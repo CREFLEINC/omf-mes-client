@@ -40,12 +40,11 @@ const capturingRoute = (pathname: string, body: unknown, seen: URL[]): StubRoute
 const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
 
 describe('스캔값으로 LOT 찾기', () => {
-  it('번호가 정확히 같은 줄만 고른다', async () => {
+  /* 부분 검색은 여러 줄을 내고, 찾는 줄이 첫 페이지 밖으로 밀리면 없는 것과 구별되지 않는다. */
+  it('정확 일치로 묻는다', async () => {
+    const seen: URL[] = [];
     const fetch = createStubFetch([
-      route('/trace/lots', {
-        items: [lotRow(7, `${SCANNED}9`), lotRow(4, SCANNED)],
-        page,
-      }),
+      capturingRoute('/trace/lots', { items: [lotRow(4, SCANNED)], page }, seen),
     ]);
 
     const { result } = renderHookWithProviders(() => useScannedLot(SCANNED), { fetch });
@@ -53,12 +52,26 @@ describe('스캔값으로 LOT 찾기', () => {
     await waitFor(() => {
       expect(result.current.data).toEqual({ lotId: 4, lotNo: SCANNED, itemId: 1 });
     });
+    expect(seen[0]?.searchParams.get('lotNo')).toBe(SCANNED);
+    expect(seen[0]?.searchParams.get('q')).toBeNull();
   });
 
-  it('일치하는 줄이 없으면 오류가 아니라 null이다', async () => {
+  /* 정확 일치가 지켜지지 않으면 남의 위치와 수량을 이 LOT 의 것으로 보이게 된다. */
+  it('번호가 다른 줄이 와도 그것을 이 LOT으로 보지 않는다', async () => {
     const fetch = createStubFetch([
       route('/trace/lots', { items: [lotRow(7, `${SCANNED}9`)], page }),
     ]);
+
+    const { result } = renderHookWithProviders(() => useScannedLot(SCANNED), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(result.current.data).toBeNull();
+  });
+
+  it('일치하는 줄이 없으면 오류가 아니라 null이다', async () => {
+    const fetch = createStubFetch([route('/trace/lots', { items: [], page })]);
 
     const { result } = renderHookWithProviders(() => useScannedLot(SCANNED), { fetch });
 
