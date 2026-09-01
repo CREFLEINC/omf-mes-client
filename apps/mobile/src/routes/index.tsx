@@ -11,6 +11,7 @@ import { InboundReceiptScreen } from '../screens/inbound-receipt/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
+import { PutawayScreen } from '../screens/putaway/screen';
 import { RepairRoundtripScreen } from '../screens/repair-roundtrip/screen';
 
 export const appRoutes: RouteObject[] = [
@@ -27,6 +28,7 @@ export const appRoutes: RouteObject[] = [
       { index: true, element: <WorkerSignInScreen /> },
       { path: 'screens', element: <ShellHome /> },
       { path: 'inbound-receipt', element: <InboundReceiptScreen /> },
+      { path: 'putaway', element: <PutawayScreen /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
       { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
