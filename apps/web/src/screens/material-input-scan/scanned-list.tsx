@@ -31,8 +31,13 @@ export interface ScannedListProps {
   notes: readonly RecordedNote[];
   /** 이미 기록된 자재. **되돌릴 수 없다** — 잠그고 빼기도 내리지 않는다. */
   recordedLotIds: readonly number[];
-  /** 지금 기록 중인 자재. 그 줄만 잠근다. */
-  savingLotId: number | null;
+  /**
+   * 이 단말이 이 공정에서 투입할 수 있는가(스펙 §5-1).
+   *
+   * ⭐ **기록이 곧 쓰기다**(§5-8) — 게이트가 닫혔으면 여기서 막아야 한다. 「투입 확정」에만
+   * 잠금을 두면 닫힌 단말에서 자재가 그대로 원장에 남는다.
+   */
+  canRecord: boolean;
   onQtyChange: (lotId: number, value: string) => void;
   onRemoveMaterial: (lotId: number) => void;
   /** 수량을 마치고 그 한 건을 기록한다 — 스펙 §5-8 건별 저장. */
@@ -60,7 +65,7 @@ export const ScannedList = ({
   qtyDrafts,
   notes,
   recordedLotIds,
-  savingLotId,
+  canRecord,
   onQtyChange,
   onRemoveMaterial,
   onRecord,
@@ -75,10 +80,10 @@ export const ScannedList = ({
     {draft.materials.length === 0 ? (
       <p className="field-note">{t.scanned.empty}</p>
     ) : (
-      <ul className="scanned-items">
+      /* 화면에 목록이 여럿이라 이름을 붙인다 — 이름 없는 목록은 무엇의 목록인지 알 수 없다. */
+      <ul className="scanned-items" aria-label={t.scanned.materialsLabel}>
         {draft.materials.map((material) => {
           const isRecorded = recordedLotIds.includes(material.lotId);
-          const isSaving = savingLotId === material.lotId;
 
           return (
             <li key={material.lotId} className="scanned-item">
@@ -102,7 +107,6 @@ export const ScannedList = ({
                   <Button
                     variant="text"
                     size="sm"
-                    disabled={isSaving}
                     aria-label={t.scanned.removeMaterial(material.lotNo)}
                     onClick={() => {
                       onRemoveMaterial(material.lotId);
@@ -171,7 +175,7 @@ export const ScannedList = ({
                 value={readQty(qtyDrafts, material.lotId)}
                 inputMode="decimal"
                 autoComplete="off"
-                readOnly={isRecorded || isSaving}
+                readOnly={isRecorded}
                 error={isRecorded ? undefined : qtyError(readQty(qtyDrafts, material.lotId))}
                 onChange={(event) => {
                   onQtyChange(material.lotId, event.target.value);
@@ -192,6 +196,7 @@ export const ScannedList = ({
                     value={readQty(qtyDrafts, material.lotId)}
                     label={t.scanned.keypadLabel(material.lotNo)}
                     submitLabel={t.scanned.keypadSubmit}
+                    submitDisabled={!canRecord}
                     clearLabel={t.scanned.keypadClear}
                     backspaceLabel={t.scanned.keypadBackspace}
                     onChange={(next) => {

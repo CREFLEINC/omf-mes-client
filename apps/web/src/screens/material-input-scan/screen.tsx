@@ -105,6 +105,8 @@ export const MaterialInputScanScreen = () => {
   const [notes, setNotes] = useState<readonly RecordedNote[]>([]);
   /* 「투입 확정」으로 닫은 뒤 남길 건수. 닫기 전에는 `null`이다. */
   const [closedCount, setClosedCount] = useState<number | null>(null);
+  /* 이미 보고 넘긴 거부의 수. 회차를 닫으면 여기까지는 지난 일이 된다. */
+  const [dismissedRejections, setDismissedRejections] = useState(0);
   /*
    * 오프라인 폴백(스펙 §5-7 · 공유계약 C-1). **담는 것이 곧 성공이다** — 통신을 기다리지
    * 않고, 미전송 건수를 헤더가 상시 낸다(C-1 #2·#4).
@@ -164,6 +166,17 @@ export const MaterialInputScanScreen = () => {
   const recordMaterial = (lotId: number): void => {
     if (workOrderId === null || workerNo === null) return;
 
+    /*
+     * ⭐ **게이트는 쓰기를 막아야 한다**(스펙 §5-1 · 조항 F-1). 스펙이 「「투입 확정」을
+     * 비활성」이라 적은 것은 **확정이 곧 쓰기이던 시점**의 문장이고, §5-8 건별 저장을 채택한
+     * 뒤로 원장에 남기는 것은 이 함수다 — 확정은 목록만 닫는다. 잠금을 확정에만 두면
+     * **닫힌 단말에서 자재가 그대로 기록된다.**
+     *
+     * ⛔ 이것이 방어는 아니다(F-1 — 집행은 서버의 403). 오조작을 줄이는 장치이고, 줄이려면
+     * 실제로 조작이 일어나는 자리에 있어야 한다.
+     */
+    if (gate.verdict !== 'allowed') return;
+
     const material = draft.materials.find((candidate) => candidate.lotId === lotId);
     /* 이미 담긴 줄은 다시 담지 않는다 — 같은 자재가 두 번 투입된 것이 된다. */
     if (material === undefined || recordedLotIdsSeen.includes(lotId)) return;
@@ -218,6 +231,8 @@ export const MaterialInputScanScreen = () => {
     setQtyDrafts(EMPTY_QTY_DRAFTS);
     setNotes([]);
     setRecordedLotIdsSeen([]);
+    /* 지난 회차의 거부는 이 회차의 사실이 아니다 — 남겨 두면 새로 담은 것이 거부된 것처럼 읽힌다. */
+    setDismissedRejections(outbox.rejections.length);
     /* ⛔ 큐는 비우지 않는다 — 아직 서버에 닿지 않은 건이 목록을 닫는다고 사라지지 않는다. */
   };
 
@@ -328,7 +343,7 @@ export const MaterialInputScanScreen = () => {
             qtyDrafts={qtyDrafts}
             notes={notes}
             recordedLotIds={recordedLotIdsSeen}
-            savingLotId={null}
+            canRecord={gate.verdict === 'allowed'}
             onQtyChange={changeQty}
             onRemoveMaterial={removeMaterial}
             onRecord={recordMaterial}
@@ -339,7 +354,7 @@ export const MaterialInputScanScreen = () => {
             hasPending={pendingMaterials.length > 0}
             hasWorker={workerNo !== null}
             gate={gate}
-            rejection={outbox.rejections.at(-1)?.error ?? null}
+            rejection={outbox.rejections.slice(dismissedRejections).at(-1)?.error ?? null}
             closedCount={closedCount}
             onConfirm={closeList}
           />

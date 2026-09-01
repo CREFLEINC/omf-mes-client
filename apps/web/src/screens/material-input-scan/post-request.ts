@@ -82,25 +82,3 @@ export const toMaterialConsumption = (
     occurredAt: toOffsetDateTime(occurredAt),
   };
 };
-
-/**
- * 담긴 자재 전부의 본문. **하나라도 만들 수 없으면 통째로 만들지 않는다.**
- *
- * 일부만 실어 보내면 나머지 자재가 투입되지 않은 채 「확정」이 끝난 것으로 보인다 — 계보에
- * 구멍이 남고, 그 구멍은 투입 기록을 보고는 알 수 없다.
- */
-export const toMaterialConsumptions = (
-  workOrderId: number,
-  materials: readonly ScannedMaterial[],
-  drafts: QtyDrafts,
-  occurredAt: Date,
-  workSessionId: number | null,
-): MaterialConsumptionCreate[] | null => {
-  if (materials.length === 0) return null;
-
-  const bodies = materials.map((material) =>
-    toMaterialConsumption(workOrderId, material, drafts, occurredAt, workSessionId),
-  );
-
-  return bodies.every((body): body is MaterialConsumptionCreate => body !== null) ? bodies : null;
-};

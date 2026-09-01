@@ -29,6 +29,11 @@ export interface NumericKeypadProps {
   allowDecimal?: boolean;
   /** 입력을 마쳤을 때. 스캔형 화면에서는 이 자리가 「기록」이 된다. */
   onSubmit?: () => void;
+  /**
+   * 제출만 잠근다. **숫자 키는 계속 눌린다** — 값을 고칠 수 없게 만들면 왜 못 보내는지
+   * 알아보려던 작업자가 입력까지 막힌 것으로 읽는다. 사유는 부르는 쪽이 화면에 낸다.
+   */
+  submitDisabled?: boolean;
   /** 접근 이름 — 화면에 이 패드가 둘 이상 설 수 있어 무엇을 치는 패드인지 밝힌다. */
   label: string;
   submitLabel: string;
@@ -63,6 +68,7 @@ export const NumericKeypad = ({
   onChange,
   allowDecimal = true,
   onSubmit,
+  submitDisabled = false,
   label,
   submitLabel,
   clearLabel,
@@ -147,6 +153,7 @@ export const NumericKeypad = ({
         variant="filled"
         size="xl"
         className="pop-touch-target numeric-keypad-submit"
+        disabled={submitDisabled}
         onClick={onSubmit}
       >
         {submitLabel}

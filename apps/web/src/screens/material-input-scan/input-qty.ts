@@ -62,12 +62,3 @@ export const dropQty = (drafts: QtyDrafts, lotId: number): QtyDrafts => {
 
   return rest;
 };
-
-/**
- * 담긴 자재 전부가 쓸 수 있는 수량을 갖췄는가.
- *
- * **하나라도 비면 보내지 않는다** — 일부만 실어 보내면 나머지 자재가 투입되지 않은 채
- * 「확정」이 끝난 것으로 보인다.
- */
-export const hasEveryQty = (drafts: QtyDrafts, lotIds: readonly number[]): boolean =>
-  lotIds.length > 0 && lotIds.every((lotId) => validateQty(readQty(drafts, lotId)) === null);

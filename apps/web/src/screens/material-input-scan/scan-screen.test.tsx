@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -884,5 +885,59 @@ describe('MaterialInputScanScreen — 끊겼을 때의 스캔', () => {
     expect(screen.queryByText(t.scan.outcomes.failed)).toBeNull();
 
     Object.defineProperty(globalThis.navigator, 'onLine', { value: true, configurable: true });
+  });
+});
+
+/**
+ * ⭐ **판정은 단말이 아니라 「단말 × 공정」에 붙는다.**
+ *
+ * 이 조회가 내는 것은 구성 전체가 아니라 「이 공정에서 투입할 수 있는가」라는 불리언 하나다 —
+ * 단말만 캐시 키로 잡으면 같은 단말에서 공정이 바뀌었을 때 **앞 공정의 판정이 그대로 돌아오고,
+ * 닫힌 공정이 열려 보인다.**
+ */
+describe('MaterialInputScanScreen — 게이팅 캐시', () => {
+  const OTHER_PROCESS = 7903;
+
+  /** 트리 «안에서» 공정을 바꾼다 — 캐시를 공유해야 「앞 판정이 돌아오는지」를 잴 수 있다. */
+  const SwitchableProcess = () => {
+    const [processId, setProcessId] = useState(PROCESS_ID);
+
+    return (
+      <PopIdentityProvider value={{ ...GATED, processId }}>
+        <button
+          type="button"
+          onClick={() => {
+            setProcessId(OTHER_PROCESS);
+          }}
+        >
+          공정 바꾸기
+        </button>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>
+    );
+  };
+
+  it('같은 단말이라도 공정이 다르면 판정을 다시 받는다', async () => {
+    const user = userEvent.setup();
+
+    /* 이 단말은 7902 에서는 열려 있고 7903 에서는 닫혀 있다. */
+    const twoProcesses: StubRoute = {
+      match: (request) => isGet(request, TERMINAL_PROCESSES_PATH),
+      respond: () =>
+        jsonResponse({
+          items: [
+            { processId: PROCESS_ID, canInputMaterial: true },
+            { processId: OTHER_PROCESS, canInputMaterial: false },
+          ],
+        }),
+    };
+
+    const stub = createStubFetch([...receiptRoutes(), lotsRoute([lot()]), twoProcesses]);
+    renderWithProviders(<SwitchableProcess />, { fetch: stub, route: ROUTE });
+
+    await screen.findByText(t.confirm.reasons.nothingScanned);
+    await user.click(screen.getByRole('button', { name: '공정 바꾸기' }));
+
+    expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
   });
 });

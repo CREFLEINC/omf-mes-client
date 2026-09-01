@@ -159,6 +159,9 @@ const renderScreen = (lots: unknown[], postRoute: StubRoute, extra: StubRoute[] 
   return sent;
 };
 
+/** 담은 자재 목록. 화면에 목록이 여럿이라 이름으로 집는다. */
+const scannedList = (): HTMLElement => screen.getByRole('list', { name: t.scanned.materialsLabel });
+
 const okRoute = (bodies: unknown[]): StubRoute => {
   let call = 0;
 
@@ -259,15 +262,23 @@ describe('투입 확정 — 무엇이 나가는가', () => {
    */
   it('자재가 둘이면 키도 둘이고 서로 다르다', async () => {
     const user = userEvent.setup();
-    const sent = renderScreen([lot()], okRoute([consumption(7301), consumption(7302)]));
+    const sent = renderScreen(
+      [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })],
+      okRoute([consumption(7301), consumption(7302)]),
+    );
 
-    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await prepare(user, [
+      ['SAMPLE-LOT-0001', '12'],
+      ['SAMPLE-LOT-0002', '5'],
+    ]);
+
     await waitFor(() => {
-      expect(sent).toHaveLength(1);
+      expect(sent).toHaveLength(2);
     });
 
     const keys = sent.map((one) => one.headers.get('Idempotency-Key'));
-    expect(new Set(keys).size).toBe(keys.length);
+    /* 하나로 묶으면 서버가 둘째를 재전송으로 흡수해 **담은 자재가 조용히 투입되지 않는다.** */
+    expect(new Set(keys).size).toBe(2);
   });
 });
 
@@ -283,8 +294,20 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
 
     expect(await screen.findByText(t.scanned.crossProcess)).toBeTruthy();
-    /* 출고 귀속이 있는 건에는 그 표시를 붙이지 않는다. */
-    expect(screen.queryByText(t.scanned.unlinkedIssue)).toBeTruthy();
+  });
+
+  /*
+   * ⛔ **출고에 귀속된 건에는 그 표시를 붙이지 않는다.** 「통과」와 「기록만 됨」을 가르는
+   * 표시라 아무 데나 붙으면 구분이 사라진다 — 나중에 계보를 추적할 때 쓸 수 없게 된다.
+   */
+  it('출고에 귀속된 건에는 「출고 미귀속」을 붙이지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301, { shopfloorReceiptLineId: 7101 })]));
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await screen.findByText(t.scanned.recordedMark);
+
+    expect(screen.queryByText(t.scanned.unlinkedIssue)).toBeNull();
   });
 
   it('기록된 줄에 기록 표시가 붙는다', async () => {
@@ -702,20 +725,198 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
    */
   it('서버가 거부하면 그 건만 목록에서 내린다', async () => {
     const user = userEvent.setup();
+
+    /* 첫 건은 받고 **둘째만 거부**한다 — 「그 건만」이 성립하는지 재려면 둘이 갈려야 한다. */
+    let call = 0;
     renderScreen([lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })], {
       match: (request) => isPost(request, CONSUMPTIONS_PATH),
-      respond: (request) => {
-        const url = new URL(request.url);
+      respond: () => {
+        call += 1;
 
-        return url.pathname === CONSUMPTIONS_PATH
+        return call === 1
           ? jsonResponse(consumption(7301), { status: 201 })
           : new Response(null, { status: 500 });
       },
     });
 
-    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await prepare(user, [
+      ['SAMPLE-LOT-0001', '12'],
+      ['SAMPLE-LOT-0002', '5'],
+    ]);
 
-    expect(await screen.findByText(t.scanned.recordedMark)).toBeTruthy();
-    expect(screen.getByText('SAMPLE-LOT-0001')).toBeTruthy();
+    /* 거부된 둘째는 원장에 없으므로 목록에서 내려간다 — §6 「자재LOT 스캔부터 루프백」. */
+    await waitFor(() => {
+      expect(within(scannedList()).queryByText('SAMPLE-LOT-0002')).toBeNull();
+    });
+
+    /*
+     * ⛔ **전체 롤백 금지**(C-2). 40건 중 1건 때문에 39건을 버리면 현장이 마비된다 —
+     * 받아들여진 첫 건은 목록에 그대로 남아 있어야 한다.
+     */
+    expect(within(scannedList()).getByText('SAMPLE-LOT-0001')).toBeTruthy();
+    expect(screen.getByText(t.scanned.recordedMark)).toBeTruthy();
   });
+});
+
+/**
+ * ⭐ **게이트는 「투입 확정」이 아니라 «쓰기»를 막아야 한다**(스펙 §5-1 · 조항 F-1).
+ *
+ * 스펙이 「「투입 확정」을 비활성」이라 적은 것은 확정이 곧 쓰기이던 시점의 문장이다. §5-8
+ * 건별 저장을 채택한 뒤로 원장에 남기는 것은 키패드 「기록」이고, 확정은 목록만 닫는다 —
+ * 잠금을 확정에만 두면 **닫힌 단말에서 자재가 그대로 기록된다.**
+ */
+describe('MaterialInputScanScreen — 게이트와 쓰기', () => {
+  const deniedBackdrop = (lots: unknown[]): StubRoute[] => [
+    {
+      match: (request) => isGet(request, TERMINAL_PROCESSES_PATH),
+      respond: () => jsonResponse({ items: [{ processId: PROCESS_ID, canInputMaterial: false }] }),
+    },
+    ...backdrop(lots),
+  ];
+
+  it('권한이 닫힌 단말에서는 기록이 나가지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent: Sent[] = [];
+    const stub = createStubFetch([...deniedBackdrop([lot()]), okRoute([consumption(7301)])]);
+    const fetch: StubFetch = async (request) => {
+      if (isPost(request, CONSUMPTIONS_PATH)) {
+        sent.push({ headers: request.headers, body: await request.clone().json() });
+      }
+
+      return stub(request);
+    };
+
+    renderWithProviders(
+      <PopIdentityProvider value={GATED}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
+
+    await screen.findByText(t.confirm.reasons.denied);
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
+
+    /* 「기록」이 잠겨 있고, 눌러도 원장에 닿지 않는다 — 잠금과 보내는 자리가 각각 막는다. */
+    const record = screen.getByRole('button', { name: t.scanned.keypadSubmit });
+    expect(record).toHaveProperty('disabled', true);
+
+    await user.click(record);
+    expect(sent).toHaveLength(0);
+    expect(screen.queryByText(t.scanned.recordedMark)).toBeNull();
+  });
+
+  /*
+   * ⛔ **숫자 키까지 잠그지 않는다.** 값을 고칠 수 없게 만들면 왜 못 보내는지 알아보려던
+   * 작업자가 입력까지 막힌 것으로 읽는다 — 사유는 확정 구획이 문장으로 말한다.
+   */
+  it('권한이 닫혀도 수량은 칠 수 있다', async () => {
+    const user = userEvent.setup();
+    const stub = createStubFetch([...deniedBackdrop([lot()]), okRoute([consumption(7301)])]);
+
+    renderWithProviders(
+      <PopIdentityProvider value={GATED}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch: stub, route: ROUTE },
+    );
+
+    await screen.findByText(t.confirm.reasons.denied);
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '');
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+    expect(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toHaveProperty(
+      'value',
+      '7',
+    );
+  });
+});
+
+/**
+ * 큐가 **사라지지도 멈추지도 않는지** — 공유계약 C-1. 둘 다 「이미 성공을 본」 작업자가
+ * 알아챌 수 없는 형태로 실패하는 자리다.
+ */
+describe('MaterialInputScanScreen — 큐가 살아남는가', () => {
+  it('담은 건이 브라우저 저장소에 남는다', async () => {
+    const user = userEvent.setup();
+    globalThis.localStorage.clear();
+
+    const stub = createStubFetch([...backdrop([lot()])]);
+    const fetch: StubFetch = async (request) => {
+      if (isPost(request, CONSUMPTIONS_PATH)) throw new TypeError('Failed to fetch');
+
+      return stub(request);
+    };
+
+    renderWithProviders(
+      <PopIdentityProvider value={GATED}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
+
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+
+    /*
+     * ⭐ 메모리에만 있으면 화면을 한 번 되살리는 것으로 기록이 사라지고, 작업자는 이미 성공을
+     * 보았으므로 **사라진 줄 모른다.**
+     */
+    await waitFor(() => {
+      const stored: unknown = JSON.parse(
+        globalThis.localStorage.getItem('omf-mes.material-input-scan.outbox') ?? '[]',
+      );
+      expect(Array.isArray(stored) && stored.length).toBe(1);
+    });
+
+    globalThis.localStorage.clear();
+  });
+
+  /*
+   * ⭐ **연결 이벤트만 믿지 않는다.** 「끊긴 적 없이 실패한」 요청은 그 이벤트를 일으키지
+   * 않으므로, 스스로 깨우지 않으면 큐가 연결이 살아 있는데도 영원히 멈춰 선다.
+   */
+  it('통신 실패 뒤 스스로 다시 시도한다', async () => {
+    const user = userEvent.setup();
+    globalThis.localStorage.clear();
+
+    let attempt = 0;
+    const stub = createStubFetch([...backdrop([lot()])]);
+    const fetch: StubFetch = async (request) => {
+      if (isPost(request, CONSUMPTIONS_PATH)) {
+        attempt += 1;
+        if (attempt === 1) throw new TypeError('Failed to fetch');
+
+        return jsonResponse(consumption(7301), { status: 201 });
+      }
+
+      return stub(request);
+    };
+
+    renderWithProviders(
+      <PopIdentityProvider value={GATED}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
+
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+
+    await waitFor(() => {
+      expect(attempt).toBe(1);
+    });
+
+    /*
+     * ⛔ 연결 이벤트를 «보내지 않는다» — 재시도 타이머만으로 깨어나야 한다. 실제 간격(5초)을
+     * 그대로 기다리므로 이 감지기만 제한 시간을 늘린다.
+     */
+    await waitFor(
+      () => {
+        expect(attempt).toBe(2);
+      },
+      { timeout: 12_000 },
+    );
+
+    globalThis.localStorage.clear();
+  }, 15_000);
 });

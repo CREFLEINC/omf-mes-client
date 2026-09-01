@@ -43,8 +43,13 @@ export interface TerminalGate {
 }
 
 export const terminalGatingKeys = {
-  processes: (terminalId: number) =>
-    ['material-input-scan', 'terminal-processes', terminalId] as const,
+  /*
+   * ⛔ **공정까지 키에 넣는다.** 이 조회의 결과는 「이 단말의 구성」이 아니라 「이 단말이 이
+   * 공정에서 투입할 수 있는가」라는 **불리언 하나**다. 단말만 키로 잡으면 같은 단말에서 공정이
+   * 바뀌었을 때 **앞 공정의 판정이 그대로 돌아온다** — 닫힌 공정이 열린 것으로 보인다.
+   */
+  processes: (terminalId: number, processId: number) =>
+    ['material-input-scan', 'terminal-processes', terminalId, processId] as const,
 };
 
 /**
@@ -84,7 +89,7 @@ export const useTerminalGate = (
   const identified = terminalId !== null && processId !== null;
 
   const query = useQuery({
-    queryKey: terminalGatingKeys.processes(terminalId ?? 0),
+    queryKey: terminalGatingKeys.processes(terminalId ?? 0, processId ?? 0),
     enabled: identified,
     queryFn: () => {
       if (terminalId === null || processId === null) {
