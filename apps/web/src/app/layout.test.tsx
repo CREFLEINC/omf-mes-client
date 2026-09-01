@@ -485,6 +485,10 @@ describe('AppLayout', () => {
       'href',
       '/shipment/shipment-confirm',
     );
+    expect(within(sidebar).getByRole('link', { name: '제품 폐기 요청' })).toHaveAttribute(
+      'href',
+      '/shipment/product-disposal-request',
+    );
     /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
       links.indexOf('/logistics/document-progress') + 1,
@@ -510,6 +514,10 @@ describe('AppLayout', () => {
     /* 확정은 «만드는» 두 화면 뒤다 — 되돌릴 수 있는 구간이 여기서 끝난다(W-04-12). */
     expect(links.indexOf('/shipment/shipment-confirm')).toBe(
       links.indexOf('/shipment/expedited-shipment') + 1,
+    );
+    /* 버리는 일은 만드는·확정하는 일 뒤다(W-04-10). */
+    expect(links.indexOf('/shipment/product-disposal-request')).toBe(
+      links.indexOf('/shipment/shipment-confirm') + 1,
     );
     expect(links.indexOf('/shipment/shipment-processing')).toBeLessThan(
       links.indexOf('/production/work-order-close'),
@@ -557,7 +565,7 @@ describe('AppLayout', () => {
       '/production/work-order-progress',
     );
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/shipment/shipment-confirm') + 1,
+      links.indexOf('/shipment/product-disposal-request') + 1,
     );
     expect(links.indexOf('/production/production-plans')).toBe(
       links.indexOf('/production/production-orders') + 1,
@@ -755,6 +763,8 @@ describe('AppLayout', () => {
       '/shipment/expedited-shipment',
       /* W-04-12 — 되돌릴 수 있는 구간이 여기서 끝난다. 만드는 두 화면 뒤다. */
       '/shipment/shipment-confirm',
+      /* W-04-10 — 처분 판정이 선행이고 결재를 탄다. 출하 흐름 넷 뒤다. */
+      '/shipment/product-disposal-request',
       '/production/production-orders',
       '/production/production-plans',
       '/production/work-order-assignments',

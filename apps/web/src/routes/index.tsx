@@ -57,6 +57,7 @@ import { ProductStockStatusScreen } from '../screens/product-stock-status/screen
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
+import { ProductDisposalRequestScreen } from '../screens/product-disposal-request/screen';
 import { ShipmentConfirmScreen } from '../screens/shipment-confirm/screen';
 import { ShipmentProcessingScreen } from '../screens/shipment-processing/screen';
 import { ShipmentRequestCreateScreen } from '../screens/shipment-request-create/screen';
@@ -534,6 +535,11 @@ export const appRouter = createBrowserRouter([
        * 되돌릴 수 있는 구간이 여기서 끝난다.
        */
       { path: 'shipment/shipment-confirm', element: <ShipmentConfirmScreen /> },
+      /*
+       * W-04-10 — 출하가 아니라 «되돌아온 물건을 버리는» 일이라 확정 뒤에 둔다. 처분 판정이
+       * 선행이고 결재를 타므로 만드는 화면들과 축이 다르다.
+       */
+      { path: 'shipment/product-disposal-request', element: <ProductDisposalRequestScreen /> },
       /*
        * W-04-08 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만
        * 완제품 재고·Lot Status 조회는 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다.

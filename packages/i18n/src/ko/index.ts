@@ -88,6 +88,7 @@ import { equipmentFailureReport } from './equipment-failure-report';
 import { oqcInspection } from './oqc-inspection';
 import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
+import { productDisposalRequest } from './product-disposal-request';
 
 export const ko = {
   common,
@@ -164,6 +165,7 @@ export const ko = {
   oqcInspection,
   expeditedShipment,
   shipmentConfirm,
+  productDisposalRequest,
 } as const;
 
 export type Messages = typeof ko;

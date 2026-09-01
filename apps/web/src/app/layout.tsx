@@ -267,6 +267,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/shipment/shipment-confirm" icon="task_alt">
               출하 확정·취소
             </NavItem>
+            {/*
+             * W-04-10 — 처분 판정이 선행이고 결재를 타는 화면이라 출하 흐름 넷 뒤에 둔다.
+             * 나가는 일이 아니라 «버리는» 일이다.
+             */}
+            <NavItem to="/shipment/product-disposal-request" icon="delete_sweep">
+              제품 폐기 요청
+            </NavItem>
           </SidebarSection>
           {/* W-02-01 — 생산의 계획·지시 첫 화면이며 현재 생산 블록의 첫 항목으로 둔다. */}
           <SidebarSection label="생산">
