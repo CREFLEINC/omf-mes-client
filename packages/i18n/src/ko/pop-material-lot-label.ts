@@ -36,6 +36,13 @@ export const popMaterialLotLabel = {
   },
   printer: {
     label: '프린터',
+    /**
+     * 스펙 §5-1 은 「프린터 선택 | 프린터 2대 이상」을, §8-4 는 「단일 프린터 전제로 설계하고
+     * 선택 UI 는 자리만」을 정했다. 설치 구성(대수·단말당 배정)이 고객 정리 대기라 **고르는
+     * 동작을 만들지 않고 자리만 둔다.**
+     */
+    select: '프린터 선택',
+    selectPending: '프린터 배정이 정해지면 고를 수 있습니다. 지금은 기본 프린터로 인쇄합니다.',
     /** 목록이 비어 올 수 있다 — 서버가 무엇을 보고 목록을 만드는지가 아직 미결이다. */
     none: '사용할 수 있는 프린터가 없습니다.',
     /**
@@ -46,24 +53,6 @@ export const popMaterialLotLabel = {
     retry: '다시 확인',
     /** 서버가 사람이 읽는 설명을 주지 않았다. 상태 값을 화면이 한국어로 옮기지 않는다. */
     noStatusMessage: '상태 설명이 없습니다.',
-  },
-  lines: {
-    paneLabel: '품목',
-    caption: '품목',
-    columns: {
-      select: '선택',
-      item: '품목',
-      quantity: '수량',
-      attachment: '부착',
-    },
-    selectRow: (itemName: string) => `${itemName} 선택`,
-    deselectRow: (itemName: string) => `${itemName} 선택 해제`,
-    /** 공급사가 LOT 을 붙여 온 건과 우리가 발번할 건을 가른다. */
-    missing: '미부착',
-    attached: '부착됨',
-    empty: '이 입하 건에 품목이 없습니다.',
-    loadFailed: '품목을 불러오지 못했습니다.',
-    retry: '다시 불러오기',
   },
   target: {
     paneLabel: '채번 대상',
@@ -89,11 +78,6 @@ export const popMaterialLotLabel = {
       quantity: '수량',
       supplier: '공급사',
     },
-    /**
-     * 이미 공급사 LOT 이 붙어 온 건이다. 이 화면은 미부착 건에 MES 가 발번하는 자리라
-     * 대상이 아니다 — 왜 진행할 수 없는지 밝힌다.
-     */
-    alreadyAttached: '공급사 LOT 이 붙어 있는 품목입니다. 이 화면의 발번 대상이 아닙니다.',
   },
   pageNav: {
     label: '쪽 이동',

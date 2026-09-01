@@ -54,9 +54,9 @@ type InboundReceiptLineResponse = components['schemas']['InboundReceiptLine'];
 /**
  * 화면이 다루는 입하 라인 한 줄.
  *
- * **`supplierLotMissing`이 이 화면의 갈림길이다.** 공급사가 LOT 을 붙여 온 건은 이 화면의
- * 대상이 아니다(사전부착 경로가 따로 있다). 계약이 이 값을 **라인** 속성으로 두고 입하 건
- * 목록에는 필터를 주지 않아, 걸러 내는 대신 **줄마다 표시**한다(검토 요청 omf-mes#245 ③).
+ * **`supplierLotMissing`이 이 화면의 갈림길이다.** 공급사가 LOT 을 붙여 온 라인은 이 화면의
+ * 대상이 아니다(사전부착 경로가 따로 있다). 스펙 §6 은 그런 라인이 **나타나면 안 된다**고
+ * 확정했으므로 표시하지 않고 **뺀다.**
  */
 export interface LineView {
   inboundReceiptLineId: number;
@@ -138,7 +138,7 @@ export interface TargetRow {
  *
  * ⛔ **사전부착 건은 빼고 낸다** — 스펙 §6 「사전부착 건이 목록에 옴 → 나타나면 안 된다」.
  * 계약이 이 조건을 질의로 주지 않아 화면이 거른다. 그래서 **한 쪽에 보이는 줄 수가 쪽 크기와
- * 다를 수 있다**(검토 요청 omf-mes#245 ③).
+ * 다를 수 있다**(변경 통지 #534).
  */
 export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow[] =>
   lines

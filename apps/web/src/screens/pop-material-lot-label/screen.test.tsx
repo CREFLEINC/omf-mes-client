@@ -363,7 +363,7 @@ describe('PopMaterialLotLabelScreen — 채번 대상', () => {
 
   /**
    * ⛔ 계약의 `Lot.statusCode`는 품질 판정 축이고 `LotCreate`에 그 필드가 없다 —
-   * 화면이 보낼 수도 없는 값을 지어내지 않는다(omf-mes#245 ⑤).
+   * 화면이 보낼 수도 없는 값을 지어내지 않는다(변경 통지 #534).
    */
   it('상태를 지어내 보이지 않는다', async () => {
     const { user } = renderScreen();
