@@ -105,8 +105,6 @@ export const MaterialInputScanScreen = () => {
   const [notes, setNotes] = useState<readonly RecordedNote[]>([]);
   /* 「투입 확정」으로 닫은 뒤 남길 건수. 닫기 전에는 `null`이다. */
   const [closedCount, setClosedCount] = useState<number | null>(null);
-  /* 이미 보고 넘긴 거부의 수. 회차를 닫으면 여기까지는 지난 일이 된다. */
-  const [dismissedRejections, setDismissedRejections] = useState(0);
   /*
    * 오프라인 폴백(스펙 §5-7 · 공유계약 C-1). **담는 것이 곧 성공이다** — 통신을 기다리지
    * 않고, 미전송 건수를 헤더가 상시 낸다(C-1 #2·#4).
@@ -231,9 +229,13 @@ export const MaterialInputScanScreen = () => {
     setQtyDrafts(EMPTY_QTY_DRAFTS);
     setNotes([]);
     setRecordedLotIdsSeen([]);
-    /* 지난 회차의 거부는 이 회차의 사실이 아니다 — 남겨 두면 새로 담은 것이 거부된 것처럼 읽힌다. */
-    setDismissedRejections(outbox.rejections.length);
-    /* ⛔ 큐는 비우지 않는다 — 아직 서버에 닿지 않은 건이 목록을 닫는다고 사라지지 않는다. */
+    /*
+     * 지난 회차의 결과는 이 회차의 사실이 아니다 — 남겨 두면 같은 LOT을 다시 담았을 때
+     * **지난 판정이 딸려와 표시가 겹치고**, 거부 배너도 새로 담은 것이 거부된 것처럼 읽힌다.
+     *
+     * ⛔ 큐는 비우지 않는다 — 아직 서버에 닿지 않은 건이 목록을 닫는다고 사라지지 않는다.
+     */
+    outbox.clearResults();
   };
 
   const outcome = scan.data;
@@ -354,7 +356,7 @@ export const MaterialInputScanScreen = () => {
             hasPending={pendingMaterials.length > 0}
             hasWorker={workerNo !== null}
             gate={gate}
-            rejection={outbox.rejections.slice(dismissedRejections).at(-1)?.error ?? null}
+            rejection={outbox.rejections.at(-1)?.error ?? null}
             closedCount={closedCount}
             onConfirm={closeList}
           />

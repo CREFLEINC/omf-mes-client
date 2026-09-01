@@ -120,6 +120,14 @@ export interface Outbox {
   accepted: readonly MaterialConsumption[];
   /** 서버가 거부한 건. **그 건만** 되돌린다(C-2). */
   rejections: readonly OutboxRejection[];
+  /**
+   * 이 회차의 결과를 지운다 — 「투입 확정」으로 목록을 닫을 때 부른다.
+   *
+   * ⛔ **큐를 비우는 것이 아니다.** 아직 서버에 닿지 않은 건은 그대로 남아 계속 나간다.
+   * 여기서 지우는 것은 **이미 끝난 건의 응답**뿐이다 — 남겨 두면 다음 회차에 같은 LOT을
+   * 다시 담았을 때 지난 회차의 판정이 딸려와 표시가 겹친다.
+   */
+  clearResults: () => void;
 }
 
 /**
@@ -218,5 +226,10 @@ export const useOutbox = (): Outbox => {
     });
   }, []);
 
-  return { pendingCount: entries.length, isOnline, enqueue, accepted, rejections };
+  const clearResults = useCallback((): void => {
+    setAccepted([]);
+    setRejections([]);
+  }, []);
+
+  return { pendingCount: entries.length, isOnline, enqueue, accepted, rejections, clearResults };
 };

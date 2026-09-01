@@ -920,3 +920,30 @@ describe('MaterialInputScanScreen — 큐가 살아남는가', () => {
     globalThis.localStorage.clear();
   }, 15_000);
 });
+
+/** 회차를 닫은 뒤 같은 자재를 다시 담았을 때, 지난 회차의 결과가 딸려오지 않아야 한다. */
+describe('MaterialInputScanScreen — 회차 격리(리뷰 확인)', () => {
+  it('닫고 같은 LOT을 다시 담아도 표시가 겹치지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [lot()],
+      okRoute([
+        consumption(7301, { actualUseProcessId: 7902 }),
+        consumption(7301, { actualUseProcessId: 7902 }),
+      ]),
+    );
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await screen.findByText(t.scanned.crossProcess);
+
+    await user.click(screen.getByRole('button', { name: t.confirm.action }));
+    await screen.findByText(t.scanned.empty);
+
+    /* 새 회차 — 같은 LOT을 다시 담는다. */
+    await prepare(user, [['SAMPLE-LOT-0001', '7']]);
+
+    await waitFor(() => {
+      expect(screen.getAllByText(t.scanned.crossProcess)).toHaveLength(1);
+    });
+  });
+});
