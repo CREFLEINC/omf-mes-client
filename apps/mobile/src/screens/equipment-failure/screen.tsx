@@ -12,11 +12,20 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
 import { useOnlineStatus } from '../../patterns/online-status';
+import { capturePhoto, readCapturedPhoto, type CapturedPhoto } from '../../patterns/photo-capture';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useEquipments, useOpenBreakdownCount, type Equipment } from './queries';
-import { scanMissOf, toOutboxDraft, validateReport, type OccurrenceState } from './report';
+import {
+  MAX_PHOTOS,
+  PHOTO_QUEUE_LIMIT_BYTES,
+  scanMissOf,
+  toOutboxDraft,
+  toPhotoDrafts,
+  validateReport,
+  type OccurrenceState,
+} from './report';
 import './screen.css';
 
 const t = messages.equipmentFailureReport;
@@ -68,6 +77,8 @@ export const EquipmentFailureScreen = () => {
   const [state, setState] = useState<OccurrenceState | null>(null);
   const [stoppedAt, setStoppedAt] = useState('');
   const [notify, setNotify] = useState(true);
+  const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   const openBreakdowns = useOpenBreakdownCount(selected?.equipmentId ?? null);
@@ -99,12 +110,27 @@ export const EquipmentFailureScreen = () => {
     occurrenceState: state ?? undefined,
   });
 
+  const queuedBytes = photos.reduce((total, photo) => total + photo.byteLength, 0);
+  const photoFull = photos.length >= MAX_PHOTOS;
+  const photoTooHeavy = queuedBytes >= PHOTO_QUEUE_LIMIT_BYTES;
+
+  const takePhoto = async () => {
+    try {
+      const captured = await readCapturedPhoto(await capturePhoto());
+      setPhotos((current) => [...current, captured]);
+      setPhotoError(null);
+    } catch {
+      setPhotoError(t.photo.failed);
+    }
+  };
+
   const report = async () => {
     if (selected === null || state === null) {
       return;
     }
 
     const occurredAt = new Date().toISOString();
+    const reportId = crypto.randomUUID();
     const draft = toOutboxDraft(
       {
         equipmentId: selected.equipmentId,
@@ -114,9 +140,15 @@ export const EquipmentFailureScreen = () => {
         notifyAssignee: notify,
       },
       occurredAt,
+      reportId,
     );
 
     await enqueue(draft);
+
+    /* 본문을 먼저 담는다. 사진을 기다리느라 설비담당이 늦게 알면 안 된다. */
+    for (const photo of toPhotoDrafts(photos, draft, occurredAt)) {
+      await enqueue(photo);
+    }
 
     /*
      * 담은 뒤 곧바로 보내 본다. 사람이 기다리는 보고라 닿을 수 있으면 지금 보내는 편이 낫고,
@@ -145,6 +177,8 @@ export const EquipmentFailureScreen = () => {
     setState(null);
     setStoppedAt('');
     setNotify(true);
+    setPhotos([]);
+    setPhotoError(null);
     setOutcome(null);
     scanField.focus();
   };
@@ -156,7 +190,9 @@ export const EquipmentFailureScreen = () => {
           <AlertBanner variant="success" title={t.sent.title} />
         ) : (
           <AlertBanner variant="warning" title={t.queued.title}>
-            {t.queued.description}
+            {photos.length === 0
+              ? t.queued.description
+              : `${t.queued.description} ${t.photo.waiting(photos.length)}`}
           </AlertBanner>
         )}
         <Button variant="filled" size="xl" onClick={restart}>
@@ -209,6 +245,34 @@ export const EquipmentFailureScreen = () => {
             setSymptom(event.target.value);
           }}
         />
+      </section>
+
+      <section className="equipment-failure__section">
+        <h2>{t.photo.legend}</h2>
+        <Button
+          variant="outlined"
+          size="lg"
+          disabled={selected === null || photoFull || photoTooHeavy}
+          onClick={() => {
+            void takePhoto();
+          }}
+        >
+          {t.photo.take(photos.length, MAX_PHOTOS)}
+        </Button>
+
+        {photos.length === 0 ? null : (
+          <ul className="equipment-failure__photos">
+            {photos.map((photo) => (
+              <li key={photo.fileName}>
+                <img src={photo.previewUrl} alt={t.photo.thumbnail} />
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {photoFull ? <p className="equipment-failure__note">{t.photo.full}</p> : null}
+        {photoTooHeavy ? <p className="equipment-failure__note">{t.photo.tooHeavy}</p> : null}
+        {photoError === null ? null : <AlertBanner variant="warning" title={photoError} />}
       </section>
 
       <section className="equipment-failure__section">
