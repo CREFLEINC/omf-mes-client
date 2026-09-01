@@ -35,7 +35,13 @@ export const createMlkitQrCamera = (): QrCamera => ({
       }
     });
 
-    await BarcodeScanner.startScan({ formats: REGISTRATION_FORMATS });
+    try {
+      await BarcodeScanner.startScan({ formats: REGISTRATION_FORMATS });
+    } catch (error) {
+      // 열지 못했는데 듣는 것만 남으면 다시 시도할 때마다 쌓여 한 번 읽은 것이 여러 번이 된다.
+      await listener.remove();
+      throw error;
+    }
 
     return async () => {
       await listener.remove();
