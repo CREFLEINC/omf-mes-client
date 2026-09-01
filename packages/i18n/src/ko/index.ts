@@ -63,6 +63,7 @@ import { workOrderClose } from './work-order-close';
 import { workOrderRelease } from './work-order-release';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { shipmentSchedule } from './shipment-schedule';
+import { materialInputScan } from './material-input-scan';
 import { dispositionDecision } from './disposition-decision';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { workOrderProgress } from './work-order-progress';
@@ -137,6 +138,7 @@ export const ko = {
   workOrderRelease,
   suspiciousMaterialHold,
   shipmentSchedule,
+  materialInputScan,
   dispositionDecision,
   emergencyWorkOrder,
   workOrderProgress,
