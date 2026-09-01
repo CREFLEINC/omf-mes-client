@@ -16,8 +16,14 @@ export const stoppedAtOf = (hourMinute: string, occurredAt: string): string | nu
     return null;
   }
 
+  const reported = new Date(occurredAt);
   const at = new Date(occurredAt);
   at.setHours(Number(match[1]), Number(match[2]), 0, 0);
+
+  /* 멈춘 것이 보고보다 뒤일 수는 없다. 자정을 넘겨 적으면 그날로 잡은 값이 미래가 된다. */
+  if (at.getTime() > reported.getTime()) {
+    at.setDate(at.getDate() - 1);
+  }
 
   return at.toISOString();
 };

@@ -83,6 +83,14 @@ describe('큐에 담을 모양', () => {
     expect(new Date(sent).getMinutes()).toBe(20);
   });
 
+  /* 자정 직후에 보고하면 그날로 잡은 정지 시각이 아직 오지 않은 시각이 된다. */
+  it('보고보다 뒤인 정지 시각은 앞날로 본다', () => {
+    const draft = toOutboxDraft({ ...report, stoppedAt: '23:50' }, '2026-09-02T00:10:00.000Z');
+    const sent = (draft.body as { stoppedAt: string }).stoppedAt;
+
+    expect(new Date(sent).getTime()).toBeLessThan(Date.parse('2026-09-02T00:10:00.000Z'));
+  });
+
   it('정지 시각을 모르면 비운 채로 담는다', () => {
     const draft = toOutboxDraft({ ...report, stoppedAt: null }, OCCURRED_AT);
 

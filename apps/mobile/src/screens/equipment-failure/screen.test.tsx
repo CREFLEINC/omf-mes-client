@@ -200,6 +200,47 @@ describe('설비 고장 보고 화면', () => {
     expect(screen.queryByLabelText('정지 시각')).not.toBeInTheDocument();
   });
 
+  /* 감춘 값이 남아 나가면 멈추지 않은 고장에 정지 시각이 붙는다. */
+  it('멈췄다로 적은 정지 시각은 상태를 바꾸면 함께 지운다', async () => {
+    const user = userEvent.setup();
+    const sent: Record<string, unknown>[] = [];
+
+    renderWithProviders(<EquipmentFailureScreen />, {
+      fetch: createStubFetch([
+        ...routes(),
+        {
+          match: (request: Request) =>
+            new URL(request.url).pathname === '/maintenance/breakdowns' &&
+            request.method === 'POST',
+          respond: (request: Request) => {
+            void request
+              .clone()
+              .json()
+              .then((body: Record<string, unknown>) => {
+                sent.push(body);
+              });
+            return jsonResponse({ breakdownId: 1 }, { status: 201 });
+          },
+        },
+      ]),
+    });
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
+    await user.type(screen.getByLabelText('정지 시각'), '14:20');
+    await user.click(screen.getByRole('radio', { name: '돌지만 이상하다' }));
+    await user.click(screen.getByRole('button', { name: '고장 보고' }));
+
+    await screen.findByText('고장을 보고했습니다');
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(sent[0]?.stoppedAt).toBeNull();
+  });
+
   it('보고하면 큐를 거쳐 계약 경로로 나간다', async () => {
     const user = userEvent.setup();
     const seen: URL[] = [];

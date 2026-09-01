@@ -219,6 +219,10 @@ export const EquipmentFailureScreen = () => {
           value={state ?? undefined}
           onChange={(value) => {
             setState(value as OccurrenceState);
+            /* 감춘 값이 남아 나가면 멈추지 않은 고장에 정지 시각이 붙는다. */
+            if (value !== 'STOPPED') {
+              setStoppedAt('');
+            }
           }}
         >
           <Radio value="STOPPED">{t.state.stopped}</Radio>
