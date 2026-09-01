@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { popTouchClass } from '../../patterns/pop-touch';
-import type { TargetRow } from './types';
+import { toIssueStage, type TargetRow } from './types';
 
 const t = messages.popMaterialLotLabel.target;
 
@@ -32,6 +32,12 @@ export interface TargetCardProps {
  */
 export const TargetCard = ({ row, itemLookup, uomLookup, supplierLookup }: TargetCardProps) => {
   if (row === null) return <p className="field-note">{t.empty}</p>;
+
+  /*
+   * 등록이 이미 끝난 라인은 **인쇄만** 한다. 단추 이름이 다음에 무슨 일이 일어나는지를
+   * 말해야 한다 — 「등록·인쇄」로 두면 이미 있는 LOT 위에 또 만든다고 읽힌다.
+   */
+  const isRegistered = toIssueStage(row) === 'registered';
 
   return (
     <>
@@ -64,12 +70,13 @@ export const TargetCard = ({ row, itemLookup, uomLookup, supplierLookup }: Targe
 
       <div className="pop-target-actions">
         <Button className={popTouchClass('critical')} variant="filled" size="xl" disabled>
-          {t.actions.issue}
+          {isRegistered ? t.actions.printOnly : t.actions.issue}
         </Button>
         <Button className={popTouchClass('critical')} variant="outlined" size="xl" disabled>
           {t.actions.reissue}
         </Button>
       </div>
+      {isRegistered ? <p className="field-note pop-wide-note">{t.actions.registeredNote}</p> : null}
       <p className="field-note pop-wide-note">{t.actions.unavailable}</p>
     </>
   );
