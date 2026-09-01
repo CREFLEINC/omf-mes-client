@@ -124,21 +124,24 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       const arrived = latest.filter((entry) => !attempted.has(entry.id));
       const next = [...result.remaining, ...arrived];
 
-      await writeQueue(next);
-      setEntries(next);
+      /*
+       * 되돌아온 건을 큐에서 빼기 전에 남긴다. 큐를 먼저 쓰면 그 사이에 보관소가 거절할 때
+       * 큐에서도 빠지고 어디에도 남지 않는다 - 이 순서면 남는 것은 같은 건이 큐에 한 번 더
+       * 남는 것뿐이고, 그것은 다음 회차에 다시 판정을 받는다.
+       */
+      if (result.rejected.length > 0) {
+        const kept = appendRejected(
+          await readRejected(),
+          result.rejected,
+          new Date().toISOString(),
+        );
 
-      if (result.rejected.length === 0) {
-        return;
+        await writeRejected(kept);
+        setRejected(kept);
       }
 
-      /*
-       * 되돌아온 건은 큐에서 빠지고 여기에 남는다. 같은 차례 안에서 옮겨야, 큐에서는 빠졌는데
-       * 어디에도 남지 않은 순간이 생기지 않는다.
-       */
-      const kept = appendRejected(await readRejected(), result.rejected, new Date().toISOString());
-
-      await writeRejected(kept);
-      setRejected(kept);
+      await writeQueue(next);
+      setEntries(next);
     });
 
     return result;

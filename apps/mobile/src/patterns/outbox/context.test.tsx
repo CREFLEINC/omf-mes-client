@@ -8,9 +8,16 @@ import type { OutboxTransport } from './send';
 
 const store = vi.hoisted(() => new Map<string, string>());
 
+/** 보관소가 특정 자리의 저장을 거절하는 상황을 만든다. */
+const refuse = vi.hoisted(() => ({ key: null as string | null }));
+
 vi.mock('../local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (key === refuse.key) {
+      return Promise.reject(new Error('보관소가 거절했습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -40,6 +47,7 @@ const mount = (send: OutboxTransport = unreachable) =>
 
 beforeEach(() => {
   store.clear();
+  refuse.key = null;
 });
 
 describe('outbox', () => {
@@ -204,6 +212,25 @@ describe('outbox', () => {
     });
     expect(result.current.rejected[0]?.entry.label).toBe('생산 실적');
     expect(result.current.rejected[0]?.error).toEqual({ kind: 'http', status: 422 });
+  });
+
+  /*
+   * 큐를 먼저 비우면, 그 사이에 보관소가 거절할 때 큐에서도 빠지고 어디에도 남지 않는다.
+   * 남기는 것이 먼저라야 최악이 같은 건을 큐에 한 번 더 남기는 데서 그친다.
+   */
+  it('보관소가 큐 저장을 거절해도 되돌아온 건은 남는다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+
+    // 담아 둔 것을 셸이 스스로 보내는 첫 회차에 거절이 걸리게 한다.
+    store.set('outbox', JSON.stringify([{ ...draft('k-1'), id: 'e-1' }]));
+    refuse.key = 'outbox';
+
+    const { result } = mount(send);
+
+    await waitFor(() => {
+      expect(result.current.rejected).toHaveLength(1);
+    });
   });
 
   it('앱을 다시 띄워도 되돌아온 건이 남아 있다', async () => {
