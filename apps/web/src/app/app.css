@@ -44,6 +44,7 @@
  * .pop-context-right  헤더 오른쪽 끝 — 세션·단말. 지금 어디서 찍고 있는지
  * .scan-manual   스캔 실패의 대체 경로 — 「직접 입력」과 그 설명
  * .receipt-summary  수령 표 아래, 모자란 것만 다시 세우는 자리
+ * .numeric-keypad   화면 내장 숫자 키패드(공유계약 D-4) — OS 자판에 의존하지 않는다
  * .pop-panes     POP 화면의 좌우 두 구획 — 스캔이 주 입력이라 좌우로 편다
  * .pane-title    구획 표제
  * .scan-row      스캔 칸과 읽기 버튼을 한 줄에 — 버튼 높이를 칸의 라벨 층만큼 내린다
@@ -903,4 +904,22 @@ main > * + * {
 .scanned-item-notes {
   display: inline-flex;
   gap: var(--space-2);
+}
+
+/*
+ * 화면 내장 숫자 키패드 — **공유계약 D-4**. 3열 격자로 전화기 배열을 따른다(1이 왼쪽 위).
+ * 손이 기억한 위치가 화면마다 달라지면 오조작이 늘어, 배열을 사용처가 바꾸지 못하게 여기서
+ * 고정한다.
+ */
+.numeric-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  max-width: 22rem;
+  margin-block-start: var(--space-3);
+}
+
+/* 「기록」은 되돌릴 수 없는 조작이라 한 줄을 통째로 차지해 다른 키와 섞이지 않는다. */
+.numeric-keypad-submit {
+  grid-column: 1 / -1;
 }

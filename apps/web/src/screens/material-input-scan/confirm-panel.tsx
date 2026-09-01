@@ -3,17 +3,22 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { toApiError } from '../../patterns/request';
-import { PartialConfirmError, type ConfirmResult } from './mutations';
+import type { RecordResult } from './mutations';
 import type { TerminalGate } from './terminal-gating';
 
 const t = messages.materialInputScan;
 
 export interface ConfirmPanelProps {
-  hasMaterials: boolean;
-  hasEveryQty: boolean;
+  /** 기록된 자재가 하나라도 있는가. 닫을 것이 있어야 닫는다. */
+  hasRecorded: boolean;
+  /** 아직 기록되지 않은 줄이 남았는가. 남은 채 닫으면 그 줄이 버려진다. */
+  hasPending: boolean;
   hasWorker: boolean;
   gate: TerminalGate;
-  confirm: ConfirmResult;
+  /** 건별 기록의 진행·실패. 확정 버튼은 이 뮤테이션을 부르지 않는다. */
+  record: RecordResult;
+  /** 닫은 뒤 남길 문구. 닫기 전에는 `null`. */
+  closedCount: number | null;
   onConfirm: () => void;
 }
 
@@ -37,17 +42,18 @@ export interface ConfirmPanelProps {
  * 화면을 지나지 않는다.
  */
 export const ConfirmPanel = ({
-  hasMaterials,
-  hasEveryQty,
+  hasRecorded,
+  hasPending,
   hasWorker,
   gate,
-  confirm,
+  record,
+  closedCount,
   onConfirm,
 }: ConfirmPanelProps) => {
   const reasonId = useId();
 
   const blockReason = ((): string | undefined => {
-    if (confirm.isPending) return t.confirm.reasons.sending;
+    if (record.isPending) return t.confirm.reasons.sending;
 
     switch (gate.verdict) {
       case 'denied':
@@ -63,12 +69,19 @@ export const ConfirmPanel = ({
     }
 
     if (!hasWorker) return t.confirm.reasons.workerMissing;
-    if (!hasMaterials) return t.confirm.reasons.nothingScanned;
 
-    return hasEveryQty ? undefined : t.confirm.reasons.qtyMissing;
+    /*
+     * ⭐ **기록되지 않은 줄을 남긴 채 닫지 않는다.** 확정은 서버를 부르지 않으므로, 닫는
+     * 순간 그 줄은 아무 데도 남지 않고 사라진다 — 작업자는 다 넣었다고 믿는다.
+     *
+     * 「기록된 것 없음」보다 **앞에 둔다** — 담아 둔 줄이 있으면 작업자가 할 일은 「담아라」가
+     * 아니라 「그것을 기록해라」다. 순서를 뒤집으면 이미 담은 자재를 앞에 두고 담으라는 말을
+     * 읽는다.
+     */
+    if (hasPending) return t.confirm.reasons.qtyMissing;
+
+    return hasRecorded ? undefined : t.confirm.reasons.nothingScanned;
   })();
-
-  const recorded = confirm.data;
 
   return (
     <div className="confirm-row">
@@ -100,23 +113,24 @@ export const ConfirmPanel = ({
         </Button>
       )}
 
-      {/* 되돌릴 수 없는 기록이 남았다는 사실을 그 자리에서 말한다. */}
-      {recorded !== undefined && !confirm.isError && (
+      {/* 몇 건으로 닫았는지 그 자리에서 말한다. 기록 자체는 이미 건별로 끝나 있다. */}
+      {closedCount !== null && (
         <p className="field-note" role="status">
-          {t.confirm.recorded(recorded.length)}
+          {t.confirm.closed(closedCount)}
         </p>
       )}
 
       {/*
-       * ⚠ **몇 건이 들어갔는지 함께 말한다.** 자재마다 한 건씩 보내므로 중간에 실패하면 앞서
-       * 들어간 것은 남는다 — 서버에 일괄 취소가 없고 정정 경로도 없다(§8 미결 9).
+       * 건별 기록의 실패다 — **그 한 건에만 미친다.** 앞서 기록된 것은 남고 이 건은 남지
+       * 않는다. 부분 기록이라는 모호한 상태가 생기지 않는 것이 건별 저장의 값이다.
+       *
+       * ⭐ BOM 불일치가 여기로 온다(§6) — 서버가 판정하고 화면은 그 말을 옮긴다. 실패한
+       * 자재는 목록에서 빠지므로 **자재LOT 스캔부터 루프백**이 성립한다.
        */}
-      {confirm.isError && (
+      {record.isError && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={t.confirm.failed}>
-            {confirm.error instanceof PartialConfirmError
-              ? t.confirm.partiallyRecorded(confirm.error.recordedCount)
-              : describeConfirmError(confirm.error)}
+            {describeConfirmError(record.error)}
           </AlertBanner>
         </div>
       )}

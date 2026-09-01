@@ -15,9 +15,9 @@ import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from '.
 import { ScanField } from './scan-field';
 import { useScanLookup } from './scan-queries';
 import { ScannedList } from './scanned-list';
-import { dropQty, EMPTY_QTY_DRAFTS, hasEveryQty, writeQty, type QtyDrafts } from './input-qty';
-import { toRecordedNote, useConfirmInput, type RecordedNote } from './mutations';
-import { toMaterialConsumptions } from './post-request';
+import { dropQty, EMPTY_QTY_DRAFTS, writeQty, type QtyDrafts } from './input-qty';
+import { toRecordedNote, useRecordConsumption, type RecordedNote } from './mutations';
+import { toMaterialConsumption } from './post-request';
 import { readWorkOrderId } from './screen-params';
 import { useOpenWorkSession } from './session';
 import { useTerminalGate } from './terminal-gating';
@@ -91,8 +91,11 @@ export const MaterialInputScanScreen = () => {
   const workSessionId = useOpenWorkSession(workOrderId);
 
   const [qtyDrafts, setQtyDrafts] = useState<QtyDrafts>(EMPTY_QTY_DRAFTS);
+  /* 기록된 줄. **되돌릴 수 없다** — 빼거나 고칠 수 없고 닫을 때까지 남는다(§5-8 · B-3). */
   const [notes, setNotes] = useState<readonly RecordedNote[]>([]);
-  const confirm = useConfirmInput();
+  /* 「투입 확정」으로 닫은 뒤 남길 건수. 닫기 전에는 `null`이다. */
+  const [closedCount, setClosedCount] = useState<number | null>(null);
+  const record = useRecordConsumption();
 
   const handleScan = (code: string): void => {
     /*
@@ -108,6 +111,8 @@ export const MaterialInputScanScreen = () => {
            * **먼저 담긴 자재가 사라진다.** 현장에서는 이 연타가 기본 사용법이다.
            */
           setDraft((prev) => applyScan(prev, outcome));
+          /* 새로 담기 시작하면 앞 회차의 「마쳤습니다」는 사실이 아니게 된다. */
+          setClosedCount(null);
         },
       },
     );
@@ -122,41 +127,65 @@ export const MaterialInputScanScreen = () => {
     setQtyDrafts((prev) => dropQty(prev, lotId));
   };
 
+  const recordedLotIds = notes.map((note) => note.lotId);
+  const pendingMaterials = draft.materials.filter(
+    (material) => !recordedLotIds.includes(material.lotId),
+  );
+
   const changeQty = (lotId: number, value: string): void => {
     setQtyDrafts((prev) => writeQty(prev, lotId, value));
   };
 
   /**
-   * 투입 확정 — **되돌릴 수 없는 쓰기**다.
+   * 자재 한 건을 기록한다 — **스캔 한 건이 곧 한 호출이다**(스펙 §5-8 · C-3).
    *
-   * ⛔ **보내기 직전에 본문을 다시 만든다.** 버튼 잠금이 이미 닫아 둔 길이지만, 그것이
-   * 뚫려도 갖춰지지 않은 값이 원장에 실리지 않아야 한다. 본문을 만들 수 없으면 보내지 않는다.
+   * ⭐ **여기서 보내야 BOM 불일치가 스캔 자리에서 드러난다.** 담아 두었다가 확정에서
+   * 한꺼번에 보내면 그 판정을 버튼을 누른 뒤에야 받고, 그때는 앞 자재가 이미 원장에 남아
+   * 되돌릴 수 없다(B-3 · 정정 경로 부재 §8 미결 9).
+   *
+   * ⛔ **보내기 직전에 본문을 다시 만든다.** 키패드가 이미 막아 둔 길이지만, 그것이 뚫려도
+   * 갖춰지지 않은 값이 원장에 실리지 않아야 한다.
    */
-  const sendConfirm = (): void => {
-    if (workOrderId === null || workerNo === null || confirm.isPending) return;
+  const recordMaterial = (lotId: number): void => {
+    if (workOrderId === null || workerNo === null || record.isPending) return;
 
-    const bodies = toMaterialConsumptions(
-      workOrderId,
-      draft.materials,
-      qtyDrafts,
-      new Date(),
-      workSessionId,
-    );
-    if (bodies === null) return;
+    const material = draft.materials.find((candidate) => candidate.lotId === lotId);
+    /* 이미 기록된 줄은 다시 보내지 않는다 — 같은 자재가 두 번 투입된 것이 된다. */
+    if (material === undefined || recordedLotIds.includes(lotId)) return;
 
-    confirm.mutate(
-      { workerNo, bodies },
+    const body = toMaterialConsumption(workOrderId, material, qtyDrafts, new Date(), workSessionId);
+    if (body === null) return;
+
+    record.mutate(
+      { workerNo, body },
       {
         onSuccess: (recorded) => {
+          /* 서버가 통과시키되 기록만 한 것을 표시한다(§5-3). 「통과」가 「정상」이 아니다. */
+          setNotes((prev) => [...prev, toRecordedNote(recorded)]);
+        },
+        onError: () => {
           /*
-           * 서버가 통과시키되 기록만 한 것을 표시한다(§5-3). **담은 목록은 지우지 않는다** —
-           * 무엇이 들어갔는지 작업자가 확인할 수 있어야 하고, 되돌릴 수 없는 기록이라
-           * 화면이 스스로 치우면 확인할 길이 사라진다.
+           * ⭐ **실패한 자재는 목록에서 뺀다** — 서버가 거절했으므로 원장에 남지 않았다.
+           * 남겨 두면 기록된 것처럼 보이고, §6의 「자재LOT 스캔부터 루프백」이 성립하지 않는다.
            */
-          setNotes(recorded.map(toRecordedNote));
+          removeMaterial(lotId);
         },
       },
     );
+  };
+
+  /**
+   * 「투입 확정」 — **그날 목록을 닫는 완료 동작**이지 저장을 모아 보내는 버튼이 아니다(§5-8).
+   *
+   * ⛔ **서버를 부르지 않는다.** 기록은 이미 건별로 끝나 있고, 계약에 이 동작에 대응하는
+   * 오퍼레이션이 없는 것도 그래서다 — 서버가 할 일이 없다.
+   */
+  const closeList = (): void => {
+    setClosedCount(notes.length);
+    setDraft(EMPTY_SCAN_DRAFT);
+    setQtyDrafts(EMPTY_QTY_DRAFTS);
+    setNotes([]);
+    record.reset();
   };
 
   const outcome = scan.data;
@@ -242,20 +271,21 @@ export const MaterialInputScanScreen = () => {
             statusLabels={statusLabels}
             qtyDrafts={qtyDrafts}
             notes={notes}
+            recordedLotIds={recordedLotIds}
+            savingLotId={record.isPending ? (record.variables?.body.lotId ?? null) : null}
             onQtyChange={changeQty}
             onRemoveMaterial={removeMaterial}
+            onRecord={recordMaterial}
           />
 
           <ConfirmPanel
-            hasMaterials={draft.materials.length > 0}
-            hasEveryQty={hasEveryQty(
-              qtyDrafts,
-              draft.materials.map((material) => material.lotId),
-            )}
+            hasRecorded={notes.length > 0}
+            hasPending={pendingMaterials.length > 0}
             hasWorker={workerNo !== null}
             gate={gate}
-            confirm={confirm}
-            onConfirm={sendConfirm}
+            record={record}
+            closedCount={closedCount}
+            onConfirm={closeList}
           />
         </section>
       </div>

@@ -78,8 +78,18 @@ const backdrop = (lots: unknown[]): StubRoute[] => [
     respond: () => jsonResponse({ items: [{ processId: PROCESS_ID, canInputMaterial: true }] }),
   },
   {
+    /*
+     * 자재LOT 조회 두 축(omf-mes#254 회신 ①). 정확 일치 축은 **계약이 0·1건을 보장**하므로
+     * 번호로 걸러 낸다 — 스텁이 그 약속을 어기면 감지기가 있을 수 없는 상태를 재게 된다.
+     */
     match: (request) => isGet(request, LOTS_PATH),
-    respond: () => jsonResponse({ items: lots, page: { page: 1, size: 50, total: lots.length } }),
+    respond: (request) => {
+      const lotNo = new URL(request.url).searchParams.get('lotNo');
+      const items =
+        lotNo === null ? lots : lots.filter((one) => (one as { lotNo?: string }).lotNo === lotNo);
+
+      return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+    },
   },
 ];
 
@@ -142,7 +152,10 @@ const okRoute = (bodies: unknown[]): StubRoute => {
   };
 };
 
-/** 스캔 → 수량 입력까지. 확정을 누를 수 있는 상태로 만든다. */
+/**
+ * 스캔 → 수량 → **기록**까지. 스펙 §5-8이 「스캔 한 건이 곧 한 호출」로 못박았으므로
+ * 쓰기는 「투입 확정」이 아니라 여기서 일어난다.
+ */
 const prepare = async (
   user: ReturnType<typeof userEvent.setup>,
   entries: readonly (readonly [string, string])[],
@@ -151,7 +164,19 @@ const prepare = async (
     await user.type(screen.getByLabelText(t.scan.label), `${code}{Enter}`);
     await screen.findByText(t.scan.outcomes.material(code, code));
     await user.type(screen.getByLabelText(t.scanned.qtyLabel(code)), qty);
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
   }
+};
+
+/** 수량까지만. 기록은 하지 않는다 — 보내지 않는 갈래를 재는 감지기가 쓴다. */
+const prepareWithoutRecord = async (
+  user: ReturnType<typeof userEvent.setup>,
+  code: string,
+  qty: string,
+): Promise<void> => {
+  await user.type(screen.getByLabelText(t.scan.label), `${code}{Enter}`);
+  await screen.findByText(t.scan.outcomes.material(code, code));
+  if (qty !== '') await user.type(screen.getByLabelText(t.scanned.qtyLabel(code)), qty);
 };
 
 describe('투입 확정 — 무엇이 나가는가', () => {
@@ -165,7 +190,6 @@ describe('투입 확정 — 무엇이 나가는가', () => {
     const sent = renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
 
     await waitFor(() => {
       expect(sent).toHaveLength(1);
@@ -195,7 +219,6 @@ describe('투입 확정 — 무엇이 나가는가', () => {
     const sent = renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
 
     await waitFor(() => {
       expect(sent).toHaveLength(1);
@@ -218,7 +241,6 @@ describe('투입 확정 — 무엇이 나가는가', () => {
     const sent = renderScreen([lot()], okRoute([consumption(7301), consumption(7302)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
     await waitFor(() => {
       expect(sent).toHaveLength(1);
     });
@@ -238,21 +260,39 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301, { actualUseProcessId: 7902 })]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
 
     expect(await screen.findByText(t.scanned.crossProcess)).toBeTruthy();
     /* 출고 귀속이 있는 건에는 그 표시를 붙이지 않는다. */
     expect(screen.queryByText(t.scanned.unlinkedIssue)).toBeTruthy();
   });
 
-  it('기록되면 몇 건인지 말한다', async () => {
+  it('기록된 줄에 기록 표시가 붙는다', async () => {
     const user = userEvent.setup();
     renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
 
-    expect(await screen.findByText(t.confirm.recorded(1))).toBeTruthy();
+    expect(await screen.findByText(t.scanned.recordedMark)).toBeTruthy();
+  });
+
+  /*
+   * ⛔ **기록된 줄은 잠근다.** 투입은 정정이 아니라 새 기록으로만 고칠 수 있는데(B-3) 계약에
+   * 그 경로가 없다(§8 미결 9) — 빼거나 고칠 수 있는 것처럼 두면 작업자가 그렇게 했다고 믿는다.
+   */
+  it('기록된 줄은 빼거나 고칠 수 없다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301)]));
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await screen.findByText(t.scanned.recordedMark);
+
+    expect(
+      screen.queryByRole('button', { name: t.scanned.removeMaterial('SAMPLE-LOT-0001') }),
+    ).toBeNull();
+    expect(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001'))).toHaveProperty(
+      'readOnly',
+      true,
+    );
   });
 
   /*
@@ -264,8 +304,7 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     renderScreen([lot()], okRoute([consumption(7301)]));
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
-    await screen.findByText(t.confirm.recorded(1));
+    await screen.findByText(t.scanned.recordedMark);
 
     expect(screen.getByText('SAMPLE-LOT-0001')).toBeTruthy();
   });
@@ -278,12 +317,19 @@ describe('투입 확정 — 결과를 어떻게 말하는가', () => {
     });
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
 
     expect(await screen.findByText(t.confirm.failed)).toBeTruthy();
     /* 서버가 게이팅을 집행한 것이라 화면의 잠금 사유와 다른 자리에서 말한다. */
     expect(screen.getByText(messages.httpError.forbidden)).toBeTruthy();
-    expect(screen.queryByText(t.confirm.recorded(0))).toBeNull();
+
+    /*
+     * ⭐ **거절된 자재는 목록에서 빠진다** — 서버가 받지 않았으므로 원장에 없다. 남겨 두면
+     * 기록된 것처럼 보이고, §6의 「자재LOT 스캔부터 루프백」이 성립하지 않는다.
+     */
+    expect(screen.queryByText(t.scanned.recordedMark)).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByText(t.scanned.empty)).toBeTruthy();
+    });
   });
 });
 
@@ -292,18 +338,18 @@ describe('투입 확정 — 보내지 않는 경우', () => {
    * ⭐ **버튼 잠금과 별개의 겹이다.** 잠금이 뚫려도 갖춰지지 않은 값이 되돌릴 수 없는 기록에
    * 실리지 않아야 한다 — 보내는 자리에서 본문을 다시 만들고, 만들 수 없으면 보내지 않는다.
    */
-  it('수량이 없으면 눌러도 나가지 않는다', async () => {
+  it('수량이 없으면 기록을 눌러도 나가지 않는다', async () => {
     const user = userEvent.setup();
     const sent = renderScreen([lot()], okRoute([consumption(7301)]));
 
-    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
-
-    const button = screen.getByRole('button', { name: t.confirm.action });
-    expect(button).toHaveProperty('disabled', true);
-    await user.click(button);
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     expect(sent).toHaveLength(0);
+
+    /* 담아 둔 줄이 있으므로 사유는 「담아라」가 아니라 「그것을 기록해라」다. */
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByText(t.confirm.reasons.qtyMissing)).toBeTruthy();
   });
 
   /*
@@ -313,7 +359,7 @@ describe('투입 확정 — 보내지 않는 경우', () => {
    * 실제로 막는 층은 **버튼 잠금**이다. 보내는 자리의 진행 중 검사는 버튼을 지나지 않는
    * 호출을 막는 둘째 겹이라 이 경로에서는 떼어내도 결과가 같다(등가).
    */
-  it('보내는 중에는 확정을 다시 누를 수 없다', async () => {
+  it('기록하는 중에는 같은 자재를 다시 보내지 않는다', async () => {
     const user = userEvent.setup();
 
     let releasePost = (): void => undefined;
@@ -339,19 +385,19 @@ describe('투입 확정 — 보내지 않는 경우', () => {
       { fetch, route: ROUTE },
     );
 
-    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     await waitFor(() => {
       expect(screen.getByText(t.confirm.reasons.sending)).toBeTruthy();
     });
-    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
 
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
+    /* 보내는 중에 또 눌러도 두 번 나가지 않는다 — 같은 자재가 두 번 투입되면 되돌릴 수 없다. */
+    await user.click(screen.getByRole('button', { name: t.scanned.saving }));
     expect(sent).toHaveLength(1);
 
     releasePost();
-    await screen.findByText(t.confirm.recorded(1));
+    await screen.findByText(t.scanned.recordedMark);
   });
 
   /* 0은 있을 수 없는 값이다 — 계약이 `qty_t > 0` 을 건다. */
@@ -359,10 +405,10 @@ describe('투입 확정 — 보내지 않는 경우', () => {
     const user = userEvent.setup();
     const sent = renderScreen([lot()], okRoute([consumption(7301)]));
 
-    await prepare(user, [['SAMPLE-LOT-0001', '0']]);
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '0');
 
     expect(screen.getByText(t.scanned.qtyProblems.notPositive)).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: t.confirm.action }));
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
     expect(sent).toHaveLength(0);
   });
@@ -373,7 +419,7 @@ describe('투입 확정 — 담은 목록의 표시', () => {
     const user = userEvent.setup();
     renderScreen([lot()], okRoute([consumption(7301)]));
 
-    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
 
     const item = screen.getByText('SAMPLE-LOT-0001').closest('li');
     expect(item).not.toBeNull();
@@ -389,12 +435,8 @@ describe('투입 확정 — 담은 목록의 표시', () => {
  * 다루면 세션을 열지 않은 긴급 투입·사후 입력이 통째로 막힌다.
  */
 describe('MaterialInputScanScreen — 세션', () => {
-  const confirmOnce = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
-    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
-    await user.type(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')), '12');
-    await user.click(await screen.findByRole('button', { name: t.confirm.action }));
-  };
+  const confirmOnce = (user: ReturnType<typeof userEvent.setup>): Promise<void> =>
+    prepare(user, [['SAMPLE-LOT-0001', '12']]);
 
   it('열린 세션이 하나면 그 번호를 싣는다', async () => {
     const user = userEvent.setup();
@@ -455,5 +497,50 @@ describe('MaterialInputScanScreen — 세션', () => {
       expect(sent).toHaveLength(1);
     });
     expect(sent[0]?.body).not.toHaveProperty('workSessionId');
+  });
+});
+
+/**
+ * 「투입 확정」 — **그날 목록을 닫는 완료 동작**이지 저장을 모아 보내는 버튼이 아니다(§5-8).
+ *
+ * 기록은 이미 건별로 끝나 있으므로 이 버튼은 서버를 부르지 않는다. 계약에 대응하는
+ * 오퍼레이션이 없는 것도 그래서다.
+ */
+describe('MaterialInputScanScreen — 목록 닫기', () => {
+  it('확정은 서버를 부르지 않고 목록만 닫는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]));
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await screen.findByText(t.scanned.recordedMark);
+    expect(sent).toHaveLength(1);
+
+    await user.click(screen.getByRole('button', { name: t.confirm.action }));
+
+    /* 닫아도 요청이 더 나가지 않는다 — 기록은 이미 끝나 있다. */
+    expect(sent).toHaveLength(1);
+    expect(await screen.findByText(t.confirm.closed(1))).toBeTruthy();
+    expect(screen.getByText(t.scanned.empty)).toBeTruthy();
+  });
+
+  /*
+   * ⭐ **기록되지 않은 줄을 남긴 채 닫지 않는다.** 확정은 서버를 부르지 않으므로 닫는 순간
+   * 그 줄은 아무 데도 남지 않고 사라진다 — 작업자는 다 넣었다고 믿는다.
+   */
+  it('기록되지 않은 줄이 남으면 닫지 못한다', async () => {
+    const user = userEvent.setup();
+    renderScreen(
+      [lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })],
+      okRoute([consumption(7301), consumption(7302)]),
+    );
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+    await screen.findByText(t.scanned.recordedMark);
+
+    /* 둘째를 담기만 하고 기록하지 않는다. */
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0002', '5');
+
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+    expect(screen.getByText(t.confirm.reasons.qtyMissing)).toBeTruthy();
   });
 });

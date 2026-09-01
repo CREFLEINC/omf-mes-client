@@ -1,6 +1,7 @@
 import { Button, Chip, Progress, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { NumericKeypad } from '../../ds-candidates/numeric-keypad';
 import { readQty, validateQty, type QtyDrafts } from './input-qty';
 import type { LotStatusLabels } from './lot-status-labels';
 import type { RecordedNote } from './mutations';
@@ -23,10 +24,16 @@ export interface ScannedListProps {
   draft: ScanDraft;
   statusLabels: LotStatusLabels;
   qtyDrafts: QtyDrafts;
-  /** 서버가 통과시키되 기록만 한 것(§5-3). 보내기 전에는 비어 있다. */
+  /** 서버가 통과시키되 기록만 한 것(§5-3). 기록된 줄에만 붙는다. */
   notes: readonly RecordedNote[];
+  /** 이미 기록된 자재. **되돌릴 수 없다** — 잠그고 빼기도 내리지 않는다. */
+  recordedLotIds: readonly number[];
+  /** 지금 기록 중인 자재. 그 줄만 잠근다. */
+  savingLotId: number | null;
   onQtyChange: (lotId: number, value: string) => void;
   onRemoveMaterial: (lotId: number) => void;
+  /** 수량을 마치고 그 한 건을 기록한다 — 스펙 §5-8 건별 저장. */
+  onRecord: (lotId: number) => void;
 }
 
 /**
@@ -47,8 +54,11 @@ export const ScannedList = ({
   statusLabels,
   qtyDrafts,
   notes,
+  recordedLotIds,
+  savingLotId,
   onQtyChange,
   onRemoveMaterial,
+  onRecord,
 }: ScannedListProps) => (
   <>
     <h2 className="pane-title">{t.scanned.materialsLabel}</h2>
@@ -61,73 +71,122 @@ export const ScannedList = ({
       <p className="field-note">{t.scanned.empty}</p>
     ) : (
       <ul className="scanned-items">
-        {draft.materials.map((material) => (
-          <li key={material.lotId} className="scanned-item">
-            <div className="scanned-item-head">
-              <span className="scanned-code">{material.lotNo}</span>
+        {draft.materials.map((material) => {
+          const isRecorded = recordedLotIds.includes(material.lotId);
+          const isSaving = savingLotId === material.lotId;
+
+          return (
+            <li key={material.lotId} className="scanned-item">
+              <div className="scanned-item-head">
+                <span className="scanned-code">{material.lotNo}</span>
+
+                {/*
+                 * ⭐ **기록된 줄에는 「빼기」를 두지 않는다.** 화면에서 빼도 서버 기록은 남아
+                 * 정정 경로조차 없다(이력 불변 B-3 · §8 미결 9) — 뺄 수 있는 것처럼 보이면
+                 * 작업자가 지웠다고 믿고 넘어간다.
+                 */}
+                {isRecorded ? (
+                  <Chip variant="status" size="sm" status="success">
+                    {t.scanned.recordedMark}
+                  </Chip>
+                ) : (
+                  /*
+                   * 「빼기」는 담은 것을 되돌리는 평범한 조작이다. 브랜드 기본색이 붉은 계열이라
+                   * 테두리 변형을 쓰면 **위험 액션처럼 보인다** — 중립 변형으로 둔다.
+                   */
+                  <Button
+                    variant="text"
+                    size="sm"
+                    disabled={isSaving}
+                    aria-label={t.scanned.removeMaterial(material.lotNo)}
+                    onClick={() => {
+                      onRemoveMaterial(material.lotId);
+                    }}
+                  >
+                    {t.scanned.remove}
+                  </Button>
+                )}
+              </div>
+              <div className="scanned-item-facts">
+                <span className="field-note">
+                  {t.scanned.statusLabel} · {statusLabels.describe(material.statusCode)}
+                </span>
+                {material.isHeld && (
+                  <Chip variant="status" size="sm" status="warning">
+                    {t.scanned.heldMark}
+                  </Chip>
+                )}
+
+                {/*
+                 * 서버가 **통과시키되 기록만 한 것**(스펙 §5-3). 「통과」가 「정상」이 아니다 —
+                 * 나중에 계보를 추적할 때 이 구분이 필요하다. 보내기 전에는 비어 있다.
+                 */}
+                {notes
+                  .filter((note) => note.lotId === material.lotId)
+                  .map((note) => (
+                    <span key={note.lotId} className="scanned-item-notes">
+                      {note.unlinkedIssue && (
+                        <Chip variant="status" size="sm" status="info">
+                          {t.scanned.unlinkedIssue}
+                        </Chip>
+                      )}
+                      {note.crossProcess && (
+                        <Chip variant="status" size="sm" status="info">
+                          {t.scanned.crossProcess}
+                        </Chip>
+                      )}
+                    </span>
+                  ))}
+              </div>
+
               {/*
-               * 「빼기」는 담은 것을 되돌리는 평범한 조작이다. 브랜드 기본색이 붉은 계열이라
-               * 테두리 변형을 쓰면 **위험 액션처럼 보인다** — 중립 변형으로 둔다.
+               * 스펙 §4-B의 **유일한 「입력」 칸**이다. 단위 환산은 서버가 하므로(§5-6) 화면은
+               * 스캔한 LOT의 단위로 받은 값을 그대로 싣는다.
+               *
+               * ⛔ **기록된 뒤에는 고칠 수 없다.** 투입은 정정이 아니라 새 기록으로만 고치는데
+               * (B-3) 계약에 그 경로가 없다(§8 미결 9) — 고칠 수 있는 것처럼 두면 작업자가
+               * 고쳤다고 믿고 넘어간다.
                */}
-              <Button
-                variant="text"
-                size="sm"
-                aria-label={t.scanned.removeMaterial(material.lotNo)}
-                onClick={() => {
-                  onRemoveMaterial(material.lotId);
+              <TextField
+                label={t.scanned.qtyLabel(material.lotNo)}
+                value={readQty(qtyDrafts, material.lotId)}
+                inputMode="decimal"
+                autoComplete="off"
+                readOnly={isRecorded || isSaving}
+                error={isRecorded ? undefined : qtyError(readQty(qtyDrafts, material.lotId))}
+                onChange={(event) => {
+                  onQtyChange(material.lotId, event.target.value);
                 }}
-              >
-                {t.scanned.remove}
-              </Button>
-            </div>
-            <div className="scanned-item-facts">
-              <span className="field-note">
-                {t.scanned.statusLabel} · {statusLabels.describe(material.statusCode)}
-              </span>
-              {material.isHeld && (
-                <Chip variant="status" size="sm" status="warning">
-                  {t.scanned.heldMark}
-                </Chip>
-              )}
+              />
 
               {/*
-               * 서버가 **통과시키되 기록만 한 것**(스펙 §5-3). 「통과」가 「정상」이 아니다 —
-               * 나중에 계보를 추적할 때 이 구분이 필요하다. 보내기 전에는 비어 있다.
+               * ⭐ **화면 내장 키패드**(공유계약 D-4) — OS 터치 키보드에 의존하지 않는다.
+               * 키오스크 창에서 그것이 화면을 덮으면 제어할 방법이 없다.
+               *
+               * 「기록」이 곧 저장이다(§5-8 건별 저장) — 여기서 보내야 BOM 불일치가 **스캔
+               * 자리에서** 드러나고, 그 자재가 원장에 남지 않는다.
                */}
-              {notes
-                .filter((note) => note.lotId === material.lotId)
-                .map((note) => (
-                  <span key={note.lotId} className="scanned-item-notes">
-                    {note.unlinkedIssue && (
-                      <Chip variant="status" size="sm" status="info">
-                        {t.scanned.unlinkedIssue}
-                      </Chip>
-                    )}
-                    {note.crossProcess && (
-                      <Chip variant="status" size="sm" status="info">
-                        {t.scanned.crossProcess}
-                      </Chip>
-                    )}
-                  </span>
-                ))}
-            </div>
-
-            {/*
-             * 스펙 §4-B의 **유일한 「입력」 칸**이다. 단위 환산은 서버가 하므로(§5-6) 화면은
-             * 스캔한 LOT의 단위로 받은 값을 그대로 싣는다.
-             */}
-            <TextField
-              label={t.scanned.qtyLabel(material.lotNo)}
-              value={readQty(qtyDrafts, material.lotId)}
-              inputMode="decimal"
-              autoComplete="off"
-              error={qtyError(readQty(qtyDrafts, material.lotId))}
-              onChange={(event) => {
-                onQtyChange(material.lotId, event.target.value);
-              }}
-            />
-          </li>
-        ))}
+              {!isRecorded && (
+                <>
+                  <p className="field-note">{t.scanned.saveHint}</p>
+                  <NumericKeypad
+                    value={readQty(qtyDrafts, material.lotId)}
+                    label={t.scanned.keypadLabel(material.lotNo)}
+                    submitLabel={isSaving ? t.scanned.saving : t.scanned.keypadSubmit}
+                    clearLabel={t.scanned.keypadClear}
+                    backspaceLabel={t.scanned.keypadBackspace}
+                    onChange={(next) => {
+                      onQtyChange(material.lotId, next);
+                    }}
+                    onSubmit={() => {
+                      onRecord(material.lotId);
+                    }}
+                  />
+                </>
+              )}
+            </li>
+          );
+        })}
       </ul>
     )}
 

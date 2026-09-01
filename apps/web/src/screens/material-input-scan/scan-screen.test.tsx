@@ -749,7 +749,11 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
    * 열려 있고 · 담았고 · 수량까지 있어야 비로소 눌린다 — 이 화면이 실제로 투입할 수 있는
    * 유일한 상태다. **수량이 빠진 채로 열리면** 갖춰지지 않은 값이 되돌릴 수 없는 기록에 실린다.
    */
-  it('권한·자재·수량이 모두 갖춰져야 확정이 열린다', async () => {
+  /*
+   * ⭐ 「투입 확정」은 **목록을 닫는 동작**이라(§5-8) 기록된 것이 있어야 열린다. 담기만 하거나
+   * 수량만 친 상태로 닫으면 그 줄은 아무 데도 남지 않고 사라진다 — 기록은 「기록」이 한다.
+   */
+  it('기록된 것이 있어야 확정이 열린다', async () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED);
 
@@ -758,18 +762,13 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
 
-    /* 담기만 해서는 열리지 않는다 — 수량이 남았다. */
+    /* 담기만 해서는 열리지 않는다 — 아직 기록되지 않았다. */
     expect(await screen.findByText(t.confirm.reasons.qtyMissing)).toBeTruthy();
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
 
+    /* 수량을 쳐도 아직이다 — 「기록」을 눌러야 원장에 남는다. */
     await user.type(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')), '12');
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty(
-        'disabled',
-        false,
-      );
-    });
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
   });
 
   /* 단말을 모르면 조회를 보내지 않는다 — 서버가 거절할 요청을 화면이 한 번 더 만들지 않는다. */
