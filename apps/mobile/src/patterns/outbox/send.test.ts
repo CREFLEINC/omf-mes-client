@@ -28,6 +28,52 @@ const rejectWith = (ids: Set<string>): OutboxTransport => {
   };
 };
 
+describe('앞 건이 만든 것에 붙는 건', () => {
+  const leader = { ...entry('body', 'report-1'), path: '/maintenance/breakdowns' };
+  const follower = {
+    ...entry('photo', 'report-1'),
+    path: '/maintenance/breakdowns/:id/attachments',
+    pathFrom: { entryId: 'body', field: 'breakdownId', token: ':id' },
+  };
+
+  it('앞 건의 응답으로 경로를 완성해 보낸다', async () => {
+    const seen: string[] = [];
+    const send: OutboxTransport = (item) => {
+      seen.push(item.path);
+      return Promise.resolve(item.id === 'body' ? { breakdownId: 42 } : {});
+    };
+
+    const result = await flushQueue([leader, follower], send);
+
+    expect(seen).toEqual(['/maintenance/breakdowns', '/maintenance/breakdowns/42/attachments']);
+    expect(result.sent).toBe(2);
+  });
+
+  /* 붙을 곳이 없으면 이 건만 다시 보내서는 풀리지 않는다. */
+  it('앞 건이 거부되면 붙을 곳이 없어 함께 되돌아온다', async () => {
+    const result = await flushQueue([leader, follower], rejectWith(new Set(['body'])));
+
+    expect(result.sent).toBe(0);
+    expect(result.rejected.map((item) => [item.entry.id, item.cascaded])).toEqual([
+      ['body', false],
+      ['photo', true],
+    ]);
+  });
+
+  it('앞 건의 응답에 그 값이 없으면 보내지 않는다', async () => {
+    const seen: string[] = [];
+    const send: OutboxTransport = (item) => {
+      seen.push(item.path);
+      return Promise.resolve({});
+    };
+
+    const result = await flushQueue([leader, follower], send);
+
+    expect(seen).toEqual(['/maintenance/breakdowns']);
+    expect(result.rejected.map((item) => item.entry.id)).toEqual(['photo']);
+  });
+});
+
 describe('큐 전송', () => {
   it('담긴 순서대로 하나씩 보낸다', async () => {
     const seen: string[] = [];

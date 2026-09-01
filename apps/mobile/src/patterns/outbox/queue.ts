@@ -10,6 +10,30 @@ export type OutboxMethod = 'POST' | 'PUT' | 'PATCH' | 'DELETE';
  */
 export type OutboxConfirmation = 'immediate' | 'pending';
 
+/**
+ * 본문 대신 파일을 보내는 건.
+ *
+ * 단말 보관소는 문자열만 담아 base64 로 둔다. 사진은 한 장이 수 MB 라 큐가 금세 커지므로,
+ * 담는 쪽이 몇 장까지 받을지 정한다.
+ */
+export interface OutboxFile {
+  fileName: string;
+  mimeType: string;
+  data: string;
+}
+
+/**
+ * 앞 건의 응답에서 값을 받아 경로를 완성한다.
+ *
+ * 사진처럼 앞 건이 만든 것에 붙는 요청이 있다. 그 식별자는 보내 봐야 나오므로 담을 때는 알 수
+ * 없고, 앞 건이 못 가면 이 건은 붙을 곳 자체가 없다.
+ */
+export interface OutboxPathFrom {
+  entryId: string;
+  field: string;
+  token: string;
+}
+
 export interface OutboxEntry {
   id: string;
   idempotencyKey: string;
@@ -24,6 +48,8 @@ export interface OutboxEntry {
    * 뒤는 앞이 만든 식별자를 참조하므로 혼자서는 반드시 실패한다.
    */
   batchId?: string;
+  file?: OutboxFile;
+  pathFrom?: OutboxPathFrom;
 }
 
 export interface OutboxDraft extends Omit<OutboxEntry, 'id'> {
@@ -59,8 +85,8 @@ export const readQueue = async (): Promise<OutboxEntry[]> => {
   }
 
   /*
-   * 읽지 못한 것은 보낼 수 없지만, 그대로 두면 다음 저장이 덮어 없앤다. 보내지 못한 기록이
-   * 무엇이었는지 나중에라도 볼 수 있게 옮겨 둔다.
+   * 읽지 못한 것은 보낼 수 없지만, 그대로 두면 다음 저장이 덮어 없앤다. 다른 자리로 옮겨
+   * 원본을 남긴다.
    */
   await writeLocal(OUTBOX_BROKEN_KEY, stored);
 
