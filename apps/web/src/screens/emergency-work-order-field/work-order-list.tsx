@@ -7,6 +7,10 @@ import type { WorkOrder } from './types';
 export interface WorkOrderListProps {
   /** 못 받았으면 `undefined` — 빈 배열과 다른 사실이다. */
   workOrders: WorkOrder[] | undefined;
+  /** 목록을 물었는가. 유형 값을 몰라 조회를 열지 않은 상태와 「없다」를 가른다. */
+  isAsked: boolean;
+  /** 물었고 아직 답이 오지 않았는가. */
+  isLoading: boolean;
   /** 필터 전체 건수. 목록이 잘렸는지는 이 값으로만 알 수 있다. */
   total: number | undefined;
   isError: boolean;
@@ -24,9 +28,15 @@ export interface WorkOrderListProps {
  *
  * ⛔ **받지 못한 것은 다르다.** 「없다」와 「모른다」를 같은 화면으로 말하면, 조회가 실패한
  * 사이에 긴급 지시가 밀려도 화면이 조용하다.
+ *
+ * ⛔ **아직 답이 안 온 것과 묻지 않은 것도 「없다」가 아니다.** 값이 비었다는 사실만 보고
+ * 「없습니다」를 세우면, 받는 중인 몇 초 동안 현장 작업자가 **긴급 지시가 없다고 읽고 자리를
+ * 뜬다.** 유형 값을 몰라 아예 묻지 못한 경우는 더 나쁘다 — 그 단언이 영구히 남는다.
  */
 export const WorkOrderList = ({
   workOrders,
+  isAsked,
+  isLoading,
   total,
   isError,
   selectedId,
@@ -91,10 +101,16 @@ export const WorkOrderList = ({
         </div>
       ) : (
         <>
+          {/*
+           * ⛔ 「없다」는 **묻고 답을 받은 뒤에만** 말할 수 있다. 받는 중이거나 묻지 않은
+           *    동안에는 아무것도 단언하지 않는다.
+           */}
           {rows.length === 0 ? (
-            <div className="banner-slot">
-              <AlertBanner variant="info">{t.empty}</AlertBanner>
-            </div>
+            isAsked && !isLoading ? (
+              <div className="banner-slot">
+                <AlertBanner variant="info">{t.empty}</AlertBanner>
+              </div>
+            ) : null
           ) : (
             <Table
               density="comfortable"

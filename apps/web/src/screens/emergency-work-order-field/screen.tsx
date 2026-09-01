@@ -7,7 +7,7 @@ import { useEmergencyWorkOrders } from './queries';
 import type { WorkOrder } from './types';
 import { useUomLookup } from './uom-lookup';
 import { WorkOrderList } from './work-order-list';
-import { EMERGENCY_WORK_ORDER_TYPE_CODE } from './work-order-type';
+import { EMERGENCY_WORK_ORDER_TYPE_CODE, isEmergencyTypeCodeKnown } from './work-order-type';
 
 export interface EmergencyWorkOrderFieldScreenProps {
   /**
@@ -34,6 +34,12 @@ export const EmergencyWorkOrderFieldScreen = ({
   const t = messages.emergencyWorkOrderField;
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
+  /*
+   * ⛔ **「묻지 않았다」를 「없다」로 흘려보내지 않는다.** 조회를 여는 조건을 화면이 알아야
+   *    목록 구획이 빈 값을 무엇으로 말할지 가를 수 있다 — `isPending` 은 «꺼 둔» 조회에
+   *    대해 거짓이라 그것만으로는 두 상태가 구별되지 않는다.
+   */
+  const isAsked = isEmergencyTypeCodeKnown(typeCode);
   const list = useEmergencyWorkOrders(typeCode);
   const uoms = useUomLookup(t.detail.unknown);
 
@@ -51,6 +57,8 @@ export const EmergencyWorkOrderFieldScreen = ({
 
       <WorkOrderList
         workOrders={workOrders}
+        isAsked={isAsked}
+        isLoading={isAsked && list.isPending}
         total={list.data?.page.total}
         isError={list.isError}
         selectedId={selected?.workOrderId ?? null}

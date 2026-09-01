@@ -65,3 +65,33 @@ describe('긴급 W/O 현장 화면', () => {
     expect(screen.queryByText(/\b11\b/)).not.toBeInTheDocument();
   });
 });
+
+describe('「없다」와 「모른다」를 가른다', () => {
+  it('아직 받는 중이면 「없습니다」를 세우지 않는다', async () => {
+    renderScreen({ holdList: true });
+
+    /* 단위 이름표는 먼저 도착한다 — 그 시점에도 목록은 아직 답이 없다. */
+    await screen.findByRole('heading', { name: t.list.title });
+
+    expect(screen.queryByText(t.list.empty)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.list.loadError)).not.toBeInTheDocument();
+  });
+
+  it('유형 값을 몰라 묻지 못했으면 「없습니다」를 세우지 않는다', async () => {
+    renderScreen({ typeCode: '  ' });
+
+    await screen.findByRole('heading', { name: t.list.title });
+
+    expect(screen.queryByText(t.list.empty)).not.toBeInTheDocument();
+  });
+});
+
+describe('목록이 잘렸는지', () => {
+  it('전체 건수가 보이는 수와 같으면 잘림을 알리지 않는다', async () => {
+    renderScreen({ total: 1 });
+
+    await screen.findByText(EMERGENCY_WORK_ORDER.workOrderNo);
+
+    expect(screen.queryByText(t.list.truncated(1, 1))).not.toBeInTheDocument();
+  });
+});

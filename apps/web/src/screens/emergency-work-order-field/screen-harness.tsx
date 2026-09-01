@@ -36,6 +36,9 @@ export interface StubOptions {
   listStatus?: number;
   /** 단위 이름을 못 받는 상황. 숫자 식별자가 새어 나오는지 잰다. */
   uoms?: Record<string, unknown>[];
+  uomsStatus?: number;
+  /** 목록 응답을 붙들어 둔다 — 「받는 중」을 「없다」로 말하는지 잰다. */
+  holdList?: boolean;
 }
 
 const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } => {
@@ -45,6 +48,9 @@ const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } =
     urls.push(`${url.pathname}${url.search}`);
 
     if (url.pathname === '/production/work-orders') {
+      /* 영영 답하지 않는다 — 첫 렌더 상태를 그대로 붙들어 둔다. */
+      if (options.holdList === true) return new Promise<Response>(() => {});
+
       if (options.listStatus !== undefined) {
         return jsonResponse({ message: '실패' }, { status: options.listStatus });
       }
@@ -57,6 +63,10 @@ const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } =
     }
 
     if (url.pathname === '/mdm/uoms') {
+      if (options.uomsStatus !== undefined) {
+        return jsonResponse({ message: '실패' }, { status: options.uomsStatus });
+      }
+
       const items = options.uoms ?? [UOM];
       return jsonResponse({ items, page: { page: 1, size: 200, total: items.length } });
     }
