@@ -7,3 +7,20 @@ import { afterEach } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+/*
+ * jsdom 은 dialog 의 showModal·close 를 구현하지 않는다. 없으면 대화상자를 쓰는 화면이
+ * 렌더 도중 죽어, 시험이 화면의 잘못이 아닌 것으로 실패한다. open 속성만 맞춰 준다.
+ */
+if (typeof HTMLDialogElement !== 'undefined') {
+  HTMLDialogElement.prototype.showModal ??= function showModal(this: HTMLDialogElement) {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.show ??= function show(this: HTMLDialogElement) {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close ??= function close(this: HTMLDialogElement) {
+    this.open = false;
+    this.dispatchEvent(new Event('close'));
+  };
+}

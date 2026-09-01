@@ -8,6 +8,7 @@ import { EquipmentFailureScreen } from '../screens/equipment-failure/screen';
 import { EquipmentInspectionScreen } from '../screens/equipment-inspection/screen';
 import { IqcSkipRequestScreen } from '../screens/iqc-skip-request/screen';
 import { InboundReceiptScreen } from '../screens/inbound-receipt/screen';
+import { InboundVarianceScreen } from '../screens/inbound-variance/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
@@ -28,6 +29,7 @@ export const appRoutes: RouteObject[] = [
       { index: true, element: <WorkerSignInScreen /> },
       { path: 'screens', element: <ShellHome /> },
       { path: 'inbound-receipt', element: <InboundReceiptScreen /> },
+      { path: 'inbound-variance', element: <InboundVarianceScreen /> },
       { path: 'putaway', element: <PutawayScreen /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },

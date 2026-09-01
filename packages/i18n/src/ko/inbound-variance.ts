@@ -22,6 +22,7 @@ export const inboundVariance = {
     linesLoadFailed: '입하 라인을 확인할 수 없습니다',
     linesNone: '이 입하에 라인이 없습니다',
     lineLabel: (no: number, qty: string) => `${String(no)}번 줄 · 실입하 ${qty}`,
+    chosen: (no: number, qty: string) => `고른 줄 ${String(no)}번 · 실입하 ${qty}`,
     change: '다른 대상 고르기',
     itemLoadFailed: '품목을 확인할 수 없습니다',
   },
