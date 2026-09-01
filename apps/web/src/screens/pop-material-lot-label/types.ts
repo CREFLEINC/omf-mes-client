@@ -54,9 +54,9 @@ type InboundReceiptLineResponse = components['schemas']['InboundReceiptLine'];
 /**
  * 화면이 다루는 입하 라인 한 줄.
  *
- * **`supplierLotMissing`이 이 화면의 갈림길이다.** 공급사가 LOT 을 붙여 온 라인은 이 화면의
- * 대상이 아니다(사전부착 경로가 따로 있다). 스펙 §6 은 그런 라인이 **나타나면 안 된다**고
- * 확정했으므로 표시하지 않고 **뺀다.**
+ * ⛔ **`supplierLotMissing`을 옮기지 않는다.** 공급사가 LOT 을 붙여 온 라인은 이 화면의 대상이
+ * 아니지만(사전부착 경로가 따로 있다) 그 판정은 **서버가 질의로 끝낸다**(스펙 §3-6). 화면 타입에
+ * 자리를 두면 「화면도 판정한다」는 오해가 생기고, 실제로 한 번 더 거르는 코드가 붙었던 자리다.
  */
 export interface LineView {
   inboundReceiptLineId: number;
@@ -64,8 +64,6 @@ export interface LineView {
   itemId: number;
   receivedQty: number;
   uomId: number;
-  /** 참이면 공급사 LOT 이 없다 — MES 가 발번할 대상이다. */
-  supplierLotMissing: boolean;
 }
 
 /** 라인 한 줄을 화면 타입으로 옮기는 **유일한 지점**이다. */
@@ -75,7 +73,6 @@ export const toLineView = (data: InboundReceiptLineResponse): LineView => ({
   itemId: data.itemId,
   receivedQty: data.receivedQty,
   uomId: data.uomId,
-  supplierLotMissing: data.supplierLotMissing,
 });
 
 type PrinterResponse = components['schemas']['Printer'];
@@ -136,20 +133,18 @@ export interface TargetRow {
 /**
  * 입하 건과 그 라인을 목록 줄로 편다.
  *
- * ⛔ **사전부착 건은 빼고 낸다** — 스펙 §6 「사전부착 건이 목록에 옴 → 나타나면 안 된다」.
- * 계약이 이 조건을 질의로 주지 않아 화면이 거른다. 그래서 **한 쪽에 보이는 줄 수가 쪽 크기와
- * 다를 수 있다**(변경 통지 #534).
+ * ⛔ **화면이 거르지 않는다.** 사전부착 라인을 빼는 것은 스펙 §6 이 요구하지만, 그 조건은
+ * `supplierLotMissing` 질의로 **서버가 거른다**(스펙 §3-6 · 변경 통지 #534). 화면이 한 번 더
+ * 거르면 서버가 이미 좁힌 쪽을 다시 깎아 쪽 크기와 어긋난다.
  */
 export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow[] =>
-  lines
-    .filter((line) => line.supplierLotMissing)
-    .map((line) => ({
-      inboundReceiptLineId: line.inboundReceiptLineId,
-      inboundReceiptId: receipt.inboundReceiptId,
-      inboundReceiptNo: receipt.inboundReceiptNo,
-      supplierId: receipt.supplierId,
-      receiptDatetime: receipt.receiptDatetime,
-      itemId: line.itemId,
-      receivedQty: line.receivedQty,
-      uomId: line.uomId,
-    }));
+  lines.map((line) => ({
+    inboundReceiptLineId: line.inboundReceiptLineId,
+    inboundReceiptId: receipt.inboundReceiptId,
+    inboundReceiptNo: receipt.inboundReceiptNo,
+    supplierId: receipt.supplierId,
+    receiptDatetime: receipt.receiptDatetime,
+    itemId: line.itemId,
+    receivedQty: line.receivedQty,
+    uomId: line.uomId,
+  }));

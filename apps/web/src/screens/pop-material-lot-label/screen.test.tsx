@@ -39,6 +39,7 @@ interface StubOptions {
   printers?: unknown[];
   printersFail?: boolean;
   onReceiptRequest?: (url: URL) => void;
+  onLineRequest?: (url: URL) => void;
   onPrinterRequest?: (url: URL) => void;
 }
 
@@ -64,6 +65,8 @@ const renderScreen = (options: StubOptions = {}) => {
         match: (request) =>
           /\/logistics\/inbound-receipts\/(\d+)\/lines$/u.test(new URL(request.url).pathname),
         respond: (request) => {
+          options.onLineRequest?.(new URL(request.url));
+
           if (options.linesFail === true) return jsonResponse({ message: '실패' }, { status: 500 });
 
           const matched = /\/inbound-receipts\/(\d+)\/lines$/u.exec(new URL(request.url).pathname);
@@ -178,7 +181,6 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     expect(within(row).getByText('2026-08-27')).toBeInTheDocument();
   });
 
-  /** 스펙 §6 — 사전부착 건이 목록에 나타나면 안 된다. */
   /**
    * 칸은 오른쪽 정렬인데 쌓는 줄이 왼쪽에 붙어, 머리글과 값이 어긋나 보였다(실기에서
    * 드러났다). `.stacked-cell`의 기본값이 칸 정렬을 거스르는 자리다.
@@ -191,13 +193,35 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     expect(quantity.closest('.stacked-cell')).toHaveClass('pop-stacked-end');
   });
 
-  it('공급사 LOT 이 붙어 온 자재는 목록에서 뺀다', async () => {
+  /**
+   * ⛔ **화면이 거르지 않는다** — 사전부착 라인을 빼는 것은 서버 질의의 몫이다(스펙 §3-6 ·
+   * 변경 통지 #534). 화면이 한 번 더 거르면 서버가 이미 좁힌 쪽을 다시 깎아 쪽 크기와 어긋난다.
+   * 그래서 잣대는 「무엇이 안 보이나」가 아니라 **「무엇을 요청에 싣나」**를 본다.
+   */
+  it('사전부착·발행완료를 거를 조건을 두 요청에 모두 싣는다', async () => {
+    const receiptUrls: URL[] = [];
+    const lineUrls: URL[] = [];
     renderScreen({
-      lines: [line(8501, 8101, 8601, 500, true), line(8502, 8101, 8601, 200, false)],
+      onReceiptRequest: (url) => receiptUrls.push(url),
+      onLineRequest: (url) => lineUrls.push(url),
     });
 
+    await waitFor(() => {
+      expect(lineUrls.length).toBeGreaterThan(0);
+    });
+
+    for (const url of [receiptUrls[0], lineUrls[0]]) {
+      expect(url?.searchParams.get('supplierLotMissing')).toBe('true');
+      expect(url?.searchParams.get('labelIssued')).toBe('false');
+    }
+  });
+
+  /** 서버가 이미 거르므로 화면에는 받은 줄이 그대로 선다. */
+  it('받은 라인을 화면이 다시 거르지 않는다', async () => {
+    renderScreen({ lines: [line(8501, 8101, 8601, 500, true), line(8502, 8101, 8601, 200, true)] });
+
     expect(await screen.findByText('500 EA')).toBeInTheDocument();
-    expect(screen.queryByText('200 EA')).not.toBeInTheDocument();
+    expect(screen.getByText('200 EA')).toBeInTheDocument();
   });
 
   it('거른다는 사실을 화면이 밝힌다 — 보이는 것을 전부로 오해하지 않게 한다', async () => {
@@ -242,12 +266,12 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   });
 
   /**
-   * ⭐ **입하 건은 있는데 보일 자재가 없는 상태가 정상적으로 생긴다** — 사전부착 자재를
-   * 걸러 내기 때문이다. 그때 「발행할 자재가 없습니다」만 내면 옆의 「전체 1건」과 나란히
-   * 서서 서로 어긋나 보인다(실기에서 그 상태가 그대로 나왔다).
+   * ⭐ **입하 건은 있는데 보일 자재가 없는 상태가 정상적으로 생긴다** — 건과 라인을 서버가
+   * 각각 거르므로 건은 남고 라인이 0 건으로 오는 쪽이 나온다. 그때 「발행할 자재가 없습니다」만
+   * 내면 옆의 「전체 1건」과 나란히 서서 서로 어긋나 보인다(실기에서 그 상태가 그대로 나왔다).
    */
   it('입하 건은 있는데 걸러 내 비었으면 왜 비었는지와 다음 쪽을 말한다', async () => {
-    renderScreen({ lines: [line(8501, 8101, 8601, 500, false)] });
+    renderScreen({ lines: [] });
 
     expect(
       await screen.findByText(/이 쪽의 입하 건에는 발행할 자재가 없습니다/u),
@@ -257,7 +281,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
 
   /** 쪽 나눔은 입하 건 단위다 — 목록 줄(자재) 수로 세면 단위가 섞인다. */
   it('쪽 위치를 입하 건 단위로 세고 그 단위를 밝힌다', async () => {
-    renderScreen({ lines: [line(8501, 8101, 8601, 500, false)] });
+    renderScreen({ lines: [] });
 
     expect(await screen.findByText('입하 건 1–1 / 전체 1건')).toBeInTheDocument();
   });
