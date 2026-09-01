@@ -55,8 +55,6 @@ export const pqcInspection = {
 
   result: {
     heading: '수량 판정',
-    round: (round: number): string => `${round}회차`,
-    notStarted: '아직 입력된 검사 결과가 없습니다.',
     loading: '검사 결과를 불러오는 중입니다.',
     confirmed: '이 회차는 확정되어 고칠 수 없습니다. 다시 검사하려면 재검사 회차를 추가합니다.',
     fields: {
@@ -86,8 +84,6 @@ export const pqcInspection = {
     confirmNote: '확정하면 LOT 상태가 바뀌고 되돌릴 수 없습니다.',
     confirmBlockedByTotals: '검사 확정 — 수량 합계가 검사수량과 맞아야 확정할 수 있습니다.',
     confirmBlockedByJudgment: '검사 확정 — 종합 판정을 골라야 확정할 수 있습니다.',
-    confirmBlockedByConfirmed: '검사 확정 — 이미 확정된 회차입니다.',
-    confirmBlockedByUnsaved: '검사 확정 — 먼저 임시 저장을 해야 확정할 수 있습니다.',
     /** 스펙 §5-9 「전 항목 판정」 — 무엇이 남았는지는 좌측 「진행 n / m」이 말한다. */
     confirmBlockedByItems: '검사 확정 — 검사 항목을 모두 판정해야 확정할 수 있습니다.',
     /**
@@ -97,13 +93,6 @@ export const pqcInspection = {
     confirmBlockedByTerminal:
       '검사 확정 — 이 단말은 이 공정의 검사 입력 권한이 없습니다. 단말 설정에서 권한을 부여하세요.',
     confirmSucceeded: '검사를 확정했습니다.',
-
-    reinspect: '재검사 회차 추가',
-    reinspectCancel: '재검사 그만두기',
-    reinspectRound: '새 회차 (재검사)',
-    reinspectNote: '수량을 넣고 임시 저장하면 새 회차가 만들어집니다. 앞 회차는 그대로 남습니다.',
-    reinspectReasonPending:
-      '재검사 사유는 아직 고를 수 없습니다. 사유 목록이 정해지면 이 자리에 추가됩니다.',
   },
 
   /**

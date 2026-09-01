@@ -41,8 +41,6 @@ export interface ItemPanelProps {
   /** 항목 판정 선택지 — **두 값이다**(합격·불합격). 종합 판정과 그룹이 다르다 */
   judgmentOptions: CodeOption[];
   isLoading: boolean;
-  /** 확정된 회차는 고치지 않는다 — 정정이 아니라 재검사로 새 회차를 쌓는다 */
-  isLocked: boolean;
 }
 
 export const ItemPanel = ({
@@ -52,7 +50,6 @@ export const ItemPanel = ({
   onChange,
   judgmentOptions,
   isLoading,
-  isLocked,
 }: ItemPanelProps) => (
   <section className="pane" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
@@ -88,7 +85,6 @@ export const ItemPanel = ({
               draft={drafts[row.key] ?? EMPTY_MEASUREMENT_DRAFT}
               onChange={onChange}
               judgmentOptions={judgmentOptions}
-              isLocked={isLocked}
             />
           ))}
         </ol>
@@ -102,10 +98,9 @@ interface ItemRowProps {
   draft: MeasurementDraft;
   onChange: (key: string, draft: MeasurementDraft) => void;
   judgmentOptions: CodeOption[];
-  isLocked: boolean;
 }
 
-const ItemRow = ({ row, draft, onChange, judgmentOptions, isLocked }: ItemRowProps) => {
+const ItemRow = ({ row, draft, onChange, judgmentOptions }: ItemRowProps) => {
   const judgmentId = useId();
   const outOfSpec = isOutOfSpec(row);
 
@@ -140,7 +135,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, isLocked }: ItemRowPro
             options={BOOLEAN_OPTIONS}
             value={draft.value}
             placeholder={t.notMeasured}
-            disabled={isLocked}
+
             onChange={(value) => onChange(row.key, { ...draft, value })}
           />
         ) : (
@@ -148,7 +143,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, isLocked }: ItemRowPro
             label={t.columns.value}
             inputMode={row.dataTypeCode === DATA_TYPES.numeric ? 'decimal' : 'text'}
             value={draft.value}
-            disabled={isLocked}
+
             error={isValueInvalid(row, draft) ? t.valueInvalid : undefined}
             onChange={(event) => onChange(row.key, { ...draft, value: event.target.value })}
           />
@@ -163,7 +158,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, isLocked }: ItemRowPro
             options={judgmentOptions}
             value={draft.judgment}
             placeholder={t.judgmentPlaceholder}
-            disabled={isLocked || judgmentOptions.length === 0}
+            disabled={judgmentOptions.length === 0}
             onChange={(judgment) => onChange(row.key, { ...draft, judgment })}
           />
           {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}

@@ -30,15 +30,9 @@ export interface ActionBarProps {
   isJustConfirmed: boolean;
 
   isSaving: boolean;
-  isConfirming: boolean;
-  /** 확정된 회차 — 이때 할 수 있는 일은 재검사뿐이다 */
-  isLocked: boolean;
-  isReinspecting: boolean;
 
   onSave: () => void;
   onConfirm: () => void;
-  onStartReinspection: () => void;
-  onCancelReinspection: () => void;
 }
 
 export const ActionBar = ({
@@ -47,13 +41,8 @@ export const ActionBar = ({
   isSaved,
   isJustConfirmed,
   isSaving,
-  isConfirming,
-  isLocked,
-  isReinspecting,
   onSave,
   onConfirm,
-  onStartReinspection,
-  onCancelReinspection,
 }: ActionBarProps) => (
   <div className="pop-action-bar">
     <div className="pop-action-note">
@@ -61,7 +50,7 @@ export const ActionBar = ({
        * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 알린다. 이 순간 LOT 상태가
        * 전이하고 되돌릴 경로가 없다.
        */}
-      {!isLocked && <p className="field-note">{t.confirmNote}</p>}
+      <p className="field-note">{t.confirmNote}</p>
 
       {/* 눌렀는데 아무 일도 없어 보이지 않게 결과를 한 줄로 알린다. */}
       {isSaved && <p className="field-note">{t.saved}</p>}
@@ -72,47 +61,17 @@ export const ActionBar = ({
       {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
     </div>
 
-    {/*
-     * ⛔ **확정된 회차에서 유일하게 할 수 있는 일이 재검사다.** 잠긴 사유만 내고 길을 내지
-     * 않으면, 문면이 「재검사 회차를 추가합니다」라고 말하는데 추가할 자리가 화면에 없다.
-     */}
-    {isLocked ? (
-      <Button type="button" variant="outlined" size="xl" onClick={onStartReinspection}>
-        {t.reinspect}
-      </Button>
-    ) : (
-      <>
-        {/* 그만두는 길을 함께 둔다 — 열고 나서 되돌아갈 데가 없으면 갇힌다. */}
-        {isReinspecting && (
-          <Button
-            type="button"
-            variant="text"
-            size="xl"
-            disabled={isSaving || isConfirming}
-            onClick={onCancelReinspection}
-          >
-            {t.reinspectCancel}
-          </Button>
-        )}
-        <Button
-          type="button"
-          variant="outlined"
-          size="xl"
-          disabled={isSaving || isConfirming}
-          onClick={onSave}
-        >
-          {isSaving ? t.saving : t.save}
-        </Button>
-        <Button
-          type="button"
-          variant="filled"
-          size="xl"
-          disabled={blockedReason !== null || isSaving || isConfirming}
-          onClick={onConfirm}
-        >
-          {isConfirming ? t.confirming : t.confirm}
-        </Button>
-      </>
-    )}
+    <Button type="button" variant="outlined" size="xl" disabled={isSaving} onClick={onSave}>
+      {isSaving ? t.saving : t.save}
+    </Button>
+    <Button
+      type="button"
+      variant="filled"
+      size="xl"
+      disabled={blockedReason !== null || isSaving}
+      onClick={onConfirm}
+    >
+      {isSaving ? t.confirming : t.confirm}
+    </Button>
   </div>
 );

@@ -48,12 +48,6 @@ export interface ResultPanelProps {
   onInspectedChange: (raw: string) => void;
   /** 합계 판정의 오른쪽 변. 초안이 수량이 아니면 판정이 서지 않는다 */
   inspectedQty: number;
-  /** 회차 번호. 아직 회차가 없으면 `null` */
-  round: number | null;
-  /** 확정된 회차는 고치지 않는다 — 정정이 아니라 재검사로 새 회차를 쌓는다 */
-  isLocked: boolean;
-  /** 지금 **재검사 회차를 쓰는 중**인가. 아직 만들어지지 않은 회차라 번호가 없다 */
-  isReinspecting: boolean;
 
   draft: QuantityDraft;
   onChange: (draft: QuantityDraft) => void;
@@ -96,9 +90,6 @@ export const ResultPanel = ({
   inspectedDraft,
   onInspectedChange,
   inspectedQty,
-  round,
-  isLocked,
-  isReinspecting,
   draft,
   onChange,
   fieldErrors,
@@ -118,7 +109,7 @@ export const ResultPanel = ({
   const totals = toTotals(draft, inspectedQty);
   /* 검사 수량도 수량이다 — 같은 자로 잰다. 빈 칸은 아직 넣지 않은 것이지 잘못이 아니다. */
   const inspectedInvalid = inspectedDraft.trim() !== '' && toMicro(inspectedDraft) === null;
-  const canChoose = !isLocked && canChooseDisposition(rejectedMicro(draft.rejected));
+  const canChoose = canChooseDisposition(rejectedMicro(draft.rejected));
 
   /** 서버가 짚어 준 칸 오류를 화면의 칸 이름으로 옮긴다. */
   const serverErrorOf = (key: keyof QuantityDraft): string | undefined => {
@@ -148,8 +139,8 @@ export const ResultPanel = ({
       label={label}
       inputMode="decimal"
       value={draft[key]}
-      disabled={isLocked}
-      disabledReason={isLocked ? t.confirmed : undefined}
+      disabled={false}
+
       /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
       error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
       onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
@@ -160,24 +151,6 @@ export const ResultPanel = ({
     <section className="pane" aria-label={t.heading}>
       <h2 className="field-label">{t.heading}</h2>
 
-      <p className="field-note">
-        {isReinspecting ? t.reinspectRound : round === null ? t.notStarted : t.round(round)}
-      </p>
-
-      {/*
-       * ⭐ **저장해야 회차가 생긴다.** 「검사 시작」 액션을 두지 않고 첫 임시 저장을 검사
-       * 시작으로 삼은 규율과 같다 — 열어 두고 떠난 사람이 빈 회차를 남기지 않는다.
-       *
-       * ⛔ **사유 칸을 지어내지 않는다.** 계약이 재검사 사유를 선택으로 받지만 고를 값 목록이
-       * 정해지지 않았다. 감추지 않고 왜 없는지 밝힌다.
-       */}
-      {isReinspecting && (
-        <>
-          <p className="field-note">{t.reinspectNote}</p>
-          <p className="field-note">{t.reinspectReasonPending}</p>
-        </>
-      )}
-
       {/*
        * 적용 생산구간 — 이 검사가 «어느 시간대의 생산분»을 대표하는가(§5-5). 불합격일 때
        * 회수 범위가 이 구간으로 정해지므로, 자동으로 채우되 **사람이 고칠 수 있게** 둔다.
@@ -186,15 +159,15 @@ export const ResultPanel = ({
         <TextField
           label={tCoverage.from}
           value={coverage.from}
-          disabled={isLocked}
-          disabledReason={isLocked ? t.confirmed : undefined}
+          disabled={false}
+
           onChange={(event) => onCoverageChange({ ...coverage, from: event.target.value })}
         />
         <TextField
           label={tCoverage.to}
           value={coverage.to}
-          disabled={isLocked}
-          disabledReason={isLocked ? t.confirmed : undefined}
+          disabled={false}
+
           /* ⛔ 조용히 뒤집어 고치지 않는다 — 무엇을 넣었는지 사용자가 알아야 고칠 수 있다. */
           error={isCoverageOutOfOrder(coverage) ? tCoverage.invalidOrder : undefined}
           onChange={(event) => onCoverageChange({ ...coverage, to: event.target.value })}
@@ -217,8 +190,8 @@ export const ResultPanel = ({
           label={t.fields.inspectedQty}
           inputMode="decimal"
           value={inspectedDraft}
-          disabled={isLocked}
-          disabledReason={isLocked ? t.confirmed : undefined}
+          disabled={false}
+
           error={showErrors && inspectedInvalid ? t.quantityInvalid : undefined}
           onChange={(event) => onInspectedChange(event.target.value)}
         />
@@ -258,7 +231,7 @@ export const ResultPanel = ({
             options={judgmentOptions}
             value={judgment}
             placeholder={t.judgmentPlaceholder}
-            disabled={isLocked || judgmentOptions.length === 0}
+            disabled={judgmentOptions.length === 0}
             onChange={onJudgmentChange}
           />
           {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}

@@ -21,16 +21,13 @@ import { messages } from '@omf-mes/i18n';
  */
 
 const t = messages.pqcInspection.noStandard;
-const tResult = messages.pqcInspection.result;
 
 export interface FreeInputPanelProps {
   remarks: string;
   onRemarksChange: (value: string) => void;
-  /** 확정된 회차는 고치지 않는다 */
-  isLocked: boolean;
 }
 
-export const FreeInputPanel = ({ remarks, onRemarksChange, isLocked }: FreeInputPanelProps) => (
+export const FreeInputPanel = ({ remarks, onRemarksChange }: FreeInputPanelProps) => (
   <section className="pane" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
 
@@ -41,8 +38,6 @@ export const FreeInputPanel = ({ remarks, onRemarksChange, isLocked }: FreeInput
     <TextField
       label={t.remarks}
       value={remarks}
-      disabled={isLocked}
-      disabledReason={isLocked ? tResult.confirmed : undefined}
       onChange={(event) => onRemarksChange(event.target.value)}
     />
   </section>

@@ -9,8 +9,6 @@ const t = messages.pqcInspection.result;
 /** 아무것도 막히지 않은 상태. 시험마다 «한 가지만» 무너뜨려 그 갈래를 잰다. */
 const OPEN: ConfirmGateInput = {
   canInputInspection: true,
-  isLocked: false,
-  hasRound: true,
   totals: toTotals({ accepted: '30', rejected: '0', held: '0' }, 30),
   judgment: 'ACCEPTED',
   isAllJudged: true,
@@ -39,21 +37,12 @@ describe('toConfirmBlockedReason — 막힌 사유를 하나로 좁힌다', () =
     const blocked = toConfirmBlockedReason({
       ...OPEN,
       canInputInspection: false,
-      hasRound: false,
       judgment: '',
       isAllJudged: false,
       totals: toTotals({ accepted: '1', rejected: '0', held: '0' }, 30),
     });
 
     expect(blocked).toBe(t.confirmBlockedByTerminal);
-  });
-
-  it('확정된 회차는 이미 확정됐다고 말한다', () => {
-    expect(toConfirmBlockedReason({ ...OPEN, isLocked: true })).toBe(t.confirmBlockedByConfirmed);
-  });
-
-  it('회차가 없으면 «먼저 임시 저장»을 말한다 — 오류가 났다고 하지 않는다', () => {
-    expect(toConfirmBlockedReason({ ...OPEN, hasRound: false })).toBe(t.confirmBlockedByUnsaved);
   });
 
   it('합계가 맞지 않으면 수량을 가리킨다', () => {
@@ -81,8 +70,6 @@ describe('toConfirmBlockedReason — 막힌 사유를 하나로 좁힌다', () =
   it('사유가 서로 다른 문장이다', () => {
     const reasons = [
       toConfirmBlockedReason({ ...OPEN, canInputInspection: false }),
-      toConfirmBlockedReason({ ...OPEN, isLocked: true }),
-      toConfirmBlockedReason({ ...OPEN, hasRound: false }),
       toConfirmBlockedReason({
         ...OPEN,
         totals: toTotals({ accepted: '1', rejected: '0', held: '0' }, 30),

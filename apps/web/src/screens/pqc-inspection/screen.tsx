@@ -1,6 +1,6 @@
 import { Breadcrumb, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
@@ -26,16 +26,14 @@ import {
   type MeasurementDraft,
   type MeasurementDrafts,
 } from './measurement-draft';
+import { judgeAutomatically } from './auto-judgment';
 import { toMeasurementRows, type MeasurementRow } from './measurement-rows';
 import {
+  RESULT_STATUS,
   useCodeValues,
-  useConfirmResult,
   useInspectionItemSpecs,
   useInspectionRequestDetail,
-  useInspectionRoundLock,
-  useInspectionRounds,
-  useMeasurements,
-  useSaveDraft,
+  useSaveResult,
 } from './queries';
 import { ResultPanel } from './result-panel';
 import { TargetHeader } from './target-header';
@@ -49,7 +47,6 @@ import {
   validateQuantities,
   type QuantityDraft,
 } from './quantity-draft';
-import { latestRound } from './types';
 
 /**
  * P-02-13 PQC 제품 검사·검사 결과 입력 — **화면 스펙 §3 의 배치를 그대로 따른다.**
@@ -80,51 +77,12 @@ export const PqcInspectionScreen = () => {
   const targetId = readTargetId(searchParams);
 
   const detail = useInspectionRequestDetail(targetId);
-  const rounds = useInspectionRounds(targetId);
-
-  const round = latestRound(rounds.data ?? []);
-
-  /**
-   * 확정된 회차에서 **재검사 회차를 쓰는 중**인가.
-   *
-   * ⭐ **회차를 먼저 만들지 않는다.** 누르면 칸이 열릴 뿐이고 회차는 첫 임시 저장이 만든다 —
-   * 먼저 만들면 열어 보고 그만둔 사람마다 빈 회차가 쌓인다.
-   */
-  const [isReinspecting, setIsReinspecting] = useState(false);
-
-  /**
-   * 재검사가 가리키는 **앞 회차**. 재검사 중이 아니면 `null`.
-   *
-   * ⭐ **지금 화면에 있는 회차로 매번 다시 판정한다** — 눌렀을 때의 식별자를 따로 들고 있으면
-   * 그 값이 화면의 회차와 어긋나는 상태가 생기고, 어느 쪽이 옳은지 정할 근거가 없다.
-   */
-  const reinspectingFrom = isReinspecting ? (round?.inspectionResultId ?? null) : null;
-  const isReinspectingNow = reinspectingFrom !== null;
-
-  /** 확정된 회차는 고치지 않는다 — 정정이 아니라 재검사로 새 회차를 쌓는다. */
-  const isConfirmed = round?.statusCode === CONFIRMED_STATUS;
-  const isLocked = isConfirmed && !isReinspectingNow;
-
-  /** 고칠 회차. 확정본이면 `null` 이 되어 저장이 「새로 만들기」로 간다. */
-  const editingResultId = !isConfirmed && round !== null ? round.inspectionResultId : null;
-
-  /* ⭐ 잠금 토큰을 얻으려고 회차 한 건을 따로 부른다 — 목록 200 에는 `ETag` 가 없다. */
-  useInspectionRoundLock(editingResultId);
-
-  /**
-   * ⭐ **기준이 없으면 항목 목록을 부르지 않는다**(§5-2 · 통지 #589). 부를 버전이 없고,
-   * 그 갈래에는 항목표 자체가 없다.
-   */
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
   /*
-   * ⚠ **재검사 중에는 앞 회차의 측정치를 그리지 않는다.** 그리면 아직 아무것도 재지 않은 새
-   * 회차에 앞 회차의 값이 들어 있는 것처럼 보이고, 검사자가 그것을 자기가 잰 값으로 읽는다.
+   * ⛔ **저장된 측정치를 부르지 않는다.** 이 화면이 부르는 경로는 셋뿐이고(요구서 §3-7)
+   * 측정치 조회는 그중에 없다 — 검사자는 지금 재서 넣는다.
    */
-  const measurements = useMeasurements(
-    isReinspectingNow ? null : (round?.inspectionResultId ?? null),
-  );
-
-  const rows = toMeasurementRows(itemSpecs.data ?? [], measurements.data ?? []);
+  const rows = toMeasurementRows(itemSpecs.data ?? [], []);
 
   /**
    * 종합 판정과 **항목 판정은 그룹이 다르다** — 항목에는 「보류」가 없다. 합쳐 쓰면 항목
@@ -138,9 +96,8 @@ export const PqcInspectionScreen = () => {
   const [draft, setDraft] = useState<QuantityDraft>(EMPTY_QUANTITY_DRAFT);
 
   /**
-   * 검사 수량 초안 — **사람이 넣는 값이다**(§3 도면 · §4-B). 회차가 있으면 그 값에서,
-   * 없으면 의뢰의 대상 수량에서 시작한다: 표본 검사라 둘이 다를 수 있고, 다를 때 고치는
-   * 것은 사람이다.
+   * 검사 수량 초안 — **사람이 넣는 값이다**(§3 도면 · §4-B). 의뢰의 대상 수량에서 시작한다:
+   * 표본 검사라 둘이 다를 수 있고, 다를 때 고치는 것은 사람이다.
    */
   const [inspectedDraft, setInspectedDraft] = useState('');
   const [drafts, setDrafts] = useState<MeasurementDrafts>({});
@@ -153,108 +110,65 @@ export const PqcInspectionScreen = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [isJustConfirmed, setIsJustConfirmed] = useState(false);
 
-  const save = useSaveDraft(targetId, editingResultId, () => {
-    setIsSaved(true);
-  });
+  /**
+   * 저장 — **임시 저장과 검사 확정이 한 훅이다**(요구서 §3-7). 무엇으로 저장했는지에 따라
+   * 알리는 문장이 갈린다.
+   */
+  /**
+   * 방금 무엇으로 저장했는지. **훅의 성공 되먹임은 응답만 준다** — 응답의 상태값은 서버가
+   * 정하므로 「내가 무엇을 눌렀나」를 알려면 보낸 값을 여기 남겨야 한다.
+   */
+  const submitted = useRef<string>(RESULT_STATUS.draft);
 
-  const confirm = useConfirmResult(targetId, editingResultId, () => {
-    setIsSaved(false);
-    setIsJustConfirmed(true);
+  const save = useSaveResult(() => {
+    setIsSaved(submitted.current === RESULT_STATUS.draft);
+    setIsJustConfirmed(submitted.current === RESULT_STATUS.confirmed);
   });
 
   /*
    * 되돌림은 **값**으로 판정한다 — 조회 응답이 다시 그려질 때마다 참조가 달라지므로,
    * 참조로 판정하면 그때마다 사용자가 치던 값이 사라진다.
    */
-  const roundId = round?.inspectionResultId ?? null;
-  const { acceptedQty, rejectedQty, heldQty } = round ?? {
-    acceptedQty: 0,
-    rejectedQty: 0,
-    heldQty: 0,
-  };
-  const storedJudgment = round?.overallJudgmentCode ?? '';
-  const storedRemarks = round?.remarks ?? '';
-  /* 회차가 있으면 그 검사 수량, 없으면 의뢰의 대상 수량에서 시작한다. */
-  const storedInspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
+  const storedInspectedQty = detail.data?.targetQty ?? 0;
   const coverageFromAt = detail.data?.coverageFromAt ?? null;
   const coverageToAt = detail.data?.coverageToAt ?? null;
 
   /**
-   * 회차가 화면에 보일 값. 회차가 없으면 빈 초안이다.
+   * 대상이 바뀌면 화면을 그 대상의 시작 상태로 되돌린다.
    *
-   * ⛔ 0을 미리 채우지 않는다 — 채우면 「검사자가 0으로 판정했다」와 「아직 아무것도 넣지
-   * 않았다」가 화면에서 같아 보인다.
-   */
-  const draftOf = (
-    source: { acceptedQty: number; rejectedQty: number; heldQty: number } | null,
-  ): QuantityDraft =>
-    source === null
-      ? EMPTY_QUANTITY_DRAFT
-      : {
-          accepted: String(source.acceptedQty),
-          rejected: String(source.rejectedQty),
-          held: String(source.heldQty),
-        };
-
-  /**
-   * 고른 대상이나 회차가 바뀌면 그 회차의 값으로 되돌아간다.
-   *
-   * ⭐ **대상(`targetId`)이 의존성에 든다.** 회차 값만 보면 **회차가 없는 대상끼리 옮길 때**
-   * 네 값이 모두 그대로여서 effect 가 깨어나지 않고, 앞 대상에 친 수량이 다음 화면에 남는다 —
-   * 저장이 붙는 순간 **다른 LOT 에 앞 대상의 수량을 저장**하는 길이 된다.
+   * ⭐ **대상(`targetId`)이 의존성에 든다.** 대상이 달라졌는데 되돌리지 않으면 앞 대상에 친
+   * 수량이 다음 화면에 남고, 저장이 붙는 순간 **다른 LOT 에 앞 대상의 수량을 저장**하는
+   * 길이 된다.
    */
   useEffect(() => {
     setIsSaved(false);
     setIsJustConfirmed(false);
     setShowErrors(false);
-    /*
-     * ⭐ 재검사 모드도 함께 푼다 — 저장이 새 회차를 만들면 `roundId` 가 바뀌어 여기로 오고,
-     * 그 회차는 이제 «실재하는 작성중 회차»라 재검사 모드로 남아 있으면 다음 저장이 또 새
-     * 회차를 만든다.
-     */
-    setIsReinspecting(false);
-    setJudgment(storedJudgment);
-    setDraft(draftOf(roundId === null ? null : { acceptedQty, rejectedQty, heldQty }));
+    setJudgment('');
+    setDraft(EMPTY_QUANTITY_DRAFT);
     /*
      * ⚠ **처분은 저장되지 않으므로 되돌릴 원본이 없다.** 다른 대상으로 옮겼는데 앞 대상에서
      * 고른 처분이 남아 있으면, 검사자는 그것을 «이 대상의 판단»으로 읽는다.
      */
     setDisposition(null);
-    setRemarks(storedRemarks);
+    setRemarks('');
     setCoverage(toCoverageDraft(coverageFromAt, coverageToAt));
     setInspectedDraft(String(storedInspectedQty));
-  }, [
-    targetId,
-    roundId,
-    acceptedQty,
-    rejectedQty,
-    heldQty,
-    storedJudgment,
-    storedRemarks,
-    storedInspectedQty,
-    coverageFromAt,
-    coverageToAt,
-  ]);
+  }, [targetId, storedInspectedQty, coverageFromAt, coverageToAt]);
 
   /**
-   * 항목 초안은 **줄이 서거나 저장값이 바뀌면** 그 줄의 저장값으로 되돌아간다.
+   * 항목 초안은 **줄이 서면** 빈 초안으로 시작한다. 저장된 측정치를 부르지 않으므로
+   * (요구서 §3-7) 되돌릴 값이 없고, 검사자가 지금 재서 넣는다.
    *
-   * ⛔ **열쇠만 보면 안 된다.** 항목 규격과 측정치는 서로 다른 조회라 **규격이 먼저 오고
-   * 측정치가 나중에 온다** — 그 사이 줄의 열쇠는 그대로이므로, 열쇠만 의존성에 넣으면
-   * 되돌림이 깨어나지 않아 **저장된 측정치가 화면 칸에 영영 안 붙는다.** 실제로 그 상태로
-   * 화면에 나갔고, 값이 비었는데 「규격 밖」 표만 붙어 있는 모습으로 드러났다.
-   *
-   * 그래서 **저장값까지 포함한 지문**을 의존성으로 삼는다. 배열 참조로 넣으면 조회가 다시
-   * 그려질 때마다 검사자가 치던 값이 사라지므로 참조가 아니라 **값**이어야 한다.
+   * 줄의 열쇠를 이어 붙인 문자열을 의존성으로 삼는다 — 배열 참조로 넣으면 조회가 다시
+   * 그려질 때마다 검사자가 치던 값이 사라진다.
    */
-  const rowsFingerprint = rows
-    .map((row) => `${row.key}:${row.measured?.judgmentCode ?? ''}:${storedValueKey(row)}`)
-    .join('|');
+  const rowKeys = rows.map((row) => row.key).join('|');
 
   useEffect(() => {
     setDrafts(toMeasurementDrafts(rows));
-    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 줄 목록은 지문 문자열로 판정한다 */
-  }, [rowsFingerprint, roundId, isReinspectingNow]);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 줄 목록은 열쇠 문자열로 판정한다 */
+  }, [rowKeys]);
 
   const changeInspected = (raw: string): void => {
     setIsSaved(false);
@@ -271,9 +185,24 @@ export const PqcInspectionScreen = () => {
     setDisposition((current) => settleDisposition(current, toMicro(next.rejected)));
   };
 
+  /**
+   * 항목 한 줄을 고친다.
+   *
+   * ⭐ **값을 넣으면 자동 판정이 채운다**(§5-11) — 저장된 측정치를 부르지 않으므로 검사자가
+   * 지금 넣는 값이 유일한 대조 대상이다. ⛔ **사람이 이미 고른 판정은 덮지 않는다.** 채운
+   * 값은 시작점이지 확정이 아니고, 덮으면 사람 판단이 지워진다.
+   */
   const changeMeasurement = (key: string, next: MeasurementDraft): void => {
     setIsSaved(false);
-    setDrafts((current) => ({ ...current, [key]: next }));
+    setDrafts((current) => {
+      const row = rows.find((candidate) => candidate.key === key);
+      const filled =
+        row !== undefined && next.judgment === ''
+          ? (judgeAutomatically({ ...row, measured: toProbe(row, next.value) }) ?? '')
+          : next.judgment;
+
+      return { ...current, [key]: { ...next, judgment: filled } };
+    });
   };
 
   /**
@@ -308,8 +237,6 @@ export const PqcInspectionScreen = () => {
    */
   const confirmBlockedReason = toConfirmBlockedReason({
     canInputInspection,
-    isLocked,
-    hasRound: editingResultId !== null,
     totals,
     judgment,
     isAllJudged: isAllJudged(rows, drafts),
@@ -325,12 +252,21 @@ export const PqcInspectionScreen = () => {
       ? t.result.saveBlockedByInvalid
       : null;
 
-  const saveDraft = (inspectionRequestId: number, uomId: number): void => {
+  /**
+   * 결과를 저장한다 — **임시 저장과 검사 확정이 같은 경로**이고 상태값으로 갈린다(§3-7).
+   */
+  const saveResult = (
+    inspectionRequestId: number,
+    uomId: number,
+    statusCode: (typeof RESULT_STATUS)['draft'],
+  ): void => {
     setShowErrors(true);
 
     if (hasQuantityError(validateQuantities(draft)) || hasValueError(rows, drafts)) return;
 
     setIsSaved(false);
+    setIsJustConfirmed(false);
+    submitted.current = statusCode;
 
     /* 검사한 시각은 지금이다. **한 번만 읽어 두 자리가 갈리지 않게 한다.** */
     const inspectedAt = new Date().toISOString();
@@ -343,24 +279,17 @@ export const PqcInspectionScreen = () => {
       heldQty: toSendableNumber(draft.held),
       uomId,
       /*
-       * ⛔ **고른 판정을 함께 싣는다.** 싣지 않으면 저장 뒤 재조회가 저장 전 판정을 돌려주고
-       * 되돌림이 사용자가 고른 값을 덮는다 — 그러고 확정하면 «고른 것과 다른 판정»이 나가는데
-       * 그 쓰기는 되돌릴 수 없다.
-       */
+       * ⛔ **고른 판정을 함께 싣는다** — 확정에도 임시 저장에도 이 값이 결론이다. */
       overallJudgmentCode: judgment,
       inspectedAt,
       remarks,
+      statusCode,
       /*
        * ⭐ **구간이 비어 있으면 검사 시각으로 채워 보낸다.** 표본 검사는 대표 구간이 있어야
        * 불합격 시 회수 범위가 정해진다 — 비운 채 저장하면 그 근거가 영영 없다.
        */
       coverage: fillCoverage(coverage, inspectedAt),
-      /*
-       * 재검사면 앞 회차를 가리킨다 — 이 값이 있어야 서버가 회차를 +1 하고 사슬을 잇는다.
-       * ⛔ 빠뜨리면 같은 의뢰에 회차 1이 두 번 만들어지려 해 `UNIQUE(의뢰, 회차)` 에 걸린다.
-       */
-      previousResultId: reinspectingFrom,
-      /* ⛔ 측정치는 자체 쓰기 경로가 없다 — 결과 저장에 함께 실린다. */
+      /* ⛔ 측정치는 자체 쓰기 경로가 없다 — 결과 저장에 함께 실린다(§4-C). */
       measurements: toMeasurementInputs(rows, drafts, inspectedAt),
     });
   };
@@ -411,7 +340,7 @@ export const PqcInspectionScreen = () => {
          * 제품이 멈춘다. 어느 갈래인지는 **의뢰에 기준이 실려 있는가**로 갈린다.
          */}
         {planVersionId === null ? (
-          <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} isLocked={isLocked} />
+          <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} />
         ) : (
           <ItemPanel
             inspectionPlanVersionId={planVersionId}
@@ -419,8 +348,7 @@ export const PqcInspectionScreen = () => {
             drafts={drafts}
             onChange={changeMeasurement}
             judgmentOptions={itemJudgmentOptions}
-            isLoading={itemSpecs.isLoading || measurements.isLoading}
-            isLocked={isLocked}
+            isLoading={itemSpecs.isLoading}
           />
         )}
 
@@ -428,9 +356,6 @@ export const PqcInspectionScreen = () => {
           inspectedDraft={inspectedDraft}
           onInspectedChange={changeInspected}
           inspectedQty={inspectedQty}
-          round={isReinspectingNow ? null : (round?.inspectionRound ?? null)}
-          isLocked={isLocked}
-          isReinspecting={isReinspectingNow}
           draft={draft}
           onChange={changeDraft}
           fieldErrors={save.fieldErrors}
@@ -450,38 +375,36 @@ export const PqcInspectionScreen = () => {
         saveBlockedReason={saveBlockedReason}
         isSaved={isSaved}
         isJustConfirmed={isJustConfirmed}
-        isSaving={save.isSaving || rounds.isFetching}
-        isConfirming={confirm.isSaving}
-        isLocked={isLocked}
-        isReinspecting={isReinspectingNow}
+        isSaving={save.isSaving}
         onSave={() => {
-          saveDraft(targetId, detail.data.uomId);
+          saveResult(targetId, detail.data.uomId, RESULT_STATUS.draft);
         }}
         onConfirm={() => {
-          confirm.write({ overallJudgmentCode: judgment });
-        }}
-        onStartReinspection={() => {
-          /* 새 회차는 빈 칸에서 시작한다 — 앞 회차의 값이 남으면 그대로 저장된다. */
-          setIsSaved(false);
-          setDraft(EMPTY_QUANTITY_DRAFT);
-          setDrafts({});
-          setJudgment('');
-          setIsReinspecting(true);
-        }}
-        onCancelReinspection={() => {
-          setIsReinspecting(false);
-          /*
-           * ⛔ **확정본의 값을 되돌려 놓는다.** 비우면 그만둔 자리에 확정된 회차가 «수량
-           * 없이» 놓인다 — 판정이 끝난 기록인데 화면이 비어 있으니 검사자는 자기가 방금
-           * 그것을 지웠다고 읽는다.
-           */
-          setDraft(draftOf(round));
-          setDrafts(toMeasurementDrafts(rows));
-          setJudgment(storedJudgment);
+          saveResult(targetId, detail.data.uomId, RESULT_STATUS.confirmed);
         }}
       />
     </PqcFrame>
   );
+};
+
+/**
+ * 지금 친 값을 **자동 판정이 볼 수 있는 모양**으로 감싼다. 저장된 측정치가 없으므로 대조할
+ * 값은 화면의 초안뿐이다 — 수치가 아니면 잴 것이 없어 비운다.
+ */
+const toProbe = (row: MeasurementRow, raw: string): MeasurementRow['measured'] => {
+  const numeric = Number(raw.trim());
+
+  if (raw.trim() === '' || Number.isNaN(numeric)) return null;
+
+  return {
+    numericValue: numeric,
+    textValue: null,
+    booleanValue: null,
+    judgmentCode: '',
+    measuredAt: '',
+    inspectionEquipmentId: null,
+    calibrationExpired: false,
+  };
 };
 
 /**

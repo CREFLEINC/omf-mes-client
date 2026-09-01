@@ -333,65 +333,31 @@ describe('PqcInspectionScreen — 검사 항목 구획', () => {
   });
 });
 
-describe('PqcInspectionScreen — 저장된 판정이 목록에 없을 때', () => {
-  /*
-   * ⚠ 코드값이 사용 중지되면 **선택칸은 비어 보이는데 화면은 값을 들고 있다.** 조용히 두면
-   * 아무도 판정하지 않은 줄로 읽히고 「진행 n / m」도 어긋나 보인다 — 실동작 확인에서
-   * 드러난 자리다. 종합 판정에는 안내가 있었고 항목 판정에만 없었다.
+describe('PqcInspectionScreen — 검사 기준이 없는 갈래', () => {
+  /**
+   * 기준 없는 의뢰를 흉내 낸다 — 기준 버전이 비어 온다. 어느 경로를 «불렀는지»도 함께 센다.
    */
-  it('항목 판정이 목록에 없으면 그 사실을 «항목 구획»에 밝힌다', async () => {
-    const { measured } = await renderWithStoredJudgment();
-
-    const items = await screen.findByLabelText(messages.pqcInspection.measurements.heading);
-
-    /* 문구가 두 구획에서 같으므로 «어느 구획인지»로 가른다. */
-    expect(
-      within(items).getByText(messages.pqcInspection.measurements.judgmentUnknown(measured)),
-    ).toBeInTheDocument();
-  });
-
-  /* 종합 판정 쪽 안내는 이미 있었다 — 함께 서 있는지 확인한다. */
-  it('종합 판정이 목록에 없으면 그 사실을 «결과 구획»에 밝힌다', async () => {
-    await renderWithStoredJudgment();
-
-    const result = await screen.findByLabelText(messages.pqcInspection.result.heading);
-
-    expect(
-      within(result).getByText(messages.pqcInspection.result.judgmentUnknown('ACCEPTED')),
-    ).toBeInTheDocument();
-  });
-});
-
-describe('PqcInspectionScreen — 저장된 측정치가 칸에 붙는다', () => {
-  /*
-   * ⛔ **항목 규격과 측정치는 서로 다른 조회다** — 규격이 먼저 오고 측정치가 나중에 온다.
-   * 그 사이 줄의 열쇠는 그대로라, 되돌림이 열쇠만 보면 깨어나지 않아 **저장된 값이 화면
-   * 칸에 영영 안 붙는다.** 실제로 그 상태로 화면에 나갔고, 칸은 비었는데 「규격 밖」 표만
-   * 붙어 있는 모습으로 드러났다.
-   */
-  it('나중에 도착한 측정치가 입력 칸에 채워진다', async () => {
-    let measurementsReady = false;
+  const renderWithoutStandard = () => {
+    const called: string[] = [];
 
     const fetch = createStubFetch([
       {
         match: (request) => request.method !== 'GET',
-        respond: () => jsonResponse(draftRound, { status: 201 }),
-      },
-      {
-        match: (request) => new URL(request.url).pathname.endsWith('/measurements'),
-        respond: () => {
-          /*
-           * 첫 조회는 비어 있고 저장 뒤 재조회에서 값이 온다 — 항목 규격과 측정치가 서로
-           * 다른 조회라 실제로 이 차가 난다.
-           */
-          const items = measurementsReady ? [expiredMeasurement] : [];
-          measurementsReady = true;
-          return jsonResponse(measurementsResponse(items));
+        respond: (request) => {
+          called.push(new URL(request.url).pathname);
+          return jsonResponse(draftRound, { status: 201 });
         },
       },
       {
         match: (request) => new URL(request.url).pathname.endsWith('/items'),
-        respond: () => jsonResponse(itemSpecsResponse()),
+        respond: (request) => {
+          called.push(new URL(request.url).pathname);
+          return jsonResponse(itemSpecsResponse());
+        },
+      },
+      {
+        match: (request) => new URL(request.url).pathname.endsWith('/measurements'),
+        respond: () => jsonResponse(measurementsResponse([])),
       },
       {
         match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
@@ -405,7 +371,8 @@ describe('PqcInspectionScreen — 저장된 측정치가 칸에 붙는다', () =
       {
         match: (request) =>
           new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
-        respond: () => jsonResponse(waitingRequest),
+        /* 기준 버전이 «비어» 온다 — 기준 없이 만들어진 의뢰다. */
+        respond: () => jsonResponse({ ...waitingRequest, inspectionPlanVersionId: undefined }),
       },
       {
         match: (request) => new URL(request.url).pathname === '/mdm/code-values',
@@ -415,20 +382,103 @@ describe('PqcInspectionScreen — 저장된 측정치가 칸에 붙는다', () =
 
     renderWithProviders(<PqcInspectionScreen />, { route: '/?ir=1001', fetch });
 
-    await screen.findByText(t.measurements.heading);
+    return { called };
+  };
 
-    /* 저장이 회차를 무효화해 측정치를 다시 부른다 — 그때 값이 도착한다. */
+  /*
+   * ⛔ 「기준을 먼저 등록하세요」로 되돌리면 현장이 멈춘다 — 기준 미등록은 실제로 일어나는
+   * 상태이고, 확정이 「단순 선택이라도 하라」고 한 이유가 그것이다.
+   */
+  it('막지 않고 판정과 자유 입력을 그린다', async () => {
+    renderWithoutStandard();
+
+    expect(await screen.findByText(t.noStandard.note)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.noStandard.remarks)).toBeInTheDocument();
+    /* 항목표는 이 갈래에 없다. */
+    expect(screen.queryByText(t.measurements.heading)).not.toBeInTheDocument();
+  });
+
+  it('항목 목록 경로를 부르지 않는다', async () => {
+    const { called } = renderWithoutStandard();
+
+    await screen.findByText(t.noStandard.note);
+
+    expect(called.some((path) => path.endsWith('/items'))).toBe(false);
+  });
+
+  /*
+   * ⛔ 두 값짜리 목록을 따로 만들지 않는다 — 이 갈래의 판정은 **종합 판정 그것**이고
+   * 우측 구획에 이미 있다(통지 #589). 좌우에 같은 값을 두 번 두지 않는다.
+   */
+  it('종합 판정을 좌측에 다시 두지 않는다', async () => {
+    renderWithoutStandard();
+
+    await screen.findByText(t.noStandard.note);
+
+    /* 우측 구획에 하나만 있어야 한다 — 둘이면 어느 쪽이 정본인지 알 수 없다. */
+    expect(screen.getAllByLabelText(t.result.judgment)).toHaveLength(1);
+  });
+
+  it('자유 입력을 적고 저장할 수 있다', async () => {
+    renderWithoutStandard();
+
+    await screen.findByText(t.noStandard.note);
+    await userEvent.type(screen.getByLabelText(t.noStandard.remarks), '외관 양호');
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
-    /*
-     * 줄에 붙었으면 **입력 칸에도** 붙어야 한다 — 이 둘이 갈리던 것이 이번 결함이다.
-     * 되돌림은 렌더 «뒤» 효과라 한 렌더 늦게 반영된다.
-     */
-    await waitFor(() => {
-      const values = screen.getAllByLabelText(t.measurements.columns.value) as HTMLInputElement[];
-      /* 줄 차례는 채번(sequenceNo)이 정하므로 «값»으로 찾는다 — 자리로 찾으면 차례가 바뀔 때 헛통과한다. */
-      expect(values.map((input) => input.value)).toContain(String(expiredMeasurement.numericValue));
-    });
+    expect(await screen.findByText(t.result.saved)).toBeInTheDocument();
+  });
+});
+
+describe('PqcInspectionScreen — 검사 항목 구획', () => {
+  /* ⭐ 무엇이 남았는지가 이 구획의 정보다(스펙 §3 「진행 2 / 3」). */
+  it('진행 n / m 을 보인다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.measurements.progress(0, 5))).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **항목 판정과 종합 판정은 그룹이 다르다** — 항목에는 「보류」가 없다. 합쳐 쓰면 항목
+   * 선택칸에 보류가 떠서 설계와 어긋난 값이 저장된다.
+   */
+  it('항목 판정과 종합 판정을 서로 다른 코드 그룹으로 부른다', async () => {
+    const requested: string[] = [];
+
+    const fetch = createStubFetch([
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+        respond: (request) => {
+          requested.push(new URL(request.url).searchParams.get('codeGroupCode') ?? '');
+          return jsonResponse(codeValuesResponse(overallJudgmentCodeValues));
+        },
+      },
+      {
+        match: (request) => new URL(request.url).pathname.endsWith('/measurements'),
+        respond: () => jsonResponse(measurementsResponse([])),
+      },
+      {
+        match: (request) => new URL(request.url).pathname.endsWith('/items'),
+        respond: () => jsonResponse(itemSpecsResponse()),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
+        respond: () => jsonResponse(roundsResponse([draftRound])),
+      },
+      {
+        match: (request) =>
+          new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
+        respond: () => jsonResponse(waitingRequest),
+      },
+    ]);
+
+    renderWithProviders(<PqcInspectionScreen />, { route: '/?ir=1001', fetch });
+
+    await screen.findByText(t.measurements.heading);
+
+    await waitFor(() => expect(requested.length).toBeGreaterThanOrEqual(2));
+    expect(requested).toContain('INSPECTION_RESULT_OVERALL_JUDGMENT');
+    expect(requested).toContain('INSPECTION_MEASUREMENT_JUDGMENT');
   });
 });
 
@@ -456,8 +506,11 @@ describe('PqcInspectionScreen — 저장이 실어 가는 것', () => {
         'coverageToAt',
         'heldQty',
         'inspectedAt',
-        'overallJudgmentCode',
+        'inspectedQty',
+        'inspectionRequestId',
         'rejectedQty',
+        'statusCode',
+        'uomId',
       ].sort(),
     );
   });
@@ -546,10 +599,10 @@ describe('PqcInspectionScreen — 액션바', () => {
     renderScreen();
 
     /*
-     * 회차의 수량·판정은 이미 채워져 있고 검사 항목이 아직 판정되지 않았다 —
-     * 남은 것을 정확히 가리켜야 한다(뭉치면 무엇을 고칠지 알 수 없다).
+     * 수량이 비어 합계가 서지 않는다 — 남은 것을 정확히 가리켜야 한다(뭉치면 무엇을
+     * 고칠지 알 수 없다).
      */
-    expect(await screen.findByText(t.result.confirmBlockedByItems)).toBeInTheDocument();
+    expect(await screen.findByText(t.result.confirmBlockedByTotals)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
   });
 
