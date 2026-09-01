@@ -123,16 +123,17 @@ export const toPhotoDrafts = (
   photos: CapturedPhoto[],
   body: OutboxDraft,
   occurredAt: string,
+  reportId: string,
 ): OutboxDraft[] =>
   photos.map((photo, index) => ({
-    id: `${body.id ?? ''}-photo-${String(index)}`,
+    id: `${reportId}-photo-${String(index)}`,
     idempotencyKey: `${body.idempotencyKey}:photo:${String(index)}`,
     method: 'POST',
     path: '/maintenance/breakdowns/:breakdownId/attachments',
     body: null,
     file: { fileName: photo.fileName, mimeType: photo.mimeType, data: photo.data },
     pathFrom: {
-      entryId: body.id ?? '',
+      entryId: reportId,
       field: 'breakdownId',
       token: ':breakdownId',
     },

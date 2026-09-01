@@ -67,7 +67,7 @@ const EquipmentPicker = ({
 export const EquipmentFailureScreen = () => {
   useScreenTitle(t.title);
   const online = useOnlineStatus();
-  const { enqueue, flush } = useOutbox();
+  const { enqueue, flush, pendingBytes } = useOutbox();
   const equipments = useEquipments();
 
   const [selected, setSelected] = useState<Equipment | null>(null);
@@ -110,7 +110,8 @@ export const EquipmentFailureScreen = () => {
     occurrenceState: state ?? undefined,
   });
 
-  const queuedBytes = photos.reduce((total, photo) => total + photo.byteLength, 0);
+  /* 이 화면의 사진과 이미 큐에 담긴 것을 함께 센다. 큐가 끝없이 커지지 않게 하는 자리다. */
+  const queuedBytes = pendingBytes + photos.reduce((total, photo) => total + photo.data.length, 0);
   const photoFull = photos.length >= MAX_PHOTOS;
   const photoTooHeavy = queuedBytes >= PHOTO_QUEUE_LIMIT_BYTES;
 
@@ -146,7 +147,7 @@ export const EquipmentFailureScreen = () => {
     await enqueue(draft);
 
     /* 본문을 먼저 담는다. 사진을 기다리느라 설비담당이 늦게 알면 안 된다. */
-    for (const photo of toPhotoDrafts(photos, draft, occurredAt)) {
+    for (const photo of toPhotoDrafts(photos, draft, occurredAt, reportId)) {
       await enqueue(photo);
     }
 

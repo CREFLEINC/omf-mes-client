@@ -371,6 +371,39 @@ describe('설비 고장 보고 화면', () => {
     expect(screen.getByText('사진은 세 장까지 붙일 수 있습니다.')).toBeInTheDocument();
   });
 
+  /* 보고를 마치면 화면은 비지만 큐는 그대로다 - 이 화면 것만 세면 큐가 끝없이 커진다. */
+  it('이미 큐에 쌓인 사진도 한도에 센다', async () => {
+    const heavy = 'A'.repeat(5 * 1024 * 1024);
+    store.set(
+      'outbox',
+      JSON.stringify([
+        {
+          id: 'old',
+          idempotencyKey: 'old-key',
+          method: 'POST',
+          path: '/maintenance/breakdowns/9/attachments',
+          body: null,
+          file: { fileName: 'old.jpg', mimeType: 'image/jpeg', data: heavy },
+          occurredAt: '2026-09-01T00:00:00.000Z',
+          confirmation: 'pending',
+        },
+      ]),
+    );
+
+    mount();
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /촬영/ })).toBeDisabled();
+    });
+    expect(
+      screen.getByText('보내지 못한 사진이 많아 지금은 더 찍을 수 없습니다.'),
+    ).toBeInTheDocument();
+  });
+
   it('설비를 고르기 전에는 찍을 수 없다', async () => {
     mount();
 

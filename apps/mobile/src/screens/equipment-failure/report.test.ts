@@ -149,7 +149,7 @@ describe('사진을 본문에 딸린 건으로 담기', () => {
   });
 
   it('본문이 만들 식별자로 경로를 완성하게 담는다', () => {
-    const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT);
+    const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT, 'r-1');
 
     expect(first?.path).toBe('/maintenance/breakdowns/:breakdownId/attachments');
     expect(first?.pathFrom).toEqual({
@@ -161,7 +161,12 @@ describe('사진을 본문에 딸린 건으로 담기', () => {
 
   /* 본문이 성공해야 붙을 곳이 생기므로 사진에 따로 키를 두지 않는다. */
   it('사진의 키는 본문의 키에서 나온다', () => {
-    const [first, second] = toPhotoDrafts([photo('a.jpg'), photo('b.jpg')], body, OCCURRED_AT);
+    const [first, second] = toPhotoDrafts(
+      [photo('a.jpg'), photo('b.jpg')],
+      body,
+      OCCURRED_AT,
+      'r-1',
+    );
 
     expect(first?.idempotencyKey.startsWith(body.idempotencyKey)).toBe(true);
     expect(second?.idempotencyKey.startsWith(body.idempotencyKey)).toBe(true);
@@ -170,26 +175,26 @@ describe('사진을 본문에 딸린 건으로 담기', () => {
 
   /* 본문이 거부되면 사진도 함께 되돌아와야 한다. */
   it('본문과 같은 묶음에 담는다', () => {
-    const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT);
+    const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT, 'r-1');
 
     expect(first?.batchId).toBe(body.batchId);
   });
 
   it('담긴 것만으로 붙었다고 하지 않는다', () => {
-    const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT);
+    const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT, 'r-1');
 
     expect(first?.confirmation).toBe('pending');
   });
 
   it('파일을 몸이 아니라 파일 자리에 담는다', () => {
-    const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT);
+    const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT, 'r-1');
 
     expect(first?.body).toBeNull();
     expect(first?.file).toEqual({ fileName: 'a.jpg', mimeType: 'image/jpeg', data: 'AAAA' });
   });
 
   it('사진이 없으면 담을 것도 없다', () => {
-    expect(toPhotoDrafts([], body, OCCURRED_AT)).toEqual([]);
+    expect(toPhotoDrafts([], body, OCCURRED_AT, 'r-1')).toEqual([]);
   });
 
   it('계약이 정한 한도가 셋이다', () => {
