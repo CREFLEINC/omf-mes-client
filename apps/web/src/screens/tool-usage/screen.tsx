@@ -510,6 +510,9 @@ export const ToolUsageScreen = () => {
                    * 0% 로 그리면 「다 썼다」로, 캐시 값으로 그리면 실제보다 여유 있게 읽힌다.
                    */}
                   {usagePercentFigure.kind === 'value' && (
+                    <span className="pop-usage-label">{t.cumulative.usageBarLabel}</span>
+                  )}
+                  {usagePercentFigure.kind === 'value' && (
                     <Progress
                       label={t.cumulative.usageLabel}
                       value={usagePercentFigure.value}

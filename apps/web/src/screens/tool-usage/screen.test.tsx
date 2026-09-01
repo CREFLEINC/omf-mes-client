@@ -262,6 +262,8 @@ describe('ToolUsageScreen — 누계 구획', () => {
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
 
     expect(await screen.findByRole('progressbar')).toBeInTheDocument();
+    /* 막대가 「남은 비율」로 읽히지 않게 이름을 곁에 세운다. */
+    expect(screen.getByText(t.cumulative.usageBarLabel)).toBeInTheDocument();
   });
 
   it('적정타수가 비면 산출 불가로 적고 진행 막대를 그리지 않는다 — 0% 는 「다 썼다」로 읽힌다', async () => {

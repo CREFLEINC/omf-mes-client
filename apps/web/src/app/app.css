@@ -1031,3 +1031,14 @@ main > * + * {
   margin: 0;
   text-align: right;
 }
+
+/*
+ * 사용률 막대의 이름 — 막대가 「남은 비율」이 아니라 「쓴 비율」임을 그 자리에서 말한다.
+ * 이름이 없으면 사용 가능 줄의 백분율이 「사용 가능이 0%」로 읽힌다.
+ */
+.pop-usage-label {
+  flex: none;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
