@@ -67,6 +67,7 @@ import { dispositionDecision } from './disposition-decision';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
+import { toolUsage } from './tool-usage';
 import { productStockStatus } from './product-stock-status';
 import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentProcessing } from './shipment-processing';
@@ -156,6 +157,7 @@ export const ko = {
   materialIssueRequest,
   deviceRegistration,
   oqcInspection,
+  toolUsage,
 } as const;
 
 export type Messages = typeof ko;

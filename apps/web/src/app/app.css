@@ -844,3 +844,145 @@ main > * + * {
   max-width: 44rem;
   margin: var(--space-2) 0;
 }
+
+/*
+ * POP 태스크 화면의 세로 3단 — 머리 · 본문 · 액션바.
+ *
+ * **셸(AppShell)을 쓰지 않는 두 번째 사정이다.** 규범 8이 적은 첫 사정은 「탐색이 성립하지
+ * 않는다」(인증 전)였고, 이쪽은 **폼팩터**다 — POP은 작업지시 하나에 매인 태스크 화면이라
+ * 사이드바로 옮겨 다니지 않고, 액션바가 늘 같은 자리에 있어야 장갑 낀 손이 눈으로 찾지 않는다.
+ *
+ * ⛔ **구획 높이를 픽셀로 못박지 않는다.** 화면 스펙의 세로 예산(64 + 616 + 88)은 1024×768
+ * 패널을 전제로 도출한 값이다. 그 값을 그대로 박으면 다른 크기에서 본문이 잘리고, 잘린 부분에
+ * 저장 버튼이 들어가면 **작업자가 저장을 못 한다.** 머리와 액션바만 높이를 고정하고 본문은
+ * 남는 만큼 쓰되, 넘치면 본문 «안에서» 흐르게 둔다 — 액션바는 어떤 경우에도 화면에 남는다.
+ *
+ * 두 번째 POP 화면이 같은 결정을 되풀이하면 그때 배치 규범으로 올린다
+ * (`docs/layout-conventions.md` 갱신 규칙).
+ */
+.pop-shell {
+  box-sizing: border-box;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 100%;
+  padding: 0;
+}
+
+.pop-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.pop-title {
+  margin: 0;
+  font: var(--type-title-md);
+}
+
+/* 작업지시·사번·연결 상태 — 없는 것은 자리를 만들지 않는다(공유계약 G-9). */
+.pop-entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 본문만 흐른다 — 액션바를 밀어내지 않기 위해서다.
+ * `min-height: 0`이 없으면 grid 자식이 내용 높이만큼 부풀어 `overflow`가 걸리지 않는다.
+ */
+.pop-body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-4) var(--space-6);
+}
+
+/* 구획 하나. 내부 블록 사이 간격은 구획이 소유한다 — 전역 `main > * + *`는 여기 닿지 않는다. */
+.pop-section > * > * + * {
+  margin-top: var(--space-3);
+}
+
+/* 스캔 줄 — 입력칸이 남는 폭을 쓰고 조회 버튼이 그 옆에 붙는다. */
+.pop-scan {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.pop-scan > *:first-child {
+  flex: 1;
+}
+
+/* 스캔된 툴의 코드·이름·캐비티가 한 줄에 선다. 좁으면 접힌다. */
+.pop-tool {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+/* 입력칸과 숫자 키패드를 나란히 — 키패드가 자기 폭을 갖고 입력칸이 나머지를 쓴다. */
+.pop-shot {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+
+.pop-shot > *:first-child {
+  flex: 1;
+}
+
+.pop-conversion {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/*
+ * 누계 다섯 줄 — 이름과 값이 짝으로 읽혀야 한다. 최소 폭 격자로 두면 폭이 허락하는 만큼
+ * 한 줄에 서고 모자라면 접힌다(`.kpi-grid`와 같은 판단, 값은 이 화면의 것이다).
+ */
+.pop-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.pop-figures dt {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.pop-figures dd {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+/* 액션바 — 화면 아래에 붙박이다. 오른쪽 정렬이되 사유는 줄 왼쪽에 남는다. */
+.pop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.pop-actions > .field-note {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
+}
