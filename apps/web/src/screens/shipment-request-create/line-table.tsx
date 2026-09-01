@@ -1,6 +1,14 @@
-import { Checkbox, Chip, type Column, IconButton, Select, Table, TextField } from '@crefle/web-ui';
+import {
+  Checkbox,
+  Chip,
+  IconButton,
+  Select,
+  Table,
+  TextArea,
+  TextField,
+  type Column,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { TextArea } from '@omf-mes/ui';
 
 import { isShortageLine } from './shortage-banner';
 import {

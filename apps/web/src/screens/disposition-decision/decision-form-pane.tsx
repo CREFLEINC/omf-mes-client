@@ -1,7 +1,6 @@
-import { Button, Radio, RadioGroup, TextField } from '@crefle/web-ui';
+import { Button, Radio, RadioGroup, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { TextArea } from '@omf-mes/ui';
 import { useId } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';

@@ -1,7 +1,6 @@
-import { AlertBanner, Radio, RadioGroup, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Radio, RadioGroup, Select, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { TextArea } from '@omf-mes/ui';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useState } from 'react';
 
