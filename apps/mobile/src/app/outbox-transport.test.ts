@@ -7,6 +7,7 @@ import { createOutboxTransport } from './outbox-transport';
 
 const entry = (overrides: Partial<OutboxEntry> = {}): OutboxEntry => ({
   id: 'e-1',
+  label: '설비 고장 보고',
   idempotencyKey: 'key-1',
   method: 'POST',
   path: '/maintenance/breakdowns',

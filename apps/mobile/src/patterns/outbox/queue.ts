@@ -36,6 +36,13 @@ export interface OutboxPathFrom {
 
 export interface OutboxEntry {
   id: string;
+  /**
+   * 이 건이 무엇인지 사람에게 보이는 이름.
+   *
+   * 되돌아온 건을 목록으로 낼 때 쓴다. 경로와 방식으로는 무엇이 되돌아왔는지 알 수 없어,
+   * 담는 쪽이 자기 기록의 이름을 함께 넣는다.
+   */
+  label: string;
   idempotencyKey: string;
   method: OutboxMethod;
   path: string;

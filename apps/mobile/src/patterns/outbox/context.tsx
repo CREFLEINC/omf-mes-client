@@ -10,6 +10,13 @@ import {
 } from 'react';
 
 import { appendEntry, readQueue, writeQueue, type OutboxDraft, type OutboxEntry } from './queue';
+import {
+  appendRejected,
+  dropRejected,
+  readRejected,
+  writeRejected,
+  type RejectedRecord,
+} from './rejected';
 import { flushQueue, type FlushResult, type OutboxTransport } from './send';
 
 export interface Outbox {
@@ -22,10 +29,18 @@ export interface Outbox {
    * 보고를 마칠 때마다 셈이 처음으로 돌아가 큐가 끝없이 커진다.
    */
   pendingBytes: number;
+  /**
+   * 서버가 되돌린 건. 큐에서 빠진 뒤에도 남는다.
+   *
+   * 못 보낸 건과 한 셈에 넣지 않는다 - 앞엣것은 기다리면 가고 뒤엣것은 기다려도 가지 않는다.
+   */
+  rejected: RejectedRecord[];
   /** 담고 곧바로 돌아온다. 통신을 기다리지 않는다. */
   enqueue: (draft: OutboxDraft) => Promise<void>;
   /** 보낼 수 있는 만큼 보낸다. 거부된 건을 돌려준다. */
   flush: () => Promise<FlushResult | null>;
+  /** 되돌아온 건 하나를 목록에서 내린다. 사람이 보고 정리한 뒤다. */
+  dismissRejected: (id: string) => Promise<void>;
 }
 
 const OutboxContext = createContext<Outbox | null>(null);
@@ -37,6 +52,7 @@ export interface OutboxProviderProps {
 
 export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
   const [entries, setEntries] = useState<OutboxEntry[]>([]);
+  const [rejected, setRejected] = useState<RejectedRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   /*
@@ -60,14 +76,15 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
   useEffect(() => {
     let cancelled = false;
 
-    void readQueue()
-      .catch(() => [])
-      .then((stored) => {
+    void Promise.all([readQueue().catch(() => []), readRejected().catch(() => [])]).then(
+      ([stored, returned]) => {
         if (!cancelled) {
           setEntries(stored);
+          setRejected(returned);
           setLoaded(true);
         }
-      });
+      },
+    );
 
     return () => {
       cancelled = true;
@@ -107,12 +124,40 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       const arrived = latest.filter((entry) => !attempted.has(entry.id));
       const next = [...result.remaining, ...arrived];
 
+      /*
+       * 되돌아온 건을 큐에서 빼기 전에 남긴다. 큐를 먼저 쓰면 그 사이에 보관소가 거절할 때
+       * 큐에서도 빠지고 어디에도 남지 않는다 - 이 순서면 남는 것은 같은 건이 큐에 한 번 더
+       * 남는 것뿐이고, 그것은 다음 회차에 다시 판정을 받는다.
+       */
+      if (result.rejected.length > 0) {
+        const kept = appendRejected(
+          await readRejected(),
+          result.rejected,
+          new Date().toISOString(),
+        );
+
+        await writeRejected(kept);
+        setRejected(kept);
+      }
+
       await writeQueue(next);
       setEntries(next);
     });
 
     return result;
   }, [inTurn, send]);
+
+  const dismissRejected = useCallback(
+    async (id: string) => {
+      await inTurn(async () => {
+        const next = dropRejected(await readRejected(), id);
+
+        await writeRejected(next);
+        setRejected(next);
+      });
+    },
+    [inTurn],
+  );
 
   const flush = useCallback((): Promise<FlushResult | null> => {
     sending.current ??= runFlush().finally(() => {
@@ -165,8 +210,15 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     : 0;
 
   const value = useMemo(
-    () => ({ pending: loaded ? entries.length : 0, pendingBytes, enqueue, flush }),
-    [enqueue, entries.length, flush, loaded, pendingBytes],
+    () => ({
+      pending: loaded ? entries.length : 0,
+      pendingBytes,
+      rejected,
+      enqueue,
+      flush,
+      dismissRejected,
+    }),
+    [dismissRejected, enqueue, entries.length, flush, loaded, pendingBytes, rejected],
   );
 
   return <OutboxContext value={value}>{children}</OutboxContext>;
