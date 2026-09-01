@@ -12,6 +12,7 @@ import type { ReactNode } from 'react';
 import { appQueryDefaults } from '../app/providers';
 import { ApiClientProvider } from '../patterns/api-context';
 import { OutboxProvider } from '../patterns/outbox';
+import { createOutboxTransport } from '../app/outbox-transport';
 import { WorkerSessionProvider } from '../patterns/worker-session';
 import { DeviceRegistrationProvider } from '../patterns/device-registration';
 
@@ -74,7 +75,8 @@ const createProviders = (fetch: StubFetch) => {
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
         <DeviceRegistrationProvider>
-          <OutboxProvider send={() => Promise.resolve()}>
+          {/* 큐가 실제로 같은 스텁 fetch 를 지나야 화면이 보내는 것을 잴 수 있다. */}
+          <OutboxProvider send={createOutboxTransport(apiClient)}>
             <WorkerSessionProvider>
               <ToastProvider>{children}</ToastProvider>
             </WorkerSessionProvider>
