@@ -947,3 +947,47 @@ describe('MaterialInputScanScreen — 회차 격리(리뷰 확인)', () => {
     });
   });
 });
+
+/**
+ * 저장소에서 되살린 큐 — **끝에 있는 것이 되돌릴 수 없는 원장 쓰기**라 모양을 확인한다.
+ *
+ * 지난 판의 화면이 썼거나 손으로 고쳐진 값이 들어올 수 있고, 모양이 깨진 항목을 남겨 두면
+ * 큐 맨 앞에서 매번 거부돼 **그 뒤에 쌓인 정상 건까지 함께 막는다.**
+ */
+describe('MaterialInputScanScreen — 저장소에서 되살린 큐', () => {
+  it('모양이 깨진 항목은 버리고 성한 것만 보낸다', async () => {
+    globalThis.localStorage.setItem(
+      'omf-mes.material-input-scan.outbox',
+      JSON.stringify([
+        /* 본문이 없다 — 무엇을 기록할지 알 수 없다. */
+        { idempotencyKey: 'broken-1', workerNo: WORKER_NO },
+        /* 사번이 없다 — 귀속 헤더를 만들 수 없다(D-5). */
+        { idempotencyKey: 'broken-2', body: { workOrderId: 1, itemId: 1, lotId: 1 } },
+        {
+          idempotencyKey: 'sound-1',
+          workerNo: WORKER_NO,
+          body: {
+            workOrderId: WORK_ORDER_ID,
+            itemId: 7201,
+            lotId: 7301,
+            inputQty: 3,
+            uomId: 7401,
+            occurredAt: '2026-09-01T09:00:00+09:00',
+          },
+        },
+      ]),
+    );
+
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]));
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(sent[0]?.headers.get('Idempotency-Key')).toBe('sound-1');
+
+    /* 깨진 둘은 큐에서 사라져 헤더가 「전송 완료」로 돌아온다 — 맨 앞에서 막히지 않는다. */
+    expect(await screen.findByText(t.header.synced)).toBeTruthy();
+
+    globalThis.localStorage.clear();
+  });
+});

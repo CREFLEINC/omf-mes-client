@@ -51,11 +51,43 @@ const STORAGE_KEY = 'omf-mes.material-input-scan.outbox';
 const RETRY_DELAY_MS = 5_000;
 
 /**
+ * 저장소에서 읽은 값이 **보낼 수 있는 모양인가.**
+ *
+ * ⛔ **믿고 넘기지 않는다.** 이 값은 지난 판의 화면이 썼거나 손으로 고쳐졌을 수 있고, 그
+ * 끝에 있는 것은 **되돌릴 수 없는 원장 쓰기**다 — 모양이 깨진 항목을 그대로 보내면 서버가
+ * 무엇을 기록할지 화면이 알 수 없다. 계약이 필수로 둔 것만 확인한다.
+ */
+const isSendableEntry = (value: unknown): value is OutboxEntry => {
+  if (typeof value !== 'object' || value === null) return false;
+
+  const entry = value as Record<string, unknown>;
+  if (typeof entry.idempotencyKey !== 'string' || entry.idempotencyKey === '') return false;
+  if (typeof entry.workerNo !== 'string' || entry.workerNo === '') return false;
+
+  const body = entry.body;
+  if (typeof body !== 'object' || body === null) return false;
+
+  const fields = body as Record<string, unknown>;
+
+  return (
+    typeof fields.workOrderId === 'number' &&
+    typeof fields.itemId === 'number' &&
+    typeof fields.lotId === 'number' &&
+    typeof fields.inputQty === 'number' &&
+    typeof fields.uomId === 'number' &&
+    typeof fields.occurredAt === 'string'
+  );
+};
+
+/**
  * 저장소에서 큐를 읽는다.
  *
  * ⛔ **읽기가 화면을 세우지 못하게 하지 않는다.** 사생활 보호 모드·저장소 차단·손상된 값이
  * 전부 던질 수 있는 자리라, 실패하면 빈 큐로 시작한다 — 큐를 못 읽은 것이 화면이 뜨지 않을
  * 이유가 되면 작업자는 아무것도 할 수 없다.
+ *
+ * ⚠ **모양이 깨진 항목은 조용히 버린다.** 되살릴 방법이 없고, 남겨 두면 큐 맨 앞에서 매번
+ * 거부돼 **그 뒤에 쌓인 정상 건까지 함께 막는다.**
  */
 const readStored = (): OutboxEntry[] => {
   try {
@@ -64,7 +96,7 @@ const readStored = (): OutboxEntry[] => {
 
     const parsed: unknown = JSON.parse(raw);
 
-    return Array.isArray(parsed) ? (parsed as OutboxEntry[]) : [];
+    return Array.isArray(parsed) ? parsed.filter(isSendableEntry) : [];
   } catch {
     return [];
   }
@@ -171,6 +203,11 @@ export const useOutbox = (): Outbox => {
       globalThis.removeEventListener('online', goOnline);
       globalThis.removeEventListener('offline', goOffline);
     };
+    /*
+     * 의존성이 비어 있는 것은 의도다 — 이 리스너는 **단말이 사는 동안 한 벌만** 있으면 된다.
+     * 무엇에도 의존하지 않고 상태 갱신 함수만 부르므로 다시 걸 이유가 없고, 다시 걸면 등록·
+     * 해제가 렌더마다 오간다.
+     */
   }, []);
 
   useEffect(() => {
