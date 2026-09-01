@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from './lot-number';
+import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from './material-lot-no';
 
 const SCANNED = '7770001118880002229901015554447777';
 
@@ -25,5 +25,14 @@ describe('자재 LOT 번호 표시', () => {
   it('34자리인지 판정한다', () => {
     expect(isMaterialLotNo(SCANNED)).toBe(true);
     expect(isMaterialLotNo(SCANNED.slice(1))).toBe(false);
+  });
+});
+
+describe('숫자 전용', () => {
+  /* 자릿수와 숫자 전용은 저장소가 막지 않는다. 화면이 지키지 않으면 분절이 어긋난 채 남는다. */
+  it('숫자가 아닌 글자가 섞이면 자재 LOT 번호로 보지 않는다', () => {
+    expect(isMaterialLotNo('7770001118880002229901015554447777')).toBe(true);
+    expect(isMaterialLotNo('777000111888000222990101555444777A')).toBe(false);
+    expect(isMaterialLotNo('777000111888000222990101555444-777')).toBe(false);
   });
 });

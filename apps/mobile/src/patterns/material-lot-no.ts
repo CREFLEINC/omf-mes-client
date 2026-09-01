@@ -8,7 +8,14 @@ const SEPARATOR = ' · ';
 
 export const MATERIAL_LOT_NO_LENGTH = SEGMENT_LENGTHS.reduce((sum, length) => sum + length, 0);
 
-export const isMaterialLotNo = (value: string): boolean => value.length === MATERIAL_LOT_NO_LENGTH;
+/**
+ * 이 값이 자재 LOT 번호의 모양인가.
+ *
+ * 자릿수와 숫자 전용은 저장소 제약이 아니라 화면 책임이다 - 컬럼이 넉넉해 다른 모양도
+ * 저장되고, 그러면 분절이 어긋난 채로 남는다.
+ */
+export const isMaterialLotNo = (value: string): boolean =>
+  value.length === MATERIAL_LOT_NO_LENGTH && /^\d+$/.test(value);
 
 /**
  * 저장은 원문, 표시는 분절 그룹핑한다(공유계약 E-2). 34자리를 붙여 쓰면 작업자가 실물

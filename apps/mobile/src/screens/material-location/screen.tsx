@@ -9,7 +9,7 @@ import { toApiError } from '../../patterns/request';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useReferenceNames, type ReferenceNames, type ReferenceState } from './lookups';
-import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from './lot-number';
+import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from '../../patterns/material-lot-no';
 import {
   useLotBalances,
   useLotHolds,
