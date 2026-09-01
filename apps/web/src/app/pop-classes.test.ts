@@ -79,6 +79,33 @@ const usedClassNames = (): Set<string> => {
 const isDefined = (name: string): boolean =>
   new RegExp(`\\.${name}(?![a-z-])`, 'u').test(CSS_RULES);
 
+/**
+ * ⭐ **규칙이 닫혔는지부터 본다.**
+ *
+ * 리베이스 병합이 `.alert-meta`·`.pop-screen`·`.notice-body` 세 규칙의 끝을 삼켜, 그 뒤의
+ * `.pop-*` 규칙 **전부가 브라우저에서 무시됐다**(실기에서 좌우 2단이 위아래로 쌓여 드러났다).
+ *
+ * 타입 검사도 테스트도 이것을 잡지 못한다 — CSS 는 컴파일되지 않고, `css: false` 설정이라
+ * 스타일이 렌더 테스트에 도달하지도 않는다. 그래서 **원문을 직접 센다.**
+ */
+describe('app.css 구조', () => {
+  const source = readFileSync(join(WEB_ROOT, 'app/app.css'), 'utf8');
+
+  it('중괄호 짝이 맞는다 — 하나만 어긋나도 그 뒤 규칙이 통째로 죽는다', () => {
+    expect(source.split('{').length).toBe(source.split('}').length);
+  });
+
+  it('주석 짝이 맞는다', () => {
+    expect(source.split('/*').length).toBe(source.split('*/').length);
+  });
+
+  it('규칙 안에 주석 머리말이 끼어들지 않는다', () => {
+    const strayHeading = /\{[^{}]*\n \* /u.exec(source);
+
+    expect(strayHeading?.[0]).toBeUndefined();
+  });
+});
+
 describe('POP 배치 클래스', () => {
   it('화면이 쓰는 클래스가 CSS에 전부 정의돼 있다 — 없으면 간격이 조용히 0이 된다', () => {
     const missing = [...usedClassNames()].filter((name) => !isDefined(name));
