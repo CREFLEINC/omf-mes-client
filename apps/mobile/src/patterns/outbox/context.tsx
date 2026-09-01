@@ -38,6 +38,12 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
    */
   const turn = useRef<Promise<unknown>>(Promise.resolve());
 
+  /*
+   * 보내는 동안에는 큐를 잡지 않으므로, 그 사이에 다시 보내라 하면 같은 건이 두 번 나간다.
+   * 서버가 멱등키로 흡수해도 보낸 건수가 거짓이 되고 왕복이 두 배가 된다.
+   */
+  const sending = useRef<Promise<FlushResult | null> | null>(null);
+
   const inTurn = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
     const next = turn.current.then(task, task);
     turn.current = next.catch(() => undefined);
@@ -74,7 +80,7 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     [inTurn],
   );
 
-  const flush = useCallback(async (): Promise<FlushResult | null> => {
+  const runFlush = useCallback(async (): Promise<FlushResult | null> => {
     const stored = await inTurn(() => readQueue());
 
     if (stored.length === 0) {
@@ -100,6 +106,14 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
 
     return result;
   }, [inTurn, send]);
+
+  const flush = useCallback((): Promise<FlushResult | null> => {
+    sending.current ??= runFlush().finally(() => {
+      sending.current = null;
+    });
+
+    return sending.current;
+  }, [runFlush]);
 
   const value = useMemo(
     () => ({ pending: loaded ? entries.length : 0, enqueue, flush }),

@@ -99,6 +99,26 @@ describe('outbox', () => {
     expect(result.current.pending).toBe(1);
   });
 
+  /* 겹쳐 부르면 같은 건을 두 번 보낸다. 서버가 흡수해도 보낸 건수는 거짓이 된다. */
+  it('겹쳐 보내라 해도 같은 건을 두 번 보내지 않는다', async () => {
+    const seen: string[] = [];
+    const send: OutboxTransport = (entry) => {
+      seen.push(entry.idempotencyKey);
+      return Promise.resolve();
+    };
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    await act(async () => {
+      await Promise.all([result.current.flush(), result.current.flush()]);
+    });
+
+    expect(seen).toEqual(['k-1']);
+  });
+
   it('앱을 다시 띄워도 담긴 것이 남아 있다', async () => {
     const first = mount();
     await act(async () => {
