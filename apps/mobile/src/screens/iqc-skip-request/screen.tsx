@@ -4,17 +4,12 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { useScannedLot } from '../../patterns/lots';
+import { useItemName, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import {
-  useItemName,
-  useMyRequests,
-  usePendingRequest,
-  useUomCodes,
-  type ApprovalRequest,
-} from './queries';
+import { useMyRequests, usePendingRequest, type ApprovalRequest } from './queries';
 import { hasReason, isInspectionPending, isRouteMissing, toOutboxDraft } from './request';
 import './screen.css';
 
