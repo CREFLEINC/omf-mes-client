@@ -204,6 +204,19 @@ export const ToolUsageScreen = () => {
     write.reset();
   };
 
+  /**
+   * 「코드 직접 입력」 — **칸을 비우고 커서를 둔다.**
+   *
+   * ⛔ 안내 문구만 바꾸면 **눌러도 아무 일이 없다.** 스캔한 코드가 칸에 남아 있으면 placeholder
+   * 는 보이지 않고, 고른 툴도 그대로여서 사용자는 버튼이 죽은 줄 안다. 이 버튼이 서는 자리는
+   * 「QR 이 안 읽혀 손으로 치겠다」(스펙 §6-1)이므로 **다음 코드를 칠 수 있는 상태**로 만든다.
+   */
+  const startManualEntry = (): void => {
+    clearTool();
+    setIsManualEntry(true);
+    scanRef.current?.focus();
+  };
+
   const clearTool = (): void => {
     setCodeInput('');
     setSubmittedCode('');
@@ -276,7 +289,8 @@ export const ToolUsageScreen = () => {
               <TextField
                 ref={scanRef}
                 label={t.scan.inputLabel}
-                placeholder={isManualEntry ? t.scan.manualPlaceholder : t.scan.placeholder}
+                placeholder={t.scan.placeholder}
+                helperText={isManualEntry ? t.scan.manualHint : undefined}
                 size="xl"
                 fullWidth
                 autoFocus
@@ -290,15 +304,7 @@ export const ToolUsageScreen = () => {
                * 그대로 제출된다 — 손으로 칠 때도 같은 길이다. 버튼을 두면 장갑 낀 손이 스캔
                * 뒤에 한 번 더 눌러야 한다.
                */}
-              <Button
-                type="button"
-                size="2xl"
-                variant="tonal"
-                onClick={() => {
-                  setIsManualEntry(true);
-                  scanRef.current?.focus();
-                }}
-              >
+              <Button type="button" size="2xl" variant="tonal" onClick={startManualEntry}>
                 {t.scan.manualEntry}
               </Button>
             </form>

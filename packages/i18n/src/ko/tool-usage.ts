@@ -20,7 +20,8 @@ export const toolUsage = {
     placeholder: '금형 QR 을 비추세요',
     /** QR 이 안 읽힐 때의 폴백. 같은 칸에 손으로 친다 — 스캐너와 입력 자리를 나누지 않는다. */
     manualEntry: '코드 직접 입력',
-    manualPlaceholder: '툴 코드를 입력하고 Enter',
+    /** 버튼을 누른 뒤 칸 아래에 «계속» 보이는 안내. placeholder 는 칸이 비었을 때만 보인다. */
+    manualHint: '툴 코드를 치고 Enter 를 누르세요.',
     cavity: '캐비티',
     notFound: '그 코드의 툴이 없습니다. 코드를 다시 확인하세요.',
     disposed: '폐기된 툴입니다. 다른 툴을 스캔하세요.',

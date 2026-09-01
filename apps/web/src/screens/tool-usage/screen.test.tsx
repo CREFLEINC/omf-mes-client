@@ -170,6 +170,24 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     expect(screen.getByText(t.actionReasons.noTool)).toBeInTheDocument();
   });
 
+  it('「코드 직접 입력」은 칸을 비우고 안내를 «보이는 자리»에 세운다 — 눌렀는데 아무 일도 없으면 안 된다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanTool(user);
+    expect(await screen.findByText(TOOL_CODE)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.scan.manualEntry }));
+
+    const field = screen.getByLabelText(t.scan.inputLabel);
+
+    expect(field).toHaveValue('');
+    expect(field).toHaveFocus();
+    /* 안내는 칸이 비어 있을 때만 보이는 placeholder 가 아니라 늘 보이는 자리에 선다. */
+    expect(screen.getByText(t.scan.manualHint)).toBeInTheDocument();
+    expect(screen.queryByText(TOOL_CODE)).not.toBeInTheDocument();
+  });
+
   it('「툴 다시 고르기」는 찍은 코드와 고른 툴을 함께 버린다 — 툴을 바꾸는 유일한 길이다', async () => {
     const user = userEvent.setup();
     renderScreen();
