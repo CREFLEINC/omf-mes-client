@@ -57,6 +57,7 @@ import { ProductStockStatusScreen } from '../screens/product-stock-status/screen
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
 import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
+import { ShipmentConfirmScreen } from '../screens/shipment-confirm/screen';
 import { ShipmentProcessingScreen } from '../screens/shipment-processing/screen';
 import { ShipmentRequestCreateScreen } from '../screens/shipment-request-create/screen';
 import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
@@ -528,6 +529,11 @@ export const appRouter = createBrowserRouter([
        * 정상 흐름(W-04-04) 바로 뒤에 둔다. 앞에 두면 예외가 기본으로 읽힌다.
        */
       { path: 'shipment/expedited-shipment', element: <ExpeditedShipmentScreen /> },
+      /*
+       * W-04-12 — 앞의 두 화면이 만든 «미확정» 출하를 확정·취소하는 자리라 그 뒤에 둔다.
+       * 되돌릴 수 있는 구간이 여기서 끝난다.
+       */
+      { path: 'shipment/shipment-confirm', element: <ShipmentConfirmScreen /> },
       /*
        * W-04-08 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만
        * 완제품 재고·Lot Status 조회는 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다.
