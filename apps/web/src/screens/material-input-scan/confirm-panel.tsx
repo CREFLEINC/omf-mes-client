@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { toApiError } from '../../patterns/request';
-import type { RecordResult } from './mutations';
+
 import type { TerminalGate } from './terminal-gating';
 
 const t = messages.materialInputScan;
@@ -15,8 +15,8 @@ export interface ConfirmPanelProps {
   hasPending: boolean;
   hasWorker: boolean;
   gate: TerminalGate;
-  /** 건별 기록의 진행·실패. 확정 버튼은 이 뮤테이션을 부르지 않는다. */
-  record: RecordResult;
+  /** 서버가 거부한 건의 오류. 없으면 `null`. **그 건만** 되돌린다(C-2). */
+  rejection: unknown;
   /** 닫은 뒤 남길 문구. 닫기 전에는 `null`. */
   closedCount: number | null;
   onConfirm: () => void;
@@ -46,15 +46,13 @@ export const ConfirmPanel = ({
   hasPending,
   hasWorker,
   gate,
-  record,
+  rejection,
   closedCount,
   onConfirm,
 }: ConfirmPanelProps) => {
   const reasonId = useId();
 
   const blockReason = ((): string | undefined => {
-    if (record.isPending) return t.confirm.reasons.sending;
-
     switch (gate.verdict) {
       case 'denied':
         return t.confirm.reasons.denied;
@@ -127,10 +125,10 @@ export const ConfirmPanel = ({
        * ⭐ BOM 불일치가 여기로 온다(§6) — 서버가 판정하고 화면은 그 말을 옮긴다. 실패한
        * 자재는 목록에서 빠지므로 **자재LOT 스캔부터 루프백**이 성립한다.
        */}
-      {record.isError && (
+      {rejection !== null && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={t.confirm.failed}>
-            {describeConfirmError(record.error)}
+            {describeConfirmError(rejection)}
           </AlertBanner>
         </div>
       )}

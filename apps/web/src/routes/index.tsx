@@ -27,6 +27,7 @@ import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
 import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
+import { DevPopIdentityProvider } from '../screens/material-input-scan/dev-identity';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
 import { LotStatusTransitionScreen } from '../screens/lot-status-transition/screen';
@@ -453,10 +454,20 @@ export const appRouter = createBrowserRouter([
    * ⛔ **사이드바에 올리지 않는다.** 관리웹 사용자가 갈 자리가 아니다. 진입은 작업지시를 실은
    * 주소(`?workOrderId=`)로만 하며, `P-02-01`(작업 시작)이 서면 그 화면이 이 주소로 넘긴다.
    *
-   * ⚠ **이 라우트도 접근을 제한하지 않는다.** 단말 게이팅은 계약에 자재 투입 플래그가 없어
-   * 화면이 미리 판정하지 않는다(검토 요청 omf-mes#246) — 쓰기 슬라이스가 서버의 거절을
-   * 안내로 그린다.
+   * ⚠ **이 라우트도 접근을 제한하지 않는다.** 화면의 단말 게이팅은 오조작을 줄이는 장치이지
+   * 집행이 아니다(공유계약 F-1 · F-5) — 집행은 서버의 403이다.
+   *
+   * ⚠⚠ **`DevPopIdentityProvider`는 확인용 이음매다.** POP 셸(`P-CO-01` · 단말 토큰)이 아직
+   * 없어 손으로 확인할 방법이 없어 둔 것이며, 셸이 서면 이 감싸개를 벗기고 화면만 남긴다 —
+   * 화면 자체는 값을 컨텍스트에서 받으므로 한 줄도 바뀌지 않는다.
    */
-  { path: '/pop/material-input', element: <MaterialInputScanScreen /> },
+  {
+    path: '/pop/material-input',
+    element: (
+      <DevPopIdentityProvider>
+        <MaterialInputScanScreen />
+      </DevPopIdentityProvider>
+    ),
+  },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

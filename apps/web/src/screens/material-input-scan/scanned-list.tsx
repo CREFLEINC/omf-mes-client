@@ -191,7 +191,7 @@ export const ScannedList = ({
                   <NumericKeypad
                     value={readQty(qtyDrafts, material.lotId)}
                     label={t.scanned.keypadLabel(material.lotNo)}
-                    submitLabel={isSaving ? t.scanned.saving : t.scanned.keypadSubmit}
+                    submitLabel={t.scanned.keypadSubmit}
                     clearLabel={t.scanned.keypadClear}
                     backspaceLabel={t.scanned.keypadBackspace}
                     onChange={(next) => {

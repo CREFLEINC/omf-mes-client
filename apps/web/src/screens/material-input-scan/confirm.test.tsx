@@ -380,7 +380,7 @@ describe('투입 확정 — 보내지 않는 경우', () => {
    * 실제로 막는 층은 **버튼 잠금**이다. 보내는 자리의 진행 중 검사는 버튼을 지나지 않는
    * 호출을 막는 둘째 겹이라 이 경로에서는 떼어내도 결과가 같다(등가).
    */
-  it('기록하는 중에는 같은 자재를 다시 보내지 않는다', async () => {
+  it('담긴 자재는 다시 담기지 않는다', async () => {
     const user = userEvent.setup();
 
     let releasePost = (): void => undefined;
@@ -409,16 +409,19 @@ describe('투입 확정 — 보내지 않는 경우', () => {
     await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
 
-    await waitFor(() => {
-      expect(screen.getByText(t.confirm.reasons.sending)).toBeTruthy();
-    });
+    /* 큐에 담기는 즉시 「기록됨」이다(C-1 #2) — 통신을 기다리지 않는다. */
+    await screen.findByText(t.scanned.recordedMark);
 
-    /* 보내는 중에 또 눌러도 두 번 나가지 않는다 — 같은 자재가 두 번 투입되면 되돌릴 수 없다. */
-    await user.click(screen.getByRole('button', { name: t.scanned.saving }));
-    expect(sent).toHaveLength(1);
+    /*
+     * 담긴 뒤에는 키패드가 사라지므로 다시 담을 길이 없다. 큐에 같은 자재가 두 번 들어가면
+     * 같은 자재가 두 번 투입되고, 되돌릴 수 없다.
+     */
+    expect(screen.queryByRole('button', { name: t.scanned.keypadSubmit })).toBeNull();
 
     releasePost();
-    await screen.findByText(t.scanned.recordedMark);
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
   });
 
   /* 0은 있을 수 없는 값이다 — 계약이 `qty_t > 0` 을 건다. */
@@ -600,5 +603,119 @@ describe('MaterialInputScanScreen — 담은 자재의 품목·수량', () => {
       await screen.findByText(t.scanned.itemAndQty('SAMPLE-ITEM-7201', '12', '')),
     ).toBeTruthy();
     expect(screen.queryByText(/7401/)).toBeNull();
+  });
+});
+
+/**
+ * 오프라인 outbox — **공유계약 C-1**(✓확정) · 스펙 §5-7. 이 화면이 POP 폴백의 첫 사례다.
+ */
+describe('MaterialInputScanScreen — 미전송 큐', () => {
+  /*
+   * ⭐ **미전송 건수는 필수 요건이다**(C-1 #4). 결정 기록이 「즉시 성공 표시」를 택하면서
+   * 이 표시가 그 결정의 전제라고 못박았다 — 없으면 서버에 도달하지 않은 사실을 알 방법이 없다.
+   */
+  it('보내는 동안 미전송 건수를 헤더가 낸다', async () => {
+    const user = userEvent.setup();
+
+    let releasePost = (): void => undefined;
+    const postHeld = new Promise<void>((resolve) => {
+      releasePost = resolve;
+    });
+
+    const stub = createStubFetch([...backdrop([lot()]), okRoute([consumption(7301)])]);
+    const fetch: StubFetch = async (request) => {
+      if (isPost(request, CONSUMPTIONS_PATH)) await postHeld;
+
+      return stub(request);
+    };
+
+    renderWithProviders(
+      <PopIdentityProvider value={GATED}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
+
+    /* 담기 전에는 보낼 것이 없다. */
+    expect(await screen.findByText(t.header.synced)).toBeTruthy();
+
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+
+    /* 담는 즉시 성공이고(C-1 #2), 아직 닿지 않았다는 사실은 건수가 말한다(C-1 #4). */
+    expect(await screen.findByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(await screen.findByText(t.header.unsynced(1))).toBeTruthy();
+
+    releasePost();
+    expect(await screen.findByText(t.header.synced)).toBeTruthy();
+  });
+
+  /*
+   * ⛔ **재전송은 같은 키로**(C-1 #5). 시도마다 새 키를 만들면 재전송이 새 전표가 되고,
+   * 작업자에게는 같은 자재가 두 번 투입된 것으로 남는다 — 되돌릴 수 없다.
+   */
+  it('키는 큐 항목에 붙어 있어 재전송해도 바뀌지 않는다', async () => {
+    const user = userEvent.setup();
+
+    let attempt = 0;
+    const sent: Sent[] = [];
+    const stub = createStubFetch([...backdrop([lot()])]);
+    const fetch: StubFetch = async (request) => {
+      if (isPost(request, CONSUMPTIONS_PATH)) {
+        sent.push({ headers: request.headers, body: await request.clone().json() });
+        attempt += 1;
+
+        /* 첫 시도는 통신이 끊긴 것으로 둔다 — 기다리면 풀리는 갈래다. */
+        if (attempt === 1) throw new TypeError('Failed to fetch');
+
+        return jsonResponse(consumption(7301), { status: 201 });
+      }
+
+      return stub(request);
+    };
+
+    renderWithProviders(
+      <PopIdentityProvider value={GATED}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
+
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
+    await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
+
+    /* 끊긴 건은 큐에 남는다 — 재전송을 유발한다. */
+    await screen.findByText(t.header.unsynced(1));
+    globalThis.dispatchEvent(new Event('online'));
+
+    await waitFor(() => {
+      expect(sent.length).toBeGreaterThanOrEqual(2);
+    });
+
+    const keys = sent.map((one) => one.headers.get('Idempotency-Key'));
+    expect(new Set(keys).size).toBe(1);
+  });
+
+  /*
+   * ⛔ **전체 롤백 금지**(C-2). 서버가 거부하면 그 건만 되돌린다 — 40건 중 1건 때문에 39건을
+   * 버리면 현장이 마비된다.
+   */
+  it('서버가 거부하면 그 건만 목록에서 내린다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })], {
+      match: (request) => isPost(request, CONSUMPTIONS_PATH),
+      respond: (request) => {
+        const url = new URL(request.url);
+
+        return url.pathname === CONSUMPTIONS_PATH
+          ? jsonResponse(consumption(7301), { status: 201 })
+          : new Response(null, { status: 500 });
+      },
+    });
+
+    await prepare(user, [['SAMPLE-LOT-0001', '12']]);
+
+    expect(await screen.findByText(t.scanned.recordedMark)).toBeTruthy();
+    expect(screen.getByText('SAMPLE-LOT-0001')).toBeTruthy();
   });
 });

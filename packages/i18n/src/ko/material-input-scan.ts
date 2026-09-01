@@ -22,6 +22,15 @@ export const materialInputScan = {
     /** 어느 단말에서 찍고 있는지. 단말을 모르면 게이팅이 닫히므로 그 사실이 헤더에도 선다. */
     terminal: (terminalId: number): string => `단말 #${String(terminalId)}`,
     terminalUnknown: '단말 미확인',
+    /**
+     * 미동기 건수 — **공유계약 C-1 #4의 필수 요건**이다.
+     *
+     * ⭐ 결정 기록이 「즉시 성공 표시」를 택하면서 **이 표시가 그 결정의 전제**라고 못박았다:
+     * 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다. 선택 사항이 아니다.
+     */
+    unsynced: (count: number): string => `미전송 ${String(count)}건`,
+    synced: '전송 완료',
+    offline: '연결 끊김',
   },
   table: {
     item: '품목',
@@ -134,11 +143,11 @@ export const materialInputScan = {
      * 뺄 수도 없다 — 빼면 서버 기록과 어긋난 거짓말이 된다. 그래서 기록된 줄은 잠근다.
      */
     saveHint: '수량을 입력하고 「기록」을 누르세요.',
+    /* 큐에 담긴 것도 「기록됨」이다 — C-1 이 즉시 성공 표시를 택했다. 미전송 여부는 헤더가 낸다. */
     keypadLabel: (lotNo: string): string => `${lotNo} 수량 키패드`,
     keypadSubmit: '기록',
     keypadClear: '지움',
     keypadBackspace: '한 글자 지우기',
-    saving: '기록하는 중',
     recordedMark: '기록됨',
     recordFailed: '기록하지 못했습니다',
     empty: '아직 아무것도 담지 않았습니다.',
@@ -183,7 +192,6 @@ export const materialInputScan = {
       /* 건별 저장이라 「아직 기록되지 않은 줄」이 남아 있다는 뜻이다 — 닫으면 그 줄이 버려진다. */
       qtyMissing: '아직 기록되지 않은 자재가 있습니다. 수량을 입력해 기록하거나 빼세요.',
       workerMissing: '작업자가 확인되지 않았습니다. 사번을 확인한 뒤 다시 들어오세요.',
-      sending: '자재를 기록하는 중입니다.',
     },
     /**
      * 무엇을 다시 하는지 드러나야 한다 — 「다시 확인」만으로는 스캔을 다시 하라는 것인지

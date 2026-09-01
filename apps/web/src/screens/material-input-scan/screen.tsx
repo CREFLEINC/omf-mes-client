@@ -1,6 +1,6 @@
-import { AlertBanner } from '@crefle/web-ui';
+import { AlertBanner, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -17,9 +17,10 @@ import { ScanField } from './scan-field';
 import { useScanLookup } from './scan-queries';
 import { ScannedList } from './scanned-list';
 import { dropQty, EMPTY_QTY_DRAFTS, writeQty, type QtyDrafts } from './input-qty';
-import { toRecordedNote, useRecordConsumption, type RecordedNote } from './mutations';
+import { toRecordedNote, type RecordedNote } from './mutations';
 import { toMaterialConsumption } from './post-request';
 import { readWorkOrderId } from './screen-params';
+import { useOutbox } from './outbox';
 import { useOpenWorkSession } from './session';
 import { useTerminalGate } from './terminal-gating';
 
@@ -104,7 +105,13 @@ export const MaterialInputScanScreen = () => {
   const [notes, setNotes] = useState<readonly RecordedNote[]>([]);
   /* 「투입 확정」으로 닫은 뒤 남길 건수. 닫기 전에는 `null`이다. */
   const [closedCount, setClosedCount] = useState<number | null>(null);
-  const record = useRecordConsumption();
+  /*
+   * 오프라인 폴백(스펙 §5-7 · 공유계약 C-1). **담는 것이 곧 성공이다** — 통신을 기다리지
+   * 않고, 미전송 건수를 헤더가 상시 낸다(C-1 #2·#4).
+   */
+  const outbox = useOutbox();
+  /* 화면에서 이미 치운 자재의 늦은 응답까지 되살리지 않는다. */
+  const [recordedLotIdsSeen, setRecordedLotIdsSeen] = useState<readonly number[]>([]);
 
   const handleScan = (code: string): void => {
     /*
@@ -136,9 +143,8 @@ export const MaterialInputScanScreen = () => {
     setQtyDrafts((prev) => dropQty(prev, lotId));
   };
 
-  const recordedLotIds = notes.map((note) => note.lotId);
   const pendingMaterials = draft.materials.filter(
-    (material) => !recordedLotIds.includes(material.lotId),
+    (material) => !recordedLotIdsSeen.includes(material.lotId),
   );
 
   const changeQty = (lotId: number, value: string): void => {
@@ -156,32 +162,49 @@ export const MaterialInputScanScreen = () => {
    * 갖춰지지 않은 값이 원장에 실리지 않아야 한다.
    */
   const recordMaterial = (lotId: number): void => {
-    if (workOrderId === null || workerNo === null || record.isPending) return;
+    if (workOrderId === null || workerNo === null) return;
 
     const material = draft.materials.find((candidate) => candidate.lotId === lotId);
-    /* 이미 기록된 줄은 다시 보내지 않는다 — 같은 자재가 두 번 투입된 것이 된다. */
-    if (material === undefined || recordedLotIds.includes(lotId)) return;
+    /* 이미 담긴 줄은 다시 담지 않는다 — 같은 자재가 두 번 투입된 것이 된다. */
+    if (material === undefined || recordedLotIdsSeen.includes(lotId)) return;
 
     const body = toMaterialConsumption(workOrderId, material, qtyDrafts, new Date(), workSessionId);
     if (body === null) return;
 
-    record.mutate(
-      { workerNo, body },
-      {
-        onSuccess: (recorded) => {
-          /* 서버가 통과시키되 기록만 한 것을 표시한다(§5-3). 「통과」가 「정상」이 아니다. */
-          setNotes((prev) => [...prev, toRecordedNote(recorded)]);
-        },
-        onError: () => {
-          /*
-           * ⭐ **실패한 자재는 목록에서 뺀다** — 서버가 거절했으므로 원장에 남지 않았다.
-           * 남겨 두면 기록된 것처럼 보이고, §6의 「자재LOT 스캔부터 루프백」이 성립하지 않는다.
-           */
-          removeMaterial(lotId);
-        },
-      },
-    );
+    /*
+     * ⭐ **큐에 담는 것이 곧 성공이다**(C-1 #2 「로컬 저장 후 즉시 성공 피드백 — 통신을
+     * 기다리지 않는다」). 작업자는 다음 자재로 넘어가고, 보내는 일은 outbox가 뒤에서 한다.
+     * 서버에 닿지 않은 사실은 **헤더의 미전송 건수**가 상시 말한다(C-1 #4 — 이 표시가 위
+     * 결정의 전제다).
+     */
+    outbox.enqueue(workerNo, body);
+    setRecordedLotIdsSeen((prev) => [...prev, lotId]);
   };
+
+  /*
+   * 서버가 받아 준 건의 「기록만 된 것」을 표시한다(§5-3) — 늦게 오지만 계보 추적에 필요하다.
+   * 이미 화면에서 치운 자재는 되살리지 않는다.
+   */
+  useEffect(() => {
+    setNotes(
+      outbox.accepted.map(toRecordedNote).filter((note) => recordedLotIdsSeen.includes(note.lotId)),
+    );
+  }, [outbox.accepted, recordedLotIdsSeen]);
+
+  /*
+   * ⭐ **서버가 거부한 건만 되돌린다**(C-2 — 전체 롤백 금지). 그 자재는 원장에 없으므로
+   * 목록에서 내려야 §6의 「자재LOT 스캔부터 루프백」이 성립한다.
+   */
+  useEffect(() => {
+    const rejected = outbox.rejections.map((one) => one.entry.body.lotId);
+    if (rejected.length === 0) return;
+
+    setDraft((prev) => ({
+      ...prev,
+      materials: prev.materials.filter((material) => !rejected.includes(material.lotId)),
+    }));
+    setRecordedLotIdsSeen((prev) => prev.filter((lotId) => !rejected.includes(lotId)));
+  }, [outbox.rejections]);
 
   /**
    * 「투입 확정」 — **그날 목록을 닫는 완료 동작**이지 저장을 모아 보내는 버튼이 아니다(§5-8).
@@ -190,11 +213,12 @@ export const MaterialInputScanScreen = () => {
    * 오퍼레이션이 없는 것도 그래서다 — 서버가 할 일이 없다.
    */
   const closeList = (): void => {
-    setClosedCount(notes.length);
+    setClosedCount(recordedLotIdsSeen.length);
     setDraft(EMPTY_SCAN_DRAFT);
     setQtyDrafts(EMPTY_QTY_DRAFTS);
     setNotes([]);
-    record.reset();
+    setRecordedLotIdsSeen([]);
+    /* ⛔ 큐는 비우지 않는다 — 아직 서버에 닿지 않은 건이 목록을 닫는다고 사라지지 않는다. */
   };
 
   const outcome = scan.data;
@@ -226,6 +250,20 @@ export const MaterialInputScanScreen = () => {
           <span>
             {terminalId === null ? t.header.terminalUnknown : t.header.terminal(terminalId)}
           </span>
+
+          {/*
+           * ⭐ **미전송 건수는 필수 요건이다**(공유계약 C-1 #4). 「즉시 성공 표시」를 택한
+           * 결정의 전제가 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
+           * 연결 상태도 함께 낸다 — 끊긴 것과 밀리는 것은 다르다.
+           */}
+          <Chip variant="status" size="sm" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
+            {outbox.pendingCount > 0 ? t.header.unsynced(outbox.pendingCount) : t.header.synced}
+          </Chip>
+          {!outbox.isOnline && (
+            <Chip variant="status" size="sm" status="error">
+              {t.header.offline}
+            </Chip>
+          )}
         </p>
       </header>
 
@@ -283,19 +321,19 @@ export const MaterialInputScanScreen = () => {
             describeUom={labels.describeUom}
             qtyDrafts={qtyDrafts}
             notes={notes}
-            recordedLotIds={recordedLotIds}
-            savingLotId={record.isPending ? (record.variables?.body.lotId ?? null) : null}
+            recordedLotIds={recordedLotIdsSeen}
+            savingLotId={null}
             onQtyChange={changeQty}
             onRemoveMaterial={removeMaterial}
             onRecord={recordMaterial}
           />
 
           <ConfirmPanel
-            hasRecorded={notes.length > 0}
+            hasRecorded={recordedLotIdsSeen.length > 0}
             hasPending={pendingMaterials.length > 0}
             hasWorker={workerNo !== null}
             gate={gate}
-            record={record}
+            rejection={outbox.rejections.at(-1)?.error ?? null}
             closedCount={closedCount}
             onConfirm={closeList}
           />
