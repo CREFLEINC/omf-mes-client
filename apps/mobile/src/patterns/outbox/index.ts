@@ -7,6 +7,8 @@ export {
   writeQueue,
   type OutboxConfirmation,
   type OutboxDraft,
+  type OutboxFile,
+  type OutboxPathFrom,
   type OutboxEntry,
   type OutboxMethod,
 } from './queue';
