@@ -115,6 +115,44 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     return sending.current;
   }, [runFlush]);
 
+  /*
+   * 보내기를 부르는 자리가 화면마다 흩어지면 어느 화면도 열지 않은 동안 큐가 갇힌다. 셸이
+   * 스스로 보낸다.
+   *
+   * 연결 사건만으로는 모자란다. 기기가 무선에 붙어 있는데 서버만 죽었다 살아나면 그 사건이
+   * 아예 오지 않아 큐가 앱을 켜 둔 내내 갇힌다. 화면이 다시 앞으로 나오는 것도 신호로 쓴다 -
+   * 단말을 내려놓았다 집어 드는 것이 현장에서 가장 흔한 재시도 시점이다.
+   *
+   * 되풀이해 두드리지는 않는다. 못 닿는 동안 계속 보내면 배터리만 쓴다.
+   */
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+
+  useEffect(() => {
+    if (!loaded) {
+      return;
+    }
+
+    const attempt = () => {
+      void flushRef.current().catch(() => undefined);
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        attempt();
+      }
+    };
+
+    attempt();
+    window.addEventListener('online', attempt);
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      window.removeEventListener('online', attempt);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [loaded]);
+
   const value = useMemo(
     () => ({ pending: loaded ? entries.length : 0, enqueue, flush }),
     [enqueue, entries.length, flush, loaded],

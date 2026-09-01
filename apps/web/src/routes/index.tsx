@@ -56,6 +56,7 @@ import { DispositionDecisionScreen } from '../screens/disposition-decision/scree
 import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
+import { ExpeditedShipmentScreen } from '../screens/expedited-shipment/screen';
 import { ShipmentProcessingScreen } from '../screens/shipment-processing/screen';
 import { ShipmentRequestCreateScreen } from '../screens/shipment-request-create/screen';
 import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
@@ -522,6 +523,11 @@ export const appRouter = createBrowserRouter([
        * 바로 뒤에 둔다.
        */
       { path: 'shipment/shipment-processing', element: <ShipmentProcessingScreen /> },
+      /*
+       * W-04-05 — 같은 출하 생성 경로를 쓰되 창고 경유·피킹·포장을 건너뛰는 예외 흐름이라
+       * 정상 흐름(W-04-04) 바로 뒤에 둔다. 앞에 두면 예외가 기본으로 읽힌다.
+       */
+      { path: 'shipment/expedited-shipment', element: <ExpeditedShipmentScreen /> },
       /*
        * W-04-08 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만
        * 완제품 재고·Lot Status 조회는 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다.

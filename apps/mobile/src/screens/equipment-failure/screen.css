@@ -1,0 +1,37 @@
+.equipment-failure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.equipment-failure > * {
+  flex: none;
+}
+
+.equipment-failure__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.equipment-failure__section h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.equipment-failure p {
+  margin: 0;
+}
+
+.equipment-failure__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.equipment-failure__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
