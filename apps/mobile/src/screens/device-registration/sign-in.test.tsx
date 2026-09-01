@@ -72,18 +72,18 @@ describe('사번 확인 화면', () => {
   });
 
   /* 목록을 못 받은 것은 없는 사번과 달리 작업자가 다시 쳐서 풀 수 없다. */
-  it('목록을 받지 못했으면 없는 사번이라 하지 않는다', async () => {
+  it('목록을 받지 못했으면 확인 자체를 막고 그 이유만 말한다', async () => {
     store.clear();
     const user = userEvent.setup();
     mount();
 
-    await waitFor(() => {
-      expect(screen.getAllByText('기준정보를 아직 받지 못했습니다').length).toBeGreaterThan(0);
-    });
+    expect(await screen.findByText('기준정보를 아직 받지 못했습니다')).toBeInTheDocument();
 
     await press(user, '900028');
-    await user.click(screen.getByRole('button', { name: '확인' }));
 
+    expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
+    // 같은 문장을 배너와 입력 칸에 두 번 두지 않는다.
+    expect(screen.getAllByText('기준정보를 아직 받지 못했습니다')).toHaveLength(1);
     expect(
       screen.queryByText('등록되지 않았거나 재직 중이 아닌 사번입니다'),
     ).not.toBeInTheDocument();

@@ -54,7 +54,9 @@ export const DeviceRegistrationScreen = ({ camera }: { camera?: QrCamera }) => {
 
   return (
     <div className="device-registration" data-phase={phase}>
-      <h1 className="device-registration__headline">{t.unregistered.title}</h1>
+      {phase === 'receiving' ? null : (
+        <h1 className="device-registration__headline">{t.unregistered.title}</h1>
+      )}
 
       {phase === 'offline' ? (
         <AlertBanner

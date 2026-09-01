@@ -143,6 +143,22 @@ describe('기기 등록 화면', () => {
     expect(await screen.findByText('기준정보를 받는 중입니다')).toBeInTheDocument();
   });
 
+  /* 받는 중에 미등록이라고 말하면 방금 읽은 것이 헛일이 된 줄로 읽힌다. */
+  it('기준정보를 받는 동안에는 등록되지 않았다고 말하지 않는다', async () => {
+    const camera = stubCamera();
+    renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
+      fetch: createStubFetch([workersRoute([worker])]),
+    });
+
+    await screen.findByText('관리자 화면의 등록 QR을 비추세요.');
+    camera.read(REGISTRATION_TOKEN);
+
+    await screen.findByText('기준정보를 받는 중입니다');
+    expect(
+      screen.queryByRole('heading', { name: '이 기기는 아직 등록되지 않았습니다' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('읽은 뒤에는 카메라를 닫는다', async () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {

@@ -14,6 +14,19 @@ describe('단말 토큰의 클레임 읽기', () => {
     expect(readTerminalClaims(token)).toEqual({ terminalCode: 'SYN-TERM-01', plantId: 7 });
   });
 
+  /* 실제 토큰의 본문에는 채움 문자가 붙지 않는다. 앞 시험은 붙은 값만 재고 있었다. */
+  it('채움 문자 없는 본문도 읽는다', () => {
+    const body = btoa(JSON.stringify({ terminalCode: 'SYN-TERM-02', plantId: 9 }))
+      .replaceAll('+', '-')
+      .replaceAll('/', '_')
+      .replaceAll('=', '');
+
+    expect(readTerminalClaims(`header.${body}.signature`)).toEqual({
+      terminalCode: 'SYN-TERM-02',
+      plantId: 9,
+    });
+  });
+
   it('토큰이 아닌 QR은 오류가 아니라 null이다', () => {
     expect(readTerminalClaims('https://example.test/anything')).toBeNull();
   });

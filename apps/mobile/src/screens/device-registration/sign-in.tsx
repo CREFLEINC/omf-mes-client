@@ -94,9 +94,7 @@ export const WorkerSignInScreen = () => {
         readOnly
         size="xl"
         fullWidth
-        error={
-          rejected === null ? undefined : rejected.kind === 'unknown' ? t.unknown : t.noDirectory
-        }
+        error={rejected?.kind === 'unknown' ? t.unknown : undefined}
       />
 
       <NumericKeypad
@@ -111,7 +109,12 @@ export const WorkerSignInScreen = () => {
         clearLabel={t.keypad.clear}
       />
 
-      <Button variant="filled" size="xl" disabled={entry === ''} onClick={confirm}>
+      <Button
+        variant="filled"
+        size="xl"
+        disabled={entry === '' || directory === null}
+        onClick={confirm}
+      >
         {t.confirm}
       </Button>
 
