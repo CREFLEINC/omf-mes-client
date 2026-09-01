@@ -83,6 +83,7 @@ import { terminalProcessMap } from './terminal-process-map';
 import { toolPmResult } from './tool-pm-result';
 import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
+import { equipmentFailureReport } from './equipment-failure-report';
 import { oqcInspection } from './oqc-inspection';
 
 export const ko = {
@@ -155,6 +156,7 @@ export const ko = {
   toolPmResult,
   materialIssueRequest,
   deviceRegistration,
+  equipmentFailureReport,
   oqcInspection,
 } as const;
 
