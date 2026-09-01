@@ -1,8 +1,10 @@
 import { screen, waitFor } from '@testing-library/react';
+import { useEffect } from 'react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { useWorkerSession } from '../../patterns/worker-session';
 import { EquipmentFailureScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
@@ -70,10 +72,26 @@ const routes = (options: { openBreakdowns?: number; seen?: URL[] } = {}) => [
   },
 ];
 
+/* 사번 없이는 보고할 수 없다 - 화면을 세우려면 먼저 세워 둔다. */
+const SignedIn = ({ children }: { children: React.ReactNode }) => {
+  const { worker, signIn } = useWorkerSession();
+
+  useEffect(() => {
+    if (worker === null) {
+      signIn({ workerNo: '900028', workerName: '김철수' });
+    }
+  }, [signIn, worker]);
+
+  return worker === null ? null : children;
+};
+
 const mount = (extra: ReturnType<typeof routes> = []) =>
-  renderWithProviders(<EquipmentFailureScreen />, {
-    fetch: createStubFetch([...routes(), ...extra]),
-  });
+  renderWithProviders(
+    <SignedIn>
+      <EquipmentFailureScreen />
+    </SignedIn>,
+    { fetch: createStubFetch([...routes(), ...extra]) },
+  );
 
 const scan = (code: string) => {
   const field = screen.getByLabelText('설비 스캔') as HTMLInputElement;
@@ -91,6 +109,23 @@ afterEach(() => {
 });
 
 describe('설비 고장 보고 화면', () => {
+  /* 누가 한 일인지 없이 기록을 남길 수 없다 - 서버가 사번 없는 쓰기를 받지 않는다. */
+  it('사번을 확인하기 전에는 다 채워도 보고할 수 없고 이유를 말한다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<EquipmentFailureScreen />, {
+      fetch: createStubFetch(routes()),
+    });
+
+    await screen.findByLabelText('설비 스캔');
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
+
+    expect(screen.getByText('사번을 확인해야 보고할 수 있습니다')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '고장 보고' })).toBeDisabled();
+  });
+
   it('설비를 고르기 전에는 보고할 수 없다', async () => {
     mount();
 
@@ -134,9 +169,14 @@ describe('설비 고장 보고 화면', () => {
   /* 폐기된 설비가 나오면 안 되는 것이 정상이다. */
   it('운용 중인 설비만 청한다', async () => {
     const seen: URL[] = [];
-    renderWithProviders(<EquipmentFailureScreen />, {
-      fetch: createStubFetch(routes({ seen })),
-    });
+    renderWithProviders(
+      <SignedIn>
+        <EquipmentFailureScreen />
+      </SignedIn>,
+      {
+        fetch: createStubFetch(routes({ seen })),
+      },
+    );
 
     await waitFor(() => {
       expect(seen.some((url) => url.pathname === '/mdm/equipments')).toBe(true);
@@ -148,9 +188,14 @@ describe('설비 고장 보고 화면', () => {
   /* 막지 않는다 — 다른 증상일 수 있어 사람이 보고 정한다. */
   it('처리 중인 고장이 있으면 알리되 막지 않는다', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<EquipmentFailureScreen />, {
-      fetch: createStubFetch(routes({ openBreakdowns: 1 })),
-    });
+    renderWithProviders(
+      <SignedIn>
+        <EquipmentFailureScreen />
+      </SignedIn>,
+      {
+        fetch: createStubFetch(routes({ openBreakdowns: 1 })),
+      },
+    );
     await screen.findByLabelText('설비 스캔');
 
     scan('PRS-01');
@@ -218,25 +263,30 @@ describe('설비 고장 보고 화면', () => {
     const user = userEvent.setup();
     const sent: Record<string, unknown>[] = [];
 
-    renderWithProviders(<EquipmentFailureScreen />, {
-      fetch: createStubFetch([
-        ...routes(),
-        {
-          match: (request: Request) =>
-            new URL(request.url).pathname === '/maintenance/breakdowns' &&
-            request.method === 'POST',
-          respond: (request: Request) => {
-            void request
-              .clone()
-              .json()
-              .then((body: Record<string, unknown>) => {
-                sent.push(body);
-              });
-            return jsonResponse({ breakdownId: 1 }, { status: 201 });
+    renderWithProviders(
+      <SignedIn>
+        <EquipmentFailureScreen />
+      </SignedIn>,
+      {
+        fetch: createStubFetch([
+          ...routes(),
+          {
+            match: (request: Request) =>
+              new URL(request.url).pathname === '/maintenance/breakdowns' &&
+              request.method === 'POST',
+            respond: (request: Request) => {
+              void request
+                .clone()
+                .json()
+                .then((body: Record<string, unknown>) => {
+                  sent.push(body);
+                });
+              return jsonResponse({ breakdownId: 1 }, { status: 201 });
+            },
           },
-        },
-      ]),
-    });
+        ]),
+      },
+    );
     await screen.findByLabelText('설비 스캔');
 
     scan('PRS-01');
@@ -257,20 +307,25 @@ describe('설비 고장 보고 화면', () => {
   it('보고하면 큐를 거쳐 계약 경로로 나간다', async () => {
     const user = userEvent.setup();
     const seen: URL[] = [];
-    renderWithProviders(<EquipmentFailureScreen />, {
-      fetch: createStubFetch([
-        ...routes(),
-        {
-          match: (request: Request) =>
-            new URL(request.url).pathname === '/maintenance/breakdowns' &&
-            request.method === 'POST',
-          respond: (request: Request) => {
-            seen.push(new URL(request.url));
-            return jsonResponse({ breakdownId: 1 }, { status: 201 });
+    renderWithProviders(
+      <SignedIn>
+        <EquipmentFailureScreen />
+      </SignedIn>,
+      {
+        fetch: createStubFetch([
+          ...routes(),
+          {
+            match: (request: Request) =>
+              new URL(request.url).pathname === '/maintenance/breakdowns' &&
+              request.method === 'POST',
+            respond: (request: Request) => {
+              seen.push(new URL(request.url));
+              return jsonResponse({ breakdownId: 1 }, { status: 201 });
+            },
           },
-        },
-      ]),
-    });
+        ]),
+      },
+    );
     await screen.findByLabelText('설비 스캔');
 
     scan('PRS-01');
@@ -301,21 +356,26 @@ describe('설비 고장 보고 화면', () => {
       ]),
     );
 
-    renderWithProviders(<EquipmentFailureScreen />, {
-      fetch: createStubFetch([
-        ...routes(),
-        {
-          match: (request: Request) => new URL(request.url).pathname === '/production/results',
-          respond: () => jsonResponse({ code: 'CONFLICT' }, { status: 409 }),
-        },
-        {
-          match: (request: Request) =>
-            new URL(request.url).pathname === '/maintenance/breakdowns' &&
-            request.method === 'POST',
-          respond: () => jsonResponse({ breakdownId: 1 }, { status: 201 }),
-        },
-      ]),
-    });
+    renderWithProviders(
+      <SignedIn>
+        <EquipmentFailureScreen />
+      </SignedIn>,
+      {
+        fetch: createStubFetch([
+          ...routes(),
+          {
+            match: (request: Request) => new URL(request.url).pathname === '/production/results',
+            respond: () => jsonResponse({ code: 'CONFLICT' }, { status: 409 }),
+          },
+          {
+            match: (request: Request) =>
+              new URL(request.url).pathname === '/maintenance/breakdowns' &&
+              request.method === 'POST',
+            respond: () => jsonResponse({ breakdownId: 1 }, { status: 201 }),
+          },
+        ]),
+      },
+    );
     await screen.findByLabelText('설비 스캔');
 
     scan('PRS-01');
@@ -411,21 +471,46 @@ describe('설비 고장 보고 화면', () => {
   });
 
   /* 담긴 것만으로 보고됨이라 하면 설비담당이 오지 않는데 온 줄 안다. */
+  /* 교대한 뒤에 나가도 그때 그 사람의 일로 남아야 한다. */
+  it('담긴 건이 그때의 사번을 들고 있다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
+    await user.click(screen.getByRole('button', { name: '고장 보고' }));
+
+    await waitFor(() => {
+      expect(store.get('outbox')).toBeDefined();
+    });
+    const queued = JSON.parse(store.get('outbox') ?? '[]') as { workerNo?: string }[];
+
+    expect(queued[0]?.workerNo).toBe('900028');
+  });
+
   it('보내지 못하면 담아 두었다고만 말한다', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<EquipmentFailureScreen />, {
-      fetch: createStubFetch([
-        ...routes(),
-        {
-          match: (request: Request) =>
-            new URL(request.url).pathname === '/maintenance/breakdowns' &&
-            request.method === 'POST',
-          respond: () => {
-            throw new TypeError('Failed to fetch');
+    renderWithProviders(
+      <SignedIn>
+        <EquipmentFailureScreen />
+      </SignedIn>,
+      {
+        fetch: createStubFetch([
+          ...routes(),
+          {
+            match: (request: Request) =>
+              new URL(request.url).pathname === '/maintenance/breakdowns' &&
+              request.method === 'POST',
+            respond: () => {
+              throw new TypeError('Failed to fetch');
+            },
           },
-        },
-      ]),
-    });
+        ]),
+      },
+    );
     await screen.findByLabelText('설비 스캔');
 
     scan('PRS-01');

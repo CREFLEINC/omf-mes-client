@@ -48,6 +48,13 @@ export interface OutboxEntry {
    * 뒤는 앞이 만든 식별자를 참조하므로 혼자서는 반드시 실패한다.
    */
   batchId?: string;
+  /**
+   * 이 쓰기를 누가 한 일로 기록할 것인가.
+   *
+   * 담을 때의 사번을 들고 있는다. 보낼 때 읽으면, 교대한 뒤에 나간 건이 지금 사람의 일로
+   * 남는다 - 하지 않은 사람에게 기록이 붙는다.
+   */
+  workerNo?: string;
   file?: OutboxFile;
   pathFrom?: OutboxPathFrom;
 }

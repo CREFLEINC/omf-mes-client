@@ -54,6 +54,8 @@ export const equipmentFailureReport = {
     offline: '연결되면 알립니다. 급하면 직접 연락하세요.',
   },
   submit: '고장 보고',
+  /** 누가 한 일인지 없이 기록을 남길 수 없다. 서버가 사번 없는 쓰기를 받지 않는다. */
+  noWorker: '사번을 확인해야 보고할 수 있습니다',
   queued: {
     title: '보고를 담아 두었습니다',
     description: '연결되면 보냅니다. 아직 설비담당에게 가지 않았습니다.',

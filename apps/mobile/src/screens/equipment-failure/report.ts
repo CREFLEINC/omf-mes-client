@@ -69,10 +69,12 @@ export const toOutboxDraft = (
   report: FailureReport,
   occurredAt: string,
   reportId: string,
+  workerNo: string,
 ): OutboxDraft => ({
   /* 사진이 이 건을 가리켜야 하므로 식별자를 여기서 정한다. 묶음 이름도 같은 값을 쓴다. */
   id: reportId,
   batchId: reportId,
+  workerNo,
   idempotencyKey: createIdempotencyKey({
     operation: 'breakdown-report',
     target: report.equipmentId,
@@ -138,6 +140,7 @@ export const toPhotoDrafts = (
       token: ':breakdownId',
     },
     batchId: body.batchId,
+    workerNo: body.workerNo,
     occurredAt,
     /* 본문이 가야 붙을 곳이 생긴다. 담긴 것만으로 붙었다고 할 수 없다. */
     confirmation: 'pending',

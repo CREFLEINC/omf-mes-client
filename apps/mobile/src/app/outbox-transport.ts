@@ -43,11 +43,13 @@ export const createOutboxTransport = (api: ApiClient): OutboxTransport => {
      */
     const body = entry.file === undefined ? entry.body : toFormData(entry.file);
 
-    return runRequest(() =>
-      call(entry.path, {
-        body,
-        headers: { 'Idempotency-Key': entry.idempotencyKey },
-      }),
-    );
+    /* 계약이 전 쓰기에 사번을 요구한다. 없으면 서버가 요청 자체를 받지 않는다. */
+    const headers: Record<string, string> = { 'Idempotency-Key': entry.idempotencyKey };
+
+    if (entry.workerNo !== undefined) {
+      headers['X-Worker-No'] = entry.workerNo;
+    }
+
+    return runRequest(() => call(entry.path, { body, headers }));
   };
 };
