@@ -34,6 +34,8 @@ const LOTS_PATH = '/trace/lots';
 const CODE_VALUES_PATH = '/mdm/code-values';
 const CONSUMPTIONS_PATH = '/production/material-consumptions';
 const TERMINAL_PROCESSES_PATH = `/mdm/terminals/${String(TERMINAL_ID)}/processes`;
+const WORK_SESSIONS_PATH = '/production/work-sessions';
+const WORK_SESSION_ID = 7601;
 
 const isGet = (request: Request, pathname: string): boolean =>
   request.method === 'GET' && new URL(request.url).pathname === pathname;
@@ -41,8 +43,24 @@ const isGet = (request: Request, pathname: string): boolean =>
 const isPost = (request: Request, pathname: string): boolean =>
   request.method === 'POST' && new URL(request.url).pathname === pathname;
 
+/** 이 W/O 에서 열려 있는 세션. 인자로 몇 건이 걸리는지를 정한다(스펙 §5-5). */
+const sessionsRoute = (items: unknown[]): StubRoute => ({
+  match: (request) => isGet(request, WORK_SESSIONS_PATH),
+  respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
+});
+
+const openSession = (workSessionId = WORK_SESSION_ID) => ({
+  workSessionId,
+  workOrderId: WORK_ORDER_ID,
+  sessionNo: 2,
+  terminalId: TERMINAL_ID,
+  shiftId: 1,
+  startedAt: '2026-09-01T08:00:00+09:00',
+});
+
 /** 확정 이외의 구획은 이 감지기의 관심사가 아니다 — 늘 같은 답을 주고 비켜 둔다. */
 const backdrop = (lots: unknown[]): StubRoute[] => [
+  sessionsRoute([openSession()]),
   {
     match: (request) => isGet(request, RECEIPTS_PATH),
     respond: () => jsonResponse({ items: [receipt()], page: { page: 1, size: 50, total: 1 } }),
@@ -87,9 +105,10 @@ const consumption = (lotId: number, overrides: Record<string, unknown> = {}) => 
   ...overrides,
 });
 
-const renderScreen = (lots: unknown[], postRoute: StubRoute) => {
+const renderScreen = (lots: unknown[], postRoute: StubRoute, extra: StubRoute[] = []) => {
   const sent: Sent[] = [];
-  const stub = createStubFetch([...backdrop(lots), postRoute]);
+  /* 앞에 놓인 규칙이 이긴다 — 세션 갈래를 재는 감지기가 배경을 덮어쓸 수 있게 한다. */
+  const stub = createStubFetch([...extra, ...backdrop(lots), postRoute]);
 
   const fetch: StubFetch = async (request) => {
     if (isPost(request, CONSUMPTIONS_PATH)) {
@@ -314,11 +333,11 @@ describe('투입 확정 — 보내지 않는 경우', () => {
     };
 
     renderWithProviders(
-    <PopIdentityProvider value={GATED}>
-      <MaterialInputScanScreen />
-    </PopIdentityProvider>,
-    { fetch, route: ROUTE },
-  );
+      <PopIdentityProvider value={GATED}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
 
     await prepare(user, [['SAMPLE-LOT-0001', '12']]);
     await user.click(screen.getByRole('button', { name: t.confirm.action }));
@@ -360,5 +379,81 @@ describe('투입 확정 — 담은 목록의 표시', () => {
     expect(item).not.toBeNull();
     expect(within(item as HTMLElement).queryByText(t.scanned.unlinkedIssue)).toBeNull();
     expect(within(item as HTMLElement).queryByText(t.scanned.crossProcess)).toBeNull();
+  });
+});
+
+/**
+ * 세션 — **투입을 매다는 값이지 여는 조건이 아니다**(스펙 §5-5).
+ *
+ * 계약이 `workSessionId`를 nullable로 두었으므로 없어도 투입은 선다. 화면이 이 값을 필수처럼
+ * 다루면 세션을 열지 않은 긴급 투입·사후 입력이 통째로 막힌다.
+ */
+describe('MaterialInputScanScreen — 세션', () => {
+  const confirmOnce = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+    await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
+    await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
+    await user.type(screen.getByLabelText(t.scanned.qtyLabel('SAMPLE-LOT-0001')), '12');
+    await user.click(await screen.findByRole('button', { name: t.confirm.action }));
+  };
+
+  it('열린 세션이 하나면 그 번호를 싣는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]));
+
+    await confirmOnce(user);
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(sent[0]?.body).toHaveProperty('workSessionId', WORK_SESSION_ID);
+  });
+
+  /* 세션이 없어도 투입은 선다 — 없는 것을 값으로 채우지 않는다. */
+  it('열린 세션이 없으면 칸을 싣지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [sessionsRoute([])]);
+
+    await confirmOnce(user);
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(sent[0]?.body).not.toHaveProperty('workSessionId');
+  });
+
+  /*
+   * ⭐ **여럿이면 고르지 않는다.** 그중 하나를 화면이 집으면 투입이 엉뚱한 구간에 붙고,
+   * 되돌릴 수 없는 기록이라(B-3) 그 잘못이 그대로 남는다.
+   */
+  it('열린 세션이 여럿이면 매달지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [
+      sessionsRoute([openSession(), openSession(7602)]),
+    ]);
+
+    await confirmOnce(user);
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(sent[0]?.body).not.toHaveProperty('workSessionId');
+  });
+
+  /* 세션 조회 실패는 게이팅과 다른 축이다 — 모르면 매달지 않을 뿐 막지 않는다. */
+  it('세션 조회가 실패해도 투입을 막지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = renderScreen([lot()], okRoute([consumption(7301)]), [
+      {
+        match: (request) => isGet(request, WORK_SESSIONS_PATH),
+        respond: () => new Response(null, { status: 500 }),
+      },
+    ]);
+
+    await confirmOnce(user);
+
+    await waitFor(() => {
+      expect(sent).toHaveLength(1);
+    });
+    expect(sent[0]?.body).not.toHaveProperty('workSessionId');
   });
 });

@@ -330,3 +330,30 @@ describe('MaterialInputScanScreen — 상세를 기다리는 동안', () => {
     });
   });
 });
+
+/**
+ * 스펙 §3 — 표 아래에 **모자란 것만** 다시 세운다.
+ *
+ * 표는 모든 줄을 같은 무게로 늘어놓아, 스무 줄 중 둘이 모자랄 때 그 둘을 찾는 것이 눈의 일이
+ * 된다. 장갑을 낀 채 화면을 훑는 작업자는 그것을 놓친다.
+ */
+describe('MaterialInputScanScreen — 수령 요약', () => {
+  it('부족·미수령만 줄로 세운다', async () => {
+    renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
+
+    /* 픽스처는 셋 — 수령 완료 하나 · 20 부족 하나 · 미수령 하나. */
+    expect(await screen.findByText(t.receiptSummary.short(7202, 20))).toBeTruthy();
+    expect(screen.getByText(t.receiptSummary.none(7203))).toBeTruthy();
+
+    /* 맞아떨어진 줄은 여기 오지 않는다 — 다시 볼 이유가 없다. */
+    expect(screen.queryByText(t.receiptSummary.short(7201, 0))).toBeNull();
+  });
+
+  /* 다 맞으면 구획째 서지 않는다 — 빈 제목만 남으면 무언가 빠진 것처럼 읽힌다. */
+  it('모두 수령했으면 요약을 세우지 않는다', async () => {
+    renderScreen([listRoute(), detailRoute(7001, [receiptLineFixtures[0]])]);
+
+    await screen.findByText(t.receiptStatus.matched);
+    expect(screen.queryByText(t.receiptSummary.label)).toBeNull();
+  });
+});

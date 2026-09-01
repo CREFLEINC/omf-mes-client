@@ -11,6 +11,7 @@ import type { ScannedMaterial } from './scan';
  * | 자리 | 어디서 | 근거 |
  * | --- | --- | --- |
  * | `workOrderId` | 주소 | 이 화면이 무엇을 투입하는지 |
+ * | `workSessionId` | 열린 세션 | ⚠ **nullable** — 없어도 투입은 선다(§5-5) |
  * | `itemId` · `lotId` · `uomId` | **스캔한 LOT** | 스캔이 자재를 특정한다 |
  * | `inputQty` | 작업자가 친 값 | 스펙 §4-B의 유일한 「입력」 칸 |
  * | `occurredAt` | 보내는 순간 | ⚠ **기록 시각과 다르다** — 오프라인 복구 시 발생과 기록이 갈린다(§5-7) |
@@ -62,12 +63,18 @@ export const toMaterialConsumption = (
   material: ScannedMaterial,
   drafts: QtyDrafts,
   occurredAt: Date,
+  workSessionId: number | null,
 ): MaterialConsumptionCreate | null => {
   const inputQty = toInputQty(readQty(drafts, material.lotId));
   if (inputQty === null) return null;
 
   return {
     workOrderId,
+    /*
+     * 세션은 **있으면 붙이고 없으면 뺀다**(§5-5). 계약이 nullable로 두었으므로 「모른다」를
+     * 값으로 채우지 않는다 — 빈 자리와 지어낸 값은 나중에 계보를 볼 때 다른 뜻이 된다.
+     */
+    ...(workSessionId === null ? {} : { workSessionId }),
     itemId: material.itemId,
     lotId: material.lotId,
     inputQty,
@@ -87,11 +94,12 @@ export const toMaterialConsumptions = (
   materials: readonly ScannedMaterial[],
   drafts: QtyDrafts,
   occurredAt: Date,
+  workSessionId: number | null,
 ): MaterialConsumptionCreate[] | null => {
   if (materials.length === 0) return null;
 
   const bodies = materials.map((material) =>
-    toMaterialConsumption(workOrderId, material, drafts, occurredAt),
+    toMaterialConsumption(workOrderId, material, drafts, occurredAt, workSessionId),
   );
 
   return bodies.every((body): body is MaterialConsumptionCreate => body !== null) ? bodies : null;

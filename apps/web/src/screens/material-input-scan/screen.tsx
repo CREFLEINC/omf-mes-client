@@ -9,6 +9,7 @@ import { ConfirmPanel } from './confirm-panel';
 import { LoadErrorBanner } from './load-error-banner';
 import { useLotStatusLabels } from './lot-status-labels';
 import { useReceiptLines } from './queries';
+import { ReceiptSummary } from './receipt-summary';
 import { ReceiptTable } from './receipt-table';
 import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from './scan';
 import { ScanField } from './scan-field';
@@ -18,6 +19,7 @@ import { dropQty, EMPTY_QTY_DRAFTS, hasEveryQty, writeQty, type QtyDrafts } from
 import { toRecordedNote, useConfirmInput, type RecordedNote } from './mutations';
 import { toMaterialConsumptions } from './post-request';
 import { readWorkOrderId } from './screen-params';
+import { useOpenWorkSession } from './session';
 import { useTerminalGate } from './terminal-gating';
 
 const t = messages.materialInputScan;
@@ -82,6 +84,11 @@ export const MaterialInputScanScreen = () => {
   const statusLabels = useLotStatusLabels();
   /* 단말 게이팅 — 스펙 §5-1. 화면의 잠금은 오조작을 줄이는 장치이지 집행이 아니다. */
   const gate = useTerminalGate(terminalId, processId);
+  /*
+   * 열린 세션 — **투입을 매다는 값이지 여는 조건이 아니다**(스펙 §5-5). 계약이 nullable로
+   * 두었으므로 없어도 투입은 선다.
+   */
+  const workSessionId = useOpenWorkSession(workOrderId);
 
   const [qtyDrafts, setQtyDrafts] = useState<QtyDrafts>(EMPTY_QTY_DRAFTS);
   const [notes, setNotes] = useState<readonly RecordedNote[]>([]);
@@ -128,7 +135,13 @@ export const MaterialInputScanScreen = () => {
   const sendConfirm = (): void => {
     if (workOrderId === null || workerNo === null || confirm.isPending) return;
 
-    const bodies = toMaterialConsumptions(workOrderId, draft.materials, qtyDrafts, new Date());
+    const bodies = toMaterialConsumptions(
+      workOrderId,
+      draft.materials,
+      qtyDrafts,
+      new Date(),
+      workSessionId,
+    );
     if (bodies === null) return;
 
     confirm.mutate(
@@ -159,6 +172,23 @@ export const MaterialInputScanScreen = () => {
           {t.title}
         </h1>
         {workOrderId !== null && <p className="pop-context">{t.header.workOrder(workOrderId)}</p>}
+
+        {/*
+         * 스펙 §3의 헤더 오른쪽 — **지금 어느 구간에서 어느 단말로 찍고 있는가.** 단말은
+         * 여러 대가 같은 화면을 띄우므로, 무엇으로 찍었는지가 보이지 않으면 나중에 기록을
+         * 보고도 그 자리를 되짚을 수 없다.
+         *
+         * ⚠ **없을 때도 말한다.** 「세션 없음」은 정상 상태이고(§5-5), 「단말 미확인」은
+         * 게이팅이 닫혀 있는 이유다 — 비워 두면 작업자가 확정이 왜 잠겼는지 알 수 없다.
+         */}
+        <p className="pop-context pop-context-right">
+          <span>
+            {workSessionId === null ? t.header.sessionNone : t.header.session(workSessionId)}
+          </span>
+          <span>
+            {terminalId === null ? t.header.terminalUnknown : t.header.terminal(terminalId)}
+          </span>
+        </p>
       </header>
 
       {/*
@@ -179,11 +209,14 @@ export const MaterialInputScanScreen = () => {
         <section className="pane" aria-label={t.panes.receipt}>
           <h2 className="pane-title">{t.panes.receipt}</h2>
           {!receipt.isError && (
-            <ReceiptTable
-              lines={receipt.lines}
-              isLoading={receipt.isPending && workOrderId !== null}
-              hasWorkOrder={workOrderId !== null}
-            />
+            <>
+              <ReceiptTable
+                lines={receipt.lines}
+                isLoading={receipt.isPending && workOrderId !== null}
+                hasWorkOrder={workOrderId !== null}
+              />
+              <ReceiptSummary lines={receipt.lines} />
+            </>
           )}
         </section>
 

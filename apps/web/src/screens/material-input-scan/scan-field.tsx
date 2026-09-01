@@ -106,7 +106,27 @@ export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
         </Button>
       </div>
 
-      <p className="field-note">{t.notes.manualEntry}</p>
+      {/*
+       * 스캔 실패의 대체 경로(스펙 §3 · D-3). **칸으로 포커스를 옮기는 것이 전부다** — 코드는
+       * 이미 손으로 칠 수 있고, 없던 것은 「어디를 눌러야 하는가」였다. 터치 단말에서는 이
+       * 포커스가 화면 자판을 함께 띄운다.
+       *
+       * ⛔ 별도 입력창을 열지 않는다. 스캐너가 살아 있을 때 그 창이 스캔값을 가로챈다.
+       */}
+      <div className="scan-manual">
+        <Button
+          type="button"
+          variant="outlined"
+          size="xl"
+          className="pop-touch-target"
+          onClick={() => {
+            inputRef.current?.focus();
+          }}
+        >
+          {t.scan.manualEntry}
+        </Button>
+        <p className="field-note">{t.notes.manualEntry}</p>
+      </div>
     </form>
   );
 };

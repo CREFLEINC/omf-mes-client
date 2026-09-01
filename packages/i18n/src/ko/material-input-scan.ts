@@ -16,6 +16,12 @@ export const materialInputScan = {
     /** W/O 를 주소에서 받지 못한 상태 — 무엇을 해야 하는지까지 적는다. */
     workOrderMissing: '작업지시가 지정되지 않았습니다. 작업지시를 고른 뒤 다시 들어오세요.',
     workOrder: (workOrderId: number): string => `작업지시 #${String(workOrderId)}`,
+    /** 이 투입이 매달릴 구간(스펙 §5-5). 세션은 없어도 투입이 서므로 없을 때도 말한다. */
+    session: (sessionId: number): string => `세션 #${String(sessionId)}`,
+    sessionNone: '세션 없음',
+    /** 어느 단말에서 찍고 있는지. 단말을 모르면 게이팅이 닫히므로 그 사실이 헤더에도 선다. */
+    terminal: (terminalId: number): string => `단말 #${String(terminalId)}`,
+    terminalUnknown: '단말 미확인',
   },
   table: {
     item: '품목',
@@ -47,11 +53,32 @@ export const materialInputScan = {
     manualEntry: '스캔이 되지 않으면 코드를 직접 입력하고 Enter를 누르세요.',
   },
 
+  /**
+   * 계획 대비 수령 요약 — 표 아래에 부족한 것만 줄로 세운다(스펙 §3).
+   *
+   * ⛔ **막는 말이 아니다.** 부족·미수령이 있어도 수령한 양으로 투입할 수 있다(§6). 문장이
+   * 그 사실과 어긋나지 않게 「모자란다」까지만 말하고 지시를 붙이지 않는다.
+   */
+  receiptSummary: {
+    label: '부족·미수령',
+    /* 품목 코드를 얻을 경로가 이 화면 몫에 없어 번호로 가리킨다. */
+    short: (itemId: number, varianceQty: number): string =>
+      `품목 #${String(itemId)} ${String(varianceQty)} 부족`,
+    none: (itemId: number): string => `품목 #${String(itemId)} 미수령`,
+  },
+
   /** 스캔 구획 — 자재LOT과 금형을 **같은 칸**에서 받는다(스펙 §3). */
   scan: {
     label: '자재LOT / 금형 코드',
     submit: '읽기',
     scanning: '조회 중',
+    /**
+     * 스캔이 안 될 때의 대체 경로를 **눈에 보이는 조작으로** 세운다(스펙 §3 · 공유계약 D-3).
+     *
+     * 안내 문구만 두면 장갑을 낀 채 화면을 훑는 작업자에게는 없는 것과 같다 — 스캐너가
+     * 죽었을 때 무엇을 눌러야 하는지가 보여야 한다.
+     */
+    manualEntry: '직접 입력',
     /**
      * 스캔 한 번의 결과를 말하는 자리. 실패도 그 자리에서 말한다 — 화면을 옮기지 않는다.
      *

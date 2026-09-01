@@ -104,7 +104,8 @@ const isExactLotQuery = (request: Request): boolean =>
  */
 const lotsRoute = (items: unknown[]): StubRoute => ({
   match: (request) => isGet(request, LOTS_PATH),
-  respond: (request) => jsonResponse(listBody(isExactLotQuery(request) ? items.slice(0, 1) : items)),
+  respond: (request) =>
+    jsonResponse(listBody(isExactLotQuery(request) ? items.slice(0, 1) : items)),
 });
 
 /**
@@ -680,6 +681,29 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
   });
 
+  /*
+   * ⭐ **플래그가 응답에 없으면 닫힌 것이다**(2026-08-31 설계 통지). 계약이 8플래그를
+   * `required` 로 두지 않았고 전부 「기본은 닫힘」이다 — `flag !== false` 로 읽으면 값이 없을 때
+   * 통과하고, **버튼이 항상 열린 채로 굳는다.** 화면은 정상으로 보이므로 눈으로는 드러나지
+   * 않는다.
+   */
+  it('행은 있는데 플래그가 없으면 닫힌 것으로 읽는다', async () => {
+    renderScreen(
+      [
+        lotsRoute([lot()]),
+        {
+          match: (request) => isGet(request, TERMINAL_PROCESSES_PATH),
+          /* 이 공정의 행은 있는데 자재 투입 플래그만 빠져 있다. */
+          respond: () => jsonResponse({ items: [{ processId: PROCESS_ID }] }),
+        },
+      ],
+      GATED,
+    );
+
+    expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
+  });
+
   /* 권한이 없을 때 「다시 시도」를 두면 작업자가 풀 수 없는 것을 되풀이한다. */
   it('권한이 닫힌 것에는 다시 시도를 붙이지 않는다', async () => {
     renderScreen([lotsRoute([lot()]), gateRoute(false)], GATED);
@@ -773,5 +797,54 @@ describe('MaterialInputScanScreen — 자재 상태 표시', () => {
     expect(item).not.toBeNull();
     expect(within(item as HTMLElement).getByText(/검사 대기/)).toBeTruthy();
     expect(within(item as HTMLElement).getByText(t.scanned.heldMark)).toBeTruthy();
+  });
+});
+
+describe('MaterialInputScanScreen — 스캔 실패의 대체 경로', () => {
+  /*
+   * ⭐ 공유계약 D-3 — 스캐너가 죽었을 때 **무엇을 눌러야 하는지가 보여야** 한다. 안내 문구만
+   * 두면 장갑을 낀 채 화면을 훑는 작업자에게는 없는 것과 같다.
+   */
+  it('「직접 입력」이 스캔 칸으로 포커스를 옮긴다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lotsRoute([lot()])]);
+
+    /* 다른 곳으로 포커스를 옮겨 둔다 — 옮겨 오는 것을 재려면 출발점이 달라야 한다. */
+    const away = screen.getByRole('button', { name: t.scan.submit });
+    away.focus();
+    expect(document.activeElement).toBe(away);
+
+    await user.click(screen.getByRole('button', { name: t.scan.manualEntry }));
+
+    expect(document.activeElement).toBe(screen.getByLabelText(t.scan.label));
+  });
+
+  /* 대체 경로는 **되돌릴 수 있는 조작**이 아니라 현장에서 급히 누르는 것이다 — 크기를 건다. */
+  it('대체 경로에도 현장 단말 치수를 건다', () => {
+    renderScreen([lotsRoute([lot()])]);
+
+    expect(screen.getByRole('button', { name: t.scan.manualEntry }).className).toContain(
+      'pop-touch-target',
+    );
+  });
+});
+
+describe('MaterialInputScanScreen — 헤더 맥락', () => {
+  /*
+   * 스펙 §3 — 지금 **어느 구간에서 어느 단말로** 찍고 있는가. 단말 여러 대가 같은 화면을
+   * 띄우므로, 무엇으로 찍었는지가 보이지 않으면 기록을 보고도 그 자리를 되짚을 수 없다.
+   */
+  it('세션과 단말이 없으면 없다고 말한다', async () => {
+    renderScreen([lotsRoute([lot()])]);
+
+    expect(await screen.findByText(t.header.sessionNone)).toBeTruthy();
+    expect(screen.getByText(t.header.terminalUnknown)).toBeTruthy();
+  });
+
+  /* 단말을 아는 상태에서는 번호가 선다 — 게이팅이 왜 열렸는지의 근거이기도 하다. */
+  it('단말을 알면 그 번호를 보인다', async () => {
+    renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED);
+
+    expect(await screen.findByText(t.header.terminal(TERMINAL_ID))).toBeTruthy();
   });
 });
