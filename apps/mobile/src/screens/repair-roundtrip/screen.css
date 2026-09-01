@@ -1,0 +1,73 @@
+.repair {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.repair > * {
+  flex: none;
+}
+
+.repair__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding-top: var(--space-3, 12px);
+}
+
+.repair__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.repair__section h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.repair p {
+  margin: 0;
+}
+
+.repair__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.repair__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.repair__picks > li > button,
+.repair__submit {
+  width: 100%;
+}
+
+.repair__picks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 장갑을 낀 손으로 고르는 자리라 둘이 나란히 서고 각자 폭을 반씩 갖는다. */
+.repair__results {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+
+.repair__results > * {
+  flex: 1;
+}
+
+/* 표는 좁은 화면에서 줄바꿈 대신 가로로 밀린다. 본문은 가로로 밀리지 않는다. */
+.repair__table {
+  overflow-x: auto;
+}
