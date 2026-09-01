@@ -1,3 +1,5 @@
+import { messages } from '@omf-mes/i18n';
+
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 import type { CapturedPhoto } from '../../patterns/photo-capture';
 
@@ -73,6 +75,7 @@ export const toOutboxDraft = (
 ): OutboxDraft => ({
   /* 사진이 이 건을 가리켜야 하므로 식별자를 여기서 정한다. 묶음 이름도 같은 값을 쓴다. */
   id: reportId,
+  label: messages.equipmentFailureReport.record.report,
   batchId: reportId,
   workerNo,
   idempotencyKey: createIdempotencyKey(),
@@ -126,6 +129,7 @@ export const toPhotoDrafts = (
 ): OutboxDraft[] =>
   photos.map((photo, index) => ({
     id: `${reportId}-photo-${String(index)}`,
+    label: messages.equipmentFailureReport.record.photo,
     /*
      * 사진에도 키가 필요하다 - 계약이 전 쓰기에 요구한다. 본문과 나눠 쓰지 않는 이유는
      * 형식이 UUID 라서다. 사진이 본문 없이 홀로 가지 않는 것은 묶음과 경로가 지킨다.

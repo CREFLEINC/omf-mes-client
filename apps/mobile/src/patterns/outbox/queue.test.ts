@@ -18,6 +18,7 @@ vi.mock('../local-store', () => ({
 }));
 
 const draft = (key: string): OutboxDraft => ({
+  label: '생산 실적',
   idempotencyKey: key,
   method: 'POST',
   path: '/production/results',

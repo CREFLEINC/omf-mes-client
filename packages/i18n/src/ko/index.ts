@@ -85,6 +85,7 @@ import { toolPmResult } from './tool-pm-result';
 import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
 import { equipmentFailureReport } from './equipment-failure-report';
+import { outboxRejections } from './outbox-rejections';
 import { oqcInspection } from './oqc-inspection';
 import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
@@ -161,6 +162,7 @@ export const ko = {
   materialIssueRequest,
   deviceRegistration,
   equipmentFailureReport,
+  outboxRejections,
   oqcInspection,
   expeditedShipment,
   shipmentConfirm,

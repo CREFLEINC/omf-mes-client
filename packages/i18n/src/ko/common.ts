@@ -17,6 +17,8 @@ export const common = {
     offline: '오프라인',
     /** 담긴 순간 성공으로 보이므로, 아직 닿지 않은 건수를 보이지 않으면 알 방법이 없다. */
     unsent: (count: number) => `미동기 ${String(count)}`,
+    /** 되돌아온 것은 기다려도 가지 않는다. 미동기와 같은 셈에 넣으면 갈 것으로 읽힌다. */
+    returned: (count: number) => `되돌아옴 ${String(count)}`,
   },
   reference: {
     empty: '—',

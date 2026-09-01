@@ -21,6 +21,7 @@ vi.mock('../local-store', () => ({
 }));
 
 const draft = (key: string): OutboxDraft => ({
+  label: '생산 실적',
   idempotencyKey: key,
   method: 'POST',
   path: '/production/results',
@@ -186,6 +187,84 @@ describe('outbox', () => {
     await waitFor(() => {
       expect(result.current.pending).toBe(0);
     });
+  });
+
+  /* 큐에서 빠지고 어디에도 남지 않으면, 적은 사람은 기록이 어디로 갔는지 알 수 없다. */
+  it('거부된 건을 큐 밖에 남긴다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    await waitFor(() => {
+      expect(result.current.rejected).toHaveLength(1);
+    });
+    expect(result.current.rejected[0]?.entry.label).toBe('생산 실적');
+    expect(result.current.rejected[0]?.error).toEqual({ kind: 'http', status: 422 });
+  });
+
+  it('앱을 다시 띄워도 되돌아온 건이 남아 있다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+    const first = mount(send);
+
+    await act(async () => {
+      await first.result.current.enqueue(draft('k-1'));
+    });
+    await waitFor(() => {
+      expect(first.result.current.rejected).toHaveLength(1);
+    });
+
+    const again = mount(send);
+
+    await waitFor(() => {
+      expect(again.result.current.rejected).toHaveLength(1);
+    });
+  });
+
+  /* 닿지 못한 것은 기다리면 간다. 거부와 같은 목록에 넣으면 갈 것을 안 간다고 하는 셈이다. */
+  it('닿지 못한 건은 되돌아온 것으로 세지 않는다', async () => {
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    await act(async () => {
+      await result.current.flush();
+    });
+
+    expect(result.current.rejected).toHaveLength(0);
+    expect(result.current.pending).toBe(1);
+  });
+
+  it('내린 건은 다시 띄워도 돌아오지 않는다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+    await waitFor(() => {
+      expect(result.current.rejected).toHaveLength(1);
+    });
+
+    const id = result.current.rejected[0]?.entry.id ?? '';
+    await act(async () => {
+      await result.current.dismissRejected(id);
+    });
+
+    expect(result.current.rejected).toHaveLength(0);
+
+    const again = mount(send);
+    await waitFor(() => {
+      expect(again.result.current.pending).toBe(0);
+    });
+    expect(again.result.current.rejected).toHaveLength(0);
   });
 
   /* 어느 화면도 열지 않으면 큐가 갇힌다. 셸이 스스로 보낸다. */

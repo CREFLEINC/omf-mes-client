@@ -8,6 +8,7 @@ import type { OutboxEntry } from './queue';
 
 const entry = (id: string, batchId?: string): OutboxEntry => ({
   id,
+  label: '생산 실적',
   idempotencyKey: `key-${id}`,
   method: 'POST',
   path: '/production/results',

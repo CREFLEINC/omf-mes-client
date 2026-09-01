@@ -10,6 +10,7 @@ import {
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 
 import { useOnlineStatus } from '../../patterns/online-status';
 import { capturePhoto, readCapturedPhoto, type CapturedPhoto } from '../../patterns/photo-capture';
@@ -31,7 +32,13 @@ import './screen.css';
 
 const t = messages.equipmentFailureReport;
 
-type Outcome = 'queued' | 'sent';
+/**
+ * 보고가 어디까지 갔는가.
+ *
+ * 담긴 것과 되돌아온 것을 한 말로 내지 않는다 - 앞엣것은 기다리면 가고 뒤엣것은 기다려도
+ * 가지 않는다. 같은 말로 내면 보고자는 갈 줄 알고 자리를 뜬다.
+ */
+type Outcome = 'queued' | 'sent' | 'rejected';
 
 const EquipmentPicker = ({
   equipments,
@@ -166,10 +173,13 @@ export const EquipmentFailureScreen = () => {
      */
     const mine = (entry: { idempotencyKey: string }) =>
       entry.idempotencyKey === draft.idempotencyKey;
-    const stuck =
-      result === null ||
-      result.rejected.some((item) => mine(item.entry)) ||
-      result.remaining.some(mine);
+
+    if (result !== null && result.rejected.some((item) => mine(item.entry))) {
+      setOutcome('rejected');
+      return;
+    }
+
+    const stuck = result === null || result.remaining.some(mine);
 
     setOutcome(stuck ? 'queued' : 'sent');
   };
@@ -190,15 +200,20 @@ export const EquipmentFailureScreen = () => {
   if (outcome !== null) {
     return (
       <div className="equipment-failure">
-        {outcome === 'sent' ? (
-          <AlertBanner variant="success" title={t.sent.title} />
-        ) : (
+        {outcome === 'sent' ? <AlertBanner variant="success" title={t.sent.title} /> : null}
+        {outcome === 'queued' ? (
           <AlertBanner variant="warning" title={t.queued.title}>
             {photos.length === 0
               ? t.queued.description
               : `${t.queued.description} ${t.photo.waiting(photos.length)}`}
           </AlertBanner>
-        )}
+        ) : null}
+        {outcome === 'rejected' ? (
+          <AlertBanner variant="error" title={t.rejected.title}>
+            {t.rejected.description}
+            <Link to="/rejections">{t.rejected.action}</Link>
+          </AlertBanner>
+        ) : null}
         <Button variant="filled" size="xl" onClick={restart}>
           {t.another}
         </Button>
