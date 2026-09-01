@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router';
 
+import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 
@@ -52,4 +53,13 @@ export const popRoutes: RouteObject[] = [
    * 아직 이 저장소에 없다. 그 화면들이 서면 `entry-context.ts` 하나가 바뀐다.
    */
   { path: '/pop/tool-usage', element: <ToolUsageScreen /> },
+  /*
+   * P-02-12 — 긴급 W/O 를 현장에서 «집는» 자리다. 관리웹의 `W-02-07`
+   * (`production/emergency-work-orders`)이 «만드는» 화면이고, 이 주소는 그렇게 만들어진
+   * 지시를 골라 정상 경로 화면(위 `/pop/material-input` 등)으로 넘긴다.
+   *
+   * ⚠ **진입 컨텍스트를 받지 않는다** — 목록이 곧 진입이라 주소에 실을 것이 없다. 나가는
+   * 쪽에만 `?workOrderId=` 를 싣는다.
+   */
+  { path: '/pop/emergency-work-orders', element: <EmergencyWorkOrderFieldScreen /> },
 ];

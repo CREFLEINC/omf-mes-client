@@ -66,6 +66,7 @@ import { shipmentSchedule } from './shipment-schedule';
 import { materialInputScan } from './material-input-scan';
 import { dispositionDecision } from './disposition-decision';
 import { emergencyWorkOrder } from './emergency-work-order';
+import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
 import { toolUsage } from './tool-usage';
@@ -153,6 +154,7 @@ export const ko = {
   materialInputScan,
   dispositionDecision,
   emergencyWorkOrder,
+  emergencyWorkOrderField,
   workOrderProgress,
   materialLocation,
   productStockStatus,
