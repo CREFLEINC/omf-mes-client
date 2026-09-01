@@ -76,12 +76,14 @@ describe('NonconformanceList', () => {
     ).toBeInTheDocument();
   });
 
-  it('⚠ 물러난 항목의 사실을 표 머리에 적는다(A-11)', () => {
+  /*
+   * ⭐ 「원천으로 거를 수 없다」 안내가 «사라졌음»을 못박는다(#648). 축이 되살아났으므로
+   * 그 문장은 이제 거짓이고, 표 머리에 남아 있으면 화면이 있는 기능을 없다고 말한다.
+   */
+  it('⭐ 원천을 못 거른다는 안내를 표 머리에 두지 않는다', () => {
     renderList();
 
-    const banner = screen.getByRole('status');
-
-    expect(banner).toHaveTextContent(t.withdrawn.sourceFilter);
+    expect(screen.queryByText(/원천으로 거르는/)).toBeNull();
   });
 
   it('품목을 이름으로 보인다', () => {

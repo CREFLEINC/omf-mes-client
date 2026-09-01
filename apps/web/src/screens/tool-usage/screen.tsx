@@ -288,7 +288,7 @@ export const ToolUsageScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        <div className="pop-entry">
+        <div className="pop-context-right">
           {entry.workOrderId !== null && (
             <span>{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</span>
           )}
@@ -300,7 +300,7 @@ export const ToolUsageScreen = () => {
         </div>
       </header>
 
-      <div className="pop-body">
+      <>
         {lookup.isError && (
           <ErrorBanner
             error={toApiError(lookup.error)}
@@ -323,7 +323,7 @@ export const ToolUsageScreen = () => {
         {/* ① 툴 스캔 — QR 이 실패해도 코드를 손으로 칠 수 있어야 한다(스펙 §6-1 · D-3). */}
         <Card bordered className="pop-section" aria-label={t.scan.sectionLabel}>
           <Card.Body>
-            <form className="pop-scan" onSubmit={submitCode}>
+            <form className="scan-row" onSubmit={submitCode}>
               <TextField
                 ref={scanRef}
                 label={t.scan.inputLabel}
@@ -534,7 +534,7 @@ export const ToolUsageScreen = () => {
         <Card bordered className="pop-section pop-notice" aria-label={t.notice.sectionLabel}>
           <Card.Body>{t.notice.serverAdds}</Card.Body>
         </Card>
-      </div>
+      </>
 
       <div className="pop-actions">
         <Button variant="outlined" size="2xl" disabled={!hasInput(draft)} onClick={resetDraft}>

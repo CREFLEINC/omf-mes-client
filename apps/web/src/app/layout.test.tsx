@@ -477,6 +477,14 @@ describe('AppLayout', () => {
     expect(
       within(sidebar).getByRole('link', { name: '출하 처리(상차·실물 출고)' }),
     ).toHaveAttribute('href', '/shipment/shipment-processing');
+    expect(within(sidebar).getByRole('link', { name: '긴급 직행 출하 처리' })).toHaveAttribute(
+      'href',
+      '/shipment/expedited-shipment',
+    );
+    expect(within(sidebar).getByRole('link', { name: '출하 확정·취소' })).toHaveAttribute(
+      'href',
+      '/shipment/shipment-confirm',
+    );
     /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
       links.indexOf('/logistics/document-progress') + 1,
@@ -491,6 +499,17 @@ describe('AppLayout', () => {
     /* 예정 목록에서 피킹까지 끝난 후보를 처리하므로 판정 바로 뒤다(업무 순서). */
     expect(links.indexOf('/shipment/shipment-processing')).toBe(
       links.indexOf('/shipment/oqc-inspection') + 1,
+    );
+    /*
+     * ⭐ 예외 흐름은 정상 흐름 «뒤»다 — 앞에 두면 창고 경유·피킹·포장을 건너뛰는 화면이
+     * 기본으로 읽힌다(W-04-05).
+     */
+    expect(links.indexOf('/shipment/expedited-shipment')).toBe(
+      links.indexOf('/shipment/shipment-processing') + 1,
+    );
+    /* 확정은 «만드는» 두 화면 뒤다 — 되돌릴 수 있는 구간이 여기서 끝난다(W-04-12). */
+    expect(links.indexOf('/shipment/shipment-confirm')).toBe(
+      links.indexOf('/shipment/expedited-shipment') + 1,
     );
     expect(links.indexOf('/shipment/shipment-processing')).toBeLessThan(
       links.indexOf('/production/work-order-close'),
@@ -538,7 +557,7 @@ describe('AppLayout', () => {
       '/production/work-order-progress',
     );
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/shipment/shipment-processing') + 1,
+      links.indexOf('/shipment/shipment-confirm') + 1,
     );
     expect(links.indexOf('/production/production-plans')).toBe(
       links.indexOf('/production/production-orders') + 1,
@@ -732,6 +751,10 @@ describe('AppLayout', () => {
       /* W-04-03 — 상차 전에 판정한다. 예정 목록 뒤·출하 처리 앞이다(업무 순서). */
       '/shipment/oqc-inspection',
       '/shipment/shipment-processing',
+      /* W-04-05 — 같은 출하 생성 경로의 예외 흐름이라 정상 흐름 바로 뒤다. */
+      '/shipment/expedited-shipment',
+      /* W-04-12 — 되돌릴 수 있는 구간이 여기서 끝난다. 만드는 두 화면 뒤다. */
+      '/shipment/shipment-confirm',
       '/production/production-orders',
       '/production/production-plans',
       '/production/work-order-assignments',

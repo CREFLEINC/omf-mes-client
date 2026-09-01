@@ -28,6 +28,69 @@ const rejectWith = (ids: Set<string>): OutboxTransport => {
   };
 };
 
+describe('앞 건이 만든 것에 붙는 건', () => {
+  const leader = { ...entry('body', 'report-1'), path: '/maintenance/breakdowns' };
+  const follower = {
+    ...entry('photo', 'report-1'),
+    path: '/maintenance/breakdowns/:id/attachments',
+    pathFrom: { entryId: 'body', field: 'breakdownId', token: ':id' },
+  };
+
+  it('앞 건의 응답으로 경로를 완성해 보낸다', async () => {
+    const seen: string[] = [];
+    const send: OutboxTransport = (item) => {
+      seen.push(item.path);
+      return Promise.resolve(item.id === 'body' ? { breakdownId: 42 } : {});
+    };
+
+    const result = await flushQueue([leader, follower], send);
+
+    expect(seen).toEqual(['/maintenance/breakdowns', '/maintenance/breakdowns/42/attachments']);
+    expect(result.sent).toBe(2);
+  });
+
+  /* 붙을 곳이 없으면 이 건만 다시 보내서는 풀리지 않는다. */
+  it('앞 건이 거부되면 붙을 곳이 없어 함께 되돌아온다', async () => {
+    const result = await flushQueue([leader, follower], rejectWith(new Set(['body'])));
+
+    expect(result.sent).toBe(0);
+    expect(result.rejected.map((item) => [item.entry.id, item.cascaded])).toEqual([
+      ['body', false],
+      ['photo', true],
+    ]);
+  });
+
+  /* 본문은 갔는데 사진이 다음 회차로 넘어가면, 그때는 앞 건이 큐에 없어 붙을 곳을 잃는다. */
+  it('앞 건이 간 뒤 멈추면 뒤 건이 완성된 경로를 들고 남는다', async () => {
+    const send: OutboxTransport = (item) => {
+      if (item.id === 'body') {
+        return Promise.resolve({ breakdownId: 42 });
+      }
+      return Promise.reject(new ApiRequestError(NETWORK_ERROR));
+    };
+
+    const result = await flushQueue([leader, follower], send);
+
+    expect(result.outcome).toBe('unreachable');
+    expect(result.remaining).toHaveLength(1);
+    expect(result.remaining[0]?.path).toBe('/maintenance/breakdowns/42/attachments');
+    expect(result.remaining[0]?.pathFrom).toBeUndefined();
+  });
+
+  it('앞 건의 응답에 그 값이 없으면 보내지 않는다', async () => {
+    const seen: string[] = [];
+    const send: OutboxTransport = (item) => {
+      seen.push(item.path);
+      return Promise.resolve({});
+    };
+
+    const result = await flushQueue([leader, follower], send);
+
+    expect(seen).toEqual(['/maintenance/breakdowns']);
+    expect(result.rejected.map((item) => item.entry.id)).toEqual(['photo']);
+  });
+});
+
 describe('큐 전송', () => {
   it('담긴 순서대로 하나씩 보낸다', async () => {
     const seen: string[] = [];

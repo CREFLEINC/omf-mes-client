@@ -15,6 +15,13 @@ import { flushQueue, type FlushResult, type OutboxTransport } from './send';
 export interface Outbox {
   /** 아직 서버에 닿지 못한 건수. 상시 표시가 즉시 성공 표시의 전제다. */
   pending: number;
+  /**
+   * 담긴 파일이 차지하는 크기.
+   *
+   * 사진처럼 큰 것을 담는 화면이 더 받아도 되는지 정할 때 쓴다. 화면이 자기 것만 세면
+   * 보고를 마칠 때마다 셈이 처음으로 돌아가 큐가 끝없이 커진다.
+   */
+  pendingBytes: number;
   /** 담고 곧바로 돌아온다. 통신을 기다리지 않는다. */
   enqueue: (draft: OutboxDraft) => Promise<void>;
   /** 보낼 수 있는 만큼 보낸다. 거부된 건을 돌려준다. */
@@ -115,9 +122,51 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     return sending.current;
   }, [runFlush]);
 
+  /*
+   * 보내기를 부르는 자리가 화면마다 흩어지면 어느 화면도 열지 않은 동안 큐가 갇힌다. 셸이
+   * 스스로 보낸다.
+   *
+   * 연결 사건만으로는 모자란다. 기기가 무선에 붙어 있는데 서버만 죽었다 살아나면 그 사건이
+   * 아예 오지 않아 큐가 앱을 켜 둔 내내 갇힌다. 화면이 다시 앞으로 나오는 것도 신호로 쓴다 -
+   * 단말을 내려놓았다 집어 드는 것이 현장에서 가장 흔한 재시도 시점이다.
+   *
+   * 되풀이해 두드리지는 않는다. 못 닿는 동안 계속 보내면 배터리만 쓴다.
+   */
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+
+  useEffect(() => {
+    if (!loaded) {
+      return;
+    }
+
+    const attempt = () => {
+      void flushRef.current().catch(() => undefined);
+    };
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') {
+        attempt();
+      }
+    };
+
+    attempt();
+    window.addEventListener('online', attempt);
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      window.removeEventListener('online', attempt);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [loaded]);
+
+  const pendingBytes = loaded
+    ? entries.reduce((total, entry) => total + (entry.file?.data.length ?? 0), 0)
+    : 0;
+
   const value = useMemo(
-    () => ({ pending: loaded ? entries.length : 0, enqueue, flush }),
-    [enqueue, entries.length, flush, loaded],
+    () => ({ pending: loaded ? entries.length : 0, pendingBytes, enqueue, flush }),
+    [enqueue, entries.length, flush, loaded, pendingBytes],
   );
 
   return <OutboxContext value={value}>{children}</OutboxContext>;

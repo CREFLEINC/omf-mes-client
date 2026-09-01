@@ -63,15 +63,30 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(screen.getByText(t.remaining.note)).toBeInTheDocument();
   });
 
-  it('물러난 항목의 사실을 목록 머리에 적는다', async () => {
+  /*
+   * ⭐ 되살아난 원천 축이 **화면 끝에서 서버 요청까지** 닿는지 본다(#648). 필터 바만 보는
+   * 시험은 「칸은 섰는데 조회 조건에는 안 실리는」 결함을 통과시킨다 — 눈으로 봐서 가장
+   * 멀쩡해 보이는 실패 모양이라 여기서 한 번 끝까지 물어 둔다.
+   */
+  it('⭐ 원천을 고르면 목록 조회에 그 축이 실린다', async () => {
+    const { user } = renderScreen();
+    await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
+
+    await user.click(screen.getByLabelText(t.fields.sourceCode));
+    await user.click(screen.getByRole('option', { name: t.values.sourceCode.RETURN }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    await waitFor(() => {
+      expect(requestedPaths().some((path) => path.includes('sourceCode=RETURN'))).toBe(true);
+    });
+  });
+
+  /* 축이 되살아났으므로 「거를 수 없다」는 안내는 이제 거짓이다 — 남아 있으면 안 된다. */
+  it('⭐ 원천을 못 거른다는 안내가 목록 머리에 남아 있지 않다', async () => {
     renderScreen();
     await screen.findByRole('button', { name: t.actions.selectRow('NC-TEST-0041') });
 
-    const banner = screen
-      .getAllByRole('status')
-      .find((element) => element.textContent?.includes(t.withdrawn.sourceFilter) === true);
-
-    expect(banner).toBeDefined();
+    expect(screen.queryByText(/원천으로 거르는/)).toBeNull();
   });
 
   it('⛔ 승인·반려 컨트롤이 화면에 없다', async () => {

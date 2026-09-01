@@ -63,6 +63,7 @@ import { workOrderClose } from './work-order-close';
 import { workOrderRelease } from './work-order-release';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { shipmentSchedule } from './shipment-schedule';
+import { materialInputScan } from './material-input-scan';
 import { dispositionDecision } from './disposition-decision';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { workOrderProgress } from './work-order-progress';
@@ -84,7 +85,10 @@ import { terminalProcessMap } from './terminal-process-map';
 import { toolPmResult } from './tool-pm-result';
 import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
+import { equipmentFailureReport } from './equipment-failure-report';
 import { oqcInspection } from './oqc-inspection';
+import { expeditedShipment } from './expedited-shipment';
+import { shipmentConfirm } from './shipment-confirm';
 
 export const ko = {
   common,
@@ -136,6 +140,7 @@ export const ko = {
   workOrderRelease,
   suspiciousMaterialHold,
   shipmentSchedule,
+  materialInputScan,
   dispositionDecision,
   emergencyWorkOrder,
   workOrderProgress,
@@ -156,7 +161,10 @@ export const ko = {
   toolPmResult,
   materialIssueRequest,
   deviceRegistration,
+  equipmentFailureReport,
   oqcInspection,
+  expeditedShipment,
+  shipmentConfirm,
   toolUsage,
 } as const;
 

@@ -9,6 +9,9 @@ export const ShellHome = () => {
         <li>
           <Link to="/material-location">{messages.materialLocation.title}</Link>
         </li>
+        <li>
+          <Link to="/equipment-failure">{messages.equipmentFailureReport.title}</Link>
+        </li>
       </ul>
     </nav>
   );

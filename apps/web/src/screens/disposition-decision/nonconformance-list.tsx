@@ -1,4 +1,4 @@
-import { AlertBanner, Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
+import { Button, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
@@ -96,12 +96,10 @@ export const NonconformanceList = ({
   return (
     <>
       {/*
-       * A-11 — 만들지 않기로 «물러난» 항목의 사실을 결과 표 머리에 적는다.
-       * 조용히 빼면 보는 사람이 「없는 기능」이 아니라 「없는 데이터」로 읽는다.
+       * ⭐ 여기 있던 「원천으로 거를 수 없다」 안내(A-11)를 걷었다 — **물러났던 것이 아니라
+       * 되살아났다.** 축이 `sourceCode`로 정의돼 필터 바에 섰으므로(W-03-10 §5-4 · #648)
+       * 그 자리에 남겨 두면 화면이 «있는 기능»을 없다고 말하게 된다.
        */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.withdrawn.sourceFilter}</AlertBanner>
-      </div>
       <Table
         density="compact"
         columns={columns}

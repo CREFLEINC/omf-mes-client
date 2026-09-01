@@ -1,9 +1,24 @@
 import type { ApiClient } from '@omf-mes/api-client';
 
-import type { OutboxEntry, OutboxTransport } from '../patterns/outbox';
+import type { OutboxEntry, OutboxFile, OutboxTransport } from '../patterns/outbox';
 import { runRequest, type ApiCallResult } from '../patterns/request';
 
 type Call = (path: string, init: Record<string, unknown>) => Promise<ApiCallResult<unknown>>;
+
+/** base64 로 담아 둔 파일을 보낼 수 있는 몸으로 되돌린다. */
+const toFormData = (file: OutboxFile): FormData => {
+  const binary = atob(file.data);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  const form = new FormData();
+  form.append('file', new Blob([bytes], { type: file.mimeType }), file.fileName);
+
+  return form;
+};
 
 /**
  * 큐에 담긴 건을 실제로 보낸다.
@@ -22,11 +37,19 @@ export const createOutboxTransport = (api: ApiClient): OutboxTransport => {
       throw new Error(`보낼 수 없는 방식입니다: ${entry.method}`);
     }
 
-    await runRequest(() =>
-      call(entry.path, {
-        body: entry.body,
-        headers: { 'Idempotency-Key': entry.idempotencyKey },
-      }),
-    );
+    /*
+     * 파일은 몸을 통째로 바꾼다. 내용 유형은 브라우저가 경계 문자열과 함께 정해야 해서
+     * 우리가 적지 않는다 — 적으면 경계가 빠져 서버가 몸을 가르지 못한다.
+     */
+    const body = entry.file === undefined ? entry.body : toFormData(entry.file);
+
+    /* 계약이 전 쓰기에 사번을 요구한다. 없으면 서버가 요청 자체를 받지 않는다. */
+    const headers: Record<string, string> = { 'Idempotency-Key': entry.idempotencyKey };
+
+    if (entry.workerNo !== undefined) {
+      headers['X-Worker-No'] = entry.workerNo;
+    }
+
+    return runRequest(() => call(entry.path, { body, headers }));
   };
 };

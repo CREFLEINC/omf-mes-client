@@ -253,6 +253,20 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/shipment/shipment-processing" icon="outbound">
               출하 처리(상차·실물 출고)
             </NavItem>
+            {/*
+             * W-04-05 — 같은 출하 생성 경로를 쓰되 창고 경유·피킹·포장을 건너뛰는 예외 흐름이라
+             * 정상 흐름 바로 뒤에 둔다. 앞에 두면 예외가 기본으로 읽힌다.
+             */}
+            <NavItem to="/shipment/expedited-shipment" icon="bolt">
+              긴급 직행 출하 처리
+            </NavItem>
+            {/*
+             * W-04-12 — 앞의 두 화면이 만든 미확정 출하를 확정·취소한다. 되돌릴 수 있는 구간이
+             * 여기서 끝나므로 두 화면 뒤에 둔다.
+             */}
+            <NavItem to="/shipment/shipment-confirm" icon="task_alt">
+              출하 확정·취소
+            </NavItem>
           </SidebarSection>
           {/* W-02-01 — 생산의 계획·지시 첫 화면이며 현재 생산 블록의 첫 항목으로 둔다. */}
           <SidebarSection label="생산">

@@ -20,6 +20,7 @@ export const dispositionDecision = {
     item: '품목',
     severityCode: '심각도',
     statusCode: '상태',
+    sourceCode: '원천',
     nonconformanceNo: '부적합번호',
     openedAt: '접수일',
     qty: '수량',
@@ -55,12 +56,13 @@ export const dispositionDecision = {
       '상태 기준값이 준비되지 않아 코드 값을 그대로 표시합니다. 원문 뜻은 담당자에게 확인하세요.',
   },
   /**
-   * A-11 — 화면이 만들지 않기로 물러난 항목은 **물러난 사실을 적는다.**
-   * 조용히 빼면 보는 사람이 「없는 기능」이 아니라 「없는 데이터」로 읽는다.
+   * 원천 칸에 상시 붙는 안내 — **비어 있어서가 아니라 축의 범위가 좁아서** 다는 것이다.
+   * 그래서 값 목록이 없을 때 다는 `codePending`과 자리가 다르다.
+   *
+   * ⚠ 설계 원문은 업무 구분 번호를 앞에 달았으나(「04 제품·04 반품」) 화면 문구에는 내부
+   * 구성을 드러내지 않는다(이 파일 머리의 작성 규칙) — 뜻을 그대로 두고 번호만 걷었다.
    */
-  withdrawn: {
-    sourceFilter: '원천으로 거르는 기능은 두지 않았습니다. 품목·심각도·상태로 좁히세요.',
-  },
+  sourceNote: '제품·반품 두 갈래만 옵니다. 수리·자재 부적합은 이 목록으로 들어오지 않습니다.',
   actions: {
     selectRow: (nonconformanceNo: string): string => `${nonconformanceNo} 선택`,
     save: '판정 저장',
@@ -166,6 +168,17 @@ export const dispositionDecision = {
     periodRequired: '기간을 선택해야 조회할 수 있습니다',
     periodInvalid: '달력에 없는 날짜입니다. 있는 날짜로 고쳐 주세요',
     periodReversed: '시작일이 종료일보다 뒤입니다. 두 날짜를 바꿔 주세요',
+    /**
+     * 원천 두 값. 「판정 진행」과 같은 사정이다 — 계약이 값을 열거했으므로(G-2 예외) 이름을
+     * 붙여도 된다. ⛔ **이름을 붙이는 것뿐이고 값으로 «행동»을 가르지 않는다** — 이 화면에서
+     * 원천은 거르는 축으로만 쓰이며, 서버가 대상 LOT의 입고 유형으로 파생해 내린다.
+     *
+     * ⚠ **이름이 겹친다** — 입고 유형의 `PRODUCT`(제품입고)와 뜻이 다르다.
+     */
+    sourceCode: {
+      PRODUCT: '제품',
+      RETURN: '반품',
+    },
     /** 「판정 진행」 열의 값 셋. 계약이 값을 열거했으므로(G-2 예외) 코드로 갈라도 된다. */
     dispositionProgress: {
       NOT_STARTED: '미판정',
