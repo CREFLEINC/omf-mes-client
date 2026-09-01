@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { scanMissOf, toOutboxDraft, validateReport } from './report';
 
+/* 화면의 시각 칸이 주는 모양 그대로 둔다 - 시:분뿐이다. */
 const report = {
   equipmentId: 7,
   symptom: '유압 누유 · 실린더 하부',
   occurrenceState: 'STOPPED' as const,
-  stoppedAt: '2026-09-01T14:20:00.000Z',
+  stoppedAt: '14:20',
   notifyAssignee: true,
 };
 
@@ -49,7 +50,7 @@ describe('큐에 담을 모양', () => {
       equipmentId: 7,
       symptom: '유압 누유 · 실린더 하부',
       occurrenceStateCode: 'STOPPED',
-      stoppedAt: '2026-09-01T14:20:00.000Z',
+      stoppedAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) as unknown as string,
       reportedAt: OCCURRED_AT,
       notifyAssignee: true,
     });
@@ -69,6 +70,17 @@ describe('큐에 담을 모양', () => {
     const draft = toOutboxDraft({ ...report, symptom: '  누유  ' }, OCCURRED_AT);
 
     expect((draft.body as { symptom: string }).symptom).toBe('누유');
+  });
+
+  /* 계약이 받는 것은 날짜까지 있는 시각이다. 화면의 시각 칸은 시:분만 준다. */
+  it('시각 칸의 시:분을 그날의 시각으로 만들어 담는다', () => {
+    const draft = toOutboxDraft({ ...report, stoppedAt: '14:20' }, '2026-09-01T14:31:00.000Z');
+    const sent = (draft.body as { stoppedAt: string }).stoppedAt;
+
+    expect(sent).not.toBe('14:20');
+    expect(Number.isNaN(Date.parse(sent))).toBe(false);
+    expect(new Date(sent).getHours()).toBe(14);
+    expect(new Date(sent).getMinutes()).toBe(20);
   });
 
   it('정지 시각을 모르면 비운 채로 담는다', () => {

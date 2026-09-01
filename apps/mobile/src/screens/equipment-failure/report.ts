@@ -3,6 +3,25 @@ import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 /** 멈췄다 / 돌지만 이상하다. 정지 여부가 뒤를 가른다. */
 export type OccurrenceState = 'STOPPED' | 'ABNORMAL';
 
+/**
+ * 화면의 시각 칸이 주는 것은 시:분뿐인데 계약이 받는 것은 날짜까지 있는 시각이다.
+ *
+ * 보고 시각과 같은 날로 본다. 고장을 적는 것은 난 직후라 날을 넘길 일이 드물고, 넘겼다면
+ * 시각만으로는 어느 날인지 알 수 없어 어차피 화면이 물어야 한다.
+ */
+export const stoppedAtOf = (hourMinute: string, occurredAt: string): string | null => {
+  const match = /^(\d{2}):(\d{2})$/.exec(hourMinute);
+
+  if (match === null) {
+    return null;
+  }
+
+  const at = new Date(occurredAt);
+  at.setHours(Number(match[1]), Number(match[2]), 0, 0);
+
+  return at.toISOString();
+};
+
 export interface FailureReport {
   equipmentId: number;
   symptom: string;
@@ -50,7 +69,7 @@ export const toOutboxDraft = (report: FailureReport, occurredAt: string): Outbox
     equipmentId: report.equipmentId,
     symptom: report.symptom.trim(),
     occurrenceStateCode: report.occurrenceState,
-    stoppedAt: report.stoppedAt,
+    stoppedAt: report.stoppedAt === null ? null : stoppedAtOf(report.stoppedAt, occurredAt),
     reportedAt: occurredAt,
     notifyAssignee: report.notifyAssignee,
   },

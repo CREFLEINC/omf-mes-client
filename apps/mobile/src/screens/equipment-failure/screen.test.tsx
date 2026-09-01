@@ -229,6 +229,50 @@ describe('설비 고장 보고 화면', () => {
     expect(seen.some((url) => url.pathname === '/maintenance/breakdowns')).toBe(true);
   });
 
+  /* 앞서 담긴 남의 건이 거부됐다고 이 보고까지 못 간 것으로 말하면 안 된다. */
+  it('큐에 있던 다른 건이 거부돼도 이 보고의 결과로 말한다', async () => {
+    const user = userEvent.setup();
+    store.set(
+      'outbox',
+      JSON.stringify([
+        {
+          id: 'old',
+          idempotencyKey: 'old-key',
+          method: 'POST',
+          path: '/production/results',
+          body: {},
+          occurredAt: '2026-09-01T00:00:00.000Z',
+          confirmation: 'immediate',
+        },
+      ]),
+    );
+
+    renderWithProviders(<EquipmentFailureScreen />, {
+      fetch: createStubFetch([
+        ...routes(),
+        {
+          match: (request: Request) => new URL(request.url).pathname === '/production/results',
+          respond: () => jsonResponse({ code: 'CONFLICT' }, { status: 409 }),
+        },
+        {
+          match: (request: Request) =>
+            new URL(request.url).pathname === '/maintenance/breakdowns' &&
+            request.method === 'POST',
+          respond: () => jsonResponse({ breakdownId: 1 }, { status: 201 }),
+        },
+      ]),
+    });
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
+    await user.click(screen.getByRole('button', { name: '고장 보고' }));
+
+    expect(await screen.findByText('고장을 보고했습니다')).toBeInTheDocument();
+  });
+
   /* 담긴 것만으로 보고됨이라 하면 설비담당이 오지 않는데 온 줄 안다. */
   it('보내지 못하면 담아 두었다고만 말한다', async () => {
     const user = userEvent.setup();

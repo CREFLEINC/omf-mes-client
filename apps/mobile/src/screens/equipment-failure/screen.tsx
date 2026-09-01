@@ -105,26 +105,37 @@ export const EquipmentFailureScreen = () => {
     }
 
     const occurredAt = new Date().toISOString();
-
-    await enqueue(
-      toOutboxDraft(
-        {
-          equipmentId: selected.equipmentId,
-          symptom,
-          occurrenceState: state,
-          stoppedAt: stoppedAt === '' ? null : stoppedAt,
-          notifyAssignee: notify,
-        },
-        occurredAt,
-      ),
+    const draft = toOutboxDraft(
+      {
+        equipmentId: selected.equipmentId,
+        symptom,
+        occurrenceState: state,
+        stoppedAt: stoppedAt === '' ? null : stoppedAt,
+        notifyAssignee: notify,
+      },
+      occurredAt,
     );
+
+    await enqueue(draft);
 
     /*
      * 담은 뒤 곧바로 보내 본다. 사람이 기다리는 보고라 닿을 수 있으면 지금 보내는 편이 낫고,
      * 못 닿으면 담긴 채로 남아 다음 기회에 나간다.
      */
     const result = await flush().catch(() => null);
-    setOutcome(result?.outcome === 'drained' && result.rejected.length === 0 ? 'sent' : 'queued');
+
+    /*
+     * 큐에는 남의 건도 있다. 그것이 거부됐다고 이 보고까지 못 간 것으로 말하면, 간 것을
+     * 안 갔다고 하는 셈이라 보고자가 같은 고장을 또 적는다.
+     */
+    const mine = (entry: { idempotencyKey: string }) =>
+      entry.idempotencyKey === draft.idempotencyKey;
+    const stuck =
+      result === null ||
+      result.rejected.some((item) => mine(item.entry)) ||
+      result.remaining.some(mine);
+
+    setOutcome(stuck ? 'queued' : 'sent');
   };
 
   const restart = () => {
