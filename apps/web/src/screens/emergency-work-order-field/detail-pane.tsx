@@ -27,7 +27,7 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
 
   return (
     <section className="pane" aria-label={t.title}>
-      <h2 className="field-label">{t.title}</h2>
+      <h2>{t.title}</h2>
 
       {workOrder === null ? (
         <div className="banner-slot">
@@ -43,7 +43,7 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
           </Card.Header>
 
           <Card.Body>
-            <dl>
+            <dl className="pop-detail-list">
               <dt>{t.item}</dt>
               <dd>{itemText(workOrder)}</dd>
               <dt>{t.orderQty}</dt>

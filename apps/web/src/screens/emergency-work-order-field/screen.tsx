@@ -61,8 +61,12 @@ export const EmergencyWorkOrderFieldScreen = ({
       {/*
        * ⭐ 스펙이 **좌 목록 / 우 상세** 2단으로 못박은 배치다. 세로로 쌓으면 1024×768 단말에서
        *    상세와 이탈 버튼이 접혀 내려가, 고른 뒤 «스크롤해서» 버튼을 찾게 된다.
+       *
+       * ⛔ 관리웹의 `.two-pane` 을 쓰지 않는다 — 접힘 기준점이 1280px 이라 **1024 단말에서는
+       *    언제나 접힌다.** POP 기준점(900px)과 그 근거는 `app.css` 의 `.pop-two-pane` 에 적었다
+       *    (배치 규범 5 이탈 조건).
        */}
-      <div className="two-pane">
+      <div className="pop-two-pane">
         <WorkOrderList
           workOrders={workOrders}
           isAsked={isAsked}
