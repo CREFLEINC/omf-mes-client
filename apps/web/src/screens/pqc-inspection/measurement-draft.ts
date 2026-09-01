@@ -1,5 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 
+import { judgeAutomatically } from './auto-judgment';
 import type { MeasurementRow } from './measurement-rows';
 
 /**
@@ -15,9 +16,9 @@ import type { MeasurementRow } from './measurement-rows';
  * (`ck_inspection_measurement num_nonnulls ≤ 1`), 셋 다 비어도 된다 — 육안 항목은 판정만으로
  * 성립한다. **판정은 언제나 필수다.**
  *
- * ⛔ **규격 밖이라고 판정을 대신 채우지 않는다**(스펙 §6). 계약의 `judgmentCode` 설명도 같은
- * 말을 못박았다 — 표시하고 **사람이 판정한다.** 항목 규격의 `automaticJudgment` 플래그는
- * 그 문면과 어긋나 보여 설계에 물었고(omf-mes#257), 답이 올 때까지 **읽지 않는다.**
+ * ⭐ **자동 판정이 서는 항목은 채운 채로 시작한다**(§5-11 · `auto-judgment.ts`). 채운 값은
+ * 시작점이지 확정이 아니라 **사람이 바꿀 수 있다.** 「자동 불합격이 아니다」(§6)는 «종합»
+ * 판정이 자동으로 내려지지 않는다는 뜻이고, 항목 판정을 채우는 것과 층이 다르다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -52,17 +53,23 @@ const NUMBER_PATTERN = /^-?\d+(?:\.\d+)?$/;
 /**
  * 저장된 측정치를 편집 초안으로 옮긴다. 아직 재지 않은 줄은 빈 초안이다.
  *
- * ⛔ **판정을 미리 채우지 않는다** — 채우면 「사람이 합격으로 판정했다」와 「아직 판정하지
- * 않았다」가 화면에서 같아 보인다.
+ * ⭐ **저장된 판정이 우선한다.** 사람이 이미 내린 판정을 자동 판정으로 덮지 않는다 — 덮으면
+ * 검사자가 고친 값이 재조회마다 되돌아간다.
+ *
+ * ⭐ **판정이 비어 있고 자동 판정이 서면 그때 채운다**(§5-11). 채운 값은 시작점이라 사람이
+ * 바꿀 수 있고, 서지 않는 항목은 비운 채 둔다 — 「사람이 합격으로 판정했다」와 「아직 판정
+ * 하지 않았다」가 화면에서 같아 보이면 안 된다.
  */
 export const toMeasurementDrafts = (rows: readonly MeasurementRow[]): MeasurementDrafts => {
   const drafts: MeasurementDrafts = {};
 
   for (const row of rows) {
-    drafts[row.key] =
-      row.measured === null
-        ? EMPTY_MEASUREMENT_DRAFT
-        : { judgment: row.measured.judgmentCode, value: storedValueOf(row) };
+    const stored = row.measured === null ? '' : row.measured.judgmentCode;
+
+    drafts[row.key] = {
+      judgment: stored === '' ? (judgeAutomatically(row) ?? '') : stored,
+      value: storedValueOf(row),
+    };
   }
 
   return drafts;

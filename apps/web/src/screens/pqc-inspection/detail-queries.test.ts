@@ -10,7 +10,7 @@ import {
   waitingRequest,
 } from './fixtures';
 import { useInspectionRequestDetail, useInspectionRounds } from './queries';
-import { latestRound, previousRounds, toInspectionResultRound } from './types';
+import { latestRound, toInspectionResultRound } from './types';
 
 const detailRoute = () => ({
   match: (request: Request) =>
@@ -103,31 +103,5 @@ describe('latestRound', () => {
     const rounds = [confirmedRound, reinspectionRound].map(toInspectionResultRound);
 
     expect(latestRound(rounds)?.inspectionRound).toBe(2);
-  });
-});
-
-describe('previousRounds', () => {
-  /* 최신은 위쪽 폼이 이미 그린다 — 이력에 또 실으면 같은 회차가 화면에 둘이다. */
-  it('최신 회차를 빼고 큰 회차부터 준다', () => {
-    const third = { ...reinspectionRound, inspectionResultId: 9003, inspectionRound: 3 };
-    /* 서버가 주는 차례를 믿지 않는다 — 뒤섞어 넣고 화면이 정렬한다. */
-    const rounds = [confirmedRound, third, reinspectionRound].map(toInspectionResultRound);
-
-    expect(previousRounds(rounds).map((round) => round.inspectionRound)).toEqual([2, 1]);
-  });
-
-  it('회차가 하나뿐이면 비어 있다', () => {
-    expect(previousRounds([toInspectionResultRound(confirmedRound)])).toEqual([]);
-  });
-
-  /*
-   * ⭐ 최신을 **식별자로** 뺀다. 번호로 빼면 같은 번호가 둘 있을 때(서버가 잘못 준 상황)
-   * 둘 다 사라져 화면에서 이력이 조용히 짧아진다.
-   */
-  it('같은 번호가 둘이어도 하나만 뺀다 — 이력이 조용히 짧아지지 않는다', () => {
-    const twin = { ...confirmedRound, inspectionResultId: 9009 };
-    const rounds = [confirmedRound, twin].map(toInspectionResultRound);
-
-    expect(previousRounds(rounds)).toHaveLength(1);
   });
 });

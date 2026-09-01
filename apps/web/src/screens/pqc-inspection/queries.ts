@@ -265,6 +265,11 @@ export interface SaveDraftVariables {
   overallJudgmentCode: string;
   /** 검사한 시각. **호출부가 준다** — 이 파일이 실행 환경의 시각을 스스로 읽지 않는다 */
   inspectedAt: string;
+  /**
+   * 자유 입력. **검사 기준이 없는 갈래가 쓰는 자리**다(§5-2) — 항목표가 없어 적을 곳이
+   * 여기뿐이다. 비어 있으면 키 자체를 싣지 않는다.
+   */
+  remarks: string;
   /** 이 검사가 대표하는 생산 구간(§5-5). 빈 칸은 키 자체가 실리지 않는다 */
   coverage: CoverageDraft;
   /**
@@ -362,6 +367,10 @@ const previousOf = (previousResultId: number | null): { previousResultId?: numbe
  * 잰 것이 없으면 **키 자체를 싣지 않는다** — 빈 배열을 보내면 서버가 그것을 「측정치를
  * 전부 지워라」로 읽을 수 있다. 아직 아무것도 재지 않은 상태와 지우려는 뜻은 다르다.
  */
+/** 빈 자유 입력은 **키 자체를 싣지 않는다** — 빈 문자열을 보내면 「비우라」로 읽힐 수 있다. */
+const remarksOf = (remarks: string): { remarks?: string } =>
+  remarks.trim() === '' ? {} : { remarks: remarks.trim() };
+
 const measurementsOf = (
   measurements: InspectionMeasurementInput[],
 ): { measurements?: InspectionMeasurementInput[] } =>
@@ -380,6 +389,7 @@ const toCreateBody = (v: SaveDraftVariables): InspectionResultCreate => ({
   ...previousOf(v.previousResultId),
   ...toCoverageBody(v.coverage),
   ...measurementsOf(v.measurements),
+  ...remarksOf(v.remarks),
 });
 
 const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
@@ -390,6 +400,7 @@ const toUpdateBody = (v: SaveDraftVariables): InspectionResultUpdate => ({
   ...judgmentOf(v.overallJudgmentCode),
   ...toCoverageBody(v.coverage),
   ...measurementsOf(v.measurements),
+  ...remarksOf(v.remarks),
 });
 
 /** 확정이 보내는 값. ⛔ 처분·비고를 싣지 않는다 — 스펙 §4-B 가 싣지 않은 칸이다. */

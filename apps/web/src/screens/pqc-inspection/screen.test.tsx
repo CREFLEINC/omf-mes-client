@@ -184,6 +184,103 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
   });
 });
 
+describe('PqcInspectionScreen — 검사 기준이 없는 갈래', () => {
+  /**
+   * 기준 없는 의뢰를 흉내 낸다 — 기준 버전이 비어 온다. 어느 경로를 «불렀는지»도 함께 센다.
+   */
+  const renderWithoutStandard = () => {
+    const called: string[] = [];
+
+    const fetch = createStubFetch([
+      {
+        match: (request) => request.method !== 'GET',
+        respond: (request) => {
+          called.push(new URL(request.url).pathname);
+          return jsonResponse(draftRound, { status: 201 });
+        },
+      },
+      {
+        match: (request) => new URL(request.url).pathname.endsWith('/items'),
+        respond: (request) => {
+          called.push(new URL(request.url).pathname);
+          return jsonResponse(itemSpecsResponse());
+        },
+      },
+      {
+        match: (request) => new URL(request.url).pathname.endsWith('/measurements'),
+        respond: () => jsonResponse(measurementsResponse([])),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/quality/inspection-results',
+        respond: () => jsonResponse(roundsResponse([draftRound])),
+      },
+      {
+        match: (request) =>
+          /^\/quality\/inspection-results\/\d+$/.test(new URL(request.url).pathname),
+        respond: () => jsonResponse(draftRound, { headers: { ETag: 'W/"1"' } }),
+      },
+      {
+        match: (request) =>
+          new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
+        /* 기준 버전이 «비어» 온다 — 기준 없이 만들어진 의뢰다. */
+        respond: () => jsonResponse({ ...waitingRequest, inspectionPlanVersionId: undefined }),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+        respond: () => jsonResponse(codeValuesResponse(overallJudgmentCodeValues)),
+      },
+    ]);
+
+    renderWithProviders(<PqcInspectionScreen />, { route: '/?ir=1001', fetch });
+
+    return { called };
+  };
+
+  /*
+   * ⛔ 「기준을 먼저 등록하세요」로 되돌리면 현장이 멈춘다 — 기준 미등록은 실제로 일어나는
+   * 상태이고, 확정이 「단순 선택이라도 하라」고 한 이유가 그것이다.
+   */
+  it('막지 않고 판정과 자유 입력을 그린다', async () => {
+    renderWithoutStandard();
+
+    expect(await screen.findByText(t.noStandard.note)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.noStandard.remarks)).toBeInTheDocument();
+    /* 항목표는 이 갈래에 없다. */
+    expect(screen.queryByText(t.measurements.heading)).not.toBeInTheDocument();
+  });
+
+  it('항목 목록 경로를 부르지 않는다', async () => {
+    const { called } = renderWithoutStandard();
+
+    await screen.findByText(t.noStandard.note);
+
+    expect(called.some((path) => path.endsWith('/items'))).toBe(false);
+  });
+
+  /*
+   * ⛔ 두 값짜리 목록을 따로 만들지 않는다 — 이 갈래의 판정은 **종합 판정 그것**이고
+   * 우측 구획에 이미 있다(통지 #589). 좌우에 같은 값을 두 번 두지 않는다.
+   */
+  it('종합 판정을 좌측에 다시 두지 않는다', async () => {
+    renderWithoutStandard();
+
+    await screen.findByText(t.noStandard.note);
+
+    /* 우측 구획에 하나만 있어야 한다 — 둘이면 어느 쪽이 정본인지 알 수 없다. */
+    expect(screen.getAllByLabelText(t.result.judgment)).toHaveLength(1);
+  });
+
+  it('자유 입력을 적고 저장할 수 있다', async () => {
+    renderWithoutStandard();
+
+    await screen.findByText(t.noStandard.note);
+    await userEvent.type(screen.getByLabelText(t.noStandard.remarks), '외관 양호');
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    expect(await screen.findByText(t.result.saved)).toBeInTheDocument();
+  });
+});
+
 describe('PqcInspectionScreen — 검사 항목 구획', () => {
   /* ⭐ 무엇이 남았는지가 이 구획의 정보다(스펙 §3 「진행 2 / 3」). */
   it('진행 n / m 을 보인다', async () => {

@@ -26,6 +26,7 @@ const rowOf = (
   itemName: '항목',
   itemCode: 'ITEM',
   dataTypeCode,
+  automaticJudgment: false,
   sampleNo: Number(key.split('-')[1]),
   sampleCount: 1,
   required: true,
@@ -71,6 +72,45 @@ describe('toMeasurementDrafts — 저장된 값을 초안으로', () => {
     ]);
 
     expect(drafts['2-1']).toEqual({ judgment: 'REJECTED', value: 'false' });
+  });
+});
+
+describe('자동 판정과 저장된 판정', () => {
+  const autoRow = (measuredJudgment: string, value: number): MeasurementRow => ({
+    ...rowOf('9-1', DATA_TYPES.numeric, {
+      numericValue: value,
+      textValue: null,
+      booleanValue: null,
+      judgmentCode: measuredJudgment,
+      measuredAt: '2026-09-01T09:00:00+09:00',
+      inspectionEquipmentId: null,
+      calibrationExpired: false,
+    }),
+    automaticJudgment: true,
+    spec: { target: null, lower: 9.9, upper: 10.1 },
+  });
+
+  /*
+   * ⭐ 사람이 이미 내린 판정을 자동 판정으로 덮으면 **검사자가 고친 값이 재조회마다
+   * 되돌아간다.** 저장된 값이 우선한다.
+   */
+  it('저장된 판정이 있으면 자동 판정이 덮지 않는다', () => {
+    /* 값은 규격 밖(12)이라 자동 판정은 불합격을 낼 자리인데, 저장된 것은 합격이다. */
+    const drafts = toMeasurementDrafts([autoRow('ACCEPTED', 12)]);
+
+    expect(drafts['9-1']?.judgment).toBe('ACCEPTED');
+  });
+
+  it('저장된 판정이 없고 자동 판정이 서면 채운 채로 시작한다', () => {
+    const drafts = toMeasurementDrafts([autoRow('', 12)]);
+
+    expect(drafts['9-1']?.judgment).toBe('REJECTED');
+  });
+
+  it('자동 판정이 서지 않으면 비운 채로 둔다', () => {
+    const drafts = toMeasurementDrafts([rowOf('1-1', DATA_TYPES.numeric)]);
+
+    expect(drafts['1-1']?.judgment).toBe('');
   });
 });
 

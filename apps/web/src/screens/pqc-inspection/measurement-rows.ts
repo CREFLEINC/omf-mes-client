@@ -47,6 +47,11 @@ export interface MeasurementRow {
    * 모양을 이 값으로 고르고, 규격 대비 판정도 수치형에만 뜻이 있다.
    */
   dataTypeCode: string;
+  /**
+   * 이 항목을 **상·하한으로 자동 판정할지**(§5-11). 기준정보가 항목마다 갖는 스위치다.
+   * ⛔ 화면이 정하는 값이 아니다 — 검사기준 등록 화면에서 사람이 켜고 끈다.
+   */
+  automaticJudgment: boolean;
   /** 이 항목의 몇 번째 샘플인가. 1부터 */
   sampleNo: number;
   /** 이 항목이 요구하는 샘플 수 — 같은 항목의 줄들이 공유한다 */
@@ -119,6 +124,8 @@ export const toMeasurementRows = (
         itemName: spec.inspectionItemName,
         itemCode: spec.inspectionItemCode,
         dataTypeCode: spec.dataTypeCode,
+        /* 계약 기본값이 참이다 — 값이 안 오면 「자동 판정한다」로 읽는다. */
+        automaticJudgment: spec.automaticJudgment ?? true,
         sampleNo,
         sampleCount,
         required: spec.requiredFlag,

@@ -2,6 +2,7 @@ import { Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { lacksLimits } from './auto-judgment';
 import { isKnownCode, type CodeOption } from './code-options';
 import {
   DATA_TYPES,
@@ -173,6 +174,11 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, isLocked }: ItemRowPro
           {!isKnownCode(judgmentOptions, draft.judgment) && (
             <p className="field-note">{t.judgmentUnknown(draft.judgment)}</p>
           )}
+          {/*
+           * ⚠ 자동 판정 플래그는 켜졌는데 기준이 없어 판정이 서지 않는다(§6). ⛔ 저장을
+           * 막지 않고 사유만 보인다 — 사람이 고르면 된다(조항 G-15).
+           */}
+          {lacksLimits(row) && <p className="field-note">{t.autoJudgmentNoLimits}</p>}
         </div>
       </div>
 

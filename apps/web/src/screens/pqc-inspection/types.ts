@@ -70,8 +70,16 @@ export const toInspectionQueueResult = (response: {
 export interface InspectionRequestDetail {
   inspectionRequestId: number;
   inspectionRequestNo: string;
-  /** ⚠ 검사 시점에 고정되는 기준 버전. 화면 표시 필수(§4-A) */
-  inspectionPlanVersionId: number;
+  /**
+   * ⚠ 검사 시점에 고정되는 기준 버전. **비어 있을 수 있다** — 검사 기준이 등록되지 않은
+   * 상태에서도 검사한다는 확정이 있어(2026-07-15), 기준 없이 만들어진 의뢰가 이 칸을 비운
+   * 채 온다. 비면 화면이 **두 번째 갈래**로 간다(§5-2 · 통지 #589).
+   *
+   * ⚠ 생성 타입은 아직 이 칸을 필수로 잡고 있다(계약은 옵셔널로 바뀌었으나 재생성이 전
+   * 도메인을 함께 끌어와 이 이슈에서 돌리지 않았다). **런타임에는 비어 올 수 있으므로**
+   * 여기서 없음으로 접는다.
+   */
+  inspectionPlanVersionId: number | null;
   workOrderId: number | null;
   lotId: number | null;
   itemId: number;
@@ -89,7 +97,7 @@ export const toInspectionRequestDetail = (
 ): InspectionRequestDetail => ({
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
-  inspectionPlanVersionId: item.inspectionPlanVersionId,
+  inspectionPlanVersionId: item.inspectionPlanVersionId ?? null,
   workOrderId: item.workOrderId ?? null,
   lotId: item.lotId ?? null,
   itemId: item.itemId,
@@ -120,6 +128,8 @@ export interface InspectionResultRound {
   statusCode: string;
   confirmedAt: string | null;
   previousResultId: number | null;
+  /** 자유 입력. **기준 없는 갈래**가 쓰는 자리다(§5-2) */
+  remarks: string;
 }
 
 export const toInspectionResultRound = (item: InspectionResultResponse): InspectionResultRound => ({
@@ -133,6 +143,7 @@ export const toInspectionResultRound = (item: InspectionResultResponse): Inspect
   statusCode: item.statusCode,
   confirmedAt: item.confirmedAt ?? null,
   previousResultId: item.previousResultId ?? null,
+  remarks: item.remarks ?? '',
 });
 
 /**
@@ -146,19 +157,3 @@ export const latestRound = (rounds: InspectionResultRound[]): InspectionResultRo
       latest === null || round.inspectionRound > latest.inspectionRound ? round : latest,
     null,
   );
-
-/**
- * 최신 회차를 뺀 **이전 회차들**. 큰 회차가 앞에 온다.
- *
- * ⭐ 최신을 **회차 번호로 고른 뒤 식별자로 뺀다.** 번호로 빼면 같은 번호가 둘 있을 때
- * (서버가 잘못 준 상황) 둘 다 사라져 화면에서 이력이 조용히 짧아진다 — 식별자로 빼면
- * 하나만 빠지고 나머지는 눈에 보인다.
- */
-export const previousRounds = (rounds: InspectionResultRound[]): InspectionResultRound[] => {
-  const latest = latestRound(rounds);
-
-  return rounds
-    .filter((round) => round.inspectionResultId !== latest?.inspectionResultId)
-    .slice()
-    .sort((left, right) => right.inspectionRound - left.inspectionRound);
-};

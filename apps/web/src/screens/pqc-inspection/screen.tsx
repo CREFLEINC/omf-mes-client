@@ -15,6 +15,7 @@ import {
   type CoverageDraft,
 } from './coverage';
 import { settleDisposition, type DispositionState } from './disposition';
+import { FreeInputPanel } from './free-input-panel';
 import { ItemPanel } from './item-panel';
 import { QueueLoadErrorBanner } from './load-error-banner';
 import {
@@ -110,6 +111,10 @@ export const PqcInspectionScreen = () => {
   /* ⭐ 잠금 토큰을 얻으려고 회차 한 건을 따로 부른다 — 목록 200 에는 `ETag` 가 없다. */
   useInspectionRoundLock(editingResultId);
 
+  /**
+   * ⭐ **기준이 없으면 항목 목록을 부르지 않는다**(§5-2 · 통지 #589). 부를 버전이 없고,
+   * 그 갈래에는 항목표 자체가 없다.
+   */
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
   /*
    * ⚠ **재검사 중에는 앞 회차의 측정치를 그리지 않는다.** 그리면 아직 아무것도 재지 않은 새
@@ -142,6 +147,8 @@ export const PqcInspectionScreen = () => {
   const [coverage, setCoverage] = useState<CoverageDraft>(EMPTY_COVERAGE_DRAFT);
   const [disposition, setDisposition] = useState<DispositionState>(null);
   const [judgment, setJudgment] = useState('');
+  /** 자유 입력 — **기준 없는 갈래가 쓰는 자리**다(§5-2). */
+  const [remarks, setRemarks] = useState('');
   const [showErrors, setShowErrors] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isJustConfirmed, setIsJustConfirmed] = useState(false);
@@ -166,6 +173,7 @@ export const PqcInspectionScreen = () => {
     heldQty: 0,
   };
   const storedJudgment = round?.overallJudgmentCode ?? '';
+  const storedRemarks = round?.remarks ?? '';
   /* 회차가 있으면 그 검사 수량, 없으면 의뢰의 대상 수량에서 시작한다. */
   const storedInspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
   const coverageFromAt = detail.data?.coverageFromAt ?? null;
@@ -212,6 +220,7 @@ export const PqcInspectionScreen = () => {
      * 고른 처분이 남아 있으면, 검사자는 그것을 «이 대상의 판단»으로 읽는다.
      */
     setDisposition(null);
+    setRemarks(storedRemarks);
     setCoverage(toCoverageDraft(coverageFromAt, coverageToAt));
     setInspectedDraft(String(storedInspectedQty));
   }, [
@@ -221,6 +230,7 @@ export const PqcInspectionScreen = () => {
     rejectedQty,
     heldQty,
     storedJudgment,
+    storedRemarks,
     storedInspectedQty,
     coverageFromAt,
     coverageToAt,
@@ -339,6 +349,7 @@ export const PqcInspectionScreen = () => {
        */
       overallJudgmentCode: judgment,
       inspectedAt,
+      remarks,
       /*
        * ⭐ **구간이 비어 있으면 검사 시각으로 채워 보낸다.** 표본 검사는 대표 구간이 있어야
        * 불합격 시 회수 범위가 정해진다 — 비운 채 저장하면 그 근거가 영영 없다.
@@ -387,20 +398,31 @@ export const PqcInspectionScreen = () => {
     );
   }
 
+  const planVersionId = detail.data.inspectionPlanVersionId;
+
   return (
     <PqcFrame>
       <TargetHeader detail={detail.data} />
 
       <div className="pop-inspect">
-        <ItemPanel
-          inspectionPlanVersionId={detail.data.inspectionPlanVersionId}
-          rows={rows}
-          drafts={drafts}
-          onChange={changeMeasurement}
-          judgmentOptions={itemJudgmentOptions}
-          isLoading={itemSpecs.isLoading || measurements.isLoading}
-          isLocked={isLocked}
-        />
+        {/*
+         * ⭐ **갈래가 둘이다**(§5-2 · 통지 #589). 검사 기준이 없으면 항목표 대신 판정 선택과
+         * 자유 입력만 보인다 — 기준 미등록은 현장에서 실제로 일어나고, 그때 검사를 막으면
+         * 제품이 멈춘다. 어느 갈래인지는 **의뢰에 기준이 실려 있는가**로 갈린다.
+         */}
+        {planVersionId === null ? (
+          <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} isLocked={isLocked} />
+        ) : (
+          <ItemPanel
+            inspectionPlanVersionId={planVersionId}
+            rows={rows}
+            drafts={drafts}
+            onChange={changeMeasurement}
+            judgmentOptions={itemJudgmentOptions}
+            isLoading={itemSpecs.isLoading || measurements.isLoading}
+            isLocked={isLocked}
+          />
+        )}
 
         <ResultPanel
           inspectedDraft={inspectedDraft}
