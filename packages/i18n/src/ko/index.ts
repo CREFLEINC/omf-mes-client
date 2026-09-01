@@ -93,6 +93,7 @@ import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
 import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
+import { inboundReceipt } from './inbound-receipt';
 
 export const ko = {
   common,
@@ -174,6 +175,7 @@ export const ko = {
   shipmentConfirm,
   repairRoundtrip,
   productPicking,
+  inboundReceipt,
 } as const;
 
 export type Messages = typeof ko;

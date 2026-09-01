@@ -7,6 +7,9 @@ export const ShellHome = () => {
     <nav aria-label="화면 목록">
       <ul>
         <li>
+          <Link to="/inbound-receipt">{messages.inboundReceipt.title}</Link>
+        </li>
+        <li>
           <Link to="/material-location">{messages.materialLocation.title}</Link>
         </li>
         <li>
