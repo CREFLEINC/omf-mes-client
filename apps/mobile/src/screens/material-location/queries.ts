@@ -19,11 +19,18 @@ export const materialLocationKeys = {
 };
 
 const findLot = async (client: Client, code: string): Promise<ScannedLot> => {
+  /*
+   * 정확 일치로 묻는다. 부분 검색은 LOT 번호와 외부 식별자를 함께 훑어 여러 줄이 오고,
+   * 그러면 찾는 줄이 첫 페이지 밖으로 밀릴 수 있다. 밀린 것은 없는 것과 구별되지 않는다.
+   */
   const data = await runRequest(() =>
-    client.GET('/trace/lots', { params: { query: { q: code } } }),
+    client.GET('/trace/lots', { params: { query: { lotNo: code } } }),
   );
 
-  // q는 LOT 번호와 외부 식별자를 함께 훑으므로 다른 줄이 섞여 온다.
+  /*
+   * 돌아온 줄도 확인한다. 정확 일치가 지켜지지 않으면 첫 줄은 다른 LOT 이고, 그때 화면은
+   * 남의 위치와 수량을 이 LOT 의 것으로 보인다. 없다고 하는 편이 낫다.
+   */
   const found = data.items.find((lot) => lot.lotNo === code);
 
   return found === undefined
