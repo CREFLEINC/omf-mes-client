@@ -12,7 +12,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
 import { useScannedLot } from '../../patterns/lots';
-import { useItemName, useUomCodes } from '../../patterns/masters';
+import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -77,7 +77,7 @@ export const RepairRoundtripScreen = () => {
 
   const lot = useScannedLot(scanned);
   const lotId = lot.data?.lotId ?? null;
-  const item = useItemName(lot.data?.itemId ?? null);
+  const item = useItem(lot.data?.itemId ?? null);
   const uoms = useUomCodes(true);
   const defects = useDefectRecords(lotId);
   const scopedOpen = useOpenRepairs(lotId);

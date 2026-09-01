@@ -8,13 +8,15 @@ export const masterKeys = {
   uoms: () => ['master-uoms'] as const,
 };
 
-export interface ItemName {
+export interface ItemSummary {
   itemCode: string;
   itemName: string;
+  /** 선출 정책. 품목마다 다르고 전사 고정이 아니다. */
+  fifoPolicyCode: string;
 }
 
 /** 계약의 LOT 응답에 품목 이름이 없어 되짚어 부른다. 스캔한 것이 맞는지 사람이 볼 값이다. */
-export const useItemName = (itemId: number | null): UseQueryResult<ItemName> => {
+export const useItem = (itemId: number | null): UseQueryResult<ItemSummary> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -29,7 +31,11 @@ export const useItemName = (itemId: number | null): UseQueryResult<ItemName> => 
         client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } }),
       );
 
-      return { itemCode: data.item.itemCode, itemName: data.item.itemName };
+      return {
+        itemCode: data.item.itemCode,
+        itemName: data.item.itemName,
+        fifoPolicyCode: data.item.fifoPolicyCode,
+      };
     },
   });
 };
