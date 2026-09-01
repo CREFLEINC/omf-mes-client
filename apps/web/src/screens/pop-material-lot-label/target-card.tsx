@@ -24,7 +24,7 @@ export interface TargetCardProps {
  *
  * ⛔ **상태를 보이지 않는다.** 스펙 §4-B 가 2026-08-25 종결로 확정했다 — 「Hold」는
  * `lot.status_code` 값이 아니고 입하 보류는 서버가 등록과 함께 자동으로 건다. 화면은 응답의
- * `held`로 보류 여부만 읽으므로 **등록 전에는 보일 것이 없다.**
+ * `held`로 보류 여부만 읽으므로 **등록 전에는 보일 것이 없다**(변경 통지 #534).
  *
  * ⚠ **등록·인쇄·재인쇄를 감추지 않고 비활성으로 둔다**(F-1 — 「숨기지 않는다. 왜 못 하는지
  * 알아야 한다」). 스펙 §5-2 가 세 걸음을 확정했고 계약도 갖췄으나, 그 계약을 이 저장소에
@@ -52,7 +52,14 @@ export const TargetCard = ({ row, itemLookup, uomLookup, supplierLookup }: Targe
 
       <Card>
         <p className="pop-lot-label">{t.lotPreview.label}</p>
-        <p className="field-note">{t.lotPreview.pending}</p>
+        {/*
+         * 등록 전에는 번호가 없다 — 서버가 등록 시점에 매기므로 화면이 미리 만들면 실제
+         * 번호와 달라진다(스펙 §3).
+         *
+         * ⛔ **대형 텍스트 서식을 미리 만들지 않는다**(§7-1 「Card 내 대형 텍스트」). 보일 값이
+         * 없는데 서식만 두면 맞는지 확인할 방법이 없다 — 값이 서는 슬라이스에서 함께 만든다.
+         */}
+        <p className="field-note pop-wide-note">{t.lotPreview.pending}</p>
       </Card>
 
       <div className="pop-target-actions">

@@ -66,6 +66,7 @@ export const PopMaterialLotLabelScreen = () => {
         <PageHeader title={t.title} size="compact" />
         <PrinterStatusIndicator
           printer={toHeadPrinter(printers.data ?? [])}
+          hasChoice={(printers.data ?? []).length > 1}
           isLoading={printers.isPending}
           isError={printers.isError}
           onRetry={() => {

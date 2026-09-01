@@ -19,6 +19,8 @@ const CHIP_STATUS: Record<PrinterStatus, 'success' | 'warning' | 'error'> = {
 
 export interface PrinterStatusProps {
   printer: PrinterView | null;
+  /** 프린터가 둘 이상인가. 스펙 §5-1 의 「프린터 선택」 활성 조건이다. */
+  hasChoice: boolean;
   isLoading: boolean;
   isError: boolean;
   onRetry: () => void;
@@ -38,6 +40,7 @@ export interface PrinterStatusProps {
  */
 export const PrinterStatusIndicator = ({
   printer,
+  hasChoice,
   isLoading,
   isError,
   onRetry,
@@ -71,6 +74,22 @@ export const PrinterStatusIndicator = ({
         <span>{printer.displayName}</span>
       </p>
       <Chip status={CHIP_STATUS[printer.status]}>{printer.statusMessage ?? t.noStatusMessage}</Chip>
+      {/*
+       * 프린터가 둘 이상일 때만 자리를 둔다(스펙 §5-1 활성 조건). ⛔ **고르는 동작을 만들지
+       * 않는다** — 설치 구성이 고객 정리 대기라 §8-4 가 「선택 UI 는 자리만」으로 정했다.
+       * 감추지 않고 왜 못 고르는지 밝힌다(F-1).
+       */}
+      {hasChoice ? (
+        <Button
+          className={popTouchClass('normal')}
+          variant="outlined"
+          size="xl"
+          disabled
+          title={t.selectPending}
+        >
+          {t.select}
+        </Button>
+      ) : null}
     </div>
   );
 };
