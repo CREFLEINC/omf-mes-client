@@ -1,0 +1,139 @@
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { ApiRequestError } from '../request';
+import { OutboxProvider, useOutbox } from './context';
+import type { OutboxDraft } from './queue';
+import type { OutboxTransport } from './send';
+
+const store = vi.hoisted(() => new Map<string, string>());
+
+vi.mock('../local-store', () => ({
+  readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
+  writeLocal: (key: string, value: string) => {
+    store.set(key, value);
+    return Promise.resolve();
+  },
+  removeLocal: (key: string) => {
+    store.delete(key);
+    return Promise.resolve();
+  },
+}));
+
+const draft = (key: string): OutboxDraft => ({
+  idempotencyKey: key,
+  method: 'POST',
+  path: '/production/results',
+  body: {},
+  occurredAt: '2026-09-01T00:00:00.000Z',
+  confirmation: 'immediate',
+});
+
+const mount = (send: OutboxTransport = () => Promise.resolve()) =>
+  renderHook(() => useOutbox(), {
+    wrapper: ({ children }) => <OutboxProvider send={send}>{children}</OutboxProvider>,
+  });
+
+beforeEach(() => {
+  store.clear();
+});
+
+describe('outbox', () => {
+  it('담긴 건수를 상시 낸다', async () => {
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    expect(result.current.pending).toBe(1);
+  });
+
+  /* 통신을 기다리게 하지 않는 것이 이 부품의 요점이다. */
+  it('담을 때 서버를 부르지 않는다', async () => {
+    const send = vi.fn(() => Promise.resolve());
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('앱을 다시 띄워도 담긴 것이 남아 있다', async () => {
+    const first = mount();
+    await act(async () => {
+      await first.result.current.enqueue(draft('k-1'));
+    });
+
+    const again = mount();
+
+    await waitFor(() => {
+      expect(again.result.current.pending).toBe(1);
+    });
+  });
+
+  it('보낸 만큼 건수가 줄고 큐가 비워진다', async () => {
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+      await result.current.enqueue(draft('k-2'));
+    });
+
+    await act(async () => {
+      await result.current.flush();
+    });
+
+    expect(result.current.pending).toBe(0);
+    expect(store.get('outbox')).toBe('[]');
+  });
+
+  /* 닿지 못한 것을 지우면 되찾을 자리가 없다. */
+  it('닿지 못하면 담긴 채로 남는다', async () => {
+    const send: OutboxTransport = () => Promise.reject(new ApiRequestError({ kind: 'network' }));
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    let outcome: string | undefined;
+    await act(async () => {
+      outcome = (await result.current.flush())?.outcome;
+    });
+
+    expect(outcome).toBe('unreachable');
+    expect(result.current.pending).toBe(1);
+  });
+
+  it('거부된 건은 큐에서 빠지고 이유와 함께 돌아온다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 409 }));
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    let rejectedCount: number | undefined;
+    await act(async () => {
+      rejectedCount = (await result.current.flush())?.rejected.length;
+    });
+
+    expect(rejectedCount).toBe(1);
+    expect(result.current.pending).toBe(0);
+  });
+
+  it('빈 큐를 보내면 아무 결과도 내지 않는다', async () => {
+    const { result } = mount();
+
+    let value: unknown;
+    await act(async () => {
+      value = await result.current.flush();
+    });
+
+    expect(value).toBeNull();
+  });
+});

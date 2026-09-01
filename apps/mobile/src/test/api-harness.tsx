@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 
 import { appQueryDefaults } from '../app/providers';
 import { ApiClientProvider } from '../patterns/api-context';
+import { OutboxProvider } from '../patterns/outbox';
 import { WorkerSessionProvider } from '../patterns/worker-session';
 import { DeviceRegistrationProvider } from '../patterns/device-registration';
 
@@ -73,9 +74,11 @@ const createProviders = (fetch: StubFetch) => {
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
         <DeviceRegistrationProvider>
-          <WorkerSessionProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </WorkerSessionProvider>
+          <OutboxProvider send={() => Promise.resolve()}>
+            <WorkerSessionProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </WorkerSessionProvider>
+          </OutboxProvider>
         </DeviceRegistrationProvider>
       </ApiClientProvider>
     </QueryClientProvider>
