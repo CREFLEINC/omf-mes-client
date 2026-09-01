@@ -74,6 +74,13 @@ describe('usagePercent', () => {
       kind: 'guaranteedMissing',
     });
   });
+
+  it('적정타수 0 을 사용 가능과 사용률이 «같게» 다룬다 — 한 화면이 두 말을 하면 안 된다', () => {
+    expect(availableShots({ ...base, guaranteedShotCount: 0 })).toEqual({
+      kind: 'guaranteedMissing',
+    });
+    expect(isOverGuaranteed({ ...base, guaranteedShotCount: 0 })).toBe(false);
+  });
 });
 
 describe('isOverGuaranteed', () => {

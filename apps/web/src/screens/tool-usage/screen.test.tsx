@@ -36,6 +36,8 @@ interface Options {
   writes?: Request[];
   /** 저장 응답 상태. 기본 201 */
   saveStatus?: number;
+  /** 저장 실패 응답의 본문 — 서버가 준 사유를 화면이 어떻게 다루는지 본다 */
+  saveErrorBody?: unknown;
   /** 저장이 두 번째부터 성공한다 — 재시도의 멱등 키를 검사한다 */
   failFirstSave?: boolean;
 }
@@ -71,7 +73,9 @@ const routes = (options: Options): StubRoute[] => {
         }
 
         if (options.saveStatus !== undefined && options.saveStatus !== 201) {
-          return jsonResponse({ message: '거부' }, { status: options.saveStatus });
+          return jsonResponse(options.saveErrorBody ?? { message: '거부' }, {
+            status: options.saveStatus,
+          });
         }
 
         return jsonResponse(
@@ -152,6 +156,30 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     expect(await screen.findByText(t.scan.disposed)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
   });
+
+  it('폐기 툴은 타발수를 기입해도 저장이 열리지 않는다 — 잠긴 사유가 「타발수 없음」이면 안 된다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ tools: [makeTool({ statusCode: 'DISPOSED' })] });
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+
+    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.noTool)).toBeInTheDocument();
+  });
+
+  it('「다시 입력」은 친 값만 지우고 고른 툴은 남긴다 — 오타 하나에 재스캔시키지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanTool(user);
+    const field = await screen.findByLabelText(t.shot.inputLabel);
+    await user.type(field, '1250');
+    await user.click(screen.getByRole('button', { name: t.actions.reset }));
+
+    expect(screen.getByLabelText(t.shot.inputLabel)).toHaveValue('');
+    expect(screen.getByText(TOOL_CODE)).toBeInTheDocument();
+  });
 });
 
 describe('ToolUsageScreen — 누계 구획', () => {
@@ -164,6 +192,16 @@ describe('ToolUsageScreen — 누계 구획', () => {
 
     expect(await screen.findByText(`413,550 ${t.shot.unit}`)).toBeInTheDocument();
     expect(screen.getByText(`86,450 ${t.shot.unit}`)).toBeInTheDocument();
+  });
+
+  it('적정타수가 있으면 사용률 진행 막대를 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+
+    expect(await screen.findByRole('progressbar')).toBeInTheDocument();
   });
 
   it('적정타수가 비면 산출 불가로 적고 진행 막대를 그리지 않는다 — 0% 는 「다 썼다」로 읽힌다', async () => {
@@ -309,6 +347,58 @@ describe('ToolUsageScreen — 저장', () => {
 
     expect(await screen.findByText(t.save.forbidden)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  it('업무 규칙에 걸리면 서버가 준 사유를 보이고 다시 시도를 권하지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ saveStatus: 422, saveErrorBody: { message: '이미 마감된 작업지시입니다' } });
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText('이미 마감된 작업지시입니다')).toBeInTheDocument();
+    /* 같은 값으로 다시 눌러도 같은 답이 온다 — 누를 수 있는데 아무 일도 없는 컨트롤을 두지 않는다. */
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  it('값이 규칙에 어긋나면 그 칸 옆에 사유를 붙이고 친 값을 남긴다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      saveStatus: 400,
+      saveErrorBody: {
+        errors: [
+          { scope: 'field', field: 'shotCount', code: 'INVALID', message: '타발수가 너무 큽니다' },
+        ],
+      },
+    });
+
+    await scanTool(user);
+    const field = await screen.findByLabelText(t.shot.inputLabel);
+    await user.type(field, '1250');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText('타발수가 너무 큽니다')).toBeInTheDocument();
+    expect(field).toHaveValue('1250');
+  });
+
+  it('서버 문구가 공백뿐이면 공용 안내로 떨어진다 — 제목만 있고 본문이 빈 배너를 만들지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      saveStatus: 400,
+      saveErrorBody: {
+        errors: [
+          { scope: 'screen', code: 'X', message: '   ' },
+          { scope: 'screen', code: 'Y', message: '' },
+        ],
+      },
+    });
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
   });
 
   it('진입 컨텍스트가 없으면 저장을 열지 않고 사유를 보인다', async () => {

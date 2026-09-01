@@ -153,13 +153,23 @@ export const ToolUsageScreen = () => {
     setSaved(null);
   };
 
-  const clearTool = (): void => {
-    setCodeInput('');
-    setSubmittedCode('');
+  /**
+   * 「다시 입력」 — **친 값만 지우고 고른 툴은 남긴다.**
+   *
+   * ⛔ 툴까지 지우면 타발수 오타 하나에 QR 을 다시 찍게 된다. 툴을 바꾸는 길은 스캔 구획의
+   * 「툴 다시 고르기」로 따로 있다 — 두 액션은 지우는 대상이 다르다(스펙 §5-1).
+   */
+  const resetDraft = (): void => {
     setDraft(emptyUsageDraft);
     occurredAtRef.current = null;
     setSaved(null);
     write.reset();
+  };
+
+  const clearTool = (): void => {
+    setCodeInput('');
+    setSubmittedCode('');
+    resetDraft();
   };
 
   const save = (): void => {
@@ -418,7 +428,7 @@ export const ToolUsageScreen = () => {
       </div>
 
       <div className="pop-actions">
-        <Button variant="outlined" size="2xl" disabled={!hasInput(draft)} onClick={clearTool}>
+        <Button variant="outlined" size="2xl" disabled={!hasInput(draft)} onClick={resetDraft}>
           {t.actions.reset}
         </Button>
         <Button

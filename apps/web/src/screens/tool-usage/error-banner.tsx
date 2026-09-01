@@ -19,6 +19,15 @@ import type { ReactNode } from 'react';
 
 const FORBIDDEN = 403;
 
+/**
+ * 다시 눌러도 같은 답이 오는 상태 코드.
+ *
+ * ⛔ **여기에 「다시 시도」를 두지 않는다**(공유계약 G-23). 400 은 보낸 값이 규칙에 어긋난
+ * 것이고 422 는 업무 규칙에 걸린 것이라, 값을 고치거나 사정이 달라지기 전에는 결과가 같다.
+ * 누를 수 있는데 아무 일도 없는 컨트롤은 사용자를 헛돌게 하고 정작 해야 할 일을 가린다.
+ */
+const NO_RETRY_STATUSES: readonly number[] = [400, 422];
+
 interface BannerContent {
   lines: string[];
   canRetry: boolean;
@@ -48,10 +57,29 @@ const toContent = (error: ApiError): BannerContent => {
     case 'conflict':
       /* 이 화면의 쓰기에는 낙관적 잠금이 없어 오지 않는 갈래다. 와도 침묵하지 않는다. */
       return { lines: [messages.httpError.description], canRetry: true };
-    case 'http':
-      return error.status === FORBIDDEN
-        ? { lines: [messages.toolUsage.save.forbidden], canRetry: false }
-        : { lines: [messages.httpError.description], canRetry: true };
+    case 'http': {
+      if (error.status === FORBIDDEN) {
+        return { lines: [messages.toolUsage.save.forbidden], canRetry: false };
+      }
+
+      const canRetry = !NO_RETRY_STATUSES.includes(error.status);
+      /*
+       * ⛔ **서버가 준 사유를 삼키지 않는다.** 뭉갠 문구로 덮으면 「이미 마감된 작업지시입니다」
+       * 같은, 사용자가 다음 행동을 정하는 데 필요한 유일한 단서가 사라진다. 계약 형태가 아닌
+       * 응답에서도 `message` 는 남아 온다(`normalizeApiError`).
+       */
+      const serverLines = usableMessages(
+        error.message === undefined ? [] : [{ message: error.message }],
+      );
+
+      if (serverLines.length > 0) return { lines: serverLines, canRetry };
+
+      /* 서버가 아무 말도 하지 않았다 — 다시 눌러도 같은 답이면 그 사실에 맞는 안내를 낸다. */
+      return {
+        lines: [canRetry ? messages.httpError.description : messages.toolUsage.save.rejected],
+        canRetry,
+      };
+    }
   }
 };
 

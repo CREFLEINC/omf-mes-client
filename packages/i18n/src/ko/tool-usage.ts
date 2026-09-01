@@ -49,7 +49,6 @@ export const toolUsage = {
     increment: '이번 입력',
     projected: '저장 후 누계',
     available: '사용 가능',
-    asOf: '기준',
     usageLabel: '적정타수 대비 사용률',
     /** 적정타수가 비어 있을 때. **저장은 막지 않는다** — 기록 자체는 남아야 한다. */
     guaranteedMissing: '적정타수 미등록 — 사용 가능 타수를 산출할 수 없습니다.',
@@ -83,6 +82,8 @@ export const toolUsage = {
     /** 서버가 더한 누계를 그대로 보인다 — 화면의 예상치가 아니다. */
     successBody: '누계가 갱신됐습니다.',
     failTitle: '실적을 저장하지 못했습니다',
+    /** 서버가 사유를 주지 않았는데 다시 눌러도 같은 답이 오는 갈래. */
+    rejected: '보낸 값이나 업무 규칙에 걸려 저장되지 않았습니다. 값을 확인한 뒤 다시 저장하세요.',
     forbidden: '이 단말에서는 툴 사용실적을 입력할 수 없습니다. 담당자에게 문의하세요.',
   },
 } as const;

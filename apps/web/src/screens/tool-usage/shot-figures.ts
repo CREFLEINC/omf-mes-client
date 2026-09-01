@@ -27,8 +27,15 @@ export interface FigureInput {
   isOnline: boolean;
 }
 
-const arrived = (value: number | null | undefined): value is number =>
-  value !== null && value !== undefined;
+/**
+ * 적정타수를 셈에 쓸 수 있는가.
+ *
+ * ⚠ **0 은 「다 썼다」가 아니라 「정해지지 않았다」로 다룬다.** 나누면 무한이 나오고, 빼면
+ * 누계 전체가 초과분으로 잡혀 「사용 가능 −412,300 회」 같은 숫자가 선다 — 두 구획이 서로 다른
+ * 말을 하게 된다. **사용 가능과 사용률이 같은 가드를 쓴다.**
+ */
+const usableGuaranteed = (value: number | null | undefined): value is number =>
+  value !== null && value !== undefined && value > 0;
 
 /**
  * 저장 후 누계 = 서버 누계 + 이번 입력.
@@ -48,7 +55,7 @@ export const availableShots = (input: FigureInput): ShotFigure => {
   const projected = projectedTotal(input);
 
   if (projected.kind !== 'value') return projected;
-  if (!arrived(input.guaranteedShotCount)) return { kind: 'guaranteedMissing' };
+  if (!usableGuaranteed(input.guaranteedShotCount)) return { kind: 'guaranteedMissing' };
 
   return { kind: 'value', value: input.guaranteedShotCount - projected.value };
 };
@@ -58,9 +65,7 @@ export const usagePercent = (input: FigureInput): ShotFigure => {
   const projected = projectedTotal(input);
 
   if (projected.kind !== 'value') return projected;
-  if (!arrived(input.guaranteedShotCount) || input.guaranteedShotCount === 0) {
-    return { kind: 'guaranteedMissing' };
-  }
+  if (!usableGuaranteed(input.guaranteedShotCount)) return { kind: 'guaranteedMissing' };
 
   return { kind: 'value', value: (projected.value / input.guaranteedShotCount) * 100 };
 };
