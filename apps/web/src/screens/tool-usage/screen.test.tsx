@@ -228,6 +228,32 @@ describe('ToolUsageScreen — 누계 구획', () => {
     expect(screen.getByText(`86,450 ${t.shot.unit}`)).toBeInTheDocument();
   });
 
+  it('타발수 칸에 문자를 쳐도 들어가지 않는다 — 저장할 때가 아니라 칠 때 막는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanTool(user);
+    const field = await screen.findByLabelText(t.shot.inputLabel);
+    await user.type(field, '12a3.5-');
+
+    expect(field).toHaveValue('1235');
+  });
+
+  it('숫자 키패드로 친 값이 타발수 칸과 누계에 그대로 간다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanTool(user);
+    await screen.findByText(TOOL_CODE);
+
+    for (const key of ['1', '2', '5', '0']) {
+      await user.click(screen.getByRole('button', { name: key }));
+    }
+
+    expect(screen.getByLabelText(t.shot.inputLabel)).toHaveValue('1250');
+    expect(screen.getByText(`+1,250 ${t.shot.unit}`)).toBeInTheDocument();
+  });
+
   it('적정타수가 있으면 사용률 진행 막대를 보인다', async () => {
     const user = userEvent.setup();
     renderScreen();
@@ -369,6 +395,25 @@ describe('ToolUsageScreen — 저장', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(t.shot.inputLabel)).toHaveValue('');
     });
+  });
+
+  it('저장 뒤 ③ 누계가 «서버가 더한 값»으로 바뀐다 — 배너와 표가 다른 말을 하면 안 된다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText(t.save.successTitle)).toBeInTheDocument();
+
+    /* 조회 응답은 0 을 그대로 돌려주지만, 서버가 방금 알려 준 누계가 더 새롭다. */
+    const rows = [...document.querySelectorAll('.pop-figures > div')].map(
+      (row) => row.textContent ?? '',
+    );
+    const currentRow = rows.find((row) => row.startsWith(t.cumulative.current));
+
+    expect(currentRow).toContain('413,550');
   });
 
   it('단말 권한에 막히면 그 사정을 말하고 다시 시도를 권하지 않는다', async () => {

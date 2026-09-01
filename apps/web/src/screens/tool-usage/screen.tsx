@@ -27,7 +27,15 @@ import {
 } from './shot-figures';
 import { useToolUsageWrite } from './mutations';
 import { useOnline } from './use-online';
-import { canSave, hasInput, incrementOf, saveDisabledReason, type SaveGuard } from './usage-draft';
+import {
+  canSave,
+  decimalOnly,
+  digitsOnly,
+  hasInput,
+  incrementOf,
+  saveDisabledReason,
+  type SaveGuard,
+} from './usage-draft';
 import {
   COLLECTION_METHOD,
   DISPOSED_STATUS_CODE,
@@ -42,9 +50,16 @@ const t = messages.toolUsage;
 /** 타발수 상한 — 계약이 정수로 받고, 자릿수를 넘겨 치는 것은 오타다. 키패드가 그 위를 무시한다. */
 const SHOT_MAX_LENGTH = 9;
 
-/** 저장 후 서버가 돌려준 누계를 그대로 보인다 — 화면의 예상치가 아니다. */
+/**
+ * 저장 응답이 준 것. **서버가 더한 누계와 그 누계가 어느 시각 것인지다**(계약 `ToolUsage`).
+ *
+ * ⭐ **이 값이 ③ 구획을 곧바로 갱신한다.** 배너만 새 누계를 말하고 아래 표가 옛 값을 그대로
+ * 두면 한 화면이 두 말을 한다 — 사용자는 어느 쪽이 참인지 알 수 없다. 다시 조회해 올 때까지
+ * 기다리지 않고, 서버가 방금 알려 준 값을 그대로 세운다.
+ */
 interface SaveResult {
   cumulativeShotCount: number | undefined;
+  cumulativeAsOf: string | undefined;
 }
 
 const figureText = (figure: ShotFigure, offlineText: string, missingText: string): string => {
@@ -119,7 +134,10 @@ export const ToolUsageScreen = () => {
     onSuccess: (usage: ToolUsage) => {
       occurredAtRef.current = null;
       setDraft(emptyUsageDraft);
-      setSaved({ cumulativeShotCount: usage.cumulativeShotCount });
+      setSaved({
+        cumulativeShotCount: usage.cumulativeShotCount,
+        cumulativeAsOf: usage.cumulativeAsOf,
+      });
     },
   });
 
@@ -141,8 +159,16 @@ export const ToolUsageScreen = () => {
 
   const blockReason = saveDisabledReason(guard);
 
+  /**
+   * 지금 화면이 아는 서버 누계. **저장 응답이 조회 응답보다 새롭다.**
+   *
+   * 저장이 끝나면 서버가 더한 값을 곧바로 알려 주므로 그것을 쓴다. 다시 조회해 온 값이
+   * 도착하면(초안이 바뀌거나 툴을 다시 고를 때 `saved` 를 버린다) 그쪽으로 돌아간다.
+   */
+  const serverShotCount = saved?.cumulativeShotCount ?? usableTool?.currentShotCount ?? 0;
+
   const figures: FigureInput = {
-    currentShotCount: usableTool?.currentShotCount ?? 0,
+    currentShotCount: serverShotCount,
     guaranteedShotCount: usableTool?.guaranteedShotCount,
     increment,
     isOnline,
@@ -167,17 +193,20 @@ export const ToolUsageScreen = () => {
       : `${formatShots(usableTool.guaranteedShotCount)} ${t.shot.unit}`;
 
   /**
-   * 누계를 «언제 받은 값»인가.
+   * 누계가 «언제 것인가».
    *
-   * ⚠ **서버가 시각을 주지 않는다** — 툴 마스터에 그 칸이 없다. 그래서 화면이 그 값을 받은
-   * 시각을 적는다. 스펙 §3 이 요구하는 「○○ 기준」의 뜻(이 숫자가 언제 것인가)은 그대로 서고,
-   * 없는 값을 지어내지도 않는다. 계약에 시각이 생기면 그 값으로 바꾼다.
+   * ⭐ **저장 응답의 `cumulativeAsOf` 가 정본이다** — 서버가 더한 시점을 그 값이 말한다.
+   * ⚠ 아직 저장하지 않았으면 그 값이 없다. 툴 마스터에는 시각 칸이 없으므로 그때는 **화면이
+   * 그 값을 받은 시각**을 적는다 — 없는 값을 지어내지 않되 「이 숫자가 언제 것인가」는 답한다.
    */
+  const asOfSource = saved?.cumulativeAsOf ?? null;
+  const asOfMillis = asOfSource === null ? lookup.dataUpdatedAt : new Date(asOfSource).getTime();
+
   const asOfText =
-    lookup.dataUpdatedAt === 0
+    asOfMillis === 0 || Number.isNaN(asOfMillis)
       ? null
       : t.cumulative.asOf(
-          new Date(lookup.dataUpdatedAt).toLocaleTimeString('ko-KR', {
+          new Date(asOfMillis).toLocaleTimeString('ko-KR', {
             hour: '2-digit',
             minute: '2-digit',
           }),
@@ -354,7 +383,7 @@ export const ToolUsageScreen = () => {
                   /* 단위는 칸 오른쪽 안에 붙인다 — 스펙 §3 의 「타발수 [1,250] 회」 */
                   trailingIcon={t.shot.unit}
                   onChange={(event) => {
-                    changeDraft({ shotCount: event.target.value });
+                    changeDraft({ shotCount: digitsOnly(event.target.value) });
                   }}
                 />
 
@@ -390,7 +419,7 @@ export const ToolUsageScreen = () => {
                       value={draft.baseQty}
                       error={write.fieldErrors.conversionBaseQty}
                       onChange={(event) => {
-                        changeDraft({ baseQty: event.target.value });
+                        changeDraft({ baseQty: decimalOnly(event.target.value) });
                       }}
                     />
                     <p className="field-note">
@@ -429,9 +458,7 @@ export const ToolUsageScreen = () => {
               <div>
                 <dt>{t.cumulative.current}</dt>
                 <dd>
-                  {usableTool === null
-                    ? '—'
-                    : `${formatShots(usableTool.currentShotCount)} ${t.shot.unit}`}
+                  {usableTool === null ? '—' : `${formatShots(serverShotCount)} ${t.shot.unit}`}
                   {usableTool !== null && asOfText !== null && (
                     <span className="pop-figure-note">{asOfText}</span>
                   )}

@@ -3,7 +3,15 @@ import { describe, expect, it } from 'vitest';
 
 import type { ConversionState } from './conversion';
 import { COLLECTION_METHOD, emptyUsageDraft, type UsageDraft } from './types';
-import { canSave, hasInput, incrementOf, saveDisabledReason, type SaveGuard } from './usage-draft';
+import {
+  canSave,
+  decimalOnly,
+  digitsOnly,
+  hasInput,
+  incrementOf,
+  saveDisabledReason,
+  type SaveGuard,
+} from './usage-draft';
 
 const t = messages.toolUsage;
 
@@ -94,5 +102,43 @@ describe('hasInput', () => {
     expect(hasInput(emptyUsageDraft)).toBe(false);
     expect(hasInput(direct('12'))).toBe(true);
     expect(hasInput(converted('12'))).toBe(true);
+  });
+});
+
+describe('digitsOnly', () => {
+  it('타발수 칸은 숫자만 받는다 — 문자는 애초에 들어갈 수 없는 값이다', () => {
+    expect(digitsOnly('12a3')).toBe('123');
+    expect(digitsOnly('abc')).toBe('');
+    expect(digitsOnly('1,250')).toBe('1250');
+  });
+
+  it('소수점도 받지 않는다 — 계약의 타발수는 정수다', () => {
+    expect(digitsOnly('1.5')).toBe('15');
+  });
+
+  it('음수 기호를 받지 않는다 — 되돌리는 것은 다른 화면의 일이다', () => {
+    expect(digitsOnly('-5')).toBe('5');
+  });
+
+  it('빈 칸은 그대로 둔다 — 지우는 중이 정상 상태다', () => {
+    expect(digitsOnly('')).toBe('');
+  });
+});
+
+describe('decimalOnly', () => {
+  it('생산 수량은 소수를 받는다', () => {
+    expect(decimalOnly('12.5')).toBe('12.5');
+  });
+
+  it('소수점은 하나뿐이다', () => {
+    expect(decimalOnly('1.2.3')).toBe('1.23');
+  });
+
+  it('문자는 거른다', () => {
+    expect(decimalOnly('1a2.5b')).toBe('12.5');
+  });
+
+  it('치는 도중의 「1.」 을 깨뜨리지 않는다', () => {
+    expect(decimalOnly('1.')).toBe('1.');
   });
 });

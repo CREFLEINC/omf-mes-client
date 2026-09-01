@@ -81,3 +81,27 @@ export const canSave = (guard: SaveGuard): boolean => saveDisabledReason(guard) 
 /** 「다시 입력」이 열리는 조건 — 지울 것이 있을 때만(스펙 §5-1). */
 export const hasInput = (draft: UsageDraft): boolean =>
   draft.shotCount.trim() !== '' || draft.baseQty.trim() !== '';
+
+/**
+ * 타발수 칸이 받는 글자 — **숫자만이다.**
+ *
+ * ⛔ 저장 단계에서만 거르면 안 된다. 계약의 타발수는 정수이고 이 칸의 입력 수단은 숫자
+ * 키패드(스펙 §4-A · D-4)라, 문자가 들어간 값은 **애초에 있을 수 없는 값**이다. 치는 대로
+ * 두었다가 저장에서 막으면 작업자는 다 치고 나서야 안 되는 것을 안다.
+ *
+ * ⚠ 빈 문자열은 그대로 둔다 — 지우는 중이 정상 상태다.
+ */
+export const digitsOnly = (value: string): string => value.replace(/[^0-9]/g, '');
+
+/**
+ * 생산 수량 칸이 받는 글자 — 숫자와 소수점 하나.
+ *
+ * 수량은 소수가 올 수 있다(환산 비율이 소수라 수량까지 정수로 묶을 이유가 없다). 다만
+ * **소수점은 하나뿐**이다 — 둘 이상이면 숫자가 아니다.
+ */
+export const decimalOnly = (value: string): string => {
+  const cleaned = value.replace(/[^0-9.]/g, '');
+  const [head, ...rest] = cleaned.split('.');
+
+  return rest.length === 0 ? cleaned : `${head ?? ''}.${rest.join('')}`;
+};
