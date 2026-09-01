@@ -9,12 +9,8 @@ import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import {
-  SUBSTITUTE_LOT_REASON,
-  useCodeValues,
-  useOpenPurchaseOrders,
-  usePurchaseOrderLines,
-} from './queries';
+import { useCodeValues } from '../../patterns/code-values';
+import { SUBSTITUTE_LOT_REASON, useOpenPurchaseOrders, usePurchaseOrderLines } from './queries';
 import {
   NORMAL,
   OVER,

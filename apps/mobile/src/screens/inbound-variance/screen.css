@@ -1,0 +1,57 @@
+.variance {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.variance > * {
+  flex: none;
+}
+
+.variance__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.variance__section h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.variance p {
+  margin: 0;
+}
+
+.variance__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.variance__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.variance__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.variance__wide {
+  width: 100%;
+}
+
+.variance__lines,
+.variance__known {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

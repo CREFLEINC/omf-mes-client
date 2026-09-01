@@ -95,6 +95,7 @@ import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
 import { inboundReceipt } from './inbound-receipt';
 import { putaway } from './putaway';
+import { inboundVariance } from './inbound-variance';
 
 export const ko = {
   common,
@@ -178,6 +179,7 @@ export const ko = {
   productPicking,
   inboundReceipt,
   putaway,
+  inboundVariance,
 } as const;
 
 export type Messages = typeof ko;
