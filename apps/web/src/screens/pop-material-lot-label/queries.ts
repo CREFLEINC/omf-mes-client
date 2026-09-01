@@ -22,12 +22,10 @@ import {
  * | --- | --- |
  * | 첫 진입 | 라벨 미발행 입하 건 목록 |
  *
- * ⚠ **미부착(`supplierLotMissing`) 조건을 아직 싣지 못한다.** 스펙 §3-6 과 변경 통지 #534 가
- * 목록 원천을 `?supplierLotMissing=true&labelIssued=false` 두 질의로 정했고 **설계 저장소의
- * 계약에는 이미 들어와 있다.** 다만 그 계약을 이 저장소에 반영하려면 생성 타입을 다시
- * 만들어야 하는데, 그 재생성이 **이번 이슈 범위 밖의 다른 화면 열다섯 곳을 깨뜨린다**
- * (2026-09-01 실측 51곳). 계약 반영이 별도로 이뤄질 때까지 **화면이 받아서 거른다** —
- * 그래서 한 쪽에 보이는 줄 수가 쪽 크기와 다를 수 있고, 그 사실을 화면이 밝힌다.
+ * **미부착 조건을 서버가 거른다.** 스펙 §3-6 과 변경 통지 #534 가 목록 원천을
+ * `?supplierLotMissing=true&labelIssued=false` 로 정했고 그 질의가 계약에 있다. 화면이 받아서
+ * 거르던 우회는 걷었다 — 거르는 쪽이 서버이므로 **한 쪽에 보이는 줄 수가 쪽 크기와 어긋나지
+ * 않는다.**
  *
  * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
  * 문자열 변수로 넘기면 타입 검사가 풀린다.
@@ -60,8 +58,11 @@ const fetchReceipts = async (
 ): Promise<ReceiptListResult> => {
   const data = await runRequest(() =>
     client.GET('/logistics/inbound-receipts', {
-      // 이미 발행된 건은 목록에서 뺀다. 그 건은 재인쇄 경로로 간다.
-      params: { query: { ...query, labelIssued: false } },
+      /*
+       * 미부착이면서 아직 라벨을 찍지 않은 건만 받는다(스펙 §3-6 · 변경 통지 #534).
+       * ⛔ 화면이 받아서 거르지 않는다 — 목록이 쪽 단위라 거른 뒤 개수가 쪽 크기와 어긋난다.
+       */
+      params: { query: { ...query, supplierLotMissing: true, labelIssued: false } },
     }),
   );
 
@@ -83,10 +84,17 @@ export const useReceipts = (query: ReceiptListQuery): UseQueryResult<ReceiptList
   });
 };
 
+/*
+ * 라인도 같은 두 조건으로 서버가 거른다 — 발번 단위가 「건」이 아니라 「라인」이므로
+ * (스펙 §3-6) 목록 줄과 발번 개수를 맞추려면 거르는 자리가 서버여야 한다.
+ */
 const fetchReceiptLines = async (client: Client, inboundReceiptId: number): Promise<LineView[]> => {
   const data = await runRequest(() =>
     client.GET('/logistics/inbound-receipts/{inboundReceiptId}/lines', {
-      params: { path: { inboundReceiptId } },
+      params: {
+        path: { inboundReceiptId },
+        query: { supplierLotMissing: true, labelIssued: false },
+      },
     }),
   );
 
