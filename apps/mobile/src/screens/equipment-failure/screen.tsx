@@ -16,6 +16,7 @@ import { capturePhoto, readCapturedPhoto, type CapturedPhoto } from '../../patte
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
+import { useWorkerSession } from '../../patterns/worker-session';
 import { useEquipments, useOpenBreakdownCount, type Equipment } from './queries';
 import {
   MAX_PHOTOS,
@@ -68,6 +69,7 @@ export const EquipmentFailureScreen = () => {
   useScreenTitle(t.title);
   const online = useOnlineStatus();
   const { enqueue, flush, pendingBytes } = useOutbox();
+  const { worker } = useWorkerSession();
   const equipments = useEquipments();
 
   const [selected, setSelected] = useState<Equipment | null>(null);
@@ -126,7 +128,7 @@ export const EquipmentFailureScreen = () => {
   };
 
   const report = async () => {
-    if (selected === null || state === null) {
+    if (selected === null || state === null || worker === null) {
       return;
     }
 
@@ -142,6 +144,7 @@ export const EquipmentFailureScreen = () => {
       },
       occurredAt,
       reportId,
+      worker.workerNo,
     );
 
     await enqueue(draft);
@@ -324,10 +327,12 @@ export const EquipmentFailureScreen = () => {
         {online ? null : <p className="equipment-failure__note">{t.notify.offline}</p>}
       </section>
 
+      {worker === null ? <AlertBanner variant="warning" title={t.noWorker} /> : null}
+
       <Button
         variant="filled"
         size="xl"
-        disabled={!validity.canSubmit}
+        disabled={!validity.canSubmit || worker === null}
         onClick={() => {
           void report();
         }}

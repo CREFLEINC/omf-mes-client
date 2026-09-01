@@ -13,6 +13,8 @@ const report = {
 
 const OCCURRED_AT = '2026-09-01T14:31:00.000Z';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 describe('보고를 낼 수 있는가', () => {
   it('설비·증상·발생 상태가 모두 있어야 낼 수 있다', () => {
     expect(validateReport(report).canSubmit).toBe(true);
@@ -42,7 +44,7 @@ describe('보고를 낼 수 있는가', () => {
 
 describe('큐에 담을 모양', () => {
   it('계약이 정한 경로와 필드로 담는다', () => {
-    const draft = toOutboxDraft(report, OCCURRED_AT, 'r-1');
+    const draft = toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028');
 
     expect(draft.method).toBe('POST');
     expect(draft.path).toBe('/maintenance/breakdowns');
@@ -56,18 +58,23 @@ describe('큐에 담을 모양', () => {
     });
   });
 
+  /* 서버가 사번 없는 쓰기를 받지 않는다. */
+  it('담을 때의 사번을 함께 담는다', () => {
+    expect(toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028').workerNo).toBe('900028');
+  });
+
   /* 오프라인 지연이 고장 발생 시각을 뒤로 밀면 안 된다. */
   it('보고 시각은 단말 시계가 정한 값을 그대로 싣는다', () => {
-    expect(toOutboxDraft(report, OCCURRED_AT, 'r-1').occurredAt).toBe(OCCURRED_AT);
+    expect(toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028').occurredAt).toBe(OCCURRED_AT);
   });
 
   /* 설비담당이 와야 끝나는 일이라 서버가 받기 전까지 보고됨으로 그리지 않는다. */
   it('담긴 것만으로 확정으로 보지 않는다', () => {
-    expect(toOutboxDraft(report, OCCURRED_AT, 'r-1').confirmation).toBe('pending');
+    expect(toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028').confirmation).toBe('pending');
   });
 
   it('증상의 앞뒤 공백은 떼고 담는다', () => {
-    const draft = toOutboxDraft({ ...report, symptom: '  누유  ' }, OCCURRED_AT, 'r-1');
+    const draft = toOutboxDraft({ ...report, symptom: '  누유  ' }, OCCURRED_AT, 'r-1', '900028');
 
     expect((draft.body as { symptom: string }).symptom).toBe('누유');
   });
@@ -78,6 +85,7 @@ describe('큐에 담을 모양', () => {
       { ...report, stoppedAt: '14:20' },
       '2026-09-01T14:31:00.000Z',
       'r-1',
+      '900028',
     );
     const sent = (draft.body as { stoppedAt: string }).stoppedAt;
 
@@ -93,6 +101,7 @@ describe('큐에 담을 모양', () => {
       { ...report, stoppedAt: '23:50' },
       '2026-09-02T00:10:00.000Z',
       'r-1',
+      '900028',
     );
     const sent = (draft.body as { stoppedAt: string }).stoppedAt;
 
@@ -100,21 +109,19 @@ describe('큐에 담을 모양', () => {
   });
 
   it('정지 시각을 모르면 비운 채로 담는다', () => {
-    const draft = toOutboxDraft({ ...report, stoppedAt: null }, OCCURRED_AT, 'r-1');
+    const draft = toOutboxDraft({ ...report, stoppedAt: null }, OCCURRED_AT, 'r-1', '900028');
 
     expect((draft.body as { stoppedAt: string | null }).stoppedAt).toBeNull();
   });
 
-  /* 본문만으로 키를 만들면 다른 설비에 보낸 뒤 요청이 조용히 사라진다. */
-  it('멱등키가 설비를 담는다', () => {
-    expect(
-      toOutboxDraft(report, OCCURRED_AT, 'r-1').idempotencyKey.startsWith('breakdown-report:7:'),
-    ).toBe(true);
+  /* 계약이 형식을 UUID 로 못 박았다. 다른 모양이면 서버가 요청 자체를 거부한다. */
+  it('멱등키가 계약이 요구하는 형식이다', () => {
+    expect(toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028').idempotencyKey).toMatch(UUID);
   });
 
   it('같은 설비라도 부를 때마다 다른 키다', () => {
-    expect(toOutboxDraft(report, OCCURRED_AT, 'r-1').idempotencyKey).not.toEqual(
-      toOutboxDraft(report, OCCURRED_AT, 'r-1').idempotencyKey,
+    expect(toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028').idempotencyKey).not.toEqual(
+      toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028').idempotencyKey,
     );
   });
 });
@@ -139,7 +146,7 @@ describe('읽은 코드를 못 찾았다고 말할 수 있는가', () => {
 });
 
 describe('사진을 본문에 딸린 건으로 담기', () => {
-  const body = toOutboxDraft(report, OCCURRED_AT, 'r-1');
+  const body = toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028');
   const photo = (name: string) => ({
     fileName: name,
     mimeType: 'image/jpeg',
@@ -159,8 +166,8 @@ describe('사진을 본문에 딸린 건으로 담기', () => {
     });
   });
 
-  /* 본문이 성공해야 붙을 곳이 생기므로 사진에 따로 키를 두지 않는다. */
-  it('사진의 키는 본문의 키에서 나온다', () => {
+  /* 사진도 쓰기라 계약이 키를 요구하고, 형식이 UUID 라 본문 키를 나눠 쓸 수 없다. */
+  it('사진마다 계약 형식의 다른 키를 준다', () => {
     const [first, second] = toPhotoDrafts(
       [photo('a.jpg'), photo('b.jpg')],
       body,
@@ -168,8 +175,8 @@ describe('사진을 본문에 딸린 건으로 담기', () => {
       'r-1',
     );
 
-    expect(first?.idempotencyKey.startsWith(body.idempotencyKey)).toBe(true);
-    expect(second?.idempotencyKey.startsWith(body.idempotencyKey)).toBe(true);
+    expect(first?.idempotencyKey).toMatch(UUID);
+    expect(second?.idempotencyKey).toMatch(UUID);
     expect(first?.idempotencyKey).not.toEqual(second?.idempotencyKey);
   });
 
@@ -178,6 +185,14 @@ describe('사진을 본문에 딸린 건으로 담기', () => {
     const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT, 'r-1');
 
     expect(first?.batchId).toBe(body.batchId);
+  });
+
+  /* 사진도 쓰기라 사번이 필요하고, 본문과 같은 사람의 일이어야 한다. */
+  it('사진도 본문과 같은 사번으로 담는다', () => {
+    const [first] = toPhotoDrafts([photo('a.jpg')], body, OCCURRED_AT, 'r-1');
+
+    expect(first?.workerNo).toBe(body.workerNo);
+    expect(first?.workerNo).toBe('900028');
   });
 
   it('담긴 것만으로 붙었다고 하지 않는다', () => {

@@ -69,14 +69,13 @@ export const toOutboxDraft = (
   report: FailureReport,
   occurredAt: string,
   reportId: string,
+  workerNo: string,
 ): OutboxDraft => ({
   /* 사진이 이 건을 가리켜야 하므로 식별자를 여기서 정한다. 묶음 이름도 같은 값을 쓴다. */
   id: reportId,
   batchId: reportId,
-  idempotencyKey: createIdempotencyKey({
-    operation: 'breakdown-report',
-    target: report.equipmentId,
-  }),
+  workerNo,
+  idempotencyKey: createIdempotencyKey(),
   method: 'POST',
   path: '/maintenance/breakdowns',
   body: {
@@ -127,7 +126,11 @@ export const toPhotoDrafts = (
 ): OutboxDraft[] =>
   photos.map((photo, index) => ({
     id: `${reportId}-photo-${String(index)}`,
-    idempotencyKey: `${body.idempotencyKey}:photo:${String(index)}`,
+    /*
+     * 사진에도 키가 필요하다 - 계약이 전 쓰기에 요구한다. 본문과 나눠 쓰지 않는 이유는
+     * 형식이 UUID 라서다. 사진이 본문 없이 홀로 가지 않는 것은 묶음과 경로가 지킨다.
+     */
+    idempotencyKey: createIdempotencyKey(),
     method: 'POST',
     path: '/maintenance/breakdowns/:breakdownId/attachments',
     body: null,
@@ -138,6 +141,7 @@ export const toPhotoDrafts = (
       token: ':breakdownId',
     },
     batchId: body.batchId,
+    workerNo: body.workerNo,
     occurredAt,
     /* 본문이 가야 붙을 곳이 생긴다. 담긴 것만으로 붙었다고 할 수 없다. */
     confirmation: 'pending',

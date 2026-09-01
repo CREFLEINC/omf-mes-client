@@ -81,30 +81,16 @@ describe('큐에 담기', () => {
   });
 });
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 describe('멱등키', () => {
-  /* 본문만으로 만들면 다른 대상에 보낸 뒤 요청이 조용히 사라진다. */
-  it('대상이 다르면 키도 다르다', () => {
-    const first = createIdempotencyKey({ operation: 'result', target: 1 });
-    const second = createIdempotencyKey({ operation: 'result', target: 2 });
-
-    expect(first.startsWith('result:1:')).toBe(true);
-    expect(second.startsWith('result:2:')).toBe(true);
+  /* 계약이 형식을 UUID 로 못 박았다. 다른 모양이면 서버가 요청 자체를 거부한다. */
+  it('계약이 요구하는 형식이다', () => {
+    expect(createIdempotencyKey()).toMatch(UUID);
   });
 
-  it('오퍼레이션이 다르면 키도 다르다', () => {
-    expect(createIdempotencyKey({ operation: 'issue', target: 1 })).not.toEqual(
-      createIdempotencyKey({ operation: 'receipt', target: 1 }),
-    );
-  });
-
-  /* 같은 대상에 같은 일을 일부러 두 번 하는 경우가 있다. */
-  it('같은 대상이라도 부를 때마다 다른 키다', () => {
-    const scope = { operation: 'result', target: 1 };
-
-    expect(createIdempotencyKey(scope)).not.toEqual(createIdempotencyKey(scope));
-  });
-
-  it('대상이 없으면 오퍼레이션만으로 짓는다', () => {
-    expect(createIdempotencyKey({ operation: 'register' }).startsWith('register:')).toBe(true);
+  /* 내용으로 지으면 다른 대상에 보낸 뒤 요청이 조용히 사라진다. */
+  it('부를 때마다 다른 키다', () => {
+    expect(createIdempotencyKey()).not.toEqual(createIdempotencyKey());
   });
 });
