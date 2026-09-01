@@ -42,6 +42,30 @@ const renderQty = (totals: LineQtyTotals | null): ReactNode => {
 };
 
 /**
+ * 「검사」 열 — 서버 롤업(`ShipmentRequestView.inspectionStatus`)을 그대로 옮긴다.
+ * `REJECTED`·`HELD` 전용 배지는 이번 슬라이스에서 두지 않는다 — `PENDING`과 같게 그린다
+ * (계약 주석 W-04-02 §5-3 · omf-mes#232 · omf-mes#235, 다음 착수에서 분리). **default 분기가
+ * 곧 미지 값 대응이다** — 계약에 값이 늘어도 여기로 떨어져 빈 배지·예외로 이어지지 않는다.
+ */
+const renderInspectionStatus = (status: ShipmentRequestView['inspectionStatus']): ReactNode => {
+  if (status === 'NOT_REQUIRED') return t.values.empty;
+
+  if (status === 'PASSED') {
+    return (
+      <Chip variant="status" status="success" size="sm">
+        {t.values.inspectionPassed}
+      </Chip>
+    );
+  }
+
+  return (
+    <Chip variant="status" size="sm">
+      {t.values.inspectionPending}
+    </Chip>
+  );
+};
+
+/**
  * 이 화면이 열 수 있는 정렬 열의 집합. 계약 열거값이 곧 전체다(보기가 하나뿐이라
  * W-01-07처럼 보기별로 좁히지 않는다).
  */
@@ -54,8 +78,9 @@ const SORTABLE_KEYS = new Set<string>(CONTRACT_SORT_KEYS);
  * 칸)·검사·진행. 편성/출하 확정으로의 행 이동은 이 슬라이스에 없다(계획서 미결) — 선택·액션
  * 열을 두지 않는다.
  *
- * **「검사」는 대상/`—` 두 상태뿐이다.** 계약에 검사 결과를 이을 필드가 없어 「대기」·「합격」을
- * 가를 근거가 없다(설계 검토 요청 omf-mes#232). **「진행」은 원문 코드를 그대로 낸다** — 값
+ * **「검사」는 서버 롤업(`shippingInspectionStatusCode`)을 그대로 옮긴다**(omf-mes#232 ·
+ * omf-mes#235). `REJECTED`·`HELD` 전용 배지는 이번 슬라이스에서 두지 않는다 — 「대기」로 같이
+ * 표시한다(다음 착수에서 분리). **「진행」은 원문 코드를 그대로 낸다** — 값
  * 집합이 확정되지 않아(omf-mes#64) 색이나 문구를 지어내지 않는다.
  */
 export const ShipmentTable = ({
@@ -106,14 +131,7 @@ export const ShipmentTable = ({
       key: 'inspection',
       header: t.table.inspection,
       width: '96px',
-      render: (row) =>
-        row.hasInspectionRequiredLine ? (
-          <Chip variant="status" size="sm">
-            {t.values.inspectionTarget}
-          </Chip>
-        ) : (
-          t.values.empty
-        ),
+      render: (row) => renderInspectionStatus(row.inspectionStatus),
     },
     {
       key: 'progress',

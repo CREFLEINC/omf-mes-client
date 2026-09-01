@@ -72,6 +72,9 @@ const BASE_SUMMARY: InventoryCountSummaryResponse = {
   countedCount: 25,
   uncountedCount: 15,
   varianceCount: 6,
+  /* client#601 3-4 — 신설 필드. 미실사·차이가 남아 있어 마감을 열 수 없다. */
+  closable: false,
+  closeBlockedReasonCode: 'SAMPLE_UNCOUNTED_REMAINING',
 };
 
 export const summaryResponse = (
@@ -98,6 +101,7 @@ export const CLOSABLE_SUMMARY: InventoryCountSummaryResponse = {
   countedCount: 40,
   uncountedCount: 0,
   varianceCount: 0,
+  closable: true,
 };
 
 /**
@@ -141,6 +145,8 @@ const BASE_LINE: InventoryCountLineResponse = {
   uomId: 9501,
   varianceReasonCode: 'SAMPLE_VARIANCE_REASON_A',
   countedAt: '2026-08-06T09:12:00+09:00',
+  /* client#601 3-4 — 신설 필드. 실제로 센 줄이라 참이다(countedQty가 채워져 있다). */
+  counted: true,
 };
 
 export const countLineResponse = (

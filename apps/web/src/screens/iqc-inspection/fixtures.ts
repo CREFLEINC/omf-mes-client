@@ -62,6 +62,18 @@ export const requestWithoutLot: InspectionRequestResponse = {
   targetTypeCode: 'WORK_ORDER',
 };
 
+/**
+ * 검사기준이 등록되지 않은 상태로 만들어진 건(client#589) — 실무상 W-01-01에서는 안 비지만
+ * 방어 경로를 시험하려면 만들 수 있어야 한다.
+ */
+export const requestWithoutPlanVersion: InspectionRequestResponse = {
+  ...waitingRequest,
+  inspectionRequestId: 1004,
+  inspectionRequestNo: 'IR-2026-0004',
+  requestedAt: '2026-08-15T08:40:00+09:00',
+  inspectionPlanVersionId: undefined,
+};
+
 export const queueItems: InspectionRequestResponse[] = [
   waitingRequest,
   inProgressRequest,
@@ -141,7 +153,8 @@ export const roundsResponse = (
  */
 export const dimensionSpec: InspectionItemSpecResponse = {
   inspectionItemSpecId: 7001,
-  inspectionPlanVersionId: waitingRequest.inspectionPlanVersionId,
+  /* 항목 규격의 기준 버전은 항상 있다(다른 스키마) — waitingRequest의 값과 같은 3001을 그대로 쓴다. */
+  inspectionPlanVersionId: 3001,
   sequenceNo: 10,
   inspectionItemCode: 'DIM',
   inspectionItemName: '치수',
@@ -157,7 +170,8 @@ export const dimensionSpec: InspectionItemSpecResponse = {
 
 export const appearanceSpec: InspectionItemSpecResponse = {
   inspectionItemSpecId: 7002,
-  inspectionPlanVersionId: waitingRequest.inspectionPlanVersionId,
+  /* 항목 규격의 기준 버전은 항상 있다(다른 스키마) — waitingRequest의 값과 같은 3001을 그대로 쓴다. */
+  inspectionPlanVersionId: 3001,
   sequenceNo: 20,
   inspectionItemCode: 'APPEAR',
   inspectionItemName: '외관',
@@ -170,7 +184,8 @@ export const appearanceSpec: InspectionItemSpecResponse = {
 /** 필수가 아닌 항목. 채번에 구멍이 있어도(시퀀스 5) 화면은 위치로 1부터 센다. */
 export const optionalSpec: InspectionItemSpecResponse = {
   inspectionItemSpecId: 7003,
-  inspectionPlanVersionId: waitingRequest.inspectionPlanVersionId,
+  /* 항목 규격의 기준 버전은 항상 있다(다른 스키마) — waitingRequest의 값과 같은 3001을 그대로 쓴다. */
+  inspectionPlanVersionId: 3001,
   sequenceNo: 5,
   inspectionItemCode: 'NOTE',
   inspectionItemName: '비고 측정',

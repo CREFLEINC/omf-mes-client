@@ -801,8 +801,11 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
     expect(operations.map((item) => item.routingOperationId)).toEqual([8002, 8001]);
   });
 
-  /** 계약에 자리가 없는 항목을 지어내 보내지 않는다. */
-  it('저장 본문에 외주 공정 항목이 실리지 않는다', async () => {
+  /**
+   * client#603 — `isOutsourced`가 되살아나 필수가 됐다. 화면이 그 칸을 아직 입력받지 않으므로
+   * 항상 `false`로 싣는다(폼이 실제로 보이는 값 그대로) — `draftId`(화면 전용 키)는 여전히 안 싣는다.
+   */
+  it('저장 본문에 외주 공정은 항상 false로 실리고 화면 전용 키는 실리지 않는다', async () => {
     const { requests, user } = renderDraftOperations([operationSaveRoute()]);
     await screen.findByText('1차 사출');
 
@@ -813,7 +816,7 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
     await screen.findByText('저장했습니다');
 
     const body = savePuts(requests)[0]?.body ?? '';
-    expect(body).not.toContain('utsourced');
+    expect(body).toContain('"isOutsourced":false');
     expect(body).not.toContain('draftId');
   });
 
@@ -852,7 +855,12 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
         jsonResponse(
           {
             errors: [
-              { scope: 'field', field: 'operationSeq', code: 'STANDARD', message: '순서가 겹칩니다.' },
+              {
+                scope: 'field',
+                field: 'operationSeq',
+                code: 'STANDARD',
+                message: '순서가 겹칩니다.',
+              },
             ],
           },
           { status: 400 },
@@ -877,7 +885,11 @@ describe('RoutingScreen — 공정 라인 편집과 일괄 저장', () => {
         jsonResponse(
           {
             errors: [
-              { scope: 'screen', code: 'STATE_LOCKED', message: '확정된 Rev는 수정할 수 없습니다.' },
+              {
+                scope: 'screen',
+                code: 'STATE_LOCKED',
+                message: '확정된 Rev는 수정할 수 없습니다.',
+              },
             ],
           },
           { status: 400 },
@@ -1057,10 +1069,7 @@ const transitionRoute = (
 });
 
 const stateLockedResponse = (message: string): Response =>
-  jsonResponse(
-    { errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] },
-    { status: 400 },
-  );
+  jsonResponse({ errors: [{ scope: 'screen', code: 'STATE_LOCKED', message }] }, { status: 400 });
 
 describe('RoutingScreen — 확정·폐기', () => {
   /* 되돌릴 수 없는 전이다 — 확인 단계를 건너뛰면 실수로 판이 잠긴다. */
@@ -1105,7 +1114,9 @@ describe('RoutingScreen — 확정·폐기', () => {
     };
 
     await user.click(within(headerRegion()).getByRole('button', { name: '확정' }));
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '확정' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '확정' }),
+    );
     await screen.findByText('저장했습니다');
 
     await waitFor(() => {
@@ -1123,7 +1134,9 @@ describe('RoutingScreen — 확정·폐기', () => {
     await screen.findByText('1차 사출');
 
     await user.click(within(headerRegion()).getByRole('button', { name: '확정' }));
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '확정' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '확정' }),
+    );
 
     expect(await screen.findByText('작성중 Rev가 아니라 확정할 수 없습니다.')).toBeInTheDocument();
     expect(screen.getByText('지금은 저장할 수 없는 상태입니다')).toBeInTheDocument();
@@ -1158,7 +1171,9 @@ describe('RoutingScreen — 확정·폐기', () => {
 
     expect(within(headerRegion()).getByRole('button', { name: '확정' })).toBeDisabled();
     expect(
-      screen.getByText('확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.'),
+      screen.getByText(
+        '확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -1167,7 +1182,9 @@ describe('RoutingScreen — 확정·폐기', () => {
     await screen.findByText('1차 사출');
 
     expect(within(headerRegion()).getByRole('button', { name: '폐기' })).toBeDisabled();
-    expect(screen.getByText('폐기는 확정된 Rev에만 할 수 있습니다. 먼저 확정하세요.')).toBeInTheDocument();
+    expect(
+      screen.getByText('폐기는 확정된 Rev에만 할 수 있습니다. 먼저 확정하세요.'),
+    ).toBeInTheDocument();
   });
 
   it('확정 Rev에서는 폐기가 활성이고 확인하면 요청이 나간다', async () => {
@@ -1189,7 +1206,9 @@ describe('RoutingScreen — 확정·폐기', () => {
     expect(await screen.findByText('이 Rev를 폐기할까요?')).toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings/7002:obsolete')).toHaveLength(0);
 
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '폐기' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '폐기' }),
+    );
     await screen.findByText('저장했습니다');
 
     const posts = requestsTo(requests, '/planning/routings/7002:obsolete');
@@ -1202,7 +1221,9 @@ describe('RoutingScreen — 확정·폐기', () => {
     await screen.findByText('1차 사출');
 
     await user.click(within(headerRegion()).getByRole('button', { name: '확정' }));
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: '취소' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: '취소' }),
+    );
 
     expect(screen.queryByText('이 Rev를 확정할까요?')).not.toBeInTheDocument();
     expect(requestsTo(requests, '/planning/routings/7003:confirm')).toHaveLength(0);
@@ -1224,7 +1245,10 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
   it('Rev가 1건 이상이면 발행 버튼이 활성되고 멱등 키만 실어 요청한다', async () => {
     const { requests, user } = renderDraftOperations([
       transitionRoute('new-revision', 7003, () =>
-        jsonResponse({ ...routingFixtures[0], routingId: 7004, routingVersion: 4 }, { status: 201 }),
+        jsonResponse(
+          { ...routingFixtures[0], routingId: 7004, routingVersion: 4 },
+          { status: 201 },
+        ),
       ),
       routingDetailRoute({ ...routingFixtures[0]!, routingId: 7004, routingVersion: 4 }),
       operationListRoute(7004),
@@ -1247,7 +1271,10 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
   it('발행에 성공하면 새 Rev로 옮겨 상세와 라인을 다시 조회한다', async () => {
     const { requests, user } = renderDraftOperations([
       transitionRoute('new-revision', 7003, () =>
-        jsonResponse({ ...routingFixtures[0], routingId: 7004, routingVersion: 4 }, { status: 201 }),
+        jsonResponse(
+          { ...routingFixtures[0], routingId: 7004, routingVersion: 4 },
+          { status: 201 },
+        ),
       ),
       routingDetailRoute({ ...routingFixtures[0]!, routingId: 7004, routingVersion: 4 }),
       operationListRoute(7004),
@@ -1282,9 +1309,7 @@ describe('RoutingScreen — 신규 Rev 발행과 첫 Rev 등록', () => {
     const { user } = renderDraftOperations([transitionRoute('new-revision')]);
     await screen.findByText('1차 사출');
 
-    await user.click(
-      within(operationsRegion()).getByRole('button', { name: '1번 공정 삭제' }),
-    );
+    await user.click(within(operationsRegion()).getByRole('button', { name: '1번 공정 삭제' }));
 
     expect(within(revisionRegion()).getByRole('button', { name: '신규 Rev 발행' })).toBeDisabled();
     expect(

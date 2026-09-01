@@ -87,6 +87,7 @@ export const makePlan = (
   inspectionPlanCode,
   inspectionPlanName,
   inspectionTypeCode: 'PQC',
+  pqcSkipAllowed: false,
   isActive: true,
 });
 

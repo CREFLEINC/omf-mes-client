@@ -1,12 +1,15 @@
-import { EmptyState, Icon } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import { Link } from 'react-router';
 
+// Capacitor 셸에는 주소창이 없어 링크가 없으면 붙인 화면을 열 수단이 없다.
 export const ShellHome = () => {
   return (
-    <EmptyState
-      size="lg"
-      icon={<Icon name="smartphone" />}
-      title="모바일 셸이 실행 중입니다"
-      description="화면은 아직 붙지 않았습니다."
-    />
+    <nav aria-label="화면 목록">
+      <ul>
+        <li>
+          <Link to="/material-location">{messages.materialLocation.title}</Link>
+        </li>
+      </ul>
+    </nav>
   );
 };

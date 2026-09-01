@@ -145,7 +145,7 @@ describe('Lot Status 전이 후보', () => {
       itemId: 801,
       lotStatusCode: 'NORMAL',
       transitionFrom: '2026-08-01T00:00:00+09:00',
-      transitionTo: '2026-08-25T23:59:59+09:00',
+      transitionTo: '2026-08-26T00:00:00+09:00',
       page: 3,
     });
     expect(toLotStatusCandidateQuery(EMPTY_LOT_STATUS_CANDIDATE_FILTERS, 1, 540)).toEqual({});

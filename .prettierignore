@@ -9,3 +9,7 @@ apps/mobile/android/capacitor-cordova-android-plugins/
 apps/mobile/android/app/src/main/assets/public/
 apps/mobile/android/app/src/main/assets/capacitor.config.json
 apps/mobile/android/app/src/main/assets/capacitor.plugins.json
+
+# 계약 타입은 openapi-typescript 가 소유한다. Prettier 가 손대면 재생성 결과와 어긋나
+# 생성물 경계 검사가 보는 파일이 사람 손을 탄 것처럼 보인다.
+packages/api-client/src/generated/

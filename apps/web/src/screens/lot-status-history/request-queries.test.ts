@@ -85,7 +85,7 @@ describe('보류 사건 이력 요청', () => {
       ),
     ).toEqual({
       occurredFrom: '2026-08-01T00:00:00+09:00',
-      occurredTo: '2026-08-07T23:59:59+09:00',
+      occurredTo: '2026-08-08T00:00:00+09:00',
       actorId: 505,
       lotNo: 'SAMPLE-LOT-001',
       sort: 'occurredDesc',
@@ -113,7 +113,7 @@ describe('보류 사건 이력 요청', () => {
       ),
     ).toEqual({
       occurredFrom: '2026-08-01T00:00:00-05:00',
-      occurredTo: '2026-08-07T23:59:59-05:00',
+      occurredTo: '2026-08-08T00:00:00-05:00',
       sort: 'occurredDesc',
     });
   });

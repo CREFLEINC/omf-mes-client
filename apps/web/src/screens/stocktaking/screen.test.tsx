@@ -3591,7 +3591,7 @@ describe('StocktakingScreen — 마감 잠금과 활성', () => {
    * 버튼까지 이어져 있는지**가 여기서만 관측되기 때문이다 — 단위 테스트는 판정 함수가 옳다는
    * 것까지만 말하고, 그 답이 실제로 버튼에 닿았는지는 말하지 않는다.
    */
-  it.each<[string, Record<string, number>, string | null]>([
+  it.each<[string, Record<string, unknown>, string | null]>([
     ['둘 다 0이면', CLOSABLE_SUMMARY, null],
     [
       '미실사가 남으면',
@@ -3658,7 +3658,7 @@ describe('StocktakingScreen — 마감 잠금과 활성', () => {
   it.each(['uncountedCount', 'varianceCount'])(
     '요약에서 %s가 빠져 오면 마감이 잠긴다',
     async (field) => {
-      const partial: Record<string, number> = { ...CLOSABLE_SUMMARY };
+      const partial: Record<string, unknown> = { ...CLOSABLE_SUMMARY };
 
       delete partial[field];
 

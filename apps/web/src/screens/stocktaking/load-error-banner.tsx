@@ -30,7 +30,11 @@ export const describeLoadError = (error: ApiError): string => {
       return error.message === '' ? messages.httpError.description : error.message;
     case 'stateLocked':
     case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
+      /* client#192 — 잇기 전에 항목별로 거른다(공백만·빈 문구 여럿이 이음쇠만 남기지 않도록). */
+      const lines = error.errors
+        .map((item) => item.message)
+        .filter((message) => message.trim() !== '')
+        .join(' ');
       return lines === '' ? messages.httpError.description : lines;
     }
   }

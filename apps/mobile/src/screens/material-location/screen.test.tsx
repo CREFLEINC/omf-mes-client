@@ -1,0 +1,480 @@
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubRoute,
+} from '../../test/api-harness';
+import { ScreenTitleProvider, useCurrentScreenTitle } from '../../patterns/screen-title';
+import { MaterialLocationScreen } from './screen';
+
+/* 앱바를 대신해 셸이 받은 제목을 그린다. */
+const TitleProbe = () => {
+  const title = useCurrentScreenTitle();
+  return title === null ? null : <h1>{title}</h1>;
+};
+
+const SCANNED = '7770001118880002229901015554447777';
+
+const page = { page: 0, size: 20, totalElements: 1, totalPages: 1 };
+
+const lotRow = {
+  lotId: 4,
+  lotNo: SCANNED,
+  itemId: 31,
+  lotTypeCode: 'MATERIAL',
+  plantId: 1,
+  initialQty: 120,
+  uomId: 41,
+  sourceTypeCode: 'RECEIPT',
+  sourceId: 1,
+  statusCode: 'ACTIVE',
+};
+
+const balanceRow = (overrides: Record<string, unknown> = {}) => ({
+  groupBy: 'LOCATION',
+  warehouseId: 11,
+  locationId: 21,
+  itemId: 31,
+  lotId: 4,
+  ownershipTypeCode: 'OWNED',
+  onHandQty: 120,
+  reservedQty: 20,
+  pickedQty: 0,
+  blockedQty: 0,
+  availableQty: 100,
+  uomId: 41,
+  ...overrides,
+});
+
+const route = (pathname: string, body: unknown): StubRoute => ({
+  match: (request) => new URL(request.url).pathname === pathname,
+  respond: () => jsonResponse(body),
+});
+
+interface StubOptions {
+  balances?: unknown[];
+  holds?: unknown[];
+  lots?: unknown[];
+}
+
+const stub = (options: StubOptions = {}) =>
+  createStubFetch([
+    route('/trace/lots', { items: options.lots ?? [lotRow], page }),
+    route('/inventory/balances', { items: options.balances ?? [balanceRow()], page }),
+    route('/trace/lots/4/holds', { items: options.holds ?? [] }),
+    route('/mdm/warehouses/11', { warehouse: { warehouseName: '1공장 자재창고' } }),
+    route('/mdm/locations/21', {
+      location: { locationCode: 'A-01-03', locationName: '3단 선반' },
+    }),
+    route('/mdm/locations/22', { location: { locationCode: 'B-02-01', locationName: '평치장' } }),
+    route('/mdm/items/31', { item: { itemCode: 'ABC-123' } }),
+    route('/mdm/uoms', { items: [{ uomId: 41, uomCode: 'EA' }], page }),
+  ]);
+
+const scan = async (value = SCANNED) => {
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText('스캔 대기'), `${value}{Enter}`);
+  return user;
+};
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe('자재 위치 확인 화면', () => {
+  it('스캔하기 전에는 결과를 보이지 않는다', () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+
+    expect(screen.getByLabelText('스캔 대기')).toBeInTheDocument();
+    expect(screen.queryByText('보유')).not.toBeInTheDocument();
+  });
+
+  it('스캔한 LOT 번호를 다섯 토막으로 보인다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan();
+
+    expect(
+      await screen.findByText('777000111 · 888000222 · 990101 · 555444 · 7777'),
+    ).toBeInTheDocument();
+  });
+
+  it('어느 화면인지 셸에 넘겨 알린다', () => {
+    renderWithProviders(
+      <ScreenTitleProvider>
+        <TitleProbe />
+        <MaterialLocationScreen />
+      </ScreenTitleProvider>,
+      { fetch: stub() },
+    );
+
+    expect(screen.getByRole('heading', { name: '자재 위치 확인' })).toBeInTheDocument();
+  });
+
+  it('품목 코드를 보인다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan();
+
+    expect(await screen.findByText('ABC-123')).toBeInTheDocument();
+  });
+
+  it('LOT은 있는데 재고가 잡힌 자리가 없으면 그렇게 알린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub({ balances: [] }) });
+    await scan();
+
+    expect(await screen.findByText('재고가 있는 위치가 없습니다')).toBeInTheDocument();
+  });
+
+  it('같은 자리라도 상태가 다른 잔액은 따로 보인다', async () => {
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({
+        balances: [
+          balanceRow({ inventoryStatusCode: 'AVAILABLE', onHandQty: 90 }),
+          balanceRow({ inventoryStatusCode: 'IN_TRANSIT', onHandQty: 30 }),
+        ],
+      }),
+    });
+    await scan();
+
+    await screen.findByText('위치 2곳');
+    expect(screen.getAllByText('A-01-03 (3단 선반)')).toHaveLength(2);
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('same key');
+  });
+
+  it('스캔하기 전에는 단위 목록도 부르지 않는다', () => {
+    const seen: string[] = [];
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: (request) => {
+        seen.push(new URL(request.url).pathname);
+        return Promise.resolve(jsonResponse({ items: [], page }));
+      },
+    });
+
+    expect(seen).toEqual([]);
+  });
+
+  it('창고와 위치를 이름으로 보인다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan();
+
+    expect(await screen.findByText('1공장 자재창고')).toBeInTheDocument();
+    expect(screen.getByText('A-01-03 (3단 선반)')).toBeInTheDocument();
+  });
+
+  it('가용 수량은 서버가 준 값을 그대로 그린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({ balances: [balanceRow({ availableQty: 77 })] }),
+    });
+    await scan();
+
+    expect(await screen.findByText('77 EA')).toBeInTheDocument();
+  });
+
+  it('보유 수량이 음수여도 값을 보이고 확인을 청한다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({ balances: [balanceRow({ onHandQty: -5 })] }),
+    });
+    await scan();
+
+    expect(await screen.findByText('-5 EA')).toBeInTheDocument();
+    expect(screen.getByText('보유 수량이 음수입니다')).toBeInTheDocument();
+  });
+
+  it('수량이 0인 자리는 감추지 않고 소진으로 표시한다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({ balances: [balanceRow({ onHandQty: 0 })] }),
+    });
+    await scan();
+
+    expect(await screen.findByText('0 EA (소진)')).toBeInTheDocument();
+  });
+
+  it('여러 자리에 나뉘면 수량이 많은 자리를 먼저 보인다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({
+        balances: [
+          balanceRow({ locationId: 22, onHandQty: 30 }),
+          balanceRow({ locationId: 21, onHandQty: 90 }),
+        ],
+      }),
+    });
+    await scan();
+
+    await screen.findByText('위치 2곳');
+    const shown = screen.getAllByText(/^(A-01-03|B-02-01)/).map((node) => node.textContent);
+    expect(shown).toEqual(['A-01-03 (3단 선반)', 'B-02-01 (평치장)']);
+  });
+
+  it('LOT 단위로 나뉘지 않는 잔액은 LOT 무관으로 표시한다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({ balances: [balanceRow({ lotId: null })] }),
+    });
+    await scan();
+
+    expect(await screen.findByText('(LOT 무관)')).toBeInTheDocument();
+  });
+
+  it('보류가 걸려 있으면 경고로 알린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({
+        holds: [
+          {
+            lotHoldId: 1,
+            lotId: 4,
+            reasonCode: 'IQC_WAIT',
+            statusCode: 'HELD',
+            heldAt: '2026-08-27T00:00:00Z',
+            holdQty: 20,
+            uomId: 41,
+            releaseCondition: '수입검사 합격',
+          },
+        ],
+      }),
+    });
+    await scan();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('보류 중');
+    expect(screen.getByText(/20 EA 보류/)).toBeInTheDocument();
+    expect(screen.getByText(/해제 조건: 수입검사 합격/)).toBeInTheDocument();
+  });
+
+  it('보류가 아직 오지 않았으면 확인 중임을 알린다', async () => {
+    let releaseHolds = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseHolds = resolve;
+    });
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: async (request) => {
+        if (new URL(request.url).pathname === '/trace/lots/4/holds') {
+          await held;
+          return jsonResponse({ items: [] });
+        }
+        return stub()(request);
+      },
+    });
+    await scan();
+
+    expect(await screen.findByText('보류 여부를 확인하는 중입니다')).toBeInTheDocument();
+    releaseHolds();
+  });
+
+  it('하나가 실패해도 남은 조회의 진행을 계속 알린다', async () => {
+    let releaseBalances = () => {};
+    const held = new Promise<void>((resolve) => {
+      releaseBalances = resolve;
+    });
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: async (request) => {
+        const path = new URL(request.url).pathname;
+        if (path === '/trace/lots/4/holds') {
+          return jsonResponse({ code: 'INTERNAL' }, { status: 500 });
+        }
+        if (path === '/inventory/balances') {
+          await held;
+          return jsonResponse({ items: [balanceRow()], page });
+        }
+        return stub()(request);
+      },
+    });
+    await scan();
+    await screen.findByText('보류 여부를 확인하지 못했습니다');
+
+    expect(screen.getByText('조회 중입니다')).toBeInTheDocument();
+    releaseBalances();
+  });
+
+  it('같은 자리·같은 상태라도 품목이 다르면 따로 보인다', async () => {
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => {});
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({
+        balances: [
+          balanceRow({ lotId: null, itemId: 31, onHandQty: 90 }),
+          balanceRow({ lotId: null, itemId: 32, onHandQty: 30 }),
+        ],
+      }),
+    });
+    await scan();
+
+    await screen.findByText('위치 2곳');
+    expect(warn.mock.calls.flat().join(' ')).not.toContain('same key');
+  });
+
+  it('다시 시도는 실패한 조회만 다시 부른다', async () => {
+    const seen: string[] = [];
+    let holdsFails = true;
+    const user = userEvent.setup();
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: (request) => {
+        const path = new URL(request.url).pathname;
+        seen.push(path);
+        if (path === '/trace/lots/4/holds' && holdsFails) {
+          return Promise.resolve(jsonResponse({ code: 'INTERNAL' }, { status: 500 }));
+        }
+        return stub()(request);
+      },
+    });
+    await user.type(screen.getByLabelText('스캔 대기'), `${SCANNED}{Enter}`);
+    await screen.findByText('보류 여부를 확인하지 못했습니다');
+
+    holdsFails = false;
+    seen.length = 0;
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+    await screen.findByText('1공장 자재창고');
+
+    expect(seen).toEqual(['/trace/lots/4/holds']);
+  });
+
+  it('보류를 확인하지 못하면 없는 것처럼 두지 않는다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: createStubFetch([
+        route('/trace/lots', { items: [lotRow], page }),
+        route('/inventory/balances', { items: [balanceRow()], page }),
+        {
+          match: (request) => new URL(request.url).pathname === '/trace/lots/4/holds',
+          respond: () => jsonResponse({ code: 'INTERNAL' }, { status: 500 }),
+        },
+        route('/mdm/warehouses/11', { warehouse: { warehouseName: '1공장 자재창고' } }),
+        route('/mdm/locations/21', {
+          location: { locationCode: 'A-01-03', locationName: '3단 선반' },
+        }),
+        route('/mdm/items/31', { item: { itemCode: 'ABC-123' } }),
+        route('/mdm/uoms', { items: [{ uomId: 41, uomCode: 'EA' }], page }),
+      ]),
+    });
+    await scan();
+
+    expect(await screen.findByText('보류 여부를 확인하지 못했습니다')).toBeInTheDocument();
+    expect(screen.getByText('1공장 자재창고')).toBeInTheDocument();
+  });
+
+  it('길이 위반 스캔은 앞 결과를 지운다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan();
+    await screen.findByText('1공장 자재창고');
+
+    await scan('0001234500');
+
+    expect(await screen.findByText(/34자리입니다/)).toBeInTheDocument();
+    expect(screen.queryByText('1공장 자재창고')).not.toBeInTheDocument();
+  });
+
+  it('보류 수량이 없으면 전량 보류로 읽는다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: stub({
+        holds: [
+          {
+            lotHoldId: 1,
+            lotId: 4,
+            reasonCode: 'IQC_WAIT',
+            statusCode: 'HELD',
+            heldAt: '2026-08-27T00:00:00Z',
+            holdQty: null,
+          },
+        ],
+      }),
+    });
+    await scan();
+
+    expect(await screen.findByText('전량 보류')).toBeInTheDocument();
+  });
+
+  it('없는 LOT이면 등록되지 않았다고 알린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub({ lots: [] }) });
+    await scan();
+
+    expect(await screen.findByText('등록되지 않은 LOT입니다')).toBeInTheDocument();
+  });
+
+  it('34자리가 아니면 조회하지 않고 읽은 자릿수를 알린다', async () => {
+    const seen: string[] = [];
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: (request) => {
+        seen.push(new URL(request.url).pathname);
+        return Promise.resolve(jsonResponse({ items: [], page }));
+      },
+    });
+    await scan('0001234500');
+
+    expect(
+      await screen.findByText('자재 LOT은 34자리입니다. 10자리를 읽었습니다.'),
+    ).toBeInTheDocument();
+    expect(seen).toEqual([]);
+  });
+
+  it('길이 오류 뒤에도 스캔 칸은 비워지고 포커스가 남는다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: createStubFetch([]) });
+    await scan('0001234500');
+
+    const field = screen.getByLabelText('스캔 대기');
+    expect(field).toHaveValue('');
+    expect(field).toHaveFocus();
+  });
+
+  it('길이가 맞으면 오류가 사라진다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan('0001234500');
+    await screen.findByText(/34자리입니다/);
+
+    await scan();
+
+    expect(await screen.findByText('1공장 자재창고')).toBeInTheDocument();
+    expect(screen.queryByText(/34자리입니다/)).not.toBeInTheDocument();
+  });
+
+  it('서버에 닿지 못하면 오프라인이라고 알린다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: () => Promise.reject(new TypeError('Failed to fetch')),
+    });
+    await scan();
+
+    expect(await screen.findByText('오프라인이라 조회할 수 없습니다')).toBeInTheDocument();
+  });
+
+  it('서버가 오류를 주면 다시 시도를 낸다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, {
+      fetch: createStubFetch([
+        {
+          match: (request) => new URL(request.url).pathname === '/trace/lots',
+          respond: () => jsonResponse({ code: 'INTERNAL' }, { status: 500 }),
+        },
+      ]),
+    });
+    await scan();
+
+    expect(await screen.findByText('조회하지 못했습니다')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다시 시도' })).toBeInTheDocument();
+    expect(screen.queryByText('오프라인이라 조회할 수 없습니다')).not.toBeInTheDocument();
+  });
+
+  /* 결과가 길어지면 흐르는 구획 안의 것은 화면 밖으로 밀린다. 다음 스캔은 그 밖에 있어야 한다. */
+  it('다음 스캔을 흐르는 구획 밖에 둔다', async () => {
+    const { container } = renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    await scan();
+
+    const nextScan = await screen.findByRole('button', { name: '다음 스캔' });
+    const scrolling = container.querySelector('.material-location__body');
+
+    expect(scrolling).not.toBeNull();
+    expect(scrolling?.contains(nextScan)).toBe(false);
+  });
+
+  it('결과가 없을 때는 다음 스캔 자리를 세우지 않는다', () => {
+    const { container } = renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+
+    expect(container.querySelector('.material-location__actions')).toBeNull();
+  });
+
+  it('다음 스캔을 누르면 결과를 비우고 스캔 칸으로 돌아간다', async () => {
+    renderWithProviders(<MaterialLocationScreen />, { fetch: stub() });
+    const user = await scan();
+
+    await user.click(await screen.findByRole('button', { name: '다음 스캔' }));
+
+    expect(screen.queryByText('1공장 자재창고')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('스캔 대기')).toHaveFocus();
+  });
+});

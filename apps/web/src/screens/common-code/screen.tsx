@@ -14,7 +14,12 @@ import { type ReactNode, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner, codeLockMessage, useMasterWrite } from '../../patterns/master';
+import {
+  SaveErrorBanner,
+  codeLockMessage,
+  requireIfMatch,
+  useMasterWrite,
+} from '../../patterns/master';
 import { CodeGroupFormPane } from './code-group-form-pane';
 import { CodeGroupListPane } from './code-group-list-pane';
 import {
@@ -112,6 +117,7 @@ import {
   useWorkerList,
   useWorkerQualifications,
   workerKeys,
+  workerQualificationsPath,
 } from './worker-queries';
 import type {
   CodeGroupFilters,
@@ -1127,16 +1133,19 @@ export const CommonCodeScreen = () => {
       client.PUT('/mdm/workers/{workerId}/qualifications', {
         params: {
           path: { workerId: selectedWorkerId ?? 0 },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
         },
         body: { qualifications: toQualificationsPayload(drafts) },
       }),
     /*
-     * **반드시 `null`이다.** 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고,
-     * 더구나 `GET /mdm/workers/{id}`가 `ETag`를 주지 않는다 — 상세 경로를 주면 토큰을 찾지 못해
-     * 요청이 **나가지 않고 멈춘다**(「저장을 눌러도 아무 일이 없다」).
+     * ⭐ **client#602 — 이 목록 조회의 `GET` 200 응답에 `ETag`가 새로 생겼다.** 예전에는
+     * `GET /mdm/workers/{id}`도 이 목록 조회도 토큰을 주지 않아 `null`이었다 — 지금은
+     * 이 목록 조회 자체가 토큰을 준다.
      */
-    etagPath: null,
+    etagPath: selectedWorkerId === null ? null : workerQualificationsPath(selectedWorkerId),
     invalidateKeys: [workerKeys.all],
     // 대응하는 입력칸이 이 구획에 없다(창 안에 있다) — 필드 오류도 배너로 올린다.
     knownFields: [],

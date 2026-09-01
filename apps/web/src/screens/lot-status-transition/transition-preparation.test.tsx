@@ -203,16 +203,22 @@ const prepareRelease = async (
 const fillRelease = async (
   user: ReturnType<typeof userEvent.setup>,
   quantity = '5',
+  reason = 'SYN_RELEASE_REASON',
   remarks = '재검사 합격으로 해제',
 ) => {
   await user.click(await screen.findByRole('radio', { name: '일부 해제' }));
   await user.type(screen.getByLabelText('해제 수량'), quantity);
-  if (remarks !== '') await user.type(screen.getByLabelText('해제 사유 및 비고'), remarks);
+  if (reason !== '') await user.type(screen.getByLabelText('해제 사유'), reason);
+  if (remarks !== '') await user.type(screen.getByLabelText('비고'), remarks);
 };
 const fillFullRelease = async (
   user: ReturnType<typeof userEvent.setup>,
+  reason = 'SYN_RELEASE_REASON',
   remarks = '재검사 합격으로 전량 해제',
-) => user.type(screen.getByLabelText('해제 사유 및 비고'), remarks);
+) => {
+  await user.type(screen.getByLabelText('해제 사유'), reason);
+  await user.type(screen.getByLabelText('비고'), remarks);
+};
 const prepareCreate = async (
   response = createRoute(),
   selected = lot({ availableQty: 20 }),
@@ -535,7 +541,8 @@ describe('Lot Status 전이 준비', () => {
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
     expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
-    expect(screen.getByLabelText('해제 사유 및 비고')).toHaveValue('');
+    expect(screen.getByLabelText('해제 사유')).toHaveValue('');
+    expect(screen.getByLabelText('비고')).toHaveValue('');
     expect(urls.filter((url) => url.pathname === lotHoldDetailPath(502))).toHaveLength(1);
   });
 
@@ -742,7 +749,8 @@ describe('Lot Status 전이 준비', () => {
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
     expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
-    expect(screen.getByLabelText('해제 사유 및 비고')).toHaveValue('');
+    expect(screen.getByLabelText('해제 사유')).toHaveValue('');
+    expect(screen.getByLabelText('비고')).toHaveValue('');
   });
 
   it('해제 모드를 바꾸면 앞 입력을 버리고 새 모드의 필수값부터 다시 받는다', async () => {
@@ -752,31 +760,30 @@ describe('Lot Status 전이 준비', () => {
 
     await user.click(screen.getByRole('radio', { name: '전량 해제' }));
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
-    expect(screen.getByLabelText('해제 사유 및 비고')).toHaveValue('');
+    expect(screen.getByLabelText('해제 사유')).toHaveValue('');
+    expect(screen.getByLabelText('비고')).toHaveValue('');
     expect(screen.getByRole('button', { name: '해제 확인' })).toBeDisabled();
   });
 
   it.each([
-    ['0', '해제 수량은 0보다 커야 합니다.'],
-    ['11', '해제 수량은 보류 수량 10 이하여야 합니다.'],
-  ])('해제 수량 %s를 차단한다', async (quantity, message) => {
+    ['0', 'SYN_RELEASE_REASON', '재검사 합격으로 해제', '해제 수량은 0보다 커야 합니다.'],
+    [
+      '11',
+      'SYN_RELEASE_REASON',
+      '재검사 합격으로 해제',
+      '해제 수량은 보류 수량 10 이하여야 합니다.',
+    ],
+    ['5', '', '재검사 합격으로 해제', '해제 사유를 입력하세요.'],
+    ['5', 'SYN_RELEASE_REASON', '', '비고를 입력하세요.'],
+  ])('해제 입력 %s/%s/%s를 fail-closed한다', async (quantity, reason, remarks, message) => {
     const { requests, user } = await prepareRelease(releaseRoute());
-    await fillRelease(user, quantity);
+    await fillRelease(user, quantity, reason, remarks);
     const confirm = screen.getByRole('button', { name: '해제 확인' });
 
     expect(screen.getByText(message)).toBeVisible();
     expect(confirm).toBeDisabled();
-    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
-  });
-
-  it('자유 텍스트 해제 사유 및 비고를 필수로 검사한다', async () => {
-    const { user } = await prepareRelease(releaseRoute());
-    await fillRelease(user, '5', '');
-    const confirm = screen.getByRole('button', { name: '해제 확인' });
-
-    expect(screen.getByText('해제 사유 및 비고를 입력하세요.')).toBeVisible();
-    expect(confirm).toBeDisabled();
     expect(screen.queryByRole('dialog')).toBeNull();
+    expect(requests.filter((request) => request.method === 'POST')).toHaveLength(0);
   });
 
   it('전량 해제는 수량을 받지 않고 releaseQty를 생략하며 위치 누락도 확인시킨다', async () => {
@@ -799,6 +806,7 @@ describe('Lot Status 전이 준비', () => {
     );
     expect(await requests.find((request) => request.method === 'POST')!.json()).toEqual({
       targetLotStatusCode: 'NORMAL',
+      releaseReasonCode: 'SYN_RELEASE_REASON',
       remarks: '재검사 합격으로 전량 해제',
     });
   });
@@ -837,6 +845,7 @@ describe('Lot Status 전이 준비', () => {
     expect(await sent.json()).toEqual({
       targetLotStatusCode: 'NORMAL',
       releaseQty: 5,
+      releaseReasonCode: 'SYN_RELEASE_REASON',
       remarks: '재검사 합격으로 해제',
     });
     expect(sent.headers.get('If-Match')).toBe('W/"11"');
@@ -938,7 +947,8 @@ describe('Lot Status 전이 준비', () => {
     await screen.findByText('보류 해제 준비가 완료되었습니다.');
     expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
-    expect(screen.getByLabelText('해제 사유 및 비고')).toHaveValue('');
+    expect(screen.getByLabelText('해제 사유')).toHaveValue('');
+    expect(screen.getByLabelText('비고')).toHaveValue('');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

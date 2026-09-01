@@ -55,6 +55,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       }
       sidebar={
         <Sidebar aria-label="주 메뉴">
+          {/*
+           * W-CO-05 — **맨 위이고 섹션이 없다.** 이 화면은 어느 업무 묶음에도 속하지 않고
+           * 모든 묶음의 숫자를 모아 보인다. 「기준정보」 아래에 넣으면 마스터 관리 화면들
+           * 사이에 서서 분류가 무너지고, 자기 섹션을 하나 만들면 항목 하나짜리 섹션이 생겨
+           * 제목이 항목보다 무거워진다.
+           */}
+          <NavItem to="/dashboard" icon="dashboard">
+            통합 대시보드
+          </NavItem>
           <SidebarSection label="기준정보">
             <NavItem to="/master-data/warehouse-location" icon="warehouse">
               창고·Location
@@ -67,6 +76,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
              */}
             <NavItem to="/master-data/putaway-rule" icon="shelves">
               적치 규칙
+            </NavItem>
+            {/*
+             * W-CO-08 — 창고 계열의 끝에 둔다. 창고·Location 이 만든 위치를 여기서 도면에
+             * 얹으므로 그 뒤이고, 적치 규칙과 창고·Location 의 인접은 흔들지 않는다.
+             */}
+            <NavItem to="/master-data/warehouse-layout" icon="map">
+              창고 배치도
             </NavItem>
             <NavItem to="/master-data/routing" icon="account_tree">
               Routing(공정)
@@ -211,8 +227,31 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
            * 입고를 처리한 뒤(자재창고) 출하를 다루고, 그 결과가 생산과는 독립이다.
            */}
           <SidebarSection label="출하">
+            {/*
+             * W-04-01 — 출하지시서 Import·작업지시 생성. 「출하 예정 목록」(W-04-02)이 먼저
+             * 이 섹션을 열었으나, 업무 순서로는 지시서를 편성해야 예정이 생긴다 — 그래서
+             * 목록보다 앞자리에 둔다.
+             */}
+            <NavItem to="/shipment/shipment-request-create" icon="assignment">
+              출하지시서 Import·작업지시 생성
+            </NavItem>
             <NavItem to="/shipment/shipment-schedule" icon="local_shipping">
               출하 예정 목록
+            </NavItem>
+            {/*
+             * W-04-03 — 예정 목록에서 출하 대상이 정해진 뒤, 상차하기 «전»에 출하검사를 판정한다.
+             * 그래서 예정 목록 뒤·출하 처리 앞이다: 편성 → 예정 → **OQC 판정** → 출하 처리.
+             */}
+            <NavItem to="/shipment/oqc-inspection" icon="fact_check">
+              OQC 출하검사 판정
+            </NavItem>
+            {/*
+             * W-04-04 — 예정 목록(W-04-02)에서 피킹까지 끝난 후보를 상차·실물 출고 처리하므로
+             * 그 바로 뒤에 둔다. 되돌릴 수 없는 쓰기(재고 차감·genealogy 종결)이지만 출하 자체는
+             * 미확정 상태로 남는다 — 확정·취소는 W-04-12(미착수) 소관이다.
+             */}
+            <NavItem to="/shipment/shipment-processing" icon="outbound">
+              출하 처리(상차·실물 출고)
             </NavItem>
           </SidebarSection>
           {/* W-02-01 — 생산의 계획·지시 첫 화면이며 현재 생산 블록의 첫 항목으로 둔다. */}
@@ -235,6 +274,18 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             {/* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */}
             <NavItem to="/production/work-order-close" icon="archive">
               W/O 마감·ERP 실적 송신
+            </NavItem>
+            {/* W-02-07 — 계획을 거치지 않고 직접 발행한다. 갈래가 달라 정규 흐름 뒤에 둔다. */}
+            <NavItem to="/production/emergency-work-orders" icon="bolt">
+              긴급 W/O 발행
+            </NavItem>
+            {/* W-02-10 — 긴급 W/O 의 부족 자재를 정식 출고로 경유시킨다. 긴급 발행 바로 뒤가 흐름이다. */}
+            <NavItem to="/production/material-issue-requests" icon="playlist_add">
+              추가 자재 출고 요청
+            </NavItem>
+            {/* W-02-08 — 발행한 W/O 가 지금 어디까지 왔는지 본다. 만드는 화면들 뒤, 조회 자리다. */}
+            <NavItem to="/production/work-order-progress" icon="monitoring">
+              W/O 진행현황 조회
             </NavItem>
           </SidebarSection>
           {/*
@@ -261,6 +312,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             {/* W-03-09 — Lot Status 조회·판정·의심자재 등록 다음에 서는 품질 승인 화면이다. */}
             <NavItem to="/quality/approvals" icon="approval">
               특채·한도승인 승인 처리
+            </NavItem>
+            {/* W-03-10 — 승인 처리 다음이다. 여기서 정한 처분이 폐기·재등록·재작업 화면의 진입을 연다. */}
+            <NavItem to="/quality/dispositions" icon="gavel">
+              처분 판정 처리
             </NavItem>
           </SidebarSection>
           {/*
@@ -326,6 +381,47 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/equipment/gauge-master" icon="straighten">
               계측기 마스터 관리
             </NavItem>
+            {/*
+             * W-05-10 — **계측기 마스터 바로 뒤다.** 이력은 그 마스터가 있어야 적을 수 있고,
+             * 인접이 그 관계를 드러낸다. 비가동 집계보다 앞인 것은 이쪽이 계측기라는 같은
+             * 대상을 다루기 때문이다.
+             */}
+            <NavItem to="/equipment/gauge-calibration" icon="event_available">
+              계측기 검교정 이력
+            </NavItem>
+            {/*
+             * W-05-04 — 마스터·이력 뒤, 집계 앞이다. 고장 처리는 **일하는 화면**이라 정해 두는
+             * 화면들과 결과를 보는 화면 사이에 선다.
+             */}
+            <NavItem to="/equipment/failures" icon="build">
+              설비고장 상세처리
+            </NavItem>
+            {/*
+             * W-05-05 — **고장 처리 바로 뒤다.** 고장이 트리거의 한 원천이라 앞선 화면이 만든
+             * 것을 이 화면이 묶는다.
+             */}
+            <NavItem to="/equipment/maintenance-orders" icon="assignment">
+              보전지시 발행
+            </NavItem>
+            {/* W-05-06 — 지시가 이 실적의 대상이라 발행 바로 뒤다. */}
+            <NavItem to="/equipment/maintenance-results" icon="task_alt">
+              보전 실적·예비품
+            </NavItem>
+            {/* W-05-02 — 설비 보전 실적 뒤다. 「설비 보전 → 툴 보전」 차례를 만든다. */}
+            <NavItem to="/equipment/tool-pm-order" icon="schedule">
+              툴 보전오더 생성
+            </NavItem>
+            {/* W-05-03 — 오더 생성 바로 뒤다. 오더가 이 실적의 대상이다. */}
+            <NavItem to="/equipment/tool-pm-result" icon="restart_alt">
+              툴 PM 실적 등록
+            </NavItem>
+            {/*
+             * W-05-08 — 마스터·설정 항목들 **뒤**다. 앞의 것들은 설비를 어떻게 다룰지 정해 두는
+             * 자리이고 이것은 그렇게 돌아간 결과를 보는 자리라, 정하는 것과 보는 것을 섞지 않는다.
+             */}
+            <NavItem to="/equipment/downtime-summary" icon="timelapse">
+              비가동 집계 조회
+            </NavItem>
           </SidebarSection>
           {/*
            * W-CO-09 — 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**다.
@@ -360,6 +456,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/notification/center" icon="notifications">
               알림센터
             </NavItem>
+            {/* W-CO-04 — 알림센터가 받는 자리이고 이쪽이 보내는 자리다. */}
+            <NavItem to="/notification/notices" icon="campaign">
+              공지·전달
+            </NavItem>
           </SidebarSection>
           {/*
            * 사용자·역할·권한은 기준정보가 아니라 **시스템 운영**이다 —
@@ -375,6 +475,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
              */}
             <NavItem to="/system/approval-route" icon="approval">
               결재선 정의
+            </NavItem>
+            {/* W-CO-06 — 단말은 시스템 관리의 자원이다. */}
+            <NavItem to="/system/terminal-process-map" icon="tablet_android">
+              단말기-공정 매핑
             </NavItem>
             {/*
              * W-CO-10 — **섹션 맨 끝이다.** 앞의 둘은 관리자가 남을 설정하는 자리이고 이것은

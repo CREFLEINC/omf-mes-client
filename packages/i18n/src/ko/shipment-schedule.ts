@@ -6,8 +6,9 @@
  * 공유계약 L-2(파생 값은 서버가 계산)를 화면이 스스로 어긴다. 설계 검토 요청(omf-mes#232)
  * 등록 후 이번 슬라이스는 그 구획을 뺐다.
  *
- * **「검사」 열은 대상/`—` 두 상태뿐이다.** 계약에 검사 결과를 이을 필드가 없어 「대기」·「합격」을
- * 가를 근거가 없다(같은 검토 요청).
+ * **「검사」 열은 서버 롤업(`shippingInspectionStatusCode`)을 그대로 옮긴다**(omf-mes#232 ·
+ * omf-mes#235). `REJECTED`·`HELD` 전용 문구는 이번 슬라이스에서 두지 않는다 — 「대기」로 같이
+ * 표시한다(다음 착수에서 분리).
  */
 export const shipmentSchedule = {
   title: '출하 예정 목록',
@@ -54,7 +55,8 @@ export const shipmentSchedule = {
     unknown: '알 수 없음',
     referenceLoading: '이름 불러오는 중',
     referenceFailed: '이름을 불러오지 못했습니다',
-    inspectionTarget: '대상',
+    inspectionPending: '대기',
+    inspectionPassed: '합격',
   },
   filters: {
     all: '전체',

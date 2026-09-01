@@ -37,14 +37,25 @@ describe('Lot Status 전이 조회 기간', () => {
     expect(validateTransitionPeriod(period)).toBe(expected);
   });
 
-  it('지역 날짜 양 끝을 서버용 date-time 쌍으로 만든다', () => {
+  it('⛔ 끝 경계는 반열림이다(L-3-1) — 종료일 익일 00:00:00을 서버용 date-time으로 만든다', () => {
     expect(toTransitionPeriodBounds({ from: '2026-08-01', to: '2026-08-25' }, 540)).toEqual({
       transitionFrom: '2026-08-01T00:00:00+09:00',
-      transitionTo: '2026-08-25T23:59:59+09:00',
+      transitionTo: '2026-08-26T00:00:00+09:00',
     });
     expect(toTransitionPeriodBounds({ from: '2026-08-01', to: '2026-08-25' }, -300)).toEqual({
       transitionFrom: '2026-08-01T00:00:00-05:00',
-      transitionTo: '2026-08-25T23:59:59-05:00',
+      transitionTo: '2026-08-26T00:00:00-05:00',
+    });
+  });
+
+  it('⛔ 종료일이 월·해 경계에 있어도 다음 날로 넘어간다', () => {
+    expect(toTransitionPeriodBounds({ from: '2026-08-01', to: '2026-08-31' }, 540)).toEqual({
+      transitionFrom: '2026-08-01T00:00:00+09:00',
+      transitionTo: '2026-09-01T00:00:00+09:00',
+    });
+    expect(toTransitionPeriodBounds({ from: '2026-12-01', to: '2026-12-31' }, 540)).toEqual({
+      transitionFrom: '2026-12-01T00:00:00+09:00',
+      transitionTo: '2027-01-01T00:00:00+09:00',
     });
   });
 });

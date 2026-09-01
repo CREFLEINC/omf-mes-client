@@ -64,6 +64,27 @@ import { workOrderRelease } from './work-order-release';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { shipmentSchedule } from './shipment-schedule';
 import { materialInputScan } from './material-input-scan';
+import { dispositionDecision } from './disposition-decision';
+import { emergencyWorkOrder } from './emergency-work-order';
+import { workOrderProgress } from './work-order-progress';
+import { materialLocation } from './material-location';
+import { productStockStatus } from './product-stock-status';
+import { shipmentRequestCreate } from './shipment-request-create';
+import { shipmentProcessing } from './shipment-processing';
+import { dashboard } from './dashboard';
+import { downtimeSummary } from './downtime-summary';
+import { gaugeCalibration } from './gauge-calibration';
+import { equipmentFailure } from './equipment-failure';
+import { maintenanceOrder } from './maintenance-order';
+import { maintenanceResult } from './maintenance-result';
+import { toolPmOrder } from './tool-pm-order';
+import { notice } from './notice';
+import { warehouseLayout } from './warehouse-layout';
+import { terminalProcessMap } from './terminal-process-map';
+import { toolPmResult } from './tool-pm-result';
+import { materialIssueRequest } from './material-issue-request';
+import { deviceRegistration } from './device-registration';
+import { oqcInspection } from './oqc-inspection';
 
 export const ko = {
   common,
@@ -116,6 +137,27 @@ export const ko = {
   suspiciousMaterialHold,
   shipmentSchedule,
   materialInputScan,
+  dispositionDecision,
+  emergencyWorkOrder,
+  workOrderProgress,
+  materialLocation,
+  productStockStatus,
+  shipmentRequestCreate,
+  shipmentProcessing,
+  dashboard,
+  downtimeSummary,
+  gaugeCalibration,
+  equipmentFailure,
+  maintenanceOrder,
+  maintenanceResult,
+  toolPmOrder,
+  notice,
+  warehouseLayout,
+  terminalProcessMap,
+  toolPmResult,
+  materialIssueRequest,
+  deviceRegistration,
+  oqcInspection,
 } as const;
 
 export type Messages = typeof ko;

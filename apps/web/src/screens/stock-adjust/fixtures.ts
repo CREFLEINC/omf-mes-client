@@ -74,6 +74,8 @@ const BASE_COUNT_LINE: InventoryCountLineResponse = {
   uomId: 9601,
   varianceReasonCode: null,
   countedAt: '2026-08-17T09:12:00+09:00',
+  /* client#601 3-4 — 신설 필드. 실제로 센 줄이라 참이다(countedQty가 채워져 있다). */
+  counted: true,
 };
 
 export const countVarianceLineResponse = (

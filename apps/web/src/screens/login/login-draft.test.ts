@@ -52,10 +52,17 @@ describe('canSubmit', () => {
     expect(canSubmit(draft({ password: SYNTHETIC_PASSWORD }))).toBe(false);
   });
 
-  it('앞뒤 공백만 있는 값은 빈 값으로 본다', () => {
-    expect(canSubmit(draft({ loginId: '   ', password: '   ' }))).toBe(false);
-    expect(canSubmit(draft({ loginId: SYNTHETIC_LOGIN_ID, password: '   ' }))).toBe(false);
+  it('아이디에 공백만 있으면 빈 값으로 본다', () => {
     expect(canSubmit(draft({ loginId: '   ', password: SYNTHETIC_PASSWORD }))).toBe(false);
+    expect(canSubmit(draft({ loginId: '   ', password: '   ' }))).toBe(false);
+  });
+
+  /**
+   * client#197 — 가려진 칸(`type="password"`)에서 공백은 점으로 **보인다.** 아이디 칸과 같은
+   * 잣대(`trim()`)를 쓰면 값을 바르게 친 사용자가 채워진 칸을 보면서도 잠긴 버튼을 만난다.
+   */
+  it('비밀번호는 가려진 칸이라 공백도 값으로 본다', () => {
+    expect(canSubmit(draft({ loginId: SYNTHETIC_LOGIN_ID, password: '   ' }))).toBe(true);
   });
 
   it('앞뒤 공백을 걷어낸 값이 남으면 보낼 수 있다', () => {

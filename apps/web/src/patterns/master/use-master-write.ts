@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../api-context';
-import { runRequest, toApiError, type ApiCallResult } from '../request';
+import { ApiRequestError, runRequest, toApiError, type ApiCallResult } from '../request';
 
 /**
  * 멱등 키의 수명 — **쓰기의 성격이 정한다. 부품이 정하지 않는다.**
@@ -124,6 +124,25 @@ const staleTokenError = (): ApiError => ({
   kind: 'validation',
   errors: [{ scope: 'screen', code: 'STALE_TOKEN', message: messages.save.staleToken }],
 });
+
+/**
+ * If-Match 를 **필수로 받는** 쓰기에서 토큰을 꺼낸다.
+ *
+ * ⭐ **계약이 헤더를 필수로 요구하는 쓰기가 생겨** 이 자리가 필요해졌다. 훅은 `etagPath` 가
+ * 있으면 토큰 없이 보내지 않으므로 정상 경로에서는 언제나 값이 있지만, **타입에는 그 보장이
+ * 없다** — 그 틈을 `?? ''` 로 메우면 **빈 토큰이 나가고**, 서버의 거부가 화면에서 「저장이
+ * 반려됐다」로 읽힌다. 실제로는 **물어보지도 못한 것**이다.
+ *
+ * 그래서 값이 없으면 보내지 않고 멈춘다. 던지는 값이 이미 정규화된 실패라 `runRequest` 가
+ * 연결 문제로 덮지 않고 그대로 올린다 — 사용자는 「다시 불러오세요」를 본다.
+ */
+export const requireIfMatch = (headers: WriteHeaders): string => {
+  const ifMatch = headers['If-Match'];
+
+  if (ifMatch === undefined) throw new ApiRequestError(staleTokenError());
+
+  return ifMatch;
+};
 
 /**
  * 서버 오류를 인라인용과 배너용으로 나눈다.

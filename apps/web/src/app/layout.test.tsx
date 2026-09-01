@@ -444,10 +444,17 @@ describe('AppLayout', () => {
     expect(links.indexOf('/quality/approvals')).toBeGreaterThan(
       links.indexOf('/quality/inspection-results'),
     );
+    expect(within(sidebar).getByRole('link', { name: '처분 판정 처리' })).toHaveAttribute(
+      'href',
+      '/quality/dispositions',
+    );
+    expect(links.indexOf('/quality/dispositions')).toBeGreaterThan(
+      links.indexOf('/quality/approvals'),
+    );
     expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
 
-  it('출하 섹션의 출하 예정 목록 메뉴가 자재창고 뒤·생산 앞에 있다', () => {
+  it('출하 섹션(출하지시서 Import·작업지시 생성 · 출하 예정 목록 · OQC 출하검사 판정 · 출하 처리)이 자재창고 뒤·생산 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -456,14 +463,36 @@ describe('AppLayout', () => {
       .map((link) => link.getAttribute('href'));
 
     expect(within(sidebar).getByText('출하')).toBeInTheDocument();
+    expect(
+      within(sidebar).getByRole('link', { name: '출하지시서 Import·작업지시 생성' }),
+    ).toHaveAttribute('href', '/shipment/shipment-request-create');
     expect(within(sidebar).getByRole('link', { name: '출하 예정 목록' })).toHaveAttribute(
       'href',
       '/shipment/shipment-schedule',
     );
-    expect(links.indexOf('/shipment/shipment-schedule')).toBe(
+    expect(within(sidebar).getByRole('link', { name: 'OQC 출하검사 판정' })).toHaveAttribute(
+      'href',
+      '/shipment/oqc-inspection',
+    );
+    expect(
+      within(sidebar).getByRole('link', { name: '출하 처리(상차·실물 출고)' }),
+    ).toHaveAttribute('href', '/shipment/shipment-processing');
+    /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
+    expect(links.indexOf('/shipment/shipment-request-create')).toBe(
       links.indexOf('/logistics/document-progress') + 1,
     );
-    expect(links.indexOf('/shipment/shipment-schedule')).toBeLessThan(
+    expect(links.indexOf('/shipment/shipment-schedule')).toBe(
+      links.indexOf('/shipment/shipment-request-create') + 1,
+    );
+    /* 상차 전에 출하검사를 판정하므로 예정 목록 뒤·출하 처리 앞이다(업무 순서). */
+    expect(links.indexOf('/shipment/oqc-inspection')).toBe(
+      links.indexOf('/shipment/shipment-schedule') + 1,
+    );
+    /* 예정 목록에서 피킹까지 끝난 후보를 처리하므로 판정 바로 뒤다(업무 순서). */
+    expect(links.indexOf('/shipment/shipment-processing')).toBe(
+      links.indexOf('/shipment/oqc-inspection') + 1,
+    );
+    expect(links.indexOf('/shipment/shipment-processing')).toBeLessThan(
       links.indexOf('/production/work-order-close'),
     );
   });
@@ -496,8 +525,20 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-close',
     );
+    expect(within(sidebar).getByRole('link', { name: '긴급 W/O 발행' })).toHaveAttribute(
+      'href',
+      '/production/emergency-work-orders',
+    );
+    expect(within(sidebar).getByRole('link', { name: '추가 자재 출고 요청' })).toHaveAttribute(
+      'href',
+      '/production/material-issue-requests',
+    );
+    expect(within(sidebar).getByRole('link', { name: 'W/O 진행현황 조회' })).toHaveAttribute(
+      'href',
+      '/production/work-order-progress',
+    );
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/shipment/shipment-schedule') + 1,
+      links.indexOf('/shipment/shipment-processing') + 1,
     );
     expect(links.indexOf('/production/production-plans')).toBe(
       links.indexOf('/production/production-orders') + 1,
@@ -526,8 +567,17 @@ describe('AppLayout', () => {
    * 아닌, **올라온 결재를 처리하는 일**이라 기존 「승인」 섹션에 그대로 남는다.
    *
    * W-04-02가 출하(도메인 04)의 첫 화면으로 「출하」를 열어 이제 아홉이다.
+   *
+   * ⭐ **섹션 밖에 서는 항목이 하나 생겼다** — W-CO-05 통합 대시보드다. 그 화면은 어느 업무
+   * 묶음에도 속하지 않고 **모든 묶음의 숫자를 모아** 보이므로, 어느 섹션에 넣어도 그 섹션의
+   * 분류가 무너진다. 항목 하나짜리 섹션을 만들면 제목이 항목보다 무거워진다.
+   *
+   * ⚠ **그래서 이 감지기는 「전부 섹션 안」이 아니라 「섹션 밖은 이것 하나」를 잰다.**
+   * 느슨해진 것이 아니다 — 섹션 밖에 항목이 하나 더 늘면 그때도 여기서 걸린다.
    */
-  it('사이드바 섹션이 아홉이고 모든 항목이 그 안에 있다', () => {
+  const UNSECTIONED_LINKS = ['/dashboard'];
+
+  it('사이드바 섹션이 아홉이고 섹션 밖 항목은 통합 대시보드 하나다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -546,8 +596,11 @@ describe('AppLayout', () => {
     const grouped = sections.flatMap((section) =>
       section === null ? [] : [...section.querySelectorAll('a')],
     );
+    const all = within(sidebar).getAllByRole('link');
+    const ungrouped = all.filter((link) => !grouped.some((anchor) => anchor === link));
 
-    expect(grouped).toEqual(within(sidebar).getAllByRole('link'));
+    expect(ungrouped.map((link) => link.getAttribute('href'))).toEqual(UNSECTIONED_LINKS);
+    expect(grouped.length + ungrouped.length).toBe(all.length);
   });
 
   /*
@@ -603,8 +656,12 @@ describe('AppLayout', () => {
       'href',
       '/system/password-change',
     );
-    expect(links.indexOf('/system/password-change')).toBe(
-      links.indexOf('/system/approval-route') + 1,
+    /*
+     * ⭐ 견주는 것은 **맨 끝인가**이지 「결재선 다음인가」가 아니다. 관리자 설정 항목은 앞으로도
+     * 더 붙으므로, 인접으로 못 박으면 항목이 늘 때마다 뜻과 무관하게 시험이 깨진다.
+     */
+    expect(links.indexOf('/system/password-change')).toBeGreaterThan(
+      links.indexOf('/system/approval-route'),
     );
     expect(links.indexOf('/system/password-change')).toBe(links.length - 1);
   });
@@ -646,8 +703,11 @@ describe('AppLayout', () => {
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')),
     ).toEqual([
+      /* W-CO-05 — 섹션 밖 맨 위. 로그인 직후 첫 화면이라 모든 묶음 위에 선다. */
+      '/dashboard',
       '/master-data/warehouse-location',
       '/master-data/putaway-rule',
+      '/master-data/warehouse-layout',
       '/master-data/routing',
       '/master-data/inspection-standard',
       '/master-data/defect-cause-code',
@@ -667,27 +727,45 @@ describe('AppLayout', () => {
       '/logistics/disposal-issue',
       '/logistics/iqc-skip-approval',
       '/logistics/document-progress',
+      '/shipment/shipment-request-create',
       '/shipment/shipment-schedule',
+      /* W-04-03 — 상차 전에 판정한다. 예정 목록 뒤·출하 처리 앞이다(업무 순서). */
+      '/shipment/oqc-inspection',
+      '/shipment/shipment-processing',
       '/production/production-orders',
       '/production/production-plans',
       '/production/work-order-assignments',
       '/production/work-order-release',
       '/production/work-order-close',
+      '/production/emergency-work-orders',
+      /* W-02-10 — 긴급 발행이 만든 W/O 의 부족 자재를 잇는 자리라 그 바로 뒤다. */
+      '/production/material-issue-requests',
+      '/production/work-order-progress',
       '/quality/lot-status',
       '/quality/lot-status-transition',
       '/quality/suspicious-material-hold',
       '/quality/inspection-results',
       '/quality/approvals',
+      '/quality/dispositions',
       '/equipment/master',
       '/equipment/tool-master',
       '/equipment/work-calendar',
       '/equipment/collection-channels',
       '/equipment/shot-conversion',
       '/equipment/gauge-master',
+      '/equipment/gauge-calibration',
+      '/equipment/failures',
+      '/equipment/maintenance-orders',
+      '/equipment/maintenance-results',
+      '/equipment/tool-pm-order',
+      '/equipment/tool-pm-result',
+      '/equipment/downtime-summary',
       '/approval/inbox',
       '/notification/center',
+      '/notification/notices',
       '/system/users-roles',
       '/system/approval-route',
+      '/system/terminal-process-map',
       '/system/password-change',
     ]);
   });

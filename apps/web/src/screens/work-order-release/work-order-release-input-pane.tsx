@@ -1,7 +1,6 @@
-import { AlertBanner, EmptyState, TextField } from '@crefle/web-ui';
+import { AlertBanner, EmptyState, TextArea, TextField } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { TextArea } from '@omf-mes/ui';
 import { useEffect, useMemo, useState } from 'react';
 
 import {

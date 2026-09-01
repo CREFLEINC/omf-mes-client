@@ -4435,9 +4435,13 @@ const savedQualifications = [
   },
 ];
 
-const qualificationListRoute = (items: unknown[] = savedQualifications): StubRoute => ({
+/** 자격 목록 — client#602로 이 조회에 `ETag`가 생겼다. 저장의 `If-Match`가 이 값에서 나온다. */
+const qualificationListRoute = (
+  items: unknown[] = savedQualifications,
+  { withEtag = true } = {},
+): StubRoute => ({
   match: (request) => isGet(request, qualificationsPath(5001)),
-  respond: () => jsonResponse({ items }),
+  respond: () => jsonResponse({ items }, withEtag ? { headers: { ETag: 'W/"9"' } } : {}),
 });
 
 const processesRoute = (): StubRoute => ({
@@ -4586,10 +4590,10 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
   });
 
   /*
-   * C66 · 뮤테이션 23 — **`etagPath`가 `null`이어야 요청이 실제로 나간다.**
-   * 작업자 상세에 `ETag`가 없어 상세 경로를 주면 토큰을 못 찾고 요청이 멈춘다.
+   * C66 · client#602 — **`etagPath`가 이 목록 조회를 가리켜야 요청이 실제로 나간다.**
+   * 그 조회의 `ETag`가 `If-Match`로 그대로 돌아온다.
    */
-  it('저장이 치환 경로로 실제로 나가고 If-Match가 없다', async () => {
+  it('저장이 치환 경로로 실제로 나가고 목록 조회의 ETag를 If-Match로 되돌려 보낸다', async () => {
     const { requests, user } = renderScreen(
       [...qualificationRoutes(), replaceRoute(() => jsonResponse(replacedResponse))],
       '?tab=worker&wkr=5001',
@@ -4609,7 +4613,37 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
     const sent = requests.find((request) => request.method === 'PUT');
     expect(sent?.url.pathname).toBe(qualificationsPath(5001));
     expect(sent?.headers.get('Idempotency-Key')).toMatch(UUID);
-    expect(sent?.headers.has('If-Match')).toBe(false);
+    expect(sent?.headers.get('If-Match')).toBe('W/"9"');
+  });
+
+  /*
+   * 반대 방향 — 목록 조회에 토큰이 없으면 저장이 나가지 않는다. 토큰이 있는 상황만
+   * 검사하면 `etagPath`를 잘못 준 코드가 그대로 통과한다.
+   */
+  it('목록 조회에 잠금 토큰이 없으면 자격 저장이 나가지 않는다', async () => {
+    const { requests, user } = renderScreen(
+      [
+        ...workerRoutes(),
+        qualificationListRoute(savedQualifications, { withEtag: false }),
+        processesRoute(),
+        replaceRoute(() => jsonResponse(replacedResponse)),
+      ],
+      '?tab=worker&wkr=5001',
+    );
+
+    const dialog = await openEditDialog(user);
+    await user.clear(within(dialog).getByLabelText('인증번호'));
+    await user.type(within(dialog).getByLabelText('인증번호'), 'SYN-CERT-77');
+    await user.click(within(dialog).getByRole('button', { name: '확인' }));
+
+    await user.click(within(qualificationPane()).getByRole('button', { name: '저장' }));
+
+    await waitFor(() => {
+      expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(0);
+    });
+    expect(
+      await screen.findByText('최신 정보를 불러오는 중입니다. 잠시 뒤 다시 저장하세요.'),
+    ).toBeInTheDocument();
   });
 
   /* C67 — 계약의 요청 항목에 식별자가 없다. W-06-01·W-06-02의 치환과 반대다. */
@@ -4709,7 +4743,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
         processesRoute(),
         {
           match: (request) => isGet(request, qualificationsPath(5001)),
-          respond: () => jsonResponse({ items: current }),
+          respond: () => jsonResponse({ items: current }, { headers: { ETag: 'W/"9"' } }),
         },
         replaceRoute(() => {
           current = replacedResponse.items;
@@ -4755,7 +4789,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
             listCalls += 1;
 
             return listCalls === 1
-              ? jsonResponse({ items: savedQualifications })
+              ? jsonResponse({ items: savedQualifications }, { headers: { ETag: 'W/"9"' } })
               : neverFinishingResponse();
           },
         },
@@ -4921,7 +4955,7 @@ describe('CommonCodeScreen — 자격 편집과 저장 (C65~C68·C74)', () => {
         workerDetailRoute(5002),
         {
           match: (request) => isGet(request, qualificationsPath(5002)),
-          respond: () => jsonResponse({ items: [] }),
+          respond: () => jsonResponse({ items: [] }, { headers: { ETag: 'W/"9"' } }),
         },
       ],
       '?tab=worker&wkr=5001',
@@ -4964,7 +4998,8 @@ describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠�
     workerDetailRoute(5002),
     {
       match: (request) => isGet(request, qualificationsPath(5002)),
-      respond: () => jsonResponse({ items: otherWorkerQualifications }),
+      respond: () =>
+        jsonResponse({ items: otherWorkerQualifications }, { headers: { ETag: 'W/"9"' } }),
     },
   ];
 
@@ -5117,7 +5152,7 @@ describe('CommonCodeScreen — 나가는 중인 자격 저장의 매임과 잠�
             otherListCalls += 1;
 
             return otherListCalls === 1
-              ? jsonResponse({ items: otherWorkerQualifications })
+              ? jsonResponse({ items: otherWorkerQualifications }, { headers: { ETag: 'W/"9"' } })
               : neverFinishingResponse();
           },
         },

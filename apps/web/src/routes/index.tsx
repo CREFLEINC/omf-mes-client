@@ -12,6 +12,9 @@ import { GaugeMasterScreen } from '../screens/gauge-master/screen';
 import { ToolMasterScreen } from '../screens/tool-master/screen';
 import { WorkCalendarScreen } from '../screens/work-calendar/screen';
 import { WorkOrderCloseScreen } from '../screens/work-order-close/screen';
+import { EmergencyWorkOrderScreen } from '../screens/emergency-work-order/screen';
+import { MaterialIssueRequestScreen } from '../screens/material-issue-request/screen';
+import { WorkOrderProgressScreen } from '../screens/work-order-progress/screen';
 import { WorkOrderReleaseScreen } from '../screens/work-order-release/screen';
 import { WorkOrderAssignmentScreen } from '../screens/work-order/screen';
 import { GoodsReceiptScreen } from '../screens/goods-receipt/screen';
@@ -21,6 +24,15 @@ import { IntegrationSyncScreen } from '../screens/integration-sync/screen';
 import { InspectionMeasurementRoutePage } from '../screens/inspection-result-insights/measurement-route-page';
 import { InspectionResultInsightsPage } from '../screens/inspection-result-insights/page';
 import { CollectionChannelScreen } from '../screens/collection-channel/screen';
+import { DashboardScreen } from '../screens/dashboard/screen';
+import { DowntimeSummaryScreen } from '../screens/downtime-summary/screen';
+import { EquipmentFailureScreen } from '../screens/equipment-failure/screen';
+import { GaugeCalibrationScreen } from '../screens/gauge-calibration/screen';
+import { MaintenanceOrderScreen } from '../screens/maintenance-order/screen';
+import { MaintenanceResultScreen } from '../screens/maintenance-result/screen';
+import { ToolPmOrderScreen } from '../screens/tool-pm-order/screen';
+import { TerminalProcessMapScreen } from '../screens/terminal-process-map/screen';
+import { ToolPmResultScreen } from '../screens/tool-pm-result/screen';
 import { EquipmentMasterScreen } from '../screens/equipment-master/screen';
 import { ShotConversionScreen } from '../screens/shot-conversion/screen';
 import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
@@ -31,15 +43,21 @@ import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
 import { LotStatusTransitionScreen } from '../screens/lot-status-transition/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
+import { NoticeScreen } from '../screens/notice/screen';
 import { NotificationCenterScreen } from '../screens/notification-center/screen';
+import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';
 import { ProductionPlanScreen } from '../screens/production-plan/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
+import { DispositionDecisionScreen } from '../screens/disposition-decision/screen';
+import { ProductStockStatusScreen } from '../screens/product-stock-status/screen';
 import { QualityApprovalScreen } from '../screens/quality-approval/screen';
 import { RoutingScreen } from '../screens/routing/screen';
+import { ShipmentProcessingScreen } from '../screens/shipment-processing/screen';
+import { ShipmentRequestCreateScreen } from '../screens/shipment-request-create/screen';
 import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
 import { StockAdjustScreen } from '../screens/stock-adjust/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
@@ -47,6 +65,7 @@ import { StocktakingScreen } from '../screens/stocktaking/screen';
 import { SuspiciousMaterialHoldScreen } from '../screens/suspicious-material-hold/screen';
 import { SupplierReturnScreen } from '../screens/supplier-return/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
+import { WarehouseLayoutScreen } from '../screens/warehouse-layout/screen';
 import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 
 export const appRouter = createBrowserRouter([
@@ -58,8 +77,19 @@ export const appRouter = createBrowserRouter([
       </AppLayout>
     ),
     children: [
-      { index: true, element: <Navigate to="/master-data/warehouse-location" replace /> },
+      /*
+       * W-CO-05 — **로그인 직후 첫 화면이다**(IA). 그래서 루트가 여기로 보낸다. 그전까지 루트는
+       * 「그때 있던 첫 화면」(창고·Location)을 가리키고 있었다 — 첫 화면이 없어서지 그 화면이
+       * 시작점이어서가 아니었다.
+       *
+       * 계약 경로는 `/app/dashboard-summary`인데 주소 앞머리는 `dashboard/`를 쓰지 않고 이
+       * 화면 하나로 선다 — 이 화면은 어느 섹션에도 속하지 않고 **모든 섹션 위에** 있다.
+       */
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: 'dashboard', element: <DashboardScreen /> },
       { path: 'master-data/warehouse-location', element: <WarehouseLocationScreen /> },
+      /* W-CO-08 — 창고·Location 바로 뒤다. 그 화면이 만든 위치를 여기서 도면에 얹는다. */
+      { path: 'master-data/warehouse-layout', element: <WarehouseLayoutScreen /> },
       /*
        * W-06-14 — 계약 경로는 `/logistics/putaway-rules`인데 앞머리는 같은 규칙(사이드바
        * 섹션)을 따른다. 적치 규칙은 물건이 오가는 일이 아니라 **어디에 둘지 미리 정해 두는
@@ -102,6 +132,8 @@ export const appRouter = createBrowserRouter([
        * 보낼 수 없는 비밀번호 변경 화면을 노출하면 사용자는 바꿨다고 믿고 떠난다
        * (정책 §5.2 — 접근 불가능한 경계).
        */
+      /* W-CO-06 — 단말은 시스템 관리의 자원이다. 결재선 정의 뒤에 둔다. */
+      { path: 'system/terminal-process-map', element: <TerminalProcessMapScreen /> },
       { path: 'system/password-change', element: <PasswordChangeScreen /> },
       /*
        * W-01-09 — 자재창고(도메인 01)의 첫 화면. 앞머리를 계약 경로(`/logistics/**`)와 같은
@@ -255,6 +287,21 @@ export const appRouter = createBrowserRouter([
       /* W-02-05 — 같은 생산 섹션의 마감·모니터링 화면이다. */
       { path: 'production/work-order-close', element: <WorkOrderCloseScreen /> },
       /*
+       * W-02-07 — 계획 없이 W/O를 직접 만들어 배포한다. 계획을 거치는 위 흐름과 갈래가 달라
+       * 그 뒤에 둔다.
+       */
+      { path: 'production/emergency-work-orders', element: <EmergencyWorkOrderScreen /> },
+      /*
+       * W-02-10 — 긴급 W/O 등으로 부족한 자재를 무절차 반출 없이 정식 출고로 경유시킨다.
+       * 긴급 발행 바로 뒤에 둔다 — 그 화면이 만든 W/O 의 부족분을 여기서 잇는다.
+       */
+      { path: 'production/material-issue-requests', element: <MaterialIssueRequestScreen /> },
+      /*
+       * W-02-08 — 발행한 W/O 가 지금 어디까지 왔는지 본다. 만드는 화면들 뒤, 조회 자리다.
+       * 저장 액션이 없는 읽기 전용 화면이다.
+       */
+      { path: 'production/work-order-progress', element: <WorkOrderProgressScreen /> },
+      /*
        * W-03-01 — Lot Status 계열의 첫 화면이므로 품질관리 섹션을 연다.
        * 계약의 /quality/**와 주소 앞머리가 같지만 근거는 사이드바 업무 섹션이다.
        * 현재 LOT 상태와 보류 등록·해제 이력을 함께 보는 조회 화면이다.
@@ -272,6 +319,13 @@ export const appRouter = createBrowserRouter([
       },
       /* W-03-09 — Lot Status 조회·판정·의심자재 등록 다음에 서는 품질 승인 화면이다. */
       { path: 'quality/approvals', element: <QualityApprovalScreen /> },
+      /*
+       * W-03-10 — 특채·한도승인 «다음»이다. 부적합의 처분을 정하는 화면이라 승인 처리 뒤에 서고,
+       * 이 라우트가 W-04-10(폐기)·W-04-11(재등록)·P-04-03(재작업)의 진입 목록과
+       * W-03-09의 「부적합 열기」(`?nonconformanceId=`)를 함께 연다.
+       * 앞머리는 계약 경로가 아니라 사이드바 업무 섹션(품질관리)을 따른다.
+       */
+      { path: 'quality/dispositions', element: <DispositionDecisionScreen /> },
       /*
        * W-CO-09 — 앞머리는 같은 규칙(사이드바 섹션)이고 계약 경로(`/app/**`)를 따르지 않는다.
        * 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**여서 섹션을 새로 연다.
@@ -396,6 +450,40 @@ export const appRouter = createBrowserRouter([
        * 이름을 쓴다.
        */
       { path: 'equipment/shot-conversion', element: <ShotConversionScreen /> },
+      /*
+       * W-05-08 — 설비/툴 섹션의 조회 화면이다. 계약 경로는 `/maintenance/**`이지만 주소
+       * 앞머리는 같은 규칙(사이드바 섹션)을 따른다 — 비가동은 보전 업무의 기록이 아니라
+       * **설비가 선 시간**을 보는 자리라 설비/툴에 든다.
+       */
+      { path: 'equipment/downtime-summary', element: <DowntimeSummaryScreen /> },
+      /*
+       * W-05-10 — 계측기 마스터(W-05-11) 바로 뒤다. 이력을 적으려면 그 마스터가 있어야 하고,
+       * 인접이 그 관계를 드러낸다. 계약 경로는 `/maintenance/**`이지만 주소 앞머리는 같은
+       * 규칙(사이드바 섹션)을 따른다.
+       */
+      { path: 'equipment/gauge-calibration', element: <GaugeCalibrationScreen /> },
+      /*
+       * W-05-04 — 설비 마스터 계열 뒤, 비가동 집계 앞이다. 고장 처리는 **일하는 화면**이라
+       * 정해 두는 화면들과 결과를 보는 화면 사이에 선다. 계약 경로는 `/maintenance/**`이지만
+       * 주소 앞머리는 같은 규칙(사이드바 섹션)을 따른다.
+       */
+      { path: 'equipment/failures', element: <EquipmentFailureScreen /> },
+      /*
+       * W-05-05 — 고장 처리 바로 뒤다. 고장이 트리거의 한 원천이라 앞선 화면이 만든 것을
+       * 이 화면이 묶는다 — 인접이 그 흐름을 드러낸다.
+       */
+      { path: 'equipment/maintenance-orders', element: <MaintenanceOrderScreen /> },
+      /*
+       * W-05-06 — 보전지시 발행 바로 뒤다. 지시가 이 실적의 대상이고, 인접이 그 흐름을 드러낸다.
+       */
+      { path: 'equipment/maintenance-results', element: <MaintenanceResultScreen /> },
+      /*
+       * W-05-02 — 툴 마스터 계열이 아니라 **보전 흐름** 쪽이다. 설비 보전 실적 뒤에 두어
+       * 「설비 보전 → 툴 보전」 차례를 만든다.
+       */
+      { path: 'equipment/tool-pm-order', element: <ToolPmOrderScreen /> },
+      /* W-05-03 — 오더 생성 바로 뒤다. 오더가 이 실적의 대상이다. */
+      { path: 'equipment/tool-pm-result', element: <ToolPmResultScreen /> },
       { path: 'approval/inbox', element: <ApprovalInboxScreen /> },
       /*
        * W-CO-03 — 계약 경로는 `/app/notifications`인데 앞머리는 같은 규칙(사이드바 섹션)을
@@ -410,13 +498,41 @@ export const appRouter = createBrowserRouter([
        * 알림은 계속 쌓이는데 지울 수도 읽음으로 바꿀 수도 없으면 화면이 늘 밀린 것으로 보인다.
        */
       { path: 'notification/center', element: <NotificationCenterScreen /> },
+      /* W-CO-04 — 알림 묶음이다. 알림센터가 받는 자리이고 이쪽이 보내는 자리다. */
+      { path: 'notification/notices', element: <NoticeScreen /> },
       /*
        * W-04-02 — **출하(도메인 04)의 첫 화면.** 계약 경로가 `/logistics/**`이지만 앞머리는
        * `shipment/`를 쓴다 — IA가 이 화면을 「자재창고」가 아니라 새 「출하」 섹션에 두었고
        * (착수 이슈 §1), W-01-07(재고 현황)이 이미 계약 경로와 사이드바 섹션이 갈릴 때는
        * 섹션을 따른다는 선례를 남겼다.
        */
+      /*
+       * W-04-01 — **출하(도메인 04)에서 가장 먼저 도는 화면**이지만 W-04-02보다 뒤에 적는다.
+       * 이 저장소에 이미 W-04-02(예정 목록)가 있었고 그 화면이 먼저 이 섹션을 열었다 —
+       * 목록에 화면을 더하는 차례는 착수 순서를 따르고, 사이드바의 항목 차례(업무 순서)와는
+       * 별개다. 계약 경로는 `/logistics/**`이지만 앞머리는 `shipment/`를 쓴다 — W-04-02와
+       * 같은 선례(사이드바 섹션을 따른다)다.
+       */
+      { path: 'shipment/shipment-request-create', element: <ShipmentRequestCreateScreen /> },
       { path: 'shipment/shipment-schedule', element: <ShipmentScheduleScreen /> },
+      /*
+       * W-04-04 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만 출하 처리는
+       * 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다. 업무 순서로는 편성(W-04-01) →
+       * 예정 목록(W-04-02) → 이 화면(피킹완료 후보를 상차·실물 출고 처리) 순이라 예정 목록
+       * 바로 뒤에 둔다.
+       */
+      { path: 'shipment/shipment-processing', element: <ShipmentProcessingScreen /> },
+      /*
+       * W-04-08 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/logistics/**`이지만
+       * 완제품 재고·Lot Status 조회는 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다.
+       */
+      { path: 'shipment/product-stock-status', element: <ProductStockStatusScreen /> },
+      /*
+       * W-04-03 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/quality/**`이지만 OQC 출하검사
+       * 판정은 출하 섹션에 둔다 — W-04-02와 같은 선례를 따른다. 이 목록의 차례는 **착수 순서**라
+       * 업무 순서(예정 목록 → 이 화면 → 출하 처리)와 별개이며, 그 차례는 사이드바가 든다.
+       */
+      { path: 'shipment/oqc-inspection', element: <OqcInspectionScreen /> },
     ],
   },
   /*

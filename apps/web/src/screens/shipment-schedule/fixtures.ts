@@ -26,6 +26,7 @@ const BASE_SHIPMENT_REQUEST = {
   shipToPartnerId: 9111,
   requestedShipDate: '2026-08-13',
   statusCode: 'SAMPLE_STATUS_A',
+  shippingInspectionStatusCode: 'NOT_REQUIRED',
   lines: [BASE_LINE],
 };
 
@@ -35,7 +36,7 @@ export const shipmentRequest = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-/** 목록 픽스처. 검사 대상 라인이 있는 건 하나를 섞어 그 배지가 실제로 나오는지 검사할 수 있게 한다. */
+/** 목록 픽스처. 검사 대기 라인이 있는 건 하나를 섞어 그 배지가 실제로 나오는지 검사할 수 있게 한다. */
 export const shipmentRequestFixtures = [
   shipmentRequest(),
   shipmentRequest({
@@ -43,6 +44,7 @@ export const shipmentRequestFixtures = [
     shipmentRequestNo: 'SAMPLE-SR-0002',
     // 목록에 없는 거래처 번호 — 「목록에 없음」 갈래를 실제 값으로 만든다.
     customerId: 9102,
+    shippingInspectionStatusCode: 'PENDING',
     lines: [{ ...BASE_LINE, shipmentRequestLineId: 9702, shippingInspectionRequired: true }],
   }),
 ];

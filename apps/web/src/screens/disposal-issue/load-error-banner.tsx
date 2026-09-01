@@ -15,6 +15,10 @@ import { toApiError } from '../../patterns/request';
  * 서버가 빈 문구를 주는 일이 실제로 있다 — `??`는 빈 문자열을 통과시켜 배너 본문을 지운다.
  * 그래서 널이 아니라 빈 문자열까지 명시적으로 검사한다.
  *
+ * **검증·잠금 갈래는 잇기 전에 항목별로 거른다.** `join(' ')` 한 뒤 빈 문자열인지 검사하면
+ * 공백만 있는 문구([{message:'   '}])나 빈 문구 여럿([{message:''},{message:''}])이
+ * 이음쇠 공백만 남겨 검사를 통과하고, 공백만 그린 배너가 선다(client#192).
+ *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const describeLoadError = (error: ApiError): string => {
@@ -30,7 +34,10 @@ export const describeLoadError = (error: ApiError): string => {
       return error.message === '' ? messages.httpError.description : error.message;
     case 'stateLocked':
     case 'validation': {
-      const lines = error.errors.map((item) => item.message).join(' ');
+      const lines = error.errors
+        .map((item) => item.message)
+        .filter((message) => message.trim() !== '')
+        .join(' ');
       return lines === '' ? messages.httpError.description : lines;
     }
   }

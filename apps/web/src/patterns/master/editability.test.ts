@@ -56,13 +56,25 @@ describe('codeLockMessage', () => {
     expect(result).toBe(messages.editability.labelIssued(null));
   });
 
-  it('다섯 사유가 서로 다른 문구를 낸다 — 어느 사유인지 화면에서 구분된다', () => {
+  /** 그룹 전체가 잠기는 사유다(omf-mes-server#45) — 개별 값의 참조 건수와 무관하다. */
+  it('그룹이 시스템 소유면 참조 건수가 있어도 잠근다', () => {
+    const result = codeLockMessage({
+      codeEditable: false,
+      reason: 'SYSTEM_OWNED',
+      referenceCount: 5,
+    });
+
+    expect(result).toBe(messages.editability.systemOwned(null));
+  });
+
+  it('여섯 사유가 서로 다른 문구를 낸다 — 어느 사유인지 화면에서 구분된다', () => {
     const reasons = [
       'EDITABLE',
       'REFERENCED',
       'NOT_COUNTABLE',
       'RECEIVED_FROM_ERP',
       'LABEL_ISSUED',
+      'SYSTEM_OWNED',
     ] as const;
 
     const rendered = reasons.map((reason) => codeLockMessage({ codeEditable: false, reason }));
