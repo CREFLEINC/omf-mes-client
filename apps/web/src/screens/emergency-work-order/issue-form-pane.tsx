@@ -1,6 +1,5 @@
-import { TextField } from '@crefle/web-ui';
+import { TextArea, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { TextArea } from '@omf-mes/ui';
 
 import { useState } from 'react';
 

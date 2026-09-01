@@ -1,7 +1,6 @@
-import { Button, Checkbox, DatePicker, TextField } from '@crefle/web-ui';
+import { Button, Checkbox, DatePicker, TextArea, TextField } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { TextArea } from '@omf-mes/ui';
 import { useId } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
