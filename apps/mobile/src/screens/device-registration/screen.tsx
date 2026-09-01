@@ -2,6 +2,7 @@ import { AlertBanner, Button, Card } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect } from 'react';
 
+import { readDeviceModel } from '../../patterns/device-model';
 import { useScreenTitle } from '../../patterns/screen-title';
 import type { QrCamera } from '../../patterns/qr-camera';
 import { useRegistrationFlow } from './registration';
@@ -9,12 +10,17 @@ import './screen.css';
 
 const t = messages.deviceRegistration;
 
-const DeviceInfo = () => (
-  <section className="device-registration__info">
-    <h2>{t.device.label}</h2>
-    <p>{navigator.userAgent}</p>
-  </section>
-);
+const DeviceInfo = () => {
+  const { model, platform } = readDeviceModel(navigator.userAgent);
+  const parts = [model, platform].filter((part) => part !== null);
+
+  return (
+    <section className="device-registration__info">
+      <h2>{t.device.label}</h2>
+      <p>{parts.length === 0 ? t.device.unknown : parts.join(' · ')}</p>
+    </section>
+  );
+};
 
 /**
  * 미리보기는 웹 화면 뒤에 그려진다. 이 자리를 비워 두지 않으면 카메라가 켜져 있어도

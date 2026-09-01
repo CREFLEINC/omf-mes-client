@@ -62,7 +62,16 @@
   background: transparent;
 }
 
-/* 비워 둔 칸 말고 나머지 글자는 미리보기 위에서도 읽혀야 한다. */
+/*
+ * 미리보기는 화면 전체에 깔리므로 비워 둘 칸 바깥을 도로 덮는다. 자식은 부모에 구멍을
+ * 내지 못해, 상자 밖으로 한없이 번지는 그림자로 나머지를 칠한다.
+ */
+.camera-open .device-registration__viewfinder {
+  box-shadow: 0 0 0 100vmax var(--surface, #fff);
+}
+
+/* 덮개는 뷰파인더가 그리므로 나머지 글자를 그 위로 올린다. */
 .camera-open .device-registration > *:not(.device-registration__viewfinder) {
-  background: var(--surface, transparent);
+  position: relative;
+  z-index: 1;
 }

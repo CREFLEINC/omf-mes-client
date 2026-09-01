@@ -40,5 +40,7 @@ export const deviceRegistration = {
   },
   device: {
     label: '기기 정보',
+    /** 사용자 문자열을 읽지 못하는 기기가 있다. 빈칸으로 두면 화면이 고장 난 것으로 읽힌다. */
+    unknown: '기기 정보를 읽지 못했습니다',
   },
 } as const;
