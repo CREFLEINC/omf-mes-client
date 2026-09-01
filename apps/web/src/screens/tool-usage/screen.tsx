@@ -62,10 +62,18 @@ interface SaveResult {
   cumulativeAsOf: string | undefined;
 }
 
+/**
+ * 값 하나를 사람이 읽는 글자로.
+ *
+ * ⭐ **초과는 수치 옆에 붙는다** — 「−1,200 회(초과)」(스펙 §6-1). 따로 떨어진 문장으로 두면
+ * 어느 숫자가 넘긴 것인지 눈이 다시 찾아야 한다.
+ */
 const figureText = (figure: ShotFigure, offlineText: string, missingText: string): string => {
   switch (figure.kind) {
     case 'value':
-      return `${formatShots(figure.value)} ${t.shot.unit}`;
+      return figure.value < 0
+        ? `${formatShots(figure.value)} ${t.shot.unit}${t.cumulative.overSuffix}`
+        : `${formatShots(figure.value)} ${t.shot.unit}`;
     case 'offline':
       return offlineText;
     case 'guaranteedMissing':
@@ -285,8 +293,9 @@ export const ToolUsageScreen = () => {
             <span>{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</span>
           )}
           {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
+          {/* 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다(모바일 셸 전례). */}
           <Chip status={isOnline ? 'success' : 'warning'}>
-            {isOnline ? t.entry.online : t.entry.offline}
+            {isOnline ? messages.common.connection.online : messages.common.connection.offline}
           </Chip>
         </div>
       </header>
@@ -515,7 +524,6 @@ export const ToolUsageScreen = () => {
             {!isOnline && usableTool !== null && (
               <p className="field-note">{t.cumulative.offlineBase}</p>
             )}
-            {isOver && <p className="field-note">{t.cumulative.over}</p>}
           </Card.Body>
         </Card>
 

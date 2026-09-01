@@ -281,7 +281,10 @@ describe('ToolUsageScreen — 누계 구획', () => {
     await scanTool(user);
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '90000');
 
-    expect(await screen.findByText(t.cumulative.over)).toBeInTheDocument();
+    /* 초과는 수치 옆에 붙는다 — 「−2,300 회(초과)」(스펙 §6-1). 따로 떨어진 문장이 아니다. */
+    expect(
+      await screen.findByText(`-2,300 ${t.shot.unit}${t.cumulative.overSuffix}`),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.save })).toBeEnabled();
   });
 });

@@ -10,8 +10,6 @@ export const toolUsage = {
     /** 헤더에 작업지시·사번을 세운다. 없으면 그 자리를 비운다 — 「알 수 없음」을 쓰지 않는다. */
     workOrderLabel: '작업지시',
     workerLabel: '사번',
-    online: '연결됨',
-    offline: '연결 끊김',
   },
 
   scan: {
@@ -60,7 +58,8 @@ export const toolUsage = {
     /** 연결이 끊기면 다른 단말의 입력분을 반영하지 못한다. 그럴듯한 숫자를 그리지 않는다. */
     offlineBase: '이후 다른 단말 입력분이 반영되지 않았습니다.',
     offlineProjection: '연결 후 확인',
-    over: '적정타수를 넘습니다',
+    /** 초과는 «수치 옆»에 붙인다 — 「−1,200 회(초과)」(스펙 §6-1). 따로 떨어진 문장으로 두지 않는다. */
+    overSuffix: '(초과)',
   },
 
   notice: {
