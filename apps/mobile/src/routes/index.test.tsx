@@ -32,9 +32,16 @@ const renderAt = (path: string) =>
   );
 
 describe('모바일 라우트', () => {
+  /* 진입 화면은 사번 확인이다 - 누구로 기록되는지 정하기 전에는 작업 화면에 갈 일이 없다. */
+  it('등록된 단말은 사번 확인으로 들어온다', async () => {
+    renderAt('/');
+
+    expect(await screen.findByRole('heading', { name: '사번 확인' })).toBeInTheDocument();
+  });
+
   it('셸 홈에서 자재 위치 확인으로 갈 수 있다', async () => {
     const user = userEvent.setup();
-    renderAt('/');
+    renderAt('/screens');
 
     await user.click(await screen.findByRole('link', { name: '자재 위치 확인' }));
 

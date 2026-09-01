@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 
 import { appQueryDefaults } from '../app/providers';
 import { ApiClientProvider } from '../patterns/api-context';
+import { WorkerSessionProvider } from '../patterns/worker-session';
 import { DeviceRegistrationProvider } from '../patterns/device-registration';
 
 /** 테스트 전용 기준 URL. 실제로 접속하지 않으며 스텁 fetch가 모든 요청을 받는다. */
@@ -72,7 +73,9 @@ const createProviders = (fetch: StubFetch) => {
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
         <DeviceRegistrationProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <WorkerSessionProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </WorkerSessionProvider>
         </DeviceRegistrationProvider>
       </ApiClientProvider>
     </QueryClientProvider>

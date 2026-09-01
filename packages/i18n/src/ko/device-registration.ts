@@ -38,6 +38,26 @@ export const deviceRegistration = {
     label: '단말',
     plant: '공장',
   },
+  signIn: {
+    title: '사번 확인',
+    label: '사번',
+    confirm: '확인',
+    change: '사번 바꾸기',
+    toWork: '작업 목록으로',
+    /** 없는 사번과 목록 미수신은 작업자가 할 수 있는 일이 달라 문구를 가른다. */
+    unknown: '등록되지 않았거나 재직 중이 아닌 사번입니다',
+    noDirectory: '기준정보를 아직 받지 못했습니다',
+    keypad: {
+      label: '사번 입력',
+      backspace: '한 자 지움',
+      clear: '전체 지움',
+    },
+    current: {
+      label: '현재 작업자',
+      /** 귀속이 어디로 붙는지 밝히지 않으면 남의 사번으로 기록이 쌓인다. */
+      notice: '이 기기의 기록은 이 사번으로 남습니다.',
+    },
+  },
   device: {
     label: '기기 정보',
     /** 사용자 문자열을 읽지 못하는 기기가 있다. 빈칸으로 두면 화면이 고장 난 것으로 읽힌다. */
