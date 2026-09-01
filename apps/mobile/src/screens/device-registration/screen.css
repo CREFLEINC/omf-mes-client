@@ -1,0 +1,77 @@
+.device-registration {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.device-registration > h1,
+.device-registration > p {
+  margin: 0;
+}
+
+.device-registration__headline {
+  font-size: var(--type-title-md-size, 1.25rem);
+}
+
+/*
+ * 미리보기가 뒤에 있으므로 이 칸만 비워 둔다. 테두리는 어디를 비추라는 뜻이라 카메라가
+ * 아직 안 열렸을 때도 자리를 지킨다.
+ */
+.device-registration__viewfinder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  border: 2px solid var(--outline, currentColor);
+  border-radius: var(--radius-md, 8px);
+}
+
+.device-registration__viewfinder[data-open='false'] {
+  background: var(--surface-container, transparent);
+}
+
+.device-registration__guide {
+  text-align: center;
+}
+
+.device-registration__where,
+.device-registration__info {
+  color: var(--on-surface-muted, inherit);
+}
+
+.device-registration__info h2 {
+  margin: 0 0 var(--space-1, 4px);
+  font: inherit;
+  font-weight: 600;
+}
+
+.device-registration__info p {
+  margin: 0;
+  word-break: break-all;
+}
+
+/*
+ * 카메라가 열려 있는 동안에는 셸이 칠하는 바탕을 걷는다. 웹 화면이 불투명하면 그 뒤의
+ * 미리보기가 한 픽셀도 보이지 않아, 작업자에게는 기기가 멈춘 것으로 보인다.
+ */
+.camera-open,
+.camera-open body,
+.camera-open .mobile-shell,
+.camera-open .mobile-shell > main {
+  background: transparent;
+}
+
+/*
+ * 미리보기는 화면 전체에 깔리므로 비워 둘 칸 바깥을 도로 덮는다. 자식은 부모에 구멍을
+ * 내지 못해, 상자 밖으로 한없이 번지는 그림자로 나머지를 칠한다.
+ */
+.camera-open .device-registration__viewfinder {
+  box-shadow: 0 0 0 100vmax var(--surface, #fff);
+}
+
+/* 덮개는 뷰파인더가 그리므로 나머지 글자를 그 위로 올린다. */
+.camera-open .device-registration > *:not(.device-registration__viewfinder) {
+  position: relative;
+  z-index: 1;
+}

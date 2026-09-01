@@ -32,6 +32,9 @@ importers:
       '@aparajita/capacitor-secure-storage':
         specifier: 8.0.0
         version: 8.0.0
+      '@capacitor-mlkit/barcode-scanning':
+        specifier: 8.1.1
+        version: 8.1.1(@capacitor/core@8.5.0)
       '@capacitor/android':
         specifier: 8.5.0
         version: 8.5.0(@capacitor/core@8.5.0)
@@ -59,6 +62,9 @@ importers:
       '@omf-mes/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@omf-mes/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.101.4
         version: 5.101.4(react@19.2.8)
@@ -362,6 +368,11 @@ packages:
   '@bramus/specificity@2.4.2':
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
     hasBin: true
+
+  '@capacitor-mlkit/barcode-scanning@8.1.1':
+    resolution: {integrity: sha512-hVhxTIBXlZzhejtjSe5If3+JknWXKeAdRpV2QDuj1Tn/nS38i/Ty3tKLEa7whvQjclM6SQOYVCvZvkMORlhT1w==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
 
   '@capacitor/android@8.5.0':
     resolution: {integrity: sha512-Rb3prJeQiTp0pQhSSOReJuG9VgibOGMG4ECs+UhMwr6TCCHZ3NCZO811bDA0HxD0xrT/gCrJAsY5yfEATu84JQ==}
@@ -3451,6 +3462,10 @@ snapshots:
   '@bramus/specificity@2.4.2':
     dependencies:
       css-tree: 3.2.1
+
+  '@capacitor-mlkit/barcode-scanning@8.1.1(@capacitor/core@8.5.0)':
+    dependencies:
+      '@capacitor/core': 8.5.0
 
   '@capacitor/android@8.5.0(@capacitor/core@8.5.0)':
     dependencies:
