@@ -10,6 +10,7 @@ import { LoadErrorBanner } from './load-error-banner';
 import { useLotStatusLabels } from './lot-status-labels';
 import { useReceiptLines } from './queries';
 import { ReceiptSummary } from './receipt-summary';
+import { useReferenceLabels } from './reference-labels';
 import { ReceiptTable } from './receipt-table';
 import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from './scan';
 import { ScanField } from './scan-field';
@@ -89,6 +90,14 @@ export const MaterialInputScanScreen = () => {
    * 두었으므로 없어도 투입은 선다.
    */
   const workSessionId = useOpenWorkSession(workOrderId);
+  /*
+   * 품목·단위 이름 풀이(스펙 §3). **화면에 선 번호만큼만** 조회한다 — 표의 줄과 담은 자재가
+   * 그 모집단이다. 어느 판정에도 쓰이지 않고 읽을 수 있게 하는 데만 쓴다.
+   */
+  const labels = useReferenceLabels([
+    ...receipt.lines.map((line) => line.itemId),
+    ...draft.materials.map((material) => material.itemId),
+  ]);
 
   const [qtyDrafts, setQtyDrafts] = useState<QtyDrafts>(EMPTY_QTY_DRAFTS);
   /* 기록된 줄. **되돌릴 수 없다** — 빼거나 고칠 수 없고 닫을 때까지 남는다(§5-8 · B-3). */
@@ -243,8 +252,9 @@ export const MaterialInputScanScreen = () => {
                 lines={receipt.lines}
                 isLoading={receipt.isPending && workOrderId !== null}
                 hasWorkOrder={workOrderId !== null}
+                describeItem={labels.describeItem}
               />
-              <ReceiptSummary lines={receipt.lines} />
+              <ReceiptSummary lines={receipt.lines} describeItem={labels.describeItem} />
             </>
           )}
         </section>
@@ -269,6 +279,8 @@ export const MaterialInputScanScreen = () => {
           <ScannedList
             draft={draft}
             statusLabels={statusLabels}
+            describeItem={labels.describeItem}
+            describeUom={labels.describeUom}
             qtyDrafts={qtyDrafts}
             notes={notes}
             recordedLotIds={recordedLotIds}

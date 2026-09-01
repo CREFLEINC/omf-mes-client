@@ -32,6 +32,8 @@ const STATUS_LABEL: Record<ReceiptLineStatus, string> = {
 };
 
 export interface ReceiptTableProps {
+  /** 품목 번호를 코드로 옮긴다. 못 옮기면 번호가 그대로 선다. */
+  describeItem: (itemId: number) => string;
   lines: ReceiptLineView[];
   isLoading: boolean;
   /** 조회가 실제로 나갔는가. 거짓이면 「없습니다」로 말하지 않는다 — 작업지시가 없으면 요청이 나가지 않는다. */
@@ -47,18 +49,31 @@ const renderQty = (value: number): ReactNode => String(value);
  * **열이 여섯이다**(스펙 §4-A 그대로): 품목·LOT·출고·수령·차이·상태.
  * 차이 수량은 **서버가 계산한 값을 옮긴다** — 화면이 빼지 않는다(공유계약 L-2).
  *
- * 품목·LOT은 이 슬라이스에서 **번호를 그대로 낸다.** 이름 풀이는 뒤 슬라이스에서 스캔이
- * 붙을 때 함께 들인다 — 여기서 좁힌 조회로 이름을 풀면 좁힘 밖의 정상 자료가 「알 수 없음」으로
- * 보인다(#47).
+ * **품목은 코드로 낸다**(스펙 §3의 `MAT-A`). 계약이 번호만 주므로 이름 풀이를 따로 걸고,
+ * 풀지 못하면 번호를 그대로 낸다 — 옮기지 못한 것과 값이 없는 것은 다르다.
+ *
+ * ⚠ LOT은 번호 그대로다. 계약의 수령 라인이 `lotId`만 주고 LOT 번호를 얻으려면 자재LOT을
+ * 줄마다 다시 조회해야 하는데, 이 표는 **계획 대비 수령을 견주는 자리**이지 LOT을 특정하는
+ * 자리가 아니다 — 특정은 스캔이 한다.
  */
-export const ReceiptTable = ({ lines, isLoading, hasWorkOrder }: ReceiptTableProps) => {
+export const ReceiptTable = ({
+  lines,
+  isLoading,
+  hasWorkOrder,
+  describeItem,
+}: ReceiptTableProps) => {
   /*
    * **여섯 열을 모두 가운데로 맞춘다.** 현장 단말은 멀리서 훑어보는 화면이라, 열마다 정렬이
    * 갈리면 눈이 좌우로 튄다 — 숫자를 오른쪽에 붙이는 관행은 자릿수를 견주는 표의 것이고
    * 이 표는 줄 사이 크기 비교가 목적이 아니다.
    */
   const columns: Column<ReceiptLineView>[] = [
-    { key: 'itemId', header: t.table.item, align: 'center', render: (row) => String(row.itemId) },
+    {
+      key: 'itemId',
+      header: t.table.item,
+      align: 'center',
+      render: (row) => describeItem(row.itemId),
+    },
     { key: 'lotId', header: t.table.lot, align: 'center', render: (row) => String(row.lotId) },
     {
       key: 'issuedQty',

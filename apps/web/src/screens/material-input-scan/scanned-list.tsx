@@ -23,6 +23,9 @@ const qtyError = (draft: string): string | undefined => {
 export interface ScannedListProps {
   draft: ScanDraft;
   statusLabels: LotStatusLabels;
+  /** 품목·단위 번호를 코드로 옮긴다. 못 옮기면 번호가, 단위는 빈 자리가 선다. */
+  describeItem: (itemId: number) => string;
+  describeUom: (uomId: number) => string;
   qtyDrafts: QtyDrafts;
   /** 서버가 통과시키되 기록만 한 것(§5-3). 기록된 줄에만 붙는다. */
   notes: readonly RecordedNote[];
@@ -52,6 +55,8 @@ export interface ScannedListProps {
 export const ScannedList = ({
   draft,
   statusLabels,
+  describeItem,
+  describeUom,
   qtyDrafts,
   notes,
   recordedLotIds,
@@ -107,6 +112,20 @@ export const ScannedList = ({
                   </Button>
                 )}
               </div>
+
+              {/*
+               * 스펙 §3의 목록 한 줄 — 품목과 수량·단위가 LOT 번호와 함께 선다. LOT 번호만
+               * 보이면 **잘못 읽힌 자재를 작업자가 알아채지 못한다**: 스캔은 번호의 일부나
+               * 외부 식별자로도 걸리므로 읽은 것과 담긴 것이 다를 수 있다.
+               */}
+              <p className="scanned-item-facts-line">
+                {t.scanned.itemAndQty(
+                  describeItem(material.itemId),
+                  readQty(qtyDrafts, material.lotId),
+                  describeUom(material.uomId),
+                )}
+              </p>
+
               <div className="scanned-item-facts">
                 <span className="field-note">
                   {t.scanned.statusLabel} · {statusLabels.describe(material.statusCode)}

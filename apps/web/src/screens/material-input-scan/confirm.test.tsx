@@ -74,6 +74,27 @@ const backdrop = (lots: unknown[]): StubRoute[] => [
     respond: () => jsonResponse({ items: [], page: { page: 1, size: 50, total: 0 } }),
   },
   {
+    /* 품목·단위 이름 풀이 — 표시용이라 어느 판정에도 쓰이지 않는다. */
+    match: (request) => isGet(request, '/mdm/uoms'),
+    respond: () =>
+      jsonResponse({
+        items: [{ uomId: 7401, uomCode: 'EA', uomName: '개', decimalScale: 0, isActive: true }],
+        page: { page: 1, size: 50, total: 1 },
+      }),
+  },
+  {
+    match: (request) =>
+      request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+    respond: (request) => {
+      const itemId = Number(new URL(request.url).pathname.split('/').pop());
+
+      return jsonResponse({
+        item: { itemId, itemCode: `SAMPLE-ITEM-${String(itemId)}`, itemName: '합성 품목' },
+        editability: {},
+      });
+    },
+  },
+  {
     match: (request) => isGet(request, TERMINAL_PROCESSES_PATH),
     respond: () => jsonResponse({ items: [{ processId: PROCESS_ID, canInputMaterial: true }] }),
   },
@@ -542,5 +563,42 @@ describe('MaterialInputScanScreen — 목록 닫기', () => {
 
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
     expect(screen.getByText(t.confirm.reasons.qtyMissing)).toBeTruthy();
+  });
+});
+
+/**
+ * 담은 자재 한 줄이 **무엇을 얼마나**인지 말한다 — 스펙 §3의 `LOT-…0031  MAT-A  100 EA`.
+ *
+ * LOT 번호만 보이면 잘못 읽힌 자재를 작업자가 알아채지 못한다. 스캔은 번호의 일부나 외부
+ * 식별자로도 걸리므로 **읽은 것과 담긴 것이 다를 수 있다.**
+ */
+describe('MaterialInputScanScreen — 담은 자재의 품목·수량', () => {
+  it('LOT 번호와 함께 품목·수량·단위를 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301)]));
+
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
+
+    expect(
+      await screen.findByText(t.scanned.itemAndQty('SAMPLE-ITEM-7201', '12', 'EA')),
+    ).toBeTruthy();
+  });
+
+  /* 단위를 못 풀면 **빈 자리로 둔다** — 수량 뒤에 번호가 붙으면 그것이 값처럼 읽힌다. */
+  it('단위를 풀지 못하면 수량 뒤에 번호를 붙이지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen([lot()], okRoute([consumption(7301)]), [
+      {
+        match: (request) => isGet(request, '/mdm/uoms'),
+        respond: () => new Response(null, { status: 500 }),
+      },
+    ]);
+
+    await prepareWithoutRecord(user, 'SAMPLE-LOT-0001', '12');
+
+    expect(
+      await screen.findByText(t.scanned.itemAndQty('SAMPLE-ITEM-7201', '12', '')),
+    ).toBeTruthy();
+    expect(screen.queryByText(/7401/)).toBeNull();
   });
 });

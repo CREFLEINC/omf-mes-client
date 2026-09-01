@@ -61,10 +61,9 @@ export const materialInputScan = {
    */
   receiptSummary: {
     label: '부족·미수령',
-    /* 품목 코드를 얻을 경로가 이 화면 몫에 없어 번호로 가리킨다. */
-    short: (itemId: number, varianceQty: number): string =>
-      `품목 #${String(itemId)} ${String(varianceQty)} 부족`,
-    none: (itemId: number): string => `품목 #${String(itemId)} 미수령`,
+    /** 품목은 코드로 가리킨다(스펙 §3). 코드를 못 풀면 번호가 그 자리에 선다. */
+    short: (item: string, varianceQty: number): string => `${item} ${String(varianceQty)} 부족`,
+    none: (item: string): string => `${item} 미수령`,
   },
 
   /** 스캔 구획 — 자재LOT과 금형을 **같은 칸**에서 받는다(스펙 §3). */
@@ -111,6 +110,14 @@ export const materialInputScan = {
     remove: '빼기',
     /** 스펙 §4-B의 유일한 「입력」 칸. 되돌릴 수 없는 값이라 문구가 무엇을 치는지 못박는다. */
     qtyLabel: (lotNo: string): string => `${lotNo} 투입 수량`,
+    /**
+     * 스펙 §3의 목록 한 줄 — `LOT-…0031  MAT-A  100 EA`.
+     *
+     * 품목과 단위를 **LOT 번호와 함께** 낸다. LOT 번호만으로는 무엇을 담았는지 알 수 없어,
+     * 잘못 읽힌 자재를 작업자가 알아채지 못한다.
+     */
+    itemAndQty: (item: string, qty: string, uom: string): string =>
+      uom === '' ? `${item} · ${qty}` : `${item} · ${qty} ${uom}`,
     qtyProblems: {
       empty: '투입 수량을 입력하세요.',
       format: '투입 수량은 숫자로 입력하세요.',

@@ -341,12 +341,16 @@ describe('MaterialInputScanScreen — 수령 요약', () => {
   it('부족·미수령만 줄로 세운다', async () => {
     renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
 
-    /* 픽스처는 셋 — 수령 완료 하나 · 20 부족 하나 · 미수령 하나. */
-    expect(await screen.findByText(t.receiptSummary.short(7202, 20))).toBeTruthy();
-    expect(screen.getByText(t.receiptSummary.none(7203))).toBeTruthy();
+    /*
+     * 픽스처는 셋 — 수령 완료 하나 · 20 부족 하나 · 미수령 하나. 품목 조회를 스텁하지 않아
+     * **코드를 풀지 못한 상태**이고, 그때는 번호가 그대로 선다(옮기지 못한 것과 값이 없는
+     * 것은 다르다).
+     */
+    expect(await screen.findByText(t.receiptSummary.short('7202', 20))).toBeTruthy();
+    expect(screen.getByText(t.receiptSummary.none('7203'))).toBeTruthy();
 
     /* 맞아떨어진 줄은 여기 오지 않는다 — 다시 볼 이유가 없다. */
-    expect(screen.queryByText(t.receiptSummary.short(7201, 0))).toBeNull();
+    expect(screen.queryByText(t.receiptSummary.short('7201', 0))).toBeNull();
   });
 
   /* 다 맞으면 구획째 서지 않는다 — 빈 제목만 남으면 무언가 빠진 것처럼 읽힌다. */
@@ -355,5 +359,54 @@ describe('MaterialInputScanScreen — 수령 요약', () => {
 
     await screen.findByText(t.receiptStatus.matched);
     expect(screen.queryByText(t.receiptSummary.label)).toBeNull();
+  });
+});
+
+/**
+ * 품목 이름 풀이 — 스펙 §3이 표와 목록을 `MAT-A`로 그렸는데 계약은 **번호만 준다**.
+ *
+ * ⚠ **어느 판정에도 쓰이지 않는다.** 투입 가부는 서버가 정하고(§5-2), 이 조회는 읽을 수 있게
+ * 하는 데만 쓴다. 그래서 실패해도 화면은 그대로 서야 한다.
+ */
+describe('MaterialInputScanScreen — 품목 이름 풀이', () => {
+  const itemRoute = (): StubRoute => ({
+    match: (request) =>
+      request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+    respond: (request) => {
+      const itemId = Number(new URL(request.url).pathname.split('/').pop());
+
+      return jsonResponse({
+        item: { itemId, itemCode: `SAMPLE-ITEM-${String(itemId)}`, itemName: '합성 품목' },
+        editability: {},
+      });
+    },
+  });
+
+  it('표와 요약이 번호 대신 품목 코드를 보인다', async () => {
+    renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures), itemRoute()]);
+
+    expect(await screen.findByText('SAMPLE-ITEM-7201')).toBeTruthy();
+    /* 요약도 같은 이름을 쓴다 — 표에서 본 것을 요약에서 번호로 다시 보면 눈으로 맞춰야 한다. */
+    expect(screen.getByText(t.receiptSummary.short('SAMPLE-ITEM-7202', 20))).toBeTruthy();
+  });
+
+  /*
+   * ⛔ **못 풀었다고 번호를 감추지 않는다.** 옮기지 못한 것과 값이 없는 것은 다르고, 번호는
+   * 담당자에게 전할 수 있는 유일한 단서다.
+   */
+  it('품목 조회가 실패해도 번호를 그대로 보이고 표는 선다', async () => {
+    renderScreen([
+      listRoute(),
+      detailRoute(7001, receiptLineFixtures),
+      {
+        match: (request) =>
+          request.method === 'GET' && /^\/mdm\/items\/\d+$/.test(new URL(request.url).pathname),
+        respond: () => new Response(null, { status: 500 }),
+      },
+    ]);
+
+    expect(await screen.findByText('7201')).toBeTruthy();
+    /* 표 자체는 실패로 물들지 않는다 — 이름 풀이는 표의 선행이 아니다. */
+    expect(screen.getByText(t.receiptStatus.matched)).toBeTruthy();
   });
 });

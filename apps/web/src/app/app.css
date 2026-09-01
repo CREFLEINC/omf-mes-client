@@ -45,6 +45,7 @@
  * .scan-manual   스캔 실패의 대체 경로 — 「직접 입력」과 그 설명
  * .receipt-summary  수령 표 아래, 모자란 것만 다시 세우는 자리
  * .numeric-keypad   화면 내장 숫자 키패드(공유계약 D-4) — OS 자판에 의존하지 않는다
+ * .scanned-item-facts-line  담은 자재 한 줄의 사실 — 품목 · 수량 단위(스펙 §3)
  * .pop-panes     POP 화면의 좌우 두 구획 — 스캔이 주 입력이라 좌우로 편다
  * .pane-title    구획 표제
  * .scan-row      스캔 칸과 읽기 버튼을 한 줄에 — 버튼 높이를 칸의 라벨 층만큼 내린다
@@ -922,4 +923,15 @@ main > * + * {
 /* 「기록」은 되돌릴 수 없는 조작이라 한 줄을 통째로 차지해 다른 키와 섞이지 않는다. */
 .numeric-keypad-submit {
   grid-column: 1 / -1;
+}
+
+/*
+ * 담은 자재의 「무엇을 얼마나」 — 스펙 §3의 `MAT-A  100 EA`. LOT 번호 바로 아래 붙여
+ * **한 자재의 사실이 한 덩이로** 읽히게 한다. 상태·보류는 다른 축이라 아래 줄에 따로 선다.
+ */
+.scanned-item-facts-line {
+  margin: var(--space-1) 0 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  color: var(--on-surface);
 }
