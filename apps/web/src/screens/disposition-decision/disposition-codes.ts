@@ -20,8 +20,29 @@ export const DISPOSITION_TYPE_CODES: readonly string[] = [];
 export const SEVERITY_CODES: readonly string[] = [];
 export const NONCONFORMANCE_STATUS_CODES: readonly string[] = [];
 
+/**
+ * ⭐ 원천은 **위 셋과 사정이 다르다 — 계약이 값을 열거했다**(`PRODUCT`·`RETURN`). 그래서
+ * G-2의 「값 목록 미정」에 걸리지 않고 선택지를 처음부터 채운다.
+ *
+ * ⭐ **저장 컬럼이 아니다** — 서버가 대상 LOT의 입고 유형으로 파생해 내리며, 화면은 이 값을
+ * **보내지 않는다**(거르는 축으로만 싣는다). 근거: W-03-10 §5-4 · omf-mes#303.
+ *
+ * ⛔ **값으로 «행동»을 가르지 않는다.** 여기서 코드를 아는 것은 ⓐ 주소에서 온 모르는 값을
+ * 거르고 ⓑ 선택지에 이름을 붙이기 위해서다. 값을 보고 다른 일을 하는 분기는 두지 않는다.
+ *
+ * ⚠ **이름이 겹친다** — 입고 유형의 `PRODUCT`(제품입고)와 뜻이 다르다.
+ */
+export const SOURCE_CODES = ['PRODUCT', 'RETURN'] as const;
+
 export const toCodeOptions = (codes: readonly string[]): CodeOption[] =>
   codes.map((code) => ({ value: code, label: code }));
+
+/** 원천만 이름이 있다 — 계약이 값을 열거한 축이라 코드를 그대로 보이지 않아도 된다. */
+export const sourceCodeOptions = (): CodeOption[] =>
+  SOURCE_CODES.map((code) => ({
+    value: code,
+    label: messages.dispositionDecision.values.sourceCode[code],
+  }));
 
 /** 선택지가 비었을 때 판정 컨트롤에 붙일 잠금 사유. 있으면 잠그지 않는다. */
 export const dispositionLockReason = (codes: readonly string[]): string | undefined =>

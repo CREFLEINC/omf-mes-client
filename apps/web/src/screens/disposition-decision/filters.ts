@@ -1,3 +1,4 @@
+import { SOURCE_CODES } from './disposition-codes';
 import {
   defaultPeriod,
   isPeriodDate,
@@ -10,6 +11,7 @@ export interface PendingFilters extends PeriodInput {
   itemId: string;
   severityCode: string;
   statusCode: string;
+  sourceCode: string;
 }
 
 export interface PendingListQuery {
@@ -18,6 +20,7 @@ export interface PendingListQuery {
   itemId?: number;
   severityCode?: string;
   statusCode?: string;
+  sourceCode?: string;
   page?: number;
 }
 
@@ -35,6 +38,7 @@ const KEYS = {
   itemId: 'item',
   severityCode: 'sev',
   statusCode: 'st',
+  sourceCode: 'src',
   page: 'page',
   tab: 'tab',
   selected: 'nonconformanceId',
@@ -103,6 +107,11 @@ export const readPendingFilters = (
     itemId: identifierOf(params.get(KEYS.itemId)),
     severityCode: allowedCode(params.get(KEYS.severityCode), severityCodes),
     statusCode: allowedCode(params.get(KEYS.statusCode), statusCodes),
+    /*
+     * ⭐ 원천만 값 목록을 밖에서 받지 않는다 — **계약이 두 값을 열거했기** 때문이다.
+     * 심각도·상태는 공통코드가 확정돼야 채워지므로 주입받지만, 이 축은 그럴 대기가 없다.
+     */
+    sourceCode: allowedCode(params.get(KEYS.sourceCode), SOURCE_CODES),
   };
 };
 
@@ -137,6 +146,7 @@ export const toAppliedSearchParams = (
   replace(next, KEYS.itemId, filters.itemId.trim());
   replace(next, KEYS.severityCode, filters.severityCode.trim());
   replace(next, KEYS.statusCode, filters.statusCode.trim());
+  replace(next, KEYS.sourceCode, filters.sourceCode.trim());
   replace(next, KEYS.page, page > 1 ? String(page) : '');
   // 조건이 바뀌면 앞서 고른 부적합은 목록에 없을 수 있다 — 고른 것을 지우고 다시 고르게 한다.
   next.delete(KEYS.selected);
@@ -184,6 +194,7 @@ export const toPendingListQuery = (
     ...(filters.itemId === '' ? {} : { itemId: Number(filters.itemId) }),
     ...(filters.severityCode === '' ? {} : { severityCode: filters.severityCode }),
     ...(filters.statusCode === '' ? {} : { statusCode: filters.statusCode }),
+    ...(filters.sourceCode === '' ? {} : { sourceCode: filters.sourceCode }),
     ...(page > 1 ? { page } : {}),
   };
 };

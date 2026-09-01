@@ -341,6 +341,7 @@ export const DispositionDecisionScreen = ({
                         itemId: '',
                         severityCode: '',
                         statusCode: '',
+                        sourceCode: '',
                       })
                     }
                   />

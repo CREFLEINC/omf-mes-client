@@ -16,6 +16,7 @@ const applied: PendingFilters = {
   itemId: '',
   severityCode: '',
   statusCode: '',
+  sourceCode: '',
 };
 
 const items = (): DispositionLookup => ({
@@ -70,6 +71,7 @@ describe('FilterBar', () => {
       itemId: '5001',
       severityCode: '',
       statusCode: '',
+      sourceCode: '',
     });
   });
 
@@ -90,9 +92,40 @@ describe('FilterBar', () => {
     expect(screen.getByLabelText(t.fields.item)).toHaveTextContent('SYNTH-ITEM-1 · 합성 품목');
   });
 
-  it('⚠ 원천으로 거르는 칸을 두지 않는다 — 서버가 값을 내리지 않는다', () => {
+  /*
+   * ⭐ 여기 있던 「원천 칸을 두지 않는다」 단언을 뒤집었다 — 서버가 값을 내리지 않던 것이
+   * 아니라 축이 되살아났다(#648). 되살린 쪽을 «고르고 적용되는 데»까지 물어야 칸만 세워 두고
+   * 조건이 안 실리는 상태를 잡는다 — 렌더 여부만 보면 그 결함을 통과시킨다.
+   */
+  it('⭐ 원천으로 거른다 — 고른 값이 적용 조건에 실린다', async () => {
+    const { props, user } = renderBar();
+
+    await user.click(screen.getByLabelText(t.fields.sourceCode));
+    await user.click(screen.getByRole('option', { name: t.values.sourceCode.RETURN }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(props.onApply).toHaveBeenCalledWith(expect.objectContaining({ sourceCode: 'RETURN' }));
+  });
+
+  it('원천 칸에 두 갈래뿐이라는 사실을 상시 붙인다 — 값 목록이 비어서가 아니다', () => {
     renderBar();
 
-    expect(screen.queryByLabelText('원천')).toBeNull();
+    const source = screen.getByLabelText(t.fields.sourceCode);
+
+    expect(source).toHaveAccessibleDescription(t.sourceNote);
+    /* 선택지가 채워져 있으므로 G-2의 「준비 중」 자리는 비어 있어야 한다. */
+    expect(source).not.toHaveTextContent(t.codePlaceholder);
+  });
+
+  it('⛔ 원천에 계약이 열거하지 않은 선택지를 짓지 않는다', async () => {
+    const { user } = renderBar();
+
+    await user.click(screen.getByLabelText(t.fields.sourceCode));
+
+    /* 개수까지 본다 — 이름만 확인하면 지어낸 값이 하나 더 끼어도 통과한다. */
+    expect(screen.getAllByRole('option')).toHaveLength(3);
+    expect(screen.getByRole('option', { name: t.all })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: t.values.sourceCode.PRODUCT })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: t.values.sourceCode.RETURN })).toBeInTheDocument();
   });
 });
