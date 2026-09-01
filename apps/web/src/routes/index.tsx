@@ -27,7 +27,6 @@ import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
 import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
-import { DevPopIdentityProvider } from '../screens/material-input-scan/dev-identity';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
 import { LotStatusTransitionScreen } from '../screens/lot-status-transition/screen';
@@ -457,17 +456,10 @@ export const appRouter = createBrowserRouter([
    * ⚠ **이 라우트도 접근을 제한하지 않는다.** 화면의 단말 게이팅은 오조작을 줄이는 장치이지
    * 집행이 아니다(공유계약 F-1 · F-5) — 집행은 서버의 403이다.
    *
-   * ⚠⚠ **`DevPopIdentityProvider`는 확인용 이음매다.** POP 셸(`P-CO-01` · 단말 토큰)이 아직
-   * 없어 손으로 확인할 방법이 없어 둔 것이며, 셸이 서면 이 감싸개를 벗기고 화면만 남긴다 —
-   * 화면 자체는 값을 컨텍스트에서 받으므로 한 줄도 바뀌지 않는다.
+   * ⚠ **단말·공정·사번은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 아직 비어 있어
+   * 이 화면은 「단말이 확인되지 않았습니다」로 막힌 채 뜬다 — 모르는 것을 통과로 처리하지
+   * 않는다(F-6). `P-CO-01`과 단말 토큰이 서면 그때 채워진다.
    */
-  {
-    path: '/pop/material-input',
-    element: (
-      <DevPopIdentityProvider>
-        <MaterialInputScanScreen />
-      </DevPopIdentityProvider>
-    ),
-  },
+  { path: '/pop/material-input', element: <MaterialInputScanScreen /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
