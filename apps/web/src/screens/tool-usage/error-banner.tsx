@@ -50,8 +50,13 @@ const toContent = (error: ApiError): BannerContent => {
     case 'stateLocked': {
       const lines = usableMessages(error.errors);
 
+      /*
+       * ⛔ **쓸 수 있는 문구가 하나도 없어도 「다시 시도」를 두지 않는다.** 이 갈래는 보낸 값이
+       * 규칙에 어긋났다는 뜻이라 값이 그대로면 답도 그대로다 — 서버가 말을 못 했다는 사정은
+       * 「다시 누르면 달라진다」로 바뀌지 않는다(`http` 갈래의 400·422와 같은 판단).
+       */
       return lines.length === 0
-        ? { lines: [messages.httpError.description], canRetry: true }
+        ? { lines: [messages.toolUsage.save.rejected], canRetry: false }
         : { lines, canRetry: false };
     }
     case 'conflict':

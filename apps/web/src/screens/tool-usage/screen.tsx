@@ -147,10 +147,19 @@ export const ToolUsageScreen = () => {
     isOnline,
   };
 
+  /**
+   * 툴을 새로 찍는다 — **앞 시도의 흔적을 함께 버린다.**
+   *
+   * ⛔ 앞 시도의 실패 배너를 남기면 방금 찍은 툴이 거부된 것처럼 읽힌다.
+   * ⛔ 발생 시각도 버린다 — 붙들고 있으면 **툴 B 의 실적에 툴 A 를 찍던 시각**이 박힌다.
+   * 친 타발수는 남긴다. 값을 먼저 치고 툴을 찍는 순서도 정상이다.
+   */
   const submitCode = (event: FormEvent<HTMLFormElement>): void => {
     event.preventDefault();
     setSubmittedCode(codeInput.trim());
     setSaved(null);
+    occurredAtRef.current = null;
+    write.reset();
   };
 
   /**

@@ -168,6 +168,20 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     expect(screen.getByText(t.actionReasons.noTool)).toBeInTheDocument();
   });
 
+  it('「툴 다시 고르기」는 찍은 코드와 고른 툴을 함께 버린다 — 툴을 바꾸는 유일한 길이다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await user.click(screen.getByRole('button', { name: t.scan.clear }));
+
+    expect(screen.queryByText(TOOL_CODE)).not.toBeInTheDocument();
+    expect(screen.getByLabelText(t.scan.inputLabel)).toHaveValue('');
+    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
+    expect(screen.getByText(t.actionReasons.noTool)).toBeInTheDocument();
+  });
+
   it('「다시 입력」은 친 값만 지우고 고른 툴은 남긴다 — 오타 하나에 재스캔시키지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen();
@@ -398,7 +412,54 @@ describe('ToolUsageScreen — 저장', () => {
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
     await user.click(screen.getByRole('button', { name: t.actions.save }));
 
-    expect(await screen.findByText(messages.httpError.description)).toBeInTheDocument();
+    expect(await screen.findByText(t.save.rejected)).toBeInTheDocument();
+    /* 서버가 말을 못 했다는 사정이 「다시 누르면 달라진다」로 바뀌지는 않는다. */
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  it('계약 형태가 아닌 400 응답에서도 서버 사유를 보이고 다시 시도를 권하지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ saveStatus: 400, saveErrorBody: { message: '값이 범위를 벗어났습니다' } });
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText('값이 범위를 벗어났습니다')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  it('서버가 사유를 아예 주지 않아도 다시 시도를 권하지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ saveStatus: 422, saveErrorBody: {} });
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText(t.save.rejected)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+
+  it('저장에 실패한 뒤 다른 툴을 찍으면 앞 시도의 배너가 남지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      tools: [makeTool(), makeTool({ moldId: 2002, moldCode: 'MLD-0999' })],
+      saveStatus: 422,
+      saveErrorBody: { message: '이미 마감된 작업지시입니다' },
+    });
+
+    await scanTool(user);
+    await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
+    await user.click(screen.getByRole('button', { name: t.actions.save }));
+    expect(await screen.findByText('이미 마감된 작업지시입니다')).toBeInTheDocument();
+
+    await user.clear(screen.getByLabelText(t.scan.inputLabel));
+    await scanTool(user, 'MLD-0999');
+
+    await waitFor(() => {
+      expect(screen.queryByText('이미 마감된 작업지시입니다')).not.toBeInTheDocument();
+    });
   });
 
   it('진입 컨텍스트가 없으면 저장을 열지 않고 사유를 보인다', async () => {
