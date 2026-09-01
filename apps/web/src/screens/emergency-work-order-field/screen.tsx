@@ -56,7 +56,15 @@ export const EmergencyWorkOrderFieldScreen = ({
 
   return (
     <>
-      <PopHeader terminalNo={terminalNo} />
+      <PopHeader
+        terminalNo={terminalNo}
+        /*
+         * ⭐ 연결 여부는 «마지막 조회가 서버에 닿았는가»로 말한다 — 브라우저의 온라인
+         *    표시는 산업용 패널 PC 에서 사실과 다르다(같은 기기의 서버에는 랜선 없이도 닿는다).
+         *    아직 답을 못 받았으면 `undefined` 로 두어 «모른다»를 말하지 않는다.
+         */
+        isConnected={list.isError ? false : list.isSuccess ? true : undefined}
+      />
 
       {/*
        * ⭐ 스펙이 **좌 목록 / 우 상세** 2단으로 못박은 배치다. 세로로 쌓으면 1024×768 단말에서

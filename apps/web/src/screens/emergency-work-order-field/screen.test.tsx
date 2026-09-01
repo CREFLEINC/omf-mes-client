@@ -138,3 +138,40 @@ describe('POP 제품명', () => {
     expect(await screen.findByText('OMF-MES POP')).toBeInTheDocument();
   });
 });
+
+describe('상세 구획의 제목', () => {
+  it('고르면 W/O 번호 자체가 제목이 된다', async () => {
+    const { user } = renderScreen();
+
+    await user.click(
+      await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
+    );
+
+    expect(
+      screen.getByRole('heading', { name: new RegExp(EMERGENCY_WORK_ORDER.workOrderNo) }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('연결 표시', () => {
+  it('서버에 닿으면 연결됨을 보인다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.header.connected)).toBeInTheDocument();
+  });
+
+  it('조회가 실패하면 연결 끊김을 보인다', async () => {
+    renderScreen({ listStatus: 500 });
+
+    expect(await screen.findByText(t.header.disconnected)).toBeInTheDocument();
+  });
+
+  it('답을 받기 전에는 연결 여부를 말하지 않는다', async () => {
+    renderScreen({ holdList: true });
+
+    await screen.findByRole('heading', { name: t.list.title });
+
+    expect(screen.queryByText(t.header.connected)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.header.disconnected)).not.toBeInTheDocument();
+  });
+});

@@ -1256,14 +1256,26 @@ main > * + * {
   display: grid;
   grid-template-columns: minmax(340px, 2fr) 3fr;
   gap: var(--space-5);
-  align-items: start;
   padding: var(--space-4);
+  /*
+   * 두 칸이 화면 아래까지 이어진다 — 스펙 그림이 그렇고, 내용에 맞춰 줄어들면 목록이 한 줄일
+   * 때 페인이 위쪽에 조각처럼 남아 「덜 그려졌나」로 읽힌다. 상단 띠 높이를 뺀 나머지를 쓴다.
+   */
+  min-height: calc(100vh - 4rem);
+  align-items: stretch;
 }
 
 @media (max-width: 900px) {
   .pop-two-pane {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
+}
+
+/* 이탈 버튼 둘은 나란히 선다 — 스펙이 좌우로 둔 자리다. */
+.pop-handoff {
+  display: flex;
+  gap: var(--space-3);
 }
 
 /* 제품명 다음의 화면 이름이 남은 폭을 먹고, 단말 표시가 오른쪽 끝에 붙는다. */

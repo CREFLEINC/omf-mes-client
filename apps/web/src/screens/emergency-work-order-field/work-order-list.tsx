@@ -103,8 +103,15 @@ export const WorkOrderList = ({
 
           {isTruncated && <p>{t.truncated(rows.length, total)}</p>}
 
-          {/* 발행 자리를 여기서 찾지 않게 한다 — 이 화면에는 만드는 액션이 없다. */}
-          <p>{t.issuedElsewhere}</p>
+          {/*
+           * 발행 자리를 여기서 찾지 않게 한다 — 이 화면에는 만드는 액션이 없다.
+           * ⭐ 스펙이 ⓘ 를 붙인 자리라 안내 배너로 세운다.
+           */}
+          {rows.length > 0 && (
+            <div className="banner-slot">
+              <AlertBanner variant="info">{t.issuedElsewhere}</AlertBanner>
+            </div>
+          )}
         </>
       )}
     </section>

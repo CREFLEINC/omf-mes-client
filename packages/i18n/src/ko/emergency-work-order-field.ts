@@ -20,6 +20,14 @@ export const emergencyWorkOrderField = {
      */
     terminalUnknown: '단말 확인 전',
     terminalLabel: (terminalNo: string): string => `단말 ${terminalNo}`,
+
+    /**
+     * 연결 표시. ⛔ **브라우저가 말하는 「온라인」이 아니라 «서버에 닿았는가»로 말한다** —
+     * 랜선이 빠져도 같은 기기의 서버에는 닿고, 반대로 브라우저가 온라인이라도 서버가 죽어
+     * 있을 수 있다. 마지막 조회가 답을 받았는지를 그대로 보인다.
+     */
+    connected: '연결됨',
+    disconnected: '연결 끊김',
   },
 
   /** 목록 구획. */
@@ -35,19 +43,20 @@ export const emergencyWorkOrderField = {
     select: '선택',
 
     /** ⛔ 「없다」로 끝내지 않는다 — 어디서 만들어지는지까지 적어야 여기서 기다리지 않는다. */
-    empty: '긴급 W/O 가 없습니다. 긴급 W/O 는 관리웹에서 발행합니다.',
+    empty: '긴급 W/O 가 없습니다. 긴급 W/O 는 관리웹 「긴급 W/O 발행」에서 발행합니다.',
     loadError: '긴급 W/O 목록을 받지 못했습니다. 새로고침해 주세요.',
 
     /** 목록이 잘렸다는 사실은 전체 건수로만 알 수 있다. */
     truncated: (shown: number, total: number): string =>
       `${String(total)}건 중 ${String(shown)}건을 보이고 있습니다.`,
 
-    /** 발행 자리를 여기서 찾지 않게 한다. */
-    issuedElsewhere: '긴급 W/O 는 관리웹에서 발행합니다.',
+    /** 발행 자리를 여기서 찾지 않게 한다. 어느 화면인지까지 적어야 찾아갈 수 있다. */
+    issuedElsewhere: '긴급 W/O 는 관리웹 「긴급 W/O 발행」에서 발행합니다.',
   },
 
   /** 상세 구획 — 고른 W/O 하나. */
   detail: {
+    /** 아직 고르지 않았을 때의 구획 이름. 고른 뒤에는 **W/O 번호 자체가 제목**이다. */
     title: 'W/O 상세',
     notSelected: '왼쪽 목록에서 긴급 W/O 를 고르세요.',
     item: '품목',

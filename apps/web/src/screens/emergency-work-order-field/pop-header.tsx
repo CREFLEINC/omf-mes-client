@@ -7,18 +7,25 @@ export interface PopHeaderProps {
    * 「모른다」다.
    */
   terminalNo?: string;
+  /**
+   * 서버에 닿았는가. **아직 모르면 `undefined`** — 그때는 아무 말도 하지 않는다.
+   *
+   * ⛔ **브라우저의 온라인 여부로 판정하지 않는다.** 랜선이 빠져도 같은 기기의 서버에는
+   * 닿고(산업용 패널 PC), 반대로 브라우저가 온라인이라도 서버가 죽어 있을 수 있다.
+   */
+  isConnected?: boolean;
 }
 
 /**
- * POP 상단 띠 — 화면 이름과 **지금 어느 단말 앞인지**.
+ * POP 상단 띠 — 제품명 · 화면 이름 · **지금 어느 단말 앞이고 서버에 닿아 있는지**.
  *
- * ⭐ **단말을 상시 보인다.** 현장에는 같은 화면을 띄운 단말이 여럿이고, 어느 단말에서 한
- * 일인지가 기록의 귀속을 가른다 — 그 사실을 화면이 늘 말해야 사람이 옆 단말에 대고 일하지
- * 않는다.
+ * ⭐ **단말과 연결을 상시 보인다.** 현장에는 같은 화면을 띄운 단말이 여럿이고, 어느 단말에서
+ * 한 일인지가 기록의 귀속을 가른다. 연결이 끊긴 것을 모르면 목록이 비었을 때 「긴급 지시가
+ * 없다」로 읽는다.
  *
  * ⛔ **모르는 것을 빈칸으로 두지 않는다.** 비워 두면 단말이 하나뿐인 것처럼 읽힌다.
  */
-export const PopHeader = ({ terminalNo }: PopHeaderProps) => {
+export const PopHeader = ({ terminalNo, isConnected }: PopHeaderProps) => {
   const t = messages.emergencyWorkOrderField;
 
   return (
@@ -40,6 +47,11 @@ export const PopHeader = ({ terminalNo }: PopHeaderProps) => {
           ? t.header.terminalUnknown
           : t.header.terminalLabel(terminalNo)}
       </span>
+      {isConnected !== undefined && (
+        <Chip status={isConnected ? 'success' : 'error'} size="sm">
+          {isConnected ? t.header.connected : t.header.disconnected}
+        </Chip>
+      )}
     </header>
   );
 };
