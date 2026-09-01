@@ -1,4 +1,5 @@
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
+import type { CapturedPhoto } from '../../patterns/photo-capture';
 
 /** 멈췄다 / 돌지만 이상하다. 정지 여부가 뒤를 가른다. */
 export type OccurrenceState = 'STOPPED' | 'ABNORMAL';
@@ -64,7 +65,14 @@ export const validateReport = (draft: Partial<FailureReport>): ReportValidity =>
  * 보고 시각은 단말 시계가 정한다 — 오프라인 지연이 고장 발생 시각을 뒤로 밀면 안 된다.
  * 알림은 끊겨 있어도 끄지 않는다. 끄면 보고자가 알린 줄 안다.
  */
-export const toOutboxDraft = (report: FailureReport, occurredAt: string): OutboxDraft => ({
+export const toOutboxDraft = (
+  report: FailureReport,
+  occurredAt: string,
+  reportId: string,
+): OutboxDraft => ({
+  /* 사진이 이 건을 가리켜야 하므로 식별자를 여기서 정한다. 묶음 이름도 같은 값을 쓴다. */
+  id: reportId,
+  batchId: reportId,
   idempotencyKey: createIdempotencyKey({
     operation: 'breakdown-report',
     target: report.equipmentId,
@@ -95,3 +103,42 @@ export const scanMissOf = (
   loaded: boolean,
   selectedCode: string | undefined,
 ): string | null => (scanned !== null && loaded && selectedCode !== scanned ? scanned : null);
+
+/** 계약이 정한 한도. 넘겨 찍을 수 없게 화면이 막는다. */
+export const MAX_PHOTOS = 3;
+
+/*
+ * 담아 둘 수 있는 사진의 총량. 한 장이 수백 KB 라 이 값이면 대여섯 장이 들어가고, 그보다
+ * 쌓이면 단말 보관소가 감당하지 못한다. 넘으면 더 찍지 못하게 막고 이유를 말한다.
+ */
+export const PHOTO_QUEUE_LIMIT_BYTES = 4 * 1024 * 1024;
+
+/**
+ * 사진을 본문에 딸린 건으로 담는다.
+ *
+ * 사진에 따로 멱등키를 두지 않는다 - 본문이 성공해야 붙을 곳이 생기므로 본문의 키를 나눠 쓴다.
+ * 본문이 거부되면 사진도 함께 되돌아온다.
+ */
+export const toPhotoDrafts = (
+  photos: CapturedPhoto[],
+  body: OutboxDraft,
+  occurredAt: string,
+  reportId: string,
+): OutboxDraft[] =>
+  photos.map((photo, index) => ({
+    id: `${reportId}-photo-${String(index)}`,
+    idempotencyKey: `${body.idempotencyKey}:photo:${String(index)}`,
+    method: 'POST',
+    path: '/maintenance/breakdowns/:breakdownId/attachments',
+    body: null,
+    file: { fileName: photo.fileName, mimeType: photo.mimeType, data: photo.data },
+    pathFrom: {
+      entryId: reportId,
+      field: 'breakdownId',
+      token: ':breakdownId',
+    },
+    batchId: body.batchId,
+    occurredAt,
+    /* 본문이 가야 붙을 곳이 생긴다. 담긴 것만으로 붙었다고 할 수 없다. */
+    confirmation: 'pending',
+  }));

@@ -15,6 +15,13 @@ import { flushQueue, type FlushResult, type OutboxTransport } from './send';
 export interface Outbox {
   /** 아직 서버에 닿지 못한 건수. 상시 표시가 즉시 성공 표시의 전제다. */
   pending: number;
+  /**
+   * 담긴 파일이 차지하는 크기.
+   *
+   * 사진처럼 큰 것을 담는 화면이 더 받아도 되는지 정할 때 쓴다. 화면이 자기 것만 세면
+   * 보고를 마칠 때마다 셈이 처음으로 돌아가 큐가 끝없이 커진다.
+   */
+  pendingBytes: number;
   /** 담고 곧바로 돌아온다. 통신을 기다리지 않는다. */
   enqueue: (draft: OutboxDraft) => Promise<void>;
   /** 보낼 수 있는 만큼 보낸다. 거부된 건을 돌려준다. */
@@ -153,9 +160,13 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     };
   }, [loaded]);
 
+  const pendingBytes = loaded
+    ? entries.reduce((total, entry) => total + (entry.file?.data.length ?? 0), 0)
+    : 0;
+
   const value = useMemo(
-    () => ({ pending: loaded ? entries.length : 0, enqueue, flush }),
-    [enqueue, entries.length, flush, loaded],
+    () => ({ pending: loaded ? entries.length : 0, pendingBytes, enqueue, flush }),
+    [enqueue, entries.length, flush, loaded, pendingBytes],
   );
 
   return <OutboxContext value={value}>{children}</OutboxContext>;

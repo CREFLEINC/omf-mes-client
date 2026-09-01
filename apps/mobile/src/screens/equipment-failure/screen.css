@@ -35,3 +35,18 @@
   flex-direction: column;
   gap: var(--space-1, 4px);
 }
+
+.equipment-failure__photos {
+  display: flex;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equipment-failure__photos img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: var(--radius-sm, 4px);
+}
