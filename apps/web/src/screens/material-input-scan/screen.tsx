@@ -308,7 +308,13 @@ export const MaterialInputScanScreen = () => {
            */}
           <p className="scan-outcome" role="status">
             {scan.isError
-              ? t.scan.outcomes.failed
+              ? /*
+                 * 끊긴 것과 조회가 실패한 것은 **작업자가 할 일이 다르다**(G-3). 앞은 기다려야
+                 * 풀리고 뒤는 다시 읽으면 풀린다 — 합치면 끊긴 단말에서 되읽기를 반복한다.
+                 */
+                outbox.isOnline
+                ? t.scan.outcomes.failed
+                : t.scan.outcomes.offline
               : outcome === undefined
                 ? ''
                 : describeOutcome(outcome)}

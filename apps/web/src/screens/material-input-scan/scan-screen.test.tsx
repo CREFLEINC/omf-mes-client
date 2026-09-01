@@ -847,3 +847,42 @@ describe('MaterialInputScanScreen — 헤더 맥락', () => {
     expect(await screen.findByText(t.header.terminal(TERMINAL_ID))).toBeTruthy();
   });
 });
+
+describe('MaterialInputScanScreen — 끊겼을 때의 스캔', () => {
+  /*
+   * ⭐ **끊긴 것과 조회가 실패한 것은 작업자가 할 일이 다르다**(공유계약 G-3). 앞은 기다려야
+   * 풀리고 뒤는 다시 읽으면 풀린다 — 합치면 끊긴 단말에서 되읽기를 반복한다.
+   *
+   * ⛔ **오프라인 조회를 대신 만들지 않는다.** 스캔은 LOT 상태를 함께 받는데 그것은 차단
+   * 판정에 쓰이는 값이고, C-6 이 그 캐시를 금지한다 — 지난 상태를 보이면 보류된 자재가
+   * 정상으로 읽힌다. 이 화면 §6 이 네트워크 두절에 요구한 것은 **쓰기 큐잉**이다.
+   */
+  it('끊긴 상태에서는 「다시 읽어라」고 하지 않는다', async () => {
+    const user = userEvent.setup();
+
+    const stub = createStubFetch([...receiptRoutes(), lotsRoute([lot()])]);
+    const fetch: StubFetch = async (request) => {
+      if (isGet(request, LOTS_PATH)) throw new TypeError('Failed to fetch');
+
+      return stub(request);
+    };
+
+    renderWithProviders(
+      <PopIdentityProvider value={GATED}>
+        <MaterialInputScanScreen />
+      </PopIdentityProvider>,
+      { fetch, route: ROUTE },
+    );
+
+    /* 브라우저가 끊김을 알린 상태로 둔다 — 그때만 문구가 갈린다. */
+    Object.defineProperty(globalThis.navigator, 'onLine', { value: false, configurable: true });
+    globalThis.dispatchEvent(new Event('offline'));
+
+    await scanCode(user, 'SAMPLE-LOT-0001');
+
+    expect(await screen.findByText(t.scan.outcomes.offline)).toBeTruthy();
+    expect(screen.queryByText(t.scan.outcomes.failed)).toBeNull();
+
+    Object.defineProperty(globalThis.navigator, 'onLine', { value: true, configurable: true });
+  });
+});
