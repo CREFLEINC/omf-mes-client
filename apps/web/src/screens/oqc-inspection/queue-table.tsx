@@ -6,10 +6,14 @@ import { toStatusBadge } from './status-badge';
 import type { InspectionQueueRow } from './types';
 
 /**
- * 좌측 검사 대상 목록의 표 — **네 칸뿐이다.**
+ * 좌측 검사 대상 목록의 표 — **네 칸이고, 첫 칸이 두 행이다.**
  *
- * 이 창이 화면의 약 1/3 폭이라(스펙 §3) 고르는 데 필요한 것만 싣는다. 스펙 §3 좌단이 품목과
- * 검사수량을 그리고 있어 그 둘을 넣고, 대상 LOT·기준 버전 같은 나머지는 고른 뒤 우측 창이 보인다.
+ * 이 창이 화면의 약 1/3 폭이라(스펙 §3) 열을 늘리는 대신 **한 줄을 두 행으로 쓴다** — §3 이
+ * 그린 모양이 그렇다. 첫 행이 의뢰번호이고 둘째 행이 대상번호다. 대상 LOT·기준 버전 같은
+ * 나머지는 고른 뒤 우측 창이 보인다.
+ *
+ * ⛔ **회차·검사일 칸을 지어내지 않는다** — 계약이 이 축에 주지 않는 값이다(`types.ts` 머리 참조).
+ * 빈 칸으로 세워 두면 「아직 없음」과 「못 불러옴」이 화면에서 같아 보인다.
  *
  * **의뢰번호 칸이 곧 「이 줄을 연다」다.** 저장소의 목록 창들이 쓰는 관용구와 같은 형태이며,
  * 고른 줄은 `aria-current` 로 표시한다.
@@ -30,16 +34,23 @@ const columnsOf = (
     key: 'inspectionRequestNo',
     header: t.columns.inspectionRequestNo,
     /* 번호 칸이 곧 「이 줄을 연다」다 — 저장소의 목록 창들과 같은 관용구. */
+    /*
+     * ⛔ **두 행을 인라인으로 붙이지 않는다.** 붙으면 「IR-OQC-0001대상 6101」로 읽힌다 —
+     * 번호 칸이라 이어진 글자가 한 값처럼 보인다. `.stacked-cell` 이 그 갈라짐을 만든다.
+     */
     render: (row) => (
-      <button
-        type="button"
-        className="link-cell"
-        aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
-        aria-label={t.openRow(row.inspectionRequestNo)}
-        onClick={() => onSelect(row.inspectionRequestId)}
-      >
-        {row.inspectionRequestNo}
-      </button>
+      <span className="stacked-cell">
+        <button
+          type="button"
+          className="link-cell"
+          aria-current={row.inspectionRequestId === selectedId ? 'true' : undefined}
+          aria-label={t.openRow(row.inspectionRequestNo)}
+          onClick={() => onSelect(row.inspectionRequestId)}
+        >
+          {row.inspectionRequestNo}
+        </button>
+        <span className="field-note">{t.targetId(row.targetId)}</span>
+      </span>
     ),
   },
   {

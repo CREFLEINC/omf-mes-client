@@ -110,6 +110,16 @@ export const ResultFormPane = ({
   onCancelReinspection,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
+  const lockNoteId = useId();
+  /**
+   * ⭐ **이 화면은 어떤 회차도 고치지 않는다.**
+   *
+   * 확정본이 아니라 **회차가 있다는 사실**이 잠그는 근거다. 「작성중」만 열어 두면 막다른 길이
+   * 생긴다 — 이 화면에는 임시 저장도 확정 경로도 없어서, 칸이 열려 있어도 저장은 서버에서
+   * `UNIQUE(의뢰, 회차)` 에 걸려 409 로 되돌아오고, 「확정본이 아니다」라는 이유로 재검사 단추도
+   * 서지 않는다. 그러면 그 회차를 끝낼 길이 화면 어디에도 없다.
+   */
+  const isLocked = round !== null;
   const isConfirmed = round?.statusCode === CONFIRMED;
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
@@ -145,8 +155,10 @@ export const ResultFormPane = ({
    * ⭐ **선택지가 비어 있음을 「고르지 않았다」보다 «먼저» 본다.** 목록이 비어 있는데 「고르세요」
    * 라고 하면 사용자는 고를 수 없는 것을 고르려 든다 — 실제로 할 일은 담당자 문의다.
    */
-  const saveBlockedReason: string | null = isConfirmed
-    ? t.blockedByConfirmed
+  const saveBlockedReason: string | null = isLocked
+    ? isConfirmed
+      ? t.blockedByConfirmed
+      : t.blockedByDraftElsewhere
     : !canConfirm(totals)
       ? t.blockedByTotals
       : judgmentOptions.length === 0
@@ -190,7 +202,13 @@ export const ResultFormPane = ({
       label={label}
       inputMode="decimal"
       value={draft[key]}
-      disabled={isConfirmed || isSaving}
+      disabled={isLocked || isSaving}
+      /*
+       * ⭐ **묶음에 한 번 낸 사유를 세 칸이 «가리킨다».** 디자인 시스템의 `disabledReason` 은
+       * 사유를 보이면서 `aria-describedby` 로도 이어 주는데, 같은 문장을 세 번 내지 않으려고
+       * 접으면서 그 연결이 함께 사라졌다 — 보이는 문장과 접근 이름 중 하나를 고를 필요가 없다.
+       */
+      aria-describedby={isLocked ? lockNoteId : undefined}
       /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
       error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
       onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
@@ -240,7 +258,11 @@ export const ResultFormPane = ({
        * 이유로 잠긴 것처럼 읽히고, 읽는 사람은 셋을 다 읽고 나서야 같은 말임을 안다. 잠긴 것은
        * 칸 하나가 아니라 이 회차라 이유도 묶음의 것이다.
        */}
-      {isConfirmed && <p className="field-note">{t.confirmed}</p>}
+      {isLocked && (
+        <p className="field-note" id={lockNoteId}>
+          {isConfirmed ? t.confirmed : t.draftElsewhere}
+        </p>
+      )}
 
       <div className="form-grid">
         {field('accepted', t.fields.accepted, errors.accepted)}
@@ -273,7 +295,7 @@ export const ResultFormPane = ({
           options={judgmentOptions}
           value={judgment}
           placeholder={t.judgmentPlaceholder}
-          disabled={isConfirmed || isSaving || judgmentOptions.length === 0}
+          disabled={isLocked || isSaving || judgmentOptions.length === 0}
           onChange={onJudgmentChange}
         />
         {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
@@ -290,7 +312,7 @@ export const ResultFormPane = ({
        * ⛔ **되돌릴 수 없는 쓰기가 무엇을 하는지 누르기 «전»에 보인다.** 확인 창에도 같은 본문이
        * 다시 서지만, 창을 열기 전에 이미 보고 판단할 수 있어야 한다.
        */}
-      {!isConfirmed && <TransitionWarning preview={preview} />}
+      {!isLocked && <TransitionWarning preview={preview} />}
 
       {/* 창이 열려 있는 동안에는 배너를 창 안에서 낸다 — 밖에 내면 창에 가려 보이지 않는다. */}
       {openedAt === null && banner}
@@ -307,7 +329,7 @@ export const ResultFormPane = ({
        * 내고 길을 내지 않으면, 문면이 「재검사로 새 회차를 쌓으세요」라고 말하는데 쌓을 자리가
        * 화면에 없다.
        */}
-      {isConfirmed && (
+      {isLocked && (
         <div className="form-actions">
           <Button type="button" variant="outlined" size="sm" onClick={onStartReinspection}>
             {t.reinspect}
@@ -315,7 +337,7 @@ export const ResultFormPane = ({
         </div>
       )}
 
-      {!isConfirmed && (
+      {!isLocked && (
         <div className="form-actions">
           {showErrors && hasQuantityError(errors) && (
             <p className="field-note form-actions-secondary">{t.saveBlockedByInvalid}</p>

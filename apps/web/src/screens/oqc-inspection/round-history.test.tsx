@@ -77,6 +77,30 @@ describe('RoundHistory', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
+  /**
+   * ⭐ **재검사 중에는 회차 하나여도 그린다.** 그때 폼에는 회차가 넘어가지 않으므로(「아직 없는
+   * 새 회차」다), 이력까지 감추면 검사자가 **「앞에 무엇이 있었나」를 볼 자리가 화면 어디에도
+   * 없는 채로** 되돌릴 수 없는 쓰기를 친다.
+   */
+  it('재검사 중에는 회차가 하나여도 앞 회차를 보인다', () => {
+    renderWithProviders(
+      <RoundHistory
+        rounds={[toInspectionResultRound(confirmedRound)]}
+        currentResultId={null}
+        isReinspecting
+      />,
+    );
+
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(1);
+    expect(screen.getByText('합격 480 · 불합격 15 · 보류 5')).toBeInTheDocument();
+  });
+
+  it('회차가 아예 없으면 재검사 중이라도 그리지 않는다 — 없는 것을 설명하지 않는다', () => {
+    renderWithProviders(<RoundHistory rounds={[]} currentResultId={null} isReinspecting />);
+
+    expect(screen.queryByRole('list')).not.toBeInTheDocument();
+  });
+
   it('확정되지 않은 회차의 확정 시각을 빈칸으로 두지 않는다', () => {
     renderWithProviders(
       <RoundHistory

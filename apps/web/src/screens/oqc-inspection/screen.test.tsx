@@ -98,6 +98,8 @@ const renderScreen = (options: ScreenOptions = {}) => {
   );
   /** 공통코드를 몇 번 불렀나 — 저장이 마스터까지 다시 부르지 않는지 본다 */
   let codeValueCalls = 0;
+  /** 목록을 몇 번 불렀나 — 저장 뒤 목록이 «다시» 서는지 본다 */
+  let queueCalls = 0;
 
   const stubFetch: StubFetch = async (request) => {
     const url = new URL(request.url);
@@ -105,6 +107,8 @@ const renderScreen = (options: ScreenOptions = {}) => {
     const isSave = path === '/quality/inspection-results' && request.method === 'POST';
 
     if (path === '/quality/inspection-requests') {
+      queueCalls += 1;
+
       return options.queue?.(request) ?? jsonResponse(queueResponse());
     }
 
@@ -157,7 +161,13 @@ const renderScreen = (options: ScreenOptions = {}) => {
     fetch: stubFetch,
   });
 
-  return { ...view, saves, rounds, codeValueCallsAt: () => codeValueCalls };
+  return {
+    ...view,
+    saves,
+    rounds,
+    codeValueCallsAt: () => codeValueCalls,
+    queueCallsAt: () => queueCalls,
+  };
 };
 
 const openRow = (inspectionRequestNo: string) =>
@@ -376,6 +386,64 @@ describe('OqcInspectionScreen — 저장 이후(V6)', () => {
    * 재면 폼을 의뢰에 매어 두지 않아도 시험이 통과한다(실측). 캐시가 찬 의뢰로 돌아가면 폼이
    * 자리를 지키므로 **매어 둔 것이 있어야만** 창이 닫힌다.
    */
+  /**
+   * ⭐ **판정한 의뢰가 목록에서 빠지는지는 서버가 정한다.** 화면이 그 판단을 흉내 내지 않는
+   * 대신 목록을 다시 부른다 — 다시 부르지 않으면 「대기·진행만 보기」에 방금 판정한 줄이 그대로
+   * 남아, 검사자가 **이미 한 일을 다시 하러 들어간다.**
+   */
+  it('저장 뒤 목록을 다시 부른다', async () => {
+    const user = userEvent.setup();
+    const { queueCallsAt } = renderScreen({
+      route: `/?ir=${String(waitingRequest.inspectionRequestId)}`,
+    });
+
+    await screen.findByLabelText(t.result.fields.accepted);
+
+    const before = queueCallsAt();
+
+    await fillJudgment(user);
+    await user.click(screen.getByRole('button', { name: t.result.save }));
+    await pressSaveInDialog(user);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.result.reinspect })).toBeInTheDocument(),
+    );
+
+    await waitFor(() => expect(queueCallsAt()).toBeGreaterThan(before));
+  });
+
+  /**
+   * ⭐ **재검사가 다시 검사하는 대상은 앞 회차가 아니라 의뢰다.** 폼에 회차를 넘기지 않으면서
+   * (「아직 없는 새 회차」다) 수량만 그 회차에서 가져오면 두 말이 한 화면에서 어긋난다.
+   */
+  it('재검사 중에는 검사수량이 의뢰의 대상 수량이다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({
+      route: `/?ir=${String(waitingRequest.inspectionRequestId)}`,
+      /* 앞 회차가 «다른» 수량을 들고 있어야 두 값이 갈린다. */
+      rounds: { [waitingRequest.inspectionRequestId]: [{ ...confirmedRound, inspectedQty: 300 }] },
+    });
+
+    /*
+     * 「검사수량」 라벨의 «짝»만 읽는다 — 폼에는 잔여·합계에도 같은 숫자가 설 수 있고, 우측
+     * 대상 정보에도 같은 라벨이 있다.
+     */
+    const inspectedQtyText = (): string => {
+      const label = within(screen.getByRole('form', { name: t.result.heading })).getByText(
+        t.result.fields.inspectedQty,
+      );
+
+      return label.parentElement?.querySelector('dd')?.textContent ?? '';
+    };
+
+    await screen.findByRole('button', { name: t.result.reinspect });
+    expect(inspectedQtyText()).toBe('300');
+
+    await user.click(screen.getByRole('button', { name: t.result.reinspect }));
+
+    expect(inspectedQtyText()).toBe(String(waitingRequest.targetQty));
+  });
+
   it('열어 둔 확인 창은 의뢰를 바꾸면 닫힌다 — 앞 의뢰의 창이 새 번호를 달고 서면 안 된다', async () => {
     const user = userEvent.setup();
 

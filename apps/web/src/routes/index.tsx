@@ -44,8 +44,8 @@ import { LotStatusTransitionScreen } from '../screens/lot-status-transition/scre
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { NoticeScreen } from '../screens/notice/screen';
 import { NotificationCenterScreen } from '../screens/notification-center/screen';
-import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
+import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';

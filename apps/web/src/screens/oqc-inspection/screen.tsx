@@ -238,8 +238,17 @@ export const OqcInspectionScreen = () => {
     <p className="field-note">{t.queue.empty}</p>
   );
 
-  /* 회차가 있으면 그 회차의 검사수량이고, 없으면 의뢰의 대상 수량이다. */
-  const inspectedQty = round?.inspectedQty ?? detail.data?.targetQty ?? 0;
+  /**
+   * 합계 제약의 오른쪽 변.
+   *
+   * ⭐ **재검사 중에는 의뢰의 대상 수량을 쓴다.** 그때 폼에는 회차를 넘기지 않으면서
+   * (「아직 없는 새 회차」다) 수량만 그 회차에서 가져오면, 「이 회차는 없는 것으로 친다」와
+   * 「그 회차의 검사수량으로 합계를 잰다」가 한 화면에서 어긋난다. 새 회차가 다시 검사하는
+   * 대상은 앞 회차가 아니라 **의뢰**다.
+   */
+  const inspectedQty = isReinspectingNow
+    ? (detail.data?.targetQty ?? 0)
+    : (round?.inspectedQty ?? detail.data?.targetQty ?? 0);
 
   /**
    * 저장이 보낼 값을 만든다.
@@ -364,6 +373,7 @@ export const OqcInspectionScreen = () => {
         <RoundHistory
           rounds={rounds.data ?? []}
           currentResultId={isReinspectingNow ? null : roundId}
+          isReinspecting={isReinspectingNow}
         />
       </>
     );

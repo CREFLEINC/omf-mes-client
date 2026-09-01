@@ -49,6 +49,27 @@ describe('QueueTable', () => {
     expect(onSelect).toHaveBeenCalledWith(waitingRequest.inspectionRequestId);
   });
 
+  /**
+   * ⭐ **대상번호가 줄의 «둘째 행»에 선다.** 스펙 §3 이 한 줄을 두 행으로 그린 자리다.
+   *
+   * ⚠ **부분 일치로는 못 잡는다** — 붙어 있어도 통과한다. jsdom 에는 배치가 없어 「두 행으로
+   * 보이는가」를 잴 수 없으므로, 그 갈라짐을 만드는 구조를 본다(회차 이력과 같은 규율).
+   */
+  it('대상번호를 줄의 둘째 행에 세운다 — 붙으면 번호 둘이 한 값처럼 읽힌다', () => {
+    renderTable();
+
+    const cell = screen
+      .getByRole('button', { name: t.openRow(waitingRequest.inspectionRequestNo) })
+      .closest('.stacked-cell');
+
+    expect(cell).not.toBeNull();
+
+    const lines = within(cell as HTMLElement);
+
+    expect(lines.getByText(waitingRequest.inspectionRequestNo)).toBeInTheDocument();
+    expect(lines.getByText(t.targetId(waitingRequest.targetId))).toBeInTheDocument();
+  });
+
   it('결과가 없으면 부르는 쪽이 준 빈 자리를 그린다 — 실패와 빈 결과는 여기서 가르지 않는다', () => {
     renderWithProviders(
       <QueueTable rows={[]} selectedId={null} onSelect={vi.fn()} empty={<p>{t.empty}</p>} />,

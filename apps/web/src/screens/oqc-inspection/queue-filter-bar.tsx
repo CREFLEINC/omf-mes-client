@@ -2,7 +2,7 @@ import { Button, Checkbox, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type FormEvent } from 'react';
 
-import type { QueueFilters } from './filters';
+import { EMPTY_FILTERS, type QueueFilters } from './filters';
 import {
   EMPTY_DRAFT,
   hasError,
@@ -86,7 +86,12 @@ export const QueueFilterBar = ({ appliedFilters, onSearch, onReset }: QueueFilte
    */
   const reset = (): void => {
     setDraft(EMPTY_DRAFT);
-    setPendingOnly(true);
+    /*
+     * ⛔ **기본값을 여기 다시 적지 않는다.** 정본은 `filters.ts` 이고 부모의 `onReset` 도 그쪽을
+     * 쓴다. 손으로 적어 두면 기본값이 뒤집히는 날, **이미 기본 상태인 화면에서 초기화를 누를 때**
+     * 주소가 안 바뀌어 되돌림 effect 도 안 깨어나고 체크박스만 어긋난 채 남는다.
+     */
+    setPendingOnly(EMPTY_FILTERS.pendingOnly);
     setShowErrors(false);
     onReset();
   };

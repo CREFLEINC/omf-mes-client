@@ -20,16 +20,23 @@ export type InspectionResultResponse = components['schemas']['InspectionResult']
 export type PageMetaResponse = components['schemas']['PageMeta'];
 
 /**
- * 표의 한 줄. 좌측 창이 화면의 약 1/3 폭이라(스펙 §3) **고르는 데 필요한 것만** 싣는다.
+ * 표의 한 줄 — **스펙 §3 이 한 줄에 두 행으로 그린 정보다.**
  *
- * ⚠ **대상 LOT 을 싣지 않는다** — 좁은 창에 번호만 늘어놓아 봐야 고르는 데 도움이 되지 않는다.
- * 고른 뒤 상세 창이 보인다.
+ * ⚠ **대상 LOT 을 싣지 않는다** — 좁은 창에 비슷한 번호를 둘 늘어놓으면 고르는 데 오히려
+ * 방해가 된다. LOT 은 고른 뒤 상세 창이 보인다.
+ *
+ * ⛔ **회차·검사일을 싣지 못한다** — 계약의 `InspectionRequest` 에 그 둘이 없다(회차와 검사
+ * 시각은 «결과»의 값이다). 이 축에서 그리려면 줄마다 결과를 따로 부르거나 축을 결과로 옮겨야
+ * 하는데, 뒤쪽은 **아직 판정하지 않은 의뢰가 목록에서 사라지는** 길이라 이 화면이 할 일과
+ * 정면으로 어긋난다. 설계 회신 대기(`omf-mes#322`).
  */
 export interface InspectionQueueRow {
   /** 행 선택의 열쇠. 계약이 정수로 준다. */
   inspectionRequestId: number;
   /** 사람이 읽고 부르는 번호. 검색(`q`)도 이 값을 훑는다. */
   inspectionRequestNo: string;
+  /** 다형 참조의 대상. 줄의 둘째 행에 선다 */
+  targetId: number;
   /** 품목 식별자. **코드 문자열이 아니다** — 계약이 정수만 준다(파일 머리 참조). */
   itemId: number;
   /** 검사 수량. 합계 제약의 오른쪽 변이 될 값이다 */
@@ -45,6 +52,7 @@ export interface InspectionQueueResult {
 export const toInspectionQueueRow = (item: InspectionRequestResponse): InspectionQueueRow => ({
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
+  targetId: item.targetId,
   itemId: item.itemId,
   targetQty: item.targetQty,
   statusCode: item.statusCode,

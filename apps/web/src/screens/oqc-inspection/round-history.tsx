@@ -38,6 +38,14 @@ export interface RoundHistoryProps {
    * 단계가 없다 — 없는 회차를 그리면 사용자가 그것을 저장된 것으로 읽는다.
    */
   currentResultId: number | null;
+  /**
+   * 지금 재검사 회차를 쓰는 중인가.
+   *
+   * ⭐ **참이면 회차가 하나여도 그린다.** 그때 폼에는 회차가 넘어가지 않으므로(「아직 없는 새
+   * 회차」다), 이력까지 감추면 검사자가 **「앞에 무엇이 있었나」를 볼 자리가 화면 어디에도 없는
+   * 채로** 되돌릴 수 없는 쓰기를 친다.
+   */
+  isReinspecting?: boolean;
 }
 
 const toStep = (round: InspectionResultRound, currentResultId: number | null): StepperItem => ({
@@ -69,9 +77,14 @@ const toStep = (round: InspectionResultRound, currentResultId: number | null): S
   ),
 });
 
-export const RoundHistory = ({ rounds, currentResultId }: RoundHistoryProps) => {
-  /* 쌓였을 때만 볼 것이다 — 회차 하나짜리 이력은 설명할 것이 없다. */
-  if (rounds.length <= 1) return null;
+export const RoundHistory = ({
+  rounds,
+  currentResultId,
+  isReinspecting = false,
+}: RoundHistoryProps) => {
+  /* 쌓였을 때만 볼 것이다 — 회차 하나짜리 이력은 설명할 것이 없다. 재검사 중에는 예외다. */
+  if (rounds.length <= 1 && !isReinspecting) return null;
+  if (rounds.length === 0) return null;
 
   return (
     <section aria-label={t.heading}>

@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { renderWithProviders } from '../../test/api-harness';
 import { toCodeOptions } from './code-options';
-import { confirmedRound, overallJudgmentCodeValues, waitingRequest } from './fixtures';
+import { confirmedRound, draftRound, overallJudgmentCodeValues, waitingRequest } from './fixtures';
 import { EMPTY_QUANTITY_DRAFT, type QuantityDraft } from './quantity-draft';
 import { ResultFormPane, type ResultFormPaneProps } from './result-form-pane';
 import { toInspectionResultRound } from './types';
@@ -111,6 +111,90 @@ describe('ResultFormPane — 막힌 사유 네 갈래', () => {
 
     /* `getAllByText` 라 세 번 반복되면 길이가 3이 되어 죽는다. */
     expect(screen.getAllByText(t.confirmed)).toHaveLength(1);
+  });
+
+  it('잠긴 사유를 세 칸이 접근 이름으로도 가리킨다 — 보이는 문장과 접근 이름 중 하나를 고르지 않는다', () => {
+    renderPane({ round: toInspectionResultRound(confirmedRound), draft: MATCHING });
+
+    const note = screen.getByText(t.confirmed);
+
+    for (const label of [t.fields.accepted, t.fields.rejected, t.fields.held]) {
+      expect(screen.getByLabelText(label)).toHaveAttribute('aria-describedby', note.id);
+    }
+  });
+
+  /**
+   * ⭐ **막다른 길을 열어 두지 않는다.**
+   *
+   * 다른 곳이 남긴 「작성중」 회차에서 칸만 열어 두면, 저장은 서버에서 `UNIQUE(의뢰, 회차)` 에
+   * 걸려 409 로 되돌아오는데 「확정본이 아니다」라는 이유로 재검사 단추도 서지 않는다 —
+   * 그 회차를 끝낼 길이 화면 어디에도 없다.
+   */
+  it('다른 곳이 남긴 「작성중」 회차도 잠그고 재검사 길을 연다 — 끝낼 길 없는 자리를 만들지 않는다', () => {
+    renderPane({ round: toInspectionResultRound(draftRound), draft: MATCHING });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeDisabled();
+    expect(screen.getByText(t.draftElsewhere)).toBeInTheDocument();
+    expect(screen.getByText(t.blockedByDraftElsewhere)).toBeInTheDocument();
+    /* 여기서 할 수 있는 일이 하나 있어야 한다. */
+    expect(screen.getByRole('button', { name: t.reinspect })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.save })).not.toBeInTheDocument();
+  });
+});
+
+describe('ResultFormPane — 재검사 갈래', () => {
+  it('재검사를 시작하면 부르는 쪽에 알린다', async () => {
+    const onStartReinspection = vi.fn();
+
+    renderPane({ round: toInspectionResultRound(confirmedRound), onStartReinspection });
+
+    await userEvent.click(screen.getByRole('button', { name: t.reinspect }));
+
+    expect(onStartReinspection).toHaveBeenCalledTimes(1);
+  });
+
+  it('재검사 중에는 칸이 열리고 사유 목록이 없다는 사실을 밝힌다', () => {
+    renderPane({ round: null, isReinspecting: true, draft: MATCHING, judgment: 'ACCEPTED' });
+
+    expect(screen.getByLabelText(t.fields.accepted)).toBeEnabled();
+    expect(screen.getByText(t.reinspectRound)).toBeInTheDocument();
+    expect(screen.getByText(t.reinspectNote)).toBeInTheDocument();
+    /* ⛔ 사유 칸을 지어내지 않는다 — 고를 값 목록이 없다. */
+    expect(screen.getByText(t.reinspectReasonPending)).toBeInTheDocument();
+  });
+
+  it('그만두는 길을 함께 둔다 — 열고 나서 되돌아갈 데가 없으면 갇힌다', async () => {
+    const onCancelReinspection = vi.fn();
+
+    renderPane({ round: null, isReinspecting: true, draft: MATCHING, onCancelReinspection });
+
+    await userEvent.click(screen.getByRole('button', { name: t.reinspectCancel }));
+
+    expect(onCancelReinspection).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ResultFormPane — 서버가 되돌린 것', () => {
+  it('저장된 판정이 목록에서 사라진 것을 밝힌다 — 조용히 비우면 고른 것이 지워진다', () => {
+    renderPane({ draft: MATCHING, judgment: 'RETIRED' });
+
+    expect(screen.getByText(t.judgmentUnknown('RETIRED'))).toBeInTheDocument();
+  });
+
+  it('서버가 짚어 준 칸 오류를 그 칸에 낸다', () => {
+    renderPane({ draft: MATCHING, fieldErrors: { acceptedQty: '합격수량이 너무 큽니다.' } });
+
+    expect(screen.getByText('합격수량이 너무 큽니다.')).toBeInTheDocument();
+  });
+
+  it('되말한 충돌 문구를 배너로 낸다', () => {
+    renderPane({
+      draft: MATCHING,
+      judgment: 'ACCEPTED',
+      saveError: { kind: 'http', status: 409, message: messages.oqcInspection.save.invalidState },
+    });
+
+    expect(screen.getByText(messages.oqcInspection.save.invalidState)).toBeInTheDocument();
   });
 });
 
