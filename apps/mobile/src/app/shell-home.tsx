@@ -13,6 +13,9 @@ export const ShellHome = () => {
           <Link to="/equipment-failure">{messages.equipmentFailureReport.title}</Link>
         </li>
         <li>
+          <Link to="/equipment-inspection">{messages.equipmentInspection.title}</Link>
+        </li>
+        <li>
           <Link to="/iqc-skip-request">{messages.iqcSkipRequest.title}</Link>
         </li>
         <li>

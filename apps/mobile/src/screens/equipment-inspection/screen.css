@@ -1,0 +1,73 @@
+.inspection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.inspection > * {
+  flex: none;
+}
+
+.inspection__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.inspection__section h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.inspection p {
+  margin: 0;
+}
+
+.inspection__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.inspection__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.inspection__items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspection__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.inspection__item-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  align-items: center;
+}
+
+.inspection__item-note {
+  color: var(--on-surface-muted, inherit);
+}
+
+/* 장갑을 낀 손으로 고르는 자리라 둘이 나란히 서고 각자 폭을 반씩 갖는다. */
+.inspection__judge {
+  display: flex;
+  gap: var(--space-2, 8px);
+}
+
+.inspection__judge > * {
+  flex: 1;
+}

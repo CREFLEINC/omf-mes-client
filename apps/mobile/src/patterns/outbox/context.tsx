@@ -35,6 +35,13 @@ export interface Outbox {
    * 못 보낸 건과 한 셈에 넣지 않는다 - 앞엣것은 기다리면 가고 뒤엣것은 기다려도 가지 않는다.
    */
   rejected: RejectedRecord[];
+  /**
+   * 이 이름으로 담긴 것이 몇 건인가.
+   *
+   * 미동기 총건수만으로는 화면이 자기 기록을 셀 수 없다. 무엇이 못 갔을 때 무엇이 어긋나는지는
+   * 기록의 종류마다 다르고, 그것을 이름으로 말할 수 있는 것은 담은 화면뿐이다.
+   */
+  countPending: (label: string) => number;
   /** 담고 곧바로 돌아온다. 통신을 기다리지 않는다. */
   enqueue: (draft: OutboxDraft) => Promise<void>;
   /** 보낼 수 있는 만큼 보낸다. 거부된 건을 돌려준다. */
@@ -209,16 +216,22 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     ? entries.reduce((total, entry) => total + (entry.file?.data.length ?? 0), 0)
     : 0;
 
+  const countPending = useCallback(
+    (label: string) => (loaded ? entries.filter((entry) => entry.label === label).length : 0),
+    [entries, loaded],
+  );
+
   const value = useMemo(
     () => ({
       pending: loaded ? entries.length : 0,
       pendingBytes,
+      countPending,
       rejected,
       enqueue,
       flush,
       dismissRejected,
     }),
-    [dismissRejected, enqueue, entries.length, flush, loaded, pendingBytes, rejected],
+    [countPending, dismissRejected, enqueue, entries.length, flush, loaded, pendingBytes, rejected],
   );
 
   return <OutboxContext value={value}>{children}</OutboxContext>;
