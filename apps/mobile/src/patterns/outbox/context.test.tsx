@@ -238,6 +238,36 @@ describe('outbox', () => {
     });
   });
 
+  /* 서버만 죽었다 살아나면 연결 사건이 오지 않아 큐가 앱을 켜 둔 내내 갇힌다. */
+  it('화면이 다시 앞으로 나오면 스스로 보낸다', async () => {
+    const seen: string[] = [];
+    let reachable = false;
+    const send: OutboxTransport = (entry) => {
+      if (!reachable) {
+        return Promise.reject(new ApiRequestError({ kind: 'network' }));
+      }
+      seen.push(entry.idempotencyKey);
+      return Promise.resolve();
+    };
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    expect(result.current.pending).toBe(1);
+
+    reachable = true;
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await waitFor(() => {
+      expect(seen).toEqual(['k-1']);
+    });
+  });
+
   it('빈 큐를 보내면 아무 결과도 내지 않는다', async () => {
     const { result } = mount();
 
