@@ -130,3 +130,11 @@ describe('통제 우회 표시', () => {
     expect(screen.getByText(t.detail.controlBypass)).toBeInTheDocument();
   });
 });
+
+describe('POP 제품명', () => {
+  it('어느 프로그램의 화면인지 상단에 적는다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText('OMF-MES POP')).toBeInTheDocument();
+  });
+});

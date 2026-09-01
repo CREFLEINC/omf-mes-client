@@ -23,6 +23,12 @@ export const PopHeader = ({ terminalNo }: PopHeaderProps) => {
 
   return (
     <header className="pop-header">
+      {/*
+       * ⭐ **어느 프로그램 앞인지부터 말한다.** 이 셸에는 사이드바도 주소창도 없어(설치형
+       * 키오스크) 화면 이름만 있으면 «무슨 시스템의» 화면인지 알 길이 없다. 관리웹이
+       * 상단 바에 이름을 두는 것과 같은 자리이며, 이름은 설치형 앱의 제품명과 맞춘다.
+       */}
+      <strong className="pop-brand">OMF-MES POP</strong>
       <h1>
         <Chip status="error" size="md">
           {t.list.emergencyBadge}

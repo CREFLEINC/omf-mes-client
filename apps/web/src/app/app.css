@@ -1235,10 +1235,20 @@ main > * + * {
 .pop-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--outline-variant);
+}
+
+/* 제품명 다음의 화면 이름이 남은 폭을 먹고, 단말 표시가 오른쪽 끝에 붙는다. */
+.pop-header > h1 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.pop-brand {
+  white-space: nowrap;
 }
 
 /*
