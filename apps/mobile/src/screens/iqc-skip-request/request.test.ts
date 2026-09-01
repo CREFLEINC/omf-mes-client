@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Lot } from './queries';
+import type { Lot } from '../../patterns/lots';
 import { hasReason, isInspectionPending, isRouteMissing, toOutboxDraft } from './request';
 
 const lot = (statusCode: string): Lot => ({

@@ -2,7 +2,8 @@ import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
-import { INSPECTION_PENDING, type Lot } from './queries';
+import type { Lot } from '../../patterns/lots';
+import { INSPECTION_PENDING } from './queries';
 
 /** 계약이 사유를 NOT NULL 로 받는다. 빈 값은 저장되지 않으므로 화면이 먼저 막는다. */
 export const hasReason = (reason: string): boolean => reason.trim() !== '';
