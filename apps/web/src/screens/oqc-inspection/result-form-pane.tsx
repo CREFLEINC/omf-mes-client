@@ -54,7 +54,11 @@ export interface ResultFormPaneProps {
   round: InspectionResultRound | null;
   /** 확인 창의 제목에 쓴다 — 무엇에 대한 판정인지가 누르는 자리에 있어야 한다 */
   inspectionRequestNo: string;
-  /** 검사수량 — 회차가 있으면 그 값, 없으면 의뢰의 대상 수량이다 */
+  /**
+   * 검사수량 — **재검사 중이면 언제나 의뢰의 대상 수량**이고, 그 밖에는 회차가 있으면 그
+   * 값, 없으면 의뢰의 대상 수량이다. 새 회차가 다시 검사하는 대상은 앞 회차가 아니라
+   * 의뢰이기 때문이다(`screen.tsx` 의 `inspectedQty` 주석).
+   */
   inspectedQty: number;
   draft: QuantityDraft;
   onChange: (draft: QuantityDraft) => void;
