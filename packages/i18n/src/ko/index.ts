@@ -86,6 +86,7 @@ import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { outboxRejections } from './outbox-rejections';
+import { iqcSkipRequest } from './iqc-skip-request';
 import { oqcInspection } from './oqc-inspection';
 import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
@@ -163,6 +164,7 @@ export const ko = {
   deviceRegistration,
   equipmentFailureReport,
   outboxRejections,
+  iqcSkipRequest,
   oqcInspection,
   expeditedShipment,
   shipmentConfirm,
