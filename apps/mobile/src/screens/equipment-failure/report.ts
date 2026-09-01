@@ -75,10 +75,7 @@ export const toOutboxDraft = (
   id: reportId,
   batchId: reportId,
   workerNo,
-  idempotencyKey: createIdempotencyKey({
-    operation: 'breakdown-report',
-    target: report.equipmentId,
-  }),
+  idempotencyKey: createIdempotencyKey(),
   method: 'POST',
   path: '/maintenance/breakdowns',
   body: {
@@ -129,7 +126,11 @@ export const toPhotoDrafts = (
 ): OutboxDraft[] =>
   photos.map((photo, index) => ({
     id: `${reportId}-photo-${String(index)}`,
-    idempotencyKey: `${body.idempotencyKey}:photo:${String(index)}`,
+    /*
+     * 사진에도 키가 필요하다 - 계약이 전 쓰기에 요구한다. 본문과 나눠 쓰지 않는 이유는
+     * 형식이 UUID 라서다. 사진이 본문 없이 홀로 가지 않는 것은 묶음과 경로가 지킨다.
+     */
+    idempotencyKey: createIdempotencyKey(),
     method: 'POST',
     path: '/maintenance/breakdowns/:breakdownId/attachments',
     body: null,

@@ -13,6 +13,8 @@ const report = {
 
 const OCCURRED_AT = '2026-09-01T14:31:00.000Z';
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 describe('보고를 낼 수 있는가', () => {
   it('설비·증상·발생 상태가 모두 있어야 낼 수 있다', () => {
     expect(validateReport(report).canSubmit).toBe(true);
@@ -112,13 +114,9 @@ describe('큐에 담을 모양', () => {
     expect((draft.body as { stoppedAt: string | null }).stoppedAt).toBeNull();
   });
 
-  /* 본문만으로 키를 만들면 다른 설비에 보낸 뒤 요청이 조용히 사라진다. */
-  it('멱등키가 설비를 담는다', () => {
-    expect(
-      toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028').idempotencyKey.startsWith(
-        'breakdown-report:7:',
-      ),
-    ).toBe(true);
+  /* 계약이 형식을 UUID 로 못 박았다. 다른 모양이면 서버가 요청 자체를 거부한다. */
+  it('멱등키가 계약이 요구하는 형식이다', () => {
+    expect(toOutboxDraft(report, OCCURRED_AT, 'r-1', '900028').idempotencyKey).toMatch(UUID);
   });
 
   it('같은 설비라도 부를 때마다 다른 키다', () => {
@@ -168,8 +166,8 @@ describe('사진을 본문에 딸린 건으로 담기', () => {
     });
   });
 
-  /* 본문이 성공해야 붙을 곳이 생기므로 사진에 따로 키를 두지 않는다. */
-  it('사진의 키는 본문의 키에서 나온다', () => {
+  /* 사진도 쓰기라 계약이 키를 요구하고, 형식이 UUID 라 본문 키를 나눠 쓸 수 없다. */
+  it('사진마다 계약 형식의 다른 키를 준다', () => {
     const [first, second] = toPhotoDrafts(
       [photo('a.jpg'), photo('b.jpg')],
       body,
@@ -177,8 +175,8 @@ describe('사진을 본문에 딸린 건으로 담기', () => {
       'r-1',
     );
 
-    expect(first?.idempotencyKey.startsWith(body.idempotencyKey)).toBe(true);
-    expect(second?.idempotencyKey.startsWith(body.idempotencyKey)).toBe(true);
+    expect(first?.idempotencyKey).toMatch(UUID);
+    expect(second?.idempotencyKey).toMatch(UUID);
     expect(first?.idempotencyKey).not.toEqual(second?.idempotencyKey);
   });
 
