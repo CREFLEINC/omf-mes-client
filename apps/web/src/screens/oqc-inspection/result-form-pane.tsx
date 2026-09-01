@@ -191,7 +191,6 @@ export const ResultFormPane = ({
       inputMode="decimal"
       value={draft[key]}
       disabled={isConfirmed || isSaving}
-      disabledReason={isConfirmed ? t.confirmed : undefined}
       /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
       error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
       onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
@@ -233,6 +232,15 @@ export const ResultFormPane = ({
           <dd>{String(inspectedQty)}</dd>
         </div>
       </dl>
+
+      {/*
+       * 잠긴 이유를 **묶음에 한 번** 낸다.
+       *
+       * ⛔ 칸마다 `disabledReason` 을 달면 같은 문장이 세 번 연달아 선다 — 세 칸이 «각각 다른»
+       * 이유로 잠긴 것처럼 읽히고, 읽는 사람은 셋을 다 읽고 나서야 같은 말임을 안다. 잠긴 것은
+       * 칸 하나가 아니라 이 회차라 이유도 묶음의 것이다.
+       */}
+      {isConfirmed && <p className="field-note">{t.confirmed}</p>}
 
       <div className="form-grid">
         {field('accepted', t.fields.accepted, errors.accepted)}

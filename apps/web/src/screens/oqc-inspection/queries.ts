@@ -62,6 +62,11 @@ const ALL_KEY = ['oqc-inspection'] as const;
 
 export const oqcInspectionKeys = {
   all: ALL_KEY,
+  /**
+   * 조건·쪽이 무엇이든 목록 전부. **저장 뒤 무효화가 이 앞머리를 쓴다** — 어느 조건으로 보고
+   * 있었는지 쓰기 쪽이 알 이유가 없고, 알려고 들면 화면의 조건이 배선에 새어 든다.
+   */
+  queues: () => [...ALL_KEY, 'queue'] as const,
   /** 질의가 곧 열쇠다 — 조건이나 쪽이 다르면 다른 결과이므로 캐시도 갈려야 한다. */
   queue: (query: QueueListQuery) => [...ALL_KEY, 'queue', query] as const,
   detail: (inspectionRequestId: number) => [...ALL_KEY, 'detail', inspectionRequestId] as const,
@@ -331,8 +336,16 @@ export const useSaveInspectionResult = (
     /*
      * 회차가 바뀌고, 서버가 의뢰 상태를 함께 옮길 수 있어 목록·상세도 함께 무효화한다 —
      * 판정한 의뢰가 「대기·진행만 보기」에서 빠지는지는 서버 판단이라 화면이 미리 정하지 않는다.
+     *
+     * ⛔ **뿌리 키(`ALL_KEY`)를 쓰지 않는다.** 그것을 쓰면 코드값까지 함께 다시 부르게 되어,
+     * 앞머리를 넷으로 가른 이유(마스터는 저장이 바꾸지 않는다)가 코드에서 무효가 된다 —
+     * 주석은 갈라 두었다고 말하는데 실제로는 하나로 묶인 상태가 가장 읽기 나쁘다.
      */
-    invalidateKeys: [oqcInspectionKeys.rounds(inspectionRequestId ?? 0), ALL_KEY],
+    invalidateKeys: [
+      oqcInspectionKeys.rounds(inspectionRequestId ?? 0),
+      oqcInspectionKeys.detail(inspectionRequestId ?? 0),
+      oqcInspectionKeys.queues(),
+    ],
     knownFields: SAVE_FIELDS,
     keyLifetime: 'until-applied',
     onSuccess: onSaved,

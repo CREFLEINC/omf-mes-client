@@ -36,6 +36,35 @@ describe('RoundHistory', () => {
     expect(steps[0]).toHaveTextContent('합격 480 · 불합격 15 · 보류 5');
   });
 
+  /**
+   * ⭐ **수량과 확정 시각이 한 줄로 이어 붙지 않는다.**
+   *
+   * 그냥 `<span>` 둘을 나란히 두면 인라인이라 「보류 5확정 2026-08-30 10:00」으로 읽히고,
+   * 수량 칸이라 **「5확정」이 값처럼 보인다.**
+   *
+   * ⚠ **부분 일치(`toHaveTextContent`)로는 못 잡는다** — 붙어 있어도 통과한다. jsdom 에는
+   * 배치가 없어 「두 줄로 보이는가」를 잴 수 없으므로, **그 갈라짐을 만드는 구조**를 본다.
+   */
+  it('수량과 확정 시각을 줄로 가른다 — 붙으면 「5확정」이 값처럼 읽힌다', () => {
+    renderWithProviders(
+      <RoundHistory
+        rounds={[reinspectionRound, confirmedRound].map(toInspectionResultRound)}
+        currentResultId={null}
+      />,
+    );
+
+    const [first] = within(screen.getByRole('list')).getAllByRole('listitem');
+    const stacked = first?.querySelector('.stacked-cell');
+
+    expect(stacked).not.toBeNull();
+
+    const lines = within(stacked as HTMLElement);
+
+    /* 각 줄의 글자가 «정확히» 그 값이다 — 한 마디로 합쳐지면 둘 다 죽는다. */
+    expect(lines.getByText('합격 480 · 불합격 15 · 보류 5')).toBeInTheDocument();
+    expect(lines.getByText(t.confirmedAt('2026-08-30 10:00'))).toBeInTheDocument();
+  });
+
   it('읽기 전용이다 — 앞 회차를 고치는 자리가 아니므로 누를 것을 두지 않는다', () => {
     renderWithProviders(
       <RoundHistory

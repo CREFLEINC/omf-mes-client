@@ -105,6 +105,13 @@ describe('ResultFormPane — 막힌 사유 네 갈래', () => {
     expect(screen.queryByRole('button', { name: t.save })).not.toBeInTheDocument();
     expect(screen.getByText(t.blockedByConfirmed)).toBeInTheDocument();
   });
+
+  it('잠긴 이유를 묶음에 한 번만 낸다 — 칸마다 달면 세 칸이 각각 다른 이유로 잠긴 것처럼 읽힌다', () => {
+    renderPane({ round: toInspectionResultRound(confirmedRound), draft: MATCHING });
+
+    /* `getAllByText` 라 세 번 반복되면 길이가 3이 되어 죽는다. */
+    expect(screen.getAllByText(t.confirmed)).toHaveLength(1);
+  });
 });
 
 describe('ResultFormPane — 전이 경고', () => {

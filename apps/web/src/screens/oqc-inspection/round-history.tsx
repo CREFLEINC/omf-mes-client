@@ -50,8 +50,13 @@ const toStep = (round: InspectionResultRound, currentResultId: number | null): S
       : round.inspectionResultId === currentResultId
         ? 'current'
         : 'pending',
+  /*
+   * ⛔ **두 값을 줄로 가른다.** 그냥 `<span>` 둘을 나란히 두면 인라인이라 한 줄로 이어 붙어
+   * 「보류 0확정 2026-08-31 10:00」으로 읽힌다 — 수량 칸이라 **「0확정」이 값처럼 보이는**
+   * 오독이다. `.stacked-cell` 이 이미 그 일을 하는 공용 클래스라 새로 만들지 않는다.
+   */
   description: (
-    <>
+    <span className="stacked-cell">
       <span>
         {t.quantities(String(round.acceptedQty), String(round.rejectedQty), String(round.heldQty))}
       </span>
@@ -60,7 +65,7 @@ const toStep = (round: InspectionResultRound, currentResultId: number | null): S
           ? t.notConfirmed
           : t.confirmedAt(formatDateTime(round.confirmedAt))}
       </span>
-    </>
+    </span>
   ),
 });
 
