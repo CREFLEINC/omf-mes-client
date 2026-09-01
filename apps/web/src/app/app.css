@@ -1225,4 +1225,30 @@ main > * + * {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-muted);
+
+/*
+ * POP 상단 띠 — 화면 이름과 지금 선 단말을 한 줄에 둔다.
+ *
+ * 셸(사이드바·상단 바) 밖에 서는 화면이라 이 띠가 유일한 머리다. 1024×768 단말에서 세로는
+ * 아껴야 하므로 이름과 단말을 좌우로 벌려 한 줄에 담는다.
+ */
+.pop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+/*
+ * 누를 자리가 줄 전체인 목록. 장갑 낀 손을 전제하므로 줄 사이를 벌려 오조작을 줄인다.
+ */
+.pop-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }

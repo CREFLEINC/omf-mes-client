@@ -26,7 +26,7 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
   const handoff = messages.emergencyWorkOrderField.handoff;
 
   return (
-    <section aria-label={t.title}>
+    <section className="pane" aria-label={t.title}>
       <h2 className="field-label">{t.title}</h2>
 
       {workOrder === null ? (
@@ -56,11 +56,17 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
              * ⚠ 배정이 없는 것이 긴급의 «정상» 상태다 — 오류가 아니라 경고로 말한다.
              * 하나라도 배정돼 있으면 세우지 않는다. 늘 서 있으면 아무도 읽지 않는다.
              */}
-            {hasNoAssignment(workOrder) && (
-              <div className="banner-slot">
-                <AlertBanner variant="warning">{t.noAssignment}</AlertBanner>
-              </div>
-            )}
+            {/*
+             * ⭐ 통제 우회는 «긴급이면 언제나»다 — 판정은 서버가 유형을 보고 하고 화면은
+             *    그 사실을 알린다. 배정 유무와는 다른 축이라 배너를 따로 세운다.
+             */}
+            <div className="banner-slot">
+              <AlertBanner variant="warning">
+                {hasNoAssignment(workOrder)
+                  ? `${t.noAssignment} ${t.controlBypass}`
+                  : t.controlBypass}
+              </AlertBanner>
+            </div>
 
             {/* 자재가 부족할 때 갈 곳. 이 화면은 안내만 하고 요청을 만들지 않는다. */}
             <p>{t.shortageGuide}</p>

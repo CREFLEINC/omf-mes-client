@@ -11,14 +11,23 @@
 export const emergencyWorkOrderField = {
   title: '긴급 W/O',
 
+  /** 상단 띠 — 어느 단말 앞에 서 있는지. */
+  header: {
+    /**
+     * ⛔ **단말 번호는 셸이 아는 값이다** — 요청을 인증한 단말 토큰의 주체이고 화면이 스스로
+     * 알 수 없다. 채우는 곳이 아직 없으므로 «모른다»고 적는다. 빈칸으로 두면 단말이 하나뿐인
+     * 것처럼 읽힌다.
+     */
+    terminalUnknown: '단말 확인 전',
+    terminalLabel: (terminalNo: string): string => `단말 ${terminalNo}`,
+  },
+
   /** 목록 구획. */
   list: {
     title: '긴급 W/O 목록',
     caption: '진행할 수 있는 긴급 작업지시',
     columns: {
-      workOrderNo: 'W/O 번호',
-      item: '품목',
-      orderQty: '지시수량',
+      /** 카드 둘째 줄에서 시각 앞에 붙는 말. */
       releasedAt: '발행',
     },
     /** 긴급임을 줄에서 바로 알아보게 하는 표식. */
@@ -53,6 +62,13 @@ export const emergencyWorkOrderField = {
      * 아니라 「이런 상태로 진행한다」로 적는다.
      */
     noAssignment: '설비·금형·교대가 배정되지 않았습니다. 긴급 W/O 는 배정 없이 진행합니다.',
+
+    /**
+     * ⭐ **긴급 W/O 는 작업 전 점검 통제를 지나지 않는다**(작업 통제 3단계 + 긴급 우회 확정).
+     * 판정은 서버가 유형을 보고 하며 화면은 그 사실을 «알린다» — 몰래 지나가면 나중에
+     * 「왜 점검이 없었나」를 아무도 설명하지 못한다.
+     */
+    controlBypass: '작업 전 점검 통제를 지나지 않습니다.',
 
     /** 자재 부족 시 갈 곳. 이 화면은 안내만 한다. */
     shortageGuide: '자재가 부족하면 관리웹에서 추가 자재 출고를 요청합니다.',

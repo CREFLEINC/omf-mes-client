@@ -6,6 +6,9 @@ import { EMERGENCY_WORK_ORDER, renderScreen } from './screen-harness';
 
 const t = messages.emergencyWorkOrderField;
 
+/** 줄 전체가 누를 자리라, 카드의 이름으로 고른다. */
+const selectName = (workOrderNo: string): string => `${t.list.select} ${workOrderNo}`;
+
 describe('긴급 W/O 현장 화면', () => {
   it('빈 목록을 오류가 아니라 정상 상태로 그리고 어디서 발행되는지 알린다', async () => {
     renderScreen({ workOrders: [] });
@@ -17,7 +20,7 @@ describe('긴급 W/O 현장 화면', () => {
   it('고르기 전에는 이동 버튼이 잠기고 푸는 방법을 말한다', async () => {
     renderScreen();
 
-    await screen.findByText(EMERGENCY_WORK_ORDER.workOrderNo);
+    await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) });
 
     expect(screen.getByText(t.handoff.locked)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.handoff.materialInput })).toBeDisabled();
@@ -27,7 +30,9 @@ describe('긴급 W/O 현장 화면', () => {
   it('고르면 두 정상 화면으로 가는 주소에 W/O 를 싣는다', async () => {
     const { user } = renderScreen();
 
-    await user.click(await screen.findByRole('button', { name: t.list.select }));
+    await user.click(
+      await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
+    );
 
     expect(screen.getByRole('link', { name: t.handoff.materialInput })).toHaveAttribute(
       'href',
@@ -42,9 +47,13 @@ describe('긴급 W/O 현장 화면', () => {
   it('배정이 없으면 그 사실을 경고로 보인다', async () => {
     const { user } = renderScreen();
 
-    await user.click(await screen.findByRole('button', { name: t.list.select }));
+    await user.click(
+      await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
+    );
 
-    expect(screen.getByText(t.detail.noAssignment)).toBeInTheDocument();
+    expect(
+      screen.getByText(`${t.detail.noAssignment} ${t.detail.controlBypass}`),
+    ).toBeInTheDocument();
   });
 
   it('배정이 하나라도 있으면 「배정 없음」을 세우지 않는다', async () => {
@@ -52,16 +61,20 @@ describe('긴급 W/O 현장 화면', () => {
       workOrders: [{ ...EMERGENCY_WORK_ORDER, plannedEquipmentId: 6001 }],
     });
 
-    await user.click(await screen.findByRole('button', { name: t.list.select }));
+    await user.click(
+      await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
+    );
 
     expect(screen.getByText(t.detail.shortageGuide)).toBeInTheDocument();
-    expect(screen.queryByText(t.detail.noAssignment)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(`${t.detail.noAssignment} ${t.detail.controlBypass}`),
+    ).not.toBeInTheDocument();
   });
 
   it('단위 이름을 못 받으면 숫자 식별자를 보이지 않는다', async () => {
     renderScreen({ uoms: [] });
 
-    expect(await screen.findByText(`50 ${t.detail.unknown}`)).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`50 ${t.detail.unknown}`))).toBeInTheDocument();
     expect(screen.queryByText(/\b11\b/)).not.toBeInTheDocument();
   });
 });
@@ -90,8 +103,30 @@ describe('목록이 잘렸는지', () => {
   it('전체 건수가 보이는 수와 같으면 잘림을 알리지 않는다', async () => {
     renderScreen({ total: 1 });
 
-    await screen.findByText(EMERGENCY_WORK_ORDER.workOrderNo);
+    await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) });
 
     expect(screen.queryByText(t.list.truncated(1, 1))).not.toBeInTheDocument();
+  });
+});
+
+describe('POP 상단 띠', () => {
+  it('단말을 모르면 빈칸이 아니라 모른다고 적는다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.header.terminalUnknown)).toBeInTheDocument();
+  });
+});
+
+describe('통제 우회 표시', () => {
+  it('배정이 있어도 통제 우회 사실은 알린다', async () => {
+    const { user } = renderScreen({
+      workOrders: [{ ...EMERGENCY_WORK_ORDER, plannedEquipmentId: 6001 }],
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
+    );
+
+    expect(screen.getByText(t.detail.controlBypass)).toBeInTheDocument();
   });
 });

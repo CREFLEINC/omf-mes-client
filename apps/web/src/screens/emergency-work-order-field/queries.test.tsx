@@ -4,13 +4,17 @@ import { describe, expect, it } from 'vitest';
 
 import { EMERGENCY_WORK_ORDER, listUrls, renderScreen } from './screen-harness';
 
+/** 줄 전체가 누를 자리라, 카드의 이름으로 찾는다. */
+const selectName = (workOrderNo: string): string =>
+  `${messages.emergencyWorkOrderField.list.select} ${workOrderNo}`;
+
 const t = messages.emergencyWorkOrderField;
 
 describe('긴급 W/O 조회 조건', () => {
   it('유형과 진행 가능 상태 두 축을 «서버에» 싣는다', async () => {
     const { urls } = renderScreen();
 
-    await screen.findByText(EMERGENCY_WORK_ORDER.workOrderNo);
+    await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) });
 
     const listed = listUrls(urls).at(-1) ?? '';
     const query = new URL(listed, 'http://api.test').searchParams;

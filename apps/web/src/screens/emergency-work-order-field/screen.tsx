@@ -1,8 +1,8 @@
-import { PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import { DetailPane } from './detail-pane';
+import { PopHeader } from './pop-header';
 import { useEmergencyWorkOrders } from './queries';
 import type { WorkOrder } from './types';
 import { useUomLookup } from './uom-lookup';
@@ -10,6 +10,8 @@ import { WorkOrderList } from './work-order-list';
 import { EMERGENCY_WORK_ORDER_TYPE_CODE, isEmergencyTypeCodeKnown } from './work-order-type';
 
 export interface EmergencyWorkOrderFieldScreenProps {
+  /** 이 단말의 번호. 셸이 채운다 — 아직 채우는 곳이 없어 기본은 「모른다」다. */
+  terminalNo?: string;
   /**
    * 긴급을 뜻하는 유형 코드. 화면은 기본값으로 상수를 쓴다.
    *
@@ -30,6 +32,7 @@ export interface EmergencyWorkOrderFieldScreenProps {
  */
 export const EmergencyWorkOrderFieldScreen = ({
   typeCode = EMERGENCY_WORK_ORDER_TYPE_CODE,
+  terminalNo,
 }: EmergencyWorkOrderFieldScreenProps) => {
   const t = messages.emergencyWorkOrderField;
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -53,22 +56,28 @@ export const EmergencyWorkOrderFieldScreen = ({
 
   return (
     <>
-      <PageHeader title={t.title} />
+      <PopHeader terminalNo={terminalNo} />
 
-      <WorkOrderList
-        workOrders={workOrders}
-        isAsked={isAsked}
-        isLoading={isAsked && list.isPending}
-        total={list.data?.page.total}
-        isError={list.isError}
-        selectedId={selected?.workOrderId ?? null}
-        uomLabel={(uomId) => uoms.labelOf(uomId)}
-        onSelect={(workOrder: WorkOrder) => {
-          setSelectedId(workOrder.workOrderId);
-        }}
-      />
+      {/*
+       * ⭐ 스펙이 **좌 목록 / 우 상세** 2단으로 못박은 배치다. 세로로 쌓으면 1024×768 단말에서
+       *    상세와 이탈 버튼이 접혀 내려가, 고른 뒤 «스크롤해서» 버튼을 찾게 된다.
+       */}
+      <div className="two-pane">
+        <WorkOrderList
+          workOrders={workOrders}
+          isAsked={isAsked}
+          isLoading={isAsked && list.isPending}
+          total={list.data?.page.total}
+          isError={list.isError}
+          selectedId={selected?.workOrderId ?? null}
+          uomLabel={(uomId) => uoms.labelOf(uomId)}
+          onSelect={(workOrder: WorkOrder) => {
+            setSelectedId(workOrder.workOrderId);
+          }}
+        />
 
-      <DetailPane workOrder={selected} uomLabel={(uomId) => uoms.labelOf(uomId)} />
+        <DetailPane workOrder={selected} uomLabel={(uomId) => uoms.labelOf(uomId)} />
+      </div>
     </>
   );
 };
