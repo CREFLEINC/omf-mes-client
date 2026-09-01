@@ -10,3 +10,6 @@ allowBuilds:
   electron-winstaller: true
   esbuild: true
   node: true
+
+minimumReleaseAgeExclude:
+  - '@capacitor-mlkit/barcode-scanning@8.1.1'

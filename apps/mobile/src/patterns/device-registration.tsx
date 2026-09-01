@@ -6,7 +6,14 @@ export type RegistrationStatus = 'loading' | 'unregistered' | 'registered';
 
 export interface DeviceRegistration {
   status: RegistrationStatus;
-  register: (token: string) => Promise<void>;
+  /**
+   * 토큰을 두고 verify 가 끝나야 등록으로 친다.
+   *
+   * verify 는 그 토큰으로 서버를 한 번 부르는 자리다 — 기기는 QR 을 읽기만 하므로, 서버가
+   * 받아 주는지는 실제로 불러 봐야 안다. 거절당한 토큰을 남기면 다음 실행에서 등록된 것처럼
+   * 보이고, 작업자는 어느 화면에서도 인증 오류만 만난다.
+   */
+  register: (token: string, verify: () => Promise<void>) => Promise<void>;
   unregister: () => Promise<void>;
 }
 
@@ -38,8 +45,16 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
     };
   }, []);
 
-  const register = useCallback(async (token: string) => {
+  const register = useCallback(async (token: string, verify: () => Promise<void>) => {
     await writeDeviceToken(token);
+
+    try {
+      await verify();
+    } catch (error) {
+      await clearDeviceToken();
+      throw error;
+    }
+
     setStatus('registered');
   }, []);
 

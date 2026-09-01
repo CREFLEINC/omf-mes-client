@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { DeviceRegistrationProvider } from '../patterns/device-registration';
+import { createStubFetch, renderWithProviders } from '../test/api-harness';
 import { ShellGate } from './shell-gate';
 
 const keystore = vi.hoisted(() => ({ token: null as string | null }));
@@ -24,12 +24,11 @@ afterEach(() => {
 });
 
 const renderGate = () => {
-  render(
-    <DeviceRegistrationProvider>
-      <ShellGate>
-        <p>작업 화면</p>
-      </ShellGate>
-    </DeviceRegistrationProvider>,
+  renderWithProviders(
+    <ShellGate>
+      <p>작업 화면</p>
+    </ShellGate>,
+    { fetch: createStubFetch([]) },
   );
 };
 
