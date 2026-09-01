@@ -22,6 +22,9 @@ export const ShellHome = () => {
           <Link to="/repair-roundtrip">{messages.repairRoundtrip.title}</Link>
         </li>
         <li>
+          <Link to="/product-picking">{messages.productPicking.title}</Link>
+        </li>
+        <li>
           <Link to="/rejections">{messages.outboxRejections.title}</Link>
         </li>
       </ul>

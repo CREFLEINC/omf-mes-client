@@ -92,6 +92,7 @@ import { oqcInspection } from './oqc-inspection';
 import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
 import { repairRoundtrip } from './repair-roundtrip';
+import { productPicking } from './product-picking';
 
 export const ko = {
   common,
@@ -172,6 +173,7 @@ export const ko = {
   expeditedShipment,
   shipmentConfirm,
   repairRoundtrip,
+  productPicking,
 } as const;
 
 export type Messages = typeof ko;
