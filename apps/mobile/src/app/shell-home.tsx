@@ -19,6 +19,9 @@ export const ShellHome = () => {
           <Link to="/iqc-skip-request">{messages.iqcSkipRequest.title}</Link>
         </li>
         <li>
+          <Link to="/repair-roundtrip">{messages.repairRoundtrip.title}</Link>
+        </li>
+        <li>
           <Link to="/rejections">{messages.outboxRejections.title}</Link>
         </li>
       </ul>

@@ -9,6 +9,7 @@ import { EquipmentInspectionScreen } from '../screens/equipment-inspection/scree
 import { IqcSkipRequestScreen } from '../screens/iqc-skip-request/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
+import { RepairRoundtripScreen } from '../screens/repair-roundtrip/screen';
 
 export const appRoutes: RouteObject[] = [
   {
@@ -27,6 +28,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
       { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
       { path: 'iqc-skip-request', element: <IqcSkipRequestScreen /> },
+      { path: 'repair-roundtrip', element: <RepairRoundtripScreen /> },
       { path: 'rejections', element: <OutboxRejectionsScreen /> },
     ],
   },

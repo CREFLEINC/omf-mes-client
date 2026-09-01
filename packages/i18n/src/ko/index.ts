@@ -91,6 +91,7 @@ import { equipmentInspection } from './equipment-inspection';
 import { oqcInspection } from './oqc-inspection';
 import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
+import { repairRoundtrip } from './repair-roundtrip';
 
 export const ko = {
   common,
@@ -170,6 +171,7 @@ export const ko = {
   oqcInspection,
   expeditedShipment,
   shipmentConfirm,
+  repairRoundtrip,
 } as const;
 
 export type Messages = typeof ko;
