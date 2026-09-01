@@ -10,6 +10,9 @@ export const ShellHome = () => {
           <Link to="/inbound-receipt">{messages.inboundReceipt.title}</Link>
         </li>
         <li>
+          <Link to="/putaway">{messages.putaway.title}</Link>
+        </li>
+        <li>
           <Link to="/material-location">{messages.materialLocation.title}</Link>
         </li>
         <li>
