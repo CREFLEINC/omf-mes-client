@@ -41,11 +41,19 @@ describe('큐 보관', () => {
     expect(await readQueue()).toEqual([]);
   });
 
-  /* 읽지 못한 큐를 비우면 보내지 못한 것이 조용히 사라진다. */
-  it('보관된 값이 깨져 있어도 예외를 내지 않는다', async () => {
+  /* 읽지 못한 큐를 그대로 두면 다음 저장이 덮어 없앤다. */
+  it('보관된 값이 깨져 있으면 옮겨 두고 빈 큐로 본다', async () => {
     store.set('outbox', '{');
 
     expect(await readQueue()).toEqual([]);
+    expect(store.get('outbox-broken')).toBe('{');
+  });
+
+  it('배열이 아닌 값도 옮겨 둔다', async () => {
+    store.set('outbox', '{"a":1}');
+
+    expect(await readQueue()).toEqual([]);
+    expect(store.get('outbox-broken')).toBe('{"a":1}');
   });
 });
 

@@ -1,5 +1,6 @@
 export { createIdempotencyKey, type KeyScope } from './key';
 export {
+  OUTBOX_BROKEN_KEY,
   OUTBOX_KEY,
   appendEntry,
   readQueue,

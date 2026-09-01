@@ -61,6 +61,44 @@ describe('outbox', () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  /* 화면 둘이 동시에 담으면 나중 것이 먼저 것을 덮어 한 건이 사라진다. */
+  it('동시에 담아도 한 건도 잃지 않는다', async () => {
+    const { result } = mount();
+
+    await act(async () => {
+      await Promise.all([
+        result.current.enqueue(draft('k-1')),
+        result.current.enqueue(draft('k-2')),
+        result.current.enqueue(draft('k-3')),
+      ]);
+    });
+
+    expect(result.current.pending).toBe(3);
+  });
+
+  /* 보내는 중에 담긴 것을 비우면 방금 담은 기록이 사라진다. */
+  it('보내는 도중에 담긴 것을 지우지 않는다', async () => {
+    let release: (() => void) | null = null;
+    const send: OutboxTransport = () =>
+      new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    await act(async () => {
+      const sending = result.current.flush();
+      await result.current.enqueue(draft('k-2'));
+      release?.();
+      await sending;
+    });
+
+    expect(result.current.pending).toBe(1);
+  });
+
   it('앱을 다시 띄워도 담긴 것이 남아 있다', async () => {
     const first = mount();
     await act(async () => {

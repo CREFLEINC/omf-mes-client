@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -31,6 +32,18 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
   const [entries, setEntries] = useState<OutboxEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
 
+  /*
+   * 큐를 만지는 일은 읽고 고쳐 쓰는 세 걸음이라 겹치면 나중 것이 먼저 것을 덮는다. 화면 둘이
+   * 같이 담거나 보내는 중에 담기면 그 자리에서 한 건이 사라지고, 사라진 것은 보이지 않는다.
+   */
+  const turn = useRef<Promise<unknown>>(Promise.resolve());
+
+  const inTurn = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
+    const next = turn.current.then(task, task);
+    turn.current = next.catch(() => undefined);
+    return next;
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -48,29 +61,45 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     };
   }, []);
 
-  const enqueue = useCallback(async (draft: OutboxDraft) => {
-    // 보관된 것을 다시 읽어 담는다. 화면이 여럿 떠 있어도 한쪽이 다른 쪽을 덮지 않는다.
-    const stored = await readQueue().catch(() => [] as OutboxEntry[]);
-    const next = appendEntry(stored, draft);
+  const enqueue = useCallback(
+    async (draft: OutboxDraft) => {
+      await inTurn(async () => {
+        const stored = await readQueue();
+        const next = appendEntry(stored, draft);
 
-    await writeQueue(next);
-    setEntries(next);
-  }, []);
+        await writeQueue(next);
+        setEntries(next);
+      });
+    },
+    [inTurn],
+  );
 
   const flush = useCallback(async (): Promise<FlushResult | null> => {
-    const stored = await readQueue().catch(() => [] as OutboxEntry[]);
+    const stored = await inTurn(() => readQueue());
 
     if (stored.length === 0) {
       return null;
     }
 
+    /*
+     * 보내는 동안에는 큐를 잡지 않는다. 잡고 있으면 통신이 끝날 때까지 담을 수 없어, 작업자가
+     * 그 사이에 한 일이 어디에도 남지 않는다.
+     */
     const result = await flushQueue(stored, send);
 
-    await writeQueue(result.remaining);
-    setEntries(result.remaining);
+    await inTurn(async () => {
+      const attempted = new Set(stored.map((entry) => entry.id));
+      const latest = await readQueue();
+      // 보내려던 것 밖에 있는 것은 그 사이에 담긴 것이다. 결과로 덮으면 그 건이 사라진다.
+      const arrived = latest.filter((entry) => !attempted.has(entry.id));
+      const next = [...result.remaining, ...arrived];
+
+      await writeQueue(next);
+      setEntries(next);
+    });
 
     return result;
-  }, [send]);
+  }, [inTurn, send]);
 
   const value = useMemo(
     () => ({ pending: loaded ? entries.length : 0, enqueue, flush }),

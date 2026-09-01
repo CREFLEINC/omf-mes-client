@@ -32,6 +32,9 @@ export interface OutboxDraft extends Omit<OutboxEntry, 'id'> {
 
 export const OUTBOX_KEY = 'outbox';
 
+/** 읽지 못한 큐를 옮겨 두는 자리. 다음 저장이 덮어 없애는 것을 막는다. */
+export const OUTBOX_BROKEN_KEY = 'outbox-broken';
+
 const newId = (): string => {
   const buffer = new Uint8Array(8);
   crypto.getRandomValues(buffer);
@@ -47,11 +50,21 @@ export const readQueue = async (): Promise<OutboxEntry[]> => {
 
   try {
     const parsed: unknown = JSON.parse(stored);
-    return Array.isArray(parsed) ? (parsed as OutboxEntry[]) : [];
+
+    if (Array.isArray(parsed)) {
+      return parsed as OutboxEntry[];
+    }
   } catch {
-    // 읽지 못한 큐를 비우지 않는다. 지우면 보내지 못한 것이 조용히 사라진다.
-    return [];
+    // 아래에서 함께 다룬다.
   }
+
+  /*
+   * 읽지 못한 것은 보낼 수 없지만, 그대로 두면 다음 저장이 덮어 없앤다. 보내지 못한 기록이
+   * 무엇이었는지 나중에라도 볼 수 있게 옮겨 둔다.
+   */
+  await writeLocal(OUTBOX_BROKEN_KEY, stored);
+
+  return [];
 };
 
 export const writeQueue = async (entries: OutboxEntry[]): Promise<void> => {
