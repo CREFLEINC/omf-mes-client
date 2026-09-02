@@ -7,7 +7,7 @@ import {
   renderHookWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { useLotBalances, useLotHolds, useScannedLot } from './queries';
+import { useLotBalances, useLotHolds } from './queries';
 
 const SCANNED = '7770001118880002229901015554447777';
 
@@ -38,72 +38,6 @@ const capturingRoute = (pathname: string, body: unknown, seen: URL[]): StubRoute
 });
 
 const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
-
-describe('스캔값으로 LOT 찾기', () => {
-  /* 부분 검색은 여러 줄을 내고, 찾는 줄이 첫 페이지 밖으로 밀리면 없는 것과 구별되지 않는다. */
-  it('정확 일치로 묻는다', async () => {
-    const seen: URL[] = [];
-    const fetch = createStubFetch([
-      capturingRoute('/trace/lots', { items: [lotRow(4, SCANNED)], page }, seen),
-    ]);
-
-    const { result } = renderHookWithProviders(() => useScannedLot(SCANNED), { fetch });
-
-    await waitFor(() => {
-      expect(result.current.data).toEqual({ lotId: 4, lotNo: SCANNED, itemId: 1 });
-    });
-    expect(seen[0]?.searchParams.get('lotNo')).toBe(SCANNED);
-    expect(seen[0]?.searchParams.get('q')).toBeNull();
-  });
-
-  /* 정확 일치가 지켜지지 않으면 남의 위치와 수량을 이 LOT 의 것으로 보이게 된다. */
-  it('번호가 다른 줄이 와도 그것을 이 LOT으로 보지 않는다', async () => {
-    const fetch = createStubFetch([
-      route('/trace/lots', { items: [lotRow(7, `${SCANNED}9`)], page }),
-    ]);
-
-    const { result } = renderHookWithProviders(() => useScannedLot(SCANNED), { fetch });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-    expect(result.current.data).toBeNull();
-  });
-
-  it('일치하는 줄이 없으면 오류가 아니라 null이다', async () => {
-    const fetch = createStubFetch([route('/trace/lots', { items: [], page })]);
-
-    const { result } = renderHookWithProviders(() => useScannedLot(SCANNED), { fetch });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-    expect(result.current.data).toBeNull();
-  });
-
-  it('스캔하기 전에는 요청하지 않는다', () => {
-    const fetch = createStubFetch([]);
-
-    const { result } = renderHookWithProviders(() => useScannedLot(null), { fetch });
-
-    expect(result.current.fetchStatus).toBe('idle');
-  });
-
-  it('조회가 실패하면 오류 상태가 된다', async () => {
-    const fetch = createStubFetch([
-      {
-        match: (request) => new URL(request.url).pathname === '/trace/lots',
-        respond: () => jsonResponse({ code: 'INTERNAL' }, { status: 500 }),
-      },
-    ]);
-
-    const { result } = renderHookWithProviders(() => useScannedLot(SCANNED), { fetch });
-
-    await waitFor(() => {
-      expect(result.current.isError).toBe(true);
-    });
-  });
-});
 
 describe('잔액 조회', () => {
   it('위치별로 갈라 받고 잔액 0인 줄도 받는다', async () => {

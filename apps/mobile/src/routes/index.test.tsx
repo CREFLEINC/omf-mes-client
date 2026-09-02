@@ -58,6 +58,24 @@ describe('모바일 라우트', () => {
     expect(await screen.findByText('되돌아온 기록이 없습니다.')).toBeInTheDocument();
   });
 
+  it('셸 홈에서 설비 점검으로 갈 수 있다', async () => {
+    const user = userEvent.setup();
+    renderAt('/screens');
+
+    await user.click(await screen.findByRole('link', { name: '설비 점검' }));
+
+    expect(await screen.findByLabelText('설비 스캔')).toBeInTheDocument();
+  });
+
+  it('셸 홈에서 긴급 IQC 생략 요청으로 갈 수 있다', async () => {
+    const user = userEvent.setup();
+    renderAt('/screens');
+
+    await user.click(await screen.findByRole('link', { name: '긴급 IQC 생략 요청' }));
+
+    expect(await screen.findByLabelText('입하 LOT 스캔')).toBeInTheDocument();
+  });
+
   it('경로로 바로 들어와도 화면이 선다', async () => {
     renderAt('/material-location');
 

@@ -87,9 +87,17 @@ import { materialIssueRequest } from './material-issue-request';
 import { deviceRegistration } from './device-registration';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { outboxRejections } from './outbox-rejections';
+import { iqcSkipRequest } from './iqc-skip-request';
+import { equipmentInspection } from './equipment-inspection';
 import { oqcInspection } from './oqc-inspection';
 import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
+import { repairRoundtrip } from './repair-roundtrip';
+import { productPicking } from './product-picking';
+import { inboundReceipt } from './inbound-receipt';
+import { putaway } from './putaway';
+import { inboundVariance } from './inbound-variance';
+import { temporaryPutaway } from './temporary-putaway';
 
 export const ko = {
   common,
@@ -164,10 +172,18 @@ export const ko = {
   deviceRegistration,
   equipmentFailureReport,
   outboxRejections,
+  iqcSkipRequest,
+  equipmentInspection,
   oqcInspection,
   expeditedShipment,
   shipmentConfirm,
   toolUsage,
+  repairRoundtrip,
+  productPicking,
+  inboundReceipt,
+  putaway,
+  inboundVariance,
+  temporaryPutaway,
 } as const;
 
 export type Messages = typeof ko;

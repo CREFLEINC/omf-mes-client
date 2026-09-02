@@ -4,15 +4,15 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { playErrorTone } from '../../patterns/error-tone';
+import { useScannedLot } from '../../patterns/lots';
 import { toApiError } from '../../patterns/request';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useReferenceNames, type ReferenceNames, type ReferenceState } from './lookups';
-import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from './lot-number';
+import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from '../../patterns/material-lot-no';
 import {
   useLotBalances,
   useLotHolds,
-  useScannedLot,
   type InventoryBalance,
   type LotHold,
 } from './queries';

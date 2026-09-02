@@ -1,0 +1,140 @@
+import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
+import type { UseMutationResult } from '@tanstack/react-query';
+
+import { useApiClient } from '../../patterns/api-context';
+import { createIdempotencyKey } from '../../patterns/outbox';
+import { runRequest } from '../../patterns/request';
+import {
+  defectWindow,
+  toDispatchBody,
+  toReturnBody,
+  type DefectRecord,
+  type RepairExecution,
+  type RepairResult,
+} from './repair';
+
+export const repairKeys = {
+  defects: (lotId: number | null) => ['repair-defects', lotId] as const,
+  open: (lotId: number | null) => ['repair-open', lotId] as const,
+};
+
+/**
+ * 이 LOT 에 달린 불량 기록.
+ *
+ * 처분 유형으로 거르지 않는다. 그 코드 문자열이 아직 확정 전이라, 지어내 실으면 값이 달라지는
+ * 날 목록이 조용히 비고 화면은 불량이 없다고 말한다.
+ */
+export const useDefectRecords = (lotId: number | null): UseQueryResult<DefectRecord[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: repairKeys.defects(lotId),
+    enabled: lotId !== null,
+    queryFn: async () => {
+      if (lotId === null) {
+        throw new Error('LOT을 찾기 전에는 불량을 조회하지 않습니다.');
+      }
+
+      const window = defectWindow(new Date());
+      const data = await runRequest(() =>
+        client.GET('/quality/defect-records', {
+          params: {
+            query: { lotId, detectedFrom: window.from, detectedTo: window.to },
+          },
+        }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+/**
+ * 아직 닫히지 않은 수리 건.
+ *
+ * 상태 컬럼으로 거르지 않는다 - 반출 시각이 비어 있는 것이 곧 열린 건이고, 그 판정은 서버가
+ * 한다. 목록이 쪽 단위라 받아 놓고 화면이 거르면 쪽 안에서만 걸러진다.
+ */
+export const useOpenRepairs = (lotId?: number | null): UseQueryResult<RepairExecution[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: repairKeys.open(lotId ?? null),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/production/repair-executions', {
+          params: {
+            query:
+              lotId === null || lotId === undefined ? { open: true } : { open: true, lotId },
+          },
+        }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+export interface DispatchVariables {
+  defect: DefectRecord;
+  qty: string;
+  workerNo: string;
+}
+
+export interface ReturnVariables {
+  repairExecutionId: number;
+  result: RepairResult;
+  workerNo: string;
+}
+
+/**
+ * 수리 투입을 등록한다.
+ *
+ * 큐에 담지 않는다 - 이 화면은 연결이 있어야 서고, 담아 둔 투입은 반출할 때 서버에 없어
+ * 왕복의 앞쪽을 찾지 못한다.
+ */
+export const useDispatchRepair = (): UseMutationResult<
+  RepairExecution,
+  Error,
+  DispatchVariables
+> => {
+  const { client } = useApiClient();
+  const queries = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ defect, qty, workerNo }: DispatchVariables) =>
+      runRequest(() =>
+        client.POST('/production/repair-executions', {
+          params: {
+            header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
+          },
+          body: toDispatchBody(defect, qty, new Date().toISOString()),
+        }),
+      ),
+    onSuccess: () => {
+      void queries.invalidateQueries({ queryKey: ['repair-open'] });
+    },
+  });
+};
+
+/** 수리 반출을 등록해 왕복을 닫는다. 반출 시각이 생기면 열린 목록에서 빠진다. */
+export const useReturnRepair = (): UseMutationResult<RepairExecution, Error, ReturnVariables> => {
+  const { client } = useApiClient();
+  const queries = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ repairExecutionId, result, workerNo }: ReturnVariables) =>
+      runRequest(() =>
+        client.POST('/production/repair-executions/{repairExecutionId}:return', {
+          params: {
+            path: { repairExecutionId },
+            header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
+          },
+          body: toReturnBody(new Date().toISOString(), result),
+        }),
+      ),
+    onSuccess: () => {
+      void queries.invalidateQueries({ queryKey: ['repair-open'] });
+    },
+  });
+};
