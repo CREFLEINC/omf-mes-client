@@ -1227,6 +1227,43 @@ main > * + * {
   color: var(--on-surface-muted);
 }
 
+/* 이탈 버튼 둘은 나란히 선다 — 스펙이 좌우로 둔 자리다. */
+.pop-handoff {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/*
+ * 상세의 이름–값 목록. 스펙 목업이 「품목    XYZ-999」처럼 한 줄에 나란히 두므로 두 열로 세운다.
+ * 이름 열을 고정 폭으로 두면 값들이 같은 세로선에서 시작해 눈이 훑기 쉽다.
+ */
+.pop-detail-list {
+  display: grid;
+  grid-template-columns: 6rem 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-4);
+}
+
+.pop-detail-list > dt {
+  color: var(--on-surface-variant);
+}
+
+.pop-detail-list > dd {
+  margin: 0;
+}
+
+/*
+ * 누를 자리가 줄 전체인 목록. 장갑 낀 손을 전제하므로 줄 사이를 벌려 오조작을 줄인다.
+ */
+.pop-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
 /*
  * POP 검사 화면 배치 — 화면 스펙 §3 의 도면을 그대로 옮긴다.
  *
