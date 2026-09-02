@@ -96,10 +96,18 @@ describe('투입 조건', () => {
 
 describe('반출 조건', () => {
   it('투입 건과 결과와 사번이 다 있어야 반출할 수 있다', () => {
-    expect(canReturn(execution(), SUCCEEDED, true)).toBe(true);
-    expect(canReturn(null, SUCCEEDED, true)).toBe(false);
-    expect(canReturn(execution(), null, true)).toBe(false);
-    expect(canReturn(execution(), SUCCEEDED, false)).toBe(false);
+    expect(canReturn(execution(), SUCCEEDED, true, true)).toBe(true);
+    expect(canReturn(null, SUCCEEDED, true, true)).toBe(false);
+    expect(canReturn(execution(), null, true, true)).toBe(false);
+    expect(canReturn(execution(), SUCCEEDED, false, true)).toBe(false);
+  });
+
+  /*
+   * 조회를 막는 것만으로 지키면 서버가 lotId 를 무시하는 순간 남의 건이 다시 실린다. 계약에서
+   * 그 질의는 선택이라 무시해도 200 이 온다.
+   */
+  it('스캔하지 않았으면 반출할 수 없다', () => {
+    expect(canReturn(execution(), SUCCEEDED, true, false)).toBe(false);
   });
 });
 

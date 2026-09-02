@@ -342,6 +342,11 @@ describe('수리 왕복 스캔 화면', () => {
 
     await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
 
+    /* 전제 - 전체 목록에는 그 남의 건이 실제로 담겨 있다. 담기지 않으면 이 시험은 공회전이다. */
+    expect(await screen.findByText('수리 중 1건')).toBeTruthy();
+
+    /* 빈 화면으로 두지 않는다. 무엇을 해야 하는지 말하고, 반출로 가는 길은 열지 않는다. */
+    expect(await screen.findByText('불량 LOT 을 먼저 스캔하세요')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '수리 실패' })).toBeNull();
     expect(screen.queryByRole('button', { name: '반출 등록' })).toBeNull();
     expect(seen).toHaveLength(0);

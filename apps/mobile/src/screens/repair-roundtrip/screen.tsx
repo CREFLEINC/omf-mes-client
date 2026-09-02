@@ -156,7 +156,7 @@ export const RepairRoundtripScreen = () => {
   };
 
   const submitReturn = async () => {
-    if (execution === null || result === null || worker === null) {
+    if (execution === null || result === null || worker === null || lotId === null) {
       return;
     }
 
@@ -291,6 +291,8 @@ export const RepairRoundtripScreen = () => {
   const returnPanel = (
     <div className="repair__panel">
       {scannedCard}
+      {/* 스캔 전에는 어느 LOT 의 건인지 모른다. 빈 화면으로 두지 않고 무엇을 할지 말한다. */}
+      {lotId === null ? <AlertBanner variant="info" title={t.return.needScan} /> : null}
       {scopedOpen.isError ? <AlertBanner variant="error" title={t.open.loadFailed} /> : null}
       {lotId !== null && scopedOpen.isSuccess && scopedOpen.data.length === 0 ? (
         <AlertBanner variant="warning" title={t.return.noOpen} />
@@ -357,7 +359,7 @@ export const RepairRoundtripScreen = () => {
             variant="filled"
             size="2xl"
             loading={returning.isPending}
-            disabled={!canReturn(execution, result, worker !== null)}
+            disabled={!canReturn(execution, result, worker !== null, lotId !== null)}
             onClick={() => void submitReturn()}
           >
             {t.return.submit}

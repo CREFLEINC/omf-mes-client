@@ -20,7 +20,7 @@ export const repairKeys = {
    * 전체와 같은 이름이 되어, 이 LOT 의 것을 묻는 자리에 남의 건이 들어온다.
    */
   open: () => ['repair-open', 'all'] as const,
-  openForLot: (lotId: number) => ['repair-open', 'lot', lotId] as const,
+  openForLot: (lotId: number | null) => ['repair-open', 'lot', lotId ?? 'none'] as const,
 };
 
 /**
@@ -85,7 +85,7 @@ export const useOpenRepairsForLot = (lotId: number | null): UseQueryResult<Repai
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: repairKeys.openForLot(lotId ?? 0),
+    queryKey: repairKeys.openForLot(lotId),
     enabled: lotId !== null,
     queryFn: async () => {
       if (lotId === null) {
