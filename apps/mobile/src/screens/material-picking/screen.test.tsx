@@ -19,6 +19,7 @@ const store = vi.hoisted(() => new Map<string, string>());
 const held = vi.hoisted(() => ({
   key: null as string | null,
   release: null as (() => void) | null,
+  failWrite: null as string | null,
 }));
 
 vi.mock('../../patterns/local-store', () => ({
@@ -35,6 +36,10 @@ vi.mock('../../patterns/local-store', () => ({
     });
   },
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -176,9 +181,11 @@ interface Mounted {
   issues: Request[];
   /** 시험 도중에 갈아 끼운다 - 오프라인에 담아 둔 뒤 다시 붙었을 때를 재기 위해서다. */
   set: (next: { pick?: Behaviour; issue?: Behaviour; rejectNextPicks?: number }) => void;
-  /** 다음 피킹 응답을 붙잡아 둔다. 아직 보내는 중인 상태를 재는 시험이 쓴다. */
+  /** 다음 응답을 붙잡아 둔다. 아직 보내는 중인 상태를 재는 시험이 쓴다. */
   holdNextPick: () => void;
   releasePick: () => void;
+  holdNextIssue: () => void;
+  releaseIssue: () => void;
 }
 
 const mount = (options: Options = {}): Mounted => {
@@ -190,8 +197,10 @@ const mount = (options: Options = {}): Mounted => {
     issue: options.issue ?? 'ok',
     rejectNextPicks: 0,
     hold: false,
+    holdIssue: false,
   };
   let release: (() => void) | null = null;
+  let releaseIssue: (() => void) | null = null;
 
   const answerPick = async (req: Request): Promise<Response> => {
     const held = current.hold ? new Promise<void>((resolve) => (release = resolve)) : null;
@@ -226,7 +235,19 @@ const mount = (options: Options = {}): Mounted => {
     {
       match: (req) =>
         new URL(req.url).pathname === '/logistics/goods-issues' && req.method === 'POST',
-      respond: (req) => respondWith(current.issue, { goodsIssueId: 900 }, issues, req),
+      respond: async (req) => {
+        const waiting = current.holdIssue
+          ? new Promise<void>((resolve) => (releaseIssue = resolve))
+          : null;
+
+        current.holdIssue = false;
+
+        if (waiting !== null) {
+          await waiting;
+        }
+
+        return respondWith(current.issue, { goodsIssueId: 900 }, issues, req);
+      },
     },
     ...rest(options, serverPicked),
   ];
@@ -252,6 +273,13 @@ const mount = (options: Options = {}): Mounted => {
     releasePick: () => {
       release?.();
       release = null;
+    },
+    holdNextIssue: () => {
+      current.holdIssue = true;
+    },
+    releaseIssue: () => {
+      releaseIssue?.();
+      releaseIssue = null;
     },
   };
 };
@@ -280,6 +308,7 @@ beforeEach(() => {
   store.clear();
   held.key = null;
   held.release = null;
+  held.failWrite = null;
 });
 
 describe('자재 출고·피킹 화면', () => {
@@ -723,6 +752,79 @@ describe('자재 출고·피킹 화면', () => {
     const last = sent.issues[sent.issues.length - 1];
 
     expect(await last?.json()).toMatchObject({ lines: [{ issueQty: 120 }] });
+  });
+
+  /*
+   * 더 집어서 또 내보내는 것은 정상 흐름이다. 이미 내보낸 만큼만 빼야 하고, 지시 단위로 막으면
+   * 그 흐름이 끊긴다.
+   */
+  it('더 집어서 또 확정하면 이번에 늘어난 만큼만 나간다', async () => {
+    const user = userEvent.setup();
+    const sent = mount();
+    await chooseOrder(user);
+    await pickLine(user, '50');
+    await screen.findByText('집었습니다');
+    await chooseIssueType(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 확정했습니다');
+
+    await user.click(screen.getByRole('button', { name: '다음 지시' }));
+    await chooseOrder(user);
+    await waitFor(() => {
+      expect(screen.getByText('요청 200 / 피킹 50')).toBeTruthy();
+    });
+
+    await pickLine(user, '70');
+    await screen.findByText('집었습니다');
+    await chooseIssueType(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 확정했습니다');
+
+    await waitFor(() => {
+      expect(sent.issues).toHaveLength(2);
+    });
+    expect(await sent.issues[0]?.json()).toMatchObject({ lines: [{ issueQty: 50 }] });
+    expect(await sent.issues[1]?.json()).toMatchObject({ lines: [{ issueQty: 70 }] });
+  });
+
+  it('보내는 동안 확정을 다시 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+    await chooseIssueType(user);
+
+    sent.holdNextIssue();
+
+    const button = screen.getByRole('button', { name: '출고 확정' });
+
+    await user.click(button);
+    await user.click(button);
+    await user.click(button);
+
+    sent.releaseIssue();
+
+    await screen.findByText('출고를 확정했습니다');
+    expect(sent.issues).toHaveLength(1);
+  });
+
+  /*
+   * 담기지 못한 것을 내보낸 것으로 세면, 나가지도 않은 양이 셈에 들어가 확정이 영영 잠긴다.
+   */
+  it('담기에 실패하면 그 사실을 말하고 내보낸 것으로 세지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+    await chooseIssueType(user);
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    expect(
+      await screen.findByText('단말에 담지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeNull();
+    expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(false);
+    expect(sent.issues).toHaveLength(0);
   });
 
   it('보낼 출고 유형이 없으면 그 사실을 말한다', async () => {

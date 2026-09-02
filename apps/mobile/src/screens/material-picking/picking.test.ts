@@ -9,6 +9,7 @@ import {
   canPick,
   isOutOfSequence,
   isOfOrder,
+  issuableQtyOf,
   isScannedLotOf,
   lineProblemOf,
   qtyProblemOf,
@@ -351,5 +352,59 @@ describe('담긴 출고', () => {
     expect(isOfOrder(pick, 9)).toBe(false);
     expect(isOfOrder(issue(7), 7)).toBe(true);
     expect(isOfOrder(issue(9), 7)).toBe(false);
+  });
+});
+
+/*
+ * 서버는 출고 뒤에도 집은 양을 그대로 내려주고 라인에 이미 내보낸 양을 담을 자리가 없다.
+ * 빼지 않으면 같은 수량이 한 번 더 나간다.
+ */
+describe('이미 내보낸 양', () => {
+  const now = new Date('2026-09-02T10:00:00+09:00');
+
+  it('남은 것은 집은 것에서 내보낸 것을 뺀 만큼이다', () => {
+    const each = line({ pickedQty: 120 });
+
+    expect(issuableQtyOf(each, [], new Map([[41, 50]]))).toBe(70);
+    expect(issuableQtyOf(each, [], new Map([[41, 120]]))).toBe(0);
+  });
+
+  it('내보낼 것이 남지 않으면 확정할 수 없다', () => {
+    const lines = [line({ pickedQty: 120 })];
+
+    expect(canConfirmIssue(lines, true, [], 0, new Map([[41, 120]]))).toBe(false);
+    expect(canConfirmIssue(lines, true, [], 0, new Map([[41, 50]]))).toBe(true);
+  });
+
+  it('출고에는 아직 내보내지 않은 만큼만 싣는다', () => {
+    const draft = toIssueDraft(
+      order(),
+      [line({ pickedQty: 120 })],
+      [],
+      'PRODUCTION',
+      'b',
+      now,
+      '100027',
+      new Map([[41, 50]]),
+    );
+    const body = draft.body as { lines: { issueQty: number }[] };
+
+    expect(body.lines[0]?.issueQty).toBe(70);
+  });
+
+  it('다 내보낸 라인은 출고에 싣지 않는다', () => {
+    const draft = toIssueDraft(
+      order(),
+      [line({ pickedQty: 120 })],
+      [],
+      'PRODUCTION',
+      'b',
+      now,
+      '100027',
+      new Map([[41, 120]]),
+    );
+    const body = draft.body as { lines: unknown[] };
+
+    expect(body.lines).toEqual([]);
   });
 });

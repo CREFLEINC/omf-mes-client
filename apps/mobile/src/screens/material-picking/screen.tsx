@@ -76,12 +76,14 @@ export const MaterialPickingScreen = () => {
    * 서버가 흡수할 수 없어 재고가 두 번 움직인다.
    */
   const [busy, setBusy] = useState(false);
+  /* 담기가 실패하면 적은 것이 어디에도 없다. 조용히 넘기지 않는다. */
+  const [saveFailed, setSaveFailed] = useState(false);
   /*
    * 이 단말이 이번에 담은 출고. 담는 순간 적고, 되돌아온 것만 빼고 센다.
    *
    * 보냈는지로 가르면 셸이 배경으로 보낸 것을 아무도 세지 않아, 큐가 비는 순간 담긴 출고를
    * 세는 방어와 함께 꺼진다 - 같은 수량이 한 번 더 나간다. 담긴 것도 나갈 것이므로 함께 세고,
-   * 되돌아온 것만 되돌린다. 앱을 다시 띄우면 사라지는 반쪽 방어이며 나머지는 설계에 물었다.
+   * 되돌아온 것만 되돌린다. 화면이 다시 서면 사라지는 반쪽 방어이며 나머지는 설계에 물었다.
    */
   const issuedHere = useRef<{ idempotencyKey: string; lines: GoodsIssueLineUpsert[] }[]>([]);
 
@@ -217,6 +219,7 @@ export const MaterialPickingScreen = () => {
     }
 
     setBusy(true);
+    setSaveFailed(false);
 
     try {
       const draft = toIssueDraft(
@@ -230,13 +233,21 @@ export const MaterialPickingScreen = () => {
         alreadyIssued,
       );
 
-      /* 담는 순간 적는다. 담긴 것도 서버로 향하므로 보냈는지로 가르지 않는다. */
+      try {
+        await enqueue(draft);
+      } catch {
+        setSaveFailed(true);
+        return;
+      }
+
+      /*
+       * 담긴 뒤에 적는다. 담기지 못한 것을 적으면 나가지도 않은 양이 셈에 들어가 확정이
+       * 잠긴다. 담긴 것도 서버로 향하므로 보냈는지로는 가르지 않는다.
+       */
       issuedHere.current = [
         ...issuedHere.current,
         { idempotencyKey: draft.idempotencyKey, lines: issuedLinesOf(draft) },
       ];
-
-      await enqueue(draft);
 
       const result = await flush().catch(() => null);
       const mine = (each: { idempotencyKey: string }) =>
@@ -505,6 +516,7 @@ export const MaterialPickingScreen = () => {
         {/* 어느 값이 이 화면의 출고인지 계약이 아직 말하지 않아 사람이 고른다. */}
         <p className="picking-out__note">{t.issueTypeNote}</p>
         {worker === null ? <p className="picking-out__note">{t.noWorker}</p> : null}
+        {saveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
         {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
         {alreadyIssued.size > 0 &&
         !lines.some((each) => issuableQtyOf(each, queued, alreadyIssued) > 0) ? (
