@@ -15,6 +15,8 @@ export interface ReceiptView {
   inboundReceiptId: number;
   inboundReceiptNo: string;
   supplierId: number;
+  /** LOT 등록 본문이 요구한다 — 입하 건이 어느 공장으로 들어왔는가가 그대로 LOT 의 공장이다. */
+  plantId: number;
   receiptDatetime: string;
 }
 
@@ -23,6 +25,7 @@ export const toReceiptView = (data: InboundReceiptResponse): ReceiptView => ({
   inboundReceiptId: data.inboundReceiptId,
   inboundReceiptNo: data.inboundReceiptNo,
   supplierId: data.supplierId,
+  plantId: data.plantId,
   receiptDatetime: data.receiptDatetime,
 });
 
@@ -132,6 +135,7 @@ export interface TargetRow {
   inboundReceiptId: number;
   inboundReceiptNo: string;
   supplierId: number;
+  plantId: number;
   receiptDatetime: string;
   itemId: number;
   receivedQty: number;
@@ -175,9 +179,81 @@ export const toTargetRows = (receipt: ReceiptView, lines: LineView[]): TargetRow
     inboundReceiptId: receipt.inboundReceiptId,
     inboundReceiptNo: receipt.inboundReceiptNo,
     supplierId: receipt.supplierId,
+    plantId: receipt.plantId,
     receiptDatetime: receipt.receiptDatetime,
     itemId: line.itemId,
     receivedQty: line.receivedQty,
     uomId: line.uomId,
     lotId: line.lotId,
   }));
+
+/**
+ * 자재 LOT 번호의 자릿수 구성 — **34자리·전부 숫자·구분문자 없음**이다(MLOT #16 ✓확정).
+ *
+ * | 조각 | 자릿수 | 무엇 |
+ * | --- | :-: | --- |
+ * | 제품코드 | 9 | |
+ * | 수량 스냅샷 | 9 | 등록 시점의 수량 |
+ * | 날짜 | 6 | `YYMMDD` |
+ * | 공급사 성분 | 6 | |
+ * | 번호 | 4 | 같은 날 같은 공급사 안의 일련 |
+ */
+const LOT_NO_SEGMENTS = [9, 9, 6, 6, 4] as const;
+
+const LOT_NO_LENGTH = LOT_NO_SEGMENTS.reduce((sum, size) => sum + size, 0);
+
+/** 34자리 전부가 숫자여야 한다 — 계약이 「전부 숫자」로 못박았다. */
+const LOT_NO_PATTERN = /^\d+$/u;
+
+/**
+ * LOT 번호를 **읽을 수 있게 끊어 보인다.**
+ *
+ * 34자리가 구분문자 없이 이어져 있어 그대로 그리면 사람이 대조할 수 없다 — 라벨에 인쇄된
+ * 번호와 화면의 번호가 같은지 확인하는 것이 이 자리의 일이고, 그 확인은 눈으로 한다.
+ * **끊는 자리는 뜻의 경계**(제품코드 · 수량 · 날짜 · 공급사 · 일련)라 조각마다 무엇인지
+ * 알아볼 수 있다.
+ *
+ * ⛔ **보내는 값을 바꾸지 않는다.** 끊는 것은 보이기 위한 것이고, 서버로 가는 값에는 공백이
+ * 없다. 이 함수의 결과를 요청 본문에 싣지 않는다.
+ *
+ * ⛔ **형식이 아니면 원문을 그대로 낸다.** 34자리가 아니거나 숫자가 아닌 값이 오면 끊지 않고
+ * 그대로 보인다 — 화면이 삼키면 서버가 무엇을 보냈는지 알 수 없다(공유계약 G-9).
+ */
+export const formatLotNo = (value: string): string => {
+  if (value.length !== LOT_NO_LENGTH || !LOT_NO_PATTERN.test(value)) return value;
+
+  let cursor = 0;
+
+  return LOT_NO_SEGMENTS.map((size) => {
+    const piece = value.slice(cursor, cursor + size);
+    cursor += size;
+
+    return piece;
+  }).join(' ');
+};
+
+type DocumentIssueResponse = components['schemas']['DocumentIssue'];
+
+/** 인쇄 결과. 계약의 enum 을 그대로 쓴다 — 보고 전에는 `PENDING` 이다. */
+export type PrintOutcome = DocumentIssueResponse['printOutcome'];
+
+/**
+ * 화면이 다루는 발행 기록 한 건.
+ *
+ * **회차(`issueSeq`)는 서버가 매긴다.** ⛔ 화면이 세지 않는다 — 같은 대상을 다른 단말에서도
+ * 찍으므로 화면이 센 값은 곧 틀린다(착수 이슈 #139 §6).
+ */
+export interface IssueView {
+  documentIssueLogId: number;
+  issueSeq: number;
+  lotNo: string | null;
+  printOutcome: PrintOutcome;
+}
+
+/** 응답 한 건을 화면 타입으로 옮기는 **유일한 지점**이다. */
+export const toIssueView = (data: DocumentIssueResponse): IssueView => ({
+  documentIssueLogId: data.documentIssueLogId,
+  issueSeq: data.issueSeq,
+  lotNo: data.lotNo ?? null,
+  printOutcome: data.printOutcome,
+});

@@ -71,7 +71,7 @@
  * .pop-screen-head  화면명과 프린터·단말 상태를 한 줄에 두는 머리
  * .pop-screen-status 머리 오른쪽의 상태 묶음 — 이름과 표식 사이를 벌린다
  * .pop-printer-name  프린터 라벨 + 이름 한 덩어리
- * .pop-panes        POP 좌우 2단 — 접힘 기준점이 없다. 구획이 하나면 줄 전체를 쓴다
+ * .pop-screen-panes POP 좌우 2단 — 접힘 기준점이 없다. 구획이 하나면 줄 전체를 쓴다
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
  * .pop-empty-note   표가 비었을 때의 안내 — 칸 가운데
  * .pop-row-select(-on) 목록에서 한 줄을 고르는 자리 — 칸 전체가 누르는 곳
@@ -79,6 +79,7 @@
  * .pop-wide-note    구획 폭을 그대로 쓰는 보조 안내(.field-note 의 20rem 제한 밖)
  * .pop-pane-title   구획 제목
  * .pop-target-fields 발번 대상의 읽기 전용 라벨·값 두 열
+ * .pop-lot-no       34자리 LOT 번호 — 조각 사이에서만 접힌다
  * .pop-lot-label    LOT 번호 자리의 라벨
  * .pop-target-actions 등록·인쇄와 재인쇄를 나란히 두는 줄
  * .pop-page-nav     쪽 이동 줄 — 위치 표시와 이전·다음
@@ -1098,12 +1099,6 @@ main > * + * {
   gap: var(--space-3);
 }
 
-.pop-screen-status {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
 .alert-code {
   font-weight: 600;
 }
@@ -1157,7 +1152,7 @@ main > * + * {
  * ⛔ `.two-pane`을 쓰지 않는다. 그쪽은 1280px 아래에서 한 줄로 접히는데, POP은 1024px에
  * 고정된 키오스크라 **접히면 항상 접힌 채로 선다.** 여기는 접힘 기준점을 두지 않는다.
  */
-.pop-panes {
+.pop-screen-panes {
   display: grid;
   min-height: 0;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
@@ -1172,7 +1167,7 @@ main > * + * {
  * (실기 확인에서 드러났다). 오른쪽 구획이 실제로 들어오면 이 규칙은 저절로 풀린다 —
  * 그때 CSS를 고칠 일이 없다.
  */
-.pop-panes > :only-child {
+.pop-screen-panes > :only-child {
   grid-column: 1 / -1;
 }
 
@@ -1773,4 +1768,16 @@ main > * + * {
 .downtime-field-error {
   margin: 0;
   color: var(--semantic-error);
+ * LOT 번호 — **멀리서, 그리고 라벨과 대조하며 읽는다.**
+ *
+ * 34자리를 뜻의 경계로 끊어 그리므로 줄이 넘칠 수 있다. 끊긴 자리에서 줄바꿈이 일어나도
+ * 조각이 쪼개지지 않게 공백에서만 접는다 — 조각 가운데가 갈라지면 대조가 성립하지 않는다.
+ */
+.pop-lot-no {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--type-title-md, 1.25rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  word-break: keep-all;
+  margin: var(--space-2) 0 0;
 }

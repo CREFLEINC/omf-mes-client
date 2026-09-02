@@ -3,6 +3,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { REISSUE_REASON_CODE_GROUP } from './codes';
 import {
   toLineView,
   toPrinterView,
@@ -188,4 +189,64 @@ export const useTargetRows = (receipts: ReceiptView[]): TargetRowsResult => {
       for (const result of results) void result.refetch();
     },
   };
+};
+
+/**
+ * 이미 등록된 라인의 **LOT 번호.**
+ *
+ * 목록 응답은 라인에 `lotId` 만 싣고 번호는 싣지 않는다. 화면이 번호를 보여야 하는 이유는
+ * 하나다 — **라벨에 인쇄된 번호와 눈으로 대조**하는 자리이기 때문이다.
+ *
+ * **등록 전에는 부르지 않는다**(`enabled`). 번호는 등록 시점에 서버가 매기므로 그 전에는
+ * 조회할 대상이 없다.
+ */
+export const useLotNo = (lotId: number | null): UseQueryResult<string> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['pop-material-lot-label', 'lot', lotId],
+    enabled: lotId !== null,
+    queryFn: async () => {
+      if (lotId === null) throw new Error('등록 전에는 LOT 번호를 조회하지 않습니다.');
+
+      const data = await runRequest(() =>
+        client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
+      );
+
+      return data.lot.lotNo;
+    },
+  });
+};
+
+/** 재발행 사유 한 가지. 표시 문구는 **서버가 준 이름을 그대로** 쓴다. */
+export interface ReissueReasonOption {
+  code: string;
+  name: string;
+}
+
+/**
+ * 재발행 사유 선택지.
+ *
+ * ⛔ **화면이 값을 지어내지 않는다.** 값 목록은 서버가 코드 그룹으로 내려 준다(계약 명시).
+ * ⛔ **채번 식별자(`codeGroupId`)를 하드코딩하지 않는다** — 환경마다 다르다.
+ *
+ * ⚠ **비어 올 수 있다.** 값 목록이 아직 확정되지 않은 코드 그룹이라(`omf-mes#145`) 운영
+ * 데이터가 비어 있을 수 있고, 그때는 재인쇄를 열지 않고 사유를 보인다 — 사유 없이 보내면 422 다.
+ */
+export const useReissueReasons = (enabled: boolean): UseQueryResult<ReissueReasonOption[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['pop-material-lot-label', 'reissue-reasons'],
+    enabled,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode: REISSUE_REASON_CODE_GROUP } },
+        }),
+      );
+
+      return data.items.map((item) => ({ code: item.code, name: item.codeName }));
+    },
+  });
 };

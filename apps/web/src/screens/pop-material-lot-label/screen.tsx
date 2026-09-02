@@ -2,13 +2,17 @@ import { AlertBanner, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { usePopIdentity } from '../../patterns/pop-identity';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { IssueOutcome } from './issue-outcome';
 import { useItemLookup, useSupplierLookup, useUomLookup } from './lookups';
+import { useLabelIssue } from './mutations';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { PrinterStatusIndicator } from './printer-status';
-import { usePrinters, useReceipts, useTargetRows } from './queries';
+import { useLotNo, usePrinters, useReceipts, useReissueReasons, useTargetRows } from './queries';
 import { ReceiptTable } from './receipt-table';
+import { ReissueDialog } from './reissue-dialog';
 import { TargetCard } from './target-card';
 import { toHeadPrinter } from './types';
 
@@ -38,6 +42,13 @@ const emptyMessage = (isBeyondLast: boolean, receiptCount: number): string => {
 export const PopMaterialLotLabelScreen = () => {
   const [page, setPage] = useState(1);
   const [selectedLineId, setSelectedLineId] = useState<number | null>(null);
+  const [isReissueOpen, setReissueOpen] = useState(false);
+
+  /*
+   * 귀속 사번은 **셸이 아는 값**이다(진입점 화면 소관 · 이 저장소 #157). 쓰기가 헤더로
+   * 요구하므로 없으면 부를 수 없고, 그 사실을 감추지 않고 사유로 보인다(공유계약 F-1·F-6).
+   */
+  const { workerNo } = usePopIdentity();
 
   // 첫 쪽이면 조건을 싣지 않는다 — 서버 기본값이 1이라 URL에 없는 편이 조건을 정직하게 드러낸다.
   const receipts = useReceipts(page === 1 ? {} : { page });
@@ -57,6 +68,28 @@ export const PopMaterialLotLabelScreen = () => {
   const selectedRow =
     targets.rows.find((row) => row.inboundReceiptLineId === selectedLineId) ?? null;
 
+  const lot = useLotNo(selectedRow?.lotId ?? null);
+  const reissueReasons = useReissueReasons(isReissueOpen);
+  const headPrinter = toHeadPrinter(printers.data ?? []);
+  const issue = useLabelIssue({ workerNo: workerNo ?? '' });
+
+  /**
+   * 등록·인쇄 한 번을 시작한다.
+   *
+   * ⛔ **사번이 없으면 부르지 않는다** — 서버가 거부한다. 단추도 함께 막혀 있지만, 판정을
+   * 부르는 자리에도 두어 다른 경로로 새는 것을 막는다.
+   */
+  const startIssue = (reissueReasonCode: string | null): void => {
+    if (selectedRow === null || workerNo === null) return;
+
+    issue.run({
+      row: selectedRow,
+      // 프린터 배정이 정해지기 전에는 한 대 전제다 — 고른 것이 없으면 서버 기본값에 맡긴다.
+      printerName: headPrinter?.printerName ?? null,
+      reissueReasonCode,
+    });
+  };
+
   /** 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다. */
   const isListError = receipts.isError || targets.isError;
 
@@ -65,7 +98,7 @@ export const PopMaterialLotLabelScreen = () => {
       <header className="pop-screen-head">
         <PageHeader title={t.title} size="compact" />
         <PrinterStatusIndicator
-          printer={toHeadPrinter(printers.data ?? [])}
+          printer={headPrinter}
           hasChoice={(printers.data ?? []).length > 1}
           isLoading={printers.isPending}
           isError={printers.isError}
@@ -75,7 +108,7 @@ export const PopMaterialLotLabelScreen = () => {
         />
       </header>
 
-      <div className="pop-panes">
+      <div className="pop-screen-panes">
         <section className="pane pop-pane" aria-label={t.receipts.paneLabel}>
           {isListError ? (
             <AlertBanner
@@ -135,9 +168,36 @@ export const PopMaterialLotLabelScreen = () => {
             itemLookup={itemLookup}
             uomLookup={uomLookup}
             supplierLookup={supplierLookup}
+            lotNo={lot.data ?? null}
+            isLotNoLoading={lot.isPending && selectedRow?.lotId !== null}
+            isLotNoError={lot.isError}
+            hasWorkerNo={workerNo !== null}
+            runningStep={issue.step}
+            onIssue={() => {
+              startIssue(null);
+            }}
+            onReissue={() => {
+              setReissueOpen(true);
+            }}
           />
+          <IssueOutcome result={issue.result} onClose={issue.reset} />
         </section>
       </div>
+
+      {isReissueOpen ? (
+        <ReissueDialog
+          reasons={reissueReasons.data ?? []}
+          isLoading={reissueReasons.isPending}
+          isError={reissueReasons.isError}
+          onCancel={() => {
+            setReissueOpen(false);
+          }}
+          onConfirm={(reissueReasonCode) => {
+            setReissueOpen(false);
+            startIssue(reissueReasonCode);
+          }}
+        />
+      ) : null}
     </div>
   );
 };
