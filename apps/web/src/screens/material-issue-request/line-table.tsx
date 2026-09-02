@@ -210,7 +210,7 @@ export const LineTable = ({
   ];
 
   return (
-    <div className="wide-table">
+    <div className="wide-table material-issue-request-table">
       {/*
        * `getRowId`가 초안 키를 쓴다 — 인덱스가 키가 되면 가운데 줄을 지울 때 치고 있던 칸의
        * DOM 노드가 대신 지워져 입력과 포커스가 다른 줄로 옮겨 붙는다.
@@ -220,6 +220,7 @@ export const LineTable = ({
         columns={columns}
         rows={rows}
         getRowId={(row) => row.key}
+        caption={t.panes.lines}
         empty={
           <EmptyState
             size="sm"
