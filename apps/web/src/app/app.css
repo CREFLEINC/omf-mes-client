@@ -834,6 +834,69 @@ main > * + * {
   align-items: start;
 }
 
+.rework-result-pane {
+  display: grid;
+  grid-template-rows: 176px 224px minmax(96px, 1fr) 88px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.rework-result-screen {
+  box-sizing: border-box;
+  grid-template-rows: 44px minmax(0, 1fr);
+  height: 100%;
+  overflow: hidden;
+}
+
+.rework-result-screen > .pop-panes {
+  min-height: 0;
+  margin-top: 0;
+}
+
+.rework-target-card {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rework-result-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: start;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+.rework-result-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.rework-result-fields > .pane-title,
+.rework-result-fields > .field-note {
+  grid-column: 1 / -1;
+}
+
+.rework-result-summary {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.rework-result-summary > p {
+  margin: 0;
+}
+
+.rework-result-pane > .pop-action-bar {
+  margin-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
 @media (max-width: 900px) {
   .pop-panes {
     grid-template-columns: 1fr;

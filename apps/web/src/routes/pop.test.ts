@@ -47,6 +47,10 @@ describe('POP 라우트 편입', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/material-lot-label');
   });
 
+  it('P-04-03 재작업 실적 등록 주소가 서 있다', () => {
+    expect(popRoutes.map(({ path }) => path)).toContain('/pop/rework-results');
+  });
+
   it('POP 경로는 `/pop`으로 시작한다 — 관리웹 셸 주소와 섞이지 않는다', () => {
     for (const { path } of popRoutes) {
       expect(path).toMatch(/^\/pop\//);
