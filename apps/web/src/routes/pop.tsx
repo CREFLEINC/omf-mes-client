@@ -6,6 +6,7 @@ import { IdentificationTagIssueScreen } from '../screens/identification-tag-issu
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
+import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 import { WorkStartScreen } from '../screens/work-start/screen';
@@ -140,4 +141,5 @@ export const popRoutes: RouteObject[] = [
    * 처리하지 않는다(F-6). `P-CO-01`과 단말 토큰이 서면 그때 채워진다.
    */
   { path: '/pop/work-start', element: <WorkStartScreen /> },
+  { path: '/pop/rework-results', element: <ReworkResultRegisterScreen /> },
 ];
