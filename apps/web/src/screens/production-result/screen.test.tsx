@@ -296,6 +296,19 @@ describe('ProductionResultScreen 수량 입력', () => {
     expect(await screen.findByText('EA')).toBeInTheDocument();
   });
 
+  /*
+   * ⛔ 단위 이름을 못 받았다고 숫자 식별자를 대신 붙이지 않는다 — 「120 10」으로 읽힌다.
+   * 식별자는 W/O 응답에서 바로 오므로 잔여수량이 뜬 시점이면 새어 나올 자리는 이미 그려져 있다.
+   */
+  it('단위 조회가 실패하면 아무것도 붙이지 않는다 — 식별자로 대신하지 않는다', async () => {
+    renderScreen({ uomsFail: true });
+
+    await screen.findByText(t.quantity.remainingValue('380', '500'));
+
+    expect(screen.queryByText('EA')).not.toBeInTheDocument();
+    expect(screen.queryByText(String(UOM_ID))).not.toBeInTheDocument();
+  });
+
   it('잔여수량을 잔여 / 지시로 보인다', async () => {
     renderScreen({ goodQty: 120 });
 
