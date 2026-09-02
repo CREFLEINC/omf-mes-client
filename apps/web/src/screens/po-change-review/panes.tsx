@@ -66,6 +66,7 @@ export const NotificationList = ({
     {
       key: 'acknowledged',
       header: t.list.fields.acknowledged,
+      align: 'center',
       render: (row) =>
         row.acknowledgedAt === null ? (
           <Chip status="warning">{t.list.unacknowledgedChip}</Chip>
@@ -91,6 +92,8 @@ export const NotificationList = ({
         <AlertBanner variant="info">{t.diff.pendingContract}</AlertBanner>
       </div>
       <Table
+        className="po-change-review-table"
+        caption={<span className="po-change-review-table-caption">{t.panes.list}</span>}
         density="compact"
         columns={columns}
         rows={rows}
@@ -120,15 +123,15 @@ export interface DiffPaneProps {
  * 못해 세 행 중 둘이 빈다. 「계약이 늦으면 비워 두는 편이 낫다」가 설계의 지시다.
  */
 export const DiffPane = ({ selected, uoms }: DiffPaneProps) => (
-  <section className="pane" aria-label={t.panes.diff}>
+  <section className="pane po-change-review-pane" aria-label={t.panes.diff}>
     <h2>{t.panes.diff}</h2>
     {selected === null ? (
       <EmptyState size="sm" title={t.diff.selectFirst} />
     ) : (
       <>
         {/* 지금 확실히 아는 것 하나 — 변경 «후» 값이다. 왼쪽(기존)은 아직 못 받는다. */}
-        <dl className="filter-bar">
-          <div className="field-cell">
+        <dl className="po-change-review-diff-values">
+          <div>
             <dt className="field-label">{t.diff.columns.after}</dt>
             <dd>
               {String(selected.orderQty)} {lookupDisplayLabel(uoms, selected.uomId)}
@@ -180,7 +183,12 @@ export const WorkOrderPane = ({
       align: 'end',
       render: (row) => String(row.orderQty),
     },
-    { key: 'status', header: t.workOrders.fields.status, render: (row) => row.statusCode },
+    {
+      key: 'status',
+      header: t.workOrders.fields.status,
+      align: 'center',
+      render: (row) => row.statusCode,
+    },
     {
       key: 'produced',
       header: t.workOrders.fields.produced,
@@ -197,13 +205,14 @@ export const WorkOrderPane = ({
     {
       key: 'mismatch',
       header: t.workOrders.fields.mismatch,
+      align: 'center',
       render: (row) =>
         row.poMismatch ? <Chip status="error">{t.workOrders.mismatchChip}</Chip> : null,
     },
   ];
 
   return (
-    <section className="pane" aria-label={t.panes.workOrders}>
+    <section className="pane po-change-review-pane" aria-label={t.panes.workOrders}>
       <h2>{t.panes.workOrders}</h2>
       {!hasSelection ? (
         <EmptyState size="sm" title={t.diff.selectFirst} />
@@ -216,6 +225,8 @@ export const WorkOrderPane = ({
       ) : (
         <>
           <Table
+            className="po-change-review-table"
+            caption={<span className="po-change-review-table-caption">{t.panes.workOrders}</span>}
             density="compact"
             columns={columns}
             rows={rows}
@@ -261,7 +272,7 @@ export const DecisionPane = ({ draft, showError, warnings, onChange }: DecisionP
   const labelId = useId();
 
   return (
-    <section className="pane" aria-label={t.panes.decision}>
+    <section className="pane po-change-review-pane" aria-label={t.panes.decision}>
       <h2>{t.panes.decision}</h2>
 
       <div className="field-cell" role="group" aria-label={t.decision.label}>
