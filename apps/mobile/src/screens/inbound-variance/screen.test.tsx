@@ -231,7 +231,7 @@ describe('입하 오류 등록 화면', () => {
           new URL(req.url).pathname === '/logistics/inbound-receipt-lines/55/variances' &&
           req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
+          seen.push(req.clone());
           return jsonResponse({ inboundVarianceId: 9 }, { status: 201 });
         },
       },
@@ -254,7 +254,7 @@ describe('입하 오류 등록 화면', () => {
           new URL(req.url).pathname === '/logistics/inbound-receipt-lines/55/variances' &&
           req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
+          seen.push(req.clone());
           return jsonResponse({ inboundVarianceId: 9 }, { status: 201 });
         },
       },
@@ -272,18 +272,13 @@ describe('입하 오류 등록 화면', () => {
   it('확인하면 유형과 수량을 줄 경로로 보낸다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    const bodies: unknown[] = [];
     mount([
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/inbound-receipt-lines/55/variances' &&
           req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
-          void req
-            .clone()
-            .json()
-            .then((body: unknown) => bodies.push(body));
+          seen.push(req.clone());
           return jsonResponse({ inboundVarianceId: 9 }, { status: 201 });
         },
       },
@@ -300,11 +295,8 @@ describe('입하 오류 등록 화면', () => {
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
 
-    await waitFor(() => {
-      expect(bodies).toHaveLength(1);
-    });
-
-    const body = bodies[0] as { varianceTypeCode: string; varianceQty: number; reasonCode: unknown };
+    
+    const body = (await seen[0]!.json()) as { varianceTypeCode: string; varianceQty: number; reasonCode: unknown };
 
     expect(body.varianceTypeCode).toBe('SHORT');
     expect(body.varianceQty).toBe(20);

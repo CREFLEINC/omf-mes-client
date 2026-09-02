@@ -211,7 +211,7 @@ export const InboundVarianceScreen = () => {
         <>
           <section className="variance__section">
             <Card bordered>
-              <Card.Body className="variance__card">
+              <Card.Body className="card-body variance__card">
                 <strong>
                   {item.data === undefined
                     ? String(draft.line.itemId)

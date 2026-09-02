@@ -87,7 +87,7 @@ const LocationCard = ({ balance, names }: { balance: InventoryBalance; names: Re
         <p>{referenceLabel(names.location(balance.locationId))}</p>
         {balance.lotId === null || balance.lotId === undefined ? <p>{t.lot.noLot}</p> : null}
       </Card.Header>
-      <Card.Body>
+      <Card.Body className="card-body">
         <dl className="material-location__quantities">
           <Quantity
             label={t.quantity.onHand}
@@ -124,6 +124,7 @@ const HoldBanner = ({ holds, names }: { holds: LotHold[]; names: ReferenceNames 
 export const MaterialLocationScreen = () => {
   const [code, setCode] = useState<string | null>(null);
   const [rejectedLength, setRejectedLength] = useState<number | null>(null);
+  const [manual, setManual] = useState('');
 
   const accept = (value: string) => {
     if (!isMaterialLotNo(value)) {
@@ -168,6 +169,7 @@ export const MaterialLocationScreen = () => {
   const restart = () => {
     setCode(null);
     setRejectedLength(null);
+    setManual('');
     scanField.focus();
   };
 
@@ -186,9 +188,27 @@ export const MaterialLocationScreen = () => {
               : t.invalidLength(rejectedLength, MATERIAL_LOT_NO_LENGTH)
           }
         />
-        <Button variant="outlined" size="lg" onClick={scanField.focus}>
-          {t.scan.manualEntry}
-        </Button>
+        {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
+        <div className="material-location__manual">
+          <TextField
+            label={t.scan.manualEntry}
+            size="xl"
+            fullWidth
+            value={manual}
+            onChange={(event) => {
+              setManual(event.target.value);
+            }}
+          />
+          <Button
+            variant="outlined"
+            size="xl"
+            onClick={() => {
+              accept(manual.trim());
+            }}
+          >
+            {t.scan.manualSubmit}
+          </Button>
+        </div>
 
         {unreachable ? (
           <EmptyState
@@ -255,7 +275,7 @@ export const MaterialLocationScreen = () => {
 
       {lot.data !== null && lot.data !== undefined ? (
         <div className="material-location__actions">
-          <Button variant="filled" size="xl" onClick={restart}>
+          <Button variant="filled" size="2xl" onClick={restart}>
             {t.nextScan}
           </Button>
         </div>

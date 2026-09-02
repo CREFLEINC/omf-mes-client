@@ -257,18 +257,13 @@ describe('적치·입고 완료 화면', () => {
   it('완료는 실제 위치와 업무 기준일을 실어 지시 경로로 보낸다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    const bodies: unknown[] = [];
     mount([
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete' &&
           req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
-          void req
-            .clone()
-            .json()
-            .then((body: unknown) => bodies.push(body));
+          seen.push(req.clone());
           return jsonResponse(task({ actualLocationId: 5 }));
         },
       },
@@ -285,11 +280,8 @@ describe('적치·입고 완료 화면', () => {
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
 
-    await waitFor(() => {
-      expect(bodies).toHaveLength(1);
-    });
-
-    const body = bodies[0] as { actualLocationId: number; confirmedNoRule: boolean; businessDate: string };
+    
+    const body = (await seen[0]!.json()) as { actualLocationId: number; confirmedNoRule: boolean; businessDate: string };
 
     expect(body.actualLocationId).toBe(5);
     expect(body.confirmedNoRule).toBe(false);

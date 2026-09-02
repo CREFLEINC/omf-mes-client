@@ -24,6 +24,8 @@ export const putaway = {
     qty: (qty: string) => `수량 ${qty}`,
     from: (code: string) => `현재 ${code}`,
     recommended: (code: string) => `권장 위치 ${code}`,
+    /** 목록에서는 위치 코드를 아직 받지 못했다. 있고 없고만 말한다. */
+    hasRule: '권장 위치 있음',
     /** 권장이 없는 것과 확인하지 못한 것은 다르다. 앞엣것만 이렇게 적는다. */
     noRule: '권장 위치 없음',
     /** 값 목록이 확정되기 전이라 코드를 그대로 보인다. */
