@@ -118,6 +118,8 @@ describe('P-02-10 작업 중단 등록', () => {
     expect(within(rows[1]!).getByText('금형 교체')).toBeInTheDocument();
     /* 재개는 사유가 없다 — 「없음」이라 적지 않는다. */
     expect(within(rows[2]!).getByText(t.eventTypes.RESUME)).toBeInTheDocument();
+    /* 이력은 기록 전용이다 — 정정할 수 없다는 사실이 이력 옆에 상시 서 있어야 한다. */
+    expect(within(history).getByText(t.history.recordOnlyNotice)).toBeInTheDocument();
   });
 
   it('사유 목록이 임시라는 사실을 상시 세운다', async () => {
