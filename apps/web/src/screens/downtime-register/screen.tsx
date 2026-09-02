@@ -1,6 +1,7 @@
 import { AlertBanner, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -22,7 +23,13 @@ import { LoadErrorBanner } from './load-error-banner';
 import { OngoingPanel } from './ongoing-panel';
 import { useOutbox } from './outbox';
 import { toDowntimeCreate, type DowntimeDraft } from './post-request';
-import { toLocalDay, useOngoingDowntime, useOpenBreakdowns, useTodayDowntimes } from './queries';
+import {
+  downtimeRegisterKeys,
+  toLocalDay,
+  useOngoingDowntime,
+  useOpenBreakdowns,
+  useTodayDowntimes,
+} from './queries';
 import { ReasonFields } from './reason-fields';
 import { readEquipmentCode, readEquipmentId } from './screen-params';
 import { TodayPanel } from './today-panel';
@@ -88,6 +95,7 @@ export const DowntimeRegisterScreen = () => {
 
   const outbox = useOutbox();
   const gate = useTerminalGate(terminalId, processId);
+  const queryClient = useQueryClient();
 
   /*
    * ⛔ **시계에 조건을 걸지 않는다.** 「진행 중이 있을 때만」으로 좁혔더니, 저장이 열리는
@@ -179,6 +187,8 @@ export const DowntimeRegisterScreen = () => {
    */
   const save = (): void => {
     setSaveAttempted(true);
+    /* 앞 회차의 거부는 이 회차의 사실이 아니다 — 남겨 두면 방금 저장한 것이 거부된 것처럼 읽힌다. */
+    outbox.clearRejections();
     if (block !== null || workerNo === null) return;
     /* 덜 채운 칸이 있으면 여기서 멈춘다 — 그 사실은 칸 옆에 이미 서 있다. */
     if (hasIntervalError(intervalErrors) || reasonMissing) return;
@@ -201,7 +211,39 @@ export const DowntimeRegisterScreen = () => {
     setSavedNotice(t.ongoing.closed);
   };
 
+  /*
+   * ⭐ **큐가 받아 온 것을 조회 쪽으로 되돌린다.** 쓰기가 큐를 통해 나가므로 그 결과가
+   * 저절로 캐시에 반영되지 않는다 — 되돌리지 않으면 「지금 종료」를 눌러도 진행 중 구획이
+   * 그대로 남아 새 저장까지 계속 막히고, 저장이 받아들여져도 ④의 합계가 옛 값에 머문다
+   * (건수만 늘어 합계와 어긋난다).
+   *
+   * ⚠ 세는 것은 **받아들여진 건수**다. 배열 자체를 의존성에 두면 같은 내용에도 새 참조가
+   * 오갈 때 무효화가 되풀이된다.
+   */
+  const acceptedCount = outbox.accepted.length;
+
+  useEffect(() => {
+    if (acceptedCount === 0 || equipmentId === null) return;
+
+    void queryClient.invalidateQueries({ queryKey: downtimeRegisterKeys.ongoing(equipmentId) });
+    void queryClient.invalidateQueries({ queryKey: downtimeRegisterKeys.today(equipmentId, day) });
+    void queryClient.invalidateQueries({
+      queryKey: downtimeRegisterKeys.todaySummary(equipmentId, day),
+    });
+  }, [acceptedCount, day, equipmentId, queryClient]);
+
   const rejection = outbox.rejections.at(-1);
+
+  /*
+   * ⛔ **거부가 돌아오면 성공 알림을 내린다.** 큐에 담긴 순간을 성공으로 보이는 것은 조항이
+   * 정한 바이지만, 서버가 그 건을 받지 않기로 판정한 뒤에도 「저장했습니다」가 남아 있으면
+   * **한 화면이 성공과 실패를 동시에 말한다.**
+   */
+  useEffect(() => {
+    if (rejection === undefined) return;
+
+    setSavedNotice(null);
+  }, [rejection]);
 
   return (
     /* 표제가 본문의 이름이 된다 — 셸이 없어 줄 사람이 이 화면뿐이다. */
@@ -258,6 +300,7 @@ export const DowntimeRegisterScreen = () => {
         <LoadErrorBanner
           error={rejection.error}
           title={rejection.entry.kind === 'close' ? t.errors.closeFailed : t.errors.saveFailed}
+          onDismiss={outbox.clearRejections}
         />
       )}
 

@@ -35,13 +35,16 @@ export interface LoadErrorBannerProps {
   error: unknown;
   title?: string;
   onRetry?: () => void;
+  /** 주면 닫기 단추가 선다. **쓰기 실패는 닫을 수 있어야 한다** — 다음 저장까지 남으면
+   *  방금 저장한 것이 거부된 것처럼 읽힌다. */
+  onDismiss?: () => void;
 }
 
 /**
  * 실패 배너. **실패를 빈 상태로 보이지 않는다** — 「없습니다」로 내면 작업자가 오늘 비가동이
  * 없는 것으로 읽고, 이미 적어 둔 구간을 한 번 더 적는다.
  */
-export const LoadErrorBanner = ({ error, title, onRetry }: LoadErrorBannerProps) => {
+export const LoadErrorBanner = ({ error, title, onRetry, onDismiss }: LoadErrorBannerProps) => {
   const apiError = toApiError(error);
   const forbidden = isForbidden(apiError);
 
@@ -49,6 +52,7 @@ export const LoadErrorBanner = ({ error, title, onRetry }: LoadErrorBannerProps)
     <div className="banner-slot">
       <AlertBanner
         variant="error"
+        onDismiss={onDismiss}
         title={title ?? (forbidden ? messages.httpError.title : messages.httpError.loadTitle)}
         action={
           forbidden || onRetry === undefined ? undefined : (

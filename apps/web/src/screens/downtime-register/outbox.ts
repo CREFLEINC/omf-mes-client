@@ -164,8 +164,14 @@ export interface Outbox {
   accepted: readonly Downtime[];
   /** 서버가 거부한 건. **그 건만** 되돌린다. */
   rejections: readonly OutboxRejection[];
-  /** 이 회차의 결과를 지운다. ⛔ **큐를 비우는 것이 아니다.** */
-  clearResults: () => void;
+  /**
+   * 거부 기록을 지운다 — 배너를 닫거나 새 저장을 시작할 때 부른다.
+   *
+   * ⛔ **큐를 비우는 것이 아니다.** 아직 서버에 닿지 않은 건은 그대로 남아 계속 나간다.
+   * ⛔ **받아들여진 건(`accepted`)도 지우지 않는다.** 끊긴 동안 이 단말이 넣은 것을 ④가
+   * 그리는 근거라, 지우면 방금 넣은 줄이 화면에서 사라진다.
+   */
+  clearRejections: () => void;
 }
 
 export const useOutbox = (): Outbox => {
@@ -301,8 +307,7 @@ export const useOutbox = (): Outbox => {
     [push],
   );
 
-  const clearResults = useCallback((): void => {
-    setAccepted([]);
+  const clearRejections = useCallback((): void => {
     setRejections([]);
   }, []);
 
@@ -316,6 +321,6 @@ export const useOutbox = (): Outbox => {
     enqueueClose,
     accepted,
     rejections,
-    clearResults,
+    clearRejections,
   };
 };

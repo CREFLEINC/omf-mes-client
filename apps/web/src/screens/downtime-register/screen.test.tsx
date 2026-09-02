@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
@@ -414,6 +414,180 @@ describe('DowntimeRegisterScreen — 저장', () => {
 
     await waitFor(() => {
       expect(postedBodies(requests)).toHaveLength(1);
+    });
+  });
+});
+
+describe('DowntimeRegisterScreen — 큐가 받아 온 뒤', () => {
+  /**
+   * 쓰기가 큐를 통해 나가므로 그 결과가 저절로 캐시에 반영되지 않는다. **되돌리지 않으면
+   * 화면이 낡은 채로 선다** — 리뷰에서 나온 자리이고, 사번이 비어 쓰기가 막혀 있는 동안은
+   * 실행되지 않아 앞선 검증들이 닿지 못했다.
+   */
+  it('종료가 받아들여지면 진행 중 구획이 내려가고 새 저장이 열린다', async () => {
+    let ongoingItems: unknown[] = [ongoingDowntime({ downtimeId: 5201 })];
+
+    const { requests } = renderScreen([
+      {
+        match: (request) => isGet(request, DOWNTIMES_PATH),
+        respond: (request) => {
+          const openOnly = new URL(request.url).searchParams.get('openOnly') === 'true';
+          /* 종료가 서버에 닿은 뒤로는 열린 구간이 없다. */
+          const items = openOnly ? ongoingItems : [];
+
+          return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+        },
+      },
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+      {
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === closePath(5201),
+        respond: () => {
+          ongoingItems = [];
+
+          return jsonResponse(downtime({ downtimeId: 5201 }));
+        },
+      },
+    ]);
+
+    fireEvent.click(await screen.findByRole('button', { name: t.ongoing.close }));
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.url.pathname === closePath(5201))).toBe(true);
+    });
+
+    /* 눌렀는데 아무 일도 일어나지 않는 화면을 두지 않는다. */
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: t.ongoing.title })).toBeNull();
+    });
+
+    /* 진행 중이 사라졌으므로 새 저장을 막을 이유도 없어졌다. */
+    expect(screen.queryByText(t.ongoing.blocksNew)).toBeNull();
+  });
+
+  it('저장이 받아들여지면 오늘 집계를 다시 부른다', async () => {
+    const { requests } = renderScreen([
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+      createRoute(),
+    ]);
+
+    await flush();
+    const before = requests.filter((request) => request.url.pathname === SUMMARY_PATH).length;
+
+    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
+    await chooseReason();
+    save();
+
+    /*
+     * 합계를 화면이 스스로 더하지 않기로 한 결정은 옳지만, 그 결정이 「서버 값을 낡은 채로
+     * 보인다」로 이어지면 안 된다 — 건수만 늘고 합계가 그대로면 둘이 어긋난 채 선다.
+     */
+    await waitFor(() => {
+      expect(
+        requests.filter((request) => request.url.pathname === SUMMARY_PATH).length,
+      ).toBeGreaterThan(before);
+    });
+  });
+
+  it('거부 배너를 닫을 수 있고, 새 저장을 시작하면 스스로 내려간다', async () => {
+    let attempts = 0;
+
+    const { requests } = renderScreen([
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+      {
+        /*
+         * ⚠ **첫 저장만 거부한다.** 늘 거부하는 스텁으로는 「새 저장이 앞 거부를 지운다」를
+         * 잴 수 없다 — 지운 자리에 곧바로 새 거부가 들어차 화면이 같은 모양으로 남는다.
+         */
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === DOWNTIMES_PATH,
+        respond: () => {
+          attempts += 1;
+
+          return attempts === 1
+            ? jsonResponse(
+                { errors: [{ scope: 'screen', code: 'SAMPLE_REJECT', message: '합성 거부' }] },
+                { status: 422 },
+              )
+            : jsonResponse(downtime({ downtimeId: 5299 }), { status: 201 });
+        },
+      },
+    ]);
+
+    await flush();
+    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
+    await chooseReason();
+    save();
+
+    const banner = (await screen.findByText(t.errors.saveFailed)).closest('div[role]');
+    expect(banner).not.toBeNull();
+    expect(postedBodies(requests)).toHaveLength(1);
+
+    /* 거부가 돌아온 뒤에는 「저장했습니다」가 남아 있지 않다 — 한 화면이 두 말을 하지 않는다. */
+    await waitFor(() => {
+      expect(screen.queryByText(t.actions.saved)).toBeNull();
+    });
+
+    fireEvent.click(within(banner as HTMLElement).getByRole('button', { name: '닫기' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.errors.saveFailed)).toBeNull();
+    });
+  });
+
+  it('닫지 않고 새로 저장해도 앞 회차의 거부는 내려간다', async () => {
+    /*
+     * ⚠ **닫기를 누르지 않는다.** 눌러 버리면 거부 기록이 이미 비어 있어, 새 저장이 그것을
+     * 지우는지를 잴 수 없다 — 잴 수 없는 시험은 지키는 척만 한다.
+     */
+    let attempts = 0;
+
+    const { requests } = renderScreen([
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+      {
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === DOWNTIMES_PATH,
+        respond: () => {
+          attempts += 1;
+
+          return attempts === 1
+            ? jsonResponse(
+                { errors: [{ scope: 'screen', code: 'SAMPLE_REJECT', message: '합성 거부' }] },
+                { status: 422 },
+              )
+            : jsonResponse(downtime({ downtimeId: 5299 }), { status: 201 });
+        },
+      },
+    ]);
+
+    await flush();
+    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
+    await chooseReason();
+    save();
+
+    expect(await screen.findByText(t.errors.saveFailed)).toBeTruthy();
+
+    /* 남겨 두면 방금 저장한 것이 거부된 것처럼 읽힌다. */
+    typeInterval(['2026-08-11', '09:00'], ['2026-08-11', '09:30']);
+    await chooseReason();
+    save();
+
+    await waitFor(() => {
+      expect(postedBodies(requests)).toHaveLength(2);
+    });
+    await waitFor(() => {
+      expect(screen.queryByText(t.errors.saveFailed)).toBeNull();
     });
   });
 });
