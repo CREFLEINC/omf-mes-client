@@ -1,4 +1,4 @@
-import { Button } from '@crefle/web-ui';
+import { Button, type ButtonSize } from '@crefle/web-ui';
 
 import './numeric-keypad.css';
 
@@ -16,6 +16,11 @@ export interface NumericKeypadProps {
   clearLabel: string;
   /** 키 묶음 전체의 접근 이름. */
   label: string;
+  /**
+   * 키 하나의 크기 등급. ⛔ **부품이 정하지 않고 밖에서 받는다** — 터치 규격이 화면마다
+   * 다르고(POP 64·72 · 모바일 56), 부품이 고르면 자기가 어느 화면에 놓였는지 알게 된다.
+   */
+  keySize?: ButtonSize;
   className?: string;
 }
 
@@ -31,6 +36,7 @@ export const NumericKeypad = ({
   backspaceLabel,
   clearLabel,
   label,
+  keySize = 'xl',
   className,
 }: NumericKeypadProps) => {
   const full = maxLength !== undefined && value.length >= maxLength;
@@ -50,7 +56,7 @@ export const NumericKeypad = ({
           key={digit}
           type="button"
           variant="outlined"
-          size="xl"
+          size={keySize}
           disabled={disabled || full}
           onClick={() => {
             append(digit);
@@ -62,7 +68,7 @@ export const NumericKeypad = ({
       <Button
         type="button"
         variant="outlined"
-        size="xl"
+        size={keySize}
         disabled={disabled || value === ''}
         aria-label={backspaceLabel}
         onClick={() => {
@@ -74,7 +80,7 @@ export const NumericKeypad = ({
       <Button
         type="button"
         variant="outlined"
-        size="xl"
+        size={keySize}
         disabled={disabled || full}
         onClick={() => {
           append('0');
@@ -85,7 +91,7 @@ export const NumericKeypad = ({
       <Button
         type="button"
         variant="outlined"
-        size="xl"
+        size={keySize}
         disabled={disabled || value === ''}
         onClick={() => {
           onChange('');
