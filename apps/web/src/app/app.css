@@ -1225,68 +1225,10 @@ main > * + * {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-muted);
-
-/*
- * POP 상단 띠 — 화면 이름과 지금 선 단말을 한 줄에 둔다.
- *
- * 셸(사이드바·상단 바) 밖에 서는 화면이라 이 띠가 유일한 머리다. 1024×768 단말에서 세로는
- * 아껴야 하므로 이름과 단말을 좌우로 벌려 한 줄에 담는다.
- */
-.pop-header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--outline-variant);
-}
-
-/*
- * POP 2단 배치 — 좌 목록 / 우 상세.
- *
- * ⛔ **`.two-pane` 을 쓰지 않는다.** 그쪽 접힘 기준점은 1280px 이고(규범 5 — 우측 «폼»이
- * 2열을 유지할 하한), POP 은 화면이 **1024 고정**이라 항상 접힌다 — 스펙이 좌우로 못박은
- * 배치가 위아래로 쌓여 고른 뒤 스크롤해서 버튼을 찾게 된다.
- *
- * **자기 기준점 900px 의 근거**(규범 5 이탈 조건): 우 칸에는 폼이 아니라 상세 카드와 72픽셀
- * 이탈 버튼 둘이 선다 — 나란히 서는 데 약 560px 이면 되고, 좌 칸의 카드 한 줄(W/O 번호 ·
- * 품목)은 340px 에서 접히지 않는다. 1024 단말에서는 접히지 않고, 그보다 좁은 창에서만
- * 1단으로 내린다.
- */
-.pop-two-pane {
-  display: grid;
-  grid-template-columns: minmax(340px, 2fr) 3fr;
-  gap: var(--space-5);
-  padding: var(--space-4);
-  /*
-   * 두 칸이 화면 아래까지 이어진다 — 스펙 그림이 그렇고, 내용에 맞춰 줄어들면 목록이 한 줄일
-   * 때 페인이 위쪽에 조각처럼 남아 「덜 그려졌나」로 읽힌다. 상단 띠 높이를 뺀 나머지를 쓴다.
-   */
-  min-height: calc(100vh - 4rem);
-  align-items: stretch;
-}
-
-@media (max-width: 900px) {
-  .pop-two-pane {
-    grid-template-columns: 1fr;
-    min-height: 0;
-  }
-}
-
 /* 이탈 버튼 둘은 나란히 선다 — 스펙이 좌우로 둔 자리다. */
 .pop-handoff {
   display: flex;
   gap: var(--space-3);
-}
-
-/* 제품명 다음의 화면 이름이 남은 폭을 먹고, 단말 표시가 오른쪽 끝에 붙는다. */
-.pop-header > h1 {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-}
-
-.pop-brand {
-  white-space: nowrap;
 }
 
 /*

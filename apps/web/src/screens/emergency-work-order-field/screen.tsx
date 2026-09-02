@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { DetailPane } from './detail-pane';
 import { PopHeader } from './pop-header';
@@ -36,6 +36,8 @@ export const EmergencyWorkOrderFieldScreen = ({
 }: EmergencyWorkOrderFieldScreenProps) => {
   const t = messages.emergencyWorkOrderField;
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  /* 셸이 없는 화면이라 표제가 본문의 이름이 된다 — 이름 없는 랜드마크로 남기지 않는다. */
+  const titleId = useId();
 
   /*
    * ⛔ **「묻지 않았다」를 「없다」로 흘려보내지 않는다.** 조회를 여는 조건을 화면이 알아야
@@ -55,8 +57,9 @@ export const EmergencyWorkOrderFieldScreen = ({
     (workOrders ?? []).find((workOrder) => workOrder.workOrderId === selectedId) ?? null;
 
   return (
-    <>
+    <main className="pop-shell" aria-labelledby={titleId}>
       <PopHeader
+        titleId={titleId}
         terminalNo={terminalNo}
         /*
          * ⭐ 연결 여부는 «마지막 조회가 서버에 닿았는가»로 말한다 — 브라우저의 온라인
@@ -71,10 +74,9 @@ export const EmergencyWorkOrderFieldScreen = ({
        *    상세와 이탈 버튼이 접혀 내려가, 고른 뒤 «스크롤해서» 버튼을 찾게 된다.
        *
        * ⛔ 관리웹의 `.two-pane` 을 쓰지 않는다 — 접힘 기준점이 1280px 이라 **1024 단말에서는
-       *    언제나 접힌다.** POP 기준점(900px)과 그 근거는 `app.css` 의 `.pop-two-pane` 에 적었다
-       *    (배치 규범 5 이탈 조건).
+       *    언제나 접힌다.** POP 화면들이 함께 쓰는 `.pop-panes`(기준점 900px)를 그대로 쓴다.
        */}
-      <div className="pop-two-pane">
+      <div className="pop-panes">
         <WorkOrderList
           workOrders={workOrders}
           isAsked={isAsked}
@@ -90,6 +92,6 @@ export const EmergencyWorkOrderFieldScreen = ({
 
         <DetailPane workOrder={selected} uomLabel={(uomId) => uoms.labelOf(uomId)} />
       </div>
-    </>
+    </main>
   );
 };

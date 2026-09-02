@@ -131,11 +131,17 @@ describe('통제 우회 표시', () => {
   });
 });
 
-describe('POP 제품명', () => {
-  it('어느 프로그램의 화면인지 상단에 적는다', async () => {
+describe('POP 상단 띠', () => {
+  /*
+   * ⛔ 설계가 제품명을 그린 자리는 진입 화면(P-CO-01·M-CO-01)뿐이고 POP·모바일의 업무
+   *    화면은 모두 화면 이름으로 시작한다. 되풀이하면 64픽셀 띠에서 화면 이름이 밀린다.
+   */
+  it('업무 화면이라 제품명을 되풀이하지 않는다', async () => {
     renderScreen();
 
-    expect(await screen.findByText('OMF-MES POP')).toBeInTheDocument();
+    await screen.findByRole('heading', { name: t.title });
+
+    expect(screen.queryByText(/OMF-MES|오마이팩토리/)).not.toBeInTheDocument();
   });
 });
 

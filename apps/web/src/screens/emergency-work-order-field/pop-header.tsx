@@ -2,6 +2,8 @@ import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 export interface PopHeaderProps {
+  /** 표제와 본문을 잇는 id. 셸이 없는 화면이라 표제가 본문의 이름이 된다. */
+  titleId: string;
   /**
    * 이 단말의 번호. **셸이 아는 값**이라 화면은 받기만 한다 — 채우는 곳이 아직 없어 기본은
    * 「모른다」다.
@@ -17,7 +19,12 @@ export interface PopHeaderProps {
 }
 
 /**
- * POP 상단 띠 — 제품명 · 화면 이름 · **지금 어느 단말 앞이고 서버에 닿아 있는지**.
+ * POP 상단 띠 — **화면 이름 · 지금 어느 단말 앞이고 서버에 닿아 있는지**.
+ *
+ * ⛔ **제품명을 넣지 않는다.** 설계가 제품명을 그린 자리는 셸에 처음 들어설 때 보는 진입
+ * 화면(`P-CO-01`·`M-CO-01`)뿐이고, POP·모바일의 업무 화면은 모두 **화면 이름으로 시작**한다.
+ * 셸 안에 이미 들어와 있는 사람에게 매 화면 시스템 이름을 되풀이하면, 정작 64픽셀짜리
+ * 띠에서 「지금 무슨 화면인가」가 밀린다.
  *
  * ⭐ **단말과 연결을 상시 보인다.** 현장에는 같은 화면을 띄운 단말이 여럿이고, 어느 단말에서
  * 한 일인지가 기록의 귀속을 가른다. 연결이 끊긴 것을 모르면 목록이 비었을 때 「긴급 지시가
@@ -25,35 +32,28 @@ export interface PopHeaderProps {
  *
  * ⛔ **모르는 것을 빈칸으로 두지 않는다.** 비워 두면 단말이 하나뿐인 것처럼 읽힌다.
  */
-export const PopHeader = ({ terminalNo, isConnected }: PopHeaderProps) => {
+export const PopHeader = ({ titleId, terminalNo, isConnected }: PopHeaderProps) => {
   const t = messages.emergencyWorkOrderField;
 
   return (
     <header className="pop-header">
-      {/*
-       * ⭐ **어느 프로그램 앞인지부터 말한다.** 이 셸에는 사이드바도 주소창도 없어(설치형
-       * 키오스크) 화면 이름만 있으면 «무슨 시스템의» 화면인지 알 길이 없다. 관리웹이
-       * 상단 바에 이름을 두는 것과 같은 자리이며, 이름은 설치형 앱의 제품명과 맞춘다.
-       */}
-      <strong className="pop-brand">OMF-MES POP</strong>
+      <h1 id={titleId} className="pop-title">
+        {t.title}
+      </h1>
 
-      {/*
-       * ⛔ **화면 이름 옆에 배지를 붙이지 않는다.** 다른 POP 화면들의 상단 띠는 「화면 이름 ·
-       *    맥락 … 단말 · 연결」로만 서 있고 배지를 두지 않는다 — 띠는 «지금 어디에 서 있는가»를
-       *    말하는 자리이고, 긴급 여부는 목록의 줄과 상세의 제목이 이미 말한다. 같은 말을 세
-       *    곳에서 하면 정작 줄마다 다른 표식이 필요해질 때 눈에 띄지 않는다.
-       */}
-      <h1>{t.title}</h1>
-      <span className="field-note">
-        {terminalNo === undefined || terminalNo.trim() === ''
-          ? t.header.terminalUnknown
-          : t.header.terminalLabel(terminalNo)}
-      </span>
-      {isConnected !== undefined && (
-        <Chip status={isConnected ? 'success' : 'error'} size="sm">
-          {isConnected ? t.header.connected : t.header.disconnected}
-        </Chip>
-      )}
+      <p className="pop-context pop-context-right">
+        <span>
+          {terminalNo === undefined || terminalNo.trim() === ''
+            ? t.header.terminalUnknown
+            : t.header.terminalLabel(terminalNo)}
+        </span>
+
+        {isConnected !== undefined && (
+          <Chip variant="status" size="sm" status={isConnected ? 'success' : 'error'}>
+            {isConnected ? t.header.connected : t.header.disconnected}
+          </Chip>
+        )}
+      </p>
     </header>
   );
 };
