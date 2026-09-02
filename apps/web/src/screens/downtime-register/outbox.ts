@@ -180,8 +180,12 @@ export const useOutbox = (): Outbox => {
   const draining = useRef(false);
 
   /*
-   * 스스로 깨우는 타이머의 손잡이. **화면이 사라질 때 끊어야 한다** — 남겨 두면 이미 없는
-   * 화면의 상태를 건드리고, 시험에서는 다음 시험 위로 요청이 하나 더 날아간다.
+   * 스스로 깨우는 타이머의 손잡이. **화면이 사라질 때 끊는다.**
+   *
+   * ⚠ **이 정리는 감지기로 고정할 수 없다.** 끊지 않아도 늦게 발화한 타이머는 이미 없는
+   * 화면의 상태 갱신만 부르고 거기서 멈춘다 — 요청이 더 나가지도, 오류가 뜨지도 않아
+   * **관측되는 결과가 없다.** 재지 못하는 것을 재는 척하는 시험을 두는 대신, 왜 두었는지를
+   * 여기 적어 둔다. 값싼 정리이고, 이것이 없으면 화면 밖으로 새는 타이머가 남는다.
    */
   const retryTimer = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
 
@@ -244,6 +248,12 @@ export const useOutbox = (): Outbox => {
            * 실패한」 요청이 큐를 영원히 막는다.
            */
           if (!isRejected(error)) {
+            /*
+             * ⛔ **앞 예약을 덮어쓰지 않는다.** 손잡이를 하나만 들고 있으므로 확인 없이 덮으면
+             * 앞 타이머는 아무도 끊지 못한 채 남아, 화면이 사라진 뒤에 발화한다.
+             */
+            if (retryTimer.current !== null) globalThis.clearTimeout(retryTimer.current);
+
             retryTimer.current = globalThis.setTimeout(() => {
               retryTimer.current = null;
               setRetryTick((tick) => tick + 1);

@@ -126,14 +126,21 @@ describe('validateInterval', () => {
 
     expect(validateInterval(oneMinuteAhead, NOW).startedAt).toBe('future');
 
-    /* 틱 간격(30초) 안쪽은 방금 찍은 것일 수 있으므로 통과한다. */
-    const withinTick = draft({
-      startedAt: { date: '2026-08-11', time: '16:00' },
+    /*
+     * 틱 간격(30초) 안쪽은 방금 찍은 것일 수 있으므로 통과한다.
+     *
+     * ⚠ **기준 시각을 정각으로 두지 않는다.** 정각이면 `[지금]`이 넣는 값과 딱 맞아떨어져
+     * 등호로 통과하고, **여유를 0으로 좁혀도** 이 단언이 그대로 통과한다 — 그러면 여유가
+     * 사라진 것을 아무도 알아채지 못한다. 시계가 45초에 틱한 상태를 재현해 그 폭을 잰다.
+     */
+    const tickedAtFortyFive = new Date(2026, 7, 11, 16, 0, 45);
+    const justNow = draft({
+      startedAt: { date: '2026-08-11', time: '16:01' },
       endedAt: { date: '', time: '' },
       stillOngoing: true,
     });
 
-    expect(validateInterval(withinTick, NOW).startedAt).toBeNull();
+    expect(validateInterval(justNow, tickedAtFortyFive).startedAt).toBeNull();
   });
 });
 

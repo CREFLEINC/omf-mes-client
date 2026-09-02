@@ -3,7 +3,13 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toBreakdownView, toDowntimeView, type BreakdownView, type DowntimeView } from './types';
+import {
+  isOngoing,
+  toBreakdownView,
+  toDowntimeView,
+  type BreakdownView,
+  type DowntimeView,
+} from './types';
 
 /**
  * 이 화면의 읽기 넷.
@@ -54,7 +60,20 @@ const fetchOngoing = async (client: Client, equipmentId: number): Promise<Downti
     }),
   );
 
-  return data.items.map(toDowntimeView);
+  /*
+   * ⚠ **받은 것을 한 번 더 거른다.** 「끝나지 않은 것만」으로 물었지만 끝난 구간이 섞여 오면
+   * 화면이 **자기 목록과 모순되는 말**을 한다 — 위에서는 「진행 중」이라 하고 아래 오늘 목록에는
+   * 같은 건이 끝난 구간으로 선다. 그 상태에서 「지금 종료」는 이미 닫힌 구간을 닫으려 든다.
+   *
+   * 진행 중인지는 **끝 시각의 부재**로 판정할 수 있으므로 화면이 스스로 확인할 수 있다 —
+   * 확인할 수 있는 것을 믿고 넘기지 않는다.
+   *
+   * ⚠ 목 서버에서 이 모습을 봤지만 그것은 **목이 질의를 무시하고 예시를 돌려주기 때문**일 수
+   * 있다. 이 방어의 근거는 「서버가 틀린다」가 아니라 **「화면이 두 자리에서 같은 건을 다르게
+   * 말하면 안 된다」**이다 — 위에서는 진행 중이라 하고 아래 오늘 목록에서는 끝난 구간으로 서는
+   * 모습은 어느 쪽이 원인이든 화면의 잘못이다.
+   */
+  return data.items.map(toDowntimeView).filter(isOngoing);
 };
 
 const fetchToday = async (

@@ -220,6 +220,26 @@ describe('DowntimeRegisterScreen — 진행 중 구획', () => {
     expect(call?.url.searchParams.get('equipmentId')).toBe(String(EQUIPMENT_ID));
   });
 
+  it('끝난 구간이 섞여 오면 진행 중으로 그리지 않는다', async () => {
+    /*
+     * 「끝나지 않은 것만」으로 물어도 서버가 끝난 건을 섞어 줄 수 있다. 그대로 믿으면 화면이
+     * 위에서는 「진행 중」이라 하고 아래 오늘 목록에는 같은 건을 끝난 구간으로 세운다 —
+     * 실제 목 서버에서 그 모습을 봤다. 끝 시각의 부재는 화면이 스스로 확인할 수 있는 사실이다.
+     */
+    renderScreen([
+      downtimeListRoute({ ongoing: [downtime()] }),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+    ]);
+
+    await flush();
+
+    expect(screen.queryByRole('region', { name: t.ongoing.title })).toBeNull();
+    /* 진행 중이 없으므로 저장도 막히지 않는다. */
+    expect(screen.queryByText(t.ongoing.blocksNew)).toBeNull();
+  });
+
   it('진행 중이 없으면 그 구획이 아예 서지 않는다', async () => {
     renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
 
