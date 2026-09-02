@@ -39,6 +39,8 @@ describe('WorkOrderReleaseInputPane', () => {
 
   it('reports the exact body and ceiling slot preview from controlled text', async () => {
     const { props, user } = renderPane();
+    const pane = screen.getByRole('region', { name: t.pane });
+    expect(pane).toHaveClass('work-order-release-input-pane');
 
     await user.type(screen.getByRole('textbox', { name: t.fields.lotSize }), '1200');
     await user.type(screen.getByRole('textbox', { name: t.fields.handoverNote }), ' 교대 전달 ');
