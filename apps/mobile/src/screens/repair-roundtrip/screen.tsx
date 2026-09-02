@@ -70,8 +70,15 @@ export const RepairRoundtripScreen = () => {
   const [typing, setTyping] = useState(false);
   const [result, setResult] = useState<RepairResult | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  /* 한 번의 확정에 키 하나. 다른 것을 적기 시작하면 비운다. */
-  const idempotency = useIdempotencyKey();
+  /*
+   * 쓰기마다 키를 따로 둔다. 하나를 나눠 쓰면 실패한 투입의 키가 살아 있는 채로 반출에 실려,
+   * 서버가 투입의 응답을 되돌려 주고 화면은 반출을 기록했다고 말한다 - 왕복은 열린 채다.
+   *
+   * 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 키가 스스로 비워지게 한다. 수량과 결과도
+   * 대상에 넣는다 - 값이 달라졌는데 앞 키로 가면 서버가 앞 시도로 보고 흡수한다.
+   */
+  const dispatchKey = useIdempotencyKey(`${String(defectId)}:${qty}`);
+  const returnKey = useIdempotencyKey(`${String(executionId)}:${String(result)}`);
 
   const scanField = useScanField({
     onScan: (value) => {
@@ -81,7 +88,6 @@ export const RepairRoundtripScreen = () => {
       setQty('');
       setResult(null);
       setDone(null);
-      idempotency.reset();
     },
   });
 
@@ -137,7 +143,6 @@ export const RepairRoundtripScreen = () => {
   };
 
   const restart = () => {
-    idempotency.reset();
     setScanned(null);
     setDefectId(null);
     setExecutionId(null);
@@ -157,10 +162,10 @@ export const RepairRoundtripScreen = () => {
         defect,
         qty,
         workerNo: worker.workerNo,
-        idempotencyKey: idempotency.current(),
+        idempotencyKey: dispatchKey.current(),
       })
       .then(() => {
-        idempotency.reset();
+        dispatchKey.reset();
         setDone(t.dispatch.done);
       })
       .catch(() => null);
@@ -176,10 +181,10 @@ export const RepairRoundtripScreen = () => {
         repairExecutionId: execution.repairExecutionId,
         result,
         workerNo: worker.workerNo,
-        idempotencyKey: idempotency.current(),
+        idempotencyKey: returnKey.current(),
       })
       .then(() => {
-        idempotency.reset();
+        returnKey.reset();
         setDone(t.return.done);
       })
       .catch(() => null);
