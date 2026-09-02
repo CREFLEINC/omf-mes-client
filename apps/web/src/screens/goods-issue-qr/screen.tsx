@@ -11,6 +11,7 @@ import { LineListPane } from './line-list-pane';
 import { useItemNames, useLotNames, useReissueReasonOptions, useUomNames } from './lookups';
 import { useDocumentIssueWrite, usePrintFlow } from './mutations';
 import { hasPrintBridge } from './pop-print';
+import { printResult, type PrintResult } from './print-result';
 import { useDocumentIssueSummary, useGoodsIssue, useGoodsIssueLines, usePrinters } from './queries';
 import { TargetPane } from './target-pane';
 import { useGoodsIssueQrEntry } from './entry-context';
@@ -18,6 +19,7 @@ import {
   PLACEHOLDER_DOCUMENT_TYPE_CODE,
   PLACEHOLDER_LINE_TARGET_TYPE_CODE,
   type DocumentIssue,
+  type Printer,
 } from './types';
 
 const t = messages.goodsIssueQr;
@@ -123,7 +125,7 @@ export const GoodsIssueQrScreen = () => {
           <PrinterChip
             isLoading={printers.isPending}
             isError={printers.isError}
-            statusMessage={printers.data?.[0]?.statusMessage ?? null}
+            statusMessage={defaultPrinter(printers.data)?.statusMessage ?? null}
             hasPrinter={(printers.data?.length ?? 0) > 0}
           />
         </div>
@@ -160,20 +162,7 @@ export const GoodsIssueQrScreen = () => {
       )}
       <PrintResultBanner
         isPending={printFlow.isPending}
-        printedAll={
-          printFlow.data !== undefined &&
-          printFlow.data.reports.every((report) => report.attempt.kind === 'printed')
-        }
-        failed={
-          printFlow.data !== undefined &&
-          printFlow.data.reports.some((report) => report.attempt.kind === 'failed')
-        }
-        reportMissing={
-          printFlow.data !== undefined &&
-          printFlow.data.reports.some(
-            (report) => report.attempt.kind === 'failed' && !report.reported,
-          )
-        }
+        result={printResult(printFlow.data?.reports ?? [])}
       />
 
       <div className="pop-panes">
@@ -224,6 +213,16 @@ export const GoodsIssueQrScreen = () => {
   );
 };
 
+/**
+ * 머리에 세울 프린터 한 대. **계약이 표시한 기본 프린터를 고른다** — 목록의 첫 줄을 집으면
+ * 서버가 순서를 바꾸는 순간 다른 프린터의 상태를 보이게 된다. 기본 표시가 없으면 첫 줄이다.
+ */
+const defaultPrinter = (printers: Printer[] | undefined): Printer | null => {
+  if (printers === undefined || printers.length === 0) return null;
+
+  return printers.find((printer) => printer.isDefault) ?? printers[0] ?? null;
+};
+
 /** 서버가 이 단말의 발행을 막았는가. 게이트는 서버가 갖는다(통지 #535). */
 const isForbidden = (error: ApiError | null): boolean =>
   error !== null && error.kind === 'http' && error.status === 403;
@@ -263,17 +262,14 @@ const PrinterChip = ({ isLoading, isError, hasPrinter, statusMessage }: PrinterC
 
 interface PrintResultBannerProps {
   isPending: boolean;
-  printedAll: boolean;
-  failed: boolean;
-  reportMissing: boolean;
+  result: PrintResult;
 }
 
-const PrintResultBanner = ({
-  isPending,
-  printedAll,
-  failed,
-  reportMissing,
-}: PrintResultBannerProps) => {
+/**
+ * 인쇄 걸음의 결과. **다섯 갈래를 다섯 문장으로 말한다** — 접으면 사용자가 다음에 무엇을
+ * 해야 하는지가 달라지는데 화면은 같은 말을 하게 된다.
+ */
+const PrintResultBanner = ({ isPending, result }: PrintResultBannerProps) => {
   if (isPending) {
     return (
       <div className="banner-slot">
@@ -282,23 +278,32 @@ const PrintResultBanner = ({
     );
   }
 
-  if (failed) {
-    return (
-      <div className="banner-slot">
-        <AlertBanner variant="warning">
-          {reportMissing ? t.result.reportFailed : t.result.printFailed}
-        </AlertBanner>
-      </div>
-    );
+  switch (result.kind) {
+    case 'none':
+      return null;
+    case 'printed':
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="success">{t.result.printed}</AlertBanner>
+        </div>
+      );
+    case 'printedUnreported':
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.result.printedUnreported}</AlertBanner>
+        </div>
+      );
+    case 'failed':
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.result.printFailed}</AlertBanner>
+        </div>
+      );
+    case 'failedUnreported':
+      return (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.result.reportFailed}</AlertBanner>
+        </div>
+      );
   }
-
-  if (printedAll) {
-    return (
-      <div className="banner-slot">
-        <AlertBanner variant="success">{t.result.printed}</AlertBanner>
-      </div>
-    );
-  }
-
-  return null;
 };

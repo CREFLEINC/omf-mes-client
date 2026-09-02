@@ -41,8 +41,6 @@ export const goodsIssueQr = {
     statusNotIssued: '미발행',
     statusIssued: (count: number) => `발행됨 ${String(count)}회`,
     statusUnknown: '발행 현황 확인 불가',
-    /** 여러 장이 도는 상태라는 주의 표시. */
-    statusIssuedWarning: '라벨이 여러 장 도는 상태입니다.',
   },
 
   target: {
@@ -60,7 +58,6 @@ export const goodsIssueQr = {
     documentTypePending: '출력물 종류 코드는 확정 전이라 임시 값으로 발행합니다.',
     previewLabel: '미리보기',
     previewEmpty: '발행하면 인쇄될 모습을 여기에 보여 줍니다.',
-    previewLoading: '미리보기를 불러오는 중입니다.',
     previewFailed: '미리보기를 불러오지 못했습니다. 인쇄는 그대로 진행할 수 있습니다.',
     previewAlt: '출고 QR 미리보기',
   },
@@ -78,7 +75,6 @@ export const goodsIssueQr = {
 
   action: {
     issue: '발행·인쇄',
-    issuing: '발행하는 중입니다',
     /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
     disabledNoSelection: '발행·인쇄: 발행할 라인을 먼저 고르세요.',
     disabledNoReason: '발행·인쇄: 재발행 사유를 고르세요.',
@@ -91,13 +87,15 @@ export const goodsIssueQr = {
     printing: '프린터로 보내는 중입니다.',
     printed: '인쇄를 마쳤습니다.',
     printFailed: '인쇄에 실패했습니다. 발행 기록은 남아 있으니 재발행으로 다시 찍으세요.',
-    reportFailed: '인쇄 결과를 보고하지 못했습니다. 발행 기록은 남아 있습니다.',
+    reportFailed:
+      '인쇄에 실패했고 그 결과를 서버에 남기지도 못했습니다. 발행 기록은 남아 있습니다.',
+    /** 종이는 나왔는데 서버가 그 사실을 모른다 — 다음 회차가 「아직 안 찍었나」로 읽는다. */
+    printedUnreported:
+      '인쇄는 마쳤지만 그 결과를 서버에 남기지 못했습니다. 이미 찍힌 라벨을 확인하고 필요할 때만 다시 찍으세요.',
   },
 
   errors: {
     forbidden: '이 단말에서는 발행할 수 없습니다. 다른 단말에서 다시 시도하세요.',
-    reasonRequired: '재발행 사유가 필요합니다. 사유를 고른 뒤 다시 발행하세요.',
-    issueFailed: '발행하지 못했습니다. 잠시 뒤 다시 시도하세요.',
   },
 
   /** 「전량 출고에도 예외 없이 항상 발행한다」는 확정 사항을 사용자가 물었을 때의 근거. */
