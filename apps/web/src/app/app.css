@@ -1352,3 +1352,136 @@ main > * + * {
     min-height: 0;
   }
 }
+
+/*
+ * P-05-02 비가동 실적 입력 — POP 화면의 네 구획.
+ *
+ * 세로 예산이 빠듯한 단말이라(1024×768) 구획 사이를 넓히지 않는다. 구획 하나가 커지면
+ * 아래 것이 접힌 자리로 내려가고, 내려간 것은 없는 것과 같다.
+ */
+.downtime-ongoing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.downtime-ongoing-line {
+  margin: 0;
+  font: var(--type-title-md);
+}
+
+.downtime-ongoing-reason {
+  margin: var(--space-1) 0 0;
+  color: var(--on-surface-muted);
+}
+
+.downtime-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/*
+ * 시각 두 칸과 [지금] 버튼이 한 줄에 선다. 버튼에는 라벨 층이 없어 그만큼 내려 컨트롤
+ * 상자의 윗선에 맞춘다 — 스캔 화면의 같은 규범이다.
+ */
+.downtime-time-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.downtime-time-row > button,
+.downtime-time-row > label {
+  margin-top: var(--field-label-layer);
+}
+
+.downtime-field-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.downtime-field-label {
+  font: var(--type-body-lg);
+  color: var(--on-surface-muted);
+}
+
+.downtime-field-value {
+  margin: 0;
+  color: var(--on-surface-muted);
+}
+
+/* 임시 목록이라는 사실은 사유 칸 바로 아래 붙는다 — 떨어뜨리면 무엇이 임시인지 흐려진다. */
+.downtime-placeholder-notice {
+  margin: 0;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 길이 표시. **글자가 없을 때도 자리를 지킨다** — 값이 들고 날 때마다 아래 구획이 밀리면
+ * 터치 화면에서는 누르려던 것이 손가락 아래에서 움직인다.
+ */
+.downtime-duration {
+  margin: 0;
+  min-height: 1.5rem;
+  font: var(--type-title-sm);
+}
+
+.downtime-today-summary {
+  margin: 0;
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+
+.downtime-today-basis {
+  color: var(--on-surface-muted);
+}
+
+/* 범위를 말하는 줄. 합계 바로 아래 붙어야 그 합계의 범위로 읽힌다. */
+.downtime-today-scope {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--on-surface-muted);
+}
+
+.downtime-today-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-1);
+  max-height: 128px;
+  overflow-y: auto;
+}
+
+.downtime-today-row {
+  display: grid;
+  grid-template-columns: 8rem 6rem 1fr;
+  gap: var(--space-3);
+}
+
+.downtime-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* 막힌 사유는 버튼 왼쪽에 상시 선다 — 눌러 봐야 아는 잠금은 잠금이 아니다. */
+.downtime-block-reason {
+  margin: 0;
+  margin-inline-end: auto;
+  color: var(--semantic-error);
+}
+
+/* 칸 옆이 아니라 구획 안에 서는 오류 문장 — 어느 칸의 것인지는 바로 위 줄이 말한다. */
+.downtime-field-error {
+  margin: 0;
+  color: var(--semantic-error);
+}

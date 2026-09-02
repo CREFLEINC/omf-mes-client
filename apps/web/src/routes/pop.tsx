@@ -1,5 +1,6 @@
 import type { RouteObject } from 'react-router';
 
+import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
@@ -78,4 +79,12 @@ export const popRoutes: RouteObject[] = [
    * 쪽에만 `?workOrderId=` 를 싣는다.
    */
   { path: '/pop/emergency-work-orders', element: <EmergencyWorkOrderFieldScreen /> },
+  /*
+   * P-05-02 — 비가동은 **설비에 붙지 작업에 붙지 않는다.** 그래서 진입 컨텍스트가 앞의
+   * 것들과 다르다: 작업지시가 아니라 설비를 주소로 받는다(`?equipmentId=`).
+   *
+   * ⚠ POP 단말은 설비에 붙어 있고 그 붙임을 셸이 알려 주는 자리가 아직 없다 — 그 자리가
+   * 서면 `screen-params.ts` 하나가 바뀐다.
+   */
+  { path: '/pop/downtime', element: <DowntimeRegisterScreen /> },
 ];
