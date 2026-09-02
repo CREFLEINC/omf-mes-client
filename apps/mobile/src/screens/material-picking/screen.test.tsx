@@ -663,10 +663,66 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(screen.getByRole('button', { name: '다음 지시' }));
     await chooseOrder(user);
     await chooseIssueType(user);
+
+    expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
+    expect(sent.issues).toHaveLength(1);
+  });
+
+  /*
+   * 셸이 배경으로 담긴 출고를 보내면 큐가 빈다. 보냈는지로 세면 그 순간 담긴 출고를 세는
+   * 방어와 함께 꺼져, 다시 열었을 때 같은 수량이 한 번 더 나간다.
+   */
+  it('오프라인에서 담아 둔 출고가 셸을 통해 나간 뒤에도 다시 나가지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ issue: 'offline', lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+    await chooseIssueType(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 담아 두었습니다');
+
+    sent.set({ issue: 'ok' });
+    window.dispatchEvent(new Event('online'));
+
+    await waitFor(() => {
+      expect(sent.issues).toHaveLength(2);
+    });
+
+    await user.click(screen.getByRole('button', { name: '다음 지시' }));
+    await chooseOrder(user);
+    await chooseIssueType(user);
+
+    expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
+  });
+
+  /* 되돌아온 것은 나간 적이 없다. 빼 두면 다시 내보낼 길이 사라진다. */
+  it('담아 둔 출고가 거부되면 다시 확정할 때 전액이 실린다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ issue: 'offline', lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+    await chooseIssueType(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 담아 두었습니다');
+
+    sent.set({ issue: 'rejected' });
+    window.dispatchEvent(new Event('online'));
+
+    await waitFor(() => {
+      expect(sent.issues).toHaveLength(2);
+    });
+
+    await user.click(screen.getByRole('button', { name: '다음 지시' }));
+    await chooseOrder(user);
+    await chooseIssueType(user);
+
+    sent.set({ issue: 'ok' });
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
     await screen.findByText('출고를 확정했습니다');
 
-    expect(sent.issues).toHaveLength(1);
+    const last = sent.issues[sent.issues.length - 1];
+
+    expect(await last?.json()).toMatchObject({ lines: [{ issueQty: 120 }] });
   });
 
   it('보낼 출고 유형이 없으면 그 사실을 말한다', async () => {

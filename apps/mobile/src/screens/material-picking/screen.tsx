@@ -18,6 +18,7 @@ import {
   isOutOfSequence,
   isOfOrder,
   issuedLinesOf,
+  issuableQtyOf,
   isScannedLotOf,
   lineProblemOf,
   pickedQtyOf,
@@ -28,6 +29,7 @@ import {
   remainingQtyOf,
   toIssueDraft,
   toPickDraft,
+  type GoodsIssueLineUpsert,
   type PickingLine,
 } from './picking';
 import { pickingKeys, useAssignedPickingOrders, usePickingOrder } from './queries';
@@ -75,11 +77,13 @@ export const MaterialPickingScreen = () => {
    */
   const [busy, setBusy] = useState(false);
   /*
-   * 이 단말이 이번에 내보낸 양. 서버는 출고 뒤에도 집은 양을 그대로 내려주고, 라인에 이미
-   * 내보낸 양을 담은 자리가 없다 - 그것 없이는 같은 지시를 다시 열었을 때 같은 수량이 한 번
-   * 더 나간다. 앱을 다시 띄우면 사라지므로 이 방어는 반쪽이며, 나머지는 설계에 물어 두었다.
+   * 이 단말이 이번에 담은 출고. 담는 순간 적고, 되돌아온 것만 빼고 센다.
+   *
+   * 보냈는지로 가르면 셸이 배경으로 보낸 것을 아무도 세지 않아, 큐가 비는 순간 담긴 출고를
+   * 세는 방어와 함께 꺼진다 - 같은 수량이 한 번 더 나간다. 담긴 것도 나갈 것이므로 함께 세고,
+   * 되돌아온 것만 되돌린다. 앱을 다시 띄우면 사라지는 반쪽 방어이며 나머지는 설계에 물었다.
    */
-  const issuedHere = useRef(new Map<number, number>());
+  const issuedHere = useRef<{ idempotencyKey: string; lines: GoodsIssueLineUpsert[] }[]>([]);
 
   const workerId = useWorkerId(worker?.workerNo ?? null);
   const orders = useAssignedPickingOrders(workerId.data ?? null);
@@ -97,6 +101,23 @@ export const MaterialPickingScreen = () => {
   const done = lines.filter((each) => lineProblemOf(each, queued) === 'done').length;
   /* 배경 보내기가 거부당하면 큐에서 빠진다. 화면이 읽지 않으면 사유가 어디에도 보이지 않는다. */
   const returned = rejected.filter((record) => isOfOrder(record.entry, orderId ?? -1));
+
+  const alreadyIssued = new Map<number, number>();
+
+  for (const record of issuedHere.current) {
+    /* 되돌아온 것은 나간 적이 없다. 빼 두면 다시 내보낼 길이 사라진다. */
+    if (rejected.some((each) => each.entry.idempotencyKey === record.idempotencyKey)) {
+      continue;
+    }
+
+    for (const each of record.lines) {
+      const lineId = each.pickingLineId;
+
+      if (lineId !== null && lineId !== undefined) {
+        alreadyIssued.set(lineId, (alreadyIssued.get(lineId) ?? 0) + each.issueQty);
+      }
+    }
+  }
 
   /*
    * 셸이 스스로 큐를 비운다. 그때 다시 조회하지 않으면 담긴 것이 셈에서 빠진 자리에 서버가
@@ -206,16 +227,14 @@ export const MaterialPickingScreen = () => {
         batchIdOf(order.pickingOrderId),
         new Date(),
         worker.workerNo,
-        issuedHere.current,
+        alreadyIssued,
       );
 
-      const sending = (draft.body as { lines: { pickingLineId: number; issueQty: number }[] })
-        .lines;
-
-      if (sending.length === 0) {
-        setOutcome('sent');
-        return;
-      }
+      /* 담는 순간 적는다. 담긴 것도 서버로 향하므로 보냈는지로 가르지 않는다. */
+      issuedHere.current = [
+        ...issuedHere.current,
+        { idempotencyKey: draft.idempotencyKey, lines: issuedLinesOf(draft) },
+      ];
 
       await enqueue(draft);
 
@@ -231,23 +250,7 @@ export const MaterialPickingScreen = () => {
         return;
       }
 
-      const queuedStill = result === null || result.remaining.some(mine);
-
-      /*
-       * 서버가 받은 것만 센다. 담기기만 한 것을 세면, 그 건이 나중에 거부됐을 때 깎을 자리가
-       * 없어 다음 확정이 보낼 것을 잃는다 - 담긴 동안에는 담긴 출고를 세는 쪽이 막는다.
-       */
-      if (!queuedStill) {
-        for (const each of issuedLinesOf(draft)) {
-          const lineId = each.pickingLineId;
-
-          if (lineId !== null && lineId !== undefined) {
-            issuedHere.current.set(lineId, (issuedHere.current.get(lineId) ?? 0) + each.issueQty);
-          }
-        }
-      }
-
-      setOutcome(queuedStill ? 'queued' : 'sent');
+      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
     } finally {
       setBusy(false);
     }
@@ -503,6 +506,10 @@ export const MaterialPickingScreen = () => {
         <p className="picking-out__note">{t.issueTypeNote}</p>
         {worker === null ? <p className="picking-out__note">{t.noWorker}</p> : null}
         {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
+        {alreadyIssued.size > 0 &&
+        !lines.some((each) => issuableQtyOf(each, queued, alreadyIssued) > 0) ? (
+          <AlertBanner variant="info" title={t.allIssued} />
+        ) : null}
         <Button
           variant="filled"
           size="2xl"
@@ -510,7 +517,7 @@ export const MaterialPickingScreen = () => {
           disabled={
             busy ||
             !loaded ||
-            !canConfirmIssue(lines, worker !== null, queued, queuedIssues) ||
+            !canConfirmIssue(lines, worker !== null, queued, queuedIssues, alreadyIssued) ||
             issueTypeCode === null
           }
           onClick={() => void confirm()}

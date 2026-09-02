@@ -193,6 +193,18 @@ export const canPick = (
 };
 
 /**
+ * 아직 내보내지 않은 양. 이것이 0 이면 실을 것이 없다.
+ *
+ * 서버가 출고 뒤에도 집은 양을 그대로 내려주고 라인에 이미 내보낸 양을 담은 자리가 없어,
+ * 이 단말이 내보낸 것을 화면이 기억해 빼지 않으면 같은 수량이 한 번 더 나간다.
+ */
+export const issuableQtyOf = (
+  line: PickingLine,
+  queued: QueuedPick[] = [],
+  alreadyIssued: ReadonlyMap<number, number> = new Map(),
+): number => pickedQtyOf(line, queued) - (alreadyIssued.get(line.pickingLineId) ?? 0);
+
+/**
  * 한 건이라도 집었으면 출고를 확정할 수 있다. 모자란 만큼은 부분 출고로 남는다.
  *
  * 담아 둔 것도 집은 것으로 센다. 서버가 아는 것만 세면 오프라인에서 확정이 영영 열리지
@@ -206,8 +218,11 @@ export const canConfirmIssue = (
   hasWorker: boolean,
   queued: QueuedPick[] = [],
   queuedIssues = 0,
+  alreadyIssued: ReadonlyMap<number, number> = new Map(),
 ): boolean =>
-  hasWorker && queuedIssues === 0 && lines.some((line) => pickedQtyOf(line, queued) > 0);
+  hasWorker &&
+  queuedIssues === 0 &&
+  lines.some((line) => issuableQtyOf(line, queued, alreadyIssued) > 0);
 
 const pad = (value: number): string => String(value).padStart(2, '0');
 
@@ -273,10 +288,7 @@ export const toIssueDraft = (
    * 지시를 다시 열었을 때 같은 수량이 한 번 더 나간다 - 즉시 전기라 되돌릴 수 없다.
    */
   const issued: GoodsIssueLineUpsert[] = lines
-    .map((line) => ({
-      line,
-      qty: pickedQtyOf(line, queued) - (alreadyIssued.get(line.pickingLineId) ?? 0),
-    }))
+    .map((line) => ({ line, qty: issuableQtyOf(line, queued, alreadyIssued) }))
     .filter((each) => each.qty > 0)
     .map(({ line, qty }) => ({
       pickingLineId: line.pickingLineId,
