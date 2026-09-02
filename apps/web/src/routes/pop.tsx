@@ -6,6 +6,7 @@ import { IdentificationTagIssueScreen } from '../screens/identification-tag-issu
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
+import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 
@@ -125,4 +126,5 @@ export const popRoutes: RouteObject[] = [
    * 「단말이 확인되지 않았습니다」로 발행이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
    */
   { path: '/pop/tag-issue', element: <IdentificationTagIssueScreen /> },
+  { path: '/pop/rework-results', element: <ReworkResultRegisterScreen /> },
 ];
