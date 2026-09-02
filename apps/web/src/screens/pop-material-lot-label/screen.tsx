@@ -184,7 +184,13 @@ export const PopMaterialLotLabelScreen = () => {
               setReissueOpen(true);
             }}
           />
-          <IssueOutcome result={issue.result} onClose={issue.reset} />
+          {/*
+           * ⛔ **결과는 그 결과를 만든 줄 밑에만 선다.** 끝난 뒤 다른 자재를 고르면 「인쇄
+           * 했습니다」가 아직 찍지 않은 자재 밑에 서게 되고, 사람은 그것을 자기 것으로 읽는다.
+           */}
+          {issue.result.lineId === selectedRow?.inboundReceiptLineId ? (
+            <IssueOutcome result={issue.result} onClose={issue.reset} />
+          ) : null}
         </section>
       </div>
 

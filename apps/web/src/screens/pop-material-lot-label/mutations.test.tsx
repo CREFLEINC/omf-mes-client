@@ -1,7 +1,7 @@
-import { act } from '@testing-library/react';
+import { act, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { renderHookWithProviders } from '../../test/api-harness';
+import { jsonResponse, renderHookWithProviders } from '../../test/api-harness';
 import { useLabelIssue } from './mutations';
 import type { TargetRow } from './types';
 
@@ -41,5 +41,40 @@ describe('useLabelIssue — 사번을 모를 때', () => {
 
     expect(calls).toBe(0);
     expect(result.current.isRunning).toBe(false);
+  });
+});
+
+describe('useLabelIssue — 두 번 눌렸을 때', () => {
+  /**
+   * 장갑 낀 손은 한 번 누를 것을 두 번 누른다. **단추의 비활성만으로는 못 막는다** —
+   * 그 값은 다음 렌더에서야 반영되므로, 두 번째 누름이 «같은 렌더에서» 들어온다.
+   *
+   * ⛔ 등록이 두 번 나가면 같은 자재에 LOT 이 둘 생기고, 그것을 되돌릴 화면이 없다.
+   */
+  it('⛔ 같은 렌더에서 두 번 들어와도 등록은 한 번만 나간다', async () => {
+    const posts: string[] = [];
+
+    const { result } = renderHookWithProviders(() => useLabelIssue({ workerNo: '900028' }), {
+      fetch: async (request: Request) => {
+        const { pathname } = new URL(request.url);
+
+        if (request.method === 'POST') posts.push(pathname);
+
+        // 등록 뒤는 무엇이 오든 상관없다 — 여기서 보는 것은 「몇 번 나갔는가」뿐이다.
+        return jsonResponse({ lot: { lotId: 9001 } }, { status: 201 });
+      },
+    });
+
+    // 렌더 사이를 두지 않고 잇달아 부른다 — 두 번 누름과 같은 모양이다.
+    act(() => {
+      result.current.run({ row, printerName: null, reissueReasonCode: null });
+      result.current.run({ row, printerName: null, reissueReasonCode: null });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isRunning).toBe(false);
+    });
+
+    expect(posts.filter((path) => path === '/trace/lots')).toHaveLength(1);
   });
 });

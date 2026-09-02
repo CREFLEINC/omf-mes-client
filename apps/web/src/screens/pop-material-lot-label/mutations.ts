@@ -1,6 +1,6 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, toApiError } from '../../patterns/request';
@@ -33,6 +33,12 @@ export type IssueStep = 'register' | 'issue' | 'render' | 'print' | 'report';
  * ⭐ **성공만 결과가 아니다.** 중간에 멈춘 것도 결과이고, 그 자리마다 사용자가 할 일이 다르다.
  */
 export interface IssueRunResult {
+  /**
+   * ⛔ **이 결과가 «어느 줄의 것인가».** 결과를 줄과 묶지 않으면, 끝난 뒤 다른 자재를 고른
+   * 사람이 **남의 결과를 자기 것으로 읽는다** — 「인쇄했습니다」가 아직 찍지 않은 자재 밑에
+   * 선다. 쉬는 중이면 `null`.
+   */
+  lineId: number | null;
   /** 끝까지 갔는가. 인쇄까지 성공하고 보고를 마쳤을 때만 참이다. */
   isPrinted: boolean;
   /** 멈춘 걸음. 끝까지 갔으면 `null`. */
@@ -49,6 +55,7 @@ export interface IssueRunResult {
 }
 
 const IDLE: IssueRunResult = {
+  lineId: null,
   isPrinted: false,
   failedAt: null,
   hasCreatedLot: false,
@@ -72,11 +79,12 @@ const createLot = async (
   row: TargetRow,
   occurredAt: string,
   workerNo: string,
+  idempotencyKey: string,
 ): Promise<number> => {
   const data = await runRequest(() =>
     client.POST('/trace/lots', {
       params: {
-        header: { 'Idempotency-Key': crypto.randomUUID(), 'X-Worker-No': workerNo },
+        header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
       },
       body: toLotCreateBody(row, occurredAt),
     }),
@@ -178,6 +186,20 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
   const queryClient = useQueryClient();
   const [step, setStep] = useState<IssueStep | null>(null);
   const [result, setResult] = useState<IssueRunResult>(IDLE);
+  /*
+   * ⛔ **한 번에 하나만 나간다.** 단추의 비활성만으로는 막지 못한다 — 그 값은 다음 렌더에서야
+   * 반영되므로, 장갑 낀 손이 빠르게 두 번 누르면 **같은 렌더에서 두 번** 들어온다. 그러면
+   * 등록이 두 번 나가 같은 자재에 LOT 이 둘 생기고, 그것을 되돌릴 화면이 없다.
+   */
+  const isRunning = useRef(false);
+  /*
+   * 등록의 멱등 키 — **적용될 때까지 줄마다 같은 값을 쓴다.**
+   *
+   * 매번 새 키를 만들면 서버가 두 요청을 «다른 쓰기»로 보아, 통신이 끊긴 뒤 다시 시도한
+   * 등록이 LOT 을 하나 더 만든다. 되돌릴 수 없는 쓰기라 키를 붙잡아 둔다
+   * (`patterns/master` 의 `until-applied` 와 같은 규율).
+   */
+  const lotKeys = useRef(new Map<number, string>());
 
   const reset = useCallback(() => {
     setStep(null);
@@ -193,6 +215,9 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
        * 있지만 판정을 나가는 자리에 두어, 다른 경로가 생겨도 빈 사번이 새지 않게 한다.
        */
       if (workerNo === null) return;
+      if (isRunning.current) return;
+
+      isRunning.current = true;
 
       const execute = async (): Promise<void> => {
         let hasCreatedLot = false;
@@ -218,8 +243,14 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           let lotId = row.lotId;
 
           if (lotId === null) {
-            lotId = await createLot(client, row, new Date().toISOString(), workerNo);
+            const keys = lotKeys.current;
+            const key = keys.get(row.inboundReceiptLineId) ?? crypto.randomUUID();
+            keys.set(row.inboundReceiptLineId, key);
+
+            lotId = await createLot(client, row, new Date().toISOString(), workerNo, key);
             hasCreatedLot = true;
+            // 적용됐다 — 이 줄의 키는 제 몫을 다했다. 남겨 두면 다음 등록이 옛 키로 나간다.
+            keys.delete(row.inboundReceiptLineId);
             // 라인에 LOT 이 붙었다 — 목록을 다시 읽어야 다음 조작이 옳은 단추를 낸다.
             await queryClient.invalidateQueries({
               queryKey: receiptKeys.lines(row.inboundReceiptId),
@@ -258,6 +289,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           await reportPrint(client, issue.documentIssueLogId, failureReason, workerNo);
 
           setResult({
+            lineId: row.inboundReceiptLineId,
             isPrinted: failureReason === null,
             failedAt: failureReason === null ? null : 'print',
             hasCreatedLot,
@@ -266,6 +298,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           });
         } catch (cause) {
           setResult({
+            lineId: row.inboundReceiptLineId,
             isPrinted: false,
             failedAt: at,
             hasCreatedLot,
@@ -273,6 +306,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
             error: toApiError(cause),
           });
         } finally {
+          isRunning.current = false;
           setStep(null);
           // 목록의 라벨 발행 여부가 바뀌었을 수 있다 — 끝나면 언제나 다시 읽는다.
           await queryClient.invalidateQueries({ queryKey: receiptKeys.lists });

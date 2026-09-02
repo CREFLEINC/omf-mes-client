@@ -19,18 +19,18 @@ const LOT_ID = 9001;
 const ISSUE_LOG_ID = 44001;
 const LOT_NO = '0009999990000005002608270000110001';
 
-const RECEIPT = {
-  inboundReceiptId: 8101,
-  inboundReceiptNo: 'SYN-IB-0001',
+const receiptOf = (n: number) => ({
+  inboundReceiptId: 8100 + n,
+  inboundReceiptNo: `SYN-IB-${String(n).padStart(4, '0')}`,
   supplierId: 8201,
   plantId: 8301,
   receiptDatetime: '2026-08-27T09:12:30Z',
   statusCode: 'SYN_STATUS',
-};
+});
 
-const lineOf = (lotId: number | null) => ({
-  inboundReceiptLineId: 8501,
-  inboundReceiptId: 8101,
+const lineOf = (lotId: number | null, receiptNo = 1) => ({
+  inboundReceiptLineId: 8500 + receiptNo,
+  inboundReceiptId: 8100 + receiptNo,
   lineNo: 1,
   itemId: 8601,
   receivedQty: 500,
@@ -62,6 +62,8 @@ interface Sent {
 }
 
 interface FlowOptions {
+  /** 목록에 세울 입하 건 수. 결과가 다른 줄로 새는지 보려면 둘 이상이 필요하다. */
+  receiptCount?: number;
   /** 이 라인으로 이미 만들어진 LOT. `null` 이면 아직 등록 전이다. */
   lotId?: number | null;
   identity?: Partial<PopIdentity>;
@@ -75,6 +77,9 @@ interface FlowOptions {
 const renderFlow = (options: FlowOptions = {}) => {
   const sent: Sent[] = [];
   const lotId = options.lotId ?? null;
+  const receipts = Array.from({ length: options.receiptCount ?? 1 }, (_, index) =>
+    receiptOf(index + 1),
+  );
 
   const record = async (request: Request): Promise<void> => {
     sent.push({
@@ -101,13 +106,23 @@ const renderFlow = (options: FlowOptions = {}) => {
       fetch: createStubFetch([
         {
           match: (request) => new URL(request.url).pathname === '/logistics/inbound-receipts',
-          respond: () => jsonResponse({ items: [RECEIPT], page: { page: 1, size: 20, total: 1 } }),
+          respond: () =>
+            jsonResponse({ items: receipts, page: { page: 1, size: 20, total: receipts.length } }),
         },
         {
           match: (request) =>
             /\/logistics\/inbound-receipts\/\d+\/lines$/u.test(new URL(request.url).pathname),
-          respond: () =>
-            jsonResponse({ items: [lineOf(lotId)], page: { page: 1, size: 20, total: 1 } }),
+          respond: (request) => {
+            const matched = /\/inbound-receipts\/(\d+)\/lines$/u.exec(
+              new URL(request.url).pathname,
+            );
+            const receiptNo = Number(matched?.[1] ?? 8101) - 8100;
+
+            return jsonResponse({
+              items: [lineOf(receiptNo === 1 ? lotId : null, receiptNo)],
+              page: { page: 1, size: 20, total: 1 },
+            });
+          },
         },
         {
           match: (request) => new URL(request.url).pathname === '/app/printers',
@@ -354,6 +369,27 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     });
 
     expect(await screen.findByText(/라벨이 나오지 않았습니다/u)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **결과는 그 결과를 만든 줄의 것이다.** 끝난 뒤 다른 자재를 고르면 「인쇄했습니다」가
+   * 아직 찍지 않은 자재 밑에 서고, 사람은 그것을 자기 것으로 읽는다.
+   */
+  it('⛔ 끝난 뒤 다른 자재를 고르면 앞 자재의 결과가 따라오지 않는다', async () => {
+    const { user } = renderFlow({
+      receiptCount: 2,
+      shellPrint: vi.fn(async () => 'C:/syn/label.png'),
+    });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    expect(await screen.findByText(/라벨이 나오지 않았습니다|인쇄했습니다/u)).toBeInTheDocument();
+
+    await user.click(
+      await screen.findByRole('button', { name: 'SYN-IB-0002 SYN-ITEM-01 · 합성 품목 가 선택' }),
+    );
+
+    expect(screen.queryByText(/라벨이 나오지 않았습니다|인쇄했습니다/u)).not.toBeInTheDocument();
   });
 
   it('⛔ LOT 만 생기고 발행 기록이 실패하면 「다시 등록하지 말라」고 함께 말한다', async () => {
