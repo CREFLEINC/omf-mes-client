@@ -184,6 +184,20 @@ export const createSeed = (now = new Date()) => {
       ['INSPECTION_PENDING', '검사 대기'],
       ['SCRAPPED', '폐기'],
     ],
+    ISSUE_TYPE: [
+      ['PRODUCTION', '생산 투입'],
+      ['RETURN', '공급사 반품'],
+      ['DISPOSAL', '폐기'],
+      ['TRANSFER', '이고 출고'],
+    ],
+    LOT_HOLD_REASON: [
+      ['INSPECTION_PENDING', '수입검사 대기'],
+      ['SUSPECT', '의심 자재'],
+    ],
+    PICKING_TYPE: [
+      ['PRODUCTION', '생산 투입'],
+      ['SHIPMENT', '출하'],
+    ],
     RECEIPT_TYPE: [
       ['PURCHASE', '구매 입고'],
       ['PRODUCTION', '제품 입고'],
@@ -546,6 +560,119 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /*
+   * 피킹 지시. 라인마다 사람이 읽을 값을 함께 담는다 - 계약이 그렇게 내려주기로 했고,
+   * 모바일은 오프라인에서 마스터를 갱신할 수 없어 되짚어 부르지 못한다.
+   */
+  const pickingOrders = [
+    {
+      pickingOrderId: 16001,
+      pickingOrderNo: 'PK-2026-000077',
+      pickingTypeCode: 'PRODUCTION',
+      sourceDocumentTypeCode: 'MATERIAL_ISSUE_REQUEST',
+      sourceDocumentId: 16101,
+      warehouseId: 1001,
+      statusCode: 'ASSIGNED',
+      assignedWorkerId: 1001,
+    },
+  ];
+
+  const pickingLines = [
+    {
+      pickingLineId: 16201,
+      pickingOrderId: 16001,
+      lineNo: 1,
+      itemId: 2002,
+      lotId: 8001,
+      locationId: 3001,
+      plannedQty: 200,
+      pickedQty: 0,
+      uomId: 1001,
+      inventoryReservationId: 16301,
+      statusCode: 'ASSIGNED',
+      held: false,
+      holdReasonCode: null,
+      itemCode: 'ABC-123',
+      itemName: '하우징 커버 A',
+      lotNo: MATERIAL_LOT_A,
+      locationCode: 'A-01-03',
+      expiryDate: dayOf(shift(now, 340)),
+      manufacturedAt: iso(-20),
+      /* 선출 순위는 서버가 매긴다. 이 품목에 두 LOT 이 있어 순서가 갈린다. */
+      pickSequenceRank: 2,
+    },
+    {
+      pickingLineId: 16202,
+      pickingOrderId: 16001,
+      lineNo: 2,
+      itemId: 2002,
+      lotId: 8003,
+      locationId: 3003,
+      plannedQty: 120,
+      pickedQty: 0,
+      uomId: 1001,
+      inventoryReservationId: null,
+      statusCode: 'ASSIGNED',
+      /* 보류는 서버가 표시해 내려준다. 화면은 이 값만 보고 라인을 비활성으로 둔다. */
+      held: true,
+      holdReasonCode: 'INSPECTION_PENDING',
+      itemCode: 'ABC-123',
+      itemName: '하우징 커버 A',
+      lotNo: MATERIAL_LOT_HELD,
+      locationCode: 'TMP-01',
+      expiryDate: dayOf(shift(now, 360)),
+      manufacturedAt: iso(-3),
+      pickSequenceRank: 1,
+    },
+    {
+      pickingLineId: 16203,
+      pickingOrderId: 16001,
+      lineNo: 3,
+      itemId: 2001,
+      lotId: 8002,
+      locationId: 3001,
+      plannedQty: 100,
+      pickedQty: 0,
+      uomId: 1001,
+      inventoryReservationId: 16302,
+      statusCode: 'ASSIGNED',
+      held: false,
+      holdReasonCode: null,
+      itemCode: 'RM-1001',
+      itemName: '수지A',
+      lotNo: MATERIAL_LOT_B,
+      locationCode: 'A-01-03',
+      expiryDate: dayOf(shift(now, 200)),
+      manufacturedAt: iso(-15),
+      pickSequenceRank: 1,
+    },
+  ];
+
+  const reservations = [
+    {
+      inventoryReservationId: 16301,
+      lotId: 8001,
+      itemId: 2002,
+      warehouseId: 1001,
+      locationId: 3001,
+      reservedQty: 200,
+      releasedQty: 0,
+      consumedQty: 0,
+      uomId: 1001,
+    },
+    {
+      inventoryReservationId: 16302,
+      lotId: 8002,
+      itemId: 2001,
+      warehouseId: 1001,
+      locationId: 3001,
+      reservedQty: 100,
+      releasedQty: 0,
+      consumedQty: 0,
+      uomId: 1001,
+    },
+  ];
+
   /* 출하 요청은 오늘 날짜로 걸린다 — 박아 두면 다음 날 목록이 빈다. */
   const shipmentRequests = [
     {
@@ -702,6 +829,10 @@ export const createSeed = (now = new Date()) => {
     inboundReceiptLines,
     inboundVariances: [],
     putawayTasks,
+    pickingOrders,
+    pickingLines,
+    reservations,
+    goodsIssues: [],
     shipmentRequests,
     shipmentRequestLines,
     workOrders,
