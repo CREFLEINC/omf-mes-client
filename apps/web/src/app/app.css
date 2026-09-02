@@ -379,6 +379,129 @@ main > * + * {
   }
 }
 
+/* P/O 수신·조회 — 필터, 목록, 상세의 정보 위계를 화면 안에서만 정돈한다. */
+.production-order-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.production-order-pane > h2,
+.production-order-pane-heading > h2 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.production-order-pane-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.filter-bar.production-order-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  align-items: start;
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.production-order-filter-bar > *,
+.production-order-filter-bar .field-cell,
+.production-order-detail-grid > * {
+  min-width: 0;
+}
+
+.production-order-filter-bar .field-cell {
+  align-items: stretch;
+}
+
+.production-order-filter-bar .filter-actions {
+  justify-content: flex-end;
+}
+
+.production-order-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.production-order-basic-pane {
+  grid-column: 1 / -1;
+}
+
+.production-order-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin: 0;
+}
+
+.production-order-detail-field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.production-order-detail-field > dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.production-order-table {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.wide-table.production-order-plan-table table {
+  min-width: 27rem;
+}
+
+.wide-table.production-order-work-order-table table {
+  min-width: 64rem;
+}
+
+.production-order-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 960px) {
+  .production-order-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .production-order-basic-pane {
+    grid-column: auto;
+  }
+
+  .production-order-detail-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .production-order-detail-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;

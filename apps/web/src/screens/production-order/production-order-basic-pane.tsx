@@ -53,7 +53,10 @@ export const ProductionOrderBasicPane = ({
 }: ProductionOrderBasicPaneProps) => {
   if (!isSelected) {
     return (
-      <section className="pane" aria-label={t.panes.basic}>
+      <section
+        className="pane production-order-pane production-order-basic-pane"
+        aria-label={t.panes.basic}
+      >
         <EmptyState
           size="sm"
           title={t.basic.unselectedTitle}
@@ -64,7 +67,10 @@ export const ProductionOrderBasicPane = ({
   }
   if (detailState.kind === 'LOADING') {
     return (
-      <section className="pane" aria-label={t.panes.basic}>
+      <section
+        className="pane production-order-pane production-order-basic-pane"
+        aria-label={t.panes.basic}
+      >
         <h2>{t.basic.heading}</h2>
         <div role="status" aria-label={t.basic.loading}>
           <SkeletonText lines={4} />
@@ -74,7 +80,10 @@ export const ProductionOrderBasicPane = ({
   }
   if (detailState.kind === 'ERROR') {
     return (
-      <section className="pane" aria-label={t.panes.basic}>
+      <section
+        className="pane production-order-pane production-order-basic-pane"
+        aria-label={t.panes.basic}
+      >
         <h2>{t.basic.heading}</h2>
         <AlertBanner variant="error" title={t.basic.loadFailedTitle}>
           {t.basic.loadFailedDescription}
@@ -123,13 +132,19 @@ export const ProductionOrderBasicPane = ({
   ];
 
   return (
-    <section className="pane" aria-label={t.panes.basic}>
-      <h2>{t.basic.heading}</h2>
+    <section
+      className="pane production-order-pane production-order-basic-pane"
+      aria-label={t.panes.basic}
+    >
+      <div className="production-order-pane-heading">
+        <h2>{t.basic.heading}</h2>
+        {action}
+      </div>
       <Card bordered>
         <Card.Body>
-          <dl className="filter-bar">
+          <dl className="production-order-detail-fields">
             {fields.map((field) => (
-              <div className="field-cell" key={field.key}>
+              <div className="production-order-detail-field" key={field.key}>
                 <dt className="field-label">{field.label}</dt>
                 <dd>{field.value}</dd>
               </div>
@@ -137,7 +152,6 @@ export const ProductionOrderBasicPane = ({
           </dl>
         </Card.Body>
       </Card>
-      {action !== undefined && <div className="form-actions">{action}</div>}
     </section>
   );
 };

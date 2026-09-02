@@ -201,6 +201,10 @@ describe('ProductionOrderScreen', () => {
       'href',
       '/production/production-plans?productionOrderId=701',
     );
+    expect(screen.getByRole('heading', { name: t.panes.filters })).toBeInTheDocument();
+    expect(screen.getByLabelText(t.panes.basic).parentElement).toHaveClass(
+      'production-order-detail-grid',
+    );
   });
 
   it('목록 실패를 빈 성공으로 바꾸지 않고 상세 요청도 시작하지 않는다', async () => {

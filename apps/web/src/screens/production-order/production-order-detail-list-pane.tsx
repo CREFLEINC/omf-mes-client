@@ -49,6 +49,7 @@ const planColumns = (uoms: ReferenceSource): Column<ProductionOrderPlanFact>[] =
   {
     key: 'statusCode',
     header: t.detail.columns.status,
+    align: 'center',
     render: (row) => status(row.statusCode),
   },
 ];
@@ -70,6 +71,7 @@ const workOrderColumns = (uoms: ReferenceSource): Column<ProductionOrderWorkOrde
   {
     key: 'statusCode',
     header: t.detail.columns.status,
+    align: 'center',
     render: (row) => status(row.statusCode),
   },
 ];
@@ -81,7 +83,7 @@ export const ProductionOrderDetailListPane = (props: ProductionOrderDetailListPa
 
   if (!props.isSelected) {
     return (
-      <section className="pane" aria-label={paneLabel}>
+      <section className="pane production-order-pane" aria-label={paneLabel}>
         <EmptyState
           size="sm"
           title={t.detail.unselectedTitle}
@@ -92,7 +94,7 @@ export const ProductionOrderDetailListPane = (props: ProductionOrderDetailListPa
   }
   if (props.state.kind === 'LOADING') {
     return (
-      <section className="pane" aria-label={paneLabel}>
+      <section className="pane production-order-pane" aria-label={paneLabel}>
         <h2>{heading}</h2>
         <div role="status" aria-label={isPlans ? t.detail.planLoading : t.detail.workOrderLoading}>
           <SkeletonText lines={3} />
@@ -102,7 +104,7 @@ export const ProductionOrderDetailListPane = (props: ProductionOrderDetailListPa
   }
   if (props.state.kind === 'ERROR') {
     return (
-      <section className="pane" aria-label={paneLabel}>
+      <section className="pane production-order-pane" aria-label={paneLabel}>
         <h2>{heading}</h2>
         <AlertBanner
           variant="error"
@@ -115,11 +117,16 @@ export const ProductionOrderDetailListPane = (props: ProductionOrderDetailListPa
   }
 
   return (
-    <section className="pane" aria-label={paneLabel}>
+    <section className="pane production-order-pane" aria-label={paneLabel}>
       <h2>{heading}</h2>
-      <div className="wide-table">
+      <div
+        className={`wide-table production-order-table ${
+          isPlans ? 'production-order-plan-table' : 'production-order-work-order-table'
+        }`}
+      >
         {props.kind === 'plans' ? (
           <Table
+            caption={<span className="production-order-table-caption">{heading}</span>}
             density="compact"
             columns={planColumns(props.uoms)}
             rows={props.state.items}
@@ -129,6 +136,7 @@ export const ProductionOrderDetailListPane = (props: ProductionOrderDetailListPa
           />
         ) : (
           <Table
+            caption={<span className="production-order-table-caption">{heading}</span>}
             density="compact"
             columns={workOrderColumns(props.uoms)}
             rows={props.state.items}
