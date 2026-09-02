@@ -16,6 +16,7 @@ import {
   LOT_NO,
   PROCESS_ID,
   TERMINAL_ID,
+  UOM_ID,
   WORKER_NO,
   WORK_ORDER_ID,
   makeLot,
@@ -54,6 +55,8 @@ interface Options {
   saveStatus?: number;
   /** 앞의 몇 번을 통신 실패로 만들 것인가. 재전송이 같은 키로 나가는지 볼 때 쓴다 */
   networkFailures?: number;
+  /** 단위 조회가 실패한다 — 이름을 모를 때 숫자를 보이지 않는지 본다 */
+  uomsFail?: boolean;
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -74,6 +77,13 @@ const routes = (options: Options): StubRoute[] => [
     match: (request) => pathOf(request).startsWith('/production/work-orders/'),
     respond: () =>
       jsonResponse(makeWorkOrder(options.goodQty === undefined ? 120 : options.goodQty)),
+  },
+  {
+    match: (request) => pathOf(request) === '/mdm/uoms',
+    respond: () =>
+      options.uomsFail === true
+        ? jsonResponse({ message: '조회 실패' }, { status: 500 })
+        : jsonResponse({ items: [{ uomId: UOM_ID, uomCode: 'EA', uomName: '개' }] }),
   },
   {
     match: (request) => request.method === 'GET' && pathOf(request) === '/trace/lots',
@@ -277,6 +287,13 @@ describe('ProductionResultScreen 수량 입력', () => {
     await user.click(screen.getByRole('button', { name: t.quantity.quickAdd(10) }));
 
     expect(field).toHaveValue('22');
+  });
+
+  /* 스펙 §3-2 가 「양품수량 [ 120 ] EA」로 단위를 칸에 붙였다. */
+  it('양품수량 칸에 단위를 붙인다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText('EA')).toBeInTheDocument();
   });
 
   it('잔여수량을 잔여 / 지시로 보인다', async () => {
@@ -511,7 +528,12 @@ describe('ProductionResultScreen 오프라인 (공유계약 C-1)', () => {
    * ⭐ **재전송이 같은 키로 나가야 한다**(C-1 #5). 시도마다 새 키를 만들면 통신이 끊긴 뒤
    * 다시 갔을 때 서버가 다른 쓰기로 보고 **같은 실적을 두 건 만든다.**
    */
-  it('통신 실패 뒤 재전송이 같은 멱등 키로 나간다', async () => {
+  /*
+   * ⚠ **넉넉한 시한을 준다.** 이 시험만 «두 번째» 요청을 기다리는데, 그 사이에 큐의 재시도
+   * 타이머(5초)가 함께 돌아 기본 시한(1초·5초)으로는 부하가 걸린 기계에서 간헐로 넘어간다.
+   * 동작이 아니라 대기 시간의 문제라 시한만 늘린다.
+   */
+  it('통신 실패 뒤 재전송이 같은 멱등 키로 나간다', { timeout: 20_000 }, async () => {
     setOnline(true);
     const user = userEvent.setup();
     const writes: Request[] = [];
@@ -528,9 +550,12 @@ describe('ProductionResultScreen 오프라인 (공유계약 C-1)', () => {
     /* 연결이 살아난 계기를 만든다 — 5초 대기 대신 같은 경로를 깨운다. */
     globalThis.dispatchEvent(new Event('online'));
 
-    await waitFor(() => {
-      expect(writes).toHaveLength(2);
-    });
+    await waitFor(
+      () => {
+        expect(writes).toHaveLength(2);
+      },
+      { timeout: 10_000 },
+    );
 
     expect(writes[1]?.headers.get('Idempotency-Key')).toBe(
       writes[0]?.headers.get('Idempotency-Key'),

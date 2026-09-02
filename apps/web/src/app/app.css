@@ -5954,3 +5954,11 @@ main > * + * {
 .pop-result-banner-text {
   margin: 0 0 var(--space-3);
 }
+
+/* 스펙 §3-2 — 대상(LOT·제품)과 입력(양품수량·비고)을 가르는 선. */
+.pop-result-rule {
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--outline-variant);
+}

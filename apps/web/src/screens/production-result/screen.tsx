@@ -24,6 +24,7 @@ import {
 } from './quantity-draft';
 import { buildSaveBody } from './save-request';
 import { useTerminalGate, type GateVerdict } from './terminal-gating';
+import { useUomLookup } from './uom-lookup';
 import { emptyResultDraft, type ResultDraft } from './types';
 
 const t = messages.productionResult;
@@ -93,6 +94,7 @@ export const ProductionResultScreen = () => {
   const lots = useTargetLots(entry.workOrderId);
   const pendingPqc = usePendingPqc(entry.workOrderId);
   const outbox = useOutbox();
+  const uom = useUomLookup();
 
   const [draft, setDraft] = useState<ResultDraft>(emptyResultDraft);
   const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
@@ -203,6 +205,8 @@ export const ProductionResultScreen = () => {
   };
 
   const enteredQty = parseGoodQty(draft.goodQty);
+  /* 단위는 품목 기본 단위다 — 고른 LOT 이 없으면 W/O 의 것을 쓴다(둘은 같은 품목이다). */
+  const uomLabel = uom.labelOf(selectedLot?.uomId ?? workOrder.data?.uomId);
 
   return (
     <main className="pop-shell" aria-labelledby={titleId}>
@@ -321,6 +325,9 @@ export const ProductionResultScreen = () => {
               </div>
             </dl>
 
+            {/* 스펙 §3-2 가 «대상»과 «입력» 사이에 선을 둔다 — 위는 고르는 것, 아래는 치는 것이다. */}
+            <hr className="pop-result-rule" />
+
             <TextField
               id={goodQtyId}
               label={t.quantity.goodQtyLabel}
@@ -330,6 +337,8 @@ export const ProductionResultScreen = () => {
               inputMode="numeric"
               value={draft.goodQty}
               error={outbox.rejection?.fieldErrors.goodQty}
+              /* 단위는 칸 오른쪽 안에 붙인다 — 스펙 §3-2 의 「양품수량 [ 120 ] EA」 */
+              trailingIcon={uomLabel ?? undefined}
               onChange={(event) => {
                 changeDraft({ goodQty: event.target.value.replace(/\D/gu, '') });
               }}
