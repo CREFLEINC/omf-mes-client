@@ -19,12 +19,23 @@ export const UNDER = 'under';
 
 export type Verdict = typeof NORMAL | typeof OVER | typeof UNDER;
 
-export const verdictOf = (line: PurchaseOrderLine, receivedQty: number): Verdict => {
-  if (receivedQty > line.orderedQty + line.toleranceOverQty) {
+/**
+ * 아직 안 온 수량. 한 발주에 여러 번 도착할 수 있어 발주 총량과 견주면 두 방향으로 틀린다.
+ *
+ * 분할 납품의 마지막 회차가 부족으로 읽히고, 누적이 총량을 넘긴 것도 부족으로 읽힌다.
+ * 뒤엣것이 더 무겁다 - 서버가 거부할 초과인데 화면이 입하 오류 등록으로 보낸다.
+ */
+export const remainingQtyOf = (line: PurchaseOrderLine): number =>
+  line.orderedQty - line.receivedQty;
+
+export const verdictOf = (line: PurchaseOrderLine, arrivedQty: number): Verdict => {
+  const remaining = remainingQtyOf(line);
+
+  if (arrivedQty > remaining + line.toleranceOverQty) {
     return OVER;
   }
 
-  return receivedQty < line.orderedQty - line.toleranceUnderQty ? UNDER : NORMAL;
+  return arrivedQty < remaining - line.toleranceUnderQty ? UNDER : NORMAL;
 };
 
 export type QtyProblem = 'empty' | 'notNumber' | 'notPositive';

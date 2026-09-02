@@ -73,7 +73,7 @@ export const IqcSkipRequestScreen = () => {
   const item = useItem(found?.itemId ?? null);
   const uoms = useUomCodes(found !== null);
   const pending = usePendingRequest(found?.lotId ?? null);
-  const mine = useMyRequests();
+  const mine = useMyRequests(worker?.workerNo ?? null);
 
   const inspectionPending = isInspectionPending(found);
   const canSubmit = found !== null && inspectionPending && hasReason(reason) && worker !== null;
@@ -234,7 +234,8 @@ export const IqcSkipRequestScreen = () => {
 
       <section className="iqc-skip__section">
         <h2>{t.mine.legend}</h2>
-        {mine.isPending ? <p role="status">{t.mine.loading}</p> : null}
+        {worker === null ? <p>{t.mine.noWorker}</p> : null}
+        {worker !== null && mine.isPending ? <p role="status">{t.mine.loading}</p> : null}
         {mine.isError ? <AlertBanner variant="warning" title={t.mine.loadFailed} /> : null}
         {mine.data === undefined || mine.data.length > 0 ? null : <p>{t.mine.empty}</p>}
         {mine.data === undefined ? null : <MyRequests requests={mine.data} />}

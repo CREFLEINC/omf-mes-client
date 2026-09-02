@@ -26,7 +26,7 @@ export const INBOUND_LOT = 'INBOUND_LOT';
 
 export const iqcSkipKeys = {
   pending: (lotId: number | null) => ['iqc-skip-pending', lotId] as const,
-  mine: () => ['iqc-skip-mine'] as const,
+  mine: (workerNo: string | null) => ['iqc-skip-mine', workerNo] as const,
 };
 
 /**
@@ -64,16 +64,33 @@ export const usePendingRequest = (lotId: number | null): UseQueryResult<Approval
  *
  * 승인 유형으로 거르지 않는다. 그 코드 문자열은 아직 확정 전이라, 지어내 실으면 값이 달라지는
  * 순간 목록이 조용히 빈다 - 비어 있는 것과 없는 것이 화면에서 같아 보인다.
+ *
+ * 사번을 싣는다. 이 셸에는 계정 로그인이 없어 서버가 상신자를 풀 근거가 그 헤더뿐이고, 한
+ * 단말을 여러 사람이 교대로 쓰므로 없이 부르면 남이 올린 요청이 섞인다. 목록이 비는 것이
+ * 아니라 채워진 채로 틀려서 화면으로는 보이지 않는다.
+ *
+ * 사번을 모르는 동안에는 부르지 않는다 - 교대 중에 부르면 그 사이의 답이 누구 것인지 모른다.
  */
-export const useMyRequests = (): UseQueryResult<ApprovalRequest[]> => {
+export const useMyRequests = (workerNo: string | null): UseQueryResult<ApprovalRequest[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: iqcSkipKeys.mine(),
+    queryKey: iqcSkipKeys.mine(workerNo),
+    enabled: workerNo !== null,
     queryFn: async () => {
+      if (workerNo === null) {
+        throw new Error('사번을 확인하기 전에는 내가 올린 요청을 조회하지 않습니다.');
+      }
+
       const data = await runRequest(() =>
         client.GET('/app/approval-requests', {
           params: { query: { requestedByMe: true, size: 20 } },
+          /*
+           * params.header 로 싣지 못한다 - 이 헤더는 계약에 갓 선언됐고 생성 타입이 아직
+           * 그 회차를 타지 않았다. 편입은 다른 팀 소관이라 우리가 재생성하지 않는다.
+           * 편입되면 params.header 로 옮긴다.
+           */
+          headers: { 'X-Worker-No': workerNo },
         }),
       );
 
