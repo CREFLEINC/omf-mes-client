@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
+import { popRoutes } from './pop';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
@@ -39,8 +40,6 @@ import { IqcInspectionScreen } from '../screens/iqc-inspection/screen';
 import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
-import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
-import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
 import { LotStatusTransitionScreen } from '../screens/lot-status-transition/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
@@ -577,32 +576,11 @@ export const appRouter = createBrowserRouter([
    */
   { path: '/login', element: <LoginScreen /> },
   /*
-   * P-02-03 — **POP(현장 단말) 화면의 첫 라우트다.** 로그인과 같이 위 배열의 형제로 서서
-   * `AppLayout`을 지나지 않는다.
+   * POP(현장 단말) 화면. 표는 `./pop`이 들고 여기서는 펼치기만 한다 — POP은 관리웹의 한
+   * 구역이 아니라 다른 프로그램이고, 라우트의 소유도 그쪽에 있다.
    *
-   * 근거: 이 화면 앞에 선 사람은 장갑을 낀 채 스캐너를 든다. 사이드바·상단 바는 마우스로
-   * 메뉴를 오가는 사람을 위한 것이라, 1024×768 단말에서는 **누르지 않을 것들이 화면 너비의
-   * 4분의 1을 가져간다.** 셸 밖에 선 근거가 로그인과 다르다 — 그쪽은 메뉴가 성립하지 않는
-   * 것이고 이쪽은 메뉴를 쓸 손이 없는 것이다.
-   *
-   * ⛔ **사이드바에 올리지 않는다.** 관리웹 사용자가 갈 자리가 아니다. 진입은 작업지시를 실은
-   * 주소(`?workOrderId=`)로만 하며, `P-02-01`(작업 시작)이 서면 그 화면이 이 주소로 넘긴다.
-   *
-   * ⚠ **이 라우트도 접근을 제한하지 않는다.** 화면의 단말 게이팅은 오조작을 줄이는 장치이지
-   * 집행이 아니다(공유계약 F-1 · F-5) — 집행은 서버의 403이다.
-   *
-   * ⚠ **단말·공정·사번은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 아직 비어 있어
-   * 이 화면은 「단말이 확인되지 않았습니다」로 막힌 채 뜬다 — 모르는 것을 통과로 처리하지
-   * 않는다(F-6). `P-CO-01`과 단말 토큰이 서면 그때 채워진다.
+   * ⛔ **새 P- 화면을 이 파일에 직접 추가하지 않는다.** `routes/pop.tsx`에만 붙인다.
    */
-  { path: '/pop/material-input', element: <MaterialInputScanScreen /> },
-  /*
-   * P-05-01 — **POP 태스크 화면이라 셸 밖에 선다**(관리웹 사이드바로 옮겨 다니는 화면이 아니다).
-   * 주소 앞머리 `/pop`이 그 사실을 드러낸다.
-   *
-   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다** — 작업지시 선택(P-02-01)과 사번 인증(P-CO-01)이
-   * 아직 이 저장소에 없다. 그 화면들이 서면 `entry-context.ts` 하나가 바뀐다.
-   */
-  { path: '/pop/tool-usage', element: <ToolUsageScreen /> },
+  ...popRoutes,
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
