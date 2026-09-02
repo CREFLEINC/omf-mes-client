@@ -62,6 +62,10 @@ interface Options {
   reportFails?: boolean;
   /** 발행 요약 조회 요청을 담아 둔다 — 질의 축을 검사한다 */
   summaryRequests?: Request[];
+  /** 라인 0건 */
+  noLines?: boolean;
+  /** 라인 조회가 실패하는 경우 */
+  linesFail?: boolean;
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -84,7 +88,10 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request) === '/logistics/goods-issues/900/lines',
-    respond: () => jsonResponse({ items: LINES }),
+    respond: () =>
+      options.linesFail === true
+        ? jsonResponse({ message: '조회 실패' }, { status: 500 })
+        : jsonResponse({ items: options.noLines === true ? [] : LINES }),
   },
   {
     match: (request) => pathOf(request) === '/app/document-issues/summary',
@@ -549,6 +556,19 @@ describe('GoodsIssueQrScreen', () => {
 
     expect(await screen.findByText(t.target.previewFailed)).toBeInTheDocument();
     expect(screen.queryByAltText(t.target.previewAlt)).not.toBeInTheDocument();
+  });
+
+  it('라인이 0건이면 빈 상태를 말한다', async () => {
+    renderScreen({ noLines: true });
+
+    expect(await screen.findByText(t.lines.empty)).toBeInTheDocument();
+  });
+
+  it('라인을 못 불러오면 빈 목록이 아니라 실패라고 말한다', async () => {
+    renderScreen({ linesFail: true });
+
+    expect(await screen.findByText(t.lines.failed)).toBeInTheDocument();
+    expect(screen.queryByText(t.lines.empty)).not.toBeInTheDocument();
   });
 
   it('전표 없이 들어오면 그 사실을 말한다', async () => {
