@@ -36,6 +36,17 @@ describe('POP 라우트 편입', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/worker-assignment');
   });
 
+  /**
+   * 같은 이유로 이 화면도 이름으로 못박는다 — 창고 단말이 고정으로 띄우는 주소라, 사라지면
+   * 그 앞에 선 사람만 알게 된다.
+   *
+   * ⚠ **화면마다 자기 줄을 지킨다.** 여기에 전체 목록을 두면 새 POP 화면이 늘 때마다 남의
+   * 시험을 고쳐야 하고, 그러다 빠뜨리면 지키는 것이 없어진다.
+   */
+  it('P-01-01 자재LOT 등록·라벨 발행 주소가 서 있다', () => {
+    expect(popRoutes.map(({ path }) => path)).toContain('/pop/material-lot-label');
+  });
+
   it('POP 경로는 `/pop`으로 시작한다 — 관리웹 셸 주소와 섞이지 않는다', () => {
     for (const { path } of popRoutes) {
       expect(path).toMatch(/^\/pop\//);

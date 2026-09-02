@@ -1,7 +1,9 @@
 import type { RouteObject } from 'react-router';
 
+import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
+import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
@@ -79,6 +81,28 @@ export const popRoutes: RouteObject[] = [
    * 쪽에만 `?workOrderId=` 를 싣는다.
    */
   { path: '/pop/emergency-work-orders', element: <EmergencyWorkOrderFieldScreen /> },
+  /*
+   * P-05-02 — 비가동은 **설비에 붙지 작업에 붙지 않는다.** 그래서 진입 컨텍스트가 앞의
+   * 것들과 다르다: 작업지시가 아니라 설비를 주소로 받는다(`?equipmentId=`).
+   *
+   * ⚠ POP 단말은 설비에 붙어 있고 그 붙임을 셸이 알려 주는 자리가 아직 없다 — 그 자리가
+   * 서면 `screen-params.ts` 하나가 바뀐다.
+   */
+  { path: '/pop/downtime', element: <DowntimeRegisterScreen /> },
+  /*
+   * P-01-01 — 자재LOT 등록·라벨 발행. 다른 POP 화면과 같이 셸 밖에 선다.
+   *
+   * ⛔ **사이드바에 올리지 않는다.** 관리웹 사용자가 메뉴로 찾아가는 곳이 아니라 창고 단말이
+   * 고정으로 띄우는 화면이다.
+   *
+   * ⚠ **사번은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 비어 있으면 이 화면의
+   * 등록·인쇄가 사유와 함께 막힌 채 뜬다 — 쓰기가 사번 헤더를 요구하기 때문이며, 모르는
+   * 것을 통과로 처리하지 않는다(F-6). `P-CO-01`이 서면 그때 채워진다.
+   *
+   * ⚠ **단말 게이팅 선차단을 두지 않는다.** 창고 단말은 F-1 적용 범위 밖이고(스펙 §5-5),
+   * 출력 권한 집행은 서버의 403이다.
+   */
+  { path: '/pop/material-lot-label', element: <PopMaterialLotLabelScreen /> },
   /*
    * P-02-13 — 공정 중 제품을 검사하고 판정한다. **검사 «수행» 지점이 생산 공정이라** 품질
    * 관리자가 결과를 횡단해 보는 화면(W-03-xx)과 다른 자리에 선다.

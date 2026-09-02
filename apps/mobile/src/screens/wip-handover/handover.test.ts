@@ -1,0 +1,156 @@
+import { describe, expect, it } from 'vitest';
+
+import type { Lot } from '../../patterns/lots';
+import {
+  canConfirm,
+  fromWorkOrderIdOf,
+  isUnreleased,
+  lotProblemOf,
+  qtyProblemOf,
+  toBody,
+  type WorkOrder,
+} from './handover';
+
+const lot = (overrides: Partial<Lot> = {}): Lot =>
+  ({
+    lotId: 4,
+    lotNo: 'PLOT-2026-0805-0031',
+    itemId: 31,
+    lotTypeCode: 'PRODUCTION',
+    plantId: 1,
+    initialQty: 500,
+    uomId: 9,
+    sourceTypeCode: 'WORK_ORDER',
+    sourceId: 13,
+    statusCode: 'NORMAL',
+    completedAt: '2026-08-11T17:40:00+09:00',
+    held: false,
+    ...overrides,
+  }) as Lot;
+
+const workOrder = (overrides: Partial<WorkOrder> = {}): WorkOrder =>
+  ({
+    workOrderId: 27,
+    workOrderNo: 'WO-2026-0027',
+    productionPlanId: 1,
+    routingOperationId: 2,
+    itemId: 31,
+    orderQty: 500,
+    uomId: 9,
+    workOrderTypeCode: 'NORMAL',
+    priorityNo: 1,
+    statusCode: 'RELEASED',
+    releasedAt: '2026-08-10T09:00:00+09:00',
+    ...overrides,
+  }) as WorkOrder;
+
+describe('넘길 수 있는 LOT 인가', () => {
+  it('완료된 생산LOT 은 넘긴다', () => {
+    expect(lotProblemOf(lot())).toBeNull();
+  });
+
+  /* 공정 인계는 생산LOT 만 넘긴다. */
+  it('생산LOT 이 아니면 막는다', () => {
+    expect(lotProblemOf(lot({ lotTypeCode: 'MATERIAL' }))).toBe('notProduction');
+  });
+
+  /* 완료를 시각으로 판정한다. 상태 코드 문자열을 몰라도 갈린다. */
+  it('완료되지 않았으면 막는다', () => {
+    expect(lotProblemOf(lot({ completedAt: null }))).toBe('notCompleted');
+    expect(lotProblemOf(lot({ completedAt: undefined }))).toBe('notCompleted');
+  });
+
+  /* 다음 공정이 홀드품을 투입하면 불량이 퍼진다. 재고 이동과 달리 여기서는 막는다. */
+  it('홀드 중이면 막는다', () => {
+    expect(lotProblemOf(lot({ held: true }))).toBe('held');
+  });
+
+  /* W/O 마감 여부는 보지 않는다 - 마감 전이라도 완료된 LOT 은 넘어간다. */
+  it('완료된 LOT 이면 W/O 상태를 보지 않는다', () => {
+    expect(lotProblemOf(lot({ statusCode: '무엇이든' }))).toBeNull();
+  });
+});
+
+describe('출발 W/O', () => {
+  it('생산LOT 의 원천이 출발 W/O 다', () => {
+    expect(fromWorkOrderIdOf(lot())).toBe(13);
+  });
+
+  /* 넘길 수 없는 LOT 의 원천을 W/O 로 읽지 않는다. */
+  it('넘길 수 없는 LOT 은 출발 W/O 를 내지 않는다', () => {
+    expect(fromWorkOrderIdOf(lot({ lotTypeCode: 'MATERIAL' }))).toBeNull();
+    expect(fromWorkOrderIdOf(lot({ held: true }))).toBeNull();
+  });
+});
+
+describe('다음 공정', () => {
+  /* 배포 시각으로 가른다. 상태 코드 문자열은 아직 확정되지 않았다. */
+  it('배포 시각이 없으면 아직 배포되지 않은 것이다', () => {
+    expect(isUnreleased(workOrder({ releasedAt: undefined }))).toBe(true);
+    expect(isUnreleased(workOrder())).toBe(false);
+  });
+});
+
+describe('인계 수량', () => {
+  it('숫자가 아니면 막는다', () => {
+    expect(qtyProblemOf('', 500)).toBe('notNumber');
+    expect(qtyProblemOf('다섯', 500)).toBe('notNumber');
+  });
+
+  it('0 이하를 막는다', () => {
+    expect(qtyProblemOf('0', 500)).toBe('notPositive');
+    expect(qtyProblemOf('-1', 500)).toBe('notPositive');
+  });
+
+  it('완료 수량을 넘지 못한다', () => {
+    expect(qtyProblemOf('500', 500)).toBeNull();
+    expect(qtyProblemOf('501', 500)).toBe('overCompleted');
+  });
+});
+
+describe('확정 가능 여부', () => {
+  it('사번이 없으면 확정할 수 없다', () => {
+    expect(canConfirm(lot(), workOrder(), '100', false)).toBe(false);
+  });
+
+  it('다음 공정을 고르지 않으면 확정할 수 없다', () => {
+    expect(canConfirm(lot(), null, '100', true)).toBe(false);
+  });
+
+  it('넘길 수 없는 LOT 이면 확정할 수 없다', () => {
+    expect(canConfirm(lot({ held: true }), workOrder(), '100', true)).toBe(false);
+  });
+
+  /* 서버도 막지만 눌러 보고 알게 두지 않는다. */
+  it('같은 W/O 로는 넘기지 못한다', () => {
+    expect(canConfirm(lot({ sourceId: 27 }), workOrder({ workOrderId: 27 }), '100', true)).toBe(
+      false,
+    );
+  });
+
+  it('수량이 어긋나면 확정할 수 없다', () => {
+    expect(canConfirm(lot(), workOrder(), '501', true)).toBe(false);
+  });
+
+  it('다 갖추면 확정한다', () => {
+    expect(canConfirm(lot(), workOrder(), '500', true)).toBe(true);
+  });
+});
+
+describe('보낼 것', () => {
+  const now = new Date('2026-09-02T13:00:00+09:00');
+
+  it('출발과 도착 W/O 와 한 줄을 싣는다', () => {
+    expect(toBody(lot(), 13, 27, '100', now)).toEqual({
+      fromWorkOrderId: 13,
+      toWorkOrderId: 27,
+      handedOverAt: now.toISOString(),
+      lines: [{ lotId: 4, handoverQty: 100, uomId: 9 }],
+    });
+  });
+
+  /* 받는 쪽 화면이 없어 서버가 인계와 같은 시각으로 함께 찍는다. */
+  it('수령 시각을 싣지 않는다', () => {
+    expect(toBody(lot(), 13, 27, '100', now)).not.toHaveProperty('receivedAt');
+  });
+});

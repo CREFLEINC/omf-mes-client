@@ -16,6 +16,7 @@ import { ProductPickingScreen } from '../screens/product-picking/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
 import { TemporaryPutawayScreen } from '../screens/temporary-putaway/screen';
 import { RepairRoundtripScreen } from '../screens/repair-roundtrip/screen';
+import { WipHandoverScreen } from '../screens/wip-handover/screen';
 
 export const appRoutes: RouteObject[] = [
   {
@@ -38,6 +39,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
       { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
       { path: 'iqc-skip-request', element: <IqcSkipRequestScreen /> },
+      { path: 'wip-handover', element: <WipHandoverScreen /> },
       { path: 'repair-roundtrip', element: <RepairRoundtripScreen /> },
       { path: 'product-picking', element: <ProductPickingScreen /> },
       { path: 'packing-repack', element: <PackingRepackScreen /> },

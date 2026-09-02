@@ -75,6 +75,7 @@ import { productStockStatus } from './product-stock-status';
 import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentProcessing } from './shipment-processing';
 import { dashboard } from './dashboard';
+import { downtimeRegister } from './downtime-register';
 import { downtimeSummary } from './downtime-summary';
 import { gaugeCalibration } from './gauge-calibration';
 import { equipmentFailure } from './equipment-failure';
@@ -103,7 +104,9 @@ import { putaway } from './putaway';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
+import { wipHandover } from './wip-handover';
 import { workerAssignment } from './worker-assignment';
+import { popMaterialLotLabel } from './pop-material-lot-label';
 
 export const ko = {
   common,
@@ -166,6 +169,7 @@ export const ko = {
   shipmentRequestCreate,
   shipmentProcessing,
   dashboard,
+  downtimeRegister,
   downtimeSummary,
   gaugeCalibration,
   equipmentFailure,
@@ -195,7 +199,9 @@ export const ko = {
   temporaryPutaway,
   poChangeReview,
   shellHome,
+  wipHandover,
   workerAssignment,
+  popMaterialLotLabel,
 } as const;
 
 export type Messages = typeof ko;

@@ -1,0 +1,230 @@
+import type { ApiClient } from '@omf-mes/api-client';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
+
+import { useApiClient } from '../../patterns/api-context';
+import { runRequest } from '../../patterns/request';
+import { REISSUE_REASON_CODE_GROUP } from './codes';
+import {
+  toLineView,
+  toPrinterView,
+  toReceiptView,
+  toTargetRows,
+  type LineView,
+  type PrinterView,
+  type ReceiptListResult,
+  type ReceiptView,
+  type TargetRow,
+} from './types';
+
+/**
+ * 이 화면의 요청 — 이 슬라이스에서는 **읽기 하나뿐**이다.
+ *
+ * | 언제 | 무엇 |
+ * | --- | --- |
+ * | 첫 진입 | 라벨 미발행 입하 건 목록 |
+ *
+ * **미부착 조건을 서버가 거른다.** 스펙 §3-6 과 변경 통지 #534 가 목록 원천을
+ * `?supplierLotMissing=true&labelIssued=false` 로 정했고 그 질의가 계약에 있다. 화면이 받아서
+ * 거르던 우회는 걷었다 — 거르는 쪽이 서버이므로 **한 쪽에 보이는 줄 수가 쪽 크기와 어긋나지
+ * 않는다.**
+ *
+ * 경로 리터럴은 이 파일에만 둔다 — `openapi-fetch`가 경로를 리터럴 타입으로 요구해
+ * 문자열 변수로 넘기면 타입 검사가 풀린다.
+ */
+
+type Client = ApiClient['client'];
+
+/** 목록 조회의 쿼리 전체. **채운 조건만 키가 실린다** — 요청 URL이 조건을 그대로 드러낸다. */
+export interface ReceiptListQuery {
+  /** 첫 쪽이면 싣지 않는다 — 서버 기본값이 1이다. */
+  page?: number;
+}
+
+const RECEIPT_LIST_KEY = ['pop-material-lot-label', 'receipts'] as const;
+
+export const receiptKeys = {
+  lists: RECEIPT_LIST_KEY,
+  list: (query: ReceiptListQuery) => [...RECEIPT_LIST_KEY, query] as const,
+  /**
+   * 라인 캐시는 **고른 건마다 갈린다.** 목록 키와 앞머리를 갈라 두어, 목록만 다시 불러도
+   * 라인까지 함께 무효화되지 않게 한다.
+   */
+  lines: (inboundReceiptId: number | null) =>
+    ['pop-material-lot-label', 'receipt-lines', inboundReceiptId] as const,
+};
+
+const fetchReceipts = async (
+  client: Client,
+  query: ReceiptListQuery,
+): Promise<ReceiptListResult> => {
+  const data = await runRequest(() =>
+    client.GET('/logistics/inbound-receipts', {
+      /*
+       * 미부착이면서 아직 라벨을 찍지 않은 건만 받는다(스펙 §3-6 · 변경 통지 #534).
+       * ⛔ 화면이 받아서 거르지 않는다 — 목록이 쪽 단위라 거른 뒤 개수가 쪽 크기와 어긋난다.
+       */
+      params: { query: { ...query, supplierLotMissing: true, labelIssued: false } },
+    }),
+  );
+
+  return { items: data.items.map(toReceiptView), page: data.page };
+};
+
+/**
+ * 발행 대상 입하 건 목록.
+ *
+ * **조건 없이 곧바로 조회한다.** 화면에 들어오면 무엇을 고를 수 있는지 바로 보여야 한다 —
+ * 빈 화면으로 시작하면 조건을 먼저 정해야 하는 줄 안다. 터치 단말에는 조건을 치는 자리가 없다.
+ */
+export const useReceipts = (query: ReceiptListQuery): UseQueryResult<ReceiptListResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: receiptKeys.list(query),
+    queryFn: () => fetchReceipts(client, query),
+  });
+};
+
+/*
+ * 라인도 같은 두 조건으로 서버가 거른다 — 발번 단위가 「건」이 아니라 「라인」이므로
+ * (스펙 §3-6) 목록 줄과 발번 개수를 맞추려면 거르는 자리가 서버여야 한다.
+ */
+const fetchReceiptLines = async (client: Client, inboundReceiptId: number): Promise<LineView[]> => {
+  const data = await runRequest(() =>
+    client.GET('/logistics/inbound-receipts/{inboundReceiptId}/lines', {
+      params: {
+        path: { inboundReceiptId },
+        query: { supplierLotMissing: true, labelIssued: false },
+      },
+    }),
+  );
+
+  return data.items.map(toLineView);
+};
+
+/**
+ * 이 단말이 쓸 수 있는 프린터와 그 상태.
+ *
+ * ⛔ **`documentTypeCode`로 거르지 않는다.** 문서 유형 값 목록이 아직 확정되지 않아(착수 이슈
+ * 미결 1) 화면이 값을 넣으면 서버가 모르는 코드로 걸러 **목록이 통째로 비어 올 수 있다.**
+ * 거르지 않으면 최악이 「쓸 수 없는 프린터도 함께 보인다」이고, 거르면 최악이 「쓸 수 있는
+ * 프린터가 없다고 보인다」다 — 뒤쪽이 더 나쁘다.
+ *
+ * ⚠ **비어 올 수 있다.** 서버가 무엇을 보고 목록을 만드는지가 미결이다(착수 이슈 6항).
+ * 빈 목록은 정상 응답이므로 오류로 다루지 않고 빈 상태로 그린다.
+ */
+export const usePrinters = (): UseQueryResult<PrinterView[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['pop-material-lot-label', 'printers'],
+    queryFn: async () => {
+      const data = await runRequest(() => client.GET('/app/printers', {}));
+
+      return data.items.map(toPrinterView);
+    },
+  });
+};
+
+export interface TargetRowsResult {
+  rows: TargetRow[];
+  isPending: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
+
+/**
+ * 목록에 놓일 발번 대상 줄 — **입하 건마다 라인을 받아 한 목록으로 편다.**
+ *
+ * 스펙 §3 은 품목·수량이 목록에 바로 보이는 한 단계다. 계약이 입하 건 목록에 품목을 싣지
+ * 않아 건마다 라인을 따로 부르고, 그 결과를 화면이 합친다.
+ *
+ * ⚠ **요청이 쪽마다 1 + N 이다.** 쪽 크기를 작게 두어(POP 목록은 한 화면에 몇 줄뿐이다)
+ * 감당한다. 계약이 라인을 함께 내려 주면 1 회로 줄어든다(변경 통지 #534).
+ */
+export const useTargetRows = (receipts: ReceiptView[]): TargetRowsResult => {
+  const { client } = useApiClient();
+
+  const results = useQueries({
+    queries: receipts.map((receipt) => ({
+      queryKey: receiptKeys.lines(receipt.inboundReceiptId),
+      queryFn: () => fetchReceiptLines(client, receipt.inboundReceiptId),
+    })),
+  });
+
+  return {
+    rows: results.flatMap((result, index) => {
+      const receipt = receipts[index];
+
+      return receipt === undefined || result.data === undefined
+        ? []
+        : toTargetRows(receipt, result.data);
+    }),
+    isPending: results.some((result) => result.isPending),
+    // 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다.
+    isError: results.some((result) => result.isError),
+    refetch: () => {
+      for (const result of results) void result.refetch();
+    },
+  };
+};
+
+/**
+ * 이미 등록된 라인의 **LOT 번호.**
+ *
+ * 목록 응답은 라인에 `lotId` 만 싣고 번호는 싣지 않는다. 화면이 번호를 보여야 하는 이유는
+ * 하나다 — **라벨에 인쇄된 번호와 눈으로 대조**하는 자리이기 때문이다.
+ *
+ * **등록 전에는 부르지 않는다**(`enabled`). 번호는 등록 시점에 서버가 매기므로 그 전에는
+ * 조회할 대상이 없다.
+ */
+export const useLotNo = (lotId: number | null): UseQueryResult<string> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['pop-material-lot-label', 'lot', lotId],
+    enabled: lotId !== null,
+    queryFn: async () => {
+      if (lotId === null) throw new Error('등록 전에는 LOT 번호를 조회하지 않습니다.');
+
+      const data = await runRequest(() =>
+        client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
+      );
+
+      return data.lot.lotNo;
+    },
+  });
+};
+
+/** 재발행 사유 한 가지. 표시 문구는 **서버가 준 이름을 그대로** 쓴다. */
+export interface ReissueReasonOption {
+  code: string;
+  name: string;
+}
+
+/**
+ * 재발행 사유 선택지.
+ *
+ * ⛔ **화면이 값을 지어내지 않는다.** 값 목록은 서버가 코드 그룹으로 내려 준다(계약 명시).
+ * ⛔ **채번 식별자(`codeGroupId`)를 하드코딩하지 않는다** — 환경마다 다르다.
+ *
+ * ⚠ **비어 올 수 있다.** 값 목록이 아직 확정되지 않은 코드 그룹이라(`omf-mes#145`) 운영
+ * 데이터가 비어 있을 수 있고, 그때는 재인쇄를 열지 않고 사유를 보인다 — 사유 없이 보내면 422 다.
+ */
+export const useReissueReasons = (enabled: boolean): UseQueryResult<ReissueReasonOption[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['pop-material-lot-label', 'reissue-reasons'],
+    enabled,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode: REISSUE_REASON_CODE_GROUP } },
+        }),
+      );
+
+      return data.items.map((item) => ({ code: item.code, name: item.codeName }));
+    },
+  });
+};
