@@ -259,6 +259,38 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     expect(selected).toHaveAttribute('aria-pressed', 'true');
   });
 
+  /**
+   * 스펙 §3 의 목록은 한 줄을 상자 하나로 그리고, 장갑 낀 손을 전제하므로(G-5) 타겟을 칸
+   * 하나로 좁히지 않는다. 첫 칸에만 조작을 두면 **나머지 칸을 눌러도 아무 일이 없어**
+   * 「눌리지 않는다」로 읽힌다.
+   */
+  it('첫 칸이 아닌 칸을 눌러도 그 줄이 골라진다 — 누르는 자리는 줄 전체다', async () => {
+    const { user } = renderScreen();
+
+    // 품목 칸에는 조작이 없다. 그 글자를 눌러도 그 줄의 선택이 뒤집혀야 한다.
+    await user.click(await screen.findByText('SYN-ITEM-01 · 합성 품목 가'));
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택 해제',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('같은 줄의 다른 칸을 다시 누르면 선택이 풀린다 — 무를 수단이 없으면 갇힌다', async () => {
+    const { user } = renderScreen();
+
+    const itemCell = await screen.findByText('SYN-ITEM-01 · 합성 품목 가');
+    await user.click(itemCell);
+    await user.click(itemCell);
+
+    expect(
+      await screen.findByRole('button', {
+        name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택',
+      }),
+    ).toHaveAttribute('aria-pressed', 'false');
+  });
+
   /** 스펙 §3 의 목록은 입하·품목·수량 세 칸이다. 선택 칸을 따로 두지 않는다. */
   it('목록이 스펙의 세 칸으로 선다', async () => {
     renderScreen();
