@@ -1,6 +1,7 @@
 import type { RouteObject } from 'react-router';
 
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
+import { PackingResultScreen } from '../screens/packing-result/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 
 /**
@@ -52,4 +53,12 @@ export const popRoutes: RouteObject[] = [
    * 아직 이 저장소에 없다. 그 화면들이 서면 `entry-context.ts` 하나가 바뀐다.
    */
   { path: '/pop/tool-usage', element: <ToolUsageScreen /> },
+  /*
+   * P-04-01 — **매칭 스캔 화면**이라 스캐너를 든 손이 화면 앞에 선다. 관리웹 사이드바에
+   * 올리지 않는 이유는 앞의 둘과 같다.
+   *
+   * ⚠ **진입에 질의 문자열이 없다** — 이 화면은 납품라벨 스캔으로 스스로 출하를 정한다.
+   * 앞 화면이 무엇을 실어 주지 않아도 서고, 그래서 독립 진입이다(스펙 §1 「범위」).
+   */
+  { path: '/pop/packing', element: <PackingResultScreen /> },
 ];

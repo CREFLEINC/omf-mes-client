@@ -25093,7 +25093,7 @@ export interface paths {
                     oqcPassed?: boolean;
                     /** @description 스캔한 납품라벨 값으로 배분을 찾는다. ⛔ 범위는 납품라벨 번호 하나다 — LOT 번호는 lotId 를, 포장은 handlingUnitId 를 쓴다. ⭐ P-04-01 매칭 스캔의 진입이다(P-04-01 §5-1 · 공유계약 D-2). 일치하는 배분이 없으면 «빈 목록»이다 — 화면은 items 가 비었는지로 「없는 납품라벨」을 판정한다. ⛔ 404 를 내지 않는다 — 같은 오퍼레이션의 lotQ 가 이미 200 + match 로 판정을 내리므로, 파라미터에 따라 상태 코드가 갈리면 예외가 는다 */
                     q?: string;
-                    /** @description 스캔한 생산 LOT 값. shipmentId(납품라벨 스캔으로 정해진 출하)와 함께 주면 서버가 「이 출하의 배분에 이 LOT 이 있는가」를 판정한다 — 화면이 목록을 받아 비교하지 않는다(P-04-01 §5-1 · 공유계약 C-6) */
+                    /** @description 스캔한 생산 LOT 값. shipmentId(납품라벨 스캔으로 정해진 출하)와 함께 주면 서버가 「이 출하의 배분에 이 LOT 이 있는가」를 판정한다 — 화면이 목록을 받아 비교하지 않는다(P-04-01 §5-1 · 공유계약 C-6) ⭐ 이 shipmentId 는 첫 스캔(q) 응답의 ShipmentLotAllocation.shipmentId 에서 그대로 얻는다 — 화면이 출하를 다시 조회하지 않는다(omf-mes#330 A). */
                     lotQ?: string;
                     /** @description 1 부터 */
                     page?: number;
@@ -25226,6 +25226,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/logistics/stock-reinstatements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 재고 재등록 확정
+         * @description 판정이 끝난 반품품을 판매 가능 재고로 되돌린다. 반출·도착·보류 해제·Lot Status 전이를 한 트랜잭션으로 처리한다 — 이 화면의 「재등록 확정」은 한 번의 확정이고 중간 상태를 남기지 않는다(공유계약 B-8 규칙 1 · B-8-1). ⭐ 이 경로에서만 반영 목적의 Hold → 정상 전이가 허용된다 — 「Release 로 할 것인가」를 정하는 것은 W-03-02·W-04-03 이고 이 경로는 그 결정을 재고에 반영할 뿐이다(공유계약 B-13). ⛔ 창고 간 이동의 2단계 스캔(POST /logistics/stock-transfers → :arrive)을 쓰지 않는다 — 재등록은 이동 중 구간이 없는 한 번의 행위라 그 형태가 맞지 않는다. 근거: W-04-11 §0 · §5-3 · §5-6
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["StockReinstatementCreate"];
+                };
+            };
+            responses: {
+                /** @description 재등록됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StockReinstatementResponse"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StockReinstatementConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/logistics/shipment-requests": {
         parameters: {
             query?: never;
@@ -25242,6 +25315,8 @@ export interface paths {
                 query?: {
                     customerId?: number;
                     shipToPartnerId?: number;
+                    /** @description 이 품목이 담긴 라인이 있는 작업지시만. ⭐ 긴급 직행 출하(W-04-05)가 고른 제품 LOT 의 품목으로 지시를 좁히는 축이다 — 이 축이 없으면 화면이 이번 쪽 안에서만 거를 수 있어 맞는 지시가 있는데도 안 보인다(공유계약 L-11). 근거: W-04-05 §5-7 */
+                    itemId?: number;
                     statusCode?: string;
                     /** @description 출하 희망 시간대 필터 — 공통코드 그룹 `SHIPMENT_TIME_SLOT`(`MORNING`·`AFTERNOON`·`NIGHT`). W-04-02 시간대 필터 축. 근거: W-04-02 §5-2, 2026-08-31 결정(omf-mes-server#41) */
                     timeSlotCode?: string;
@@ -25374,6 +25449,8 @@ export interface paths {
                     pickingCompleteOnly?: boolean;
                     /** @description 출하 잔여가 남은 작업지시만 — 라인 중 shippedQty < allocatedQty 인 것이 하나라도 있는 건. ⭐ 부분 출하 후 잔여도 다시 잡힌다(W-04-04 §5-7·§8-6) */
                     shippableRemainderOnly?: boolean;
+                    /** @description 이 품목이 담긴 라인이 있는 작업지시만. ⭐ 긴급 직행 출하(W-04-05)가 고른 제품 LOT 의 품목으로 지시를 좁히는 축이다 — 이 축이 없으면 화면이 이번 쪽 안에서만 거를 수 있어 맞는 지시가 있는데도 안 보인다(공유계약 L-11). 근거: W-04-05 §5-7 */
+                    itemId?: number;
                 };
                 header?: never;
                 path?: never;
@@ -25990,7 +26067,7 @@ export interface paths {
                 query?: {
                     /** @description 의뢰 전 · 판정 대기 · 판정 완료 */
                     statusCode?: string;
-                    /** @description PRODUCT(제품)·RETURN(반품). 2026-08-30 되살림 — W-03-10 §5-4 */
+                    /** @description PRODUCT(제품)·RETURN(반품). ⭐ 서버가 대상 LOT 의 입고 유형으로 파생하는 축이다 — 화면이 보내지 않는다. W-03-10 §5-4 원천 필터가 쓴다. 이력: 2026-08-30 신설(W-03-10 원천 필터 되살리기) · 2026-09-01 서버 파생으로 재정의(omf-mes#303) */
                     sourceCode?: string;
                     warehouseId?: number;
                     itemId?: number;
@@ -41004,7 +41081,7 @@ export interface components {
             /** @example 값 */
             remarks?: string | null;
         };
-        /** @description 부적합. W-04-07 「부적합 등록」이 만든다. 판정은 W-03-10 이 한다 — affectedQtyTotal·dispositionProgressCode 는 그 화면의 목록이 쓰는 서버 집계다 */
+        /** @description 부적합. W-04-07 「부적합 등록」이 만든다. 판정은 W-03-10 이 한다 — affectedQtyTotal·dispositionProgressCode 는 그 화면의 목록이 쓰는 서버 집계다. sourceCode 는 서버가 항상 파생해 내린다 — lots 가 minItems:1 필수라 대상 LOT 이 반드시 있다 */
         Nonconformance: {
             /**
              * Format: int64
@@ -41029,8 +41106,8 @@ export interface components {
              * @example 1001
              */
             inspectionResultId?: number | null;
-            /** @description 원천 축 — PRODUCT(04 제품 부적합 등록)·RETURN(04 반품 입고) 2종. 02 수리·01 자재는 이 경로로 들어오지 않아 대상이 아니다(W-03-10 §5-4). 2026-08-30 되살림 — W-04-07·W-04-06 이 같은 경로·스키마를 쓰던 것을 이 축으로 가른다 */
-            sourceCode?: string;
+            /** @description ⭐ 서버 파생 값이다 — 저장 컬럼이 아니고 화면이 보내지 않는다(W-CO-03 의 openable 과 같은 형태). 파생 규칙: 대상 LOT 이 receiptTypeCode=RETURN 인 입고 전표로 들어왔으면 RETURN, 그 밖은 전부 PRODUCT. ⛔ NonconformanceCreate 에 이 칸이 없는 것은 결손이 아니라 이 결정의 귀결이다 — 다음 사람이 또 「Create 에 칸이 없다」로 이슈를 열지 않도록 남긴다. 부적합을 만드는 화면은 W-04-07 하나다(요구서 §3-6 · 2026-08-29 확정). 쓰는 곳: W-03-10 의 원천 필터(§5-4) · W-04-07 상세의 「원천」 표시(§3). ⚠ 값 이름 충돌 주의 — GoodsReceipt.receiptTypeCode 의 PRODUCT(제품입고)와 뜻이 다르다. 이력: 2026-08-30 신설(W-03-10 원천 필터 되살리기) · 2026-09-01 서버 파생으로 재정의(omf-mes#303) */
+            sourceCode: string;
             /** @example 값 */
             severityCode: string;
             /**
@@ -41324,6 +41401,18 @@ export interface components {
         ShipmentCancel: {
             /** @example 값 */
             remarks?: string | null;
+            /**
+             * Format: date
+             * @description 영업일(발생일). 취소는 재고를 되돌리므로 원장을 지난다 — 유일 제약에 영업일이 들어 있다(공유계약 C-8 · W-04-12 §5-8).
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 취소를 실행한 시각. 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
         };
         ShipmentCancelRequest: {
             /**
@@ -41332,7 +41421,7 @@ export interface components {
              */
             reason: string;
         };
-        /** @description 출하 처리. 출하·라인·LOT 배분을 한 트랜잭션으로 만든다(공유계약 B-8). ⛔ 확정하지 않는다 — 미확정 출하까지다. 확정은 :confirm 이다 재고 차감(수불 원장 전기)은 이 오퍼레이션 안이다. expedited=true 이면 제품 입고 전표와 입고 전기를 여기서 함께 만든다. ⛔ 출고 전기·ERP 송신 적재는 여기가 아니라 :confirm 이다(2026-08-07 출하 2단 확정 · W-04-05 §5-1 · 공유계약 B-8) */
+        /** @description 출하 처리. 출하·라인·LOT 배분을 한 트랜잭션으로 만든다(공유계약 B-8). ⛔ 확정하지 않는다 — 미확정 출하까지다. 확정은 :confirm 이다. ⭐ 재고 차감(수불 원장 전기 = 출고 전기)은 이 오퍼레이션 안이다 — 실물이 나갔으므로 여기서 차감한다(W-04-04 §5-1 도식). expedited=true 이면 제품 입고 전표와 입고 전기를 여기서 함께 만든다. ⛔ :confirm 으로 가는 것은 ERP 송신 적재 하나뿐이다(2026-08-07 출하 2단 확정 · W-04-05 §5-1 · 공유계약 B-8). ⭐ businessDate·occurredAt 을 반드시 싣는다 — 이 오퍼레이션이 재고 원장을 지나고 그 유일 제약에 영업일이 들어 있다(공유계약 C-8) */
         ShipmentCreate: {
             /**
              * Format: int64
@@ -41363,7 +41452,7 @@ export interface components {
              */
             carrierId?: number;
             /**
-             * @description ⭐ 긴급 직행 출하인가(W-04-05) — 창고 경유·피킹·Packing 을 건너뛴다. ⛔ 품질 게이트는 건너뛰지 않는다 — 배분 LOT 이 Release 가 아니면 400 이다(결정 10 · W-04-05 §5-3). ⭐ 참이면 서버가 제품 입고 전표와 입고 전기를 같은 트랜잭션에서 함께 만든다 — 화면이 01 계약을 따로 부르지 않는다. 입고 유형·원천 문서 유형은 서버가 정한다(01 계약 receiptTypeCode·sourceDocumentTypeCode · 공유계약 G-2 — 그 값 목록은 아직 확정되지 않았다). 장부상 입고 창고는 본문의 warehouseId 다(W-04-05 §5-1·§5-4)
+             * @description ⭐ 긴급 직행 출하인가(W-04-05) — 창고 경유·피킹·Packing 을 건너뛴다. ⛔ 품질 게이트는 건너뛰지 않는다 — 배분 LOT 이 Release 가 아니면 400 이다(결정 10 · W-04-05 §5-3). ⭐ 참이면 서버가 제품 입고 전표와 입고 전기를 같은 트랜잭션에서 함께 만든다 — 화면이 01 계약을 따로 부르지 않는다. 입고 유형·원천 문서 유형은 서버가 정한다(01 계약 receiptTypeCode·sourceDocumentTypeCode). 입고 유형은 제품입고(PRODUCT)로 확정됐고(2026-08-31 · 공유계약 G-32 등록부 RECEIPT_TYPE), 원천 문서 유형의 값 목록만 아직 확정 전이다(omf-mes#145). 장부상 입고 창고는 본문의 warehouseId 다 — 화면이 고른다(W-04-05 §5-1·§5-4)
              * @default false
              * @example true
              */
@@ -41375,6 +41464,18 @@ export interface components {
             expediteReason?: string | null;
             /** @example 값 */
             remarks?: string;
+            /**
+             * Format: date
+             * @description 영업일(발생일). ⛔ 서버가 수신 시각으로 다시 잡지 않는다 — 재고 원장의 유일 제약이 (idempotency_key, business_date) 라 자정을 넘긴 재시도에서 같은 키로도 전표가 두 벌 생긴다. 근거: 공유계약 C-8 · W-04-05 §5-6
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 실물이 나간 시각. 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
             lines: components["schemas"]["ShipmentLineCreate"][];
         };
         ShipmentLine: {
@@ -41440,9 +41541,26 @@ export interface components {
             shipmentLotAllocationId: number;
             /**
              * Format: int64
+             * @description 이 배분이 속한 출하. ⛔ 없으면 P-04-01 의 둘째 스캔을 부를 수 없다 — 첫 스캔(q)이 주는 것은 shipmentLineId 까지인데 lotQ 판정은 «출하» 범위를 요구한다(같은 오퍼레이션의 lotQ 설명). 질의 축에는 있는데 응답에 없어 «거를 수는 있고 받을 수는 없던» 자리다 — 항상 내린다. 근거: P-04-01 §5-1 · omf-mes#330 A
+             * @example 1001
+             */
+            shipmentId: number;
+            /**
+             * Format: int64
              * @example 1001
              */
             shipmentLineId: number;
+            /**
+             * Format: int64
+             * @description 이 배분의 품목. shipment_line.item_id 를 그대로 내린다. ⛔ 없으면 포장 확정 본문(01 계약 HandlingUnitContentUpsert.itemId 필수)을 채울 수 없다 — 표시가 아니라 «쓰기»가 막힌다. 항상 내린다. 근거: P-04-01 §4-B·§5-6 · omf-mes#330 A
+             * @example 1001
+             */
+            itemId: number;
+            /**
+             * @description 화면에 그대로 그리는 품목 코드. ⛔ 화면이 itemId→코드 대응을 따로 조회하지 않는다 — 계약이 표시 문자열까지 내려 준다(공유계약 A-10 보강 · W-02-06 ProductionOrderChangedField.label 과 같은 형태). P-04-01 §3 포장 구성 표의 「품목」 열과 불일치 문구(「이 납품라벨은 FG-1002 용입니다」)가 이 값이다. ⚠ itemName 은 두지 않는다 — POP 1024×768 의 세로·가로 예산(E-1·E-2)에 이름 열이 들어갈 자리가 없다
+             * @example ABC-123
+             */
+            itemCode: string;
             /**
              * Format: int64
              * @example 1001
@@ -41456,6 +41574,12 @@ export interface components {
              * @example 1001
              */
             handlingUnitId?: number | null;
+            /**
+             * Format: int64
+             * @description 이 배분이 나가는 창고(shipment.warehouse_id). ⛔ 없으면 P-04-01 이 상위 포장 후보를 좁힐 수 없어 창고 전체가 후보가 된다 — 01 계약 GET /inventory/handling-units 의 warehouseId 질의에 넣는 값이다(새 질의 축을 만들지 않는다). 새로 만드는 취급 단위의 warehouseId 도 이 값이다. 근거: P-04-01 §5-2 · omf-mes#330 D
+             * @example 1001
+             */
+            warehouseId: number;
             /**
              * Format: double
              * @example 120
@@ -41791,6 +41915,147 @@ export interface components {
              * @example 2026-08-13T10:22:00+09:00
              */
             pickedAt: string;
+        };
+        StockReinstatementCreate: {
+            /**
+             * Format: int64
+             * @description 진입 목록에서 고른 처분 결정. 서버가 이 값으로 followUpPending 을 내린다 — 처리한 건이 목록에 남아 같은 LOT 을 두 번 재등록하는 것을 막는다. 근거: GET /quality/disposition-decisions 의 followUpPending
+             * @example 1001
+             */
+            dispositionDecisionId: number;
+            /** @description 낙관적 잠금 토큰을 본문으로 싣는다 — 원천은 GET /quality/lot-statuses 의 versionNo 다. POST /quality/lot-holds 의 lots[].versionNo 와 같은 축·같은 원천이다. 화면이 표시하지 않는다. 근거: 공유계약 A-4 · A-4-1 */
+            lot: {
+                /**
+                 * Format: int64
+                 * @example 1001
+                 */
+                lotId: number;
+                /** @example 3 */
+                versionNo: number;
+            };
+            /**
+             * Format: int64
+             * @description 닫을 보류 문서. GET /quality/lot-holds?lotId=&open=true 에서 얻는다 — 식별자이지 잠금 토큰이 아니다
+             * @example 1001
+             */
+            lotHoldId: number;
+            /**
+             * Format: int64
+             * @description 되돌릴 창고(완제품창고)
+             * @example 1001
+             */
+            toWarehouseId: number;
+            /**
+             * Format: int64
+             * @description 창고가 위치를 관리하면 필수 — 서버가 판정한다. 근거: W-04-11 §4-B
+             * @example 1001
+             */
+            toLocationId?: number | null;
+            /**
+             * Format: double
+             * @description 현재 보유 이하. 부분 재등록을 허용한다. 근거: W-04-11 §6
+             * @example 200
+             */
+            qty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * @description 보류 해제 사유 — 필수다. LotHoldRelease 와 같은 축을 유지한다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_RELEASE_REASON. 근거: 공유계약 G-32 · omf-mes#293
+             * @example RETEST_PASS
+             */
+            releaseReasonCode: string;
+            /** @description 재등록 사유 — 「재등록이 몇 건인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. 근거: 공유계약 §I-41 · omf-mes#84 */
+            reasonCode?: string | null;
+            /**
+             * Format: date
+             * @description 근거: 공유계약 C-8
+             * @example 2026-08-06
+             */
+            businessDate: string;
+            /**
+             * Format: date-time
+             * @description 재등록 확정 시각. 근거: 공유계약 C-1
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /**
+             * @description 부가 비고 — 사유는 releaseReasonCode·reasonCode 가 정본이다
+             * @example 값
+             */
+            remarks?: string | null;
+        };
+        StockReinstatementResponse: {
+            /**
+             * Format: int64
+             * @description 만들어진 이동 문서
+             * @example 1001
+             */
+            stockTransferId: number;
+            /**
+             * @description receivedAt 이 채워진 상태로 만들어진다 — 반출과 도착이 이 한 번에 끝났다
+             * @example ST-2026-000260
+             */
+            stockTransferNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /**
+             * @description 전이 결과 — 화면이 확정 후 「무엇이 풀렸는가」를 말할 근거다(공유계약 B-8 규칙 4). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS. 근거: 공유계약 G-32
+             * @example NORMAL
+             */
+            lotStatusCode: string;
+            /**
+             * Format: int64
+             * @description 닫힌 보류
+             * @example 1001
+             */
+            releasedLotHoldId: number;
+            /**
+             * Format: double
+             * @example 200
+             */
+            reinstatedQty: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            toWarehouseId: number;
+            /**
+             * Format: date-time
+             * @example 2026-08-06T09:12:00+09:00
+             */
+            occurredAt: string;
+            /**
+             * Format: double
+             * @description 부분 재등록 후 불량창고에 남은 수량. 근거: W-04-11 §6
+             * @example 80
+             */
+            remainingHeldQty?: number | null;
+        };
+        StockReinstatementConflictResponse: {
+            /**
+             * @description ALREADY_REINSTATED 는 이 처분 결정이 이미 재등록됐다는 뜻이다 — followUpPending 이 이미 내려갔다. HOLD_ALREADY_RELEASED 는 다른 경로에서 보류가 먼저 풀렸다는 뜻이다(판정 화면 W-03-02 가 그럴 수 있다). DISPOSITION_NOT_REINSTATABLE 은 처분이 폐기이거나 아직 판정 대기라는 뜻이다. 근거: W-04-11 §5-2 · §6
+             * @example VERSION_CONFLICT
+             * @enum {string}
+             */
+            code: "VERSION_CONFLICT" | "DUPLICATE_KEY" | "INVALID_STATE" | "ALREADY_REINSTATED" | "HOLD_ALREADY_RELEASED" | "DISPOSITION_NOT_REINSTATABLE";
+            /** @example 값 */
+            message: string;
+            /**
+             * @description VERSION_CONFLICT 일 때 서버의 현재 version_no
+             * @example 값
+             */
+            currentVersion?: string;
         };
         InspectionLine: {
             /**

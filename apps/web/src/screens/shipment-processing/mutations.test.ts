@@ -17,6 +17,8 @@ const createBody = (overrides: Record<string, unknown> = {}) => ({
   shipmentRequestId: 501,
   warehouseId: 1001,
   expedited: false,
+  businessDate: '2026-08-12',
+  occurredAt: '2026-08-12T10:22:00+09:00',
   lines: [
     {
       shipmentRequestLineId: 701,

@@ -93,6 +93,7 @@ import { oqcInspection } from './oqc-inspection';
 import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
 import { poChangeReview } from './po-change-review';
+import { packingResult } from './packing-result';
 import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
 import { inboundReceipt } from './inbound-receipt';
@@ -186,6 +187,7 @@ export const ko = {
   inboundVariance,
   temporaryPutaway,
   poChangeReview,
+  packingResult,
 } as const;
 
 export type Messages = typeof ko;

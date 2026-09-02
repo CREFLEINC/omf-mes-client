@@ -11,6 +11,8 @@ import {
   type ShipmentRequestTargetLine,
 } from './types';
 
+import type { ShipmentCreateDraft } from './occurrence';
+
 /**
  * 확정 게이트와 본문 조립을 **한 파일에 둔다.**
  *
@@ -19,7 +21,11 @@ import {
  * 순서로** 나와야 하고, 그러려면 한 자리에 있어야 한다.
  */
 
-export type ShipmentCreateBody = components['schemas']['ShipmentCreate'];
+/**
+ * 화면이 조립하는 본문 — **시각 두 칸(`businessDate`·`occurredAt`)은 여기 없다.**
+ * 그 둘은 보내는 순간에 `occurrence.ts`가 얹는다(공유계약 C-8).
+ */
+export type ShipmentCreateBody = ShipmentCreateDraft;
 type ShipmentLineCreate = components['schemas']['ShipmentLineCreate'];
 
 /** ③ 상차 정보 — 전부 선택 입력이다(§5-7). */

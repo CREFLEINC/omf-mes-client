@@ -15,6 +15,7 @@ import {
 import { LotPane } from './lot-pane';
 import { lotReleaseState } from './lot-release';
 import { useExpeditedShipmentMutation } from './mutations';
+import { withOccurrence, type ShipmentCreate } from './occurrence';
 import { OutcomePane } from './outcome-pane';
 import { defaultPeriod, isUsablePeriod, type Period } from './period';
 import {
@@ -70,7 +71,8 @@ export const ExpeditedShipmentScreen = ({
   const [draft, setDraft] = useState<ExpeditedShipmentDraft>(EMPTY_DRAFT);
   const [chosenWarehouseId, setChosenWarehouseId] = useState('');
   const [showErrors, setShowErrors] = useState(false);
-  const [confirming, setConfirming] = useState<ShipmentCreateBody | null>(null);
+  /** 확정 대기 중인 본문 — **시각까지 찍힌 완성본**이다(재전송에서 같은 값이어야 한다). */
+  const [confirming, setConfirming] = useState<ShipmentCreate | null>(null);
 
   const items = useItemLookup();
   const uoms = useUomLookup();
@@ -225,7 +227,11 @@ export const ExpeditedShipmentScreen = ({
               /* 게이트가 열려 있는데 본문이 없으면 그대로 멈춘다 — 절반짜리 요청을 만들지 않는다. */
               if (body === null) return;
               write.reset();
-              setConfirming(body);
+              /*
+               * ⭐ 시각은 **확정 창을 여는 순간 한 번만** 찍는다. 보내는 자리에서 찍으면 실패한
+               * 요청을 다시 보낼 때 값이 달라져 **멱등 키가 갈리고 전표가 두 벌 생긴다.**
+               */
+              setConfirming(withOccurrence(body, new Date()));
             }}
           >
             {t.submit}
