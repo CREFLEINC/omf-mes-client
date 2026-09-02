@@ -99,6 +99,7 @@ import { inboundReceipt } from './inbound-receipt';
 import { putaway } from './putaway';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
+import { shellHome } from './shell-home';
 
 export const ko = {
   common,
@@ -186,6 +187,7 @@ export const ko = {
   inboundVariance,
   temporaryPutaway,
   poChangeReview,
+  shellHome,
 } as const;
 
 export type Messages = typeof ko;

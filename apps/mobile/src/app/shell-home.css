@@ -1,0 +1,41 @@
+.shell-home {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.shell-home__group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.shell-home__group h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.shell-home__tiles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 카드 전체가 누르는 자리다. 글자만 눌리면 장갑 낀 손이 빗나간다. */
+.shell-home__tile {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.shell-home__tile:focus-visible {
+  outline: 2px solid var(--primary, currentColor);
+  outline-offset: 2px;
+  border-radius: var(--radius-md, 12px);
+}

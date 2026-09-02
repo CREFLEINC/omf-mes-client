@@ -158,11 +158,15 @@ export const PutawayScreen = () => {
                     <span>
                       {t.tasks.qty(`${String(each.taskQty)} ${uoms.data?.get(each.uomId) ?? ''}`)}
                     </span>
+                    {/*
+                     * 목록에서는 위치 코드를 아직 받지 못했다. 식별자를 그대로 보이면 사람이
+                     * 읽을 수 없는 번호가 권장 위치인 척한다 - 있고 없고만 말한다.
+                     */}
                     <span>
                       {each.recommendedLocationId === null ||
                       each.recommendedLocationId === undefined
                         ? t.tasks.noRule
-                        : t.tasks.recommended(String(each.recommendedLocationId))}
+                        : t.tasks.hasRule}
                     </span>
                   </span>
                 </Button>

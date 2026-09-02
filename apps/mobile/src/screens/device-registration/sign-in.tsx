@@ -75,7 +75,7 @@ export const WorkerSignInScreen = () => {
 
         <Button
           variant="filled"
-          size="xl"
+          size="2xl"
           onClick={() => {
             void navigate('/screens');
           }}
@@ -111,7 +111,7 @@ export const WorkerSignInScreen = () => {
 
       <Button
         variant="filled"
-        size="xl"
+        size="2xl"
         disabled={entry === '' || directory === null}
         onClick={confirm}
       >

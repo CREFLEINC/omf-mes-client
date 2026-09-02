@@ -47,7 +47,7 @@ export const OutboxRejectionsScreen = () => {
                 ) : null}
                 <Button
                   variant="outlined"
-                  size="lg"
+                  size="xl"
                   onClick={() => void dismissRejected(record.entry.id)}
                 >
                   {t.dismiss}

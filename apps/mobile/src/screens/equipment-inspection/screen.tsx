@@ -226,7 +226,7 @@ export const EquipmentInspectionScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
-        <Button variant="filled" size="lg" onClick={restart}>
+        <Button variant="filled" size="2xl" onClick={restart}>
           {t.another}
         </Button>
       </div>
@@ -354,7 +354,7 @@ export const EquipmentInspectionScreen = () => {
             <p className="inspection__note">{t.summary.remainingRequired(remaining.itemName)}</p>
           )}
           {worker === null ? <p className="inspection__note">{t.noWorker}</p> : null}
-          <Button variant="filled" size="lg" disabled={!ready} onClick={() => void complete()}>
+          <Button variant="filled" size="2xl" disabled={!ready} onClick={() => void complete()}>
             {t.submit}
           </Button>
         </section>
