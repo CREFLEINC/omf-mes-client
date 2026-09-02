@@ -249,6 +249,94 @@ describe('수리 왕복 스캔 화면', () => {
     expect(await screen.findByText('수리 투입을 기록했습니다')).toBeTruthy();
   });
 
+  /*
+   * 보낼 때마다 키를 새로 만들면 멱등키가 아무것도 막지 못한다. 서버가 기록한 뒤 응답이
+   * 유실되면 화면은 실패로 보이고, 사람이 다시 누르면 새 키라 서버가 같은 일을 한 번 더 한다.
+   */
+  it('투입을 다시 시도해도 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse({ ...execution, repairQty: 20 }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    reachable = true;
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+    expect(await screen.findByText('수리 투입을 기록했습니다')).toBeTruthy();
+  });
+
+  /* 다른 것을 적기 시작했으면 앞 시도의 키를 들고 가지 않는다. 서버가 흡수해 조용히 사라진다. */
+  it('다른 LOT 을 스캔하면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+          return jsonResponse({ ...execution, repairQty: 20 }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(await screen.findByRole('button', { name: '다음 LOT 스캔' }));
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
   /* 서버가 충돌로 되돌린 것은 다시 시도해서 풀리지 않는다. 다시 하라고 말하지 않는다. */
   it('서버가 충돌로 되돌리면 이미 투입된 것으로 말한다', async () => {
     const user = userEvent.setup();

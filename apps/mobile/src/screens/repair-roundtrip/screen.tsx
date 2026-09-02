@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
+import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -69,6 +70,8 @@ export const RepairRoundtripScreen = () => {
   const [typing, setTyping] = useState(false);
   const [result, setResult] = useState<RepairResult | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  /* 한 번의 확정에 키 하나. 다른 것을 적기 시작하면 비운다. */
+  const idempotency = useIdempotencyKey();
 
   const scanField = useScanField({
     onScan: (value) => {
@@ -78,6 +81,7 @@ export const RepairRoundtripScreen = () => {
       setQty('');
       setResult(null);
       setDone(null);
+      idempotency.reset();
     },
   });
 
@@ -133,6 +137,7 @@ export const RepairRoundtripScreen = () => {
   };
 
   const restart = () => {
+    idempotency.reset();
     setScanned(null);
     setDefectId(null);
     setExecutionId(null);
@@ -148,8 +153,14 @@ export const RepairRoundtripScreen = () => {
     }
 
     await dispatch
-      .mutateAsync({ defect, qty, workerNo: worker.workerNo })
+      .mutateAsync({
+        defect,
+        qty,
+        workerNo: worker.workerNo,
+        idempotencyKey: idempotency.current(),
+      })
       .then(() => {
+        idempotency.reset();
         setDone(t.dispatch.done);
       })
       .catch(() => null);
@@ -165,8 +176,10 @@ export const RepairRoundtripScreen = () => {
         repairExecutionId: execution.repairExecutionId,
         result,
         workerNo: worker.workerNo,
+        idempotencyKey: idempotency.current(),
       })
       .then(() => {
+        idempotency.reset();
         setDone(t.return.done);
       })
       .catch(() => null);
