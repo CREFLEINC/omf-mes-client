@@ -108,10 +108,17 @@ export const WorkOrderValidationPane = ({
   const summary = toValidationSummary(report);
 
   return (
-    <section className="pane" aria-label={t.panes.validation} aria-busy={isRefreshing}>
-      <Chip variant="status" status={summaryStatus[summary]} size="sm">
-        {t.summary[summary]}
-      </Chip>
+    <section
+      className="pane work-order-validation-pane"
+      aria-label={t.panes.validation}
+      aria-busy={isRefreshing}
+    >
+      <div className="work-order-validation-heading">
+        <h2 className="pane-title">{t.panes.validation}</h2>
+        <Chip variant="status" status={summaryStatus[summary]} size="sm">
+          {t.summary[summary]}
+        </Chip>
+      </div>
       {isRefreshing && (
         <p role="status" aria-label={t.refreshing}>
           {t.refreshing}
@@ -127,6 +134,7 @@ export const WorkOrderValidationPane = ({
         <div className="wide-table">
           <Table
             density="compact"
+            caption={<span className="work-order-table-caption">{t.panes.validation}</span>}
             columns={columns}
             rows={report.findings}
             getRowId={(_finding, index) => String(index)}

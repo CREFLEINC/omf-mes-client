@@ -553,6 +553,155 @@ main > * + * {
   }
 }
 
+/* 4M 자원배정·유효성 점검 — 선택→배정→검증의 읽는 순서를 유지하며 세로 길이를 줄인다. */
+.work-order-assignment-workspace,
+.work-order-assignment-editor {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.work-order-assignment-context,
+.work-order-assignment-list-pane,
+.work-order-resource-pane,
+.work-order-plan-pane,
+.work-order-validation-pane {
+  padding: var(--space-5);
+}
+
+.work-order-assignment-context {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.work-order-assignment-context > span {
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+  letter-spacing: var(--type-label-md-tracking);
+}
+
+.work-order-assignment-context > h2,
+.work-order-assignment-context > p {
+  margin: 0;
+}
+
+.work-order-assignment-context > h2 {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.work-order-assignment-list-pane,
+.work-order-resource-pane,
+.work-order-plan-pane,
+.work-order-validation-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.work-order-assignment-list-pane > .pane-title,
+.work-order-resource-pane > .pane-title,
+.work-order-plan-pane > .pane-title,
+.work-order-validation-heading > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.work-order-assignment-table table {
+  min-width: 50rem;
+}
+
+.work-order-assignment-list-pane > .wide-table,
+.work-order-validation-pane > .wide-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.work-order-validation-pane > .wide-table table {
+  min-width: 32rem;
+  width: 100%;
+}
+
+.work-order-priority-field {
+  width: 6.5rem;
+}
+
+.work-order-priority-field input {
+  text-align: end;
+}
+
+.work-order-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.work-order-assignment-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.work-order-resource-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.work-order-resource-grid h3,
+.work-order-plan-pane h3 {
+  margin: 0;
+}
+
+.work-order-resource-pane .field-cell {
+  align-items: stretch;
+}
+
+.work-order-resource-pane .field-cell + .field-cell {
+  margin-top: var(--space-3);
+}
+
+.work-order-plan-fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.work-order-validation-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.work-order-assignment-editor > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1360px) {
+  .work-order-assignment-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .work-order-resource-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;

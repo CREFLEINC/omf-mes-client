@@ -130,9 +130,11 @@ it('opens the exact production plan workspace from the public route parameter', 
   );
 
   expect(mocks.context).toHaveBeenCalledWith(501);
-  expect(
-    screen.getByRole('region', { name: messages.workOrder.screen.view.contextPane }),
-  ).toBeVisible();
+  const contextPane = screen.getByRole('region', {
+    name: messages.workOrder.screen.view.contextPane,
+  });
+  expect(contextPane).toBeVisible();
+  expect(contextPane.parentElement).toHaveClass('work-order-assignment-workspace');
 });
 
 it('joins exact context, display references, selection, and shared priority draft', async () => {

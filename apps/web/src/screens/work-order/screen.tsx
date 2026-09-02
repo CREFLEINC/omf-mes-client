@@ -141,9 +141,10 @@ export const WorkOrderAssignmentWorkspace = ({
   ) : null;
 
   return (
-    <>
+    <div className="work-order-assignment-workspace">
       {ready && (
-        <section className="pane" aria-label={t.contextPane}>
+        <section className="pane work-order-assignment-context" aria-label={t.contextPane}>
+          <span>{t.contextPane}</span>
           <h2>{exactPlan.planNo}</h2>
           <p>{t.context(exactOrder.productionOrderNo, workOrders.data.page.total)}</p>
         </section>
@@ -191,7 +192,7 @@ export const WorkOrderAssignmentWorkspace = ({
             }
           />
         ))}
-    </>
+    </div>
   );
 };
 
