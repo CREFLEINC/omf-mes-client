@@ -34,19 +34,17 @@ describe('POP 라우트 편입', () => {
    */
   it('P-CO-01 진입 주소가 서 있다', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/worker-assignment');
-   * ⛔ **어느 화면이 표에 있어야 하는가**도 함께 지킨다. 위 시험은 「표에 든 것이 붙어 있는가」만
-   * 보므로, 한 화면의 줄이 병합 중에 사라져도 타입 검사·빌드·화면 시험이 전부 통과한다 —
-   * 화면 시험은 라우터를 지나지 않기 때문이다. 증상은 런타임에만 난다(`*` 라우트가 관리웹
-   * 첫 화면으로 되돌린다).
-   *
-   * 새 POP 화면을 붙일 때 이 목록에도 함께 적는다.
-   */
-  it('선 화면의 주소가 표에서 빠지지 않았다', () => {
-    const paths = popRoutes.map((route) => route.path);
+  });
 
-    for (const path of ['/pop/material-input', '/pop/tool-usage', '/pop/material-lot-label']) {
-      expect(paths).toContain(path);
-    }
+  /**
+   * 같은 이유로 이 화면도 이름으로 못박는다 — 창고 단말이 고정으로 띄우는 주소라, 사라지면
+   * 그 앞에 선 사람만 알게 된다.
+   *
+   * ⚠ **화면마다 자기 줄을 지킨다.** 여기에 전체 목록을 두면 새 POP 화면이 늘 때마다 남의
+   * 시험을 고쳐야 하고, 그러다 빠뜨리면 지키는 것이 없어진다.
+   */
+  it('P-01-01 자재LOT 등록·라벨 발행 주소가 서 있다', () => {
+    expect(popRoutes.map(({ path }) => path)).toContain('/pop/material-lot-label');
   });
 
   it('POP 경로는 `/pop`으로 시작한다 — 관리웹 셸 주소와 섞이지 않는다', () => {

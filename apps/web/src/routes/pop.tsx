@@ -81,7 +81,6 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/emergency-work-orders', element: <EmergencyWorkOrderFieldScreen /> },
   /*
-<<<<<<< HEAD
    * P-05-02 — 비가동은 **설비에 붙지 작업에 붙지 않는다.** 그래서 진입 컨텍스트가 앞의
    * 것들과 다르다: 작업지시가 아니라 설비를 주소로 받는다(`?equipmentId=`).
    *
@@ -89,7 +88,7 @@ export const popRoutes: RouteObject[] = [
    * 서면 `screen-params.ts` 하나가 바뀐다.
    */
   { path: '/pop/downtime', element: <DowntimeRegisterScreen /> },
-=======
+  /*
    * P-01-01 — 자재LOT 등록·라벨 발행. 다른 POP 화면과 같이 셸 밖에 선다.
    *
    * ⛔ **사이드바에 올리지 않는다.** 관리웹 사용자가 메뉴로 찾아가는 곳이 아니라 창고 단말이
@@ -103,5 +102,4 @@ export const popRoutes: RouteObject[] = [
    * 출력 권한 집행은 서버의 403이다.
    */
   { path: '/pop/material-lot-label', element: <PopMaterialLotLabelScreen /> },
->>>>>>> 2c28f1d (refactor(pop): 라우트를 POP 라우트 표로 옮기고 겹친 셸을 걷는다)
 ];

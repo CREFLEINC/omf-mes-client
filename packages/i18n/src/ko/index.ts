@@ -103,11 +103,7 @@ import { putaway } from './putaway';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
-<<<<<<< HEAD
 import { workerAssignment } from './worker-assignment';
-import { popShell } from './pop-shell';
-=======
->>>>>>> 2c28f1d (refactor(pop): 라우트를 POP 라우트 표로 옮기고 겹친 셸을 걷는다)
 import { popMaterialLotLabel } from './pop-material-lot-label';
 
 export const ko = {
@@ -200,11 +196,7 @@ export const ko = {
   temporaryPutaway,
   poChangeReview,
   shellHome,
-<<<<<<< HEAD
   workerAssignment,
-  popShell,
-=======
->>>>>>> 2c28f1d (refactor(pop): 라우트를 POP 라우트 표로 옮기고 겹친 셸을 걷는다)
   popMaterialLotLabel,
 } as const;
 

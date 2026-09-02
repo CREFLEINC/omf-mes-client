@@ -47,7 +47,7 @@ export const PrinterStatusIndicator = ({
 }: PrinterStatusProps) => {
   if (isError) {
     return (
-      <div className="pop-screen-status">
+      <div className="pop-lot-status">
         <Chip status="error">{t.unknown}</Chip>
         <Button className={popTouchClass('normal')} variant="outlined" size="xl" onClick={onRetry}>
           {t.retry}
@@ -61,14 +61,14 @@ export const PrinterStatusIndicator = ({
 
   if (printer === null) {
     return (
-      <div className="pop-screen-status">
+      <div className="pop-lot-status">
         <Chip status="warning">{t.none}</Chip>
       </div>
     );
   }
 
   return (
-    <div className="pop-screen-status">
+    <div className="pop-lot-status">
       <p className="pop-printer-name">
         <span className="pop-printer-label">{t.label}</span>
         <span>{printer.displayName}</span>
