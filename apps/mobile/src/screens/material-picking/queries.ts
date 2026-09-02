@@ -59,6 +59,13 @@ export const usePickingOrder = (
   return useQuery({
     queryKey: pickingKeys.order(pickingOrderId),
     enabled: pickingOrderId !== null,
+    /*
+     * 열 때마다 서버에 다시 묻는다. 이 값에 담긴 것을 더해 얼마를 집을지 정하고, 그 결과가
+     * 되돌릴 수 없는 재고 차감이다 - 목록으로 나가 있는 사이 셸이 큐를 비우면 담긴 것이
+     * 셈에서 빠지는데, 낡은 응답이 남아 있으면 화면이 안 집은 것으로 보인다.
+     */
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () => {
       if (pickingOrderId === null) {
         throw new Error('지시를 고르기 전에는 라인을 조회하지 않습니다.');

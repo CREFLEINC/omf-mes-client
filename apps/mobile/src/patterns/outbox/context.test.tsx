@@ -91,10 +91,18 @@ describe('outbox', () => {
   /* 보내는 중에 담긴 것을 비우면 방금 담은 기록이 사라진다. */
   it('보내는 도중에 담긴 것을 지우지 않는다', async () => {
     let release: (() => void) | null = null;
-    const send: OutboxTransport = () =>
-      new Promise<void>((resolve) => {
+    const seen: string[] = [];
+    const send: OutboxTransport = (entry) => {
+      seen.push(entry.idempotencyKey);
+
+      if (entry.idempotencyKey !== 'k-1') {
+        return Promise.resolve();
+      }
+
+      return new Promise<void>((resolve) => {
         release = resolve;
       });
+    };
     const { result } = mount(send);
 
     await act(async () => {
@@ -108,7 +116,47 @@ describe('outbox', () => {
       await sending;
     });
 
-    expect(result.current.pending).toBe(1);
+    expect(seen).toEqual(['k-1', 'k-2']);
+    expect(result.current.pending).toBe(0);
+  });
+
+  /*
+   * 도는 회차의 목록은 담기 전에 떠진 것이라 방금 담은 건이 없다. 합류시키면 보낸 적 없는 건이
+   * 보냈다는 결과를 받고, 화면은 되돌릴 수 없는 쓰기에 그 거짓을 붙인다.
+   */
+  it('보내는 도중에 담은 건도 그 부름이 끝나기 전에 보낸다', async () => {
+    let release: (() => void) | null = null;
+    const seen: string[] = [];
+    const send: OutboxTransport = (entry) => {
+      seen.push(entry.idempotencyKey);
+
+      if (entry.idempotencyKey !== 'k-1') {
+        return Promise.resolve();
+      }
+
+      return new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    };
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    await act(async () => {
+      const first = result.current.flush();
+      await result.current.enqueue(draft('k-2'));
+
+      const second = result.current.flush();
+
+      release?.();
+
+      await Promise.all([first, second]);
+    });
+
+    expect(seen).toContain('k-2');
+    expect(result.current.pending).toBe(0);
   });
 
   /* 겹쳐 부르면 같은 건을 두 번 보낸다. 서버가 흡수해도 보낸 건수는 거짓이 된다. */
