@@ -7,7 +7,7 @@ import { toApiError } from '../../patterns/request';
 import { confirmLockReason } from './confirm-lock';
 import { ContentsTable } from './contents-table';
 import { usePackingIdentity } from './entry-context';
-import { usePackingConfirm } from './mutations';
+import { useHandlingUnitCreate, usePackingConfirm, type OpenHandlingUnit } from './mutations';
 import { addLine, qtyError, removeLine, toProgress } from './packing-draft';
 import {
   useHandlingUnitTypeOptions,
@@ -54,6 +54,11 @@ export const PackingResultScreen = () => {
   const [qty, setQty] = useState('');
   const [mergeNote, setMergeNote] = useState<string | null>(null);
   const [handlingUnitTypeCode, setHandlingUnitTypeCode] = useState('');
+  /**
+   * 담는 동안 열려 있는 포장. **번호는 서버가 매기므로 먼저 만들어야 ③ 구획에 설 수 있다**
+   * (스펙 §3). 확정이 이 포장을 닫는다.
+   */
+  const [openUnit, setOpenUnit] = useState<OpenHandlingUnit | null>(null);
   const [parentId, setParentId] = useState<string>(NO_PARENT);
   const [confirmedNo, setConfirmedNo] = useState<string | null>(null);
 
@@ -66,6 +71,8 @@ export const PackingResultScreen = () => {
   const shipmentAllocations = useShipmentAllocations(shipmentId);
   const progress = toProgress(shipmentAllocations.allocations);
 
+  const createUnit = useHandlingUnitCreate();
+
   const confirm = usePackingConfirm({
     shipmentId,
     onSuccess: (handlingUnit) => {
@@ -75,6 +82,8 @@ export const PackingResultScreen = () => {
       setQty('');
       setMergeNote(null);
       setParentId(NO_PARENT);
+      /* 이 포장은 닫혔다 — 다음 포장은 새로 만든다. */
+      setOpenUnit(null);
       setConfirmedNo(handlingUnit.handlingUnitNo);
     },
   });
@@ -118,12 +127,35 @@ export const PackingResultScreen = () => {
   const packable = matched?.verdict.matched === true ? matched.allocation : undefined;
   const qtyIssue = packable === undefined ? undefined : qtyError(qty, packable, lines);
 
+  /**
+   * 아직 포장이 없으면 만든다 — **담을 것과 유형이 정해진 뒤 한 번**.
+   *
+   * ⛔ 유형만 골랐을 때 만들지 않는다. 고르기만 하고 그만두면 빈 포장이 남고, 이 화면에는
+   * 그것을 되돌릴 조작이 없다(§5-6 포장 해체 없음).
+   */
+  const ensureOpenUnit = (nextLines: readonly PackedLine[], typeCode: string): void => {
+    if (openUnit !== null || createUnit.isPending) return;
+    if (typeCode === '' || nextLines.length === 0 || warehouseId === null) return;
+    if (identity.workerNo === null) return;
+
+    createUnit.mutate(
+      {
+        handlingUnitTypeCode: typeCode,
+        parentHandlingUnitId: parentId === NO_PARENT ? null : Number(parentId),
+        warehouseId,
+        workerNo: identity.workerNo,
+      },
+      { onSuccess: setOpenUnit },
+    );
+  };
+
   const addToPacking = (): void => {
     if (packable === undefined || qtyIssue !== undefined) return;
 
     const outcome = addLine(lines, packable, Number(qty));
 
     setLines(outcome.lines);
+    ensureOpenUnit(outcome.lines, handlingUnitTypeCode);
     setQty('');
     /* ⛔ **조용히 합치지 않는다** — 합친 사실을 말하지 않으면 중복 스캔을 알아채지 못한다(§5-3). */
     setMergeNote(
@@ -214,9 +246,20 @@ export const PackingResultScreen = () => {
             lockReason={shipmentId === null ? t.scan.lotLocked : undefined}
             onScan={scanLot}
           />
-          <p className="scan-outcome" role="status">
-            {matchMessage === null ? '' : matchMessage.text}
-          </p>
+          {/*
+           * 판정은 **배너**로 낸다(스펙 §7 DS 매핑 · G-1). 장갑을 낀 작업자가 스캐너에서 눈을
+           * 떼는 순간이라 한 줄 글자로는 「맞다·다르다」가 눈에 걸리지 않는다.
+           *
+           * ⚠ **자리를 늘 비워 둔다.** 판정이 뜰 때마다 아래 구획이 밀리면, 담긴 줄을 누르려던
+           * 손가락이 빗나간다 — 터치 화면에서 이 흔들림은 오조작이 된다.
+           */}
+          <div className="packing-verdict" role="status">
+            {matchMessage !== null && (
+              <AlertBanner variant={matchMessage.tone === 'success' ? 'success' : 'error'}>
+                {matchMessage.text}
+              </AlertBanner>
+            )}
+          </div>
         </section>
 
         {/* ③ 포장 구성 — 유일한 조정 여지이고, 넘치면 «이 안에서» 스크롤한다(§3-1). */}
@@ -224,12 +267,22 @@ export const PackingResultScreen = () => {
           <div className="packing-compose-main">
             <div className="packing-compose-head">
               <h2 className="pane-title">{t.panes.packing}</h2>
+              {/*
+               * 스펙 §3 의 「포장 단위 CTN-…」 자리. **번호는 서버가 매긴다** — 아직 만들어지지
+               * 않았으면 그 사실을 적는다. 빈 자리로 두면 번호가 없는 것인지 화면이 덜 그려진
+               * 것인지 알 수 없다.
+               */}
+              <p className="packing-unit-no">
+                {openUnit === null ? t.fields.handlingUnitPending : openUnit.handlingUnitNo}
+              </p>
               <Select
                 aria-label={t.fields.handlingUnitType}
                 placeholder={t.fields.handlingUnitType}
                 value={handlingUnitTypeCode === '' ? null : handlingUnitTypeCode}
                 onChange={(value) => {
-                  setHandlingUnitTypeCode(value ?? '');
+                  const nextType = value ?? '';
+                  setHandlingUnitTypeCode(nextType);
+                  ensureOpenUnit(lines, nextType);
                 }}
                 options={typeOptions.options}
               />
@@ -342,10 +395,10 @@ export const PackingResultScreen = () => {
               return;
             }
 
+            if (openUnit === null) return;
+
             confirm.mutate({
-              handlingUnitTypeCode,
-              parentHandlingUnitId: parentId === NO_PARENT ? null : Number(parentId),
-              warehouseId,
+              handlingUnit: openUnit,
               lines,
               workerNo: identity.workerNo,
               now: new Date(),

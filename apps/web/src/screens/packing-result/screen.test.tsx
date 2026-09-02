@@ -292,6 +292,21 @@ describe('PackingResultScreen — 담기와 확정', () => {
     expect(await screen.findByText(t.qty.overRemaining(180))).toBeTruthy();
   });
 
+  it('⭐ 담는 동안 «포장 번호»가 선다 — 번호는 서버가 매기므로 먼저 만들어 받아 온다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    /* 담기 전에는 번호가 없다는 사실을 적는다 — 빈 자리로 두지 않는다. */
+    expect(screen.getByText(t.fields.handlingUnitPending)).toBeTruthy();
+
+    await scanUntilMatched(user);
+    await pack(user, '60');
+    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
+    await user.click(await screen.findByRole('option', { name: '카톤' }));
+
+    expect(await screen.findByText('SYN-CTN-0091')).toBeTruthy();
+  });
+
   it('확정하면 세 단계를 돌고 «포장 번호»를 말한 뒤 담긴 것을 비운다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];

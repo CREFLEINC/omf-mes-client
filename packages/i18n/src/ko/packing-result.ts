@@ -64,6 +64,8 @@ export const packingResult = {
     handlingUnitType: '유형',
     parentHandlingUnit: '상위 포장',
     parentNone: '(없음)',
+    /** 번호는 서버가 매긴다 — 담기 시작 전에는 존재하지 않는 값이다. */
+    handlingUnitPending: '포장 번호 — 담으면 매겨집니다',
   },
   notes: {
     parentHint: '팔레트에 담으면 지정합니다',

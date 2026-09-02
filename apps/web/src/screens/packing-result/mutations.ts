@@ -6,10 +6,10 @@ import { runRequestWithResponse, runRequest } from '../../patterns/request';
 
 import { withOccurrence, type HandlingUnitPackDraft } from './occurrence';
 import { packingResultKeys } from './queries';
-import type { HandlingUnit, PackedLine } from './types';
+import type { PackedLine } from './types';
 
 /**
- * 포장 확정 — **세 번의 쓰기가 한 조작이다.**
+ * 포장 쓰기 — **세 번이고, 첫 번째는 «담는 동안» 일어난다.**
  *
  * ```
  * ① POST /inventory/handling-units                       빈 취급 단위를 만든다(01 계약)
@@ -17,8 +17,15 @@ import type { HandlingUnit, PackedLine } from './types';
  * ③ PUT  /logistics/shipment-lot-allocations/{id}        배분에 포장을 잇는다(04 계약) — 담긴 줄마다
  * ```
  *
- * ⭐ **두 왕복인 것은 스캔이 여러 번 일어나기 때문이다**(계약 주석). 취급 단위는 01 자재창고가,
- * 배분과 포장의 연결은 04 제품출하가 소유한다 — 한 계약에 몰아넣을 수 없다.
+ * ⭐ **①을 확정까지 미루지 않는다.** 계약이 「빈 포장 단위를 만들고 :pack 이 내용물과 함께
+ * 닫는다 — **두 왕복인 것은 스캔이 여러 번 일어나기 때문이다**」라고 적었고, 스펙 §3 의 ③ 구획이
+ * 담는 동안 **포장 번호를 보여 준다.** 번호는 서버가 매기므로 먼저 만들지 않으면 그 자리가 빈다.
+ *
+ * ⚠ **먼저 만든 포장은 화면이 되돌리지 못한다** — 포장 해체는 이 화면에 두지 않기로 한 조작이다
+ * (§5-6). 담다가 그만두면 빈 포장이 남는다.
+ *
+ * ⭐ 취급 단위는 01 자재창고가, 배분과 포장의 연결은 04 제품출하가 소유한다 — 한 계약에
+ * 몰아넣을 수 없다.
  *
  * ⛔ **앞 단계가 실패하면 뒤를 부르지 않는다.** 절반만 진행된 상태를 만들지 않기 위해서이고,
  * 그 실패는 그대로 화면에 올라간다. ⚠ 이미 만들어진 취급 단위를 화면이 되돌리지 않는다 —
@@ -41,11 +48,25 @@ import type { HandlingUnit, PackedLine } from './types';
 
 type Client = ApiClient['client'];
 
-export interface ConfirmPackingInput {
+/** ① 취급 단위를 만들 때 필요한 것. */
+export interface CreateHandlingUnitInput {
   handlingUnitTypeCode: string;
   parentHandlingUnitId: number | null;
   /** 배분 응답의 `warehouseId` 를 그대로 보낸다(`omf-mes#330` D). ⛔ 비우지 않는다. */
   warehouseId: number;
+  workerNo: string;
+}
+
+/** 만들어진 포장 — **번호를 화면이 보이고, 토큰은 확정이 쓴다.** */
+export interface OpenHandlingUnit {
+  handlingUnitId: number;
+  handlingUnitNo: string;
+  /** ① 응답의 `ETag`. 확정의 `If-Match` 가 된다(공유계약 B-1). */
+  etag: string | null;
+}
+
+export interface ConfirmPackingInput {
+  handlingUnit: OpenHandlingUnit;
   lines: readonly PackedLine[];
   workerNo: string;
   /** 확정을 누른 순간. 시험이 시각을 고정할 수 있도록 부르는 쪽이 넘긴다. */
@@ -54,10 +75,10 @@ export interface ConfirmPackingInput {
 
 const newIdempotencyKey = (): string => crypto.randomUUID();
 
-const createHandlingUnit = async (
+export const createHandlingUnit = async (
   client: Client,
-  input: ConfirmPackingInput,
-): Promise<{ handlingUnit: HandlingUnit; etag: string | null }> => {
+  input: CreateHandlingUnitInput,
+): Promise<OpenHandlingUnit> => {
   const { data, response } = await runRequestWithResponse(() =>
     client.POST('/inventory/handling-units', {
       params: {
@@ -73,15 +94,14 @@ const createHandlingUnit = async (
     }),
   );
 
-  return { handlingUnit: data.handlingUnit, etag: response.headers.get('ETag') };
+  return {
+    handlingUnitId: data.handlingUnit.handlingUnitId,
+    handlingUnitNo: data.handlingUnit.handlingUnitNo,
+    etag: response.headers.get('ETag'),
+  };
 };
 
-const packHandlingUnit = async (
-  client: Client,
-  input: ConfirmPackingInput,
-  handlingUnitId: number,
-  etag: string | null,
-): Promise<void> => {
+const packHandlingUnit = async (client: Client, input: ConfirmPackingInput): Promise<void> => {
   const draft: HandlingUnitPackDraft = {
     contents: input.lines.map((line) => ({
       itemId: line.itemId,
@@ -94,12 +114,12 @@ const packHandlingUnit = async (
   await runRequest(() =>
     client.POST('/inventory/handling-units/{handlingUnitId}:pack', {
       params: {
-        path: { handlingUnitId },
+        path: { handlingUnitId: input.handlingUnit.handlingUnitId },
         header: {
           'Idempotency-Key': newIdempotencyKey(),
           'X-Worker-No': input.workerNo,
-          /* 계약이 선택으로 두었다 — 방금 만든 자원이라 토큰이 없을 수 없으나, 없으면 그냥 보낸다. */
-          ...(etag === null ? {} : { 'If-Match': etag }),
+          /* 계약이 선택으로 두었다 — 만들 때 받은 토큰이라 없을 수 없으나, 없으면 그냥 보낸다. */
+          ...(input.handlingUnit.etag === null ? {} : { 'If-Match': input.handlingUnit.etag }),
         },
       },
       body: withOccurrence(draft, input.now),
@@ -107,11 +127,7 @@ const packHandlingUnit = async (
   );
 };
 
-const linkAllocations = async (
-  client: Client,
-  input: ConfirmPackingInput,
-  handlingUnitId: number,
-): Promise<void> => {
+const linkAllocations = async (client: Client, input: ConfirmPackingInput): Promise<void> => {
   /*
    * ⛔ **한 줄씩 «순서대로» 잇는다.** 동시에 보내면 하나가 409(이미 다른 포장이 붙어 있다)로
    * 막혔을 때 나머지가 이미 나가 버려, 어디까지 이어졌는지 화면이 말할 수 없게 된다.
@@ -123,7 +139,7 @@ const linkAllocations = async (
           path: { shipmentLotAllocationId: line.shipmentLotAllocationId },
           header: { 'Idempotency-Key': newIdempotencyKey(), 'X-Worker-No': input.workerNo },
         },
-        body: { handlingUnitId },
+        body: { handlingUnitId: input.handlingUnit.handlingUnitId },
       }),
     );
   }
@@ -132,24 +148,33 @@ const linkAllocations = async (
 export const confirmPacking = async (
   client: Client,
   input: ConfirmPackingInput,
-): Promise<HandlingUnit> => {
-  const { handlingUnit, etag } = await createHandlingUnit(client, input);
+): Promise<OpenHandlingUnit> => {
+  await packHandlingUnit(client, input);
+  await linkAllocations(client, input);
 
-  await packHandlingUnit(client, input, handlingUnit.handlingUnitId, etag);
-  await linkAllocations(client, input, handlingUnit.handlingUnitId);
+  return input.handlingUnit;
+};
 
-  return handlingUnit;
+/** ① 취급 단위 생성 — 담기 시작에 한 번. 번호가 ③ 구획에 선다. */
+export const useHandlingUnitCreate = (): UseMutationResult<
+  OpenHandlingUnit,
+  Error,
+  CreateHandlingUnitInput
+> => {
+  const { client } = useApiClient();
+
+  return useMutation({ mutationFn: (input) => createHandlingUnit(client, input) });
 };
 
 export interface PackingWriteOptions {
   shipmentId: number | null;
-  onSuccess: (handlingUnit: HandlingUnit) => void;
+  onSuccess: (handlingUnit: OpenHandlingUnit) => void;
 }
 
 export const usePackingConfirm = ({
   shipmentId,
   onSuccess,
-}: PackingWriteOptions): UseMutationResult<HandlingUnit, Error, ConfirmPackingInput> => {
+}: PackingWriteOptions): UseMutationResult<OpenHandlingUnit, Error, ConfirmPackingInput> => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
 

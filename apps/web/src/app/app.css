@@ -1250,9 +1250,14 @@ main > * + * {
 .packing-shell {
   box-sizing: border-box;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: var(--space-3);
-  min-height: 100vh;
+  /*
+   * ⛔ **`min-height` 가 아니라 `height` 다.** 최소 높이로 두면 안이 커질 때 셸이 함께 늘어
+   * 액션바가 화면 «밖»으로 나간다 — 담을 것을 다 담고도 [포장 확정]이 보이지 않는다.
+   * 실측으로 그렇게 밀렸다(판정 배너가 떴을 때).
+   */
+  height: 100vh;
   padding: var(--space-4);
 }
 
@@ -1261,6 +1266,12 @@ main > * + * {
   flex-direction: column;
   gap: var(--space-3);
   min-height: 0;
+  /*
+   * 마지막 안전망 — 구획들이 각자의 최소를 더해도 안 들어가는 화면(더 낮은 단말·큰 글꼴)에서는
+   * **본문이** 스크롤한다. 머리와 액션바는 자리를 지킨다. 평소에는 ③ 표가 먼저 삼키므로 여기는
+   * 돌지 않는다(스펙 §3-1).
+   */
+  overflow-y: auto;
 }
 
 /*
@@ -1270,6 +1281,14 @@ main > * + * {
  */
 .packing-body > .packing-compose {
   flex: 1 1 auto;
+}
+
+/*
+ * ② 아래 판정 자리 — **배너가 없어도 자리를 비워 둔다.** 뜰 때마다 아래가 밀리면 담긴 줄을
+ * 누르려던 손가락이 빗나간다(스펙 §3 의 ② 구획 안이다).
+ */
+.packing-verdict {
+  min-height: 48px;
 }
 
 /*
@@ -1304,6 +1323,14 @@ main > * + * {
   gap: var(--space-2);
   min-height: 0;
   overflow: hidden;
+}
+
+/* 포장 번호 — 표제 옆에 값으로 선다(스펙 ③ 「포장 단위 CTN-…」). */
+.packing-unit-no {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  color: var(--on-surface-muted);
 }
 
 /* 구획 표제와 유형 선택이 한 줄에 — 스펙 ③ 의 「포장 단위 … 유형 [ ▾ ]」 줄이다. */

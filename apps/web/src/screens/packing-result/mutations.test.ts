@@ -3,7 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { createStubFetch, jsonResponse, type StubRoute } from '../../test/api-harness';
 import { createApiClient } from '@omf-mes/api-client';
 
-import { confirmPacking, type ConfirmPackingInput } from './mutations';
+import {
+  confirmPacking,
+  createHandlingUnit,
+  type ConfirmPackingInput,
+  type CreateHandlingUnitInput,
+} from './mutations';
 import type { PackedLine } from './types';
 
 const BASE_URL = 'http://api.test';
@@ -20,13 +25,23 @@ const line = (overrides: Partial<PackedLine> = {}): PackedLine => ({
   ...overrides,
 });
 
+const OPEN_UNIT = { handlingUnitId: 4001, handlingUnitNo: 'SYN-CTN-0091', etag: '"7"' };
+
 const input = (overrides: Partial<ConfirmPackingInput> = {}): ConfirmPackingInput => ({
-  handlingUnitTypeCode: 'CARTON',
-  parentHandlingUnitId: null,
-  warehouseId: 1001,
+  handlingUnit: OPEN_UNIT,
   lines: [line()],
   workerNo: '3391',
   now: new Date('2026-08-12T10:22:00+09:00'),
+  ...overrides,
+});
+
+const createInput = (
+  overrides: Partial<CreateHandlingUnitInput> = {},
+): CreateHandlingUnitInput => ({
+  handlingUnitTypeCode: 'CARTON',
+  parentHandlingUnitId: null,
+  warehouseId: 1001,
+  workerNo: '3391',
   ...overrides,
 });
 
@@ -101,42 +116,70 @@ const harness = (
   };
 };
 
+describe('createHandlingUnit', () => {
+  it('번호와 낙관적 잠금 토큰을 돌려준다 — 번호는 ③ 구획이, 토큰은 확정이 쓴다', async () => {
+    const { calls, client } = harness();
+
+    const unit = await createHandlingUnit(client.client, createInput());
+
+    expect(unit).toEqual({ handlingUnitId: 4001, handlingUnitNo: 'SYN-CTN-0091', etag: '"7"' });
+    expect(calls).toHaveLength(1);
+  });
+
+  it('취급 단위 생성 본문에 창고를 «반드시» 싣는다 — 비우면 포장이 어디 있는지 사라진다', async () => {
+    const { calls, client } = harness();
+
+    await createHandlingUnit(client.client, createInput({ parentHandlingUnitId: 4000 }));
+
+    expect(calls[0]?.body).toEqual({
+      handlingUnitTypeCode: 'CARTON',
+      parentHandlingUnitId: 4000,
+      warehouseId: 1001,
+    });
+  });
+
+  it('상위 포장을 고르지 않으면 그 칸을 «보내지 않는다» — 비어 있음과 없음은 다르다', async () => {
+    const { calls, client } = harness();
+
+    await createHandlingUnit(client.client, createInput());
+
+    expect(calls[0]?.body).not.toHaveProperty('parentHandlingUnitId');
+  });
+});
+
 describe('confirmPacking', () => {
-  it('세 단계를 «순서대로» 부른다 — 취급 단위 생성 → 포장 확정 → 배분 연결', async () => {
+  it('두 단계를 «순서대로» 부른다 — 포장 확정 → 배분 연결', async () => {
     const { calls, client } = harness();
 
     await confirmPacking(client.client, input());
 
     expect(calls.map((call) => `${call.method} ${call.path}`)).toEqual([
-      'POST /inventory/handling-units',
       'POST /inventory/handling-units/4001:pack',
       'PUT /logistics/shipment-lot-allocations/9001',
     ]);
   });
 
-  it('취급 단위 생성이 실패하면 뒤를 부르지 않는다 — 절반만 진행된 상태를 만들지 않는다', async () => {
-    const { calls, client } = harness({ create: 403 });
+  it('⛔ 확정 시점에 취급 단위를 «다시 만들지 않는다» — 담는 동안 이미 만들어 두었다', async () => {
+    const { calls, client } = harness();
 
-    await expect(confirmPacking(client.client, input())).rejects.toThrow();
-    expect(calls).toHaveLength(1);
+    await confirmPacking(client.client, input());
+
+    expect(calls.some((call) => call.path === '/inventory/handling-units')).toBe(false);
   });
 
   it('포장 확정이 실패하면 배분을 잇지 않는다', async () => {
     const { calls, client } = harness({ pack: 409 });
 
     await expect(confirmPacking(client.client, input())).rejects.toThrow();
-    expect(calls.map((call) => call.path)).toEqual([
-      '/inventory/handling-units',
-      '/inventory/handling-units/4001:pack',
-    ]);
+    expect(calls.map((call) => call.path)).toEqual(['/inventory/handling-units/4001:pack']);
   });
 
-  it('포장 확정에 ① 응답의 ETag 를 If-Match 로 싣는다 — 잠그는 단위가 취급 단위다', async () => {
+  it('포장 확정에 만들 때 받은 ETag 를 If-Match 로 싣는다 — 잠그는 단위가 취급 단위다', async () => {
     const { calls, client } = harness();
 
     await confirmPacking(client.client, input());
 
-    expect(calls[1]?.headers.get('If-Match')).toBe('"7"');
+    expect(calls[0]?.headers.get('If-Match')).toBe('"7"');
   });
 
   it('세 요청 모두 사번을 싣고 멱등 키는 «단계마다 다르다»', async () => {
@@ -158,11 +201,11 @@ describe('confirmPacking', () => {
 
     await confirmPacking(client.client, input());
 
-    expect(calls[1]?.body).toMatchObject({
+    expect(calls[0]?.body).toMatchObject({
       contents: [{ itemId: 5001, lotId: 8001, qty: 120, uomId: 920001 }],
       businessDate: '2026-08-12',
     });
-    expect((calls[1]?.body as { occurredAt: string }).occurredAt).toBe(
+    expect((calls[0]?.body as { occurredAt: string }).occurredAt).toBe(
       new Date('2026-08-12T10:22:00+09:00').toISOString(),
     );
   });
@@ -179,25 +222,5 @@ describe('confirmPacking', () => {
       '/logistics/shipment-lot-allocations/9001',
       '/logistics/shipment-lot-allocations/9002',
     ]);
-  });
-
-  it('취급 단위 생성 본문에 창고를 «반드시» 싣는다 — 비우면 포장이 어디 있는지 사라진다', async () => {
-    const { calls, client } = harness();
-
-    await confirmPacking(client.client, input({ parentHandlingUnitId: 4000 }));
-
-    expect(calls[0]?.body).toEqual({
-      handlingUnitTypeCode: 'CARTON',
-      parentHandlingUnitId: 4000,
-      warehouseId: 1001,
-    });
-  });
-
-  it('상위 포장을 고르지 않으면 그 칸을 «보내지 않는다» — 비어 있음과 없음은 다르다', async () => {
-    const { calls, client } = harness();
-
-    await confirmPacking(client.client, input());
-
-    expect(calls[0]?.body).not.toHaveProperty('parentHandlingUnitId');
   });
 });
