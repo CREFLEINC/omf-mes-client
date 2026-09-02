@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -60,6 +60,8 @@ interface Options {
   renditionFails?: boolean;
   /** 인쇄 결과 보고가 거부되는 경우 */
   reportFails?: boolean;
+  /** 발행 요약 조회 요청을 담아 둔다 — 질의 축을 검사한다 */
+  summaryRequests?: Request[];
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -86,7 +88,9 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request) === '/app/document-issues/summary',
-    respond: () => {
+    respond: (request) => {
+      options.summaryRequests?.push(request.clone());
+
       const counts = options.issueCounts ?? {};
 
       return jsonResponse({
@@ -516,6 +520,35 @@ describe('GoodsIssueQrScreen', () => {
     });
 
     expect(await screen.findByText(`${t.printer.label} 대기 중`)).toBeInTheDocument();
+  });
+
+  it('발행 요약을 출력물 종류로 좁혀 묻는다 — 다른 출력물까지 세면 회차가 틀어진다', async () => {
+    const summaryRequests: Request[] = [];
+    renderScreen({ issueCounts: { 1001: 0 }, summaryRequests });
+
+    await screen.findByText('LOT-SAMPLE-20');
+
+    const query = new URL(summaryRequests[0]?.url ?? 'http://x/').searchParams;
+
+    expect(query.get('documentTypeCode')).toBe('ISSUE_QR');
+    expect(query.get('targetTypeCode')).toBe('GOODS_ISSUE_LINE');
+    expect(query.get('targetIds')).toBe('1001,1002');
+  });
+
+  it('미리보기를 못 받으면 깨진 그림 대신 사유를 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ issueCounts: { 1001: 0 } });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    const preview = await screen.findByAltText(t.target.previewAlt);
+
+    fireEvent.error(preview);
+
+    expect(await screen.findByText(t.target.previewFailed)).toBeInTheDocument();
+    expect(screen.queryByAltText(t.target.previewAlt)).not.toBeInTheDocument();
   });
 
   it('전표 없이 들어오면 그 사실을 말한다', async () => {
