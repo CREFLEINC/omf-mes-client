@@ -2,11 +2,11 @@ import { AlertBanner, Button, Chip, NumberPad, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
-import { usePopIdentity } from '../../patterns/pop-identity';
 import { toApiError } from '../../patterns/request';
 
 import { confirmLockReason } from './confirm-lock';
 import { ContentsTable } from './contents-table';
+import { usePackingIdentity } from './entry-context';
 import { usePackingConfirm } from './mutations';
 import { addLine, qtyError, removeLine, toProgress } from './packing-draft';
 import {
@@ -35,12 +35,13 @@ const NO_PARENT = '';
  *
  * ⛔ **온라인 전용이다.** 판정이 서버에 있으므로 끊긴 상태에서는 확정을 막는다(§6).
  *
- * ⚠ **단말·공정·사번은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 아직 비어 있어 이
- * 화면은 「단말이 확인되지 않았습니다」로 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
+ * ⚠ **단말·공정·사번은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 아직 비어 있어
+ * 당분간은 주소로도 받는다(`entry-context`) — 어느 쪽에서도 오지 않으면 화면은 「단말이
+ * 확인되지 않았습니다」로 막힌 채 뜬다. 모르는 것을 통과로 처리하지 않는다.
  */
 export const PackingResultScreen = () => {
   const titleId = useId();
-  const identity = usePopIdentity();
+  const identity = usePackingIdentity();
   const isOnline = useOnline();
   const gate = useTerminalGate(identity.terminalId, identity.processId);
 
