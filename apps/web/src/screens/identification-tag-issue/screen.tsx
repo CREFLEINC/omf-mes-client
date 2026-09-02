@@ -44,6 +44,19 @@ const headlinePrinter = (printers: readonly Printer[] | undefined): Printer | nu
 };
 
 /**
+ * 프린터 칩에 적을 말.
+ *
+ * ⛔ **이름표를 사유 앞에 붙이지 않는다.** 사유 문구가 이미 「프린터를 …」로 시작해, 앞에
+ * 「프린터」를 덧대면 **「프린터 프린터를 확인할 수 없습니다」**가 된다(실측). 이름표는 값이
+ * 있을 때만 값을 가리키는 말이다.
+ */
+const printerChipText = (printer: Printer | null, failed: boolean): string => {
+  if (printer !== null) return `${t.device.printerLabel} ${printer.displayName}`;
+
+  return failed ? t.device.printerUnknown : t.device.printerNone;
+};
+
+/**
  * 발행 기록 요청 본문. **개체마다 한 대상**이다 — `uq_document_issue_log` 가 대상 단위라
  * 480 장을 발행하면 개체 480 행 + 기록 480 행이 된다(스펙 §5-3).
  *
@@ -154,7 +167,7 @@ export const IdentificationTagIssueScreen = () => {
         </h1>
         <div className="pop-context-right">
           <Chip status={printer === null ? 'warning' : printerTone(printer.status)}>
-            {`${t.device.printerLabel} ${printer?.displayName ?? (printers.isError ? t.device.printerUnknown : t.device.printerNone)}`}
+            {printerChipText(printer, printers.isError)}
           </Chip>
           <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
             {`${t.device.terminalLabel} ${identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)}`}

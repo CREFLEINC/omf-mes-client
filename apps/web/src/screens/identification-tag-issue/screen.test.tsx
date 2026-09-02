@@ -23,6 +23,7 @@ import {
   readyPrinter,
 } from './fixtures';
 import { IdentificationTagIssueScreen } from './screen';
+import type { Printer } from './types';
 
 const t = messages.identificationTagIssue;
 
@@ -44,6 +45,10 @@ interface Options {
   gateFails?: boolean;
   /** 이 공정의 기능 구성 행이 아예 없다 */
   noProcessRow?: boolean;
+  /** 프린터 조회가 실패한다 */
+  printersFail?: boolean;
+  /** 돌려줄 프린터 목록. 기본은 준비된 프린터 한 대 */
+  printers?: Printer[];
   goodQty?: number | null;
   issuedCount?: number;
   /** 발번 요청을 담아 둔다 */
@@ -101,7 +106,10 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request) === '/app/printers',
-    respond: () => jsonResponse({ items: [readyPrinter] }),
+    respond: () =>
+      options.printersFail === true
+        ? jsonResponse({ message: '조회 실패' }, { status: 500 })
+        : jsonResponse({ items: options.printers ?? [readyPrinter] }),
   },
   {
     match: (request) => request.method === 'POST' && pathOf(request) === '/trace/serial-numbers',
@@ -208,6 +216,29 @@ describe('IdentificationTagIssueScreen — 단말 게이팅', () => {
 
     expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
+  });
+});
+
+describe('IdentificationTagIssueScreen — 장비 상태', () => {
+  it('프린터를 확인하지 못하면 사유만 말한다 — 이름표를 앞에 덧대지 않는다', async () => {
+    renderScreen({ printersFail: true });
+
+    expect(await screen.findByText(t.device.printerUnknown)).toBeInTheDocument();
+    expect(screen.queryByText(`${t.device.printerLabel} ${t.device.printerUnknown}`)).toBeNull();
+  });
+
+  it('쓸 수 있는 프린터가 없으면 없다고 말한다', async () => {
+    renderScreen({ printers: [] });
+
+    expect(await screen.findByText(t.device.printerNone)).toBeInTheDocument();
+  });
+
+  it('프린터가 있으면 이름표와 이름을 함께 세운다', async () => {
+    renderScreen();
+
+    expect(
+      await screen.findByText(`${t.device.printerLabel} ${readyPrinter.displayName}`),
+    ).toBeInTheDocument();
   });
 });
 
