@@ -266,6 +266,7 @@ export const IdentificationTagIssueScreen = () => {
               quantity={quantity}
               onQuantityChange={setQuantity}
               rejection={verdict.ok ? null : verdict.reason}
+              serverQuantityError={serialIssue.fieldErrors.quantity ?? null}
               blockedReason={blockedReason}
               issuedSerials={progress.serials}
               isSubmitting={isSubmitting || printRunner.state.phase === 'sending'}

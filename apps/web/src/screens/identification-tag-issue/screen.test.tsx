@@ -42,6 +42,8 @@ interface Options {
   canPrintLabel?: boolean;
   /** 게이팅 조회가 실패한다 */
   gateFails?: boolean;
+  /** 이 공정의 기능 구성 행이 아예 없다 */
+  noProcessRow?: boolean;
   goodQty?: number | null;
   issuedCount?: number;
   /** 발번 요청을 담아 둔다 */
@@ -52,6 +54,10 @@ interface Options {
   serialStatus?: number;
   /** 발행 기록 응답 상태. 기본 201 */
   issueStatus?: number;
+  /** 발번 실패 응답의 본문 — 서버가 준 사유를 화면이 어떻게 다루는지 본다 */
+  serialErrorBody?: unknown;
+  /** 발행 기록 실패 응답의 본문 */
+  issueErrorBody?: unknown;
 }
 
 const SERIAL_COUNT = 3;
@@ -59,12 +65,18 @@ const SERIAL_COUNT = 3;
 const routes = (options: Options): StubRoute[] => [
   {
     match: (request) => pathOf(request).startsWith('/mdm/terminals/'),
-    respond: () =>
-      options.gateFails === true
-        ? jsonResponse({ message: '조회 실패' }, { status: 500 })
-        : jsonResponse({
-            items: [{ processId: PROCESS_ID, canPrintLabel: options.canPrintLabel ?? true }],
-          }),
+    respond: () => {
+      if (options.gateFails === true) {
+        return jsonResponse({ message: '조회 실패' }, { status: 500 });
+      }
+
+      /* 이 공정의 구성 자체가 없는 상태 — 「없음」과 「닫힘」이 같아야 한다 */
+      if (options.noProcessRow === true) return jsonResponse({ items: [] });
+
+      return jsonResponse({
+        items: [{ processId: PROCESS_ID, canPrintLabel: options.canPrintLabel ?? true }],
+      });
+    },
   },
   {
     match: (request) => request.method === 'GET' && pathOf(request) === '/trace/lots',
@@ -97,7 +109,9 @@ const routes = (options: Options): StubRoute[] => [
       options.serialWrites?.push(request.clone());
 
       if (options.serialStatus !== undefined && options.serialStatus !== 201) {
-        return jsonResponse({ message: '발번 거부' }, { status: options.serialStatus });
+        return jsonResponse(options.serialErrorBody ?? { message: '발번 거부' }, {
+          status: options.serialStatus,
+        });
       }
 
       const items = Array.from({ length: SERIAL_COUNT }, (_unused, index) => makeSerial(index + 1));
@@ -111,7 +125,9 @@ const routes = (options: Options): StubRoute[] => [
       options.issueWrites?.push(request.clone());
 
       if (options.issueStatus !== undefined && options.issueStatus !== 201) {
-        return jsonResponse({ message: '발행 기록 거부' }, { status: options.issueStatus });
+        return jsonResponse(options.issueErrorBody ?? { message: '발행 기록 거부' }, {
+          status: options.issueStatus,
+        });
       }
 
       const items = Array.from({ length: SERIAL_COUNT }, (_unused, index) => makeIssue(index + 1));
@@ -165,6 +181,16 @@ describe('IdentificationTagIssueScreen — 단말 게이팅', () => {
     expect(submitButton()).toBeDisabled();
   });
 
+  it('이 공정의 기능 구성 행이 없으면 닫힘으로 다룬다 — 구성되지 않은 공정은 열려 있지 않다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ noProcessRow: true });
+
+    await selectLot(user);
+
+    expect(await screen.findByText(t.gate.denied)).toBeInTheDocument();
+    expect(submitButton()).toBeDisabled();
+  });
+
   it('단말을 모르면 발행을 열지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen({}, ENTRY_ROUTE, { terminalId: null, processId: null, workerNo: WORKER_NO });
@@ -182,6 +208,79 @@ describe('IdentificationTagIssueScreen — 단말 게이팅', () => {
 
     expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
+  });
+});
+
+describe('IdentificationTagIssueScreen — 서버가 준 사유', () => {
+  it('수량 칸에 붙은 서버 오류를 인라인으로 낸다 — 어디에도 안 나오는 오류를 만들지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      serialStatus: 400,
+      serialErrorBody: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'quantity',
+            code: 'OVER_LIMIT',
+            message: '미발행 양품 수를 넘습니다',
+          },
+        ],
+      },
+    });
+
+    await selectLot(user);
+    await user.type(quantityField(), '3');
+    await user.click(submitButton());
+
+    expect(await screen.findByText('미발행 양품 수를 넘습니다')).toBeInTheDocument();
+  });
+
+  it('화면에 칸이 없는 오류는 배너로 올린다 — 삼키지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      issueStatus: 422,
+      issueErrorBody: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'reissueReasonCode',
+            code: 'REQUIRED',
+            message: '재발행 사유가 필요합니다',
+          },
+        ],
+      },
+    });
+
+    await selectLot(user);
+    await user.type(quantityField(), '3');
+    await user.click(submitButton());
+
+    expect(await screen.findByText(t.result.serialsOnlyTitle)).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('재발행 사유가 필요합니다');
+  });
+
+  it('400 은 다시 시도를 두지 않는다 — 값이 그대로면 답도 그대로다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ serialStatus: 400 });
+
+    await selectLot(user);
+    await user.type(quantityField(), '3');
+    await user.click(submitButton());
+
+    const banner = await screen.findByRole('alert');
+    expect(within(banner).queryByRole('button', { name: messages.common.retry })).toBeNull();
+  });
+
+  it('500 은 다시 시도를 둔다 — 같은 요청이 다음에 통할 수 있다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ serialStatus: 500 });
+
+    await selectLot(user);
+    await user.type(quantityField(), '3');
+    await user.click(submitButton());
+
+    const banner = await screen.findByRole('alert');
+    expect(within(banner).getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
   });
 });
 

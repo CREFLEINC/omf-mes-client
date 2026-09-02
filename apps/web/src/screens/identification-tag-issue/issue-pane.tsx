@@ -38,6 +38,13 @@ export interface IssuePaneProps {
   onQuantityChange: (next: string) => void;
   /** 입력이 막힌 사유. 통과했으면 `null` */
   rejection: QuantityRejection | null;
+  /**
+   * 서버가 수량 칸에 붙여 준 오류. 없으면 `null`.
+   *
+   * ⭐ **화면의 판정보다 앞선다** — 화면이 통과시킨 값을 서버가 거부했다는 뜻이고, 그 사유는
+   * 화면이 알 수 없는 것(그 사이에 다른 단말이 발번했다 등)이다.
+   */
+  serverQuantityError: string | null;
   /** 발행이 열리지 않는 사유(게이팅·사번 등). 열려 있으면 `null` */
   blockedReason: string | null;
   issuedSerials: readonly SerialNumber[];
@@ -62,6 +69,7 @@ export const IssuePane = ({
   quantity,
   onQuantityChange,
   rejection,
+  serverQuantityError,
   blockedReason,
   issuedSerials,
   isSubmitting,
@@ -77,9 +85,8 @@ export const IssuePane = ({
   const noGoodQty = goodQty === 0;
   const inlineError = noGoodQty
     ? t.quantity.noGoodQty
-    : rejection === null || rejection === 'empty'
-      ? undefined
-      : rejectionMessage(rejection);
+    : (serverQuantityError ??
+      (rejection === null || rejection === 'empty' ? undefined : rejectionMessage(rejection)));
 
   const canSubmit = !isSubmitting && blockedReason === null && rejection === null && !noGoodQty;
 

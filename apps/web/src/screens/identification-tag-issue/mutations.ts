@@ -25,8 +25,14 @@ import type {
 /** ① 개체 대량 발번. 인라인으로 낼 수 있는 필드는 수량 하나다. */
 const SERIAL_FIELDS = ['quantity'] as const;
 
-/** ② 발행 기록. 재발행 사유가 인라인 자리를 갖는다. */
-const ISSUE_FIELDS = ['reissueReasonCode'] as const;
+/**
+ * ② 발행 기록. **인라인 자리가 없다.**
+ *
+ * ⛔ **화면이 갖지 않은 입력칸을 여기 적지 않는다.** `knownFields` 는 「이 화면에 그 오류를
+ * 놓을 칸이 있다」는 선언이라, 없는 칸을 적으면 서버가 준 사유가 배너에서도 빠져 **어디에도
+ * 표시되지 않는다.** 재발행 사유 칸은 값 목록이 도착할 때까지 비활성이라 이 화면에 없다.
+ */
+const ISSUE_FIELDS: readonly string[] = [];
 
 export interface SerialIssueOptions {
   workerNo: string;
