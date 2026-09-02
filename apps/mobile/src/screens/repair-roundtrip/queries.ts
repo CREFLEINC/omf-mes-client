@@ -15,7 +15,12 @@ import {
 
 export const repairKeys = {
   defects: (lotId: number | null) => ['repair-defects', lotId] as const,
-  open: (lotId: number | null) => ['repair-open', lotId] as const,
+  /*
+   * 거르지 않은 전체와 한 LOT 의 것을 다른 이름으로 가른다. 하나로 두면 스캔 전의 null 이
+   * 전체와 같은 이름이 되어, 이 LOT 의 것을 묻는 자리에 남의 건이 들어온다.
+   */
+  open: () => ['repair-open', 'all'] as const,
+  openForLot: (lotId: number | null) => ['repair-open', 'lot', lotId ?? 'none'] as const,
 };
 
 /**
@@ -55,18 +60,41 @@ export const useDefectRecords = (lotId: number | null): UseQueryResult<DefectRec
  * 상태 컬럼으로 거르지 않는다 - 반출 시각이 비어 있는 것이 곧 열린 건이고, 그 판정은 서버가
  * 한다. 목록이 쪽 단위라 받아 놓고 화면이 거르면 쪽 안에서만 걸러진다.
  */
-export const useOpenRepairs = (lotId?: number | null): UseQueryResult<RepairExecution[]> => {
+export const useOpenRepairs = (): UseQueryResult<RepairExecution[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: repairKeys.open(lotId ?? null),
+    queryKey: repairKeys.open(),
     queryFn: async () => {
       const data = await runRequest(() =>
+        client.GET('/production/repair-executions', { params: { query: { open: true } } }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+/**
+ * 스캔한 LOT 의 열린 수리 건.
+ *
+ * 스캔 전에는 묻지 않는다. 물으면 서버가 거르지 않은 전체를 주고, 그 자리에 남의 건이 들어와
+ * 자동 선택으로 골라진다 - 스캔한 적 없이 반출이 열린다. 전체를 받는 조회와 이름도 가른다.
+ */
+export const useOpenRepairsForLot = (lotId: number | null): UseQueryResult<RepairExecution[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: repairKeys.openForLot(lotId),
+    enabled: lotId !== null,
+    queryFn: async () => {
+      if (lotId === null) {
+        throw new Error('LOT 을 스캔하기 전에는 열린 건을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
         client.GET('/production/repair-executions', {
-          params: {
-            query:
-              lotId === null || lotId === undefined ? { open: true } : { open: true, lotId },
-          },
+          params: { query: { open: true, lotId } },
         }),
       );
 
