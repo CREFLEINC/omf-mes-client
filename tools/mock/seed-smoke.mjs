@@ -30,6 +30,8 @@ const ENTRIES = [
   ['M-01-05 내 적치 지시', '/logistics/putaway-tasks?assignedWorkerId=1001', 1],
   ['M-01-05 창고 위치', '/mdm/locations?warehouseId=1001', 2],
   ['M-01-06 입하 목록', '/logistics/inbound-receipts', 1],
+  ['M-01-08 내 피킹 지시', '/logistics/picking-orders?assignedWorkerId=1001', 1],
+  ['M-01-08 출고 유형', '/mdm/code-values?codeGroupCode=ISSUE_TYPE', 1],
   ['M-01-06 입하 라인', '/logistics/inbound-receipts/9001/lines', 1],
   ['M-01-06 오류 유형', '/mdm/code-values?codeGroupCode=INBOUND_VARIANCE_TYPE', 1],
   ['M-01-07 임시 사유', '/mdm/code-values?codeGroupCode=PUTAWAY_TASK_TEMPORARY_REASON', 1],
@@ -48,6 +50,14 @@ const ENTRIES = [
 const DETAILS = [
   ['M-04-03 포장 내용물', '/inventory/handling-units/13001', (body) => body.contents.length >= 2],
   ['M-01-04 품목명', '/mdm/items/2002', (body) => typeof body.item.itemName === 'string'],
+  [
+    'M-01-08 라인 표시값',
+    '/logistics/picking-orders/16001',
+    (body) =>
+      body.lines.length >= 3 &&
+      body.lines.every((line) => typeof line.itemCode === 'string' && typeof line.lotNo === 'string') &&
+      body.lines.some((line) => line.held === true),
+  ],
 ];
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

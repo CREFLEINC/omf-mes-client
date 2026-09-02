@@ -465,6 +465,106 @@ on('POST', '/logistics/putaway-tasks/{putawayTaskId}:complete-temporary', (p, q,
   completePutaway(p, q, body, true),
 );
 
+on('GET', '/inventory/reservations', (_p, query) =>
+  page(
+    keep(state.reservations, [
+      byNum(query, 'lotId', 'lotId'),
+      byNum(query, 'itemId', 'itemId'),
+      (row) => bool(query, 'openOnly') !== true || row.consumedQty < row.reservedQty,
+    ]),
+    query,
+  ),
+);
+
+on('GET', '/logistics/picking-orders', (_p, query) =>
+  page(
+    keep(state.pickingOrders, [
+      byNum(query, 'assignedWorkerId', 'assignedWorkerId'),
+      byNum(query, 'warehouseId', 'warehouseId'),
+      byText(query, 'statusCode', 'statusCode'),
+    ]),
+    query,
+  ),
+);
+
+on('GET', '/logistics/picking-orders/{pickingOrderId}', (params) => {
+  const id = Number(params.pickingOrderId);
+  const order = state.pickingOrders.find((each) => each.pickingOrderId === id);
+
+  return order === undefined
+    ? null
+    : {
+        pickingOrder: order,
+        lines: state.pickingLines.filter((line) => line.pickingOrderId === id),
+      };
+});
+
+/* 집은 양은 서버가 더한다. 화면이 그 셈을 따로 하지 않는다. */
+on(
+  'POST',
+  '/logistics/picking-orders/{pickingOrderId}/lines/{pickingLineId}:pick',
+  (params, _q, body) => {
+    const line = state.pickingLines.find(
+      (each) => each.pickingLineId === Number(params.pickingLineId),
+    );
+
+    if (line === undefined) {
+      return null;
+    }
+
+    /* 보류 중인 LOT 은 서버가 막는다. 화면이 비활성으로 두더라도 정본은 여기다. */
+    if (line.held === true) {
+      return {
+        status: 400,
+        created: { code: 'LOT_ON_HOLD', message: '보류 중인 LOT 입니다.', errors: [] },
+      };
+    }
+
+    if (body?.lotId !== undefined && body.lotId !== null && body.lotId !== line.lotId) {
+      return {
+        status: 400,
+        created: { code: 'LOT_MISMATCH', message: '계획과 다른 LOT 입니다.', errors: [] },
+      };
+    }
+
+    line.pickedQty += body?.pickedQty ?? 0;
+
+    const balance = state.balances.find((each) => each.lotId === line.lotId);
+
+    if (balance !== undefined) {
+      balance.pickedQty += body?.pickedQty ?? 0;
+      balance.availableQty = balance.onHandQty - balance.pickedQty - balance.blockedQty;
+    }
+
+    return { ...line };
+  },
+);
+
+on('POST', '/logistics/goods-issues', (_p, _q, body) => {
+  const goodsIssueId = newId();
+  const created = {
+    goodsIssueId,
+    goodsIssueNo: `GI-2026-${String(goodsIssueId).slice(-6)}`,
+    ...body,
+    statusCode: body?.postImmediately === true ? 'POSTED' : 'DRAFT',
+  };
+
+  state.goodsIssues.push(created);
+
+  /* 전기하면 재고가 실제로 빠진다. 위치 확인 화면이 그 결과를 보인다. */
+  for (const line of body?.lines ?? []) {
+    const balance = state.balances.find((each) => each.lotId === line.lotId);
+
+    if (balance !== undefined) {
+      balance.onHandQty -= line.issueQty;
+      balance.pickedQty = Math.max(0, balance.pickedQty - line.issueQty);
+      balance.availableQty = balance.onHandQty - balance.pickedQty - balance.blockedQty;
+    }
+  }
+
+  return { created, status: 201 };
+});
+
 on('GET', '/logistics/shipment-requests', (_p, query) => {
   const from = query.get('shipDateFrom');
   const to = query.get('shipDateTo');

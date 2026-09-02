@@ -70,6 +70,7 @@ import { emergencyWorkOrder } from './emergency-work-order';
 import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
+import { materialPicking } from './material-picking';
 import { toolUsage } from './tool-usage';
 import { productStockStatus } from './product-stock-status';
 import { shipmentRequestCreate } from './shipment-request-create';
@@ -166,6 +167,7 @@ export const ko = {
   emergencyWorkOrderField,
   workOrderProgress,
   materialLocation,
+  materialPicking,
   productStockStatus,
   shipmentRequestCreate,
   shipmentProcessing,
