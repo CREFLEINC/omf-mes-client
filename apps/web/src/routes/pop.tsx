@@ -1,6 +1,7 @@
 import type { RouteObject } from 'react-router';
 
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
+import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 
 /**
@@ -52,4 +53,13 @@ export const popRoutes: RouteObject[] = [
    * 아직 이 저장소에 없다. 그 화면들이 서면 `entry-context.ts` 하나가 바뀐다.
    */
   { path: '/pop/tool-usage', element: <ToolUsageScreen /> },
+  /*
+   * P-02-13 — 공정 중 제품을 검사하고 판정한다. **검사 «수행» 지점이 생산 공정이라** 품질
+   * 관리자가 결과를 횡단해 보는 화면(W-03-xx)과 다른 자리에 선다.
+   *
+   * ⚠ **진입 대상을 질의 문자열로 받는다**(`?ir=<검사의뢰 id>`) — 이 화면이 부르는 경로는
+   * 진입·항목 목록·결과 저장 셋뿐이라 «고를 목록»을 스스로 조회하지 않는다. 대상 없이 들어오면
+   * 작업 화면에서 진입하라고 안내한다.
+   */
+  { path: '/pop/pqc-inspection', element: <PqcInspectionScreen /> },
 ];

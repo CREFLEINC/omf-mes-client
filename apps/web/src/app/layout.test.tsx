@@ -560,14 +560,6 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-progress',
     );
-    /*
-     * P-02-13 — 검사이지만 검사 «수행» 지점이 생산 공정이라 생산 섹션에 둔다. 품질관리
-     * 섹션이 다루는 것은 그 결과를 횡단해 보는 조회·승인이다.
-     */
-    expect(within(sidebar).getByRole('link', { name: 'PQC 제품 검사' })).toHaveAttribute(
-      'href',
-      '/production/pqc-inspection',
-    );
     expect(links.indexOf('/production/production-orders')).toBe(
       links.indexOf('/shipment/shipment-confirm') + 1,
     );
@@ -782,7 +774,6 @@ describe('AppLayout', () => {
       /* W-02-10 — 긴급 발행이 만든 W/O 의 부족 자재를 잇는 자리라 그 바로 뒤다. */
       '/production/material-issue-requests',
       '/production/work-order-progress',
-      '/production/pqc-inspection',
       '/quality/lot-status',
       '/quality/lot-status-transition',
       '/quality/suspicious-material-hold',
