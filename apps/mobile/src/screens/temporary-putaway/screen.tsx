@@ -175,6 +175,8 @@ export const TemporaryPutawayScreen = () => {
               : undefined
           }
         />
+        {/* 스캔한 코드를 확인하는 동안 등록이 잠긴다. 왜 잠겼는지 말하지 않으면 멈춘 것처럼 보인다. */}
+        {scanned !== null && byCode.isPending ? <p role="status">{t.location.loading}</p> : null}
         {byCode.isError ? <AlertBanner variant="error" title={t.location.loadFailed} /> : null}
 
         {locations.isPending ? <p role="status">{t.location.loading}</p> : null}

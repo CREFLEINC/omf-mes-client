@@ -246,7 +246,75 @@ describe('임시 위치 적재 화면', () => {
 
     await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
 
+    /* 아무 일도 없었음을 재려면 일이 일어날 시간을 준 뒤에 봐야 한다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+        true,
+      );
+    });
     expect(seen).toHaveLength(0);
+    expect(screen.queryByText('임시 적치를 기록했습니다')).toBeNull();
+  });
+
+  /* 막기만 하고 나갈 길이 없으면 현장이 멈춘다. 빗나간 스캔을 되돌릴 수 있어야 한다. */
+  it('빗나간 스캔 뒤 목록에서 고르면 다시 등록할 수 있다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ task: task(), location: TEMP }, [
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
+          req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse(task({ actualLocationId: 9 }));
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('비고');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+    scan('Z-99');
+    await screen.findByText('Z-99 위치를 이 창고에서 찾지 못했습니다');
+
+    await user.click(await screen.findByRole('combobox', { name: '목록에서 고르기' }));
+    await user.click(await screen.findByRole('option', { name: /TMP-01/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+        false,
+      );
+    });
+
+    await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+    expect((await seen[0]!.json()) as { actualLocationId: number }).toMatchObject({
+      actualLocationId: 9,
+    });
+  });
+
+  /* 확인하지 못한 것을 없는 것으로 말하면 작업자가 라벨을 의심한다. */
+  it('위치 조회가 실패하면 찾지 못했다고 말하지 않는다', async () => {
+    mount({ task: task(), location: TEMP }, [
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/mdm/locations' &&
+          new URL(req.url).searchParams.get('locationCode') !== null,
+        respond: () => jsonResponse({ message: '실패' }, { status: 500 }),
+      },
+    ]);
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+    scan('TMP-01');
+
+    expect(await screen.findByText('위치를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    expect(screen.queryByText('TMP-01 위치를 이 창고에서 찾지 못했습니다')).toBeNull();
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      true,
+    );
   });
 
   /* 임시 위치는 수용량으로 막지 않는다. 값이 있으면 알리기만 한다. */
