@@ -117,8 +117,17 @@ export const WorkOrderList = ({
                       surface={selectedId === row.workOrderId ? 'high' : 'low'}
                       aria-label={`${t.select} ${row.workOrderNo}`}
                       aria-pressed={selectedId === row.workOrderId}
-                      aria-disabled={!canSelect}
+                      /*
+                       * ⛔ **`aria-disabled` 로 두지 않는다.** 디자인 시스템의 `Card` 는
+                       *    `interactive` 일 때 자기 `aria-disabled` 를 «나중에» 얹어 밖에서
+                       *    넘긴 값을 지운다 — 잠긴 카드가 스크린리더에 평범한 버튼으로
+                       *    읽히고 탭 순서에도 남는다. 사유 배너는 눈으로 보는 사람에게만
+                       *    닿으므로, 못 누른다는 사실이 컨트롤 자신에도 있어야 한다.
+                       *    `disabled` 는 그 자리를 `button` 의 속성으로 채운다.
+                       */
+                      disabled={!canSelect}
                       onClick={() => {
+                        /* 눌릴 수 없지만 남겨 둔다 — 카드가 비-interactive 가 되면 이 가드만 남는다. */
                         if (!canSelect) return;
 
                         onSelect(row);

@@ -133,6 +133,21 @@ describe('P-02-01 작업 시작 — 사번', () => {
     expect(screen.getByText(t.selection.notSelected)).toBeInTheDocument();
   });
 
+  /**
+   * ⛔ **못 누르는 것이 컨트롤 «자신»에도 적혀 있어야 한다.** 사유 배너는 눈으로 보는
+   * 사람에게만 닿는다 — 키보드·스크린리더로 이 줄에 닿은 사람은 「눌리는 버튼」으로
+   * 읽고 눌러 본 뒤에야 아무 일도 없다는 것을 안다.
+   */
+  it('확인 전 목록 카드는 잠긴 상태로 읽힌다', async () => {
+    renderScreen();
+
+    const card = await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+
+    /* ⚠ 디자인 시스템의 카드는 `div[role=button]` 이라 `toBeDisabled` 가 서지 않는다 — 속성으로 잰다. */
+    expect(card).toHaveAttribute('aria-disabled', 'true');
+    expect(card).toHaveAttribute('tabindex', '-1');
+  });
+
   it('미등록과 퇴사를 다른 문구로 가른다', async () => {
     const { user } = renderScreen({ workers: [] });
 
