@@ -36,12 +36,14 @@ export const PopHeader = ({ terminalNo, isConnected }: PopHeaderProps) => {
        * 상단 바에 이름을 두는 것과 같은 자리이며, 이름은 설치형 앱의 제품명과 맞춘다.
        */}
       <strong className="pop-brand">OMF-MES POP</strong>
-      <h1>
-        <Chip status="error" size="md">
-          {t.list.emergencyBadge}
-        </Chip>{' '}
-        {t.title}
-      </h1>
+
+      {/*
+       * ⛔ **화면 이름 옆에 배지를 붙이지 않는다.** 다른 POP 화면들의 상단 띠는 「화면 이름 ·
+       *    맥락 … 단말 · 연결」로만 서 있고 배지를 두지 않는다 — 띠는 «지금 어디에 서 있는가»를
+       *    말하는 자리이고, 긴급 여부는 목록의 줄과 상세의 제목이 이미 말한다. 같은 말을 세
+       *    곳에서 하면 정작 줄마다 다른 표식이 필요해질 때 눈에 띄지 않는다.
+       */}
+      <h1>{t.title}</h1>
       <span className="field-note">
         {terminalNo === undefined || terminalNo.trim() === ''
           ? t.header.terminalUnknown
