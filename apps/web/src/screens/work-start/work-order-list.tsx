@@ -72,6 +72,15 @@ export const WorkOrderList = ({
       </div>
 
       {/*
+       * ⚠ **버튼 이름만으로는 무엇이 열리는지 읽히지 않는다**(사용자 확인 실측). 지금 무엇이
+       *    보이고 있고 누르면 무엇이 늘어나는지를 한 줄로 말한다 — 배너가 아니라 보조 문구다:
+       *    경고가 아니라 «현재 상태»라서 배너로 세우면 세로 예산을 먹고 경고와 섞인다.
+       */}
+      <p className="field-note work-start-scope-note">
+        {isShowingAll ? t.scopeNoteAll : t.scopeNoteEquipment}
+      </p>
+
+      {/*
        * ⚠ 설비를 몰라 기본 목록을 못 세운 상태는 **빈 목록이 아니다.** 사유와 다음 행동을
        *    함께 보인다 — 그러지 않으면 「이 설비에 지시가 없다」로 읽힌다.
        */}

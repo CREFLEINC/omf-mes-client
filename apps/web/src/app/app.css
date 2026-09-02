@@ -2078,6 +2078,11 @@ main > * + * {
   overflow-y: auto;
 }
 
+/* 지금 목록이 어느 범위인지 말하는 보조 문구 — 제목 바로 아래에 붙는다. */
+.work-start-scope-note {
+  margin: 0 0 var(--space-2);
+}
+
 /* ③ 선택 확인 — ⛔ 접지 않는다. */
 .work-start-selection {
   min-height: 0;

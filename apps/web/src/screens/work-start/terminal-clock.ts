@@ -37,3 +37,19 @@ export const terminalNow = (at: Date): string =>
     at.getHours(),
     2,
   )}:${pad(at.getMinutes(), 2)}:${pad(at.getSeconds(), 2)}${offsetText(at)}`;
+
+/**
+ * 「언제부터 이 사번으로 기록되는가」를 **사람이 읽는 글자**로. 계약에 실리는 값이 아니다.
+ *
+ * ⛔ **`toISOString` 을 쓰지 않는다** — 그 값은 UTC 라, 아침에 지정해도 화면이 아홉 시간
+ * 어긋난 시각을 말한다. 초는 버린다 — 분이면 충분하고, 초까지 두면 정밀해 보이기만 한다.
+ */
+export const assignedAtText = (at: Date): string =>
+  at.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });

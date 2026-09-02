@@ -1,7 +1,8 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { setWorkerSession } from '../../patterns/worker-session';
 import {
   EQUIPMENT_ID,
   PROCESS_ID,
@@ -27,8 +28,15 @@ const enterWorkerNo = async (user: ReturnType<typeof renderScreen>['user'], work
 
 const startButton = () => screen.getByRole('button', { name: t.actions.start });
 
+/* 단말이 들고 있는 사번은 화면 밖 «단일 자리»다 — 감지기가 서로의 상태 위에서 서지 않게 한다. */
+beforeEach(() => {
+  setWorkerSession(null);
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
+  /* 단말이 들고 있는 사번은 화면 밖 «단일 자리»다 — 감지기 사이에 새면 다음 것이 이미 선 채로 시작한다. */
+  setWorkerSession(null);
 });
 
 describe('P-02-01 작업 시작 — 단말 게이팅', () => {
@@ -87,6 +95,21 @@ describe('P-02-01 작업 시작 — 목록 조회 축', () => {
     expect(first).toContain(`plannedEquipmentId=${String(EQUIPMENT_ID)}`);
     /* ⛔ 확정된 적 없는 상태 문자열을 조회 조건으로 싣지 않는다. */
     expect(first).not.toContain('statusCode=');
+  });
+
+  /**
+   * ⚠ **버튼 이름만으로는 무엇이 열리는지 읽히지 않는다**(사용자 확인 실측 · 2026-09-02).
+   * 지금 목록이 어느 범위인지, 누르면 무엇이 늘어나는지를 화면이 말해야 한다.
+   */
+  it('지금 목록이 어느 범위인지 글로 말하고, 범위를 바꾸면 그 글도 바뀐다', async () => {
+    const { user } = renderScreen();
+
+    expect(await screen.findByText(t.list.scopeNoteEquipment)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.list.showAll }));
+
+    expect(await screen.findByText(t.list.scopeNoteAll)).toBeInTheDocument();
+    expect(screen.queryByText(t.list.scopeNoteEquipment)).not.toBeInTheDocument();
   });
 
   it('「전체 보기」는 설비 축만 뺀다', async () => {
@@ -162,6 +185,54 @@ describe('P-02-01 작업 시작 — 사번', () => {
     await enterWorkerNo(user, WORKER.workerNo);
 
     expect(await screen.findByText(t.worker.inactive)).toBeInTheDocument();
+  });
+});
+
+describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 쓴다', () => {
+  /**
+   * ⭐ **두 벌을 만들지 않는다.** 사번 경량 인증(`P-CO-01`)이 정한 값이 `worker-session` 에
+   * 있고, 이 화면은 그 자리를 읽는다 — 지나온 작업자에게 같은 것을 두 번 묻지 않는다.
+   */
+  it('이미 지정된 사번이 있으면 키패드를 보이지 않고 그 사번으로 선다', async () => {
+    setWorkerSession({
+      worker: WORKER,
+      assignedAt: '2026-09-02 09:00',
+      isOtherPlant: false,
+    } as never);
+
+    renderScreen();
+
+    /* 머리띠와 ① 구획 둘 다 사번을 말한다 — 「하나만 있어야 한다」가 아니라 「선다」를 잰다. */
+    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+    expect(screen.queryByRole('button', { name: t.worker.confirm })).not.toBeInTheDocument();
+  });
+
+  /**
+   * 이 화면에서 확인한 사번도 같은 자리에 넣는다 — 다음 화면이 이어받는다.
+   *
+   * ⭐ **화면을 지웠다 다시 세워 확인한다.** 값이 화면 «안»에 있으면 지우는 순간 사라진다 —
+   * 다시 세운 화면이 그 사번으로 서면 그 자리는 화면 밖이라는 뜻이다.
+   */
+  it('여기서 확인한 사번을 단말이 들고 간다', async () => {
+    const first = renderScreen();
+
+    await enterWorkerNo(first.user, WORKER.workerNo);
+    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo));
+
+    first.unmount();
+    renderScreen();
+
+    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+  });
+
+  it('「다시 입력」은 단말이 들고 있던 사번을 비운다', async () => {
+    const { user } = renderScreen();
+
+    await enterWorkerNo(user, WORKER.workerNo);
+    await user.click(await screen.findByRole('button', { name: t.worker.change }));
+
+    expect(screen.getByText(t.header.workerUnset)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.worker.confirm })).toBeInTheDocument();
   });
 });
 

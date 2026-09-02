@@ -1,8 +1,9 @@
 import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
 import { useIsOnline } from './connection';
 import { useStartGate } from './gating';
@@ -11,7 +12,7 @@ import { PopHeader } from './pop-header';
 import { SelectionCard } from './selection-card';
 import { useOpenSession, useTerminal, useWorkOrders, useWorkerLookup } from './queries';
 import { toSessionRequest } from './session-request';
-import { terminalNow } from './terminal-clock';
+import { assignedAtText, terminalNow } from './terminal-clock';
 import type { WorkOrder } from './types';
 import { WorkOrderList } from './work-order-list';
 import { isHeld } from './work-order-status';
@@ -50,41 +51,69 @@ export const WorkStartScreen = () => {
   const equipmentName = terminal.data?.equipmentName ?? null;
 
   /*
-   * ⭐ 셸이 사번을 이미 정했으면 그 값으로 선다 — 사번 경량 인증(`P-CO-01`)을 지나온 작업자에게
-   *    같은 것을 두 번 묻지 않는다. 없으면 이 화면의 키패드로 받는다(스펙 §4 ① · §7 G-6).
+   * ⭐ **사번은 단말이 이미 들고 있을 수 있다.** 사번 경량 인증(`P-CO-01`)이 정한 값이
+   *    `patterns/worker-session` 에 있고, 그 자리는 처음부터 「읽을 곳은 그 화면 밖」으로
+   *    세워졌다. 지나온 작업자에게 같은 것을 두 번 묻지 않는다 — **이 화면은 그 자리를
+   *    읽고, 여기서 확인한 사번도 같은 자리에 넣는다.** 두 벌을 만들지 않는다.
+   *
+   * ⚠ 셸이 채울 `pop-identity` 가 먼저다 — 단말 토큰에서 온 값이 있으면 그것이 정본이다.
    */
-  const [confirmedNo, setConfirmedNo] = useState<string | null>(identity.workerNo);
+  const workerSession = useWorkerSession();
+  const confirmedNo = identity.workerNo ?? workerSession?.worker.workerNo ?? null;
+
   const [draft, setDraft] = useState('');
   /** 눌렀을 때만 조회한다 — 치는 동안 매 글자마다 물으면 아직 다 치지도 않은 사번으로 「없다」가 뜬다. */
   const [submittedNo, setSubmittedNo] = useState<string | null>(null);
   const lookup = useWorkerLookup(submittedNo);
 
+  /** 다른 공장 사번인지 견줄 기준. 단말이 선 공장이다 — 못 받았으면 견주지 않는다. */
+  const homePlantId = terminal.data?.plantId ?? null;
+
+  /*
+   * ⚠ **다시 만들지 않는다.** 이 값은 아래 효과의 의존이라, 렌더마다 새 객체가 되면 효과가
+   * 매 렌더 돈다 — 사번을 정하는 효과가 화면 밖 저장소를 건드리므로 그 소음이 곧 재렌더가 된다.
+   */
+  const verified = useMemo(
+    () =>
+      submittedNo !== null && lookup.data !== undefined
+        ? verifyWorker(lookup.data, submittedNo, homePlantId)
+        : null,
+    [lookup.data, submittedNo, homePlantId],
+  );
+
   const workerError = ((): string | null => {
     if (submittedNo === null || confirmedNo !== null) return null;
     if (lookup.isError) return t.worker.lookupFailed;
-    if (lookup.data === undefined) return null;
-
-    const result = verifyWorker(lookup.data, submittedNo);
-
-    if (result.kind === 'unknown') return t.worker.unknown;
-    if (result.kind === 'inactive') return t.worker.inactive;
+    if (verified === null) return null;
+    if (verified.kind === 'unknown') return t.worker.unknown;
+    if (verified.kind === 'inactive') return t.worker.inactive;
 
     return null;
   })();
 
   /*
-   * 확인이 끝났으면 그 사번을 확정한다. `useEffect` 를 쓰지 않고 렌더 중에 상태를 옮기는 것을
-   * 피하려고, 확정 판정만 여기서 하고 반영은 아래 버튼 처리에서 한다.
+   * 확인이 끝나면 단말의 「현재 작업자」를 정한다 — 이 값은 화면 지역 상태가 아니라 단말이
+   * 들고 있는 것이라, 다음 화면으로 넘어가도 남아야 한다(`worker-session` 머리 주석).
+   *
+   * ⛔ **렌더 도중에 쓰지 않는다.** 화면 밖 저장소를 렌더에서 쓰면 「썼으니 다시 그린다 →
+   * 아직 조건이 참이다 → 또 쓴다」가 성립할 수 있다 — 실제로 그 고리를 만들어 화면이 멈추는
+   * 것을 봤다. 사번 경량 인증 화면(`P-CO-01`)도 같은 이유로 확인을 효과에서 매듭짓는다.
+   *
+   * ⚠ **한 번 확인한 사번은 다시 쓰지 않는다** — 어떤 사번을 이미 반영했는지 기억해 둔다.
    */
-  const verified =
-    submittedNo !== null && lookup.data !== undefined
-      ? verifyWorker(lookup.data, submittedNo)
-      : null;
+  const [appliedNo, setAppliedNo] = useState<string | null>(null);
 
-  if (confirmedNo === null && verified !== null && verified.kind === 'ok') {
-    /* 렌더 중 상태 갱신 — React 가 같은 렌더에서 다시 그린다. 값이 같으면 다시 돌지 않는다. */
-    setConfirmedNo(verified.workerNo);
-  }
+  useEffect(() => {
+    if (verified === null || verified.kind !== 'ok') return;
+    if (submittedNo === null || appliedNo === submittedNo) return;
+
+    setAppliedNo(submittedNo);
+    setWorkerSession({
+      worker: verified.worker,
+      assignedAt: assignedAtText(new Date()),
+      isOtherPlant: verified.isOtherPlant,
+    });
+  }, [verified, submittedNo, appliedNo]);
 
   const [isShowingAll, setShowingAll] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -201,7 +230,9 @@ export const WorkStartScreen = () => {
           setSubmittedNo(draft.trim());
         }}
         onReset={() => {
-          setConfirmedNo(null);
+          /* 작업자를 바꾼다 — 단말이 들고 있던 사번을 비운다. */
+          setWorkerSession(null);
+          setAppliedNo(null);
           setSubmittedNo(null);
           setDraft('');
           setSelectedId(null);

@@ -17,7 +17,9 @@ import type { Worker } from './types';
 
 /** 확인 결과. **거부 두 가지를 가른다** — 문구가 다르고 사용자가 할 일이 다르다. */
 export type VerifyResult =
-  { kind: 'unknown' } | { kind: 'inactive' } | { kind: 'ok'; workerNo: string };
+  | { kind: 'unknown' }
+  | { kind: 'inactive' }
+  | { kind: 'ok'; worker: Worker; isOtherPlant: boolean };
 
 /**
  * 조회 응답에서 그 사번의 한 건을 고른다.
@@ -29,11 +31,24 @@ export type VerifyResult =
 export const pickExact = (items: readonly Worker[], workerNo: string): Worker | undefined =>
   items.find((item) => item.workerNo === workerNo.trim());
 
-export const verifyWorker = (items: readonly Worker[], workerNo: string): VerifyResult => {
+/**
+ * ⚠ **다른 공장 사번은 막지 않는다.** 사번이 전역에서 유일해 조회가 되고, 현장에서 사람이
+ * 옮겨 다니는 일이 실제로 있다 — 표시만 하고 통과시킨다. 견줄 기준(`homePlantId`)이 없으면
+ * **다른 공장이라고 말하지 않는다** — 모르는 것을 아는 것처럼 그리지 않는다.
+ */
+export const verifyWorker = (
+  items: readonly Worker[],
+  workerNo: string,
+  homePlantId: number | null,
+): VerifyResult => {
   const found = pickExact(items, workerNo);
 
   if (found === undefined) return { kind: 'unknown' };
   if (!found.isActive) return { kind: 'inactive' };
 
-  return { kind: 'ok', workerNo: found.workerNo };
+  return {
+    kind: 'ok',
+    worker: found,
+    isOtherPlant: homePlantId !== null && found.plantId !== homePlantId,
+  };
 };
