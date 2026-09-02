@@ -1562,7 +1562,14 @@ main > * + * {
  */
 .pop-issue-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /*
+   * ⛔ **남는 폭을 나눠 갖지 않는다**(`1fr`이 아니라 상한이다). 관리웹 창을 넓히면 `1fr`은
+   * 수치·입력칸을 함께 늘려 **네 자리 숫자 칸이 600px가 되고** 키패드만 오른쪽 끝으로
+   * 떨어져 나간다 — 눈이 좌우로 왕복한다. 실기(1024)에서는 상한에 못 미쳐 이 값이 보이지
+   * 않고, 넓은 화면에서만 폭을 묶는다.
+   */
+  grid-template-columns: minmax(0, 34rem) auto;
+  justify-content: start;
   align-items: start;
   gap: var(--space-5);
 }
@@ -1592,8 +1599,18 @@ main > * + * {
   overflow-wrap: anywhere;
 }
 
+/*
+ * 받는 값은 네 자리다 — 칸이 그보다 훨씬 넓으면 「무엇을 넣는 칸인가」가 흐려지고, 친 값이
+ * 왼쪽 끝에 홀로 남는다. 키패드가 옆에 있어 손으로 칠 일도 드물다.
+ */
 .pop-issue-input {
   margin-block-start: var(--space-5);
+  max-width: 16rem;
+}
+
+/* DS 입력칸은 제 기본 폭을 갖는다 — 이 자리에서는 위 상한을 따르게 한다. */
+.pop-issue-input > * {
+  width: 100%;
 }
 
 /*
