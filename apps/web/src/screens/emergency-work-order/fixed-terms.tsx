@@ -25,13 +25,13 @@ export const FixedTermsPane = () => {
   const terms = [t.type, t.approval, t.materialRequest, t.resource];
 
   return (
-    <section aria-label={t.title}>
-      <h2 className="field-label">{t.title}</h2>
-      <p>{t.lead}</p>
+    <section className="pane emergency-work-order-pane" aria-label={t.title}>
+      <h2 className="pane-title">{t.title}</h2>
+      <p className="emergency-work-order-lead">{t.lead}</p>
 
-      <dl className="filter-bar">
+      <dl className="emergency-work-order-terms">
         {terms.map((term) => (
-          <div className="field-cell" key={term.label}>
+          <div className="field-cell emergency-work-order-term" key={term.label}>
             <dt className="field-label">{term.label}</dt>
             <dd>
               <strong>{term.value}</strong>

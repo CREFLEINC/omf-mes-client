@@ -33,29 +33,35 @@ export const ItemPicker = ({ selected, onSelect }: ItemPickerProps) => {
   const total = search.data?.page?.total ?? 0;
 
   return (
-    <section aria-label={t.title}>
-      <SearchInput
-        aria-label={t.label}
-        placeholder={t.placeholder}
-        value={draft}
-        onChange={(event) => {
-          setDraft(event.target.value);
-        }}
-        onSearch={setKeyword}
-        loading={search.isFetching}
-      />
-      <Button
-        onClick={() => {
-          setKeyword(draft);
-        }}
-      >
-        {t.search}
-      </Button>
+    <section className="pane emergency-work-order-pane" aria-label={t.title}>
+      <h2 className="pane-title">{t.title}</h2>
+
+      <div className="emergency-work-order-search-row">
+        <SearchInput
+          aria-label={t.label}
+          placeholder={t.placeholder}
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+          }}
+          onSearch={setKeyword}
+          loading={search.isFetching}
+        />
+        <Button
+          onClick={() => {
+            setKeyword(draft);
+          }}
+        >
+          {t.search}
+        </Button>
+      </div>
 
       {selected !== null && (
-        <div className="field-cell">
-          <span className="field-label">{t.selected}</span>
-          <span>{`${selected.itemCode} · ${selected.itemName}`}</span>
+        <div className="emergency-work-order-selected-item">
+          <div className="field-cell">
+            <span className="field-label">{t.selected}</span>
+            <strong>{`${selected.itemCode} · ${selected.itemName}`}</strong>
+          </div>
           <Button
             variant="text"
             onClick={() => {
@@ -78,7 +84,7 @@ export const ItemPicker = ({ selected, onSelect }: ItemPickerProps) => {
       {search.isSuccess && !search.isFetching && items.length === 0 && <p>{t.empty}</p>}
 
       {items.length > 0 && (
-        <ul>
+        <ul className="emergency-work-order-search-results">
           {items.map((item) => (
             <li key={item.itemId}>
               <Button
