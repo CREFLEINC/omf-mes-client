@@ -385,6 +385,104 @@ describe('수리 왕복 스캔 화면', () => {
     );
   });
 
+  /*
+   * 값이 잠깐 달라졌다 돌아오면 최종 대상은 같다. 직전 렌더와 견주면 그 사이에 키가 버려져,
+   * 같은 것을 다시 보내는데 새 키로 간다 - 막으려던 중복이 그대로 난다.
+   */
+  it('수량을 고쳤다 되돌리면 앞 시도와 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse({ ...execution, repairQty: 20 }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    const field = screen.getByLabelText('수리 수량');
+
+    await user.type(field, '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    /* 손이 미끄러져 지웠다 다시 넣는다. 보낼 값은 그대로 20 이다. */
+    await user.type(field, '{backspace}');
+    await user.type(field, '0');
+
+    reachable = true;
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+  });
+
+  /* 대상은 친 문자열이 아니라 보낼 값이다. 20 과 20.0 은 같은 쓰기다. */
+  it('같은 수량을 다르게 적어도 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse({ ...execution, repairQty: 20 }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    const field = screen.getByLabelText('수리 수량');
+
+    await user.type(field, '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.type(field, '.0');
+
+    reachable = true;
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(await seen[1]?.clone().json()).toMatchObject({ repairQty: 20 });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+  });
+
   /* 반출도 같은 성질을 가져야 한다. 투입만 재면 반출의 회귀를 잡지 못한다. */
   it('반출을 다시 시도해도 같은 멱등키로 간다', async () => {
     const user = userEvent.setup();

@@ -27,18 +27,21 @@ export interface IdempotencyKey {
  * 큐를 타는 쓰기는 담을 때 만든 키를 회차마다 재사용해 이미 이 성질을 갖는다. 온라인 전용
  * 경로에는 그 자리가 없어 여기서 준다.
  */
-export const useIdempotencyKey = (target?: unknown): IdempotencyKey => {
+export const useIdempotencyKey = (target?: string | number | null): IdempotencyKey => {
   const key = useRef<string | null>(null);
-  const written = useRef(target);
-
-  if (!Object.is(written.current, target)) {
-    written.current = target;
-    key.current = null;
-  }
+  /*
+   * 키를 만들 때의 대상을 함께 적어 둔다. 직전 렌더와 견주면 값이 잠깐 달라졌다 돌아왔을 때
+   * 키가 이미 버려져 있어, 같은 것을 다시 보내는데 새 키로 간다 - 막으려던 중복이 그대로 난다.
+   */
+  const mintedFor = useRef<string | number | null | undefined>(undefined);
 
   return {
     current: () => {
-      key.current ??= createIdempotencyKey();
+      if (key.current === null || !Object.is(mintedFor.current, target)) {
+        key.current = createIdempotencyKey();
+        mintedFor.current = target;
+      }
+
       return key.current;
     },
     reset: () => {

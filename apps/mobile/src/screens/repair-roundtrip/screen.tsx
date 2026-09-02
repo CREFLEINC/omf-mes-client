@@ -76,8 +76,11 @@ export const RepairRoundtripScreen = () => {
    *
    * 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 키가 스스로 비워지게 한다. 수량과 결과도
    * 대상에 넣는다 - 값이 달라졌는데 앞 키로 가면 서버가 앞 시도로 보고 흡수한다.
+   *
+   * 친 문자열이 아니라 실제로 보낼 값으로 짓는다. 20 과 20.0 은 같은 쓰기인데 문자열로 재면
+   * 다른 키를 받는다.
    */
-  const dispatchKey = useIdempotencyKey(`${String(defectId)}:${qty}`);
+  const dispatchKey = useIdempotencyKey(`${String(defectId)}:${String(Number(qty.trim()))}`);
   const returnKey = useIdempotencyKey(`${String(executionId)}:${String(result)}`);
 
   const scanField = useScanField({
