@@ -58,9 +58,14 @@ export const productionResult = {
     remarksLabel: '비고',
     keypadLabel: '수량 키패드',
     quickAdd: (step: number) => `＋${String(step)}`,
-    /** 잔여 / 지시 — 스펙 §3 의 「잔여수량 380 / 500」 */
+    /**
+     * 잔여 / 지시 — 스펙 §3 의 「잔여수량 380 / 500」.
+     *
+     * ⚠ **숫자 둘을 빗금으로만 잇지 않는다.** 어느 쪽이 잔여이고 어느 쪽이 지시인지 화면에서
+     * 알 수 없어 읽는 사람이 멈춘다(실기 확인에서 나온 지적). 각 숫자에 이름을 붙인다.
+     */
     remaining: '잔여수량',
-    remainingValue: (remaining: string, ordered: string) => `${remaining} / ${ordered}`,
+    remainingValue: (remaining: string, ordered: string) => `잔여 ${remaining} / 지시 ${ordered}`,
     remainingUnknown: '잔여수량을 확인할 수 없습니다.',
     empty: '양품수량을 입력하세요.',
     zero: '양품수량은 0보다 커야 합니다.',

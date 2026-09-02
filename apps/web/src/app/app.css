@@ -5863,9 +5863,28 @@ main > * + * {
   align-items: start;
 }
 
+/*
+ * 키패드는 제 폭이 정해져 있다(스펙 §3-2 — 키 64 × 3열 + 간격). 카드가 그보다 넓으므로
+ * **가운데에 놓는다** — 왼쪽에 붙이면 오른쪽에 빈 판이 생겨 카드가 잘못 그려진 것처럼 보인다.
+ */
+.pop-result-keypad > * {
+  display: flex;
+  justify-content: center;
+}
+
+/*
+ * ⚠ **접히면 키패드가 폭을 다 먹는다.** 2단일 때 우단은 392px 이지만 1단이 되면 카드가
+ * 화면 너비로 늘어나 키 3열 오른쪽에 빈 판이 생긴다 — 실기 확인에서 나온 지적이다.
+ * 접힌 뒤에도 키패드는 제 폭만 쓴다.
+ */
 @media (max-width: 900px) {
   .pop-result-panes {
     grid-template-columns: 1fr;
+  }
+
+  .pop-result-panes > :last-child {
+    justify-self: start;
+    max-width: 392px;
   }
 }
 
@@ -5924,4 +5943,14 @@ main > * + * {
   gap: var(--space-3);
   font: var(--type-body-lg);
   letter-spacing: var(--type-body-lg-tracking);
+}
+
+/*
+ * 배너 안의 조치 버튼은 **문장 아래**에 선다.
+ *
+ * ⚠ 실기 크기(1024×768)에서 확인한 것 — 문장 뒤에 그대로 이어 붙이면 마지막 글자와 버튼이
+ * 맞닿아 문장이 잘린 것처럼 보인다. 장갑 낀 손이 누를 자리이므로 사방에 여백이 필요하다.
+ */
+.pop-result-banner-text {
+  margin: 0 0 var(--space-3);
 }

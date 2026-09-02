@@ -257,7 +257,7 @@ export const ProductionResultScreen = () => {
       {hasPendingPqc && (
         <div className="banner-slot">
           <AlertBanner variant="warning" title={t.pqc.blockedTitle}>
-            {t.pqc.blockedBody}
+            <p className="pop-result-banner-text">{t.pqc.blockedBody}</p>
             <Button size="2xl" onClick={goInspect}>
               {t.pqc.goInspect}
             </Button>
@@ -376,7 +376,11 @@ export const ProductionResultScreen = () => {
         </Card>
 
         {/* 우단 — 숫자 키패드. 화면 안에 고정한다(OS 터치 키보드가 입력칸을 덮는다). */}
-        <Card bordered className="pop-section" aria-label={t.quantity.keypadLabel}>
+        <Card
+          bordered
+          className="pop-section pop-result-keypad"
+          aria-label={t.quantity.keypadLabel}
+        >
           <Card.Body>
             <NumberPad
               aria-label={t.quantity.keypadLabel}
