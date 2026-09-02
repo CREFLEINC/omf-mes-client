@@ -33,12 +33,12 @@ const lotRow = (lotId: number, lotNo: string) => ({
 });
 
 describe('오늘 출하분', () => {
-  /* 끝 경계가 반열림이라 다음 날 0시까지 준다. 그러지 않으면 오늘분 일부가 빠진다. */
-  it('오늘 0시부터 다음 날 0시까지를 잡는다', () => {
+  /* 계약이 날짜로 받는다. 시각까지 실으면 서버가 요청을 물리고 목록이 영영 뜨지 않는다. */
+  it('시각 없이 날짜만 잡는다', () => {
     const day = shipDay(new Date(2026, 8, 1, 14, 30));
 
-    expect(Date.parse(day.to) - Date.parse(day.from)).toBe(24 * 60 * 60 * 1000);
-    expect(new Date(day.from).getHours()).toBe(0);
+    expect(day.from).toBe('2026-09-01');
+    expect(day.to).toBe('2026-09-01');
   });
 
   it('기간을 비우지 않고 묻는다', async () => {
@@ -54,8 +54,8 @@ describe('오늘 출하분', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(seen[0]?.searchParams.get('shipDateFrom')).not.toBeNull();
-    expect(seen[0]?.searchParams.get('shipDateTo')).not.toBeNull();
+    expect(seen[0]?.searchParams.get('shipDateFrom')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(seen[0]?.searchParams.get('shipDateTo')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   /* 값 목록이 확정 전이라 지어내 실으면 값이 달라지는 날 목록이 조용히 빈다. */
