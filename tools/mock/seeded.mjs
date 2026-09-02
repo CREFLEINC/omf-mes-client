@@ -12,14 +12,28 @@
 
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
+import { networkInterfaces } from 'node:os';
 
 import { writeMergedSpec } from '../merge-spec.mjs';
 import { resolveSpecPaths } from './resolve-spec.mjs';
 import { createSeed } from './seed.mjs';
 
 const PORT = Number(process.env.MOCK_PORT ?? 4010);
+/*
+ * 기본으로 모든 인터페이스에 묶는다. 실기(PDA)는 Wi-Fi 로 이 기계의 LAN 주소를 부르는데,
+ * 루프백에만 묶으면 단말에서 닿지 않는다 - 화면은 「연결을 확인하세요」만 말하고 이유를
+ * 알려 주지 않는다.
+ */
+const HOST = process.env.MOCK_HOST ?? '0.0.0.0';
 /** Prism 은 뒤에 숨겨 두고 모르는 경로만 넘긴다. */
 const FALLBACK_PORT = PORT + 1;
+
+/** 실기가 부를 주소. 사람이 찾아 헤매지 않게 띄울 때 함께 적는다. */
+const lanAddresses = () =>
+  Object.values(networkInterfaces())
+    .flat()
+    .filter((entry) => entry !== undefined && entry.family === 'IPv4' && !entry.internal)
+    .map((entry) => entry.address);
 
 const state = createSeed();
 let nextId = 900001;
@@ -770,8 +784,13 @@ const prism = spawn(
   { stdio: ['ignore', 'ignore', 'inherit'] },
 );
 
-server.listen(PORT, '127.0.0.1', () => {
+server.listen(PORT, HOST, () => {
   console.log(`상태 기반 목 서버: http://127.0.0.1:${String(PORT)}`);
+
+  for (const address of lanAddresses()) {
+    console.log(`  실기에서: http://${address}:${String(PORT)}`);
+  }
+
   console.log(`  씨앗 기준일: ${state.today}`);
   console.log(`  사번: ${state.scannables.workerNos.join(' · ')}`);
   console.log(`  모르는 경로는 Prism(${String(FALLBACK_PORT)})으로 넘깁니다`);

@@ -2,6 +2,7 @@ import { AlertBanner, Button, Card, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -32,14 +33,6 @@ export const WipHandoverScreen = () => {
   const [qty, setQty] = useState('');
   const [done, setDone] = useState(false);
 
-  const scanField = useScanField({
-    onScan: (value) => {
-      setScanned(value.trim());
-      setToWorkOrderId(null);
-      setQty('');
-    },
-  });
-
   const lot = useScannedLot(scanned);
   const found = lot.data ?? null;
   const item = useItem(found?.itemId ?? null);
@@ -50,6 +43,19 @@ export const WipHandoverScreen = () => {
   const successors = useSuccessors(fromWorkOrderId);
 
   const confirm = useConfirmHandover();
+  /* 한 번의 확정에 키 하나. 재시도가 같은 키로 가야 서버가 중복을 막는다. */
+  const idempotency = useIdempotencyKey();
+
+  const scanField = useScanField({
+    onScan: (value) => {
+      setScanned(value.trim());
+      setToWorkOrderId(null);
+      setQty('');
+      /* 다른 LOT 을 적기 시작했다. 앞 시도의 키를 물려주면 서버가 이것을 그 시도로 본다. */
+      idempotency.reset();
+      confirm.reset();
+    },
+  });
 
   const chosen = successors.data?.find((each) => each.workOrderId === toWorkOrderId) ?? null;
   const uom = uoms.data?.get(found?.uomId ?? -1) ?? '';
@@ -62,6 +68,7 @@ export const WipHandoverScreen = () => {
     setQty('');
     setDone(false);
     confirm.reset();
+    idempotency.reset();
     scanField.focus();
   };
 
@@ -77,8 +84,14 @@ export const WipHandoverScreen = () => {
         toWorkOrderId: chosen.workOrderId,
         qty,
         workerNo: worker.workerNo,
+        idempotencyKey: idempotency.current(),
       },
-      { onSuccess: () => { setDone(true); } },
+      {
+        onSuccess: () => {
+          setDone(true);
+          idempotency.reset();
+        },
+      },
     );
   };
 

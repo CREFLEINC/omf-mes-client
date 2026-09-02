@@ -7,7 +7,6 @@ import {
 
 import { useApiClient } from '../../patterns/api-context';
 import type { Lot } from '../../patterns/lots';
-import { createIdempotencyKey } from '../../patterns/outbox';
 import { runRequest } from '../../patterns/request';
 import { toBody, type WorkOrder } from './handover';
 
@@ -49,13 +48,16 @@ interface HandoverVariables {
   toWorkOrderId: number;
   qty: string;
   workerNo: string;
+  /** 이번 확정의 키. 재시도는 같은 값으로 온다 — 서버가 중복을 그것으로 막는다. */
+  idempotencyKey: string;
 }
 
 /**
  * 인계 확정.
  *
  * 셸의 outbox 에 담지 않는다 - 이 화면은 온라인 전용이고 연결이 끊기면 진입 자체가 막힌다.
- * 멱등키는 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해 싣는다.
+ * 멱등키는 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해 싣는다. 그래서 화면이 만들어
+ * 넘긴다 - 여기서 만들면 재시도마다 새 값이 되어 막으려던 중복을 그대로 낸다.
  *
  * If-Match 를 싣지 않는다. 신규 생성이라 대조할 판이 아직 없다.
  */
@@ -63,11 +65,18 @@ export const useConfirmHandover = (): UseMutationResult<unknown, Error, Handover
   const { client } = useApiClient();
 
   return useMutation({
-    mutationFn: ({ lot, fromWorkOrderId, toWorkOrderId, qty, workerNo }: HandoverVariables) =>
+    mutationFn: ({
+      lot,
+      fromWorkOrderId,
+      toWorkOrderId,
+      qty,
+      workerNo,
+      idempotencyKey,
+    }: HandoverVariables) =>
       runRequest(() =>
         client.POST('/production/operation-handovers', {
           params: {
-            header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
+            header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
           },
           body: toBody(lot, fromWorkOrderId, toWorkOrderId, qty, new Date()),
         }),
