@@ -13,18 +13,30 @@ import {
 const t = messages.downtimeRegister;
 
 /** 오류 갈래를 문구로. 짝 제약은 두 칸에 **같은 말**이 선다(스펙 §6-1). */
-type ErrorKind = IntervalErrors['startedAt'] | IntervalErrors['endedAt'];
-
-const describeError = (kind: ErrorKind): string | undefined => {
+/** 시작 칸의 오류 문구. **끝 칸과 「덜 친 것」의 안내가 다르다** — 고칠 칸을 가리켜야 한다. */
+const describeStartedError = (kind: IntervalErrors['startedAt']): string | undefined => {
   switch (kind) {
     case 'required':
       return t.errors.startedRequired;
+    case 'incomplete':
+      return t.errors.startedIncomplete;
     case 'future':
       return t.errors.future;
     case 'order':
       return t.errors.endedBeforeStarted;
+    case null:
+      return undefined;
+  }
+};
+
+const describeEndedError = (kind: IntervalErrors['endedAt']): string | undefined => {
+  switch (kind) {
     case 'incomplete':
       return t.errors.endedIncomplete;
+    case 'future':
+      return t.errors.future;
+    case 'order':
+      return t.errors.endedBeforeStarted;
     case null:
       return undefined;
   }
@@ -50,7 +62,20 @@ export interface IntervalFieldsProps {
  * 「진행 중」이라는 별도 값이 있는 것이 아니라 **끝이 비어 있는 것**이 그 뜻이다.
  */
 export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps) => {
-  const minutes = intervalMinutes(readInterval(draft));
+  const moments = readInterval(draft);
+  const minutes = intervalMinutes(moments);
+
+  /*
+   * 길이 자리는 세 갈래다. **아직 아무것도 치지 않은 상태를 「진행 중」이라 부르지 않는다** —
+   * 실사용에서 빈 화면이 「진행 중이라 산출할 수 없습니다」라고 말했다. 진행 중은 시작을
+   * 찍은 뒤에야 성립하는 사실이다.
+   */
+  const durationLabel =
+    minutes !== null
+      ? toDurationLabel(minutes)
+      : moments.started !== null
+        ? t.interval.durationUnknown
+        : t.interval.durationNotYet;
 
   const setStarted = (part: 'date' | 'time', value: string): void => {
     onChange({ ...draft, startedAt: { ...draft.startedAt, [part]: value } });
@@ -71,7 +96,7 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
             size="xl"
             label={`${t.interval.startedAt} ${t.interval.date}`}
             value={draft.startedAt.date}
-            error={describeError(errors.startedAt)}
+            error={describeStartedError(errors.startedAt)}
             onChange={(event) => {
               setStarted('date', event.target.value);
             }}
@@ -105,7 +130,7 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
             label={`${t.interval.endedAt} ${t.interval.date}`}
             value={draft.endedAt.date}
             disabled={draft.stillOngoing}
-            error={describeError(errors.endedAt)}
+            error={describeEndedError(errors.endedAt)}
             onChange={(event) => {
               setEnded('date', event.target.value);
             }}
@@ -148,9 +173,7 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
          * 길이는 **입력 확인용**이다 — 저장되는 값은 서버가 낸다. 진행 중이면 산출 불가라고
          * 말하고 비워 두지 않는다: 빈 자리는 「0분」과 「모른다」를 같은 모양으로 만든다.
          */}
-        <p className="downtime-duration">
-          {minutes === null ? t.interval.durationUnknown : toDurationLabel(minutes)}
-        </p>
+        <p className="downtime-duration">{durationLabel}</p>
       </section>
     </Card>
   );

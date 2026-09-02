@@ -561,6 +561,28 @@ describe('DowntimeRegisterScreen — 시간이 흐른 뒤', () => {
   }, 15_000);
 });
 
+describe('DowntimeRegisterScreen — 구간을 치기 전', () => {
+  it('빈 화면이 「진행 중」이라고 말하지 않는다', async () => {
+    renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
+
+    await flush();
+
+    /* 아무것도 치지 않은 상태는 진행 중이 아니라 **아직 아무것도 아닌 상태**다. */
+    expect(screen.queryByText(t.interval.durationUnknown)).toBeNull();
+    expect(screen.getByText(t.interval.durationNotYet)).toBeTruthy();
+  });
+
+  it('시작을 찍고 「아직 진행 중」을 켜면 그때 산출 불가라고 말한다', async () => {
+    renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
+
+    await flush();
+    typeInterval(['2026-08-11', '14:20']);
+    fireEvent.click(screen.getByLabelText(t.interval.stillOngoing));
+
+    expect(await screen.findByText(t.interval.durationUnknown)).toBeTruthy();
+  });
+});
+
 describe('DowntimeRegisterScreen — 덜 친 종료 시각', () => {
   it('종료 날짜만 넣고 시각을 비우면 **조용히 진행 중으로 저장하지 않는다**', async () => {
     const { requests } = renderScreen([
@@ -583,6 +605,18 @@ describe('DowntimeRegisterScreen — 덜 친 종료 시각', () => {
     /* 끝을 적으려던 구간이 진행 중으로 남으면 그 뒤로 새 비가동도 시작할 수 없다. */
     expect(postedBodies(requests)).toHaveLength(0);
     expect(screen.getByText(t.errors.endedIncomplete)).toBeTruthy();
+  });
+
+  it('시작을 아직 안 쳤어도 끝 칸의 문제를 바로 말한다', async () => {
+    renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
+
+    await flush();
+    /* 시작은 건드리지 않고 끝 날짜만 넣는다 — 저장을 누르기 전이다. */
+    fireEvent.change(screen.getByLabelText(`${t.interval.endedAt} ${t.interval.date}`), {
+      target: { value: '2026-08-11' },
+    });
+
+    expect(await screen.findByText(t.errors.endedIncomplete)).toBeTruthy();
   });
 });
 

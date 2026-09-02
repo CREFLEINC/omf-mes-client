@@ -101,7 +101,7 @@ export const readInterval = (draft: IntervalDraft): IntervalMoments => ({
 
 /** 어느 칸에 무엇이 잘못됐는가. 짝 제약은 **두 칸에 함께** 붙는다(스펙 §6-1). */
 export interface IntervalErrors {
-  startedAt: 'required' | 'future' | 'order' | null;
+  startedAt: 'required' | 'future' | 'order' | 'incomplete' | null;
   endedAt: 'future' | 'order' | 'incomplete' | null;
 }
 
@@ -125,38 +125,48 @@ export const validateInterval = (
   const limit = now.getTime() + tolerance;
   const { started, ended } = readInterval(draft);
 
-  if (started === null) {
-    return { ...NO_INTERVAL_ERRORS, startedAt: 'required' };
-  }
-
-  if (started.getTime() > limit) {
-    return { ...NO_INTERVAL_ERRORS, startedAt: 'future' };
-  }
-
   /*
-   * 「아직 진행 중」을 켜지 않았는데 끝 칸이 반만 채워져 있다 — **덜 친 것을 비운 것으로 읽지
-   * 않는다.** 그대로 두면 끝을 적으려던 구간이 조용히 진행 중으로 저장되고, 그 뒤로는 새
-   * 비가동을 시작할 수도 없다.
+   * ⛔ **한 칸이 걸렸다고 거기서 멈추지 않는다.** 시작이 덜 채워졌다는 이유로 끝 칸 검사를
+   * 건너뛰면, 두 칸을 다 잘못 친 작업자가 **한 번에 하나씩** 고치게 된다 — 실사용에서
+   * 「시작이 비어 있어 끝의 문제가 아예 표시되지 않는」 자리가 나왔다.
    */
-  if (!draft.stillOngoing && isUnreadable(draft.endedAt)) {
-    return { ...NO_INTERVAL_ERRORS, endedAt: 'incomplete' };
-  }
+  const startedAt = ((): IntervalErrors['startedAt'] => {
+    /* 덜 친 것은 「안 친 것」과 다르다 — 뒤엣것만 저장을 누른 뒤에 말한다. */
+    if (isUnreadable(draft.startedAt)) return 'incomplete';
+    if (started === null) return 'required';
 
-  if (ended === null) return NO_INTERVAL_ERRORS;
+    return started.getTime() > limit ? 'future' : null;
+  })();
 
-  if (ended.getTime() > limit) {
-    return { ...NO_INTERVAL_ERRORS, endedAt: 'future' };
-  }
+  const endedAt = ((): IntervalErrors['endedAt'] => {
+    /* 「아직 진행 중」이면 끝 칸을 읽지 않기로 했으므로 남은 글자로 막지 않는다. */
+    if (draft.stillOngoing) return null;
+    /*
+     * 끝 칸이 읽히지 않는다 — **덜 친 것을 비운 것으로 읽지 않는다.** 그대로 두면 끝을
+     * 적으려던 구간이 조용히 진행 중으로 저장되고, 그 뒤로는 새 비가동을 시작할 수도 없다.
+     */
+    if (isUnreadable(draft.endedAt)) return 'incomplete';
+    if (ended === null) return null;
+
+    return ended.getTime() > limit ? 'future' : null;
+  })();
 
   /*
    * 끝이 시작보다 앞선다 — **두 칸에 함께** 붙인다. 한쪽에만 붙이면 작업자가 그 칸만 고치고,
-   * 고쳐야 할 쪽이 반대일 때 같은 오류를 다시 만난다.
+   * 고쳐야 할 쪽이 반대일 때 같은 오류를 다시 만난다. 각 칸이 이미 자기 문제를 들고 있으면
+   * 그쪽이 먼저다 — 읽히지도 않는 값으로 순서를 따질 수 없다.
    */
-  if (ended.getTime() < started.getTime()) {
+  if (
+    startedAt === null &&
+    endedAt === null &&
+    started !== null &&
+    ended !== null &&
+    ended.getTime() < started.getTime()
+  ) {
     return { startedAt: 'order', endedAt: 'order' };
   }
 
-  return NO_INTERVAL_ERRORS;
+  return { startedAt, endedAt };
 };
 
 export const hasIntervalError = (errors: IntervalErrors): boolean =>

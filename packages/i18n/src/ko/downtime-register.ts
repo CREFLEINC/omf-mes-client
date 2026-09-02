@@ -42,6 +42,8 @@ export const downtimeRegister = {
     now: '지금',
     stillOngoing: '아직 진행 중',
     durationUnknown: '진행 중이라 산출할 수 없습니다',
+    /** 아직 구간을 치지 않은 상태 — 「진행 중」과 다르다. 자리는 비우되 없애지 않는다. */
+    durationNotYet: '—',
   },
   reason: {
     title: '사유',
@@ -92,6 +94,8 @@ export const downtimeRegister = {
     /** 목록은 받았는데 합계만 못 받은 상태. 합계 자리를 0으로 채우지 않는다. */
     summaryUnavailable: '합계를 불러오지 못했습니다',
     startedRequired: '시작 시각을 입력하세요.',
+    /** 시작 칸을 적으려다 만 상태. 「안 친 것」과 달라 누르기 전에도 말한다. */
+    startedIncomplete: '시작 날짜와 시각을 함께 입력하세요.',
     reasonRequired: '비가동 사유를 고르세요.',
     /** 겹침은 경고다 — 저장을 막지 않는다(스펙 §6-1 · 미결 처리 「만들지 않는다」). */
     overlapWarning: (rangeLabel: string): string => `${rangeLabel} 과 겹칩니다. 그대로 저장됩니다.`,

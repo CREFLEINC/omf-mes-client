@@ -15,6 +15,7 @@ import {
   toTimeFieldDraft,
   validateInterval,
   type IntervalDraft,
+  type IntervalErrors,
 } from './interval';
 import { IntervalFields } from './interval-fields';
 import { LoadErrorBanner } from './load-error-banner';
@@ -151,10 +152,16 @@ export const DowntimeRegisterScreen = () => {
    * - **아직 안 친 것**(시작 필수 · 사유 필수)은 저장을 누른 뒤에 보인다. 빈 화면을 붉은
    *   글씨로 맞이하지 않는다.
    */
-  const shownIntervalErrors =
-    saveAttempted || intervalErrors.startedAt !== 'required'
-      ? intervalErrors
-      : { startedAt: null, endedAt: null };
+  const shownIntervalErrors: IntervalErrors = {
+    /* 「안 친 것」만 누르기 전에는 숨긴다 — 빈 화면을 붉은 글씨로 맞이하지 않는다. */
+    startedAt:
+      !saveAttempted && intervalErrors.startedAt === 'required' ? null : intervalErrors.startedAt,
+    /*
+     * ⛔ **끝 칸의 오류를 시작 칸 사정으로 숨기지 않는다.** 한 덩이로 숨겼더니 시작을 아직
+     * 치지 않은 동안 끝 칸의 문제가 통째로 가려졌다 — 실사용에서 나온 자리다.
+     */
+    endedAt: intervalErrors.endedAt,
+  };
 
   const resetDraft = (): void => {
     setDraft(EMPTY_DRAFT);
@@ -220,8 +227,13 @@ export const DowntimeRegisterScreen = () => {
           <Chip variant="status" size="sm" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
             {outbox.pendingCount > 0 ? t.header.unsent(outbox.pendingCount) : t.header.sent}
           </Chip>
+          {/*
+            ⚠ **오프라인은 오류가 아니다.** 이 화면은 끊긴 채로 쓰도록 만들어졌고, 통신이 끊긴
+            것 자체가 비가동 사유가 될 수 있다. 붉게 칠하면 「잘못됐다」로 읽혀 작업자가 멈춰
+            선다 — 같은 도메인의 P-05-01 도 연결 상태를 `warning` 으로 낸다.
+          */}
           {!outbox.isOnline && (
-            <Chip variant="status" size="sm" status="error">
+            <Chip variant="status" size="sm" status="warning">
               {t.header.offline}
             </Chip>
           )}

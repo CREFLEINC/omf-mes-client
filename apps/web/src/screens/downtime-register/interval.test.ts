@@ -53,6 +53,34 @@ describe('readInterval', () => {
 });
 
 describe('validateInterval', () => {
+  it('시작이 덜 채워져도 **끝 칸의 문제를 함께** 말한다', () => {
+    /*
+     * 한 칸이 걸렸다고 거기서 멈추면 두 칸을 다 잘못 친 작업자가 한 번에 하나씩 고치게 된다.
+     * 실사용에서 「시작이 비어 있어 끝의 문제가 아예 표시되지 않는」 자리가 나왔다.
+     */
+    const errors = validateInterval(
+      draft({
+        startedAt: { date: '2026-08-11', time: '' },
+        endedAt: { date: '2026-08-11', time: '' },
+      }),
+      NOW,
+    );
+
+    expect(errors.startedAt).toBe('incomplete');
+    expect(errors.endedAt).toBe('incomplete');
+  });
+
+  it('시작 칸도 「덜 친 것」과 「안 친 것」을 가른다', () => {
+    /* 덜 친 것은 누르기 전에도 말하고, 안 친 것은 저장을 누른 뒤에 말한다. */
+    expect(
+      validateInterval(draft({ startedAt: { date: '2026-08-11', time: '' } }), NOW).startedAt,
+    ).toBe('incomplete');
+
+    expect(validateInterval(draft({ startedAt: { date: '', time: '' } }), NOW).startedAt).toBe(
+      'required',
+    );
+  });
+
   it('시작이 비어 있으면 필수로 잡는다', () => {
     const errors = validateInterval(draft({ startedAt: { date: '', time: '' } }), NOW);
 
@@ -151,6 +179,17 @@ describe('intervalMinutes', () => {
 
   it('진행 중이면 **0이 아니라 산출 불가**다', () => {
     expect(intervalMinutes(readInterval(draft({ stillOngoing: true })))).toBeNull();
+  });
+
+  it('아직 시작을 찍지 않았으면 「진행 중」이 아니다', () => {
+    /*
+     * 화면이 이 둘을 같은 글자로 그리면 **빈 화면이 「진행 중이라 산출할 수 없습니다」**라고
+     * 말한다 — 실사용에서 나온 자리다. 진행 중은 시작을 찍은 뒤에야 성립한다.
+     */
+    const untouched = readInterval(draft({ startedAt: { date: '', time: '' } }));
+
+    expect(untouched.started).toBeNull();
+    expect(intervalMinutes(untouched)).toBeNull();
   });
 });
 
