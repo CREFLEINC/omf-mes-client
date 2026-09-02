@@ -64,6 +64,7 @@ interface RouteOptions {
   pending?: ReturnType<typeof approval>[];
   mine?: ReturnType<typeof approval>[];
   seen?: URL[];
+  asked?: Request[];
 }
 
 const routes = (options: RouteOptions = {}) => [
@@ -93,6 +94,7 @@ const routes = (options: RouteOptions = {}) => [
     respond: (request: Request) => {
       const url = new URL(request.url);
       options.seen?.push(url);
+      options.asked?.push(request.clone());
       const items =
         url.searchParams.get('pendingOnly') === 'true'
           ? (options.pending ?? [])
@@ -320,6 +322,30 @@ describe('긴급 IQC 생략 요청 화면', () => {
     const asked = seen.find((url) => url.searchParams.get('pendingOnly') === 'true');
     expect(asked?.searchParams.get('targetTypeCode')).toBe('INBOUND_LOT');
     expect(asked?.searchParams.get('targetId')).toBe('7');
+  });
+
+  /*
+   * 이 셸에는 계정 로그인이 없어 서버가 상신자를 풀 근거가 사번뿐이다. 한 단말을 여러
+   * 사람이 교대로 쓰므로 없이 부르면 남이 올린 요청이 섞이고, 목록이 비는 것이 아니라
+   * 채워진 채로 틀려 화면으로는 보이지 않는다.
+   */
+  it('내가 올린 요청을 물을 때 사번을 싣는다', async () => {
+    const asked: Request[] = [];
+    mount([], { mine: [approval()], asked });
+
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    await waitFor(() => {
+      expect(
+        asked.some((request) => new URL(request.url).searchParams.get('requestedByMe') === 'true'),
+      ).toBe(true);
+    });
+
+    const mineRequest = asked.find(
+      (request) => new URL(request.url).searchParams.get('requestedByMe') === 'true',
+    );
+
+    expect(mineRequest?.headers.get('X-Worker-No')).toBe('900028');
   });
 
   it('내가 올린 요청을 상태와 함께 보인다', async () => {

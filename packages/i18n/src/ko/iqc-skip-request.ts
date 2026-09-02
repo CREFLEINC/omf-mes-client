@@ -57,8 +57,14 @@ export const iqcSkipRequest = {
   mine: {
     legend: '내가 올린 요청',
     loading: '불러오는 중입니다',
-    loadFailed: '내가 올린 요청을 불러오지 못했습니다',
+    /*
+     * 이 목록은 앞서 받은 것이 그대로 남는다. 이 화면에는 요청 취소·회수가 없어, 빈 목록이
+     * 요청이 없다는 뜻으로 읽히면 같은 요청을 다시 올린다.
+     */
+    loadFailed: '지금은 갱신하지 못했습니다. 연결되면 갱신됩니다.',
     empty: '올린 요청이 없습니다.',
+    /** 사번을 아직 모르면 누구의 요청인지 물을 수 없다. */
+    noWorker: '사번을 확인하면 보입니다',
     requestedAt: (at: string) => `${at} 올림`,
   },
 } as const;

@@ -14,10 +14,12 @@ import { SUBSTITUTE_LOT_REASON, useOpenPurchaseOrders, usePurchaseOrderLines } f
 import {
   NORMAL,
   OVER,
+  UNDER,
   canSubmit,
   isExpiryBeforeManufactured,
   packageProblem,
   qtyProblem,
+  remainingQtyOf,
   toOutboxDraft,
   verdictOf,
   type PurchaseOrder,
@@ -53,8 +55,18 @@ export const InboundReceiptScreen = () => {
   const [malformed, setMalformed] = useState<string | null>(null);
   const [manual, setManual] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  /* 부족한데도 그대로 등록하겠다는 사람의 답. 화면은 더 올 것인지 알지 못한다. */
+  const [continueUnder, setContinueUnder] = useState(false);
 
   const patch = (next: Partial<ReceiptDraft>) => {
+    /*
+     * 판정을 이루는 값이 바뀌면 앞서 받은 답을 버린다. 남겨 두면 부족하다고 답한 수량이
+     * 아닌 다른 수량이 그 답을 타고 넘어간다.
+     */
+    if ('receivedQty' in next || 'purchaseOrderLine' in next) {
+      setContinueUnder(false);
+    }
+
     setDraft((current) => ({ ...current, ...next }));
   };
 
@@ -84,7 +96,8 @@ export const InboundReceiptScreen = () => {
     draft.purchaseOrderLine === null || qtyProblem(draft.receivedQty) !== null
       ? null
       : verdictOf(draft.purchaseOrderLine, received);
-  const ready = canSubmit(draft, worker !== null);
+  /* 부족은 더 올 것이 남았다고 사람이 답해야 넘어간다. 마지막 회차면 갈 곳이 다르다. */
+  const ready = canSubmit(draft, worker !== null) && (verdict !== UNDER || continueUnder);
   const uom = uoms.data?.get(draft.purchaseOrderLine?.uomId ?? -1) ?? '';
 
   const qtyMessage = (): string | undefined => {
@@ -98,6 +111,7 @@ export const InboundReceiptScreen = () => {
     setMalformed(null);
     setManual('');
     setOutcome(null);
+    setContinueUnder(false);
     scanField.focus();
   };
 
@@ -439,22 +453,52 @@ export const InboundReceiptScreen = () => {
               {/* 판정 결과를 먼저 보인 뒤에 넘긴다. 조용히 넘기면 왜 왔는지 알 수 없다. */}
               {verdict === null ? null : verdict === NORMAL ? (
                 <AlertBanner variant="success" title={t.verdict.normal} />
+              ) : verdict === OVER ? (
+                <AlertBanner
+                  variant="warning"
+                  title={t.verdict.over(
+                    String(remainingQtyOf(draft.purchaseOrderLine)),
+                    String(received),
+                  )}
+                >
+                  {t.verdict.overNext}
+                </AlertBanner>
               ) : (
                 <AlertBanner
                   variant="warning"
-                  title={
-                    verdict === OVER
-                      ? t.verdict.over(
-                          String(draft.purchaseOrderLine.orderedQty),
-                          String(received),
-                        )
-                      : t.verdict.under(
-                          String(draft.purchaseOrderLine.orderedQty),
-                          String(received),
-                        )
-                  }
+                  title={t.verdict.under(
+                    String(remainingQtyOf(draft.purchaseOrderLine)),
+                    String(received),
+                  )}
                 >
-                  {verdict === OVER ? t.verdict.overNext : t.verdict.underNext}
+                  <dl className="receipt__counts">
+                    <dt>{t.verdict.counts.ordered}</dt>
+                    <dd>{`${String(draft.purchaseOrderLine.orderedQty)} ${uom}`}</dd>
+                    <dt>{t.verdict.counts.received}</dt>
+                    <dd>{`${String(draft.purchaseOrderLine.receivedQty)} ${uom}`}</dd>
+                    <dt>{t.verdict.counts.arrived}</dt>
+                    <dd>{`${String(received)} ${uom}`}</dd>
+                    <dt>{t.verdict.counts.remaining}</dt>
+                    <dd>{`${String(remainingQtyOf(draft.purchaseOrderLine))} ${uom}`}</dd>
+                  </dl>
+                  <p>{t.verdict.underAsk}</p>
+                  <div className="receipt__under-choice">
+                    <Button
+                      variant={continueUnder ? 'filled' : 'outlined'}
+                      size="xl"
+                      onClick={() => {
+                        setContinueUnder(true);
+                      }}
+                    >
+                      {t.verdict.underContinue}
+                    </Button>
+                    <Link to="/inbound-variance" className="receipt__under-link">
+                      {t.verdict.underVariance}
+                    </Link>
+                  </div>
+                  <p>
+                    {continueUnder ? t.verdict.underContinueNote : t.verdict.underVarianceNote}
+                  </p>
                 </AlertBanner>
               )}
 
