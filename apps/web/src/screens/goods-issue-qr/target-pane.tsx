@@ -1,6 +1,6 @@
 import { Card, Radio, RadioGroup, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import type { LookupSource } from '../../patterns/lookup-display';
 import { ISSUE_UNIT } from './types';
@@ -40,6 +40,16 @@ export const TargetPane = ({
 }: TargetPaneProps) => {
   const unitLabelId = useId();
   const reasonLabelId = useId();
+
+  /*
+   * 미리보기는 `<img>` 가 직접 받아 온다(주소만 만들어 준다). 그래서 실패도 브라우저가 알려
+   * 주는 자리에서 받는다 — 받지 않으면 **깨진 그림 아이콘만 남고** 화면은 아무 말도 못 한다.
+   */
+  const [previewFailed, setPreviewFailed] = useState(false);
+
+  useEffect(() => {
+    setPreviewFailed(false);
+  }, [previewSrc]);
 
   const reasonNote = reasonOptions.isError
     ? t.reissue.failed
@@ -105,8 +115,16 @@ export const TargetPane = ({
           <span>{t.target.previewLabel}</span>
           {previewSrc === null ? (
             <p className="field-note">{t.target.previewEmpty}</p>
+          ) : previewFailed ? (
+            <p className="field-note">{t.target.previewFailed}</p>
           ) : (
-            <img src={previewSrc} alt={t.target.previewAlt} />
+            <img
+              src={previewSrc}
+              alt={t.target.previewAlt}
+              onError={() => {
+                setPreviewFailed(true);
+              }}
+            />
           )}
         </div>
 

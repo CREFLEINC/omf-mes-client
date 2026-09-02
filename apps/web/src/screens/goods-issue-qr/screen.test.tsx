@@ -18,10 +18,14 @@ const ENTRY_ROUTE = '/pop/goods-issue-qr?goodsIssueId=900&workerNo=3391';
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
-const line = (goodsIssueLineId: number, lotId: number) => ({
+/*
+ * ⚠ `lineNo` 를 `goodsIssueLineId` 와 «다른 값»으로 둔다. 같게 두면 발행 요약을 어느 키로
+ * 잇는지 뒤바꿔도 테스트가 통과한다 — 실 데이터에서는 둘이 전혀 다른 값이다.
+ */
+const line = (goodsIssueLineId: number, lotId: number, lineNo: number) => ({
   goodsIssueLineId,
   goodsIssueId: 900,
-  lineNo: goodsIssueLineId,
+  lineNo,
   itemId: 10,
   lotId,
   issueQty: 500,
@@ -29,7 +33,7 @@ const line = (goodsIssueLineId: number, lotId: number) => ({
   sourceLocationId: 40,
 });
 
-const LINES = [line(1001, 20), line(1002, 21)];
+const LINES = [line(1001, 20, 1), line(1002, 21, 2)];
 
 const issuedRecord = (documentIssueLogId: number, targetId: number, issueSeq: number) => ({
   documentIssueLogId,
@@ -54,6 +58,8 @@ interface Options {
   reports?: Request[];
   /** 서버가 그린 것을 못 주는 경우 */
   renditionFails?: boolean;
+  /** 인쇄 결과 보고가 거부되는 경우 */
+  reportFails?: boolean;
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -159,7 +165,9 @@ const routes = (options: Options): StubRoute[] => [
     respond: (request) => {
       options.reports?.push(request.clone());
 
-      return jsonResponse(issuedRecord(44001, 1001, 1));
+      return options.reportFails === true
+        ? jsonResponse({ message: '보고 거부' }, { status: 500 })
+        : jsonResponse(issuedRecord(44001, 1001, 1));
     },
   },
   {
@@ -421,6 +429,93 @@ describe('GoodsIssueQrScreen', () => {
     });
     expect(reports).toHaveLength(0);
     expect(screen.queryByText(t.result.printed)).not.toBeInTheDocument();
+  });
+
+  it('인쇄는 됐는데 보고를 못 하면 그것을 성공으로 접지 않는다', async () => {
+    const user = userEvent.setup();
+    installPrintBridge(() => Promise.resolve('C:/labels/sample.png'));
+    renderScreen({ issueCounts: { 1001: 0 }, reportFails: true });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    expect(await screen.findByText(t.result.printedUnreported)).toBeInTheDocument();
+    expect(screen.queryByText(t.result.printed)).not.toBeInTheDocument();
+  });
+
+  it('인쇄 결과 보고에도 멱등 키를 싣는다', async () => {
+    const user = userEvent.setup();
+    const reports: Request[] = [];
+    installPrintBridge(() => Promise.resolve('C:/labels/sample.png'));
+    renderScreen({ issueCounts: { 1001: 0 }, reports });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    await waitFor(() => {
+      expect(reports).toHaveLength(1);
+    });
+
+    expect(reports[0]?.headers.get('Idempotency-Key')).not.toBeNull();
+  });
+
+  it('전체 선택이 모든 라인을 고르고, 다시 누르면 푼다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ issueCounts: { 1001: 0, 1002: 0 } });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(screen.getByRole('button', { name: t.lines.selectAll }));
+
+    expect(await screen.findByText(t.target.selectedCount(LINES.length))).toBeInTheDocument();
+    expect(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox')).toBeChecked();
+
+    await user.click(screen.getByRole('button', { name: t.lines.clearSelection }));
+
+    expect(await screen.findByText(t.target.none)).toBeInTheDocument();
+  });
+
+  it('고른 재발행 사유를 본문에 실어 보낸다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    renderScreen({ issueCounts: { 1001: 0, 1002: 2 }, writes });
+
+    await screen.findByText('LOT-SAMPLE-21');
+    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox'));
+    await user.click(screen.getByRole('combobox', { name: t.reissue.label }));
+    await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    expect(await writes[0]?.json()).toMatchObject({ reissueReasonCode: 'PRINT_FAILURE' });
+  });
+
+  it('기본으로 표시된 프린터의 상태를 머리에 보인다 — 목록 첫 줄이 아니다', async () => {
+    renderScreen({
+      issueCounts: { 1001: 0 },
+      printers: [
+        {
+          printerName: 'p-1',
+          displayName: '첫 줄 프린터',
+          status: 'OFFLINE',
+          statusMessage: '연결 끊김',
+          isDefault: false,
+        },
+        {
+          printerName: 'p-2',
+          displayName: '기본 프린터',
+          status: 'READY',
+          statusMessage: '대기 중',
+          isDefault: true,
+        },
+      ],
+    });
+
+    expect(await screen.findByText(`${t.printer.label} 대기 중`)).toBeInTheDocument();
   });
 
   it('전표 없이 들어오면 그 사실을 말한다', async () => {
