@@ -68,6 +68,7 @@ import { materialInputScan } from './material-input-scan';
 import { dispositionDecision } from './disposition-decision';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { emergencyWorkOrderField } from './emergency-work-order-field';
+import { workStart } from './work-start';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
 import { materialPicking } from './material-picking';
@@ -206,6 +207,7 @@ export const ko = {
   workerAssignment,
   popMaterialLotLabel,
   identificationTagIssue,
+  workStart,
 } as const;
 
 export type Messages = typeof ko;
