@@ -18,7 +18,13 @@ import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { useDefectRecords, useDispatchRepair, useOpenRepairs, useReturnRepair } from './queries';
+import {
+  useDefectRecords,
+  useDispatchRepair,
+  useOpenRepairs,
+  useOpenRepairsForLot,
+  useReturnRepair,
+} from './queries';
 import {
   DEFECT_WINDOW_DAYS,
   FAILED,
@@ -80,8 +86,8 @@ export const RepairRoundtripScreen = () => {
   const item = useItem(lot.data?.itemId ?? null);
   const uoms = useUomCodes(true);
   const defects = useDefectRecords(lotId);
-  const scopedOpen = useOpenRepairs(lotId);
-  const allOpen = useOpenRepairs(null);
+  const scopedOpen = useOpenRepairsForLot(lotId);
+  const allOpen = useOpenRepairs();
   const dispatch = useDispatchRepair();
   const returning = useReturnRepair();
 
@@ -109,8 +115,7 @@ export const RepairRoundtripScreen = () => {
   }
 
   const defect = defects.data?.find((each) => each.defectRecordId === defectId) ?? null;
-  const execution =
-    scopedOpen.data?.find((each) => each.repairExecutionId === executionId) ?? null;
+  const execution = scopedOpen.data?.find((each) => each.repairExecutionId === executionId) ?? null;
   const alreadyOpen =
     defect === null ? null : openFor(scopedOpen.data ?? [], defect.defectRecordId);
   const problem = defect === null ? null : qtyProblem(defect, qty);
@@ -260,8 +265,8 @@ export const RepairRoundtripScreen = () => {
 
           {worker === null ? <p className="repair__note">{t.noWorker}</p> : null}
           {dispatch.error === null || dispatch.error === undefined ? null : isAlreadyOpen(
-            toApiError(dispatch.error),
-          ) ? (
+              toApiError(dispatch.error),
+            ) ? (
             <AlertBanner variant="warning" title={t.dispatch.already} />
           ) : (
             <AlertBanner variant="error" title={t.dispatch.failed} />
@@ -314,9 +319,7 @@ export const RepairRoundtripScreen = () => {
           <Card bordered>
             <Card.Body className="card-body repair__card">
               <strong>{lot.data?.lotNo}</strong>
-              <p>
-                {`${String(execution.repairQty)} ${uomLabel(uoms.data, execution.uomId)}`}
-              </p>
+              <p>{`${String(execution.repairQty)} ${uomLabel(uoms.data, execution.uomId)}`}</p>
               <p className="repair__note">{t.dispatch.alreadyAt(stamp(execution.startedAt))}</p>
             </Card.Body>
           </Card>

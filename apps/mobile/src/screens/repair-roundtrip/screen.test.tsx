@@ -66,7 +66,10 @@ const execution = {
 
 interface Options {
   defects?: unknown[];
+  /** 스캔한 LOT 의 열린 건. 서버가 lotId 로 걸러 준 결과다. */
   open?: unknown[];
+  /** 전체 열린 건. 거르지 않고 물었을 때 오는 것으로, 아래 목록이 쓴다. */
+  openAll?: unknown[];
   defectsStatus?: number;
 }
 
@@ -91,10 +94,17 @@ const routes = (options: Options = {}): StubRoute[] => [
         : jsonResponse({ message: '실패' }, { status: options.defectsStatus }),
   },
   {
+    /* 서버는 lotId 로 거른다. 스텁이 그것을 무시하면 범위가 어긋난 결함을 시험이 덮는다. */
     match: (request) =>
-      new URL(request.url).pathname === '/production/repair-executions' &&
-      request.method === 'GET',
-    respond: () => jsonResponse({ items: options.open ?? [], page }),
+      new URL(request.url).pathname === '/production/repair-executions' && request.method === 'GET',
+    respond: (request) => {
+      const lotId = new URL(request.url).searchParams.get('lotId');
+
+      return jsonResponse({
+        items: lotId === null ? (options.openAll ?? options.open ?? []) : (options.open ?? []),
+        page,
+      });
+    },
   },
 ];
 
@@ -167,7 +177,9 @@ describe('수리 왕복 스캔 화면', () => {
     await screen.findByLabelText('불량 LOT 스캔');
     scan(SCANNED);
 
-    expect(await screen.findByText('불량 기록을 확인할 수 없습니다. 연결을 확인한 뒤 다시 스캔하세요.')).toBeTruthy();
+    expect(
+      await screen.findByText('불량 기록을 확인할 수 없습니다. 연결을 확인한 뒤 다시 스캔하세요.'),
+    ).toBeTruthy();
     expect(screen.queryByText('불량 판정된 LOT이 아닙니다')).toBeNull();
   });
 
@@ -305,6 +317,34 @@ describe('수리 왕복 스캔 화면', () => {
     expect(((await seen[0]!.json()) as { repairResultCode: string }).repairResultCode).toBe(
       'FAILED',
     );
+  });
+
+  /*
+   * 스캔 전에는 이 LOT 의 열린 건이 무엇인지 알 수 없다. 그 자리에 전체 목록이 들어오면 남의
+   * 건이 자동으로 골라지고, 결과만 고르면 반출이 열린다 - 되돌릴 수 없는 상태 전이다.
+   */
+  it('스캔하지 않았으면 남의 열린 건으로 반출할 수 없다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount(
+      [
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions/1001:return',
+          respond: (request) => {
+            seen.push(request.clone());
+            return jsonResponse(execution);
+          },
+        },
+      ],
+      { open: [], openAll: [execution] },
+    );
+
+    await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
+
+    expect(screen.queryByRole('button', { name: '수리 실패' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '반출 등록' })).toBeNull();
+    expect(seen).toHaveLength(0);
   });
 
   it('결과를 고르기 전에는 반출할 수 없다', async () => {
