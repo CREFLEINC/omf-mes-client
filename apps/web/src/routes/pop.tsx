@@ -2,6 +2,7 @@ import type { RouteObject } from 'react-router';
 
 import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
+import { GoodsIssueQrScreen } from '../screens/goods-issue-qr/screen';
 import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
@@ -125,4 +126,16 @@ export const popRoutes: RouteObject[] = [
    * 「단말이 확인되지 않았습니다」로 발행이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
    */
   { path: '/pop/tag-issue', element: <IdentificationTagIssueScreen /> },
+  /*
+   * P-01-02 — 창고 스테이션 모드의 화면이라 작업지시가 아니라 **출고 전표**에 매인다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?goodsIssueId=`·`?workerNo=`) — 전표를 고르는
+   * 자리가 아직 없고, 사번은 `P-CO-01` 이 `patterns/worker-session` 에 두지만 **그 자리를 읽는
+   * 화면은 아직 없다**(`P-02-05` 가 같은 사정을 적어 두었다). 그때 `entry-context.ts` 하나가
+   * 바뀐다.
+   *
+   * ⚠ **단말 권한으로 이 주소를 막지 않는다**(통지 #535). 창고 POP 은 단말 기능 구성의 적용
+   * 범위 밖이고 집행은 서버의 403 이다.
+   */
+  { path: '/pop/goods-issue-qr', element: <GoodsIssueQrScreen /> },
 ];

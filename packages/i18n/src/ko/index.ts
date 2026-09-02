@@ -34,6 +34,7 @@ import { usersRoles } from './users-roles';
 import { inboundSchedule } from './inbound-schedule';
 import { stockStatus } from './stock-status';
 import { overReceiptSplit } from './over-receipt-split';
+import { goodsIssueQr } from './goods-issue-qr';
 import { goodsReceipt } from './goods-receipt';
 import { stocktaking } from './stocktaking';
 import { supplierReturn } from './supplier-return';
@@ -130,6 +131,7 @@ export const ko = {
   inboundSchedule,
   stockStatus,
   overReceiptSplit,
+  goodsIssueQr,
   goodsReceipt,
   stocktaking,
   supplierReturn,
