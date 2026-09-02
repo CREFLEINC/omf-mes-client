@@ -1540,6 +1540,34 @@ main > * + * {
  * 사용률 막대의 이름 — 막대가 「남은 비율」이 아니라 「쓴 비율」임을 그 자리에서 말한다.
  * 이름이 없으면 사용 가능 줄의 백분율이 「사용 가능이 0%」로 읽힌다.
  */
+/*
+ * 발행 수량 — **키패드와 입력칸을 나란히 둔다**(스펙 §3). 장갑 낀 손은 키패드를, 손 입력·화면
+ * 판독기는 입력칸을 쓴다. 위아래로 쌓으면 1024×768 에서 키패드가 접힌 아래로 내려간다.
+ */
+.pop-issue-input {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/*
+ * 번호 미리보기. 발행 «전»에는 안내 문장이, 발행 뒤에는 서버가 매긴 범위가 같은 자리에 선다 —
+ * 자리를 옮기면 방금 읽던 곳이 사라진다.
+ */
+.pop-preview {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-4) 0 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.pop-preview-label {
+  font: var(--type-label-lg);
+  color: var(--on-surface-muted);
+}
+
 .pop-usage-label {
   flex: none;
   font: var(--type-body-sm);

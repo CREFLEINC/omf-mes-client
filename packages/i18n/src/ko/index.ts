@@ -107,6 +107,7 @@ import { shellHome } from './shell-home';
 import { wipHandover } from './wip-handover';
 import { workerAssignment } from './worker-assignment';
 import { popMaterialLotLabel } from './pop-material-lot-label';
+import { identificationTagIssue } from './identification-tag-issue';
 
 export const ko = {
   common,
@@ -202,6 +203,7 @@ export const ko = {
   wipHandover,
   workerAssignment,
   popMaterialLotLabel,
+  identificationTagIssue,
 } as const;
 
 export type Messages = typeof ko;
