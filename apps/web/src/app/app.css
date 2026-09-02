@@ -1810,3 +1810,132 @@ main > * + * {
   word-break: keep-all;
   margin: var(--space-2) 0 0;
 }
+
+/*
+ * POP 검사 화면 배치 — 화면 스펙 §3 의 도면을 그대로 옮긴다.
+ *
+ * 좌 464 / 우 544 는 1024 폭 단말의 비율이고, 본문 616 · 액션바 88 은 세로 예산(E-1)이다.
+ * 이 화면은 POP 라우트라 관리웹 셸(`AppLayout`) 밖에 서고 뷰포트를 그대로 쓴다. 그래도
+ * 높이는 뷰포트가 아니라 **본문 구획의 높이**로 둔다 — `.pop-shell` 이 머리와 본문을 함께
+ * 쌓으므로 본문에 768 을 걸면 머리 높이만큼 넘친다.
+ *
+ * ⭐ **스크롤 구획은 좌측 하나다**(E-4). 지시가 여럿이면 항목이 길어지므로 그쪽만 흐르고,
+ * 우측 결과 입력과 액션바는 제자리에 남는다 — 판정 결과가 스크롤 밖으로 나가면 못 본다.
+ */
+.pop-inspect {
+  display: grid;
+  grid-template-columns: 464fr 544fr;
+  gap: var(--space-4);
+  align-items: stretch;
+  height: 616px;
+}
+
+/*
+ * ⛔ **구획을 flex 열로 두지 않는다.** 높이를 616 으로 고정한 채 flex 열로 두면 자식들이
+ * 기본 `flex-shrink: 1` 로 «제 내용보다 작게» 눌리고, 눌린 칸에서 넘친 글자가 다음 칸 위로
+ * 겹쳐 그려진다 — 합계 문구가 판정 라벨 위에, 판정 안내가 처분 라디오 위에 겹치는 것을
+ * 실제로 겪었다. 넘침을 «자르는» 문제가 아니라 **칸이 눌리는** 문제라 overflow 로는 안 풀린다.
+ *
+ * 그래서 평범한 흐름으로 두고 **구획 자체가 흐르게** 한다.
+ */
+.pop-inspect > .pane {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/*
+ * 좌측 항목이 흐른다 — E-4 가 지정한 스크롤 자리다. 구획이 이미 흐르므로 여기서 높이를
+ * 다시 잡지 않는다: 두 자리에서 잡으면 안쪽 스크롤과 바깥 스크롤이 겹쳐 두 번 긁게 된다.
+ */
+.pop-inspect-scroll {
+  min-height: 0;
+}
+
+/*
+ * 항목 목록 — 번호는 **화면이 그린다**(채번 값이 아니라 목록 내 위치). 그래서 목록 표지의
+ * 자동 번호를 끈다: 켜 두면 「1. 1. 항목」처럼 번호가 두 번 나온다.
+ */
+.pop-item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.pop-item {
+  border-top: 1px solid var(--outline-variant);
+  padding-top: var(--space-3);
+}
+
+/*
+ * 액션바 — 화면 아래 88(§3). ⛔ 폼 «중간»에 흘리지 않는다: 터치 단말에서 손이 닿는 자리가
+ * 정해져 있어야 한다.
+ *
+ * ⚠ **화면에 붙이지(sticky) 않는다.** 도면의 예산은 헤더 64 + 본문 616 + 액션바 88 = 768 로
+ * 페이지가 «스크롤되지 않는» 전제다. 관리웹 셸은 머리가 그보다 커서 페이지가 스크롤되는데,
+ * 그때 붙인 바가 본문 구획 위를 덮어 내용을 가린다 — 실측으로 확인했다. 흐름에 두면 POP
+ * 렌더러(768 고정)에서는 그대로 맨 아래에 선다.
+ */
+.pop-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  /*
+   * ⛔ **88 은 테두리·여백을 «포함한» 치수다.** §3 이 이 띠에 준 세로 예산이 88 이고 슬랙이
+   * 0 이라, 기본값(`content-box`)으로 두면 88 «안쪽»에 여백 16 과 테두리 2 가 더 붙어
+   * **106 이 된다** — 실측으로 18 이 넘쳤다. 예산은 화면이 차지하는 자리를 말하므로
+   * `border-box` 로 잰다.
+   *
+   * ⛔ **세로 여백을 두지 않는다.** 이 안에 72 짜리 「검사 확정」이 선다(등급 `destructive`) —
+   * 여백을 8 만 줘도 72 + 16 + 2 = 90 이라 88 을 넘는다. 띠의 높이는 여백이 아니라 `min-height`
+   * 가 정하고, 남는 자리는 `align-items: center` 가 위아래로 나눈다. 가로는 남으므로 그대로 둔다.
+   */
+  box-sizing: border-box;
+  min-height: 88px;
+  padding: 0 var(--space-4);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+  margin-top: var(--space-4);
+}
+
+/*
+ * 막힌 사유는 버튼 왼쪽에 함께 선다 — 잠긴 버튼만 두지 않는다(G-3).
+ *
+ * ⛔ **남는 가로를 사유가 쓰게 한다**(`flex: 1`). `margin-right: auto` 만 두면 칸이 글자
+ * 길이대로 좁아져(실측 320) 두 문장이 각각 두 줄로 접히고, **액션바가 88 을 30 넘어
+ * 세로 예산(64 + 616 + 88 = 768 · 슬랙 0)이 무너진다** — 1024×768 단말에서 액션바 아래가
+ * 잘린다. 가로는 700 넘게 남아 있으니 접을 이유가 없다.
+ *
+ * ⛔ 문단 기본 여백을 함께 턴다 — 위아래 18 씩이 두 문장에 붙어 그것만으로 36 을 먹는다.
+ */
+.pop-action-note {
+  flex: 1;
+  min-width: 0;
+}
+
+.pop-action-note > p {
+  margin: 0;
+}
+
+.pop-action-note > p + p {
+  margin-top: var(--space-1);
+}
+
+/*
+ * ⚠ **접힘 기준이 대상 단말보다 넓으면 안 된다.** 처음에 1280 으로 두었더니 **POP 단말
+ * 폭인 1024 에서 2단이 접혀** 도면의 배치가 실기기에서 서지 않았다. 이 화면의 대상은
+ * 1024×768 키오스크이므로 그보다 좁을 때만 접는다.
+ */
+@media (max-width: 900px) {
+  .pop-inspect {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .pop-inspect-scroll {
+    overflow-y: visible;
+  }
+}
