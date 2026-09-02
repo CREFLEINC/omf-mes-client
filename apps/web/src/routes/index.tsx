@@ -50,6 +50,7 @@ import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
 import { PoRegisterScreen } from '../screens/po-register/screen';
+import { PoChangeReviewScreen } from '../screens/po-change-review/screen';
 import { ProductionOrderScreen } from '../screens/production-order/screen';
 import { ProductionPlanScreen } from '../screens/production-plan/screen';
 import { PutawayRuleScreen } from '../screens/putaway-rule/screen';
@@ -281,6 +282,11 @@ export const appRouter = createBrowserRouter([
       { path: 'logistics/document-progress', element: <DocumentProgressScreen /> },
       /* W-02-01 — 생산의 첫 화면이며 주소는 API 리소스가 아니라 화면을 가리킨다. */
       { path: 'production/production-orders', element: <ProductionOrderScreen /> },
+      /*
+       * W-02-06 — P/O 수신·조회 바로 뒤다. 받은 P/O 가 «바뀌었을 때» 판정하는 자리라
+       * 그 화면이 만든 목록 위에서 이어진다.
+       */
+      { path: 'production/po-change-review', element: <PoChangeReviewScreen /> },
       /* W-02-02 — P/O를 고른 뒤 계획을 편성하므로 생산의 둘째 공개 화면이다. */
       { path: 'production/production-plans', element: <ProductionPlanScreen /> },
       /* W-02-03 — 생산계획의 W/O에 4M 자원을 배정하고 유효성을 점검한다. */

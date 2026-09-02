@@ -544,6 +544,10 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-close',
     );
+    expect(within(sidebar).getByRole('link', { name: 'P/O 변경 관리자 확인' })).toHaveAttribute(
+      'href',
+      '/production/po-change-review',
+    );
     expect(within(sidebar).getByRole('link', { name: '긴급 W/O 발행' })).toHaveAttribute(
       'href',
       '/production/emergency-work-orders',
@@ -559,8 +563,12 @@ describe('AppLayout', () => {
     expect(links.indexOf('/production/production-orders')).toBe(
       links.indexOf('/shipment/shipment-confirm') + 1,
     );
-    expect(links.indexOf('/production/production-plans')).toBe(
+    /* 변경 판정은 수신·조회 바로 뒤다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06). */
+    expect(links.indexOf('/production/po-change-review')).toBe(
       links.indexOf('/production/production-orders') + 1,
+    );
+    expect(links.indexOf('/production/production-plans')).toBe(
+      links.indexOf('/production/po-change-review') + 1,
     );
     expect(links.indexOf('/production/work-order-assignments')).toBe(
       links.indexOf('/production/production-plans') + 1,
@@ -756,6 +764,8 @@ describe('AppLayout', () => {
       /* W-04-12 — 되돌릴 수 있는 구간이 여기서 끝난다. 만드는 두 화면 뒤다. */
       '/shipment/shipment-confirm',
       '/production/production-orders',
+      /* W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다. */
+      '/production/po-change-review',
       '/production/production-plans',
       '/production/work-order-assignments',
       '/production/work-order-release',
