@@ -56,7 +56,6 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
         rows={[...lots]}
         getRowId={(lot) => String(lot.lotId)}
         density="comfortable"
-        caption={t.lotList.sectionLabel}
         empty={t.lotList.empty}
       />
       <p className="field-note">{t.lotList.goodQtyPending}</p>
