@@ -1574,6 +1574,275 @@ main > * + * {
   }
 }
 
+/* Lot Status 판정·전이 — 조회, 선택 확인, 실행 준비를 순서가 보이는 별도 구획으로 나눈다. */
+.lot-status-transition-workspace,
+.lot-status-transition-flow {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.lot-status-transition-notice-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.lot-status-transition-notice-row > .banner-slot {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.lot-status-transition-history-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  color: var(--primary-text);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.lot-status-transition-history-link:hover {
+  background: var(--state-hover-neutral);
+}
+
+.lot-status-transition-history-link:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.lot-status-transition-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.lot-status-transition-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.lot-status-transition-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.lot-status-transition-filter > *,
+.lot-status-transition-filter .field-cell {
+  min-width: 0;
+}
+
+.lot-status-transition-filter .field-cell {
+  align-items: stretch;
+}
+
+.lot-status-transition-period {
+  grid-column: span 2;
+}
+
+.lot-status-transition-filter-footer,
+.lot-status-transition-list-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.lot-status-transition-filter-footer > .field-note,
+.lot-status-transition-filter-footer > .field-error,
+.lot-status-transition-list-footer > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+.lot-status-transition-filter-actions,
+.lot-status-transition-list-footer > .form-actions {
+  justify-content: flex-end;
+  margin: 0 0 0 auto;
+}
+
+.lot-status-transition-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.lot-status-transition-table table {
+  min-width: 48rem;
+}
+
+.lot-status-transition-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lot-status-transition-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.lot-status-transition-identity,
+.lot-status-transition-status-grid {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+}
+
+.lot-status-transition-identity {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.lot-status-transition-status-grid {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
+.lot-status-transition-identity dd,
+.lot-status-transition-status-grid dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.lot-status-transition-identity dd {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.lot-status-transition-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.lot-status-transition-choice,
+.lot-status-transition-holds,
+.lot-status-transition-execution {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.lot-status-transition-choice {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.lot-status-transition-preparation-note {
+  margin: 0;
+  color: var(--on-surface-muted);
+}
+
+.lot-status-transition-execution {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.lot-status-transition-execution-form {
+  margin: 0;
+}
+
+.lot-status-transition-execution-form > :last-child {
+  grid-column: 1 / -1;
+}
+
+.lot-status-transition-execution-actions {
+  margin: 0;
+}
+
+.lot-status-transition-pane .link-cell[aria-current='true'] {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  text-decoration: none;
+}
+
+@media (min-width: 1100px) {
+  .filter-bar.lot-status-transition-filter {
+    grid-template-columns: minmax(24rem, 30rem) repeat(3, minmax(9.5rem, 1fr));
+  }
+
+  .lot-status-transition-period {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 1440px) {
+  .lot-status-transition-detail-grid {
+    grid-template-columns: minmax(24rem, 4fr) minmax(32rem, 5fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .lot-status-transition-notice-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lot-status-transition-history-link {
+    justify-self: end;
+  }
+
+  .lot-status-transition-period {
+    grid-column: auto;
+  }
+
+  .lot-status-transition-filter-footer,
+  .lot-status-transition-list-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lot-status-transition-filter-footer > .field-note,
+  .lot-status-transition-filter-footer > .field-error,
+  .lot-status-transition-list-footer > .field-note {
+    flex: initial;
+  }
+
+  .lot-status-transition-filter-actions,
+  .lot-status-transition-list-footer > .form-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+
+  .lot-status-transition-identity {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
