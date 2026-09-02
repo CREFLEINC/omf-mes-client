@@ -39,12 +39,14 @@ type InspectionResultResponse = components['schemas']['InspectionResult'];
 /** 큐에 담긴 한 건. 검사 결과는 회차마다 한 건이지만 큐는 밀릴 수 있어 배열로 든다. */
 export interface OutboxEntry {
   idempotencyKey: string;
-  /** 무엇으로 눌렀나 — 화면이 「임시 저장됨」과 「확정됨」을 가르는 근거다. */
-  statusCode: InspectionResultCreate['statusCode'];
+  /**
+   * 보낼 본문. ⛔ **`statusCode` 를 항목에 따로 두지 않는다** — 본문에 이미 있고, 두 벌이면
+   * 한쪽만 고쳐진다. 「임시 저장」과 「확정」을 가르는 것은 담는 쪽이 이미 알고 있다.
+   */
   body: InspectionResultCreate;
 }
 
-const STORAGE_KEY = 'omf-mes.pqc-inspection.outbox';
+export const STORAGE_KEY = 'omf-mes.pqc-inspection.outbox';
 
 /**
  * 통신 실패 뒤 다시 시도하기까지.
@@ -60,12 +62,11 @@ const RETRY_DELAY_MS = 5_000;
  * ⛔ **믿고 넘기지 않는다.** 지난 판의 화면이 썼거나 손으로 고쳐졌을 수 있고, 그 끝에 있는
  * 것은 **되돌릴 수 없는 판정 기록**이다. 계약이 필수로 둔 것만 확인한다.
  */
-const isSendableEntry = (value: unknown): value is OutboxEntry => {
+export const isSendableEntry = (value: unknown): value is OutboxEntry => {
   if (typeof value !== 'object' || value === null) return false;
 
   const entry = value as Record<string, unknown>;
   if (typeof entry.idempotencyKey !== 'string' || entry.idempotencyKey === '') return false;
-  if (typeof entry.statusCode !== 'string' || entry.statusCode === '') return false;
 
   const body = entry.body;
   if (typeof body !== 'object' || body === null) return false;
@@ -130,7 +131,7 @@ const postEntry = async (client: Client, entry: OutboxEntry): Promise<Inspection
  * 통신이 끊긴 것은 기다리면 풀리고, 서버가 거부한 것은 아무리 기다려도 풀리지 않는다.
  * 뒤엣것을 계속 재전송하면 큐가 영원히 비지 않는다.
  */
-const isRejected = (error: unknown): boolean => toApiError(error).kind !== 'network';
+export const isRejected = (error: unknown): boolean => toApiError(error).kind !== 'network';
 
 export interface Outbox {
   /** 아직 서버에 닿지 않은 건수. **상시 표시가 필수 요건이다**(C-1 #4). */
@@ -138,7 +139,7 @@ export interface Outbox {
   /** 지금 연결돼 있는가. 건수와 함께 낸다 — 끊긴 것과 밀리는 것은 다르다. */
   isOnline: boolean;
   /** 큐에 담는다. **이것이 곧 성공이다** — 통신을 기다리지 않는다(C-1 #2). */
-  enqueue: (statusCode: InspectionResultCreate['statusCode'], body: InspectionResultCreate) => void;
+  enqueue: (body: InspectionResultCreate) => void;
   /** 서버가 거부한 것 — 인라인용·배너용으로 갈라 둔다. 없으면 `null`. */
   rejection: SplitError | null;
   /** 거부 표시를 지운다 — 사용자가 값을 고쳐 다시 저장할 때 부른다. */
@@ -230,18 +231,15 @@ export const useOutbox = (): Outbox => {
     })();
   }, [client, entries, isOnline, retryTick]);
 
-  const enqueue = useCallback(
-    (statusCode: InspectionResultCreate['statusCode'], body: InspectionResultCreate): void => {
-      setRejection(null);
-      setEntries((prev) => {
-        const next = [...prev, { idempotencyKey: crypto.randomUUID(), statusCode, body }];
-        writeStored(next);
+  const enqueue = useCallback((body: InspectionResultCreate): void => {
+    setRejection(null);
+    setEntries((prev) => {
+      const next = [...prev, { idempotencyKey: crypto.randomUUID(), body }];
+      writeStored(next);
 
-        return next;
-      });
-    },
-    [],
-  );
+      return next;
+    });
+  }, []);
 
   const clearRejection = useCallback((): void => {
     setRejection(null);

@@ -15,6 +15,7 @@ import {
   waitingRequest,
 } from './fixtures';
 import type { CodeValueResponse } from './code-options';
+import { STORAGE_KEY } from './outbox';
 import { PqcInspectionScreen } from './screen';
 
 const t = messages.pqcInspection;
@@ -23,7 +24,13 @@ const t = messages.pqcInspection;
  * 요청이 실제로 무엇을 실어 갔는지 본다 — **화면이 무엇을 저장하는가**가 이 화면의 판정
  * 자료이므로, 그려진 글자보다 나간 본문이 더 중요한 자리가 많다.
  */
-const renderScreen = (route = '/?ir=1001', rounds = [draftRound], specs = itemSpecsResponse()) => {
+const renderScreen = (
+  route = '/?ir=1001',
+  rounds = [draftRound],
+  specs = itemSpecsResponse(),
+  /** 쓰기에 무엇으로 답할지. 기본은 201 — 거부 갈래를 볼 때만 바꾼다. */
+  respondWrite: () => Response = () => jsonResponse(draftRound, { status: 201 }),
+) => {
   const writes: Request[] = [];
 
   const fetch = createStubFetch([
@@ -32,7 +39,7 @@ const renderScreen = (route = '/?ir=1001', rounds = [draftRound], specs = itemSp
       match: (request) => request.method !== 'GET',
       respond: (request) => {
         writes.push(request.clone() as Request);
-        return jsonResponse(draftRound, { status: 201 });
+        return respondWrite();
       },
     },
     {
@@ -528,7 +535,7 @@ describe('PqcInspectionScreen — 끊겨도 저장된다 (공유계약 C-1)', ()
    */
   it('끊긴 동안 담긴 건이 새로고침을 넘어 같은 멱등 키로 나간다', async () => {
     const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
-    let stored: string | null = null;
+    let stored = '';
 
     try {
       renderScreen();
@@ -537,15 +544,14 @@ describe('PqcInspectionScreen — 끊겨도 저장된다 (공유계약 C-1)', ()
       await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
       await waitFor(() => {
-        stored = globalThis.localStorage.getItem('omf-mes.pqc-inspection.outbox');
-        expect(stored).not.toBeNull();
+        stored = globalThis.localStorage.getItem(STORAGE_KEY) ?? '';
+        expect(stored).not.toBe('');
       });
     } finally {
       online.mockRestore();
     }
 
-    const key = (JSON.parse(stored as unknown as string) as { idempotencyKey: string }[])[0]
-      ?.idempotencyKey;
+    const key = (JSON.parse(stored) as { idempotencyKey: string }[])[0]?.idempotencyKey;
 
     expect(key).toBeTruthy();
 
@@ -555,6 +561,43 @@ describe('PqcInspectionScreen — 끊겨도 저장된다 (공유계약 C-1)', ()
 
     await waitFor(() => expect(writes).toHaveLength(1));
     expect((writes[0] as Request).headers.get('Idempotency-Key')).toBe(key);
+  });
+});
+
+describe('PqcInspectionScreen — 서버가 거부하면 (공유계약 C-7)', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  /*
+   * ⛔ **담는 순간 성공을 말한 뒤 거부되면 그 말을 거둬야 한다.** 거두지 않으면 거부된 건이
+   * 큐에서 내려가 미동기 건수마저 0 으로 돌아오고, **기록이 유실됐는데 화면의 표시가 전부
+   * 성공을 말한다.** 검사자는 그대로 다음 LOT 으로 넘어간다.
+   *
+   * ⚠ 화면이 아는 칸(수량 셋) 밖의 거부로 시험한다 — 인라인으로 소화되지 않는 것이야말로
+   * 배너가 없으면 **아무 흔적도 남지 않는** 갈래다.
+   */
+  it('거부되면 성공 표시를 거두고 사유를 배너로 올린다', async () => {
+    renderScreen(undefined, undefined, undefined, () =>
+      jsonResponse({ errors: [{ scope: 'screen', code: 'FORBIDDEN' }] }, { status: 403 }),
+    );
+
+    await screen.findByRole('button', { name: t.result.save });
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    /*
+     * 거부가 돌아오면 사유가 선다. ⚠ **담긴 직후의 성공 표시는 여기서 겨누지 않는다** —
+     * 거부가 곧바로 돌아오면 그 표시는 눈 깜짝할 사이라 시험이 붙잡지 못한다. 그 갈래는
+     * 「끊겨도 저장된다」가 덮는다.
+     */
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    /* ⛔ 그리고 성공 표시가 남아 있으면 안 된다 — 남으면 유실을 성공으로 읽는다. */
+    expect(screen.queryByText(t.result.saved)).not.toBeInTheDocument();
+    /* 큐에서 내려갔으므로 머리는 「동기됨」이다 — 그래서 배너가 유일한 흔적이다. */
+    expect(
+      within(await screen.findByRole('banner')).getByText(t.header.synced),
+    ).toBeInTheDocument();
   });
 });
 

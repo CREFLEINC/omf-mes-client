@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { SaveErrorBanner } from '../../patterns/master';
 import { toApiError } from '../../patterns/request';
 
 import { ActionBar } from './action-bar';
@@ -37,7 +38,6 @@ import {
 } from './queries';
 import { ResultPanel } from './result-panel';
 import { TargetHeader } from './target-header';
-import { useOnline } from './use-online';
 import { useOutbox } from './outbox';
 import { readTargetId } from './target';
 import {
@@ -117,6 +117,19 @@ export const PqcInspectionScreen = () => {
    * 알리는 문장이 갈린다.
    */
   const outbox = useOutbox();
+
+  /*
+   * ⛔ **거부가 서면 성공 표시를 거둔다.** 담는 순간 성공을 말하는 것은 옳지만(C-1 #2),
+   * 서버가 받지 않기로 판정한 뒤에도 그 말이 남아 있으면 **기록이 유실됐는데 화면의 표시가
+   * 전부 성공을 말한다** — 거부된 건은 큐에서 내려가 미동기 건수마저 0 으로 돌아온다.
+   * 검사자는 그대로 다음 LOT 으로 넘어간다.
+   */
+  useEffect(() => {
+    if (outbox.rejection === null) return;
+
+    setIsSaved(false);
+    setIsJustConfirmed(false);
+  }, [outbox.rejection]);
 
   /*
    * 되돌림은 **값**으로 판정한다 — 조회 응답이 다시 그려질 때마다 참조가 달라지므로,
@@ -269,7 +282,6 @@ export const PqcInspectionScreen = () => {
      * 건수가 말한다(#4).
      */
     outbox.enqueue(
-      statusCode,
       toResultBody({
         inspectionRequestId,
         inspectedQty: toSendableNumber(inspectedDraft),
@@ -338,6 +350,13 @@ export const PqcInspectionScreen = () => {
       pendingCount={outbox.pendingCount}
       isOnline={outbox.isOnline}
     >
+      {/*
+       * ⚠ **인라인으로 소화되지 않은 거부는 여기서 말한다.** 화면이 아는 칸(수량 셋)의
+       * 오류만 칸 옆에 붙고, 그 밖의 거부(권한·중복·서버 오류)는 붙을 자리가 없다 — 배너가
+       * 없으면 **아무 흔적도 남지 않는다.**
+       */}
+      <SaveErrorBanner error={outbox.rejection?.error ?? null} />
+
       <div className="pop-inspect">
         {/*
          * ⭐ **갈래가 둘이다**(§5-2 · 통지 #589). 검사 기준이 없으면 항목표 대신 판정 선택과
