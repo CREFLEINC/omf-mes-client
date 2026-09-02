@@ -54,7 +54,10 @@ describe('WorkOrderCloseInputPane', () => {
     (completionJudgment: WorkOrderCloseCompletionJudgment, displayKey) => {
       renderPane({ completionJudgment });
 
-      expect(screen.getByRole('region', { name: t.pane })).toHaveClass('pane');
+      expect(screen.getByRole('region', { name: t.pane })).toHaveClass(
+        'pane',
+        'work-order-close-input-pane',
+      );
       expect(screen.getByRole('heading', { name: t.heading })).toBeVisible();
       expect(screen.getByText(t.classification.label)).toBeVisible();
       expect(screen.getByText(t.classification[displayKey])).toBeVisible();

@@ -27,7 +27,10 @@ describe('WorkOrderCloseStatusPane', () => {
   it('shows only named checking status for CHECKING', () => {
     renderPane({ kind: 'CHECKING' });
 
-    expect(screen.getByRole('region', { name: t.pane })).toHaveClass('pane');
+    expect(screen.getByRole('region', { name: t.pane })).toHaveClass(
+      'pane',
+      'work-order-close-status-pane',
+    );
     expect(screen.getByRole('heading', { name: t.heading })).toBeVisible();
     expect(screen.getByRole('status', { name: t.loading })).toBeVisible();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();

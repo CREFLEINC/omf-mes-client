@@ -49,8 +49,8 @@ export const WorkOrderCloseOutboundItemsPane = ({
   }
 
   return (
-    <section aria-label={t.pane} className="pane">
-      <h2>{t.heading}</h2>
+    <section aria-label={t.pane} className="pane work-order-close-outbound-pane">
+      <h2 className="pane-title">{t.heading}</h2>
       {settings.length === 0 ? (
         <EmptyState live size="sm" title={t.empty.title} description={t.empty.description} />
       ) : (

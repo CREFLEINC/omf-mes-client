@@ -53,16 +53,18 @@ export const WorkOrderCloseExecution = (props: WorkOrderCloseExecutionProps) => 
   };
   return (
     <>
-      <Button
-        disabled={request === null || write.isSaving}
-        onClick={() => {
-          if (request === null) return;
-          write.reset();
-          setConfirmation([request, etags.ifMatch(etagPath), JSON.stringify(request)]);
-        }}
-      >
-        {messages.workOrderClose.confirm.confirm}
-      </Button>
+      <div className="work-order-close-actions">
+        <Button
+          disabled={request === null || write.isSaving}
+          onClick={() => {
+            if (request === null) return;
+            write.reset();
+            setConfirmation([request, etags.ifMatch(etagPath), JSON.stringify(request)]);
+          }}
+        >
+          {messages.workOrderClose.confirm.confirm}
+        </Button>
+      </div>
       {confirmation === null || (request === null && !write.isSaving) ? null : (
         <WorkOrderCloseConfirmDialog
           workOrderNo={props.workOrderNo}

@@ -805,6 +805,118 @@ main > * + * {
   }
 }
 
+/* W/O 마감 — 후보와 집계·입력·ERP 송신 설정을 한 흐름으로 묶는 마스터·디테일 배치. */
+.work-order-close-workspace,
+.work-order-close-detail {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.work-order-close-content {
+  display: grid;
+  grid-template-columns: minmax(20rem, 2fr) minmax(0, 3fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.work-order-close-filter-pane,
+.work-order-close-list-pane,
+.work-order-close-summary-pane,
+.work-order-close-status-pane,
+.work-order-close-input-pane,
+.work-order-close-outbound-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.work-order-close-filter-pane > .pane-title,
+.work-order-close-list-pane > .pane-title,
+.work-order-close-summary-pane > .pane-title,
+.work-order-close-status-pane > .pane-title,
+.work-order-close-input-pane > .pane-title,
+.work-order-close-outbound-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.work-order-close-filter {
+  margin-bottom: 0;
+}
+
+.work-order-close-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.work-order-close-table table {
+  min-width: 36rem;
+}
+
+.work-order-close-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.work-order-close-summary-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.work-order-close-summary-section > h3 {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.work-order-close-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.work-order-close-order-field {
+  align-items: stretch;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.work-order-close-order-field > dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.work-order-close-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1280px) {
+  .work-order-close-content {
+    grid-template-columns: 1fr;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
