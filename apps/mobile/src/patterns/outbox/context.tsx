@@ -12,6 +12,7 @@ import {
 import { appendEntry, readQueue, writeQueue, type OutboxDraft, type OutboxEntry } from './queue';
 import {
   appendRejected,
+  brokenBatchesOf,
   dropRejected,
   readRejected,
   writeRejected,
@@ -133,10 +134,16 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     }
 
     /*
+     * 앞 회차에 깨진 묶음을 이어받는다. 앞 건이 거부돼 큐에서 빠지면 이 회차에는 그 사실을 볼
+     * 자리가 없어, 그 결과를 실은 뒤 건이 혼자 나간다 - 서버가 받지 않은 수량이 기록된다.
+     */
+    const broken = brokenBatchesOf(await inTurn(() => readRejected()));
+
+    /*
      * 보내는 동안에는 큐를 잡지 않는다. 잡고 있으면 통신이 끝날 때까지 담을 수 없어, 작업자가
      * 그 사이에 한 일이 어디에도 남지 않는다.
      */
-    const result = await flushQueue(stored, send);
+    const result = await flushQueue(stored, send, broken);
 
     await inTurn(async () => {
       const attempted = new Set(stored.map((entry) => entry.id));

@@ -50,9 +50,11 @@ const readField = (response: unknown, field: string): string | null => {
 export const flushQueue = async (
   entries: OutboxEntry[],
   send: OutboxTransport,
+  brokenBefore: ReadonlyMap<string, ApiError> = new Map(),
 ): Promise<FlushResult> => {
   const rejected: OutboxRejection[] = [];
-  const brokenBatches = new Map<string, ApiError>();
+  /* 앞 회차에 깨진 묶음을 이어받는다. 앞 건은 이미 큐 밖이라 여기서는 만날 수 없다. */
+  const brokenBatches = new Map<string, ApiError>(brokenBefore);
   const responses = new Map<string, unknown>();
   /*
    * 앞 건의 값을 알게 되는 즉시 뒤 건에 굳혀 둔다. 여기서 멈추면 남는 것은 이 목록이고,

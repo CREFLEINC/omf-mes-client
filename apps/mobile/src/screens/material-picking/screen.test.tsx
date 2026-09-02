@@ -573,6 +573,63 @@ describe('자재 출고·피킹 화면', () => {
     });
   });
 
+  /*
+   * 장갑 낀 손이 한 번 더 누르면 멱등키가 다른 두 건이 담긴다. 서버가 흡수할 수 없어 재고가
+   * 두 번 움직인다.
+   */
+  it('보내는 동안 같은 단추를 다시 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const sent = mount();
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: /ABC-123/ }));
+    await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
+    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await screen.findByText('라인의 LOT 과 같습니다');
+    await user.type(screen.getByLabelText('출고 수량'), '50');
+
+    sent.holdNextPick();
+
+    const button = screen.getByRole('button', { name: '이 라인 피킹' });
+
+    await user.click(button);
+    await user.click(button);
+    await user.click(button);
+
+    sent.releasePick();
+
+    await screen.findByText('집었습니다');
+    expect(sent.picks).toHaveLength(1);
+  });
+
+  /*
+   * 앞 건이 앞 회차에 거부돼 큐에서 빠지면 이 회차에는 그 사실을 볼 자리가 없다. 그 결과를
+   * 실은 뒤 건이 혼자 나가면 서버가 받지 않은 수량이 그대로 기록된다.
+   */
+  it('앞 회차에서 피킹이 거부됐으면 다음 회차의 출고도 나가지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ pick: 'offline', issue: 'ok' });
+    await chooseOrder(user);
+    await pickLine(user, '50');
+    await screen.findByText('피킹을 담아 두었습니다');
+
+    /*
+     * 셸이 스스로 보내는 회차가 도는 중에 확정한다. 그 회차의 목록에는 출고가 없어 딸림
+     * 되돌리기가 걸리지 않고, 출고는 다음 회차에 혼자 남는다.
+     */
+    sent.set({ pick: 'rejected' });
+    sent.holdNextPick();
+    window.dispatchEvent(new Event('online'));
+
+    await chooseIssueType(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+
+    sent.releasePick();
+
+    expect(await screen.findByText('출고가 되돌아왔습니다')).toBeTruthy();
+    expect(sent.issues).toHaveLength(0);
+  });
+
   it('보낼 출고 유형이 없으면 그 사실을 말한다', async () => {
     const user = userEvent.setup();
     mount({ issueTypes: [], lines: [line({ pickedQty: 120 })] });

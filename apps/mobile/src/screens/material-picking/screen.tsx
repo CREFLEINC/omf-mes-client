@@ -68,6 +68,11 @@ export const MaterialPickingScreen = () => {
   /* 피킹 한 건의 결과. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
   const [pickOutcome, setPickOutcome] = useState<Outcome | null>(null);
   const [issueTypeCode, setIssueTypeCode] = useState<string | null>(null);
+  /*
+   * 보내는 동안 단추를 잠근다. 장갑 낀 손이 한 번 더 누르면 멱등키가 다른 두 건이 담기고,
+   * 서버가 흡수할 수 없어 재고가 두 번 움직인다.
+   */
+  const [busy, setBusy] = useState(false);
 
   const workerId = useWorkerId(worker?.workerNo ?? null);
   const orders = useAssignedPickingOrders(workerId.data ?? null);
@@ -133,67 +138,81 @@ export const MaterialPickingScreen = () => {
   const pick = async () => {
     const order = detail.data?.order;
 
-    if (order === undefined || line === null || worker === null) {
+    if (order === undefined || line === null || worker === null || busy) {
       return;
     }
 
-    /* 이 지시의 피킹과 출고를 한 묶음으로 둔다. 앞이 거부되면 뒤가 함께 되돌아간다. */
-    const draft = toPickDraft(
-      order,
-      line,
-      qty,
-      batchIdOf(order.pickingOrderId),
-      new Date(),
-      worker.workerNo,
-    );
+    setBusy(true);
 
-    await enqueue(draft);
+    try {
+      /* 이 지시의 피킹과 출고를 한 묶음으로 둔다. 앞이 거부되면 뒤가 함께 되돌아간다. */
+      const draft = toPickDraft(
+        order,
+        line,
+        qty,
+        batchIdOf(order.pickingOrderId),
+        new Date(),
+        worker.workerNo,
+      );
 
-    const result = await flush().catch(() => null);
-    const mine = (each: { idempotencyKey: string }) => each.idempotencyKey === draft.idempotencyKey;
+      await enqueue(draft);
 
-    /* 서버가 집은 양을 더해 내려준다. 화면이 그 셈을 따로 하지 않는다. */
-    await queryClient.invalidateQueries({ queryKey: pickingKeys.order(orderId) });
+      const result = await flush().catch(() => null);
+      const mine = (each: { idempotencyKey: string }) =>
+        each.idempotencyKey === draft.idempotencyKey;
 
-    if (result !== null && result.rejected.some((each) => mine(each.entry))) {
-      setPickOutcome('rejected');
-      return;
+      /* 서버가 집은 양을 더해 내려준다. 화면이 그 셈을 따로 하지 않는다. */
+      await queryClient.invalidateQueries({ queryKey: pickingKeys.order(orderId) });
+
+      if (result !== null && result.rejected.some((each) => mine(each.entry))) {
+        setPickOutcome('rejected');
+        return;
+      }
+
+      setPickOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+      setLineId(null);
+      setScanned(null);
+      setQty('');
+    } finally {
+      setBusy(false);
     }
-
-    setPickOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
-    setLineId(null);
-    setScanned(null);
-    setQty('');
   };
 
   const confirm = async () => {
     const order = detail.data?.order;
 
-    if (order === undefined || worker === null || issueTypeCode === null) {
+    if (order === undefined || worker === null || issueTypeCode === null || busy) {
       return;
     }
 
-    const draft = toIssueDraft(
-      order,
-      lines,
-      queued,
-      issueTypeCode,
-      batchIdOf(order.pickingOrderId),
-      new Date(),
-      worker.workerNo,
-    );
+    setBusy(true);
 
-    await enqueue(draft);
+    try {
+      const draft = toIssueDraft(
+        order,
+        lines,
+        queued,
+        issueTypeCode,
+        batchIdOf(order.pickingOrderId),
+        new Date(),
+        worker.workerNo,
+      );
 
-    const result = await flush().catch(() => null);
-    const mine = (each: { idempotencyKey: string }) => each.idempotencyKey === draft.idempotencyKey;
+      await enqueue(draft);
 
-    if (result !== null && result.rejected.some((each) => mine(each.entry))) {
-      setOutcome('rejected');
-      return;
+      const result = await flush().catch(() => null);
+      const mine = (each: { idempotencyKey: string }) =>
+        each.idempotencyKey === draft.idempotencyKey;
+
+      if (result !== null && result.rejected.some((each) => mine(each.entry))) {
+        setOutcome('rejected');
+        return;
+      }
+
+      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+    } finally {
+      setBusy(false);
     }
-
-    setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
   };
 
   if (outcome !== null) {
@@ -412,7 +431,7 @@ export const MaterialPickingScreen = () => {
               variant="filled"
               size="2xl"
               className="picking-out__wide"
-              disabled={!loaded || !canPick(line, scanned, qty, worker !== null, queued)}
+              disabled={busy || !loaded || !canPick(line, scanned, qty, worker !== null, queued)}
               onClick={() => void pick()}
             >
               {t.pick}
@@ -451,6 +470,7 @@ export const MaterialPickingScreen = () => {
           size="2xl"
           className="picking-out__wide"
           disabled={
+            busy ||
             !loaded ||
             !canConfirmIssue(lines, worker !== null, queued, queuedIssues) ||
             issueTypeCode === null
