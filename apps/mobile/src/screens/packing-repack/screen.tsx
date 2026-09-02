@@ -1,10 +1,16 @@
 import { AlertBanner, Button, Card, Radio, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
-import { useScannedHandlingUnit, type ScannedHandlingUnit } from '../../patterns/handling-units';
-import { useUomCodes } from '../../patterns/masters';
+import {
+  handlingUnitKeys,
+  useLotLabels,
+  useScannedHandlingUnit,
+  type ScannedHandlingUnit,
+} from '../../patterns/handling-units';
+import { useItemLabels, useUomCodes } from '../../patterns/masters';
 import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -39,6 +45,7 @@ export const PackingRepackScreen = () => {
   useScreenTitle(t.title);
 
   const { enqueue, flush } = useOutbox();
+  const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
 
   const [sources, setSources] = useState<ScannedHandlingUnit[]>([]);
@@ -51,6 +58,9 @@ export const PackingRepackScreen = () => {
 
   const found = useScannedHandlingUnit(scanned);
   const uoms = useUomCodes(sources.length > 0);
+  /* 내용물은 품목·LOT 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
+  const itemLabels = useItemLabels(sources.length > 0);
+  const lotLabels = useLotLabels(sources);
 
   const pooled = pooledContents(sources);
   const merged = mergedPairs(sources);
@@ -59,8 +69,15 @@ export const PackingRepackScreen = () => {
 
   const uomOf = (uomId: number): string => uoms.data?.get(uomId) ?? '';
 
-  const label = (content: { lotId: number; qty: number; uomId: number }): string =>
-    `${t.contents.lot(String(content.lotId))} · ${String(content.qty)} ${uomOf(content.uomId)}`;
+  const nameOf = (content: { itemId: number; lotId: number }): string => {
+    const item = itemLabels.data?.get(content.itemId);
+    const lotNo = lotLabels.get(content.lotId) ?? String(content.lotId);
+
+    return t.contents.lot(item === undefined ? '' : item.itemCode, lotNo);
+  };
+
+  const label = (content: { itemId: number; lotId: number; qty: number; uomId: number }): string =>
+    `${nameOf(content)} · ${String(content.qty)} ${uomOf(content.uomId)}`;
 
   /*
    * 찾은 포장을 목록에 얹는다. 조회가 끝난 뒤에 일어나야 해서 렌더 중에 하지 않는다.
@@ -163,7 +180,20 @@ export const PackingRepackScreen = () => {
     }
 
     const result = await flush().catch(() => null);
-    const mine = (each: { idempotencyKey: string }) => each.idempotencyKey === create.idempotencyKey;
+
+    /*
+     * 우리가 방금 바꾼 포장이다. 캐시를 두면 다음 스캔이 옛 수량을 보이고, 구성 치환은 집합을
+     * 통째로 갈아 끼우므로 그 옛 수량으로 계산한 잔량이 실재를 덮어 물건이 조용히 사라진다.
+     */
+    queryClient.removeQueries({ queryKey: handlingUnitKeys.root });
+
+    /*
+     * 묶음 전체를 본다. 새 포장 하나만 보면 원 포장 치환이 거부돼도 성공으로 보이는데, 그때
+     * 새 포장은 이미 만들어졌고 원 포장은 그대로라 같은 물건이 두 곳에 있게 된다. 되돌리기
+     * 경로가 없고 작업자는 끝난 줄 안다.
+     */
+    const keys = new Set([create, ...replaces].map((entry) => entry.idempotencyKey));
+    const mine = (each: { idempotencyKey: string }) => keys.has(each.idempotencyKey);
 
     if (result !== null && result.rejected.some((each) => mine(each.entry))) {
       setOutcome('rejected');
@@ -304,7 +334,7 @@ export const PackingRepackScreen = () => {
               return (
                 <div key={line.lotId} className="repack__line">
                   <TextField
-                    label={t.contents.qtyLabel(String(line.lotId))}
+                    label={t.contents.qtyLabel(nameOf(line))}
                     size="xl"
                     fullWidth
                     inputMode="numeric"

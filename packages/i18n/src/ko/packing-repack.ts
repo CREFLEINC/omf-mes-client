@@ -40,7 +40,8 @@ export const packingRepack = {
     /** 원 포장에 있는 것보다 많이 담을 수 없다. 얼마까지인지를 함께 적는다. */
     pooled: (qty: string) => `원 포장 합 ${qty}`,
     qtyLabel: (lotNo: string) => `${lotNo} 수량`,
-    lot: (lotNo: string) => `LOT ${lotNo}`,
+    /* 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. */
+    lot: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
     /** 같은 짝이 두 줄로 들어가지 못한다. 합쳤다는 사실을 말하지 않으면 어디서 왔는지 못 본다. */
     merged: (before: string, added: string, after: string) =>
       `${before} 에 ${added} 을(를) 더해 ${after} 이(가) 됩니다`,
