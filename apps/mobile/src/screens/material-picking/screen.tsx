@@ -73,6 +73,12 @@ export const MaterialPickingScreen = () => {
    * 서버가 흡수할 수 없어 재고가 두 번 움직인다.
    */
   const [busy, setBusy] = useState(false);
+  /*
+   * 이 단말이 이번에 내보낸 양. 서버는 출고 뒤에도 집은 양을 그대로 내려주고, 라인에 이미
+   * 내보낸 양을 담은 자리가 없다 - 그것 없이는 같은 지시를 다시 열었을 때 같은 수량이 한 번
+   * 더 나간다. 앱을 다시 띄우면 사라지므로 이 방어는 반쪽이며, 나머지는 설계에 물어 두었다.
+   */
+  const issuedHere = useRef(new Map<number, number>());
 
   const workerId = useWorkerId(worker?.workerNo ?? null);
   const orders = useAssignedPickingOrders(workerId.data ?? null);
@@ -196,7 +202,16 @@ export const MaterialPickingScreen = () => {
         batchIdOf(order.pickingOrderId),
         new Date(),
         worker.workerNo,
+        issuedHere.current,
       );
+
+      const sending = (draft.body as { lines: { pickingLineId: number; issueQty: number }[] })
+        .lines;
+
+      if (sending.length === 0) {
+        setOutcome('sent');
+        return;
+      }
 
       await enqueue(draft);
 
@@ -207,6 +222,14 @@ export const MaterialPickingScreen = () => {
       if (result !== null && result.rejected.some((each) => mine(each.entry))) {
         setOutcome('rejected');
         return;
+      }
+
+      /* 되돌아오지 않은 것은 나갔거나 나갈 것이다. 두 경우 모두 다시 실으면 두 번 나간다. */
+      for (const each of sending) {
+        issuedHere.current.set(
+          each.pickingLineId,
+          (issuedHere.current.get(each.pickingLineId) ?? 0) + each.issueQty,
+        );
       }
 
       setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');

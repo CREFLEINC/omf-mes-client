@@ -18,21 +18,43 @@ export interface RejectedRecord {
   rejectedAt: string;
 }
 
+export interface BrokenBatch {
+  error: ApiError;
+  /**
+   * 이 시각보다 앞서 만들어진 건만 딸림으로 본다. 비우면 회차 안의 모든 뒤 건에 걸린다 -
+   * 그 건들은 회차가 시작될 때 이미 큐에 있었으므로 따질 것이 없다.
+   *
+   * 묶음 이름만 기억하면 그 이름을 쓰는 새 시도까지 영영 막힌다 - 사람이 사유를 보고 고쳐
+   * 다시 한 것은 앞 거부와 무관한 새 기록이다. 막아야 하는 것은 거부를 알기 전에 만들어져
+   * 그 결과를 이미 싣고 있는 건뿐이다.
+   */
+  since?: string;
+}
+
 /**
- * 이미 되돌아온 건이 속한 묶음.
+ * 이미 되돌아온 건이 남긴 딸림 판정.
  *
  * 딸림 되돌리기가 한 번의 보내기 안에서만 걸리면, 앞 건이 앞 회차에 거부돼 큐에서 빠진 뒤
  * 뒤 건이 혼자 나간다 - 그 뒤 건은 앞 건의 결과를 싣고 있어, 서버가 받지 않은 수량이 그대로
  * 기록된다. 되돌아온 건은 사람이 정리할 때까지 남으므로 그것을 회차 너머의 기억으로 쓴다.
+ *
+ * 한 묶음에 여러 번 거부가 쌓이면 가장 이른 것을 기준으로 둔다. 그보다 뒤에 만든 것은 새
+ * 시도이고, 그것이 다시 딸림이 되는 경우는 같은 회차 안에서 걸린다.
  */
-export const brokenBatchesOf = (records: RejectedRecord[]): Map<string, ApiError> => {
-  const broken = new Map<string, ApiError>();
+export const brokenBatchesOf = (records: RejectedRecord[]): Map<string, BrokenBatch> => {
+  const broken = new Map<string, BrokenBatch>();
 
   for (const record of records) {
     const batchId = record.entry.batchId;
 
-    if (batchId !== undefined && !broken.has(batchId)) {
-      broken.set(batchId, record.error);
+    if (batchId === undefined) {
+      continue;
+    }
+
+    const previous = broken.get(batchId);
+
+    if (previous?.since === undefined || record.rejectedAt < previous.since) {
+      broken.set(batchId, { error: record.error, since: record.rejectedAt });
     }
   }
 

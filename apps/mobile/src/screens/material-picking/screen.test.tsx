@@ -630,6 +630,45 @@ describe('자재 출고·피킹 화면', () => {
     expect(sent.issues).toHaveLength(0);
   });
 
+  /*
+   * 딸림 되돌리기를 묶음 이름만으로 걸면 그 지시가 통째로 잠긴다. 사람이 사유를 보고 다시 한
+   * 것은 앞 거부와 무관한 새 기록이라 서버까지 가야 한다.
+   */
+  it('피킹이 거부된 뒤 다시 집으면 그 건은 서버까지 간다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ pick: 'rejected' });
+    await chooseOrder(user);
+    await pickLine(user, '50');
+    await screen.findByText('피킹이 되돌아왔습니다');
+
+    sent.set({ pick: 'ok' });
+    await pickLine(user, '50');
+
+    expect(await screen.findByText('집었습니다')).toBeTruthy();
+    expect(sent.picks.filter((each) => each.url.includes('/lines/41:pick'))).toHaveLength(2);
+  });
+
+  /*
+   * 서버는 출고 뒤에도 집은 양을 그대로 내려주고, 라인에 이미 내보낸 양을 담은 자리가 없다.
+   * 빼지 않으면 같은 지시를 다시 열었을 때 같은 수량이 한 번 더 나간다.
+   */
+  it('온라인으로 확정한 뒤 같은 지시를 다시 열어도 같은 수량이 다시 나가지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+    await chooseIssueType(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 확정했습니다');
+
+    await user.click(screen.getByRole('button', { name: '다음 지시' }));
+    await chooseOrder(user);
+    await chooseIssueType(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 확정했습니다');
+
+    expect(sent.issues).toHaveLength(1);
+  });
+
   it('보낼 출고 유형이 없으면 그 사실을 말한다', async () => {
     const user = userEvent.setup();
     mount({ issueTypes: [], lines: [line({ pickedQty: 120 })] });

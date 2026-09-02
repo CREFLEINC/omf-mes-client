@@ -259,11 +259,20 @@ export const toIssueDraft = (
   batchId: string,
   now: Date,
   workerNo: string,
+  alreadyIssued: ReadonlyMap<number, number> = new Map(),
 ): OutboxDraft => {
   const occurredAt = now.toISOString();
-  /* 집은 만큼만 나간다. 안 집은 라인은 부족분으로 남는다. */
+  /*
+   * 집은 만큼만 나간다. 안 집은 라인은 부족분으로 남는다.
+   *
+   * 이미 내보낸 만큼은 뺀다. 서버가 출고 뒤에도 집은 양을 그대로 내려주어, 빼지 않으면 같은
+   * 지시를 다시 열었을 때 같은 수량이 한 번 더 나간다 - 즉시 전기라 되돌릴 수 없다.
+   */
   const issued: GoodsIssueLineUpsert[] = lines
-    .map((line) => ({ line, qty: pickedQtyOf(line, queued) }))
+    .map((line) => ({
+      line,
+      qty: pickedQtyOf(line, queued) - (alreadyIssued.get(line.pickingLineId) ?? 0),
+    }))
     .filter((each) => each.qty > 0)
     .map(({ line, qty }) => ({
       pickingLineId: line.pickingLineId,
