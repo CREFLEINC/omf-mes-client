@@ -563,6 +563,50 @@ describe('수리 왕복 스캔 화면', () => {
     );
   });
 
+  /* 한 LOT 에 열린 건이 둘 이상인 것은 화면이 설계로 받는 상태다. 건을 바꾸면 다른 쓰기다. */
+  it('다른 수리 건을 고르면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const other = { ...execution, repairExecutionId: 1002, repairQty: 35 };
+    mount(
+      [
+        {
+          match: (request) => /\/production\/repair-executions\/\d+:return$/.test(request.url),
+          respond: (request) => {
+            seen.push(request.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      { open: [execution, other], openAll: [execution, other] },
+    );
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
+
+    const picks = await screen.findAllByRole('button', { name: /EA ·/ });
+
+    await user.click(picks[0] as HTMLElement);
+    await user.click(await screen.findByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getAllByRole('button', { name: /EA ·/ })[1] as HTMLElement);
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(new URL(seen[1]?.url ?? '').pathname).not.toBe(new URL(seen[0]?.url ?? '').pathname);
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
   /* 되돌아오면 최종 대상은 같다. 그 사이에 키가 버려지면 같은 것을 새 키로 보낸다. */
   it('결과를 바꿨다 되돌리면 앞 시도와 같은 멱등키로 간다', async () => {
     const user = userEvent.setup();
