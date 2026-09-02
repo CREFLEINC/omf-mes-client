@@ -11,9 +11,6 @@ import { MAX_ISSUE_QUANTITY } from './types';
  * 그때 0 으로 치면 「양품이 없다」는 **사실과 다른 안내**가 나간다(공유계약 F-6 와 같은 방향).
  */
 
-/** 양품 누계를 모를 때의 표시 — 「0」과 구분한다. */
-export const UNKNOWN_GOOD_QTY = null;
-
 export interface UnissuedInput {
   /** 양품 누계. 모르면 `null` */
   goodQty: number | null;

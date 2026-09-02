@@ -15,7 +15,6 @@ export type DocumentIssueBatchResult = components['schemas']['DocumentIssueBatch
 export type SerialNumberBatchCreate = components['schemas']['SerialNumberBatchCreate'];
 export type SerialNumberBatchResult = components['schemas']['SerialNumberBatchResult'];
 export type Printer = components['schemas']['Printer'];
-export type PrintOutcomeReport = components['schemas']['PrintOutcomeReport'];
 
 /**
  * 한 번에 다룰 수 있는 개체 수의 상한. **발번도 발행 기록도 같은 값이다**(계약 명시).
@@ -24,13 +23,6 @@ export type PrintOutcomeReport = components['schemas']['PrintOutcomeReport'];
  * 잘못 친 것을 **보내기 전에** 안다.
  */
 export const MAX_ISSUE_QUANTITY = 1000;
-
-/**
- * 개체 목록 조회의 한 쪽 크기. 계약 기본값이 50 이라 그대로 두면 개체가 그보다 많을 때
- * **`targetIds` 상한(1000)보다 페이지가 먼저 걸린다**(요구서 §3-1). 한 쪽을 크게 잡아 왕복을
- * 줄이되 상한 안에 둔다.
- */
-export const SERIAL_PAGE_SIZE = MAX_ISSUE_QUANTITY;
 
 /**
  * ⚠ **값 목록이 확정되지 않은 코드들 — 자리표시다**(착수 이슈 미결표 · 요구서 §3-1, `omf-mes#145`).
