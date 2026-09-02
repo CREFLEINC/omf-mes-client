@@ -40,6 +40,7 @@ import { IqcSkipApprovalScreen } from '../screens/iqc-skip-approval/screen';
 import { ItemExtendedAttrsScreen } from '../screens/item-extended-attrs/screen';
 import { LoginScreen } from '../screens/login/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
+import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { LotStatusHistoryScreen } from '../screens/lot-status-history/screen';
 import { LotStatusTransitionScreen } from '../screens/lot-status-transition/screen';
 import { MasterChangeScreen } from '../screens/master-change/screen';
@@ -589,5 +590,13 @@ export const appRouter = createBrowserRouter([
    * 않는다(F-6). `P-CO-01`과 단말 토큰이 서면 그때 채워진다.
    */
   { path: '/pop/material-input', element: <MaterialInputScanScreen /> },
+  /*
+   * P-05-01 — **POP 태스크 화면이라 셸 밖에 선다**(관리웹 사이드바로 옮겨 다니는 화면이 아니다).
+   * 주소 앞머리 `/pop`이 그 사실을 드러낸다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다** — 작업지시 선택(P-02-01)과 사번 인증(P-CO-01)이
+   * 아직 이 저장소에 없다. 그 화면들이 서면 `entry-context.ts` 하나가 바뀐다.
+   */
+  { path: '/pop/tool-usage', element: <ToolUsageScreen /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
