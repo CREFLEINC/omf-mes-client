@@ -36,7 +36,7 @@ export const OutboxRejectionsScreen = () => {
         {records.map((record) => (
           <li key={record.entry.id}>
             <Card bordered>
-              <Card.Body className="outbox-rejections__item">
+              <Card.Body className="card-body outbox-rejections__item">
                 <h2 className="outbox-rejections__label">{record.entry.label}</h2>
                 <p className="outbox-rejections__when">
                   {t.occurredAt(whenOf(record.entry.occurredAt))}
@@ -47,7 +47,7 @@ export const OutboxRejectionsScreen = () => {
                 ) : null}
                 <Button
                   variant="outlined"
-                  size="lg"
+                  size="xl"
                   onClick={() => void dismissRejected(record.entry.id)}
                 >
                   {t.dismiss}

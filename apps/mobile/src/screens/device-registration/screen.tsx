@@ -111,7 +111,7 @@ export const DeviceRegistrationScreen = ({ camera }: { camera?: QrCamera }) => {
 
       {terminal === null ? null : (
         <Card bordered aria-label={t.terminal.label}>
-          <Card.Body>
+          <Card.Body className="card-body">
             <p>{`${t.terminal.label} ${terminal.terminalCode}`}</p>
             <p>{`${t.terminal.plant} ${String(terminal.plantId)}`}</p>
           </Card.Body>

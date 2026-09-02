@@ -238,18 +238,13 @@ describe('임시 위치 적재 화면', () => {
   it('등록은 임시 경로로 사번과 멱등키를 실어 보낸다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    const bodies: unknown[] = [];
     mount({ task: task(), location: TEMP }, [
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
           req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
-          void req
-            .clone()
-            .json()
-            .then((body: unknown) => bodies.push(body));
+          seen.push(req.clone());
           return jsonResponse(task({ actualLocationId: 9 }));
         },
       },
@@ -265,11 +260,8 @@ describe('임시 위치 적재 화면', () => {
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
 
-    await waitFor(() => {
-      expect(bodies).toHaveLength(1);
-    });
-
-    const body = bodies[0] as { actualLocationId: number; remarks: string; reasonCode: unknown };
+    
+    const body = (await seen[0]!.json()) as { actualLocationId: number; remarks: string; reasonCode: unknown };
 
     expect(body.actualLocationId).toBe(9);
     expect(body.remarks).toBe('통로에 둠');

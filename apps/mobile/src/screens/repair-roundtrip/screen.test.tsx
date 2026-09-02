@@ -216,7 +216,7 @@ describe('수리 왕복 스캔 화면', () => {
           new URL(request.url).pathname === '/production/repair-executions' &&
           request.method === 'POST',
         respond: (request) => {
-          seen.push(request);
+          seen.push(request.clone());
           return jsonResponse({ ...execution, repairQty: 20 }, { status: 201 });
         },
       },
@@ -275,17 +275,14 @@ describe('수리 왕복 스캔 화면', () => {
 
   it('반출은 고른 결과를 실어 왕복을 닫는다', async () => {
     const user = userEvent.setup();
-    const bodies: unknown[] = [];
+    const seen: Request[] = [];
     mount(
       [
         {
           match: (request) =>
             new URL(request.url).pathname === '/production/repair-executions/1001:return',
           respond: (request) => {
-            void request
-              .clone()
-              .json()
-              .then((body: unknown) => bodies.push(body));
+            seen.push(request.clone());
             return jsonResponse({ ...execution, returnedAt: '2026-09-01T11:40:00+09:00' });
           },
         },
@@ -303,9 +300,11 @@ describe('수리 왕복 스캔 화면', () => {
 
     expect(await screen.findByText('수리 반출을 기록했습니다')).toBeTruthy();
     await waitFor(() => {
-      expect(bodies).toHaveLength(1);
+      expect(seen).toHaveLength(1);
     });
-    expect((bodies[0] as { repairResultCode: string }).repairResultCode).toBe('FAILED');
+    expect(((await seen[0]!.json()) as { repairResultCode: string }).repairResultCode).toBe(
+      'FAILED',
+    );
   });
 
   it('결과를 고르기 전에는 반출할 수 없다', async () => {

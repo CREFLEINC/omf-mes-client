@@ -65,3 +65,14 @@
 .material-location__negative {
   color: var(--semantic-warning);
 }
+
+/* 스캔이 실패했을 때 손으로 넣는 자리. 입력이 넓고 버튼이 붙는다. */
+.material-location__manual {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-end;
+}
+
+.material-location__manual > *:first-child {
+  flex: 1;
+}

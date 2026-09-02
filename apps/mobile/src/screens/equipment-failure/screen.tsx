@@ -215,7 +215,7 @@ export const EquipmentFailureScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
-        <Button variant="filled" size="xl" onClick={restart}>
+        <Button variant="filled" size="2xl" onClick={restart}>
           {t.another}
         </Button>
       </div>

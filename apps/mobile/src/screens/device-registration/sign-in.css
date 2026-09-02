@@ -12,9 +12,3 @@
 .worker-sign-in p {
   margin: 0;
 }
-
-/* 누구로 기록되는지가 이 카드의 요점이라 나머지보다 크게 둔다. */
-.worker-sign-in__worker {
-  font-size: var(--type-title-md-size, 1.25rem);
-  font-weight: 600;
-}

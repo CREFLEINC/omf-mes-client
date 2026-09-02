@@ -212,16 +212,13 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
   it('계약 경로로 사유만 보낸다', async () => {
     const user = userEvent.setup();
-    const bodies: unknown[] = [];
     const seen: URL[] = [];
+    const sent: Request[] = [];
     mount(
       [
         createRoute((request) => {
           seen.push(new URL(request.url));
-          void request
-            .clone()
-            .json()
-            .then((body: unknown) => bodies.push(body));
+          sent.push(request.clone());
           return jsonResponse({ approvalRequestId: 91 }, { status: 202 });
         }),
       ],
@@ -236,8 +233,9 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
     expect(await screen.findByText('요청했습니다')).toBeInTheDocument();
     await waitFor(() => {
-      expect(bodies).toEqual([{ reason: '라인 정지 임박' }]);
+      expect(sent).toHaveLength(1);
     });
+    expect(await sent[0]!.json()).toEqual({ reason: '라인 정지 임박' });
     expect(seen[0]?.pathname).toBe('/trace/lots/7:request-iqc-skip');
   });
 

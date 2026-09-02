@@ -40,7 +40,7 @@ const MyRequests = ({ requests }: { requests: ApprovalRequest[] }) => (
     {requests.map((request) => (
       <li key={request.approvalRequestId}>
         <Card bordered>
-          <Card.Body className="iqc-skip__request">
+          <Card.Body className="card-body iqc-skip__request">
             {/* 상태 문자열은 공통코드 소관이라 화면이 값을 지어내지 않고 받은 것을 그대로 보인다. */}
             <Chip>{request.statusCode}</Chip>
             <span className="iqc-skip__request-name">{request.target.displayName}</span>
@@ -61,6 +61,7 @@ export const IqcSkipRequestScreen = () => {
   const { worker } = useWorkerSession();
 
   const [scanned, setScanned] = useState<string | null>(null);
+  const [manual, setManual] = useState('');
   const [reason, setReason] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [noRoute, setNoRoute] = useState(false);
@@ -135,7 +136,7 @@ export const IqcSkipRequestScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
-        <Button variant="filled" size="lg" onClick={restart}>
+        <Button variant="filled" size="2xl" onClick={restart}>
           {t.another}
         </Button>
       </div>
@@ -150,9 +151,30 @@ export const IqcSkipRequestScreen = () => {
           ref={scanField.ref}
           label={t.lot.scanLabel}
           placeholder={t.lot.scanPlaceholder}
-          size="lg"
+          size="xl"
           fullWidth
         />
+        {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
+        <div className="iqc-skip__manual">
+          <TextField
+            label={t.lot.manualLabel}
+            size="xl"
+            fullWidth
+            value={manual}
+            onChange={(event) => {
+              setManual(event.target.value);
+            }}
+          />
+          <Button
+            variant="outlined"
+            size="xl"
+            onClick={() => {
+              setScanned(manual.trim() === '' ? null : manual.trim());
+            }}
+          >
+            {t.lot.manualSubmit}
+          </Button>
+        </div>
         {lot.isPending && scanned !== null ? <p role="status">{t.lot.loading}</p> : null}
         {lot.isError ? <AlertBanner variant="error" title={t.lot.loadFailed} /> : null}
         {scanned !== null && !lot.isPending && found === null && !lot.isError ? (
@@ -160,7 +182,7 @@ export const IqcSkipRequestScreen = () => {
         ) : null}
         {found === null ? null : (
           <Card bordered>
-            <Card.Body className="iqc-skip__lot">
+            <Card.Body className="card-body iqc-skip__lot">
               <strong>{found.lotNo}</strong>
               {item.data === undefined ? null : (
                 <span>{`${item.data.itemCode} ${item.data.itemName}`}</span>
@@ -206,7 +228,7 @@ export const IqcSkipRequestScreen = () => {
 
       {worker === null ? <p className="iqc-skip__note">{t.noWorker}</p> : null}
 
-      <Button variant="filled" size="lg" disabled={!canSubmit} onClick={() => void request()}>
+      <Button variant="filled" size="2xl" disabled={!canSubmit} onClick={() => void request()}>
         {t.submit}
       </Button>
 

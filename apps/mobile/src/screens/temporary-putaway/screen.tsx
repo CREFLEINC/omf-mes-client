@@ -136,7 +136,7 @@ export const TemporaryPutawayScreen = () => {
       <section className="temporary__section">
         <h2>{t.task.legend}</h2>
         <Card bordered>
-          <Card.Body className="temporary__card">
+          <Card.Body className="card-body temporary__card">
             <strong>{task.putawayTaskNo}</strong>
             <p>{t.task.qty(`${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`)}</p>
             {task.recommendedLocationId === null || task.recommendedLocationId === undefined ? (
