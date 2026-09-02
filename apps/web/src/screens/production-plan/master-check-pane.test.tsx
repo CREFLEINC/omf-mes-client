@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
@@ -70,6 +70,29 @@ const Harness = ({
 };
 
 describe('생산계획 마스터 점검', () => {
+  it('BOM과 Routing을 같은 비중의 비교 카드 묶음으로 표시한다', async () => {
+    const { container } = renderWithProviders(
+      <Harness boms={[bom(701, true)]} routings={[routing(801)]} />,
+    );
+
+    await waitFor(() => expect(screen.getAllByText('선택됨')).toHaveLength(2));
+    const pane = screen.getByLabelText('마스터 점검');
+    const grid = container.querySelector('.production-plan-master-grid');
+
+    expect(pane).toHaveClass('production-plan-section');
+    expect(within(pane).getByRole('heading', { name: '마스터 점검' }).parentElement).toHaveClass(
+      'production-plan-section-heading',
+    );
+    expect(grid).not.toBeNull();
+    expect(grid?.children).toHaveLength(2);
+    expect(within(pane).getByRole('heading', { name: 'BOM (ERP 정본)' }).parentElement).toHaveClass(
+      'production-plan-master-card-header',
+    );
+    expect(
+      within(pane).getByRole('heading', { name: 'Routing (MES 정본)' }).parentElement,
+    ).toHaveClass('production-plan-master-card-header');
+  });
+
   it('유일한 기본 BOM과 유일한 Routing만 자동 선택해 준비 상태로 만든다', async () => {
     const boms = [bom(701), bom(702, true)];
     const routings = [routing(801)];
