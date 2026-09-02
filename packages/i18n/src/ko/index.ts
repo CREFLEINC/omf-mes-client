@@ -97,6 +97,7 @@ import { poChangeReview } from './po-change-review';
 import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
 import { inboundReceipt } from './inbound-receipt';
+import { packingRepack } from './packing-repack';
 import { putaway } from './putaway';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
@@ -186,6 +187,7 @@ export const ko = {
   repairRoundtrip,
   productPicking,
   inboundReceipt,
+  packingRepack,
   putaway,
   inboundVariance,
   temporaryPutaway,
