@@ -29,8 +29,6 @@ export interface ActionBarProps {
    */
   isJustConfirmed: boolean;
 
-  isSaving: boolean;
-
   onSave: () => void;
   onConfirm: () => void;
 }
@@ -40,7 +38,6 @@ export const ActionBar = ({
   saveBlockedReason,
   isSaved,
   isJustConfirmed,
-  isSaving,
   onSave,
   onConfirm,
 }: ActionBarProps) => (
@@ -61,17 +58,23 @@ export const ActionBar = ({
       {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
     </div>
 
-    <Button type="button" variant="outlined" size="xl" disabled={isSaving} onClick={onSave}>
-      {isSaving ? t.saving : t.save}
+    {/*
+     * ⛔ **「저장 중」이 없다.** 담는 순간이 곧 성공이라(공유계약 C-1 #2) 기다리는 구간 자체가
+     * 생기지 않는다 — 보내는 일은 outbox 가 뒤에서 하고, 닿았는지는 머리의 미동기 건수가
+     * 말한다. 여기서 버튼을 잠그면 통신이 끊긴 단말에서 검사자가 두 번째 항목을 저장하지
+     * 못한다.
+     */}
+    <Button type="button" variant="outlined" size="xl" onClick={onSave}>
+      {t.save}
     </Button>
     <Button
       type="button"
       variant="filled"
       size="xl"
-      disabled={blockedReason !== null || isSaving}
+      disabled={blockedReason !== null}
       onClick={onConfirm}
     >
-      {isSaving ? t.confirming : t.confirm}
+      {t.confirm}
     </Button>
   </div>
 );

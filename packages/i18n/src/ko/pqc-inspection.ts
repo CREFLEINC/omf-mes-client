@@ -12,6 +12,13 @@ export const pqcInspection = {
   /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
   emptyValue: '—',
 
+  header: {
+    /**
+     * 밀린 것이 없다. ⛔ **비워 두지 않는다** — 표식이 사라지면 「다 갔다」와 「표시가 없다」가
+     * 같은 모양이 되고, 담는 순간 성공을 본 검사자는 그 차이를 알 방법이 없다(C-1 #4).
+     */
+    synced: '동기됨',
+  },
   detail: {
     heading: '대상',
     /**
@@ -69,7 +76,6 @@ export const pqcInspection = {
     over: (over: string): string => `검사수량보다 ${over} 많습니다.`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
     save: '임시 저장',
-    saving: '저장 중',
     saved: '저장했습니다.',
     saveBlockedByInvalid: '수량 칸을 고친 뒤 저장할 수 있습니다.',
 
@@ -79,7 +85,6 @@ export const pqcInspection = {
     judgmentUnknown: (code: string): string => `저장된 판정(${code})이 목록에 없습니다.`,
 
     confirm: '검사 확정',
-    confirming: '확정 중',
     confirmNote: '확정하면 LOT 상태가 바뀌고 되돌릴 수 없습니다.',
     confirmBlockedByTotals: '검사 확정 — 수량 합계가 검사수량과 맞아야 확정할 수 있습니다.',
     confirmBlockedByJudgment: '검사 확정 — 종합 판정을 골라야 확정할 수 있습니다.',

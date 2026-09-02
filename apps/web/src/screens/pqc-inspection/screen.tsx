@@ -33,11 +33,12 @@ import {
   useCodeValues,
   useInspectionItemSpecs,
   useInspectionRequestDetail,
-  useSaveResult,
+  toResultBody,
 } from './queries';
 import { ResultPanel } from './result-panel';
 import { TargetHeader } from './target-header';
 import { useOnline } from './use-online';
+import { useOutbox } from './outbox';
 import { readTargetId } from './target';
 import {
   EMPTY_QUANTITY_DRAFT,
@@ -115,16 +116,7 @@ export const PqcInspectionScreen = () => {
    * 저장 — **임시 저장과 검사 확정이 한 훅이다**(요구서 §3-7). 무엇으로 저장했는지에 따라
    * 알리는 문장이 갈린다.
    */
-  /**
-   * 방금 무엇으로 저장했는지. **훅의 성공 되먹임은 응답만 준다** — 응답의 상태값은 서버가
-   * 정하므로 「내가 무엇을 눌렀나」를 알려면 보낸 값을 여기 남겨야 한다.
-   */
-  const submitted = useRef<string>(RESULT_STATUS.draft);
-
-  const save = useSaveResult(() => {
-    setIsSaved(submitted.current === RESULT_STATUS.draft);
-    setIsJustConfirmed(submitted.current === RESULT_STATUS.confirmed);
-  });
+  const outbox = useOutbox();
 
   /*
    * 되돌림은 **값**으로 판정한다 — 조회 응답이 다시 그려질 때마다 참조가 달라지므로,
@@ -267,32 +259,42 @@ export const PqcInspectionScreen = () => {
 
     setIsSaved(false);
     setIsJustConfirmed(false);
-    submitted.current = statusCode;
 
     /* 검사한 시각은 지금이다. **한 번만 읽어 두 자리가 갈리지 않게 한다.** */
     const inspectedAt = new Date().toISOString();
 
-    save.write({
-      inspectionRequestId,
-      inspectedQty: toSendableNumber(inspectedDraft),
-      acceptedQty: toSendableNumber(draft.accepted),
-      rejectedQty: toSendableNumber(draft.rejected),
-      heldQty: toSendableNumber(draft.held),
-      uomId,
-      /*
-       * ⛔ **고른 판정을 함께 싣는다** — 확정에도 임시 저장에도 이 값이 결론이다. */
-      overallJudgmentCode: judgment,
-      inspectedAt,
-      remarks,
+    /*
+     * ⭐ **담는 순간이 곧 성공이다**(공유계약 C-1 #2). 통신을 기다리지 않는다 — 끊긴 망에서
+     * 검사자가 저장 버튼 앞에 붙들려 있으면 현장이 멈춘다. 서버에 닿았는지는 머리의 미동기
+     * 건수가 말한다(#4).
+     */
+    outbox.enqueue(
       statusCode,
-      /*
-       * ⭐ **구간이 비어 있으면 검사 시각으로 채워 보낸다.** 표본 검사는 대표 구간이 있어야
-       * 불합격 시 회수 범위가 정해진다 — 비운 채 저장하면 그 근거가 영영 없다.
-       */
-      coverage: fillCoverage(coverage, inspectedAt),
-      /* ⛔ 측정치는 자체 쓰기 경로가 없다 — 결과 저장에 함께 실린다(§4-C). */
-      measurements: toMeasurementInputs(rows, drafts, inspectedAt),
-    });
+      toResultBody({
+        inspectionRequestId,
+        inspectedQty: toSendableNumber(inspectedDraft),
+        acceptedQty: toSendableNumber(draft.accepted),
+        rejectedQty: toSendableNumber(draft.rejected),
+        heldQty: toSendableNumber(draft.held),
+        uomId,
+        /*
+         * ⛔ **고른 판정을 함께 싣는다** — 확정에도 임시 저장에도 이 값이 결론이다. */
+        overallJudgmentCode: judgment,
+        inspectedAt,
+        remarks,
+        statusCode,
+        /*
+         * ⭐ **구간이 비어 있으면 검사 시각으로 채워 보낸다.** 표본 검사는 대표 구간이 있어야
+         * 불합격 시 회수 범위가 정해진다 — 비운 채 저장하면 그 근거가 영영 없다.
+         */
+        coverage: fillCoverage(coverage, inspectedAt),
+        /* ⛔ 측정치는 자체 쓰기 경로가 없다 — 결과 저장에 함께 실린다(§4-C). */
+        measurements: toMeasurementInputs(rows, drafts, inspectedAt),
+      }),
+    );
+
+    setIsSaved(statusCode === RESULT_STATUS.draft);
+    setIsJustConfirmed(statusCode === RESULT_STATUS.confirmed);
   };
 
   /**
@@ -303,7 +305,7 @@ export const PqcInspectionScreen = () => {
    */
   if (targetId === null) {
     return (
-      <PqcFrame>
+      <PqcFrame pendingCount={outbox.pendingCount} isOnline={outbox.isOnline}>
         <p className="field-note">{t.detail.nothingSelected}</p>
       </PqcFrame>
     );
@@ -311,7 +313,7 @@ export const PqcInspectionScreen = () => {
 
   if (detail.isError) {
     return (
-      <PqcFrame>
+      <PqcFrame pendingCount={outbox.pendingCount} isOnline={outbox.isOnline}>
         <QueueLoadErrorBanner
           error={toApiError(detail.error)}
           onRetry={() => void detail.refetch()}
@@ -322,7 +324,7 @@ export const PqcInspectionScreen = () => {
 
   if (detail.data === undefined) {
     return (
-      <PqcFrame>
+      <PqcFrame pendingCount={outbox.pendingCount} isOnline={outbox.isOnline}>
         <p className="field-note">{t.detail.loading}</p>
       </PqcFrame>
     );
@@ -331,7 +333,11 @@ export const PqcInspectionScreen = () => {
   const planVersionId = detail.data.inspectionPlanVersionId;
 
   return (
-    <PqcFrame target={<TargetHeader detail={detail.data} />}>
+    <PqcFrame
+      target={<TargetHeader detail={detail.data} />}
+      pendingCount={outbox.pendingCount}
+      isOnline={outbox.isOnline}
+    >
       <div className="pop-inspect">
         {/*
          * ⭐ **갈래가 둘이다**(§5-2 · 통지 #589). 검사 기준이 없으면 항목표 대신 판정 선택과
@@ -357,7 +363,7 @@ export const PqcInspectionScreen = () => {
           inspectedQty={inspectedQty}
           draft={draft}
           onChange={changeDraft}
-          fieldErrors={save.fieldErrors}
+          fieldErrors={outbox.rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}
           showErrors={showErrors}
           coverage={coverage}
           onCoverageChange={setCoverage}
@@ -374,7 +380,6 @@ export const PqcInspectionScreen = () => {
         saveBlockedReason={saveBlockedReason}
         isSaved={isSaved}
         isJustConfirmed={isJustConfirmed}
-        isSaving={save.isSaving}
         onSave={() => {
           saveResult(targetId, detail.data.uomId, RESULT_STATUS.draft);
         }}
@@ -428,15 +433,21 @@ const storedValueKey = (row: MeasurementRow): string => {
  * ⚠ 도면의 단말명·연결 표시(`POP-L1 ●`)는 아직 그리지 않는다 — 단말 컨텍스트가 이 저장소에
  * 서지 않았다(`patterns/pop-identity`). 모르는 것을 지어내지 않는다.
  */
+/** 거부가 없을 때 넘길 빈 목록. 렌더마다 새로 만들면 아래 구획이 매번 다시 그려진다. */
+const EMPTY_FIELD_ERRORS: Record<string, string> = {};
+
 const PqcFrame = ({
   children,
   target,
+  pendingCount,
+  isOnline,
 }: {
   children: React.ReactNode;
   target?: React.ReactNode;
+  pendingCount: number;
+  isOnline: boolean;
 }) => {
   const titleId = useId();
-  const isOnline = useOnline();
 
   return (
     <main className="pop-shell" aria-labelledby={titleId}>
@@ -449,11 +460,18 @@ const PqcFrame = ({
          * 도면 §3 머리 오른쪽 끝의 상태 표식이다. **어느 갈래에서나 선다** — 대상을 못
          * 불러온 화면이야말로 「연결이 끊겨서인가」를 물을 자리다.
          *
-         * 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다(`P-05-01` 전례).
+         * ⭐ **미동기 건수가 필수 요건이다**(공유계약 C-1 #4). 「담는 순간 성공」을 택한
+         * 결정의 전제가 이것이라, 없으면 서버에 닿지 않은 사실을 알 방법이 사라진다.
+         * **연결 상태도 함께 낸다 — 끊긴 것과 밀리는 것은 다르다**(`P-02-03` 전례).
          */}
-        <Chip status={isOnline ? 'success' : 'warning'}>
-          {isOnline ? messages.common.connection.online : messages.common.connection.offline}
+        <Chip variant="status" size="sm" status={pendingCount > 0 ? 'warning' : 'success'}>
+          {pendingCount > 0 ? messages.common.connection.unsent(pendingCount) : t.header.synced}
         </Chip>
+        {!isOnline && (
+          <Chip variant="status" size="sm" status="error">
+            {messages.common.connection.offline}
+          </Chip>
+        )}
       </header>
       {children}
     </main>

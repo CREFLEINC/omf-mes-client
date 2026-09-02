@@ -6,7 +6,9 @@ export { codeLockMessage, type Editability } from './editability';
 export { SaveErrorBanner, type SaveErrorBannerProps } from './save-error-banner';
 export {
   requireIfMatch,
+  splitError,
   useMasterWrite,
+  type SplitError,
   type MasterWriteOptions,
   type MasterWriteResult,
   type WriteHeaders,

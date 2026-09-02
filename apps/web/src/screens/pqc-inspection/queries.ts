@@ -2,8 +2,7 @@ import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { useMasterWrite, type MasterWriteResult, type WriteHeaders } from '../../patterns/master';
-import { runRequest, type ApiCallResult } from '../../patterns/request';
+import { runRequest } from '../../patterns/request';
 import type { CodeValueResponse } from './code-options';
 import type { CoverageDraft } from './coverage';
 import type { InspectionMeasurementInput } from './measurement-draft';
@@ -164,33 +163,17 @@ export const RESULT_STATUS: {
 };
 
 /**
- * 검사 결과를 저장한다 — **임시 저장과 검사 확정이 한 경로다**(요구서 §3-7).
+ * 검사 결과 저장의 **본문을 만든다** — 임시 저장과 검사 확정이 한 경로이고(요구서 §3-7)
+ * 상태값으로 갈린다.
+ *
+ * ⛔ **여기서 보내지 않는다.** 스펙 §5-7 이 이 화면을 오프라인 대상으로 못박았으므로 보내는
+ * 일은 outbox 가 맡는다(`outbox.ts` · 공유계약 C-1) — 통신을 기다리지 않고 담는 순간
+ * 성공이며, 멱등 키는 항목에 붙어 새로고침을 넘긴다.
  *
  * ⛔ **고치는 경로도 확정 전용 경로도 부르지 않는다.** 이 화면이 부르는 경로는 셋뿐이고
  * (진입·항목 목록·결과 저장) 저장은 언제나 새로 만든다.
- *
- * ⭐ **응답은 201 하나뿐이다.** 오프라인이면 HTTP 요청 자체가 일어나지 않아 서버가
- * 「접수했다」를 말할 수 없다 — 큐는 셸이 들고 있다가 연결되면 보낸다(2026-08-12 정정).
- *
- * ⭐ 확정은 **되돌릴 수 없는 쓰기**라 멱등 키 수명을 `until-applied` 로 둔다 — 통신이
- * 끊기거나 5xx 뒤에 다시 눌러도 서버가 다른 쓰기로 보지 않는다.
  */
-export const useSaveResult = (onSaved: () => void): MasterWriteResult<SaveResultVariables> => {
-  const { client } = useApiClient();
-
-  return useMasterWrite<SaveResultVariables, InspectionResultResponse>({
-    request: (variables, headers: WriteHeaders): Promise<ApiCallResult<InspectionResultResponse>> =>
-      client.POST('/quality/inspection-results', {
-        params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body: toCreateBody(variables),
-      }),
-    invalidateKeys: [ALL_KEY],
-    etagPath: null,
-    knownFields: SAVE_FIELDS,
-    keyLifetime: 'until-applied',
-    onSuccess: onSaved,
-  });
-};
+export const toResultBody = (v: SaveResultVariables): InspectionResultCreate => toCreateBody(v);
 
 /** 이 화면이 소유한 입력칸 — 서버 필드 오류를 인라인으로 낼지 배너로 올릴지 가르는 기준이다. */
 export const SAVE_FIELDS = ['acceptedQty', 'rejectedQty', 'heldQty'] as const;

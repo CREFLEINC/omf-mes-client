@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
@@ -486,6 +486,75 @@ describe('PqcInspectionScreen — 저장이 실어 가는 것', () => {
     await waitFor(() => expect(writes).toHaveLength(1));
 
     expect(await bodyOf(writes[0] as Request)).not.toHaveProperty('measurements');
+  });
+});
+
+describe('PqcInspectionScreen — 끊겨도 저장된다 (공유계약 C-1)', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  /*
+   * ⭐ **담는 순간이 곧 성공이다**(C-1 #2). 현장 검사가 통신에 묶이면 안 된다(스펙 §5-7) —
+   * 끊긴 망에서 저장이 실패로 보이면 검사자는 종이에 적고 나중에 옮긴다.
+   */
+  it('연결이 끊겨 있어도 저장이 성공으로 보이고 미동기 건수가 선다', async () => {
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+
+    try {
+      const { writes } = renderScreen();
+
+      await screen.findByRole('button', { name: t.result.save });
+      await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+      const header = await screen.findByRole('banner');
+
+      /* 담겼다는 사실이 곧 성공이다 — 서버에 물어보지 않았는데도 저장이 끝났다고 말한다. */
+      expect(await screen.findByText(t.result.saved)).toBeInTheDocument();
+      /* ⭐ 그 대신 **닿지 않았다는 사실**을 머리가 말한다(C-1 #4). 이것이 위 표시의 전제다. */
+      expect(within(header).getByText(messages.common.connection.unsent(1))).toBeInTheDocument();
+      expect(within(header).getByText(messages.common.connection.offline)).toBeInTheDocument();
+      /* ⛔ 요청은 나가지 않았다 — 나갔다면 「끊겨 있다」가 거짓이다. */
+      expect(writes).toHaveLength(0);
+    } finally {
+      online.mockRestore();
+    }
+  });
+
+  /*
+   * ⛔ **멱등 키가 새로고침을 넘어야 한다**(C-1 #5). 키를 메모리에만 들면 되살아난 화면이
+   * 새 키로 보내고, **같은 검사가 두 건의 결과로 기록된다** — 확정은 되돌릴 수 없는 쓰기라
+   * 그 사고가 특히 비싸다.
+   */
+  it('끊긴 동안 담긴 건이 새로고침을 넘어 같은 멱등 키로 나간다', async () => {
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    let stored: string | null = null;
+
+    try {
+      renderScreen();
+
+      await screen.findByRole('button', { name: t.result.save });
+      await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+      await waitFor(() => {
+        stored = globalThis.localStorage.getItem('omf-mes.pqc-inspection.outbox');
+        expect(stored).not.toBeNull();
+      });
+    } finally {
+      online.mockRestore();
+    }
+
+    const key = (JSON.parse(stored as unknown as string) as { idempotencyKey: string }[])[0]
+      ?.idempotencyKey;
+
+    expect(key).toBeTruthy();
+
+    /* 화면을 새로 세운다 — 되살아난 단말이다. 이번엔 연결돼 있다. */
+    cleanup();
+    const { writes } = renderScreen();
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    expect((writes[0] as Request).headers.get('Idempotency-Key')).toBe(key);
   });
 });
 
