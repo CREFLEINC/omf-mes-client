@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import {
@@ -193,6 +193,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.localStorage.clear();
+  vi.useRealTimers();
 });
 
 describe('DowntimeRegisterScreen — 진행 중 구획', () => {
@@ -428,6 +429,30 @@ describe('DowntimeRegisterScreen — 오프라인', () => {
   });
 });
 
+describe('DowntimeRegisterScreen — 합계만 못 받았을 때', () => {
+  it('보이는 줄은 서버 목록이므로 **「내 단말 입력분만」이라 부르지 않는다**', async () => {
+    renderScreen([
+      downtimeListRoute({ today: [downtime()] }),
+      /* 목록은 왔는데 집계만 실패한 상태. */
+      {
+        match: (request) => isGet(request, SUMMARY_PATH),
+        respond: () =>
+          jsonResponse(
+            { errors: [{ scope: 'screen', code: 'SAMPLE_FAIL', message: '합성 실패' }] },
+            { status: 500 },
+          ),
+      },
+      breakdownsRoute(),
+      gateRoute(),
+    ]);
+
+    /* 합계 자리에만 못 받았다고 적는다 — 0으로 채우지도, 범위를 좁게 말하지도 않는다. */
+    expect(await screen.findByText(new RegExp(t.errors.summaryUnavailable))).toBeTruthy();
+    expect(screen.queryByText(t.today.localOnly)).toBeNull();
+    expect(screen.queryByText(t.today.localOnlyDescription)).toBeNull();
+  });
+});
+
 describe('DowntimeRegisterScreen — 고장 연결', () => {
   it('연결한 고장의 정지 시각을 **제안만** 하고 자동으로 넣지 않는다', async () => {
     renderScreen([
@@ -472,5 +497,100 @@ describe('DowntimeRegisterScreen — 설비 미지정', () => {
 
     expect(screen.getByText(t.header.equipmentMissing)).toBeTruthy();
     expect(requests.some((request) => request.url.pathname.startsWith(DOWNTIMES_PATH))).toBe(false);
+  });
+});
+
+describe('DowntimeRegisterScreen — 시간이 흐른 뒤', () => {
+  /**
+   * 화면을 열어 둔 채 시간이 지나도 저장이 서야 한다.
+   *
+   * **실측 결함의 회귀 감지기다.** 시계를 「진행 중이 있을 때만」 돌렸더니, 저장이 열리는
+   * 상태가 곧 진행 중이 없는 상태라 정작 입력하는 동안 시계가 멈춰 있었다 — 몇 분 뒤
+   * `[지금]`으로 찍은 시각이 자기 화면의 멈춘 시계보다 «미래»가 되어 저장이 거부됐다.
+   */
+  it('20분 열어 둔 뒤 [지금]으로 찍어도 미래 시각으로 막지 않는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date(2026, 7, 11, 9, 0));
+
+    const { requests } = renderScreen([
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+      createRoute(),
+    ]);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20 * 60_000);
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: t.interval.now })[0] as HTMLElement);
+    await chooseReason();
+    save();
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText(t.errors.future)).toBeNull();
+    expect(postedBodies(requests)).toHaveLength(1);
+  }, 15_000);
+});
+
+describe('DowntimeRegisterScreen — 덜 친 종료 시각', () => {
+  it('종료 날짜만 넣고 시각을 비우면 **조용히 진행 중으로 저장하지 않는다**', async () => {
+    const { requests } = renderScreen([
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+      createRoute(),
+    ]);
+
+    await flush();
+    typeInterval(['2026-08-11', '14:20']);
+    fireEvent.change(screen.getByLabelText(`${t.interval.endedAt} ${t.interval.date}`), {
+      target: { value: '2026-08-11' },
+    });
+    await chooseReason();
+    save();
+    await flush();
+
+    /* 끝을 적으려던 구간이 진행 중으로 남으면 그 뒤로 새 비가동도 시작할 수 없다. */
+    expect(postedBodies(requests)).toHaveLength(0);
+    expect(screen.getByText(t.errors.endedIncomplete)).toBeTruthy();
+  });
+});
+
+describe('DowntimeRegisterScreen — 터치 타겟', () => {
+  /**
+   * 장갑 낀 손으로 누르는 버튼은 72픽셀 급이다 — 디자인 시스템의 `2xl`이 그 크기를 낸다.
+   *
+   * ⚠ 클래스 이름으로 재는 것은 차선이다. 스타일이 CSS 모듈이라 시험 환경에서는 계산된
+   * 크기를 읽을 수 없고, 크기를 정하는 것이 그 클래스 하나뿐이라 여기서는 그것이 잣대가 된다.
+   */
+  const isExtraLarge = (button: HTMLElement): boolean => /xxl/.test(button.className);
+
+  it('시각을 찍는 버튼과 액션바 버튼이 72픽셀 급으로 선다', async () => {
+    renderScreen([
+      downtimeListRoute({ ongoing: [ongoingDowntime()] }),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+    ]);
+
+    await screen.findByRole('region', { name: t.ongoing.title });
+
+    screen.getAllByRole('button', { name: t.interval.now }).forEach((button) => {
+      expect(isExtraLarge(button)).toBe(true);
+    });
+
+    expect(isExtraLarge(screen.getByRole('button', { name: t.ongoing.close }))).toBe(true);
+    expect(isExtraLarge(screen.getByRole('button', { name: t.actions.save }))).toBe(true);
+    expect(isExtraLarge(screen.getByRole('button', { name: t.actions.reset }))).toBe(true);
   });
 });

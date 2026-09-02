@@ -34,7 +34,17 @@ export const TodayPanel = ({
   isLocalOnly,
   now,
 }: TodayPanelProps) => {
-  const totalLabel = totalMinutes === null ? t.today.localOnly : toDurationLabel(totalMinutes);
+  /*
+   * 합계를 못 받은 이유가 둘이다 — 끊겨서 아예 부르지 않았거나, 불렀는데 실패했거나.
+   * **0으로 채우지 않는다**: 없는 값과 모르는 값을 같은 모양으로 그리면 오늘 비가동이 없었던
+   * 것처럼 읽힌다.
+   */
+  const totalLabel =
+    totalMinutes === null
+      ? isLocalOnly
+        ? t.today.localOnly
+        : t.errors.summaryUnavailable
+      : toDurationLabel(totalMinutes);
   const basisLabel = toClockLabel(now.toISOString());
 
   return (

@@ -13,7 +13,9 @@ import {
 const t = messages.downtimeRegister;
 
 /** 오류 갈래를 문구로. 짝 제약은 두 칸에 **같은 말**이 선다(스펙 §6-1). */
-const describeError = (kind: IntervalErrors['startedAt']): string | undefined => {
+type ErrorKind = IntervalErrors['startedAt'] | IntervalErrors['endedAt'];
+
+const describeError = (kind: ErrorKind): string | undefined => {
   switch (kind) {
     case 'required':
       return t.errors.startedRequired;
@@ -21,6 +23,8 @@ const describeError = (kind: IntervalErrors['startedAt']): string | undefined =>
       return t.errors.future;
     case 'order':
       return t.errors.endedBeforeStarted;
+    case 'incomplete':
+      return t.errors.endedIncomplete;
     case null:
       return undefined;
   }

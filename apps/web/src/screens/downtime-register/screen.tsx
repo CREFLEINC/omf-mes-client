@@ -88,9 +88,13 @@ export const DowntimeRegisterScreen = () => {
   const outbox = useOutbox();
   const gate = useTerminalGate(terminalId, processId);
 
-  /* 진행 중 구간이 있는 동안만 시계를 돌린다 — 볼 것이 없으면 깨울 이유도 없다. */
+  /*
+   * ⛔ **시계에 조건을 걸지 않는다.** 「진행 중이 있을 때만」으로 좁혔더니, 저장이 열리는
+   * 상태가 곧 진행 중이 없는 상태라 **정작 입력하는 동안 시계가 서 있었다** — 몇 분 뒤
+   * `[지금]`으로 찍은 시각이 멈춘 시계보다 미래가 되어 저장이 거부됐다.
+   */
+  const now = useNow();
   const ongoing = useOngoingDowntime(equipmentId);
-  const now = useNow(ongoing.downtime !== null);
 
   const day = toLocalDay(now);
   const today = useTodayDowntimes(equipmentId, day, outbox.isOnline);
@@ -99,8 +103,11 @@ export const DowntimeRegisterScreen = () => {
   /*
    * ④의 줄. 온라인이면 서버 목록이 정본이고, 끊겨 있으면 **이 단말이 아는 것만** 세운다.
    * 그 사실은 목록 위에서 이름으로 말한다.
+   *
+   * ⚠ **집계만 실패한 것을 「내 단말 입력분만」이라 부르지 않는다** — 그때 보이는 줄은 서버가
+   * 준 전체 목록이라 범위를 좁게 말하는 것이 사실과 다르다. 합계 자리에만 못 받았다고 적는다.
    */
-  const isLocalOnly = !outbox.isOnline || today.totalMinutes === null;
+  const isLocalOnly = !outbox.isOnline;
 
   const rows: TodayRow[] = useMemo(() => {
     const local = [

@@ -1,3 +1,5 @@
+import { TICK_MS } from './use-now';
+
 /**
  * 구간 — **이 화면에서는 시각 자체가 데이터다**(스펙 §5-2). 다른 화면에서는 「언제 적었나」가
  * 몇 분 틀려도 기록의 뜻이 변하지 않지만, 비가동은 **시작과 끝의 차가 곧 값**이다.
@@ -78,6 +80,10 @@ export interface IntervalMoments {
   ended: Date | null;
 }
 
+/** 한쪽 칸만 채운 상태 — 다 친 것도 비운 것도 아니다. */
+export const isPartiallyTyped = (field: TimeFieldDraft): boolean =>
+  (field.date === '') !== (field.time === '');
+
 export const readInterval = (draft: IntervalDraft): IntervalMoments => ({
   started: readTimeField(draft.startedAt),
   /* 「아직 진행 중」이면 끝 칸을 읽지 않는다 — 남아 있는 글자가 본문에 실리지 않게. */
@@ -87,7 +93,7 @@ export const readInterval = (draft: IntervalDraft): IntervalMoments => ({
 /** 어느 칸에 무엇이 잘못됐는가. 짝 제약은 **두 칸에 함께** 붙는다(스펙 §6-1). */
 export interface IntervalErrors {
   startedAt: 'required' | 'future' | 'order' | null;
-  endedAt: 'future' | 'order' | null;
+  endedAt: 'future' | 'order' | 'incomplete' | null;
 }
 
 export const NO_INTERVAL_ERRORS: IntervalErrors = { startedAt: null, endedAt: null };
@@ -98,20 +104,38 @@ export const NO_INTERVAL_ERRORS: IntervalErrors = { startedAt: null, endedAt: nu
  * ⚠ `now`를 인자로 받는 것은 시험을 위해서만이 아니다 — 검사와 본문 만들기가 **같은 순간**을
  * 봐야 「검사할 때는 과거였는데 보낼 때는 미래」 같은 틈이 생기지 않는다.
  */
-export const validateInterval = (draft: IntervalDraft, now: Date): IntervalErrors => {
+export const validateInterval = (
+  draft: IntervalDraft,
+  now: Date,
+  /*
+   * 화면의 시계는 틱 간격만큼 뒤처져 있을 수 있다. 그 폭 안의 값을 「미래」라 부르면 **방금
+   * `[지금]`으로 찍은 시각이 미래가 되어** 저장이 막힌다 — 실측으로 겪은 결함이다.
+   */
+  tolerance = TICK_MS,
+): IntervalErrors => {
+  const limit = now.getTime() + tolerance;
   const { started, ended } = readInterval(draft);
 
   if (started === null) {
     return { ...NO_INTERVAL_ERRORS, startedAt: 'required' };
   }
 
-  if (started.getTime() > now.getTime()) {
+  if (started.getTime() > limit) {
     return { ...NO_INTERVAL_ERRORS, startedAt: 'future' };
+  }
+
+  /*
+   * 「아직 진행 중」을 켜지 않았는데 끝 칸이 반만 채워져 있다 — **덜 친 것을 비운 것으로 읽지
+   * 않는다.** 그대로 두면 끝을 적으려던 구간이 조용히 진행 중으로 저장되고, 그 뒤로는 새
+   * 비가동을 시작할 수도 없다.
+   */
+  if (!draft.stillOngoing && isPartiallyTyped(draft.endedAt)) {
+    return { ...NO_INTERVAL_ERRORS, endedAt: 'incomplete' };
   }
 
   if (ended === null) return NO_INTERVAL_ERRORS;
 
-  if (ended.getTime() > now.getTime()) {
+  if (ended.getTime() > limit) {
     return { ...NO_INTERVAL_ERRORS, endedAt: 'future' };
   }
 
