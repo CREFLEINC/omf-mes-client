@@ -1537,6 +1537,100 @@ main > * + * {
 }
 
 /*
+ * 내용이 아니라 **폭이 열 너비를 정한다.** 34자리 번호가 표를 밀어 넓히면 오른쪽 끝의
+ * 선택 버튼이 표 밖으로 나가 보이지 않는다 — 목록이 화면 안에 들어오는 것이 먼저다.
+ */
+.pop-lot-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/*
+ * LOT 번호는 34자리다 — 남은 폭을 다 먹고 옆 열을 밀어낸다. 한 줄로 잘라 두고 전체는
+ * 툴팁으로 남긴다(뒷자리가 구분자라 고른 뒤 오른쪽 《발행》에서 온전히 다시 읽는다).
+ */
+.pop-lot-no {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 《발행》 구획 — **수치·입력·액션이 한 줄, 키패드가 그 옆**이다. 위아래로 쌓으면 구획이
+ * 830px 이 되어 1024×768 단말에서 「발행·인쇄」가 접힌 아래로 내려간다(실측).
+ */
+.pop-issue-layout {
+  display: grid;
+  /*
+   * ⛔ **남는 폭을 나눠 갖지 않는다**(`1fr`이 아니라 상한이다). 관리웹 창을 넓히면 `1fr`은
+   * 수치·입력칸을 함께 늘려 **네 자리 숫자 칸이 600px가 되고** 키패드만 오른쪽 끝으로
+   * 떨어져 나간다 — 눈이 좌우로 왕복한다. 실기(1024)에서는 상한에 못 미쳐 이 값이 보이지
+   * 않고, 넓은 화면에서만 폭을 묶는다.
+   */
+  grid-template-columns: minmax(0, 34rem) auto;
+  justify-content: start;
+  align-items: start;
+  gap: var(--space-5);
+}
+
+/*
+ * 좁아지면 키패드를 아래로 내린다 — 두 열을 우겨넣으면 수치가 한 글자씩 접혀 읽을 수 없다.
+ * POP 실기(1024×768)는 위 두 열 배치로 선다.
+ */
+@media (max-width: 900px) {
+  .pop-issue-layout {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+}
+
+.pop-issue-main {
+  min-width: 0;
+}
+
+/*
+ * LOT 번호가 34자리라 값 칸을 넘어 옆 키패드 위로 흘렀다(실측). 끊어 내리되 «자르지는»
+ * 않는다 — 목록에서 이미 잘렸으므로 고른 뒤 번호 전체를 확인할 자리가 여기뿐이다.
+ *
+ * 이 화면에만 건다. `.pop-figures` 는 다른 POP 화면도 쓰는데 그쪽 값은 짧은 수치다.
+ */
+.pop-issue-main .pop-figures dd {
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 받는 값은 네 자리다 — 칸이 그보다 훨씬 넓으면 「무엇을 넣는 칸인가」가 흐려지고, 친 값이
+ * 왼쪽 끝에 홀로 남는다. 키패드가 옆에 있어 손으로 칠 일도 드물다.
+ */
+.pop-issue-input {
+  margin-block-start: var(--space-5);
+  max-width: 16rem;
+}
+
+/* DS 입력칸은 제 기본 폭을 갖는다 — 이 자리에서는 위 상한을 따르게 한다. */
+.pop-issue-input > * {
+  width: 100%;
+}
+
+/*
+ * 번호 미리보기. 발행 «전»에는 안내 문장이, 발행 뒤에는 서버가 매긴 범위가 같은 자리에 선다 —
+ * 자리를 옮기면 방금 읽던 곳이 사라진다.
+ */
+.pop-preview {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-4) 0 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.pop-preview-label {
+  font: var(--type-label-lg);
+  color: var(--on-surface-muted);
+}
+
+/*
  * 사용률 막대의 이름 — 막대가 「남은 비율」이 아니라 「쓴 비율」임을 그 자리에서 말한다.
  * 이름이 없으면 사용 가능 줄의 백분율이 「사용 가능이 0%」로 읽힌다.
  */

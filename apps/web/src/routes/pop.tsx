@@ -2,6 +2,7 @@ import type { RouteObject } from 'react-router';
 
 import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
+import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
@@ -112,4 +113,16 @@ export const popRoutes: RouteObject[] = [
    * 작업 화면에서 진입하라고 안내한다.
    */
   { path: '/pop/pqc-inspection', element: <PqcInspectionScreen /> },
+  /*
+   * P-02-05 — 인식표 발행·부착. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시
+   * 선택(`P-02-01`)이 아직 이 저장소에 없다. 사번은 `P-CO-01` 이 `patterns/worker-session` 에
+   * 두지만, **그 자리를 읽는 화면은 아직 없다** — 그 파일이 「이 자리로 모으는 일은 셸이
+   * `pop-identity` 를 채울 때」라고 못박았다. 그때 `entry-context.ts` 하나가 바뀐다.
+   *
+   * ⚠ **단말·공정은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 비어 있는 동안 이 화면은
+   * 「단말이 확인되지 않았습니다」로 발행이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
+   */
+  { path: '/pop/tag-issue', element: <IdentificationTagIssueScreen /> },
 ];
