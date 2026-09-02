@@ -40,7 +40,10 @@ const tiles = [
   },
   {
     label: t.tiles.productionMove,
-    screens: [{ to: '/repair-roundtrip', label: messages.repairRoundtrip.title }],
+    screens: [
+      { to: '/wip-handover', label: messages.wipHandover.title },
+      { to: '/repair-roundtrip', label: messages.repairRoundtrip.title },
+    ],
   },
   {
     label: t.tiles.shipment,

@@ -102,6 +102,7 @@ import { putaway } from './putaway';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
+import { wipHandover } from './wip-handover';
 import { workerAssignment } from './worker-assignment';
 
 export const ko = {
@@ -193,6 +194,7 @@ export const ko = {
   temporaryPutaway,
   poChangeReview,
   shellHome,
+  wipHandover,
   workerAssignment,
 } as const;
 
