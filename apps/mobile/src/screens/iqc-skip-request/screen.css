@@ -1,0 +1,69 @@
+.iqc-skip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.iqc-skip > * {
+  flex: none;
+}
+
+.iqc-skip__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.iqc-skip__section h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.iqc-skip p {
+  margin: 0;
+}
+
+.iqc-skip__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.iqc-skip__lot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+  align-items: flex-start;
+}
+
+.iqc-skip__requests {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.iqc-skip__request {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  align-items: center;
+}
+
+.iqc-skip__request-when {
+  color: var(--on-surface-muted, inherit);
+}
+
+/* 스캔이 실패했을 때 손으로 넣는 자리. 입력이 넓고 버튼이 붙는다. */
+.iqc-skip__manual {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-end;
+}
+
+.iqc-skip__manual > *:first-child {
+  flex: 1;
+}

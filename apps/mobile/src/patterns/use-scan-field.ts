@@ -54,6 +54,12 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
         return;
       }
 
+      /*
+       * 이 칸은 스캐너가 밀어 넣는 자리다. 포커스를 잡고 있어야 입력을 받지만, 그 포커스에
+       * 소프트 키보드가 딸려 오면 화면 절반이 덮여 목록도 버튼도 가린다. 손으로 넣는 길은
+       * 화면마다 따로 둔다.
+       */
+      node.inputMode = 'none';
       node.addEventListener('blur', handleBlur);
       detachRef.current =
         adapterRef.current?.attach(node, (value) => {

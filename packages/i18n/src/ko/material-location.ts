@@ -12,7 +12,9 @@ export const materialLocation = {
   scan: {
     label: '스캔 대기',
     placeholder: '자재 LOT을 읽어 주세요',
+    /* 스캔 칸은 스캐너 전용이라 손 입력을 여기서 받는다. */
     manualEntry: '직접 입력',
+    manualSubmit: '넣기',
   },
   lot: {
     /** 잔액이 LOT 단위로 나뉘지 않는다는 뜻이다. 없다는 뜻이 아니다. */

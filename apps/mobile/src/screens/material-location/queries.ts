@@ -9,46 +9,9 @@ type Client = ReturnType<typeof useApiClient>['client'];
 export type InventoryBalance = components['schemas']['InventoryBalance'];
 export type LotHold = components['schemas']['LotHold'];
 
-/** 스캔값이 가리키는 LOT. 찾지 못하면 null이며, 조회 실패와는 다른 결과다. */
-export type ScannedLot = { lotId: number; lotNo: string; itemId: number } | null;
-
 export const materialLocationKeys = {
-  lot: (code: string | null) => ['material-location-lot', code] as const,
   balances: (lotId: number | null) => ['material-location-balances', lotId] as const,
   holds: (lotId: number | null) => ['material-location-holds', lotId] as const,
-};
-
-const findLot = async (client: Client, code: string): Promise<ScannedLot> => {
-  const data = await runRequest(() =>
-    client.GET('/trace/lots', { params: { query: { q: code } } }),
-  );
-
-  // q는 LOT 번호와 외부 식별자를 함께 훑으므로 다른 줄이 섞여 온다.
-  const found = data.items.find((lot) => lot.lotNo === code);
-
-  return found === undefined
-    ? null
-    : { lotId: found.lotId, lotNo: found.lotNo, itemId: found.itemId };
-};
-
-/**
- * 스캔값으로 LOT을 찾는다. 찾지 못한 것과 조회가 실패한 것을 훅이 갈라 준다 —
- * 전자는 데이터가 돌아온 정상 결과(null)이고 후자는 오류 상태다.
- */
-export const useScannedLot = (code: string | null): UseQueryResult<ScannedLot> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: materialLocationKeys.lot(code),
-    enabled: code !== null,
-    queryFn: () => {
-      if (code === null) {
-        throw new Error('스캔하기 전에는 LOT을 조회하지 않습니다.');
-      }
-
-      return findLot(client, code);
-    },
-  });
 };
 
 const fetchBalances = async (client: Client, lotId: number): Promise<InventoryBalance[]> => {

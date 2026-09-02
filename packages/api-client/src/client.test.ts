@@ -122,3 +122,55 @@ describe('createApiClient — 질의 직렬화', () => {
     expect(queryOf(urls[0], 'includeInactive')).toBe('false');
   });
 });
+
+describe('createApiClient — 단말 토큰', () => {
+  const capture = (authToken?: () => string | null) => {
+    const headers: Headers[] = [];
+    const { client } = createApiClient({
+      baseUrl: 'http://mock.test',
+      authToken,
+      fetch: async (request) => {
+        headers.push(request.headers);
+        return jsonResponse([]);
+      },
+    });
+
+    return { client, headers };
+  };
+
+  it('토큰이 있으면 Bearer 로 싣는다', async () => {
+    const { client, headers } = capture(() => 'tok-1');
+
+    await client.GET('/mdm/warehouses');
+
+    expect(headers[0]?.get('Authorization')).toBe('Bearer tok-1');
+  });
+
+  it('토큰이 없으면 헤더를 붙이지 않는다', async () => {
+    const { client, headers } = capture(() => null);
+
+    await client.GET('/mdm/warehouses');
+
+    expect(headers[0]?.get('Authorization')).toBeNull();
+  });
+
+  /* 등록·해제로 값이 바뀐다. 만들 때 고정하면 재등록 뒤에도 옛 토큰을 보낸다. */
+  it('요청마다 다시 읽는다', async () => {
+    let token = 'tok-1';
+    const { client, headers } = capture(() => token);
+
+    await client.GET('/mdm/warehouses');
+    token = 'tok-2';
+    await client.GET('/mdm/warehouses');
+
+    expect(headers[1]?.get('Authorization')).toBe('Bearer tok-2');
+  });
+
+  it('토큰 공급자를 주지 않으면 헤더가 없다', async () => {
+    const { client, headers } = capture();
+
+    await client.GET('/mdm/warehouses');
+
+    expect(headers[0]?.get('Authorization')).toBeNull();
+  });
+});

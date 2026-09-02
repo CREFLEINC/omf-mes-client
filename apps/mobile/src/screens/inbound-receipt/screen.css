@@ -1,0 +1,97 @@
+.receipt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.receipt > * {
+  flex: none;
+}
+
+.receipt__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.receipt__section h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.receipt p {
+  margin: 0;
+}
+
+.receipt__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.receipt__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.receipt__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.receipt__wide {
+  width: 100%;
+}
+
+.receipt__lines {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 한 줄에 세 값이 들어가 폭이 모자란다. 줄바꿈을 허용하고 왼쪽으로 붙인다. */
+.receipt__line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  align-items: baseline;
+  justify-content: flex-start;
+  text-align: start;
+}
+
+/* 스캔이 실패했을 때 손으로 넣는 자리와 날짜 두 칸이 같은 모양으로 나란히 선다. */
+.receipt__row {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-end;
+}
+
+.receipt__row > *:first-child {
+  flex: 1;
+}
+
+/* 발주·누적·이번 도착·남은 예정 네 수. 이름과 값이 짝으로 붙어야 어느 수인지 읽힌다. */
+.receipt__counts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin: var(--space-3, 12px) 0;
+}
+
+.receipt__counts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt__under-choice {
+  display: flex;
+  gap: var(--space-3, 12px);
+  align-items: center;
+  flex-wrap: wrap;
+}

@@ -11,6 +11,10 @@ import type { ReactNode } from 'react';
 
 import { appQueryDefaults } from '../app/providers';
 import { ApiClientProvider } from '../patterns/api-context';
+import { OutboxProvider } from '../patterns/outbox';
+import { createOutboxTransport } from '../app/outbox-transport';
+import { WorkerSessionProvider } from '../patterns/worker-session';
+import { DeviceRegistrationProvider } from '../patterns/device-registration';
 
 /** 테스트 전용 기준 URL. 실제로 접속하지 않으며 스텁 fetch가 모든 요청을 받는다. */
 const TEST_BASE_URL = 'http://api.test';
@@ -70,7 +74,14 @@ const createProviders = (fetch: StubFetch) => {
   const Providers = ({ children }: { children: ReactNode }): ReactNode => (
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
-        <ToastProvider>{children}</ToastProvider>
+        <DeviceRegistrationProvider>
+          {/* 큐가 실제로 같은 스텁 fetch 를 지나야 화면이 보내는 것을 잴 수 있다. */}
+          <OutboxProvider send={createOutboxTransport(apiClient)}>
+            <WorkerSessionProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </WorkerSessionProvider>
+          </OutboxProvider>
+        </DeviceRegistrationProvider>
       </ApiClientProvider>
     </QueryClientProvider>
   );

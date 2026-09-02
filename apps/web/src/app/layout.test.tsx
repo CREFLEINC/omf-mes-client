@@ -454,7 +454,7 @@ describe('AppLayout', () => {
     expect(links.indexOf('/quality/approvals')).toBeLessThan(links.indexOf('/approval/inbox'));
   });
 
-  it('출하 섹션(출하지시서 Import·작업지시 생성 · 출하 예정 목록 · 출하 처리)이 자재창고 뒤·생산 앞에 있다', () => {
+  it('출하 섹션(출하지시서 Import·작업지시 생성 · 출하 예정 목록 · OQC 출하검사 판정 · 출하 처리)이 자재창고 뒤·생산 앞에 있다', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
@@ -470,9 +470,21 @@ describe('AppLayout', () => {
       'href',
       '/shipment/shipment-schedule',
     );
+    expect(within(sidebar).getByRole('link', { name: 'OQC 출하검사 판정' })).toHaveAttribute(
+      'href',
+      '/shipment/oqc-inspection',
+    );
     expect(
       within(sidebar).getByRole('link', { name: '출하 처리(상차·실물 출고)' }),
     ).toHaveAttribute('href', '/shipment/shipment-processing');
+    expect(within(sidebar).getByRole('link', { name: '긴급 직행 출하 처리' })).toHaveAttribute(
+      'href',
+      '/shipment/expedited-shipment',
+    );
+    expect(within(sidebar).getByRole('link', { name: '출하 확정·취소' })).toHaveAttribute(
+      'href',
+      '/shipment/shipment-confirm',
+    );
     /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
       links.indexOf('/logistics/document-progress') + 1,
@@ -480,9 +492,24 @@ describe('AppLayout', () => {
     expect(links.indexOf('/shipment/shipment-schedule')).toBe(
       links.indexOf('/shipment/shipment-request-create') + 1,
     );
-    /* 예정 목록에서 피킹까지 끝난 후보를 처리하므로 그 바로 뒤다(업무 순서). */
-    expect(links.indexOf('/shipment/shipment-processing')).toBe(
+    /* 상차 전에 출하검사를 판정하므로 예정 목록 뒤·출하 처리 앞이다(업무 순서). */
+    expect(links.indexOf('/shipment/oqc-inspection')).toBe(
       links.indexOf('/shipment/shipment-schedule') + 1,
+    );
+    /* 예정 목록에서 피킹까지 끝난 후보를 처리하므로 판정 바로 뒤다(업무 순서). */
+    expect(links.indexOf('/shipment/shipment-processing')).toBe(
+      links.indexOf('/shipment/oqc-inspection') + 1,
+    );
+    /*
+     * ⭐ 예외 흐름은 정상 흐름 «뒤»다 — 앞에 두면 창고 경유·피킹·포장을 건너뛰는 화면이
+     * 기본으로 읽힌다(W-04-05).
+     */
+    expect(links.indexOf('/shipment/expedited-shipment')).toBe(
+      links.indexOf('/shipment/shipment-processing') + 1,
+    );
+    /* 확정은 «만드는» 두 화면 뒤다 — 되돌릴 수 있는 구간이 여기서 끝난다(W-04-12). */
+    expect(links.indexOf('/shipment/shipment-confirm')).toBe(
+      links.indexOf('/shipment/expedited-shipment') + 1,
     );
     expect(links.indexOf('/shipment/shipment-processing')).toBeLessThan(
       links.indexOf('/production/work-order-close'),
@@ -517,19 +544,31 @@ describe('AppLayout', () => {
       'href',
       '/production/work-order-close',
     );
+    expect(within(sidebar).getByRole('link', { name: 'P/O 변경 관리자 확인' })).toHaveAttribute(
+      'href',
+      '/production/po-change-review',
+    );
     expect(within(sidebar).getByRole('link', { name: '긴급 W/O 발행' })).toHaveAttribute(
       'href',
       '/production/emergency-work-orders',
+    );
+    expect(within(sidebar).getByRole('link', { name: '추가 자재 출고 요청' })).toHaveAttribute(
+      'href',
+      '/production/material-issue-requests',
     );
     expect(within(sidebar).getByRole('link', { name: 'W/O 진행현황 조회' })).toHaveAttribute(
       'href',
       '/production/work-order-progress',
     );
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/shipment/shipment-processing') + 1,
+      links.indexOf('/shipment/shipment-confirm') + 1,
+    );
+    /* 변경 판정은 수신·조회 바로 뒤다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06). */
+    expect(links.indexOf('/production/po-change-review')).toBe(
+      links.indexOf('/production/production-orders') + 1,
     );
     expect(links.indexOf('/production/production-plans')).toBe(
-      links.indexOf('/production/production-orders') + 1,
+      links.indexOf('/production/po-change-review') + 1,
     );
     expect(links.indexOf('/production/work-order-assignments')).toBe(
       links.indexOf('/production/production-plans') + 1,
@@ -644,8 +683,12 @@ describe('AppLayout', () => {
       'href',
       '/system/password-change',
     );
-    expect(links.indexOf('/system/password-change')).toBe(
-      links.indexOf('/system/approval-route') + 1,
+    /*
+     * ⭐ 견주는 것은 **맨 끝인가**이지 「결재선 다음인가」가 아니다. 관리자 설정 항목은 앞으로도
+     * 더 붙으므로, 인접으로 못 박으면 항목이 늘 때마다 뜻과 무관하게 시험이 깨진다.
+     */
+    expect(links.indexOf('/system/password-change')).toBeGreaterThan(
+      links.indexOf('/system/approval-route'),
     );
     expect(links.indexOf('/system/password-change')).toBe(links.length - 1);
   });
@@ -691,6 +734,7 @@ describe('AppLayout', () => {
       '/dashboard',
       '/master-data/warehouse-location',
       '/master-data/putaway-rule',
+      '/master-data/warehouse-layout',
       '/master-data/routing',
       '/master-data/inspection-standard',
       '/master-data/defect-cause-code',
@@ -712,13 +756,23 @@ describe('AppLayout', () => {
       '/logistics/document-progress',
       '/shipment/shipment-request-create',
       '/shipment/shipment-schedule',
+      /* W-04-03 — 상차 전에 판정한다. 예정 목록 뒤·출하 처리 앞이다(업무 순서). */
+      '/shipment/oqc-inspection',
       '/shipment/shipment-processing',
+      /* W-04-05 — 같은 출하 생성 경로의 예외 흐름이라 정상 흐름 바로 뒤다. */
+      '/shipment/expedited-shipment',
+      /* W-04-12 — 되돌릴 수 있는 구간이 여기서 끝난다. 만드는 두 화면 뒤다. */
+      '/shipment/shipment-confirm',
       '/production/production-orders',
+      /* W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다. */
+      '/production/po-change-review',
       '/production/production-plans',
       '/production/work-order-assignments',
       '/production/work-order-release',
       '/production/work-order-close',
       '/production/emergency-work-orders',
+      /* W-02-10 — 긴급 발행이 만든 W/O 의 부족 자재를 잇는 자리라 그 바로 뒤다. */
+      '/production/material-issue-requests',
       '/production/work-order-progress',
       '/quality/lot-status',
       '/quality/lot-status-transition',
@@ -733,11 +787,18 @@ describe('AppLayout', () => {
       '/equipment/shot-conversion',
       '/equipment/gauge-master',
       '/equipment/gauge-calibration',
+      '/equipment/failures',
+      '/equipment/maintenance-orders',
+      '/equipment/maintenance-results',
+      '/equipment/tool-pm-order',
+      '/equipment/tool-pm-result',
       '/equipment/downtime-summary',
       '/approval/inbox',
       '/notification/center',
+      '/notification/notices',
       '/system/users-roles',
       '/system/approval-route',
+      '/system/terminal-process-map',
       '/system/password-change',
     ]);
   });

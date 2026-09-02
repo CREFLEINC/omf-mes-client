@@ -28,6 +28,7 @@ const filters = (overrides: Partial<PendingFilters> = {}): PendingFilters => ({
   itemId: '',
   severityCode: '',
   statusCode: '',
+  sourceCode: '',
   ...overrides,
 });
 
@@ -91,6 +92,22 @@ describe('readPendingFilters', () => {
   it('값 목록이 비어 있으면 어떤 코드도 읽지 않는다', () => {
     expect(readPendingFilters(params('sev=CODE-B'), TODAY).severityCode).toBe('');
   });
+
+  /*
+   * ⭐ 원천은 **값 목록을 주입받지 않는데도** 읽혀야 한다 — 계약이 두 값을 열거한 축이라
+   * 공통코드 확정을 기다리지 않는다. 심각도·상태와 같은 자리에 두면 값 목록이 비었다고
+   * 판단해 조용히 버리게 되므로, 주입 없이 부르는 갈래를 따로 물어 둔다.
+   */
+  it('⭐ 원천은 값 목록을 주입하지 않아도 읽는다 — 계약이 열거한 축이다', () => {
+    expect(readPendingFilters(params('src=RETURN'), TODAY).sourceCode).toBe('RETURN');
+    expect(readPendingFilters(params('src=PRODUCT'), TODAY).sourceCode).toBe('PRODUCT');
+  });
+
+  it('⛔ 계약에 없는 원천 값은 그대로 보내지 않는다', () => {
+    expect(readPendingFilters(params('src=REPAIR'), TODAY).sourceCode).toBe('');
+    expect(readPendingFilters(params('src=product'), TODAY).sourceCode).toBe('');
+    expect(readPendingFilters(params('src='), TODAY).sourceCode).toBe('');
+  });
 });
 
 describe('readPage', () => {
@@ -149,10 +166,19 @@ describe('toAppliedSearchParams', () => {
   });
 
   it('빈 조건은 주소에서 지운다 — 빈 값을 남기지 않는다', () => {
-    const next = toAppliedSearchParams(params('item=5001&sev=CODE-B'), filters(), 1);
+    const next = toAppliedSearchParams(params('item=5001&sev=CODE-B&src=RETURN'), filters(), 1);
 
     expect(next.get('item')).toBeNull();
     expect(next.get('sev')).toBeNull();
+    expect(next.get('src')).toBeNull();
+  });
+
+  /* 주소에 실려야 새로고침·뒤로가기·주소 공유가 같은 목록을 낸다. */
+  it('원천을 주소에 싣고, 그 주소를 다시 읽으면 같은 값이 나온다', () => {
+    const next = toAppliedSearchParams(params(''), filters({ sourceCode: 'RETURN' }), 1);
+
+    expect(next.get('src')).toBe('RETURN');
+    expect(readPendingFilters(next, TODAY).sourceCode).toBe('RETURN');
   });
 
   it('이 화면이 모르는 주소 값은 건드리지 않는다', () => {
@@ -201,7 +227,12 @@ describe('toPendingListQuery', () => {
   it('고른 조건만 싣는다 — 빈 코드를 보내지 않는다', () => {
     const query = queryOf(
       toPendingListQuery(
-        filters({ itemId: '5001', severityCode: 'CODE-B', statusCode: 'CODE-C' }),
+        filters({
+          itemId: '5001',
+          severityCode: 'CODE-B',
+          statusCode: 'CODE-C',
+          sourceCode: 'RETURN',
+        }),
         2,
         KST,
       ),
@@ -210,7 +241,12 @@ describe('toPendingListQuery', () => {
     expect(query.itemId).toBe(5001);
     expect(query.severityCode).toBe('CODE-B');
     expect(query.statusCode).toBe('CODE-C');
+    expect(query.sourceCode).toBe('RETURN');
     expect(query.page).toBe(2);
+  });
+
+  it('원천을 고르지 않으면 싣지 않는다 — 빈 코드로 거르게 하지 않는다', () => {
+    expect(queryOf(toPendingListQuery(filters(), 1, KST)).sourceCode).toBeUndefined();
   });
 
   it('품목을 숫자로 보낸다 — 계약이 정수를 받는다', () => {

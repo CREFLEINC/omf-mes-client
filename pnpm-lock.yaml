@@ -32,6 +32,9 @@ importers:
       '@aparajita/capacitor-secure-storage':
         specifier: 8.0.0
         version: 8.0.0
+      '@capacitor-mlkit/barcode-scanning':
+        specifier: 8.1.1
+        version: 8.1.1(@capacitor/core@8.5.0)
       '@capacitor/android':
         specifier: 8.5.0
         version: 8.5.0(@capacitor/core@8.5.0)
@@ -51,14 +54,17 @@ importers:
         specifier: 8.0.1
         version: 8.0.1(@capacitor/core@8.5.0)
       '@crefle/web-ui':
-        specifier: github:CREFLEINC/design-system-v2-webui#8c4a7751f0760b438d185546796cbdc4bc1fabee
-        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/8c4a7751f0760b438d185546796cbdc4bc1fabee(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: github:CREFLEINC/design-system-v2-webui#d63fdcf
+        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@omf-mes/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
       '@omf-mes/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@omf-mes/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       '@tanstack/react-query':
         specifier: ^5.101.4
         version: 5.101.4(react@19.2.8)
@@ -140,8 +146,8 @@ importers:
   apps/web:
     dependencies:
       '@crefle/web-ui':
-        specifier: github:CREFLEINC/design-system-v2-webui#8c4a7751f0760b438d185546796cbdc4bc1fabee
-        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/8c4a7751f0760b438d185546796cbdc4bc1fabee(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: github:CREFLEINC/design-system-v2-webui#d63fdcf
+        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@omf-mes/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -232,8 +238,8 @@ importers:
   packages/ui:
     dependencies:
       '@crefle/web-ui':
-        specifier: github:CREFLEINC/design-system-v2-webui#8c4a7751f0760b438d185546796cbdc4bc1fabee
-        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/8c4a7751f0760b438d185546796cbdc4bc1fabee(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        specifier: github:CREFLEINC/design-system-v2-webui#d63fdcf
+        version: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
     devDependencies:
       '@types/react':
         specifier: ^19.1.9
@@ -244,6 +250,9 @@ importers:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.1.2)(jsdom@29.1.1(@noble/hashes@2.3.0))(vite@7.3.6(@types/node@26.1.2)(jiti@2.7.0))
 
 packages:
 
@@ -360,6 +369,11 @@ packages:
     resolution: {integrity: sha512-ctxtJ/eA+t+6q2++vj5j7FYX3nRu311q1wfYH3xjlLOsczhlhxAg2FWNUXhpGvAw3BWo1xBcvOV6/YLc2r5FJw==}
     hasBin: true
 
+  '@capacitor-mlkit/barcode-scanning@8.1.1':
+    resolution: {integrity: sha512-hVhxTIBXlZzhejtjSe5If3+JknWXKeAdRpV2QDuj1Tn/nS38i/Ty3tKLEa7whvQjclM6SQOYVCvZvkMORlhT1w==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
+
   '@capacitor/android@8.5.0':
     resolution: {integrity: sha512-Rb3prJeQiTp0pQhSSOReJuG9VgibOGMG4ECs+UhMwr6TCCHZ3NCZO811bDA0HxD0xrT/gCrJAsY5yfEATu84JQ==}
     peerDependencies:
@@ -398,8 +412,8 @@ packages:
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
 
-  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/8c4a7751f0760b438d185546796cbdc4bc1fabee':
-    resolution: {gitHosted: true, integrity: sha512-m2VGKGhh4qnR+rEJCLihfhawtSGqaYR1/dcoZgkEA+T86uwAR3ul20SCqaimpAo62/8Xujeptxeu9Us9YEptMA==, tarball: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/8c4a7751f0760b438d185546796cbdc4bc1fabee}
+  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155':
+    resolution: {gitHosted: true, integrity: sha512-q7d3r+Q/Am+OoRs5P/V5VVAsl85vM3zFaGFs3zXPZvJtJsfXL84Q9O3EkKXHpFm+ROk3VKk61x08tP3h4GcfZA==, tarball: https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155}
     version: 0.2.0
     engines: {node: '>=20.19'}
     peerDependencies:
@@ -3449,6 +3463,10 @@ snapshots:
     dependencies:
       css-tree: 3.2.1
 
+  '@capacitor-mlkit/barcode-scanning@8.1.1(@capacitor/core@8.5.0)':
+    dependencies:
+      '@capacitor/core': 8.5.0
+
   '@capacitor/android@8.5.0(@capacitor/core@8.5.0)':
     dependencies:
       '@capacitor/core': 8.5.0
@@ -3500,7 +3518,7 @@ snapshots:
     dependencies:
       '@capacitor/core': 8.5.0
 
-  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/8c4a7751f0760b438d185546796cbdc4bc1fabee(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)

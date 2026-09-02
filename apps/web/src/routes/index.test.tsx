@@ -613,6 +613,14 @@ describe('appRouter', () => {
    */
   it('비밀번호 변경이 시스템 관리 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/system/password-change');
+  });
+
+  /**
+   * ⭐ **단말은 시스템 관리의 자원이다.** 계약 경로는 `/mdm/terminals`이지만 이 화면이 하는 일은
+   * 기준정보 편집이 아니라 「어느 단말에서 무엇을 열어 둘 것인가」의 운영 설정이다.
+   */
+  it('W-CO-06 단말기-공정 매핑을 시스템 관리 아래에 둔다', () => {
+    expect(routedPaths()).toContain('/system/terminal-process-map');
     expect(routedPaths()).not.toContain('/account/password');
     expect(routedPaths()).not.toContain('/app/users/me:change-password');
   });
@@ -677,12 +685,22 @@ describe('appRouter', () => {
    */
   it('알림센터가 알림 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/notification/center');
+  });
+
+  /** ⭐ 알림센터가 «받는» 자리이고 공지·전달이 «보내는» 자리다 — 같은 묶음에 둔다. */
+  it('W-CO-04 공지·전달을 알림 아래에 둔다', () => {
+    expect(routedPaths()).toContain('/notification/notices');
     expect(routedPaths()).not.toContain('/app/notifications');
     expect(routedPaths()).not.toContain('/system/notification-center');
   });
 
   it('적치 규칙이 기준정보 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/master-data/putaway-rule');
+  });
+
+  /** ⭐ 창고·Location 이 만든 위치를 이 화면이 도면에 얹는다 — 같은 묶음이다. */
+  it('W-CO-08 창고 배치도를 기준정보 아래에 둔다', () => {
+    expect(routedPaths()).toContain('/master-data/warehouse-layout');
     expect(routedPaths()).not.toContain('/logistics/putaway-rules');
     expect(routedPaths()).not.toContain('/logistics/putaway-rule');
   });
@@ -1726,6 +1744,16 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       '/equipment/gauge-master',
       /* W-05-10 — 계측기 마스터 바로 뒤다. 이력은 그 마스터가 있어야 적을 수 있다. */
       '/equipment/gauge-calibration',
+      /* W-05-04 — 일하는 화면이라 정해 두는 화면들과 결과를 보는 화면 사이다. */
+      '/equipment/failures',
+      /* W-05-05 — 고장이 트리거의 한 원천이라 고장 처리 바로 뒤다. */
+      '/equipment/maintenance-orders',
+      /* W-05-06 — 지시가 이 실적의 대상이라 발행 바로 뒤다. */
+      '/equipment/maintenance-results',
+      /* W-05-02 — 설비 보전 실적 뒤다. 「설비 보전 → 툴 보전」 차례를 만든다. */
+      '/equipment/tool-pm-order',
+      /* W-05-03 — 오더가 이 실적의 대상이라 오더 생성 바로 뒤다. */
+      '/equipment/tool-pm-result',
       /* W-05-08 — 마스터·설정 뒤다. 정해 두는 화면들과 그 결과를 보는 화면을 섞지 않는다. */
       '/equipment/downtime-summary',
     ]);
