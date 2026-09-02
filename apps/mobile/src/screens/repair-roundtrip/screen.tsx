@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
+import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -69,6 +70,18 @@ export const RepairRoundtripScreen = () => {
   const [typing, setTyping] = useState(false);
   const [result, setResult] = useState<RepairResult | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  /*
+   * 쓰기마다 키를 따로 둔다. 하나를 나눠 쓰면 실패한 투입의 키가 살아 있는 채로 반출에 실려,
+   * 서버가 투입의 응답을 되돌려 주고 화면은 반출을 기록했다고 말한다 - 왕복은 열린 채다.
+   *
+   * 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 키가 스스로 비워지게 한다. 수량과 결과도
+   * 대상에 넣는다 - 값이 달라졌는데 앞 키로 가면 서버가 앞 시도로 보고 흡수한다.
+   *
+   * 친 문자열이 아니라 실제로 보낼 값으로 짓는다. 20 과 20.0 은 같은 쓰기인데 문자열로 재면
+   * 다른 키를 받는다.
+   */
+  const dispatchKey = useIdempotencyKey(`${String(defectId)}:${String(Number(qty.trim()))}`);
+  const returnKey = useIdempotencyKey(`${String(executionId)}:${String(result)}`);
 
   const scanField = useScanField({
     onScan: (value) => {
@@ -148,8 +161,14 @@ export const RepairRoundtripScreen = () => {
     }
 
     await dispatch
-      .mutateAsync({ defect, qty, workerNo: worker.workerNo })
+      .mutateAsync({
+        defect,
+        qty,
+        workerNo: worker.workerNo,
+        idempotencyKey: dispatchKey.current(),
+      })
       .then(() => {
+        dispatchKey.reset();
         setDone(t.dispatch.done);
       })
       .catch(() => null);
@@ -165,8 +184,10 @@ export const RepairRoundtripScreen = () => {
         repairExecutionId: execution.repairExecutionId,
         result,
         workerNo: worker.workerNo,
+        idempotencyKey: returnKey.current(),
       })
       .then(() => {
+        returnKey.reset();
         setDone(t.return.done);
       })
       .catch(() => null);

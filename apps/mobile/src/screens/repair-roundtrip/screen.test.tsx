@@ -249,6 +249,499 @@ describe('수리 왕복 스캔 화면', () => {
     expect(await screen.findByText('수리 투입을 기록했습니다')).toBeTruthy();
   });
 
+  /*
+   * 보낼 때마다 키를 새로 만들면 멱등키가 아무것도 막지 못한다. 서버가 기록한 뒤 응답이
+   * 유실되면 화면은 실패로 보이고, 사람이 다시 누르면 새 키라 서버가 같은 일을 한 번 더 한다.
+   */
+  it('투입을 다시 시도해도 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse({ ...execution, repairQty: 20 }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    reachable = true;
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+    expect(await screen.findByText('수리 투입을 기록했습니다')).toBeTruthy();
+  });
+
+  /* 성공한 쓰기를 같은 키로 다시 보내면 서버가 흡수해 조용히 사라진다. */
+  it('투입에 성공한 뒤 다시 적으면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+          return jsonResponse({ ...execution, repairQty: 20 }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(await screen.findByRole('button', { name: '다음 LOT 스캔' }));
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /*
+   * 앞 키를 들고 가면 서버가 그것을 앞 시도로 보고 흡수한다. 화면은 기록했다고 말하는데
+   * 아무것도 기록되지 않는다 - 중복과 정확히 대칭인 조용한 유실이다.
+   */
+  it('다른 불량 건을 고르면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const other = { ...defect, defectRecordId: 502, defectQty: 30 };
+    mount(
+      [
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions' &&
+            request.method === 'POST',
+          respond: (request) => {
+            seen.push(request.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      { defects: [defect, other] },
+    );
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+
+    const picks = await screen.findAllByRole('button', { name: /불량 \d+ EA/ });
+
+    await user.click(picks[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('수리 수량'), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getAllByRole('button', { name: /불량 \d+ EA/ })[1] as HTMLElement);
+    await user.type(await screen.findByLabelText('수리 수량'), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /*
+   * 값이 잠깐 달라졌다 돌아오면 최종 대상은 같다. 직전 렌더와 견주면 그 사이에 키가 버려져,
+   * 같은 것을 다시 보내는데 새 키로 간다 - 막으려던 중복이 그대로 난다.
+   */
+  it('수량을 고쳤다 되돌리면 앞 시도와 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse({ ...execution, repairQty: 20 }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    const field = screen.getByLabelText('수리 수량');
+
+    await user.type(field, '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    /* 손이 미끄러져 지웠다 다시 넣는다. 보낼 값은 그대로 20 이다. */
+    await user.type(field, '{backspace}');
+    await user.type(field, '0');
+
+    reachable = true;
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+  });
+
+  /* 대상은 친 문자열이 아니라 보낼 값이다. 20 과 20.0 은 같은 쓰기다. */
+  it('같은 수량을 다르게 적어도 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse({ ...execution, repairQty: 20 }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    const field = screen.getByLabelText('수리 수량');
+
+    await user.type(field, '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.type(field, '.0');
+
+    reachable = true;
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(await seen[1]?.clone().json()).toMatchObject({ repairQty: 20 });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+  });
+
+  /* 보낼 값이 달라졌으면 다른 쓰기다. 앞 키로 가면 서버가 앞 시도로 보고 흡수한다. */
+  it('수량을 바꾸면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    const field = screen.getByLabelText('수리 수량');
+
+    await user.type(field, '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.clear(field);
+    await user.type(field, '30');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /* 성공과 실패는 다른 쓰기다. 앞 키로 가면 서버가 앞 판정을 되돌려 준다. */
+  it('결과를 바꾸면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount(
+      [
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions/1001:return',
+          respond: (request) => {
+            seen.push(request.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      { open: [execution], openAll: [execution] },
+    );
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
+    await user.click(await screen.findByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '수리 실패' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /* 한 LOT 에 열린 건이 둘 이상인 것은 화면이 설계로 받는 상태다. 건을 바꾸면 다른 쓰기다. */
+  it('다른 수리 건을 고르면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const other = { ...execution, repairExecutionId: 1002, repairQty: 35 };
+    mount(
+      [
+        {
+          match: (request) => /\/production\/repair-executions\/\d+:return$/.test(request.url),
+          respond: (request) => {
+            seen.push(request.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      { open: [execution, other], openAll: [execution, other] },
+    );
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
+
+    const picks = await screen.findAllByRole('button', { name: /EA ·/ });
+
+    await user.click(picks[0] as HTMLElement);
+    await user.click(await screen.findByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getAllByRole('button', { name: /EA ·/ })[1] as HTMLElement);
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(new URL(seen[1]?.url ?? '').pathname).not.toBe(new URL(seen[0]?.url ?? '').pathname);
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /* 되돌아오면 최종 대상은 같다. 그 사이에 키가 버려지면 같은 것을 새 키로 보낸다. */
+  it('결과를 바꿨다 되돌리면 앞 시도와 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount(
+      [
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions/1001:return',
+          respond: (request) => {
+            seen.push(request.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      { open: [execution], openAll: [execution] },
+    );
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
+    await user.click(await screen.findByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '수리 실패' }));
+    await user.click(screen.getByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+  });
+
+  /* 반출도 같은 성질을 가져야 한다. 투입만 재면 반출의 회귀를 잡지 못한다. */
+  it('반출을 다시 시도해도 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount(
+      [
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions/1001:return',
+          respond: (request) => {
+            seen.push(request.clone());
+
+            if (!reachable) {
+              throw new TypeError('Failed to fetch');
+            }
+
+            return jsonResponse(execution);
+          },
+        },
+      ],
+      { open: [execution], openAll: [execution] },
+    );
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
+    await user.click(await screen.findByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    reachable = true;
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+  });
+
+  /*
+   * 투입과 반출이 키 그릇을 나눠 쓰면, 실패한 투입의 키가 살아 있는 채로 반출에 실린다. 서버가
+   * 투입의 응답을 되돌려 주면 화면은 반출을 기록했다고 말하는데 왕복은 열린 채다.
+   */
+  it('투입이 실패한 뒤 반출해도 투입의 멱등키를 쓰지 않는다', async () => {
+    const user = userEvent.setup();
+    const dispatched: Request[] = [];
+    const returned: Request[] = [];
+    mount(
+      [
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions' &&
+            request.method === 'POST',
+          respond: (request) => {
+            dispatched.push(request.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions/1001:return',
+          respond: (request) => {
+            returned.push(request.clone());
+            return jsonResponse(execution);
+          },
+        },
+      ],
+      /* 열린 건이 다른 불량에 걸려 있어야 투입 패널이 막히지 않는다. */
+      { open: [{ ...execution, defectRecordId: 599 }], openAll: [execution] },
+    );
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(dispatched).toHaveLength(1);
+    });
+
+    await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
+    await user.click(await screen.findByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(returned).toHaveLength(1);
+    });
+    expect(returned[0]?.headers.get('Idempotency-Key')).not.toBe(
+      dispatched[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
   /* 서버가 충돌로 되돌린 것은 다시 시도해서 풀리지 않는다. 다시 하라고 말하지 않는다. */
   it('서버가 충돌로 되돌리면 이미 투입된 것으로 말한다', async () => {
     const user = userEvent.setup();

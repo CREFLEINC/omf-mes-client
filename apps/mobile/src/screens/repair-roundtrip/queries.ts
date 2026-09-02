@@ -2,7 +2,6 @@ import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tan
 import type { UseMutationResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { createIdempotencyKey } from '../../patterns/outbox';
 import { runRequest } from '../../patterns/request';
 import {
   defectWindow,
@@ -107,12 +106,18 @@ export interface DispatchVariables {
   defect: DefectRecord;
   qty: string;
   workerNo: string;
+  /*
+   * 화면이 들고 있는 키. 여기서 만들면 재시도마다 값이 달라져 멱등키가 아무것도 막지 못한다 -
+   * 서버가 기록한 뒤 응답이 유실되면 사람이 다시 누르고, 새 키라 같은 일이 한 번 더 일어난다.
+   */
+  idempotencyKey: string;
 }
 
 export interface ReturnVariables {
   repairExecutionId: number;
   result: RepairResult;
   workerNo: string;
+  idempotencyKey: string;
 }
 
 /**
@@ -130,11 +135,11 @@ export const useDispatchRepair = (): UseMutationResult<
   const queries = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ defect, qty, workerNo }: DispatchVariables) =>
+    mutationFn: ({ defect, qty, workerNo, idempotencyKey }: DispatchVariables) =>
       runRequest(() =>
         client.POST('/production/repair-executions', {
           params: {
-            header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
+            header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
           },
           body: toDispatchBody(defect, qty, new Date().toISOString()),
         }),
@@ -151,12 +156,12 @@ export const useReturnRepair = (): UseMutationResult<RepairExecution, Error, Ret
   const queries = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ repairExecutionId, result, workerNo }: ReturnVariables) =>
+    mutationFn: ({ repairExecutionId, result, workerNo, idempotencyKey }: ReturnVariables) =>
       runRequest(() =>
         client.POST('/production/repair-executions/{repairExecutionId}:return', {
           params: {
             path: { repairExecutionId },
-            header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
+            header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
           },
           body: toReturnBody(new Date().toISOString(), result),
         }),
