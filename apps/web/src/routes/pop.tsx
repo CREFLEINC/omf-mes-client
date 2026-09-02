@@ -7,6 +7,7 @@ import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
+import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 
 /**
@@ -125,4 +126,16 @@ export const popRoutes: RouteObject[] = [
    * 「단말이 확인되지 않았습니다」로 발행이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
    */
   { path: '/pop/tag-issue', element: <IdentificationTagIssueScreen /> },
+  /*
+   * P-02-10 — 작업 중단(홀드) 등록. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⛔ **세션이 열려 있어야 성립한다**(스펙 §5-2) — 세션 사건의 세션 참조가 NOT NULL 이라
+   * 세션 없이는 중단을 기록할 자리가 없다. 그래서 이 주소로 바로 들어와도 세션이 없으면
+   * 차단 안내가 선다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=`) — 작업지시 선택(`P-02-01`)이
+   * 아직 이 저장소에 없다. 그 화면이 서면 `entry-context.ts` 하나가 바뀐다. 사번은 셸의
+   * `pop-identity` → `P-CO-01` 의 `worker-session` 순으로 읽고, 둘 다 비면 주소를 본다.
+   */
+  { path: '/pop/work-hold', element: <WorkHoldRegisterScreen /> },
 ];
