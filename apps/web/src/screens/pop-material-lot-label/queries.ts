@@ -103,28 +103,6 @@ const fetchReceiptLines = async (client: Client, inboundReceiptId: number): Prom
 };
 
 /**
- * 고른 입하 건의 품목.
- *
- * **고르기 전에는 부르지 않는다**(`enabled`). 캐시 키가 고른 번호를 담으므로 같은 건을
- * 다시 그려도 요청이 한 번을 넘지 않는다.
- */
-export const useReceiptLines = (inboundReceiptId: number | null): UseQueryResult<LineView[]> => {
-  const { client } = useApiClient();
-
-  return useQuery({
-    queryKey: receiptKeys.lines(inboundReceiptId),
-    enabled: inboundReceiptId !== null,
-    queryFn: () => {
-      if (inboundReceiptId === null) {
-        throw new Error('입하 건을 고르기 전에는 품목을 조회하지 않습니다.');
-      }
-
-      return fetchReceiptLines(client, inboundReceiptId);
-    },
-  });
-};
-
-/**
  * 이 단말이 쓸 수 있는 프린터와 그 상태.
  *
  * ⛔ **`documentTypeCode`로 거르지 않는다.** 문서 유형 값 목록이 아직 확정되지 않아(착수 이슈

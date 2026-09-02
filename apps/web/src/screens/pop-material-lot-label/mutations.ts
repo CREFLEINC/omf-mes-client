@@ -147,8 +147,12 @@ export interface IssueRunOptions {
   /**
    * 귀속 사번. **없으면 부르지 않는다** — 서버가 거부한다(공유계약 D-5). 화면이 이 값을
    * 확보하지 못한 상태를 비활성 + 사유로 보인다.
+   *
+   * ⛔ **모르면 `null` 이다.** 빈 문자열로 떨어뜨리지 않는다 — 빈 값은 서버에 「사번이 있다」로
+   * 나가고, 거절이 화면이 아니라 서버에서 난다. 부르는 쪽이 값을 확보하기 전에는 이 훅이
+   * 스스로 나가지 않는다.
    */
-  workerNo: string;
+  workerNo: string | null;
 }
 
 export interface IssueRunResultHandle {
@@ -183,6 +187,12 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
   const run = useCallback(
     (command: IssueCommand) => {
       const { row, printerName, reissueReasonCode } = command;
+
+      /*
+       * ⛔ **사번을 모르면 아무것도 부르지 않는다**(공유계약 D-5 · F-6). 단추도 함께 막혀
+       * 있지만 판정을 나가는 자리에 두어, 다른 경로가 생겨도 빈 사번이 새지 않게 한다.
+       */
+      if (workerNo === null) return;
 
       const execute = async (): Promise<void> => {
         let hasCreatedLot = false;

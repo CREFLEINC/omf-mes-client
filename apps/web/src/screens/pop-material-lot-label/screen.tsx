@@ -71,7 +71,7 @@ export const PopMaterialLotLabelScreen = () => {
   const lot = useLotNo(selectedRow?.lotId ?? null);
   const reissueReasons = useReissueReasons(isReissueOpen);
   const headPrinter = toHeadPrinter(printers.data ?? []);
-  const issue = useLabelIssue({ workerNo: workerNo ?? '' });
+  const issue = useLabelIssue({ workerNo });
 
   /**
    * 등록·인쇄 한 번을 시작한다.
