@@ -115,6 +115,25 @@ const routes = (options: Options = {}): StubRoute[] => {
       },
     },
     {
+      match: (req) => /^\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
+      respond: (req) => {
+        const id = Number(new URL(req.url).pathname.split('/').pop());
+        return jsonResponse({
+          lot: { lotId: id, lotNo: `FLOT-2026-0${String(id)}` },
+          externalIdentifiers: [],
+          holds: [],
+        });
+      },
+    },
+    {
+      match: (req) => new URL(req.url).pathname === '/mdm/items',
+      respond: () =>
+        jsonResponse({
+          items: [{ itemId: 100, itemCode: 'FG-1001', itemName: '외장 커버', fifoPolicyCode: 'FEFO' }],
+          page,
+        }),
+    },
+    {
       match: (req) => new URL(req.url).pathname === '/mdm/uoms',
       respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
     },
@@ -170,7 +189,7 @@ describe('포장 재구성 화면', () => {
      * 두 곳에 나온다 - 원 포장 카드와 남는 것 카드다. 아직 아무것도 옮기지 않았으니 전량이
      * 남는 것이 맞다.
      */
-    expect(await screen.findAllByText(/LOT 1000 · 180 EA/)).toHaveLength(2);
+    expect(await screen.findAllByText(/FG-1001 · FLOT-2026-01000 · 180 EA/)).toHaveLength(2);
   });
 
   /* 부분 검색으로 물으므로 돌아온 줄을 다시 확인하지 않으면 비슷한 번호를 이 포장으로 읽는다. */
@@ -203,7 +222,7 @@ describe('포장 재구성 화면', () => {
 
     scan(CARTON);
     await screen.findByText(CARTON);
-    await user.type(screen.getByLabelText('1000 수량'), '80');
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
 
     expect(screen.getByRole('button', { name: '재구성 확정' })).toBeDisabled();
 
@@ -220,7 +239,7 @@ describe('포장 재구성 화면', () => {
     scan(CARTON);
     await screen.findByText(CARTON);
     await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
-    await user.type(screen.getByLabelText('1000 수량'), '181');
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '181');
 
     expect(await screen.findByText(/원 포장에 있는 180 EA/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '재구성 확정' })).toBeDisabled();
@@ -234,12 +253,12 @@ describe('포장 재구성 화면', () => {
 
     scan(CARTON);
     await screen.findByText(CARTON);
-    await user.type(screen.getByLabelText('1000 수량'), '80');
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
 
     expect(
       await screen.findByText(`${CARTON} — 분할 잔량은 원 포장 번호를 그대로 씁니다`),
     ).toBeTruthy();
-    expect(screen.getByText(/LOT 1000 · 100 EA/)).toBeTruthy();
+    expect(screen.getByText(/FG-1001 · FLOT-2026-01000 · 100 EA/)).toBeTruthy();
   });
 
   it('전량을 옮기면 원 포장이 비워진다고 적는다', async () => {
@@ -249,7 +268,7 @@ describe('포장 재구성 화면', () => {
 
     scan(CARTON);
     await screen.findByText(CARTON);
-    await user.type(screen.getByLabelText('1000 수량'), '180');
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '180');
 
     expect(await screen.findByText('원 포장이 비워집니다')).toBeTruthy();
   });
@@ -294,7 +313,7 @@ describe('포장 재구성 화면', () => {
     scan(CARTON);
     await screen.findByText(CARTON);
     await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
-    await user.type(screen.getByLabelText('1000 수량'), '80');
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
     await user.click(screen.getByRole('button', { name: '재구성 확정' }));
 
     expect(await screen.findByText('재구성을 기록했습니다')).toBeTruthy();
@@ -324,7 +343,7 @@ describe('포장 재구성 화면', () => {
     scan(CARTON);
     await screen.findByText(CARTON);
     await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
-    await user.type(screen.getByLabelText('1000 수량'), '80');
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
     await user.click(screen.getByRole('button', { name: '재구성 확정' }));
 
     expect(await screen.findByText('재구성이 되돌아왔습니다')).toBeTruthy();
@@ -346,7 +365,7 @@ describe('포장 재구성 화면', () => {
     scan(CARTON);
     await screen.findByText(CARTON);
     await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
-    await user.type(screen.getByLabelText('1000 수량'), '80');
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
     await user.click(screen.getByRole('button', { name: '재구성 확정' }));
     await screen.findByText('재구성을 기록했습니다');
 
@@ -366,7 +385,7 @@ describe('포장 재구성 화면', () => {
     scan(CARTON);
     await screen.findByText(CARTON);
     await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
-    await user.type(screen.getByLabelText('1000 수량'), '80');
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
     await user.click(screen.getByRole('button', { name: '재구성 확정' }));
 
     await waitFor(() => {

@@ -89,6 +89,14 @@ const routes = (options: Options = {}): StubRoute[] => [
       }),
   },
   {
+    match: (req) => new URL(req.url).pathname === '/mdm/items',
+    respond: () =>
+      jsonResponse({
+        items: [{ itemId: 31, itemCode: 'ABC-123', itemName: '원자재', fifoPolicyCode: 'FIFO' }],
+        page,
+      }),
+  },
+  {
     match: (req) => new URL(req.url).pathname === '/mdm/items/31',
     respond: () =>
       jsonResponse({ item: { itemCode: 'ABC-123', itemName: '원자재', fifoPolicyCode: 'FIFO' } }),
@@ -122,7 +130,7 @@ const mount = (extra: StubRoute[] = [], options: Options = {}) =>
   );
 
 const scan = (code: string) => {
-  const field = screen.getByLabelText('자재 LOT 스캔') as HTMLInputElement;
+  const field = screen.getByLabelText('LOT 번호') as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -138,7 +146,7 @@ describe('입하 등록 화면', () => {
   it('34자리 숫자가 아니면 받지 않고 몇 자인지 말한다', async () => {
     mount();
 
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     scan('123');
 
     expect(await screen.findByText('자재 LOT 번호는 34자리 숫자입니다 (현재 3자)')).toBeTruthy();
@@ -148,7 +156,7 @@ describe('입하 등록 화면', () => {
   it('스캔하면 공급사 LOT으로 들고 발주 선택을 연다', async () => {
     mount();
 
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
     expect(await screen.findByText(`공급사 LOT ${SCANNED}`)).toBeTruthy();
@@ -159,7 +167,7 @@ describe('입하 등록 화면', () => {
   it('스캔값이 발주를 정하지 않는다고 말한다', async () => {
     mount();
 
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
     expect(
@@ -172,7 +180,7 @@ describe('입하 등록 화면', () => {
     const user = userEvent.setup();
     mount();
 
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await user.click(screen.getByRole('button', { name: 'LOT 번호 없음' }));
 
     expect(await screen.findByText('LOT 번호가 붙어 있지 않습니다')).toBeTruthy();
@@ -183,7 +191,7 @@ describe('입하 등록 화면', () => {
   it('발주 조회 실패를 발주 없음으로 말하지 않는다', async () => {
     mount([], { ordersStatus: 500 });
 
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
     expect(
@@ -196,7 +204,7 @@ describe('입하 등록 화면', () => {
   it('발주 없이 도착한 건을 여기서 등록할 수 없다고 말한다', async () => {
     mount();
 
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
     expect(
@@ -208,7 +216,7 @@ describe('입하 등록 화면', () => {
   it('명세서 번호가 없어도 막지 않고 그 사실만 말한다', async () => {
     mount();
 
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
     expect(await screen.findByText('명세서 번호가 없습니다. 등록은 진행됩니다.')).toBeTruthy();
@@ -230,7 +238,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('발주 라인을 고르면 예정 수량과 누적 입하와 허용치를 보인다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
     await screen.findByText('P/O 선택');
 
@@ -245,7 +253,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('허용치 안이면 예정과 맞다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     await user.type(await screen.findByLabelText('실입하 수량'), '505');
@@ -257,7 +265,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('초과면 초과라 말하고 넘어갈 화면이 없다는 것도 말한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     await user.type(await screen.findByLabelText('실입하 수량'), '511');
@@ -271,7 +279,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('부족이면 부족이라 말한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     await user.type(await screen.findByLabelText('실입하 수량'), '400');
@@ -286,7 +294,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('부족이면 네 수를 보이고 두 갈래를 연다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     await user.type(await screen.findByLabelText('실입하 수량'), '400');
@@ -303,7 +311,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('부족인데 고르지 않으면 등록할 수 없다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     await user.type(await screen.findByLabelText('실입하 수량'), '400');
@@ -321,7 +329,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('수량을 고치면 앞서 받은 답을 버린다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     const qty = await screen.findByLabelText('실입하 수량');
@@ -341,7 +349,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('유효기한이 제조일보다 앞서면 등록을 막는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     await user.type(await screen.findByLabelText('실입하 수량'), '500');
@@ -356,7 +364,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('검사 대상 여부를 서버가 정한다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     expect(
@@ -378,7 +386,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
         },
       },
     ]);
-    await screen.findByLabelText('자재 LOT 스캔');
+    await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     await user.type(await screen.findByLabelText('실입하 수량'), '500');

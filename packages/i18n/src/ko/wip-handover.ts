@@ -37,7 +37,8 @@ export const wipHandover = {
   },
   next: {
     legend: '다음 공정',
-    label: '다음 공정',
+    /* 구획 제목과 같은 말을 쓰지 않는다. 좁은 화면에 같은 줄이 둘로 붙는다. */
+    label: '인계할 공정',
     placeholder: '다음 공정을 고르세요',
     loading: '다음 공정을 불러오는 중입니다',
     loadFailed: '다음 공정을 확인할 수 없습니다. 연결을 확인하세요.',

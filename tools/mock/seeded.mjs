@@ -345,8 +345,10 @@ on('POST', '/logistics/inbound-receipts', (_p, _q, body) => {
 
   state.inboundReceipts.push(created);
 
-  const lines = (body?.lines ?? []).map((line) => {
+  const lines = (body?.lines ?? []).map((line, index) => {
     const inboundReceiptLineId = newId();
+    /* 줄 번호는 서버가 붙인다. 없으면 화면이 「undefined번 줄」을 보인다. */
+    const lineNo = index + 1;
 
     /* 사전부착 라인은 자재 LOT 이 함께 생기고 검사 대기로 보류된다. */
     let lotId = null;
@@ -396,7 +398,7 @@ on('POST', '/logistics/inbound-receipts', (_p, _q, body) => {
       poLine.receivedQty += line.receivedQty;
     }
 
-    return { inboundReceiptLineId, inboundReceiptId, ...line, lotId, labelIssued: false };
+    return { inboundReceiptLineId, inboundReceiptId, lineNo, ...line, lotId, labelIssued: false };
   });
 
   state.inboundReceiptLines.push(...lines);

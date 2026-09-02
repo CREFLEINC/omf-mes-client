@@ -474,6 +474,7 @@ export const createSeed = (now = new Date()) => {
     {
       inboundReceiptLineId: 9301,
       inboundReceiptId: 9001,
+      lineNo: 1,
       purchaseOrderLineId: 9201,
       itemId: 2002,
       receivedQty: 200,
@@ -488,6 +489,7 @@ export const createSeed = (now = new Date()) => {
     {
       inboundReceiptLineId: 9302,
       inboundReceiptId: 9002,
+      lineNo: 1,
       purchaseOrderLineId: 9202,
       itemId: 2002,
       receivedQty: 120,

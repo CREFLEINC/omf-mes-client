@@ -6,10 +6,11 @@ import { Link } from 'react-router';
 
 import {
   handlingUnitKeys,
+  useLotLabels,
   useScannedHandlingUnit,
   type ScannedHandlingUnit,
 } from '../../patterns/handling-units';
-import { useUomCodes } from '../../patterns/masters';
+import { useItemLabels, useUomCodes } from '../../patterns/masters';
 import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -57,6 +58,9 @@ export const PackingRepackScreen = () => {
 
   const found = useScannedHandlingUnit(scanned);
   const uoms = useUomCodes(sources.length > 0);
+  /* 내용물은 품목·LOT 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
+  const itemLabels = useItemLabels(sources.length > 0);
+  const lotLabels = useLotLabels(sources);
 
   const pooled = pooledContents(sources);
   const merged = mergedPairs(sources);
@@ -65,8 +69,15 @@ export const PackingRepackScreen = () => {
 
   const uomOf = (uomId: number): string => uoms.data?.get(uomId) ?? '';
 
-  const label = (content: { lotId: number; qty: number; uomId: number }): string =>
-    `${t.contents.lot(String(content.lotId))} · ${String(content.qty)} ${uomOf(content.uomId)}`;
+  const nameOf = (content: { itemId: number; lotId: number }): string => {
+    const item = itemLabels.data?.get(content.itemId);
+    const lotNo = lotLabels.get(content.lotId) ?? String(content.lotId);
+
+    return t.contents.lot(item === undefined ? '' : item.itemCode, lotNo);
+  };
+
+  const label = (content: { itemId: number; lotId: number; qty: number; uomId: number }): string =>
+    `${nameOf(content)} · ${String(content.qty)} ${uomOf(content.uomId)}`;
 
   /*
    * 찾은 포장을 목록에 얹는다. 조회가 끝난 뒤에 일어나야 해서 렌더 중에 하지 않는다.
@@ -323,7 +334,7 @@ export const PackingRepackScreen = () => {
               return (
                 <div key={line.lotId} className="repack__line">
                   <TextField
-                    label={t.contents.qtyLabel(String(line.lotId))}
+                    label={t.contents.qtyLabel(nameOf(line))}
                     size="xl"
                     fullWidth
                     inputMode="numeric"

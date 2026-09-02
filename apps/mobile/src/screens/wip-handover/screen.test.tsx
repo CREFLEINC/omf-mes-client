@@ -204,7 +204,7 @@ describe('WIP 공정 이동 화면', () => {
     scan(LOT_NO);
 
     expect(await screen.findByText(LOT_NO)).toBeTruthy();
-    expect(await screen.findByRole('combobox', { name: '다음 공정' })).toBeTruthy();
+    expect(await screen.findByRole('combobox', { name: '인계할 공정' })).toBeTruthy();
   });
 
   /* 서버가 공정 의존을 푼다. 화면이 라우팅을 걸어 맞추지 않는다. */
@@ -279,7 +279,7 @@ describe('WIP 공정 이동 화면', () => {
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
 
-    await user.click(await screen.findByRole('combobox', { name: '다음 공정' }));
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
     await user.type(screen.getByLabelText('인계 수량'), '100');
 
@@ -297,7 +297,7 @@ describe('WIP 공정 이동 화면', () => {
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
 
-    await user.click(await screen.findByRole('combobox', { name: '다음 공정' }));
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
     await user.type(screen.getByLabelText('인계 수량'), '501');
 
@@ -320,7 +320,7 @@ describe('WIP 공정 이동 화면', () => {
 
     expect(await screen.findByText('완료 수량 430 EA')).toBeTruthy();
 
-    await user.click(await screen.findByRole('combobox', { name: '다음 공정' }));
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
     await user.type(screen.getByLabelText('인계 수량'), '440');
 
@@ -350,7 +350,7 @@ describe('WIP 공정 이동 화면', () => {
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
-    await user.click(await screen.findByRole('combobox', { name: '다음 공정' }));
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
 
     const qty = screen.getByLabelText('인계 수량');
@@ -378,7 +378,7 @@ describe('WIP 공정 이동 화면', () => {
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
 
-    await user.click(await screen.findByRole('combobox', { name: '다음 공정' }));
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
     await user.type(screen.getByLabelText('인계 수량'), '100');
     await user.click(screen.getByRole('button', { name: '인계 확정' }));
@@ -408,7 +408,7 @@ describe('WIP 공정 이동 화면', () => {
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
 
-    await user.click(await screen.findByRole('combobox', { name: '다음 공정' }));
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
     await user.type(screen.getByLabelText('인계 수량'), '100');
     await user.click(screen.getByRole('button', { name: '인계 확정' }));
