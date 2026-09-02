@@ -180,37 +180,39 @@ export const WorkOrderAssignmentEditorSession = ({
   ) : null;
 
   return (
-    <>
+    <div className="work-order-assignment-editor">
       <SaveErrorBanner error={update.error} onReload={onReload} />
       {writeOwnerMismatch && <AlertBanner variant="error">{t.writeOwnerMismatch}</AlertBanner>}
-      <WorkOrderResourcePane
-        selectedWorkOrderNo={workOrder.workOrderNo}
-        draft={effectiveDraft}
-        productionLineOptions={options(lineSource, effectiveDraft.productionLineId)}
-        plannedEquipmentOptions={options(equipmentSource, effectiveDraft.plannedEquipmentId)}
-        responsibleWorkerOptions={options(workerSource, effectiveDraft.responsibleWorkerId)}
-        plannedMoldOptions={options(moldSource, effectiveDraft.plannedMoldId)}
-        plannedShiftOptions={options(shiftSource, effectiveDraft.plannedShiftId)}
-        fieldErrors={fieldErrors}
-        fieldNotes={{
-          productionLineId: lookupNote(lineSource, lines.data?.truncated),
-          plannedEquipmentId: lookupNote(equipmentSource, equipments.data?.truncated),
-          responsibleWorkerId: lookupNote(workerSource, workers.data?.truncated),
-          plannedMoldId: lookupNote(moldSource, molds.data?.truncated),
-          plannedShiftId: lookupNote(shiftSource, shifts.data?.truncated),
-        }}
-        disabled={lockReason !== null}
-        disabledReason={lockReason ?? undefined}
-        onChange={patch}
-      />
-      <WorkOrderPlanFieldsPane
-        selectedWorkOrderNo={workOrder.workOrderNo}
-        draft={effectiveDraft}
-        fieldErrors={fieldErrors}
-        disabled={lockReason !== null}
-        disabledReason={lockReason ?? undefined}
-        onChange={patch}
-      />
+      <div className="work-order-assignment-edit-grid">
+        <WorkOrderResourcePane
+          selectedWorkOrderNo={workOrder.workOrderNo}
+          draft={effectiveDraft}
+          productionLineOptions={options(lineSource, effectiveDraft.productionLineId)}
+          plannedEquipmentOptions={options(equipmentSource, effectiveDraft.plannedEquipmentId)}
+          responsibleWorkerOptions={options(workerSource, effectiveDraft.responsibleWorkerId)}
+          plannedMoldOptions={options(moldSource, effectiveDraft.plannedMoldId)}
+          plannedShiftOptions={options(shiftSource, effectiveDraft.plannedShiftId)}
+          fieldErrors={fieldErrors}
+          fieldNotes={{
+            productionLineId: lookupNote(lineSource, lines.data?.truncated),
+            plannedEquipmentId: lookupNote(equipmentSource, equipments.data?.truncated),
+            responsibleWorkerId: lookupNote(workerSource, workers.data?.truncated),
+            plannedMoldId: lookupNote(moldSource, molds.data?.truncated),
+            plannedShiftId: lookupNote(shiftSource, shifts.data?.truncated),
+          }}
+          disabled={lockReason !== null}
+          disabledReason={lockReason ?? undefined}
+          onChange={patch}
+        />
+        <WorkOrderPlanFieldsPane
+          selectedWorkOrderNo={workOrder.workOrderNo}
+          draft={effectiveDraft}
+          fieldErrors={fieldErrors}
+          disabled={lockReason !== null}
+          disabledReason={lockReason ?? undefined}
+          onChange={patch}
+        />
+      </div>
       <WorkOrderValidationPane
         selectedWorkOrderNo={workOrder.workOrderNo}
         report={validationQuery.data}
@@ -235,7 +237,7 @@ export const WorkOrderAssignmentEditorSession = ({
           if (body !== null) update.write(body);
         }}
       />
-    </>
+    </div>
   );
 };
 

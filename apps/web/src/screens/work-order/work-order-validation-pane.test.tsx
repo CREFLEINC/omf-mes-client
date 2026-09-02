@@ -161,6 +161,8 @@ describe('WorkOrderValidationPane', () => {
     const pane = screen.getByRole('region', { name: t.panes.validation });
 
     expect(pane).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('heading', { level: 2, name: t.panes.validation })).toBeVisible();
+    expect(screen.getByRole('table', { name: t.panes.validation })).toBeInTheDocument();
     expect(screen.getByRole('status', { name: t.refreshing })).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getByText('SYN-SERVER-MESSAGE')).toBeInTheDocument();

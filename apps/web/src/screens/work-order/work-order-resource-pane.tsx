@@ -132,41 +132,43 @@ export const WorkOrderResourcePane = ({
   );
 
   return (
-    <section className="pane" aria-label={t.pane}>
-      <h2>{t.heading(selectedWorkOrderNo)}</h2>
+    <section className="pane work-order-resource-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.heading(selectedWorkOrderNo)}</h2>
       <AlertBanner variant="warning">{t.warning}</AlertBanner>
-      <Card bordered>
-        <Card.Header>
-          <h3>{t.cards.machine}</h3>
-        </Card.Header>
-        <Card.Body>
-          {select('productionLineId', t.fields.productionLine, productionLineOptions)}
-          {select('plannedEquipmentId', t.fields.equipment, plannedEquipmentOptions)}
-        </Card.Body>
-      </Card>
-      <Card bordered>
-        <Card.Header>
-          <h3>{t.cards.man}</h3>
-        </Card.Header>
-        <Card.Body>
-          {select('responsibleWorkerId', t.fields.worker, responsibleWorkerOptions)}
-          {select('plannedShiftId', t.fields.shift, plannedShiftOptions)}
-        </Card.Body>
-      </Card>
-      <Card bordered>
-        <Card.Header>
-          <h3>{t.cards.tool}</h3>
-        </Card.Header>
-        <Card.Body>{select('plannedMoldId', t.fields.mold, plannedMoldOptions)}</Card.Body>
-      </Card>
-      <Card bordered>
-        <Card.Header>
-          <h3>{t.cards.material}</h3>
-        </Card.Header>
-        <Card.Body>
-          <AlertBanner variant="info">{t.materialInfo}</AlertBanner>
-        </Card.Body>
-      </Card>
+      <div className="work-order-resource-grid">
+        <Card bordered>
+          <Card.Header>
+            <h3>{t.cards.machine}</h3>
+          </Card.Header>
+          <Card.Body>
+            {select('productionLineId', t.fields.productionLine, productionLineOptions)}
+            {select('plannedEquipmentId', t.fields.equipment, plannedEquipmentOptions)}
+          </Card.Body>
+        </Card>
+        <Card bordered>
+          <Card.Header>
+            <h3>{t.cards.man}</h3>
+          </Card.Header>
+          <Card.Body>
+            {select('responsibleWorkerId', t.fields.worker, responsibleWorkerOptions)}
+            {select('plannedShiftId', t.fields.shift, plannedShiftOptions)}
+          </Card.Body>
+        </Card>
+        <Card bordered>
+          <Card.Header>
+            <h3>{t.cards.tool}</h3>
+          </Card.Header>
+          <Card.Body>{select('plannedMoldId', t.fields.mold, plannedMoldOptions)}</Card.Body>
+        </Card>
+        <Card bordered>
+          <Card.Header>
+            <h3>{t.cards.material}</h3>
+          </Card.Header>
+          <Card.Body>
+            <AlertBanner variant="info">{t.materialInfo}</AlertBanner>
+          </Card.Body>
+        </Card>
+      </div>
     </section>
   );
 };
