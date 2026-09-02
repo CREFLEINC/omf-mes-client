@@ -181,3 +181,20 @@ describe('연결 표시', () => {
     expect(screen.queryByText(t.header.disconnected)).not.toBeInTheDocument();
   });
 });
+
+describe('발행 자리 안내', () => {
+  /*
+   * ⛔ **목록이 있을 때도 선다.** 빈 목록 문구 안에 같은 말이 들어 있어 그쪽만 재면, 목록이
+   *    찬 화면에서 안내가 통째로 사라져도 아무 감지기가 울지 않는다.
+   */
+  it('목록이 있어도 어디서 발행하는지 목록 아래에 알린다', async () => {
+    renderScreen();
+
+    const list = await screen.findByLabelText(t.list.caption);
+    const guide = screen.getByText(t.list.issuedElsewhere);
+
+    expect(guide).toBeInTheDocument();
+    /* DOM 순서로 「목록 아래」를 잰다 — 위로 올라가면 목록을 훑기 전에 읽게 된다. */
+    expect(list.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
