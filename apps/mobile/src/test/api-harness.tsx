@@ -23,7 +23,8 @@ export type StubFetch = (request: Request) => Promise<Response>;
 
 export interface StubRoute {
   match: (request: Request) => boolean;
-  respond: (request: Request) => Response;
+  /** 늦게 답하는 서버를 흉내 내야 하는 시험이 있어 약속도 받는다. */
+  respond: (request: Request) => Response | Promise<Response>;
 }
 
 export const jsonResponse = (body: unknown, init: ResponseInit = {}): Response =>

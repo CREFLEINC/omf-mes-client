@@ -20,6 +20,13 @@ import {
 import { flushQueue, type FlushResult, type OutboxTransport } from './send';
 
 export interface Outbox {
+  /**
+   * 큐를 보관소에서 읽어 왔는가.
+   *
+   * 읽기 전에는 담긴 것이 없는 것과 구별되지 않는다. 담긴 것을 셈에 넣어 쓰기를 막는 화면은
+   * 그 사이에 안 한 것으로 보여 같은 것을 다시 적게 된다 - 읽기 전에는 막아 둔다.
+   */
+  loaded: boolean;
   /** 아직 서버에 닿지 못한 건수. 상시 표시가 즉시 성공 표시의 전제다. */
   pending: number;
   /**
@@ -45,7 +52,7 @@ export interface Outbox {
   /**
    * 담겨 있는 건을 그대로 돌려준다.
    *
-   * 몇 건인지만으로는 «무엇이» 담겼는지 알 수 없다. 오프라인에서 화면이 담긴 것을 셈에 넣어야
+   * 몇 건인지만으로는 무엇이 담겼는지 알 수 없다. 오프라인에서 화면이 담긴 것을 셈에 넣어야
    * 하는 자리가 있다 - 그러지 않으면 같은 것을 다시 적고 큐에 두 건이 쌓인다.
    */
   pendingOf: (label: string) => OutboxEntry[];
@@ -173,12 +180,26 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     [inTurn],
   );
 
+  /*
+   * 도는 회차에 합류시키지 않고 뒤에 잇는다. 그 회차의 목록은 담기 전에 떠진 것이라 방금 담은
+   * 건이 들어 있지 않다 - 합류시키면 보낸 적 없는 건이 보냈다는 결과를 받고, 화면은 되돌릴 수
+   * 없는 쓰기에 그 거짓을 붙인다. 겹쳐 보내지 않는다는 약속은 그대로다.
+   */
   const flush = useCallback((): Promise<FlushResult | null> => {
-    sending.current ??= runFlush().finally(() => {
-      sending.current = null;
-    });
+    const inFlight = sending.current;
+    const started = inFlight === null ? runFlush() : inFlight.then(runFlush, runFlush);
 
-    return sending.current;
+    sending.current = started;
+
+    void started
+      .catch(() => null)
+      .then(() => {
+        if (sending.current === started) {
+          sending.current = null;
+        }
+      });
+
+    return started;
   }, [runFlush]);
 
   /*
@@ -235,6 +256,7 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
 
   const value = useMemo(
     () => ({
+      loaded,
       pending: loaded ? entries.length : 0,
       pendingBytes,
       countPending,

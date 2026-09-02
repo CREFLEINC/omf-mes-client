@@ -1,11 +1,11 @@
 import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useCodeValues } from '../../patterns/code-values';
-import { useOutbox } from '../../patterns/outbox';
+import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
@@ -16,10 +16,12 @@ import {
   canConfirmIssue,
   canPick,
   isOutOfSequence,
+  isOfOrder,
   isScannedLotOf,
   lineProblemOf,
   pickedQtyOf,
   qtyProblemOf,
+  queuedIssueCountOf,
   queuedPicksOf,
   queuedQtyOf,
   remainingQtyOf,
@@ -34,22 +36,19 @@ const t = messages.materialPicking;
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
-/**
- * 한 지시의 피킹과 출고를 같은 묶음에 둔다.
- *
- * 순서 의존이 있다 - 출고가 피킹의 결과를 싣는다. 묶지 않으면 피킹이 거부돼도 출고가 그대로
- * 나간다. 지시마다 값이 갈리면 되고 매번 새로 만들 이유가 없어 번호에서 짓는다.
- */
-const batchIdOf = (pickingOrderId: number): string => `picking-order-${String(pickingOrderId)}`;
-
 export const MaterialPickingScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush, pendingOf } = useOutbox();
+  const { enqueue, flush, loaded, pendingOf, rejected } = useOutbox();
   const { worker } = useWorkerSession();
   const queryClient = useQueryClient();
 
   const [orderId, setOrderId] = useState<number | null>(null);
+  /*
+   * 묶음은 한 번의 시도를 가리킨다. 지시 번호로 지으면 여러 날의 모든 시도가 한 이름을 써,
+   * 앞 시도의 실패가 뒤 시도의 멀쩡한 건까지 딸려 되돌리고 반대로 회차가 갈리면 묶이지 않는다.
+   */
+  const [batchId, setBatchId] = useState(createIdempotencyKey);
   const [lineId, setLineId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
   const [qty, setQty] = useState('');
@@ -71,7 +70,27 @@ export const MaterialPickingScreen = () => {
    * 같은 라인을 다시 집게 되고, 출고 확정도 영영 열리지 않는다.
    */
   const queued = queuedPicksOf(pendingOf(t.record.picked), orderId ?? -1);
+  const queuedIssues = queuedIssueCountOf(pendingOf(t.record.issued), orderId ?? -1);
   const done = lines.filter((each) => lineProblemOf(each, queued) === 'done').length;
+  /* 배경 보내기가 거부당하면 큐에서 빠진다. 화면이 읽지 않으면 사유가 어디에도 보이지 않는다. */
+  const returned = rejected.filter((record) => isOfOrder(record.entry, orderId ?? -1));
+
+  /*
+   * 셸이 스스로 큐를 비운다. 그때 다시 조회하지 않으면 담긴 것이 셈에서 빠진 자리에 서버가
+   * 아직 모르는 값이 남아, 화면이 안 집은 것으로 되돌아간다 - 작업자는 같은 라인을 다시 집는다.
+   */
+  const queuedCount = queued.length + queuedIssues;
+  const lastQueuedCount = useRef(queuedCount);
+
+  useEffect(() => {
+    const drained = queuedCount < lastQueuedCount.current;
+
+    lastQueuedCount.current = queuedCount;
+
+    if (drained && orderId !== null) {
+      void queryClient.invalidateQueries({ queryKey: pickingKeys.order(orderId) });
+    }
+  }, [orderId, queryClient, queuedCount]);
 
   const scanField = useScanField({
     onScan: (value) => {
@@ -85,6 +104,12 @@ export const MaterialPickingScreen = () => {
     setScanned(null);
     setQty('');
     setManual('');
+  };
+
+  /* 지시를 새로 여는 것이 새 시도다. 앞 시도에 남은 것과 묶이지 않게 이름을 바꾼다. */
+  const openOrder = (pickingOrderId: number) => {
+    setOrderId(pickingOrderId);
+    setBatchId(createIdempotencyKey());
   };
 
   const restart = () => {
@@ -107,7 +132,7 @@ export const MaterialPickingScreen = () => {
     }
 
     /* 이 지시의 피킹과 출고를 한 묶음으로 둔다. 앞이 거부되면 뒤가 함께 되돌아간다. */
-    const draft = toPickDraft(order, line, qty, batchIdOf(order.pickingOrderId), new Date(), worker.workerNo);
+    const draft = toPickDraft(order, line, qty, batchId, new Date(), worker.workerNo);
 
     await enqueue(draft);
 
@@ -140,7 +165,7 @@ export const MaterialPickingScreen = () => {
       lines,
       queued,
       issueTypeCode,
-      batchIdOf(order.pickingOrderId),
+      batchId,
       new Date(),
       worker.workerNo,
     );
@@ -187,7 +212,7 @@ export const MaterialPickingScreen = () => {
           workerNo={worker?.workerNo ?? null}
           workerId={workerId}
           orders={orders}
-          onChoose={setOrderId}
+          onChoose={openOrder}
         />
       </div>
     );
@@ -242,7 +267,13 @@ export const MaterialPickingScreen = () => {
           title={t.pickOutcome[pickOutcome].title}
         >
           {t.pickOutcome[pickOutcome].description}
-          {pickOutcome === 'rejected' ? <Link to="/rejections">{t.rejected.action}</Link> : null}
+        </AlertBanner>
+      )}
+
+      {returned.length === 0 ? null : (
+        <AlertBanner variant="error" title={t.returned.title(String(returned.length))}>
+          {t.returned.description}
+          <Link to="/rejections">{t.rejected.action}</Link>
         </AlertBanner>
       )}
 
@@ -368,7 +399,7 @@ export const MaterialPickingScreen = () => {
               variant="filled"
               size="2xl"
               className="picking-out__wide"
-              disabled={!canPick(line, scanned, qty, worker !== null, queued)}
+              disabled={!loaded || !canPick(line, scanned, qty, worker !== null, queued)}
               onClick={() => void pick()}
             >
               {t.pick}
@@ -379,9 +410,7 @@ export const MaterialPickingScreen = () => {
 
       <section className="picking-out__section">
         <p className="picking-out__note">{t.partialNote}</p>
-        {issueTypes.isError ? (
-          <AlertBanner variant="error" title={t.issueTypeLoadFailed} />
-        ) : null}
+        {issueTypes.isError ? <AlertBanner variant="error" title={t.issueTypeLoadFailed} /> : null}
         {issueTypes.data !== undefined && issueTypes.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.noIssueType} />
         ) : null}
@@ -403,11 +432,16 @@ export const MaterialPickingScreen = () => {
         {/* 어느 값이 이 화면의 출고인지 계약이 아직 말하지 않아 사람이 고른다. */}
         <p className="picking-out__note">{t.issueTypeNote}</p>
         {worker === null ? <p className="picking-out__note">{t.noWorker}</p> : null}
+        {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
         <Button
           variant="filled"
           size="2xl"
           className="picking-out__wide"
-          disabled={!canConfirmIssue(lines, worker !== null, queued) || issueTypeCode === null}
+          disabled={
+            !loaded ||
+            !canConfirmIssue(lines, worker !== null, queued, queuedIssues) ||
+            issueTypeCode === null
+          }
           onClick={() => void confirm()}
         >
           {t.submit}

@@ -28,16 +28,53 @@ export interface QueuedPick {
 
 const PICK_PATH = /\/logistics\/picking-orders\/(\d+)\/lines\/(\d+):pick$/;
 
+const ISSUE_PATH = '/logistics/goods-issues';
+
+/** 큐에 담긴 한 건. 경로와 본문만 본다 - 큐는 화면을 가리지 않고 한 줄로 쌓인다. */
+export interface QueuedEntry {
+  path: string;
+  body: unknown;
+}
+
+const isPickOf = (entry: QueuedEntry, pickingOrderId: number): boolean =>
+  Number(PICK_PATH.exec(entry.path)?.[1] ?? Number.NaN) === pickingOrderId;
+
+const isIssueOf = (entry: QueuedEntry, pickingOrderId: number): boolean => {
+  if (entry.path !== ISSUE_PATH) {
+    return false;
+  }
+
+  const body = entry.body as {
+    sourceDocumentTypeCode?: unknown;
+    sourceDocumentId?: unknown;
+  } | null;
+
+  return (
+    body?.sourceDocumentTypeCode === SOURCE_DOCUMENT_TYPE &&
+    body.sourceDocumentId === pickingOrderId
+  );
+};
+
+/** 이 지시에서 나온 건인가. 되돌아온 건 중 이 화면 몫을 고를 때 쓴다. */
+export const isOfOrder = (entry: QueuedEntry, pickingOrderId: number): boolean =>
+  isPickOf(entry, pickingOrderId) || isIssueOf(entry, pickingOrderId);
+
+/**
+ * 큐에 담긴 이 지시의 출고 건수.
+ *
+ * 담긴 출고는 서버에 없어 다음 조회에도 나타나지 않는다. 그것을 세지 않으면 같은 지시를 다시
+ * 열어 한 번 더 확정할 수 있고, 두 건이 각자 멱등키를 들고 나가 재고가 두 번 깎인다.
+ */
+export const queuedIssueCountOf = (entries: QueuedEntry[], pickingOrderId: number): number =>
+  entries.filter((entry) => isIssueOf(entry, pickingOrderId)).length;
+
 /**
  * 큐에 담긴 것 중 이 지시의 피킹만 골라 낸다.
  *
  * 큐는 화면을 가리지 않고 한 줄로 쌓이므로 다른 지시의 건이 섞여 있다. 경로에서 지시와 라인을
  * 읽어 이 화면 몫만 센다.
  */
-export const queuedPicksOf = (
-  entries: { path: string; body: unknown }[],
-  pickingOrderId: number,
-): QueuedPick[] =>
+export const queuedPicksOf = (entries: QueuedEntry[], pickingOrderId: number): QueuedPick[] =>
   entries.flatMap((entry) => {
     const matched = PICK_PATH.exec(entry.path);
 
@@ -160,12 +197,17 @@ export const canPick = (
  *
  * 담아 둔 것도 집은 것으로 센다. 서버가 아는 것만 세면 오프라인에서 확정이 영영 열리지
  * 않는데, 이 화면은 오프라인 출고를 전제한다.
+ *
+ * 이미 담긴 출고가 있으면 막는다. 확정은 되돌릴 수 없는 재고 차감이고, 담긴 것은 서버가 아직
+ * 몰라 조회로는 드러나지 않는다.
  */
 export const canConfirmIssue = (
   lines: PickingLine[],
   hasWorker: boolean,
   queued: QueuedPick[] = [],
-): boolean => hasWorker && lines.some((line) => pickedQtyOf(line, queued) > 0);
+  queuedIssues = 0,
+): boolean =>
+  hasWorker && queuedIssues === 0 && lines.some((line) => pickedQtyOf(line, queued) > 0);
 
 const pad = (value: number): string => String(value).padStart(2, '0');
 

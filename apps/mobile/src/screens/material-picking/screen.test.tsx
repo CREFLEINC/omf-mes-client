@@ -71,17 +71,26 @@ const codeValue = (code: string, nameKo: string, displayOrder: number) => ({
   isActive: true,
 });
 
+const secondLine = () =>
+  line({
+    pickingLineId: 42,
+    lineNo: 2,
+    itemCode: 'ABC-124',
+    itemName: '하우징 커버 B',
+    pickSequenceRank: 2,
+  });
+
 /** 보내기 한 번이 어떻게 끝나는지. 오프라인·거부·성공을 시험마다 갈아 끼운다. */
 type Behaviour = 'ok' | 'offline' | 'rejected';
 
 interface Options {
-  lines?: unknown[];
+  lines?: ReturnType<typeof line>[];
   pick?: Behaviour;
   issue?: Behaviour;
   issueTypes?: unknown[];
 }
 
-const rest = (options: Options): StubRoute[] => [
+const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] => [
   {
     match: (req) => new URL(req.url).pathname === '/mdm/workers',
     respond: () =>
@@ -95,8 +104,16 @@ const rest = (options: Options): StubRoute[] => [
     respond: () => jsonResponse({ items: [order], page }),
   },
   {
+    /* 보낸 피킹을 서버가 기억한다. 기억하지 않으면 다시 조회해도 안 집은 값이 돌아온다. */
     match: (req) => new URL(req.url).pathname === '/logistics/picking-orders/7',
-    respond: () => jsonResponse({ pickingOrder: order, lines: options.lines ?? [line()] }),
+    respond: () =>
+      jsonResponse({
+        pickingOrder: order,
+        lines: (options.lines ?? [line()]).map((each) => ({
+          ...each,
+          pickedQty: each.pickedQty + (serverPicked.get(each.pickingLineId) ?? 0),
+        })),
+      }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
@@ -123,6 +140,8 @@ const respondWith = (behaviour: Behaviour, body: unknown, seen: Request[], reque
     : jsonResponse(body, { status: 201 });
 };
 
+const PICK_LINE = /\/lines\/(\d+):pick$/;
+
 const SignedIn = ({ children }: { children: ReactNode }) => {
   const { worker, signIn } = useWorkerSession();
 
@@ -139,30 +158,60 @@ interface Mounted {
   picks: Request[];
   issues: Request[];
   /** 시험 도중에 갈아 끼운다 - 오프라인에 담아 둔 뒤 다시 붙었을 때를 재기 위해서다. */
-  set: (next: { pick?: Behaviour; issue?: Behaviour }) => void;
+  set: (next: { pick?: Behaviour; issue?: Behaviour; rejectNextPicks?: number }) => void;
+  /** 다음 피킹 응답을 붙잡아 둔다. 아직 보내는 중인 상태를 재는 시험이 쓴다. */
+  holdNextPick: () => void;
+  releasePick: () => void;
 }
 
 const mount = (options: Options = {}): Mounted => {
   const picks: Request[] = [];
   const issues: Request[] = [];
-  const current: { pick: Behaviour; issue: Behaviour } = {
+  const serverPicked = new Map<number, number>();
+  const current = {
     pick: options.pick ?? 'ok',
     issue: options.issue ?? 'ok',
+    rejectNextPicks: 0,
+    hold: false,
+  };
+  let release: (() => void) | null = null;
+
+  const answerPick = async (req: Request): Promise<Response> => {
+    const held = current.hold ? new Promise<void>((resolve) => (release = resolve)) : null;
+
+    current.hold = false;
+
+    const lineId = Number(PICK_LINE.exec(new URL(req.url).pathname)?.[1] ?? Number.NaN);
+    const body = (await req.clone().json()) as { pickedQty: number };
+    const behaviour =
+      current.rejectNextPicks > 0 ? ('rejected' as Behaviour) : (current.pick as Behaviour);
+
+    if (current.rejectNextPicks > 0) {
+      current.rejectNextPicks -= 1;
+    }
+
+    if (held !== null) {
+      await held;
+    }
+
+    if (behaviour === 'ok') {
+      serverPicked.set(lineId, (serverPicked.get(lineId) ?? 0) + body.pickedQty);
+    }
+
+    return respondWith(behaviour, line({ pickingLineId: lineId }), picks, req);
   };
 
   const routes: StubRoute[] = [
     {
-      match: (req) =>
-        new URL(req.url).pathname === '/logistics/picking-orders/7/lines/41:pick' &&
-        req.method === 'POST',
-      respond: (req) => respondWith(current.pick, line({ pickedQty: 50 }), picks, req),
+      match: (req) => PICK_LINE.test(new URL(req.url).pathname) && req.method === 'POST',
+      respond: (req) => answerPick(req),
     },
     {
       match: (req) =>
         new URL(req.url).pathname === '/logistics/goods-issues' && req.method === 'POST',
       respond: (req) => respondWith(current.issue, { goodsIssueId: 900 }, issues, req),
     },
-    ...rest(options),
+    ...rest(options, serverPicked),
   ];
 
   renderWithProviders(
@@ -179,6 +228,13 @@ const mount = (options: Options = {}): Mounted => {
     issues,
     set: (next) => {
       Object.assign(current, next);
+    },
+    holdNextPick: () => {
+      current.hold = true;
+    },
+    releasePick: () => {
+      release?.();
+      release = null;
     },
   };
 };
@@ -299,6 +355,7 @@ describe('자재 출고·피킹 화면', () => {
     await pickLine(user, '50');
 
     expect(await screen.findByText('피킹이 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('이 지시에서 되돌아온 건 1')).toBeTruthy();
     expect(screen.getByRole('link', { name: '되돌아온 건 보기' })).toBeTruthy();
     expect(screen.queryByText('집었습니다')).toBeNull();
   });
@@ -333,6 +390,112 @@ describe('자재 출고·피킹 화면', () => {
     await chooseIssueType(user);
 
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(false);
+  });
+
+  /*
+   * 담긴 출고는 서버에 없어 다시 조회해도 나타나지 않는다. 확정 단추가 다시 열리면 같은 지시가
+   * 두 건으로 나가고, 멱등키가 달라 서버도 흡수하지 못한다 - 재고가 두 번 깎인다.
+   */
+  it('확정한 뒤 같은 지시를 다시 열어도 출고를 두 번 담지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ pick: 'offline', issue: 'offline' });
+    await chooseOrder(user);
+    await pickLine(user, '50');
+    await screen.findByText('피킹을 담아 두었습니다');
+    await chooseIssueType(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 담아 두었습니다');
+
+    await user.click(screen.getByRole('button', { name: '다음 지시' }));
+    await chooseOrder(user);
+    await chooseIssueType(user);
+
+    expect(
+      await screen.findByText('이 지시의 출고가 이미 담겨 있습니다. 연결되면 나갑니다.'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
+    expect(sent.issues).toHaveLength(0);
+  });
+
+  /*
+   * 셸이 스스로 큐를 비운다. 그때 다시 조회하지 않으면 담긴 것이 셈에서 빠진 자리에 서버가 아직
+   * 모르는 값이 남아, 화면이 안 집은 것으로 되돌아간다 - 작업자는 같은 라인을 다시 집는다.
+   */
+  it('셸이 스스로 큐를 비우면 화면이 서버 값으로 갱신된다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ pick: 'offline' });
+    await chooseOrder(user);
+    await pickLine(user, '50');
+    await screen.findByText('50 미확정 — 아직 서버에 없습니다');
+
+    sent.set({ pick: 'ok' });
+    window.dispatchEvent(new Event('online'));
+
+    /* 담긴 것이 빠진 자리에 서버 값이 들어와야 한다. 안 그러면 피킹 0 으로 되돌아간다. */
+    await waitFor(() => {
+      expect(screen.getByText('요청 200 / 피킹 50')).toBeTruthy();
+      expect(screen.queryByText('50 미확정 — 아직 서버에 없습니다')).toBeNull();
+    });
+  });
+
+  /*
+   * 도는 회차의 목록은 담기 전에 떠진 것이라 방금 담은 건이 없다. 그 결과를 그대로 받으면 보낸
+   * 적 없는 건에 집었다는 말이 붙는다.
+   */
+  it('보내는 도중에 집어도 그 건이 실제로 나간다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ pick: 'offline', lines: [line(), secondLine()] });
+    await chooseOrder(user);
+    await pickLine(user, '50');
+    await screen.findByText('피킹을 담아 두었습니다');
+
+    sent.set({ pick: 'ok' });
+    sent.holdNextPick();
+    window.dispatchEvent(new Event('online'));
+
+    await user.click(screen.getByRole('button', { name: /ABC-124/ }));
+    await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
+    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await screen.findByText('라인의 LOT 과 같습니다');
+    await user.type(screen.getByLabelText('출고 수량'), '30');
+    await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
+
+    sent.releasePick();
+
+    await waitFor(() => {
+      expect(sent.picks.filter((each) => each.url.includes('/lines/42:pick'))).toHaveLength(1);
+    });
+  });
+
+  /*
+   * 묶음은 한 번의 시도를 가리킨다. 지시 번호로 지으면 앞 시도의 실패가 뒤 시도의 멀쩡한 건까지
+   * 딸려 되돌린다.
+   */
+  it('앞 시도가 거부돼도 뒤 시도의 피킹은 딸려 되돌아가지 않는다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ pick: 'offline', lines: [line(), secondLine()] });
+    await chooseOrder(user);
+    await pickLine(user, '50');
+    await screen.findByText('피킹을 담아 두었습니다');
+
+    await user.click(screen.getByRole('button', { name: '다른 지시 고르기' }));
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: /ABC-124/ }));
+    await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
+    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await screen.findByText('라인의 LOT 과 같습니다');
+    await user.type(screen.getByLabelText('출고 수량'), '30');
+    await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
+    await screen.findByText('피킹을 담아 두었습니다');
+
+    sent.set({ pick: 'ok', rejectNextPicks: 1 });
+    window.dispatchEvent(new Event('online'));
+
+    /* 앞 시도가 400 으로 되돌아가도 뒤 시도의 라인은 서버까지 가야 한다. */
+    await waitFor(() => {
+      expect(sent.picks.filter((each) => each.url.includes('/lines/42:pick'))).toHaveLength(1);
+    });
   });
 
   it('보낼 출고 유형이 없으면 그 사실을 말한다', async () => {

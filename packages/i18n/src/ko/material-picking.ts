@@ -88,8 +88,15 @@ export const materialPicking = {
     },
     rejected: {
       title: '피킹이 되돌아왔습니다',
-      description: '서버가 받지 않았습니다. 사유를 확인하세요. ',
+      description: '서버가 받지 않았습니다.',
     },
+  },
+  /* 담긴 출고는 서버가 아직 몰라 조회로 드러나지 않는다. 또 확정하면 재고가 두 번 깎인다. */
+  issueQueued: '이 지시의 출고가 이미 담겨 있습니다. 연결되면 나갑니다.',
+  /* 셸이 배경으로 보내다 거부당한 건은 화면이 스스로 본 적이 없다. 그래도 사유는 보여야 한다. */
+  returned: {
+    title: (count: string) => `이 지시에서 되돌아온 건 ${count}`,
+    description: '서버가 받지 않았습니다. 사유를 확인하세요. ',
   },
   noWorker: '사번을 확인한 뒤에 피킹할 수 있습니다',
   sent: {

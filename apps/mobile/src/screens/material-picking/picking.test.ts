@@ -8,9 +8,11 @@ import {
   canConfirmIssue,
   canPick,
   isOutOfSequence,
+  isOfOrder,
   isScannedLotOf,
   lineProblemOf,
   qtyProblemOf,
+  queuedIssueCountOf,
   remainingQtyOf,
   toIssueDraft,
   toPickDraft,
@@ -151,7 +153,9 @@ describe('피킹 가능 여부', () => {
 describe('출고 확정 가능 여부', () => {
   /* 모자라면 부분 출고로 두고 부족분을 남긴다. */
   it('한 건이라도 집었으면 확정한다', () => {
-    expect(canConfirmIssue([line({ pickedQty: 50 }), line({ pickingLineId: 42 })], true)).toBe(true);
+    expect(canConfirmIssue([line({ pickedQty: 50 }), line({ pickingLineId: 42 })], true)).toBe(
+      true,
+    );
   });
 
   it('아무것도 안 집었으면 확정할 수 없다', () => {
@@ -182,7 +186,15 @@ describe('보낼 것', () => {
   it('출고에는 집은 라인만 싣는다', () => {
     const picked = line({ pickedQty: 120 });
     const untouched = line({ pickingLineId: 42, pickedQty: 0 });
-    const draft = toIssueDraft(order(), [picked, untouched], [], 'PRODUCTION', 'batch-1', now, '100027');
+    const draft = toIssueDraft(
+      order(),
+      [picked, untouched],
+      [],
+      'PRODUCTION',
+      'batch-1',
+      now,
+      '100027',
+    );
     const body = draft.body as { lines: { pickingLineId: number; issueQty: number }[] };
 
     expect(body.lines).toEqual([
@@ -192,14 +204,30 @@ describe('보낼 것', () => {
 
   /* 둘로 나누면 오프라인 큐에 중간 상태가 남는다. */
   it('등록과 전기를 한 요청으로 보낸다', () => {
-    const draft = toIssueDraft(order(), [line({ pickedQty: 1 })], [], 'PRODUCTION', 'b', now, '100027');
+    const draft = toIssueDraft(
+      order(),
+      [line({ pickedQty: 1 })],
+      [],
+      'PRODUCTION',
+      'b',
+      now,
+      '100027',
+    );
     const body = draft.body as { postImmediately: boolean };
 
     expect(body.postImmediately).toBe(true);
   });
 
   it('원천 문서로 피킹 지시를 가리킨다', () => {
-    const draft = toIssueDraft(order(), [line({ pickedQty: 1 })], [], 'PRODUCTION', 'b', now, '100027');
+    const draft = toIssueDraft(
+      order(),
+      [line({ pickedQty: 1 })],
+      [],
+      'PRODUCTION',
+      'b',
+      now,
+      '100027',
+    );
     const body = draft.body as { sourceDocumentTypeCode: string; sourceDocumentId: number };
 
     expect(body.sourceDocumentTypeCode).toBe(SOURCE_DOCUMENT_TYPE);
@@ -208,7 +236,15 @@ describe('보낼 것', () => {
 
   /* 그 위치를 받을 경로가 이 화면에 없다. 지어낸 값을 실으면 엉뚱한 자리로 기록된다. */
   it('도착지를 비운다', () => {
-    const draft = toIssueDraft(order(), [line({ pickedQty: 1 })], [], 'PRODUCTION', 'b', now, '100027');
+    const draft = toIssueDraft(
+      order(),
+      [line({ pickedQty: 1 })],
+      [],
+      'PRODUCTION',
+      'b',
+      now,
+      '100027',
+    );
 
     expect(draft.body).not.toHaveProperty('destinationId');
   });
@@ -274,5 +310,46 @@ describe('담긴 피킹', () => {
     const body = draft.body as { lines: { issueQty: number }[] };
 
     expect(body.lines[0]?.issueQty).toBe(80);
+  });
+});
+
+/*
+ * 담긴 출고는 서버에 없어 다시 조회해도 나타나지 않는다. 세지 않으면 같은 지시를 한 번 더
+ * 확정할 수 있고, 두 건이 각자 멱등키를 들고 나가 재고가 두 번 깎인다.
+ */
+describe('담긴 출고', () => {
+  const issue = (pickingOrderId: number) => ({
+    path: '/logistics/goods-issues',
+    body: { sourceDocumentTypeCode: SOURCE_DOCUMENT_TYPE, sourceDocumentId: pickingOrderId },
+  });
+
+  const pick = {
+    path: '/logistics/picking-orders/7/lines/41:pick',
+    body: { pickedQty: 50 },
+  };
+
+  it('이 지시의 것만 센다', () => {
+    expect(queuedIssueCountOf([issue(7), issue(9)], 7)).toBe(1);
+  });
+
+  it('원천 유형이 다르면 이 화면의 출고가 아니다', () => {
+    const other = {
+      path: '/logistics/goods-issues',
+      body: { sourceDocumentTypeCode: 'SHIPMENT_REQUEST', sourceDocumentId: 7 },
+    };
+
+    expect(queuedIssueCountOf([other], 7)).toBe(0);
+  });
+
+  it('피킹은 출고로 세지 않는다', () => {
+    expect(queuedIssueCountOf([pick], 7)).toBe(0);
+  });
+
+  /* 되돌아온 건 중 이 화면 몫을 고를 때 피킹과 출고를 함께 봐야 한다. */
+  it('이 지시에서 나온 건은 피킹도 출고도 가려낸다', () => {
+    expect(isOfOrder(pick, 7)).toBe(true);
+    expect(isOfOrder(pick, 9)).toBe(false);
+    expect(isOfOrder(issue(7), 7)).toBe(true);
+    expect(isOfOrder(issue(9), 7)).toBe(false);
   });
 });
