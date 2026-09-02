@@ -1,6 +1,5 @@
-import { Breadcrumb, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { toApiError } from '../../patterns/request';
@@ -330,9 +329,7 @@ export const PqcInspectionScreen = () => {
   const planVersionId = detail.data.inspectionPlanVersionId;
 
   return (
-    <PqcFrame>
-      <TargetHeader detail={detail.data} />
-
+    <PqcFrame target={<TargetHeader detail={detail.data} />}>
       <div className="pop-inspect">
         {/*
          * ⭐ **갈래가 둘이다**(§5-2 · 통지 #589). 검사 기준이 없으면 항목표 대신 판정 선택과
@@ -419,13 +416,34 @@ const storedValueKey = (row: MeasurementRow): string => {
   return String(measured.numericValue ?? measured.textValue ?? measured.booleanValue ?? '');
 };
 
-/** 머리와 이름은 어느 갈래에서나 같다 — 갈래마다 다시 쓰면 한쪽만 고쳐지는 자리가 된다. */
-const PqcFrame = ({ children }: { children: React.ReactNode }) => (
-  <>
-    <PageHeader
-      title={t.title}
-      breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
-    />
-    {children}
-  </>
-);
+/**
+ * 머리와 이름은 어느 갈래에서나 같다 — 갈래마다 다시 쓰면 한쪽만 고쳐지는 자리가 된다.
+ *
+ * 도면 §3 의 **위쪽 64 한 줄**이다 — 제목이 왼쪽, 대상이 오른쪽에 선다. 관리웹의
+ * `PageHeader` + `Breadcrumb` 를 쓰지 않는다: 이 화면은 POP 라우트라 관리웹 셸
+ * (`AppLayout`) 밖에 서고, 사이드바로 오가지 않아 **돌아갈 경로가 없다.**
+ *
+ * ⚠ 도면의 단말명·연결 표시(`POP-L1 ●`)는 아직 그리지 않는다 — 단말 컨텍스트가 이 저장소에
+ * 서지 않았다(`patterns/pop-identity`). 모르는 것을 지어내지 않는다.
+ */
+const PqcFrame = ({
+  children,
+  target,
+}: {
+  children: React.ReactNode;
+  target?: React.ReactNode;
+}) => {
+  const titleId = useId();
+
+  return (
+    <main className="pop-shell" aria-labelledby={titleId}>
+      <header className="pop-header">
+        <h1 id={titleId} className="pop-title">
+          {t.title}
+        </h1>
+        {target}
+      </header>
+      {children}
+    </main>
+  );
+};

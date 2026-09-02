@@ -13,8 +13,11 @@ import type { InspectionRequestDetail } from './types';
  * 매핑 표에 헤더 항목이 없어 **라벨 유무·컴포넌트·배열은 정해져 있지 않다.** 스케치의
  * 가운뎃점을 「라벨 없이 이으라」로 읽었다가 되돌린 자리다 — 스케치는 그 말을 하지 않는다.
  *
- * 그래서 **저장소의 전례를 따른다** — 읽기 전용 요약을 `dl.filter-bar` + `field-cell` 로
- * 그리는 형태이며 51개 화면이 같다. 같은 계열인 IQC 수입검사도 이 형태다.
+ * 그래서 **POP 화면의 전례를 따른다** — 도면의 64 짜리 한 줄을 `pop-header` 안의
+ * `pop-context-right` 로 그린다(`P-02-03`·`P-05-01` 과 같은 형태). 관리웹의 `PageHeader` +
+ * `Breadcrumb` 는 쓰지 않는다: 이 화면은 셸 밖에 서고, 사이드바로 오가지 않아 돌아갈 경로가
+ * 없다. 라벨을 값 앞에 붙이는 것도 그 전례를 따른다 — 도면의 가운뎃점은 라벨을 지우라는
+ * 말이 아니고, 라벨이 없으면 정수 셋이 무엇인지 구분되지 않는다.
  *
  * ⛔ **§4-A 를 표시 목록으로 읽지 않는다.** 그 표는 `quality.inspection_request` 의 «필드»
  * 표이고 「필수」 칸은 `UNIQUE`·`NOT NULL` 같은 **데이터 제약**이다. 무엇을 그릴지는 도면이
@@ -53,15 +56,10 @@ export const TargetHeader = ({ detail }: TargetHeaderProps) => {
   ];
 
   return (
-    <section aria-label={t.heading}>
-      <dl className="filter-bar">
-        {items.map((item) => (
-          <div className="field-cell" key={item.key}>
-            <dt className="field-label">{item.label}</dt>
-            <dd>{item.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </section>
+    <div className="pop-context-right" aria-label={t.heading} role="group">
+      {items.map((item) => (
+        <span key={item.key}>{`${item.label} ${item.value}`}</span>
+      ))}
+    </div>
   );
 };

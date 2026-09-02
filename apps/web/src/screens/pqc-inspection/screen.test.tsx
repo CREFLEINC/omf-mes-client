@@ -163,16 +163,22 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
    * 도면의 헤더는 W/O·품목·LOT(그릴 자료가 있는 셋)이고, 그리는 «형태»는 저장소 전례를
    * 따른다 — 읽기 전용 요약은 라벨과 값을 짝으로 둔다.
    */
-  it('헤더는 작업지시·품목·대상 LOT 셋을 라벨과 함께 그린다', async () => {
+  /*
+   * 도면 §3 의 **위쪽 64 는 한 줄**이다 — 제목과 대상이 같은 머리에 선다. 대상 줄을 머리
+   * «아래»에 따로 두면 세로 예산(헤더 64 + 본문 616 + 액션바 88 = 768)이 넘쳐 액션바가
+   * 화면 밖으로 밀린다. 그래서 「무엇을 그리는가」와 함께 **어디에 서는가**도 지킨다.
+   */
+  it('작업지시·품목·대상 LOT 이 라벨과 함께 머리 한 줄에 선다', async () => {
     renderScreen();
 
-    const header = await screen.findByLabelText(t.detail.heading);
-    const labels = [...header.querySelectorAll('dt')].map((cell) => cell.textContent);
+    const target = await screen.findByLabelText(t.detail.heading);
 
-    expect(labels).toEqual([
-      t.detail.fields.workOrderId,
-      t.detail.fields.itemId,
-      t.detail.fields.lotId,
+    expect(target.closest('.pop-header')).not.toBeNull();
+    expect([...target.children].map((child) => child.textContent)).toEqual([
+      /* 이 픽스처의 의뢰에는 작업지시가 없다 — 지어내지 않고 빈 값 표식을 세운다. */
+      `${t.detail.fields.workOrderId} ${t.emptyValue}`,
+      `${t.detail.fields.itemId} ${String(waitingRequest.itemId)}`,
+      `${t.detail.fields.lotId} ${String(waitingRequest.lotId)}`,
     ]);
   });
 

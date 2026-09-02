@@ -8,7 +8,6 @@
  */
 export const pqcInspection = {
   title: 'PQC 제품 검사',
-  breadcrumbRoot: '생산실행',
 
   /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
   emptyValue: '—',
