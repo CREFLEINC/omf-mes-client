@@ -75,7 +75,7 @@ export const ProgressFilterBar = ({
   };
 
   return (
-    <form aria-label={t.legend} className="filter-bar" onSubmit={submit}>
+    <form aria-label={t.legend} className="filter-bar work-order-progress-filter" onSubmit={submit}>
       <div className="field-cell">
         <TextField
           aria-describedby={blockedReason === null ? undefined : periodNoteId}
@@ -146,8 +146,11 @@ export const ProgressFilterBar = ({
         />
       </div>
 
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
+      <div className="work-order-progress-filter-footer">
+        {/* A-11 — 만들지 않은 조건을 한 문장으로 밝힌다. */}
+        <p className="field-note">{t.processUnavailable}</p>
+
+        <div className="filter-actions work-order-progress-filter-buttons">
           <Button
             aria-describedby={blockedReason === null ? undefined : periodNoteId}
             disabled={blockedReason !== null}
@@ -168,9 +171,6 @@ export const ProgressFilterBar = ({
 
         {/* ⛔ 넓은 기간을 막지 않는다 — 느려질 수 있다는 사실만 미리 알린다. */}
         {wideWarning === null ? null : <p className="field-note">{wideWarning}</p>}
-
-        {/* A-11 — 만들지 않은 조건을 한 문장으로 밝힌다. */}
-        <p className="field-note">{t.processUnavailable}</p>
       </div>
     </form>
   );

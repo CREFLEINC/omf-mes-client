@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { listUrl, renderScreen, WORK_ORDER } from './screen-harness';
@@ -11,6 +11,15 @@ describe('WorkOrderProgressScreen', () => {
     renderScreen();
 
     expect(screen.getByRole('heading', { name: t.title })).toBeInTheDocument();
+  });
+
+  it('조회 조건을 제목이 있는 구획으로 구분한다', () => {
+    renderScreen();
+
+    const region = screen.getByRole('region', { name: t.filters.legend });
+    expect(
+      within(region).getByRole('heading', { level: 2, name: t.filters.legend }),
+    ).toBeInTheDocument();
   });
 
   /*

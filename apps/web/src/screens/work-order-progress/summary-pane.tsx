@@ -40,10 +40,10 @@ export const SummaryPane = ({ total }: SummaryPaneProps) => {
   ];
 
   return (
-    <section aria-label={t.title}>
-      <h2 className="field-label">{t.title}</h2>
+    <section className="pane work-order-progress-pane" aria-label={t.title}>
+      <h2 className="pane-title">{t.title}</h2>
 
-      <div className="filter-bar">
+      <div className="work-order-progress-summary-grid">
         <StatCard label={t.total} value={total === null ? t.unavailableMark : String(total)} />
         {cards.map((card) => (
           <StatCard key={card.label} label={card.label} value={t.unavailableMark} />
