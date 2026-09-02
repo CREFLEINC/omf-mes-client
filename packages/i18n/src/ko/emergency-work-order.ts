@@ -64,6 +64,7 @@ export const emergencyWorkOrder = {
 
   /** 발행 정보 입력. 고정된 넷은 여기 없다 — 그쪽은 `fixedTerms`가 값으로만 적는다. */
   form: {
+    title: '발행 정보',
     item: '품목',
     orderQty: '수량',
     plannedEnd: '납기',
@@ -95,6 +96,7 @@ export const emergencyWorkOrder = {
 
   /** 발행 액션의 이름. 한 번 누르면 만들고 배포까지 간다 — 이름이 그것을 말한다. */
   action: '발행·배포',
+  actionTitle: '발행 준비',
 
   /**
    * 자동 전개 구획. 고른 품목에서 **무엇이 펼쳐지는지**를 보인다.

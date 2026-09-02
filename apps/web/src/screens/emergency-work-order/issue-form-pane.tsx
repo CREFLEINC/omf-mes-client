@@ -42,43 +42,49 @@ export const IssueFormPane = ({ value, errors, item, uomLabel, onChange }: Issue
     touched[field] === true ? errors[field] : undefined;
 
   return (
-    <section aria-label={messages.emergencyWorkOrder.title}>
-      <div className="field-cell">
-        <span className="field-label">{t.item}</span>
-        <span>{item === null ? '—' : `${item.itemCode} · ${item.itemName}`}</span>
+    <section className="pane emergency-work-order-pane" aria-label={t.title}>
+      <h2 className="pane-title">{t.title}</h2>
+
+      <div className="emergency-work-order-form-grid">
+        <div className="field-cell emergency-work-order-form-item">
+          <span className="field-label">{t.item}</span>
+          <strong>{item === null ? '—' : `${item.itemCode} · ${item.itemName}`}</strong>
+        </div>
+
+        <TextField
+          label={`${t.orderQty} (${uomLabel})`}
+          inputMode="decimal"
+          value={value.orderQty}
+          error={errorOf('orderQty')}
+          onChange={(event) => {
+            set('orderQty', event.target.value);
+          }}
+        />
+
+        <TextField
+          label={t.plannedEnd}
+          type="date"
+          value={value.dueDate}
+          helperText={t.dueHelp}
+          error={errorOf('dueDate')}
+          onChange={(event) => {
+            set('dueDate', event.target.value);
+          }}
+        />
+
+        <div className="emergency-work-order-form-reason">
+          <TextArea
+            label={t.reason}
+            value={value.remarks}
+            /* 왜 필수인지와, 어디에 어떻게 남는지를 함께 적는다. */
+            helperText={`${t.reasonHelp} ${t.reasonScope}`}
+            error={errorOf('remarks')}
+            onChange={(event) => {
+              set('remarks', event.target.value);
+            }}
+          />
+        </div>
       </div>
-
-      <TextField
-        label={`${t.orderQty} (${uomLabel})`}
-        inputMode="decimal"
-        value={value.orderQty}
-        error={errorOf('orderQty')}
-        onChange={(event) => {
-          set('orderQty', event.target.value);
-        }}
-      />
-
-      <TextField
-        label={t.plannedEnd}
-        type="date"
-        value={value.dueDate}
-        helperText={t.dueHelp}
-        error={errorOf('dueDate')}
-        onChange={(event) => {
-          set('dueDate', event.target.value);
-        }}
-      />
-
-      <TextArea
-        label={t.reason}
-        value={value.remarks}
-        /* 왜 필수인지와, 어디에 어떻게 남는지를 함께 적는다. */
-        helperText={`${t.reasonHelp} ${t.reasonScope}`}
-        error={errorOf('remarks')}
-        onChange={(event) => {
-          set('remarks', event.target.value);
-        }}
-      />
     </section>
   );
 };
