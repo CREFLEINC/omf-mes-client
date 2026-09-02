@@ -1537,18 +1537,62 @@ main > * + * {
 }
 
 /*
- * 사용률 막대의 이름 — 막대가 「남은 비율」이 아니라 「쓴 비율」임을 그 자리에서 말한다.
- * 이름이 없으면 사용 가능 줄의 백분율이 「사용 가능이 0%」로 읽힌다.
+ * 내용이 아니라 **폭이 열 너비를 정한다.** 34자리 번호가 표를 밀어 넓히면 오른쪽 끝의
+ * 선택 버튼이 표 밖으로 나가 보이지 않는다 — 목록이 화면 안에 들어오는 것이 먼저다.
  */
+.pop-lot-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
 /*
- * 발행 수량 — **키패드와 입력칸을 나란히 둔다**(스펙 §3). 장갑 낀 손은 키패드를, 손 입력·화면
- * 판독기는 입력칸을 쓴다. 위아래로 쌓으면 1024×768 에서 키패드가 접힌 아래로 내려간다.
+ * LOT 번호는 34자리다 — 남은 폭을 다 먹고 옆 열을 밀어낸다. 한 줄로 잘라 두고 전체는
+ * 툴팁으로 남긴다(뒷자리가 구분자라 고른 뒤 오른쪽 《발행》에서 온전히 다시 읽는다).
  */
+.pop-lot-no {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 《발행》 구획 — **수치·입력·액션이 한 줄, 키패드가 그 옆**이다. 위아래로 쌓으면 구획이
+ * 830px 이 되어 1024×768 단말에서 「발행·인쇄」가 접힌 아래로 내려간다(실측).
+ */
+.pop-issue-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--space-5);
+}
+
+/*
+ * 좁아지면 키패드를 아래로 내린다 — 두 열을 우겨넣으면 수치가 한 글자씩 접혀 읽을 수 없다.
+ * POP 실기(1024×768)는 위 두 열 배치로 선다.
+ */
+@media (max-width: 900px) {
+  .pop-issue-layout {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: start;
+  }
+}
+
+.pop-issue-main {
+  min-width: 0;
+}
+
+/*
+ * LOT 번호가 34자리라 값 칸을 넘어 옆 키패드 위로 흘렀다(실측). 끊어 내리되 «자르지는»
+ * 않는다 — 목록에서 이미 잘렸으므로 고른 뒤 번호 전체를 확인할 자리가 여기뿐이다.
+ *
+ * 이 화면에만 건다. `.pop-figures` 는 다른 POP 화면도 쓰는데 그쪽 값은 짧은 수치다.
+ */
+.pop-issue-main .pop-figures dd {
+  overflow-wrap: anywhere;
+}
+
 .pop-issue-input {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
-  flex-wrap: wrap;
   margin-block-start: var(--space-5);
 }
 
@@ -1569,6 +1613,10 @@ main > * + * {
   color: var(--on-surface-muted);
 }
 
+/*
+ * 사용률 막대의 이름 — 막대가 「남은 비율」이 아니라 「쓴 비율」임을 그 자리에서 말한다.
+ * 이름이 없으면 사용 가능 줄의 백분율이 「사용 가능이 0%」로 읽힌다.
+ */
 .pop-usage-label {
   flex: none;
   font: var(--type-body-sm);

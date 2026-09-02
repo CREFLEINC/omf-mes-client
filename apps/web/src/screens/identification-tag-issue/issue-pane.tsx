@@ -91,63 +91,72 @@ export const IssuePane = ({
   const canSubmit = !isSubmitting && blockedReason === null && rejection === null && !noGoodQty;
 
   return (
-    <>
-      <dl className="pop-figures">
-        <div>
-          <dt>{t.issue.lotLabel}</dt>
-          <dd>{lotNo}</dd>
-        </div>
-        <div>
-          <dt>{t.issue.goodQtyLabel}</dt>
-          <dd>{figure(goodQty, t.issue.countUnit)}</dd>
-        </div>
-        <div>
-          <dt>{t.issue.issuedLabel}</dt>
-          <dd>{figure(issuedCount, t.issue.countUnit)}</dd>
-        </div>
-        <div>
-          <dt>{t.issue.unissuedLabel}</dt>
-          <dd>{figure(unissued, t.issue.countUnit)}</dd>
-        </div>
-      </dl>
+    <div className="pop-issue-layout">
+      <div className="pop-issue-main">
+        <dl className="pop-figures">
+          <div>
+            <dt>{t.issue.lotLabel}</dt>
+            <dd>{lotNo}</dd>
+          </div>
+          <div>
+            <dt>{t.issue.goodQtyLabel}</dt>
+            <dd>{figure(goodQty, t.issue.countUnit)}</dd>
+          </div>
+          <div>
+            <dt>{t.issue.issuedLabel}</dt>
+            <dd>{figure(issuedCount, t.issue.countUnit)}</dd>
+          </div>
+          <div>
+            <dt>{t.issue.unissuedLabel}</dt>
+            <dd>{figure(unissued, t.issue.countUnit)}</dd>
+          </div>
+        </dl>
 
-      <div className="pop-issue-input">
-        <TextField
-          id={quantityId}
-          label={`${t.issue.quantityLabel} (${t.issue.quantityUnit})`}
-          size="xl"
-          inputMode="numeric"
-          value={quantity}
-          error={inlineError}
-          onChange={(event) => {
-            onQuantityChange(event.target.value);
-          }}
-        />
-        <NumberPad
-          value={quantity}
-          onChange={onQuantityChange}
-          maxLength={QUANTITY_MAX_LENGTH}
-          max={MAX_ISSUE_QUANTITY}
-          size="xl"
-          aria-label={t.issue.quantityLabel}
-        />
+        <div className="pop-issue-input">
+          <TextField
+            id={quantityId}
+            label={`${t.issue.quantityLabel} (${t.issue.quantityUnit})`}
+            size="xl"
+            inputMode="numeric"
+            fullWidth
+            value={quantity}
+            error={inlineError}
+            onChange={(event) => {
+              onQuantityChange(event.target.value);
+            }}
+          />
+        </div>
+
+        <p className="pop-preview">
+          <span className="pop-preview-label">{t.preview.label}</span>
+          <span>{preview ?? t.preview.beforeIssue}</span>
+        </p>
+
+        {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
+
+        <div className="pop-actions">
+          <Button size="2xl" loading={isSubmitting} disabled={!canSubmit} onClick={onSubmit}>
+            {t.issue.submit}
+          </Button>
+          <Button variant="outlined" size="2xl" onClick={onReissue}>
+            {t.issue.reissue}
+          </Button>
+        </div>
       </div>
 
-      <p className="pop-preview">
-        <span className="pop-preview-label">{t.preview.label}</span>
-        <span>{preview ?? t.preview.beforeIssue}</span>
-      </p>
-
-      {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
-
-      <div className="pop-actions">
-        <Button size="2xl" loading={isSubmitting} disabled={!canSubmit} onClick={onSubmit}>
-          {t.issue.submit}
-        </Button>
-        <Button variant="outlined" size="2xl" onClick={onReissue}>
-          {t.issue.reissue}
-        </Button>
-      </div>
-    </>
+      {/*
+        ⭐ **키패드를 옆에 세운다.** 아래로 쌓으면 1024×768 단말에서 «발행·인쇄»가 접힌 아래로
+        내려간다 — 스펙 §3 이 세로 여유를 119px 로 못박은 화면이고, 주 액션이 스크롤 밖에 있는
+        것은 현장에서 없는 것과 같다(실측: 쌓았을 때 구획 높이가 830px 였다).
+      */}
+      <NumberPad
+        value={quantity}
+        onChange={onQuantityChange}
+        maxLength={QUANTITY_MAX_LENGTH}
+        max={MAX_ISSUE_QUANTITY}
+        size="xl"
+        aria-label={t.issue.quantityLabel}
+      />
+    </div>
   );
 };
