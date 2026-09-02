@@ -1882,18 +1882,46 @@ main > * + * {
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-3);
+  /*
+   * ⛔ **88 은 테두리·여백을 «포함한» 치수다.** §3 이 이 띠에 준 세로 예산이 88 이고 슬랙이
+   * 0 이라, 기본값(`content-box`)으로 두면 88 «안쪽»에 여백 16 과 테두리 2 가 더 붙어
+   * **106 이 된다** — 실측으로 18 이 넘쳤다. 예산은 화면이 차지하는 자리를 말하므로
+   * `border-box` 로 잰다.
+   *
+   * ⛔ **세로 여백을 두지 않는다.** 이 안에 72 짜리 「검사 확정」이 선다(등급 `destructive`) —
+   * 여백을 8 만 줘도 72 + 16 + 2 = 90 이라 88 을 넘는다. 띠의 높이는 여백이 아니라 `min-height`
+   * 가 정하고, 남는 자리는 `align-items: center` 가 위아래로 나눈다. 가로는 남으므로 그대로 둔다.
+   */
+  box-sizing: border-box;
   min-height: 88px;
-  padding: var(--space-3) var(--space-4);
+  padding: 0 var(--space-4);
   background: var(--surface-container-low);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-lg);
   margin-top: var(--space-4);
 }
 
-/* 막힌 사유는 버튼 왼쪽에 함께 선다 — 잠긴 버튼만 두지 않는다(G-3). */
+/*
+ * 막힌 사유는 버튼 왼쪽에 함께 선다 — 잠긴 버튼만 두지 않는다(G-3).
+ *
+ * ⛔ **남는 가로를 사유가 쓰게 한다**(`flex: 1`). `margin-right: auto` 만 두면 칸이 글자
+ * 길이대로 좁아져(실측 320) 두 문장이 각각 두 줄로 접히고, **액션바가 88 을 30 넘어
+ * 세로 예산(64 + 616 + 88 = 768 · 슬랙 0)이 무너진다** — 1024×768 단말에서 액션바 아래가
+ * 잘린다. 가로는 700 넘게 남아 있으니 접을 이유가 없다.
+ *
+ * ⛔ 문단 기본 여백을 함께 턴다 — 위아래 18 씩이 두 문장에 붙어 그것만으로 36 을 먹는다.
+ */
 .pop-action-note {
-  margin-right: auto;
+  flex: 1;
   min-width: 0;
+}
+
+.pop-action-note > p {
+  margin: 0;
+}
+
+.pop-action-note > p + p {
+  margin-top: var(--space-1);
 }
 
 /*

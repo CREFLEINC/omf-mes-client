@@ -1,6 +1,8 @@
 import { Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { popTouchClass } from '../../patterns/pop-touch';
+
 /**
  * 액션바 — 화면 스펙 §3 이 **화면 아래 고정 88** 로 둔 자리다.
  *
@@ -64,13 +66,34 @@ export const ActionBar = ({
      * 말한다. 여기서 버튼을 잠그면 통신이 끊긴 단말에서 검사자가 두 번째 항목을 저장하지
      * 못한다.
      */}
-    <Button type="button" variant="outlined" size="xl" onClick={onSave}>
+    {/*
+     * 터치 등급 — **치수가 아니라 「틀렸을 때 무엇이 일어나는가」로 고른다**(`patterns/pop-touch`).
+     *
+     * 임시 저장은 흐름을 진행시키는 주 조작이라 `primary`(64) 다. 되돌리려면 값을 고쳐 다시
+     * 누르면 된다.
+     *
+     * ⛔ **검사 확정은 `destructive`(72) 다.** 확정은 되돌릴 수 없는 쓰기이고 정정이 아니라
+     * **재검 회차로만** 고친다(B-10). 스펙 §3 도면이 이 자리에 72 를 적은 이유이며, 착수 이슈
+     * #86 6항이 「DS 의 `xl` 은 60px 이라 부족분을 제품이 채운다」로 처리 방법을 지정해 둔
+     * 자리다 — `P-01-01` 이 그 수단을 세우면서 채울 수 있게 됐다.
+     *
+     * ⛔ 픽셀을 여기에 적지 않는다 — 치수는 `app.css` 한 곳에 있고, 두 곳에 적으면 한쪽만
+     * 고쳐진다.
+     */}
+    <Button
+      type="button"
+      variant="outlined"
+      size="xl"
+      className={popTouchClass('primary')}
+      onClick={onSave}
+    >
       {t.save}
     </Button>
     <Button
       type="button"
       variant="filled"
       size="xl"
+      className={popTouchClass('destructive')}
       disabled={blockedReason !== null}
       onClick={onConfirm}
     >

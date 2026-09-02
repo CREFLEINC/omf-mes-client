@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
+import { popTouchClass } from '../../patterns/pop-touch';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   codeValuesResponse,
@@ -681,6 +682,24 @@ describe('PqcInspectionScreen — 서버가 거부하면 (공유계약 C-7)', ()
 });
 
 describe('PqcInspectionScreen — 액션바', () => {
+  /*
+   * ⭐ **터치 등급은 치수가 아니라 「틀렸을 때 무엇이 일어나는가」로 갈린다**(`pop-touch`).
+   *
+   * ⛔ **검사 확정은 되돌릴 수 없는 쓰기다**(B-10 — 정정이 아니라 재검 회차로만 고친다).
+   * 스펙 §3 도면이 이 자리에 72 를 적었고, DS 의 `xl` 은 60px 이라 부족분을 제품이 채운다
+   * (착수 이슈 #86 6항). 등급이 내려가면 **장갑 낀 손이 되돌릴 수 없는 단추를 12px 작게
+   * 누른다** — 치수는 CSS 한 곳에 있으므로 여기서는 «등급»을 지킨다.
+   */
+  it('임시 저장은 주 조작 등급, 검사 확정은 되돌릴 수 없는 등급이다', async () => {
+    renderScreen();
+
+    const save = await screen.findByRole('button', { name: t.result.save });
+    const confirm = screen.getByRole('button', { name: t.result.confirm });
+
+    expect(save).toHaveClass(...popTouchClass('primary').split(' '));
+    expect(confirm).toHaveClass(...popTouchClass('destructive').split(' '));
+  });
+
   /*
    * ⛔ 잠긴 단추만 두지 않는다(G-3). 막혔으면 «무엇이» 막혔는지 함께 세운다.
    */
