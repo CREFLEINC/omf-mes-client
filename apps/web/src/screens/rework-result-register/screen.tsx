@@ -89,7 +89,8 @@ export const ReworkResultRegisterScreen = () => {
     dispositions.isSuccess &&
     progress.remaining > 0 &&
     (verdict === 'partial' || verdict === 'complete') &&
-    gateReason === null;
+    gateReason === null &&
+    !queued;
 
   const selectWorkOrder = (workOrder: WorkOrder) => {
     setSelectedId(workOrder.workOrderId);
@@ -115,6 +116,13 @@ export const ReworkResultRegisterScreen = () => {
         })
         .catch(() => setPendingCount(pendingReworkResultCount()));
     }
+  };
+
+  const reset = () => {
+    setDrafts(EMPTY_QUANTITIES);
+    setQueued(false);
+    setQueueError(false);
+    setRejected(false);
   };
 
   return (
@@ -262,7 +270,7 @@ export const ReworkResultRegisterScreen = () => {
 
               <div className="pop-action-bar">
                 <div className="pop-action-note">{gateReason && <p>{gateReason}</p>}</div>
-                <Button size="2xl" variant="outlined" onClick={() => setDrafts(EMPTY_QUANTITIES)}>
+                <Button size="2xl" variant="outlined" onClick={reset}>
                   {t.reset}
                 </Button>
                 <Button size="2xl" disabled={!canSave} onClick={save}>

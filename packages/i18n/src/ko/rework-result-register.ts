@@ -28,7 +28,7 @@ export const reworkResultRegister = {
   defectCodeReason: '불량 코드 저장 기준이 확정되기 전까지 선택할 수 없습니다.',
   reset: '다시 입력',
   save: '실적 저장',
-  queued: '실적을 저장했습니다. 서버 전송을 기다리고 있습니다.',
+  queued: '실적을 저장했습니다.',
   queueError: '실적을 단말에 저장하지 못했습니다. 다시 시도해 주세요.',
   rejected: '서버가 실적을 받지 않았습니다. 입력 내용을 확인해 주세요.',
   gateUnidentified: '단말과 공정이 확인되지 않아 저장할 수 없습니다.',
