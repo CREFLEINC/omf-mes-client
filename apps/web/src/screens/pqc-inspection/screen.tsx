@@ -1,3 +1,4 @@
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -36,6 +37,7 @@ import {
 } from './queries';
 import { ResultPanel } from './result-panel';
 import { TargetHeader } from './target-header';
+import { useOnline } from './use-online';
 import { readTargetId } from './target';
 import {
   EMPTY_QUANTITY_DRAFT,
@@ -434,6 +436,7 @@ const PqcFrame = ({
   target?: React.ReactNode;
 }) => {
   const titleId = useId();
+  const isOnline = useOnline();
 
   return (
     <main className="pop-shell" aria-labelledby={titleId}>
@@ -442,6 +445,15 @@ const PqcFrame = ({
           {t.title}
         </h1>
         {target}
+        {/*
+         * 도면 §3 머리 오른쪽 끝의 상태 표식이다. **어느 갈래에서나 선다** — 대상을 못
+         * 불러온 화면이야말로 「연결이 끊겨서인가」를 물을 자리다.
+         *
+         * 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다(`P-05-01` 전례).
+         */}
+        <Chip status={isOnline ? 'success' : 'warning'}>
+          {isOnline ? messages.common.connection.online : messages.common.connection.offline}
+        </Chip>
       </header>
       {children}
     </main>

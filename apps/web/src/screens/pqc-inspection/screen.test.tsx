@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
@@ -180,6 +180,27 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
       `${t.detail.fields.itemId} ${String(waitingRequest.itemId)}`,
       `${t.detail.fields.lotId} ${String(waitingRequest.lotId)}`,
     ]);
+  });
+
+  /*
+   * 도면 §3 머리 오른쪽 끝의 상태 표식이다. §5-7·§6 이 이 화면을 오프라인 지원 대상으로
+   * 못박았으므로 **끊겼다는 사실을 화면이 말해야 한다.**
+   *
+   * ⚠ 대상을 못 불러온 갈래에서도 선다 — 그 화면이야말로 「연결이 끊겨서인가」를 물을
+   * 자리다. 그래서 진입 인자가 없는 갈래로 확인한다.
+   */
+  it('연결이 끊기면 머리에서 그 사실을 말한다', async () => {
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+
+    try {
+      renderScreen('/');
+
+      const header = await screen.findByRole('banner');
+
+      expect(within(header).getByText(messages.common.connection.offline)).toBeInTheDocument();
+    } finally {
+      online.mockRestore();
+    }
   });
 
   /* ⚠ 샘플 수의 단위가 미확정이다 — 어느 한쪽으로 읽어 계산하지 않고 그 사실을 밝힌다. */
