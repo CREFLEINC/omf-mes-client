@@ -176,6 +176,179 @@ main > * + * {
   min-width: 0;
 }
 
+/*
+ * W/O 전개·편성 — 이 화면에만 적용되는 조합 배치.
+ * DS 컴포넌트의 내부 클래스는 겨냥하지 않고, 공개 className과 HTML 표 요소만 사용한다.
+ */
+.production-plan-workspace {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.production-plan-order-summary,
+.production-plan-section {
+  padding: var(--space-5);
+}
+
+.production-plan-order-summary {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.production-plan-order-heading {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.production-plan-order-heading > span {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.production-plan-order-heading > h2,
+.production-plan-order-facts,
+.production-plan-section h2,
+.production-plan-section h3 {
+  margin: 0;
+}
+
+.production-plan-order-heading > h2,
+.production-plan-section h2 {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+  color: var(--on-surface);
+}
+
+.production-plan-order-facts {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+.production-plan-section {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.production-plan-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.production-plan-section-heading > button {
+  margin-left: auto;
+}
+
+.production-plan-step {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 var(--space-7);
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: var(--radius-full);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.production-plan-master-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.production-plan-master-card {
+  min-width: 0;
+}
+
+.production-plan-master-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.production-plan-master-card-body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.production-plan-master-card-body > p {
+  margin: 0;
+}
+
+.production-plan-editor-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.production-plan-quantity-field > p {
+  margin: 0;
+  text-align: left;
+}
+
+.production-plan-table {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.wide-table.production-plan-table table {
+  min-width: 100rem;
+}
+
+.production-plan-table th {
+  white-space: nowrap;
+}
+
+.production-plan-table tbody td {
+  vertical-align: top;
+}
+
+.production-plan-table .inline-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.production-plan-table-value {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-sm);
+}
+
+.production-plan-table-value-center {
+  justify-content: center;
+}
+
+.production-plan-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 960px) {
+  .production-plan-master-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;

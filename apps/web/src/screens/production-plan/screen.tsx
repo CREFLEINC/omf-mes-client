@@ -68,10 +68,13 @@ const ProductionPlanWorkspace = ({
   const defaults = { planDate: '', plannedQty: '', bomId, routingId };
 
   return (
-    <>
-      <section className="pane" aria-label="선택 생산 P/O">
-        <h2>{order.productionOrderNo}</h2>
-        <p>
+    <div className="production-plan-workspace">
+      <section className="pane production-plan-order-summary" aria-label="선택 생산 P/O">
+        <header className="production-plan-order-heading">
+          <span>선택 생산 P/O</span>
+          <h2>{order.productionOrderNo}</h2>
+        </header>
+        <p className="production-plan-order-facts">
           {describeItem(order.itemId, new Map(itemNames.items.map((item) => [item.itemId, item])))}{' '}
           · {quantity(order.orderQty)} {uomLabel}
           {order.dueDate === null ? '' : ` · 납기 ${order.dueDate}`}
@@ -149,7 +152,7 @@ const ProductionPlanWorkspace = ({
       <AlertBanner variant="info">
         생산 LOT 크기와 선발행은 W/O 확정·배포 단계에서 입력합니다.
       </AlertBanner>
-    </>
+    </div>
   );
 };
 
