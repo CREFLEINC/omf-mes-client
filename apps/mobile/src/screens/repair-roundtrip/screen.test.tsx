@@ -295,8 +295,8 @@ describe('수리 왕복 스캔 화면', () => {
     expect(await screen.findByText('수리 투입을 기록했습니다')).toBeTruthy();
   });
 
-  /* 다른 것을 적기 시작했으면 앞 시도의 키를 들고 가지 않는다. 서버가 흡수해 조용히 사라진다. */
-  it('다른 LOT 을 스캔하면 새 멱등키로 간다', async () => {
+  /* 성공한 쓰기를 같은 키로 다시 보내면 서버가 흡수해 조용히 사라진다. */
+  it('투입에 성공한 뒤 다시 적으면 새 멱등키로 간다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount([
@@ -480,6 +480,124 @@ describe('수리 왕복 스캔 화면', () => {
       expect(seen).toHaveLength(2);
     });
     expect(await seen[1]?.clone().json()).toMatchObject({ repairQty: 20 });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+  });
+
+  /* 보낼 값이 달라졌으면 다른 쓰기다. 앞 키로 가면 서버가 앞 시도로 보고 흡수한다. */
+  it('수량을 바꾸면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (request) =>
+          new URL(request.url).pathname === '/production/repair-executions' &&
+          request.method === 'POST',
+        respond: (request) => {
+          seen.push(request.clone());
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    const field = screen.getByLabelText('수리 수량');
+
+    await user.type(field, '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.clear(field);
+    await user.type(field, '30');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /* 성공과 실패는 다른 쓰기다. 앞 키로 가면 서버가 앞 판정을 되돌려 준다. */
+  it('결과를 바꾸면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount(
+      [
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions/1001:return',
+          respond: (request) => {
+            seen.push(request.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      { open: [execution], openAll: [execution] },
+    );
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
+    await user.click(await screen.findByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '수리 실패' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /* 되돌아오면 최종 대상은 같다. 그 사이에 키가 버려지면 같은 것을 새 키로 보낸다. */
+  it('결과를 바꿨다 되돌리면 앞 시도와 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount(
+      [
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions/1001:return',
+          respond: (request) => {
+            seen.push(request.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      { open: [execution], openAll: [execution] },
+    );
+
+    await screen.findByLabelText('불량 LOT 스캔');
+    scan(SCANNED);
+    await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
+    await user.click(await screen.findByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '수리 실패' }));
+    await user.click(screen.getByRole('button', { name: '수리 성공' }));
+    await user.click(screen.getByRole('button', { name: '반출 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
     expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
   });
 
