@@ -15,8 +15,25 @@ import { MaterialPickingScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
 
+/** 보관소 읽기를 한 열쇠에서만 붙잡아 둔다. 큐를 아직 모르는 사이를 재는 시험이 쓴다. */
+const held = vi.hoisted(() => ({
+  key: null as string | null,
+  release: null as (() => void) | null,
+}));
+
 vi.mock('../../patterns/local-store', () => ({
-  readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
+  readLocal: (key: string) => {
+    if (held.key !== key) {
+      return Promise.resolve(store.get(key) ?? null);
+    }
+
+    return new Promise<string | null>((resolve) => {
+      held.release = () => {
+        held.key = null;
+        resolve(store.get(key) ?? null);
+      };
+    });
+  },
   writeLocal: (key: string, value: string) => {
     store.set(key, value);
     return Promise.resolve();
@@ -261,6 +278,8 @@ const chooseIssueType = async (user: ReturnType<typeof userEvent.setup>) => {
 
 beforeEach(() => {
   store.clear();
+  held.key = null;
+  held.release = null;
 });
 
 describe('자재 출고·피킹 화면', () => {
@@ -439,6 +458,35 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /*
+   * 큐가 비는 시점은 대개 이 화면 밖이다. 돌아왔을 때 낡은 응답을 그대로 쓰면 담긴 것이 셈에서
+   * 빠진 자리에 안 집은 값이 남아, 작업자가 같은 라인을 다시 집는다.
+   */
+  it('목록으로 나가 있는 사이 큐가 비어도 다시 열면 서버 값을 보인다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ pick: 'offline' });
+    await chooseOrder(user);
+    await pickLine(user, '50');
+    await screen.findByText('50 미확정 — 아직 서버에 없습니다');
+
+    await user.click(screen.getByRole('button', { name: '다른 지시 고르기' }));
+    await screen.findByRole('button', { name: /PK-2026-000077/ });
+
+    sent.set({ pick: 'ok' });
+    window.dispatchEvent(new Event('online'));
+
+    await waitFor(() => {
+      expect(sent.picks.filter((each) => each.url.includes('/lines/41:pick'))).toHaveLength(2);
+    });
+
+    await chooseOrder(user);
+
+    await waitFor(() => {
+      expect(screen.getByText('요청 200 / 피킹 50')).toBeTruthy();
+    });
+    expect(screen.queryByText('50 미확정 — 아직 서버에 없습니다')).toBeNull();
+  });
+
+  /*
    * 도는 회차의 목록은 담기 전에 떠진 것이라 방금 담은 건이 없다. 그 결과를 그대로 받으면 보낸
    * 적 없는 건에 집었다는 말이 붙는다.
    */
@@ -468,33 +516,60 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /*
-   * 묶음은 한 번의 시도를 가리킨다. 지시 번호로 지으면 앞 시도의 실패가 뒤 시도의 멀쩡한 건까지
-   * 딸려 되돌린다.
+   * 묶음 이름을 화면 상태로 지으면 지시를 다시 여는 순간 갈린다. 앞서 담긴 피킹과 뒤에 담긴
+   * 출고가 다른 묶음이 되어, 피킹이 거부돼도 출고가 그 수량을 싣고 그대로 나간다.
    */
-  it('앞 시도가 거부돼도 뒤 시도의 피킹은 딸려 되돌아가지 않는다', async () => {
+  it('지시를 다시 연 뒤 확정해도 앞서 담긴 피킹과 한 묶음이다', async () => {
     const user = userEvent.setup();
-    const sent = mount({ pick: 'offline', lines: [line(), secondLine()] });
+    const sent = mount({ pick: 'offline', issue: 'offline' });
     await chooseOrder(user);
     await pickLine(user, '50');
     await screen.findByText('피킹을 담아 두었습니다');
 
     await user.click(screen.getByRole('button', { name: '다른 지시 고르기' }));
     await chooseOrder(user);
+    await chooseIssueType(user);
+    await user.click(screen.getByRole('button', { name: '출고 확정' }));
+    await screen.findByText('출고를 담아 두었습니다');
 
-    await user.click(screen.getByRole('button', { name: /ABC-124/ }));
+    sent.set({ pick: 'rejected', issue: 'ok' });
+    window.dispatchEvent(new Event('online'));
+
+    await waitFor(() => {
+      expect(
+        sent.picks.filter((each) => each.url.includes('/lines/41:pick')).length,
+      ).toBeGreaterThan(1);
+    });
+    /* 집지 않은 것으로 판정된 수량이 즉시 전기로 나가면 되돌릴 수 없다. */
+    expect(sent.issues).toHaveLength(0);
+  });
+
+  /*
+   * 큐를 읽기 전에는 담긴 것이 없는 것과 구별되지 않는다. 그 사이에 집게 두면 이미 담아 둔
+   * 라인을 안 집은 것으로 보고 다시 집는다.
+   */
+  it('큐를 아직 읽지 못했으면 집을 수 없다', async () => {
+    const user = userEvent.setup();
+    held.key = 'outbox';
+    mount();
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: /ABC-123/ }));
     await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
     await user.click(screen.getByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
-    await user.type(screen.getByLabelText('출고 수량'), '30');
-    await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
-    await screen.findByText('피킹을 담아 두었습니다');
+    await user.type(screen.getByLabelText('출고 수량'), '50');
 
-    sent.set({ pick: 'ok', rejectNextPicks: 1 });
-    window.dispatchEvent(new Event('online'));
+    expect(screen.getByRole('button', { name: '이 라인 피킹' }).hasAttribute('disabled')).toBe(
+      true,
+    );
 
-    /* 앞 시도가 400 으로 되돌아가도 뒤 시도의 라인은 서버까지 가야 한다. */
+    held.release?.();
+
     await waitFor(() => {
-      expect(sent.picks.filter((each) => each.url.includes('/lines/42:pick'))).toHaveLength(1);
+      expect(screen.getByRole('button', { name: '이 라인 피킹' }).hasAttribute('disabled')).toBe(
+        false,
+      );
     });
   });
 

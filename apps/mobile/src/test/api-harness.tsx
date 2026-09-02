@@ -59,17 +59,14 @@ export type ProvidedRenderHookResult<TResult> = RenderHookResult<TResult, unknow
 };
 
 /**
- * 앱의 캐시 기본값을 그대로 쓴다. 여기서 값을 다시 적으면 앱이 바뀌어도 테스트는 옛
- * 값으로 계속 통과한다 — 오프라인으로 보고될 때 조회가 보류되는 실패가 그런 갈래다.
- * 다시 조회하지 않게 만드는 값만 덮는다.
+ * 앱의 캐시 기본값을 그대로 쓴다.
+ *
+ * 여기서 값을 다시 적으면 앱이 바뀌어도 테스트는 옛 값으로 계속 통과한다. 특히 `staleTime`
+ * 을 0 으로 덮으면 앱보다 자주 다시 조회하게 되어, 낡은 응답이 화면에 남는 실패가 시험에
+ * 잡히지 않는다 — 다시 조회해야 하는 자리는 화면이 스스로 정하게 두고 여기서 덮지 않는다.
  */
 const createProviders = (fetch: StubFetch) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      ...appQueryDefaults,
-      queries: { ...appQueryDefaults.queries, staleTime: 0 },
-    },
-  });
+  const queryClient = new QueryClient({ defaultOptions: appQueryDefaults });
   const apiClient = createApiClient({ baseUrl: TEST_BASE_URL, fetch });
 
   const Providers = ({ children }: { children: ReactNode }): ReactNode => (

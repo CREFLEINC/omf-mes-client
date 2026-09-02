@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useCodeValues } from '../../patterns/code-values';
-import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
+import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
@@ -36,6 +36,22 @@ const t = messages.materialPicking;
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
+/**
+ * 한 지시의 피킹과 출고를 한 묶음에 둔다.
+ *
+ * 출고 본문은 이 지시에 담긴 피킹 전부의 수량을 합쳐 싣는다. 그중 하나라도 서버가 거부하면
+ * 출고가 싣고 있는 수량이 틀린 것이 되므로, 그 출고는 나가면 안 된다. 묶음이 그것을 건다.
+ *
+ * 이름을 화면 상태로 지으면 지시를 다시 열거나 화면이 다시 서는 순간 갈린다 - 앞서 담긴
+ * 피킹과 뒤에 담긴 출고가 다른 묶음이 되어, 피킹이 거부돼도 출고가 그 수량을 싣고 그대로
+ * 나간다. 즉시 전기라 되돌릴 수 없다. 그래서 지시 번호에서 짓는다.
+ *
+ * 같은 묶음의 다른 라인 피킹까지 함께 되돌아가는 것은 이 선택의 대가다. 그 라인의 물건은
+ * 이미 집혔지만, 출고가 그 수량도 싣고 있어 함께 판정받는 것이 맞다 - 되돌아온 건에 남으므로
+ * 기록이 사라지지는 않는다.
+ */
+const batchIdOf = (pickingOrderId: number): string => `picking-order-${String(pickingOrderId)}`;
+
 export const MaterialPickingScreen = () => {
   useScreenTitle(t.title);
 
@@ -44,11 +60,6 @@ export const MaterialPickingScreen = () => {
   const queryClient = useQueryClient();
 
   const [orderId, setOrderId] = useState<number | null>(null);
-  /*
-   * 묶음은 한 번의 시도를 가리킨다. 지시 번호로 지으면 여러 날의 모든 시도가 한 이름을 써,
-   * 앞 시도의 실패가 뒤 시도의 멀쩡한 건까지 딸려 되돌리고 반대로 회차가 갈리면 묶이지 않는다.
-   */
-  const [batchId, setBatchId] = useState(createIdempotencyKey);
   const [lineId, setLineId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
   const [qty, setQty] = useState('');
@@ -80,14 +91,15 @@ export const MaterialPickingScreen = () => {
    * 아직 모르는 값이 남아, 화면이 안 집은 것으로 되돌아간다 - 작업자는 같은 라인을 다시 집는다.
    */
   const queuedCount = queued.length + queuedIssues;
-  const lastQueuedCount = useRef(queuedCount);
+  const lastQueued = useRef({ orderId, count: queuedCount });
 
   useEffect(() => {
-    const drained = queuedCount < lastQueuedCount.current;
+    const previous = lastQueued.current;
 
-    lastQueuedCount.current = queuedCount;
+    lastQueued.current = { orderId, count: queuedCount };
 
-    if (drained && orderId !== null) {
+    /* 지시를 갈아타며 줄어든 것은 이 지시가 보낸 것이 아니다. 같은 지시일 때만 본다. */
+    if (previous.orderId === orderId && queuedCount < previous.count && orderId !== null) {
       void queryClient.invalidateQueries({ queryKey: pickingKeys.order(orderId) });
     }
   }, [orderId, queryClient, queuedCount]);
@@ -104,12 +116,6 @@ export const MaterialPickingScreen = () => {
     setScanned(null);
     setQty('');
     setManual('');
-  };
-
-  /* 지시를 새로 여는 것이 새 시도다. 앞 시도에 남은 것과 묶이지 않게 이름을 바꾼다. */
-  const openOrder = (pickingOrderId: number) => {
-    setOrderId(pickingOrderId);
-    setBatchId(createIdempotencyKey());
   };
 
   const restart = () => {
@@ -132,7 +138,14 @@ export const MaterialPickingScreen = () => {
     }
 
     /* 이 지시의 피킹과 출고를 한 묶음으로 둔다. 앞이 거부되면 뒤가 함께 되돌아간다. */
-    const draft = toPickDraft(order, line, qty, batchId, new Date(), worker.workerNo);
+    const draft = toPickDraft(
+      order,
+      line,
+      qty,
+      batchIdOf(order.pickingOrderId),
+      new Date(),
+      worker.workerNo,
+    );
 
     await enqueue(draft);
 
@@ -165,7 +178,7 @@ export const MaterialPickingScreen = () => {
       lines,
       queued,
       issueTypeCode,
-      batchId,
+      batchIdOf(order.pickingOrderId),
       new Date(),
       worker.workerNo,
     );
@@ -212,7 +225,7 @@ export const MaterialPickingScreen = () => {
           workerNo={worker?.workerNo ?? null}
           workerId={workerId}
           orders={orders}
-          onChoose={openOrder}
+          onChoose={setOrderId}
         />
       </div>
     );
