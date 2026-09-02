@@ -12,6 +12,7 @@ export const packingResult = {
   panes: {
     scan: '스캔',
     packing: '포장 구성',
+    progress: '진행',
   },
   header: {
     /** 스캔 전에는 어느 출하인지 모른다 — 빈 자리로 두지 않고 그 사실을 적는다. */
@@ -65,10 +66,10 @@ export const packingResult = {
     parentNone: '(없음)',
   },
   notes: {
-    manualEntry: '스캔이 안 되면 칸에 직접 칠 수 있습니다',
     parentHint: '팔레트에 담으면 지정합니다',
     /** 후보가 없는 것은 고장이 아니다(스펙 §5-2-1). */
     parentEmpty: '이 창고에 담을 상위 포장이 없습니다. 없이 확정할 수 있습니다',
+    qtyWaiting: '생산LOT 을 읽으면 수량을 칠 수 있습니다',
     typeUnavailable: '포장 유형을 받지 못했습니다. 다시 시도해 주세요',
   },
   progress: {

@@ -162,7 +162,8 @@ export const PackingResultScreen = () => {
   })();
 
   return (
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="packing-shell" aria-labelledby={titleId}>
+      {/* 헤더 64 — 「무엇을」이 왼쪽, 「어디서·누가」가 오른쪽이다(스펙 §3). */}
       <header className="pop-header">
         <h1 className="pop-title" id={titleId}>
           {t.title}
@@ -179,118 +180,143 @@ export const PackingResultScreen = () => {
         </div>
       </header>
 
-      {confirmedNo !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="success">{t.confirmed(confirmedNo)}</AlertBanner>
-        </div>
-      )}
+      {/*
+       * 본문 616 — ① 88 + ② 88 + ③ 320 + ④ 88 (스펙 §3-1 세로 예산 · 슬랙 0).
+       * ⛔ 구획을 좌우로 펴지 않는다 — 스캔이 «순서»이기 때문이다. 위에서 아래로 읽는 차례가
+       * 곧 작업 순서이고, 좌우로 나누면 ①과 ②의 선후가 사라진다.
+       */}
+      <div className="packing-body">
+        {(confirmedNo !== null || confirm.isError) && (
+          <div className="banner-slot">
+            {confirmedNo !== null ? (
+              <AlertBanner variant="success">{t.confirmed(confirmedNo)}</AlertBanner>
+            ) : (
+              <AlertBanner variant="error">{String(toApiError(confirm.error).kind)}</AlertBanner>
+            )}
+          </div>
+        )}
 
-      {confirm.isError && (
-        <div className="banner-slot">
-          <AlertBanner variant="error">{`${String(toApiError(confirm.error).kind)}`}</AlertBanner>
-        </div>
-      )}
-
-      <div className="pop-panes">
-        <section className="pop-section" aria-label={t.panes.scan}>
-          <h2 className="pane-title">{t.panes.scan}</h2>
-
+        {/* ① 납품라벨 스캔 */}
+        {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
+        <section className="packing-scan">
           <ScanField
             label={t.scan.label.deliveryLabel}
             isScanning={labelScan.isPending}
             onScan={scanLabel}
           />
+        </section>
 
+        {/* ② 생산LOT 스캔 — 판정 문구가 칸 바로 아래 붙는다. 떨어뜨리면 어느 스캔의 답인지 흐려진다. */}
+        <section className="packing-scan">
           <ScanField
             label={t.scan.label.productionLot}
             isScanning={lotScan.isPending}
             lockReason={shipmentId === null ? t.scan.lotLocked : undefined}
             onScan={scanLot}
           />
-
           <p className="scan-outcome" role="status">
             {matchMessage === null ? '' : matchMessage.text}
           </p>
-
-          {packable !== undefined && (
-            <>
-              {/*
-               * 숫자 키패드는 **디자인 시스템 부품**이다(DS `#41` 종결 · 공유계약 D-4).
-               * ⛔ 화면이 다시 만들지 않는다 — 같은 것이 둘이 되면 자릿수 규칙이 갈린다.
-               *
-               * ⛔ **`max` 로 키를 막지 않는다.** 막으면 넘긴 순간 아무 일도 일어나지 않아
-               * 작업자는 패드가 고장 난 것으로 읽는다 — **넘겼다고 말하고** 담기를 잠근다(§6).
-               */}
-              <NumberPad
-                aria-label={t.qty.label}
-                value={qty}
-                allowDecimal
-                onChange={setQty}
-                onConfirm={addToPacking}
-              />
-              {/* 잠긴 사유는 감추지 않는다 — 무엇을 고쳐야 하는지가 그 문장에 있다. */}
-              {qty !== '' && qtyIssue !== undefined && <p className="field-note">{qtyIssue}</p>}
-            </>
-          )}
-
-          {mergeNote !== null && (
-            <div className="banner-slot">
-              <AlertBanner variant="warning">{mergeNote}</AlertBanner>
-            </div>
-          )}
         </section>
 
-        <section className="pop-section" aria-label={t.panes.packing}>
-          <h2 className="pane-title">{t.panes.packing}</h2>
+        {/* ③ 포장 구성 — 유일한 조정 여지이고, 넘치면 «이 안에서» 스크롤한다(§3-1). */}
+        <section className="packing-compose" aria-label={t.panes.packing}>
+          <div className="packing-compose-main">
+            <div className="packing-compose-head">
+              <h2 className="pane-title">{t.panes.packing}</h2>
+              <Select
+                aria-label={t.fields.handlingUnitType}
+                placeholder={t.fields.handlingUnitType}
+                value={handlingUnitTypeCode === '' ? null : handlingUnitTypeCode}
+                onChange={(value) => {
+                  setHandlingUnitTypeCode(value ?? '');
+                }}
+                options={typeOptions.options}
+              />
+              {typeOptions.isUnavailable && <p className="field-note">{t.notes.typeUnavailable}</p>}
+            </div>
 
-          <Select
-            aria-label={t.fields.handlingUnitType}
-            placeholder={t.fields.handlingUnitType}
-            value={handlingUnitTypeCode === '' ? null : handlingUnitTypeCode}
-            onChange={(value) => {
-              setHandlingUnitTypeCode(value ?? '');
-            }}
-            options={typeOptions.options}
-          />
-          {typeOptions.isUnavailable && <p className="field-note">{t.notes.typeUnavailable}</p>}
+            <ContentsTable
+              lines={lines}
+              onRemove={(allocationId) => {
+                setLines(removeLine(lines, allocationId));
+                setMergeNote(null);
+              }}
+            />
 
-          <ContentsTable
-            lines={lines}
-            onRemove={(allocationId) => {
-              setLines(removeLine(lines, allocationId));
-              setMergeNote(null);
-            }}
-          />
+            <div className="packing-parent">
+              <Select
+                aria-label={t.fields.parentHandlingUnit}
+                placeholder={t.fields.parentNone}
+                value={parentId === NO_PARENT ? null : parentId}
+                onChange={(value) => {
+                  setParentId(value ?? NO_PARENT);
+                }}
+                /*
+                 * ⛔ **후보를 계층으로 거르지 않는다**(§5-2-1). 계층 깊이가 확정이 아니고, 이
+                 * 화면은 매번 새 취급 단위를 만들므로 자기 하위가 존재할 수 없다.
+                 */
+                options={parents.candidates.map((candidate) => ({
+                  value: String(candidate.handlingUnitId),
+                  label: candidate.handlingUnitNo,
+                }))}
+              />
+              <p className="field-note">
+                {warehouseId !== null && !parents.isPending && parents.candidates.length === 0
+                  ? t.notes.parentEmpty
+                  : t.notes.parentHint}
+              </p>
+            </div>
+          </div>
 
-          <Select
-            aria-label={t.fields.parentHandlingUnit}
-            placeholder={t.fields.parentNone}
-            value={parentId === NO_PARENT ? null : parentId}
-            onChange={(value) => {
-              setParentId(value ?? NO_PARENT);
-            }}
-            /*
-             * ⛔ **후보를 계층으로 거르지 않는다**(§5-2-1). 계층 깊이가 확정이 아니고, 이 화면은
-             * 매번 새 취급 단위를 만들므로 자기 하위가 존재할 수 없다 — 순환이 불가능하다.
-             */
-            options={parents.candidates.map((candidate) => ({
-              value: String(candidate.handlingUnitId),
-              label: candidate.handlingUnitNo,
-            }))}
-          />
-          <p className="field-note">
-            {warehouseId !== null && !parents.isPending && parents.candidates.length === 0
-              ? t.notes.parentEmpty
-              : t.notes.parentHint}
-          </p>
+          {/*
+           * 수량 키패드는 ③ 안에서 «옆»에 선다. 스펙 그림에 키패드 자리가 따로 없는데 D-4 는
+           * 화면 내장 키패드를 요구한다 — 세로 예산이 슬랙 0 이라 새 구획을 아래에 붙일 수 없어
+           * 이 구획의 남는 «가로»를 쓴다. 담을 LOT 이 정해졌을 때만 선다.
+           */}
+          <div className="packing-keypad">
+            {packable === undefined ? (
+              <p className="field-note">{t.notes.qtyWaiting}</p>
+            ) : (
+              <>
+                <NumberPad
+                  aria-label={t.qty.label}
+                  value={qty}
+                  allowDecimal
+                  onChange={setQty}
+                  onConfirm={addToPacking}
+                />
+                {qty !== '' && qtyIssue !== undefined && <p className="field-note">{qtyIssue}</p>}
+                {mergeNote !== null && <p className="field-note">{mergeNote}</p>}
+              </>
+            )}
+          </div>
+        </section>
 
-          <p className="packing-progress">
-            {`${t.progress.packed(progress.packedCount)} · ${t.progress.unpacked(progress.unpackedQty)}`}
-          </p>
+        {/* ④ 진행 — ⛔ 「예상 N」이 없어 분모가 없다. 진행 막대를 그리지 않는다(§3-3). */}
+        <section className="packing-progress" aria-label={t.panes.progress}>
+          <span>{t.progress.packed(progress.packedCount)}</span>
+          <span>{t.progress.unpacked(progress.unpackedQty)}</span>
         </section>
       </div>
 
-      <div className="pop-actions">
+      {/* 액션바 88 — 화면 바닥에 고정한다. 본문이 밀어내면 확정이 화면 밖으로 나간다. */}
+      <div className="packing-actions">
+        {lockReason !== undefined && <p className="packing-lock">{lockReason}</p>}
+
+        {gate.verdict === 'unavailable' && (
+          <Button
+            type="button"
+            variant="text"
+            size="sm"
+            onClick={() => {
+              gate.retry();
+            }}
+          >
+            {t.actions.retry}
+          </Button>
+        )}
+
         <Button
           type="button"
           variant="outlined"
@@ -328,21 +354,6 @@ export const PackingResultScreen = () => {
         >
           {confirm.isPending ? t.actions.confirming : t.actions.confirm}
         </Button>
-
-        {lockReason !== undefined && <p className="field-note">{lockReason}</p>}
-
-        {gate.verdict === 'unavailable' && (
-          <Button
-            type="button"
-            variant="text"
-            size="sm"
-            onClick={() => {
-              gate.retry();
-            }}
-          >
-            {t.actions.retry}
-          </Button>
-        )}
       </div>
     </main>
   );

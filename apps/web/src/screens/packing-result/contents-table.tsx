@@ -19,13 +19,29 @@ const t = messages.packingResult;
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-/** 표시용 분절. 저장값은 건드리지 않는다 — 되돌릴 수 있게 **보이기만** 바꾼다. */
-export const segmentLotNo = (lotNo: string, size = 6): string => {
-  if (lotNo.length <= size) return lotNo;
+/**
+ * 표시용 분절 — **공유계약 E-2**(✓확정 2026-08-02).
+ *
+ * 저장은 원문, 표시만 그룹으로 끊는다. 34자리를 붙여 쓰면 작업자가 실물 라벨과 화면을 **눈으로
+ * 대조할 수 없다.**
+ *
+ * ⛔ **끊는 자리를 화면이 지어내지 않는다.** 그룹 길이는 계약이 정한 자릿수 구성에서 오고,
+ * 그 구성이 걸리는 것은 **34자리 형식 하나**다. 형식이 다른 값을 같은 규칙으로 끊으면 없는
+ * 경계를 있는 것처럼 보여 대조를 오히려 방해한다 — 그때는 **원문을 그대로 낸다.**
+ */
+const LOT_GROUPS = [9, 9, 6, 6, 4] as const;
+
+const GROUPED_LENGTH = LOT_GROUPS.reduce((sum, size) => sum + size, 0);
+
+export const segmentLotNo = (lotNo: string): string => {
+  if (lotNo.length !== GROUPED_LENGTH) return lotNo;
 
   const parts: string[] = [];
-  for (let index = 0; index < lotNo.length; index += size) {
-    parts.push(lotNo.slice(index, index + size));
+  let cursor = 0;
+
+  for (const size of LOT_GROUPS) {
+    parts.push(lotNo.slice(cursor, cursor + size));
+    cursor += size;
   }
 
   return parts.join(' · ');

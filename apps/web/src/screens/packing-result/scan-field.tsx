@@ -57,6 +57,11 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
 
   return (
     <form onSubmit={submit}>
+      {/*
+       * ⭐ **한 줄에 셋을 놓는다** — 칸 · [읽기] · [직접 입력]. 스펙 §3 이 이 구획에 88px 만
+       * 준다. 대체 경로(D-3)를 아래 줄로 내리면 구획이 두 배가 되고, 그만큼 ③ 포장 구성이
+       * 줄어 표가 한 줄도 못 보이는 화면이 된다.
+       */}
       <div className="scan-row">
         <TextField
           ref={inputRef}
@@ -83,13 +88,11 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
         >
           {isScanning ? t.scan.scanning : t.scan.submit}
         </Button>
-      </div>
-
-      {/*
-       * 스캔 실패의 대체 경로(공유계약 D-3). **칸으로 포커스를 옮기는 것이 전부다** — 코드는
-       * 이미 손으로 칠 수 있고, 없던 것은 「어디를 눌러야 하는가」였다.
-       */}
-      <div className="scan-manual">
+        {/*
+         * 스캔 실패의 대체 경로(공유계약 D-3). **칸으로 포커스를 옮기는 것이 전부다** — 코드는
+         * 이미 손으로 칠 수 있고, 없던 것은 「어디를 눌러야 하는가」였다. 터치 단말에서는 이
+         * 포커스가 화면 자판을 함께 띄운다.
+         */}
         <Button
           type="button"
           variant="outlined"
@@ -102,8 +105,13 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
         >
           {t.scan.manualEntry}
         </Button>
-        <p className="field-note">{locked ? lockReason : t.notes.manualEntry}</p>
       </div>
+
+      {/*
+       * ⚠ 잠긴 사유만 낸다. 상시 안내(「직접 칠 수 있습니다」)는 [직접 입력] 버튼이 이미 눈에
+       * 보이는 자리에 있어 없어도 길을 잃지 않고, 한 줄이 늘 때마다 ③ 포장 구성이 줄어든다.
+       */}
+      {locked && <p className="field-note">{lockReason}</p>}
     </form>
   );
 };
