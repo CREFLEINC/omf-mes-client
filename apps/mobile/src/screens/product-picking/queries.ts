@@ -13,8 +13,6 @@ import { createIdempotencyKey } from '../../patterns/outbox';
 import { runRequest } from '../../patterns/request';
 import { toPickBody, type Candidate, type ShipmentRequest, type ShipmentRequestLine } from './picking';
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 export const pickingKeys = {
   requests: (day: string) => ['picking-requests', day] as const,
   lots: (itemId: number | null) => ['picking-lots', itemId] as const,
@@ -22,14 +20,17 @@ export const pickingKeys = {
   balances: (itemId: number | null) => ['picking-balances', itemId] as const,
 };
 
-/** 오늘 하루. 끝 경계가 반열림이라 다음 날 0시를 준다. */
+/**
+ * 오늘 하루.
+ *
+ * 계약이 이 축을 날짜로 받는다 - 시각까지 실으면 서버가 요청 자체를 물리고 목록이 영영
+ * 뜨지 않는다. 날짜 축이라 두 끝을 같은 날로 두면 그날 하루가 된다.
+ */
 export const shipDay = (today: Date): { from: string; to: string } => {
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const day = `${String(today.getFullYear())}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
 
-  return {
-    from: start.toISOString(),
-    to: new Date(start.getTime() + MS_PER_DAY).toISOString(),
-  };
+  return { from: day, to: day };
 };
 
 /**
