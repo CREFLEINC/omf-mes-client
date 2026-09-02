@@ -33,6 +33,8 @@ export const materialPicking = {
     loadFailed: '라인을 확인할 수 없습니다. 연결을 확인하세요.',
     none: '이 지시에 라인이 없습니다',
     planned: (planned: string, picked: string) => `요청 ${planned} / 피킹 ${picked}`,
+    /* 담긴 것은 아직 서버에 없다. 끝난 것으로 보이면 같은 라인을 다시 집는다. */
+    queued: (qty: string) => `${qty} 미확정 — 아직 서버에 없습니다`,
     at: (locationCode: string) => `위치 ${locationCode}`,
     expiry: (date: string) => `유효 ${date}`,
     manufactured: (date: string) => `제조 ${date}`,
@@ -69,13 +71,26 @@ export const materialPicking = {
   /** 모자란 만큼은 부족분으로 남는다. 대체 자재는 이 화면 밖이다. */
   partialNote: '요청보다 적게 집었으면 부족분은 남습니다. 대체 자재는 이 화면에서 다루지 않습니다.',
   /*
-   * 출고 유형과 원천 문서 유형의 값 목록이 아직 확정되지 않았다. 지어낸 값을 소리 없이
-   * 실으면 값이 정해지는 날 전부 거부되므로, 무엇을 실었는지 화면이 적는다.
+   * 어느 값이 이 화면의 출고인지 계약이 아직 말하지 않는다. 목록의 첫 값을 조용히 쓰면 틀린
+   * 값을 소리 없이 보내는 것과 같아, 사람이 고르게 하고 왜 고르는지를 적는다.
    */
-  placeholderNote: (issueType: string) =>
-    `출고 유형을 ${issueType} 로 보냅니다. 값 목록이 확정되면 바뀝니다.`,
+  issueTypeLabel: '출고 유형',
+  issueTypePlaceholder: '출고 유형을 고르세요',
+  issueTypeNote: '어느 값이 이 출고인지 아직 정해지지 않아 담당자가 고릅니다.',
   issueTypeLoadFailed: '출고 유형을 불러오지 못했습니다',
   noIssueType: '보낼 출고 유형이 없습니다. 공통코드를 확인하세요.',
+  /* 담긴 것을 끝난 것으로 말하지 않는다. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
+  pickOutcome: {
+    sent: { title: '집었습니다', description: '' },
+    queued: {
+      title: '피킹을 담아 두었습니다',
+      description: '연결되면 보냅니다. 아직 서버에 없습니다.',
+    },
+    rejected: {
+      title: '피킹이 되돌아왔습니다',
+      description: '서버가 받지 않았습니다. 사유를 확인하세요. ',
+    },
+  },
   noWorker: '사번을 확인한 뒤에 피킹할 수 있습니다',
   sent: {
     title: '출고를 확정했습니다',

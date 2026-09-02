@@ -1,15 +1,16 @@
-import { AlertBanner, Button, Card, Chip, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { useCodeValues } from '../../patterns/code-values';
-import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
+import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { PickingOrderList } from './order-list';
 import {
   ISSUE_TYPE,
   canConfirmIssue,
@@ -17,7 +18,10 @@ import {
   isOutOfSequence,
   isScannedLotOf,
   lineProblemOf,
+  pickedQtyOf,
   qtyProblemOf,
+  queuedPicksOf,
+  queuedQtyOf,
   remainingQtyOf,
   toIssueDraft,
   toPickDraft,
@@ -30,10 +34,18 @@ const t = messages.materialPicking;
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
+/**
+ * 한 지시의 피킹과 출고를 같은 묶음에 둔다.
+ *
+ * 순서 의존이 있다 - 출고가 피킹의 결과를 싣는다. 묶지 않으면 피킹이 거부돼도 출고가 그대로
+ * 나간다. 지시마다 값이 갈리면 되고 매번 새로 만들 이유가 없어 번호에서 짓는다.
+ */
+const batchIdOf = (pickingOrderId: number): string => `picking-order-${String(pickingOrderId)}`;
+
 export const MaterialPickingScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush } = useOutbox();
+  const { enqueue, flush, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
   const queryClient = useQueryClient();
 
@@ -43,6 +55,9 @@ export const MaterialPickingScreen = () => {
   const [qty, setQty] = useState('');
   const [manual, setManual] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  /* 피킹 한 건의 결과. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
+  const [pickOutcome, setPickOutcome] = useState<Outcome | null>(null);
+  const [issueTypeCode, setIssueTypeCode] = useState<string | null>(null);
 
   const workerId = useWorkerId(worker?.workerNo ?? null);
   const orders = useAssignedPickingOrders(workerId.data ?? null);
@@ -51,8 +66,12 @@ export const MaterialPickingScreen = () => {
 
   const lines = detail.data?.lines ?? [];
   const line = lines.find((each) => each.pickingLineId === lineId) ?? null;
-  const done = lines.filter((each) => lineProblemOf(each) === 'done').length;
-  const issueTypeCode = issueTypes.data?.[0]?.code ?? null;
+  /*
+   * 담긴 피킹을 셈에 넣는다. 서버가 아는 것만 세면 오프라인에서 집은 흔적이 화면에 남지 않아
+   * 같은 라인을 다시 집게 되고, 출고 확정도 영영 열리지 않는다.
+   */
+  const queued = queuedPicksOf(pendingOf(t.record.picked), orderId ?? -1);
+  const done = lines.filter((each) => lineProblemOf(each, queued) === 'done').length;
 
   const scanField = useScanField({
     onScan: (value) => {
@@ -61,6 +80,7 @@ export const MaterialPickingScreen = () => {
   });
 
   const chooseLine = (next: PickingLine) => {
+    setPickOutcome(null);
     setLineId(next.pickingLineId);
     setScanned(null);
     setQty('');
@@ -74,6 +94,8 @@ export const MaterialPickingScreen = () => {
     setQty('');
     setManual('');
     setOutcome(null);
+    setPickOutcome(null);
+    setIssueTypeCode(null);
     scanField.focus();
   };
 
@@ -84,12 +106,23 @@ export const MaterialPickingScreen = () => {
       return;
     }
 
-    await enqueue(toPickDraft(order, line, qty, createIdempotencyKey(), new Date(), worker.workerNo));
-    await flush().catch(() => null);
+    /* 이 지시의 피킹과 출고를 한 묶음으로 둔다. 앞이 거부되면 뒤가 함께 되돌아간다. */
+    const draft = toPickDraft(order, line, qty, batchIdOf(order.pickingOrderId), new Date(), worker.workerNo);
+
+    await enqueue(draft);
+
+    const result = await flush().catch(() => null);
+    const mine = (each: { idempotencyKey: string }) => each.idempotencyKey === draft.idempotencyKey;
 
     /* 서버가 집은 양을 더해 내려준다. 화면이 그 셈을 따로 하지 않는다. */
     await queryClient.invalidateQueries({ queryKey: pickingKeys.order(orderId) });
 
+    if (result !== null && result.rejected.some((each) => mine(each.entry))) {
+      setPickOutcome('rejected');
+      return;
+    }
+
+    setPickOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
     setLineId(null);
     setScanned(null);
     setQty('');
@@ -105,8 +138,9 @@ export const MaterialPickingScreen = () => {
     const draft = toIssueDraft(
       order,
       lines,
+      queued,
       issueTypeCode,
-      createIdempotencyKey(),
+      batchIdOf(order.pickingOrderId),
       new Date(),
       worker.workerNo,
     );
@@ -149,39 +183,17 @@ export const MaterialPickingScreen = () => {
   if (orderId === null) {
     return (
       <div className="picking-out">
-        <section className="picking-out__section">
-          <h2>{t.orders.legend}</h2>
-          {workerId.isPending && worker !== null ? <p role="status">{t.worker.loading}</p> : null}
-          {workerId.isError ? <AlertBanner variant="error" title={t.worker.loadFailed} /> : null}
-          {worker !== null && workerId.data === null ? (
-            <AlertBanner variant="warning" title={t.worker.notFound(worker.workerNo)} />
-          ) : null}
-          {orders.isPending && workerId.data !== null ? (
-            <p role="status">{t.orders.loading}</p>
-          ) : null}
-          {orders.isError ? <AlertBanner variant="error" title={t.orders.loadFailed} /> : null}
-          {orders.data !== undefined && orders.data.length === 0 ? (
-            <AlertBanner variant="info" title={t.orders.none} />
-          ) : null}
-          {(orders.data ?? []).map((order) => (
-            <Button
-              key={order.pickingOrderId}
-              variant="outlined"
-              size="xl"
-              className="picking-out__wide"
-              onClick={() => {
-                setOrderId(order.pickingOrderId);
-              }}
-            >
-              {`${order.pickingOrderNo} · ${t.orders.type(order.pickingTypeCode)}`}
-            </Button>
-          ))}
-        </section>
+        <PickingOrderList
+          workerNo={worker?.workerNo ?? null}
+          workerId={workerId}
+          orders={orders}
+          onChoose={setOrderId}
+        />
       </div>
     );
   }
 
-  const problem = line === null ? null : lineProblemOf(line);
+  const problem = line === null ? null : lineProblemOf(line, queued);
   const matched = line !== null && scanned !== null && isScannedLotOf(line, scanned);
 
   const qtyMessage = (): string | undefined => {
@@ -189,14 +201,14 @@ export const MaterialPickingScreen = () => {
       return undefined;
     }
 
-    const trouble = qtyProblemOf(qty, line);
+    const trouble = qtyProblemOf(qty, line, queued);
 
     if (trouble === null) {
       return undefined;
     }
 
     return trouble === 'overPlanned'
-      ? t.qty.problem.overPlanned(String(remainingQtyOf(line)))
+      ? t.qty.problem.overPlanned(String(remainingQtyOf(line, queued)))
       : t.qty.problem[trouble];
   };
 
@@ -222,6 +234,18 @@ export const MaterialPickingScreen = () => {
         </Button>
       </section>
 
+      {pickOutcome === null ? null : (
+        <AlertBanner
+          variant={
+            pickOutcome === 'sent' ? 'success' : pickOutcome === 'queued' ? 'warning' : 'error'
+          }
+          title={t.pickOutcome[pickOutcome].title}
+        >
+          {t.pickOutcome[pickOutcome].description}
+          {pickOutcome === 'rejected' ? <Link to="/rejections">{t.rejected.action}</Link> : null}
+        </AlertBanner>
+      )}
+
       <section className="picking-out__section">
         <h2>{`${t.lines.legend} ${t.lines.progress(done, lines.length)}`}</h2>
         {detail.isPending ? <p role="status">{t.lines.loading}</p> : null}
@@ -231,7 +255,7 @@ export const MaterialPickingScreen = () => {
         ) : null}
 
         {lines.map((each) => {
-          const trouble = lineProblemOf(each);
+          const trouble = lineProblemOf(each, queued);
 
           return (
             <Button
@@ -247,7 +271,12 @@ export const MaterialPickingScreen = () => {
             >
               <span className="picking-out__line">
                 <span>{`${each.itemCode ?? ''} ${each.itemName ?? ''}`}</span>
-                <span>{t.lines.planned(String(each.plannedQty), String(each.pickedQty))}</span>
+                <span>
+                  {t.lines.planned(String(each.plannedQty), String(pickedQtyOf(each, queued)))}
+                </span>
+                {queuedQtyOf(each, queued) === 0 ? null : (
+                  <span>{t.lines.queued(String(queuedQtyOf(each, queued)))}</span>
+                )}
                 <span>
                   {[
                     each.lotNo ?? '',
@@ -318,7 +347,7 @@ export const MaterialPickingScreen = () => {
               <AlertBanner variant="error" title={t.scan.mismatch(line.lotNo ?? '')} />
             )}
 
-            {isOutOfSequence(line, lines) ? (
+            {isOutOfSequence(line, lines, queued) ? (
               <AlertBanner variant="warning" title={t.outOfSequence} />
             ) : null}
           </section>
@@ -339,7 +368,7 @@ export const MaterialPickingScreen = () => {
               variant="filled"
               size="2xl"
               className="picking-out__wide"
-              disabled={!canPick(line, scanned, qty, worker !== null)}
+              disabled={!canPick(line, scanned, qty, worker !== null, queued)}
               onClick={() => void pick()}
             >
               {t.pick}
@@ -353,18 +382,32 @@ export const MaterialPickingScreen = () => {
         {issueTypes.isError ? (
           <AlertBanner variant="error" title={t.issueTypeLoadFailed} />
         ) : null}
-        {issueTypes.data !== undefined && issueTypeCode === null ? (
+        {issueTypes.data !== undefined && issueTypes.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.noIssueType} />
         ) : null}
-        {issueTypeCode === null ? null : (
-          <p className="picking-out__note">{t.placeholderNote(issueTypeCode)}</p>
+        {issueTypes.data === undefined || issueTypes.data.length === 0 ? null : (
+          <div className="picking-out__field">
+            <label htmlFor="picking-issue-type">{t.issueTypeLabel}</label>
+            <Select
+              id="picking-issue-type"
+              placeholder={t.issueTypePlaceholder}
+              size="xl"
+              value={issueTypeCode}
+              onChange={(value) => {
+                setIssueTypeCode(String(value));
+              }}
+              options={issueTypes.data.map((each) => ({ value: each.code, label: each.name }))}
+            />
+          </div>
         )}
+        {/* 어느 값이 이 화면의 출고인지 계약이 아직 말하지 않아 사람이 고른다. */}
+        <p className="picking-out__note">{t.issueTypeNote}</p>
         {worker === null ? <p className="picking-out__note">{t.noWorker}</p> : null}
         <Button
           variant="filled"
           size="2xl"
           className="picking-out__wide"
-          disabled={!canConfirmIssue(lines, worker !== null) || issueTypeCode === null}
+          disabled={!canConfirmIssue(lines, worker !== null, queued) || issueTypeCode === null}
           onClick={() => void confirm()}
         >
           {t.submit}

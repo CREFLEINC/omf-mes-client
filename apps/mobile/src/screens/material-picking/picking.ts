@@ -17,13 +17,59 @@ export type GoodsIssueLineUpsert = components['schemas']['GoodsIssueLineUpsert']
  */
 export const SOURCE_DOCUMENT_TYPE = 'PICKING_ORDER';
 
-/** 생산 투입 출고의 도착은 위치다. 계약이 값을 닫아 두었다. */
-export const DESTINATION_TYPE = 'LOCATION';
-
 /** 출고 유형 값 목록을 받는 그룹. */
 export const ISSUE_TYPE = 'ISSUE_TYPE';
 
+/** 큐에 담긴 피킹 한 건. 경로와 본문에서 뽑아 낸다. */
+export interface QueuedPick {
+  pickingLineId: number;
+  pickedQty: number;
+}
+
+const PICK_PATH = /\/logistics\/picking-orders\/(\d+)\/lines\/(\d+):pick$/;
+
+/**
+ * 큐에 담긴 것 중 이 지시의 피킹만 골라 낸다.
+ *
+ * 큐는 화면을 가리지 않고 한 줄로 쌓이므로 다른 지시의 건이 섞여 있다. 경로에서 지시와 라인을
+ * 읽어 이 화면 몫만 센다.
+ */
+export const queuedPicksOf = (
+  entries: { path: string; body: unknown }[],
+  pickingOrderId: number,
+): QueuedPick[] =>
+  entries.flatMap((entry) => {
+    const matched = PICK_PATH.exec(entry.path);
+
+    if (matched === null || Number(matched[1]) !== pickingOrderId) {
+      return [];
+    }
+
+    const body = entry.body as { pickedQty?: unknown } | null;
+    const qty = typeof body?.pickedQty === 'number' ? body.pickedQty : 0;
+
+    return [{ pickingLineId: Number(matched[2]), pickedQty: qty }];
+  });
+
 export type LineProblem = 'held' | 'done';
+
+/**
+ * 아직 서버에 닿지 않은 피킹.
+ *
+ * 큐에 담긴 건은 서버 응답에 없다. 그 만큼을 셈에 넣지 않으면 화면이 안 집은 것으로 보여
+ * 같은 라인을 다시 집게 되고, 큐에 두 건이 쌓여 둘 다 나간다 - 되돌릴 수 없는 재고 차감이다.
+ */
+export const queuedQtyOf = (line: PickingLine, queued: QueuedPick[]): number =>
+  queued
+    .filter((each) => each.pickingLineId === line.pickingLineId)
+    .reduce((total, each) => total + each.pickedQty, 0);
+
+/** 서버가 아는 만큼과 담아 둔 만큼을 합친 것. 화면이 보이는 수는 이것이다. */
+export const pickedQtyOf = (line: PickingLine, queued: QueuedPick[]): number =>
+  line.pickedQty + queuedQtyOf(line, queued);
+
+export const remainingQtyOf = (line: PickingLine, queued: QueuedPick[] = []): number =>
+  line.plannedQty - pickedQtyOf(line, queued);
 
 /**
  * 이 라인을 지금 집을 수 있는가.
@@ -31,19 +77,21 @@ export type LineProblem = 'held' | 'done';
  * 보류는 서버가 표시해 내려준다 - 화면이 따로 판정하지 않는다. 판정 정본이 하나여야 오프라인
  * 에서 화면이 다르게 판단하는 일이 없다.
  */
-export const lineProblemOf = (line: PickingLine): LineProblem | null => {
+export const lineProblemOf = (line: PickingLine, queued: QueuedPick[] = []): LineProblem | null => {
   if (line.held === true) {
     return 'held';
   }
 
-  return line.pickedQty >= line.plannedQty ? 'done' : null;
+  return pickedQtyOf(line, queued) >= line.plannedQty ? 'done' : null;
 };
-
-export const remainingQtyOf = (line: PickingLine): number => line.plannedQty - line.pickedQty;
 
 export type QtyProblem = 'notNumber' | 'notPositive' | 'overPlanned';
 
-export const qtyProblemOf = (text: string, line: PickingLine): QtyProblem | null => {
+export const qtyProblemOf = (
+  text: string,
+  line: PickingLine,
+  queued: QueuedPick[] = [],
+): QtyProblem | null => {
   const trimmed = text.trim();
   const value = Number(trimmed);
 
@@ -55,7 +103,7 @@ export const qtyProblemOf = (text: string, line: PickingLine): QtyProblem | null
     return 'notPositive';
   }
 
-  return value > remainingQtyOf(line) ? 'overPlanned' : null;
+  return value > remainingQtyOf(line, queued) ? 'overPlanned' : null;
 };
 
 /**
@@ -68,7 +116,11 @@ export const isScannedLotOf = (line: PickingLine, scanned: string): boolean =>
   line.lotNo !== undefined && line.lotNo === scanned;
 
 /** 선출 순서를 지켰는가. 서버가 매긴 순위를 화면이 다시 계산하지 않는다. */
-export const isOutOfSequence = (line: PickingLine, lines: PickingLine[]): boolean => {
+export const isOutOfSequence = (
+  line: PickingLine,
+  lines: PickingLine[],
+  queued: QueuedPick[] = [],
+): boolean => {
   const rank = line.pickSequenceRank;
 
   if (rank === null || rank === undefined) {
@@ -78,7 +130,7 @@ export const isOutOfSequence = (line: PickingLine, lines: PickingLine[]): boolea
   return lines.some(
     (each) =>
       each.itemId === line.itemId &&
-      lineProblemOf(each) === null &&
+      lineProblemOf(each, queued) === null &&
       each.pickSequenceRank !== null &&
       each.pickSequenceRank !== undefined &&
       each.pickSequenceRank < rank,
@@ -90,21 +142,30 @@ export const canPick = (
   scanned: string | null,
   qty: string,
   hasWorker: boolean,
+  queued: QueuedPick[] = [],
 ): boolean => {
   if (!hasWorker || line === null || scanned === null) {
     return false;
   }
 
-  if (lineProblemOf(line) !== null || !isScannedLotOf(line, scanned)) {
+  if (lineProblemOf(line, queued) !== null || !isScannedLotOf(line, scanned)) {
     return false;
   }
 
-  return qtyProblemOf(qty, line) === null;
+  return qtyProblemOf(qty, line, queued) === null;
 };
 
-/** 한 건이라도 집었으면 출고를 확정할 수 있다. 모자란 만큼은 부분 출고로 남는다. */
-export const canConfirmIssue = (lines: PickingLine[], hasWorker: boolean): boolean =>
-  hasWorker && lines.some((line) => line.pickedQty > 0);
+/**
+ * 한 건이라도 집었으면 출고를 확정할 수 있다. 모자란 만큼은 부분 출고로 남는다.
+ *
+ * 담아 둔 것도 집은 것으로 센다. 서버가 아는 것만 세면 오프라인에서 확정이 영영 열리지
+ * 않는데, 이 화면은 오프라인 출고를 전제한다.
+ */
+export const canConfirmIssue = (
+  lines: PickingLine[],
+  hasWorker: boolean,
+  queued: QueuedPick[] = [],
+): boolean => hasWorker && lines.some((line) => pickedQtyOf(line, queued) > 0);
 
 const pad = (value: number): string => String(value).padStart(2, '0');
 
@@ -151,6 +212,7 @@ export const toPickDraft = (
 export const toIssueDraft = (
   order: PickingOrder,
   lines: PickingLine[],
+  queued: QueuedPick[],
   issueTypeCode: string,
   batchId: string,
   now: Date,
@@ -159,12 +221,13 @@ export const toIssueDraft = (
   const occurredAt = now.toISOString();
   /* 집은 만큼만 나간다. 안 집은 라인은 부족분으로 남는다. */
   const issued: GoodsIssueLineUpsert[] = lines
-    .filter((line) => line.pickedQty > 0)
-    .map((line) => ({
+    .map((line) => ({ line, qty: pickedQtyOf(line, queued) }))
+    .filter((each) => each.qty > 0)
+    .map(({ line, qty }) => ({
       pickingLineId: line.pickingLineId,
       itemId: line.itemId,
       lotId: line.lotId,
-      issueQty: line.pickedQty,
+      issueQty: qty,
       uomId: line.uomId,
       sourceLocationId: line.locationId,
     }));

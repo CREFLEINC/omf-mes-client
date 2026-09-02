@@ -39,3 +39,10 @@
 .picking-out__wide {
   width: 100%;
 }
+
+/* Select 는 스스로 라벨을 갖지 않는다. 라벨과 칸을 한 덩이로 세운다. */
+.picking-out__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}

@@ -42,6 +42,13 @@ export interface Outbox {
    * 기록의 종류마다 다르고, 그것을 이름으로 말할 수 있는 것은 담은 화면뿐이다.
    */
   countPending: (label: string) => number;
+  /**
+   * 담겨 있는 건을 그대로 돌려준다.
+   *
+   * 몇 건인지만으로는 «무엇이» 담겼는지 알 수 없다. 오프라인에서 화면이 담긴 것을 셈에 넣어야
+   * 하는 자리가 있다 - 그러지 않으면 같은 것을 다시 적고 큐에 두 건이 쌓인다.
+   */
+  pendingOf: (label: string) => OutboxEntry[];
   /** 담고 곧바로 돌아온다. 통신을 기다리지 않는다. */
   enqueue: (draft: OutboxDraft) => Promise<void>;
   /** 보낼 수 있는 만큼 보낸다. 거부된 건을 돌려준다. */
@@ -221,17 +228,33 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     [entries, loaded],
   );
 
+  const pendingOf = useCallback(
+    (label: string) => (loaded ? entries.filter((entry) => entry.label === label) : []),
+    [entries, loaded],
+  );
+
   const value = useMemo(
     () => ({
       pending: loaded ? entries.length : 0,
       pendingBytes,
       countPending,
+      pendingOf,
       rejected,
       enqueue,
       flush,
       dismissRejected,
     }),
-    [countPending, dismissRejected, enqueue, entries.length, flush, loaded, pendingBytes, rejected],
+    [
+      countPending,
+      pendingOf,
+      dismissRejected,
+      enqueue,
+      entries.length,
+      flush,
+      loaded,
+      pendingBytes,
+      rejected,
+    ],
   );
 
   return <OutboxContext value={value}>{children}</OutboxContext>;
