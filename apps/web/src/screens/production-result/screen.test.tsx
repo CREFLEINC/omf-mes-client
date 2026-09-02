@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import {
@@ -44,12 +44,16 @@ interface Options {
   gateFails?: boolean;
   /** 아직 끝나지 않은 PQC 의뢰가 있다 */
   hasPendingPqc?: boolean;
+  /** 검사 의뢰 조회가 실패한다 — 「모르는 것」을 「통과」로 처리하지 않는지 본다 */
+  pqcFails?: boolean;
   /** `withProgress` 응답의 양품 누계. `null` 이면 진척 자체가 없다 */
   goodQty?: number | null;
   /** 저장 요청을 담아 둔다 */
   writes?: Request[];
   /** 저장 응답 상태. 기본 201 */
   saveStatus?: number;
+  /** 앞의 몇 번을 통신 실패로 만들 것인가. 재전송이 같은 키로 나가는지 볼 때 쓴다 */
+  networkFailures?: number;
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -77,17 +81,30 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request) === '/quality/inspection-requests',
-    respond: () =>
-      jsonResponse({
+    respond: () => {
+      if (options.pqcFails === true) return jsonResponse({ message: '조회 실패' }, { status: 500 });
+
+      return jsonResponse({
         items: options.hasPendingPqc === true ? [makePendingPqc()] : [],
         page: { page: 1, size: 20, total: 0 },
-      }),
+      });
+    },
   },
   {
     match: (request) =>
       request.method === 'POST' && pathOf(request) === '/production/production-results',
     respond: (request) => {
       options.writes?.push(request.clone());
+
+      /*
+       * 통신이 끊긴 실패는 «응답이 없는» 실패다 — 상태 코드로 흉내 내면 큐가 그것을 거부로
+       * 읽어 항목을 내려 버린다. 그래서 던진다(`runRequest` 가 network 로 정규화한다).
+       */
+      if (options.networkFailures !== undefined && options.writes !== undefined) {
+        if (options.writes.length <= options.networkFailures) {
+          throw new TypeError('Failed to fetch');
+        }
+      }
 
       const status = options.saveStatus ?? 201;
 
@@ -190,6 +207,22 @@ describe('ProductionResultScreen 검사 선행 (R54)', () => {
     renderScreen({ hasPendingPqc: true });
 
     expect(await screen.findByText(t.pqc.blockedTitle)).toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
+  });
+
+  /*
+   * ⛔ **「판정할 수 없음」을 「통과」로 처리하지 않는다**(공유계약 F-6). 조회가 실패했는데
+   * 실적을 열면 R54 를 어긴 실적이 조용히 들어간다.
+   */
+  it('검사 의뢰 조회가 실패하면 실적 입력을 열지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ pqcFails: true });
+
+    expect(await screen.findByText(t.pqc.loadFailed)).toBeInTheDocument();
+
+    await selectLot(user);
+    await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '10');
+
     expect(saveButton()).toBeDisabled();
   });
 
@@ -381,19 +414,126 @@ describe('ProductionResultScreen 저장', () => {
 
     expect(await screen.findByText(messages.httpError.forbidden)).toBeInTheDocument();
   });
+});
+
+describe('ProductionResultScreen 오프라인 (공유계약 C-1)', () => {
+  /** 연결 상태를 이 시험이 정한다 — 실제 단말의 값에 기대지 않는다. */
+  const setOnline = (value: boolean): void => {
+    vi.spyOn(globalThis.navigator, 'onLine', 'get').mockReturnValue(value);
+  };
+
+  const readQueue = (): { idempotencyKey: string; workerNo: string }[] => {
+    const raw = globalThis.localStorage.getItem(STORAGE_KEY);
+
+    return raw === null ? [] : (JSON.parse(raw) as { idempotencyKey: string; workerNo: string }[]);
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  /* ⭐ 큐에 담기는 순간이 성공이다 — 통신을 기다리지 않는다(C-1 #2). */
+  it('끊긴 채 저장해도 즉시 성공이고 요청은 나가지 않는다', async () => {
+    setOnline(false);
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    renderScreen({ writes, goodQty: 120 });
+
+    await selectLot(user);
+    await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '10');
+    await user.click(saveButton());
+
+    expect(await screen.findByText(t.save.continueBody)).toBeInTheDocument();
+    expect(writes).toHaveLength(0);
+  });
+
+  /* ⭐ 미전송 건수가 없으면 서버에 닿지 않은 사실을 알 방법이 사라진다(C-1 #4). */
+  it('미전송 건수를 상시 보인다', async () => {
+    setOnline(false);
+    const user = userEvent.setup();
+    renderScreen({ goodQty: 120 });
+
+    await selectLot(user);
+    await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '10');
+    await user.click(saveButton());
+
+    expect(await screen.findByText(t.sync.pending(1))).toBeInTheDocument();
+  });
 
   /* ⚠ 재전송은 화면이 다시 그려진 뒤에 일어날 수 있다 — 그때 사번이 없으면 서버가 거부한다. */
-  it('큐에 담긴 항목이 사번을 함께 들고 있다', async () => {
+  it('큐에 담긴 항목이 사번과 멱등 키를 함께 들고 있다', async () => {
+    setOnline(false);
     const user = userEvent.setup();
-    renderScreen({ saveStatus: 500 });
+    renderScreen({ goodQty: 120 });
 
     await selectLot(user);
     await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '10');
     await user.click(saveButton());
 
     await waitFor(() => {
-      const raw = globalThis.localStorage.getItem(STORAGE_KEY);
-      expect(raw).not.toBe(null);
+      expect(readQueue()).toHaveLength(1);
     });
+
+    const entry = readQueue()[0];
+    if (entry === undefined) throw new Error('큐가 비어 있습니다.');
+
+    expect(entry.workerNo).toBe(WORKER_NO);
+    expect(entry.idempotencyKey).not.toBe('');
+  });
+
+  it('연결이 살아나면 담아 둔 건을 그대로 보낸다', async () => {
+    setOnline(false);
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    renderScreen({ writes, goodQty: 120 });
+
+    await selectLot(user);
+    await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '10');
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(readQueue()).toHaveLength(1);
+    });
+
+    const queuedKey = readQueue()[0]?.idempotencyKey;
+
+    setOnline(true);
+    globalThis.dispatchEvent(new Event('online'));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    expect(writes[0]?.headers.get('Idempotency-Key')).toBe(queuedKey);
+  });
+
+  /*
+   * ⭐ **재전송이 같은 키로 나가야 한다**(C-1 #5). 시도마다 새 키를 만들면 통신이 끊긴 뒤
+   * 다시 갔을 때 서버가 다른 쓰기로 보고 **같은 실적을 두 건 만든다.**
+   */
+  it('통신 실패 뒤 재전송이 같은 멱등 키로 나간다', async () => {
+    setOnline(true);
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    renderScreen({ writes, goodQty: 120, networkFailures: 1 });
+
+    await selectLot(user);
+    await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '10');
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    /* 연결이 살아난 계기를 만든다 — 5초 대기 대신 같은 경로를 깨운다. */
+    globalThis.dispatchEvent(new Event('online'));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(2);
+    });
+
+    expect(writes[1]?.headers.get('Idempotency-Key')).toBe(
+      writes[0]?.headers.get('Idempotency-Key'),
+    );
   });
 });
