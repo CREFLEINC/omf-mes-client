@@ -54,6 +54,10 @@ const writeEntries = (entries: readonly ReworkResultOutboxEntry[]): void => {
   }
 };
 
+const removeEntry = (idempotencyKey: string): void => {
+  writeEntries(readEntries().filter((entry) => entry.idempotencyKey !== idempotencyKey));
+};
+
 export const enqueueReworkResult = (
   workerNo: string,
   body: ProductionResultCreate,
@@ -95,7 +99,8 @@ export const drainReworkResults = (client: Client): Promise<DrainResult> => {
         if (toApiError(error).kind === 'network') throw error;
         rejected += 1;
       }
-      writeEntries(entries.slice(accepted + rejected));
+      /* 전송 중 새로 담긴 항목까지 snapshot으로 덮어 지우지 않는다. */
+      removeEntry(entry.idempotencyKey);
     }
     return { accepted, rejected };
   })().finally(() => {
