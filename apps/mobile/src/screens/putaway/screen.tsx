@@ -9,7 +9,8 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useWorkerId } from '../../patterns/workers';
-import { useLocationByCode, useLocations, usePutawayTasks } from './queries';
+import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
+import { usePutawayTasks } from './queries';
 import {
   MATCHED,
   NOT_RECOMMENDED,
@@ -18,7 +19,6 @@ import {
   isSingleItemOnly,
   toOutboxDraft,
   verdictOf,
-  type Location,
   type PutawayTask,
 } from './putaway';
 import './screen.css';
@@ -264,7 +264,10 @@ export const PutawayScreen = () => {
                 variant="error"
                 title={t.verdict.notRecommended(codeOf(task.recommendedLocationId))}
               >
-                {t.verdict.notRecommendedNext}
+                {/* 임시로 두어야 하는 경우가 있다. 그 길을 지시와 함께 넘긴다. */}
+                <Link to="/temporary-putaway" state={{ task, location }}>
+                  {t.verdict.temporary}
+                </Link>
               </AlertBanner>
             ) : null}
 
