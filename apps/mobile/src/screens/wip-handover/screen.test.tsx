@@ -67,6 +67,10 @@ interface Options {
   lots?: ReturnType<typeof lot>[];
   successors?: ReturnType<typeof workOrder>[];
   seen?: Request[];
+  /** 실제로 만들어 낸 양. 넘길 수 있는 상한이 이것이다. */
+  goodQty?: number | null;
+  /** 인계 확정을 실패시킨다. 재시도 경로를 밟기 위한 것이다. */
+  failConfirm?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -83,6 +87,31 @@ const routes = (options: Options = {}): StubRoute[] => [
     },
   },
   {
+    match: (req) => /^\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
+    respond: (req) => {
+      const id = Number(new URL(req.url).pathname.split('/').pop());
+      const found = (options.lots ?? [lot()]).find((each) => each.lotId === id);
+      const good = options.goodQty === undefined ? 500 : options.goodQty;
+
+      return jsonResponse({
+        lot:
+          good === null
+            ? found
+            : {
+                ...found,
+                progress: {
+                  goodQty: good,
+                  achievementRate: 1,
+                  varianceQty: 0,
+                  completionJudgmentCode: 'NORMAL',
+                },
+              },
+        externalIdentifiers: [],
+        holds: [],
+      });
+    },
+  },
+  {
     match: (req) =>
       new URL(req.url).pathname === '/production/work-orders' && req.method === 'GET',
     respond: (req) => {
@@ -94,6 +123,11 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => new URL(req.url).pathname === '/production/operation-handovers',
     respond: (req) => {
       options.seen?.push(req.clone());
+
+      if (options.failConfirm === true) {
+        return jsonResponse({ code: 'SERVER_ERROR', message: '실패' }, { status: 500 });
+      }
+
       return jsonResponse({ operationHandoverId: 1, handoverNo: 'OH-1' }, { status: 201 });
     },
   },
@@ -271,6 +305,68 @@ describe('WIP 공정 이동 화면', () => {
       await screen.findByText('완료 수량 500 EA 을(를) 넘을 수 없습니다'),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: '인계 확정' })).toBeDisabled();
+  });
+
+  /*
+   * 초기 수량은 계획이다. 미달 마감된 LOT 을 계획으로 재면 만들지 않은 양까지 넘어간다.
+   */
+  it('상한을 계획이 아니라 실제로 만든 양으로 잡는다', async () => {
+    const user = userEvent.setup();
+    mount({ goodQty: 430 });
+    await screen.findByLabelText('LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+
+    expect(await screen.findByText('완료 수량 430 EA')).toBeTruthy();
+
+    await user.click(await screen.findByRole('combobox', { name: '다음 공정' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+    await user.type(screen.getByLabelText('인계 수량'), '440');
+
+    expect(await screen.findByText('완료 수량 430 EA 을(를) 넘을 수 없습니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '인계 확정' })).toBeDisabled();
+  });
+
+  /* 넉넉한 쪽으로 물러서지 않는다 - 되돌릴 수 없는 쓰기다. */
+  it('완료 수량을 못 받으면 인계할 수 없다고 말한다', async () => {
+    mount({ goodQty: null });
+    await screen.findByLabelText('LOT 스캔');
+
+    scan(LOT_NO);
+
+    expect(await screen.findByText('완료 수량을 확인할 수 없어 인계할 수 없습니다')).toBeTruthy();
+  });
+
+  /*
+   * 본 단추는 막혀 있는데 오류 배너 안의 재시도만 열려 있었다. 실패한 뒤 수량을 상한 위로
+   * 고쳐 놓고 누르면 그 값이 그대로 나간다.
+   */
+  it('다시 보내기도 수량 검증을 지난다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen, goodQty: 430, failConfirm: true });
+    await screen.findByLabelText('LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+    await user.click(await screen.findByRole('combobox', { name: '다음 공정' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+
+    const qty = screen.getByLabelText('인계 수량');
+    await user.type(qty, '100');
+    await user.click(screen.getByRole('button', { name: '인계 확정' }));
+    await screen.findByText('인계하지 못했습니다');
+
+    /* 실패한 뒤 상한을 넘긴 값으로 고친다. 본 단추는 막히고, 재시도도 막혀야 한다. */
+    await user.clear(qty);
+    await user.type(qty, '9999');
+    await screen.findByText('완료 수량 430 EA 을(를) 넘을 수 없습니다');
+
+    await user.click(screen.getByRole('button', { name: '다시 보내기' }));
+
+    const posted = seen.filter((each) => each.method === 'POST');
+    expect(posted).toHaveLength(1);
   });
 
   it('확정하면 출발·도착 W/O 와 사번을 싣는다', async () => {

@@ -11,12 +11,13 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import {
   canConfirm,
+  completedQtyOf,
   fromWorkOrderIdOf,
   isUnreleased,
   lotProblemOf,
   qtyProblemOf,
 } from './handover';
-import { useConfirmHandover, useSuccessors } from './queries';
+import { useConfirmHandover, useLotProgress, useSuccessors } from './queries';
 import './screen.css';
 
 const t = messages.wipHandover;
@@ -41,6 +42,8 @@ export const WipHandoverScreen = () => {
   const problem = found === null ? null : lotProblemOf(found);
   const fromWorkOrderId = found === null ? null : fromWorkOrderIdOf(found);
   const successors = useSuccessors(fromWorkOrderId);
+  const progress = useLotProgress(found === null || problem !== null ? null : found.lotId);
+  const completedQty = completedQtyOf(progress.data ?? null);
 
   const confirm = useConfirmHandover();
   /* 한 번의 확정에 키 하나. 재시도가 같은 키로 가야 서버가 중복을 막는다. */
@@ -59,7 +62,7 @@ export const WipHandoverScreen = () => {
 
   const chosen = successors.data?.find((each) => each.workOrderId === toWorkOrderId) ?? null;
   const uom = uoms.data?.get(found?.uomId ?? -1) ?? '';
-  const ready = canConfirm(found, chosen, qty, worker !== null);
+  const ready = canConfirm(found, chosen, qty, worker !== null, completedQty);
 
   const restart = () => {
     setScanned(null);
@@ -73,7 +76,11 @@ export const WipHandoverScreen = () => {
   };
 
   const submit = () => {
-    if (found === null || chosen === null || fromWorkOrderId === null || worker === null) {
+    /*
+     * 다시 보내기도 여기로 온다. null 만 보고 넘기면 실패한 뒤 수량을 고쳐 놓고 눌렀을 때
+     * 상한을 넘긴 값이 그대로 나간다 - 본 단추는 막혀 있는데 이 길만 열려 있었다.
+     */
+    if (!ready || found === null || chosen === null || fromWorkOrderId === null || worker === null) {
       return;
     }
 
@@ -127,14 +134,18 @@ export const WipHandoverScreen = () => {
       return undefined;
     }
 
-    const trouble = qtyProblemOf(qty, found.initialQty);
+    if (completedQty === null) {
+      return undefined;
+    }
+
+    const trouble = qtyProblemOf(qty, completedQty);
 
     if (trouble === null) {
       return undefined;
     }
 
     return trouble === 'overCompleted'
-      ? t.qty.problem.overCompleted(`${String(found.initialQty)} ${uom}`)
+      ? t.qty.problem.overCompleted(`${String(completedQty)} ${uom}`)
       : t.qty.problem[trouble];
   };
 
@@ -185,7 +196,11 @@ export const WipHandoverScreen = () => {
             <Card.Header>{found.lotNo}</Card.Header>
             <Card.Body className="card-body">
               <p>{item.data?.itemName ?? ''}</p>
-              <p>{t.lot.qty(`${String(found.initialQty)} ${uom}`)}</p>
+              <p>
+                {completedQty === null
+                  ? t.lot.qtyUnknown
+                  : t.lot.qty(`${String(completedQty)} ${uom}`)}
+              </p>
             </Card.Body>
           </Card>
         )}

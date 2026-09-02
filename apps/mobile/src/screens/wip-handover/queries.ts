@@ -8,10 +8,41 @@ import {
 import { useApiClient } from '../../patterns/api-context';
 import type { Lot } from '../../patterns/lots';
 import { runRequest } from '../../patterns/request';
-import { toBody, type WorkOrder } from './handover';
+import { toBody, type LotProgress, type WorkOrder } from './handover';
 
 export const handoverKeys = {
   successors: (workOrderId: number | null) => ['handover-successors', workOrderId] as const,
+  progress: (lotId: number | null) => ['handover-lot-progress', lotId] as const,
+};
+
+/**
+ * 이 LOT 이 실제로 만들어 낸 양.
+ *
+ * 넘길 수 있는 상한이 이 값이다. LOT 이 들고 있는 초기 수량은 «계획»이라, 미달 마감된 LOT
+ * 에서는 만들지 않은 양까지 넘길 수 있게 된다.
+ *
+ * 목록 응답에는 이 값이 없다 - 진척은 LOT 마다 세야 해서 상세에서만 내려준다.
+ */
+export const useLotProgress = (lotId: number | null): UseQueryResult<LotProgress | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: handoverKeys.progress(lotId),
+    enabled: lotId !== null,
+    queryFn: async () => {
+      if (lotId === null) {
+        throw new Error('LOT 을 찾기 전에는 진척을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/trace/lots/{lotId}', {
+          params: { path: { lotId }, query: { withProgress: true } },
+        }),
+      );
+
+      return data.lot.progress ?? null;
+    },
+  });
 };
 
 /**
