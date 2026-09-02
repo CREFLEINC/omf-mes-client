@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Card, NumberPad, Progress, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -20,7 +20,6 @@ import {
   type QuantityDrafts,
   type QuantityKey,
 } from './result';
-import type { WorkOrder } from './types';
 
 const quantityKeys: QuantityKey[] = ['goodQty', 'defectQty', 'holdQty', 'scrapQty'];
 
@@ -36,16 +35,14 @@ export const ReworkResultRegisterScreen = () => {
   const [queueError, setQueueError] = useState(false);
   const [rejected, setRejected] = useState(false);
   const [pendingCount, setPendingCount] = useState(pendingReworkResultCount);
+  const [isOnline, setIsOnline] = useState(() => globalThis.navigator.onLine);
 
   const selected = workOrders.data?.items.find((row) => row.workOrderId === selectedId) ?? null;
   const nonconformanceId = selected?.reworkSourceNonconformanceId ?? null;
   const source = useReworkSource(nonconformanceId);
   const dispositions = useDispositionDecisions(nonconformanceId);
   const gate = useResultGate(identity.terminalId, identity.processId);
-  const progress = useMemo(
-    () => reworkDispositionProgress(dispositions.data?.items ?? []),
-    [dispositions.data],
-  );
+  const progress = reworkDispositionProgress(dispositions.data?.items ?? []);
   const total = quantityTotal(drafts);
   const verdict = quantityVerdict(total, progress.remaining);
   const remaining = Math.max(0, progress.remaining - total);
@@ -59,6 +56,7 @@ export const ReworkResultRegisterScreen = () => {
 
   useEffect(() => {
     const drain = () => {
+      setIsOnline(true);
       void drainReworkResults(client)
         .then((result) => {
           setPendingCount(pendingReworkResultCount());
@@ -67,9 +65,14 @@ export const ReworkResultRegisterScreen = () => {
         })
         .catch(() => setPendingCount(pendingReworkResultCount()));
     };
+    const offline = () => setIsOnline(false);
     if (globalThis.navigator.onLine) drain();
     globalThis.addEventListener('online', drain);
-    return () => globalThis.removeEventListener('online', drain);
+    globalThis.addEventListener('offline', offline);
+    return () => {
+      globalThis.removeEventListener('online', drain);
+      globalThis.removeEventListener('offline', offline);
+    };
   }, [client]);
 
   const gateReason = gate.unidentified
@@ -91,10 +94,6 @@ export const ReworkResultRegisterScreen = () => {
     (verdict === 'partial' || verdict === 'complete') &&
     gateReason === null &&
     !queued;
-
-  const selectWorkOrder = (workOrder: WorkOrder) => {
-    setSelectedId(workOrder.workOrderId);
-  };
 
   const save = () => {
     if (!canSave || selected === null || identity.workerNo === null) return;
@@ -133,7 +132,9 @@ export const ReworkResultRegisterScreen = () => {
         </h1>
         <p className="pop-context">{selected?.workOrderNo ?? t.selectWorkOrder}</p>
         <p className="pop-context pop-context-right">
-          {identity.workerNo ?? '—'} · {t.pending(pendingCount)}
+          {identity.workerNo ?? '—'} ·{' '}
+          {isOnline ? messages.common.connection.online : messages.common.connection.offline} ·{' '}
+          {t.pending(pendingCount)}
         </p>
       </header>
 
@@ -151,7 +152,7 @@ export const ReworkResultRegisterScreen = () => {
                   interactive
                   bordered
                   surface={row.workOrderId === selectedId ? 'high' : 'low'}
-                  onClick={() => selectWorkOrder(row)}
+                  onClick={() => setSelectedId(row.workOrderId)}
                 >
                   <Card.Body>
                     <strong>{row.workOrderNo}</strong>
