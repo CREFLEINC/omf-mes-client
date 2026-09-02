@@ -179,7 +179,7 @@ export const RepairRoundtripScreen = () => {
 
   const defectCard = (record: DefectRecord) => (
     <Card bordered>
-      <Card.Body className="repair__card">
+      <Card.Body className="card-body repair__card">
         <strong>{lot.data?.lotNo}</strong>
         <p className="repair__note">{item.data?.itemCode ?? ''}</p>
         <p>{t.defect.qty(String(record.defectQty), uomLabel(uoms.data, record.uomId))}</p>
@@ -312,7 +312,7 @@ export const RepairRoundtripScreen = () => {
       {execution === null ? null : (
         <>
           <Card bordered>
-            <Card.Body className="repair__card">
+            <Card.Body className="card-body repair__card">
               <strong>{lot.data?.lotNo}</strong>
               <p>
                 {`${String(execution.repairQty)} ${uomLabel(uoms.data, execution.uomId)}`}

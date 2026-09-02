@@ -55,7 +55,7 @@ export const ShellHome = () => {
               <li key={tile.to}>
                 <Link to={tile.to} className="shell-home__tile">
                   <Card bordered>
-                    <Card.Body>
+                    <Card.Body className="card-body">
                       <strong>{tile.label}</strong>
                     </Card.Body>
                   </Card>

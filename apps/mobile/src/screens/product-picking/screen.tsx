@@ -72,7 +72,7 @@ const CandidateCard = ({
 
   return (
     <Card bordered>
-      <Card.Body className="picking__candidate">
+      <Card.Body className="card-body picking__candidate">
         <div className="picking__candidate-head">
           <strong>{candidate.lot.lotNo}</strong>
           {recommended ? <Chip status="success">{t.candidates.recommended}</Chip> : null}
@@ -288,7 +288,7 @@ export const ProductPickingScreen = () => {
       <section className="picking__section">
         <h2>{t.target.legend}</h2>
         <Card bordered>
-          <Card.Body className="picking__card">
+          <Card.Body className="card-body picking__card">
             <strong>{target.request.shipmentRequestNo}</strong>
             <p>{item.data === undefined ? '' : `${item.data.itemCode} ${item.data.itemName}`}</p>
             {item.isError ? <p className="picking__note">{t.target.itemFailed}</p> : null}

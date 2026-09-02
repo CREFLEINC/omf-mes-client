@@ -87,7 +87,7 @@ const LocationCard = ({ balance, names }: { balance: InventoryBalance; names: Re
         <p>{referenceLabel(names.location(balance.locationId))}</p>
         {balance.lotId === null || balance.lotId === undefined ? <p>{t.lot.noLot}</p> : null}
       </Card.Header>
-      <Card.Body>
+      <Card.Body className="card-body">
         <dl className="material-location__quantities">
           <Quantity
             label={t.quantity.onHand}

@@ -62,9 +62,10 @@ export const WorkerSignInScreen = () => {
   if (worker !== null) {
     return (
       <div className="worker-sign-in">
+        {/* 누구로 기록되는지가 이 카드의 요점이라 머리말 자리에 둔다. */}
         <Card bordered aria-label={t.current.label}>
+          <Card.Header>{`${worker.workerName} · ${worker.workerNo}`}</Card.Header>
           <Card.Body>
-            <p className="worker-sign-in__worker">{`${worker.workerName} · ${worker.workerNo}`}</p>
             <p>{t.current.notice}</p>
           </Card.Body>
         </Card>

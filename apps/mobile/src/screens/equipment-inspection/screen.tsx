@@ -64,7 +64,7 @@ const ItemCard = ({
 
   return (
     <Card bordered>
-      <Card.Body className="inspection__item">
+      <Card.Body className="card-body inspection__item">
         <div className="inspection__item-head">
           <strong>{`${String(item.sequenceNo)}. ${item.itemName}`}</strong>
           {item.requiredFlag ? <Chip size="sm">{t.items.required}</Chip> : null}

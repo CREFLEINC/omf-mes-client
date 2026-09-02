@@ -360,7 +360,7 @@ export const InboundReceiptScreen = () => {
             <section className="receipt__section">
               <h2>{t.qty.legend}</h2>
               <Card bordered>
-                <Card.Body className="receipt__card">
+                <Card.Body className="card-body receipt__card">
                   <strong>
                     {item.data === undefined
                       ? String(draft.purchaseOrderLine.itemId)

@@ -309,17 +309,12 @@ describe('입하 등록 화면 — 발주 경로', () => {
   it('등록은 헤더와 라인을 한 건에 담아 사번과 함께 보낸다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    const bodies: unknown[] = [];
     mount([
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
-          void req
-            .clone()
-            .json()
-            .then((body: unknown) => bodies.push(body));
+          seen.push(req.clone());
           return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
         },
       },
@@ -335,11 +330,8 @@ describe('입하 등록 화면 — 발주 경로', () => {
     });
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
-    await waitFor(() => {
-      expect(bodies).toHaveLength(1);
-    });
-
-    const body = bodies[0] as { businessDate: string; lines: unknown[] };
+    
+    const body = (await seen[0]!.json()) as { businessDate: string; lines: unknown[] };
 
     expect(body.lines).toHaveLength(1);
     expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);

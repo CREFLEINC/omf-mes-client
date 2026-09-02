@@ -237,13 +237,10 @@ describe('설비 점검 입력 화면', () => {
 
   it('계약 경로로 헤더와 라인을 한 번에 보낸다', async () => {
     const user = userEvent.setup();
-    const bodies: unknown[] = [];
+    const seen: Request[] = [];
     mount([
       submitRoute((request) => {
-        void request
-          .clone()
-          .json()
-          .then((body: unknown) => bodies.push(body));
+        seen.push(request.clone());
         return jsonResponse({ inspectionId: 5 }, { status: 201 });
       }),
     ]);
@@ -254,9 +251,9 @@ describe('설비 점검 입력 화면', () => {
 
     expect(await screen.findByText('점검을 기록했습니다')).toBeInTheDocument();
     await waitFor(() => {
-      expect(bodies).toHaveLength(1);
+      expect(seen).toHaveLength(1);
     });
-    expect(bodies[0]).toMatchObject({
+    expect(await seen[0]!.json()).toMatchObject({
       equipmentId: 7,
       inspectionTypeCode: 'DAILY',
       lines: [{ inspectionItemId: 1, resultCode: 'OK', measuredValue: 13.4 }],

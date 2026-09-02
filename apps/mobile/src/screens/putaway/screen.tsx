@@ -183,7 +183,7 @@ export const PutawayScreen = () => {
       <section className="putaway__section">
         <h2>{t.tasks.legend}</h2>
         <Card bordered>
-          <Card.Body className="putaway__card">
+          <Card.Body className="card-body putaway__card">
             <strong>{task.putawayTaskNo}</strong>
             <p>{t.tasks.qty(`${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`)}</p>
             <p className="putaway__note">{t.tasks.from(codeOf(task.fromLocationId))}</p>

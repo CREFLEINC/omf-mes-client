@@ -40,7 +40,7 @@ const MyRequests = ({ requests }: { requests: ApprovalRequest[] }) => (
     {requests.map((request) => (
       <li key={request.approvalRequestId}>
         <Card bordered>
-          <Card.Body className="iqc-skip__request">
+          <Card.Body className="card-body iqc-skip__request">
             {/* 상태 문자열은 공통코드 소관이라 화면이 값을 지어내지 않고 받은 것을 그대로 보인다. */}
             <Chip>{request.statusCode}</Chip>
             <span className="iqc-skip__request-name">{request.target.displayName}</span>
@@ -182,7 +182,7 @@ export const IqcSkipRequestScreen = () => {
         ) : null}
         {found === null ? null : (
           <Card bordered>
-            <Card.Body className="iqc-skip__lot">
+            <Card.Body className="card-body iqc-skip__lot">
               <strong>{found.lotNo}</strong>
               {item.data === undefined ? null : (
                 <span>{`${item.data.itemCode} ${item.data.itemName}`}</span>
