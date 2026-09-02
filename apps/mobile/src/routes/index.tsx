@@ -11,6 +11,7 @@ import { InboundReceiptScreen } from '../screens/inbound-receipt/screen';
 import { InboundVarianceScreen } from '../screens/inbound-variance/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
+import { PackingRepackScreen } from '../screens/packing-repack/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
 import { TemporaryPutawayScreen } from '../screens/temporary-putaway/screen';
@@ -39,6 +40,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'iqc-skip-request', element: <IqcSkipRequestScreen /> },
       { path: 'repair-roundtrip', element: <RepairRoundtripScreen /> },
       { path: 'product-picking', element: <ProductPickingScreen /> },
+      { path: 'packing-repack', element: <PackingRepackScreen /> },
       { path: 'rejections', element: <OutboxRejectionsScreen /> },
     ],
   },

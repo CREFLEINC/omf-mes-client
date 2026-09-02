@@ -8,5 +8,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // findBy 의 기다림(5초)보다 위여야 한다. 같으면 기다리다 시험이 먼저 끊겨,
+    // 무엇을 못 찾았는지 대신 시간 초과만 남는다.
+    testTimeout: 15000,
   },
 });

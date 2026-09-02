@@ -1,0 +1,51 @@
+.repack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 20px);
+  padding: var(--space-4, 16px);
+}
+
+.repack__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+/* 스캔이 실패했을 때 손으로 넣는 자리. 칸과 단추가 밑선을 맞춘다. */
+.repack__row {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-end;
+}
+
+.repack__row > *:first-child {
+  flex: 1;
+}
+
+.repack__contents {
+  margin: 0;
+  padding-left: var(--space-5, 20px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.repack__line {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.repack__pooled {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.repack__note {
+  margin: 0;
+}
+
+/* 핵심 단추는 장갑 낀 손으로 누른다. 폭을 꽉 채워 겨냥하지 않아도 닿게 한다. */
+.repack__wide {
+  width: 100%;
+}
