@@ -1160,6 +1160,144 @@ main > * + * {
   }
 }
 
+/* 추가 자재 출고 요청 — 대상·품목·사유·발행의 단계와 액션 위치를 분명히 한다. */
+.material-issue-request-workspace {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.material-issue-request-workspace > .banner-slot,
+.material-issue-request-pane > .banner-slot {
+  margin-bottom: 0;
+}
+
+.material-issue-request-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.material-issue-request-pane > .pane-title,
+.material-issue-request-pane-heading > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.material-issue-request-target-search {
+  margin-bottom: 0;
+}
+
+.material-issue-request-target-search > .field-cell {
+  flex: 1 1 24rem;
+  max-width: 32rem;
+}
+
+.material-issue-request-target-search > .field-cell > * {
+  width: 100%;
+}
+
+.material-issue-request-pane-heading,
+.material-issue-request-line-footer,
+.material-issue-request-publish-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.material-issue-request-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.material-issue-request-table table {
+  min-width: 58rem;
+}
+
+.material-issue-request-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.material-issue-request-line-footer {
+  align-items: flex-end;
+}
+
+.material-issue-request-line-notes {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.material-issue-request-line-notes > .field-note {
+  margin: 0;
+  max-width: none;
+}
+
+.material-issue-request-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
+  gap: var(--space-5);
+  align-items: stretch;
+  min-width: 0;
+}
+
+.material-issue-request-footer > .material-issue-request-pane {
+  min-width: 0;
+}
+
+.material-issue-request-publish-row {
+  align-self: end;
+}
+
+.material-issue-request-publish-row > .field-note {
+  flex: 1 1 18rem;
+  max-width: none;
+  margin: 0;
+}
+
+.material-issue-request-empty-pane {
+  min-height: 14rem;
+}
+
+@media (max-width: 1280px) {
+  .material-issue-request-footer {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .material-issue-request-pane-heading,
+  .material-issue-request-line-footer,
+  .material-issue-request-publish-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .material-issue-request-pane-heading > button,
+  .material-issue-request-line-footer > button,
+  .material-issue-request-publish-row > button {
+    align-self: flex-end;
+  }
+
+  .material-issue-request-publish-row > .field-note {
+    flex: initial;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;

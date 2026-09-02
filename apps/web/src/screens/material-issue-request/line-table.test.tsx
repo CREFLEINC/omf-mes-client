@@ -53,6 +53,12 @@ const renderTable = (rows = lineDraftsFromShortage(shortageFixtures.map(toShorta
   );
 
 describe('LineTable', () => {
+  it('표가 구획 제목으로 식별된다', () => {
+    renderTable();
+
+    expect(screen.getByRole('table', { name: t.panes.lines })).toBeInTheDocument();
+  });
+
   it('6열 머리가 선다', () => {
     renderTable();
 
