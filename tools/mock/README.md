@@ -5,15 +5,17 @@ OpenAPI 정본을 Prism으로 그대로 서빙하는 **계약 검증·초기 개
 ## 사용
 
 ```bash
-pnpm mock          # 목 서버 실행 (기본 http://127.0.0.1:4010)
-pnpm mock:smoke    # 대표 경로 smoke 테스트
+pnpm mock             # 상태 기반 목 서버 (기본 http://127.0.0.1:4010)
+pnpm mock:seed-smoke  # 화면마다 진입 데이터가 있는지 검사
+pnpm mock:contract    # Prism 만 — 계약 그대로 서빙
+pnpm mock:smoke       # 대표 경로 smoke 테스트
 ```
 
 환경변수:
 
 | 변수 | 기본값 | 뜻 |
 | --- | --- | --- |
-| `OMF_SPEC_PATH` | `tools/mock/resolve-spec.mjs`의 `DEFAULT_SPEC_PATHS` — 형제 클론 `../omf/design/wiki/api-contracts/openapi/` 아래의 계약 벌들 | OpenAPI 정본 경로. **쉼표로 여러 벌**을 준다. 하나만 줘도 된다 |
+| `OMF_SPEC_PATH` | `tools/mock/resolve-spec.mjs`의 `SPEC_ROOTS` 중 실재하는 첫 자리 — 형제 클론 `../omf/…` 또는 격리 클론 `.claude/_designref/omf-mes/…` | OpenAPI 정본 경로. **쉼표로 여러 벌**을 준다. 하나만 줘도 된다 |
 | `MOCK_PORT` | `4010` | 목 서버 포트 |
 
 ## 정본 규칙
@@ -52,6 +54,35 @@ pnpm mock:smoke    # 대표 경로 smoke 테스트
 node tools/merge-spec.mjs <openapi.json> [openapi.json ...]   # 앞에 오는 문서가 우선한다
 ```
 
-## 한계 — 상태가 없다
+## 상태 기반 목 서버 — `seeded.mjs`
 
-Prism은 example을 반환할 뿐 상태를 갖지 않는다. 생성 후 목록 변화 · Rev 전이 · ETag 충돌 · `STATE_LOCKED` · 오프라인 재전송은 검증할 수 없다. 그 검증이 필요해지는 시점에 상태 기반 Mock을 이 폴더에 추가한다(구조설계 v0.2 §5).
+Prism은 example을 반환할 뿐 상태가 없다. 그래서 **발주가 없어 입하를 못 열고, 지시가 없어 적치를 못 열었다** — 화면을 만들어 놓고 열 수가 없는 상태였다. 구조설계 v0.2 §5가 예고한 자리를 채운 것이 `seeded.mjs`다.
+
+| | `mock` (기본) | `mock:contract` |
+| --- | --- | --- |
+| 서빙 | 씨앗 데이터 + 화면이 거는 필터 | Prism이 example 그대로 |
+| 쓰기 | **상태를 바꾼다** | 바꾸지 않는다 |
+| 모르는 경로 | Prism으로 넘긴다(`MOCK_PORT + 1`) | — |
+
+### 씨앗 — `seed.mjs`
+
+값은 **계약 정본의 `example`을 그대로 쓴다.** 계약의 `description`·`example`은 생성 타입으로 이 저장소에 이미 들어와 있는 공개 면이라, 씨앗에 적는다고 새로 드러나는 것이 없다. `example`이 자리표시(「값」·「문자열」)인 자리만 같은 결로 지어낸다.
+
+**날짜는 실행 시각 기준으로 만든다.** 박아 두면 다음 날 출하 목록이 비어 화면을 열 수 없다 — 출하 요청은 `shipDate`가 오늘인 것만 걸린다.
+
+### 쓰기가 상태를 바꾼다
+
+- 적치를 끝내면 **지시 목록에서 빠지고** 재고가 그 위치로 간다
+- 입하를 등록하면 **누적 입하가 늘어** 다음 회차의 남은 예정이 줄고, 자재 LOT이 **보류로** 함께 생긴다
+- 포장 구성 치환은 **요청에서 빠진 줄을 지운다** — 실서버와 같은 성격이라 그 위험을 화면이 시험할 수 있다
+- 인계·피킹·점검·고장·IQC 생략 요청이 각각 기록으로 남는다
+
+### 화면이 열리는지 검사한다 — `seed-smoke.mjs`
+
+각 화면이 진입에 거는 질의를 그대로 눌러 보고 **하나라도 비면 실패**한다. 데이터가 없어 열리지 않는 화면은 시험할 수 없는 화면이고, 그 사실이 조용히 지나가면 실기에서야 안다.
+
+**화면을 새로 만들면 `ENTRIES`에 한 줄을 더한다.**
+
+### 아직 하지 않는 것
+
+Rev 전이 · ETag 충돌 · `STATE_LOCKED` · 오프라인 재전송의 서버 측 판정. 필요해지면 여기에 더한다.
