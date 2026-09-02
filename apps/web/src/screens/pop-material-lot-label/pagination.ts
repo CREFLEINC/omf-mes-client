@@ -19,7 +19,16 @@ export interface PageView {
   /** 1부터 센 현재 쪽 */
   page: number;
   totalPages: number;
-  /** 「51–100 / 전체 120건」 */
+  /**
+   * 「3쪽 중 1쪽」 — **세는 단위를 두지 않는다.**
+   *
+   * ⛔ 「N–M / 전체 K건」으로 적지 않는다. 쪽 나눔은 «입하 건» 단위인데 목록의 줄은 «자재»라
+   * (스펙 §3-6 — 한 건에 자재가 여럿이면 라벨도 여러 장이다) 두 수가 영영 맞지 않는다.
+   * 「1–5 / 전체 12건」 옆에 줄이 일곱이면 사용자는 화면을 의심한다.
+   *
+   * 계약이 «자재» 단위로 쪽을 잘라 주지 않아 이 어긋남을 화면이 없앨 수 없다 — 그래서
+   * **틀린 수를 말하지 않는 쪽**을 고른다. 쪽 번호는 어느 단위로 세든 같다.
+   */
   rangeLabel: string;
   canPrev: boolean;
   canNext: boolean;
@@ -33,13 +42,11 @@ export const toPageView = (meta: PageMeta, shown: number): PageView => {
   const page = meta.page > 0 ? meta.page : 1;
   const totalPages = Math.ceil(meta.total / size);
 
-  const start = (page - 1) * size + 1;
-
   return {
     page,
     totalPages,
-    // 보이는 것이 없으면 범위를 지어내지 않는다. 전체 건수는 그대로 밝힌다.
-    rangeLabel: shown > 0 ? t.range(start, start + shown - 1, meta.total) : t.totalOnly(meta.total),
+    // 보이는 것이 없으면 자리를 지어내지 않는다 — 쪽 수가 0이면 「어디에 있는지」가 없다.
+    rangeLabel: totalPages > 0 ? t.position(page, totalPages) : t.empty,
     canPrev: page > 1,
     canNext: page < totalPages,
     isBeyondLast: meta.total > 0 && page > totalPages,

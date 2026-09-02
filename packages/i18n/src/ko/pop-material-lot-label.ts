@@ -129,8 +129,12 @@ export const popMaterialLotLabel = {
     label: '쪽 이동',
     prev: '◀ 이전',
     next: '다음 ▶',
-    /** **입하 건**을 센다 — 목록에 보이는 자재 줄 수와 단위가 다르다. */
-    range: (from: number, to: number, total: number) => `입하 건 ${from}–${to} / 전체 ${total}건`,
-    totalOnly: (total: number) => `입하 건 전체 ${total}건`,
+    /**
+     * ⛔ **건수를 세지 않는다.** 쪽 나눔은 「입하 건」 단위인데 목록의 줄은 「자재」라
+     * (스펙 §3-6) 두 수가 맞지 않는다 — 「1–5 / 전체 12건」 옆에 줄이 일곱이면 화면을
+     * 의심하게 된다. 쪽 번호는 어느 단위로 세든 같다.
+     */
+    position: (page: number, totalPages: number) => `${totalPages}쪽 중 ${page}쪽`,
+    empty: '보여 줄 쪽이 없습니다.',
   },
 } as const;

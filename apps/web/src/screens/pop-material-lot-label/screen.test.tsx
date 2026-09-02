@@ -321,10 +321,10 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   });
 
   /** 쪽 나눔은 입하 건 단위다 — 목록 줄(자재) 수로 세면 단위가 섞인다. */
-  it('쪽 위치를 입하 건 단위로 세고 그 단위를 밝힌다', async () => {
+  it('지금 자리를 쪽 번호로 보인다 — 줄 수와 어긋나는 건수를 말하지 않는다', async () => {
     renderScreen({ lines: [] });
 
-    expect(await screen.findByText('입하 건 1–1 / 전체 1건')).toBeInTheDocument();
+    expect(await screen.findByText('1쪽 중 1쪽')).toBeInTheDocument();
   });
 
   it('입하 목록 조회에 실패하면 사유와 다시 시도 경로를 함께 보인다', async () => {
