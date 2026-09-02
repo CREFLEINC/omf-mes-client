@@ -61,6 +61,13 @@ export interface Outbox {
   enqueue: (draft: OutboxDraft) => Promise<void>;
   /** 보낼 수 있는 만큼 보낸다. 거부된 건을 돌려준다. */
   flush: () => Promise<FlushResult | null>;
+  /**
+   * 이 멱등키가 되돌아온 건에 있는가.
+   *
+   * 화면이 스스로 부른 보내기의 결과만 보면 딸려 되돌아간 건을 놓친다 - 그 판정은 셸이 도는
+   * 다른 회차에서 내려질 수 있고, 화면은 빈 결과를 받아 담아 두었다고 잘못 말한다.
+   */
+  isRejected: (idempotencyKey: string) => boolean;
   /** 되돌아온 건 하나를 목록에서 내린다. 사람이 보고 정리한 뒤다. */
   dismissRejected: (id: string) => Promise<void>;
 }
@@ -76,6 +83,12 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
   const [entries, setEntries] = useState<OutboxEntry[]>([]);
   const [rejected, setRejected] = useState<RejectedRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
+
+  /*
+   * 되돌아온 건을 상태와 별도로 붙잡아 둔다. 판정을 묻는 자리는 비동기 처리기 안이라 그 시점의
+   * 상태 값은 이미 낡아 있다.
+   */
+  const rejectedRef = useRef<RejectedRecord[]>([]);
 
   /*
    * 큐를 만지는 일은 읽고 고쳐 쓰는 세 걸음이라 겹치면 나중 것이 먼저 것을 덮는다. 화면 둘이
@@ -102,6 +115,7 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       ([stored, returned]) => {
         if (!cancelled) {
           setEntries(stored);
+          rejectedRef.current = returned;
           setRejected(returned);
           setLoaded(true);
         }
@@ -134,16 +148,10 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     }
 
     /*
-     * 앞 회차에 깨진 묶음을 이어받는다. 앞 건이 거부돼 큐에서 빠지면 이 회차에는 그 사실을 볼
-     * 자리가 없어, 그 결과를 실은 뒤 건이 혼자 나간다 - 서버가 받지 않은 수량이 기록된다.
-     */
-    const broken = brokenBatchesOf(await inTurn(() => readRejected()));
-
-    /*
      * 보내는 동안에는 큐를 잡지 않는다. 잡고 있으면 통신이 끝날 때까지 담을 수 없어, 작업자가
      * 그 사이에 한 일이 어디에도 남지 않는다.
      */
-    const result = await flushQueue(stored, send, broken);
+    const result = await flushQueue(stored, send);
 
     await inTurn(async () => {
       const attempted = new Set(stored.map((entry) => entry.id));
@@ -153,23 +161,35 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       const next = [...result.remaining, ...arrived];
 
       /*
+       * 보내는 사이에 담긴 딸림 건은 이번 목록에 없어 판정을 받지 못했다. 그대로 두면 다음
+       * 회차에 혼자 나가는데, 그 건은 앞 건의 결과를 이미 싣고 있다 - 여기서 함께 되돌린다.
+       */
+      const broken = brokenBatchesOf(result.rejected);
+      const orphans = next.flatMap((entry) => {
+        const error = entry.batchId === undefined ? undefined : broken.get(entry.batchId);
+
+        return error === undefined ? [] : [{ entry, error, cascaded: true }];
+      });
+      const returned = [...result.rejected, ...orphans];
+      const orphaned = new Set(orphans.map((each) => each.entry.id));
+
+      /*
        * 되돌아온 건을 큐에서 빼기 전에 남긴다. 큐를 먼저 쓰면 그 사이에 보관소가 거절할 때
        * 큐에서도 빠지고 어디에도 남지 않는다 - 이 순서면 남는 것은 같은 건이 큐에 한 번 더
        * 남는 것뿐이고, 그것은 다음 회차에 다시 판정을 받는다.
        */
-      if (result.rejected.length > 0) {
-        const kept = appendRejected(
-          await readRejected(),
-          result.rejected,
-          new Date().toISOString(),
-        );
+      if (returned.length > 0) {
+        const kept = appendRejected(await readRejected(), returned, new Date().toISOString());
 
         await writeRejected(kept);
+        rejectedRef.current = kept;
         setRejected(kept);
       }
 
-      await writeQueue(next);
-      setEntries(next);
+      const remaining = next.filter((entry) => !orphaned.has(entry.id));
+
+      await writeQueue(remaining);
+      setEntries(remaining);
     });
 
     return result;
@@ -181,10 +201,17 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
         const next = dropRejected(await readRejected(), id);
 
         await writeRejected(next);
+        rejectedRef.current = next;
         setRejected(next);
       });
     },
     [inTurn],
+  );
+
+  const isRejected = useCallback(
+    (idempotencyKey: string) =>
+      rejectedRef.current.some((record) => record.entry.idempotencyKey === idempotencyKey),
+    [],
   );
 
   /*
@@ -269,6 +296,7 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       countPending,
       pendingOf,
       rejected,
+      isRejected,
       enqueue,
       flush,
       dismissRejected,
@@ -278,6 +306,7 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       pendingOf,
       dismissRejected,
       enqueue,
+      isRejected,
       entries.length,
       flush,
       loaded,

@@ -2,7 +2,6 @@ import type { ApiError } from '@omf-mes/api-client';
 
 import { ApiRequestError } from '../request';
 import type { OutboxEntry } from './queue';
-import type { BrokenBatch } from './rejected';
 
 /** 한 건을 실제로 보내는 자리. 응답 본문을 돌려주고 실패는 던져 올린다. */
 export type OutboxTransport = (entry: OutboxEntry) => Promise<unknown>;
@@ -51,11 +50,9 @@ const readField = (response: unknown, field: string): string | null => {
 export const flushQueue = async (
   entries: OutboxEntry[],
   send: OutboxTransport,
-  brokenBefore: ReadonlyMap<string, BrokenBatch> = new Map(),
 ): Promise<FlushResult> => {
   const rejected: OutboxRejection[] = [];
-  /* 앞 회차에 깨진 묶음을 이어받는다. 앞 건은 이미 큐 밖이라 여기서는 만날 수 없다. */
-  const brokenBatches = new Map<string, BrokenBatch>(brokenBefore);
+  const brokenBatches = new Map<string, ApiError>();
   const responses = new Map<string, unknown>();
   /*
    * 앞 건의 값을 알게 되는 즉시 뒤 건에 굳혀 둔다. 여기서 멈추면 남는 것은 이 목록이고,
@@ -73,15 +70,8 @@ export const flushQueue = async (
 
     const brokenBy = entry.batchId === undefined ? undefined : brokenBatches.get(entry.batchId);
 
-    /*
-     * 거부를 알기 전에 만들어진 건만 딸림으로 본다. 그 뒤에 만든 것은 사람이 사유를 보고
-     * 다시 한 새 기록이고, 이름만으로 막으면 그 지시가 통째로 잠긴다.
-     */
-    if (
-      brokenBy !== undefined &&
-      (brokenBy.since === undefined || entry.occurredAt < brokenBy.since)
-    ) {
-      rejected.push({ entry, error: brokenBy.error, cascaded: true });
+    if (brokenBy !== undefined) {
+      rejected.push({ entry, error: brokenBy, cascaded: true });
       continue;
     }
 
@@ -128,8 +118,7 @@ export const flushQueue = async (
       rejected.push({ entry, error, cascaded: false });
 
       if (entry.batchId !== undefined) {
-        /* 이 회차의 뒤 건은 모두 회차가 시작될 때 이미 큐에 있었다. 시각을 따지지 않는다. */
-        brokenBatches.set(entry.batchId, { error });
+        brokenBatches.set(entry.batchId, error);
       }
     }
   }

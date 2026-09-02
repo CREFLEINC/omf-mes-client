@@ -251,6 +251,10 @@ export const toPickDraft = (
  * 도착지를 비운다. 계약이 선택으로 두었고, 이 화면에는 그 위치를 받을 경로가 없다 - 지어낸
  * 값을 실으면 엉뚱한 자리로 나간 것으로 기록된다.
  */
+/** 이 초안이 실제로 싣는 줄. 무엇이 나갔는지 화면이 세려면 본문을 되짚지 않고 이것을 쓴다. */
+export const issuedLinesOf = (draft: OutboxDraft): GoodsIssueLineUpsert[] =>
+  (draft.body as GoodsIssueCreate).lines;
+
 export const toIssueDraft = (
   order: PickingOrder,
   lines: PickingLine[],

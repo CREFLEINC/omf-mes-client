@@ -17,6 +17,7 @@ import {
   canPick,
   isOutOfSequence,
   isOfOrder,
+  issuedLinesOf,
   isScannedLotOf,
   lineProblemOf,
   pickedQtyOf,
@@ -55,7 +56,7 @@ const batchIdOf = (pickingOrderId: number): string => `picking-order-${String(pi
 export const MaterialPickingScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush, loaded, pendingOf, rejected } = useOutbox();
+  const { enqueue, flush, isRejected, loaded, pendingOf, rejected } = useOutbox();
   const { worker } = useWorkerSession();
   const queryClient = useQueryClient();
 
@@ -170,7 +171,10 @@ export const MaterialPickingScreen = () => {
       /* 서버가 집은 양을 더해 내려준다. 화면이 그 셈을 따로 하지 않는다. */
       await queryClient.invalidateQueries({ queryKey: pickingKeys.order(orderId) });
 
-      if (result !== null && result.rejected.some((each) => mine(each.entry))) {
+      if (
+        (result !== null && result.rejected.some((each) => mine(each.entry))) ||
+        isRejected(draft.idempotencyKey)
+      ) {
         setPickOutcome('rejected');
         return;
       }
@@ -219,20 +223,31 @@ export const MaterialPickingScreen = () => {
       const mine = (each: { idempotencyKey: string }) =>
         each.idempotencyKey === draft.idempotencyKey;
 
-      if (result !== null && result.rejected.some((each) => mine(each.entry))) {
+      if (
+        (result !== null && result.rejected.some((each) => mine(each.entry))) ||
+        isRejected(draft.idempotencyKey)
+      ) {
         setOutcome('rejected');
         return;
       }
 
-      /* 되돌아오지 않은 것은 나갔거나 나갈 것이다. 두 경우 모두 다시 실으면 두 번 나간다. */
-      for (const each of sending) {
-        issuedHere.current.set(
-          each.pickingLineId,
-          (issuedHere.current.get(each.pickingLineId) ?? 0) + each.issueQty,
-        );
+      const queuedStill = result === null || result.remaining.some(mine);
+
+      /*
+       * 서버가 받은 것만 센다. 담기기만 한 것을 세면, 그 건이 나중에 거부됐을 때 깎을 자리가
+       * 없어 다음 확정이 보낼 것을 잃는다 - 담긴 동안에는 담긴 출고를 세는 쪽이 막는다.
+       */
+      if (!queuedStill) {
+        for (const each of issuedLinesOf(draft)) {
+          const lineId = each.pickingLineId;
+
+          if (lineId !== null && lineId !== undefined) {
+            issuedHere.current.set(lineId, (issuedHere.current.get(lineId) ?? 0) + each.issueQty);
+          }
+        }
       }
 
-      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+      setOutcome(queuedStill ? 'queued' : 'sent');
     } finally {
       setBusy(false);
     }
