@@ -250,7 +250,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     await user.type(await screen.findByLabelText('실입하 수량'), '505');
 
-    expect(await screen.findByText('예정 수량과 맞습니다')).toBeTruthy();
+    expect(await screen.findByText('남은 예정과 맞습니다')).toBeTruthy();
   });
 
   /* 판정 결과를 먼저 보인 뒤에 넘긴다. 조용히 넘기면 왜 왔는지 알 수 없다. */
@@ -262,7 +262,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     await user.type(await screen.findByLabelText('실입하 수량'), '511');
 
-    expect(await screen.findByText('수량 초과 — 예정 500, 실입하 511')).toBeTruthy();
+    expect(await screen.findByText('수량 초과 — 남은 예정 500, 이번 도착 511')).toBeTruthy();
     expect(
       screen.getByText('초과분은 초과 입하 분리에서 나눕니다. 그 화면은 아직 이 앱에 없습니다.'),
     ).toBeTruthy();
@@ -276,7 +276,66 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     await user.type(await screen.findByLabelText('실입하 수량'), '400');
 
-    expect(await screen.findByText('수량 부족 — 예정 500, 실입하 400')).toBeTruthy();
+    expect(await screen.findByText('수량 부족 — 남은 예정 500, 이번 도착 400')).toBeTruthy();
+  });
+
+  /*
+   * 화면은 더 올 것인지 알지 못한다. 트럭과 거래명세서를 본 사람이 안다. 네 수를 보이고
+   * 사람이 고르게 한다 - 수 없이 고르라 하면 무엇을 고르는지 모른다.
+   */
+  it('부족이면 네 수를 보이고 두 갈래를 연다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('자재 LOT 스캔');
+    await choosePoLine(user);
+
+    await user.type(await screen.findByLabelText('실입하 수량'), '400');
+
+    await screen.findByText('더 올 것이 남았습니까?');
+    expect(screen.getByText('발주')).toBeTruthy();
+    expect(screen.getByText('누적')).toBeTruthy();
+    expect(screen.getByText('이번 도착')).toBeTruthy();
+    expect(screen.getByText('남은 예정')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '계속 등록' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: '입하 오류 등록' })).toBeTruthy();
+  });
+
+  it('부족인데 고르지 않으면 등록할 수 없다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('자재 LOT 스캔');
+    await choosePoLine(user);
+
+    await user.type(await screen.findByLabelText('실입하 수량'), '400');
+    await user.type(screen.getByLabelText('포장 수'), '10');
+
+    await screen.findByText('더 올 것이 남았습니까?');
+    expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '계속 등록' }));
+
+    expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
+  });
+
+  /* 남겨 두면 부족하다고 답한 수량이 아닌 다른 수량이 그 답을 타고 넘어간다. */
+  it('수량을 고치면 앞서 받은 답을 버린다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('자재 LOT 스캔');
+    await choosePoLine(user);
+
+    const qty = await screen.findByLabelText('실입하 수량');
+    await user.type(qty, '400');
+    await user.type(screen.getByLabelText('포장 수'), '10');
+    await screen.findByText('더 올 것이 남았습니까?');
+    await user.click(screen.getByRole('button', { name: '계속 등록' }));
+    expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
+
+    await user.clear(qty);
+    await user.type(qty, '300');
+
+    await screen.findByText('수량 부족 — 남은 예정 500, 이번 도착 300');
+    expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
   });
 
   it('유효기한이 제조일보다 앞서면 등록을 막는다', async () => {

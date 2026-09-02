@@ -80,6 +80,31 @@ describe('입하 검증 세 갈래', () => {
     expect(verdictOf(strict, 501)).toBe(OVER);
     expect(verdictOf(strict, 499)).toBe(UNDER);
   });
+
+  /*
+   * 한 발주에 여러 번 도착한다. 발주 총량과 견주면 마지막 회차가 부족으로 읽히고, 누적이
+   * 총량을 넘긴 것도 부족으로 읽힌다. 뒤엣것은 서버가 거부할 초과인데 화면이 입하 오류
+   * 등록으로 보낸다 - 가야 할 곳은 초과 입하 분리다.
+   */
+  describe('여러 번 도착하는 발주', () => {
+    const split = (received: number) => poLine({ orderedQty: 300, receivedQty: received });
+
+    it('분할 납품의 마지막 회차는 정상이다', () => {
+      expect(verdictOf(split(200), 100)).toBe(NORMAL);
+    });
+
+    it('누적이 발주를 넘기면 초과다', () => {
+      expect(verdictOf(split(200), 150)).toBe(OVER);
+    });
+
+    it('남은 예정이 얼마 없는데 많이 오면 초과다', () => {
+      expect(verdictOf(split(280), 200)).toBe(OVER);
+    });
+
+    it('마지막 회차가 남은 예정에 모자라면 부족이다', () => {
+      expect(verdictOf(split(200), 90)).toBe(UNDER);
+    });
+  });
 });
 
 describe('수량 입력', () => {

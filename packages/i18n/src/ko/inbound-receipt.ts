@@ -70,14 +70,29 @@ export const inboundReceipt = {
     expiryBeforeManufactured: '유효기한이 제조일보다 앞설 수 없습니다',
   },
   verdict: {
-    normal: '예정 수량과 맞습니다',
+    normal: '남은 예정과 맞습니다',
     /** 판정 결과를 먼저 보인 뒤에 넘긴다. 넘어갈 화면은 아직 이 앱에 없다. */
-    over: (ordered: string, received: string) =>
-      `수량 초과 — 예정 ${ordered}, 실입하 ${received}`,
+    over: (remaining: string, arrived: string) =>
+      `수량 초과 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
     overNext: '초과분은 초과 입하 분리에서 나눕니다. 그 화면은 아직 이 앱에 없습니다.',
-    under: (ordered: string, received: string) =>
-      `수량 부족 — 예정 ${ordered}, 실입하 ${received}`,
-    underNext: '부족분은 입하 오류 등록으로 갑니다. 그 화면은 아직 이 앱에 없습니다.',
+    under: (remaining: string, arrived: string) =>
+      `수량 부족 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
+    /*
+     * 화면은 더 올 것인지 알지 못한다. 트럭과 거래명세서를 본 사람이 안다. 네 수를 보이고
+     * 사람이 고르게 한다 - 수 없이 고르라 하면 무엇을 고르는지 모른다.
+     */
+    counts: {
+      ordered: '발주',
+      received: '누적',
+      arrived: '이번 도착',
+      remaining: '남은 예정',
+    },
+    underAsk: '더 올 것이 남았습니까?',
+    /** 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. */
+    underContinue: '계속 등록',
+    underContinueNote: '분할 납품이면 그대로 등록합니다. 발주는 열린 채 남습니다.',
+    underVariance: '입하 오류 등록',
+    underVarianceNote: '이번이 마지막인데 모자라면 입하 오류로 넘어갑니다.',
   },
   /** 검사 대상 여부는 서버가 라인마다 정한다. 화면이 보내지 않는다. */
   inspectionNote: '검사 대상 여부는 등록 뒤 서버가 라인마다 정합니다',
