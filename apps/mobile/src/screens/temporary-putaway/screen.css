@@ -1,0 +1,48 @@
+.temporary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.temporary > * {
+  flex: none;
+}
+
+.temporary__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.temporary__section h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.temporary p {
+  margin: 0;
+}
+
+.temporary__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.temporary__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.temporary__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  align-items: flex-start;
+}
+
+.temporary__wide {
+  width: 100%;
+}

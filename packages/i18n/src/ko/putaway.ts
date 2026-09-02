@@ -46,7 +46,7 @@ export const putaway = {
     matched: '권장 위치와 같습니다',
     /** 다른 곳에 두면 다음 사람이 찾지 못한다. 임시로 두어야 하면 다른 화면이 받는다. */
     notRecommended: (code: string) => `권장 위치 ${code} 가 아닙니다`,
-    notRecommendedNext: '임시로 두어야 하면 임시 위치 적재로 가세요. 그 화면은 아직 이 앱에 없습니다.',
+    temporary: '임시로 두어야 하면 임시 위치 적재로 갑니다',
     noRule: '관리 위치가 없는 품목입니다. 여기 적치합니까?',
     noRuleConfirm: '여기 적치합니다',
   },

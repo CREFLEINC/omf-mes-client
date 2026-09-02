@@ -96,6 +96,7 @@ import { productPicking } from './product-picking';
 import { inboundReceipt } from './inbound-receipt';
 import { putaway } from './putaway';
 import { inboundVariance } from './inbound-variance';
+import { temporaryPutaway } from './temporary-putaway';
 
 export const ko = {
   common,
@@ -180,6 +181,7 @@ export const ko = {
   inboundReceipt,
   putaway,
   inboundVariance,
+  temporaryPutaway,
 } as const;
 
 export type Messages = typeof ko;

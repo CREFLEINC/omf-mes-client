@@ -264,7 +264,10 @@ export const PutawayScreen = () => {
                 variant="error"
                 title={t.verdict.notRecommended(codeOf(task.recommendedLocationId))}
               >
-                {t.verdict.notRecommendedNext}
+                {/* 임시로 두어야 하는 경우가 있다. 그 길을 지시와 함께 넘긴다. */}
+                <Link to="/temporary-putaway" state={{ task, location }}>
+                  {t.verdict.temporary}
+                </Link>
               </AlertBanner>
             ) : null}
 
