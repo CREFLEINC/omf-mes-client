@@ -30,6 +30,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseTypeCode: 'SYN-WH-TYPE',
     managementLevelCode: 'SYN-LEVEL',
     isExternal: false,
+    isDefect: false,
     isActive: true,
   },
   {
@@ -41,6 +42,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseTypeCode: 'SYN-WH-TYPE',
     managementLevelCode: 'SYN-LEVEL',
     isExternal: false,
+    isDefect: false,
     /** 미사용 창고 — 선택지에 표식이 붙되 빠지지 않는다. */
     isActive: false,
   },

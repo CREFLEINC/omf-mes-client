@@ -64,6 +64,42 @@ import { workOrderClose } from './work-order-close';
 import { workOrderRelease } from './work-order-release';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { shipmentSchedule } from './shipment-schedule';
+import { materialInputScan } from './material-input-scan';
+import { dispositionDecision } from './disposition-decision';
+import { emergencyWorkOrder } from './emergency-work-order';
+import { workOrderProgress } from './work-order-progress';
+import { materialLocation } from './material-location';
+import { toolUsage } from './tool-usage';
+import { productStockStatus } from './product-stock-status';
+import { shipmentRequestCreate } from './shipment-request-create';
+import { shipmentProcessing } from './shipment-processing';
+import { dashboard } from './dashboard';
+import { downtimeSummary } from './downtime-summary';
+import { gaugeCalibration } from './gauge-calibration';
+import { equipmentFailure } from './equipment-failure';
+import { maintenanceOrder } from './maintenance-order';
+import { maintenanceResult } from './maintenance-result';
+import { toolPmOrder } from './tool-pm-order';
+import { notice } from './notice';
+import { warehouseLayout } from './warehouse-layout';
+import { terminalProcessMap } from './terminal-process-map';
+import { toolPmResult } from './tool-pm-result';
+import { materialIssueRequest } from './material-issue-request';
+import { deviceRegistration } from './device-registration';
+import { equipmentFailureReport } from './equipment-failure-report';
+import { outboxRejections } from './outbox-rejections';
+import { iqcSkipRequest } from './iqc-skip-request';
+import { equipmentInspection } from './equipment-inspection';
+import { oqcInspection } from './oqc-inspection';
+import { expeditedShipment } from './expedited-shipment';
+import { shipmentConfirm } from './shipment-confirm';
+import { poChangeReview } from './po-change-review';
+import { repairRoundtrip } from './repair-roundtrip';
+import { productPicking } from './product-picking';
+import { inboundReceipt } from './inbound-receipt';
+import { putaway } from './putaway';
+import { inboundVariance } from './inbound-variance';
+import { temporaryPutaway } from './temporary-putaway';
 
 export const ko = {
   common,
@@ -116,6 +152,42 @@ export const ko = {
   workOrderRelease,
   suspiciousMaterialHold,
   shipmentSchedule,
+  materialInputScan,
+  dispositionDecision,
+  emergencyWorkOrder,
+  workOrderProgress,
+  materialLocation,
+  productStockStatus,
+  shipmentRequestCreate,
+  shipmentProcessing,
+  dashboard,
+  downtimeSummary,
+  gaugeCalibration,
+  equipmentFailure,
+  maintenanceOrder,
+  maintenanceResult,
+  toolPmOrder,
+  notice,
+  warehouseLayout,
+  terminalProcessMap,
+  toolPmResult,
+  materialIssueRequest,
+  deviceRegistration,
+  equipmentFailureReport,
+  outboxRejections,
+  iqcSkipRequest,
+  equipmentInspection,
+  oqcInspection,
+  expeditedShipment,
+  shipmentConfirm,
+  toolUsage,
+  repairRoundtrip,
+  productPicking,
+  inboundReceipt,
+  putaway,
+  inboundVariance,
+  temporaryPutaway,
+  poChangeReview,
 } as const;
 
 export type Messages = typeof ko;

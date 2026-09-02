@@ -22,11 +22,20 @@ import type {
  * `CANCELLED`). ⛔ 지어낸 코드를 쓰지 않는다 — 배지 판정이 되물림으로 빠져나가 시험이
  * 「모르는 값」 경로를 도는 것을 정상으로 통과시킨다.
  */
+/**
+ * 검사 기준 버전 식별자. ⛔ 지어낸 값이다.
+ *
+ * 규격(`InspectionItemSpec`)은 버전에 «속하므로» 이 값이 필수지만, 의뢰
+ * (`InspectionRequest`)는 기준이 없어도 성립해 계약이 선택 항목으로 둔다 — 그래서
+ * 규격 픽스처가 의뢰에서 값을 끌어오지 않고 여기서 직접 받는다.
+ */
+const PLAN_VERSION_ID = 3001;
+
 export const waitingRequest: InspectionRequestResponse = {
   inspectionRequestId: 1001,
   inspectionRequestNo: 'IR-2026-0001',
   inspectionTypeCode: 'PQC',
-  inspectionPlanVersionId: 3001,
+  inspectionPlanVersionId: PLAN_VERSION_ID,
   targetTypeCode: 'LOT',
   targetId: 5001,
   itemId: 2001,
@@ -144,7 +153,7 @@ export const roundsResponse = (
  */
 export const dimensionSpec: InspectionItemSpecResponse = {
   inspectionItemSpecId: 7001,
-  inspectionPlanVersionId: waitingRequest.inspectionPlanVersionId,
+  inspectionPlanVersionId: PLAN_VERSION_ID,
   sequenceNo: 10,
   inspectionItemCode: 'DIM',
   inspectionItemName: '치수',
@@ -160,7 +169,7 @@ export const dimensionSpec: InspectionItemSpecResponse = {
 
 export const appearanceSpec: InspectionItemSpecResponse = {
   inspectionItemSpecId: 7002,
-  inspectionPlanVersionId: waitingRequest.inspectionPlanVersionId,
+  inspectionPlanVersionId: PLAN_VERSION_ID,
   sequenceNo: 20,
   inspectionItemCode: 'APPEAR',
   inspectionItemName: '외관',
@@ -173,7 +182,7 @@ export const appearanceSpec: InspectionItemSpecResponse = {
 /** 필수가 아닌 항목. 채번에 구멍이 있어도(시퀀스 5) 화면은 위치로 1부터 센다. */
 export const optionalSpec: InspectionItemSpecResponse = {
   inspectionItemSpecId: 7003,
-  inspectionPlanVersionId: waitingRequest.inspectionPlanVersionId,
+  inspectionPlanVersionId: PLAN_VERSION_ID,
   sequenceNo: 5,
   inspectionItemCode: 'NOTE',
   inspectionItemName: '비고 측정',

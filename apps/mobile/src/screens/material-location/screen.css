@@ -1,0 +1,67 @@
+.material-location {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.material-location__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+  overflow-y: auto;
+}
+
+/*
+ * 넘치면 줄이지 말고 흐르게 한다. 본문 높이가 고정되면 글자 한 줄 말고는 속이 없는 것부터
+ * 눌려, 버튼이 손가락으로 누를 수 없는 두께가 된다.
+ */
+.material-location__body > * {
+  flex: none;
+}
+
+/* 세로 간격은 위 gap 하나로만 준다. 기본 여백이 남으면 그 위에 겹쳐 리듬이 두 배가 된다. */
+.material-location__body > p {
+  margin: 0;
+}
+
+/*
+ * 다음 스캔은 바닥에 남는다. 흐름 안에 두면 결과가 길어질 때 화면 밖으로 밀려,
+ * 다음 자재를 찍으려면 먼저 스크롤해야 한다.
+ */
+.material-location__actions {
+  flex: none;
+  padding: var(--space-2, 8px) var(--space-4, 16px);
+}
+
+.material-location__actions button {
+  width: 100%;
+}
+
+.material-location__lot-no {
+  font-family: var(--font-mono, monospace);
+  word-break: break-all;
+}
+
+.material-location__quantities {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2, 8px) var(--space-4, 16px);
+  margin: 0;
+}
+
+.material-location__quantities dt {
+  color: var(--on-surface-muted, inherit);
+}
+
+.material-location__quantities dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* 마이너스 재고는 정상일 수 있어 오류색을 쓰지 않는다. 확인이 필요하다는 뜻만 준다. */
+.material-location__negative {
+  color: var(--semantic-warning);
+}

@@ -6,11 +6,26 @@ import { createEtagStore, type EtagStore } from './etag-store';
 export interface ApiClientOptions {
   baseUrl: string;
   fetch?: (request: Request) => Promise<Response>;
+  /**
+   * 요청마다 실을 단말 토큰. 현장 단말은 계정 로그인이 없어 이 토큰이 인증의 전부다.
+   * 함수로 받는 것은 등록·해제로 값이 바뀌기 때문이다 — 만들 때 고정하면 재등록 뒤에도
+   * 옛 토큰을 계속 보낸다.
+   */
+  authToken?: () => string | null;
 }
 
 export interface ApiClient {
   client: ReturnType<typeof createClient<paths>>;
   etags: EtagStore;
+  /**
+   * 서버 주소.
+   *
+   * ⭐ **파일 내용처럼 `fetch` 로 받지 않는 자원이 있다** — 이미지는 `<img src>` 가 브라우저에게
+   * 직접 받게 하는 편이 낫다(캐시·점진 표시가 공짜다). 그때 주소를 지을 자리가 필요하다.
+   * ⛔ 화면이 환경 변수를 따로 읽지 않게 한다 — 클라이언트와 다른 주소를 가리키면 조회는
+   * 되는데 그림만 안 나오고, 그 어긋남은 화면에서 보이지 않는다.
+   */
+  baseUrl: string;
 }
 
 /**
@@ -54,6 +69,22 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     querySerializer: serializeQuery,
   });
 
+  const authToken = options.authToken;
+
+  if (authToken !== undefined) {
+    client.use({
+      onRequest({ request }) {
+        const token = authToken();
+
+        if (token !== null) {
+          request.headers.set('Authorization', `Bearer ${token}`);
+        }
+
+        return request;
+      },
+    });
+  }
+
   client.use({
     onResponse({ request, response }) {
       const etag = response.headers.get('ETag');
@@ -64,5 +95,5 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     },
   });
 
-  return { client, etags };
+  return { client, etags, baseUrl: options.baseUrl };
 };

@@ -1,0 +1,52 @@
+.equipment-failure {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.equipment-failure > * {
+  flex: none;
+}
+
+.equipment-failure__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.equipment-failure__section h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.equipment-failure p {
+  margin: 0;
+}
+
+.equipment-failure__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.equipment-failure__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.equipment-failure__photos {
+  display: flex;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.equipment-failure__photos img {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: var(--radius-sm, 4px);
+}

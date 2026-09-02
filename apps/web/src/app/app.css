@@ -36,6 +36,26 @@
  * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
  * .login-fields  카드 안 입력 칸 사이 간격(규범 8)
  * .login-actions 카드 안 액션 줄 — 하나뿐인 액션이 줄 전체를 채운다(규범 8)
+ *
+ * .pop-shell     POP(현장 단말) 화면의 본문 — 셸 밖에 서서 뷰포트를 그대로 쓴다
+ * .pop-header    그 화면의 표제 줄
+ * .pop-title     표제 — 1024×768 단말에서 멀리서 읽는다
+ * .pop-context   표제 옆의 맥락 표시(작업지시 등)
+ * .pop-context-right  헤더 오른쪽 끝 — 세션·단말. 지금 어디서 찍고 있는지
+ * .scan-manual   스캔 실패의 대체 경로 — 「직접 입력」과 그 설명
+ * .receipt-summary  수령 표 아래, 모자란 것만 다시 세우는 자리
+ * .numeric-keypad   화면 내장 숫자 키패드(공유계약 D-4) — OS 자판에 의존하지 않는다
+ * .scanned-item-facts-line  담은 자재 한 줄의 사실 — 품목 · 수량 단위(스펙 §3)
+ * .pop-panes     POP 화면의 좌우 두 구획 — 스캔이 주 입력이라 좌우로 편다
+ * .pane-title    구획 표제
+ * .scan-row      스캔 칸과 읽기 버튼을 한 줄에 — 버튼 높이를 칸의 라벨 층만큼 내린다
+ * .scan-outcome  스캔 한 번의 결과가 서는 자리(늘 자리를 차지한다)
+ * .scanned-items 담은 자재 목록
+ * .scanned-item  그 한 줄
+ * .scanned-code  LOT·금형 코드 — 멀리서 읽는다
+ * .scanned-mold  물린 금형 구획
+ * .confirm-row   투입 확정 버튼과 잠금 사유
+ * .pop-touch-target  현장 단말의 터치 타겟 하한 — DS xl(60px)이 12px 모자란 자리를 채운다
  */
 
 :root {
@@ -428,9 +448,13 @@ main > * + * {
   background: var(--state-hover-neutral);
 }
 
+/*
+ * `--focus-ring` 값은 box-shadow 목록(`0 0 0 2px …, 0 0 0 4px …`)이다 — `outline` 단축 문법에
+ * 넣으면 선언째 버려진다(client#243). `box-shadow`로 적용한다. 전례: 아래
+ * `.notification-list [role='button']:focus-visible`.
+ */
 .link-cell:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
 }
 
 .tree-toggle {
@@ -690,6 +714,517 @@ main > * + * {
   font: var(--type-label-lg);
   letter-spacing: var(--type-label-lg-tracking);
   color: var(--on-surface-variant);
+}
+
+/*
+ * POP(현장 단말) 화면 — 셸 밖에 서는 두 번째 형태다(규범 8).
+ *
+ * 로그인(`.login-shell`)은 카드 하나를 뷰포트 한가운데 세우지만 이쪽은 **폭을 좁히지 않는다.**
+ * 1024×768 단말에서 세로 여유가 119px뿐이라 가운데 정렬로 남는 폭을 버릴 수 없다.
+ */
+.pop-shell {
+  box-sizing: border-box;
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+  min-height: 100%;
+}
+
+.pop-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+/* 표제 서식은 디자인 시스템 위계를 그대로 쓰고 브라우저 기본 여백만 턴다. */
+.pop-title {
+  margin: 0;
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.pop-context {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 세션·단말은 헤더 «오른쪽 끝»에 선다(스펙 §3). 표제·작업지시와 같은 줄이되 반대편이라,
+ * 작업자가 왼쪽에서 「무엇을」을, 오른쪽에서 「어디서」를 읽는다.
+ */
+.pop-context-right {
+  display: flex;
+  gap: var(--space-4);
+  margin-inline-start: auto;
+}
+
+/*
+ * 스캔 실패의 대체 경로. 버튼과 설명을 한 덩이로 묶어 **읽기 버튼과 다른 층**임을 보인다 —
+ * 나란히 두면 둘 다 스캔을 보내는 것으로 읽힌다.
+ */
+.scan-manual {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-block-start: var(--space-3);
+}
+
+/*
+ * 모자란 것만 다시 세우는 자리(스펙 §3). 표와 붙여 두되 «목록»이라 표와 다른 결로 보인다 —
+ * 같은 표의 연장으로 보이면 다시 훑어야 하는 것이 된다.
+ */
+.receipt-summary {
+  margin-block-start: var(--space-4);
+}
+
+.receipt-summary-title {
+  margin: 0 0 var(--space-2);
+  font: var(--type-title-sm);
+  color: var(--on-surface);
+}
+
+.receipt-summary-items {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  display: grid;
+  gap: var(--space-1);
+}
+
+/*
+ * 스펙 §3 — **스캔이 주 입력이라 좌우로 편다.** 1024×768에서 세로 여유가 119px뿐이라
+ * 위아래로 쌓으면 스캔 칸이 접힌 아래로 내려간다.
+ */
+.pop-panes {
+  display: grid;
+  grid-template-columns: minmax(320px, 2fr) 3fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .pop-panes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pane-title {
+  margin: 0 0 var(--space-3);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* 두 번째 이후의 구획 표제는 앞 블록과 사이를 둔다. */
+.pane-title:not(:first-child) {
+  margin-top: var(--space-5);
+}
+
+/* 규범 2 — 컨트롤 상자의 윗선에 맞춘다. 버튼에는 라벨 층이 없어 그만큼 내려 준다. */
+.scan-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.scan-row > button {
+  margin-top: var(--field-label-layer);
+}
+
+/*
+ * 현장 단말의 터치 타겟 하한 — **72px**.
+ *
+ * 착수 이슈 6번이 「위험 등급 버튼은 72px가 필요한데 DS의 `xl`은 60px다 — 12px 부족분은
+ * 제품이 임시로 채운다」로 처리 방법을 정했다. 그 12px을 여기서 채운다.
+ *
+ * ⚠ **임시다.** 디자인 시스템에 그 크기가 서면 이 규칙을 지우고 DS 변형을 쓴다 —
+ * 제품이 치수를 오래 들고 있으면 화면마다 다른 값이 굳는다.
+ *
+ * ⛔ **모든 버튼에 걸지 않는다.** 목록의 「빼기」처럼 되돌릴 수 있는 조작까지 키우면
+ * 화면이 버튼으로 덮이고, 정작 큰 것이 눈에 띄지 않아 크기가 뜻을 잃는다.
+ * 장갑 낀 손으로 눌러야 하는 것 — 스캔을 보내는 것과 투입을 확정하는 것 — 에만 건다.
+ */
+.pop-touch-target {
+  min-height: 72px;
+}
+
+/*
+ * 결과가 없을 때도 **자리를 비워 둔다.** 결과가 뜰 때마다 아래 목록이 밀리면, 담긴 줄을
+ * 누르려던 손가락이 빗나간다 — 터치 화면에서 이 흔들림은 오조작이 된다.
+ */
+.scan-outcome {
+  min-height: 1.5rem;
+  margin: var(--space-3) 0 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.scanned-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* 멀리서 읽는 값이라 본문보다 크게 두고, 자릿수가 흔들리지 않게 고정폭으로 그린다. */
+.scanned-code {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.scanned-mold {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.confirm-row {
+  margin-top: var(--space-5);
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+
+/* 품질 판정과 보류는 **다른 축**이라 코드 줄 아래에 따로 세운다(나란히 두면 모순처럼 읽힌다). */
+.scanned-item {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.scanned-item-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.scanned-item-facts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* 서버가 기록만 한 것을 상태 옆에 붙인다 — 「통과」가 「정상」이 아니다. */
+.scanned-item-notes {
+  display: inline-flex;
+  gap: var(--space-2);
+}
+
+/*
+ * 화면 내장 숫자 키패드 — **공유계약 D-4**. 3열 격자로 전화기 배열을 따른다(1이 왼쪽 위).
+ * 손이 기억한 위치가 화면마다 달라지면 오조작이 늘어, 배열을 사용처가 바꾸지 못하게 여기서
+ * 고정한다.
+ */
+.numeric-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  max-width: 22rem;
+  margin-block-start: var(--space-3);
+}
+
+/* 「기록」은 되돌릴 수 없는 조작이라 한 줄을 통째로 차지해 다른 키와 섞이지 않는다. */
+.numeric-keypad-submit {
+  grid-column: 1 / -1;
+}
+
+/*
+ * 담은 자재의 「무엇을 얼마나」 — 스펙 §3의 `MAT-A  100 EA`. LOT 번호 바로 아래 붙여
+ * **한 자재의 사실이 한 덩이로** 읽히게 한다. 상태·보류는 다른 축이라 아래 줄에 따로 선다.
+ */
+.scanned-item-facts-line {
+  margin: var(--space-1) 0 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  color: var(--on-surface);
+}
+
+/*
+ * 지표 카드 줄 — **카드 수를 화면이 정하지 않는다.**
+ *
+ * 서버가 준 카드를 그대로 그리는 자리라 개수가 회차마다 다를 수 있다. 열 수를 고정하면
+ * 카드가 넷일 때는 빈 칸이 남고 일곱일 때는 눌린다. 최소 폭 격자로 두면 폭이 허락하는 만큼
+ * 한 줄에 서고 모자라면 접힌다 — 접힘 기준점을 따로 두지 않아도 된다.
+ *
+ * ⭐ `auto-fit`이 아니라 **`auto-fill`**이다. 둘의 차이는 **카드가 트랙 수보다 적을 때** 난다 —
+ * `auto-fit`은 빈 트랙을 접어 버려 **카드 한 장이 페인 폭 전체로 늘어난다.** 브라우저 확인에서
+ * 실제로 그렇게 보였고, 그 카드는 지표가 아니라 배너로 읽혔다. `auto-fill`은 빈 트랙을 남겨
+ * 카드가 몇 장이든 **같은 폭**으로 선다.
+ *
+ * 최소 폭 11rem은 「12,480」에 단위와 증감이 붙은 카드가 눌리지 않는 폭이다. 간격은
+ * 규범 1의 블록 이음매(--space-5)보다 좁은 --space-3이다 — 카드끼리는 서로 다른 블록이
+ * 아니라 한 묶음의 항목이라, 블록 간격을 주면 한 줄이 아니라 구획 여럿으로 읽힌다.
+ */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: var(--space-3);
+}
+
+/*
+ * 페인 «전체»에 걸리는 안내 문장 — 칸 하나가 아니라 그 구획이 통째로 지는 사정이다.
+ *
+ * `.field-note`(규범 4)를 쓰면 안 되는 자리다. 그쪽은 **필드 하나에 딸린 사유**라 `20rem`에
+ * 갇혀 있어, 넓은 페인에 두면 오른쪽을 다 비워 두고 좁은 기둥으로 서너 줄 접힌다 — 브라우저
+ * 확인에서 실제로 그렇게 보였다. 그렇다고 폭을 풀면 한 줄이 너무 길어져 눈이 다음 줄 첫머리를
+ * 놓친다. `.dialog-lead`가 창 안에서 푼 것과 같은 문제이고, 여기서는 **읽기 좋은 길이**로 가둔다.
+ */
+.pane-lead {
+  display: block;
+  max-width: 44rem;
+  margin-top: var(--space-2);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 카드 아래 본문 — 분모가 온전하지 않다는 사유와 제외 건수가 여기 온다.
+ *
+ * ⛔ 툴팁이 아니다. 가려 두면 사용자가 온전한 값으로 읽고 그대로 판단한다.
+ * 값보다 약하게 읽혀야 한다 — 카드에서 먼저 읽히는 것은 숫자다.
+ */
+.kpi-card-note {
+  display: grid;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 카드 한 장을 통째로 감싸는 링크 — 지표 카드와 알람 카드가 함께 쓴다.
+ *
+ * 카드 «안»에 링크를 두지 않는 이유는 눌리는 자리가 제목 글자만큼으로 줄어들기 때문이다.
+ * 밑줄·색을 물려받지 않게 지우고, 대신 **포커스 링을 링크가 직접 그린다** — 감싸기만 하면
+ * 링크 자신은 크기가 없어 보이지 않는 곳에 링이 그려진다.
+ */
+.kpi-card-link,
+.alert-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+
+.kpi-card-link:focus-visible,
+.alert-link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/*
+ * 알람 카드 목록 — **알림센터의 `.notification-*`과 값이 같고 소유가 다르다.**
+ *
+ * 그쪽 클래스를 그대로 가져다 쓰지 않는 이유는 이 저장소의 규율이 「화면 슬라이스는 다른 화면의
+ * 같은 이름 부품을 참조하지 않는다」이기 때문이다. 이름이 그 화면의 것인 클래스에 기대면, 그
+ * 화면이 값을 바꾸는 날 이 화면이 **아무도 모르게** 같이 바뀐다.
+ *
+ * 값이 같은 것은 우연이 아니다 — 둘 다 「카드가 반복되는 목록」이라 같은 결정을 내렸다. 세
+ * 번째 사용처가 나오면 그때 이름을 일반화해 배치 규범으로 올린다(`docs/layout-conventions.md`
+ * 갱신 규칙).
+ */
+.alert-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 카드 머리줄 — 유형 · 확인 표시 · 발생 시각이 한 줄에 선다. 좁으면 접힌다. */
+.alert-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.alert-code {
+  font-weight: 600;
+}
+
+/* 시각은 카드에서 가장 약하게 읽혀야 한다 — 무슨 알람인가가 먼저다. */
+.alert-time {
+  margin-left: auto;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 코드 그림 자리 — 가운데 두고 위아래로 숨을 준다. 그림 자체는 흰 바탕을 스스로 그리므로
+ * 여기서 배경을 칠하지 않는다(칠하면 어두운 테마에서 그림 테두리가 배경에 먹힌다).
+ */
+.token-figure {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3) 0;
+}
+
+/* 발급 시각·만료 — 이름과 값을 두 칸으로 세운다. 값이 길어도 이름 칸은 흔들리지 않는다. */
+.token-meta {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0;
+}
+
+.token-meta dt {
+  color: var(--on-surface-muted);
+}
+
+.token-meta dd {
+  margin: 0;
+}
+
+/*
+ * 공지 본문 — 사람이 친 줄바꿈을 살린다. 살리지 않으면 문단이 한 덩어리로 붙어
+ * 「8월 20일 09:00~12:00」 같은 줄이 앞 문장 꼬리에 매달린다.
+ * 읽는 글이라 규범 4의 이탈 조건을 따라 폭을 묶는다.
+ */
+.notice-body {
+  white-space: pre-wrap;
+  max-width: 44rem;
+  margin: var(--space-2) 0;
+}
+
+/*
+ * P-05-01 이 더하는 자리들.
+ *
+ * ⭐ **셸·머리·표제·스캔 줄은 이미 있는 것을 쓴다** — `.pop-shell`·`.pop-header`·`.pop-title`·
+ * `.pop-context-right`·`.scan-row` 는 먼저 선 POP 화면이 세웠다. 같은 이름을 다시 선언하면
+ * **나중 선언이 이겨** 그 화면의 배치가 조용히 바뀐다 — 게이트가 잡지 못하는 종류의 사고다.
+ *
+ * 여기 남는 것은 이 화면에만 있는 것이다 — 액션 줄 · 툴 정보 줄 · 타발수와 키패드 · 누계 표.
+ */
+
+/*
+ * 액션 줄 — 마지막 블록이라 화면 아래에 선다. 오른쪽 정렬이되 사유는 줄 왼쪽에 남는다.
+ *
+ * ⛔ **구획 높이를 픽셀로 못박지 않는다.** 스펙의 세로 예산(64 + 616 + 88)은 1024×768 을
+ * 전제로 도출한 값이라, 그대로 박으면 다른 크기에서 잘린 자리에 저장 버튼이 들어간다.
+ */
+.pop-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.pop-actions > .field-note {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
+}
+
+/* 구획 하나. 내부 블록 사이 간격은 구획이 소유한다 — 전역 `main > * + *`는 여기 닿지 않는다. */
+.pop-section > * > * + * {
+  margin-top: var(--space-3);
+}
+
+/* 스캔된 툴의 코드·이름·캐비티가 한 줄에 선다. 좁으면 접힌다. */
+.pop-tool {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+}
+
+/* 입력칸과 숫자 키패드를 나란히 — 키패드가 자기 폭을 갖고 입력칸이 나머지를 쓴다. */
+.pop-shot {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-5);
+}
+
+.pop-conversion {
+  display: grid;
+  gap: var(--space-2);
+}
+
+/*
+ * 누계 다섯 줄 — **세로로 쌓는다**(화면 스펙 §3). 이름과 값이 한 줄에서 짝을 이루고, 줄이
+ * 위에서 아래로 「지금 → 저장하면」의 순서를 만든다. 가로로 늘어놓으면 그 순서가 사라진다.
+ */
+.pop-figures {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.pop-figures > div {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.pop-figures dt {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.pop-figures dd {
+  margin: 0;
+  font: var(--type-title-sm);
+}
+
+/*
+ * 구분선 — 위 셋은 「지금 사실」이고 아래 둘은 「저장하면 그렇게 된다」다.
+ * 선 하나가 그 경계를 말한다(화면 스펙 §3).
+ */
+.pop-figures-rule {
+  height: 1px;
+  margin: var(--space-1) 0;
+  background: var(--outline-variant);
+}
+
+/* 사용 가능 줄 — 값 오른쪽에 진행 막대가 붙는다. 막대가 없으면 값만 선다. */
+.pop-figure-usage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.pop-figure-usage > *:last-child {
+  flex: 1;
+}
+
+/* 「이 숫자가 언제 것인가」 — 값보다 약하게 읽혀야 한다. */
+.pop-figure-note {
+  margin-left: var(--space-3);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 안내 구획 — 글자만 담는다. 경고가 아니라 상시 사실이라 배너를 쓰지 않는다. */
+.pop-notice {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 입력칸 묶음이 남는 폭을 쓰고 키패드가 자기 폭을 갖는다. */
+.pop-shot-fields {
+  display: grid;
+  gap: var(--space-3);
+  flex: 1;
+}
+
+/*
+ * 사용률 막대의 이름 — 막대가 「남은 비율」이 아니라 「쓴 비율」임을 그 자리에서 말한다.
+ * 이름이 없으면 사용 가능 줄의 백분율이 「사용 가능이 0%」로 읽힌다.
+ */
+.pop-usage-label {
+  flex: none;
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
 }
 
 /*

@@ -15,6 +15,7 @@ const operation = (overrides: Partial<RoutingOperation> = {}): RoutingOperation 
   materialInputManaged: false,
   productionResultManaged: true,
   inspectionManaged: false,
+  isOutsourced: false,
   outputLotRequired: false,
   equipmentRequired: false,
   moldRequired: false,

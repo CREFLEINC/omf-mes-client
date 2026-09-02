@@ -3,10 +3,14 @@ packages:
   - packages/*
 
 allowBuilds:
-  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/91c233b257ea844dfe9df8eef440221329b092a6': true
+  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/8c4a7751f0760b438d185546796cbdc4bc1fabee': set this to true or false
+  '@crefle/web-ui@https://codeload.github.com/CREFLEINC/design-system-v2-webui/tar.gz/d63fdcf0809791301bef8c3d3144ff7490c81155': true
   '@scarf/scarf': false
   # POP 셸(#441) — Electron 바이너리 내려받기와 Windows 인스톨러 생성에 설치 스크립트가 필요하다.
   electron: true
   electron-winstaller: true
   esbuild: true
   node: true
+
+minimumReleaseAgeExclude:
+  - '@capacitor-mlkit/barcode-scanning@8.1.1'

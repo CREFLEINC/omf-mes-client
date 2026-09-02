@@ -1,7 +1,6 @@
-import { Button } from '@crefle/web-ui';
+import { Button, TextArea } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { TextArea } from '@omf-mes/ui';
 
 import { SaveErrorBanner } from '../../patterns/master';
 

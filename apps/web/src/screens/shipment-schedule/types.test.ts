@@ -8,9 +8,12 @@ const LINE = {
   itemId: 9301,
   requestedQty: 100,
   allocatedQty: 80,
+  pickedQty: 40,
   shippedQty: 20,
   uomId: 9501,
   shippingInspectionRequired: false,
+  /* client#601 1-5 — 집은 LOT 신설. 이 시험은 아직 이 값을 읽지 않는다. */
+  picks: [],
 };
 
 const RESPONSE = {
@@ -20,6 +23,7 @@ const RESPONSE = {
   shipToPartnerId: 9201,
   requestedShipDate: '2026-08-13',
   statusCode: 'SAMPLE_STATUS_A',
+  shippingInspectionStatusCode: 'NOT_REQUIRED' as const,
   lines: [LINE],
 };
 
@@ -62,25 +66,23 @@ describe('toShipmentRequestView', () => {
       shipToPartnerId: 9201,
       requestedShipDate: '2026-08-13',
       statusCode: 'SAMPLE_STATUS_A',
-      hasInspectionRequiredLine: false,
+      inspectionStatus: 'NOT_REQUIRED',
       lineTotals: { requestedQty: 100, allocatedQty: 80, shippedQty: 20 },
     });
   });
 
-  it('검사 대상 라인이 하나라도 있으면 참이다', () => {
+  it('검사 상태 값을 서버가 낸 그대로 옮긴다 — 화면이 라인을 다시 순회해 판정하지 않는다', () => {
     expect(
-      toShipmentRequestView({
-        ...RESPONSE,
-        lines: [LINE, { ...LINE, shipmentRequestLineId: 2, shippingInspectionRequired: true }],
-      }).hasInspectionRequiredLine,
-    ).toBe(true);
+      toShipmentRequestView({ ...RESPONSE, shippingInspectionStatusCode: 'REJECTED' })
+        .inspectionStatus,
+    ).toBe('REJECTED');
   });
 
-  it('lines가 없으면 검사 대상 없음·합계 없음으로 본다', () => {
+  it('lines가 없어도 검사 상태는 응답 값 그대로다 — 합계만 null이 된다', () => {
     const { lines: _lines, ...withoutLines } = RESPONSE;
 
     expect(toShipmentRequestView(withoutLines)).toMatchObject({
-      hasInspectionRequiredLine: false,
+      inspectionStatus: 'NOT_REQUIRED',
       lineTotals: null,
     });
   });

@@ -13,7 +13,7 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { SaveErrorBanner, requireIfMatch, useMasterWrite } from '../../patterns/master';
 import {
   createBuMapDraft,
   isSameBuMapDrafts,
@@ -82,7 +82,10 @@ import { lookupLabel, selectableOptions } from './options';
 import { toPageView } from './pagination';
 import { SetDefaultDialog } from './set-default-dialog';
 import {
+  buMapsPath,
+  externalCodesPath,
   subsidiaryKeys,
+  uomConversionsPath,
   useBuMaps,
   useExternalCodes,
   useUomConversions,
@@ -353,7 +356,10 @@ export const ItemExtendedAttrsScreen = () => {
       client.PUT('/mdm/items/{itemId}/bu-item-maps', {
         params: {
           path: { itemId: selectedItemId ?? 0 },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
         },
         /*
          * **경로의 `itemId`가 `fromItemId`다**(계약). 본문에 다시 실으면 두 곳이
@@ -362,11 +368,10 @@ export const ItemExtendedAttrsScreen = () => {
         body: { maps: toBuMapsPayload(drafts) },
       }),
     /*
-     * **반드시 `null`이다**(§5.3 표 2행). 계약에 이 쓰기의 `If-Match` 파라미터 자체가 없고
-     * 목록 조회가 `ETag`를 주지도 않는다 — 상세 경로를 주면 토큰을 찾지 못해
-     * 요청이 **나가지 않고 멈춘다**(M17).
+     * ⭐ **client#602 — 이 목록 조회의 `GET` 200 응답에 `ETag`가 새로 생겼다**(§5.3 표 2행 갱신).
+     * 예전에는 계약에 `If-Match` 파라미터가 없고 목록 조회도 토큰을 주지 않아 `null`이었다.
      */
-    etagPath: null,
+    etagPath: selectedItemId === null ? null : buMapsPath(selectedItemId),
     invalidateKeys: [subsidiaryKeys.buMaps(selectedItemId ?? 0)],
     // 대응하는 입력칸이 이 구획에 없다(창 안에 있다) — 필드 오류도 배너로 올린다.
     knownFields: [],
@@ -420,12 +425,15 @@ export const ItemExtendedAttrsScreen = () => {
       client.PUT('/mdm/items/{itemId}/uom-conversions', {
         params: {
           path: { itemId: selectedItemId ?? 0 },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
         },
         body: { conversions: toUomConversionsPayload(drafts) },
       }),
-    /* **반드시 `null`이다**(§5.3 표 3행) — 사업부 매핑과 같은 근거다(M17). */
-    etagPath: null,
+    /* ⭐ **client#602 — 이 목록 조회에 `ETag`가 새로 생겼다**(§5.3 표 3행) — 사업부 매핑과 같다. */
+    etagPath: selectedItemId === null ? null : uomConversionsPath(selectedItemId),
     invalidateKeys: [subsidiaryKeys.uomConversions(selectedItemId ?? 0)],
     knownFields: [],
     onSuccess: (saved) => {
@@ -477,12 +485,15 @@ export const ItemExtendedAttrsScreen = () => {
       client.PUT('/mdm/items/{itemId}/external-codes', {
         params: {
           path: { itemId: selectedItemId ?? 0 },
-          header: { 'Idempotency-Key': headers['Idempotency-Key'] },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
         },
         body: { externalCodes: toExternalCodesPayload(drafts) },
       }),
-    /* **반드시 `null`이다**(§5.3 표 4행) — 부속 3종이 같은 근거다(M17). */
-    etagPath: null,
+    /* ⭐ **client#602 — 이 목록 조회에 `ETag`가 새로 생겼다**(§5.3 표 4행) — 부속 3종이 같다. */
+    etagPath: selectedItemId === null ? null : externalCodesPath(selectedItemId),
     invalidateKeys: [subsidiaryKeys.externalCodes(selectedItemId ?? 0)],
     knownFields: [],
     onSuccess: (saved) => {

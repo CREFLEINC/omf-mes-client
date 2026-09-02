@@ -1,0 +1,86 @@
+.picking {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+  padding: var(--space-4, 16px);
+}
+
+.picking > * {
+  flex: none;
+}
+
+.picking__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+.picking__section h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}
+
+.picking__subhead {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+}
+
+.picking p {
+  margin: 0;
+}
+
+.picking__note {
+  color: var(--on-surface-muted, inherit);
+}
+
+.picking__card,
+.picking__candidate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.picking__candidate-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  align-items: center;
+}
+
+.picking__pick {
+  width: 100%;
+}
+
+.picking__targets,
+.picking__candidates {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 한 줄에 네 값이 들어가 폭이 모자란다. 줄바꿈을 허용하고 왼쪽으로 붙인다. */
+.picking__target-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 8px);
+  align-items: baseline;
+  justify-content: flex-start;
+  text-align: start;
+}
+
+/* 스캔이 실패했을 때 손으로 넣는 자리다. 입력이 넓고 버튼이 붙는다. */
+.picking__manual {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-end;
+}
+
+.picking__manual > *:first-child {
+  flex: 1;
+}

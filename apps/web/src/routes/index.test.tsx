@@ -11,6 +11,11 @@ import {
 import { describe, expect, it } from 'vitest';
 
 import { AppLayout } from '../app/layout';
+import {
+  DISPOSITION_SCREEN_PATH,
+  dispositionEntryPath,
+} from '../screens/disposition-decision/filters';
+import { WORK_ORDER_PROGRESS_PATH } from '../screens/work-order-progress/filters';
 import { SessionProvider } from '../patterns/session';
 import {
   groupsResponse as equipmentGroupsResponse,
@@ -431,6 +436,12 @@ const inspectionResultRoutes = (): StubRoute[] => [
 /** W-03-09가 선택 없는 첫 진입에 부르는 승인 요청 목록 하나다. */
 const qualityApprovalRoutes = (): StubRoute[] => [lookupRoute('/app/approval-requests', [])];
 
+const dispositionRoutes = (): StubRoute[] => [
+  lookupRoute('/quality/nonconformances', []),
+  lookupRoute('/mdm/items', []),
+  lookupRoute('/mdm/uoms', []),
+];
+
 const workOrderCloseRoutes = (): StubRoute[] => [
   {
     match: (request) => isGet(request, '/mdm/code-values'),
@@ -602,6 +613,14 @@ describe('appRouter', () => {
    */
   it('비밀번호 변경이 시스템 관리 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/system/password-change');
+  });
+
+  /**
+   * ⭐ **단말은 시스템 관리의 자원이다.** 계약 경로는 `/mdm/terminals`이지만 이 화면이 하는 일은
+   * 기준정보 편집이 아니라 「어느 단말에서 무엇을 열어 둘 것인가」의 운영 설정이다.
+   */
+  it('W-CO-06 단말기-공정 매핑을 시스템 관리 아래에 둔다', () => {
+    expect(routedPaths()).toContain('/system/terminal-process-map');
     expect(routedPaths()).not.toContain('/account/password');
     expect(routedPaths()).not.toContain('/app/users/me:change-password');
   });
@@ -666,12 +685,22 @@ describe('appRouter', () => {
    */
   it('알림센터가 알림 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/notification/center');
+  });
+
+  /** ⭐ 알림센터가 «받는» 자리이고 공지·전달이 «보내는» 자리다 — 같은 묶음에 둔다. */
+  it('W-CO-04 공지·전달을 알림 아래에 둔다', () => {
+    expect(routedPaths()).toContain('/notification/notices');
     expect(routedPaths()).not.toContain('/app/notifications');
     expect(routedPaths()).not.toContain('/system/notification-center');
   });
 
   it('적치 규칙이 기준정보 앞머리로 등록돼 있다', () => {
     expect(routedPaths()).toContain('/master-data/putaway-rule');
+  });
+
+  /** ⭐ 창고·Location 이 만든 위치를 이 화면이 도면에 얹는다 — 같은 묶음이다. */
+  it('W-CO-08 창고 배치도를 기준정보 아래에 둔다', () => {
+    expect(routedPaths()).toContain('/master-data/warehouse-layout');
     expect(routedPaths()).not.toContain('/logistics/putaway-rules');
     expect(routedPaths()).not.toContain('/logistics/putaway-rule');
   });
@@ -1263,6 +1292,45 @@ describe('appRouter — 특채·한도승인 승인 처리의 진입 경로', ()
   });
 });
 
+describe('appRouter — 처분 판정 처리의 진입 경로', () => {
+  it('품질관리 메뉴를 키보드로 열면 정식 주소와 화면 제목·탐색 경로가 선다', async () => {
+    const user = userEvent.setup();
+    renderRoutedApp('/quality/lot-status', [...lotStatusRoutes(), ...dispositionRoutes()]);
+
+    const link = screen.getByRole('link', { name: '처분 판정 처리' });
+    link.focus();
+    await user.keyboard('{Enter}');
+
+    await waitFor(() => expect(currentLocation()).toBe('/quality/dispositions'));
+    expect(screen.getAllByRole('heading', { level: 1, name: '처분 판정 처리' })).toHaveLength(1);
+    const breadcrumb = screen.getByRole('navigation', { name: '탐색 경로' });
+    const items = within(within(breadcrumb).getByRole('list')).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(within(items[0]!).getByText(messages.dispositionDecision.breadcrumbRoot)).toBeVisible();
+    expect(within(items[1]!).getByText('처분 판정 처리')).toBeVisible();
+  });
+
+  it('⭐ 다른 화면이 부르는 진입 주소와 등록된 라우트가 «같다»', () => {
+    /* 둘이 갈리면 「부적합 열기」가 조용히 404로 간다 — 여기서 묶어 둔다. */
+    expect(routedPaths()).toContain(DISPOSITION_SCREEN_PATH);
+    expect(dispositionEntryPath(1001).startsWith(DISPOSITION_SCREEN_PATH)).toBe(true);
+  });
+
+  /*
+   * ⛔ W/O 진행현황은 자기 주소를 화면 슬라이스가 들고 있다(의존 방향 때문에 라우트를 참조할
+   * 수 없다). 둘이 갈리면 조건을 주소에 적는 일이 조용히 어긋난다 — 여기서 묶어 둔다.
+   */
+  it('⭐ W/O 진행현황이 아는 자기 주소와 등록된 라우트가 «같다»', () => {
+    expect(routedPaths()).toContain(WORK_ORDER_PROGRESS_PATH);
+  });
+
+  it('화면 주소는 exact 정식 route이고 테스트용 단수 주소는 없다', () => {
+    expect(routedPaths()).not.toContain('/quality/disposition');
+    expect(routedPaths()).not.toContain('/disposition-decision');
+    expect(routedPaths()).not.toContain('/quality/disposition-decisions');
+  });
+});
+
 describe('appRouter — W/O 마감·ERP 실적 송신의 진입 경로', () => {
   it('생산 메뉴를 키보드로 열면 실제 마감 화면의 첫 상태가 선다', async () => {
     const user = userEvent.setup();
@@ -1674,6 +1742,20 @@ describe('appRouter — 설비·설비그룹 마스터의 진입 경로', () => 
       '/equipment/collection-channels',
       '/equipment/shot-conversion',
       '/equipment/gauge-master',
+      /* W-05-10 — 계측기 마스터 바로 뒤다. 이력은 그 마스터가 있어야 적을 수 있다. */
+      '/equipment/gauge-calibration',
+      /* W-05-04 — 일하는 화면이라 정해 두는 화면들과 결과를 보는 화면 사이다. */
+      '/equipment/failures',
+      /* W-05-05 — 고장이 트리거의 한 원천이라 고장 처리 바로 뒤다. */
+      '/equipment/maintenance-orders',
+      /* W-05-06 — 지시가 이 실적의 대상이라 발행 바로 뒤다. */
+      '/equipment/maintenance-results',
+      /* W-05-02 — 설비 보전 실적 뒤다. 「설비 보전 → 툴 보전」 차례를 만든다. */
+      '/equipment/tool-pm-order',
+      /* W-05-03 — 오더가 이 실적의 대상이라 오더 생성 바로 뒤다. */
+      '/equipment/tool-pm-result',
+      /* W-05-08 — 마스터·설정 뒤다. 정해 두는 화면들과 그 결과를 보는 화면을 섞지 않는다. */
+      '/equipment/downtime-summary',
     ]);
   });
 });

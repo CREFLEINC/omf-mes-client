@@ -1,14 +1,5 @@
-import {
-  AlertBanner,
-  Button,
-  Dialog,
-  Radio,
-  RadioGroup,
-  TextField,
-  useToast,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog, Radio, RadioGroup, TextArea, TextField, useToast } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
-import { TextArea } from '@omf-mes/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 

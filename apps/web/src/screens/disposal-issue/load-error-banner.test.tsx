@@ -41,6 +41,31 @@ describe('describeLoadError', () => {
       messages.httpError.description,
     );
   });
+
+  /*
+   * client#192 — `join(' ')` 뒤에 `=== ''` 로 검사하면 공백만 있는 문구는 공백 하나로,
+   * 빈 문구 여럿은 이음쇠 공백으로 남아 검사를 통과한다. 잇기 **전에** 항목별로 걸러야 한다.
+   */
+  it('공백만 있는 문구는 공통 안내로 메운다', () => {
+    expect(
+      describeLoadError({
+        kind: 'validation',
+        errors: [{ scope: 'screen', code: 'SAMPLE_A', message: '   ' }],
+      }),
+    ).toBe(messages.httpError.description);
+  });
+
+  it('빈 문구 여럿도 공통 안내로 메운다', () => {
+    expect(
+      describeLoadError({
+        kind: 'validation',
+        errors: [
+          { scope: 'screen', code: 'SAMPLE_A', message: '' },
+          { scope: 'screen', code: 'SAMPLE_B', message: '' },
+        ],
+      }),
+    ).toBe(messages.httpError.description);
+  });
 });
 
 describe('LoadErrorBanner', () => {

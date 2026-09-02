@@ -97,13 +97,16 @@ export const formatDateTime = (value: string): string => {
  * ⚠ **검사기준 버전을 반드시 보인다.** 검사 시점의 기준 버전이 그 검사에 **고정되고**,
  * 이후 기준이 바뀌어도 이 검사는 당시 버전으로 남는다(§4-A). 화면이 버전을 감추면 검사자는
  * 자기가 어느 기준으로 재고 있는지 알 수 없고, 나중에 결과를 다시 읽는 사람도 알 수 없다.
+ *
+ * ⭐ **client#589 — 이 칸이 널일 수 있다**(2026-08-30 계약 required 완화). 이 화면(W-01-01)에서는
+ * 실무상 비지 않지만 방어는 한다 — 비면 「기준 없음」으로 그리고 진행을 막지 않는다.
  */
 export interface InspectionRequestDetail {
   inspectionRequestId: number;
   inspectionRequestNo: string;
   inspectionTypeCode: string;
-  /** ⚠ 검사 시점에 고정되는 기준 버전. 화면 표시 필수(§4-A) */
-  inspectionPlanVersionId: number;
+  /** ⚠ 검사 시점에 고정되는 기준 버전. 화면 표시 필수(§4-A) — client#589로 널 가능해졌다. */
+  inspectionPlanVersionId: number | null;
   lotId: number | null;
   itemId: number;
   /** 입하 등록 수량. 합계 제약의 오른쪽 변이다 */
@@ -119,7 +122,7 @@ export const toInspectionRequestDetail = (
   inspectionRequestId: item.inspectionRequestId,
   inspectionRequestNo: item.inspectionRequestNo,
   inspectionTypeCode: item.inspectionTypeCode,
-  inspectionPlanVersionId: item.inspectionPlanVersionId,
+  inspectionPlanVersionId: item.inspectionPlanVersionId ?? null,
   lotId: item.lotId ?? null,
   itemId: item.itemId,
   targetQty: item.targetQty,
