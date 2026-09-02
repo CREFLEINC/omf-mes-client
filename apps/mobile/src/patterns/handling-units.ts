@@ -16,6 +16,8 @@ export interface ScannedHandlingUnit {
 }
 
 export const handlingUnitKeys = {
+  /** 이 뿌리를 걷으면 이 화면이 들고 있던 포장 조회가 전부 버려진다. */
+  root: ['scanned-handling-unit'] as const,
   scanned: (code: string | null) => ['scanned-handling-unit', code] as const,
 };
 

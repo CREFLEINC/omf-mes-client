@@ -1,9 +1,14 @@
 import { AlertBanner, Button, Card, Radio, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 
-import { useScannedHandlingUnit, type ScannedHandlingUnit } from '../../patterns/handling-units';
+import {
+  handlingUnitKeys,
+  useScannedHandlingUnit,
+  type ScannedHandlingUnit,
+} from '../../patterns/handling-units';
 import { useUomCodes } from '../../patterns/masters';
 import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -39,6 +44,7 @@ export const PackingRepackScreen = () => {
   useScreenTitle(t.title);
 
   const { enqueue, flush } = useOutbox();
+  const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
 
   const [sources, setSources] = useState<ScannedHandlingUnit[]>([]);
@@ -163,7 +169,20 @@ export const PackingRepackScreen = () => {
     }
 
     const result = await flush().catch(() => null);
-    const mine = (each: { idempotencyKey: string }) => each.idempotencyKey === create.idempotencyKey;
+
+    /*
+     * 우리가 방금 바꾼 포장이다. 캐시를 두면 다음 스캔이 옛 수량을 보이고, 구성 치환은 집합을
+     * 통째로 갈아 끼우므로 그 옛 수량으로 계산한 잔량이 실재를 덮어 물건이 조용히 사라진다.
+     */
+    queryClient.removeQueries({ queryKey: handlingUnitKeys.root });
+
+    /*
+     * 묶음 전체를 본다. 새 포장 하나만 보면 원 포장 치환이 거부돼도 성공으로 보이는데, 그때
+     * 새 포장은 이미 만들어졌고 원 포장은 그대로라 같은 물건이 두 곳에 있게 된다. 되돌리기
+     * 경로가 없고 작업자는 끝난 줄 안다.
+     */
+    const keys = new Set([create, ...replaces].map((entry) => entry.idempotencyKey));
+    const mine = (each: { idempotencyKey: string }) => keys.has(each.idempotencyKey);
 
     if (result !== null && result.rejected.some((each) => mine(each.entry))) {
       setOutcome('rejected');
