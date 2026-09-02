@@ -1,4 +1,5 @@
 import { AlertBanner, Button, Card, NumberPad, Progress, Select, TextField } from '@crefle/web-ui';
+import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
@@ -46,14 +47,12 @@ export const ReworkResultRegisterScreen = () => {
   const total = quantityTotal(drafts);
   const verdict = quantityVerdict(total, progress.remaining);
   const remaining = Math.max(0, progress.remaining - total);
-
   useEffect(() => {
     setDrafts(EMPTY_QUANTITIES);
     setQueued(false);
     setQueueError(false);
     setRejected(false);
   }, [selectedId]);
-
   useEffect(() => {
     const drain = () => {
       setIsOnline(true);
@@ -74,7 +73,6 @@ export const ReworkResultRegisterScreen = () => {
       globalThis.removeEventListener('offline', offline);
     };
   }, [client]);
-
   const gateReason = gate.unidentified
     ? t.gateUnidentified
     : gate.checking
@@ -94,7 +92,6 @@ export const ReworkResultRegisterScreen = () => {
     (verdict === 'partial' || verdict === 'complete') &&
     gateReason === null &&
     !queued;
-
   const save = () => {
     if (!canSave || selected === null || identity.workerNo === null) return;
     try {
@@ -116,14 +113,12 @@ export const ReworkResultRegisterScreen = () => {
         .catch(() => setPendingCount(pendingReworkResultCount()));
     }
   };
-
   const reset = () => {
     setDrafts(EMPTY_QUANTITIES);
     setQueued(false);
     setQueueError(false);
     setRejected(false);
   };
-
   return (
     <main className="pop-shell rework-result-screen" aria-labelledby="rework-result-title">
       <header className="pop-header">
@@ -132,9 +127,11 @@ export const ReworkResultRegisterScreen = () => {
         </h1>
         <p className="pop-context">{selected?.workOrderNo ?? t.selectWorkOrder}</p>
         <p className="pop-context pop-context-right">
-          {identity.workerNo ?? '—'} ·{' '}
-          {isOnline ? messages.common.connection.online : messages.common.connection.offline} ·{' '}
-          {t.pending(pendingCount)}
+          <span>{identity.workerNo ?? '—'}</span>
+          <Chip variant="status" size="sm" status={isOnline ? 'success' : 'warning'}>
+            {isOnline ? messages.common.connection.online : messages.common.connection.offline}
+          </Chip>
+          <span>{t.pending(pendingCount)}</span>
         </p>
       </header>
 
