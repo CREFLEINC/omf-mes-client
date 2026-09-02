@@ -2146,10 +2146,10 @@ main > * + * {
   margin: 0 0 var(--space-2);
 }
 
-/* ③ 선택 확인 — ⛔ 접지 않는다. */
-.work-start-selection {
-  min-height: 0;
-}
+/*
+ * ③ 선택 확인 — ⛔ **접지 않는다**(E-4). 점검 통제 결과가 여기 나오므로 접히면 못 본다.
+ * 그래서 이 구획에는 높이 상한도 스크롤도 두지 않는다 — 스크롤 구획은 ② 하나다.
+ */
 
 .work-start-actions {
   display: grid;

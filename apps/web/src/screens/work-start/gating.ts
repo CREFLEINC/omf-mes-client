@@ -85,11 +85,11 @@ const fetchCanStartWork = async (
 export const useStartGate = (terminalId: number | null, processId: number | null): StartGate => {
   const { client } = useApiClient();
 
-  const identified = terminalId !== null && processId !== null;
+  const isIdentified = terminalId !== null && processId !== null;
 
   const query = useQuery({
     queryKey: startGatingKeys.processes(terminalId ?? 0, processId ?? 0),
-    enabled: identified,
+    enabled: isIdentified,
     queryFn: () => {
       if (terminalId === null || processId === null) {
         throw new Error('단말·공정을 모르면 게이팅을 조회하지 않습니다.');
@@ -100,7 +100,7 @@ export const useStartGate = (terminalId: number | null, processId: number | null
   });
 
   const verdict = ((): StartGateVerdict => {
-    if (!identified) return 'unidentified';
+    if (!isIdentified) return 'unidentified';
     if (query.isError) return 'unavailable';
     /*
      * 조회 중에는 **막는다.** 여는 쪽으로 두면 답이 오기 전 찰나에 눌린 시작이 게이팅을

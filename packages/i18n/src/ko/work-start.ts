@@ -47,6 +47,12 @@ export const workStart = {
     unknown: '등록되지 않은 사번입니다.',
     inactive: '재직 중이 아닌 사번입니다.',
     lookupFailed: '사번을 확인하지 못했습니다. 다시 시도해 주세요.',
+    /**
+     * ⛔ **「다시 시도해 주세요」라고 적었으면 다시 시도할 수단이 있어야 한다.** 이 저장소는
+     * 자동 재조회를 꺼 두었고(`app/providers.tsx`), 같은 사번을 다시 제출해도 값이 같아
+     * 조회가 다시 일어나지 않는다 — 버튼이 없으면 단말을 새로 켜야 풀린다.
+     */
+    retry: '다시 시도',
     /** 확인이 끝나기 전에는 목록을 고를 수 없다. 컨트롤 이름으로 시작한다. */
     required: '작업지시 선택: 먼저 사번을 입력하고 확인하세요.',
   },
@@ -75,7 +81,6 @@ export const workStart = {
 
     emergencyBadge: '긴급',
     heldBadge: '중단 중',
-    resume: '재개',
 
     columns: {
       plannedStart: '계획',
@@ -86,6 +91,12 @@ export const workStart = {
     empty:
       '이 설비에 배포된 작업지시가 없습니다. 「전체 보기」로 다른 설비의 지시를 볼 수 있습니다.',
     emptyAll: '진행할 수 있는 작업지시가 없습니다.',
+    /**
+     * ⛔ **받는 중을 무표시로 두지 않는다.** 네 갈래(묻지 않음·받는 중·없음·실패) 가운데
+     * 이것만 비어 있으면 「없다」와 구분되지 않는다 — 빈 화면을 본 작업자가 지시가 없다고
+     * 읽는다.
+     */
+    loading: '작업지시를 받는 중입니다.',
     loadError: '작업지시 목록을 받지 못했습니다. 다시 시도해 주세요.',
     retry: '다시 시도',
 
@@ -101,8 +112,6 @@ export const workStart = {
   selection: {
     title: '선택 확인',
     notSelected: '위 목록에서 작업지시를 고르세요.',
-    item: '품목',
-    orderQty: '수량',
     equipment: '설비',
     mold: '금형',
     unknown: '확인 중',

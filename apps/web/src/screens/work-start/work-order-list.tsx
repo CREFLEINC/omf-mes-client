@@ -108,7 +108,12 @@ export const WorkOrderList = ({
       ) : (
         <>
           {rows.length === 0 ? (
-            isAsked && !isLoading ? (
+            /* ⛔ 「받는 중」과 「없다」를 같은 화면으로 말하지 않는다 — 네 갈래를 다 적는다. */
+            isLoading ? (
+              <div className="banner-slot">
+                <AlertBanner variant="info">{t.loading}</AlertBanner>
+              </div>
+            ) : isAsked ? (
               <div className="banner-slot">
                 <AlertBanner variant="info">{isShowingAll ? t.emptyAll : t.empty}</AlertBanner>
               </div>
@@ -116,7 +121,7 @@ export const WorkOrderList = ({
           ) : (
             <ul className="pop-card-list" aria-label={t.caption}>
               {rows.map((row) => {
-                const held = isHeld(row);
+                const isHeldRow = isHeld(row);
 
                 return (
                   <li key={String(row.workOrderId)}>
@@ -132,7 +137,9 @@ export const WorkOrderList = ({
                        *    넘긴 값을 지운다 — 잠긴 카드가 스크린리더에 평범한 버튼으로
                        *    읽히고 탭 순서에도 남는다. 사유 배너는 눈으로 보는 사람에게만
                        *    닿으므로, 못 누른다는 사실이 컨트롤 자신에도 있어야 한다.
-                       *    `disabled` 는 그 자리를 `button` 의 속성으로 채운다.
+                       *    `disabled` 를 넘기면 `Card` 가 스스로 `aria-disabled="true"` 와
+                       *    `tabindex="-1"` 을 얹는다 — `interactive` 인 `Card` 는 `button` 이
+                       *    아니라 `div[role="button"]` 이라 그 길로만 잠긴다.
                        */
                       disabled={!canSelect}
                       onClick={() => {
@@ -156,7 +163,7 @@ export const WorkOrderList = ({
                            *    판정은 `work-order-status.ts` 한 곳이 하고, 값이 통지되면 그
                            *    파일만 고치면 이 배지와 [재개] 가 함께 켜진다.
                            */}
-                          {held && (
+                          {isHeldRow && (
                             <>
                               <Chip status="warning" size="sm">
                                 {t.heldBadge}

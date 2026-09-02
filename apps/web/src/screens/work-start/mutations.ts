@@ -88,7 +88,12 @@ export const useStartWork = ({
 };
 
 export interface ResumeWorkOptions {
-  workSessionId: number;
+  /**
+   * 재개할 세션. ⛔ **모르면 `null` 이다 — 0 으로 채우지 않는다.** 채우면
+   * `/production/work-sessions/0/events` 로 나간다. 없는 값을 0 으로 떨어뜨리지 않는 것은
+   * 요청 본문에서 이미 세운 원칙이고(`session-request.ts`), 경로도 같은 자리다.
+   */
+  workSessionId: number | null;
   workerNo: string;
   onSuccess: () => void;
 }
@@ -110,8 +115,12 @@ export const useResumeWork = ({
   const { client } = useApiClient();
 
   return useMasterWrite<WorkSessionEventCreate, unknown>({
-    request: (body, headers) =>
-      client.POST('/production/work-sessions/{workSessionId}/events', {
+    request: (body, headers) => {
+      if (workSessionId === null) {
+        throw new Error('재개할 세션을 모르면 사건을 적재하지 않습니다.');
+      }
+
+      return client.POST('/production/work-sessions/{workSessionId}/events', {
         params: {
           path: { workSessionId },
           header: {
@@ -120,7 +129,8 @@ export const useResumeWork = ({
           },
         },
         body,
-      }),
+      });
+    },
     etagPath: null,
     invalidateKeys: [workStartKeys.all],
     knownFields: KNOWN_FIELDS,

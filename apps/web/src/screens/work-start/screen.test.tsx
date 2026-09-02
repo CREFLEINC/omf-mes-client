@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setWorkerSession } from '../../patterns/worker-session';
 import {
   EQUIPMENT_ID,
+  IDENTITY,
   PROCESS_ID,
   WORKER,
   WORK_ORDER,
@@ -188,6 +189,63 @@ describe('P-02-01 작업 시작 — 사번', () => {
   });
 });
 
+describe('P-02-01 작업 시작 — 사번 조회가 실패했을 때', () => {
+  /**
+   * ⛔ **「다시 시도해 주세요」라고 적었으면 수단이 있어야 한다.** 이 저장소는 자동 재조회를
+   * 꺼 두었고, 같은 사번을 다시 제출해도 값이 같아 조회가 다시 일어나지 않는다 — 버튼이
+   * 없으면 사번을 못 넣고, 사번이 없으면 이 화면의 모든 것이 막혀 단말을 새로 켜야 한다.
+   */
+  it('실패 문구와 함께 다시 시도할 경로를 준다', async () => {
+    const { user } = renderScreen({ workersStatus: 500 });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+
+    expect(await screen.findByText(t.worker.lookupFailed)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.worker.retry })).toBeInTheDocument();
+  });
+
+  it('「다시 시도」가 실제로 다시 묻고, 이번에 성공하면 그 사번으로 선다', async () => {
+    const { user } = renderScreen({ workersFailFirst: true });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+    await user.click(await screen.findByRole('button', { name: t.worker.retry }));
+
+    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+  });
+
+  /** ⛔ 미등록·퇴사는 다시 물어도 답이 같다 — 없는 사람을 계속 찾게 하지 않는다. */
+  it('미등록 사번에는 「다시 시도」를 주지 않는다', async () => {
+    const { user } = renderScreen({ workers: [] });
+
+    await enterWorkerNo(user, WORKER.workerNo);
+
+    expect(await screen.findByText(t.worker.unknown)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.worker.retry })).not.toBeInTheDocument();
+  });
+});
+
+describe('P-02-01 작업 시작 — 사번을 바꿀 수 있는 자리인가', () => {
+  /**
+   * ⛔ **눌러도 아무 일이 없는 버튼을 세우지 않는다.** 단말 토큰이 정한 사번(`pop-identity`)은
+   * 이 화면이 비워도 그대로 돌아온다 — 「다시 입력」이 영구 무동작이 된다.
+   */
+  it('단말 토큰이 사번을 들고 있으면 「다시 입력」을 주지 않는다', async () => {
+    renderScreen({ identity: { ...IDENTITY, workerNo: WORKER.workerNo } });
+
+    expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
+    expect(screen.queryByRole('button', { name: t.worker.change })).not.toBeInTheDocument();
+  });
+
+  /** 화면에서 넣은 사번은 화면에서 바꿀 수 있다 — 교대할 때 필요하다. */
+  it('여기서 확인한 사번에는 「다시 입력」을 준다', async () => {
+    const { user } = renderScreen();
+
+    await enterWorkerNo(user, WORKER.workerNo);
+
+    expect(await screen.findByRole('button', { name: t.worker.change })).toBeInTheDocument();
+  });
+});
+
 describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 쓴다', () => {
   /**
    * ⭐ **두 벌을 만들지 않는다.** 사번 경량 인증(`P-CO-01`)이 정한 값이 `worker-session` 에
@@ -288,6 +346,123 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
 
     expect(sent.headers['x-worker-no']).toBe(WORKER.workerNo);
     expect(sent.headers['idempotency-key']).toBeTruthy();
+  });
+
+  /**
+   * ⛔ **되돌릴 수 없는 쓰기라 재시도가 같은 키로 나가야 한다.** 멱등 키는 본문의 지문에
+   * 매이는데, 시각을 누를 때마다 새로 만들면 **지문이 달라져 새 키가 발급된다** — 통신이
+   * 끊긴 뒤 다시 누르면 서버가 다른 쓰기로 보고 세션을 두 번 연다.
+   */
+  it('실패한 뒤 다시 눌러도 같은 멱등 키로 나간다', async () => {
+    /*
+     * ⚠ **시계를 움직여야 재진다.** 단말 시각은 초 단위라, 두 번의 누름이 같은 초 안에 들면
+     *    결함이 있어도 값이 우연히 같아진다 — 감지기가 조용히 통과한다(실측). 실제 재시도는
+     *    사람이 오류를 읽고 누르는 것이라 초를 넘긴다.
+     */
+    let seconds = 1;
+    vi.spyOn(Date.prototype, 'getSeconds').mockImplementation(() => seconds);
+
+    const rendered = renderScreen({ startStatus: 500 });
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+
+    await rendered.user.click(startButton());
+    await screen.findByText(t.result.startFailed);
+
+    seconds = 9;
+    await rendered.user.click(startButton());
+
+    await waitFor(() => {
+      expect(rendered.recorded.bodies).toHaveLength(2);
+    });
+
+    const [first, second] = rendered.recorded.bodies;
+    if (first === undefined || second === undefined) throw new Error('두 번 나가지 않았습니다.');
+
+    expect(second.headers['idempotency-key']).toBe(first.headers['idempotency-key']);
+    /* 시각도 함께 얼어 있어야 한다 — 이것이 달라지면 지문이 달라진다. */
+    expect((second.body as Record<string, unknown>).startedAt).toBe(
+      (first.body as Record<string, unknown>).startedAt,
+    );
+  });
+
+  /** 다른 지시를 고르면 다른 쓰기다 — 붙들고 있던 시각과 키를 버린다. */
+  it('다른 작업지시를 고르면 새 멱등 키로 나간다', async () => {
+    const other = {
+      ...WORK_ORDER,
+      workOrderId: WORK_ORDER.workOrderId + 1,
+      workOrderNo: 'SYN-WO-0102',
+    };
+    const rendered = renderScreen({ startStatus: 500, workOrders: [WORK_ORDER, other] });
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await rendered.user.click(startButton());
+    await screen.findByText(t.result.startFailed);
+
+    await rendered.user.click(screen.getByRole('button', { name: selectName(other.workOrderNo) }));
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await rendered.user.click(startButton());
+
+    await waitFor(() => {
+      expect(rendered.recorded.bodies).toHaveLength(2);
+    });
+
+    const [first, second] = rendered.recorded.bodies;
+    if (first === undefined || second === undefined) throw new Error('두 번 나가지 않았습니다.');
+
+    expect(second.headers['idempotency-key']).not.toBe(first.headers['idempotency-key']);
+  });
+
+  /** 시작이 실패하면 그 사실을 말한다 — 조용히 아무 일도 없던 것처럼 두지 않는다. */
+  it('시작이 실패하면 사유를 보인다', async () => {
+    const rendered = renderScreen({ startStatus: 500 });
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await rendered.user.click(startButton());
+
+    expect(await screen.findByText(t.result.startFailed)).toBeInTheDocument();
+  });
+
+  /** ⛔ 409 를 「진행 중」으로 읽지 않는다 — 계약이 그 응답을 「충돌」로만 적었다. */
+  it('충돌(409)은 상태가 바뀌었다고만 말한다', async () => {
+    const rendered = renderScreen({ startStatus: 409 });
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await rendered.user.click(startButton());
+
+    expect(await screen.findByText(t.result.conflict)).toBeInTheDocument();
+    expect(screen.queryByText(t.result.startFailed)).not.toBeInTheDocument();
   });
 
   it('시작하면 그 사실을 작업지시 번호와 함께 알린다', async () => {

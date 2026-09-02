@@ -19,7 +19,17 @@ import type { Worker } from './types';
 export type VerifyResult =
   | { kind: 'unknown' }
   | { kind: 'inactive' }
-  | { kind: 'ok'; worker: Worker; isOtherPlant: boolean };
+  | {
+      kind: 'ok';
+      worker: Worker;
+      /**
+       * 단말이 선 공장과 다른 공장 소속인가.
+       *
+       * ⚠ **이 화면은 이 값을 그리지 않는다** — `patterns/worker-session` 에 실어 두고,
+       * 읽는 곳은 그 자리를 공유하는 다른 화면이다(§6 은 경고만 요구하고 차단하지 않는다).
+       */
+      isOtherPlant: boolean;
+    };
 
 /**
  * 조회 응답에서 그 사번의 한 건을 고른다.

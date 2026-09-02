@@ -55,6 +55,7 @@ export const WORK_ORDER = {
   plannedStartAt: '2026-09-02T08:00:00+09:00',
 };
 
+/** ⚠ `workerNo` 는 숫자 칸이라 `SYN-` 접두를 붙일 수 없다 — **지어낸 값**이다. */
 export const WORKER = {
   workerId: 2101,
   workerNo: '3391',
@@ -76,6 +77,8 @@ export interface StubOptions {
   openSessions?: Record<string, unknown>[];
   workers?: Record<string, unknown>[];
   workersStatus?: number;
+  /** 사번 조회를 «첫 번째만» 실패시킨다 — 「다시 시도」가 실제로 푸는지 재려면 필요하다. */
+  workersFailFirst?: boolean;
   /** 세션 열기 응답 상태. 기본 201. */
   startStatus?: number;
 }
@@ -87,6 +90,7 @@ export interface Recorded {
 
 const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch } => {
   const recorded: Recorded = { urls: [], bodies: [] };
+  let workerCalls = 0;
 
   const fetch: StubFetch = async (request) => {
     const url = new URL(request.url);
@@ -152,6 +156,14 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
     }
 
     if (url.pathname === '/mdm/workers') {
+      if (options.workersFailFirst === true && workerCalls === 0) {
+        workerCalls += 1;
+
+        return jsonResponse({ message: '실패' }, { status: 500 });
+      }
+
+      workerCalls += 1;
+
       if (options.workersStatus !== undefined) {
         return jsonResponse({ message: '실패' }, { status: options.workersStatus });
       }

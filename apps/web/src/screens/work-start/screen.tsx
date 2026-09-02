@@ -1,6 +1,6 @@
 import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
@@ -143,18 +143,32 @@ export const WorkStartScreen = () => {
    */
   const openSession = useOpenSession(selected?.workOrderId ?? null, selected !== null);
 
+  /**
+   * 이 시도가 언제 일어났는가. **한 번 정하면 성공할 때까지 붙든다.**
+   *
+   * ⛔ **누를 때마다 새로 만들면 안 된다.** 시각이 본문에 실리므로(`startedAt`·`occurredAt`)
+   * 재시도마다 값이 달라지고, 그러면 **멱등 키의 지문도 매번 달라져 같은 쓰기가 새 쓰기로
+   * 나간다** — 통신이 끊긴 뒤 다시 누르면 세션이 두 번 열리고 재개가 두 번 적재된다.
+   * 멱등 키를 `until-applied` 로 둔 뜻이 시각 한 줄로 무너지는 자리다(선례 `tool-usage`).
+   *
+   * 값이 실제로 바뀌었을 때만 버린다 — 성공했거나, 다른 작업지시를 골랐거나.
+   */
+  const submitAtRef = useRef<string | null>(null);
+
   const startWork = useStartWork({
     workerNo: confirmedNo ?? '',
     onSuccess: () => {
+      submitAtRef.current = null;
       setOutcome(t.result.started(selected?.workOrderNo ?? ''));
       setSelectedId(null);
     },
   });
 
   const resumeWork = useResumeWork({
-    workSessionId: openSession.data?.workSessionId ?? 0,
+    workSessionId: openSession.data?.workSessionId ?? null,
     workerNo: confirmedNo ?? '',
     onSuccess: () => {
+      submitAtRef.current = null;
       setOutcome(t.result.resumed(selected?.workOrderNo ?? ''));
       setSelectedId(null);
     },
@@ -197,16 +211,31 @@ export const WorkStartScreen = () => {
 
     setOutcome(null);
 
+    /* 붙들고 있던 시각이 있으면 그대로 쓴다 — 같은 시도의 재시도이기 때문이다. */
+    submitAtRef.current ??= terminalNow(new Date());
+    const at = submitAtRef.current;
+
     if (isResume) {
-      resumeWork.write(toResumeBody(terminalNow(new Date())));
+      resumeWork.write(toResumeBody(at));
 
       return;
     }
 
-    startWork.write(
-      toSessionRequest({ workOrder: selected, equipmentId, startedAt: terminalNow(new Date()) }),
-    );
+    startWork.write(toSessionRequest({ workOrder: selected, equipmentId, startedAt: at }));
   };
+
+  /** 다른 것을 고르면 다른 쓰기다 — 붙들고 있던 시각을 버린다. */
+  const selectWorkOrder = (workOrder: WorkOrder) => {
+    submitAtRef.current = null;
+    setOutcome(null);
+    setSelectedId(workOrder.workOrderId);
+  };
+
+  /**
+   * 연결됐다고 말할 수 있는가. ⛔ **아직 답을 못 받았으면 `undefined`(모른다)다** — 셋을
+   * 삼항 두 겹으로 겹쳐 쓰면 「모른다」가 「끊겼다」로 읽히기 쉬운 자리라 따로 세운다.
+   */
+  const connectionVerdict = list.isError ? false : list.isSuccess ? true : undefined;
 
   return (
     <main className="pop-shell work-start-screen" aria-labelledby={titleId}>
@@ -219,7 +248,7 @@ export const WorkStartScreen = () => {
          * ⭐ 연결 여부는 «마지막 조회가 서버에 닿았는가»로 말한다 — 브라우저의 온라인 표시는
          *    산업용 패널 PC 에서 사실과 다르다. 아직 답을 못 받았으면 «모른다»로 둔다.
          */
-        isConnected={list.isError ? false : list.isSuccess ? true : undefined}
+        isConnected={connectionVerdict}
       />
 
       <WorkerPanel
@@ -237,6 +266,10 @@ export const WorkStartScreen = () => {
           setDraft('');
           setSelectedId(null);
         }}
+        canChange={identity.workerNo === null}
+        onRetry={() => {
+          void lookup.refetch();
+        }}
         isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
         error={workerError}
       />
@@ -251,11 +284,9 @@ export const WorkStartScreen = () => {
         isEquipmentUnknown={equipmentId === null}
         canSelect={confirmedNo !== null}
         selectedId={selectedId}
-        onSelect={(workOrder: WorkOrder) => {
-          setOutcome(null);
-          setSelectedId(workOrder.workOrderId);
-        }}
+        onSelect={selectWorkOrder}
         onToggleScope={() => {
+          submitAtRef.current = null;
           setSelectedId(null);
           setShowingAll((previous) => !previous);
         }}
@@ -292,6 +323,7 @@ export const WorkStartScreen = () => {
         onRetry={gate.retry}
         isSaving={isResume ? resumeWork.isSaving : startWork.isSaving}
         onReset={() => {
+          submitAtRef.current = null;
           setSelectedId(null);
           setOutcome(null);
         }}

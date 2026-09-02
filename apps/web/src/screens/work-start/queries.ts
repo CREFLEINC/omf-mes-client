@@ -87,6 +87,7 @@ const fetchWorkOrders = (
           open: true,
           /* 「전체 보기」는 이 축만 뺀다 — 다른 조건은 그대로다(§5-5). */
           ...(equipmentId === null ? {} : { plannedEquipmentId: equipmentId }),
+          page: 1,
           size: LIST_SIZE,
         },
       },

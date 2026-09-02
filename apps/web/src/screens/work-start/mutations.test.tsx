@@ -52,6 +52,36 @@ describe('재개 — 세션 사건 적재', () => {
     expect(sent.workerNo).toBe(WORKER_NO);
   });
 
+  /**
+   * ⛔ **모르는 세션을 0 으로 채우지 않는다.** 채우면 `/production/work-sessions/0/events` 로
+   * 나가고, 서버가 그 경로를 어떻게 읽든 이쪽이 지어낸 값이다 — 요청 본문에서 세운 원칙과
+   * 같은 자리다(`session-request.ts`).
+   */
+  it('재개할 세션을 모르면 아무 요청도 내보내지 않는다', async () => {
+    const seen: string[] = [];
+
+    const { result } = renderHookWithProviders(
+      () => useResumeWork({ workSessionId: null, workerNo: WORKER_NO, onSuccess: vi.fn() }),
+      {
+        fetch: async (request) => {
+          seen.push(new URL(request.url).pathname);
+
+          return jsonResponse({ workSessionEventId: 1 }, { status: 201 });
+        },
+      },
+    );
+
+    act(() => {
+      result.current.write(toResumeBody(OCCURRED_AT));
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).not.toBeNull();
+    });
+
+    expect(seen).toHaveLength(0);
+  });
+
   /** ⭐ 사유는 비운다 — 중단 사유는 중단할 때 남았고, 재개에 다시 실을 값이 아니다. */
   it('RESUME 을 사유 없이 싣는다', () => {
     const body = toResumeBody(OCCURRED_AT);

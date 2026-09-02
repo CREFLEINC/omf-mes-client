@@ -14,6 +14,15 @@ export interface WorkerPanelProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   onReset: () => void;
+  /**
+   * 이 화면에서 사번을 바꿀 수 있는가.
+   *
+   * ⛔ **단말 토큰이 정한 사번은 여기서 못 바꾼다** — `pop-identity` 가 정본이라 화면이
+   * 비워도 값이 그대로 돌아온다. 눌러도 아무 일이 없는 버튼을 세우지 않는다.
+   */
+  canChange: boolean;
+  /** 조회가 실패했을 때 다시 묻는 경로. ⛔ 문구가 「다시 시도해 주세요」이므로 수단이 있어야 한다. */
+  onRetry: () => void;
   isChecking: boolean;
   /** 확인 결과의 오류 문구. 없으면 `null` */
   error: string | null;
@@ -37,6 +46,8 @@ export const WorkerPanel = ({
   onChange,
   onSubmit,
   onReset,
+  canChange,
+  onRetry,
   isChecking,
   error,
 }: WorkerPanelProps) => (
@@ -75,16 +86,29 @@ export const WorkerPanel = ({
 
         {error !== null && (
           <div className="banner-slot">
-            <AlertBanner variant="error">{error}</AlertBanner>
+            <AlertBanner variant="error">
+              {error}{' '}
+              {/*
+               * ⛔ **조회가 실패한 자리에만 준다.** 미등록·퇴사는 다시 물어도 답이 같다 —
+               *    거기 「다시 시도」를 붙이면 없는 사람을 계속 찾게 한다.
+               */}
+              {error === t.lookupFailed && (
+                <Button type="button" variant="text" size="lg" onClick={onRetry}>
+                  {t.retry}
+                </Button>
+              )}
+            </AlertBanner>
           </div>
         )}
       </>
     ) : (
       <p className="work-start-worker-confirmed">
         {messages.workStart.header.workerLabel(confirmed)}{' '}
-        <Button type="button" variant="text" size="lg" onClick={onReset}>
-          {t.change}
-        </Button>
+        {canChange && (
+          <Button type="button" variant="text" size="lg" onClick={onReset}>
+            {t.change}
+          </Button>
+        )}
       </p>
     )}
   </section>
