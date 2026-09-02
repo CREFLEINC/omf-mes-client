@@ -91,7 +91,8 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () => jsonResponse({ items: options.reasons ?? [codeValue('FULL', '정위치 포화')], page }),
+    respond: () =>
+      jsonResponse({ items: options.reasons ?? [codeValue('FULL', '정위치 포화')], page }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
@@ -111,11 +112,7 @@ const SignedIn = ({ children }: { children: ReactNode }) => {
   return worker === null ? null : children;
 };
 
-const mount = (
-  state: unknown,
-  extra: StubRoute[] = [],
-  options: Options = {},
-) =>
+const mount = (state: unknown, extra: StubRoute[] = [], options: Options = {}) =>
   renderWithProviders(
     <MemoryRouter initialEntries={[{ pathname: '/temporary-putaway', state }]}>
       <SignedIn>
@@ -177,9 +174,9 @@ describe('임시 위치 적재 화면', () => {
     mount({ task: task(), location: TEMP });
 
     expect(await screen.findByText('사유를 고르거나 비고를 적으세요')).toBeTruthy();
-    expect(
-      screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled'),
-    ).toBe(true);
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      true,
+    );
   });
 
   it('비고만 적어도 등록할 수 있다', async () => {
@@ -189,9 +186,9 @@ describe('임시 위치 적재 화면', () => {
     await screen.findByLabelText('비고');
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
-    expect(
-      screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled'),
-    ).toBe(false);
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      false,
+    );
   });
 
   /* 값이 없으면 고를 것이 없다. 비고로 적게 두고 그 사실을 말한다. */
@@ -220,6 +217,38 @@ describe('임시 위치 적재 화면', () => {
     expect(await screen.findByText('Z-99 위치를 이 창고에서 찾지 못했습니다')).toBeTruthy();
   });
 
+  /*
+   * 스캔을 시작했으면 스캔이 정본이다. 찾지 못한 것을 앞 화면의 위치로 되돌리면, 작업자는
+   * 자기가 비춘 자리에 넣었다고 믿는데 장부는 다른 자리를 가리킨다 - 실물을 사람이 찾아야 한다.
+   */
+  it('스캔이 빗나가면 앞 화면의 위치로 등록하지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ task: task(), location: TEMP }, [
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse(task({ actualLocationId: 9 }));
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('비고');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+    scan('Z-99');
+
+    expect(await screen.findByText('Z-99 위치를 이 창고에서 찾지 못했습니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      true,
+    );
+
+    await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
+
+    expect(seen).toHaveLength(0);
+  });
+
   /* 임시 위치는 수용량으로 막지 않는다. 값이 있으면 알리기만 한다. */
   it('수용량이 있어도 막지 않고 알리기만 한다', async () => {
     const user = userEvent.setup();
@@ -229,9 +258,9 @@ describe('임시 위치 적재 화면', () => {
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
     expect(screen.getByText('수용량 100 — 임시 위치라 막지 않습니다')).toBeTruthy();
-    expect(
-      screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled'),
-    ).toBe(false);
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      false,
+    );
   });
 
   /* 사번은 인증이 아니라 귀속이다. 정상 적치와 다른 경로로 보낸다. */
@@ -260,8 +289,11 @@ describe('임시 위치 적재 화면', () => {
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
 
-    
-    const body = (await seen[0]!.json()) as { actualLocationId: number; remarks: string; reasonCode: unknown };
+    const body = (await seen[0]!.json()) as {
+      actualLocationId: number;
+      remarks: string;
+      reasonCode: unknown;
+    };
 
     expect(body.actualLocationId).toBe(9);
     expect(body.remarks).toBe('통로에 둠');
