@@ -142,7 +142,7 @@ export const LotFilterBar = ({
   };
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar lot-status-filter">
       <SelectField
         required
         label="LOT 유형"
@@ -191,8 +191,14 @@ export const LotFilterBar = ({
         note={locationNote}
         onChange={(location) => setFilters((current) => ({ ...current, location }))}
       />
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
+      <div className="lot-status-filter-footer">
+        {searchReason !== null && (
+          <span id={reasonId} className="field-note">
+            {searchReason}
+          </span>
+        )}
+
+        <div className="filter-actions lot-status-filter-buttons">
           <Button
             disabled={searchReason !== null}
             aria-describedby={searchReason === null ? undefined : reasonId}
@@ -204,11 +210,6 @@ export const LotFilterBar = ({
             초기화
           </Button>
         </div>
-        {searchReason !== null && (
-          <span id={reasonId} className="field-note">
-            {searchReason}
-          </span>
-        )}
       </div>
     </div>
   );
