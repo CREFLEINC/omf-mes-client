@@ -567,9 +567,16 @@ describe('DowntimeRegisterScreen — 구간을 치기 전', () => {
 
     await flush();
 
-    /* 아무것도 치지 않은 상태는 진행 중이 아니라 **아직 아무것도 아닌 상태**다. */
+    /*
+     * 아무것도 치지 않은 상태는 진행 중이 아니라 **아직 아무것도 아닌 상태**다. 그 자리에
+     * 쓸 문구는 스펙에 없으므로 비워 두되, 자리 자체는 남아 있어야 한다 — 글자가 생길 때마다
+     * 아래 구획이 밀리면 터치 화면에서 손가락이 빗나간다.
+     */
     expect(screen.queryByText(t.interval.durationUnknown)).toBeNull();
-    expect(screen.getByText(t.interval.durationNotYet)).toBeTruthy();
+
+    const duration = document.querySelector('.downtime-duration');
+    expect(duration).not.toBeNull();
+    expect(duration?.textContent).toBe('');
   });
 
   it('시작을 찍고 「아직 진행 중」을 켜면 그때 산출 불가라고 말한다', async () => {

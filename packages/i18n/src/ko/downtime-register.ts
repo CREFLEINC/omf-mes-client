@@ -42,8 +42,6 @@ export const downtimeRegister = {
     now: '지금',
     stillOngoing: '아직 진행 중',
     durationUnknown: '진행 중이라 산출할 수 없습니다',
-    /** 아직 구간을 치지 않은 상태 — 「진행 중」과 다르다. 자리는 비우되 없애지 않는다. */
-    durationNotYet: '—',
   },
   reason: {
     title: '사유',

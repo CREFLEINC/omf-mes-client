@@ -66,16 +66,21 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
   const minutes = intervalMinutes(moments);
 
   /*
-   * 길이 자리는 세 갈래다. **아직 아무것도 치지 않은 상태를 「진행 중」이라 부르지 않는다** —
-   * 실사용에서 빈 화면이 「진행 중이라 산출할 수 없습니다」라고 말했다. 진행 중은 시작을
-   * 찍은 뒤에야 성립하는 사실이다.
+   * 길이 자리는 세 갈래다.
+   *
+   * ⛔ **아직 아무것도 치지 않은 상태를 「진행 중」이라 부르지 않는다** — 실사용에서 빈 화면이
+   * 「진행 중이라 산출할 수 없습니다」라고 말했다. 진행 중은 시작을 찍은 뒤에야 성립한다.
+   *
+   * ⚠ 그 상태에 쓸 문구는 **스펙에 없다**(스펙이 정한 것은 「47 분」과 진행 중의 산출 불가
+   * 둘뿐이다). 없는 문구를 지어내지 않고 **비워 둔다** — 다만 자리는 남긴다(CSS 최소 높이):
+   * 글자가 생길 때마다 아래 구획이 밀리면 터치 화면에서 손가락이 빗나간다.
    */
   const durationLabel =
     minutes !== null
       ? toDurationLabel(minutes)
       : moments.started !== null
         ? t.interval.durationUnknown
-        : t.interval.durationNotYet;
+        : '';
 
   const setStarted = (part: 'date' | 'time', value: string): void => {
     onChange({ ...draft, startedAt: { ...draft.startedAt, [part]: value } });

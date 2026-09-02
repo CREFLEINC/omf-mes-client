@@ -1420,8 +1420,13 @@ main > * + * {
   color: var(--on-surface-muted);
 }
 
+/*
+ * 길이 표시. **글자가 없을 때도 자리를 지킨다** — 값이 들고 날 때마다 아래 구획이 밀리면
+ * 터치 화면에서는 누르려던 것이 손가락 아래에서 움직인다.
+ */
 .downtime-duration {
   margin: 0;
+  min-height: 1.5rem;
   font: var(--type-title-sm);
 }
 
