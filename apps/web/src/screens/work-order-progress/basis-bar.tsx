@@ -25,13 +25,13 @@ export interface BasisBarProps {
  * 으로 읽는다 — 조회 화면에서 가장 비싼 오해다.
  */
 export const BasisBar = ({ basisAt, onRefresh }: BasisBarProps) => (
-  <>
-    <div className="form-actions">
-      <p className="field-note form-actions-secondary">{t.label(basisAt.toLocaleString())}</p>
-      <Button size="sm" variant="outlined" onClick={onRefresh}>
-        {t.refresh}
-      </Button>
+  <div className="work-order-progress-basis">
+    <div className="work-order-progress-basis-copy">
+      <strong>{t.label(basisAt.toLocaleString())}</strong>
+      <p>{t.note}</p>
     </div>
-    <p className="field-note">{t.note}</p>
-  </>
+    <Button size="sm" variant="outlined" onClick={onRefresh}>
+      {t.refresh}
+    </Button>
+  </div>
 );
