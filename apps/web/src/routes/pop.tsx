@@ -1,6 +1,7 @@
 import type { RouteObject } from 'react-router';
 
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
+import { GoodsIssueQrScreen } from '../screens/goods-issue-qr/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
@@ -78,4 +79,16 @@ export const popRoutes: RouteObject[] = [
    * 쪽에만 `?workOrderId=` 를 싣는다.
    */
   { path: '/pop/emergency-work-orders', element: <EmergencyWorkOrderFieldScreen /> },
+  /*
+   * P-01-02 — 창고 스테이션 모드의 화면이라 작업지시가 아니라 **출고 전표**에 매인다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?goodsIssueId=`·`?workerNo=`) — 전표를 고르는
+   * 자리가 아직 없고, 사번 인증(`P-CO-01`)은 섰지만 **고른 사번을 다른 화면에 건네는 자리가
+   * 아직 없다**(`/pop/worker-assignment` 는 자기 화면 안에서 끝난다). 그 통로가 서면
+   * `entry-context.ts` 하나가 바뀐다.
+   *
+   * ⚠ **단말 권한으로 이 주소를 막지 않는다**(통지 #535). 창고 POP 은 단말 기능 구성의 적용
+   * 범위 밖이고 집행은 서버의 403 이다.
+   */
+  { path: '/pop/goods-issue-qr', element: <GoodsIssueQrScreen /> },
 ];
