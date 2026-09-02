@@ -74,6 +74,12 @@ describe('ProductionOrderBasicPane', () => {
   it('semantic 기본 Card에 서버 사실과 사람이 읽는 참조명만 표시한다', () => {
     render(<ProductionOrderBasicPane {...baseProps()} />);
 
+    const pane = screen.getByLabelText(t.panes.basic);
+    const heading = screen.getByRole('heading', { name: t.basic.heading });
+    expect(pane).toHaveClass('production-order-pane', 'production-order-basic-pane');
+    expect(heading.parentElement).toHaveClass('production-order-pane-heading');
+    expect(pane.querySelector('.production-order-detail-fields')).not.toBeNull();
+    expect(pane.querySelectorAll('.production-order-detail-field')).toHaveLength(10);
     const expected = [
       [t.fields.productionOrderNo, 'SYN-PO-701'],
       [t.fields.erpProductionOrderNo, 'SYN-ERP-701'],

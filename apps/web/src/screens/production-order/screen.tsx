@@ -82,7 +82,11 @@ export const ProductionOrderScreen = () => {
         title={t.title}
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
-      <section className="pane" aria-label={t.panes.filters}>
+      <section
+        className="pane production-order-pane production-order-filter-pane"
+        aria-label={t.panes.filters}
+      >
+        <h2>{t.panes.filters}</h2>
         <ProductionOrderFilterBar
           appliedFilters={filters}
           businessUnitOptions={[...businessUnits.entries]}
@@ -121,7 +125,7 @@ export const ProductionOrderScreen = () => {
         />
       )}
 
-      <div className="three-pane">
+      <div className="production-order-detail-grid">
         <ProductionOrderBasicPane
           isSelected={isSelected}
           detailState={toBasicDetailState(selectedId, detail)}
