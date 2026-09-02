@@ -1246,15 +1246,24 @@ main > * + * {
  * 스펙의 목록에는 선택 칸이 없다. 줄을 눌러 고르는 모양이라, 첫 칸을 채우는 버튼으로 둔다.
  * 장갑 낀 손으로 누르므로 타겟을 칸 크기까지 넓힌다.
  */
+/*
+ * ⛔ **자기 상자를 그리지 않는다.** 누르는 자리는 줄 전체인데 이 칸만 테두리·배경을 가지면
+ * 「여기만 눌린다」로 읽힌다. 이 요소가 갖는 것은 «조작»이지 «표시»가 아니다 — 골라진 모양은
+ * 아래 `tr` 규칙이 줄 전체에 그린다.
+ */
 .pop-row-select {
   display: flex;
   width: 100%;
   flex-direction: column;
   align-items: flex-start;
+  justify-content: center;
   gap: var(--space-1);
+  /*
+   * 여백은 남긴다 — 보이지 않지만 **줄 높이와 글자 위치**를 만든다. 지우면 줄이 터치 하한
+   * 아래로 내려앉고, 글자가 칸 머리글과 어긋나 왼쪽으로 밀린다(실기에서 드러났다).
+   */
   padding: var(--space-2) var(--space-3);
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border: none;
   background: none;
   color: inherit;
   font: inherit;
@@ -1267,22 +1276,15 @@ main > * + * {
   white-space: nowrap;
 }
 
-.pop-row-select:hover {
-  background: var(--state-hover-neutral);
-}
-
 .pop-row-select:focus-visible {
   outline: var(--focus-ring);
   outline-offset: 2px;
 }
 
 /*
- * 고른 줄 — **눈에 남아야 한다.** 앞선 판은 눌린 상태를 화면 읽기 프로그램에만 알리고
- * 시각 변화를 두지 않아, 누른 사람이 골랐는지 알 수 없었다(실기에서 드러났다).
- */
-/*
- * 고른 줄 — **상자는 줄 전체다.** 첫 칸만 물들이면 「이 칸이 눌린 것」으로 읽혀,
- * 실제로 어느 줄이 골라졌는지가 눈에 남지 않는다(스펙 §3 의 목록은 한 줄이 상자 하나다).
+ * 고른 줄 — **눈에 남아야 하고, 상자는 줄 전체다.** 앞선 판은 눌린 상태를 화면 읽기
+ * 프로그램에만 알려 누른 사람이 골랐는지 알 수 없었고, 그다음 판은 첫 칸만 물들여 첫 칸만 물들이면 「이 칸이 눌린 것」으로 읽혀,
+ * 「이 칸이 눌린 것」으로 읽혔다(스펙 §3 의 목록은 한 줄이 상자 하나다).
  *
  * 디자인 시스템의 `Table` 이 행에 선택 표시를 주지 않으므로(`selectable` 을 쓰지 않는다)
  * 안쪽 버튼의 상태로 그 줄을 짚는다.
@@ -1290,12 +1292,26 @@ main > * + * {
 .pop-row-target tbody tr:has(.pop-row-select-on) {
   background: var(--primary-container);
   color: var(--on-primary-container);
-  box-shadow: inset 0 0 0 1px var(--primary);
+}
+
+/*
+ * 줄 앞의 강조 막대 — **배경만으로는 약하다.** 어두운 배색에서 골라진 줄과 그렇지 않은 줄의
+ * 밝기 차가 작아, 배경만 두면 「조금 밝은 줄」로 스쳐 지나간다.
+ *
+ * ⛔ 테두리를 `tr` 에 두지 않는다 — 표의 행은 테두리·그림자를 그리지 않는 브라우저가 있어
+ * 조용히 사라진다. 칸에 안쪽 그림자로 그린다.
+ */
+.pop-row-target tbody tr:has(.pop-row-select-on) > td:first-child {
+  box-shadow: inset 3px 0 var(--primary);
 }
 
 /* 줄 어디를 눌러도 골라지므로 줄 전체가 누를 수 있는 것으로 보여야 한다. */
 .pop-row-target tbody tr {
   cursor: pointer;
+}
+
+.pop-row-target tbody tr:hover:not(:has(.pop-row-select-on)) {
+  background: var(--state-hover-neutral);
 }
 
 /*
