@@ -1,0 +1,73 @@
+import type { components } from '@omf-mes/api-client';
+import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+
+import { useApiClient } from './api-context';
+import { runRequest } from './request';
+
+type Client = ReturnType<typeof useApiClient>['client'];
+
+export type HandlingUnit = components['schemas']['HandlingUnit'];
+export type HandlingUnitContent = components['schemas']['HandlingUnitContent'];
+
+/** 스캔한 포장과 그 안에 든 것. 찾지 못하면 null 이며 조회 실패와는 다른 결과다. */
+export interface ScannedHandlingUnit {
+  handlingUnit: HandlingUnit;
+  contents: HandlingUnitContent[];
+}
+
+export const handlingUnitKeys = {
+  scanned: (code: string | null) => ['scanned-handling-unit', code] as const,
+};
+
+/**
+ * 스캔값으로 포장을 찾는다.
+ *
+ * 이 경로에는 번호 정확 일치 축이 없어 부분 검색으로 묻고 화면이 고른다. 돌아온 줄을 다시
+ * 확인하지 않으면 비슷한 번호의 다른 포장을 이 포장으로 읽는다.
+ *
+ * 쪽을 넉넉히 받는다. 목록이 쪽 단위라 일치 건이 뒷쪽에 있으면 못 찾는데, 못 찾은 것과 없는
+ * 것이 화면에서 같아 보인다.
+ */
+const SEARCH_SIZE = 200;
+
+const findHandlingUnit = async (
+  client: Client,
+  code: string,
+): Promise<ScannedHandlingUnit | null> => {
+  const found = await runRequest(() =>
+    client.GET('/inventory/handling-units', { params: { query: { q: code, size: SEARCH_SIZE } } }),
+  );
+
+  const matched = found.items.find((unit) => unit.handlingUnitNo === code);
+
+  if (matched === undefined) {
+    return null;
+  }
+
+  /* 목록 응답에는 내용물이 없다. 무엇이 들었는지는 따로 묻는다. */
+  const detail = await runRequest(() =>
+    client.GET('/inventory/handling-units/{handlingUnitId}', {
+      params: { path: { handlingUnitId: matched.handlingUnitId } },
+    }),
+  );
+
+  return { handlingUnit: detail.handlingUnit, contents: detail.contents };
+};
+
+export const useScannedHandlingUnit = (
+  code: string | null,
+): UseQueryResult<ScannedHandlingUnit | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: handlingUnitKeys.scanned(code),
+    enabled: code !== null,
+    queryFn: () => {
+      if (code === null) {
+        throw new Error('스캔하기 전에는 포장을 조회하지 않습니다.');
+      }
+
+      return findHandlingUnit(client, code);
+    },
+  });
+};

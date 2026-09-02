@@ -1,7 +1,9 @@
 import { messages } from '@omf-mes/i18n';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useNavigate } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactNode } from 'react';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
@@ -20,6 +22,27 @@ import { PqcInspectionScreen } from './screen';
 
 const t = messages.pqcInspection;
 
+const GO_NEXT = '다음 대상으로';
+
+/**
+ * 대상만 바꾸는 이동 단추. **화면을 다시 세우지 않고** 주소만 옮기기 위해 화면 곁에 세운다 —
+ * 다시 세우면 상태가 통째로 초기화되어, 「되돌림이 앞 건의 거부를 거두는가」를 묻지 못한다.
+ */
+const GoToNextTarget = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigate('/?ir=1002');
+      }}
+    >
+      {GO_NEXT}
+    </button>
+  );
+};
+
 /**
  * 요청이 실제로 무엇을 실어 갔는지 본다 — **화면이 무엇을 저장하는가**가 이 화면의 판정
  * 자료이므로, 그려진 글자보다 나간 본문이 더 중요한 자리가 많다.
@@ -30,6 +53,8 @@ const renderScreen = (
   specs = itemSpecsResponse(),
   /** 쓰기에 무엇으로 답할지. 기본은 201 — 거부 갈래를 볼 때만 바꾼다. */
   respondWrite: () => Response = () => jsonResponse(draftRound, { status: 201 }),
+  /** 화면 곁에 함께 세울 것. 대상 이동처럼 화면 밖에서 오는 일을 흉내 낼 때만 쓴다. */
+  beside: ReactNode = null,
 ) => {
   const writes: Request[] = [];
 
@@ -74,7 +99,13 @@ const renderScreen = (
     },
   ]);
 
-  renderWithProviders(<PqcInspectionScreen />, { route, fetch });
+  renderWithProviders(
+    <>
+      <PqcInspectionScreen />
+      {beside}
+    </>,
+    { route, fetch },
+  );
 
   return { writes };
 };
@@ -598,6 +629,54 @@ describe('PqcInspectionScreen — 서버가 거부하면 (공유계약 C-7)', ()
     expect(
       within(await screen.findByRole('banner')).getByText(t.header.synced),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **배너가 세로 예산 밖으로 나가지 않는다.** §3 E-1 의 예산은 머리 64 + 본문 616 +
+   * 액션바 88 = 768 이고 **슬랙이 0** 이다. 머리와 본문 «사이»에 세우면 그만큼 전체가 밀려
+   * 1024×768 단말에서 **「검사 확정」이 접힌 아래로 내려간다** — 하필 저장이 실패해 다시
+   * 눌러야 하는 순간이다.
+   *
+   * 결과 구획은 이미 흐르므로(`.pop-inspect > .pane`) 그 «안»에 서면 높이가 늘어도 액션바가
+   * 제자리에 남는다. 배치는 jsdom 이 재지 못하므로 **어디에 붙어 있는지**로 지킨다.
+   */
+  it('거부 배너가 결과 구획 안에 선다 — 액션바를 밀어내지 않는다', async () => {
+    renderScreen(undefined, undefined, undefined, () =>
+      jsonResponse({ errors: [{ scope: 'screen', code: 'FORBIDDEN' }] }, { status: 403 }),
+    );
+
+    await screen.findByRole('button', { name: t.result.save });
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    const alert = await screen.findByRole('alert');
+
+    expect(alert.closest('.pane')).toBe(screen.getByLabelText(t.result.heading));
+  });
+
+  /*
+   * ⛔ **대상이 바뀌면 앞 건의 거부가 따라오지 않는다.** 이 화면은 라우트가 같아 대상만
+   * 바뀔 때 다시 세워지지 않는다 — 지우지 않으면 **실패한 적 없는 대상 위에 「저장 실패」가
+   * 서 있고**, 검사자는 그것을 이 대상의 결과로 읽는다.
+   */
+  it('다른 의뢰로 옮기면 앞 건의 거부가 따라오지 않는다', async () => {
+    renderScreen(
+      undefined,
+      undefined,
+      undefined,
+      () => jsonResponse({ errors: [{ scope: 'screen', code: 'FORBIDDEN' }] }, { status: 403 }),
+      <GoToNextTarget />,
+    );
+
+    await screen.findByRole('button', { name: t.result.save });
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+    /* 주소의 대상만 바꾼다 — 화면을 다시 세우지 않는 것이 이 시험의 요점이다. */
+    await userEvent.click(screen.getByRole('button', { name: GO_NEXT }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
   });
 });
 

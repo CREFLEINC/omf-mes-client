@@ -1,6 +1,6 @@
 import { Radio, RadioGroup, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, type ReactElement } from 'react';
+import { useId, type ReactElement, type ReactNode } from 'react';
 
 import { isKnownCode, type CodeOption } from './code-options';
 import { isCoverageOutOfOrder, type CoverageDraft } from './coverage';
@@ -53,6 +53,13 @@ export interface ResultPanelProps {
   onChange: (draft: QuantityDraft) => void;
   /** 서버가 칸을 짚어 준 오류. 로컬 검증 결과와 합쳐 그 칸에 낸다 */
   fieldErrors: Record<string, string>;
+  /**
+   * 칸으로 소화되지 않은 저장 오류. **이 구획 «안»에 세운다** — 머리와 본문 사이에 두면
+   * 세로 예산(64 + 616 + 88 = 768 · 슬랙 0)을 넘겨 **액션바가 화면 밖으로 밀린다.**
+   * 하필 저장이 실패해 다시 눌러야 하는 순간이라 그 자리가 접히면 안 된다. 이 구획은 이미
+   * 흐르므로 여기서는 높이가 늘어도 액션바가 제자리에 남는다.
+   */
+  errorBanner?: ReactNode;
   /** 저장을 누른 뒤부터 로컬 오류를 보인다 — 「0.5」를 치는 도중 「0.」에서 틀렸다고 하지 않는다 */
   showErrors: boolean;
 
@@ -93,6 +100,7 @@ export const ResultPanel = ({
   draft,
   onChange,
   fieldErrors,
+  errorBanner,
   showErrors,
   coverage,
   onCoverageChange,
@@ -150,6 +158,8 @@ export const ResultPanel = ({
   return (
     <section className="pane" aria-label={t.heading}>
       <h2 className="field-label">{t.heading}</h2>
+
+      {errorBanner}
 
       {/*
        * 적용 생산구간 — 이 검사가 «어느 시간대의 생산분»을 대표하는가(§5-5). 불합격일 때

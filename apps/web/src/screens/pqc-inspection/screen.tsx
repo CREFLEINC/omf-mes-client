@@ -117,6 +117,7 @@ export const PqcInspectionScreen = () => {
    * 알리는 문장이 갈린다.
    */
   const outbox = useOutbox();
+  const { clearRejection } = outbox;
 
   /*
    * ⛔ **거부가 서면 성공 표시를 거둔다.** 담는 순간 성공을 말하는 것은 옳지만(C-1 #2),
@@ -157,10 +158,16 @@ export const PqcInspectionScreen = () => {
      * 고른 처분이 남아 있으면, 검사자는 그것을 «이 대상의 판단»으로 읽는다.
      */
     setDisposition(null);
+    /*
+     * ⚠ **앞 대상의 거부도 함께 거둔다.** 이 화면은 라우트가 같아 대상만 바뀔 때 «다시
+     * 세워지지 않으므로», 지우지 않으면 실패한 적 없는 대상 위에 앞 건의 「저장 실패」
+     * 배너와 칸 오류가 그대로 선다 — 검사자는 그것을 이 대상의 결과로 읽는다.
+     */
+    clearRejection();
     setRemarks('');
     setCoverage(toCoverageDraft(coverageFromAt, coverageToAt));
     setInspectedDraft(String(storedInspectedQty));
-  }, [targetId, storedInspectedQty, coverageFromAt, coverageToAt]);
+  }, [targetId, storedInspectedQty, coverageFromAt, coverageToAt, clearRejection]);
 
   /**
    * 항목 초안은 **줄이 서면** 빈 초안으로 시작한다. 저장된 측정치를 부르지 않으므로
@@ -350,13 +357,6 @@ export const PqcInspectionScreen = () => {
       pendingCount={outbox.pendingCount}
       isOnline={outbox.isOnline}
     >
-      {/*
-       * ⚠ **인라인으로 소화되지 않은 거부는 여기서 말한다.** 화면이 아는 칸(수량 셋)의
-       * 오류만 칸 옆에 붙고, 그 밖의 거부(권한·중복·서버 오류)는 붙을 자리가 없다 — 배너가
-       * 없으면 **아무 흔적도 남지 않는다.**
-       */}
-      <SaveErrorBanner error={outbox.rejection?.error ?? null} />
-
       <div className="pop-inspect">
         {/*
          * ⭐ **갈래가 둘이다**(§5-2 · 통지 #589). 검사 기준이 없으면 항목표 대신 판정 선택과
@@ -383,6 +383,7 @@ export const PqcInspectionScreen = () => {
           draft={draft}
           onChange={changeDraft}
           fieldErrors={outbox.rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}
+          errorBanner={<SaveErrorBanner error={outbox.rejection?.error ?? null} />}
           showErrors={showErrors}
           coverage={coverage}
           onCoverageChange={setCoverage}

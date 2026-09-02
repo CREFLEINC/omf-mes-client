@@ -44,7 +44,10 @@ const tiles = [
   },
   {
     label: t.tiles.shipment,
-    screens: [{ to: '/product-picking', label: messages.productPicking.title }],
+    screens: [
+      { to: '/product-picking', label: messages.productPicking.title },
+      { to: '/packing-repack', label: messages.packingRepack.title },
+    ],
   },
   {
     label: t.tiles.equipment,

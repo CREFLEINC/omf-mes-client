@@ -4,6 +4,7 @@ import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-f
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
+import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 
 /**
  * POP(현장 단말) 화면의 라우트 표.
@@ -26,6 +27,21 @@ import { ToolUsageScreen } from '../screens/tool-usage/screen';
  * 빌드 엔트리는 아직 없고, `apps/pop`은 여전히 `apps/web/dist`를 통째로 복사해 쓴다.
  */
 export const popRoutes: RouteObject[] = [
+  /*
+   * P-CO-01 — **POP 셸의 진입 화면이다.** 스펙 §1 이 IA 위치를 「POP > 진입(셸 공통)」으로
+   * 못박았다: 메뉴로 찾아 들어가는 화면이 아니라 **단말을 켰을 때 맨 처음 서는 화면**이다.
+   * 그래서 이 배열의 첫 자리에 둔다 — 아래 태스크 화면들은 이 화면이 사번을 정한 «뒤»에 선다.
+   *
+   * ⛔ **세로 예산이 셸 밖에 서는 이유다.** §3/E-1 은 헤더 64 + 본문 704 = 768 이고 「슬랙이
+   * 0」이라, 관리웹 셸의 상단 바와 본문 여백이 위에 얹히면 1024×768 단말에서 본문 아래가
+   * 잘린다.
+   *
+   * ⚠ **이 화면이 정한 사번을 아직 아무도 읽지 않는다.** 아래 화면들은 각자 다른 출처를
+   * 쓰고 있고(셸이 채울 `patterns/pop-identity` · 진입 주소), 이 화면은 값을 단말 메모리에
+   * 두기만 한다(`patterns/worker-session`). 단말·공정은 여전히 셸 몫이라, 이 화면이 섰다고
+   * 그 자리가 채워지는 것은 아니다.
+   */
+  { path: '/pop/worker-assignment', element: <WorkerAssignmentScreen /> },
   /*
    * P-02-03 — **POP(현장 단말) 화면의 첫 라우트다.** 로그인과 같이 관리웹 셸 배열의 형제로
    * 서서 `AppLayout`을 지나지 않는다.
