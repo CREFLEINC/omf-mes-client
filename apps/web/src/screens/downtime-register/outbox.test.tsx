@@ -1,6 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { act, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -9,7 +9,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { downtime, EQUIPMENT_ID, WORKER_NO } from './fixtures';
-import { useOutbox } from './outbox';
+import { RETRY_DELAY_MS, useOutbox } from './outbox';
 
 /**
  * outbox 감지기 — **큐가 지키는 성질을 각각 잰다.**
@@ -87,6 +87,7 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.localStorage.clear();
+  vi.useRealTimers();
 });
 
 describe('useOutbox', () => {
@@ -177,6 +178,66 @@ describe('useOutbox', () => {
 
     expect(result.current.pendingCount).toBe(0);
     expect(attempts).toHaveLength(0);
+  });
+
+  it('담은 **순서대로** 보낸다 — 종료가 등록을 앞지르면 없는 구간을 닫으려 든다', async () => {
+    const attempts: Attempt[] = [];
+    const { result } = renderOutbox([
+      flakyCreateRoute(attempts, 0),
+      {
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname.endsWith(':close'),
+        respond: (request) => {
+          attempts.push({
+            idempotencyKey: request.headers.get('Idempotency-Key'),
+            workerNo: request.headers.get('X-Worker-No'),
+            path: new URL(request.url).pathname,
+          });
+
+          return jsonResponse(downtime());
+        },
+      },
+    ]);
+
+    act(() => {
+      result.current.enqueueCreate(WORKER_NO, body());
+      result.current.enqueueClose(WORKER_NO, 5201);
+    });
+
+    await waitFor(() => {
+      expect(attempts).toHaveLength(2);
+    });
+
+    /* 오프라인에서 「등록 → 지금 종료」를 연달아 하는 경로가 실제로 있는 화면이다. */
+    expect(attempts[0]?.path).toBe(DOWNTIMES_PATH);
+    expect(attempts[1]?.path).toContain(':close');
+  });
+
+  it('연결 이벤트가 오지 않아도 **스스로 깨어** 다시 보낸다', async () => {
+    /*
+     * 「끊긴 적 없이 실패한」 요청이 있다. 연결 이벤트만 믿으면 그 건이 큐를 영원히 막고,
+     * 작업자는 이미 성공을 보았으므로 멈춘 줄 모른다.
+     */
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const attempts: Attempt[] = [];
+    const { result } = renderOutbox([flakyCreateRoute(attempts, 1)]);
+
+    act(() => {
+      result.current.enqueueCreate(WORKER_NO, body());
+    });
+
+    await waitFor(() => {
+      expect(attempts).toHaveLength(1);
+    });
+
+    /* 연결 이벤트를 쏘지 «않는다» — 오직 자체 타이머만으로 다시 서야 한다. */
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS + 100);
+    });
+
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]?.idempotencyKey).toBe(attempts[0]?.idempotencyKey);
   });
 
   it('아직 나가지 않은 등록 건을 멱등키와 함께 낸다 — 오프라인 목록의 이름이 된다', () => {

@@ -82,6 +82,59 @@ describe('validateInterval', () => {
 
     expect(hasIntervalError(errors)).toBe(false);
   });
+
+  it('끝 칸에 손을 댔는데 읽히지 않으면 잡는다 — 「비었는가」가 아니라 「읽히는가」다', () => {
+    /* 한쪽만 친 것과 다 쳤지만 성립하지 않는 값은 **같은 실수**다 — 둘 다 진행 중이 아니다. */
+    expect(
+      validateInterval(draft({ endedAt: { date: '2026-08-11', time: '' } }), NOW).endedAt,
+    ).toBe('incomplete');
+
+    /* 없는 날짜 — 두 칸이 다 차 있어 「비었는가」 잣대는 이것을 놓친다. */
+    expect(
+      validateInterval(draft({ endedAt: { date: '2026-02-30', time: '15:00' } }), NOW).endedAt,
+    ).toBe('incomplete');
+
+    /* 모양이 깨진 시각도 마찬가지. */
+    expect(
+      validateInterval(draft({ endedAt: { date: '2026-08-11', time: '25:00' } }), NOW).endedAt,
+    ).toBe('incomplete');
+  });
+
+  it('「아직 진행 중」이면 끝 칸에 무엇이 남아 있든 잡지 않는다', () => {
+    /* 체크가 곧 「이 칸을 읽지 않는다」는 뜻이다 — 남은 글자로 저장을 막으면 체크가 무의미해진다. */
+    const errors = validateInterval(
+      draft({ endedAt: { date: '2026-02-30', time: '15:00' }, stillOngoing: true }),
+      NOW,
+    );
+
+    expect(hasIntervalError(errors)).toBe(false);
+  });
+
+  it('미래 판정의 여유는 시계의 틱 간격만큼이다 — 그보다 넓히지 않는다', () => {
+    /*
+     * `[지금]`은 초를 버려 실제보다 늘 이르고, 화면의 시계는 최대 한 틱 뒤처진다. 그래서
+     * 여유가 틱 간격과 «같아야» 방금 찍은 지금이 막히지 않는다.
+     *
+     * ⛔ 그보다 넓히면 **손으로 친 미래 시각이 통과한다** — 앞으로 일어날 정지를 미리 적는 것이
+     * 되고, 그 기록은 나중에 아무도 설명하지 못한다.
+     */
+    const oneMinuteAhead = draft({
+      startedAt: { date: '2026-08-11', time: '16:01' },
+      endedAt: { date: '', time: '' },
+      stillOngoing: true,
+    });
+
+    expect(validateInterval(oneMinuteAhead, NOW).startedAt).toBe('future');
+
+    /* 틱 간격(30초) 안쪽은 방금 찍은 것일 수 있으므로 통과한다. */
+    const withinTick = draft({
+      startedAt: { date: '2026-08-11', time: '16:00' },
+      endedAt: { date: '', time: '' },
+      stillOngoing: true,
+    });
+
+    expect(validateInterval(withinTick, NOW).startedAt).toBeNull();
+  });
 });
 
 describe('intervalMinutes', () => {

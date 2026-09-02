@@ -45,7 +45,7 @@ const STORAGE_KEY = 'omf-mes.downtime-register.outbox';
  * ⚠ **짧게 두지 않는다.** 끊긴 망에 대고 즉시 되던지면 단말이 요청을 쏟아 내고, 복구된 순간
  * 그 폭주가 서버로 향한다.
  */
-const RETRY_DELAY_MS = 5_000;
+export const RETRY_DELAY_MS = 5_000;
 
 /**
  * 저장소에서 읽은 값이 **보낼 수 있는 모양인가.**
@@ -180,6 +180,19 @@ export const useOutbox = (): Outbox => {
   const draining = useRef(false);
 
   /*
+   * 스스로 깨우는 타이머의 손잡이. **화면이 사라질 때 끊어야 한다** — 남겨 두면 이미 없는
+   * 화면의 상태를 건드리고, 시험에서는 다음 시험 위로 요청이 하나 더 날아간다.
+   */
+  const retryTimer = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (retryTimer.current !== null) globalThis.clearTimeout(retryTimer.current);
+    },
+    [],
+  );
+
+  /*
    * ⭐ **다시 시도할 계기를 만드는 자리다.** 통신이 끊겨 실패하면 큐도 연결 상태도 그대로라
    * 비우기 효과가 다시 돌 이유가 없다 — 그러면 큐는 연결이 살아 있는데도 영원히 멈춰 서고,
    * 작업자는 이미 성공을 보았으므로 멈춘 줄 모른다.
@@ -231,7 +244,8 @@ export const useOutbox = (): Outbox => {
            * 실패한」 요청이 큐를 영원히 막는다.
            */
           if (!isRejected(error)) {
-            globalThis.setTimeout(() => {
+            retryTimer.current = globalThis.setTimeout(() => {
+              retryTimer.current = null;
               setRetryTick((tick) => tick + 1);
             }, RETRY_DELAY_MS);
 

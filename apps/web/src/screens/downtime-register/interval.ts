@@ -80,9 +80,18 @@ export interface IntervalMoments {
   ended: Date | null;
 }
 
-/** 한쪽 칸만 채운 상태 — 다 친 것도 비운 것도 아니다. */
-export const isPartiallyTyped = (field: TimeFieldDraft): boolean =>
-  (field.date === '') !== (field.time === '');
+/** 이 칸에 손을 댔는가. 두 칸 중 하나라도 글자가 있으면 그렇다. */
+const isTouched = (field: TimeFieldDraft): boolean => field.date !== '' || field.time !== '';
+
+/**
+ * **적으려 했는데 읽히지 않는 상태.**
+ *
+ * ⛔ 「한쪽 칸이 비었는가」로 재지 않는다 — 그 잣대는 **두 칸이 다 찼지만 값이 성립하지 않는
+ * 경우**를 놓친다(없는 날짜 등). 놓치면 끝을 적으려던 구간이 조용히 진행 중으로 저장되고,
+ * 비가동에는 정정 경로가 없다. 「비었는가」가 아니라 **「읽히는가」**가 옳은 기준이다.
+ */
+export const isUnreadable = (field: TimeFieldDraft): boolean =>
+  isTouched(field) && readTimeField(field) === null;
 
 export const readInterval = (draft: IntervalDraft): IntervalMoments => ({
   started: readTimeField(draft.startedAt),
@@ -129,7 +138,7 @@ export const validateInterval = (
    * 않는다.** 그대로 두면 끝을 적으려던 구간이 조용히 진행 중으로 저장되고, 그 뒤로는 새
    * 비가동을 시작할 수도 없다.
    */
-  if (!draft.stillOngoing && isPartiallyTyped(draft.endedAt)) {
+  if (!draft.stillOngoing && isUnreadable(draft.endedAt)) {
     return { ...NO_INTERVAL_ERRORS, endedAt: 'incomplete' };
   }
 
