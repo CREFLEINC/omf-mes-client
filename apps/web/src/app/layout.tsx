@@ -273,6 +273,13 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/production/production-orders" icon="account_tree">
               P/O 수신·조회
             </NavItem>
+            {/*
+             * W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다.
+             * 그 화면이 만든 목록 위에서 이어진다.
+             */}
+            <NavItem to="/production/po-change-review" icon="published_with_changes">
+              P/O 변경 관리자 확인
+            </NavItem>
             {/* W-02-02 — 선택한 P/O를 계획·W/O로 전개하므로 조회 바로 뒤에 둔다. */}
             <NavItem to="/production/production-plans" icon="schema">
               W/O 전개·편성
