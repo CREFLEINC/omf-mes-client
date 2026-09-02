@@ -1225,6 +1225,8 @@ main > * + * {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-muted);
+}
+
 /* 이탈 버튼 둘은 나란히 선다 — 스펙이 좌우로 둔 자리다. */
 .pop-handoff {
   display: flex;
