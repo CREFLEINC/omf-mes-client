@@ -77,10 +77,12 @@ export const WorkOrderCloseCandidateListPane = ({
   }
 
   return (
-    <section className="pane" aria-label={t.pane}>
-      <div className="wide-table">
+    <section className="pane work-order-close-list-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.pane}</h2>
+      <div className="wide-table work-order-close-table">
         <Table
           density="compact"
+          caption={<span className="work-order-close-table-caption">{t.pane}</span>}
           columns={columns}
           rows={rows}
           getRowId={(row) => String(row.workOrderId)}

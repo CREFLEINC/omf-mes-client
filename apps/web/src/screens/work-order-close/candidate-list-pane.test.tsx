@@ -63,8 +63,10 @@ describe('WorkOrderCloseCandidateListPane', () => {
       ],
     });
 
+    expect(screen.getByRole('heading', { level: 2, name: t.pane })).toBeVisible();
+    expect(screen.getByRole('table', { name: t.pane })).toBeInTheDocument();
     expect(
-      within(screen.getByRole('table'))
+      within(screen.getByRole('table', { name: t.pane }))
         .getAllByRole('columnheader')
         .map((header) => header.textContent ?? ''),
     ).toEqual(['W/O 번호', '품목', '지시 수량']);
