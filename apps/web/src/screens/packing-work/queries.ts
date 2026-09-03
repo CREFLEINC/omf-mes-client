@@ -74,7 +74,11 @@ export const useHandlingUnitTypes = (): UseQueryResult<CodeValue[]> => {
           params: {
             query: {
               codeGroupCode: HANDLING_UNIT_TYPE_GROUP,
-              page: 1,
+              /*
+               * ⛔ **쪽 번호를 보내지 않는다.** 첫 쪽만 쓰는 조회라 보낼 이유가 없고,
+               * 서버·목이 번호를 세는 기준(0 부터냐 1 부터냐)이 갈리면 보낸 쪽이 빈 목록을
+               * 받는다 — 실측으로 목에서 그렇게 됐다. 기본값을 그대로 쓴다.
+               */
               size: CODE_VALUES_PAGE_SIZE,
             },
           },
@@ -100,7 +104,8 @@ export const useParentHandlingUnits = (): UseQueryResult<HandlingUnit[]> => {
     queryFn: async (): Promise<HandlingUnit[]> => {
       const data = await runRequest(() =>
         client.GET('/inventory/handling-units', {
-          params: { query: { page: 1, size: PARENT_PAGE_SIZE } },
+          /* 쪽 번호를 보내지 않는다 — 위 「포장 유형」과 같은 이유다. */
+          params: { query: { size: PARENT_PAGE_SIZE } },
         }),
       );
 
