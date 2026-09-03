@@ -393,9 +393,20 @@
   align-items: flex-end;
 }
 
+/*
+ * 스캔 줄의 버튼과 그 아래 대체 경로 버튼은 **같은 크기로 한 열을 이룬다.**
+ *
+ * 폭을 글자 길이에 맡기면 「읽기」(두 자)와 「직접 입력」(네 자)이 서로 다른 폭으로 서서,
+ * 오른쪽 끝만 맞고 왼쪽이 들쭉날쭉해진다(실측 128 vs 113.5). 같은 자리에 위아래로 놓인
+ * 것은 같은 폭이어야 열로 읽힌다 — 무게는 색으로 가르지 크기로 가르지 않는다.
+ */
+.pop-ui .scan-row > button,
+.pop-ui .scan-manual > button {
+  min-width: 8rem;
+}
+
 .pop-ui .scan-row > button {
   margin-top: 0;
-  min-width: 8rem;
 }
 
 .pop-ui .scan-manual {
