@@ -60,6 +60,11 @@ const referenceLabel = (
 
 const sameSelection = (left: SelectedLotSnapshot[], right: SelectedLotSnapshot[]): boolean =>
   JSON.stringify(left) === JSON.stringify(right);
+const formatDateTime = (value: string | undefined): string => {
+  if (value === undefined) return t.values.transitionNone;
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
+  return match === null ? value : `${match[1]} ${match[2]}`;
+};
 
 export const SuspiciousMaterialCandidatePane = ({
   isLocked,
@@ -200,8 +205,16 @@ export const SuspiciousMaterialCandidatePane = ({
     {
       key: 'status',
       header: t.fields.statusAndTransition,
-      render: (row) =>
-        `${statusLabel(row.lotStatusCode)} · ${row.latestTransitionAt ?? t.values.transitionNone}`,
+      render: (row) => (
+        <div className="stacked-cell suspicious-material-hold-status-cell">
+          <span>{statusLabel(row.lotStatusCode)}</span>
+          {row.latestTransitionAt === undefined ? (
+            <span>{t.values.transitionNone}</span>
+          ) : (
+            <time dateTime={row.latestTransitionAt}>{formatDateTime(row.latestTransitionAt)}</time>
+          )}
+        </div>
+      ),
     },
   ];
   const options = (data: ReferenceOptionsResult | undefined) =>
@@ -218,8 +231,9 @@ export const SuspiciousMaterialCandidatePane = ({
     meta === undefined || meta.size < 1 ? 1 : Math.max(1, Math.ceil(meta.total / meta.size));
 
   return (
-    <section className="pane" aria-label={t.pane}>
-      <div className="filter-bar">
+    <section className="pane suspicious-material-hold-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.pane}</h2>
+      <div className="filter-bar suspicious-material-hold-filter">
         <SearchInput
           label={t.fields.lotNo}
           value={draft.q}
@@ -228,10 +242,12 @@ export const SuspiciousMaterialCandidatePane = ({
           onSearch={apply}
         />
         {filterSelects.map(([label, key, entries]) => (
-          <div key={key}>
-            <span className="field-label">{label}</span>
+          <div className="field-cell wide-select" key={key}>
+            <label className="field-label" htmlFor={`suspicious-material-hold-${key}`}>
+              {label}
+            </label>
             <Select
-              aria-label={label}
+              id={`suspicious-material-hold-${key}`}
               value={draft[key]}
               options={[{ value: '', label: t.values.all }, ...entries]}
               disabled={isLocked}
@@ -239,14 +255,20 @@ export const SuspiciousMaterialCandidatePane = ({
             />
           </div>
         ))}
-        <Button disabled={isLocked} onClick={apply}>
-          {t.actions.search}
-        </Button>
-        <Button variant="outlined" disabled={isLocked} onClick={reset}>
-          {t.actions.reset}
-        </Button>
+        <div className="suspicious-material-hold-filter-footer">
+          <p className="suspicious-material-hold-selection" role="status">
+            {t.values.selected(selection.length)}
+          </p>
+          <div className="form-actions suspicious-material-hold-filter-actions">
+            <Button variant="outlined" disabled={isLocked} onClick={reset}>
+              {t.actions.reset}
+            </Button>
+            <Button disabled={isLocked} onClick={apply}>
+              {t.actions.search}
+            </Button>
+          </div>
+        </div>
       </div>
-      <p role="status">{t.values.selected(selection.length)}</p>
       {candidates.isError ? (
         <AlertBanner
           variant="error"
@@ -259,30 +281,41 @@ export const SuspiciousMaterialCandidatePane = ({
         </div>
       ) : (
         <>
-          <Table
-            density="compact"
-            columns={columns}
-            rows={candidates.data.items}
-            getRowId={(row) => String(row.lotId)}
-            sort={null}
-            empty={<EmptyState size="sm" live title={t.empty} />}
-          />
-          <nav className="form-actions" aria-label={t.pagination}>
-            <Button
-              variant="outlined"
-              disabled={isLocked || page <= 1}
-              onClick={() => move(filters, page - 1)}
-            >
-              {t.actions.previous}
-            </Button>
-            <Button
-              variant="outlined"
-              disabled={isLocked || page >= pages}
-              onClick={() => move(filters, page + 1)}
-            >
-              {t.actions.next}
-            </Button>
-          </nav>
+          <div
+            className="wide-table suspicious-material-hold-table"
+            aria-busy={candidates.isFetching}
+          >
+            <Table
+              density="compact"
+              caption={t.pane}
+              columns={columns}
+              rows={candidates.data.items}
+              getRowId={(row) => String(row.lotId)}
+              sort={null}
+              empty={<EmptyState size="sm" live title={t.empty} />}
+            />
+          </div>
+          <div className="suspicious-material-hold-list-footer">
+            <p className="field-note">
+              총 {new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0)}건 · {page} / {pages}쪽
+            </p>
+            <nav className="form-actions" aria-label={t.pagination}>
+              <Button
+                variant="outlined"
+                disabled={isLocked || page <= 1}
+                onClick={() => move(filters, page - 1)}
+              >
+                {t.actions.previous}
+              </Button>
+              <Button
+                variant="outlined"
+                disabled={isLocked || page >= pages}
+                onClick={() => move(filters, page + 1)}
+              >
+                {t.actions.next}
+              </Button>
+            </nav>
+          </div>
         </>
       )}
     </section>
