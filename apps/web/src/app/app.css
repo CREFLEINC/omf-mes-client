@@ -6836,3 +6836,84 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0;
   text-align: right;
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * P-04-04 재구성 신규 라벨 발행 (`screens/repack-label-issue`)
+ *
+ * ⚠ 이름을 `pop-repack-` 으로 묶는다 — 이 파일은 접촉이 가장 몰리는 자리라 짧은 이름은
+ * 다른 POP 슬라이스와 겹친다(전례 실측).
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+/* 대상 포장의 사실 세 줄 — 번호·유형·내용물. 읽는 값이라 입력처럼 보이지 않게 둔다. */
+.pop-repack-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+
+.pop-repack-facts > dt {
+  color: var(--on-surface-muted);
+}
+
+.pop-repack-facts > dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* 발행 현황 한 줄 — 「사유가 필요한가」를 사용자가 먼저 읽는 자리다. */
+.pop-repack-standing {
+  margin: 0 0 var(--space-3);
+}
+
+.pop-repack-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* 칸 아래에 붙는 사유·오류. 배너로 올리지 않는다 — 고칠 자리가 바로 위다. */
+.pop-repack-note {
+  margin: 0;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 미리보기 이미지 — 서버가 그린 것을 그대로 건다.
+ * ⛔ 늘리지 않는다(`max-width`만 건다) — 라벨을 확대하면 실제 인쇄면과 달라 보인다.
+ */
+.pop-repack-preview-image {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.pop-repack-preview-note {
+  margin: var(--space-3) 0 0;
+  color: var(--on-surface-muted);
+}
+
+/* 막힌 사유 — ⛔ 툴팁에만 두면 터치 패널에서 읽히지 않는다(독립 검증 실측). */
+.pop-repack-blocked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  color: var(--semantic-error);
+}
+
+/* 칸 아래의 오류 — 위 `.pop-repack-note`(도움말)와 색으로 갈린다. */
+.pop-repack-error {
+  margin: 0;
+  color: var(--semantic-error);
+}
+
+/*
+ * ⛔ `.pop-section > * > * + *`(구획 안 형제 간격 12)가 액션바의 둘째 버튼까지 때린다 —
+ * 실측으로 두 버튼의 윗변이 12 어긋났다. 이 띠는 `align-items: center` 로 세로를 잡으므로
+ * 형제 간격을 턴다.
+ */
+.pop-repack-actions > * + * {
+  margin-top: 0;
+}

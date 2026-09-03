@@ -101,12 +101,11 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     query: '?workOrderId=11001&workerNo=100029',
   },
   {
-    path: '/pop/lot-label',
-    label: 'P-02-07 LOT 라벨 출력',
-    query: '?workOrderId=11002&workerNo=100029',
+    path: '/pop/repack-label-issue',
+    label: 'P-04-04 재구성 라벨 발행',
+    /* P-02-09 와 같은 씨앗 포장을 쓴다 — 씨앗에 실제로 있는 번호여야 한다(위 주석). */
+    query: '?handlingUnitId=13001&workerNo=100029',
   },
-  /* 출하는 씨앗에 없어 진입값을 적지 않는다 — 화면은 「출하를 모른다」로 뜬다. */
-  { path: '/pop/shipping-label', label: 'P-04-02 납품·포장 라벨 출력' },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */

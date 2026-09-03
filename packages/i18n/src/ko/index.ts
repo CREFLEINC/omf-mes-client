@@ -116,6 +116,7 @@ import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
 import { popLotLabelPrint } from './pop-lot-label-print';
 import { shippingPackingLabel } from './shipping-packing-label';
+import { repackLabelIssue } from './repack-label-issue';
 
 export const ko = {
   common,
@@ -220,6 +221,7 @@ export const ko = {
   packingLabelReprint,
   popLotLabelPrint,
   shippingPackingLabel,
+  repackLabelIssue,
 } as const;
 
 export type Messages = typeof ko;
