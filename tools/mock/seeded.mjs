@@ -41,14 +41,30 @@ const state = createSeed();
 let nextId = 900001;
 const newId = () => (nextId += 1);
 
+/**
+ * 쪽 나누기. **계약은 1쪽부터 센다** — 목이 0부터 세면 화면이 규약대로 `page=1` 을 보냈을 때
+ * 두 번째 쪽을 받는다.
+ *
+ * ⛔ **0부터로 되돌리지 않는다.** 그 상태에서는 자료가 한 쪽에 다 들어가는 목록이 전부 빈 채로
+ *    떴다 — 재인쇄 사유가 「목록이 아직 준비되지 않았습니다」로 뜬 것이 그것이다(실측).
+ *    저장소의 화면 28자리가 모두 `page: 1` 을 보내므로 조용히 전부 걸렸다.
+ */
 const page = (items, query) => {
   const size = Number(query.get('size') ?? 20);
-  const at = Number(query.get('page') ?? 0);
-  const from = at * size;
+  const asked = Number(query.get('page') ?? 1);
+  /* 0 이나 음수가 와도 첫 쪽을 준다 — 목이 화면보다 먼저 죽을 이유가 없다. */
+  const at = Number.isFinite(asked) && asked >= 1 ? asked : 1;
+  const from = (at - 1) * size;
 
   return {
     items: items.slice(from, from + size),
-    page: { page: at, size, total: items.length, totalElements: items.length, totalPages: 1 },
+    page: {
+      page: at,
+      size,
+      total: items.length,
+      totalElements: items.length,
+      totalPages: Math.max(1, Math.ceil(items.length / size)),
+    },
   };
 };
 
@@ -89,8 +105,16 @@ const on = (method, pattern, handle) => {
 
 /* ── 기준정보 ─────────────────────────────────────────────── */
 
+/*
+ * ⚠ **사번 축을 실제로 건다.** 종전에는 `q` 만 걸어 사번을 무엇으로 쳐도 같은 목록이 왔고,
+ * 진입 화면은 그 안에 정확히 일치하는 행이 있을 때만 통과시키므로 **어느 사번이 통하는지가
+ * 쪽 크기에 따라 달라졌다**(실측). 씨앗의 사번 넷이 모두 같게 동작해야 한다.
+ */
 on('GET', '/mdm/workers', (_p, query) =>
-  page(keep(state.workers, [contains(query, 'q', 'workerNo')]), query),
+  page(
+    keep(state.workers, [byText(query, 'workerNo', 'workerNo'), contains(query, 'q', 'workerNo')]),
+    query,
+  ),
 );
 
 on('GET', '/mdm/items', (_p, query) =>
