@@ -105,6 +105,7 @@ import { inboundReceipt } from './inbound-receipt';
 import { packingRepack } from './packing-repack';
 import { packingWork } from './packing-work';
 import { putaway } from './putaway';
+import { recycleEntry } from './recycle-entry';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
@@ -208,6 +209,7 @@ export const ko = {
   packingRepack,
   packingWork,
   putaway,
+  recycleEntry,
   inboundVariance,
   temporaryPutaway,
   poChangeReview,
