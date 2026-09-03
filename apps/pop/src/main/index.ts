@@ -5,7 +5,15 @@
  * `window-options` · `renderer-path` · `file-blob-store` · `secure-store` · `local-db` · `print`.
  * 이 파일이 얇아야 「Electron을 띄워야만 확인 가능한 부분」이 작아진다.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -22,6 +30,7 @@ import {
   isRenditionFormat,
   toRenditionFileName,
 } from './print';
+import { formatPrintLog, reasonOf } from './print-log';
 import { resolveRendererPath } from './renderer-path';
 import { type PrintPage, createSilentPrinter, selectPrinter } from './silent-print';
 import { SecureStore } from './secure-store';
@@ -182,6 +191,8 @@ async function main(): Promise<void> {
   const dbPath = join(userData, 'pop.sqlite');
   const localDb = await openLocalDb(dbPath);
   const renditionDir = join(userData, 'renditions');
+  /** 인쇄 진단 기록이 앉는 자리. 사람이 파일로 읽는다. */
+  const logDir = join(userData, 'logs');
   const stagingDir = join(app.getPath('temp'), 'omf-pop-print');
   const printer = new RenditionPrinter(
     fileWriter,
@@ -261,6 +272,32 @@ async function main(): Promise<void> {
       const filePath = join(renditionDir, toRenditionFileName(label, now, format));
 
       /*
+       * ⛔ 화면에는 기술 사유를 보이지 않는다(사용자 지시). 그래도 사유를 버리지는 않는다 —
+       *    키오스크에는 개발자도구가 없어 이 파일이 무슨 일이 났는지 아는 유일한 자리다.
+       */
+      const noteFailure = (
+        available: readonly string[],
+        deviceName: string | null,
+        cause: unknown,
+      ) => {
+        try {
+          mkdirSync(logDir, { recursive: true });
+          appendFileSync(
+            join(logDir, 'print.log'),
+            formatPrintLog({
+              at: new Date().toISOString(),
+              label,
+              available,
+              deviceName,
+              reason: reasonOf(cause),
+            }),
+          );
+        } catch {
+          /* 기록을 남기지 못한 것이 인쇄 실패를 덮지 않는다 — 원인은 아래에서 그대로 던진다. */
+        }
+      };
+
+      /*
        * ⭐ **기록을 먼저 남기고 인쇄한다.** 인쇄가 실패해도 서버가 그려 준 것은 단말에 남아,
        *    현장에서 무엇이 나왔어야 하는지 확인할 수 있다. 순서를 뒤집으면 프린터가 죽은 날의
        *    출력물이 아무 데도 남지 않는다.
@@ -268,10 +305,21 @@ async function main(): Promise<void> {
       await printer.print(rendition, { kind: 'file', filePath });
 
       const { deviceName, available } = await resolvePrinter();
-      /* ⛔ 프린터를 못 고른 것을 성공으로 두지 않는다(공유계약 F-6) — 화면이 인쇄 실패로 낸다. */
-      if (deviceName === null) throw new PrinterUnavailableError(available);
 
-      await printer.print(rendition, { kind: 'printer', deviceName });
+      /* ⛔ 프린터를 못 고른 것을 성공으로 두지 않는다(공유계약 F-6) — 화면이 인쇄 실패로 낸다. */
+      if (deviceName === null) {
+        const error = new PrinterUnavailableError(available);
+        noteFailure(available, null, error);
+        throw error;
+      }
+
+      try {
+        await printer.print(rendition, { kind: 'printer', deviceName });
+      } catch (cause) {
+        noteFailure(available, deviceName, cause);
+        throw cause;
+      }
+
       return filePath;
     },
   );
