@@ -18,6 +18,13 @@ export interface ScanPaneProps {
   blockedReason: string | null;
   /** 스캔 코드가 목록에 없을 때의 인라인 오류. */
   scanError: string | null;
+  /**
+   * 담을 때마다 값이 바뀌는 표. 이 값이 바뀌면 포커스를 스캔 칸으로 되돌린다.
+   *
+   * ⛔ **`isAdding` 만 보면 안 된다** — 두 번째 담기부터는 서버를 부르지 않아 그 값이 그대로다.
+   * 포커스는 「담기」 버튼에 남고, 이어 읽힌 코드는 아무 데도 들어가지 않고 사라진다.
+   */
+  addedCount: number;
   /** 수량 입력의 인라인 오류. */
   quantityError: string | null;
   isAdding: boolean;
@@ -46,6 +53,7 @@ export const ScanPane = ({
   blockedReason,
   scanError,
   quantityError,
+  addedCount,
   isAdding,
 }: ScanPaneProps) => {
   const [code, setCode] = useState('');
@@ -57,7 +65,7 @@ export const ScanPane = ({
    */
   useEffect(() => {
     if (!isAdding) scanRef.current?.focus();
-  }, [isAdding]);
+  }, [isAdding, addedCount]);
 
   const submitScan = (event: FormEvent<HTMLFormElement>): void => {
     /*

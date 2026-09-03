@@ -322,6 +322,29 @@ describe('P-02-08 포장 작업', () => {
     expect(unitPane().getAllByText(`100 ${UOM_CODE}`)).toHaveLength(2);
   });
 
+  /**
+   * ⭐ **담고 나면 포커스가 스캔 칸으로 돌아와야 한다.** 작업자는 화면을 보지 않고 연달아
+   * 읽는다 — 포커스가 「담기」 버튼에 남아 있으면 다음 스캔이 아무 데도 들어가지 않고
+   * 사라지는데, 작업자는 읽었다고 믿고 넘어간다.
+   *
+   * 서버를 부르는 첫 담기뿐 아니라 **화면 안에서만 합산하는 두 번째 담기**도 같다.
+   */
+  it('담을 때마다 포커스가 스캔 칸으로 돌아온다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+
+    await packOneLine(user, LOT_A_NO, '100');
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.scan.label)).toHaveFocus();
+
+    await user.type(screen.getByLabelText(t.scan.quantityLabel), '50');
+    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+
+    expect(await unitPane().findAllByText(`150 ${UOM_CODE}`)).toHaveLength(2);
+    expect(screen.getByLabelText(t.scan.label)).toHaveFocus();
+  });
+
   it('스캔 칸으로 읽은 코드가 목록에 없으면 인라인으로 말한다', async () => {
     const user = userEvent.setup();
 

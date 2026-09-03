@@ -56,14 +56,21 @@ export const PackingWorkScreen = () => {
    */
   const pendingLine = useRef<PackingLine | null>(null);
   const [packed, setPacked] = useState(false);
+  /* 담은 횟수 — 스캔 칸이 이 값으로 포커스를 되돌린다(`scan-pane.tsx`). */
+  const [addedCount, setAddedCount] = useState(0);
 
   const lots = useTargetLots(entry.workOrderId);
   const unitTypes = useHandlingUnitTypes();
   const parents = useParentHandlingUnits();
-  /* 담은 줄에 붙일 품목코드·단위. 대상 LOT 이 알려 주는 축이라 목록에서 뽑는다. */
+  /*
+   * 담은 줄에 붙일 품목코드·단위.
+   *
+   * ⚠ **담은 줄에서만 뽑는다** — 대상 목록 전체로 물으면 아직 담지도 않은 LOT 의 품목까지
+   * 화면을 열자마자 건마다 조회한다. 이름이 보이는 자리는 내용물 표 하나뿐이다.
+   */
   const labels = useCodeLabels(
-    (lots.data ?? []).map((lot) => lot.itemId),
-    (lots.data ?? []).map((lot) => lot.uomId),
+    draft.lines.map((line) => line.itemId),
+    draft.lines.map((line) => line.uomId),
   );
 
   const workerNo = entry.workerNo;
@@ -84,6 +91,7 @@ export const PackingWorkScreen = () => {
       }));
       pendingLine.current = null;
       setQuantity('');
+      setAddedCount((count) => count + 1);
     },
   });
 
@@ -169,6 +177,7 @@ export const PackingWorkScreen = () => {
 
     setDraft((current) => ({ ...current, lines: addLine(current.lines, line) }));
     setQuantity('');
+    setAddedCount((count) => count + 1);
   };
 
   const confirmBlockedReason = ((): string | null => {
@@ -201,6 +210,7 @@ export const PackingWorkScreen = () => {
     setScanError(null);
     setQuantityError(null);
     setPacked(false);
+    setAddedCount(0);
     pack.reset();
     create.reset();
   };
@@ -278,6 +288,7 @@ export const PackingWorkScreen = () => {
             blockedReason={addBlockedReason}
             scanError={scanError}
             quantityError={quantityError}
+            addedCount={addedCount}
             isAdding={create.isSaving}
           />
 
