@@ -84,6 +84,12 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     query: '?workOrderId=11002&workerNo=100029',
   },
   { path: '/pop/downtime', label: 'P-05-02 비가동 등록', query: '?equipmentId=5001' },
+  {
+    path: '/pop/repack-label-issue',
+    label: 'P-04-04 재구성 라벨 발행',
+    /* P-02-09 와 같은 씨앗 포장을 쓴다 — 씨앗에 실제로 있는 번호여야 한다(위 주석). */
+    query: '?handlingUnitId=13001&workerNo=100029',
+  },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
