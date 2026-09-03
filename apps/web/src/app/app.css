@@ -2901,6 +2901,157 @@ main > * + * {
   border: 0;
 }
 
+/* 작업 캘린더 설정 — 7열 월간 그리드는 전체 폭을 보존하고 보조 구획만 넓은 화면에서 나눈다. */
+.work-calendar-workspace,
+.work-calendar-pane,
+.work-calendar-table {
+  min-width: 0;
+}
+
+.work-calendar-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.work-calendar-pane > .pane-title,
+.work-calendar-pane-heading > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.work-calendar-filter {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr);
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.work-calendar-filter-footer,
+.work-calendar-pane-heading,
+.work-calendar-month-toolbar,
+.work-calendar-month-navigation,
+.work-calendar-month-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.work-calendar-filter-footer,
+.work-calendar-pane-heading,
+.work-calendar-month-toolbar {
+  justify-content: space-between;
+}
+
+.work-calendar-filter-footer > .filter-actions,
+.work-calendar-pane-heading > button,
+.work-calendar-month-context {
+  margin-left: auto;
+}
+
+.filter-bar.work-calendar-filter-chips,
+.filter-bar.work-calendar-effective-filter {
+  margin-bottom: 0;
+}
+
+.work-calendar-filter-chips:empty {
+  display: none;
+}
+
+.work-calendar-month-navigation > strong {
+  min-width: 7rem;
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+  text-align: center;
+}
+
+.work-calendar-month-context > .field-note {
+  max-width: none;
+}
+
+.work-calendar-pane-note,
+.work-calendar-pane p {
+  margin: 0;
+}
+
+.work-calendar-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.work-calendar-list-table table {
+  min-width: 44rem;
+}
+
+.work-calendar-application-table table {
+  min-width: 30rem;
+}
+
+.work-calendar-table th,
+.work-calendar-grid-pane th {
+  white-space: nowrap;
+}
+
+.work-calendar-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.work-calendar-support-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.work-calendar-support-grid > :only-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+  .work-calendar-support-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .work-calendar-month-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .work-calendar-month-context {
+    justify-content: space-between;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .work-calendar-filter-footer,
+  .work-calendar-month-toolbar,
+  .work-calendar-month-context {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .work-calendar-filter-footer > .filter-actions,
+  .work-calendar-month-context,
+  .work-calendar-pane-heading > button {
+    margin-left: 0;
+  }
+}
+
 @media (max-width: 640px) {
   .tool-master-filter-footer,
   .tool-master-filter-footer > .check-group {

@@ -478,7 +478,7 @@ export const WorkCalendarScreen = ({
        * 브라우저 실측으로 확인하고 바꾼 자리다. 목록은 고르는 자리라 폭이 남고, 달력은
        * 이 화면의 본론이라 폭이 필요하다.
        */}
-      <div className="pane-stack">
+      <div className="pane-stack work-calendar-workspace">
         <CalendarListPane
           items={items}
           isLoading={calendars.isLoading}
@@ -517,56 +517,58 @@ export const WorkCalendarScreen = ({
           }
         />
 
-        <ApplicationPane
-          calendarName={selected === null ? null : selected.calendarName}
-          items={applications.data?.items ?? NO_ITEMS}
-          isLoading={applications.isLoading}
-          unassignedPlants={unassignedPlants}
-          onAdd={() => {
-            resetIfIdle(applicationWrite);
-            setTargetTypeCode(TARGET_TYPES.plant);
-            setTargetId('');
-            setAssigning(true);
-          }}
-          onRelease={(application: WorkCalendarApplication) => {
-            resetIfIdle(releaseWrite);
-            /* ⭐ 해제는 `workCalendarId` 를 비워 보내는 것이다 — 같은 경로다. */
-            releaseWrite.write({
-              targetTypeCode: application.targetTypeCode,
-              targetId: application.targetId,
-            });
-          }}
-          loadError={
-            applications.isError ? (
-              <LoadErrorBanner
-                error={toApiError(applications.error)}
-                onRetry={() => void applications.refetch()}
-              />
-            ) : null
-          }
-        />
-
-        {/*
-         * ⭐ **캘린더를 고른 뒤에만 선다.** 이 자리가 답하는 것은 「내가 지금 손대는 캘린더가
-         * 실제로 어느 설비에 닿는가」이고, 고른 캘린더가 없으면 그 물음 자체가 서지 않는다.
-         */}
-        {selected !== null && (
-          <EffectivePane
-            equipmentId={effectiveEquipmentId}
-            onChangeEquipment={setEffectiveEquipmentId}
-            options={equipmentTargets}
-            effective={effective.data ?? null}
-            isLoading={effective.isLoading}
+        <div className="work-calendar-support-grid">
+          <ApplicationPane
+            calendarName={selected === null ? null : selected.calendarName}
+            items={applications.data?.items ?? NO_ITEMS}
+            isLoading={applications.isLoading}
+            unassignedPlants={unassignedPlants}
+            onAdd={() => {
+              resetIfIdle(applicationWrite);
+              setTargetTypeCode(TARGET_TYPES.plant);
+              setTargetId('');
+              setAssigning(true);
+            }}
+            onRelease={(application: WorkCalendarApplication) => {
+              resetIfIdle(releaseWrite);
+              /* ⭐ 해제는 `workCalendarId` 를 비워 보내는 것이다 — 같은 경로다. */
+              releaseWrite.write({
+                targetTypeCode: application.targetTypeCode,
+                targetId: application.targetId,
+              });
+            }}
             loadError={
-              effective.isError ? (
+              applications.isError ? (
                 <LoadErrorBanner
-                  error={toApiError(effective.error)}
-                  onRetry={() => void effective.refetch()}
+                  error={toApiError(applications.error)}
+                  onRetry={() => void applications.refetch()}
                 />
               ) : null
             }
           />
-        )}
+
+          {/*
+           * ⭐ **캘린더를 고른 뒤에만 선다.** 이 자리가 답하는 것은 「내가 지금 손대는 캘린더가
+           * 실제로 어느 설비에 닿는가」이고, 고른 캘린더가 없으면 그 물음 자체가 서지 않는다.
+           */}
+          {selected !== null && (
+            <EffectivePane
+              equipmentId={effectiveEquipmentId}
+              onChangeEquipment={setEffectiveEquipmentId}
+              options={equipmentTargets}
+              effective={effective.data ?? null}
+              isLoading={effective.isLoading}
+              loadError={
+                effective.isError ? (
+                  <LoadErrorBanner
+                    error={toApiError(effective.error)}
+                    onRetry={() => void effective.refetch()}
+                  />
+                ) : null
+              }
+            />
+          )}
+        </div>
       </div>
 
       {dialog !== null && (
