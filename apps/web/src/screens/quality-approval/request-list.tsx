@@ -81,15 +81,18 @@ export const RequestList = ({
   );
 
   return (
-    <>
-      <Table
-        density="compact"
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.approvalRequestId)}
-        empty={empty}
-      />
+    <div className="quality-approval-list">
+      <div className="quality-approval-table">
+        <Table
+          density="compact"
+          caption={<span className="quality-approval-table-caption">{t.panes.list}</span>}
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.approvalRequestId)}
+          empty={empty}
+        />
+      </div>
       <PageNav view={page} onChange={onChangePage} />
-    </>
+    </div>
   );
 };

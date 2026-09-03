@@ -33,7 +33,8 @@ export const ApprovalActionPane = ({
   const isLocked = lockReason !== undefined;
 
   return (
-    <div role="group" aria-label={t.approval.title}>
+    <div className="quality-approval-action" role="group" aria-label={t.approval.title}>
+      <h3>{t.approval.title}</h3>
       <SaveErrorBanner error={writeError} onReload={onReload} />
       {writeError?.kind === 'network' && (
         <div className="form-actions">
