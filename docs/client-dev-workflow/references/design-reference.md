@@ -1,54 +1,49 @@
-# 설계 저장소 참조 — 클론 절차와 열람 경계
+# 설계 자료 고정과 변경 수신
 
-운영 규칙 §2-2 「참고 자료」의 실행 절차다. 배정된 이슈를 분석하기 전에 필요한 정보는 설계팀(`CREFLEINC/omf-mes`, 비공개)이 갖고 있다. **본인 워크스페이스의 임시 폴더에 클론**하여 참고한다 — 로컬에 이미 있는 다른 clone을 직접 보지 않는다.
+설계 결과물은 개발 목표의 정본이다. 동시에, 진행 중인 업무가 바라보는 설계 버전은 고정되어야 한다.
 
-## 왜 격리 클론인가
+## 격리 클론
 
-로컬에 설계 저장소를 직접 바라보면, 설계팀이 자기 로컬 브랜치를 옮기는 순간 검증되지 않은 자료를 열람하게 될 수 있다. 임시 폴더에 별도로 클론하면 **항상 이 워크스페이스가 확인한 시점의 `main` 상태**를 보장받는다.
+팀 전용 워크트리 아래 `.client-dev/design/omf-mes/`에 설계 저장소를 별도로 클론한다. 다른 팀이나 설계팀이 사용하는 로컬 체크아웃을 직접 읽지 않는다.
 
-⛔ **`../omf-mes`(또는 그 밖의 로컬 clone)를 직접 열지 않는다.** 그 clone이 지금 어느 브랜치에 있는지, 로컬 커밋이 섞여 있는지 이 워크스페이스는 알 방법이 없다.
+`.client-dev/` 전체는 gitignore 대상이다. 비공개 설계 파일이나 요청서 원문이 공개 저장소에 포함되지 않도록 커밋 전 `git status`를 확인한다.
 
-## 위치
+## 최초 고정
 
-```
-.claude/_designref/omf-mes/
-```
-
-이 경로는 `.gitignore`에 있다 — 저장소는 공개(public), 설계 저장소는 비공개이므로 이 클론이 실수로 커밋되면 사고다. 클론 직후와 커밋 전에 `git status`로 이 경로가 잡히지 않는지 확인하는 습관을 들인다.
-
-## 최초 클론
+팀 환경을 처음 만들 때만 기본 브랜치를 클론하고 현재 HEAD를 고정한다.
 
 ```bash
-gh repo clone CREFLEINC/omf-mes .claude/_designref/omf-mes -- --depth 1 --single-branch --branch main
+gh repo clone CREFLEINC/omf-mes .client-dev/design/omf-mes -- --single-branch --branch main
+pnpm workflow init --team <N> --issue <이슈번호> --design-ref .client-dev/design/omf-mes
 ```
 
-## 매 착수 전 — 항상 `main` 최신화
+고정 정보는 `.client-dev/state.json`에 기록된다. 공개 이슈와 PR에는 전체 설계 내용을 옮기지 않고 필요한 경우 커밋이나 문서 경로만 포인터로 남긴다.
 
-이슈에 착수하기 전에는 **항상** 최신 상태로 맞춘다. 이미 클론돼 있어도 생략하지 않는다.
+## 평상시 금지
+
+- 작업 착수마다 `fetch`, `pull`, `reset`으로 최신화하지 않는다.
+- 공지 없이 다른 브랜치나 커밋으로 이동하지 않는다.
+- 설계 클론에 커밋·푸시하지 않는다.
+- 설계 본문·와이어프레임·화면 캡처를 클라이언트 저장소로 복사하지 않는다.
+
+`pnpm workflow:check`는 설계 클론 HEAD가 고정 커밋과 다르면 실패한다.
+
+## 설계 변동 공지를 받았을 때만 갱신
+
+공지가 지정한 커밋을 가져오고 정확히 체크아웃한다. 공지에 없는 최신 커밋까지 따라가지 않는다.
 
 ```bash
-git -C .claude/_designref/omf-mes fetch --depth 1 origin main
-git -C .claude/_designref/omf-mes reset --hard origin/main
+git -C .client-dev/design/omf-mes fetch origin <공지커밋>
+git -C .client-dev/design/omf-mes checkout --detach <공지커밋>
+pnpm workflow accept-design-change \
+  --notice <클라이언트저장소-공지이슈번호> \
+  --commit <공지전체커밋> \
+  --design-ref .client-dev/design/omf-mes
+pnpm workflow:check
 ```
 
-`reset --hard`인 이유: 이 클론은 읽기 전용 참고본이다. 로컬 변경이 있을 이유가 없으므로 충돌 해소 절차 없이 항상 origin과 동일하게 맞춘다.
+그 뒤 변경 지점을 직접 분석하고 현재 계획·구조 설계·코드·테스트 영향 범위를 전면 재검토한다. 공지 자체에는 변경 상세가 없어야 하며, 자세한 판단은 지정 버전의 자료에서 수행한다.
 
-## 확인 시점을 남긴다
+## 설계가 불완전하거나 개선이 필요할 때
 
-읽기 직전 아래를 계획서 또는 이슈 코멘트의 근거 칸에 적는다 — `docs/uiux-handoff.md` §1이 요구하는 「무엇을 언제 확인했는지」다.
-
-```bash
-git -C .claude/_designref/omf-mes log -1 --format='%H %cI'
-```
-
-DS(디자인 시스템) 확인은 「이슈가 닫혔다」가 아니라 **고정한 커밋의 설치본에서 실물을 확인한 시점**을 적는다(`docs/uiux-handoff.md` §1 사례 1 — 문서와 DS 설치본이 어긋난 실례가 있었다).
-
-## 열람 경계 — 이 클론으로 할 수 없는 것
-
-- ⛔ **커밋·푸시하지 않는다.** 읽기 전용이다.
-- ⛔ **읽은 내용을 이 저장소로 옮기지 않는다.** 코드·주석·커밋 메시지·PR 본문·이슈 어디에도 스펙 본문을 복사·발췌·요약하지 않는다. 화면 ID·경로·개정일·설계 저장소 이슈 번호(`omf-mes#42`)만 적는다 — 근거는 `CLAUDE.md` 공개 저장소 경계와 `docs/uiux-handoff.md` §2.
-- ⛔ **이 클론을 근거로 설계를 대신 확정하지 않는다.** 스펙과 계약이 어긋나거나 미결 항목의 처리 방법이 안 적혀 있으면, 혼자 규칙을 만들지 말고 [검토 요청](review-request.md)을 올린다.
-
-## 판단이 서지 않으면
-
-올리지 말고 먼저 묻는다. 이미 올렸다면 즉시 알린다 — 조용히 지우거나 고쳐 덮지 않는다. 공개 저장소에서는 push된 순간 노출된 것으로 본다.
+현재 고정 버전을 임의 해석해 바꾸거나 설계팀에 직접 묻지 않는다. [design-request.md](design-request.md)에 따라 요청서를 사용자에게 전달하고, 고정된 설계를 기준으로 가능한 업무를 계속한다.
