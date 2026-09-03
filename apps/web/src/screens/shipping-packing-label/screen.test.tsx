@@ -3,7 +3,6 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import {
   createStubFetch,
   jsonResponse,
@@ -25,9 +24,11 @@ import { ShippingPackingLabelScreen } from './screen';
 
 const t = messages.shippingPackingLabel;
 
-const ROUTE = `/pop/shipping-label?shipmentId=${String(SHIPMENT_ID)}`;
+/** 사번은 진입 주소로 온다(전례 `P-02-05`) — 셸이 채우는 자리는 아직 비어 있다. */
+const ROUTE = `/pop/shipping-label?shipmentId=${String(SHIPMENT_ID)}&workerNo=${WORKER_NO}`;
 
-const IDENTIFIED: PopIdentity = { terminalId: 9001, processId: 9002, workerNo: WORKER_NO };
+/** 사번 없이 들어온 경우. 발행이 열리면 안 된다. */
+const ROUTE_WITHOUT_WORKER = `/pop/shipping-label?shipmentId=${String(SHIPMENT_ID)}`;
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
@@ -125,13 +126,11 @@ const routes = (options: Options): StubRoute[] => {
   ];
 };
 
-const renderScreen = (options: Options = {}, route = ROUTE, identity = IDENTIFIED) =>
-  renderWithProviders(
-    <PopIdentityProvider value={identity}>
-      <ShippingPackingLabelScreen />
-    </PopIdentityProvider>,
-    { fetch: createStubFetch(routes(options)), route },
-  );
+const renderScreen = (options: Options = {}, route = ROUTE) =>
+  renderWithProviders(<ShippingPackingLabelScreen />, {
+    fetch: createStubFetch(routes(options)),
+    route,
+  });
 
 const chooseKind = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
   await user.click(await screen.findByRole('radio', { name: new RegExp(name, 'u') }));
@@ -166,7 +165,7 @@ describe('ShippingPackingLabelScreen — 진입', () => {
 
   it('사번을 모르면 발행하지 않는다 — 서버가 거부할 쓰기를 만들지 않는다', async () => {
     const user = userEvent.setup();
-    renderScreen({}, ROUTE, { terminalId: 9001, processId: 9002, workerNo: null });
+    renderScreen({}, ROUTE_WITHOUT_WORKER);
 
     await chooseKind(user, '납품라벨');
 
@@ -180,6 +179,13 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     renderScreen();
 
     expect(await screen.findByText(t.targets.empty)).toBeInTheDocument();
+  });
+
+  it('종류를 고르기 전에는 프린터가 «없다»고 단정하지 않는다 — 아직 조회하지 않았다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.targets.empty)).toBeInTheDocument();
+    expect(screen.queryByText(t.printer.none)).not.toBeInTheDocument();
   });
 
   it('납품라벨은 미합격 건도 목록에 남기되 고를 수 없게 한다', async () => {

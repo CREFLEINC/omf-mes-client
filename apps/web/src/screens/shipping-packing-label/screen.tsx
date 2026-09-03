@@ -2,7 +2,6 @@ import { AlertBanner, Button, PageHeader } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 
-import { usePopIdentity } from '../../patterns/pop-identity';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { DELIVERY_LABEL, type LabelKind } from './codes';
 import { useShippingLabelEntry } from './entry-context';
@@ -48,12 +47,14 @@ const t = messages.shippingPackingLabel;
  * 발행 전 미리보기는 이번 계약에 없다(착수 이슈 §6).
  */
 export const ShippingPackingLabelScreen = () => {
-  const { shipmentId } = useShippingLabelEntry();
   /*
    * 귀속 사번은 **셸이 아는 값**이다(진입점 화면 소관). 쓰기가 헤더로 요구하므로 없으면
    * 부를 수 없고, 그 사실을 감추지 않고 사유로 보인다(공유계약 F-1 · F-6).
+   *
+   * ⚠ 셸이 채우는 자리(`pop-identity`)는 저장소에 공급자가 아직 없어 **항상 비어 있다** —
+   * 진입 주소에서 받는다(전례 `P-02-05`). 셸이 서면 `entry-context` 하나가 바뀐다.
    */
-  const { workerNo } = usePopIdentity();
+  const { shipmentId, workerNo } = useShippingLabelEntry();
   const shipment = useShipment(shipmentId);
 
   /*
@@ -249,7 +250,12 @@ export const ShippingPackingLabelScreen = () => {
               printers={printerItems}
               value={effectivePrinterName}
               onChange={setPrinterName}
-              isLoading={kind !== null && printers.isPending}
+              /*
+               * ⛔ 종류를 고르기 전에는 「찍을 수 있는 프린터가 없다」고 «단정하지» 않는다 —
+               * 그때는 조회 자체를 하지 않아 모르는 상태다. 모르는 것을 없음으로 그리면
+               * 사용자가 설치 문제로 오해한다(공유계약 G-9 · 실측 2026-09-03).
+               */
+              isLoading={kind === null || printers.isPending}
               isError={printers.isError}
               onRetry={() => {
                 void printers.refetch();

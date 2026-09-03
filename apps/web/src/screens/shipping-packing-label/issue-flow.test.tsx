@@ -2,7 +2,6 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   allocation,
@@ -41,7 +40,8 @@ interface Sent {
 }
 
 interface FlowOptions {
-  identity?: Partial<PopIdentity>;
+  /** 사번 없이 들어온다 — 진입 주소에 싣지 않는다. */
+  withoutWorker?: boolean;
   /** 이 대상들은 이미 발행된 적이 있다 — 재출력 구획이 서는 조건이다. */
   issued?: Record<number, number>;
   /** 셸 인쇄 통로. 없으면 브라우저와 같은 상태다(오류가 아니라 「프린터가 없다」). */
@@ -63,106 +63,95 @@ const renderFlow = (options: FlowOptions = {}) => {
     });
   };
 
-  const identity: PopIdentity = {
-    terminalId: null,
-    processId: null,
-    workerNo: WORKER_NO,
-    ...options.identity,
-  };
-
   if (options.shellPrint != null) {
     vi.stubGlobal('pop', { rendition: { save: options.shellPrint } });
   }
 
-  const result = renderWithProviders(
-    <PopIdentityProvider value={identity}>
-      <ShippingPackingLabelScreen />
-    </PopIdentityProvider>,
-    {
-      route:
-        options.withoutShipment === true
-          ? '/pop/shipping-label'
-          : `/pop/shipping-label?shipmentId=${String(SHIPMENT_ID)}`,
-      fetch: createStubFetch([
-        {
-          match: (request) => /\/logistics\/shipments\/\d+$/u.test(new URL(request.url).pathname),
-          respond: () => jsonResponse(shipment()),
-        },
-        {
-          match: (request) =>
-            new URL(request.url).pathname === '/logistics/shipment-lot-allocations',
-          respond: () =>
-            jsonResponse({
-              items: [
-                allocation(ALLOCATION_PASSED, 9801, 'SYN-LOT-0001', true, HANDLING_UNIT_ID),
-                allocation(ALLOCATION_WAITING, 9802, 'SYN-LOT-0002', false, HANDLING_UNIT_ID),
-              ],
-              page: { page: 1, size: 20, total: 2 },
-            }),
-        },
-        {
-          match: (request) =>
-            /\/inventory\/handling-units\/\d+$/u.test(new URL(request.url).pathname),
-          respond: () => jsonResponse(handlingUnitDetail(HANDLING_UNIT_ID, 'SYN-HU-0001')),
-        },
-        {
-          match: (request) => new URL(request.url).pathname === '/app/document-issues/summary',
-          respond: (request) => {
-            /*
-             * 배열 질의는 반복 키로도 쉼표 묶음으로도 실려 올 수 있다 — 스텁이 한 모양만
-             * 알면 직렬화 방식이 바뀌었을 때 **조회가 빈 채로 통과한다.**
-             */
-            const ids = new URL(request.url).searchParams
-              .getAll('targetIds')
-              .flatMap((value) => value.split(','))
-              .map(Number);
+  const worker = options.withoutWorker === true ? '' : `&workerNo=${WORKER_NO}`;
 
-            return jsonResponse({
-              items: ids.map((id) => summary(id, issued[id] ?? 0, null)),
-            });
-          },
-        },
-        {
-          match: (request) => new URL(request.url).pathname === '/app/printers',
-          respond: () => jsonResponse({ items: [printer('SYN-PRN-01', true)] }),
-        },
-        {
-          match: (request) => new URL(request.url).pathname === '/mdm/code-values',
-          respond: () =>
-            jsonResponse({
-              items: [reissueReason('SYN_PRINT_FAILED', '인쇄 실패')],
-              page: { page: 1, size: 20, total: 1 },
-            }),
-        },
-        {
-          match: (request) =>
-            request.method === 'POST' && new URL(request.url).pathname === '/app/document-issues',
-          respond: (request) => {
-            void record(request);
+  const result = renderWithProviders(<ShippingPackingLabelScreen />, {
+    route:
+      options.withoutShipment === true
+        ? '/pop/shipping-label'
+        : `/pop/shipping-label?shipmentId=${String(SHIPMENT_ID)}${worker}`,
+    fetch: createStubFetch([
+      {
+        match: (request) => /\/logistics\/shipments\/\d+$/u.test(new URL(request.url).pathname),
+        respond: () => jsonResponse(shipment()),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/logistics/shipment-lot-allocations',
+        respond: () =>
+          jsonResponse({
+            items: [
+              allocation(ALLOCATION_PASSED, 9801, 'SYN-LOT-0001', true, HANDLING_UNIT_ID),
+              allocation(ALLOCATION_WAITING, 9802, 'SYN-LOT-0002', false, HANDLING_UNIT_ID),
+            ],
+            page: { page: 1, size: 20, total: 2 },
+          }),
+      },
+      {
+        match: (request) =>
+          /\/inventory\/handling-units\/\d+$/u.test(new URL(request.url).pathname),
+        respond: () => jsonResponse(handlingUnitDetail(HANDLING_UNIT_ID, 'SYN-HU-0001')),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/app/document-issues/summary',
+        respond: (request) => {
+          /*
+           * 배열 질의는 반복 키로도 쉼표 묶음으로도 실려 올 수 있다 — 스텁이 한 모양만
+           * 알면 직렬화 방식이 바뀌었을 때 **조회가 빈 채로 통과한다.**
+           */
+          const ids = new URL(request.url).searchParams
+            .getAll('targetIds')
+            .flatMap((value) => value.split(','))
+            .map(Number);
 
-            return jsonResponse({
-              items: [issueLog(ISSUE_LOG_ID, ALLOCATION_PASSED, 'SYN-LOT-0001', 1)],
-            });
-          },
+          return jsonResponse({
+            items: ids.map((id) => summary(id, issued[id] ?? 0, null)),
+          });
         },
-        {
-          match: (request) => new URL(request.url).pathname.endsWith('/rendition'),
-          respond: () =>
-            new Response(new Uint8Array([1, 2, 3]), {
-              headers: { 'Content-Type': 'image/png' },
-            }),
-        },
-        {
-          match: (request) => new URL(request.url).pathname.endsWith(':report-print'),
-          respond: (request) => {
-            void record(request);
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/app/printers',
+        respond: () => jsonResponse({ items: [printer('SYN-PRN-01', true)] }),
+      },
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+        respond: () =>
+          jsonResponse({
+            items: [reissueReason('SYN_PRINT_FAILED', '인쇄 실패')],
+            page: { page: 1, size: 20, total: 1 },
+          }),
+      },
+      {
+        match: (request) =>
+          request.method === 'POST' && new URL(request.url).pathname === '/app/document-issues',
+        respond: (request) => {
+          void record(request);
 
-            return jsonResponse({ documentIssueLogId: ISSUE_LOG_ID, printOutcome: 'SUCCEEDED' });
-          },
+          return jsonResponse({
+            items: [issueLog(ISSUE_LOG_ID, ALLOCATION_PASSED, 'SYN-LOT-0001', 1)],
+          });
         },
-      ]),
-    },
-  );
+      },
+      {
+        match: (request) => new URL(request.url).pathname.endsWith('/rendition'),
+        respond: () =>
+          new Response(new Uint8Array([1, 2, 3]), {
+            headers: { 'Content-Type': 'image/png' },
+          }),
+      },
+      {
+        match: (request) => new URL(request.url).pathname.endsWith(':report-print'),
+        respond: (request) => {
+          void record(request);
+
+          return jsonResponse({ documentIssueLogId: ISSUE_LOG_ID, printOutcome: 'SUCCEEDED' });
+        },
+      },
+    ]),
+  });
 
   return { ...result, sent, user: userEvent.setup() };
 };
@@ -304,7 +293,7 @@ describe('재발행', () => {
 
 describe('사번', () => {
   it('사번을 모르면 발행을 부르지 않는다 — 서버가 거부한다', async () => {
-    const { user, sent } = renderFlow({ identity: { workerNo: null } });
+    const { user, sent } = renderFlow({ withoutWorker: true });
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');

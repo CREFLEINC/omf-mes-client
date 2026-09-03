@@ -17,6 +17,19 @@ import { useSearchParams } from 'react-router';
 export interface ShippingLabelEntry {
   /** 출하 식별자. 대상 목록을 이 축으로 좁힌다. 없으면 `null` */
   shipmentId: number | null;
+  /**
+   * 귀속용 사번. 쓰기 2종(`POST /app/document-issues` · `:report-print`)의 `X-Worker-No`
+   * 헤더에 실린다. 없으면 `null` — 발행을 열지 않는다.
+   *
+   * ⚠ **`patterns/pop-identity` 에서 읽지 않는다.** 그 자리는 셸이 채우는 곳인데 **저장소에
+   * 채우는 곳이 아직 없어** 항상 `null` 이다 — 그것을 읽으면 화면이 영구히 막힌다(실측
+   * 2026-09-03: 발행 단추가 어떤 조작으로도 열리지 않았다).
+   *
+   * ⚠ **`patterns/worker-session` 에서도 읽지 않는다.** 그 파일이 「아직 이 자리를 읽는
+   * 화면은 없다 · 모으는 일은 셸이 `pop-identity` 를 채울 때다」로 못박았다. 앞질러 읽으면
+   * POP 쓰기 화면마다 사번 출처가 갈린다 — 전례 `P-02-05` 와 **같은 자리**를 쓴다.
+   */
+  workerNo: string | null;
 }
 
 const parseId = (value: string | null): number | null => {
@@ -27,8 +40,19 @@ const parseId = (value: string | null): number | null => {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
+const parseWorkerNo = (value: string | null): string | null => {
+  if (value === null) return null;
+
+  const trimmed = value.trim();
+
+  return trimmed === '' ? null : trimmed;
+};
+
 export const useShippingLabelEntry = (): ShippingLabelEntry => {
   const [searchParams] = useSearchParams();
 
-  return { shipmentId: parseId(searchParams.get('shipmentId')) };
+  return {
+    shipmentId: parseId(searchParams.get('shipmentId')),
+    workerNo: parseWorkerNo(searchParams.get('workerNo')),
+  };
 };
