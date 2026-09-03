@@ -84,6 +84,19 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     query: '?workOrderId=11002&workerNo=100029',
   },
   { path: '/pop/downtime', label: 'P-05-02 비가동 등록', query: '?equipmentId=5001' },
+  {
+    path: '/pop/packing-work',
+    label: 'P-02-08 포장 작업',
+    /* 씨앗에서 완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 포장 대상이 비어 뜬다. */
+    query: '?workOrderId=11001&workerNo=100029',
+  },
+  {
+    path: '/pop/lot-label',
+    label: 'P-02-07 LOT 라벨 출력',
+    query: '?workOrderId=11002&workerNo=100029',
+  },
+  /* 출하는 씨앗에 없어 진입값을 적지 않는다 — 화면은 「출하를 모른다」로 뜬다. */
+  { path: '/pop/shipping-label', label: 'P-04-02 납품·포장 라벨 출력' },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
