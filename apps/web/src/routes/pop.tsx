@@ -7,6 +7,7 @@ import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
+import { ProductionResultScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
@@ -155,4 +156,17 @@ export const popRoutes: RouteObject[] = [
    * 바뀐다(전례 `P-02-05`).
    */
   { path: '/pop/packing-label-reprint', element: <PackingLabelReprintScreen /> },
+  /*
+   * P-02-04 — 작업실적 등록. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⭐ **이 화면의 세로 예산에는 슬랙이 0 이다**(헤더 64 + 본문 616 + 액션바 88 = 768 — 스펙
+   * §3-1). 관리웹 셸의 상단 바가 위에 얹히면 1024×768 단말에서 본문 아래가 그대로 잘린다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시
+   * 선택(`P-02-01`)이 아직 이 저장소에 없다. 그것이 서면 `entry-context.ts` 하나가 바뀐다.
+   *
+   * ⚠ **단말·공정은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 비어 있는 동안 이 화면은
+   * 「단말이 확인되지 않았습니다」로 저장이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
+   */
+  { path: '/pop/production-result', element: <ProductionResultScreen /> },
 ];

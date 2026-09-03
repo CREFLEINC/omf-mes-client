@@ -50,6 +50,7 @@ import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { iqcInspection } from './iqc-inspection';
 import { pqcInspection } from './pqc-inspection';
+import { productionResult } from './production-result';
 import { equipmentMaster } from './equipment-master';
 import { qualityApproval } from './quality-approval';
 import { productionOrder } from './production-order';
@@ -150,6 +151,7 @@ export const ko = {
   notificationCenter,
   iqcInspection,
   pqcInspection,
+  productionResult,
   equipmentMaster,
   qualityApproval,
   productionOrder,
