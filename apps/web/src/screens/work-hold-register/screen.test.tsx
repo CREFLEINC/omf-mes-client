@@ -129,6 +129,7 @@ describe('P-02-10 작업 중단 등록', () => {
     expect(await screen.findByText(t.form.reasonProvisional)).toBeInTheDocument();
   });
 
+  /* ⛔ 코드 문자열은 코드 사전(`CD-WORK-SESSION-EVENT-REASON`)이 정본이다 — 지어내지 않는다. */
   it('사유 7값을 스펙의 순서대로 세운다', async () => {
     renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
@@ -137,7 +138,7 @@ describe('P-02-10 작업 중단 등록', () => {
     const labels = screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'));
 
     expect(labels).toEqual([
-      'EMERGENCY_ORDER',
+      'URGENT_ORDER_INTERRUPT',
       'EQUIPMENT_FAILURE',
       'TOOL_FAILURE',
       'MATERIAL_SHORTAGE',

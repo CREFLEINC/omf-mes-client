@@ -3,7 +3,8 @@ import { messages } from '@omf-mes/i18n';
 /**
  * 중단 사유와 세션 사건 유형의 **자리표시 상수** — 착수 이슈 §4 가 정한 처리다.
  *
- * ⚠ **임시 목록이다.** 값 목록의 정본은 공통코드
+ * ⚠ **목록을 화면이 들고 있는 것이 임시다.** 값 자체는 코드 사전이 확정했고, 받아 오는 자리가
+ * 아직 없어 여기 적어 둔다. 값 목록의 정본은 공통코드
  * (`GET /mdm/code-values?codeGroupCode=WORK_SESSION_EVENT_REASON`)이고 그 마스터를 채우는
  * 화면은 이 저장소 밖이다(`W-06-06`). 마스터가 서면 **이 파일 하나가** 조회로 바뀐다 —
  * 화면 본문은 아래 목록만 부른다.
@@ -44,9 +45,15 @@ export interface HoldReason {
   name: string;
 }
 
-/** 중단 사유 7값 — 스펙 §3 목업의 표시 순서를 그대로 따른다. */
+/**
+ * 중단 사유 7값 — 스펙 §3 목업의 표시 순서를 그대로 따른다.
+ *
+ * ⛔ **코드 문자열은 고정한 설계 기준의 코드 사전이 정본이다**(`CD-WORK-SESSION-EVENT-REASON`).
+ * 화면이 「뜻이 통하는」 이름을 지어내면 정정 경로가 없는 기록에 서버가 모르는 값이 남는다 —
+ * 실제로 첫 값을 그렇게 잘못 적고 있었다(2026-09-03 정정).
+ */
 export const HOLD_REASONS: readonly HoldReason[] = [
-  { code: 'EMERGENCY_ORDER', name: t.reasons.EMERGENCY_ORDER },
+  { code: 'URGENT_ORDER_INTERRUPT', name: t.reasons.URGENT_ORDER_INTERRUPT },
   { code: 'EQUIPMENT_FAILURE', name: t.reasons.EQUIPMENT_FAILURE },
   { code: 'TOOL_FAILURE', name: t.reasons.TOOL_FAILURE },
   { code: 'MATERIAL_SHORTAGE', name: t.reasons.MATERIAL_SHORTAGE },

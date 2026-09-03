@@ -90,7 +90,7 @@ export const workHoldRegister = {
 
   /** 중단 사유 표시명 — 스펙 §3 목업의 7값. */
   reasons: {
-    EMERGENCY_ORDER: '긴급 오더 끼어들기',
+    URGENT_ORDER_INTERRUPT: '긴급 오더 끼어들기',
     EQUIPMENT_FAILURE: '설비 고장',
     TOOL_FAILURE: '도구 고장',
     MATERIAL_SHORTAGE: '자재 결품',
