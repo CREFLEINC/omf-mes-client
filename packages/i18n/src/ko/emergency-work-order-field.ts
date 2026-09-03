@@ -8,6 +8,8 @@
  * ⛔ **빈 목록이 오류가 아니다.** 긴급 W/O 는 없는 것이 정상이고, 발행은 관리웹의 몫이다 —
  * 그래서 빈 상태 문구가 「없습니다」에서 끝나지 않고 **어디서 만들어지는지**까지 적는다.
  */
+import { common } from './common';
+
 export const emergencyWorkOrderField = {
   title: '긴급 W/O',
 
@@ -37,8 +39,15 @@ export const emergencyWorkOrderField = {
      * 랜선이 빠져도 같은 기기의 서버에는 닿고, 반대로 브라우저가 온라인이라도 서버가 죽어
      * 있을 수 있다. 마지막 조회가 답을 받았는지를 그대로 보인다.
      */
-    connected: '연결됨',
-    disconnected: '연결 끊김',
+    /*
+     * ⚠ **연결 상태 문구는 공용 어휘를 쓴다**(`common.connection`). 화면마다 자기 낱말을
+     * 가지고 있어 「연결됨/오프라인」·「연결됨/연결 끊김」·「온라인/오프라인」 셋으로 갈려
+     * 있었고, 한 칩 안에서 반대말이 아닌 짝이 서기도 했다(실측). 설계는 「연결 상태를 상시
+     * 표시」까지만 요구하고 낱말을 정하지 않았으므로(공유계약 C-1), 이미 다수가 쓰던 공용
+     * 어휘로 모은다(사용자 확정 2026-09-03).
+     */
+    connected: common.connection.online,
+    disconnected: common.connection.offline,
   },
 
   /** 목록 구획. */

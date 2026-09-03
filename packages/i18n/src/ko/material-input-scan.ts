@@ -6,6 +6,8 @@
  *   나중에 계보를 추적할 때 그 구분이 필요하다 — 그래서 표시할 말이 따로 있다.
  * - 판정 문구를 화면이 지어내지 않는다. 자재 상태·오투입 판정은 서버가 하고 화면은 옮긴다.
  */
+import { common } from './common';
+
 export const materialInputScan = {
   title: '자재 투입',
   panes: {
@@ -52,7 +54,14 @@ export const materialInputScan = {
      */
     unsynced: (count: number): string => `미전송 ${String(count)}건`,
     synced: '전송 완료',
-    offline: '연결 끊김',
+    /*
+     * ⚠ **연결 상태 문구는 공용 어휘를 쓴다**(`common.connection`). 화면마다 자기 낱말을
+     * 가지고 있어 「연결됨/오프라인」·「연결됨/연결 끊김」·「온라인/오프라인」 셋으로 갈려
+     * 있었고, 한 칩 안에서 반대말이 아닌 짝이 서기도 했다(실측). 설계는 「연결 상태를 상시
+     * 표시」까지만 요구하고 낱말을 정하지 않았으므로(공유계약 C-1), 이미 다수가 쓰던 공용
+     * 어휘로 모은다(사용자 확정 2026-09-03).
+     */
+    offline: common.connection.offline,
   },
   table: {
     item: '품목',

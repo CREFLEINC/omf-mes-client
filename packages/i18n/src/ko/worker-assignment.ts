@@ -5,6 +5,8 @@
  * 정한다. 그래서 문구에 **비밀번호·로그인·잠금·세션**을 쓰지 않는다. 이름 하나가 없는
  * 기능을 요구하게 만드는 것을 스펙이 경계했다.
  */
+import { common } from './common';
+
 export const workerAssignment = {
   header: {
     /**
@@ -22,8 +24,15 @@ export const workerAssignment = {
     label: '단말',
     /** 값이 없는 칸. 빈 칸으로 두면 「없음」인지 「못 불러왔는지」 구분되지 않는다. */
     emptyValue: '—',
-    online: '연결됨',
-    offline: '오프라인',
+    /*
+     * ⚠ **연결 상태 문구는 공용 어휘를 쓴다**(`common.connection`). 화면마다 자기 낱말을
+     * 가지고 있어 「연결됨/오프라인」·「연결됨/연결 끊김」·「온라인/오프라인」 셋으로 갈려
+     * 있었고, 한 칩 안에서 반대말이 아닌 짝이 서기도 했다(실측). 설계는 「연결 상태를 상시
+     * 표시」까지만 요구하고 낱말을 정하지 않았으므로(공유계약 C-1), 이미 다수가 쓰던 공용
+     * 어휘로 모은다(사용자 확정 2026-09-03).
+     */
+    online: common.connection.online,
+    offline: common.connection.offline,
   },
 
   input: {

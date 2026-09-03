@@ -11,6 +11,8 @@
  * ⛔ **닫힘 사유 두 가지를 가른다.** 「권한이 없습니다」와 「확인할 수 없습니다」는 사용자가
  * 할 일이 다르다 — 앞의 것은 단말 설정으로, 뒤의 것은 다시 시도로 간다(F-6 · G-3).
  */
+import { common } from './common';
+
 export const workStart = {
   title: '작업 시작',
 
@@ -27,8 +29,15 @@ export const workStart = {
     workerUnset: '사번 미입력',
     workerLabel: (workerNo: string): string => `사번 ${workerNo}`,
 
-    connected: '연결됨',
-    disconnected: '연결 끊김',
+    /*
+     * ⚠ **연결 상태 문구는 공용 어휘를 쓴다**(`common.connection`). 화면마다 자기 낱말을
+     * 가지고 있어 「연결됨/오프라인」·「연결됨/연결 끊김」·「온라인/오프라인」 셋으로 갈려
+     * 있었고, 한 칩 안에서 반대말이 아닌 짝이 서기도 했다(실측). 설계는 「연결 상태를 상시
+     * 표시」까지만 요구하고 낱말을 정하지 않았으므로(공유계약 C-1), 이미 다수가 쓰던 공용
+     * 어휘로 모은다(사용자 확정 2026-09-03).
+     */
+    connected: common.connection.online,
+    disconnected: common.connection.offline,
   },
 
   /** ① 사번 구획. */

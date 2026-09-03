@@ -7,6 +7,8 @@
  * - 겹침은 **막지 않고 알리기만 한다**(스펙 §6-1). 경고 문구가 저장을 막는 것처럼 읽히면 안 된다.
  * - 오프라인에서 오늘 집계는 **이 단말이 넣은 것만** 보인다. 그 범위를 문구가 말한다(§6-2).
  */
+import { common } from './common';
+
 export const downtimeRegister = {
   title: '비가동 실적 입력',
   header: {
@@ -19,7 +21,14 @@ export const downtimeRegister = {
     /** 미전송 건수는 즉시 성공 표시의 전제라 상시 보인다(공유계약 C-1 #4). */
     unsent: (count: number): string => `미전송 ${String(count)}건`,
     sent: '전송 완료',
-    offline: '연결 끊김',
+    /*
+     * ⚠ **연결 상태 문구는 공용 어휘를 쓴다**(`common.connection`). 화면마다 자기 낱말을
+     * 가지고 있어 「연결됨/오프라인」·「연결됨/연결 끊김」·「온라인/오프라인」 셋으로 갈려
+     * 있었고, 한 칩 안에서 반대말이 아닌 짝이 서기도 했다(실측). 설계는 「연결 상태를 상시
+     * 표시」까지만 요구하고 낱말을 정하지 않았으므로(공유계약 C-1), 이미 다수가 쓰던 공용
+     * 어휘로 모은다(사용자 확정 2026-09-03).
+     */
+    offline: common.connection.offline,
   },
   ongoing: {
     title: '진행 중 비가동',
