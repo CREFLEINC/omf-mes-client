@@ -27,6 +27,12 @@
 import '@crefle/web-ui/styles/index.css';
 import '@crefle/web-ui/css';
 import './app.css';
+/*
+ * ⭐ **POP 셸의 스타일시트.** `app.css`는 관리웹과 함께 쓰는 것이고, 단말 전용 규칙은 이쪽에
+ * 둔다 — 모바일 셸이 `apps/mobile/src/app/app.css`를 자기 진입점에서만 읽는 것과 같은 형태다.
+ * 근거는 그 파일 머리말에 있다.
+ */
+import './pop.css';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
