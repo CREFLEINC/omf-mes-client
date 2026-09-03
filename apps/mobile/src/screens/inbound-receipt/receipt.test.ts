@@ -233,12 +233,7 @@ describe('등록 본문', () => {
   });
 
   it('비워 둔 항목은 빈 문자가 아니라 비운 값으로 싣는다', () => {
-    const bare = draft({
-      deliveryNoteNo: '',
-      packageCount: '',
-      manufacturedDate: '',
-      expiryDate: '',
-    });
+    const bare = draft({ deliveryNoteNo: '', packageCount: '', manufacturedDate: '', expiryDate: '' });
     const body = toOutboxDraft(bare, 31, 9, 1, 2, NOW, '900028').body as {
       deliveryNoteNo: unknown;
       lines: Record<string, unknown>[];

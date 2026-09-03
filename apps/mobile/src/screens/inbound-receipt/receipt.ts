@@ -168,10 +168,13 @@ export const toOutboxDraft = (
         itemId,
         receivedQty: Number(draft.receivedQty.trim()),
         uomId,
-        packageCount: draft.packageCount.trim() === '' ? null : Number(draft.packageCount.trim()),
+        packageCount:
+          draft.packageCount.trim() === '' ? null : Number(draft.packageCount.trim()),
         supplierLotNo: draft.supplierLotMissing ? null : optional(draft.supplierLotNo),
         supplierLotMissing: draft.supplierLotMissing,
-        substituteLotReasonCode: draft.supplierLotMissing ? draft.substituteLotReasonCode : null,
+        substituteLotReasonCode: draft.supplierLotMissing
+          ? draft.substituteLotReasonCode
+          : null,
         manufacturedDate: optional(draft.manufacturedDate),
         expiryDate: optional(draft.expiryDate),
       },

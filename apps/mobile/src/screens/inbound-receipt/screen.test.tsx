@@ -201,7 +201,9 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    expect(await screen.findByText('발주를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    expect(
+      await screen.findByText('발주를 확인할 수 없습니다. 연결을 확인하세요.'),
+    ).toBeTruthy();
     expect(screen.queryByText('미마감 발주가 없습니다')).toBeNull();
   });
 
@@ -402,7 +404,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     });
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
-
+    
     const body = (await seen[0]!.json()) as { businessDate: string; lines: unknown[] };
 
     expect(body.lines).toHaveLength(1);
