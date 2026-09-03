@@ -266,16 +266,24 @@
 }
 
 /*
+ * ⚠ **키패드가 두 벌이다** — `.omf-numeric-keypad`(`packages/ui`, 작업자 지정)와
+ * `.numeric-keypad`(`apps/web`, 자재 투입). 한쪽만 겨냥했더니 자재 투입의 숫자만 14px 붉은
+ * 글자로 남았다(실측). 통합은 이 작업의 범위 밖이라 **둘 다 겨냥**해 두고, 합쳐질 때 이
+ * 선택자도 함께 줄인다.
+ */
+/*
  * 화면 내장 키패드 — **숫자를 키운다.** 키는 72px 인데 숫자가 14px 이라 멀리서 어느 키인지
  * 분간되지 않았다. 색도 본문색으로 되돌린다 — 붉은 액센트는 「주의」를 뜻하는 자리이고
  * 숫자 열 개가 전부 주의일 수는 없다.
  */
-.pop-ui .omf-numeric-keypad {
+.pop-ui .omf-numeric-keypad,
+.pop-ui .numeric-keypad {
   gap: var(--space-3);
   max-width: none;
 }
 
-.pop-ui .omf-numeric-keypad > button {
+.pop-ui .omf-numeric-keypad > button,
+.pop-ui .numeric-keypad > button {
   font-size: 28px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -556,4 +564,103 @@
 
 .pop-ui .pop-pane > .field-label {
   margin-block-end: 0;
+}
+
+/*
+ * 안내 배너의 아이콘·글자 줄맞춤 — **임시 우회**(DS 쪽 값이 한 경우에만 맞다).
+ *
+ * DS 는 아이콘에 `margin-top: 4px` 을 고정으로 준다. 그 값은 «제목이 있는» 배너의 첫 줄
+ * (16px/24)을 기준으로 잡힌 것이라, 제목 없이 본문만 있는 배너(14px/20)에서는 아이콘이
+ * **4px 내려앉는다**(실측 — 아이콘 top 482.5 vs 본문 top 478.5). POP 배너는 대부분 본문만
+ * 있어 이 어긋남이 늘 보인다.
+ *
+ * 고치는 방법은 «오프셋을 화면마다 손보는 것»이 아니라 **첫 줄 높이를 한 값으로 만드는
+ * 것**이다. 본문 줄높이를 제목과 같은 24 로 맞추면 두 경우 모두 첫 줄이 24 가 되고,
+ * 20px 아이콘의 올바른 오프셋이 `(24 − 20) / 2 = 2px` 하나로 성립한다.
+ *
+ * 본문 글자도 함께 15px 로 올린다 — 14px 은 이 화면의 글자 바닥(`--pop-label`) 아래다.
+ *
+ * ⚠ DS 내부 클래스를 겨냥하지 않는다 — 구조 선택자만 쓴다(아이콘 = 첫째, 내용 = 마지막).
+ * 걷어내는 시점: DS 가 아이콘 정렬을 첫 줄 기준으로 고친 뒤.
+ */
+.pop-ui .banner-slot > * > :first-child {
+  margin-block-start: 2px;
+}
+
+.pop-ui .banner-slot > * > :last-child > * {
+  line-height: 24px;
+}
+
+.pop-ui .banner-slot > * > :last-child > :last-child {
+  font-size: var(--pop-label);
+}
+
+/*
+ * ⛔ **두 번째 이후 구획 표제는 앞 블록에서 뗀다** — 내가 냈던 회귀다.
+ *
+ * `app.css` 의 `.pane-title:not(:first-child)` 가 20px 을 주고 있었는데, 위에서 표제 여백을
+ * 한 값(`0 0 16px`)으로 덮으면서 그 규칙이 함께 지워졌다. 스캔 결과 문장 바로 아래에
+ * 「담은 자재」가 달라붙어, 결과가 제목의 일부처럼 읽혔다(실측).
+ */
+.pop-ui .pane-title:not(:first-child) {
+  margin-block-start: var(--space-6);
+}
+
+/*
+ * 담은 자재 한 줄 — **면을 준다.** 자재가 둘 이상 담기면 LOT·품목·상태·수량칸·키패드가
+ * 줄마다 반복되는데, 경계가 없으면 어디까지가 한 자재인지 읽히지 않는다.
+ */
+.pop-ui .scanned-item {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+/*
+ * LOT 번호는 **34자리**다(실측). 한 줄에 안 들어가면 폭을 넘겨 잘리므로 접히게 두고,
+ * 자릿수를 눈으로 짚을 수 있게 고정폭으로 그린다.
+ */
+.pop-ui .scanned-code {
+  font-size: var(--pop-label);
+  font-weight: 600;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+}
+
+/* 품목·수량은 이 줄에서 가장 먼저 읽혀야 한다 — 자재를 «가리는» 값이다. */
+.pop-ui .scanned-item-facts-line {
+  font-size: var(--pop-value);
+  font-weight: 600;
+  line-height: 28px;
+}
+
+/*
+ * 수량 칸의 라벨 — 접근 이름에 LOT 번호가 통째로 들어 있어(칸이 여럿이라 이름이 유일해야
+ * 한다) 글자로 그리면 34자리가 라벨 한 줄을 통째로 먹는다. 화면에서는 한 줄로 줄여 두고,
+ * 무엇의 수량인지는 바로 위 LOT 번호가 말한다.
+ *
+ * ⚠ 접근 이름은 건드리지 않는다 — 줄이는 것은 «보이는 것»뿐이다.
+ */
+.pop-ui .scanned-item label {
+  display: block;
+  overflow: hidden;
+  font-size: var(--pop-label);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/*
+ * 키패드의 «모든» 키가 같은 모양이어야 한다.
+ *
+ * 「지움」이 DS 의 `text` 변형이라 **테두리도 배경도 없다** — 숫자 키 사이에서 혼자 글자만
+ * 떠 있어, 누르는 자리인지 안내 문구인지 분간되지 않는다(실측). 키패드는 손이 위치로
+ * 기억하는 물건이라, 한 칸만 모양이 다르면 그 칸에서 손이 멈춘다.
+ *
+ * 변형을 바꾸지 않고 «키의 테두리»만 한 값으로 준다 — 어느 변형이 오든 격자 안에서는
+ * 같은 키로 보인다.
+ */
+.pop-ui .omf-numeric-keypad > button,
+.pop-ui .numeric-keypad > button {
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
 }
