@@ -5472,6 +5472,38 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow-y: auto;
 }
 
+/* 고른 LOT의 확인 정보와 출력 조작 — 값과 버튼이 서로 붙지 않게 세로 흐름을 고정한다. */
+.pop-lot-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 현장에서 라벨과 값을 빠르게 대조할 수 있도록 이름/값 두 칸을 일정하게 맞춘다. */
+.pop-lot-facts {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.pop-lot-facts dt {
+  color: var(--on-surface-muted);
+}
+
+.pop-lot-facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* 위험 조작과 비활성 사유·재시도는 한 묶음으로 읽히되 각각 충분한 터치 간격을 둔다. */
+.pop-lot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: auto;
+}
+
 /* 쪽 이동 줄 — 위치 표시를 왼쪽 끝에 두고 이동 버튼을 오른쪽에 모은다. */
 .pop-page-nav {
   display: flex;
