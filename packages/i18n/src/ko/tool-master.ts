@@ -6,6 +6,7 @@
  */
 export const toolMaster = {
   title: '툴/금형/지그 마스터 관리',
+  paneTitle: '툴 목록',
   breadcrumbRoot: '설비/툴',
   actions: {
     addTool: '툴 등록',
