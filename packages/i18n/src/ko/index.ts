@@ -110,6 +110,7 @@ import { workerAssignment } from './worker-assignment';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { identificationTagIssue } from './identification-tag-issue';
 import { reworkResultRegister } from './rework-result-register';
+import { shippingPackingLabel } from './shipping-packing-label';
 
 export const ko = {
   common,
@@ -208,6 +209,7 @@ export const ko = {
   popMaterialLotLabel,
   identificationTagIssue,
   reworkResultRegister,
+  shippingPackingLabel,
 } as const;
 
 export type Messages = typeof ko;
