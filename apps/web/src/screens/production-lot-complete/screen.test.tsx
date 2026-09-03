@@ -465,6 +465,24 @@ describe('ProductionLotCompleteScreen — 목록', () => {
     expect(screen.queryByText(t.lotList.emptyNoWorkOrder)).not.toBeInTheDocument();
   });
 
+  /**
+   * ⛔ **슬롯 안내가 무엇을 가리키는지 말하게 한다.** 수 없이 「계획값이며 상한이 아닙니다」만
+   * 두면 사용자가 뜻을 잡지 못한다(실측 — 사용자 확인에서 잡혔다).
+   */
+  it('슬롯 안내가 남은 LOT 수를 함께 말한다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.lotList.slotNotice(1))).toBeInTheDocument();
+  });
+
+  it('셀 LOT 이 없으면 슬롯 안내를 내지 않는다', async () => {
+    renderScreen({ emptyLots: true });
+
+    await screen.findByText(t.lotList.empty);
+
+    expect(screen.queryByText(t.lotList.slotNotice(0))).not.toBeInTheDocument();
+  });
+
   /** ⚠ 목록 조회에 진척 질의가 없다 — 비워 두고 사유를 말한다(`omf-mes#399` 3번). */
   it('목록의 양품 열은 비우고 사유를 말한다', async () => {
     renderScreen();

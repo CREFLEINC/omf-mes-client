@@ -82,10 +82,15 @@ export const LotListPane = ({
         empty={hasWorkOrder ? t.lotList.empty : t.lotList.emptyNoWorkOrder}
       />
       <p className="field-note">{t.lotList.goodQtyPending}</p>
-      {/* 슬롯 안내는 스펙 §7 이 `AlertBanner`(info) 로 못박았다 — 문단으로 두지 않는다. */}
-      <div className="pop-lotdone-notice">
-        <AlertBanner variant="info">{t.lotList.slotNotice}</AlertBanner>
-      </div>
+      {/*
+        슬롯 안내는 스펙 §7 이 `AlertBanner`(info) 로 못박았다 — 문단으로 두지 않는다.
+        ⛔ 셀 것이 없으면 내지 않는다 — 「0개 있습니다」는 안내가 아니라 잡음이다.
+      */}
+      {lots.length > 0 && (
+        <div className="pop-lotdone-notice">
+          <AlertBanner variant="info">{t.lotList.slotNotice(lots.length)}</AlertBanner>
+        </div>
+      )}
     </>
   );
 };
