@@ -32,8 +32,9 @@ export interface TargetPaneProps {
  */
 export const TargetPane = ({ name, openState, onOpen }: TargetPaneProps) => {
   return (
-    <div role="group" aria-label={t.panes.target}>
-      <dl className="filter-bar">
+    <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.target}>
+      <h3>{t.panes.target}</h3>
+      <dl className="filter-bar approval-inbox-target-facts">
         <div className="field-cell">
           <dt className="field-label">{t.panes.target}</dt>
           <dd>{name}</dd>
