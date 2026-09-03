@@ -4074,6 +4074,80 @@ main > * + * {
   }
 }
 
+/* 비가동 집계 조회 — 긴 지표 설명이 세로 기둥으로 눌리지 않게 읽기 폭을 보장한다. */
+.downtime-summary-pane,
+.downtime-summary-table,
+.downtime-summary-filter > * {
+  min-width: 0;
+}
+
+.downtime-summary-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.downtime-summary-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.downtime-summary-pane > .pane-lead {
+  margin: 0;
+}
+
+.filter-bar.downtime-summary-filter {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.4fr) repeat(3, minmax(10rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.downtime-summary-filter .field-cell {
+  align-items: stretch;
+}
+
+.downtime-summary-filter-actions {
+  grid-column: 1 / -1;
+  align-items: flex-end;
+  margin-top: 0;
+}
+
+.kpi-grid.downtime-summary-kpi-grid {
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+
+.filter-bar.downtime-summary-bucket-filter {
+  margin-bottom: 0;
+}
+
+.downtime-summary-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.downtime-summary-table table {
+  min-width: 48rem;
+}
+
+.downtime-summary-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.downtime-summary-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .downtime-summary-filter-actions {
+    grid-column: 1;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
