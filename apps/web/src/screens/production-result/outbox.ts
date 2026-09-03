@@ -132,12 +132,33 @@ const postEntry = async (client: Client, entry: OutboxEntry): Promise<void> => {
 };
 
 /**
+ * 기다리면 풀리는 상태 코드 — 서버가 「지금은 못 받는다」고 말한 것이지 「이 실적은 안 된다」고
+ * 판정한 것이 아니다. 408 요청 시간초과 · 429 요청 과다 · 5xx 서버 오류가 여기 든다.
+ */
+const isTransientStatus = (status: number): boolean =>
+  status >= 500 || status === 429 || status === 408;
+
+/**
  * 서버가 **받지 않기로 판정한** 실패인가.
  *
  * 통신이 끊긴 것은 기다리면 풀리고, 서버가 거부한 것은 아무리 기다려도 풀리지 않는다.
  * 뒤엣것을 계속 재전송하면 큐가 영원히 비지 않는다.
+ *
+ * ⛔ **연결이 끊긴 것만 「기다림」으로 보면 안 된다.** 서버 재기동(502·503·504)·과부하(429)도
+ * 기다리면 풀리는 실패인데, 이것을 거부로 읽으면 항목이 큐에서 내려간다. 그 시점의 화면은 이미
+ * 「저장했습니다」를 띄우고 초안을 비운 뒤라 **작업자가 친 값을 되돌릴 방법이 없다** — 처음부터
+ * 다시 쳐야 한다. 큐에 남겨 두면 서버가 돌아왔을 때 같은 멱등 키로 나간다.
+ *
+ * ⚠ 상태 코드를 모르는 실패(`status === 0`)는 그대로 거부로 다룬다. 무엇이 잘못됐는지 말해 주지
+ * 못하는 실패를 무한히 재전송하면 큐가 그 한 건에 영원히 막힌다.
  */
-export const isRejected = (error: unknown): boolean => toApiError(error).kind !== 'network';
+export const isRejected = (error: unknown): boolean => {
+  const apiError = toApiError(error);
+
+  if (apiError.kind === 'network') return false;
+
+  return !(apiError.kind === 'http' && isTransientStatus(apiError.status));
+};
 
 export interface Outbox {
   /** 아직 서버에 닿지 않은 건수. **상시 표시가 필수 요건이다**(C-1 #4). */

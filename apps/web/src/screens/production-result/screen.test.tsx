@@ -56,6 +56,8 @@ interface Options {
   saveStatus?: number;
   /** 앞의 몇 번을 통신 실패로 만들 것인가. 재전송이 같은 키로 나가는지 볼 때 쓴다 */
   networkFailures?: number;
+  /** 앞의 몇 번을 서버 오류(503)로 만들 것인가. 기다리면 풀리는 실패를 거부로 읽지 않는지 본다 */
+  serverErrors?: number;
   /** 단위 조회가 실패한다 — 이름을 모를 때 숫자를 보이지 않는지 본다 */
   uomsFail?: boolean;
 }
@@ -114,6 +116,16 @@ const routes = (options: Options): StubRoute[] => [
       if (options.networkFailures !== undefined && options.writes !== undefined) {
         if (options.writes.length <= options.networkFailures) {
           throw new TypeError('Failed to fetch');
+        }
+      }
+
+      /*
+       * 서버 재기동을 흉내 낸다 — 응답은 오지만 「지금은 못 받는다」는 답이다. 이것을 거부로
+       * 읽으면 항목이 큐에서 내려가 작업자가 친 값이 사라진다.
+       */
+      if (options.serverErrors !== undefined && options.writes !== undefined) {
+        if (options.writes.length <= options.serverErrors) {
+          return jsonResponse({ message: '잠시 뒤 다시 시도하세요' }, { status: 503 });
         }
       }
 
@@ -587,4 +599,43 @@ describe('ProductionResultScreen 오프라인 (공유계약 C-1)', () => {
       writes[0]?.headers.get('Idempotency-Key'),
     );
   });
+
+  /*
+   * ⛔ **서버 오류를 거부로 읽지 않는다.** 읽으면 항목이 큐에서 내려가는데, 그 시점의 화면은
+   * 이미 성공을 말하고 초안을 비운 뒤라 작업자가 친 값을 되돌릴 방법이 없다.
+   */
+  it(
+    '서버 오류(503) 뒤에도 실적이 남아 같은 멱등 키로 다시 나간다',
+    { timeout: 20_000 },
+    async () => {
+      setOnline(true);
+      const user = userEvent.setup();
+      const writes: Request[] = [];
+      renderScreen({ writes, goodQty: 120, serverErrors: 1 });
+
+      await selectLot(user);
+      await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '10');
+      await user.click(saveButton());
+
+      await waitFor(() => {
+        expect(writes).toHaveLength(1);
+      });
+
+      /* 큐에 남아 있어야 한다 — 내려갔으면 미전송 건수가 0 이 된다. */
+      expect(screen.getByText(t.sync.pending(1))).toBeInTheDocument();
+
+      globalThis.dispatchEvent(new Event('online'));
+
+      await waitFor(
+        () => {
+          expect(writes).toHaveLength(2);
+        },
+        { timeout: 10_000 },
+      );
+
+      expect(writes[1]?.headers.get('Idempotency-Key')).toBe(
+        writes[0]?.headers.get('Idempotency-Key'),
+      );
+    },
+  );
 });

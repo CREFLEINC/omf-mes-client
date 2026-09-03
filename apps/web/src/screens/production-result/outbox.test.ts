@@ -34,6 +34,28 @@ describe('isRejected — 기다리면 풀리는가, 아닌가', () => {
   it('요청 경로 밖의 예외는 거부로 다룬다 — 재시도로 큐를 막지 않는다', () => {
     expect(isRejected(new Error('알 수 없음'))).toBe(true);
   });
+
+  /*
+   * ⛔ **서버가 「지금은 못 받는다」고 한 것을 「이 실적은 안 된다」로 읽지 않는다.** 거부로
+   * 읽으면 항목이 큐에서 내려가는데, 그 시점의 화면은 이미 성공을 말하고 초안을 비운 뒤라
+   * 작업자가 친 값을 되돌릴 방법이 없다.
+   */
+  it('서버 재기동·과부하는 거부가 아니다 — 기다리면 풀린다', () => {
+    for (const status of [408, 429, 500, 502, 503, 504]) {
+      expect(isRejected(new ApiRequestError({ kind: 'http', status }))).toBe(false);
+    }
+  });
+
+  it('값이 틀렸다는 4xx 는 그대로 거부다 — 기다려도 같은 답이 온다', () => {
+    for (const status of [400, 401, 404, 409, 422]) {
+      expect(isRejected(new ApiRequestError({ kind: 'http', status }))).toBe(true);
+    }
+  });
+
+  /* 무엇이 잘못됐는지 말해 주지 못하는 실패를 무한히 재전송하면 큐가 그 한 건에 막힌다. */
+  it('상태 코드를 모르는 실패는 거부로 다룬다', () => {
+    expect(isRejected(new ApiRequestError({ kind: 'http', status: 0 }))).toBe(true);
+  });
 });
 
 describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', () => {
