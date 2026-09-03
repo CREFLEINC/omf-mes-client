@@ -74,9 +74,19 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     label: 'P-02-09 포장 라벨·인식표 재출력',
     query: '?handlingUnitId=13001&workerNo=100029',
   },
+  {
+    path: '/pop/lot-label',
+    label: 'P-02-07 LOT 라벨 출력·부착',
+    query: '?workOrderId=11002&workerNo=100029',
+  },
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
+  {
+    path: '/pop/shipping-label',
+    label: 'P-04-02 납품·포장 라벨 출력',
+    query: '?shipmentId=14001&workerNo=100029',
+  },
   { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
   {
     path: '/pop/tool-usage',
