@@ -28,6 +28,8 @@ import { ShippingPackingLabelScreen } from './screen';
  */
 
 const ALLOCATION_PASSED = 9401;
+/** 서버가 아는 대상은 LOT 이다 — 회차 조회와 발행이 이 값으로 나간다. */
+const LOT_PASSED = 9801;
 const ALLOCATION_WAITING = 9402;
 const HANDLING_UNIT_ID = 9501;
 const ISSUE_LOG_ID = 9601;
@@ -222,7 +224,7 @@ describe('발행 → 미리보기 → 인쇄', () => {
 
     expect(sentTo(sent, '/app/document-issues')?.body).toMatchObject({
       documentTypeCode: 'DELIVERY_LABEL',
-      targets: [{ targetId: ALLOCATION_PASSED }],
+      targets: [{ targetId: LOT_PASSED }],
     });
     /* ⛔ 인쇄 결과 보고가 여기서 나가면 「나오지 않은 라벨」이 나온 것으로 남는다. */
     expect(sentTo(sent, ':report-print')).toBeUndefined();
@@ -276,7 +278,7 @@ describe('발행 → 미리보기 → 인쇄', () => {
 
 describe('재발행', () => {
   it('이미 발행된 대상을 고르면 사유를 받기 전까지 발행이 막힌다', async () => {
-    const { user, sent } = renderFlow({ issued: { [ALLOCATION_PASSED]: 1 } });
+    const { user, sent } = renderFlow({ issued: { [LOT_PASSED]: 1 } });
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');

@@ -92,7 +92,12 @@ export const ShippingPackingLabelScreen = () => {
       : units.units.map(toPackingRow);
   }, [allocationItems, kind, units.units]);
 
-  const targetIds = useMemo(() => rows.map((row) => row.targetId), [rows]);
+  /*
+   * ⛔ **서버에 묻는 것은 줄 식별자가 아니라 대상 식별자다**(`issueTargetId`). 납품 라벨은
+   * 한 LOT 이 여러 배분으로 갈릴 수 있어 유일하게 만든다 — 같은 값을 두 번 물으면 서버가
+   * 같은 회차를 두 줄로 돌려주고 화면이 그중 하나만 보게 된다.
+   */
+  const targetIds = useMemo(() => [...new Set(rows.map((row) => row.issueTargetId))], [rows]);
   const summaries = useIssueSummaries(kind, targetIds);
   const summaryItems = useMemo(() => summaries.data ?? [], [summaries.data]);
   const printers = usePrinters(kind);
@@ -101,8 +106,16 @@ export const ShippingPackingLabelScreen = () => {
    * ⛔ **재발행 여부를 화면이 세지 않는다.** 서버가 준 발행 횟수로만 가른다 — 화면이 세면
    * 다른 단말이 찍은 회차를 놓친다(스펙 §5-4).
    */
-  const isReissue = needsReissueReason(selectedIds, summaryItems);
-  const alreadyIssuedCount = selectedIds.filter((id) =>
+  const selectedRows = useMemo(
+    () => rows.filter((row) => selectedIds.includes(row.targetId)),
+    [rows, selectedIds],
+  );
+  const selectedIssueTargetIds = useMemo(
+    () => [...new Set(selectedRows.map((row) => row.issueTargetId))],
+    [selectedRows],
+  );
+  const isReissue = needsReissueReason(selectedIssueTargetIds, summaryItems);
+  const alreadyIssuedCount = selectedIssueTargetIds.filter((id) =>
     summaryItems.some((summary) => summary.targetId === id && summary.issueCount > 0),
   ).length;
 
@@ -117,8 +130,6 @@ export const ShippingPackingLabelScreen = () => {
   const isBusy = issue.phase === 'issuing' || issue.phase === 'printing';
   const isListError = allocations.isError || units.isError;
   const isListPending = allocations.isPending || units.isPending;
-  const selectedRows = rows.filter((row) => selectedIds.includes(row.targetId));
-
   /**
    * 발행할 수 있는가 — **막는 사유가 넷이다.**
    *

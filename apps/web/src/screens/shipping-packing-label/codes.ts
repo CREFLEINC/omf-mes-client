@@ -43,7 +43,23 @@ export type LabelKind = (typeof LABEL_KINDS)[number];
  *
  * 값이 확정되면 **이 파일의 두 줄만** 바뀐다.
  */
-export const DELIVERY_TARGET_TYPE_CODE = 'SHIPMENT_LOT_ALLOCATION';
+/*
+ * ⚠ **가정한 값이다 — 확정이 아니다**(사용자 결정 2026-09-03 · 설계팀 질문 대기).
+ *
+ * ⛔ 종전의 `'SHIPMENT_LOT_ALLOCATION'` 은 **계약이 거부한다.** 회차 조회
+ * `GET /app/document-issues/summary` 의 `targetTypeCode` 가 7값 enum 으로 닫혀 있고
+ * (`LOT`·`SERIAL_NUMBER`·`HANDLING_UNIT`·`GOODS_ISSUE_LINE`·`MOLD`·`LOCATION`·
+ * `INSPECTION_RESULT`) 「출하 배분」이 그 안에 없다 — 실측 2026-09-03, 목 서버가 400 을
+ * 냈고 화면은 회차를 몰라 발행을 막았다.
+ *
+ * enum 안에서 **우리가 실제로 가진 식별자로 부를 수 있는 값은 `LOT` 하나다**
+ * (`GOODS_ISSUE_LINE` 은 출고 라인 식별자를 요구하는데 이 화면에 그 값이 없다).
+ * 앞선 라벨 화면(`P-01-01`)도 같은 값을 쓴다.
+ *
+ * ⛔ **그래서 납품 라벨의 조회·발행 대상 식별자는 배분이 아니라 LOT 이다**
+ * (`TargetRow.issueTargetId`). 목록의 줄은 여전히 배분 단위다.
+ */
+export const DELIVERY_TARGET_TYPE_CODE = 'LOT';
 
 /** ⚠ 위와 같은 자리표시다. 포장 라벨의 대상은 취급 단위(`inventory.handling_unit`)다. */
 export const PACKING_TARGET_TYPE_CODE = 'HANDLING_UNIT';

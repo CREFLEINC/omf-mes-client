@@ -6,6 +6,8 @@ import type { TargetRow } from './types';
 
 const deliveryRow: TargetRow = {
   targetId: 9401,
+  /** 납품 라벨은 서버에 LOT 으로 묻는다 — 줄은 배분이지만 대상은 LOT 이다. */
+  issueTargetId: 9501,
   displayName: 'SYN-LOT-0001',
   lotId: 9501,
   isIssuable: true,
@@ -14,6 +16,7 @@ const deliveryRow: TargetRow = {
 
 const packingRow: TargetRow = {
   targetId: 9601,
+  issueTargetId: 9601,
   displayName: 'SYN-CTN-0001',
   lotId: null,
   isIssuable: true,
@@ -30,9 +33,7 @@ describe('toDocumentIssueBody', () => {
     });
 
     expect(body.documentTypeCode).toBe(DELIVERY_LABEL);
-    expect(body.targets).toEqual([
-      { targetTypeCode: 'SHIPMENT_LOT_ALLOCATION', targetId: 9401, lotId: 9501 },
-    ]);
+    expect(body.targets).toEqual([{ targetTypeCode: 'LOT', targetId: 9501, lotId: 9501 }]);
   });
 
   it('포장 라벨은 LOT 을 싣지 않는다 — 한 포장에 여러 LOT 이 섞여 하나로 정할 수 없다', () => {

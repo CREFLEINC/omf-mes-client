@@ -11,8 +11,8 @@ export interface TargetTableProps {
   summaries: IssueSummaryView[];
   selectedIds: readonly number[];
   onSelectionChange: (nextIds: number[]) => void;
-  /** 이력 창을 여는 자리. 회차가 1 이상인 대상에만 선다(스펙 §5-7). */
-  onOpenHistory: (targetId: number) => void;
+  /** 이력 창을 여는 자리 — **서버가 아는 대상 식별자**를 넘긴다(줄 식별자가 아니다). */
+  onOpenHistory: (issueTargetId: number) => void;
   empty: string;
 }
 
@@ -71,7 +71,7 @@ export const TargetTable = ({
       header: t.columns.lastIssued,
       width: '150px',
       render: (row) => {
-        const summary = summaryOf(summaries, row.targetId);
+        const summary = summaryOf(summaries, row.issueTargetId);
 
         return summary === null || summary.lastIssuedAt === null
           ? t.neverIssued
@@ -84,7 +84,7 @@ export const TargetTable = ({
       align: 'end',
       width: '140px',
       render: (row) => {
-        const summary = summaryOf(summaries, row.targetId);
+        const summary = summaryOf(summaries, row.issueTargetId);
 
         // 발행한 적이 없으면 이력을 열 것이 없다 — 빈 창을 여는 버튼을 두지 않는다.
         if (summary === null || summary.issueCount === 0) return t.neverIssued;
@@ -95,7 +95,7 @@ export const TargetTable = ({
             variant="text"
             size="xl"
             onClick={() => {
-              onOpenHistory(row.targetId);
+              onOpenHistory(row.issueTargetId);
             }}
           >
             {String(summary.issueCount)}

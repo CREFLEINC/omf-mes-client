@@ -39,7 +39,7 @@ export const IssueOutcome = ({
   onClose,
   onRetryRendition,
 }: IssueOutcomeProps) => {
-  const { printed, failedAt, error } = result;
+  const { printed, failedAt, failureReason, error } = result;
 
   // 아직 아무것도 하지 않았다 — 자리를 미리 차지하지 않는다.
   if (phase === 'idle' && failedAt === null) return null;
@@ -81,6 +81,12 @@ export const IssueOutcome = ({
        * 서버만 아는 것이라, 화면이 「실패했습니다」로 덮으면 사용자가 무엇을 고쳐야 할지 모른다.
        */}
       {error === null ? null : <p className="pop-slabel-wide-note">{describeError(error)}</p>}
+      {/*
+       * ⛔ **인쇄가 «왜» 실패했는지를 감추지 않는다.** 이 사유는 셸만 아는 것이고(통로 없음 ·
+       * 프린터 꺼짐 · 용지 없음) 서버 보고에는 실리는데 화면에만 없었다 — 사용자는 「나오지
+       * 않았다」만 보고 무엇을 고쳐야 할지 알 수 없다(공유계약 F-1 · G-9 · 실측 2026-09-03).
+       */}
+      {failureReason === null ? null : <p className="pop-slabel-wide-note">{failureReason}</p>}
     </AlertBanner>
   );
 };

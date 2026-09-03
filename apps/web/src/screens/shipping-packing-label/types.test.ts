@@ -56,6 +56,7 @@ describe('toPackingRow', () => {
       toPackingRow({ handlingUnitId: 9601, handlingUnitNo: 'SYN-CTN-0001', statusCode: 'SYN_HU' }),
     ).toEqual({
       targetId: 9601,
+      issueTargetId: 9601,
       displayName: 'SYN-CTN-0001',
       lotId: null,
       isIssuable: true,

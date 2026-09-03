@@ -51,7 +51,7 @@ export const toDocumentIssueBody = ({
   documentTypeCode: kind,
   targets: rows.map((row) => ({
     targetTypeCode: targetTypeCodeOf(kind),
-    targetId: row.targetId,
+    targetId: row.issueTargetId,
     ...(row.lotId === null ? {} : { lotId: row.lotId }),
   })),
   ...(reissueReasonCode === null ? {} : { reissueReasonCode }),

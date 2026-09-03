@@ -82,8 +82,22 @@ export const toHandlingUnitView = (data: HandlingUnitResponse): HandlingUnitView
  * 표 컴포넌트가 둘이 되고 회차 열을 두 번 고치게 된다.
  */
 export interface TargetRow {
-  /** 발행 요청의 `targetId` 로 그대로 실린다. 종류에 따라 배분 또는 취급 단위 식별자다. */
+  /**
+   * **목록 줄의 정체성.** 고름·표 행 키가 이 값이다. 납품 라벨은 배분, 포장 라벨은 취급 단위.
+   *
+   * ⛔ 서버로 나가는 값이 아니다 — 그것은 `issueTargetId` 다. 둘을 하나로 두었더니 계약이
+   * 거부하는 대상 유형으로 조회가 나갔다(실측 2026-09-03).
+   */
   targetId: number;
+  /**
+   * **서버가 아는 대상 식별자** — 회차 조회와 발행 요청에 실리는 값이다.
+   *
+   * 대상 유형(`codes.ts`)과 짝이다: 납품 라벨은 `LOT` 이므로 LOT 식별자, 포장 라벨은
+   * `HANDLING_UNIT` 이므로 취급 단위 식별자다. ⚠ 납품 라벨에서 **한 LOT 이 여러 배분으로
+   * 갈리면 줄은 둘이어도 이 값은 같다** — 회차가 LOT 단위로 매겨진다는 뜻이고, 그것이
+   * 가정한 대상 유형의 결과다(설계팀 질문 대기).
+   */
+  issueTargetId: number;
   /**
    * 화면에 그리는 대상 이름.
    *
@@ -140,6 +154,7 @@ export const toDeliveryRow = (
   unnamedLabel: string,
 ): TargetRow => ({
   targetId: allocation.shipmentLotAllocationId,
+  issueTargetId: allocation.lotId,
   // 서버가 준 표시 문자열만 쓴다 — 없으면 지어내지 않고 「없음」을 밝힌다(공유계약 G-9).
   displayName: allocation.lotNo ?? unnamedLabel,
   lotId: allocation.lotId,
@@ -155,6 +170,7 @@ export const toDeliveryRow = (
  */
 export const toPackingRow = (unit: HandlingUnitView): TargetRow => ({
   targetId: unit.handlingUnitId,
+  issueTargetId: unit.handlingUnitId,
   displayName: unit.handlingUnitNo,
   lotId: null,
   isIssuable: true,
