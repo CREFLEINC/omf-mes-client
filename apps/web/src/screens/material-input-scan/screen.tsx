@@ -245,7 +245,7 @@ export const MaterialInputScanScreen = () => {
      * **표제가 본문의 이름이 된다.** 셸이 있는 화면은 `AppShell`이 본문 이름을 주지만
      * 이 화면에는 줄 사람이 없다 — 이름 없는 랜드마크로 남으면 무엇인지 알 수 없다.
      */
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}

@@ -81,7 +81,7 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
 
       <p>{workOrder === null ? handoff.locked : handoff.lead}</p>
 
-      <div className="pop-handoff">
+      <div className="pop-handoff pop-ui-actions">
         {workOrder === null ? (
           <>
             {/*

@@ -5575,3 +5575,463 @@ main > * + * {
   justify-content: flex-end;
   gap: var(--space-4);
 }
+
+/*
+ * ══ POP 현장 단말 표시 규격 — `.pop-ui` ══════════════════════════════════════
+ *
+ * **옵트인이다.** 이 클래스가 붙은 화면에만 걸린다. POP 화면 전체에 한꺼번에 걸지 않는
+ * 이유는 지금이 «방향을 정하는 샘플» 단계이기 때문이다 — 방향이 확정되기 전에 11장에
+ * 걸면, 되돌릴 때 11장을 되돌려야 한다.
+ *
+ * ## 무엇을 고치는가
+ *
+ * 화면들을 1024×768 로 띄워 보고 잡은 것 넷이다.
+ *
+ * 1. **글자가 작다.** 디자인 시스템의 본문·라벨은 관리웹(마우스·근거리) 기준이라 12~14px
+ *    인데, 이 화면은 장갑 낀 사람이 한 걸음 떨어져 읽는다. POP 안에서만 바닥을 올린다.
+ * 2. **버튼 글자가 14px 로 고정돼 있다.** DS Button 이 `--type-label-lg` 를 못박아, 72px
+ *    짜리 버튼 위에 14px 글자가 앉는다. 크기는 손을 위한 것이고 글자는 눈을 위한 것이라
+ *    둘이 따로 논다. (DS 갈래 **b** — 변형 부족. 방향 확정 후 DS 이슈 후보다.)
+ * 3. **세로 예산이 화면마다 다르다.** 어떤 화면은 아래 250px 를 비우고 어떤 화면은 넘쳐
+ *    스크롤이 생긴다. 단말에는 주소창도 스크롤바도 없어, 넘친 것은 «없는 것»이 된다.
+ *    → 화면 높이를 뷰포트에 고정하고 **구획 안에서만** 스크롤시킨다.
+ * 4. **머리줄이 화면마다 다르게 생겼다.** 표제 크기·상태 표시 위치가 제각각이라, 단말을
+ *    옮겨 다니는 사람이 매번 「지금 무슨 화면인가」를 다시 찾는다.
+ *
+ * ⛔ **장식을 더하지 않는다.** 그림자·그라데이션·전환 효과를 새로 넣지 않았다. 바뀐 것은
+ * 치수·굵기·대비·배치뿐이다.
+ */
+
+/*
+ * POP 표시 치수 — **한 곳에 모은다.** 화면마다 적으면 한쪽만 고쳐진다.
+ * 값의 근거는 「1024×768 패널 PC · 시거리 50~70cm · 장갑」이다.
+ */
+.pop-ui {
+  --pop-header-h: 72px;
+  --pop-pad: var(--space-5);
+
+  /* 글자 바닥 — 이 아래로 내려가는 문자는 이 화면에 두지 않는다. */
+  --pop-text: 16px;
+  --pop-label: 15px;
+  /* 목록에서 «찾는» 값(지시 번호·LOT 번호) */
+  --pop-value: 20px;
+  /* 화면이 지금 말하는 단 하나의 값(현재 작업자 등) */
+  --pop-value-lg: 30px;
+}
+
+/*
+ * 화면 = 머리줄 + 본문. 높이를 뷰포트에 못박아 **본문이 남은 높이를 정확히 가져가게** 한다.
+ * `min-height` 로 두면 내용이 적을 때 아래가 비고 많을 때 문서가 늘어난다 — 단말에서는
+ * 둘 다 잘못이다.
+ */
+.pop-ui {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  /* `main { padding: 24px }`(관리웹 본문 여백)를 턴다 — 머리줄이 화면 끝까지 가야 한다. */
+  padding: 0;
+  font-size: var(--pop-text);
+}
+
+/* 규범 1의 블록 이음매(`main > * + *`)를 받지 않는다 — 여백은 아래에서 직접 준다. */
+.pop-ui > * + * {
+  margin-top: 0;
+}
+
+/* ── 머리줄 ─────────────────────────────────────────────────────────────── */
+
+/*
+ * 두 어휘(`.pop-header` · `.pop-terminal-header`)가 같은 모양으로 서게 한다. 화면마다
+ * 이름이 다른 것은 슬라이스 소유 규율의 결과이고, **보이는 것까지 달라야 할 이유는 없다.**
+ */
+.pop-ui > .pop-header,
+.pop-ui > .pop-terminal-header {
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--pop-header-h);
+  min-height: var(--pop-header-h);
+  padding: 0 var(--pop-pad);
+  background: var(--surface-container-low);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+/*
+ * 표제 — 멀리서 읽는 첫 글자다. DS 의 `title-lg`(20px)로는 머리줄에서 상태 칩과 무게가
+ * 비슷해져 「무슨 화면인가」가 밀린다. `headline-lg` 급으로 올린다.
+ */
+.pop-ui .pop-title,
+.pop-ui .pop-terminal-header__brand {
+  margin: 0;
+  font: 700 26px/32px var(--font-sans);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+/* 표제 옆 맥락(작업지시 번호 등) — 표제보다 약하되 본문 바닥은 지킨다. */
+.pop-ui .pop-context {
+  font: 400 var(--pop-text) / 24px var(--font-sans);
+  letter-spacing: 0;
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 오른쪽 끝의 세션·단말·연결. **줄바꿈시키지 않는다** — 머리줄 높이가 고정이라 접히면
+ * 잘린다. 항목 사이는 넉넉히 벌려 눈이 덩어리로 읽게 한다.
+ */
+.pop-ui .pop-context-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin: 0 0 0 auto;
+  white-space: nowrap;
+}
+
+/* 머리줄 안의 보조 문구는 `.field-note` 로 오지만 여기서는 잘 보여야 한다. */
+.pop-ui > .pop-terminal-header .field-note {
+  margin: 0;
+  font-size: var(--pop-text);
+  color: var(--on-surface-variant);
+}
+
+/* ── 본문 ──────────────────────────────────────────────────────────────── */
+
+/*
+ * 본문 구획이 남은 높이를 전부 가져간다. `min-height: 0` 이 없으면 flex 자식이 내용만큼
+ * 부풀어 화면 밖으로 밀린다.
+ */
+.pop-ui > .pop-panes,
+.pop-ui > .pop-assign {
+  flex: 1 1 auto;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: var(--pop-pad);
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+/*
+ * 좌우 비율을 **1 : 1.15 로 고친다.** 기존 2 : 3 은 왼쪽을 387px 로 만들어, 여섯 열짜리
+ * 수령 표의 마지막 열(상태)이 잘렸다 — 표 안쪽에 스크롤이 있긴 하지만 단말에는 스크롤바가
+ * 보이지 않아 «없는 열»이 된다.
+ */
+.pop-ui > .pop-panes {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+}
+
+/* 머리줄과 본문 사이에 끼는 배너(작업지시 없음 등)도 본문과 같은 좌우 여백을 쓴다. */
+.pop-ui > .banner-slot {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  margin: var(--space-4) 0 0;
+  padding: 0 var(--pop-pad);
+}
+
+/*
+ * 구획 — **스크롤은 여기서만 일어난다.** 화면이 스크롤하면 머리줄이 위로 사라져 지금 어느
+ * 화면·어느 단말인지가 없어진다.
+ */
+.pop-ui .pane,
+.pop-ui .pop-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+}
+
+/* 구획 제목 — 본문과 한 급 차이를 두어 「여기서부터 다른 이야기」가 보이게 한다. */
+.pop-ui .pane > h2,
+.pop-ui .pane-title,
+.pop-ui .pop-pane > .field-label {
+  margin: 0 0 var(--space-4);
+  font: 600 20px/28px var(--font-sans);
+  letter-spacing: -0.01em;
+  color: var(--on-surface);
+}
+
+/* 본문 문단·보조 문구의 바닥. 14px 이하로 내려가는 글자를 이 화면에 두지 않는다. */
+.pop-ui p,
+.pop-ui li,
+.pop-ui dd,
+.pop-ui dt {
+  font-size: var(--pop-text);
+  line-height: 24px;
+}
+
+.pop-ui .field-note,
+.pop-ui .pane-lead {
+  font-size: var(--pop-label);
+  line-height: 22px;
+  color: var(--on-surface-variant);
+}
+
+.pop-ui .field-label {
+  font-size: var(--pop-label);
+  font-weight: 600;
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 안내 배너의 아래 이음매를 줄인다(20 → 12). 규범 6 의 20px 은 관리웹 밀도 기준인데,
+ * POP 은 배너가 구획의 절반을 차지하는 일이 잦아 그만큼 본문이 밀린다.
+ */
+.pop-ui .banner-slot {
+  margin-bottom: var(--space-3);
+}
+
+/* ── 조작부 ────────────────────────────────────────────────────────────── */
+
+/*
+ * ⭐ **버튼 글자를 손 크기에 맞춘다.** DS Button 이 `font: var(--type-label-lg)`(14px)로
+ * 못박아 72px 버튼 위에 14px 글자가 앉는다. 크기는 손을 위한 것이고 글자는 눈을 위한
+ * 것이라, 한쪽만 키우면 「큰데 안 읽히는 버튼」이 된다.
+ *
+ * 모서리도 함께 편다. `--radius-full` 은 글자가 짧을 때 버튼을 **원**으로 만들어(실측:
+ * 스캔 「읽기」 버튼) 누를 면적이 실제보다 작아 보이고, 옆의 네모난 입력칸과 짝이 맞지 않는다.
+ */
+.pop-ui button {
+  border-radius: var(--radius-md);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/*
+ * 잠긴 버튼 — **눌리는 것처럼 보이지 않게 한다.** DS 의 잠금 표현이 「옅은 회색 채움」이라
+ * 채운 주 버튼과 형태가 같아, 실측 화면에서 잠긴 「투입 확정」이 눌러도 되는 것으로 읽혔다.
+ * 채움을 걷고 테두리만 남긴다 — 자리는 지키되 면이 없다.
+ */
+.pop-ui button:disabled {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  color: var(--state-disabled-text);
+}
+
+/*
+ * 화면 내장 키패드 — **숫자를 키운다.** 키는 72px 인데 숫자가 14px 이라 멀리서 어느 키인지
+ * 분간되지 않았다. 색도 본문색으로 되돌린다 — 붉은 액센트는 「주의」를 뜻하는 자리이고
+ * 숫자 열 개가 전부 주의일 수는 없다.
+ */
+.pop-ui .omf-numeric-keypad {
+  gap: var(--space-3);
+  max-width: none;
+}
+
+.pop-ui .omf-numeric-keypad > button {
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface);
+}
+
+/*
+ * 구획 «전체»가 지는 조작은 구획 폭을 그대로 쓴다. 폭이 글자 길이로 정해지면, 같은 무게의
+ * 조작 둘이 서로 다른 크기로 서서 어느 쪽이 주된 것인지 흐려진다.
+ */
+.pop-ui-actions {
+  display: flex;
+  gap: var(--space-3);
+  margin-block-start: auto;
+  padding-block-start: var(--space-4);
+}
+
+.pop-ui-actions > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pop-ui-actions button {
+  width: 100%;
+}
+
+/* `<Link>` 로 감싼 버튼은 링크가 폭을 갖지 않으면 늘어나지 않는다. */
+.pop-ui-actions > a {
+  display: block;
+  text-decoration: none;
+}
+
+/* ── 목록·표 ───────────────────────────────────────────────────────────── */
+
+/*
+ * 목록 줄 — **번호가 먼저 읽히게 한다.** 지금은 지시 번호와 수량·시각이 같은 무게로 서서,
+ * 손에 든 지시서와 눈으로 맞추는 데 시간이 걸린다.
+ */
+.pop-ui .pop-card-list p:first-child {
+  font-size: var(--pop-value);
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.pop-ui .pop-card-list .field-note {
+  margin-top: var(--space-1);
+}
+
+/* 표 — 관리웹보다 한 급 크게. 좁은 구획에서도 열 이름이 접히지 않게 여백은 줄인다. */
+.pop-ui table {
+  font-size: var(--pop-label);
+}
+
+.pop-ui th {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 상세의 이름–값 — 값이 이름보다 무겁게 읽혀야 한다. 지금은 둘이 같은 크기라 «무엇을»
+ * 보려던 눈이 이름 열을 먼저 훑는다.
+ */
+.pop-ui .pop-detail-list > dt {
+  font-size: var(--pop-label);
+  color: var(--on-surface-muted);
+}
+
+.pop-ui .pop-detail-list > dd {
+  font-size: var(--pop-value);
+  font-weight: 600;
+  line-height: 28px;
+}
+
+/* ── 화면별 ────────────────────────────────────────────────────────────── */
+
+/*
+ * P-CO-01 — 좌우 512 는 유지하되 **704 고정을 푼다.** 고정 높이는 뷰포트가 정확히 768 일
+ * 때만 맞고, 아니면 남거나 넘친다. 위에서 화면 높이를 뷰포트에 못박았으므로 구획은
+ * 「남은 만큼」이면 된다.
+ */
+.pop-ui.pop-screen > .pop-assign {
+  min-height: 0;
+}
+
+/*
+ * 사번 표시칸 — 이 화면이 말하는 값이라 가장 크게 둔다. 칸 높이는 `xl`(60px) 그대로다
+ * (「큰 글자」는 글자 요구이지 높이 요구가 아니다 · §7).
+ */
+.pop-ui .worker-no-field input {
+  font-size: var(--pop-value-lg);
+  font-weight: 600;
+}
+
+/* 현재 작업자 — 지금 누구로 기록되는지가 화면 밖에서도 보여야 한다(§5-4). */
+.pop-ui .worker-card__name {
+  font-size: var(--pop-value-lg);
+  line-height: 40px;
+}
+
+/*
+ * 스캔 줄 — 입력칸과 버튼의 **윗선을 맞춘다.** 버튼 높이가 72(터치 하한)이고 칸이 60이라
+ * 기존 규범 2(라벨 층만큼 내림)로는 아랫선이 12px 어긋난다.
+ */
+.pop-ui .scan-row {
+  align-items: flex-end;
+}
+
+.pop-ui .scan-row > button {
+  margin-top: 0;
+  min-width: 8rem;
+}
+
+.pop-ui .scan-manual {
+  align-items: center;
+}
+
+/*
+ * 구획에 직접 놓인 주 버튼(사번 「확인」 등)은 구획 폭을 쓴다. 위 `.pop-ui-actions` 와 같은
+ * 근거이며, 묶을 짝이 없어 래퍼를 두지 않은 자리다.
+ */
+.pop-ui .pop-pane > button {
+  width: 100%;
+}
+
+/*
+ * 「투입 확정」 줄 — **구획 바닥에 둔다.** 담은 자재 목록이 길어질수록 확정 버튼이 아래로
+ * 밀려, 다 담고 나면 스크롤해서 버튼을 찾아야 했다. 바닥에 고정하면 목록만 스크롤한다.
+ */
+.pop-ui .confirm-row {
+  margin-block-start: auto;
+  padding-block-start: var(--space-4);
+  justify-items: stretch;
+}
+
+.pop-ui .confirm-row > button:first-child {
+  width: 100%;
+}
+
+/*
+ * 목록 카드 — **누를 자리의 경계가 보여야 한다.**
+ *
+ * 카드 표면(`low`)이 구획 바탕과 같은 값이라 실측 화면에서 카드 경계가 사라졌다. 줄 전체가
+ * 누르는 자리인 목록에서 그 경계가 안 보이면, 장갑 낀 손이 «줄과 줄 사이»를 누른다.
+ * 한 단 올린 표면과 또렷한 테두리로 면을 세우고, 고른 줄은 왼쪽에 액센트 띠를 세운다 —
+ * 색만으로 가르지 않는다(색각 이상·직사광선).
+ *
+ * ⚠ DS 의 내부 클래스를 겨냥하지 않는다 — 구조 선택자와 공개 속성(`aria-pressed`)만 쓴다.
+ */
+.pop-ui .pop-card-list > li > * {
+  background: var(--surface-container);
+  border-color: var(--outline);
+}
+
+.pop-ui .pop-card-list > li > [aria-pressed='true'] {
+  background: var(--surface-container-high);
+  box-shadow: inset 4px 0 0 var(--primary);
+}
+
+/* 카드 안쪽 여백을 좁혀 한 화면에 서는 줄 수를 늘린다(기존 20 → 16, 위쪽 0 → 16). */
+.pop-ui .pop-card-list > li > * > * {
+  padding: var(--space-4);
+}
+
+.pop-ui .pop-card-list p {
+  margin: 0;
+}
+
+/*
+ * 값 목록과 경고 사이의 구분선. 브라우저 기본 `<hr>` 은 내용 폭에 맞춰 줄어들어(실측: 점
+ * 하나로 보였다) 선의 구실을 못 한다 — 구획 폭을 그대로 쓰는 가는 선으로 되돌린다.
+ */
+.pop-ui hr {
+  width: 100%;
+  margin: var(--space-4) 0;
+  border: 0;
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+/*
+ * ⭐ **키패드를 구획 바닥에 못박는다.** 실측에서 잡은 오조작이다 — 사번을 찍는 도중 「6자리와
+ * 다릅니다」 경고가 뜨자 그 높이만큼 키패드가 **아래로 밀려**, 다음 숫자를 누르려던 손가락이
+ * 한 줄 위의 키를 눌렀다. 위에서 배너가 늘어도 키의 자리는 그대로여야 한다.
+ *
+ * `.scan-outcome` 이 「결과가 없을 때도 자리를 비워 둔다」로 푼 것과 같은 문제이고, 이쪽은
+ * 배너 조합이 여럿이라 높이를 예약하는 대신 **바닥 기준으로 세운다.**
+ */
+.pop-ui .pop-pane > .omf-numeric-keypad {
+  margin-block-start: auto;
+}
+
+.pop-ui .pop-pane > .omf-numeric-keypad + button {
+  margin-block-start: var(--space-3);
+}
+
+/*
+ * 사번 칸 아래 알림 자리 — 배너 한 장 분(46 + 이음매 12)을 **미리 비워 둔다.** 배너가 뜨고
+ * 질 때 아래 키패드가 움직이지 않아야 한다(`keypad-panel.tsx` 머리말 · `.scan-outcome` 과
+ * 같은 근거).
+ */
+.worker-no-notice {
+  min-height: 58px;
+}
+
+.worker-no-notice > .banner-slot:last-child {
+  margin-bottom: 0;
+}

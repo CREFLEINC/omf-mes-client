@@ -210,7 +210,7 @@ export const WorkerAssignmentScreen = () => {
   }, [submitted, lookup.isError]);
 
   return (
-    <div className="pop-screen">
+    <div className="pop-screen pop-ui">
       {/*
        * ⛔ **머리글·이동 경로를 두지 않는다.** 스펙 §3/E-1 의 세로 예산은 헤더 64 + 본문 704
        * = 768 이고 「슬랙이 0」이라, 도면에 없는 줄을 얹을 자리가 없다. 관리웹 화면의 전례를

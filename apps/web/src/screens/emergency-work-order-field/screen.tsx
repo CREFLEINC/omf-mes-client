@@ -57,7 +57,7 @@ export const EmergencyWorkOrderFieldScreen = ({
     (workOrders ?? []).find((workOrder) => workOrder.workOrderId === selectedId) ?? null;
 
   return (
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <PopHeader
         titleId={titleId}
         terminalNo={terminalNo}

@@ -56,25 +56,34 @@ export const KeypadPanel = ({
       onChange={() => undefined}
     />
 
-    {/* ⚠ 경고일 뿐 확인을 막지 않는다. */}
-    {looksUnusual(workerNo) && (
-      <div className="banner-slot">
-        <AlertBanner variant="warning">{t.unusual}</AlertBanner>
-      </div>
-    )}
+    {/*
+     * 알림 자리 — **비어 있을 때도 높이를 지킨다.**
+     *
+     * 배너가 뜨고 지는 대로 키패드가 위아래로 움직이면, 다음 숫자를 누르려던 손가락이 한 줄
+     * 옆의 키를 누른다(실측으로 잡았다: 「6자리와 다릅니다」 경고가 뜬 순간 키패드가 밀렸다).
+     * `.scan-outcome` 이 스캔 결과 줄에서 같은 문제를 같은 방법으로 막고 있다.
+     */}
+    <div className="worker-no-notice">
+      {/* ⚠ 경고일 뿐 확인을 막지 않는다. */}
+      {looksUnusual(workerNo) && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.unusual}</AlertBanner>
+        </div>
+      )}
 
-    {/* ⚠ 오프라인이어도 확인은 눌린다 — 미리 받아 둔 목록으로 본다(§5-6). */}
-    {offlineNote !== null && (
-      <div className="banner-slot">
-        <AlertBanner variant="info">{offlineNote}</AlertBanner>
-      </div>
-    )}
+      {/* ⚠ 오프라인이어도 확인은 눌린다 — 미리 받아 둔 목록으로 본다(§5-6). */}
+      {offlineNote !== null && (
+        <div className="banner-slot">
+          <AlertBanner variant="info">{offlineNote}</AlertBanner>
+        </div>
+      )}
 
-    {error !== null && (
-      <div className="banner-slot">
-        <AlertBanner variant="error">{error}</AlertBanner>
-      </div>
-    )}
+      {error !== null && (
+        <div className="banner-slot">
+          <AlertBanner variant="error">{error}</AlertBanner>
+        </div>
+      )}
+    </div>
 
     <NumericKeypad
       value={workerNo}
