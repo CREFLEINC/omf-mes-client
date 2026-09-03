@@ -394,8 +394,16 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     );
   });
 
-  /** 다른 지시를 고르면 다른 쓰기다 — 붙들고 있던 시각과 키를 버린다. */
-  it('다른 작업지시를 고르면 새 멱등 키로 나간다', async () => {
+  /**
+   * 다른 지시를 고르면 다른 쓰기다 — 붙들고 있던 시각과 키를 버린다.
+   *
+   * ⚠ **시계를 얼려 놓고 잰다.** 본문에는 `workOrderId` 도 실려 지시만 바꿔도 지문이 달라진다 —
+   *    시각을 움직이게 두면 「시각을 버렸는가」를 재지 못하고 감지기가 조용히 통과한다(실측).
+   */
+  it('다른 작업지시를 고르면 새 멱등 키로 나가고 시각도 새로 잡는다', async () => {
+    let seconds = 1;
+    vi.spyOn(Date.prototype, 'getSeconds').mockImplementation(() => seconds);
+
     const other = {
       ...WORK_ORDER,
       workOrderId: WORK_ORDER.workOrderId + 1,
@@ -414,6 +422,7 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     await rendered.user.click(startButton());
     await screen.findByText(t.result.startFailed);
 
+    seconds = 9;
     await rendered.user.click(screen.getByRole('button', { name: selectName(other.workOrderNo) }));
     await waitFor(() => {
       expect(startButton()).toBeEnabled();
@@ -428,6 +437,10 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     if (first === undefined || second === undefined) throw new Error('두 번 나가지 않았습니다.');
 
     expect(second.headers['idempotency-key']).not.toBe(first.headers['idempotency-key']);
+    /* ⭐ 이 줄이 「시각을 버렸는가」를 잰다 — 위 키 비교만으로는 지시 번호 때문에 늘 통과한다. */
+    expect((second.body as Record<string, unknown>).startedAt).not.toBe(
+      (first.body as Record<string, unknown>).startedAt,
+    );
   });
 
   /** 시작이 실패하면 그 사실을 말한다 — 조용히 아무 일도 없던 것처럼 두지 않는다. */

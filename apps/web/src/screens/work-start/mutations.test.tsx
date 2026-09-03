@@ -80,6 +80,11 @@ describe('재개 — 세션 사건 적재', () => {
     });
 
     expect(seen).toHaveLength(0);
+    /*
+     * ⛔ 「연결을 확인하세요」로 새면 안 된다 — 끊긴 것이 아니라 «보낼 수 없다»고 판정한
+     *    실패다. 정규화하지 않고 던지면 `runRequest` 가 network 로 바꾼다.
+     */
+    expect(result.current.error?.kind).not.toBe('network');
   });
 
   /** ⭐ 사유는 비운다 — 중단 사유는 중단할 때 남았고, 재개에 다시 실을 값이 아니다. */

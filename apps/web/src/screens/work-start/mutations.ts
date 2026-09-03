@@ -1,5 +1,8 @@
+import { messages } from '@omf-mes/i18n';
+
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { ApiRequestError } from '../../patterns/request';
 import { workStartKeys } from './queries';
 import type { WorkSession, WorkSessionCreate, WorkSessionEventCreate } from './types';
 
@@ -116,8 +119,23 @@ export const useResumeWork = ({
 
   return useMasterWrite<WorkSessionEventCreate, unknown>({
     request: (body, headers) => {
+      /*
+       * ⛔ **평 `Error` 를 던지지 않는다.** `runRequest` 는 정규화되지 않은 실패를 「연결
+       *    문제」로 바꾸고(`patterns/request.ts`), 그러면 화면이 「연결을 확인하세요」라고
+       *    말해 **할 수 없는 조치**를 시킨다 — 끊긴 것이 아니라 보낼 수 없다고 판정한 것이다.
+       *    선례는 같은 성격의 `requireIfMatch`(토큰 없음)다.
+       */
       if (workSessionId === null) {
-        throw new Error('재개할 세션을 모르면 사건을 적재하지 않습니다.');
+        throw new ApiRequestError({
+          kind: 'validation',
+          errors: [
+            {
+              scope: 'screen',
+              code: 'RESUME_SESSION_UNKNOWN',
+              message: messages.workStart.resume.sessionNotFound,
+            },
+          ],
+        });
       }
 
       return client.POST('/production/work-sessions/{workSessionId}/events', {
