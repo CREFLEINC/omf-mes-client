@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
 import {
@@ -173,5 +174,104 @@ describe('P-02-10 작업 중단 등록', () => {
     );
 
     expect(await screen.findByText(t.entry.workerUnknown)).toBeInTheDocument();
+  });
+
+  /**
+   * 전송 — **큐에 담는 것이 곧 성공이다**(공유계약 C-1 #2). 통신을 기다리지 않는다.
+   */
+  describe('중단·재개 전송', () => {
+    beforeEach(() => {
+      globalThis.localStorage.clear();
+    });
+
+    afterEach(() => {
+      globalThis.localStorage.clear();
+    });
+
+    const eventPost = (sent: Request[]): StubRoute => ({
+      match: (request) => request.method === 'POST' && new URL(request.url).pathname === EVENTS_PATH,
+      respond: (request) => {
+        sent.push(request);
+
+        return jsonResponse({}, { status: 201 });
+      },
+    });
+
+    it('사유를 고르고 누르면 STOP 이 그 세션 경로로 나간다', async () => {
+      const user = userEvent.setup();
+      const sent: Request[] = [];
+
+      renderScreen([sessionsRoute([workSession()]), eventsRoute([]), eventPost(sent)]);
+
+      await user.click(await screen.findByRole('radio', { name: t.reasons.MOLD_CHANGE }));
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1);
+      });
+      expect(await sent[0]!.json()).toMatchObject({
+        eventTypeCode: 'STOP',
+        reasonCode: 'MOLD_CHANGE',
+      });
+    });
+
+    /* ⛔ ⓐ 차단(스펙 §6) — 사유 없이 보내면 정정할 수 없는 기록이 사유 없이 남는다. */
+    it('사유를 고르지 않으면 보내지 않고 말한다', async () => {
+      const user = userEvent.setup();
+      const sent: Request[] = [];
+
+      renderScreen([sessionsRoute([workSession()]), eventsRoute([]), eventPost(sent)]);
+
+      await user.click(await screen.findByRole('button', { name: t.form.stopAction }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(t.form.reasonRequired);
+      expect(sent).toHaveLength(0);
+    });
+
+    /* 스펙 §6 — 「이미 중단 상태면 재개만 활성」. 돌고 있는 설비에 중단을 두 번 걸지 않는다. */
+    it('중단된 세션에서는 재개만 누를 수 있다', async () => {
+      renderScreen([
+        sessionsRoute([workSession({ statusCode: 'STOPPED' })]),
+        eventsRoute([]),
+      ]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeEnabled();
+      });
+      expect(screen.getByRole('button', { name: t.form.stopAction })).toBeDisabled();
+    });
+
+    /* ⛔ 재개는 사유를 비운다(§5-4) — 초안에 남은 사유를 실어 보내지 않는다. */
+    it('재개는 사유 없이 나간다', async () => {
+      const user = userEvent.setup();
+      const sent: Request[] = [];
+
+      renderScreen([
+        sessionsRoute([workSession({ statusCode: 'STOPPED' })]),
+        eventsRoute([]),
+        eventPost(sent),
+      ]);
+
+      await user.click(await screen.findByRole('button', { name: t.form.resumeAction }));
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(1);
+      });
+      /* 본문은 한 번만 읽을 수 있다 — 두 번 부르면 두 번째가 던져 검사가 헛돈다. */
+      const body: unknown = await sent[0]!.json();
+
+      expect(body).toMatchObject({ eventTypeCode: 'RESUME' });
+      expect(body).not.toHaveProperty('reasonCode');
+    });
+
+    /*
+     * ⛔ **적은 것이 어디로 가는지 숨기지 않는다.** 비고를 담을 칸이 계약에 없어 이번에는
+     * 나가지 않는다 — 말하지 않으면 작업자는 남았다고 믿는다.
+     */
+    it('비고가 아직 저장되지 않는다는 사실을 상시 세운다', async () => {
+      renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
+
+      expect(await screen.findByText(t.form.remarksNotSaved)).toBeInTheDocument();
+    });
   });
 });

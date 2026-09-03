@@ -15,6 +15,23 @@ import type { components } from '@omf-mes/api-client';
 type WorkSessionResponse = components['schemas']['WorkSession'];
 type WorkSessionEventResponse = components['schemas']['WorkSessionEvent'];
 
+/** 이 화면이 보내는 세션 사건 한 건. */
+export type WorkSessionEventCreate = components['schemas']['WorkSessionEventCreate'];
+
+/**
+ * 세션이 **중단 상태**인가 — 「재개」만 활성이 되는 자리다(스펙 §6).
+ *
+ * ⭐ 여기서는 상태 코드를 쓴다. 열림/닫힘과 달리 **중단은 끝 시각으로 알 수 없고**, 고정한
+ * 계약이 문자열 셋(`RUNNING`·`STOPPED`·`ENDED`)을 확정해 두었다.
+ *
+ * ⚠ 모르는 문자열이 오면 **중단이 아닌 것으로 읽는다** — 「모른다」를 「중단됐다」로 바꿔
+ * 재개 버튼을 열면, 돌고 있는 설비에 재개를 한 번 더 적재한다.
+ */
+export const STOPPED_STATUS_CODE = 'STOPPED';
+
+export const isStoppedSession = (session: Pick<WorkSessionView, 'statusCode'>): boolean =>
+  session.statusCode === STOPPED_STATUS_CODE;
+
 /** 화면이 다루는 작업 세션 한 건. */
 export interface WorkSessionView {
   workSessionId: number;
@@ -23,7 +40,7 @@ export interface WorkSessionView {
   startedAt: string;
   /** **비어 있으면 아직 닫히지 않았다.** */
   endedAt: string | null;
-  /** 진행·중단·종료. ⚠ 코드 문자열은 계약이 아직 확정하지 않았다 — 표시에만 쓴다. */
+  /** 진행(`RUNNING`)·중단(`STOPPED`)·종료(`ENDED`). 문자열은 고정한 계약이 확정했다. */
   statusCode: string;
   versionNo: number | null;
 }

@@ -7078,3 +7078,18 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0 0 var(--space-2);
   font: var(--type-label-lg);
 }
+
+/* 중단·재개 버튼은 나란히 두고 터치 폭을 채운다 — 장갑 낀 손이 겨냥하는 자리다. */
+.pop-hold-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+/* 등록을 누른 뒤에만 서는 자리라 여백을 위쪽에만 준다. */
+.pop-hold-error {
+  margin: var(--space-2) 0 0;
+  color: var(--semantic-error-text);
+  font: var(--type-body-lg);
+}

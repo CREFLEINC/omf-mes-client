@@ -1,4 +1,4 @@
-import { Card, Radio, RadioGroup, TextField } from '@crefle/web-ui';
+import { Button, Card, Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -10,8 +10,16 @@ const t = messages.workHoldRegister;
 export interface HoldFormProps {
   draft: HoldDraft;
   disabled: boolean;
+  /** 중단을 걸 수 있는가 — 세션이 «진행 중»일 때만이다(스펙 §6). */
+  canStop: boolean;
+  /** 재개할 수 있는가 — 세션이 «중단» 상태일 때만이다(스펙 §6). */
+  canResume: boolean;
+  /** 고르지 않고 등록을 눌렀을 때 뜨는 말. 누르기 전에는 `null`이다. */
+  error: string | null;
   onReasonChange: (code: string) => void;
   onRemarksChange: (value: string) => void;
+  onStop: () => void;
+  onResume: () => void;
 }
 
 /**
@@ -23,7 +31,17 @@ export interface HoldFormProps {
  * ⚠ **사유 목록은 임시다**(착수 이슈 §4). 그 사실을 목록 옆에 적는다 — 적지 않으면 현장에서
  * 「우리 사유가 없다」를 결함으로 신고한다.
  */
-export const HoldForm = ({ draft, disabled, onReasonChange, onRemarksChange }: HoldFormProps) => {
+export const HoldForm = ({
+  draft,
+  disabled,
+  canStop,
+  canResume,
+  error,
+  onReasonChange,
+  onRemarksChange,
+  onStop,
+  onResume,
+}: HoldFormProps) => {
   const legendId = useId();
 
   return (
@@ -51,9 +69,13 @@ export const HoldForm = ({ draft, disabled, onReasonChange, onRemarksChange }: H
 
         {/*
           ⚠ 「사유를 고르세요」는 등록을 누른 «뒤»에 뜬다 — 빈 화면을 붉은 글씨로 맞이하지
-          않는다. 그 버튼이 아직 없어 이 자리도 아직 서지 않는다(판정은 `hold-draft.ts`).
-          「임시 목록」은 상시 선다 — 사실의 성격이 다르다.
+          않는다(판정은 `hold-draft.ts`). 「임시 목록」은 상시 선다 — 사실의 성격이 다르다.
         */}
+        {error !== null && (
+          <p className="pop-hold-error" role="alert">
+            {error}
+          </p>
+        )}
         <p className="pop-hold-note">{t.form.reasonProvisional}</p>
 
         <TextField
@@ -66,6 +88,25 @@ export const HoldForm = ({ draft, disabled, onReasonChange, onRemarksChange }: H
             onRemarksChange(event.target.value);
           }}
         />
+
+        {/*
+          ⛔ **적은 것이 어디로 가는지 숨기지 않는다.** 담을 칸이 계약에 없어 이번에는 서버로
+          나가지 않는다 — 말하지 않으면 작업자는 남았다고 믿고, 뒤에 그것을 찾는 사람이 없다.
+        */}
+        <p className="pop-hold-note">{t.form.remarksNotSaved}</p>
+
+        {/*
+          ⭐ **두 버튼을 함께 세우고 상태로 가른다.** 하나를 숨기면 지금 세션이 어느 쪽인지
+          화면에서 사라져, 눌러 본 뒤에야 안다(스펙 §6 — 「이미 중단 상태면 재개만 활성」).
+        */}
+        <div className="pop-hold-actions">
+          <Button size="lg" disabled={disabled || !canStop} onClick={onStop}>
+            {t.form.stopAction}
+          </Button>
+          <Button variant="outlined" size="lg" disabled={disabled || !canResume} onClick={onResume}>
+            {t.form.resumeAction}
+          </Button>
+        </div>
       </section>
     </Card>
   );

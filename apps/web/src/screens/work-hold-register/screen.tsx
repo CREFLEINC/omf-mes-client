@@ -1,15 +1,18 @@
-import { AlertBanner, Chip } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { useNow } from './use-now';
 import { useWorkHoldEntry } from './entry-context';
 import { EventHistoryPanel } from './event-history-panel';
-import { EMPTY_HOLD_DRAFT, type HoldDraft } from './hold-draft';
+import { EMPTY_HOLD_DRAFT, validateHoldDraft, type HoldDraft } from './hold-draft';
 import { HoldForm } from './hold-form';
 import { LoadErrorBanner } from './load-error-banner';
+import { toResumeRequest, toStopRequest } from './event-request';
+import { useWorkHoldOutbox } from './outbox';
 import { useOpenSession, useSessionEvents } from './queries';
 import { SessionPanel } from './session-panel';
+import { isStoppedSession } from './types';
 
 const t = messages.workHoldRegister;
 
@@ -41,12 +44,47 @@ export const WorkHoldRegisterScreen = () => {
   const now = useNow();
 
   const [draft, setDraft] = useState<HoldDraft>(EMPTY_HOLD_DRAFT);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   const session = useOpenSession(workOrderId);
   const events = useSessionEvents(session.session?.workSessionId ?? null);
+  const outbox = useWorkHoldOutbox();
 
   /** 세션이 없으면 사유를 고를 수 없다 — 고른 값을 실을 곳이 없기 때문이다. */
   const inputDisabled = session.session === null;
+
+  const stopped = session.session !== null && isStoppedSession(session.session);
+
+  /**
+   * 큐에 담고 화면을 비운다 — **담은 것이 곧 성공이다**(C-1 #2). 통신을 기다리지 않는다.
+   *
+   * ⛔ **사번이 없으면 담지 않는다.** 헤더가 비면 서버가 거부하는데(D-5), 큐에 담긴 뒤의
+   * 거부는 작업자가 화면을 떠난 뒤에 온다 — 그때는 무엇이 실패했는지 말할 자리가 없다.
+   */
+  const submit = (body: ReturnType<typeof toResumeRequest>): void => {
+    if (session.session === null || workerNo === null) return;
+
+    outbox.enqueue({ workSessionId: session.session.workSessionId, workerNo, body });
+    setDraft(EMPTY_HOLD_DRAFT);
+    setDraftError(null);
+  };
+
+  const handleStop = (): void => {
+    const invalid = validateHoldDraft(draft);
+
+    if (invalid !== null) {
+      setDraftError(t.form.reasonRequired);
+
+      return;
+    }
+
+    submit(toStopRequest(draft, new Date().toISOString()));
+  };
+
+  /* ⛔ 재개는 사유를 비운다(§5-4) — 초안에 남은 사유를 실어 보내지 않는다. */
+  const handleResume = (): void => {
+    submit(toResumeRequest(new Date().toISOString()));
+  };
 
   return (
     /* 표제가 본문의 이름이 된다 — 셸이 없어 줄 사람이 이 화면뿐이다. */
@@ -93,6 +131,42 @@ export const WorkHoldRegisterScreen = () => {
         />
       )}
 
+      {/*
+        ⛔ **미전송 건수와 연결 상태를 상시 세운다**(C-1 #4). 이것이 없으면 「등록했습니다」가
+        서버에 닿았다는 뜻으로 읽히고, 단말이 꺼지면 그 사실이 아무 데도 남지 않는다.
+      */}
+      {(outbox.pendingCount > 0 || !outbox.isOnline) && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning" title={t.outbox.pending(outbox.pendingCount)}>
+            {outbox.isOnline ? t.outbox.queued : t.outbox.offline}
+          </AlertBanner>
+        </div>
+      )}
+
+      {outbox.isStalled && (
+        <div className="banner-slot">
+          <AlertBanner
+            variant="warning"
+            title={t.outbox.stalled}
+            action={
+              <Button variant="outlined" size="sm" onClick={outbox.retryNow}>
+                {t.outbox.retryNow}
+              </Button>
+            }
+          >
+            {t.outbox.pending(outbox.pendingCount)}
+          </AlertBanner>
+        </div>
+      )}
+
+      {outbox.rejection !== null && (
+        <LoadErrorBanner
+          error={outbox.rejection}
+          title={t.outbox.rejected}
+          onRetry={outbox.clearRejection}
+        />
+      )}
+
       <div className="pop-panes">
         <div className="pop-hold-column">
           {/*
@@ -124,12 +198,18 @@ export const WorkHoldRegisterScreen = () => {
         <HoldForm
           draft={draft}
           disabled={inputDisabled}
+          canStop={!stopped}
+          canResume={stopped}
+          error={draftError}
           onReasonChange={(code) => {
             setDraft((prev) => ({ ...prev, reasonCode: code }));
+            setDraftError(null);
           }}
           onRemarksChange={(value) => {
             setDraft((prev) => ({ ...prev, remarks: value }));
           }}
+          onStop={handleStop}
+          onResume={handleResume}
         />
       </div>
     </main>
