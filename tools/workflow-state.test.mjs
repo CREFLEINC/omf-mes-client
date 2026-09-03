@@ -77,10 +77,9 @@ test('과거 팀별 공지 이슈 상태를 거부한다', () => {
 test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'workflow-policy-'));
   const required = [
-    'AGENTS.md',
-    'CLAUDE.md',
+    'docs/client-dev-workflow/multi-agent-team-workflow-v3.md',
+    'tools/workflow/bootstrap.mjs',
     'docs/client-dev-workflow/README.md',
-    'docs/client-dev-workflow/references/design-reference.md',
     'docs/client-dev-workflow/references/design-request.md',
     '.github/ISSUE_TEMPLATE/design-request-tracking.yml',
   ];
@@ -99,7 +98,10 @@ test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
   );
   writeFileSync(path.join(root, 'multi-agent-team-workflow-v2.md'), 'old policy\n');
   assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('폐기된 하네스')));
-  writeFileSync(path.join(root, 'AGENTS.md'), '설계팀이 이 저장소에 발행\n');
+  writeFileSync(
+    path.join(root, 'docs/client-dev-workflow/multi-agent-team-workflow-v3.md'),
+    '설계팀이 이 저장소에 발행\n',
+  );
   assert.ok(
     repositoryPolicyErrors(root).some((error) =>
       error.includes('클라이언트 전용 설계 변동 공지 채널'),

@@ -3,6 +3,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { bootstrapErrors, WORKFLOW_SOURCE } from './workflow/bootstrap.mjs';
+
 const STATE_VERSION = 1;
 const DEFAULT_STATE_PATH = '.client-dev/state.json';
 const DEFAULT_DESIGN_REF = '.client-dev/design/omf-mes';
@@ -169,6 +171,7 @@ function requireState(root, statePath = DEFAULT_STATE_PATH) {
 function check(root, statePath = DEFAULT_STATE_PATH) {
   const { state } = requireState(root, statePath);
   const errors = validateState(state);
+  errors.push(...bootstrapErrors(root, state.team));
   const branch = git(['branch', '--show-current'], root);
   if (!branch || ['main', 'master'].includes(branch))
     errors.push('main/master가 아닌 팀 전용 브랜치에서 작업해야 합니다.');
@@ -273,6 +276,10 @@ export function repositoryPolicyErrors(root) {
   const forbiddenPaths = [
     'multi-agent-team-workflow-v2.md',
     'docs/uiux-handoff.md',
+    'docs/client-dev-workflow/references/design-reference.md',
+    'docs/client-dev-workflow/references/issue-lifecycle.md',
+    'docs/client-dev-workflow/references/merge-rules.md',
+    'docs/client-dev-workflow/references/verification-levels.md',
     '.github/ISSUE_TEMPLATE/uiux-ready.yml',
     '.github/ISSUE_TEMPLATE/design-change-notice.yml',
     '.github/ISSUE_TEMPLATE/design-change-impact-review.yml',
@@ -284,9 +291,9 @@ export function repositoryPolicyErrors(root) {
   }
 
   const requiredPaths = [
-    'AGENTS.md',
+    WORKFLOW_SOURCE,
+    'tools/workflow/bootstrap.mjs',
     'docs/client-dev-workflow/README.md',
-    'docs/client-dev-workflow/references/design-reference.md',
     'docs/client-dev-workflow/references/design-request.md',
     '.github/ISSUE_TEMPLATE/design-request-tracking.yml',
   ];
@@ -295,15 +302,9 @@ export function repositoryPolicyErrors(root) {
   }
 
   const canonicalFiles = [
-    'AGENTS.md',
-    'CLAUDE.md',
+    WORKFLOW_SOURCE,
     'README.md',
     'docs/client-dev-workflow/README.md',
-    'docs/client-dev-workflow/references/design-reference.md',
-    'docs/client-dev-workflow/references/design-request.md',
-    'docs/client-dev-workflow/references/issue-lifecycle.md',
-    'docs/client-dev-workflow/references/merge-rules.md',
-    'docs/client-dev-workflow/references/verification-levels.md',
     'docs/client-dev-workflow/templates/completion-report.md',
     'docs/client-dev-workflow/templates/design-request.md',
     'docs/client-dev-workflow/templates/plan.md',
@@ -332,6 +333,14 @@ export function repositoryPolicyErrors(root) {
       if (pattern.test(content)) errors.push(`${file}: ${description}`);
     }
   }
+  for (const file of ['AGENTS.md', 'CLAUDE.md']) {
+    try {
+      git(['ls-files', '--error-unmatch', '--', file], root);
+      errors.push(`${file}: AI 도구별 로컬 어댑터는 Git에서 추적하면 안 됩니다.`);
+    } catch {
+      // Git 저장소가 아니거나 추적되지 않은 로컬 파일이면 정상이다.
+    }
+  }
   return errors;
 }
 
@@ -343,6 +352,7 @@ function repoCheck(root) {
 
 function usage() {
   return `사용법:
+  pnpm workflow:bootstrap --tool <codex|claude|both> --team <번호>
   pnpm workflow init --team <번호> --issue <번호> --design-ref <경로>
   pnpm workflow check
   pnpm workflow set-issue --issue <번호>

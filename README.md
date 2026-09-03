@@ -23,6 +23,7 @@ tools/
 
 ```bash
 pnpm install
+pnpm workflow:bootstrap --tool <codex|claude|both> --team <팀번호>
 gh repo clone CREFLEINC/omf-mes .client-dev/design/omf-mes -- --single-branch --branch main
 pnpm workflow init --team <팀번호> --issue <이슈번호> --design-ref .client-dev/design/omf-mes
 pnpm workflow:check
@@ -45,4 +46,4 @@ pnpm --filter @omf-mes/mobile dev   # 모바일 셸 개발 서버 (브라우저)
 
 ## 작업 규칙
 
-`main` 직접 push는 차단돼 있다 — 팀 전용 워크트리와 브랜치에서 작업하고 PR로 병합한다. 업무 규칙은 `AGENTS.md`와 `docs/client-dev-workflow/`, 공개 저장소 경계는 `CLAUDE.md`를 따른다.
+`main` 직접 push는 차단돼 있다 — 팀 전용 워크트리와 브랜치에서 작업하고 PR로 병합한다. 업무 규칙과 절차의 정본은 `docs/client-dev-workflow/multi-agent-team-workflow-v3.md`다. 루트의 `AGENTS.md`와 `CLAUDE.md`는 부트스트랩으로 만드는 개인별 로컬 파일이며 커밋하지 않는다.
