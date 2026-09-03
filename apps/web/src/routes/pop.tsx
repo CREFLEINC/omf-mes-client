@@ -12,6 +12,7 @@ import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionResultScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
+import { RunningChangeScreen } from '../screens/running-change/screen';
 import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
@@ -223,4 +224,17 @@ export const popRoutes: RouteObject[] = [
    * 열리면 `entry-context.ts` 하나가 바뀐다(전례 `P-02-09`).
    */
   { path: '/pop/repack-label-issue', element: <RepackLabelIssueScreen /> },
+  /*
+   * P-02-11 — 러닝체인지 부품 교체 등록. **설비를 멈추지 않고 같은 세션 안에서** 부품을 간다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=`) — 프로세스상 진입은 메인
+   * 작업 화면의 인라인 「부품 교체」이고(스펙 §2), 그 화면이 아직 이 저장소에 없다. 서면
+   * `screen-params.ts` 하나가 바뀐다.
+   *
+   * ⛔ **사이드바에 올리지 않는다.** 관리웹 사용자가 메뉴로 찾아가는 곳이 아니다.
+   *
+   * ⚠ **계획 분할 지정은 이 주소가 아니다**(§5-5) — 그것은 관리웹에서 지정하면 시스템이
+   * 자동 실행하며 화면이 없다. 이 주소가 다루는 것은 **생산 당일 교체** 하나다.
+   */
+  { path: '/pop/running-change', element: <RunningChangeScreen /> },
 ];
