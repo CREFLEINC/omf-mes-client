@@ -653,16 +653,19 @@ describe('제품LOT 피킹 스캔 화면', () => {
   it('확정 뒤 목록 조회가 실패해도 남은 배정이 되살아나지 않는다', async () => {
     const user = userEvent.setup();
     let listFails = false;
-    const seen: Request[] = [];
+    let picked = 120;
     mount([
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
           req.method === 'POST',
-        respond: (req) => {
-          seen.push(req.clone());
+        respond: async (req) => {
+          const body = (await req.clone().json()) as { pickedQty: number };
+
+          picked += body.pickedQty;
           listFails = true;
-          return jsonResponse(line({ pickedQty: 300 }));
+
+          return jsonResponse(line({ pickedQty: picked }));
         },
       },
       {
@@ -695,14 +698,19 @@ describe('제품LOT 피킹 스캔 화면', () => {
   it('고르던 라인이 목록에서 빠지면 그 사실을 말한다', async () => {
     const user = userEvent.setup();
     let dropped = false;
+    let picked = 120;
     mount([
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
           req.method === 'POST',
-        respond: () => {
+        respond: async (req) => {
+          const body = (await req.clone().json()) as { pickedQty: number };
+
+          picked += body.pickedQty;
           dropped = true;
-          return jsonResponse(line({ pickedQty: 300 }));
+
+          return jsonResponse(line({ pickedQty: picked }));
         },
       },
       {
