@@ -14,6 +14,7 @@ import {
   BOX_CODE,
   BOX_NAME,
   HANDLING_UNIT_NO,
+  ITEM_CODE,
   ITEM_ID,
   LOT_A_ID,
   LOT_A_NO,
@@ -21,6 +22,7 @@ import {
   LOT_B_NO,
   PROCESS_ID,
   TERMINAL_ID,
+  UOM_CODE,
   UOM_ID,
   WORKER_NO,
   WORK_ORDER_ID,
@@ -49,6 +51,8 @@ interface Options {
   lotsFail?: boolean;
   /** 포장 유형 조회가 실패한다 */
   unitTypesFail?: boolean;
+  /** 품목 조회가 실패한다 */
+  itemFails?: boolean;
   /** 등록·확정 요청을 담아 둔다 */
   writes?: Request[];
   /** 취급 단위 등록 응답 상태. 기본 201 */
@@ -79,6 +83,27 @@ const routes = (options: Options): StubRoute[] => [
 
       return jsonResponse({ items: unitTypes, page: { page: 1, size: 200, total: 1 } });
     },
+  },
+  {
+    match: (request) => pathOf(request) === `/mdm/items/${String(ITEM_ID)}`,
+    respond: () => {
+      if (options.itemFails === true) {
+        return jsonResponse({ message: '조회 실패' }, { status: 500 });
+      }
+
+      return jsonResponse({
+        item: { itemId: ITEM_ID, itemCode: ITEM_CODE, itemName: '샘플 품목' },
+        editability: { editableFields: [] },
+      });
+    },
+  },
+  {
+    match: (request) => pathOf(request) === '/mdm/uoms',
+    respond: () =>
+      jsonResponse({
+        items: [{ uomId: UOM_ID, uomCode: UOM_CODE, uomName: '개', isActive: true }],
+        page: { page: 1, size: 20, total: 1 },
+      }),
   },
   {
     match: (request) => request.method === 'GET' && pathOf(request) === '/inventory/handling-units',
@@ -265,8 +290,36 @@ describe('P-02-08 포장 작업', () => {
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     /* 행의 수량과 아래 합계가 둘 다 150 이다 — 행이 늘었다면 100 과 50 으로 갈라진다 */
-    expect(await unitPane().findAllByText('150')).toHaveLength(2);
+    expect(await unitPane().findAllByText(`150 ${UOM_CODE}`)).toHaveLength(2);
     expect(unitPane().getAllByText(LOT_A_NO)).toHaveLength(1);
+  });
+
+  /**
+   * 스펙 §3 은 내용물 행을 `LOT-…0031  ABC-123  100 EA` 로 그린다 — 「100」과 「100 EA」는
+   * 다른 값이다. 단위 없이 숫자만 두면 읽는 사람이 자기가 아는 단위로 채워 읽는다.
+   */
+  it('담은 줄과 합계에 품목코드와 단위가 붙는다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+
+    await packOneLine(user, LOT_A_NO, '100');
+
+    expect(await unitPane().findByText(ITEM_CODE)).toBeInTheDocument();
+    expect(unitPane().getAllByText(`100 ${UOM_CODE}`)).toHaveLength(2);
+  });
+
+  /* 이름이 아직 오지 않았으면 지어내지 않는다 — 숫자만 보이고 품목 자리는 비운 표를 쓴다. */
+  it('품목 이름을 받지 못하면 수량만 보인다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ itemFails: true });
+
+    await packOneLine(user, LOT_A_NO, '100');
+
+    expect(await unitPane().findByText(LOT_A_NO)).toBeInTheDocument();
+    expect(unitPane().queryByText(ITEM_CODE)).not.toBeInTheDocument();
+    expect(unitPane().getAllByText(`100 ${UOM_CODE}`)).toHaveLength(2);
   });
 
   it('스캔 칸으로 읽은 코드가 목록에 없으면 인라인으로 말한다', async () => {

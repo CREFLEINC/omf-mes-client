@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { popTouchClass } from '../../patterns/pop-touch';
 import { isMixedLot, totalQty } from './contents';
+import type { CodeLabels } from './queries';
 import type { CodeValue, HandlingUnit, PackingDraft, PackingLine } from './types';
 
 const t = messages.packingWork;
@@ -21,6 +22,8 @@ export interface PackingPaneProps {
   onTypeChange: (code: string) => void;
   onParentChange: (parentId: number | null) => void;
   onConfirm: () => void;
+  /** 품목코드·단위 — 담은 줄에 붙는다(스펙 §3 · §4-B). */
+  labels: CodeLabels;
   /** 확정이 막혀 있으면 그 사유. 없으면 `null` */
   blockedReason: string | null;
   isConfirming: boolean;
@@ -29,9 +32,11 @@ export interface PackingPaneProps {
 /**
  * 우단 《포장 단위》·《내용물》.
  *
- * ⭐ **포장 번호는 서버가 매긴 뒤에야 있다**(스펙 §4-A 「자동」). 첫 내용물을 담을 때 만들어지므로
- * 그전에는 자리만 두고 「언제 부여되는가」를 말한다 — 빈 자리만 두면 번호가 없는 것인지 아직
- * 안 온 것인지 알 수 없다.
+ * ⭐ **포장 번호는 구획 제목 옆에 붙는다**(스펙 §3 — 「《포장 단위》 HU-2026-0804-0007」).
+ * 번호를 별도 줄로 크게 세우면 그 아래 「유형」이 오른쪽 「상위」와 어긋나 보인다(실측).
+ *
+ * ⭐ **유형·상위는 위아래 두 줄이다**(스펙 §3) — 라벨이 왼쪽, 값이 오른쪽에 선다. 좌우로
+ * 늘어놓으면 스펙의 읽는 순서가 사라지고 값 칸이 절반으로 좁아진다.
  */
 export const PackingPane = ({
   draft,
@@ -43,9 +48,29 @@ export const PackingPane = ({
   onTypeChange,
   onParentChange,
   onConfirm,
+  labels,
   blockedReason,
   isConfirming,
 }: PackingPaneProps) => {
+  /*
+   * ⭐ **수량에는 단위를 붙인다**(스펙 §3 — `100 EA`). 「100」과 「100 EA」는 다른 값이라,
+   * 단위 없이 숫자만 두면 읽는 사람이 자기가 아는 단위로 채워 읽는다.
+   *
+   * ⚠ 단위 이름이 아직 오지 않았으면 **숫자만 보인다** — 지어낸 단위를 붙이지 않는다.
+   */
+  const withUom = (qty: number, uomId: number): string => {
+    const uomCode = labels.uomCodeOf(uomId);
+
+    return uomCode === null ? String(qty) : `${String(qty)} ${uomCode}`;
+  };
+
+  /** 담은 것이 모두 같은 단위일 때만 합계에 단위를 붙인다 — 섞였으면 더한 값의 단위가 없다. */
+  const totalUomId = ((): number | null => {
+    const ids = new Set(draft.lines.map((line) => line.uomId));
+
+    return ids.size === 1 ? ([...ids][0] ?? null) : null;
+  })();
+
   const columns: Column<PackingLine>[] = [
     {
       key: 'lotNo',
@@ -57,20 +82,22 @@ export const PackingPane = ({
       ),
     },
     {
+      key: 'itemCode',
+      header: t.contents.itemColumn,
+      width: '132px',
+      render: (line) => labels.itemCodeOf(line.itemId) ?? t.contents.unknownCode,
+    },
+    {
       key: 'qty',
       header: t.contents.qtyColumn,
       align: 'end',
-      width: '96px',
-      render: (line) => String(line.qty),
+      width: '120px',
+      render: (line) => withUom(line.qty, line.uomId),
     },
   ];
 
   return (
     <>
-      <p className="pack-work-unit-no">
-        {draft.handlingUnit === null ? t.unit.numberPending : draft.handlingUnit.handlingUnitNo}
-      </p>
-
       <div className="pack-work-unit-fields">
         <label className="pack-work-field">
           <span className="pack-work-field-label">{t.unit.typeLabel}</span>
@@ -111,6 +138,7 @@ export const PackingPane = ({
         </label>
       </div>
 
+      {draft.handlingUnit === null && <p className="field-note">{t.unit.numberPending}</p>}
       {unitTypesFailed && <p className="field-error">{t.unit.typeLoadFailed}</p>}
       {parentsFailed && <p className="field-error">{t.unit.parentLoadFailed}</p>}
       {locked && <p className="field-note">{t.unit.lockedNotice}</p>}
@@ -128,10 +156,14 @@ export const PackingPane = ({
             ? undefined
             : [
                 [
-                  { key: 'label', content: t.contents.totalLabel, emphasis: true },
+                  /* LOT·품목 두 열을 묶어 합계 라벨을 놓는다 — 열 수가 어긋나면 값이 밀린다. */
+                  { key: 'label', content: t.contents.totalLabel, colSpan: 2, emphasis: true },
                   {
                     key: 'total',
-                    content: String(totalQty(draft.lines)),
+                    content:
+                      totalUomId === null
+                        ? String(totalQty(draft.lines))
+                        : withUom(totalQty(draft.lines), totalUomId),
                     align: 'end',
                     emphasis: true,
                   },

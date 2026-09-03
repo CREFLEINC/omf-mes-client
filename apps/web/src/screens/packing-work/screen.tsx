@@ -10,7 +10,12 @@ import { LotListPane } from './lot-list-pane';
 import { useHandlingUnitCreate, useHandlingUnitPack } from './mutations';
 import { toPackBody } from './pack-request';
 import { PackingPane } from './packing-pane';
-import { useHandlingUnitTypes, useParentHandlingUnits, useTargetLots } from './queries';
+import {
+  useCodeLabels,
+  useHandlingUnitTypes,
+  useParentHandlingUnits,
+  useTargetLots,
+} from './queries';
 import { ScanPane } from './scan-pane';
 import { emptyPackingDraft, type Lot, type PackingLine } from './types';
 
@@ -55,6 +60,11 @@ export const PackingWorkScreen = () => {
   const lots = useTargetLots(entry.workOrderId);
   const unitTypes = useHandlingUnitTypes();
   const parents = useParentHandlingUnits();
+  /* 담은 줄에 붙일 품목코드·단위. 대상 LOT 이 알려 주는 축이라 목록에서 뽑는다. */
+  const labels = useCodeLabels(
+    (lots.data ?? []).map((lot) => lot.itemId),
+    (lots.data ?? []).map((lot) => lot.uomId),
+  );
 
   const workerNo = entry.workerNo;
 
@@ -280,7 +290,16 @@ export const PackingWorkScreen = () => {
         </Card>
 
         <Card bordered className="pop-section" aria-label={t.unit.sectionLabel}>
-          <h2 className="pane-title">{t.unit.sectionLabel}</h2>
+          {/*
+            ⭐ **번호는 구획 제목 옆에 선다**(스펙 §3 — 「《포장 단위》 HU-…」). 별도 줄로
+            크게 세우면 그 아래 「유형」이 오른쪽 「상위 포장」과 어긋나 보인다.
+          */}
+          <h2 className="pane-title pack-work-unit-heading">
+            {t.unit.sectionLabel}
+            {draft.handlingUnit !== null && (
+              <span className="pack-work-unit-no">{draft.handlingUnit.handlingUnitNo}</span>
+            )}
+          </h2>
           <PackingPane
             draft={draft}
             unitTypes={unitTypes.data ?? []}
@@ -295,6 +314,7 @@ export const PackingWorkScreen = () => {
               setDraft((current) => ({ ...current, parentHandlingUnitId: parentId }));
             }}
             onConfirm={confirm}
+            labels={labels}
             blockedReason={confirmBlockedReason}
             isConfirming={pack.isSaving}
           />

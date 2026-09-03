@@ -53,7 +53,7 @@ export const packingWork = {
 
   unit: {
     sectionLabel: '포장 단위',
-    numberPending: '첫 내용물을 담을 때 부여됩니다',
+    numberPending: '번호는 첫 내용물을 담을 때 부여됩니다',
     typeLabel: '유형',
     typePlaceholder: '고르십시오',
     typeLoadFailed: '포장 유형 목록을 불러오지 못했습니다.',
@@ -67,7 +67,9 @@ export const packingWork = {
   contents: {
     sectionLabel: '내용물',
     lotColumn: 'LOT',
+    itemColumn: '품목',
     qtyColumn: '수량',
+    unknownCode: '—',
     empty: '아직 담은 것이 없습니다.',
     totalLabel: '합계',
     mixedTitle: '한 포장에 여러 LOT 이 섞였습니다',

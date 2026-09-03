@@ -6785,23 +6785,34 @@ dl.filter-bar.approval-inbox-detail-facts {
   font-variant-numeric: tabular-nums;
 }
 
-/* 포장 번호 — 우단에서 가장 먼저 읽히는 값이다(스펙 §3). 없는 동안에도 자리는 선다. */
+/*
+ * 포장 번호 — **구획 제목 옆에 선다**(스펙 §3 「《포장 단위》 HU-2026-0804-0007」).
+ * 별도 줄로 세우면 아래 「유형」 라벨이 오른쪽 「상위 포장」과 어긋나 보인다.
+ */
+.pack-work-unit-heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
 .pack-work-unit-no {
-  margin: 0;
-  font: var(--type-title-sm);
   font-variant-numeric: tabular-nums;
 }
 
-/* 유형·상위 포장 두 칸. 1024px 폭의 우단에 나란히 들어간다. */
+/*
+ * 유형·상위 포장 — **위아래 두 줄**이다(스펙 §3). 줄마다 라벨이 왼쪽, 값이 오른쪽에 선다.
+ * 좌우로 늘어놓으면 스펙의 읽는 순서가 사라지고 값 칸이 절반으로 좁아진다.
+ */
 .pack-work-unit-fields {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: var(--space-3);
 }
 
 .pack-work-field {
   display: grid;
-  gap: var(--space-1);
+  grid-template-columns: 5rem 1fr;
+  align-items: center;
+  gap: var(--space-4);
   min-width: 0;
 }
 

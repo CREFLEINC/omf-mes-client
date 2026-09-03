@@ -1,4 +1,4 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -13,6 +13,8 @@ export const packingWorkKeys = {
   lots: (workOrderId: number) => ['packing-work', 'lots', workOrderId] as const,
   unitTypes: ['packing-work', 'unit-types'] as const,
   parents: ['packing-work', 'parents'] as const,
+  item: (itemId: number) => ['packing-work', 'item', itemId] as const,
+  uoms: ['packing-work', 'uoms'] as const,
 };
 
 /** 한 코드 그룹에서 받아 올 값 수의 상한. */
@@ -112,4 +114,58 @@ export const useParentHandlingUnits = (): UseQueryResult<HandlingUnit[]> => {
       return data.items;
     },
   });
+};
+
+/**
+ * 내용물 줄에 붙는 **품목코드와 단위**(스펙 §3 · §4-B).
+ *
+ * ⭐ **수량은 단위와 함께 읽어야 뜻이 선다** — 「100」과 「100 EA」는 다른 값이다. 스펙 §3 이
+ * 내용물 행마다 품목코드와 단위를 함께 그린 이유다.
+ *
+ * ⚠ **품목은 줄마다, 단위는 한 번에 받는다.** 단위는 기준정보라 줄마다 다시 물을 것이 아니고,
+ * 미사용 단위를 쓰는 값이 와도 이름이 비지 않게 사용 여부로 좁히지 않는다(전례 `P-02-09`).
+ */
+export interface CodeLabels {
+  itemCodeOf: (itemId: number) => string | null;
+  uomCodeOf: (uomId: number) => string | null;
+}
+
+export const useCodeLabels = (
+  itemIds: readonly number[],
+  uomIds: readonly number[],
+): CodeLabels => {
+  const { client } = useApiClient();
+
+  const distinctItemIds = [...new Set(itemIds)];
+
+  const items = useQueries({
+    queries: distinctItemIds.map((itemId) => ({
+      queryKey: packingWorkKeys.item(itemId),
+      queryFn: () =>
+        runRequest(() => client.GET('/mdm/items/{itemId}', { params: { path: { itemId } } })),
+    })),
+  });
+
+  const uoms = useQuery({
+    queryKey: packingWorkKeys.uoms,
+    enabled: uomIds.length > 0,
+    queryFn: () =>
+      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+  });
+
+  const itemCodeOf = new Map(
+    items.flatMap((result) =>
+      result.data === undefined
+        ? []
+        : [[result.data.item.itemId, result.data.item.itemCode] as const],
+    ),
+  );
+  const uomCodeOf = new Map(
+    (uoms.data?.items ?? []).map((uom) => [uom.uomId, uom.uomCode] as const),
+  );
+
+  return {
+    itemCodeOf: (itemId) => itemCodeOf.get(itemId) ?? null,
+    uomCodeOf: (uomId) => uomCodeOf.get(uomId) ?? null,
+  };
 };

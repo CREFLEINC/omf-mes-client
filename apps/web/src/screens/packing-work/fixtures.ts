@@ -15,7 +15,9 @@ export const LOT_B_ID = 90102;
 export const LOT_B_NO = 'LOT-SAMPLE-0032';
 
 export const ITEM_ID = 2001;
+export const ITEM_CODE = 'ABC-123';
 export const UOM_ID = 1;
+export const UOM_CODE = 'EA';
 export const PLANT_ID = 10;
 
 export const HANDLING_UNIT_ID = 5501;
