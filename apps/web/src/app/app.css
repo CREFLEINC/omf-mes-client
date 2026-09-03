@@ -4286,6 +4286,65 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 }
 
+/* 알림센터 — 조회 조건과 카드 목록을 한 축에 맞추고 필터 역할을 분명히 한다. */
+.notification-center-pane,
+.notification-center-filter > * {
+  min-width: 0;
+}
+
+.notification-center-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.notification-center-pane > * {
+  min-width: 0;
+}
+
+.notification-center-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.notification-center-filter {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(13rem, 1fr);
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.notification-center-filter .field-cell {
+  align-items: stretch;
+}
+
+.notification-center-unread-filter {
+  justify-content: flex-start;
+}
+
+.notification-center-unread-filter > label {
+  min-height: var(--control-height-md);
+  align-items: center;
+}
+
+.notification-center-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.notification-center-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .notification-center-unread-filter {
+    margin-top: 0;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
