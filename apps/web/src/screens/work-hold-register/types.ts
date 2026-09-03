@@ -27,10 +27,20 @@ export type WorkSessionEventCreate = components['schemas']['WorkSessionEventCrea
  * ⚠ 모르는 문자열이 오면 **중단이 아닌 것으로 읽는다** — 「모른다」를 「중단됐다」로 바꿔
  * 재개 버튼을 열면, 돌고 있는 설비에 재개를 한 번 더 적재한다.
  */
+export const RUNNING_STATUS_CODE = 'RUNNING';
 export const STOPPED_STATUS_CODE = 'STOPPED';
 
 export const isStoppedSession = (session: Pick<WorkSessionView, 'statusCode'>): boolean =>
   session.statusCode === STOPPED_STATUS_CODE;
+
+/**
+ * 지금 **돌고 있는가** — 중단을 걸 수 있는 자리다(스펙 §6).
+ *
+ * ⛔ **「중단이 아니면 진행 중」으로 읽지 않는다.** 종료(`ENDED`)와 모르는 문자열까지 진행
+ * 중으로 삼게 되고, 그러면 이미 끝난 세션에 중단을 걸어 정정할 수 없는 기록을 남긴다.
+ */
+export const isRunningSession = (session: Pick<WorkSessionView, 'statusCode'>): boolean =>
+  session.statusCode === RUNNING_STATUS_CODE;
 
 /** 화면이 다루는 작업 세션 한 건. */
 export interface WorkSessionView {
@@ -48,9 +58,8 @@ export interface WorkSessionView {
 /**
  * 이 세션이 아직 열려 있는가 — **끝 시각의 부재로 판정한다.**
  *
- * ⛔ 상태 코드로 판정하지 않는다. 그 값의 문자열이 계약에서 아직 확정되지 않아(`statusCode`
- * 설명) 화면이 임의의 문자열을 「열림」으로 읽으면, 설계가 승인한 적 없는 판단이 굳는다.
- * 끝 시각은 뜻이 하나뿐이다.
+ * ⛔ 상태 코드로 판정하지 않는다. 열림은 **중단을 포함**하기 때문이다 — `STOPPED` 인 세션도
+ * 열려 있고, 그래야 재개할 수 있다. 끝 시각은 뜻이 하나뿐이다.
  */
 export const isOpenSession = (session: Pick<WorkSessionView, 'endedAt'>): boolean =>
   session.endedAt === null;

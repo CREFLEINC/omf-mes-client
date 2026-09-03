@@ -209,10 +209,11 @@ describe('P-02-10 작업 중단 등록', () => {
       await waitFor(() => {
         expect(sent).toHaveLength(1);
       });
-      expect(await sent[0]!.json()).toMatchObject({
-        eventTypeCode: 'STOP',
-        reasonCode: 'MOLD_CHANGE',
-      });
+      const body: unknown = await sent[0]!.json();
+
+      expect(body).toMatchObject({ eventTypeCode: 'STOP', reasonCode: 'MOLD_CHANGE' });
+      /* 발생 시각은 단말이 보낸다(계약) — 서버 수신 시각과 다른 값이다. */
+      expect(body).toHaveProperty('occurredAt', expect.any(String));
     });
 
     /* ⛔ ⓐ 차단(스펙 §6) — 사유 없이 보내면 정정할 수 없는 기록이 사유 없이 남는다. */
@@ -268,6 +269,52 @@ describe('P-02-10 작업 중단 등록', () => {
      * ⛔ **적은 것이 어디로 가는지 숨기지 않는다.** 비고를 담을 칸이 계약에 없어 이번에는
      * 나가지 않는다 — 말하지 않으면 작업자는 남았다고 믿는다.
      */
+    /* ⛔ 사번이 없으면 서버가 거부한다 — 누르고 나서가 아니라 누르기 전에 막는다. */
+    it('사번을 모르면 두 버튼이 막히고 이유를 말한다', async () => {
+      renderScreen(
+        [sessionsRoute([workSession()]), eventsRoute([])],
+        `/pop/work-hold?workOrderId=${String(WORK_ORDER_ID)}`,
+      );
+
+      expect(await screen.findByText(t.form.workerRequired)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.form.stopAction })).toBeDisabled();
+      expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
+    });
+
+    it('세션이 없으면 두 버튼 다 막힌다', async () => {
+      renderScreen([sessionsRoute([]), eventsRoute([])]);
+
+      expect(await screen.findByText(t.session.none)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.form.stopAction })).toBeDisabled();
+      expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
+    });
+
+    it('진행 중인 세션에서는 재개가 막힌다', async () => {
+      renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.form.stopAction })).toBeEnabled();
+      });
+      expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
+    });
+
+    /*
+     * ⛔ **「중단이 아니면 진행 중」이 아니다.** 끝난 세션·모르는 상태에서 중단이 열리면
+     * 정정할 수 없는 기록이 엉뚱한 세션에 남는다.
+     */
+    it('끝났거나 모르는 상태의 세션에는 중단을 걸 수 없다', async () => {
+      renderScreen([sessionsRoute([workSession({ statusCode: 'ENDED' })]), eventsRoute([])]);
+
+      /*
+       * ⛔ **세션이 «선 뒤에» 본다.** 조회 전에는 어차피 두 버튼이 막혀 있어, 기다리지 않고
+       * 보면 「아직 안 왔다」를 「막혔다」로 읽고 검사가 헛돈다.
+       */
+      expect(await screen.findAllByText(t.session.sessionNo(2))).not.toHaveLength(0);
+
+      expect(screen.getByRole('button', { name: t.form.stopAction })).toBeDisabled();
+      expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
+    });
+
     it('비고가 아직 저장되지 않는다는 사실을 상시 세운다', async () => {
       renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 

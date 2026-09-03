@@ -12,7 +12,7 @@ import { toResumeRequest, toStopRequest } from './event-request';
 import { useWorkHoldOutbox } from './outbox';
 import { useOpenSession, useSessionEvents } from './queries';
 import { SessionPanel } from './session-panel';
-import { isStoppedSession } from './types';
+import { isRunningSession, isStoppedSession } from './types';
 
 const t = messages.workHoldRegister;
 
@@ -33,10 +33,14 @@ const t = messages.workHoldRegister;
  * 이슈 §4 가 「만들지 않는다 — 임의 매핑을 만들지 않고 게이팅 없이 시작한다」로 정했다.
  * 집행은 어차피 서버의 403 이다(공유계약 F-1·F-5).
  *
- * ⚠ **중단·재개·종료의 «전송»과 그 버튼은 아직 이 화면에 없다.** 입력 검증(`hold-draft.ts`)은
- * 세워 두었고 버튼이 설 때 그대로 쓴다. 어느 경로로 보내는지가 스펙·요구서·
- * 계약에서 갈려 있어 설계 회신을 기다린다(검토 요청 `omf-mes#398` · 착수 이슈 `#77`). 한쪽을
- * 골라 임시로 넣으면 회신에 따라 통째로 걷어내야 한다 — 입력·검증까지만 세우고 멈춘다.
+ * ⭐ **중단·재개는 세션 사건 적재 한 경로로 나간다** — 계약이 「단말이 적재하는 것은 구간
+ * 안의 사건인 `STOP`·`RESUME` 뿐」이라고 못박았다. 구간의 경계(`START`·`END`)는 세션을 열고
+ * 닫는 오퍼레이션이 같은 트랜잭션으로 만들며 이 화면이 보내지 않는다.
+ *
+ * ⚠ **세션 종료 버튼은 아직 없다.** 스펙 §5-4(「이 화면은 중단·재개만」)와 §8 미결 5(「이
+ * 화면이 받는다」)가 갈려 있어 설계 회신을 기다린다 — 한쪽을 골라 넣으면 통째로 걷어내야 한다.
+ *
+ * ⚠ **비고는 보내지 않는다.** 세션 «사건» 에 담을 칸이 계약에 없다(`event-request.ts`).
  */
 export const WorkHoldRegisterScreen = () => {
   const { workOrderId, workerNo } = useWorkHoldEntry();
@@ -54,6 +58,8 @@ export const WorkHoldRegisterScreen = () => {
   const inputDisabled = session.session === null;
 
   const stopped = session.session !== null && isStoppedSession(session.session);
+  /* ⛔ 「중단이 아니면 진행 중」이 아니다 — 종료된 세션·모르는 상태에 중단을 걸지 않는다. */
+  const running = session.session !== null && isRunningSession(session.session);
 
   /**
    * 큐에 담고 화면을 비운다 — **담은 것이 곧 성공이다**(C-1 #2). 통신을 기다리지 않는다.
@@ -198,9 +204,10 @@ export const WorkHoldRegisterScreen = () => {
         <HoldForm
           draft={draft}
           disabled={inputDisabled}
-          canStop={!stopped}
+          canStop={running}
           canResume={stopped}
           error={draftError}
+          workerUnknown={workerNo === null}
           onReasonChange={(code) => {
             setDraft((prev) => ({ ...prev, reasonCode: code }));
             setDraftError(null);

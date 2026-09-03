@@ -16,6 +16,11 @@ export interface HoldFormProps {
   canResume: boolean;
   /** 고르지 않고 등록을 눌렀을 때 뜨는 말. 누르기 전에는 `null`이다. */
   error: string | null;
+  /**
+   * 사번을 모르는가. **모르면 두 버튼을 다 막는다** — 헤더가 비면 서버가 거부하는데(D-5),
+   * 큐에 담긴 뒤의 거부는 작업자가 화면을 떠난 뒤에 온다. 막고 그 이유를 여기서 말한다.
+   */
+  workerUnknown: boolean;
   onReasonChange: (code: string) => void;
   onRemarksChange: (value: string) => void;
   onStop: () => void;
@@ -37,6 +42,7 @@ export const HoldForm = ({
   canStop,
   canResume,
   error,
+  workerUnknown,
   onReasonChange,
   onRemarksChange,
   onStop,
@@ -99,11 +105,18 @@ export const HoldForm = ({
           ⭐ **두 버튼을 함께 세우고 상태로 가른다.** 하나를 숨기면 지금 세션이 어느 쪽인지
           화면에서 사라져, 눌러 본 뒤에야 안다(스펙 §6 — 「이미 중단 상태면 재개만 활성」).
         */}
+        {workerUnknown && <p className="pop-hold-note">{t.form.workerRequired}</p>}
+
         <div className="pop-hold-actions">
-          <Button size="lg" disabled={disabled || !canStop} onClick={onStop}>
+          <Button size="lg" disabled={disabled || workerUnknown || !canStop} onClick={onStop}>
             {t.form.stopAction}
           </Button>
-          <Button variant="outlined" size="lg" disabled={disabled || !canResume} onClick={onResume}>
+          <Button
+            variant="outlined"
+            size="lg"
+            disabled={disabled || workerUnknown || !canResume}
+            onClick={onResume}
+          >
             {t.form.resumeAction}
           </Button>
         </div>

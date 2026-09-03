@@ -172,6 +172,16 @@ export const useWorkHoldOutbox = (): Outbox => {
     [],
   );
 
+  /** 갱신 «뒤에» 저장할 값. 갱신 함수를 순수하게 두기 위한 자리다. */
+  const pendingWrite = useRef<OutboxEntry[] | null>(null);
+
+  useEffect(() => {
+    if (pendingWrite.current === null) return;
+
+    writeStored(pendingWrite.current);
+    pendingWrite.current = null;
+  });
+
   /** 항목별 자동 재전송 시도 횟수. 메모리에만 둔다 — 새로 뜨면 다시 세는 것이 맞다. */
   const attempts = useRef(new Map<string, number>());
   const [isStalled, setIsStalled] = useState(false);
@@ -248,7 +258,7 @@ export const useWorkHoldOutbox = (): Outbox => {
         attempts.current.delete(entry.idempotencyKey);
         setEntries((prev) => {
           const next = prev.filter((one) => one.idempotencyKey !== entry.idempotencyKey);
-          writeStored(next);
+          pendingWrite.current = next;
 
           return next;
         });
@@ -258,11 +268,18 @@ export const useWorkHoldOutbox = (): Outbox => {
     })();
   }, [client, entries, isOnline, isStalled, retryTick]);
 
+  /**
+   * ⛔ **키 생성과 저장을 상태 갱신 «함수 안»에서 하지 않는다.** 갱신 함수는 순수해야 하고
+   * StrictMode 는 그것을 두 번 부른다 — 안에서 키를 만들면 두 키가 생기고 저장도 두 번 돈다.
+   * 키는 밖에서 한 번 만들고, 저장은 갱신이 끝난 뒤 효과가 한다.
+   */
   const enqueue = useCallback((entry: Omit<OutboxEntry, 'idempotencyKey'>): void => {
+    const queued: OutboxEntry = { idempotencyKey: crypto.randomUUID(), ...entry };
+
     setRejection(null);
     setEntries((prev) => {
-      const next = [...prev, { idempotencyKey: crypto.randomUUID(), ...entry }];
-      writeStored(next);
+      const next = [...prev, queued];
+      pendingWrite.current = next;
 
       return next;
     });

@@ -14,7 +14,7 @@ export const workSession = (overrides: Partial<WorkSession> = {}): WorkSession =
   sessionNo: 2,
   terminalId: 7,
   startedAt: '2026-09-02T08:00:00+09:00',
-  statusCode: 'IN_PROGRESS',
+  statusCode: 'RUNNING',
   versionNo: 3,
   ...overrides,
 });
