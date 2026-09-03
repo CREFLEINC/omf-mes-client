@@ -973,43 +973,54 @@
 /*
  * 배너 «안»의 버튼은 **문구와 같은 줄, 오른쪽 끝**에 선다.
  *
- * DS 는 버튼을 문구 아래에 쌓는다. 그 탓에 배너 하나가 세로로 124px 를 먹고, 1024×768
- * 단말에서는 그만큼 본문이 눌린다 — 실측에서 좌측 입력 구획의 「비고」·「잔여수량」이 접힌
- * 아래로 내려갔다. 문장 왼쪽 · 조작 오른쪽은 이 화면의 머리줄·액션바와 같은 결이라 눈이
- * 새로 익힐 것이 없다.
+ * DS 는 버튼을 문구 아래에 쌓는다. 배너 하나가 세로로 124px 를 먹고, 1024×768 단말에서는
+ * 그만큼 본문이 눌린다 — 실측에서 좌측 입력 구획의 「비고」·「잔여수량」이 접힌 아래로
+ * 내려갔다. 문장 왼쪽 · 조작 오른쪽은 이 화면의 머리줄·액션바와 같은 결이다.
  *
- * ⚠ **배너 «내용»을 가로로 편다** — 버튼이 든 칸이 문구의 형제이지 자식이 아니다. 실측한
- * 구조가 `내용 = [제목(문구), 본문(버튼)]` 의 세로 쌓기였고, 안쪽만 손보면 버튼이 오른쪽으로
- * 가되 아랫줄에 그대로 남았다(문구 y=88 / 버튼 y=128).
+ * ⚠ **배너가 두 형태다.** 실측한 구조가 갈렸다 —
  *
- * ⚠ 버튼이 «있는» 배너만 편다(`:has`) — 문구만 있는 배너는 그대로 둔다.
+ * | 형태 | 내용의 구성 | 펴는 곳 |
+ * | --- | --- | --- |
+ * | 버튼만 | `[문구(제목), 버튼]` | **내용**을 가로로 (버튼이 문구의 «형제») |
+ * | 문구+버튼 | `[제목, 본문(문구 + 버튼)]` | **본문**을 가로로 (버튼이 문구와 같은 칸) |
+ *
+ * 한쪽 규칙만 두면 다른 쪽이 어긋난다 — 내용을 무조건 펴면 제목과 본문이 좌우로 갈라져
+ * 제목이 왼쪽에, 문구가 오른쪽 위에 서고 버튼은 그 아래에 남는다(실측).
+ *
  * ⚠ DS 내부 클래스를 겨냥하지 않는다 — 구조 선택자만 쓴다.
  */
-.pop-ui .banner-slot > * > :last-child:has(> :last-child button) {
+
+/* ① 버튼만 있는 본문 — 내용을 가로로 편다. */
+.pop-ui .banner-slot > * > :last-child:has(> :last-child > button:only-child) {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   gap: var(--space-4);
 }
 
-.pop-ui .banner-slot > * > :last-child:has(> :last-child button) > :last-child {
+.pop-ui .banner-slot > * > :last-child:has(> :last-child > button:only-child) > :last-child {
   flex: none;
   margin-inline-start: auto;
 }
 
-/*
- * 줄로 편 배너는 **아이콘도 그 줄에 맞춘다.**
- *
- * 위에서 내용을 가로 줄로 펴자 줄 높이가 버튼(72)만큼 커졌는데, 아이콘은 여전히 첫 줄
- * 기준(위쪽)에 붙어 홀로 떠 있었다. 문구·버튼이 줄 가운데에 서므로 아이콘도 가운데다.
- *
- * ⚠ 버튼이 없는 배너는 그대로 둔다 — 그쪽은 여러 줄이 될 수 있어 아이콘이 «첫 줄»에
- * 붙는 것이 옳다(위 「아이콘·글자 줄맞춤」).
- */
-.pop-ui .banner-slot > *:has(> :last-child > :last-child button) {
+/* ①의 아이콘도 그 줄 가운데에 — 줄이 버튼만큼 높아져 아이콘만 위에 떠 있었다. */
+.pop-ui .banner-slot > *:has(> :last-child > :last-child > button:only-child) {
   align-items: center;
 }
 
-.pop-ui .banner-slot > *:has(> :last-child > :last-child button) > :first-child {
+.pop-ui .banner-slot > *:has(> :last-child > :last-child > button:only-child) > :first-child {
   margin-block-start: 0;
+}
+
+/* ② 문구와 버튼이 한 칸에 있는 본문 — 그 칸만 가로로 편다. */
+.pop-ui .banner-slot > * > :last-child > :last-child:has(> button:not(:only-child)) {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.pop-ui .banner-slot > * > :last-child > :last-child > button:not(:only-child) {
+  flex: none;
+  margin-inline-start: auto;
 }
