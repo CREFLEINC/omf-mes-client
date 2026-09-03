@@ -171,7 +171,7 @@ export const IssuePane = ({
         </p>
       )}
 
-      <div className="pop-action-bar">
+      <div className="pop-action-bar pop-repack-actions">
         {/*
           ⚠ **발행 전에는 볼 것이 없다.** 그리기 경로가 발행 기록 번호를 받는다(착수 이슈 §6) —
           비활성으로 두되 **사유를 말한다.**

@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -384,6 +384,23 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.issue.preview })).toBeEnabled();
     });
+  });
+
+  /*
+   * ⛔ **받았다고 그려지는 것은 아니다.** 200 · `image/png` 여도 내용이 이미지가 아니면
+   * 브라우저가 깨진 아이콘을 놓는다(실측 — 목 서버가 본문에 `"string"` 을 준다).
+   */
+  it('라벨이 그려지지 않으면 깨진 그림 대신 사유를 말한다', async () => {
+    renderScreen({ issueCount: 0 });
+
+    await screen.findByText(HANDLING_UNIT_NO);
+    await clickWhenEnabled(submitButton);
+
+    const image = await screen.findByAltText(t.preview.alt);
+    fireEvent.error(image);
+
+    expect(await screen.findByText(t.preview.notDrawable)).toBeInTheDocument();
+    expect(screen.getByAltText(t.preview.alt)).not.toBeVisible();
   });
 
   it('발행하면 미리보기가 뜨고, 인쇄를 눌러야 프린터로 간다', async () => {

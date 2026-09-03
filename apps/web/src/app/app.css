@@ -6632,3 +6632,12 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0;
   color: var(--semantic-error);
 }
+
+/*
+ * ⛔ `.pop-section > * > * + *`(구획 안 형제 간격 12)가 액션바의 둘째 버튼까지 때린다 —
+ * 실측으로 두 버튼의 윗변이 12 어긋났다. 이 띠는 `align-items: center` 로 세로를 잡으므로
+ * 형제 간격을 턴다.
+ */
+.pop-repack-actions > * + * {
+  margin-top: 0;
+}

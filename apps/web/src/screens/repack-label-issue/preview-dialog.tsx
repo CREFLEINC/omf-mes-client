@@ -1,5 +1,6 @@
 import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useEffect, useState } from 'react';
 
 const t = messages.repackLabelIssue.preview;
 
@@ -28,34 +29,55 @@ export const PreviewDialog = ({
   isPrinting,
   onPrint,
   onClose,
-}: PreviewDialogProps) => (
-  <Dialog
-    open={open}
-    onClose={onClose}
-    title={t.title}
-    size="lg"
-    footer={
-      <>
-        <Button variant="outlined" size="lg" onClick={onClose}>
-          {t.close}
-        </Button>
-        <Button
-          variant="filled"
-          size="lg"
-          onClick={onPrint}
-          loading={isPrinting}
-          disabled={imageUrl === null}
-        >
-          {t.print}
-        </Button>
-      </>
-    }
-  >
-    {imageUrl === null ? (
-      <p className="pop-empty-note">{t.loading}</p>
-    ) : (
-      <img className="pop-repack-preview-image" src={imageUrl} alt={t.alt} />
-    )}
-    <p className="pop-repack-preview-note">{t.closeNote}</p>
-  </Dialog>
-);
+}: PreviewDialogProps) => {
+  /*
+   * ⛔ **받았다고 그려지는 것은 아니다.** 응답이 200 이고 `image/png` 여도 내용이 이미지가
+   * 아니면 브라우저는 **깨진 아이콘**을 놓는다 — 실측으로 그 상태가 화면에 그대로 남았다.
+   * 사용자에게는 「못 받았다」와 구분이 안 되므로 말로 대신한다.
+   */
+  const [isBroken, setIsBroken] = useState(false);
+
+  useEffect(() => {
+    setIsBroken(false);
+  }, [imageUrl]);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={t.title}
+      size="lg"
+      footer={
+        <>
+          <Button variant="outlined" size="lg" onClick={onClose}>
+            {t.close}
+          </Button>
+          <Button
+            variant="filled"
+            size="lg"
+            onClick={onPrint}
+            loading={isPrinting}
+            disabled={imageUrl === null}
+          >
+            {t.print}
+          </Button>
+        </>
+      }
+    >
+      {imageUrl === null && <p className="pop-empty-note">{t.loading}</p>}
+      {imageUrl !== null && isBroken && <p className="pop-repack-error">{t.notDrawable}</p>}
+      {imageUrl !== null && (
+        <img
+          className="pop-repack-preview-image"
+          src={imageUrl}
+          alt={t.alt}
+          hidden={isBroken}
+          onError={() => {
+            setIsBroken(true);
+          }}
+        />
+      )}
+      <p className="pop-repack-preview-note">{t.closeNote}</p>
+    </Dialog>
+  );
+};
