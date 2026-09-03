@@ -5,7 +5,7 @@
  * `window-options` · `renderer-path` · `file-blob-store` · `secure-store` · `local-db` · `print`.
  * 이 파일이 얇아야 「Electron을 띄워야만 확인 가능한 부분」이 작아진다.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -16,12 +16,14 @@ import { createFileBlobStore } from './file-blob-store';
 import { LocalDb, type SqlDatabase } from './local-db';
 import {
   type FileWriter,
+  PrinterUnavailableError,
   RenditionPrinter,
   UnknownFormatError,
   isRenditionFormat,
   toRenditionFileName,
 } from './print';
 import { resolveRendererPath } from './renderer-path';
+import { type PrintPage, createSilentPrinter, selectPrinter } from './silent-print';
 import { SecureStore } from './secure-store';
 import { createKioskWindowOptions } from './window-options';
 
@@ -87,6 +89,54 @@ const fileWriter: FileWriter = {
   },
 };
 
+/**
+ * 인쇄용 숨은 창. **작업마다 새로 열고 끝나면 닫는다** — 하나를 계속 쓰면 앞 출력물이 남아
+ * 다음 인쇄에 섞인다.
+ *
+ * ⛔ 키오스크 창의 옵션을 물려받지 않는다. 이 창은 사람에게 보이지 않고 우리가 방금 떨어뜨린
+ *    임시 파일 하나만 띄운다 — 통로를 더 열 이유가 없다.
+ */
+function openPrintPage(): PrintPage {
+  const page = new BrowserWindow({
+    show: false,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      devTools: false,
+    },
+  });
+
+  return {
+    load: async (url) => {
+      await page.loadURL(url);
+    },
+    print: async (deviceName, jobName) =>
+      new Promise((resolve, reject) => {
+        page.webContents.print(
+          {
+            silent: true,
+            deviceName,
+            /*
+             * ⚠ **여백을 두지 않는다.** 라벨은 대지 크기가 곧 인쇄 영역이라, 기본 여백이
+             *   들어가면 그림이 줄어 바코드 폭이 규격을 벗어난다.
+             * ⛔ 배경은 찍지 않는다 — 브라우저 엔진이 이미지 문서에 깔아 주는 바탕색이
+             *   라벨 전면을 덮는다.
+             */
+            margins: { marginType: 'none' },
+            printBackground: false,
+          },
+          (success, reason) => {
+            /* 취소도 실패로 다룬다 — 종이가 안 나온 것을 성공으로 두지 않는다(공유계약 F-6). */
+            if (success) resolve();
+            else reject(new Error(reason === '' ? '인쇄가 완료되지 않았다' : reason));
+          },
+        );
+      }),
+    close: () => page.destroy(),
+  };
+}
+
 async function openLocalDb(dbPath: string): Promise<LocalDb> {
   const SQL = await initSqlJs();
   const existing = existsSync(dbPath) ? readFileSync(dbPath) : undefined;
@@ -122,7 +172,38 @@ async function main(): Promise<void> {
   const dbPath = join(userData, 'pop.sqlite');
   const localDb = await openLocalDb(dbPath);
   const renditionDir = join(userData, 'renditions');
-  const printer = new RenditionPrinter(fileWriter);
+  const stagingDir = join(app.getPath('temp'), 'omf-pop-print');
+  const printer = new RenditionPrinter(
+    fileWriter,
+    createSilentPrinter({
+      openPage: openPrintPage,
+      stage: async (bytes, format) => {
+        mkdirSync(stagingDir, { recursive: true });
+        /* 이름은 겹치지 않기만 하면 된다 — 사람이 읽는 이름은 `renditions/` 쪽이 갖는다. */
+        const path = join(
+          stagingDir,
+          `${String(Date.now())}-${String(process.hrtime.bigint())}.${format}`,
+        );
+        writeFileSync(path, bytes);
+        return { path, url: pathToFileURL(path).toString() };
+      },
+      discard: async (path) => rmSync(path, { force: true }),
+    }),
+  );
+
+  /**
+   * 어느 프린터로 보내는가. **창이 선 뒤에야 물어볼 수 있다** — 프린터 목록은 `webContents`
+   * 가 준다. 인쇄는 사람이 화면을 조작한 뒤에 일어나므로 그때는 이미 서 있다.
+   *
+   * ⚠ 매번 다시 묻는다. 현장에서 프린터를 갈아 끼우거나 껐다 켜는 일이 있어, 기동 시점의
+   *   목록을 들고 있으면 사라진 장치로 계속 보낸다.
+   */
+  let printHost: BrowserWindow | null = null;
+  const resolveDeviceName = async (): Promise<string | null> => {
+    if (printHost === null) return null;
+    const printers = await printHost.webContents.getPrintersAsync();
+    return selectPrinter(printers, process.env.POP_PRINTER_NAME);
+  };
 
   // 대기열이 사라지면 현장 실적이 사라진다. 창을 만들기 **전에** 등록한다 —
   // 창 생성이나 로드가 실패해도 이미 걸려 있어야 그 세션의 기록이 남는다.
@@ -159,8 +240,22 @@ async function main(): Promise<void> {
     async (_e, bytes: Uint8Array, label: string, now: string, format: unknown) => {
       // 형식은 파일 경로 계산에 들어간다 — 아는 값인지 경계에서 막는다.
       if (!isRenditionFormat(format)) throw new UnknownFormatError(format);
+
+      const rendition = { bytes, label, format };
       const filePath = join(renditionDir, toRenditionFileName(label, now, format));
-      await printer.print({ bytes, label, format }, { kind: 'file', filePath });
+
+      /*
+       * ⭐ **기록을 먼저 남기고 인쇄한다.** 인쇄가 실패해도 서버가 그려 준 것은 단말에 남아,
+       *    현장에서 무엇이 나왔어야 하는지 확인할 수 있다. 순서를 뒤집으면 프린터가 죽은 날의
+       *    출력물이 아무 데도 남지 않는다.
+       */
+      await printer.print(rendition, { kind: 'file', filePath });
+
+      const deviceName = await resolveDeviceName();
+      /* ⛔ 프린터를 못 고른 것을 성공으로 두지 않는다(공유계약 F-6) — 화면이 인쇄 실패로 낸다. */
+      if (deviceName === null) throw new PrinterUnavailableError();
+
+      await printer.print(rendition, { kind: 'printer', deviceName });
       return filePath;
     },
   );
@@ -168,6 +263,7 @@ async function main(): Promise<void> {
   const window = new BrowserWindow(
     createKioskWindowOptions({ preloadPath: PRELOAD_PATH, isDev: IS_DEV }),
   );
+  printHost = window;
 
   // 새 창은 키오스크 옵션을 물려받지 않는다 — 프레임 있는 일반 창에 개발자도구가 열린 채
   // 뜬다. 작업자가 셸 밖으로 빠져나갈 통로라 아예 막는다.

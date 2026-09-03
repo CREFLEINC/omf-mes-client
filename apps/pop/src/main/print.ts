@@ -9,8 +9,9 @@
  *    셸이 형식을 단정하면 이름과 내용이 어긋난다 — 이전 판이 받은 PNG를 무조건 `.pdf`로
  *    저장해 PDF 리더가 열지 못하는 파일을 만들었다(실측).
  *
- * 실기 프린터가 아직 없으므로 **파일로 떨어뜨리는 경로를 먼저** 만든다.
- * 실기 도착 후 `PrintTarget`만 무음 인쇄로 바꾼다 — 호출부는 그대로 둔다.
+ * 목표는 둘이다 — **파일로 떨어뜨리기**(기록)와 **무음 인쇄**(실물). #441 이 파일 경로를
+ * 먼저 세웠고 #798 이 인쇄 경로를 채웠다. 예고한 대로 **호출부는 바뀌지 않았다** — 렌더러는
+ * 지금도 `rendition.save(bytes, label, now, format)` 하나만 부른다.
  */
 
 /** 서버가 돌려주는 출력물 형식. 계약의 `format` 파라미터와 같은 값이다. */
@@ -33,9 +34,14 @@ export interface FileWriter {
   write(filePath: string, bytes: Uint8Array): Promise<void>;
 }
 
-/** 무음 인쇄. 실기 도착 전까지는 구현이 없다. */
+/**
+ * 무음 인쇄. 구현은 `silent-print.ts` 에 있고 Electron 배선은 `index.ts` 가 준다.
+ *
+ * ⚠ **출력물을 통째로 넘긴다.** 바이트만으로는 임시 파일 확장자를 정할 수 없고, 확장자가
+ *   틀리면 브라우저 엔진이 PNG 를 문서로 읽어 빈 종이를 뽑는다.
+ */
 export interface SilentPrinter {
-  print(deviceName: string, bytes: Uint8Array, jobName: string): Promise<void>;
+  print(deviceName: string, rendition: Rendition): Promise<void>;
 }
 
 export class EmptyRenditionError extends Error {
@@ -47,7 +53,7 @@ export class EmptyRenditionError extends Error {
 
 export class PrinterUnavailableError extends Error {
   constructor() {
-    super('무음 인쇄 경로가 아직 없다 — 실기 도착 전까지 파일 경로를 쓴다');
+    super('인쇄할 프린터를 찾을 수 없다 — 출력물은 파일로 남았다');
     this.name = 'PrinterUnavailableError';
   }
 }
@@ -111,7 +117,7 @@ export class RenditionPrinter {
     }
 
     if (this.printer === undefined) throw new PrinterUnavailableError();
-    await this.printer.print(target.deviceName, rendition.bytes, rendition.label);
+    await this.printer.print(target.deviceName, rendition);
   }
 }
 

@@ -12,6 +12,8 @@
 
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
+
+import { makeLabelPng } from './label-png.mjs';
 import { networkInterfaces } from 'node:os';
 
 import { writeMergedSpec } from '../merge-spec.mjs';
@@ -288,10 +290,31 @@ on('POST', '/app/document-issues', (_params, _query, body) => {
   return { created: { items, issuedCount: items.length }, status: 201 };
 });
 
-on('GET', '/app/document-issues/{documentIssueLogId}/rendition', () => ({
-  format: 'png',
-  content: 'synthetic-label',
-}));
+/**
+ * 그려 준 출력물. **진짜 PNG 바이트를 돌려준다** — 종전의 JSON 응답으로는 POP 셸의 형식
+ * 시그니처 검사를 통과하지 못해 실기 인쇄 확인을 시작할 수 없었다(#798).
+ *
+ * ⛔ 라벨 서식이 아니다. 서식은 서버가 그린다(설계 결정 18) — 여기 그림은 경로 확인용이다.
+ * ⚠ `format=pdf`(성적서·보고서)는 씨앗이 만들지 않는다. 없는 것을 png 로 대신 주면 셸이
+ *   이름과 내용이 어긋난 파일을 만든다.
+ */
+on('GET', '/app/document-issues/{documentIssueLogId}/rendition', (params, query) => {
+  const format = query.get('format') ?? 'png';
+
+  if (format !== 'png') {
+    return {
+      status: 415,
+      created: { code: 'UNSUPPORTED_FORMAT', message: '씨앗은 png 만 그립니다.' },
+    };
+  }
+
+  return {
+    binary: {
+      contentType: 'image/png',
+      bytes: makeLabelPng(Number(params.documentIssueLogId) || 1),
+    },
+  };
+});
 
 on('POST', '/app/document-issues/{documentIssueLogId}:report-print', (params, _query, body) => {
   const issue = state.documentIssues.find(
@@ -410,9 +433,7 @@ on('POST', '/inventory/handling-units/{handlingUnitId}:pack', (params, _q, body)
     return {
       status: 400,
       created: {
-        errors: [
-          { scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' },
-        ],
+        errors: [{ scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' }],
       },
     };
   }
@@ -955,6 +976,23 @@ const readBody = (request) =>
     });
   });
 
+/**
+ * 그림·문서처럼 **JSON 이 아닌 응답**. 핸들러가 `{ binary: … }` 를 돌려주면 이 길로 간다.
+ *
+ * ⚠ 실기 인쇄 확인에 반드시 필요하다 — 셸이 형식 시그니처를 검사하므로 JSON 을 PNG 라고
+ *   말하면 인쇄 경로가 시작되지 않는다.
+ */
+const sendBinary = (response, { contentType, bytes }) => {
+  response.writeHead(200, {
+    'Content-Type': contentType,
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Content-Length': bytes.length,
+  });
+  response.end(bytes);
+};
+
 const send = (response, status, payload) => {
   const body = JSON.stringify(payload);
   response.writeHead(status, {
@@ -1022,6 +1060,11 @@ const server = createServer((request, response) => {
 
       if (result === null) {
         send(response, 404, { code: 'NOT_FOUND', message: '씨앗에 없는 자원입니다.' });
+        return;
+      }
+
+      if (result !== null && typeof result === 'object' && 'binary' in result) {
+        sendBinary(response, result.binary);
         return;
       }
 

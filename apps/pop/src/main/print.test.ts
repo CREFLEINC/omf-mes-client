@@ -104,7 +104,7 @@ describe('빈 출력물 방어', () => {
   });
 });
 
-describe('무음 인쇄 경로 — 실기 도착 후 갈아끼울 자리', () => {
+describe('무음 인쇄 경로', () => {
   it('프린터 구현이 없으면 명확히 던진다', async () => {
     await expect(
       new RenditionPrinter(recordingWriter()).print(rendition(), {
@@ -114,13 +114,14 @@ describe('무음 인쇄 경로 — 실기 도착 후 갈아끼울 자리', () =>
     ).rejects.toThrow(PrinterUnavailableError);
   });
 
-  it('구현이 있으면 원본 바이트·장치명·작업 이름을 넘긴다', async () => {
+  it('구현이 있으면 장치명과 출력물을 그대로 넘긴다', async () => {
     const printer: SilentPrinter = { print: vi.fn(async () => undefined) };
-    await new RenditionPrinter(recordingWriter(), printer).print(rendition('png', PNG, 'LOT-77'), {
+    const target = rendition('png', PNG, 'LOT-77');
+    await new RenditionPrinter(recordingWriter(), printer).print(target, {
       kind: 'printer',
       deviceName: 'ZD421',
     });
-    expect(printer.print).toHaveBeenCalledWith('ZD421', Uint8Array.from(PNG), 'LOT-77');
+    expect(printer.print).toHaveBeenCalledWith('ZD421', target);
   });
 });
 
