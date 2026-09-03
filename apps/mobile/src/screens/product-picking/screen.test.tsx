@@ -591,6 +591,10 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await waitFor(() => {
       expect(seen).toHaveLength(2);
     });
+    /* 전제 - 라인만 다르고 나머지는 같다. 그러지 않으면 이 시험은 라인을 재는 것이 아니다. */
+    expect(new URL(seen[0]?.url ?? '').pathname).toContain('/lines/77:pick');
+    expect(new URL(seen[1]?.url ?? '').pathname).toContain('/lines/78:pick');
+    expect(await seen[1]?.clone().json()).toEqual(await seen[0]?.clone().json());
     expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
       seen[0]?.headers.get('Idempotency-Key'),
     );
