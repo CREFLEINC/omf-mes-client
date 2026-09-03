@@ -9,9 +9,13 @@ import {
 
 import { useApiClient } from '../../patterns/api-context';
 import type { Lot } from '../../patterns/lots';
-import { createIdempotencyKey } from '../../patterns/outbox';
 import { runRequest } from '../../patterns/request';
-import { toPickBody, type Candidate, type ShipmentRequest, type ShipmentRequestLine } from './picking';
+import {
+  toPickBody,
+  type Candidate,
+  type ShipmentRequest,
+  type ShipmentRequestLine,
+} from './picking';
 
 export const pickingKeys = {
   requests: (day: string) => ['picking-requests', day] as const,
@@ -157,6 +161,10 @@ export const toCandidates = (pool: LotPool, available: Map<number, number>): Can
   }));
 
 export interface PickVariables {
+  /*
+   * 화면이 들고 있는 키. 여기서 만들면 재시도마다 값이 달라져 멱등키가 아무것도 막지 못한다.
+   */
+  idempotencyKey: string;
   shipmentRequestId: number;
   line: ShipmentRequestLine;
   candidate: Candidate;
@@ -175,14 +183,21 @@ export const usePickLine = (): UseMutationResult<ShipmentRequestLine, Error, Pic
   const queries = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ shipmentRequestId, line, candidate, qty, workerNo }: PickVariables) =>
+    mutationFn: ({
+      shipmentRequestId,
+      line,
+      candidate,
+      qty,
+      workerNo,
+      idempotencyKey,
+    }: PickVariables) =>
       runRequest(() =>
         client.POST(
           '/logistics/shipment-requests/{shipmentRequestId}/lines/{shipmentRequestLineId}:pick',
           {
             params: {
               path: { shipmentRequestId, shipmentRequestLineId: line.shipmentRequestLineId },
-              header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
+              header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
             },
             body: toPickBody(candidate, line, qty),
           },

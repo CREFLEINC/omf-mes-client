@@ -1,7 +1,8 @@
 import { AlertBanner, Button, Card, Chip, NumberPad, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
+import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
@@ -127,6 +128,12 @@ export const ProductPickingScreen = () => {
   const [manual, setManual] = useState('');
   const [missed, setMissed] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  /*
+   * 보내는 동안 잠근다. 상태로 두면 React 가 두 이벤트 사이에 커밋하지 못한 경우를 막지 못한다 -
+   * 셋이 잇달아 들어오면 셋 다 갱신 전의 값을 보고 통과한다. 즉시 바뀌는 자리에 둔다. 단추를
+   * 흐리게 하는 것은 DS 단추의 loading 이 이미 한다.
+   */
+  const inFlight = useRef(false);
 
   const requests = useTodayRequests(today);
   const itemId = target?.line.itemId ?? null;
@@ -164,6 +171,23 @@ export const ProductPickingScreen = () => {
 
   const scanField = useScanField({ onScan: takeScan });
 
+  /*
+   * 한 번의 확정에 키 하나. 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 스스로 비워지게 한다.
+   * 이 화면은 후보 LOT 을 바꿔 가며 고르는 것이 주된 조작이라, 요청·라인·후보·수량이 다 들어가야
+   * 한다. 수량은 친 문자열이 아니라 실제로 보낼 값으로 짓는다.
+   *
+   * 조기 반환보다 위에 둔다. 아래에 두면 연결이 끊겼다 붙는 순간 훅 수가 달라져 화면이 통째로
+   * 던진다.
+   */
+  const idempotency = useIdempotencyKey(
+    [
+      String(target?.request.shipmentRequestId),
+      String(target?.line.shipmentRequestLineId),
+      String(lotId),
+      String(Number(qty.trim())),
+    ].join(':'),
+  );
+
   if (!online) {
     return (
       <div className="picking">
@@ -175,7 +199,8 @@ export const ProductPickingScreen = () => {
   }
 
   const selected = candidates.find((each) => each.lot.lotId === lotId) ?? null;
-  const problem = target === null || selected === null ? null : qtyProblem(selected, target.line, qty);
+  const problem =
+    target === null || selected === null ? null : qtyProblem(selected, target.line, qty);
 
   const qtyMessage = (): string | undefined => {
     if (selected === null || target === null || problem === null) {
@@ -203,22 +228,30 @@ export const ProductPickingScreen = () => {
   };
 
   const confirm = async () => {
-    if (target === null || selected === null || worker === null) {
+    if (target === null || selected === null || worker === null || inFlight.current) {
       return;
     }
 
-    await pick
-      .mutateAsync({
-        shipmentRequestId: target.request.shipmentRequestId,
-        line: target.line,
-        candidate: selected,
-        qty,
-        workerNo: worker.workerNo,
-      })
-      .then(() => {
-        setDone(true);
-      })
-      .catch(() => null);
+    inFlight.current = true;
+
+    try {
+      await pick
+        .mutateAsync({
+          shipmentRequestId: target.request.shipmentRequestId,
+          line: target.line,
+          candidate: selected,
+          qty,
+          workerNo: worker.workerNo,
+          idempotencyKey: idempotency.current(),
+        })
+        .then(() => {
+          idempotency.reset();
+          setDone(true);
+        })
+        .catch(() => null);
+    } finally {
+      inFlight.current = false;
+    }
   };
 
   if (done) {
@@ -250,7 +283,9 @@ export const ProductPickingScreen = () => {
                 const left = remainingAllocated(line);
 
                 return (
-                  <li key={`${String(request.shipmentRequestId)}-${String(line.shipmentRequestLineId)}`}>
+                  <li
+                    key={`${String(request.shipmentRequestId)}-${String(line.shipmentRequestLineId)}`}
+                  >
                     <Button
                       className="picking__pick"
                       variant="outlined"
@@ -268,7 +303,9 @@ export const ProductPickingScreen = () => {
                         <span>
                           {t.targets.progress(String(line.allocatedQty), String(line.pickedQty))}
                         </span>
-                        <span>{left <= 0 ? t.targets.complete : t.targets.remaining(String(left), '')}</span>
+                        <span>
+                          {left <= 0 ? t.targets.complete : t.targets.remaining(String(left), '')}
+                        </span>
                       </span>
                     </Button>
                   </li>
@@ -451,8 +488,8 @@ export const ProductPickingScreen = () => {
           />
           {worker === null ? <p className="picking__note">{t.noWorker}</p> : null}
           {pick.error === null || pick.error === undefined ? null : isConflict(
-            toApiError(pick.error),
-          ) ? (
+              toApiError(pick.error),
+            ) ? (
             <AlertBanner variant="error" title={t.conflict} />
           ) : (
             <AlertBanner variant="error" title={t.failed} />
