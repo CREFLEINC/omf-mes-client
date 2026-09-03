@@ -49,9 +49,9 @@ const t = messages.goodsReceipt;
 const { codeValues } = vi.hoisted(() => ({
   codeValues: {
     receiptType: [] as string[],
-    sourceDocumentType: [] as string[],
+    sourceDocumentType: ['INBOUND_RECEIPT'] as string[],
     qualityStatus: [] as string[],
-    inventoryStatus: [] as string[],
+    inventoryStatus: ['AVAILABLE', 'IN_TRANSIT', 'ON_HOLD', 'BLOCKED'] as string[],
     reason: [] as string[],
   },
 }));
@@ -76,9 +76,9 @@ const SAMPLE_REASON = 'SAMPLE_REASON_A';
 
 const clearCodeLists = (): void => {
   codeValues.receiptType = [];
-  codeValues.sourceDocumentType = [];
+  codeValues.sourceDocumentType = ['INBOUND_RECEIPT'];
   codeValues.qualityStatus = [];
-  codeValues.inventoryStatus = [];
+  codeValues.inventoryStatus = ['AVAILABLE', 'IN_TRANSIT', 'ON_HOLD', 'BLOCKED'];
   codeValues.reason = [];
 };
 
@@ -87,7 +87,7 @@ const fillCodeLists = (): void => {
   codeValues.receiptType = [SAMPLE_RECEIPT_TYPE];
   codeValues.sourceDocumentType = [SAMPLE_SOURCE_TYPE];
   codeValues.qualityStatus = [SAMPLE_QUALITY];
-  codeValues.inventoryStatus = [SAMPLE_INVENTORY];
+  codeValues.inventoryStatus = ['AVAILABLE', 'IN_TRANSIT', 'ON_HOLD', 'BLOCKED'];
   codeValues.reason = [SAMPLE_REASON];
 };
 
@@ -1684,14 +1684,14 @@ describe('GoodsReceiptScreen — 코드 목록이 확정되지 않은 지금', (
     expect(postRequests(requests)).toHaveLength(0);
   });
 
-  it('코드 다섯 칸이 비어 있고 왜 비었는지 밝힌다', async () => {
+  it('운영 코드 세 칸이 비어 있고 왜 비었는지 밝힌다', async () => {
     const { user } = renderScreen(allRoutes(), '?ir=9001');
 
     await openPostPane(user);
 
     const pane = screen.getByRole('region', { name: t.panes.post });
 
-    expect(within(pane).getAllByText(messages.pendingCode.note)).toHaveLength(5);
+    expect(within(pane).getAllByText(messages.pendingCode.note)).toHaveLength(3);
   });
 });
 

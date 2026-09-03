@@ -1,7 +1,13 @@
 import type { components } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { FIFO_POLICY_CODES, FREE_TEXT_CODES, fifoPolicyOptions } from './code-catalog';
+import {
+  EXTERNAL_SYSTEM_CODES,
+  FIFO_POLICY_CODES,
+  FREE_TEXT_CODES,
+  externalSystemOptions,
+  fifoPolicyOptions,
+} from './code-catalog';
 import type { ExternalCodeItemPayload } from './external-code-draft';
 
 type ItemUpdate = components['schemas']['ItemUpdate'];
@@ -69,12 +75,8 @@ describe('FREE_TEXT_CODES', () => {
     expect(FREE_TEXT_CODES).not.toContain('fifoPolicyCode');
   });
 
-  /*
-   * 외부 코드 구획의 필수 필드다. 앞선 화면처럼 빈 선택지로 두면
-   * 그 탭이 통째로 동작하지 않는다 — 행을 아예 추가할 수 없다(결정 4).
-   */
-  it('외부 시스템 코드가 자유 입력이다', () => {
-    expect(FREE_TEXT_CODES).toContain('externalSystemCode');
+  it('OpenAPI enum인 외부 시스템 코드는 자유 입력이 아니다', () => {
+    expect(FREE_TEXT_CODES).not.toContain('externalSystemCode');
   });
 
   /* 이 목록은 필드 이름만 담는다 — 코드값이 섞이면 화면이 값 목록을 아는 것처럼 보인다. */
@@ -82,6 +84,13 @@ describe('FREE_TEXT_CODES', () => {
     for (const example of CONTRACT_EXAMPLE_STRINGS) {
       expect(FREE_TEXT_CODES).not.toContain(example);
     }
+  });
+});
+
+describe('EXTERNAL_SYSTEM_CODES', () => {
+  it('OpenAPI가 닫은 세 값만 제공한다', () => {
+    expect(EXTERNAL_SYSTEM_CODES).toEqual(['EQUIPMENT_STANDARD_IF', 'TRACKING_SYSTEM', 'UNIERP']);
+    expect(externalSystemOptions.map((option) => option.value)).toEqual(EXTERNAL_SYSTEM_CODES);
   });
 });
 

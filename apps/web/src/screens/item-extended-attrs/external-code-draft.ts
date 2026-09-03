@@ -1,6 +1,9 @@
 import type { components, paths } from '@omf-mes/api-client';
 
 type ItemExternalCode = components['schemas']['ItemExternalCode'];
+type ExternalCodeInput =
+  paths['/mdm/items/{itemId}/external-codes']['put']['requestBody']['content']['application/json']['externalCodes'][number];
+export type ExternalSystemCode = ExternalCodeInput['externalSystemCode'];
 
 /**
  * 외부 코드 초안 — 표에 보이는 목록과 치환 본문 사이의 유일한 통로.
@@ -19,12 +22,8 @@ type ItemExternalCode = components['schemas']['ItemExternalCode'];
  */
 
 /** 치환 본문의 항목 하나. **계약의 요청 항목이 정확히 셋이고 식별자가 없다.** */
-type ExternalCodeInput =
-  paths['/mdm/items/{itemId}/external-codes']['put']['requestBody']['content']['application/json']['externalCodes'][number];
-
 export interface ExternalCodeItemPayload {
-  /** 계약이 외부 시스템을 세 값으로 닫았다(코드 사전 2026-09-03). 선택지는 서버 코드값이다 */
-  externalSystemCode: ExternalCodeInput['externalSystemCode'];
+  externalSystemCode: ExternalSystemCode;
   partnerId?: number | null;
   externalItemCode: string;
 }
@@ -38,8 +37,8 @@ export interface ExternalCodeItemPayload {
 export interface ExternalCodeDraft {
   /** 표의 행 식별자·React key. **서버로 나가지 않는다** */
   draftId: string;
-  /** 값 목록이 확정되지 않아 자유 입력이다(결정 4) · 길이 50 */
-  externalSystemCode: string;
+  /** OpenAPI가 닫은 외부 시스템 셋. 빈 문자열은 새 초안의 미선택 상태다. */
+  externalSystemCode: ExternalSystemCode | '';
   /** 비우면 「(전체)」다 — 계약이 그 뜻을 널로 표현한다(A-7) */
   partnerId: string;
   /** 고객 바코드 체계의 저장처 · 길이 100 */
@@ -101,12 +100,17 @@ export const removeExternalCodeDraft = (
 export const toExternalCodesPayload = (
   drafts: readonly ExternalCodeDraft[],
 ): ExternalCodeItemPayload[] =>
-  drafts.map((draft) => ({
-    /* 선택칸의 값은 서버 코드값 목록에서 온다 — 계약이 닫은 형으로 좁혀 싣는다. */
-    externalSystemCode: draft.externalSystemCode.trim() as ExternalCodeInput['externalSystemCode'],
-    partnerId: draft.partnerId === '' ? null : Number(draft.partnerId),
-    externalItemCode: draft.externalItemCode.trim(),
-  }));
+  drafts.map((draft) => {
+    if (draft.externalSystemCode === '') {
+      throw new Error('externalSystemCode is required');
+    }
+
+    return {
+      externalSystemCode: draft.externalSystemCode,
+      partnerId: draft.partnerId === '' ? null : Number(draft.partnerId),
+      externalItemCode: draft.externalItemCode.trim(),
+    };
+  });
 
 /**
  * 유일 제약의 판정 키.
@@ -120,7 +124,7 @@ export const toExternalCodesPayload = (
 export const duplicateKeyOf = (draft: ExternalCodeDraft): string => {
   const partner = draft.partnerId === '' ? 0 : Number(draft.partnerId);
 
-  return `${draft.externalSystemCode.trim()}#${String(partner)}`;
+  return `${draft.externalSystemCode}#${String(partner)}`;
 };
 
 const isSameDraft = (a: ExternalCodeDraft, b: ExternalCodeDraft | undefined): boolean =>

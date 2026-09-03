@@ -85,7 +85,7 @@ describe('DecisionSubjectSummary', () => {
     expect(list?.querySelectorAll('dd')).toHaveLength(5);
   });
 
-  /** 유형 코드는 **코드 그대로**다 — 값 목록이 확정되기 전에 이름을 지어내면 그것이 매핑표다. */
+  /** 유형 코드는 고정 OpenAPI가 정한 코드 그대로 낸다. */
   it('유형 코드를 이름으로 바꾸지 않는다', () => {
     const other = requestFixtures.find(
       (request) => request.approvalTypeCode === 'INVENTORY_ADJUSTMENT',

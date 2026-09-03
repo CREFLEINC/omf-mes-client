@@ -314,11 +314,9 @@ export const itemExtendedAttrs = {
       confirm: '확인',
       notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
     },
-    /* 값 목록이 확정되지 않아 자유 입력으로 받는다(결정 4) — 그 사실을 밝힌다. */
-    externalSystemNote: '코드 목록이 확정되지 않아 직접 입력합니다. 값은 서버가 확인합니다.',
+    externalSystemPlaceholder: '외부 시스템을 선택하세요',
     validation: {
       required: '필수 입력 항목입니다.',
-      externalSystemCodeTooLong: '외부 시스템 코드는 50자를 넘을 수 없습니다.',
       externalItemCodeTooLong: '외부 품목코드는 100자를 넘을 수 없습니다.',
       /* 계약 uq_item_external_code — COALESCE(partner_id,0) 접기를 문구가 밝힌다(A-7). */
       duplicateKey:

@@ -162,7 +162,7 @@ describe('참조 이름 조회', () => {
             itemName: '합성 품목',
             itemTypeCode: 'CODE-F',
             baseUomId: 7001,
-            lotControlTypeCode: 'CODE-G',
+            lotControlled: true,
             serialControlTypeCode: 'CODE-H',
             inspectionRequired: true,
             fifoPolicyCode: 'CODE-I',

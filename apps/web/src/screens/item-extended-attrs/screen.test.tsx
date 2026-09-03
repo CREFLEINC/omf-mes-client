@@ -11,6 +11,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { pickDate } from '../../test/date-picker';
+import type { ExternalCodeDraft } from './external-code-draft';
 import {
   bomComponentFixtures,
   bomFixtures,
@@ -2388,13 +2389,14 @@ const externalCodePuts = (requests: RecordedRequest[], itemId = 1001): RecordedR
 /** 외부 코드 한 줄을 창에서 만든다. 확인까지 누르면 표에만 반영된다. */
 const addExternalCodeRow = async (
   user: ReturnType<typeof userEvent.setup>,
-  systemCode = 'SYN-EXT-09',
+  systemCode: ExternalCodeDraft['externalSystemCode'] = 'EQUIPMENT_STANDARD_IF',
 ) => {
   await user.click(screen.getByRole('button', { name: '외부 코드 추가' }));
 
   const dialog = screen.getByRole('dialog');
 
-  await user.type(within(dialog).getByLabelText('외부 시스템'), systemCode);
+  await user.click(within(dialog).getByLabelText('외부 시스템'));
+  await user.click(within(dialog).getByRole('option', { name: systemCode }));
   await user.type(within(dialog).getByLabelText('외부 품목코드'), 'SYN-EXT-ITEM-09');
 
   await user.click(within(dialog).getByRole('button', { name: '확인' }));
@@ -2512,7 +2514,9 @@ describe('ItemExtendedAttrsScreen — 외부 코드 치환 (M15~M18)', () => {
     const body = externalCodeBodies(requests)[0] as {
       externalCodes: { externalSystemCode: string; partnerId: number | null }[];
     };
-    const added = body.externalCodes.find((code) => code.externalSystemCode === 'SYN-EXT-09');
+    const added = body.externalCodes.find(
+      (code) => code.externalSystemCode === 'EQUIPMENT_STANDARD_IF',
+    );
     expect(added?.partnerId).toBeNull();
   });
 
@@ -2631,7 +2635,8 @@ describe('ItemExtendedAttrsScreen — 외부 코드 중복 (M29)', () => {
 
     await user.click(screen.getByRole('button', { name: '외부 코드 추가' }));
     const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText('외부 시스템'), 'TRACKING_SYSTEM');
+    await user.click(within(dialog).getByLabelText('외부 시스템'));
+    await user.click(within(dialog).getByRole('option', { name: 'TRACKING_SYSTEM' }));
     await user.click(within(dialog).getByLabelText('거래처'));
     await user.click(screen.getByRole('option', { name: 'SYN-PARTNER-01 · 합성 거래처 A' }));
     await user.type(within(dialog).getByLabelText('외부 품목코드'), 'SYN-EXT-ITEM-09');

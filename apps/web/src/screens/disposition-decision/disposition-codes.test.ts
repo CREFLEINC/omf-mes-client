@@ -20,8 +20,8 @@ const PLACEHOLDER_SEVERITY_CODE = 'CODE-B';
 const PLACEHOLDER_STATUS_CODE = 'CODE-C';
 
 describe('코드 상수', () => {
-  it('값 목록이 확정되기 전에는 코드를 지어내지 않는다', () => {
-    expect(DISPOSITION_TYPE_CODES).toEqual([]);
+  it('고정 OpenAPI의 처분 유형 3종을 담는다', () => {
+    expect(DISPOSITION_TYPE_CODES).toEqual(['REWORK', 'SCRAP', 'NORMAL']);
     expect(SEVERITY_CODES).toEqual([]);
     expect(NONCONFORMANCE_STATUS_CODES).toEqual([]);
   });

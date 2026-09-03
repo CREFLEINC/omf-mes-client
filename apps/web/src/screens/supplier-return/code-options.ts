@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReturnCodeKey, SelectOption } from './types';
 
 /**
- * 값 목록이 확정되지 않은 코드 **여섯**을 한 파일에 격리한다.
+ * 고정 OpenAPI가 닫은 구조 코드와 운영 목록을 기다리는 코드를 한 파일에 격리한다.
  *
  * **값을 지어내지 않는 것이 이 파일의 목적이다.** 착수 이슈가 미결로 남긴 것을 화면이
  * 그럴듯한 예시로 메우면, 사용자는 고를 수 있다고 믿고 고르는데 서버는 그 값을 모른다 —
@@ -34,10 +34,8 @@ export type SupplierReturnCodeKey = ReturnCodeKey | 'receiptType' | 'status';
 /**
  * 계약이 **요청 필수**로 요구하는 넷.
  *
- * `sourceDocumentType`·`destinationType`이 여기 있는 것이 눈에 걸릴 수 있다 — 원천이 입고
- * 전표임을·도착지가 공급사임을 가리키는 **구조 값**이라 사용자가 고를 성질이 아니다.
- * 그런데도 자리표시로 두는 이유는, 그 값이 무엇이어야 하는지도 아직 확정되지 않았기
- * 때문이다. 화면이 「입고 전표를 뜻하는 코드」를 정해 심으면 그것도 지어내는 것이다.
+ * `sourceDocumentType`·`destinationType`은 원천이 입고 전표임을·도착지가 공급사임을
+ * 가리키는 **구조 값**이며, OpenAPI가 닫은 `GOODS_RECEIPT`·`PARTNER`를 그대로 쓴다.
  *
  * `reason`은 계약 스키마에서 nullable이지만 설명이 「반품·기타 출고에서는 필수」라
  * **설명을 따른다**(계획 §5.4-4).
@@ -49,23 +47,17 @@ export const REQUIRED_CODE_KEYS: readonly ReturnCodeKey[] = [
   'reason',
 ];
 
-/** 코드마다의 값 목록. **비어 있는 것이 지금의 사실이다.** */
+/** 코드마다의 값 목록. 구조 enum은 채우고 운영 공통코드는 비워 둔다. */
 export type CodeValueLists = Record<SupplierReturnCodeKey, readonly string[]>;
 
 /** 코드마다의 선택지. */
 export type CodeOptionSets = Record<SupplierReturnCodeKey, SelectOption[]>;
 
-/**
- * 값 목록 — **여섯 다 비어 있다.**
- *
- * 자리표시 값을 하나 넣어 두지 않는다. 넣으면 사용자가 그것을 고를 수 있고, 고르면
- * 서버가 모르는 코드가 되돌릴 수 없는 전표에 실린다. 조회 조건 쪽에 넣으면 결과가 늘
- * 비어 보인다.
- */
+/** 고정 OpenAPI가 닫은 구조 코드만 채운다. 운영 공통코드 축은 실행 시점 조회 전까지 비워 둔다. */
 export const PLACEHOLDER_SUPPLIER_RETURN_CODES: CodeValueLists = {
   issueType: [],
-  sourceDocumentType: [],
-  destinationType: [],
+  sourceDocumentType: ['GOODS_RECEIPT'],
+  destinationType: ['PARTNER'],
   reason: [],
   receiptType: [],
   status: [],

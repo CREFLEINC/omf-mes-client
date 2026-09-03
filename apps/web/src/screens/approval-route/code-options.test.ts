@@ -22,14 +22,14 @@ const t = messages.approvalRoute;
  */
 
 describe('PLACEHOLDER_APPROVAL_TYPE_CODES', () => {
-  it('비어 있는 것이 지금의 사실이다', () => {
-    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toEqual([]);
+  it('고정 OpenAPI의 승인 유형 8종을 담는다', () => {
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toHaveLength(8);
   });
 });
 
 describe('toApprovalTypeOptions', () => {
-  it('빈 값 목록은 빈 선택지가 된다', () => {
-    expect(toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)).toEqual([]);
+  it('고정 목록은 8개 선택지가 된다', () => {
+    expect(toApprovalTypeOptions(PLACEHOLDER_APPROVAL_TYPE_CODES)).toHaveLength(8);
   });
 
   it('값이 차면 코드값을 그대로 라벨로 쓴다', () => {

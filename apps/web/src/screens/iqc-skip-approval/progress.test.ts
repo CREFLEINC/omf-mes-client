@@ -17,13 +17,13 @@ const t = messages.iqcSkipApproval;
 /** 자리표시가 빈 지금의 판정. 시험이 채워 넣는 집합과 구분해 쓴다. */
 const NO_REJECTION_CODES: readonly string[] = [];
 
-describe('REJECTION_DECISION_CODES 자리표시', () => {
+describe('REJECTION_DECISION_CODES', () => {
   /**
    * **비어 있는 것이 지금의 사실이다.** 값 목록이 공통코드 소관이라(`omf-mes#64`) 어떤 코드가
    * 반려인지 화면이 알 근거가 없다. 채우는 순간 살아나는 것은 아래 전환 감지기가 잰다.
    */
-  it('지금은 비어 있다 — 코드를 지어내지 않는다', () => {
-    expect(REJECTION_DECISION_CODES).toEqual([]);
+  it('고정 OpenAPI의 반려 값을 쓴다', () => {
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
   });
 });
 
@@ -70,11 +70,7 @@ describe('toStepProgressViews — 단계 상태', () => {
     expect(view?.status).toBe('complete');
   });
 
-  /**
-   * **결재 결과 코드를 해석하지 않는다.** 자리표시가 빈 동안에는 어떤 코드도 반려가 되지
-   * 않는다 — 「이 코드는 반려일 것」이라는 짐작이 사용자에게는 사실로 보인다.
-   */
-  it('자리표시가 비어 있으면 어떤 코드도 반려가 아니다', () => {
+  it('고정 반려 코드만 반려로 그린다', () => {
     const views = toStepProgressViews(
       [
         { ...pendingStep, decisionCode: SAMPLE_DECISION_CODE_A },
@@ -84,7 +80,7 @@ describe('toStepProgressViews — 단계 상태', () => {
       REJECTION_DECISION_CODES,
     );
 
-    expect(views.every((view) => view.status !== 'rejected')).toBe(true);
+    expect(views.map((view) => view.status)).toEqual(['complete', 'rejected', 'rejected']);
   });
 
   /**

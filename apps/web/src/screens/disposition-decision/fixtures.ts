@@ -84,7 +84,7 @@ export const conflictResponseFixture = (
 // prettier-ignore
 const itemFixture = {
   itemId: 5001, itemCode: 'SYNTH-ITEM-1', itemName: '합성 품목', itemTypeCode: 'CODE-F',
-  baseUomId: 7001, lotControlTypeCode: 'CODE-G', serialControlTypeCode: 'CODE-H',
+  baseUomId: 7001, lotControlled: true, serialControlTypeCode: 'CODE-H',
   inspectionRequired: true, fifoPolicyCode: 'CODE-I', negativeStockAllowed: false, isActive: true,
 };
 

@@ -51,6 +51,8 @@ const LABELS = [
   t.fields.reason,
 ];
 
+const PENDING_LABELS = [t.fields.receiptType, t.fields.qualityStatus, t.fields.reason];
+
 describe('CodeFields — 칸 구성', () => {
   it('코드 다섯 칸이 요청 차례대로 선다', () => {
     renderFields();
@@ -75,13 +77,19 @@ describe('CodeFields — 칸 구성', () => {
 
 describe('CodeFields — 값 목록이 비어 있을 때', () => {
   /* 비어 있는 선택칸만 두면 고장으로 읽힌다. 왜 비었는지가 화면에서 읽혀야 한다. */
-  it('다섯 칸 모두 왜 비었는지 밝히고 그 문구가 칸에 이어진다', () => {
+  it('운영 코드 세 칸은 왜 비었는지 밝히고 그 문구가 칸에 이어진다', () => {
     renderFields();
 
-    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(5);
+    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(3);
 
-    for (const label of LABELS) {
+    for (const label of PENDING_LABELS) {
       expect(screen.getByRole('combobox', { name: label })).toHaveAccessibleDescription(
+        messages.pendingCode.note,
+      );
+    }
+
+    for (const label of [t.fields.sourceDocumentType, t.fields.inventoryStatus]) {
+      expect(screen.getByRole('combobox', { name: label })).not.toHaveAccessibleDescription(
         messages.pendingCode.note,
       );
     }
@@ -90,7 +98,7 @@ describe('CodeFields — 값 목록이 비어 있을 때', () => {
   it('트리거가 준비 중임을 밝힌다', () => {
     renderFields();
 
-    expect(screen.getAllByText(messages.pendingCode.placeholder)).toHaveLength(5);
+    expect(screen.getAllByText(messages.pendingCode.placeholder)).toHaveLength(3);
   });
 });
 

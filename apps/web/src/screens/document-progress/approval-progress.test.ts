@@ -25,8 +25,8 @@ describe('자리표시 두 벌', () => {
     expect(APPROVED_APPROVAL_STATUS_CODES).toEqual([]);
   });
 
-  it('반려 결과 코드가 비어 있다', () => {
-    expect(REJECTION_DECISION_CODES).toEqual([]);
+  it('고정 OpenAPI의 반려 결과 코드를 쓴다', () => {
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
   });
 });
 
@@ -125,8 +125,8 @@ describe('toStepProgressViews', () => {
     ]);
   });
 
-  /* 결재 기록이 있으면 완료다. **반려 자리표시가 빈 동안 어떤 코드도 반려가 되지 않는다.** */
-  it('자리표시가 비어 있으면 결재된 단계가 완료로 그려진다', () => {
+  /* 빈 목록을 명시적으로 주입한 방어 경계에서는 결재된 단계를 완료로 그린다. */
+  it('반려 목록을 비워 주입하면 결재된 단계가 완료로 그려진다', () => {
     const [first] = toStepProgressViews([approvalStep({ decisionCode: 'REJECTED' })], []);
 
     expect(first?.status).toBe('complete');

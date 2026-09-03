@@ -69,7 +69,16 @@ const ENTRIES = [
 /** 목록이 아닌 상세는 형태로 본다. */
 const DETAILS = [
   ['M-04-03 포장 내용물', '/inventory/handling-units/13001', (body) => body.contents.length >= 2],
-  ['M-01-04 품목명', '/mdm/items/2002', (body) => typeof body.item.itemName === 'string'],
+  [
+    'M-01-04 품목 계약 필드',
+    '/mdm/items/2002',
+    (body) =>
+      typeof body.item.itemName === 'string' &&
+      typeof body.item.lotControlled === 'boolean' &&
+      typeof body.item.serialControlTypeCode === 'string' &&
+      typeof body.item.inspectionRequired === 'boolean' &&
+      typeof body.item.negativeStockAllowed === 'boolean',
+  ],
   [
     'M-01-08 라인 표시값',
     '/logistics/picking-orders/16001',
@@ -102,7 +111,7 @@ const reachable = async () => {
   return false;
 };
 
-const server = spawn('node', ['tools/mock/seeded.mjs'], {
+const server = spawn(process.execPath, ['tools/mock/seeded.mjs'], {
   env: { ...process.env, MOCK_PORT: String(PORT) },
   stdio: ['ignore', 'ignore', 'inherit'],
 });

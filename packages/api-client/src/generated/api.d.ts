@@ -29472,13 +29472,13 @@ export interface components {
              * @default false
              * @example false
              */
-            isExternal: boolean;
+            isExternal?: boolean;
             /**
              * @description 불량창고 여부. 근거: DR-012 확정 3-C · omf-mes#147
              * @default false
              * @example false
              */
-            isDefect: boolean;
+            isDefect?: boolean;
             /**
              * Format: int64
              * @description ck_external_warehouse_partner — isExternal 이 참이면 필수
@@ -29630,12 +29630,12 @@ export interface components {
              * @default true
              * @example false
              */
-            allowMixedItem: boolean;
+            allowMixedItem?: boolean;
             /**
              * @default true
              * @example false
              */
-            allowMixedLot: boolean;
+            allowMixedLot?: boolean;
             /**
              * @description qty_t numeric(20,6)
              * @example 500
@@ -29978,7 +29978,7 @@ export interface components {
              * @default false
              * @example true
              */
-            isDefault: boolean;
+            isDefault?: boolean;
         };
         /** @description Routing 최초 등록(Rev 1) 요청 — 품목에 Rev 가 하나도 없을 때만 쓴다. routingVersion 은 서버가 항상 1로, statusCode 는 항상 작성중으로 채운다. 근거: W-06-01 §4-A · §5-1 */
         RoutingCreate: {
@@ -30090,7 +30090,7 @@ export interface components {
              * @default false
              * @example false
              */
-            isOutsourced: boolean;
+            isOutsourced?: boolean;
             /**
              * @default false
              * @example false
@@ -30178,7 +30178,7 @@ export interface components {
              * @default false
              * @example false
              */
-            isOutsourced: boolean;
+            isOutsourced?: boolean;
             /**
              * @default false
              * @example false
@@ -31178,7 +31178,7 @@ export interface components {
              * @default false
              * @example false
              */
-            pqcSkipAllowed: boolean;
+            pqcSkipAllowed?: boolean;
             /**
              * @default true
              * @example true
@@ -32406,7 +32406,7 @@ export interface components {
              * @default 100
              * @example 100
              */
-            priorityNo: number;
+            priorityNo?: number;
             /** @example 비고 문자열 */
             remarks?: string | null;
         };
@@ -32433,7 +32433,7 @@ export interface components {
              * @default 100
              * @example 100
              */
-            priorityNo: number;
+            priorityNo?: number;
             /** @example 비고 문자열 */
             remarks?: string | null;
         };
@@ -33194,7 +33194,7 @@ export interface components {
              * @default true
              * @example true
              */
-            isActive: boolean;
+            isActive?: boolean;
             /**
              * @description 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 검교정 주기와 점검 부여 주기가 «같은 그룹»이다 — 같은 종류의 값(기간 단위)이라 어휘를 두 벌 만들지 않는다. ⛔ 검사 «유형»(품질 IQC·PQC·OQC ↔ 설비 DAILY·MONTHLY·MAINTENANCE)은 종류가 달라 그룹을 가른다 — 공유계약 G-32. 근거: omf-mes#188
              * @example DAY
@@ -33297,7 +33297,7 @@ export interface components {
              * @description 예방보전을 무엇으로 판정하는가 — 타발수(SHOT) · 날짜(DATE) · 둘 다(BOTH) · 하지 않음(NONE). ⭐ 확정이 「겸용 설정형」이라 이 칸이 그 «설정»이다 — 툴마다 사용자가 고른다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 편집하면 안 된다. 값이 늘면 PM 도래 판정 규칙이 함께 늘어야 한다. 값 목록은 GET /mdm/code-values?codeGroupCode=MOLD_PM_TRIGGER_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default NONE
              */
-            pmTriggerTypeCode: string;
+            pmTriggerTypeCode?: string;
             /**
              * @description 날짜 주기 간격. 날짜 축을 쓰면 단위와 함께 필요하다
              * @example 6
@@ -33369,7 +33369,7 @@ export interface components {
              * @description 예방보전을 무엇으로 판정하는가 — 타발수(SHOT) · 날짜(DATE) · 둘 다(BOTH) · 하지 않음(NONE). ⭐ 확정이 「겸용 설정형」이라 이 칸이 그 «설정»이다 — 툴마다 사용자가 고른다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 편집하면 안 된다. 값이 늘면 PM 도래 판정 규칙이 함께 늘어야 한다. 값 목록은 GET /mdm/code-values?codeGroupCode=MOLD_PM_TRIGGER_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default NONE
              */
-            pmTriggerTypeCode: string;
+            pmTriggerTypeCode?: string;
             /**
              * @description 날짜 주기 간격. 날짜 축을 쓰면 단위와 함께 필요하다
              * @example 6
@@ -33408,7 +33408,7 @@ export interface components {
              * @description 예방보전을 무엇으로 판정하는가 — 타발수(SHOT) · 날짜(DATE) · 둘 다(BOTH) · 하지 않음(NONE). ⭐ 확정이 「겸용 설정형」이라 이 칸이 그 «설정»이다 — 툴마다 사용자가 고른다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 편집하면 안 된다. 값이 늘면 PM 도래 판정 규칙이 함께 늘어야 한다. 값 목록은 GET /mdm/code-values?codeGroupCode=MOLD_PM_TRIGGER_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default NONE
              */
-            pmTriggerTypeCode: string;
+            pmTriggerTypeCode?: string;
             /**
              * @description 날짜 주기 간격. 날짜 축을 쓰면 단위와 함께 필요하다
              * @example 6
@@ -34365,13 +34365,13 @@ export interface components {
              * @default true
              * @example true
              */
-            sendToErp: boolean;
+            sendToErp?: boolean;
             /**
              * @description 참이면 등록과 동시에 전기한다. 두 번 호출로 나누면 오프라인 큐에 중간 상태가 남는다
              * @default false
              * @example true
              */
-            postImmediately: boolean;
+            postImmediately?: boolean;
             /** @example 비고 문자열 */
             remarks?: string | null;
             /**
@@ -35389,7 +35389,7 @@ export interface components {
              * @default true
              * @example true
              */
-            sendToErp: boolean;
+            sendToErp?: boolean;
             /** @description 최소 1행 */
             lines: components["schemas"]["InventoryAdjustmentLineUpsert"][];
         };
@@ -35736,7 +35736,7 @@ export interface components {
              * @default false
              * @example false
              */
-            blindCount: boolean;
+            blindCount?: boolean;
         };
         InventoryCountDetailResponse: {
             inventoryCount: components["schemas"]["InventoryCount"];
@@ -37306,7 +37306,7 @@ export interface components {
              * @default false
              * @example false
              */
-            confirmedNoRule: boolean;
+            confirmedNoRule?: boolean;
             /**
              * Format: date
              * @description 근거: 공유계약 C-8
@@ -38748,7 +38748,7 @@ export interface components {
              * @example AVAILABLE
              * @enum {string}
              */
-            valueStatusCode: "AVAILABLE" | "NOT_YET" | "PARTIAL";
+            valueStatusCode?: "AVAILABLE" | "NOT_YET" | "PARTIAL";
             /**
              * @description 분모에서 제외한 건수. 화면이 「N품목 제외」로 적는다
              * @example 3
@@ -42716,7 +42716,7 @@ export interface components {
              * @default false
              * @example true
              */
-            expedited: boolean;
+            expedited?: boolean;
             /**
              * @description expedited 가 참이면 필수다. 근거: W-04-05 §5-5 · 공유계약 A-12
              * @example 값
@@ -43875,7 +43875,7 @@ export interface components {
              * @default false
              * @example false
              */
-            isOutsourced: boolean;
+            isOutsourced?: boolean;
             /**
              * @description 외주처 이름. ⛔ 거래처 마스터를 가리키지 않는다 — 보전 업체는 구매 협력사로 등록돼 있지 않을 가능성이 높고 등록을 강제하면 실적을 못 적는다. 근거: W-05-06 §5-5
              * @example 대성정밀
@@ -43952,7 +43952,7 @@ export interface components {
              * @default false
              * @example false
              */
-            isOutsourced: boolean;
+            isOutsourced?: boolean;
             /**
              * @description 외주처 이름. ⛔ 거래처 마스터를 가리키지 않는다 — 보전 업체는 구매 협력사로 등록돼 있지 않을 가능성이 높고 등록을 강제하면 실적을 못 적는다. 근거: W-05-06 §5-5
              * @example 대성정밀
@@ -44573,7 +44573,7 @@ export interface components {
              * @default false
              * @example false
              */
-            blocksUse: boolean;
+            blocksUse?: boolean;
         };
         /** @description 설비별 묶음 한 줄. 근거: W-05-08 §4 ③ 설비별 탭 */
         DowntimeEquipmentSummary: {

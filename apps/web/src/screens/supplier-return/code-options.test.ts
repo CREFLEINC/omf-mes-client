@@ -28,8 +28,10 @@ const ALL_KEYS = [
 ] as const;
 
 describe('PLACEHOLDER_SUPPLIER_RETURN_CODES', () => {
-  it('여섯 코드가 전부 비어 있다', () => {
-    for (const key of ALL_KEYS) {
+  it('닫힌 구조 코드만 고정 계약 값으로 채운다', () => {
+    expect(PLACEHOLDER_SUPPLIER_RETURN_CODES.sourceDocumentType).toEqual(['GOODS_RECEIPT']);
+    expect(PLACEHOLDER_SUPPLIER_RETURN_CODES.destinationType).toEqual(['PARTNER']);
+    for (const key of ['issueType', 'reason', 'receiptType', 'status'] as const) {
       expect(PLACEHOLDER_SUPPLIER_RETURN_CODES[key]).toEqual([]);
     }
   });
@@ -76,12 +78,13 @@ describe('toCodeOptionSets', () => {
     expect(sets.status.map((option) => option.value)).toEqual(['SAMPLE_Z', 'SAMPLE_A']);
   });
 
-  it('지금은 여섯 선택지가 모두 비어 있다', () => {
+  it('고정 구조 코드 두 축만 선택지로 옮긴다', () => {
     const sets = toCodeOptionSets(PLACEHOLDER_SUPPLIER_RETURN_CODES);
 
-    for (const key of ALL_KEYS) {
+    expect(sets.sourceDocumentType.map((option) => option.value)).toEqual(['GOODS_RECEIPT']);
+    expect(sets.destinationType.map((option) => option.value)).toEqual(['PARTNER']);
+    for (const key of ['issueType', 'reason', 'receiptType', 'status'] as const)
       expect(sets[key]).toEqual([]);
-    }
   });
 });
 

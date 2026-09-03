@@ -32,7 +32,7 @@ const DRAFT: ReturnDraft = {
   supplier: '9901',
   codes: {
     issueType: 'SAMPLE_ISSUE_TYPE_A',
-    sourceDocumentType: 'SAMPLE_SOURCE_TYPE_A',
+    sourceDocumentType: 'GOODS_RECEIPT',
     destinationType: DESTINATION_TYPE,
     reason: 'SAMPLE_REASON_A',
   },
@@ -106,12 +106,14 @@ describe('toReturnLines — 고른 줄을 요청 라인으로 옮긴다', () => 
    * 실으면 `null`이나 `0`이 요청에 들어간다 — 막는 판정은 버튼이 이미 했지만 타입은 그 사실을
    * 모르므로, 여기서 값으로 한 번 더 좁힌다(non-null 단언을 쓰지 않는 자리다).
    */
-  it.each([['', '빈 칸'], ['abc', '숫자가 아닌 글자'], ['0', '0'], ['-1', '음수']])(
-    '수량이 %s(%s)인 줄은 싣지 않는다',
-    (text) => {
-      expect(selectedLines(pick(EMPTY_LINE_DRAFT, 9401, text))).toEqual([]);
-    },
-  );
+  it.each([
+    ['', '빈 칸'],
+    ['abc', '숫자가 아닌 글자'],
+    ['0', '0'],
+    ['-1', '음수'],
+  ])('수량이 %s(%s)인 줄은 싣지 않는다', (text) => {
+    expect(selectedLines(pick(EMPTY_LINE_DRAFT, 9401, text))).toEqual([]);
+  });
 
   it('여러 줄을 고른 차례가 아니라 표의 차례로 싣는다', () => {
     const draft = pick(pick(EMPTY_LINE_DRAFT, 9402, '5'), 9401, '30');
@@ -264,7 +266,7 @@ describe('toGoodsIssueRequest — 되돌릴 수 없는 쓰기의 본문', () => 
           ...DRAFT,
           codes: {
             issueType: '  SAMPLE_ISSUE_TYPE_A  ',
-            sourceDocumentType: ' SAMPLE_SOURCE_TYPE_A ',
+            sourceDocumentType: ' GOODS_RECEIPT ',
             destinationType: ` ${DESTINATION_TYPE} `,
             reason: ' SAMPLE_REASON_A ',
           },
@@ -273,7 +275,7 @@ describe('toGoodsIssueRequest — 되돌릴 수 없는 쓰기의 본문', () => 
     );
 
     expect(body?.issueTypeCode).toBe('SAMPLE_ISSUE_TYPE_A');
-    expect(body?.sourceDocumentTypeCode).toBe('SAMPLE_SOURCE_TYPE_A');
+    expect(body?.sourceDocumentTypeCode).toBe('GOODS_RECEIPT');
     expect(body?.destinationTypeCode).toBe(DESTINATION_TYPE);
     expect(body?.reasonCode).toBe('SAMPLE_REASON_A');
   });

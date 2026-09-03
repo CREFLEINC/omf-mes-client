@@ -19,7 +19,7 @@ export type PmStatus = 'notRequired' | 'due' | 'beforeDue' | 'unknown';
  */
 export type PmJudgment =
   | { status: Extract<PmStatus, 'notRequired' | 'beforeDue' | 'unknown'>; axis: null }
-  | { status: Extract<PmStatus, 'due'>; axis: string | null };
+  | { status: Extract<PmStatus, 'due'>; axis: NonNullable<Mold['pmDueAxisCode']> | null };
 
 export type PmTarget = Pick<Mold, 'pmTriggerTypeCode' | 'pmDue' | 'pmDueAxisCode'>;
 

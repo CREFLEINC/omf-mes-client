@@ -416,7 +416,7 @@ export const approvalRequestDetailBody = (
 export const SAMPLE_APPROVED_STATUS = 'SAMPLE_AP_STATUS_A';
 
 /** 반려 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
-export const SAMPLE_REJECTION_DECISION = 'APPROVED';
+export const SAMPLE_REJECTION_DECISION = 'REJECTED';
 
 /**
  * 값이 전부 유효한 라인 초안. **검사하려는 칸만 인자로 어긋나게 둔다** —

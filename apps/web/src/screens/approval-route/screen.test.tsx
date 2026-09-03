@@ -716,12 +716,16 @@ describe('ApprovalRouteScreen — 목록', () => {
     expect(table.textContent).not.toContain('9101');
   });
 
-  it('승인 유형 선택지가 비어 있고 왜 비었는지 밝힌다', async () => {
-    renderScreen(allRoutes());
+  it('고정 OpenAPI의 승인 유형을 선택지로 제공한다', async () => {
+    const { user } = renderScreen(allRoutes());
 
     await waitForList();
 
-    expect(screen.getByText(messages.pendingCode.note)).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
+
+    expect(screen.getAllByRole('option')).toHaveLength(9); // 전체 + 고정 enum 8개
+    expect(screen.getByRole('option', { name: 'IQC_SKIP' })).toBeInTheDocument();
+    expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
   });
 });
 
@@ -1351,25 +1355,22 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
     expect(stepsRequests(requests)).toHaveLength(0);
   });
 
-  /**
-   * **잠기는 것은 등록 하나뿐이다**(`omf-mes#64`). 사유가 그 사실을 함께 말해야
-   * 사용자가 화면 전체가 막힌 줄 알지 않는다.
-   */
-  it('승인 유형 값 목록이 없으면 등록이 잠기고 사유가 보이며 요청이 나가지 않는다', async () => {
+  it('등록 폼에서도 고정 승인 유형을 고를 수 있다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
     const createPane = await screen.findByRole('region', { name: t.panes.create });
-    const submit = within(createPane).getByRole('button', { name: t.actions.submitCreate });
+    const approvalType = within(createPane).getByRole('combobox', {
+      name: t.fields.approvalTypeCode,
+    });
+    await user.click(approvalType);
+    await user.click(screen.getByRole('option', { name: 'IQC_SKIP' }));
 
-    expect(submit).toBeDisabled();
-    expect(within(createPane).getByText(t.actionReasons.createPendingCode)).toBeInTheDocument();
-    expect(within(createPane).getByText(messages.pendingCode.note)).toBeInTheDocument();
-
-    await user.click(submit);
-
+    expect(approvalType).toHaveTextContent('IQC_SKIP');
+    expect(within(createPane).queryByText(t.actionReasons.createPendingCode)).toBeNull();
+    expect(within(createPane).queryByText(messages.pendingCode.note)).toBeNull();
     expect(writeRequests(requests)).toHaveLength(0);
   });
 

@@ -14,8 +14,16 @@ describe('자리표시 상수', () => {
    * 값 목록이 확정되지 않았다. 예시 문자열을 넣으면 화면이 없는 값을 고르게 만든다 —
    * 확정되면 이 배열만 채운다.
    */
-  it('두 상수가 모두 비어 있다 — 값을 지어내지 않는다', () => {
-    expect(PLACEHOLDER_TARGET_TYPE_CODES).toEqual([]);
+  it('대상 유형은 고정 enum을 쓰고 이벤트 유형은 운영 목록을 기다린다', () => {
+    expect(PLACEHOLDER_TARGET_TYPE_CODES).toEqual([
+      'APP_USER',
+      'ROLE',
+      'WORKER',
+      'TERMINAL',
+      'ITEM',
+      'ROUTING',
+      'INSPECTION_PLAN_VERSION',
+    ]);
     expect(PLACEHOLDER_EVENT_TYPE_CODES).toEqual([]);
   });
 });

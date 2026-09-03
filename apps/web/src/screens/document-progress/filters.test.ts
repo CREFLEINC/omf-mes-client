@@ -185,12 +185,11 @@ describe('toSearchParams', () => {
 });
 
 describe('toListQuery — 조회가 성립하는가', () => {
-  /*
-   * ⭐ **표가 비어 있는 동안에는 어떤 주소로도 질의가 만들어지지 않는다.**
-   * 그것이 「목록 조회를 한 번도 부르지 않는다」의 구현이며, 표를 인자로 받기 때문에 잴 수 있다.
-   */
-  it('유형 표가 비어 있으면 질의를 만들지 않는다', () => {
-    expect(toListQuery(filters(), DOCUMENT_TYPES, 1)).toBeNull();
+  it('고정 유형 표로 질의를 만든다', () => {
+    expect(toListQuery(filters(), DOCUMENT_TYPES, 1)).toEqual({
+      documentTypeCode: 'GOODS_RECEIPT',
+      cancellableOnly: false,
+    });
   });
 
   it('유형을 고르지 않았으면 질의를 만들지 않는다', () => {
