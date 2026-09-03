@@ -530,6 +530,72 @@ describe('제품LOT 피킹 스캔 화면', () => {
     expect(seen).toHaveLength(1);
   });
 
+  /*
+   * 창고 구석에서 연결이 끊겼다 붙는다. 훅이 조기 반환 아래에 있으면 그 순간 훅 수가 달라져
+   * 화면이 통째로 던지고, 이 앱에는 그것을 받을 자리가 없어 빈 화면이 남는다.
+   */
+  it('연결이 끊겼다 돌아와도 화면이 살아 있다', async () => {
+    const user = userEvent.setup();
+    setOnline(false);
+    mount();
+
+    await screen.findByText('연결이 없어 피킹할 수 없습니다');
+
+    setOnline(true);
+    window.dispatchEvent(new Event('online'));
+
+    await chooseTarget(user);
+
+    expect(screen.getByText('배정 300 · 피킹 120')).toBeTruthy();
+  });
+
+  /* 라인이 다르면 다른 쓰기다. 대상 바꾸기로 라인을 갈아탈 수 있다. */
+  it('다른 라인을 고르면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const second = line({ shipmentRequestLineId: 78, lineNo: 2 });
+    mount(
+      [
+        {
+          match: (req) =>
+            /\/logistics\/shipment-requests\/5\/lines\/\d+:pick$/.test(req.url) &&
+            req.method === 'POST',
+          respond: (req) => {
+            seen.push(req.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      { requests: [request({ lines: [line(), second] })] },
+    );
+
+    await user.click(await screen.findByRole('button', { name: /1번 줄/ }));
+    await screen.findByText('FG-1001 완제품');
+    await screen.findByText('FG-0298');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '다른 대상 고르기' }));
+    await user.click(await screen.findByRole('button', { name: /2번 줄/ }));
+    await screen.findByText('FG-0298');
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
   /* 확정 후 되돌리기를 두지 않는다. 예약이 소진된다. */
   it('확정 뒤에 되돌리기를 두지 않고 그 사실을 말한다', async () => {
     const user = userEvent.setup();
