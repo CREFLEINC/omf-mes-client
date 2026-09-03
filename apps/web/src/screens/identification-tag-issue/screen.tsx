@@ -247,7 +247,7 @@ export const IdentificationTagIssueScreen = () => {
               </Button>
             }
           >
-            {`${t.print.failedBody} ${printRunner.state.reason ?? ''}`.trim()}
+            {t.print.failedBody}
           </AlertBanner>
         </div>
       )}
