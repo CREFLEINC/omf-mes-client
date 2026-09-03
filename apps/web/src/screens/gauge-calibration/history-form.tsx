@@ -82,7 +82,7 @@ export const HistoryForm = ({
         </AlertBanner>
       </div>
 
-      <div className="form-grid">
+      <div className="form-grid gauge-calibration-form-grid">
         <SelectField
           label={t.form.equipment}
           options={equipmentOptions}
