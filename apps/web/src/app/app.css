@@ -7005,3 +7005,115 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-2);
   margin-block-start: var(--space-4);
 }
+
+/*
+ * W-04-07 재작업/폐기 판정 의뢰 — 이 화면에만 적용되는 조합 배치.
+ * 좌측 목록 · 우측(선택한 대상 → ① 등록 → ② 의뢰 → ③ 결과)의 2단이다. W-03-10과 같은 골격이되
+ * 우측이 넷이라 세로로 쌓는다. DS 컴포넌트의 내부 클래스는 겨냥하지 않는다.
+ */
+.disposition-request-workspace {
+  display: grid;
+  grid-template-columns: minmax(30rem, 5fr) minmax(26rem, 4fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.disposition-request-side,
+.disposition-request-pane,
+.disposition-request-list,
+.disposition-request-target,
+.disposition-request-subsection,
+.disposition-request-form,
+.disposition-request-result,
+.disposition-request-progress {
+  min-width: 0;
+}
+
+.disposition-request-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.disposition-request-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.disposition-request-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.disposition-request-filter > *,
+.disposition-request-filter .field-cell {
+  min-width: 0;
+}
+
+.disposition-request-filter .field-cell {
+  align-items: stretch;
+}
+
+.disposition-request-filter-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.disposition-request-list-pane > .banner-slot,
+.disposition-request-subsection > .banner-slot {
+  margin-bottom: 0;
+}
+
+.disposition-request-list,
+.disposition-request-target,
+.disposition-request-subsection,
+.disposition-request-form,
+.disposition-request-result {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.disposition-request-table {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.disposition-request-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 내용은 여러 줄이라 정의 목록의 한 칸이 아니라 줄 전체를 쓴다. */
+.disposition-request-description {
+  grid-column: 1 / -1;
+}
+
+/* 후속 버튼 넷은 각자 사유를 아래에 단다(규범 4) — 한 줄에 흐르게 두되 사유 폭은 셀이 가둔다. */
+.disposition-request-follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.disposition-request-follow-ups .field-cell {
+  max-width: 20rem;
+}
+
+@media (max-width: 1280px) {
+  .disposition-request-workspace {
+    grid-template-columns: 1fr;
+  }
+}

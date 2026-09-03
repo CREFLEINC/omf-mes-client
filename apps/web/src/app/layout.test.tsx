@@ -485,6 +485,14 @@ describe('AppLayout', () => {
       'href',
       '/shipment/shipment-confirm',
     );
+    /* W-04-07 — 반품·재고 갈래의 첫 화면. 출하 지시·확정 흐름이 끝난 뒤라 확정·취소 바로 뒤다. */
+    expect(within(sidebar).getByRole('link', { name: '재작업/폐기 판정 의뢰' })).toHaveAttribute(
+      'href',
+      '/shipment/disposition-requests',
+    );
+    expect(links.indexOf('/shipment/disposition-requests')).toBe(
+      links.indexOf('/shipment/shipment-confirm') + 1,
+    );
     /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
       links.indexOf('/logistics/document-progress') + 1,
@@ -561,7 +569,7 @@ describe('AppLayout', () => {
       '/production/work-order-progress',
     );
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/shipment/shipment-confirm') + 1,
+      links.indexOf('/shipment/disposition-requests') + 1,
     );
     /* 변경 판정은 수신·조회 바로 뒤다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06). */
     expect(links.indexOf('/production/po-change-review')).toBe(
@@ -763,6 +771,8 @@ describe('AppLayout', () => {
       '/shipment/expedited-shipment',
       /* W-04-12 — 되돌릴 수 있는 구간이 여기서 끝난다. 만드는 두 화면 뒤다. */
       '/shipment/shipment-confirm',
+      /* W-04-07 — 반품·재고 갈래의 첫 화면. 출하 지시·확정 흐름이 끝난 뒤다. */
+      '/shipment/disposition-requests',
       '/production/production-orders',
       /* W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다. */
       '/production/po-change-review',
