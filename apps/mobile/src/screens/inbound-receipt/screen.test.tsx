@@ -14,6 +14,12 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { InboundReceiptScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 토큰이 싣고 오는 공장. 시험 환경에는 토큰이 없어 값을 여기서 정한다. */
+const plant = vi.hoisted(() => ({ id: null as number | null }));
+
+vi.mock('../../patterns/plant', () => ({
+  currentPlantId: () => plant.id,
+}));
 /** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
 const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
@@ -36,6 +42,9 @@ vi.mock('../../patterns/local-store', () => ({
 const SCANNED = '7770001118880002229901015554447777';
 
 const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
+
+/** 공급사 조회에 실린 역할. 거르지 않으면 고객사가 공급사 후보에 섞인다. */
+const partnerQueries: (string | null)[] = [];
 
 const order = {
   purchaseOrderId: 7,
@@ -111,6 +120,17 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
   },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/partners',
+    respond: (req) => {
+      partnerQueries.push(new URL(req.url).searchParams.get('roleTypeCode'));
+
+      return jsonResponse({
+        items: [{ partnerId: 2, partnerName: '합성공급사' }],
+        page,
+      });
+    },
+  },
 ];
 
 const SignedIn = ({ children }: { children: ReactNode }) => {
@@ -143,6 +163,8 @@ const scan = (code: string) => {
 };
 
 beforeEach(() => {
+  plant.id = 1;
+  partnerQueries.length = 0;
   store.clear();
   localStorage.clear();
   held.failWrite = null;
@@ -208,15 +230,19 @@ describe('입하 등록 화면', () => {
   });
 
   /* 발주 없이 도착한 건은 공급사의 출처가 이 화면에 없다. 있는 것처럼 두지 않는다. */
-  it('발주 없이 도착한 건을 여기서 등록할 수 없다고 말한다', async () => {
+  it('발주 없이 도착한 건을 넣을 길을 연다', async () => {
+    const user = userEvent.setup();
     mount();
 
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    expect(
-      await screen.findByText('발주 없이 도착한 건은 아직 이 화면에서 등록할 수 없습니다'),
-    ).toBeTruthy();
+    await user.click(await screen.findByRole('button', { name: '발주 없이 등록' }));
+
+    expect(await screen.findByText('발주 없이 도착')).toBeTruthy();
+    expect(await screen.findByRole('combobox', { name: '공급사' })).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: '품목' })).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: '단위' })).toBeTruthy();
   });
 
   /* 없어도 등록을 막지 않는다. 다만 없다는 사실은 말한다. */
@@ -491,5 +517,116 @@ describe('입하 등록 화면 — 되돌릴 수 없는 쓰기', () => {
     await user.type(await screen.findByLabelText('실입하 수량'), '500');
 
     expect(await screen.findByText('수량 초과 — 남은 예정 0, 이번 도착 500')).toBeTruthy();
+  });
+});
+
+describe('입하 등록 화면 — 발주 없이 도착', () => {
+  const openUnordered = async (user: ReturnType<typeof userEvent.setup>) => {
+    scan(SCANNED);
+    await user.click(await screen.findByRole('button', { name: '발주 없이 등록' }));
+  };
+
+  const choose = async (user: ReturnType<typeof userEvent.setup>, name: string, option: RegExp) => {
+    await user.click(await screen.findByRole('combobox', { name }));
+    await user.click(await screen.findByRole('option', { name: option }));
+  };
+
+  /*
+   * 거래처 역할은 다섯이다. 거르지 않으면 고객사가 공급사 후보에 섞이고, 잘못 실린 거래처로
+   * 입하가 서면 되돌릴 자리가 없다.
+   */
+  it('공급사 후보를 공급사 역할로 걸러 청한다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await openUnordered(user);
+
+    await screen.findByRole('combobox', { name: '공급사' });
+    expect(partnerQueries).toContain('SUPPLIER');
+    expect(partnerQueries.every((role) => role === 'SUPPLIER')).toBe(true);
+  });
+
+  /* 발주가 없으면 승계할 곳이 없다. 고른 값과 단말의 공장이 그대로 실려야 한다. */
+  it('고른 공급사와 품목과 단위를 단말 공장과 함께 싣는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    plant.id = 7;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('LOT 번호');
+    await openUnordered(user);
+
+    await choose(user, '공급사', /합성공급사/);
+    await choose(user, '품목', /ABC-123/);
+    await choose(user, '단위', /EA/);
+    await user.type(await screen.findByLabelText('실입하 수량'), '40');
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]!.json()) as {
+      supplierId: number;
+      plantId: number;
+      lines: { purchaseOrderLineId: number | null; itemId: number; uomId: number }[];
+    };
+
+    expect(body.supplierId).toBe(2);
+    expect(body.plantId).toBe(7);
+    expect(body.lines[0]?.purchaseOrderLineId).toBeNull();
+    expect(body.lines[0]?.itemId).toBe(31);
+    expect(body.lines[0]?.uomId).toBe(9);
+  });
+
+  /* 공장을 모르는 채로 0 이나 1 을 채우면 다른 공장의 재고가 는다. */
+  it('단말의 공장을 모르면 등록을 막고 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    plant.id = null;
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await openUnordered(user);
+
+    await choose(user, '공급사', /합성공급사/);
+    await choose(user, '품목', /ABC-123/);
+    await choose(user, '단위', /EA/);
+    await user.type(await screen.findByLabelText('실입하 수량'), '40');
+
+    expect(screen.getByText('이 단말의 공장을 확인할 수 없어 등록할 수 없습니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
+  });
+
+  /* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */
+  it('목록에 없는 품목은 여기서 만들 수 없다고 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await openUnordered(user);
+
+    expect(await screen.findByText('목록에 없는 품목은 여기서 만들 수 없습니다')).toBeTruthy();
+    expect(screen.getByText('ERP 에 품목이 선 뒤에 등록할 수 있습니다.')).toBeTruthy();
+  });
+
+  /* 발주가 없으면 예정 수량이 없어 초과도 부족도 판정할 것이 없다. */
+  it('발주가 없으면 예정과 견주지 않는다고 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await openUnordered(user);
+
+    expect(await screen.findByText('발주가 없어 예정과 견주지 않습니다')).toBeTruthy();
   });
 });
