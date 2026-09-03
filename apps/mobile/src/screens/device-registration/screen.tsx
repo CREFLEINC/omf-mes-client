@@ -120,7 +120,8 @@ export const DeviceRegistrationScreen = ({ camera }: { camera?: QrCamera }) => {
         </>
       ) : null}
 
-      {terminal === null ? null : (
+      {/* 받는 중에는 위 등록 표시가 같은 코드를 보인다. 두 번 보이면 어느 쪽을 볼지 갈린다. */}
+      {terminal === null || phase === 'receiving' ? null : (
         <Card bordered aria-label={t.terminal.label}>
           <Card.Body className="card-body">
             <p>{`${t.terminal.label} ${terminal.terminalCode}`}</p>

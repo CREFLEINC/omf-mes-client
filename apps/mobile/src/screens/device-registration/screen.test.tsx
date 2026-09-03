@@ -114,7 +114,9 @@ describe('기기 등록 화면', () => {
     });
     camera.read(REGISTRATION_TOKEN);
 
-    expect(await screen.findByText('단말 SYN-TERM-01')).toBeInTheDocument();
+    /* 받는 중에는 등록 표시가 그 자리를 대신한다. 같은 코드를 두 번 보이지 않는다. */
+    await screen.findByText('등록되었습니다');
+    expect(screen.getAllByText(/SYN-TERM-01/)).toHaveLength(1);
   });
 
   /*
@@ -170,7 +172,7 @@ describe('기기 등록 화면', () => {
     });
     camera.read(REGISTRATION_TOKEN);
 
-    await screen.findByText('단말 SYN-TERM-01');
+    await screen.findByText(/SYN-TERM-01/);
     expect(screen.queryByText(/공장/)).toBeNull();
   });
 
