@@ -74,7 +74,7 @@ const BASE_SUMMARY: InventoryCountSummaryResponse = {
   varianceCount: 6,
   /* client#601 3-4 — 신설 필드. 미실사·차이가 남아 있어 마감을 열 수 없다. */
   closable: false,
-  closeBlockedReasonCode: 'SAMPLE_UNCOUNTED_REMAINING',
+  closeBlockedReasonCode: 'COUNT_REMAINING',
 };
 
 export const summaryResponse = (

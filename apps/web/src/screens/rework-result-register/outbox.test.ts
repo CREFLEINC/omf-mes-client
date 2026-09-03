@@ -18,7 +18,7 @@ const BODY = {
   workOrderId: 1001,
   goodQty: 12,
   uomId: 1001,
-  resultSourceCode: 'MANUAL',
+  resultSourceCode: 'MANUAL' as const,
   occurredAt: '2026-09-03T09:12:00+09:00',
 };
 

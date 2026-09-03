@@ -787,7 +787,7 @@ describe('ItemExtendedAttrsScreen — 저장 본문 (M02·M03)', () => {
         'fifoPolicyCode',
         'inspectionRequired',
         'isActive',
-        'lotControlTypeCode',
+        'lotControlled',
         'negativeStockAllowed',
         'openedShelfLifeHours',
         'serialControlTypeCode',
@@ -2615,8 +2615,8 @@ describe('ItemExtendedAttrsScreen — 외부 코드 중복 (M29)', () => {
 
     const pane = await findExternalCodePane();
 
-    /* 픽스처 5502가 거래처를 비운 `SYN-EXT-02`다 — 같은 코드를 거래처 없이 하나 더 만든다. */
-    await addExternalCodeRow(user, 'SYN-EXT-02');
+    /* 픽스처 5502가 거래처를 비운 `TRACKING_SYSTEM`다 — 같은 코드를 거래처 없이 하나 더 만든다. */
+    await addExternalCodeRow(user, 'TRACKING_SYSTEM');
 
     expect(screen.getByText(/거래처를 비운 줄끼리도 같은 줄로 봅니다/)).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -2631,7 +2631,7 @@ describe('ItemExtendedAttrsScreen — 외부 코드 중복 (M29)', () => {
 
     await user.click(screen.getByRole('button', { name: '외부 코드 추가' }));
     const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText('외부 시스템'), 'SYN-EXT-02');
+    await user.type(within(dialog).getByLabelText('외부 시스템'), 'TRACKING_SYSTEM');
     await user.click(within(dialog).getByLabelText('거래처'));
     await user.click(screen.getByRole('option', { name: 'SYN-PARTNER-01 · 합성 거래처 A' }));
     await user.type(within(dialog).getByLabelText('외부 품목코드'), 'SYN-EXT-ITEM-09');

@@ -19,7 +19,7 @@ const uoms = (): DispositionLookup => ({
 const rows: DecisionRow[] = [
   {
     dispositionDecisionId: 3001,
-    dispositionTypeCode: 'CODE-A',
+    dispositionTypeCode: 'REWORK',
     decisionQtyText: '200',
     uomId: 7001,
     reason: '표면만 손상돼 재작업으로 회복된다',

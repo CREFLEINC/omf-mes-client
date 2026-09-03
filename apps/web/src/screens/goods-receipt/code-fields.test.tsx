@@ -12,7 +12,7 @@ const t = messages.goodsReceipt;
 
 const FILLED_SETS = toCodeOptionSets({
   receiptType: ['SAMPLE_RECEIPT_TYPE_A', 'SAMPLE_RECEIPT_TYPE_B'],
-  sourceDocumentType: ['SAMPLE_SOURCE_TYPE_A'],
+  sourceDocumentType: ['INBOUND_RECEIPT'],
   qualityStatus: ['SAMPLE_QUALITY_A'],
   inventoryStatus: ['SAMPLE_INVENTORY_A'],
   reason: ['SAMPLE_REASON_A'],
@@ -59,7 +59,9 @@ describe('CodeFields — 칸 구성', () => {
 
     expect(comboboxes).toHaveLength(5);
     /* 차례가 요청·확인 창과 같아야 사용자가 무엇을 확인했는지 맞춰 볼 수 있다. */
-    expect(LABELS.map((label) => screen.getByRole('combobox', { name: label }))).toEqual(comboboxes);
+    expect(LABELS.map((label) => screen.getByRole('combobox', { name: label }))).toEqual(
+      comboboxes,
+    );
   });
 
   it('다섯 칸이 저마다 이름을 갖는다', () => {
@@ -133,9 +135,9 @@ describe('CodeFields — 오류와 잠금', () => {
       fieldErrors: { [CODE_FIELD_NAMES.qualityStatus]: t.errors.codeTooLong(50) },
     });
 
-    expect(screen.getByRole('combobox', { name: t.fields.qualityStatus })).toHaveAccessibleDescription(
-      t.errors.codeTooLong(50),
-    );
+    expect(
+      screen.getByRole('combobox', { name: t.fields.qualityStatus }),
+    ).toHaveAccessibleDescription(t.errors.codeTooLong(50));
     /* 짝 방향 — 다른 칸에는 붙지 않는다. */
     expect(
       screen.getByRole('combobox', { name: t.fields.receiptType }),

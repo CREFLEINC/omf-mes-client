@@ -1,3 +1,4 @@
+import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { RouteFilters } from './types';
@@ -178,8 +179,13 @@ export const withoutSelection = (params: URLSearchParams): URLSearchParams => {
  *
  * **`size`가 없다.** 서버 기본값을 쓴다. 화면이 정한 크기를 심으면 그것이 계약처럼 굳는다.
  */
+type ListQueryParams = NonNullable<paths['/app/approval-routes']['get']['parameters']['query']>;
+
+/** 계약이 승인 유형의 값 목록을 닫았다(코드 사전 2026-09-03). 조회·등록·중복 판정이 같은 형을 쓴다 */
+export type ApprovalTypeCode = NonNullable<ListQueryParams['approvalTypeCode']>;
+
 export interface RouteListQuery {
-  approvalTypeCode?: string;
+  approvalTypeCode?: ApprovalTypeCode;
   businessUnitId?: number;
   activeOnly: boolean;
   q?: string;
@@ -196,7 +202,10 @@ export const toRouteListQuery = (filters: RouteFilters, page: number): RouteList
   const keyword = keywordOf(filters.q);
 
   return {
-    ...(filters.approvalTypeCode === '' ? {} : { approvalTypeCode: filters.approvalTypeCode }),
+    /* 조건 칸의 선택지가 서버 코드값이라 값은 목록 안에 있다 — 계약이 닫은 형으로 좁혀 싣는다. */
+    ...(filters.approvalTypeCode === ''
+      ? {}
+      : { approvalTypeCode: filters.approvalTypeCode as ApprovalTypeCode }),
     ...(filters.businessUnitId === '' ? {} : { businessUnitId: Number(filters.businessUnitId) }),
     activeOnly: !filters.includeInactive,
     ...(keyword === '' ? {} : { q: keyword }),

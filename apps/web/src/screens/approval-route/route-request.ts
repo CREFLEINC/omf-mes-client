@@ -83,7 +83,8 @@ const toRangeValue = (raw: string): number | null => {
  * **승인 유형의 앞뒤 공백을 턴다** — 목이 공백만인 값을 201로 받으므로 막는 곳이 화면뿐이다.
  */
 export const toRouteCreate = (values: RouteFormValues): ApprovalRouteCreate => ({
-  approvalTypeCode: values.approvalTypeCode.trim(),
+  /* 선택칸의 값은 서버 코드값 목록에서 온다 — 계약이 닫은 형으로 좁혀 싣는다(코드 사전 2026-09-03). */
+  approvalTypeCode: values.approvalTypeCode.trim() as ApprovalRouteCreate['approvalTypeCode'],
   businessUnitId: toBusinessUnitId(values.businessUnitId),
   minValue: toRangeValue(values.minValue),
   maxValue: toRangeValue(values.maxValue),

@@ -32,6 +32,11 @@ export interface CalibrationDraft {
   nextDueOn: string;
   toleranceNote: string;
   remarks: string;
+  /**
+   * 이 이력이 계측기 사용을 막는가. 계약 필수(2026-09-02 사용자 결정) — 사용 가부 판정이
+   * 이력 유형 문자열 대신 이 값과 `clearedAt`을 읽는다(W-05-11 §5-2). 기본은 막지 않음이다.
+   */
+  blocksUse: boolean;
 }
 
 export const EMPTY_DRAFT: CalibrationDraft = {
@@ -45,6 +50,7 @@ export const EMPTY_DRAFT: CalibrationDraft = {
   nextDueOn: '',
   toleranceNote: '',
   remarks: '',
+  blocksUse: false,
 };
 
 /**
@@ -141,5 +147,6 @@ export const toCreateBody = (draft: CalibrationDraft): CalibrationCreate => {
         }
       : {}),
     ...(optionalText(draft.remarks) === undefined ? {} : { remarks: optionalText(draft.remarks) }),
+    blocksUse: draft.blocksUse,
   };
 };

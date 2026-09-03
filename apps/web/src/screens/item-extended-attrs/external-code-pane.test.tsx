@@ -50,7 +50,7 @@ describe('ExternalCodePane — 표시', () => {
   it('외부 시스템과 외부 품목코드를 그대로 낸다', () => {
     renderPane();
 
-    expect(screen.getByText('SYN-EXT-01')).toBeInTheDocument();
+    expect(screen.getByText('UNIERP')).toBeInTheDocument();
     expect(screen.getByText('SYN-EXT-ITEM-01')).toBeInTheDocument();
   });
 

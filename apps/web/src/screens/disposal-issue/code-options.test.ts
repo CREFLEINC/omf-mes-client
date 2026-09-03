@@ -134,7 +134,7 @@ describe('isRequiredCodeListPending — 두 방향', () => {
   const filledRequired = (): CodeValueLists => ({
     ...PLACEHOLDER_DISPOSAL_ISSUE_CODES,
     issueType: ['SAMPLE_ISSUE_TYPE_A'],
-    sourceDocumentType: ['SAMPLE_SRC_TYPE_A'],
+    sourceDocumentType: ['INBOUND_RECEIPT'],
     reason: ['SAMPLE_REASON_A'],
   });
 

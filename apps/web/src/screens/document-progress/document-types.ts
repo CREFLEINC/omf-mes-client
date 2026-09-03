@@ -1,4 +1,10 @@
+import type { paths } from '@omf-mes/api-client';
+
 import type { SelectOption } from './types';
+
+/** 계약이 문서 유형을 닫았다(코드 사전 2026-09-03) — 목록 질의값·상세 경로 조각이 같은 형이다. */
+export type DocumentTypeCode =
+  paths['/logistics/document-progress']['get']['parameters']['query']['documentTypeCode'];
 
 /**
  * ⭐ **이 화면의 단일 채움 지점.**
@@ -38,7 +44,7 @@ export type CancelResource = 'goods-receipts' | 'inbound-receipts' | 'goods-issu
 
 export interface DocumentTypeEntry {
   /** 계약에 실을 코드값 — 목록 질의값·상세 경로 조각으로 그대로 나간다 */
-  code: string;
+  code: DocumentTypeCode;
   /** 화면에 보일 이름. 설계가 코드와 함께 준다 */
   label: string;
   /**

@@ -15,7 +15,7 @@ import {
  * 확정되지 않았다. 감지기가 「코드가 오면 이렇게 다룬다」를 보이기 위한 것이지
  * 확정값이 아니므로, 제품 상수로 옮기지 않는다.
  */
-const PLACEHOLDER_DISPOSITION_CODE = 'CODE-A';
+const PLACEHOLDER_DISPOSITION_CODE = 'REWORK';
 const PLACEHOLDER_SEVERITY_CODE = 'CODE-B';
 const PLACEHOLDER_STATUS_CODE = 'CODE-C';
 

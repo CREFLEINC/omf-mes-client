@@ -30,7 +30,6 @@ export const FIFO_POLICY_CODES: readonly string[] = ['FIFO', 'FEFO'];
  * 그 필드를 다루는 구획이 생길 때다 — 지금 없는 구획의 필드를 미리 적지 않는다.
  */
 export const FREE_TEXT_CODES: readonly string[] = [
-  'lotControlTypeCode',
   'serialControlTypeCode',
   'storageConditionCode',
   /* 외부 코드 구획의 필수 필드다 — 선택지가 비면 행을 아예 추가할 수 없다(결정 4). */

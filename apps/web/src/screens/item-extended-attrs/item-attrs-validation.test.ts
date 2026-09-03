@@ -29,14 +29,14 @@ describe('validateItemAttrsForm — 필수 코드', () => {
     expect(validateItemAttrsForm(base)).toEqual({});
   });
 
-  it.each(['lotControlTypeCode', 'serialControlTypeCode', 'fifoPolicyCode'] as const)(
+  it.each(['serialControlTypeCode', 'fifoPolicyCode'] as const)(
     '%s가 비면 필수 오류다',
     (field) => {
       expect(validateItemAttrsForm(withValues({ [field]: '' }))).toHaveProperty(field);
     },
   );
 
-  it.each(['lotControlTypeCode', 'serialControlTypeCode', 'fifoPolicyCode'] as const)(
+  it.each(['serialControlTypeCode', 'fifoPolicyCode'] as const)(
     '%s가 공백만이면 필수 오류다',
     (field) => {
       expect(validateItemAttrsForm(withValues({ [field]: '   ' }))).toHaveProperty(field);
@@ -45,10 +45,12 @@ describe('validateItemAttrsForm — 필수 코드', () => {
 
   /* 상한 자체는 허용값이며 그것을 넘을 때만 막는다. */
   it('코드 50자는 통과하고 51자는 막힌다', () => {
-    expect(validateItemAttrsForm(withValues({ lotControlTypeCode: 'a'.repeat(50) }))).toEqual({});
+    expect(validateItemAttrsForm(withValues({ serialControlTypeCode: 'a'.repeat(50) }))).toEqual(
+      {},
+    );
     expect(
-      validateItemAttrsForm(withValues({ lotControlTypeCode: 'a'.repeat(51) })),
-    ).toHaveProperty('lotControlTypeCode');
+      validateItemAttrsForm(withValues({ serialControlTypeCode: 'a'.repeat(51) })),
+    ).toHaveProperty('serialControlTypeCode');
   });
 
   /*
@@ -58,7 +60,7 @@ describe('validateItemAttrsForm — 필수 코드', () => {
   it('코드가 어떤 목록에 속하는지 검사하지 않는다', () => {
     expect(
       validateItemAttrsForm(
-        withValues({ lotControlTypeCode: 'SYN-ANY-CODE', fifoPolicyCode: 'SYN-POLICY-X' }),
+        withValues({ serialControlTypeCode: 'SYN-ANY-CODE', fifoPolicyCode: 'SYN-POLICY-X' }),
       ),
     ).toEqual({});
   });

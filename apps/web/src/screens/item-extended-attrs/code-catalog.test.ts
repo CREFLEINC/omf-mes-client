@@ -40,7 +40,7 @@ describe('FREE_TEXT_CODES', () => {
    */
   it('전부 계약 요청 본문의 필드 이름이다', () => {
     const updateKeys: (keyof ItemUpdate)[] = [
-      'lotControlTypeCode',
+      'lotControlled',
       'serialControlTypeCode',
       'shelfLifeDays',
       'inspectionRequired',

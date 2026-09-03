@@ -349,7 +349,7 @@ const BASE_APPROVAL_STEP: ApprovalStepResponse = {
   stepNo: 1,
   approverId: 9811,
   approverName: '합성 결재자 가',
-  decisionCode: 'SAMPLE_DECISION_A',
+  decisionCode: 'APPROVED',
   decisionAt: '2026-08-18T15:02:00+09:00',
   decisionComment: '합성 결재 의견',
   /** **결재함이 쓰는 표기다** — 이 화면이 나르지 않는 것을 재려면 참으로 와야 한다(C36). */
@@ -381,14 +381,14 @@ export const approvalRequestDetailBody = (
     approvalRequestId: 9801,
     /* 업무 번호에 내부 번호를 섞지 않는다 — 「9801이 그려지지 않는다」를 잴 수 있어야 한다. */
     approvalRequestNo: 'SAMPLE-AP-0001',
-    approvalTypeCode: 'SAMPLE_AT_A',
+    approvalTypeCode: 'INVENTORY_ADJUSTMENT',
     requestedBy: 9821,
     requestedByName: '합성 상신자 가',
     requestedAt: '2026-08-18T14:35:00+09:00',
     statusCode: 'SAMPLE_AP_STATUS_A',
     reason: '합성 조정 사유 첫 줄\n\n둘째 문단 — 근거를 적는 자리',
     target: {
-      targetTypeCode: 'SAMPLE_TARGET_TYPE_A',
+      targetTypeCode: 'INVENTORY_ADJUSTMENT',
       targetId: 9301,
       displayName: '합성 대상 문서',
       openable: false,
@@ -416,7 +416,7 @@ export const approvalRequestDetailBody = (
 export const SAMPLE_APPROVED_STATUS = 'SAMPLE_AP_STATUS_A';
 
 /** 반려 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
-export const SAMPLE_REJECTION_DECISION = 'SAMPLE_DECISION_A';
+export const SAMPLE_REJECTION_DECISION = 'APPROVED';
 
 /**
  * 값이 전부 유효한 라인 초안. **검사하려는 칸만 인자로 어긋나게 둔다** —
