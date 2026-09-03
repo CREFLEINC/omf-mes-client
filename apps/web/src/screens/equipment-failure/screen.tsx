@@ -164,86 +164,97 @@ export const EquipmentFailureScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.filters}>
-        <FailureFilterBar
-          appliedFilters={filters}
-          equipmentOptions={equipmentOptions}
-          equipmentNote={equipmentNote(equipments)}
-          onSearch={(next) => {
-            apply(next);
-          }}
-          onReset={() => {
-            apply(DEFAULT_FILTERS);
-          }}
-        />
-      </section>
+      <div className="equipment-failure-workspace">
+        <section className="pane equipment-failure-pane" aria-label={t.panes.filters}>
+          <h2 className="pane-title">{t.panes.filters}</h2>
+          <FailureFilterBar
+            appliedFilters={filters}
+            equipmentOptions={equipmentOptions}
+            equipmentNote={equipmentNote(equipments)}
+            onSearch={(next) => {
+              apply(next);
+            }}
+            onReset={() => {
+              apply(DEFAULT_FILTERS);
+            }}
+          />
+        </section>
 
-      <div className="two-pane">
-        <section className="pane" aria-label={t.panes.list}>
-          {!list.isError && (
-            <>
-              <FailureTable
-                rows={rows}
-                selectedId={selectedId}
-                isLoading={list.isPending}
-                isBeyondLast={pageView.isBeyondLast}
-                onSelect={(breakdownId) => {
-                  apply(filters, page, breakdownId);
-                }}
-                onFirstPage={() => {
-                  apply(filters);
-                }}
-              />
-              {!list.isPending && !pageView.isBeyondLast && (
-                <PageNav
-                  view={pageView}
-                  onChange={(nextPage) => {
-                    apply(filters, nextPage);
+        <div className="two-pane equipment-failure-layout">
+          <section
+            className="pane equipment-failure-pane equipment-failure-list-pane"
+            aria-label={t.panes.list}
+          >
+            <h2 className="pane-title">{t.panes.list}</h2>
+            {!list.isError && (
+              <>
+                <FailureTable
+                  rows={rows}
+                  selectedId={selectedId}
+                  isLoading={list.isPending}
+                  isBeyondLast={pageView.isBeyondLast}
+                  onSelect={(breakdownId) => {
+                    apply(filters, page, breakdownId);
+                  }}
+                  onFirstPage={() => {
+                    apply(filters);
                   }}
                 />
-              )}
-            </>
-          )}
-        </section>
+                {!list.isPending && !pageView.isBeyondLast && (
+                  <PageNav
+                    view={pageView}
+                    onChange={(nextPage) => {
+                      apply(filters, nextPage);
+                    }}
+                  />
+                )}
+              </>
+            )}
+          </section>
 
-        <section className="pane" aria-label={t.panes.detail}>
-          {detail.isError ? (
-            <LoadErrorBanner
-              error={detail.error}
-              onRetry={() => {
-                void detail.refetch();
-              }}
-            />
-          ) : (
-            <>
-              <SaveErrorBanner error={writeError} />
-              <DetailPane
-                detail={detailView}
-                isLoading={detail.isPending && selectedId !== null}
-                causeCode={causeCode}
-                handlingNote={handlingNote}
-                fieldErrors={fieldErrors}
-                isSaving={isSaving}
-                onChangeCause={setCauseCode}
-                onChangeNote={setHandlingNote}
-                onSave={() => {
-                  clearOtherErrors('update');
-                  /* 빈 값은 「지운다」가 아니라 「아직 안 적었다」다 — `null`로 보낸다. */
-                  update.write({
-                    causeCode: causeCode === '' ? null : causeCode,
-                    handlingNote: handlingNote.trim() === '' ? null : handlingNote,
-                  });
-                }}
-                onStartHandling={() => {
-                  setPending('start');
-                }}
-                onComplete={() => {
-                  setPending('complete');
+          <section
+            className="pane equipment-failure-pane equipment-failure-detail-pane"
+            aria-label={t.panes.detail}
+          >
+            <h2 className="pane-title">{t.panes.detail}</h2>
+            {detail.isError ? (
+              <LoadErrorBanner
+                error={detail.error}
+                onRetry={() => {
+                  void detail.refetch();
                 }}
               />
-            </>
-          )}
-        </section>
+            ) : (
+              <>
+                <SaveErrorBanner error={writeError} />
+                <DetailPane
+                  detail={detailView}
+                  isLoading={detail.isPending && selectedId !== null}
+                  causeCode={causeCode}
+                  handlingNote={handlingNote}
+                  fieldErrors={fieldErrors}
+                  isSaving={isSaving}
+                  onChangeCause={setCauseCode}
+                  onChangeNote={setHandlingNote}
+                  onSave={() => {
+                    clearOtherErrors('update');
+                    /* 빈 값은 「지운다」가 아니라 「아직 안 적었다」다 — `null`로 보낸다. */
+                    update.write({
+                      causeCode: causeCode === '' ? null : causeCode,
+                      handlingNote: handlingNote.trim() === '' ? null : handlingNote,
+                    });
+                  }}
+                  onStartHandling={() => {
+                    setPending('start');
+                  }}
+                  onComplete={() => {
+                    setPending('complete');
+                  }}
+                />
+              </>
+            )}
+          </section>
+        </div>
       </div>
 
       {/*

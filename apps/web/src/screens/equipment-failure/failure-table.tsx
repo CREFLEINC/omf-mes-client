@@ -128,6 +128,7 @@ export const FailureTable = ({
   /* ⛔ `.wide-table`로 감싸지 않는다 — 좁은 칸에 최소 폭을 주면 뒤쪽 열이 화면 밖으로 나간다. */
   return (
     <Table
+      caption={<span className="equipment-failure-table-caption">{t.panes.list}</span>}
       columns={columns}
       rows={rows}
       getRowId={(row) => String(row.breakdownId)}

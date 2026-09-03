@@ -61,7 +61,7 @@ export const equipmentFailure = {
 
   detail: {
     emptyTitle: '고장을 고르세요',
-    empty: '왼쪽 목록에서 고장을 고르면 여기에 상세가 열립니다.',
+    empty: '고장 목록에서 항목을 고르면 여기에 상세가 열립니다.',
 
     reportHeading: '현장이 적은 것',
     /** ⛔ 현장 기록은 사무가 고치지 않는다. 감추지 않고 읽기 전용임을 말한다. */

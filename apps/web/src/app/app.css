@@ -3209,6 +3209,871 @@ main > * + * {
   }
 }
 
+/* 타발수 환산 — 전역 설정과 정책·미리보기의 단계가 구획 간격과 제목 계층으로 읽히게 한다. */
+.shot-conversion-workspace,
+.shot-conversion-main-grid,
+.shot-conversion-pane,
+.shot-conversion-table {
+  min-width: 0;
+}
+
+.shot-conversion-workspace,
+.shot-conversion-main-grid {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.shot-conversion-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.shot-conversion-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.shot-conversion-pane > .dialog-lead,
+.shot-conversion-pane > .field-note,
+.shot-conversion-pane > p,
+.shot-conversion-preview-grid p {
+  margin: 0;
+}
+
+.filter-bar.shot-conversion-policy-filter {
+  margin-bottom: 0;
+}
+
+.shot-conversion-policy-filter > .field-cell-unlabeled {
+  align-items: flex-end;
+}
+
+.shot-conversion-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.shot-conversion-policy-table table {
+  min-width: 58rem;
+}
+
+.shot-conversion-table th {
+  white-space: nowrap;
+}
+
+.shot-conversion-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.shot-conversion-preview-grid {
+  align-items: start;
+}
+
+@media (min-width: 1500px) {
+  .shot-conversion-main-grid {
+    grid-template-columns: minmax(58rem, 3.4fr) minmax(32rem, 2fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .shot-conversion-policy-filter > .field-cell {
+    align-items: stretch;
+    flex-basis: 100%;
+  }
+
+  .shot-conversion-policy-filter .filter-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* 계측기 마스터 — 조회 입력과 즉시 조건·액션을 분리해 목록의 시작선을 명확히 한다. */
+.gauge-master-pane,
+.gauge-master-table {
+  min-width: 0;
+}
+
+.gauge-master-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.gauge-master-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.gauge-master-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.gauge-master-filter > *,
+.gauge-master-filter .field-cell {
+  min-width: 0;
+}
+
+.gauge-master-filter .field-cell {
+  align-items: stretch;
+}
+
+.gauge-master-filter-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.gauge-master-filter-footer > .check-group {
+  flex: 1 1 28rem;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.gauge-master-filter-footer > .filter-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.filter-bar.gauge-master-filter-chips {
+  gap: var(--space-2);
+  margin-bottom: 0;
+}
+
+.gauge-master-filter-chips:empty {
+  display: none;
+}
+
+.gauge-master-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.gauge-master-table table {
+  min-width: 58rem;
+}
+
+.gauge-master-table th {
+  white-space: nowrap;
+}
+
+.gauge-master-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.gauge-master-filter {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .gauge-master-filter-footer,
+  .gauge-master-filter-footer > .check-group {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gauge-master-filter-footer > .filter-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
+/* 계측기 검교정 이력 — 조회·목록·등록의 경계를 제목과 공통 구획 간격으로 드러낸다. */
+.gauge-calibration-workspace,
+.gauge-calibration-pane,
+.gauge-calibration-table,
+.gauge-calibration-form-grid {
+  min-width: 0;
+}
+
+.gauge-calibration-workspace {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.gauge-calibration-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.gauge-calibration-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.gauge-calibration-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.gauge-calibration-filter > *,
+.gauge-calibration-filter .field-cell {
+  min-width: 0;
+}
+
+.gauge-calibration-filter .field-cell {
+  align-items: stretch;
+}
+
+.gauge-calibration-filter-actions {
+  grid-column: 1 / -1;
+  align-items: flex-end;
+  margin-top: 0;
+}
+
+.gauge-calibration-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.gauge-calibration-table table {
+  min-width: 70rem;
+}
+
+.gauge-calibration-table th {
+  white-space: nowrap;
+}
+
+.gauge-calibration-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.gauge-calibration-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.gauge-calibration-filter {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 설비고장 상세처리 — 조회·목록·상세의 위계와 읽기/입력 영역을 분명히 나눈다. */
+.equipment-failure-workspace,
+.equipment-failure-layout,
+.equipment-failure-pane {
+  min-width: 0;
+}
+
+.equipment-failure-workspace {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.equipment-failure-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.equipment-failure-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.equipment-failure-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.equipment-failure-filter > *,
+.equipment-failure-filter .field-cell {
+  min-width: 0;
+}
+
+.equipment-failure-filter .field-cell {
+  align-items: stretch;
+}
+
+.equipment-failure-filter .equipment-failure-filter-options {
+  grid-column: 1 / 3;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center !important;
+  justify-content: flex-start;
+  gap: var(--space-4);
+  margin-top: 0;
+}
+
+.equipment-failure-filter-actions {
+  grid-column: 3;
+  align-items: flex-end !important;
+  margin-top: 0;
+}
+
+.equipment-failure-pane > .pane-lead {
+  margin: 0;
+}
+
+.equipment-failure-list-pane table {
+  width: 100%;
+}
+
+.equipment-failure-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.equipment-failure-detail-pane > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.equipment-failure-readonly {
+  box-sizing: border-box;
+  justify-content: flex-start;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.equipment-failure-readonly > :last-child {
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+.equipment-failure-detail-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.equipment-failure-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .equipment-failure-filter-options,
+  .equipment-failure-filter-actions {
+    grid-column: 1;
+  }
+
+  .equipment-failure-filter-actions {
+    align-items: flex-start !important;
+  }
+}
+
+/* 보전지시 발행 — 대상 선택부터 발행 결과까지 한 흐름으로 읽히게 구획을 맞춘다. */
+.maintenance-order-workspace,
+.maintenance-order-pane,
+.maintenance-order-form-content,
+.maintenance-order-form-grid,
+.maintenance-order-list-table {
+  min-width: 0;
+}
+
+.maintenance-order-workspace {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.maintenance-order-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.maintenance-order-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.maintenance-order-pane > .pane-lead,
+.maintenance-order-form-content > .pane-lead {
+  margin: 0;
+}
+
+.maintenance-order-form-content {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 72rem;
+}
+
+.maintenance-order-form-content > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.filter-bar.maintenance-order-item-filter,
+.filter-bar.maintenance-order-trigger-filter {
+  display: grid;
+  grid-template-columns: minmax(20rem, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+  margin-bottom: 0;
+}
+
+.maintenance-order-item-filter > *,
+.maintenance-order-trigger-filter > * {
+  min-width: 0;
+}
+
+.maintenance-order-item-actions,
+.maintenance-order-trigger-actions {
+  align-items: flex-end;
+}
+
+.maintenance-order-form-content > .form-actions,
+.maintenance-order-pane > .form-actions {
+  margin-top: 0;
+}
+
+.maintenance-order-list-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.maintenance-order-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .form-grid.maintenance-order-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .filter-bar.maintenance-order-item-filter,
+  .filter-bar.maintenance-order-trigger-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-order-item-actions,
+  .maintenance-order-trigger-actions {
+    align-items: flex-start;
+    margin-top: 0;
+  }
+}
+
+/* 보전 실적·예비품 — 실적 입력과 예비품 기록을 한 흐름 안에서 단계별로 구분한다. */
+.maintenance-result-pane,
+.maintenance-result-form-grid,
+.maintenance-result-list-table {
+  min-width: 0;
+}
+
+.maintenance-result-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.maintenance-result-pane + .maintenance-result-pane {
+  margin-top: var(--space-5);
+}
+
+.maintenance-result-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.maintenance-result-form-pane > :not(.pane-title) {
+  width: 100%;
+  max-width: 72rem;
+}
+
+.maintenance-result-form-pane > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.maintenance-result-form-pane > .pane-lead,
+.maintenance-result-pane > .pane-lead {
+  margin: 0;
+}
+
+.filter-bar.maintenance-result-part-picker,
+.filter-bar.maintenance-result-part-row {
+  display: grid;
+  align-items: start;
+  gap: var(--space-3);
+  margin-bottom: 0;
+}
+
+.filter-bar.maintenance-result-part-picker {
+  grid-template-columns: minmax(20rem, 1fr) auto;
+}
+
+.filter-bar.maintenance-result-part-row {
+  grid-template-columns: minmax(10rem, 1fr) minmax(9rem, 0.5fr) minmax(20rem, 1fr) auto;
+}
+
+.maintenance-result-part-picker > *,
+.maintenance-result-part-row > * {
+  min-width: 0;
+}
+
+.maintenance-result-part-action {
+  align-items: flex-end;
+}
+
+.maintenance-result-form-pane > .form-actions,
+.maintenance-result-pane > .form-actions {
+  margin-top: 0;
+}
+
+.maintenance-result-list-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.maintenance-result-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .form-grid.maintenance-result-form-grid,
+  .filter-bar.maintenance-result-part-picker,
+  .filter-bar.maintenance-result-part-row {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-result-form-grid > .field-cell-unlabeled,
+  .maintenance-result-part-action {
+    align-items: flex-start;
+    margin-top: 0;
+  }
+}
+
+/* 툴 보전오더 생성 — 조회·도래 목록·오더 작성 단계를 제목과 정렬 축으로 구분한다. */
+.tool-pm-order-pane,
+.tool-pm-order-table,
+.tool-pm-order-form-grid {
+  min-width: 0;
+}
+
+.tool-pm-order-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.tool-pm-order-pane + .tool-pm-order-pane {
+  margin-top: var(--space-5);
+}
+
+.tool-pm-order-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.tool-pm-order-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(16rem, 1fr)) auto;
+  align-items: start;
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.tool-pm-order-filter > *,
+.tool-pm-order-filter .field-cell {
+  min-width: 0;
+}
+
+.tool-pm-order-filter .field-cell {
+  align-items: stretch;
+}
+
+.tool-pm-order-filter .tool-pm-order-filter-options {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-4);
+  margin-top: 0;
+}
+
+.tool-pm-order-filter-actions {
+  grid-column: 3;
+  grid-row: 1;
+  align-items: flex-end !important;
+  margin-top: 0;
+}
+
+.tool-pm-order-pane > .pane-lead {
+  margin: 0;
+}
+
+.tool-pm-order-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tool-pm-order-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tool-pm-order-form-pane > :not(.pane-title) {
+  width: 100%;
+  max-width: 72rem;
+}
+
+.tool-pm-order-form-pane > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.filter-bar.tool-pm-order-item-row {
+  display: grid;
+  grid-template-columns: minmax(20rem, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+  margin-bottom: 0;
+}
+
+.tool-pm-order-item-row > * {
+  min-width: 0;
+}
+
+.tool-pm-order-item-actions {
+  align-items: flex-end;
+}
+
+.tool-pm-order-form-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.tool-pm-order-filter,
+  .form-grid.tool-pm-order-form-grid,
+  .filter-bar.tool-pm-order-item-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-pm-order-filter .tool-pm-order-filter-options,
+  .tool-pm-order-filter-actions {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .tool-pm-order-filter-actions,
+  .tool-pm-order-item-actions {
+    align-items: flex-start !important;
+    margin-top: 0;
+  }
+}
+
+/* 툴 PM 실적 등록 — 대상 툴의 기준값과 실적 입력·이력을 단계별로 구분한다. */
+.tool-pm-result-pane,
+.tool-pm-result-tool-grid,
+.tool-pm-result-form-grid,
+.tool-pm-result-table {
+  min-width: 0;
+}
+
+.tool-pm-result-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.tool-pm-result-pane + .tool-pm-result-pane {
+  margin-top: var(--space-5);
+}
+
+.tool-pm-result-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.tool-pm-result-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 72rem;
+  margin-bottom: 0;
+}
+
+.tool-pm-result-tool-grid > *,
+.tool-pm-result-tool-grid .field-cell {
+  min-width: 0;
+}
+
+.tool-pm-result-tool-grid .field-cell {
+  align-items: stretch;
+}
+
+.tool-pm-result-fact {
+  box-sizing: border-box;
+  justify-content: flex-start;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.tool-pm-result-fact > :last-child {
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+.tool-pm-result-pane > .pane-lead {
+  margin: 0;
+}
+
+.tool-pm-result-form-pane > :not(.pane-title) {
+  width: 100%;
+  max-width: 72rem;
+}
+
+.tool-pm-result-form-pane > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.tool-pm-result-form-pane > .form-actions {
+  margin-top: 0;
+}
+
+.tool-pm-result-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tool-pm-result-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.tool-pm-result-tool-grid,
+  .form-grid.tool-pm-result-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-pm-result-form-grid > .field-cell-unlabeled {
+    margin-top: 0;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -5167,4 +6032,176 @@ main > * + * {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-4);
+}
+
+/*
+ * P-02-09 포장 라벨 재출력 — 좌단 《포장 단위》의 포장 번호.
+ *
+ * ⚠ 클래스 이름에 화면을 넣는다(`pop-reprint-`). `.pop-` 일반명은 POP 화면 전부가 함께 쓰는
+ * 이 파일에서 이미 임자가 있고, 같은 이름을 다른 값으로 다시 정의하면 앞 화면 배치가 조용히
+ * 덮인다 — 시험이 CSS 를 읽지 않아 게이트가 잡지 못한다.
+ */
+.pop-reprint-hu-no {
+  margin: 0;
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+/* P-02-09 우단 《재출력 대상》 — 줄 하나가 라벨 한 장이다. */
+.pop-reprint-targets {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pop-reprint-target {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-subtle, rgb(0 0 0 / 8%));
+}
+
+.pop-reprint-target-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 출력물 종류가 먼저 읽혀야 한다 — 같은 LOT 에 두 줄이 서기 때문이다. */
+.pop-reprint-kind {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  white-space: nowrap;
+}
+
+/* 번호가 남은 폭을 갖고, 넘치면 잘린다 — 버튼이 밖으로 밀리지 않게 한다. */
+.pop-reprint-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-reprint-target-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/*
+ * P-02-04 작업실적 등록 — **좌우 2단**(입력 / 키패드).
+ *
+ * 스펙 §3-2 의 배치다: 좌 616 × 우 392. 세로 예산에 슬랙이 0 이라(64 + 616 + 88 = 768) 위아래로
+ * 쌓으면 키패드가 접힌 아래로 내려가고, 그러면 이 화면의 주 입력 수단이 화면 밖에 선다.
+ *
+ * ⚠ **접힘 기준이 대상 단말보다 넓으면 안 된다** — 대상은 1024×768 키오스크다(전례 `.pop-inspect`).
+ */
+.pop-result-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 616fr) minmax(0, 392fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/*
+ * 키패드는 제 폭이 정해져 있다(스펙 §3-2 — 키 64 × 3열 + 간격). 카드가 그보다 넓으므로
+ * **가운데에 놓는다** — 왼쪽에 붙이면 오른쪽에 빈 판이 생겨 카드가 잘못 그려진 것처럼 보인다.
+ */
+.pop-result-keypad > * {
+  display: flex;
+  justify-content: center;
+}
+
+/*
+ * ⚠ **접히면 키패드가 폭을 다 먹는다.** 2단일 때 우단은 392px 이지만 1단이 되면 카드가
+ * 화면 너비로 늘어나 키 3열 오른쪽에 빈 판이 생긴다 — 실기 확인에서 나온 지적이다.
+ * 접힌 뒤에도 키패드는 제 폭만 쓴다.
+ */
+@media (max-width: 900px) {
+  .pop-result-panes {
+    grid-template-columns: 1fr;
+  }
+
+  .pop-result-panes > :last-child {
+    justify-self: start;
+    max-width: 392px;
+  }
+}
+
+/* 대상 LOT·제품 — 스펙 §3-2 가 라벨과 값과 「변경」을 한 줄에 둔다. */
+.pop-result-target {
+  margin: 0 0 var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pop-result-target > div {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pop-result-target dt {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.pop-result-target dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/*
+ * ⛔ **번호가 남은 폭을 다 가져가게 두지 않는다.** LOT 번호는 34자리라 실측에서 행이 599px 중
+ * 597px 을 썼다(스펙 §3-3) — 한 글자만 길어져도 「변경」 버튼이 밀려난다. 넘치면 자르고, 전체는
+ * 마우스를 올리면 보인다.
+ */
+.pop-result-lot-no {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-result-quick {
+  margin: var(--space-3) 0 var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+}
+
+.pop-result-remaining {
+  margin: var(--space-4) 0 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+/*
+ * 배너 안의 조치 버튼은 **문장 아래**에 선다.
+ *
+ * ⚠ 실기 크기(1024×768)에서 확인한 것 — 문장 뒤에 그대로 이어 붙이면 마지막 글자와 버튼이
+ * 맞닿아 문장이 잘린 것처럼 보인다. 장갑 낀 손이 누를 자리이므로 사방에 여백이 필요하다.
+ */
+.pop-result-banner-text {
+  margin: 0 0 var(--space-3);
+}
+
+/* 스펙 §3-2 — 대상(LOT·제품)과 입력(양품수량·비고)을 가르는 선. */
+.pop-result-rule {
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--outline-variant);
 }

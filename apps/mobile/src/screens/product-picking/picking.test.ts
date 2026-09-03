@@ -101,8 +101,12 @@ describe('권장 순서', () => {
   });
 
   it('FIFO는 제조 시각으로 세운다', () => {
-    const older = candidate({ lot: lot({ lotId: 4, manufacturedAt: '2026-01-01T00:00:00+09:00' }) });
-    const newer = candidate({ lot: lot({ lotId: 5, manufacturedAt: '2026-06-01T00:00:00+09:00' }) });
+    const older = candidate({
+      lot: lot({ lotId: 4, manufacturedAt: '2026-01-01T00:00:00+09:00' }),
+    });
+    const newer = candidate({
+      lot: lot({ lotId: 5, manufacturedAt: '2026-06-01T00:00:00+09:00' }),
+    });
     const ranked = rankCandidates([newer, older], FIFO);
 
     expect(ranked.ordered.map((each) => each.lot.lotId)).toEqual([4, 5]);

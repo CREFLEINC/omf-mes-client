@@ -4,8 +4,10 @@ import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
+import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
+import { ProductionResultScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
@@ -27,9 +29,12 @@ import { WorkStartScreen } from '../screens/work-start/screen';
  *
  * ⛔ **POP 라우트를 `index.tsx`에 직접 추가하지 않는다.** 새 P- 화면은 이 배열에만 붙인다.
  *
- * ⚠ 지금은 `index.tsx`가 이 배열을 그대로 펼쳐 넣는다 — **주소도 동작도 이전과 같다.**
- * 이 파일이 분리된 것은 소유를 가르기 위해서이지 번들을 가르기 위해서가 아니다. POP 전용
- * 빌드 엔트리는 아직 없고, `apps/pop`은 여전히 `apps/web/dist`를 통째로 복사해 쓴다.
+ * ⚠ **`index.tsx`는 이 배열을 펼쳐 넣지 않는다**(#752). 소유뿐 아니라 번들도 갈렸다 —
+ * 이 표를 세우는 것은 POP 진입점(`app/pop-main.tsx`)뿐이고, `apps/pop`은 POP 전용 산출물
+ * (`apps/web/dist-pop`)을 싣는다.
+ *
+ * 개발 중 브라우저로 이 화면들을 여는 길은 POP 전용 개발 서버다 —
+ * `pnpm --filter @omf-mes/web dev:pop` → `http://localhost:5174/pop/...`.
  */
 export const popRoutes: RouteObject[] = [
   /*
@@ -142,4 +147,26 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/work-start', element: <WorkStartScreen /> },
   { path: '/pop/rework-results', element: <ReworkResultRegisterScreen /> },
+  /*
+   * P-02-09 — **재출력이 정상 경로인 유일한 화면**이다(스펙 §5-1). 재출력 사유가 예외가 아니라
+   * 기본 입력이라 우단에 상시 선다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?handlingUnitId=&workerNo=`) — 포장을 만드는
+   * 포장 작업(`P-02-08`)이 아직 이 저장소에 없다(#76). 그것이 서면 `entry-context.ts` 하나가
+   * 바뀐다(전례 `P-02-05`).
+   */
+  { path: '/pop/packing-label-reprint', element: <PackingLabelReprintScreen /> },
+  /*
+   * P-02-04 — 작업실적 등록. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⭐ **이 화면의 세로 예산에는 슬랙이 0 이다**(헤더 64 + 본문 616 + 액션바 88 = 768 — 스펙
+   * §3-1). 관리웹 셸의 상단 바가 위에 얹히면 1024×768 단말에서 본문 아래가 그대로 잘린다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시
+   * 선택(`P-02-01`)이 아직 이 저장소에 없다. 그것이 서면 `entry-context.ts` 하나가 바뀐다.
+   *
+   * ⚠ **단말·공정은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 비어 있는 동안 이 화면은
+   * 「단말이 확인되지 않았습니다」로 저장이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
+   */
+  { path: '/pop/production-result', element: <ProductionResultScreen /> },
 ];
