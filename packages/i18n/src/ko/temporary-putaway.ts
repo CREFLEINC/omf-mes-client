@@ -66,6 +66,11 @@ export const temporaryPutaway = {
     description: '되돌아온 건에서 사유를 확인하세요. ',
     action: '되돌아온 건 보기',
   },
+  /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
+  saveFailed: {
+    title: '임시 적치를 담아 두지 못했습니다',
+    description: '기록되지 않았습니다. 다시 시도하세요.',
+  },
   noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
   done: '적치 화면으로',
 } as const;
