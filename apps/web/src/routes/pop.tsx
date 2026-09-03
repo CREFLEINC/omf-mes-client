@@ -4,6 +4,7 @@ import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
+import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
@@ -145,4 +146,13 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/work-start', element: <WorkStartScreen /> },
   { path: '/pop/rework-results', element: <ReworkResultRegisterScreen /> },
+  /*
+   * P-02-09 — **재출력이 정상 경로인 유일한 화면**이다(스펙 §5-1). 재출력 사유가 예외가 아니라
+   * 기본 입력이라 우단에 상시 선다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?handlingUnitId=&workerNo=`) — 포장을 만드는
+   * 포장 작업(`P-02-08`)이 아직 이 저장소에 없다(#76). 그것이 서면 `entry-context.ts` 하나가
+   * 바뀐다(전례 `P-02-05`).
+   */
+  { path: '/pop/packing-label-reprint', element: <PackingLabelReprintScreen /> },
 ];
