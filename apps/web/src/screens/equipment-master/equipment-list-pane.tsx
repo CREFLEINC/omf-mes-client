@@ -198,20 +198,23 @@ export const EquipmentListPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={items}
-        getRowId={(row) => String(row.equipmentId)}
-        empty={emptySlot}
-      />
+      <div className="equipment-master-table equipment-master-equipment-table">
+        <Table
+          density="compact"
+          caption={<span className="equipment-master-table-caption">{t.tabs.equipment}</span>}
+          columns={columns}
+          rows={items}
+          getRowId={(row) => String(row.equipmentId)}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   return (
-    <section aria-label={t.tabs.equipment}>
+    <section className="equipment-master-tab-content" aria-label={t.tabs.equipment}>
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      <div className="filter-bar">
+      <div className="filter-bar equipment-master-filter equipment-master-equipment-filter">
         <SearchInput
           label={t.equipmentFilters.searchLabel}
           placeholder={t.equipmentFilters.searchPlaceholder}
@@ -226,53 +229,51 @@ export const EquipmentListPane = ({
           onChange={(value) => setDraft((prev) => ({ ...prev, equipmentTypeCode: value }))}
           note={messages.pendingCode.note}
         />
-        {/* 해제 축이라 변경 즉시 적용한다. */}
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.calibrationRequired}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, calibrationRequired: event.target.checked })
-            }
-          >
-            {t.equipmentFilters.calibrationRequiredOnly}
-          </Checkbox>
+        <div className="equipment-master-filter-footer">
+          <div className="equipment-master-filter-checks">
+            {/* 해제 축이라 변경 즉시 적용한다. */}
+            <Checkbox
+              checked={appliedFilters.calibrationRequired}
+              onChange={(event) =>
+                onApplyFilters({ ...appliedFilters, calibrationRequired: event.target.checked })
+              }
+            >
+              {t.equipmentFilters.calibrationRequiredOnly}
+            </Checkbox>
+            <Checkbox
+              checked={appliedFilters.includeInactive}
+              onChange={(event) =>
+                onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+              }
+            >
+              {messages.common.includeInactive}
+            </Checkbox>
+            {/*
+             * ⭐ 사용 여부와 «다른 축» 이다. 기본은 운용 중인 것만 부르되, 마스터는 폐기된 자산도
+             * 볼 수 있어야 한다 — 감추기만 하면 폐기 처리의 결과를 아무 데서도 확인할 수 없다.
+             */}
+            <Checkbox
+              checked={appliedFilters.includeDisposed}
+              onChange={(event) =>
+                onApplyFilters({ ...appliedFilters, includeDisposed: event.target.checked })
+              }
+            >
+              {t.equipmentFilters.includeDisposed}
+            </Checkbox>
+          </div>
+          <div className="filter-actions">
+            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+            <Button variant="outlined" onClick={onAdd}>
+              {t.actions.addEquipment}
+            </Button>
+            <Button variant="outlined" onClick={resetAll}>
+              {messages.common.reset}
+            </Button>
+          </div>
         </div>
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.includeInactive}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-            }
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-        </div>
-        {/*
-         * ⭐ 사용 여부와 «다른 축» 이다. 기본은 운용 중인 것만 부르되, 마스터는 폐기된 자산도
-         * 볼 수 있어야 한다 — 감추기만 하면 폐기 처리의 결과를 아무 데서도 확인할 수 없다.
-         */}
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.includeDisposed}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeDisposed: event.target.checked })
-            }
-          >
-            {t.equipmentFilters.includeDisposed}
-          </Checkbox>
-        </div>
-        <Button className="field-cell-unlabeled" onClick={() => applyDraft()}>
-          {messages.common.search}
-        </Button>
-        <Button className="field-cell-unlabeled" variant="outlined" onClick={onAdd}>
-          {t.actions.addEquipment}
-        </Button>
-        <Button className="field-cell-unlabeled" variant="outlined" onClick={resetAll}>
-          {messages.common.reset}
-        </Button>
       </div>
 
-      <div className="filter-bar">
+      <div className="filter-bar equipment-master-filter-chips">
         {appliedFilters.q !== '' && (
           <Chip
             variant="status"
