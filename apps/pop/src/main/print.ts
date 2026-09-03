@@ -52,8 +52,17 @@ export class EmptyRenditionError extends Error {
 }
 
 export class PrinterUnavailableError extends Error {
-  constructor() {
-    super('인쇄할 프린터를 찾을 수 없다 — 출력물은 파일로 남았다');
+  /**
+   * ⚠ **단말이 알려 준 프린터 이름을 함께 싣는다.** 현장 단말은 키오스크라 개발자도구가 없어,
+   *   이 문장이 사유를 알 수 있는 **유일한 자리**다. 「못 찾았다」만 말하면 프린터가 아예 없는
+   *   것인지 여럿인데 기본이 없는 것인지 가릴 수 없다(실측 — 실기 확인이 여기서 한 번 멈췄다).
+   */
+  constructor(available: readonly string[] = []) {
+    super(
+      available.length === 0
+        ? '인쇄할 프린터를 찾을 수 없다 — 이 단말에 등록된 프린터가 없다. 출력물은 파일로 남았다'
+        : `인쇄할 프린터를 찾을 수 없다 — 기본 프린터가 지정돼 있지 않다(등록된 프린터: ${available.join(', ')}). 출력물은 파일로 남았다`,
+    );
     this.name = 'PrinterUnavailableError';
   }
 }

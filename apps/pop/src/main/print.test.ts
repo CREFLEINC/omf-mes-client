@@ -189,3 +189,16 @@ describe('파일명 다듬기', () => {
     }
   });
 });
+
+describe('프린터를 못 고른 사유를 말한다', () => {
+  // ⚠ 현장 단말은 키오스크라 개발자도구가 없다 — 이 문장이 사유를 알 수 있는 유일한 자리다.
+  it('등록된 프린터가 없으면 그렇게 말한다', () => {
+    expect(new PrinterUnavailableError([]).message).toContain('등록된 프린터가 없다');
+  });
+
+  it('여럿인데 못 골랐으면 이름을 함께 보인다', () => {
+    const message = new PrinterUnavailableError(['TSC TH240', 'Microsoft Print to PDF']).message;
+    expect(message).toContain('기본 프린터가 지정돼 있지 않다');
+    expect(message).toContain('TSC TH240');
+  });
+});

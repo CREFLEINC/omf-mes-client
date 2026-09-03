@@ -209,10 +209,16 @@ async function main(): Promise<void> {
    *   목록을 들고 있으면 사라진 장치로 계속 보낸다.
    */
   let printHost: BrowserWindow | null = null;
-  const resolveDeviceName = async (): Promise<string | null> => {
-    if (printHost === null) return null;
+  const resolvePrinter = async (): Promise<{ deviceName: string | null; available: string[] }> => {
+    if (printHost === null) return { deviceName: null, available: [] };
+
     const printers = await printHost.webContents.getPrintersAsync();
-    return selectPrinter(printers, process.env.POP_PRINTER_NAME);
+
+    return {
+      deviceName: selectPrinter(printers, process.env.POP_PRINTER_NAME),
+      /* 고르지 못했을 때 **무엇이 있었는지**를 사용자에게 말해 주기 위해 함께 들고 나간다. */
+      available: printers.map((printer) => printer.displayName || printer.name),
+    };
   };
 
   // 대기열이 사라지면 현장 실적이 사라진다. 창을 만들기 **전에** 등록한다 —
@@ -261,9 +267,9 @@ async function main(): Promise<void> {
        */
       await printer.print(rendition, { kind: 'file', filePath });
 
-      const deviceName = await resolveDeviceName();
+      const { deviceName, available } = await resolvePrinter();
       /* ⛔ 프린터를 못 고른 것을 성공으로 두지 않는다(공유계약 F-6) — 화면이 인쇄 실패로 낸다. */
-      if (deviceName === null) throw new PrinterUnavailableError();
+      if (deviceName === null) throw new PrinterUnavailableError(available);
 
       await printer.print(rendition, { kind: 'printer', deviceName });
       return filePath;
