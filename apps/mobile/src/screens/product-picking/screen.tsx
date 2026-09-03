@@ -287,6 +287,8 @@ export const ProductPickingScreen = () => {
       <div className="picking">
         <section className="picking__section">
           <h2>{t.targets.legend}</h2>
+          {/* 고르던 라인이 빠졌으면 말없이 나가지 않는다. 남겨 두면 나중에 예고 없이 되돌아간다. */}
+          {chosen !== null ? <AlertBanner variant="warning" title={t.targets.dropped} /> : null}
           {requests.isPending ? <p role="status">{t.targets.loading}</p> : null}
           {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
           {requests.data !== undefined && requests.data.length === 0 ? (
@@ -384,6 +386,11 @@ export const ProductPickingScreen = () => {
         >
           {t.target.change}
         </Button>
+        {/*
+          이 화면이 보이는 남은 배정은 목록 조회에서 나온다. 그것이 늙은 채로 굳으면 확정 전
+          값이 그대로 남아 배정을 다 채우고도 한 번 더 집게 된다 - 조용히 두지 않는다.
+        */}
+        {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
       </section>
 
       <section className="picking__section">
@@ -501,7 +508,8 @@ export const ProductPickingScreen = () => {
           <NumberPad
             value={qty}
             onChange={setQty}
-            max={Math.min(selected.availableQty, remainingAllocated(target.line))}
+            /* 남은 배정이 음수로 오면 상한이 음수가 된다. 서버 값이 그럴 수 있다. */
+            max={Math.max(0, Math.min(selected.availableQty, remainingAllocated(target.line)))}
             allowDecimal
           />
           {worker === null ? <p className="picking__note">{t.noWorker}</p> : null}

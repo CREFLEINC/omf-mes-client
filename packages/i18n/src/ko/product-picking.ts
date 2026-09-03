@@ -17,6 +17,8 @@ export const productPicking = {
     legend: '오늘 출하분',
     loading: '오늘 출하분을 불러오는 중입니다',
     loadFailed: '오늘 출하분을 확인할 수 없습니다',
+    /* 고르던 라인이 목록에서 빠졌다. 말없이 나가면 무슨 일이 있었는지 알 수 없다. */
+    dropped: '고르던 라인이 오늘 출하분에서 빠졌습니다',
     none: '오늘 출하할 작업지시가 없습니다',
     line: (no: number) => `${String(no)}번 줄`,
     progress: (allocated: string, picked: string) => `배정 ${allocated} · 피킹 ${picked}`,
