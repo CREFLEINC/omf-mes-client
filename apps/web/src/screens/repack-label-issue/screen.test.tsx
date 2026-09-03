@@ -79,6 +79,14 @@ interface Options {
   issueStatus?: number;
   issueErrorBody?: unknown;
   issueWrites?: Request[];
+  /** 발행 이력 조회가 실패한다 */
+  historyFails?: boolean;
+  /** 렌디션 조회가 실패한다 */
+  renditionFails?: boolean;
+  /** 인쇄 결과 보고가 실패한다 */
+  reportFails?: boolean;
+  /** 어느 발행 기록의 렌디션을 받았는지 담아 둔다 */
+  renditionCalls?: number[];
 }
 
 const defaultReasons = [
@@ -174,22 +182,33 @@ const routes = (options: Options): StubRoute[] => [
   {
     match: (request) => pathOf(request) === '/app/document-issues',
     respond: () =>
-      jsonResponse({
-        items: options.history ?? [],
-        page: { page: 1, size: 50, total: options.history?.length ?? 0 },
-      }),
+      options.historyFails === true
+        ? jsonResponse({ message: '조회 실패' }, { status: 500 })
+        : jsonResponse({
+            items: options.history ?? [],
+            page: { page: 1, size: 50, total: options.history?.length ?? 0 },
+          }),
   },
   {
     match: (request) => pathOf(request).endsWith('/rendition'),
-    respond: () =>
-      new Response(new Uint8Array([9, 9, 9]), {
-        status: 200,
-        headers: { 'Content-Type': 'image/png' },
-      }),
+    respond: (request) => {
+      const id = Number(pathOf(request).split('/').at(-2));
+      options.renditionCalls?.push(id);
+
+      return options.renditionFails === true
+        ? jsonResponse({ message: '렌디션 실패' }, { status: 500 })
+        : new Response(new Uint8Array([9, 9, 9]), {
+            status: 200,
+            headers: { 'Content-Type': 'image/png' },
+          });
+    },
   },
   {
     match: (request) => pathOf(request).includes(':report-print'),
-    respond: () => jsonResponse({ ok: true }),
+    respond: () =>
+      options.reportFails === true
+        ? jsonResponse({ message: '보고 실패' }, { status: 500 })
+        : jsonResponse({ ok: true }),
   },
 ];
 
@@ -403,10 +422,81 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
     expect(screen.getByText(t.history.seq(1))).toBeInTheDocument();
   });
 
+  /*
+   * ⛔ **목록의 첫 줄이 최신이라고 가정하지 않는다** — 계약이 정렬을 보장하지 않아 오름차순으로
+   * 오면 첫 줄이 1회차다(독립 검증 실측).
+   */
+  it('오름차순으로 와도 가장 높은 회차를 연다', async () => {
+    const renditionCalls: number[] = [];
+    renderScreen({
+      renditionCalls,
+      history: [
+        makeIssue({ issueSeq: 1, printOutcome: 'SUCCEEDED', documentIssueLogId: 44301 }),
+        makeIssue({ issueSeq: 2, printOutcome: 'SUCCEEDED', documentIssueLogId: 44302 }),
+      ],
+    });
+
+    await clickWhenEnabled(() => screen.getByRole('button', { name: t.issue.preview }));
+
+    await waitFor(() => {
+      expect(renditionCalls).toContain(44302);
+    });
+    expect(renditionCalls).not.toContain(44301);
+  });
+
   it('발행 이력이 없으면 그 사실을 말한다', async () => {
     renderScreen({ history: [] });
 
     expect(await screen.findByText(t.history.empty)).toBeInTheDocument();
+  });
+});
+
+describe('RepackLabelIssueScreen — 막힌 사유를 말한다', () => {
+  /*
+   * ⛔ **툴팁에만 두면 도달하지 않는다** — 감싼 버튼이 비활성이라 포커스를 못 받고, 터치
+   * 패널에는 hover 가 없다(독립 검증 실측).
+   */
+  it('권한이 없으면 그 문구가 화면에 보인다', async () => {
+    renderScreen({ canPrintLabel: false });
+
+    expect(await screen.findByText(t.gate.denied)).toBeInTheDocument();
+  });
+
+  it('사번이 없으면 그 문구가 화면에 보인다', async () => {
+    renderWithProviders(
+      <PopIdentityProvider value={IDENTIFIED}>
+        <RepackLabelIssueScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: createStubFetch(routes({})),
+        route: `/pop/repack-label-issue?handlingUnitId=${String(HANDLING_UNIT_ID)}`,
+      },
+    );
+
+    expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
+  });
+
+  /* 「확인할 수 없다」와 「권한이 없다」는 다른 말이고, 앞의 것에만 다시 물을 길을 준다(G-3). */
+  it('권한을 확인할 수 없으면 다시 확인할 길을 준다', async () => {
+    renderWithProviders(
+      <PopIdentityProvider value={IDENTIFIED}>
+        <RepackLabelIssueScreen />
+      </PopIdentityProvider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => pathOf(request).startsWith('/mdm/terminals/'),
+            respond: () => jsonResponse({ message: '조회 실패' }, { status: 500 }),
+          },
+          ...routes({}),
+        ]),
+        route: ENTRY_ROUTE,
+      },
+    );
+
+    expect(await screen.findByText(t.gate.unavailable)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.issue.gateRetry })).toBeInTheDocument();
+    expect(screen.queryByText(t.gate.denied)).not.toBeInTheDocument();
   });
 });
 
@@ -444,6 +534,37 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
     await clickWhenEnabled(submitButton);
 
     expect(await screen.findByText(t.error.forbidden)).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **종이는 나왔다.** 「인쇄하지 못했다」고 말하고 「다시 인쇄」를 권하면 같은 라벨이 한
+   * 장 더 나온다(독립 검증 실측).
+   */
+  it('보고만 실패하면 다시 인쇄를 권하지 않는다', async () => {
+    const save = vi.fn(async () => 'ok');
+    (window as unknown as { pop?: { rendition?: RenditionShell } }).pop = { rendition: { save } };
+
+    renderScreen({ issueCount: 0, reportFails: true });
+
+    await screen.findByText(HANDLING_UNIT_NO);
+    await clickWhenEnabled(submitButton);
+    await userEvent.click(await screen.findByRole('button', { name: t.preview.print }));
+
+    expect(await screen.findByText(t.print.reportFailedTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.print.retry })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.print.reportRetry })).toBeInTheDocument();
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  /* ⛔ 회차만 오르고 빠져나갈 길이 없는 자리를 두지 않는다. */
+  it('이력 조회가 실패해도 방금 발행한 것으로 다시 볼 수 있다', async () => {
+    renderScreen({ issueCount: 0, historyFails: true, renditionFails: true });
+
+    await screen.findByText(HANDLING_UNIT_NO);
+    await clickWhenEnabled(submitButton);
+
+    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeEnabled();
   });
 
   /* ⛔ 인쇄 실패를 발행 실패로 말하지 않는다(K-4) — 복구는 「다시 인쇄」다. */

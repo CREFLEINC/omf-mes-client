@@ -2,7 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import { HANDLING_UNIT_ID, REASON_CODE, readyPrinter } from './fixtures';
 import { issueBody } from './issue-body';
-import { DOCUMENT_TYPE_CODE, TARGET_TYPE_CODE, needsReason } from './types';
+import { needsReason } from './types';
+
+/*
+ * ⛔ **계약 값을 구현에서 가져와 비교하지 않는다.** `DOCUMENT_TYPE_CODE` 를 import 해 견주면
+ * 상수를 다른 유효 enum 으로 바꿔도 시험이 그대로 통과한다(독립 검증 실측 — `HANDLING_UNIT`
+ * 을 `LOT` 으로 뒤집어도 39건 전부 통과했다). 계약이 정한 **글자 그대로** 적는다.
+ */
+const CONTRACT_DOCUMENT_TYPE = 'PACKING_LABEL';
+const CONTRACT_TARGET_TYPE = 'HANDLING_UNIT';
 
 const base = {
   handlingUnitId: HANDLING_UNIT_ID,
@@ -15,9 +23,9 @@ describe('발행 요청 본문', () => {
   it('대상은 포장 단위 하나이고 포장 라벨을 찍는다', () => {
     const body = issueBody(base);
 
-    expect(body.documentTypeCode).toBe(DOCUMENT_TYPE_CODE);
+    expect(body.documentTypeCode).toBe(CONTRACT_DOCUMENT_TYPE);
     expect(body.targets).toHaveLength(1);
-    expect(body.targets[0]?.targetTypeCode).toBe(TARGET_TYPE_CODE);
+    expect(body.targets[0]?.targetTypeCode).toBe(CONTRACT_TARGET_TYPE);
     expect(body.targets[0]?.targetId).toBe(HANDLING_UNIT_ID);
   });
 

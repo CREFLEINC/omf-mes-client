@@ -172,8 +172,11 @@ describe('발행 뒤 인쇄 절차', () => {
   /*
    * ⚠ **보고 실패가 인쇄 성공을 뒤집지 않는다.** 종이는 이미 나왔다 — 「인쇄되지 않았다」고
    * 말하면 사용자가 한 장을 더 뽑는다.
+   *
+   * ⛔ **`failed` 와 갈린 상태여야 한다.** 같은 상태로 두면 화면이 두 경우를 구분할 수 없어
+   * 복구로 「다시 인쇄」를 권하게 된다(독립 검증 실측).
    */
-  it('보고가 실패해도 종이가 나온 사실을 부정하지 않는다', async () => {
+  it('종이가 나온 뒤 보고만 실패하면 인쇄 실패와 다른 상태다', async () => {
     const save = vi.fn(async () => 'ok');
     installShell(save);
     const { result } = setup({ reportFails: true });
@@ -186,8 +189,29 @@ describe('발행 뒤 인쇄 절차', () => {
     });
 
     expect(save).toHaveBeenCalledTimes(1);
-    expect(result.current.state.phase).toBe('failed');
-    expect(result.current.state.reason).not.toBe('인쇄 실패');
+    expect(result.current.state.phase).toBe('reportFailed');
+    expect(result.current.state.phase).not.toBe('failed');
+  });
+
+  /* ⛔ 복구는 보고 재시도다 — 셸을 다시 부르면 같은 라벨이 한 장 더 나온다. */
+  it('보고 재시도가 종이를 다시 뽑지 않는다', async () => {
+    const save = vi.fn<RenditionShell['save']>(async () => 'ok');
+    installShell(save);
+    const { result, reports } = setup({ reportFails: true });
+
+    await act(async () => {
+      await result.current.begin(TARGET);
+    });
+    await act(async () => {
+      await result.current.print();
+    });
+    await act(async () => {
+      await result.current.retryReport();
+    });
+
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(reports).toHaveLength(2);
+    expect(reports[1]?.outcome).toBe('SUCCEEDED');
   });
 
   /* ⛔ 재시도마다 새 키를 만들면 같은 보고가 다른 쓰기로 나간다. */

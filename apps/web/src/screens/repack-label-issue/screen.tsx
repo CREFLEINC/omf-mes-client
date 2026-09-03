@@ -22,7 +22,7 @@ import {
 } from './queries';
 import { useTerminalGate } from './terminal-gating';
 import { useIssuePrintRunner } from './use-issue-print';
-import { needsReason, type IssueStanding, type Printer } from './types';
+import { needsReason, type DocumentIssue, type IssueStanding, type Printer } from './types';
 
 const t = messages.repackLabelIssue;
 
@@ -132,16 +132,34 @@ export const RepackLabelIssueScreen = () => {
     issue.write(issueBody({ handlingUnitId, printerName, reasonCode, reasonRequired }));
   };
 
-  /** 이미 발행한 적이 있어야 볼 것이 있다. 가장 최근 회차를 연다. */
-  const latestIssue = history.data?.[0] ?? null;
+  /**
+   * 이미 발행한 적이 있어야 볼 것이 있다 — **가장 높은 회차**를 연다.
+   *
+   * ⛔ **목록의 첫 줄을 쓰지 않는다.** 계약은 「회차가 쌓인 그대로 돌려준다」이고 정렬을
+   * 보장하지 않는다 — 오름차순으로 오면 첫 줄이 1회차라 **가장 오래된 라벨**이 열린다.
+   */
+  const latestIssue = (history.data ?? []).reduce<DocumentIssue | null>(
+    (latest, issue) => (latest === null || issue.issueSeq > latest.issueSeq ? issue : latest),
+    null,
+  );
 
   const openPreview = (): void => {
-    if (latestIssue === null) return;
+    /*
+     * ⭐ **방금 발행한 것을 먼저 쓴다.** 이력 조회가 실패하면 `latestIssue` 가 비는데, 그때도
+     * 렌디션을 다시 받을 번호는 절차가 들고 있다 — 안 쓰면 회차만 오른 채 빠져나갈 길이 없다.
+     */
+    const target =
+      printRunner.state.target ??
+      (latestIssue === null
+        ? null
+        : {
+            documentIssueLogId: latestIssue.documentIssueLogId,
+            label: handlingUnit.data?.handlingUnit.handlingUnitNo ?? latestIssue.target.displayName,
+          });
 
-    void printRunner.begin({
-      documentIssueLogId: latestIssue.documentIssueLogId,
-      label: handlingUnit.data?.handlingUnit.handlingUnitNo ?? latestIssue.target.displayName,
-    });
+    if (target === null) return;
+
+    void printRunner.begin(target);
   };
 
   const phase = printRunner.state.phase;
@@ -232,6 +250,32 @@ export const RepackLabelIssueScreen = () => {
         </div>
       )}
 
+      {/*
+        ⛔ **인쇄 실패와 갈라 세운다**(K-4 위에 한 겹 더). 종이는 이미 나왔으므로 「다시 인쇄」를
+        권하면 같은 라벨이 한 장 더 나온다 — 여기서 남은 일은 보고를 다시 보내는 것뿐이다.
+      */}
+      {phase === 'reportFailed' && (
+        <div className="banner-slot">
+          <AlertBanner
+            variant="warning"
+            title={t.print.reportFailedTitle}
+            action={
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => {
+                  void printRunner.retryReport();
+                }}
+              >
+                {t.print.reportRetry}
+              </Button>
+            }
+          >
+            {`${t.print.reportFailedBody} ${printRunner.state.reason ?? ''}`.trim()}
+          </AlertBanner>
+        </div>
+      )}
+
       {phase === 'succeeded' && (
         <div className="banner-slot">
           <AlertBanner variant="success" title={t.print.issued}>
@@ -268,9 +312,10 @@ export const RepackLabelIssueScreen = () => {
             printerName={printerName}
             onPrinterChange={setPickedPrinter}
             blockedReason={blockedReason}
+            onRetryGate={gate.verdict === 'unavailable' ? gate.retry : null}
             isSubmitting={issue.isSaving || phase === 'fetching' || phase === 'printing'}
             onSubmit={submit}
-            canPreview={latestIssue !== null}
+            canPreview={isOnline && (latestIssue !== null || printRunner.state.target !== null)}
             onPreview={openPreview}
           />
 

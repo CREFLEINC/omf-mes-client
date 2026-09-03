@@ -23,8 +23,15 @@ export type IssuePrintPhase =
   /** 프린터로 보내는 중 */
   | 'printing'
   | 'succeeded'
-  /** 인쇄나 보고가 실패했다. **발행 기록은 남아 있다** */
+  /** 프린터로 보내지 못했다. **발행 기록은 남아 있다** — 복구는 다시 인쇄다 */
   | 'failed'
+  /**
+   * **종이는 나왔고 결과 보고만 실패했다.**
+   *
+   * ⛔ `failed` 와 섞지 않는다 — 섞으면 화면이 「인쇄하지 못했다」고 말하고 복구로 다시
+   * 인쇄를 권해 **같은 라벨이 한 장 더 나온다.** 여기서 할 일은 보고 재시도다.
+   */
+  | 'reportFailed'
   /** 그린 것을 받지 못했다. 발행 기록은 남아 있다 */
   | 'renditionFailed'
   /** 셸 밖(브라우저)이라 프린터로 보낼 수 없다 */
@@ -57,6 +64,8 @@ export interface IssuePrintRunner {
   begin: (target: IssuePrintTarget) => Promise<void>;
   /** 미리보기에서 인쇄를 눌렀다 */
   print: () => Promise<void>;
+  /** 종이는 나왔는데 보고만 실패했다 — **보고만** 다시 보낸다. 인쇄를 되풀이하지 않는다 */
+  retryReport: () => Promise<void>;
   /** 미리보기를 닫는다. **발행 기록은 남는다** — 인쇄는 나중에 다시 할 수 있다 */
   dismiss: () => void;
   reset: () => void;
@@ -210,13 +219,43 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
        * ⚠ **보고 실패가 인쇄 성공을 뒤집지 않는다.** 종이는 이미 나왔다 — 그 사실을 사유로
        * 올리되 「인쇄되지 않았다」고 말하지 않는다.
        */
-      setState((current) => ({ ...current, phase: 'failed', reason: printFailureReason(error) }));
+      setState((current) => ({
+        ...current,
+        phase: 'reportFailed',
+        reason: printFailureReason(error),
+      }));
       return;
     }
 
     releaseImage();
     setState((current) => ({ ...current, phase: 'succeeded', imageUrl: null }));
   }, [releaseImage, report, state.target, workerNo]);
+
+  /**
+   * 보고만 다시 보낸다.
+   *
+   * ⭐ **멱등 키가 이미 고정이라 안전하다** — 같은 결과의 보고는 같은 키로 나가므로 서버가
+   * 두 번 기록하지 않는다.
+   */
+  const retryReport = useCallback(async (): Promise<void> => {
+    const target = state.target;
+
+    if (target === null) return;
+
+    try {
+      await report(target.documentIssueLogId, null);
+    } catch (error) {
+      setState((current) => ({
+        ...current,
+        phase: 'reportFailed',
+        reason: printFailureReason(error),
+      }));
+      return;
+    }
+
+    releaseImage();
+    setState((current) => ({ ...current, phase: 'succeeded', imageUrl: null }));
+  }, [releaseImage, report, state.target]);
 
   const dismiss = useCallback(() => {
     releaseImage();
@@ -229,5 +268,5 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
     setState(IDLE);
   }, [releaseImage]);
 
-  return { state, begin, print, dismiss, reset };
+  return { state, begin, print, retryReport, dismiss, reset };
 };

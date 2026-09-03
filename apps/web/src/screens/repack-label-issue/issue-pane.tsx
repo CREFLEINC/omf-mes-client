@@ -25,6 +25,8 @@ export interface IssuePaneProps {
 
   /** 발행을 막는 사유. `null` 이면 막지 않는다 */
   blockedReason: string | null;
+  /** 판정을 다시 물을 수 있으면 그 경로. 「확인할 수 없다」에만 준다 */
+  onRetryGate: (() => void) | null;
   isSubmitting: boolean;
   onSubmit: () => void;
 
@@ -57,6 +59,7 @@ export const IssuePane = ({
   printerName,
   onPrinterChange,
   blockedReason,
+  onRetryGate,
   isSubmitting,
   onSubmit,
   canPreview,
@@ -126,9 +129,10 @@ export const IssuePane = ({
         {!reasonsFailed && reasons.length === 0 && (
           <p className="pop-repack-note">{t.reasonsEmpty}</p>
         )}
-        {reasonMissing && <p className="pop-repack-note">{t.reasonRequired}</p>}
+        {/* ⚠ 오류는 도움말과 **다른 색**이어야 한다 — 같으면 사용자가 안내로 읽고 지나친다. */}
+        {reasonMissing && <p className="pop-repack-error">{t.reasonRequired}</p>}
         {reasonServerError !== null && (
-          <p className="pop-repack-note" id={reasonErrorId}>
+          <p className="pop-repack-error" id={reasonErrorId} role="alert">
             {reasonServerError}
           </p>
         )}
@@ -150,6 +154,22 @@ export const IssuePane = ({
           <p className="pop-repack-note">{t.printersEmpty}</p>
         )}
       </div>
+
+      {/*
+        ⛔ **막힌 사유를 툴팁에만 두지 않는다.** 감싼 버튼이 `disabled` 라 포커스를 못 받고,
+        터치 패널에는 hover 가 없어 **문구가 사용자에게 도달하지 않는다**(독립 검증 실측).
+        전례 `P-02-09` 도 본문에 세운다.
+      */}
+      {blockedReason !== null && (
+        <p className="pop-repack-blocked" role="status">
+          {blockedReason}
+          {onRetryGate !== null && (
+            <Button variant="outlined" size="sm" onClick={onRetryGate}>
+              {t.gateRetry}
+            </Button>
+          )}
+        </p>
+      )}
 
       <div className="pop-action-bar">
         {/*
@@ -173,23 +193,15 @@ export const IssuePane = ({
           실제로 있다. `patterns/pop-touch` 의 부족분 보충은 `xl`(60px)까지이던 시절의 것이라
           여기서는 쓰지 않는다.
         */}
-        {blockedReason === null ? (
-          <Button
-            variant="filled"
-            size="2xl"
-            onClick={onSubmit}
-            loading={isSubmitting}
-            disabled={disabled}
-          >
-            {t.submit}
-          </Button>
-        ) : (
-          <Tooltip content={blockedReason}>
-            <Button variant="filled" size="2xl" disabled>
-              {t.submit}
-            </Button>
-          </Tooltip>
-        )}
+        <Button
+          variant="filled"
+          size="2xl"
+          onClick={onSubmit}
+          loading={isSubmitting}
+          disabled={disabled}
+        >
+          {t.submit}
+        </Button>
       </div>
     </>
   );
