@@ -255,6 +255,25 @@ describe('DispositionRequestScreen — ② 판정 의뢰', () => {
     });
   });
 
+  /* 다른 화면이 `?lot=`만 들고 들어와도 그 LOT의 부적합을 따라 잠금 토큰이 선다. */
+  it('⭐ 주소에 LOT만 있어도 그 LOT의 부적합을 따라 상세가 서고 의뢰가 열린다', async () => {
+    const { user } = renderScreen({
+      allCandidates: true,
+      route: '/shipment/disposition-requests?lot=8202',
+    });
+    await waitFor(() => {
+      expect(requestPane().getByRole('button', { name: t.actions.request })).toBeEnabled();
+    });
+
+    await user.click(requestPane().getByRole('button', { name: t.actions.request }));
+
+    expect(await screen.findByText(t.request.success)).toBeInTheDocument();
+    const post = requestsSent().find((request) =>
+      new URL(request.url).pathname.endsWith(':request-disposition'),
+    );
+    expect(post?.headers.get('If-Match')).toBe('W/"3"');
+  });
+
   it('대상 수량을 넘는 의뢰 수량은 보내기 전에 막는다', async () => {
     const { user } = renderScreen({ allCandidates: true });
     await selectRow(user, 'LOT-TEST-0305');

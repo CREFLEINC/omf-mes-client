@@ -123,13 +123,6 @@ export const DispositionRequestScreen = () => {
   const listQuery = useMemo(() => toListQuery(filters, page), [filters, page]);
 
   const list = useTargetList(listQuery);
-  const detail = useNonconformanceDetail(selection.nonconformanceId);
-  const decisions = useDecisions(selection.nonconformanceId);
-  const uoms = useUomLookup();
-  const severity = useSeverityOptions();
-  const warehouses = useDefectWarehouseOptions();
-  const departments = useDepartmentOptions();
-
   const rows = useMemo<TargetRow[]>(() => {
     if (list.data === undefined) return [];
     return list.data.source === 'candidates'
@@ -152,6 +145,17 @@ export const DispositionRequestScreen = () => {
       ) ?? null
     );
   }, [rows, selection]);
+  /*
+   * 주소에 LOT만 있어도 그 줄이 이미 부적합을 가지면 그 번호를 따른다 — 상세(잠금 토큰)와 처분이 그
+   * 번호로 서야 ②가 제대로 열린다. 다른 화면이 `?lot=`만 들고 진입하는 길이 있다.
+   */
+  const activeNonconformanceId = selection.nonconformanceId ?? matchedRow?.nonconformanceId ?? null;
+  const detail = useNonconformanceDetail(activeNonconformanceId);
+  const decisions = useDecisions(activeNonconformanceId);
+  const uoms = useUomLookup();
+  const severity = useSeverityOptions();
+  const warehouses = useDefectWarehouseOptions();
+  const departments = useDepartmentOptions();
   const activeRow = useMemo(
     () => overlayDetail(matchedRow, detail.data),
     [matchedRow, detail.data],
@@ -247,9 +251,7 @@ export const DispositionRequestScreen = () => {
       return result;
     },
     etagPath:
-      selection.nonconformanceId === null
-        ? null
-        : nonconformanceDetailPath(selection.nonconformanceId),
+      activeNonconformanceId === null ? null : nonconformanceDetailPath(activeNonconformanceId),
     invalidateKeys: [requestKeys.all],
     knownFields: ['requestedQty', 'uomId', 'remarks'],
     keyLifetime: 'until-applied',
@@ -273,7 +275,7 @@ export const DispositionRequestScreen = () => {
   const requestLock = toRequestLock({
     row: activeRow,
     detail: {
-      isPending: detail.isPending && selection.nonconformanceId !== null,
+      isPending: detail.isPending && activeNonconformanceId !== null,
       isError: detail.isError,
     },
     isSaving: request.isSaving,
@@ -368,7 +370,7 @@ export const DispositionRequestScreen = () => {
             <TargetHeader
               row={activeRow}
               detail={{
-                isPending: detail.isPending && selection.nonconformanceId !== null,
+                isPending: detail.isPending && activeNonconformanceId !== null,
                 isError: detail.isError,
                 isNotFound: isDetailNotFound,
                 error: detail.error,
@@ -447,7 +449,7 @@ export const DispositionRequestScreen = () => {
               stage={activeRow?.stage ?? null}
               decisions={{
                 rows: decisionRows,
-                isLoading: decisions.isPending && selection.nonconformanceId !== null,
+                isLoading: decisions.isPending && activeNonconformanceId !== null,
                 isError: decisions.isError,
                 error: decisions.error,
               }}
