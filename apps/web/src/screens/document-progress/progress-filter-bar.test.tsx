@@ -265,7 +265,7 @@ describe('ProgressFilterBar — 자리표시 코드 셋', () => {
     await user.click(screen.getByRole('option', { name: '합성 유형 나' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
-    expect(onSearch).toHaveBeenCalledWith(applied({ documentType: 'GOODS_RECEIPT' }));
+    expect(onSearch).toHaveBeenCalledWith(applied({ documentType: 'GOODS_ISSUE' }));
   });
 
   it('상태 표를 채우면 고를 수 있다', async () => {

@@ -12,7 +12,7 @@ const t = messages.goodsReceipt;
 
 const FILLED_SETS = toCodeOptionSets({
   receiptType: ['SAMPLE_RECEIPT_TYPE_A', 'SAMPLE_RECEIPT_TYPE_B'],
-  sourceDocumentType: ['SAMPLE_SOURCE_TYPE_A'],
+  sourceDocumentType: ['INBOUND_RECEIPT'],
   qualityStatus: ['SAMPLE_QUALITY_A'],
   inventoryStatus: ['SAMPLE_INVENTORY_A'],
   reason: ['SAMPLE_REASON_A'],

@@ -10,14 +10,14 @@ const t = messages.qualityApproval;
 const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => ({
   approvalRequestId: 31,
   approvalRequestNo: 'SYNTH-REQ-031',
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'IQC_SKIP',
   requestedBy: 700_001,
   requestedByName: '합성 상신자',
   requestedAt: '2026-08-22T09:30:00+09:00',
   statusCode: 'SYNTH-PENDING',
   reason: '합성 근거',
   target: {
-    targetTypeCode: 'PURCHASE_ORDER',
+    targetTypeCode: 'INBOUND_LOT',
     targetId: 700_002,
     displayName: '합성 대상',
     openable: false,
@@ -44,7 +44,8 @@ describe('toApprovalProgressView', () => {
       steps: [
         step({
           approverName: ' ',
-          decisionCode: 'SYNTH-UNKNOWN' as never,
+          decisionCode:
+            'SYNTH-UNKNOWN' as never /* 계약 밖 판정 — 지어내지 않고 그대로 두는지 잰다 */,
           decisionAt: '2026-08-22T15:02:00+09:00',
           decisionComment: '합성 결재 의견',
           isCurrent: true,
@@ -62,7 +63,8 @@ describe('toApprovalProgressView', () => {
           stepNo: 7,
           status: 'complete',
           approverName: t.values.unknownApprover,
-          decisionCode: 'SYNTH-UNKNOWN',
+          decisionCode:
+            'SYNTH-UNKNOWN' as never /* 계약 밖 판정 — 지어내지 않고 그대로 두는지 잰다 */,
           decisionAtText: '2026-08-22 15:02',
           decisionComment: '합성 결재 의견',
           isCurrent: true,

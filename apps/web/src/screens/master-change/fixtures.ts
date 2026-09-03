@@ -12,7 +12,7 @@ import type { AuditEventView } from './types';
 const BASE_EVENT: AuditEventView = {
   auditEventId: 9001,
   occurredAt: '2026-08-04T09:12:00+09:00',
-  targetTypeCode: 'APP_USER',
+  targetTypeCode: 'ITEM',
   targetId: 9101,
   eventTypeCode: 'SAMPLE_EVENT_A',
   /*
@@ -49,7 +49,7 @@ export const auditEventFixtures: AuditEventView[] = [
   auditEvent({
     auditEventId: 9002,
     occurredAt: '2026-08-04T10:30:00+09:00',
-    targetTypeCode: 'ROLE',
+    targetTypeCode: 'WORKER',
     targetId: 9102,
     eventTypeCode: 'SAMPLE_EVENT_B',
     beforeValue: {},

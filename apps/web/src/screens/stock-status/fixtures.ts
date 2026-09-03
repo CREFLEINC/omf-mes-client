@@ -309,7 +309,7 @@ const RECEIPT_TRANSACTION: TransactionView = {
   businessDate: '2026-08-06',
   transactionNo: 'SAMPLE-IT-0001',
   transactionTypeCode: 'SAMPLE_TX_T_A',
-  sourceDocumentTypeCode: 'INVENTORY_ADJUSTMENT',
+  sourceDocumentTypeCode: 'GOODS_RECEIPT',
   statusCode: 'SAMPLE_TX_S_A',
   occurredAt: '2026-08-06T09:12:00+09:00',
   isReversal: false,
@@ -356,7 +356,7 @@ const RECEIPT_TRANSACTION_RESPONSE: components['schemas']['InventoryTransaction'
   plantId: 9001,
   occurredAt: '2026-08-06T09:12:00+09:00',
   recordedAt: '2026-08-06T09:13:00+09:00',
-  sourceDocumentTypeCode: 'INVENTORY_ADJUSTMENT',
+  sourceDocumentTypeCode: 'GOODS_RECEIPT',
   sourceDocumentId: 9021,
   statusCode: 'SAMPLE_TX_S_A',
 };

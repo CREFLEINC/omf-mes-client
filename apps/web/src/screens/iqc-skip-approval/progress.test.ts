@@ -109,7 +109,12 @@ describe('toStepProgressViews — 단계 상태', () => {
   it('빈 문자열 결재 코드는 「결재하지 않음」이다 — 선택 필드의 빈 값과 널이 같은 뜻이다', () => {
     const views = toStepProgressViews(
       [
-        { ...pendingStep, decisionCode: null, isCurrent: true },
+        {
+          ...pendingStep,
+          decisionCode:
+            '' as never /* 계약 밖 값 — 서버가 빈 판정을 내렸을 때의 화면 동작을 시험한다 */,
+          isCurrent: true,
+        },
         { ...pendingStep, stepNo: 2, decisionCode: null },
       ],
       NO_REJECTION_CODES,

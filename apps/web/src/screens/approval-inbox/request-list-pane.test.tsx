@@ -194,7 +194,7 @@ describe('RequestListPane — 확정된 여섯 열', () => {
     expect(
       screen.getByRole('columnheader', { name: t.fields.approvalTypeCode }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('PURCHASE_ORDER').length).toBe(2);
+    expect(screen.getAllByText('GOODS_ISSUE_DISPOSAL').length).toBe(2);
     expect(screen.getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
   });
 
@@ -204,7 +204,7 @@ describe('RequestListPane — 확정된 여섯 열', () => {
 
     /* 선행 단언 — 열이 실제로 서 있어야 「그 값이 없다」가 뜻을 갖는다. */
     expect(screen.getAllByRole('columnheader')).toHaveLength(6);
-    expect(text).toContain('PURCHASE_ORDER');
+    expect(text).toContain('GOODS_ISSUE_DISPOSAL');
 
     for (const request of requestFixtures) {
       if (request.target.displayName !== '') expect(text).not.toContain(request.target.displayName);

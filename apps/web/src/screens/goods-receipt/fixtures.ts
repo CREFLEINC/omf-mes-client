@@ -285,7 +285,7 @@ export const lotDetailResponse = (statusCode = 'SAMPLE_LOT_STATUS_A') => ({
     plantId: 9201,
     initialQty: 100,
     uomId: 9501,
-    sourceTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+    sourceTypeCode: 'INBOUND_RECEIPT',
     sourceId: 9001,
     statusCode,
   },

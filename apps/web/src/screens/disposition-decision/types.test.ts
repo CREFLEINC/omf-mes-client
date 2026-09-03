@@ -34,6 +34,7 @@ const lot = (overrides: Partial<NonconformanceLot> = {}): NonconformanceLot => (
 const nonconformance = (overrides: Partial<Nonconformance> = {}): Nonconformance => ({
   nonconformanceId: 1001,
   nonconformanceNo: 'NC-TEST-0042',
+  sourceCode: 'PRODUCT',
   itemId: 5001,
   sourceCode: 'PRODUCT',
   severityCode: 'CODE-B',

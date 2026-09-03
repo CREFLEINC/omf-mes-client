@@ -455,12 +455,12 @@ describe('ProgressTable — 행 식별자', () => {
     const shared = { documentId: 9001, documentNo: 'SYN-DOC-2026-0001' };
     const typeA = documentProgress({
       ...shared,
-      documentTypeCode: 'PURCHASE_ORDER',
+      documentTypeCode: 'GOODS_RECEIPT',
       statusCode: 'SYN_STATUS_A',
     });
     const typeB = documentProgress({
       ...shared,
-      documentTypeCode: 'GOODS_RECEIPT',
+      documentTypeCode: 'GOODS_ISSUE',
       statusCode: 'SYN_STATUS_B',
     });
 

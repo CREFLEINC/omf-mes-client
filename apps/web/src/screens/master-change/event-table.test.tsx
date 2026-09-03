@@ -43,7 +43,7 @@ describe('EventTable — 목록 표시', () => {
   it('대상 종류·대상·사건 종류·수행자가 받은 그대로 나온다', () => {
     renderTable({ rows: [auditEvent()] });
 
-    expect(screen.getByText('APP_USER')).toBeInTheDocument();
+    expect(screen.getByText('ITEM')).toBeInTheDocument();
     expect(screen.getByText('9101')).toBeInTheDocument();
     expect(screen.getByText('SAMPLE_EVENT_A')).toBeInTheDocument();
     expect(screen.getByText('9201')).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('EventTable — 목록 표시', () => {
     renderTable({ rows: [auditEvent({ performedBy: null })] });
 
     expect(screen.getByRole('table')).toHaveTextContent('—');
-    expect(screen.getByText('APP_USER')).toBeInTheDocument();
+    expect(screen.getByText('ITEM')).toBeInTheDocument();
   });
 
   it('발생 시각의 형식이 깨져 있어도 「—」로 내고 행을 버리지 않는다', () => {

@@ -83,7 +83,7 @@ describe('toRequestRow', () => {
     const row = toRequestRow(multiline as ApprovalRequest);
 
     expect(row.approvalRequestNo).toBe('SYNTH-REQ-001');
-    expect(row.approvalTypeCode).toBe('IQC_SKIP');
+    expect(row.approvalTypeCode).toBe('GOODS_ISSUE_DISPOSAL');
     expect(row.targetName).toBe('합성 대상 문서 가');
     expect(row.reasonFirstLine).toBe('합성 사유 첫 줄');
     expect(row.requesterName).toBe('합성 상신자1');
@@ -170,7 +170,7 @@ describe('toRequestDetailView', () => {
     const view = toRequestDetailView(multiline as ApprovalRequest);
 
     expect(view.approvalRequestNo).toBe('SYNTH-REQ-001');
-    expect(view.approvalTypeCode).toBe('IQC_SKIP');
+    expect(view.approvalTypeCode).toBe('GOODS_ISSUE_DISPOSAL');
     expect(view.requesterName).toBe('합성 상신자1');
     expect(view.requestedAtText).toBe('2026-08-06 14:20');
     expect(view.statusCode).toBe('SAMPLE-STATUS-OPEN');
@@ -223,7 +223,7 @@ describe('toDecisionSubject', () => {
     const subject = toDecisionSubject(multiline as ApprovalRequest);
 
     expect(subject.approvalRequestNo).toBe('SYNTH-REQ-001');
-    expect(subject.approvalTypeCode).toBe('IQC_SKIP');
+    expect(subject.approvalTypeCode).toBe('GOODS_ISSUE_DISPOSAL');
     expect(subject.targetName).toBe('합성 대상 문서 가');
     expect(subject.requesterName).toBe('합성 상신자1');
     expect(subject.reasonFirstLine).toBe(FIRST_LINE_OF_MULTILINE_REASON);

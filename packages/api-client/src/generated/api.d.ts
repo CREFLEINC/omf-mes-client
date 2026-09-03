@@ -44573,7 +44573,7 @@ export interface components {
              * @default false
              * @example false
              */
-            blocksUse?: boolean;
+            blocksUse: boolean;
         };
         /** @description 설비별 묶음 한 줄. 근거: W-05-08 §4 ③ 설비별 탭 */
         DowntimeEquipmentSummary: {

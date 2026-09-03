@@ -43,7 +43,8 @@ export const groupToFormValues = (group: EquipmentGroup): GroupFormValues => ({
 /**
  * 신규 등록 폼의 초기값.
  *
- * 그룹유형만 자리표시 값을 쓴다 — 공통코드 목록이 확정되지 않아 고를 수 있는 값이 그것뿐이다.
+ * 그룹유형도 비워 둔다 — 계약이 두 값으로 닫혀(코드 사전 2026-09-03) 사용자가 골라야 하고,
+ * 기본값을 심으면 고른 적 없는 값이 조용히 굳는다. 비어 있으면 검증이 필수로 막는다.
  * 공장은 비워 둔다. **좌측에서 고른 그룹의 공장을 기본값으로 넣지 않는다** — 등록 후에는 바꿀
  * 수 없는 값이라, 사용자가 고른 적 없는 값이 조용히 굳으면 되돌릴 길이 없다.
  */
@@ -51,7 +52,7 @@ export const emptyGroupFormValues = (): GroupFormValues => ({
   plantId: '',
   groupCode: '',
   groupName: '',
-  groupTypeCode: PENDING_CODE_VALUE,
+  groupTypeCode: '',
   parentGroupId: '',
 });
 
@@ -72,6 +73,7 @@ export const toGroupUpdate = (
   // 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 코드가 된다.
   ...(codeEditable ? { groupCode: values.groupCode.trim() } : {}),
   groupName: values.groupName.trim(),
+  /* 선택칸의 값은 서버 코드값 목록에서 온다 — 계약이 닫은 두 값(`LINE`·`WORK_AREA`)으로 좁혀 싣는다. */
   groupTypeCode: values.groupTypeCode as EquipmentGroupUpdate['groupTypeCode'],
   parentGroupId: textToOptionalId(values.parentGroupId),
 });

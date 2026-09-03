@@ -51,7 +51,7 @@ export const INACTIVE_BUSINESS_UNIT_LABEL = 'SAMPLE-BU-02 · 합성사업부 나
  */
 const routeWithUnit: ApprovalRoute = {
   approvalRouteId: 9001,
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   businessUnitId: 9101,
   minValue: 100,
   maxValue: 500,
@@ -64,7 +64,7 @@ export const routeFixtures: ApprovalRoute[] = [
   routeWithUnit,
   {
     approvalRouteId: 9002,
-    approvalTypeCode: 'PURCHASE_ORDER',
+    approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
     businessUnitId: null,
     minValue: null,
     maxValue: null,
@@ -102,7 +102,7 @@ export const routeFormValuesFixture: RouteFormValues = routeToFormValues(
  */
 export const createdRouteFixture: ApprovalRoute = {
   approvalRouteId: 9004,
-  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
+  approvalTypeCode: 'PURCHASE_ORDER',
   businessUnitId: null,
   minValue: null,
   maxValue: null,

@@ -1,3 +1,5 @@
+import type { components } from '@omf-mes/api-client';
+
 /**
  * 이 화면이 **보내고 또 조회 축으로 쓰는** 코드 값 — 확정된 것과 아직 아닌 것을 한 곳에서 가른다.
  *
@@ -64,8 +66,12 @@ export const DELIVERY_TARGET_TYPE_CODE = 'LOT';
 /** ⚠ 위와 같은 자리표시다. 포장 라벨의 대상은 취급 단위(`inventory.handling_unit`)다. */
 export const PACKING_TARGET_TYPE_CODE = 'HANDLING_UNIT';
 
+/** 계약이 대상 유형을 닫았다(코드 사전 2026-09-03) — 발행 본문과 회차 조회가 같은 형을 쓴다. */
+export type LabelTargetTypeCode =
+  components['schemas']['DocumentIssueCreate']['targets'][number]['targetTypeCode'];
+
 /** 라벨 종류가 대상 유형을 정한다 — 화면이 둘을 따로 고르게 하지 않는다(스펙 §5-2 ①안). */
-export const targetTypeCodeOf = (kind: LabelKind): DocumentTargetTypeCode =>
+export const targetTypeCodeOf = (kind: LabelKind): LabelTargetTypeCode =>
   kind === DELIVERY_LABEL ? DELIVERY_TARGET_TYPE_CODE : PACKING_TARGET_TYPE_CODE;
 
 /**

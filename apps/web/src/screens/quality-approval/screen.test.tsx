@@ -42,7 +42,7 @@ const requests: ApprovalRequest[] = [
     statusCode: 'SYNTH-PENDING',
     reason: '합성 승인 근거',
     target: {
-      targetTypeCode: 'PURCHASE_ORDER',
+      targetTypeCode: 'INBOUND_LOT',
       targetId: 91,
       displayName: '합성 대상',
       openable: false,
@@ -188,7 +188,7 @@ const processRoute = (
           processId: 1_301,
           processCode: 'SYNTH-OP',
           processName: '합성 공정',
-          processTypeCode: 'PURCHASE_ORDER',
+          processTypeCode: 'IQC_SKIP',
           isActive: true,
         },
       ]),

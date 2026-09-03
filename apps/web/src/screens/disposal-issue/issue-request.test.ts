@@ -30,7 +30,7 @@ const t = messages.disposalIssue;
 const FILLED_DRAFT: DisposalDraft = {
   codes: {
     issueType: 'SAMPLE_GI_TYPE_A',
-    sourceDocumentType: 'GOODS_RECEIPT',
+    sourceDocumentType: 'INBOUND_RECEIPT',
     reason: 'SAMPLE_GI_REASON_A',
   },
   issuedDate: '2026-08-11',
@@ -229,7 +229,7 @@ describe('toGoodsIssueRequest', () => {
     });
 
     expect(body?.issueTypeCode).toBe('SAMPLE_GI_TYPE_A');
-    expect(body?.sourceDocumentTypeCode).toBe('GOODS_RECEIPT');
+    expect(body?.sourceDocumentTypeCode).toBe('INBOUND_RECEIPT');
     expect(body?.reasonCode).toBe('SAMPLE_GI_REASON_A');
   });
 

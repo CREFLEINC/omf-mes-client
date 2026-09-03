@@ -114,6 +114,7 @@ describe('NotificationRow — 이동 버튼이 서지 않는 갈래', () => {
   });
 
   it('모르는 코드에도 서지 않는다', () => {
+    /* 계약 밖 값 — 서버가 대상 유형을 더했을 때 화면이 링크를 지어내지 않는지 잰다. */
     renderRow({ targetTypeCode: 'SYN-UNKNOWN' as never, targetId: 7201 });
 
     expectNoMoveLink();

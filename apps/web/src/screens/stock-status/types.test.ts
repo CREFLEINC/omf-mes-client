@@ -300,7 +300,7 @@ const MINIMAL_TRANSACTION: InventoryTransactionResponse = {
   plantId: 9001,
   occurredAt: '2026-08-06T09:12:00+09:00',
   recordedAt: '2026-08-06T09:13:00+09:00',
-  sourceDocumentTypeCode: 'INVENTORY_ADJUSTMENT',
+  sourceDocumentTypeCode: 'GOODS_RECEIPT',
   sourceDocumentId: 9021,
   statusCode: 'SAMPLE_TX_S_A',
 };
@@ -317,7 +317,7 @@ describe('toTransactionView — 이력 한 줄을 옮기는 유일한 지점', (
     expect(Object.keys(view)).not.toContain('plantId');
     expect(Object.keys(view)).not.toContain('reversalOfTransactionId');
     /* 선행 단언 — 유형 코드는 옮긴다(전부 안 옮기면 위 단언이 저절로 통과한다). */
-    expect(view.sourceDocumentTypeCode).toBe('INVENTORY_ADJUSTMENT');
+    expect(view.sourceDocumentTypeCode).toBe('GOODS_RECEIPT');
   });
 
   /* 역처리 여부는 **있다·없다**로만 옮긴다 — 대상 거래의 번호를 이 자리에서 버린다. */

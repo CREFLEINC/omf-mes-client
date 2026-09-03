@@ -14,7 +14,7 @@ import type { RouteFormValues } from './types';
 const t = messages.approvalRoute;
 
 const values = (overrides: Partial<RouteFormValues> = {}): RouteFormValues => ({
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   businessUnitId: '9101',
   minValue: '',
   maxValue: '',

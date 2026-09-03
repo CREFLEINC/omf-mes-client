@@ -13,7 +13,7 @@ const request = (): ApprovalRequest => ({
   statusCode: 'SYNTH-PENDING',
   reason: '\n반복\r\n\r\n반복\n',
   target: {
-    targetTypeCode: 'PURCHASE_ORDER',
+    targetTypeCode: 'INBOUND_LOT',
     targetId: 91,
     displayName: '합성 대상',
     openable: false,

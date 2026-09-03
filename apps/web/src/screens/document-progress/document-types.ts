@@ -2,9 +2,9 @@ import type { paths } from '@omf-mes/api-client';
 
 import type { SelectOption } from './types';
 
-type DocumentTypeCode = NonNullable<
-  paths['/logistics/document-progress']['get']['parameters']['query']
->['documentTypeCode'];
+/** 계약이 문서 유형을 닫았다(코드 사전 2026-09-03) — 목록 질의값·상세 경로 조각이 같은 형이다. */
+export type DocumentTypeCode =
+  paths['/logistics/document-progress']['get']['parameters']['query']['documentTypeCode'];
 
 /**
  * 고정 OpenAPI가 닫은 문서 유형을 한 표에서 관리한다. 이 값은 세 가지 일을 한꺼번에 한다.

@@ -5,7 +5,7 @@ import type { ApprovalRoute } from './types';
 
 const route = (overrides: Partial<ApprovalRoute> = {}): ApprovalRoute => ({
   approvalRouteId: 9001,
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   businessUnitId: 9101,
   minValue: null,
   maxValue: null,

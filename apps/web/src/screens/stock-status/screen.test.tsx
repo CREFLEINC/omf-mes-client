@@ -2484,7 +2484,7 @@ describe('StockStatusScreen — 이력의 빈 상태와 실패', () => {
 
     /* 선행 단언 — 내야 하는 것은 실제로 그려져 있다(아무것도 안 그려도 통과하지 않게 한다). */
     expect(body).toContain('SAMPLE-IT-0001');
-    expect(body).toContain('INVENTORY_ADJUSTMENT');
+    expect(body).toContain('GOODS_RECEIPT');
 
     for (const leaked of ['9021', '9022', '9001', '9901', '9902']) {
       expect(body).not.toContain(leaked);

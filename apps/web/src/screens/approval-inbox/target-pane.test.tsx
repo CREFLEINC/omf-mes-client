@@ -91,7 +91,7 @@ describe('TargetPane', () => {
 
     expect(screen.getByText(t.values.unknownTarget)).toBeVisible();
     expect(pane.textContent).not.toContain('9401');
-    expect(pane.textContent).not.toContain('PURCHASE_ORDER');
+    expect(pane.textContent).not.toContain('INBOUND_LOT');
   });
 
   it('대상 유형으로 이름을 지어내지 않는다 — 받은 이름 하나만 낸다', () => {

@@ -196,7 +196,8 @@ export const useIssueSummaries = (
         client.GET('/app/document-issues/summary', {
           params: {
             query: {
-              targetTypeCode: resolvedTargetTypeCode,
+              /* 종류가 정해진 뒤에만 여기 온다 — 계약이 닫은 대상 유형 형으로 다시 뽑는다. */
+              targetTypeCode: targetTypeCodeOf(kind),
               targetIds: [...targetIds],
               // 한 대상에 라벨과 성적서가 따로 붙을 수 있다 — 이 화면 몫만 센다(계약 명시).
               documentTypeCode: kind,
@@ -299,7 +300,7 @@ export const useIssueHistory = (
       const data = await runRequest(() =>
         client.GET('/app/document-issues', {
           params: {
-            query: { targetTypeCode: resolvedTargetTypeCode, targetId, documentTypeCode: kind },
+            query: { targetTypeCode: targetTypeCodeOf(kind), targetId, documentTypeCode: kind },
           },
         }),
       );

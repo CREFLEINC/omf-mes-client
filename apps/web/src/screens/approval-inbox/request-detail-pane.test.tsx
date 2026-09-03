@@ -11,14 +11,14 @@ const t = messages.approvalInbox;
 const baseRequest: ApprovalRequest = {
   approvalRequestId: 9001,
   approvalRequestNo: 'SYNTH-REQ-001',
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-06T14:20:00+09:00',
   statusCode: 'SAMPLE-STATUS-OPEN',
   reason: '합성 사유 첫 줄\n둘째 줄은 훨씬 길게 이어지는 설명이다',
   target: {
-    targetTypeCode: 'GOODS_RECEIPT',
+    targetTypeCode: 'INBOUND_LOT',
     targetId: 9401,
     displayName: '합성 대상 문서 가',
     openable: true,
@@ -39,7 +39,7 @@ describe('RequestDetailPane', () => {
     const pane = renderPane();
 
     expect(within(pane).getByText('SYNTH-REQ-001')).toBeVisible();
-    expect(within(pane).getByText('PURCHASE_ORDER')).toBeVisible();
+    expect(within(pane).getByText('GOODS_ISSUE_DISPOSAL')).toBeVisible();
     expect(within(pane).getByText('합성 상신자1')).toBeVisible();
     expect(within(pane).getByText('2026-08-06 14:20')).toBeVisible();
     expect(within(pane).getByText('SAMPLE-STATUS-OPEN')).toBeVisible();
@@ -131,7 +131,7 @@ describe('RequestDetailPane', () => {
     const pane = renderPane();
 
     expect(pane.textContent).not.toContain('합성 대상 문서 가');
-    expect(pane.textContent).not.toContain('GOODS_RECEIPT');
+    expect(pane.textContent).not.toContain('INBOUND_LOT');
   });
 
   it('상신자 이름이 없으면 번호를 대신 내지 않는다', () => {

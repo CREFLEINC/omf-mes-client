@@ -330,6 +330,7 @@ export const toGoodsIssueRequest = (input: DisposalRequestInput): GoodsIssueCrea
 
   return {
     issueTypeCode,
+    /* 선택칸의 값은 서버 코드값 목록에서 온다 — 계약이 닫은 원천 문서 유형으로 좁혀 싣는다(코드 사전 2026-09-03). */
     sourceDocumentTypeCode: sourceDocumentTypeCode as GoodsIssueCreate['sourceDocumentTypeCode'],
     sourceDocumentId: input.receipt.goodsReceiptId,
     sourceWarehouseId: input.receipt.warehouseId,

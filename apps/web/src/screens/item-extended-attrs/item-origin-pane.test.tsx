@@ -73,7 +73,7 @@ describe('ItemOriginPane — 원본 4열의 값 표기', () => {
   it('확장 속성을 이 구획에 내지 않는다', () => {
     renderPane();
 
-    expect(screen.queryByLabelText('LOT 관리 유형')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('LOT 관리')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('선출 정책')).not.toBeInTheDocument();
   });
 

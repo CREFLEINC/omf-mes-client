@@ -21,9 +21,9 @@ const params = (search: string): URLSearchParams => new URLSearchParams(search);
 describe('readFilters — 주소가 조건의 정본이다', () => {
   it('주소 키를 조건으로 옮긴다', () => {
     expect(
-      readFilters(params('type=APP_USER&target=9101&event=SAMPLE_EVENT_A&by=9201&corr=C-1')),
+      readFilters(params('type=ITEM&target=9101&event=SAMPLE_EVENT_A&by=9201&corr=C-1')),
     ).toEqual({
-      targetType: 'APP_USER',
+      targetType: 'ITEM',
       targetId: '9101',
       eventType: 'SAMPLE_EVENT_A',
       performedBy: '9201',
@@ -77,11 +77,11 @@ describe('toSearchParams — 빈 조건은 키 자체를 두지 않는다', () =
   it('기간과 걸린 조건만 적는다', () => {
     const next = toSearchParams(
       { from: '2026-08-01', to: '2026-08-07' },
-      filters({ targetType: 'APP_USER' }),
+      filters({ targetType: 'ITEM' }),
       1,
     );
 
-    expect(next.toString()).toBe('from=2026-08-01&to=2026-08-07&type=APP_USER');
+    expect(next.toString()).toBe('from=2026-08-01&to=2026-08-07&type=ITEM');
   });
 
   it('첫 쪽이면 page를 적지 않는다 — 같은 화면의 주소가 두 가지가 되면 공유가 갈린다', () => {
@@ -120,7 +120,7 @@ describe('toFilterQuery — 계약 쿼리 이름으로 옮긴다', () => {
     expect(
       toFilterQuery(
         filters({
-          targetType: 'APP_USER',
+          targetType: 'ITEM',
           targetId: '9101',
           eventType: 'SAMPLE_EVENT_A',
           performedBy: '9201',
@@ -128,7 +128,7 @@ describe('toFilterQuery — 계약 쿼리 이름으로 옮긴다', () => {
         }),
       ),
     ).toEqual({
-      targetTypeCode: 'APP_USER',
+      targetTypeCode: 'ITEM',
       targetId: 9101,
       eventTypeCode: 'SAMPLE_EVENT_A',
       performedBy: 9201,
@@ -148,17 +148,17 @@ describe('toFilterQuery — 계약 쿼리 이름으로 옮긴다', () => {
 describe('toFilterChips', () => {
   it('적용된 조건마다 하나씩 나오고 순서는 조건 줄과 같다', () => {
     const chips = toFilterChips(
-      filters({ targetType: 'APP_USER', performedBy: '9201', correlationId: 'C-1' }),
+      filters({ targetType: 'ITEM', performedBy: '9201', correlationId: 'C-1' }),
     );
 
     expect(chips.map((chip) => chip.key)).toEqual(['targetType', 'performedBy', 'correlationId']);
-    expect(chips[0]?.label).toBe('대상 종류: APP_USER');
+    expect(chips[0]?.label).toBe('대상 종류: ITEM');
   });
 
   it('제거 이름이 조건마다 다르다 — 「제거」가 다섯이면 어느 것을 푸는지 알 수 없다', () => {
     const chips = toFilterChips(
       filters({
-        targetType: 'APP_USER',
+        targetType: 'ITEM',
         targetId: '9101',
         eventType: 'SAMPLE_EVENT_A',
         performedBy: '9201',

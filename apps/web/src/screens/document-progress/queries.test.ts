@@ -103,7 +103,7 @@ const anyExecuteCancelRoute: StubRoute = {
     ),
   respond: () =>
     jsonResponse({
-      documentTypeCode: 'GOODS_RECEIPT',
+      documentTypeCode: 'GOODS_ISSUE',
       documentId: DOCUMENT_ID,
       statusCode: 'SYN_STATUS_CANCELLED',
       reversed: false,
@@ -120,14 +120,14 @@ const approvalRoute: StubRoute = {
       request: {
         approvalRequestId: APPROVAL_REQUEST_ID,
         approvalRequestNo: 'SYN-AP-2026-0001',
-        approvalTypeCode: 'GOODS_ISSUE_CANCEL',
+        approvalTypeCode: 'GOODS_RECEIPT_CANCEL',
         requestedBy: 9701,
         requestedByName: '이상신',
         requestedAt: '2026-08-06T14:20:00+09:00',
         statusCode: 'SYN_APPROVAL_IN_PROGRESS',
         reason: '합성 사유',
         target: {
-          targetTypeCode: 'GOODS_ISSUE',
+          targetTypeCode: 'GOODS_RECEIPT',
           targetId: DOCUMENT_ID,
           displayName: 'SYN-GR-2026-0001',
           openable: false,

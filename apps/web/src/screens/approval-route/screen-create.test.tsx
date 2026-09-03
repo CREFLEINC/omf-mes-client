@@ -28,7 +28,7 @@ import { ApprovalRouteScreen } from './screen';
 vi.mock('./code-options', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./code-options')>();
 
-  return { ...actual, PLACEHOLDER_APPROVAL_TYPE_CODES: ['PURCHASE_ORDER', 'GOODS_ISSUE_DISPOSAL'] };
+  return { ...actual, PLACEHOLDER_APPROVAL_TYPE_CODES: ['GOODS_ISSUE_DISPOSAL', 'PURCHASE_ORDER'] };
 });
 
 const t = messages.approvalRoute;
@@ -215,7 +215,7 @@ const probeRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
 /** 등록 폼을 열고 승인 유형을 고른 상태까지 간다. */
 const openCreateForm = async (
   user: ReturnType<typeof userEvent.setup>,
-  approvalTypeCode = 'GOODS_ISSUE_DISPOSAL',
+  approvalTypeCode = 'PURCHASE_ORDER',
 ): Promise<HTMLElement> => {
   await screen.findByText('INVENTORY_ADJUSTMENT');
   await user.click(screen.getByRole('button', { name: t.actions.create }));
@@ -288,7 +288,7 @@ describe('ApprovalRouteScreen(등록) — 요청', () => {
     });
 
     expect(createRequests(requests)[0]?.body).toEqual({
-      approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
+      approvalTypeCode: 'PURCHASE_ORDER',
       businessUnitId: null,
       minValue: null,
       maxValue: null,
@@ -395,13 +395,13 @@ describe('ApprovalRouteScreen(등록) — 활성 중복 선검사', () => {
 
     /* 조건 줄에도 같은 이름의 선택칸이 있다 — 폼 구획 안에서 집는다. */
     await user.click(within(pane).getByRole('combobox', { name: t.fields.approvalTypeCode }));
-    await user.click(screen.getByRole('option', { name: 'GOODS_ISSUE_DISPOSAL' }));
+    await user.click(screen.getByRole('option', { name: 'PURCHASE_ORDER' }));
 
     await waitFor(() => {
       expect(probeRequests(requests)).toHaveLength(1);
     });
     expect(probeRequests(requests)[0]?.url.searchParams.get('approvalTypeCode')).toBe(
-      'GOODS_ISSUE_DISPOSAL',
+      'PURCHASE_ORDER',
     );
   });
 });
@@ -449,7 +449,7 @@ describe('ApprovalRouteScreen(등록) — 성공 뒤 목록', () => {
     const listPane = screen.getByRole('region', { name: t.panes.list });
 
     await waitFor(() => {
-      expect(within(listPane).getByText('GOODS_ISSUE_DISPOSAL')).toBeInTheDocument();
+      expect(within(listPane).getByText('PURCHASE_ORDER')).toBeInTheDocument();
     });
   });
 });

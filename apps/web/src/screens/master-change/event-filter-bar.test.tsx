@@ -9,7 +9,7 @@ import { EMPTY_FILTERS } from './filters';
 const baseProps = (): EventFilterBarProps => ({
   appliedPeriod: { from: '2026-08-01', to: '2026-08-07' },
   appliedFilters: EMPTY_FILTERS,
-  targetTypeOptions: ['APP_USER', 'ROLE'],
+  targetTypeOptions: ['ITEM', 'WORKER'],
   eventTypeOptions: ['SAMPLE_EVENT_A'],
   onSearch: vi.fn(),
   onRemoveFilter: vi.fn(),
@@ -181,7 +181,7 @@ describe('EventFilterBar — 조건 5종', () => {
 
     await user.click(screen.getByLabelText('대상 종류'));
 
-    expect(screen.getByRole('option', { name: 'ROLE' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'WORKER' })).toBeInTheDocument();
   });
 
   /* 두지 않으면 한 번 고른 뒤에 조건을 해제할 방법이 선택칸 안에 없어진다. */
@@ -209,16 +209,16 @@ describe('EventFilterBar — 조건 5종', () => {
 describe('EventFilterBar — 조건 칩', () => {
   it('적용된 조건마다 칩이 하나씩 나온다', () => {
     renderBar({
-      appliedFilters: { ...EMPTY_FILTERS, targetType: 'APP_USER', performedBy: '9201' },
+      appliedFilters: { ...EMPTY_FILTERS, targetType: 'ITEM', performedBy: '9201' },
     });
 
-    expect(screen.getByText('대상 종류: APP_USER')).toBeInTheDocument();
+    expect(screen.getByText('대상 종류: ITEM')).toBeInTheDocument();
     expect(screen.getByText('수행자: 9201')).toBeInTheDocument();
   });
 
   it('×를 누르면 그 조건만 풀린다', async () => {
     const { onRemoveFilter, user } = renderBar({
-      appliedFilters: { ...EMPTY_FILTERS, targetType: 'APP_USER', performedBy: '9201' },
+      appliedFilters: { ...EMPTY_FILTERS, targetType: 'ITEM', performedBy: '9201' },
     });
 
     await user.click(screen.getByRole('button', { name: '수행자 조건 제거' }));

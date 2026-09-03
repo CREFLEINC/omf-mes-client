@@ -44,6 +44,7 @@ export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
 export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<string, string> => {
   const errors: Record<string, string> = {};
 
+  /* LOT 관리 여부는 스위치라 비거나 길 수 없다 — 검사할 것이 없다. */
   if (values.serialControlTypeCode.trim() === '') {
     errors.serialControlTypeCode = t.required;
   } else if (values.serialControlTypeCode.trim().length > CODE_MAX) {

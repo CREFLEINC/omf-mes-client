@@ -175,7 +175,14 @@ describe('toStepProgressViews', () => {
   /* 빈 문자열은 값이 아니다 — 계약이 선택으로 둔 자리라 빈 글자가 스키마를 통과한다. */
   it('빈 의견·빈 결과 코드를 값으로 세우지 않는다', () => {
     const [first] = toStepProgressViews(
-      [approvalStep({ decisionCode: null, decisionAt: '', decisionComment: '' })],
+      [
+        approvalStep({
+          decisionCode:
+            '' as never /* 계약 밖 값 — 서버가 빈 판정을 내렸을 때의 화면 동작을 시험한다 */,
+          decisionAt: '',
+          decisionComment: '',
+        }),
+      ],
       [],
     );
 
@@ -196,7 +203,7 @@ describe('toRequestProgressView', () => {
     const view = toRequestProgressView(approvalRequestDetail(), []);
 
     expect(view.requestNo).toBe('SYN-AP-2026-0001');
-    expect(view.approvalTypeCode).toBe('GOODS_ISSUE_CANCEL');
+    expect(view.approvalTypeCode).toBe('GOODS_RECEIPT_CANCEL');
     expect(view.statusCode).toBe('SYN_APPROVAL_IN_PROGRESS');
     expect(view.requesterLabel).toBe('이상신');
     expect(view.requestedAtText).toBe('2026-08-06 14:20');

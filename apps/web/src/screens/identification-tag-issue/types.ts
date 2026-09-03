@@ -34,9 +34,9 @@ export const MAX_ISSUE_QUANTITY = 1000;
  * 값이 아니다 — 고르게 두면 확정되지 않은 값을 사용자가 고른 것으로 기록에 남는다.
  */
 export const PLACEHOLDER_CODES = {
-  /** 출력물 종류 — 인식표(TAG 계열). 값 미확정 */
+  /** 출력물 종류 — 인식표. ✅ 계약 `enum`으로 확정됐다(코드 사전 2026-09-03) — 옛 `TAG`는 거부된다 */
   documentType: 'IDENTIFICATION_TAG',
-  /** 발행 대상 유형 — 개체(일련번호)를 가리킨다. 값 미확정 */
+  /** 발행 대상 유형 — 개체(일련번호)를 가리킨다. ✅ 같은 회차에 `enum`으로 확정됐다 */
   serialTargetType: 'SERIAL_NUMBER',
 } as const;
 

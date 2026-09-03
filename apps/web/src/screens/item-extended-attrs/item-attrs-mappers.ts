@@ -55,6 +55,7 @@ export const toItemUpdate = (values: ItemAttrsFormValues, source: Item): ItemUpd
 
   return {
     lotControlled: values.lotControlled,
+    // 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 값이 된다.
     serialControlTypeCode: values.serialControlTypeCode.trim(),
     // 토글 OFF는 「값을 비운다」가 아니라 「유효기한을 관리하지 않는다」다 — 널을 명시해 보낸다.
     shelfLifeDays: values.shelfLifeManaged ? Number(values.shelfLifeDays.trim()) : null,

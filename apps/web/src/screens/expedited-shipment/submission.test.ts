@@ -131,9 +131,12 @@ describe('submitLockReason', () => {
   });
 });
 
+/* 현지 시각으로 만든다 — 영업일은 단말의 현지 날짜이고 오프셋은 실행 환경을 따른다. */
+const NOW = new Date(2026, 8, 3, 17, 5, 0);
+
 describe('toShipmentCreateBody', () => {
   it('⭐ `expedited`를 참으로, 사유를 함께 보낸다 — 이 화면의 전부다', () => {
-    const body = toShipmentCreateBody(input());
+    const body = toShipmentCreateBody(input(), NOW);
 
     expect(body?.expedited).toBe(true);
     expect(body?.expediteReason).toBe('고객 라인 정지 — 당일 납품 요청');
@@ -142,7 +145,7 @@ describe('toShipmentCreateBody', () => {
   });
 
   it('라인 하나에 LOT 배분 하나를 싣는다 — 수량이 셋 다 같다', () => {
-    const body = toShipmentCreateBody(input());
+    const body = toShipmentCreateBody(input(), NOW);
 
     expect(body?.lines).toHaveLength(1);
     expect(body?.lines[0]).toEqual({
@@ -154,7 +157,7 @@ describe('toShipmentCreateBody', () => {
   });
 
   it('상차 정보는 빈 칸을 싣지 않는다 — 빈 문자열을 값으로 보내지 않는다', () => {
-    const body = toShipmentCreateBody(input());
+    const body = toShipmentCreateBody(input(), NOW);
 
     expect(body).not.toHaveProperty('vehicleNo');
     expect(body).not.toHaveProperty('driverName');
@@ -170,6 +173,7 @@ describe('toShipmentCreateBody', () => {
           loading: { vehicleNo: ' 12가 3456 ', driverName: '', sealNo: 'SEAL-0092' },
         },
       }),
+      NOW,
     );
 
     expect(body?.vehicleNo).toBe('12가 3456');
@@ -182,13 +186,13 @@ describe('toShipmentCreateBody', () => {
    * 아무 일도 안 일어나는」 상태나 「막았는데 본문은 만들어지는」 상태가 생긴다.
    */
   it('⛔ 막을 사유가 하나라도 있으면 본문을 만들지 않는다', () => {
-    expect(toShipmentCreateBody(input({ release: { kind: 'held' } }))).toBeNull();
-    expect(toShipmentCreateBody(input({ warehouseId: null }))).toBeNull();
+    expect(toShipmentCreateBody(input({ release: { kind: 'held' } }), NOW)).toBeNull();
+    expect(toShipmentCreateBody(input({ warehouseId: null }), NOW)).toBeNull();
     expect(
-      toShipmentCreateBody(input({ draft: { ...EMPTY_DRAFT, qty: '400', reason: 'x' } })),
+      toShipmentCreateBody(input({ draft: { ...EMPTY_DRAFT, qty: '400', reason: 'x' } }), NOW),
     ).toBeNull();
     expect(
-      toShipmentCreateBody(input({ draft: { ...EMPTY_DRAFT, qty: '300', reason: '' } })),
+      toShipmentCreateBody(input({ draft: { ...EMPTY_DRAFT, qty: '300', reason: '' } }), NOW),
     ).toBeNull();
   });
 
@@ -205,7 +209,7 @@ describe('toShipmentCreateBody', () => {
 
     for (const one of cases) {
       const locked = submitLockReason(one) !== undefined;
-      expect(toShipmentCreateBody(one) === null).toBe(locked);
+      expect(toShipmentCreateBody(one, NOW) === null).toBe(locked);
     }
   });
 });

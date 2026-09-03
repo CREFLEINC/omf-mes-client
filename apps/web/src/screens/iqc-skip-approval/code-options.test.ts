@@ -42,7 +42,7 @@ describe('typePendingNote — 자리표시 두 방향', () => {
   });
 
   it('코드가 차면 안내를 거둔다 — 남으면 화면이 거짓말을 한다', () => {
-    expect(typePendingNote('PURCHASE_ORDER')).toBeUndefined();
+    expect(typePendingNote('GOODS_ISSUE_DISPOSAL')).toBeUndefined();
   });
 
   it('공백만인 코드는 채워지지 않은 것으로 본다 — 그 값으로는 좁힐 수 없다', () => {

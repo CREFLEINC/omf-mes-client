@@ -78,7 +78,7 @@ interface ReceiptResponseShape extends ReceiptView {
 const toReceiptResponse = (view: ReceiptView): ReceiptResponseShape => ({
   ...view,
   plantId: 9101,
-  sourceDocumentTypeCode: 'GOODS_RECEIPT',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   sourceDocumentId: 9201,
 });
 
@@ -370,7 +370,7 @@ export const goodsIssueFixtures: IssueView[] = [
  */
 export const goodsIssueResponseFixtures = goodsIssueFixtures.map((view) => ({
   ...view,
-  sourceDocumentTypeCode: 'GOODS_RECEIPT',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   sourceDocumentId: 9001,
   replacementExpected: false,
   ...(view.reasonCode === null ? { reasonCode: undefined } : {}),
@@ -453,7 +453,7 @@ export const approvalRequestDetailFixture: ApprovalRequestDetailResponse = {
     statusCode: 'SAMPLE_AP_STATUS_A',
     reason: '합성 폐기 사유 첫 줄\n\n둘째 문단 — 근거를 적는 자리',
     target: {
-      targetTypeCode: 'INVENTORY_ADJUSTMENT',
+      targetTypeCode: 'GOODS_ISSUE',
       targetId: 9501,
       displayName: '합성 대상 문서',
       openable: false,
@@ -548,7 +548,7 @@ export const createdIssueResponseFixture = {
   goodsIssueId: 9504,
   goodsIssueNo: 'GI-2026-950004',
   issueTypeCode: 'SAMPLE_GI_TYPE_A',
-  sourceDocumentTypeCode: 'GOODS_RECEIPT',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   sourceDocumentId: 9001,
   sourceWarehouseId: 9701,
   destinationTypeCode: 'DISPOSAL_SITE',
@@ -583,6 +583,6 @@ export const createdIssueLineResponseFixtures = [
  */
 export const SAMPLE_FORM_CODES = {
   issueType: 'SAMPLE_GI_TYPE_A',
-  sourceDocumentType: 'SAMPLE_SRC_TYPE_A',
+  sourceDocumentType: 'INBOUND_RECEIPT',
   reason: 'SAMPLE_GI_REASON_A',
 };

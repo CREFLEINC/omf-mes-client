@@ -60,7 +60,7 @@ describe('RequestDetailPane — 값 표기', () => {
     const pane = renderPane(multiline as ApprovalRequest);
 
     expect(within(pane).getByText('SYNTH-REQ-001')).toBeVisible();
-    expect(within(pane).getByText('IQC_SKIP')).toBeVisible();
+    expect(within(pane).getByText('GOODS_ISSUE_DISPOSAL')).toBeVisible();
     expect(within(pane).getByText('합성 상신자1')).toBeVisible();
     expect(within(pane).getByText('2026-08-06 14:20')).toBeVisible();
     expect(within(pane).getByText('SAMPLE-STATUS-OPEN')).toBeVisible();
@@ -84,7 +84,7 @@ describe('RequestDetailPane — 값 표기', () => {
   it('승인 유형을 코드 그대로 낸다', () => {
     const pane = renderPane(multiline as ApprovalRequest);
 
-    expect(within(pane).getByText('IQC_SKIP')).toBeVisible();
+    expect(within(pane).getByText('GOODS_ISSUE_DISPOSAL')).toBeVisible();
   });
 
   it('내부 번호가 어느 칸에도 없다 — 이름은 보인다(짝 단언)', () => {

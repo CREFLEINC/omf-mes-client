@@ -136,8 +136,11 @@ describe('toExternalCodesPayload (M15·M16·M28)', () => {
     expect(toExternalCodesPayload([draftOf({ partnerId: '6001' })])[0]?.partnerId).toBe(6001);
   });
 
-  it('외부 품목코드의 앞뒤 공백을 뗀다', () => {
-    const [payload] = toExternalCodesPayload([draftOf({ externalItemCode: ' SYN-EXT-ITEM-01  ' })]);
+  /* 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 값이 되어 조회에 걸리지 않는다. */
+  it('코드의 앞뒤 공백을 뗀다', () => {
+    const [payload] = toExternalCodesPayload([
+      draftOf({ externalSystemCode: '  UNIERP ', externalItemCode: ' SYN-EXT-ITEM-01  ' }),
+    ]);
 
     expect(payload?.externalSystemCode).toBe('UNIERP');
     expect(payload?.externalItemCode).toBe('SYN-EXT-ITEM-01');
@@ -177,6 +180,13 @@ describe('duplicateKeyOf — COALESCE 접기 (M29)', () => {
 
   it('외부 시스템이 다르면 다른 키다', () => {
     expect(duplicateKeyOf(draftOf({ externalSystemCode: 'TRACKING_SYSTEM' }))).not.toBe(
+      duplicateKeyOf(draftOf()),
+    );
+  });
+
+  /* 본문에서 공백을 떼므로 판정도 같은 기준으로 해야 한다 — 아니면 저장 시점에야 거부된다. */
+  it('앞뒤 공백만 다른 코드는 같은 키다', () => {
+    expect(duplicateKeyOf(draftOf({ externalSystemCode: ' UNIERP ' }))).toBe(
       duplicateKeyOf(draftOf()),
     );
   });

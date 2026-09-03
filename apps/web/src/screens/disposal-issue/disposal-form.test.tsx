@@ -13,7 +13,7 @@ const t = messages.disposalIssue;
 /** 값 목록이 확정된 뒤의 모양. **지금의 사실이 아니라 전환을 재기 위한 입력**이다. */
 const FILLED_CODES = toCodeOptionSets({
   issueType: ['SAMPLE_GI_TYPE_A'],
-  sourceDocumentType: ['SAMPLE_SRC_TYPE_A'],
+  sourceDocumentType: ['INBOUND_RECEIPT'],
   reason: ['SAMPLE_GI_REASON_A'],
   receiptType: [],
   status: [],

@@ -443,13 +443,16 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
   });
 
   it('주소의 조건 넷이 그대로 조회에 실린다', async () => {
-    const { requests } = renderScreen(allRoutes(), '?ty=PURCHASE_ORDER&bu=9101&q=SAMPLE&page=2');
+    const { requests } = renderScreen(
+      allRoutes(),
+      '?ty=GOODS_ISSUE_DISPOSAL&bu=9101&q=SAMPLE&page=2',
+    );
 
     await waitForList();
 
     const query = listRequests(requests)[0]?.url.searchParams;
 
-    expect(query?.get('approvalTypeCode')).toBe('PURCHASE_ORDER');
+    expect(query?.get('approvalTypeCode')).toBe('GOODS_ISSUE_DISPOSAL');
     expect(query?.get('businessUnitId')).toBe('9101');
     expect(query?.get('q')).toBe('SAMPLE');
     expect(query?.get('page')).toBe('2');
@@ -496,7 +499,10 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
   });
 
   it('초기화는 조건을 통째로 비운다', async () => {
-    const { user } = renderScreen(allRoutes(), '?ty=PURCHASE_ORDER&q=SAMPLE&inactive=1&page=2');
+    const { user } = renderScreen(
+      allRoutes(),
+      '?ty=GOODS_ISSUE_DISPOSAL&q=SAMPLE&inactive=1&page=2',
+    );
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
@@ -739,7 +745,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
-    await user.click(selectRouteButton('PURCHASE_ORDER', BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('GOODS_ISSUE_DISPOSAL', BUSINESS_UNIT_LABEL));
 
     await screen.findByRole('region', { name: t.panes.steps });
 
@@ -755,7 +761,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     );
 
     await waitForList();
-    await user.click(selectRouteButton('PURCHASE_ORDER', BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('GOODS_ISSUE_DISPOSAL', BUSINESS_UNIT_LABEL));
 
     await waitFor(() => {
       expect(locationText()).toContain('ar=9001');
@@ -1242,7 +1248,7 @@ describe('ApprovalRouteScreen — 빈 상태와 실패', () => {
     // 상세는 그대로 읽힌다 — 한쪽 실패가 다른 쪽을 지우지 않는다.
     const detailPane = screen.getByRole('region', { name: t.panes.detail });
 
-    expect(within(detailPane).getByText('PURCHASE_ORDER')).toBeInTheDocument();
+    expect(within(detailPane).getByText('GOODS_ISSUE_DISPOSAL')).toBeInTheDocument();
     expect(within(detailPane).queryByText(messages.httpError.loadTitle)).toBeNull();
     expect(
       within(screen.getByRole('region', { name: t.panes.steps })).getByText(
@@ -1635,7 +1641,7 @@ describe('ApprovalRouteScreen — 활성 중복 선검사', () => {
 
     const query = probeRequests(requests)[0]?.url.searchParams;
 
-    expect(query?.get('approvalTypeCode')).toBe('PURCHASE_ORDER');
+    expect(query?.get('approvalTypeCode')).toBe('GOODS_ISSUE_DISPOSAL');
     expect(query?.get('activeOnly')).toBe('true');
     expect(query?.get('size')).toBe('100');
     /* 사업부는 쿼리로 좁히지 않는다 — 「전 사업부 공통」(null)을 표현할 수 없다. */
@@ -1762,7 +1768,7 @@ describe('ApprovalRouteScreen — 사용 전환', () => {
     const dialog = activationDialog();
 
     expect(
-      within(dialog).getByText(t.dialog.deactivateBlocks('PURCHASE_ORDER')),
+      within(dialog).getByText(t.dialog.deactivateBlocks('GOODS_ISSUE_DISPOSAL')),
     ).toBeInTheDocument();
     /* 건수는 결재선 응답이 실어 온 값이다 — 화면이 세지 않는다. */
     expect(within(dialog).getByText(t.dialog.deactivateInProgress(3))).toBeInTheDocument();

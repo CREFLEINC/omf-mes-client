@@ -13,7 +13,7 @@ import type { ApprovalRoute } from './types';
 
 const route = (patch: Partial<ApprovalRoute> = {}): ApprovalRoute => ({
   approvalRouteId: 9001,
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   isActive: true,
   stepCount: 2,
   inProgressCount: 3,
@@ -52,7 +52,7 @@ describe('toRouteView', () => {
 
     expect(view).toMatchObject({
       approvalRouteId: 9002,
-      approvalTypeCode: 'PURCHASE_ORDER',
+      approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
       isActive: false,
       stepCount: 0,
       inProgressCount: 0,

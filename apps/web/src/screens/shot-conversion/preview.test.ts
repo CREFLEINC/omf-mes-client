@@ -68,8 +68,13 @@ describe('이긴 축', () => {
     expect(matchedScopeText(effectiveResponse({ matchedScopeCode: 'ALL' }))).toBe('전체');
   });
 
-  it('공정 범위를 사람 말로 옮긴다', () => {
-    expect(matchedScopeText(effectiveResponse({ matchedScopeCode: 'PROCESS' }))).toBe('공정');
+  /** ⛔ 모르는 값에 이름을 지어내지 않는다(G-9). 계약이 축을 닫았어도 서버가 값을 더할 수 있어 그대로 시험한다. */
+  it('모르는 값은 그대로 둔다', () => {
+    const unknownScope = 'ZONE' as unknown as NonNullable<
+      ReturnType<typeof effectiveResponse>['matchedScopeCode']
+    >;
+
+    expect(matchedScopeText(effectiveResponse({ matchedScopeCode: unknownScope }))).toBe('ZONE');
   });
 
   it('맞지 않았으면 없음이다', () => {

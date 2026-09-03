@@ -28,7 +28,7 @@ describe('DecisionSubjectSummary', () => {
 
     for (const [label, value] of [
       [t.fields.approvalRequestNo, 'SYNTH-REQ-001'],
-      [t.fields.approvalTypeCode, 'IQC_SKIP'],
+      [t.fields.approvalTypeCode, 'GOODS_ISSUE_DISPOSAL'],
       [t.fields.target, '합성 대상 문서 가'],
       [t.fields.requestedByName, '합성 상신자1'],
       [t.fields.reason, '합성 사유 첫 줄'],
@@ -56,7 +56,7 @@ describe('DecisionSubjectSummary', () => {
     ]);
     expect(details).toEqual([
       'SYNTH-REQ-001',
-      'IQC_SKIP',
+      'GOODS_ISSUE_DISPOSAL',
       '합성 대상 문서 가',
       '합성 상신자1',
       '합성 사유 첫 줄',
@@ -87,9 +87,12 @@ describe('DecisionSubjectSummary', () => {
 
   /** 유형 코드는 고정 OpenAPI가 정한 코드 그대로 낸다. */
   it('유형 코드를 이름으로 바꾸지 않는다', () => {
-    const summary = renderSummary();
+    const other = requestFixtures.find(
+      (request) => request.approvalTypeCode === 'INVENTORY_ADJUSTMENT',
+    );
+    const summary = renderSummary(other as ApprovalRequest);
 
-    expect(summary.getByText('IQC_SKIP')).toBeVisible();
+    expect(summary.getByText('INVENTORY_ADJUSTMENT')).toBeVisible();
   });
 
   /** 짝 방향 — 이름이 비어 와도 **번호를 대신 내지 않는다**(`omf-mes#44`). */

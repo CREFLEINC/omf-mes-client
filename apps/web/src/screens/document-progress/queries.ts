@@ -73,6 +73,15 @@ type DocumentTypeCode = DocumentProgressQuery['documentTypeCode'];
  */
 const ALL_KEY = ['document-progress'] as const;
 
+/**
+ * 캐시 키에 싣는 질의 모양. 계약은 문서 유형을 `enum`으로 닫았지만, **부르지 않는 동안의 자리표시**
+ * (`EMPTY_QUERY`)는 빈 유형을 담아야 하므로 키 쪽만 그 한 값을 더 허용한다 — 요청 본문으로는
+ * 나가지 않는다(`enabled`가 거짓이다).
+ */
+type ListQueryKey = Omit<DocumentProgressListQuery, 'documentTypeCode'> & {
+  documentTypeCode: DocumentProgressListQuery['documentTypeCode'] | '';
+};
+
 export const documentProgressKeys = {
   /**
    * 뿌리 키 — **취소 요청 성공 뒤 이 하나를 무효화한다.** 목록과 상세가 함께 갱신돼야
@@ -80,7 +89,7 @@ export const documentProgressKeys = {
    * 400에서 후속 목록을 다시 부르는 자리도 이 키를 쓴다(`screen.tsx`).
    */
   all: ALL_KEY,
-  list: (query: DocumentProgressListQuery) => [...ALL_KEY, 'list', query] as const,
+  list: (query: ListQueryKey) => [...ALL_KEY, 'list', query] as const,
   /**
    * 상세 키 — **유형과 번호 둘 다** 들어간다(계약 경로가 둘을 열쇠로 쓴다).
    *
@@ -112,7 +121,7 @@ const fetchDocumentProgressList = async (
  * 거짓이라 이 키로는 아무 요청도 나가지 않으며, `documentTypeCode`가 빈 문자열인 것이 곧
  * 「고른 유형이 없다」는 사실이다.
  */
-const EMPTY_QUERY: DocumentProgressListQuery = { documentTypeCode: '', cancellableOnly: false };
+const EMPTY_QUERY: ListQueryKey = { documentTypeCode: '', cancellableOnly: false };
 
 /**
  * 고른 유형의 진행현황 목록.

@@ -79,6 +79,7 @@ export const useInspectionCandidates = (): UseQueryResult<InspectionCandidateVie
     queryFn: () =>
       runRequest(() =>
         client.GET('/maintenance/inspections', {
+          /* 종합 결과 값이 `PASS`·`FAIL` 둘로 닫혔다(코드 사전 2026-09-03) — 옛 `NG`는 계약이 거부한다. */
           params: { query: { overallResultCode: 'FAIL', withoutMaintenanceOrder: true } },
         }),
       ).then((data) => data.items.map(toInspectionCandidate)),

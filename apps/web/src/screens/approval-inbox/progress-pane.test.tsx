@@ -22,14 +22,14 @@ const step = (overrides: Partial<ApprovalStep> = {}): ApprovalStep => ({
 const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => ({
   approvalRequestId: 9001,
   approvalRequestNo: 'SYNTH-REQ-001',
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-06T14:20:00+09:00',
   statusCode: 'SAMPLE-STATUS-OPEN',
   reason: '합성 사유',
   target: {
-    targetTypeCode: 'PURCHASE_ORDER',
+    targetTypeCode: 'INBOUND_LOT',
     targetId: 9401,
     displayName: '합성 대상 문서 가',
     openable: false,

@@ -223,7 +223,14 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
   /* 계약이 선택으로 둔 값은 널·없음·빈 문자열이 모두 「없음」이다. */
   it('빈 문자열로 온 값은 없음으로 읽는다', () => {
     const views = toStepProgressViews(
-      [step({ decisionCode: null, decisionAt: '', decisionComment: '' })],
+      [
+        step({
+          decisionCode:
+            '' as never /* 계약 밖 값 — 서버가 빈 판정을 내렸을 때의 화면 동작을 시험한다 */,
+          decisionAt: '',
+          decisionComment: '',
+        }),
+      ],
       [],
     );
 

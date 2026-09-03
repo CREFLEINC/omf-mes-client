@@ -32,11 +32,11 @@ describe('quality approval URL filters', () => {
   });
 
   it('코드 목록이 확정되면 같은 구조로 유형과 상태를 읽는다', () => {
-    const params = new URLSearchParams('ty=PURCHASE_ORDER&st=SYNTH-OPEN');
+    const params = new URLSearchParams('ty=IQC_SKIP&st=SYNTH-OPEN');
 
-    expect(readFilters(params, ['PURCHASE_ORDER'], ['SYNTH-OPEN'])).toEqual({
+    expect(readFilters(params, ['IQC_SKIP'], ['SYNTH-OPEN'])).toEqual({
       ...EMPTY_FILTERS,
-      approvalTypeCode: 'PURCHASE_ORDER',
+      approvalTypeCode: 'IQC_SKIP',
       statusCode: 'SYNTH-OPEN',
     });
   });
@@ -69,7 +69,7 @@ describe('quality approval request query', () => {
     expect(
       toRequestListQuery(
         {
-          approvalTypeCode: 'PURCHASE_ORDER',
+          approvalTypeCode: 'IQC_SKIP',
           statusCode: 'SYNTH-OPEN',
           from: '2026-08-01',
           to: '2026-08-22',
@@ -80,7 +80,7 @@ describe('quality approval request query', () => {
       ),
     ).toEqual({
       assignedToMe: true,
-      approvalTypeCode: 'PURCHASE_ORDER',
+      approvalTypeCode: 'IQC_SKIP',
       statusCode: 'SYNTH-OPEN',
       requestedAtFrom: '2026-08-01',
       requestedAtTo: '2026-08-22',

@@ -53,7 +53,7 @@ describe('RouteListPane — 표', () => {
   it('사업부를 비운 결재선은 「전 사업부 공통」으로 읽힌다', () => {
     renderPane();
 
-    const row = rowOf('PURCHASE_ORDER', 1);
+    const row = rowOf('GOODS_ISSUE_DISPOSAL', 1);
 
     expect(within(row).getByText(t.values.allBusinessUnits)).toBeInTheDocument();
   });
@@ -61,7 +61,7 @@ describe('RouteListPane — 표', () => {
   it('사업부를 지정한 결재선은 이름으로 읽히고 번호가 보이지 않는다', () => {
     renderPane();
 
-    const row = rowOf('PURCHASE_ORDER', 0);
+    const row = rowOf('GOODS_ISSUE_DISPOSAL', 0);
 
     expect(within(row).getByText(BUSINESS_UNIT_LABEL)).toBeInTheDocument();
     expect(row.textContent).not.toContain('9101');
@@ -72,21 +72,23 @@ describe('RouteListPane — 표', () => {
     renderPane();
 
     // 선행 단언 — 단계가 있는 줄은 수치로 읽힌다.
-    expect(within(rowOf('PURCHASE_ORDER', 0)).getByText('2')).toBeInTheDocument();
-    expect(within(rowOf('PURCHASE_ORDER', 1)).getByText(t.values.noSteps)).toBeInTheDocument();
+    expect(within(rowOf('GOODS_ISSUE_DISPOSAL', 0)).getByText('2')).toBeInTheDocument();
+    expect(
+      within(rowOf('GOODS_ISSUE_DISPOSAL', 1)).getByText(t.values.noSteps),
+    ).toBeInTheDocument();
   });
 
   it('진행 중 건수를 응답 값 그대로 낸다', () => {
     renderPane();
 
-    expect(within(rowOf('PURCHASE_ORDER', 0)).getByText('3')).toBeInTheDocument();
+    expect(within(rowOf('GOODS_ISSUE_DISPOSAL', 0)).getByText('3')).toBeInTheDocument();
     expect(within(rowOf('INVENTORY_ADJUSTMENT')).getByText('0')).toBeInTheDocument();
   });
 
   it('사용 여부를 글자로 낸다', () => {
     renderPane();
 
-    expect(within(rowOf('PURCHASE_ORDER', 0)).getByText(t.values.active)).toBeInTheDocument();
+    expect(within(rowOf('GOODS_ISSUE_DISPOSAL', 0)).getByText(t.values.active)).toBeInTheDocument();
     expect(within(rowOf('INVENTORY_ADJUSTMENT')).getByText(t.values.inactive)).toBeInTheDocument();
   });
 });
@@ -111,7 +113,7 @@ describe('RouteListPane — 고르기', () => {
     const names = screen
       .getAllByRole('button')
       .map((button) => button.getAttribute('aria-label'))
-      .filter((name): name is string => name !== null && name.includes('PURCHASE_ORDER'));
+      .filter((name): name is string => name !== null && name.includes('GOODS_ISSUE_DISPOSAL'));
 
     expect(names).toHaveLength(2);
     expect(new Set(names).size).toBe(2);

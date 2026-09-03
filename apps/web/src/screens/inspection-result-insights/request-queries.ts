@@ -83,6 +83,7 @@ export const toDefectDistributionQuery = (
   };
   const itemId = toIdentifier(filters.itemId);
   if (itemId !== undefined) query.itemId = itemId;
-  if (sourceCode !== '') query.sourceCode = sourceCode;
+  /* 계약이 질의값 이름을 `sourceAxisCode`에서 `sourceCode`로 맞췄다(응답 축과 같은 이름 · 2026-09-03). */
+  if (sourceAxisCode !== '') query.sourceCode = sourceAxisCode;
   return query;
 };

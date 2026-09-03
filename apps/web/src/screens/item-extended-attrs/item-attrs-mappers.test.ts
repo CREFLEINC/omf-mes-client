@@ -104,7 +104,7 @@ describe('toItemUpdate — isActive를 되돌려 싣는다 (M03)', () => {
   it('폼을 고쳐도 사용 여부는 조회한 값을 따른다', () => {
     const edited: ItemAttrsFormValues = {
       ...itemToAttrsFormValues(inactiveItem),
-      lotControlled: false,
+      lotControlled: true,
     };
 
     expect(toItemUpdate(edited, inactiveItem).isActive).toBe(false);
@@ -158,12 +158,13 @@ describe('toItemUpdate — 널 허용 항목', () => {
   it('코드의 앞뒤 공백을 턴다', () => {
     const values: ItemAttrsFormValues = {
       ...itemToAttrsFormValues(activeItem),
+      serialControlTypeCode: '  SYN-SERIAL-01  ',
       fifoPolicyCode: ' FEFO ',
       storageConditionCode: '  ',
     };
     const body = toItemUpdate(values, activeItem);
 
-    expect(body.lotControlled).toBe(true);
+    expect(body.serialControlTypeCode).toBe('SYN-SERIAL-01');
     expect(body.fifoPolicyCode).toBe('FEFO');
     // 공백만 남은 칸은 「지정하지 않음」이다.
     expect(body.storageConditionCode).toBeNull();

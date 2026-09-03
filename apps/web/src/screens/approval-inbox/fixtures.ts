@@ -21,9 +21,7 @@ const target = (
   openable: boolean,
   screenId?: string,
 ): ApprovalRequest['target'] => ({
-  // 승인 유형과 대상 유형은 서로 다른 축이다. 같은 문자열을 쓰면 화면 누출 검사가
-  // 정상적으로 표시된 승인 유형을 대상 유형으로 오인한다.
-  targetTypeCode: 'GOODS_RECEIPT',
+  targetTypeCode: 'INBOUND_LOT',
   targetId,
   displayName,
   ...(screenId === undefined ? {} : { screenId }),
@@ -42,7 +40,7 @@ const target = (
 const multilineReasonRequest: ApprovalRequest = {
   approvalRequestId: 9001,
   approvalRequestNo: 'SYNTH-REQ-001',
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-06T14:20:00+09:00',
@@ -76,7 +74,7 @@ const singleLineReasonRequest: ApprovalRequest = {
 const namelessRequest: ApprovalRequest = {
   approvalRequestId: 9003,
   approvalRequestNo: 'SYNTH-REQ-003',
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   requestedBy: 9303,
   /** 이름이 비어 왔다 — **번호를 대신 내지 않는다**(`omf-mes#44`). */
   requestedByName: '',
@@ -97,7 +95,7 @@ const namelessRequest: ApprovalRequest = {
 const blankLeadingReasonRequest: ApprovalRequest = {
   approvalRequestId: 9004,
   approvalRequestNo: 'SYNTH-REQ-004',
-  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
+  approvalTypeCode: 'PURCHASE_ORDER',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-03T11:00:00+09:00',

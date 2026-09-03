@@ -127,7 +127,7 @@ describe('ItemAttrsPane — 사용 여부는 값 표기다', () => {
 
     const switches = screen.getAllByRole('switch').map((element) => element.getAttribute('id'));
 
-    // 스위치는 LOT 관리·유효기한 관리·입고검사 대상·마이너스 재고 허용 넷뿐이다.
+    // 스위치는 LOT 관리·유효기한 관리·입고검사 대상·마이너스 재고 허용 넷뿐이다(LOT 관리는 코드 사전 2026-09-03 에 여부로 바뀌었다).
     expect(switches).toHaveLength(4);
     expect(screen.queryByRole('switch', { name: '사용 여부' })).not.toBeInTheDocument();
   });

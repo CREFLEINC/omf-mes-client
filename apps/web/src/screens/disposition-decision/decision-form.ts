@@ -117,6 +117,7 @@ export const toDecisionCreateBody = (
   if (hasBlockingError(validateDecisionForm(value))) return undefined;
 
   return {
+    /* 선택지가 계약 `enum` 세 값 그대로다 — 계약이 닫은 형으로 좁혀 싣는다. */
     dispositionTypeCode: value.dispositionTypeCode as DecisionCreateBody['dispositionTypeCode'],
     decisionQty: Number(value.qty.trim()),
     uomId,

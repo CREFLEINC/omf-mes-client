@@ -221,9 +221,9 @@ describe('toRequestListQuery — 고정 축과 조건', () => {
   /** **전환 감지기**(M06의 단위 몫) — 자리표시를 채우면 그 값이 조건으로 실린다. */
   it('승인 유형 코드가 없으면 싣지 않고, 있으면 그대로 싣는다', () => {
     expect(toRequestListQuery(EMPTY_FILTERS, true, 1, null).approvalTypeCode).toBeUndefined();
-    expect(toRequestListQuery(EMPTY_FILTERS, true, 1, 'PURCHASE_ORDER').approvalTypeCode).toBe(
-      'PURCHASE_ORDER',
-    );
+    expect(
+      toRequestListQuery(EMPTY_FILTERS, true, 1, 'GOODS_ISSUE_DISPOSAL').approvalTypeCode,
+    ).toBe('GOODS_ISSUE_DISPOSAL');
   });
 
   it('공백만인 유형 코드는 싣지 않는다 — 그 값으로는 아무것도 걸리지 않는다', () => {
@@ -267,7 +267,7 @@ describe('toRequestListQuery — 고정 축과 조건', () => {
 
   /** 이 화면은 상신하지 않는다 — 「내가 올린 것」 축이 존재할 수 없다. */
   it('`requestedByMe`·`myTurnOnly`·`size`를 싣지 않는다', () => {
-    const query = toRequestListQuery(EMPTY_FILTERS, true, 1, 'PURCHASE_ORDER') as Record<
+    const query = toRequestListQuery(EMPTY_FILTERS, true, 1, 'GOODS_ISSUE_DISPOSAL') as Record<
       string,
       unknown
     >;

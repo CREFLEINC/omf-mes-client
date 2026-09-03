@@ -30,13 +30,11 @@ export const FIFO_POLICY_CODES: readonly string[] = ['FIFO', 'FEFO'];
  * 화면이 이 필드들의 선택지를 만들지 않는다. 목록이 늘어나는 것은
  * 그 필드를 다루는 구획이 생길 때다 — 지금 없는 구획의 필드를 미리 적지 않는다.
  */
-export const FREE_TEXT_CODES: readonly string[] = ['serialControlTypeCode', 'storageConditionCode'];
-
-/** OpenAPI가 고객 확장 불가 enum으로 닫은 외부 시스템 셋. */
-export const EXTERNAL_SYSTEM_CODES: readonly ExternalSystemCode[] = [
-  'EQUIPMENT_STANDARD_IF',
-  'TRACKING_SYSTEM',
-  'UNIERP',
+export const FREE_TEXT_CODES: readonly string[] = [
+  'serialControlTypeCode',
+  'storageConditionCode',
+  /* 외부 코드 구획의 필수 필드다 — 선택지가 비면 행을 아예 추가할 수 없다(결정 4). */
+  'externalSystemCode',
 ];
 
 export const externalSystemOptions: SelectOption[] = EXTERNAL_SYSTEM_CODES.map((code) => ({

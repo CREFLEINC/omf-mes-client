@@ -202,6 +202,14 @@ export const equipmentMaster = {
     parentGroup: '상위그룹',
     isActive: '사용',
   },
+  /**
+   * 그룹유형 값의 표시명. 계약이 `LINE`·`WORK_AREA` 둘로 닫았고(코드 사전 2026-09-03) 설명이
+   * 「라인과 작업구역을 가른다」라 그 낱말을 그대로 쓴다 — 화면이 이름을 지어내지 않는다.
+   */
+  groupTypes: {
+    LINE: '라인',
+    WORK_AREA: '작업구역',
+  },
   values: {
     active: '사용 중',
     inactive: '미사용',

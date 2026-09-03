@@ -22,14 +22,14 @@ const step = (overrides: Partial<ApprovalStep> = {}): ApprovalStep => ({
 const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => ({
   approvalRequestId: 9001,
   approvalRequestNo: 'SYNTH-REQ-001',
-  approvalTypeCode: 'PURCHASE_ORDER',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-06T14:20:00+09:00',
   statusCode: 'SAMPLE-STATUS-OPEN',
   reason: '합성 사유',
   target: {
-    targetTypeCode: 'PURCHASE_ORDER',
+    targetTypeCode: 'INBOUND_LOT',
     targetId: 9401,
     displayName: '합성 대상 문서 가',
     openable: false,
@@ -75,7 +75,13 @@ describe('단계 상태', () => {
 
   it('빈 결재 코드는 결재하지 않은 것이다', () => {
     const [empty] = toStepProgressViews(
-      [step({ decisionCode: null, isCurrent: true })],
+      [
+        step({
+          decisionCode:
+            '' as never /* 계약 밖 값 — 서버가 빈 판정을 내렸을 때의 화면 동작을 시험한다 */,
+          isCurrent: true,
+        }),
+      ],
       REJECTION_DECISION_CODES,
     );
     const [nulled] = toStepProgressViews(
