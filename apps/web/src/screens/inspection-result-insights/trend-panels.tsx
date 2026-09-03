@@ -44,8 +44,8 @@ const TrendPanel = ({ filters, label, showPopulationLabel, enabled }: TrendPanel
     : '불량률 추이를 불러오지 못했습니다.';
 
   return (
-    <section aria-label={`${label} 불량률 추이 결과`}>
-      {showPopulationLabel && <h3>{label}</h3>}
+    <section className="inspection-results-trend-panel" aria-label={`${label} 불량률 추이 결과`}>
+      {showPopulationLabel && <h3 className="inspection-results-subtitle">{label}</h3>}
       {trend.isPending && <SkeletonText lines={3} />}
       {trend.isError && (
         <AlertBanner
@@ -84,13 +84,15 @@ const TrendPanel = ({ filters, label, showPopulationLabel, enabled }: TrendPanel
               formatValue={(value) => `${value}%`}
               showPoints
             />
-            <Table
-              density="compact"
-              caption={`${title} 데이터`}
-              columns={TREND_COLUMNS}
-              rows={[...trend.data.points]}
-              getRowId={(point) => point.bucket}
-            />
+            <div className="wide-table inspection-results-table">
+              <Table
+                density="compact"
+                caption={`${title} 데이터`}
+                columns={TREND_COLUMNS}
+                rows={[...trend.data.points]}
+                getRowId={(point) => point.bucket}
+              />
+            </div>
           </>
         ))}
       {!trend.isError && trend.data !== undefined && (
@@ -109,7 +111,7 @@ export const TrendPanels = ({ filters, enabled }: TrendPanelsProps) => {
   const showPopulationLabel = filters.inspectionTypeCode === '';
 
   return (
-    <section aria-label="불량률 추이 결과">
+    <section className="inspection-results-analysis" aria-label="불량률 추이 결과">
       {showPopulationLabel && (
         <p className="field-note">검사유형별 추이를 분리하며 서로 합산하지 않습니다.</p>
       )}

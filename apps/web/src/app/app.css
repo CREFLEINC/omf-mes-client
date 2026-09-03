@@ -2046,6 +2046,177 @@ main > * + * {
   }
 }
 
+/* 검사실적·검사결과 조회 — 조회 조건, 실적, 분석을 각각 완결된 정보 구획으로 묶는다. */
+.inspection-results-workspace {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.inspection-results-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.inspection-results-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.inspection-results-pane > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+.inspection-results-empty-pane {
+  min-height: 14rem;
+}
+
+.filter-bar.inspection-results-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.inspection-results-filter > *,
+.inspection-results-filter .field-cell {
+  min-width: 0;
+}
+
+.inspection-results-filter .field-cell {
+  align-items: stretch;
+}
+
+.inspection-results-filter-footer,
+.inspection-results-list-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.inspection-results-filter-footer > .field-note,
+.inspection-results-filter-footer > .field-error,
+.inspection-results-list-footer > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+.inspection-results-filter-actions,
+.inspection-results-list-footer > .form-actions {
+  justify-content: flex-end;
+  margin: 0 0 0 auto;
+}
+
+.inspection-results-summary-panel,
+.inspection-results-trend-panel,
+.inspection-results-analysis {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.inspection-results-summary-panel,
+.inspection-results-trend-panel {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.inspection-results-summary-panel > .field-note,
+.inspection-results-trend-panel > .field-note,
+.inspection-results-analysis > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+.inspection-results-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspection-results-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.inspection-results-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.inspection-results-table table {
+  min-width: 64rem;
+}
+
+.inspection-results-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.inspection-results-banner-stack {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspection-results-banner-stack > * {
+  box-sizing: border-box;
+}
+
+.inspection-results-distribution-field {
+  max-width: 20rem;
+}
+
+/* 비활성 쿼리도 DS Skeleton을 pending으로 그리므로, 조건 적용 전에는 탭 본문만 감춘다. */
+.inspection-results-insights-pane-empty [role='tabpanel'] {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .inspection-results-filter-footer,
+  .inspection-results-list-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inspection-results-filter-footer > .field-note,
+  .inspection-results-filter-footer > .field-error,
+  .inspection-results-list-footer > .field-note {
+    flex: initial;
+  }
+
+  .inspection-results-filter-actions,
+  .inspection-results-list-footer > .form-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
