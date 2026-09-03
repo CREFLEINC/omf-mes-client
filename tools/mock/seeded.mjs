@@ -16,7 +16,7 @@ import { networkInterfaces } from 'node:os';
 
 import { writeMergedSpec } from '../merge-spec.mjs';
 import { resolveSpecPaths } from './resolve-spec.mjs';
-import { createSeed } from './seed.mjs';
+import { createSeed, dayOf } from './seed.mjs';
 
 const PORT = Number(process.env.MOCK_PORT ?? 4010);
 /*
@@ -781,6 +781,124 @@ on(
 );
 
 on('GET', '/logistics/goods-receipts', (_p, query) => page(state.goodsReceipts, query));
+
+/*
+ * W-04-06 — 반품 입고 등록. 생성과 전기가 한 순간이다. 반품(RETURN)이면 그 LOT 이 W-04-07 의
+ * 판정 후보에 함께 실린다 — 두 화면이 한 흐름이다.
+ */
+on('POST', '/logistics/goods-receipts', (_p, _q, body) => {
+  const goodsReceiptId = newId();
+  const receiptNo = `RT-2026-${String(goodsReceiptId).slice(-4)}`;
+  const goodsReceipt = {
+    goodsReceiptId,
+    goodsReceiptNo: receiptNo,
+    receiptTypeCode: body?.receiptTypeCode,
+    plantId: body?.plantId,
+    warehouseId: body?.warehouseId,
+    receiptDatetime: body?.receiptDatetime,
+    statusCode: 'POSTED',
+    sourceDocumentTypeCode: body?.sourceDocumentTypeCode ?? null,
+    sourceDocumentId: body?.sourceDocumentId ?? null,
+    reasonCode: body?.reasonCode ?? null,
+    remarks: body?.remarks ?? null,
+    erpMessageQueued: true,
+  };
+  const lines = (body?.lines ?? []).map((line, index) => ({
+    goodsReceiptLineId: goodsReceiptId * 10 + index,
+    goodsReceiptId,
+    lineNo: index + 1,
+    inboundReceiptLineId: line.inboundReceiptLineId ?? null,
+    itemId: line.itemId,
+    lotId: line.lotId,
+    receiptQty: line.receiptQty,
+    uomId: line.uomId,
+    qualityStatusCode: line.qualityStatusCode,
+    inventoryStatusCode: line.inventoryStatusCode,
+    destinationLocationId: line.destinationLocationId,
+    originalShipmentLotAllocationId: line.originalShipmentLotAllocationId ?? null,
+  }));
+  state.goodsReceipts.push(goodsReceipt);
+  state.goodsReceiptLines.push(...lines);
+
+  if (body?.receiptTypeCode === 'RETURN') {
+    const warehouse = state.warehouses.find((row) => row.warehouseId === body.warehouseId);
+    const shipment =
+      body.sourceDocumentTypeCode === 'SHIPMENT'
+        ? state.shipments.find((row) => row.shipmentId === body.sourceDocumentId)
+        : undefined;
+    const request = state.shipmentRequests.find(
+      (row) => row.shipmentRequestId === shipment?.shipmentRequestId,
+    );
+    const partner = state.partners.find((row) => row.partnerId === request?.customerId);
+    for (const line of lines) {
+      const lot = state.lots.find((row) => row.lotId === line.lotId);
+      const item = state.items.find((row) => row.itemId === line.itemId);
+      state.dispositionCandidates.push({
+        lotId: line.lotId,
+        lotNo: lot?.lotNo ?? String(line.lotId),
+        itemId: line.itemId,
+        itemCode: item?.itemCode ?? String(line.itemId),
+        itemName: item?.itemName ?? '',
+        quantity: line.receiptQty,
+        uomId: line.uomId,
+        warehouseId: body.warehouseId,
+        warehouseName: warehouse?.warehouseName ?? '',
+        sourceCode: 'RETURN',
+        goodsReceiptId,
+        receiptNo,
+        receivedAt: dayOf(new Date()),
+        partnerName: partner?.partnerName ?? null,
+        inspectionResultId: null,
+        nonconformanceId: null,
+        nonconformanceNo: null,
+        nonconformanceStatusCode: null,
+      });
+    }
+  }
+
+  return { created: { goodsReceipt, lines }, status: 201 };
+});
+
+/* ── 출하 (W-04-06 원 출하 찾기 · W-04-12 확정) ───────────────── */
+
+const shipmentEtag = (shipment) => `W/"${String(shipment.versionNo ?? 1)}"`;
+
+on('GET', '/logistics/shipments', (_p, query) => {
+  const customerId = num(query, 'customerId');
+  const lotId = num(query, 'lotId');
+  const from = query.get('shipDateFrom');
+  const to = query.get('shipDateTo');
+  const q = query.get('q');
+  const unconfirmedOnly = bool(query, 'unconfirmedOnly');
+  const requestOf = (shipment) =>
+    state.shipmentRequests.find((row) => row.shipmentRequestId === shipment.shipmentRequestId);
+  const allocationsOf = (shipment) =>
+    (shipment.lines ?? []).flatMap((line) => line.allocations ?? []);
+
+  return page(
+    keep(state.shipments, [
+      byText(query, 'statusCode', 'statusCode'),
+      (row) => customerId === null || requestOf(row)?.customerId === customerId,
+      (row) => unconfirmedOnly !== true || row.statusCode === 'UNCONFIRMED',
+      (row) => from === null || (row.shippedAt ?? '').slice(0, 10) >= from,
+      (row) => to === null || (row.shippedAt ?? '').slice(0, 10) <= to,
+      (row) => lotId === null || allocationsOf(row).some((each) => each.lotId === lotId),
+      (row) =>
+        q === null ||
+        q === '' ||
+        row.shipmentNo.includes(q) ||
+        allocationsOf(row).some((each) => String(each.lotNo ?? '').includes(q)),
+    ]),
+    query,
+  );
+});
+
+on('GET', '/logistics/shipments/{shipmentId}', (params) => {
+  const shipment = state.shipments.find((row) => row.shipmentId === Number(params.shipmentId));
+  return shipment === undefined
+    ? null
+    : { created: shipment, status: 200, headers: { ETag: shipmentEtag(shipment) } };
+});
 
 /* ── 생산 ─────────────────────────────────────────────────── */
 

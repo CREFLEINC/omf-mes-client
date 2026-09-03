@@ -7117,3 +7117,63 @@ dl.filter-bar.approval-inbox-detail-facts {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── W-04-06 반품·클레임 입고 등록 ─────────────────────────────── */
+
+/* 2단 — 좌 원 출하 찾기 · 우 반품 입고. 좌 칸은 목업의 380px 감각을 최소 폭으로 남긴다. */
+.return-receipt-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 2fr) 3fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.return-receipt-form,
+.return-receipt-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.return-receipt-filters {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.return-receipt-direct {
+  margin-top: var(--space-3);
+}
+
+.return-receipt-lines .pane-subtitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.return-receipt-lot-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.return-receipt-effect {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.return-receipt-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 1280px) {
+  .return-receipt-workspace {
+    grid-template-columns: 1fr;
+  }
+}
