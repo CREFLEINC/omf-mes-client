@@ -172,7 +172,12 @@ export const ProductionLotCompleteScreen = () => {
       <div className="pop-panes">
         <Card bordered className="pop-section" aria-label={t.lotList.sectionLabel}>
           <h2 className="pane-title">{t.lotList.sectionLabel}</h2>
-          <LotListPane lots={lots.data ?? []} selectedLotId={selectedLotId} onSelect={selectLot} />
+          <LotListPane
+            lots={lots.data ?? []}
+            selectedLotId={selectedLotId}
+            onSelect={selectLot}
+            hasWorkOrder={entry.workOrderId !== null}
+          />
         </Card>
 
         <Card bordered className="pop-section" aria-label={t.detail.sectionLabel}>

@@ -60,6 +60,8 @@ interface Options {
   writes?: Request[];
   /** 완료 응답 상태. 기본 200 */
   writeStatus?: number;
+  /** 목록이 비어 온다 — 빈 목록 문구를 재는 자리 */
+  emptyLots?: boolean;
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -95,7 +97,10 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => request.method === 'GET' && pathOf(request) === '/trace/lots',
-    respond: () => jsonResponse({ items: [makeLot()], page: { page: 1, size: 20, total: 1 } }),
+    respond: () =>
+      options.emptyLots === true
+        ? jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } })
+        : jsonResponse({ items: [makeLot()], page: { page: 1, size: 20, total: 1 } }),
   },
   {
     match: (request) => request.method === 'GET' && /^\/trace\/lots\/\d+$/.test(pathOf(request)),
@@ -439,6 +444,25 @@ describe('ProductionLotCompleteScreen — 목록', () => {
     renderScreen({}, '/pop/lot-complete');
 
     expect(await screen.findByText(t.entry.missingWorkOrder)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **빈 목록이 위쪽 띠와 다른 이야기를 하지 않는다.** 작업지시가 없는데 「이 작업지시에
+   * 완료할 LOT 이 없습니다」라고 하면, 사용자는 작업지시가 있는데 LOT 만 없는 것으로 읽는다
+   * (실측 — 사용자 확인에서 잡혔다).
+   */
+  it('작업지시가 없으면 빈 목록이 「이 작업지시에」라고 말하지 않는다', async () => {
+    renderScreen({}, '/pop/lot-complete');
+
+    expect(await screen.findByText(t.lotList.emptyNoWorkOrder)).toBeInTheDocument();
+    expect(screen.queryByText(t.lotList.empty)).not.toBeInTheDocument();
+  });
+
+  it('작업지시가 있으면 빈 목록이 그 작업지시를 가리킨다', async () => {
+    renderScreen({ emptyLots: true });
+
+    expect(await screen.findByText(t.lotList.empty)).toBeInTheDocument();
+    expect(screen.queryByText(t.lotList.emptyNoWorkOrder)).not.toBeInTheDocument();
   });
 
   /** ⚠ 목록 조회에 진척 질의가 없다 — 비워 두고 사유를 말한다(`omf-mes#399` 3번). */

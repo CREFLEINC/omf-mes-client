@@ -1,4 +1,4 @@
-import { Button, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Button, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { Lot } from './types';
@@ -9,6 +9,8 @@ export interface LotListPaneProps {
   lots: readonly Lot[];
   selectedLotId: number | null;
   onSelect: (lotId: number) => void;
+  /** 작업지시를 받았는가. 빈 목록의 사유가 갈린다. */
+  hasWorkOrder: boolean;
 }
 
 /**
@@ -20,7 +22,12 @@ export interface LotListPaneProps {
  *
  * 열 자체는 남긴다. 지웠다가 값이 도착하면 표의 폭과 순서가 다시 흔들린다.
  */
-export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps) => {
+export const LotListPane = ({
+  lots,
+  selectedLotId,
+  onSelect,
+  hasWorkOrder,
+}: LotListPaneProps) => {
   /*
    * ⛔ **번호 열이 남은 폭을 다 가져가게 두지 않는다.** LOT 번호는 34자리라, 표가 내용대로 폭을
    * 잡으면 선택 버튼이 표 밖으로 밀려난다(전례 `P-02-05` 실측). 뒤 두 열의 너비를 못박아 남는
@@ -72,10 +79,13 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
         rows={[...lots]}
         getRowId={(lot) => String(lot.lotId)}
         density="comfortable"
-        empty={t.lotList.empty}
+        empty={hasWorkOrder ? t.lotList.empty : t.lotList.emptyNoWorkOrder}
       />
       <p className="field-note">{t.lotList.goodQtyPending}</p>
-      <p className="pop-lotdone-notice">{t.lotList.slotNotice}</p>
+      {/* 슬롯 안내는 스펙 §7 이 `AlertBanner`(info) 로 못박았다 — 문단으로 두지 않는다. */}
+      <div className="pop-lotdone-notice">
+        <AlertBanner variant="info">{t.lotList.slotNotice}</AlertBanner>
+      </div>
     </>
   );
 };
