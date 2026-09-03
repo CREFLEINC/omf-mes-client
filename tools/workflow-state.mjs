@@ -27,7 +27,7 @@ export function normalizeNoticeReference(value, designRepository = DEFAULT_DESIG
   const reference = String(value ?? '').trim();
   const shorthand = reference.match(/^([a-z0-9_.-]+)\/([a-z0-9_.-]+)#([1-9][0-9]*)$/i);
   const issueUrl = reference.match(
-    /^https:\/\/github\.com\/([a-z0-9_.-]+)\/([a-z0-9_.-]+)\/issues\/([1-9][0-9]*)$/i,
+    /^https:\/\/github\.com\/([a-z0-9_.-]+)\/([a-z0-9_.-]+)\/issues\/([1-9][0-9]*)\/?(?:#issuecomment-[0-9]+)?$/i,
   );
   const match = shorthand ?? issueUrl;
   if (!match) {
@@ -79,12 +79,15 @@ export function validateState(state) {
     }
     if (design.reason === 'design-change-notice') {
       if (design.noticeIssue !== undefined && design.noticeIssue !== null) {
-        errors.push('팀별 noticeIssue는 폐기되었습니다. 공통 noticeReference를 사용하세요.');
-      }
-      try {
-        normalizeNoticeReference(design.noticeReference, design.repository);
-      } catch (error) {
-        errors.push(error.message);
+        errors.push(
+          '구 noticeIssue 상태의 이주가 필요합니다. 설계팀의 공통 공지를 확인한 뒤 pnpm workflow migrate-v3 --notice-ref <설계저장소-공통공지>를 실행하세요.',
+        );
+      } else {
+        try {
+          normalizeNoticeReference(design.noticeReference, design.repository);
+        } catch (error) {
+          errors.push(error.message);
+        }
       }
     }
     if (Number.isNaN(Date.parse(String(design.pinnedAt ?? '')))) {
@@ -254,20 +257,45 @@ function acceptDesignChange(root, options) {
   if (head !== commit)
     throw new Error(`설계 참조 HEAD(${head})가 공지 커밋(${commit})과 다릅니다.`);
 
+  const repository = state.designBaseline.repository ?? DEFAULT_DESIGN_REPOSITORY;
   state.designBaseline = {
-    repository: state.designBaseline.repository,
+    repository,
     commit,
     source,
     pinnedAt: new Date().toISOString(),
     reason: 'design-change-notice',
-    noticeReference: normalizeNoticeReference(
-      options['notice-ref'],
-      state.designBaseline.repository,
-    ),
+    noticeReference: normalizeNoticeReference(options['notice-ref'], repository),
   };
   writeJson(absolute, state);
   process.stdout.write(
     `design baseline accepted from ${state.designBaseline.noticeReference}: ${commit}\n`,
+  );
+}
+
+export function migrateLegacyNoticeState(state, noticeReferenceInput) {
+  const design = state.designBaseline;
+  if (
+    design?.reason !== 'design-change-notice' ||
+    !Number.isInteger(design.noticeIssue) ||
+    design.noticeIssue < 1
+  ) {
+    throw new Error('이 상태에는 이주할 구 noticeIssue가 없습니다.');
+  }
+  const repository = design.repository ?? DEFAULT_DESIGN_REPOSITORY;
+  const noticeReference = normalizeNoticeReference(noticeReferenceInput, repository);
+  const { noticeIssue: _retiredNoticeIssue, ...currentDesign } = design;
+  return {
+    ...state,
+    designBaseline: { ...currentDesign, repository, noticeReference },
+  };
+}
+
+function migrateV3(root, options) {
+  const { absolute, state } = requireState(root, options.state ?? DEFAULT_STATE_PATH);
+  const migrated = migrateLegacyNoticeState(state, options['notice-ref']);
+  writeJson(absolute, migrated);
+  process.stdout.write(
+    `workflow state migrated from legacy noticeIssue to ${migrated.designBaseline.noticeReference}\n`,
   );
 }
 
@@ -305,6 +333,7 @@ export function repositoryPolicyErrors(root) {
     WORKFLOW_SOURCE,
     'README.md',
     'docs/client-dev-workflow/README.md',
+    'docs/client-dev-workflow/references/design-request.md',
     'docs/client-dev-workflow/templates/completion-report.md',
     'docs/client-dev-workflow/templates/design-request.md',
     'docs/client-dev-workflow/templates/plan.md',
@@ -333,12 +362,21 @@ export function repositoryPolicyErrors(root) {
       if (pattern.test(content)) errors.push(`${file}: ${description}`);
     }
   }
-  for (const file of ['AGENTS.md', 'CLAUDE.md']) {
+  let insideGitRepository = false;
+  try {
+    insideGitRepository = git(['rev-parse', '--is-inside-work-tree'], root) === 'true';
+    if (!insideGitRepository) errors.push('Git 작업 트리에서 저장소 정책 검사를 실행해야 합니다.');
+  } catch (error) {
+    errors.push(`Git 작업 트리를 확인할 수 없습니다: ${error.message}`);
+  }
+  for (const file of insideGitRepository ? ['AGENTS.md', 'CLAUDE.md'] : []) {
     try {
       git(['ls-files', '--error-unmatch', '--', file], root);
       errors.push(`${file}: AI 도구별 로컬 어댑터는 Git에서 추적하면 안 됩니다.`);
-    } catch {
-      // Git 저장소가 아니거나 추적되지 않은 로컬 파일이면 정상이다.
+    } catch (error) {
+      if (error.status !== 1) {
+        errors.push(`${file}: Git 추적 상태를 확인할 수 없습니다: ${error.message}`);
+      }
     }
   }
   return errors;
@@ -357,6 +395,7 @@ function usage() {
   pnpm workflow check
   pnpm workflow set-issue --issue <번호>
   pnpm workflow clear-issue
+  pnpm workflow migrate-v3 --notice-ref <설계저장소-공통공지-URL|CREFLEINC/omf-mes#번호>
   pnpm workflow accept-design-change --notice-ref <설계저장소-공통공지-URL|CREFLEINC/omf-mes#번호> --commit <40자리해시> [--design-ref <경로>]
   pnpm workflow repo-check\n`;
 }
@@ -376,6 +415,9 @@ function main() {
       break;
     case 'clear-issue':
       clearIssue(root, options);
+      break;
+    case 'migrate-v3':
+      migrateV3(root, options);
       break;
     case 'accept-design-change':
       acceptDesignChange(root, options);

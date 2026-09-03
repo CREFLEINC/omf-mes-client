@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -26,12 +26,40 @@ test('선택한 AI 도구의 로컬 어댑터를 생성한다', () => {
 test('재생성할 때 개인 설정을 보존하고 관리 블록을 갱신한다', () => {
   const root = fixture();
   bootstrap(root, { tool: 'claude', team: '5' });
-  appendFileSync(path.join(root, 'CLAUDE.md'), '\n개인 검토 노하우\n');
+  const target = path.join(root, 'CLAUDE.md');
+  writeFileSync(
+    target,
+    readFileSync(target, 'utf8').replace(
+      '## 개인별 AI 도구 설정',
+      '개인 구역 앞 메모\n\n## 개인별 AI 도구 설정',
+    ),
+  );
   writeFileSync(path.join(root, WORKFLOW_SOURCE), '# workflow\n\nupdated mandatory rule\n');
   bootstrap(root, { tool: 'claude', team: '5' });
-  const content = readFileSync(path.join(root, 'CLAUDE.md'), 'utf8');
+  const content = readFileSync(target, 'utf8');
   assert.match(content, /updated mandatory rule/);
-  assert.match(content, /개인 검토 노하우/);
+  assert.match(content, /개인 구역 앞 메모/);
+  assert.deepEqual(bootstrapErrors(root, 'Agent : T5'), []);
+});
+
+test('출처 불명 파일은 force 없이는 덮어쓰지 않는다', () => {
+  const root = fixture();
+  const target = path.join(root, 'AGENTS.md');
+  writeFileSync(target, '직접 작성한 기존 파일\n');
+  assert.throws(
+    () => bootstrap(root, { tool: 'codex', team: '5' }),
+    /검증된 부트스트랩 생성물이 아닙니다/,
+  );
+  assert.equal(readFileSync(target, 'utf8'), '직접 작성한 기존 파일\n');
+  bootstrap(root, { tool: 'codex', team: '5', force: true });
+  assert.match(readFileSync(target, 'utf8'), /workflow-bootstrap/);
+});
+
+test('both는 Codex와 Claude 어댑터를 함께 생성한다', () => {
+  const root = fixture();
+  bootstrap(root, { tool: 'both', team: '5' });
+  assert.equal(existsSync(path.join(root, 'AGENTS.md')), true);
+  assert.equal(existsSync(path.join(root, 'CLAUDE.md')), true);
   assert.deepEqual(bootstrapErrors(root, 'Agent : T5'), []);
 });
 

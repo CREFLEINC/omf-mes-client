@@ -38,13 +38,14 @@ function selectedTools(value) {
   throw new Error('--tool은 codex, claude, both 중 하나여야 합니다.');
 }
 
-function personalSection(existing) {
-  const index = existing.indexOf(PERSONAL_HEADING);
-  if (index < 0) return null;
-  return existing.slice(index + PERSONAL_HEADING.length).trim();
+function personalTail(existing) {
+  parseMetadata(existing);
+  const end = existing.indexOf(MANAGED_END);
+  if (end < 0) throw new Error('관리 워크플로 종료 표지가 없습니다.');
+  return existing.slice(end + MANAGED_END.length).trim();
 }
 
-export function renderAdapter({ tool, team, policyContent, personal = '' }) {
+export function renderAdapter({ tool, team, policyContent, personalTail: personal = '' }) {
   const adapter = ADAPTERS[tool];
   if (!adapter) throw new Error(`지원하지 않는 AI 도구입니다: ${tool}`);
   const metadata = {
@@ -55,9 +56,10 @@ export function renderAdapter({ tool, team, policyContent, personal = '' }) {
     tool,
     team: normalizeTeam(team),
   };
-  const personalBody =
-    personal || '<!-- 공통 규칙을 무효화하지 않는 개인 노하우를 여기에 적습니다. -->';
-  return `# ${adapter.title} 로컬 개발환경\n\n<!-- workflow-bootstrap: ${JSON.stringify(metadata)} -->\n\n이 파일은 로컬 생성물이며 업무 규칙의 정본이 아닙니다. 아래 관리 블록은 직접 수정하지 말고 \`pnpm workflow:bootstrap\`으로 갱신하세요. 개인 설정은 공통 규칙을 무효화할 수 없습니다.\n\n현재 담당: **${metadata.team}**\n\n${MANAGED_START}\n${policyContent.trim()}\n${MANAGED_END}\n\n${PERSONAL_HEADING}\n\n${personalBody}\n`;
+  const personalContent =
+    personal ||
+    `${PERSONAL_HEADING}\n\n<!-- 공통 규칙을 무효화하지 않는 개인 노하우를 여기에 적습니다. -->`;
+  return `# ${adapter.title} 로컬 개발환경\n\n<!-- workflow-bootstrap: ${JSON.stringify(metadata)} -->\n\n이 파일은 로컬 생성물이며 업무 규칙의 정본이 아닙니다. 아래 관리 블록은 직접 수정하지 말고 \`pnpm workflow:bootstrap\`으로 갱신하세요. 개인 설정은 공통 규칙을 무효화할 수 없습니다.\n\n현재 담당: **${metadata.team}**\n\n${MANAGED_START}\n${policyContent.trim()}\n${MANAGED_END}\n\n${personalContent}\n`;
 }
 
 function parseMetadata(content) {
@@ -112,30 +114,51 @@ export function bootstrapErrors(root, expectedTeam) {
 
 export function bootstrap(root, options) {
   const currentPolicy = policy(root);
+  const tools = selectedTools(options.tool);
   const team = normalizeTeam(options.team);
-  for (const tool of selectedTools(options.tool)) {
+  const writes = [];
+  for (const tool of tools) {
     const target = path.join(root, ADAPTERS[tool].file);
-    let personal = '';
+    let preservedTail = '';
     if (existsSync(target)) {
       const existing = readFileSync(target, 'utf8');
-      personal = personalSection(existing);
-      if (personal === null && !options.force) {
-        throw new Error(
-          `${ADAPTERS[tool].file}은 부트스트랩 생성물이 아닙니다. 교체하려면 --force를 사용하세요.`,
-        );
+      try {
+        preservedTail = personalTail(existing);
+      } catch (error) {
+        if (!options.force) {
+          throw new Error(
+            `${ADAPTERS[tool].file}은 검증된 부트스트랩 생성물이 아닙니다: ${error.message} 교체하려면 --force를 사용하세요.`,
+          );
+        }
       }
-      personal ??= '';
     }
-    writeFileSync(
+    writes.push({
       target,
-      renderAdapter({ tool, team, policyContent: currentPolicy.content, personal }),
-      { flag: 'w' },
-    );
-    process.stdout.write(`workflow adapter ready: ${ADAPTERS[tool].file} (${team})\n`);
+      file: ADAPTERS[tool].file,
+      content: renderAdapter({
+        tool,
+        team,
+        policyContent: currentPolicy.content,
+        personalTail: preservedTail,
+      }),
+    });
+  }
+  for (const write of writes) {
+    writeFileSync(write.target, write.content, { flag: 'w' });
+    process.stdout.write(`workflow adapter ready: ${write.file} (${team})\n`);
   }
 }
 
+function usage() {
+  return `사용법:
+  pnpm workflow:bootstrap --tool <codex|claude|both> --team <번호>
+  pnpm workflow:bootstrap --tool <codex|claude|both> --team <번호> --force
+
+--force는 출처를 검증할 수 없는 기존 도구 파일을 의도적으로 교체할 때만 사용합니다.\n`;
+}
+
 function parseArgs(argv) {
+  if (argv.includes('--help') || argv.includes('-h')) return { help: true };
   const options = {};
   for (let index = 0; index < argv.length; index += 1) {
     const key = argv[index];
@@ -156,9 +179,14 @@ const isEntryPoint =
   process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
 if (isEntryPoint) {
   try {
-    bootstrap(process.cwd(), parseArgs(process.argv.slice(2)));
+    const options = parseArgs(process.argv.slice(2));
+    if (options.help) {
+      process.stdout.write(usage());
+    } else {
+      bootstrap(process.cwd(), options);
+    }
   } catch (error) {
-    process.stderr.write(`workflow bootstrap error:\n${error.message}\n`);
+    process.stderr.write(`workflow bootstrap error:\n${error.message}\n\n${usage()}`);
     process.exitCode = 1;
   }
 }

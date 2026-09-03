@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -6,6 +7,7 @@ import test from 'node:test';
 
 import {
   inferBranchTeam,
+  migrateLegacyNoticeState,
   normalizeNoticeReference,
   normalizeTeam,
   repositoryPolicyErrors,
@@ -29,6 +31,10 @@ test('공통 설계 변동 공지 참조를 정규화한다', () => {
   assert.equal(normalizeNoticeReference('CREFLEINC/omf-mes#123'), 'CREFLEINC/omf-mes#123');
   assert.equal(
     normalizeNoticeReference('https://github.com/CREFLEINC/omf-mes/issues/123'),
+    'https://github.com/CREFLEINC/omf-mes/issues/123',
+  );
+  assert.equal(
+    normalizeNoticeReference('https://github.com/CREFLEINC/omf-mes/issues/123/#issuecomment-456'),
     'https://github.com/CREFLEINC/omf-mes/issues/123',
   );
   assert.throws(() => normalizeNoticeReference('123'), /GitHub 이슈 URL/);
@@ -57,7 +63,7 @@ test('설계 변동 기준에는 공통 공지 참조가 필요하다', () => {
 });
 
 test('과거 팀별 공지 이슈 상태를 거부한다', () => {
-  const errors = validateState({
+  const legacy = {
     schemaVersion: 1,
     team: 'Agent : T5',
     activeIssue: 782,
@@ -70,12 +76,24 @@ test('과거 팀별 공지 이슈 상태를 거부한다', () => {
       noticeIssue: 123,
       noticeReference: 'CREFLEINC/omf-mes#123',
     },
-  });
+  };
+  const errors = validateState(legacy);
   assert.ok(errors.some((error) => error.includes('noticeIssue')));
+  const migrated = migrateLegacyNoticeState(legacy, 'CREFLEINC/omf-mes#456');
+  assert.equal(migrated.designBaseline.noticeIssue, undefined);
+  assert.equal(migrated.designBaseline.noticeReference, 'CREFLEINC/omf-mes#456');
+  assert.deepEqual(validateState(migrated), []);
+  const withoutRepository = structuredClone(legacy);
+  delete withoutRepository.designBaseline.repository;
+  assert.equal(
+    migrateLegacyNoticeState(withoutRepository, 'CREFLEINC/omf-mes#456').designBaseline.repository,
+    'CREFLEINC/omf-mes',
+  );
 });
 
 test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'workflow-policy-'));
+  execFileSync('git', ['init', '-q'], { cwd: root });
   const required = [
     'docs/client-dev-workflow/multi-agent-team-workflow-v3.md',
     'tools/workflow/bootstrap.mjs',
@@ -105,6 +123,22 @@ test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
   assert.ok(
     repositoryPolicyErrors(root).some((error) =>
       error.includes('클라이언트 전용 설계 변동 공지 채널'),
+    ),
+  );
+  writeFileSync(path.join(root, 'AGENTS.md'), 'tracked local adapter\n');
+  execFileSync('git', ['add', 'AGENTS.md'], { cwd: root });
+  assert.ok(
+    repositoryPolicyErrors(root).some((error) =>
+      error.includes('AI 도구별 로컬 어댑터는 Git에서 추적하면 안 됩니다'),
+    ),
+  );
+});
+
+test('Git 작업 트리가 아니면 추적 검사를 통과시키지 않는다', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'workflow-no-git-'));
+  assert.ok(
+    repositoryPolicyErrors(root).some((error) =>
+      error.includes('Git 작업 트리를 확인할 수 없습니다'),
     ),
   );
 });
