@@ -116,6 +116,7 @@ import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
 import { popLotLabelPrint } from './pop-lot-label-print';
 import { shippingPackingLabel } from './shipping-packing-label';
+import { repackLabelIssue } from './repack-label-issue';
 import { runningChange } from './running-change';
 
 export const ko = {
@@ -221,6 +222,7 @@ export const ko = {
   packingLabelReprint,
   popLotLabelPrint,
   shippingPackingLabel,
+  repackLabelIssue,
   runningChange,
 } as const;
 

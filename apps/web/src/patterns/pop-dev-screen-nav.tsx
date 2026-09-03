@@ -104,9 +104,16 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     /* 씨앗에서 완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 포장 대상이 비어 뜬다. */
     query: '?workOrderId=11001&workerNo=100029',
   },
+  {
+    path: '/pop/repack-label-issue',
+    label: 'P-04-04 재구성 라벨 발행',
+    /* P-02-09 와 같은 씨앗 포장을 쓴다 — 씨앗에 실제로 있는 번호여야 한다(위 주석). */
+    query: '?handlingUnitId=13001&workerNo=100029',
+  },
   /*
-   * ⚠ 이 화면은 사번을 주소로 받지 않는다 — 단말·공정·사번은 셸이 채운다. 그 자리가 아직
-   * 비어 있어 **등록은 「단말이 확인되지 않았습니다」로 막힌 채 뜬다**(F-6). 읽기 쪽은 선다.
+   * ⚠ 이 화면은 사번을 주소로 받지 않는다 — 단말·공정·사번은 셸이 채운다. 개발 셸이 그
+   * 자리를 합성값으로 채우므로(`app/pop-main.tsx`) 화면은 서고, 등록 가부는 그 단말·공정의
+   * 게이팅 조회 결과가 정한다(F-6).
    */
   {
     path: '/pop/running-change',

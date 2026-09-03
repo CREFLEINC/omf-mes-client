@@ -9,6 +9,7 @@ import { PackingWorkScreen } from '../screens/packing-work/screen';
 import { PopLotLabelPrintScreen } from '../screens/pop-lot-label-print/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
+import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionResultScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { RunningChangeScreen } from '../screens/running-change/screen';
@@ -211,6 +212,18 @@ export const popRoutes: RouteObject[] = [
    * 먼저 막으면 「완료 LOT 이 없다」와 구분되지 않는다 — 집행은 서버의 403 이다(F-1).
    */
   { path: '/pop/lot-label', element: <PopLotLabelPrintScreen /> },
+  /*
+   * P-04-04 — 재구성 신규 라벨 발행.
+   *
+   * ⛔ **스펙의 네 구획 중 둘만 서 있다.** ① 발행 대기 목록과 ② 신규 발번은 계약이 「무엇을 몇
+   * 개 만들어야 하는가」와 「이미 처리한 건인가」를 나르지 못해 만들지 않았다(`omf-mes#418` ·
+   * 근거는 `screens/repack-label-issue/types.ts` 머리). 임시 구현으로 메우면 목록이 지워지지
+   * 않아 같은 재구성을 반복 처리하게 된다.
+   *
+   * ⚠ **그래서 대상 포장을 질의 문자열로 받는다**(`?handlingUnitId=&workerNo=`) — 앞단이
+   * 열리면 `entry-context.ts` 하나가 바뀐다(전례 `P-02-09`).
+   */
+  { path: '/pop/repack-label-issue', element: <RepackLabelIssueScreen /> },
   /*
    * P-02-11 — 러닝체인지 부품 교체 등록. **설비를 멈추지 않고 같은 세션 안에서** 부품을 간다.
    *
