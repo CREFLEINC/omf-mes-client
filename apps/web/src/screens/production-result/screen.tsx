@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { SaveErrorBanner } from '../../patterns/master';
 import { canWrite, useResultEntry } from './entry-context';
@@ -235,20 +236,7 @@ export const ProductionResultScreen = () => {
         </div>
       </header>
 
-      {/*
-        ⭐ 자동 재전송이 멈춘 것을 «말한다». 미전송 건수만 늘어나면 작업자는 밀리는 중인지
-        멈춘 것인지 구별할 수 없고, 실적은 큐에 있는 채로 아무도 모르게 남는다.
-      */}
-      {outbox.isStalled && (
-        <div className="banner-slot">
-          <AlertBanner variant="error" title={t.sync.stalledTitle}>
-            <p>{t.sync.stalledBody}</p>
-            <Button variant="outlined" size="2xl" onClick={outbox.retryNow}>
-              {t.sync.retry}
-            </Button>
-          </AlertBanner>
-        </div>
-      )}
+      {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
       {gateNotice !== null && (
         <div className="banner-slot">

@@ -91,7 +91,9 @@ on('GET', '/mdm/workers', (_p, query) =>
   page(keep(state.workers, [contains(query, 'q', 'workerNo')]), query),
 );
 
-on('GET', '/mdm/items', (_p, query) => page(keep(state.items, [contains(query, 'q', 'itemCode')]), query));
+on('GET', '/mdm/items', (_p, query) =>
+  page(keep(state.items, [contains(query, 'q', 'itemCode')]), query),
+);
 on('GET', '/mdm/items/{itemId}', (params) => {
   const item = state.items.find((each) => each.itemId === Number(params.itemId));
   return item === undefined ? null : { item, editability: { editable: true } };
@@ -101,7 +103,9 @@ on('GET', '/mdm/uoms', (_p, query) => page(state.uoms, query));
 
 on('GET', '/mdm/warehouses', (_p, query) => page(state.warehouses, query));
 on('GET', '/mdm/warehouses/{warehouseId}', (params) => {
-  const warehouse = state.warehouses.find((each) => each.warehouseId === Number(params.warehouseId));
+  const warehouse = state.warehouses.find(
+    (each) => each.warehouseId === Number(params.warehouseId),
+  );
   return warehouse === undefined ? null : { warehouse, editability: { editable: true } };
 });
 
@@ -157,6 +161,23 @@ on('GET', '/mdm/code-values', (_p, query) => {
   );
 });
 
+on('GET', '/mdm/terminals/{terminalId}/processes', () => ({
+  items: [
+    {
+      processId: 1001,
+      processName: '사출',
+      canStartWork: true,
+      canCompleteWork: true,
+      canInputMaterial: true,
+      canInputResult: true,
+      canInputInspection: true,
+      canPrintLabel: true,
+      canCancelInput: true,
+      canReturnMaterial: true,
+    },
+  ],
+}));
+
 /* ── 추적 ─────────────────────────────────────────────────── */
 
 on('GET', '/trace/lots', (_p, query) => {
@@ -196,6 +217,91 @@ on('GET', '/trace/lots/{lotId}/holds', (params, query) =>
     query,
   ),
 );
+
+/* ── 문서 발행·인쇄 ───────────────────────────────────────── */
+
+const targetIds = (query) =>
+  query
+    .getAll('targetIds')
+    .flatMap((value) => value.split(','))
+    .map(Number)
+    .filter(Number.isFinite);
+
+on('GET', '/app/document-issues/summary', (_params, query) => {
+  const targetTypeCode = query.get('targetTypeCode');
+  const documentTypeCode = query.get('documentTypeCode');
+
+  return {
+    items: targetIds(query).map((targetId) => {
+      const issues = state.documentIssues.filter(
+        (issue) =>
+          issue.targetId === targetId &&
+          issue.targetTypeCode === targetTypeCode &&
+          issue.documentTypeCode === documentTypeCode,
+      );
+      const last = issues.at(-1);
+
+      return {
+        targetTypeCode,
+        targetId,
+        issueCount: issues.length,
+        ...(last === undefined
+          ? {}
+          : {
+              lastIssueSeq: last.issueSeq,
+              lastIssuedAt: last.issuedAt,
+              lastPrintOutcome: last.printOutcome,
+            }),
+      };
+    }),
+  };
+});
+
+on('POST', '/app/document-issues', (_params, _query, body) => {
+  const items = (body?.targets ?? []).map((target) => {
+    const lot = state.lots.find((row) => row.lotId === target.lotId);
+    const issueSeq =
+      state.documentIssues.filter(
+        (issue) =>
+          issue.targetId === target.targetId &&
+          issue.targetTypeCode === target.targetTypeCode &&
+          issue.documentTypeCode === body.documentTypeCode,
+      ).length + 1;
+    const issue = {
+      documentIssueLogId: newId(),
+      documentTypeCode: body.documentTypeCode,
+      targetTypeCode: target.targetTypeCode,
+      targetId: target.targetId,
+      lotId: target.lotId,
+      issueSeq,
+      issuedAt: new Date().toISOString(),
+      printOutcome: 'PENDING',
+    };
+    state.documentIssues.push(issue);
+
+    return {
+      ...issue,
+      target: { displayName: lot?.lotNo ?? String(target.targetId) },
+    };
+  });
+
+  return { created: { items, issuedCount: items.length }, status: 201 };
+});
+
+on('GET', '/app/document-issues/{documentIssueLogId}/rendition', () => ({
+  format: 'png',
+  content: 'synthetic-label',
+}));
+
+on('POST', '/app/document-issues/{documentIssueLogId}:report-print', (params, _query, body) => {
+  const issue = state.documentIssues.find(
+    (row) => row.documentIssueLogId === Number(params.documentIssueLogId),
+  );
+  if (issue === undefined) return null;
+
+  issue.printOutcome = body?.outcome ?? 'FAILED';
+  return { issue };
+});
 
 on('POST', '/trace/lots/{lotId}:request-iqc-skip', (params, _q, body) => {
   const request = {
@@ -272,11 +378,68 @@ on('POST', '/inventory/handling-units', (_p, _q, body) => {
 
   state.handlingUnits.push(created);
 
-  for (const content of body?.contents ?? []) {
-    state.handlingUnitContents.push({ handlingUnitContentId: newId(), handlingUnitId, ...content });
+  const contents = (body?.contents ?? []).map((content) => ({
+    handlingUnitContentId: newId(),
+    handlingUnitId,
+    ...content,
+  }));
+
+  state.handlingUnitContents.push(...contents);
+
+  /* 계약의 201 은 HandlingUnitDetailResponse 다 — 취급 단위만 내리면 화면이 번호를 못 읽는다. */
+  return { created: { handlingUnit: created, contents }, status: 201 };
+});
+
+/*
+ * 포장 확정 — 내용물 N 행이 한 트랜잭션으로 실린다(P-02-08 · 계약 :pack).
+ *
+ * 씨앗에 두지 않으면 Prism 이 받아 계약의 «첫» 응답인 400 을 돌려준다 — 화면을 손으로
+ * 확인하는 사람은 자기 입력이 틀린 줄 안다.
+ *
+ * 치환이라 요청에서 빠진 줄은 지워진다. 빈 내용물은 계약대로 400 이다.
+ */
+on('POST', '/inventory/handling-units/{handlingUnitId}:pack', (params, _q, body) => {
+  const id = Number(params.handlingUnitId);
+  const handlingUnit = state.handlingUnits.find((each) => each.handlingUnitId === id);
+
+  if (handlingUnit === undefined) return null;
+
+  const items = body?.contents ?? [];
+
+  if (items.length === 0) {
+    return {
+      status: 400,
+      created: {
+        errors: [
+          { scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' },
+        ],
+      },
+    };
   }
 
-  return { created, status: 201 };
+  if (handlingUnit.statusCode === 'PACKED') {
+    return {
+      status: 409,
+      created: {
+        errors: [{ scope: 'request', code: 'ALREADY_PACKED', message: '이미 확정된 포장입니다.' }],
+      },
+    };
+  }
+
+  state.handlingUnitContents = state.handlingUnitContents.filter(
+    (each) => each.handlingUnitId !== id,
+  );
+
+  const contents = items.map((content) => ({
+    handlingUnitContentId: newId(),
+    handlingUnitId: id,
+    ...content,
+  }));
+
+  state.handlingUnitContents.push(...contents);
+  handlingUnit.statusCode = 'PACKED';
+
+  return { handlingUnit, contents };
 });
 
 /* 치환이라 요청에서 빠진 줄은 지워진다. 실서버와 같은 성격이어야 화면이 그것을 시험할 수 있다. */
@@ -411,17 +574,21 @@ on('GET', '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/variances', (
   ),
 }));
 
-on('POST', '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/variances', (params, _q, body) => {
-  const created = {
-    inboundVarianceId: newId(),
-    inboundReceiptLineId: Number(params.inboundReceiptLineId),
-    ...body,
-    statusCode: 'OPEN',
-  };
+on(
+  'POST',
+  '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/variances',
+  (params, _q, body) => {
+    const created = {
+      inboundVarianceId: newId(),
+      inboundReceiptLineId: Number(params.inboundReceiptLineId),
+      ...body,
+      statusCode: 'OPEN',
+    };
 
-  state.inboundVariances.push(created);
-  return { created, status: 201 };
-});
+    state.inboundVariances.push(created);
+    return { created, status: 201 };
+  },
+);
 
 on('GET', '/logistics/putaway-tasks', (_p, query) =>
   page(
@@ -822,7 +989,10 @@ const forward = async (request, response, body) => {
     });
     response.end(text);
   } catch {
-    send(response, 502, { code: 'MOCK_FALLBACK_UNAVAILABLE', message: 'Prism 에 닿지 못했습니다.' });
+    send(response, 502, {
+      code: 'MOCK_FALLBACK_UNAVAILABLE',
+      message: 'Prism 에 닿지 못했습니다.',
+    });
   }
 };
 
@@ -873,16 +1043,7 @@ const mergedSpecPath = writeMergedSpec(specPaths);
 
 const prism = spawn(
   'pnpm',
-  [
-    'exec',
-    'prism',
-    'mock',
-    mergedSpecPath,
-    '--host',
-    '127.0.0.1',
-    '--port',
-    String(FALLBACK_PORT),
-  ],
+  ['exec', 'prism', 'mock', mergedSpecPath, '--host', '127.0.0.1', '--port', String(FALLBACK_PORT)],
   { stdio: ['ignore', 'ignore', 'inherit'] },
 );
 

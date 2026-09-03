@@ -103,6 +103,7 @@ import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
 import { inboundReceipt } from './inbound-receipt';
 import { packingRepack } from './packing-repack';
+import { packingWork } from './packing-work';
 import { putaway } from './putaway';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
@@ -113,6 +114,8 @@ import { popMaterialLotLabel } from './pop-material-lot-label';
 import { identificationTagIssue } from './identification-tag-issue';
 import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
+import { popLotLabelPrint } from './pop-lot-label-print';
+import { shippingPackingLabel } from './shipping-packing-label';
 import { repackLabelIssue } from './repack-label-issue';
 
 export const ko = {
@@ -203,6 +206,7 @@ export const ko = {
   productPicking,
   inboundReceipt,
   packingRepack,
+  packingWork,
   putaway,
   inboundVariance,
   temporaryPutaway,
@@ -215,6 +219,8 @@ export const ko = {
   workStart,
   reworkResultRegister,
   packingLabelReprint,
+  popLotLabelPrint,
+  shippingPackingLabel,
   repackLabelIssue,
 } as const;
 

@@ -5472,6 +5472,38 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow-y: auto;
 }
 
+/* 고른 LOT의 확인 정보와 출력 조작 — 값과 버튼이 서로 붙지 않게 세로 흐름을 고정한다. */
+.pop-lot-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 현장에서 라벨과 값을 빠르게 대조할 수 있도록 이름/값 두 칸을 일정하게 맞춘다. */
+.pop-lot-facts {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.pop-lot-facts dt {
+  color: var(--on-surface-muted);
+}
+
+.pop-lot-facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* 위험 조작과 비활성 사유·재시도는 한 묶음으로 읽히되 각각 충분한 터치 간격을 둔다. */
+.pop-lot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: auto;
+}
+
 /* 쪽 이동 줄 — 위치 표시를 왼쪽 끝에 두고 이동 버튼을 오른쪽에 모은다. */
 .pop-page-nav {
   display: flex;
@@ -6559,6 +6591,250 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0;
   border: 0;
   background: var(--outline-variant);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * P-04-02 납품·포장 라벨 출력 (POP)
+ *
+ * ⚠ **이 화면 전용 이름(`pop-slabel-`)이다.** 앞선 POP 화면들이 `pop-lot-`·`pop-`
+ * 어휘를 이미 쓰고 있어, 같은 뜻이라도 이름을 나눈다 — 겹치면 한쪽을 고칠 때 다른 화면이
+ * 조용히 함께 바뀐다.
+ *
+ * 스펙 §3 의 세로 예산은 헤더 64 + 본문 616 + 액션바 88 = 768 이고 **슬랙이 0**이다.
+ * 그래서 ③ 재출력 구획은 필요할 때만 서고, 넘치는 것은 ② 목록 «안에서» 스크롤한다.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.pop-slabel-screen {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pop-slabel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/*
+ * ① 라벨 종류 구획 — 스펙 §3 의 72px 한 칸이다. 위아래 숨을 주지 않는다(슬랙 0).
+ */
+.pop-slabel-kind {
+  display: flex;
+  align-items: center;
+}
+
+/*
+ * 그 안의 라디오 두 개 — 가로 한 줄. 세로 예산이 72px 라 두 줄로 쌓을 자리가 없다.
+ */
+.pop-slabel-kinds {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+
+.pop-slabel-kind-name {
+  font-weight: 600;
+}
+
+/*
+ * 종류마다 「언제 발행하는가」가 붙는다. 이름 옆이 아니라 «아래»에 두어, 멀리서 볼 때
+ * 이름 두 개가 먼저 읽히게 한다 — 고르는 것은 종류이지 설명이 아니다.
+ */
+.pop-slabel-kind-note {
+  display: block;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * ② 대상 — **이 구획 «안에서» 스크롤한다.**
+ * 화면 전체를 스크롤시키면 라벨 종류와 액션바가 함께 밀려, 지금 무엇을 뽑는 중인지가
+ * 화면 밖으로 나간다.
+ */
+.pop-slabel-targets {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+}
+
+.pop-slabel-empty {
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+/* ③ 재출력 — 재발행일 때만 선다. 서는 순간 세로를 차지하므로 안쪽 여백을 아낀다. */
+.pop-slabel-reissue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pop-slabel-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* 「필수」는 라벨 옆에서 가장 강하게 읽혀야 한다 — 빠뜨리면 저장이 DB 제약에 막힌다. */
+.pop-slabel-required {
+  color: var(--semantic-error);
+  font-weight: 600;
+}
+
+/* ④ 프린터 — 이름·상태를 한 줄에 둔다. 인쇄가 안 될 때 가장 먼저 보는 자리다. */
+.pop-slabel-printer,
+.pop-slabel-printer-pane {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/*
+ * 액션바 — 오른쪽에 모은다. 막힌 사유는 왼쪽 끝에 두어 단추와 같은 줄에서 읽히게 한다.
+ */
+.pop-slabel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.pop-slabel-actions > .field-note {
+  margin-right: auto;
+}
+
+/*
+ * 구획 폭을 그대로 쓰는 보조 안내. `.field-note` 는 규범 4가 **비활성 사유**용으로 정의해
+ * `max-width: 20rem` 에 갇히는데, 이쪽은 구획 전체에 걸리는 안내다.
+ */
+.pop-slabel-wide-note {
+  max-width: none;
+}
+
+/*
+ * 미리보기 — 여러 장을 한 창에 편다. 라벨 이미지는 서버가 그린 것이라 크기를 모른다.
+ * 폭을 묶고 비율을 유지해, 큰 그림이 와도 창이 화면 밖으로 자라지 않게 한다.
+ */
+.pop-slabel-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.pop-slabel-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+/*
+ * ⛔ 배경을 칠하지 않는다 — 라벨은 흰 바탕을 스스로 그리고, 칠하면 어두운 테마에서
+ * 그림 테두리가 배경에 먹힌다(전례 `.token-figure`).
+ */
+.pop-slabel-preview-image {
+  max-width: 20rem;
+  height: auto;
+  border: 1px solid var(--outline-variant);
+}
+
+/*
+ * P-02-08 포장 작업이 더하는 자리들.
+ *
+ * ⭐ **셸·머리·표제·스캔 줄은 이미 있는 것을 쓴다** — `.pop-shell`·`.pop-header`·`.pop-title`·
+ * `.pop-context-right`·`.pop-panes`·`.scan-row` 는 먼저 선 POP 화면이 세웠다.
+ *
+ * ⛔ **이름을 `pack-work-` 로 굳힌다.** 포장을 다루는 화면이 셋(`P-02-08`·`P-02-09`·`P-04-01`)
+ * 이라 `packing-` 으로 시작하는 이름은 나중에 선 화면이 조용히 덮는다 — 게이트가 잡지 못한다.
+ */
+
+/* 스캔 칸 아래 「수량 + 담기」 한 줄. 담기는 장갑 낀 손이 누르므로 자기 폭을 갖는다. */
+.pack-work-add-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.pack-work-add-row > *:first-child {
+  flex: 1;
+}
+
+/*
+ * ⛔ **번호가 남은 폭을 다 가져가게 두지 않는다.** LOT 번호가 길면 행이 옆으로 늘어나
+ * 오른쪽 끝의 선택 버튼이 표 밖으로 밀려난다(전례 `P-02-05` 실측).
+ */
+.pack-work-lot-table,
+.pack-work-content-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.pack-work-lot-no {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 포장 번호 — **구획 제목 옆에 선다**(스펙 §3 「《포장 단위》 HU-2026-0804-0007」).
+ * 별도 줄로 세우면 아래 「유형」 라벨이 오른쪽 「상위 포장」과 어긋나 보인다.
+ */
+.pack-work-unit-heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.pack-work-unit-no {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 유형·상위 포장 — **위아래 두 줄**이다(스펙 §3). 줄마다 라벨이 왼쪽, 값이 오른쪽에 선다.
+ * 좌우로 늘어놓으면 스펙의 읽는 순서가 사라지고 값 칸이 절반으로 좁아진다.
+ */
+.pack-work-unit-fields {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pack-work-field {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.pack-work-field-label {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 확정 줄 — 오른쪽 정렬이되 막힌 사유는 줄 왼쪽 아래에 남는다. */
+.pack-work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.pack-work-actions > .field-note {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
