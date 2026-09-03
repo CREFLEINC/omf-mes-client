@@ -76,6 +76,22 @@ const IDLE_RESULT: IssueRunResult = {
 /** 인쇄를 못 한 사유 — 서버 보고에 그대로 실린다. `FAILED` 인데 사유가 없으면 422 다. */
 const NO_SHELL_REASON = '셸 인쇄 통로가 없는 단말에서 실행됐습니다.';
 
+/** 사유를 말하지 못한 실패에 붙이는 말. **빈 사유로 보고하면 서버가 422 로 막는다.** */
+const UNSPOKEN_FAILURE = '셸 인쇄가 실패했습니다.';
+
+/**
+ * 셸이 던진 것을 보고할 사유로 옮긴다.
+ *
+ * ⛔ **빈 문자열을 사유로 삼지 않는다.** `new Error('')` 처럼 말 없는 실패가 오면 `message` 가
+ * 빈 문자열인데, 그것은 `null` 이 아니라 **「사유가 있다」로 나가** 서버가 422 로 막는다 —
+ * 인쇄도 실패하고 보고도 실패해 회차가 `PENDING` 인 채 남는다.
+ */
+const toFailureReason = (cause: unknown): string => {
+  const spoken = cause instanceof Error ? cause.message.trim() : '';
+
+  return spoken === '' ? UNSPOKEN_FAILURE : spoken;
+};
+
 const createIssues = async (
   client: Client,
   input: { kind: LabelKind; rows: readonly TargetRow[] } & {
@@ -255,12 +271,18 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
         } finally {
           isRunning.current = false;
           setStep(null);
+          /*
+           * ⚠ **여기서 멈췄어도 기록은 남았다.** 회차를 다시 읽지 않으면 같은 대상을 다시
+           * 고를 때 화면이 낡은 「발행 0회」를 보고 재발행 사유를 요구하지 않는다 — 사유 없는
+           * 2회차 요청이 나가 `ck_document_reissue_reason` 에 막힌다.
+           */
+          await queryClient.invalidateQueries({ queryKey: ['shipping-packing-label', 'summary'] });
         }
       };
 
       void execute();
     },
-    [client, workerNo],
+    [client, queryClient, workerNo],
   );
 
   const retryRendition = useCallback(() => {
@@ -337,9 +359,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
                     RENDITION_FORMAT,
                   )
                   .then(() => null)
-                  .catch((cause: unknown) =>
-                    cause instanceof Error ? cause.message : '셸 인쇄가 실패했습니다.',
-                  );
+                  .catch((cause: unknown) => toFailureReason(cause));
 
           setStep('report');
           await reportPrint(client, label.issue.documentIssueLogId, failureReason, workerNo);

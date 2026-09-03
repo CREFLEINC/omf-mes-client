@@ -325,6 +325,32 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     expect(report.failureReason).toEqual(expect.any(String));
   });
 
+  it('셸이 말 없이 실패해도 사유를 채워 보고한다 — 빈 사유는 서버가 422 로 막는다', async () => {
+    const user = userEvent.setup();
+    // 사유를 말하지 않는 실패. `message` 가 빈 문자열이라 그대로 실으면 「사유 없음」이 된다.
+    const save = vi.fn<() => Promise<string>>().mockRejectedValue(new Error('   '));
+    Object.defineProperty(window, 'pop', { configurable: true, value: { rendition: { save } } });
+
+    const requests: { request: Request; body: string }[] = [];
+    renderScreen({ requests });
+
+    await chooseKind(user, '납품라벨');
+    await user.click(await rowCheckbox(0));
+    await user.click(issueButton());
+
+    await user.click(await screen.findByRole('button', { name: t.actions.preview }));
+    await user.click(await screen.findByRole('button', { name: t.preview.print }));
+
+    await waitFor(() => {
+      expect(requests).toHaveLength(2);
+    });
+
+    const report = JSON.parse(nth(requests, 1).body) as { outcome: string; failureReason: string };
+
+    expect(report.outcome).toBe('FAILED');
+    expect(report.failureReason.trim()).not.toBe('');
+  });
+
   it('셸이 있으면 서버가 그린 바이트를 그대로 넘기고 성공으로 보고한다', async () => {
     const user = userEvent.setup();
     const save = vi.fn<(bytes: Uint8Array) => Promise<string>>().mockResolvedValue('SYN/path');
