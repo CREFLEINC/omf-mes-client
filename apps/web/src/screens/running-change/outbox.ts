@@ -2,7 +2,8 @@ import type { ApiClient, components } from '@omf-mes/api-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest, toApiError } from '../../patterns/request';
+import { MAX_AUTO_ATTEMPTS, isRejected, retryDelayOf } from '../../patterns/outbox-policy';
+import { runRequest } from '../../patterns/request';
 
 /**
  * 교체 등록 outbox — **공유계약 C-1** · 스펙 §6(오프라인 → 큐잉).
@@ -49,14 +50,6 @@ export interface OutboxEntry {
 }
 
 const STORAGE_KEY = 'omf-mes.running-change.outbox';
-
-/**
- * 통신 실패 뒤 다시 시도하기까지.
- *
- * ⚠ **짧게 두지 않는다.** 끊긴 망에 대고 즉시 되던지면 단말이 요청을 쏟아 내고, 복구된 순간
- * 그 폭주가 서버로 향한다.
- */
-const RETRY_DELAY_MS = 5_000;
 
 /**
  * 저장소에서 읽은 값이 **보낼 수 있는 모양인가.**
@@ -139,15 +132,6 @@ const postEntry = async (client: Client, entry: OutboxEntry): Promise<MaterialCo
     }),
   );
 
-/**
- * 서버가 **받지 않기로 판정한** 실패인가.
- *
- * 갈래를 가르는 것이 이 큐의 핵심이다 — 통신이 끊긴 것은 **기다리면 풀리고**, 서버가 거부한
- * 것은 아무리 기다려도 풀리지 않는다. 뒤엣것을 계속 재전송하면 큐가 영원히 비지 않고 그 뒤에
- * 쌓인 정상 건까지 함께 막힌다.
- */
-const isRejected = (error: unknown): boolean => toApiError(error).kind !== 'network';
-
 export interface OutboxRejection {
   entry: OutboxEntry;
   error: unknown;
@@ -170,6 +154,15 @@ export interface Outbox {
    * ⛔ **큐를 비우는 것이 아니다.** 아직 서버에 닿지 않은 건은 그대로 남아 계속 나간다.
    */
   clearResults: () => void;
+  /**
+   * 자동 재전송을 멈춘 상태인가. **항목은 큐에 그대로 있다** — 사라진 것이 아니라 멈춘 것이다.
+   *
+   * ⭐ **미전송 건수만으로는 부족하다**(C-1 #4). 건수는 「밀리는 중」과 「멈춤」을 같은 모양으로
+   * 보여 주는데, 담는 순간을 성공으로 본 작업자는 그 차이를 알 방법이 없다.
+   */
+  isStalled: boolean;
+  /** 멈춘 큐를 사람이 깨운다. */
+  retryNow: () => void;
 }
 
 /**
@@ -189,6 +182,23 @@ export const useOutbox = (): Outbox => {
   /* 비우는 작업이 겹쳐 돌면 같은 항목이 두 번 나간다 — 키가 같아 서버가 흡수하지만, 굳이. */
   const draining = useRef(false);
 
+  /** 항목별 자동 재전송 시도 횟수. 메모리에만 둔다 — 새로 뜨면 다시 세는 것이 맞다. */
+  const attempts = useRef(new Map<string, number>());
+  const [isStalled, setIsStalled] = useState(false);
+
+  /**
+   * 예약해 둔 재시도. **언마운트에서 지운다** — 남겨 두면 화면을 떠난 뒤에도 최장 1분간
+   * 클로저가 살아 있다.
+   */
+  const retryTimer = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (retryTimer.current !== null) globalThis.clearTimeout(retryTimer.current);
+    },
+    [],
+  );
+
   /*
    * ⭐ **다시 시도할 계기를 만드는 자리다.** 통신이 끊겨 실패하면 큐도 연결 상태도 그대로라
    * 비우기 효과가 **다시 돌 이유가 없다** — 그러면 큐는 연결이 살아 있는데도 영원히 멈춰
@@ -199,6 +209,9 @@ export const useOutbox = (): Outbox => {
   useEffect(() => {
     const goOnline = (): void => {
       setIsOnline(true);
+      /* 연결이 새로 섰으면 사정이 달라졌을 수 있다 — 시도 횟수를 다시 센다. */
+      attempts.current.clear();
+      setIsStalled(false);
       /* 이미 온라인으로 알고 있었더라도 깨운다 — 상태가 그대로면 효과가 돌지 않는다. */
       setRetryTick((tick) => tick + 1);
     };
@@ -219,7 +232,7 @@ export const useOutbox = (): Outbox => {
   }, []);
 
   useEffect(() => {
-    if (entries.length === 0 || !isOnline || draining.current) return;
+    if (entries.length === 0 || !isOnline || draining.current || isStalled) return;
 
     draining.current = true;
 
@@ -239,9 +252,29 @@ export const useOutbox = (): Outbox => {
            * 실패한」 요청이 큐를 영원히 막는다.
            */
           if (!isRejected(error)) {
-            globalThis.setTimeout(() => {
+            const tried = (attempts.current.get(entry.idempotencyKey) ?? 0) + 1;
+            attempts.current.set(entry.idempotencyKey, tried);
+
+            /*
+             * 상한을 넘었다 — 자동 재전송만 멈춘다. ⛔ 항목은 큐에 남긴다: 여기서 내리면
+             * 작업자가 친 교체가 사라지고, 그것이 이 큐가 막으려는 바로 그 일이다.
+             */
+            if (tried >= MAX_AUTO_ATTEMPTS) {
+              setIsStalled(true);
+
+              return;
+            }
+
+            /*
+             * ⛔ **앞 예약을 덮어쓰지 않는다.** 손잡이를 하나만 들고 있으므로 확인 없이 덮으면
+             * 앞 타이머는 아무도 끊지 못한 채 남아, 화면이 사라진 뒤에 발화한다.
+             */
+            if (retryTimer.current !== null) globalThis.clearTimeout(retryTimer.current);
+
+            retryTimer.current = globalThis.setTimeout(() => {
+              retryTimer.current = null;
               setRetryTick((tick) => tick + 1);
-            }, RETRY_DELAY_MS);
+            }, retryDelayOf(tried));
 
             return;
           }
@@ -250,6 +283,7 @@ export const useOutbox = (): Outbox => {
         }
 
         /* 받아졌든 거부됐든 큐에서는 내린다. 거부는 **그 건만** 내린다(C-2). */
+        attempts.current.delete(entry.idempotencyKey);
         setEntries((prev) => {
           const next = prev.filter((one) => one.idempotencyKey !== entry.idempotencyKey);
           writeStored(next);
@@ -260,7 +294,7 @@ export const useOutbox = (): Outbox => {
         draining.current = false;
       }
     })();
-  }, [client, entries, isOnline, retryTick]);
+  }, [client, entries, isOnline, isStalled, retryTick]);
 
   const enqueue = useCallback((workerNo: string, body: MaterialConsumptionCreate): void => {
     /*
@@ -283,5 +317,20 @@ export const useOutbox = (): Outbox => {
     setRejections([]);
   }, []);
 
-  return { pendingCount: entries.length, isOnline, enqueue, accepted, rejections, clearResults };
+  const retryNow = useCallback((): void => {
+    attempts.current.clear();
+    setIsStalled(false);
+    setRetryTick((tick) => tick + 1);
+  }, []);
+
+  return {
+    pendingCount: entries.length,
+    isOnline,
+    enqueue,
+    accepted,
+    rejections,
+    clearResults,
+    isStalled,
+    retryNow,
+  };
 };

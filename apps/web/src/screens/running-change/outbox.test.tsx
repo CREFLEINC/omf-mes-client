@@ -8,6 +8,8 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 
+import { MAX_AUTO_ATTEMPTS, retryDelayOf } from '../../patterns/outbox-policy';
+
 import { makeConsumption, WORKER_NO } from './fixtures';
 import { useOutbox } from './outbox';
 
@@ -199,5 +201,99 @@ describe('교체 등록 큐', () => {
 
     expect(attempts).toHaveLength(1);
     expect(attempts[0]?.key).toBe('a');
+  });
+  /*
+   * ⛔ **서버 오류를 거부로 읽지 않는다**(#772 전례). 502·503·504 는 서버가 「지금은 못
+   * 받는다」고 말한 것이지 「이것은 안 된다」고 판정한 것이 아니다. 여기서 큐에서 내리면 화면은
+   * 이미 「담았습니다」를 띄우고 입력을 비운 뒤라 **작업자가 친 교체를 되돌릴 방법이 없다.**
+   */
+  it('서버 오류(503)에서는 큐에 남아 같은 멱등 키로 다시 나간다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const attempts: Attempt[] = [];
+    const { result } = renderHookWithProviders(() => useOutbox(), {
+      fetch: createStubFetch(
+        routes(attempts, (index) =>
+          index === 0
+            ? jsonResponse({ message: '잠시 뒤 다시' }, { status: 503 })
+            : jsonResponse(makeConsumption(), { status: 201 }),
+        ),
+      ),
+    });
+
+    act(() => {
+      result.current.enqueue(WORKER_NO, BODY);
+    });
+
+    await waitFor(() => {
+      expect(attempts).toHaveLength(1);
+    });
+    /* 남아 있어야 한다 — 내려갔다면 그 순간 값이 사라진 것이다. */
+    expect(result.current.pendingCount).toBe(1);
+    /* 「멈췄다」도 「거부됐다」도 아니다 — 기다리는 중이다. */
+    expect(result.current.rejections).toHaveLength(0);
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(retryDelayOf(1) + 1_000);
+    });
+
+    await waitFor(() => {
+      expect(attempts).toHaveLength(2);
+    });
+    expect(attempts[1]?.key).toBe(attempts[0]?.key);
+
+    await waitFor(() => {
+      expect(result.current.accepted).toHaveLength(1);
+    });
+  });
+
+  /*
+   * ⛔ **상한에 닿아도 큐에서 내리지 않는다.** 자동 재전송만 멈추고, 멈췄다는 사실을 화면이
+   * 말한다(`isStalled` → `OutboxStallBanner`). 건수만으로는 「밀리는 중」과 구분되지 않는다.
+   */
+  it('서버 오류가 이어지면 자동 재전송만 멈추고 항목은 남는다', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const attempts: Attempt[] = [];
+    const { result } = renderHookWithProviders(() => useOutbox(), {
+      fetch: createStubFetch(
+        routes(attempts, () => jsonResponse({ message: '잠시 뒤 다시' }, { status: 503 })),
+      ),
+    });
+
+    act(() => {
+      result.current.enqueue(WORKER_NO, BODY);
+    });
+
+    for (let tried = 1; tried < MAX_AUTO_ATTEMPTS; tried += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(retryDelayOf(tried) + 1_000);
+      });
+    }
+
+    await waitFor(() => {
+      expect(result.current.isStalled).toBe(true);
+    });
+    expect(result.current.pendingCount).toBe(1);
+    expect(result.current.rejections).toHaveLength(0);
+
+    /* 멈춘 뒤에는 더 던지지 않는다. */
+    const sentSoFar = attempts.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(retryDelayOf(MAX_AUTO_ATTEMPTS) * 3);
+    });
+    expect(attempts).toHaveLength(sentSoFar);
+
+    /* 사람이 누르면 **같은 키로** 다시 나간다. */
+    await act(async () => {
+      result.current.retryNow();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    await waitFor(() => {
+      expect(attempts.length).toBeGreaterThan(sentSoFar);
+    });
+    expect(result.current.isStalled).toBe(false);
+    expect(attempts.at(-1)?.key).toBe(attempts[0]?.key);
   });
 });

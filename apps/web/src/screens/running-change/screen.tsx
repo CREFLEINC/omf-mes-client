@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
 
 import { CurrentInputs } from './current-inputs';
@@ -64,8 +65,9 @@ export const RunningChangeScreen = () => {
   const workOrderId = readWorkOrderId(searchParams);
   /*
    * 단말·공정·사번은 **셸이 아는 것**이라 주소가 아니라 컨텍스트로 온다(`patterns/pop-identity`).
-   * 채우는 자리가 아직 없어 지금은 전부 `null`이고, 화면은 그 상태를 사유와 함께 보인다 —
-   * 모르는 것을 통과로 처리하지 않는다(F-6).
+   * 개발 셸이 합성값으로 채우고(`app/pop-main.tsx`) 설치본에는 아직 채우는 자리가 없다 —
+   * 없으면 전부 `null`이고, 화면은 그 상태를 사유와 함께 보인다. 모르는 것을 통과로 처리하지
+   * 않는다(F-6).
    */
   const { terminalId, processId, workerNo } = usePopIdentity();
 
@@ -226,6 +228,9 @@ export const RunningChangeScreen = () => {
           )}
         </p>
       </header>
+
+      {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
+      {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
       {/*
        * 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 배너로 먼저 말한다 — 빈 목록만
