@@ -122,7 +122,11 @@ export const ProductPickingScreen = () => {
   const { worker } = useWorkerSession();
   const today = useMemo(() => new Date(), []);
 
-  const [target, setTarget] = useState<Target | null>(null);
+  /*
+   * 어느 요청의 어느 라인인가만 들고 있는다. 대상 자체를 굳혀 두면 확정 뒤에도 옛 피킹량이
+   * 남아 남은 배정이 줄지 않고, 배정보다 많이 집을 수 있다 - 되돌릴 수 없는 예약 소진이다.
+   */
+  const [chosen, setChosen] = useState<{ requestId: number; lineId: number } | null>(null);
   const [lotId, setLotId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
   const [manual, setManual] = useState('');
@@ -136,6 +140,17 @@ export const ProductPickingScreen = () => {
   const inFlight = useRef(false);
 
   const requests = useTodayRequests(today);
+  /* 화면이 보는 값은 늘 새 조회에서 나온다. 상태에 굳은 사본을 두지 않는다. */
+  const target: Target | null = (() => {
+    if (chosen === null) {
+      return null;
+    }
+
+    const request = requests.data?.find((each) => each.shipmentRequestId === chosen.requestId);
+    const line = request?.lines?.find((each) => each.shipmentRequestLineId === chosen.lineId);
+
+    return request === undefined || line === undefined ? null : { request, line };
+  })();
   const itemId = target?.line.itemId ?? null;
   const item = useItem(itemId);
   const uoms = useUomCodes(true);
@@ -291,7 +306,10 @@ export const ProductPickingScreen = () => {
                       variant="outlined"
                       size="xl"
                       onClick={() => {
-                        setTarget({ request, line });
+                        setChosen({
+                          requestId: request.shipmentRequestId,
+                          lineId: line.shipmentRequestLineId,
+                        });
                         setLotId(null);
                         setQty('');
                         setMissed(null);
@@ -358,7 +376,7 @@ export const ProductPickingScreen = () => {
           variant="text"
           size="lg"
           onClick={() => {
-            setTarget(null);
+            setChosen(null);
             setLotId(null);
             setQty('');
             setMissed(null);
