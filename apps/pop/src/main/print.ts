@@ -18,7 +18,9 @@
 export type RenditionFormat = 'png' | 'pdf';
 
 export type PrintTarget =
-  { kind: 'file'; filePath: string } | { kind: 'printer'; deviceName: string };
+  | { kind: 'file'; filePath: string }
+  /** `deviceName` 이 없으면 **OS 기본 프린터**로 간다 — 어느 것이 기본인지는 OS 가 안다. */
+  | { kind: 'printer'; deviceName?: string };
 
 /** 서버가 그려 준 출력물. 앱은 내용을 해석하지 않는다. */
 export interface Rendition {
@@ -41,7 +43,7 @@ export interface FileWriter {
  *   틀리면 브라우저 엔진이 PNG 를 문서로 읽어 빈 종이를 뽑는다.
  */
 export interface SilentPrinter {
-  print(deviceName: string, rendition: Rendition): Promise<void>;
+  print(deviceName: string | undefined, rendition: Rendition): Promise<void>;
 }
 
 export class EmptyRenditionError extends Error {

@@ -30,9 +30,14 @@ import {
   isRenditionFormat,
   toRenditionFileName,
 } from './print';
-import { formatPrintLog, reasonOf } from './print-log';
+import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
 import { resolveRendererPath } from './renderer-path';
-import { type PrintPage, createSilentPrinter, selectPrinter } from './silent-print';
+import {
+  type PrintPage,
+  type PrinterChoice,
+  createSilentPrinter,
+  selectPrinter,
+} from './silent-print';
 import { SecureStore } from './secure-store';
 import { createKioskWindowOptions } from './window-options';
 
@@ -108,11 +113,19 @@ const fileWriter: FileWriter = {
 function openPrintPage(): PrintPage {
   const page = new BrowserWindow({
     show: false,
+    /*
+     * ⛔ **숨은 창도 그리게 둔다.** 이 값을 끄면 창은 뜨는데 화면을 한 번도 그리지 않고,
+     *    인쇄는 성공했다고 하면서 **백지가 나온다**(실측 — 라벨이 급지는 되는데 아무것도
+     *    찍히지 않았다). 사람에게 안 보이는 것과 그리지 않는 것은 다른 축이다.
+     */
+    paintWhenInitiallyHidden: true,
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
       devTools: false,
+      /* 보이지 않는 창은 기본으로 그리기를 늦춘다 — 인쇄 직전에 그것이 백지가 된다. */
+      backgroundThrottling: false,
     },
   });
 
@@ -129,13 +142,27 @@ function openPrintPage(): PrintPage {
         if (target !== url) event.preventDefault();
       });
       await page.loadURL(url);
+
+      /*
+       * ⭐ **다 그려진 것을 확인하고 나서 인쇄한다.** 문서 로딩이 끝난 것과 그림이 화면에
+       *    올라간 것은 다르다 — 로딩만 보고 인쇄하면 종이가 백지로 나온다. 그림의 디코딩이
+       *    끝나기를 기다리고, 화면 갱신을 두 번 넘긴 뒤에 넘어간다.
+       */
+      await page.webContents.executeJavaScript(
+        `new Promise((done) => {
+           const images = Array.from(document.images ?? []);
+           Promise.all(images.map((image) => image.decode().catch(() => undefined)))
+             .then(() => requestAnimationFrame(() => requestAnimationFrame(() => { done(true); })));
+         })`,
+      );
     },
     print: async (deviceName, jobName) =>
       new Promise((resolve, reject) => {
         page.webContents.print(
           {
             silent: true,
-            deviceName,
+            /* ⭐ 지정이 없으면 **항목 자체를 싣지 않는다** — 그래야 OS 기본으로 간다. */
+            ...(deviceName === undefined ? {} : { deviceName }),
             /*
              * ⚠ **여백을 두지 않는다.** 라벨은 대지 크기가 곧 인쇄 영역이라, 기본 여백이
              *   들어가면 그림이 줄어 바코드 폭이 규격을 벗어난다.
@@ -220,15 +247,18 @@ async function main(): Promise<void> {
    *   목록을 들고 있으면 사라진 장치로 계속 보낸다.
    */
   let printHost: BrowserWindow | null = null;
-  const resolvePrinter = async (): Promise<{ deviceName: string | null; available: string[] }> => {
-    if (printHost === null) return { deviceName: null, available: [] };
+  const resolvePrinter = async (): Promise<{
+    choice: PrinterChoice;
+    available: LoggedPrinter[];
+  }> => {
+    if (printHost === null) return { choice: { kind: 'none' }, available: [] };
 
     const printers = await printHost.webContents.getPrintersAsync();
 
     return {
-      deviceName: selectPrinter(printers, process.env.POP_PRINTER_NAME),
-      /* 고르지 못했을 때 **무엇이 있었는지**를 사용자에게 말해 주기 위해 함께 들고 나간다. */
-      available: printers.map((printer) => printer.displayName || printer.name),
+      choice: selectPrinter(printers, process.env.POP_PRINTER_NAME),
+      /* 고르지 못했을 때 **무엇이 있었는지**를 기록에 남기려고 함께 들고 나간다. */
+      available: printers.map(({ name, displayName }) => ({ name, displayName })),
     };
   };
 
@@ -276,7 +306,7 @@ async function main(): Promise<void> {
        *    키오스크에는 개발자도구가 없어 이 파일이 무슨 일이 났는지 아는 유일한 자리다.
        */
       const noteFailure = (
-        available: readonly string[],
+        available: readonly LoggedPrinter[],
         deviceName: string | null,
         cause: unknown,
       ) => {
@@ -289,6 +319,7 @@ async function main(): Promise<void> {
               label,
               available,
               deviceName,
+              preferred: process.env.POP_PRINTER_NAME,
               reason: reasonOf(cause),
             }),
           );
@@ -304,19 +335,24 @@ async function main(): Promise<void> {
        */
       await printer.print(rendition, { kind: 'file', filePath });
 
-      const { deviceName, available } = await resolvePrinter();
+      const { choice, available } = await resolvePrinter();
 
-      /* ⛔ 프린터를 못 고른 것을 성공으로 두지 않는다(공유계약 F-6) — 화면이 인쇄 실패로 낸다. */
-      if (deviceName === null) {
-        const error = new PrinterUnavailableError(available);
+      /* ⛔ 보낼 곳이 없는 것을 성공으로 두지 않는다(공유계약 F-6) — 화면이 인쇄 실패로 낸다. */
+      if (choice.kind === 'none') {
+        const error = new PrinterUnavailableError(
+          available.map((printer) => printer.displayName ?? printer.name),
+        );
         noteFailure(available, null, error);
         throw error;
       }
 
+      /* 지정이 없으면 장치를 싣지 않는다 — 받는 쪽이 OS 기본으로 보낸다. */
+      const deviceName = choice.kind === 'named' ? choice.deviceName : undefined;
+
       try {
         await printer.print(rendition, { kind: 'printer', deviceName });
       } catch (cause) {
-        noteFailure(available, deviceName, cause);
+        noteFailure(available, deviceName ?? '(OS 기본)', cause);
         throw cause;
       }
 

@@ -18,43 +18,43 @@ const printer = (name: string, extra: Partial<AvailablePrinter> = {}): Available
   ...extra,
 });
 
-describe('프린터 선택 — 못 고르면 보내지 않는다', () => {
+describe('어디로 보낼지 정한다', () => {
   it('지정한 이름이 있으면 그것을 쓴다', () => {
-    expect(selectPrinter([printer('A'), printer('B')], 'B')).toBe('B');
+    expect(selectPrinter([printer('A'), printer('B')], 'B')).toEqual({
+      kind: 'named',
+      deviceName: 'B',
+    });
   });
 
   it('보이는 이름으로 지정해도 찾아내되 드라이버 이름을 돌려준다', () => {
-    expect(selectPrinter([printer('ZD421_1', { displayName: '라벨기 1호' })], '라벨기 1호')).toBe(
-      'ZD421_1',
-    );
+    expect(
+      selectPrinter([printer('ZD421_1', { displayName: '라벨기 1호' })], '라벨기 1호'),
+    ).toEqual({ kind: 'named', deviceName: 'ZD421_1' });
   });
 
   // ⛔ 이 항목이 「엉뚱한 프린터에서 라벨이 나오는 것」을 막는다. 종이는 나오는 즉시 자재에
   //    붙어 되돌릴 수 없다 — 지정한 장치가 없으면 인쇄하지 않는 편이 낫다.
   it('지정한 이름이 목록에 없으면 다른 프린터로 대신 보내지 않는다', () => {
-    expect(selectPrinter([printer('A', { isDefault: true }), printer('B')], '없는프린터')).toBe(
-      null,
-    );
+    expect(selectPrinter([printer('A'), printer('B')], '없는프린터')).toEqual({ kind: 'none' });
   });
 
-  it('지정이 없으면 OS 기본 프린터를 쓴다', () => {
-    expect(selectPrinter([printer('A'), printer('B', { isDefault: true })])).toBe('B');
+  /*
+   * ⭐ 이 묶음이 실기에서 인쇄를 막았던 결함을 문다. 종전 판은 목록에서 「기본」 표시를
+   *    찾았는데 Electron 의 프린터 정보에는 그런 항목이 없어 **언제나 못 찾았고**, 기본
+   *    프린터를 제대로 지정한 단말에서도 전부 막혔다.
+   */
+  it('지정이 없으면 OS 기본 프린터에 맡긴다', () => {
+    expect(selectPrinter([printer('A'), printer('B'), printer('C')])).toEqual({
+      kind: 'systemDefault',
+    });
   });
 
   it('빈 지정은 지정하지 않은 것으로 본다 — 환경변수가 비어 있을 때다', () => {
-    expect(selectPrinter([printer('A', { isDefault: true })], '   ')).toBe('A');
+    expect(selectPrinter([printer('A')], '   ')).toEqual({ kind: 'systemDefault' });
   });
 
-  it('기본이 없어도 한 대뿐이면 그것을 쓴다', () => {
-    expect(selectPrinter([printer('A')])).toBe('A');
-  });
-
-  it('여러 대인데 기본도 지정도 없으면 고르지 않는다', () => {
-    expect(selectPrinter([printer('A'), printer('B')])).toBe(null);
-  });
-
-  it('프린터가 없으면 null', () => {
-    expect(selectPrinter([])).toBe(null);
+  it('프린터가 하나도 없으면 보내지 않는다', () => {
+    expect(selectPrinter([])).toEqual({ kind: 'none' });
   });
 });
 

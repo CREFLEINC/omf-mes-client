@@ -17,41 +17,60 @@ import type { Rendition, RenditionFormat, SilentPrinter } from './print';
 /**
  * OS 가 알려 주는 프린터 한 대. Electron `PrinterInfo` 중 **이 모듈이 쓰는 것만** 적는다 —
  * 전체를 옮기면 Electron 타입에 묶여 감지기에서 만들어 낼 수 없다.
+ *
+ * ⛔ **「기본 프린터」 표시를 여기서 찾지 않는다.** Electron 의 `PrinterInfo` 에는 그런 항목이
+ *    없다(38 기준 — `description`·`displayName`·`name`·`options` 뿐). 종전 판은 있지도 않은
+ *    `isDefault` 를 읽어 **언제나 `undefined`** 를 받았고, 그래서 기본 프린터를 제대로 지정한
+ *    단말에서도 「기본 프린터가 지정돼 있지 않다」로 막혔다(실측). 기본이 무엇인지는 OS 가
+ *    안다 — 우리가 알아내려 하지 않고 **OS 에 맡긴다**.
  */
 export interface AvailablePrinter {
   /** 드라이버에 등록된 이름. 인쇄 요청에 그대로 실린다. */
   name: string;
   /** 사람에게 보이는 이름. 설정에 따라 `name` 과 다르다. */
   displayName?: string;
-  isDefault?: boolean;
 }
 
 /**
- * 어느 프린터로 보낼지 고른다. **못 고르면 `null` — 아무 데나 보내지 않는다.**
+ * 어디로 보낼지에 대한 판정.
+ *
+ * | 값 | 뜻 |
+ * | --- | --- |
+ * | `named` | 지정값이 가리킨 프린터로 보낸다 |
+ * | `systemDefault` | **OS 기본 프린터에 맡긴다** — 장치 이름을 싣지 않는다 |
+ * | `none` | 보낼 수 없다. 프린터가 없거나 지정한 이름이 목록에 없다 |
+ */
+export type PrinterChoice =
+  { kind: 'named'; deviceName: string } | { kind: 'systemDefault' } | { kind: 'none' };
+
+/**
+ * 어디로 보낼지 정한다.
  *
  * ⛔ **지정한 이름이 목록에 없으면 다른 프린터로 대신 보내지 않는다.** 라벨은 종이가 나오는
  *    순간 자재에 붙는다 — 엉뚱한 장치에서 나온 것을 나중에 되돌릴 방법이 없다.
  *
- * 순서: ① 지정한 이름 → ② OS 기본 프린터 → ③ 딱 한 대뿐이면 그것.
- * 여러 대인데 기본도 지정도 없으면 고르지 않는다 — 그 상황은 사람이 정할 일이다.
+ * ⭐ **지정이 없으면 OS 기본 프린터에 맡긴다.** 「어느 것이 기본인가」는 사용자가 Windows 에서
+ *    정하는 것이고, 인쇄를 받는 쪽이 그것을 안다. 우리가 목록에서 알아내려 했다가 있지도 않은
+ *    항목을 읽어 전부 막았다 — 판정을 아는 쪽으로 넘긴다.
+ *
+ * ⚠ 그래도 **프린터가 하나도 없으면 보내지 않는다.** 그때 인쇄로 넘기면 어디로도 가지 않은
+ *   작업이 성공으로 보인다.
  */
 export function selectPrinter(
   printers: readonly AvailablePrinter[],
   preferred?: string,
-): string | null {
+): PrinterChoice {
   const wanted = preferred?.trim();
 
   if (wanted !== undefined && wanted !== '') {
     const matched = printers.find(
       (printer) => printer.name === wanted || printer.displayName === wanted,
     );
-    return matched?.name ?? null;
+
+    return matched === undefined ? { kind: 'none' } : { kind: 'named', deviceName: matched.name };
   }
 
-  const fallback = printers.find((printer) => printer.isDefault === true);
-  if (fallback !== undefined) return fallback.name;
-
-  return printers.length === 1 ? (printers[0]?.name ?? null) : null;
+  return printers.length === 0 ? { kind: 'none' } : { kind: 'systemDefault' };
 }
 
 /** 임시로 떨어뜨린 출력물. 인쇄가 끝나면 `path` 를 지운다. */
@@ -65,8 +84,12 @@ export interface StagedRendition {
 export interface PrintPage {
   /** 다 그려진 뒤 resolve 한다 — 그리기 전에 인쇄하면 빈 종이가 나온다. */
   load(url: string): Promise<void>;
-  /** 대화상자 없이 인쇄한다. 실패하면 사유와 함께 reject 한다. */
-  print(deviceName: string, jobName: string): Promise<void>;
+  /**
+   * 대화상자 없이 인쇄한다. 실패하면 사유와 함께 reject 한다.
+   *
+   * `deviceName` 이 `undefined` 면 **장치를 싣지 않는다** — 받는 쪽이 OS 기본으로 보낸다.
+   */
+  print(deviceName: string | undefined, jobName: string): Promise<void>;
   close(): void;
 }
 
