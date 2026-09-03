@@ -10,7 +10,8 @@ import { renderWithProviders } from '../test/api-harness';
 const LocationProbe = () => {
   const { pathname, search } = useLocation();
 
-  return <output>{search === '' ? pathname : search}</output>;
+  /* ⛔ 진입값만 내놓지 않는다 — 경로를 잘못 적어도 통과하는 시험이 된다. */
+  return <output>{`${pathname}${search}`}</output>;
 };
 
 const renderNav = (disabled = false) =>
@@ -46,7 +47,7 @@ describe('PopDevScreenNav — 개발용 POP 화면 이동', () => {
     await userEvent.click(screen.getByRole('option', { name: 'P-02-13 PQC 제품 검사' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('status').textContent).toBe('?ir=1001');
+      expect(screen.getByRole('status').textContent).toBe('/pop/pqc-inspection?ir=1001');
     });
   });
 

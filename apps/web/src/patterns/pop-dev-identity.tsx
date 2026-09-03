@@ -26,7 +26,11 @@ import { useWorkerSession } from './worker-session';
  * 아직 아무도 치지 않았을 때만 데모 사번으로 내려간다.
  */
 
-/** 목 서버에 있는 단말. `GET /mdm/terminals/{terminalId}` 가 이 번호로 답한다. */
+/**
+ * 단말 번호. ⚠ **씨앗(`tools/mock/seed.mjs`)에 단말 자료가 없다** — 이 경로는 계약 예시
+ * 서버로 넘어가 어떤 번호에도 답하므로, 이 값 자체에 근거가 있는 것은 아니다. 씨앗이 단말을
+ * 갖게 되면 그때 실제 번호로 맞춘다.
+ */
 export const POP_DEV_TERMINAL_ID = 1001;
 
 /** 게이팅 판정의 대상 공정. 목 서버의 공정 하나를 쓴다. */

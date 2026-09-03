@@ -28,8 +28,12 @@ export interface PopDevScreen {
   /**
    * 화면이 요구하는 진입값. **없으면 그 화면은 「대상이 없습니다」로 막힌 채 뜬다.**
    *
-   * ⚠ **목 서버(`tools/mock`)의 값이다.** 시연·확인용이며 제품 데이터가 아니다. 목 자료가
-   * 바뀌면 여기도 함께 바뀌어야 한다 — 어긋나면 화면이 조용히 비어 뜬다.
+   * ⚠ **`pnpm mock`(씨앗 서버)에 실제로 있는 번호여야 한다.** 씨앗이 직접 처리하는 자원에
+   * 없는 번호를 적으면 404 가 돌아와, 이 셀렉터가 없애려던 「대상이 없습니다」로 그대로 뜬다
+   * (실측 — 포장 번호를 씨앗에 없는 값으로 적었다가 걸렸다). 씨앗에 경로가 없는 것은 계약
+   * 예시 서버로 넘어가 어떤 번호에도 답한다.
+   *
+   * ⛔ 제품 데이터가 아니다. 목 자료가 바뀌면 여기도 함께 바뀐다.
    *
    * ⛔ 이 값을 화면 코드가 읽는 기본값으로 옮기지 않는다. 진입값은 화면을 «부르는 쪽»이
    * 정하는 것이고, 화면이 스스로 지어내면 대상 없이 열린 사실이 가려진다.
@@ -52,7 +56,7 @@ export interface PopDevScreen {
  * ⛔ i18n 리소스에 넣지 않는다. 개발 중에만 보이는 문구라 번역 대상이 아니고, 공용 문구
  * 파일은 여러 작업이 동시에 건드리는 자리다.
  */
-export const POP_DEV_SCREENS: PopDevScreen[] = [
+export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/work-start', label: 'P-02-01 작업 시작' },
   { path: '/pop/material-input', label: 'P-02-03 자재 투입 스캔', query: '?workOrderId=11002' },
   {
@@ -68,7 +72,7 @@ export const POP_DEV_SCREENS: PopDevScreen[] = [
   {
     path: '/pop/packing-label-reprint',
     label: 'P-02-09 포장 라벨·인식표 재출력',
-    query: '?handlingUnitId=1001&workerNo=100029',
+    query: '?handlingUnitId=13001&workerNo=100029',
   },
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
