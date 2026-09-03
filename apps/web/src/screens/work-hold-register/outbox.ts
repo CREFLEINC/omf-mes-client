@@ -134,6 +134,14 @@ export interface Outbox {
    * 상태는 옛것 그대로라, 이 값이 없으면 중단을 담은 뒤 재개를 누를 방법이 사라진다.
    */
   lastQueuedType: string | null;
+  /**
+   * 마지막으로 **서버가 받은** 사건 유형. 없으면 `null`.
+   *
+   * ⭐ **큐가 빈 직후의 짧은 구간을 메운다.** 보낸 것이 닿으면 큐는 즉시 비지만 세션 조회는
+   * 아직 돌아오지 않았다 — 그 사이 옛 상태(「진행」)를 그대로 믿으면 방금 건 중단이 한 번 더
+   * 눌린다.
+   */
+  lastSentType: string | null;
   /** 지금 연결돼 있는가. 건수와 함께 낸다 — 끊긴 것과 밀리는 것은 다르다. */
   isOnline: boolean;
   /** 큐에 담는다. **이것이 곧 성공이다** — 통신을 기다리지 않는다(C-1 #2). */
@@ -187,6 +195,7 @@ export const useWorkHoldOutbox = (): Outbox => {
    * 한 번 더 등록한다(사건은 정정 경로가 없다).
    */
   const [sentTick, setSentTick] = useState(0);
+  const [lastSentType, setLastSentType] = useState<string | null>(null);
 
   /** 갱신 «뒤에» 저장할 값. 갱신 함수를 순수하게 두기 위한 자리다. */
   const pendingWrite = useRef<OutboxEntry[] | null>(null);
@@ -281,7 +290,10 @@ export const useWorkHoldOutbox = (): Outbox => {
 
         /* 받아졌든 거부됐든 «그 건»은 큐에서 내린다. 뒤엣것은 위에서 멈춰 세웠다. */
         attempts.current.delete(entry.idempotencyKey);
-        if (sent) setSentTick((tick) => tick + 1);
+        if (sent) {
+          setSentTick((tick) => tick + 1);
+          setLastSentType(entry.body.eventTypeCode);
+        }
         setEntries((prev) => {
           const next = prev.filter((one) => one.idempotencyKey !== entry.idempotencyKey);
           pendingWrite.current = next;
@@ -325,6 +337,7 @@ export const useWorkHoldOutbox = (): Outbox => {
     pendingCount: entries.length,
     sentCount: sentTick,
     lastQueuedType: entries.at(-1)?.body.eventTypeCode ?? null,
+    lastSentType,
     isOnline,
     enqueue,
     rejection,

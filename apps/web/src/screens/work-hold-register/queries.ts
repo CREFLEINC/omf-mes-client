@@ -78,6 +78,8 @@ export interface OpenSessionResult {
    */
   session: WorkSessionView | null;
   isPending: boolean;
+  /** 다시 읽는 중인가. 그 구간에는 **옛 값이 그대로 나온다.** */
+  isFetching: boolean;
   isError: boolean;
   error: unknown;
   refetch: () => void;
@@ -109,6 +111,8 @@ export const useOpenSession = (workOrderId: number | null): OpenSessionResult =>
   return {
     session: latest ?? null,
     isPending: workOrderId !== null && query.isPending,
+    /** 다시 읽는 중인가. **옛 값을 그대로 내주는 구간**이라 화면이 알아야 한다. */
+    isFetching: query.isFetching,
     isError: query.isError,
     error: query.error,
     refetch: () => {

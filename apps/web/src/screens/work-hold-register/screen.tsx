@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
 
+import { resolveActions } from './actions';
 import { useNow } from './use-now';
 import { useWorkHoldEntry } from './entry-context';
 import { EventHistoryPanel } from './event-history-panel';
@@ -74,17 +75,13 @@ export const WorkHoldRegisterScreen = () => {
   /* ⛔ 「중단이 아니면 진행 중」이 아니다 — 종료된 세션·모르는 상태에 중단을 걸지 않는다. */
   const running = session.session !== null && isRunningSession(session.session);
 
-  /*
-   * **지금 이 세션은 어느 쪽인가** — 서버가 아직 받지 못한 것이 큐에 있으면 그것이 답이다.
-   *
-   * ⛔ **「보낼 것이 있으면 둘 다 잠근다」로 두지 않는다.** 망이 끊기면 큐가 비지 않아, 중단을
-   * 담은 뒤 설비가 다시 돌 때 **재개를 아예 등록하지 못한다** — 「담는 것이 곧 성공」이라는
-   * 이 큐의 전제를 오프라인에서 되돌리는 일이다(공유계약 C-1 #2).
-   *
-   * ⛔ **같은 방향을 두 번 담는 것만 막는다.** 순서는 큐가 지킨다(한 번에 한 건씩·거부하면 멈춤).
-   */
-  const canStop = outbox.lastQueuedType === null ? running : outbox.lastQueuedType === 'RESUME';
-  const canResume = outbox.lastQueuedType === null ? stopped : outbox.lastQueuedType === 'STOP';
+  const { canStop, canResume } = resolveActions({
+    running,
+    stopped,
+    lastQueuedType: outbox.lastQueuedType,
+    lastSentType: outbox.lastSentType,
+    isRefetching: session.isFetching,
+  });
 
   /**
    * 큐에 담고 화면을 비운다 — **담은 것이 곧 성공이다**(C-1 #2). 통신을 기다리지 않는다.
