@@ -272,11 +272,68 @@ on('POST', '/inventory/handling-units', (_p, _q, body) => {
 
   state.handlingUnits.push(created);
 
-  for (const content of body?.contents ?? []) {
-    state.handlingUnitContents.push({ handlingUnitContentId: newId(), handlingUnitId, ...content });
+  const contents = (body?.contents ?? []).map((content) => ({
+    handlingUnitContentId: newId(),
+    handlingUnitId,
+    ...content,
+  }));
+
+  state.handlingUnitContents.push(...contents);
+
+  /* 계약의 201 은 HandlingUnitDetailResponse 다 — 취급 단위만 내리면 화면이 번호를 못 읽는다. */
+  return { created: { handlingUnit: created, contents }, status: 201 };
+});
+
+/*
+ * 포장 확정 — 내용물 N 행이 한 트랜잭션으로 실린다(P-02-08 · 계약 :pack).
+ *
+ * 씨앗에 두지 않으면 Prism 이 받아 계약의 «첫» 응답인 400 을 돌려준다 — 화면을 손으로
+ * 확인하는 사람은 자기 입력이 틀린 줄 안다.
+ *
+ * 치환이라 요청에서 빠진 줄은 지워진다. 빈 내용물은 계약대로 400 이다.
+ */
+on('POST', '/inventory/handling-units/{handlingUnitId}:pack', (params, _q, body) => {
+  const id = Number(params.handlingUnitId);
+  const handlingUnit = state.handlingUnits.find((each) => each.handlingUnitId === id);
+
+  if (handlingUnit === undefined) return null;
+
+  const items = body?.contents ?? [];
+
+  if (items.length === 0) {
+    return {
+      status: 400,
+      created: {
+        errors: [
+          { scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' },
+        ],
+      },
+    };
   }
 
-  return { created, status: 201 };
+  if (handlingUnit.statusCode === 'PACKED') {
+    return {
+      status: 409,
+      created: {
+        errors: [{ scope: 'request', code: 'ALREADY_PACKED', message: '이미 확정된 포장입니다.' }],
+      },
+    };
+  }
+
+  state.handlingUnitContents = state.handlingUnitContents.filter(
+    (each) => each.handlingUnitId !== id,
+  );
+
+  const contents = items.map((content) => ({
+    handlingUnitContentId: newId(),
+    handlingUnitId: id,
+    ...content,
+  }));
+
+  state.handlingUnitContents.push(...contents);
+  handlingUnit.statusCode = 'PACKED';
+
+  return { handlingUnit, contents };
 });
 
 /* 치환이라 요청에서 빠진 줄은 지워진다. 실서버와 같은 성격이어야 화면이 그것을 시험할 수 있다. */
