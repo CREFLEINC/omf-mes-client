@@ -343,7 +343,19 @@ export const InboundReceiptScreen = () => {
                     const picked = (orders.data as PurchaseOrder[]).find(
                       (each) => each.purchaseOrderId === Number(value),
                     );
-                    patch({ purchaseOrder: picked ?? null, purchaseOrderLine: null });
+                    /*
+                     * 발주를 고르면 무발주 갈래를 접는다. 둘이 함께 서 있으면 고른 발주는
+                     * 판정에 쓰이는데 실려 나가는 것은 손으로 고른 값이라, 화면이 보이는
+                     * 것과 서버에 남는 것이 달라진다.
+                     */
+                    patch({
+                      purchaseOrder: picked ?? null,
+                      purchaseOrderLine: null,
+                      unordered: false,
+                      supplierId: null,
+                      itemId: null,
+                      uomId: null,
+                    });
                   }}
                   options={orders.data.map((each) => ({
                     value: String(each.purchaseOrderId),

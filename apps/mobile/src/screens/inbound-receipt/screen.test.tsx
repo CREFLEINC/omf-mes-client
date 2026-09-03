@@ -619,6 +619,30 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     expect(screen.getByText('ERP 에 품목이 선 뒤에 등록할 수 있습니다.')).toBeTruthy();
   });
 
+  /*
+   * 둘이 함께 서 있으면 고른 발주는 판정에 쓰이는데 실려 나가는 것은 손으로 고른 값이라,
+   * 화면이 보이는 것과 서버에 남는 것이 달라진다.
+   */
+  it('발주를 고르면 무발주 갈래를 접는다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await openUnordered(user);
+    await choose(user, '공급사', /합성공급사/);
+
+    await screen.findByRole('combobox', { name: '공급사' });
+
+    await user.click(screen.getByRole('combobox', { name: '발주 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('combobox', { name: '공급사' })).toBeNull();
+    });
+    expect(screen.queryByText('발주 없이 도착')).toBeNull();
+    expect(screen.getByRole('button', { name: '발주 없이 등록' })).toBeTruthy();
+  });
+
   /* 발주가 없으면 예정 수량이 없어 초과도 부족도 판정할 것이 없다. */
   it('발주가 없으면 예정과 견주지 않는다고 말한다', async () => {
     const user = userEvent.setup();
