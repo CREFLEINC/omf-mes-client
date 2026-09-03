@@ -11,10 +11,12 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import type { PutawayTask } from '../putaway/putaway';
+import { usePutawayTask } from '../putaway/queries';
 import {
   PUTAWAY_TASK_TEMPORARY_REASON,
   canSubmit,
   isAlreadyPutAway,
+  queuedCountOf,
   toOutboxDraft,
   type TemporaryDraft,
 } from './temporary';
@@ -39,7 +41,7 @@ const isHandoff = (value: unknown): value is TemporaryPutawayHandoff =>
 export const TemporaryPutawayScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush, isRejected } = useOutbox();
+  const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
   const routed = useLocation();
   const handoff = isHandoff(routed.state) ? routed.state : null;
@@ -69,6 +71,18 @@ export const TemporaryPutawayScreen = () => {
     },
   });
 
+  /*
+   * 앞 화면이 넘긴 지시는 굳은 스냅숏이다. 서버에서 다시 읽어, 이미 적치된 것을 또 적지 않는다.
+   * 다시 읽지 못하면(끊김) 넘겨받은 것으로 버티되 큐가 남은 절반을 막는다.
+   */
+  const fresh = usePutawayTask(task?.putawayTaskId ?? null);
+  /*
+   * 둘 중 하나라도 이미 적치라고 하면 막는다. 실제 적치 위치는 완료될 때 채워지고 다시
+   * 비지 않으므로, 한쪽만 그렇다면 다른 쪽이 낡은 것이다 - 되돌릴 수 없는 쓰기라 막는 쪽을 택한다.
+   */
+  const known = task !== null && isAlreadyPutAway(task) ? task : (fresh.data ?? task);
+  const queuedCount = task === null ? 0 : queuedCountOf(pendingOf(t.record), task.putawayTaskId);
+
   const locations = useLocations(task?.warehouseId ?? null);
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const reasons = useCodeValues(PUTAWAY_TASK_TEMPORARY_REASON);
@@ -80,7 +94,14 @@ export const TemporaryPutawayScreen = () => {
    * 자기가 비춘 자리에 넣었다고 믿는데 장부는 다른 자리를 가리킨다 - 실물을 사람이 찾아야 한다.
    */
   const location = scanned === null ? draft.location : scannedLocation;
-  const ready = canSubmit(task, { ...draft, location }, worker !== null);
+  /*
+   * 큐를 읽기 전에는 막아 둔다 - 담긴 것이 없는 것과 구별되지 않아, 앞서 담은 등록이 셈에서
+   * 빠진 채로 같은 지시에 한 건이 더 나간다. 서버 상세를 확인하는 동안에도 같다.
+   */
+  const ready =
+    loaded &&
+    !fresh.isPending &&
+    canSubmit(known, { ...draft, location }, worker !== null, queuedCount);
 
   const codeOf = (locationId: number | null | undefined): string =>
     locations.data?.find((each) => each.locationId === locationId)?.locationCode ?? '';
@@ -179,9 +200,15 @@ export const TemporaryPutawayScreen = () => {
         </Card>
 
         {/* 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */}
-        {isAlreadyPutAway(task) ? (
+        {known !== null && isAlreadyPutAway(known) ? (
           <AlertBanner variant="error" title={t.task.already}>
-            {t.task.alreadyAt(codeOf(task.actualLocationId))}
+            {t.task.alreadyAt(codeOf(known.actualLocationId))}
+          </AlertBanner>
+        ) : null}
+        {/* 서버는 아직 모르는 등록이다. 말하지 않으면 안 한 줄 알고 한 번 더 적는다. */}
+        {queuedCount > 0 ? (
+          <AlertBanner variant="warning" title={t.task.queued}>
+            {t.task.queuedWhy}
           </AlertBanner>
         ) : null}
       </section>
@@ -218,7 +245,12 @@ export const TemporaryPutawayScreen = () => {
               id="temporary-location"
               placeholder={t.location.pickPlaceholder}
               size="xl"
-              value={draft.location === null ? null : String(draft.location.locationId)}
+              /*
+               * 등록되는 자리를 그대로 가리킨다. 스캔을 시작하면 스캔이 정본이므로, 고른 값을
+               * 계속 보이면 화면이 두 자리를 동시에 말하게 된다 - 작업자가 어느 쪽을 믿을지
+               * 정할 근거가 없다.
+               */
+              value={location === null ? null : String(location.locationId)}
               onChange={(value) => {
                 setScanned(null);
                 patch({

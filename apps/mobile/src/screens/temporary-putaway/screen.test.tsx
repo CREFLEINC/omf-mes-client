@@ -77,6 +77,8 @@ const codeValue = (code: string, name: string) => ({
 interface Options {
   reasons?: unknown[];
   locations?: unknown[];
+  /** 서버가 아는 지시. 앞 화면이 넘긴 스냅숏과 다를 수 있다. */
+  fresh?: unknown;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -103,6 +105,10 @@ const routes = (options: Options = {}): StubRoute[] => [
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/logistics/putaway-tasks/90',
+    respond: () => jsonResponse(options.fresh ?? task()),
   },
 ];
 
@@ -212,7 +218,35 @@ describe('임시 위치 적재 화면', () => {
     await screen.findByLabelText('임시 위치 코드 스캔');
     scan('TMP-01');
 
-    expect(await screen.findByText('TMP-01 임시 자리')).toBeTruthy();
+    /* 확인 줄과 선택칸이 같은 자리를 가리킨다 - 둘이 갈리면 어느 쪽을 믿을지 알 수 없다. */
+    expect(await screen.findAllByText('TMP-01 임시 자리')).toHaveLength(2);
+  });
+
+  /*
+   * 선택칸이 등록되는 자리와 다른 자리를 가리키면, 화면이 두 자리를 동시에 말하게 된다.
+   * 되돌릴 수 없는 재고 위치 기록이라 작업자가 어느 쪽을 믿을지 정할 근거가 있어야 한다.
+   */
+  it('앞 화면의 위치가 있어도 스캔하면 선택칸이 스캔한 자리를 가리킨다', async () => {
+    mount({ task: task(), location: TEMP });
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+    expect(await screen.findAllByText('TMP-01 임시 자리')).toHaveLength(2);
+
+    scan('A-01-03');
+
+    expect((await screen.findAllByText('A-01-03 자재 A열')).length).toBeGreaterThan(1);
+    expect(screen.queryByText('TMP-01 임시 자리')).toBeNull();
+  });
+
+  /* 빗나간 스캔에서는 가리킬 자리가 없다. 앞 화면의 위치를 고른 것처럼 보이면 안 된다. */
+  it('스캔이 빗나가면 선택칸도 앞 화면의 위치를 가리키지 않는다', async () => {
+    mount({ task: task(), location: TEMP });
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+    scan('Z-99');
+
+    await screen.findByText('Z-99 위치를 이 창고에서 찾지 못했습니다');
+    expect(screen.queryByText('TMP-01 임시 자리')).toBeNull();
   });
 
   it('이 창고에 없는 코드를 스캔하면 찾지 못했다고 말한다', async () => {
@@ -444,5 +478,75 @@ describe('임시 위치 적재 화면', () => {
     expect(await screen.findByText('임시 적치를 담아 두지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('임시 적치를 기록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
+  });
+});
+
+describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는다', () => {
+  const temporaryRoute = (seen: Request[], fail = false): StubRoute => ({
+    match: (req) =>
+      new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
+      req.method === 'POST',
+    respond: (req) => {
+      seen.push(req.clone());
+
+      if (fail) {
+        throw new TypeError('Failed to fetch');
+      }
+
+      return jsonResponse(task({ actualLocationId: 9 }));
+    },
+  });
+
+  /*
+   * 앞 화면이 넘긴 지시는 굳은 스냅숏이다. 등록을 마친 뒤 같은 상태로 다시 들어오면 실제
+   * 적치 위치가 여전히 비어 있어, 그것만 보고는 이미 끝난 지시를 또 적는다.
+   */
+  it('서버가 이미 적치됐다고 하면 넘겨받은 스냅숏이 비어 있어도 막는다', async () => {
+    mount({ task: task(), location: TEMP }, [], { fresh: task({ actualLocationId: 9 }) });
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+
+    expect(await screen.findByText('이미 임시 적치되었습니다')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '임시 적치 등록' })).toBeDisabled();
+    });
+  });
+
+  /* 끊겨 있어 서버가 아직 모르는 등록이다. 큐를 보지 않으면 재진입에 한 건이 더 나간다. */
+  it('담아 둔 등록이 있으면 다시 들어와도 막고 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const first = mount({ task: task(), location: TEMP }, [temporaryRoute(seen, true)]);
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+    await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
+
+    await screen.findByText('임시 적치를 담아 두었습니다');
+    expect(seen).toHaveLength(1);
+
+    first.unmount();
+
+    mount({ task: task(), location: TEMP }, [temporaryRoute(seen, true)]);
+
+    expect(await screen.findByText('이 지시의 임시 적치를 이미 담아 두었습니다')).toBeTruthy();
+
+    /*
+     * 비고를 다시 적어 다른 이유로 잠기지 않게 한 뒤에 잰다. 비워 두면 「사유·비고가 둘 다
+     * 비었다」로 잠겨, 큐를 셈에 넣지 않아도 시험이 통과한다.
+     */
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '임시 적치 등록' })).toBeDisabled();
+    });
+
+    /*
+     * 셸이 담긴 것을 다시 보내므로 요청 수로는 재지 못한다. 같은 멱등키면 서버가 흡수하는
+     * 한 건이고, 새 키가 섞이면 두 건이 기록된다.
+     */
+    const keys = new Set(seen.map((each) => each.headers.get('Idempotency-Key')));
+
+    expect(keys.size).toBe(1);
   });
 });
