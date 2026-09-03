@@ -87,6 +87,8 @@ interface Options {
   reportFails?: boolean;
   /** 어느 발행 기록의 렌디션을 받았는지 담아 둔다 */
   renditionCalls?: number[];
+  /** 발행 현황 조회가 실패한다 */
+  standingFails?: boolean;
 }
 
 const defaultReasons = [
@@ -150,16 +152,18 @@ const routes = (options: Options): StubRoute[] => [
   {
     match: (request) => pathOf(request) === '/app/document-issues/summary',
     respond: () =>
-      jsonResponse({
-        items: [
-          {
-            targetTypeCode: 'HANDLING_UNIT',
-            targetId: HANDLING_UNIT_ID,
-            issueCount: options.issueCount ?? 0,
-            lastIssuedAt: null,
-          },
-        ],
-      }),
+      options.standingFails === true
+        ? jsonResponse({ message: '조회 실패' }, { status: 500 })
+        : jsonResponse({
+            items: [
+              {
+                targetTypeCode: 'HANDLING_UNIT',
+                targetId: HANDLING_UNIT_ID,
+                issueCount: options.issueCount ?? 0,
+                lastIssuedAt: null,
+              },
+            ],
+          }),
   },
   {
     match: (request) => pathOf(request) === '/mdm/code-values',
@@ -559,6 +563,49 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
     await clickWhenEnabled(submitButton);
 
     expect(await screen.findByText('재발행 사유가 필요합니다.')).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **막다른 자리를 두지 않는다.** 발행 현황을 못 받으면 화면은 「재발행인지」를 모르고,
+   * 서버는 422 로 사유를 요구한다. 그때 사유 칸이 잠겨 있으면 **사용자가 고칠 방법이 없다.**
+   */
+  it('현황을 못 받아 422 가 와도 사유를 고를 수 있다', async () => {
+    const issueWrites: Request[] = [];
+    renderScreen({
+      standingFails: true,
+      issueStatus: 422,
+      issueWrites,
+      issueErrorBody: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'reissueReasonCode',
+            code: 'REQUIRED',
+            message: '재발행 사유가 필요합니다.',
+          },
+        ],
+      },
+    });
+
+    await screen.findByText(HANDLING_UNIT_NO);
+    await clickWhenEnabled(submitButton);
+
+    expect(await screen.findByText('재발행 사유가 필요합니다.')).toBeInTheDocument();
+
+    /* 서버가 사유를 요구했으니 이제 고를 수 있어야 한다 */
+    await waitFor(() => {
+      expect(reasonSelect()).toBeEnabled();
+    });
+    await userEvent.click(reasonSelect());
+    await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
+    await clickWhenEnabled(submitButton);
+
+    await waitFor(() => {
+      expect(issueWrites).toHaveLength(2);
+    });
+
+    const body = (await issueWrites[1]?.json()) as Record<string, unknown>;
+    expect(body.reissueReasonCode).toBe(REASON_CODE);
   });
 
   /* 403 은 단말 출력 권한이다 — 사용자가 할 일이 「담당자 문의」다. */

@@ -83,7 +83,6 @@ export const RepackLabelIssueScreen = () => {
   const printRunner = useIssuePrintRunner(entry.workerNo);
 
   const standing = standingQuery.data ?? UNKNOWN_STANDING;
-  const reasonRequired = needsReason(standing);
 
   const printerList = printers.data ?? [];
   /*
@@ -107,6 +106,15 @@ export const RepackLabelIssueScreen = () => {
       });
     },
   });
+
+  /*
+   * 사유를 요구할 근거는 둘이다 — **발행 현황**과 **서버가 되돌린 422**.
+   *
+   * ⛔ **뒤엣것을 빼면 막다른 자리가 생긴다.** 현황 조회가 실패하면 화면은 재발행인지 모르고,
+   * 그 상태로 보내면 서버가 사유를 요구한다 — 그때 사유 칸이 잠겨 있으면 **사용자가 고칠
+   * 방법이 없다.** 서버가 지목한 것이 곧 「필요하다」의 근거다.
+   */
+  const reasonRequired = needsReason(standing) || issue.fieldErrors.reissueReasonCode !== undefined;
 
   const blockedReason = ((): string | null => {
     if (entry.handlingUnitId === null) return t.entry.missingHandlingUnit;
