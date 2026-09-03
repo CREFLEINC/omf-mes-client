@@ -103,14 +103,11 @@ export const useFindLot = (): UseMutationResult<Lot | null, unknown, string> => 
   });
 };
 
-/** 화면이 아는 필드 — 서버 필드 오류를 칸에 붙일 때 쓴다. 모르는 필드는 배너로 간다. */
-const POST_FORM_FIELDS = [
-  'reasonCode',
-  'remarks',
-  'warehouseId',
-  'destinationLocationId',
-  'lines',
-] as const;
+/**
+ * 화면이 «칸으로» 받는 필드 — 서버 필드 오류를 그 칸 아래 붙인다. 여기 없는 필드(라인 배열 등)는
+ * 배너로 간다 — 칸이 없는 필드를 여기 적으면 오류가 어디에도 보이지 않는다.
+ */
+const POST_FORM_FIELDS = ['reasonCode', 'remarks', 'warehouseId', 'destinationLocationId'] as const;
 
 /**
  * 반품 입고 등록 — **이 화면의 유일한 쓰기이고 되돌릴 수 없다.**

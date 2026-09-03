@@ -290,10 +290,9 @@ export const ReturnReceiptScreen = () => {
               writeError={write.error}
               isSaving={write.isSaving}
               canCancel={hasLineInput(lines) || hasDraftInput(draft)}
-              onChangeQty={(key, qtyText) => {
-                write.clearFieldError('lines');
-                setLines((current) => setLineQty(current, key, qtyText));
-              }}
+              onChangeQty={(key, qtyText) =>
+                setLines((current) => setLineQty(current, key, qtyText))
+              }
               onRemoveLine={(key) => setLines((current) => removeLine(current, key))}
               onChangeDraft={(next) => {
                 if (next.locationId !== draft.locationId)
