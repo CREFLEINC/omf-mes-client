@@ -1,6 +1,7 @@
 import type { ApiClient } from '@omf-mes/api-client';
 
-import { runRequest, toApiError } from '../../patterns/request';
+import { isRejected } from '../../patterns/outbox-policy';
+import { runRequest } from '../../patterns/request';
 import type { ProductionResult, ProductionResultCreate } from './types';
 
 type Client = ApiClient['client'];
@@ -96,7 +97,12 @@ export const drainReworkResults = (client: Client): Promise<DrainResult> => {
         await postReworkResult(client, entry);
         accepted += 1;
       } catch (error) {
-        if (toApiError(error).kind === 'network') throw error;
+        /*
+         * ⛔ **기다리면 풀리는 실패에서 항목을 내리지 않는다.** 던지면 이 회차가 멈추고 항목이
+         * 큐에 남아, 다음 계기(연결 복구·화면 재진입)에 같은 멱등 키로 다시 나간다. 내려 버리면
+         * 작업자가 남긴 재작업 실적이 사라지고, 화면은 이미 성공을 말한 뒤다(#772).
+         */
+        if (!isRejected(error)) throw error;
         rejected += 1;
       }
       /* 전송 중 새로 담긴 항목까지 snapshot으로 덮어 지우지 않는다. */

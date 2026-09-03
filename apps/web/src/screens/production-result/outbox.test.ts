@@ -1,71 +1,16 @@
-import { NETWORK_ERROR } from '@omf-mes/api-client';
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ApiRequestError } from '../../patterns/request';
+import { MAX_AUTO_ATTEMPTS, retryDelayOf } from '../../patterns/outbox-policy';
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import {
-  MAX_AUTO_ATTEMPTS,
-  isRejected,
-  isSendableEntry,
-  retryDelayOf,
-  useOutbox,
-  type OutboxEntry,
-} from './outbox';
+import { isSendableEntry, useOutbox, type OutboxEntry } from './outbox';
 
 /**
  * 이 큐가 지키는 것은 **되돌릴 수 없는 쓰기**다 — 실적은 정정 실적을 새로 만들어야 지워진다.
- * 여기서는 화면을 세우지 않고 **갈래 판정** 둘을 직접 겨눈다.
+ *
+ * ⚠ 실패 판정·백오프는 화면 밖 공용물이라 `patterns/outbox-policy.test.ts` 가 본다. 여기서는
+ * **이 화면의 큐**만 겨눈다.
  */
-
-describe('isRejected — 기다리면 풀리는가, 아닌가', () => {
-  /*
-   * ⭐ **이 판정이 큐의 심장이다.** 통신 실패를 거부로 오판하면 **실적이 조용히 사라지고**,
-   * 거부를 통신 실패로 오판하면 큐가 영원히 비지 않아 그 뒤에 쌓인 정상 건까지 막힌다.
-   */
-  it('통신이 끊긴 것은 거부가 아니다 — 기다리면 풀린다', () => {
-    expect(isRejected(new ApiRequestError(NETWORK_ERROR))).toBe(false);
-  });
-
-  it('서버가 값을 되돌린 것은 거부다 — 기다려도 풀리지 않는다', () => {
-    const rejection = new ApiRequestError({
-      kind: 'validation',
-      errors: [{ scope: 'field', field: 'goodQty', code: 'RANGE', message: '범위를 벗어났다' }],
-    });
-
-    expect(isRejected(rejection)).toBe(true);
-  });
-
-  it('단말 게이팅 거부(403)도 거부다 — 다시 보내도 같은 답이 온다', () => {
-    expect(isRejected(new ApiRequestError({ kind: 'http', status: 403 }))).toBe(true);
-  });
-
-  it('요청 경로 밖의 예외는 거부로 다룬다 — 재시도로 큐를 막지 않는다', () => {
-    expect(isRejected(new Error('알 수 없음'))).toBe(true);
-  });
-
-  /*
-   * ⛔ **서버가 「지금은 못 받는다」고 한 것을 「이 실적은 안 된다」로 읽지 않는다.** 거부로
-   * 읽으면 항목이 큐에서 내려가는데, 그 시점의 화면은 이미 성공을 말하고 초안을 비운 뒤라
-   * 작업자가 친 값을 되돌릴 방법이 없다.
-   */
-  it('서버 재기동·과부하는 거부가 아니다 — 기다리면 풀린다', () => {
-    for (const status of [408, 429, 500, 502, 503, 504]) {
-      expect(isRejected(new ApiRequestError({ kind: 'http', status }))).toBe(false);
-    }
-  });
-
-  it('값이 틀렸다는 4xx 는 그대로 거부다 — 기다려도 같은 답이 온다', () => {
-    for (const status of [400, 401, 404, 409, 422]) {
-      expect(isRejected(new ApiRequestError({ kind: 'http', status }))).toBe(true);
-    }
-  });
-
-  /* 무엇이 잘못됐는지 말해 주지 못하는 실패를 무한히 재전송하면 큐가 그 한 건에 막힌다. */
-  it('상태 코드를 모르는 실패는 거부로 다룬다', () => {
-    expect(isRejected(new ApiRequestError({ kind: 'http', status: 0 }))).toBe(true);
-  });
-});
 
 describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', () => {
   const body = {
@@ -110,23 +55,6 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
     expect(isSendableEntry(null)).toBe(false);
     expect(isSendableEntry('key-1')).toBe(false);
     expect(isSendableEntry({ ...entry, body: null })).toBe(false);
-  });
-});
-
-describe('retryDelayOf — 기다림은 늘리되 상한을 둔다', () => {
-  /*
-   * ⚠ **간격이 고정이면 장애가 길어질수록 손해가 커진다.** 밤새 켜 둔 단말이 5초마다 던지면
-   * 장애 중인 서버가 그 폭주를 함께 받는다.
-   */
-  it('시도마다 두 배로 늘린다', () => {
-    expect(retryDelayOf(1)).toBe(5_000);
-    expect(retryDelayOf(2)).toBe(10_000);
-    expect(retryDelayOf(3)).toBe(20_000);
-  });
-
-  it('아무리 늘어도 1분을 넘지 않는다', () => {
-    expect(retryDelayOf(10)).toBe(60_000);
-    expect(retryDelayOf(100)).toBe(60_000);
   });
 });
 

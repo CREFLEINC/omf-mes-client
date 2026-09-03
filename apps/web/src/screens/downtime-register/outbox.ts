@@ -2,6 +2,7 @@ import type { ApiClient, components } from '@omf-mes/api-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { MAX_AUTO_ATTEMPTS, isRejected, retryDelayOf } from '../../patterns/outbox-policy';
 import { runRequest, toApiError } from '../../patterns/request';
 
 /**
@@ -38,14 +39,6 @@ export type OutboxEntry =
   | { kind: 'close'; idempotencyKey: string; workerNo: string; downtimeId: number };
 
 const STORAGE_KEY = 'omf-mes.downtime-register.outbox';
-
-/**
- * 통신 실패 뒤 다시 시도하기까지.
- *
- * ⚠ **짧게 두지 않는다.** 끊긴 망에 대고 즉시 되던지면 단말이 요청을 쏟아 내고, 복구된 순간
- * 그 폭주가 서버로 향한다.
- */
-export const RETRY_DELAY_MS = 5_000;
 
 /**
  * 저장소에서 읽은 값이 **보낼 수 있는 모양인가.**
@@ -132,14 +125,6 @@ const sendEntry = async (client: Client, entry: OutboxEntry): Promise<Downtime> 
   );
 };
 
-/**
- * 서버가 **받지 않기로 판정한** 실패인가.
- *
- * 통신이 끊긴 것은 기다리면 풀리고, 서버가 거부한 것은 아무리 기다려도 풀리지 않는다.
- * 뒤엣것을 계속 재전송하면 큐가 영원히 비지 않고 그 뒤에 쌓인 정상 건까지 함께 막힌다.
- */
-const isRejected = (error: unknown): boolean => toApiError(error).kind !== 'network';
-
 export interface OutboxRejection {
   entry: OutboxEntry;
   error: unknown;
@@ -172,6 +157,13 @@ export interface Outbox {
    * 그리는 근거라, 지우면 방금 넣은 줄이 화면에서 사라진다.
    */
   clearRejections: () => void;
+  /**
+   * 자동 재전송을 멈춘 상태인가. **항목은 큐에 그대로 있다** — 사라진 것이 아니라 멈춘 것이다.
+   * 연결이 살아나거나 사람이 다시 시도하면 풀린다.
+   */
+  isStalled: boolean;
+  /** 멈춘 큐를 사람이 깨운다. */
+  retryNow: () => void;
 }
 
 export const useOutbox = (): Outbox => {
@@ -209,9 +201,16 @@ export const useOutbox = (): Outbox => {
    */
   const [retryTick, setRetryTick] = useState(0);
 
+  /** 항목별 자동 재전송 시도 횟수. 메모리에만 둔다 — 새로 뜨면 다시 세는 것이 맞다. */
+  const attempts = useRef(new Map<string, number>());
+  const [isStalled, setIsStalled] = useState(false);
+
   useEffect(() => {
     const goOnline = (): void => {
       setIsOnline(true);
+      /* 연결이 새로 섰으면 사정이 달라졌을 수 있다 — 시도 횟수를 다시 센다. */
+      attempts.current.clear();
+      setIsStalled(false);
       /* 이미 온라인으로 알고 있었더라도 깨운다 — 상태가 그대로면 효과가 돌지 않는다. */
       setRetryTick((tick) => tick + 1);
     };
@@ -230,7 +229,7 @@ export const useOutbox = (): Outbox => {
   }, []);
 
   useEffect(() => {
-    if (entries.length === 0 || !isOnline || draining.current) return;
+    if (entries.length === 0 || !isOnline || draining.current || isStalled) return;
 
     draining.current = true;
 
@@ -254,6 +253,19 @@ export const useOutbox = (): Outbox => {
            * 실패한」 요청이 큐를 영원히 막는다.
            */
           if (!isRejected(error)) {
+            const tried = (attempts.current.get(entry.idempotencyKey) ?? 0) + 1;
+            attempts.current.set(entry.idempotencyKey, tried);
+
+            /*
+             * 상한을 넘었다 — 자동 재전송만 멈춘다. ⛔ 항목은 큐에 남긴다: 여기서 내리면
+             * 작업자가 남긴 비가동 기록이 사라지고, 그것이 이 큐가 막으려는 일이다.
+             */
+            if (tried >= MAX_AUTO_ATTEMPTS) {
+              setIsStalled(true);
+
+              return;
+            }
+
             /*
              * ⛔ **앞 예약을 덮어쓰지 않는다.** 손잡이를 하나만 들고 있으므로 확인 없이 덮으면
              * 앞 타이머는 아무도 끊지 못한 채 남아, 화면이 사라진 뒤에 발화한다.
@@ -263,7 +275,7 @@ export const useOutbox = (): Outbox => {
             retryTimer.current = globalThis.setTimeout(() => {
               retryTimer.current = null;
               setRetryTick((tick) => tick + 1);
-            }, RETRY_DELAY_MS);
+            }, retryDelayOf(tried));
 
             return;
           }
@@ -272,6 +284,7 @@ export const useOutbox = (): Outbox => {
         }
 
         /* 받아졌든 거부됐든 큐에서는 내린다. 거부는 **그 건만** 내린다. */
+        attempts.current.delete(entry.idempotencyKey);
         setEntries((prev) => {
           const next = prev.filter((one) => one.idempotencyKey !== entry.idempotencyKey);
           writeStored(next);
@@ -282,7 +295,7 @@ export const useOutbox = (): Outbox => {
         draining.current = false;
       }
     })();
-  }, [client, entries, isOnline, retryTick]);
+  }, [client, entries, isOnline, isStalled, retryTick]);
 
   const push = useCallback((entry: OutboxEntry): void => {
     setEntries((prev) => {
@@ -311,6 +324,12 @@ export const useOutbox = (): Outbox => {
     setRejections([]);
   }, []);
 
+  const retryNow = useCallback((): void => {
+    attempts.current.clear();
+    setIsStalled(false);
+    setRetryTick((tick) => tick + 1);
+  }, []);
+
   return {
     pendingCount: entries.length,
     pendingCreates: entries.flatMap((entry) =>
@@ -322,5 +341,7 @@ export const useOutbox = (): Outbox => {
     accepted,
     rejections,
     clearRejections,
+    isStalled,
+    retryNow,
   };
 };

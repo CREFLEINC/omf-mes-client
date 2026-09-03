@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { act, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { MAX_AUTO_ATTEMPTS, retryDelayOf } from '../../patterns/outbox-policy';
 import {
   createStubFetch,
   jsonResponse,
@@ -9,7 +10,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { downtime, EQUIPMENT_ID, WORKER_NO } from './fixtures';
-import { RETRY_DELAY_MS, useOutbox } from './outbox';
+import { useOutbox } from './outbox';
 
 /**
  * outbox 감지기 — **큐가 지키는 성질을 각각 잰다.**
@@ -233,7 +234,7 @@ describe('useOutbox', () => {
 
     /* 연결 이벤트를 쏘지 «않는다» — 오직 자체 타이머만으로 다시 서야 한다. */
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(RETRY_DELAY_MS + 100);
+      await vi.advanceTimersByTimeAsync(retryDelayOf(1) + 100);
     });
 
     expect(attempts).toHaveLength(2);
@@ -252,5 +253,83 @@ describe('useOutbox', () => {
     expect(result.current.pendingCreates).toHaveLength(1);
     expect(result.current.pendingCreates[0]?.idempotencyKey).toBeTruthy();
     expect(result.current.pendingCount).toBe(1);
+  });
+});
+
+describe('useOutbox — 끝나지 않는 장애에서 멈추되 담긴 것은 남긴다', () => {
+  /** 언제 물어도 「지금은 못 받는다」고 답하는 서버. */
+  const unavailable = (sent?: Request[]): StubRoute[] => [
+    {
+      match: (request: Request) => new URL(request.url).pathname === '/maintenance/downtimes',
+      respond: (request: Request) => {
+        sent?.push(request);
+
+        return jsonResponse({ message: '잠시 뒤 다시' }, { status: 503 });
+      },
+    },
+  ];
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  /** 상한에 닿을 때까지 기다림을 흘려보낸다 — 간격이 시도마다 늘어난다. */
+  const runOutRetries = async (): Promise<void> => {
+    for (let tried = 1; tried < MAX_AUTO_ATTEMPTS; tried += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(retryDelayOf(tried) + 1_000);
+      });
+    }
+  };
+
+  /*
+   * ⛔ **멈출 때도 큐에서 내리지 않는다.** 내리면 작업자가 남긴 비가동 기록이 사라지고,
+   * 그것이 이 큐가 막으려는 바로 그 일이다.
+   */
+  it('자동 재전송을 멈춰도 담긴 것은 큐에 남는다', async () => {
+    const { result } = renderHookWithProviders(() => useOutbox(), {
+      fetch: createStubFetch(unavailable()),
+    });
+
+    act(() => {
+      result.current.enqueueCreate(WORKER_NO, body());
+    });
+
+    await runOutRetries();
+
+    expect(result.current.isStalled).toBe(true);
+    expect(result.current.pendingCount).toBe(1);
+    /* 거부가 아니므로 되돌아온 목록에 넣지 않는다 — 「멈췄다」와 「거부됐다」는 다른 말이다. */
+    expect(result.current.rejections).toHaveLength(0);
+  });
+
+  it('멈춘 뒤에는 더 던지지 않고, 사람이 누르면 같은 멱등 키로 다시 나간다', async () => {
+    const sent: Request[] = [];
+    const { result } = renderHookWithProviders(() => useOutbox(), {
+      fetch: createStubFetch(unavailable(sent)),
+    });
+
+    act(() => {
+      result.current.enqueueCreate(WORKER_NO, body());
+    });
+
+    await runOutRetries();
+    const sentSoFar = sent.length;
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(retryDelayOf(MAX_AUTO_ATTEMPTS) * 3);
+    });
+    expect(sent).toHaveLength(sentSoFar);
+
+    await act(async () => {
+      result.current.retryNow();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(result.current.isStalled).toBe(false);
+    expect(sent.length).toBeGreaterThan(sentSoFar);
+    expect(sent.at(-1)?.headers.get('Idempotency-Key')).toBe(
+      sent[0]?.headers.get('Idempotency-Key'),
+    );
   });
 });
