@@ -131,7 +131,7 @@ const renderScreen = (options: RenderOptions = {}) => {
   return { ...view, user, sent, plantSent, codeValueSent, writes };
 };
 
-const listPane = () => screen.getByRole('region', { name: t.title });
+const listPane = () => screen.getByRole('region', { name: t.paneTitle });
 
 const rowOf = async (code: string) => {
   const cell = await screen.findByRole('cell', { name: code });
@@ -144,6 +144,7 @@ describe('W-05-13 툴 마스터 — 목록', () => {
     renderScreen();
 
     expect(await screen.findByRole('cell', { name: 'TL-01' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.paneTitle })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'TL-06' })).toBeInTheDocument();
   });
 

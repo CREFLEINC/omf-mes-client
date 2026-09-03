@@ -47,6 +47,7 @@ describe('WorkOrderReleaseSummaryPane', () => {
       screen.getByRole('heading', { level: 2, name: t.heading('SYN-WO-ALPHA') }),
     ).toBeVisible();
     expect(definitionList).not.toBeNull();
+    expect(definitionList).toHaveClass('work-order-release-summary-grid');
     expect(definitionList?.closest('[class*="_card_"]')?.className).toContain('_bordered_');
     expect(cells).toHaveLength(9);
     expect(cells.every((cell) => cell.classList.contains('field-cell'))).toBe(true);

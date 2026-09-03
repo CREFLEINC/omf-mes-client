@@ -53,7 +53,9 @@ export const ReasonPane = ({
   const reasonErrorId = useId();
 
   return (
-    <section className="pane" aria-label={t.panes.reason}>
+    <section className="pane material-issue-request-pane" aria-label={t.panes.reason}>
+      <h2 className="pane-title">{t.panes.reason}</h2>
+
       <div className="field-cell">
         <span className="field-label">{t.formFields.reason}</span>
         <RadioGroup

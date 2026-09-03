@@ -60,7 +60,7 @@ export const DecisionFormPane = ({
   const uomLabel = uomId === undefined ? '' : lookupDisplayLabel(uoms, uomId);
 
   return (
-    <div role="group" aria-label={t.panes.decision}>
+    <div className="disposition-decision-form" role="group" aria-label={t.panes.decision}>
       <SaveErrorBanner error={writeError} onReload={onReload} />
 
       <div className="field-cell">

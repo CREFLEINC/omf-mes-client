@@ -44,3 +44,16 @@ body {
 .card-body {
   padding-top: var(--space-5);
 }
+
+/*
+ * 화면 구획의 제목. 앱바 제목과 다른 층위라 본문 크기로 두고 색으로만 가른다.
+ *
+ * 화면마다 따로 두지 않는다 - 새 화면에서 빠뜨리면 그 화면만 브라우저 기본 크기로 크게 뜨고,
+ * 실제로 두 화면이 그랬다.
+ */
+section > h2 {
+  margin: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-surface-muted, inherit);
+}

@@ -133,9 +133,9 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
     (hasProcessReference && processes.isError);
 
   return (
-    <div role="group" aria-label={t.title}>
-      <span className="field-label">{t.title}</span>
-      <dl className="filter-bar">
+    <div className="quality-approval-condition" role="group" aria-label={t.title}>
+      <h3>{t.title}</h3>
+      <dl className="quality-approval-condition-facts">
         {[
           [t.concessionNo, view.concessionNo],
           [t.approvedQty, view.approvedQty],
@@ -169,7 +169,7 @@ export const ConditionPane = ({ approvalRequestId }: ConditionPaneProps) => {
        * **번호를 링크 «옆에» 둔다** — 링크 이름은 갈 곳을 말하고, 번호는 어느 부적합인지를 말한다.
        * 번호 없이 링크만 세우면 승인자가 무엇을 여는지 모른 채 화면을 떠난다.
        */}
-      <div className="field-cell">
+      <div className="field-cell quality-approval-condition-link">
         <span className="field-label">{t.nonconformance}</span>
         <span>{view.nonconformanceNo}</span>
         <Link to={dispositionEntryPath(detail.data.nonconformanceId)}>{t.openNonconformance}</Link>

@@ -133,15 +133,20 @@ export const MasterCheckPane = ({
   };
 
   return (
-    <section className="pane" aria-label="마스터 점검">
-      <h2>① 마스터 점검</h2>
-      <div className="two-pane">
-        <Card bordered>
-          <Card.Header>
+    <section className="pane production-plan-section" aria-label="마스터 점검">
+      <div className="production-plan-section-heading">
+        <span className="production-plan-step" aria-hidden="true">
+          1
+        </span>
+        <h2>마스터 점검</h2>
+      </div>
+      <div className="production-plan-master-grid">
+        <Card bordered className="production-plan-master-card">
+          <Card.Header className="production-plan-master-card-header">
             <h3>BOM (ERP 정본)</h3>
             {isBomSelected && <Chip status="success">선택됨</Chip>}
           </Card.Header>
-          <Card.Body>
+          <Card.Body className="production-plan-master-card-body">
             {referenceBody(
               'BOM',
               boms,
@@ -159,12 +164,12 @@ export const MasterCheckPane = ({
               ))}
           </Card.Body>
         </Card>
-        <Card bordered>
-          <Card.Header>
+        <Card bordered className="production-plan-master-card">
+          <Card.Header className="production-plan-master-card-header">
             <h3>Routing (MES 정본)</h3>
             {isRoutingSelected && <Chip status="success">선택됨</Chip>}
           </Card.Header>
-          <Card.Body>
+          <Card.Body className="production-plan-master-card-body">
             {referenceBody(
               'Routing',
               routings,

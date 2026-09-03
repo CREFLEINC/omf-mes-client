@@ -57,6 +57,12 @@ const renderTable = (overrides: Partial<WorkOrderTableProps> = {}) => {
 };
 
 describe('WorkOrderTable', () => {
+  it('목록을 제목이 있는 구획으로 구분한다', () => {
+    const { region } = renderTable();
+
+    expect(within(region).getByRole('heading', { level: 2, name: t.title })).toBeInTheDocument();
+  });
+
   it('한 줄에 수량 다섯을 그대로 보인다 — 셋으로 접지 않는다', () => {
     const { region } = renderTable();
 

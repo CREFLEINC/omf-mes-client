@@ -60,6 +60,11 @@ export const equipmentFailureReport = {
   },
   submit: '고장 보고',
   /** 누가 한 일인지 없이 기록을 남길 수 없다. 서버가 사번 없는 쓰기를 받지 않는다. */
+  /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
+  saveFailed: {
+    title: '보고를 담아 두지 못했습니다',
+    description: '보고되지 않았습니다. 다시 시도하세요.',
+  },
   noWorker: '사번을 확인해야 보고할 수 있습니다',
   queued: {
     title: '보고를 담아 두었습니다',

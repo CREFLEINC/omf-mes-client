@@ -1,7 +1,6 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
-import { popRoutes } from './pop';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
@@ -576,11 +575,15 @@ export const appRouter = createBrowserRouter([
    */
   { path: '/login', element: <LoginScreen /> },
   /*
-   * POP(현장 단말) 화면. 표는 `./pop`이 들고 여기서는 펼치기만 한다 — POP은 관리웹의 한
-   * 구역이 아니라 다른 프로그램이고, 라우트의 소유도 그쪽에 있다.
+   * ⛔ **POP(현장 단말) 화면은 이 표에 없다.** POP은 관리웹의 한 구역이 아니라 다른
+   * 프로그램이고, 라우트 표(`routes/pop.tsx`)도 진입점(`app/pop-main.tsx`)도 번들도
+   * 그쪽이 따로 갖는다 — 모바일(`apps/mobile`)이 자기 표를 갖는 것과 같은 형태다.
    *
-   * ⛔ **새 P- 화면을 이 파일에 직접 추가하지 않는다.** `routes/pop.tsx`에만 붙인다.
+   * 여기서 펼쳐 넣으면 관리웹 번들에 현장 단말 화면 전부가 실리고, 브라우저에서 `/pop/...`이
+   * 관리웹 번들로 열려 **검증 대상이 실제 POP 셸이 아니게 된다**(#752).
+   *
+   * ⛔ **새 P- 화면을 이 파일에 추가하지 않는다.** `routes/pop.tsx`에만 붙인다.
+   * 개발 중 브라우저로 POP 화면을 여는 길은 `pnpm --filter @omf-mes/web dev:pop`이다.
    */
-  ...popRoutes,
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

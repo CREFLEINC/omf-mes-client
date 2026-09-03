@@ -133,6 +133,7 @@ describe('의심자재 보류 입력 pane', () => {
     expect(screen.queryByRole('region', { name: '보류 등록 입력' })).toBeNull();
     empty.unmount();
     const one = renderPane([display(701)]);
+    expect(screen.getByRole('heading', { level: 2, name: '보류 등록 입력' })).toBeVisible();
     expect(await screen.findByRole('radio', { name: '일부 보류' })).toBeEnabled();
     one.unmount();
     renderPane([display(701), display(702)]);

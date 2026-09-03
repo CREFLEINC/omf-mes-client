@@ -206,6 +206,4229 @@ main > * + * {
   min-width: 0;
 }
 
+/*
+ * W/O 전개·편성 — 이 화면에만 적용되는 조합 배치.
+ * DS 컴포넌트의 내부 클래스는 겨냥하지 않고, 공개 className과 HTML 표 요소만 사용한다.
+ */
+.production-plan-workspace {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.production-plan-order-summary,
+.production-plan-section {
+  padding: var(--space-5);
+}
+
+.production-plan-order-summary {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.production-plan-order-heading {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.production-plan-order-heading > span {
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+.production-plan-order-heading > h2,
+.production-plan-order-facts,
+.production-plan-section h2,
+.production-plan-section h3 {
+  margin: 0;
+}
+
+.production-plan-order-heading > h2,
+.production-plan-section h2 {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+  color: var(--on-surface);
+}
+
+.production-plan-order-facts {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+  color: var(--on-surface-variant);
+}
+
+.production-plan-section {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.production-plan-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.production-plan-section-heading > button {
+  margin-left: auto;
+}
+
+.production-plan-step {
+  display: inline-grid;
+  place-items: center;
+  flex: 0 0 var(--space-7);
+  width: var(--space-7);
+  height: var(--space-7);
+  border-radius: var(--radius-full);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.production-plan-master-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.production-plan-master-card {
+  min-width: 0;
+}
+
+.production-plan-master-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.production-plan-master-card-body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+}
+
+.production-plan-master-card-body > p {
+  margin: 0;
+}
+
+.production-plan-editor-field {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.production-plan-quantity-field > p {
+  margin: 0;
+  text-align: left;
+}
+
+.production-plan-table {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.wide-table.production-plan-table table {
+  min-width: 100rem;
+}
+
+.production-plan-table th {
+  white-space: nowrap;
+}
+
+.production-plan-table tbody td {
+  vertical-align: top;
+}
+
+.production-plan-table .inline-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.production-plan-table-value {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-sm);
+}
+
+.production-plan-table-value-center {
+  justify-content: center;
+}
+
+.production-plan-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 960px) {
+  .production-plan-master-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* P/O 수신·조회 — 필터, 목록, 상세의 정보 위계를 화면 안에서만 정돈한다. */
+.production-order-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.production-order-pane > h2,
+.production-order-pane-heading > h2 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.production-order-pane-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.filter-bar.production-order-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  align-items: start;
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.production-order-filter-bar > *,
+.production-order-filter-bar .field-cell,
+.production-order-detail-grid > * {
+  min-width: 0;
+}
+
+.production-order-filter-bar .field-cell {
+  align-items: stretch;
+}
+
+.production-order-filter-bar .filter-actions {
+  justify-content: flex-end;
+}
+
+.production-order-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.production-order-basic-pane {
+  grid-column: 1 / -1;
+}
+
+.production-order-detail-fields {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin: 0;
+}
+
+.production-order-detail-field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.production-order-detail-field > dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.production-order-table {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.wide-table.production-order-plan-table table {
+  min-width: 27rem;
+}
+
+.wide-table.production-order-work-order-table table {
+  min-width: 64rem;
+}
+
+.production-order-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 960px) {
+  .production-order-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .production-order-basic-pane {
+    grid-column: auto;
+  }
+
+  .production-order-detail-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .production-order-detail-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* P/O 변경 관리자 확인 — 목록과 판단 흐름을 데스크톱에서 함께 보이게 유지한다. */
+.two-pane.po-change-review-layout {
+  grid-template-columns: minmax(20rem, 2fr) minmax(0, 3fr);
+}
+
+.po-change-review-pane {
+  padding: var(--space-5);
+}
+
+.po-change-review-pane > h2 {
+  margin: 0 0 var(--space-4);
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.po-change-review-diff-values {
+  display: grid;
+  margin: 0 0 var(--space-4);
+}
+
+.po-change-review-diff-values > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.po-change-review-diff-values dd {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.po-change-review-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 960px) {
+  .two-pane.po-change-review-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 4M 자원배정·유효성 점검 — 선택→배정→검증의 읽는 순서를 유지하며 세로 길이를 줄인다. */
+.work-order-assignment-workspace,
+.work-order-assignment-editor {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.work-order-assignment-context,
+.work-order-assignment-list-pane,
+.work-order-resource-pane,
+.work-order-plan-pane,
+.work-order-validation-pane {
+  padding: var(--space-5);
+}
+
+.work-order-assignment-context {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.work-order-assignment-context > span {
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+  letter-spacing: var(--type-label-md-tracking);
+}
+
+.work-order-assignment-context > h2,
+.work-order-assignment-context > p {
+  margin: 0;
+}
+
+.work-order-assignment-context > h2 {
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.work-order-assignment-list-pane,
+.work-order-resource-pane,
+.work-order-plan-pane,
+.work-order-validation-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.work-order-assignment-list-pane > .pane-title,
+.work-order-resource-pane > .pane-title,
+.work-order-plan-pane > .pane-title,
+.work-order-validation-heading > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.work-order-assignment-table table {
+  min-width: 50rem;
+}
+
+.work-order-assignment-list-pane > .wide-table,
+.work-order-validation-pane > .wide-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.work-order-validation-pane > .wide-table table {
+  min-width: 32rem;
+  width: 100%;
+}
+
+.work-order-priority-field {
+  width: 6.5rem;
+}
+
+.work-order-priority-field input {
+  text-align: end;
+}
+
+.work-order-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.work-order-assignment-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.work-order-resource-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.work-order-resource-grid h3,
+.work-order-plan-pane h3 {
+  margin: 0;
+}
+
+.work-order-resource-pane .field-cell {
+  align-items: stretch;
+}
+
+.work-order-resource-pane .field-cell + .field-cell {
+  margin-top: var(--space-3);
+}
+
+.work-order-plan-fields {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.work-order-validation-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.work-order-assignment-editor > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1360px) {
+  .work-order-assignment-edit-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1100px) {
+  .work-order-resource-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* W/O 확정·배포 — 후보 선택과 배포 상세를 넓은 화면에서 함께 읽는 마스터·디테일 배치. */
+.work-order-release-workspace,
+.work-order-release-detail {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.work-order-release-filter-pane,
+.work-order-release-list-pane,
+.work-order-release-summary-pane,
+.work-order-release-status-pane,
+.work-order-release-input-pane {
+  padding: var(--space-5);
+}
+
+.work-order-release-filter-pane,
+.work-order-release-list-pane,
+.work-order-release-summary-pane,
+.work-order-release-status-pane,
+.work-order-release-input-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.work-order-release-filter-pane > .pane-title,
+.work-order-release-list-pane > .pane-title,
+.work-order-release-summary-pane > .pane-title,
+.work-order-release-status-pane > .pane-title,
+.work-order-release-input-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.work-order-release-filter {
+  margin-bottom: 0;
+}
+
+.work-order-release-content.has-selection {
+  display: grid;
+  grid-template-columns: minmax(20rem, 2fr) minmax(0, 3fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.work-order-release-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.work-order-release-table table {
+  min-width: 36rem;
+}
+
+.work-order-release-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.work-order-release-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4) var(--space-5);
+  margin: 0;
+}
+
+.work-order-release-summary-field {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.work-order-release-summary-field > dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--on-surface);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.work-order-release-detail > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1280px) {
+  .work-order-release-content.has-selection {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* W/O 마감 — 후보와 집계·입력·ERP 송신 설정을 한 흐름으로 묶는 마스터·디테일 배치. */
+.work-order-close-workspace,
+.work-order-close-detail {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.work-order-close-content {
+  display: grid;
+  grid-template-columns: minmax(20rem, 2fr) minmax(0, 3fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.work-order-close-filter-pane,
+.work-order-close-list-pane,
+.work-order-close-summary-pane,
+.work-order-close-status-pane,
+.work-order-close-input-pane,
+.work-order-close-outbound-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.work-order-close-filter-pane > .pane-title,
+.work-order-close-list-pane > .pane-title,
+.work-order-close-summary-pane > .pane-title,
+.work-order-close-status-pane > .pane-title,
+.work-order-close-input-pane > .pane-title,
+.work-order-close-outbound-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.work-order-close-filter {
+  margin-bottom: 0;
+}
+
+.work-order-close-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.work-order-close-table table {
+  min-width: 36rem;
+}
+
+.work-order-close-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.work-order-close-summary-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.work-order-close-summary-section > h3 {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.work-order-close-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.work-order-close-order-field {
+  align-items: stretch;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.work-order-close-order-field > dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.work-order-close-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1280px) {
+  .work-order-close-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 긴급 W/O 발행 — 고정 조건, 입력, 자동 전개의 위계를 카드와 반응형 그리드로 구분한다. */
+.emergency-work-order-workspace,
+.emergency-work-order-inputs {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.emergency-work-order-composer {
+  display: grid;
+  grid-template-columns: minmax(24rem, 2fr) minmax(0, 3fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.emergency-work-order-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.emergency-work-order-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.emergency-work-order-pane > .banner-slot {
+  margin-bottom: 0;
+}
+
+.emergency-work-order-lead,
+.emergency-work-order-pane > p,
+.emergency-work-order-action-row > p {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.emergency-work-order-terms {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.emergency-work-order-term {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.emergency-work-order-term > dd,
+.emergency-work-order-expansion-field > dd {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.emergency-work-order-term > dd > strong,
+.emergency-work-order-selected-item strong,
+.emergency-work-order-form-item > strong {
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.emergency-work-order-term p {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+}
+
+.emergency-work-order-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: end;
+  min-width: 0;
+}
+
+.emergency-work-order-selected-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.emergency-work-order-search-results {
+  display: grid;
+  gap: var(--space-1);
+  max-height: 16rem;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.emergency-work-order-search-results > li {
+  min-width: 0;
+}
+
+.emergency-work-order-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+  min-width: 0;
+}
+
+.emergency-work-order-form-grid > * {
+  min-width: 0;
+}
+
+.emergency-work-order-form-item,
+.emergency-work-order-form-reason {
+  grid-column: 1 / -1;
+}
+
+.emergency-work-order-form-item {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.emergency-work-order-expansion-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.emergency-work-order-expansion-field {
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.emergency-work-order-empty {
+  display: grid;
+  min-height: 8rem;
+  place-items: center;
+  padding: var(--space-5);
+  border: 1px dashed var(--outline-variant);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.emergency-work-order-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.emergency-work-order-table table {
+  min-width: 38rem;
+}
+
+.emergency-work-order-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.emergency-work-order-composer > .emergency-work-order-action-pane {
+  grid-column: 1 / -1;
+}
+
+.emergency-work-order-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.emergency-work-order-action-row > p {
+  flex: 1 1 28rem;
+}
+
+.emergency-work-order-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+@media (max-width: 1280px) {
+  .emergency-work-order-composer {
+    grid-template-columns: 1fr;
+  }
+
+  .emergency-work-order-terms {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .emergency-work-order-terms,
+  .emergency-work-order-form-grid,
+  .emergency-work-order-expansion-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .emergency-work-order-form-item,
+  .emergency-work-order-form-reason {
+    grid-column: auto;
+  }
+
+  .emergency-work-order-selected-item,
+  .emergency-work-order-action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .emergency-work-order-action-row > p {
+    flex: initial;
+  }
+
+  .emergency-work-order-action-buttons {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
+/* 추가 자재 출고 요청 — 대상·품목·사유·발행의 단계와 액션 위치를 분명히 한다. */
+.material-issue-request-workspace {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.material-issue-request-workspace > .banner-slot,
+.material-issue-request-pane > .banner-slot {
+  margin-bottom: 0;
+}
+
+.material-issue-request-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.material-issue-request-pane > .pane-title,
+.material-issue-request-pane-heading > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.material-issue-request-target-search {
+  margin-bottom: 0;
+}
+
+.material-issue-request-target-search > .field-cell {
+  flex: 1 1 24rem;
+  max-width: 32rem;
+}
+
+.material-issue-request-target-search > .field-cell > * {
+  width: 100%;
+}
+
+.material-issue-request-pane-heading,
+.material-issue-request-line-footer,
+.material-issue-request-publish-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.material-issue-request-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.material-issue-request-table table {
+  min-width: 58rem;
+}
+
+.material-issue-request-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.material-issue-request-line-footer {
+  align-items: flex-end;
+}
+
+.material-issue-request-line-notes {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.material-issue-request-line-notes > .field-note {
+  margin: 0;
+  max-width: none;
+}
+
+.material-issue-request-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
+  gap: var(--space-5);
+  align-items: stretch;
+  min-width: 0;
+}
+
+.material-issue-request-footer > .material-issue-request-pane {
+  min-width: 0;
+}
+
+.material-issue-request-publish-row {
+  align-self: end;
+}
+
+.material-issue-request-publish-row > .field-note {
+  flex: 1 1 18rem;
+  max-width: none;
+  margin: 0;
+}
+
+.material-issue-request-empty-pane {
+  min-height: 14rem;
+}
+
+@media (max-width: 1280px) {
+  .material-issue-request-footer {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .material-issue-request-pane-heading,
+  .material-issue-request-line-footer,
+  .material-issue-request-publish-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .material-issue-request-pane-heading > button,
+  .material-issue-request-line-footer > button,
+  .material-issue-request-publish-row > button {
+    align-self: flex-end;
+  }
+
+  .material-issue-request-publish-row > .field-note {
+    flex: initial;
+  }
+}
+
+/* W/O 진행현황 — 조회 조건, 기준 시각, 요약, 목록을 각각 읽히는 구획으로 나눈다. */
+.work-order-progress-workspace,
+.work-order-progress-list-group {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.work-order-progress-workspace > .banner-slot,
+.work-order-progress-pane > .banner-slot {
+  margin-bottom: 0;
+}
+
+.work-order-progress-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.work-order-progress-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.work-order-progress-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.work-order-progress-filter > *,
+.work-order-progress-filter .field-cell {
+  min-width: 0;
+}
+
+.work-order-progress-filter .field-cell {
+  align-items: stretch;
+}
+
+.work-order-progress-filter-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.work-order-progress-filter-footer > p {
+  flex: 1 1 24rem;
+  max-width: none;
+  margin: 0;
+}
+
+.work-order-progress-filter-buttons {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.work-order-progress-basis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.work-order-progress-basis-copy {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.work-order-progress-basis-copy > strong {
+  color: var(--on-surface);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.work-order-progress-basis-copy > p {
+  margin: 0;
+  color: var(--on-surface-variant);
+}
+
+.work-order-progress-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.work-order-progress-list-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  color: var(--on-surface-variant);
+}
+
+.work-order-progress-list-notes > p {
+  margin: 0;
+}
+
+.work-order-progress-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.work-order-progress-table table {
+  min-width: 84rem;
+}
+
+.work-order-progress-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.work-order-progress-page-nav {
+  margin-top: calc(var(--space-2) * -1);
+}
+
+@media (max-width: 720px) {
+  .work-order-progress-filter-footer,
+  .work-order-progress-basis {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .work-order-progress-filter-footer > p {
+    flex: initial;
+  }
+
+  .work-order-progress-filter-buttons,
+  .work-order-progress-basis > button {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
+/* Lot Status 현황·변경이력 — 두 조회 모드의 조건과 결과를 같은 카드 흐름으로 맞춘다. */
+.lot-status-workspace {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.lot-status-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.lot-status-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.lot-status-pane > .banner-slot {
+  margin-bottom: 0;
+}
+
+.filter-bar.lot-status-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.lot-status-filter > *,
+.lot-status-filter .field-cell {
+  min-width: 0;
+}
+
+.lot-status-filter .field-cell {
+  align-items: stretch;
+}
+
+.lot-status-filter-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.lot-status-filter-footer > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+.lot-status-filter-buttons {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.lot-status-history-filter {
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+}
+
+.lot-status-empty-pane {
+  min-height: 14rem;
+}
+
+.lot-status-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.lot-status-list-title {
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.lot-status-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.lot-status-table table {
+  min-width: 60rem;
+}
+
+.lot-status-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 720px) {
+  .lot-status-filter-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lot-status-filter-footer > .field-note {
+    flex: initial;
+  }
+
+  .lot-status-filter-buttons {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
+/* Lot Status 판정·전이 — 조회, 선택 확인, 실행 준비를 순서가 보이는 별도 구획으로 나눈다. */
+.lot-status-transition-workspace,
+.lot-status-transition-flow {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.lot-status-transition-notice-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.lot-status-transition-notice-row > .banner-slot {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.lot-status-transition-history-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  color: var(--primary-text);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.lot-status-transition-history-link:hover {
+  background: var(--state-hover-neutral);
+}
+
+.lot-status-transition-history-link:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.lot-status-transition-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.lot-status-transition-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.lot-status-transition-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.lot-status-transition-filter > *,
+.lot-status-transition-filter .field-cell {
+  min-width: 0;
+}
+
+.lot-status-transition-filter .field-cell {
+  align-items: stretch;
+}
+
+.lot-status-transition-period {
+  grid-column: span 2;
+}
+
+.lot-status-transition-filter-footer,
+.lot-status-transition-list-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.lot-status-transition-filter-footer > .field-note,
+.lot-status-transition-filter-footer > .field-error,
+.lot-status-transition-list-footer > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+.lot-status-transition-filter-actions,
+.lot-status-transition-list-footer > .form-actions {
+  justify-content: flex-end;
+  margin: 0 0 0 auto;
+}
+
+.lot-status-transition-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.lot-status-transition-table table {
+  min-width: 48rem;
+}
+
+.lot-status-transition-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.lot-status-transition-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.lot-status-transition-identity,
+.lot-status-transition-status-grid {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+}
+
+.lot-status-transition-identity {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.lot-status-transition-status-grid {
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+}
+
+.lot-status-transition-identity dd,
+.lot-status-transition-status-grid dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.lot-status-transition-identity dd {
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.lot-status-transition-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.lot-status-transition-choice,
+.lot-status-transition-holds,
+.lot-status-transition-execution {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.lot-status-transition-choice {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.lot-status-transition-preparation-note {
+  margin: 0;
+  color: var(--on-surface-muted);
+}
+
+.lot-status-transition-execution {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.lot-status-transition-execution-form {
+  margin: 0;
+}
+
+.lot-status-transition-execution-form > :last-child {
+  grid-column: 1 / -1;
+}
+
+.lot-status-transition-execution-actions {
+  margin: 0;
+}
+
+.lot-status-transition-pane .link-cell[aria-current='true'] {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  text-decoration: none;
+}
+
+@media (min-width: 1100px) {
+  .filter-bar.lot-status-transition-filter {
+    grid-template-columns: minmax(24rem, 30rem) repeat(3, minmax(9.5rem, 1fr));
+  }
+
+  .lot-status-transition-period {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 1440px) {
+  .lot-status-transition-detail-grid {
+    grid-template-columns: minmax(24rem, 4fr) minmax(32rem, 5fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .lot-status-transition-notice-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lot-status-transition-history-link {
+    justify-self: end;
+  }
+
+  .lot-status-transition-period {
+    grid-column: auto;
+  }
+
+  .lot-status-transition-filter-footer,
+  .lot-status-transition-list-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lot-status-transition-filter-footer > .field-note,
+  .lot-status-transition-filter-footer > .field-error,
+  .lot-status-transition-list-footer > .field-note {
+    flex: initial;
+  }
+
+  .lot-status-transition-filter-actions,
+  .lot-status-transition-list-footer > .form-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+
+  .lot-status-transition-identity {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 의심자재 등록 — 후보 선택, 보류 입력, 실행 확인의 세 단계를 독립된 카드로 읽게 한다. */
+.suspicious-material-hold-workspace {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.suspicious-material-hold-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.suspicious-material-hold-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.suspicious-material-hold-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.suspicious-material-hold-filter > *,
+.suspicious-material-hold-filter .field-cell {
+  min-width: 0;
+}
+
+.suspicious-material-hold-filter .field-cell {
+  align-items: stretch;
+}
+
+.suspicious-material-hold-filter-footer,
+.suspicious-material-hold-list-footer,
+.suspicious-material-hold-action-row {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.suspicious-material-hold-selection {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.suspicious-material-hold-filter-actions,
+.suspicious-material-hold-list-footer > .form-actions {
+  justify-content: flex-end;
+  margin: 0 0 0 auto;
+}
+
+.suspicious-material-hold-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.suspicious-material-hold-table table {
+  min-width: 64rem;
+}
+
+.suspicious-material-hold-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.suspicious-material-hold-status-cell > time {
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}
+
+.suspicious-material-hold-list-footer > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+.suspicious-material-hold-range,
+.suspicious-material-hold-impact {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.suspicious-material-hold-range > .field-note,
+.suspicious-material-hold-impact > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+.suspicious-material-hold-input-grid {
+  margin: 0;
+}
+
+.suspicious-material-hold-input-grid > :last-child {
+  grid-column: 1 / -1;
+}
+
+.suspicious-material-hold-pane > .banner-slot {
+  margin-bottom: 0;
+}
+
+.suspicious-material-hold-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.suspicious-material-hold-impact-lead {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.suspicious-material-hold-impact > ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suspicious-material-hold-impact li {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.suspicious-material-hold-impact li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.suspicious-material-hold-action-pane {
+  padding-block: var(--space-4);
+}
+
+.suspicious-material-hold-action-row > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+.suspicious-material-hold-action-row > button {
+  margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .suspicious-material-hold-filter-footer,
+  .suspicious-material-hold-list-footer,
+  .suspicious-material-hold-action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .suspicious-material-hold-filter-actions,
+  .suspicious-material-hold-list-footer > .form-actions,
+  .suspicious-material-hold-action-row > button {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+
+  .suspicious-material-hold-list-footer > .field-note,
+  .suspicious-material-hold-action-row > .field-note {
+    flex: initial;
+  }
+
+  .suspicious-material-hold-impact li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+}
+
+/* 검사실적·검사결과 조회 — 조회 조건, 실적, 분석을 각각 완결된 정보 구획으로 묶는다. */
+.inspection-results-workspace {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.inspection-results-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.inspection-results-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.inspection-results-pane > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+.inspection-results-empty-pane {
+  min-height: 14rem;
+}
+
+.filter-bar.inspection-results-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.inspection-results-filter > *,
+.inspection-results-filter .field-cell {
+  min-width: 0;
+}
+
+.inspection-results-filter .field-cell {
+  align-items: stretch;
+}
+
+.inspection-results-filter-footer,
+.inspection-results-list-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.inspection-results-filter-footer > .field-note,
+.inspection-results-filter-footer > .field-error,
+.inspection-results-list-footer > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+.inspection-results-filter-actions,
+.inspection-results-list-footer > .form-actions {
+  justify-content: flex-end;
+  margin: 0 0 0 auto;
+}
+
+.inspection-results-summary-panel,
+.inspection-results-trend-panel,
+.inspection-results-analysis {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.inspection-results-summary-panel,
+.inspection-results-trend-panel {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.inspection-results-summary-panel > .field-note,
+.inspection-results-trend-panel > .field-note,
+.inspection-results-analysis > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+.inspection-results-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspection-results-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.inspection-results-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.inspection-results-table table {
+  min-width: 64rem;
+}
+
+.inspection-results-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.inspection-results-banner-stack {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.inspection-results-banner-stack > * {
+  box-sizing: border-box;
+}
+
+.inspection-results-distribution-field {
+  max-width: 20rem;
+}
+
+/* 비활성 쿼리도 DS Skeleton을 pending으로 그리므로, 조건 적용 전에는 탭 본문만 감춘다. */
+.inspection-results-insights-pane-empty [role='tabpanel'] {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .inspection-results-filter-footer,
+  .inspection-results-list-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .inspection-results-filter-footer > .field-note,
+  .inspection-results-filter-footer > .field-error,
+  .inspection-results-list-footer > .field-note {
+    flex: initial;
+  }
+
+  .inspection-results-filter-actions,
+  .inspection-results-list-footer > .form-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
+/* 특채·한도승인 승인 처리 — 목록에서 상세·결재로 이어지는 판단 흐름을 한 화면에 묶는다. */
+.quality-approval-workspace {
+  display: grid;
+  grid-template-columns: minmax(32rem, 5fr) minmax(25rem, 4fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.quality-approval-side,
+.quality-approval-pane,
+.quality-approval-list,
+.quality-approval-detail,
+.quality-approval-progress,
+.quality-approval-action,
+.quality-approval-condition {
+  min-width: 0;
+}
+
+.quality-approval-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.quality-approval-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.quality-approval-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.quality-approval-filter > *,
+.quality-approval-filter .field-cell {
+  min-width: 0;
+}
+
+.quality-approval-filter .field-cell {
+  align-items: stretch;
+}
+
+.quality-approval-filter-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.quality-approval-filter-footer .filter-actions {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.quality-approval-list-pane > .banner-slot {
+  margin-bottom: 0;
+}
+
+.quality-approval-list {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.quality-approval-table {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.quality-approval-table table {
+  min-width: 34rem;
+}
+
+.quality-approval-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.quality-approval-page-nav {
+  align-items: center;
+  margin: 0;
+}
+
+.quality-approval-page-nav > .field-note {
+  max-width: none;
+  margin-block: 0;
+}
+
+.quality-approval-detail,
+.quality-approval-progress,
+.quality-approval-action,
+.quality-approval-condition {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.quality-approval-detail-facts,
+.quality-approval-condition-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.quality-approval-detail-facts > .field-cell,
+.quality-approval-condition-facts > .field-cell {
+  min-width: 0;
+}
+
+.quality-approval-detail-facts dd,
+.quality-approval-condition-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--on-surface);
+}
+
+.quality-approval-content-card,
+.quality-approval-progress-summary,
+.quality-approval-condition,
+.quality-approval-action {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.quality-approval-content-card > p,
+.quality-approval-progress-summary > p {
+  max-width: none;
+  margin: 0;
+}
+
+.quality-approval-condition > h3,
+.quality-approval-action > h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.quality-approval-condition-link {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  justify-content: initial;
+  gap: var(--space-2);
+}
+
+.quality-approval-condition-link > .field-label {
+  grid-column: 1 / -1;
+}
+
+.quality-approval-progress-summary {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.quality-approval-progress-summary > p:first-child {
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.quality-approval-action > .form-actions {
+  justify-content: flex-end;
+}
+
+@media (min-width: 1500px) {
+  .quality-approval-workspace {
+    grid-template-columns: minmax(32rem, 5fr) repeat(2, minmax(22rem, 4fr));
+  }
+
+  .quality-approval-side {
+    display: contents;
+  }
+}
+
+@media (max-width: 1100px) {
+  .quality-approval-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .filter-bar.quality-approval-filter,
+  .quality-approval-detail-facts,
+  .quality-approval-condition-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .quality-approval-filter-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .quality-approval-filter-footer .filter-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
+/* 처분 판정 처리 — 목록·상세·판정을 하나의 판단 흐름으로 정돈한다. */
+.disposition-workspace {
+  display: grid;
+  grid-template-columns: minmax(32rem, 5fr) minmax(25rem, 4fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.disposition-side,
+.disposition-pane,
+.disposition-list,
+.disposition-detail,
+.disposition-subsection,
+.disposition-decision-form,
+.disposition-history-results {
+  min-width: 0;
+}
+
+.disposition-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.disposition-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.disposition-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.disposition-filter > *,
+.disposition-history-filter > *,
+.disposition-filter .field-cell,
+.disposition-history-filter .field-cell {
+  min-width: 0;
+}
+
+.disposition-filter .field-cell,
+.disposition-history-filter .field-cell {
+  align-items: stretch;
+}
+
+.disposition-filter-actions,
+.disposition-history-filter-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.disposition-list-pane > .banner-slot,
+.disposition-subsection > .banner-slot {
+  margin-bottom: 0;
+}
+
+.disposition-list,
+.disposition-detail,
+.disposition-subsection,
+.disposition-decision-form,
+.disposition-history-results {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.disposition-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.disposition-pending-table table {
+  min-width: 58rem;
+}
+
+.disposition-lot-table table {
+  min-width: 30rem;
+}
+
+.disposition-decision-table table,
+.disposition-history-table table {
+  min-width: 44rem;
+}
+
+.disposition-table th {
+  white-space: nowrap;
+}
+
+.disposition-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.disposition-page-nav {
+  align-items: center;
+  margin: 0;
+}
+
+.disposition-page-nav > .field-note {
+  max-width: none;
+  margin-block: 0;
+}
+
+.disposition-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.disposition-detail-facts > .field-cell {
+  min-width: 0;
+}
+
+.disposition-detail-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--on-surface);
+}
+
+.disposition-content-card,
+.disposition-remaining-card {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.disposition-content-card > p,
+.disposition-remaining-card > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+.disposition-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.disposition-remaining-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  justify-content: initial;
+  gap: var(--space-2);
+}
+
+.disposition-remaining-card > .field-label,
+.disposition-remaining-card > .field-note {
+  grid-column: 1 / -1;
+}
+
+.disposition-decision-form > .form-actions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.filter-bar.disposition-history-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+@media (min-width: 1500px) {
+  .disposition-workspace {
+    grid-template-columns: minmax(32rem, 5fr) repeat(2, minmax(22rem, 4fr));
+  }
+
+  .disposition-side {
+    display: contents;
+  }
+}
+
+@media (max-width: 1100px) {
+  .disposition-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .filter-bar.disposition-filter,
+  .filter-bar.disposition-history-filter,
+  .disposition-detail-facts {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 설비·설비그룹 마스터 — 계층 목록과 선택한 그룹의 작업 공간을 함께 읽히게 한다. */
+.two-pane.equipment-master-layout {
+  grid-template-columns: minmax(24rem, 5fr) minmax(0, 7fr);
+  gap: var(--space-5);
+}
+
+.equipment-master-pane,
+.equipment-master-tab-content,
+.equipment-master-form,
+.equipment-master-table {
+  min-width: 0;
+}
+
+.equipment-master-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.equipment-master-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.equipment-master-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.equipment-master-filter > *,
+.equipment-master-filter .field-cell {
+  min-width: 0;
+}
+
+.equipment-master-filter .field-cell {
+  align-items: stretch;
+}
+
+.equipment-master-filter-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.equipment-master-filter-footer > .filter-actions {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.equipment-master-filter-checks {
+  display: flex;
+  flex: 1 1 20rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.filter-bar.equipment-master-filter-chips {
+  gap: var(--space-2);
+  margin-bottom: 0;
+}
+
+.equipment-master-filter-chips:empty {
+  display: none;
+}
+
+.equipment-master-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.equipment-master-group-table table {
+  min-width: 38rem;
+}
+
+.equipment-master-equipment-table table,
+.equipment-master-inspection-master-table table {
+  min-width: 58rem;
+}
+
+.equipment-master-inspection-table table {
+  min-width: 38rem;
+}
+
+.equipment-master-table th {
+  white-space: nowrap;
+}
+
+.equipment-master-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.equipment-master-detail-pane > [role='tablist'] {
+  margin-top: calc(var(--space-1) * -1);
+}
+
+.equipment-master-form,
+.equipment-master-tab-content {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.equipment-master-form > .form-grid {
+  margin: 0;
+}
+
+.equipment-master-form > .form-actions,
+.equipment-master-tab-content > .form-actions {
+  justify-content: flex-end;
+}
+
+.equipment-master-tab-content > .dialog-lead {
+  max-width: none;
+  margin: 0;
+}
+
+.equipment-master-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.equipment-master-subsection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.equipment-master-subsection-actions > .filter-actions {
+  margin-left: auto;
+}
+
+.equipment-master-subsection-actions > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .two-pane.equipment-master-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .filter-bar.equipment-master-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .equipment-master-filter-footer,
+  .equipment-master-filter-checks {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .equipment-master-filter-footer > .filter-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
+/* 툴/금형/지그 마스터 — 조회 조건, 즉시 조건, 목록 액션의 층을 분리한다. */
+.tool-master-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.tool-master-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.tool-master-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.tool-master-filter > *,
+.tool-master-filter .field-cell {
+  min-width: 0;
+}
+
+.tool-master-filter .field-cell {
+  align-items: stretch;
+}
+
+.tool-master-filter-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tool-master-filter-footer > .check-group {
+  flex: 1 1 28rem;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tool-master-filter-footer > .filter-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.filter-bar.tool-master-filter-chips {
+  gap: var(--space-2);
+  margin-bottom: 0;
+}
+
+.tool-master-filter-chips:empty {
+  display: none;
+}
+
+.tool-master-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tool-master-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 작업 캘린더 설정 — 7열 월간 그리드는 전체 폭을 보존하고 보조 구획만 넓은 화면에서 나눈다. */
+.work-calendar-workspace,
+.work-calendar-pane,
+.work-calendar-table {
+  min-width: 0;
+}
+
+.work-calendar-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.work-calendar-pane > .pane-title,
+.work-calendar-pane-heading > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.work-calendar-filter {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1fr);
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.work-calendar-filter-footer,
+.work-calendar-pane-heading,
+.work-calendar-month-toolbar,
+.work-calendar-month-navigation,
+.work-calendar-month-context {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.work-calendar-filter-footer,
+.work-calendar-pane-heading,
+.work-calendar-month-toolbar {
+  justify-content: space-between;
+}
+
+.work-calendar-filter-footer > .filter-actions,
+.work-calendar-pane-heading > button,
+.work-calendar-month-context {
+  margin-left: auto;
+}
+
+.filter-bar.work-calendar-filter-chips,
+.filter-bar.work-calendar-effective-filter {
+  margin-bottom: 0;
+}
+
+.work-calendar-filter-chips:empty {
+  display: none;
+}
+
+.work-calendar-month-navigation > strong {
+  min-width: 7rem;
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+  text-align: center;
+}
+
+.work-calendar-month-context > .field-note {
+  max-width: none;
+}
+
+.work-calendar-pane-note,
+.work-calendar-pane p {
+  margin: 0;
+}
+
+.work-calendar-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.work-calendar-list-table table {
+  min-width: 44rem;
+}
+
+.work-calendar-application-table table {
+  min-width: 30rem;
+}
+
+.work-calendar-table th,
+.work-calendar-grid-pane th {
+  white-space: nowrap;
+}
+
+.work-calendar-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.work-calendar-support-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.work-calendar-support-grid > :only-child {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1100px) {
+  .work-calendar-support-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .work-calendar-month-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .work-calendar-month-context {
+    justify-content: space-between;
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .work-calendar-filter-footer,
+  .work-calendar-month-toolbar,
+  .work-calendar-month-context {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .work-calendar-filter-footer > .filter-actions,
+  .work-calendar-month-context,
+  .work-calendar-pane-heading > button {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .tool-master-filter-footer,
+  .tool-master-filter-footer > .check-group {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tool-master-filter-footer > .check-group {
+    flex: initial;
+  }
+
+  .tool-master-filter-footer > .filter-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
+/* 수집 채널 매핑 — 설비 선택과 그 설비의 채널 작업 공간을 한 시야에 둔다. */
+.two-pane.collection-channel-layout {
+  grid-template-columns: minmax(20rem, 2fr) minmax(0, 3.6fr);
+  gap: var(--space-5);
+}
+
+.collection-channel-pane,
+.collection-channel-table {
+  min-width: 0;
+}
+
+.collection-channel-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.collection-channel-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.collection-channel-context-title {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.filter-bar.collection-channel-equipment-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.collection-channel-equipment-filter > *,
+.collection-channel-equipment-filter .field-cell {
+  min-width: 0;
+}
+
+.collection-channel-equipment-filter .field-cell {
+  align-items: stretch;
+}
+
+.collection-channel-equipment-filter > .field-cell-unlabeled,
+.collection-channel-toolbar > .field-cell-unlabeled {
+  margin-top: 0;
+}
+
+.collection-channel-equipment-filter > .field-cell-unlabeled {
+  align-items: flex-end;
+}
+
+.filter-bar.collection-channel-filter-chips,
+.filter-bar.collection-channel-toolbar {
+  margin-bottom: 0;
+}
+
+.collection-channel-filter-chips:empty {
+  display: none;
+}
+
+.collection-channel-toolbar {
+  justify-content: space-between;
+}
+
+.collection-channel-toolbar > .field-cell:first-child {
+  flex: 1 1 24rem;
+}
+
+.collection-channel-toolbar > .field-cell:last-child {
+  flex: 0 1 auto;
+}
+
+.collection-channel-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.collection-channel-equipment-table table {
+  min-width: 25rem;
+}
+
+.wide-table.collection-channel-mapping-table table {
+  min-width: 58rem;
+}
+
+.collection-channel-table th {
+  white-space: nowrap;
+}
+
+.collection-channel-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.collection-channel-pane > .field-note,
+.collection-channel-pane > p {
+  margin: 0;
+}
+
+@media (min-width: 1600px) {
+  .filter-bar.collection-channel-equipment-filter {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .collection-channel-equipment-filter > .field-cell-unlabeled {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1000px) {
+  .two-pane.collection-channel-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .collection-channel-toolbar > .field-cell {
+    align-items: stretch;
+    flex-basis: 100%;
+  }
+
+  .collection-channel-toolbar .filter-actions,
+  .collection-channel-toolbar .check-group {
+    flex-wrap: wrap;
+  }
+}
+
+/* 타발수 환산 — 전역 설정과 정책·미리보기의 단계가 구획 간격과 제목 계층으로 읽히게 한다. */
+.shot-conversion-workspace,
+.shot-conversion-main-grid,
+.shot-conversion-pane,
+.shot-conversion-table {
+  min-width: 0;
+}
+
+.shot-conversion-workspace,
+.shot-conversion-main-grid {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.shot-conversion-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.shot-conversion-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.shot-conversion-pane > .dialog-lead,
+.shot-conversion-pane > .field-note,
+.shot-conversion-pane > p,
+.shot-conversion-preview-grid p {
+  margin: 0;
+}
+
+.filter-bar.shot-conversion-policy-filter {
+  margin-bottom: 0;
+}
+
+.shot-conversion-policy-filter > .field-cell-unlabeled {
+  align-items: flex-end;
+}
+
+.shot-conversion-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.shot-conversion-policy-table table {
+  min-width: 58rem;
+}
+
+.shot-conversion-table th {
+  white-space: nowrap;
+}
+
+.shot-conversion-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.shot-conversion-preview-grid {
+  align-items: start;
+}
+
+@media (min-width: 1500px) {
+  .shot-conversion-main-grid {
+    grid-template-columns: minmax(58rem, 3.4fr) minmax(32rem, 2fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .shot-conversion-policy-filter > .field-cell {
+    align-items: stretch;
+    flex-basis: 100%;
+  }
+
+  .shot-conversion-policy-filter .filter-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* 계측기 마스터 — 조회 입력과 즉시 조건·액션을 분리해 목록의 시작선을 명확히 한다. */
+.gauge-master-pane,
+.gauge-master-table {
+  min-width: 0;
+}
+
+.gauge-master-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.gauge-master-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.gauge-master-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.gauge-master-filter > *,
+.gauge-master-filter .field-cell {
+  min-width: 0;
+}
+
+.gauge-master-filter .field-cell {
+  align-items: stretch;
+}
+
+.gauge-master-filter-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.gauge-master-filter-footer > .check-group {
+  flex: 1 1 28rem;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.gauge-master-filter-footer > .filter-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.filter-bar.gauge-master-filter-chips {
+  gap: var(--space-2);
+  margin-bottom: 0;
+}
+
+.gauge-master-filter-chips:empty {
+  display: none;
+}
+
+.gauge-master-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.gauge-master-table table {
+  min-width: 58rem;
+}
+
+.gauge-master-table th {
+  white-space: nowrap;
+}
+
+.gauge-master-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.gauge-master-filter {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .gauge-master-filter-footer,
+  .gauge-master-filter-footer > .check-group {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gauge-master-filter-footer > .filter-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
+/* 계측기 검교정 이력 — 조회·목록·등록의 경계를 제목과 공통 구획 간격으로 드러낸다. */
+.gauge-calibration-workspace,
+.gauge-calibration-pane,
+.gauge-calibration-table,
+.gauge-calibration-form-grid {
+  min-width: 0;
+}
+
+.gauge-calibration-workspace {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.gauge-calibration-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.gauge-calibration-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.gauge-calibration-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.gauge-calibration-filter > *,
+.gauge-calibration-filter .field-cell {
+  min-width: 0;
+}
+
+.gauge-calibration-filter .field-cell {
+  align-items: stretch;
+}
+
+.gauge-calibration-filter-actions {
+  grid-column: 1 / -1;
+  align-items: flex-end;
+  margin-top: 0;
+}
+
+.gauge-calibration-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.gauge-calibration-table table {
+  min-width: 70rem;
+}
+
+.gauge-calibration-table th {
+  white-space: nowrap;
+}
+
+.gauge-calibration-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.gauge-calibration-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.gauge-calibration-filter {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 설비고장 상세처리 — 조회·목록·상세의 위계와 읽기/입력 영역을 분명히 나눈다. */
+.equipment-failure-workspace,
+.equipment-failure-layout,
+.equipment-failure-pane {
+  min-width: 0;
+}
+
+.equipment-failure-workspace {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.equipment-failure-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.equipment-failure-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.equipment-failure-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.equipment-failure-filter > *,
+.equipment-failure-filter .field-cell {
+  min-width: 0;
+}
+
+.equipment-failure-filter .field-cell {
+  align-items: stretch;
+}
+
+.equipment-failure-filter .equipment-failure-filter-options {
+  grid-column: 1 / 3;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center !important;
+  justify-content: flex-start;
+  gap: var(--space-4);
+  margin-top: 0;
+}
+
+.equipment-failure-filter-actions {
+  grid-column: 3;
+  align-items: flex-end !important;
+  margin-top: 0;
+}
+
+.equipment-failure-pane > .pane-lead {
+  margin: 0;
+}
+
+.equipment-failure-list-pane table {
+  width: 100%;
+}
+
+.equipment-failure-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.equipment-failure-detail-pane > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.equipment-failure-readonly {
+  box-sizing: border-box;
+  justify-content: flex-start;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.equipment-failure-readonly > :last-child {
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+.equipment-failure-detail-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.equipment-failure-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .equipment-failure-filter-options,
+  .equipment-failure-filter-actions {
+    grid-column: 1;
+  }
+
+  .equipment-failure-filter-actions {
+    align-items: flex-start !important;
+  }
+}
+
+/* 보전지시 발행 — 대상 선택부터 발행 결과까지 한 흐름으로 읽히게 구획을 맞춘다. */
+.maintenance-order-workspace,
+.maintenance-order-pane,
+.maintenance-order-form-content,
+.maintenance-order-form-grid,
+.maintenance-order-list-table {
+  min-width: 0;
+}
+
+.maintenance-order-workspace {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.maintenance-order-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.maintenance-order-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.maintenance-order-pane > .pane-lead,
+.maintenance-order-form-content > .pane-lead {
+  margin: 0;
+}
+
+.maintenance-order-form-content {
+  display: grid;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 72rem;
+}
+
+.maintenance-order-form-content > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.filter-bar.maintenance-order-item-filter,
+.filter-bar.maintenance-order-trigger-filter {
+  display: grid;
+  grid-template-columns: minmax(20rem, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+  margin-bottom: 0;
+}
+
+.maintenance-order-item-filter > *,
+.maintenance-order-trigger-filter > * {
+  min-width: 0;
+}
+
+.maintenance-order-item-actions,
+.maintenance-order-trigger-actions {
+  align-items: flex-end;
+}
+
+.maintenance-order-form-content > .form-actions,
+.maintenance-order-pane > .form-actions {
+  margin-top: 0;
+}
+
+.maintenance-order-list-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.maintenance-order-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .form-grid.maintenance-order-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .filter-bar.maintenance-order-item-filter,
+  .filter-bar.maintenance-order-trigger-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-order-item-actions,
+  .maintenance-order-trigger-actions {
+    align-items: flex-start;
+    margin-top: 0;
+  }
+}
+
+/* 보전 실적·예비품 — 실적 입력과 예비품 기록을 한 흐름 안에서 단계별로 구분한다. */
+.maintenance-result-pane,
+.maintenance-result-form-grid,
+.maintenance-result-list-table {
+  min-width: 0;
+}
+
+.maintenance-result-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.maintenance-result-pane + .maintenance-result-pane {
+  margin-top: var(--space-5);
+}
+
+.maintenance-result-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.maintenance-result-form-pane > :not(.pane-title) {
+  width: 100%;
+  max-width: 72rem;
+}
+
+.maintenance-result-form-pane > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.maintenance-result-form-pane > .pane-lead,
+.maintenance-result-pane > .pane-lead {
+  margin: 0;
+}
+
+.filter-bar.maintenance-result-part-picker,
+.filter-bar.maintenance-result-part-row {
+  display: grid;
+  align-items: start;
+  gap: var(--space-3);
+  margin-bottom: 0;
+}
+
+.filter-bar.maintenance-result-part-picker {
+  grid-template-columns: minmax(20rem, 1fr) auto;
+}
+
+.filter-bar.maintenance-result-part-row {
+  grid-template-columns: minmax(10rem, 1fr) minmax(9rem, 0.5fr) minmax(20rem, 1fr) auto;
+}
+
+.maintenance-result-part-picker > *,
+.maintenance-result-part-row > * {
+  min-width: 0;
+}
+
+.maintenance-result-part-action {
+  align-items: flex-end;
+}
+
+.maintenance-result-form-pane > .form-actions,
+.maintenance-result-pane > .form-actions {
+  margin-top: 0;
+}
+
+.maintenance-result-list-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.maintenance-result-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .form-grid.maintenance-result-form-grid,
+  .filter-bar.maintenance-result-part-picker,
+  .filter-bar.maintenance-result-part-row {
+    grid-template-columns: 1fr;
+  }
+
+  .maintenance-result-form-grid > .field-cell-unlabeled,
+  .maintenance-result-part-action {
+    align-items: flex-start;
+    margin-top: 0;
+  }
+}
+
+/* 툴 보전오더 생성 — 조회·도래 목록·오더 작성 단계를 제목과 정렬 축으로 구분한다. */
+.tool-pm-order-pane,
+.tool-pm-order-table,
+.tool-pm-order-form-grid {
+  min-width: 0;
+}
+
+.tool-pm-order-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.tool-pm-order-pane + .tool-pm-order-pane {
+  margin-top: var(--space-5);
+}
+
+.tool-pm-order-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.tool-pm-order-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(16rem, 1fr)) auto;
+  align-items: start;
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.tool-pm-order-filter > *,
+.tool-pm-order-filter .field-cell {
+  min-width: 0;
+}
+
+.tool-pm-order-filter .field-cell {
+  align-items: stretch;
+}
+
+.tool-pm-order-filter .tool-pm-order-filter-options {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-4);
+  margin-top: 0;
+}
+
+.tool-pm-order-filter-actions {
+  grid-column: 3;
+  grid-row: 1;
+  align-items: flex-end !important;
+  margin-top: 0;
+}
+
+.tool-pm-order-pane > .pane-lead {
+  margin: 0;
+}
+
+.tool-pm-order-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tool-pm-order-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.tool-pm-order-form-pane > :not(.pane-title) {
+  width: 100%;
+  max-width: 72rem;
+}
+
+.tool-pm-order-form-pane > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.filter-bar.tool-pm-order-item-row {
+  display: grid;
+  grid-template-columns: minmax(20rem, 1fr) auto;
+  align-items: start;
+  gap: var(--space-3);
+  margin-bottom: 0;
+}
+
+.tool-pm-order-item-row > * {
+  min-width: 0;
+}
+
+.tool-pm-order-item-actions {
+  align-items: flex-end;
+}
+
+.tool-pm-order-form-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.tool-pm-order-filter,
+  .form-grid.tool-pm-order-form-grid,
+  .filter-bar.tool-pm-order-item-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-pm-order-filter .tool-pm-order-filter-options,
+  .tool-pm-order-filter-actions {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .tool-pm-order-filter-actions,
+  .tool-pm-order-item-actions {
+    align-items: flex-start !important;
+    margin-top: 0;
+  }
+}
+
+/* 툴 PM 실적 등록 — 대상 툴의 기준값과 실적 입력·이력을 단계별로 구분한다. */
+.tool-pm-result-pane,
+.tool-pm-result-tool-grid,
+.tool-pm-result-form-grid,
+.tool-pm-result-table {
+  min-width: 0;
+}
+
+.tool-pm-result-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.tool-pm-result-pane + .tool-pm-result-pane {
+  margin-top: var(--space-5);
+}
+
+.tool-pm-result-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.tool-pm-result-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 72rem;
+  margin-bottom: 0;
+}
+
+.tool-pm-result-tool-grid > *,
+.tool-pm-result-tool-grid .field-cell {
+  min-width: 0;
+}
+
+.tool-pm-result-tool-grid .field-cell {
+  align-items: stretch;
+}
+
+.tool-pm-result-fact {
+  box-sizing: border-box;
+  justify-content: flex-start;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.tool-pm-result-fact > :last-child {
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+.tool-pm-result-pane > .pane-lead {
+  margin: 0;
+}
+
+.tool-pm-result-form-pane > :not(.pane-title) {
+  width: 100%;
+  max-width: 72rem;
+}
+
+.tool-pm-result-form-pane > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.tool-pm-result-form-pane > .form-actions {
+  margin-top: 0;
+}
+
+.tool-pm-result-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tool-pm-result-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.tool-pm-result-tool-grid,
+  .form-grid.tool-pm-result-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-pm-result-form-grid > .field-cell-unlabeled {
+    margin-top: 0;
+  }
+}
+
+/* 비가동 집계 조회 — 긴 지표 설명이 세로 기둥으로 눌리지 않게 읽기 폭을 보장한다. */
+.downtime-summary-pane,
+.downtime-summary-table,
+.downtime-summary-filter > * {
+  min-width: 0;
+}
+
+.downtime-summary-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.downtime-summary-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.downtime-summary-pane > .pane-lead {
+  margin: 0;
+}
+
+.filter-bar.downtime-summary-filter {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.4fr) repeat(3, minmax(10rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.downtime-summary-filter .field-cell {
+  align-items: stretch;
+}
+
+.downtime-summary-filter-actions {
+  grid-column: 1 / -1;
+  align-items: flex-end;
+  margin-top: 0;
+}
+
+.kpi-grid.downtime-summary-kpi-grid {
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}
+
+.filter-bar.downtime-summary-bucket-filter {
+  margin-bottom: 0;
+}
+
+.downtime-summary-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.downtime-summary-table table {
+  min-width: 48rem;
+}
+
+.downtime-summary-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.downtime-summary-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .downtime-summary-filter-actions {
+    grid-column: 1;
+  }
+}
+
+/* 결재함 — 찾기·선택·판단·결재의 위계를 제목과 구획 간격으로 드러낸다. */
+.approval-inbox-pane,
+.approval-inbox-table,
+.approval-inbox-filter > *,
+.approval-inbox-detail-section {
+  min-width: 0;
+}
+
+.approval-inbox-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.approval-inbox-pane > * {
+  min-width: 0;
+}
+
+.approval-inbox-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.approval-inbox-filter {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+/* DS 폼 컨트롤의 100% 폭에 패딩이 더해지는 구간을 이 화면 안에서만 바로잡는다. */
+.approval-inbox-filter,
+.approval-inbox-filter *,
+.approval-inbox-filter *::before,
+.approval-inbox-filter *::after {
+  box-sizing: border-box;
+}
+
+.approval-inbox-filter > * {
+  width: 100%;
+  max-width: 100%;
+}
+
+.approval-inbox-filter [role='combobox'],
+.approval-inbox-filter .field-cell > button {
+  width: 100%;
+  max-width: 100%;
+}
+
+.approval-inbox-filter .field-cell {
+  align-items: stretch;
+}
+
+.approval-inbox-filter-actions {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+.filter-bar.approval-inbox-filter-chips {
+  margin-bottom: 0;
+}
+
+.approval-inbox-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.approval-inbox-table table {
+  min-width: 58rem;
+}
+
+.approval-inbox-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.approval-inbox-detail-section {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.approval-inbox-detail-section + .approval-inbox-detail-section {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.approval-inbox-detail-section > h3 {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+dl.filter-bar.approval-inbox-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.approval-inbox-detail-facts dd,
+.approval-inbox-target-facts dd {
+  margin: 0;
+}
+
+.filter-bar.approval-inbox-target-facts,
+.approval-inbox-detail-section > .field-note,
+.approval-inbox-detail-section > .form-actions,
+.approval-inbox-detail-section > p {
+  margin: 0;
+}
+
+.approval-inbox-detail-section > .field-cell {
+  max-width: 44rem;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.approval-inbox-filter,
+  dl.filter-bar.approval-inbox-detail-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .approval-inbox-filter-actions {
+    grid-column: 1;
+  }
+}
+
+/* 알림센터 — 조회 조건과 카드 목록을 한 축에 맞추고 필터 역할을 분명히 한다. */
+.notification-center-pane,
+.notification-center-filter > * {
+  min-width: 0;
+}
+
+.notification-center-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.notification-center-pane > * {
+  min-width: 0;
+}
+
+.notification-center-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.notification-center-filter {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(13rem, 1fr);
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.notification-center-filter .field-cell {
+  align-items: stretch;
+}
+
+.notification-center-unread-filter {
+  justify-content: flex-start;
+}
+
+.notification-center-unread-filter > label {
+  min-height: var(--control-height-md);
+  align-items: center;
+}
+
+.notification-center-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.notification-center-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .notification-center-unread-filter {
+    margin-top: 0;
+  }
+}
+
+/* 공지·전달 — 검색 조건을 의미별 두 행으로 묶고 목록·상세 제목의 위계를 통일한다. */
+.notice-pane,
+.notice-table,
+.notice-filter > * {
+  min-width: 0;
+}
+
+.notice-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.notice-pane > * {
+  min-width: 0;
+}
+
+.notice-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.notice-filter {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.5fr) repeat(2, minmax(13rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.notice-filter .field-cell {
+  align-items: stretch;
+}
+
+.notice-filter-options {
+  align-items: flex-start !important;
+  margin-top: 0;
+}
+
+.notice-filter-clear {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
+.notice-pane > .pane-lead,
+.notice-pane > .form-actions {
+  margin-top: 0;
+}
+
+.notice-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.notice-table table {
+  min-width: 58rem;
+}
+
+.notice-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.notice-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .notice-filter-clear {
+    grid-column: 1;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -834,6 +5057,69 @@ main > * + * {
   align-items: start;
 }
 
+.rework-result-pane {
+  display: grid;
+  grid-template-rows: 176px 224px minmax(96px, 1fr) 88px;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.rework-result-screen {
+  box-sizing: border-box;
+  grid-template-rows: 44px minmax(0, 1fr);
+  height: 100%;
+  overflow: hidden;
+}
+
+.rework-result-screen > .pop-panes {
+  min-height: 0;
+  margin-top: 0;
+}
+
+.rework-target-card {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.rework-result-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: start;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: var(--space-3);
+}
+
+.rework-result-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.rework-result-fields > .pane-title,
+.rework-result-fields > .field-note {
+  grid-column: 1 / -1;
+}
+
+.rework-result-summary {
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.rework-result-summary > p {
+  margin: 0;
+}
+
+.rework-result-pane > .pop-action-bar {
+  margin-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
 @media (max-width: 900px) {
   .pop-panes {
     grid-template-columns: 1fr;
@@ -1184,6 +5470,38 @@ main > * + * {
   flex-direction: column;
   gap: var(--space-3);
   overflow-y: auto;
+}
+
+/* 고른 LOT의 확인 정보와 출력 조작 — 값과 버튼이 서로 붙지 않게 세로 흐름을 고정한다. */
+.pop-lot-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 현장에서 라벨과 값을 빠르게 대조할 수 있도록 이름/값 두 칸을 일정하게 맞춘다. */
+.pop-lot-facts {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.pop-lot-facts dt {
+  color: var(--on-surface-muted);
+}
+
+.pop-lot-facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* 위험 조작과 비활성 사유·재시도는 한 묶음으로 읽히되 각각 충분한 터치 간격을 둔다. */
+.pop-lot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: auto;
 }
 
 /* 쪽 이동 줄 — 위치 표시를 왼쪽 끝에 두고 이동 버튼을 오른쪽에 모은다. */
@@ -2033,6 +6351,659 @@ main > * + * {
     overflow-y: visible;
   }
 }
+/* ------------------------------------------------------------------------ *
+ * P-02-01 작업 시작(작업지시 선택)
+ *
+ * 스펙 §4가 1024×768의 **세로 예산을 슬랙 0으로** 짰다 — 헤더 64 + 본문 616(① 96 · ② 328 ·
+ * ③ 160) + 액션바 88. ⚠ 그래서 **스크롤 구획은 ② 하나**이고 ③은 접지 않는다(E-4): 작업 전
+ * 점검 통제 결과가 ③에 나오므로 접히면 못 본다.
+ *
+ * ⛔ 클래스 이름을 `work-start-` 로 시작한다 — POP 화면들이 같은 파일에 살아 일반명(`.pop-list`
+ * 따위)을 쓰면 다른 화면과 조용히 겹친다.
+ * ------------------------------------------------------------------------ */
+
+.work-start-screen {
+  /* 본문이 늘어나도 액션바가 밀려 나가지 않게 한 열로 세운다. */
+  grid-template-columns: 1fr;
+}
+
+/* ① 사번 — 키패드가 붙는 구획이라 안쪽 간격을 따로 준다. */
+.work-start-worker {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+.work-start-worker-confirmed {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.work-start-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/*
+ * ② 목록만 스크롤한다. 높이를 고정하지 않고 상한만 두어, 지시가 적을 때 빈 상자가 남지
+ * 않게 한다 — 남으면 ③이 그만큼 아래로 밀려 액션바와 겹친다.
+ */
+.work-start-list .pop-card-list {
+  max-height: 328px;
+  overflow-y: auto;
+}
+
+/* 지금 목록이 어느 범위인지 말하는 보조 문구 — 제목 바로 아래에 붙는다. */
+.work-start-scope-note {
+  margin: 0 0 var(--space-2);
+}
+
+/*
+ * ③ 선택 확인 — ⛔ **접지 않는다**(E-4). 점검 통제 결과가 여기 나오므로 접히면 못 본다.
+ * 그래서 이 구획에는 높이 상한도 스크롤도 두지 않는다 — 스크롤 구획은 ② 하나다.
+ */
+
+.work-start-actions {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/*
+ * 액션바 — 되돌릴 수 없는 조작이 오른쪽 끝에 선다. 「다시 선택」과 붙여 두면 장갑 낀 손이
+ * 옆 것을 누른다.
+ */
+.work-start-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+/*
+ * P-02-09 포장 라벨 재출력 — 좌단 《포장 단위》의 포장 번호.
+ *
+ * ⚠ 클래스 이름에 화면을 넣는다(`pop-reprint-`). `.pop-` 일반명은 POP 화면 전부가 함께 쓰는
+ * 이 파일에서 이미 임자가 있고, 같은 이름을 다른 값으로 다시 정의하면 앞 화면 배치가 조용히
+ * 덮인다 — 시험이 CSS 를 읽지 않아 게이트가 잡지 못한다.
+ */
+.pop-reprint-hu-no {
+  margin: 0;
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+/* P-02-09 우단 《재출력 대상》 — 줄 하나가 라벨 한 장이다. */
+.pop-reprint-targets {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pop-reprint-target {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-subtle, rgb(0 0 0 / 8%));
+}
+
+.pop-reprint-target-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 출력물 종류가 먼저 읽혀야 한다 — 같은 LOT 에 두 줄이 서기 때문이다. */
+.pop-reprint-kind {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  white-space: nowrap;
+}
+
+/* 번호가 남은 폭을 갖고, 넘치면 잘린다 — 버튼이 밖으로 밀리지 않게 한다. */
+.pop-reprint-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-reprint-target-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/*
+ * P-02-04 작업실적 등록 — **좌우 2단**(입력 / 키패드).
+ *
+ * 스펙 §3-2 의 배치다: 좌 616 × 우 392. 세로 예산에 슬랙이 0 이라(64 + 616 + 88 = 768) 위아래로
+ * 쌓으면 키패드가 접힌 아래로 내려가고, 그러면 이 화면의 주 입력 수단이 화면 밖에 선다.
+ *
+ * ⚠ **접힘 기준이 대상 단말보다 넓으면 안 된다** — 대상은 1024×768 키오스크다(전례 `.pop-inspect`).
+ */
+.pop-result-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 616fr) minmax(0, 392fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+/*
+ * 키패드는 제 폭이 정해져 있다(스펙 §3-2 — 키 64 × 3열 + 간격). 카드가 그보다 넓으므로
+ * **가운데에 놓는다** — 왼쪽에 붙이면 오른쪽에 빈 판이 생겨 카드가 잘못 그려진 것처럼 보인다.
+ */
+.pop-result-keypad > * {
+  display: flex;
+  justify-content: center;
+}
+
+/*
+ * ⚠ **접히면 키패드가 폭을 다 먹는다.** 2단일 때 우단은 392px 이지만 1단이 되면 카드가
+ * 화면 너비로 늘어나 키 3열 오른쪽에 빈 판이 생긴다 — 실기 확인에서 나온 지적이다.
+ * 접힌 뒤에도 키패드는 제 폭만 쓴다.
+ */
+@media (max-width: 900px) {
+  .pop-result-panes {
+    grid-template-columns: 1fr;
+  }
+
+  .pop-result-panes > :last-child {
+    justify-self: start;
+    max-width: 392px;
+  }
+}
+
+/* 대상 LOT·제품 — 스펙 §3-2 가 라벨과 값과 「변경」을 한 줄에 둔다. */
+.pop-result-target {
+  margin: 0 0 var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pop-result-target > div {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.pop-result-target dt {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.pop-result-target dd {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/*
+ * ⛔ **번호가 남은 폭을 다 가져가게 두지 않는다.** LOT 번호는 34자리라 실측에서 행이 599px 중
+ * 597px 을 썼다(스펙 §3-3) — 한 글자만 길어져도 「변경」 버튼이 밀려난다. 넘치면 자르고, 전체는
+ * 마우스를 올리면 보인다.
+ */
+.pop-result-lot-no {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-result-quick {
+  margin: var(--space-3) 0 var(--space-4);
+  display: flex;
+  gap: var(--space-3);
+}
+
+.pop-result-remaining {
+  margin: var(--space-4) 0 0;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+/*
+ * 배너 안의 조치 버튼은 **문장 아래**에 선다.
+ *
+ * ⚠ 실기 크기(1024×768)에서 확인한 것 — 문장 뒤에 그대로 이어 붙이면 마지막 글자와 버튼이
+ * 맞닿아 문장이 잘린 것처럼 보인다. 장갑 낀 손이 누를 자리이므로 사방에 여백이 필요하다.
+ */
+.pop-result-banner-text {
+  margin: 0 0 var(--space-3);
+}
+
+/* 스펙 §3-2 — 대상(LOT·제품)과 입력(양품수량·비고)을 가르는 선. */
+.pop-result-rule {
+  height: 1px;
+  margin: 0;
+  border: 0;
+  background: var(--outline-variant);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * P-04-02 납품·포장 라벨 출력 (POP)
+ *
+ * ⚠ **이 화면 전용 이름(`pop-slabel-`)이다.** 앞선 POP 화면들이 `pop-lot-`·`pop-`
+ * 어휘를 이미 쓰고 있어, 같은 뜻이라도 이름을 나눈다 — 겹치면 한쪽을 고칠 때 다른 화면이
+ * 조용히 함께 바뀐다.
+ *
+ * 스펙 §3 의 세로 예산은 헤더 64 + 본문 616 + 액션바 88 = 768 이고 **슬랙이 0**이다.
+ * 그래서 ③ 재출력 구획은 필요할 때만 서고, 넘치는 것은 ② 목록 «안에서» 스크롤한다.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.pop-slabel-screen {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pop-slabel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/*
+ * ① 라벨 종류 구획 — 스펙 §3 의 72px 한 칸이다. 위아래 숨을 주지 않는다(슬랙 0).
+ */
+.pop-slabel-kind {
+  display: flex;
+  align-items: center;
+}
+
+/*
+ * 그 안의 라디오 두 개 — 가로 한 줄. 세로 예산이 72px 라 두 줄로 쌓을 자리가 없다.
+ */
+.pop-slabel-kinds {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+
+.pop-slabel-kind-name {
+  font-weight: 600;
+}
+
+/*
+ * 종류마다 「언제 발행하는가」가 붙는다. 이름 옆이 아니라 «아래»에 두어, 멀리서 볼 때
+ * 이름 두 개가 먼저 읽히게 한다 — 고르는 것은 종류이지 설명이 아니다.
+ */
+.pop-slabel-kind-note {
+  display: block;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * ② 대상 — **이 구획 «안에서» 스크롤한다.**
+ * 화면 전체를 스크롤시키면 라벨 종류와 액션바가 함께 밀려, 지금 무엇을 뽑는 중인지가
+ * 화면 밖으로 나간다.
+ */
+.pop-slabel-targets {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+}
+
+.pop-slabel-empty {
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+/* ③ 재출력 — 재발행일 때만 선다. 서는 순간 세로를 차지하므로 안쪽 여백을 아낀다. */
+.pop-slabel-reissue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pop-slabel-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* 「필수」는 라벨 옆에서 가장 강하게 읽혀야 한다 — 빠뜨리면 저장이 DB 제약에 막힌다. */
+.pop-slabel-required {
+  color: var(--semantic-error);
+  font-weight: 600;
+}
+
+/* ④ 프린터 — 이름·상태를 한 줄에 둔다. 인쇄가 안 될 때 가장 먼저 보는 자리다. */
+.pop-slabel-printer,
+.pop-slabel-printer-pane {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/*
+ * 액션바 — 오른쪽에 모은다. 막힌 사유는 왼쪽 끝에 두어 단추와 같은 줄에서 읽히게 한다.
+ */
+.pop-slabel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.pop-slabel-actions > .field-note {
+  margin-right: auto;
+}
+
+/*
+ * 구획 폭을 그대로 쓰는 보조 안내. `.field-note` 는 규범 4가 **비활성 사유**용으로 정의해
+ * `max-width: 20rem` 에 갇히는데, 이쪽은 구획 전체에 걸리는 안내다.
+ */
+.pop-slabel-wide-note {
+  max-width: none;
+}
+
+/*
+ * 미리보기 — 여러 장을 한 창에 편다. 라벨 이미지는 서버가 그린 것이라 크기를 모른다.
+ * 폭을 묶고 비율을 유지해, 큰 그림이 와도 창이 화면 밖으로 자라지 않게 한다.
+ */
+.pop-slabel-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.pop-slabel-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+/*
+ * ⛔ 배경을 칠하지 않는다 — 라벨은 흰 바탕을 스스로 그리고, 칠하면 어두운 테마에서
+ * 그림 테두리가 배경에 먹힌다(전례 `.token-figure`).
+ */
+.pop-slabel-preview-image {
+  max-width: 20rem;
+  height: auto;
+  border: 1px solid var(--outline-variant);
+}
+
+/*
+ * P-02-08 포장 작업이 더하는 자리들.
+ *
+ * ⭐ **셸·머리·표제·스캔 줄은 이미 있는 것을 쓴다** — `.pop-shell`·`.pop-header`·`.pop-title`·
+ * `.pop-context-right`·`.pop-panes`·`.scan-row` 는 먼저 선 POP 화면이 세웠다.
+ *
+ * ⛔ **이름을 `pack-work-` 로 굳힌다.** 포장을 다루는 화면이 셋(`P-02-08`·`P-02-09`·`P-04-01`)
+ * 이라 `packing-` 으로 시작하는 이름은 나중에 선 화면이 조용히 덮는다 — 게이트가 잡지 못한다.
+ */
+
+/* 스캔 칸 아래 「수량 + 담기」 한 줄. 담기는 장갑 낀 손이 누르므로 자기 폭을 갖는다. */
+.pack-work-add-row {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.pack-work-add-row > *:first-child {
+  flex: 1;
+}
+
+/*
+ * ⛔ **번호가 남은 폭을 다 가져가게 두지 않는다.** LOT 번호가 길면 행이 옆으로 늘어나
+ * 오른쪽 끝의 선택 버튼이 표 밖으로 밀려난다(전례 `P-02-05` 실측).
+ */
+.pack-work-lot-table,
+.pack-work-content-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.pack-work-lot-no {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 포장 번호 — **구획 제목 옆에 선다**(스펙 §3 「《포장 단위》 HU-2026-0804-0007」).
+ * 별도 줄로 세우면 아래 「유형」 라벨이 오른쪽 「상위 포장」과 어긋나 보인다.
+ */
+.pack-work-unit-heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.pack-work-unit-no {
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 유형·상위 포장 — **위아래 두 줄**이다(스펙 §3). 줄마다 라벨이 왼쪽, 값이 오른쪽에 선다.
+ * 좌우로 늘어놓으면 스펙의 읽는 순서가 사라지고 값 칸이 절반으로 좁아진다.
+ */
+.pack-work-unit-fields {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pack-work-field {
+  display: grid;
+  grid-template-columns: 5rem 1fr;
+  align-items: center;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.pack-work-field-label {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 확정 줄 — 오른쪽 정렬이되 막힌 사유는 줄 왼쪽 아래에 남는다. */
+.pack-work-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.pack-work-actions > .field-note {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+ * P-04-04 재구성 신규 라벨 발행 (`screens/repack-label-issue`)
+ *
+ * ⚠ 이름을 `pop-repack-` 으로 묶는다 — 이 파일은 접촉이 가장 몰리는 자리라 짧은 이름은
+ * 다른 POP 슬라이스와 겹친다(전례 실측).
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+/* 대상 포장의 사실 세 줄 — 번호·유형·내용물. 읽는 값이라 입력처럼 보이지 않게 둔다. */
+.pop-repack-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+
+.pop-repack-facts > dt {
+  color: var(--on-surface-muted);
+}
+
+.pop-repack-facts > dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* 발행 현황 한 줄 — 「사유가 필요한가」를 사용자가 먼저 읽는 자리다. */
+.pop-repack-standing {
+  margin: 0 0 var(--space-3);
+}
+
+.pop-repack-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* 칸 아래에 붙는 사유·오류. 배너로 올리지 않는다 — 고칠 자리가 바로 위다. */
+.pop-repack-note {
+  margin: 0;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 미리보기 이미지 — 서버가 그린 것을 그대로 건다.
+ * ⛔ 늘리지 않는다(`max-width`만 건다) — 라벨을 확대하면 실제 인쇄면과 달라 보인다.
+ */
+.pop-repack-preview-image {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.pop-repack-preview-note {
+  margin: var(--space-3) 0 0;
+  color: var(--on-surface-muted);
+}
+
+/* 막힌 사유 — ⛔ 툴팁에만 두면 터치 패널에서 읽히지 않는다(독립 검증 실측). */
+.pop-repack-blocked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  color: var(--semantic-error);
+}
+
+/* 칸 아래의 오류 — 위 `.pop-repack-note`(도움말)와 색으로 갈린다. */
+.pop-repack-error {
+  margin: 0;
+  color: var(--semantic-error);
+}
+
+/*
+ * ⛔ `.pop-section > * > * + *`(구획 안 형제 간격 12)가 액션바의 둘째 버튼까지 때린다 —
+ * 실측으로 두 버튼의 윗변이 12 어긋났다. 이 띠는 `align-items: center` 로 세로를 잡으므로
+ * 형제 간격을 턴다.
+ */
+.pop-repack-actions > * + * {
+  margin-top: 0;
+}
+
+/*
+ * P-02-11 러닝체인지 부품 교체 — **슬라이스 전용 이름(`pop-rc-`)을 쓴다.**
+ *
+ * ⛔ `.pop-pane`·`.pop-screen` 같은 일반명은 이미 임자가 있다. 같은 이름을 다른 값으로 다시
+ * 정의하면 **나중 정의가 앞 화면의 배치를 통째로 덮는데**, 시험이 스타일을 읽지 않아
+ * (`vitest.config.ts`의 `css: false`) 게이트가 잡지 못한다.
+ *
+ * 셸·머리·2단 배치는 먼저 선 POP 화면들의 `.pop-shell`·`.pop-header`·`.pop-panes`를 그대로
+ * 쓴다 — **다시 정의하지 않고 쓰기만 한다.**
+ */
+.pop-rc-inputs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+/*
+ * 한 줄에 품목·LOT·수량이 선다. LOT 번호가 34자리까지 가므로(계약) 줄바꿈을 허용하되,
+ * 수량은 오른쪽 끝에 붙여 여러 줄을 위아래로 훑을 때 자릿수가 한 열에 서게 한다.
+ */
+.pop-rc-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.pop-rc-input-item {
+  font-weight: 600;
+}
+
+.pop-rc-input-lot {
+  color: var(--on-surface-muted);
+  word-break: break-all;
+}
+
+.pop-rc-input-qty {
+  margin-inline-start: auto;
+}
+
+/* 지금 물린 금형. 목록과 붙되 한 덩이로 읽히게 사이를 둔다. */
+.pop-rc-mold,
+.pop-rc-part {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.pop-rc-mold-label,
+.pop-rc-part-label {
+  font-weight: 600;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 라벨과 컨트롤을 위아래로 둔다 — `Select`은 `TextField`와 달리 라벨 층을 스스로 갖지 않아
+ * 외부 `<label htmlFor>`와 짝을 이룬다.
+ */
+.pop-rc-field {
+  display: grid;
+  gap: var(--space-1);
+  margin-block-start: var(--space-4);
+}
+
+.pop-rc-field > label {
+  font: var(--type-label-lg);
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 등록 버튼과 그 사유. **버튼과 사유가 늘 한 덩이로 붙어 있어야** 무엇이 왜 잠겼는지
+ * 시각적으로 끊기지 않는다.
+ */
+.pop-rc-submit {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
 
 /*
  * P-02-10 작업 중단(홀드) 등록 — 슬라이스 전용 이름을 쓴다.

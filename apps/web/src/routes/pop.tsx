@@ -4,11 +4,20 @@ import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
+import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
+import { PackingWorkScreen } from '../screens/packing-work/screen';
+import { PopLotLabelPrintScreen } from '../screens/pop-lot-label-print/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
+import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
+import { ProductionResultScreen } from '../screens/production-result/screen';
+import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
+import { RunningChangeScreen } from '../screens/running-change/screen';
+import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
+import { WorkStartScreen } from '../screens/work-start/screen';
 
 /**
  * POP(현장 단말) 화면의 라우트 표.
@@ -26,9 +35,12 @@ import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
  *
  * ⛔ **POP 라우트를 `index.tsx`에 직접 추가하지 않는다.** 새 P- 화면은 이 배열에만 붙인다.
  *
- * ⚠ 지금은 `index.tsx`가 이 배열을 그대로 펼쳐 넣는다 — **주소도 동작도 이전과 같다.**
- * 이 파일이 분리된 것은 소유를 가르기 위해서이지 번들을 가르기 위해서가 아니다. POP 전용
- * 빌드 엔트리는 아직 없고, `apps/pop`은 여전히 `apps/web/dist`를 통째로 복사해 쓴다.
+ * ⚠ **`index.tsx`는 이 배열을 펼쳐 넣지 않는다**(#752). 소유뿐 아니라 번들도 갈렸다 —
+ * 이 표를 세우는 것은 POP 진입점(`app/pop-main.tsx`)뿐이고, `apps/pop`은 POP 전용 산출물
+ * (`apps/web/dist-pop`)을 싣는다.
+ *
+ * 개발 중 브라우저로 이 화면들을 여는 길은 POP 전용 개발 서버다 —
+ * `pnpm --filter @omf-mes/web dev:pop` → `http://localhost:5174/pop/...`.
  */
 export const popRoutes: RouteObject[] = [
   /*
@@ -126,6 +138,106 @@ export const popRoutes: RouteObject[] = [
    * 「단말이 확인되지 않았습니다」로 발행이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
    */
   { path: '/pop/tag-issue', element: <IdentificationTagIssueScreen /> },
+  /*
+   * P-02-01 — **POP 태스크의 시작점이다.** 사번을 받고 이 설비에 배포된 작업지시를 골라
+   * 세션을 연다. 다른 POP 화면(`/pop/material-input` 등)이 그 세션 위에서 돈다.
+   *
+   * ⛔ **사이드바에 올리지 않는다.** 관리웹 사용자가 메뉴로 찾아가는 곳이 아니라 설비에
+   * 붙은 단말이 고정으로 띄우는 화면이다.
+   *
+   * ⚠ **진입 컨텍스트를 주소로 받지 않는다** — 단말·공정·사번은 셸이 채우고
+   * (`patterns/pop-identity`), 「이 설비」는 그 단말 번호로 서버에 물어 얻는다
+   * (`GET /mdm/terminals/{terminalId}` 의 `equipmentId`). 그 자리가 아직 비어 있어
+   * 이 화면은 「이 단말을 확인하지 못했습니다」로 막힌 채 뜬다 — 모르는 것을 통과로
+   * 처리하지 않는다(F-6). `P-CO-01`과 단말 토큰이 서면 그때 채워진다.
+   */
+  { path: '/pop/work-start', element: <WorkStartScreen /> },
+  { path: '/pop/rework-results', element: <ReworkResultRegisterScreen /> },
+  /*
+   * P-02-09 — **재출력이 정상 경로인 유일한 화면**이다(스펙 §5-1). 재출력 사유가 예외가 아니라
+   * 기본 입력이라 우단에 상시 선다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?handlingUnitId=&workerNo=`) — 포장을 만드는
+   * 포장 작업(`P-02-08`)이 섰지만 그 화면은 여기로 넘기지 않는다(스펙이 분기를 두지 않았다).
+   * 넘기는 자리가 정해지면 `entry-context.ts` 하나가 바뀐다(전례 `P-02-05`).
+   */
+  { path: '/pop/packing-label-reprint', element: <PackingLabelReprintScreen /> },
+  /*
+   * P-02-04 — 작업실적 등록. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⭐ **이 화면의 세로 예산에는 슬랙이 0 이다**(헤더 64 + 본문 616 + 액션바 88 = 768 — 스펙
+   * §3-1). 관리웹 셸의 상단 바가 위에 얹히면 1024×768 단말에서 본문 아래가 그대로 잘린다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시
+   * 선택(`P-02-01`)이 아직 이 저장소에 없다. 그것이 서면 `entry-context.ts` 하나가 바뀐다.
+   *
+   * ⚠ **단말·공정은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 비어 있는 동안 이 화면은
+   * 「단말이 확인되지 않았습니다」로 저장이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
+   */
+  { path: '/pop/production-result', element: <ProductionResultScreen /> },
+  /*
+   * P-02-08 — 포장 작업(LOT 스캔·제품 포장). 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시
+   * 선택(`P-02-01`)이 아직 이 저장소에 없다. 그것이 서면 `entry-context.ts` 하나가
+   * 바뀐다(전례 `P-02-05`).
+   *
+   * ⚠ **재출력 화면(`P-02-09`)으로 넘기지 않는다.** 스펙이 이 화면에 분기를 두지 않았다 —
+   * 확정한 포장의 라벨을 다시 뽑는 것은 그 화면의 소관이고, 넘기는 자리는 설계가 정한다.
+   */
+  { path: '/pop/packing-work', element: <PackingWorkScreen /> },
+  /*
+   * P-04-02 — 납품·포장 라벨 출력. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?shipmentId=&workerNo=`) — 스펙 §3 의 세로 예산이
+   * 슬랙 0 이라 **출하를 고르는 구획이 화면 안에 없다.** `P-04-01`(포장 실적 등록)이
+   * 「라벨 출력」으로 넘기는 것이 적혀 있는 유일한 경로이고, POP 모드 메뉴에서 직접 들어올
+   * 때 출하를 무엇으로 정하는지는 아직 설계에 없다. 정해지면 `entry-context.ts` 하나가 바뀐다.
+   *
+   * ⚠ **사번도 같은 주소에서 받는다.** 셸이 채우는 자리(`patterns/pop-identity`)는 저장소에
+   * 공급자가 아직 없어 항상 비어 있고, 그것을 읽으면 발행이 영구히 막힌다(실측). 없으면
+   * 발행이 사유와 함께 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다(공유계약 F-6).
+   *
+   * ⚠ **단말 게이팅 선차단을 두지 않는다.** 출력 권한 집행은 서버의 403 이다(스펙 §6).
+   */
+  { path: '/pop/shipping-label', element: <ShippingPackingLabelScreen /> },
+  /*
+   * P-02-07 — LOT 라벨 출력·부착. 2단 출력의 나머지 한 단이며 `P-02-05`(인식표)와 **발행
+   * 시점이 다르다**(스펙 §5-3) — 인식표는 생산 «중», LOT 라벨은 LOT 이 완료된 «뒤»다. 두
+   * 화면은 서로를 안내만 하고 합치지 않는다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시 선택
+   * (`P-02-01`)이 아직 이 저장소에 없다. 그것이 서면 `entry-context.ts` 하나가 바뀐다.
+   *
+   * ⚠ **단말 게이팅(`can_print_label`)은 출력 액션과 함께 붙는다.** 목록만 서 있는 동안
+   * 먼저 막으면 「완료 LOT 이 없다」와 구분되지 않는다 — 집행은 서버의 403 이다(F-1).
+   */
+  { path: '/pop/lot-label', element: <PopLotLabelPrintScreen /> },
+  /*
+   * P-04-04 — 재구성 신규 라벨 발행.
+   *
+   * ⛔ **스펙의 네 구획 중 둘만 서 있다.** ① 발행 대기 목록과 ② 신규 발번은 계약이 「무엇을 몇
+   * 개 만들어야 하는가」와 「이미 처리한 건인가」를 나르지 못해 만들지 않았다(`omf-mes#418` ·
+   * 근거는 `screens/repack-label-issue/types.ts` 머리). 임시 구현으로 메우면 목록이 지워지지
+   * 않아 같은 재구성을 반복 처리하게 된다.
+   *
+   * ⚠ **그래서 대상 포장을 질의 문자열로 받는다**(`?handlingUnitId=&workerNo=`) — 앞단이
+   * 열리면 `entry-context.ts` 하나가 바뀐다(전례 `P-02-09`).
+   */
+  { path: '/pop/repack-label-issue', element: <RepackLabelIssueScreen /> },
+  /*
+   * P-02-11 — 러닝체인지 부품 교체 등록. **설비를 멈추지 않고 같은 세션 안에서** 부품을 간다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=`) — 프로세스상 진입은 메인
+   * 작업 화면의 인라인 「부품 교체」이고(스펙 §2), 그 화면이 아직 이 저장소에 없다. 서면
+   * `screen-params.ts` 하나가 바뀐다.
+   *
+   * ⛔ **사이드바에 올리지 않는다.** 관리웹 사용자가 메뉴로 찾아가는 곳이 아니다.
+   *
+   * ⚠ **계획 분할 지정은 이 주소가 아니다**(§5-5) — 그것은 관리웹에서 지정하면 시스템이
+   * 자동 실행하며 화면이 없다. 이 주소가 다루는 것은 **생산 당일 교체** 하나다.
+   */
+  { path: '/pop/running-change', element: <RunningChangeScreen /> },
   /*
    * P-02-10 — 작업 중단(홀드) 등록. 셸 밖에 서는 POP 태스크 화면이다.
    *

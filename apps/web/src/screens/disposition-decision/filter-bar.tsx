@@ -99,7 +99,7 @@ export const FilterBar = ({
   const sourceOptions = sourceCodeOptions();
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar disposition-filter">
       <div className="field-cell">
         <label className="field-label" htmlFor={periodId}>
           {t.fields.period}
@@ -152,7 +152,7 @@ export const FilterBar = ({
         note={t.sourceNote}
         onChange={(value) => setDraft((current) => ({ ...current, sourceCode: value }))}
       />
-      <div className="field-cell field-cell-unlabeled">
+      <div className="disposition-filter-actions">
         <div className="filter-actions">
           <Button onClick={() => onApply(draft)}>{messages.common.search}</Button>
           <Button variant="outlined" onClick={onReset}>

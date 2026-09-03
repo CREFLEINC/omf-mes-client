@@ -9,12 +9,18 @@
   },
   "scripts": {
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "mock": "node tools/mock/serve.mjs",
+    "test": "pnpm run workflow:repo-check && pnpm run test:workflow && pnpm -r test",
+    "test:workflow": "node --test tools/workflow-state.test.mjs",
+    "workflow": "node tools/workflow-state.mjs",
+    "workflow:check": "node tools/workflow-state.mjs check",
+    "workflow:repo-check": "node tools/workflow-state.mjs repo-check",
+    "mock": "node tools/mock/seeded.mjs",
     "mock:smoke": "node tools/mock/smoke.mjs",
     "gen:api": "node tools/gen-api.mjs",
     "check:generated": "node tools/check-generated-boundary.mjs",
-    "dep:check": "depcruise apps packages --config .dependency-cruiser.cjs"
+    "dep:check": "depcruise apps packages --config .dependency-cruiser.cjs",
+    "mock:contract": "node tools/mock/serve.mjs",
+    "mock:seed-smoke": "node tools/mock/seed-smoke.mjs"
   },
   "devDependencies": {
     "@stoplight/prism-cli": "^5.14.2",

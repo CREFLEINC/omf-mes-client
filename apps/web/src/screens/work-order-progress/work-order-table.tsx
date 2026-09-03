@@ -152,7 +152,8 @@ export const WorkOrderTable = ({
 
   if (isError) {
     return (
-      <section aria-label={t.title}>
+      <section className="pane work-order-progress-pane" aria-label={t.title}>
+        <h2 className="pane-title">{t.title}</h2>
         <div className="banner-slot">
           <AlertBanner variant="error">{t.loadError}</AlertBanner>
         </div>
@@ -161,26 +162,32 @@ export const WorkOrderTable = ({
   }
 
   return (
-    <section aria-label={t.title}>
+    <section className="pane work-order-progress-pane" aria-label={t.title}>
+      <h2 className="pane-title">{t.title}</h2>
+
       {isLoading && <p role="status">{t.loading}</p>}
 
-      <p>{t.joinedColumnsNote}</p>
-      <p>{t.quantityNote}</p>
-      {/* ⛔ 지연이 서버 판정이 아니라는 사실을 값 옆에 상시 둔다(omf-mes#265). */}
-      <p>{t.delayReference}</p>
+      <div className="work-order-progress-list-notes">
+        <p>{t.joinedColumnsNote}</p>
+        <p>{t.quantityNote}</p>
+        {/* ⛔ 지연이 서버 판정이 아니라는 사실을 값 옆에 상시 둔다(omf-mes#265). */}
+        <p>{t.delayReference}</p>
+      </div>
 
-      <Table
-        density="compact"
-        caption={t.title}
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.workOrderId)}
-        sort={toTableSort(sort)}
-        onSortChange={(next) => {
-          if (next !== null) onSort(next.key as SortKey);
-        }}
-        empty={<EmptyState title={t.empty} />}
-      />
+      <div className="work-order-progress-table">
+        <Table
+          density="compact"
+          caption={t.title}
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.workOrderId)}
+          sort={toTableSort(sort)}
+          onSortChange={(next) => {
+            if (next !== null) onSort(next.key as SortKey);
+          }}
+          empty={<EmptyState title={t.empty} />}
+        />
+      </div>
     </section>
   );
 };

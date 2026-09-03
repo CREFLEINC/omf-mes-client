@@ -145,7 +145,7 @@ describe('IssueFormPane', () => {
 
   it('⛔ 승인·자원 배정·출고요청 컨트롤을 두지 않는다 — 확정은 컨트롤로 존재하지 않는다', () => {
     renderPane();
-    const section = screen.getByRole('region', { name: messages.emergencyWorkOrder.title });
+    const section = screen.getByRole('region', { name: t.title });
 
     expect(within(section).queryAllByRole('checkbox')).toHaveLength(0);
     expect(within(section).queryAllByRole('switch')).toHaveLength(0);

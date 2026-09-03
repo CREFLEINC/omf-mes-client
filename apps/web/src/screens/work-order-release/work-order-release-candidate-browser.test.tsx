@@ -155,7 +155,10 @@ describe('WorkOrderReleaseCandidateBrowser', () => {
     await user.click(
       screen.getByRole('button', { name: t.candidateList.actions.select('SYN-WO-701') }),
     );
-    expect(screen.getByText('SELECTION:701')).toBeVisible();
+    const selected = screen.getByText('SELECTION:701');
+    expect(selected).toBeVisible();
+    expect(selected.closest('.work-order-release-detail')).not.toBeNull();
+    expect(selected.closest('.work-order-release-content')).toHaveClass('has-selection');
     await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.next }));
     expect(
       await screen.findByRole('button', { name: t.candidateList.actions.select('SYN-WO-702') }),

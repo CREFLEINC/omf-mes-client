@@ -82,7 +82,7 @@ export const InspectionInsightFilterBar = ({
   ] as const;
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar inspection-results-filter">
       <TextField
         type="date"
         label="시작일"
@@ -129,7 +129,7 @@ export const InspectionInsightFilterBar = ({
           }
         />
       </div>
-      <div className="field-cell field-cell-unlabeled">
+      <div className="inspection-results-filter-footer">
         <Checkbox
           checked={draft.finalRoundOnly}
           onChange={(event) =>
@@ -138,17 +138,7 @@ export const InspectionInsightFilterBar = ({
         >
           최종 회차만
         </Checkbox>
-      </div>
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
-          <Button disabled={reason !== null} onClick={() => onSearch(draft)}>
-            조회
-          </Button>
-          <Button variant="outlined" onClick={onReset}>
-            초기화
-          </Button>
-        </div>
-        <span className="field-note">
+        <span className={reason === null ? 'field-note' : 'field-error'} role="status">
           {reason ??
             (draft.inspectionTypeCode === ''
               ? '전체 선택 시 요약·추이는 검사유형별로 분리합니다.'
@@ -156,6 +146,14 @@ export const InspectionInsightFilterBar = ({
                 ? '최종 검사 회차만 조회합니다.'
                 : '재검 사슬 전체를 회차 순서로 조회합니다.')}
         </span>
+        <div className="form-actions inspection-results-filter-actions">
+          <Button variant="outlined" onClick={onReset}>
+            초기화
+          </Button>
+          <Button disabled={reason !== null} onClick={() => onSearch(draft)}>
+            조회
+          </Button>
+        </div>
       </div>
     </div>
   );

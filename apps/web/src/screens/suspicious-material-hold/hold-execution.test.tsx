@@ -52,6 +52,8 @@ const renderExecution = (reply: Reply, value: Body | null = body) => {
 describe('의심자재 보류 실행', () => {
   it('유효 body만 확인하고 exact POST와 Idempotency-Key만 보낸다', async () => {
     const blocked = renderExecution(() => jsonResponse([]), null);
+    expect(screen.getByRole('heading', { level: 2, name: '의심자재 보류 실행' })).toBeVisible();
+    expect(screen.getByText('보류 사유와 해제 조건을 입력하면 등록할 수 있습니다.')).toBeVisible();
     expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled();
     blocked.unmount?.();
     const { requests, user } = renderExecution(() => jsonResponse([], { status: 201 }));

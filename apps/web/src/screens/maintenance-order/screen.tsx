@@ -227,82 +227,91 @@ export const MaintenanceOrderScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.triggers}>
-        <h2>{t.triggers.heading}</h2>
-        <TriggerPicker
-          breakdowns={breakdowns.data ?? []}
-          inspections={inspections.data ?? []}
-          isLoading={breakdowns.isPending || inspections.isPending}
-          selected={triggers}
-          equipmentOptions={toOptions(equipments.entries)}
-          onToggle={toggleTrigger}
-          onRemove={removeTrigger}
-        />
-      </section>
+      <div className="maintenance-order-workspace">
+        <section className="pane maintenance-order-pane" aria-label={t.panes.triggers}>
+          <h2 className="pane-title">{t.triggers.heading}</h2>
+          <TriggerPicker
+            breakdowns={breakdowns.data ?? []}
+            inspections={inspections.data ?? []}
+            isLoading={breakdowns.isPending || inspections.isPending}
+            selected={triggers}
+            equipmentOptions={toOptions(equipments.entries)}
+            onToggle={toggleTrigger}
+            onRemove={removeTrigger}
+          />
+        </section>
 
-      <section className="pane" aria-label={t.panes.form}>
-        <SaveErrorBanner error={create.error} />
-        <OrderForm
-          draft={draft}
-          triggers={triggers}
-          errors={{ ...errors, ...create.fieldErrors }}
-          equipmentOptions={toOptions(equipments.entries)}
-          userOptions={toOptions(users.entries)}
-          itemOptions={toOptions(items.entries)}
-          equipmentNote={lookupNote(equipments, t.form.equipmentLookupFailed)}
-          userNote={lookupNote(users, t.form.userLookupFailed)}
-          itemNote={lookupNote(items, t.form.itemLookupFailed)}
-          isSaving={create.isSaving}
-          onChange={setDraft}
-          onSubmit={requestSubmit}
-          onReset={() => {
-            setDraft(EMPTY_DRAFT);
-            setTriggers(EMPTY_TRIGGERS);
-            setErrors({});
-            create.reset();
-          }}
-        />
-      </section>
-
-      <section className="pane" aria-label={t.panes.list}>
-        <h2>{t.panes.list}</h2>
-        <SaveErrorBanner error={cancel.error} />
-        {orders.isError ? (
-          <LoadErrorBanner
-            error={orders.error}
-            onRetry={() => {
-              void orders.refetch();
+        <section className="pane maintenance-order-pane" aria-label={t.panes.form}>
+          <h2 className="pane-title">{t.panes.form}</h2>
+          <SaveErrorBanner error={create.error} />
+          <OrderForm
+            draft={draft}
+            triggers={triggers}
+            errors={{ ...errors, ...create.fieldErrors }}
+            equipmentOptions={toOptions(equipments.entries)}
+            userOptions={toOptions(users.entries)}
+            itemOptions={toOptions(items.entries)}
+            equipmentNote={lookupNote(equipments, t.form.equipmentLookupFailed)}
+            userNote={lookupNote(users, t.form.userLookupFailed)}
+            itemNote={lookupNote(items, t.form.itemLookupFailed)}
+            isSaving={create.isSaving}
+            onChange={setDraft}
+            onSubmit={requestSubmit}
+            onReset={() => {
+              setDraft(EMPTY_DRAFT);
+              setTriggers(EMPTY_TRIGGERS);
+              setErrors({});
+              create.reset();
             }}
           />
-        ) : orders.isPending ? (
-          <Skeleton variant="rect" height="10rem" />
-        ) : (
-          <>
-            <div className="wide-table">
-              <Table
-                columns={listColumns}
-                rows={rows}
-                getRowId={(row) => String(row.maintenanceOrderId)}
-                density="compact"
-                empty={
-                  <EmptyState size="sm" live title={t.list.emptyTitle} description={t.list.empty} />
-                }
-              />
-            </div>
-            <PageNav
-              view={pageView}
-              onChange={(nextPage) => {
-                const params = new URLSearchParams();
+        </section>
 
-                if (statusFilter !== '') params.set('status', statusFilter);
-                if (nextPage > 1) params.set('page', String(nextPage));
-                setSearchParams(params);
+        <section className="pane maintenance-order-pane" aria-label={t.panes.list}>
+          <h2 className="pane-title">{t.panes.list}</h2>
+          <SaveErrorBanner error={cancel.error} />
+          {orders.isError ? (
+            <LoadErrorBanner
+              error={orders.error}
+              onRetry={() => {
+                void orders.refetch();
               }}
             />
-          </>
-        )}
-        <p className="pane-lead">{t.list.cancelLockedStatus}</p>
-      </section>
+          ) : orders.isPending ? (
+            <Skeleton variant="rect" height="10rem" />
+          ) : (
+            <>
+              <div className="wide-table maintenance-order-list-table">
+                <Table
+                  caption={<span className="maintenance-order-table-caption">{t.panes.list}</span>}
+                  columns={listColumns}
+                  rows={rows}
+                  getRowId={(row) => String(row.maintenanceOrderId)}
+                  density="compact"
+                  empty={
+                    <EmptyState
+                      size="sm"
+                      live
+                      title={t.list.emptyTitle}
+                      description={t.list.empty}
+                    />
+                  }
+                />
+              </div>
+              <PageNav
+                view={pageView}
+                onChange={(nextPage) => {
+                  const params = new URLSearchParams();
+
+                  if (statusFilter !== '') params.set('status', statusFilter);
+                  if (nextPage > 1) params.set('page', String(nextPage));
+                  setSearchParams(params);
+                }}
+              />
+            </>
+          )}
+          <p className="pane-lead">{t.list.cancelLockedStatus}</p>
+        </section>
+      </div>
 
       {/* 발행 확인 — 무엇이 하나로 묶이는지 되읽어 준다. */}
       <Dialog

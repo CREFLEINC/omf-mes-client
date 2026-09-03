@@ -470,6 +470,21 @@ describe('QualityApprovalScreen detail', () => {
     await findRequest();
 
     expect(screen.getByRole('region', { name: t.panes.list })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.list })).getByRole('heading', {
+        name: t.panes.list,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.detail })).getByRole('heading', {
+        name: t.panes.detail,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.progress })).getByRole('heading', {
+        name: t.panes.progress,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '요청 상세' })).toHaveTextContent(
       '승인 요청을 선택하세요',
     );

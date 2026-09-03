@@ -188,19 +188,23 @@ export const GaugeListPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={visible}
-        getRowId={(row) => String(row.equipmentId)}
-        empty={emptySlot}
-      />
+      <div className="wide-table gauge-master-table">
+        <Table
+          density="compact"
+          caption={<span className="gauge-master-table-caption">{t.paneTitle}</span>}
+          columns={columns}
+          rows={visible}
+          getRowId={(row) => String(row.equipmentId)}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   return (
-    <section className="pane" aria-label={t.title}>
-      <div className="filter-bar">
+    <section className="pane gauge-master-pane" aria-label={t.paneTitle}>
+      <h2 className="pane-title">{t.paneTitle}</h2>
+      <div className="filter-bar gauge-master-filter">
         <SearchInput
           label={t.filters.searchLabel}
           placeholder={t.filters.searchPlaceholder}
@@ -221,49 +225,47 @@ export const GaugeListPane = ({
           onChange={(value) => setDraft((prev) => ({ ...prev, equipmentTypeCode: value }))}
           note={typeOptionsNote}
         />
-        {/* 해제 축이라 변경 즉시 적용한다. */}
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.overdueOnly}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, overdueOnly: event.target.checked })
-            }
-          >
-            {t.filters.overdueOnly}
-          </Checkbox>
+        <div className="gauge-master-filter-footer">
+          {/* 해제 축이라 변경 즉시 적용한다. */}
+          <div className="check-group">
+            <Checkbox
+              checked={appliedFilters.overdueOnly}
+              onChange={(event) =>
+                onApplyFilters({ ...appliedFilters, overdueOnly: event.target.checked })
+              }
+            >
+              {t.filters.overdueOnly}
+            </Checkbox>
+            <Checkbox
+              checked={appliedFilters.includeInactive}
+              onChange={(event) =>
+                onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
+              }
+            >
+              {messages.common.includeInactive}
+            </Checkbox>
+            <Checkbox
+              checked={appliedFilters.includeDisposed}
+              onChange={(event) =>
+                onApplyFilters({ ...appliedFilters, includeDisposed: event.target.checked })
+              }
+            >
+              {t.filters.includeDisposed}
+            </Checkbox>
+          </div>
+          <div className="filter-actions">
+            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+            <Button variant="outlined" onClick={resetAll}>
+              {messages.common.reset}
+            </Button>
+            <Button variant="outlined" onClick={onAdd}>
+              {t.actions.addGauge}
+            </Button>
+          </div>
         </div>
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.includeInactive}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeInactive: event.target.checked })
-            }
-          >
-            {messages.common.includeInactive}
-          </Checkbox>
-        </div>
-        <div className="field-cell field-cell-unlabeled">
-          <Checkbox
-            checked={appliedFilters.includeDisposed}
-            onChange={(event) =>
-              onApplyFilters({ ...appliedFilters, includeDisposed: event.target.checked })
-            }
-          >
-            {t.filters.includeDisposed}
-          </Checkbox>
-        </div>
-        <Button className="field-cell-unlabeled" onClick={() => applyDraft()}>
-          {messages.common.search}
-        </Button>
-        <Button className="field-cell-unlabeled" variant="outlined" onClick={resetAll}>
-          {messages.common.reset}
-        </Button>
-        <Button className="field-cell-unlabeled" variant="outlined" onClick={onAdd}>
-          {t.actions.addGauge}
-        </Button>
       </div>
 
-      <div className="filter-bar">
+      <div className="filter-bar gauge-master-filter-chips">
         {appliedFilters.q !== '' && (
           <Chip
             variant="status"

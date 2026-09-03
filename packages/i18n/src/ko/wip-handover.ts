@@ -23,7 +23,10 @@ export const wipHandover = {
     loading: 'LOT을 불러오는 중입니다',
     loadFailed: 'LOT을 확인할 수 없습니다. 연결을 확인하세요.',
     notFound: (code: string) => `${code} LOT을 찾지 못했습니다`,
+    /* 초기 수량은 계획이다. 여기 적는 것은 실제로 만들어 낸 양이다. */
     qty: (qty: string) => `완료 수량 ${qty}`,
+    /* 모르는 채로 넉넉한 쪽으로 물러서지 않는다 - 되돌릴 수 없는 쓰기다. */
+    qtyUnknown: '완료 수량을 확인할 수 없어 인계할 수 없습니다',
     problem: {
       notProduction: '생산LOT이 아닙니다. 공정 인계는 생산LOT만 넘깁니다.',
       notCompleted: '생산 완료 처리가 필요합니다',
@@ -34,7 +37,8 @@ export const wipHandover = {
   },
   next: {
     legend: '다음 공정',
-    label: '다음 공정',
+    /* 구획 제목과 같은 말을 쓰지 않는다. 좁은 화면에 같은 줄이 둘로 붙는다. */
+    label: '인계할 공정',
     placeholder: '다음 공정을 고르세요',
     loading: '다음 공정을 불러오는 중입니다',
     loadFailed: '다음 공정을 확인할 수 없습니다. 연결을 확인하세요.',

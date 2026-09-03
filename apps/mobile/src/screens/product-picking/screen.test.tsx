@@ -274,9 +274,9 @@ describe('제품LOT 피킹 스캔 화면', () => {
     const blocked = await screen.findAllByText(/고객 요구 999999일 미달/);
 
     expect(blocked).toHaveLength(2);
-    expect(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0]?.hasAttribute('disabled')).toBe(
-      true,
-    );
+    expect(
+      screen.getAllByRole('button', { name: '이 LOT 고르기' })[0]?.hasAttribute('disabled'),
+    ).toBe(true);
   });
 
   /* 셀 수 없는 것을 넉넉한 것으로 두지 않는다. 판정의 정본은 서버다. */
@@ -288,9 +288,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     });
     await chooseTarget(user);
 
-    expect(
-      await screen.findByText('유효기간이 없어 잔여 일수를 판정할 수 없습니다'),
-    ).toBeTruthy();
+    expect(await screen.findByText('유효기간이 없어 잔여 일수를 판정할 수 없습니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 LOT 고르기' }).hasAttribute('disabled')).toBe(
       false,
     );
@@ -328,7 +326,9 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
     await user.type(await screen.findByLabelText('피킹 수량'), '181');
 
-    expect(await screen.findByText('피킹 수량은 남은 배정 180을(를) 넘을 수 없습니다')).toBeTruthy();
+    expect(
+      await screen.findByText('피킹 수량은 남은 배정 180을(를) 넘을 수 없습니다'),
+    ).toBeTruthy();
     expect(screen.getByRole('button', { name: '피킹 확정' }).hasAttribute('disabled')).toBe(true);
   });
 
@@ -360,6 +360,375 @@ describe('제품LOT 피킹 스캔 화면', () => {
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
     expect(await screen.findByText('피킹을 기록했습니다')).toBeTruthy();
+  });
+
+  /*
+   * 보낼 때마다 키를 새로 만들면 멱등키가 아무것도 막지 못한다. 서버가 기록한 뒤 응답이
+   * 유실되면 화면은 실패로 보이고, 다시 누르면 새 키라 서버가 같은 일을 한 번 더 한다.
+   */
+  it('확정을 다시 시도해도 같은 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let reachable = false;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+
+          if (!reachable) {
+            throw new TypeError('Failed to fetch');
+          }
+
+          return jsonResponse(line({ pickedQty: 300 }));
+        },
+      },
+    ]);
+    await chooseTarget(user);
+    await screen.findByText('FG-0298');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    reachable = true;
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).toBe(seen[0]?.headers.get('Idempotency-Key'));
+  });
+
+  /* 보낼 값이 달라졌으면 다른 쓰기다. 앞 키로 가면 서버가 앞 시도로 보고 흡수한다. */
+  it('수량을 바꾸면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+    await chooseTarget(user);
+    await screen.findByText('FG-0298');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+
+    const field = await screen.findByLabelText('피킹 수량');
+
+    await user.type(field, '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.clear(field);
+    await user.type(field, '150');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /* 후보를 바꾸는 것이 이 화면의 주된 조작이다. 다른 LOT 은 다른 쓰기다. */
+  it('다른 후보 LOT 을 고르면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+    await chooseTarget(user);
+    await screen.findByText('FG-0311');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[1] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    expect(await seen[1]?.clone().json()).not.toMatchObject(
+      (await seen[0]?.clone().json()) as Record<string, unknown>,
+    );
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /* 장갑 낀 손이 한 번 더 누르면 멱등키가 다른 두 건이 나가 예약이 두 번 소진된다. */
+  it('보내는 동안 확정을 다시 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const gate: { release: (() => void) | null } = { release: null };
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: async (req) => {
+          seen.push(req.clone());
+          await new Promise<void>((resolve) => {
+            gate.release = resolve;
+          });
+
+          return jsonResponse(line({ pickedQty: 300 }));
+        },
+      },
+    ]);
+    await chooseTarget(user);
+    await screen.findByText('FG-0298');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+
+    /* 장갑 낀 손의 연타다. 하나가 끝나기를 기다리지 않고 잇달아 누른다. */
+    const button = screen.getByRole('button', { name: '피킹 확정' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await waitFor(() => {
+      expect(seen.length).toBeGreaterThan(0);
+    });
+    gate.release?.();
+
+    expect(await screen.findByText('피킹을 기록했습니다')).toBeTruthy();
+    expect(seen).toHaveLength(1);
+  });
+
+  /*
+   * 창고 구석에서 연결이 끊겼다 붙는다. 훅이 조기 반환 아래에 있으면 그 순간 훅 수가 달라져
+   * 화면이 통째로 던지고, 이 앱에는 그것을 받을 자리가 없어 빈 화면이 남는다.
+   */
+  it('연결이 끊겼다 돌아와도 화면이 살아 있다', async () => {
+    const user = userEvent.setup();
+    setOnline(false);
+    mount();
+
+    await screen.findByText('연결이 없어 피킹할 수 없습니다');
+
+    setOnline(true);
+    window.dispatchEvent(new Event('online'));
+
+    await chooseTarget(user);
+
+    expect(screen.getByText('배정 300 · 피킹 120')).toBeTruthy();
+  });
+
+  /* 라인이 다르면 다른 쓰기다. 대상 바꾸기로 라인을 갈아탈 수 있다. */
+  it('다른 라인을 고르면 새 멱등키로 간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const second = line({ shipmentRequestLineId: 78, lineNo: 2 });
+    mount(
+      [
+        {
+          match: (req) =>
+            /\/logistics\/shipment-requests\/5\/lines\/\d+:pick$/.test(req.url) &&
+            req.method === 'POST',
+          respond: (req) => {
+            seen.push(req.clone());
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+      { requests: [request({ lines: [line(), second] })] },
+    );
+
+    await user.click(await screen.findByRole('button', { name: /1번 줄/ }));
+    await screen.findByText('FG-1001 완제품');
+    await screen.findByText('FG-0298');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    await user.click(screen.getByRole('button', { name: '다른 대상 고르기' }));
+    await user.click(await screen.findByRole('button', { name: /2번 줄/ }));
+    await screen.findByText('FG-0298');
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(2);
+    });
+    /* 전제 - 라인만 다르고 나머지는 같다. 그러지 않으면 이 시험은 라인을 재는 것이 아니다. */
+    expect(new URL(seen[0]?.url ?? '').pathname).toContain('/lines/77:pick');
+    expect(new URL(seen[1]?.url ?? '').pathname).toContain('/lines/78:pick');
+    expect(await seen[1]?.clone().json()).toEqual(await seen[0]?.clone().json());
+    expect(seen[1]?.headers.get('Idempotency-Key')).not.toBe(
+      seen[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /*
+   * 남은 배정은 굳은 스냅숏이 아니라 서버가 아는 값에서 나와야 한다. 확정 뒤에도 옛 값이
+   * 남으면 배정보다 많이 집을 수 있다 - 되돌릴 수 없는 예약 소진이다.
+   */
+  it('확정한 뒤 다음 건으로 가면 남은 배정이 줄어 있다', async () => {
+    const user = userEvent.setup();
+    let picked = 120;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: async (req) => {
+          /* 절대값을 박으면 화면이 무엇을 보냈든 통과한다. 보낸 만큼 더한다. */
+          const body = (await req.clone().json()) as { pickedQty: number };
+
+          picked += body.pickedQty;
+
+          return jsonResponse(line({ pickedQty: picked }));
+        },
+      },
+      {
+        /* 서버가 집은 양을 기억한다. 기억하지 않으면 낡은 스냅숏을 잡을 수 없다. */
+        match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
+        respond: () =>
+          jsonResponse({ items: [request({ lines: [line({ pickedQty: picked })] })], page }),
+      },
+    ]);
+    await chooseTarget(user);
+
+    expect(screen.getByText('남은 배정 180 EA')).toBeTruthy();
+
+    await screen.findByText('FG-0298');
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await screen.findByText('피킹을 기록했습니다');
+    await user.click(screen.getByRole('button', { name: '다음 피킹' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('남은 배정 0 EA')).toBeTruthy();
+    });
+    expect(screen.queryByText('남은 배정 180 EA')).toBeNull();
+  });
+
+  /*
+   * 남은 배정을 목록 조회에서만 얻으면, 그 조회가 실패했을 때 확정 전 값이 그대로 남는다.
+   * 배정을 다 채우고도 남은 배정이 남아 보여 한 번 더 집게 된다.
+   */
+  it('확정 뒤 목록 조회가 실패해도 남은 배정이 되살아나지 않는다', async () => {
+    const user = userEvent.setup();
+    let listFails = false;
+    let picked = 120;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: async (req) => {
+          const body = (await req.clone().json()) as { pickedQty: number };
+
+          picked += body.pickedQty;
+          listFails = true;
+
+          return jsonResponse(line({ pickedQty: picked }));
+        },
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
+        respond: () =>
+          listFails
+            ? jsonResponse({ message: '실패' }, { status: 500 })
+            : jsonResponse({ items: [request()], page }),
+      },
+    ]);
+    await chooseTarget(user);
+    await screen.findByText('FG-0298');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await screen.findByText('피킹을 기록했습니다');
+    await user.click(screen.getByRole('button', { name: '다음 피킹' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('남은 배정 0 EA')).toBeTruthy();
+    });
+    expect(screen.queryByText('남은 배정 180 EA')).toBeNull();
+    /* 조회가 늙었다는 사실도 함께 말한다. */
+    expect(screen.getByText('오늘 출하분을 확인할 수 없습니다')).toBeTruthy();
+  });
+
+  /* 말없이 나가면 무슨 일이 있었는지 알 수 없고, 남겨 두면 나중에 예고 없이 되돌아간다. */
+  it('고르던 라인이 목록에서 빠지면 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    let dropped = false;
+    let picked = 120;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: async (req) => {
+          const body = (await req.clone().json()) as { pickedQty: number };
+
+          picked += body.pickedQty;
+          dropped = true;
+
+          return jsonResponse(line({ pickedQty: picked }));
+        },
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
+        respond: () => jsonResponse({ items: dropped ? [] : [request()], page }),
+      },
+    ]);
+    await chooseTarget(user);
+    await screen.findByText('FG-0298');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await screen.findByText('피킹을 기록했습니다');
+    await user.click(screen.getByRole('button', { name: '다음 피킹' }));
+
+    expect(await screen.findByText('고르던 라인이 오늘 출하분에서 빠졌습니다')).toBeTruthy();
   });
 
   /* 확정 후 되돌리기를 두지 않는다. 예약이 소진된다. */
@@ -400,7 +769,9 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await user.type(await screen.findByLabelText('피킹 수량'), '180');
     await user.click(screen.getByRole('button', { name: '피킹 확정' }));
 
-    expect(await screen.findByText('집을 수 없는 상태로 바뀌었습니다. 목록을 다시 확인하세요.')).toBeTruthy();
+    expect(
+      await screen.findByText('집을 수 없는 상태로 바뀌었습니다. 목록을 다시 확인하세요.'),
+    ).toBeTruthy();
     expect(screen.queryByText('피킹을 기록하지 못했습니다. 다시 시도하세요.')).toBeNull();
   });
 

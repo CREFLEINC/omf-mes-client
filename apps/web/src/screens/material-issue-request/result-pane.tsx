@@ -34,7 +34,9 @@ export const ResultPane = ({ publishBlockReason, banner, created, onPublish }: R
   const reasonId = useId();
 
   return (
-    <section className="pane" aria-label={t.panes.result}>
+    <section className="pane material-issue-request-pane" aria-label={t.panes.result}>
+      <h2 className="pane-title">{t.panes.result}</h2>
+
       {created !== null && (
         <div className="banner-slot">
           <AlertBanner variant="success" title={t.result.title}>
@@ -50,21 +52,20 @@ export const ResultPane = ({ publishBlockReason, banner, created, onPublish }: R
        * 잠긴 사유는 감추지 않고 항상 보이는 DOM 텍스트로 렌더해 `aria-describedby`로 잇는다
        * (배치 규범 4) — 잠긴 버튼은 포커스를 받지 못해 툴팁만으로는 닿을 수 없다.
        */}
-      <div className="form-actions">
-        <div className="field-cell">
-          <Button
-            disabled={publishBlockReason !== null}
-            aria-describedby={publishBlockReason === null ? undefined : reasonId}
-            onClick={onPublish}
-          >
-            {t.actions.publish}
-          </Button>
-          {publishBlockReason !== null && (
-            <span id={reasonId} className="field-note">
-              {publishBlockReason}
-            </span>
-          )}
-        </div>
+      <div className="material-issue-request-publish-row">
+        {publishBlockReason !== null && (
+          <span id={reasonId} className="field-note">
+            {publishBlockReason}
+          </span>
+        )}
+
+        <Button
+          disabled={publishBlockReason !== null}
+          aria-describedby={publishBlockReason === null ? undefined : reasonId}
+          onClick={onPublish}
+        >
+          {t.actions.publish}
+        </Button>
       </div>
     </section>
   );

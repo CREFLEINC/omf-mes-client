@@ -11,7 +11,7 @@ export interface PageNavProps {
 
 /** DS에 쪽 이동 컴포넌트가 없어 조합으로 만든다(design-system-v2-webui#72). */
 export const PageNav = ({ view, label, onChange }: PageNavProps) => (
-  <nav className="form-actions" aria-label={label}>
+  <nav className="form-actions disposition-page-nav" aria-label={label}>
     <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
     <Button
       variant="outlined"

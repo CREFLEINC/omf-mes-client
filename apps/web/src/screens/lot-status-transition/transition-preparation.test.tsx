@@ -139,10 +139,11 @@ const chooseHold = async (
   reasonCode: string,
   heldAt: string,
 ): Promise<void> => {
+  const visibleHeldAt = `${heldAt.slice(0, 10)} ${heldAt.slice(11, 16)}`;
   await screen.findAllByText(reasonCode);
   const row = screen.getAllByRole('row').find((candidate) => {
     const text = candidate.textContent ?? '';
-    return text.includes(reasonCode) && text.includes(heldAt);
+    return text.includes(reasonCode) && text.includes(visibleHeldAt);
   });
   if (row === undefined) throw new Error(`보류 ${reasonCode} / ${heldAt}의 행이 없습니다.`);
   await user.click(within(row).getByRole('button', { name: /^선택(?:됨)?$/ }));
@@ -565,9 +566,9 @@ describe('Lot Status 전이 준비', () => {
     await chooseTransition(user, '정상');
     const list = await screen.findByRole('region', { name: '열린 보류 목록' });
     expect(within(list).getAllByText('SAME_REASON')).toHaveLength(3);
-    expect(within(list).getByText('2026-08-25T08:00:00+09:00')).toBeVisible();
-    expect(within(list).getByText('2026-08-25T09:00:00+09:00')).toBeVisible();
-    expect(within(list).getByText('2026-08-25T10:00:00+09:00')).toBeVisible();
+    expect(within(list).getByText('2026-08-25 08:00')).toBeVisible();
+    expect(within(list).getByText('2026-08-25 09:00')).toBeVisible();
+    expect(within(list).getByText('2026-08-25 10:00')).toBeVisible();
     const holdRequests = urls.filter((url) => url.pathname === HOLDS);
     expect(holdRequests).toHaveLength(2);
     expect(holdRequests[0]?.searchParams.has('page')).toBe(false);

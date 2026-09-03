@@ -52,7 +52,7 @@ export const HistoryFilterBar = ({
       : actorOptions;
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar lot-status-filter lot-status-history-filter">
       <div className="field-cell">
         <label className="field-label" htmlFor={periodId}>
           기간
@@ -87,8 +87,14 @@ export const HistoryFilterBar = ({
         value={draft.lot}
         onChange={(event) => setDraft((current) => ({ ...current, lot: event.target.value }))}
       />
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
+      <div className="lot-status-filter-footer">
+        {reason !== null && (
+          <span id={reasonId} className="field-note">
+            {reason}
+          </span>
+        )}
+
+        <div className="filter-actions lot-status-filter-buttons">
           <Button
             disabled={reason !== null}
             aria-describedby={reason === null ? undefined : reasonId}
@@ -100,11 +106,6 @@ export const HistoryFilterBar = ({
             초기화
           </Button>
         </div>
-        {reason !== null && (
-          <span id={reasonId} className="field-note">
-            {reason}
-          </span>
-        )}
       </div>
     </div>
   );

@@ -13,11 +13,16 @@
  *    차지한다(실측 — 화면 코드 2.5MB → 0.5MB).
  *
  * 그래서 이 파일이 **POP 라우트 표만** 세우고 루트를 진입 화면(P-CO-01)으로 보낸다.
- * `main.tsx`(관리웹)는 그대로 두었다 — 관리웹 번들에서 POP 라우트를 빼는 것은 개발 중
- * 브라우저로 POP 화면을 여는 경로를 없애는 일이라, 이 변경의 범위 밖이다.
  *
- * ⛔ **탭 제목 맞추기(`syncDocumentTitle`)를 여기서 걸지 않는다.** 그것은 「한 번들에 셸이
- * 둘이라 제목이 하나뿐」인 사정을 메우는 장치이고, 이 번들은 `pop.html`이 자기 제목을 갖는다.
+ * ⚠ **관리웹 라우트 표는 POP 라우트를 더 이상 펼쳐 넣지 않는다**(#752). 그래서 개발 중
+ * 브라우저로 POP 화면을 여는 길도 이 번들로 옮겨졌다 — `pnpm --filter @omf-mes/web dev:pop`
+ * 이 `pop.html`을 5174 포트로 띄운다(`vite.pop.config.ts`). 확인 대상이 실제로 단말에
+ * 나가는 번들이라는 점에서 이전보다 낫다.
+ *
+ * ⛔ **탭 제목을 코드에서 맞추지 않는다.** 셸마다 진입 문서가 따로이므로 제목도 그 문서가
+ * 갖는다 — `pop.html`이 「OMF-MES POP」, 관리웹 `index.html`이 「OMF-MES 관리웹」,
+ * 모바일 `apps/mobile/index.html`이 「OMF-MES 모바일」이다. 주소로 제목을 가르던 장치
+ * (`app/document-title.ts`)는 「한 번들에 셸이 둘」인 동안만 필요했고, #752 로 사라졌다.
  */
 import '@crefle/web-ui/styles/index.css';
 import '@crefle/web-ui/css';
@@ -28,7 +33,29 @@ import { createRoot } from 'react-dom/client';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router';
 
 import { popRoutes } from '../routes/pop';
+import {
+  PopIdentityProvider,
+  UNKNOWN_POP_IDENTITY,
+  type PopIdentity,
+} from '../patterns/pop-identity';
 import { AppProviders } from './providers';
+
+/** 브라우저 수동 검증에서만 쓰는 합성 셸 값. 설치본에는 들어가지 않는다. */
+const DEV_POP_IDENTITY: PopIdentity = {
+  terminalId: 10,
+  processId: 1001,
+  workerNo: '100027',
+};
+
+const popIdentity = import.meta.env.DEV ? DEV_POP_IDENTITY : UNKNOWN_POP_IDENTITY;
+
+if (import.meta.env.DEV && window.pop === undefined) {
+  window.pop = {
+    rendition: {
+      save: async (_bytes, label) => `dev://print/${encodeURIComponent(label)}`,
+    },
+  };
+}
 
 /**
  * 단말을 켰을 때 맨 처음 서는 화면 — 사번 경량 인증(P-CO-01).
@@ -56,7 +83,9 @@ if (!container) {
 createRoot(container).render(
   <StrictMode>
     <AppProviders>
-      <RouterProvider router={popRouter} />
+      <PopIdentityProvider value={popIdentity}>
+        <RouterProvider router={popRouter} />
+      </PopIdentityProvider>
     </AppProviders>
   </StrictMode>,
 );

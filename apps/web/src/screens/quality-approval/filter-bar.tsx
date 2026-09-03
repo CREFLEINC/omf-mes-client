@@ -77,7 +77,7 @@ export const FilterBar = ({
   };
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar quality-approval-filter">
       <CodeField
         label={messages.qualityApproval.fields.approvalTypeCode}
         options={typeOptions}
@@ -110,15 +110,13 @@ export const FilterBar = ({
         onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
         onSearch={(value) => onApply({ ...draft, q: value })}
       />
-      <div className="field-cell field-cell-unlabeled">
+      <div className="quality-approval-filter-footer">
         <Checkbox
           checked={pendingOnly}
           onChange={(event) => onTogglePendingOnly(event.target.checked)}
         >
           {messages.qualityApproval.fields.pendingOnly}
         </Checkbox>
-      </div>
-      <div className="field-cell field-cell-unlabeled">
         <div className="filter-actions">
           <Button onClick={() => onApply(draft)}>{messages.common.search}</Button>
           <Button variant="outlined" onClick={reset}>

@@ -121,7 +121,7 @@ describe('DetailSlot 상태 갈래', () => {
     renderSlot();
 
     expect(screen.getByText('도장 표면 박리')).toBeInTheDocument();
-    expect(screen.getByText(t.panes.decisions)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.panes.decisions })).toBeInTheDocument();
   });
 
   it('상세가 아직 없으면 아무것도 그리지 않는다', () => {

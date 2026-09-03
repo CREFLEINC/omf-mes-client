@@ -106,23 +106,26 @@ const LotMode = ({
       : optionNote(lotStatuses, '현재 상태');
 
   return (
-    <section className="pane" aria-label="LOT으로 찾기">
-      <LotFilterBar
-        appliedFilters={filters}
-        lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
-        lotStatusOptions={toCodeOptions(lotStatuses.data?.items)}
-        warehouseOptions={toReferenceOptions(warehouses.data?.entries)}
-        itemOptions={toReferenceOptions(items.data?.entries)}
-        lotTypeNote={
-          lotTypes.data?.isTruncated === true ? '일부 LOT 유형만 표시됩니다.' : undefined
-        }
-        lotStatusNote={lotStatusNote}
-        warehouseNote={optionNote(warehouses, '창고')}
-        itemNote={optionNote(items, '품목')}
-        lotTypeBlockReason={lotTypeBlockReason}
-        onSearch={onSearch}
-        onReset={onReset}
-      />
+    <div className="lot-status-workspace">
+      <section className="pane lot-status-pane" aria-label="LOT 조회 조건">
+        <h2 className="pane-title">LOT 조회 조건</h2>
+        <LotFilterBar
+          appliedFilters={filters}
+          lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
+          lotStatusOptions={toCodeOptions(lotStatuses.data?.items)}
+          warehouseOptions={toReferenceOptions(warehouses.data?.entries)}
+          itemOptions={toReferenceOptions(items.data?.entries)}
+          lotTypeNote={
+            lotTypes.data?.isTruncated === true ? '일부 LOT 유형만 표시됩니다.' : undefined
+          }
+          lotStatusNote={lotStatusNote}
+          warehouseNote={optionNote(warehouses, '창고')}
+          itemNote={optionNote(items, '품목')}
+          lotTypeBlockReason={lotTypeBlockReason}
+          onSearch={onSearch}
+          onReset={onReset}
+        />
+      </section>
       <CurrentResults
         filters={filters}
         page={page}
@@ -143,7 +146,7 @@ const LotMode = ({
           onClose={() => onSelectLot(null)}
         />
       )}
-    </section>
+    </div>
   );
 };
 
@@ -173,21 +176,24 @@ const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: History
           : undefined;
 
   return (
-    <section className="pane" aria-label="이력으로 찾기">
-      <HistoryFilterBar
-        appliedFilters={filters}
-        actorOptions={actorOptions}
-        actorNote={actorNote}
-        onSearch={onSearch}
-        onReset={onReset}
-      />
+    <div className="lot-status-workspace">
+      <section className="pane lot-status-pane" aria-label="이력 조회 조건">
+        <h2 className="pane-title">이력 조회 조건</h2>
+        <HistoryFilterBar
+          appliedFilters={filters}
+          actorOptions={actorOptions}
+          actorNote={actorNote}
+          onSearch={onSearch}
+          onReset={onReset}
+        />
+      </section>
       <HistoryResults
         filters={filters}
         page={page}
         offsetMinutes={-new Date().getTimezoneOffset()}
         onPageChange={onPageChange}
       />
-    </section>
+    </div>
   );
 };
 

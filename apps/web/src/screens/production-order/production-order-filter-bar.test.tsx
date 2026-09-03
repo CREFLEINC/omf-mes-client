@@ -28,9 +28,10 @@ const renderBar = (
 
 describe('ProductionOrderFilterBar', () => {
   it('keeps edits as a draft until Search, including Enter in q', async () => {
-    const { props, user } = renderBar();
+    const { container, props, user } = renderBar();
     const query = screen.getByRole('searchbox', { name: '검색' });
 
+    expect(container.firstElementChild).toHaveClass('production-order-filter-bar');
     await user.type(query, 'SYNTH');
     expect(props.onSearch).not.toHaveBeenCalled();
     await user.keyboard('{Enter}');

@@ -88,11 +88,19 @@ export const canDispatch = (draft: DispatchDraft, hasWorker: boolean): boolean =
   return qtyProblem(draft.defect, draft.qty) === null;
 };
 
+/**
+ * 반출할 수 있는가.
+ *
+ * 스캔했는지를 함께 묻는다. 조회를 막는 것만으로 지키면, 서버가 lotId 를 무시하는 순간
+ * 남의 건이 다시 실린다 - 계약에서 그 질의는 선택이라 무시해도 200 이 온다. 안전을 캐시
+ * 구성의 부작용이 아니라 이 판정의 성질로 둔다.
+ */
 export const canReturn = (
   execution: RepairExecution | null,
   result: RepairResult | null,
   hasWorker: boolean,
-): boolean => execution !== null && result !== null && hasWorker;
+  hasScannedLot: boolean,
+): boolean => hasScannedLot && execution !== null && result !== null && hasWorker;
 
 export const toDispatchBody = (
   defect: DefectRecord,

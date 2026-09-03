@@ -219,9 +219,10 @@ export const ToolListPane = ({
      * 스크롤 상자는 디자인 시스템 `Table` 이 이미 갖고 있어 우리가 만들지 않는다.
      */
     return (
-      <div className="wide-table">
+      <div className="wide-table tool-master-table">
         <Table
           density="compact"
+          caption={<span className="tool-master-table-caption">{t.paneTitle}</span>}
           columns={columns}
           rows={items}
           getRowId={(row) => String(row.moldId)}
@@ -232,8 +233,9 @@ export const ToolListPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.title}>
-      <div className="filter-bar">
+    <section className="pane tool-master-pane" aria-label={t.paneTitle}>
+      <h2 className="pane-title">{t.paneTitle}</h2>
+      <div className="filter-bar tool-master-filter">
         <SearchInput
           label={t.filters.searchLabel}
           placeholder={t.filters.searchPlaceholder}
@@ -266,7 +268,7 @@ export const ToolListPane = ({
          * 남은 체크칸이 무엇에 딸린 것인지 읽히지 않는다(규범 2-1 과 같은 갈래 · 브라우저
          * 확인에서 실제로 하나만 앞줄에 남았다).
          */}
-        <div className="field-cell field-cell-unlabeled">
+        <div className="tool-master-filter-footer">
           <div className="check-group">
             <Checkbox
               checked={appliedFilters.guaranteedShotCountMissing}
@@ -296,9 +298,7 @@ export const ToolListPane = ({
               {messages.common.includeInactive}
             </Checkbox>
           </div>
-        </div>
-        {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
-        <div className="field-cell field-cell-unlabeled">
+          {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
           <div className="filter-actions">
             <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
             <Button variant="outlined" onClick={resetAll}>
@@ -314,7 +314,7 @@ export const ToolListPane = ({
         </div>
       </div>
 
-      <div className="filter-bar">
+      <div className="filter-bar tool-master-filter-chips">
         {appliedFilters.q !== '' && (
           <Chip
             variant="status"

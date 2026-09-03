@@ -75,18 +75,31 @@ export const ApplicationPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={[...items]}
-        getRowId={(row) => `${row.targetTypeCode}-${String(row.targetId)}`}
-        empty={<EmptyState size="sm" live title={t.emptyTitle} description={t.emptyDescription} />}
-      />
+      <div className="wide-table work-calendar-table work-calendar-application-table">
+        <Table
+          density="compact"
+          caption={<span className="work-calendar-table-caption">{t.title}</span>}
+          columns={columns}
+          rows={[...items]}
+          getRowId={(row) => `${row.targetTypeCode}-${String(row.targetId)}`}
+          empty={
+            <EmptyState size="sm" live title={t.emptyTitle} description={t.emptyDescription} />
+          }
+        />
+      </div>
     );
   };
 
   return (
-    <section className="pane" aria-label={t.title}>
+    <section className="pane work-calendar-pane" aria-label={t.title}>
+      <div className="work-calendar-pane-heading">
+        <h2 className="pane-title">{t.title}</h2>
+        {calendarName !== null && (
+          <Button variant="outlined" onClick={onAdd}>
+            {t.add}
+          </Button>
+        )}
+      </div>
       {/*
        * ⭐ **저장을 막지 않고 세어 보인다**(스펙 §6). 공장을 새로 만들면 잠시 기본 캘린더가
        * 없는 것이 정상이다 — 다만 그 공장의 설비는 따를 캘린더가 없으므로 조용히 두지 않는다.
@@ -98,21 +111,7 @@ export const ApplicationPane = ({
         </div>
       )}
 
-      <div className="filter-bar">
-        <div className="field-cell field-cell-unlabeled">
-          <strong>{t.title}</strong>
-        </div>
-        {calendarName !== null && (
-          <div className="field-cell field-cell-unlabeled">
-            <Button variant="outlined" onClick={onAdd}>
-              {t.add}
-            </Button>
-          </div>
-        )}
-        <div className="field-cell field-cell-unlabeled">
-          <span className="field-note">{t.releaseNote}</span>
-        </div>
-      </div>
+      <p className="work-calendar-pane-note">{t.releaseNote}</p>
 
       {listSlot()}
     </section>

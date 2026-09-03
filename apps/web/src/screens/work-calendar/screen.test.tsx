@@ -188,7 +188,7 @@ const renderScreen = (options: RenderOptions = {}) => {
   };
 };
 
-const listPane = () => screen.getByRole('region', { name: t.title });
+const listPane = () => screen.getByRole('region', { name: t.listTitle });
 const gridPane = () => screen.getByRole('region', { name: t.grid.title });
 const formDialog = () => screen.getByRole('dialog');
 
@@ -216,6 +216,8 @@ describe('W-05-09 작업 캘린더 — 목록', () => {
 
     expect(await screen.findByRole('button', { name: 'CAL-A' })).toBeInTheDocument();
     expect(screen.getByText('CAL-A 캘린더')).toBeInTheDocument();
+    expect(within(listPane()).getByRole('heading', { name: t.listTitle })).toBeInTheDocument();
+    expect(within(listPane()).getByRole('table', { name: t.listTitle })).toBeInTheDocument();
   });
 
   it('사용 여부를 말로 보인다', async () => {
