@@ -186,23 +186,26 @@ export const RatioListPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={items}
-        getRowId={(row) => String(row.operationPolicyId)}
-        empty={emptySlot}
-      />
+      <div className="wide-table shot-conversion-table shot-conversion-policy-table">
+        <Table
+          density="compact"
+          caption={<span className="shot-conversion-table-caption">{t.ratioList.paneTitle}</span>}
+          columns={columns}
+          rows={items}
+          getRowId={(row) => String(row.operationPolicyId)}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   const truncated = total !== null && total > items.length;
 
   return (
-    <section className="pane" aria-label={t.ratioList.paneTitle}>
-      <h3>{t.ratioList.paneTitle}</h3>
+    <section className="pane shot-conversion-pane" aria-label={t.ratioList.paneTitle}>
+      <h2 className="pane-title">{t.ratioList.paneTitle}</h2>
 
-      <div className="filter-bar">
+      <div className="filter-bar shot-conversion-policy-filter">
         <div className="field-cell">
           <TextField
             type="date"

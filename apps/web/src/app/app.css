@@ -3209,6 +3209,96 @@ main > * + * {
   }
 }
 
+/* 타발수 환산 — 전역 설정과 정책·미리보기의 단계가 구획 간격과 제목 계층으로 읽히게 한다. */
+.shot-conversion-workspace,
+.shot-conversion-main-grid,
+.shot-conversion-pane,
+.shot-conversion-table {
+  min-width: 0;
+}
+
+.shot-conversion-workspace,
+.shot-conversion-main-grid {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.shot-conversion-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.shot-conversion-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.shot-conversion-pane > .dialog-lead,
+.shot-conversion-pane > .field-note,
+.shot-conversion-pane > p,
+.shot-conversion-preview-grid p {
+  margin: 0;
+}
+
+.filter-bar.shot-conversion-policy-filter {
+  margin-bottom: 0;
+}
+
+.shot-conversion-policy-filter > .field-cell-unlabeled {
+  align-items: flex-end;
+}
+
+.shot-conversion-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.shot-conversion-policy-table table {
+  min-width: 58rem;
+}
+
+.shot-conversion-table th {
+  white-space: nowrap;
+}
+
+.shot-conversion-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.shot-conversion-preview-grid {
+  align-items: start;
+}
+
+@media (min-width: 1500px) {
+  .shot-conversion-main-grid {
+    grid-template-columns: minmax(58rem, 3.4fr) minmax(32rem, 2fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .shot-conversion-policy-filter > .field-cell {
+    align-items: stretch;
+    flex-basis: 100%;
+  }
+
+  .shot-conversion-policy-filter .filter-actions {
+    flex-wrap: wrap;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
