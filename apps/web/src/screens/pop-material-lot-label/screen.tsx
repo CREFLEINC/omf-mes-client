@@ -98,7 +98,7 @@ export const PopMaterialLotLabelScreen = () => {
      * ⚠ **이 화면이 최상위 랜드마크다.** POP 라우트는 관리웹 셸을 지나지 않으므로(`routes/pop`)
      * `main`을 세워 주는 바깥이 없다 — 먼저 선 POP 화면들과 같은 형태다.
      */
-    <main className="pop-lot-screen" aria-label={t.title}>
+    <main className="pop-lot-screen pop-ui" aria-label={t.title}>
       <header className="pop-lot-head">
         <PageHeader title={t.title} size="compact" />
         <PrinterStatusIndicator

@@ -238,7 +238,7 @@ export const WorkStartScreen = () => {
   const connectionVerdict = list.isError ? false : list.isSuccess ? true : undefined;
 
   return (
-    <main className="pop-shell work-start-screen" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui work-start-screen" aria-labelledby={titleId}>
       <PopHeader
         titleId={titleId}
         equipmentCode={equipmentCode}

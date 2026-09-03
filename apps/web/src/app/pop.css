@@ -83,6 +83,8 @@
   overflow: hidden;
   /* `main { padding: 24px }`(관리웹 본문 여백)를 턴다 — 머리줄이 화면 끝까지 가야 한다. */
   padding: 0;
+  /* 최상위 블록 사이 이음매를 한 곳에서 준다 — 블록마다 붙이면 반드시 하나를 빠뜨린다. */
+  gap: var(--space-4);
   font-size: var(--pop-text);
 }
 
@@ -156,12 +158,28 @@
  * 본문 구획이 남은 높이를 전부 가져간다. `min-height: 0` 이 없으면 flex 자식이 내용만큼
  * 부풀어 화면 밖으로 밀린다.
  */
+/*
+ * ⭐ **머리줄만 화면 끝까지 간다.** 나머지 최상위 블록은 같은 좌우 여백 안에 선다.
+ *
+ * 처음에는 2단 배치(`.pop-panes`·`.pop-assign`)만 겨냥했는데, POP 화면의 절반은 구획을
+ * **세로로 쌓는다**(작업 시작·작업실적 등). 그 화면들에서는 여백을 주는 규칙이 하나도 걸리지
+ * 않아 구획이 화면 양 끝에 붙고 하단 버튼이 잘렸다(실측). 배치 «형태»가 아니라 «자리»로
+ * 겨냥해야 화면이 늘어도 규칙이 따라간다.
+ */
+.pop-ui > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head) {
+  box-sizing: border-box;
+  margin-inline: var(--pop-pad);
+}
+
+/* 마지막 블록 아래에도 같은 여백 — 없으면 화면 바닥에 붙는다. */
+.pop-ui > :last-child {
+  margin-block-end: var(--pop-pad);
+}
+
 .pop-ui > .pop-panes,
 .pop-ui > .pop-assign {
   flex: 1 1 auto;
   min-height: 0;
-  box-sizing: border-box;
-  padding: var(--pop-pad);
   gap: var(--space-4);
   align-items: stretch;
 }
@@ -175,12 +193,9 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
 }
 
-/* 머리줄과 본문 사이에 끼는 배너(작업지시 없음 등)도 본문과 같은 좌우 여백을 쓴다. */
+/* 머리줄과 본문 사이에 끼는 배너(작업지시 없음 등)는 늘어나지 않는다. */
 .pop-ui > .banner-slot {
-  box-sizing: border-box;
   flex: 0 0 auto;
-  margin: var(--space-4) 0 0;
-  padding: 0 var(--pop-pad);
 }
 
 /*
