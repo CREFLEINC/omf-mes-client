@@ -1,5 +1,4 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
-import type { paths } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -11,11 +10,6 @@ import type {
   Nonconformance,
   NonconformanceListResponse,
 } from './types';
-
-type PendingQuery = NonNullable<paths['/quality/nonconformances']['get']['parameters']['query']>;
-type HistoryQuery = NonNullable<
-  paths['/quality/disposition-decisions']['get']['parameters']['query']
->;
 
 export const dispositionKeys = {
   all: ['disposition-decision'] as const,
@@ -53,11 +47,7 @@ export const usePendingNonconformances = (
     queryFn: () => {
       if (query === null) throw new Error('기간이 막힌 채로는 목록을 조회하지 않습니다.');
 
-      return runRequest(() =>
-        client.GET('/quality/nonconformances', {
-          params: { query: query as PendingQuery },
-        }),
-      );
+      return runRequest(() => client.GET('/quality/nonconformances', { params: { query } }));
     },
   });
 };
@@ -126,11 +116,7 @@ export const useDecisionHistory = (
     queryFn: () => {
       if (query === null) throw new Error('이력 탭이 아닐 때는 조회하지 않습니다.');
 
-      return runRequest(() =>
-        client.GET('/quality/disposition-decisions', {
-          params: { query: query as HistoryQuery },
-        }),
-      );
+      return runRequest(() => client.GET('/quality/disposition-decisions', { params: { query } }));
     },
   });
 };

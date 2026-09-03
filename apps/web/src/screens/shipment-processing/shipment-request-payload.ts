@@ -71,8 +71,6 @@ export const toShipmentCreatePayload = (
   if (input.lineDrafts.length === 0) return null;
   if (input.lineDrafts.some((line) => lineAllocationIssues(line).length > 0)) return null;
 
-  const now = input.now ?? new Date();
-
   return {
     shipmentRequestId: input.shipmentRequestId,
     warehouseId: input.warehouseId,

@@ -47,9 +47,9 @@ describe('자리표시 — 지금은 비어 있다', () => {
    * **비어 있는 것이 지금의 사실이다.** 값을 하나 넣어 두면 화면이 「승인됐다」·「반려됐다」를
    * 지어내고, 그 짐작이 사용자에게는 사실로 보인다.
    */
-  it('승인 완료·반려 코드 집합이 비어 있다', () => {
+  it('승인 완료 상태는 운영 목록을 기다리고 반려는 고정 OpenAPI 값을 쓴다', () => {
     expect(APPROVED_APPROVAL_STATUS_CODES).toEqual([]);
-    expect(REJECTION_DECISION_CODES).toEqual([]);
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
   });
 
   it('비어 있으면 승인 판정을 할 수 없다고 말한다', () => {
@@ -198,7 +198,7 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
     expect(views[0]?.status).toBe('complete');
   });
 
-  it('반려 자리표시가 비어 있는 동안 어떤 코드도 반려가 되지 않는다', () => {
+  it('반려 목록을 비워 주입하면 어떤 코드도 반려가 되지 않는다', () => {
     const views = toStepProgressViews([step({ decisionCode: SAMPLE_REJECTION_DECISION })], []);
 
     expect(views[0]?.status).toBe('complete');

@@ -45,9 +45,8 @@ describe('findDocumentType', () => {
     expect(findDocumentType('SYN_DOC_TYPE_Z', documentTypeFixtures)).toBeNull();
   });
 
-  /* 표가 비어 있으면 어떤 코드로도 찾을 수 없다 — 주소를 손으로 고쳐도 마찬가지다. */
-  it('빈 표에서는 어떤 코드도 찾지 못한다', () => {
-    expect(findDocumentType('GOODS_RECEIPT', DOCUMENT_TYPES)).toBeNull();
+  it('고정 표에서 발주 유형을 찾는다', () => {
+    expect(findDocumentType('PURCHASE_ORDER', DOCUMENT_TYPES)?.code).toBe('PURCHASE_ORDER');
   });
 });
 
@@ -100,7 +99,7 @@ describe('describeDisabledTypes', () => {
   it('막힌 유형이 없으면 안내를 만들지 않는다', () => {
     expect(
       describeDisabledTypes([
-        { code: 'GOODS_RECEIPT', label: '가', cancelResource: null, disabledReason: null },
+        { code: 'PURCHASE_ORDER', label: '가', cancelResource: null, disabledReason: null },
       ]),
     ).toBeUndefined();
   });
@@ -124,8 +123,8 @@ describe('describeDisabledTypes', () => {
    */
   it('막힌 유형이 둘이면 경계가 보이게 가른다', () => {
     const note = describeDisabledTypes([
-      { code: 'GOODS_RECEIPT', label: '가', cancelResource: null, disabledReason: '사유 하나' },
-      { code: 'GOODS_ISSUE', label: '나', cancelResource: null, disabledReason: '사유 둘' },
+      { code: 'PURCHASE_ORDER', label: '가', cancelResource: null, disabledReason: '사유 하나' },
+      { code: 'GOODS_RECEIPT', label: '나', cancelResource: null, disabledReason: '사유 둘' },
     ]);
 
     expect(note).toBe('가: 사유 하나 · 나: 사유 둘');
@@ -138,8 +137,8 @@ describe('cancelResourceOf', () => {
    * 계약이 내려 주지 않아 표가 비어 있는 것이 지금의 사실이고, 그 상태에서 리소스를 지어내면
    * 화면이 **없는 주소로 취소 요청을 보낸다.**
    */
-  it('빈 표에서는 어떤 유형도 취소 리소스를 얻지 못한다', () => {
-    expect(cancelResourceOf('GOODS_ISSUE', DOCUMENT_TYPES)).toBeNull();
+  it('고정 표에서 입고 취소 리소스를 얻는다', () => {
+    expect(cancelResourceOf('GOODS_RECEIPT', DOCUMENT_TYPES)).toBe('goods-receipts');
   });
 
   /* ⭐ 표에 값이 생기면 **그것만으로** 취소 경로가 정해진다 — 다른 자리는 바뀌지 않는다. */

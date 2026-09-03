@@ -1,4 +1,4 @@
-import type { ApiClient, paths } from '@omf-mes/api-client';
+import type { ApiClient } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -35,9 +35,6 @@ import type { GroupByQuery } from './view-axis';
  */
 
 type Client = ApiClient['client'];
-type InventoryBalanceQuery = NonNullable<
-  paths['/inventory/balances']['get']['parameters']['query']
->;
 
 /**
  * 잔액 조회의 쿼리 전체. **채운 조건만 키가 실린다** —
@@ -72,11 +69,7 @@ const fetchBalances = async (
   client: Client,
   query: BalanceListQuery,
 ): Promise<BalanceListResult> => {
-  const data = await runRequest(() =>
-    client.GET('/inventory/balances', {
-      params: { query: query as InventoryBalanceQuery },
-    }),
-  );
+  const data = await runRequest(() => client.GET('/inventory/balances', { params: { query } }));
 
   return { items: data.items.map(toBalanceView), page: data.page };
 };

@@ -1232,7 +1232,7 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
     );
   });
 
-  it('반려 자리표시가 빈 동안에는 어떤 단계도 반려로 그려지지 않는다', async () => {
+  it('고정 반려 값이 아닌 결재 결과는 완료로 그린다', async () => {
     await renderDetail(finishedDetail, '?rq=9002');
 
     const progress = screen.getByRole('group', { name: t.panes.progress });

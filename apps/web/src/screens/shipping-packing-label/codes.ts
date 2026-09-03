@@ -83,6 +83,3 @@ export const REISSUE_REASON_CODE_GROUP = 'REISSUE_REASON';
 
 /** 라벨은 이미지다. 성적서·보고서(`pdf`)는 이 화면의 출력물이 아니다. */
 export const RENDITION_FORMAT = 'png';
-import type { components } from '@omf-mes/api-client';
-
-type DocumentTargetTypeCode = components['schemas']['DocumentTarget']['targetTypeCode'];

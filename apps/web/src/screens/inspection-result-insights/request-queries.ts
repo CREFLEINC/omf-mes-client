@@ -73,7 +73,7 @@ export const toInspectionListQuery = (
 export const toDefectDistributionQuery = (
   filters: InspectionInsightFilters,
   groupBy: DistributionGroup,
-  sourceCode: string,
+  sourceAxisCode: string,
 ): DefectDistributionQuery | null => {
   if (!hasValidPeriod(filters)) return null;
   const query: DefectDistributionQuery = {

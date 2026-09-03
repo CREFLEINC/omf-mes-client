@@ -91,14 +91,14 @@ describe('toApprovalProgressView', () => {
     ]);
   });
 
-  it('반려 자리표시는 비어 있고 주입한 코드만 rejected로 바꾼다', () => {
+  it('고정 반려 코드를 rejected로 바꾼다', () => {
     const detail: ApprovalRequestDetail = {
       request: request(),
       steps: [step({ decisionCode: 'REJECTED' })],
     };
 
-    expect(REJECTION_DECISION_CODES).toEqual([]);
-    expect(toApprovalProgressView(detail).steps[0]?.status).toBe('complete');
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
+    expect(toApprovalProgressView(detail).steps[0]?.status).toBe('rejected');
     expect(toApprovalProgressView(detail, ['REJECTED']).steps[0]?.status).toBe('rejected');
   });
 

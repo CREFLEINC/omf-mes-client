@@ -4,8 +4,6 @@ import { EMPTY_LOADING_INFO_DRAFT, type LoadingInfoDraft } from './loading-info-
 import type { LineAllocationDraft } from './line-allocation-draft';
 import { toShipmentCreatePayload } from './shipment-request-payload';
 
-const NOW = new Date(2026, 7, 11, 14, 20, 30);
-
 const balancedLine = (overrides: Partial<LineAllocationDraft> = {}): LineAllocationDraft => ({
   shipmentRequestLineId: 701,
   lineNo: 1,
@@ -71,7 +69,6 @@ describe('toShipmentCreatePayload', () => {
       warehouseId: 1001,
       loadingInfo: loadingInfo(),
       lineDrafts: [balancedLine()],
-      now: NOW,
     });
 
     expect(payload).toEqual({

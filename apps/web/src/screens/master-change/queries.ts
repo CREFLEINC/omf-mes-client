@@ -1,4 +1,4 @@
-import type { ApiClient, paths } from '@omf-mes/api-client';
+import type { ApiClient } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -18,7 +18,6 @@ import { toAuditEventView, type AuditEventListResult, type AuditEventView } from
  */
 
 type Client = ApiClient['client'];
-type AuditEventQuery = NonNullable<paths['/audit/events']['get']['parameters']['query']>;
 
 /**
  * 목록 조회의 쿼리 전체. **기간은 필수**이고 나머지는 값이 있을 때만 키가 실린다 —
@@ -43,9 +42,7 @@ const fetchAuditEvents = async (
   client: Client,
   query: AuditEventListQuery,
 ): Promise<AuditEventListResult> => {
-  const data = await runRequest(() =>
-    client.GET('/audit/events', { params: { query: query as AuditEventQuery } }),
-  );
+  const data = await runRequest(() => client.GET('/audit/events', { params: { query } }));
 
   return { items: data.items.map(toAuditEventView), page: data.page };
 };

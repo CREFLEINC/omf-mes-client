@@ -15,7 +15,7 @@ import { INVENTORY_STATUS_CODES } from './gr-request';
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
 const SAMPLE_CODES: CodeValueLists = {
   receiptType: ['SAMPLE_RECEIPT_TYPE_A'],
-  sourceDocumentType: ['INBOUND_RECEIPT'],
+  sourceDocumentType: ['SAMPLE_SOURCE_TYPE_A'],
   qualityStatus: ['SAMPLE_QUALITY_A'],
   inventoryStatus: ['SAMPLE_INVENTORY_A'],
   reason: ['SAMPLE_REASON_A'],
@@ -26,11 +26,14 @@ describe('자리표시 상수', () => {
    * **M26** — 계약 예시 값을 초기값으로 심으면 사용자는 고를 수 있다고 믿는데 서버는 그 값을
    * 모른다. 되돌릴 수 없는 전표에 실리므로 지어내지 않는다.
    */
-  it('코드 다섯의 값 목록이 전부 비어 있다', () => {
-    expect(
-      Object.values(PLACEHOLDER_GOODS_RECEIPT_CODES).every((values) => values.length === 0),
-    ).toBe(true);
-    /* 짝 방향 — 다섯 키가 실제로 있다(빈 객체는 위 단언을 그냥 통과한다). */
+  it('닫힌 구조 코드만 고정 계약 값으로 채운다', () => {
+    expect(PLACEHOLDER_GOODS_RECEIPT_CODES).toEqual({
+      receiptType: [],
+      sourceDocumentType: ['INBOUND_RECEIPT'],
+      qualityStatus: [],
+      inventoryStatus: ['AVAILABLE', 'IN_TRANSIT', 'ON_HOLD', 'BLOCKED'],
+      reason: [],
+    });
     expect(Object.keys(PLACEHOLDER_GOODS_RECEIPT_CODES)).toHaveLength(5);
   });
 

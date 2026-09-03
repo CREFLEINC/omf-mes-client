@@ -492,7 +492,7 @@ export const contradictoryApprovalDetailFixture: ApprovalRequestDetailResponse =
 };
 
 /** 반려 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
-export const SAMPLE_REJECTION_DECISION = 'APPROVED';
+export const SAMPLE_REJECTION_DECISION = 'REJECTED';
 
 /** 승인 완료 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
 export const SAMPLE_APPROVED_STATUS = 'SAMPLE_AP_STATUS_A';

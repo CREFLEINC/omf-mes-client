@@ -187,7 +187,7 @@ describe('toSearchParams', () => {
 describe('toListQuery — 조회가 성립하는가', () => {
   it('고정 유형 표로 질의를 만든다', () => {
     expect(toListQuery(filters(), DOCUMENT_TYPES, 1)).toEqual({
-      documentTypeCode: 'PURCHASE_ORDER',
+      documentTypeCode: 'GOODS_RECEIPT',
       cancellableOnly: false,
     });
   });

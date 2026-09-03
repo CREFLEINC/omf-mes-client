@@ -1,7 +1,9 @@
 import type { components, paths } from '@omf-mes/api-client';
 
 type ItemExternalCode = components['schemas']['ItemExternalCode'];
-export type ExternalSystemCode = ItemExternalCode['externalSystemCode'];
+type ExternalCodeInput =
+  paths['/mdm/items/{itemId}/external-codes']['put']['requestBody']['content']['application/json']['externalCodes'][number];
+export type ExternalSystemCode = ExternalCodeInput['externalSystemCode'];
 
 /**
  * 외부 코드 초안 — 표에 보이는 목록과 치환 본문 사이의 유일한 통로.
@@ -20,12 +22,8 @@ export type ExternalSystemCode = ItemExternalCode['externalSystemCode'];
  */
 
 /** 치환 본문의 항목 하나. **계약의 요청 항목이 정확히 셋이고 식별자가 없다.** */
-type ExternalCodeInput =
-  paths['/mdm/items/{itemId}/external-codes']['put']['requestBody']['content']['application/json']['externalCodes'][number];
-
 export interface ExternalCodeItemPayload {
-  /** 계약이 외부 시스템을 세 값으로 닫았다(코드 사전 2026-09-03). 선택지는 서버 코드값이다 */
-  externalSystemCode: ExternalCodeInput['externalSystemCode'];
+  externalSystemCode: ExternalSystemCode;
   partnerId?: number | null;
   externalItemCode: string;
 }
@@ -102,12 +100,17 @@ export const removeExternalCodeDraft = (
 export const toExternalCodesPayload = (
   drafts: readonly ExternalCodeDraft[],
 ): ExternalCodeItemPayload[] =>
-  drafts.map((draft) => ({
-    /* 선택칸의 값은 서버 코드값 목록에서 온다 — 계약이 닫은 형으로 좁혀 싣는다. */
-    externalSystemCode: draft.externalSystemCode.trim() as ExternalCodeInput['externalSystemCode'],
-    partnerId: draft.partnerId === '' ? null : Number(draft.partnerId),
-    externalItemCode: draft.externalItemCode.trim(),
-  }));
+  drafts.map((draft) => {
+    if (draft.externalSystemCode === '') {
+      throw new Error('externalSystemCode is required');
+    }
+
+    return {
+      externalSystemCode: draft.externalSystemCode,
+      partnerId: draft.partnerId === '' ? null : Number(draft.partnerId),
+      externalItemCode: draft.externalItemCode.trim(),
+    };
+  });
 
 /**
  * 유일 제약의 판정 키.

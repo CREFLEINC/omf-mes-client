@@ -68,7 +68,6 @@ const issueBody = (
   reasonCode: string,
 ): DocumentIssueCreate | null => {
   const first = selected[0];
-  if (first === undefined) throw new Error('재발행 대상을 고른 뒤에만 본문을 만듭니다.');
 
   /* 고른 줄이 없으면 본문도 없다 — 문서 유형은 계약 `enum`이라 빈 값으로 채울 수 없다. */
   if (first === undefined) return null;

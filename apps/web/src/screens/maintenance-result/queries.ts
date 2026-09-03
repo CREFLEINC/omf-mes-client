@@ -25,9 +25,6 @@ import { toResultView, type ResultListResult } from './types';
 type Client = ApiClient['client'];
 type MaintenanceResult = components['schemas']['MaintenanceResult'];
 type MaintenanceResultCreate = components['schemas']['MaintenanceResultCreate'];
-type MaintenanceResultQuery = NonNullable<
-  paths['/maintenance/results']['get']['parameters']['query']
->;
 
 type ResultQueryParams = NonNullable<paths['/maintenance/results']['get']['parameters']['query']>;
 
@@ -47,11 +44,7 @@ export const resultKeys = {
 };
 
 const fetchList = async (client: Client, query: ResultListQuery): Promise<ResultListResult> => {
-  const data = await runRequest(() =>
-    client.GET('/maintenance/results', {
-      params: { query: query as MaintenanceResultQuery },
-    }),
-  );
+  const data = await runRequest(() => client.GET('/maintenance/results', { params: { query } }));
 
   return {
     items: data.items.map(toResultView),

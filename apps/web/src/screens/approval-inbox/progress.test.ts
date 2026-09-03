@@ -6,7 +6,7 @@ import type { ApprovalRequest, ApprovalStep } from './types';
 
 const t = messages.approvalInbox;
 
-/** 반려로 확정되면 이 배열에 들어올 대역. **지금은 자리표시가 비어 있어 아무 뜻이 없다.** */
+/** 고정 OpenAPI가 닫은 반려 결과 코드. */
 const SYNTHETIC_REJECTION_CODE = 'REJECTED';
 
 const step = (overrides: Partial<ApprovalStep> = {}): ApprovalStep => ({
@@ -94,12 +94,12 @@ describe('단계 상태', () => {
   });
 });
 
-describe('반려 코드 자리표시', () => {
-  it('지금은 비어 있다 — 반려를 뜻하는 코드를 화면이 알지 못한다', () => {
-    expect(REJECTION_DECISION_CODES).toHaveLength(0);
+describe('반려 코드', () => {
+  it('고정 OpenAPI의 반려 값을 쓴다', () => {
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
   });
 
-  it('자리표시가 빈 동안에는 어떤 코드도 반려로 그려지지 않는다', () => {
+  it('고정 반려 코드는 반려로, 승인 코드는 완료로 그린다', () => {
     const views = toStepProgressViews(
       [
         step({ decisionCode: SYNTHETIC_REJECTION_CODE }),
@@ -110,7 +110,7 @@ describe('반려 코드 자리표시', () => {
 
     /* 선행 단언 — 두 단계가 실제로 그려졌다. */
     expect(views).toHaveLength(2);
-    expect(views.map((view) => view.status)).toEqual(['complete', 'complete']);
+    expect(views.map((view) => view.status)).toEqual(['rejected', 'complete']);
   });
 
   it('자리표시를 채우면 그 코드가 반려가 된다 — 자리표시가 죽은 가지가 아니다', () => {

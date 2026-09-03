@@ -2635,7 +2635,8 @@ describe('ItemExtendedAttrsScreen — 외부 코드 중복 (M29)', () => {
 
     await user.click(screen.getByRole('button', { name: '외부 코드 추가' }));
     const dialog = screen.getByRole('dialog');
-    await user.type(within(dialog).getByLabelText('외부 시스템'), 'TRACKING_SYSTEM');
+    await user.click(within(dialog).getByLabelText('외부 시스템'));
+    await user.click(within(dialog).getByRole('option', { name: 'TRACKING_SYSTEM' }));
     await user.click(within(dialog).getByLabelText('거래처'));
     await user.click(screen.getByRole('option', { name: 'SYN-PARTNER-01 · 합성 거래처 A' }));
     await user.type(within(dialog).getByLabelText('외부 품목코드'), 'SYN-EXT-ITEM-09');
