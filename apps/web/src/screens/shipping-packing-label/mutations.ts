@@ -99,10 +99,11 @@ const createIssues = async (
     reissueReasonCode: string | null;
   },
   workerNo: string,
+  idempotencyKey: string,
 ): Promise<IssueView[]> => {
   const data = await runRequest(() =>
     client.POST('/app/document-issues', {
-      params: { header: { 'Idempotency-Key': crypto.randomUUID(), 'X-Worker-No': workerNo } },
+      params: { header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo } },
       body: toDocumentIssueBody(input),
     }),
   );
@@ -186,6 +187,20 @@ export interface LabelIssueOptions {
  * ⛔ **발행과 인쇄를 한 호출로 묶지 않는다**(스펙 §6). 묶으면 인쇄가 실패했을 때 기록까지
  * 없던 일로 만들고 싶어지는데, 계약에 **발행 취소 경로가 없다** — 기록 전용이다.
  */
+/**
+ * 이 발행 명령을 가리키는 지문 — **같은 명령이면 같은 문자열이다.**
+ *
+ * 대상 집합·프린터·사유가 하나라도 다르면 다른 명령이다. 대상 순서는 고름 순서라 뜻이 없어
+ * 정렬해 지운다.
+ */
+const signatureOf = ({ kind, rows, printerName, reissueReasonCode }: IssueCommand): string =>
+  [
+    kind,
+    [...new Set(rows.map((row) => row.issueTargetId))].sort((a, b) => a - b).join(','),
+    printerName ?? '',
+    reissueReasonCode ?? '',
+  ].join('|');
+
 export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
@@ -199,6 +214,13 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
    * 발행이 두 번 나가 회차가 하나 더 오르고, 그것을 되돌릴 화면이 없다.
    */
   const isRunning = useRef(false);
+  /*
+   * ⛔ **재시도에 새 멱등 키를 붙이지 않는다.** 키가 매번 달라지면 서버는 같은 명령인 줄 모르고
+   * **두 번째 기록을 만든다** — 타임아웃 뒤 다시 누르는 것이 곧 2회차가 된다. `isRunning` 은
+   * 같은 세션의 연타만 막고 실패 후 재시도는 막지 못하므로, 서버 쪽 방어가 유일한 그물이다.
+   * 명령이 바뀌면(대상·프린터·사유) 그때 새 키를 낸다 — 전례 `patterns/master/use-master-write`.
+   */
+  const issueKey = useRef<{ signature: string; key: string } | null>(null);
   const issued = useRef<IssueView[]>([]);
   /* 미리보기 주소는 화면이 놓아도 브라우저가 놓지 않는다 — 이 훅이 끝까지 들고 있다가 푼다. */
   const urls = useRef<string[]>([]);
@@ -236,7 +258,13 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
         try {
           setPhase('issuing');
           setStep('issue');
-          const issues = await createIssues(client, command, workerNo);
+          const signature = signatureOf(command);
+
+          if (issueKey.current?.signature !== signature) {
+            issueKey.current = { signature, key: crypto.randomUUID() };
+          }
+
+          const issues = await createIssues(client, command, workerNo, issueKey.current.key);
           issued.current = issues;
 
           at = 'render';
@@ -256,6 +284,8 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
           setLabels(rendered);
           setResult(IDLE_RESULT);
           setPhase('issued');
+          // 기록이 남았다 — 다음 발행은 같은 값이라도 «다른» 명령이다.
+          issueKey.current = null;
         } catch (cause) {
           /*
            * ⚠ **기록이 남았는데 그리기에서 멈춘 상태가 있다.** 그것을 「발행 실패」로 말하면
@@ -277,6 +307,8 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
            * 2회차 요청이 나가 `ck_document_reissue_reason` 에 막힌다.
            */
           await queryClient.invalidateQueries({ queryKey: ['shipping-packing-label', 'summary'] });
+          // 이력도 함께 낡는다 — 발행 뒤 인쇄 전에 회차 단추를 누르면 지난 목록이 뜬다.
+          await queryClient.invalidateQueries({ queryKey: ['shipping-packing-label', 'history'] });
         }
       };
 
@@ -361,6 +393,12 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
                   .then(() => null)
                   .catch((cause: unknown) => toFailureReason(cause));
 
+          /*
+           * ⭐ **종이가 나온 시점에 센다.** 보고 뒤에 세면 보고만 실패했을 때 이미 나온 장이
+           * 카운트에서 빠져, 「종이는 나왔다」는 안내와 화면의 숫자가 서로를 부정한다.
+           */
+          if (failureReason === null) printed += 1;
+
           setStep('report');
           await reportPrint(client, label.issue.documentIssueLogId, failureReason, workerNo);
 
@@ -375,8 +413,6 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
 
             return;
           }
-
-          printed += 1;
         }
 
         setResult({ printed, failedAt: null, failureReason: null, error: null });

@@ -49,7 +49,14 @@ export const toDocumentIssueBody = ({
   reissueReasonCode,
 }: DocumentIssueInput): DocumentIssueCreateBody => ({
   documentTypeCode: kind,
-  targets: rows.map((row) => ({
+  /*
+   * ⛔ **같은 대상을 두 번 싣지 않는다.** 목록 줄은 배분인데 서버로 나가는 것은 LOT 이라
+   * (`issueTargetId`), 한 LOT 이 여러 배분으로 갈린 출하에서는 **줄 둘이 같은 대상**이 된다.
+   * 그대로 보내면 한 트랜잭션에 같은 대상이 두 번 실려 회차가 한 번에 두 번 오르거나
+   * `uq_document_issue_log` 에 걸려 **전건 실패**한다 — 고를 수 있었던 대상까지 못 나간다.
+   * 발행 취소 경로가 없어 어느 쪽도 되돌릴 수 없다.
+   */
+  targets: [...new Map(rows.map((row) => [row.issueTargetId, row])).values()].map((row) => ({
     targetTypeCode: targetTypeCodeOf(kind),
     targetId: row.issueTargetId,
     ...(row.lotId === null ? {} : { lotId: row.lotId }),

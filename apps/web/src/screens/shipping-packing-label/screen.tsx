@@ -159,8 +159,13 @@ export const ShippingPackingLabelScreen = () => {
     });
   };
 
+  /* 빈 목록의 «이유»가 셋이다 — 종류를 안 골랐다 / 포장이 없다 / 배분이 없다. */
   const emptyMessage =
-    kind !== null && !isDelivery(kind) ? t.targets.emptyPacking : t.targets.empty;
+    kind === null
+      ? t.targets.beforeKind
+      : isDelivery(kind)
+        ? t.targets.empty
+        : t.targets.emptyPacking;
 
   return (
     /*

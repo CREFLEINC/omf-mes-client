@@ -45,6 +45,8 @@ interface Options {
   requests?: { request: Request; body: string }[];
   /** 셸 인쇄가 실패한다 */
   renditionFails?: boolean;
+  /** 발행 자체가 실패한다 — 사용자가 그대로 다시 누르는 갈래를 만든다. */
+  issueFails?: boolean;
   renditionFailsOnce?: boolean;
   renditionAttempts?: number[];
 }
@@ -116,7 +118,9 @@ const routes = (options: Options): StubRoute[] => {
       respond: (request) => {
         void record(request);
 
-        return jsonResponse({ items: [issueLog(9701, 9401, 'SYN-LOT-0001', 1)] }, { status: 201 });
+        return options.issueFails === true
+          ? jsonResponse({ message: '실패' }, { status: 500 })
+          : jsonResponse({ items: [issueLog(9701, 9401, 'SYN-LOT-0001', 1)] }, { status: 201 });
       },
     },
     {
@@ -175,16 +179,18 @@ describe('ShippingPackingLabelScreen — 진입', () => {
 });
 
 describe('ShippingPackingLabelScreen — 대상 목록', () => {
-  it('종류를 고르기 전에는 대상이 서지 않는다 — 고르지 않은 종류의 라벨이 나가면 안 된다', async () => {
+  it('종류를 고르기 전에는 대상이 서지 않고, 왜 비었는지 말한다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.targets.empty)).toBeInTheDocument();
+    expect(await screen.findByText(t.targets.beforeKind)).toBeInTheDocument();
+    // ⛔ 「이 출하에 대상이 없다」로 그리지 않는다 — 아직 고르지 않았을 뿐이다.
+    expect(screen.queryByText(t.targets.empty)).not.toBeInTheDocument();
   });
 
   it('종류를 고르기 전에는 프린터가 «없다»고 단정하지 않는다 — 아직 조회하지 않았다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.targets.empty)).toBeInTheDocument();
+    expect(await screen.findByText(t.targets.beforeKind)).toBeInTheDocument();
     expect(screen.queryByText(t.printer.none)).not.toBeInTheDocument();
   });
 
@@ -281,6 +287,53 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     expect(sent.request.headers.get('Idempotency-Key')).not.toBeNull();
 
     expect(await screen.findByText(t.outcome.issued(1))).toBeInTheDocument();
+  });
+
+  it('발행 단추를 연달아 눌러도 발행은 한 번만 나간다 — 회차는 되돌릴 수 없다', async () => {
+    const user = userEvent.setup();
+    const requests: { request: Request; body: string }[] = [];
+    renderScreen({ requests });
+
+    await chooseKind(user, '납품라벨');
+    await user.click(await rowCheckbox(0));
+
+    const button = issueButton();
+
+    /*
+     * ⛔ 기다리지 않고 두 번 누른다 — 단추의 `disabled` 는 다음 렌더에서야 반영되므로
+     * 장갑 낀 손의 연타는 «같은 렌더»에서 두 번 들어온다. 막는 것은 훅 안의 ref 다.
+     */
+    await Promise.all([user.click(button), user.click(button)]);
+
+    await waitFor(() => {
+      expect(requests.length).toBeGreaterThan(0);
+    });
+
+    expect(requests.filter((one) => one.request.method === 'POST')).toHaveLength(1);
+  });
+
+  it('발행이 실패해 그대로 다시 눌러도 멱등 키가 같다 — 서버가 기록을 두 벌 만들지 않는다', async () => {
+    const user = userEvent.setup();
+    const requests: { request: Request; body: string }[] = [];
+    renderScreen({ requests, issueFails: true });
+
+    await chooseKind(user, '납품라벨');
+    await user.click(await rowCheckbox(0));
+
+    await user.click(issueButton());
+    expect(await screen.findByText(t.outcome.issueFailed)).toBeInTheDocument();
+
+    // 사용자 눈에는 「다시 시도」다 — 같은 대상·같은 프린터·같은 사유다.
+    await user.click(issueButton());
+
+    await waitFor(() => {
+      expect(requests).toHaveLength(2);
+    });
+
+    const keys = requests.map((one) => one.request.headers.get('Idempotency-Key'));
+
+    expect(keys[0]).not.toBeNull();
+    expect(keys[1]).toBe(keys[0]);
   });
 
   it('발행은 됐는데 그리기가 실패하면 「다시 발행하지 말라」고 말한다 — 회차가 또 오른다', async () => {
