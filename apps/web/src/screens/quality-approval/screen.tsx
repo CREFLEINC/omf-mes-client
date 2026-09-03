@@ -381,8 +381,12 @@ export const QualityApprovalScreen = ({
         title={t.title}
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
-      <div className="three-pane">
-        <section className="pane" aria-label={t.panes.list}>
+      <div className="quality-approval-workspace">
+        <section
+          className="pane quality-approval-pane quality-approval-list-pane"
+          aria-label={t.panes.list}
+        >
+          <h2 className="pane-title">{t.panes.list}</h2>
           <FilterBar
             applied={filters}
             typeOptions={toCodeOptions(approvalTypeCodes)}
@@ -412,12 +416,16 @@ export const QualityApprovalScreen = ({
             onChangePage={(nextPage) => apply(filters, pendingOnly, nextPage)}
           />
         </section>
-        <section className="pane" aria-label={t.panes.detail}>
-          {detailSlot()}
-        </section>
-        <section className="pane" aria-label={t.panes.progress}>
-          {progressSlot()}
-        </section>
+        <div className="pane-stack quality-approval-side">
+          <section className="pane quality-approval-pane" aria-label={t.panes.detail}>
+            <h2 className="pane-title">{t.panes.detail}</h2>
+            {detailSlot()}
+          </section>
+          <section className="pane quality-approval-pane" aria-label={t.panes.progress}>
+            <h2 className="pane-title">{t.panes.progress}</h2>
+            {progressSlot()}
+          </section>
+        </div>
       </div>
       {dialogDraft !== null &&
         selectedId === dialogDraft.approvalRequestId &&

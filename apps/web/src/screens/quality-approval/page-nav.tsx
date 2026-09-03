@@ -10,7 +10,10 @@ export const PageNav = ({
   view: PageView;
   onChange: (page: number) => void;
 }) => (
-  <nav className="form-actions" aria-label={messages.qualityApproval.page.label}>
+  <nav
+    className="form-actions quality-approval-page-nav"
+    aria-label={messages.qualityApproval.page.label}
+  >
     <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
     <Button
       variant="outlined"
