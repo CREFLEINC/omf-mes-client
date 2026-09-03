@@ -5588,3 +5588,47 @@ main > * + * {
   font: var(--type-title-md);
   letter-spacing: var(--type-title-md-tracking);
 }
+
+/* P-02-09 우단 《재출력 대상》 — 줄 하나가 라벨 한 장이다. */
+.pop-reprint-targets {
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+}
+
+.pop-reprint-target {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--outline-subtle, rgb(0 0 0 / 8%));
+}
+
+.pop-reprint-target-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* 출력물 종류가 먼저 읽혀야 한다 — 같은 LOT 에 두 줄이 서기 때문이다. */
+.pop-reprint-kind {
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+  white-space: nowrap;
+}
+
+/* 번호가 남은 폭을 갖고, 넘치면 잘린다 — 버튼이 밖으로 밀리지 않게 한다. */
+.pop-reprint-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-reprint-target-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}

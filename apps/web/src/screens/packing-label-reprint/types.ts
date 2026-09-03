@@ -45,16 +45,16 @@ export const DOCUMENT_TYPE_CODES = {
 } as const;
 
 /**
- * ⚠ **대상 유형 코드 문자열은 아직 확정되지 않았다** — 요구서 §3-7 이 「잠정」임을 명시했고
- * 확정 주체는 `omf-mes#145` 다. 자리표시이며 **이 파일 한 곳만** 바뀐다.
+ * 대상 유형 — **공유계약 A-10 의 대응표가 값을 닫았다**(2026-09-03 · `CD-DOCUMENT-ISSUE-TARGET-TYPE`).
  *
- * ⛔ **사용자에게 선택지로 보이지 않는다.** 화면이 고정으로 싣는 값이지 사람이 고르는 값이
- * 아니다 — 고르게 두면 확정되지 않은 값을 사용자가 고른 것으로 기록에 남는다.
+ * ⭐ **`targetTypeCode` 를 먼저 보고 판정한다**(A-10 규칙 3·4 · 스펙 §5-3). 참조 키(`targetId`)로
+ * 먼저 갈래를 잡으면 인식표 재출력이 LOT 라벨로 잘못 기록된다 — LOT 은 `targetId` 와 `lotId` 가
+ * 같은 값이고 개체는 다르다.
  */
-export const PLACEHOLDER_TARGET_TYPES = {
-  /** 생산·제품 LOT. 포장 라벨의 대상으로 싣는다 */
+export const TARGET_TYPE_CODES = {
+  /** 생산·제품 LOT. 포장 라벨의 대상이다 */
   lot: 'LOT',
-  /** 개체 일련번호. 인식표의 대상이지만 이번 회차에는 보내지 않는다(아래) */
+  /** 개체 일련번호. 인식표의 대상이지만 이 화면은 개체를 특정할 수 없다(아래) */
   serialNumber: 'SERIAL_NUMBER',
 } as const;
 

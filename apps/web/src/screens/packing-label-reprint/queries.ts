@@ -2,8 +2,18 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { DOCUMENT_TYPE_CODES, type HandlingUnit, type HandlingUnitContent } from './types';
-import type { PackingContentRow, Printer } from './types';
+import {
+  DOCUMENT_TYPE_CODES,
+  MAX_TARGETS,
+  REISSUE_REASON_GROUP_CODE,
+  TARGET_TYPE_CODES,
+  type HandlingUnit,
+  type HandlingUnitContent,
+} from './types';
+import type { CodeValue, DocumentIssueSummary, PackingContentRow, Printer } from './types';
+
+/** 사유 선택지는 한 화면에 다 보여야 한다 — 쪽을 넘기게 두지 않는다. */
+const REASON_PAGE_SIZE = 100;
 
 /**
  * 이 화면이 쓰는 조회와 캐시 키. 이 화면이 소유한다 — 다른 화면 슬라이스의 키 모듈을
@@ -17,6 +27,10 @@ export const reprintKeys = {
   item: (itemId: number) => ['packing-label-reprint', 'item', itemId] as const,
   uoms: ['packing-label-reprint', 'uoms'] as const,
   printers: ['packing-label-reprint', 'printers'] as const,
+  /** 대상 집합이 곧 열쇠다 — 줄이 늘거나 줄면 회차를 다시 받아야 한다 */
+  summary: (targetIds: readonly number[]) =>
+    ['packing-label-reprint', 'issue-summary', targetIds.join(',')] as const,
+  reissueReasons: ['packing-label-reprint', 'reissue-reasons'] as const,
 };
 
 export interface HandlingUnitView {
@@ -117,7 +131,9 @@ export const useContentRows = (contents: readonly HandlingUnitContent[]): Conten
   );
   const itemCodeOf = new Map(
     items.flatMap((result) =>
-      result.data === undefined ? [] : [[result.data.item.itemId, result.data.item.itemCode] as const],
+      result.data === undefined
+        ? []
+        : [[result.data.item.itemId, result.data.item.itemCode] as const],
     ),
   );
   const uomCodeOf = new Map(
@@ -160,6 +176,76 @@ export const usePrinters = (): UseQueryResult<Printer[]> => {
       const data = await runRequest(() =>
         client.GET('/app/printers', {
           params: { query: { documentTypeCode: DOCUMENT_TYPE_CODES.packingLabel } },
+        }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+/**
+ * 대상별 발행 회차 — **한 번에 받는다**(스펙 §6 · 계약).
+ *
+ * ⛔ **줄마다 부르지 않는다.** 계약이 이 경로를 「목록 화면이 행마다 이미 발행됐는가를 판정하는
+ * 입력」으로 두었고, 건별 조회로는 목록을 그릴 수 없다고 못박았다.
+ *
+ * ⚠ **한 번에 한 유형만 묻는다** — 유형이 섞이면 `targetId` 의 뜻이 갈린다(계약). 이 화면에서
+ * 고를 수 있는 것은 LOT 줄뿐이라 그 축으로만 부른다. 인식표 줄의 회차는 받지 않고 「모른다」로
+ * 둔다 — 대상 id 자체가 없어 물을 수가 없다.
+ */
+export const useIssueSummary = (
+  targetIds: readonly number[],
+): UseQueryResult<DocumentIssueSummary[]> => {
+  const { client } = useApiClient();
+
+  const ids = [...new Set(targetIds)].sort((a, b) => a - b);
+
+  return useQuery({
+    queryKey: reprintKeys.summary(ids),
+    enabled: ids.length > 0 && ids.length <= MAX_TARGETS,
+    queryFn: async (): Promise<DocumentIssueSummary[]> => {
+      const data = await runRequest(() =>
+        client.GET('/app/document-issues/summary', {
+          params: {
+            query: {
+              targetTypeCode: TARGET_TYPE_CODES.lot,
+              targetIds: ids,
+              documentTypeCode: DOCUMENT_TYPE_CODES.packingLabel,
+            },
+          },
+        }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+/**
+ * 재발행 사유 선택지.
+ *
+ * ⛔ **채번 식별자(`codeGroupId`)를 박지 않는다** — 환경마다 다르다(계약 명시). 이름으로 가리키는
+ * 것이 화면이 그룹을 안정적으로 지목할 수 있는 유일한 수단이다.
+ *
+ * ⛔ **목록이 비어도 칸을 감추지 않는다**(공유계약 G-2). 비었으면 비활성 + 사유로 둔다 — 감추면
+ * 재출력이 왜 안 되는지 알 수 없다.
+ */
+export const useReissueReasons = (): UseQueryResult<CodeValue[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: reprintKeys.reissueReasons,
+    queryFn: async (): Promise<CodeValue[]> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: {
+            query: {
+              codeGroupCode: REISSUE_REASON_GROUP_CODE,
+              page: 1,
+              size: REASON_PAGE_SIZE,
+            },
+          },
         }),
       );
 

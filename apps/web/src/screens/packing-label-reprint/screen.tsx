@@ -1,13 +1,29 @@
-import { AlertBanner, Card, Chip } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { useReprintEntry } from './entry-context';
+import { ErrorBanner } from './error-banner';
 import { HandlingUnitPane } from './handling-unit-pane';
-import { useContentRows, useHandlingUnit, usePrinters } from './queries';
+import { useDocumentReissue } from './mutations';
+import {
+  useContentRows,
+  useHandlingUnit,
+  useIssueSummary,
+  usePrinters,
+  useReissueReasons,
+} from './queries';
+import { ReprintPane } from './reprint-pane';
+import { applySummary, buildTargets, needsReason } from './targets';
 import { useTerminalGate } from './terminal-gating';
-import type { Printer } from './types';
+import { usePrintRunner } from './use-print';
+import {
+  TARGET_TYPE_CODES,
+  type DocumentIssueCreate,
+  type Printer,
+  type ReprintTarget,
+} from './types';
 
 const t = messages.packingLabelReprint;
 
@@ -42,12 +58,32 @@ const printerChipText = (printer: Printer | null, failed: boolean): string => {
 };
 
 /**
+ * 발행 요청 본문. **고른 줄마다 한 대상**이다 — 줄 하나가 라벨 한 장이다(스펙 §3·§5-2).
+ *
+ * ⚠ **사유는 필요할 때만 싣는다.** 이력이 없는 대상만 골랐으면 최초 발행이고(스펙 §6), 신규
+ * 기록에 재발행 사유가 붙으면 이력이 거짓이 된다(계약).
+ */
+const issueBody = (selected: readonly ReprintTarget[], reasonCode: string): DocumentIssueCreate => {
+  const first = selected[0];
+
+  return {
+    documentTypeCode: first === undefined ? '' : first.documentTypeCode,
+    targets: selected.map((target) => ({
+      targetTypeCode: target.targetTypeCode,
+      targetId: target.targetId,
+      lotId: target.lotId,
+    })),
+    ...(needsReason(selected) && reasonCode !== '' ? { reissueReasonCode: reasonCode } : {}),
+  };
+};
+
+/**
  * P-02-09 포장 라벨·인식표 재출력·부착.
  *
- * ⚠ **지금은 좌단 《포장 단위》까지다.** 우단 《재출력 대상》과 재출력 실행은 아직 없다 —
- * 「LOT 라벨」의 대상 축이 스펙(§5-2·§5-3 · LOT 마다 1장)과 요구서(§3-8 · `PACKING_LABEL` 의
- * 대상 유형은 포장)에서 갈려, 대상 목록·요약 조회 축·발행 본문이 그 답에 통째로 걸린다.
- * 추측으로 세우면 답이 온 뒤 두 슬라이스를 다시 만든다.
+ * ⭐ **재발행이 정상 경로인 유일한 화면이다**(스펙 §5-1). 사유가 예외가 아니라 기본 입력이라
+ * 우단에 상시 세운다.
+ *
+ * ⛔ **인쇄를 발행에 묶지 않는다**(K-4). 인쇄가 실패해도 발행 기록은 남아야 재인쇄로 복구된다.
  */
 export const PackingLabelReprintScreen = () => {
   const titleId = useId();
@@ -55,17 +91,65 @@ export const PackingLabelReprintScreen = () => {
   const identity = usePopIdentity();
   const gate = useTerminalGate(identity.terminalId, identity.processId);
 
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
+  const [reasonCode, setReasonCode] = useState('');
+
   const handlingUnit = useHandlingUnit(entry.handlingUnitId);
   const contents = useContentRows(handlingUnit.data?.contents ?? []);
   const printers = usePrinters();
+  const reasons = useReissueReasons();
+  const printRunner = usePrintRunner(entry.workerNo);
+
+  const targets = useMemo(() => buildTargets(contents.rows), [contents.rows]);
+
+  /* 회차는 고를 수 있는 축(LOT)으로만 묻는다 — 개체는 대상 id 자체가 없다 */
+  const summaryIds = useMemo(
+    () =>
+      targets
+        .filter((target) => target.targetTypeCode === TARGET_TYPE_CODES.lot)
+        .map((target) => target.targetId),
+    [targets],
+  );
+  const summary = useIssueSummary(summaryIds);
+
+  const withCounts = useMemo(() => applySummary(targets, summary.data), [targets, summary.data]);
+
+  const selected = withCounts.filter((target) => selectedRowIds.includes(target.rowId));
+  const workerNo = entry.workerNo;
+
+  const reissue = useDocumentReissue({
+    workerNo: workerNo ?? '',
+    onSuccess: (result) => {
+      void printRunner.run(
+        result.items.map((issue) => ({
+          documentIssueLogId: issue.documentIssueLogId,
+          label: issue.target.displayName,
+        })),
+      );
+    },
+  });
 
   const blockedReason = ((): string | null => {
     if (entry.handlingUnitId === null) return t.entry.missingHandlingUnit;
-    if (entry.workerNo === null) return t.entry.missingWorker;
+    if (workerNo === null) return t.entry.missingWorker;
     if (gate.verdict !== 'allowed') return t.gate[gate.verdict];
 
     return null;
   })();
+
+  const submit = (): void => {
+    if (workerNo === null || selected.length === 0) return;
+    if (needsReason(selected) && reasonCode === '') return;
+
+    printRunner.reset();
+    reissue.write(issueBody(selected, reasonCode));
+  };
+
+  const toggle = (rowId: string): void => {
+    setSelectedRowIds((current) =>
+      current.includes(rowId) ? current.filter((id) => id !== rowId) : [...current, rowId],
+    );
+  };
 
   const printer = headlinePrinter(printers.data);
 
@@ -85,16 +169,56 @@ export const PackingLabelReprintScreen = () => {
         </div>
       </header>
 
-      {blockedReason !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="warning" title={blockedReason} />
-        </div>
-      )}
-
       {handlingUnit.isError && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={t.handlingUnit.loadFailed}>
             {messages.httpError.description}
+          </AlertBanner>
+        </div>
+      )}
+
+      {reissue.error !== null && (
+        <ErrorBanner error={reissue.error} title={t.error.issueTitle} onRetry={submit} />
+      )}
+
+      {printRunner.state.phase === 'shellUnavailable' && (
+        <div className="banner-slot">
+          <AlertBanner variant="info" title={t.print.issued}>
+            {t.print.shellUnavailable}
+          </AlertBanner>
+        </div>
+      )}
+
+      {/*
+        ⛔ **인쇄 실패를 발행 실패로 말하지 않는다**(K-4). 기록은 남았고 프린터만 실패한 것이라,
+        복구 경로는 「다시 인쇄」이지 「다시 발행」이 아니다 — 다시 발행하면 회차가 또 오른다.
+      */}
+      {printRunner.state.phase === 'failed' && (
+        <div className="banner-slot">
+          <AlertBanner
+            variant="error"
+            title={t.print.failedTitle}
+            action={
+              <Button
+                variant="outlined"
+                size="sm"
+                onClick={() => {
+                  void printRunner.run(printRunner.state.targets);
+                }}
+              >
+                {t.print.retry}
+              </Button>
+            }
+          >
+            {`${t.print.failedBody} ${printRunner.state.reason ?? ''}`.trim()}
+          </AlertBanner>
+        </div>
+      )}
+
+      {printRunner.state.phase === 'succeeded' && (
+        <div className="banner-slot">
+          <AlertBanner variant="success" title={t.print.issued}>
+            {t.print.succeeded}
           </AlertBanner>
         </div>
       )}
@@ -109,6 +233,25 @@ export const PackingLabelReprintScreen = () => {
               namesFailed={contents.isNameError}
             />
           )}
+        </Card>
+
+        <Card bordered className="pop-section" aria-label={t.targets.sectionLabel}>
+          <h2 className="pane-title">{t.targets.sectionLabel}</h2>
+          <ReprintPane
+            targets={withCounts}
+            selectedRowIds={selectedRowIds}
+            onToggle={toggle}
+            summaryFailed={summary.isError}
+            reasons={reasons.data ?? []}
+            reasonsFailed={reasons.isError}
+            reasonCode={reasonCode}
+            onReasonChange={setReasonCode}
+            reasonRequired={needsReason(selected)}
+            reasonServerError={reissue.fieldErrors.reissueReasonCode ?? null}
+            blockedReason={blockedReason}
+            isSubmitting={reissue.isSaving || printRunner.state.phase === 'sending'}
+            onSubmit={submit}
+          />
         </Card>
       </div>
     </main>
