@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
+  createTestQueryClient,
   jsonResponse,
   renderWithProviders,
   type StubRoute,
@@ -124,14 +125,19 @@ const SignedIn = ({ children }: { children: ReactNode }) => {
   return worker === null ? null : children;
 };
 
-const mount = (state: unknown, extra: StubRoute[] = [], options: Options = {}) =>
+const mount = (
+  state: unknown,
+  extra: StubRoute[] = [],
+  options: Options = {},
+  queryClient?: ReturnType<typeof createTestQueryClient>,
+) =>
   renderWithProviders(
     <MemoryRouter initialEntries={[{ pathname: '/temporary-putaway', state }]}>
       <SignedIn>
         <TemporaryPutawayScreen />
       </SignedIn>
     </MemoryRouter>,
-    { fetch: createStubFetch([...extra, ...routes(options)]) },
+    { fetch: createStubFetch([...extra, ...routes(options)]), queryClient },
   );
 
 const scan = (code: string) => {
@@ -510,6 +516,79 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '임시 적치 등록' })).toBeDisabled();
     });
+  });
+
+  /*
+   * 온라인으로 등록하면 담긴 것이 큐에서 빠진다. 그때 서버 상세가 조회에 머물러 있으면
+   * 다시 들어온 화면이 등록 전 값을 그대로 보고, 큐도 비어 있어 한 건이 더 나간다.
+   */
+  it('온라인으로 등록한 뒤 곧바로 다시 들어와도 막는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    let done = false;
+    /* 앱에서 화면을 오가는 것은 캐시를 버리지 않는다. 같은 캐시로 재진입을 잰다. */
+    const cache = createTestQueryClient();
+    const first = mount(
+      { task: task(), location: TEMP },
+      [
+        {
+          match: (req) =>
+            new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
+            req.method === 'POST',
+          respond: (req) => {
+            seen.push(req.clone());
+            done = true;
+            return jsonResponse(task({ actualLocationId: 9 }));
+          },
+        },
+        {
+          /* 서버는 등록을 기억한다. 기억하지 않으면 낡은 조회를 잡을 수 없다. */
+          match: (req) => new URL(req.url).pathname === '/logistics/putaway-tasks/90',
+          respond: () => jsonResponse(done ? task({ actualLocationId: 9 }) : task()),
+        },
+      ],
+      {},
+      cache,
+    );
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+    await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
+
+    await screen.findByText('임시 적치를 기록했습니다');
+    expect(seen).toHaveLength(1);
+
+    first.unmount();
+
+    mount(
+      { task: task(), location: TEMP },
+      [
+        {
+          match: (req) =>
+            new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
+            req.method === 'POST',
+          respond: (req) => {
+            seen.push(req.clone());
+            return jsonResponse(task({ actualLocationId: 9 }));
+          },
+        },
+        {
+          match: (req) => new URL(req.url).pathname === '/logistics/putaway-tasks/90',
+          respond: () => jsonResponse(task({ actualLocationId: 9 })),
+        },
+      ],
+      {},
+      cache,
+    );
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+
+    expect(await screen.findByText('이미 임시 적치되었습니다')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '임시 적치 등록' })).toBeDisabled();
+    });
+    expect(seen).toHaveLength(1);
   });
 
   /* 끊겨 있어 서버가 아직 모르는 등록이다. 큐를 보지 않으면 재진입에 한 건이 더 나간다. */

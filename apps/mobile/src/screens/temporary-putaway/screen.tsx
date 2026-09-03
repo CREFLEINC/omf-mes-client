@@ -1,5 +1,6 @@
 import { AlertBanner, Button, Card, Chip, Select, TextArea, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 
@@ -11,7 +12,7 @@ import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import type { PutawayTask } from '../putaway/putaway';
-import { usePutawayTask } from '../putaway/queries';
+import { putawayKeys, usePutawayTask } from '../putaway/queries';
 import {
   PUTAWAY_TASK_TEMPORARY_REASON,
   canSubmit,
@@ -42,6 +43,7 @@ export const TemporaryPutawayScreen = () => {
   useScreenTitle(t.title);
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
+  const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
   const routed = useLocation();
   const handoff = isHandoff(routed.state) ? routed.state : null;
@@ -126,6 +128,14 @@ export const TemporaryPutawayScreen = () => {
       }
 
       const result = await flush().catch(() => null);
+
+      /*
+       * 보낸 뒤에 서버가 아는 이 지시를 낡은 것으로 표시한다. 조회에 머무는 시간이 있어,
+       * 표시하지 않으면 그사이 다시 들어온 화면이 등록 전 값을 보고 한 건을 더 내보낸다.
+       * 보내기 앞에 표시하면 아직 안 간 값을 다시 받아 와 같은 자리로 돌아온다.
+       */
+      await queryClient.invalidateQueries({ queryKey: putawayKeys.task(task.putawayTaskId) });
+
       const mine = (each: { idempotencyKey: string }) =>
         each.idempotencyKey === entry.idempotencyKey;
 
