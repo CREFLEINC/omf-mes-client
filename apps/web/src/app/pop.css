@@ -805,3 +805,103 @@
   color: var(--on-surface-variant);
   font-weight: 500;
 }
+
+/* ── 액션 줄 ──────────────────────────────────────────────────────────── */
+
+/*
+ * 화면 바닥의 액션 버튼은 **글자 길이로 크기가 정해지지 않는다.**
+ *
+ * 「취소」·「저장」이 95px 로 서서, 같은 화면의 키패드 키(72)보다 좁고 다른 POP 화면의 액션
+ * (128)과도 달랐다(실측). 되돌릴 수 없는 조작이 가장 작은 버튼인 것은 크기가 뜻을 잃은 것이다.
+ */
+.pop-ui [class*='action'] button {
+  min-width: 8rem;
+  /* 같은 줄에서 높이가 갈리지 않게 한다 — 실측 64 와 72 가 나란히 서 있었다. */
+  min-height: 72px;
+}
+
+/*
+ * 빠른 입력 보조(`+10`·`+100`)는 **채우지 않는다.** 브랜드 강조색으로 채워 두면 화면에서
+ * 가장 눈에 띄는 것이 「수량을 조금 더하는 일」이 된다 — 이 화면의 주 조작은 저장이다.
+ */
+.pop-ui .pop-result-quick button {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 자재LOT 의 「인쇄만」과 「재인쇄」는 **둘 다 열려 있는 것이 정상이다**(다른 동작이다).
+ * 그래서 무게로 가른다 — 채운 쪽이 이번 회차의 인쇄이고, 재인쇄는 사유를 실어 보내는
+ * 되짚는 조작이라 조용히 둔다. 같은 붉은색으로 나란히 서면 어느 쪽이 지금 할 일인지 흐려진다.
+ */
+.pop-ui .pop-target-actions > button:last-child {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  color: var(--on-surface-variant);
+}
+
+/* ── 화면 내장 키패드(세 번째 구현) ───────────────────────────────────── */
+
+/*
+ * ⚠ **키패드가 이제 세 벌이다** — `.omf-numeric-keypad`(작업자 지정) · `.numeric-keypad`
+ * (자재 투입) · 그리고 작업실적 등록이 쓰는 DS 부품(`.pop-result-keypad` 안). 셋째는 키가
+ * **60px** 이라 현장 터치 하한(72)에 못 미쳤다(실측 80×60).
+ *
+ * ⛔ DS 내부 클래스를 겨냥하지 않는다 — 제품이 소유한 껍데기 클래스로 그 안의 키만 잡는다.
+ */
+.pop-ui .pop-result-keypad button {
+  min-height: 72px;
+  border-radius: var(--radius-md);
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  font-size: 28px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface);
+}
+
+/* ── PQC 수량 판정 ────────────────────────────────────────────────────── */
+
+/*
+ * 합계·잔여 — **이 구획이 지는 제약을 말하는 줄이다**(합격 + 불합격 + 보류 = 검사수량).
+ * 라벨과 값이 같은 크기로 붙어 있어 숫자가 문장처럼 읽혔다. 값을 키우고 라벨을 낮춰
+ * **숫자가 먼저** 보이게 하고, 두 값 사이를 벌려 서로 다른 값임을 드러낸다.
+ *
+ * `dl` 로만 겨냥한다 — 같은 클래스를 «거르개 줄»로 쓰는 자리(`div`)와 갈라야 한다.
+ */
+.pop-ui dl.filter-bar {
+  gap: var(--space-7);
+  align-items: start;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.pop-ui dl.filter-bar dd {
+  margin: 0;
+  font-size: var(--pop-value-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 36px;
+}
+
+/*
+ * 불합격 처분 — 라디오는 **글자가 아니라 누르는 자리**다. DS 기본은 마우스 기준이라
+ * 장갑 낀 손에는 표적이 너무 작다. 줄 전체를 표적으로 넓히고 터치 하한을 준다.
+ */
+.pop-ui [role='radiogroup'] {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.pop-ui [role='radiogroup'] label {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 56px;
+  padding-inline: var(--space-3);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  font-size: var(--pop-text);
+}
