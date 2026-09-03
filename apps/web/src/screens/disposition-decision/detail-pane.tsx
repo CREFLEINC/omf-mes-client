@@ -25,8 +25,8 @@ export const DetailPane = ({ view, items, uoms }: DetailPaneProps) => {
   ];
 
   return (
-    <>
-      <dl className="filter-bar">
+    <div className="disposition-detail">
+      <dl className="disposition-detail-facts">
         {[
           [t.fields.nonconformanceNo, view.nonconformanceNo],
           [t.fields.item, lookupDisplayLabel(items, view.itemId)],
@@ -41,13 +41,17 @@ export const DetailPane = ({ view, items, uoms }: DetailPaneProps) => {
         ))}
       </dl>
 
-      <div className="field-cell" role="group" aria-label={t.fields.description}>
+      <div
+        className="field-cell disposition-content-card"
+        role="group"
+        aria-label={t.fields.description}
+      >
         <span className="field-label">{t.fields.description}</span>
         <p>{view.description}</p>
       </div>
 
-      <section aria-label={t.panes.lots}>
-        <h3 className="field-label">{t.panes.lots}</h3>
+      <section className="disposition-subsection" aria-label={t.panes.lots}>
+        <h3 className="disposition-subtitle">{t.panes.lots}</h3>
         {/*
          * A-11 — LOT 상태 변경이력 표가 데이터에 없다(omf-mes#64). 판정으로 일어난 전이가
          * 어디에도 남지 않으므로, 그 사실을 결과 표 머리에 적어 「보이지 않는 것」과
@@ -56,14 +60,17 @@ export const DetailPane = ({ view, items, uoms }: DetailPaneProps) => {
         <div className="banner-slot">
           <AlertBanner variant="info">{t.detail.transitionHistoryUnavailable}</AlertBanner>
         </div>
-        <Table
-          density="compact"
-          columns={columns}
-          rows={view.lots}
-          getRowId={(row) => String(row.nonconformanceLotId)}
-          empty={<EmptyState size="sm" title={t.detail.noLots} />}
-        />
+        <div className="disposition-table disposition-lot-table">
+          <Table
+            density="compact"
+            caption={<span className="disposition-table-caption">{t.panes.lots}</span>}
+            columns={columns}
+            rows={view.lots}
+            getRowId={(row) => String(row.nonconformanceLotId)}
+            empty={<EmptyState size="sm" title={t.detail.noLots} />}
+          />
+        </div>
       </section>
-    </>
+    </div>
   );
 };
