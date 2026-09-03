@@ -715,3 +715,21 @@
 .pop-ui .confirm-row > .field-note {
   max-width: none;
 }
+
+/*
+ * 스캔 대체 경로의 버튼 — **주 조작과 다른 층으로 보이게 한다.**
+ *
+ * 이 버튼이 하는 일은 «입력칸으로 포커스를 옮기는 것»뿐이다(`scan-field.tsx` — 코드는
+ * 이미 손으로 칠 수 있고, 없던 것은 「어디를 눌러야 하는가」였다). 그런데 브랜드 강조색
+ * (붉은 글자)에 테두리까지 두르고 「읽기」 바로 아래 같은 열에 서 있어, **스캔을 보내는
+ * 버튼이 둘인 것처럼** 읽혔다. 그 파일의 머리말이 경고해 둔 바로 그 상태다.
+ *
+ * ⛔ **크기는 줄이지 않는다.** 장갑 낀 손이 누르는 것은 그대로이고 72px 하한은 터치 규격
+ * 이지 강조가 아니다(E-3). 낮추는 것은 **색과 무게**다 — 면을 비우고 글자를 본문색으로.
+ */
+.pop-ui .scan-manual > button {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--outline-variant);
+  color: var(--on-surface-variant);
+  font-weight: 500;
+}
