@@ -46,6 +46,28 @@ describe('isRejected — 기다리면 풀리는가, 아닌가', () => {
   it('요청 경로 밖의 예외도 거부로 다룬다', () => {
     expect(isRejected(new Error('알 수 없음'))).toBe(true);
   });
+
+  /*
+   * ⚠ **알려진 구멍을 여기에 못 박아 둔다** — `omf-mes-client#789`.
+   *
+   * `normalizeApiError` 는 본문이 계약 오류 봉투(`errors[]`)면 **상태 코드보다 그 모양을 먼저
+   * 본다.** 그래서 503 이 그 봉투로 오면 `validation` 으로 접히고, 이 판정은 상태를 볼 기회가
+   * 없어 거부로 떨어진다 — 담긴 것이 큐에서 내려간다.
+   *
+   * 지금 이것이 터지지 않는 근거는 **계약에 5xx·429·408 응답 정의가 한 건도 없다**는 것이다
+   * (실측 2026-09-03 — 계약 7벌 · 응답 정의 1,303건 중 0건). 서버가 그 모양을 낼 근거가 없다.
+   *
+   * ⛔ **이 시험이 「올바른 동작」을 적은 것이 아니다.** 지금 동작을 적어 둔 것이고, #789 가
+   * 정규화 순서를 고치면 **이 시험이 먼저 깨져야 한다** — 그때 기대값을 뒤집는다.
+   */
+  it('[알려진 구멍 #789] 5xx 가 계약 오류 봉투로 오면 거부로 떨어진다', () => {
+    const enveloped = new ApiRequestError({
+      kind: 'validation',
+      errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '잠시 뒤 다시' }],
+    });
+
+    expect(isRejected(enveloped)).toBe(true);
+  });
 });
 
 describe('retryDelayOf — 기다림은 늘리되 상한을 둔다', () => {
