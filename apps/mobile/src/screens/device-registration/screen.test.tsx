@@ -114,7 +114,66 @@ describe('기기 등록 화면', () => {
     });
     camera.read(REGISTRATION_TOKEN);
 
-    expect(await screen.findByText('단말 SYN-TERM-01')).toBeInTheDocument();
+    /* 받는 중에는 등록 표시가 그 자리를 대신한다. 같은 코드를 두 번 보이지 않는다. */
+    await screen.findByText('등록되었습니다');
+    expect(screen.getAllByText(/SYN-TERM-01/)).toHaveLength(1);
+  });
+
+  /*
+   * 미등록 단말에는 대조할 기대값이 없어 틀린 QR 을 기계가 잡을 수 없다. 잡을 수 있는 것은
+   * 사람뿐이고, 사람이 잡으려면 무엇으로 등록됐는지와 무엇과 맞춰 보라는 말이 함께 있어야 한다.
+   */
+  it('무엇으로 등록됐는지와 확인하라는 말을 함께 보인다', async () => {
+    const camera = stubCamera();
+    renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
+      fetch: createStubFetch([workersRoute([worker])]),
+    });
+
+    await waitFor(() => {
+      expect(camera.closed()).toBe(0);
+    });
+    camera.read(REGISTRATION_TOKEN);
+
+    expect(await screen.findByText('등록되었습니다')).toBeInTheDocument();
+    expect(screen.getByText('SYN-TERM-01')).toBeInTheDocument();
+    expect(screen.getByText('관리자가 안내한 단말 코드와 같은지 확인하세요')).toBeInTheDocument();
+  });
+
+  /* 등록 자체가 맞았는지를 먼저 본다. 기준정보를 받는 표시보다 앞에 온다. */
+  it('등록 표시가 기준정보 수신 표시보다 앞에 온다', async () => {
+    const camera = stubCamera();
+    renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
+      fetch: createStubFetch([workersRoute([worker])]),
+    });
+
+    await waitFor(() => {
+      expect(camera.closed()).toBe(0);
+    });
+    camera.read(REGISTRATION_TOKEN);
+
+    const registered = await screen.findByText('등록되었습니다');
+    const receiving = screen.getByText('기준정보를 받는 중입니다');
+
+    expect(registered.compareDocumentPosition(receiving)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
+  /*
+   * 토큰도 발급 응답도 공장을 정수로만 갖고 이름이 없다. 정수를 그대로 보이면 작업자가
+   * 대조할 것이 없고, 단말 코드가 전역 유일이라 코드가 맞으면 공장도 함께 맞는다.
+   */
+  it('공장을 따로 보이지 않는다', async () => {
+    const camera = stubCamera();
+    renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
+      fetch: createStubFetch([workersRoute([worker])]),
+    });
+
+    await waitFor(() => {
+      expect(camera.closed()).toBe(0);
+    });
+    camera.read(REGISTRATION_TOKEN);
+
+    await screen.findByText(/SYN-TERM-01/);
+    expect(screen.queryByText(/공장/)).toBeNull();
   });
 
   /* 등록 QR 이 아닌 코드가 먼저 잡히는 일이 흔하다. 그때 화면이 멈추면 다시 비출 수 없다. */

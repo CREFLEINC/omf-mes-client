@@ -6,6 +6,7 @@ import type { PutawayTask } from './putaway';
 
 export const putawayKeys = {
   tasks: (workerId: number | null) => ['putaway-tasks', workerId] as const,
+  task: (putawayTaskId: number | null) => ['putaway-task', putawayTaskId] as const,
 };
 
 /**
@@ -32,6 +33,32 @@ export const usePutawayTasks = (workerId: number | null): UseQueryResult<Putaway
       );
 
       return data.items;
+    },
+  });
+};
+
+/**
+ * 지시 한 건을 서버에서 다시 읽는다.
+ *
+ * 앞 화면이 라우터 상태로 넘긴 것은 굳은 스냅숏이다. 등록을 마친 뒤 같은 상태로 다시 들어오면
+ * 실제 적치 위치가 여전히 비어 있어, 그것만 보고는 이미 끝난 지시를 또 적을 수 있다.
+ */
+export const usePutawayTask = (putawayTaskId: number | null): UseQueryResult<PutawayTask> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: putawayKeys.task(putawayTaskId),
+    enabled: putawayTaskId !== null,
+    queryFn: async () => {
+      if (putawayTaskId === null) {
+        throw new Error('지시를 고르기 전에는 상세를 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/logistics/putaway-tasks/{putawayTaskId}', {
+          params: { path: { putawayTaskId } },
+        }),
+      );
     },
   });
 };

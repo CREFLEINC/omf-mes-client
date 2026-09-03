@@ -176,7 +176,10 @@ export const DowntimeSummaryScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.filters}>
+      <section className="pane downtime-summary-pane" aria-labelledby="downtime-filters-title">
+        <h2 id="downtime-filters-title" className="pane-title">
+          {t.panes.filters}
+        </h2>
         <DowntimeFilterBar
           appliedPeriod={period}
           appliedFilters={filters}
@@ -203,7 +206,13 @@ export const DowntimeSummaryScreen = () => {
            * 보였다. 조회를 막고 있는 사유는 이미 조건 줄이 말하고 있다.
            */}
           {isSummaryVisible && (
-            <section className="pane" aria-label={t.panes.summary}>
+            <section
+              className="pane downtime-summary-pane"
+              aria-labelledby="downtime-summary-title"
+            >
+              <h2 id="downtime-summary-title" className="pane-title">
+                {t.panes.summary}
+              </h2>
               <SummaryPanel
                 view={view}
                 isLoading={summary.isPending && summaryQuery !== null}
@@ -212,7 +221,13 @@ export const DowntimeSummaryScreen = () => {
             </section>
           )}
 
-          <section className="pane" aria-label={t.panes.detail}>
+          <section
+            className="pane downtime-summary-pane"
+            aria-labelledby="downtime-distribution-title"
+          >
+            <h2 id="downtime-distribution-title" className="pane-title">
+              {t.panes.detail}
+            </h2>
             <Tabs
               aria-label={t.panes.detail}
               value={groupBy}
@@ -231,7 +246,7 @@ export const DowntimeSummaryScreen = () => {
              * 결과를 바꾼다고 읽지만 서버는 무시한다.
              */}
             {groupBy === 'PERIOD' && (
-              <div className="filter-bar">
+              <div className="filter-bar downtime-summary-bucket-filter">
                 <SelectField
                   label={t.bucket.label}
                   options={BUCKET_VALUES.map((value) => ({

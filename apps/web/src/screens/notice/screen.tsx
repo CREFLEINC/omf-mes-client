@@ -283,9 +283,9 @@ export const NoticeScreen = () => {
         </div>
       )}
 
-      <section className="pane" aria-label={t.panes.list}>
-        <h2>{t.panes.list}</h2>
-        <div className="filter-bar">
+      <section className="pane notice-pane" aria-label={t.panes.list}>
+        <h2 className="pane-title">{t.panes.list}</h2>
+        <div className="filter-bar notice-filter">
           <div className="field-cell">
             <span className="field-label">{t.filters.search}</span>
             <SearchInput
@@ -321,7 +321,7 @@ export const NoticeScreen = () => {
             }}
           />
 
-          <div className="field-cell">
+          <div className="field-cell notice-filter-period">
             <span className="field-label">{t.filters.from}</span>
             <DatePicker
               mode="single"
@@ -334,7 +334,7 @@ export const NoticeScreen = () => {
             />
           </div>
 
-          <div className="field-cell">
+          <div className="field-cell notice-filter-period">
             <span className="field-label">{t.filters.to}</span>
             <DatePicker
               mode="single"
@@ -349,7 +349,7 @@ export const NoticeScreen = () => {
             {invalidPeriod !== undefined && <span className="field-error">{invalidPeriod}</span>}
           </div>
 
-          <div className="field-cell field-cell-unlabeled check-group">
+          <div className="field-cell field-cell-unlabeled check-group notice-filter-options">
             <Checkbox
               checked={filters.activeOnly}
               onChange={(event) => {
@@ -368,7 +368,7 @@ export const NoticeScreen = () => {
             </Checkbox>
           </div>
 
-          <div className="form-actions">
+          <div className="form-actions notice-filter-clear">
             <Button
               variant="outlined"
               onClick={() => {
@@ -393,12 +393,13 @@ export const NoticeScreen = () => {
         ) : notices.isPending ? (
           <Skeleton variant="rect" height="12rem" />
         ) : (
-          <div className="wide-table">
+          <div className="wide-table notice-table">
             <Table
               columns={columns}
               rows={rows}
               getRowId={(row) => String(row.noticeId)}
               density="compact"
+              caption={t.panes.list}
               empty={
                 <EmptyState size="sm" live title={t.list.emptyTitle} description={t.list.empty} />
               }
@@ -415,8 +416,8 @@ export const NoticeScreen = () => {
         )}
       </section>
 
-      <section className="pane" aria-label={t.panes.detail}>
-        <h2>{formMode === 'create' ? t.form.create : t.panes.detail}</h2>
+      <section className="pane notice-pane" aria-label={t.panes.detail}>
+        <h2 className="pane-title">{formMode === 'create' ? t.form.create : t.panes.detail}</h2>
 
         {formMode !== 'closed' ? (
           <NoticeForm
@@ -522,8 +523,8 @@ export const NoticeScreen = () => {
       </section>
 
       {selected !== null && formMode === 'closed' && (
-        <section className="pane" aria-label={t.panes.ack}>
-          <h2>{t.ack.title}</h2>
+        <section className="pane notice-pane" aria-label={t.panes.ack}>
+          <h2 className="pane-title">{t.ack.title}</h2>
           <AckPanel
             required={selected.acknowledgeRequired}
             pendingOnly={pendingOnly}

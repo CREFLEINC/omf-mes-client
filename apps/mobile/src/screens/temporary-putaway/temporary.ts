@@ -19,6 +19,25 @@ export const PUTAWAY_TASK_TEMPORARY_REASON = 'PUTAWAY_TASK_TEMPORARY_REASON';
 export const isAlreadyPutAway = (task: PutawayTask): boolean =>
   task.actualLocationId !== null && task.actualLocationId !== undefined;
 
+/** 이 지시의 임시 적치 등록 경로. 담는 쪽과 세는 쪽이 어긋나지 않도록 한 자리에서 만든다. */
+export const temporaryPathOf = (putawayTaskId: number): string =>
+  `/logistics/putaway-tasks/${String(putawayTaskId)}:complete-temporary`;
+
+/** 큐에서 이 화면이 셈에 넣을 만큼만 읽는다. 큐는 화면을 가리지 않고 한 줄로 쌓인다. */
+export interface QueuedTemporary {
+  path: string;
+}
+
+/**
+ * 이 지시로 이미 담아 둔 등록이 몇 건인가.
+ *
+ * 앞 화면이 넘긴 지시는 굳은 스냅숏이라, 등록을 마치고 같은 상태로 다시 들어오면 실제 적치
+ * 위치가 여전히 비어 있다. 큐를 함께 보지 않으면 그 사이에 한 건이 더 나가고, 멱등키가
+ * 달라 서버도 흡수하지 못한다.
+ */
+export const queuedCountOf = (entries: QueuedTemporary[], putawayTaskId: number): number =>
+  entries.filter((entry) => entry.path === temporaryPathOf(putawayTaskId)).length;
+
 export interface TemporaryDraft {
   location: Location | null;
   reasonCode: string;
@@ -36,12 +55,14 @@ export const canSubmit = (
   task: PutawayTask | null,
   draft: TemporaryDraft,
   hasWorker: boolean,
+  queuedCount: number,
 ): boolean => {
   if (task === null || draft.location === null || !hasWorker) {
     return false;
   }
 
-  if (isAlreadyPutAway(task)) {
+  /* 서버가 아는 것과 아직 못 간 것을 함께 본다. 하나만 보면 재진입에 한 건이 더 나간다. */
+  if (isAlreadyPutAway(task) || queuedCount > 0) {
     return false;
   }
 
@@ -69,7 +90,7 @@ export const toOutboxDraft = (
     workerNo,
     idempotencyKey: createIdempotencyKey(),
     method: 'POST',
-    path: `/logistics/putaway-tasks/${String(task.putawayTaskId)}:complete-temporary`,
+    path: temporaryPathOf(task.putawayTaskId),
     body,
     occurredAt,
     confirmation: 'pending',

@@ -435,7 +435,10 @@ export const NotificationCenterScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.list}>
+      <section className="pane notification-center-pane" aria-labelledby="notification-list-title">
+        <h2 id="notification-list-title" className="pane-title">
+          {t.panes.list}
+        </h2>
         {/*
          * ⭐ **결과가 없어도, 조회에 실패해도 조건 줄은 감추지 않는다** — 조건을 고칠 수단이
          * 사라지면 사용자가 실패에서 빠져나올 길이 없다. T1은 조건 줄이 없어 실패 시 구획

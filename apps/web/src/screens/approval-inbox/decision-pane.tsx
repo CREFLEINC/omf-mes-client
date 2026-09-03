@@ -67,7 +67,8 @@ export const DecisionPane = ({
   const isCommentDisabled = !isMyTurn || isLocked;
 
   return (
-    <div role="group" aria-label={t.panes.decision}>
+    <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.decision}>
+      <h3>{t.panes.decision}</h3>
       {banner}
 
       <div className="field-cell">

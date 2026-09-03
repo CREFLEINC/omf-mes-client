@@ -99,7 +99,7 @@ export const DistributionTable = ({
   if (!hasQuery) return null;
 
   return (
-    <div className="wide-table">
+    <div className="wide-table downtime-summary-table">
       <Table
         columns={columnsOf(groupBy)}
         rows={rows}

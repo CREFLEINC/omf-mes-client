@@ -77,10 +77,30 @@ export const createSeed = (now = new Date()) => {
   }));
 
   const locations = [
-    { locationId: 3001, warehouseId: 1001, locationCode: 'A-01-03', locationName: 'A구역 01열 03단' },
-    { locationId: 3002, warehouseId: 1001, locationCode: 'A-01-04', locationName: 'A구역 01열 04단' },
-    { locationId: 3003, warehouseId: 1001, locationCode: 'TMP-01', locationName: '하역장 임시자리' },
-    { locationId: 3004, warehouseId: 1002, locationCode: 'FG-A-02-01', locationName: '완제품 A구역 02열 01단' },
+    {
+      locationId: 3001,
+      warehouseId: 1001,
+      locationCode: 'A-01-03',
+      locationName: 'A구역 01열 03단',
+    },
+    {
+      locationId: 3002,
+      warehouseId: 1001,
+      locationCode: 'A-01-04',
+      locationName: 'A구역 01열 04단',
+    },
+    {
+      locationId: 3003,
+      warehouseId: 1001,
+      locationCode: 'TMP-01',
+      locationName: '하역장 임시자리',
+    },
+    {
+      locationId: 3004,
+      warehouseId: 1002,
+      locationCode: 'FG-A-02-01',
+      locationName: '완제품 A구역 02열 01단',
+    },
   ].map((location) => ({
     ...location,
     locationTypeCode: location.locationCode.startsWith('TMP') ? 'TEMPORARY' : 'RACK',
@@ -230,6 +250,11 @@ export const createSeed = (now = new Date()) => {
       ['EMERGENCY', '긴급'],
       ['REWORK', '재작업'],
     ],
+    REISSUE_REASON: [
+      ['DAMAGED', '라벨 훼손'],
+      ['UNREADABLE', '라벨 판독 불가'],
+      ['LOST', '라벨 분실'],
+    ],
   };
 
   /* 34자리 전부 숫자 — 화면이 그 형식으로 스캔값을 거른다. */
@@ -299,7 +324,12 @@ export const createSeed = (now = new Date()) => {
       statusCode: 'NORMAL',
       completedAt: iso(-1, 17),
       held: false,
-      progress: { goodQty: 480, defectQty: 20 },
+      progress: {
+        goodQty: 480,
+        defectQty: 20,
+        achievementRate: 1,
+        completionJudgmentCode: 'NORMAL',
+      },
     },
     {
       lotId: 8102,
@@ -315,7 +345,12 @@ export const createSeed = (now = new Date()) => {
       statusCode: 'DEFECTIVE',
       completedAt: iso(-1, 18),
       held: false,
-      progress: { goodQty: 180, defectQty: 20 },
+      progress: {
+        goodQty: 180,
+        defectQty: 20,
+        achievementRate: 1,
+        completionJudgmentCode: 'NORMAL',
+      },
     },
     {
       lotId: 8201,
@@ -774,9 +809,30 @@ export const createSeed = (now = new Date()) => {
 
   /* 두 포장에 같은 LOT 이 들어 있다 — 합병에서 합쳐지는 갈래를 이것으로 시험한다. */
   const handlingUnitContents = [
-    { handlingUnitContentId: 13101, handlingUnitId: 13001, itemId: 2003, lotId: 8201, qty: 180, uomId: 1001 },
-    { handlingUnitContentId: 13102, handlingUnitId: 13001, itemId: 2003, lotId: 8202, qty: 60, uomId: 1001 },
-    { handlingUnitContentId: 13103, handlingUnitId: 13002, itemId: 2003, lotId: 8201, qty: 120, uomId: 1001 },
+    {
+      handlingUnitContentId: 13101,
+      handlingUnitId: 13001,
+      itemId: 2003,
+      lotId: 8201,
+      qty: 180,
+      uomId: 1001,
+    },
+    {
+      handlingUnitContentId: 13102,
+      handlingUnitId: 13001,
+      itemId: 2003,
+      lotId: 8202,
+      qty: 60,
+      uomId: 1001,
+    },
+    {
+      handlingUnitContentId: 13103,
+      handlingUnitId: 13002,
+      itemId: 2003,
+      lotId: 8201,
+      qty: 120,
+      uomId: 1001,
+    },
   ];
 
   const defectRecords = [
@@ -846,6 +902,7 @@ export const createSeed = (now = new Date()) => {
     approvalRequests,
     goodsReceipts: [],
     productionResults: [],
+    documentIssues: [],
     /** 스캔해 볼 값 — 시험 키트가 이 목록을 그대로 인쇄한다. */
     scannables: {
       workerNos: workers.map((worker) => worker.workerNo),

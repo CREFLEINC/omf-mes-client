@@ -23,8 +23,11 @@ tools/
 
 ```bash
 pnpm install
+gh repo clone CREFLEINC/omf-mes .client-dev/design/omf-mes -- --single-branch --branch main
+pnpm workflow init --team <팀번호> --issue <이슈번호> --design-ref .client-dev/design/omf-mes
+pnpm workflow:check
 pnpm typecheck     # 전 패키지 타입 검사
-pnpm mock          # 목 서버 (형제 경로의 omf-mes 클론 필요 — tools/mock/README.md)
+pnpm mock          # 목 서버 (고정한 설계 참조본 사용 — tools/mock/README.md)
 pnpm mock:smoke    # 목 서버 smoke 테스트
 pnpm --filter @omf-mes/web dev      # 관리웹 개발 서버
 pnpm --filter @omf-mes/mobile dev   # 모바일 셸 개발 서버 (브라우저)
@@ -42,4 +45,4 @@ pnpm --filter @omf-mes/mobile dev   # 모바일 셸 개발 서버 (브라우저)
 
 ## 작업 규칙
 
-`main` 직접 push는 차단돼 있다 — 브랜치에서 작업하고 PR로 병합한다. 공개 저장소 경계 규칙은 `CLAUDE.md`를 따른다.
+`main` 직접 push는 차단돼 있다 — 팀 전용 워크트리와 브랜치에서 작업하고 PR로 병합한다. 업무 규칙은 `AGENTS.md`와 `docs/client-dev-workflow/`, 공개 저장소 경계는 `CLAUDE.md`를 따른다.

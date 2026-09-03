@@ -215,8 +215,9 @@ export const ToolPmResultScreen = () => {
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
 
-      <section className="pane" aria-label={t.panes.tool}>
-        <div className="filter-bar">
+      <section className="pane tool-pm-result-pane" aria-label={t.panes.tool}>
+        <h2 className="pane-title">{t.panes.tool}</h2>
+        <div className="filter-bar tool-pm-result-tool-grid">
           <SelectField
             label={t.tool.select}
             options={toOptions(tools.entries)}
@@ -229,11 +230,11 @@ export const ToolPmResultScreen = () => {
           />
           {tool !== null && (
             <>
-              <div className="field-cell">
+              <div className="field-cell tool-pm-result-fact">
                 <span className="field-label">{t.tool.currentShot}</span>
                 <span>{formatCount(tool.currentShotCount)}</span>
               </div>
-              <div className="field-cell">
+              <div className="field-cell tool-pm-result-fact">
                 <span className="field-label">{t.tool.guaranteed}</span>
                 <span>
                   {tool.guaranteedShotCount === null
@@ -249,8 +250,11 @@ export const ToolPmResultScreen = () => {
         {moldId !== null && detail.isPending && <p className="pane-lead">{t.tool.loadingLock}</p>}
       </section>
 
-      <section className="pane" aria-label={t.panes.form}>
-        <h2>{t.panes.form}</h2>
+      <section
+        className="pane tool-pm-result-pane tool-pm-result-form-pane"
+        aria-label={t.panes.form}
+      >
+        <h2 className="pane-title">{t.panes.form}</h2>
         <SaveErrorBanner error={create.error} />
         {/* 되돌린 저장과 그냥 저장을 가려 말한다 — 되돌리기만이 툴 마스터를 바꾼다. */}
         {savedReset !== null && (
@@ -264,7 +268,7 @@ export const ToolPmResultScreen = () => {
           </AlertBanner>
         )}
 
-        <div className="form-grid">
+        <div className="form-grid tool-pm-result-form-grid">
           <SelectField
             label={t.form.order}
             options={[{ value: '', label: t.form.orderNone }, ...toOptions(orders.entries)]}
@@ -445,8 +449,8 @@ export const ToolPmResultScreen = () => {
         </div>
       </section>
 
-      <section className="pane" aria-label={t.panes.list}>
-        <h2>{t.panes.list}</h2>
+      <section className="pane tool-pm-result-pane" aria-label={t.panes.list}>
+        <h2 className="pane-title">{t.panes.list}</h2>
         {moldId === null ? (
           <EmptyState size="sm" title={t.table.selectToolTitle} description={t.table.selectTool} />
         ) : results.isError ? (
@@ -459,8 +463,9 @@ export const ToolPmResultScreen = () => {
         ) : results.isPending ? (
           <Skeleton variant="rect" height="10rem" />
         ) : (
-          <div className="wide-table">
+          <div className="wide-table tool-pm-result-table">
             <Table
+              caption={<span className="tool-pm-result-table-caption">{t.panes.list}</span>}
               columns={columns}
               rows={rows}
               getRowId={(row) => String(row.maintenanceResultId)}

@@ -49,7 +49,7 @@ export interface SummaryPanelProps {
 export const SummaryPanel = ({ view, isLoading, onOpenIntervals }: SummaryPanelProps) => {
   if (isLoading) {
     return (
-      <div className="kpi-grid" aria-hidden="true">
+      <div className="kpi-grid downtime-summary-kpi-grid" aria-hidden="true">
         {[0, 1, 2, 3, 4, 5].map((slot) => (
           <Skeleton key={slot} variant="rect" height="6.5rem" />
         ))}
@@ -61,7 +61,7 @@ export const SummaryPanel = ({ view, isLoading, onOpenIntervals }: SummaryPanelP
 
   return (
     <>
-      <div className="kpi-grid">
+      <div className="kpi-grid downtime-summary-kpi-grid">
         <Figure
           label={t.summary.operating}
           value={formatCount(view.operatingMinutes)}

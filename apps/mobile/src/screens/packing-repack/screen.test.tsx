@@ -14,10 +14,16 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { PackingRepackScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -170,6 +176,7 @@ const scan = (code: string) => {
 };
 
 beforeEach(() => {
+  held.failWrite = null;
   store.clear();
   localStorage.clear();
 });
@@ -394,5 +401,49 @@ describe('포장 재구성 화면', () => {
 
     expect(seen[0]!.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]!.headers.get('Idempotency-Key')).toBeTruthy();
+  });
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 상태로 잠그면 다시 그리기 전의 연타를 놓쳐, 멱등키가 다른
+   * 묶음이 하나 더 담기고 같은 물건이 두 번 재구성된다 - 되돌리기 경로가 없다.
+   */
+  it('같은 틱에 확정을 세 번 눌러도 한 묶음만 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen });
+    await screen.findByLabelText('포장 스캔');
+
+    scan(CARTON);
+    await screen.findByText(CARTON);
+    await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
+
+    const button = screen.getByRole('button', { name: '재구성 확정' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('재구성을 기록했습니다');
+    expect(seen).toHaveLength(2);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 재구성된 줄 안다. */
+  it('담아 두지 못하면 기록되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen });
+    await screen.findByLabelText('포장 스캔');
+
+    scan(CARTON);
+    await screen.findByText(CARTON);
+    await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '재구성 확정' }));
+
+    expect(await screen.findByText('재구성을 담아 두지 못했습니다')).toBeTruthy();
+    expect(screen.queryByText('재구성을 기록했습니다')).toBeNull();
+    expect(seen).toHaveLength(0);
   });
 });

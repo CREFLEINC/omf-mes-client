@@ -128,10 +128,9 @@ export const findBoundaryViolations = (source) => {
 
 const HOW_TO_FIX = [
   '고치는 방법 — 생성물을 직접 고치지 않는다. 다시 생성하면 그대로 돌아온다.',
-  '  1. 설계 저장소(omf-mes)의 OpenAPI 정본에서 해당 description 을 고친다.',
-  '     내부 내용은 x-internal-note 로 옮긴다 — 그 필드는 생성물에 실리지 않는다.',
-  '  2. pnpm gen:api 로 다시 생성한다. 이 검사가 생성 직후 함께 돈다.',
-  '  3. 정본을 고칠 수 없으면 설계 저장소에 [client→uiux] 질문 이슈를 올린다 (선례: omf-mes#92).',
+  '  1. docs/client-dev-workflow/templates/design-request.md 로 설계 개선 요청서를 만든다.',
+  '  2. 사용자에게 요청서 전달을 부탁하고, 현재 고정 설계를 기준으로 다른 업무를 계속한다.',
+  '  3. 설계 변동 공지가 오면 지정 커밋을 고정한 뒤 pnpm gen:api 로 다시 생성한다.',
   '',
   '이미 push 했다면 조용히 지우지 말고 즉시 알린다 — 공개 저장소는 올라간 순간 노출된 것으로 본다.',
 ];

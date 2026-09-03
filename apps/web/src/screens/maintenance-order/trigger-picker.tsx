@@ -184,6 +184,9 @@ export const TriggerPicker = ({
             label: t.triggers.breakdownTab,
             content: (
               <Table
+                caption={
+                  <span className="maintenance-order-table-caption">{t.triggers.breakdownTab}</span>
+                }
                 columns={breakdownColumns}
                 rows={breakdowns}
                 getRowId={(row) => String(row.breakdownId)}
@@ -204,6 +207,11 @@ export const TriggerPicker = ({
             label: t.triggers.inspectionTab,
             content: (
               <Table
+                caption={
+                  <span className="maintenance-order-table-caption">
+                    {t.triggers.inspectionTab}
+                  </span>
+                }
                 columns={inspectionColumns}
                 rows={inspections}
                 getRowId={(row) => String(row.inspectionId)}
@@ -226,7 +234,7 @@ export const TriggerPicker = ({
               <>
                 {/* ⛔ 가리킬 기록이 없어 목록이 아니다 — 설비를 골라 직접 더한다. */}
                 <p className="pane-lead">{t.triggers.pmDueLead}</p>
-                <div className="filter-bar">
+                <div className="filter-bar maintenance-order-trigger-filter">
                   <SelectField
                     label={t.triggers.equipment}
                     options={equipmentOptions}
@@ -235,29 +243,31 @@ export const TriggerPicker = ({
                     wide
                     onChange={setPmDueEquipment}
                   />
-                  <div className="filter-actions">
-                    <Button
-                      variant="outlined"
-                      disabled={pmDueEquipment === '' || isLockedFor(Number(pmDueEquipment))}
-                      onClick={() => {
-                        const equipmentId = Number(pmDueEquipment);
-                        const option = equipmentOptions.find(
-                          (entry) => entry.value === pmDueEquipment,
-                        );
+                  <div className="field-cell field-cell-unlabeled maintenance-order-trigger-actions">
+                    <div className="filter-actions">
+                      <Button
+                        variant="outlined"
+                        disabled={pmDueEquipment === '' || isLockedFor(Number(pmDueEquipment))}
+                        onClick={() => {
+                          const equipmentId = Number(pmDueEquipment);
+                          const option = equipmentOptions.find(
+                            (entry) => entry.value === pmDueEquipment,
+                          );
 
-                        onToggle({
-                          key: triggerKey(PM_DUE_TRIGGER, equipmentId),
-                          triggerTypeCode: PM_DUE_TRIGGER,
-                          /* ⛔ 주기 도래는 가리킬 행이 없다 — 원천 식별자를 비운다. */
-                          sourceId: null,
-                          equipmentId,
-                          equipmentCode: option?.label ?? null,
-                          label: `${t.triggers.pmDueAdded} · ${option?.label ?? pmDueEquipment}`,
-                        });
-                      }}
-                    >
-                      {t.triggers.addPmDue}
-                    </Button>
+                          onToggle({
+                            key: triggerKey(PM_DUE_TRIGGER, equipmentId),
+                            triggerTypeCode: PM_DUE_TRIGGER,
+                            /* ⛔ 주기 도래는 가리킬 행이 없다 — 원천 식별자를 비운다. */
+                            sourceId: null,
+                            equipmentId,
+                            equipmentCode: option?.label ?? null,
+                            label: `${t.triggers.pmDueAdded} · ${option?.label ?? pmDueEquipment}`,
+                          });
+                        }}
+                      >
+                        {t.triggers.addPmDue}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </>

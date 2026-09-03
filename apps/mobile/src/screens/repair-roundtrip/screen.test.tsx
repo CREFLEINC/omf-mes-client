@@ -567,7 +567,13 @@ describe('수리 왕복 스캔 화면', () => {
   it('다른 수리 건을 고르면 새 멱등키로 간다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    const other = { ...execution, repairExecutionId: 1002, repairQty: 35 };
+    /* 다른 수리 건은 다른 불량 건에서 난다. 같은 불량에 열린 수리 둘은 화면이 만들 수 없다. */
+    const other = {
+      ...execution,
+      repairExecutionId: 1002,
+      defectRecordId: 502,
+      repairQty: 35,
+    };
     mount(
       [
         {

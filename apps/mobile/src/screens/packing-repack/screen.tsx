@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Card, Radio, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import {
@@ -44,7 +44,7 @@ const TYPES: { value: RepackType; label: string }[] = [
 export const PackingRepackScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush } = useOutbox();
+  const { enqueue, flush, isRejected } = useOutbox();
   const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
 
@@ -55,6 +55,12 @@ export const PackingRepackScreen = () => {
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [manual, setManual] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  /*
+   * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
+   * 두 번째가 들어와 멱등키가 다른 묶음이 하나 더 담기고, 같은 물건이 두 번 재구성된다.
+   */
+  const inFlight = useRef(false);
 
   const found = useScannedHandlingUnit(scanned);
   const uoms = useUomCodes(sources.length > 0);
@@ -156,51 +162,71 @@ export const PackingRepackScreen = () => {
   };
 
   const submit = async () => {
-    if (worker === null || type === null) {
+    if (worker === null || type === null || inFlight.current) {
       return;
     }
 
-    const now = new Date();
-    /* 새 포장과 원 포장 치환이 한 묶음이다. 앞이 거부되면 뒤가 함께 되돌아간다. */
-    const batchId = createIdempotencyKey();
-    const create = toCreateDraft(sources, lines, batchId, now, worker.workerNo);
+    inFlight.current = true;
+    setSaveFailed(false);
 
-    /*
-     * 잔량은 첫 포장에 남긴다 - 분할 잔량이 원 번호를 그대로 쓴다는 규칙이고, 나머지 원
-     * 포장들은 내용이 첫 포장으로 모였으므로 비운다.
-     */
-    const replaces = sources.map((source, index) =>
-      toReplaceDraft(source, index === 0 ? remainder : [], batchId, now, worker.workerNo),
-    );
+    try {
+      const now = new Date();
+      /* 새 포장과 원 포장 치환이 한 묶음이다. 앞이 거부되면 뒤가 함께 되돌아간다. */
+      const batchId = createIdempotencyKey();
+      const create = toCreateDraft(sources, lines, batchId, now, worker.workerNo);
 
-    await enqueue(create);
+      /*
+       * 잔량은 첫 포장에 남긴다 - 분할 잔량이 원 번호를 그대로 쓴다는 규칙이고, 나머지 원
+       * 포장들은 내용이 첫 포장으로 모였으므로 비운다.
+       */
+      const replaces = sources.map((source, index) =>
+        toReplaceDraft(source, index === 0 ? remainder : [], batchId, now, worker.workerNo),
+      );
 
-    for (const replace of replaces) {
-      await enqueue(replace);
+      /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 재구성된 줄 안다. */
+      try {
+        await enqueue(create);
+
+        for (const replace of replaces) {
+          await enqueue(replace);
+        }
+      } catch {
+        setSaveFailed(true);
+        return;
+      }
+
+      const result = await flush().catch(() => null);
+
+      /*
+       * 우리가 방금 바꾼 포장이다. 캐시를 두면 다음 스캔이 옛 수량을 보이고, 구성 치환은 집합을
+       * 통째로 갈아 끼우므로 그 옛 수량으로 계산한 잔량이 실재를 덮어 물건이 조용히 사라진다.
+       */
+      queryClient.removeQueries({ queryKey: handlingUnitKeys.root });
+
+      /*
+       * 묶음 전체를 본다. 새 포장 하나만 보면 원 포장 치환이 거부돼도 성공으로 보이는데, 그때
+       * 새 포장은 이미 만들어졌고 원 포장은 그대로라 같은 물건이 두 곳에 있게 된다. 되돌리기
+       * 경로가 없고 작업자는 끝난 줄 안다.
+       */
+      const keys = new Set([create, ...replaces].map((entry) => entry.idempotencyKey));
+      const mine = (each: { idempotencyKey: string }) => keys.has(each.idempotencyKey);
+
+      /*
+       * 자기가 부른 보내기의 결과만 보면 딸려 되돌아간 건을 놓친다 - 그 판정은 셸이 도는 다른
+       * 회차에서 내려질 수 있고, 화면은 빈 결과를 받아 담아 두었다고 잘못 말한다.
+       */
+      if (
+        (result !== null && result.rejected.some((each) => mine(each.entry))) ||
+        [...keys].some((key) => isRejected(key))
+      ) {
+        setOutcome('rejected');
+        return;
+      }
+
+      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+    } finally {
+      inFlight.current = false;
     }
-
-    const result = await flush().catch(() => null);
-
-    /*
-     * 우리가 방금 바꾼 포장이다. 캐시를 두면 다음 스캔이 옛 수량을 보이고, 구성 치환은 집합을
-     * 통째로 갈아 끼우므로 그 옛 수량으로 계산한 잔량이 실재를 덮어 물건이 조용히 사라진다.
-     */
-    queryClient.removeQueries({ queryKey: handlingUnitKeys.root });
-
-    /*
-     * 묶음 전체를 본다. 새 포장 하나만 보면 원 포장 치환이 거부돼도 성공으로 보이는데, 그때
-     * 새 포장은 이미 만들어졌고 원 포장은 그대로라 같은 물건이 두 곳에 있게 된다. 되돌리기
-     * 경로가 없고 작업자는 끝난 줄 안다.
-     */
-    const keys = new Set([create, ...replaces].map((entry) => entry.idempotencyKey));
-    const mine = (each: { idempotencyKey: string }) => keys.has(each.idempotencyKey);
-
-    if (result !== null && result.rejected.some((each) => mine(each.entry))) {
-      setOutcome('rejected');
-      return;
-    }
-
-    setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
   };
 
   if (outcome !== null) {
@@ -382,6 +408,11 @@ export const PackingRepackScreen = () => {
           <p className="repack__note">{t.labelNotice}</p>
 
           <section className="repack__section">
+            {saveFailed ? (
+              <AlertBanner variant="error" title={t.saveFailed.title}>
+                {t.saveFailed.description}
+              </AlertBanner>
+            ) : null}
             {worker === null ? <p className="repack__note">{t.noWorker}</p> : null}
             {type === null ? <p className="repack__note">{t.noType}</p> : null}
             <Button

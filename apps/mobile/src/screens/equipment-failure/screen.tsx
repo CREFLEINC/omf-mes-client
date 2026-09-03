@@ -9,7 +9,7 @@ import {
   TextField,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -76,7 +76,7 @@ const EquipmentPicker = ({
 export const EquipmentFailureScreen = () => {
   useScreenTitle(t.title);
   const online = useOnlineStatus();
-  const { enqueue, flush, pendingBytes } = useOutbox();
+  const { enqueue, flush, pendingBytes, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
   const equipments = useEquipments();
 
@@ -90,6 +90,12 @@ export const EquipmentFailureScreen = () => {
   const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  /*
+   * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
+   * 두 번째가 들어와 같은 고장이 두 건으로 서고 설비담당이 두 번 불려 간다.
+   */
+  const inFlight = useRef(false);
 
   const openBreakdowns = useOpenBreakdownCount(selected?.equipmentId ?? null);
 
@@ -136,53 +142,74 @@ export const EquipmentFailureScreen = () => {
   };
 
   const report = async () => {
-    if (selected === null || state === null || worker === null) {
+    if (selected === null || state === null || worker === null || inFlight.current) {
       return;
     }
 
-    const occurredAt = new Date().toISOString();
-    const reportId = crypto.randomUUID();
-    const draft = toOutboxDraft(
-      {
-        equipmentId: selected.equipmentId,
-        symptom,
-        occurrenceState: state,
-        stoppedAt: stoppedAt === '' ? null : stoppedAt,
-        notifyAssignee: notify,
-      },
-      occurredAt,
-      reportId,
-      worker.workerNo,
-    );
+    inFlight.current = true;
+    setSaveFailed(false);
 
-    await enqueue(draft);
+    try {
 
-    /* 본문을 먼저 담는다. 사진을 기다리느라 설비담당이 늦게 알면 안 된다. */
-    for (const photo of toPhotoDrafts(photos, draft, occurredAt, reportId)) {
-      await enqueue(photo);
+      const occurredAt = new Date().toISOString();
+      const reportId = crypto.randomUUID();
+      const draft = toOutboxDraft(
+        {
+          equipmentId: selected.equipmentId,
+          symptom,
+          occurrenceState: state,
+          stoppedAt: stoppedAt === '' ? null : stoppedAt,
+          notifyAssignee: notify,
+        },
+        occurredAt,
+        reportId,
+        worker.workerNo,
+      );
+
+      /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 보고된 줄 안다. */
+      try {
+        await enqueue(draft);
+
+        /* 본문을 먼저 담는다. 사진을 기다리느라 설비담당이 늦게 알면 안 된다. */
+        for (const photo of toPhotoDrafts(photos, draft, occurredAt, reportId)) {
+          await enqueue(photo);
+        }
+      } catch {
+        setSaveFailed(true);
+        return;
+      }
+
+      /*
+       * 담은 뒤 곧바로 보내 본다. 사람이 기다리는 보고라 닿을 수 있으면 지금 보내는 편이 낫고,
+       * 못 닿으면 담긴 채로 남아 다음 기회에 나간다.
+       */
+      const result = await flush().catch(() => null);
+
+      /*
+       * 큐에는 남의 건도 있다. 그것이 거부됐다고 이 보고까지 못 간 것으로 말하면, 간 것을
+       * 안 갔다고 하는 셈이라 보고자가 같은 고장을 또 적는다.
+       */
+      const mine = (entry: { idempotencyKey: string }) =>
+        entry.idempotencyKey === draft.idempotencyKey;
+
+      /*
+       * 자기가 부른 보내기의 결과만 보면 딸려 되돌아간 건을 놓친다 - 그 판정은 셸이 도는 다른
+       * 회차에서 내려질 수 있고, 화면은 빈 결과를 받아 담아 두었다고 잘못 말한다.
+       */
+      if (
+        (result !== null && result.rejected.some((item) => mine(item.entry))) ||
+        isRejected(draft.idempotencyKey)
+      ) {
+        setOutcome('rejected');
+        return;
+      }
+
+      const stuck = result === null || result.remaining.some(mine);
+
+      setOutcome(stuck ? 'queued' : 'sent');
+    } finally {
+      inFlight.current = false;
     }
-
-    /*
-     * 담은 뒤 곧바로 보내 본다. 사람이 기다리는 보고라 닿을 수 있으면 지금 보내는 편이 낫고,
-     * 못 닿으면 담긴 채로 남아 다음 기회에 나간다.
-     */
-    const result = await flush().catch(() => null);
-
-    /*
-     * 큐에는 남의 건도 있다. 그것이 거부됐다고 이 보고까지 못 간 것으로 말하면, 간 것을
-     * 안 갔다고 하는 셈이라 보고자가 같은 고장을 또 적는다.
-     */
-    const mine = (entry: { idempotencyKey: string }) =>
-      entry.idempotencyKey === draft.idempotencyKey;
-
-    if (result !== null && result.rejected.some((item) => mine(item.entry))) {
-      setOutcome('rejected');
-      return;
-    }
-
-    const stuck = result === null || result.remaining.some(mine);
-
-    setOutcome(stuck ? 'queued' : 'sent');
   };
 
   const restart = () => {
@@ -195,6 +222,7 @@ export const EquipmentFailureScreen = () => {
     setPhotos([]);
     setPhotoError(null);
     setOutcome(null);
+    setSaveFailed(false);
     scanField.focus();
   };
 
@@ -343,6 +371,11 @@ export const EquipmentFailureScreen = () => {
         {online ? null : <p className="equipment-failure__note">{t.notify.offline}</p>}
       </section>
 
+      {saveFailed ? (
+        <AlertBanner variant="error" title={t.saveFailed.title}>
+          {t.saveFailed.description}
+        </AlertBanner>
+      ) : null}
       {worker === null ? <AlertBanner variant="warning" title={t.noWorker} /> : null}
 
       <Button

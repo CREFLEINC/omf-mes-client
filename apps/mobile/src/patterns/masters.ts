@@ -7,6 +7,7 @@ export const masterKeys = {
   item: (itemId: number | null) => ['master-item', itemId] as const,
   items: () => ['master-items'] as const,
   uoms: () => ['master-uoms'] as const,
+  suppliers: () => ['master-suppliers'] as const,
 };
 
 export interface ItemSummary {
@@ -85,6 +86,39 @@ export const useItemLabels = (enabled: boolean): UseQueryResult<Map<number, Item
           },
         ]),
       );
+    },
+  });
+};
+
+export interface SupplierSummary {
+  partnerId: number;
+  partnerName: string;
+}
+
+/**
+ * 공급사 후보.
+ *
+ * 거래처 역할은 다섯이라 거르지 않으면 고객사가 공급사 자리에 섞인다 - 고른 사람은 알아채기
+ * 어렵고, 잘못 실린 거래처로 입하가 서면 되돌릴 자리가 없다. 역할을 부르는 쪽이 정하지 않고
+ * 여기서 못박는 이유가 그것이다.
+ */
+export const useSuppliers = (enabled: boolean): UseQueryResult<SupplierSummary[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: masterKeys.suppliers(),
+    enabled,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/partners', {
+          params: { query: { roleTypeCode: 'SUPPLIER', size: 200 } },
+        }),
+      );
+
+      return data.items.map((partner) => ({
+        partnerId: partner.partnerId,
+        partnerName: partner.partnerName,
+      }));
     },
   });
 };

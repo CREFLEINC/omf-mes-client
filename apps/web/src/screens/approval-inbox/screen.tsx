@@ -941,7 +941,10 @@ export const ApprovalInboxScreen = () => {
         }
       />
 
-      <section className="pane" aria-label={t.panes.list}>
+      <section className="pane approval-inbox-pane" aria-labelledby="approval-list-title">
+        <h2 id="approval-list-title" className="pane-title">
+          {t.panes.list}
+        </h2>
         {/* 결과가 없어도 조건 줄은 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
         <RequestFilterBar
           appliedFilters={filters}
@@ -972,7 +975,10 @@ export const ApprovalInboxScreen = () => {
        * 상태(목록 밖·404·403·불러오는 중)에서 구획이 통째로 사라지면, 무엇을 골랐는지도
        * 무엇이 잘못됐는지도 화면 어디에도 단서가 없는 **빈 구간**이 생긴다.
        */}
-      <section className="pane" aria-label={t.panes.detail}>
+      <section className="pane approval-inbox-pane" aria-labelledby="approval-detail-title">
+        <h2 id="approval-detail-title" className="pane-title">
+          {t.panes.detail}
+        </h2>
         {detailSlot()}
       </section>
 

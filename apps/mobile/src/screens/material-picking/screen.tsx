@@ -78,6 +78,13 @@ export const MaterialPickingScreen = () => {
   const [busy, setBusy] = useState(false);
   /* 담기가 실패하면 적은 것이 어디에도 없다. 조용히 넘기지 않는다. */
   const [saveFailed, setSaveFailed] = useState(false);
+  const [pickSaveFailed, setPickSaveFailed] = useState(false);
+  /*
+   * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
+   * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 재고가 두 번 움직인다.
+   * 아래 busy 는 단추를 잠가 보이기 위한 것이고, 실제로 막는 것은 이 자리다.
+   */
+  const inFlight = useRef(false);
   /*
    * 이 단말이 이번에 담은 출고. 담는 순간 적고, 되돌아온 것만 빼고 센다.
    *
@@ -168,11 +175,13 @@ export const MaterialPickingScreen = () => {
   const pick = async () => {
     const order = detail.data?.order;
 
-    if (order === undefined || line === null || worker === null || busy) {
+    if (order === undefined || line === null || worker === null || busy || inFlight.current) {
       return;
     }
 
+    inFlight.current = true;
     setBusy(true);
+    setPickSaveFailed(false);
 
     try {
       /* 이 지시의 피킹과 출고를 한 묶음으로 둔다. 앞이 거부되면 뒤가 함께 되돌아간다. */
@@ -185,7 +194,13 @@ export const MaterialPickingScreen = () => {
         worker.workerNo,
       );
 
-      await enqueue(draft);
+      /* 담기지 못하면 집은 것이 어디에도 없다. 말하지 않으면 사람은 집힌 줄 안다. */
+      try {
+        await enqueue(draft);
+      } catch {
+        setPickSaveFailed(true);
+        return;
+      }
 
       const result = await flush().catch(() => null);
       const mine = (each: { idempotencyKey: string }) =>
@@ -207,6 +222,7 @@ export const MaterialPickingScreen = () => {
       setScanned(null);
       setQty('');
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -214,10 +230,17 @@ export const MaterialPickingScreen = () => {
   const confirm = async () => {
     const order = detail.data?.order;
 
-    if (order === undefined || worker === null || issueTypeCode === null || busy) {
+    if (
+      order === undefined ||
+      worker === null ||
+      issueTypeCode === null ||
+      busy ||
+      inFlight.current
+    ) {
       return;
     }
 
+    inFlight.current = true;
     setBusy(true);
     setSaveFailed(false);
 
@@ -263,6 +286,7 @@ export const MaterialPickingScreen = () => {
 
       setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -479,6 +503,7 @@ export const MaterialPickingScreen = () => {
               }}
               error={qtyMessage()}
             />
+            {pickSaveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
             <Button
               variant="filled"
               size="2xl"
