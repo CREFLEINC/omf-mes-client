@@ -122,7 +122,11 @@ export const ProductPickingScreen = () => {
   const { worker } = useWorkerSession();
   const today = useMemo(() => new Date(), []);
 
-  const [target, setTarget] = useState<Target | null>(null);
+  /*
+   * 어느 요청의 어느 라인인가만 들고 있는다. 대상 자체를 굳혀 두면 확정 뒤에도 옛 피킹량이
+   * 남아 남은 배정이 줄지 않고, 배정보다 많이 집을 수 있다 - 되돌릴 수 없는 예약 소진이다.
+   */
+  const [chosen, setChosen] = useState<{ requestId: number; lineId: number } | null>(null);
   const [lotId, setLotId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
   const [manual, setManual] = useState('');
@@ -136,6 +140,17 @@ export const ProductPickingScreen = () => {
   const inFlight = useRef(false);
 
   const requests = useTodayRequests(today);
+  /* 화면이 보는 값은 늘 새 조회에서 나온다. 상태에 굳은 사본을 두지 않는다. */
+  const target: Target | null = (() => {
+    if (chosen === null) {
+      return null;
+    }
+
+    const request = requests.data?.find((each) => each.shipmentRequestId === chosen.requestId);
+    const line = request?.lines?.find((each) => each.shipmentRequestLineId === chosen.lineId);
+
+    return request === undefined || line === undefined ? null : { request, line };
+  })();
   const itemId = target?.line.itemId ?? null;
   const item = useItem(itemId);
   const uoms = useUomCodes(true);
@@ -272,6 +287,8 @@ export const ProductPickingScreen = () => {
       <div className="picking">
         <section className="picking__section">
           <h2>{t.targets.legend}</h2>
+          {/* 고르던 라인이 빠졌으면 말없이 나가지 않는다. 남겨 두면 나중에 예고 없이 되돌아간다. */}
+          {chosen !== null ? <AlertBanner variant="warning" title={t.targets.dropped} /> : null}
           {requests.isPending ? <p role="status">{t.targets.loading}</p> : null}
           {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
           {requests.data !== undefined && requests.data.length === 0 ? (
@@ -291,7 +308,10 @@ export const ProductPickingScreen = () => {
                       variant="outlined"
                       size="xl"
                       onClick={() => {
-                        setTarget({ request, line });
+                        setChosen({
+                          requestId: request.shipmentRequestId,
+                          lineId: line.shipmentRequestLineId,
+                        });
                         setLotId(null);
                         setQty('');
                         setMissed(null);
@@ -358,7 +378,7 @@ export const ProductPickingScreen = () => {
           variant="text"
           size="lg"
           onClick={() => {
-            setTarget(null);
+            setChosen(null);
             setLotId(null);
             setQty('');
             setMissed(null);
@@ -366,6 +386,11 @@ export const ProductPickingScreen = () => {
         >
           {t.target.change}
         </Button>
+        {/*
+          이 화면이 보이는 남은 배정은 목록 조회에서 나온다. 그것이 늙은 채로 굳으면 확정 전
+          값이 그대로 남아 배정을 다 채우고도 한 번 더 집게 된다 - 조용히 두지 않는다.
+        */}
+        {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
       </section>
 
       <section className="picking__section">
@@ -483,7 +508,8 @@ export const ProductPickingScreen = () => {
           <NumberPad
             value={qty}
             onChange={setQty}
-            max={Math.min(selected.availableQty, remainingAllocated(target.line))}
+            /* 남은 배정이 음수로 오면 상한이 음수가 된다. 서버 값이 그럴 수 있다. */
+            max={Math.max(0, Math.min(selected.availableQty, remainingAllocated(target.line)))}
             allowDecimal
           />
           {worker === null ? <p className="picking__note">{t.noWorker}</p> : null}

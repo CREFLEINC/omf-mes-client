@@ -600,6 +600,137 @@ describe('제품LOT 피킹 스캔 화면', () => {
     );
   });
 
+  /*
+   * 남은 배정은 굳은 스냅숏이 아니라 서버가 아는 값에서 나와야 한다. 확정 뒤에도 옛 값이
+   * 남으면 배정보다 많이 집을 수 있다 - 되돌릴 수 없는 예약 소진이다.
+   */
+  it('확정한 뒤 다음 건으로 가면 남은 배정이 줄어 있다', async () => {
+    const user = userEvent.setup();
+    let picked = 120;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: async (req) => {
+          /* 절대값을 박으면 화면이 무엇을 보냈든 통과한다. 보낸 만큼 더한다. */
+          const body = (await req.clone().json()) as { pickedQty: number };
+
+          picked += body.pickedQty;
+
+          return jsonResponse(line({ pickedQty: picked }));
+        },
+      },
+      {
+        /* 서버가 집은 양을 기억한다. 기억하지 않으면 낡은 스냅숏을 잡을 수 없다. */
+        match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
+        respond: () =>
+          jsonResponse({ items: [request({ lines: [line({ pickedQty: picked })] })], page }),
+      },
+    ]);
+    await chooseTarget(user);
+
+    expect(screen.getByText('남은 배정 180 EA')).toBeTruthy();
+
+    await screen.findByText('FG-0298');
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await screen.findByText('피킹을 기록했습니다');
+    await user.click(screen.getByRole('button', { name: '다음 피킹' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('남은 배정 0 EA')).toBeTruthy();
+    });
+    expect(screen.queryByText('남은 배정 180 EA')).toBeNull();
+  });
+
+  /*
+   * 남은 배정을 목록 조회에서만 얻으면, 그 조회가 실패했을 때 확정 전 값이 그대로 남는다.
+   * 배정을 다 채우고도 남은 배정이 남아 보여 한 번 더 집게 된다.
+   */
+  it('확정 뒤 목록 조회가 실패해도 남은 배정이 되살아나지 않는다', async () => {
+    const user = userEvent.setup();
+    let listFails = false;
+    let picked = 120;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: async (req) => {
+          const body = (await req.clone().json()) as { pickedQty: number };
+
+          picked += body.pickedQty;
+          listFails = true;
+
+          return jsonResponse(line({ pickedQty: picked }));
+        },
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
+        respond: () =>
+          listFails
+            ? jsonResponse({ message: '실패' }, { status: 500 })
+            : jsonResponse({ items: [request()], page }),
+      },
+    ]);
+    await chooseTarget(user);
+    await screen.findByText('FG-0298');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await screen.findByText('피킹을 기록했습니다');
+    await user.click(screen.getByRole('button', { name: '다음 피킹' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('남은 배정 0 EA')).toBeTruthy();
+    });
+    expect(screen.queryByText('남은 배정 180 EA')).toBeNull();
+    /* 조회가 늙었다는 사실도 함께 말한다. */
+    expect(screen.getByText('오늘 출하분을 확인할 수 없습니다')).toBeTruthy();
+  });
+
+  /* 말없이 나가면 무슨 일이 있었는지 알 수 없고, 남겨 두면 나중에 예고 없이 되돌아간다. */
+  it('고르던 라인이 목록에서 빠지면 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    let dropped = false;
+    let picked = 120;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/shipment-requests/5/lines/77:pick' &&
+          req.method === 'POST',
+        respond: async (req) => {
+          const body = (await req.clone().json()) as { pickedQty: number };
+
+          picked += body.pickedQty;
+          dropped = true;
+
+          return jsonResponse(line({ pickedQty: picked }));
+        },
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/shipment-requests',
+        respond: () => jsonResponse({ items: dropped ? [] : [request()], page }),
+      },
+    ]);
+    await chooseTarget(user);
+    await screen.findByText('FG-0298');
+
+    await user.click(screen.getAllByRole('button', { name: '이 LOT 고르기' })[0] as HTMLElement);
+    await user.type(await screen.findByLabelText('피킹 수량'), '180');
+    await user.click(screen.getByRole('button', { name: '피킹 확정' }));
+
+    await screen.findByText('피킹을 기록했습니다');
+    await user.click(screen.getByRole('button', { name: '다음 피킹' }));
+
+    expect(await screen.findByText('고르던 라인이 오늘 출하분에서 빠졌습니다')).toBeTruthy();
+  });
+
   /* 확정 후 되돌리기를 두지 않는다. 예약이 소진된다. */
   it('확정 뒤에 되돌리기를 두지 않고 그 사실을 말한다', async () => {
     const user = userEvent.setup();
