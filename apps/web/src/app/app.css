@@ -3495,6 +3495,127 @@ main > * + * {
   }
 }
 
+/* 설비고장 상세처리 — 조회·목록·상세의 위계와 읽기/입력 영역을 분명히 나눈다. */
+.equipment-failure-workspace,
+.equipment-failure-layout,
+.equipment-failure-pane {
+  min-width: 0;
+}
+
+.equipment-failure-workspace {
+  display: grid;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.equipment-failure-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.equipment-failure-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.equipment-failure-filter {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.equipment-failure-filter > *,
+.equipment-failure-filter .field-cell {
+  min-width: 0;
+}
+
+.equipment-failure-filter .field-cell {
+  align-items: stretch;
+}
+
+.equipment-failure-filter .equipment-failure-filter-options {
+  grid-column: 1 / 3;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center !important;
+  justify-content: flex-start;
+  gap: var(--space-4);
+  margin-top: 0;
+}
+
+.equipment-failure-filter-actions {
+  grid-column: 3;
+  align-items: flex-end !important;
+  margin-top: 0;
+}
+
+.equipment-failure-pane > .pane-lead {
+  margin: 0;
+}
+
+.equipment-failure-list-pane table {
+  width: 100%;
+}
+
+.equipment-failure-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.equipment-failure-detail-pane > h3 {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.equipment-failure-readonly {
+  box-sizing: border-box;
+  justify-content: flex-start;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.equipment-failure-readonly > :last-child {
+  color: var(--on-surface);
+  font: var(--type-body-md);
+  letter-spacing: var(--type-body-md-tracking);
+}
+
+.equipment-failure-detail-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.equipment-failure-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .equipment-failure-filter-options,
+  .equipment-failure-filter-actions {
+    grid-column: 1;
+  }
+
+  .equipment-failure-filter-actions {
+    align-items: flex-start !important;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
