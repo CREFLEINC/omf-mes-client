@@ -1,0 +1,54 @@
+name: 사용자 경유 설계 요청 추적
+description: 사용자가 요청서를 전달했고 회신을 기다리라고 한 뒤에만 생성합니다.
+title: '[설계 요청 추적] '
+labels:
+  - 'question'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        요청서 원문은 붙이지 않습니다. 공개 가능한 포인터와 전달 상태만 기록합니다.
+
+  - type: dropdown
+    id: request-type
+    attributes:
+      label: 요청 종류
+      options:
+        - 정보 요청
+        - 설계 개선
+    validations:
+      required: true
+
+  - type: input
+    id: target
+    attributes:
+      label: 대상 포인터
+      description: 화면 ID, 문서 경로, 관련 클라이언트 이슈 번호만 적습니다.
+    validations:
+      required: true
+
+  - type: input
+    id: delivered-at
+    attributes:
+      label: 사용자 전달일
+      placeholder: '2026-09-03'
+    validations:
+      required: true
+
+  - type: input
+    id: work-issue
+    attributes:
+      label: 관련 작업 이슈
+      placeholder: '#123'
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: relay-confirmed
+    attributes:
+      label: 생성 조건 확인
+      options:
+        - label: 사용자가 전달 완료와 회신 대기를 지시했습니다.
+          required: true
+        - label: 요청서 본문이나 비공개 설계 내용을 포함하지 않았습니다.
+          required: true
