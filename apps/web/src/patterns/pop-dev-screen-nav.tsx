@@ -82,6 +82,10 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
+  /*
+   * ⚠ **씨앗에 출하가 없다** — 이 번호는 씨앗이 아니라 계약 예시 서버가 받아 답한다(씨앗에
+   * 경로가 아예 없으면 그리로 넘어간다). 씨앗이 출하를 담게 되면 그때 실제 번호로 바꾼다.
+   */
   {
     path: '/pop/shipping-label',
     label: 'P-04-02 납품·포장 라벨 출력',
@@ -105,6 +109,16 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     label: 'P-04-04 재구성 라벨 발행',
     /* P-02-09 와 같은 씨앗 포장을 쓴다 — 씨앗에 실제로 있는 번호여야 한다(위 주석). */
     query: '?handlingUnitId=13001&workerNo=100029',
+  },
+  /*
+   * ⚠ 이 화면은 사번을 주소로 받지 않는다 — 단말·공정·사번은 셸이 채운다. 개발 셸이 그
+   * 자리를 합성값으로 채우므로(`app/pop-main.tsx`) 화면은 서고, 등록 가부는 그 단말·공정의
+   * 게이팅 조회 결과가 정한다(F-6).
+   */
+  {
+    path: '/pop/running-change',
+    label: 'P-02-11 러닝체인지 부품 교체',
+    query: '?workOrderId=11002',
   },
 ];
 
