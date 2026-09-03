@@ -98,8 +98,12 @@ export const useOpenSession = (workOrderId: number | null): OpenSessionResult =>
     },
   });
 
-  const latest = [...(query.data ?? [])].sort((left, right) =>
-    right.startedAt.localeCompare(left.startedAt),
+  /*
+   * ⛔ **시각을 사전순으로 비교하지 않는다.** 오프셋이 섞이면(`+09:00` 과 `Z`) 사전순과
+   * 시간순이 갈리고, 그러면 「방금 연 세션」이 아닌 것에 중단이 걸린다.
+   */
+  const latest = [...(query.data ?? [])].sort(
+    (left, right) => Date.parse(right.startedAt) - Date.parse(left.startedAt),
   )[0];
 
   return {

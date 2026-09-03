@@ -125,6 +125,8 @@ const postEntry = async (client: Client, entry: OutboxEntry): Promise<void> => {
 export interface Outbox {
   /** 아직 서버에 닿지 않은 건수. **상시 표시가 필수 요건이다**(C-1 #4). */
   pendingCount: number;
+  /** 서버가 받은 횟수. 늘어나면 화면이 조회를 다시 한다. */
+  sentCount: number;
   /** 지금 연결돼 있는가. 건수와 함께 낸다 — 끊긴 것과 밀리는 것은 다르다. */
   isOnline: boolean;
   /** 큐에 담는다. **이것이 곧 성공이다** — 통신을 기다리지 않는다(C-1 #2). */
@@ -171,6 +173,13 @@ export const useWorkHoldOutbox = (): Outbox => {
     },
     [],
   );
+
+  /**
+   * 서버가 실제로 받은 횟수. **화면이 조회를 다시 할 계기다** — 중단이 닿으면 세션 상태가
+   * 서버에서 바뀌는데, 화면이 옛 상태를 들고 있으면 「중단」 버튼이 열린 채 남아 같은 중단을
+   * 한 번 더 등록한다(사건은 정정 경로가 없다).
+   */
+  const [sentTick, setSentTick] = useState(0);
 
   /** 갱신 «뒤에» 저장할 값. 갱신 함수를 순수하게 두기 위한 자리다. */
   const pendingWrite = useRef<OutboxEntry[] | null>(null);
@@ -219,8 +228,11 @@ export const useWorkHoldOutbox = (): Outbox => {
         const entry = entries[0];
         if (entry === undefined) return;
 
+        let sent = false;
+
         try {
           await postEntry(client, entry);
+          sent = true;
         } catch (error) {
           /*
            * 통신이 끊긴 것이면 큐에 그대로 둔다 — 기다리면 풀린다. 다만 가만히 두지는 않는다:
@@ -251,11 +263,18 @@ export const useWorkHoldOutbox = (): Outbox => {
             return;
           }
 
+          /*
+           * ⛔ **거부가 나면 큐 전체를 멈춘다.** 이 큐에서는 **순서가 곧 뜻이다** — 중단이
+           * 거부됐는데 뒤따르던 재개가 그대로 나가면, 멈춘 적 없는 세션에 재개가 기록된다.
+           * 거부된 건만 내리고 나머지는 사람이 보고 다시 보내게 남긴다.
+           */
           setRejection(toApiError(error));
+          setIsStalled(true);
         }
 
-        /* 받아졌든 거부됐든 큐에서는 내린다. 거부는 **그 건만** 내린다. */
+        /* 받아졌든 거부됐든 «그 건»은 큐에서 내린다. 뒤엣것은 위에서 멈춰 세웠다. */
         attempts.current.delete(entry.idempotencyKey);
+        if (sent) setSentTick((tick) => tick + 1);
         setEntries((prev) => {
           const next = prev.filter((one) => one.idempotencyKey !== entry.idempotencyKey);
           pendingWrite.current = next;
@@ -297,6 +316,7 @@ export const useWorkHoldOutbox = (): Outbox => {
 
   return {
     pendingCount: entries.length,
+    sentCount: sentTick,
     isOnline,
     enqueue,
     rejection,

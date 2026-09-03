@@ -35,10 +35,3 @@ export const validateHoldDraft = (draft: HoldDraft): HoldDraftError | null => {
 
   return known ? null : 'reasonUnknown';
 };
-
-/** 화면 밖으로 나가는 비고. **앞뒤 공백만 있는 값은 없는 것으로 다룬다.** */
-export const readRemarks = (draft: HoldDraft): string | null => {
-  const trimmed = draft.remarks.trim();
-
-  return trimmed === '' ? null : trimmed;
-};

@@ -190,7 +190,8 @@ describe('P-02-10 작업 중단 등록', () => {
     });
 
     const eventPost = (sent: Request[]): StubRoute => ({
-      match: (request) => request.method === 'POST' && new URL(request.url).pathname === EVENTS_PATH,
+      match: (request) =>
+        request.method === 'POST' && new URL(request.url).pathname === EVENTS_PATH,
       respond: (request) => {
         sent.push(request);
 
@@ -232,10 +233,7 @@ describe('P-02-10 작업 중단 등록', () => {
 
     /* 스펙 §6 — 「이미 중단 상태면 재개만 활성」. 돌고 있는 설비에 중단을 두 번 걸지 않는다. */
     it('중단된 세션에서는 재개만 누를 수 있다', async () => {
-      renderScreen([
-        sessionsRoute([workSession({ statusCode: 'STOPPED' })]),
-        eventsRoute([]),
-      ]);
+      renderScreen([sessionsRoute([workSession({ statusCode: 'STOPPED' })]), eventsRoute([])]);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeEnabled();
@@ -270,6 +268,33 @@ describe('P-02-10 작업 중단 등록', () => {
      * ⛔ **적은 것이 어디로 가는지 숨기지 않는다.** 비고를 담을 칸이 계약에 없어 이번에는
      * 나가지 않는다 — 말하지 않으면 작업자는 남았다고 믿는다.
      */
+    /*
+     * ⛔ **담긴 중단이 아직 안 나갔으면 한 번 더 누를 수 없다.** 서버에 닿기 전에는 세션이
+     * 여전히 「진행」이라, 잠그지 않으면 같은 중단이 두 건 기록된다 — 정정 경로가 없다.
+     */
+    it('보낼 것이 남아 있는 동안 두 버튼이 잠긴다', async () => {
+      const user = userEvent.setup();
+
+      renderScreen([
+        sessionsRoute([workSession()]),
+        eventsRoute([]),
+        {
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname === EVENTS_PATH,
+          /* 서버가 아직 답하지 않은 상태 — 큐에 남아 있다. */
+          respond: () => jsonResponse({ message: '잠시 뒤 다시' }, { status: 503 }),
+        },
+      ]);
+
+      await user.click(await screen.findByRole('radio', { name: t.reasons.MOLD_CHANGE }));
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.form.stopAction })).toBeDisabled();
+      });
+      expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
+    });
+
     /* ⛔ 사번이 없으면 서버가 거부한다 — 누르고 나서가 아니라 누르기 전에 막는다. */
     it('사번을 모르면 두 버튼이 막히고 이유를 말한다', async () => {
       renderScreen(

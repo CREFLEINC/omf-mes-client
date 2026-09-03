@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { EMPTY_HOLD_DRAFT, readRemarks, validateHoldDraft } from './hold-draft';
+import { EMPTY_HOLD_DRAFT, validateHoldDraft } from './hold-draft';
 
 /**
  * 사유는 ⓐ 차단이다(스펙 §6 · 2026-08-23 변경).
@@ -27,10 +27,5 @@ describe('중단 등록 입력 검증', () => {
 
   it('「기타」가 목록에 있어 차단해도 고를 것이 남는다', () => {
     expect(validateHoldDraft({ reasonCode: 'OTHER', remarks: '' })).toBeNull();
-  });
-
-  it('비고는 앞뒤 공백만 있으면 없는 것으로 다룬다', () => {
-    expect(readRemarks({ reasonCode: 'OTHER', remarks: '   ' })).toBeNull();
-    expect(readRemarks({ reasonCode: 'OTHER', remarks: ' 금형 대기 ' })).toBe('금형 대기');
   });
 });

@@ -22,7 +22,12 @@ const body = {
 } satisfies OutboxEntry['body'];
 
 describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', () => {
-  const entry = { idempotencyKey: 'key-1', workSessionId: WORK_SESSION_ID, workerNo: WORKER_NO, body };
+  const entry = {
+    idempotencyKey: 'key-1',
+    workSessionId: WORK_SESSION_ID,
+    workerNo: WORKER_NO,
+    body,
+  };
 
   it('갖출 것을 갖춘 항목은 보낼 수 있다', () => {
     expect(isSendableEntry(entry)).toBe(true);
@@ -120,6 +125,8 @@ describe('useWorkHoldOutbox', () => {
     /* ⛔ 큐에 쌓인 요청은 낙관적 잠금 토큰을 싣지 않는다(C-9). */
     expect(sent[0]!.headers.get('If-Match')).toBeNull();
     expect(result.current.pendingCount).toBe(0);
+    /* 서버가 받았다는 사실을 화면이 알아야 세션을 다시 읽는다. */
+    expect(result.current.sentCount).toBe(1);
   });
 
   /* ⛔ **재전송이 새 사건이 되면 안 된다** — 같은 중단이 이력에 두 번 남는다(C-1 #5). */
@@ -190,6 +197,44 @@ describe('useWorkHoldOutbox', () => {
     });
 
     expect(result.current.isStalled).toBe(false);
+    expect(result.current.pendingCount).toBe(1);
+  });
+
+  /*
+   * ⛔ **거부 뒤에 뒤엣것을 계속 보내지 않는다.** 이 큐는 순서가 곧 뜻이다 — 중단이 거부됐는데
+   * 재개가 그대로 나가면 멈춘 적 없는 세션에 재개가 기록된다.
+   */
+  it('거부가 나면 뒤에 담긴 것을 보내지 않고 멈춘다', async () => {
+    const sent: Request[] = [];
+    const { result } = renderHookWithProviders(() => useWorkHoldOutbox(), {
+      fetch: createStubFetch([
+        {
+          match: (request: Request) => new URL(request.url).pathname === EVENTS_PATH,
+          respond: (request: Request) => {
+            sent.push(request);
+
+            return jsonResponse({ message: '세션이 이미 닫혔습니다' }, { status: 409 });
+          },
+        },
+      ]),
+    });
+
+    act(() => {
+      result.current.enqueue({ workSessionId: WORK_SESSION_ID, workerNo: WORKER_NO, body });
+      result.current.enqueue({
+        workSessionId: WORK_SESSION_ID,
+        workerNo: WORKER_NO,
+        body: { eventTypeCode: 'RESUME', occurredAt: '2026-09-03T10:40:00+09:00' },
+      });
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(retryDelayOf(MAX_AUTO_ATTEMPTS) * 2);
+    });
+
+    /* 거부된 중단 한 건만 나갔고, 뒤따르던 재개는 큐에 남아 있다. */
+    expect(sent).toHaveLength(1);
+    expect(result.current.isStalled).toBe(true);
     expect(result.current.pendingCount).toBe(1);
   });
 

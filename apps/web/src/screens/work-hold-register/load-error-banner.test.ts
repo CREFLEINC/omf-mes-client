@@ -10,7 +10,10 @@ import { describeError } from './load-error-banner';
 describe('조회 실패 문구', () => {
   it('공백만 있는 문구는 공용 안내로 떨어진다', () => {
     expect(
-      describeError({ kind: 'validation', errors: [{ scope: 'field', code: 'REQUIRED', message: '   ' }] }),
+      describeError({
+        kind: 'validation',
+        errors: [{ scope: 'field', code: 'REQUIRED', message: '   ' }],
+      }),
     ).toBe(messages.httpError.description);
   });
 

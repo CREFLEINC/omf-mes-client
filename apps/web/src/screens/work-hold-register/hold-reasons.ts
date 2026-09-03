@@ -65,3 +65,7 @@ export const HOLD_REASONS: readonly HoldReason[] = [
 /** 사유 코드의 표시명. 목록에 없으면 코드를 그대로 보인다. */
 export const holdReasonName = (code: string): string =>
   HOLD_REASONS.find((reason) => reason.code === code)?.name ?? code;
+
+/** 세션 상태 표시명. **모르는 값이면 코드를 그대로 보인다** — 임의로 접지 않는다. */
+export const sessionStatusName = (code: string): string =>
+  code in t.sessionStatus ? t.sessionStatus[code as keyof typeof t.sessionStatus] : code;

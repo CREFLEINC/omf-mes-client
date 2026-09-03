@@ -48,6 +48,8 @@ export const workHoldRegister = {
     sectionLabel: '중단 등록',
     reasonLabel: '중단 사유',
     reasonRequired: '중단 사유를 고르세요.',
+    /** 목록 밖 값이 들어온 자리 — 「고르세요」로 말하면 이미 고른 사람에게 틀린 안내가 된다. */
+    reasonUnknown: '고른 사유를 알 수 없습니다. 목록에서 다시 고르세요.',
     /** ⚠ 값 목록이 공통코드에 아직 없어 화면이 임시 목록을 들고 있다(착수 이슈 §4). */
     reasonProvisional: '중단 사유는 임시 목록입니다.',
     remarksLabel: '비고',
@@ -86,6 +88,13 @@ export const workHoldRegister = {
     RESUME: '재개',
     END: '세션 종료',
     CONTROL_OVERRIDE: '통제 우회',
+  },
+
+  /** 세션 상태 표시명 — 계약이 확정한 셋. */
+  sessionStatus: {
+    RUNNING: '진행 중',
+    STOPPED: '중단',
+    ENDED: '종료',
   },
 
   /** 중단 사유 표시명 — 스펙 §3 목업의 7값. */

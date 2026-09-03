@@ -1,6 +1,7 @@
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useId, useState } from 'react';
 
 import { useNow } from './use-now';
 import { useWorkHoldEntry } from './entry-context';
@@ -10,9 +11,9 @@ import { HoldForm } from './hold-form';
 import { LoadErrorBanner } from './load-error-banner';
 import { toResumeRequest, toStopRequest } from './event-request';
 import { useWorkHoldOutbox } from './outbox';
-import { useOpenSession, useSessionEvents } from './queries';
+import { useOpenSession, useSessionEvents, workHoldKeys } from './queries';
 import { SessionPanel } from './session-panel';
-import { isRunningSession, isStoppedSession } from './types';
+import { isRunningSession, isStoppedSession, type WorkSessionEventCreate } from './types';
 
 const t = messages.workHoldRegister;
 
@@ -53,9 +54,27 @@ export const WorkHoldRegisterScreen = () => {
   const session = useOpenSession(workOrderId);
   const events = useSessionEvents(session.session?.workSessionId ?? null);
   const outbox = useWorkHoldOutbox();
+  const queryClient = useQueryClient();
+
+  /**
+   * ⛔ **서버가 받았으면 세션을 다시 읽는다.** 중단이 닿으면 세션 상태가 서버에서 「중단」으로
+   * 옮겨 가는데, 화면이 옛 상태를 들고 있으면 「중단 등록」이 열린 채 남아 **같은 중단이 한 번
+   * 더 기록된다** — 사건은 정정 경로가 없다.
+   */
+  useEffect(() => {
+    if (outbox.sentCount === 0) return;
+
+    void queryClient.invalidateQueries({ queryKey: workHoldKeys.all });
+  }, [outbox.sentCount, queryClient]);
 
   /** 세션이 없으면 사유를 고를 수 없다 — 고른 값을 실을 곳이 없기 때문이다. */
   const inputDisabled = session.session === null;
+
+  /*
+   * ⛔ **보낼 것이 남아 있는 동안은 둘 다 잠근다.** 큐에 담긴 중단이 아직 서버에 닿지 않았으면
+   * 세션 상태는 여전히 「진행」이라, 잠그지 않으면 작업자가 같은 중단을 한 번 더 담는다.
+   */
+  const sending = outbox.pendingCount > 0;
 
   const stopped = session.session !== null && isStoppedSession(session.session);
   /* ⛔ 「중단이 아니면 진행 중」이 아니다 — 종료된 세션·모르는 상태에 중단을 걸지 않는다. */
@@ -67,7 +86,7 @@ export const WorkHoldRegisterScreen = () => {
    * ⛔ **사번이 없으면 담지 않는다.** 헤더가 비면 서버가 거부하는데(D-5), 큐에 담긴 뒤의
    * 거부는 작업자가 화면을 떠난 뒤에 온다 — 그때는 무엇이 실패했는지 말할 자리가 없다.
    */
-  const submit = (body: ReturnType<typeof toResumeRequest>): void => {
+  const submit = (body: WorkSessionEventCreate): void => {
     if (session.session === null || workerNo === null) return;
 
     outbox.enqueue({ workSessionId: session.session.workSessionId, workerNo, body });
@@ -79,7 +98,8 @@ export const WorkHoldRegisterScreen = () => {
     const invalid = validateHoldDraft(draft);
 
     if (invalid !== null) {
-      setDraftError(t.form.reasonRequired);
+      /* 「고르지 않았다」와 「모르는 값이다」는 작업자가 할 일이 다르다 — 같은 말로 덮지 않는다. */
+      setDraftError(invalid === 'reasonRequired' ? t.form.reasonRequired : t.form.reasonUnknown);
 
       return;
     }
@@ -204,8 +224,8 @@ export const WorkHoldRegisterScreen = () => {
         <HoldForm
           draft={draft}
           disabled={inputDisabled}
-          canStop={running}
-          canResume={stopped}
+          canStop={running && !sending}
+          canResume={stopped && !sending}
           error={draftError}
           workerUnknown={workerNo === null}
           onReasonChange={(code) => {

@@ -2,6 +2,7 @@ import { AlertBanner, Card, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { elapsedMinutes, toDateTimeLabel, toDurationLabel } from './formatting';
+import { sessionStatusName } from './hold-reasons';
 import type { WorkSessionView } from './types';
 
 const t = messages.workHoldRegister;
@@ -51,8 +52,9 @@ export const SessionPanel = ({ session, isPending, now }: SessionPanelProps) => 
         <h2 className="pane-title">{t.session.sectionLabel}</h2>
 
         <dl className="pop-hold-facts">
-          <dt>{t.session.sessionNo(session.sessionNo)}</dt>
-          <dd />
+          {/* 세션 번호는 이름 없는 값이라 한 칸으로 둔다 — 빈 `dd` 를 읽히지 않는다. */}
+          <dt className="pop-hold-facts-lead" />
+          <dd>{t.session.sessionNo(session.sessionNo)}</dd>
 
           <dt>{t.session.startedLabel}</dt>
           <dd>{startedLabel}</dd>
@@ -61,11 +63,11 @@ export const SessionPanel = ({ session, isPending, now }: SessionPanelProps) => 
           <dd>{elapsedLabel ?? t.session.unknownValue}</dd>
 
           {/*
-           * ⚠ 상태 코드의 «문자열»은 계약이 아직 확정하지 않았다 — 화면은 받은 값을 그대로
-           * 보이고, 그 값으로 분기하지 않는다(`types.ts` 의 열림 판정).
+           * 상태 문자열은 계약이 셋으로 확정했다 — 사람 말로 옮겨 보이고, **모르는 값이면
+           * 코드를 그대로 보인다**(임의로 「진행」으로 접으면 화면이 없는 사실을 말한다).
            */}
           <dt>{t.session.statusLabel}</dt>
-          <dd>{session.statusCode}</dd>
+          <dd>{sessionStatusName(session.statusCode)}</dd>
         </dl>
       </section>
     </Card>
