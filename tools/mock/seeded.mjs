@@ -220,6 +220,42 @@ on('GET', '/trace/lots/{lotId}/holds', (params, query) =>
   ),
 );
 
+/* ── 개체(일련번호) ───────────────────────────────────────── */
+
+/*
+ * ⭐ **P-02-05 인식표 발행이 여기에 걸려 있었다.** 이 경로가 씨앗에 없어 계약 예시 서버로
+ * 넘어갔고, 그쪽은 첫 예시가 오류라 발번이 항상 400 으로 되돌아왔다 — 화면 잘못이 아니라
+ * 목이 답을 못 준 것이다(실측).
+ *
+ * ⛔ 채번 규칙을 지어내지 않는다. 계약이 「전역 유일」만 정하고 자릿수·구성은 열어 두었으므로
+ *    목은 겹치지만 않게 만든다.
+ */
+on('GET', '/trace/serial-numbers', (_p, query) =>
+  page(keep(state.serialNumbers, [byNum(query, 'lotId', 'lotId')]), query),
+);
+
+on('POST', '/trace/serial-numbers', (_p, _q, body) => {
+  const lot = state.lots.find((row) => row.lotId === body?.lotId);
+  if (lot === undefined) return null;
+
+  const quantity = Number(body?.quantity ?? 0);
+  const made = Array.from({ length: quantity }, () => {
+    const serial = {
+      serialNumberId: newId(),
+      serialNo: `SN-${String(lot.lotNo)}-${String(state.serialNumbers.length + 1).padStart(4, '0')}`,
+      itemId: lot.itemId,
+      lotId: lot.lotId,
+      statusCode: 'ACTIVE',
+      producedAt: body?.producedAt ?? new Date().toISOString(),
+    };
+    state.serialNumbers.push(serial);
+
+    return serial;
+  });
+
+  return { created: { items: made, issuedCount: made.length }, status: 201 };
+});
+
 /* ── 문서 발행·인쇄 ───────────────────────────────────────── */
 
 const targetIds = (query) =>
@@ -433,9 +469,7 @@ on('POST', '/inventory/handling-units/{handlingUnitId}:pack', (params, _q, body)
     return {
       status: 400,
       created: {
-        errors: [
-          { scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' },
-        ],
+        errors: [{ scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' }],
       },
     };
   }

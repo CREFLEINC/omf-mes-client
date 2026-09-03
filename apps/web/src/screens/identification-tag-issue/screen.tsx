@@ -14,7 +14,7 @@ import { ReissueDialog } from './reissue-dialog';
 import { useTerminalGate } from './terminal-gating';
 import { usePrintRunner } from './use-print';
 import {
-  PLACEHOLDER_CODES,
+  ISSUE_CODES,
   emptyIssueProgress,
   type DocumentIssueCreate,
   type Printer,
@@ -64,9 +64,9 @@ const printerChipText = (printer: Printer | null, failed: boolean): string => {
  * 이력이 거짓이 된다(계약).
  */
 const issueBody = (serials: readonly SerialNumber[]): DocumentIssueCreate => ({
-  documentTypeCode: PLACEHOLDER_CODES.documentType,
+  documentTypeCode: ISSUE_CODES.documentType,
   targets: serials.map((serial) => ({
-    targetTypeCode: PLACEHOLDER_CODES.serialTargetType,
+    targetTypeCode: ISSUE_CODES.serialTargetType,
     targetId: serial.serialNumberId,
     lotId: serial.lotId,
   })),

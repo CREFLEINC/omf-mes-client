@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { PLACEHOLDER_CODES, type Lot, type Printer } from './types';
+import { ISSUE_CODES, type Lot, type Printer } from './types';
 
 /**
  * 이 화면이 쓰는 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -123,7 +123,7 @@ export const usePrinters = (): UseQueryResult<Printer[]> => {
     queryFn: async (): Promise<Printer[]> => {
       const data = await runRequest(() =>
         client.GET('/app/printers', {
-          params: { query: { documentTypeCode: PLACEHOLDER_CODES.documentType } },
+          params: { query: { documentTypeCode: ISSUE_CODES.documentType } },
         }),
       );
 

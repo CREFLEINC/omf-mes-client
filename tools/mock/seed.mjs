@@ -903,6 +903,8 @@ export const createSeed = (now = new Date()) => {
     goodsReceipts: [],
     productionResults: [],
     documentIssues: [],
+    /** 개체(일련번호) — P-02-05 가 발번해 채운다. 씨앗은 비워 둔다(발번 전 상태가 기본이다). */
+    serialNumbers: [],
     /** 스캔해 볼 값 — 시험 키트가 이 목록을 그대로 인쇄한다. */
     scannables: {
       workerNos: workers.map((worker) => worker.workerNo),
