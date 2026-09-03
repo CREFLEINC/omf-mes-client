@@ -82,11 +82,6 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
-  {
-    path: '/pop/shipping-label',
-    label: 'P-04-02 납품·포장 라벨 출력',
-    query: '?shipmentId=14001&workerNo=100029',
-  },
   { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
   {
     path: '/pop/tool-usage',
@@ -100,13 +95,14 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     /* 씨앗에서 완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 포장 대상이 비어 뜬다. */
     query: '?workOrderId=11001&workerNo=100029',
   },
-  {
-    path: '/pop/lot-label',
-    label: 'P-02-07 LOT 라벨 출력',
-    query: '?workOrderId=11002&workerNo=100029',
-  },
   /* 출하는 씨앗에 없어 진입값을 적지 않는다 — 화면은 「출하를 모른다」로 뜬다. */
   { path: '/pop/shipping-label', label: 'P-04-02 납품·포장 라벨 출력' },
+  {
+    path: '/pop/lot-complete',
+    label: 'P-02-06 생산LOT 완료 처리',
+    /* 씨앗에서 미완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 대상 목록이 비어 뜬다. */
+    query: '?workOrderId=11002',
+  },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
