@@ -18,7 +18,17 @@ export const materialInputScan = {
     workOrder: (workOrderId: number): string => `작업지시 #${String(workOrderId)}`,
     /** 이 투입이 매달릴 구간(스펙 §5-5). 세션은 없어도 투입이 서므로 없을 때도 말한다. */
     session: (sessionId: number): string => `세션 #${String(sessionId)}`,
-    sessionNone: '세션 없음',
+    /**
+     * 열린 세션이 정해지지 않았을 때 — **「세션 —」**.
+     *
+     * ⚠ **오류가 아니다.** 세션은 「이 투입이 어느 구간에 속하는가」이고 계약이 그 칸을
+     * 선택 값으로 두었다 — 없어도 투입은 기록된다(긴급 투입·사후 입력). 「단말 —」이
+     * 확정을 막는 것과 성격이 다르다.
+     *
+     * 같은 머리줄의 단말 표기와 모양을 맞춘다 — 값이 없는 칸을 화면 안에서 두 가지로
+     * 말하지 않는다(사용자 확정 2026-09-03 · `terminalUnknown` 과 같은 근거).
+     */
+    sessionNone: '세션 —',
     /** 어느 단말에서 찍고 있는지. 단말을 모르면 게이팅이 닫히므로 그 사실이 헤더에도 선다. */
     terminal: (terminalId: number): string => `단말 #${String(terminalId)}`,
     /**
