@@ -145,72 +145,90 @@ export const SuspiciousMaterialHoldInputPane = ({
     setDraft((current) => ({ ...current, [key]: value }));
 
   return (
-    <section className="pane" aria-label={t.pane}>
-      <RadioGroup
-        name="suspicious-material-hold-mode"
-        orientation="horizontal"
-        value={selection.length > 1 ? 'FULL' : draft.mode}
-        disabled={isLocked}
-        aria-label={t.range}
-        onChange={(value) =>
-          setDraft((current) => ({
-            ...current,
-            mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
-            holdQty: '',
-          }))
-        }
-      >
-        <Radio value="FULL">{t.full}</Radio>
-        {selection.length === 1 && <Radio value="PARTIAL">{t.partial}</Radio>}
-      </RadioGroup>
-      <p>{t.fullDescription}</p>
-      {draft.mode === 'PARTIAL' && selection.length === 1 && (
-        <TextField
-          label={t.quantity}
-          inputMode="decimal"
-          value={draft.holdQty}
+    <section className="pane suspicious-material-hold-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.pane}</h2>
+      <div className="suspicious-material-hold-range">
+        <RadioGroup
+          name="suspicious-material-hold-mode"
+          orientation="horizontal"
+          value={selection.length > 1 ? 'FULL' : draft.mode}
           disabled={isLocked}
-          onChange={(event) => update('holdQty', event.target.value)}
+          aria-label={t.range}
+          onChange={(value) =>
+            setDraft((current) => ({
+              ...current,
+              mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
+              holdQty: '',
+            }))
+          }
+        >
+          <Radio value="FULL">{t.full}</Radio>
+          {selection.length === 1 && <Radio value="PARTIAL">{t.partial}</Radio>}
+        </RadioGroup>
+        <p className="field-note">{t.fullDescription}</p>
+      </div>
+      <div className="form-grid suspicious-material-hold-input-grid">
+        {draft.mode === 'PARTIAL' && selection.length === 1 && (
+          <TextField
+            label={t.quantity}
+            inputMode="decimal"
+            value={draft.holdQty}
+            disabled={isLocked}
+            onChange={(event) => update('holdQty', event.target.value)}
+          />
+        )}
+        <div className="field-cell wide-select">
+          <label className="field-label" htmlFor={reasonId}>
+            {t.reason}
+          </label>
+          <Select
+            id={reasonId}
+            value={draft.reasonCode || null}
+            options={activeReasons.map(({ code, codeName }) => ({ value: code, label: codeName }))}
+            placeholder={t.reasonPlaceholder}
+            disabled={isLocked || reasonUnavailable}
+            onChange={(value) => update('reasonCode', value)}
+          />
+        </div>
+        <TextField
+          label={t.releaseCondition}
+          value={draft.releaseCondition}
+          disabled={isLocked}
+          onChange={(event) => update('releaseCondition', event.target.value)}
         />
-      )}
-      <div>
-        <label htmlFor={reasonId}>{t.reason}</label>
-        <Select
-          id={reasonId}
-          value={draft.reasonCode || null}
-          options={activeReasons.map(({ code, codeName }) => ({ value: code, label: codeName }))}
-          placeholder={t.reasonPlaceholder}
-          disabled={isLocked || reasonUnavailable}
-          onChange={(value) => update('reasonCode', value)}
+        <TextArea
+          label={t.remarks}
+          rows={3}
+          value={draft.remarks}
+          disabled={isLocked}
+          onChange={(event) => update('remarks', event.target.value)}
         />
       </div>
-      <TextField
-        label={t.releaseCondition}
-        value={draft.releaseCondition}
-        disabled={isLocked}
-        onChange={(event) => update('releaseCondition', event.target.value)}
-      />
-      <TextArea
-        label={t.remarks}
-        rows={3}
-        value={draft.remarks}
-        disabled={isLocked}
-        onChange={(event) => update('remarks', event.target.value)}
-      />
-      {reasonUnavailable && <AlertBanner variant="warning" title={t.reasonUnavailable} />}
-      {(labelsUnavailable || (targetLotStatusCode?.trim() ?? '') === '') && (
-        <AlertBanner variant="warning" title={t.factsUnavailable} />
+      {reasonUnavailable && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning" title={t.reasonUnavailable} />
+        </div>
       )}
-      <section aria-label={t.impact}>
-        <h3>{t.impact}</h3>
-        <p>{t.impactCount(selection.length)}</p>
-        {selection.map((lot) => (
-          <p key={lot.lotId}>
-            {lot.lotNo}: {lot.onHandQty === undefined ? t.quantityUnknown : String(lot.onHandQty)}{' '}
-            {lot.uomLabel ?? t.uomUnknown} · {lot.locationLabel ?? t.locationUnknown}
-          </p>
-        ))}
-        <p>{t.recovery}</p>
+      {(labelsUnavailable || (targetLotStatusCode?.trim() ?? '') === '') && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning" title={t.factsUnavailable} />
+        </div>
+      )}
+      <section className="suspicious-material-hold-impact" aria-label={t.impact}>
+        <h3 className="suspicious-material-hold-subtitle">{t.impact}</h3>
+        <p className="suspicious-material-hold-impact-lead">{t.impactCount(selection.length)}</p>
+        <ul>
+          {selection.map((lot) => (
+            <li key={lot.lotId}>
+              <strong>{lot.lotNo}</strong>
+              <span>
+                {lot.onHandQty === undefined ? t.quantityUnknown : String(lot.onHandQty)}{' '}
+                {lot.uomLabel ?? t.uomUnknown} · {lot.locationLabel ?? t.locationUnknown}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="field-note">{t.recovery}</p>
       </section>
     </section>
   );

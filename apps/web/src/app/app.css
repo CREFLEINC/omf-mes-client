@@ -1843,6 +1843,209 @@ main > * + * {
   }
 }
 
+/* 의심자재 등록 — 후보 선택, 보류 입력, 실행 확인의 세 단계를 독립된 카드로 읽게 한다. */
+.suspicious-material-hold-workspace {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.suspicious-material-hold-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.suspicious-material-hold-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.suspicious-material-hold-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.suspicious-material-hold-filter > *,
+.suspicious-material-hold-filter .field-cell {
+  min-width: 0;
+}
+
+.suspicious-material-hold-filter .field-cell {
+  align-items: stretch;
+}
+
+.suspicious-material-hold-filter-footer,
+.suspicious-material-hold-list-footer,
+.suspicious-material-hold-action-row {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.suspicious-material-hold-selection {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font: var(--type-label-lg);
+  letter-spacing: var(--type-label-lg-tracking);
+}
+
+.suspicious-material-hold-filter-actions,
+.suspicious-material-hold-list-footer > .form-actions {
+  justify-content: flex-end;
+  margin: 0 0 0 auto;
+}
+
+.suspicious-material-hold-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.suspicious-material-hold-table table {
+  min-width: 64rem;
+}
+
+.suspicious-material-hold-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.suspicious-material-hold-status-cell > time {
+  color: var(--on-surface-muted);
+  white-space: nowrap;
+}
+
+.suspicious-material-hold-list-footer > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+.suspicious-material-hold-range,
+.suspicious-material-hold-impact {
+  display: grid;
+  align-content: start;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.suspicious-material-hold-range > .field-note,
+.suspicious-material-hold-impact > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+.suspicious-material-hold-input-grid {
+  margin: 0;
+}
+
+.suspicious-material-hold-input-grid > :last-child {
+  grid-column: 1 / -1;
+}
+
+.suspicious-material-hold-pane > .banner-slot {
+  margin-bottom: 0;
+}
+
+.suspicious-material-hold-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.suspicious-material-hold-impact-lead {
+  margin: 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.suspicious-material-hold-impact > ul {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.suspicious-material-hold-impact li {
+  display: grid;
+  grid-template-columns: minmax(8rem, auto) minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.suspicious-material-hold-impact li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.suspicious-material-hold-action-pane {
+  padding-block: var(--space-4);
+}
+
+.suspicious-material-hold-action-row > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+.suspicious-material-hold-action-row > button {
+  margin-left: auto;
+}
+
+@media (max-width: 720px) {
+  .suspicious-material-hold-filter-footer,
+  .suspicious-material-hold-list-footer,
+  .suspicious-material-hold-action-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .suspicious-material-hold-filter-actions,
+  .suspicious-material-hold-list-footer > .form-actions,
+  .suspicious-material-hold-action-row > button {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+
+  .suspicious-material-hold-list-footer > .field-note,
+  .suspicious-material-hold-action-row > .field-note {
+    flex: initial;
+  }
+
+  .suspicious-material-hold-impact li {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
