@@ -9,6 +9,7 @@ import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
+import { WorkStartScreen } from '../screens/work-start/screen';
 
 /**
  * POP(현장 단말) 화면의 라우트 표.
@@ -126,5 +127,19 @@ export const popRoutes: RouteObject[] = [
    * 「단말이 확인되지 않았습니다」로 발행이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
    */
   { path: '/pop/tag-issue', element: <IdentificationTagIssueScreen /> },
+  /*
+   * P-02-01 — **POP 태스크의 시작점이다.** 사번을 받고 이 설비에 배포된 작업지시를 골라
+   * 세션을 연다. 다른 POP 화면(`/pop/material-input` 등)이 그 세션 위에서 돈다.
+   *
+   * ⛔ **사이드바에 올리지 않는다.** 관리웹 사용자가 메뉴로 찾아가는 곳이 아니라 설비에
+   * 붙은 단말이 고정으로 띄우는 화면이다.
+   *
+   * ⚠ **진입 컨텍스트를 주소로 받지 않는다** — 단말·공정·사번은 셸이 채우고
+   * (`patterns/pop-identity`), 「이 설비」는 그 단말 번호로 서버에 물어 얻는다
+   * (`GET /mdm/terminals/{terminalId}` 의 `equipmentId`). 그 자리가 아직 비어 있어
+   * 이 화면은 「이 단말을 확인하지 못했습니다」로 막힌 채 뜬다 — 모르는 것을 통과로
+   * 처리하지 않는다(F-6). `P-CO-01`과 단말 토큰이 서면 그때 채워진다.
+   */
+  { path: '/pop/work-start', element: <WorkStartScreen /> },
   { path: '/pop/rework-results', element: <ReworkResultRegisterScreen /> },
 ];
