@@ -2820,6 +2820,104 @@ main > * + * {
   }
 }
 
+/* 툴/금형/지그 마스터 — 조회 조건, 즉시 조건, 목록 액션의 층을 분리한다. */
+.tool-master-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.tool-master-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.tool-master-filter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.tool-master-filter > *,
+.tool-master-filter .field-cell {
+  min-width: 0;
+}
+
+.tool-master-filter .field-cell {
+  align-items: stretch;
+}
+
+.tool-master-filter-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.tool-master-filter-footer > .check-group {
+  flex: 1 1 28rem;
+  flex-flow: row wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.tool-master-filter-footer > .filter-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.filter-bar.tool-master-filter-chips {
+  gap: var(--space-2);
+  margin-bottom: 0;
+}
+
+.tool-master-filter-chips:empty {
+  display: none;
+}
+
+.tool-master-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.tool-master-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .tool-master-filter-footer,
+  .tool-master-filter-footer > .check-group {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tool-master-filter-footer > .check-group {
+    flex: initial;
+  }
+
+  .tool-master-filter-footer > .filter-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
