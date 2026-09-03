@@ -76,7 +76,7 @@ export const FailureFilterBar = ({
 
   return (
     <>
-      <div className="filter-bar">
+      <div className="filter-bar equipment-failure-filter">
         <SelectField
           label={t.filters.equipment}
           options={[{ value: '', label: t.filters.all }, ...equipmentOptions]}
@@ -122,7 +122,7 @@ export const FailureFilterBar = ({
           />
         </div>
 
-        <div className="field-cell field-cell-unlabeled check-group">
+        <div className="field-cell field-cell-unlabeled check-group equipment-failure-filter-options">
           <Checkbox
             checked={filters.openOnly}
             onChange={(event) => {
@@ -141,17 +141,19 @@ export const FailureFilterBar = ({
           </Checkbox>
         </div>
 
-        <div className="filter-actions">
-          <Button
-            onClick={search}
-            disabled={lockReason !== null}
-            aria-describedby={lockReason === null ? undefined : reasonId}
-          >
-            {t.filters.search}
-          </Button>
-          <Button variant="outlined" onClick={onReset}>
-            {t.filters.reset}
-          </Button>
+        <div className="field-cell field-cell-unlabeled equipment-failure-filter-actions">
+          <div className="filter-actions">
+            <Button
+              onClick={search}
+              disabled={lockReason !== null}
+              aria-describedby={lockReason === null ? undefined : reasonId}
+            >
+              {t.filters.search}
+            </Button>
+            <Button variant="outlined" onClick={onReset}>
+              {t.filters.reset}
+            </Button>
+          </div>
         </div>
       </div>
 
