@@ -8,6 +8,7 @@ import { readOutboxSize, readWorkerDirectory, writeWorkerDirectory } from './pop
 import { useTerminal, useWorkerDirectory, useWorkerLookup } from './queries';
 import { pickExact, verifyWorker, type WorkerResponse } from './verify';
 import { WorkerCard } from './worker-card';
+import { PopDevScreenNav } from '../../patterns/pop-dev-screen-nav';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 
 /**
@@ -279,6 +280,23 @@ export const WorkerAssignmentScreen = () => {
            * 없다 — ⛔ 임의의 화면으로 보내지 않는다. 대상이 서면 이 한 자리를 채운다.
            */
           onGoToWork={() => undefined}
+          /*
+           * ⚠ **개발 서버에서만** 그 자리에 화면 이동 셀렉터를 세운다 — 갈 곳이 없는 동안
+           * POP 화면을 손으로 확인할 경로가 단말 셸에 없기 때문이다(주소창이 없다).
+           *
+           * ⛔ **`DEV`가 아니라 `MODE`로 가른다.** `DEV`는 시험 실행에서도 참이라, 개발용
+           * 대체물이 이 화면의 제품 시험 안으로 들어와 「이동 버튼이 있다」는 §5-8 단언을
+           * 무너뜨린다(실측 — 3건이 깨졌다). 시험은 제품 동작을 봐야 한다.
+           *
+           * ⛔ **조건을 런타임 값으로 바꾸지 않는다.** `MODE`는 빌드 시점에 상수로 치환되어
+           * 배포 번들에서 이 가지째 걷힌다(실측). 런타임 조회로 바꾸면 걷히지 않고 현장
+           * 단말에 개발용 조작이 남는다.
+           */
+          devScreenNav={
+            import.meta.env.MODE === 'development' ? (
+              <PopDevScreenNav disabled={session === null} />
+            ) : undefined
+          }
         />
       </div>
     </div>
