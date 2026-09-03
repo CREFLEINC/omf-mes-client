@@ -2433,6 +2433,212 @@ main > * + * {
   }
 }
 
+/* 처분 판정 처리 — 목록·상세·판정을 하나의 판단 흐름으로 정돈한다. */
+.disposition-workspace {
+  display: grid;
+  grid-template-columns: minmax(32rem, 5fr) minmax(25rem, 4fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.disposition-side,
+.disposition-pane,
+.disposition-list,
+.disposition-detail,
+.disposition-subsection,
+.disposition-decision-form,
+.disposition-history-results {
+  min-width: 0;
+}
+
+.disposition-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.disposition-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.disposition-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.disposition-filter > *,
+.disposition-history-filter > *,
+.disposition-filter .field-cell,
+.disposition-history-filter .field-cell {
+  min-width: 0;
+}
+
+.disposition-filter .field-cell,
+.disposition-history-filter .field-cell {
+  align-items: stretch;
+}
+
+.disposition-filter-actions,
+.disposition-history-filter-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.disposition-list-pane > .banner-slot,
+.disposition-subsection > .banner-slot {
+  margin-bottom: 0;
+}
+
+.disposition-list,
+.disposition-detail,
+.disposition-subsection,
+.disposition-decision-form,
+.disposition-history-results {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.disposition-table {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.disposition-pending-table table {
+  min-width: 58rem;
+}
+
+.disposition-lot-table table {
+  min-width: 30rem;
+}
+
+.disposition-decision-table table,
+.disposition-history-table table {
+  min-width: 44rem;
+}
+
+.disposition-table th {
+  white-space: nowrap;
+}
+
+.disposition-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.disposition-page-nav {
+  align-items: center;
+  margin: 0;
+}
+
+.disposition-page-nav > .field-note {
+  max-width: none;
+  margin-block: 0;
+}
+
+.disposition-detail-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.disposition-detail-facts > .field-cell {
+  min-width: 0;
+}
+
+.disposition-detail-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--on-surface);
+}
+
+.disposition-content-card,
+.disposition-remaining-card {
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container);
+}
+
+.disposition-content-card > p,
+.disposition-remaining-card > .field-note {
+  max-width: none;
+  margin: 0;
+}
+
+.disposition-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.disposition-remaining-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  justify-content: initial;
+  gap: var(--space-2);
+}
+
+.disposition-remaining-card > .field-label,
+.disposition-remaining-card > .field-note {
+  grid-column: 1 / -1;
+}
+
+.disposition-decision-form > .form-actions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.filter-bar.disposition-history-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+@media (min-width: 1500px) {
+  .disposition-workspace {
+    grid-template-columns: minmax(32rem, 5fr) repeat(2, minmax(22rem, 4fr));
+  }
+
+  .disposition-side {
+    display: contents;
+  }
+}
+
+@media (max-width: 1100px) {
+  .disposition-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .filter-bar.disposition-filter,
+  .filter-bar.disposition-history-filter,
+  .disposition-detail-facts {
+    grid-template-columns: 1fr;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
