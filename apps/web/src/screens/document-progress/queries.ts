@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, components, paths } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -32,8 +32,7 @@ import {
  * | 「취소 실행하기」 | ⛔ **취소 실행**(200) — 원장에서 수량을 되돌린다 |
  *
  * ⭐ **유형을 고르기 전에는 아무것도 부르지 않는다.** `documentTypeCode`가 계약의 **필수**
- * 질의값이라 유형 없이 부를 방법 자체가 없고, 유형 값 목록이 확정되지 않은 지금은 어떤 주소로
- * 들어와도 그 상태다 — 조회가 성립하는가는 `filters.ts`의 `toListQuery`가 한 곳에서 판정하고
+ * 질의값이라 유형 없이 부를 방법 자체가 없다. 조회가 성립하는가는 `filters.ts`의 `toListQuery`가 한 곳에서 판정하고
  * (`null`이면 성립하지 않는다) 이 훅은 그 결과를 나른다. 여기서 다시 판정하면 두 자리가 갈린다.
  *
  * ⭐ **상세를 둘 부른다 — 역할이 다르다.** 진행현황 상세는 경과·후속을 주고 **잠금 토큰을 주지
@@ -56,6 +55,10 @@ type Client = ApiClient['client'];
 type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
 export type ApprovalRequestRef = components['schemas']['ApprovalRequestRef'];
 type CancelResultResponse = components['schemas']['CancelResult'];
+type DocumentProgressQuery = NonNullable<
+  paths['/logistics/document-progress']['get']['parameters']['query']
+>;
+type DocumentTypeCode = DocumentProgressQuery['documentTypeCode'];
 
 /**
  * 이 자원의 조회를 덮는 뿌리 키.
@@ -93,7 +96,9 @@ const fetchDocumentProgressList = async (
   query: DocumentProgressListQuery,
 ): Promise<DocumentProgressListResult> => {
   const data = await runRequest(() =>
-    client.GET('/logistics/document-progress', { params: { query } }),
+    client.GET('/logistics/document-progress', {
+      params: { query: query as DocumentProgressQuery },
+    }),
   );
 
   return { items: data.items.map(toDocumentProgressView), page: data.page };
@@ -145,7 +150,7 @@ const fetchDocumentProgressDetail = async (
     client.GET('/logistics/document-progress/{documentTypeCode}/{documentId}', {
       params: {
         path: {
-          documentTypeCode: selection.documentTypeCode,
+          documentTypeCode: selection.documentTypeCode as DocumentTypeCode,
           documentId: selection.documentId,
         },
       },

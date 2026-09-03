@@ -72,7 +72,7 @@ export const issueLog = (
 ) => ({
   documentIssueLogId,
   documentTypeCode: 'DELIVERY_LABEL',
-  target: { targetTypeCode: 'SYN_TARGET_TYPE', targetId, displayName },
+  target: { targetTypeCode: 'LOT', targetId, displayName },
   issueSeq,
   issuedAt: '2026-09-02T04:20:00Z',
   printOutcome: 'PENDING',

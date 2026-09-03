@@ -10,7 +10,7 @@ const t = messages.approvalRoute;
 const renderDialog = (overrides: Partial<ActivationDialogProps> = {}) => {
   const props: ActivationDialogProps = {
     intent: 'deactivate',
-    approvalTypeCode: 'SAMPLE-TYPE-A',
+    approvalTypeCode: 'PURCHASE_ORDER',
     inProgressCount: 3,
     stepCount: 2,
     isSaving: false,
@@ -28,7 +28,7 @@ describe('ActivationDialog — 사용 중지', () => {
   it('무엇이 막히는지를 승인 유형과 함께 말한다', () => {
     renderDialog();
 
-    expect(screen.getByText(t.dialog.deactivateBlocks('SAMPLE-TYPE-A'))).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.deactivateBlocks('PURCHASE_ORDER'))).toBeInTheDocument();
   });
 
   it('진행 중인 요청이 그대로 진행된다는 사실을 건수와 함께 말한다', () => {
@@ -72,7 +72,7 @@ describe('ActivationDialog — 다시 사용', () => {
   it('무엇이 열리는지와 단계 수를 말한다', () => {
     renderDialog({ intent: 'activate' });
 
-    expect(screen.getByText(t.dialog.activateOpens('SAMPLE-TYPE-A'))).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.activateOpens('PURCHASE_ORDER'))).toBeInTheDocument();
     expect(screen.getByText(t.dialog.activateStepCount(2))).toBeInTheDocument();
   });
 
@@ -80,7 +80,7 @@ describe('ActivationDialog — 다시 사용', () => {
   it('끄기의 문장을 내지 않는다', () => {
     renderDialog({ intent: 'activate' });
 
-    expect(screen.queryByText(t.dialog.deactivateBlocks('SAMPLE-TYPE-A'))).not.toBeInTheDocument();
+    expect(screen.queryByText(t.dialog.deactivateBlocks('PURCHASE_ORDER'))).not.toBeInTheDocument();
     expect(screen.queryByText(t.dialog.deactivateInProgress(3))).not.toBeInTheDocument();
   });
 
@@ -110,7 +110,7 @@ describe('ActivationDialog — 창의 경계', () => {
   it('내부 번호를 내지 않는다', () => {
     const { container } = renderDialog();
 
-    expect(screen.getByText(t.dialog.deactivateBlocks('SAMPLE-TYPE-A'))).toBeInTheDocument();
+    expect(screen.getByText(t.dialog.deactivateBlocks('PURCHASE_ORDER'))).toBeInTheDocument();
     expect(container.textContent).not.toContain('9001');
   });
 

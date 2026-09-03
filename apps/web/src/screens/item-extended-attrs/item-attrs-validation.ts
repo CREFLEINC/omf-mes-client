@@ -18,7 +18,7 @@ const NON_NEGATIVE_INTEGER = /^\d+$/;
  * 보이지 않는 칸에 붙인 오류는 어디에도 표시되지 않는다.
  */
 export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
-  'lotControlTypeCode',
+  'lotControlled',
   'serialControlTypeCode',
   'shelfLifeDays',
   'inspectionRequired',
@@ -43,12 +43,6 @@ export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
  */
 export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<string, string> => {
   const errors: Record<string, string> = {};
-
-  if (values.lotControlTypeCode.trim() === '') {
-    errors.lotControlTypeCode = t.required;
-  } else if (values.lotControlTypeCode.trim().length > CODE_MAX) {
-    errors.lotControlTypeCode = t.codeTooLong;
-  }
 
   if (values.serialControlTypeCode.trim() === '') {
     errors.serialControlTypeCode = t.required;

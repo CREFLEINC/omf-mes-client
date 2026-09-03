@@ -68,7 +68,7 @@ export const makeGroup = (
   plantId: 11,
   groupCode,
   groupName: `${groupCode} 그룹`,
-  groupTypeCode: 'PENDING',
+  groupTypeCode: 'LINE',
   parentGroupId: null,
   isActive: true,
   ...overrides,

@@ -23,7 +23,7 @@ describe('PLACEHOLDER_DOCUMENT_STATUS_CODES', () => {
    */
   it('상태 선택지가 비어 있어도 목록 조회를 막지 않는다', () => {
     const filters: ProgressFilters = {
-      documentType: 'SYN_DOC_TYPE_A',
+      documentType: 'PURCHASE_ORDER',
       status: '',
       from: '',
       to: '',
@@ -65,11 +65,10 @@ describe('codeNote', () => {
     expect(codeNote(toStatusOptions(['SYN_STATUS_A']))).toBeUndefined();
   });
 
-  /* 유형 표도 같은 안내를 쓴다 — 두 자리가 갈리면 한쪽만 「준비 중」이 남는다. */
-  it('유형 자리표시가 비어 있을 때도 같은 안내를 낸다', () => {
+  it('고정 유형 선택지에는 준비 중 안내를 붙이지 않는다', () => {
     expect(
       codeNote(DOCUMENT_TYPES.map((entry) => ({ value: entry.code, label: entry.label }))),
-    ).toBe(messages.pendingCode.note);
+    ).toBeUndefined();
   });
 });
 

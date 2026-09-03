@@ -73,7 +73,7 @@ export const toInspectionListQuery = (
 export const toDefectDistributionQuery = (
   filters: InspectionInsightFilters,
   groupBy: DistributionGroup,
-  sourceAxisCode: string,
+  sourceCode: string,
 ): DefectDistributionQuery | null => {
   if (!hasValidPeriod(filters)) return null;
   const query: DefectDistributionQuery = {
@@ -83,6 +83,6 @@ export const toDefectDistributionQuery = (
   };
   const itemId = toIdentifier(filters.itemId);
   if (itemId !== undefined) query.itemId = itemId;
-  if (sourceAxisCode !== '') query.sourceAxisCode = sourceAxisCode;
+  if (sourceCode !== '') query.sourceCode = sourceCode;
   return query;
 };

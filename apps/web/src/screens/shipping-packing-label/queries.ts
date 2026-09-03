@@ -173,9 +173,8 @@ export const useHandlingUnits = (
 /**
  * 대상들의 발행 현황 — 목록의 「최근 발행 · 회차」 칸과 재발행 판정의 입력이다.
  *
- * ⚠ **`targetTypeCode` 가 필수 질의인데 그 값이 아직 확정되지 않았다**(`codes.ts`). 서버가
- * 가진 문자열과 다르면 **발행한 적 있는 대상도 `issueCount: 0` 으로 돌아온다** — 오류가
- * 아니라 빈 결과라, 화면은 그것을 「처음 발행」으로 읽는다. 그 위험을 화면이 안내로 밝힌다.
+ * `targetTypeCode`는 고정 OpenAPI enum에 맞춰 납품 라벨은 `LOT`, 포장 라벨은
+ * `HANDLING_UNIT`로 `codes.ts`가 한 곳에서 결정한다.
  *
  * ⛔ **대상이 없으면 부르지 않는다.** 빈 배열로 부르면 서버가 400 을 낸다(`targetIds` 필수).
  */
@@ -191,12 +190,13 @@ export const useIssueSummaries = (
     enabled: kind !== null && targetIds.length > 0,
     queryFn: async () => {
       if (kind === null) throw new Error('라벨 종류 없이 발행 현황을 조회하지 않습니다.');
+      const resolvedTargetTypeCode = targetTypeCodeOf(kind);
 
       const data = await runRequest(() =>
         client.GET('/app/document-issues/summary', {
           params: {
             query: {
-              targetTypeCode,
+              targetTypeCode: resolvedTargetTypeCode,
               targetIds: [...targetIds],
               // 한 대상에 라벨과 성적서가 따로 붙을 수 있다 — 이 화면 몫만 센다(계약 명시).
               documentTypeCode: kind,
@@ -294,10 +294,13 @@ export const useIssueHistory = (
     queryFn: async () => {
       if (kind === null || targetId === null)
         throw new Error('대상 없이 이력을 조회하지 않습니다.');
+      const resolvedTargetTypeCode = targetTypeCodeOf(kind);
 
       const data = await runRequest(() =>
         client.GET('/app/document-issues', {
-          params: { query: { targetTypeCode, targetId, documentTypeCode: kind } },
+          params: {
+            query: { targetTypeCode: resolvedTargetTypeCode, targetId, documentTypeCode: kind },
+          },
         }),
       );
 

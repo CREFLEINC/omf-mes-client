@@ -1,9 +1,14 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import type { paths } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import type { RequestListQuery } from './filters';
 import type { ApprovalRequest, ApprovalRequestDetail, PageMeta } from './types';
+
+type ApprovalRequestQuery = NonNullable<
+  paths['/app/approval-requests']['get']['parameters']['query']
+>;
 
 /**
  * 이 화면의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -63,7 +68,12 @@ export const useRequestList = (query: RequestListQuery): UseQueryResult<RequestL
 
   return useQuery({
     queryKey: iqcSkipApprovalKeys.list(query),
-    queryFn: () => runRequest(() => client.GET('/app/approval-requests', { params: { query } })),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/approval-requests', {
+          params: { query: query as ApprovalRequestQuery },
+        }),
+      ),
   });
 };
 

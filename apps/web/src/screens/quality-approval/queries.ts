@@ -1,4 +1,5 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import type { paths } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -14,6 +15,10 @@ import type {
   Uom,
   WorkOrder,
 } from './types';
+
+type ApprovalRequestQuery = NonNullable<
+  paths['/app/approval-requests']['get']['parameters']['query']
+>;
 
 export interface RequestListResponse {
   items: ApprovalRequest[];
@@ -69,7 +74,12 @@ export const useApprovalRequests = (
 
   return useQuery({
     queryKey: qualityApprovalKeys.list(query),
-    queryFn: () => runRequest(() => client.GET('/app/approval-requests', { params: { query } })),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/approval-requests', {
+          params: { query: query as ApprovalRequestQuery },
+        }),
+      ),
   });
 };
 

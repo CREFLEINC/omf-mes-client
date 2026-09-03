@@ -202,7 +202,9 @@ export const toGoodsReceiptRequest = (input: GoodsReceiptInput): GoodsReceiptCre
     plantId: input.inboundReceipt.plantId,
     warehouseId: Number(draft.warehouse),
     receiptDatetime: toOffsetDateTime(draft.receiptDatetime, input.now),
-    sourceDocumentTypeCode: trimmed(draft.codes.sourceDocumentType),
+    sourceDocumentTypeCode: trimmed(
+      draft.codes.sourceDocumentType,
+    ) as GoodsReceiptCreate['sourceDocumentTypeCode'],
     sourceDocumentId: input.inboundReceipt.inboundReceiptId,
     ...optionalText('reasonCode', draft.codes.reason),
     ...optionalText('remarks', draft.remarks),

@@ -187,7 +187,7 @@ const plainRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
   requestsTo(requests, LIST_PATH).filter((request) => !isNarrowed(request));
 
 const ALL_FILTERS_SEARCH =
-  '?from=2026-08-01&to=2026-08-06&type=SAMPLE_TARGET_A&target=9101&event=SAMPLE_EVENT_A&by=9201&corr=SAMPLE-CORR-0001';
+  '?from=2026-08-01&to=2026-08-06&type=APP_USER&target=9101&event=SAMPLE_EVENT_A&by=9201&corr=SAMPLE-CORR-0001';
 
 const currentLocation = (): string => screen.getByTestId('location').textContent ?? '';
 
@@ -326,14 +326,14 @@ describe('MasterChangeScreen — 기간 필수 조회', () => {
    * 공유받은 주소의 조건·쪽이 조용히 사라져, 받은 사람과 보낸 사람이 서로 다른 결과를 본다.
    */
   it('기간을 채워 넣어도 주소에 있던 조건과 쪽이 그대로 남는다', async () => {
-    renderScreen([listRoute()], '?type=SAMPLE_TARGET_A&corr=SAMPLE-CORR-0001&page=3');
+    renderScreen([listRoute()], '?type=APP_USER&corr=SAMPLE-CORR-0001&page=3');
 
     await waitFor(() => {
       expect(currentLocation()).toContain('from=');
     });
 
     const location = currentLocation();
-    expect(location).toContain('type=SAMPLE_TARGET_A');
+    expect(location).toContain('type=APP_USER');
     expect(location).toContain('corr=SAMPLE-CORR-0001');
     expect(location).toContain('page=3');
     expect(location).toContain(`to=${todayText()}`);
@@ -355,12 +355,12 @@ describe('MasterChangeScreen — 조건으로 좁히기', () => {
     await screen.findByText('SAMPLE_EVENT_B');
 
     const listRequest = narrowedRequests(requests).at(-1);
-    expect(listRequest?.url.searchParams.get('targetTypeCode')).toBe('SAMPLE_TARGET_A');
+    expect(listRequest?.url.searchParams.get('targetTypeCode')).toBe('APP_USER');
     expect(listRequest?.url.searchParams.get('targetId')).toBe('9101');
     expect(listRequest?.url.searchParams.get('eventTypeCode')).toBe('SAMPLE_EVENT_A');
     expect(listRequest?.url.searchParams.get('performedBy')).toBe('9201');
     expect(listRequest?.url.searchParams.get('correlationId')).toBe('SAMPLE-CORR-0001');
-    expect(currentLocation()).toContain('type=SAMPLE_TARGET_A');
+    expect(currentLocation()).toContain('type=APP_USER');
   });
 
   it('빈 조건은 요청에 키 자체가 실리지 않는다', async () => {
@@ -426,11 +426,11 @@ describe('MasterChangeScreen — 조건으로 좁히기', () => {
     await user.click(screen.getByRole('button', { name: '수행자 조건 제거' }));
 
     expect(currentLocation()).not.toContain('by=9201');
-    expect(currentLocation()).toContain('type=SAMPLE_TARGET_A');
+    expect(currentLocation()).toContain('type=APP_USER');
 
     const listRequest = narrowedRequests(requests).at(-1);
     expect(listRequest?.url.searchParams.has('performedBy')).toBe(false);
-    expect(listRequest?.url.searchParams.get('targetTypeCode')).toBe('SAMPLE_TARGET_A');
+    expect(listRequest?.url.searchParams.get('targetTypeCode')).toBe('APP_USER');
   });
 
   it('초기화는 기간을 되돌리고 나머지 조건과 쪽을 지운다', async () => {
@@ -494,7 +494,10 @@ describe('MasterChangeScreen — 쪽 이동', () => {
   });
 
   it('결과가 0건이면 양쪽이 다 잠기고 전체 건수만 밝힌다', async () => {
-    renderScreen([listRoute([], { page: 1, size: 50, total: 0 })], '?from=2026-08-01&to=2026-08-06');
+    renderScreen(
+      [listRoute([], { page: 1, size: 50, total: 0 })],
+      '?from=2026-08-01&to=2026-08-06',
+    );
 
     expect(await screen.findByText('전체 0건')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '이전' })).toBeDisabled();
@@ -646,7 +649,7 @@ describe('MasterChangeScreen — 변경 내용 창', () => {
   it('창을 열면 주소에 sel이 붙고 조건·쪽은 그대로다', async () => {
     const { user } = renderScreen(
       [listRoute(auditEventFixtures, { page: 2, size: 50, total: 120 })],
-      `${PERIOD_SEARCH}&type=SAMPLE_TARGET_A&page=2`,
+      `${PERIOD_SEARCH}&type=APP_USER&page=2`,
     );
     await screen.findByText('SAMPLE_EVENT_A');
 
@@ -655,7 +658,7 @@ describe('MasterChangeScreen — 변경 내용 창', () => {
     const location = currentLocation();
     expect(location).toContain('sel=9001');
     expect(location).toContain('page=2');
-    expect(location).toContain('type=SAMPLE_TARGET_A');
+    expect(location).toContain('type=APP_USER');
   });
 
   /* 디자인 시스템 Dialog는 닫혀도 내용이 DOM에 남는다. */
@@ -740,7 +743,7 @@ describe('MasterChangeScreen — 창 수명', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
 
     await user.click(screen.getByLabelText('대상 종류'));
-    await user.click(screen.getByRole('option', { name: 'SAMPLE_TARGET_B' }));
+    await user.click(screen.getByRole('option', { name: 'ROLE' }));
     await user.click(screen.getByRole('button', { name: '조회' }));
 
     expect(currentLocation()).not.toContain('sel=');
@@ -779,7 +782,7 @@ describe('MasterChangeScreen — 창 수명', () => {
     const { user } = renderScreen(
       [filteringListRoute()],
       PERIOD_SEARCH,
-      `${PERIOD_SEARCH.slice(1)}&type=SAMPLE_TARGET_B&sel=9001`,
+      `${PERIOD_SEARCH.slice(1)}&type=ROLE&sel=9001`,
     );
     await screen.findByText('SAMPLE_EVENT_A');
 
@@ -789,7 +792,7 @@ describe('MasterChangeScreen — 창 수명', () => {
       expect(currentLocation()).not.toContain('sel=');
     });
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(currentLocation()).toContain('type=SAMPLE_TARGET_B');
+    expect(currentLocation()).toContain('type=ROLE');
   });
 
   /* 뒤로가기로 sel이 붙은 주소로 되돌아오는 경로다 — 화면 핸들러를 거치지 않는다. */

@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, components, paths } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -25,6 +25,9 @@ import { toResultView, type ResultListResult } from './types';
 type Client = ApiClient['client'];
 type MaintenanceResult = components['schemas']['MaintenanceResult'];
 type MaintenanceResultCreate = components['schemas']['MaintenanceResultCreate'];
+type MaintenanceResultQuery = NonNullable<
+  paths['/maintenance/results']['get']['parameters']['query']
+>;
 
 export interface ResultListQuery {
   maintenanceOrderId?: number;
@@ -41,7 +44,11 @@ export const resultKeys = {
 };
 
 const fetchList = async (client: Client, query: ResultListQuery): Promise<ResultListResult> => {
-  const data = await runRequest(() => client.GET('/maintenance/results', { params: { query } }));
+  const data = await runRequest(() =>
+    client.GET('/maintenance/results', {
+      params: { query: query as MaintenanceResultQuery },
+    }),
+  );
 
   return {
     items: data.items.map(toResultView),

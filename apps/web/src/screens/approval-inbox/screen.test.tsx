@@ -355,7 +355,7 @@ describe('첫 진입', () => {
 
     const table = within(requestTable());
 
-    expect(table.getByText('SAMPLE-TYPE-B')).toBeInTheDocument();
+    expect(table.getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
     expect(table.getAllByText('합성 상신자1').length).toBe(2);
     /* 상신 일시는 **시각까지** 보인다 — 날짜만 그리면 여기서 멈춘다. */
     expect(table.getByText('2026-08-06 14:20')).toBeInTheDocument();
@@ -465,7 +465,7 @@ describe('탭', () => {
    * 축을 바꿨다고 방금 좁힌 범위를 버리면 사용자가 같은 조건을 다시 친다.
    */
   it('탭을 옮겨도 조건은 그대로다', async () => {
-    const { requests, user } = renderScreen(defaultRoutes(), '?q=SYNTH&ty=SAMPLE-TYPE-A');
+    const { requests, user } = renderScreen(defaultRoutes(), '?q=SYNTH&ty=PURCHASE_ORDER');
 
     await waitForList();
     await user.click(tabFor(t.tabs.requested));
@@ -476,7 +476,7 @@ describe('탭', () => {
 
     expect(currentLocation()).toContain('q=SYNTH');
     expect(lastListQuery(requests)?.get('q')).toBe('SYNTH');
-    expect(lastListQuery(requests)?.get('approvalTypeCode')).toBe('SAMPLE-TYPE-A');
+    expect(lastListQuery(requests)?.get('approvalTypeCode')).toBe('PURCHASE_ORDER');
   });
 });
 
@@ -561,14 +561,14 @@ describe('조회 조건', () => {
   it('주소로 들어오면 같은 조건으로 조회한다', async () => {
     const { requests } = renderScreen(
       defaultRoutes(),
-      '?ty=SAMPLE-TYPE-A&st=SAMPLE-STATUS-OPEN&q=SYNTH',
+      '?ty=PURCHASE_ORDER&st=SAMPLE-STATUS-OPEN&q=SYNTH',
     );
 
     await waitForList();
 
     const query = lastListQuery(requests);
 
-    expect(query?.get('approvalTypeCode')).toBe('SAMPLE-TYPE-A');
+    expect(query?.get('approvalTypeCode')).toBe('PURCHASE_ORDER');
     expect(query?.get('statusCode')).toBe('SAMPLE-STATUS-OPEN');
     expect(query?.get('q')).toBe('SYNTH');
   });
@@ -589,7 +589,7 @@ describe('조회 조건', () => {
   });
 
   it('초기화가 조건을 비운다', async () => {
-    const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&ty=SAMPLE-TYPE-A&page=2');
+    const { user } = renderScreen(defaultRoutes(), '?q=SYNTH&ty=PURCHASE_ORDER&page=2');
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
@@ -1021,7 +1021,7 @@ describe('조회만 하는 조작', () => {
     for (const request of requests) expect(request.method).toBe('GET');
   });
 
-  it('선택지가 비어도 조회·탭 전환·쪽 이동이 열려 있다', async () => {
+  it('상태 선택지가 비어도 조회·탭 전환·쪽 이동이 열려 있다', async () => {
     const { requests, user } = renderScreen([
       listRoute(requestFixtures, { total: 120 }),
       countRoute(),
@@ -1030,7 +1030,8 @@ describe('조회만 하는 조작', () => {
 
     await waitForList();
 
-    expect(screen.getAllByText(messages.pendingCode.note).length).toBe(2);
+    // 승인 유형은 고정 OpenAPI enum으로 채워졌고, 상태 공통코드만 아직 대기 중이다.
+    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(1);
 
     await user.click(screen.getByRole('button', { name: t.actions.nextPage }));
 
@@ -1108,7 +1109,7 @@ describe('고른 요청 — 정보·대상·진행', () => {
     const target = screen.getByRole('group', { name: t.panes.target });
 
     expect(within(target).getByText('합성 대상 문서 가')).toBeVisible();
-    expect(target.textContent).not.toContain('SAMPLE-TARGET-A');
+    expect(target.textContent).not.toContain('PURCHASE_ORDER');
     expect(within(target).getByText(t.target.note)).toBeVisible();
   });
 
@@ -1214,7 +1215,7 @@ describe('고른 요청 — 순차 판정은 서버 값이다', () => {
 
     const progress = screen.getByRole('group', { name: t.panes.progress });
 
-    expect(within(progress).getByText('SAMPLE-DECISION-APPROVED')).toBeVisible();
+    expect(within(progress).getByText('APPROVED')).toBeVisible();
     expect(within(progress).getByText('2026-08-06 15:02')).toBeVisible();
     expect(within(progress).getByText('합성 결재 의견 하나')).toBeVisible();
   });

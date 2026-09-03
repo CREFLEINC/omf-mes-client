@@ -68,9 +68,8 @@ describe('이긴 축', () => {
     expect(matchedScopeText(effectiveResponse({ matchedScopeCode: 'ALL' }))).toBe('전체');
   });
 
-  /** ⛔ 모르는 값에 이름을 지어내지 않는다(G-9). */
-  it('모르는 값은 그대로 둔다', () => {
-    expect(matchedScopeText(effectiveResponse({ matchedScopeCode: 'ZONE' }))).toBe('ZONE');
+  it('공정 범위를 사람 말로 옮긴다', () => {
+    expect(matchedScopeText(effectiveResponse({ matchedScopeCode: 'PROCESS' }))).toBe('공정');
   });
 
   it('맞지 않았으면 없음이다', () => {

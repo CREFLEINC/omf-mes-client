@@ -65,7 +65,7 @@ export const DELIVERY_TARGET_TYPE_CODE = 'LOT';
 export const PACKING_TARGET_TYPE_CODE = 'HANDLING_UNIT';
 
 /** 라벨 종류가 대상 유형을 정한다 — 화면이 둘을 따로 고르게 하지 않는다(스펙 §5-2 ①안). */
-export const targetTypeCodeOf = (kind: LabelKind): string =>
+export const targetTypeCodeOf = (kind: LabelKind): DocumentTargetTypeCode =>
   kind === DELIVERY_LABEL ? DELIVERY_TARGET_TYPE_CODE : PACKING_TARGET_TYPE_CODE;
 
 /**
@@ -77,3 +77,6 @@ export const REISSUE_REASON_CODE_GROUP = 'REISSUE_REASON';
 
 /** 라벨은 이미지다. 성적서·보고서(`pdf`)는 이 화면의 출력물이 아니다. */
 export const RENDITION_FORMAT = 'png';
+import type { components } from '@omf-mes/api-client';
+
+type DocumentTargetTypeCode = components['schemas']['DocumentTarget']['targetTypeCode'];

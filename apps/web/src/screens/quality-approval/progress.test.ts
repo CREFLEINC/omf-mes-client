@@ -10,14 +10,14 @@ const t = messages.qualityApproval;
 const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => ({
   approvalRequestId: 31,
   approvalRequestNo: 'SYNTH-REQ-031',
-  approvalTypeCode: 'SYNTH-TYPE',
+  approvalTypeCode: 'PURCHASE_ORDER',
   requestedBy: 700_001,
   requestedByName: '합성 상신자',
   requestedAt: '2026-08-22T09:30:00+09:00',
   statusCode: 'SYNTH-PENDING',
   reason: '합성 근거',
   target: {
-    targetTypeCode: 'SYNTH-DOCUMENT',
+    targetTypeCode: 'PURCHASE_ORDER',
     targetId: 700_002,
     displayName: '합성 대상',
     openable: false,
@@ -44,7 +44,7 @@ describe('toApprovalProgressView', () => {
       steps: [
         step({
           approverName: ' ',
-          decisionCode: 'SYNTH-UNKNOWN',
+          decisionCode: 'SYNTH-UNKNOWN' as never,
           decisionAt: '2026-08-22T15:02:00+09:00',
           decisionComment: '합성 결재 의견',
           isCurrent: true,
@@ -92,12 +92,12 @@ describe('toApprovalProgressView', () => {
   it('반려 자리표시는 비어 있고 주입한 코드만 rejected로 바꾼다', () => {
     const detail: ApprovalRequestDetail = {
       request: request(),
-      steps: [step({ decisionCode: 'SYNTH-REJECTED' })],
+      steps: [step({ decisionCode: 'REJECTED' })],
     };
 
     expect(REJECTION_DECISION_CODES).toEqual([]);
     expect(toApprovalProgressView(detail).steps[0]?.status).toBe('complete');
-    expect(toApprovalProgressView(detail, ['SYNTH-REJECTED']).steps[0]?.status).toBe('rejected');
+    expect(toApprovalProgressView(detail, ['REJECTED']).steps[0]?.status).toBe('rejected');
   });
 
   it('단계가 없어도 서버의 종료 위치와 차례를 보존한다', () => {

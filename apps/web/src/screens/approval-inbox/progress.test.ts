@@ -7,7 +7,7 @@ import type { ApprovalRequest, ApprovalStep } from './types';
 const t = messages.approvalInbox;
 
 /** 반려로 확정되면 이 배열에 들어올 대역. **지금은 자리표시가 비어 있어 아무 뜻이 없다.** */
-const SYNTHETIC_REJECTION_CODE = 'SAMPLE-DECISION-REJECTED';
+const SYNTHETIC_REJECTION_CODE = 'REJECTED';
 
 const step = (overrides: Partial<ApprovalStep> = {}): ApprovalStep => ({
   stepNo: 1,
@@ -22,14 +22,14 @@ const step = (overrides: Partial<ApprovalStep> = {}): ApprovalStep => ({
 const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => ({
   approvalRequestId: 9001,
   approvalRequestNo: 'SYNTH-REQ-001',
-  approvalTypeCode: 'SAMPLE-TYPE-A',
+  approvalTypeCode: 'PURCHASE_ORDER',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-06T14:20:00+09:00',
   statusCode: 'SAMPLE-STATUS-OPEN',
   reason: '합성 사유',
   target: {
-    targetTypeCode: 'SAMPLE-TARGET-A',
+    targetTypeCode: 'PURCHASE_ORDER',
     targetId: 9401,
     displayName: '합성 대상 문서 가',
     openable: false,
@@ -43,7 +43,7 @@ const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => (
 describe('단계 상태', () => {
   it('결재했으면 완료다', () => {
     const [view] = toStepProgressViews(
-      [step({ decisionCode: 'SAMPLE-DECISION-APPROVED' })],
+      [step({ decisionCode: 'APPROVED' })],
       REJECTION_DECISION_CODES,
     );
 
@@ -66,7 +66,7 @@ describe('단계 상태', () => {
     /* 목 서버가 실제로 이런 응답을 준다(계획 §6.3). 결재된 단계를 「진행 중」으로 그리면
        사용자는 이미 끝난 단계를 기다린다. */
     const [view] = toStepProgressViews(
-      [step({ decisionCode: 'SAMPLE-DECISION-APPROVED', isCurrent: true })],
+      [step({ decisionCode: 'APPROVED', isCurrent: true })],
       REJECTION_DECISION_CODES,
     );
 
@@ -75,7 +75,7 @@ describe('단계 상태', () => {
 
   it('빈 결재 코드는 결재하지 않은 것이다', () => {
     const [empty] = toStepProgressViews(
-      [step({ decisionCode: '', isCurrent: true })],
+      [step({ decisionCode: null, isCurrent: true })],
       REJECTION_DECISION_CODES,
     );
     const [nulled] = toStepProgressViews(
@@ -97,7 +97,7 @@ describe('반려 코드 자리표시', () => {
     const views = toStepProgressViews(
       [
         step({ decisionCode: SYNTHETIC_REJECTION_CODE }),
-        step({ stepNo: 2, decisionCode: 'SAMPLE-DECISION-APPROVED' }),
+        step({ stepNo: 2, decisionCode: 'APPROVED' }),
       ],
       REJECTION_DECISION_CODES,
     );
@@ -112,7 +112,7 @@ describe('반려 코드 자리표시', () => {
     const views = toStepProgressViews(
       [
         step({ decisionCode: SYNTHETIC_REJECTION_CODE }),
-        step({ stepNo: 2, decisionCode: 'SAMPLE-DECISION-APPROVED' }),
+        step({ stepNo: 2, decisionCode: 'APPROVED' }),
       ],
       [SYNTHETIC_REJECTION_CODE],
     );
@@ -130,18 +130,18 @@ describe('반려 코드 자리표시', () => {
 describe('단계 보조 값', () => {
   it('결재 결과 코드를 그대로 나른다 — 화면 낱말로 바꾸지 않는다', () => {
     const [view] = toStepProgressViews(
-      [step({ decisionCode: 'SAMPLE-DECISION-APPROVED' })],
+      [step({ decisionCode: 'APPROVED' })],
       REJECTION_DECISION_CODES,
     );
 
-    expect(view?.decisionCode).toBe('SAMPLE-DECISION-APPROVED');
+    expect(view?.decisionCode).toBe('APPROVED');
   });
 
   it('결재 시각을 저장소 형식으로 낸다', () => {
     const [view] = toStepProgressViews(
       [
         step({
-          decisionCode: 'SAMPLE-DECISION-APPROVED',
+          decisionCode: 'APPROVED',
           decisionAt: '2026-08-06T15:02:00+09:00',
         }),
       ],
@@ -153,7 +153,7 @@ describe('단계 보조 값', () => {
 
   it('결재 시각·의견이 오지 않으면 자리를 만들지 않는다', () => {
     const [view] = toStepProgressViews(
-      [step({ decisionCode: 'SAMPLE-DECISION-APPROVED', decisionAt: null, decisionComment: '' })],
+      [step({ decisionCode: 'APPROVED', decisionAt: null, decisionComment: '' })],
       REJECTION_DECISION_CODES,
     );
 
@@ -163,7 +163,7 @@ describe('단계 보조 값', () => {
 
   it('의견을 그대로 나른다', () => {
     const [view] = toStepProgressViews(
-      [step({ decisionCode: 'SAMPLE-DECISION-APPROVED', decisionComment: '합성 결재 의견' })],
+      [step({ decisionCode: 'APPROVED', decisionComment: '합성 결재 의견' })],
       REJECTION_DECISION_CODES,
     );
 
@@ -180,7 +180,7 @@ describe('단계 보조 값', () => {
 
   it('결재된 단계는 결과 코드가 말하므로 대기 글자를 두지 않는다', () => {
     const [view] = toStepProgressViews(
-      [step({ decisionCode: 'SAMPLE-DECISION-APPROVED' })],
+      [step({ decisionCode: 'APPROVED' })],
       REJECTION_DECISION_CODES,
     );
 
@@ -240,7 +240,7 @@ describe('진행 위치와 차례 — 서버 값을 그대로 쓴다', () => {
     const view = toRequestProgressView(
       {
         request: request({ currentStepNo: 2, totalStepNo: 3 }),
-        steps: [step({ decisionCode: 'SAMPLE-DECISION-APPROVED', isCurrent: true })],
+        steps: [step({ decisionCode: 'APPROVED', isCurrent: true })],
       },
       REJECTION_DECISION_CODES,
     );
@@ -262,7 +262,7 @@ describe('진행 위치와 차례 — 서버 값을 그대로 쓴다', () => {
     const view = toRequestProgressView(
       {
         request: request({ currentStepNo: null, totalStepNo: 2 }),
-        steps: [step({ decisionCode: 'SAMPLE-DECISION-APPROVED' })],
+        steps: [step({ decisionCode: 'APPROVED' })],
       },
       REJECTION_DECISION_CODES,
     );

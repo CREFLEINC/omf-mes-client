@@ -43,7 +43,7 @@ describe('EventTable — 목록 표시', () => {
   it('대상 종류·대상·사건 종류·수행자가 받은 그대로 나온다', () => {
     renderTable({ rows: [auditEvent()] });
 
-    expect(screen.getByText('SAMPLE_TARGET_A')).toBeInTheDocument();
+    expect(screen.getByText('APP_USER')).toBeInTheDocument();
     expect(screen.getByText('9101')).toBeInTheDocument();
     expect(screen.getByText('SAMPLE_EVENT_A')).toBeInTheDocument();
     expect(screen.getByText('9201')).toBeInTheDocument();
@@ -57,7 +57,7 @@ describe('EventTable — 목록 표시', () => {
     renderTable({ rows: [auditEvent({ performedBy: null })] });
 
     expect(screen.getByRole('table')).toHaveTextContent('—');
-    expect(screen.getByText('SAMPLE_TARGET_A')).toBeInTheDocument();
+    expect(screen.getByText('APP_USER')).toBeInTheDocument();
   });
 
   it('발생 시각의 형식이 깨져 있어도 「—」로 내고 행을 버리지 않는다', () => {
@@ -108,7 +108,9 @@ describe('EventTable — 로딩과 빈 상태', () => {
   it('불러오는 중에는 표 대신 진행 표시가 나온다', () => {
     renderTable({ isLoading: true });
 
-    expect(screen.getByRole('status', { name: '변경 이력 목록을 불러오는 중' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('status', { name: '변경 이력 목록을 불러오는 중' }),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 

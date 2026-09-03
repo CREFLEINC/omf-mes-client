@@ -78,8 +78,8 @@ const { DocumentProgressScreen } = await import('./screen');
 const ROUTE = '/logistics/document-progress';
 const LIST_PATH = '/logistics/document-progress';
 
-const SELECTABLE_TYPE = 'SYN_DOC_TYPE_A';
-const DISABLED_TYPE = 'SYN_DOC_TYPE_C';
+const SELECTABLE_TYPE = 'PURCHASE_ORDER';
+const DISABLED_TYPE = 'GOODS_ISSUE';
 
 beforeEach(() => {
   documentTypes.length = 0;
@@ -221,7 +221,7 @@ const detailRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
  * 계약의 취소 경로가 셋뿐이라 덮는 유형 중 일부에 취소가 없는 것이 실제 형태이고, 그 유형에서
  * 취소 축이 서지 않는 것(C3-1)이 이 회차가 재야 할 갈래이기 때문이다.
  */
-const CANCEL_TYPE = 'SYN_DOC_TYPE_B';
+const CANCEL_TYPE = 'GOODS_RECEIPT';
 
 /** 잠금 토큰이 오는 자리 — **진행현황 상세가 아니라 문서 리소스 상세**다(계획 §5-1). */
 const CANCEL_RESOURCE_PATH = '/logistics/goods-receipts/9001';
@@ -1052,7 +1052,7 @@ describe('고른 문서의 상세', () => {
    */
   it('유형을 바꿔 같은 번호를 고르면 그 유형의 상세가 보인다', async () => {
     fillDocumentTypes();
-    const otherType = 'SYN_DOC_TYPE_B';
+    const otherType = 'GOODS_RECEIPT';
     const { user } = renderScreen(
       [
         listRoute(),

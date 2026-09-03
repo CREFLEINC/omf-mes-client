@@ -65,9 +65,10 @@ const printerChipText = (printer: Printer | null, failed: boolean): string => {
  */
 const issueBody = (selected: readonly ReprintTarget[], reasonCode: string): DocumentIssueCreate => {
   const first = selected[0];
+  if (first === undefined) throw new Error('재발행 대상을 고른 뒤에만 본문을 만듭니다.');
 
   return {
-    documentTypeCode: first === undefined ? '' : first.documentTypeCode,
+    documentTypeCode: first.documentTypeCode,
     targets: selected.map((target) => ({
       targetTypeCode: target.targetTypeCode,
       targetId: target.targetId,

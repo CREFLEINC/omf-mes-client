@@ -224,7 +224,9 @@ export const toGoodsIssueRequest = (input: ReturnRequestInput): GoodsIssueCreate
 
   return {
     issueTypeCode: trimmed(draft.codes.issueType),
-    sourceDocumentTypeCode: trimmed(draft.codes.sourceDocumentType),
+    sourceDocumentTypeCode: trimmed(
+      draft.codes.sourceDocumentType,
+    ) as GoodsIssueCreate['sourceDocumentTypeCode'],
     sourceDocumentId: input.receipt.goodsReceiptId,
     sourceWarehouseId: input.receipt.warehouseId,
     destinationTypeCode,

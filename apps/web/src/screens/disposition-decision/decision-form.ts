@@ -117,7 +117,7 @@ export const toDecisionCreateBody = (
   if (hasBlockingError(validateDecisionForm(value))) return undefined;
 
   return {
-    dispositionTypeCode: value.dispositionTypeCode,
+    dispositionTypeCode: value.dispositionTypeCode as DecisionCreateBody['dispositionTypeCode'],
     decisionQty: Number(value.qty.trim()),
     uomId,
     reason: value.reason.trim(),

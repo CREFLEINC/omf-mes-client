@@ -14,7 +14,7 @@ import type { RouteFormValues, RouteView } from './types';
 const [withUnit, allUnits, lowerOnly] = routeViewFixtures as [RouteView, RouteView, RouteView];
 
 const values = (overrides: Partial<RouteFormValues> = {}): RouteFormValues => ({
-  approvalTypeCode: 'SAMPLE-TYPE-A',
+  approvalTypeCode: 'PURCHASE_ORDER',
   businessUnitId: '9101',
   minValue: '100',
   maxValue: '500',
@@ -35,7 +35,7 @@ describe('emptyRouteFormValues', () => {
 describe('routeToFormValues', () => {
   it('서버 값을 그대로 폼 값으로 옮긴다', () => {
     expect(routeToFormValues(withUnit)).toEqual({
-      approvalTypeCode: 'SAMPLE-TYPE-A',
+      approvalTypeCode: 'PURCHASE_ORDER',
       businessUnitId: '9101',
       minValue: '100',
       maxValue: '500',
@@ -44,7 +44,7 @@ describe('routeToFormValues', () => {
 
   it('비어 있는 사업부·값 구간은 빈 칸이 된다', () => {
     expect(routeToFormValues(allUnits)).toEqual({
-      approvalTypeCode: 'SAMPLE-TYPE-A',
+      approvalTypeCode: 'PURCHASE_ORDER',
       businessUnitId: '',
       minValue: '',
       maxValue: '',
@@ -89,7 +89,7 @@ describe('toBusinessUnitId', () => {
 describe('toRouteCreate', () => {
   it('네 필드를 싣는다', () => {
     expect(toRouteCreate(values())).toEqual({
-      approvalTypeCode: 'SAMPLE-TYPE-A',
+      approvalTypeCode: 'PURCHASE_ORDER',
       businessUnitId: 9101,
       minValue: 100,
       maxValue: 500,
@@ -98,14 +98,14 @@ describe('toRouteCreate', () => {
 
   /** 목이 공백만인 유형을 201로 받는다 — 턴 값을 보내는 것이 화면의 방어다. */
   it('승인 유형의 앞뒤 공백을 턴다', () => {
-    expect(toRouteCreate(values({ approvalTypeCode: '  SAMPLE-TYPE-A  ' }))).toMatchObject({
-      approvalTypeCode: 'SAMPLE-TYPE-A',
+    expect(toRouteCreate(values({ approvalTypeCode: '  PURCHASE_ORDER  ' }))).toMatchObject({
+      approvalTypeCode: 'PURCHASE_ORDER',
     });
   });
 
   it('비운 칸은 null로 싣는다', () => {
     expect(toRouteCreate(values({ businessUnitId: '', minValue: '', maxValue: '' }))).toEqual({
-      approvalTypeCode: 'SAMPLE-TYPE-A',
+      approvalTypeCode: 'PURCHASE_ORDER',
       businessUnitId: null,
       minValue: null,
       maxValue: null,

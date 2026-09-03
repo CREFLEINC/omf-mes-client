@@ -8,7 +8,7 @@ import type { ApprovalRequest, ApprovalStep } from './types';
 
 const t = messages.approvalInbox;
 
-const SYNTHETIC_REJECTION_CODE = 'SAMPLE-DECISION-REJECTED';
+const SYNTHETIC_REJECTION_CODE = 'REJECTED';
 
 const step = (overrides: Partial<ApprovalStep> = {}): ApprovalStep => ({
   stepNo: 1,
@@ -22,14 +22,14 @@ const step = (overrides: Partial<ApprovalStep> = {}): ApprovalStep => ({
 const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => ({
   approvalRequestId: 9001,
   approvalRequestNo: 'SYNTH-REQ-001',
-  approvalTypeCode: 'SAMPLE-TYPE-A',
+  approvalTypeCode: 'PURCHASE_ORDER',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-06T14:20:00+09:00',
   statusCode: 'SAMPLE-STATUS-OPEN',
   reason: '합성 사유',
   target: {
-    targetTypeCode: 'SAMPLE-TARGET-A',
+    targetTypeCode: 'PURCHASE_ORDER',
     targetId: 9401,
     displayName: '합성 대상 문서 가',
     openable: false,
@@ -98,7 +98,7 @@ describe('ProgressPane — 배치', () => {
   });
 
   it('끝난 요청은 종료라고 적는다', () => {
-    const pane = renderPane([step({ decisionCode: 'SAMPLE-DECISION-APPROVED' })], {
+    const pane = renderPane([step({ decisionCode: 'APPROVED' })], {
       currentStepNo: null,
       totalStepNo: 2,
     });
@@ -157,13 +157,13 @@ describe('ProgressPane — 단계', () => {
   it('결재 결과 코드를 그대로 낸다 — 화면 낱말로 바꾸지 않는다', () => {
     const pane = renderPane([
       step({
-        decisionCode: 'SAMPLE-DECISION-APPROVED',
+        decisionCode: 'APPROVED',
         decisionAt: '2026-08-06T15:02:00+09:00',
         decisionComment: '합성 결재 의견',
       }),
     ]);
 
-    expect(within(pane).getByText('SAMPLE-DECISION-APPROVED')).toBeVisible();
+    expect(within(pane).getByText('APPROVED')).toBeVisible();
     expect(within(pane).getByText('2026-08-06 15:02')).toBeVisible();
     expect(within(pane).getByText('합성 결재 의견')).toBeVisible();
   });
@@ -178,7 +178,7 @@ describe('ProgressPane — 단계', () => {
   it('보이는 글자가 이름 칸이 아니라 보조 라벨 칸에 선다', () => {
     const pane = renderPane([
       step({
-        decisionCode: 'SAMPLE-DECISION-APPROVED',
+        decisionCode: 'APPROVED',
         decisionAt: '2026-08-06T15:02:00+09:00',
         decisionComment: '합성 결재 의견',
         isMine: true,
@@ -189,12 +189,7 @@ describe('ProgressPane — 단계', () => {
 
     /* 이름 칸은 승인자 이름만 맡는다 — 결과가 여기로 흘러들면 단계 이름이 문장이 된다. */
     expect(label?.textContent).toContain('합성 승인자1');
-    for (const shown of [
-      'SAMPLE-DECISION-APPROVED',
-      '2026-08-06 15:02',
-      '합성 결재 의견',
-      t.progress.mine,
-    ]) {
+    for (const shown of ['APPROVED', '2026-08-06 15:02', '합성 결재 의견', t.progress.mine]) {
       expect(description?.textContent).toContain(shown);
       expect(label?.textContent).not.toContain(shown);
     }
@@ -227,7 +222,7 @@ describe('ProgressPane — 단계', () => {
   });
 
   it('결재된 단계의 노드도 번호다 — 체크 글리프가 승인됨을 함의하지 않는다', () => {
-    const pane = renderPane([step({ stepNo: 1, decisionCode: 'SAMPLE-DECISION-APPROVED' })]);
+    const pane = renderPane([step({ stepNo: 1, decisionCode: 'APPROVED' })]);
 
     /*
      * 기본 글리프가 섰다면 노드 글자가 아이콘 리거처 이름(`check`)이 된다 — 디자인 시스템이
@@ -239,7 +234,7 @@ describe('ProgressPane — 단계', () => {
 
   it('진행 중인 단계에만 현재 표식이 붙는다', () => {
     const pane = renderPane([
-      step({ decisionCode: 'SAMPLE-DECISION-APPROVED' }),
+      step({ decisionCode: 'APPROVED' }),
       step({ stepNo: 2, isCurrent: true }),
       step({ stepNo: 3 }),
     ]);
@@ -254,7 +249,7 @@ describe('ProgressPane — 반려 자리표시', () => {
   it('자리표시가 빈 동안에는 어떤 단계도 반려로 그려지지 않는다', () => {
     const pane = renderPane([
       step({ decisionCode: SYNTHETIC_REJECTION_CODE }),
-      step({ stepNo: 2, decisionCode: 'SAMPLE-DECISION-APPROVED' }),
+      step({ stepNo: 2, decisionCode: 'APPROVED' }),
     ]);
 
     const items = stepItems(pane);
@@ -269,7 +264,7 @@ describe('ProgressPane — 반려 자리표시', () => {
     const pane = renderPane(
       [
         step({ decisionCode: SYNTHETIC_REJECTION_CODE }),
-        step({ stepNo: 2, decisionCode: 'SAMPLE-DECISION-APPROVED' }),
+        step({ stepNo: 2, decisionCode: 'APPROVED' }),
       ],
       {},
       [SYNTHETIC_REJECTION_CODE],

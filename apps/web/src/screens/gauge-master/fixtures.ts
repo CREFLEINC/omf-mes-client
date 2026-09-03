@@ -205,6 +205,7 @@ export const makeCalibration = (
   historyTypeCode: 'REGULAR',
   performedOn,
   resultCode: 'PASS',
+  blocksUse: false,
   ...overrides,
 });
 

@@ -62,6 +62,10 @@ export const createSeed = (now = new Date()) => {
     plantId: PLANT_ID,
     baseUomId: 1001,
     itemTypeCode: item.itemId === 2003 ? 'PRODUCT' : 'MATERIAL',
+    lotControlled: true,
+    serialControlTypeCode: 'NONE',
+    inspectionRequired: item.itemId !== 2003,
+    negativeStockAllowed: false,
     isActive: true,
   }));
 
@@ -219,8 +223,8 @@ export const createSeed = (now = new Date()) => {
       ['SHIPMENT', '출하'],
     ],
     RECEIPT_TYPE: [
-      ['PURCHASE', '구매 입고'],
-      ['PRODUCTION', '제품 입고'],
+      ['MATERIAL', '자재 입고'],
+      ['PRODUCT', '제품 입고'],
       ['RETURN', '반품 입고'],
       ['TRANSFER', '이고 입고'],
     ],

@@ -9,7 +9,7 @@ import { EMPTY_FILTERS } from './filters';
 const baseProps = (): EventFilterBarProps => ({
   appliedPeriod: { from: '2026-08-01', to: '2026-08-07' },
   appliedFilters: EMPTY_FILTERS,
-  targetTypeOptions: ['SAMPLE_TARGET_A', 'SAMPLE_TARGET_B'],
+  targetTypeOptions: ['APP_USER', 'ROLE'],
   eventTypeOptions: ['SAMPLE_EVENT_A'],
   onSearch: vi.fn(),
   onRemoveFilter: vi.fn(),
@@ -36,9 +36,9 @@ describe('EventFilterBar — 조회 기간', () => {
     const { onSearch, user } = renderBar();
 
     /*
-      * **양끝을 모두 적용값과 다른 날로 옮긴다.** 종료를 적용값과 같은 날로 고르면
-      * 컨트롤이 새 종료를 버려도 결과가 같아, 기간의 절반이 무보증으로 남는다.
-      */
+     * **양끝을 모두 적용값과 다른 날로 옮긴다.** 종료를 적용값과 같은 날로 고르면
+     * 컨트롤이 새 종료를 버려도 결과가 같아, 기간의 절반이 무보증으로 남는다.
+     */
     await pickRange(user, screen.getByLabelText('조회 기간'), '2026-07-20', '2026-07-25');
 
     expect(onSearch).not.toHaveBeenCalled();
@@ -110,7 +110,9 @@ describe('EventFilterBar — 조회 기간', () => {
 
     expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-08-01 ~ 2026-08-07');
 
-    rerender(<EventFilterBar {...props} appliedPeriod={{ from: '2026-07-01', to: '2026-07-31' }} />);
+    rerender(
+      <EventFilterBar {...props} appliedPeriod={{ from: '2026-07-01', to: '2026-07-31' }} />,
+    );
 
     expect(screen.getByLabelText('조회 기간')).toHaveTextContent('2026-07-01 ~ 2026-07-31');
   });
@@ -179,7 +181,7 @@ describe('EventFilterBar — 조건 5종', () => {
 
     await user.click(screen.getByLabelText('대상 종류'));
 
-    expect(screen.getByRole('option', { name: 'SAMPLE_TARGET_B' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'ROLE' })).toBeInTheDocument();
   });
 
   /* 두지 않으면 한 번 고른 뒤에 조건을 해제할 방법이 선택칸 안에 없어진다. */
@@ -207,16 +209,16 @@ describe('EventFilterBar — 조건 5종', () => {
 describe('EventFilterBar — 조건 칩', () => {
   it('적용된 조건마다 칩이 하나씩 나온다', () => {
     renderBar({
-      appliedFilters: { ...EMPTY_FILTERS, targetType: 'SAMPLE_TARGET_A', performedBy: '9201' },
+      appliedFilters: { ...EMPTY_FILTERS, targetType: 'APP_USER', performedBy: '9201' },
     });
 
-    expect(screen.getByText('대상 종류: SAMPLE_TARGET_A')).toBeInTheDocument();
+    expect(screen.getByText('대상 종류: APP_USER')).toBeInTheDocument();
     expect(screen.getByText('수행자: 9201')).toBeInTheDocument();
   });
 
   it('×를 누르면 그 조건만 풀린다', async () => {
     const { onRemoveFilter, user } = renderBar({
-      appliedFilters: { ...EMPTY_FILTERS, targetType: 'SAMPLE_TARGET_A', performedBy: '9201' },
+      appliedFilters: { ...EMPTY_FILTERS, targetType: 'APP_USER', performedBy: '9201' },
     });
 
     await user.click(screen.getByRole('button', { name: '수행자 조건 제거' }));

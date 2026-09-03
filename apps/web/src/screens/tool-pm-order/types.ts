@@ -60,7 +60,7 @@ export interface MoldView {
   nextPmDate: string | null;
   pmDue: boolean;
   /** 도래하지 않았으면 `null`. 도래했으면 먼저 도달한 축을 서버가 밝힌다. */
-  pmDueAxisCode: string | null;
+  pmDueAxisCode: Exclude<Mold['pmDueAxisCode'], undefined>;
 }
 
 export interface MoldListResult {

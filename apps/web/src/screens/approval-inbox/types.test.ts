@@ -16,14 +16,14 @@ const t = messages.approvalInbox;
 const baseRequest: ApprovalRequest = {
   approvalRequestId: 9001,
   approvalRequestNo: 'SYNTH-REQ-001',
-  approvalTypeCode: 'SAMPLE-TYPE-A',
+  approvalTypeCode: 'PURCHASE_ORDER',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-06T14:20:00+09:00',
   statusCode: 'SAMPLE-STATUS-A',
   reason: '첫 줄 사유\n둘째 줄은 더 길게 적힌 설명이다',
   target: {
-    targetTypeCode: 'SAMPLE-TARGET',
+    targetTypeCode: 'PURCHASE_ORDER',
     targetId: 9401,
     displayName: '합성 대상 문서 A',
     openable: true,
@@ -86,7 +86,7 @@ describe('toRequestRow', () => {
     expect(row).toEqual({
       approvalRequestId: 9001,
       approvalRequestNo: 'SYNTH-REQ-001',
-      approvalTypeCode: 'SAMPLE-TYPE-A',
+      approvalTypeCode: 'PURCHASE_ORDER',
       requesterName: '합성 상신자1',
       requestedAtText: '2026-08-06 14:20',
       statusCode: 'SAMPLE-STATUS-A',
@@ -106,7 +106,7 @@ describe('toRequestRow', () => {
     const keys = Object.keys(row);
 
     /* 짝 방향 — 담아야 할 값은 실제로 담긴다. 아무것도 담지 않아도 아래 단언은 통과한다. */
-    expect(row.approvalTypeCode).toBe('SAMPLE-TYPE-A');
+    expect(row.approvalTypeCode).toBe('PURCHASE_ORDER');
     expect(row.reasonFirstLine).toBe('첫 줄 사유');
 
     expect(keys).not.toContain('targetName');
@@ -150,9 +150,9 @@ describe('toRequestRow', () => {
   });
 
   it('유형 코드를 화면 낱말로 바꾸지 않는다', () => {
-    expect(
-      toRequestRow({ ...baseRequest, approvalTypeCode: 'SAMPLE-TYPE-Z' }).approvalTypeCode,
-    ).toBe('SAMPLE-TYPE-Z');
+    expect(toRequestRow({ ...baseRequest, approvalTypeCode: 'IQC_SKIP' }).approvalTypeCode).toBe(
+      'IQC_SKIP',
+    );
   });
 });
 
@@ -188,7 +188,7 @@ describe('toRequestDetailView', () => {
   it('보이는 값 여섯만 담는다', () => {
     expect(toRequestDetailView(baseRequest)).toEqual({
       approvalRequestNo: 'SYNTH-REQ-001',
-      approvalTypeCode: 'SAMPLE-TYPE-A',
+      approvalTypeCode: 'PURCHASE_ORDER',
       requesterName: '합성 상신자1',
       requestedAtText: '2026-08-06 14:20',
       statusCode: 'SAMPLE-STATUS-A',

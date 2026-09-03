@@ -35,7 +35,7 @@ export const MAX_ISSUE_QUANTITY = 1000;
  */
 export const PLACEHOLDER_CODES = {
   /** 출력물 종류 — 인식표(TAG 계열). 값 미확정 */
-  documentType: 'TAG',
+  documentType: 'IDENTIFICATION_TAG',
   /** 발행 대상 유형 — 개체(일련번호)를 가리킨다. 값 미확정 */
   serialTargetType: 'SERIAL_NUMBER',
 } as const;

@@ -72,7 +72,7 @@ export const toGroupUpdate = (
   // 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 코드가 된다.
   ...(codeEditable ? { groupCode: values.groupCode.trim() } : {}),
   groupName: values.groupName.trim(),
-  groupTypeCode: values.groupTypeCode,
+  groupTypeCode: values.groupTypeCode as EquipmentGroupUpdate['groupTypeCode'],
   parentGroupId: textToOptionalId(values.parentGroupId),
 });
 

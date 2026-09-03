@@ -129,7 +129,7 @@ describe('RouteFilterBar — 승인 유형 자리표시', () => {
 
   it('값 목록이 차면 「전체」와 함께 고를 수 있다', async () => {
     const { user } = renderBar({
-      approvalTypeOptions: toApprovalTypeOptions(['SAMPLE-TYPE-A', 'SAMPLE-TYPE-B']),
+      approvalTypeOptions: toApprovalTypeOptions(['PURCHASE_ORDER', 'INVENTORY_ADJUSTMENT']),
     });
 
     expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
@@ -137,7 +137,7 @@ describe('RouteFilterBar — 승인 유형 자리표시', () => {
     await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
 
     expect(screen.getByRole('option', { name: t.filters.all })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'SAMPLE-TYPE-A' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'PURCHASE_ORDER' })).toBeInTheDocument();
   });
 
   it('고를 것이 없는 칸에는 「전체」도 붙이지 않는다', async () => {
@@ -168,14 +168,14 @@ describe('RouteFilterBar — 조건 칩', () => {
   it('걸린 조건마다 칩 하나를 낸다', () => {
     renderBar({
       appliedFilters: {
-        approvalTypeCode: 'SAMPLE-TYPE-A',
+        approvalTypeCode: 'PURCHASE_ORDER',
         businessUnitId: '9101',
         includeInactive: true,
         q: 'SAMPLE',
       },
     });
 
-    expect(screen.getByText(t.filters.chipApprovalType('SAMPLE-TYPE-A'))).toBeInTheDocument();
+    expect(screen.getByText(t.filters.chipApprovalType('PURCHASE_ORDER'))).toBeInTheDocument();
     expect(screen.getByText(t.filters.chipBusinessUnit(BUSINESS_UNIT_LABEL))).toBeInTheDocument();
     expect(screen.getByText(t.filters.chipKeyword('SAMPLE'))).toBeInTheDocument();
 

@@ -142,7 +142,7 @@ describe('TransactionPane — 열 구성', () => {
 
     const body = table().textContent ?? '';
 
-    expect(body).toContain('SAMPLE_SRC_T_A');
+    expect(body).toContain('INVENTORY_ADJUSTMENT');
     /* 픽스처의 번호 대역(9900대)이 표 어디에도 나오지 않는다. */
     expect(body).not.toContain('9901');
     expect(body).not.toContain('9902');

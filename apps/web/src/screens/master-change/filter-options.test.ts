@@ -23,21 +23,21 @@ describe('자리표시 상수', () => {
 describe('distinctValues', () => {
   it('중복을 접고 오름차순으로 낸다', () => {
     const rows = [
-      auditEvent({ targetTypeCode: 'SAMPLE_TARGET_B' }),
-      auditEvent({ targetTypeCode: 'SAMPLE_TARGET_A' }),
-      auditEvent({ targetTypeCode: 'SAMPLE_TARGET_B' }),
+      auditEvent({ targetTypeCode: 'ROLE' }),
+      auditEvent({ targetTypeCode: 'APP_USER' }),
+      auditEvent({ targetTypeCode: 'ROLE' }),
     ];
 
-    expect(distinctValues(rows, (row) => row.targetTypeCode)).toEqual([
-      'SAMPLE_TARGET_A',
-      'SAMPLE_TARGET_B',
-    ]);
+    expect(distinctValues(rows, (row) => row.targetTypeCode)).toEqual(['APP_USER', 'ROLE']);
   });
 
   it('빈 값은 선택지가 되지 않는다', () => {
-    const rows = [auditEvent({ targetTypeCode: '' }), auditEvent({ targetTypeCode: 'SAMPLE_X' })];
+    const rows = [
+      auditEvent({ targetTypeCode: '' as never }),
+      auditEvent({ targetTypeCode: 'ITEM' }),
+    ];
 
-    expect(distinctValues(rows, (row) => row.targetTypeCode)).toEqual(['SAMPLE_X']);
+    expect(distinctValues(rows, (row) => row.targetTypeCode)).toEqual(['ITEM']);
   });
 });
 

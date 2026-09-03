@@ -193,10 +193,7 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
    * (목 실측), 그때 「진행 중」으로 그리면 사용자가 이미 끝난 단계를 기다린다.
    */
   it('결재 기록이 있으면 차례 표시보다 그것이 앞선다', () => {
-    const views = toStepProgressViews(
-      [step({ decisionCode: 'SAMPLE_DECISION_A', isCurrent: true })],
-      [],
-    );
+    const views = toStepProgressViews([step({ decisionCode: 'APPROVED', isCurrent: true })], []);
 
     expect(views[0]?.status).toBe('complete');
   });
@@ -218,15 +215,15 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
   });
 
   it('결재 결과 코드를 그대로 낸다', () => {
-    const views = toStepProgressViews([step({ decisionCode: 'SAMPLE_DECISION_A' })], []);
+    const views = toStepProgressViews([step({ decisionCode: 'APPROVED' })], []);
 
-    expect(views[0]?.decisionCode).toBe('SAMPLE_DECISION_A');
+    expect(views[0]?.decisionCode).toBe('APPROVED');
   });
 
   /* 계약이 선택으로 둔 값은 널·없음·빈 문자열이 모두 「없음」이다. */
   it('빈 문자열로 온 값은 없음으로 읽는다', () => {
     const views = toStepProgressViews(
-      [step({ decisionCode: '', decisionAt: '', decisionComment: '' })],
+      [step({ decisionCode: null, decisionAt: '', decisionComment: '' })],
       [],
     );
 
@@ -261,7 +258,7 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
       t.progress.waitingPending,
     );
     expect(
-      toStepProgressViews([step({ decisionCode: 'SAMPLE_DECISION_A' })], [])[0]?.waitingText,
+      toStepProgressViews([step({ decisionCode: 'APPROVED' })], [])[0]?.waitingText,
     ).toBeNull();
   });
 
@@ -283,7 +280,7 @@ describe('toRequestProgressView — 구획이 그리는 것 전부', () => {
 
   it('요청번호·유형·상태를 서버 값 그대로 낸다', () => {
     expect(view.requestNo).toBe('AP-2026-800001');
-    expect(view.approvalTypeCode).toBe('SAMPLE_AP_TYPE_A');
+    expect(view.approvalTypeCode).toBe('GOODS_ISSUE_DISPOSAL');
     expect(view.statusCode).toBe('SAMPLE_AP_STATUS_A');
   });
 

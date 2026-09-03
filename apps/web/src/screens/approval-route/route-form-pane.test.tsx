@@ -44,7 +44,7 @@ describe('RouteFormPane — 읽기 표기', () => {
   it('승인 유형·사용 여부·단계 수를 낸다', () => {
     renderPane();
 
-    expect(screen.getByText('SAMPLE-TYPE-A')).toBeInTheDocument();
+    expect(screen.getByText('PURCHASE_ORDER')).toBeInTheDocument();
     expect(screen.getByText(t.values.active)).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
   });
@@ -73,7 +73,7 @@ describe('RouteFormPane — 읽기 표기', () => {
     const { container } = renderPane();
 
     // 선행 단언 — 값이 실제로 그려져야 「번호가 없다」가 뜻을 갖는다.
-    expect(screen.getByText('SAMPLE-TYPE-A')).toBeInTheDocument();
+    expect(screen.getByText('PURCHASE_ORDER')).toBeInTheDocument();
     expect(container.textContent).not.toContain('9001');
     expect(container.textContent).not.toContain('9101');
   });
@@ -215,7 +215,7 @@ describe('RouteFormPane — 등록 폼', () => {
   it('선택지가 차면 안내가 사라진다', () => {
     renderPane({
       ...createProps,
-      approvalTypeOptions: [{ value: 'SAMPLE-TYPE-A', label: 'SAMPLE-TYPE-A' }],
+      approvalTypeOptions: [{ value: 'PURCHASE_ORDER', label: 'PURCHASE_ORDER' }],
     });
 
     expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();

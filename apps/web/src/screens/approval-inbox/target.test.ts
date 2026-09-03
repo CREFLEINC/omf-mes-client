@@ -10,7 +10,7 @@ const t = messages.approvalInbox;
 /** 대상 하나. **네 갈래를 만드는 축은 `openable`·`screenId`·매핑표 셋뿐이다.** */
 const target = (openable: boolean, screenId?: string, displayName = '합성 대상 문서 가') => {
   const made: ApprovalTarget = {
-    targetTypeCode: 'SAMPLE-TARGET-A',
+    targetTypeCode: 'PURCHASE_ORDER',
     targetId: 9401,
     displayName,
     openable,
@@ -112,6 +112,6 @@ describe('대상 이름', () => {
   });
 
   it('대상 유형 코드는 이름에 섞이지 않는다 — 유형으로 이름을 지어내지 않는다', () => {
-    expect(describeTargetName(target(true, 'W-99-99'))).not.toContain('SAMPLE-TARGET-A');
+    expect(describeTargetName(target(true, 'W-99-99'))).not.toContain('PURCHASE_ORDER');
   });
 });

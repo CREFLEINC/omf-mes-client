@@ -120,7 +120,12 @@ describe('toDashboardView', () => {
     const view = toDashboardView(
       summary({
         cards: [
-          { cardCode: 'SAMPLE_A', label: '합성 지표 가', value: 12, valueStatusCode: 'AVAILABLE' },
+          {
+            cardCode: 'PRODUCTION_QTY',
+            label: '합성 지표 가',
+            value: 12,
+            valueStatusCode: 'AVAILABLE',
+          },
         ],
       }),
     );

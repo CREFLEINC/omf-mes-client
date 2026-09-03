@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, components, paths } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -9,6 +9,9 @@ import type { IntegrationMessageRow, MessageDetailView, MessageListResult } from
 
 /** 계약의 상세 응답 — **전문을 담고 있다.** 화면 타입으로 옮기는 것은 `toDetailView` 하나뿐이다. */
 type IntegrationMessageDetailResponse = components['schemas']['IntegrationMessageDetail'];
+type IntegrationMessageQuery = NonNullable<
+  paths['/integration/messages']['get']['parameters']['query']
+>;
 
 /**
  * 이 화면의 읽기. 경로 리터럴은 여기와 `requests.ts`(쓰기)에만 둔다 —
@@ -38,7 +41,11 @@ export const messageKeys = {
 };
 
 const fetchMessageList = (client: Client, query: MessageListQuery): Promise<MessageListResult> =>
-  runRequest(() => client.GET('/integration/messages', { params: { query } }));
+  runRequest(() =>
+    client.GET('/integration/messages', {
+      params: { query: query as IntegrationMessageQuery },
+    }),
+  );
 
 /**
  * 연계 메시지 목록.

@@ -68,11 +68,11 @@ export const TARGET_TYPE_CODES = {
 export interface ReprintTarget {
   /** 화면 안에서만 쓰는 줄 식별자. 유형이 섞이므로 `targetId` 만으로는 유일하지 않다 */
   rowId: string;
-  targetTypeCode: string;
+  targetTypeCode: DocumentIssueCreate['targets'][number]['targetTypeCode'];
   targetId: number;
   /** 소속 LOT. 대상이 LOT 자신이면 `targetId` 와 같다 */
   lotId: number;
-  documentTypeCode: string;
+  documentTypeCode: DocumentIssueCreate['documentTypeCode'];
   /** 화면에 그대로 쓰는 표시명 */
   displayName: string;
   /** 포장에 든 수량. 개체 대상의 「범위」를 말할 때 쓴다 */

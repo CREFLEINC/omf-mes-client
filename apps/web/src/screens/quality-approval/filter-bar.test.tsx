@@ -41,7 +41,7 @@ describe('FilterBar draft lifetime', () => {
 
   it('선택·기간·검색어 draft를 Enter로 함께 적용한다', async () => {
     const { props, user } = renderBar({
-      typeOptions: [{ value: 'SYNTH-TYPE', label: '합성 유형' }],
+      typeOptions: [{ value: 'PURCHASE_ORDER', label: '합성 유형' }],
       statusOptions: [{ value: 'SYNTH-OPEN', label: '합성 상태' }],
     });
 
@@ -52,7 +52,7 @@ describe('FilterBar draft lifetime', () => {
     await pickRange(user, screen.getByLabelText(t.fields.period), '2026-08-01', '2026-08-22');
     await user.type(requestSearch(), 'SYNTH-REQ{Enter}');
     expect(props.onApply).toHaveBeenCalledWith({
-      approvalTypeCode: 'SYNTH-TYPE',
+      approvalTypeCode: 'PURCHASE_ORDER',
       statusCode: 'SYNTH-OPEN',
       from: '2026-08-01',
       to: '2026-08-22',

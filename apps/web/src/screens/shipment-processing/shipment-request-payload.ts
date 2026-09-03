@@ -21,7 +21,25 @@ export interface ShipmentRequestPayloadInput {
   warehouseId: number | null;
   loadingInfo: LoadingInfoDraft;
   lineDrafts: readonly LineAllocationDraft[];
+  /** 전표를 제출하는 시각. 시험에서는 고정 시각을 주고 화면에서는 현재 시각을 쓴다. */
+  now?: Date;
 }
+
+const pad = (value: number): string => String(value).padStart(2, '0');
+
+const toBusinessDate = (at: Date): string =>
+  `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+
+const toOccurredAt = (at: Date): string => {
+  const offsetMinutes = -at.getTimezoneOffset();
+  const sign = offsetMinutes < 0 ? '-' : '+';
+  const absolute = Math.abs(offsetMinutes);
+  const offset = `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
+
+  return `${toBusinessDate(at)}T${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(
+    at.getSeconds(),
+  )}${offset}`;
+};
 
 const trimmedOrUndefined = (value: string): string | undefined => {
   const trimmed = value.trim();
@@ -53,6 +71,8 @@ export const toShipmentCreatePayload = (
   if (input.lineDrafts.length === 0) return null;
   if (input.lineDrafts.some((line) => lineAllocationIssues(line).length > 0)) return null;
 
+  const now = input.now ?? new Date();
+
   return {
     shipmentRequestId: input.shipmentRequestId,
     warehouseId: input.warehouseId,
@@ -63,6 +83,8 @@ export const toShipmentCreatePayload = (
     loadingWorkerId: idOrUndefined(input.loadingInfo.loadingWorkerId),
     carrierId: idOrUndefined(input.loadingInfo.carrierId),
     expedited: false,
+    businessDate: toBusinessDate(now),
+    occurredAt: toOccurredAt(now),
     lines: input.lineDrafts.map(toLineCreate),
   };
 };

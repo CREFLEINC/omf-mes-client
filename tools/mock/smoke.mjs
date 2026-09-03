@@ -1,10 +1,14 @@
 import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { writeMergedSpec } from '../merge-spec.mjs';
 import { resolveSpecPaths } from './resolve-spec.mjs';
 
 const specPaths = resolveSpecPaths();
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const prismCli = path.join(repoRoot, 'node_modules/@stoplight/prism-cli/dist/index.js');
 // 서빙과 같은 병합본을 검사한다 — 병합이 깨지면 여기서 먼저 드러나야 한다.
 const mergedSpecPath = writeMergedSpec(specPaths);
 const port = process.env.MOCK_PORT ?? '4010';
@@ -29,9 +33,7 @@ const REPRESENTATIVE_PATHS = [
 const spec = JSON.parse(readFileSync(mergedSpecPath, 'utf-8'));
 
 const resolveParameter = (parameter) =>
-  '$ref' in parameter
-    ? spec.components.parameters[parameter.$ref.split('/').at(-1)]
-    : parameter;
+  '$ref' in parameter ? spec.components.parameters[parameter.$ref.split('/').at(-1)] : parameter;
 
 // 필수 쿼리 파라미터를 계약에서 읽어 형식에 맞는 고정값으로 채운다 — 경로별 지식을 하드코딩하지 않는다.
 const sampleValue = (name, schema) => {
@@ -56,9 +58,13 @@ const requiredQueryString = (path) => {
 };
 
 const startPrism = () =>
-  spawn('pnpm', ['exec', 'prism', 'mock', mergedSpecPath, '--host', '127.0.0.1', '--port', port], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  spawn(
+    process.execPath,
+    [prismCli, 'mock', mergedSpecPath, '--host', '127.0.0.1', '--port', port],
+    {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
 
 const waitUntilReady = async (timeoutMs) => {
   const deadline = Date.now() + timeoutMs;

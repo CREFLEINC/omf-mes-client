@@ -63,7 +63,25 @@ export interface SubmissionInput {
   warehouseId: number | null;
   draft: ExpeditedShipmentDraft;
   isSaving: boolean;
+  /** 전표를 제출하는 시각. 시험에서는 고정 시각을 주고 화면에서는 현재 시각을 쓴다. */
+  now?: Date;
 }
+
+const pad = (value: number): string => String(value).padStart(2, '0');
+
+const toBusinessDate = (at: Date): string =>
+  `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+
+const toOccurredAt = (at: Date): string => {
+  const offsetMinutes = -at.getTimezoneOffset();
+  const sign = offsetMinutes < 0 ? '-' : '+';
+  const absolute = Math.abs(offsetMinutes);
+  const offset = `${sign}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
+
+  return `${toBusinessDate(at)}T${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(
+    at.getSeconds(),
+  )}${offset}`;
+};
 
 /** 고른 LOT의 품목과 맞는 라인. 지시를 골랐어도 맞는 라인이 없으면 낼 수 없다. */
 export const targetLineOf = (input: SubmissionInput): ShipmentRequestTargetLine | null =>
@@ -134,6 +152,8 @@ export const toShipmentCreateBody = (input: SubmissionInput): ShipmentCreateBody
   if (input.lot === null || input.target === null || line === null) return null;
   if (qty === undefined || input.warehouseId === null) return null;
 
+  const now = input.now ?? new Date();
+
   const lineCreate: ShipmentLineCreate = {
     shipmentRequestLineId: line.shipmentRequestLineId,
     shippedQty: qty,
@@ -155,6 +175,8 @@ export const toShipmentCreateBody = (input: SubmissionInput): ShipmentCreateBody
       : { sealNo: input.draft.loading.sealNo.trim() }),
     expedited: true,
     expediteReason: input.draft.reason.trim(),
+    businessDate: toBusinessDate(now),
+    occurredAt: toOccurredAt(now),
     lines: [lineCreate],
   };
 };

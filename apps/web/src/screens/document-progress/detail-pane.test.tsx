@@ -29,7 +29,7 @@ describe('DetailPane — 요약', () => {
 
     expect(within(summary).getByText('SYN_STATUS_DETAIL')).toBeInTheDocument();
     expect(within(summary).getByText('SYN-GR-2026-0001')).toBeInTheDocument();
-    expect(within(summary).getByText('SYN_DOC_TYPE_A')).toBeInTheDocument();
+    expect(within(summary).getByText('PURCHASE_ORDER')).toBeInTheDocument();
     expect(within(summary).getByText('2026-08-06')).toBeInTheDocument();
   });
 

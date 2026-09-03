@@ -194,8 +194,8 @@ describe('RequestListPane — 확정된 여섯 열', () => {
     expect(
       screen.getByRole('columnheader', { name: t.fields.approvalTypeCode }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('SAMPLE-TYPE-A').length).toBe(2);
-    expect(screen.getByText('SAMPLE-TYPE-B')).toBeInTheDocument();
+    expect(screen.getAllByText('PURCHASE_ORDER').length).toBe(2);
+    expect(screen.getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
   });
 
   it('대상 표시명을 목록에 내지 않는다 — 대상은 상세 구획 소관이다', () => {
@@ -204,7 +204,7 @@ describe('RequestListPane — 확정된 여섯 열', () => {
 
     /* 선행 단언 — 열이 실제로 서 있어야 「그 값이 없다」가 뜻을 갖는다. */
     expect(screen.getAllByRole('columnheader')).toHaveLength(6);
-    expect(text).toContain('SAMPLE-TYPE-A');
+    expect(text).toContain('PURCHASE_ORDER');
 
     for (const request of requestFixtures) {
       if (request.target.displayName !== '') expect(text).not.toContain(request.target.displayName);

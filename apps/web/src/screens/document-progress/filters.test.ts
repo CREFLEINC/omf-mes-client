@@ -16,7 +16,7 @@ import { documentTypeFixtures } from './fixtures';
 
 const filters = (overrides: Partial<ProgressFilters> = {}): ProgressFilters => ({
   ...DEFAULT_PROGRESS_FILTERS,
-  documentType: 'SYN_DOC_TYPE_A',
+  documentType: 'PURCHASE_ORDER',
   ...overrides,
 });
 
@@ -98,11 +98,11 @@ describe('readFlagFilter', () => {
 describe('readFilters', () => {
   it('주소의 여덟 조건을 그대로 읽는다', () => {
     const params = new URLSearchParams(
-      'ty=SYN_DOC_TYPE_A&st=SYN_STATUS_A&from=2026-08-01&to=2026-08-31&item=9301&lot=9601&wh=9701&conly=1&q=SYN-GR',
+      'ty=PURCHASE_ORDER&st=SYN_STATUS_A&from=2026-08-01&to=2026-08-31&item=9301&lot=9601&wh=9701&conly=1&q=SYN-GR',
     );
 
     expect(readFilters(params)).toEqual({
-      documentType: 'SYN_DOC_TYPE_A',
+      documentType: 'PURCHASE_ORDER',
       status: 'SYN_STATUS_A',
       from: '2026-08-01',
       to: '2026-08-31',
@@ -156,7 +156,7 @@ describe('toSearchParams', () => {
   it('채운 조건만 주소에 적는다', () => {
     const params = toSearchParams(filters({ status: 'SYN_STATUS_A', item: '9301' }), 1);
 
-    expect(params.toString()).toBe('ty=SYN_DOC_TYPE_A&st=SYN_STATUS_A&item=9301');
+    expect(params.toString()).toBe('ty=PURCHASE_ORDER&st=SYN_STATUS_A&item=9301');
   });
 
   /* 기본값을 주소에 적으면 같은 화면의 주소가 두 가지가 된다. */
@@ -185,12 +185,11 @@ describe('toSearchParams', () => {
 });
 
 describe('toListQuery — 조회가 성립하는가', () => {
-  /*
-   * ⭐ **표가 비어 있는 동안에는 어떤 주소로도 질의가 만들어지지 않는다.**
-   * 그것이 「목록 조회를 한 번도 부르지 않는다」의 구현이며, 표를 인자로 받기 때문에 잴 수 있다.
-   */
-  it('유형 표가 비어 있으면 질의를 만들지 않는다', () => {
-    expect(toListQuery(filters(), DOCUMENT_TYPES, 1)).toBeNull();
+  it('고정 유형 표로 질의를 만든다', () => {
+    expect(toListQuery(filters(), DOCUMENT_TYPES, 1)).toEqual({
+      documentTypeCode: 'PURCHASE_ORDER',
+      cancellableOnly: false,
+    });
   });
 
   it('유형을 고르지 않았으면 질의를 만들지 않는다', () => {
@@ -206,14 +205,14 @@ describe('toListQuery — 조회가 성립하는가', () => {
   /* ⛔ 비활성 유형으로는 요청이 나가지 않는다 — 주소를 손으로 고쳐도 마찬가지다. */
   it('고를 수 없는 유형이면 질의를 만들지 않는다', () => {
     expect(
-      toListQuery(filters({ documentType: 'SYN_DOC_TYPE_C' }), documentTypeFixtures, 1),
+      toListQuery(filters({ documentType: 'GOODS_ISSUE' }), documentTypeFixtures, 1),
     ).toBeNull();
   });
 
   /* **표를 채우면 저절로 살아난다** — 다른 자리는 하나도 바뀌지 않는다. */
   it('표를 채우면 같은 조건으로 질의가 만들어진다', () => {
     expect(toListQuery(filters(), documentTypeFixtures, 1)).toEqual({
-      documentTypeCode: 'SYN_DOC_TYPE_A',
+      documentTypeCode: 'PURCHASE_ORDER',
       cancellableOnly: false,
     });
   });
@@ -236,7 +235,7 @@ describe('toListQuery — 조건 옮기기', () => {
     );
 
     expect(query).toEqual({
-      documentTypeCode: 'SYN_DOC_TYPE_A',
+      documentTypeCode: 'PURCHASE_ORDER',
       statusCode: 'SYN_STATUS_A',
       documentDateFrom: '2026-08-01',
       documentDateTo: '2026-08-31',
@@ -277,7 +276,7 @@ describe('toListQuery — 조건 옮기기', () => {
       1,
     );
 
-    expect(query).toEqual({ documentTypeCode: 'SYN_DOC_TYPE_A', cancellableOnly: false });
+    expect(query).toEqual({ documentTypeCode: 'PURCHASE_ORDER', cancellableOnly: false });
   });
 
   /* 번호는 문자열이 아니라 정수로 실린다 — 계약이 정수를 요구한다. */
@@ -290,8 +289,8 @@ describe('toListQuery — 조건 옮기기', () => {
   /* 유형 코드는 **표의 값**을 그대로 싣는다 — 주소의 공백은 다듬고 값은 지어내지 않는다. */
   it('유형 코드를 표에 있는 값 그대로 싣는다', () => {
     expect(
-      toListQuery(filters({ documentType: ' SYN_DOC_TYPE_B ' }), documentTypeFixtures, 1)
+      toListQuery(filters({ documentType: ' GOODS_RECEIPT ' }), documentTypeFixtures, 1)
         ?.documentTypeCode,
-    ).toBe('SYN_DOC_TYPE_B');
+    ).toBe('GOODS_RECEIPT');
   });
 });

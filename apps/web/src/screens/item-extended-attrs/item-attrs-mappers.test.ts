@@ -10,7 +10,7 @@ const inactiveItem = itemFixtures[2]!;
 
 /** 계약이 `ItemUpdate`에 두는 키 아홉. 이 집합에서 하나라도 어긋나면 잡힌다. */
 const UPDATE_KEYS = [
-  'lotControlTypeCode',
+  'lotControlled',
   'serialControlTypeCode',
   'shelfLifeDays',
   'inspectionRequired',
@@ -27,7 +27,7 @@ const ORIGIN_KEYS = ['itemCode', 'itemName', 'itemTypeCode', 'baseUomId', 'itemI
 describe('itemToAttrsFormValues', () => {
   it('계약 표현을 폼 표현으로 옮긴다', () => {
     expect(itemToAttrsFormValues(activeItem)).toEqual<ItemAttrsFormValues>({
-      lotControlTypeCode: 'SYN-LOT-01',
+      lotControlled: true,
       serialControlTypeCode: 'NONE',
       shelfLifeManaged: true,
       shelfLifeDays: '30',
@@ -104,7 +104,7 @@ describe('toItemUpdate — isActive를 되돌려 싣는다 (M03)', () => {
   it('폼을 고쳐도 사용 여부는 조회한 값을 따른다', () => {
     const edited: ItemAttrsFormValues = {
       ...itemToAttrsFormValues(inactiveItem),
-      lotControlTypeCode: 'SYN-LOT-99',
+      lotControlled: false,
     };
 
     expect(toItemUpdate(edited, inactiveItem).isActive).toBe(false);
@@ -158,13 +158,12 @@ describe('toItemUpdate — 널 허용 항목', () => {
   it('코드의 앞뒤 공백을 턴다', () => {
     const values: ItemAttrsFormValues = {
       ...itemToAttrsFormValues(activeItem),
-      lotControlTypeCode: '  SYN-LOT-01  ',
       fifoPolicyCode: ' FEFO ',
       storageConditionCode: '  ',
     };
     const body = toItemUpdate(values, activeItem);
 
-    expect(body.lotControlTypeCode).toBe('SYN-LOT-01');
+    expect(body.lotControlled).toBe(true);
     expect(body.fifoPolicyCode).toBe('FEFO');
     // 공백만 남은 칸은 「지정하지 않음」이다.
     expect(body.storageConditionCode).toBeNull();
@@ -180,7 +179,7 @@ describe('isSameItemAttrsValues', () => {
 
   /* 아홉 필드 중 하나라도 빠뜨리면 「고친 것이 없다」로 읽혀 저장 버튼이 열리지 않는다. */
   it.each([
-    ['lotControlTypeCode', { lotControlTypeCode: 'SYN-LOT-99' }],
+    ['lotControlled', { lotControlled: false }],
     ['serialControlTypeCode', { serialControlTypeCode: 'SYN-SERIAL-99' }],
     ['shelfLifeManaged', { shelfLifeManaged: false }],
     ['shelfLifeDays', { shelfLifeDays: '90' }],
@@ -205,7 +204,7 @@ describe('toItemUpdate — 없는 값을 지어내지 않는다', () => {
       itemName: '합성 품목 I',
       itemTypeCode: 'SYN-TYPE-C',
       baseUomId: 7001,
-      lotControlTypeCode: 'SYN-LOT-09',
+      lotControlled: true,
       serialControlTypeCode: 'NONE',
       inspectionRequired: false,
       fifoPolicyCode: 'FIFO',

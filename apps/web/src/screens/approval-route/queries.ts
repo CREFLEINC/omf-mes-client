@@ -1,9 +1,13 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import type { paths } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { toRouteListQuery } from './filters';
 import type { ApprovalRoute, ApprovalRouteStep, PageMeta, RouteFilters } from './types';
+
+type ApprovalRouteQuery = NonNullable<paths['/app/approval-routes']['get']['parameters']['query']>;
+type ApprovalTypeCode = NonNullable<ApprovalRouteQuery['approvalTypeCode']>;
 
 /**
  * 결재선의 조회와 캐시 키. 무효화 범위를 한 곳에서 읽을 수 있게 모아 둔다.
@@ -72,7 +76,9 @@ export const useRouteList = (
     queryKey: routeKeys.list(filters, page),
     queryFn: () =>
       runRequest(() =>
-        client.GET('/app/approval-routes', { params: { query: toRouteListQuery(filters, page) } }),
+        client.GET('/app/approval-routes', {
+          params: { query: toRouteListQuery(filters, page) as ApprovalRouteQuery },
+        }),
       ),
   });
 };
@@ -160,7 +166,7 @@ export const useDuplicateProbe = (
         client.GET('/app/approval-routes', {
           params: {
             query: {
-              approvalTypeCode,
+              approvalTypeCode: approvalTypeCode as ApprovalTypeCode,
               /* 판정 대상은 **사용 중인** 결재선뿐이다. 계약에 기본값이 없어 늘 명시해 싣는다. */
               activeOnly: true,
               size: DUPLICATE_PROBE_SIZE,

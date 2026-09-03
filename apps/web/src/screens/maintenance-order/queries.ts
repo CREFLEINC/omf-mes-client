@@ -79,7 +79,7 @@ export const useInspectionCandidates = (): UseQueryResult<InspectionCandidateVie
     queryFn: () =>
       runRequest(() =>
         client.GET('/maintenance/inspections', {
-          params: { query: { overallResultCode: 'NG', withoutMaintenanceOrder: true } },
+          params: { query: { overallResultCode: 'FAIL', withoutMaintenanceOrder: true } },
         }),
       ).then((data) => data.items.map(toInspectionCandidate)),
   });

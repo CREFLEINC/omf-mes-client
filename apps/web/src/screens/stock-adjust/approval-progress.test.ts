@@ -240,7 +240,7 @@ describe('toRequestProgressView', () => {
     );
 
     expect(view.requestNo).toBe('SAMPLE-AP-0001');
-    expect(view.approvalTypeCode).toBe('SAMPLE_AT_A');
+    expect(view.approvalTypeCode).toBe('INVENTORY_ADJUSTMENT');
     expect(view.statusCode).toBe('SAMPLE_AP_STATUS_A');
     expect(view.requesterLabel).toBe('합성 상신자 가');
     expect(view.requestedAtText).toBe('2026-08-18 14:35');

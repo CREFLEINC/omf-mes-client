@@ -13,6 +13,7 @@ import {
 import type { ProductionLotCandidate, ShipmentRequestTarget } from './types';
 
 const t = messages.expeditedShipment.lock;
+const NOW = new Date(2026, 7, 11, 14, 20, 30);
 
 const lot: ProductionLotCandidate = {
   lotId: 9001,
@@ -47,6 +48,7 @@ const input = (overrides: Partial<SubmissionInput> = {}): SubmissionInput => ({
   warehouseId: 2001,
   draft: { ...EMPTY_DRAFT, qty: '300', reason: '고객 라인 정지 — 당일 납품 요청' },
   isSaving: false,
+  now: NOW,
   ...overrides,
 });
 
@@ -135,6 +137,8 @@ describe('toShipmentCreateBody', () => {
 
     expect(body?.expedited).toBe(true);
     expect(body?.expediteReason).toBe('고객 라인 정지 — 당일 납품 요청');
+    expect(body?.businessDate).toBe('2026-08-11');
+    expect(body?.occurredAt).toMatch(/^2026-08-11T14:20:30[+-]\d{2}:\d{2}$/);
   });
 
   it('라인 하나에 LOT 배분 하나를 싣는다 — 수량이 셋 다 같다', () => {

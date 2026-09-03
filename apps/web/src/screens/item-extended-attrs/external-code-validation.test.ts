@@ -5,7 +5,7 @@ import { duplicateDraftIds, validateExternalCodeDraft } from './external-code-va
 
 const draftOf = (overrides: Partial<ExternalCodeDraft> = {}): ExternalCodeDraft => ({
   draftId: 'new:1',
-  externalSystemCode: 'SYN-EXT-01',
+  externalSystemCode: 'UNIERP',
   partnerId: '6001',
   externalItemCode: 'SYN-EXT-ITEM-01',
   ...overrides,
@@ -23,34 +23,14 @@ describe('validateExternalCodeDraft — 필수', () => {
     expect(validateExternalCodeDraft(draftOf(patch), [])[field]).toBe('필수 입력 항목입니다.');
   });
 
-  /* 공백만 넣은 코드는 값이 아니다 — 저장하면 눈에 보이지 않는 줄이 남는다. */
-  it('공백만 넣어도 필수 오류다', () => {
-    expect(
-      validateExternalCodeDraft(draftOf({ externalSystemCode: '   ' }), []).externalSystemCode,
-    ).toBe('필수 입력 항목입니다.');
-  });
-
   /* 계약이 널을 허용한다 — 비우면 「(전체)」라는 정상 값이다(A-7). */
   it('거래처는 비워도 된다', () => {
     expect(validateExternalCodeDraft(draftOf({ partnerId: '' }), [])).toEqual({});
   });
 });
 
-/** 계약 `maxLength` — 상한 자체는 허용값이며 그것을 넘을 때만 막는다. */
+/** 계약 `maxLength` — 외부 품목코드의 상한 자체는 허용값이다. */
 describe('validateExternalCodeDraft — 길이', () => {
-  it('외부 시스템 코드가 50자를 넘으면 막는다', () => {
-    expect(
-      validateExternalCodeDraft(draftOf({ externalSystemCode: 'A'.repeat(51) }), [])
-        .externalSystemCode,
-    ).toBe('외부 시스템 코드는 50자를 넘을 수 없습니다.');
-  });
-
-  it('외부 시스템 코드 50자는 허용한다', () => {
-    expect(validateExternalCodeDraft(draftOf({ externalSystemCode: 'A'.repeat(50) }), [])).toEqual(
-      {},
-    );
-  });
-
   it('외부 품목코드가 100자를 넘으면 막는다', () => {
     expect(
       validateExternalCodeDraft(draftOf({ externalItemCode: 'A'.repeat(101) }), [])
@@ -62,13 +42,6 @@ describe('validateExternalCodeDraft — 길이', () => {
     expect(validateExternalCodeDraft(draftOf({ externalItemCode: 'A'.repeat(100) }), [])).toEqual(
       {},
     );
-  });
-
-  /* 본문에서 공백을 떼므로 길이도 뗀 뒤에 세야 한다 — 아니면 정상 값이 막힌다. */
-  it('앞뒤 공백을 뗀 길이로 센다', () => {
-    expect(
-      validateExternalCodeDraft(draftOf({ externalSystemCode: `  ${'A'.repeat(50)}  ` }), []),
-    ).toEqual({});
   });
 });
 

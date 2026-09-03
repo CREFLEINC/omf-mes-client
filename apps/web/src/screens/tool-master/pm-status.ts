@@ -19,7 +19,7 @@ export type PmStatus = 'notRequired' | 'due' | 'beforeDue' | 'unknown';
  */
 export type PmJudgment =
   | { status: Extract<PmStatus, 'notRequired' | 'beforeDue' | 'unknown'>; axis: null }
-  | { status: Extract<PmStatus, 'due'>; axis: string | null };
+  | { status: Extract<PmStatus, 'due'>; axis: NonNullable<Mold['pmDueAxisCode']> | null };
 
 export type PmTarget = Pick<Mold, 'pmTriggerTypeCode' | 'pmDue' | 'pmDueAxisCode'>;
 
@@ -34,7 +34,7 @@ export const judgePm = (tool: PmTarget): PmJudgment => {
   if (tool.pmDue === true) {
     const axis = tool.pmDueAxisCode;
 
-    return { status: 'due', axis: axis === undefined || axis === '' ? null : axis };
+    return { status: 'due', axis: axis ?? null };
   }
 
   if (tool.pmTriggerTypeCode === PM_TRIGGER.none) return { status: 'notRequired', axis: null };

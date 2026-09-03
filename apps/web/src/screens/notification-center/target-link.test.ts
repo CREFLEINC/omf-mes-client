@@ -13,7 +13,7 @@ const viewOf = (overrides: Parameters<typeof notificationFixture>[0] = {}) =>
 /** 화면이 만든 제목 — **푼 이름**이다. 링크 이름이 이것을 쓰는지가 이 파일의 한 축이다. */
 const TITLE = '합성 이벤트 가';
 
-const APPROVAL = { targetTypeCode: 'APPROVAL_REQUEST', targetId: 7201 };
+const APPROVAL = { targetTypeCode: 'APPROVAL_REQUEST', targetId: 7201 } as const;
 
 describe('toTargetLink — 대응표에 있는 유형', () => {
   it('결재 요청은 결재함의 그 건을 가리킨다', () => {
@@ -59,20 +59,22 @@ describe('toTargetLink — 열지 않는 갈래', () => {
    * 첫 화면으로 튕긴다 — 공유계약 A-10 규칙 2가 막으려던 일이 그대로 일어난다.
    */
   it('도착지가 없는 계약 유형에는 링크를 만들지 않는다', () => {
-    for (const targetTypeCode of ['LOT', 'WORK_ORDER', 'NONCONFORMANCE']) {
+    for (const targetTypeCode of ['LOT', 'WORK_ORDER', 'NONCONFORMANCE'] as const) {
       expect(toTargetLink(viewOf({ targetTypeCode, targetId: 7201 }), TITLE)).toBeNull();
     }
   });
 
   it('모르는 코드에도 만들지 않는다', () => {
     expect(
-      toTargetLink(viewOf({ targetTypeCode: 'SYN-UNKNOWN', targetId: 7201 }), TITLE),
+      toTargetLink(viewOf({ targetTypeCode: 'SYN-UNKNOWN' as never, targetId: 7201 }), TITLE),
     ).toBeNull();
   });
 
   /** 목 서버가 실제로 채우는 자리표시 값이다(검증 실측) — 그것으로도 열리면 안 된다. */
   it('목이 채우는 자리표시 값에도 만들지 않는다', () => {
-    expect(toTargetLink(viewOf({ targetTypeCode: 'string', targetId: 7201 }), TITLE)).toBeNull();
+    expect(
+      toTargetLink(viewOf({ targetTypeCode: 'string' as never, targetId: 7201 }), TITLE),
+    ).toBeNull();
   });
 
   /**

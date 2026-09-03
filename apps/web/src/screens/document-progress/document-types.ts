@@ -1,10 +1,13 @@
+import type { paths } from '@omf-mes/api-client';
+
 import type { SelectOption } from './types';
 
+type DocumentTypeCode = NonNullable<
+  paths['/logistics/document-progress']['get']['parameters']['query']
+>['documentTypeCode'];
+
 /**
- * ⭐ **이 화면의 단일 채움 지점.**
- *
- * 문서 유형 값 목록이 확정되지 않았다(omf-mes#64). 그런데 이 화면에서 그 값은 세 가지 일을
- * 한꺼번에 한다.
+ * 고정 OpenAPI가 닫은 문서 유형을 한 표에서 관리한다. 이 값은 세 가지 일을 한꺼번에 한다.
  *
  * | 자리 | 이 값이 하는 일 | 비어 있으면 |
  * | --- | --- | --- |
@@ -13,17 +16,13 @@ import type { SelectOption } from './types';
  * | 고를 수 없는 유형 | 외주 2문서를 비활성하고 사유를 보인다(omf-mes#82) | 비활성할 대상이 없다 |
  * | **취소 리소스** | 취소 요청이 어느 계약 경로로 나가는지 정한다 | **취소 조작이 서지 않는다** |
  *
- * 넷을 따로 두면 서로 어긋날 수 있고, 무엇보다 **채우는 자리가 하나여야** 「값이 오면 화면이
- * 저절로 살아난다」가 참이 된다. 그래서 한 표에 담는다.
+ * 넷을 따로 두면 서로 어긋날 수 있으므로 한 표에 담는다.
  *
  * ⭐ **취소 리소스 열은 계약이 주지 않는 값이다.** 목록·상세의 열쇠는 `documentTypeCode` 하나인데
  * 취소 오퍼레이션은 **리소스별 경로 셋**(`goods-receipts`·`inbound-receipts`·`goods-issues`)에
  * 걸려 있고, 둘을 잇는 값을 계약이 내려주지 않는다(계약 본문 스스로 「유형↔테이블 규약이 아직
  * 없다」고 적었다). 그래서 화면이 그 표를 자리표시로 **소유**한다 — ⛔ 유형 코드에서 리소스를
  * **지어내는 분기**를 만들지 않는다. 그것이 금지된 「유형↔후속 관계표」와 같은 형태다.
- *
- * **값을 지어내지 않는 것이 이 파일의 목적이다.** 계약의 `@example`도 심지 않는다 — 그것은
- * 예시이지 확정이 아니며, 계약 자신이 「값 목록은 공통코드 소관」이라 적었다(공유계약 G-2).
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -38,7 +37,7 @@ export type CancelResource = 'goods-receipts' | 'inbound-receipts' | 'goods-issu
 
 export interface DocumentTypeEntry {
   /** 계약에 실을 코드값 — 목록 질의값·상세 경로 조각으로 그대로 나간다 */
-  code: string;
+  code: DocumentTypeCode;
   /** 화면에 보일 이름. 설계가 코드와 함께 준다 */
   label: string;
   /**
@@ -50,13 +49,48 @@ export interface DocumentTypeEntry {
   disabledReason: string | null;
 }
 
-/**
- * 유형 표 — **비어 있는 것이 지금의 사실이다**(omf-mes#64).
- *
- * 자리표시 값을 하나 넣어 두지 않는다. 넣으면 사용자가 그것으로 조회하는데 서버는 그 유형을
- * 모르고, 계약은 그때 400을 돌려준다.
- */
-export const DOCUMENT_TYPES: readonly DocumentTypeEntry[] = [];
+/** 유형 표 — OpenAPI enum과 같은 9개만 둔다. */
+export const DOCUMENT_TYPES: readonly DocumentTypeEntry[] = [
+  { code: 'PURCHASE_ORDER', label: 'PURCHASE_ORDER', cancelResource: null, disabledReason: null },
+  {
+    code: 'INBOUND_RECEIPT',
+    label: 'INBOUND_RECEIPT',
+    cancelResource: 'inbound-receipts',
+    disabledReason: null,
+  },
+  {
+    code: 'GOODS_RECEIPT',
+    label: 'GOODS_RECEIPT',
+    cancelResource: 'goods-receipts',
+    disabledReason: null,
+  },
+  {
+    code: 'MATERIAL_ISSUE_REQUEST',
+    label: 'MATERIAL_ISSUE_REQUEST',
+    cancelResource: null,
+    disabledReason: null,
+  },
+  { code: 'PICKING_ORDER', label: 'PICKING_ORDER', cancelResource: null, disabledReason: null },
+  { code: 'STOCK_TRANSFER', label: 'STOCK_TRANSFER', cancelResource: null, disabledReason: null },
+  {
+    code: 'SUBCONTRACT_ISSUE',
+    label: 'SUBCONTRACT_ISSUE',
+    cancelResource: null,
+    disabledReason: null,
+  },
+  {
+    code: 'SUBCONTRACT_RECEIPT',
+    label: 'SUBCONTRACT_RECEIPT',
+    cancelResource: null,
+    disabledReason: null,
+  },
+  {
+    code: 'GOODS_ISSUE',
+    label: 'GOODS_ISSUE',
+    cancelResource: 'goods-issues',
+    disabledReason: null,
+  },
+];
 
 /**
  * 값 목록이 아직 오지 않았는가.

@@ -330,7 +330,7 @@ export const toGoodsIssueRequest = (input: DisposalRequestInput): GoodsIssueCrea
 
   return {
     issueTypeCode,
-    sourceDocumentTypeCode,
+    sourceDocumentTypeCode: sourceDocumentTypeCode as GoodsIssueCreate['sourceDocumentTypeCode'],
     sourceDocumentId: input.receipt.goodsReceiptId,
     sourceWarehouseId: input.receipt.warehouseId,
     issuedAt: toOffsetDateTime(issuedLocal, input.now),

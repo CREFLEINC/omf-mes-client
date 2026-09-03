@@ -52,7 +52,6 @@ export const ItemAttrsPane = ({
   onSave,
   onCancel,
 }: ItemAttrsPaneProps) => {
-  const lotId = useId();
   const serialId = useId();
   const shelfLifeDaysId = useId();
   const storageId = useId();
@@ -68,13 +67,10 @@ export const ItemAttrsPane = ({
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
          */}
         <div className="field-cell">
-          <FieldLabel htmlFor={lotId} label={t.attrs.fields.lotControlType} required />
-          <TextField
-            id={lotId}
-            value={values.lotControlTypeCode}
-            onChange={(event) => onChange({ lotControlTypeCode: event.target.value })}
-            error={fieldErrors.lotControlTypeCode}
-            aria-required
+          <Switch
+            label={t.attrs.fields.lotControlled}
+            checked={values.lotControlled}
+            onChange={(event) => onChange({ lotControlled: event.target.checked })}
           />
         </div>
 

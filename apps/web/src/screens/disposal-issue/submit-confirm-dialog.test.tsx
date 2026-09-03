@@ -17,7 +17,7 @@ const SUMMARY: SubmitSummary = {
   goodsReceiptNo: 'GR-2026-900001',
   warehouseName: 'SAMPLE-WH-01 · 합성 폐기창고 가',
   issueTypeCode: 'SAMPLE_GI_TYPE_A',
-  sourceDocumentTypeCode: 'SAMPLE_SRC_TYPE_A',
+  sourceDocumentTypeCode: 'GOODS_RECEIPT',
   reasonCode: 'SAMPLE_GI_REASON_A',
   issuedAt: '2026-08-11 09:30',
   businessDate: '2026-08-11',
@@ -57,7 +57,7 @@ describe('SubmitConfirmDialog 보이는 것', () => {
     expect(within(dialog).getByText('GR-2026-900001')).toBeInTheDocument();
     expect(within(dialog).getByText('SAMPLE-WH-01 · 합성 폐기창고 가')).toBeInTheDocument();
     expect(within(dialog).getByText('SAMPLE_GI_TYPE_A')).toBeInTheDocument();
-    expect(within(dialog).getByText('SAMPLE_SRC_TYPE_A')).toBeInTheDocument();
+    expect(within(dialog).getByText('GOODS_RECEIPT')).toBeInTheDocument();
     expect(within(dialog).getByText('SAMPLE_GI_REASON_A')).toBeInTheDocument();
     expect(within(dialog).getByText('2026-08-11 09:30')).toBeInTheDocument();
   });

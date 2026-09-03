@@ -180,16 +180,52 @@ export const warehouseFixtures = [
  * - 9805 — 상위 번호는 있는데 그 상위가 목록에 없다. 평면으로 남는다
  */
 export const locationFixtures = [
-  { locationId: 9801, warehouseId: 9701, parentLocationId: null, locationCode: 'SAMPLE-LOC-A', locationName: '합성 구역 가' },
-  { locationId: 9802, warehouseId: 9701, parentLocationId: 9801, locationCode: 'SAMPLE-LOC-A1', locationName: '합성 열 가1' },
-  { locationId: 9803, warehouseId: 9701, parentLocationId: 9801, locationCode: 'SAMPLE-LOC-A2', locationName: '합성 열 가2' },
-  { locationId: 9804, warehouseId: 9701, parentLocationId: 9802, locationCode: 'SAMPLE-LOC-A1-1', locationName: '합성 단 가1-1' },
-  { locationId: 9805, warehouseId: 9701, parentLocationId: 9899, locationCode: 'SAMPLE-LOC-Z', locationName: '합성 구역 하' },
+  {
+    locationId: 9801,
+    warehouseId: 9701,
+    parentLocationId: null,
+    locationCode: 'SAMPLE-LOC-A',
+    locationName: '합성 구역 가',
+  },
+  {
+    locationId: 9802,
+    warehouseId: 9701,
+    parentLocationId: 9801,
+    locationCode: 'SAMPLE-LOC-A1',
+    locationName: '합성 열 가1',
+  },
+  {
+    locationId: 9803,
+    warehouseId: 9701,
+    parentLocationId: 9801,
+    locationCode: 'SAMPLE-LOC-A2',
+    locationName: '합성 열 가2',
+  },
+  {
+    locationId: 9804,
+    warehouseId: 9701,
+    parentLocationId: 9802,
+    locationCode: 'SAMPLE-LOC-A1-1',
+    locationName: '합성 단 가1-1',
+  },
+  {
+    locationId: 9805,
+    warehouseId: 9701,
+    parentLocationId: 9899,
+    locationCode: 'SAMPLE-LOC-Z',
+    locationName: '합성 구역 하',
+  },
 ];
 
 /** 9702의 위치. 창고를 바꾸면 **다른 목록이 온다**는 것을 실제 값으로 만든다. */
 export const otherLocationFixtures = [
-  { locationId: 9811, warehouseId: 9702, parentLocationId: null, locationCode: 'SAMPLE-LOC-B', locationName: '합성 구역 나' },
+  {
+    locationId: 9811,
+    warehouseId: 9702,
+    parentLocationId: null,
+    locationCode: 'SAMPLE-LOC-B',
+    locationName: '합성 구역 나',
+  },
 ];
 
 /**
@@ -213,7 +249,7 @@ export const goodsReceiptResponse = (
     warehouseId: 9701,
     receiptDatetime: '2026-08-06T09:12:00+09:00',
     statusCode: 'SAMPLE_GR_STATUS_A',
-    sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+    sourceDocumentTypeCode: 'INBOUND_RECEIPT',
     sourceDocumentId: 9001,
     ...overrides,
   },
