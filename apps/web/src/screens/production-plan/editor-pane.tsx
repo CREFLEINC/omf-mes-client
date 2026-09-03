@@ -90,7 +90,7 @@ export const ProductionPlanEditorPane = ({
     const error = fieldError(row, field);
     const errorId = `${row.key}-${field}-error`;
     return (
-      <>
+      <div className="production-plan-editor-field">
         <Select
           aria-label={`${rowName(row)} ${label}`}
           aria-describedby={error === null ? undefined : errorId}
@@ -108,16 +108,22 @@ export const ProductionPlanEditorPane = ({
             {error}
           </span>
         )}
-      </>
+      </div>
     );
   };
   const columns: Column<ProductionPlanEditorRow>[] = [
-    { key: 'planNo', header: '계획번호', render: rowName },
+    {
+      key: 'planNo',
+      header: '계획번호',
+      width: '8rem',
+      render: (row) => <span className="production-plan-table-value">{rowName(row)}</span>,
+    },
     {
       key: 'planDate',
       header: '계획일',
+      width: '10rem',
       render: (row) => (
-        <>
+        <div className="production-plan-editor-field">
           <DatePicker
             aria-label={`${rowName(row)} 계획일`}
             aria-describedby={
@@ -135,16 +141,19 @@ export const ProductionPlanEditorPane = ({
               {fieldError(row, 'planDate')}
             </span>
           )}
-        </>
+        </div>
       ),
     },
     {
       key: 'plannedQty',
       header: '수량',
+      width: '13rem',
       align: 'end',
       render: (row) => (
         <TextField
           aria-label={`${rowName(row)} 계획수량`}
+          containerClassName="production-plan-quantity-field"
+          fullWidth
           size="sm"
           type="number"
           required
@@ -161,33 +170,42 @@ export const ProductionPlanEditorPane = ({
     {
       key: 'bomId',
       header: 'BOM Rev',
+      width: '15rem',
       render: (row) => select(row, 'bomId', 'BOM Rev', bomOptions),
     },
     {
       key: 'routingId',
       header: 'Routing Rev',
+      width: '15rem',
       render: (row) => select(row, 'routingId', 'Routing Rev', routingOptions),
     },
     {
       key: 'plannedLineId',
       header: '라인',
+      width: '17rem',
       render: (row) => select(row, 'plannedLineId', '라인', lineOptions),
     },
     {
       key: 'status',
       header: '상태',
+      width: '10rem',
+      align: 'center',
       render: (row) => (
-        <Chip status={row.confirmed ? 'success' : row.isPending ? 'warning' : 'info'}>
-          {row.confirmed ? '확정 · 편집 불가' : row.isPending ? '저장 중' : row.statusCode}
-        </Chip>
+        <span className="production-plan-table-value production-plan-table-value-center">
+          <Chip status={row.confirmed ? 'success' : row.isPending ? 'warning' : 'info'}>
+            {row.confirmed ? '확정 · 편집 불가' : row.isPending ? '저장 중' : row.statusCode}
+          </Chip>
+        </span>
       ),
     },
     {
       key: 'remarks',
       header: '비고',
+      width: '12rem',
       render: (row) => (
         <TextField
           aria-label={`${rowName(row)} 비고`}
+          fullWidth
           size="sm"
           value={row.draft.remarks}
           disabled={locked(row)}
@@ -198,6 +216,8 @@ export const ProductionPlanEditorPane = ({
     {
       key: 'actions',
       header: '작업',
+      width: '15rem',
+      align: 'end',
       render: (row) =>
         renderActions?.(row) ?? (
           <Button
@@ -217,27 +237,33 @@ export const ProductionPlanEditorPane = ({
       ? '합계 계산 불가'
       : `${quantity(summary.totalPlannedQty)} / ${quantity(orderQty)} ${uomLabel}`;
   return (
-    <section className="pane" aria-label="생산계획 편집">
-      <div className="section-heading-row">
-        <h2>② 생산계획</h2>
+    <section className="pane production-plan-section" aria-label="생산계획 편집">
+      <div className="production-plan-section-heading">
+        <span className="production-plan-step" aria-hidden="true">
+          2
+        </span>
+        <h2>생산계획</h2>
         <Button size="sm" variant="outlined" disabled={addDisabled} onClick={onAdd}>
           + 계획 추가
         </Button>
       </div>
-      <Table
-        caption="P/O 생산계획 편집 표"
-        density="compact"
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => row.key}
-        empty={<p>등록된 계획이 없습니다.</p>}
-        summaryRows={[
-          [
-            { key: 'label', content: '합계', colSpan: 2, emphasis: true },
-            { key: 'total', content: total, colSpan: 7, align: 'end', emphasis: true },
-          ],
-        ]}
-      />
+      <div className="wide-table production-plan-table">
+        <Table
+          className="production-plan-editor-table"
+          caption={<span className="production-plan-table-caption">P/O 생산계획 편집 표</span>}
+          density="compact"
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => row.key}
+          empty={<p>등록된 계획이 없습니다.</p>}
+          summaryRows={[
+            [
+              { key: 'label', content: '합계', colSpan: 2, emphasis: true },
+              { key: 'total', content: total, colSpan: 7, align: 'end', emphasis: true },
+            ],
+          ]}
+        />
+      </div>
       {summary === null ? (
         <AlertBanner variant="error" title="계획 수량 오류를 먼저 수정하세요." />
       ) : summary.relation === 'empty' ? (

@@ -60,7 +60,9 @@ const usedClassNames = (): Set<string> => {
     for (const [, quoted, templated] of source.matchAll(
       /className=(?:"([^"]*)"|\{`([^`]*)`\})/gu,
     )) {
-      for (const [name] of (quoted ?? templated ?? '').matchAll(/pop-[a-z][a-z-]*/gu)) {
+      for (const [name] of (quoted ?? templated ?? '').matchAll(
+        /(?:pop|pack-work)-[a-z][a-z-]*/gu,
+      )) {
         if (!name.endsWith('-')) used.add(name);
       }
     }

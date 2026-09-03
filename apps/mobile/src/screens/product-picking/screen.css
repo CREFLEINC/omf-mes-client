@@ -15,13 +15,6 @@
   gap: var(--space-3, 12px);
 }
 
-.picking__section h2 {
-  margin: 0;
-  font: inherit;
-  font-weight: 600;
-  color: var(--on-surface-muted, inherit);
-}
-
 .picking__subhead {
   margin: 0;
   font: inherit;

@@ -9,10 +9,16 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { IqcSkipRequestScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -141,6 +147,7 @@ const createRoute = (respond: (request: Request) => Response) => ({
 });
 
 beforeEach(() => {
+  held.failWrite = null;
   store.clear();
 });
 
@@ -359,5 +366,57 @@ describe('긴급 IQC 생략 요청 화면', () => {
     mount([], { mine: [] });
 
     expect(await screen.findByText('올린 요청이 없습니다.')).toBeInTheDocument();
+  });
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 상태로 잠그면 다시 그리기 전의 연타를 놓쳐, 멱등키가 다른
+   * 두 건이 담기고 같은 면제 요청이 두 번 결재에 올라간다.
+   */
+  it('같은 틱에 요청을 세 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const sent: Request[] = [];
+    mount([
+      createRoute((request) => {
+        sent.push(request.clone());
+        return jsonResponse({ approvalRequestId: 91 }, { status: 202 });
+      }),
+    ]);
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText('수입검사 대기 중');
+    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+
+    const button = screen.getByRole('button', { name: '요청' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    expect(await screen.findByText('요청했습니다')).toBeInTheDocument();
+    expect(sent).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 요청된 줄 안다. */
+  it('담아 두지 못하면 요청되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    const sent: Request[] = [];
+    mount([
+      createRoute((request) => {
+        sent.push(request.clone());
+        return jsonResponse({ approvalRequestId: 91 }, { status: 202 });
+      }),
+    ]);
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText('수입검사 대기 중');
+    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '요청' }));
+
+    expect(await screen.findByText('요청을 담아 두지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByText('요청했습니다')).toBeNull();
+    expect(sent).toHaveLength(0);
   });
 });

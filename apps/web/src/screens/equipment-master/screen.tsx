@@ -1147,12 +1147,18 @@ export const EquipmentMasterScreen = () => {
    */
   const renderDetailPane = () => {
     if (isCreateMode) {
-      return <div className="pane">{renderGroupForm({ mode: 'create', isActive: true })}</div>;
+      return (
+        <div className="pane equipment-master-pane equipment-master-detail-pane">
+          <h2 className="pane-title">{t.form.createTitle}</h2>
+          {renderGroupForm({ mode: 'create', isActive: true })}
+        </div>
+      );
     }
 
     if (selectedGroupId === null) {
       return (
-        <div className="pane">
+        <div className="pane equipment-master-pane equipment-master-detail-pane">
+          <h2 className="pane-title">{t.panes.groupDetail}</h2>
           <EmptyState size="sm" title={t.empty.groupNotSelected} />
         </div>
       );
@@ -1160,7 +1166,8 @@ export const EquipmentMasterScreen = () => {
 
     if (detail.isError) {
       return (
-        <div className="pane">
+        <div className="pane equipment-master-pane equipment-master-detail-pane">
+          <h2 className="pane-title">{t.panes.groupDetail}</h2>
           <LoadErrorBanner error={toApiError(detail.error)} onRetry={() => void detail.refetch()} />
         </div>
       );
@@ -1168,7 +1175,8 @@ export const EquipmentMasterScreen = () => {
 
     if (detail.data === undefined || formState === null) {
       return (
-        <div className="pane">
+        <div className="pane equipment-master-pane equipment-master-detail-pane">
+          <h2 className="pane-title">{t.panes.groupDetail}</h2>
           <div role="status" aria-label={t.loading.groupDetail}>
             <SkeletonText lines={5} />
           </div>
@@ -1181,7 +1189,8 @@ export const EquipmentMasterScreen = () => {
       equipmentPage !== undefined && isTruncated(equipmentPage, equipmentItems.length);
 
     return (
-      <div className="pane">
+      <div className="pane equipment-master-pane equipment-master-detail-pane">
+        <h2 className="pane-title">{t.panes.groupDetail}</h2>
         <Tabs
           aria-label={t.title}
           value={activeTab}
@@ -1295,7 +1304,7 @@ export const EquipmentMasterScreen = () => {
         </AlertBanner>
       )}
 
-      <div className="two-pane">
+      <div className="two-pane equipment-master-layout">
         <GroupListPane
           rows={groupRows}
           isLoading={groupList.isPending}

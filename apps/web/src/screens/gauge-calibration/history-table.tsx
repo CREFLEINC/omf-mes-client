@@ -74,8 +74,9 @@ export const HistoryTable = ({ rows, isLoading, isBeyondLast, onFirstPage }: His
   }
 
   return (
-    <div className="wide-table">
+    <div className="wide-table gauge-calibration-table">
       <Table
+        caption={<span className="gauge-calibration-table-caption">{t.panes.list}</span>}
         columns={columns}
         rows={rows}
         getRowId={(row) => String(row.calibrationId)}

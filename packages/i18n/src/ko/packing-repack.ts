@@ -40,7 +40,8 @@ export const packingRepack = {
     /** 원 포장에 있는 것보다 많이 담을 수 없다. 얼마까지인지를 함께 적는다. */
     pooled: (qty: string) => `원 포장 합 ${qty}`,
     qtyLabel: (lotNo: string) => `${lotNo} 수량`,
-    lot: (lotNo: string) => `LOT ${lotNo}`,
+    /* 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. */
+    lot: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
     /** 같은 짝이 두 줄로 들어가지 못한다. 합쳤다는 사실을 말하지 않으면 어디서 왔는지 못 본다. */
     merged: (before: string, added: string, after: string) =>
       `${before} 에 ${added} 을(를) 더해 ${after} 이(가) 됩니다`,
@@ -59,6 +60,11 @@ export const packingRepack = {
   /** 발번과 인쇄는 POP 이 한다. 여기서 기다리게 두면 오지 않는 것을 기다린다. */
   labelNotice: '라벨 발행은 POP 에서 합니다. 이 화면은 구성만 바꿉니다.',
   submit: '재구성 확정',
+  /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
+  saveFailed: {
+    title: '재구성을 담아 두지 못했습니다',
+    description: '기록되지 않았습니다. 다시 시도하세요.',
+  },
   noWorker: '사번을 확인한 뒤에 재구성할 수 있습니다',
   noType: '재구성 유형을 고르세요',
   sent: {

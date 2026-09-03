@@ -5,6 +5,7 @@
  */
 export const workCalendar = {
   title: '작업 캘린더 설정',
+  listTitle: '작업 캘린더 목록',
   breadcrumbRoot: '설비/툴',
   actions: {
     addCalendar: '캘린더 등록',

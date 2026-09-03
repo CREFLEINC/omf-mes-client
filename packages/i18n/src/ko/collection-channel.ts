@@ -13,7 +13,7 @@ export const collectionChannel = {
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
   equipment: {
-    paneTitle: '설비',
+    paneTitle: '설비 목록',
     searchLabel: '설비 검색',
     searchPlaceholder: '설비번호 또는 설비명',
     plantAll: '전체 공장',

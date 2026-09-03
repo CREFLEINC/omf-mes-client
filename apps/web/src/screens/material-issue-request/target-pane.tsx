@@ -83,8 +83,10 @@ export const TargetPane = ({
   const requiredAtError = headerErrors.requiredAt;
 
   return (
-    <section className="pane" aria-label={t.panes.target}>
-      <div className="filter-bar">
+    <section className="pane material-issue-request-pane" aria-label={t.panes.target}>
+      <h2 className="pane-title">{t.panes.target}</h2>
+
+      <div className="filter-bar material-issue-request-target-search">
         <div className="field-cell">
           <SearchInput
             label={t.formFields.workOrderSearch}

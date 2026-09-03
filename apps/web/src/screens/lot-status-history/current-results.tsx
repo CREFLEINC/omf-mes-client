@@ -60,11 +60,19 @@ export const CurrentResults = ({
 
   if (filters.lotType === '') {
     return (
-      <EmptyState
-        size="sm"
-        title="LOT 유형을 선택하고 조회하세요"
-        description="조회 조건을 적용하면 현재 상태 요약과 LOT 목록이 표시됩니다."
-      />
+      <section
+        className="pane lot-status-pane lot-status-empty-pane"
+        aria-labelledby="lot-current-results-title"
+      >
+        <h2 className="pane-title" id="lot-current-results-title">
+          현재 LOT 상태
+        </h2>
+        <EmptyState
+          size="sm"
+          title="LOT 유형을 선택하고 조회하세요"
+          description="조회 조건을 적용하면 현재 상태 요약과 LOT 목록이 표시됩니다."
+        />
+      </section>
     );
   }
 
@@ -161,8 +169,10 @@ export const CurrentResults = ({
         : `${quantity(start)}–${quantity(start + rows.length - 1)} / 전체 ${quantity(meta.total)}건`;
 
   return (
-    <section aria-labelledby="lot-current-results-title">
-      <h2 id="lot-current-results-title">현재 상태</h2>
+    <section className="pane lot-status-pane" aria-labelledby="lot-current-results-title">
+      <h2 className="pane-title" id="lot-current-results-title">
+        현재 LOT 상태
+      </h2>
       {summary.isPending && (
         <div role="status" aria-label="현재 상태 요약을 불러오는 중">
           <SkeletonText lines={1} />
@@ -177,7 +187,7 @@ export const CurrentResults = ({
       )}
       {summary.data !== undefined && (
         <>
-          <div className="filter-bar" role="group" aria-label="현재 상태 요약">
+          <div className="lot-status-summary-grid" role="group" aria-label="현재 상태 요약">
             {summaryCells.map((cell) => (
               <StatCard
                 key={cell.key}
@@ -196,7 +206,7 @@ export const CurrentResults = ({
         </>
       )}
 
-      <h3>LOT 목록</h3>
+      <h3 className="lot-status-list-title">LOT 목록</h3>
       {list.isPending && (
         <div role="status" aria-label="LOT 목록을 불러오는 중">
           <SkeletonText lines={3} />
@@ -216,7 +226,7 @@ export const CurrentResults = ({
       )}
       {list.data !== undefined && (
         <>
-          <div className="wide-table" aria-busy={list.isFetching}>
+          <div className="wide-table lot-status-table" aria-busy={list.isFetching}>
             <Table
               density="compact"
               caption="현재 LOT 상태"

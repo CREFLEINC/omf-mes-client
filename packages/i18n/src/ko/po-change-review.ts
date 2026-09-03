@@ -43,7 +43,7 @@ export const poChangeReview = {
     columns: {
       after: '변경(ERP)',
     },
-    selectFirst: '왼쪽에서 변경 알림을 선택하세요',
+    selectFirst: '변경 알림 목록에서 변경 알림을 선택하세요',
     /**
      * ⚠ **아직 안 오는 것이지 만들지 않은 것이 아니다.** 변경 항목을 담아 내릴 계약 자리가
      * 생성물에 아직 반영되지 않았다 — 도착하면 이 구획이 그대로 채워진다.

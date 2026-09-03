@@ -74,7 +74,10 @@ describe('WorkOrderCloseDetailSummaryPane', () => {
   it('shows only the named loading state while checking', () => {
     renderPane({ kind: 'CHECKING' });
 
-    expect(screen.getByRole('region', { name: t.pane })).toHaveClass('pane');
+    expect(screen.getByRole('region', { name: t.pane })).toHaveClass(
+      'pane',
+      'work-order-close-summary-pane',
+    );
     expect(screen.getByRole('heading', { name: t.heading })).toBeVisible();
     expect(screen.getByRole('status', { name: t.loading })).toBeVisible();
     expect(screen.queryByText('SYN-WO-ALPHA')).not.toBeInTheDocument();
@@ -97,6 +100,9 @@ describe('WorkOrderCloseDetailSummaryPane', () => {
     expect(
       within(screen.getByRole('group', { name: t.groups.order })).getByText('SYN-WO-ALPHA'),
     ).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: t.groups.order })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: t.groups.progress })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 3, name: t.groups.preIssuedLots })).toBeVisible();
     expect(within(stat(t.fields.orderQty)).getByText('100')).toBeVisible();
     expect(within(stat(t.fields.goodQty)).getByText('180')).toBeVisible();
     expect(within(stat(t.fields.defectQty)).getByText('12')).toBeVisible();

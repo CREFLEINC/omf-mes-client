@@ -85,7 +85,10 @@ describe('WorkOrderCloseOutboundItemsPane', () => {
   it('shows the content heading and live empty state without a switch group', () => {
     renderPane({ settings: [] });
 
-    expect(screen.getByRole('region', { name: t.pane })).toHaveClass('pane');
+    expect(screen.getByRole('region', { name: t.pane })).toHaveClass(
+      'pane',
+      'work-order-close-outbound-pane',
+    );
     expect(screen.getByRole('heading', { name: t.heading })).toBeVisible();
     expect(screen.getByText(t.empty.title)).toBeVisible();
     expect(screen.getByText(t.empty.description)).toBeVisible();

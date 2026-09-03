@@ -152,6 +152,10 @@ describe('W-05-01 ① — 비율 정책을 본다', () => {
 
     expect(await within(pane()).findByText(t.scope.all)).toBeInTheDocument();
     expect(
+      within(pane()).getByRole('heading', { name: t.ratioList.paneTitle }),
+    ).toBeInTheDocument();
+    expect(within(pane()).getByRole('table', { name: t.ratioList.paneTitle })).toBeInTheDocument();
+    expect(
       within(pane()).getByText(t.scope.entry(t.scope.plantId, '가상 1공장')),
     ).toBeInTheDocument();
     expect(

@@ -185,6 +185,52 @@ describe('큐 전송', () => {
     const result = await flushQueue([], send);
 
     expect(send).not.toHaveBeenCalled();
-    expect(result).toEqual({ sent: 0, rejected: [], remaining: [], outcome: 'drained' });
+    expect(result).toEqual({
+      sent: 0,
+      responses: new Map(),
+      rejected: [],
+      remaining: [],
+      outcome: 'drained',
+    });
+  });
+});
+
+describe('서버가 돌려준 값', () => {
+  /*
+   * 서버가 매기는 값을 화면이 보여야 할 때가 있다 - 자재 묶음 번호처럼 화면이 미리 지어낼 수
+   * 없는 것이다. 여기서 끊기면 큐를 타는 쓰기는 그 값을 다시 얻을 길이 없다.
+   */
+  it('보낸 건의 응답을 멱등키로 찾을 수 있다', async () => {
+    const send: OutboxTransport = (item) =>
+      Promise.resolve({ lotNo: `LOT-${(item.body as { id: string }).id}` });
+
+    const result = await flushQueue([entry('a'), entry('b')], send);
+
+    expect(result.responses.get('key-a')).toEqual({ lotNo: 'LOT-a' });
+    expect(result.responses.get('key-b')).toEqual({ lotNo: 'LOT-b' });
+  });
+
+  /* 못 간 건의 응답을 내면 화면이 가지 않은 것을 갔다고 말한다. */
+  it('되돌아온 건의 응답은 내지 않는다', async () => {
+    const result = await flushQueue([entry('a')], rejectWith(new Set(['a'])));
+
+    expect(result.responses.has('key-a')).toBe(false);
+    expect(result.rejected).toHaveLength(1);
+  });
+
+  /* 도중에 멈춰도 그때까지 간 건의 값은 화면이 써야 한다. */
+  it('도중에 멈춰도 그때까지 간 건의 응답은 낸다', async () => {
+    const send: OutboxTransport = (item) => {
+      if ((item.body as { id: string }).id === 'b') {
+        return Promise.reject(new ApiRequestError(NETWORK_ERROR));
+      }
+
+      return Promise.resolve({ lotNo: 'LOT-a' });
+    };
+
+    const result = await flushQueue([entry('a'), entry('b')], send);
+
+    expect(result.outcome).toBe('unreachable');
+    expect(result.responses.get('key-a')).toEqual({ lotNo: 'LOT-a' });
   });
 });

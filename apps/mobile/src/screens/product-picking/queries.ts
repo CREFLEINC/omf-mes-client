@@ -9,9 +9,13 @@ import {
 
 import { useApiClient } from '../../patterns/api-context';
 import type { Lot } from '../../patterns/lots';
-import { createIdempotencyKey } from '../../patterns/outbox';
 import { runRequest } from '../../patterns/request';
-import { toPickBody, type Candidate, type ShipmentRequest, type ShipmentRequestLine } from './picking';
+import {
+  toPickBody,
+  type Candidate,
+  type ShipmentRequest,
+  type ShipmentRequestLine,
+} from './picking';
 
 export const pickingKeys = {
   requests: (day: string) => ['picking-requests', day] as const,
@@ -157,6 +161,10 @@ export const toCandidates = (pool: LotPool, available: Map<number, number>): Can
   }));
 
 export interface PickVariables {
+  /*
+   * 화면이 들고 있는 키. 여기서 만들면 재시도마다 값이 달라져 멱등키가 아무것도 막지 못한다.
+   */
+  idempotencyKey: string;
   shipmentRequestId: number;
   line: ShipmentRequestLine;
   candidate: Candidate;
@@ -175,20 +183,45 @@ export const usePickLine = (): UseMutationResult<ShipmentRequestLine, Error, Pic
   const queries = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ shipmentRequestId, line, candidate, qty, workerNo }: PickVariables) =>
+    mutationFn: ({
+      shipmentRequestId,
+      line,
+      candidate,
+      qty,
+      workerNo,
+      idempotencyKey,
+    }: PickVariables) =>
       runRequest(() =>
         client.POST(
           '/logistics/shipment-requests/{shipmentRequestId}/lines/{shipmentRequestLineId}:pick',
           {
             params: {
               path: { shipmentRequestId, shipmentRequestLineId: line.shipmentRequestLineId },
-              header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
+              header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
             },
             body: toPickBody(candidate, line, qty),
           },
         ),
       ),
-    onSuccess: () => {
+    onSuccess: (picked, { shipmentRequestId }) => {
+      /*
+       * 서버가 돌려준 라인을 캐시에 곧바로 써 넣는다. 다시 조회해 오는 것에만 기대면, 그 조회가
+       * 실패했을 때 화면이 확정 전 값을 그대로 들고 있게 된다 - 배정을 다 채웠는데도 남은 배정이
+       * 남아 보여 한 번 더 집는다. 무효화는 나머지 값을 맞추기 위해 그대로 둔다.
+       */
+      queries.setQueriesData<ShipmentRequest[]>({ queryKey: ['picking-requests'] }, (current) =>
+        current?.map((request) =>
+          request.shipmentRequestId === shipmentRequestId
+            ? {
+                ...request,
+                lines: request.lines?.map((line) =>
+                  line.shipmentRequestLineId === picked.shipmentRequestLineId ? picked : line,
+                ),
+              }
+            : request,
+        ),
+      );
+
       void queries.invalidateQueries({ queryKey: ['picking-requests'] });
       void queries.invalidateQueries({ queryKey: ['picking-balances'] });
     },

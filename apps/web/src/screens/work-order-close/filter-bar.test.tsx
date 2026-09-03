@@ -43,6 +43,7 @@ const renderBar = (
 describe('WorkOrderCloseFilterBar', () => {
   it('uses the exact localized labels and validation copy', () => {
     expect(t).toEqual({
+      pane: '마감 후보 조회 조건',
       productionOrder: 'P/O',
       plannedStartFrom: '계획 시작일(부터)',
       plannedStartTo: '계획 시작일(까지)',
@@ -64,6 +65,10 @@ describe('WorkOrderCloseFilterBar', () => {
   it('keeps raw edits private until its semantic form submits once', async () => {
     const user = userEvent.setup();
     const { onSearch } = renderBar();
+    expect(screen.getByRole('region', { name: t.pane })).toHaveClass(
+      'work-order-close-filter-pane',
+    );
+    expect(screen.getByRole('heading', { level: 2, name: t.pane })).toBeVisible();
     await user.type(screen.getByLabelText(t.plannedStartFrom), '2026-08-01');
     await user.type(screen.getByLabelText(t.plannedStartTo), '2026-08-02');
     expect(onSearch).not.toHaveBeenCalled();

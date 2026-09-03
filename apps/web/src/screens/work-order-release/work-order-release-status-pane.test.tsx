@@ -80,7 +80,9 @@ describe('WorkOrderReleaseStatusPane', () => {
     (result, copy, role, variant) => {
       renderPane({ preconditions: result });
       const banner = screen.getByRole(role);
+      const pane = screen.getByRole('region', { name: t.pane });
 
+      expect(pane).toHaveClass('work-order-release-status-pane');
       expect(
         screen.getByRole('heading', { level: 2, name: t.heading('SYN-WO-ALPHA') }),
       ).toBeVisible();

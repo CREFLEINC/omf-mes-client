@@ -15,12 +15,6 @@
   gap: var(--space-3, 12px);
 }
 
-.equipment-failure__section h2 {
-  margin: 0;
-  font: inherit;
-  font-weight: 600;
-  color: var(--on-surface-muted, inherit);
-}
 
 .equipment-failure p {
   margin: 0;

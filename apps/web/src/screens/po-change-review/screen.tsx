@@ -89,8 +89,8 @@ export const PoChangeReviewScreen = () => {
         actions={<Chip status="warning">{t.header.unacknowledged(unacknowledged)}</Chip>}
       />
 
-      <div className="two-pane">
-        <section className="pane" aria-label={t.panes.list}>
+      <div className="two-pane po-change-review-layout">
+        <section className="pane po-change-review-pane" aria-label={t.panes.list}>
           <h2>{t.panes.list}</h2>
           <NotificationList
             rows={rows}
@@ -133,7 +133,7 @@ export const PoChangeReviewScreen = () => {
             onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
           />
 
-          <section className="pane" aria-label={t.decision.submit}>
+          <section className="pane po-change-review-pane" aria-label={t.decision.submit}>
             {isConflict ? (
               <div className="banner-slot">
                 <AlertBanner

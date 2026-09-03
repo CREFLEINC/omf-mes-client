@@ -134,7 +134,8 @@ const OuterHarness = () => {
 
 it('joins resource lookups, clears line-bound equipment, and saves exact owned fields', async () => {
   const user = userEvent.setup();
-  render(<Harness />);
+  const { container } = render(<Harness />);
+  expect(container.querySelector('.work-order-assignment-edit-grid')).not.toBeNull();
   expect(
     screen.getByLabelText(t.planFieldsPane.fields.plannedStartAtLocal),
   ).toHaveAccessibleDescription('SYN-SERVER-START');

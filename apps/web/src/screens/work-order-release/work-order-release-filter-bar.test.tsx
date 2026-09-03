@@ -46,6 +46,9 @@ describe('WorkOrderReleaseFilterBar', () => {
   it('keeps edits private until the semantic form submits once', async () => {
     const user = userEvent.setup();
     const { props } = renderBar();
+    const pane = screen.getByRole('region', { name: t.pane });
+    expect(pane).toHaveClass('work-order-release-filter-pane');
+    expect(screen.getByRole('heading', { level: 2, name: t.pane })).toBeVisible();
     await user.type(screen.getByLabelText(t.plannedStartFrom), '2026-08-01');
     await user.type(screen.getByLabelText(t.plannedStartTo), '2026-08-02');
     expect(props.onSearch).not.toHaveBeenCalled();

@@ -51,8 +51,8 @@ export const WorkOrderCloseDetailSummaryPane = ({
 }: WorkOrderCloseDetailSummaryPaneProps): JSX.Element => {
   if (state.kind === 'CHECKING') {
     return (
-      <section aria-label={t.pane} className="pane">
-        <h2>{t.heading}</h2>
+      <section aria-label={t.pane} className="pane work-order-close-summary-pane">
+        <h2 className="pane-title">{t.heading}</h2>
         <div aria-label={t.loading} role="status">
           <SkeletonText lines={3} />
         </div>
@@ -62,8 +62,8 @@ export const WorkOrderCloseDetailSummaryPane = ({
 
   if (state.kind === 'UNAVAILABLE') {
     return (
-      <section aria-label={t.pane} className="pane">
-        <h2>{t.heading}</h2>
+      <section aria-label={t.pane} className="pane work-order-close-summary-pane">
+        <h2 className="pane-title">{t.heading}</h2>
         {state.content}
       </section>
     );
@@ -104,66 +104,75 @@ export const WorkOrderCloseDetailSummaryPane = ({
         ];
 
   return (
-    <section aria-label={t.pane} className="pane">
-      <h2>{t.heading}</h2>
-      <div aria-label={t.groups.order} className="filter-bar" role="group">
-        <dl className="field-cell">
-          <dt className="field-label">{t.fields.workOrderNo}</dt>
-          <dd>{detail.workOrderNo}</dd>
-        </dl>
-        <StatCard label={t.fields.orderQty} value={String(detail.orderQty)} unit={unit} />
+    <section aria-label={t.pane} className="pane work-order-close-summary-pane">
+      <h2 className="pane-title">{t.heading}</h2>
+      <div className="work-order-close-summary-section">
+        <h3>{t.groups.order}</h3>
+        <div aria-label={t.groups.order} className="work-order-close-stats" role="group">
+          <dl className="field-cell work-order-close-order-field">
+            <dt className="field-label">{t.fields.workOrderNo}</dt>
+            <dd>{detail.workOrderNo}</dd>
+          </dl>
+          <StatCard label={t.fields.orderQty} value={String(detail.orderQty)} unit={unit} />
+        </div>
       </div>
 
-      {detail.progress === null ? (
-        <div aria-label={t.groups.progress} role="group">
-          <EmptyState
-            size="sm"
-            title={t.empty.progressTitle}
-            description={t.empty.progressDescription}
-          />
-        </div>
-      ) : (
-        <div aria-label={t.groups.progress} className="filter-bar" role="group">
-          {progressStats.map((stat) => (
-            <StatCard
-              key={stat.key}
-              label={stat.label}
-              value={displayQuantity(stat.value)}
-              unit={unit}
+      <div className="work-order-close-summary-section">
+        <h3>{t.groups.progress}</h3>
+        {detail.progress === null ? (
+          <div aria-label={t.groups.progress} role="group">
+            <EmptyState
+              size="sm"
+              title={t.empty.progressTitle}
+              description={t.empty.progressDescription}
             />
-          ))}
-          <StatCard
-            label={t.fields.achievementRate}
-            value={formatAchievementRate(detail.progress.achievementRate)}
-            unit={t.units.percent}
-          />
-          <StatCard
-            label={t.fields.judgment}
-            value={JUDGMENT_LABELS[detail.progress.completionJudgmentCode]}
-          />
-        </div>
-      )}
+          </div>
+        ) : (
+          <div aria-label={t.groups.progress} className="work-order-close-stats" role="group">
+            {progressStats.map((stat) => (
+              <StatCard
+                key={stat.key}
+                label={stat.label}
+                value={displayQuantity(stat.value)}
+                unit={unit}
+              />
+            ))}
+            <StatCard
+              label={t.fields.achievementRate}
+              value={formatAchievementRate(detail.progress.achievementRate)}
+              unit={t.units.percent}
+            />
+            <StatCard
+              label={t.fields.judgment}
+              value={JUDGMENT_LABELS[detail.progress.completionJudgmentCode]}
+            />
+          </div>
+        )}
+      </div>
 
-      {detail.preIssuedLots === null ? (
-        <div aria-label={t.groups.preIssuedLots} role="group">
-          <EmptyState
-            size="sm"
-            title={t.empty.preIssuedLotsTitle}
-            description={t.empty.preIssuedLotsDescription}
-          />
-        </div>
-      ) : (
-        <div aria-label={t.groups.preIssuedLots} className="filter-bar" role="group">
-          {preIssuedLotStats.map((stat) => (
-            <StatCard
-              key={stat.key}
-              label={stat.label}
-              value={String(stat.value)}
-              unit={t.units.count}
+      <div className="work-order-close-summary-section">
+        <h3>{t.groups.preIssuedLots}</h3>
+        {detail.preIssuedLots === null ? (
+          <div aria-label={t.groups.preIssuedLots} role="group">
+            <EmptyState
+              size="sm"
+              title={t.empty.preIssuedLotsTitle}
+              description={t.empty.preIssuedLotsDescription}
             />
-          ))}
-        </div>
-      )}
+          </div>
+        ) : (
+          <div aria-label={t.groups.preIssuedLots} className="work-order-close-stats" role="group">
+            {preIssuedLotStats.map((stat) => (
+              <StatCard
+                key={stat.key}
+                label={stat.label}
+                value={String(stat.value)}
+                unit={t.units.count}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </section>
   );
 };

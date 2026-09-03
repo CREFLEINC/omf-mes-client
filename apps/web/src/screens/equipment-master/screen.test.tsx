@@ -237,6 +237,8 @@ describe('EquipmentMasterScreen', () => {
     renderScreen();
 
     expect(await screen.findByRole('button', { name: 'GRP-A' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.panes.groupList })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.panes.groupDetail })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'GRP-A-01' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'GRP-A-02' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'GRP-B' })).toBeInTheDocument();

@@ -1,4 +1,13 @@
-import { AlertBanner, Button, Dialog, Radio, RadioGroup, TextArea, TextField, useToast } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Dialog,
+  Radio,
+  RadioGroup,
+  TextArea,
+  TextField,
+  useToast,
+} from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -127,7 +136,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
   const location = `창고 ${props.warehouseId === undefined ? '미확인' : String(props.warehouseId)} / Location ${props.locationId === undefined ? '미확인' : String(props.locationId)}`;
 
   return (
-    <section aria-label="보류 해제 입력">
+    <section className="lot-status-transition-execution" aria-label="보류 해제 입력">
       <RadioGroup
         name={`release-mode-${String(props.lotHoldId)}`}
         orientation="horizontal"
@@ -148,7 +157,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
         <Radio value="FULL">전량 해제</Radio>
         <Radio value="PARTIAL">일부 해제</Radio>
       </RadioGroup>
-      <div className="form-grid">
+      <div className="form-grid lot-status-transition-execution-form">
         {draft.mode === 'PARTIAL' && (
           <TextField
             label="해제 수량"
@@ -180,17 +189,19 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           onChange={(event) => setDraft((current) => ({ ...current, remarks: event.target.value }))}
         />
       </div>
-      <Button
-        disabled={write.isSaving || validation.body === null}
-        onClick={() => {
-          if (validation.body !== null) {
-            setConfirmation(validation.body);
-            props.onConfirmationChange(true);
-          }
-        }}
-      >
-        해제 확인
-      </Button>
+      <div className="form-actions lot-status-transition-execution-actions">
+        <Button
+          disabled={write.isSaving || validation.body === null}
+          onClick={() => {
+            if (validation.body !== null) {
+              setConfirmation(validation.body);
+              props.onConfirmationChange(true);
+            }
+          }}
+        >
+          해제 확인
+        </Button>
+      </div>
       {confirmation !== null && (
         <Dialog
           open

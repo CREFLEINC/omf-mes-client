@@ -47,7 +47,7 @@ export const SuspiciousMaterialHoldFlow = ({
   };
 
   return (
-    <div className="content-stack">
+    <div className="suspicious-material-hold-workspace">
       <SuspiciousMaterialCandidatePane
         isLocked={pinned}
         selection={selection}
@@ -72,7 +72,7 @@ export const SuspiciousMaterialHoldFlow = ({
 };
 
 export const SuspiciousMaterialHoldScreen = () => (
-  <div className="screen">
+  <div className="screen suspicious-material-hold-screen">
     <PageHeader
       title={t.title}
       breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}

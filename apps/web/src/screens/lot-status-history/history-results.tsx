@@ -96,8 +96,10 @@ export const HistoryResults = ({
         : `${quantity(start)}–${quantity(start + rows.length - 1)} / 전체 ${quantity(meta.total)}건`;
 
   return (
-    <section aria-labelledby="lot-hold-history-title">
-      <h2 id="lot-hold-history-title">보류 사건 이력</h2>
+    <section className="pane lot-status-pane" aria-labelledby="lot-hold-history-title">
+      <h2 className="pane-title" id="lot-hold-history-title">
+        보류 사건 이력
+      </h2>
       <AlertBanner variant="info">{HISTORY_SCOPE_NOTICE}</AlertBanner>
       {!hasValidPeriod && (
         <EmptyState
@@ -121,7 +123,7 @@ export const HistoryResults = ({
       )}
       {hasValidPeriod && history.data !== undefined && (
         <>
-          <div className="wide-table" aria-busy={history.isFetching}>
+          <div className="wide-table lot-status-table" aria-busy={history.isFetching}>
             <Table
               density="compact"
               caption="보류 사건 이력"

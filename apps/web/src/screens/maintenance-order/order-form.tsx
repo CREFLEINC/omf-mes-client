@@ -68,8 +68,8 @@ export const OrderForm = ({
     itemOptions.find((option) => option.value === id)?.label ?? id;
 
   return (
-    <>
-      <div className="form-grid">
+    <div className="maintenance-order-form-content">
+      <div className="form-grid maintenance-order-form-grid">
         <SelectField
           label={t.form.target}
           options={equipmentOptions}
@@ -164,7 +164,7 @@ export const OrderForm = ({
 
       <h3>{t.form.items}</h3>
       <p className="pane-lead">{t.form.itemsLead}</p>
-      <div className="filter-bar">
+      <div className="filter-bar maintenance-order-item-filter">
         <SelectField
           label={t.form.items}
           options={itemOptions.filter((option) => !draft.itemIds.includes(option.value))}
@@ -175,17 +175,19 @@ export const OrderForm = ({
           wide
           onChange={setItemToAdd}
         />
-        <div className="filter-actions">
-          <Button
-            variant="outlined"
-            disabled={itemToAdd === ''}
-            onClick={() => {
-              set({ itemIds: [...draft.itemIds, itemToAdd] });
-              setItemToAdd('');
-            }}
-          >
-            {t.form.addItem}
-          </Button>
+        <div className="field-cell field-cell-unlabeled maintenance-order-item-actions">
+          <div className="filter-actions">
+            <Button
+              variant="outlined"
+              disabled={itemToAdd === ''}
+              onClick={() => {
+                set({ itemIds: [...draft.itemIds, itemToAdd] });
+                setItemToAdd('');
+              }}
+            >
+              {t.form.addItem}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -219,6 +221,6 @@ export const OrderForm = ({
         </Button>
       </div>
       {errors.triggers !== undefined && <p className="pane-lead">{errors.triggers}</p>}
-    </>
+    </div>
   );
 };

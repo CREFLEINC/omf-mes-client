@@ -67,6 +67,8 @@ describe('WorkOrderReleaseCandidateListPane', () => {
       ],
     });
 
+    expect(screen.getByRole('heading', { level: 2, name: t.pane })).toBeVisible();
+    expect(screen.getByRole('table', { name: t.pane })).toBeInTheDocument();
     expect(headerTexts()).toEqual(['W/O 번호', '품목', '지시 수량']);
     const bodyRows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
 

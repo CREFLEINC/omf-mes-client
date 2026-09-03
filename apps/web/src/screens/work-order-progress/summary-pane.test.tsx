@@ -22,6 +22,12 @@ const valueOf = (region: HTMLElement, label: string): string =>
   within(region).getByRole('group', { name: label }).textContent?.replace(label, '').trim() ?? '';
 
 describe('SummaryPane', () => {
+  it('요약을 제목이 있는 구획으로 구분한다', () => {
+    const region = renderPane();
+
+    expect(within(region).getByRole('heading', { level: 2, name: t.title })).toBeInTheDocument();
+  });
+
   it('서버가 준 전체 건수를 보인다', () => {
     const region = renderPane(128);
 

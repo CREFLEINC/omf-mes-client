@@ -82,14 +82,16 @@ export const ProductionOrderFilterBar = ({
   };
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar production-order-filter-bar">
       <TextField
+        fullWidth
         type="date"
         label={t.fields.dueFrom}
         value={draft.dueFrom}
         onChange={(event) => update('dueFrom', event.target.value)}
       />
       <TextField
+        fullWidth
         type="date"
         label={t.fields.dueTo}
         value={draft.dueTo}
@@ -124,6 +126,7 @@ export const ProductionOrderFilterBar = ({
         onChange={(value) => update('status', value)}
       />
       <SearchInput
+        fullWidth
         label={t.fields.q}
         value={draft.q}
         onChange={(event) => update('q', event.target.value)}

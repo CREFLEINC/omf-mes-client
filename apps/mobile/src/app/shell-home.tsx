@@ -24,6 +24,7 @@ const tiles = [
     screens: [
       { to: '/inbound-receipt', label: messages.inboundReceipt.title },
       { to: '/inbound-variance', label: messages.inboundVariance.title },
+      { to: '/recycle-entry', label: messages.recycleEntry.title },
     ],
   },
   {
@@ -33,6 +34,10 @@ const tiles = [
       { to: '/putaway', label: messages.putaway.title },
       { to: '/temporary-putaway', label: messages.temporaryPutaway.title },
     ],
+  },
+  {
+    label: t.tiles.picking,
+    screens: [{ to: '/material-picking', label: messages.materialPicking.title }],
   },
   {
     label: t.tiles.urgent,

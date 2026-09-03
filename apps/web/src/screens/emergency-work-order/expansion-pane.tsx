@@ -36,11 +36,15 @@ export const ExpansionPane = ({
   ];
 
   return (
-    <section aria-label={t.title}>
-      <h2 className="field-label">{t.title}</h2>
+    <section className="pane emergency-work-order-pane" aria-label={t.title}>
+      <h2 className="pane-title">{t.title}</h2>
 
-      {state.kind === 'idle' && <p>{t.selectItem}</p>}
-      {state.kind === 'loading' && <p role="status">{t.loading}</p>}
+      {state.kind === 'idle' && <p className="emergency-work-order-empty">{t.selectItem}</p>}
+      {state.kind === 'loading' && (
+        <p className="emergency-work-order-empty" role="status">
+          {t.loading}
+        </p>
+      )}
       {state.kind === 'error' && (
         <div className="banner-slot">
           <AlertBanner variant="error">{t.loadError}</AlertBanner>
@@ -82,24 +86,26 @@ export const ExpansionPane = ({
 
       {state.kind === 'ready' && (
         <>
-          <dl className="filter-bar">
-            <div className="field-cell">
+          <dl className="emergency-work-order-expansion-summary">
+            <div className="field-cell emergency-work-order-expansion-field">
               <dt className="field-label">{t.bom}</dt>
               <dd>{`${state.bom.bomCode} ${t.revision} ${String(state.bom.bomVersion)}`}</dd>
             </div>
-            <div className="field-cell">
+            <div className="field-cell emergency-work-order-expansion-field">
               <dt className="field-label">{t.routing}</dt>
               <dd>{`${state.routing.routingCode} ${t.revision} ${String(state.routing.routingVersion)}`}</dd>
             </div>
           </dl>
 
-          <Table
-            density="compact"
-            columns={columns}
-            rows={state.operations}
-            getRowId={(row) => String(row.routingOperationId)}
-            caption={t.operations}
-          />
+          <div className="emergency-work-order-table">
+            <Table
+              density="compact"
+              columns={columns}
+              rows={state.operations}
+              getRowId={(row) => String(row.routingOperationId)}
+              caption={t.operations}
+            />
+          </div>
 
           <div className="banner-slot">
             <AlertBanner variant="info">{t.lotNotice}</AlertBanner>

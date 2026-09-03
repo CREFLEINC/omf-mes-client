@@ -48,7 +48,12 @@ export const IssueAction = ({
   const reasonId = useId();
 
   return (
-    <section aria-label={t.action}>
+    <section
+      className="pane emergency-work-order-pane emergency-work-order-action-pane"
+      aria-label={t.actionTitle}
+    >
+      <h2 className="pane-title">{t.actionTitle}</h2>
+
       {/*
        * ⛔ **서버가 되돌린 문구를 그대로 낸다.** 화면이 뭉뚱그리면 「왜 반려됐는지」가 사라져
        * 사용자가 같은 조건으로 다시 누른다. ⛔ **「최신 불러오기」를 내주지 않는다** — 이
@@ -72,27 +77,31 @@ export const IssueAction = ({
         </div>
       )}
 
-      <Button
-        disabled={lock.reason !== undefined}
-        /* ⛔ 사유를 버튼에 «묶는다» — 화면에 적어 두기만 하면 버튼만 보는 사람에게 닿지 않는다. */
-        aria-describedby={lock.reason === undefined ? undefined : reasonId}
-        onClick={onIssue}
-      >
-        {t.action}
-      </Button>
+      <div className="emergency-work-order-action-row">
+        {/* ⛔ 사유를 감추지 않는다 — 잠긴 이유가 보여야 무엇을 하면 되는지 안다. */}
+        {lock.reason !== undefined && (
+          <p id={reasonId} role="status">
+            {lock.reason}
+          </p>
+        )}
 
-      {/* ⛔ 사유를 감추지 않는다 — 잠긴 이유가 보여야 무엇을 하면 되는지 안다. */}
-      {lock.reason !== undefined && (
-        <p id={reasonId} role="status">
-          {lock.reason}
-        </p>
-      )}
+        <div className="emergency-work-order-action-buttons">
+          {lock.canRetryRelease && (
+            <Button variant="tonal" onClick={onRetryRelease}>
+              {t.outcome.retryRelease}
+            </Button>
+          )}
 
-      {lock.canRetryRelease && (
-        <Button variant="tonal" onClick={onRetryRelease}>
-          {t.outcome.retryRelease}
-        </Button>
-      )}
+          <Button
+            disabled={lock.reason !== undefined}
+            /* ⛔ 사유를 버튼에 «묶는다» — 화면에 적어 두기만 하면 버튼만 보는 사람에게 닿지 않는다. */
+            aria-describedby={lock.reason === undefined ? undefined : reasonId}
+            onClick={onIssue}
+          >
+            {t.action}
+          </Button>
+        </div>
+      </div>
     </section>
   );
 };

@@ -40,8 +40,8 @@ export const WorkOrderCloseInputPane = ({
   const classificationMessageKey = CLASSIFICATION_MESSAGE_KEY[completionJudgment];
 
   return (
-    <section aria-label={t.pane} className="pane">
-      <h2>{t.heading}</h2>
+    <section aria-label={t.pane} className="pane work-order-close-input-pane">
+      <h2 className="pane-title">{t.heading}</h2>
       <div className="field-cell">
         <span className="field-label">{t.classification.label}</span>
         <span>{t.classification[classificationMessageKey]}</span>

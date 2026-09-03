@@ -52,6 +52,12 @@ const renderPane = (override: Partial<Parameters<typeof TargetPane>[0]> = {}) =>
   );
 
 describe('TargetPane', () => {
+  it('대상 입력을 제목이 있는 구획으로 구분한다', () => {
+    renderPane();
+
+    expect(screen.getByRole('heading', { level: 2, name: t.panes.target })).toBeInTheDocument();
+  });
+
   it('W/O 검색칸·선택칸·창고·도착 위치·필요 일자·필요 시각 라벨이 선다', () => {
     renderPane();
 

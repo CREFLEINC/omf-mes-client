@@ -72,11 +72,12 @@ export const LinePane = ({
      * 때마다 되풀이되지는 않는다.
      */
     <section
-      className="pane"
+      className="pane material-issue-request-pane"
       aria-label={t.panes.lines}
       aria-describedby={linesError === undefined ? undefined : linesErrorId}
     >
-      <div className="form-actions">
+      <div className="material-issue-request-pane-heading">
+        <h2 className="pane-title">{t.panes.lines}</h2>
         <Button
           variant="outlined"
           disabled={isLocked || isLoadingShortage}
@@ -112,15 +113,15 @@ export const LinePane = ({
         />
       )}
 
-      <p className="field-note">{t.notes.shortageColumnsReadOnly}</p>
-      <p className="field-note">{t.notes.lineNoAssignedByServer}</p>
-
-      <div className="filter-bar">
-        <div className="field-cell">
-          <Button variant="outlined" disabled={isLocked} onClick={onAddLine}>
-            {t.actions.addLine}
-          </Button>
+      <div className="material-issue-request-line-footer">
+        <div className="material-issue-request-line-notes">
+          <p className="field-note">{t.notes.shortageColumnsReadOnly}</p>
+          <p className="field-note">{t.notes.lineNoAssignedByServer}</p>
         </div>
+
+        <Button variant="outlined" disabled={isLocked} onClick={onAddLine}>
+          {t.actions.addLine}
+        </Button>
       </div>
 
       {outsideBomCount > 0 && (

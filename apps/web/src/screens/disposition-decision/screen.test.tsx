@@ -32,6 +32,10 @@ describe('DispositionDecisionScreen 조회', () => {
   it('기간을 반열림으로 실어 조회한다 — 조건 없는 조회를 만들지 않는다', async () => {
     renderScreen();
 
+    expect(await screen.findByRole('heading', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.panes.detail })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.panes.decision })).toBeInTheDocument();
+
     await waitFor(() => {
       const url = requestedPaths().find((path) => path.startsWith('/quality/nonconformances?'));
       expect(url).toBeDefined();
