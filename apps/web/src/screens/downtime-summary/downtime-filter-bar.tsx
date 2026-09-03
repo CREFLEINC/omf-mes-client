@@ -87,7 +87,7 @@ export const DowntimeFilterBar = ({
 
   return (
     <>
-      <div className="filter-bar">
+      <div className="filter-bar downtime-summary-filter">
         <div className="field-cell">
           <FieldLabel htmlFor={periodId} label={t.filters.period} />
           {/* 기간은 **한 컨트롤**이다 — `mode="range"` 하나가 두 값을 준다. */}
@@ -141,7 +141,7 @@ export const DowntimeFilterBar = ({
           }}
         />
 
-        <div className="filter-actions">
+        <div className="filter-actions downtime-summary-filter-actions">
           <Button
             onClick={search}
             disabled={lockReason !== null}
