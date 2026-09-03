@@ -104,6 +104,15 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     /* 씨앗에서 완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 포장 대상이 비어 뜬다. */
     query: '?workOrderId=11001&workerNo=100029',
   },
+  /*
+   * ⚠ 이 화면은 사번을 주소로 받지 않는다 — 단말·공정·사번은 셸이 채운다. 그 자리가 아직
+   * 비어 있어 **등록은 「단말이 확인되지 않았습니다」로 막힌 채 뜬다**(F-6). 읽기 쪽은 선다.
+   */
+  {
+    path: '/pop/running-change',
+    label: 'P-02-11 러닝체인지 부품 교체',
+    query: '?workOrderId=11002',
+  },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
