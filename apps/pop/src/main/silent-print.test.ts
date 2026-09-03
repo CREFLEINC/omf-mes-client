@@ -4,6 +4,7 @@ import type { Rendition } from './print';
 import {
   type AvailablePrinter,
   type PrintPage,
+  PrintTimeoutError,
   type SilentPrintDeps,
   createSilentPrinter,
   selectPrinter,
@@ -111,9 +112,47 @@ describe('무음 인쇄', () => {
       },
     });
 
-    await expect(createSilentPrinter(deps).print('ZD421', label)).rejects.toThrow('프린터 오프라인');
+    await expect(createSilentPrinter(deps).print('ZD421', label)).rejects.toThrow(
+      '프린터 오프라인',
+    );
     expect(page.close).toHaveBeenCalled();
     expect(discarded).toEqual(['/tmp/job.png']);
+  });
+
+  // ⚠ 창 열기가 던지는 경로. 종전 판은 이 자리에서만 임시 파일이 남았다.
+  it('창을 열지 못해도 임시 파일을 지운다', async () => {
+    const { deps, discarded } = fakeDeps();
+    const failing: SilentPrintDeps = {
+      ...deps,
+      openPage: () => {
+        throw new Error('창 생성 실패');
+      },
+    };
+
+    await expect(createSilentPrinter(failing).print('ZD421', label)).rejects.toThrow(
+      '창 생성 실패',
+    );
+    expect(discarded).toEqual(['/tmp/job.png']);
+  });
+
+  // ⛔ 이 묶음이 「인쇄 중에 갇히는 화면」을 막는다. 프린터를 껐다 켜는 중이면 콜백이 영영
+  //    오지 않고, 상한이 없으면 사용자는 성공도 실패도 보지 못한 채 아무것도 할 수 없다.
+  it('프린터가 응답하지 않으면 상한에서 끊고 실패로 만든다', async () => {
+    const { deps, page, discarded } = fakeDeps({ print: () => new Promise(() => undefined) });
+
+    await expect(
+      createSilentPrinter({ ...deps, timeoutMs: 20 }).print('ZD421', label),
+    ).rejects.toThrow(PrintTimeoutError);
+    expect(page.close).toHaveBeenCalled();
+    expect(discarded).toEqual(['/tmp/job.png']);
+  });
+
+  it('출력물이 떠오르지 않아도 상한에서 끊는다', async () => {
+    const { deps } = fakeDeps({ load: () => new Promise(() => undefined) });
+
+    await expect(
+      createSilentPrinter({ ...deps, timeoutMs: 20 }).print('ZD421', label),
+    ).rejects.toThrow(PrintTimeoutError);
   });
 
   it('임시 파일 정리가 실패해도 인쇄 성공을 뒤집지 않는다 — 종이는 이미 나왔다', async () => {

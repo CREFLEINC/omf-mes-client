@@ -433,7 +433,9 @@ on('POST', '/inventory/handling-units/{handlingUnitId}:pack', (params, _q, body)
     return {
       status: 400,
       created: {
-        errors: [{ scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' }],
+        errors: [
+          { scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' },
+        ],
       },
     };
   }

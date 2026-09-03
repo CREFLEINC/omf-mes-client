@@ -74,7 +74,42 @@ export interface SilentPrintDeps {
   openPage: () => PrintPage;
   stage: (bytes: Uint8Array, format: RenditionFormat) => Promise<StagedRendition>;
   discard: (path: string) => Promise<void>;
+  /** 인쇄 한 걸음의 시간 상한. 시험이 짧게 줄여 쓴다. */
+  timeoutMs?: number;
 }
+
+/**
+ * 인쇄가 **끝나지도 실패하지도 않는** 상태를 끊는다.
+ *
+ * ⚠ 프린터를 껐다 켜는 중이거나 드라이버가 매달리면 인쇄 콜백이 영영 오지 않는다. 상한이
+ *   없으면 화면이 「인쇄 중」에 갇혀 **성공도 실패도 보이지 않는다** — 현장에서 가장 먼저
+ *   만나는 상황이고, 사용자는 다시 누를 수도 넘어갈 수도 없게 된다.
+ */
+export class PrintTimeoutError extends Error {
+  constructor(step: string, ms: number) {
+    super(`${step} — ${String(ms)}ms 안에 끝나지 않았다`);
+    this.name = 'PrintTimeoutError';
+  }
+}
+
+/** 기본 상한. 라벨 한 장이 이보다 오래 걸리면 정상이 아니다. */
+export const DEFAULT_PRINT_TIMEOUT_MS = 30_000;
+
+const withLimit = async <T>(task: Promise<T>, ms: number, step: string): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    return await Promise.race([
+      task,
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new PrintTimeoutError(step, ms)), ms);
+      }),
+    ]);
+  } finally {
+    /* 타이머를 남기면 인쇄가 제때 끝난 뒤에도 프로세스가 그만큼 붙잡혀 있다. */
+    clearTimeout(timer);
+  }
+};
 
 /**
  * 무음 인쇄 구현을 만든다.
@@ -85,14 +120,17 @@ export interface SilentPrintDeps {
 export function createSilentPrinter(deps: SilentPrintDeps): SilentPrinter {
   return {
     print: async (deviceName, rendition) => {
+      const limit = deps.timeoutMs ?? DEFAULT_PRINT_TIMEOUT_MS;
       const staged = await deps.stage(rendition.bytes, rendition.format);
-      const page = deps.openPage();
+      /* ⚠ 창 열기 자체가 던져도 임시 파일은 지워야 한다 — 그래서 `try` 안에서 연다. */
+      let page: PrintPage | null = null;
 
       try {
-        await page.load(staged.url);
-        await page.print(deviceName, rendition.label);
+        page = deps.openPage();
+        await withLimit(page.load(staged.url), limit, '출력물을 띄우지 못했다');
+        await withLimit(page.print(deviceName, rendition.label), limit, '프린터가 응답하지 않는다');
       } finally {
-        page.close();
+        page?.close();
         /* 임시 파일 정리가 인쇄 결과를 뒤집지 않는다 — 종이는 이미 나왔거나 안 나왔다. */
         await deps.discard(staged.path).catch(() => undefined);
       }

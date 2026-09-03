@@ -107,8 +107,18 @@ function openPrintPage(): PrintPage {
     },
   });
 
+  /*
+   * ⛔ 이 창은 우리가 방금 떨어뜨린 파일 하나만 띄운다. 서버가 보낸 바이트를 그리는 자리라,
+   *    키오스크 창과 같은 두 빗장을 여기에도 건다 — 새 창을 열지 못하게 하고 다른 곳으로
+   *    옮겨 가지 못하게 한다.
+   */
+  page.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
   return {
     load: async (url) => {
+      page.webContents.on('will-navigate', (event, target) => {
+        if (target !== url) event.preventDefault();
+      });
       await page.loadURL(url);
     },
     print: async (deviceName, jobName) =>
