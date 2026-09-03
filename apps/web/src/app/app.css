@@ -5575,3 +5575,16 @@ main > * + * {
   justify-content: flex-end;
   gap: var(--space-4);
 }
+
+/*
+ * P-02-09 포장 라벨 재출력 — 좌단 《포장 단위》의 포장 번호.
+ *
+ * ⚠ 클래스 이름에 화면을 넣는다(`pop-reprint-`). `.pop-` 일반명은 POP 화면 전부가 함께 쓰는
+ * 이 파일에서 이미 임자가 있고, 같은 이름을 다른 값으로 다시 정의하면 앞 화면 배치가 조용히
+ * 덮인다 — 시험이 CSS 를 읽지 않아 게이트가 잡지 못한다.
+ */
+.pop-reprint-hu-no {
+  margin: 0;
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
