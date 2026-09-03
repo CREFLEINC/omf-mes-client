@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { toApiError } from '../../patterns/request';
 
 import { ActionBar } from './action-bar';
@@ -324,7 +325,12 @@ export const PqcInspectionScreen = () => {
    */
   if (targetId === null) {
     return (
-      <PqcFrame pendingCount={outbox.pendingCount} isOnline={outbox.isOnline}>
+      <PqcFrame
+        pendingCount={outbox.pendingCount}
+        isOnline={outbox.isOnline}
+        isStalled={outbox.isStalled}
+        onRetry={outbox.retryNow}
+      >
         <p className="field-note">{t.detail.nothingSelected}</p>
       </PqcFrame>
     );
@@ -332,7 +338,12 @@ export const PqcInspectionScreen = () => {
 
   if (detail.isError) {
     return (
-      <PqcFrame pendingCount={outbox.pendingCount} isOnline={outbox.isOnline}>
+      <PqcFrame
+        pendingCount={outbox.pendingCount}
+        isOnline={outbox.isOnline}
+        isStalled={outbox.isStalled}
+        onRetry={outbox.retryNow}
+      >
         <QueueLoadErrorBanner
           error={toApiError(detail.error)}
           onRetry={() => void detail.refetch()}
@@ -343,7 +354,12 @@ export const PqcInspectionScreen = () => {
 
   if (detail.data === undefined) {
     return (
-      <PqcFrame pendingCount={outbox.pendingCount} isOnline={outbox.isOnline}>
+      <PqcFrame
+        pendingCount={outbox.pendingCount}
+        isOnline={outbox.isOnline}
+        isStalled={outbox.isStalled}
+        onRetry={outbox.retryNow}
+      >
         <p className="field-note">{t.detail.loading}</p>
       </PqcFrame>
     );
@@ -356,6 +372,8 @@ export const PqcInspectionScreen = () => {
       target={<TargetHeader detail={detail.data} />}
       pendingCount={outbox.pendingCount}
       isOnline={outbox.isOnline}
+      isStalled={outbox.isStalled}
+      onRetry={outbox.retryNow}
     >
       <div className="pop-inspect">
         {/*
@@ -461,11 +479,15 @@ const PqcFrame = ({
   target,
   pendingCount,
   isOnline,
+  isStalled,
+  onRetry,
 }: {
   children: React.ReactNode;
   target?: React.ReactNode;
   pendingCount: number;
   isOnline: boolean;
+  isStalled: boolean;
+  onRetry: () => void;
 }) => {
   const titleId = useId();
 
@@ -493,6 +515,8 @@ const PqcFrame = ({
           </Chip>
         )}
       </header>
+      {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
+      {isStalled && <OutboxStallBanner onRetry={onRetry} />}
       {children}
     </main>
   );
