@@ -1530,7 +1530,7 @@ describe('appRouter — 알림센터의 진입 경로', () => {
 describe('appRouter — 물류 문서 진행현황·취소의 진입 경로', () => {
   const docProgress = messages.documentProgress;
 
-  /** 합성 문서번호다 — 실 운영 값을 쓰지 않는다(루트 `CLAUDE.md`). */
+  /** 합성 문서번호다 — 실 운영 값을 쓰지 않는다(V3 워크플로 공개 저장소 경계). */
   const SYNTHETIC_DOCUMENT_NO = 'SYN-GR-2026-0001';
 
   /*
