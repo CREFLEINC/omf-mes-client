@@ -15,7 +15,7 @@ import { INVENTORY_STATUS_CODES } from './gr-request';
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
 const SAMPLE_CODES: CodeValueLists = {
   receiptType: ['SAMPLE_RECEIPT_TYPE_A'],
-  sourceDocumentType: ['SAMPLE_SOURCE_TYPE_A'],
+  sourceDocumentType: ['INBOUND_RECEIPT'],
   qualityStatus: ['SAMPLE_QUALITY_A'],
   inventoryStatus: ['SAMPLE_INVENTORY_A'],
   reason: ['SAMPLE_REASON_A'],
@@ -27,9 +27,9 @@ describe('자리표시 상수', () => {
    * 모른다. 되돌릴 수 없는 전표에 실리므로 지어내지 않는다.
    */
   it('코드 다섯의 값 목록이 전부 비어 있다', () => {
-    expect(Object.values(PLACEHOLDER_GOODS_RECEIPT_CODES).every((values) => values.length === 0)).toBe(
-      true,
-    );
+    expect(
+      Object.values(PLACEHOLDER_GOODS_RECEIPT_CODES).every((values) => values.length === 0),
+    ).toBe(true);
     /* 짝 방향 — 다섯 키가 실제로 있다(빈 객체는 위 단언을 그냥 통과한다). */
     expect(Object.keys(PLACEHOLDER_GOODS_RECEIPT_CODES)).toHaveLength(5);
   });
@@ -148,7 +148,9 @@ describe('isRequiredCodeListPending — 배열이 비면 잠기고 차면 풀린
 
   /* 사유는 계약상 선택이라 비어 있어도 입고 처리를 막지 않는다. */
   it('사유만 비어 있으면 잠그지 않는다', () => {
-    expect(isRequiredCodeListPending(toCodeOptionSets({ ...SAMPLE_CODES, reason: [] }))).toBe(false);
+    expect(isRequiredCodeListPending(toCodeOptionSets({ ...SAMPLE_CODES, reason: [] }))).toBe(
+      false,
+    );
   });
 });
 

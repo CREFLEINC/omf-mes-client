@@ -34,6 +34,7 @@ const lot = (overrides: Partial<NonconformanceLot> = {}): NonconformanceLot => (
 const nonconformance = (overrides: Partial<Nonconformance> = {}): Nonconformance => ({
   nonconformanceId: 1001,
   nonconformanceNo: 'NC-TEST-0042',
+  sourceCode: 'PRODUCT',
   itemId: 5001,
   severityCode: 'CODE-B',
   description: '도장 표면 박리',
@@ -54,7 +55,7 @@ const nonconformance = (overrides: Partial<Nonconformance> = {}): Nonconformance
 const decision = (overrides: Partial<DispositionDecision> = {}): DispositionDecision => ({
   dispositionDecisionId: 3001,
   nonconformanceId: 1001,
-  dispositionTypeCode: 'CODE-A',
+  dispositionTypeCode: 'REWORK',
   decisionQty: 200,
   uomId: 7001,
   reason: '표면만 손상돼 재작업으로 회복된다',
@@ -162,7 +163,7 @@ describe('toDecisionRow', () => {
   it('판정 이력 행을 만든다', () => {
     expect(toDecisionRow(decision())).toEqual({
       dispositionDecisionId: 3001,
-      dispositionTypeCode: 'CODE-A',
+      dispositionTypeCode: 'REWORK',
       decisionQtyText: '200',
       uomId: 7001,
       reason: '표면만 손상돼 재작업으로 회복된다',

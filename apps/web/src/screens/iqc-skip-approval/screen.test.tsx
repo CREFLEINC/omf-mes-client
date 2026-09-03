@@ -411,7 +411,7 @@ describe('첫 진입', () => {
 
     const table = within(requestTable());
 
-    expect(table.getByText('SAMPLE-TYPE-B')).toBeInTheDocument();
+    expect(table.getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
     expect(table.getAllByText('합성 상신자1').length).toBe(2);
     /* 상신 일시는 **시각까지** 보인다 — 날짜만 그리면 여기서 멈춘다. */
     expect(table.getByText('2026-08-06 14:20')).toBeInTheDocument();
@@ -510,7 +510,7 @@ describe('G1 — 승인 유형 코드 자리표시', () => {
     expect(
       table.getByRole('columnheader', { name: t.fields.approvalTypeCode }),
     ).toBeInTheDocument();
-    expect(table.getAllByText('SAMPLE-TYPE-A').length).toBe(2);
+    expect(table.getAllByText('GOODS_ISSUE_DISPOSAL').length).toBe(2);
   });
 });
 
@@ -1677,7 +1677,7 @@ describe('결재 — 확인 창', () => {
     const summary = within(confirmDialog()).getByRole('group', { name: t.panes.decisionSubject });
 
     expect(within(summary).getByText('SYNTH-REQ-001')).toBeVisible();
-    expect(within(summary).getByText('SAMPLE-TYPE-A')).toBeVisible();
+    expect(within(summary).getByText('GOODS_ISSUE_DISPOSAL')).toBeVisible();
     expect(within(summary).getByText('합성 대상 문서 나')).toBeVisible();
     expect(within(summary).getByText('합성 상신자1')).toBeVisible();
     expect(within(summary).getByText(FIRST_LINE_OF_MULTILINE_REASON)).toBeVisible();
@@ -1691,7 +1691,7 @@ describe('결재 — 확인 창', () => {
     const summary = within(confirmDialog()).getByRole('group', { name: t.panes.decisionSubject });
 
     expect(within(summary).getByText('SYNTH-REQ-001')).toBeVisible();
-    expect(within(summary).getByText('SAMPLE-TYPE-A')).toBeVisible();
+    expect(within(summary).getByText('GOODS_ISSUE_DISPOSAL')).toBeVisible();
     expect(within(summary).getByText('합성 대상 문서 나')).toBeVisible();
     expect(within(summary).getByText('합성 상신자1')).toBeVisible();
     expect(within(summary).getByText(FIRST_LINE_OF_MULTILINE_REASON)).toBeVisible();
@@ -1709,7 +1709,7 @@ describe('결재 — 확인 창', () => {
     const summary = within(confirmDialog()).getByRole('group', { name: t.panes.decisionSubject });
 
     expect(within(summary).getByText('SYNTH-REQ-001')).toBeVisible();
-    expect(within(summary).getByText('SAMPLE-TYPE-A')).toBeVisible();
+    expect(within(summary).getByText('GOODS_ISSUE_DISPOSAL')).toBeVisible();
   });
 
   /** 창이 보여 주는 것과 나가는 것이 같은 값에서 온다 — 갈리면 확인의 뜻이 없다. */

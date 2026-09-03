@@ -37,7 +37,7 @@ const renderDialog = (overrides: Partial<Parameters<typeof ExternalCodeFormDialo
 
 const filled = (overrides: Partial<ExternalCodeDraft> = {}): ExternalCodeDraft =>
   draft({
-    externalSystemCode: 'SYN-EXT-01',
+    externalSystemCode: 'UNIERP',
     partnerId: '6001',
     externalItemCode: 'SYN-EXT-ITEM-01',
     ...overrides,
@@ -59,7 +59,7 @@ describe('ExternalCodeFormDialog — 확인은 저장이 아니다', () => {
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onConfirm.mock.calls[0]?.[0]).toMatchObject({
-      externalSystemCode: 'SYN-EXT-01',
+      externalSystemCode: 'UNIERP',
       partnerId: '6001',
       externalItemCode: 'SYN-EXT-ITEM-01',
     });

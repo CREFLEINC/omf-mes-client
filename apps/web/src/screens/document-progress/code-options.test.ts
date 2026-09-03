@@ -23,7 +23,7 @@ describe('PLACEHOLDER_DOCUMENT_STATUS_CODES', () => {
    */
   it('상태 선택지가 비어 있어도 목록 조회를 막지 않는다', () => {
     const filters: ProgressFilters = {
-      documentType: 'SYN_DOC_TYPE_A',
+      documentType: 'GOODS_RECEIPT',
       status: '',
       from: '',
       to: '',

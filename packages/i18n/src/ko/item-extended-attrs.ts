@@ -118,7 +118,7 @@ export const itemExtendedAttrs = {
    */
   attrs: {
     fields: {
-      lotControlType: 'LOT 관리 유형',
+      lotControlled: 'LOT 관리',
       serialControlType: '시리얼 관리 유형',
       shelfLifeManaged: '유효기한 관리',
       shelfLifeDays: '유효기한(일)',

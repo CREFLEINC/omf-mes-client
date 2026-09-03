@@ -16,7 +16,6 @@ import type { ItemAttrsFormValues } from './types';
  * 아래에서 **그 몫이 실제로 목록에 있는지** 함께 확인한다(목록과 화면이 갈리지 않도록).
  */
 const FREE_TEXT_LABELS: Record<string, string> = {
-  lotControlTypeCode: 'LOT 관리 유형',
   serialControlTypeCode: '시리얼 관리 유형',
   storageConditionCode: '보관 조건',
 };
@@ -128,8 +127,8 @@ describe('ItemAttrsPane — 사용 여부는 값 표기다', () => {
 
     const switches = screen.getAllByRole('switch').map((element) => element.getAttribute('id'));
 
-    // 스위치는 유효기한 관리·입고검사 대상·마이너스 재고 허용 셋뿐이다.
-    expect(switches).toHaveLength(3);
+    // 스위치는 LOT 관리·유효기한 관리·입고검사 대상·마이너스 재고 허용 넷뿐이다(LOT 관리는 코드 사전 2026-09-03 에 여부로 바뀌었다).
+    expect(switches).toHaveLength(4);
     expect(screen.queryByRole('switch', { name: '사용 여부' })).not.toBeInTheDocument();
   });
 });

@@ -95,7 +95,7 @@ describe('불량 분포 모집단', () => {
       detectedTo: '2026-08-31',
       itemId: 101,
       groupBy: 'occurrenceProcess',
-      sourceAxisCode: 'PQC',
+      sourceCode: 'PQC',
     });
   });
 });

@@ -5,7 +5,7 @@ import { duplicateDraftIds, validateExternalCodeDraft } from './external-code-va
 
 const draftOf = (overrides: Partial<ExternalCodeDraft> = {}): ExternalCodeDraft => ({
   draftId: 'new:1',
-  externalSystemCode: 'SYN-EXT-01',
+  externalSystemCode: 'UNIERP',
   partnerId: '6001',
   externalItemCode: 'SYN-EXT-ITEM-01',
   ...overrides,

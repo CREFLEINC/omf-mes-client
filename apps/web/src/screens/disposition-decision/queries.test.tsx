@@ -107,7 +107,7 @@ describe('useDecisionHistory', () => {
     const base = { decidedFrom: 'A', decidedTo: 'B' };
 
     expect(dispositionKeys.history(base)).not.toEqual(
-      dispositionKeys.history({ ...base, dispositionTypeCode: 'CODE-A' }),
+      dispositionKeys.history({ ...base, dispositionTypeCode: 'REWORK' }),
     );
     expect(dispositionKeys.history(null)).toEqual(['disposition-decision', 'history', null]);
   });

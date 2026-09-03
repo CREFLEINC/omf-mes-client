@@ -58,7 +58,8 @@ export interface ItemFilters {
  * 기본값이 끼어들어 미사용 품목이 조용히 되살아난다.
  */
 export interface ItemAttrsFormValues {
-  lotControlTypeCode: string;
+  /** 계약이 「LOT 관리 유형」 코드를 「LOT 관리 여부」 불리언으로 바꿨다(코드 사전 2026-09-03). */
+  lotControlled: boolean;
   serialControlTypeCode: string;
   /**
    * 「유효기한 관리」 토글. **계약 필드가 아니다** —

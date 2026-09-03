@@ -78,7 +78,7 @@ interface ReceiptResponseShape extends ReceiptView {
 const toReceiptResponse = (view: ReceiptView): ReceiptResponseShape => ({
   ...view,
   plantId: 9101,
-  sourceDocumentTypeCode: 'SAMPLE_SRC_TYPE_A',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   sourceDocumentId: 9201,
 });
 
@@ -370,7 +370,7 @@ export const goodsIssueFixtures: IssueView[] = [
  */
 export const goodsIssueResponseFixtures = goodsIssueFixtures.map((view) => ({
   ...view,
-  sourceDocumentTypeCode: 'SAMPLE_SRC_TYPE_A',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   sourceDocumentId: 9001,
   replacementExpected: false,
   ...(view.reasonCode === null ? { reasonCode: undefined } : {}),
@@ -420,7 +420,7 @@ const approvalStep = (overrides: Partial<ApprovalStepResponse> = {}): ApprovalSt
   stepNo: 1,
   approverId: 9551,
   approverName: '합성 승인자 가',
-  decisionCode: 'SAMPLE_DECISION_A',
+  decisionCode: 'APPROVED',
   decisionAt: '2026-08-08T15:02:00+09:00',
   decisionComment: '합성 결재 의견',
   isMine: false,
@@ -445,7 +445,7 @@ export const approvalRequestDetailFixture: ApprovalRequestDetailResponse = {
   request: {
     approvalRequestId: 9521,
     approvalRequestNo: 'AP-2026-800001',
-    approvalTypeCode: 'SAMPLE_AP_TYPE_A',
+    approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
     requestedBy: 9541,
     requestedByName: '합성 상신자 가',
     /* **출고 일시와 다른 시각이다** — 상신은 등록 뒤에 일어나고, 같으면 두 값을 가려 볼 수 없다. */
@@ -453,7 +453,7 @@ export const approvalRequestDetailFixture: ApprovalRequestDetailResponse = {
     statusCode: 'SAMPLE_AP_STATUS_A',
     reason: '합성 폐기 사유 첫 줄\n\n둘째 문단 — 근거를 적는 자리',
     target: {
-      targetTypeCode: 'SAMPLE_TARGET_TYPE_A',
+      targetTypeCode: 'GOODS_ISSUE',
       targetId: 9501,
       displayName: '합성 대상 문서',
       openable: false,
@@ -492,7 +492,7 @@ export const contradictoryApprovalDetailFixture: ApprovalRequestDetailResponse =
 };
 
 /** 반려 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
-export const SAMPLE_REJECTION_DECISION = 'SAMPLE_DECISION_A';
+export const SAMPLE_REJECTION_DECISION = 'APPROVED';
 
 /** 승인 완료 자리표시가 채워졌다고 가정할 때 쓰는 합성 코드. **계약 예시값이 아니다.** */
 export const SAMPLE_APPROVED_STATUS = 'SAMPLE_AP_STATUS_A';
@@ -548,7 +548,7 @@ export const createdIssueResponseFixture = {
   goodsIssueId: 9504,
   goodsIssueNo: 'GI-2026-950004',
   issueTypeCode: 'SAMPLE_GI_TYPE_A',
-  sourceDocumentTypeCode: 'SAMPLE_SRC_TYPE_A',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   sourceDocumentId: 9001,
   sourceWarehouseId: 9701,
   destinationTypeCode: 'DISPOSAL_SITE',
@@ -583,6 +583,6 @@ export const createdIssueLineResponseFixtures = [
  */
 export const SAMPLE_FORM_CODES = {
   issueType: 'SAMPLE_GI_TYPE_A',
-  sourceDocumentType: 'SAMPLE_SRC_TYPE_A',
+  sourceDocumentType: 'INBOUND_RECEIPT',
   reason: 'SAMPLE_GI_REASON_A',
 };

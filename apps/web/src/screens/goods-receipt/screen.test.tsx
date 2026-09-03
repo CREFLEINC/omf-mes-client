@@ -64,7 +64,7 @@ vi.mock('./code-options', async (importOriginal) => {
 
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */
 const SAMPLE_RECEIPT_TYPE = 'SAMPLE_RECEIPT_TYPE_A';
-const SAMPLE_SOURCE_TYPE = 'SAMPLE_SOURCE_TYPE_A';
+const SAMPLE_SOURCE_TYPE = 'INBOUND_RECEIPT';
 const SAMPLE_QUALITY = 'SAMPLE_QUALITY_A';
 /**
  * 재고 상태만 합성값이 아니다. **계약이 값을 넷으로 못박아** 그 밖의 값으로는 요청 본문이
@@ -615,9 +615,7 @@ describe('GoodsReceiptScreen — 첫 진입 조회', () => {
 
     await screen.findAllByText('IR-2026-900001');
 
-    expect(within(listTable()).getAllByRole('row')).toHaveLength(
-      inboundReceiptFixtures.length + 1,
-    );
+    expect(within(listTable()).getAllByRole('row')).toHaveLength(inboundReceiptFixtures.length + 1);
     expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
   });
 
@@ -1052,9 +1050,7 @@ describe('GoodsReceiptScreen — 전표 고르기', () => {
       expect(currentLocation()).toBe(`${ROUTE}?sup=9101&page=2&ir=9001`);
     });
 
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('IR-2026-900001') }),
-    );
+    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('IR-2026-900001') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?sup=9101&page=2`);
@@ -1189,9 +1185,7 @@ describe('GoodsReceiptScreen — 라인 고르기', () => {
     });
 
     /* 해제 버튼이 하나뿐이다 — 둘이면 두 줄이 함께 골라져 있는 것이다. */
-    expect(
-      within(lineTable()).getAllByRole('button', { name: /선택 해제$/ }),
-    ).toHaveLength(1);
+    expect(within(lineTable()).getAllByRole('button', { name: /선택 해제$/ })).toHaveLength(1);
   });
 
   it('고른 줄을 다시 누르면 풀린다', async () => {
@@ -1390,9 +1384,9 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
     expect(screen.getAllByText(SUPPLIER_LABEL).length).toBeGreaterThan(0);
     expect(screen.getAllByText(PLANT_LABEL).length).toBeGreaterThan(0);
     expect(screen.getAllByText('LOT-2026-900010').length).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText(t.lineTable.receivedQtyPair(100, UOM_LABEL)).length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(t.lineTable.receivedQtyPair(100, UOM_LABEL)).length).toBeGreaterThan(
+      0,
+    );
 
     expectNoInternalIds();
   });
@@ -1439,9 +1433,7 @@ describe('GoodsReceiptScreen — 참조 풀이', () => {
        * 자리가 있어(「100 이름을 불러오지 못했습니다」) 텍스트 노드로 딱 맞춰 찾을 수 없다.
        */
       expect(pane.textContent ?? '').toContain(t.values.referenceFailed);
-      expect(
-        within(pane).getByRole('button', { name: messages.common.retry }),
-      ).toBeInTheDocument();
+      expect(within(pane).getByRole('button', { name: messages.common.retry })).toBeInTheDocument();
     },
   );
 
@@ -1636,9 +1628,7 @@ const openPostPane = async (user: ReturnType<typeof userEvent.setup>): Promise<v
 };
 
 /** 코드 넷을 고른다. 사유는 계약상 선택이라 채우지 않는다. */
-const chooseRequiredCodes = async (
-  user: ReturnType<typeof userEvent.setup>,
-): Promise<void> => {
+const chooseRequiredCodes = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await chooseOption(user, t.fields.receiptType, SAMPLE_RECEIPT_TYPE);
   await chooseOption(user, t.fields.sourceDocumentType, SAMPLE_SOURCE_TYPE);
   await chooseOption(user, t.fields.qualityStatus, SAMPLE_QUALITY);
@@ -1788,7 +1778,9 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
     await waitFor(() => {
       expect(requestsTo(requests, LOCATIONS_PATH).length).toBeGreaterThan(0);
     });
-    expect(requestsTo(requests, LOCATIONS_PATH)[0]?.url.searchParams.get('warehouseId')).toBe('9701');
+    expect(requestsTo(requests, LOCATIONS_PATH)[0]?.url.searchParams.get('warehouseId')).toBe(
+      '9701',
+    );
   });
 
   /*
@@ -1902,7 +1894,9 @@ describe('GoodsReceiptScreen — 창고와 적치 위치', () => {
     await chooseOption(user, t.fields.warehouse, OTHER_WAREHOUSE_LABEL);
 
     expect(screen.getByText(t.notes.warehousePlantDiffers)).toBeInTheDocument();
-    expect(screen.getByText(t.notes.warehousePlant('SAMPLE-PLT-02 · 합성 공장 나'))).toBeInTheDocument();
+    expect(
+      screen.getByText(t.notes.warehousePlant('SAMPLE-PLT-02 · 합성 공장 나')),
+    ).toBeInTheDocument();
   });
 });
 
@@ -1954,11 +1948,7 @@ describe('GoodsReceiptScreen — 제출 확인 창', () => {
   it('확인 창이 열린 채 주소로 줄이 바뀌면 창이 닫힌다', async () => {
     fillCodeLists();
 
-    const { user, requests } = renderScreen(
-      allRoutes(),
-      '?ir=9001&line=9401',
-      'ir=9001&line=9402',
-    );
+    const { user, requests } = renderScreen(allRoutes(), '?ir=9001&line=9401', 'ir=9001&line=9402');
 
     await screen.findAllByText(ITEM_LABEL);
     await fillDraft(user);
@@ -1984,11 +1974,7 @@ describe('GoodsReceiptScreen — 제출 확인 창', () => {
   it('대상이 바뀐 뒤에는 확인을 눌러도 요청이 나가지 않는다', async () => {
     fillCodeLists();
 
-    const { user, requests } = renderScreen(
-      allRoutes(),
-      '?ir=9001&line=9401',
-      'ir=9001&line=9402',
-    );
+    const { user, requests } = renderScreen(allRoutes(), '?ir=9001&line=9401', 'ir=9001&line=9402');
 
     await screen.findAllByText(ITEM_LABEL);
     await fillDraft(user);
@@ -2300,7 +2286,9 @@ describe('GoodsReceiptScreen — 전송 중 잠금', () => {
       expect(postRequests(requests)).toHaveLength(1);
     });
 
-    expect(screen.getByRole('button', { name: t.actions.selectRow('IR-2026-900002') })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: t.actions.selectRow('IR-2026-900002') }),
+    ).toBeDisabled();
     expect(screen.getByRole('button', { name: t.actions.deselectLine(1) })).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.search })).toBeDisabled();
     expect(screen.getByRole('button', { name: messages.common.reset })).toBeDisabled();

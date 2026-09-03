@@ -72,7 +72,8 @@ export const toGroupUpdate = (
   // 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 코드가 된다.
   ...(codeEditable ? { groupCode: values.groupCode.trim() } : {}),
   groupName: values.groupName.trim(),
-  groupTypeCode: values.groupTypeCode,
+  /* 선택칸의 값은 서버 코드값 목록에서 온다 — 계약이 닫은 두 값(`LINE`·`WORK_AREA`)으로 좁혀 싣는다. */
+  groupTypeCode: values.groupTypeCode as EquipmentGroupUpdate['groupTypeCode'],
   parentGroupId: textToOptionalId(values.parentGroupId),
 });
 

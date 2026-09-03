@@ -34,18 +34,17 @@ describe('toApprovalTypeOptions', () => {
 
   it('값이 차면 코드값을 그대로 라벨로 쓴다', () => {
     // 사람이 읽을 이름을 주는 곳이 아직 없다 — 화면이 이름을 붙이면 그 뜻도 지어낸 것이 된다.
-    expect(toApprovalTypeOptions(['SAMPLE-TYPE-A', 'SAMPLE-TYPE-B'])).toEqual([
-      { value: 'SAMPLE-TYPE-A', label: 'SAMPLE-TYPE-A' },
-      { value: 'SAMPLE-TYPE-B', label: 'SAMPLE-TYPE-B' },
+    expect(toApprovalTypeOptions(['GOODS_ISSUE_DISPOSAL', 'INVENTORY_ADJUSTMENT'])).toEqual([
+      { value: 'GOODS_ISSUE_DISPOSAL', label: 'GOODS_ISSUE_DISPOSAL' },
+      { value: 'INVENTORY_ADJUSTMENT', label: 'INVENTORY_ADJUSTMENT' },
     ]);
   });
 
   it('차례를 바꾸지 않는다', () => {
     // 어떤 차례로 오는지가 뜻일 수 있다(자주 쓰는 것부터 등).
-    expect(toApprovalTypeOptions(['SAMPLE-TYPE-B', 'SAMPLE-TYPE-A']).map((o) => o.value)).toEqual([
-      'SAMPLE-TYPE-B',
-      'SAMPLE-TYPE-A',
-    ]);
+    expect(
+      toApprovalTypeOptions(['INVENTORY_ADJUSTMENT', 'GOODS_ISSUE_DISPOSAL']).map((o) => o.value),
+    ).toEqual(['INVENTORY_ADJUSTMENT', 'GOODS_ISSUE_DISPOSAL']);
   });
 });
 
@@ -119,6 +118,6 @@ describe('codeNote · codePlaceholder', () => {
 
   it('선택지가 차면 안내를 거둔다', () => {
     // 남으면 화면이 거짓말을 한다.
-    expect(codeNote(toApprovalTypeOptions(['SAMPLE-TYPE-A']))).toBeUndefined();
+    expect(codeNote(toApprovalTypeOptions(['GOODS_ISSUE_DISPOSAL']))).toBeUndefined();
   });
 });
