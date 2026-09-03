@@ -47,6 +47,8 @@ export const PreviewDialog = ({
       onClose={onClose}
       title={t.title}
       size="lg"
+      /* ⛔ 아래 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 같은 동작을 두 자리에 두지 않는다. */
+      showCloseButton={false}
       footer={
         <>
           <Button variant="outlined" size="lg" onClick={onClose}>
@@ -66,12 +68,16 @@ export const PreviewDialog = ({
     >
       {imageUrl === null && <p className="pop-empty-note">{t.loading}</p>}
       {imageUrl !== null && isBroken && <p className="pop-repack-error">{t.notDrawable}</p>}
-      {imageUrl !== null && (
+      {/*
+        ⛔ **`hidden` 으로 감추지 않는다.** 이 이미지의 `display: block` 이 `[hidden]` 의
+        `display: none` 과 명시도가 같고 뒤에 있어 이긴다 — 브라우저에서 깨진 아이콘이 사유
+        문구 옆에 그대로 남았다(실측). 아예 걷어 낸다.
+      */}
+      {imageUrl !== null && !isBroken && (
         <img
           className="pop-repack-preview-image"
           src={imageUrl}
           alt={t.alt}
-          hidden={isBroken}
           onError={() => {
             setIsBroken(true);
           }}

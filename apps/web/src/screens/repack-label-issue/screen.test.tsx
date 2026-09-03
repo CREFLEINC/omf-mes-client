@@ -400,7 +400,25 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
     fireEvent.error(image);
 
     expect(await screen.findByText(t.preview.notDrawable)).toBeInTheDocument();
-    expect(screen.getByAltText(t.preview.alt)).not.toBeVisible();
+    /*
+     * ⛔ **`toBeVisible()` 로 재지 않는다.** jsdom 은 `hidden` 속성을 그대로 존중하지만
+     * 브라우저에서는 이 이미지의 `display: block` 이 그것을 이겨 깨진 아이콘이 남았다(실측).
+     * 「문서에 없다」로 재야 두 곳이 같은 판정을 한다.
+     */
+    expect(screen.queryByAltText(t.preview.alt)).not.toBeInTheDocument();
+  });
+
+  /* 아래 [닫기]와 같은 일을 하는 X 를 두지 않는다 — 같은 동작이 두 자리에 있으면 안 된다. */
+  it('미리보기 창에 닫기가 한 자리만 있다', async () => {
+    renderScreen({ history: [makeIssue({ printOutcome: 'SUCCEEDED' })] });
+
+    await clickWhenEnabled(() => screen.getByRole('button', { name: t.issue.preview }));
+    await screen.findByRole('button', { name: t.preview.print });
+
+    expect(screen.getAllByRole('button', { name: t.preview.close })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /닫기|close/i })).toBe(
+      screen.getByRole('button', { name: t.preview.close }),
+    );
   });
 
   it('발행하면 미리보기가 뜨고, 인쇄를 눌러야 프린터로 간다', async () => {
