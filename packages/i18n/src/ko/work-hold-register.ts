@@ -38,7 +38,7 @@ export const workHoldRegister = {
     timeColumn: '시각',
     typeColumn: '구분',
     reasonColumn: '사유',
-    empty: '이 세션에 기록된 이벤트가 없습니다.',
+    empty: '기록된 이벤트가 없습니다.',
     loadFailed: '이벤트 이력을 불러오지 못했습니다.',
     recordOnlyNotice: '이벤트는 정정할 수 없습니다. 잘못 등록했으면 재개한 뒤 다시 중단하세요.',
   },
