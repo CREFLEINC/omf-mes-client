@@ -193,20 +193,24 @@ export const GroupListPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.group.equipmentGroupId)}
-        empty={emptySlot}
-      />
+      <div className="equipment-master-table equipment-master-group-table">
+        <Table
+          density="compact"
+          caption={<span className="equipment-master-table-caption">{t.panes.groupList}</span>}
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.group.equipmentGroupId)}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   return (
-    <section className="pane" aria-label={t.title}>
+    <section className="pane equipment-master-pane" aria-label={t.panes.groupList}>
+      <h2 className="pane-title">{t.panes.groupList}</h2>
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-      <div className="filter-bar">
+      <div className="filter-bar equipment-master-filter">
         <SearchInput
           label={t.filters.searchLabel}
           placeholder={t.filters.searchPlaceholder}
@@ -222,7 +226,7 @@ export const GroupListPane = ({
           onChange={(value) => setDraft((prev) => ({ ...prev, plantId: value }))}
         />
         {/* 해제 축이라 변경 즉시 적용한다. */}
-        <div className="field-cell field-cell-unlabeled">
+        <div className="equipment-master-filter-footer">
           <Checkbox
             checked={appliedFilters.includeInactive}
             onChange={(event) =>
@@ -231,16 +235,16 @@ export const GroupListPane = ({
           >
             {messages.common.includeInactive}
           </Checkbox>
+          <div className="filter-actions">
+            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+            <Button variant="outlined" onClick={resetAll}>
+              {messages.common.reset}
+            </Button>
+          </div>
         </div>
-        <Button className="field-cell-unlabeled" onClick={() => applyDraft()}>
-          {messages.common.search}
-        </Button>
-        <Button className="field-cell-unlabeled" variant="outlined" onClick={resetAll}>
-          {messages.common.reset}
-        </Button>
       </div>
 
-      <div className="filter-bar">
+      <div className="filter-bar equipment-master-filter-chips">
         {appliedFilters.q !== '' && (
           <Chip
             variant="status"

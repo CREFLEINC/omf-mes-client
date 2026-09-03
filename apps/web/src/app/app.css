@@ -2639,6 +2639,187 @@ main > * + * {
   }
 }
 
+/* 설비·설비그룹 마스터 — 계층 목록과 선택한 그룹의 작업 공간을 함께 읽히게 한다. */
+.two-pane.equipment-master-layout {
+  grid-template-columns: minmax(24rem, 5fr) minmax(0, 7fr);
+  gap: var(--space-5);
+}
+
+.equipment-master-pane,
+.equipment-master-tab-content,
+.equipment-master-form,
+.equipment-master-table {
+  min-width: 0;
+}
+
+.equipment-master-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.equipment-master-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.equipment-master-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.equipment-master-filter > *,
+.equipment-master-filter .field-cell {
+  min-width: 0;
+}
+
+.equipment-master-filter .field-cell {
+  align-items: stretch;
+}
+
+.equipment-master-filter-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.equipment-master-filter-footer > .filter-actions {
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.equipment-master-filter-checks {
+  display: flex;
+  flex: 1 1 20rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.filter-bar.equipment-master-filter-chips {
+  gap: var(--space-2);
+  margin-bottom: 0;
+}
+
+.equipment-master-filter-chips:empty {
+  display: none;
+}
+
+.equipment-master-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.equipment-master-group-table table {
+  min-width: 38rem;
+}
+
+.equipment-master-equipment-table table,
+.equipment-master-inspection-master-table table {
+  min-width: 58rem;
+}
+
+.equipment-master-inspection-table table {
+  min-width: 38rem;
+}
+
+.equipment-master-table th {
+  white-space: nowrap;
+}
+
+.equipment-master-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.equipment-master-detail-pane > [role='tablist'] {
+  margin-top: calc(var(--space-1) * -1);
+}
+
+.equipment-master-form,
+.equipment-master-tab-content {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.equipment-master-form > .form-grid {
+  margin: 0;
+}
+
+.equipment-master-form > .form-actions,
+.equipment-master-tab-content > .form-actions {
+  justify-content: flex-end;
+}
+
+.equipment-master-tab-content > .dialog-lead {
+  max-width: none;
+  margin: 0;
+}
+
+.equipment-master-subtitle {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-md);
+  letter-spacing: var(--type-title-md-tracking);
+}
+
+.equipment-master-subsection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.equipment-master-subsection-actions > .filter-actions {
+  margin-left: auto;
+}
+
+.equipment-master-subsection-actions > .field-note {
+  flex: 1 1 20rem;
+  max-width: none;
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .two-pane.equipment-master-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .filter-bar.equipment-master-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .equipment-master-filter-footer,
+  .equipment-master-filter-checks {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .equipment-master-filter-footer > .filter-actions {
+    align-self: flex-end;
+    margin-left: 0;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
