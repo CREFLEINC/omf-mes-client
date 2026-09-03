@@ -27,9 +27,12 @@ import { WorkStartScreen } from '../screens/work-start/screen';
  *
  * ⛔ **POP 라우트를 `index.tsx`에 직접 추가하지 않는다.** 새 P- 화면은 이 배열에만 붙인다.
  *
- * ⚠ 지금은 `index.tsx`가 이 배열을 그대로 펼쳐 넣는다 — **주소도 동작도 이전과 같다.**
- * 이 파일이 분리된 것은 소유를 가르기 위해서이지 번들을 가르기 위해서가 아니다. POP 전용
- * 빌드 엔트리는 아직 없고, `apps/pop`은 여전히 `apps/web/dist`를 통째로 복사해 쓴다.
+ * ⚠ **`index.tsx`는 이 배열을 펼쳐 넣지 않는다**(#752). 소유뿐 아니라 번들도 갈렸다 —
+ * 이 표를 세우는 것은 POP 진입점(`app/pop-main.tsx`)뿐이고, `apps/pop`은 POP 전용 산출물
+ * (`apps/web/dist-pop`)을 싣는다.
+ *
+ * 개발 중 브라우저로 이 화면들을 여는 길은 POP 전용 개발 서버다 —
+ * `pnpm --filter @omf-mes/web dev:pop` → `http://localhost:5174/pop/...`.
  */
 export const popRoutes: RouteObject[] = [
   /*
