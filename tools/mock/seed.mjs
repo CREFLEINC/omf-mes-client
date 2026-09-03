@@ -68,7 +68,10 @@ export const createSeed = (now = new Date()) => {
   const warehouses = [
     { warehouseId: 1001, warehouseCode: 'WH-01', warehouseName: '1공장 자재창고' },
     { warehouseId: 1002, warehouseCode: 'WH-02', warehouseName: '1공장 완제품창고' },
+    /* 불량창고 — W-04-07 판정 대기 대상이 들어오는 자리. `GET /mdm/warehouses?isDefect=true` 가 준다. */
+    { warehouseId: 1003, warehouseCode: 'WH-03', warehouseName: '1공장 불량창고', isDefect: true },
   ].map((warehouse) => ({
+    isDefect: false,
     ...warehouse,
     plantId: PLANT_ID,
     /* 구역 수준이면 위치를 관리한다. 창고 수준이면 위치 스캔을 건너뛴다. */
@@ -193,6 +196,17 @@ export const createSeed = (now = new Date()) => {
    * 실서버에서는 빈 목록을 받는다 - 그 차이를 시험 자리에서 감추지 않는다.
    */
   const codeValues = {
+    /* W-04-07 — 심각도는 고객이 늘리는 값(시드 셋), 상태는 시스템 값(고객 편집 불가). */
+    NONCONFORMANCE_SEVERITY: [
+      ['CRITICAL', '중대'],
+      ['MAJOR', '중'],
+      ['MINOR', '경'],
+    ],
+    NONCONFORMANCE_STATUS: [
+      ['NOT_REQUESTED', '의뢰 전'],
+      ['PENDING_DECISION', '판정 대기'],
+      ['DECIDED', '판정 완료'],
+    ],
     LOT_TYPE: [
       ['MATERIAL', '자재'],
       ['PRODUCTION', '생산'],
@@ -864,6 +878,118 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /*
+   * W-04-07 판정 대기 대상 — 불량창고(1003)에 들어온 제품 LOT 둘. 반품 갈래 하나(부적합 아직 없음),
+   * OQC 불합격 갈래 하나(이미 판정까지 끝나 ③ 결과 구획이 채워진다). 값은 전부 지어낸 것이다.
+   */
+  const dispositionCandidates = [
+    {
+      lotId: 8201,
+      lotNo: 'FLOT-2026-0311',
+      itemId: 2003,
+      itemCode: 'FG-1001',
+      itemName: '외장 커버',
+      quantity: 200,
+      uomId: 1001,
+      warehouseId: 1003,
+      warehouseName: '1공장 불량창고',
+      sourceCode: 'RETURN',
+      goodsReceiptId: 9601,
+      receiptNo: 'RT-2026-0044',
+      receivedAt: dayOf(shift(now, -2)),
+      partnerName: '합성 거래처 B',
+      inspectionResultId: null,
+      nonconformanceId: null,
+      nonconformanceNo: null,
+      nonconformanceStatusCode: null,
+    },
+    {
+      lotId: 8202,
+      lotNo: 'FLOT-2026-0305',
+      itemId: 2003,
+      itemCode: 'FG-1001',
+      itemName: '외장 커버',
+      quantity: 300,
+      uomId: 1001,
+      warehouseId: 1003,
+      warehouseName: '1공장 불량창고',
+      sourceCode: 'PRODUCT',
+      goodsReceiptId: null,
+      receiptNo: null,
+      receivedAt: dayOf(shift(now, -4)),
+      partnerName: null,
+      inspectionResultId: 5301,
+      nonconformanceId: 7001,
+      nonconformanceNo: 'NC-2026-0903-0001',
+      nonconformanceStatusCode: 'DECIDED',
+    },
+  ];
+
+  const nonconformances = [
+    {
+      nonconformanceId: 7001,
+      nonconformanceNo: 'NC-2026-0903-0001',
+      itemId: 2003,
+      inspectionResultId: 5301,
+      sourceCode: 'PRODUCT',
+      severityCode: 'MAJOR',
+      description: '외관 스크래치 · 상단 모서리 · 300개 중 60개 육안 확인',
+      statusCode: 'DECIDED',
+      openedAt: iso(-4, 11),
+      affectedQtyTotal: 300,
+      uomId: 1001,
+      dispositionProgressCode: 'PARTIAL',
+      lots: [
+        {
+          nonconformanceLotId: 7101,
+          lotId: 8202,
+          lotNo: 'FLOT-2026-0305',
+          affectedQty: 300,
+          uomId: 1001,
+          qualityStatusBeforeCode: 'NORMAL',
+          qualityStatusAfterCode: 'DEFECTIVE',
+        },
+      ],
+      versionNo: 3,
+    },
+  ];
+
+  const dispositionDecisions = [
+    {
+      dispositionDecisionId: 7201,
+      nonconformanceId: 7001,
+      nonconformanceNo: 'NC-2026-0903-0001',
+      dispositionTypeCode: 'REWORK',
+      decisionQty: 240,
+      uomId: 1001,
+      reason: '표면 손상만 있어 재작업으로 회복된다',
+      decidedBy: 4001,
+      decidedAt: iso(-1, 14),
+      approvalRequestId: null,
+      lotId: 8202,
+      lotNo: 'FLOT-2026-0305',
+      itemId: 2003,
+      followUpStatusCode: 'NOT_STARTED',
+      followUpQty: 0,
+    },
+    {
+      dispositionDecisionId: 7202,
+      nonconformanceId: 7001,
+      nonconformanceNo: 'NC-2026-0903-0001',
+      dispositionTypeCode: 'SCRAP',
+      decisionQty: 60,
+      uomId: 1001,
+      reason: '균열이 있어 회복할 수 없다',
+      decidedBy: 4001,
+      decidedAt: iso(-1, 14),
+      approvalRequestId: null,
+      lotId: 8202,
+      lotNo: 'FLOT-2026-0305',
+      itemId: 2003,
+      followUpStatusCode: 'NOT_STARTED',
+      followUpQty: 0,
+    },
+  ];
   return {
     plantId: PLANT_ID,
     today,
@@ -902,6 +1028,9 @@ export const createSeed = (now = new Date()) => {
     approvalRequests,
     goodsReceipts: [],
     productionResults: [],
+    dispositionCandidates,
+    nonconformances,
+    dispositionDecisions,
     documentIssues: [],
     /** 스캔해 볼 값 — 시험 키트가 이 목록을 그대로 인쇄한다. */
     scannables: {

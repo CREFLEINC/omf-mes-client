@@ -56,6 +56,9 @@ const ENTRIES = [
   ],
   ['M-04-01 제품 재고', '/inventory/balances?itemId=2003&includeZero=true', 2],
   ['M-04-03 포장 검색', '/inventory/handling-units?q=HU-2026-000058', 1],
+  ['W-04-07 판정 대기 대상', '/quality/disposition-candidates?warehouseId=1003', 2],
+  ['W-04-07 불량창고', '/mdm/warehouses?isDefect=true', 1],
+  ['W-04-07 심각도', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY', 1],
   ['M-05-01 설비', '/mdm/equipments', 2],
   ['M-05-01 점검 항목', '/mdm/equipments/5001/inspection-items', 3],
 ];

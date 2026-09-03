@@ -267,6 +267,14 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/shipment/shipment-confirm" icon="task_alt">
               출하 확정·취소
             </NavItem>
+            {/*
+             * W-04-07 — 출하 섹션의 «반품·재고» 갈래 첫 화면이다. 출하 지시·확정 흐름(위 여섯)이
+             * 끝난 뒤 돌아온 물건·불합격품을 다루므로 그 뒤에 둔다. 판정은 품질 화면 몫이고 여기서는
+             * 부적합 등록과 판정 의뢰까지다.
+             */}
+            <NavItem to="/shipment/disposition-requests" icon="assignment_return">
+              재작업/폐기 판정 의뢰
+            </NavItem>
           </SidebarSection>
           {/* W-02-01 — 생산의 계획·지시 첫 화면이며 현재 생산 블록의 첫 항목으로 둔다. */}
           <SidebarSection label="생산">

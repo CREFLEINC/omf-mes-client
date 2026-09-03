@@ -67,6 +67,7 @@ import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { shipmentSchedule } from './shipment-schedule';
 import { materialInputScan } from './material-input-scan';
 import { dispositionDecision } from './disposition-decision';
+import { dispositionRequest } from './disposition-request';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workStart } from './work-start';
@@ -174,6 +175,7 @@ export const ko = {
   shipmentSchedule,
   materialInputScan,
   dispositionDecision,
+  dispositionRequest,
   emergencyWorkOrder,
   emergencyWorkOrderField,
   workOrderProgress,
