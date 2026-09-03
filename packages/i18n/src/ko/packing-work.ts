@@ -80,6 +80,7 @@ export const packingWork = {
     blockedNoType: '포장 확정 — 포장 유형을 고르십시오.',
     blockedNoContents: '포장 확정 — 담은 것이 없습니다. 빈 포장은 만들지 않습니다.',
     blockedNoUnit: '포장 확정 — 포장 단위가 아직 만들어지지 않았습니다.',
+    blockedPacked: '이 포장은 확정을 마쳤습니다. 「다음 포장 시작」을 누르십시오.',
     done: '포장을 확정했습니다.',
     doneBody: '라벨·인식표 재출력은 이 화면 밖에서 합니다.',
     startNext: '다음 포장 시작',
@@ -90,6 +91,5 @@ export const packingWork = {
     emptyContents: '담은 것이 없어 서버가 되돌렸습니다. 내용물을 담은 뒤 다시 확정하십시오.',
     alreadyPacked: '이미 확정된 포장입니다. 다음 포장을 새로 시작하십시오.',
     forbidden: '이 단말에는 포장 권한이 없습니다. 담당자에게 문의하십시오.',
-    rejected: '보낸 값이 규칙에 어긋나 저장되지 않았습니다.',
   },
 } as const;

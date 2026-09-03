@@ -162,6 +162,12 @@ export const PackingWorkScreen = () => {
   };
 
   const confirmBlockedReason = ((): string | null => {
+    /*
+     * ⛔ **확정을 마친 포장에 다시 손대지 않는다.** 확정해도 담은 것은 화면에 그대로 남아
+     * 있어, 이 줄이 없으면 버튼이 계속 눌린다 — 두 번째 요청은 «새» 멱등 키로 나가므로
+     * 서버가 앞 쓰기와 묶어 주지도 못한다. 되돌릴 화면이 없는 쓰기다(스펙 §8-4).
+     */
+    if (packed) return t.confirm.blockedPacked;
     if (entryBlockedReason !== null) return entryBlockedReason;
     if (draft.handlingUnitTypeCode === null) return t.confirm.blockedNoType;
     if (draft.lines.length === 0) return t.confirm.blockedNoContents;

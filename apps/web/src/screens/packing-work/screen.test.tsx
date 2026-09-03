@@ -392,7 +392,33 @@ describe('P-02-08 포장 작업', () => {
     expect(unitPane().getByText(t.contents.empty)).toBeInTheDocument();
   });
 
-  it('빈 내용물로 되돌아온 400 과 이미 확정된 409 를 갈라 말한다', async () => {
+  /**
+   * ⛔ **확정을 마친 포장을 다시 확정하지 않는다.** 확정해도 담은 것은 화면에 남아 있어,
+   * 막지 않으면 버튼이 계속 눌린다 — 두 번째 요청은 «새» 멱등 키로 나가 서버가 앞 쓰기와
+   * 묶어 주지 못하고, 성공 배너가 서 있는 동안에는 그 실패도 화면에 서지 않는다.
+   */
+  it('확정을 마치면 확정 버튼이 잠기고 다시 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+
+    renderScreen({ writes });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    expect(await screen.findByText(t.confirm.done)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.confirm.submit })).toBeDisabled();
+    expect(screen.getByText(t.confirm.blockedPacked)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    /* 등록 1건 + 확정 1건. 세 번째가 있으면 같은 포장을 두 번 확정한 것이다 */
+    expect(writes).toHaveLength(2);
+  });
+
+  it('이미 확정된 409 를 그 말로 되돌린다', async () => {
     const user = userEvent.setup();
 
     renderScreen({ packStatus: 409 });
@@ -404,6 +430,24 @@ describe('P-02-08 포장 작업', () => {
 
     expect(await screen.findByText(t.error.alreadyPacked)).toBeInTheDocument();
     expect(screen.queryByText(t.error.emptyContents)).not.toBeInTheDocument();
+  });
+
+  /**
+   * 400 은 사용자가 할 일이 409 와 다르다 — 담은 것을 채우면 풀린다. 서버가 사유를 싣지
+   * 않고 되돌릴 때 그 자리를 화면이 채우는지 본다.
+   */
+  it('빈 내용물로 되돌아온 400 을 409 와 다르게 말한다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ packStatus: 400, packErrorBody: {} });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    expect(await screen.findByText(t.error.emptyContents)).toBeInTheDocument();
+    expect(screen.queryByText(t.error.alreadyPacked)).not.toBeInTheDocument();
   });
 
   it('포장 유형 목록이 실패하면 고르지 못하게 하고 그 사실을 말한다', async () => {
