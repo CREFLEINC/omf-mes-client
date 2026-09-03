@@ -63,7 +63,8 @@ export const ProgressPane = ({ view }: ProgressPaneProps) => {
   }));
 
   return (
-    <div role="group" aria-label={t.panes.progress}>
+    <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.progress}>
+      <h3>{t.panes.progress}</h3>
       <p>{view.positionText}</p>
       {/*
        * **왜 내 차례가 아닌지는 말하지 않는다.** 앞 단계가 안 끝난 것인지, 내가 승인자가

@@ -65,6 +65,10 @@ describe('POP 라우트 분리', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/rework-results');
   });
 
+  it('P-02-08 포장 작업 주소가 서 있다', () => {
+    expect(popRoutes.map(({ path }) => path)).toContain('/pop/packing-work');
+  });
+
   it('POP 경로는 `/pop`으로 시작한다 — 관리웹 셸 주소와 섞이지 않는다', () => {
     for (const { path } of popRoutes) {
       expect(path).toMatch(/^\/pop\//);

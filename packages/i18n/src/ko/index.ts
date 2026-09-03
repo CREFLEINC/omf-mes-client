@@ -103,6 +103,7 @@ import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
 import { inboundReceipt } from './inbound-receipt';
 import { packingRepack } from './packing-repack';
+import { packingWork } from './packing-work';
 import { putaway } from './putaway';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
@@ -114,6 +115,8 @@ import { identificationTagIssue } from './identification-tag-issue';
 import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
 import { productionLotComplete } from './production-lot-complete';
+import { popLotLabelPrint } from './pop-lot-label-print';
+import { shippingPackingLabel } from './shipping-packing-label';
 
 export const ko = {
   common,
@@ -203,6 +206,7 @@ export const ko = {
   productPicking,
   inboundReceipt,
   packingRepack,
+  packingWork,
   putaway,
   inboundVariance,
   temporaryPutaway,
@@ -216,6 +220,8 @@ export const ko = {
   reworkResultRegister,
   packingLabelReprint,
   productionLotComplete,
+  popLotLabelPrint,
+  shippingPackingLabel,
 } as const;
 
 export type Messages = typeof ko;
