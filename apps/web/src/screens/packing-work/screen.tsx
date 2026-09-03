@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { addLine, findScannedLot, judgeQuantity, toPackingLine } from './contents';
@@ -42,8 +42,14 @@ export const PackingWorkScreen = () => {
   const [quantity, setQuantity] = useState('');
   const [scanError, setScanError] = useState<string | null>(null);
   const [quantityError, setQuantityError] = useState<string | null>(null);
-  /** 담기가 ①을 기다리는 동안 들고 있는 줄. 포장 단위가 서면 이 줄이 들어간다. */
-  const [pendingLine, setPendingLine] = useState<PackingLine | null>(null);
+  /*
+   * 담기가 ①을 기다리는 동안 들고 있는 줄. 포장 단위가 서면 이 줄이 들어간다.
+   *
+   * ⛔ **상태로 두지 않는다.** ①의 성공 콜백은 `write` 를 부른 «그때의» 렌더를 붙들고 있어,
+   * 같은 조작에서 방금 넣은 상태가 아직 비어 있는 것으로 읽힌다 — 포장 단위는 생기고 담은
+   * 줄만 조용히 사라진다(실측). 참조는 그 자리에서 갱신되므로 콜백이 최신 값을 본다.
+   */
+  const pendingLine = useRef<PackingLine | null>(null);
   const [packed, setPacked] = useState(false);
 
   const lots = useTargetLots(entry.workOrderId);
@@ -59,12 +65,14 @@ export const PackingWorkScreen = () => {
        * ①이 끝나면 기다리던 줄을 담는다. **여기서만 담는다** — ① 전에 담아 두면 등록이
        * 실패했을 때 화면에는 담긴 것이 보이고 서버에는 포장이 없다.
        */
+      const line = pendingLine.current;
+
       setDraft((current) => ({
         ...current,
         handlingUnit: unit,
-        lines: pendingLine === null ? current.lines : addLine(current.lines, pendingLine),
+        lines: line === null ? current.lines : addLine(current.lines, line),
       }));
-      setPendingLine(null);
+      pendingLine.current = null;
       setQuantity('');
     },
   });
@@ -116,13 +124,15 @@ export const PackingWorkScreen = () => {
     const verdict = judgeQuantity(quantity);
 
     if (!verdict.ok) {
-      setQuantityError(t.scan[
-        verdict.reason === 'empty'
-          ? 'quantityRequired'
-          : verdict.reason === 'notNumber'
-            ? 'quantityNumber'
-            : 'quantityPositive'
-      ]);
+      setQuantityError(
+        t.scan[
+          verdict.reason === 'empty'
+            ? 'quantityRequired'
+            : verdict.reason === 'notNumber'
+              ? 'quantityNumber'
+              : 'quantityPositive'
+        ],
+      );
 
       return;
     }
@@ -138,7 +148,7 @@ export const PackingWorkScreen = () => {
     if (draft.handlingUnit === null) {
       if (draft.handlingUnitTypeCode === null) return;
 
-      setPendingLine(line);
+      pendingLine.current = line;
       create.write({
         handlingUnitTypeCode: draft.handlingUnitTypeCode,
         parentHandlingUnitId: draft.parentHandlingUnitId,
@@ -169,6 +179,7 @@ export const PackingWorkScreen = () => {
   /** 확정이 끝나면 다음 포장을 새로 시작한다 — 같은 포장 단위를 다시 쓰지 않는다. */
   const startNext = (): void => {
     setDraft(emptyPackingDraft);
+    pendingLine.current = null;
     setSelectedLot(null);
     setQuantity('');
     setScanError(null);
@@ -190,16 +201,12 @@ export const PackingWorkScreen = () => {
         <div className="pop-context-right">
           <Chip status={entry.workOrderId === null ? 'warning' : 'info'}>
             {`${t.device.workOrderLabel} ${
-              entry.workOrderId === null
-                ? t.device.workOrderUnknown
-                : String(entry.workOrderId)
+              entry.workOrderId === null ? t.device.workOrderUnknown : String(entry.workOrderId)
             }`}
           </Chip>
           <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
             {`${t.device.terminalLabel} ${
-              identity.terminalId === null
-                ? t.device.terminalUnknown
-                : String(identity.terminalId)
+              identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)
             }`}
           </Chip>
         </div>

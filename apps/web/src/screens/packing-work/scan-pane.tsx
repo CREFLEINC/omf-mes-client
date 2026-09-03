@@ -93,12 +93,7 @@ export const ScanPane = ({
               setCode(event.target.value);
             }}
           />
-          <Button
-            type="submit"
-            variant="outlined"
-            size="xl"
-            className={popTouchClass('normal')}
-          >
+          <Button type="submit" variant="outlined" size="xl" className={popTouchClass('normal')}>
             {t.scan.manualEntry}
           </Button>
         </div>
@@ -106,7 +101,7 @@ export const ScanPane = ({
         <p className="field-note">{t.scan.manualEntryNote}</p>
       </form>
 
-      <div className="packing-add-row">
+      <div className="pack-work-add-row">
         <TextField
           label={t.scan.quantityLabel}
           value={quantity}

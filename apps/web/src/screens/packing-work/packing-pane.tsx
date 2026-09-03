@@ -51,7 +51,7 @@ export const PackingPane = ({
       key: 'lotNo',
       header: t.contents.lotColumn,
       render: (line) => (
-        <span className="packing-lot-no" title={line.lotNo}>
+        <span className="pack-work-lot-no" title={line.lotNo}>
           {line.lotNo}
         </span>
       ),
@@ -67,15 +67,13 @@ export const PackingPane = ({
 
   return (
     <>
-      <p className="packing-unit-no">
-        {draft.handlingUnit === null
-          ? t.unit.numberPending
-          : draft.handlingUnit.handlingUnitNo}
+      <p className="pack-work-unit-no">
+        {draft.handlingUnit === null ? t.unit.numberPending : draft.handlingUnit.handlingUnitNo}
       </p>
 
-      <div className="packing-unit-fields">
-        <label className="packing-field">
-          <span className="packing-field-label">{t.unit.typeLabel}</span>
+      <div className="pack-work-unit-fields">
+        <label className="pack-work-field">
+          <span className="pack-work-field-label">{t.unit.typeLabel}</span>
           <Select
             options={unitTypes.map((value) => ({
               value: value.code,
@@ -90,8 +88,8 @@ export const PackingPane = ({
           />
         </label>
 
-        <label className="packing-field">
-          <span className="packing-field-label">{t.unit.parentLabel}</span>
+        <label className="pack-work-field">
+          <span className="pack-work-field-label">{t.unit.parentLabel}</span>
           <Select
             options={[
               { value: NO_PARENT, label: t.unit.parentNone },
@@ -101,9 +99,7 @@ export const PackingPane = ({
               })),
             ]}
             value={
-              draft.parentHandlingUnitId === null
-                ? NO_PARENT
-                : String(draft.parentHandlingUnitId)
+              draft.parentHandlingUnitId === null ? NO_PARENT : String(draft.parentHandlingUnitId)
             }
             size="xl"
             aria-label={t.unit.parentLabel}
@@ -121,7 +117,7 @@ export const PackingPane = ({
 
       <h3 className="pane-title">{t.contents.sectionLabel}</h3>
       <Table
-        className="packing-content-table"
+        className="pack-work-content-table"
         columns={columns}
         rows={[...draft.lines]}
         getRowId={(line) => `${String(line.lotId)}-${String(line.itemId)}`}
@@ -156,7 +152,7 @@ export const PackingPane = ({
         </div>
       )}
 
-      <div className="packing-actions">
+      <div className="pack-work-actions">
         <Button
           type="button"
           variant="filled"

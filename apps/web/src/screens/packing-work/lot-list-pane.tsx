@@ -32,7 +32,7 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
       key: 'lotNo',
       header: t.lotList.lotNoColumn,
       render: (lot) => (
-        <span className="packing-lot-no" title={lot.lotNo}>
+        <span className="pack-work-lot-no" title={lot.lotNo}>
           {lot.lotNo}
         </span>
       ),
@@ -68,7 +68,7 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
   return (
     <>
       <Table
-        className="packing-lot-table"
+        className="pack-work-lot-table"
         columns={columns}
         rows={[...lots]}
         getRowId={(lot) => String(lot.lotId)}

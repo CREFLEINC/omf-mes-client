@@ -5,6 +5,7 @@ import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-f
 import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
+import { PackingWorkScreen } from '../screens/packing-work/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { ProductionResultScreen } from '../screens/production-result/screen';
@@ -152,8 +153,8 @@ export const popRoutes: RouteObject[] = [
    * 기본 입력이라 우단에 상시 선다.
    *
    * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?handlingUnitId=&workerNo=`) — 포장을 만드는
-   * 포장 작업(`P-02-08`)이 아직 이 저장소에 없다(#76). 그것이 서면 `entry-context.ts` 하나가
-   * 바뀐다(전례 `P-02-05`).
+   * 포장 작업(`P-02-08`)이 섰지만 그 화면은 여기로 넘기지 않는다(스펙이 분기를 두지 않았다).
+   * 넘기는 자리가 정해지면 `entry-context.ts` 하나가 바뀐다(전례 `P-02-05`).
    */
   { path: '/pop/packing-label-reprint', element: <PackingLabelReprintScreen /> },
   /*
@@ -169,4 +170,15 @@ export const popRoutes: RouteObject[] = [
    * 「단말이 확인되지 않았습니다」로 저장이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
    */
   { path: '/pop/production-result', element: <ProductionResultScreen /> },
+  /*
+   * P-02-08 — 포장 작업(LOT 스캔·제품 포장). 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시
+   * 선택(`P-02-01`)이 아직 이 저장소에 없다. 그것이 서면 `entry-context.ts` 하나가
+   * 바뀐다(전례 `P-02-05`).
+   *
+   * ⚠ **재출력 화면(`P-02-09`)으로 넘기지 않는다.** 스펙이 이 화면에 분기를 두지 않았다 —
+   * 확정한 포장의 라벨을 다시 뽑는 것은 그 화면의 소관이고, 넘기는 자리는 설계가 정한다.
+   */
+  { path: '/pop/packing-work', element: <PackingWorkScreen /> },
 ];

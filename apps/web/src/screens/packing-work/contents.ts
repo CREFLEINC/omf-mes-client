@@ -7,8 +7,7 @@ import type { HandlingUnitContentUpsert, Lot, PackingLine } from './types';
 
 /** 수량 입력을 읽은 결과. **못 읽은 것과 0 이하를 가른다** — 사용자에게 할 말이 다르다. */
 export type QuantityVerdict =
-  | { ok: true; qty: number }
-  | { ok: false; reason: 'empty' | 'notNumber' | 'notPositive' };
+  { ok: true; qty: number } | { ok: false; reason: 'empty' | 'notNumber' | 'notPositive' };
 
 /**
  * 손으로 친 수량을 읽는다.
@@ -38,9 +37,7 @@ export const judgeQuantity = (raw: string): QuantityVerdict => {
  * ⛔ **원본 배열을 고치지 않는다** — 담기 실패로 되돌려야 할 때 앞 상태가 남아 있어야 한다.
  */
 export const addLine = (lines: readonly PackingLine[], next: PackingLine): PackingLine[] => {
-  const index = lines.findIndex(
-    (line) => line.lotId === next.lotId && line.itemId === next.itemId,
-  );
+  const index = lines.findIndex((line) => line.lotId === next.lotId && line.itemId === next.itemId);
 
   if (index === -1) return [...lines, next];
 
@@ -67,9 +64,7 @@ export const isMixedLot = (lines: readonly PackingLine[]): boolean =>
  * (공유계약 A-5). 그래서 담은 것 **전부**를 매번 싣는다. 마지막에 담은 것만 보내면 앞서
  * 담은 행이 서버에서 지워진다.
  */
-export const toContentUpserts = (
-  lines: readonly PackingLine[],
-): HandlingUnitContentUpsert[] =>
+export const toContentUpserts = (lines: readonly PackingLine[]): HandlingUnitContentUpsert[] =>
   lines.map((line) => ({
     itemId: line.itemId,
     lotId: line.lotId,

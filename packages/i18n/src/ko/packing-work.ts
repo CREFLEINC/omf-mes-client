@@ -16,7 +16,8 @@ export const packingWork = {
   },
 
   entry: {
-    missingWorkOrder: '작업지시를 알 수 없어 포장 대상을 불러오지 못했습니다. 작업 시작 화면에서 작업지시를 고른 뒤 들어오십시오.',
+    missingWorkOrder:
+      '작업지시를 알 수 없어 포장 대상을 불러오지 못했습니다. 작업 시작 화면에서 작업지시를 고른 뒤 들어오십시오.',
     missingWorker: '사번이 확인되지 않아 포장을 시작할 수 없습니다. 작업자 지정을 먼저 마치십시오.',
   },
 
@@ -28,8 +29,10 @@ export const packingWork = {
     selected: '선택됨',
     empty: '포장할 수 있는 완료 LOT 이 없습니다.',
     loadFailed: '포장 대상 목록을 불러오지 못했습니다.',
-    completedOnlyNotice: '완료된 생산LOT 만 보입니다. 미달로 마감된 LOT 도 실물이 있으므로 함께 포장할 수 있습니다.',
-    remainingPending: '「잔여」 열은 아직 세우지 않았습니다 — 이미 포장된 수량을 뺀 값을 서버가 내려 주지 않습니다.',
+    completedOnlyNotice:
+      '완료된 생산LOT 만 보입니다. 미달로 마감된 LOT 도 실물이 있으므로 함께 포장할 수 있습니다.',
+    remainingPending:
+      '「잔여」 열은 아직 세우지 않았습니다 — 이미 포장된 수량을 뺀 값을 서버가 내려 주지 않습니다.',
   },
 
   scan: {
@@ -43,7 +46,8 @@ export const packingWork = {
     quantityRequired: '수량을 넣으십시오.',
     quantityPositive: '수량은 0보다 커야 합니다.',
     quantityNumber: '수량은 숫자로 넣으십시오.',
-    blockedNoType: '담기 — 포장 유형을 먼저 고르십시오. 유형이 정해져야 포장 단위를 만들 수 있습니다.',
+    blockedNoType:
+      '담기 — 포장 유형을 먼저 고르십시오. 유형이 정해져야 포장 단위를 만들 수 있습니다.',
     creating: '포장 단위를 만드는 중입니다.',
   },
 
