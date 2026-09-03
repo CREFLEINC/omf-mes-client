@@ -26,7 +26,6 @@ type Outcome = 'queued' | 'sent' | 'rejected';
 
 const emptyDraft: RecycleDraft = {
   itemCode: '',
-  item: null,
   warehouseId: null,
   location: null,
   quantity: '',
@@ -63,7 +62,7 @@ export const RecycleEntryScreen = () => {
     }
 
     setSearching(code);
-    patch({ itemCode: code, item: null });
+    patch({ itemCode: code });
   };
 
   const scanField = useScanField({ onScan: take });
@@ -77,11 +76,10 @@ export const RecycleEntryScreen = () => {
    * 품목코드 하나에 행이 둘 온다. 첫 행을 잡으면 신재로 재고가 늘고 되돌릴 자리가 없어,
    * 구분으로 가른 뒤에만 고른 것으로 친다.
    */
-  const found = rows.data === undefined ? null : recycledRowOf(rows.data);
-  const item = draft.item ?? found;
-  const missing = rows.data !== undefined && found === null;
+  const item = rows.data === undefined ? null : recycledRowOf(rows.data);
+  const missing = rows.data !== undefined && item === null;
 
-  const ready = loaded && canSubmit({ ...draft, item }, worker !== null);
+  const ready = loaded && canSubmit(draft, item, worker !== null);
   const uom = item?.baseUomId === undefined ? null : (uoms.data?.get(item.baseUomId) ?? null);
 
   const qtyMessage = (): string | undefined => {

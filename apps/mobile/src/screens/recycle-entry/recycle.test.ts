@@ -26,7 +26,6 @@ const place = { locationId: 5, warehouseId: 2, locationCode: 'A-01-03' } as Loca
 
 const draft = (overrides: Partial<RecycleDraft> = {}): RecycleDraft => ({
   itemCode: 'ABC-123',
-  item: item(),
   warehouseId: 2,
   location: place,
   quantity: '12.5',
@@ -73,29 +72,29 @@ describe('수량 검증', () => {
 
 describe('등록 조건', () => {
   it('품목과 창고와 위치와 수량이 있으면 등록할 수 있다', () => {
-    expect(canSubmit(draft(), true)).toBe(true);
+    expect(canSubmit(draft(), item(), true)).toBe(true);
   });
 
   it('품목을 고르지 않으면 등록할 수 없다', () => {
-    expect(canSubmit(draft({ item: null }), true)).toBe(false);
+    expect(canSubmit(draft(), null, true)).toBe(false);
   });
 
   /* 위치는 비울 수 없다. 서버도 400 으로 막지만 보내기 전에 알아야 한다. */
   it('위치를 고르지 않으면 등록할 수 없다', () => {
-    expect(canSubmit(draft({ location: null }), true)).toBe(false);
+    expect(canSubmit(draft({ location: null }), item(), true)).toBe(false);
   });
 
   it('창고를 고르지 않으면 등록할 수 없다', () => {
-    expect(canSubmit(draft({ warehouseId: null }), true)).toBe(false);
+    expect(canSubmit(draft({ warehouseId: null }), item(), true)).toBe(false);
   });
 
   it('수량이 0 이하면 등록할 수 없다', () => {
-    expect(canSubmit(draft({ quantity: '0' }), true)).toBe(false);
+    expect(canSubmit(draft({ quantity: '0' }), item(), true)).toBe(false);
   });
 
   /* 누가 한 일인지 없이 재고를 늘릴 수 없다. */
   it('사번이 없으면 등록할 수 없다', () => {
-    expect(canSubmit(draft(), false)).toBe(false);
+    expect(canSubmit(draft(), item(), false)).toBe(false);
   });
 });
 

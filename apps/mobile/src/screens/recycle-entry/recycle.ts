@@ -59,15 +59,18 @@ export const qtyProblem = (text: string): QtyProblem | null => {
 export interface RecycleDraft {
   /** 스캔하거나 적은 품목코드. 이것으로 찾고, 고르는 것은 품목 행이다. */
   itemCode: string;
-  item: ItemRow | null;
   warehouseId: number | null;
   location: Location | null;
   quantity: string;
   remarks: string;
 }
 
-export const canSubmit = (draft: RecycleDraft, hasWorker: boolean): boolean => {
-  if (!hasWorker || draft.item === null) {
+export const canSubmit = (
+  draft: RecycleDraft,
+  item: ItemRow | null,
+  hasWorker: boolean,
+): boolean => {
+  if (!hasWorker || item === null) {
     return false;
   }
 
