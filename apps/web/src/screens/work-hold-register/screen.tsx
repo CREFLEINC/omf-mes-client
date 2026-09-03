@@ -70,15 +70,21 @@ export const WorkHoldRegisterScreen = () => {
   /** 세션이 없으면 사유를 고를 수 없다 — 고른 값을 실을 곳이 없기 때문이다. */
   const inputDisabled = session.session === null;
 
-  /*
-   * ⛔ **보낼 것이 남아 있는 동안은 둘 다 잠근다.** 큐에 담긴 중단이 아직 서버에 닿지 않았으면
-   * 세션 상태는 여전히 「진행」이라, 잠그지 않으면 작업자가 같은 중단을 한 번 더 담는다.
-   */
-  const sending = outbox.pendingCount > 0;
-
   const stopped = session.session !== null && isStoppedSession(session.session);
   /* ⛔ 「중단이 아니면 진행 중」이 아니다 — 종료된 세션·모르는 상태에 중단을 걸지 않는다. */
   const running = session.session !== null && isRunningSession(session.session);
+
+  /*
+   * **지금 이 세션은 어느 쪽인가** — 서버가 아직 받지 못한 것이 큐에 있으면 그것이 답이다.
+   *
+   * ⛔ **「보낼 것이 있으면 둘 다 잠근다」로 두지 않는다.** 망이 끊기면 큐가 비지 않아, 중단을
+   * 담은 뒤 설비가 다시 돌 때 **재개를 아예 등록하지 못한다** — 「담는 것이 곧 성공」이라는
+   * 이 큐의 전제를 오프라인에서 되돌리는 일이다(공유계약 C-1 #2).
+   *
+   * ⛔ **같은 방향을 두 번 담는 것만 막는다.** 순서는 큐가 지킨다(한 번에 한 건씩·거부하면 멈춤).
+   */
+  const canStop = outbox.lastQueuedType === null ? running : outbox.lastQueuedType === 'RESUME';
+  const canResume = outbox.lastQueuedType === null ? stopped : outbox.lastQueuedType === 'STOP';
 
   /**
    * 큐에 담고 화면을 비운다 — **담은 것이 곧 성공이다**(C-1 #2). 통신을 기다리지 않는다.
@@ -224,8 +230,8 @@ export const WorkHoldRegisterScreen = () => {
         <HoldForm
           draft={draft}
           disabled={inputDisabled}
-          canStop={running && !sending}
-          canResume={stopped && !sending}
+          canStop={canStop}
+          canResume={canResume}
           error={draftError}
           workerUnknown={workerNo === null}
           onReasonChange={(code) => {

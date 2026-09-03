@@ -272,7 +272,14 @@ describe('P-02-10 작업 중단 등록', () => {
      * ⛔ **담긴 중단이 아직 안 나갔으면 한 번 더 누를 수 없다.** 서버에 닿기 전에는 세션이
      * 여전히 「진행」이라, 잠그지 않으면 같은 중단이 두 건 기록된다 — 정정 경로가 없다.
      */
-    it('보낼 것이 남아 있는 동안 두 버튼이 잠긴다', async () => {
+    /*
+     * ⛔ **같은 방향을 두 번 담을 수 없다.** 서버에 닿기 전에는 세션이 여전히 「진행」이라,
+     * 막지 않으면 같은 중단이 두 건 기록된다 — 정정 경로가 없다.
+     *
+     * ⭐ **반대 방향은 열어 둔다.** 망이 끊기면 큐가 비지 않는데 둘 다 잠그면, 설비가 다시
+     * 돌아도 재개를 등록할 방법이 사라진다(공유계약 C-1 #2).
+     */
+    it('중단을 담으면 중단은 잠기고 재개가 열린다', async () => {
       const user = userEvent.setup();
 
       renderScreen([
@@ -281,7 +288,7 @@ describe('P-02-10 작업 중단 등록', () => {
         {
           match: (request) =>
             request.method === 'POST' && new URL(request.url).pathname === EVENTS_PATH,
-          /* 서버가 아직 답하지 않은 상태 — 큐에 남아 있다. */
+          /* 서버가 아직 받지 못한 상태 — 큐에 남아 있다. */
           respond: () => jsonResponse({ message: '잠시 뒤 다시' }, { status: 503 }),
         },
       ]);
@@ -292,7 +299,42 @@ describe('P-02-10 작업 중단 등록', () => {
       await waitFor(() => {
         expect(screen.getByRole('button', { name: t.form.stopAction })).toBeDisabled();
       });
-      expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
+      expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeEnabled();
+    });
+
+    /* 서버가 받으면 세션·이력을 다시 읽는다 — 옛 상태를 들고 있으면 버튼이 틀리게 열린다. */
+    it('전송이 닿으면 세션을 다시 읽는다', async () => {
+      const user = userEvent.setup();
+      let sessionReads = 0;
+
+      renderScreen([
+        {
+          match: (request) => isGet(request, SESSIONS_PATH),
+          respond: () => {
+            sessionReads += 1;
+
+            return jsonResponse({
+              items: [workSession()],
+              page: { page: 1, size: 50, total: 1 },
+            });
+          },
+        },
+        eventsRoute([]),
+        {
+          match: (request) =>
+            request.method === 'POST' && new URL(request.url).pathname === EVENTS_PATH,
+          respond: () => jsonResponse({}, { status: 201 }),
+        },
+      ]);
+
+      await user.click(await screen.findByRole('radio', { name: t.reasons.MOLD_CHANGE }));
+      const before = sessionReads;
+
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+
+      await waitFor(() => {
+        expect(sessionReads).toBeGreaterThan(before);
+      });
     });
 
     /* ⛔ 사번이 없으면 서버가 거부한다 — 누르고 나서가 아니라 누르기 전에 막는다. */

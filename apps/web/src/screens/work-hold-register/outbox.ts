@@ -127,6 +127,13 @@ export interface Outbox {
   pendingCount: number;
   /** 서버가 받은 횟수. 늘어나면 화면이 조회를 다시 한다. */
   sentCount: number;
+  /**
+   * 큐에 마지막으로 담긴 사건 유형. 없으면 `null`.
+   *
+   * ⭐ **오프라인에서 「지금 상태」를 말하는 것은 이 값이다.** 서버가 아직 받지 못했으면 세션
+   * 상태는 옛것 그대로라, 이 값이 없으면 중단을 담은 뒤 재개를 누를 방법이 사라진다.
+   */
+  lastQueuedType: string | null;
   /** 지금 연결돼 있는가. 건수와 함께 낸다 — 끊긴 것과 밀리는 것은 다르다. */
   isOnline: boolean;
   /** 큐에 담는다. **이것이 곧 성공이다** — 통신을 기다리지 않는다(C-1 #2). */
@@ -317,6 +324,7 @@ export const useWorkHoldOutbox = (): Outbox => {
   return {
     pendingCount: entries.length,
     sentCount: sentTick,
+    lastQueuedType: entries.at(-1)?.body.eventTypeCode ?? null,
     isOnline,
     enqueue,
     rejection,
