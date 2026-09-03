@@ -12,6 +12,18 @@ export type Routing = components['schemas']['Routing'];
 export type RoutingOperation = components['schemas']['RoutingOperation'];
 export type Item = components['schemas']['Item'];
 export type Process = components['schemas']['Process'];
+export type ProcessDetailResponse = components['schemas']['ProcessDetailResponse'];
+
+export interface ProcessFilters {
+  q: string;
+  includeInactive: boolean;
+}
+
+export interface ProcessFormValues {
+  processCode: string;
+  processName: string;
+  processTypeCode: string;
+}
 
 /** 좌 페인의 조회 조건. URL이 소유하며 화면 상태로 복제하지 않는다. */
 export interface ItemFilters {
