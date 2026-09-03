@@ -182,12 +182,6 @@ export interface LabelIssueOptions {
 }
 
 /**
- * 발행 한 번과 그 뒤의 인쇄를 끌고 간다.
- *
- * ⛔ **발행과 인쇄를 한 호출로 묶지 않는다**(스펙 §6). 묶으면 인쇄가 실패했을 때 기록까지
- * 없던 일로 만들고 싶어지는데, 계약에 **발행 취소 경로가 없다** — 기록 전용이다.
- */
-/**
  * 이 발행 명령을 가리키는 지문 — **같은 명령이면 같은 문자열이다.**
  *
  * 대상 집합·프린터·사유가 하나라도 다르면 다른 명령이다. 대상 순서는 고름 순서라 뜻이 없어
@@ -201,6 +195,12 @@ const signatureOf = ({ kind, rows, printerName, reissueReasonCode }: IssueComman
     reissueReasonCode ?? '',
   ].join('|');
 
+/**
+ * 발행 한 번과 그 뒤의 인쇄를 끌고 간다.
+ *
+ * ⛔ **발행과 인쇄를 한 호출로 묶지 않는다**(스펙 §6). 묶으면 인쇄가 실패했을 때 기록까지
+ * 없던 일로 만들고 싶어지는데, 계약에 **발행 취소 경로가 없다** — 기록 전용이다.
+ */
 export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
