@@ -48,14 +48,14 @@ export const goodsIssueQr = {
     unitLabel: '유형',
     unitLine: '라인 단위',
     unitPallet: '파렛트 단위',
-    /** 파렛트 단위는 값 목록이 도착하기 전까지 고를 수 없다. 감추지 않고 사유를 적는다. */
-    unitPalletPending: '유형: 파렛트 단위는 아직 고를 수 없습니다. 지금은 라인 단위로 발행합니다.',
+    /** 파렛트 단위는 고를 대상을 찾을 길이 없어 아직 못 연다. 감추지 않고 사유를 적는다. */
+    unitPalletPending:
+      '유형: 파렛트 단위는 아직 고를 수 없습니다. 이 출고 전표에 실린 파렛트를 찾는 조회가 없습니다. 지금은 라인 단위로 발행합니다.',
     selectedCount: (count: number) => `${String(count)}개 라인`,
     none: '발행할 라인을 고르세요.',
     seqLabel: '회차',
     /** 회차는 서버가 매긴다 — 화면은 발행 뒤에야 값을 안다. */
     seqUnknown: '발행하면 서버가 매깁니다.',
-    documentTypePending: '출력물 종류 코드는 확정 전이라 임시 값으로 발행합니다.',
     previewLabel: '미리보기',
     previewEmpty: '발행하면 인쇄될 모습을 여기에 보여 줍니다.',
     previewFailed: '미리보기를 불러오지 못했습니다. 인쇄는 그대로 진행할 수 있습니다.',

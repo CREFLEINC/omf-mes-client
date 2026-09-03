@@ -3,8 +3,8 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import {
-  PLACEHOLDER_DOCUMENT_TYPE_CODE,
-  PLACEHOLDER_LINE_TARGET_TYPE_CODE,
+  DOCUMENT_TYPE_CODE,
+  LINE_TARGET_TYPE_CODE,
   type DocumentIssueSummary,
   type GoodsIssue,
   type GoodsIssueLine,
@@ -100,9 +100,9 @@ export const useDocumentIssueSummary = (
         client.GET('/app/document-issues/summary', {
           params: {
             query: {
-              targetTypeCode: PLACEHOLDER_LINE_TARGET_TYPE_CODE,
+              targetTypeCode: LINE_TARGET_TYPE_CODE,
               targetIds: sorted,
-              documentTypeCode: PLACEHOLDER_DOCUMENT_TYPE_CODE,
+              documentTypeCode: DOCUMENT_TYPE_CODE,
             },
           },
         }),
@@ -128,7 +128,7 @@ export const usePrinters = (): UseQueryResult<Printer[]> => {
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/app/printers', {
-          params: { query: { documentTypeCode: PLACEHOLDER_DOCUMENT_TYPE_CODE } },
+          params: { query: { documentTypeCode: DOCUMENT_TYPE_CODE } },
         }),
       );
 

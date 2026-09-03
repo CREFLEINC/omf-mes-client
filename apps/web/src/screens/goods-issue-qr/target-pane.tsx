@@ -14,8 +14,9 @@ const t = messages.goodsIssueQr;
  * 라고 말하고, 발행 뒤에는 서버가 돌려준 값을 그대로 보인다. 화면이 `+1` 을 하면 두 단말이
  * 동시에 찍을 때 둘 다 같은 회차를 말하게 된다.
  *
- * ⚠ **파렛트 단위는 비활성이되 감추지 않는다**(G-2). 값 목록이 도착하기 전까지 고를 수 없다는
- * 사실과 그 사유를 함께 보인다 — 감추면 「없는 기능」으로 읽힌다.
+ * ⚠ **파렛트 단위는 비활성이되 감추지 않는다.** 대상 유형 값은 계약이 닫았으나 **이 전표에
+ * 실린 파렛트를 찾는 조회가 없어** 고를 대상을 세울 수 없다 — 그 사실과 사유를 함께 보인다.
+ * 감추면 「없는 기능」으로 읽힌다.
  */
 export interface TargetPaneProps {
   selectedCount: number;
@@ -127,8 +128,6 @@ export const TargetPane = ({
             />
           )}
         </div>
-
-        <p className="field-note">{t.target.documentTypePending}</p>
       </Card.Body>
     </Card>
   );

@@ -37,7 +37,7 @@ const LINES = [line(1001, 20, 1), line(1002, 21, 2)];
 
 const issuedRecord = (documentIssueLogId: number, targetId: number, issueSeq: number) => ({
   documentIssueLogId,
-  documentTypeCode: 'ISSUE_QR',
+  documentTypeCode: 'GOODS_ISSUE_QR',
   target: { targetTypeCode: 'GOODS_ISSUE_LINE', targetId },
   issueSeq,
   issuedBy: 1,
@@ -537,7 +537,7 @@ describe('GoodsIssueQrScreen', () => {
 
     const query = new URL(summaryRequests[0]?.url ?? 'http://x/').searchParams;
 
-    expect(query.get('documentTypeCode')).toBe('ISSUE_QR');
+    expect(query.get('documentTypeCode')).toBe('GOODS_ISSUE_QR');
     expect(query.get('targetTypeCode')).toBe('GOODS_ISSUE_LINE');
     expect(query.get('targetIds')).toBe('1001,1002');
   });

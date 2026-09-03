@@ -120,6 +120,15 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     label: 'P-02-11 러닝체인지 부품 교체',
     query: '?workOrderId=11002',
   },
+  /*
+   * ⚠ **씨앗에 출고 전표가 없다** — 이 번호는 계약 예시 서버가 받아 답한다(위 출하와 같은
+   * 사정). 씨앗이 출고를 담게 되면 그때 실제 번호로 바꾼다.
+   */
+  {
+    path: '/pop/goods-issue-qr',
+    label: 'P-01-02 출고 QR 발행',
+    query: '?goodsIssueId=15001&workerNo=100029',
+  },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */

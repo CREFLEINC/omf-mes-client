@@ -16,8 +16,8 @@ import { useDocumentIssueSummary, useGoodsIssue, useGoodsIssueLines, usePrinters
 import { TargetPane } from './target-pane';
 import { useGoodsIssueQrEntry } from './entry-context';
 import {
-  PLACEHOLDER_DOCUMENT_TYPE_CODE,
-  PLACEHOLDER_LINE_TARGET_TYPE_CODE,
+  DOCUMENT_TYPE_CODE,
+  LINE_TARGET_TYPE_CODE,
   type DocumentIssue,
   type Printer,
 } from './types';
@@ -92,11 +92,11 @@ export const GoodsIssueQrScreen = () => {
     printFlow.reset();
 
     write.write({
-      documentTypeCode: PLACEHOLDER_DOCUMENT_TYPE_CODE,
+      documentTypeCode: DOCUMENT_TYPE_CODE,
       targets: rows
         .filter((row) => selectedIds.includes(rowId(row.line)))
         .map((row) => ({
-          targetTypeCode: PLACEHOLDER_LINE_TARGET_TYPE_CODE,
+          targetTypeCode: LINE_TARGET_TYPE_CODE,
           targetId: row.line.goodsIssueLineId,
           lotId: row.line.lotId,
         })),
