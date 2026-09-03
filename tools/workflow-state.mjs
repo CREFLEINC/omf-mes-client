@@ -275,6 +275,7 @@ export function repositoryPolicyErrors(root) {
     'docs/uiux-handoff.md',
     '.github/ISSUE_TEMPLATE/uiux-ready.yml',
     '.github/ISSUE_TEMPLATE/design-change-notice.yml',
+    '.github/ISSUE_TEMPLATE/design-change-impact-review.yml',
     'docs/client-dev-workflow/references/review-request.md',
   ];
   for (const file of forbiddenPaths) {
@@ -287,7 +288,6 @@ export function repositoryPolicyErrors(root) {
     'docs/client-dev-workflow/README.md',
     'docs/client-dev-workflow/references/design-reference.md',
     'docs/client-dev-workflow/references/design-request.md',
-    '.github/ISSUE_TEMPLATE/design-change-impact-review.yml',
     '.github/ISSUE_TEMPLATE/design-request-tracking.yml',
   ];
   for (const file of requiredPaths) {
@@ -312,7 +312,6 @@ export function repositoryPolicyErrors(root) {
     'tools/merge-spec.mjs',
     'tools/mock/README.md',
     'tools/mock/resolve-spec.mjs',
-    '.github/ISSUE_TEMPLATE/design-change-impact-review.yml',
   ];
   const forbiddenText = [
     [/Agent\s*:\s*T\d+/, '특정 팀 번호 하드코딩'],

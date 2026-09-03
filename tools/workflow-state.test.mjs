@@ -82,7 +82,6 @@ test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
     'docs/client-dev-workflow/README.md',
     'docs/client-dev-workflow/references/design-reference.md',
     'docs/client-dev-workflow/references/design-request.md',
-    '.github/ISSUE_TEMPLATE/design-change-impact-review.yml',
     '.github/ISSUE_TEMPLATE/design-request-tracking.yml',
   ];
   for (const file of required) {
@@ -91,6 +90,13 @@ test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
     writeFileSync(target, 'current policy\n');
   }
   assert.deepEqual(repositoryPolicyErrors(root), []);
+  writeFileSync(
+    path.join(root, '.github/ISSUE_TEMPLATE/design-change-impact-review.yml'),
+    'client-owned notice format\n',
+  );
+  assert.ok(
+    repositoryPolicyErrors(root).some((error) => error.includes('design-change-impact-review.yml')),
+  );
   writeFileSync(path.join(root, 'multi-agent-team-workflow-v2.md'), 'old policy\n');
   assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('폐기된 하네스')));
   writeFileSync(path.join(root, 'AGENTS.md'), '설계팀이 이 저장소에 발행\n');
