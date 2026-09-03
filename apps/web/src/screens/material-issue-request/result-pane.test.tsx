@@ -9,6 +9,14 @@ const t = messages.materialIssueRequest;
 /** 최소 갈래 — 잠긴 사유가 **보이는 글자**인지, 결과가 서버 글자를 그대로 내는지만 본다. */
 
 describe('ResultPane', () => {
+  it('발행 액션을 제목이 있는 구획으로 구분한다', () => {
+    render(
+      <ResultPane publishBlockReason={null} banner={null} created={null} onPublish={vi.fn()} />,
+    );
+
+    expect(screen.getByRole('heading', { level: 2, name: t.panes.result })).toBeInTheDocument();
+  });
+
   it('잠긴 사유를 보이는 DOM 텍스트로 낸다 — 잠긴 버튼은 포커스를 받지 못한다', () => {
     render(
       <ResultPane

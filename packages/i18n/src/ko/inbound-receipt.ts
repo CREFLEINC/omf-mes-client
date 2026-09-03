@@ -12,7 +12,8 @@ export const inboundReceipt = {
   record: '입하 등록',
   scan: {
     legend: '자재 LOT 스캔',
-    label: '자재 LOT 스캔',
+    /* 구획 제목과 같은 말을 쓰지 않는다. 좁은 화면에 같은 줄이 둘로 붙는다. */
+    label: 'LOT 번호',
     placeholder: '자재 LOT 라벨을 비추세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',

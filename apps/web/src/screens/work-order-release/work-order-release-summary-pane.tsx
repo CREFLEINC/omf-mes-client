@@ -49,21 +49,21 @@ export const WorkOrderReleaseSummaryPane = ({ view }: WorkOrderReleaseSummaryPan
   }
 
   return (
-    <section className="pane" aria-label={t.pane}>
-      <h2>{t.heading(view.workOrderNo)}</h2>
+    <section className="pane work-order-release-summary-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.heading(view.workOrderNo)}</h2>
       <Card bordered>
         <Card.Body>
-          <dl className="filter-bar">
-            <div className="field-cell">
+          <dl className="work-order-release-summary-grid">
+            <div className="field-cell work-order-release-summary-field">
               <dt className="field-label">{t.fields.item}</dt>
               <dd>{displayLabel(view.itemLabel)}</dd>
             </div>
-            <div className="field-cell">
+            <div className="field-cell work-order-release-summary-field">
               <dt className="field-label">{t.fields.quantity}</dt>
               <dd>{view.quantityLabel}</dd>
             </div>
             {DISPLAY_FIELDS.slice(1).map((field) => (
-              <div key={field.key} className="field-cell">
+              <div key={field.key} className="field-cell work-order-release-summary-field">
                 <dt className="field-label">{field.label}</dt>
                 <dd>{displayLabel(view[field.key])}</dd>
               </div>

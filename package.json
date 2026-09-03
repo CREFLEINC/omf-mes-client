@@ -10,11 +10,13 @@
   "scripts": {
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "mock": "node tools/mock/serve.mjs",
+    "mock": "node tools/mock/seeded.mjs",
     "mock:smoke": "node tools/mock/smoke.mjs",
     "gen:api": "node tools/gen-api.mjs",
     "check:generated": "node tools/check-generated-boundary.mjs",
-    "dep:check": "depcruise apps packages --config .dependency-cruiser.cjs"
+    "dep:check": "depcruise apps packages --config .dependency-cruiser.cjs",
+    "mock:contract": "node tools/mock/serve.mjs",
+    "mock:seed-smoke": "node tools/mock/seed-smoke.mjs"
   },
   "devDependencies": {
     "@stoplight/prism-cli": "^5.14.2",

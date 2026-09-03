@@ -73,96 +73,99 @@ export const WorkOrderReleaseFilterBar = ({
   const searchDisabled = validationReasons.length > 0;
 
   return (
-    <form
-      className="filter-bar"
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!searchDisabled) onSearch({ ...draft });
-      }}
-    >
-      <div className="field-cell wide-select">
-        <label className="field-label" htmlFor={productionLineId}>
-          {t.productionLine}
-        </label>
-        <Select
-          id={productionLineId}
-          aria-describedby={productionLineUnavailableReason === null ? undefined : lineNoteId}
-          disabled={productionLineUnavailableReason !== null}
-          options={[{ value: '', label: t.all }, ...productionLineOptions]}
-          value={draft.productionLineId}
-          onChange={(value) => setDraft((current) => ({ ...current, productionLineId: value }))}
-        />
-        {productionLineUnavailableReason !== null && (
-          <p className="field-note" id={lineNoteId}>
-            {productionLineUnavailableReason}
-          </p>
-        )}
-      </div>
-      <div className="field-cell">
-        <TextField
-          label={t.plannedStartFrom}
-          type="date"
-          value={draft.plannedStartFrom}
-          onChange={(event) =>
-            setDraft((current) => ({ ...current, plannedStartFrom: event.target.value }))
-          }
-        />
-      </div>
-      <div className="field-cell">
-        <TextField
-          label={t.plannedStartTo}
-          type="date"
-          value={draft.plannedStartTo}
-          onChange={(event) =>
-            setDraft((current) => ({ ...current, plannedStartTo: event.target.value }))
-          }
-        />
-      </div>
-      <div className="field-cell wide-select">
-        <label className="field-label" htmlFor={statusId}>
-          {t.status}
-        </label>
-        <Select
-          id={statusId}
-          aria-describedby={statusReason === null ? undefined : statusNoteId}
-          aria-required
-          disabled={statusReason !== null}
-          options={statusOptions}
-          value={draft.statusCode === '' ? null : draft.statusCode}
-          onChange={(value) => setDraft((current) => ({ ...current, statusCode: value }))}
-        />
-        {statusReason !== null && (
-          <p className="field-note" id={statusNoteId}>
-            {statusReason}
-          </p>
-        )}
-      </div>
-      <div className="field-cell field-cell-unlabeled">
-        <div className="filter-actions">
-          <Button
-            type="submit"
-            aria-describedby={searchDisabled ? validationId : undefined}
-            disabled={searchDisabled}
-          >
-            {t.search}
-          </Button>
-          <Button
-            type="button"
-            variant="outlined"
-            onClick={() => {
-              setDraft(EMPTY_WORK_ORDER_RELEASE_FILTERS);
-              onReset();
-            }}
-          >
-            {t.reset}
-          </Button>
+    <section className="pane work-order-release-filter-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.pane}</h2>
+      <form
+        className="filter-bar work-order-release-filter"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!searchDisabled) onSearch({ ...draft });
+        }}
+      >
+        <div className="field-cell wide-select">
+          <label className="field-label" htmlFor={productionLineId}>
+            {t.productionLine}
+          </label>
+          <Select
+            id={productionLineId}
+            aria-describedby={productionLineUnavailableReason === null ? undefined : lineNoteId}
+            disabled={productionLineUnavailableReason !== null}
+            options={[{ value: '', label: t.all }, ...productionLineOptions]}
+            value={draft.productionLineId}
+            onChange={(value) => setDraft((current) => ({ ...current, productionLineId: value }))}
+          />
+          {productionLineUnavailableReason !== null && (
+            <p className="field-note" id={lineNoteId}>
+              {productionLineUnavailableReason}
+            </p>
+          )}
         </div>
-        {searchDisabled && (
-          <p className="field-error" id={validationId}>
-            {validationReasons.join(' ')}
-          </p>
-        )}
-      </div>
-    </form>
+        <div className="field-cell">
+          <TextField
+            label={t.plannedStartFrom}
+            type="date"
+            value={draft.plannedStartFrom}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, plannedStartFrom: event.target.value }))
+            }
+          />
+        </div>
+        <div className="field-cell">
+          <TextField
+            label={t.plannedStartTo}
+            type="date"
+            value={draft.plannedStartTo}
+            onChange={(event) =>
+              setDraft((current) => ({ ...current, plannedStartTo: event.target.value }))
+            }
+          />
+        </div>
+        <div className="field-cell wide-select">
+          <label className="field-label" htmlFor={statusId}>
+            {t.status}
+          </label>
+          <Select
+            id={statusId}
+            aria-describedby={statusReason === null ? undefined : statusNoteId}
+            aria-required
+            disabled={statusReason !== null}
+            options={statusOptions}
+            value={draft.statusCode === '' ? null : draft.statusCode}
+            onChange={(value) => setDraft((current) => ({ ...current, statusCode: value }))}
+          />
+          {statusReason !== null && (
+            <p className="field-note" id={statusNoteId}>
+              {statusReason}
+            </p>
+          )}
+        </div>
+        <div className="field-cell field-cell-unlabeled">
+          <div className="filter-actions">
+            <Button
+              type="submit"
+              aria-describedby={searchDisabled ? validationId : undefined}
+              disabled={searchDisabled}
+            >
+              {t.search}
+            </Button>
+            <Button
+              type="button"
+              variant="outlined"
+              onClick={() => {
+                setDraft(EMPTY_WORK_ORDER_RELEASE_FILTERS);
+                onReset();
+              }}
+            >
+              {t.reset}
+            </Button>
+          </div>
+          {searchDisabled && (
+            <p className="field-error" id={validationId}>
+              {validationReasons.join(' ')}
+            </p>
+          )}
+        </div>
+      </form>
+    </section>
   );
 };

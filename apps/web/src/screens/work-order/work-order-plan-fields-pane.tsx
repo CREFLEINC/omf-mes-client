@@ -42,6 +42,7 @@ const PlanFieldInput = ({
   onChange,
 }: PlanFieldInputProps) => (
   <TextField
+    containerClassName="work-order-plan-field"
     label={label}
     type={type}
     value={value}
@@ -75,45 +76,47 @@ export const WorkOrderPlanFieldsPane = ({
   }
 
   return (
-    <section className="pane" aria-label={t.pane}>
-      <h2>{t.heading(selectedWorkOrderNo)}</h2>
+    <section className="pane work-order-plan-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.heading(selectedWorkOrderNo)}</h2>
       <AlertBanner variant="warning">{t.warning}</AlertBanner>
       <Card bordered>
         <Card.Header>
           <h3>{t.card}</h3>
         </Card.Header>
         <Card.Body>
-          <PlanFieldInput
-            field="plannedStartAtLocal"
-            label={t.fields.plannedStartAtLocal}
-            type="datetime-local"
-            value={draft.plannedStartAtLocal}
-            error={fieldErrors.plannedStartAtLocal}
-            disabled={disabled}
-            disabledReason={disabledReason}
-            onChange={onChange}
-          />
-          <PlanFieldInput
-            field="plannedEndAtLocal"
-            label={t.fields.plannedEndAtLocal}
-            type="datetime-local"
-            value={draft.plannedEndAtLocal}
-            error={fieldErrors.plannedEndAtLocal}
-            disabled={disabled}
-            disabledReason={disabledReason}
-            onChange={onChange}
-          />
-          <PlanFieldInput
-            field="priorityNo"
-            label={t.fields.priorityNo}
-            type="text"
-            inputMode="numeric"
-            value={draft.priorityNo}
-            error={fieldErrors.priorityNo}
-            disabled={disabled}
-            disabledReason={disabledReason}
-            onChange={onChange}
-          />
+          <div className="work-order-plan-fields">
+            <PlanFieldInput
+              field="plannedStartAtLocal"
+              label={t.fields.plannedStartAtLocal}
+              type="datetime-local"
+              value={draft.plannedStartAtLocal}
+              error={fieldErrors.plannedStartAtLocal}
+              disabled={disabled}
+              disabledReason={disabledReason}
+              onChange={onChange}
+            />
+            <PlanFieldInput
+              field="plannedEndAtLocal"
+              label={t.fields.plannedEndAtLocal}
+              type="datetime-local"
+              value={draft.plannedEndAtLocal}
+              error={fieldErrors.plannedEndAtLocal}
+              disabled={disabled}
+              disabledReason={disabledReason}
+              onChange={onChange}
+            />
+            <PlanFieldInput
+              field="priorityNo"
+              label={t.fields.priorityNo}
+              type="text"
+              inputMode="numeric"
+              value={draft.priorityNo}
+              error={fieldErrors.priorityNo}
+              disabled={disabled}
+              disabledReason={disabledReason}
+              onChange={onChange}
+            />
+          </div>
         </Card.Body>
       </Card>
     </section>

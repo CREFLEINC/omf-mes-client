@@ -35,6 +35,10 @@ const tiles = [
     ],
   },
   {
+    label: t.tiles.picking,
+    screens: [{ to: '/material-picking', label: messages.materialPicking.title }],
+  },
+  {
     label: t.tiles.urgent,
     screens: [{ to: '/iqc-skip-request', label: messages.iqcSkipRequest.title }],
   },

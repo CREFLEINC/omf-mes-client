@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# POP 전용 빌드 산출물 — 이름이 `dist`가 아니라 위 규칙에 걸리지 않는다.
+dist-pop/
 coverage/
 *.local
 .DS_Store

@@ -17,7 +17,7 @@ export const PageNav = ({ view, onChange }: PageNavProps) => {
   const t = messages.workOrderProgress.page;
 
   return (
-    <nav className="form-actions" aria-label={t.label}>
+    <nav className="form-actions work-order-progress-page-nav" aria-label={t.label}>
       <p className="field-note form-actions-secondary">{view.rangeLabel}</p>
       <Button
         variant="outlined"

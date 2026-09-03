@@ -49,6 +49,7 @@ import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { iqcInspection } from './iqc-inspection';
+import { pqcInspection } from './pqc-inspection';
 import { equipmentMaster } from './equipment-master';
 import { qualityApproval } from './quality-approval';
 import { productionOrder } from './production-order';
@@ -69,6 +70,7 @@ import { emergencyWorkOrder } from './emergency-work-order';
 import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
+import { materialPicking } from './material-picking';
 import { toolUsage } from './tool-usage';
 import { productStockStatus } from './product-stock-status';
 import { shipmentRequestCreate } from './shipment-request-create';
@@ -106,6 +108,8 @@ import { shellHome } from './shell-home';
 import { wipHandover } from './wip-handover';
 import { workerAssignment } from './worker-assignment';
 import { popMaterialLotLabel } from './pop-material-lot-label';
+import { identificationTagIssue } from './identification-tag-issue';
+import { reworkResultRegister } from './rework-result-register';
 
 export const ko = {
   common,
@@ -143,6 +147,7 @@ export const ko = {
   documentProgress,
   notificationCenter,
   iqcInspection,
+  pqcInspection,
   equipmentMaster,
   qualityApproval,
   productionOrder,
@@ -163,6 +168,7 @@ export const ko = {
   emergencyWorkOrderField,
   workOrderProgress,
   materialLocation,
+  materialPicking,
   productStockStatus,
   shipmentRequestCreate,
   shipmentProcessing,
@@ -200,6 +206,8 @@ export const ko = {
   wipHandover,
   workerAssignment,
   popMaterialLotLabel,
+  identificationTagIssue,
+  reworkResultRegister,
 } as const;
 
 export type Messages = typeof ko;

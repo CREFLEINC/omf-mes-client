@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
 import { runRequest } from './request';
@@ -16,6 +16,8 @@ export interface ScannedHandlingUnit {
 }
 
 export const handlingUnitKeys = {
+  /** 이 뿌리를 걷으면 이 화면이 들고 있던 포장 조회가 전부 버려진다. */
+  root: ['scanned-handling-unit'] as const,
   scanned: (code: string | null) => ['scanned-handling-unit', code] as const,
 };
 
@@ -69,5 +71,37 @@ export const useScannedHandlingUnit = (
 
       return findHandlingUnit(client, code);
     },
+  });
+};
+
+/**
+ * 포장에 든 LOT 의 번호표.
+ *
+ * 구성 응답은 LOT 식별자만 준다. 그 번호를 그대로 보이면 작업자가 실물 라벨과 대조할 수
+ * 없다 - 라벨에는 LOT 번호가 찍혀 있지 대리키가 찍혀 있지 않다.
+ */
+export const useLotLabels = (sources: ScannedHandlingUnit[]): Map<number, string> => {
+  const { client } = useApiClient();
+  const lotIds = [
+    ...new Set(sources.flatMap((source) => source.contents.map((content) => content.lotId))),
+  ];
+
+  return useQueries({
+    queries: lotIds.map((lotId) => ({
+      queryKey: ['handling-unit-lot', lotId] as const,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }),
+        );
+
+        return [lotId, data.lot.lotNo] as const;
+      },
+    })),
+    combine: (results) =>
+      new Map(
+        results
+          .map((result) => result.data)
+          .filter((pair): pair is readonly [number, string] => pair !== undefined),
+      ),
   });
 };

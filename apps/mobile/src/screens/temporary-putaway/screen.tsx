@@ -69,7 +69,11 @@ export const TemporaryPutawayScreen = () => {
   const uoms = useUomCodes(true);
 
   const scannedLocation = scanned === null ? null : (byCode.data ?? null);
-  const location = scannedLocation ?? draft.location;
+  /*
+   * 스캔을 시작했으면 스캔이 정본이다. 찾지 못한 것을 앞 화면이 넘긴 위치로 되돌리면 작업자는
+   * 자기가 비춘 자리에 넣었다고 믿는데 장부는 다른 자리를 가리킨다 - 실물을 사람이 찾아야 한다.
+   */
+  const location = scanned === null ? draft.location : scannedLocation;
   const ready = canSubmit(task, { ...draft, location }, worker !== null);
 
   const codeOf = (locationId: number | null | undefined): string =>
@@ -171,6 +175,8 @@ export const TemporaryPutawayScreen = () => {
               : undefined
           }
         />
+        {/* 스캔한 코드를 확인하는 동안 등록이 잠긴다. 왜 잠겼는지 말하지 않으면 멈춘 것처럼 보인다. */}
+        {scanned !== null && byCode.isPending ? <p role="status">{t.location.loading}</p> : null}
         {byCode.isError ? <AlertBanner variant="error" title={t.location.loadFailed} /> : null}
 
         {locations.isPending ? <p role="status">{t.location.loading}</p> : null}

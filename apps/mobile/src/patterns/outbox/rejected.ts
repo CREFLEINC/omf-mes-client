@@ -18,6 +18,27 @@ export interface RejectedRecord {
   rejectedAt: string;
 }
 
+/**
+ * 이번 회차에 깨진 묶음과 그 사유.
+ *
+ * 딸림 되돌리기가 보내는 목록 안에서만 걸리면, 보내는 사이에 담긴 딸림 건이 그 판정을 피해
+ * 다음 회차에 혼자 나간다 - 그 건은 앞 건의 결과를 이미 싣고 있어 서버가 받지 않은 수량이
+ * 그대로 기록된다. 회차가 끝날 때 큐에 남은 같은 묶음을 그 자리에서 함께 되돌린다.
+ */
+export const brokenBatchesOf = (rejections: OutboxRejection[]): Map<string, ApiError> => {
+  const broken = new Map<string, ApiError>();
+
+  for (const rejection of rejections) {
+    const batchId = rejection.entry.batchId;
+
+    if (batchId !== undefined && !broken.has(batchId)) {
+      broken.set(batchId, rejection.error);
+    }
+  }
+
+  return broken;
+};
+
 export const OUTBOX_REJECTED_KEY = 'outbox-rejected';
 
 /** 읽지 못한 목록을 옮겨 두는 자리. 다음 저장이 덮어 없애는 것을 막는다. */

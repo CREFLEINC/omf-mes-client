@@ -72,7 +72,7 @@ export const WorkOrderResultPane = ({
     plan.data === undefined || workOrders.data === undefined || operations.data === undefined;
 
   return (
-    <section className="pane" aria-label="전개된 작업지시">
+    <section className="pane production-plan-section" aria-label="전개된 작업지시">
       <h2>{trustedPlan?.planNo ?? `생산계획 ${String(productionPlanId)}`} 전개 결과</h2>
       {failed ? (
         <AlertBanner

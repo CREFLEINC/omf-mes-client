@@ -357,6 +357,8 @@ export const ProductPickingScreen = () => {
             size="xl"
             onClick={() => {
               takeScan(manual.trim());
+              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+              setManual('');
             }}
           >
             {t.scan.manualSubmit}

@@ -77,7 +77,7 @@ interface WritePayload<TVariables, TData> {
   request: (variables: TVariables, headers: WriteHeaders) => Promise<ApiCallResult<TData>>;
 }
 
-interface SplitError {
+export interface SplitError {
   fieldErrors: Record<string, string>;
   error: ApiError | null;
 }
@@ -151,7 +151,7 @@ export const requireIfMatch = (headers: WriteHeaders): string => {
  * 그것을 버리면 어디에도 표시되지 않는 오류가 생긴다.
  * 같은 필드에 오류가 둘 이상이면 첫 번째만 인라인으로 내고 나머지는 배너로 올린다.
  */
-const splitError = (
+export const splitError = (
   apiError: ApiError,
   knownFields: readonly string[],
   restate: ((item: ErrorItem) => string | undefined) | undefined,

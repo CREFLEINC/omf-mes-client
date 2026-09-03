@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
-import { useItem, useUomCodes } from '../../patterns/masters';
+import { useItem, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -89,6 +89,8 @@ export const InboundReceiptScreen = () => {
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
   const item = useItem(draft.purchaseOrderLine?.itemId ?? null);
   const uoms = useUomCodes(true);
+  /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
+  const itemLabels = useItemLabels(draft.purchaseOrder !== null);
 
   const started = draft.supplierLotNo !== '' || draft.supplierLotMissing;
   const received = Number(draft.receivedQty.trim());
@@ -99,6 +101,13 @@ export const InboundReceiptScreen = () => {
   /* 부족은 더 올 것이 남았다고 사람이 답해야 넘어간다. 마지막 회차면 갈 곳이 다르다. */
   const ready = canSubmit(draft, worker !== null) && (verdict !== UNDER || continueUnder);
   const uom = uoms.data?.get(draft.purchaseOrderLine?.uomId ?? -1) ?? '';
+
+  /* 코드와 이름을 함께 보인다. 라벨에는 코드가 찍혀 있고 사람은 이름으로 고른다. */
+  const itemLabelOf = (itemId: number): string => {
+    const found = itemLabels.data?.get(itemId);
+
+    return found === undefined ? '' : `${found.itemCode} ${found.itemName}`;
+  };
 
   const qtyMessage = (): string | undefined => {
     const problem = qtyProblem(draft.receivedQty);
@@ -200,6 +209,8 @@ export const InboundReceiptScreen = () => {
             size="xl"
             onClick={() => {
               take(manual);
+              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+              setManual('');
             }}
           >
             {t.scan.manualSubmit}
@@ -319,7 +330,7 @@ export const InboundReceiptScreen = () => {
                         <span className="receipt__line">
                           <span>
                             {t.po.lineLabel(
-                              String(line.itemId),
+                              itemLabelOf(line.itemId),
                               String(line.orderedQty),
                               uoms.data?.get(line.uomId) ?? '',
                             )}

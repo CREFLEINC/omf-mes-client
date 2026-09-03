@@ -330,6 +330,8 @@ describe('Lot Status 화면 shell', () => {
       'aria-selected',
       'true',
     );
+    expect(screen.getByRole('heading', { level: 2, name: 'LOT 조회 조건' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: '현재 LOT 상태' })).toBeVisible();
     await choose(user, 'LOT 유형', '합성 자재');
     await choose(user, '현재 상태', '합성 정상 (미사용)');
     await choose(user, '창고', 'SAMPLE-WH-01 · 합성 창고 (미사용)');
@@ -366,6 +368,8 @@ describe('Lot Status 화면 shell', () => {
 
     await user.click(screen.getByRole('tab', { name: '이력으로 찾기' }));
     await waitFor(() => expect(locationSearch().get('mode')).toBe('history'));
+    expect(screen.getByRole('heading', { level: 2, name: '이력 조회 조건' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: '보류 사건 이력' })).toBeVisible();
     expect(locationSearch().get('lotType')).toBe('SAMPLE_MATERIAL');
     expect(locationSearch().get('from')).toBe('2026-08-01');
     expect(locationSearch().get('lot')).toBeNull();

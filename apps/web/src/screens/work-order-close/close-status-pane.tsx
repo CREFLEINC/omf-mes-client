@@ -17,8 +17,8 @@ export const WorkOrderCloseStatusPane = ({ state }: WorkOrderCloseStatusPaneProp
   const t = messages.workOrderClose.status;
 
   return (
-    <section aria-label={t.pane} className="pane">
-      <h2>{t.heading}</h2>
+    <section aria-label={t.pane} className="pane work-order-close-status-pane">
+      <h2 className="pane-title">{t.heading}</h2>
       {state.kind === 'CHECKING' ? (
         <div aria-label={t.loading} role="status">
           <SkeletonText lines={3} />

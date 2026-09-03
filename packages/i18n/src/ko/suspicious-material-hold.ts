@@ -64,6 +64,9 @@ export const suspiciousMaterialHold = {
   },
   execution: {
     pane: '의심자재 보류 실행',
+    selectFirst: '후보 LOT을 선택하면 보류 정보를 입력할 수 있습니다.',
+    completeInput: '보류 사유와 해제 조건을 입력하면 등록할 수 있습니다.',
+    ready: (count: number): string => `${String(count)}건의 보류 등록 내용을 확인하세요.`,
     confirm: '등록 확인',
     success: '의심자재 보류를 등록했습니다.',
     successNext: 'Lot Status 판정·전이 처리에서 후속 처리하세요.',

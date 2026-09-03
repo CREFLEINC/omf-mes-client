@@ -3,6 +3,7 @@ import type { components } from '@omf-mes/api-client';
 import type { Lot } from '../../patterns/lots';
 
 export type WorkOrder = components['schemas']['WorkOrder'];
+export type LotProgress = components['schemas']['LotProgress'];
 export type OperationHandoverCreate = components['schemas']['OperationHandoverCreate'];
 
 /** 생산LOT 만 공정을 넘어간다. 값 목록이 계약에 적혀 있다. */
@@ -51,6 +52,18 @@ export const isUnreleased = (workOrder: WorkOrder): boolean =>
 
 export type QtyProblem = 'notNumber' | 'notPositive' | 'overCompleted';
 
+/**
+ * 넘길 수 있는 상한.
+ *
+ * LOT 이 들고 있는 초기 수량은 «계획»이다. 실제로 만들어 낸 것은 진척의 양품 합계이고, 미달
+ * 마감된 LOT 에서 둘이 갈린다 - 계획으로 재면 만들지 않은 양까지 넘길 수 있다.
+ *
+ * 진척을 못 받았으면 상한을 모른다. 넉넉한 쪽으로 물러서지 않는다 - 되돌릴 수 없는 쓰기라
+ * 모르는 채 통과시키면 고칠 자리가 없다.
+ */
+export const completedQtyOf = (progress: LotProgress | null): number | null =>
+  progress === null ? null : progress.goodQty;
+
 export const qtyProblemOf = (text: string, completedQty: number): QtyProblem | null => {
   const trimmed = text.trim();
   const value = Number(trimmed);
@@ -71,8 +84,9 @@ export const canConfirm = (
   toWorkOrder: WorkOrder | null,
   qty: string,
   hasWorker: boolean,
+  completedQty: number | null,
 ): boolean => {
-  if (!hasWorker || lot === null || toWorkOrder === null) {
+  if (!hasWorker || lot === null || toWorkOrder === null || completedQty === null) {
     return false;
   }
 
@@ -83,7 +97,7 @@ export const canConfirm = (
     return false;
   }
 
-  return qtyProblemOf(qty, lot.initialQty) === null;
+  return qtyProblemOf(qty, completedQty) === null;
 };
 
 /**

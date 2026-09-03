@@ -122,55 +122,61 @@ export const EmergencyWorkOrderScreen = ({
     <>
       <PageHeader title={t.title} />
 
-      <FixedTermsPane />
+      <div className="emergency-work-order-workspace">
+        <FixedTermsPane />
 
-      {/*
-       * ⭐ **밀린 것을 먼저 보인다.** 새로 발행하기 «전에» 이미 만들어진 지시가 있다는 사실을
-       * 알아야 한다 — 모르고 발행하면 같은 지시가 둘이 된다. 밀린 것이 없으면 서지 않는다.
-       */}
-      <HandoverPane
-        workOrders={handoverRows}
-        total={unreleased.data?.page.total}
-        isError={unreleased.isError}
-        releasingId={handover.releasingId}
-        releasedNo={handover.releasedNo}
-        failure={handover.failure}
-        uomLabel={(uomId) => uoms.labelOf(uomId)}
-        onRelease={handover.release}
-      />
+        {/*
+         * ⭐ **밀린 것을 먼저 보인다.** 새로 발행하기 «전에» 이미 만들어진 지시가 있다는 사실을
+         * 알아야 한다 — 모르고 발행하면 같은 지시가 둘이 된다. 밀린 것이 없으면 서지 않는다.
+         */}
+        <HandoverPane
+          workOrders={handoverRows}
+          total={unreleased.data?.page.total}
+          isError={unreleased.isError}
+          releasingId={handover.releasingId}
+          releasedNo={handover.releasedNo}
+          failure={handover.failure}
+          uomLabel={(uomId) => uoms.labelOf(uomId)}
+          onRelease={handover.release}
+        />
 
-      <ItemPicker selected={item} onSelect={selectItem} />
+        <div className="emergency-work-order-composer">
+          <div className="emergency-work-order-inputs">
+            <ItemPicker selected={item} onSelect={selectItem} />
 
-      <IssueFormPane
-        value={form}
-        errors={validateIssueForm(form)}
-        item={item}
-        uomLabel={uoms.labelOf(item?.baseUomId)}
-        onChange={setForm}
-      />
+            <IssueFormPane
+              value={form}
+              errors={validateIssueForm(form)}
+              item={item}
+              uomLabel={uoms.labelOf(item?.baseUomId)}
+              onChange={setForm}
+            />
+          </div>
 
-      <ExpansionPane
-        state={expansion}
-        orderQtyText={form.orderQty}
-        selectedRoutingId={routingId}
-        onSelectRouting={setRoutingId}
-      />
+          <ExpansionPane
+            state={expansion}
+            orderQtyText={form.orderQty}
+            selectedRoutingId={routingId}
+            onSelectRouting={setRoutingId}
+          />
 
-      <IssueAction
-        lock={lock}
-        releasedNo={issue.releasedNo}
-        pending={issue.pending}
-        error={issue.error}
-        onRetryRelease={issue.retryRelease}
-        onIssue={() => {
-          issue.issue({
-            form,
-            item: item ?? { itemId: 0, itemCode: '', itemName: '', baseUomId: 0 },
-            routingOperationId: issueRoutingOperationId(expansion),
-            typeCode,
-          });
-        }}
-      />
+          <IssueAction
+            lock={lock}
+            releasedNo={issue.releasedNo}
+            pending={issue.pending}
+            error={issue.error}
+            onRetryRelease={issue.retryRelease}
+            onIssue={() => {
+              issue.issue({
+                form,
+                item: item ?? { itemId: 0, itemCode: '', itemName: '', baseUomId: 0 },
+                routingOperationId: issueRoutingOperationId(expansion),
+                typeCode,
+              });
+            }}
+          />
+        </div>
+      </div>
     </>
   );
 };

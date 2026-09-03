@@ -66,6 +66,7 @@ export const WorkOrderListPane = ({
       render: (row) => (
         <TextField
           size="sm"
+          containerClassName="work-order-priority-field"
           inputMode="numeric"
           aria-label={t.actions.priorityLabel(row.workOrderNo)}
           value={row.priorityText}
@@ -109,10 +110,12 @@ export const WorkOrderListPane = ({
   }
 
   return (
-    <section className="pane" aria-label={t.panes.list}>
-      <div className="wide-table">
+    <section className="pane work-order-assignment-list-pane" aria-label={t.panes.list}>
+      <h2 className="pane-title">{t.panes.list}</h2>
+      <div className="wide-table work-order-assignment-table">
         <Table
           density="compact"
+          caption={<span className="work-order-table-caption">{t.panes.list}</span>}
           columns={columns}
           rows={rows}
           getRowId={(row) => String(row.workOrderId)}
