@@ -4286,6 +4286,149 @@ dl.filter-bar.approval-inbox-detail-facts {
   }
 }
 
+/* 알림센터 — 조회 조건과 카드 목록을 한 축에 맞추고 필터 역할을 분명히 한다. */
+.notification-center-pane,
+.notification-center-filter > * {
+  min-width: 0;
+}
+
+.notification-center-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.notification-center-pane > * {
+  min-width: 0;
+}
+
+.notification-center-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.notification-center-filter {
+  display: grid;
+  grid-template-columns: minmax(18rem, 1.4fr) minmax(10rem, max-content) minmax(13rem, 1fr);
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.notification-center-filter .field-cell {
+  align-items: stretch;
+}
+
+.notification-center-unread-filter {
+  justify-content: flex-start;
+}
+
+.notification-center-unread-filter > label {
+  min-height: var(--control-height-md);
+  align-items: center;
+}
+
+.notification-center-pane > .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.notification-center-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .notification-center-unread-filter {
+    margin-top: 0;
+  }
+}
+
+/* 공지·전달 — 검색 조건을 의미별 두 행으로 묶고 목록·상세 제목의 위계를 통일한다. */
+.notice-pane,
+.notice-table,
+.notice-filter > * {
+  min-width: 0;
+}
+
+.notice-pane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.notice-pane > * {
+  min-width: 0;
+}
+
+.notice-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.notice-filter {
+  display: grid;
+  grid-template-columns: minmax(16rem, 1.5fr) repeat(2, minmax(13rem, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.notice-filter .field-cell {
+  align-items: stretch;
+}
+
+.notice-filter-options {
+  align-items: flex-start !important;
+  margin-top: 0;
+}
+
+.notice-filter-clear {
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
+.notice-pane > .pane-lead,
+.notice-pane > .form-actions {
+  margin-top: 0;
+}
+
+.notice-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.wide-table.notice-table table {
+  min-width: 58rem;
+}
+
+.notice-table caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 1100px) {
+  .filter-bar.notice-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .notice-filter-clear {
+    grid-column: 1;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
