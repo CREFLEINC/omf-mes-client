@@ -33,7 +33,29 @@ import { createRoot } from 'react-dom/client';
 import { Navigate, RouterProvider, createBrowserRouter } from 'react-router';
 
 import { popRoutes } from '../routes/pop';
+import {
+  PopIdentityProvider,
+  UNKNOWN_POP_IDENTITY,
+  type PopIdentity,
+} from '../patterns/pop-identity';
 import { AppProviders } from './providers';
+
+/** 브라우저 수동 검증에서만 쓰는 합성 셸 값. 설치본에는 들어가지 않는다. */
+const DEV_POP_IDENTITY: PopIdentity = {
+  terminalId: 10,
+  processId: 1001,
+  workerNo: '100027',
+};
+
+const popIdentity = import.meta.env.DEV ? DEV_POP_IDENTITY : UNKNOWN_POP_IDENTITY;
+
+if (import.meta.env.DEV && window.pop === undefined) {
+  window.pop = {
+    rendition: {
+      save: async (_bytes, label) => `dev://print/${encodeURIComponent(label)}`,
+    },
+  };
+}
 
 /**
  * 단말을 켰을 때 맨 처음 서는 화면 — 사번 경량 인증(P-CO-01).
@@ -61,7 +83,9 @@ if (!container) {
 createRoot(container).render(
   <StrictMode>
     <AppProviders>
-      <RouterProvider router={popRouter} />
+      <PopIdentityProvider value={popIdentity}>
+        <RouterProvider router={popRouter} />
+      </PopIdentityProvider>
     </AppProviders>
   </StrictMode>,
 );

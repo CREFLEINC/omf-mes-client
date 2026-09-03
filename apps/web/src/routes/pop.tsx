@@ -5,10 +5,12 @@ import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-f
 import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
+import { PopLotLabelPrintScreen } from '../screens/pop-lot-label-print/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { ProductionResultScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
+import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 import { WorkStartScreen } from '../screens/work-start/screen';
@@ -169,4 +171,31 @@ export const popRoutes: RouteObject[] = [
    * 「단말이 확인되지 않았습니다」로 저장이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
    */
   { path: '/pop/production-result', element: <ProductionResultScreen /> },
+  /*
+   * P-04-02 — 납품·포장 라벨 출력. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?shipmentId=&workerNo=`) — 스펙 §3 의 세로 예산이
+   * 슬랙 0 이라 **출하를 고르는 구획이 화면 안에 없다.** `P-04-01`(포장 실적 등록)이
+   * 「라벨 출력」으로 넘기는 것이 적혀 있는 유일한 경로이고, POP 모드 메뉴에서 직접 들어올
+   * 때 출하를 무엇으로 정하는지는 아직 설계에 없다. 정해지면 `entry-context.ts` 하나가 바뀐다.
+   *
+   * ⚠ **사번도 같은 주소에서 받는다.** 셸이 채우는 자리(`patterns/pop-identity`)는 저장소에
+   * 공급자가 아직 없어 항상 비어 있고, 그것을 읽으면 발행이 영구히 막힌다(실측). 없으면
+   * 발행이 사유와 함께 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다(공유계약 F-6).
+   *
+   * ⚠ **단말 게이팅 선차단을 두지 않는다.** 출력 권한 집행은 서버의 403 이다(스펙 §6).
+   */
+  { path: '/pop/shipping-label', element: <ShippingPackingLabelScreen /> },
+  /*
+   * P-02-07 — LOT 라벨 출력·부착. 2단 출력의 나머지 한 단이며 `P-02-05`(인식표)와 **발행
+   * 시점이 다르다**(스펙 §5-3) — 인식표는 생산 «중», LOT 라벨은 LOT 이 완료된 «뒤»다. 두
+   * 화면은 서로를 안내만 하고 합치지 않는다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시 선택
+   * (`P-02-01`)이 아직 이 저장소에 없다. 그것이 서면 `entry-context.ts` 하나가 바뀐다.
+   *
+   * ⚠ **단말 게이팅(`can_print_label`)은 출력 액션과 함께 붙는다.** 목록만 서 있는 동안
+   * 먼저 막으면 「완료 LOT 이 없다」와 구분되지 않는다 — 집행은 서버의 403 이다(F-1).
+   */
+  { path: '/pop/lot-label', element: <PopLotLabelPrintScreen /> },
 ];
