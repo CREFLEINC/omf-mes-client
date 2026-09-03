@@ -268,9 +268,15 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
               출하 확정·취소
             </NavItem>
             {/*
-             * W-04-07 — 출하 섹션의 «반품·재고» 갈래 첫 화면이다. 출하 지시·확정 흐름(위 여섯)이
-             * 끝난 뒤 돌아온 물건·불합격품을 다루므로 그 뒤에 둔다. 판정은 품질 화면 몫이고 여기서는
-             * 부적합 등록과 판정 의뢰까지다.
+             * W-04-06 — 출하 섹션의 «반품·재고» 갈래 첫 화면이다. 확정된 출하는 취소되지 않고 여기로
+             * 돌아오므로 확정·취소 바로 뒤에 둔다. 반품은 보류로 들어오고 판정은 다음 화면 몫이다.
+             */}
+            <NavItem to="/shipment/return-receipts" icon="keyboard_return">
+              반품·클레임 입고 등록
+            </NavItem>
+            {/*
+             * W-04-07 — 반품·재고 갈래의 둘째 화면이다. 앞 화면이 들인 반품과 불합격품의 판정을
+             * 의뢰한다. 판정은 품질 화면 몫이고 여기서는 부적합 등록과 판정 의뢰까지다.
              */}
             <NavItem to="/shipment/disposition-requests" icon="assignment_return">
               재작업/폐기 판정 의뢰
