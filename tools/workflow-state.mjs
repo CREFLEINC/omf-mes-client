@@ -3,9 +3,12 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { bootstrapErrors, WORKFLOW_SOURCE } from './workflow/bootstrap.mjs';
+
 const STATE_VERSION = 1;
 const DEFAULT_STATE_PATH = '.client-dev/state.json';
 const DEFAULT_DESIGN_REF = '.client-dev/design/omf-mes';
+const DEFAULT_DESIGN_REPOSITORY = 'CREFLEINC/omf-mes';
 
 export function normalizeTeam(value) {
   const match = String(value ?? '').match(/^(?:Agent\s*:\s*)?T?(\d+)$/i);
@@ -18,6 +21,29 @@ export function normalizeTeam(value) {
 export function inferBranchTeam(branch) {
   const match = String(branch).match(/(?:^|[-_/])team[-_]?([0-9]+)(?:$|[-_/])/i);
   return match ? `Agent : T${Number(match[1])}` : null;
+}
+
+export function normalizeNoticeReference(value, designRepository = DEFAULT_DESIGN_REPOSITORY) {
+  const reference = String(value ?? '').trim();
+  const shorthand = reference.match(/^([a-z0-9_.-]+)\/([a-z0-9_.-]+)#([1-9][0-9]*)$/i);
+  const issueUrl = reference.match(
+    /^https:\/\/github\.com\/([a-z0-9_.-]+)\/([a-z0-9_.-]+)\/issues\/([1-9][0-9]*)\/?(?:#issuecomment-[0-9]+)?$/i,
+  );
+  const match = shorthand ?? issueUrl;
+  if (!match) {
+    throw new Error(
+      '--notice-ref에는 공통 공지의 GitHub 이슈 URL 또는 owner/repo#번호가 필요합니다.',
+    );
+  }
+  const [, owner, repository, issue] = match;
+  if (`${owner}/${repository}`.toLowerCase() !== designRepository.toLowerCase()) {
+    throw new Error(
+      `--notice-ref는 고정 설계 저장소(${designRepository})의 공통 공지를 가리켜야 합니다.`,
+    );
+  }
+  return shorthand
+    ? `${owner}/${repository}#${Number(issue)}`
+    : `https://github.com/${owner}/${repository}/issues/${Number(issue)}`;
 }
 
 export function validateState(state) {
@@ -40,6 +66,9 @@ export function validateState(state) {
   if (!design || typeof design !== 'object') {
     errors.push('designBaseline이 없습니다.');
   } else {
+    if (!design.repository || typeof design.repository !== 'string') {
+      errors.push('designBaseline.repository가 없습니다.');
+    }
     if (!/^[0-9a-f]{40}$/i.test(String(design.commit ?? ''))) {
       errors.push('designBaseline.commit은 40자리 커밋 해시여야 합니다.');
     }
@@ -48,11 +77,18 @@ export function validateState(state) {
     if (!['initial', 'design-change-notice'].includes(design.reason)) {
       errors.push('designBaseline.reason은 initial 또는 design-change-notice여야 합니다.');
     }
-    if (
-      design.reason === 'design-change-notice' &&
-      (!Number.isInteger(design.noticeIssue) || design.noticeIssue < 1)
-    ) {
-      errors.push('설계 변동 반영에는 양의 noticeIssue가 필요합니다.');
+    if (design.reason === 'design-change-notice') {
+      if (design.noticeIssue !== undefined && design.noticeIssue !== null) {
+        errors.push(
+          '구 noticeIssue 상태의 이주가 필요합니다. 설계팀의 공통 공지를 확인한 뒤 pnpm workflow migrate-v3 --notice-ref <설계저장소-공통공지>를 실행하세요.',
+        );
+      } else {
+        try {
+          normalizeNoticeReference(design.noticeReference, design.repository);
+        } catch (error) {
+          errors.push(error.message);
+        }
+      }
     }
     if (Number.isNaN(Date.parse(String(design.pinnedAt ?? '')))) {
       errors.push('designBaseline.pinnedAt은 유효한 시각이어야 합니다.');
@@ -138,6 +174,7 @@ function requireState(root, statePath = DEFAULT_STATE_PATH) {
 function check(root, statePath = DEFAULT_STATE_PATH) {
   const { state } = requireState(root, statePath);
   const errors = validateState(state);
+  errors.push(...bootstrapErrors(root, state.team));
   const branch = git(['branch', '--show-current'], root);
   if (!branch || ['main', 'master'].includes(branch))
     errors.push('main/master가 아닌 팀 전용 브랜치에서 작업해야 합니다.');
@@ -183,12 +220,12 @@ function init(root, options) {
     team: normalizeTeam(options.team),
     activeIssue: positiveIssue(options.issue, '--issue'),
     designBaseline: {
-      repository: 'CREFLEINC/omf-mes',
+      repository: DEFAULT_DESIGN_REPOSITORY,
       commit: designHead(root, source),
       source,
       pinnedAt: new Date().toISOString(),
       reason: 'initial',
-      noticeIssue: null,
+      noticeReference: null,
     },
   };
   writeJson(statePath, state);
@@ -220,17 +257,45 @@ function acceptDesignChange(root, options) {
   if (head !== commit)
     throw new Error(`설계 참조 HEAD(${head})가 공지 커밋(${commit})과 다릅니다.`);
 
+  const repository = state.designBaseline.repository ?? DEFAULT_DESIGN_REPOSITORY;
   state.designBaseline = {
-    repository: 'CREFLEINC/omf-mes',
+    repository,
     commit,
     source,
     pinnedAt: new Date().toISOString(),
     reason: 'design-change-notice',
-    noticeIssue: positiveIssue(options.notice, '--notice'),
+    noticeReference: normalizeNoticeReference(options['notice-ref'], repository),
   };
   writeJson(absolute, state);
   process.stdout.write(
-    `design baseline accepted from notice #${state.designBaseline.noticeIssue}: ${commit}\n`,
+    `design baseline accepted from ${state.designBaseline.noticeReference}: ${commit}\n`,
+  );
+}
+
+export function migrateLegacyNoticeState(state, noticeReferenceInput) {
+  const design = state.designBaseline;
+  if (
+    design?.reason !== 'design-change-notice' ||
+    !Number.isInteger(design.noticeIssue) ||
+    design.noticeIssue < 1
+  ) {
+    throw new Error('이 상태에는 이주할 구 noticeIssue가 없습니다.');
+  }
+  const repository = design.repository ?? DEFAULT_DESIGN_REPOSITORY;
+  const noticeReference = normalizeNoticeReference(noticeReferenceInput, repository);
+  const { noticeIssue: _retiredNoticeIssue, ...currentDesign } = design;
+  return {
+    ...state,
+    designBaseline: { ...currentDesign, repository, noticeReference },
+  };
+}
+
+function migrateV3(root, options) {
+  const { absolute, state } = requireState(root, options.state ?? DEFAULT_STATE_PATH);
+  const migrated = migrateLegacyNoticeState(state, options['notice-ref']);
+  writeJson(absolute, migrated);
+  process.stdout.write(
+    `workflow state migrated from legacy noticeIssue to ${migrated.designBaseline.noticeReference}\n`,
   );
 }
 
@@ -239,7 +304,13 @@ export function repositoryPolicyErrors(root) {
   const forbiddenPaths = [
     'multi-agent-team-workflow-v2.md',
     'docs/uiux-handoff.md',
+    'docs/client-dev-workflow/references/design-reference.md',
+    'docs/client-dev-workflow/references/issue-lifecycle.md',
+    'docs/client-dev-workflow/references/merge-rules.md',
+    'docs/client-dev-workflow/references/verification-levels.md',
     '.github/ISSUE_TEMPLATE/uiux-ready.yml',
+    '.github/ISSUE_TEMPLATE/design-change-notice.yml',
+    '.github/ISSUE_TEMPLATE/design-change-impact-review.yml',
     'docs/client-dev-workflow/references/review-request.md',
   ];
   for (const file of forbiddenPaths) {
@@ -248,11 +319,10 @@ export function repositoryPolicyErrors(root) {
   }
 
   const requiredPaths = [
-    'AGENTS.md',
+    WORKFLOW_SOURCE,
+    'tools/workflow/bootstrap.mjs',
     'docs/client-dev-workflow/README.md',
-    'docs/client-dev-workflow/references/design-reference.md',
     'docs/client-dev-workflow/references/design-request.md',
-    '.github/ISSUE_TEMPLATE/design-change-notice.yml',
     '.github/ISSUE_TEMPLATE/design-request-tracking.yml',
   ];
   for (const file of requiredPaths) {
@@ -260,15 +330,10 @@ export function repositoryPolicyErrors(root) {
   }
 
   const canonicalFiles = [
-    'AGENTS.md',
-    'CLAUDE.md',
+    WORKFLOW_SOURCE,
     'README.md',
     'docs/client-dev-workflow/README.md',
-    'docs/client-dev-workflow/references/design-reference.md',
     'docs/client-dev-workflow/references/design-request.md',
-    'docs/client-dev-workflow/references/issue-lifecycle.md',
-    'docs/client-dev-workflow/references/merge-rules.md',
-    'docs/client-dev-workflow/references/verification-levels.md',
     'docs/client-dev-workflow/templates/completion-report.md',
     'docs/client-dev-workflow/templates/design-request.md',
     'docs/client-dev-workflow/templates/plan.md',
@@ -286,12 +351,32 @@ export function repositoryPolicyErrors(root) {
     [/client→uiux/, '폐기된 설계팀 직접 질문 채널'],
     [/github\.com\/CREFLEINC\/omf-mes\/issues\/new/, '설계 저장소 직접 이슈 링크'],
     [/\.claude\/_designref/, '폐기된 설계 참조 경로'],
+    [/설계팀이 이 저장소에 발행/, '클라이언트 전용 설계 변동 공지 채널'],
+    [/클라이언트(?:저장소[- ]?)?\s*이슈\s*번호/, '클라이언트 전용 공지 번호'],
+    [/--notice(?:\s|>)/, '폐기된 숫자형 공지 인자'],
   ];
   for (const file of canonicalFiles) {
     if (!existsSync(path.join(root, file))) continue;
     const content = readFileSync(path.join(root, file), 'utf8');
     for (const [pattern, description] of forbiddenText) {
       if (pattern.test(content)) errors.push(`${file}: ${description}`);
+    }
+  }
+  let insideGitRepository = false;
+  try {
+    insideGitRepository = git(['rev-parse', '--is-inside-work-tree'], root) === 'true';
+    if (!insideGitRepository) errors.push('Git 작업 트리에서 저장소 정책 검사를 실행해야 합니다.');
+  } catch (error) {
+    errors.push(`Git 작업 트리를 확인할 수 없습니다: ${error.message}`);
+  }
+  for (const file of insideGitRepository ? ['AGENTS.md', 'CLAUDE.md'] : []) {
+    try {
+      git(['ls-files', '--error-unmatch', '--', file], root);
+      errors.push(`${file}: AI 도구별 로컬 어댑터는 Git에서 추적하면 안 됩니다.`);
+    } catch (error) {
+      if (error.status !== 1) {
+        errors.push(`${file}: Git 추적 상태를 확인할 수 없습니다: ${error.message}`);
+      }
     }
   }
   return errors;
@@ -305,11 +390,13 @@ function repoCheck(root) {
 
 function usage() {
   return `사용법:
+  pnpm workflow:bootstrap --tool <codex|claude|both> --team <번호>
   pnpm workflow init --team <번호> --issue <번호> --design-ref <경로>
   pnpm workflow check
   pnpm workflow set-issue --issue <번호>
   pnpm workflow clear-issue
-  pnpm workflow accept-design-change --notice <번호> --commit <40자리해시> [--design-ref <경로>]
+  pnpm workflow migrate-v3 --notice-ref <설계저장소-공통공지-URL|CREFLEINC/omf-mes#번호>
+  pnpm workflow accept-design-change --notice-ref <설계저장소-공통공지-URL|CREFLEINC/omf-mes#번호> --commit <40자리해시> [--design-ref <경로>]
   pnpm workflow repo-check\n`;
 }
 
@@ -328,6 +415,9 @@ function main() {
       break;
     case 'clear-issue':
       clearIssue(root, options);
+      break;
+    case 'migrate-v3':
+      migrateV3(root, options);
       break;
     case 'accept-design-change':
       acceptDesignChange(root, options);
