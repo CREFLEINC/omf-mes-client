@@ -11,6 +11,12 @@ export const defectCauseCode = {
   tabs: {
     defect: '불량코드',
     cause: '원인코드',
+    mapping: '공정 매핑',
+  },
+  panes: {
+    list: (tab: string): string => `${tab} 목록`,
+    form: (tab: string): string => `${tab} 등록·편집`,
+    mapping: '공정별 상세 불량코드 매핑',
   },
   actions: {
     addCategory: '대분류 추가',
@@ -25,6 +31,7 @@ export const defectCauseCode = {
   loading: {
     codes: '코드 목록을 불러오는 중',
     codeDetail: '코드 정보를 불러오는 중',
+    mapping: '공정 매핑을 불러오는 중',
   },
   /** 서버가 목록을 잘라 내려보냈을 때. 잘림을 감추지 않고 조건을 좁힐 방법을 함께 알린다. */
   listTruncated: (shown: number, total: number): string =>
@@ -43,6 +50,10 @@ export const defectCauseCode = {
     codeNoMatchTitle: '조건에 맞는 결과가 없습니다',
     codeNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
     codeNotSelected: '왼쪽에서 코드를 고르거나 「대분류 추가」로 시작하세요',
+    mappingNoneTitle: '매핑할 상세 불량코드가 없습니다',
+    mappingNoneDescription: '불량코드 탭에서 대분류 아래에 상세 코드를 먼저 등록하세요.',
+    processNoneTitle: '매핑할 공정이 없습니다',
+    processNoneDescription: 'Routing 화면의 공정 마스터 탭에서 사용할 공정을 먼저 등록하세요.',
   },
   filters: {
     defectSearchLabel: '불량코드 검색',
@@ -86,5 +97,13 @@ export const defectCauseCode = {
      */
     childCount: (count: number): string =>
       `이 대분류에는 표시된 목록 기준 하위 상세 코드 ${count}건이 있습니다.`,
+  },
+  mapping: {
+    description:
+      '행은 상세 불량코드, 열은 공정입니다. 셀을 누르면 매핑이 즉시 부여되거나 회수됩니다.',
+    assigned: '매핑됨',
+    notAssigned: '매핑 안 됨',
+    saved: '공정 매핑을 반영했습니다',
+    truncated: '불량코드 또는 공정 목록이 일부만 표시되어 전체 매핑을 편집할 수 없습니다.',
   },
 } as const;
