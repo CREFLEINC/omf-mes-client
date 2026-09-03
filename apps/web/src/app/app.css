@@ -3069,6 +3069,146 @@ main > * + * {
   }
 }
 
+/* 수집 채널 매핑 — 설비 선택과 그 설비의 채널 작업 공간을 한 시야에 둔다. */
+.two-pane.collection-channel-layout {
+  grid-template-columns: minmax(20rem, 2fr) minmax(0, 3.6fr);
+  gap: var(--space-5);
+}
+
+.collection-channel-pane,
+.collection-channel-table {
+  min-width: 0;
+}
+
+.collection-channel-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.collection-channel-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.collection-channel-context-title {
+  margin: 0;
+  color: var(--on-surface-variant);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.filter-bar.collection-channel-equipment-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.collection-channel-equipment-filter > *,
+.collection-channel-equipment-filter .field-cell {
+  min-width: 0;
+}
+
+.collection-channel-equipment-filter .field-cell {
+  align-items: stretch;
+}
+
+.collection-channel-equipment-filter > .field-cell-unlabeled,
+.collection-channel-toolbar > .field-cell-unlabeled {
+  margin-top: 0;
+}
+
+.collection-channel-equipment-filter > .field-cell-unlabeled {
+  align-items: flex-end;
+}
+
+.filter-bar.collection-channel-filter-chips,
+.filter-bar.collection-channel-toolbar {
+  margin-bottom: 0;
+}
+
+.collection-channel-filter-chips:empty {
+  display: none;
+}
+
+.collection-channel-toolbar {
+  justify-content: space-between;
+}
+
+.collection-channel-toolbar > .field-cell:first-child {
+  flex: 1 1 24rem;
+}
+
+.collection-channel-toolbar > .field-cell:last-child {
+  flex: 0 1 auto;
+}
+
+.collection-channel-table {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.collection-channel-equipment-table table {
+  min-width: 25rem;
+}
+
+.wide-table.collection-channel-mapping-table table {
+  min-width: 58rem;
+}
+
+.collection-channel-table th {
+  white-space: nowrap;
+}
+
+.collection-channel-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.collection-channel-pane > .field-note,
+.collection-channel-pane > p {
+  margin: 0;
+}
+
+@media (min-width: 1600px) {
+  .filter-bar.collection-channel-equipment-filter {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .collection-channel-equipment-filter > .field-cell-unlabeled {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 1000px) {
+  .two-pane.collection-channel-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .collection-channel-toolbar > .field-cell {
+    align-items: stretch;
+    flex-basis: 100%;
+  }
+
+  .collection-channel-toolbar .filter-actions,
+  .collection-channel-toolbar .check-group {
+    flex-wrap: wrap;
+  }
+}
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
