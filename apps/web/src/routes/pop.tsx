@@ -183,6 +183,7 @@ export const popRoutes: RouteObject[] = [
    * 확정한 포장의 라벨을 다시 뽑는 것은 그 화면의 소관이고, 넘기는 자리는 설계가 정한다.
    */
   { path: '/pop/packing-work', element: <PackingWorkScreen /> },
+  /*
    * P-04-02 — 납품·포장 라벨 출력. 셸 밖에 서는 POP 태스크 화면이다.
    *
    * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?shipmentId=&workerNo=`) — 스펙 §3 의 세로 예산이
