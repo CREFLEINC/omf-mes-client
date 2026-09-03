@@ -907,21 +907,6 @@
 }
 
 /*
- * 액션 줄의 «되돌리는 것»과 «남기는 것»을 **양 끝으로 벌린다.**
- *
- * 둘이 붙어 있으면 장갑 낀 손이 옆 것을 누른다 — 한쪽은 입력을 버리고 한쪽은 기록을
- * 남기므로, 잘못 누른 결과가 서로 반대다. 작업 시작 화면의 액션 줄이 같은 근거를 이미
- * 적어 두었고(`app.css` — 「붙여 두면 장갑 낀 손이 옆 것을 누른다」), 설계 도면도 이
- * 화면의 액션바를 좌·우 끝으로 갈라 두었다.
- *
- * ⚠ **버튼이 하나뿐이면 오른쪽에 그대로 둔다** — `:not(:last-of-type)` 이 그 경우를 뺀다.
- * `justify-content: space-between` 으로 풀면 홀로 선 버튼이 왼쪽으로 가 버린다.
- */
-.pop-ui [class*='action'] > button:first-of-type:not(:last-of-type) {
-  margin-inline-end: auto;
-}
-
-/*
  * 폼 칸에 딸린 사유도 **그 칸의 폭을 쓴다.**
  *
  * `.field-note` 의 `20rem` 은 「줄 전체로 퍼지면 줄 전체의 설명으로 읽힌다」를 막는 장치인데,
@@ -945,4 +930,41 @@
 .pop-ui [class*='action'] .field-note,
 .pop-ui [class*='action'] > p {
   max-width: none;
+}
+
+/*
+ * 액션바는 **화면 바닥에 붙는 띠**다 — 머리줄의 짝이다.
+ *
+ * ⛔ **바닥에 «닿지» 않게 한다.** 실측에서 바 아래 여유가 **0px** 이었다 — 이 화면의 마지막
+ * 자식이 `<dialog>` 라 「마지막 블록 아래 여백」 규칙이 액션바에 걸리지 않았다. 단말은 베젤
+ * 안쪽에 화면이 있어, 끝에 닿은 버튼은 잘린 것처럼 보이고 실제로 가장자리가 눌리지 않는다.
+ *
+ * 머리줄처럼 **좌우 끝까지 가되 안쪽 여백을 자기가 갖는다.** 위 경계선이 「여기서부터
+ * 조작」임을 말해, 본문이 짧아 바가 멀리 떨어져 있어도 떠 있는 것으로 읽히지 않는다.
+ */
+.pop-ui > [class*='action'] {
+  box-sizing: border-box;
+  margin-inline: 0;
+  margin-block-end: 0;
+  padding: var(--space-3) var(--pop-pad);
+  background: var(--surface-container-low);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+/*
+ * 나란히 선 칸의 **라벨 윗선을 맞춘다.**
+ *
+ * 「종합 판정」과 「불합격 처분」은 같은 격자 행의 두 칸인데(실측 둘 다 top=611) 라벨이
+ * 15px 어긋나 보였다. 한쪽은 DS 가 그리는 `<label>`(16px 줄)이고 다른 쪽은 제품이 붙인
+ * `<p class="field-label">`(24px 줄)이라 **줄 높이가 달랐고**, `<p>` 의 기본 위 여백이
+ * 그 위에 더해졌다. 칸이 맞아도 라벨이 어긋나면 두 칸은 다른 행으로 읽힌다.
+ *
+ * 줄 높이를 한 값으로 두고 칸 «첫 자식»의 위 여백을 턴다 — 요소가 무엇이든 윗선이 같아진다.
+ */
+.pop-ui .field-label {
+  line-height: 24px;
+}
+
+.pop-ui .field-cell > :first-child {
+  margin-block-start: 0;
 }
