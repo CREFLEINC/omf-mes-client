@@ -152,6 +152,8 @@ describe('P-02-10 작업 중단 등록', () => {
 
     expect(await screen.findByText(t.session.loadFailed)).toBeInTheDocument();
     expect(screen.queryByText(t.session.none)).not.toBeInTheDocument();
+    /* 세션을 모르면 이력도 모른다 — 「기록된 이벤트가 없습니다」로 단정하지 않는다. */
+    expect(screen.queryByText(t.history.empty)).not.toBeInTheDocument();
   });
 
   /** ⚠ 이력을 못 읽은 것이 중단을 막지 않는다 — 이력은 설명하는 자리다. */

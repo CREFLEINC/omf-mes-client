@@ -104,15 +104,21 @@ export const WorkHoldRegisterScreen = () => {
             <SessionPanel session={session.session} isPending={session.isPending} now={now} />
           )}
 
-          {events.isError ? (
-            <LoadErrorBanner
-              error={events.error}
-              title={t.history.loadFailed}
-              onRetry={events.refetch}
-            />
-          ) : (
-            <EventHistoryPanel events={events.events} isPending={events.isPending} />
-          )}
+          {/*
+           * ⛔ **세션을 모르면 이력도 모른다.** 세션 조회가 실패하면 이력 조회는 나가지도
+           * 않는데, 그때 「기록된 이벤트가 없습니다」를 세우면 조회하지 못한 것을 «비어 있다»고
+           * 단정하게 된다 — 세션 구획과 같은 이유로 세우지 않는다.
+           */}
+          {!session.isError &&
+            (events.isError ? (
+              <LoadErrorBanner
+                error={events.error}
+                title={t.history.loadFailed}
+                onRetry={events.refetch}
+              />
+            ) : (
+              <EventHistoryPanel events={events.events} isPending={events.isPending} />
+            ))}
         </div>
 
         <HoldForm
