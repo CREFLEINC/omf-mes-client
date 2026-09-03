@@ -1,4 +1,4 @@
-import { Select, type SelectOption } from '@crefle/web-ui';
+import { Select } from '@crefle/web-ui';
 import { useNavigate } from 'react-router';
 
 /**
@@ -19,30 +19,60 @@ import { useNavigate } from 'react-router';
  * 이동 대상을 갖게 되므로 이 대체물이 남아 있을 이유가 없다.
  */
 
+export interface PopDevScreen {
+  /** 라우트 표에 있는 주소 그대로. 감지기가 이 값으로 대조한다. */
+  path: string;
+  /** 목록에 보일 이름. 화면 ID를 앞에 둔다 — 설계와 같은 말로 부른다. */
+  label: string;
+  /**
+   * 화면이 요구하는 진입값. **없으면 그 화면은 「대상이 없습니다」로 막힌 채 뜬다.**
+   *
+   * ⚠ **목 서버(`tools/mock`)의 값이다.** 시연·확인용이며 제품 데이터가 아니다. 목 자료가
+   * 바뀌면 여기도 함께 바뀌어야 한다 — 어긋나면 화면이 조용히 비어 뜬다.
+   *
+   * ⛔ 이 값을 화면 코드가 읽는 기본값으로 옮기지 않는다. 진입값은 화면을 «부르는 쪽»이
+   * 정하는 것이고, 화면이 스스로 지어내면 대상 없이 열린 사실이 가려진다.
+   */
+  query?: string;
+}
+
 /**
  * 갈 수 있는 POP 화면. **라우트 표에서 뽑지 않고 여기에 적는다** — 앱 내부 의존은
  * `routes → screens → patterns` 한 방향이라 `patterns`가 `routes`를 부를 수 없다
  * (`.dependency-cruiser.cjs` 「app-inner-direction」).
  *
- * ⭐ **빠진 화면은 감지기가 잡는다.** `routes/pop-dev-screen-nav.test.tsx`가 이 목록과
+ * ⭐ **빠진 화면은 감지기가 잡는다.** `routes/pop-dev-screen-nav.test.ts`가 이 목록과
  * `popRoutes`를 대조한다 — 라우트를 부르는 것이 허용되는 자리에 시험을 두어 방향을 지켰다.
  * 새 POP 화면을 붙이면 그 시험이 먼저 걸리므로, 목록이 조용히 낡지 않는다.
+ *
+ * ⛔ **진입 화면(P-CO-01)은 담지 않는다.** 이 셀렉터가 서 있는 화면이 그 화면이라, 목록에
+ * 두면 자기 자신으로 가는 항목이 된다.
  *
  * ⛔ i18n 리소스에 넣지 않는다. 개발 중에만 보이는 문구라 번역 대상이 아니고, 공용 문구
  * 파일은 여러 작업이 동시에 건드리는 자리다.
  */
-export const POP_DEV_SCREENS: SelectOption[] = [
-  { value: '/pop/worker-assignment', label: 'P-CO-01 작업자 지정' },
-  { value: '/pop/material-input', label: 'P-02-03 자재 투입 스캔' },
-  { value: '/pop/tool-usage', label: 'P-05-01 공구 사용' },
-  { value: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
-  { value: '/pop/downtime', label: 'P-05-02 비가동 등록' },
-  { value: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
-  { value: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사' },
-  { value: '/pop/tag-issue', label: 'P-02-05 인식표 발행' },
-  { value: '/pop/work-start', label: 'P-02-01 작업 시작' },
-  { value: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
+export const POP_DEV_SCREENS: PopDevScreen[] = [
+  { path: '/pop/work-start', label: 'P-02-01 작업 시작' },
+  { path: '/pop/material-input', label: 'P-02-03 자재 투입 스캔', query: '?workOrderId=11002' },
+  {
+    path: '/pop/tag-issue',
+    label: 'P-02-05 인식표 발행',
+    query: '?workOrderId=11002&workerNo=100029',
+  },
+  { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
+  { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
+  { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
+  { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
+  {
+    path: '/pop/tool-usage',
+    label: 'P-05-01 공구 사용',
+    query: '?workOrderId=11002&workerNo=100029',
+  },
+  { path: '/pop/downtime', label: 'P-05-02 비가동 등록', query: '?equipmentId=5001' },
 ];
+
+/** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
+export const POP_DEV_ENTRY_PATH = '/pop/worker-assignment';
 
 /** 트리거의 접근성 이름 — 시험과 화면이 같은 값을 보게 한 자리에 둔다. */
 export const POP_DEV_SCREEN_NAV_LABEL = '개발용 화면 이동';
@@ -61,9 +91,12 @@ export const PopDevScreenNav = ({ disabled }: PopDevScreenNavProps) => {
       size="xl"
       disabled={disabled}
       placeholder={POP_DEV_SCREEN_NAV_LABEL}
-      options={POP_DEV_SCREENS}
-      onChange={(path) => {
-        void navigate(path);
+      options={POP_DEV_SCREENS.map(({ path, label, query }) => ({
+        value: `${path}${query ?? ''}`,
+        label,
+      }))}
+      onChange={(target) => {
+        void navigate(target);
       }}
     />
   );
