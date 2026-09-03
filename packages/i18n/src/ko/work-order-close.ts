@@ -66,6 +66,7 @@ export const workOrderClose = {
     },
   },
   filter: {
+    pane: '마감 후보 조회 조건',
     productionOrder: 'P/O',
     plannedStartFrom: '계획 시작일(부터)',
     plannedStartTo: '계획 시작일(까지)',

@@ -25,11 +25,11 @@ export type Verdict = typeof NORMAL | typeof OVER | typeof UNDER;
  * 분할 납품의 마지막 회차가 부족으로 읽히고, 누적이 총량을 넘긴 것도 부족으로 읽힌다.
  * 뒤엣것이 더 무겁다 - 서버가 거부할 초과인데 화면이 입하 오류 등록으로 보낸다.
  */
-export const remainingQtyOf = (line: PurchaseOrderLine): number =>
-  line.orderedQty - line.receivedQty;
+export const remainingQtyOf = (line: PurchaseOrderLine, queuedQty = 0): number =>
+  line.orderedQty - line.receivedQty - queuedQty;
 
-export const verdictOf = (line: PurchaseOrderLine, arrivedQty: number): Verdict => {
-  const remaining = remainingQtyOf(line);
+export const verdictOf = (line: PurchaseOrderLine, arrivedQty: number, queuedQty = 0): Verdict => {
+  const remaining = remainingQtyOf(line, queuedQty);
 
   if (arrivedQty > remaining + line.toleranceOverQty) {
     return OVER;
@@ -37,6 +37,38 @@ export const verdictOf = (line: PurchaseOrderLine, arrivedQty: number): Verdict 
 
   return arrivedQty < remaining - line.toleranceUnderQty ? UNDER : NORMAL;
 };
+
+/** 큐에서 이 화면이 셈에 넣을 만큼만 읽는다. 큐는 화면을 가리지 않고 한 줄로 쌓인다. */
+export interface QueuedReceipt {
+  path: string;
+  body: unknown;
+}
+
+export const RECEIPT_PATH = '/logistics/inbound-receipts';
+
+/**
+ * 담긴 채 아직 못 간 입하 수량.
+ *
+ * 서버가 주는 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 오프라인에서 같은 발주
+ * 라인에 두 번 적었을 때 둘 다 남은 예정 안으로 읽혀, 서버가 거부할 초과가 정상으로 보인다.
+ */
+export const queuedQtyOf = (entries: QueuedReceipt[], purchaseOrderLineId: number): number =>
+  entries
+    .filter((entry) => entry.path === RECEIPT_PATH)
+    .flatMap((entry) => {
+      const body = entry.body as { lines?: unknown } | null;
+
+      return Array.isArray(body?.lines) ? body.lines : [];
+    })
+    .reduce((sum: number, raw) => {
+      const line = raw as { purchaseOrderLineId?: unknown; receivedQty?: unknown };
+
+      if (line.purchaseOrderLineId !== purchaseOrderLineId) {
+        return sum;
+      }
+
+      return sum + (typeof line.receivedQty === 'number' ? line.receivedQty : 0);
+    }, 0);
 
 export type QtyProblem = 'empty' | 'notNumber' | 'notPositive';
 
@@ -154,7 +186,7 @@ export const toOutboxDraft = (
     workerNo,
     idempotencyKey: createIdempotencyKey(),
     method: 'POST',
-    path: '/logistics/inbound-receipts',
+    path: RECEIPT_PATH,
     body,
     occurredAt,
     confirmation: 'pending',

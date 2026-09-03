@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Lot } from '../../patterns/lots';
 import {
   canConfirm,
+  completedQtyOf,
   fromWorkOrderIdOf,
   isUnreleased,
   lotProblemOf,
@@ -110,30 +111,56 @@ describe('인계 수량', () => {
 
 describe('확정 가능 여부', () => {
   it('사번이 없으면 확정할 수 없다', () => {
-    expect(canConfirm(lot(), workOrder(), '100', false)).toBe(false);
+    expect(canConfirm(lot(), workOrder(), '100', false, 480)).toBe(false);
   });
 
   it('다음 공정을 고르지 않으면 확정할 수 없다', () => {
-    expect(canConfirm(lot(), null, '100', true)).toBe(false);
+    expect(canConfirm(lot(), null, '100', true, 480)).toBe(false);
   });
 
   it('넘길 수 없는 LOT 이면 확정할 수 없다', () => {
-    expect(canConfirm(lot({ held: true }), workOrder(), '100', true)).toBe(false);
+    expect(canConfirm(lot({ held: true }), workOrder(), '100', true, 480)).toBe(false);
   });
 
   /* 서버도 막지만 눌러 보고 알게 두지 않는다. */
   it('같은 W/O 로는 넘기지 못한다', () => {
-    expect(canConfirm(lot({ sourceId: 27 }), workOrder({ workOrderId: 27 }), '100', true)).toBe(
+    expect(canConfirm(lot({ sourceId: 27 }), workOrder({ workOrderId: 27 }), '100', true, 480)).toBe(
       false,
     );
   });
 
   it('수량이 어긋나면 확정할 수 없다', () => {
-    expect(canConfirm(lot(), workOrder(), '501', true)).toBe(false);
+    expect(canConfirm(lot(), workOrder(), '501', true, 480)).toBe(false);
   });
 
   it('다 갖추면 확정한다', () => {
-    expect(canConfirm(lot(), workOrder(), '500', true)).toBe(true);
+    expect(canConfirm(lot(), workOrder(), '480', true, 480)).toBe(true);
+  });
+
+  /*
+   * 초기 수량은 계획이다. 미달 마감된 LOT 을 계획으로 재면 만들지 않은 양까지 넘어간다.
+   */
+  it('상한은 초기 수량이 아니라 완료 수량이다', () => {
+    const planned = lot({ initialQty: 500 });
+
+    expect(canConfirm(planned, workOrder(), '500', true, 430)).toBe(false);
+    expect(canConfirm(planned, workOrder(), '430', true, 430)).toBe(true);
+  });
+
+  /* 넉넉한 쪽으로 물러서지 않는다 - 되돌릴 수 없는 쓰기라 모르는 채 통과시키면 고칠 자리가 없다. */
+  it('완료 수량을 모르면 확정할 수 없다', () => {
+    expect(canConfirm(lot(), workOrder(), '100', true, null)).toBe(false);
+  });
+});
+
+describe('완료 수량', () => {
+  it('진척의 양품 합계가 상한이다', () => {
+    expect(completedQtyOf({ goodQty: 430, achievementRate: 0.86, varianceQty: -70,
+      completionJudgmentCode: 'UNDER' })).toBe(430);
+  });
+
+  it('진척을 못 받았으면 모른다고 답한다', () => {
+    expect(completedQtyOf(null)).toBeNull();
   });
 });
 

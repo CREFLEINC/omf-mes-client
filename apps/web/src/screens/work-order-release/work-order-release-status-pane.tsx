@@ -57,8 +57,8 @@ export const WorkOrderReleaseStatusPane = ({
   const statusBanner = <AlertBanner variant={status.variant}>{status.message}</AlertBanner>;
 
   return (
-    <section className="pane" aria-label={t.pane}>
-      <h2>{t.heading(selectedWorkOrderNo)}</h2>
+    <section className="pane work-order-release-status-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.heading(selectedWorkOrderNo)}</h2>
       {missingLocations === '' ? (
         statusBanner
       ) : (

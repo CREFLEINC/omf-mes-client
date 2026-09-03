@@ -83,8 +83,8 @@ export const WorkOrderReleaseInputPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.pane}>
-      <h2>{t.heading}</h2>
+    <section className="pane work-order-release-input-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.heading}</h2>
       <div className="form-grid">
         <TextField
           fullWidth

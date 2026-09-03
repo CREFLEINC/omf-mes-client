@@ -68,6 +68,9 @@ describe('WorkOrderResourcePane', () => {
 
   it('renders four cards in order with five labelled controls and material guidance', () => {
     renderPane();
+    const pane = screen.getByRole('region', { name: t.pane });
+    expect(pane).toHaveClass('work-order-resource-pane');
+    expect(pane.querySelector('.work-order-resource-grid')).not.toBeNull();
     expect(screen.getByRole('heading', { name: t.heading('SYN-WO-ALPHA') })).toBeInTheDocument();
     const cards = screen.getAllByRole('heading', { level: 3 });
     expect(cards.map((card) => card.textContent)).toEqual([

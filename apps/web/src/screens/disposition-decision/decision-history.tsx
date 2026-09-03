@@ -50,22 +50,29 @@ export const DecisionHistory = ({
   if (isError) return <EmptyState size="sm" title={t.decisions.unavailable} />;
 
   return (
-    <section aria-label={t.panes.decisions}>
-      <h3 className="field-label">{t.panes.decisions}</h3>
-      <Table
-        density="compact"
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.dispositionDecisionId)}
-        empty={<EmptyState size="sm" title={t.decisions.empty} />}
-      />
+    <section className="disposition-subsection" aria-label={t.panes.decisions}>
+      <h3 className="disposition-subtitle">{t.panes.decisions}</h3>
+      <div className="disposition-table disposition-decision-table">
+        <Table
+          density="compact"
+          caption={<span className="disposition-table-caption">{t.panes.decisions}</span>}
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.dispositionDecisionId)}
+          empty={<EmptyState size="sm" title={t.decisions.empty} />}
+        />
+      </div>
       {/*
        * ⭐ 남은 수량은 판정 이력 조회의 `summary.remainingQty`다 — 서버가 대상 수량 합에서
        * 결정 수량 합을 뺀 값이다(공유계약 L-2). ⚠ 그래도 **조회 시점의 스냅샷**이라 참고값으로
        * 적는다 — 이 값을 받은 뒤 다른 판정이 저장되면 실제 남은 수량은 달라져 있을 수 있고,
        * 최종 판정은 저장 시 서버가 409로 낸다. 근거: W-03-10 §3 · §9-1 · omf-mes#253.
        */}
-      <div className="field-cell" role="group" aria-label={t.remaining.label}>
+      <div
+        className="field-cell disposition-remaining-card"
+        role="group"
+        aria-label={t.remaining.label}
+      >
         <span className="field-label">{t.remaining.label}</span>
         <Chip status={remaining.isSettled ? 'idle' : 'warning'}>{remaining.text}</Chip>
         <span className="field-note">

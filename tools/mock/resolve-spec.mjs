@@ -4,8 +4,20 @@ import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
-const specPathOf = (fileName) =>
-  path.resolve(repoRoot, '..', 'omf', 'design', 'wiki', 'api-contracts', 'openapi', fileName);
+/**
+ * 정본을 둘 수 있는 자리. 앞에서부터 실재하는 첫 자리를 쓴다.
+ *
+ * 형제 클론이 기본이고, 격리 클론은 워크플로 문서가 예시로 든 자리다. 어느 쪽도 없으면
+ * OMF_SPEC_PATH 로 직접 준다.
+ */
+const SPEC_ROOTS = [
+  path.resolve(repoRoot, '..', 'omf', 'design', 'wiki', 'api-contracts', 'openapi'),
+  path.resolve(repoRoot, '.claude', '_designref', 'omf-mes', 'design', 'wiki', 'api-contracts', 'openapi'),
+];
+
+const specRoot = SPEC_ROOTS.find((root) => existsSync(root)) ?? SPEC_ROOTS[0];
+
+const specPathOf = (fileName) => path.resolve(specRoot, fileName);
 
 /**
  * 정본은 설계 저장소(omf-mes)에 있고 이 저장소로 복사하지 않는다 — 기본값은 형제 클론 경로.

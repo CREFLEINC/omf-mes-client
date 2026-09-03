@@ -43,6 +43,12 @@ const renderPane = (override: Partial<Parameters<typeof ReasonPane>[0]> = {}) =>
   );
 
 describe('ReasonPane', () => {
+  it('사유 입력을 제목이 있는 구획으로 구분한다', () => {
+    renderPane();
+
+    expect(screen.getByRole('heading', { level: 2, name: t.panes.reason })).toBeInTheDocument();
+  });
+
   it('사유 라디오가 **비활성이 아니다**', () => {
     renderPane();
 

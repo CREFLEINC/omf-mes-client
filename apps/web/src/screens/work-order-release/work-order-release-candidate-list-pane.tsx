@@ -77,10 +77,12 @@ export const WorkOrderReleaseCandidateListPane = ({
   }
 
   return (
-    <section className="pane" aria-label={t.pane}>
-      <div className="wide-table">
+    <section className="pane work-order-release-list-pane" aria-label={t.pane}>
+      <h2 className="pane-title">{t.pane}</h2>
+      <div className="wide-table work-order-release-table">
         <Table
           density="compact"
+          caption={<span className="work-order-release-table-caption">{t.pane}</span>}
           columns={columns}
           rows={rows}
           getRowId={(row) => String(row.workOrderId)}

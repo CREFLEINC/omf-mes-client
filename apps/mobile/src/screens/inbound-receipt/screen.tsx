@@ -1,10 +1,10 @@
 import { AlertBanner, Button, Card, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
-import { useItem, useUomCodes } from '../../patterns/masters';
+import { useItem, useItemLabels, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -19,6 +19,7 @@ import {
   isExpiryBeforeManufactured,
   packageProblem,
   qtyProblem,
+  queuedQtyOf,
   remainingQtyOf,
   toOutboxDraft,
   verdictOf,
@@ -48,7 +49,7 @@ const emptyDraft: ReceiptDraft = {
 export const InboundReceiptScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush } = useOutbox();
+  const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
 
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
@@ -57,6 +58,12 @@ export const InboundReceiptScreen = () => {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   /* 부족한데도 그대로 등록하겠다는 사람의 답. 화면은 더 올 것인지 알지 못한다. */
   const [continueUnder, setContinueUnder] = useState(false);
+  const [saveFailed, setSaveFailed] = useState(false);
+  /*
+   * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
+   * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 재고가 두 번 는다.
+   */
+  const inFlight = useRef(false);
 
   const patch = (next: Partial<ReceiptDraft>) => {
     /*
@@ -89,16 +96,35 @@ export const InboundReceiptScreen = () => {
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
   const item = useItem(draft.purchaseOrderLine?.itemId ?? null);
   const uoms = useUomCodes(true);
+  /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
+  const itemLabels = useItemLabels(draft.purchaseOrder !== null);
 
   const started = draft.supplierLotNo !== '' || draft.supplierLotMissing;
   const received = Number(draft.receivedQty.trim());
+  /* 서버의 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 초과가 초과로 보이지 않는다. */
+  const queuedQty = queuedQtyOf(
+    pendingOf(t.record),
+    draft.purchaseOrderLine?.purchaseOrderLineId ?? -1,
+  );
   const verdict =
     draft.purchaseOrderLine === null || qtyProblem(draft.receivedQty) !== null
       ? null
-      : verdictOf(draft.purchaseOrderLine, received);
-  /* 부족은 더 올 것이 남았다고 사람이 답해야 넘어간다. 마지막 회차면 갈 곳이 다르다. */
-  const ready = canSubmit(draft, worker !== null) && (verdict !== UNDER || continueUnder);
+      : verdictOf(draft.purchaseOrderLine, received, queuedQty);
+  /*
+   * 부족은 더 올 것이 남았다고 사람이 답해야 넘어간다. 마지막 회차면 갈 곳이 다르다.
+   *
+   * 큐를 읽기 전에는 막아 둔다 - 담긴 것이 없는 것과 구별되지 않아, 앞서 담은 입하가 셈에서
+   * 빠진 채로 같은 라인에 한 건이 더 나간다.
+   */
+  const ready = loaded && canSubmit(draft, worker !== null) && (verdict !== UNDER || continueUnder);
   const uom = uoms.data?.get(draft.purchaseOrderLine?.uomId ?? -1) ?? '';
+
+  /* 코드와 이름을 함께 보인다. 라벨에는 코드가 찍혀 있고 사람은 이름으로 고른다. */
+  const itemLabelOf = (itemId: number): string => {
+    const found = itemLabels.data?.get(itemId);
+
+    return found === undefined ? '' : `${found.itemCode} ${found.itemName}`;
+  };
 
   const qtyMessage = (): string | undefined => {
     const problem = qtyProblem(draft.receivedQty);
@@ -112,38 +138,59 @@ export const InboundReceiptScreen = () => {
     setManual('');
     setOutcome(null);
     setContinueUnder(false);
+    setSaveFailed(false);
     scanField.focus();
   };
 
   const submit = async () => {
     const line = draft.purchaseOrderLine;
 
-    if (worker === null || draft.purchaseOrder === null || line === null) {
+    if (worker === null || draft.purchaseOrder === null || line === null || inFlight.current) {
       return;
     }
 
-    const entry = toOutboxDraft(
-      draft,
-      line.itemId,
-      line.uomId,
-      draft.purchaseOrder.plantId,
-      draft.purchaseOrder.supplierId,
-      new Date(),
-      worker.workerNo,
-    );
+    inFlight.current = true;
+    setSaveFailed(false);
 
-    await enqueue(entry);
+    try {
+      const entry = toOutboxDraft(
+        draft,
+        line.itemId,
+        line.uomId,
+        draft.purchaseOrder.plantId,
+        draft.purchaseOrder.supplierId,
+        new Date(),
+        worker.workerNo,
+      );
 
-    const result = await flush().catch(() => null);
-    const mine = (each: { idempotencyKey: string }) =>
-      each.idempotencyKey === entry.idempotencyKey;
+      /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 등록된 줄 안다. */
+      try {
+        await enqueue(entry);
+      } catch {
+        setSaveFailed(true);
+        return;
+      }
 
-    if (result !== null && result.rejected.some((each) => mine(each.entry))) {
-      setOutcome('rejected');
-      return;
+      const result = await flush().catch(() => null);
+      const mine = (each: { idempotencyKey: string }) =>
+        each.idempotencyKey === entry.idempotencyKey;
+
+      /*
+       * 자기가 부른 보내기의 결과만 보면 딸려 되돌아간 건을 놓친다 - 그 판정은 셸이 도는 다른
+       * 회차에서 내려질 수 있고, 화면은 빈 결과를 받아 담아 두었다고 잘못 말한다.
+       */
+      if (
+        (result !== null && result.rejected.some((each) => mine(each.entry))) ||
+        isRejected(entry.idempotencyKey)
+      ) {
+        setOutcome('rejected');
+        return;
+      }
+
+      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+    } finally {
+      inFlight.current = false;
     }
-
-    setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
   };
 
   if (outcome !== null) {
@@ -200,6 +247,8 @@ export const InboundReceiptScreen = () => {
             size="xl"
             onClick={() => {
               take(manual);
+              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+              setManual('');
             }}
           >
             {t.scan.manualSubmit}
@@ -224,9 +273,7 @@ export const InboundReceiptScreen = () => {
                   label: each.name,
                 }))}
               />
-              {reasons.isError ? (
-                <p className="receipt__note">{t.scan.reasonLoadFailed}</p>
-              ) : null}
+              {reasons.isError ? <p className="receipt__note">{t.scan.reasonLoadFailed}</p> : null}
             </div>
             <Button
               variant="text"
@@ -319,7 +366,7 @@ export const InboundReceiptScreen = () => {
                         <span className="receipt__line">
                           <span>
                             {t.po.lineLabel(
-                              String(line.itemId),
+                              itemLabelOf(line.itemId),
                               String(line.orderedQty),
                               uoms.data?.get(line.uomId) ?? '',
                             )}
@@ -380,9 +427,7 @@ export const InboundReceiptScreen = () => {
                       ? String(draft.purchaseOrderLine.itemId)
                       : `${item.data.itemCode} ${item.data.itemName}`}
                   </strong>
-                  {item.isError ? (
-                    <p className="receipt__note">{t.qty.itemLoadFailed}</p>
-                  ) : null}
+                  {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
                   <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
                 </Card.Body>
               </Card>
@@ -416,9 +461,7 @@ export const InboundReceiptScreen = () => {
                   patch({ packageCount: event.target.value });
                 }}
                 error={
-                  packageProblem(draft.packageCount) === null
-                    ? undefined
-                    : t.qty.packageNotPositive
+                  packageProblem(draft.packageCount) === null ? undefined : t.qty.packageNotPositive
                 }
               />
 
@@ -457,7 +500,7 @@ export const InboundReceiptScreen = () => {
                 <AlertBanner
                   variant="warning"
                   title={t.verdict.over(
-                    String(remainingQtyOf(draft.purchaseOrderLine)),
+                    String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
                     String(received),
                   )}
                 >
@@ -467,7 +510,7 @@ export const InboundReceiptScreen = () => {
                 <AlertBanner
                   variant="warning"
                   title={t.verdict.under(
-                    String(remainingQtyOf(draft.purchaseOrderLine)),
+                    String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
                     String(received),
                   )}
                 >
@@ -479,7 +522,7 @@ export const InboundReceiptScreen = () => {
                     <dt>{t.verdict.counts.arrived}</dt>
                     <dd>{`${String(received)} ${uom}`}</dd>
                     <dt>{t.verdict.counts.remaining}</dt>
-                    <dd>{`${String(remainingQtyOf(draft.purchaseOrderLine))} ${uom}`}</dd>
+                    <dd>{`${String(remainingQtyOf(draft.purchaseOrderLine, queuedQty))} ${uom}`}</dd>
                   </dl>
                   <p>{t.verdict.underAsk}</p>
                   <div className="receipt__under-choice">
@@ -496,9 +539,7 @@ export const InboundReceiptScreen = () => {
                       {t.verdict.underVariance}
                     </Link>
                   </div>
-                  <p>
-                    {continueUnder ? t.verdict.underContinueNote : t.verdict.underVarianceNote}
-                  </p>
+                  <p>{continueUnder ? t.verdict.underContinueNote : t.verdict.underVarianceNote}</p>
                 </AlertBanner>
               )}
 
@@ -507,6 +548,11 @@ export const InboundReceiptScreen = () => {
           )}
 
           <section className="receipt__section">
+            {saveFailed ? (
+              <AlertBanner variant="error" title={t.saveFailed.title}>
+                {t.saveFailed.description}
+              </AlertBanner>
+            ) : null}
             {worker === null ? <p className="receipt__note">{t.noWorker}</p> : null}
             <Button
               className="receipt__wide"

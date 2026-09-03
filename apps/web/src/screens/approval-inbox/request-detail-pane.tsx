@@ -17,12 +17,8 @@ export const NO_BREAK_SPACE = ' ';
  *
  * 둘 다 「보이지 않게 되는」 자리라 **글자를 세워** 상자가 높이를 갖게 한다.
  *
- * **왜 `white-space`를 주지 않는가.** 이 슬라이스는 배치를 기존 클래스로만 하고 `app.css`를
- * 고치지 않는다 — 전역 스타일시트에 이 화면만 쓰는 규칙을 더하면 다른 화면이 그것을 물려받는
- * 자리가 생기고, 그 결정은 배치 규범을 바꾸는 일이라 이 회차의 범위가 아니다. 실측 결과
- * `app.css`에 공백을 보존하는 클래스가 없고(있는 것은 `.wide-table th`의 `nowrap` 하나뿐)
- * 이 저장소의 화면 코드에는 CSS 모듈이 쓰이지 않는다. 그래서 **구조로 푼다** —
- * 이 슬라이스 밖에 영향이 없고, 스타일이 생기는 날 이 함수만 지우면 된다.
+ * **왜 `white-space`를 주지 않는가.** 줄의 의미를 CSS에 맡기지 않고 구조로 보존한다.
+ * 이 화면 전용 스타일은 구획 배치만 담당하므로, 표시 규칙이 바뀌어도 이 함수의 결과는 같다.
  *
  * **줄 가운데·끝 공백은 바꾸지 않는다.** 축약돼도 읽는 데 지장이 없고, 전부 바꾸면 사용자가
  * 복사해 간 사유에 보통 공백이 하나도 남지 않는다.
@@ -55,8 +51,9 @@ export interface RequestDetailPaneProps {
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
 export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
-  <div role="group" aria-label={t.panes.request}>
-    <dl className="filter-bar">
+  <div className="approval-inbox-detail-section" role="group" aria-label={t.panes.request}>
+    <h3>{t.panes.request}</h3>
+    <dl className="filter-bar approval-inbox-detail-facts">
       <div className="field-cell">
         <dt className="field-label">{t.fields.approvalRequestNo}</dt>
         <dd>{view.approvalRequestNo}</dd>
@@ -83,9 +80,8 @@ export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
     <div className="field-cell">
       <span className="field-label">{t.fields.reason}</span>
       {/*
-       * **줄마다 한 칸이다.** 줄바꿈을 살리는 스타일을 새로 만들지 않고 구조로 낸다 —
-       * 배치는 기존 클래스만 쓰고 `app.css`를 고치지 않는다는 규율이 이 슬라이스에 걸려 있다.
-       * 들여쓰기와 빈 줄이 표기 층에서 사라지지 않게 하는 것은 `toVisibleLine`이 맡는다.
+       * **줄마다 한 칸이다.** 줄바꿈을 구조로 내어 들여쓰기와 빈 줄이 표기 층에서 사라지지
+       * 않게 하는 것은 `toVisibleLine`이 맡는다.
        *
        * React key에 차례를 쓴다. **여기서는 차례가 곧 그 줄의 정체다** — 사유는 통째로
        * 갈리는 한 덩어리라 줄이 재배열되거나 사이에 끼어들지 않는다.

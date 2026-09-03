@@ -109,28 +109,43 @@ export const SuspiciousMaterialHoldExecution = ({
     for (const queryKey of ROOT_KEYS) void queryClient.invalidateQueries({ queryKey });
   };
   const stale = conflict(write.error);
+  const guidance =
+    selected.length === 0
+      ? t.selectFirst
+      : body === null
+        ? t.completeInput
+        : t.ready(selected.length);
 
   return (
-    <section aria-label={t.pane}>
-      <Button
-        disabled={body === null || confirmation !== null}
-        onClick={() => {
-          if (body !== null) {
-            setApplied(false);
-            setConfirmation({
-              body,
-              lotNames: Object.fromEntries(selected.map((lot) => [String(lot.lotId), lot.lotNo])),
-            });
-            onConfirmationChange(true);
-          }
-        }}
-      >
-        {t.confirm}
-      </Button>
+    <section
+      className="pane suspicious-material-hold-pane suspicious-material-hold-action-pane"
+      aria-label={t.pane}
+    >
+      <h2 className="pane-title">{t.pane}</h2>
+      <div className="suspicious-material-hold-action-row">
+        <p className="field-note">{guidance}</p>
+        <Button
+          disabled={body === null || confirmation !== null}
+          onClick={() => {
+            if (body !== null) {
+              setApplied(false);
+              setConfirmation({
+                body,
+                lotNames: Object.fromEntries(selected.map((lot) => [String(lot.lotId), lot.lotNo])),
+              });
+              onConfirmationChange(true);
+            }
+          }}
+        >
+          {t.confirm}
+        </Button>
+      </div>
       {applied && (
-        <AlertBanner variant="success" title={t.success}>
-          {t.successNext}
-        </AlertBanner>
+        <div className="banner-slot">
+          <AlertBanner variant="success" title={t.success}>
+            {t.successNext}
+          </AlertBanner>
+        </div>
       )}
       {confirmation !== null && (
         <Dialog

@@ -146,60 +146,65 @@ export const GaugeCalibrationScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.filters}>
-        <CalibrationFilterBar
-          appliedFilters={filters}
-          equipmentOptions={equipmentOptions}
-          equipmentNote={equipmentNote(equipments)}
-          onSearch={(next) => {
-            apply(next);
-          }}
-          onReset={() => {
-            apply(EMPTY_FILTERS);
-          }}
-        />
-      </section>
-
-      {!list.isError && (
-        <section className="pane" aria-label={t.panes.list}>
-          <HistoryTable
-            rows={rows}
-            isLoading={list.isPending}
-            isBeyondLast={pageView.isBeyondLast}
-            onFirstPage={() => {
-              apply(filters);
+      <div className="gauge-calibration-workspace">
+        <section className="pane gauge-calibration-pane" aria-label={t.panes.filters}>
+          <h2 className="pane-title">{t.panes.filters}</h2>
+          <CalibrationFilterBar
+            appliedFilters={filters}
+            equipmentOptions={equipmentOptions}
+            equipmentNote={equipmentNote(equipments)}
+            onSearch={(next) => {
+              apply(next);
+            }}
+            onReset={() => {
+              apply(EMPTY_FILTERS);
             }}
           />
-          {!list.isPending && !pageView.isBeyondLast && (
-            <PageNav
-              view={pageView}
-              onChange={(nextPage) => {
-                apply(filters, nextPage);
+        </section>
+
+        {!list.isError && (
+          <section className="pane gauge-calibration-pane" aria-label={t.panes.list}>
+            <h2 className="pane-title">{t.panes.list}</h2>
+            <HistoryTable
+              rows={rows}
+              isLoading={list.isPending}
+              isBeyondLast={pageView.isBeyondLast}
+              onFirstPage={() => {
+                apply(filters);
               }}
             />
-          )}
-        </section>
-      )}
+            {!list.isPending && !pageView.isBeyondLast && (
+              <PageNav
+                view={pageView}
+                onChange={(nextPage) => {
+                  apply(filters, nextPage);
+                }}
+              />
+            )}
+          </section>
+        )}
 
-      <section className="pane" aria-label={t.panes.form}>
-        <SaveErrorBanner error={create.error} />
-        <HistoryForm
-          draft={draft}
-          errors={mergedErrors}
-          equipmentOptions={equipmentOptions}
-          equipmentNote={equipmentNote(equipments)}
-          isSaving={create.isSaving}
-          onChange={(next) => {
-            setDraft(next);
-          }}
-          onSubmit={requestSave}
-          onReset={() => {
-            setDraft(EMPTY_DRAFT);
-            setErrors({});
-            create.reset();
-          }}
-        />
-      </section>
+        <section className="pane gauge-calibration-pane" aria-label={t.panes.form}>
+          <h2 className="pane-title">{t.panes.form}</h2>
+          <SaveErrorBanner error={create.error} />
+          <HistoryForm
+            draft={draft}
+            errors={mergedErrors}
+            equipmentOptions={equipmentOptions}
+            equipmentNote={equipmentNote(equipments)}
+            isSaving={create.isSaving}
+            onChange={(next) => {
+              setDraft(next);
+            }}
+            onSubmit={requestSave}
+            onReset={() => {
+              setDraft(EMPTY_DRAFT);
+              setErrors({});
+              create.reset();
+            }}
+          />
+        </section>
+      </div>
 
       <SaveConfirmDialog
         open={isConfirming}

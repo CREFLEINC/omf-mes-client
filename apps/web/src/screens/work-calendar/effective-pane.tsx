@@ -77,6 +77,7 @@ export const EffectivePane = ({
         <span className="field-note">{t.pathNote}</span>
         <Table
           density="compact"
+          caption={<span className="work-calendar-table-caption">{t.pathTitle}</span>}
           columns={columns}
           rows={[...effective.steps]}
           getRowId={(step) => `${step.levelCode}-${String(step.targetId)}`}
@@ -86,11 +87,9 @@ export const EffectivePane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.title}>
-      <div className="filter-bar">
-        <div className="field-cell field-cell-unlabeled">
-          <strong>{t.title}</strong>
-        </div>
+    <section className="pane work-calendar-pane" aria-label={t.title}>
+      <h2 className="pane-title">{t.title}</h2>
+      <div className="filter-bar work-calendar-effective-filter">
         <SelectField
           label={t.equipment}
           options={options}

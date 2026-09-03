@@ -14,10 +14,16 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { TemporaryPutawayScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -91,7 +97,8 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () => jsonResponse({ items: options.reasons ?? [codeValue('FULL', '정위치 포화')], page }),
+    respond: () =>
+      jsonResponse({ items: options.reasons ?? [codeValue('FULL', '정위치 포화')], page }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
@@ -111,11 +118,7 @@ const SignedIn = ({ children }: { children: ReactNode }) => {
   return worker === null ? null : children;
 };
 
-const mount = (
-  state: unknown,
-  extra: StubRoute[] = [],
-  options: Options = {},
-) =>
+const mount = (state: unknown, extra: StubRoute[] = [], options: Options = {}) =>
   renderWithProviders(
     <MemoryRouter initialEntries={[{ pathname: '/temporary-putaway', state }]}>
       <SignedIn>
@@ -133,6 +136,7 @@ const scan = (code: string) => {
 };
 
 beforeEach(() => {
+  held.failWrite = null;
   store.clear();
   localStorage.clear();
 });
@@ -177,9 +181,9 @@ describe('임시 위치 적재 화면', () => {
     mount({ task: task(), location: TEMP });
 
     expect(await screen.findByText('사유를 고르거나 비고를 적으세요')).toBeTruthy();
-    expect(
-      screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled'),
-    ).toBe(true);
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      true,
+    );
   });
 
   it('비고만 적어도 등록할 수 있다', async () => {
@@ -189,9 +193,9 @@ describe('임시 위치 적재 화면', () => {
     await screen.findByLabelText('비고');
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
-    expect(
-      screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled'),
-    ).toBe(false);
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      false,
+    );
   });
 
   /* 값이 없으면 고를 것이 없다. 비고로 적게 두고 그 사실을 말한다. */
@@ -220,6 +224,106 @@ describe('임시 위치 적재 화면', () => {
     expect(await screen.findByText('Z-99 위치를 이 창고에서 찾지 못했습니다')).toBeTruthy();
   });
 
+  /*
+   * 스캔을 시작했으면 스캔이 정본이다. 찾지 못한 것을 앞 화면의 위치로 되돌리면, 작업자는
+   * 자기가 비춘 자리에 넣었다고 믿는데 장부는 다른 자리를 가리킨다 - 실물을 사람이 찾아야 한다.
+   */
+  it('스캔이 빗나가면 앞 화면의 위치로 등록하지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ task: task(), location: TEMP }, [
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse(task({ actualLocationId: 9 }));
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('비고');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+    scan('Z-99');
+
+    expect(await screen.findByText('Z-99 위치를 이 창고에서 찾지 못했습니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      true,
+    );
+
+    await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
+
+    /* 아무 일도 없었음을 재려면 일이 일어날 시간을 준 뒤에 봐야 한다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+        true,
+      );
+    });
+    expect(seen).toHaveLength(0);
+    expect(screen.queryByText('임시 적치를 기록했습니다')).toBeNull();
+  });
+
+  /* 막기만 하고 나갈 길이 없으면 현장이 멈춘다. 빗나간 스캔을 되돌릴 수 있어야 한다. */
+  it('빗나간 스캔 뒤 목록에서 고르면 다시 등록할 수 있다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ task: task(), location: TEMP }, [
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
+          req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse(task({ actualLocationId: 9 }));
+        },
+      },
+    ]);
+
+    await screen.findByLabelText('비고');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+    scan('Z-99');
+    await screen.findByText('Z-99 위치를 이 창고에서 찾지 못했습니다');
+
+    await user.click(await screen.findByRole('combobox', { name: '목록에서 고르기' }));
+    await user.click(await screen.findByRole('option', { name: /TMP-01/ }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+        false,
+      );
+    });
+
+    await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+    expect((await seen[0]!.json()) as { actualLocationId: number }).toMatchObject({
+      actualLocationId: 9,
+    });
+  });
+
+  /* 확인하지 못한 것을 없는 것으로 말하면 작업자가 라벨을 의심한다. */
+  it('위치 조회가 실패하면 찾지 못했다고 말하지 않는다', async () => {
+    mount({ task: task(), location: TEMP }, [
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/mdm/locations' &&
+          new URL(req.url).searchParams.get('locationCode') !== null,
+        respond: () => jsonResponse({ message: '실패' }, { status: 500 }),
+      },
+    ]);
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+    scan('TMP-01');
+
+    expect(await screen.findByText('위치를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
+    expect(screen.queryByText('TMP-01 위치를 이 창고에서 찾지 못했습니다')).toBeNull();
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      true,
+    );
+  });
+
   /* 임시 위치는 수용량으로 막지 않는다. 값이 있으면 알리기만 한다. */
   it('수용량이 있어도 막지 않고 알리기만 한다', async () => {
     const user = userEvent.setup();
@@ -229,9 +333,9 @@ describe('임시 위치 적재 화면', () => {
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
 
     expect(screen.getByText('수용량 100 — 임시 위치라 막지 않습니다')).toBeTruthy();
-    expect(
-      screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled'),
-    ).toBe(false);
+    expect(screen.getByRole('button', { name: '임시 적치 등록' }).hasAttribute('disabled')).toBe(
+      false,
+    );
   });
 
   /* 사번은 인증이 아니라 귀속이다. 정상 적치와 다른 경로로 보낸다. */
@@ -260,8 +364,11 @@ describe('임시 위치 적재 화면', () => {
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
 
-    
-    const body = (await seen[0]!.json()) as { actualLocationId: number; remarks: string; reasonCode: unknown };
+    const body = (await seen[0]!.json()) as {
+      actualLocationId: number;
+      remarks: string;
+      reasonCode: unknown;
+    };
 
     expect(body.actualLocationId).toBe(9);
     expect(body.remarks).toBe('통로에 둠');
@@ -289,5 +396,53 @@ describe('임시 위치 적재 화면', () => {
         '정위치 이동은 재고 이동 화면에서 합니다. 그 화면은 아직 이 앱에 없습니다.',
       ),
     ).toBeTruthy();
+  });
+  const tempRoute = (seen: Request[]): StubRoute => ({
+    match: (req) =>
+      new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
+      req.method === 'POST',
+    respond: (req) => {
+      seen.push(req.clone());
+      return jsonResponse(task({ actualLocationId: 9 }));
+    },
+  });
+
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 상태로 잠그면 다시 그리기 전의 연타를 놓쳐, 멱등키가 다른
+   * 두 건이 담기고 서버가 흡수하지 못해 같은 임시 적치가 두 번 기록된다.
+   */
+  it('같은 틱에 등록을 세 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ task: task(), location: TEMP }, [tempRoute(seen)]);
+
+    await screen.findByLabelText('비고');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+
+    const button = screen.getByRole('button', { name: '임시 적치 등록' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('임시 적치를 기록했습니다');
+    expect(seen).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 기록된 줄 안다. */
+  it('담아 두지 못하면 기록되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ task: task(), location: TEMP }, [tempRoute(seen)]);
+
+    await screen.findByLabelText('비고');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
+
+    expect(await screen.findByText('임시 적치를 담아 두지 못했습니다')).toBeTruthy();
+    expect(screen.queryByText('임시 적치를 기록했습니다')).toBeNull();
+    expect(seen).toHaveLength(0);
   });
 });

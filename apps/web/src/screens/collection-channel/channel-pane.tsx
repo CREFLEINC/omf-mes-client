@@ -179,7 +179,8 @@ export const ChannelPane = ({
   /* 고르기 전에는 빈 표가 아니라 무엇을 해야 하는지 말한다. */
   if (equipment === null) {
     return (
-      <section className="pane" aria-label={t.channels.paneTitle}>
+      <section className="pane collection-channel-pane" aria-label={t.channels.paneTitle}>
+        <h2 className="pane-title">{t.channels.paneTitle}</h2>
         <EmptyState
           size="sm"
           live
@@ -234,21 +235,31 @@ export const ChannelPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={rows}
-        getRowId={(row) => String(row.collectionChannelId)}
-        empty={emptySlot}
-      />
+      <div className="wide-table collection-channel-table collection-channel-mapping-table">
+        <Table
+          density="compact"
+          caption={
+            <span className="collection-channel-table-caption">
+              {t.channels.paneOf(equipment.equipmentCode, equipment.equipmentName)}
+            </span>
+          }
+          columns={columns}
+          rows={rows}
+          getRowId={(row) => String(row.collectionChannelId)}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   return (
-    <section className="pane" aria-label={t.channels.paneTitle}>
-      <h3>{t.channels.paneOf(equipment.equipmentCode, equipment.equipmentName)}</h3>
+    <section className="pane collection-channel-pane" aria-label={t.channels.paneTitle}>
+      <h2 className="pane-title">{t.channels.paneTitle}</h2>
+      <h3 className="collection-channel-context-title">
+        {t.channels.paneOf(equipment.equipmentCode, equipment.equipmentName)}
+      </h3>
 
-      <div className="filter-bar">
+      <div className="filter-bar collection-channel-toolbar">
         <div className="field-cell field-cell-unlabeled">
           <div className="filter-actions">
             <Button variant="outlined" onClick={onAdd}>

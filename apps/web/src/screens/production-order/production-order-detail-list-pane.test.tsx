@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import type { ProductionOrderPlanFact, ProductionOrderWorkOrderFact } from './detail-queries';
@@ -101,6 +101,13 @@ describe('ProductionOrderDetailListPane', () => {
       />,
     );
 
+    const table = screen.getByRole('table', { name: t.detail.planHeading });
+    expect(screen.getByLabelText(t.panes.plans)).toHaveClass('production-order-pane');
+    expect(table.closest('.production-order-plan-table')).not.toBeNull();
+    expect(within(table).getByText(t.detail.planHeading)).toHaveClass(
+      'production-order-table-caption',
+    );
+    expect(screen.getByText('SYN-DRAFT').closest('td')).toHaveAttribute('data-align', 'center');
     expect(rowText()).toEqual([
       expect.stringContaining('SYN-PLAN-502'),
       expect.stringContaining('SYN-PLAN-501'),

@@ -5,6 +5,7 @@ import { runRequest } from './request';
 
 export const masterKeys = {
   item: (itemId: number | null) => ['master-item', itemId] as const,
+  items: () => ['master-items'] as const,
   uoms: () => ['master-uoms'] as const,
 };
 
@@ -53,6 +54,37 @@ export const useUomCodes = (enabled: boolean): UseQueryResult<Map<number, string
       );
 
       return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));
+    },
+  });
+};
+
+/**
+ * 품목 이름표. 목록에 여러 품목이 섞여 나올 때 쓴다.
+ *
+ * 목록 응답이 품목 식별자만 주는 자리가 많다. 그 번호를 그대로 보이면 작업자가 실물 라벨과
+ * 대조할 수 없다 - 라벨에는 품목 코드가 찍혀 있지 대리키가 찍혀 있지 않다.
+ */
+export const useItemLabels = (enabled: boolean): UseQueryResult<Map<number, ItemSummary>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: masterKeys.items(),
+    enabled,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/items', { params: { query: { size: 200 } } }),
+      );
+
+      return new Map(
+        data.items.map((item) => [
+          item.itemId,
+          {
+            itemCode: item.itemCode,
+            itemName: item.itemName,
+            fifoPolicyCode: item.fifoPolicyCode,
+          },
+        ]),
+      );
     },
   });
 };

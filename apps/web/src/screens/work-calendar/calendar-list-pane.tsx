@@ -144,19 +144,23 @@ export const CalendarListPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={items}
-        getRowId={(row) => String(row.workCalendarId)}
-        empty={emptySlot}
-      />
+      <div className="wide-table work-calendar-table work-calendar-list-table">
+        <Table
+          density="compact"
+          caption={<span className="work-calendar-table-caption">{t.listTitle}</span>}
+          columns={columns}
+          rows={items}
+          getRowId={(row) => String(row.workCalendarId)}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   return (
-    <section className="pane" aria-label={t.title}>
-      <div className="filter-bar">
+    <section className="pane work-calendar-pane" aria-label={t.listTitle}>
+      <h2 className="pane-title">{t.listTitle}</h2>
+      <div className="filter-bar work-calendar-filter">
         <SearchInput
           label={t.filters.searchLabel}
           placeholder={t.filters.searchPlaceholder}
@@ -164,8 +168,8 @@ export const CalendarListPane = ({
           onChange={(event) => setDraft({ q: event.target.value })}
           onSearch={(value) => applyDraft({ q: value })}
         />
-        {/* 해제 축이라 변경 즉시 적용한다. */}
-        <div className="field-cell field-cell-unlabeled">
+        <div className="work-calendar-filter-footer">
+          {/* 해제 축이라 변경 즉시 적용한다. */}
           <Checkbox
             checked={appliedFilters.includeInactive}
             onChange={(event) =>
@@ -174,9 +178,7 @@ export const CalendarListPane = ({
           >
             {messages.common.includeInactive}
           </Checkbox>
-        </div>
-        {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
-        <div className="field-cell field-cell-unlabeled">
+          {/* 규범 2-1 — 뜻이 짝인 액션이 줄바꿈으로 갈라지지 않게 한 덩어리로 묶는다. */}
           <div className="filter-actions">
             <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
             <Button variant="outlined" onClick={resetAll}>
@@ -189,7 +191,7 @@ export const CalendarListPane = ({
         </div>
       </div>
 
-      <div className="filter-bar">
+      <div className="filter-bar work-calendar-filter-chips">
         {appliedFilters.q !== '' && (
           <Chip
             variant="status"

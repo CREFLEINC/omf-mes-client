@@ -95,6 +95,12 @@ describe('검사실적·검사결과 조회 조립', () => {
     );
 
     expect(screen.getByText('기간을 선택하세요')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: '조회 조건' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: '검사실적 요약' })).toBeVisible();
+    expect(screen.getByRole('heading', { level: 2, name: '결과 분석' })).toBeVisible();
+    expect(screen.getByRole('region', { name: '검사 결과 분석' })).toHaveClass(
+      'inspection-results-insights-pane-empty',
+    );
     expect(calls).toHaveLength(0);
   });
 

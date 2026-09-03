@@ -12,7 +12,8 @@ export const inboundReceipt = {
   record: '입하 등록',
   scan: {
     legend: '자재 LOT 스캔',
-    label: '자재 LOT 스캔',
+    /* 구획 제목과 같은 말을 쓰지 않는다. 좁은 화면에 같은 줄이 둘로 붙는다. */
+    label: 'LOT 번호',
     placeholder: '자재 LOT 라벨을 비추세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
@@ -109,6 +110,11 @@ export const inboundReceipt = {
     title: '입하가 되돌아왔습니다',
     description: '되돌아온 건에서 사유를 확인하세요. ',
     action: '되돌아온 건 보기',
+  },
+  /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 등록되지 않았다고 말한다. */
+  saveFailed: {
+    title: '입하를 담아 두지 못했습니다',
+    description: '등록되지 않았습니다. 다시 시도하세요.',
   },
   noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
   another: '다음 입하',

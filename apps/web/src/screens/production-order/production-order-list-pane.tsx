@@ -105,7 +105,7 @@ export const ProductionOrderListPane = ({
 
   if (isLoading) {
     return (
-      <section className="pane" aria-label={t.panes.list}>
+      <section className="pane production-order-pane" aria-label={t.panes.list}>
         <div role="status" aria-label={t.loading}>
           <SkeletonText lines={4} />
         </div>
@@ -114,9 +114,11 @@ export const ProductionOrderListPane = ({
   }
 
   return (
-    <section className="pane" aria-label={t.panes.list}>
-      <div className="wide-table">
+    <section className="pane production-order-pane" aria-label={t.panes.list}>
+      <h2>{t.panes.list}</h2>
+      <div className="wide-table production-order-table">
         <Table
+          caption={<span className="production-order-table-caption">{t.panes.list}</span>}
           density="compact"
           columns={columns}
           rows={rows}
