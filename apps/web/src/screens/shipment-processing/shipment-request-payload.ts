@@ -21,7 +21,7 @@ export interface ShipmentRequestPayloadInput {
   warehouseId: number | null;
   loadingInfo: LoadingInfoDraft;
   lineDrafts: readonly LineAllocationDraft[];
-  /** 영업일·발생시각의 기준 시각. 본문을 만드는 쪽이 한 번 정해 넘긴다 — 아래 `toBusinessDate` 참고 */
+  /** 영업일·발생시각의 기준 시각. 본문을 만드는 쪽이 한 번 정해 넘긴다 — 아래 본문 조립의 주석 참고 */
   now: Date;
 }
 
