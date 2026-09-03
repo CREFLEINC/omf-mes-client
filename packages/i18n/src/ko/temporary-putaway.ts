@@ -23,6 +23,9 @@ export const temporaryPutaway = {
     /** 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */
     already: '이미 임시 적치되었습니다',
     alreadyAt: (code: string) => `현재 위치 ${code}`,
+    /** 담아 둔 채 아직 못 간 등록. 서버는 모르지만 이 단말은 안다. */
+    queued: '이 지시의 임시 적치를 이미 담아 두었습니다',
+    queuedWhy: '연결되면 보냅니다. 한 번 더 적으면 두 건이 됩니다.',
   },
   location: {
     legend: '임시 위치',
