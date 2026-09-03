@@ -14,10 +14,16 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { TemporaryPutawayScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -130,6 +136,7 @@ const scan = (code: string) => {
 };
 
 beforeEach(() => {
+  held.failWrite = null;
   store.clear();
   localStorage.clear();
 });
@@ -389,5 +396,53 @@ describe('임시 위치 적재 화면', () => {
         '정위치 이동은 재고 이동 화면에서 합니다. 그 화면은 아직 이 앱에 없습니다.',
       ),
     ).toBeTruthy();
+  });
+  const tempRoute = (seen: Request[]): StubRoute => ({
+    match: (req) =>
+      new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete-temporary' &&
+      req.method === 'POST',
+    respond: (req) => {
+      seen.push(req.clone());
+      return jsonResponse(task({ actualLocationId: 9 }));
+    },
+  });
+
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 상태로 잠그면 다시 그리기 전의 연타를 놓쳐, 멱등키가 다른
+   * 두 건이 담기고 서버가 흡수하지 못해 같은 임시 적치가 두 번 기록된다.
+   */
+  it('같은 틱에 등록을 세 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ task: task(), location: TEMP }, [tempRoute(seen)]);
+
+    await screen.findByLabelText('비고');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+
+    const button = screen.getByRole('button', { name: '임시 적치 등록' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('임시 적치를 기록했습니다');
+    expect(seen).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 기록된 줄 안다. */
+  it('담아 두지 못하면 기록되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ task: task(), location: TEMP }, [tempRoute(seen)]);
+
+    await screen.findByLabelText('비고');
+    await user.type(screen.getByLabelText('비고'), '통로에 둠');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
+
+    expect(await screen.findByText('임시 적치를 담아 두지 못했습니다')).toBeTruthy();
+    expect(screen.queryByText('임시 적치를 기록했습니다')).toBeNull();
+    expect(seen).toHaveLength(0);
   });
 });
