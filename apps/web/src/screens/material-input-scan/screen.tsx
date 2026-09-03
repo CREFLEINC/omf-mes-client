@@ -273,11 +273,11 @@ export const MaterialInputScanScreen = () => {
            * 결정의 전제가 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
            * 연결 상태도 함께 낸다 — 끊긴 것과 밀리는 것은 다르다.
            */}
-          <Chip variant="status" size="sm" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
+          <Chip variant="status" size="md" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
             {outbox.pendingCount > 0 ? t.header.unsynced(outbox.pendingCount) : t.header.synced}
           </Chip>
           {!outbox.isOnline && (
-            <Chip variant="status" size="sm" status="error">
+            <Chip variant="status" size="md" status="error">
               {t.header.offline}
             </Chip>
           )}

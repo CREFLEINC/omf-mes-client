@@ -86,7 +86,7 @@ export const WorkOrderList = ({
                   >
                     <Card.Body>
                       <p>
-                        <Chip status="error" size="sm">
+                        <Chip status="error" size="md">
                           {t.emergencyBadge}
                         </Chip>{' '}
                         {row.workOrderNo} · {itemText(row)}

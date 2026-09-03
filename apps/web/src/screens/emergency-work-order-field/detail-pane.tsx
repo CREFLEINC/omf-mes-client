@@ -36,7 +36,7 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
           t.title
         ) : (
           <>
-            <Chip status="error" size="sm">
+            <Chip status="error" size="md">
               {messages.emergencyWorkOrderField.list.emergencyBadge}
             </Chip>{' '}
             {workOrder.workOrderNo}

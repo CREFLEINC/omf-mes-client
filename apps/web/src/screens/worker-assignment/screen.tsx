@@ -240,7 +240,7 @@ export const WorkerAssignmentScreen = () => {
           {t.header.label} {terminal.data?.terminalCode ?? t.header.emptyValue}
         </p>
         {/* ⭐ 오프라인이어도 «막지 않는다»(§6) — 지금 어느 상태인지만 밝힌다. */}
-        <Chip variant="status" size="sm" status={isOnline ? 'success' : 'warning'}>
+        <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
           {isOnline ? t.header.online : t.header.offline}
         </Chip>
       </section>

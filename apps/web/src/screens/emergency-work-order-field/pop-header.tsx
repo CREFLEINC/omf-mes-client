@@ -49,7 +49,7 @@ export const PopHeader = ({ titleId, terminalNo, isConnected }: PopHeaderProps) 
         </span>
 
         {isConnected !== undefined && (
-          <Chip variant="status" size="sm" status={isConnected ? 'success' : 'error'}>
+          <Chip variant="status" size="md" status={isConnected ? 'success' : 'error'}>
             {isConnected ? t.header.connected : t.header.disconnected}
           </Chip>
         )}
