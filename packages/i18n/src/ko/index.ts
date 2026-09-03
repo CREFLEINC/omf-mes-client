@@ -103,6 +103,7 @@ import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
 import { inboundReceipt } from './inbound-receipt';
 import { packingRepack } from './packing-repack';
+import { packingWork } from './packing-work';
 import { putaway } from './putaway';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
@@ -204,6 +205,7 @@ export const ko = {
   productPicking,
   inboundReceipt,
   packingRepack,
+  packingWork,
   putaway,
   inboundVariance,
   temporaryPutaway,
