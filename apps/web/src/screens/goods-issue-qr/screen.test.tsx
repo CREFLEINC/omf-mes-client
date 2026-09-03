@@ -62,6 +62,8 @@ interface Options {
   reportFails?: boolean;
   /** 발행 요약 조회 요청을 담아 둔다 — 질의 축을 검사한다 */
   summaryRequests?: Request[];
+  /** 프린터 조회 요청을 담아 둔다 — 출력물 종류로 거르는지 검사한다 */
+  printerRequests?: Request[];
   /** 라인 0건 */
   noLines?: boolean;
   /** 라인 조회가 실패하는 경우 */
@@ -111,7 +113,11 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request) === '/app/printers',
-    respond: () => jsonResponse({ items: options.printers ?? [] }),
+    respond: (request) => {
+      options.printerRequests?.push(request.clone());
+
+      return jsonResponse({ items: options.printers ?? [] });
+    },
   },
   {
     match: (request) => pathOf(request) === '/mdm/items',
@@ -328,6 +334,11 @@ describe('GoodsIssueQrScreen', () => {
 
     expect(body).not.toHaveProperty('issueSeq');
     expect(body).not.toHaveProperty('reissueReasonCode');
+    /*
+     * ⭐ 발행 기록의 종류다. 틀리면 요약 조회가 「발행한 적 없다」를 돌려주고 재발행이 신규로
+     * 처리된다 — 발행은 되돌릴 수 없는 쓰기라 조회 축보다 이 자리가 더 아프다.
+     */
+    expect(body.documentTypeCode).toBe('GOODS_ISSUE_QR');
     expect(body.targets).toEqual([
       { targetTypeCode: 'GOODS_ISSUE_LINE', targetId: 1001, lotId: 20 },
     ]);
@@ -540,6 +551,17 @@ describe('GoodsIssueQrScreen', () => {
     expect(query.get('documentTypeCode')).toBe('GOODS_ISSUE_QR');
     expect(query.get('targetTypeCode')).toBe('GOODS_ISSUE_LINE');
     expect(query.get('targetIds')).toBe('1001,1002');
+  });
+
+  it('프린터도 출력물 종류로 좁혀 묻는다 — 거르지 않으면 못 찍는 프린터가 섞인다', async () => {
+    const printerRequests: Request[] = [];
+    renderScreen({ issueCounts: { 1001: 0 }, printerRequests });
+
+    await screen.findByText('LOT-SAMPLE-20');
+
+    const query = new URL(printerRequests[0]?.url ?? 'http://x/').searchParams;
+
+    expect(query.get('documentTypeCode')).toBe('GOODS_ISSUE_QR');
   });
 
   it('미리보기를 못 받으면 깨진 그림 대신 사유를 말한다', async () => {
