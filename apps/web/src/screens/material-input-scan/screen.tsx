@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
 
 import { ConfirmPanel } from './confirm-panel';
@@ -283,6 +284,9 @@ export const MaterialInputScanScreen = () => {
           )}
         </p>
       </header>
+
+      {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
+      {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
       {/*
        * 작업지시가 없으면 **조회가 나가지 않는다.** 그 사실을 배너로 먼저 말한다 — 표의 빈
