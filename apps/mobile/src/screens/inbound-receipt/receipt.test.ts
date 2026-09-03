@@ -9,6 +9,8 @@ import {
   isExpiryBeforeManufactured,
   packageProblem,
   qtyProblem,
+  queuedQtyOf,
+  remainingQtyOf,
   toOutboxDraft,
   verdictOf,
   type PurchaseOrder,
@@ -231,7 +233,12 @@ describe('등록 본문', () => {
   });
 
   it('비워 둔 항목은 빈 문자가 아니라 비운 값으로 싣는다', () => {
-    const bare = draft({ deliveryNoteNo: '', packageCount: '', manufacturedDate: '', expiryDate: '' });
+    const bare = draft({
+      deliveryNoteNo: '',
+      packageCount: '',
+      manufacturedDate: '',
+      expiryDate: '',
+    });
     const body = toOutboxDraft(bare, 31, 9, 1, 2, NOW, '900028').body as {
       deliveryNoteNo: unknown;
       lines: Record<string, unknown>[];
@@ -249,5 +256,44 @@ describe('등록 본문', () => {
     expect(entry.workerNo).toBe('900028');
     expect(entry.confirmation).toBe('pending');
     expect(entry.path).toBe('/logistics/inbound-receipts');
+  });
+});
+
+describe('담긴 입하 셈', () => {
+  const queued = (purchaseOrderLineId: number | null, receivedQty: number) => ({
+    path: '/logistics/inbound-receipts',
+    body: { lines: [{ purchaseOrderLineId, receivedQty }] },
+  });
+
+  it('같은 발주 라인의 담긴 수량만 더한다', () => {
+    expect(queuedQtyOf([queued(41, 120), queued(99, 500), queued(41, 30)], 41)).toBe(150);
+  });
+
+  /* 큐는 화면을 가리지 않고 한 줄로 쌓인다. 다른 화면의 기록이 입하 셈에 들어가면 안 된다. */
+  it('다른 경로의 기록은 세지 않는다', () => {
+    expect(
+      queuedQtyOf(
+        [
+          {
+            path: '/logistics/goods-issues',
+            body: { lines: [{ purchaseOrderLineId: 41, receivedQty: 200 }] },
+          },
+        ],
+        41,
+      ),
+    ).toBe(0);
+  });
+
+  /* 발주 없이 들어온 라인은 어느 발주에도 매이지 않는다. 아무 라인 셈에나 붙으면 안 된다. */
+  it('발주 라인이 없는 기록은 세지 않는다', () => {
+    expect(queuedQtyOf([queued(null, 300)], 41)).toBe(0);
+  });
+
+  it('담긴 만큼 남은 예정이 줄고 그만큼 초과 판정이 앞당겨진다', () => {
+    const line = poLine();
+
+    expect(remainingQtyOf(line, 500)).toBe(0);
+    expect(verdictOf(line, 500, 0)).toBe(NORMAL);
+    expect(verdictOf(line, 500, 500)).toBe(OVER);
   });
 });

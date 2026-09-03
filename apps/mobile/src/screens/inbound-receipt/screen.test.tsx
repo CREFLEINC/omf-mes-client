@@ -14,10 +14,16 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { InboundReceiptScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -139,6 +145,7 @@ const scan = (code: string) => {
 beforeEach(() => {
   store.clear();
   localStorage.clear();
+  held.failWrite = null;
 });
 
 describe('입하 등록 화면', () => {
@@ -194,9 +201,7 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    expect(
-      await screen.findByText('발주를 확인할 수 없습니다. 연결을 확인하세요.'),
-    ).toBeTruthy();
+    expect(await screen.findByText('발주를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
     expect(screen.queryByText('미마감 발주가 없습니다')).toBeNull();
   });
 
@@ -397,11 +402,92 @@ describe('입하 등록 화면 — 발주 경로', () => {
     });
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
-    
+
     const body = (await seen[0]!.json()) as { businessDate: string; lines: unknown[] };
 
     expect(body.lines).toHaveLength(1);
     expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
+  });
+});
+
+describe('입하 등록 화면 — 되돌릴 수 없는 쓰기', () => {
+  const receiptRoute = (seen: Request[]): StubRoute => ({
+    match: (req) =>
+      new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+    respond: (req) => {
+      seen.push(req.clone());
+      return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
+    },
+  });
+
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 등록마다 멱등키를 새로 뽑으므로 두 건이 담기면 서버가
+   * 흡수하지 못하고 재고가 두 번 는다. 상태로 잠그면 다시 그리기 전의 연타를 놓친다.
+   */
+  it('등록 단추를 같은 틱에 두 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([receiptRoute(seen)]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.type(await screen.findByLabelText('실입하 수량'), '500');
+
+    const button = screen.getByRole('button', { name: '입하 등록' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('입하를 등록했습니다');
+    expect(seen).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 등록된 줄 안다. */
+  it('담아 두지 못하면 등록되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([receiptRoute(seen)]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.type(await screen.findByLabelText('실입하 수량'), '500');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+
+    expect(await screen.findByText('입하를 담아 두지 못했습니다')).toBeTruthy();
+    expect(screen.queryByText('입하를 등록했습니다')).toBeNull();
+    expect(screen.queryByText('입하를 담아 두었습니다')).toBeNull();
+    expect(seen).toHaveLength(0);
+  });
+
+  /*
+   * 서버가 주는 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 오프라인에서 같은 라인에
+   * 두 번 적었을 때 둘 다 남은 예정 안으로 읽혀, 서버가 거부할 초과가 정상으로 보인다.
+   */
+  it('담긴 입하를 남은 예정에서 뺀다', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+        respond: () => {
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.type(await screen.findByLabelText('실입하 수량'), '500');
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+
+    await screen.findByText('입하를 담아 두었습니다');
+    await user.click(screen.getByRole('button', { name: '다음 입하' }));
+
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.type(await screen.findByLabelText('실입하 수량'), '500');
+
+    expect(await screen.findByText('수량 초과 — 남은 예정 0, 이번 도착 500')).toBeTruthy();
   });
 });
