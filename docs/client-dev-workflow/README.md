@@ -73,7 +73,7 @@ git status --short --branch
 
 ### 6. 설계 변동 공지
 
-설계팀의 직접 통지는 **설계 변동 공지**만 수신한다. 공지는 아래 네 항목만 담는다.
+설계팀의 직접 통지는 모든 개발팀을 대상으로 한 **설계 변동 공지**만 수신한다. 백엔드·클라이언트별로 나뉜 공지는 정본으로 채택하지 않으며, 공지 원본을 이 저장소에 다시 만들거나 복사하지 않는다. 공지는 아래 네 항목만 담는다.
 
 1. 공지 발행일
 2. 배포 버전(설계 저장소 커밋)
@@ -83,9 +83,10 @@ git status --short --branch
 공지를 받으면:
 
 1. 지정 커밋을 격리 클론에 가져와 정확히 체크아웃한다.
-2. `pnpm workflow accept-design-change --notice <클라이언트 이슈번호> --commit <전체커밋> --design-ref .client-dev/design/omf-mes`로 기준을 갱신한다.
+2. `pnpm workflow accept-design-change --notice-ref <설계저장소-공통공지-URL|CREFLEINC/omf-mes#번호> --commit <전체커밋> --design-ref .client-dev/design/omf-mes`로 기준을 갱신한다. 클라이언트·백엔드 저장소의 팀별 이슈는 공지 정본으로 사용할 수 없다.
 3. `pnpm workflow:check`를 실행한다.
-4. 진행 중인 업무의 계획·코드 설계·검증 계획을 전면 재검토하고 대응 계획을 남긴다.
+4. 진행 중인 업무의 계획·코드 설계·검증 계획을 전면 재검토한다.
+5. `.github/ISSUE_TEMPLATE/design-change-impact-review.yml`로 공통 공지 포인터, 영향받는 클라이언트 이슈, 재검토 결과만 기록한다. 이 이슈는 공지 원본이 아니라 클라이언트 영향 검토 기록이다.
 
 공지 없이 설계 참조 클론을 fetch/pull/reset해 최신화하지 않는다.
 

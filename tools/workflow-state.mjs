@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 const STATE_VERSION = 1;
 const DEFAULT_STATE_PATH = '.client-dev/state.json';
 const DEFAULT_DESIGN_REF = '.client-dev/design/omf-mes';
+const DEFAULT_DESIGN_REPOSITORY = 'CREFLEINC/omf-mes';
 
 export function normalizeTeam(value) {
   const match = String(value ?? '').match(/^(?:Agent\s*:\s*)?T?(\d+)$/i);
@@ -18,6 +19,29 @@ export function normalizeTeam(value) {
 export function inferBranchTeam(branch) {
   const match = String(branch).match(/(?:^|[-_/])team[-_]?([0-9]+)(?:$|[-_/])/i);
   return match ? `Agent : T${Number(match[1])}` : null;
+}
+
+export function normalizeNoticeReference(value, designRepository = DEFAULT_DESIGN_REPOSITORY) {
+  const reference = String(value ?? '').trim();
+  const shorthand = reference.match(/^([a-z0-9_.-]+)\/([a-z0-9_.-]+)#([1-9][0-9]*)$/i);
+  const issueUrl = reference.match(
+    /^https:\/\/github\.com\/([a-z0-9_.-]+)\/([a-z0-9_.-]+)\/issues\/([1-9][0-9]*)$/i,
+  );
+  const match = shorthand ?? issueUrl;
+  if (!match) {
+    throw new Error(
+      '--notice-ref에는 공통 공지의 GitHub 이슈 URL 또는 owner/repo#번호가 필요합니다.',
+    );
+  }
+  const [, owner, repository, issue] = match;
+  if (`${owner}/${repository}`.toLowerCase() !== designRepository.toLowerCase()) {
+    throw new Error(
+      `--notice-ref는 고정 설계 저장소(${designRepository})의 공통 공지를 가리켜야 합니다.`,
+    );
+  }
+  return shorthand
+    ? `${owner}/${repository}#${Number(issue)}`
+    : `https://github.com/${owner}/${repository}/issues/${Number(issue)}`;
 }
 
 export function validateState(state) {
@@ -40,6 +64,9 @@ export function validateState(state) {
   if (!design || typeof design !== 'object') {
     errors.push('designBaseline이 없습니다.');
   } else {
+    if (!design.repository || typeof design.repository !== 'string') {
+      errors.push('designBaseline.repository가 없습니다.');
+    }
     if (!/^[0-9a-f]{40}$/i.test(String(design.commit ?? ''))) {
       errors.push('designBaseline.commit은 40자리 커밋 해시여야 합니다.');
     }
@@ -48,11 +75,15 @@ export function validateState(state) {
     if (!['initial', 'design-change-notice'].includes(design.reason)) {
       errors.push('designBaseline.reason은 initial 또는 design-change-notice여야 합니다.');
     }
-    if (
-      design.reason === 'design-change-notice' &&
-      (!Number.isInteger(design.noticeIssue) || design.noticeIssue < 1)
-    ) {
-      errors.push('설계 변동 반영에는 양의 noticeIssue가 필요합니다.');
+    if (design.reason === 'design-change-notice') {
+      if (design.noticeIssue !== undefined && design.noticeIssue !== null) {
+        errors.push('팀별 noticeIssue는 폐기되었습니다. 공통 noticeReference를 사용하세요.');
+      }
+      try {
+        normalizeNoticeReference(design.noticeReference, design.repository);
+      } catch (error) {
+        errors.push(error.message);
+      }
     }
     if (Number.isNaN(Date.parse(String(design.pinnedAt ?? '')))) {
       errors.push('designBaseline.pinnedAt은 유효한 시각이어야 합니다.');
@@ -183,12 +214,12 @@ function init(root, options) {
     team: normalizeTeam(options.team),
     activeIssue: positiveIssue(options.issue, '--issue'),
     designBaseline: {
-      repository: 'CREFLEINC/omf-mes',
+      repository: DEFAULT_DESIGN_REPOSITORY,
       commit: designHead(root, source),
       source,
       pinnedAt: new Date().toISOString(),
       reason: 'initial',
-      noticeIssue: null,
+      noticeReference: null,
     },
   };
   writeJson(statePath, state);
@@ -221,16 +252,19 @@ function acceptDesignChange(root, options) {
     throw new Error(`설계 참조 HEAD(${head})가 공지 커밋(${commit})과 다릅니다.`);
 
   state.designBaseline = {
-    repository: 'CREFLEINC/omf-mes',
+    repository: state.designBaseline.repository,
     commit,
     source,
     pinnedAt: new Date().toISOString(),
     reason: 'design-change-notice',
-    noticeIssue: positiveIssue(options.notice, '--notice'),
+    noticeReference: normalizeNoticeReference(
+      options['notice-ref'],
+      state.designBaseline.repository,
+    ),
   };
   writeJson(absolute, state);
   process.stdout.write(
-    `design baseline accepted from notice #${state.designBaseline.noticeIssue}: ${commit}\n`,
+    `design baseline accepted from ${state.designBaseline.noticeReference}: ${commit}\n`,
   );
 }
 
@@ -240,6 +274,7 @@ export function repositoryPolicyErrors(root) {
     'multi-agent-team-workflow-v2.md',
     'docs/uiux-handoff.md',
     '.github/ISSUE_TEMPLATE/uiux-ready.yml',
+    '.github/ISSUE_TEMPLATE/design-change-notice.yml',
     'docs/client-dev-workflow/references/review-request.md',
   ];
   for (const file of forbiddenPaths) {
@@ -252,7 +287,7 @@ export function repositoryPolicyErrors(root) {
     'docs/client-dev-workflow/README.md',
     'docs/client-dev-workflow/references/design-reference.md',
     'docs/client-dev-workflow/references/design-request.md',
-    '.github/ISSUE_TEMPLATE/design-change-notice.yml',
+    '.github/ISSUE_TEMPLATE/design-change-impact-review.yml',
     '.github/ISSUE_TEMPLATE/design-request-tracking.yml',
   ];
   for (const file of requiredPaths) {
@@ -277,6 +312,7 @@ export function repositoryPolicyErrors(root) {
     'tools/merge-spec.mjs',
     'tools/mock/README.md',
     'tools/mock/resolve-spec.mjs',
+    '.github/ISSUE_TEMPLATE/design-change-impact-review.yml',
   ];
   const forbiddenText = [
     [/Agent\s*:\s*T\d+/, '특정 팀 번호 하드코딩'],
@@ -286,6 +322,9 @@ export function repositoryPolicyErrors(root) {
     [/client→uiux/, '폐기된 설계팀 직접 질문 채널'],
     [/github\.com\/CREFLEINC\/omf-mes\/issues\/new/, '설계 저장소 직접 이슈 링크'],
     [/\.claude\/_designref/, '폐기된 설계 참조 경로'],
+    [/설계팀이 이 저장소에 발행/, '클라이언트 전용 설계 변동 공지 채널'],
+    [/클라이언트(?:저장소[- ]?)?\s*이슈\s*번호/, '클라이언트 전용 공지 번호'],
+    [/--notice(?:\s|>)/, '폐기된 숫자형 공지 인자'],
   ];
   for (const file of canonicalFiles) {
     if (!existsSync(path.join(root, file))) continue;
@@ -309,7 +348,7 @@ function usage() {
   pnpm workflow check
   pnpm workflow set-issue --issue <번호>
   pnpm workflow clear-issue
-  pnpm workflow accept-design-change --notice <번호> --commit <40자리해시> [--design-ref <경로>]
+  pnpm workflow accept-design-change --notice-ref <설계저장소-공통공지-URL|CREFLEINC/omf-mes#번호> --commit <40자리해시> [--design-ref <경로>]
   pnpm workflow repo-check\n`;
 }
 
