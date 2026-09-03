@@ -31,13 +31,15 @@ export const ProgressPane = ({ view }: ProgressPaneProps) => {
   }));
 
   return (
-    <div role="group" aria-label={t.panes.progress}>
-      <p>
-        {view.currentStepNo === null
-          ? t.progress.finished(view.totalStepNo)
-          : t.progress.position(view.currentStepNo, view.totalStepNo)}
-      </p>
-      <p>{view.isMyTurn ? t.progress.myTurn : t.progress.notMyTurn}</p>
+    <div className="quality-approval-progress" role="group" aria-label={t.panes.progress}>
+      <div className="quality-approval-progress-summary">
+        <p>
+          {view.currentStepNo === null
+            ? t.progress.finished(view.totalStepNo)
+            : t.progress.position(view.currentStepNo, view.totalStepNo)}
+        </p>
+        <p>{view.isMyTurn ? t.progress.myTurn : t.progress.notMyTurn}</p>
+      </div>
       {steps.length === 0 ? (
         <p className="field-note">{t.progress.noSteps}</p>
       ) : (

@@ -66,7 +66,7 @@ export const CalibrationFilterBar = ({
 
   return (
     <>
-      <div className="filter-bar">
+      <div className="filter-bar gauge-calibration-filter">
         <SelectField
           label={t.filters.equipment}
           options={[{ value: '', label: t.filters.all }, ...equipmentOptions]}
@@ -114,17 +114,19 @@ export const CalibrationFilterBar = ({
           />
         </div>
 
-        <div className="filter-actions">
-          <Button
-            onClick={search}
-            disabled={lockReason !== null}
-            aria-describedby={lockReason === null ? undefined : reasonId}
-          >
-            {t.filters.search}
-          </Button>
-          <Button variant="outlined" onClick={onReset}>
-            {t.filters.reset}
-          </Button>
+        <div className="field-cell field-cell-unlabeled gauge-calibration-filter-actions">
+          <div className="filter-actions">
+            <Button
+              onClick={search}
+              disabled={lockReason !== null}
+              aria-describedby={lockReason === null ? undefined : reasonId}
+            >
+              {t.filters.search}
+            </Button>
+            <Button variant="outlined" onClick={onReset}>
+              {t.filters.reset}
+            </Button>
+          </div>
         </div>
       </div>
 

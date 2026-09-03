@@ -52,6 +52,7 @@ describe('DispositionDecisionScreen 탭', () => {
   it('⛔ 처리 이력 탭에서는 판정 대기 목록을 부르지 않는다', async () => {
     renderScreen('/quality/dispositions?tab=history');
 
+    expect(await screen.findByRole('heading', { name: t.panes.history })).toBeInTheDocument();
     await waitFor(() => {
       expect(historyCalls()).toBeGreaterThan(0);
     });

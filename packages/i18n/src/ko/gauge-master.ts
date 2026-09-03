@@ -6,6 +6,7 @@
  */
 export const gaugeMaster = {
   title: '계측기 마스터 관리',
+  paneTitle: '계측기 목록',
   breadcrumbRoot: '설비/툴',
   actions: {
     addGauge: '계측기 등록',

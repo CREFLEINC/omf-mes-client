@@ -92,6 +92,10 @@ export const equipmentMaster = {
   views: {
     assets: '설비·설비그룹',
   },
+  panes: {
+    groupList: '설비 그룹 목록',
+    groupDetail: '설비 그룹 상세',
+  },
   tabs: {
     group: '그룹 정보',
     equipment: '설비',

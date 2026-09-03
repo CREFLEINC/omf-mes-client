@@ -138,21 +138,27 @@ export const EquipmentPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={items}
-        getRowId={(row) => String(row.equipmentId)}
-        empty={emptySlot}
-      />
+      <div className="wide-table collection-channel-table collection-channel-equipment-table">
+        <Table
+          density="compact"
+          caption={
+            <span className="collection-channel-table-caption">{t.equipment.paneTitle}</span>
+          }
+          columns={columns}
+          rows={items}
+          getRowId={(row) => String(row.equipmentId)}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   const truncated = total !== null && total > items.length;
 
   return (
-    <section className="pane" aria-label={t.equipment.paneTitle}>
-      <div className="filter-bar">
+    <section className="pane collection-channel-pane" aria-label={t.equipment.paneTitle}>
+      <h2 className="pane-title">{t.equipment.paneTitle}</h2>
+      <div className="filter-bar collection-channel-equipment-filter">
         <SearchInput
           label={t.equipment.searchLabel}
           placeholder={t.equipment.searchPlaceholder}
@@ -177,7 +183,7 @@ export const EquipmentPane = ({
         </div>
       </div>
 
-      <div className="filter-bar">
+      <div className="filter-bar collection-channel-filter-chips">
         {appliedFilters.q !== '' && (
           <Chip
             variant="status"

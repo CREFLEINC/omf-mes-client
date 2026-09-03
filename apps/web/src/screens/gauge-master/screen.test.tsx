@@ -152,7 +152,7 @@ const renderScreen = (options: RenderOptions = {}) => {
   return { ...view, user, sent, codeValueSent, plantSent, calibrationSent, writes };
 };
 
-const listPane = () => screen.getByRole('region', { name: t.title });
+const listPane = () => screen.getByRole('region', { name: t.paneTitle });
 
 const rowOf = async (code: string) => {
   const cell = await screen.findByRole('cell', { name: code });
@@ -165,6 +165,8 @@ describe('W-05-11 계측기 마스터 — 목록', () => {
 
     expect(await screen.findByRole('cell', { name: 'GA-01' })).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'GA-04' })).toBeInTheDocument();
+    expect(within(listPane()).getByRole('heading', { name: t.paneTitle })).toBeInTheDocument();
+    expect(within(listPane()).getByRole('table', { name: t.paneTitle })).toBeInTheDocument();
   });
 
   /*

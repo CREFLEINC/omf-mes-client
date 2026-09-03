@@ -196,14 +196,18 @@ export const MaintenanceResultScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.form}>
+      <section
+        className="pane maintenance-result-pane maintenance-result-form-pane"
+        aria-label={t.panes.form}
+      >
+        <h2 className="pane-title">{t.panes.form}</h2>
         {/* ⛔ 이 화면이 하지 않는 일을 먼저 말한다 — 하리라 믿고 기다리는 것을 막는다. */}
         <div className="banner-slot">
           <AlertBanner variant="info" title={t.form.scopeLead} />
         </div>
         <SaveErrorBanner error={create.error} />
 
-        <div className="form-grid">
+        <div className="form-grid maintenance-result-form-grid">
           <SelectField
             label={t.form.target}
             options={toOptions(equipments.entries)}
@@ -347,7 +351,7 @@ export const MaintenanceResultScreen = () => {
         <p className="pane-lead">{t.form.partsNoLot}</p>
         <p className="pane-lead">{t.form.partsMasterNote}</p>
 
-        <div className="filter-bar">
+        <div className="filter-bar maintenance-result-part-picker">
           <SelectField
             label={t.form.part}
             options={toOptions(spareParts.entries).filter(
@@ -359,37 +363,39 @@ export const MaintenanceResultScreen = () => {
             wide
             onChange={setPartToAdd}
           />
-          <div className="filter-actions">
-            <Button
-              variant="outlined"
-              disabled={partToAdd === ''}
-              onClick={() => {
-                const option = spareParts.entries.find((entry) => entry.value === partToAdd);
+          <div className="field-cell field-cell-unlabeled maintenance-result-part-action">
+            <div className="filter-actions">
+              <Button
+                variant="outlined"
+                disabled={partToAdd === ''}
+                onClick={() => {
+                  const option = spareParts.entries.find((entry) => entry.value === partToAdd);
 
-                setDraft((prev) => ({
-                  ...prev,
-                  parts: [
-                    ...prev.parts,
-                    {
-                      key: partToAdd,
-                      sparePartId: partToAdd,
-                      /* 고를 때 마스터에서 푼 이름을 얼려 둔다 — 계약이 필수로 두었다. */
-                      partName: option?.label ?? partToAdd,
-                      usedQty: '',
-                      goodsIssueId: '',
-                    },
-                  ],
-                }));
-                setPartToAdd('');
-              }}
-            >
-              {t.form.addPart}
-            </Button>
+                  setDraft((prev) => ({
+                    ...prev,
+                    parts: [
+                      ...prev.parts,
+                      {
+                        key: partToAdd,
+                        sparePartId: partToAdd,
+                        /* 고를 때 마스터에서 푼 이름을 얼려 둔다 — 계약이 필수로 두었다. */
+                        partName: option?.label ?? partToAdd,
+                        usedQty: '',
+                        goodsIssueId: '',
+                      },
+                    ],
+                  }));
+                  setPartToAdd('');
+                }}
+              >
+                {t.form.addPart}
+              </Button>
+            </div>
           </div>
         </div>
 
         {draft.parts.map((part) => (
-          <div key={part.key} className="filter-bar">
+          <div key={part.key} className="filter-bar maintenance-result-part-row">
             <div className="field-cell">
               <span className="field-label">{t.form.part}</span>
               <span>{part.partName}</span>
@@ -419,18 +425,20 @@ export const MaintenanceResultScreen = () => {
                 setPart(part.key, { goodsIssueId: value });
               }}
             />
-            <div className="filter-actions">
-              <Button
-                variant="text"
-                onClick={() => {
-                  setDraft((prev) => ({
-                    ...prev,
-                    parts: prev.parts.filter((item) => item.key !== part.key),
-                  }));
-                }}
-              >
-                {t.form.removePart}
-              </Button>
+            <div className="field-cell field-cell-unlabeled maintenance-result-part-action">
+              <div className="filter-actions">
+                <Button
+                  variant="text"
+                  onClick={() => {
+                    setDraft((prev) => ({
+                      ...prev,
+                      parts: prev.parts.filter((item) => item.key !== part.key),
+                    }));
+                  }}
+                >
+                  {t.form.removePart}
+                </Button>
+              </div>
             </div>
           </div>
         ))}
@@ -454,15 +462,16 @@ export const MaintenanceResultScreen = () => {
         </div>
       </section>
 
-      <section className="pane" aria-label={t.panes.list}>
-        <h2>{t.panes.list}</h2>
+      <section className="pane maintenance-result-pane" aria-label={t.panes.list}>
+        <h2 className="pane-title">{t.panes.list}</h2>
         {list.isPending ? (
           <Skeleton variant="rect" height="10rem" />
         ) : (
           !list.isError && (
             <>
-              <div className="wide-table">
+              <div className="wide-table maintenance-result-list-table">
                 <Table
+                  caption={<span className="maintenance-result-table-caption">{t.panes.list}</span>}
                   columns={listColumns}
                   rows={rows}
                   getRowId={(row) => String(row.maintenanceResultId)}

@@ -114,7 +114,7 @@ export const RequestFilterBar = ({
 
   return (
     <>
-      <div className="filter-bar">
+      <div className="filter-bar approval-inbox-filter">
         <SelectField
           label={t.fields.approvalTypeCode}
           options={optionsOf(approvalTypeOptions)}
@@ -178,7 +178,7 @@ export const RequestFilterBar = ({
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
          * 조건 없이도 조회가 열려 있다 — 이 화면은 들어오자마자 내 결재 대기를 보여야 한다.
          */}
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled approval-inbox-filter-actions">
           <div className="filter-actions">
             <Button onClick={search}>{messages.common.search}</Button>
             <Button variant="outlined" onClick={reset}>
@@ -189,7 +189,7 @@ export const RequestFilterBar = ({
       </div>
 
       {chips.length > 0 && (
-        <div className="filter-bar">
+        <div className="filter-bar approval-inbox-filter-chips">
           {chips.map((chip) => (
             <Chip
               key={chip.key}

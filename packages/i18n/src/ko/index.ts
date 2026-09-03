@@ -50,6 +50,7 @@ import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
 import { iqcInspection } from './iqc-inspection';
 import { pqcInspection } from './pqc-inspection';
+import { productionResult } from './production-result';
 import { equipmentMaster } from './equipment-master';
 import { qualityApproval } from './quality-approval';
 import { productionOrder } from './production-order';
@@ -68,6 +69,7 @@ import { materialInputScan } from './material-input-scan';
 import { dispositionDecision } from './disposition-decision';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { emergencyWorkOrderField } from './emergency-work-order-field';
+import { workStart } from './work-start';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
 import { materialPicking } from './material-picking';
@@ -110,6 +112,7 @@ import { workerAssignment } from './worker-assignment';
 import { popMaterialLotLabel } from './pop-material-lot-label';
 import { identificationTagIssue } from './identification-tag-issue';
 import { reworkResultRegister } from './rework-result-register';
+import { packingLabelReprint } from './packing-label-reprint';
 import { shippingPackingLabel } from './shipping-packing-label';
 
 export const ko = {
@@ -149,6 +152,7 @@ export const ko = {
   notificationCenter,
   iqcInspection,
   pqcInspection,
+  productionResult,
   equipmentMaster,
   qualityApproval,
   productionOrder,
@@ -208,7 +212,9 @@ export const ko = {
   workerAssignment,
   popMaterialLotLabel,
   identificationTagIssue,
+  workStart,
   reworkResultRegister,
+  packingLabelReprint,
   shippingPackingLabel,
 } as const;
 

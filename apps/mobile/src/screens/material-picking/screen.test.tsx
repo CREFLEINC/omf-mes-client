@@ -827,6 +827,69 @@ describe('자재 출고·피킹 화면', () => {
     expect(sent.issues).toHaveLength(0);
   });
 
+  /*
+   * 상태로 잠그면 다시 그리기 전의 연타를 놓친다. 장갑 낀 손은 한 틱 안에 두 번 누르고,
+   * 멱등키가 다른 두 건이 담기면 서버가 흡수하지 못해 재고가 두 번 움직인다.
+   */
+  it('같은 틱에 피킹을 세 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const sent = mount();
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: /ABC-123/ }));
+    await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
+    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await screen.findByText('라인의 LOT 과 같습니다');
+    await user.type(screen.getByLabelText('출고 수량'), '50');
+
+    const button = screen.getByRole('button', { name: '이 라인 피킹' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('집었습니다');
+    expect(sent.picks).toHaveLength(1);
+  });
+
+  it('같은 틱에 확정을 세 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({ lines: [line({ pickedQty: 120 })] });
+    await chooseOrder(user);
+    await chooseIssueType(user);
+
+    const button = screen.getByRole('button', { name: '출고 확정' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('출고를 확정했습니다');
+    expect(sent.issues).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 집은 것이 어디에도 없다. 말하지 않으면 사람은 집힌 줄 안다. */
+  it('피킹을 담지 못하면 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    const sent = mount();
+    await chooseOrder(user);
+
+    await user.click(screen.getByRole('button', { name: /ABC-123/ }));
+    await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
+    await user.click(screen.getByRole('button', { name: '넣기' }));
+    await screen.findByText('라인의 LOT 과 같습니다');
+    await user.type(screen.getByLabelText('출고 수량'), '50');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
+
+    expect(
+      await screen.findByText('단말에 담지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.'),
+    ).toBeTruthy();
+    expect(screen.queryByText('집었습니다')).toBeNull();
+    expect(sent.picks).toHaveLength(0);
+  });
+
   it('보낼 출고 유형이 없으면 그 사실을 말한다', async () => {
     const user = userEvent.setup();
     mount({ issueTypes: [], lines: [line({ pickedQty: 120 })] });

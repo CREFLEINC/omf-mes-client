@@ -74,22 +74,28 @@ export const InspectionItemsPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={assignments}
-        getRowId={(row) => String(row.equipmentInspectionItemId)}
-        empty={<EmptyState size="sm" live title={t.emptyTitle} description={t.emptyDescription} />}
-      />
+      <div className="equipment-master-table equipment-master-inspection-table">
+        <Table
+          density="compact"
+          caption={<span className="equipment-master-table-caption">{t.paneTitle}</span>}
+          columns={columns}
+          rows={assignments}
+          getRowId={(row) => String(row.equipmentInspectionItemId)}
+          empty={
+            <EmptyState size="sm" live title={t.emptyTitle} description={t.emptyDescription} />
+          }
+        />
+      </div>
     );
   };
 
   return (
     /* ⛔ `.pane` 을 두르지 않는다 — 탭 내용은 이미 페인 «안»이라 상자가 겹쳐 보인다. */
-    <section aria-label={t.paneTitle}>
+    <section className="equipment-master-tab-content" aria-label={t.paneTitle}>
+      <h3 className="equipment-master-subtitle">{t.paneTitle}</h3>
       <p className="dialog-lead">{t.description}</p>
 
-      <div className="field-cell field-cell-unlabeled">
+      <div className="equipment-master-subsection-actions">
         <div className="filter-actions">
           <Button variant="outlined" onClick={onEdit} disabled={!canEdit}>
             {t.editAction}

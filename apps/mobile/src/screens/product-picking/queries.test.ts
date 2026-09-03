@@ -88,10 +88,10 @@ describe('LOT 후보', () => {
           seen.push(url);
 
           return jsonResponse({
-            items: url.searchParams.get('heldOnly') === 'true' ? [lotRow(2, 'B')] : [
-              lotRow(1, 'A'),
-              lotRow(2, 'B'),
-            ],
+            items:
+              url.searchParams.get('heldOnly') === 'true'
+                ? [lotRow(2, 'B')]
+                : [lotRow(1, 'A'), lotRow(2, 'B')],
             page,
           });
         },
@@ -127,8 +127,30 @@ describe('가용 수량', () => {
         '/inventory/balances',
         {
           items: [
-            { groupBy: 'LOT', itemId: 31, lotId: 1, availableQty: 180, uomId: 9, onHandQty: 180, reservedQty: 0, pickedQty: 0, blockedQty: 0, ownershipTypeCode: 'OWN' },
-            { groupBy: 'LOT', itemId: 31, lotId: 2, availableQty: 0, uomId: 9, onHandQty: 0, reservedQty: 0, pickedQty: 0, blockedQty: 0, ownershipTypeCode: 'OWN' },
+            {
+              groupBy: 'LOT',
+              itemId: 31,
+              lotId: 1,
+              availableQty: 180,
+              uomId: 9,
+              onHandQty: 180,
+              reservedQty: 0,
+              pickedQty: 0,
+              blockedQty: 0,
+              ownershipTypeCode: 'OWN',
+            },
+            {
+              groupBy: 'LOT',
+              itemId: 31,
+              lotId: 2,
+              availableQty: 0,
+              uomId: 9,
+              onHandQty: 0,
+              reservedQty: 0,
+              pickedQty: 0,
+              blockedQty: 0,
+              ownershipTypeCode: 'OWN',
+            },
           ],
           page,
         },
