@@ -4,8 +4,9 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
-import { useItem, useItemLabels, useUomCodes } from '../../patterns/masters';
+import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
+import { currentPlantId } from '../../patterns/plant';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -21,6 +22,7 @@ import {
   qtyProblem,
   queuedQtyOf,
   remainingQtyOf,
+  sourceOf,
   toOutboxDraft,
   verdictOf,
   type PurchaseOrder,
@@ -37,6 +39,10 @@ const emptyDraft: ReceiptDraft = {
   supplierLotNo: '',
   supplierLotMissing: false,
   substituteLotReasonCode: '',
+  unordered: false,
+  supplierId: null,
+  itemId: null,
+  uomId: null,
   purchaseOrder: null,
   purchaseOrderLine: null,
   deliveryNoteNo: '',
@@ -94,10 +100,13 @@ export const InboundReceiptScreen = () => {
   const orders = useOpenPurchaseOrders();
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
-  const item = useItem(draft.purchaseOrderLine?.itemId ?? null);
+  const item = useItem((draft.unordered ? draft.itemId : draft.purchaseOrderLine?.itemId) ?? null);
   const uoms = useUomCodes(true);
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
-  const itemLabels = useItemLabels(draft.purchaseOrder !== null);
+  const itemLabels = useItemLabels(draft.purchaseOrder !== null || draft.unordered);
+  const suppliers = useSuppliers(draft.unordered);
+  /* 공장은 단말 토큰이 싣고 온다. 발주가 없으면 승계할 곳이 여기뿐이다. */
+  const plantId = draft.unordered ? currentPlantId() : (draft.purchaseOrder?.plantId ?? null);
 
   const started = draft.supplierLotNo !== '' || draft.supplierLotMissing;
   const received = Number(draft.receivedQty.trim());
@@ -116,8 +125,13 @@ export const InboundReceiptScreen = () => {
    * 큐를 읽기 전에는 막아 둔다 - 담긴 것이 없는 것과 구별되지 않아, 앞서 담은 입하가 셈에서
    * 빠진 채로 같은 라인에 한 건이 더 나간다.
    */
-  const ready = loaded && canSubmit(draft, worker !== null) && (verdict !== UNDER || continueUnder);
-  const uom = uoms.data?.get(draft.purchaseOrderLine?.uomId ?? -1) ?? '';
+  const ready =
+    loaded &&
+    plantId !== null &&
+    canSubmit(draft, worker !== null) &&
+    (verdict !== UNDER || continueUnder);
+  const uom =
+    uoms.data?.get((draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId) ?? -1) ?? '';
 
   /* 코드와 이름을 함께 보인다. 라벨에는 코드가 찍혀 있고 사람은 이름으로 고른다. */
   const itemLabelOf = (itemId: number): string => {
@@ -143,9 +157,9 @@ export const InboundReceiptScreen = () => {
   };
 
   const submit = async () => {
-    const line = draft.purchaseOrderLine;
+    const source = sourceOf(draft);
 
-    if (worker === null || draft.purchaseOrder === null || line === null || inFlight.current) {
+    if (worker === null || source === null || plantId === null || inFlight.current) {
       return;
     }
 
@@ -155,10 +169,10 @@ export const InboundReceiptScreen = () => {
     try {
       const entry = toOutboxDraft(
         draft,
-        line.itemId,
-        line.uomId,
-        draft.purchaseOrder.plantId,
-        draft.purchaseOrder.supplierId,
+        source.itemId,
+        source.uomId,
+        plantId,
+        source.supplierId,
         new Date(),
         worker.workerNo,
       );
@@ -329,7 +343,19 @@ export const InboundReceiptScreen = () => {
                     const picked = (orders.data as PurchaseOrder[]).find(
                       (each) => each.purchaseOrderId === Number(value),
                     );
-                    patch({ purchaseOrder: picked ?? null, purchaseOrderLine: null });
+                    /*
+                     * 발주를 고르면 무발주 갈래를 접는다. 둘이 함께 서 있으면 고른 발주는
+                     * 판정에 쓰이는데 실려 나가는 것은 손으로 고른 값이라, 화면이 보이는
+                     * 것과 서버에 남는 것이 달라진다.
+                     */
+                    patch({
+                      purchaseOrder: picked ?? null,
+                      purchaseOrderLine: null,
+                      unordered: false,
+                      supplierId: null,
+                      itemId: null,
+                      uomId: null,
+                    });
                   }}
                   options={orders.data.map((each) => ({
                     value: String(each.purchaseOrderId),
@@ -394,11 +420,121 @@ export const InboundReceiptScreen = () => {
                 </Button>
               </>
             )}
-            {/* 발주 없이 도착한 건은 공급사의 출처가 이 화면에 없어 아직 등록이 서지 않는다. */}
-            <AlertBanner variant="info" title={t.exception.absent}>
-              {t.exception.absentWhy}
-            </AlertBanner>
+            {/* 발주가 없으면 승계할 곳이 없어 담당자가 고른다. 고르지 않은 것과는 다른 상태다. */}
+            {draft.unordered ? null : (
+              <Button
+                variant="text"
+                size="lg"
+                onClick={() => {
+                  patch({
+                    unordered: true,
+                    purchaseOrder: null,
+                    purchaseOrderLine: null,
+                  });
+                }}
+              >
+                {t.exception.open}
+              </Button>
+            )}
           </section>
+
+          {draft.unordered ? (
+            <section className="receipt__section">
+              <h2>{t.exception.legend}</h2>
+              <p className="receipt__note">{t.exception.openNote}</p>
+
+              {plantId === null ? (
+                <AlertBanner variant="error" title={t.exception.noPlant} />
+              ) : null}
+
+              {suppliers.isPending ? <p role="status">{t.exception.supplierLoading}</p> : null}
+              {suppliers.isError ? (
+                <AlertBanner variant="error" title={t.exception.supplierLoadFailed} />
+              ) : null}
+              {suppliers.data !== undefined && suppliers.data.length === 0 ? (
+                <AlertBanner variant="warning" title={t.exception.supplierNone} />
+              ) : null}
+              {suppliers.data === undefined || suppliers.data.length === 0 ? null : (
+                <div className="receipt__field">
+                  <label htmlFor="receipt-supplier">{t.exception.supplierLabel}</label>
+                  <Select
+                    id="receipt-supplier"
+                    placeholder={t.exception.supplierPlaceholder}
+                    size="xl"
+                    value={draft.supplierId === null ? null : String(draft.supplierId)}
+                    onChange={(value) => {
+                      patch({ supplierId: Number(value) });
+                    }}
+                    options={suppliers.data.map((each) => ({
+                      value: String(each.partnerId),
+                      label: each.partnerName,
+                    }))}
+                  />
+                </div>
+              )}
+
+              {itemLabels.isError ? (
+                <AlertBanner variant="error" title={t.exception.itemLoadFailed} />
+              ) : null}
+              {itemLabels.data === undefined ? null : (
+                <div className="receipt__field">
+                  <label htmlFor="receipt-item">{t.exception.itemLabel}</label>
+                  <Select
+                    id="receipt-item"
+                    placeholder={t.exception.itemPlaceholder}
+                    size="xl"
+                    value={draft.itemId === null ? null : String(draft.itemId)}
+                    onChange={(value) => {
+                      patch({ itemId: Number(value) });
+                    }}
+                    options={[...itemLabels.data].map(([itemId, label]) => ({
+                      value: String(itemId),
+                      label: `${label.itemCode} ${label.itemName}`,
+                    }))}
+                  />
+                </div>
+              )}
+              {/* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */}
+              <AlertBanner variant="info" title={t.exception.itemUnregistered}>
+                {t.exception.itemUnregisteredWhy}
+              </AlertBanner>
+
+              {uoms.isError ? (
+                <AlertBanner variant="error" title={t.exception.uomLoadFailed} />
+              ) : null}
+              {uoms.data === undefined ? null : (
+                <div className="receipt__field">
+                  <label htmlFor="receipt-uom">{t.exception.uomLabel}</label>
+                  <Select
+                    id="receipt-uom"
+                    placeholder={t.exception.uomPlaceholder}
+                    size="xl"
+                    value={draft.uomId === null ? null : String(draft.uomId)}
+                    onChange={(value) => {
+                      patch({ uomId: Number(value) });
+                    }}
+                    options={[...uoms.data].map(([uomId, code]) => ({
+                      value: String(uomId),
+                      label: code,
+                    }))}
+                  />
+                </div>
+              )}
+
+              {/* 예정 수량이 없어 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */}
+              <p className="receipt__note">{t.exception.noVerdict}</p>
+
+              <Button
+                variant="text"
+                size="lg"
+                onClick={() => {
+                  patch({ unordered: false, supplierId: null, itemId: null, uomId: null });
+                }}
+              >
+                {t.exception.close}
+              </Button>
+            </section>
+          ) : null}
 
           <section className="receipt__section">
             <h2>{t.note.legend}</h2>
@@ -417,18 +553,22 @@ export const InboundReceiptScreen = () => {
             ) : null}
           </section>
 
-          {draft.purchaseOrderLine === null ? null : (
+          {draft.purchaseOrderLine === null &&
+          !(draft.unordered && draft.itemId !== null) ? null : (
             <section className="receipt__section">
               <h2>{t.qty.legend}</h2>
               <Card bordered>
                 <Card.Body className="card-body receipt__card">
                   <strong>
                     {item.data === undefined
-                      ? String(draft.purchaseOrderLine.itemId)
+                      ? String(draft.itemId ?? draft.purchaseOrderLine?.itemId ?? '')
                       : `${item.data.itemCode} ${item.data.itemName}`}
                   </strong>
                   {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
-                  <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
+                  {/* 발주가 없으면 예정 수량이 없다. 없는 것을 0 으로 보이지 않는다. */}
+                  {draft.purchaseOrderLine === null ? null : (
+                    <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
+                  )}
                 </Card.Body>
               </Card>
 
@@ -494,7 +634,7 @@ export const InboundReceiptScreen = () => {
               </div>
 
               {/* 판정 결과를 먼저 보인 뒤에 넘긴다. 조용히 넘기면 왜 왔는지 알 수 없다. */}
-              {verdict === null ? null : verdict === NORMAL ? (
+              {verdict === null || draft.purchaseOrderLine === null ? null : verdict === NORMAL ? (
                 <AlertBanner variant="success" title={t.verdict.normal} />
               ) : verdict === OVER ? (
                 <AlertBanner

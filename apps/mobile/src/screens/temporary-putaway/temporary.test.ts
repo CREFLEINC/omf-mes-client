@@ -5,6 +5,7 @@ import type { PutawayTask } from '../putaway/putaway';
 import {
   canSubmit,
   isAlreadyPutAway,
+  queuedCountOf,
   toOutboxDraft,
   type TemporaryDraft,
 } from './temporary';
@@ -54,35 +55,58 @@ describe('이미 적치된 건', () => {
   });
 
   it('이미 적치된 건은 등록할 수 없다', () => {
-    expect(canSubmit(task({ actualLocationId: 9 }), draft(), true)).toBe(false);
+    expect(canSubmit(task({ actualLocationId: 9 }), draft(), true, 0)).toBe(false);
+  });
+
+  /*
+   * 앞 화면이 넘긴 지시는 굳은 스냅숏이라 등록을 마쳐도 실제 적치 위치가 비어 있다. 큐를
+   * 함께 보지 않으면 재진입에 한 건이 더 나가고, 멱등키가 달라 서버도 흡수하지 못한다.
+   */
+  it('담아 둔 등록이 있으면 스냅숏이 비어 있어도 막는다', () => {
+    expect(canSubmit(task(), draft(), true, 1)).toBe(false);
+  });
+});
+
+describe('담아 둔 등록 셈', () => {
+  const entry = (putawayTaskId: number) => ({
+    path: `/logistics/putaway-tasks/${String(putawayTaskId)}:complete-temporary`,
+  });
+
+  it('이 지시의 등록만 센다', () => {
+    expect(queuedCountOf([entry(90), entry(91), entry(90)], 90)).toBe(2);
+  });
+
+  /* 큐는 화면을 가리지 않고 한 줄로 쌓인다. 다른 기록이 이 셈에 들어가면 안 된다. */
+  it('다른 경로의 기록은 세지 않는다', () => {
+    expect(queuedCountOf([{ path: '/logistics/putaway-tasks/90:complete' }], 90)).toBe(0);
   });
 });
 
 describe('등록 조건', () => {
   it('위치와 사유가 있으면 등록할 수 있다', () => {
-    expect(canSubmit(task(), draft(), true)).toBe(true);
+    expect(canSubmit(task(), draft(), true, 0)).toBe(true);
   });
 
   /* 사유와 비고 중 하나는 있어야 한다. 서버가 둘 다 비면 막는다. */
   it('사유가 없어도 비고가 있으면 등록할 수 있다', () => {
-    expect(canSubmit(task(), draft({ reasonCode: '', remarks: '통로에 둠' }), true)).toBe(true);
+    expect(canSubmit(task(), draft({ reasonCode: '', remarks: '통로에 둠' }), true, 0)).toBe(true);
   });
 
   it('사유와 비고가 둘 다 비면 등록할 수 없다', () => {
-    expect(canSubmit(task(), draft({ reasonCode: '', remarks: '   ' }), true)).toBe(false);
+    expect(canSubmit(task(), draft({ reasonCode: '', remarks: '   ' }), true, 0)).toBe(false);
   });
 
   it('위치를 고르지 않으면 등록할 수 없다', () => {
-    expect(canSubmit(task(), draft({ location: null }), true)).toBe(false);
+    expect(canSubmit(task(), draft({ location: null }), true, 0)).toBe(false);
   });
 
   /* 누가 한 일인지 없이 기록을 남길 수 없다. */
   it('사번이 없으면 등록할 수 없다', () => {
-    expect(canSubmit(task(), draft(), false)).toBe(false);
+    expect(canSubmit(task(), draft(), false, 0)).toBe(false);
   });
 
   it('지시가 없으면 등록할 수 없다', () => {
-    expect(canSubmit(null, draft(), true)).toBe(false);
+    expect(canSubmit(null, draft(), true, 0)).toBe(false);
   });
 });
 

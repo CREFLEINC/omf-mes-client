@@ -5472,6 +5472,38 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow-y: auto;
 }
 
+/* 고른 LOT의 확인 정보와 출력 조작 — 값과 버튼이 서로 붙지 않게 세로 흐름을 고정한다. */
+.pop-lot-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 현장에서 라벨과 값을 빠르게 대조할 수 있도록 이름/값 두 칸을 일정하게 맞춘다. */
+.pop-lot-facts {
+  display: grid;
+  grid-template-columns: minmax(6rem, auto) minmax(0, 1fr);
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.pop-lot-facts dt {
+  color: var(--on-surface-muted);
+}
+
+.pop-lot-facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* 위험 조작과 비활성 사유·재시도는 한 묶음으로 읽히되 각각 충분한 터치 간격을 둔다. */
+.pop-lot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: auto;
+}
+
 /* 쪽 이동 줄 — 위치 표시를 왼쪽 끝에 두고 이동 버튼을 오른쪽에 모은다. */
 .pop-page-nav {
   display: flex;
@@ -6559,6 +6591,158 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0;
   border: 0;
   background: var(--outline-variant);
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * P-04-02 납품·포장 라벨 출력 (POP)
+ *
+ * ⚠ **이 화면 전용 이름(`pop-slabel-`)이다.** 앞선 POP 화면들이 `pop-lot-`·`pop-`
+ * 어휘를 이미 쓰고 있어, 같은 뜻이라도 이름을 나눈다 — 겹치면 한쪽을 고칠 때 다른 화면이
+ * 조용히 함께 바뀐다.
+ *
+ * 스펙 §3 의 세로 예산은 헤더 64 + 본문 616 + 액션바 88 = 768 이고 **슬랙이 0**이다.
+ * 그래서 ③ 재출력 구획은 필요할 때만 서고, 넘치는 것은 ② 목록 «안에서» 스크롤한다.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.pop-slabel-screen {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pop-slabel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/*
+ * ① 라벨 종류 구획 — 스펙 §3 의 72px 한 칸이다. 위아래 숨을 주지 않는다(슬랙 0).
+ */
+.pop-slabel-kind {
+  display: flex;
+  align-items: center;
+}
+
+/*
+ * 그 안의 라디오 두 개 — 가로 한 줄. 세로 예산이 72px 라 두 줄로 쌓을 자리가 없다.
+ */
+.pop-slabel-kinds {
+  display: flex;
+  gap: var(--space-5);
+  align-items: flex-start;
+}
+
+.pop-slabel-kind-name {
+  font-weight: 600;
+}
+
+/*
+ * 종류마다 「언제 발행하는가」가 붙는다. 이름 옆이 아니라 «아래»에 두어, 멀리서 볼 때
+ * 이름 두 개가 먼저 읽히게 한다 — 고르는 것은 종류이지 설명이 아니다.
+ */
+.pop-slabel-kind-note {
+  display: block;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * ② 대상 — **이 구획 «안에서» 스크롤한다.**
+ * 화면 전체를 스크롤시키면 라벨 종류와 액션바가 함께 밀려, 지금 무엇을 뽑는 중인지가
+ * 화면 밖으로 나간다.
+ */
+.pop-slabel-targets {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-y: auto;
+}
+
+.pop-slabel-empty {
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+/* ③ 재출력 — 재발행일 때만 선다. 서는 순간 세로를 차지하므로 안쪽 여백을 아낀다. */
+.pop-slabel-reissue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pop-slabel-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+/* 「필수」는 라벨 옆에서 가장 강하게 읽혀야 한다 — 빠뜨리면 저장이 DB 제약에 막힌다. */
+.pop-slabel-required {
+  color: var(--semantic-error);
+  font-weight: 600;
+}
+
+/* ④ 프린터 — 이름·상태를 한 줄에 둔다. 인쇄가 안 될 때 가장 먼저 보는 자리다. */
+.pop-slabel-printer,
+.pop-slabel-printer-pane {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/*
+ * 액션바 — 오른쪽에 모은다. 막힌 사유는 왼쪽 끝에 두어 단추와 같은 줄에서 읽히게 한다.
+ */
+.pop-slabel-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.pop-slabel-actions > .field-note {
+  margin-right: auto;
+}
+
+/*
+ * 구획 폭을 그대로 쓰는 보조 안내. `.field-note` 는 규범 4가 **비활성 사유**용으로 정의해
+ * `max-width: 20rem` 에 갇히는데, 이쪽은 구획 전체에 걸리는 안내다.
+ */
+.pop-slabel-wide-note {
+  max-width: none;
+}
+
+/*
+ * 미리보기 — 여러 장을 한 창에 편다. 라벨 이미지는 서버가 그린 것이라 크기를 모른다.
+ * 폭을 묶고 비율을 유지해, 큰 그림이 와도 창이 화면 밖으로 자라지 않게 한다.
+ */
+.pop-slabel-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.pop-slabel-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+/*
+ * ⛔ 배경을 칠하지 않는다 — 라벨은 흰 바탕을 스스로 그리고, 칠하면 어두운 테마에서
+ * 그림 테두리가 배경에 먹힌다(전례 `.token-figure`).
+ */
+.pop-slabel-preview-image {
+  max-width: 20rem;
+  height: auto;
+  border: 1px solid var(--outline-variant);
 }
 
 /*

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider, type DefaultOptions } from '@tanstack
 import type { ReactNode } from 'react';
 
 import { ApiClientProvider } from '../patterns/api-context';
+import { PopDevIdentityProvider } from '../patterns/pop-dev-identity';
 import { SessionProvider } from '../patterns/session';
 import { apiClient } from './api';
 
@@ -59,7 +60,21 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
       <ApiClientProvider client={apiClient}>
         <SessionProvider>
           <ThemeProvider defaultTheme="system">
-            <ToastProvider position="bottom-right">{children}</ToastProvider>
+            <ToastProvider position="bottom-right">
+              {/*
+               * ⚠ **개발 서버에서만** POP 단말 신원을 임시로 채운다 — 채우는 셸이 아직 없어
+               * POP 화면의 저장·발행이 전부 잠긴 채 뜨기 때문이다(`patterns/pop-dev-identity`).
+               *
+               * ⛔ **`MODE`로 가른다.** 빌드 시점에 상수로 접혀 배포 번들에서 이 가지째
+               * 걷힌다 — 런타임 조회로 바꾸면 현장 단말이 지어낸 값으로 통과하게 된다.
+               * 시험 실행(`MODE === 'test'`)에서도 서지 않으므로 화면 시험은 그대로다.
+               */}
+              {import.meta.env.MODE === 'development' ? (
+                <PopDevIdentityProvider>{children}</PopDevIdentityProvider>
+              ) : (
+                children
+              )}
+            </ToastProvider>
           </ThemeProvider>
         </SessionProvider>
       </ApiClientProvider>

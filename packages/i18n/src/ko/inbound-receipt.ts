@@ -44,9 +44,29 @@ export const inboundReceipt = {
     clear: '발주 선택 지우기',
   },
   exception: {
-    /** 발주 없이 도착한 건은 공급사의 출처가 정해지지 않아 아직 등록이 서지 않는다. */
-    absent: '발주 없이 도착한 건은 아직 이 화면에서 등록할 수 없습니다',
-    absentWhy: '공급사를 발주에서 승계하는 구조라, 발주가 없으면 공급사를 정할 자리가 없습니다.',
+    /** 발주가 없으면 공급사도 품목도 단위도 승계할 곳이 없어 담당자가 고른다. */
+    legend: '발주 없이 도착',
+    open: '발주 없이 등록',
+    openNote: '발주가 없으면 공급사와 품목과 단위를 직접 고릅니다.',
+    close: '발주 고르기로 되돌리기',
+    supplierLabel: '공급사',
+    supplierPlaceholder: '공급사를 고르세요',
+    supplierLoading: '공급사를 불러오는 중입니다',
+    supplierLoadFailed: '공급사를 확인할 수 없습니다',
+    supplierNone: '고를 공급사가 없습니다',
+    itemLabel: '품목',
+    itemPlaceholder: '품목을 고르세요',
+    itemLoadFailed: '품목을 확인할 수 없습니다',
+    /** 품목 마스터의 주인은 ERP 다. 이 화면이 품목을 만들 길은 계약에 없다. */
+    itemUnregistered: '목록에 없는 품목은 여기서 만들 수 없습니다',
+    itemUnregisteredWhy: 'ERP 에 품목이 선 뒤에 등록할 수 있습니다.',
+    uomLabel: '단위',
+    uomPlaceholder: '단위를 고르세요',
+    uomLoadFailed: '단위를 확인할 수 없습니다',
+    /** 예정 수량이 없으므로 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */
+    noVerdict: '발주가 없어 예정과 견주지 않습니다',
+    /** 공장은 단말 토큰이 싣고 온다. 없으면 지어내지 않고 막는다. */
+    noPlant: '이 단말의 공장을 확인할 수 없어 등록할 수 없습니다',
   },
   note: {
     legend: '거래명세서',

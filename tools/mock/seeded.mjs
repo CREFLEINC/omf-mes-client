@@ -91,7 +91,9 @@ on('GET', '/mdm/workers', (_p, query) =>
   page(keep(state.workers, [contains(query, 'q', 'workerNo')]), query),
 );
 
-on('GET', '/mdm/items', (_p, query) => page(keep(state.items, [contains(query, 'q', 'itemCode')]), query));
+on('GET', '/mdm/items', (_p, query) =>
+  page(keep(state.items, [contains(query, 'q', 'itemCode')]), query),
+);
 on('GET', '/mdm/items/{itemId}', (params) => {
   const item = state.items.find((each) => each.itemId === Number(params.itemId));
   return item === undefined ? null : { item, editability: { editable: true } };
@@ -101,7 +103,9 @@ on('GET', '/mdm/uoms', (_p, query) => page(state.uoms, query));
 
 on('GET', '/mdm/warehouses', (_p, query) => page(state.warehouses, query));
 on('GET', '/mdm/warehouses/{warehouseId}', (params) => {
-  const warehouse = state.warehouses.find((each) => each.warehouseId === Number(params.warehouseId));
+  const warehouse = state.warehouses.find(
+    (each) => each.warehouseId === Number(params.warehouseId),
+  );
   return warehouse === undefined ? null : { warehouse, editability: { editable: true } };
 });
 
@@ -157,6 +161,23 @@ on('GET', '/mdm/code-values', (_p, query) => {
   );
 });
 
+on('GET', '/mdm/terminals/{terminalId}/processes', () => ({
+  items: [
+    {
+      processId: 1001,
+      processName: '사출',
+      canStartWork: true,
+      canCompleteWork: true,
+      canInputMaterial: true,
+      canInputResult: true,
+      canInputInspection: true,
+      canPrintLabel: true,
+      canCancelInput: true,
+      canReturnMaterial: true,
+    },
+  ],
+}));
+
 /* ── 추적 ─────────────────────────────────────────────────── */
 
 on('GET', '/trace/lots', (_p, query) => {
@@ -196,6 +217,91 @@ on('GET', '/trace/lots/{lotId}/holds', (params, query) =>
     query,
   ),
 );
+
+/* ── 문서 발행·인쇄 ───────────────────────────────────────── */
+
+const targetIds = (query) =>
+  query
+    .getAll('targetIds')
+    .flatMap((value) => value.split(','))
+    .map(Number)
+    .filter(Number.isFinite);
+
+on('GET', '/app/document-issues/summary', (_params, query) => {
+  const targetTypeCode = query.get('targetTypeCode');
+  const documentTypeCode = query.get('documentTypeCode');
+
+  return {
+    items: targetIds(query).map((targetId) => {
+      const issues = state.documentIssues.filter(
+        (issue) =>
+          issue.targetId === targetId &&
+          issue.targetTypeCode === targetTypeCode &&
+          issue.documentTypeCode === documentTypeCode,
+      );
+      const last = issues.at(-1);
+
+      return {
+        targetTypeCode,
+        targetId,
+        issueCount: issues.length,
+        ...(last === undefined
+          ? {}
+          : {
+              lastIssueSeq: last.issueSeq,
+              lastIssuedAt: last.issuedAt,
+              lastPrintOutcome: last.printOutcome,
+            }),
+      };
+    }),
+  };
+});
+
+on('POST', '/app/document-issues', (_params, _query, body) => {
+  const items = (body?.targets ?? []).map((target) => {
+    const lot = state.lots.find((row) => row.lotId === target.lotId);
+    const issueSeq =
+      state.documentIssues.filter(
+        (issue) =>
+          issue.targetId === target.targetId &&
+          issue.targetTypeCode === target.targetTypeCode &&
+          issue.documentTypeCode === body.documentTypeCode,
+      ).length + 1;
+    const issue = {
+      documentIssueLogId: newId(),
+      documentTypeCode: body.documentTypeCode,
+      targetTypeCode: target.targetTypeCode,
+      targetId: target.targetId,
+      lotId: target.lotId,
+      issueSeq,
+      issuedAt: new Date().toISOString(),
+      printOutcome: 'PENDING',
+    };
+    state.documentIssues.push(issue);
+
+    return {
+      ...issue,
+      target: { displayName: lot?.lotNo ?? String(target.targetId) },
+    };
+  });
+
+  return { created: { items, issuedCount: items.length }, status: 201 };
+});
+
+on('GET', '/app/document-issues/{documentIssueLogId}/rendition', () => ({
+  format: 'png',
+  content: 'synthetic-label',
+}));
+
+on('POST', '/app/document-issues/{documentIssueLogId}:report-print', (params, _query, body) => {
+  const issue = state.documentIssues.find(
+    (row) => row.documentIssueLogId === Number(params.documentIssueLogId),
+  );
+  if (issue === undefined) return null;
+
+  issue.printOutcome = body?.outcome ?? 'FAILED';
+  return { issue };
+});
 
 on('POST', '/trace/lots/{lotId}:request-iqc-skip', (params, _q, body) => {
   const request = {
@@ -468,17 +574,21 @@ on('GET', '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/variances', (
   ),
 }));
 
-on('POST', '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/variances', (params, _q, body) => {
-  const created = {
-    inboundVarianceId: newId(),
-    inboundReceiptLineId: Number(params.inboundReceiptLineId),
-    ...body,
-    statusCode: 'OPEN',
-  };
+on(
+  'POST',
+  '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/variances',
+  (params, _q, body) => {
+    const created = {
+      inboundVarianceId: newId(),
+      inboundReceiptLineId: Number(params.inboundReceiptLineId),
+      ...body,
+      statusCode: 'OPEN',
+    };
 
-  state.inboundVariances.push(created);
-  return { created, status: 201 };
-});
+    state.inboundVariances.push(created);
+    return { created, status: 201 };
+  },
+);
 
 on('GET', '/logistics/putaway-tasks', (_p, query) =>
   page(
@@ -879,7 +989,10 @@ const forward = async (request, response, body) => {
     });
     response.end(text);
   } catch {
-    send(response, 502, { code: 'MOCK_FALLBACK_UNAVAILABLE', message: 'Prism 에 닿지 못했습니다.' });
+    send(response, 502, {
+      code: 'MOCK_FALLBACK_UNAVAILABLE',
+      message: 'Prism 에 닿지 못했습니다.',
+    });
   }
 };
 
@@ -930,16 +1043,7 @@ const mergedSpecPath = writeMergedSpec(specPaths);
 
 const prism = spawn(
   'pnpm',
-  [
-    'exec',
-    'prism',
-    'mock',
-    mergedSpecPath,
-    '--host',
-    '127.0.0.1',
-    '--port',
-    String(FALLBACK_PORT),
-  ],
+  ['exec', 'prism', 'mock', mergedSpecPath, '--host', '127.0.0.1', '--port', String(FALLBACK_PORT)],
   { stdio: ['ignore', 'ignore', 'inherit'] },
 );
 
