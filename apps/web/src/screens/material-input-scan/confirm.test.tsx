@@ -726,7 +726,12 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
   it('서버가 거부하면 그 건만 목록에서 내린다', async () => {
     const user = userEvent.setup();
 
-    /* 첫 건은 받고 **둘째만 거부**한다 — 「그 건만」이 성립하는지 재려면 둘이 갈려야 한다. */
+    /*
+     * 첫 건은 받고 **둘째만 거부**한다 — 「그 건만」이 성립하는지 재려면 둘이 갈려야 한다.
+     *
+     * ⚠ **거부는 4xx 로 흉내 낸다.** 5xx 는 「기다리면 풀림」이라 큐에 남는다(#772) — 그것으로
+     * 흉내 내면 이 시험이 재는 것이 「거부」가 아니라 「보류」가 된다.
+     */
     let call = 0;
     renderScreen([lot(), lot({ lotId: 7302, lotNo: 'SAMPLE-LOT-0002' })], {
       match: (request) => isPost(request, CONSUMPTIONS_PATH),
@@ -735,7 +740,7 @@ describe('MaterialInputScanScreen — 미전송 큐', () => {
 
         return call === 1
           ? jsonResponse(consumption(7301), { status: 201 })
-          : new Response(null, { status: 500 });
+          : new Response(null, { status: 409 });
       },
     });
 
