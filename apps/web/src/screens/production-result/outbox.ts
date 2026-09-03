@@ -165,6 +165,19 @@ export const useOutbox = (): Outbox => {
    */
   const [retryTick, setRetryTick] = useState(0);
 
+  /**
+   * 예약해 둔 재시도. **언마운트에서 지운다** — 남겨 두면 화면을 떠난 뒤에도 최장 1분간
+   * 클로저가 살아 있다.
+   */
+  const retryTimer = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (retryTimer.current !== null) globalThis.clearTimeout(retryTimer.current);
+    },
+    [],
+  );
+
   /** 항목별 자동 재전송 시도 횟수. 메모리에만 둔다 — 새로 뜨면 다시 세는 것이 맞다. */
   const attempts = useRef(new Map<string, number>());
   const [isStalled, setIsStalled] = useState(false);
@@ -225,7 +238,14 @@ export const useOutbox = (): Outbox => {
               return;
             }
 
-            globalThis.setTimeout(() => {
+            /*
+             * ⛔ **앞 예약을 덮어쓰지 않는다.** 손잡이를 하나만 들고 있으므로 확인 없이 덮으면
+             * 앞 타이머는 아무도 끊지 못한 채 남아, 화면이 사라진 뒤에 발화한다.
+             */
+            if (retryTimer.current !== null) globalThis.clearTimeout(retryTimer.current);
+
+            retryTimer.current = globalThis.setTimeout(() => {
+              retryTimer.current = null;
               setRetryTick((tick) => tick + 1);
             }, retryDelayOf(tried));
 

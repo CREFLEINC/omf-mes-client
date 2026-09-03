@@ -116,6 +116,8 @@ describe('useOutbox — 끝나지 않는 장애에서 멈추되 담긴 것은 �
 
     expect(result.current.isStalled).toBe(true);
     expect(result.current.pendingCount).toBe(1);
+    /* 거부가 아니므로 배너용 오류를 세우지 않는다 — 「멈췄다」와 「거부됐다」는 다른 말이다. */
+    expect(result.current.rejection).toBeNull();
   });
 
   it('멈춘 뒤에는 더 던지지 않고, 사람이 누르면 같은 멱등 키로 다시 나간다', async () => {

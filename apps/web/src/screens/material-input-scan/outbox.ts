@@ -255,7 +255,14 @@ export const useOutbox = (): Outbox => {
               return;
             }
 
+            /*
+             * ⛔ **앞 예약을 덮어쓰지 않는다.** 손잡이를 하나만 들고 있으므로 확인 없이 덮으면
+             * 앞 타이머는 아무도 끊지 못한 채 남아, 화면이 사라진 뒤에 발화한다.
+             */
+            if (retryTimer.current !== null) globalThis.clearTimeout(retryTimer.current);
+
             retryTimer.current = globalThis.setTimeout(() => {
+              retryTimer.current = null;
               setRetryTick((tick) => tick + 1);
             }, retryDelayOf(tried));
 
