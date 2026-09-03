@@ -340,7 +340,13 @@ export const ProductionResultScreen = () => {
               /* 단위는 칸 오른쪽 안에 붙인다 — 스펙 §3-2 의 「양품수량 [ 120 ] EA」 */
               trailingIcon={uomLabel ?? undefined}
               onChange={(event) => {
-                changeDraft({ goodQty: event.target.value.replace(/\D/gu, '') });
+                /*
+                 * ⚠ 키패드와 **같은 자릿수 상한**을 건다. 키패드만 막으면 직접 쳐서 넘길 수 있고,
+                 * 그때는 서버에 닿아서야 거부된다 — 계약이 `numeric(20,6)` 이다.
+                 */
+                changeDraft({
+                  goodQty: event.target.value.replace(/\D/gu, '').slice(0, GOOD_QTY_MAX_LENGTH),
+                });
               }}
             />
 

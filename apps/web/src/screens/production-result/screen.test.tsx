@@ -11,6 +11,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { STORAGE_KEY } from './outbox';
+import { GOOD_QTY_MAX_LENGTH } from './quantity-draft';
 import { ProductionResultScreen } from './screen';
 import {
   LOT_NO,
@@ -287,6 +288,18 @@ describe('ProductionResultScreen 수량 입력', () => {
     await user.click(screen.getByRole('button', { name: t.quantity.quickAdd(10) }));
 
     expect(field).toHaveValue('22');
+  });
+
+  /* 키패드만 상한을 걸면 직접 쳐서 넘길 수 있고, 그때는 서버에 닿아서야 거부된다. */
+  it('직접 쳐도 키패드와 같은 자릿수에서 멈춘다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await selectLot(user);
+    const field = screen.getByLabelText(t.quantity.goodQtyLabel);
+    await user.type(field, '9'.repeat(GOOD_QTY_MAX_LENGTH + 3));
+
+    expect(field).toHaveValue('9'.repeat(GOOD_QTY_MAX_LENGTH));
   });
 
   /* 스펙 §3-2 가 「양품수량 [ 120 ] EA」로 단위를 칸에 붙였다. */
