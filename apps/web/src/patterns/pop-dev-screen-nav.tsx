@@ -59,6 +59,16 @@ export const POP_DEV_SCREENS: PopDevScreen[] = [
     label: 'P-02-05 인식표 발행',
     query: '?workOrderId=11002&workerNo=100029',
   },
+  {
+    path: '/pop/production-result',
+    label: 'P-02-04 작업실적 등록',
+    query: '?workOrderId=11002&workerNo=100029',
+  },
+  {
+    path: '/pop/packing-label-reprint',
+    label: 'P-02-09 포장 라벨·인식표 재출력',
+    query: '?handlingUnitId=1001&workerNo=100029',
+  },
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
