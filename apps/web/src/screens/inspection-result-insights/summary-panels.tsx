@@ -38,8 +38,8 @@ const SummaryPanel = ({
         ] as const satisfies ReadonlyArray<readonly [string, number, string]>);
 
   return (
-    <section aria-label={`${label} 검사실적 요약`}>
-      {showPopulationLabel && <h3>{label}</h3>}
+    <section className="inspection-results-summary-panel" aria-label={`${label} 검사실적 요약`}>
+      {showPopulationLabel && <h3 className="inspection-results-subtitle">{label}</h3>}
       {summary.isPending && <SkeletonText lines={1} />}
       {summary.isError && (
         <AlertBanner
@@ -55,7 +55,7 @@ const SummaryPanel = ({
       {!summary.isError && summary.data !== undefined && (
         <>
           <div
-            className="filter-bar"
+            className="inspection-results-stat-grid"
             role="group"
             aria-label={showPopulationLabel ? `${label} 검사실적 요약 카드` : '검사실적 요약 카드'}
           >
