@@ -33,7 +33,10 @@ import { useWorkerSession } from './worker-session';
  */
 export const POP_DEV_TERMINAL_ID = 1001;
 
-/** 게이팅 판정의 대상 공정. 목 서버의 공정 하나를 쓴다. */
+/**
+ * 게이팅 판정의 대상 공정. ⚠ **씨앗에 공정 자료가 없다** — 바로 위 단말 번호와 같은 사정으로
+ * 계약 예시 서버가 답하며, 이 값 자체에 근거가 있는 것은 아니다.
+ */
 export const POP_DEV_PROCESS_ID = 1001;
 
 /** 아무도 사번을 치지 않았을 때의 값. 목 서버 조회가 통하는 사번이다. */
