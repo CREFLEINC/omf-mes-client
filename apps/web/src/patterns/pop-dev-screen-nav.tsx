@@ -1,4 +1,5 @@
 import { Select } from '@crefle/web-ui';
+import { useId } from 'react';
 import { useNavigate } from 'react-router';
 
 /**
@@ -94,20 +95,43 @@ export interface PopDevScreenNavProps {
 
 export const PopDevScreenNav = ({ disabled }: PopDevScreenNavProps) => {
   const navigate = useNavigate();
+  const labelId = useId();
 
   return (
-    <Select
-      aria-label={POP_DEV_SCREEN_NAV_LABEL}
-      size="xl"
-      disabled={disabled}
-      placeholder={POP_DEV_SCREEN_NAV_LABEL}
-      options={POP_DEV_SCREENS.map(({ path, label, query }) => ({
-        value: `${path}${query ?? ''}`,
-        label,
-      }))}
-      onChange={(target) => {
-        void navigate(target);
-      }}
-    />
+    <>
+      {/*
+       * ⛔ **`aria-label` 로 때우지 않는다**(`docs/layout-conventions.md` 규범 3). 디자인
+       * 시스템의 `Select` 는 `label` prop 을 주지 않으므로 보이는 이름을 직접 만들어 잇는다 —
+       * `aria-label` 만 두면 **눈으로 보이는 이름이 없어** 무엇을 고르는 칸인지 알 수 없다.
+       * 같은 셸의 전례가 이 형태다(`screens/downtime-register/reason-fields.tsx`).
+       */}
+      <span className="field-label" id={labelId}>
+        {POP_DEV_SCREEN_NAV_LABEL}
+      </span>
+      <Select
+        aria-labelledby={labelId}
+        /*
+         * ⚠ **옆 버튼들의 `POP_TOUCH_SIZE`(2xl)를 쓸 수 없다.** `SelectSize` 는 `xl` 까지고
+         * 그 상수는 `ButtonSize` 다 — 타입이 다르다. 디자인 시스템이 `Select` 에 72px 변형을
+         * 내려 주면 그때 한 자리로 모은다.
+         */
+        size="xl"
+        disabled={disabled}
+        placeholder={POP_DEV_SCREEN_NAV_LABEL}
+        /*
+         * ⭐ **고른 값을 남기지 않는다.** 고르는 즉시 다른 화면으로 떠나므로 「지금 여기서
+         * 무엇이 골라져 있는가」라는 상태가 성립하지 않는다 — 비제어로 두면 부품이 그 상태를
+         * 대신 들고 있다가, 돌아왔을 때 가지도 않을 화면 이름을 띄운다.
+         */
+        value={null}
+        options={POP_DEV_SCREENS.map(({ path, label, query }) => ({
+          value: `${path}${query ?? ''}`,
+          label,
+        }))}
+        onChange={(target) => {
+          void navigate(target);
+        }}
+      />
+    </>
   );
 };
