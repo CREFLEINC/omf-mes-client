@@ -44,3 +44,22 @@ export const OVERRIDE_REASON_CODE = 'EMERGENCY_WORK_ORDER';
  * 화면이 먼저 좁혀 «누를 수 있는데 거부되는» 버튼을 두지 않는다.
  */
 export const EMERGENCY_WORK_ORDER_TYPE_CODE = 'EMERGENCY';
+
+/**
+ * 점검 유형의 **표시 이름이 사는 코드 그룹**.
+ *
+ * ⛔ **코드 문자열을 화면에 그대로 내지 않는다** — 스펙 §4 도면은 「일상(Daily)」·「정기(Monthly)」로
+ * 적었고, 계약은 값 목록을 코드 사전에서 받으라고 못박았다(공유계약 G-32). ⭐ **고객이 값을
+ * 늘린다** — 화면에 대응표를 박으면 늘어난 값이 코드로 노출된다.
+ *
+ * ⚠ 채번 식별자(`codeGroupId`)를 하드코딩하지 않는다 — 환경마다 다르다.
+ */
+export const INSPECTION_TYPE_CODE_GROUP = 'EQUIPMENT_INSPECTION_TYPE';
+
+/**
+ * 통제 수준이 «어느 축»으로 정해졌는가 — 계약 `matchedScopeCode`.
+ *
+ * 스펙 §4 도면이 통제 수준 옆에 적용 범위를 함께 보인다. ⚠ 도면은 공장·공정의 «이름»까지
+ * 적었으나 계약이 내려주는 것은 축뿐이고, 이름을 얻으려면 왕복이 둘 더 든다 — 축만 보인다.
+ */
+export type MatchedScopeCode = 'ITEM' | 'PROCESS' | 'PLANT' | 'BUSINESS_UNIT' | 'ALL';

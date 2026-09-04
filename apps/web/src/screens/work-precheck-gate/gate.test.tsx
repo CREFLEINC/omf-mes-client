@@ -128,6 +128,32 @@ describe('P-02-02 작업 전 점검 통제 — 차단', () => {
     expect(sessions(recorded.bodies)).toHaveLength(0);
   });
 
+  /** ⛔ 코드 문자열을 화면에 내지 않는다(스펙 §4 · 공유계약 G-32). */
+  it('점검 유형을 코드가 아니라 코드 사전의 이름으로 보인다', async () => {
+    await pressStart(NO_HISTORY);
+
+    expect(await screen.findByText('일상(Daily)')).toBeInTheDocument();
+    expect(screen.queryByText('DAILY')).not.toBeInTheDocument();
+  });
+
+  /** ⭐ 무엇이 걸렸는지 말한다 — 「점검 기록이 없다」로만 적으면 할 일을 알 수 없다. */
+  it('어느 점검이 없어서 막혔는지 문구에 적는다', async () => {
+    await pressStart(NO_HISTORY);
+
+    expect(
+      await screen.findByText(t.verdict.blockedMissingDetail('일상(Daily)')),
+    ).toBeInTheDocument();
+  });
+
+  /** ⭐ 그 수준이 어느 범위로 정해졌는지 함께 보인다(스펙 §4). */
+  it('통제 수준 옆에 적용 범위를 함께 보인다', async () => {
+    await pressStart(NO_HISTORY);
+
+    expect(
+      await screen.findByText(`${t.verdict.levelBlock}${t.verdict.scopeSuffix('공정')}`),
+    ).toBeInTheDocument();
+  });
+
   /** ⚠ 「이력 없음」을 「점검 안 함」으로 단정하지 않는다(§5-4). */
   it('이력이 없을 때 미전송 가능성을 함께 말한다', async () => {
     await pressStart(NO_HISTORY);

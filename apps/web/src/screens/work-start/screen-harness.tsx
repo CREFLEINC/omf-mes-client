@@ -128,6 +128,8 @@ export interface StubOptions {
   openBreakdownCount?: number;
   /** 판정 기록 응답 상태. 기본 201. */
   decisionStatus?: number;
+  /** 점검 유형의 표시 이름(코드 사전). 기본은 일상·정기 두 값. */
+  inspectionTypeNames?: Record<string, unknown>[];
 }
 
 export interface Recorded {
@@ -211,6 +213,7 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
         policyCode: 'PRECHECK_CONTROL_LEVEL',
         resolved: options.policyUnresolved !== true,
         valueText: options.controlLevel ?? 'BLOCK',
+        matchedScopeCode: 'PROCESS',
       });
     }
 
@@ -260,6 +263,32 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
         },
         { status: 201 },
       );
+    }
+
+    if (url.pathname === '/mdm/code-values') {
+      return jsonResponse({
+        items: options.inspectionTypeNames ?? [
+          {
+            codeValueId: 5901,
+            codeGroupId: 5900,
+            code: 'DAILY',
+            codeName: '일상(Daily)',
+            nameKo: '일상(Daily)',
+            displayOrder: 1,
+            isActive: true,
+          },
+          {
+            codeValueId: 5902,
+            codeGroupId: 5900,
+            code: 'MONTHLY',
+            codeName: '정기(Monthly)',
+            nameKo: '정기(Monthly)',
+            displayOrder: 2,
+            isActive: true,
+          },
+        ],
+        page: { page: 1, size: 20, total: 2 },
+      });
     }
 
     if (url.pathname === '/mdm/workers') {

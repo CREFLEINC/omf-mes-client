@@ -1,8 +1,14 @@
+import { useMemo } from 'react';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { PRECHECK_POLICY_CODE, UNRESOLVED_CONTROL_LEVEL, type ControlLevelCode } from './codes';
+import {
+  INSPECTION_TYPE_CODE_GROUP,
+  PRECHECK_POLICY_CODE,
+  UNRESOLVED_CONTROL_LEVEL,
+  type ControlLevelCode,
+} from './codes';
 import { cycleWindowStart } from './cycle-window';
 import type { PrecheckTarget } from './verdict';
 import type {
@@ -40,6 +46,7 @@ export const precheckKeys = {
   inspection: (equipmentId: number, inspectionTypeCode: string, from: string) =>
     [...ALL_KEY, 'inspection', equipmentId, inspectionTypeCode, from] as const,
   breakdowns: (equipmentId: number) => [...ALL_KEY, 'breakdowns', equipmentId] as const,
+  typeNames: () => [...ALL_KEY, 'type-names'] as const,
 };
 
 /**
@@ -271,4 +278,38 @@ export const useOpenBreakdownCount = (
       );
     },
   });
+};
+
+/**
+ * 점검 유형의 표시 이름 — ⛔ **코드 문자열을 화면에 내지 않는다**(스펙 §4 · 공유계약 G-32).
+ *
+ * ⚠ **못 받아도 판정을 막지 않는다.** 이름은 읽는 사람을 위한 것이지 판정의 재료가 아니다 —
+ * 못 받으면 코드를 그대로 보이고, 그 사실 때문에 작업을 막지는 않는다.
+ */
+export const useInspectionTypeNames = (enabled: boolean): Map<string, string> => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: precheckKeys.typeNames(),
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode: INSPECTION_TYPE_CODE_GROUP, includeInactive: true } },
+        }),
+      ),
+  });
+
+  return useMemo(() => {
+    const names = new Map<string, string>();
+
+    for (const value of query.data?.items ?? []) {
+      /* 한국어 명칭이 있으면 그것이 먼저다 — 표시명은 비어 올 수 있다. */
+      const label = (value.nameKo ?? '').trim() || value.codeName.trim();
+
+      if (label !== '') names.set(value.code, label);
+    }
+
+    return names;
+  }, [query.data]);
 };

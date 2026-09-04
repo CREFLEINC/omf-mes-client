@@ -7573,22 +7573,25 @@ dl.filter-bar.approval-inbox-detail-facts {
   position: fixed;
   inset: 0;
   z-index: 20;
-  grid-template-columns: 1fr;
   /*
-   * 머리 · 판정 · 이력(늘어나는 자리) · 안내 · 액션바.
+   * 머리 · 판정 · 이력 · 안내 · 액션바를 세로로 세운다.
    *
-   * ⛔ **액션바가 잘리지 않게 한다.** 세로 예산은 1024×768 단말을 기준으로 잡았는데, 그보다
-   *    낮은 창에서 열면 88px 액션바가 화면 밖으로 밀려 **누를 수 없는 버튼**이 된다(실측 —
-   *    712px 창에서 [ 돌아가기 ]·[ 다시 확인 ] 이 사라졌다). 남는 세로를 이력 구획이 갖고,
-   *    모자라면 그 구획만 스크롤한다.
+   * ⛔ **격자(`grid`)를 쓰지 않는다.** `.pop-shell` 이 `align-content: start` 로 남는 세로를
+   *    행에 나누지 않아, 늘어나야 할 구획이 **높이 0 으로 접히고 표가 통째로 사라졌다**(실측).
+   *
+   * 세로 예산(§4-1)은 1024×768 기준이다 — 머리 64 · ① 152 · ② 200 · ③ 144 · ④ 여백 88 ·
+   * 액션바 88. 그보다 낮은 창에서는 **이력만 줄어들고**, ⛔ 액션바는 절대 밀려나지 않는다
+   * (실측 — 밀려나면 [ 돌아가기 ]·[ 다시 확인 ] 을 누를 수 없다).
    */
-  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   overflow: hidden;
 }
 
 /* ① 판정 — 무엇이 막았는가. 가장 먼저 읽히도록 위에 둔다. */
 .precheck-gate-verdict {
+  flex: 0 0 auto;
   min-height: 152px;
   display: grid;
   align-content: center;
@@ -7600,13 +7603,17 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-top: var(--space-1);
 }
 
+/*
+ * ② 이력 — 남는 세로를 받는다. ⛔ **없어지지는 않는다**: 창이 낮을 때 이 구획이 0 으로
+ * 접히면 «무엇이 걸렸는지»가 화면에서 사라진다(실측). 바닥을 두고, 모자라면 여기서 스크롤한다.
+ */
 .precheck-gate-history {
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 96px;
+  overflow-y: auto;
   display: grid;
   align-content: start;
   gap: var(--space-2);
-  /* 스크롤 구획은 여기 하나다 — 여럿이면 무엇이 더 있는지 읽는 사람이 셀 수 없다. */
-  overflow-y: auto;
 }
 
 .precheck-gate-section-title {
@@ -7621,31 +7628,13 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin: 0;
 }
 
-.precheck-gate-rows {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: var(--space-2);
-}
+/* 점검 이력 표 — 두 행뿐이라 zebra 를 끄고 밀도만 좁힌다(스펙 §7 `Table`). */
 
-/* 유형 · 판정 배지 · 언제·누가 — 배지가 가운데 서서 훑을 때 결과가 한 줄로 읽힌다. */
-.precheck-gate-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.precheck-gate-row-type {
-  min-width: 120px;
-}
-
-.precheck-gate-row-detail {
-  color: var(--on-surface-variant);
-}
-
+/* ③ 안내 — 정해진 안내문이라 자리가 모자라면 여기가 먼저 줄어든다(이력이 더 중요하다). */
 .precheck-gate-guide {
-  min-height: 144px;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   display: grid;
   align-content: start;
   gap: var(--space-1);
@@ -7659,7 +7648,10 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 액션바 — [ 우회하고 시작 ] 이 오른쪽 끝에 선다. 되돌릴 수 없는 조작이라 [ 다시 확인 ] 과
  * 붙여 두면 장갑 낀 손이 옆 것을 누른다.
  */
+/* ④ 여백은 여기서 생긴다 — 남는 세로를 액션바 «위»에 둔다(§4-1). */
 .precheck-gate-actions {
+  flex: 0 0 auto;
+  margin-top: auto;
   display: flex;
   justify-content: flex-end;
   gap: var(--space-4);

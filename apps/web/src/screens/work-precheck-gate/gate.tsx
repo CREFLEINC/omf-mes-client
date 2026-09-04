@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Chip, Dialog } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, Dialog, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
@@ -14,6 +14,7 @@ import {
   toTypeWindows,
   useInspectionAssignments,
   useLatestInspections,
+  useInspectionTypeNames,
   useOpenBreakdownCount,
   usePrecheckPolicy,
 } from './queries';
@@ -63,12 +64,75 @@ export interface PrecheckGateProps {
   onCancel: () => void;
 }
 
-/** 통제 수준을 화면의 말로. ⚠ 「적용 정책 없음」은 경고와 같은 처리지만 다르게 적는다. */
-const levelText = (level: ControlLevelCode, isResolved: boolean): string => {
+/**
+ * 통제 수준을 화면의 말로. ⚠ 「적용 정책 없음」은 경고와 같은 처리지만 다르게 적는다.
+ *
+ * ⭐ **어느 범위로 정해진 수준인지 함께 적는다**(스펙 §4) — 그래야 「왜 이 단말만 막히나」가
+ * 정책 때문임을 읽을 수 있다.
+ */
+const levelText = (
+  level: ControlLevelCode,
+  isResolved: boolean,
+  matchedScopeCode: string | null | undefined,
+): string => {
   if (!isResolved) return t.verdict.levelUnresolved;
 
-  return level === 'BLOCK' ? t.verdict.levelBlock : t.verdict.levelWarn;
+  const base = level === 'BLOCK' ? t.verdict.levelBlock : t.verdict.levelWarn;
+  const scope = matchedScopeCode == null ? undefined : t.verdict.scope[matchedScopeCode];
+
+  return scope === undefined ? base : `${base}${t.verdict.scopeSuffix(scope)}`;
 };
+
+/** 표시 이름이 없으면 코드를 그대로 — ⚠ 이름을 못 받았다고 판정을 막지 않는다. */
+const typeLabel = (names: Map<string, string>, code: string): string => names.get(code) ?? code;
+
+/** 걸린 유형들을 문구에 넣는다 — 「일상 · 정기」처럼 읽힌다. */
+const typeList = (names: Map<string, string>, codes: readonly string[]): string =>
+  codes.map((code) => typeLabel(names, code)).join(' · ');
+
+/**
+ * 점검 이력 표의 열 — 스펙 §7 이 `Table`(2행 고정 — 일상·정기)로 지정했다.
+ *
+ * ⛔ **판정 배지를 글자로만 두지 않는다**(G-13 세 모양 — 대상 아님 / 없음 / 합격·NG).
+ */
+const HISTORY_COLUMNS = (names: Map<string, string>): Column<PrecheckTarget>[] => [
+  {
+    key: 'type',
+    header: t.history.columnType,
+    render: (row) => typeLabel(names, row.inspectionTypeCode),
+  },
+  {
+    key: 'result',
+    header: t.history.columnResult,
+    width: '96px',
+    render: (row) =>
+      row.latest === null ? (
+        <Chip variant="status" size="sm" status="error">
+          {t.history.none}
+        </Chip>
+      ) : (
+        <Chip
+          variant="status"
+          size="sm"
+          status={row.latest.overallResultCode === 'PASS' ? 'success' : 'error'}
+        >
+          {row.latest.overallResultCode === 'PASS' ? t.history.pass : t.history.fail}
+        </Chip>
+      ),
+  },
+  {
+    key: 'detail',
+    header: t.history.columnDetail,
+    render: (row) =>
+      row.latest === null
+        ? ''
+        : t.history.entry(
+            row.latest.inspectedAt,
+            row.latest.workerNo ?? '',
+            row.latest.overallResultCode === 'PASS' ? t.history.pass : t.history.fail,
+          ),
+  },
+];
 
 export const PrecheckGate = ({
   workOrderId,
@@ -106,6 +170,7 @@ export const PrecheckGate = ({
     canAsk && assignments.isSuccess && windows !== null,
   );
   const breakdowns = useOpenBreakdownCount(equipmentId, canAsk);
+  const typeNames = useInspectionTypeNames(canAsk);
 
   const isEmergency = (workOrderTypeCode ?? '').trim() === EMERGENCY_WORK_ORDER_TYPE_CODE;
   const controlLevel = policy.data === undefined ? UNRESOLVED_CONTROL_LEVEL : toControlLevel(policy.data);
@@ -216,6 +281,20 @@ export const PrecheckGate = ({
   };
 
   const openBreakdownCount = breakdowns.data?.page?.total ?? 0;
+
+  const levelLine = levelText(
+    controlLevel,
+    policy.data?.resolved ?? false,
+    policy.data?.matchedScopeCode,
+  );
+
+  /** 문구에 이름을 대는 유형들 — 무엇이 걸렸는지 말하기 위해서다. */
+  const missingTypes = inspections.targets
+    .filter((target) => target.latest === null)
+    .map((target) => target.inspectionTypeCode);
+  const failedTypes = inspections.targets
+    .filter((target) => target.latest?.overallResultCode === 'FAIL')
+    .map((target) => target.inspectionTypeCode);
   const isNotTargeted = windows?.length === 0 && assignments.isSuccess;
 
   return (
@@ -248,26 +327,26 @@ export const PrecheckGate = ({
         ) : verdict?.reason === 'failed' ? (
           <AlertBanner variant="error">
             <strong>{t.verdict.blockedFailed}</strong>
-            <span className="precheck-gate-detail">{t.verdict.blockedFailedDetail}</span>
             <span className="precheck-gate-detail">
-              {levelText(controlLevel, policy.data?.resolved ?? false)}
+              {t.verdict.blockedFailedDetail(typeList(typeNames, failedTypes))}
             </span>
+            <span className="precheck-gate-detail">{levelLine}</span>
           </AlertBanner>
         ) : verdict?.decisionCode === 'BLOCKED' ? (
           <AlertBanner variant="error">
             <strong>{t.verdict.blockedMissing}</strong>
-            <span className="precheck-gate-detail">{t.verdict.blockedMissingDetail}</span>
             <span className="precheck-gate-detail">
-              {levelText(controlLevel, policy.data?.resolved ?? false)}
+              {t.verdict.blockedMissingDetail(typeList(typeNames, missingTypes))}
             </span>
+            <span className="precheck-gate-detail">{levelLine}</span>
           </AlertBanner>
         ) : (
           <AlertBanner variant="warning">
             <strong>{t.verdict.warned}</strong>
-            <span className="precheck-gate-detail">{t.verdict.warnedDetail}</span>
             <span className="precheck-gate-detail">
-              {levelText(controlLevel, policy.data?.resolved ?? false)}
+              {t.verdict.warnedDetail(typeList(typeNames, missingTypes))}
             </span>
+            <span className="precheck-gate-detail">{levelLine}</span>
           </AlertBanner>
         )}
       </section>
@@ -285,42 +364,14 @@ export const PrecheckGate = ({
         {isNotTargeted ? (
           <p className="precheck-gate-empty">{t.history.notTargeted}</p>
         ) : (
-          <ul className="precheck-gate-rows">
-            {inspections.targets.map((target: PrecheckTarget) => (
-              <li key={target.inspectionTypeCode} className="precheck-gate-row">
-                <span className="precheck-gate-row-type">
-                  {t.history.typeLabel(target.inspectionTypeCode)}
-                </span>
-
-                {target.latest === null ? (
-                  <Chip variant="status" size="sm" status="error">
-                    {t.history.none}
-                  </Chip>
-                ) : (
-                  <>
-                    <Chip
-                      variant="status"
-                      size="sm"
-                      status={target.latest.overallResultCode === 'PASS' ? 'success' : 'error'}
-                    >
-                      {target.latest.overallResultCode === 'PASS'
-                        ? t.history.pass
-                        : t.history.fail}
-                    </Chip>
-                    <span className="precheck-gate-row-detail">
-                      {t.history.entry(
-                        target.latest.inspectedAt,
-                        target.latest.workerNo ?? '',
-                        target.latest.overallResultCode === 'PASS'
-                          ? t.history.pass
-                          : t.history.fail,
-                      )}
-                    </span>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
+          <Table<PrecheckTarget>
+            columns={HISTORY_COLUMNS(typeNames)}
+            rows={[...inspections.targets]}
+            getRowId={(row) => row.inspectionTypeCode}
+            caption={t.history.tableCaption}
+            density="compact"
+            zebra={false}
+          />
         )}
 
         {/* ⚠ 「없음」이 「안 했음」이 아닐 수 있다 — 그 사실을 말하되 통과시키지는 않는다. */}

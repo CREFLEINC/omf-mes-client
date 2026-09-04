@@ -26,17 +26,35 @@ export const workPrecheckGate = {
     checking: '점검 이력을 확인하고 있습니다.',
 
     blockedMissing: '작업을 시작할 수 없습니다',
-    blockedMissingDetail: '주기 내 점검 기록이 없습니다.',
+    /**
+     * ⭐ **어느 점검이 걸렸는지 말한다**(스펙 §4 「오늘 일상 점검 기록이 없습니다」). 「점검
+     * 기록이 없다」로만 적으면 작업자가 **무엇을 해야 풀리는지** 알 수 없다.
+     */
+    blockedMissingDetail: (types: string): string => `${types} 점검 기록이 없습니다.`,
 
     blockedFailed: '작업을 시작할 수 없습니다',
-    blockedFailedDetail: '점검에서 불합격이 나왔습니다.',
+    blockedFailedDetail: (types: string): string => `${types} 점검에서 불합격이 나왔습니다.`,
 
     warned: '점검 기록 없이 진행합니다',
-    warnedDetail: '주기 내 점검 기록이 없습니다. 진행하면 그 사실이 기록됩니다.',
+    warnedDetail: (types: string): string =>
+      `${types} 점검 기록이 없습니다. 진행하면 그 사실이 기록됩니다.`,
 
     /** 어떤 수준으로 판정했는지 함께 보인다 — 왜 막혔는지가 정책이라는 것을 말한다. */
     levelBlock: '통제 수준: 차단',
     levelWarn: '통제 수준: 경고',
+    /**
+     * 그 수준이 «어느 범위»로 정해졌는가(스펙 §4 「통제 수준: 차단 (공장 · 공정)」).
+     *
+     * ⚠ 계약이 내려주는 것은 **축**이고 공장·공정의 이름이 아니다 — 축만 적는다.
+     */
+    scopeSuffix: (scope: string): string => ` (${scope} 정책)`,
+    scope: {
+      ITEM: '품목',
+      PROCESS: '공정',
+      PLANT: '공장',
+      BUSINESS_UNIT: '사업부',
+      ALL: '전사',
+    } as Record<string, string>,
     /**
      * ⚠ 적용 정책이 없을 때도 경고로 다룬다. 「설정이 없어 통과」로 읽히지 않게 그 사실을
      * 따로 적는다.
@@ -51,7 +69,11 @@ export const workPrecheckGate = {
     scope: (equipment: string, from: string): string => `설비 ${equipment} · 주기 내(${from}~)`,
     equipmentUnknown: '설비 미확인',
 
-    typeLabel: (code: string): string => code,
+    /** 표의 열 이름. */
+    columnType: '점검 유형',
+    columnResult: '판정',
+    columnDetail: '언제 · 누가',
+    tableCaption: '주기 내 점검 이력',
     none: '없음',
     pass: '합격',
     fail: '불합격',
