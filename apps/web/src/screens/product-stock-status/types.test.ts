@@ -122,7 +122,7 @@ describe('toLotDetailView', () => {
         lotTypeCode: 'SAMPLE_LOT_T_A',
         plantId: 9001,
         statusCode: 'SAMPLE_LOT_S_A',
-        sourceTypeCode: 'SAMPLE_SRC_T_A',
+        sourceTypeCode: 'INVENTORY_ADJUSTMENT',
         sourceId: 9021,
         initialQty: 10,
         uomId: 9501,

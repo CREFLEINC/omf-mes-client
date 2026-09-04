@@ -1,3 +1,4 @@
+import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { DEFAULT_TAB, toTabScopeQuery, type InboxTab } from './tabs';
@@ -176,11 +177,14 @@ export const withoutSelection = (params: URLSearchParams): URLSearchParams => {
  * **`size`가 없다.** 서버 기본값을 쓴다 — 화면이 정한 크기를 심으면 그것이 계약처럼 굳는다.
  * 대기 건수 조회만 예외로 크기를 명시하고, 그 사정은 `queries.ts`가 갖는다.
  */
+type ListQueryParams = NonNullable<paths['/app/approval-requests']['get']['parameters']['query']>;
+
 export interface RequestListQuery {
   assignedToMe?: boolean;
   pendingOnly?: boolean;
   requestedByMe?: boolean;
-  approvalTypeCode?: string;
+  /** 계약이 값 목록을 닫았다(코드 사전 2026-09-03). 조건 칸의 값은 서버 코드값에서 온다 */
+  approvalTypeCode?: ListQueryParams['approvalTypeCode'];
   statusCode?: string;
   requestedAtFrom?: string;
   requestedAtTo?: string;
@@ -205,7 +209,10 @@ export const toRequestListQuery = (
 
   return {
     ...toTabScopeQuery(tab),
-    ...(filters.approvalTypeCode === '' ? {} : { approvalTypeCode: filters.approvalTypeCode }),
+    /* 조건 칸의 선택지가 서버 코드값이라 값은 목록 안에 있다 — 계약이 닫은 형으로 좁혀 싣는다. */
+    ...(filters.approvalTypeCode === ''
+      ? {}
+      : { approvalTypeCode: filters.approvalTypeCode as ListQueryParams['approvalTypeCode'] }),
     ...(filters.statusCode === '' ? {} : { statusCode: filters.statusCode }),
     ...(from === '' ? {} : { requestedAtFrom: from }),
     ...(to === '' ? {} : { requestedAtTo: to }),

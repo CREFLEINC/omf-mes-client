@@ -84,13 +84,20 @@ export const createSeed = (now = new Date()) => {
     plantId: PLANT_ID,
     baseUomId: 1001,
     itemTypeCode: item.itemId === 2003 ? 'PRODUCT' : 'MATERIAL',
+    lotControlled: true,
+    serialControlTypeCode: 'NONE',
+    inspectionRequired: item.itemId !== 2003,
+    negativeStockAllowed: false,
     isActive: true,
   }));
 
   const warehouses = [
     { warehouseId: 1001, warehouseCode: 'WH-01', warehouseName: '1공장 자재창고' },
     { warehouseId: 1002, warehouseCode: 'WH-02', warehouseName: '1공장 완제품창고' },
+    /* 불량창고 — W-04-07 판정 대기 대상이 들어오는 자리. `GET /mdm/warehouses?isDefect=true` 가 준다. */
+    { warehouseId: 1003, warehouseCode: 'WH-03', warehouseName: '1공장 불량창고', isDefect: true },
   ].map((warehouse) => ({
+    isDefect: false,
     ...warehouse,
     plantId: PLANT_ID,
     /* 구역 수준이면 위치를 관리한다. 창고 수준이면 위치 스캔을 건너뛴다. */
@@ -123,6 +130,15 @@ export const createSeed = (now = new Date()) => {
       locationCode: 'FG-A-02-01',
       locationName: '완제품 A구역 02열 01단',
     },
+    /* W-04-06 — 반품은 불량창고 위치로 들어간다. 상위 위치가 있어 선택칸이 1단 그룹으로 접힌다. */
+    { locationId: 3005, warehouseId: 1003, locationCode: 'R-01', locationName: '반품 구역' },
+    {
+      locationId: 3006,
+      warehouseId: 1003,
+      parentLocationId: 3005,
+      locationCode: 'R-01-02',
+      locationName: '반품 구역 02',
+    },
   ].map((location) => ({
     ...location,
     locationTypeCode: location.locationCode.startsWith('TMP') ? 'TEMPORARY' : 'RACK',
@@ -138,6 +154,14 @@ export const createSeed = (now = new Date()) => {
       partnerCode: 'SUP-001',
       partnerName: '(주)대한부품',
       roleTypeCode: 'SUPPLIER',
+      isActive: true,
+    },
+    /* W-04-06 — 원 출하 검색의 고객 축. 반품은 고객사에서 돌아온다. */
+    {
+      partnerId: 4002,
+      partnerCode: 'CUS-001',
+      partnerName: '합성 고객사 B',
+      roleTypeCode: 'CUSTOMER',
       isActive: true,
     },
   ];
@@ -215,6 +239,34 @@ export const createSeed = (now = new Date()) => {
    * 실서버에서는 빈 목록을 받는다 - 그 차이를 시험 자리에서 감추지 않는다.
    */
   const codeValues = {
+    /* W-04-07 — 심각도는 고객이 늘리는 값(시드 셋), 상태는 시스템 값(고객 편집 불가). */
+    NONCONFORMANCE_SEVERITY: [
+      ['CRITICAL', '중대'],
+      ['MAJOR', '중'],
+      ['MINOR', '경'],
+    ],
+    NONCONFORMANCE_STATUS: [
+      ['NOT_REQUESTED', '의뢰 전'],
+      ['PENDING_DECISION', '판정 대기'],
+      ['DECIDED', '판정 완료'],
+    ],
+    /* W-04-06 — 입고 유형·사유는 고객이 늘리는 값(시드), 출하 상태는 시스템 값. */
+    RECEIPT_TYPE: [
+      ['MATERIAL', '자재 입고'],
+      ['PRODUCT', '제품 입고'],
+      ['RETURN', '반품 입고'],
+      ['TRANSFER', '창고간 이동 입고'],
+    ],
+    GOODS_RECEIPT_REASON: [
+      ['QUALITY_DEFECT', '품질 불량'],
+      ['WRONG_DELIVERY', '오배송'],
+      ['CUSTOMER_CANCEL', '고객 취소'],
+    ],
+    SHIPMENT_STATUS: [
+      ['UNCONFIRMED', '미확정'],
+      ['CONFIRMED', '확정'],
+      ['CANCELLED', '취소'],
+    ],
     LOT_TYPE: [
       ['MATERIAL', '자재'],
       ['PRODUCTION', '생산'],
@@ -241,8 +293,8 @@ export const createSeed = (now = new Date()) => {
       ['SHIPMENT', '출하'],
     ],
     RECEIPT_TYPE: [
-      ['PURCHASE', '구매 입고'],
-      ['PRODUCTION', '제품 입고'],
+      ['MATERIAL', '자재 입고'],
+      ['PRODUCT', '제품 입고'],
       ['RETURN', '반품 입고'],
       ['TRANSFER', '이고 입고'],
     ],
@@ -742,6 +794,17 @@ export const createSeed = (now = new Date()) => {
       statusCode: 'RELEASED',
       minimumShelfLifeDays: 90,
     },
+    /* W-04-06 — 고객사 B 의 지시서. 확정된 출하 둘이 여기서 나갔다. */
+    {
+      shipmentRequestId: 9602,
+      shipmentRequestNo: 'SR-2026-0820-0112',
+      salesOrderId: 9702,
+      customerId: 4002,
+      plantId: PLANT_ID,
+      shipDate: dayOf(shift(now, -7)),
+      statusCode: 'COMPLETED',
+      minimumShelfLifeDays: 90,
+    },
   ];
 
   const shipmentRequestLines = [
@@ -754,6 +817,121 @@ export const createSeed = (now = new Date()) => {
       pickedQty: 0,
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
+    },
+  ];
+
+  /*
+   * W-04-06 — 반품이 돌아올 «원 출하». 확정된 출하 둘(라인·배분 포함)과 미확정 하나(W-04-12 몫).
+   * 배분 번호가 반품 라인의 `originalShipmentLotAllocationId` 가 된다 — 한 LOT 이 여러 출하에 나뉘어
+   * 나가므로 서버는 LOT 만으로 못 잇는다.
+   */
+  const shipmentAllocation = (allocation) => ({
+    itemId: 2003,
+    itemCode: 'FG-1001',
+    warehouseId: 1002,
+    uomId: 1001,
+    oqcPassed: true,
+    ...allocation,
+    packedQty: allocation.allocatedQty,
+  });
+  const shipments = [
+    {
+      shipmentId: 9901,
+      shipmentNo: 'SH-2026-0455',
+      shipmentRequestId: 9602,
+      warehouseId: 1002,
+      statusCode: 'CONFIRMED',
+      shippedAt: iso(-6, 15),
+      expedited: false,
+      lines: [
+        {
+          shipmentLineId: 9911,
+          lineNo: 1,
+          shipmentRequestLineId: 9801,
+          itemId: 2003,
+          shippedQty: 300,
+          uomId: 1001,
+          allocations: [
+            shipmentAllocation({
+              shipmentLotAllocationId: 9921,
+              shipmentId: 9901,
+              shipmentLineId: 9911,
+              lotId: 8201,
+              lotNo: 'FLOT-2026-0311',
+              allocatedQty: 180,
+            }),
+            shipmentAllocation({
+              shipmentLotAllocationId: 9922,
+              shipmentId: 9901,
+              shipmentLineId: 9911,
+              lotId: 8202,
+              lotNo: 'FLOT-2026-0305',
+              allocatedQty: 120,
+            }),
+          ],
+        },
+      ],
+      versionNo: 1,
+    },
+    {
+      shipmentId: 9902,
+      shipmentNo: 'SH-2026-0448',
+      shipmentRequestId: 9602,
+      warehouseId: 1002,
+      statusCode: 'CONFIRMED',
+      shippedAt: iso(-9, 11),
+      expedited: false,
+      lines: [
+        {
+          shipmentLineId: 9912,
+          lineNo: 1,
+          shipmentRequestLineId: 9801,
+          itemId: 2003,
+          shippedQty: 200,
+          uomId: 1001,
+          allocations: [
+            shipmentAllocation({
+              shipmentLotAllocationId: 9923,
+              shipmentId: 9902,
+              shipmentLineId: 9912,
+              lotId: 8201,
+              lotNo: 'FLOT-2026-0311',
+              allocatedQty: 200,
+            }),
+          ],
+        },
+      ],
+      versionNo: 1,
+    },
+    {
+      shipmentId: 9903,
+      shipmentNo: 'SH-2026-0461',
+      shipmentRequestId: 9601,
+      warehouseId: 1002,
+      statusCode: 'UNCONFIRMED',
+      shippedAt: iso(-1, 16),
+      expedited: false,
+      lines: [
+        {
+          shipmentLineId: 9913,
+          lineNo: 1,
+          shipmentRequestLineId: 9801,
+          itemId: 2003,
+          shippedQty: 100,
+          uomId: 1001,
+          allocations: [
+            shipmentAllocation({
+              shipmentLotAllocationId: 9924,
+              shipmentId: 9903,
+              shipmentLineId: 9913,
+              lotId: 8201,
+              lotNo: 'FLOT-2026-0311',
+              allocatedQty: 100,
+            }),
+          ],
+        },
+      ],
+      versionNo: 1,
     },
   ];
 
@@ -886,6 +1064,118 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /*
+   * W-04-07 판정 대기 대상 — 불량창고(1003)에 들어온 제품 LOT 둘. 반품 갈래 하나(부적합 아직 없음),
+   * OQC 불합격 갈래 하나(이미 판정까지 끝나 ③ 결과 구획이 채워진다). 값은 전부 지어낸 것이다.
+   */
+  const dispositionCandidates = [
+    {
+      lotId: 8201,
+      lotNo: 'FLOT-2026-0311',
+      itemId: 2003,
+      itemCode: 'FG-1001',
+      itemName: '외장 커버',
+      quantity: 200,
+      uomId: 1001,
+      warehouseId: 1003,
+      warehouseName: '1공장 불량창고',
+      sourceCode: 'RETURN',
+      goodsReceiptId: 9601,
+      receiptNo: 'RT-2026-0044',
+      receivedAt: dayOf(shift(now, -2)),
+      partnerName: '합성 거래처 B',
+      inspectionResultId: null,
+      nonconformanceId: null,
+      nonconformanceNo: null,
+      nonconformanceStatusCode: null,
+    },
+    {
+      lotId: 8202,
+      lotNo: 'FLOT-2026-0305',
+      itemId: 2003,
+      itemCode: 'FG-1001',
+      itemName: '외장 커버',
+      quantity: 300,
+      uomId: 1001,
+      warehouseId: 1003,
+      warehouseName: '1공장 불량창고',
+      sourceCode: 'PRODUCT',
+      goodsReceiptId: null,
+      receiptNo: null,
+      receivedAt: dayOf(shift(now, -4)),
+      partnerName: null,
+      inspectionResultId: 5301,
+      nonconformanceId: 7001,
+      nonconformanceNo: 'NC-2026-0903-0001',
+      nonconformanceStatusCode: 'DECIDED',
+    },
+  ];
+
+  const nonconformances = [
+    {
+      nonconformanceId: 7001,
+      nonconformanceNo: 'NC-2026-0903-0001',
+      itemId: 2003,
+      inspectionResultId: 5301,
+      sourceCode: 'PRODUCT',
+      severityCode: 'MAJOR',
+      description: '외관 스크래치 · 상단 모서리 · 300개 중 60개 육안 확인',
+      statusCode: 'DECIDED',
+      openedAt: iso(-4, 11),
+      affectedQtyTotal: 300,
+      uomId: 1001,
+      dispositionProgressCode: 'PARTIAL',
+      lots: [
+        {
+          nonconformanceLotId: 7101,
+          lotId: 8202,
+          lotNo: 'FLOT-2026-0305',
+          affectedQty: 300,
+          uomId: 1001,
+          qualityStatusBeforeCode: 'NORMAL',
+          qualityStatusAfterCode: 'DEFECTIVE',
+        },
+      ],
+      versionNo: 3,
+    },
+  ];
+
+  const dispositionDecisions = [
+    {
+      dispositionDecisionId: 7201,
+      nonconformanceId: 7001,
+      nonconformanceNo: 'NC-2026-0903-0001',
+      dispositionTypeCode: 'REWORK',
+      decisionQty: 240,
+      uomId: 1001,
+      reason: '표면 손상만 있어 재작업으로 회복된다',
+      decidedBy: 4001,
+      decidedAt: iso(-1, 14),
+      approvalRequestId: null,
+      lotId: 8202,
+      lotNo: 'FLOT-2026-0305',
+      itemId: 2003,
+      followUpStatusCode: 'NOT_STARTED',
+      followUpQty: 0,
+    },
+    {
+      dispositionDecisionId: 7202,
+      nonconformanceId: 7001,
+      nonconformanceNo: 'NC-2026-0903-0001',
+      dispositionTypeCode: 'SCRAP',
+      decisionQty: 60,
+      uomId: 1001,
+      reason: '균열이 있어 회복할 수 없다',
+      decidedBy: 4001,
+      decidedAt: iso(-1, 14),
+      approvalRequestId: null,
+      lotId: 8202,
+      lotNo: 'FLOT-2026-0305',
+      itemId: 2003,
+      followUpStatusCode: 'NOT_STARTED',
+      followUpQty: 0,
+    },
+  ];
   return {
     plantId: PLANT_ID,
     today,
@@ -913,6 +1203,8 @@ export const createSeed = (now = new Date()) => {
     goodsIssues: [],
     shipmentRequests,
     shipmentRequestLines,
+    shipments,
+    goodsReceiptLines: [],
     workOrders,
     handlingUnits,
     handlingUnitContents,
@@ -924,6 +1216,9 @@ export const createSeed = (now = new Date()) => {
     approvalRequests,
     goodsReceipts: [],
     productionResults: [],
+    dispositionCandidates,
+    nonconformances,
+    dispositionDecisions,
     documentIssues: [],
     /** 개체(일련번호) — P-02-05 가 발번해 채운다. 씨앗은 비워 둔다(발번 전 상태가 기본이다). */
     serialNumbers: [],

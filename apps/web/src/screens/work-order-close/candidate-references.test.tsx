@@ -28,7 +28,7 @@ const itemResponse = (itemId: number, isActive = true) => ({
     itemName: 'Synthetic Item',
     itemTypeCode: 'MATERIAL',
     baseUomId: 920001,
-    lotControlTypeCode: 'NONE',
+    lotControlled: false,
     serialControlTypeCode: 'NONE',
     inspectionRequired: false,
     fifoPolicyCode: 'FIFO',

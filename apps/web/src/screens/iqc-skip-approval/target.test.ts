@@ -122,7 +122,7 @@ describe('describeTargetName', () => {
    * 서로 다른 글자를 내게 되고, 그 자리가 곧 금지된 매핑표다.
    */
   it('유형 코드가 달라도 같은 표시명이면 같은 이름이 선다', () => {
-    const sameName = { ...targetFixtures.mapped, targetTypeCode: 'SAMPLE-TARGET-Z' };
+    const sameName = { ...targetFixtures.mapped, targetTypeCode: 'SHIPMENT' as const };
 
     expect(describeTargetName(sameName)).toBe(describeTargetName(targetFixtures.mapped));
   });

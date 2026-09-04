@@ -26,7 +26,7 @@ import type {
  */
 
 const BASE_PROGRESS: DocumentProgressView = {
-  documentTypeCode: 'SYN_DOC_TYPE_A',
+  documentTypeCode: 'GOODS_RECEIPT',
   documentId: 9001,
   documentNo: 'SYN-GR-2026-0001',
   documentDate: '2026-08-06',
@@ -157,7 +157,7 @@ export const progressStepFixtures: DocumentProgressStepView[] = [
 ];
 
 const BASE_SUCCESSOR: DocumentSuccessorView = {
-  successorTypeCode: 'SYN_DOC_TYPE_B',
+  successorTypeCode: 'GOODS_ISSUE',
   successorId: 9101,
   successorNo: 'SYN-GI-2026-0101',
   qty: 400,
@@ -226,7 +226,7 @@ const BASE_APPROVAL_STEP: ApprovalStepResponse = {
   stepNo: 1,
   approverId: 9601,
   approverName: '김승인',
-  decisionCode: 'SYN_DECISION_APPROVED',
+  decisionCode: 'APPROVED',
   decisionAt: '2026-08-06T15:02:00+09:00',
   decisionComment: '수량 확인함',
   isMine: false,
@@ -284,7 +284,7 @@ export const approvalRequestDetail = (
   request: {
     approvalRequestId: APPROVAL_REQUEST_ID,
     approvalRequestNo: 'SYN-AP-2026-0001',
-    approvalTypeCode: 'SYN_APPROVAL_TYPE_CANCEL',
+    approvalTypeCode: 'GOODS_RECEIPT_CANCEL',
     requestedBy: 9701,
     requestedByName: '이상신',
     requestedAt: '2026-08-06T14:20:00+09:00',
@@ -296,7 +296,7 @@ export const approvalRequestDetail = (
      * 「화면이 쓰지 않는 값이 응답에 있다」는 사실을 감지기가 볼 수 있게 한다.
      */
     target: {
-      targetTypeCode: 'SYN_TARGET_DOC',
+      targetTypeCode: 'GOODS_RECEIPT',
       targetId: 9001,
       displayName: 'SYN-GR-2026-0001',
       openable: false,
@@ -318,7 +318,7 @@ export const approvalRequestDetail = (
 export const cancelResult = (
   overrides: Partial<CancelResultResponse> = {},
 ): CancelResultResponse => ({
-  documentTypeCode: 'SYN_DOC_TYPE_B',
+  documentTypeCode: 'GOODS_ISSUE',
   documentId: 9001,
   statusCode: 'SYN_STATUS_CANCELLED',
   reversed: true,
@@ -340,15 +340,15 @@ export const cancelResult = (
  * | 다 | **고를 수 없는데 리소스는 있다**(외주 문서 자리 — omf-mes#82). 「비활성 + 사유 표시」와 함께, `cancelResourceOf`가 **고를 수 있는 줄에서만 읽는지**를 잰다 — 두 값이 같은 줄에 있어야 그 가드가 재어진다 |
  */
 export const documentTypeFixtures: readonly DocumentTypeEntry[] = [
-  { code: 'SYN_DOC_TYPE_A', label: '합성 유형 가', cancelResource: null, disabledReason: null },
+  { code: 'GOODS_RECEIPT', label: '합성 유형 가', cancelResource: null, disabledReason: null },
   {
-    code: 'SYN_DOC_TYPE_B',
+    code: 'GOODS_ISSUE',
     label: '합성 유형 나',
     cancelResource: 'goods-receipts',
     disabledReason: null,
   },
   {
-    code: 'SYN_DOC_TYPE_C',
+    code: 'INBOUND_RECEIPT',
     label: '합성 유형 다',
     cancelResource: 'goods-issues',
     disabledReason: '이 유형에는 상태 컬럼이 없어 진행현황을 볼 수 없습니다',

@@ -82,6 +82,12 @@ describe('isIntentReversed — 보낸 갈래가 뒤집혔는가', () => {
     expect(isIntentReversed(null, 'deactivate')).toBe(false);
     expect(isIntentReversed(null, 'activate')).toBe(false);
   });
+
+  /** 견줄 상세가 아직 없으면 현재 갈래를 확인하지 못했으므로 뒤집힘도 확인되지 않았다. */
+  it('견줄 갈래가 아직 없으면 뒤집힌 것이 아니다', () => {
+    expect(isIntentReversed('deactivate', null)).toBe(false);
+    expect(isIntentReversed('activate', null)).toBe(false);
+  });
 });
 
 describe('activationActionOf — 지금 낼 수 있는 손잡이', () => {

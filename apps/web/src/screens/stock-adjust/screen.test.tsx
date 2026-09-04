@@ -3222,7 +3222,7 @@ describe('StockAdjustScreen — 상신이 막힌 사유', () => {
     fillReason('실사 차이분 조정');
 
     expect(APPROVED_APPROVAL_STATUS_CODES).toEqual([]);
-    expect(REJECTION_DECISION_CODES).toEqual([]);
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
     expect(submitButton()).toBeEnabled();
   });
 });
@@ -4440,7 +4440,7 @@ describe('StockAdjustScreen — 전기 자리', () => {
 
     /* 자리표시가 실제로 비어 있는 것이 이 시험의 전제다. */
     expect(APPROVED_APPROVAL_STATUS_CODES).toEqual([]);
-    expect(REJECTION_DECISION_CODES).toEqual([]);
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
 
     await registerThenPostReady(user);
     await expandPost(user);

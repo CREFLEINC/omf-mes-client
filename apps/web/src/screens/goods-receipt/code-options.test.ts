@@ -26,18 +26,21 @@ describe('자리표시 상수', () => {
    * **M26** — 계약 예시 값을 초기값으로 심으면 사용자는 고를 수 있다고 믿는데 서버는 그 값을
    * 모른다. 되돌릴 수 없는 전표에 실리므로 지어내지 않는다.
    */
-  it('코드 다섯의 값 목록이 전부 비어 있다', () => {
-    expect(Object.values(PLACEHOLDER_GOODS_RECEIPT_CODES).every((values) => values.length === 0)).toBe(
-      true,
-    );
-    /* 짝 방향 — 다섯 키가 실제로 있다(빈 객체는 위 단언을 그냥 통과한다). */
+  it('닫힌 구조 코드만 고정 계약 값으로 채운다', () => {
+    expect(PLACEHOLDER_GOODS_RECEIPT_CODES).toEqual({
+      receiptType: [],
+      sourceDocumentType: ['INBOUND_RECEIPT'],
+      qualityStatus: [],
+      inventoryStatus: ['AVAILABLE', 'IN_TRANSIT', 'ON_HOLD', 'BLOCKED'],
+      reason: [],
+    });
     expect(Object.keys(PLACEHOLDER_GOODS_RECEIPT_CODES)).toHaveLength(5);
   });
 
   it('계약의 예시 코드값이 어디에도 심겨 있지 않다', () => {
     const planted = Object.values(PLACEHOLDER_GOODS_RECEIPT_CODES).flat();
 
-    for (const example of ['PURCHASE', 'INBOUND_RECEIPT', 'RELEASED', 'AVAILABLE', 'RETURN']) {
+    for (const example of ['PURCHASE', 'RELEASED', 'RETURN']) {
       expect(planted).not.toContain(example);
     }
   });
@@ -53,8 +56,13 @@ describe('자리표시 상수', () => {
    *
    * 값 목록을 `gr-request.ts`에서 가져오므로 계약이 값을 늘려도 이 감지기가 함께 자란다.
    */
-  it('값 넷이 확정된 뒤에도 재고 상태 자리표시가 비어 있고 등록이 잠긴 채다', () => {
-    expect(PLACEHOLDER_GOODS_RECEIPT_CODES.inventoryStatus).toEqual([]);
+  it('재고 상태는 고정 enum을 쓰되 나머지 운영 코드가 없어 등록은 잠긴 채다', () => {
+    expect(PLACEHOLDER_GOODS_RECEIPT_CODES.inventoryStatus).toEqual([
+      'AVAILABLE',
+      'IN_TRANSIT',
+      'ON_HOLD',
+      'BLOCKED',
+    ]);
     expect(isRequiredCodeListPending(toCodeOptionSets(PLACEHOLDER_GOODS_RECEIPT_CODES))).toBe(true);
 
     /*
@@ -116,10 +124,19 @@ describe('toCodeOptionSets', () => {
     ]);
   });
 
-  it('자리표시 상수를 넘기면 다섯 선택지가 전부 비어 있다', () => {
+  it('자리표시 상수는 고정 계약 축만 선택지로 옮긴다', () => {
     const sets = toCodeOptionSets(PLACEHOLDER_GOODS_RECEIPT_CODES);
 
-    expect(Object.values(sets).every((options) => options.length === 0)).toBe(true);
+    expect(sets.sourceDocumentType.map((option) => option.value)).toEqual(['INBOUND_RECEIPT']);
+    expect(sets.inventoryStatus.map((option) => option.value)).toEqual([
+      'AVAILABLE',
+      'IN_TRANSIT',
+      'ON_HOLD',
+      'BLOCKED',
+    ]);
+    expect(sets.receiptType).toEqual([]);
+    expect(sets.qualityStatus).toEqual([]);
+    expect(sets.reason).toEqual([]);
   });
 });
 
@@ -148,7 +165,9 @@ describe('isRequiredCodeListPending — 배열이 비면 잠기고 차면 풀린
 
   /* 사유는 계약상 선택이라 비어 있어도 입고 처리를 막지 않는다. */
   it('사유만 비어 있으면 잠그지 않는다', () => {
-    expect(isRequiredCodeListPending(toCodeOptionSets({ ...SAMPLE_CODES, reason: [] }))).toBe(false);
+    expect(isRequiredCodeListPending(toCodeOptionSets({ ...SAMPLE_CODES, reason: [] }))).toBe(
+      false,
+    );
   });
 });
 

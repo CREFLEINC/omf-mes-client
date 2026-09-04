@@ -41,6 +41,8 @@ export const screenPathOf = (
 ): string | null => {
   if (screenId === '') return null;
 
+  if (!Object.hasOwn(routes, screenId)) return null;
+
   const route = routes[screenId];
 
   if (route === undefined) return null;

@@ -25,7 +25,7 @@ export const waitingRequest: InspectionRequestResponse = {
   inspectionRequestNo: 'IR-OQC-0001',
   inspectionTypeCode: 'OQC',
   inspectionPlanVersionId: 3101,
-  targetTypeCode: 'SHIPMENT_LINE',
+  targetTypeCode: 'SHIPMENT_REQUEST',
   targetId: 6101,
   itemId: 2101,
   lotId: 5101,

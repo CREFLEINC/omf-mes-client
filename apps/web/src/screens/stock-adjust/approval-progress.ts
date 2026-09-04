@@ -63,17 +63,11 @@ const t = messages.stockAdjust;
 export const APPROVED_APPROVAL_STATUS_CODES: readonly string[] = [];
 
 /**
- * 반려를 뜻하는 결재 결과 코드 — **비어 있는 것이 지금의 사실이다.**
+ * 반려를 뜻하는 결재 결과 코드 — 고정 OpenAPI가 `REJECTED`로 닫았다.
  *
- * 디자인 시스템 `Stepper`에 반려 상태가 있고 X 글리프를 그리지만, 켜려면 결과 코드 문자열을
- * 해석해야 한다. 그것이 공유계약이 금지한 일이다.
- *
- * | | 지금(비어 있다) | 채우면 |
- * | --- | --- | --- |
- * | 반려 단계의 그림 | 완료와 같은 노드 + **결과 코드 글자** | 그 코드의 단계가 반려로 그려진다 |
- * | **버튼 잠금** | **없다** | **여전히 없다** |
+ * `REJECTED` 단계는 반려로 그리되, 이 값으로 버튼을 잠그지는 않는다.
  */
-export const REJECTION_DECISION_CODES: readonly string[] = [];
+export const REJECTION_DECISION_CODES = ['REJECTED'] as const;
 
 /**
  * 이 조정이 상신됐는가 — **세 갈래**다.
@@ -206,7 +200,7 @@ const filled = (value: string | null | undefined): string | null => {
  * 단계 하나의 상태.
  *
  * **결재했는가와 지금 차례인가, 둘로만 가른다.** 결재 기록이 있으면 완료이며, 그 코드가 반려
- * 자리표시에 들어 있을 때만 반려다 — 자리표시가 빈 지금은 어떤 코드도 반려가 되지 않는다.
+ * 고정 목록의 `REJECTED`일 때만 반려다.
  *
  * **결재 기록이 있으면 `isCurrent`가 참이어도 완료다.** 두 값이 어긋나는 응답이 실재하고,
  * 그때 「진행 중」으로 그리면 사용자가 이미 끝난 단계를 기다린다.

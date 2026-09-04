@@ -15,6 +15,7 @@ import { ReworkResultRegisterScreen } from '../screens/rework-result-register/sc
 import { RunningChangeScreen } from '../screens/running-change/screen';
 import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
+import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 import { WorkStartScreen } from '../screens/work-start/screen';
 
@@ -237,4 +238,16 @@ export const popRoutes: RouteObject[] = [
    * 자동 실행하며 화면이 없다. 이 주소가 다루는 것은 **생산 당일 교체** 하나다.
    */
   { path: '/pop/running-change', element: <RunningChangeScreen /> },
+  /*
+   * P-02-10 — 작업 중단(홀드) 등록. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⛔ **세션이 열려 있어야 성립한다**(스펙 §5-2) — 세션 사건의 세션 참조가 NOT NULL 이라
+   * 세션 없이는 중단을 기록할 자리가 없다. 그래서 이 주소로 바로 들어와도 세션이 없으면
+   * 차단 안내가 선다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=`) — 작업지시 선택(`P-02-01`)이
+   * 아직 이 저장소에 없다. 그 화면이 서면 `entry-context.ts` 하나가 바뀐다. 사번은 셸의
+   * `pop-identity` → `P-CO-01` 의 `worker-session` 순으로 읽고, 둘 다 비면 주소를 본다.
+   */
+  { path: '/pop/work-hold', element: <WorkHoldRegisterScreen /> },
 ];

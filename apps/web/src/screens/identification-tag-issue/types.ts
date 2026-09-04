@@ -25,25 +25,18 @@ export type Printer = components['schemas']['Printer'];
 export const MAX_ISSUE_QUANTITY = 1000;
 
 /**
- * 이 화면이 고정으로 싣는 코드값.
+ * ⚠ **값 목록이 확정되지 않은 코드들 — 자리표시다**(착수 이슈 미결표 · 요구서 §3-1, `omf-mes#145`).
  *
- * ⭐ **자리표시가 아니다 — 계약이 값을 닫았다.** 출력물 종류는 enum 9종으로 좁혀졌고
- * (`MATERIAL_LOT_LABEL`·`GOODS_ISSUE_QR`·`PRODUCTION_LOT_LABEL`·`IDENTIFICATION_TAG`·
- * `PACKING_LABEL`·`DELIVERY_LABEL`·`CERTIFICATE_OF_ANALYSIS`·`TOOL_LABEL`·`LOCATION_LABEL`),
- * 대상 유형은 공유계약 A-10 대응표로 닫혔다. 전례가 이미 확정값을 쓴다
- * (`packing-label-reprint/types.ts` 의 `DOCUMENT_TYPE_CODES`).
- *
- * ⛔ **`TAG` 로 되돌리지 않는다.** 종전 자리표시 `TAG` 는 좁혀진 목록에 없어 서버가 422 로
- * 거절했고, 화면은 그것을 「프린터를 확인할 수 없습니다」로 표시했다 — 실기 확인이 이 값
- * 하나에 막혔다(실측).
+ * 확정되면 **이 파일 한 곳만** 바뀐다. 화면 곳곳에 문자열을 흩뿌리면 값이 도착했을 때 어디를
+ * 고쳐야 하는지 알 수 없고, 고치다 만 자리가 조용히 남는다.
  *
  * ⛔ **이 값들을 사용자에게 선택지로 보이지 않는다.** 화면이 고정으로 싣는 값이지 사람이 고르는
- * 값이 아니다.
+ * 값이 아니다 — 고르게 두면 확정되지 않은 값을 사용자가 고른 것으로 기록에 남는다.
  */
-export const ISSUE_CODES = {
-  /** 출력물 종류 — 인식표. */
+export const PLACEHOLDER_CODES = {
+  /** 출력물 종류 — 인식표. ✅ 계약 `enum`으로 확정됐다(코드 사전 2026-09-03) — 옛 `TAG`는 거부된다 */
   documentType: 'IDENTIFICATION_TAG',
-  /** 발행 대상 유형 — 개체(일련번호)를 가리킨다. */
+  /** 발행 대상 유형 — 개체(일련번호)를 가리킨다. ✅ 같은 회차에 `enum`으로 확정됐다 */
   serialTargetType: 'SERIAL_NUMBER',
 } as const;
 

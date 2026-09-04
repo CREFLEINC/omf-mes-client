@@ -3,7 +3,6 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { PENDING_CODE_VALUE } from './code-options';
 import { GroupFormPane, type GroupFormPaneProps } from './group-form-pane';
 import type { GroupFormValues } from './types';
 
@@ -13,7 +12,7 @@ const values: GroupFormValues = {
   plantId: '11',
   groupCode: 'GRP-A',
   groupName: '프레스 구역',
-  groupTypeCode: PENDING_CODE_VALUE,
+  groupTypeCode: 'LINE',
   parentGroupId: '',
 };
 
@@ -93,11 +92,11 @@ describe('GroupFormPane', () => {
     expect(screen.getByRole('textbox', { name: /그룹코드/ })).toBeEnabled();
   });
 
-  /* 값 목록이 확정되지 않았다는 사실을 감추지 않는다 — 고를 것이 하나뿐인 이유를 밝힌다. */
-  it('그룹유형에 값 목록 준비 중 안내를 붙인다', () => {
+  /* 계약이 값을 닫았으므로(코드 사전 2026-09-03) 「준비 중」 안내가 남아 있으면 거짓이 된다. */
+  it('그룹유형에 값 목록 준비 중 안내를 붙이지 않는다', () => {
     renderPane();
 
-    expect(screen.getByText(messages.pendingCode.note)).toBeInTheDocument();
+    expect(screen.queryByText(messages.pendingCode.note)).not.toBeInTheDocument();
   });
 
   /* 고를 수 없는 값이 있다는 사실을 밝히지 않으면 사용자는 값이 사라진 줄 안다. */

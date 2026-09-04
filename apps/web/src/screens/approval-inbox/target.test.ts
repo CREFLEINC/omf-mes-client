@@ -10,7 +10,7 @@ const t = messages.approvalInbox;
 /** 대상 하나. **네 갈래를 만드는 축은 `openable`·`screenId`·매핑표 셋뿐이다.** */
 const target = (openable: boolean, screenId?: string, displayName = '합성 대상 문서 가') => {
   const made: ApprovalTarget = {
-    targetTypeCode: 'SAMPLE-TARGET-A',
+    targetTypeCode: 'INBOUND_LOT',
     targetId: 9401,
     displayName,
     openable,
@@ -48,6 +48,12 @@ describe('대상 열기 판정', () => {
 
   it('현재 표에 없는 화면 ID의 대상은 잠긴다', () => {
     expect(judgeTargetOpen(target(true, 'W-99-99'), 9001, SCREEN_ROUTES)).toEqual({
+      kind: 'unmapped',
+    });
+  });
+
+  it('객체 프로토타입 이름도 매핑되지 않은 대상으로 잠긴다', () => {
+    expect(judgeTargetOpen(target(true, 'constructor'), 9001, SCREEN_ROUTES)).toEqual({
       kind: 'unmapped',
     });
   });
@@ -112,6 +118,6 @@ describe('대상 이름', () => {
   });
 
   it('대상 유형 코드는 이름에 섞이지 않는다 — 유형으로 이름을 지어내지 않는다', () => {
-    expect(describeTargetName(target(true, 'W-99-99'))).not.toContain('SAMPLE-TARGET-A');
+    expect(describeTargetName(target(true, 'W-99-99'))).not.toContain('INBOUND_LOT');
   });
 });

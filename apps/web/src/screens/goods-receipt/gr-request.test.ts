@@ -23,7 +23,7 @@ const DRAFT: ReceiptDraft = {
   location: '9802',
   codes: {
     receiptType: 'SAMPLE_RECEIPT_TYPE_A',
-    sourceDocumentType: 'SAMPLE_SOURCE_TYPE_A',
+    sourceDocumentType: 'INBOUND_RECEIPT',
     qualityStatus: 'SAMPLE_QUALITY_A',
     inventoryStatus: 'AVAILABLE',
     reason: '',
@@ -156,7 +156,7 @@ describe('toGoodsReceiptRequest — 되돌릴 수 없는 쓰기의 본문', () =
     const body = createdBody();
 
     expect(body.receiptTypeCode).toBe('SAMPLE_RECEIPT_TYPE_A');
-    expect(body.sourceDocumentTypeCode).toBe('SAMPLE_SOURCE_TYPE_A');
+    expect(body.sourceDocumentTypeCode).toBe('INBOUND_RECEIPT');
     expect(body.lines[0]?.qualityStatusCode).toBe('SAMPLE_QUALITY_A');
     expect(body.lines[0]?.inventoryStatusCode).toBe('AVAILABLE');
   });

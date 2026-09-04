@@ -6,7 +6,7 @@ import { toDecisionLock, type DecisionLockInput } from './decision-lock';
 
 const t = messages.dispositionDecision;
 /** ⚠ 지어낸 자리표시다 — 처분 유형의 실제 값 목록은 아직 확정되지 않았다. */
-const CODES = ['CODE-A'];
+const CODES = ['REWORK'];
 
 const http = (status: number): ApiError => ({ kind: 'http', status });
 const NETWORK: ApiError = { kind: 'network' };

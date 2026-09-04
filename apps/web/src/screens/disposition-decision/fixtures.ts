@@ -84,7 +84,7 @@ export const conflictResponseFixture = (
 // prettier-ignore
 const itemFixture = {
   itemId: 5001, itemCode: 'SYNTH-ITEM-1', itemName: '합성 품목', itemTypeCode: 'CODE-F',
-  baseUomId: 7001, lotControlTypeCode: 'CODE-G', serialControlTypeCode: 'CODE-H',
+  baseUomId: 7001, lotControlled: true, serialControlTypeCode: 'CODE-H',
   inspectionRequired: true, fifoPolicyCode: 'CODE-I', negativeStockAllowed: false, isActive: true,
 };
 
@@ -92,7 +92,7 @@ const uomFixture = { uomId: 7001, uomCode: 'EA', uomName: '개', decimalScale: 0
 
 // prettier-ignore
 const decisionFixture = (decisionQty: number): Record<string, unknown> => ({
-  dispositionDecisionId: 3001, nonconformanceId: 41, dispositionTypeCode: 'CODE-A', decisionQty,
+  dispositionDecisionId: 3001, nonconformanceId: 41, dispositionTypeCode: 'REWORK', decisionQty,
   uomId: 7001, reason: '표면만 손상돼 재작업으로 회복된다', decidedBy: 4001,
   decidedAt: '2026-08-12T14:20:00+09:00',
 });

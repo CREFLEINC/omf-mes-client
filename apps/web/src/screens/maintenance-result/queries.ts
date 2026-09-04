@@ -1,4 +1,4 @@
-import type { ApiClient, components } from '@omf-mes/api-client';
+import type { ApiClient, components, paths } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -26,9 +26,12 @@ type Client = ApiClient['client'];
 type MaintenanceResult = components['schemas']['MaintenanceResult'];
 type MaintenanceResultCreate = components['schemas']['MaintenanceResultCreate'];
 
+type ResultQueryParams = NonNullable<paths['/maintenance/results']['get']['parameters']['query']>;
+
 export interface ResultListQuery {
   maintenanceOrderId?: number;
-  targetTypeCode?: string;
+  /** 계약이 대상 유형을 두 값으로 닫았다(`EQUIPMENT`·`MOLD` · 코드 사전 2026-09-03) */
+  targetTypeCode?: ResultQueryParams['targetTypeCode'];
   targetId?: number;
   startedFrom?: string;
   startedTo?: string;

@@ -42,7 +42,7 @@ describe('RequestFilterBar — 자리표시 선택칸', () => {
   });
 
   it('값이 오면 선택칸이 살아난다 — 자리표시가 죽은 가지가 아니다', () => {
-    renderBar({ approvalTypeOptions: toCodeOptions(['SAMPLE-TYPE-A']) });
+    renderBar({ approvalTypeOptions: toCodeOptions(['GOODS_ISSUE_DISPOSAL']) });
 
     /* 안내는 채워진 칸에서만 사라진다 — 상태 칸은 아직 비어 있다. */
     expect(screen.getAllByText(messages.pendingCode.note).length).toBe(1);
@@ -55,14 +55,17 @@ describe('RequestFilterBar — 자리표시 선택칸', () => {
 
   it('값이 오면 그 값을 고를 수 있다', async () => {
     const { onSearch, user } = renderBar({
-      approvalTypeOptions: toCodeOptions(['SAMPLE-TYPE-A', 'SAMPLE-TYPE-B']),
+      approvalTypeOptions: toCodeOptions(['GOODS_ISSUE_DISPOSAL', 'INVENTORY_ADJUSTMENT']),
     });
 
     await user.click(screen.getByLabelText(t.fields.approvalTypeCode));
-    await user.click(screen.getByRole('option', { name: 'SAMPLE-TYPE-B' }));
+    await user.click(screen.getByRole('option', { name: 'INVENTORY_ADJUSTMENT' }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
-    expect(onSearch).toHaveBeenCalledWith({ ...EMPTY_FILTERS, approvalTypeCode: 'SAMPLE-TYPE-B' });
+    expect(onSearch).toHaveBeenCalledWith({
+      ...EMPTY_FILTERS,
+      approvalTypeCode: 'INVENTORY_ADJUSTMENT',
+    });
   });
 });
 

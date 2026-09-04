@@ -189,6 +189,36 @@ describe('ShipmentRequestCreateScreen — 배정 수량 검증(완료 조건 C4)
   });
 });
 
+describe('ShipmentRequestCreateScreen — 고객 LOT 요구 길이 검증', () => {
+  it('200자를 넘으면 인라인 오류를 보이고 편성을 막는다', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<ShipmentRequestCreateScreen />, {
+      fetch: createStubFetch(baseRoutes()),
+      route: ROUTE,
+    });
+
+    await user.click(
+      await screen.findByRole('button', { name: t.table.selectRow('SAMPLE-SO-0001') }),
+    );
+
+    const submitButton = screen.getByRole('button', { name: t.actions.submit });
+
+    await user.type(
+      screen.getByLabelText(t.lineTable.customerLotRequirementLabel(1)),
+      '가'.repeat(201),
+    );
+
+    expect(
+      await screen.findByText(t.errors.customerLotRequirementTooLong(200)),
+    ).toBeInTheDocument();
+    expect(submitButton).toBeDisabled();
+    expect(
+      document.getElementById(submitButton.getAttribute('aria-describedby') ?? ''),
+    ).toHaveTextContent(t.actionReasons.lineInvalid);
+  });
+});
+
 describe('ShipmentRequestCreateScreen — 지시서 가져오기(완료 조건 C7)', () => {
   it('항상 비활성이고 사유가 붙어 있다', async () => {
     renderWithProviders(<ShipmentRequestCreateScreen />, {
