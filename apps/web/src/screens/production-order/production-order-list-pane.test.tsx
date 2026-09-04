@@ -68,6 +68,12 @@ describe('ProductionOrderListPane 목록', () => {
   it('W/O 전개/계획을 포함한 열과 받은 형제 순서를 그대로 표시한다', () => {
     renderPane();
 
+    const pane = screen.getByLabelText(t.panes.list);
+    const table = screen.getByRole('table', { name: t.panes.list });
+    expect(pane).toHaveClass('production-order-pane');
+    expect(screen.getByRole('heading', { name: t.panes.list })).toBeInTheDocument();
+    expect(table.closest('.production-order-table')).not.toBeNull();
+    expect(within(table).getByText(t.panes.list)).toHaveClass('production-order-table-caption');
     expect(screen.getAllByRole('columnheader').map((node) => node.textContent)).toEqual([
       t.fields.productionOrderNo,
       t.fields.erpProductionOrderNo,

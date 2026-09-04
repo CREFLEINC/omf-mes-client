@@ -327,8 +327,12 @@ export const DispositionDecisionScreen = ({
             value: 'pending',
             label: t.tabs.pending,
             content: (
-              <div className="three-pane">
-                <section className="pane" aria-label={t.panes.list}>
+              <div className="disposition-workspace">
+                <section
+                  className="pane disposition-pane disposition-list-pane"
+                  aria-label={t.panes.list}
+                >
+                  <h2 className="pane-title">{t.panes.list}</h2>
                   <FilterBar
                     applied={filters}
                     severityOptions={toCodeOptions(severityCodes)}
@@ -369,59 +373,63 @@ export const DispositionDecisionScreen = ({
                     onChangePage={(nextPage) => apply(filters, nextPage)}
                   />
                 </section>
-                <section className="pane" aria-label={t.panes.detail}>
-                  <DetailSlot
-                    selectedId={selectedId}
-                    detail={{
-                      isPending: detail.isPending,
-                      isError: detail.isError,
-                      isNotFound: isDetailNotFound,
-                      error: detail.error,
-                      view: detail.data === undefined ? null : toDetailView(detail.data),
-                    }}
-                    decisions={{
-                      rows: decisionRows,
-                      isLoading: decisions.isPending,
-                      isError: decisions.isError,
-                    }}
-                    remaining={remaining}
-                    items={items}
-                    uoms={uoms}
-                    onRetry={() => void detail.refetch()}
-                  />
-                </section>
-                <section className="pane" aria-label={t.panes.decision}>
-                  <DecisionFormPane
-                    value={form}
-                    errors={showErrors ? errors : write.fieldErrors}
-                    qtyNotice={remainingNotice(form, remaining)}
-                    lockReason={lock.reason}
-                    isUncertain={lock.isUncertain}
-                    onCheckOutcome={checkOutcome}
-                    dispositionOptions={toCodeOptions(dispositionTypeCodes)}
-                    uomId={uomId}
-                    uoms={uoms}
-                    writeError={write.error}
-                    isSaving={write.isSaving}
-                    canCancel={hasDecisionInput(form)}
-                    onChange={(next) => {
-                      /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
-                      if (next.dispositionTypeCode !== form.dispositionTypeCode)
-                        write.clearFieldError('dispositionTypeCode');
-                      if (next.qty !== form.qty) write.clearFieldError('decisionQty');
-                      if (next.reason !== form.reason) write.clearFieldError('reason');
-                      setForm(next);
-                    }}
-                    onSave={save}
-                    onCancel={() => {
-                      setForm(EMPTY_DECISION_FORM);
-                      setShowErrors(false);
-                      /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
-                      write.reset();
-                    }}
-                    onReload={checkOutcome}
-                  />
-                </section>
+                <div className="pane-stack disposition-side">
+                  <section className="pane disposition-pane" aria-label={t.panes.detail}>
+                    <h2 className="pane-title">{t.panes.detail}</h2>
+                    <DetailSlot
+                      selectedId={selectedId}
+                      detail={{
+                        isPending: detail.isPending,
+                        isError: detail.isError,
+                        isNotFound: isDetailNotFound,
+                        error: detail.error,
+                        view: detail.data === undefined ? null : toDetailView(detail.data),
+                      }}
+                      decisions={{
+                        rows: decisionRows,
+                        isLoading: decisions.isPending,
+                        isError: decisions.isError,
+                      }}
+                      remaining={remaining}
+                      items={items}
+                      uoms={uoms}
+                      onRetry={() => void detail.refetch()}
+                    />
+                  </section>
+                  <section className="pane disposition-pane" aria-label={t.panes.decision}>
+                    <h2 className="pane-title">{t.panes.decision}</h2>
+                    <DecisionFormPane
+                      value={form}
+                      errors={showErrors ? errors : write.fieldErrors}
+                      qtyNotice={remainingNotice(form, remaining)}
+                      lockReason={lock.reason}
+                      isUncertain={lock.isUncertain}
+                      onCheckOutcome={checkOutcome}
+                      dispositionOptions={toCodeOptions(dispositionTypeCodes)}
+                      uomId={uomId}
+                      uoms={uoms}
+                      writeError={write.error}
+                      isSaving={write.isSaving}
+                      canCancel={hasDecisionInput(form)}
+                      onChange={(next) => {
+                        /* 고친 칸의 서버 오류만 지운다 — 남은 칸의 오류까지 지우면 못 본 채 다시 보낸다. */
+                        if (next.dispositionTypeCode !== form.dispositionTypeCode)
+                          write.clearFieldError('dispositionTypeCode');
+                        if (next.qty !== form.qty) write.clearFieldError('decisionQty');
+                        if (next.reason !== form.reason) write.clearFieldError('reason');
+                        setForm(next);
+                      }}
+                      onSave={save}
+                      onCancel={() => {
+                        setForm(EMPTY_DECISION_FORM);
+                        setShowErrors(false);
+                        /* 지운 값에 대한 서버 판정을 남기지 않는다 — 빈 칸에 붙은 오류는 풀 길이 없다. */
+                        write.reset();
+                      }}
+                      onReload={checkOutcome}
+                    />
+                  </section>
+                </div>
               </div>
             ),
           },

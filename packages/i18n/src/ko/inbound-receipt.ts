@@ -12,7 +12,8 @@ export const inboundReceipt = {
   record: '입하 등록',
   scan: {
     legend: '자재 LOT 스캔',
-    label: '자재 LOT 스캔',
+    /* 구획 제목과 같은 말을 쓰지 않는다. 좁은 화면에 같은 줄이 둘로 붙는다. */
+    label: 'LOT 번호',
     placeholder: '자재 LOT 라벨을 비추세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
@@ -43,9 +44,29 @@ export const inboundReceipt = {
     clear: '발주 선택 지우기',
   },
   exception: {
-    /** 발주 없이 도착한 건은 공급사의 출처가 정해지지 않아 아직 등록이 서지 않는다. */
-    absent: '발주 없이 도착한 건은 아직 이 화면에서 등록할 수 없습니다',
-    absentWhy: '공급사를 발주에서 승계하는 구조라, 발주가 없으면 공급사를 정할 자리가 없습니다.',
+    /** 발주가 없으면 공급사도 품목도 단위도 승계할 곳이 없어 담당자가 고른다. */
+    legend: '발주 없이 도착',
+    open: '발주 없이 등록',
+    openNote: '발주가 없으면 공급사와 품목과 단위를 직접 고릅니다.',
+    close: '발주 고르기로 되돌리기',
+    supplierLabel: '공급사',
+    supplierPlaceholder: '공급사를 고르세요',
+    supplierLoading: '공급사를 불러오는 중입니다',
+    supplierLoadFailed: '공급사를 확인할 수 없습니다',
+    supplierNone: '고를 공급사가 없습니다',
+    itemLabel: '품목',
+    itemPlaceholder: '품목을 고르세요',
+    itemLoadFailed: '품목을 확인할 수 없습니다',
+    /** 품목 마스터의 주인은 ERP 다. 이 화면이 품목을 만들 길은 계약에 없다. */
+    itemUnregistered: '목록에 없는 품목은 여기서 만들 수 없습니다',
+    itemUnregisteredWhy: 'ERP 에 품목이 선 뒤에 등록할 수 있습니다.',
+    uomLabel: '단위',
+    uomPlaceholder: '단위를 고르세요',
+    uomLoadFailed: '단위를 확인할 수 없습니다',
+    /** 예정 수량이 없으므로 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */
+    noVerdict: '발주가 없어 예정과 견주지 않습니다',
+    /** 공장은 단말 토큰이 싣고 온다. 없으면 지어내지 않고 막는다. */
+    noPlant: '이 단말의 공장을 확인할 수 없어 등록할 수 없습니다',
   },
   note: {
     legend: '거래명세서',
@@ -70,14 +91,29 @@ export const inboundReceipt = {
     expiryBeforeManufactured: '유효기한이 제조일보다 앞설 수 없습니다',
   },
   verdict: {
-    normal: '예정 수량과 맞습니다',
+    normal: '남은 예정과 맞습니다',
     /** 판정 결과를 먼저 보인 뒤에 넘긴다. 넘어갈 화면은 아직 이 앱에 없다. */
-    over: (ordered: string, received: string) =>
-      `수량 초과 — 예정 ${ordered}, 실입하 ${received}`,
+    over: (remaining: string, arrived: string) =>
+      `수량 초과 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
     overNext: '초과분은 초과 입하 분리에서 나눕니다. 그 화면은 아직 이 앱에 없습니다.',
-    under: (ordered: string, received: string) =>
-      `수량 부족 — 예정 ${ordered}, 실입하 ${received}`,
-    underNext: '부족분은 입하 오류 등록으로 갑니다. 그 화면은 아직 이 앱에 없습니다.',
+    under: (remaining: string, arrived: string) =>
+      `수량 부족 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
+    /*
+     * 화면은 더 올 것인지 알지 못한다. 트럭과 거래명세서를 본 사람이 안다. 네 수를 보이고
+     * 사람이 고르게 한다 - 수 없이 고르라 하면 무엇을 고르는지 모른다.
+     */
+    counts: {
+      ordered: '발주',
+      received: '누적',
+      arrived: '이번 도착',
+      remaining: '남은 예정',
+    },
+    underAsk: '더 올 것이 남았습니까?',
+    /** 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. */
+    underContinue: '계속 등록',
+    underContinueNote: '분할 납품이면 그대로 등록합니다. 발주는 열린 채 남습니다.',
+    underVariance: '입하 오류 등록',
+    underVarianceNote: '이번이 마지막인데 모자라면 입하 오류로 넘어갑니다.',
   },
   /** 검사 대상 여부는 서버가 라인마다 정한다. 화면이 보내지 않는다. */
   inspectionNote: '검사 대상 여부는 등록 뒤 서버가 라인마다 정합니다',
@@ -94,6 +130,11 @@ export const inboundReceipt = {
     title: '입하가 되돌아왔습니다',
     description: '되돌아온 건에서 사유를 확인하세요. ',
     action: '되돌아온 건 보기',
+  },
+  /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 등록되지 않았다고 말한다. */
+  saveFailed: {
+    title: '입하를 담아 두지 못했습니다',
+    description: '등록되지 않았습니다. 다시 시도하세요.',
   },
   noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
   another: '다음 입하',

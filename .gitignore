@@ -1,12 +1,17 @@
 node_modules/
 dist/
+# POP 전용 빌드 산출물 — 이름이 `dist`가 아니라 위 규칙에 걸리지 않는다.
+dist-pop/
 coverage/
 *.local
 .DS_Store
 
 # 개인 Agent 도구·설정 — 정본은 docs/client-dev-workflow/ 이며 이 저장소에 공유되지 않는다.
 # 작업 산출물·설계 저장소 참조 클론처럼 비공개 내용이 섞일 수 있는 것도 이 아래에 둔다.
+/AGENTS.md
+/CLAUDE.md
 .claude/
+.client-dev/
 release/
 
 # 브라우저 육안 확인 산출물 — 세션마다 새로 생기며 제품 파일이 아니다.

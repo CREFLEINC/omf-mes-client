@@ -13,7 +13,7 @@ const t = messages.disposalIssue;
 /** 값 목록이 확정된 뒤의 모양. **지금의 사실이 아니라 전환을 재기 위한 입력**이다. */
 const FILLED_CODES = toCodeOptionSets({
   issueType: ['SAMPLE_GI_TYPE_A'],
-  sourceDocumentType: ['SAMPLE_SRC_TYPE_A'],
+  sourceDocumentType: ['INBOUND_RECEIPT'],
   reason: ['SAMPLE_GI_REASON_A'],
   receiptType: [],
   status: [],
@@ -71,7 +71,12 @@ describe('DisposalForm 자리표시', () => {
   it('값 목록이 비면 코드 셋이 잠기고 사유가 보인다', () => {
     renderForm();
 
-    for (const box of codeBoxes()) expect(box).toBeDisabled();
+    expect(screen.getByLabelText(t.formFields.issueType)).toBeDisabled();
+    expect(screen.getByLabelText(t.formFields.reason)).toBeDisabled();
+
+    const sourceDocumentType = screen.getByLabelText(t.formFields.sourceDocumentType);
+    expect(sourceDocumentType).toBeEnabled();
+    expect(sourceDocumentType).not.toHaveAccessibleDescription(messages.pendingCode.note);
 
     /* 선택칸은 **넷**이다 — 코드 셋과 폐기 거래처. 세지 않으면 칸이 늘거나 줄어도 조용하다. */
     expect(screen.getAllByRole('combobox')).toHaveLength(4);

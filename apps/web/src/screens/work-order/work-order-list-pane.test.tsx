@@ -69,6 +69,8 @@ describe('WorkOrderListPane', () => {
       ],
     });
 
+    expect(screen.getByRole('heading', { level: 2, name: t.panes.list })).toBeVisible();
+    expect(screen.getByRole('table', { name: t.panes.list })).toBeInTheDocument();
     expect(headerTexts()).toEqual(['W/O 번호', '공정', '수량', '우선순위', '배정', '검증']);
     const bodyRows = within(screen.getByRole('table')).getAllByRole('row').slice(1);
 
@@ -111,6 +113,7 @@ describe('WorkOrderListPane', () => {
     const priority = screen.getByRole('textbox', { name: 'SYN-WO-ALPHA 우선순위' });
 
     expect(priority).toHaveAttribute('inputmode', 'numeric');
+    expect(priority.closest('.work-order-priority-field')).not.toBeNull();
     expect(priority).toHaveAccessibleDescription('합성 우선순위 오류');
     await user.type(priority, '-');
     expect(props.onPriorityChange).toHaveBeenLastCalledWith(901, '-');

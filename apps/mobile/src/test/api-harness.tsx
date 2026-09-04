@@ -23,7 +23,8 @@ export type StubFetch = (request: Request) => Promise<Response>;
 
 export interface StubRoute {
   match: (request: Request) => boolean;
-  respond: (request: Request) => Response;
+  /** 늦게 답하는 서버를 흉내 내야 하는 시험이 있어 약속도 받는다. */
+  respond: (request: Request) => Response | Promise<Response>;
 }
 
 export const jsonResponse = (body: unknown, init: ResponseInit = {}): Response =>
@@ -51,24 +52,31 @@ export const createStubFetch =
 
 export interface ProviderOptions {
   fetch: StubFetch;
+  /**
+   * 여러 번 렌더하는 사이에 캐시를 이어 붙일 때 쓴다.
+   *
+   * 기본은 렌더마다 새 캐시다. 앱에서 화면을 오가는 것은 캐시를 버리지 않으므로, 다시 들어온
+   * 화면이 낡은 응답을 보는 자리는 같은 캐시를 넘겨야 잴 수 있다.
+   */
+  queryClient?: QueryClient;
 }
+
+export const createTestQueryClient = (): QueryClient =>
+  new QueryClient({ defaultOptions: appQueryDefaults });
 
 export type ProvidedRenderHookResult<TResult> = RenderHookResult<TResult, unknown> & {
   apiClient: ApiClient;
 };
 
 /**
- * 앱의 캐시 기본값을 그대로 쓴다. 여기서 값을 다시 적으면 앱이 바뀌어도 테스트는 옛
- * 값으로 계속 통과한다 — 오프라인으로 보고될 때 조회가 보류되는 실패가 그런 갈래다.
- * 다시 조회하지 않게 만드는 값만 덮는다.
+ * 앱의 캐시 기본값을 그대로 쓴다.
+ *
+ * 여기서 값을 다시 적으면 앱이 바뀌어도 테스트는 옛 값으로 계속 통과한다. 특히 `staleTime`
+ * 을 0 으로 덮으면 앱보다 자주 다시 조회하게 되어, 낡은 응답이 화면에 남는 실패가 시험에
+ * 잡히지 않는다 — 다시 조회해야 하는 자리는 화면이 스스로 정하게 두고 여기서 덮지 않는다.
  */
-const createProviders = (fetch: StubFetch) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      ...appQueryDefaults,
-      queries: { ...appQueryDefaults.queries, staleTime: 0 },
-    },
-  });
+const createProviders = (fetch: StubFetch, shared?: QueryClient) => {
+  const queryClient = shared ?? createTestQueryClient();
   const apiClient = createApiClient({ baseUrl: TEST_BASE_URL, fetch });
 
   const Providers = ({ children }: { children: ReactNode }): ReactNode => (
@@ -94,7 +102,7 @@ export const renderHookWithProviders = <TResult,>(
   hook: () => TResult,
   options: ProviderOptions,
 ): ProvidedRenderHookResult<TResult> => {
-  const { apiClient, Providers } = createProviders(options.fetch);
+  const { apiClient, Providers } = createProviders(options.fetch, options.queryClient);
   const result = renderHook(hook, { wrapper: Providers });
 
   return { ...result, apiClient };
@@ -107,7 +115,7 @@ export const renderWithProviders = (
   ui: ReactNode,
   options: ProviderOptions,
 ): ProvidedRenderResult => {
-  const { apiClient, Providers } = createProviders(options.fetch);
+  const { apiClient, Providers } = createProviders(options.fetch, options.queryClient);
   const result = render(<Providers>{ui}</Providers>);
 
   return { ...result, apiClient };

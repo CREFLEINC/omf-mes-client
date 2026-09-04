@@ -15,12 +15,6 @@
   gap: var(--space-3, 12px);
 }
 
-.iqc-skip__section h2 {
-  margin: 0;
-  font: inherit;
-  font-weight: 600;
-  color: var(--on-surface-muted, inherit);
-}
 
 .iqc-skip p {
   margin: 0;
@@ -55,4 +49,15 @@
 
 .iqc-skip__request-when {
   color: var(--on-surface-muted, inherit);
+}
+
+/* 스캔이 실패했을 때 손으로 넣는 자리. 입력이 넓고 버튼이 붙는다. */
+.iqc-skip__manual {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-end;
+}
+
+.iqc-skip__manual > *:first-child {
+  flex: 1;
 }

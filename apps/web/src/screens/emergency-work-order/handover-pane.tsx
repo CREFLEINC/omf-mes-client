@@ -86,8 +86,8 @@ export const HandoverPane = ({
   const isTruncated = total !== undefined && total > rows.length;
 
   return (
-    <section aria-label={t.title}>
-      <h2 className="field-label">{t.title}</h2>
+    <section className="pane emergency-work-order-pane" aria-label={t.title}>
+      <h2 className="pane-title">{t.title}</h2>
 
       {isError ? (
         <div className="banner-slot">
@@ -96,7 +96,9 @@ export const HandoverPane = ({
       ) : (
         <>
           {/* ⛔ 왜 남았는지와 무엇을 하면 되는지를 함께 적는다 — 새로 발행하면 지시가 둘이 된다. */}
-          <AlertBanner variant="warning">{t.lead}</AlertBanner>
+          <div className="banner-slot">
+            <AlertBanner variant="warning">{t.lead}</AlertBanner>
+          </div>
 
           {releasedNo !== null && (
             <div className="banner-slot">
@@ -115,13 +117,15 @@ export const HandoverPane = ({
             </div>
           )}
 
-          <Table
-            density="compact"
-            columns={columns}
-            rows={rows}
-            getRowId={(row) => String(row.workOrderId)}
-            caption={t.tableCaption}
-          />
+          <div className="emergency-work-order-table">
+            <Table
+              density="compact"
+              columns={columns}
+              rows={rows}
+              getRowId={(row) => String(row.workOrderId)}
+              caption={t.tableCaption}
+            />
+          </div>
 
           {/*
            * A-11 — 여기 없는 것을 밝힌다. 없는 이유까지 적어야 다른 데를 찾아보지 않는다.

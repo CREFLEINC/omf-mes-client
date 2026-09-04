@@ -132,18 +132,22 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
 
-      <section className="pane" aria-label={t.title}>
-        {/* ⛔ 결과가 없어도 조건 줄을 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
-        <ProgressFilterBar
-          appliedFilters={filters}
-          lineLookup={lines}
-          productionOrderLookup={orders}
-          statusOptions={statuses}
-          onReset={() => {
-            apply({ ...defaultPeriod(today), ...EMPTY_CONDITIONS });
-          }}
-          onSearch={apply}
-        />
+      <div className="work-order-progress-workspace">
+        <section className="pane work-order-progress-pane" aria-label={t.filters.legend}>
+          <h2 className="pane-title">{t.filters.legend}</h2>
+
+          {/* ⛔ 결과가 없어도 조건 줄을 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
+          <ProgressFilterBar
+            appliedFilters={filters}
+            lineLookup={lines}
+            productionOrderLookup={orders}
+            statusOptions={statuses}
+            onReset={() => {
+              apply({ ...defaultPeriod(today), ...EMPTY_CONDITIONS });
+            }}
+            onSearch={apply}
+          />
+        </section>
 
         {/* L-5·L-6 — 언제 것인지와, 스스로 새로워지지 않는다는 사실을 함께 둔다. */}
         <BasisBar
@@ -173,35 +177,37 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
           </div>
         )}
 
-        <WorkOrderTable
-          isError={list.isError}
-          isLoading={list.isPending && list.fetchStatus !== 'idle'}
-          itemLabel={(itemIdText) => items.labelOf(itemIdText)}
-          period={filters}
-          rows={rows}
-          sort={sort}
-          statusLabel={(statusCode) => statuses.labelOf(statusCode)}
-          onSelect={(workOrderId) => {
-            setSearchParams(withSelectedWorkOrder(searchParams, workOrderId));
-          }}
-          onSort={(key) => {
-            setSearchParams(withSort(searchParams, nextSort(sort, key)));
-          }}
-        />
-
-        {/*
-         * ⛔ 받지 못했으면 쪽 이동을 세우지 않는다. 세우면 「0건」이라고 **단언하게 되는데**,
-         * 실제로는 몇 건인지 모른다 — 실패를 「결과 없음」으로 바꿔 읽게 만든다.
-         */}
-        {list.data === undefined ? null : (
-          <PageNav
-            view={pageView}
-            onChange={(next) => {
-              setSearchParams(withPage(searchParams, next));
+        <div className="work-order-progress-list-group">
+          <WorkOrderTable
+            isError={list.isError}
+            isLoading={list.isPending && list.fetchStatus !== 'idle'}
+            itemLabel={(itemIdText) => items.labelOf(itemIdText)}
+            period={filters}
+            rows={rows}
+            sort={sort}
+            statusLabel={(statusCode) => statuses.labelOf(statusCode)}
+            onSelect={(workOrderId) => {
+              setSearchParams(withSelectedWorkOrder(searchParams, workOrderId));
+            }}
+            onSort={(key) => {
+              setSearchParams(withSort(searchParams, nextSort(sort, key)));
             }}
           />
-        )}
-      </section>
+
+          {/*
+           * ⛔ 받지 못했으면 쪽 이동을 세우지 않는다. 세우면 「0건」이라고 **단언하게 되는데**,
+           * 실제로는 몇 건인지 모른다 — 실패를 「결과 없음」으로 바꿔 읽게 만든다.
+           */}
+          {list.data === undefined ? null : (
+            <PageNav
+              view={pageView}
+              onChange={(next) => {
+                setSearchParams(withPage(searchParams, next));
+              }}
+            />
+          )}
+        </div>
+      </div>
 
       <DetailDialog
         isError={detail.isError}

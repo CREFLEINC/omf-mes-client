@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Card, Chip, TextArea, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useScannedLot } from '../../patterns/lots';
@@ -40,7 +40,7 @@ const MyRequests = ({ requests }: { requests: ApprovalRequest[] }) => (
     {requests.map((request) => (
       <li key={request.approvalRequestId}>
         <Card bordered>
-          <Card.Body className="iqc-skip__request">
+          <Card.Body className="card-body iqc-skip__request">
             {/* 상태 문자열은 공통코드 소관이라 화면이 값을 지어내지 않고 받은 것을 그대로 보인다. */}
             <Chip>{request.statusCode}</Chip>
             <span className="iqc-skip__request-name">{request.target.displayName}</span>
@@ -57,12 +57,19 @@ const MyRequests = ({ requests }: { requests: ApprovalRequest[] }) => (
 export const IqcSkipRequestScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush } = useOutbox();
+  const { enqueue, flush, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
 
   const [scanned, setScanned] = useState<string | null>(null);
+  const [manual, setManual] = useState('');
   const [reason, setReason] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  /*
+   * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
+   * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 같은 면제 요청이 두 번 선다.
+   */
+  const inFlight = useRef(false);
   const [noRoute, setNoRoute] = useState(false);
 
   const scanField = useScanField({ onScan: setScanned });
@@ -72,40 +79,62 @@ export const IqcSkipRequestScreen = () => {
   const item = useItem(found?.itemId ?? null);
   const uoms = useUomCodes(found !== null);
   const pending = usePendingRequest(found?.lotId ?? null);
-  const mine = useMyRequests();
+  const mine = useMyRequests(worker?.workerNo ?? null);
 
   const inspectionPending = isInspectionPending(found);
   const canSubmit = found !== null && inspectionPending && hasReason(reason) && worker !== null;
 
   const request = async () => {
-    if (found === null || worker === null) {
+    if (found === null || worker === null || inFlight.current) {
       return;
     }
+
+    inFlight.current = true;
+    setSaveFailed(false);
 
     setNoRoute(false);
 
     const draft = toOutboxDraft(found.lotId, reason, new Date().toISOString(), worker.workerNo);
 
-    await enqueue(draft);
+    try {
+      /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 요청된 줄 안다. */
+      try {
+        await enqueue(draft);
+      } catch {
+        setSaveFailed(true);
+        return;
+      }
 
-    /*
-     * 담은 뒤 곧바로 보내 본다. 긴급 요청이라 닿을 수 있으면 지금 보내는 편이 낫고, 못 닿으면
-     * 담긴 채로 남아 다음 기회에 나간다.
-     */
-    const result = await flush().catch(() => null);
-    const mineEntry = (entry: { idempotencyKey: string }) =>
-      entry.idempotencyKey === draft.idempotencyKey;
-    const returned = result?.rejected.find((item) => mineEntry(item.entry));
+      /*
+       * 담은 뒤 곧바로 보내 본다. 긴급 요청이라 닿을 수 있으면 지금 보내는 편이 낫고, 못 닿으면
+       * 담긴 채로 남아 다음 기회에 나간다.
+       */
+      const result = await flush().catch(() => null);
+      const mineEntry = (entry: { idempotencyKey: string }) =>
+        entry.idempotencyKey === draft.idempotencyKey;
+      const returned = result?.rejected.find((item) => mineEntry(item.entry));
 
-    if (returned !== undefined) {
-      /* 결재선이 없으면 승인자가 정해지지 않아 요청이 설 자리가 없다. 다른 거부와 다른 말을 쓴다. */
-      setNoRoute(isRouteMissing(returned.error));
-      setOutcome('rejected');
-      return;
+      if (returned !== undefined) {
+        /* 결재선이 없으면 승인자가 정해지지 않아 요청이 설 자리가 없다. 다른 거부와 다른 말을 쓴다. */
+        setNoRoute(isRouteMissing(returned.error));
+        setOutcome('rejected');
+        return;
+      }
+
+      /*
+       * 자기가 부른 보내기의 결과만 보면 딸려 되돌아간 건을 놓친다 - 그 판정은 셸이 도는 다른
+       * 회차에서 내려질 수 있고, 화면은 빈 결과를 받아 담아 두었다고 잘못 말한다.
+       */
+      if (isRejected(draft.idempotencyKey)) {
+        setOutcome('rejected');
+        return;
+      }
+
+      setOutcome(result === null || result.remaining.some(mineEntry) ? 'queued' : 'sent');
+      void mine.refetch();
+    } finally {
+      inFlight.current = false;
     }
-
-    setOutcome(result === null || result.remaining.some(mineEntry) ? 'queued' : 'sent');
-    void mine.refetch();
   };
 
   const restart = () => {
@@ -135,7 +164,7 @@ export const IqcSkipRequestScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
-        <Button variant="filled" size="lg" onClick={restart}>
+        <Button variant="filled" size="2xl" onClick={restart}>
           {t.another}
         </Button>
       </div>
@@ -150,9 +179,32 @@ export const IqcSkipRequestScreen = () => {
           ref={scanField.ref}
           label={t.lot.scanLabel}
           placeholder={t.lot.scanPlaceholder}
-          size="lg"
+          size="xl"
           fullWidth
         />
+        {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
+        <div className="iqc-skip__manual">
+          <TextField
+            label={t.lot.manualLabel}
+            size="xl"
+            fullWidth
+            value={manual}
+            onChange={(event) => {
+              setManual(event.target.value);
+            }}
+          />
+          <Button
+            variant="outlined"
+            size="xl"
+            onClick={() => {
+              setScanned(manual.trim() === '' ? null : manual.trim());
+              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+              setManual('');
+            }}
+          >
+            {t.lot.manualSubmit}
+          </Button>
+        </div>
         {lot.isPending && scanned !== null ? <p role="status">{t.lot.loading}</p> : null}
         {lot.isError ? <AlertBanner variant="error" title={t.lot.loadFailed} /> : null}
         {scanned !== null && !lot.isPending && found === null && !lot.isError ? (
@@ -160,7 +212,7 @@ export const IqcSkipRequestScreen = () => {
         ) : null}
         {found === null ? null : (
           <Card bordered>
-            <Card.Body className="iqc-skip__lot">
+            <Card.Body className="card-body iqc-skip__lot">
               <strong>{found.lotNo}</strong>
               {item.data === undefined ? null : (
                 <span>{`${item.data.itemCode} ${item.data.itemName}`}</span>
@@ -204,15 +256,21 @@ export const IqcSkipRequestScreen = () => {
 
       <AlertBanner variant="info" title={t.expectation} />
 
+      {saveFailed ? (
+        <AlertBanner variant="error" title={t.saveFailed.title}>
+          {t.saveFailed.description}
+        </AlertBanner>
+      ) : null}
       {worker === null ? <p className="iqc-skip__note">{t.noWorker}</p> : null}
 
-      <Button variant="filled" size="lg" disabled={!canSubmit} onClick={() => void request()}>
+      <Button variant="filled" size="2xl" disabled={!canSubmit} onClick={() => void request()}>
         {t.submit}
       </Button>
 
       <section className="iqc-skip__section">
         <h2>{t.mine.legend}</h2>
-        {mine.isPending ? <p role="status">{t.mine.loading}</p> : null}
+        {worker === null ? <p>{t.mine.noWorker}</p> : null}
+        {worker !== null && mine.isPending ? <p role="status">{t.mine.loading}</p> : null}
         {mine.isError ? <AlertBanner variant="warning" title={t.mine.loadFailed} /> : null}
         {mine.data === undefined || mine.data.length > 0 ? null : <p>{t.mine.empty}</p>}
         {mine.data === undefined ? null : <MyRequests requests={mine.data} />}

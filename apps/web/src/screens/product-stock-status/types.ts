@@ -16,7 +16,7 @@ import type { components } from '@omf-mes/api-client';
  * 있지만, **이 저장소가 지금 생성해 쓰는 `@omf-mes/api-client`(packages/api-client/src/generated/api.d.ts)에는
  * 아직 반영되지 않았다.** `pnpm gen:api`로 다시 생성해 보면 `quality-03품질.json`과
  * `logistics-01자재창고.json`이 `LotHold` 컴포넌트를 서로 다른 모양으로 정의하고 있어 병합
- * 자체가 실패한다(도구가 스스로 병합을 거부하고 `[client→uiux]` 질문 이슈를 올리라고 안내한다).
+ * 자체가 실패한다(도구가 스스로 병합을 거부하고 사용자 경유 정보 요청을 안내한다).
  * 그 충돌을 우회해 강제로 재생성해 보면 이 화면과 무관한 화면 40여 개가 `pnpm typecheck`에서
  * 함께 깨진다 — 이 슬라이스 하나를 위해 저장소 전체의 생성물을 갱신하는 것은 계획 범위 밖이다.
  *

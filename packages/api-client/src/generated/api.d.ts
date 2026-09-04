@@ -20,6 +20,7 @@ export interface paths {
                 query?: {
                     /** @description 코드·명칭 검색 */
                     q?: string;
+                    /** @description 값 = `MATERIAL`·`PRODUCT`·`SPARE_PART`·`GENERAL`. 값 목록은 `GET /mdm/code-values?codeGroupCode=WAREHOUSE_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     warehouseTypeCode?: string;
                     /** @description 불량창고만 거른다 — W-01-06 §3의 창고 선택(「불량창고」)이 이 조건으로 건다. 근거: DR-012 확정 3-C · omf-mes#147 */
                     isDefect?: boolean;
@@ -704,7 +705,7 @@ export interface paths {
                     q?: string;
                     /** @description 부서 필터 */
                     departmentId?: number;
-                    /** @description 상태 필터 */
+                    /** @description 사용자의 «인사» 상태로 거른다. ⛔ 계정 사용 가부는 이 값이 아니라 isActive 가 정한다 — 로그인 차단 여부로 거르려면 isActive 를 쓴다(W-CO-02 §8-4). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=APP_USER_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 기본은 사용 중인 것만. 「미사용 포함」 체크박스 */
                     includeInactive?: boolean;
@@ -944,6 +945,15 @@ export interface paths {
                         "application/json": components["schemas"]["AppUser"];
                     };
                 };
+                /** @description 업무 규칙 위반. ⛔ **code=LAST_ADMIN** — 이 사용자를 중지하면 「사용자·역할·권한 관리」 권한을 가진 사람이 0명이 된다. ⭐ **자기 자신도 막는다**(사용자 결정 2026-09-01 「둘 다 막는다」) — 관리자 교체는 «다른 관리자»가 한다: 새 관리자를 먼저 세우고 기존 관리자를 내린다. ⚠ 그래서 운영은 관리자를 **둘 이상** 두어야 한다 — 하나뿐이면 그 사람을 내릴 방법이 없다. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -1168,7 +1178,7 @@ export interface paths {
                         "application/json": components["schemas"]["UserRoleListResponse"];
                     };
                 };
-                /** @description 검증 실패 */
+                /** @description 검증 실패. ⛔ **code=LAST_ADMIN** — 이 사용자에게서 관리자 역할을 빼면 「사용자·역할·권한 관리」 권한 보유자가 0명이 된다(사용자 결정 2026-09-01 · W-CO-02 §8-6). */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -1288,6 +1298,55 @@ export interface paths {
                 };
             };
         };
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/app/permissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 기능 권한 목록 — 부여할 수 있는 «후보» 전부
+         * @description ⭐ 권한 격자의 «열»을 만드는 목록이다.
+         *
+         *     ⛔ 이 경로가 없으면 화면은 「이미 부여된 권한」만 알아 **권한을 새로 줄 수 없다** — 최초 상태(부여 0건)에서는 격자가 통째로 비고 아무도 아무 권한을 받지 못한다. 실제로 그래서 프론트가 격자를 「보기 전용」으로 닫아 두었다(omf-mes-client#17).
+         *
+         *     ⛔ **공통코드가 아니다** — 앱 기능 목록이라 고객이 W-06-06 에서 늘리거나 지울 수 없다. 없는 코드를 만들면 그것을 검사하는 자리가 없어 «아무 효과 없는 권한»이 되고, 있는 코드를 지우면 그 기능이 조용히 잠긴다.
+         *
+         *     ⭐ **입도는 화면 단위다** — 값이 화면 코드와 1:1 이다(사용자 결정 2026-09-01). 한 화면 안에서 조회와 편집을 가르지 않는다.
+         *
+         *     쪽을 나누지 않는다 — 목록이 화면 수만큼으로 닫혀 있고, 쪽이 나뉘면 둘째 쪽을 못 받았을 때 격자에서 열이 조용히 사라진다.
+         *
+         *     근거: W-CO-02 §4-E · §8-7 사용자 결정 2026-09-01
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 권한 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PermissionListResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1523,6 +1582,8 @@ export interface paths {
         /**
          * 역할 사용 중지
          * @description 물리 삭제는 제공하지 않는다. 배정된 사용자가 있는 역할은 확인 다이얼로그 + 배정 건수 표시가 선행된다. 근거: W-CO-02 §6 「참조 중인 역할 사용 중지」 · 공유계약 B-4
+         *
+         *     ⭐ **중지된 역할은 권한 «판정»에서 제외된다 — 부여 기록은 지우지 않는다**(사용자 결정 2026-09-01). 지우면 되돌릴 수 없어 다시 켰을 때 누구에게 줬는지가 사라지고, 반대로 그대로 두면 「중지했는데 안 중지된」 상태가 되어 관리자가 오해한다.
          */
         post: {
             parameters: {
@@ -1547,6 +1608,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Role"];
+                    };
+                };
+                /** @description 업무 규칙 위반. ⛔ **code=LAST_ADMIN** — 이 역할을 중지하면 「사용자·역할·권한 관리」 권한을 가진 사람이 0명이 되어 되돌릴 사람이 없어진다(사용자 결정 2026-09-01 · W-CO-02 §8-6). ⛔ 판정 기준은 «역할»이 아니라 «그 권한 보유자 수»다 — 고객이 새 역할을 만들어 같은 권한을 준 경우를 역할로 세면 못 센다. */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
@@ -1709,7 +1779,7 @@ export interface paths {
                         "application/json": components["schemas"]["RolePermissionListResponse"];
                     };
                 };
-                /** @description 검증 실패 */
+                /** @description 검증 실패. ⛔ **code=LAST_ADMIN** — 이 역할에서 관리 권한을 빼면 「사용자·역할·권한 관리」 권한 보유자가 0명이 된다(사용자 결정 2026-09-01 · W-CO-02 §8-6). */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -2341,7 +2411,10 @@ export interface paths {
                             predecessorOperationId: number;
                             /** Format: int64 */
                             successorOperationId: number;
-                            /** @description 미지정 시 서버가 물리 모델 DEFAULT('FINISH_TO_START')로 채운다 */
+                            /**
+                             * @description 공정 선후관계 유형 — 값 = FINISH_TO_START·START_TO_START·FINISH_TO_FINISH·START_TO_FINISH (2026-09-03 코드 사전 등재). ⭐ 미지정 시 종료-시작(FINISH_TO_START)으로 본다 — 사용자와 협의해 확정했다(2026-09-03). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 편집하지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=ROUTING_OPERATION_DEPENDENCY_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다.
+                             * @example FINISH_TO_START
+                             */
                             dependencyTypeCode?: string;
                         }[];
                     };
@@ -3119,10 +3192,37 @@ export interface paths {
             };
             cookie?: never;
         };
-        get?: never;
+        /**
+         * 판정유형 통제 속성 상세
+         * @description 편집 진입용. ⭐ 이 GET 의 ETag 가 뒤이을 PUT 의 If-Match 출처다 — 통제 속성은 «자기 판 번호»(versionNo)를 가지므로 자기 경로의 토큰을 쓴다(공유계약 B-1-1 ①ⓐ). ⛔ 부모인 코드값(GET /mdm/code-values/{codeValueId})의 토큰을 쓰지 않는다 — 판정유형 «이름»을 고쳤다고 통제 저장이 튕기면 안 되고, 잠그는 대상과 버전 축을 일치시킨다(B-1-1). 근거: W-06-04 §4-B·§5-1
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    codeValueId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["JudgmentTypeControl"];
+                    };
+                };
+            };
+        };
         /**
          * 판정유형 통제 속성 편집
-         * @description 전사 고정 축 — 편집하면 상태 전이도·물류 통제 규칙이 함께 바뀐다(W-06-04 §5-1). 근거: W-06-04 §4-B
+         * @description 전사 고정 축 — 편집하면 상태 전이도·물류 통제 규칙이 함께 바뀐다(W-06-04 §5-1). ⭐ If-Match 에 담을 토큰은 이 경로의 상세 조회(GET /mdm/judgment-type-controls/{codeValueId}) 200 의 ETag 다 — 통제 속성이 자기 판 번호를 가지므로 자기 축을 쓴다(공유계약 B-1-1 ①ⓐ). 근거: W-06-04 §4-B
          */
         put: {
             parameters: {
@@ -3589,6 +3689,8 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -3617,7 +3719,7 @@ export interface paths {
         get?: never;
         /**
          * 작업자 다국어 명칭 편집
-         * @description 작업자 기본 정보는 전부 ERP 수신본이라 쓰기 경로가 없지만(GET /mdm/workers/{workerId} 참조), 다국어 명칭(nameKo·nameVi)은 QA #33·#34가 「MES 확장 속성」으로 확정해 예외로 둔다 — 2026-08-30 되살림. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-06 §8-1
+         * @description 작업자 기본 정보는 전부 ERP 수신본이라 쓰기 경로가 없지만(GET /mdm/workers/{workerId} 참조), 다국어 명칭(nameKo·nameVi)은 QA #33·#34가 「MES 확장 속성」으로 확정해 예외로 둔다 — 2026-08-30 되살림. 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-06-06 §8-1 ⭐ If-Match 에 담을 토큰은 작업자 본체 조회(GET /mdm/workers/{workerId}) 200 의 ETag 다 — nameKo·nameVi 는 별도 자원이 아니라 mdm.worker «그 행»의 프로퍼티이므로 잠그는 대상과 버전 축이 본체에서 일치한다(공유계약 B-1-1 ①ⓐ · 선례 PUT /mdm/items/{itemId} — 품목도 ERP 수신본인데 MES 확장만 고치며 본체 축을 쓴다). ⚠ ERP 재동기화로 본체 판이 바뀌면 이름 번역을 고치지 않은 사용자도 충돌을 볼 수 있다 — 그 경우는 B-1 이 이미 예상해 ConflictResponse.conflictCause=erpSync 로 가르고 화면 문구도 따로 정해 두었다.
          */
         put: {
             parameters: {
@@ -3730,7 +3832,10 @@ export interface paths {
                 content: {
                     "application/json": {
                         qualifications: {
-                            /** @description 공통코드 — 값 목록 미정 §8-5 */
+                            /**
+                             * @description 공통코드 — 값 = PROCESS_OPERATION·INSPECTOR·SAFETY·EQUIPMENT_OPERATION (2026-09-03 코드 사전 등재). ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALIFICATION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다.
+                             * @example PROCESS_OPERATION
+                             */
                             qualificationTypeCode: string;
                             /**
                              * Format: int64
@@ -3816,6 +3921,7 @@ export interface paths {
                 query?: {
                     /** @description 품목코드·품목명 검색 */
                     q?: string;
+                    /** @description 품목 유형 — 원자재(RAW_MATERIAL) · 반제품(SEMI_FINISHED) · 제품(FINISHED) · 상품(MERCHANDISE). ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. ⛔ 예비품을 이 값으로 대신하지 않는다 — QA #7 이 「품목 통합 아님」으로 확정했고, 예비품은 W-06-08 예비품 마스터가 갖는다. 값 목록은 GET /mdm/code-values?codeGroupCode=ITEM_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     itemTypeCode?: string;
                     /** @description Routing 보유 여부로 거른다. false 면 Routing 이 한 건도 없는 품목만 낸다 — W-06-01 §6 「Routing 미보유 품목 필터를 제공해 보강 등록을 돕는다」. 이것이 없으면 화면이 전 품목과 전 Routing 을 받아 스스로 대조해야 한다 */
                     hasRouting?: boolean;
@@ -4143,8 +4249,12 @@ export interface paths {
                 content: {
                     "application/json": {
                         externalCodes: {
-                            /** @description 공통코드 */
-                            externalSystemCode: string;
+                            /**
+                             * @description 어느 외부 체계의 코드인가 — EQUIPMENT_STANDARD_IF · TRACKING_SYSTEM · UNIERP. ⛔ 공통코드 그룹이 아니다 — 계약이 enum 으로 닫는다(고객이 늘리지 않는다 · 공유계약 A-16 「가」 참). ⭐ 읽는 쪽 ItemExternalCode.externalSystemCode 와 같은 값집합이다.
+                             * @example EQUIPMENT_STANDARD_IF
+                             * @enum {string}
+                             */
+                            externalSystemCode: "EQUIPMENT_STANDARD_IF" | "TRACKING_SYSTEM" | "UNIERP";
                             /**
                              * Format: int64
                              * @description 비우면 (전체) — A-7
@@ -4648,6 +4758,7 @@ export interface paths {
                 query?: {
                     /** @description 기준코드·기준명 검색 */
                     q?: string;
+                    /** @description 값 = `IQC`·`PQC`·`OQC`. 값 목록은 `GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     inspectionTypeCode?: string;
                     itemId?: number;
                     includeInactive?: boolean;
@@ -4983,7 +5094,7 @@ export interface paths {
         put?: never;
         /**
          * 검사기준 승인
-         * @description approvedBy·approvedAt 을 서버가 동시에 기록한다(현재 사용자·현재 시각) — 둘은 짝이어야 하나 물리 모델에 CHECK 제약이 없어(§8-3) 서버가 항상 함께 채우는 방식으로 짝을 보장한다(A-9 취지). 전제: 이 기준에 확정(status_code=확정) 버전이 1건 이상 있어야 한다 — 없으면 400(code=CONFIRMED_VERSION_REQUIRED). 승인 해제(취소)는 제공하지 않는다. 근거: W-06-02 §5-1 「승인」
+         * @description approvedBy·approvedAt 을 서버가 동시에 기록한다(현재 사용자·현재 시각) — 둘은 짝이어야 하며 서버가 항상 함께 채우는 방식으로 그 짝을 보장한다(A-9 취지 · §8-3). 전제: 이 기준에 확정(status_code=확정) 버전이 1건 이상 있어야 한다 — 없으면 400(code=CONFIRMED_VERSION_REQUIRED). 승인 해제(취소)는 제공하지 않는다. 근거: W-06-02 §5-1 「승인」
          */
         post: {
             parameters: {
@@ -6358,13 +6469,13 @@ export interface paths {
                     /** @description 필수 — 기간 미지정 조회는 제공하지 않는다 */
                     createdFrom: string;
                     createdTo: string;
-                    /** @description 공통코드 — 값 목록 미정 §8-3. 최소 구분: 대기/처리중/완료/실패 */
+                    /** @description ERP 연계 메시지의 처리 상태로 거른다 — 대기(PENDING) · 처리중(PROCESSING) · 완료(DONE) · 실패(FAILED). 재처리 대상은 FAILED 로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INTEGRATION_MESSAGE_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 연계 정의의 interfaceCode. 선택 목록은 GET /integration/interface-definitions 에서 받는다 */
                     interfaceCode?: string;
                     /** @description 수신(INBOUND) 또는 송신(OUTBOUND). 연계 정의의 방향 값과 같은 어휘다 */
-                    directionCode?: string;
-                    /** @description 무엇을 나른 메시지인가. 값 목록은 아직 정해지지 않았다 — 확정 전에는 이 조건 대신 interfaceCode 로 거른다(선택 목록은 GET /integration/interface-definitions). */
+                    directionCode?: "INBOUND" | "OUTBOUND";
+                    /** @description 연계 대상으로 거른다. 무엇을 나른 메시지인가 — 연계 «정의»의 대상과 같은 축이다. ⭐ 2026-09-03 정정 — 전에는 「공통코드 그룹으로 받지 않는다(A-16 「가」·「나」 참)」로 적혀 있었으나 «나»가 거짓이다: 연계 대상은 계약이 「확정된 수신 대상 다섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다」로 «열어 두었고», 확정 목록 안인지는 InterfaceDefinition.withinConfirmedScope 가 말한다. 고객이 새 값을 넣어도 성립하므로 다형 참조 판별자가 아니라 «업무 코드»다(A-16 가르는 물음 넷). ⇒ InterfaceDefinition.targetCode 와 «같은 그룹»을 쓴다. 값 목록은 GET /mdm/code-values?codeGroupCode=INTERFACE_TARGET 로 받는다(G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     targetTypeCode?: string;
                     /** @description 「N회 이상」 필터 — 반복 실패 건을 찾는 주 경로 */
                     retryCountMin?: number;
@@ -6608,7 +6719,7 @@ export interface paths {
         };
         /**
          * 변경 이력 조회
-         * @description occurred_at RANGE 파티션이라 기간 조건이 없으면 전 파티션을 훑는다 — 공유계약 B-5. 이 결손 때문에 별도 /history 엔드포인트는 만들지 않는다(#68 해소 후 추가 — info.description 참고). 근거: W-06-11 §4-A·§5-1 「조회」
+         * @description occurred_at RANGE 파티션이라 기간 조건이 없으면 전 파티션을 훑는다 — 공유계약 B-5. 이 결손 때문에 별도 /history 엔드포인트는 만들지 않는다(omf-mes#68 → 지금은 omf-mes-server#74 · 해소 후 추가 — info.description 참고). 근거: W-06-11 §4-A·§5-1 「조회」
          */
         get: {
             parameters: {
@@ -6616,10 +6727,10 @@ export interface paths {
                     /** @description 필수 — 파티션 스캔 방지 */
                     occurredFrom: string;
                     occurredTo: string;
-                    /** @description 공통코드 — 값 목록 미정 §8-3 */
-                    targetTypeCode?: string;
+                    /** @description 감사 대상으로 거른다. 감사 대상 유형 — 사용자(APP_USER) · 역할(ROLE) · 작업자(WORKER) · 단말(TERMINAL) · 품목(ITEM) · 라우팅(ROUTING) · 검사기준 버전(INSPECTION_PLAN_VERSION). ⭐ 값 일곱은 사용자와 협의해 확정했다(2026-09-03) — 변경 이력이 «남아야 하는» 마스터만 든다. ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 고객이 늘릴 수 없고 공통코드 그룹으로 받지 않는다(A-10 · A-16 「가르는 물음 넷」 — 「가」·「나」 참). ⚠ 대상이 늘면 «화면이 문자열을 정해 넣기 전에» 계약이 먼저 값을 갖는다(A-16). ⚠ 개체 마스터(창고·위치·설비·금형·거래처 등)는 여기 들지 않는다 — 「무엇이 있나」가 바뀔 뿐 과거 판정이 소급해 달라지지 않고, B-4 물리 삭제 금지와 version_no 낙관적 잠금이 이미 받는다. 버전을 가진 마스터도 빠진다 — 결정 07 이 「변경 이력 요구는 Rev 이력 그 자체로 충족」이라 했다. */
+                    targetTypeCode?: "APP_USER" | "ROLE" | "WORKER" | "TERMINAL" | "ITEM" | "ROUTING" | "INSPECTION_PLAN_VERSION";
                     targetId?: number;
-                    /** @description 어떤 변경인가로 거른다. ⚠ 값 목록은 아직 정해지지 않았다 — 확정 전에는 화면이 이 선택칸을 비활성으로 두고 사유를 보인다. */
+                    /** @description 감사 이벤트 유형 — 생성(CREATE) · 수정(UPDATE) · 삭제(DELETE) · 권한 부여(GRANT) · 권한 회수(REVOKE). ⭐ GRANT·REVOKE 를 둔 근거는 W-CO-02 §8-8 이다 — 「누가 언제 권한을 줬나」가 남는 곳이 그동안 하나도 없었고 감사 이력이 그것을 받기로 했다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 무엇을 기록할지는 시스템이 정한다 — 고객이 늘리면 기록되지 않는 유형이 생긴다. 값 목록은 GET /mdm/code-values?codeGroupCode=AUDIT_EVENT_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     eventTypeCode?: string;
                     performedBy?: number;
                     /** @description 한 트랜잭션의 여러 이벤트를 묶는다[추정] */
@@ -6976,7 +7087,7 @@ export interface paths {
         };
         /**
          * 공정 목록
-         * @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 processId·processName 이다. 근거: W-06-01 §4-B 공정 · W-06-02 §4-A 검사 대상 공정 · W-06-03 §4-A·§4-C 공정 · W-06-05 §4-F 실제 사용 공정 · W-06-06 §4-E 자격 대상 공정.
+         * @description 공정 목록. 선택 목록으로도 쓰고 W-06-01 《공정 마스터》 탭의 목록으로도 쓴다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 선택 목록으로 «읽는» 화면이 쓰는 것은 processId·processName 이다. 근거: W-06-01 §4-D 공정 마스터(소유) · W-06-01 §4-B 공정 · W-06-02 §4-A 검사 대상 공정 · W-06-03 §4-A·§4-C 공정 · W-06-05 §4-F 실제 사용 공정 · W-06-06 §4-E 자격 대상 공정.
          */
         get: {
             parameters: {
@@ -7008,7 +7119,295 @@ export interface paths {
             };
         };
         put?: never;
+        /**
+         * 공정 등록
+         * @description 공정 마스터는 MES 정본이라 여기서만 생긴다(REQ-PR-0026 — ERP 에서 오지 않는다). processCode 는 전역 유일 — 중복이면 400. 근거: W-06-01 §5-1 「공정 추가」 · 공유계약 A-1
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProcessCreate"];
+                };
+            };
+            responses: {
+                /** @description 등록됨 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Process"];
+                    };
+                };
+                /** @description 검증 실패 — processCode 중복 포함 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-01 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/processes/{processId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                processId: number;
+            };
+            cookie?: never;
+        };
+        /**
+         * 공정 상세
+         * @description 편집 진입용. editability 가 공정코드 수정 가부와 사유·참조 건수를 담는다(공유계약 B-4). ⭐ 공정의 참조처는 전부 process_id FK 라 «셀 수 있다» — code_value 처럼 NOT_COUNTABLE 로 무조건 잠그는 갈래가 아니다. 근거: W-06-01 §4-D · 공유계약 B-4
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    processId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 상세 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProcessDetailResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 공정 수정
+         * @description processCode 는 참조 건수 0 일 때만 바꿀 수 있다(공유계약 B-4) — 서버가 검사한다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-01 §4-D·§5-1
+         */
+        put: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    processId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ProcessUpdate"];
+                };
+            };
+            responses: {
+                /** @description 수정됨 */
+                200: {
+                    headers: {
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다 */
+                        ETag?: string;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Process"];
+                    };
+                };
+                /** @description 검증 실패 — 참조가 있는데 processCode 를 바꾸려 함(B-4) 포함 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-01 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/processes/{processId}:deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                processId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 공정 사용 중지
+         * @description 물리 삭제는 제공하지 않는다(공유계약 B-4). ⭐ 이미 확정된 Routing 은 영향받지 않는다 — 중지는 «앞으로 새 라인에서 고를 수 없다»는 뜻이다. 참조 중이면 확인 다이얼로그 + 참조 건수. 근거: W-06-01 §5-1 · 공유계약 B-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    processId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 중지됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Process"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-01 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mdm/processes/{processId}:activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                processId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 공정 다시 사용
+         * @description 사용 중지한 것을 다시 켠다. 물리 삭제를 두지 않으므로 되돌리는 경로가 이 하나다.
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    processId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 재사용됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Process"];
+                    };
+                };
+                /** @description 권한 없음. 근거: W-06-01 §6 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 낙관적 잠금 충돌 — ConflictResponse.conflictCause 3값. 사용 중지도 is_active·version_no 를 쓰는 행 갱신이라 다른 쓰기와 같은 규칙을 적용한다(공유계약 A-4 「version_no 가 있으면 B-1 을 반드시 구현」). 업무 규칙 위반(참조 존재)은 409 가 아니라 400 이다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -7036,7 +7435,7 @@ export interface paths {
                     /** @description 소속 설비 그룹으로 거른다 */
                     productionLineId?: number;
                     /**
-                     * @description 설비 유형으로 거른다 — 값 여럿을 쉼표로 이어 보낸다. 한 화면이 «계열 전체»를 한 번에 걸러야 해서 여럿을 받는다. 계측기 마스터 관리(W-05-11)는 계측기 계열 그룹(INSTRUMENT_TYPE)의 값 전체를, 설비·설비그룹 마스터(W-05-12)는 설비 계열 그룹(EQUIPMENT_TYPE)의 값 전체를 싣는다. 두 그룹 다 값이 확정됐다 — 계측기 3값 · 설비 3값(INJECTION_MOLDING·PRESS·WATER_HEATER). 걸지 않으면 두 계열이 함께 나온다.
+                     * @description 설비 유형으로 거른다 — 값 여럿을 쉼표로 이어 보낸다. 한 화면이 «계열 전체»를 한 번에 걸러야 해서 여럿을 받는다. 계측기 마스터 관리(W-05-11)는 계측기 계열 그룹(INSTRUMENT_TYPE)의 값 전체를, 설비·설비그룹 마스터(W-05-12)는 설비 계열 그룹(EQUIPMENT_TYPE)의 값 전체를 싣는다. 두 그룹 다 값이 확정됐다 — 계측기 3값 · 설비 3값(INJECTION_MOLDING·PRESS·WATER_HEATER). 걸지 않으면 두 계열이 함께 나온다. ⭐ 값 목록은 화면이 쓰는 «계열»의 그룹에서 받는다 — GET /mdm/code-values?codeGroupCode=INSTRUMENT_TYPE(W-05-11) 또는 GET /mdm/code-values?codeGroupCode=EQUIPMENT_TYPE(W-05-12). ⛔ 한 그룹만 불러 다른 계열을 거르면 목록이 조용히 빈다 — 계열마다 그룹이 갈려 있다(공유계약 G-32 · omf-mes#219). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
                      * @example [
                      *       "CALIPER",
                      *       "MICROMETER",
@@ -7426,7 +7825,7 @@ export interface paths {
         put?: never;
         /**
          * 적치 규칙 다시 사용
-         * @description 중지한 규칙을 되살린다. 같은 (품목, 창고, 위치, 우선순위)로 이미 활성인 규칙이 있으면 400 이다 — 물리 모델에 유일 제약이 없어 계약이 막는다. 근거: W-06-14 §5-2·§5-7 · 공유계약 B-12
+         * @description 중지한 규칙을 되살린다. 같은 (품목, 창고, 위치, 우선순위)로 이미 활성인 규칙이 있으면 400 이다 — 같은 조합에 활성 규칙이 둘이면 어느 것을 적용할지 정해지지 않으므로 계약이 막는다. 근거: W-06-14 §5-2·§5-7 · 공유계약 B-12
          */
         post: {
             parameters: {
@@ -7668,6 +8067,7 @@ export interface paths {
             parameters: {
                 query?: {
                     plantId?: number;
+                    /** @description 단말 유형 — 고정 스테이션(POP · Electron 키오스크 · 산업용 패널 PC)과 손에 드는 기기(MOBILE · Capacitor Android)가 여기서 갈린다. ⭐ 폼팩터는 결정 16 이 확정한 아키텍처 축이라 고객 관행으로 늘지 않는다. ⚠ 관리웹은 단말 마스터에 등록하지 않는다 — 현장 단말만 여기 든다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     terminalTypeCode?: string;
                     includeInactive?: boolean;
                     /** @description 단말 코드 검색 */
@@ -9033,7 +9433,7 @@ export interface paths {
                     /** @description 코드·명칭 검색 */
                     q?: string;
                     plantId?: number;
-                    /** @description 점검 유형으로 거른다 */
+                    /** @description 점검 유형으로 거른다 값 = `DAILY`·`MONTHLY`·`MAINTENANCE`. 값 목록은 `GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     inspectionTypeCode?: string;
                     includeInactive?: boolean;
                     page?: number;
@@ -9456,7 +9856,7 @@ export interface paths {
                     /** @description 코드·명칭 검색 */
                     q?: string;
                     plantId?: number;
-                    /** @description 도구 유형으로 거른다 */
+                    /** @description 도구 유형 — 금형(MOLD) · 지그(JIG) · 그 밖의 도구(OTHER). ⭐ W-05-13 §3-3 이 확대된 범위(REQ-PR-0003 「모든 도구」)를 이 축으로 담기로 확정했다 — 테이블 이름(mdm.mold)은 바꾸지 않는다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=TOOL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     toolTypeCode?: string;
                     /** @description 자산 수명주기로 거른다 — 운용(IN_SERVICE) 또는 폐기(DISPOSED). 사용 여부(includeInactive)와 «다른 축» 이다. 툴 보전오더 생성 화면이 폐기된 툴을 목록에서 버릴 때 건다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_STATUS 로 받는다 */
                     statusCode?: string;
@@ -11057,6 +11457,7 @@ export interface paths {
                     /** @description 코드·명칭 검색 */
                     q?: string;
                     directionCode?: "INBOUND" | "OUTBOUND";
+                    /** @description 연계 대상 — 품목(ITEM) · 자재명세(BOM) · 조직(ORGANIZATION) · 작업자(WORKER) · 구매발주(PURCHASE_ORDER). ⭐ 계약이 «일부러 열어 둔» 자리다 — 그 밖의 값도 받고 막지 않으며 확정 목록 안인지는 withinConfirmedScope 가 말한다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=INTERFACE_TARGET 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     targetCode?: string;
                     externalSystemCode?: "UNIERP" | "TRACKING_SYSTEM" | "EQUIPMENT_STANDARD_IF";
                     includeInactive?: boolean;
@@ -11610,7 +12011,9 @@ export interface paths {
                 query?: {
                     /** @description 이 실사에서 나온 조정만 */
                     inventoryCountId?: number;
+                    /** @description 전표 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
+                    /** @description 값 = `COUNT_VARIANCE`·`TRANSPORT_DAMAGE`·`HOPPER_MEASUREMENT`·`SYSTEM_ERROR_CORRECTION`·`OTHER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=INVENTORY_ADJUSTMENT_REASON` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     reasonCode?: string;
                     /** @description 전기일 시작 */
                     adjustedAtFrom?: string;
@@ -12038,8 +12441,10 @@ export interface paths {
                     itemId?: number;
                     lotId?: number;
                     locationId?: number;
+                    /** @description 품질 상태로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED · 공유계약 G-32). ⛔ 목록은 서버가 갖는다 — 값을 화면에 박지 않는다(고객이 W-06-06 에서 바꾼다 · 공유계약 G-31 마스터안전형). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     qualityStatusCode?: string;
-                    inventoryStatusCode?: string;
+                    inventoryStatusCode?: "AVAILABLE" | "BLOCKED" | "IN_TRANSIT" | "ON_HOLD";
+                    /** @description 소유 구분으로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=OWNERSHIP_TYPE 로 받는다(공유계약 G-32 · omf-mes#198). ⛔ 목록은 서버가 갖는다 — 값을 화면에 박지 않는다(고객이 W-06-06 에서 바꾼다 · 공유계약 G-31 마스터안전형). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     ownershipTypeCode?: string;
                     /** @description 잔액이 0 인 줄도 내릴지 */
                     includeZero?: boolean;
@@ -12047,7 +12452,7 @@ export interface paths {
                     expiryDateTo?: string;
                     /** @description heldLotCount 가 0 보다 큰 줄만. 근거: W-01-07 §3 필터 */
                     heldOnly?: boolean;
-                    /** @description 신재·재생재 구분으로 거른다. ⚠ 값 목록이 아직 확정되지 않았다 — 서버가 내려주는 선택지를 그대로 쓴다(공유계약 G-2) */
+                    /** @description MES 구분 — 신재(NEW) · 재생재(RECYCLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. `(item_code, mes_category_code)` 복합 유일 인덱스가 이 값에 걸려 있어 같은 품목코드의 신재·재생재를 두 행으로 가른다(M-01-12 §5-B). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=MES_CATEGORY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     mesCategoryCode?: string;
                     /** @description 오늘부터 이 일수 안에 유효기간이 도래하는 LOT 만 — W-04-08 「유효기간 임박」 필터다. ⚠ 유효기한이 없는 LOT 은 이 필터로 판정할 수 없어 결과에서 빠지고, 응답이 그 건수를 함께 낸다(공유계약 L-8 · W-04-08 §5-3) */
                     expiryWithinDays?: number;
@@ -12118,7 +12523,9 @@ export interface paths {
                     plannedDateFrom?: string;
                     /** @description 계획일 종료 */
                     plannedDateTo?: string;
+                    /** @description 값 = `PERIODIC`·`ADHOC`·`CYCLE`. 값 목록은 `GET /mdm/code-values?codeGroupCode=INVENTORY_COUNT_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     countTypeCode?: string;
+                    /** @description 재고 실사 상태로 거른다 — 계획(PLANNED) · 진행중(IN_PROGRESS) · 완료(COMPLETED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_COUNT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 진행 중인 실사만. 근거: M-01-11 §5-6 */
                     inProgressOnly?: boolean;
@@ -12314,7 +12721,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path: {
@@ -12468,6 +12878,7 @@ export interface paths {
                 query?: {
                     warehouseId?: number;
                     locationId?: number;
+                    /** @description 값 = `BOX`·`CART`·`PALLET`. 값 목록은 `GET /mdm/code-values?codeGroupCode=HANDLING_UNIT_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     handlingUnitTypeCode?: string;
                     statusCode?: string;
                     /** @description 취급 단위 번호 검색 */
@@ -12506,7 +12917,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -12656,7 +13070,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -12785,7 +13202,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -12927,7 +13347,8 @@ export interface paths {
                     warehouseId?: number;
                     locationId?: number;
                     transactionTypeCode?: string;
-                    sourceDocumentTypeCode?: string;
+                    /** @description 원천 문서 유형으로 거른다. 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 넷이다 — 입고(GOODS_RECEIPT) · 출고(GOODS_ISSUE) · 재고조정(INVENTORY_ADJUSTMENT) · 재고이동(STOCK_TRANSFER). ⭐ 근거 — W-04-05 가 「입고·출고 전기 각 1건」을 명시하고, W-01-12 §5-2 가 「inventory_transaction.source_document_type_code 에 「재고조정」 값이 있으면 source_document_id = inventory_adjustment_id 로 잇는다」로 적었다. ⚠ STOCK_TRANSFER 는 «재고를 움직이므로 원장을 남긴다»는 추론이다 — 다른 셋보다 근거가 얕다. ⭐ 이 축이 원장 한 줄의 «성격»을 말한다 — 방향(입고·출고·이동)은 라인의 from*\/to* 가 이미 말하므로 transactionTypeCode 를 따로 두지 않는다(L-2-1 · 2026-09-02 판정). */
+                    sourceDocumentTypeCode?: "GOODS_RECEIPT" | "GOODS_ISSUE" | "INVENTORY_ADJUSTMENT" | "STOCK_TRANSFER";
                     page?: number;
                     size?: number;
                 };
@@ -13188,13 +13609,16 @@ export interface paths {
          *
          *     ⭐ successorCount·cancellable 을 서버가 판정해 내린다. 원천 참조가 다형이라(source_document_type_code + source_document_id) 유형↔테이블 규약이 아직 없는데, 프런트가 「입고 → 출고·이동·투입」 관계표를 하드코딩하면 유형이 늘 때마다 취소 판정이 조용히 틀린다(공유계약 A-10 보강).
          *
-         *     이 화면이 덮는 것은 8유형이다 — 발주·입하·입고·출고요청·피킹·이동요청·외주출고·외주입고(2026-08-30 되살림 — subcontract_issue/receipt 도 동형으로 status_code 를 둔다). 출하·생산품 입고는 다른 도메인이라 범위 밖이다. 근거: W-01-13 §5-2·§5-3·§5-6
+         *     이 화면이 덮는 것은 9종이다 — 발주·입하·입고·출고요청·피킹·이동요청·외주출고·외주입고(2026-08-30 되살림 — subcontract_issue/receipt 도 동형으로 status_code 를 둔다) + 출고(2026-09-02 — FR-IM-078 출고취소가 이 화면 소관이고, POST /logistics/goods-issues/{goodsIssueId}:request-cancel 이 후속 목록의 원천으로 이 경로를 지목한다). 셈 — 물류 12테이블 − 출하 2 = 10, 10 − 생산품 입고 1 = 9. 출하·생산품 입고는 다른 도메인이라 범위 밖이다. 근거: W-01-13 §5-2·§5-3·§5-6
+         *
+         *     취소 실행 경로는 3종에만 있다 — INBOUND_RECEIPT 는 /logistics/inbound-receipts/{id}, GOODS_RECEIPT 는 /logistics/goods-receipts/{id}, GOODS_ISSUE 는 /logistics/goods-issues/{id} 의 :request-cancel · :cancel 을 쓴다. 그 밖 6종은 취소 경로가 없다. ⚠ 이 대응은 설명이라 생성 타입에 실리지 않는다 — 화면이 옮겨 적는 것은 한시적이고, 계약 필드로 내리는 안을 따로 세운다.
          */
         get: {
             parameters: {
                 query: {
-                    /** @description 유형을 고르지 않으면 한 형태로 맞출 대상이 정해지지 않는다 */
-                    documentTypeCode: string;
+                    /** @description 유형을 고르지 않으면 한 형태로 맞출 대상이 정해지지 않는다. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 고객이 늘릴 수 있는 값이 아니다(공유계약 A-16 「가르는 물음 넷」 — 「가」 거짓 · 「라」 거짓 · 2026-09-02 판정). 선례는 같은 갈래에서 approval_type_code 8값을 enum 으로 닫은 omf-mes#336 이다. 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다. ⚠ 같은 이름의 다른 자리는 값 집합이 다르다 — 자리마다 닫는다. */
+                    documentTypeCode: "PURCHASE_ORDER" | "INBOUND_RECEIPT" | "GOODS_RECEIPT" | "MATERIAL_ISSUE_REQUEST" | "PICKING_ORDER" | "STOCK_TRANSFER" | "SUBCONTRACT_ISSUE" | "SUBCONTRACT_RECEIPT" | "GOODS_ISSUE";
+                    /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 문서 일자 시작 */
                     documentDateFrom?: string;
@@ -13252,7 +13676,8 @@ export interface paths {
             query?: never;
             header?: never;
             path: {
-                documentTypeCode: string;
+                /** @description 이 화면이 다루는 물류 문서의 종류. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 고객이 늘릴 수 있는 값이 아니다(공유계약 A-16 「가르는 물음 넷」 — 「가」 거짓 · 「라」 거짓 · 2026-09-02 판정). 선례는 같은 갈래에서 approval_type_code 8값을 enum 으로 닫은 omf-mes#336 이다. 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다. ⚠ 같은 이름의 다른 자리는 값 집합이 다르다 — 자리마다 닫는다. */
+                documentTypeCode: "PURCHASE_ORDER" | "INBOUND_RECEIPT" | "GOODS_RECEIPT" | "MATERIAL_ISSUE_REQUEST" | "PICKING_ORDER" | "STOCK_TRANSFER" | "SUBCONTRACT_ISSUE" | "SUBCONTRACT_RECEIPT" | "GOODS_ISSUE";
                 documentId: number;
             };
             cookie?: never;
@@ -13266,7 +13691,8 @@ export interface paths {
                 query?: never;
                 header?: never;
                 path: {
-                    documentTypeCode: string;
+                    /** @description 이 화면이 다루는 물류 문서의 종류. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 고객이 늘릴 수 있는 값이 아니다(공유계약 A-16 「가르는 물음 넷」 — 「가」 거짓 · 「라」 거짓 · 2026-09-02 판정). 선례는 같은 갈래에서 approval_type_code 8값을 enum 으로 닫은 omf-mes#336 이다. 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다. ⚠ 같은 이름의 다른 자리는 값 집합이 다르다 — 자리마다 닫는다. */
+                    documentTypeCode: "PURCHASE_ORDER" | "INBOUND_RECEIPT" | "GOODS_RECEIPT" | "MATERIAL_ISSUE_REQUEST" | "PICKING_ORDER" | "STOCK_TRANSFER" | "SUBCONTRACT_ISSUE" | "SUBCONTRACT_RECEIPT" | "GOODS_ISSUE";
                     documentId: number;
                 };
                 cookie?: never;
@@ -13319,10 +13745,12 @@ export interface paths {
                     issuedAtFrom?: string;
                     /** @description 출고일 종료 */
                     issuedAtTo?: string;
-                    /** @description 출고 유형 */
+                    /** @description 출고 유형 값 = `PRODUCTION`·`SUPPLIER_RETURN`·`OTHER`·`SHIPMENT`. 값 목록은 `GET /mdm/code-values?codeGroupCode=ISSUE_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     issueTypeCode?: string;
                     sourceWarehouseId?: number;
+                    /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
+                    /** @description 값 = `IQC_FAIL`·`OVER_RECEIPT`·`DEFECT_AFTER_RECEIPT`·`WRONG_SHIPMENT`·`OTHER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=GOODS_ISSUE_REASON` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     reasonCode?: string;
                     /** @description 반품 대상 공급사. 근거: W-01-05 §3 */
                     supplierId?: number;
@@ -13366,7 +13794,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path?: never;
@@ -13767,6 +14198,8 @@ export interface paths {
         /**
          * 기타 출고 품의 상신
          * @description 결재선이 없으면 400(code=ROUTE_NOT_FOUND)이다 — 상신할 곳이 없는 요청을 만들지 않는다. 진행 중인 승인 요청이 이미 있으면 400 이다 — 한 전표에 살아 있는 요청은 하나다. 반려된 요청은 진행 중이 아니므로 다시 상신할 수 있고 그때는 새 요청이 만들어진다(공유계약 J-6). 근거: W-01-06 §5-7 · 공유계약 J-4
+         *
+         *     ⭐ **승인 유형은 서버가 낸다 — 본문이 받지 않는다**(✓확정 2026-09-01 사용자 · omf-mes#336). 이 오퍼레이션이 만드는 승인 요청의 approvalTypeCode 는 언제나 GOODS_ISSUE_DISPOSAL 이다. ⛔ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)를 «유형»으로 가르지 않는다 — 둘의 결재선을 가르는 축은 결재선 정의의 businessUnitId 이고, 어느 결재선을 고를지는 서버가 «전표의 reasonCode»로 파생한다(공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 세웠다). 화면은 유형도 결재선도 고르지 않는다.
          */
         post: {
             parameters: {
@@ -13946,7 +14379,9 @@ export interface paths {
                     receiptDateTo?: string;
                     warehouseId?: number;
                     plantId?: number;
+                    /** @description 값 = `MATERIAL`·`PRODUCT`·`RETURN`·`TRANSFER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=RECEIPT_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     receiptTypeCode?: string;
+                    /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 입고번호 검색 */
                     q?: string;
@@ -13984,7 +14419,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path?: never;
@@ -14358,7 +14796,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -14427,6 +14868,7 @@ export interface paths {
                     receiptDateTo?: string;
                     supplierId?: number;
                     plantId?: number;
+                    /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 라벨이 발행된 건을 뺄지. 근거: P-01-01 §6 */
                     labelIssued?: boolean;
@@ -14470,7 +14912,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -15019,6 +15464,7 @@ export interface paths {
             parameters: {
                 query?: {
                     workOrderId?: number;
+                    /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 필요 시각 시작 */
                     requiredAtFrom?: string;
@@ -15236,6 +15682,7 @@ export interface paths {
                     /** @description 담당자로 거른다. ⛔ 「비우면 본인」이 아니다 — 모바일·POP 은 계정 로그인이 없고 서버가 사번 세션을 갖지 않아 「본인」을 풀 근거가 없다(공유계약 D-5·F-2). 현장 셸은 사번으로 GET /mdm/workers?q=<사번> 을 한 번 받아 얻은 workerId 를 여기에 싣는다. 근거: M-01-08 §5-3 */
                     assignedWorkerId?: number;
                     warehouseId?: number;
+                    /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     sourceDocumentId?: number;
                     page?: number;
@@ -15345,7 +15792,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -15422,7 +15872,7 @@ export interface paths {
                     supplierId?: number;
                     /** @description 공장 */
                     plantId?: number;
-                    /** @description 상태 */
+                    /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 이 품목이 라인에 있는 P/O 만 */
                     itemId?: number;
@@ -15836,6 +16286,7 @@ export interface paths {
                     /** @description 담당자로 거른다. ⛔ 「비우면 본인」이 아니다 — 모바일·POP 은 계정 로그인이 없고 서버가 사번 세션을 갖지 않아 「본인」을 풀 근거가 없다(공유계약 D-5·F-2). 현장 셸은 사번으로 GET /mdm/workers?q=<사번> 을 한 번 받아 얻은 workerId 를 여기에 싣는다. */
                     assignedWorkerId?: number;
                     warehouseId?: number;
+                    /** @description 적치 작업 상태로 거른다 — 적치 대기(PENDING) · 적치 완료(COMPLETED) · 임시 적치 완료(COMPLETED_TEMPORARY). ⚠ 임시 적치는 사유가 함께 필수다(PUTAWAY_TASK_TEMPORARY_REASON). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PUTAWAY_TASK_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     lotId?: number;
                     /** @description 임시 위치에 적재된 건만. 정위치 이동 대상을 찾는다 */
@@ -15950,7 +16401,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -16031,7 +16485,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -16110,7 +16567,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -16182,6 +16642,7 @@ export interface paths {
                 query?: {
                     workOrderId?: number;
                     goodsIssueId?: number;
+                    /** @description 전표 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     page?: number;
                     size?: number;
@@ -16219,7 +16680,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -16345,7 +16809,9 @@ export interface paths {
                     inTransitOnly?: boolean;
                     fromWarehouseId?: number;
                     toWarehouseId?: number;
+                    /** @description 재고 이동 유형 — 일반 이동(NORMAL) · 불량 반출(DEFECT_RETURN). ⭐ M-01-10 §4 가 「불량 반출일 때만 사유 칸을 연다」로 «동작»을 이 값에 걸었다 — 값이 늘면 화면 분기가 따라가지 못한다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=STOCK_TRANSFER_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     transferTypeCode?: string;
+                    /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 요청일 시작 */
                     requestedAtFrom?: string;
@@ -16387,8 +16853,11 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
-                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
+                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
                 cookie?: never;
@@ -16628,7 +17097,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -16720,8 +17192,8 @@ export interface paths {
                     size?: number;
                     /** @description 이 W/O 를 원천으로 발행된 LOT 만. 선발행 슬롯을 빠짐없이 훑는 경로다 — 마감(W-02-05 §3)과 POP 의 실적 대상 LOT 선택(P-02-04 §5)·생산LOT 완료(P-02-06 §3 좌단 LOT 목록)가 같은 축을 쓴다. ⭐ 저장된 형태는 다형 참조 짝(sourceTypeCode + sourceId)이지만 판별자 값 목록이 아직 미확정이라 짝 필터를 열지 않았다 — 값을 모르는 채 열면 눌러도 아무것도 안 걸린다(공유계약 G-23). 서버가 W/O 원천으로 풀어 준다 */
                     workOrderId?: number;
-                    /** @description 입고 확정 대기 큐의 판정 축 — IQC 합격 · 샘플링 미대상 · 긴급 IQC 생략 한도승인 세 갈래다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 서버가 판정한다 — 화면이 검사 결과·승인 요청을 따로 조회해 조합하면 세 갈래가 화면마다 갈린다. 근거: W-01-10 §3·§5-1·§5-5 */
-                    receiptDispositionCode?: string;
+                    /** @description 입고 확정 대기 큐의 판정 축 — IQC 합격(IQC_PASSED) · 샘플링 미대상(SAMPLING_NOT_REQUIRED) · 긴급 IQC 생략 한도승인(URGENT_IQC_WAIVED). ⭐ 값 집합은 W-01-10 §3·§5-1·§5-5 가 이미 확정했고 문자열만 없었다 — 2026-09-02 §G 로 도출. ⭐ 서버가 판정한다 — 화면이 검사 결과·승인 요청을 따로 조회해 조합하면 세 갈래가 화면마다 갈린다 */
+                    receiptDispositionCode?: "IQC_PASSED" | "SAMPLING_NOT_REQUIRED" | "URGENT_IQC_WAIVED";
                     /** @description 입고 확정이 아직 안 된 것만. 참이면 IQC 미완료 LOT 이 빠진다 — 화면 §6 이 「진입 자체가 막힌다」로 못박은 규칙을 서버가 집행한다. heldOnly 로 갈음할 수 없다 — 의심자재 보류가 섞인다. 근거: W-01-10 §5-1 */
                     awaitingReceiptOnly?: boolean;
                     /** @description 완료 처리됐는가로 거른다 — false 면 completedAt 이 비어 있는 것만, true 면 값이 있는 것만 낸다. LOT 라벨 출력(P-02-07 §4-B)의 완료 LOT 목록과 긴급 직행 출하(W-04-05 §3)의 생산 완료분 선택이 이 축으로 선다. ⭐ 상태 코드 문자열을 몰라도 판정된다. ⛔ statusCode(품질 판정 축)로는 완료를 고를 수 없다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다(공유계약 L-11). 근거: P-02-07 §4-B·§5-4 · omf-mes#269 */
@@ -16770,7 +17242,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -17221,7 +17696,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -17302,7 +17780,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -17384,7 +17865,7 @@ export interface paths {
             parameters: {
                 query?: {
                     /** @description 승인 유형 */
-                    approvalTypeCode?: string;
+                    approvalTypeCode?: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
                     businessUnitId?: number;
                     /** @description 참이면 사용 중만 */
                     activeOnly?: boolean;
@@ -17416,7 +17897,7 @@ export interface paths {
         put?: never;
         /**
          * 결재선 등록
-         * @description 같은 (approvalTypeCode, businessUnitId) 로 활성 결재선이 이미 있으면 400 이다 — 물리 모델에 유일 제약이 없어 계약이 막는다. 근거: W-06-15 §5-3 · 공유계약 B-12
+         * @description 같은 (approvalTypeCode, businessUnitId) 로 활성 결재선이 이미 있으면 400 이다 — 활성 결재선은 한 벌이어야 고를 것이 하나로 정해지므로 계약이 막는다. 근거: W-06-15 §5-3 · 공유계약 B-12
          */
         post: {
             parameters: {
@@ -17897,27 +18378,30 @@ export interface paths {
         };
         /**
          * 승인 요청 목록
-         * @description 결재함이 쓰는 목록이다. assignedToMe 는 「로그인 사용자가 approver_id 인 단계가 있는 요청」이고, pendingOnly 와 함께 쓰면 「내 결재 대기」 탭이 된다(공유계약 J-3 — 역할 기반 필터가 아니다).
+         * @description 결재함이 쓰는 목록이다. assignedToMe 는 「approver_id 가 「나」인 단계가 있는 요청」이고, pendingOnly 와 함께 쓰면 「내 결재 대기」 탭이 된다(공유계약 J-3 — 역할 기반 필터가 아니다).
          *
          *     targetTypeCode·targetId 로 거르면 업무 화면이 「이 문서의 승인 상태」를 찾을 수 있다 — 업무 자원이 승인 요청 식별자를 싣지 않는 경우에는 이것이 유일한 방법이다.
          *
-         *     근거: W-CO-09 §3·§5-8
+         *     ⭐ 부르는 셸이 «둘»이다 — 관리웹 결재함(W-CO-09)과 모바일 상신 화면(M-01-13 의 「내가 올린 요청」 구획). 그래서 「나」를 묻는 세 질의(assignedToMe·requestedByMe·myTurnOnly)가 «누구»로 풀리는지가 셸마다 다르다: 관리웹은 계정 토큰에서 서버가 풀고, 현장 단말·모바일은 계정 세션이 없어 X-Worker-No 헤더로 주체를 싣는다(공유계약 D-5·F-2 · 같은 규칙의 선례가 GET /app/notices 의 unacknowledgedByMe 다). ⛔ 단말 토큰으로 풀지 않는다 — 한 단말을 여러 작업자가 «교대로» 쓰므로 남이 올린 요청이 섞인다.
+         *
+         *     근거: W-CO-09 §3·§5-8 · M-01-13 §4 · omf-mes#335
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description 로그인 사용자가 승인자인 요청만 */
+                    /** @description 승인자가 「나」인 요청만 — approver_id 인 단계가 있는 요청이다(공유계약 J-3). ⚠ 승인 화면은 관리웹뿐이라(W-CO-09·W-01-02·W-03-09) 지금은 계정 토큰에서만 풀린다. 현장 셸이 이 질의를 쓰게 되면 requestedByMe 와 같은 규칙으로 X-Worker-No 에 주체를 싣는다 */
                     assignedToMe?: boolean;
-                    /** @description 로그인 사용자가 올린 요청만 */
+                    /** @description 올린 사람이 「나」인 요청만. ⭐ 「나」는 셸마다 다르게 풀린다 — 관리웹은 계정 토큰의 로그인 사용자이고, 현장 단말·모바일은 X-Worker-No 헤더의 «사번»이다(모바일 셸에는 계정 로그인이 없다 · M-CO-01 §2). ⛔ 헤더를 싣지 않으면 서버가 단말로 풀 수밖에 없고, 한 단말을 여러 작업자가 교대로 쓰므로 «남이 올린 요청이 내 목록에 섞인다». 근거: 공유계약 D-5·F-2 · M-01-13 §4 · omf-mes#335 */
                     requestedByMe?: boolean;
                     /** @description 참이면 아직 끝나지 않은 요청만 */
                     pendingOnly?: boolean;
-                    /** @description 참이면 지금 내가 결재할 수 있는 것만 — 상단 대기 건수의 근거 */
+                    /** @description 참이면 지금 「나」가 결재할 수 있는 것만 — 상단 대기 건수의 근거. ⚠ 「나」의 해석은 assignedToMe 와 같다 */
                     myTurnOnly?: boolean;
-                    approvalTypeCode?: string;
+                    approvalTypeCode?: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
+                    /** @description 결재 요청 상태로 거른다 — 대기(PENDING) · 승인(APPROVED) · 반려(REJECTED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=APPROVAL_REQUEST_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 업무 화면이 자기 문서의 승인 상태를 찾을 때 targetId 와 함께 쓴다 */
-                    targetTypeCode?: string;
+                    targetTypeCode?: "GOODS_ISSUE" | "GOODS_RECEIPT" | "INBOUND_RECEIPT" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "SHIPMENT" | "INBOUND_LOT";
                     targetId?: number;
                     /** @description 상신일 시작 */
                     requestedAtFrom?: string;
@@ -17928,7 +18412,13 @@ export interface paths {
                     page?: number;
                     size?: number;
                 };
-                header?: never;
+                header?: {
+                    /**
+                     * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
+                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
+                };
                 path?: never;
                 cookie?: never;
             };
@@ -18962,7 +19452,10 @@ export interface paths {
                     size?: number;
                 };
                 header?: {
-                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path?: never;
@@ -19324,7 +19817,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path: {
@@ -19764,7 +20260,8 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    targetTypeCode?: string;
+                    /** @description 무엇에 붙은 첨부인가 — WAREHOUSE → 창고 도면(W-CO-08 §3) · NOTICE → 공지 첨부(W-CO-04 §4). ⭐ 값 문자열을 확정했다(2026-09-02) — 두 화면이 이미 이 문자열을 스펙에 적어 두고 있었다. ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 고객이 늘릴 수 없고, 붙일 곳이 늘면 계약을 고친다(공유계약 A-10 · A-16 「가」·「나」 참) */
+                    targetTypeCode?: "WAREHOUSE" | "NOTICE";
                     targetId?: number;
                 };
                 header?: never;
@@ -19804,7 +20301,12 @@ export interface paths {
             requestBody: {
                 content: {
                     "multipart/form-data": {
-                        targetTypeCode: string;
+                        /**
+                         * @description 무엇에 붙이는 첨부인가 — WAREHOUSE → 창고 도면(W-CO-08 §3) · NOTICE → 공지 첨부(W-CO-04 §4). ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 고객이 늘릴 수 없고, 붙일 곳이 늘면 계약을 고친다(공유계약 A-10 · A-16 「가」·「나」 참). ⭐ 읽는 쪽 Attachment.targetTypeCode 와 같은 값집합이다.
+                         * @example WAREHOUSE
+                         * @enum {string}
+                         */
+                        targetTypeCode: "WAREHOUSE" | "NOTICE";
                         /** Format: int64 */
                         targetId: number;
                         /** Format: binary */
@@ -19932,7 +20434,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path: {
@@ -20087,8 +20592,9 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description P/O 상태로 거른다 — 수신(RECEIVED) · 수정됨(UPDATED) · 취소(CANCELLED). ⭐ ERP 가 발행하고 MES 는 수신본을 갖지만 **코드는 우리 어휘로 저장한다** — ERP 코드를 그대로 담거나 매핑 테이블을 두지 않는다(사용자 결정 2026-09-02). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
-                    /** @description ERP 변경이 도착했는데 관리자가 아직 확인하지 않은 P/O 만 낸다. 참이면 acknowledgedAt 이 비어 있고 마지막 변경 수신이 그 뒤인 것만 내린다. ⭐ 상태 코드 문자열을 몰라도 판정된다 — 확인 시각의 유무로 갈리기 때문이다(released 파라미터와 같은 형태다). ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 쪽 안에서만 걸러진다. 근거: W-02-06 §3·§4-C·§6 · omf-mes#87 */
+                    /** @description ERP 변경이 도착했는데 관리자가 아직 확인하지 않은 P/O 만 낸다. 참이면 ⓐ acknowledgedAt 이 비었거나 ⓑ lastChange.receivedAt 이 acknowledgedAt 보다 뒤인 것을 낸다 — 둘 중 하나면 미확인이다. ⓑ 가 「확인한 뒤 ERP 가 또 보낸」 경우이고 이 화면이 존재하는 이유다. ⭐ 상태 코드 문자열을 몰라도 판정된다 — 확인 시각의 유무로 갈리기 때문이다(released 파라미터와 같은 형태다). ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 쪽 안에서만 걸러진다. 근거: W-02-06 §3·§4-C·§6 · omf-mes#87 */
                     unacknowledgedOnly?: boolean;
                     /** @description 사업부 필터 — 화면 정본(W-02-01 §3)의 첫 필터. 근거: omf-mes#196 */
                     businessUnitId?: number;
@@ -20102,6 +20608,8 @@ export interface paths {
                     q?: string;
                     /** @description 하위 레벨 함께(계층 펼침용). 참이면 필터·page·size·total 은 «루트 P/O» 기준으로 세고, 각 루트의 하위 전체를 같은 페이지에 함께 내린다 — 부모와 자식이 페이지로 갈리지 않는다. 트리는 parentProductionOrderId·bomLevel 로 만든다(별도 hasChildren 불요 — 하위가 같은 응답에 있다). 기본 표시는 전체 펼침(W-02-01 §3 레이아웃). 근거: omf-mes#196 */
                     includeChildren?: boolean;
+                    /** @description 마지막으로 수신한 ERP 변경 한 건을 함께 받는다 — 응답의 lastChange 다. P/O 변경 관리자 확인 화면(W-02-06)의 «변경 알림 목록»이 행마다 「무엇이 몇에서 몇으로」를 그리므로 이 축으로 선다. ⛔ 행마다 따로 부르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 호출이 쪽 크기만큼 는다. 켜지 않으면 채우지 않는다 — 같은 경로를 P/O 수신·조회 화면(W-02-01)이 변경 정보 없이 부른다(공유계약 L-1-1 ⑵). 변경을 한 번도 받지 않은 P/O 는 켜도 이 칸이 없다. 근거: W-02-06 §3 */
+                    withLastChange?: boolean;
                     page?: number;
                     size?: number;
                 };
@@ -20146,7 +20654,10 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: never;
+                query?: {
+                    /** @description 마지막으로 수신한 ERP 변경 한 건을 함께 받는다 — 응답의 lastChange 다. 켜지 않으면 채우지 않는다. 변경을 한 번도 받지 않은 P/O 는 켜도 이 칸이 없다. 판정 저장이 409 로 막힌 뒤 다시 불러올 때 «새 변경분»을 함께 받는다(W-02-06 §5-3) */
+                    withLastChange?: boolean;
+                };
                 header?: never;
                 path: {
                     productionOrderId: number;
@@ -20199,6 +20710,12 @@ export interface paths {
          * @description 관리자가 ERP 변경을 반영할지 강행할지 판정한다. 근거: W-02-06 §5-5 · :동사 규약
          *
          *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /planning/production-orders/{productionOrderId} 의 ETag 를 그대로 싣는다. 409 가 나면 화면 문구는 「남이 고쳤다」가 아니라 「ERP 가 다시 보냈다」다.
+         *
+         *     ⭐ 토큰이 둘이다 — P/O 는 If-Match 헤더(원천 = GET /planning/production-orders/{productionOrderId} 의 ETag), 함께 고치는 W/O 는 본문 workOrderAdjustments[].versionNo(원천 = GET /production/work-orders?productionOrderId= 응답의 versionNo)다. 하나라도 어긋나면 전체를 거부한다.
+         *
+         *     ⛔ 400 규칙 — ⓐ decisionCode=PROCEED 인데 workOrderAdjustments 가 비어 있지 않으면 400 ⓑ workOrderAdjustments[].workOrderId 가 이 P/O 의 영향 W/O 가 아니면 400 ⓒ 같은 workOrderId 가 두 번 오면 400 ⓓ orderQty·plannedStartAt·plannedEndAt 을 하나도 안 담은 조정 항목이 있으면 400(아무것도 안 고치는 항목이다).
+         *
+         *     ⛔ 중단·취소 반영의 W/O 취소는 이 본문에 싣지 않는다 — POST /production/work-orders/{workOrderId}:cancel 을 건별로 부른다. 그쪽은 선발행 생산LOT 슬롯을 «전건 즉시 폐번»하는 되돌릴 수 없는 부수 효과를 갖고(DR-007), 취소 사유(reasonCode)가 W/O 마다 다를 수 있어 건별 확인이 업무 요구다.
          */
         post: {
             parameters: {
@@ -20348,6 +20865,7 @@ export interface paths {
             parameters: {
                 query?: {
                     productionOrderId?: number;
+                    /** @description 생산계획 상태로 거른다 — 작성중(DRAFT) · 확정(CONFIRMED). ⛔ 확정 뒤에는 수정·삭제가 막힌다(400 STATE_LOCKED) — :confirm 이 그 전이를 만든다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_PLAN_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     planDateFrom?: string;
                     planDateTo?: string;
@@ -20756,7 +21274,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -20916,7 +21437,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -21077,7 +21601,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -21233,7 +21760,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -21345,7 +21875,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -21470,7 +22003,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -21589,7 +22125,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -21664,7 +22203,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -21739,6 +22281,7 @@ export interface paths {
                     /** @description P/O 로 거른다(서버가 계획을 경유해 잇는다) — W-02-01 상세 「전개」 구획용. 근거: omf-mes#196 */
                     productionOrderId?: number;
                     productionPlanId?: number;
+                    /** @description 작업지시 상태로 거른다 — 편성(PLANNED) · 확정(CONFIRMED) · 배포(RELEASED) · 진행(IN_PROGRESS) · 완료(COMPLETED) · 마감(CLOSED) · 중단(SUSPENDED) · 취소(CANCELLED) «8종»(결정 14 · 사용자 확정 2026-09-02). ⛔ 「진행불가」는 상태가 «아니다» — 자원 Validation NG 는 확정 버튼을 막는 게이트이고 W/O 는 편성에 머문다(W-02-04 §5 · W-02-03 §5-3 A-9 3등급). 「재시작」을 상태에서 뺀 것과 같은 논리다(중단→진행 전이 이벤트). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 상태 전이와 버튼 활성이 이 값에 걸린다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 배포됐는가로 거른다 — false 면 released_at 이 비어 있는 것만, true 면 값이 있는 것만 낸다. 긴급 발행 화면(W-02-07)이 진입할 때 「만들어졌으나 배포되지 않은 긴급 W/O」를 되찾는 축이다(W-02-07 §5-8). ⭐ 상태 코드 문자열을 몰라도 판정된다 — 배포 시각이 있고 없고로 갈리기 때문이다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 페이지 단위라 페이지 안에서만 걸러진다(공유계약 L-11 의 반대쪽). 근거: W-02-07 §5-8 · omf-mes#258 */
                     released?: boolean;
@@ -21748,7 +22291,7 @@ export interface paths {
                     open?: boolean;
                     /** @description 확정·배포할 수 있는 상태인가로 거른다 — 참이면 ⓐ 배포 시각이 비어 있고 ⓑ 계획 자원이 배정돼 있으며 ⓒ 4M 배정 유효성 점검에 차단 건이 없는 것만 낸다. 확정·배포 화면의 《확정 대기》 목록이 이 축으로 선다. 거짓이면 그 여집합을 낸다. ⭐ 긴급 W/O 는 이 목록에 넣지 않는다 — 발행·배포를 긴급 발행 화면이 한 화면에서 끝낸다. ⭐ 상태 코드 문자열을 몰라도 판정된다 — released 와 같은 형태다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다 */
                     releasable?: boolean;
-                    /** @description P/O 와 어긋난 채 강행된 W/O 만 거른다 — 응답의 poMismatch 와 같은 축이다 */
+                    /** @description P/O 와 어긋난 채 남은 W/O 만 거른다 — 응답의 poMismatch 와 같은 축이다 */
                     poMismatch?: boolean;
                     /** @description 이 W/O 의 후속 W/O 만 낸다 — 서버가 공정 의존을 푼다. WIP 공정 이동 스캔의 「다음 공정」 선택지가 이 축으로 선다. ⭐ 후속이 여럿이면 여럿을 낸다 — 외주·재작업 분기가 있어 화면이 고른다. 후속이 없으면 빈 목록이고 화면은 「다음 공정이 없습니다」를 그린다. 후속의 statusCode 를 함께 받아 화면이 「후속 W/O 미시작 → 경고 + 진행 가능」을 추가 호출 없이 판정한다 */
                     successorOfWorkOrderId?: number;
@@ -21757,6 +22300,7 @@ export interface paths {
                     productionLineId?: number;
                     /** @description 계획 설비로 거른다. POP 작업 시작 화면(P-02-01 §4 ②)의 기본 목록 「이 설비 · 배포됨」이 이 축으로 선다 — 응답의 plannedEquipmentId 를 클라이언트가 거르는 것으로는 성립하지 않는다(목록이 페이지 단위라 페이지 안에서만 걸러진다). 저장 자리가 실재하므로 필터를 둔다(공유계약 L-11 의 반대쪽). 근거: P-02-01 §4·§5-5 · omf-mes#247 */
                     plannedEquipmentId?: number;
+                    /** @description 작업지시 유형으로 거른다 — NORMAL(양산) · EMERGENCY(긴급) · REWORK(재작업). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 계약 자신이 「이 값으로 갈리는 것이 셋」이라 적어 두었다. */
                     workOrderTypeCode?: string;
                     /** @description 기간 필터. ⚠ 진행현황 조회는 이 쌍을 «비울 수 없다» — 무제한 조회를 허용하면 실적이 쌓인 뒤 화면이 멎는다. 기본값은 최근 1개월이고 그 강제는 «화면» 규칙이다 — 다른 화면이 같은 경로를 기간 없이 부르기 때문에 계약에서 필수로 올리지 않았다. 끝 경계는 date-time 이라 반열림이다(From 이상 · To 미만). ⚠ 이 축은 W/O 의 «계획 시작 시각»이다 — 실적의 발생 시각이 아니다. 이 쌍으로 좁힌 요약의 수량 합계는 «이 기간에 시작 계획된 W/O» 의 전 기간 실적 합이며 「그 기간에 생산된 양」이 아니다. 실적 발생 시각으로 세려면 GET /production/production-results 의 occurredFrom·occurredTo 다. */
                     plannedStartFrom?: string;
@@ -22206,6 +22750,8 @@ export interface paths {
          * @description 취소 상태로 옮기고 선발행된 생산LOT 슬롯을 전부 자동 폐번한다. 마감이 미달 슬롯을 폐번하는 것과 같은 모양이다 — ⛔ 다만 대상 집합은 다르다. 마감은 실적이 없는 슬롯만(R82 · 마감 시점 전용), 취소는 선발행 슬롯 전건이다(DR-007 3-A · 2026-08-12 확정). 근거: 예외 E-4 ④(2026-08-12 종결) · R27·R82 · W-02-06 §5-5
          *
          *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /production/work-orders/{workOrderId} 의 ETag 를 그대로 싣는다. 취소는 관리웹(W-02-06) 온라인 전제이고 선발행 슬롯 자동 폐번이 붙는 되돌릴 수 없는 전이라 :close·:release 와 같은 정책이다. 근거: 형제 전이 정책 정렬 · omf-mes#205
+         *
+         *     ⚠ P/O 변경 관리자 확인(W-02-06)에서 중단·취소를 반영할 때는 영향 W/O 마다 이 오퍼레이션을 «건별로» 부른다 — 부분 성공이 생기고 화면이 성공·실패를 건별로 보인다. 수량·납기 반영이 :acknowledge 한 요청에 실리는 것과 다른데, 이쪽은 선발행 슬롯을 전건 즉시 폐번하는 되돌릴 수 없는 전이라 건별 확인이 업무 요구이기 때문이다(DR-007 · 공유계약 G-19).
          */
         post: {
             parameters: {
@@ -22400,7 +22946,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -22578,7 +23127,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -22702,7 +23254,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -22822,6 +23377,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description 값 = `START`·`STOP`·`RESUME`·`END`·`CONTROL_OVERRIDE`. 값 목록은 `GET /mdm/code-values?codeGroupCode=WORK_SESSION_EVENT_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     eventTypeCode?: string;
                 };
                 header?: never;
@@ -22856,7 +23412,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -23143,7 +23702,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -23267,7 +23829,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -23447,8 +24012,8 @@ export interface paths {
                     defectCodeId?: number;
                     occurrenceProcessId?: number;
                     detectionProcessId?: number;
-                    /** @description 현장 · PQC · OQC · 원천미상 */
-                    sourceAxisCode?: string;
+                    /** @description 불량 기록의 원천으로 거른다 — 현장(FIELD) · 공정검사(PQC) · 출하검사(OQC) · 수리(REPAIR) · 클레임(CLAIM) 5값(✓설계확정 결정 09). ⭐ **2026-09-02 정정** — 전에는 이 자리가 sourceAxisCode 라는 «다른 이름»이었고 「서버가 유도한 4축(현장/PQC/OQC/원천미상)」을 받았다. W-03-05 §5-2 가 「유도로는 결정 09 의 5축이 서지 않는다」를 확인하고 sourceCode 명시 축을 «신설»했는데 이 필터만 옛 축에 남아 있었다. ⛔ 한 사실에 두 축을 두면 화면마다 다른 수를 본다(L-2-1). ⚠ 「원천 미상」은 값이 아니라 «표시»다 — sourceCode 가 비어 있으면 화면이 「원천 미상」으로 묶어 보인다(W-03-05 §5-2 · L-8). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=DEFECT_RECORD_SOURCE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⚠ 2026-09-03 — enum 을 걷었다. 이 그룹은 registry-system 이라 값 목록이 계약이 아니라 공통코드 마스터에 산다 — 계약에 박으면 두 벌이 된다. */
+                    sourceCode?: string;
                     /** @description 기간 필수 — 공유계약 L-3 */
                     detectedFrom?: string;
                     detectedTo?: string;
@@ -23501,8 +24066,8 @@ export interface paths {
                 query?: {
                     /** @description 발생 공정으로 묶어야 개선 대상이 나온다 */
                     groupBy?: "defectCode" | "occurrenceProcess" | "detectionProcess";
-                    /** @description 현장 · PQC · OQC · 원천미상 */
-                    sourceAxisCode?: string;
+                    /** @description 불량 기록의 원천으로 거른다 — 현장(FIELD) · 공정검사(PQC) · 출하검사(OQC) · 수리(REPAIR) · 클레임(CLAIM) 5값(✓설계확정 결정 09). ⭐ **2026-09-02 정정** — 전에는 이 자리가 sourceAxisCode 라는 «다른 이름»이었고 「서버가 유도한 4축(현장/PQC/OQC/원천미상)」을 받았다. W-03-05 §5-2 가 「유도로는 결정 09 의 5축이 서지 않는다」를 확인하고 sourceCode 명시 축을 «신설»했는데 이 필터만 옛 축에 남아 있었다. ⛔ 한 사실에 두 축을 두면 화면마다 다른 수를 본다(L-2-1). ⚠ 「원천 미상」은 값이 아니라 «표시»다 — sourceCode 가 비어 있으면 화면이 「원천 미상」으로 묶어 보인다(W-03-05 §5-2 · L-8). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=DEFECT_RECORD_SOURCE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⚠ 2026-09-03 — enum 을 걷었다. 이 그룹은 registry-system 이라 값 목록이 계약이 아니라 공통코드 마스터에 산다 — 계약에 박으면 두 벌이 된다. */
+                    sourceCode?: string;
                     itemId?: number;
                     /** @description 필수 */
                     detectedFrom?: string;
@@ -23548,7 +24113,7 @@ export interface paths {
             parameters: {
                 query?: {
                     /** @description 재작업 · 폐기 · 정상 */
-                    dispositionTypeCode?: string;
+                    dispositionTypeCode?: "REWORK" | "SCRAP" | "NORMAL";
                     nonconformanceId?: number;
                     lotId?: number;
                     itemId?: number;
@@ -23660,9 +24225,9 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description IQC · PQC · OQC */
+                    /** @description IQC · PQC · OQC 값 = `IQC`·`PQC`·`OQC`. 값 목록은 `GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     inspectionTypeCode?: string;
-                    /** @description 검사 의뢰 상태로 좁힌다 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⛔ 값 목록을 화면에 고정하지 않는다 — 표시명은 06 계약 GET /mdm/code-values 로 채운다(공유계약 G-6). ⚠ 「아직 안 끝난 것」을 보려면 이것이 아니라 pendingOnly 를 쓴다 — 큐는 상태 하나가 아니다. 근거: W-01-01 §3 · 확정 2026-08-21 */
+                    /** @description 검사 의뢰 상태로 좁힌다 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_REQUEST_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 참이면 아직 끝나지 않은 의뢰만. ⭐ 정의를 값으로 못박는다 — pendingOnly=true ⇔ statusCode ∈ { REQUESTED, IN_PROGRESS }. ⭐ 검사 대기 큐가 이것이다(W-01-01 §3 좌단은 「대기」와 「진행」을 함께 보인다 — 상태 하나로는 못 고른다). ⛔ 화면이 상태 코드값을 고정하지 않게 하려는 것이 목적이다(공유계약 G-6). 선례: /app/approval-requests pendingOnly · /logistics/stock-transfers inTransitOnly. 근거: W-01-01 §3 · omf-mes#170 · 확정 2026-08-21 */
                     pendingOnly?: boolean;
@@ -23771,8 +24336,11 @@ export interface paths {
             parameters: {
                 query?: {
                     inspectionRequestId?: number;
+                    /** @description 값 = `IQC`·`PQC`·`OQC`. 값 목록은 `GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     inspectionTypeCode?: string;
+                    /** @description 검사 종합 판정으로 거른다 — 합격(ACCEPTED) · 불합격(REJECTED) · 보류(HELD). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     overallJudgmentCode?: string;
+                    /** @description 검사 성적서 상태로 거른다 — 임시저장(DRAFT) · 확정(CONFIRMED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 공정 필터 — 요약과 같은 축. 현장검사만 직접 컬럼이고 PQC·OQC 는 2단 조인이므로 잇는 것은 서버 몫이다(W-03-05 §5-2). 근거: omf-mes#192 문1 */
                     processId?: number;
@@ -23834,7 +24402,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path?: never;
@@ -23904,9 +24475,10 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
+                    /** @description 값 = `IQC`·`PQC`·`OQC`. 값 목록은 `GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     inspectionTypeCode?: string;
                     itemId?: number;
-                    /** @description 판정 필터 — 목록·요약과 같은 축. 근거: omf-mes#192 문1 */
+                    /** @description 판정 필터 — 목록·요약과 같은 축. 합격(ACCEPTED) · 불합격(REJECTED) · 보류(HELD). 근거: omf-mes#192 문1. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     overallJudgmentCode?: string;
                     /** @description 공정 필터 — 목록·요약과 같은 축. 근거: omf-mes#192 문1 */
                     processId?: number;
@@ -23966,10 +24538,11 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description ⚠ IQC·PQC·OQC 를 합치지 않는다 — 자재 불량률과 제품 불량률을 더하면 뜻이 없다(L-7) */
+                    /** @description ⚠ IQC·PQC·OQC 를 합치지 않는다 — 자재 불량률과 제품 불량률을 더하면 뜻이 없다(L-7) 값 = `IQC`·`PQC`·`OQC`. 값 목록은 `GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     inspectionTypeCode?: string;
                     itemId?: number;
                     processId?: number;
+                    /** @description 검사 종합 판정으로 거른다 — 목록과 같은 축. 합격(ACCEPTED) · 불합격(REJECTED) · 보류(HELD). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_OVERALL_JUDGMENT 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     overallJudgmentCode?: string;
                     /** @description 필수 — 공유계약 L-3 */
                     inspectedFrom?: string;
@@ -23979,6 +24552,7 @@ export interface paths {
                     /** @description 교정 만료 장비 측정분만 보거나 뺀다. ⛔ 기본은 섞어서 낸다 — 자동 제외는 정책이 미정이다(E-9 ①) */
                     calibrationExpired?: "only" | "exclude";
                     inspectionRequestId?: number;
+                    /** @description 검사 성적서 상태로 거른다 — 목록과 같은 축. 임시저장(DRAFT) · 확정(CONFIRMED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                 };
                 header?: never;
@@ -24301,6 +24875,7 @@ export interface paths {
                     lotNo?: string;
                     lotId?: number;
                     itemId?: number;
+                    /** @description 값 = `INCOMING_INSPECTION_WAIT`·`FOREIGN_MATTER_SUSPECTED`·`DIMENSION_ABNORMAL`·`APPEARANCE_ABNORMAL`·`CLAIM_RECALL`·`OTHER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=LOT_HOLD_REASON` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     reasonCode?: string;
                     /** @description 자재·생산·제품 3종(결정 10). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·PRODUCT). ⚠ 셋을 합쳐 집계하지 않는다(공유계약 L-7) — 같은 「보류 38건」이라도 자재와 제품은 대응이 다르다. 근거: omf-mes#176 */
                     lotTypeCode?: string;
@@ -24364,6 +24939,7 @@ export interface paths {
                     open?: boolean;
                     lotId?: number;
                     itemId?: number;
+                    /** @description 값 = `INCOMING_INSPECTION_WAIT`·`FOREIGN_MATTER_SUSPECTED`·`DIMENSION_ABNORMAL`·`APPEARANCE_ABNORMAL`·`CLAIM_RECALL`·`OTHER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=LOT_HOLD_REASON` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     reasonCode?: string;
                     /** @description 행위자 — W-03-01 요건 ① */
                     heldBy?: number;
@@ -25120,10 +25696,11 @@ export interface paths {
                                 /** @example true */
                                 matched: boolean;
                                 /**
-                                 * @description matched 가 거짓일 때의 사유. LABEL_ITEM_MISMATCH=이 납품라벨은 다른 품목용이다 · LOT_NOT_ALLOCATED=이 출하에 배분되지 않은 LOT 이다
+                                 * @description matched 가 거짓일 때의 사유 — LABEL_ITEM_MISMATCH(이 납품라벨은 다른 품목용이다) · LOT_NOT_ALLOCATED(이 출하에 배분되지 않은 LOT 이다). ⭐ 서버가 판정해 내리는 값이고 화면은 이 값으로 «문구»를 가른다 — 동작이 값에 걸리므로 설계가 닫는다(공유계약 G-31). ⛔ 공통코드 그룹이 아니다 — 고객이 늘리지 않는다(A-16 「가」 참). matched 가 참이면 null 이다.
                                  * @example LOT_NOT_ALLOCATED
+                                 * @enum {string|null}
                                  */
-                                reasonCode?: string | null;
+                                reasonCode?: "LABEL_ITEM_MISMATCH" | "LOT_NOT_ALLOCATED" | null;
                             };
                         };
                     };
@@ -25158,7 +25735,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -25318,7 +25898,7 @@ export interface paths {
                     /** @description 이 품목이 담긴 라인이 있는 작업지시만. ⭐ 긴급 직행 출하(W-04-05)가 고른 제품 LOT 의 품목으로 지시를 좁히는 축이다 — 이 축이 없으면 화면이 이번 쪽 안에서만 거를 수 있어 맞는 지시가 있는데도 안 보인다(공유계약 L-11). 근거: W-04-05 §5-7 */
                     itemId?: number;
                     statusCode?: string;
-                    /** @description 출하 희망 시간대 필터 — 공통코드 그룹 `SHIPMENT_TIME_SLOT`(`MORNING`·`AFTERNOON`·`NIGHT`). W-04-02 시간대 필터 축. 근거: W-04-02 §5-2, 2026-08-31 결정(omf-mes-server#41) */
+                    /** @description 출하 희망 시간대 필터 — 공통코드 그룹 `SHIPMENT_TIME_SLOT`(`MORNING`·`AFTERNOON`·`NIGHT`). W-04-02 시간대 필터 축. 근거: W-04-02 §5-2, 2026-08-31 결정(omf-mes-server#41) 값 = `MORNING`·`AFTERNOON`·`NIGHT`. 값 목록은 `GET /mdm/code-values?codeGroupCode=SHIPMENT_TIME_SLOT` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     timeSlotCode?: string;
                     /** @description 검사 상태 필터 */
                     shippingInspectionRequired?: boolean;
@@ -25438,7 +26018,7 @@ export interface paths {
                     customerId?: number;
                     shipToPartnerId?: number;
                     statusCode?: string;
-                    /** @description 출하 희망 시간대 필터 — 목록(GET /logistics/shipment-requests)과 같은 축. 공통코드 그룹 `SHIPMENT_TIME_SLOT`(`MORNING`·`AFTERNOON`·`NIGHT`). 근거: W-04-02 §5-2, 2026-08-31 결정(omf-mes-server#41) */
+                    /** @description 출하 희망 시간대 필터 — 목록(GET /logistics/shipment-requests)과 같은 축. 공통코드 그룹 `SHIPMENT_TIME_SLOT`(`MORNING`·`AFTERNOON`·`NIGHT`). 근거: W-04-02 §5-2, 2026-08-31 결정(omf-mes-server#41) 값 = `MORNING`·`AFTERNOON`·`NIGHT`. 값 목록은 `GET /mdm/code-values?codeGroupCode=SHIPMENT_TIME_SLOT` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     timeSlotCode?: string;
                     /** @description 검사 상태 필터 */
                     shippingInspectionRequired?: boolean;
@@ -25548,7 +26128,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -25632,6 +26215,7 @@ export interface paths {
                 query?: {
                     shipmentRequestId?: number;
                     customerId?: number;
+                    /** @description 출하의 진행 상태 — 미확정(UNCONFIRMED) · 확정(CONFIRMED) · 취소(CANCELLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 확정이 PGI 송신을 부르고 취소가 그것을 되돌린다(W-04-04 §5-1 · W-04-12 §5-2). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SHIPMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     warehouseId?: number;
                     /** @description 피킹이 끝난 건만 */
@@ -26051,6 +26635,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/quality/disposition-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 처분 판정 대상 목록
+         * @description 처분 판정을 기다리는 대상 목록 — `W-04-07` 의 진입 목록이다. ⭐ **부적합 유무를 가리지 않고** 낸다: 아직 부적합을 만들지 않은 대상은 nonconformanceId 가 null 이고, 만든 것은 그 건의 상태(NOT_REQUESTED·PENDING_DECISION·DECIDED)를 함께 싣는다 — 화면 목업의 배지 넷이 이 한 목록에서 나온다. ⭐ 원천 둘을 한 목록으로 합쳐 낸다 — 반품 입고(RETURN)와 OQC 불합격(PRODUCT). 화면이 두 질의를 합치지 않는다(공유계약 L-2). ⛔ 화면이 응답을 걸러 「아직 안 만든 것」을 고르지 않는다 — 목록이 페이지 단위라 성립하지 않는다(형제 오퍼레이션 GET /quality/disposition-decisions 의 같은 경고). 그 축은 withoutNonconformanceOnly 가 서버에서 판정한다. 근거: W-04-07 §3·§5-7 · REQ-PR-0025 「판정은 불량창고 입고 후」 · 프로세스 05 S11
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 원천 — 제품(PRODUCT · OQC 불합격) · 반품(RETURN · 반품·클레임 입고). 비우면 둘 다. */
+                    sourceCode?: "PRODUCT" | "RETURN";
+                    /** @description 참이면 **아직 부적합을 만들지 않은 대상만** 낸다. ⭐ 같은 대상을 두 번 등록하는 것을 막는 축이다 — 선례 GET /maintenance/inspections?withoutMaintenanceOrder=true(W-05-05 §7 「이미 지시가 있는 트리거는 목록에서 제외한다」). ⛔ 화면이 응답을 걸러 대신하지 않는다(페이지 단위). */
+                    withoutNonconformanceOnly?: boolean;
+                    /** @description 불량창고로 좁힐 때 쓴다 — 목록은 GET /mdm/warehouses?isDefect=true 가 준다(DR-012 3-C). */
+                    warehouseId?: number;
+                    itemId?: number;
+                    lotId?: number;
+                    /** @description 대상이 불량창고에 들어온 날. ⚠ 기간을 «필수»로 두지 않는다 — 이 목록은 「지금 판정을 기다리는 것」이라 재고성이고, 기간을 강제하면 오래된 미처리 건이 화면에서 사라진다. 양끝 포함(공유계약 L-3 — date 축). */
+                    receivedFrom?: string;
+                    receivedTo?: string;
+                    /** @description LOT 번호·입고번호·품목 검색 */
+                    q?: string;
+                    page?: number;
+                    size?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 목록 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            items: components["schemas"]["DispositionCandidate"][];
+                            page: components["schemas"]["PageMeta"];
+                        };
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/quality/nonconformances": {
         parameters: {
             query?: never;
@@ -26065,13 +26707,14 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 의뢰 전 · 판정 대기 · 판정 완료 */
+                    /** @description 부적합 건의 진행 상태 — 의뢰 전(NOT_REQUESTED) · 판정 대기(PENDING_DECISION) · 판정 완료(DECIDED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 이 값이 처분 판정 화면의 진입 목록을 가른다(W-04-07 §3 · W-03-10 §5-5). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
-                    /** @description PRODUCT(제품)·RETURN(반품). ⭐ 서버가 대상 LOT 의 입고 유형으로 파생하는 축이다 — 화면이 보내지 않는다. W-03-10 §5-4 원천 필터가 쓴다. 이력: 2026-08-30 신설(W-03-10 원천 필터 되살리기) · 2026-09-01 서버 파생으로 재정의(omf-mes#303) */
-                    sourceCode?: string;
+                    /** @description 부적합 원천 — 제품(PRODUCT) · 반품(RETURN). ⭐ 서버가 대상 LOT 의 입고 유형으로 «파생»하는 축이라 화면이 보내지 않는다(2026-09-01). W-03-10 §5-4 원천 필터가 쓴다. ⛔ DefectRecord 의 sourceCode(CD-DEFECT-RECORD-SOURCE)와 이름만 같고 축이 다르다 — 저쪽은 «어디서 발견했나», 여기는 «어디서 들어온 물건인가»다 */
+                    sourceCode?: "PRODUCT" | "RETURN";
                     warehouseId?: number;
                     itemId?: number;
                     lotId?: number;
+                    /** @description 부적합 심각도 — 중대(CRITICAL) · 중(MAJOR) · 경(MINOR). ⭐ 화면 목업이 「심각도 중대」(W-03-10 §3)·「심각도 중」(W-04-07 §3)을 그려 3단계 축이 이미 서 있다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     severityCode?: string;
                     /** @description 기간 필수 — 공유계약 L-3 */
                     openedFrom?: string;
@@ -26104,7 +26747,7 @@ export interface paths {
         put?: never;
         /**
          * 부적합 등록
-         * @description W-04-07 「부적합 등록」과 W-04-06 반품 입고가 만든다. 심각도와 내용이 필수다 — 내용은 판정자의 유일한 입력이라 비울 수 없다(공유계약 A-12). 근거: W-04-07 §5-3
+         * @description W-04-07 「부적합 등록」과 W-04-07 «하나»가 만든다 «(정합주: 2026-09-01 확정 — 요구서 §3-6 · W-04-06 v0.3. 반품 입고는 부적합을 만들지 않는다)». 심각도와 내용이 필수다 — 내용은 판정자의 유일한 입력이라 비울 수 없다(공유계약 A-12). 근거: W-04-07 §5-3
          */
         post: {
             parameters: {
@@ -26323,6 +26966,7 @@ export interface paths {
             parameters: {
                 query?: {
                     equipmentId?: number;
+                    /** @description 값 = `DAILY`·`MONTHLY`·`MAINTENANCE`. 값 목록은 `GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     inspectionTypeCode?: string;
                     /** @description 기간 시작. ⭐ 조건부 필수 — 전 이력을 훑는 호출에서는 반드시 싣는다(공유계약 L-3). 미발행 트리거 목록처럼 미처리 전건을 부르는 호출은 예외다(공유계약 L-12) */
                     inspectedFrom?: string;
@@ -26331,8 +26975,8 @@ export interface paths {
                     page?: number;
                     /** @description 기본 50 */
                     size?: number;
-                    /** @description 종합 판정으로 거른다 — 합격(OK) 또는 불합격(NG). 보전 지시 발행 화면이 불합격만 트리거 목록으로 부른다(W-05-05 §4) */
-                    overallResultCode?: string;
+                    /** @description 점검 종합 판정 — 합격(PASS) · 불합격(FAIL). 보전 지시 발행 화면이 «불합격만» 트리거 목록으로 부른다(W-05-05 §4). ⭐ 문자열을 PASS·FAIL 로 정한 근거는 «같은 계약 파일의 일관성»이다 — Calibration.resultCode 가 이미 합격(PASS)·불합격(FAIL)을 쓴다. 「OK」는 저장소 다른 곳에 용례가 없다(2026-09-02 실측 · 사용자 위임 판단) */
+                    overallResultCode?: "PASS" | "FAIL";
                     /** @description 참이면 아직 보전 지시로 발행되지 않은 건만 낸다. 「미발행 트리거」가 그 화면의 기본 목록이다(W-05-05 §7) */
                     withoutMaintenanceOrder?: boolean;
                     /** @description 정렬 키를 제한한다(공유계약 L-4). 기본은 점검 시각 내림차순이다 — 작업 전 점검 통제(P-02-02 §5-5)가 「여러 건 있으면 가장 최근 것」으로 판정하고 점검 입력(M-05-01 §6-2)도 같은 규약을 세웠다. ⚠ 반대 방향도 있다 — 보전 지시 발행의 미발행 트리거 목록은 오름차순을 명시해 부른다(W-05-05 §4 「경과일 긴 순」 · 공유계약 L-12). ⛔ 응답을 화면이 정렬해 고르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 쪽 안에서만 정렬된다 */
@@ -26383,7 +27027,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -26504,6 +27151,7 @@ export interface paths {
             parameters: {
                 query?: {
                     equipmentId?: number;
+                    /** @description 고장 접수 진행 상태로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_BREAKDOWN_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재) — 응답 스키마와 «같은 값 집합»이다 */
                     statusCode?: string;
                     /** @description 완료되지 않은 건만 */
                     openOnly?: boolean;
@@ -26563,7 +27211,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -26769,7 +27420,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -27033,11 +27687,13 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    targetTypeCode?: string;
+                    /** @description 보전 대상 유형 — EQUIPMENT → 설비(계측기 포함 · 계측기는 설비의 한 종류라 equipmentId 를 그대로 쓴다) · MOLD → 툴·금형. ⭐ 값 문자열을 확정했다(2026-09-02). ⛔ 다형 참조 판별자라 고객이 늘릴 수 없다(A-10 · A-16) */
+                    targetTypeCode?: "EQUIPMENT" | "MOLD";
                     targetId?: number;
+                    /** @description 보전 지시 진행 상태로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=MAINTENANCE_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재) — 응답 스키마와 «같은 값 집합»이다 */
                     statusCode?: string;
-                    /** @description 보전 유형으로 거른다 — 사후(CORRECTIVE)·예방(PREVENTIVE). 사람이 고르는 값이 아니라 발행 시 트리거 조합이 정한 값이다. */
-                    maintenanceTypeCode?: string;
+                    /** @description 보전 유형 — 사후(CORRECTIVE) · 예방(PREVENTIVE). 사람이 고르는 값이 아니라 발행 시 트리거 조합이 정한다 — 고장이 하나라도 섞이면 사후로 고정된다(W-05-05 §5-3). ⭐ 「예지(PREDICTIVE)」를 두지 않는다(사용자 결정 2026-09-02) — WF05 S5 Trigger ④ 가 「(향후) 상태 기반 예지보전」이라 적어 «촉발할 트리거가 아직 없고», 트리거가 정하는 축에 트리거 없는 값을 두면 사람이 손으로 고를 수밖에 없어 규칙이 무너진다(A-21). ⚠ 예지 트리거가 서면 그때 값을 더한다 */
+                    maintenanceTypeCode?: "CORRECTIVE" | "PREVENTIVE";
                     plannedFrom?: string;
                     plannedTo?: string;
                     /** @description 1 부터 */
@@ -27293,7 +27949,8 @@ export interface paths {
             parameters: {
                 query?: {
                     maintenanceOrderId?: number;
-                    targetTypeCode?: string;
+                    /** @description 보전 대상 유형 — EQUIPMENT → 설비(계측기 포함 · 계측기는 설비의 한 종류라 equipmentId 를 그대로 쓴다) · MOLD → 툴·금형. ⭐ 값 문자열을 확정했다(2026-09-02). ⛔ 다형 참조 판별자라 고객이 늘릴 수 없다(A-10 · A-16) */
+                    targetTypeCode?: "EQUIPMENT" | "MOLD";
                     targetId?: number;
                     startedFrom?: string;
                     startedTo?: string;
@@ -27617,7 +28274,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -27825,7 +28485,10 @@ export interface paths {
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
                     /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
                     "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
@@ -28015,7 +28678,10 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                    /**
+                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                     * @example 100027
+                     */
                     "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path?: never;
@@ -28454,7 +29120,7 @@ export interface paths {
                 query?: {
                     /** @description 계측기. 계측기는 설비의 한 종류라 /mdm/equipments 의 equipmentId 그대로다 — 계측기 전용 자원을 두지 않는다 */
                     equipmentId?: number;
-                    /** @description 이력 유형으로 거른다. 값은 Calibration.historyTypeCode 와 같다. */
+                    /** @description 이력 유형으로 거른다. 계측기 이력 유형 — 검교정(CALIBRATION) · 점검(CHECK) · 그 밖(고객이 늘린다). ⭐ 2026-09-02 사용자 결정으로 «시스템이 이름으로 지목하는 값은 CALIBRATION 하나»가 됐다 — 설비 마스터의 검교정일 갱신과 agencyTypeCode 표시가 그것에 걸린다. ⛔ 사용 가부 판정은 더 이상 이 값을 읽지 않는다 — 「열린 수리 이력이 없다」를 blocksUse + clearedAt 로 바꿨다(W-05-11 §5-2). 그래서 「수리」·「폐기」의 코드 문자열을 우리가 정할 필요가 없고, 계약이 원래 적은 「관리자 설정형」이 그제서야 성립한다. 값 목록은 GET /mdm/code-values?codeGroupCode=CALIBRATION_HISTORY_TYPE 로 받는다. */
                     historyTypeCode?: string;
                     /** @description 다음 기한이 이 날 이전인 것 */
                     dueBefore?: string;
@@ -28616,6 +29282,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/maintenance/calibrations/{calibrationId}:clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 계측기 이력의 사용 차단을 해소한다
+         * @description blocksUse=true 인 이력의 clearedAt 을 세운다 — 그 순간부터 이 계측기가 다시 사용 가능해진다(W-05-11 §5-2 판정식). ⛔ 이미 해소된 이력에 다시 부르면 409 다. ⚠ blocksUse=false 인 이력에 부르면 400 이다 — 막고 있지 않은 것을 풀 수 없다. ⭐ 행을 지우지 않는다 — 언제 누가 풀었는지가 남아야 한다.
+         */
+        post: operations["clearCalibrationBlock"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -28724,7 +29410,10 @@ export interface components {
              * @example MATERIAL
              */
             warehouseTypeCode: string;
-            /** @example STANDARD */
+            /**
+             * @description 창고 관리 수준. ✅ **값 목록 확정 2026-08-31(사용자)** — 창고(WAREHOUSE) · 구역(ZONE) · 랙(RACK) · 셀(CELL) 넷이며 **이 순서가 계층 깊이를 뜻한다**. 이 값이 위치 입력을 가른다 — 창고면 위치를 받지 않고, 셀이면 셀까지 받는다(W-06-07 §5-3). 값 목록은 GET /mdm/code-values?codeGroupCode=MANAGEMENT_LEVEL 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example WAREHOUSE
+             */
             managementLevelCode: string;
             /**
              * @default false
@@ -28774,19 +29463,22 @@ export interface components {
              * @example MATERIAL
              */
             warehouseTypeCode: string;
-            /** @example STANDARD */
+            /**
+             * @description 창고 관리 수준. ✅ **값 목록 확정 2026-08-31(사용자)** — 창고(WAREHOUSE) · 구역(ZONE) · 랙(RACK) · 셀(CELL) 넷이며 **이 순서가 계층 깊이를 뜻한다**. 이 값이 위치 입력을 가른다 — 창고면 위치를 받지 않고, 셀이면 셀까지 받는다(W-06-07 §5-3). 값 목록은 GET /mdm/code-values?codeGroupCode=MANAGEMENT_LEVEL 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example WAREHOUSE
+             */
             managementLevelCode: string;
             /**
              * @default false
              * @example false
              */
-            isExternal: boolean;
+            isExternal?: boolean;
             /**
              * @description 불량창고 여부. 근거: DR-012 확정 3-C · omf-mes#147
              * @default false
              * @example false
              */
-            isDefect: boolean;
+            isDefect?: boolean;
             /**
              * Format: int64
              * @description ck_external_warehouse_partner — isExternal 이 참이면 필수
@@ -28813,7 +29505,10 @@ export interface components {
              * @example MATERIAL
              */
             warehouseTypeCode: string;
-            /** @example STANDARD */
+            /**
+             * @description 창고 관리 수준. ✅ **값 목록 확정 2026-08-31(사용자)** — 창고(WAREHOUSE) · 구역(ZONE) · 랙(RACK) · 셀(CELL) 넷이며 **이 순서가 계층 깊이를 뜻한다**. 이 값이 위치 입력을 가른다 — 창고면 위치를 받지 않고, 셀이면 셀까지 받는다(W-06-07 §5-3). 값 목록은 GET /mdm/code-values?codeGroupCode=MANAGEMENT_LEVEL 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example WAREHOUSE
+             */
             managementLevelCode: string;
             /** @example false */
             isExternal: boolean;
@@ -28854,11 +29549,20 @@ export interface components {
             locationCode: string;
             /** @example A구역 01열 03단 */
             locationName: string;
-            /** @example RACK */
+            /**
+             * @description 위치의 «물리적 형태» — 랙(RACK) · 바닥(FLOOR) · 임시(TEMP) · 호퍼(HOPPER) · 대표(DEFAULT). ⭐ 축은 «하나»다 — 계층 깊이는 warehouse.managementLevelCode 가 따로 가지므로 이 칸과 겹치지 않는다(2026-08-22 분류표 37). ⭐ 세 화면이 이미 각각 «값 하나»를 지목해 두었다 — M-01-07 §5-3 ①안이 「임시 Location」을 TEMP 로 표현하기로 확정했고, M-01-09 가 생산창고 호퍼를 가려내며, M-01-04 는 「위치 관리를 안 하는 창고의 흡수용 Location」을 알아볼 컬럼이 없다고 적었다 — 그것이 DEFAULT 다. ⭐ 고객이 늘릴 수 있다 — 위 다섯은 초기값이지 닫힌 목록이 아니다. ⚠ 다만 TEMP·HOPPER·DEFAULT 셋은 «화면이 판정에 쓴다» — 지우면 그 화면이 선다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOCATION_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example RACK
+             */
             locationTypeCode: string;
-            /** @example STANDARD */
+            /**
+             * @description 위치의 품질 구역 구분. ⭐ 고객이 늘린다 — 창고 배치·품질관리 절차가 현장마다 달라 값을 계약이 닫지 않는다. ⛔ 이 값과 LOT 보류(Hold/Release) 물류 통제의 «관계»는 아직 정의되지 않았다(W-06-07 §8-2) — 그래서 서버·화면이 이 값으로 «출고 가부를 판정하지 않는다». 판정의 정본은 LOT 보류다. 관계가 서면 그때 판정에 넣는다(A-21). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_ZONE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example STANDARD
+             */
             qualityZoneCode?: string | null;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=STORAGE_CONDITION 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example REFRIGERATED
+             */
             storageConditionCode?: string | null;
             /**
              * @default true
@@ -28907,22 +29611,31 @@ export interface components {
             locationCode: string;
             /** @example A구역 01열 03단 */
             locationName: string;
-            /** @example RACK */
+            /**
+             * @description 위치의 «물리적 형태» — 랙(RACK) · 바닥(FLOOR) · 임시(TEMP) · 호퍼(HOPPER) · 대표(DEFAULT). ⭐ 축은 «하나»다 — 계층 깊이는 warehouse.managementLevelCode 가 따로 가지므로 이 칸과 겹치지 않는다(2026-08-22 분류표 37). ⭐ 세 화면이 이미 각각 «값 하나»를 지목해 두었다 — M-01-07 §5-3 ①안이 「임시 Location」을 TEMP 로 표현하기로 확정했고, M-01-09 가 생산창고 호퍼를 가려내며, M-01-04 는 「위치 관리를 안 하는 창고의 흡수용 Location」을 알아볼 컬럼이 없다고 적었다 — 그것이 DEFAULT 다. ⭐ 고객이 늘릴 수 있다 — 위 다섯은 초기값이지 닫힌 목록이 아니다. ⚠ 다만 TEMP·HOPPER·DEFAULT 셋은 «화면이 판정에 쓴다» — 지우면 그 화면이 선다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOCATION_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example RACK
+             */
             locationTypeCode: string;
-            /** @example STANDARD */
+            /**
+             * @description 위치의 품질 구역 구분. ⭐ 고객이 늘린다 — 창고 배치·품질관리 절차가 현장마다 달라 값을 계약이 닫지 않는다. ⛔ 이 값과 LOT 보류(Hold/Release) 물류 통제의 «관계»는 아직 정의되지 않았다(W-06-07 §8-2) — 그래서 서버·화면이 이 값으로 «출고 가부를 판정하지 않는다». 판정의 정본은 LOT 보류다. 관계가 서면 그때 판정에 넣는다(A-21). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_ZONE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example STANDARD
+             */
             qualityZoneCode?: string | null;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=STORAGE_CONDITION 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example REFRIGERATED
+             */
             storageConditionCode?: string | null;
             /**
              * @default true
              * @example false
              */
-            allowMixedItem: boolean;
+            allowMixedItem?: boolean;
             /**
              * @default true
              * @example false
              */
-            allowMixedLot: boolean;
+            allowMixedLot?: boolean;
             /**
              * @description qty_t numeric(20,6)
              * @example 500
@@ -28949,11 +29662,20 @@ export interface components {
             locationCode: string;
             /** @example A구역 01열 03단 */
             locationName: string;
-            /** @example RACK */
+            /**
+             * @description 위치의 «물리적 형태» — 랙(RACK) · 바닥(FLOOR) · 임시(TEMP) · 호퍼(HOPPER) · 대표(DEFAULT). ⭐ 축은 «하나»다 — 계층 깊이는 warehouse.managementLevelCode 가 따로 가지므로 이 칸과 겹치지 않는다(2026-08-22 분류표 37). ⭐ 세 화면이 이미 각각 «값 하나»를 지목해 두었다 — M-01-07 §5-3 ①안이 「임시 Location」을 TEMP 로 표현하기로 확정했고, M-01-09 가 생산창고 호퍼를 가려내며, M-01-04 는 「위치 관리를 안 하는 창고의 흡수용 Location」을 알아볼 컬럼이 없다고 적었다 — 그것이 DEFAULT 다. ⭐ 고객이 늘릴 수 있다 — 위 다섯은 초기값이지 닫힌 목록이 아니다. ⚠ 다만 TEMP·HOPPER·DEFAULT 셋은 «화면이 판정에 쓴다» — 지우면 그 화면이 선다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOCATION_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example RACK
+             */
             locationTypeCode: string;
-            /** @example STANDARD */
+            /**
+             * @description 위치의 품질 구역 구분. ⭐ 고객이 늘린다 — 창고 배치·품질관리 절차가 현장마다 달라 값을 계약이 닫지 않는다. ⛔ 이 값과 LOT 보류(Hold/Release) 물류 통제의 «관계»는 아직 정의되지 않았다(W-06-07 §8-2) — 그래서 서버·화면이 이 값으로 «출고 가부를 판정하지 않는다». 판정의 정본은 LOT 보류다. 관계가 서면 그때 판정에 넣는다(A-21). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_ZONE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example STANDARD
+             */
             qualityZoneCode?: string | null;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=STORAGE_CONDITION 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example REFRIGERATED
+             */
             storageConditionCode?: string | null;
             /** @example false */
             allowMixedItem: boolean;
@@ -29008,12 +29730,13 @@ export interface components {
             /** @example 문자열 */
             email?: string | null;
             /**
-             * @description 공통코드 — 값 목록 미정(§8-4) · isActive 와의 역할 분담 미정(§8-4)
+             * @description 사용자의 «인사» 상태 — EMPLOYED(재직) · ON_LEAVE(휴직) · RESIGNED(퇴사) 3값(2026-09-01 뜻 확정 · 2026-09-03 문자열 도출 · 공유계약 §G). ⭐ 고객이 늘린다 — 위 셋은 초기 시드다(G-31). 값 목록은 GET /mdm/code-values?codeGroupCode=APP_USER_STATUS 로 받는다(G-32). ⛔ **계정 사용 가부는 이 값이 아니라 isActive 가 정한다** — 로그인 차단의 정본은 isActive 다(W-CO-02 §8-4 · 사용자 결정 2026-09-01). ⛔ ACTIVE 를 쓰지 않는다 — 「사용 여부」와 「수명주기」에 같은 낱말을 쓰면 두 축이 다시 섞인다(G-32 v3.5). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default ACTIVE
-             * @example ACTIVE
+             * @example EMPLOYED
              */
             statusCode: string;
             /**
+             * @description 계정을 쓸 수 있는가. ⛔ **로그인 차단의 정본이 이 값이다** — statusCode 는 인사 상태라 판정에 쓰지 않는다(사용자 결정 2026-09-01 · W-CO-02 §8-4).
              * @default true
              * @example true
              */
@@ -29042,12 +29765,12 @@ export interface components {
              */
             email?: string | null;
             /**
-             * @description 미지정 시 서버가 물리 모델 DEFAULT('ACTIVE')로 채운다. 공통코드 값 목록 미정 — §8-4
-             * @example ACTIVE
+             * @description 사용자의 «인사» 상태 — EMPLOYED(재직) · ON_LEAVE(휴직) · RESIGNED(퇴사) 3값(2026-09-01 뜻 확정 · 2026-09-03 문자열 도출 · 공유계약 §G). ⭐ 고객이 늘린다 — 위 셋은 초기 시드다(G-31). 값 목록은 GET /mdm/code-values?codeGroupCode=APP_USER_STATUS 로 받는다(G-32). ⛔ **계정 사용 가부는 이 값이 아니라 isActive 가 정한다** — 로그인 차단의 정본은 isActive 다(W-CO-02 §8-4 · 사용자 결정 2026-09-01). ⛔ ACTIVE 를 쓰지 않는다 — 「사용 여부」와 「수명주기」에 같은 낱말을 쓰면 두 축이 다시 섞인다(G-32 v3.5). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example EMPLOYED
              */
             statusCode?: string;
         };
-        /** @description 사용자 수정 요청. loginId 는 항상 잠김(NOT_COUNTABLE)이라 요청에 포함하지 않는다. isActive 는 별도 액션(:deactivate / :activate)으로만 바꾼다. 낙관적 잠금은 공유계약 B-1. 근거: W-CO-02 §5-2 */
+        /** @description 사용자 수정 요청. loginId 는 항상 잠김(NOT_COUNTABLE)이라 요청에 포함하지 않는다. isActive 는 별도 액션(:deactivate / :activate)으로만 바꾼다. 낙관적 잠금은 공유계약 B-1. 근거: W-CO-02 §5-2 ⛔ **loginId 는 이 본문에 없다 — 한 번 만들면 고치지 않는다**(사용자 결정 2026-09-01 · W-CO-02 §8-5 해소). B-4 의 「참조 건수 0 일 때만 코드 수정」 규칙을 loginId 에는 적용할 수 없다 — 작성자 기록류에 흩어져 있고 FK 를 의도적으로 걸지 않아 **참조를 셀 수 없기 때문**이다. 셀 수 없는 조건은 규칙이 될 수 없다. 바꿔야 하면 새 계정을 만든다. ⚠ roleCode 는 참조를 셀 수 있어 기존 B-4 규칙을 그대로 쓴다. */
         AppUserUpdate: {
             /** @example 표시명 */
             userName: string;
@@ -29058,7 +29781,10 @@ export interface components {
             departmentId?: number | null;
             /** @example 문자열 */
             email?: string | null;
-            /** @example ACTIVE */
+            /**
+             * @description 사용자의 «인사» 상태 — EMPLOYED(재직) · ON_LEAVE(휴직) · RESIGNED(퇴사) 3값(2026-09-01 뜻 확정 · 2026-09-03 문자열 도출 · 공유계약 §G). ⭐ 고객이 늘린다 — 위 셋은 초기 시드다(G-31). 값 목록은 GET /mdm/code-values?codeGroupCode=APP_USER_STATUS 로 받는다(G-32). ⛔ **계정 사용 가부는 이 값이 아니라 isActive 가 정한다** — 로그인 차단의 정본은 isActive 다(W-CO-02 §8-4 · 사용자 결정 2026-09-01). ⛔ ACTIVE 를 쓰지 않는다 — 「사용 여부」와 「수명주기」에 같은 낱말을 쓰면 두 축이 다시 섞인다(G-32 v3.5). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example EMPLOYED
+             */
             statusCode: string;
         };
         AppUserDetailResponse: {
@@ -29140,6 +29866,27 @@ export interface components {
         UserRoleListResponse: {
             items: components["schemas"]["UserRole"][];
         };
+        /** @description 기능 권한 하나. ⛔ 앱이 소유한다 — 화면이 늘면 배포로 는다. 고객이 만들거나 지우지 않는다. */
+        Permission: {
+            /**
+             * @description role_permission.permission_code 에 그대로 들어간다. 화면 코드와 1:1 이다
+             * @example W-01-03
+             */
+            code: string;
+            /**
+             * @description 격자 열 머리에 보일 이름. ⛔ 화면이 지어내지 않는다 — 서버가 준 것을 그대로 쓴다
+             * @example 초과 입하 분리
+             */
+            name: string;
+            /**
+             * @description 격자를 묶는 축(도메인). ⭐ 열이 화면 수만큼(2026-09-01 실측 **117** — 폐지된 W-06-13 제외)이라 묶지 않으면 관리자가 격자를 옆으로 끝없이 스크롤한다
+             * @example 01
+             */
+            groupCode?: string;
+        };
+        PermissionListResponse: {
+            items: components["schemas"]["Permission"][];
+        };
         RolePermission: {
             /**
              * Format: int64
@@ -29151,7 +29898,10 @@ export interface components {
              * @example 1001
              */
             roleId: number;
-            /** @example MASTER_EDIT */
+            /**
+             * @description 부여된 기능 권한 코드. ⭐ **고를 수 있는 «후보» 전부는 GET /app/permissions 가 준다** — 이 경로의 응답은 「이미 부여된 것」뿐이라 그것만으로는 권한을 새로 줄 수 없다. ⛔ 공통코드가 아니다 — 앱 기능 목록이라 고객이 늘리거나 지우지 않는다. 값은 화면 코드와 1:1 이다(입도 = 화면 단위 · 사용자 결정 2026-09-01). 근거: W-CO-02 §4-E
+             * @example W-01-03
+             */
             permissionCode: string;
         };
         RolePermissionListResponse: {
@@ -29208,8 +29958,8 @@ export interface components {
              */
             routingVersion: number;
             /**
-             * @description 공통코드 — 결정 07 이 작성중/확정/폐기 세 값으로 확정했다(코드 문자열 등록은 W-06-06 소관 §8-4). 이 값으로 화면이 편집 잠금을 판정한다(§5-4). 이 API 로는 직접 바꾸지 않고 :new-revision·:confirm·:obsolete 로만 전이한다
-             * @example 값
+             * @description 마스터 버전의 편집 잠금 상태 — 작성중(DRAFT · 편집 가능) · 확정(CONFIRMED · 편집 잠김) · 폐기(OBSOLETE). ⛔ 확정본은 in-place 수정하지 않고 새 Rev 를 발행한다(결정 07). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 편집 가부가 이 값에 걸려 있어 값을 지우면 잠금이 «조용히» 안 걸리고, 이미 그 Rev 로 전개된 W/O 와 어긋난다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=MASTER_VERSION_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. 근거: 결정 07(W-06-01 §4) — Routing 이 정한 세 값을 BOM·검사기준 버전이 준용한다(사용자 결정 2026-09-02). ⭐ Routing 은 결정 07 이 값을 «직접» 확정한 자리다.
+             * @example DRAFT
              */
             statusCode: string;
             /**
@@ -29228,7 +29978,7 @@ export interface components {
              * @default false
              * @example true
              */
-            isDefault: boolean;
+            isDefault?: boolean;
         };
         /** @description Routing 최초 등록(Rev 1) 요청 — 품목에 Rev 가 하나도 없을 때만 쓴다. routingVersion 은 서버가 항상 1로, statusCode 는 항상 작성중으로 채운다. 근거: W-06-01 §4-A · §5-1 */
         RoutingCreate: {
@@ -29340,7 +30090,7 @@ export interface components {
              * @default false
              * @example false
              */
-            isOutsourced: boolean;
+            isOutsourced?: boolean;
             /**
              * @default false
              * @example false
@@ -29428,7 +30178,7 @@ export interface components {
              * @default false
              * @example false
              */
-            isOutsourced: boolean;
+            isOutsourced?: boolean;
             /**
              * @default false
              * @example false
@@ -29478,7 +30228,7 @@ export interface components {
              */
             successorOperationId: number;
             /**
-             * @description 공통코드 — 값 목록 미정
+             * @description 공정 선후관계 유형 — 종료-시작(FINISH_TO_START · 기본) · 시작-시작 · 종료-종료 · 시작-종료. ⭐ 기본은 종료-시작(FINISH_TO_START)이다 — 사용자와 협의해 확정했다(2026-09-03). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 일정 계산의 의미론이라 고객 관행으로 늘지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=ROUTING_OPERATION_DEPENDENCY_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default FINISH_TO_START
              * @example FINISH_TO_START
              */
@@ -29687,7 +30437,7 @@ export interface components {
              * @example 1001
              */
             approverRoleId?: number | null;
-            /** @description 판정유형 → 어떤 Lot Status로 전이하는가(결정 10 「상태 3축」) */
+            /** @description LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             lotStatusCode?: string | null;
             /** @example 1 */
             versionNo: number;
@@ -29706,6 +30456,7 @@ export interface components {
              * @example 1001
              */
             approverRoleId?: number | null;
+            /** @description LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             lotStatusCode?: string | null;
         };
         CodeValueDetailResponse: {
@@ -29825,8 +30576,8 @@ export interface components {
              */
             workerId: number;
             /**
-             * @description POP·모바일 사번 경량 인증의 원천(P-CO-01·M-CO-01)
-             * @example 문자열
+             * @description POP·모바일 사번 경량 인증의 원천(P-CO-01·M-CO-01). ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+             * @example 100027
              */
             workerNo: string;
             /** @example 홍길동 */
@@ -29862,7 +30613,7 @@ export interface components {
              * @example 1001
              */
             appUserId?: number | null;
-            /** @description 재직 상태 코드. ⛔ 화면은 이 값으로 재직 여부를 판정하지 않고 isActive 를 본다. */
+            /** @description ⛔ 이 값으로 재직 여부를 판정하지 않는다 — 정본은 isActive 다(사용자 결정 2026-09-02). ERP 수신본이라 값이 들어오지만 화면·서버 판정은 전부 isActive 를 본다. 같은 사실을 두 자리에 적으면 어긋났을 때 어느 쪽이 맞는지 판정할 수 없다 — AppUser 의 「인사 상태 vs isActive」·LotHold 의 「해제 칼럼」과 같은 형태다. */
             statusCode: string;
             /**
              * @default true
@@ -29887,8 +30638,8 @@ export interface components {
              */
             workerId: number;
             /**
-             * @description 공통코드 — 값 목록 미정 §8-5
-             * @example STANDARD
+             * @description 공통코드 — 값 = PROCESS_OPERATION·INSPECTOR·SAFETY·EQUIPMENT_OPERATION (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=QUALIFICATION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example PROCESS_OPERATION
              */
             qualificationTypeCode: string;
             /**
@@ -29930,7 +30681,7 @@ export interface components {
             /** @example ABC-123 */
             itemCode: string;
             /**
-             * @description ⚠ 한/베 두 언어를 담을 컬럼이 없다 — W-06-06 §8-1 과 같은 결함
+             * @description ⚠ 한/베 두 언어를 나눠 담는 축이 아직 없다 — W-06-06 §8-1 과 같은 결손이며 되살리기 잔여다
              * @example 하우징 커버 A
              */
             itemName: string;
@@ -29945,8 +30696,8 @@ export interface components {
              */
             nameVi?: string | null;
             /**
-             * @description 공통코드 — 값 목록 미정
-             * @example MATERIAL
+             * @description 품목 유형 — 원자재(RAW_MATERIAL) · 반제품(SEMI_FINISHED) · 제품(FINISHED) · 상품(MERCHANDISE). ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. ⛔ 예비품을 이 값으로 대신하지 않는다 — QA #7 이 「품목 통합 아님」으로 확정했고, 예비품은 W-06-08 예비품 마스터가 갖는다. 값 목록은 GET /mdm/code-values?codeGroupCode=ITEM_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example RAW_MATERIAL
              */
             itemTypeCode: string;
             /**
@@ -29955,10 +30706,10 @@ export interface components {
              */
             baseUomId: number;
             /**
-             * @description MES 확장 · 공통코드 — 값 목록 미정 [추정]
-             * @example STANDARD
+             * @description LOT 단위로 재고를 관리하는 품목인가. ⭐ 코드형(lot_control_type_code)에서 boolean 으로 접었다(사용자 결정 2026-09-02) — 「관리 여부」 한 축뿐이고 «방식»을 가르는 값이 계약·스펙·시드 어디에도 0건이었다. 같은 필드표가 이미 여부를 boolean 으로 둔다(inspectionRequired · negativeStockAllowed). ⛔ 설계가 정한 모양이 boolean 이므로 모델이 그것을 따라온다 — 📨 데이터 모델 작업 통지 대상이고 기다리지 않는다(00-화면스펙서식 §2 「물리 데이터 모델은 설계 결정을 앞설 수 없다」 · 사용자 확정 2026-08-18).
+             * @example true
              */
-            lotControlTypeCode: string;
+            lotControlled: boolean;
             /**
              * @description MES 확장 · 공통코드
              * @default NONE
@@ -29977,7 +30728,7 @@ export interface components {
              */
             inspectionRequired: boolean;
             /**
-             * @description MES 확장 · 확정(QA #28) — 유효기한 관리 품목=FEFO, 나머지=FIFO
+             * @description 선입선출 정책 — 입고순(FIFO) · 유효기한순(FEFO). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 피킹 정렬이 이 값에 걸린다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=FIFO_POLICY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default FIFO
              * @example FIFO
              */
@@ -29989,8 +30740,8 @@ export interface components {
              */
             negativeStockAllowed: boolean;
             /**
-             * @description MES 확장 · 공통코드 — location.storage_condition_code 와 같은 코드계
-             * @example STANDARD
+             * @description MES 확장 · 공통코드 — location.storage_condition_code 와 같은 코드계 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=STORAGE_CONDITION 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example REFRIGERATED
              */
             storageConditionCode?: string | null;
             /**
@@ -30004,7 +30755,7 @@ export interface components {
              * @example true
              */
             isActive: boolean;
-            /** @description 신재와 재생재를 가르는 MES 안쪽 구분. 기간계로 보내지 않는다 — 기간계에는 신재와 똑같이 처리한다. 근거: DR-006 확정 · M-01-12 §5-B. ⚠ 값 목록이 아직 확정되지 않았다 — 서버가 내려주는 선택지를 그대로 쓴다(공유계약 G-2) */
+            /** @description MES 구분 — 신재(NEW) · 재생재(RECYCLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. `(item_code, mes_category_code)` 복합 유일 인덱스가 이 값에 걸려 있어 같은 품목코드의 신재·재생재를 두 행으로 가른다(M-01-12 §5-B). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=MES_CATEGORY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             mesCategoryCode?: string;
             /**
              * @description 개발품인가 — 참이면 생산 실적을 ERP 로 송신하지 않는다. ⭐ 「개발품 제외」의 판정 축은 «품목»이다(사용자 확정 2026-08-24 · omf-mes#70). 확정 문구(✓확정 QA #35 · WF06 S7)가 「생산 실적 송신 = 필수(개발품 제외)」라고만 적고 무엇이 개발품인지를 안 적어 품목 속성(화면 인벤토리)과 작업지시 유형(설계 결정 14)으로 갈려 읽히던 것을 품목으로 닫았다. ⛔ mdm.item 에 담을 컬럼이 아직 없다 — 데이터 모델 담당에게 통지했다(W-06-05 §8-1). 컬럼이 서기 전까지 서버는 이 값을 늘 거짓으로 내리고, W-06-12 는 그동안 전건 송신으로 물러나 있다(A-11). 근거: W-06-12 §4-B · W-06-05 §4-B
@@ -30026,8 +30777,11 @@ export interface components {
         };
         /** @description 품목 MES 확장 속성 수정 요청. 원본 4열(itemCode·itemName·itemTypeCode·baseUomId)은 이 요청에 포함하지 않는다 — 항상 읽기 전용(ERP 수신본). 근거: W-06-05 §4-B·§5-1 */
         ItemUpdate: {
-            /** @example STANDARD */
-            lotControlTypeCode: string;
+            /**
+             * @description LOT 단위로 재고를 관리하는 품목인가. ⭐ 코드형(lot_control_type_code)에서 boolean 으로 접었다(사용자 결정 2026-09-02) — 「관리 여부」 한 축뿐이고 «방식»을 가르는 값이 계약·스펙·시드 어디에도 0건이었다. 같은 필드표가 이미 여부를 boolean 으로 둔다(inspectionRequired · negativeStockAllowed). ⛔ 설계가 정한 모양이 boolean 이므로 모델이 그것을 따라온다 — 📨 데이터 모델 작업 통지 대상이고 기다리지 않는다(00-화면스펙서식 §2 「물리 데이터 모델은 설계 결정을 앞설 수 없다」 · 사용자 확정 2026-08-18).
+             * @example true
+             */
+            lotControlled: boolean;
             /** @example STANDARD */
             serialControlTypeCode: string;
             /**
@@ -30038,13 +30792,16 @@ export interface components {
             /** @example true */
             inspectionRequired: boolean;
             /**
-             * @description MES 확장 · 확정(QA #28) — 유효기한 관리 품목=FEFO, 나머지=FIFO
+             * @description 선입선출 정책 — 입고순(FIFO) · 유효기한순(FEFO). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 피킹 정렬이 이 값에 걸린다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=FIFO_POLICY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example FIFO
              */
             fifoPolicyCode: string;
             /** @example false */
             negativeStockAllowed: boolean;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=STORAGE_CONDITION 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example REFRIGERATED
+             */
             storageConditionCode?: string | null;
             /** @example 1 */
             openedShelfLifeHours?: number | null;
@@ -30139,9 +30896,10 @@ export interface components {
             itemId: number;
             /**
              * @description 공통코드
-             * @example STANDARD
+             * @example EQUIPMENT_STANDARD_IF
+             * @enum {string}
              */
-            externalSystemCode: string;
+            externalSystemCode: "EQUIPMENT_STANDARD_IF" | "TRACKING_SYSTEM" | "UNIERP";
             /**
              * Format: int64
              * @description 비우면 (전체) — uq_item_external_code 가 COALESCE(partner_id,0) 으로 접는다(A-7)
@@ -30220,8 +30978,8 @@ export interface components {
              */
             bomVersion: number;
             /**
-             * @description 공통코드 — 값 목록 미정. W-06-11 「작성중만 편집」 규칙의 판정 컬럼
-             * @example 값
+             * @description 마스터 버전의 편집 잠금 상태 — 작성중(DRAFT · 편집 가능) · 확정(CONFIRMED · 편집 잠김) · 폐기(OBSOLETE). ⛔ 확정본은 in-place 수정하지 않고 새 Rev 를 발행한다(결정 07). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 편집 가부가 이 값에 걸려 있어 값을 지우면 잠금이 «조용히» 안 걸리고, 이미 그 Rev 로 전개된 W/O 와 어긋난다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=MASTER_VERSION_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. 근거: 결정 07(W-06-01 §4) — Routing 이 정한 세 값을 BOM·검사기준 버전이 준용한다(사용자 결정 2026-09-02). ⭐ W-06-11 「작성중만 편집」 규칙의 판정 컬럼이다.
+             * @example DRAFT
              */
             statusCode: string;
             /**
@@ -30420,7 +31178,7 @@ export interface components {
              * @default false
              * @example false
              */
-            pqcSkipAllowed: boolean;
+            pqcSkipAllowed?: boolean;
             /**
              * @default true
              * @example true
@@ -30547,8 +31305,8 @@ export interface components {
              */
             effectiveTo?: string | null;
             /**
-             * @description 공통코드 — 「전수/샘플」+「제품 단위/LOT 단위」가 여기 들어간다. 값 목록 §8-2
-             * @example STANDARD
+             * @description 공통코드 — 「전수/샘플」+「제품 단위/LOT 단위」가 여기 들어간다. 값 목록 §8-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_SAMPLING_METHOD 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example FULL_INSPECTION
              */
             samplingMethodCode: string;
             /**
@@ -30567,8 +31325,8 @@ export interface components {
              */
             rejectionNumber?: number | null;
             /**
-             * @description 공통코드 — 값 목록 미정
-             * @example STANDARD
+             * @description 공통코드 — 값 = WORK_ORDER·PRODUCTION_LOT·MATERIAL_LOT·SHIFT·TIME_INTERVAL·QUANTITY_INTERVAL·EQUIPMENT_MOLD_CHANGE·USER_REQUEST (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_FREQUENCY 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example WORK_ORDER
              */
             inspectionFrequencyCode: string;
             /**
@@ -30576,10 +31334,13 @@ export interface components {
              * @example 1
              */
             frequencyIntervalValue?: number | null;
-            /** @example STANDARD */
+            /**
+             * @description 검사 주기의 단위 — 시간(HOUR) · 수량(QUANTITY). ⭐ 두 축은 사용자와 협의해 확정했다(2026-09-03). ⚠ frequencyIntervalValue 와 짝이다 — 한쪽만 채우면 안 되고 그 짝 제약은 화면·서버가 진다(A-2 · W-06-02 §8-3). ⛔ 품목의 기준단위(uomCode)와 다른 축이다 — 여기는 «주기»의 단위다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_FREQUENCY_INTERVAL_UOM 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example HOUR
+             */
             frequencyIntervalUomCode?: string | null;
             /**
-             * @description 공통코드 — 값 목록 미정. W-06-01 의 작성중/확정/폐기 준용 여부 §8-2. 이 값으로 화면이 편집 잠금을 판정한다(§5-4). 이 API 로는 직접 바꾸지 않고 :new-revision·:confirm·:obsolete 로만 전이한다
+             * @description 마스터 버전의 편집 잠금 상태 — 작성중(DRAFT · 편집 가능) · 확정(CONFIRMED · 편집 잠김) · 폐기(OBSOLETE). ⛔ 확정본은 in-place 수정하지 않고 새 Rev 를 발행한다(결정 07). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 편집 가부가 이 값에 걸려 있어 값을 지우면 잠금이 «조용히» 안 걸리고, 이미 그 Rev 로 전개된 W/O 와 어긋난다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=MASTER_VERSION_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. 근거: 결정 07(W-06-01 §4) — Routing 이 정한 세 값을 BOM·검사기준 버전이 준용한다(사용자 결정 2026-09-02). ⭐ Routing 이 확정한 세 값을 그대로 준용한다(2026-09-02 확정).
              * @example CONFIRMED
              */
             statusCode: string;
@@ -30607,7 +31368,10 @@ export interface components {
              * @example 2026-08-04
              */
             effectiveTo?: string | null;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_SAMPLING_METHOD 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example FULL_INSPECTION
+             */
             samplingMethodCode: string;
             /** @example 1 */
             aqlValue?: number | null;
@@ -30615,11 +31379,17 @@ export interface components {
             acceptanceNumber?: number | null;
             /** @example 1 */
             rejectionNumber?: number | null;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_FREQUENCY 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example WORK_ORDER
+             */
             inspectionFrequencyCode: string;
             /** @example 1 */
             frequencyIntervalValue?: number | null;
-            /** @example STANDARD */
+            /**
+             * @description 검사 주기의 단위 — 시간(HOUR) · 수량(QUANTITY). ⭐ 두 축은 사용자와 협의해 확정했다(2026-09-03). ⚠ frequencyIntervalValue 와 짝이다 — 한쪽만 채우면 안 되고 그 짝 제약은 화면·서버가 진다(A-2 · W-06-02 §8-3). ⛔ 품목의 기준단위(uomCode)와 다른 축이다 — 여기는 «주기»의 단위다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_FREQUENCY_INTERVAL_UOM 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example HOUR
+             */
             frequencyIntervalUomCode?: string | null;
             /**
              * Format: double
@@ -30640,7 +31410,10 @@ export interface components {
              * @example 2026-08-04
              */
             effectiveTo?: string | null;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_SAMPLING_METHOD 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example FULL_INSPECTION
+             */
             samplingMethodCode: string;
             /** @example 1 */
             aqlValue?: number | null;
@@ -30648,11 +31421,17 @@ export interface components {
             acceptanceNumber?: number | null;
             /** @example 1 */
             rejectionNumber?: number | null;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_FREQUENCY 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example WORK_ORDER
+             */
             inspectionFrequencyCode: string;
             /** @example 1 */
             frequencyIntervalValue?: number | null;
-            /** @example STANDARD */
+            /**
+             * @description 검사 주기의 단위 — 시간(HOUR) · 수량(QUANTITY). ⭐ 두 축은 사용자와 협의해 확정했다(2026-09-03). ⚠ frequencyIntervalValue 와 짝이다 — 한쪽만 채우면 안 되고 그 짝 제약은 화면·서버가 진다(A-2 · W-06-02 §8-3). ⛔ 품목의 기준단위(uomCode)와 다른 축이다 — 여기는 «주기»의 단위다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_FREQUENCY_INTERVAL_UOM 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example HOUR
+             */
             frequencyIntervalUomCode?: string | null;
             /**
              * Format: double
@@ -30735,7 +31514,10 @@ export interface components {
              * @example 3
              */
             measurementCount: number;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_ITEM_SPEC_METHOD 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MEASUREMENT
+             */
             inspectionMethodCode?: string | null;
             /**
              * Format: int64
@@ -30821,7 +31603,10 @@ export interface components {
              * @example 3
              */
             measurementCount: number;
-            /** @example STANDARD */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_ITEM_SPEC_METHOD 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MEASUREMENT
+             */
             inspectionMethodCode?: string | null;
             /**
              * Format: int64
@@ -31105,9 +31890,10 @@ export interface components {
             /**
              * @description 수신(INBOUND) 또는 송신(OUTBOUND). 연계 정의의 방향 값과 같은 어휘다
              * @example OUTBOUND
+             * @enum {string}
              */
-            directionCode: string;
-            /** @description 무엇을 나른 메시지인가. 값 목록은 아직 정해지지 않았다 — 확정 전에는 이 조건 대신 interfaceCode 로 거른다(선택 목록은 GET /integration/interface-definitions). */
+            directionCode: "INBOUND" | "OUTBOUND";
+            /** @description 무엇을 나른 메시지인가 — 연계 «정의»의 대상과 같은 축이다. ⭐ 2026-09-03 정정 — 전에는 「공통코드 그룹으로 받지 않는다(A-16 「가」·「나」 참)」로 적혀 있었으나 «나»가 거짓이다: 연계 대상은 계약이 「확정된 수신 대상 다섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다」로 «열어 두었고», 확정 목록 안인지는 InterfaceDefinition.withinConfirmedScope 가 말한다. 고객이 새 값을 넣어도 성립하므로 다형 참조 판별자가 아니라 «업무 코드»다(A-16 가르는 물음 넷). ⇒ InterfaceDefinition.targetCode 와 «같은 그룹»을 쓴다. 값 목록은 GET /mdm/code-values?codeGroupCode=INTERFACE_TARGET 로 받는다(G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             targetTypeCode: string;
             /**
              * Format: int64
@@ -31116,7 +31902,7 @@ export interface components {
              */
             targetId: number;
             /**
-             * @description 공통코드 — 값 목록 미정. 최소 구분: 대기/처리중/완료/실패
+             * @description ERP 연계 메시지 한 건의 처리 상태 — 대기(PENDING) · 처리중(PROCESSING) · 완료(DONE) · 실패(FAILED). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 재처리 대상 판정이 이 값에 걸린다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INTEGRATION_MESSAGE_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. 근거: 이 계약이 적어 둔 「최소 구분」 넷을 그대로 확정했다(사용자 결정 2026-09-02).
              * @example FAILED
              */
             statusCode: string;
@@ -31181,10 +31967,11 @@ export interface components {
              */
             occurredAt: string;
             /**
-             * @description 공통코드 — 값 목록 미정 §8-3
-             * @example WAREHOUSE
+             * @description 감사 대상 유형 — 사용자(APP_USER) · 역할(ROLE) · 작업자(WORKER) · 단말(TERMINAL) · 품목(ITEM) · 라우팅(ROUTING) · 검사기준 버전(INSPECTION_PLAN_VERSION). ⭐ 값 일곱은 사용자와 협의해 확정했다(2026-09-03) — 변경 이력이 «남아야 하는» 마스터만 든다. ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 고객이 늘릴 수 없고 공통코드 그룹으로 받지 않는다(A-10 · A-16 「가르는 물음 넷」 — 「가」·「나」 참). ⚠ 대상이 늘면 «화면이 문자열을 정해 넣기 전에» 계약이 먼저 값을 갖는다(A-16). ⚠ 개체 마스터(창고·위치·설비·금형·거래처 등)는 여기 들지 않는다 — 「무엇이 있나」가 바뀔 뿐 과거 판정이 소급해 달라지지 않고, B-4 물리 삭제 금지와 version_no 낙관적 잠금이 이미 받는다. 버전을 가진 마스터도 빠진다 — 결정 07 이 「변경 이력 요구는 Rev 이력 그 자체로 충족」이라 했다.
+             * @example APP_USER
+             * @enum {string}
              */
-            targetTypeCode: string;
+            targetTypeCode: "APP_USER" | "ROLE" | "WORKER" | "TERMINAL" | "ITEM" | "ROUTING" | "INSPECTION_PLAN_VERSION";
             /**
              * Format: int64
              * @description ⚠ FK 가 아니다 — 유형별로 다른 테이블을 가리킨다. 화면이 유형→테이블→표시명을 풀어야 한다 §8-2
@@ -31192,15 +31979,28 @@ export interface components {
              */
             targetId: number;
             /**
-             * @description 공통코드 — 값 목록 미정
-             * @example STANDARD
+             * @description 감사 이벤트 유형 — 생성(CREATE) · 수정(UPDATE) · 삭제(DELETE) · 권한 부여(GRANT) · 권한 회수(REVOKE). ⭐ GRANT·REVOKE 를 둔 근거는 W-CO-02 §8-8 이다 — 「누가 언제 권한을 줬나」가 남는 곳이 그동안 하나도 없었고 감사 이력이 그것을 받기로 했다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 무엇을 기록할지는 시스템이 정한다 — 고객이 늘리면 기록되지 않는 유형이 생긴다. 값 목록은 GET /mdm/code-values?codeGroupCode=AUDIT_EVENT_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example CREATE
              */
             eventTypeCode: string;
-            /** @description 키·값 구조가 정해져 있지 않다 — 표시 규칙 §8-2. 모르는 키도 원문 그대로 표시(파싱 실패로 감추지 않는다) */
+            /**
+             * @description 변경 «전» 값. 변경 «전/후» 값. ⭐ 키 규약을 설계가 정했다(2026-09-03 · 사용자 결정) — ⓵ **키 이름은 «계약»의 필드 이름**(camelCase)이다. 물리 컬럼 이름이 아니다 — 화면은 계약을 보고 만들므로 컬럼 이름을 주면 화면이 다시 매핑해야 한다. ⓶ **바뀐 키만** 담는다. 전체를 담으면 마스터가 클수록 이력이 커지는데 화면은 「바뀐 키만 강조」한다(W-06-11 §9-2 ①). ⚠ 한쪽에만 있는 키는 «추가/삭제»이므로 그것도 변경분이다(§9-2 ②). ⓷ **코드값은 «코드만»** 담는다 — 표시명을 함께 저장하면 표시명이 바뀔 때 과거 이력의 표시명이 굳는다. 화면이 GET /mdm/code-values 로 푼다. ⚠ §9-2 ④ 「값이 코드면 코드+표시명 병기」는 «표시» 규약이고 저장 규약이 아니다. ⓸ 모르는 키도 화면이 «원문 그대로» 보인다 — 파싱 실패로 감추지 않는다(§9-2 ③).
+             * @example {
+             *       "isActive": true,
+             *       "statusCode": "ACTIVE"
+             *     }
+             */
             beforeValue?: Record<string, never> | null;
+            /**
+             * @description 변경 «후» 값. 변경 «전/후» 값. ⭐ 키 규약을 설계가 정했다(2026-09-03 · 사용자 결정) — ⓵ **키 이름은 «계약»의 필드 이름**(camelCase)이다. 물리 컬럼 이름이 아니다 — 화면은 계약을 보고 만들므로 컬럼 이름을 주면 화면이 다시 매핑해야 한다. ⓶ **바뀐 키만** 담는다. 전체를 담으면 마스터가 클수록 이력이 커지는데 화면은 「바뀐 키만 강조」한다(W-06-11 §9-2 ①). ⚠ 한쪽에만 있는 키는 «추가/삭제»이므로 그것도 변경분이다(§9-2 ②). ⓷ **코드값은 «코드만»** 담는다 — 표시명을 함께 저장하면 표시명이 바뀔 때 과거 이력의 표시명이 굳는다. 화면이 GET /mdm/code-values 로 푼다. ⚠ §9-2 ④ 「값이 코드면 코드+표시명 병기」는 «표시» 규약이고 저장 규약이 아니다. ⓸ 모르는 키도 화면이 «원문 그대로» 보인다 — 파싱 실패로 감추지 않는다(§9-2 ③).
+             * @example {
+             *       "isActive": false,
+             *       "statusCode": "SUSPENDED"
+             *     }
+             */
             afterValue?: Record<string, never> | null;
             /**
-             * @description 입력처가 어디인지 미정 §8-4
+             * @description 변경 사유. ⭐ 입력 시점을 설계가 정했다(2026-09-03 · 사용자 결정) — **되돌릴 수 없거나 하류가 막히는 변경에서만 필수**다: 비활성화(:deactivate) · 폐기(:obsolete) · 식별 코드 수정. 그 밖의 일반 편집은 «선택»이다. ⭐ 저장소 선례를 따른다 — 재발행 사유가 「회차 1이거나 사유 필수」로 «예외에만» 받는 형태다(K-7). 모든 저장에 사유를 요구하면 사람이 아무 말이나 적어 기록이 오염된다. ⚠ 필수인 자리는 그 오퍼레이션이 400 으로 막는다 — 화면이 아니라 서버가 진다.
              * @example 라인 정지 임박. 검사 대기 불가.
              */
             reason?: string | null;
@@ -31365,18 +32165,19 @@ export interface components {
             /** @example 표시명 */
             lineName: string;
             /**
-             * @description LINE | WORK_AREA
+             * @description 라인 계층 유형 — 라인(LINE)과 작업구역(WORK_AREA)을 가른다. ⚠ ProductionLine.lineTypeCode 와 EquipmentGroup.groupTypeCode 는 «같은 물리 컬럼»(mdm.production_line.line_type_code)을 다른 API 이름으로 노출한 것이라 같은 값집합이다. ⛔ 계층 모델링 개념이라 고객이 늘리지 않는다
              * @default LINE
              * @example LINE
+             * @enum {string}
              */
-            lineTypeCode: string;
+            lineTypeCode: "LINE" | "WORK_AREA";
             /**
              * @default true
              * @example true
              */
             isActive: boolean;
         };
-        /** @description 선택 목록용. 관리 화면이 인벤토리 108건에 없다. 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 화면이 쓰는 것은 processId·processName 이다. 근거: W-06-01 §4-B 공정 · W-06-02 §4-A 검사 대상 공정 · W-06-03 §4-A·§4-C 공정 · W-06-05 §4-F 실제 사용 공정 · W-06-06 §4-E 자격 대상 공정. */
+        /** @description 공정 마스터 — **MES 정본**이다(REQ-PR-0026 「ERP 에 공정 정보가 없는 경우가 전제」 · 개념데이터모델 「공정(Routing)·툴은 ERP 연계 대상에서 제외」). 관리 화면은 W-06-01 《공정 마스터》 탭이다(2026-09-03 사용자 확정 — 최상위 탭 2개로 Routing 축과 나눴다). 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다 — 공유계약 G-8. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. 선택 목록으로 «읽는» 화면이 쓰는 것은 processId·processName 이다. 근거: W-06-01 §4-D 공정 마스터(소유·CRUD) · W-06-01 §4-B 공정 라인 · W-06-02 §4-A 검사 대상 공정 · W-06-03 §4-A·§4-C 공정 · W-06-05 §4-F 실제 사용 공정 · W-06-06 §4-E 자격 대상 공정. */
         Process: {
             /**
              * Format: int64
@@ -31388,8 +32189,8 @@ export interface components {
             /** @example 사출 */
             processName: string;
             /**
-             * @description 공통코드 — 값 목록 미정
-             * @example STANDARD
+             * @description 공통코드 — 값 = MACHINING·ASSEMBLY·INSPECTION·PACKAGING (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PROCESS_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MACHINING
              */
             processTypeCode: string;
             /**
@@ -31397,6 +32198,40 @@ export interface components {
              * @example true
              */
             isActive: boolean;
+        };
+        /** @description 공정 등록 요청. isActive 는 받지 않는다 — 등록은 항상 사용중으로 선다. 근거: W-06-01 §4-D·§5-1 「공정 추가」 */
+        ProcessCreate: {
+            /**
+             * @description uq — 전역 유일. 참조 건수가 0 일 때만 수정할 수 있다(공유계약 B-4) — 가부와 사유는 ProcessDetailResponse.editability 가 내린다
+             * @example OP-INJ
+             */
+            processCode: string;
+            /** @example 사출 */
+            processName: string;
+            /**
+             * @description 공통코드 — 값 = MACHINING·ASSEMBLY·INSPECTION·PACKAGING (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PROCESS_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MACHINING
+             */
+            processTypeCode: string;
+        };
+        /** @description 공정 수정 요청. isActive 는 별도 :deactivate·:activate. processCode 는 참조 건수 0 일 때만 바꿀 수 있다(공유계약 B-4) — 참조가 있으면 화면이 입력란을 잠그고 사유·건수를 표시한다(F-1). 낙관적 잠금은 공유계약 B-1. 근거: W-06-01 §4-D */
+        ProcessUpdate: {
+            /**
+             * @description uq — 전역 유일. 참조 건수가 0 일 때만 수정할 수 있다(공유계약 B-4) — 가부와 사유는 ProcessDetailResponse.editability 가 내린다
+             * @example OP-INJ
+             */
+            processCode: string;
+            /** @example 사출 */
+            processName: string;
+            /**
+             * @description 공통코드 — 값 = MACHINING·ASSEMBLY·INSPECTION·PACKAGING (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PROCESS_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MACHINING
+             */
+            processTypeCode: string;
+        };
+        ProcessDetailResponse: {
+            process: components["schemas"]["Process"];
+            editability: components["schemas"]["Editability"];
         };
         /** @description 설비 마스터. 계측기도 설비의 한 종류이며 equipmentTypeCode 가 가른다 — 계측기 전용 자원을 두지 않는 이유는 한 행을 두 경로가 쓰게 되기 때문이다(W-05-11 §3-2). 유효성 판정은 서버가 하며 기본은 유효한 것만 내린다. 과거 데이터 표시용은 includeInactive=true 로 켜고 isActive 표식을 함께 본다. statusCode 는 운용·폐기 두 값이다 — 고장·보전 중·비가동은 거래가 만드는 조건이라 마스터에 적지 않는다(W-05-12 §5-2). lastCalibrationDate·calibrationDueDate 는 읽기 전용이며 검교정 이력 등록이 정한다. 근거: W-05-12 §4-B · W-05-11 §4-A · W-06-02 §4-C */
         Equipment: {
@@ -31571,7 +32406,7 @@ export interface components {
              * @default 100
              * @example 100
              */
-            priorityNo: number;
+            priorityNo?: number;
             /** @example 비고 문자열 */
             remarks?: string | null;
         };
@@ -31598,7 +32433,7 @@ export interface components {
              * @default 100
              * @example 100
              */
-            priorityNo: number;
+            priorityNo?: number;
             /** @example 비고 문자열 */
             remarks?: string | null;
         };
@@ -31688,8 +32523,9 @@ export interface components {
              * @example 프레스 1호기
              */
             equipmentName?: string | null;
-            /** @description 어떤 단말인가 — 고정 스테이션과 손에 드는 기기가 여기서 갈린다. 값 목록은 아직 확정 전이다 */
+            /** @description 단말 유형 — 고정 스테이션(POP · Electron 키오스크 · 산업용 패널 PC)과 손에 드는 기기(MOBILE · Capacitor Android)가 여기서 갈린다. ⭐ 폼팩터는 결정 16 이 확정한 아키텍처 축이라 고객 관행으로 늘지 않는다. ⚠ 관리웹은 단말 마스터에 등록하지 않는다 — 현장 단말만 여기 든다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             terminalTypeCode: string;
+            /** @description 단말의 가동 상태 — 가동중(RUNNING) · 정지(STOPPED) 둘뿐이다(사용자 결정 2026-09-02 — 폐기·분실은 이 축이 아니다). ⛔ isActive 와 «다른 축»이다 — isActive 는 켬/끔 스위치이고 폐기 수단이 아니다(W-CO-06 §5-4 — 끄고 다시 켜면 유출 토큰이 되살아난다. 실측 200 → 401 → 200). 분실·폐기는 이 값도 isActive 도 아닌 «재발급»이 담당한다(§5-4). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. 근거: W-CO-06 §3 목업이 「가동중」을 그린다. */
             statusCode: string;
             /** @example true */
             isActive: boolean;
@@ -31726,7 +32562,9 @@ export interface components {
              * @example 2001
              */
             equipmentId?: number | null;
+            /** @description 단말 유형 — 고정 스테이션(POP)과 손에 드는 기기(MOBILE). 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             terminalTypeCode: string;
+            /** @description 값 = `RUNNING`·`STOPPED`. 값 목록은 `GET /mdm/code-values?codeGroupCode=TERMINAL_STATUS` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             statusCode: string;
         };
         /** @description ⛔ 단말 코드는 받지 않는다 — 키는 바꾸지 않는다(공유계약 B-4). */
@@ -31747,7 +32585,9 @@ export interface components {
              * @example 2001
              */
             equipmentId?: number | null;
+            /** @description 단말 유형 — 고정 스테이션(POP)과 손에 드는 기기(MOBILE). 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             terminalTypeCode: string;
+            /** @description 값 = `RUNNING`·`STOPPED`. 값 목록은 `GET /mdm/code-values?codeGroupCode=TERMINAL_STATUS` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             statusCode: string;
         };
         /** @description 기기에 넣을 등록용 토큰. ⭐ 관리웹이 이것을 받아 «QR 로 그려» 보이고 기기가 스캔해 읽는다 — 기기는 서버를 부르지 않는다. 그래서 토큰 없이 열리는 경로가 생기지 않는다. 근거: M-CO-01 §5-2 B안 */
@@ -31913,10 +32753,11 @@ export interface components {
             /** @example 프레스라인 A */
             groupName: string;
             /**
-             * @description 공통코드 — 값 목록이 확정되지 않았다
+             * @description 라인 계층 유형 — 라인(LINE)과 작업구역(WORK_AREA)을 가른다. ⚠ ProductionLine.lineTypeCode 와 EquipmentGroup.groupTypeCode 는 «같은 물리 컬럼»(mdm.production_line.line_type_code)을 다른 API 이름으로 노출한 것이라 같은 값집합이다. ⛔ 계층 모델링 개념이라 고객이 늘리지 않는다
              * @example LINE
+             * @enum {string}
              */
-            groupTypeCode: string;
+            groupTypeCode: "LINE" | "WORK_AREA";
             /**
              * Format: int64
              * @description 상위 그룹. 비면 최상위
@@ -31939,8 +32780,12 @@ export interface components {
             groupCode: string;
             /** @example 프레스라인 A */
             groupName: string;
-            /** @example LINE */
-            groupTypeCode: string;
+            /**
+             * @description 라인 계층 유형 — 라인과 작업구역을 가른다. ⚠ ProductionLine.lineTypeCode 와 «같은 물리 컬럼»이다
+             * @example LINE
+             * @enum {string}
+             */
+            groupTypeCode: "LINE" | "WORK_AREA";
             /**
              * Format: int64
              * @example 1001
@@ -31953,8 +32798,12 @@ export interface components {
             groupCode?: string;
             /** @example 프레스라인 A */
             groupName: string;
-            /** @example LINE */
-            groupTypeCode: string;
+            /**
+             * @description 라인 계층 유형 — 라인과 작업구역을 가른다. ⚠ ProductionLine.lineTypeCode 와 «같은 물리 컬럼»이다
+             * @example LINE
+             * @enum {string}
+             */
+            groupTypeCode: "LINE" | "WORK_AREA";
             /**
              * Format: int64
              * @example 1001
@@ -32099,6 +32948,7 @@ export interface components {
         EquipmentInspectionItem: {
             /**
              * Format: int64
+             * @description 설비 점검 항목 마스터의 식별자. ⭐ 점검을 «기록할» 때는 설비툴 계약이 이 값을 inspectionItemId 라는 이름으로 받는다(InspectionLineCreate.inspectionItemId · MaintenanceOrderItemInput.inspectionItemId) — 이름만 다르고 같은 것이다. ⛔ 설비툴 계약의 CollectionChannel.inspectionItemId 는 «다른 표»다 — 그쪽은 품질 검사 항목이다. 근거: omf-mes#338
              * @example 1001
              */
             equipmentInspectionItemId: number;
@@ -32279,6 +33129,7 @@ export interface components {
         InspectionItemAssignment: {
             /**
              * Format: int64
+             * @description 설비 점검 항목 마스터의 식별자. ⭐ 점검을 «기록할» 때는 설비툴 계약이 이 값을 inspectionItemId 라는 이름으로 받는다(InspectionLineCreate.inspectionItemId · MaintenanceOrderItemInput.inspectionItemId) — 이름만 다르고 같은 것이다. ⛔ 설비툴 계약의 CollectionChannel.inspectionItemId 는 «다른 표»다 — 그쪽은 품질 검사 항목이다. 근거: omf-mes#338
              * @example 1001
              */
             equipmentInspectionItemId: number;
@@ -32343,7 +33194,7 @@ export interface components {
              * @default true
              * @example true
              */
-            isActive: boolean;
+            isActive?: boolean;
             /**
              * @description 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 검교정 주기와 점검 부여 주기가 «같은 그룹»이다 — 같은 종류의 값(기간 단위)이라 어휘를 두 벌 만들지 않는다. ⛔ 검사 «유형»(품질 IQC·PQC·OQC ↔ 설비 DAILY·MONTHLY·MAINTENANCE)은 종류가 달라 그룹을 가른다 — 공유계약 G-32. 근거: omf-mes#188
              * @example DAY
@@ -32373,7 +33224,7 @@ export interface components {
             assigned: components["schemas"]["InspectionItemAssignment"][];
             effective: components["schemas"]["InspectionItemAssignment"][];
             /**
-             * @description effective 가 어느 층에서 왔는가. NONE 이면 점검 대상이 아니며 화면은 입력을 열지 않는다
+             * @description effective 가 어느 층에서 왔는가 — 설비(EQUIPMENT) · 설비그룹(EQUIPMENT_GROUP) · 없음(NONE). NONE 이면 점검 대상이 아니며 화면은 입력을 열지 않는다. ⚠ 작업 캘린더의 같은 이름(WorkCalendarEffectiveResponse.resolvedFromLevelCode)과 «값집합이 다르다» — 그쪽은 EQUIPMENT_GROUP·PLANT 이고 부재를 null 로 표현한다(공유계약 B-28 · 2026-09-03 가름).
              * @example EQUIPMENT_GROUP
              * @enum {string}
              */
@@ -32405,7 +33256,7 @@ export interface components {
             /** @example 하우징 프레스 금형 */
             moldName: string;
             /**
-             * @description 도구 유형 — 금형 · 지그 · 그 밖의 도구
+             * @description 도구 유형 — 금형 · 지그 · 그 밖의 도구(W-05-13 §3-3). 값 목록은 GET /mdm/code-values?codeGroupCode=TOOL_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MOLD
              */
             toolTypeCode: string;
@@ -32443,18 +33294,17 @@ export interface components {
              */
             isActive: boolean;
             /**
-             * @description 예방보전을 무엇으로 판정하는가 — 타발수(SHOT) · 날짜(DATE) · 둘 다(BOTH) · 하지 않음(NONE). 확정이 「겸용 설정형」이라 이 칸이 그 「설정」이다
+             * @description 예방보전을 무엇으로 판정하는가 — 타발수(SHOT) · 날짜(DATE) · 둘 다(BOTH) · 하지 않음(NONE). ⭐ 확정이 「겸용 설정형」이라 이 칸이 그 «설정»이다 — 툴마다 사용자가 고른다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 편집하면 안 된다. 값이 늘면 PM 도래 판정 규칙이 함께 늘어야 한다. 값 목록은 GET /mdm/code-values?codeGroupCode=MOLD_PM_TRIGGER_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default NONE
-             * @example BOTH
              */
-            pmTriggerTypeCode: string;
+            pmTriggerTypeCode?: string;
             /**
              * @description 날짜 주기 간격. 날짜 축을 쓰면 단위와 함께 필요하다
              * @example 6
              */
             pmCycleInterval?: number | null;
             /**
-             * @description 날짜 주기 단위 — 일(DAY) 또는 월(MONTH). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
+             * @description 날짜 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⚠ 2026-09-02 정정 — 이 자리가 「일 또는 월」 2값으로 적혀 있었으나 omf-mes#188 이 검교정 주기 단위와 «한 그룹»으로 합치며 4값으로 확정했고 형제 자리(calibrationCycleTypeCode)는 4값을 적고 있었다. 같은 그룹을 가리키는 두 자리가 다른 목록을 말하던 것을 맞춘다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
              * @example MONTH
              */
             pmCycleUnitCode?: string | null;
@@ -32476,10 +33326,11 @@ export interface components {
              */
             pmDue?: boolean;
             /**
-             * @description 먼저 도달한 축 — SHOT 또는 DATE. 둘 다 쓰는 툴이 있어 「왜 도래했는가」를 화면이 밝힌다. 도래하지 않았으면 null
+             * @description 먼저 도달한 축 — 타발수(SHOT) · 날짜(DATE). 둘 다 쓰는 툴이 있어 「왜 도래했는가」를 화면이 밝힌다. 도래하지 않았으면 null 이다. ⚠ pmTriggerTypeCode 가 «무엇으로 판정할지»라면 이 칸은 «무엇이 먼저 걸렸는지»다. 근거: W-05-02 §5-A
              * @example SHOT
+             * @enum {string|null}
              */
-            pmDueAxisCode?: string | null;
+            pmDueAxisCode?: "SHOT" | "DATE" | null;
             /**
              * Format: double
              * @description 누계 ÷ 적정타수 백분율. 적정타수가 비면 null 이고 화면은 「산출 불가」로 그린다 — 0 으로 채우지 않는다
@@ -32498,7 +33349,7 @@ export interface components {
             /** @example 하우징 프레스 금형 */
             moldName: string;
             /**
-             * @description 도구 유형 — 금형 · 지그 · 그 밖의 도구. 요구가 「모든 도구」라 유형 축을 둔다
+             * @description 도구 유형 — 금형 · 지그 · 그 밖의 도구(W-05-13 §3-3). 값 목록은 GET /mdm/code-values?codeGroupCode=TOOL_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MOLD
              */
             toolTypeCode: string;
@@ -32515,18 +33366,17 @@ export interface components {
              */
             guaranteedShotCount?: number | null;
             /**
-             * @description 예방보전을 무엇으로 판정하는가 — 타발수(SHOT) · 날짜(DATE) · 둘 다(BOTH) · 하지 않음(NONE). 확정이 「겸용 설정형」이라 이 칸이 그 「설정」이다
+             * @description 예방보전을 무엇으로 판정하는가 — 타발수(SHOT) · 날짜(DATE) · 둘 다(BOTH) · 하지 않음(NONE). ⭐ 확정이 「겸용 설정형」이라 이 칸이 그 «설정»이다 — 툴마다 사용자가 고른다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 편집하면 안 된다. 값이 늘면 PM 도래 판정 규칙이 함께 늘어야 한다. 값 목록은 GET /mdm/code-values?codeGroupCode=MOLD_PM_TRIGGER_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default NONE
-             * @example BOTH
              */
-            pmTriggerTypeCode: string;
+            pmTriggerTypeCode?: string;
             /**
              * @description 날짜 주기 간격. 날짜 축을 쓰면 단위와 함께 필요하다
              * @example 6
              */
             pmCycleInterval?: number | null;
             /**
-             * @description 날짜 주기 단위 — 일(DAY) 또는 월(MONTH). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
+             * @description 날짜 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⚠ 2026-09-02 정정 — 이 자리가 「일 또는 월」 2값으로 적혀 있었으나 omf-mes#188 이 검교정 주기 단위와 «한 그룹»으로 합치며 4값으로 확정했고 형제 자리(calibrationCycleTypeCode)는 4값을 적고 있었다. 같은 그룹을 가리키는 두 자리가 다른 목록을 말하던 것을 맞춘다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
              * @example MONTH
              */
             pmCycleUnitCode?: string | null;
@@ -32538,7 +33388,7 @@ export interface components {
             /** @example 하우징 프레스 금형 */
             moldName: string;
             /**
-             * @description 도구 유형 — 금형 · 지그 · 그 밖의 도구. 요구가 「모든 도구」라 유형 축을 둔다
+             * @description 도구 유형 — 금형 · 지그 · 그 밖의 도구(W-05-13 §3-3). 값 목록은 GET /mdm/code-values?codeGroupCode=TOOL_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MOLD
              */
             toolTypeCode: string;
@@ -32555,18 +33405,17 @@ export interface components {
              */
             guaranteedShotCount?: number | null;
             /**
-             * @description 예방보전을 무엇으로 판정하는가 — 타발수(SHOT) · 날짜(DATE) · 둘 다(BOTH) · 하지 않음(NONE). 확정이 「겸용 설정형」이라 이 칸이 그 「설정」이다
+             * @description 예방보전을 무엇으로 판정하는가 — 타발수(SHOT) · 날짜(DATE) · 둘 다(BOTH) · 하지 않음(NONE). ⭐ 확정이 「겸용 설정형」이라 이 칸이 그 «설정»이다 — 툴마다 사용자가 고른다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 편집하면 안 된다. 값이 늘면 PM 도래 판정 규칙이 함께 늘어야 한다. 값 목록은 GET /mdm/code-values?codeGroupCode=MOLD_PM_TRIGGER_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default NONE
-             * @example BOTH
              */
-            pmTriggerTypeCode: string;
+            pmTriggerTypeCode?: string;
             /**
              * @description 날짜 주기 간격. 날짜 축을 쓰면 단위와 함께 필요하다
              * @example 6
              */
             pmCycleInterval?: number | null;
             /**
-             * @description 날짜 주기 단위 — 일(DAY) 또는 월(MONTH). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
+             * @description 날짜 주기 단위 — 일(DAY)·주(WEEK)·월(MONTH)·년(YEAR). ⚠ 2026-09-02 정정 — 이 자리가 「일 또는 월」 2값으로 적혀 있었으나 omf-mes#188 이 검교정 주기 단위와 «한 그룹»으로 합치며 4값으로 확정했고 형제 자리(calibrationCycleTypeCode)는 4값을 적고 있었다. 같은 그룹을 가리키는 두 자리가 다른 목록을 말하던 것을 맞춘다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CYCLE_TYPE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다
              * @example MONTH
              */
             pmCycleUnitCode?: string | null;
@@ -32717,7 +33566,7 @@ export interface components {
              */
             endTime?: string | null;
             /**
-             * @description 공통코드 — 값 목록이 확정되지 않았다
+             * @description 공통코드 — 값 = PUBLIC_HOLIDAY·COMPANY_FOUNDING_DAY·SUMMER_VACATION·PLANNED_MAINTENANCE·MAKEUP_WORKING_DAY·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_CALENDAR_DAY_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example PUBLIC_HOLIDAY
              */
             reasonCode?: string | null;
@@ -32820,10 +33669,11 @@ export interface components {
             /** @example CAL-HCM-2026 */
             calendarCode?: string | null;
             /**
-             * @description EQUIPMENT_GROUP 또는 PLANT. null 이면 어느 층에도 지정이 없어 따르는 캘린더가 없다 — 화면이 그 사실을 밝힌다
-             * @example PLANT
+             * @description 어느 층의 지정을 따랐나 — 설비그룹(EQUIPMENT_GROUP) · 공장(PLANT). null 이면 어느 층에도 지정이 없어 따르는 캘린더가 없다 — 화면이 그 사실을 밝힌다. ⚠ 설비 점검 항목 배정의 같은 이름과 «값집합이 다르다» — 그쪽은 EQUIPMENT·EQUIPMENT_GROUP·NONE 이고 부재를 NONE «값»으로 표현한다. 같은 이름을 한 그룹으로 묶으면 화면이 남의 선택지를 본다(공유계약 B-28 · 2026-09-03 가름).
+             * @example EQUIPMENT_GROUP
+             * @enum {string|null}
              */
-            resolvedFromLevelCode?: string | null;
+            resolvedFromLevelCode?: "EQUIPMENT_GROUP" | "PLANT" | null;
         };
         /** @description 중계 테이블 칸과 이 시스템의 칸을 잇는다. 근거: W-06-09 §4-C */
         InterfaceColumnMapping: {
@@ -32855,7 +33705,7 @@ export interface components {
              */
             directionCode: "INBOUND" | "OUTBOUND";
             /**
-             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 거래처 · 조직 · 작업자 · 구매발주 여섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다
+             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 조직 · 작업자 · 구매발주 다섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다 값 = `ITEM`·`BOM`·`ORGANIZATION`·`WORKER`·`PURCHASE_ORDER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=INTERFACE_TARGET` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31).
              * @example ITEM
              */
             targetCode: string;
@@ -32887,7 +33737,7 @@ export interface components {
              */
             relayTableName?: string | null;
             /**
-             * @description targetCode 가 확정된 수신 대상 여섯 안에 드는가. 거짓이면 화면이 「확정 목록 밖입니다」를 표식한다 — 막지는 않는다
+             * @description targetCode 가 확정된 수신 대상 다섯 안에 드는가. 거짓이면 화면이 「확정 목록 밖입니다」를 표식한다 — 막지는 않는다
              * @example true
              */
             withinConfirmedScope: boolean;
@@ -32913,7 +33763,7 @@ export interface components {
              */
             directionCode: "INBOUND" | "OUTBOUND";
             /**
-             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 거래처 · 조직 · 작업자 · 구매발주 여섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다
+             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 조직 · 작업자 · 구매발주 다섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다 값 = `ITEM`·`BOM`·`ORGANIZATION`·`WORKER`·`PURCHASE_ORDER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=INTERFACE_TARGET` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31).
              * @example ITEM
              */
             targetCode: string;
@@ -32962,7 +33812,7 @@ export interface components {
              */
             directionCode: "INBOUND" | "OUTBOUND";
             /**
-             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 거래처 · 조직 · 작업자 · 구매발주 여섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다
+             * @description 연계 대상. 확정된 수신 대상은 품목 · 자재명세 · 조직 · 작업자 · 구매발주 다섯이며 그 밖의 값도 받는다 — 막지 않고 표식만 한다. 확정 목록 안인지는 withinConfirmedScope 가 말한다 값 = `ITEM`·`BOM`·`ORGANIZATION`·`WORKER`·`PURCHASE_ORDER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=INTERFACE_TARGET` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31).
              * @example ITEM
              */
             targetCode: string;
@@ -33010,10 +33860,11 @@ export interface components {
             /** @example false */
             succeeded: boolean;
             /**
-             * @description UNREACHABLE(닿지 않는다) · TABLE_NOT_FOUND(테이블이 없다) · PERMISSION_DENIED(권한이 없다) 셋을 가른다. 「연결 실패」 한 마디로 뭉치면 무엇을 고쳐야 할지 알 수 없다
-             * @example TABLE_NOT_FOUND
+             * @description 연결 시험이 «왜» 실패했나 — 닿지 않는다 · 표가 없다 · 권한이 없다. ⭐ 「연결 실패」 한 마디로 뭉치면 무엇을 고쳐야 할지 알 수 없다
+             * @example UNREACHABLE
+             * @enum {string|null}
              */
-            failureCauseCode?: string | null;
+            failureCauseCode?: "UNREACHABLE" | "TABLE_NOT_FOUND" | "PERMISSION_DENIED" | null;
             /** @example 중계 테이블 TMP_GR_SEND 을 찾을 수 없습니다 */
             message?: string | null;
         };
@@ -33117,7 +33968,7 @@ export interface components {
         /** @description 승인 요청. 사유는 비울 수 없다 — 데이터가 NOT NULL 로 강제하고, 결재함 목록에서 이 문장이 요약을 겸한다(approval_request 에 업무 값이 reason 하나뿐이다). 승인 진행 상태를 읽고 결재하는 경로는 app-공통 파일이 갖는다. 근거: W-01-11 §5-6 · W-01-06 §5-7 · W-01-13 §5-5 · 공유계약 J-4 · A-12 보강 */
         ApprovalRequestCreate: {
             /**
-             * @description approval_request.reason 이 NOT NULL 이다. 취소 요청에서는 이 사유가 곧 취소 이력이 된다 — 문서에 취소 흔적을 담을 컬럼이 없다
+             * @description 취소 요청에서는 이 사유가 곧 취소 이력이 된다 — 취소의 누가·언제·왜를 남기는 것이 이 화면의 존재 이유다(W-01-13 §5-5). 화면이 필수로 만든다(공유계약 A-12)
              * @example 초과 입하분 정산용 발주
              */
             reason: string;
@@ -33223,14 +34074,21 @@ export interface components {
         };
         /** @description 취소 실행 결과. 전기된 문서였으면 역트랜잭션이 생기고, 전기 전이었으면 상태만 바뀐다. */
         CancelResult: {
-            /** @example GOODS_RECEIPT */
-            documentTypeCode: string;
+            /**
+             * @description 취소를 실행한 문서의 종류. ⛔ 취소 실행 경로가 있는 3종뿐이다 — 입하·입고·출고. 조회 축(DocumentProgress)은 9종이라 값 집합이 다르다 — 자리마다 닫는다(공유계약 A-16 · omf-mes#336 선례).
+             * @example GOODS_RECEIPT
+             * @enum {string}
+             */
+            documentTypeCode: "INBOUND_RECEIPT" | "GOODS_RECEIPT" | "GOODS_ISSUE";
             /**
              * Format: int64
              * @example 4412
              */
             documentId: number;
-            /** @example CANCELLED */
+            /**
+             * @description 취소 처리 뒤 그 전표가 놓인 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example CANCELLED
+             */
             statusCode: string;
             /**
              * @description 원장 역트랜잭션이 만들어졌는가. 전기 전 취소면 거짓이다
@@ -33252,10 +34110,11 @@ export interface components {
         /** @description 물류 문서 한 건의 진행현황. 문서 유형마다 테이블이 다르므로 서버가 한 형태로 맞춰 내린다 — 화면이 유형별 응답을 각각 다루지 않는다. 근거: W-01-13 §3·§4-A */
         DocumentProgress: {
             /**
-             * @description 입하·입고·출고·발주·피킹·이동요청. 값 목록은 공통코드 소관이다
+             * @description 이 화면이 다루는 물류 문서의 종류 — 발주·입하·입고·출고요청·피킹·이동요청·외주출고·외주입고·출고 9종. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 고객이 늘릴 수 있는 값이 아니다(공유계약 A-16 「가르는 물음 넷」 — 「가」 거짓 · 「라」 거짓 · 2026-09-02 판정). 선례는 같은 갈래에서 approval_type_code 8값을 enum 으로 닫은 omf-mes#336 이다. 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다. ⚠ 같은 이름의 다른 자리는 값 집합이 다르다 — 자리마다 닫는다.
              * @example GOODS_RECEIPT
+             * @enum {string}
              */
-            documentTypeCode: string;
+            documentTypeCode: "PURCHASE_ORDER" | "INBOUND_RECEIPT" | "GOODS_RECEIPT" | "MATERIAL_ISSUE_REQUEST" | "PICKING_ORDER" | "STOCK_TRANSFER" | "SUBCONTRACT_ISSUE" | "SUBCONTRACT_RECEIPT" | "GOODS_ISSUE";
             /**
              * Format: int64
              * @example 4412
@@ -33269,11 +34128,14 @@ export interface components {
              */
             documentDate: string;
             /**
-             * @description 유형 안의 구분. 입고면 정상·반품 같은 값이다
-             * @example NORMAL
+             * @description 유형 «안»의 구분 — 입고면 자재·제품·반품·이관, 출고면 생산·공급사 반품·출하·그 밖. ⚠ documentTypeCode 에 따라 «가리키는 그룹이 다르다» — 입고 계열은 RECEIPT_TYPE, 출고 계열은 ISSUE_TYPE 이다. 그 밖의 유형에는 비어 있다. 값 목록은 GET /mdm/code-values?codeGroupCode=RECEIPT_TYPE 또는 GET /mdm/code-values?codeGroupCode=ISSUE_TYPE 로 받는다(공유계약 G-32).
+             * @example PRODUCTION
              */
             documentSubTypeCode?: string | null;
-            /** @example POSTED */
+            /**
+             * @description 전표의 진행 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example POSTED
+             */
             statusCode: string;
             /**
              * @description 계획 수량. 라인 합계다
@@ -33301,10 +34163,11 @@ export interface components {
              */
             cancellable: boolean;
             /**
-             * @description cancellable 이 거짓인 이유. SUCCESSOR_EXISTS · ALREADY_CANCELLED · CANCEL_IN_PROGRESS · STATE_LOCKED
+             * @description cancellable 이 «거짓인 이유» — 후속 문서가 있다 · 이미 취소됐다 · 취소 진행 중이다 · 상태가 잠겼다. ⭐ 화면이 이 값으로 안내 문구와 다음 경로를 가른다(G-3). ⛔ 서버가 판정한다 — 화면이 조건을 따로 조합하면 화면마다 갈린다
              * @example SUCCESSOR_EXISTS
+             * @enum {string|null}
              */
-            cancelBlockedReasonCode?: string | null;
+            cancelBlockedReasonCode?: "SUCCESSOR_EXISTS" | "ALREADY_CANCELLED" | "CANCEL_IN_PROGRESS" | "STATE_LOCKED" | null;
             /**
              * Format: int64
              * @description 취소 요청이 진행 중이면 그 승인 요청 번호. 결재함으로 이어진다
@@ -33325,7 +34188,10 @@ export interface components {
         };
         /** @description 문서의 처리 경과 한 줄. 등록·전기·취소 같은 시점을 시간순으로 보인다. */
         DocumentProgressStep: {
-            /** @example POSTED */
+            /**
+             * @description 이 경과 줄이 «어느 상태에 도달한» 시점인가 — 등록 · 전기 · 취소 요청 · 취소. ⭐ 전표의 진행 상태와 «같은 값집합»이다 — 단계는 그 상태에 닿은 순간이다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example POSTED
+             */
             stepCode: string;
             /**
              * Format: date-time
@@ -33351,8 +34217,12 @@ export interface components {
         };
         /** @description 이 문서를 원천으로 삼는 하류 문서 또는 재고 사용 기록. 취소하려면 이것들을 역순으로 먼저 취소해야 한다. 근거: W-01-13 §5-3 */
         DocumentSuccessor: {
-            /** @example GOODS_ISSUE */
-            successorTypeCode: string;
+            /**
+             * @description A-10 다형 참조 판별자 — 값이 «대상 리소스 이름»이고 짝 id 가 그 리소스의 식별자다. ⭐ 대응표는 «설계»가 정한다(A-10 규칙 1 · 2026-09-03 사용자 결정). 후속이 무엇인가 — 입고 · 출고 · 피킹 · 수불 원장 · 자재 투입. ⭐ W-01-13 §5-3 이 「후속 판정이 두 갈래」로 이미 적어 두었다 — 앞 넷은 sourceDocument* 로 거꾸로 조회하는 «문서 하류»이고, 자재 투입은 원천 문서가 아니라 LOT 을 가리키는 «재고 사용»이다. ⛔ 취소하려면 이것들을 역순으로 먼저 취소해야 한다.
+             * @example GOODS_RECEIPT
+             * @enum {string}
+             */
+            successorTypeCode: "GOODS_RECEIPT" | "GOODS_ISSUE" | "PICKING_ORDER" | "INVENTORY_TRANSACTION" | "MATERIAL_CONSUMPTION";
             /**
              * Format: int64
              * @example 4455
@@ -33380,10 +34250,16 @@ export interface components {
             goodsIssueId: number;
             /** @example GI-2026-000402 */
             goodsIssueNo: string;
-            /** @description 출고 유형. 일반 출고·반품·기타 출고를 가른다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            /**
+             * @description 출고 유형. ✅ **값 목록 확정 2026-08-31(사용자)** — 생산투입(PRODUCTION) · 공급사반품(SUPPLIER_RETURN) · 기타출고(OTHER) · 출하(SHIPMENT) 넷이다. 값 목록은 GET /mdm/code-values?codeGroupCode=ISSUE_TYPE 로 받는다(공유계약 G-32). ⛔ **폐기는 출고 «유형»이 아니라 기타출고의 «사유»다**(2026-08-31 확정) — issueTypeCode=OTHER 로 두고 reasonCode 로 가른다. 승인 게이트도 사유를 보고 건다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example PRODUCTION
+             */
             issueTypeCode: string;
-            /** @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
-            sourceDocumentTypeCode: string;
+            /**
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 **대상 테이블 이름**이다 — 피킹 지시(`PICKING_ORDER` → `logistics.picking_order`, 생산 투입) · 입고 전표(`GOODS_RECEIPT` → `logistics.goods_receipt`, 공급사 반품·자재 폐기) · 처분 결정(`DISPOSITION_DECISION` → `quality.disposition_decision`, 제품 폐기) 셋이다. `sourceDocumentId` 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 **고객이 늘릴 수 있는 값이 아니다**(공유계약 A-10·A-16, `GoodsIssue.destinationTypeCode` 와 같은 처리). 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다(A-16). ⚠ 같은 이름의 다른 자리(`GoodsReceipt`·`InventoryTransaction` 등)는 값 집합이 다르다 — 자리마다 닫는다.
+             * @enum {string}
+             */
+            sourceDocumentTypeCode: "PICKING_ORDER" | "GOODS_RECEIPT" | "DISPOSITION_DECISION";
             /**
              * Format: int64
              * @example 1001
@@ -33411,11 +34287,11 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             issuedAt: string;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 취소 가부 판정이 이 값에 걸린다(W-01-13 §5-1 관문 ② 「전기됐는가」 — 전기 전은 상태 전이만, 전기 후는 원장 역트랜잭션이다). 근거: W-01-13 §5-3 이 문서 9종을 동형으로 두고 같은 화면 §3 목업이 네 값을 그린다(사용자 결정 2026-09-02). */
             statusCode: string;
             /**
-             * @description 반품·폐기 등의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=GOODS_ISSUE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
-             * @example SUPPLIER_RETURN
+             * @description 반품·폐기 등의 사유. 값 = IQC_FAIL·OVER_RECEIPT·DEFECT_AFTER_RECEIPT·WRONG_SHIPMENT·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=GOODS_ISSUE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example IQC_FAIL
              */
             reasonCode?: string | null;
             /**
@@ -33439,13 +34315,17 @@ export interface components {
         };
         /** @description 출고 전표 등록. postImmediately 가 참이면 등록과 전기가 같은 트랜잭션에서 일어난다 — 「출고 확정」·「반품 처리」처럼 화면이 한 버튼인 경우다. 승인을 먼저 받아야 하는 기타 출고는 거짓으로 보내고 나중에 전기한다. 근거: M-01-08 §5-8 · W-01-05 §5-7 · W-01-06 §5-7 */
         GoodsIssueCreate: {
-            /** @description 출고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            /**
+             * @description 출고 유형. ✅ **값 목록 확정 2026-08-31(사용자)** — 생산투입(PRODUCTION) · 공급사반품(SUPPLIER_RETURN) · 기타출고(OTHER) · 출하(SHIPMENT) 넷이다. 값 목록은 GET /mdm/code-values?codeGroupCode=ISSUE_TYPE 로 받는다(공유계약 G-32). ⛔ **폐기는 출고 «유형»이 아니라 기타출고의 «사유»다**(2026-08-31 확정) — issueTypeCode=OTHER 로 두고 reasonCode 로 가른다. 승인 게이트도 사유를 보고 건다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example PRODUCTION
+             */
             issueTypeCode: string;
             /**
-             * @description 원천 문서 유형. 유형마다 sourceDocumentId 가 가리키는 대상이 다르다 — 피킹 지시(생산 투입) · 입고 전표(공급사 반품 · 자재 폐기) · 처분 결정(제품 폐기) 셋이다. 확정된 값 목록은 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 A-10 · G-2
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 **대상 테이블 이름**이다 — 피킹 지시(`PICKING_ORDER` → `logistics.picking_order`, 생산 투입) · 입고 전표(`GOODS_RECEIPT` → `logistics.goods_receipt`, 공급사 반품·자재 폐기) · 처분 결정(`DISPOSITION_DECISION` → `quality.disposition_decision`, 제품 폐기) 셋이다. `sourceDocumentId` 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 **고객이 늘릴 수 있는 값이 아니다**(공유계약 A-10·A-16, `GoodsIssue.destinationTypeCode` 와 같은 처리). 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다(A-16). ⚠ 같은 이름의 다른 자리(`GoodsReceipt`·`InventoryTransaction` 등)는 값 집합이 다르다 — 자리마다 닫는다.
              * @example PICKING_ORDER
+             * @enum {string}
              */
-            sourceDocumentTypeCode: string;
+            sourceDocumentTypeCode: "PICKING_ORDER" | "GOODS_RECEIPT" | "DISPOSITION_DECISION";
             /**
              * Format: int64
              * @example 1001
@@ -33474,8 +34354,8 @@ export interface components {
              */
             issuedAt: string;
             /**
-             * @description 사유. 반품·기타 출고에서는 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=GOODS_ISSUE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
-             * @example SUPPLIER_RETURN
+             * @description 사유. 반품·기타 출고에서는 필수. 값 = IQC_FAIL·OVER_RECEIPT·DEFECT_AFTER_RECEIPT·WRONG_SHIPMENT·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=GOODS_ISSUE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example IQC_FAIL
              */
             reasonCode?: string | null;
             /** @example true */
@@ -33485,13 +34365,13 @@ export interface components {
              * @default true
              * @example true
              */
-            sendToErp: boolean;
+            sendToErp?: boolean;
             /**
              * @description 참이면 등록과 동시에 전기한다. 두 번 호출로 나누면 오프라인 큐에 중간 상태가 남는다
              * @default false
              * @example true
              */
-            postImmediately: boolean;
+            postImmediately?: boolean;
             /** @example 비고 문자열 */
             remarks?: string | null;
             /**
@@ -33614,7 +34494,10 @@ export interface components {
             goodsReceiptId: number;
             /** @example GR-2026-000310 */
             goodsReceiptNo: string;
-            /** @description 입고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            /**
+             * @description 입고 유형. ✅ **값 목록 확정 2026-08-31(사용자)** — 자재입고(MATERIAL) · 제품입고(PRODUCT) · 반품입고(RETURN) · 창고간이동입고(TRANSFER) 넷이다. 값 목록은 GET /mdm/code-values?codeGroupCode=RECEIPT_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MATERIAL
+             */
             receiptTypeCode: string;
             /**
              * Format: int64
@@ -33632,17 +34515,21 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             receiptDatetime: string;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 취소 가부 판정이 이 값에 걸린다(W-01-13 §5-1 관문 ② 「전기됐는가」 — 전기 전은 상태 전이만, 전기 후는 원장 역트랜잭션이다). 근거: W-01-13 §5-3 이 문서 9종을 동형으로 두고 같은 화면 §3 목업이 네 값을 그린다(사용자 결정 2026-09-02). */
             statusCode: string;
-            /** @description 원천 문서의 유형. 유형 코드와 대응 테이블의 규약이 함께 와야 화면이 원천을 표시할 수 있다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
-            sourceDocumentTypeCode: string;
+            /**
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 넷이다 — 입하(INBOUND_RECEIPT → logistics.inbound_receipt · W-01-10 정상품 입하 · W-01-13 「입하 → 입고」) · 출하(SHIPMENT → logistics.shipment · W-04-06 반품 클레임 입고) · 생산 실적(PRODUCTION_RESULT → production.production_result · M-04-04 제품 입고 적치) · 외주 출고(SUBCONTRACT_ISSUE · M-04-04 외주 회수 — 나갔던 외주분이 돌아온다). ⭐ **비울 수 있다**(2026-08-31 사용자 확정) — 「반품인 것은 확실한데 어느 출하인지 모르는」 갈래가 성립한다. sourceDocumentId 와 «함께» 비운다. ⛔ 「없음(NONE)」을 값으로 두지 않는다 — 가리킬 대상이 없는 값을 판별자에 섞지 않는다.
+             * @example INBOUND_RECEIPT
+             * @enum {string|null}
+             */
+            sourceDocumentTypeCode?: "INBOUND_RECEIPT" | "SHIPMENT" | "PRODUCTION_RESULT" | "SUBCONTRACT_ISSUE" | null;
             /**
              * Format: int64
-             * @description 원천 문서 식별자. 유형에 따라 가리키는 테이블이 다르다
+             * @description 원천 문서 식별자. ⭐ sourceDocumentTypeCode 와 «짝»이다 — 가리킬 문서가 없으면 둘을 함께 비운다(✓확정 2026-08-31 사용자 · 공유계약 A-10). 한쪽만 채우지 않는다.
              * @example 1001
              */
-            sourceDocumentId: number;
-            /** @description 반품 입고 등의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            sourceDocumentId?: number | null;
+            /** @description 입고 사유. ⭐ **고객이 운영 중에 설정하는 마스터다**(공유계약 G-31 · 2026-08-31 사용자 확정) — 확정을 기다리지 않는다. 목록은 실행 시점에 마스터에서 오므로 **화면은 정상 동작한다**(비활성으로 두지 않는다). 값 목록은 GET /mdm/code-values?codeGroupCode=GOODS_RECEIPT_REASON 로 받는다. ⛔ enum 을 못박지 않는다 — 「아직 미확정이라서」가 아니라 **실행 시점 자료라서**다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             reasonCode?: string | null;
             /** @example 비고 문자열 */
             remarks?: string | null;
@@ -33654,7 +34541,10 @@ export interface components {
         };
         /** @description 입고 처리. 생성과 전기가 같은 순간이다 — 화면이 「입고 처리」 한 버튼이므로 오퍼레이션도 하나다. 입고 전표·LOT 상태 전이·수불 원장·잔액·ERP 송신 적재가 한 트랜잭션에서 일어나며, ERP 실제 전송만 트랜잭션 밖이다. 근거: W-01-10 §5-4 · 공유계약 B-8 */
         GoodsReceiptCreate: {
-            /** @description 입고 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            /**
+             * @description 입고 유형. ✅ **값 목록 확정 2026-08-31(사용자)** — 자재입고(MATERIAL) · 제품입고(PRODUCT) · 반품입고(RETURN) · 창고간이동입고(TRANSFER) 넷이다. 값 목록은 GET /mdm/code-values?codeGroupCode=RECEIPT_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MATERIAL
+             */
             receiptTypeCode: string;
             /**
              * Format: int64
@@ -33672,16 +34562,18 @@ export interface components {
              */
             receiptDatetime: string;
             /**
-             * @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⚠ 반품·클레임 입고(W-04-06)에서는 부적합/클레임 접수 문서를 가리킨다.
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 넷이다 — 입하(INBOUND_RECEIPT → logistics.inbound_receipt · W-01-10 정상품 입하 · W-01-13 「입하 → 입고」) · 출하(SHIPMENT → logistics.shipment · W-04-06 반품 클레임 입고) · 생산 실적(PRODUCTION_RESULT → production.production_result · M-04-04 제품 입고 적치) · 외주 출고(SUBCONTRACT_ISSUE · M-04-04 외주 회수 — 나갔던 외주분이 돌아온다). ⭐ **비울 수 있다**(2026-08-31 사용자 확정) — 「반품인 것은 확실한데 어느 출하인지 모르는」 갈래가 성립한다. sourceDocumentId 와 «함께» 비운다. ⛔ 「없음(NONE)」을 값으로 두지 않는다 — 가리킬 대상이 없는 값을 판별자에 섞지 않는다.
              * @example INBOUND_RECEIPT
+             * @enum {string|null}
              */
-            sourceDocumentTypeCode: string;
+            sourceDocumentTypeCode?: "INBOUND_RECEIPT" | "SHIPMENT" | "PRODUCTION_RESULT" | "SUBCONTRACT_ISSUE" | null;
             /**
              * Format: int64
+             * @description 원천 문서 식별자. ⭐ sourceDocumentTypeCode 와 «짝»이다 — 가리킬 문서가 없으면 둘을 함께 비운다(✓확정 2026-08-31 사용자 · 공유계약 A-10). 한쪽만 채우지 않는다.
              * @example 1001
              */
-            sourceDocumentId: number;
-            /** @description 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            sourceDocumentId?: number | null;
+            /** @description 입고 사유. ⭐ **고객이 운영 중에 설정하는 마스터다**(공유계약 G-31 · 2026-08-31 사용자 확정) — 확정을 기다리지 않는다. 목록은 실행 시점에 마스터에서 오므로 **화면은 정상 동작한다**(비활성으로 두지 않는다). 값 목록은 GET /mdm/code-values?codeGroupCode=GOODS_RECEIPT_REASON 로 받는다. ⛔ enum 을 못박지 않는다 — 「아직 미확정이라서」가 아니라 **실행 시점 자료라서**다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             reasonCode?: string | null;
             /** @example 비고 문자열 */
             remarks?: string | null;
@@ -33766,6 +34658,12 @@ export interface components {
              * @example 1001
              */
             readonly putawayTaskId?: number | null;
+            /**
+             * Format: int64
+             * @description 되돌아온 물건이 어느 출하의 어느 배분이었나 — 반품 입고에서 genealogy 가 역방향으로 이어지는 자리다(W-04-06 §4-B · 머리말). ⭐ 비울 수 있다 — 원 출하를 못 찾는 갈래가 정상이다(W-04-06 §5-3 · omf-mes#302 ①과 같은 근거). ⭐ 서버가 lotId 만으로는 못 잇는다 — 한 LOT 이 여러 출하에 나뉘어 나가므로 «어느 배분»인지를 화면이 보낸다(W-04-06 §5-3 「여러 출하가 섞였을 때」). 화면이 그 값을 얻는 곳: GET /logistics/shipments/{shipmentId} 응답의 lines[].allocations[].shipmentLotAllocationId. ⚠ 가리키는 곳은 04 제품출하 계약의 ShipmentLotAllocation 이다 — 계약이 갈린다.
+             * @example 1001
+             */
+            originalShipmentLotAllocationId?: number | null;
         };
         /** @description 입고 라인 등록 항목. */
         GoodsReceiptLineCreate: {
@@ -33808,6 +34706,12 @@ export interface components {
              * @example 1001
              */
             destinationLocationId: number;
+            /**
+             * Format: int64
+             * @description 되돌아온 물건이 어느 출하의 어느 배분이었나 — 반품 입고에서 genealogy 가 역방향으로 이어지는 자리다(W-04-06 §4-B · 머리말). ⭐ 비울 수 있다 — 원 출하를 못 찾는 갈래가 정상이다(W-04-06 §5-3 · omf-mes#302 ①과 같은 근거). ⭐ 서버가 lotId 만으로는 못 잇는다 — 한 LOT 이 여러 출하에 나뉘어 나가므로 «어느 배분»인지를 화면이 보낸다(W-04-06 §5-3 「여러 출하가 섞였을 때」). 화면이 그 값을 얻는 곳: GET /logistics/shipments/{shipmentId} 응답의 lines[].allocations[].shipmentLotAllocationId. ⚠ 가리키는 곳은 04 제품출하 계약의 ShipmentLotAllocation 이다 — 계약이 갈린다.
+             * @example 1001
+             */
+            originalShipmentLotAllocationId?: number | null;
         };
         GoodsReceiptLineListResponse: {
             items: components["schemas"]["GoodsReceiptLine"][];
@@ -33822,7 +34726,7 @@ export interface components {
             /** @example HU-2026-000058 */
             handlingUnitNo: string;
             /**
-             * @description 취급 단위 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=HANDLING_UNIT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 취급 단위 유형. 값 = BOX·CART·PALLET (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=HANDLING_UNIT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example PALLET
              */
             handlingUnitTypeCode: string;
@@ -33841,7 +34745,6 @@ export interface components {
              * @example 1001
              */
             locationId?: number | null;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
         };
         /** @description 취급 단위 구성. 같은 취급 단위 안에서 품목·LOT 조합은 한 번만 나온다. */
@@ -33900,7 +34803,7 @@ export interface components {
         /** @description 취급 단위 등록. */
         HandlingUnitCreate: {
             /**
-             * @description 취급 단위 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=HANDLING_UNIT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 취급 단위 유형. 값 = BOX·CART·PALLET (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=HANDLING_UNIT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example PALLET
              */
             handlingUnitTypeCode: string;
@@ -34051,8 +34954,8 @@ export interface components {
              */
             dockLocationId?: number | null;
             /**
-             * @description P/O 없이 도착한 예외 입하의 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
-             * @example NO_PO
+             * @description P/O 없이 도착한 예외 입하의 유형. 값 = CUSTOMER_SUPPLY·FREE_SAMPLE·URGENT_RECEIPT·OVER_DELIVERY (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example CUSTOMER_SUPPLY
              */
             exceptionTypeCode?: string | null;
             /**
@@ -34062,11 +34965,11 @@ export interface components {
             exceptionReason?: string | null;
             /**
              * Format: int64
-             * @description 예외 입하 승인 요청
+             * @description ⚠ 무발주 예외 입하에는 «별도 승인을 걸지 않는다»(확정 2026-09-02 · omf-mes#348). 승인 유형 값 목록 8종(사용자 확정 2026-09-01)에 무발주 입하가 없고, 이 자리를 채울 상신 오퍼레이션도 없다. 통제는 예외 유형·사유 필수 기록과 Lot Status=Hold(가용 재고 아님) 둘이다. 이 칸은 물리 모델이 가진 자리이고 지금 채우는 경로가 없다 — 📨 데이터 모델 통지 대상이지 화면 차단이 아니다.
              * @example 1001
              */
             approvalRequestId?: number | null;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 취소 가부 판정이 이 값에 걸린다(W-01-13 §5-1 관문 ② 「전기됐는가」 — 전기 전은 상태 전이만, 전기 후는 원장 역트랜잭션이다). 근거: W-01-13 §5-3 이 문서 9종을 동형으로 두고 같은 화면 §3 목업이 네 값을 그린다(사용자 결정 2026-09-02). */
             statusCode: string;
             /**
              * Format: int64
@@ -34103,8 +35006,8 @@ export interface components {
              */
             dockLocationId?: number | null;
             /**
-             * @description P/O 를 고르지 않고 진행할 때 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
-             * @example NO_PO
+             * @description P/O 를 고르지 않고 진행할 때 필수. 값 = CUSTOMER_SUPPLY·FREE_SAMPLE·URGENT_RECEIPT·OVER_DELIVERY (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example CUSTOMER_SUPPLY
              */
             exceptionTypeCode?: string | null;
             /**
@@ -34192,7 +35095,7 @@ export interface components {
              */
             supplierLotMissing: boolean;
             /**
-             * @description supplierLotMissing 이 참일 때의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SUBSTITUTE_LOT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description supplierLotMissing 이 참일 때의 사유. 값 = NO_LABEL·LABEL_DAMAGED·FORMAT_UNRECOGNIZED·BULK_UNLABELED·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SUBSTITUTE_LOT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NO_LABEL
              */
             substituteLotReasonCode?: string | null;
@@ -34264,7 +35167,7 @@ export interface components {
              */
             supplierLotMissing: boolean;
             /**
-             * @description supplierLotMissing 이 참일 때 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SUBSTITUTE_LOT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description supplierLotMissing 이 참일 때 필수. 값 = NO_LABEL·LABEL_DAMAGED·FORMAT_UNRECOGNIZED·BULK_UNLABELED·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SUBSTITUTE_LOT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NO_LABEL
              */
             substituteLotReasonCode?: string | null;
@@ -34304,7 +35207,7 @@ export interface components {
              */
             dockLocationId?: number | null;
             /**
-             * @description 초과분 쪽에서 쓰는 예외 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 초과분 쪽에서 쓰는 예외 유형. 값 = CUSTOMER_SUPPLY·FREE_SAMPLE·URGENT_RECEIPT·OVER_DELIVERY (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example OVER_DELIVERY
              */
             exceptionTypeCode?: string | null;
@@ -34396,7 +35299,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⛔ 선택이다 — 「무엇이 틀렸나」는 varianceTypeCode 가 이미 필수로 받는다. 현장이 사유를 모를 때 오류 기록 자체가 막히면 안 된다. 근거: M-01-06 §4-A(2026-08-18 정정) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 차이 사유. 값 = DAMAGED·MISLABELED·SUPPLIER_MISSHIP·PACKAGING_DEFECT·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⛔ 선택이다 — 「무엇이 틀렸나」는 varianceTypeCode 가 이미 필수로 받는다. 현장이 사유를 모를 때 오류 기록 자체가 막히면 안 된다. 근거: M-01-06 §4-A(2026-08-18 정정) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example DAMAGED
              */
             reasonCode?: string | null;
@@ -34421,7 +35324,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⛔ 선택이다 — 「무엇이 틀렸나」는 varianceTypeCode 가 이미 필수로 받는다. 현장이 사유를 모를 때 오류 기록 자체가 막히면 안 된다. 근거: M-01-06 §4-A(2026-08-18 정정) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 차이 사유. 값 = DAMAGED·MISLABELED·SUPPLIER_MISSHIP·PACKAGING_DEFECT·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⛔ 선택이다 — 「무엇이 틀렸나」는 varianceTypeCode 가 이미 필수로 받는다. 현장이 사유를 모를 때 오류 기록 자체가 막히면 안 된다. 근거: M-01-06 §4-A(2026-08-18 정정) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example DAMAGED
              */
             reasonCode?: string | null;
@@ -34445,7 +35348,7 @@ export interface components {
              */
             inventoryCountId?: number | null;
             /**
-             * @description 헤더 사유. 비울 수 없다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_ADJUSTMENT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 헤더 사유. 비울 수 없다. 값 = COUNT_VARIANCE·TRANSPORT_DAMAGE·HOPPER_MEASUREMENT·SYSTEM_ERROR_CORRECTION·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_ADJUSTMENT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example COUNT_VARIANCE
              */
             reasonCode: string;
@@ -34454,7 +35357,7 @@ export interface components {
              * @example 1001
              */
             approvalRequestId?: number | null;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             statusCode: string;
             /**
              * Format: date-time
@@ -34477,7 +35380,7 @@ export interface components {
              */
             inventoryCountId?: number | null;
             /**
-             * @description 헤더 사유. 비울 수 없다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_ADJUSTMENT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 헤더 사유. 비울 수 없다. 값 = COUNT_VARIANCE·TRANSPORT_DAMAGE·HOPPER_MEASUREMENT·SYSTEM_ERROR_CORRECTION·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_ADJUSTMENT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example COUNT_VARIANCE
              */
             reasonCode: string;
@@ -34486,7 +35389,7 @@ export interface components {
              * @default true
              * @example true
              */
-            sendToErp: boolean;
+            sendToErp?: boolean;
             /** @description 최소 1행 */
             lines: components["schemas"]["InventoryAdjustmentLineUpsert"][];
         };
@@ -34542,7 +35445,7 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /** @description 라인 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            /** @description 라인 사유. ⭐ 헤더(InventoryAdjustment.reasonCode)와 «같은 축»이다 — 조정 사유는 고객이 설정하는 마스터다(사용자 확정 2026-08-18 · G-31). 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_ADJUSTMENT_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             reasonCode?: string | null;
         };
         InventoryAdjustmentLineListResponse: {
@@ -34583,7 +35486,7 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /** @description 라인 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            /** @description 라인 사유. 헤더와 같은 축이다. 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_ADJUSTMENT_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             reasonCode?: string | null;
         };
         /** @description 재고 잔액 한 줄. 읽기 전용이다 — 잔액을 직접 쓰는 경로를 두지 않고 원장이 움직이면 서버가 파생한다. groupBy 로 접은 축은 비워서 내린다. 다만 소유 구분은 어떤 축에서도 합치지 않는다 — 자사 재고와 고객 지급품을 더하면 오독이다. 근거: W-01-07 §5-1 · M-01-04 · 공유계약 L-7 */
@@ -34638,7 +35541,7 @@ export interface components {
              */
             lotId?: number | null;
             /**
-             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
+             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
              * @example NORMAL
              */
             qualityStatusCode?: string | null;
@@ -34649,7 +35552,7 @@ export interface components {
              */
             inventoryStatusCode?: "AVAILABLE" | "IN_TRANSIT" | "ON_HOLD" | "BLOCKED" | null;
             /**
-             * @description 소유 구분. 묶는 축과 무관하게 항상 채워진다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=OWNERSHIP_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 소유 구분. 묶는 축과 무관하게 항상 채워진다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=OWNERSHIP_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⛔ 목록은 서버가 갖는다 — 값을 화면에 박지 않는다(고객이 W-06-06 에서 바꾼다 · 공유계약 G-31 마스터안전형). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example OWNED
              */
             ownershipTypeCode: string;
@@ -34725,6 +35628,16 @@ export interface components {
              * @example A-01-03
              */
             readonly locationCode?: string | null;
+            /**
+             * @description 화면이 보이는 값. 식별자를 사람이 읽는 값으로 바꾸려 마스터를 다시 부르지 않게 한다 — ⛔ 이 값이 있으므로 GET /mdm/warehouses/{warehouseId} 를 부르지 않는다. 축이 접힌 줄에서는 비어 온다. 근거: M-01-04 §3 · W-01-07 §3
+             * @example 1공장 자재창고
+             */
+            readonly warehouseName?: string | null;
+            /**
+             * @description 화면이 보이는 값. ⛔ 이 값이 있으므로 GET /mdm/locations/{locationId} 를 부르지 않는다. groupBy 가 LOCATION 이 아니거나 축이 접힌 줄에서는 비어 온다 — locationId·locationCode 와 같은 조건이다. 근거: M-01-04 §3 · W-01-07 §3
+             * @example A구역 01열 03단
+             */
+            readonly locationName?: string | null;
         };
         /** @description 필터 조건 전체의 집계다 — 목록 한 쪽의 합이 아니다. 근거: W-01-07 §3·§5-1 · 공유계약 L-1 */
         InventoryBalanceSummary: {
@@ -34770,7 +35683,7 @@ export interface components {
             /** @example IC-2026-000019 */
             inventoryCountNo: string;
             /**
-             * @description 실사 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_COUNT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 실사 유형. 값 = PERIODIC·ADHOC·CYCLE (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_COUNT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example CYCLE
              */
             countTypeCode: string;
@@ -34790,7 +35703,7 @@ export interface components {
              * @example false
              */
             blindCount: boolean;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 재고 실사의 진행 상태 — 계획(PLANNED) · 진행중(IN_PROGRESS) · 완료(COMPLETED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_COUNT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 실사가 개시된 뒤의 잠금 판정이 이 값에 걸린다(W-01-04 §5 — 400 STATE_LOCKED 는 풀리지 않고 새 실사를 개시한다). 근거: W-01-04 §3 목업(사용자 결정 2026-09-02). */
             statusCode: string;
         };
         /** @description 실사 마감. 미실사가 0 이고 차이가 없거나 모두 조정된 뒤에만 통과한다 — 조건을 못 채우면 400 으로 무엇이 남았는지 돌려준다. 근거: W-01-04 §5-5 */
@@ -34805,7 +35718,7 @@ export interface components {
         /** @description 실사 개시. 라인은 서버가 장부에서 만든다 — 화면이 대상을 열거하지 않는다. 근거: W-01-04 §5-7 */
         InventoryCountCreate: {
             /**
-             * @description 실사 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_COUNT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 실사 유형. 값 = PERIODIC·ADHOC·CYCLE (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INVENTORY_COUNT_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example CYCLE
              */
             countTypeCode: string;
@@ -34823,7 +35736,7 @@ export interface components {
              * @default false
              * @example false
              */
-            blindCount: boolean;
+            blindCount?: boolean;
         };
         InventoryCountDetailResponse: {
             inventoryCount: components["schemas"]["InventoryCount"];
@@ -34882,7 +35795,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 차이 사유. 값 = MISPLACED·DAMAGED_IN_TRANSIT·SPILL·COUNT_ERROR·THEFT_LOSS·EVAPORATION_LOSS (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MISPLACED
              */
             varianceReasonCode?: string | null;
@@ -34981,7 +35894,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 차이가 0 이 아니면 필수. 값 = MISPLACED·DAMAGED_IN_TRANSIT·SPILL·COUNT_ERROR·THEFT_LOSS·EVAPORATION_LOSS (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MISPLACED
              */
             varianceReasonCode?: string | null;
@@ -35019,10 +35932,11 @@ export interface components {
              */
             closable: boolean;
             /**
-             * @description closable 이 거짓인 이유 — 미실사 잔여 · 차이 미조정 · 이미 마감 · 상태 잠김. 화면은 이 값으로 안내 문구와 「조정 등록」 경로를 가른다(공유계약 G-3). ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다
-             * @example 값
+             * @description closable 이 «거짓인 이유» — 미실사 잔여(COUNT_REMAINING) · 차이 미조정(VARIANCE_UNADJUSTED) · 이미 마감(ALREADY_CLOSED) · 상태 잠김(STATE_LOCKED). ⭐ 화면은 이 값으로 안내 문구와 「조정 등록」 경로를 가른다(G-3). ⛔ 서버가 판정한다 — 화면이 조건을 따로 조합하면 화면마다 갈린다
+             * @example COUNT_REMAINING
+             * @enum {string|null}
              */
-            closeBlockedReasonCode?: string | null;
+            closeBlockedReasonCode?: "COUNT_REMAINING" | "VARIANCE_UNADJUSTED" | "ALREADY_CLOSED" | "STATE_LOCKED" | null;
         };
         /** @description 재고 예약. 조회만 제공한다 — 예약은 출고 요청과 피킹의 결과로 서버가 걸고 푼다. 근거: M-01-08 §5-5 */
         InventoryReservation: {
@@ -35034,12 +35948,16 @@ export interface components {
             /** @example RS-2026-000144 */
             reservationNo: string;
             /**
-             * @description 예약 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=RESERVATION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 예약 유형. 값 = MATERIAL·SHIPMENT·PRODUCTION (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=RESERVATION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MATERIAL
              */
             reservationTypeCode: string;
-            /** @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
-            sourceDocumentTypeCode: string;
+            /**
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 지금은 하나다 — 생산오더(PRODUCTION_ORDER → production.production_order). ⭐ W-02-01 §5-4 가 「P/O 의 «자재예약정보»가 production_order 에 없고 inventory_reservation 이 P/O 를 가리킨다」로 이 축을 세웠고 2026-09-02 에 「서버가 건다」로 해소됐다. ⚠ 값이 하나라고 축이 없는 것이 아니다 — 판별자는 «무엇을 가리키는지»를 말하고, 가리킬 표가 늘면 계약을 고친다.
+             * @example PRODUCTION_ORDER
+             * @enum {string}
+             */
+            sourceDocumentTypeCode: "PRODUCTION_ORDER";
             /**
              * Format: int64
              * @example 1001
@@ -35113,8 +36031,12 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             recordedAt: string;
-            /** @description 원천 전표 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
-            sourceDocumentTypeCode: string;
+            /**
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 넷이다 — 입고(GOODS_RECEIPT) · 출고(GOODS_ISSUE) · 재고조정(INVENTORY_ADJUSTMENT) · 재고이동(STOCK_TRANSFER). ⭐ 근거 — W-04-05 가 「입고·출고 전기 각 1건」을 명시하고, W-01-12 §5-2 가 「inventory_transaction.source_document_type_code 에 「재고조정」 값이 있으면 source_document_id = inventory_adjustment_id 로 잇는다」로 적었다. ⚠ STOCK_TRANSFER 는 «재고를 움직이므로 원장을 남긴다»는 추론이다 — 다른 셋보다 근거가 얕다. ⭐ 이 축이 원장 한 줄의 «성격»을 말한다 — 방향(입고·출고·이동)은 라인의 from*\/to* 가 이미 말하므로 transactionTypeCode 를 따로 두지 않는다(L-2-1 · 2026-09-02 판정).
+             * @example GOODS_RECEIPT
+             * @enum {string}
+             */
+            sourceDocumentTypeCode: "GOODS_RECEIPT" | "GOODS_ISSUE" | "INVENTORY_ADJUSTMENT" | "STOCK_TRANSFER";
             /**
              * Format: int64
              * @example 1001
@@ -35189,7 +36111,7 @@ export interface components {
              */
             fromLocationId?: number | null;
             /**
-             * @description 전이 전 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
+             * @description 전이 전 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
              * @example NORMAL
              */
             fromQualityStatusCode?: string | null;
@@ -35210,7 +36132,7 @@ export interface components {
              */
             toLocationId?: number | null;
             /**
-             * @description 전이 후 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
+             * @description 전이 후 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
              * @example NORMAL
              */
             toQualityStatusCode?: string | null;
@@ -35264,7 +36186,7 @@ export interface components {
              */
             itemId: number;
             /**
-             * @description LOT 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description LOT 유형. 값 = MATERIAL·PRODUCTION·PRODUCT (2026-09-03 코드 사전 등재) — ⛔ 고객이 편집할 수 없다 — 우리가 정한 값이다 값 = `MATERIAL`·`PRODUCTION`·`PRODUCT`. 값 목록은 `GET /mdm/code-values?codeGroupCode=LOT_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MATERIAL
              */
             lotTypeCode: string;
@@ -35291,13 +36213,13 @@ export interface components {
              */
             expiryDate?: string | null;
             /**
-             * @description LOT 을 만든 원천의 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 확정된 값 하나 — RECYCLE_ENTRY(재생재 등록 건 · sourceId 는 등록 건 자체를 가리킨다). 근거: 공유계약 A-16 · M-01-12 §5-2
-             * @example INBOUND_RECEIPT
+             * @description LOT 이 어디서 생겼나 — 입하 라인(INBOUND_RECEIPT_LINE) · 재생재 등록(RECYCLE_ENTRY). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_SOURCE_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example INBOUND_RECEIPT_LINE
              */
             sourceTypeCode: string;
             /**
              * Format: int64
-             * @description 원천 식별자. 유형에 따라 가리키는 테이블이 다르다
+             * @description 원천 식별자. 유형에 따라 가리키는 테이블이 다르다 — INBOUND_RECEIPT_LINE 이면 inboundReceiptLineId, RECYCLE_ENTRY 면 재생재 등록 건 식별자다. ⛔ 유형과 «짝»이 맞아야 한다. 근거: 공유계약 A-16 · omf-mes#326
              * @example 1001
              */
             sourceId: number;
@@ -35307,7 +36229,7 @@ export interface components {
              */
             statusCode: string;
             /**
-             * @description ⭐ 생명주기 축(대기·활성·폐번 — 영문 표기 미정, 후보 WAITING·ACTIVE·VOIDED) — statusCode(품질 판정)와는 다른 축이다. 생산LOT 선발행(W-02-04)에서만 쓴다 — 대기: 번호 슬롯만 예약(R26 「완료 전 실물 미귀속」) · 활성: 실적이 붙어 실물에 귀속 · 폐번: 마감 시 미달 슬롯 자동 폐번(R27). 자재·제품 LOT 은 null. ⛔ 물리 컬럼 신설 대상 — 값 목록도 함께 확정 필요. 근거: 02-SW설계사양서 §4.6 · W-02-04 §5-3 · W-02-05 §5-3 · omf-mes#46 ⛔ 「완료」·「미달 마감」도 이 축에 넣지 않는다 — 폐번은 「실적이 붙지 않은 슬롯」이고 미달 마감은 「실적이 붙었는데 계획에 못 미친 것」이라 뜻이 겹치지 않는다. 완료 축은 completedAt 이 담는다. 근거: omf-mes#269
+             * @description LOT 번호 슬롯의 생명주기 — 대기(WAITING · 번호 슬롯만 예약) · 활성(ACTIVE · 실적이 붙어 실물에 귀속) · 폐번(VOIDED · 마감 시 미달 슬롯 자동 폐번). ⛔ statusCode(품질 판정)와 «다른 축»이다. 생산 LOT 선발행(W-02-04)에서만 쓰고 자재·제품 LOT 은 null 이다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_LIFECYCLE_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example WAITING
              */
             lifecycleStatusCode?: string | null;
@@ -35348,15 +36270,16 @@ export interface components {
              */
             held?: boolean;
             /**
-             * @description 입고 확정 대기 큐의 판정 축 — IQC 합격 · 샘플링 미대상 · 긴급 IQC 생략 한도승인 세 갈래다. 목록 배지 「⚠ 한도승인」의 원천이다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: W-01-10 §5-1
-             * @example 값
+             * @description 입고 확정 대기 큐의 판정 축 — IQC 합격 · 샘플링 미대상 · 긴급 IQC 생략 한도승인. 서버가 판정한다
+             * @example IQC_PASSED
+             * @enum {string|null}
              */
-            readonly receiptDispositionCode?: string | null;
+            readonly receiptDispositionCode?: "IQC_PASSED" | "SAMPLING_NOT_REQUIRED" | "URGENT_IQC_WAIVED" | null;
         };
         /** @description 생산 LOT 완료. 계획 수량에 미달하면 사유 코드가 필요하고, 서버가 작업지시에 그 사유를 함께 기록한다 — 한 트랜잭션이다(공유계약 B-8). 근거: P-02-06 §5-5 */
         LotComplete: {
             /**
-             * @description 미달 마감 사유. 계획 수량에 미달하면 필수이고 서버가 400 으로 막는다. work_order.completion_variance_reason_code 로 간다. 근거: P-02-06 §5-5 ⚠ 같은 칸을 W/O 마감(02 계약 POST /production/work-orders/{workOrderId}:close 본문 reasonCode)도 쓴다. 생산LOT 완료는 S10, W/O 마감은 S12 라 마감이 나중이다.
+             * @description 미달 마감 사유. 계획 수량에 미달하면 필수이고 서버가 400 으로 막는다(P-02-06 §5-5). ⚠ W/O 마감(POST /production/work-orders/{id}:close 의 reasonCode)이 «같은 축»을 쓴다 — 생산LOT 완료는 S10, W/O 마감은 S12 라 마감이 나중이다. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_COMPLETION_VARIANCE_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MATERIAL_SHORTAGE
              */
             completionVarianceReasonCode?: string | null;
@@ -35403,7 +36326,7 @@ export interface components {
              */
             itemId: number;
             /**
-             * @description LOT 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2
+             * @description LOT 유형. 값 = MATERIAL·PRODUCTION·PRODUCT (2026-09-03 코드 사전 등재) — ⛔ 고객이 편집할 수 없다 — 우리가 정한 값이다 값 = `MATERIAL`·`PRODUCTION`·`PRODUCT`. 값 목록은 `GET /mdm/code-values?codeGroupCode=LOT_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MATERIAL
              */
             lotTypeCode: string;
@@ -35430,12 +36353,14 @@ export interface components {
              */
             expiryDate?: string | null;
             /**
-             * @description 원천 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 확정된 값 하나 — RECYCLE_ENTRY(재생재 등록 건 · sourceId 는 등록 건 자체를 가리킨다). 근거: 공유계약 A-16 · M-01-12 §5-2
-             * @example INBOUND_RECEIPT
+             * @description 원천 유형. ⭐ 이 경로로 오는 값은 «하나»다 — INBOUND_RECEIPT_LINE(입하 라인 · sourceId 는 그 «라인» 식별자다 · P-01-01 §3-6 이 「발번 단위는 건이 아니라 라인」으로 확정했고 InboundReceiptLine.lotId 가 그 짝이다). ⛔ RECYCLE_ENTRY 는 이 경로로 오지 않는다 — 재생재 등록은 POST /logistics/recycle-entries 가 LOT 과 재고를 한 트랜잭션으로 만든다(M-01-12 §5-2 · 요구서 §3-24). ⛔ 값은 언제나 sourceId 가 «가리키는 것»을 이름한다 — 건을 뜻하는 값에 라인 식별자를 넣지 않는다. ⚠ «응답» Lot.sourceTypeCode 는 열려 있다 — 서버가 만드는 원천이 더 있기 때문이다. 자리마다 값 집합이 다르다(CancelResult 선례). 근거: 공유계약 A-16 · omf-mes#326 · omf-mes#354
+             * @example INBOUND_RECEIPT_LINE
+             * @enum {string}
              */
-            sourceTypeCode: string;
+            sourceTypeCode: "INBOUND_RECEIPT_LINE";
             /**
              * Format: int64
+             * @description 원천 식별자. 유형에 따라 가리키는 테이블이 다르다 — INBOUND_RECEIPT_LINE 이면 inboundReceiptLineId, RECYCLE_ENTRY 면 재생재 등록 건 식별자다. ⛔ 유형과 «짝»이 맞아야 한다. 근거: 공유계약 A-16 · omf-mes#326
              * @example 1001
              */
             sourceId: number;
@@ -35475,7 +36400,7 @@ export interface components {
              */
             lotId: number;
             /**
-             * @description 식별자 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_EXTERNAL_IDENTIFIER_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 식별자 유형. 값 = SUPPLIER_LOT·ERP_LOT·CUSTOMER_LOT·SUBCONTRACTOR_LOT (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_EXTERNAL_IDENTIFIER_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SUPPLIER_LOT
              */
             identifierTypeCode: string;
@@ -35486,8 +36411,12 @@ export interface components {
              * @example 1001
              */
             partnerId?: number | null;
-            /** @description 외부 시스템. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
-            externalSystemCode?: string | null;
+            /**
+             * @description 외부 시스템 구분 — 설비 표준 IF(EQUIPMENT_STANDARD_IF) · 추적 시스템(TRACKING_SYSTEM) · ERP(UNIERP). ⭐ 같은 축이 이미 계약에 닫혀 있다 — InterfaceDefinition 이 쓰는 그 값집합이다(2026-09-02 확인). ⛔ 공통코드 그룹이 아니라 계약이 enum 으로 닫는다 — 우리가 붙이는 연계 상대의 목록이라 고객이 늘리는 값이 아니다.
+             * @example UNIERP
+             * @enum {string|null}
+             */
+            externalSystemCode?: "EQUIPMENT_STANDARD_IF" | "TRACKING_SYSTEM" | "UNIERP" | null;
         };
         LotExternalIdentifierListResponse: {
             items: components["schemas"]["LotExternalIdentifier"][];
@@ -35495,7 +36424,7 @@ export interface components {
         /** @description 외부 식별자 전체 치환 항목. 요청에서 빠진 기존 행은 삭제한다. 근거: 공유계약 A-5 */
         LotExternalIdentifierUpsert: {
             /**
-             * @description 식별자 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_EXTERNAL_IDENTIFIER_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 식별자 유형. 값 = SUPPLIER_LOT·ERP_LOT·CUSTOMER_LOT·SUBCONTRACTOR_LOT (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_EXTERNAL_IDENTIFIER_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SUPPLIER_LOT
              */
             identifierTypeCode: string;
@@ -35506,8 +36435,12 @@ export interface components {
              * @example 1001
              */
             partnerId?: number | null;
-            /** @description 외부 시스템. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
-            externalSystemCode?: string | null;
+            /**
+             * @description 외부 시스템 구분 — 설비 표준 IF(EQUIPMENT_STANDARD_IF) · 추적 시스템(TRACKING_SYSTEM) · ERP(UNIERP). ⭐ 같은 축이 이미 계약에 닫혀 있다 — InterfaceDefinition 이 쓰는 그 값집합이다(2026-09-02 확인). ⛔ 공통코드 그룹이 아니라 계약이 enum 으로 닫는다 — 우리가 붙이는 연계 상대의 목록이라 고객이 늘리는 값이 아니다.
+             * @example UNIERP
+             * @enum {string|null}
+             */
+            externalSystemCode?: "EQUIPMENT_STANDARD_IF" | "TRACKING_SYSTEM" | "UNIERP" | null;
         };
         /** @description LOT 보류. 이 파일은 읽기만 제공한다 — 보류를 걸고 푸는 것은 품질 도메인의 화면이다. 근거: W-01-07 §4-B · M-01-04 · M-01-08 */
         LotHold: {
@@ -35549,7 +36482,7 @@ export interface components {
              * @example 비고 문자열
              */
             releaseCondition?: string | null;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description ⛔ 이 값으로 보류 여부를 판정하지 않는다 — 정본은 해제 칼럼(released_by · released_at)이다(사용자 결정 2026-09-02). 비어 있으면 보류중, 채워졌으면 해제됨이고 해제한 사람·시각까지 한 자리에 남는다. 같은 사실을 두 자리에 적으면 어긋났을 때 어느 쪽이 맞는지 판정할 수 없다 — AppUser 의 「인사 상태 vs isActive」를 가른 것과 같은 형태다(W-CO-02 §8-4). ⚠ 목록을 「보류중」으로 거르는 것은 서버가 released_at IS NULL 로 한다. 근거: W-03-02 §4-B. */
             statusCode: string;
             /**
              * Format: int64
@@ -35602,8 +36535,9 @@ export interface components {
             lotId: number;
             /** @example 값 */
             lotNo?: string;
-            /** @description 전이 전 상태. 최초 등록 전이(C4·C6·C14)는 null */
+            /** @description 전이 «전» 상태. 최초 등록 전이(C4·C6·C14)는 null 이다. LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             fromStatusCode?: string | null;
+            /** @description 전이 «후» 상태. LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             toStatusCode: string;
             /**
              * @description 전이 9종 — 도식스펙03 §1.3 · W-03-01 §5-1 표
@@ -35613,8 +36547,12 @@ export interface components {
             transitionCode: "C4" | "C5" | "C6" | "C7" | "C8" | "C9" | "C10" | "C14" | "C15";
             /** @example 값 */
             reason?: string | null;
-            /** @description 이 전이를 일으킨 문서 유형 — 다형 참조(공유계약 A-10) */
-            sourceDocumentTypeCode?: string | null;
+            /**
+             * @description A-10 다형 참조 판별자 — 값이 «대상 리소스 이름»이고 짝 id 가 그 리소스의 식별자다. ⭐ 대응표는 «설계»가 정한다(A-10 규칙 1 · 2026-09-03 사용자 결정). 이 전이를 일으킨 것 — 검사 결과(INSPECTION_RESULT) · LOT 보류/해제(LOT_HOLD) · 부적합(NONCONFORMANCE). ⭐ 전이 9종에서 도출했다(W-03-01 §5-1 표) — C4「합격」·C6「불합격」·C14「합격판정개수 초과」·C15「전수 재검 양품」은 검사 결과가, C5·C10「의심자재등록」은 보류가, C7·C8「재판정」은 검사 결과가, C9「클레임·리콜」은 부적합이 일으킨다.
+             * @example INSPECTION_RESULT
+             * @enum {string|null}
+             */
+            sourceDocumentTypeCode?: "INSPECTION_RESULT" | "LOT_HOLD" | "NONCONFORMANCE" | null;
             /**
              * Format: int64
              * @example 1001
@@ -35645,8 +36583,9 @@ export interface components {
             lotId: number;
             /** @example 값 */
             lotNo?: string;
-            /** @description 전이 전 생명주기 상태. 최초 전이(L1)는 null */
+            /** @description 전이 «전» 생명주기 상태. 최초 전이(L1)는 null 이다. LOT 선발행 슬롯의 생명주기 상태 — 품질 판정 축과 «다르다». 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_LIFECYCLE_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             fromLifecycleStatusCode?: string | null;
+            /** @description 전이 «후» 생명주기 상태. LOT 선발행 슬롯의 생명주기 상태 — 품질 판정 축과 «다르다». 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_LIFECYCLE_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             toLifecycleStatusCode: string;
             /**
              * @description L1=대기→활성(첫 실적이 붙을 때, 해당 슬롯) · L2=대기→폐번(마감, 실적 없는 슬롯만) · L3=활성→폐번(작업지시 취소, 그 작업지시의 선발행 슬롯 전건 — DR-007). ⚠ L3를 여는 것은 취소 오퍼레이션 한 곳뿐이다 — 사람이 화면에서 직접 폐번하는 액션은 없다
@@ -35654,8 +36593,12 @@ export interface components {
              * @enum {string}
              */
             transitionCode: "L1" | "L2" | "L3";
-            /** @description 이 전이를 일으킨 문서 유형 — 다형 참조(공유계약 A-10). L2=work_order_closing, L3=work_order */
-            sourceDocumentTypeCode?: string | null;
+            /**
+             * @description A-10 다형 참조 판별자 — 값이 «대상 리소스 이름»이고 짝 id 가 그 리소스의 식별자다. ⭐ 대응표는 «설계»가 정한다(A-10 규칙 1 · 2026-09-03 사용자 결정). 이 전이를 일으킨 것 — 생산 실적(PRODUCTION_RESULT · L1 대기→활성, 첫 실적이 붙을 때) · 작업지시 마감(WORK_ORDER_CLOSING · L2 대기→폐번) · 작업지시 취소(WORK_ORDER · L3 활성→폐번). ⭐ 전이 셋의 산문이 이미 뒤 둘을 적어 두었다.
+             * @example PRODUCTION_RESULT
+             * @enum {string|null}
+             */
+            sourceDocumentTypeCode?: "PRODUCTION_RESULT" | "WORK_ORDER_CLOSING" | "WORK_ORDER" | null;
             /**
              * Format: int64
              * @example 1001
@@ -35732,7 +36675,7 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             requiredAt?: string | null;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 취소 가부 판정이 이 값에 걸린다(W-01-13 §5-1 관문 ② 「전기됐는가」 — 전기 전은 상태 전이만, 전기 후는 원장 역트랜잭션이다). 근거: W-01-13 §5-3 이 문서 9종을 동형으로 두고 같은 화면 §3 목업이 네 값을 그린다(사용자 결정 2026-09-02). */
             statusCode: string;
             /**
              * Format: int64
@@ -35954,8 +36897,8 @@ export interface components {
              */
             held?: boolean;
             /**
-             * @description held 가 참일 때의 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
-             * @example QUALITY_HOLD
+             * @description held 가 참일 때의 사유. 값 = INCOMING_INSPECTION_WAIT·FOREIGN_MATTER_SUSPECTED·DIMENSION_ABNORMAL·APPEARANCE_ABNORMAL·CLAIM_RECALL·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example INCOMING_INSPECTION_WAIT
              */
             holdReasonCode?: string | null;
             /**
@@ -36032,12 +36975,16 @@ export interface components {
             /** @example PK-2026-000131 */
             pickingOrderNo: string;
             /**
-             * @description 피킹 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PICKING_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 피킹 유형. 값 = MATERIAL·SHIPMENT (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PICKING_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MATERIAL
              */
             pickingTypeCode: string;
-            /** @description 원천 문서 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
-            sourceDocumentTypeCode: string;
+            /**
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 둘이다 — 자재 출고요청(MATERIAL_ISSUE_REQUEST → logistics.material_issue_request · M-01-08 자재 출고 피킹) · 출하 지시(SHIPMENT_REQUEST → logistics.shipment_request · M-04-01 제품 LOT 피킹 스캔). ⭐ 자재 피킹과 제품 피킹이 같은 표를 쓰고 이 값이 둘을 가른다.
+             * @example MATERIAL_ISSUE_REQUEST
+             * @enum {string}
+             */
+            sourceDocumentTypeCode: "MATERIAL_ISSUE_REQUEST" | "SHIPMENT_REQUEST";
             /**
              * Format: int64
              * @example 1001
@@ -36048,7 +36995,7 @@ export interface components {
              * @example 1001
              */
             warehouseId: number;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 취소 가부 판정이 이 값에 걸린다(W-01-13 §5-1 관문 ② 「전기됐는가」 — 전기 전은 상태 전이만, 전기 후는 원장 역트랜잭션이다). 근거: W-01-13 §5-3 이 문서 9종을 동형으로 두고 같은 화면 §3 목업이 네 값을 그린다(사용자 결정 2026-09-02). */
             statusCode: string;
             /**
              * Format: int64
@@ -36118,7 +37065,7 @@ export interface components {
              * @example 2026-08-06
              */
             expectedReceiptDate?: string | null;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 취소 가부 판정이 이 값에 걸린다(W-01-13 §5-1 관문 ② 「전기됐는가」 — 전기 전은 상태 전이만, 전기 후는 원장 역트랜잭션이다). 근거: W-01-13 §5-3 이 문서 9종을 동형으로 두고 같은 화면 §3 목업이 네 값을 그린다(사용자 결정 2026-09-02). */
             statusCode: string;
             /**
              * Format: int64
@@ -36324,7 +37271,7 @@ export interface components {
              * @example 1001
              */
             warehouseId: number;
-            /** @description 이 지시가 속한 창고의 위치 관리 수준. 위치 스캔을 요구할지가 이 값으로 갈린다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            /** @description 이 지시가 속한 창고의 위치 관리 수준 — 창고(WAREHOUSE) · 구역(ZONE) · 랙(RACK) · 셀(CELL). ⭐ «위치 스캔을 요구할지»가 이 값으로 갈린다. 값 목록은 GET /mdm/code-values?codeGroupCode=MANAGEMENT_LEVEL 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             warehouseManagementLevelCode?: string;
             /**
              * @default 100
@@ -36336,7 +37283,7 @@ export interface components {
              * @example 1001
              */
             assignedWorkerId?: number | null;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 적치 작업의 상태 — 적치 대기(PENDING) · 적치 완료(COMPLETED) · 임시 적치 완료(COMPLETED_TEMPORARY). ⚠ 임시 적치는 사유가 함께 필수다(PUTAWAY_TASK_TEMPORARY_REASON). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PUTAWAY_TASK_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             statusCode: string;
             /**
              * Format: date-time
@@ -36359,7 +37306,7 @@ export interface components {
              * @default false
              * @example false
              */
-            confirmedNoRule: boolean;
+            confirmedNoRule?: boolean;
             /**
              * Format: date
              * @description 근거: 공유계약 C-8
@@ -36382,7 +37329,7 @@ export interface components {
              */
             actualLocationId: number;
             /**
-             * @description 임시 적재 사유. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PUTAWAY_TASK_TEMPORARY_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 임시 적재 사유. 값 = NO_SPACE·INSPECTION_HOLD·LOCATION_UNASSIGNED·OTHER (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PUTAWAY_TASK_TEMPORARY_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NO_SPACE
              */
             reasonCode?: string | null;
@@ -36528,7 +37475,7 @@ export interface components {
              * @example 1001
              */
             receivedBy?: number | null;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             statusCode: string;
             /** @description 이 수령 전표의 라인. 목록 응답도 라인을 함께 싣는다 — 한 W/O 에 수령 전표가 여러 건 서므로 라인을 보려고 전표마다 상세를 다시 부르면 1+N 왕복이 된다. 근거: P-02-03 §3 · M-01-09 §4-B */
             readonly lines?: components["schemas"]["ShopfloorReceiptLine"][];
@@ -36634,7 +37581,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이 사유. 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 차이 사유. 차이가 0 이 아니면 필수. 값 = MISPLACED·DAMAGED_IN_TRANSIT·SPILL·COUNT_ERROR·THEFT_LOSS·EVAPORATION_LOSS (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SPILL
              */
             varianceReasonCode?: string | null;
@@ -36666,7 +37613,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 차이가 0 이 아니면 필수. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 차이가 0 이 아니면 필수. 값 = MISPLACED·DAMAGED_IN_TRANSIT·SPILL·COUNT_ERROR·THEFT_LOSS·EVAPORATION_LOSS (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example SPILL
              */
             varianceReasonCode?: string | null;
@@ -36680,7 +37627,7 @@ export interface components {
             stockTransferId: number;
             /** @example ST-2026-000260 */
             stockTransferNo: string;
-            /** @description 이동 유형. 일반 이동과 불량 반출을 가른다. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            /** @description 재고 이동 유형 — 일반 이동(NORMAL) · 불량 반출(DEFECT_RETURN). ⭐ M-01-10 §4 가 「불량 반출일 때만 사유 칸을 연다」로 «동작»을 이 값에 걸었다 — 값이 늘면 화면 분기가 따라가지 못한다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=STOCK_TRANSFER_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             transferTypeCode: string;
             /**
              * Format: int64
@@ -36719,9 +37666,9 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             receivedAt?: string | null;
-            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
+            /** @description 전표의 진행 상태 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 취소 가부 판정이 이 값에 걸린다(W-01-13 §5-1 관문 ② 「전기됐는가」 — 전기 전은 상태 전이만, 전기 후는 원장 역트랜잭션이다). 근거: W-01-13 §5-3 이 문서 9종을 동형으로 두고 같은 화면 §3 목업이 네 값을 그린다(사용자 결정 2026-09-02). */
             statusCode: string;
-            /** @description 불량 반출·분실 사유. ⛔ 물리 모델에 아직 없다 — 같은 성격의 putaway_task(적치 사유)는 이미 있는데 이 테이블만 없다. 근거: 공유계약 §I-41 · omf-mes#84 */
+            /** @description 재고 이동 사유 — 불량 반출·분실 사유를 코드로 받는다. ⭐ 「불량 반출이 몇 건인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다(공유계약 §I-41 · omf-mes#84). ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 사유 코드 17자리가 이미 같은 형태다(스키마별 전용 그룹 + 고객이 늘림). 값 목록은 GET /mdm/code-values?codeGroupCode=STOCK_TRANSFER_REASON 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             reasonCode?: string | null;
         };
         /** @description 도착 확정. 반출한 수량 이하만 받을 수 있다. 근거: M-01-10 §5-6 */
@@ -36757,7 +37704,7 @@ export interface components {
         };
         /** @description 반출 등록. 반출 스캔이 곧 이동 문서를 만드는 행위이므로 생성과 반출이 한 오퍼레이션이다 — 둘로 나누면 오프라인 큐에 반출 전 상태가 남는다. 근거: M-01-10 §5-6 */
         StockTransferCreate: {
-            /** @description 이동 유형. 확정된 값 목록이 아직 없다 — 서버가 내려주는 선택지를 그대로 쓴다. 근거: 공유계약 G-2 */
+            /** @description 재고 이동 유형 — 일반 이동(NORMAL) · 불량 반출(DEFECT_RETURN). ⭐ M-01-10 §4 가 「불량 반출일 때만 사유 칸을 연다」로 «동작»을 이 값에 걸었다 — 값이 늘면 화면 분기가 따라가지 못한다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=STOCK_TRANSFER_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             transferTypeCode: string;
             /**
              * Format: int64
@@ -36914,10 +37861,11 @@ export interface components {
              */
             approvalRouteId: number;
             /**
-             * @description 승인 유형. 값 목록은 공통코드 소관이며 아직 확정되지 않았다 — W-06-15 §8-2
-             * @example DISPOSAL_REQUEST
+             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — 8값이다. ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 8개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
+             * @example GOODS_ISSUE_DISPOSAL
+             * @enum {string}
              */
-            approvalTypeCode: string;
+            approvalTypeCode: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
             /**
              * Format: int64
              * @description 비우면 전 사업부 공통 결재선이다
@@ -36925,7 +37873,7 @@ export interface components {
              */
             businessUnitId?: number | null;
             /**
-             * @description 값 구간 하한. ⚠ 1차에서는 쓰지 않는다 — 비교할 값이 approval_request 에 없고 금액 컬럼이 물리 모델에 0건이라 값의 성격은 수량이다(공유계약 J-2)
+             * @description 값 구간 하한. ⚠ 1차에서는 쓰지 않는다 — 1차 범위에서 결재 분기를 값으로 가르지 않기로 했고, 값의 성격은 금액이 아니라 수량이다(공유계약 J-2)
              * @example 100
              */
             minValue?: number | null;
@@ -36952,8 +37900,12 @@ export interface components {
         };
         /** @description 결재선 등록. isActive 는 받지 않는다 — 신규는 항상 사용 중이다. 같은 (approvalTypeCode, businessUnitId) 로 활성 결재선이 이미 있으면 400 이다. */
         ApprovalRouteCreate: {
-            /** @example DISPOSAL_REQUEST */
-            approvalTypeCode: string;
+            /**
+             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — 8값이다. ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 8개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
+             * @example GOODS_ISSUE_DISPOSAL
+             * @enum {string}
+             */
+            approvalTypeCode: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
             /**
              * Format: int64
              * @description 비우면 전 사업부 공통
@@ -36994,7 +37946,7 @@ export interface components {
              */
             maxValue?: number | null;
         };
-        /** @description 결재 단계. ⚠ 1차에서는 approverTypeCode 가 USER 인 것만 받는다 — ROLE·DEPARTMENT 는 상신 시 사람을 고를 입력이 물리 모델에 없다(mdm.department 에 관리자 컬럼 0건 · app.role 에 부서 축 없음). 근거: W-06-15 §5-2 · 공유계약 J-3 */
+        /** @description 결재 단계. ⚠ 1차에서는 approverTypeCode 가 USER 인 것만 받는다 — 1차 범위에서 결재선을 사람 지정으로 운영하기로 확정했다(2026-08-07). ROLE·DEPARTMENT 로 넓히는 것은 업무 결정이다. 근거: W-06-15 §5-2 · 공유계약 J-3 */
         ApprovalRouteStep: {
             /**
              * Format: int64
@@ -37081,10 +38033,14 @@ export interface components {
             /** @description 배열 순서가 stepNo 1..N 이 된다. 빈 배열은 400 — 단계가 없으면 상신이 거부된다 */
             steps: components["schemas"]["ApprovalRouteStepInput"][];
         };
-        /** @description 승인 대상. approval_request 는 target_type_code + target_id 다형 참조로 대상을 가리키고 유형↔테이블 규약이 아직 없다(#68). 그래서 계약이 표시명과 열 화면을 함께 내려 준다 — 화면이 「이 유형은 저 화면」 표를 갖지 않는다. 근거: W-CO-09 §5-2 · 공유계약 A-10 보강 */
+        /** @description 승인 대상. approval_request 는 target_type_code + target_id 다형 참조로 대상을 가리키고 유형↔테이블 규약이 아직 없다(omf-mes#68 — 그 이슈는 2026-08-25 후속 없이 닫혔고 지금 살아 있는 곳은 omf-mes-server#74 다). 그래서 계약이 표시명과 열 화면을 함께 내려 준다 — 화면이 「이 유형은 저 화면」 표를 갖지 않는다. 근거: W-CO-09 §5-2 · 공유계약 A-10 보강 */
         ApprovalTarget: {
-            /** @example GOODS_ISSUE */
-            targetTypeCode: string;
+            /**
+             * @description 승인 대상 유형. **A-10 다형 참조 판별자**이고 값은 **상신 오퍼레이션이 정한다** — 화면이 고르는 값이 아니라 서버가 채운다(예: `POST /trace/lots/{lotId}:request-iqc-skip` 이 `INBOUND_LOT` 을 채운다). 업무 화면이 「이 문서의 승인 상태」를 찾을 때 `GET /app/approval-requests?targetTypeCode=&targetId=` 에 싣는다. ⚠ **`INBOUND_LOT` 이 어느 표를 가리키는지는 아직 정하지 않았다**(`omf-mes-server#74`) — 값은 확정이고 대응 표만 남았다. ⛔ 같은 이름의 다른 자리(`DocumentTarget`·`Attachment`·`AuditEvent`·`MaintenanceOrder`·`InspectionRequest`·`Notification`·`IntegrationMessage`)는 **값 집합이 다르다** — 이 목록을 그쪽에 쓰지 않는다(공유계약 G-32).
+             * @example GOODS_ISSUE
+             * @enum {string}
+             */
+            targetTypeCode: "GOODS_ISSUE" | "GOODS_RECEIPT" | "INBOUND_RECEIPT" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "SHIPMENT" | "INBOUND_LOT";
             /**
              * Format: int64
              * @example 4412
@@ -37119,10 +38075,11 @@ export interface components {
             /** @example 김품질 */
             approverName: string;
             /**
-             * @description 비어 있으면 아직 결재하지 않은 단계다. 값 목록은 공통코드 소관이다
+             * @description 결재 단계의 판정 — 승인(APPROVED) · 반려(REJECTED). ⚠ 비어 있으면 아직 결재하지 않은 단계다 — 「대기」를 값으로 두지 않는다(부재로 판정한다). ⛔ 생산 사전점검의 decisionCode(CD-DECISION · BLOCKED·OVERRIDDEN·PASSED·WARNED)와 이름만 같고 축이 다르다
              * @example APPROVED
+             * @enum {string|null}
              */
-            decisionCode?: string | null;
+            decisionCode?: "APPROVED" | "REJECTED" | null;
             /**
              * Format: date-time
              * @example 2026-08-06T15:02:00+09:00
@@ -37134,7 +38091,7 @@ export interface components {
              */
             decisionComment?: string | null;
             /**
-             * @description 로그인 사용자가 이 단계의 승인자인가
+             * @description 이 단계의 승인자가 「나」인가. 「나」의 해석은 ApprovalRequest.isMyTurn 과 같다(관리웹 = 계정 토큰 · 현장 단말·모바일 = X-Worker-No · 공유계약 D-5)
              * @example false
              */
             isMine: boolean;
@@ -37144,7 +38101,7 @@ export interface components {
              */
             isCurrent: boolean;
         };
-        /** @description 승인 요청. ⚠ 업무 값이 reason 하나뿐이다 — 수량·금액·품목 컬럼이 물리 모델에 0건이라 목록 요약을 만들 수 없고 사유가 요약을 겸한다. 상신 화면이 사유 형식을 유도해야 하는 이유다(공유계약 A-12 보강). 요청 생성(:request-approval)은 각 도메인 계약 소관이다 — 이 파일은 조회와 결재만 갖는다. */
+        /** @description 승인 요청. ⚠ 업무 값이 reason 하나뿐이라 목록에서는 사유가 요약을 겸한다 — 상신 화면이 사유 형식을 유도해야 하는 이유다(공유계약 A-12 보강). 대상 요약을 따로 싣는 것은 다형 참조 규약(omf-mes#68 → 지금은 omf-mes-server#74)이 서면 연다. 요청 생성(:request-approval)은 각 도메인 계약 소관이다 — 이 파일은 조회와 결재만 갖는다. */
         ApprovalRequest: {
             /**
              * Format: int64
@@ -37156,8 +38113,12 @@ export interface components {
              * @example AP-2026-0087
              */
             approvalRequestNo: string;
-            /** @example DISPOSAL_REQUEST */
-            approvalTypeCode: string;
+            /**
+             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — 8값이다. ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 8개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
+             * @example GOODS_ISSUE_DISPOSAL
+             * @enum {string}
+             */
+            approvalTypeCode: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
             /**
              * Format: int64
              * @example 1001
@@ -37171,8 +38132,8 @@ export interface components {
              */
             requestedAt: string;
             /**
-             * @description 값 목록은 공통코드 소관이다
-             * @example IN_PROGRESS
+             * @description 결재 요청의 진행 상태 — 대기(PENDING) · 승인(APPROVED) · 반려(REJECTED). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 내 차례 판정과 버튼 활성이 이 값에 걸린다(W-CO-09 §5). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=APPROVAL_REQUEST_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. 근거: W-CO-09 §3 목업(사용자 결정 2026-09-02).
+             * @example PENDING
              */
             statusCode: string;
             /**
@@ -37189,7 +38150,7 @@ export interface components {
             /** @example 2 */
             totalStepNo: number;
             /**
-             * @description 로그인 사용자가 지금 결재할 수 있는가. 목록의 「내 결재 대기」 탭이 이 값으로 걸러진다
+             * @description 이 요청의 지금 단계 승인자가 「나」인가. 목록의 「내 결재 대기」 탭이 이 값으로 걸러진다. ⚠ 「나」는 서버가 «요청 주체»에서 푼다 — 관리웹은 계정 토큰, 현장 단말·모바일은 X-Worker-No(공유계약 D-5). ⭐ 상신자로 보는 목록(requestedByMe)에서는 뜻이 없다 — 승인 화면은 관리웹뿐이다
              * @example true
              */
             isMyTurn: boolean;
@@ -37217,8 +38178,12 @@ export interface components {
         };
         /** @description 무엇을 대상으로 발행했는가. targetType 을 먼저 보고 판정한다 — 개체 단위 출력물은 targetId 와 lotId 가 서로 다른 것을 가리킨다. */
         DocumentTarget: {
-            /** @description 대상 유형. 이 값이 targetId 의 해석을 정한다. LOT → 자재·생산·제품 로트 · 개체 → 개체 일련번호 · 포장 → 취급 단위 · 출고 라인 → 출고 전표 라인 · 툴 → 툴·금형 마스터 · Location → 위치 마스터 · 검사 결과 → 검사 결과. ⚠ 값 문자열은 아직 확정되지 않았다 — 화면은 유형 선택을 비활성으로 두고 사유를 보인다. ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다 */
-            targetTypeCode: string;
+            /**
+             * @description 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 값 문자열을 확정했다(2026-09-02) — 뜻 일곱은 §3-7 대응표가 이미 못박았고 남은 것은 문자열뿐이었다(공유계약 §G — 확정된 뜻을 영문 SNAKE 로). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다
+             * @example LOT
+             * @enum {string}
+             */
+            targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
             /**
              * Format: int64
              * @example 90101
@@ -37239,8 +38204,12 @@ export interface components {
              * @example 44001
              */
             documentIssueLogId: number;
-            /** @description 출력물 종류(라벨·검사성적서·추적보고서 등). */
-            documentTypeCode: string;
+            /**
+             * @description 출력물 종류. 라벨 6종·검사성적서·툴 QR·Location 라벨 — 값마다 «찍는 화면»과 «서버가 그리는 렌디션»이 다르다(공유계약 K-5). ⛔ 고객이 늘리는 공통코드 그룹이 아니다 — 값을 늘려도 렌디션이 없어 안 찍힌다(A-16 「가르는 물음 넷」: 가 거짓 + 다 참 ⇒ 설계가 정하는 업무 코드). MATERIAL_LOT_LABEL=자재 LOT 라벨(P-01-01) · GOODS_ISSUE_QR=출고 QR(P-01-02) · PRODUCTION_LOT_LABEL=생산 LOT 라벨(P-02-07) · IDENTIFICATION_TAG=인식표(P-02-05·P-02-09) · PACKING_LABEL=포장 라벨(P-02-09·P-04-02·P-04-04) · DELIVERY_LABEL=납품 라벨(P-04-02) · CERTIFICATE_OF_ANALYSIS=검사성적서(W-04-03) · TOOL_LABEL=툴 QR 라벨(W-05-13) · LOCATION_LABEL=Location 코드 라벨(W-06-07)
+             * @example PACKING_LABEL
+             * @enum {string}
+             */
+            documentTypeCode: "MATERIAL_LOT_LABEL" | "GOODS_ISSUE_QR" | "PRODUCTION_LOT_LABEL" | "IDENTIFICATION_TAG" | "PACKING_LABEL" | "DELIVERY_LABEL" | "CERTIFICATE_OF_ANALYSIS" | "TOOL_LABEL" | "LOCATION_LABEL";
             target: components["schemas"]["DocumentTarget"];
             /**
              * Format: int64
@@ -37291,10 +38260,20 @@ export interface components {
         };
         /** @description 발행 요청. 대상이 여럿이면 한 번에 보낸다 — 개체 단위 출력물은 수백 건이 한 작업이라 건별 호출로 나누면 부분 실패가 생긴다. 단말은 요청을 인증한 단말 토큰에서 서버가 푼다 — 화면이 보내지 않는다. */
         DocumentIssueCreate: {
-            documentTypeCode: string;
+            /**
+             * @description 찍을 출력물 종류. 값 ↔ 발행 화면 대응은 06-API-요구서-app공통출력물.md §3-8 이 정본이다.
+             * @example PACKING_LABEL
+             * @enum {string}
+             */
+            documentTypeCode: "MATERIAL_LOT_LABEL" | "GOODS_ISSUE_QR" | "PRODUCTION_LOT_LABEL" | "IDENTIFICATION_TAG" | "PACKING_LABEL" | "DELIVERY_LABEL" | "CERTIFICATE_OF_ANALYSIS" | "TOOL_LABEL" | "LOCATION_LABEL";
             /** @description 한 트랜잭션으로 처리한다. 하나라도 실패하면 전건 실패다. */
             targets: {
-                targetTypeCode: string;
+                /**
+                 * @description 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT · SERIAL_NUMBER · HANDLING_UNIT · GOODS_ISSUE_LINE · MOLD · LOCATION · INSPECTION_RESULT. ⭐ 읽는 쪽 DocumentTarget.targetTypeCode 와 같은 값집합이다 — 대응표는 공유계약 A-10 이 갖는다. ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다.
+                 * @example LOT
+                 * @enum {string}
+                 */
+                targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
                 /**
                  * Format: int64
                  * @example 771205
@@ -37359,18 +38338,25 @@ export interface components {
             /** @example true */
             isDefault: boolean;
             /**
+             * @description 이 프린터가 찍을 수 있는 출력물 종류. 값 집합은 DocumentIssue.documentTypeCode 와 같다.
              * @example [
-             *       "LABEL"
+             *       "PACKING_LABEL",
+             *       "DELIVERY_LABEL"
              *     ]
              */
-            supportedDocumentTypeCodes?: string[];
+            supportedDocumentTypeCodes?: ("MATERIAL_LOT_LABEL" | "GOODS_ISSUE_QR" | "PRODUCTION_LOT_LABEL" | "IDENTIFICATION_TAG" | "PACKING_LABEL" | "DELIVERY_LABEL" | "CERTIFICATE_OF_ANALYSIS" | "TOOL_LABEL" | "LOCATION_LABEL")[];
         };
         PrinterListResponse: {
             items: components["schemas"]["Printer"][];
         };
         /** @description 대상 하나의 발행 현황 요약. 목록 화면이 행마다 「이미 발행됐는가 · 몇 회차인가」를 판정하는 입력이다. */
         DocumentIssueSummary: {
-            targetTypeCode: string;
+            /**
+             * @description 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 값 문자열을 확정했다(2026-09-02) — 뜻 일곱은 §3-7 대응표가 이미 못박았고 남은 것은 문자열뿐이었다(공유계약 §G — 확정된 뜻을 영문 SNAKE 로). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다
+             * @example LOT
+             * @enum {string}
+             */
+            targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
             /**
              * Format: int64
              * @example 55021
@@ -37492,8 +38478,12 @@ export interface components {
             occurredAt: string;
             /** @example false */
             read: boolean;
-            /** @description 무엇에 대한 알림인가. EQUIPMENT → 설비(설비 고장 발생) · MOLD → 툴·금형(적정타수 초과) · INSTRUMENT → 계측기(검교정 만료 임박) · PURCHASE_ORDER → 구매발주(P/O 변경 수신) · INTEGRATION_SYNC → 연계 메시지(연계 실패) · APPROVAL_REQUEST → 승인 요청(승인 요청·결재 도착) · LOT / WORK_ORDER / NONCONFORMANCE — ⚠ 대응 이벤트가 알림센터 목록에 아직 없다. ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다 */
-            targetTypeCode?: string;
+            /**
+             * @description 무엇에 대한 알림인가 — EQUIPMENT → 설비(설비 고장 발생) · MOLD → 툴·금형(적정타수 초과) · INSTRUMENT → 계측기(검교정 만료 임박) · PURCHASE_ORDER → 구매발주(P/O 변경 수신) · INTEGRATION_SYNC → 연계 메시지(연계 실패) · APPROVAL_REQUEST → 승인 요청(승인·결재 도착) · LOT / WORK_ORDER / NONCONFORMANCE. ⚠ 뒤 셋은 대응 이벤트가 알림센터 목록에 아직 없다. ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 공통코드 그룹으로 받지 않는다(A-10 · A-16 · 2026-09-03 정정). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다
+             * @example EQUIPMENT
+             * @enum {string}
+             */
+            targetTypeCode?: "EQUIPMENT" | "MOLD" | "INSTRUMENT" | "PURCHASE_ORDER" | "INTEGRATION_SYNC" | "APPROVAL_REQUEST" | "LOT" | "WORK_ORDER" | "NONCONFORMANCE";
             /**
              * Format: int64
              * @example 1001
@@ -37532,8 +38522,12 @@ export interface components {
         };
         /** @description 조직×역할로 묶어 지정하거나 사람을 하나씩 지정한다. 근거: W-CO-11 §5 */
         NotificationRecipient: {
-            /** @description 어떻게 지정했나. ROLE → 조직×역할 묶음 (businessUnitId + roleId) · USER → 사람 하나 (userId) */
-            recipientTypeCode: string;
+            /**
+             * @description 수신자를 어떻게 지정했나 — ROLE → 조직×역할 묶음(businessUnitId + roleId) · USER → 사람 하나(userId). ⛔ 값이 어느 «짝 필드»를 채우는지 가르므로 계약이 닫는다
+             * @example ROLE
+             * @enum {string}
+             */
+            recipientTypeCode: "ROLE" | "USER";
             /**
              * Format: int64
              * @example 1001
@@ -37671,7 +38665,10 @@ export interface components {
              * @example 2026-08-13T09:12:00+09:00
              */
             acknowledgedAt?: string;
-            /** @description 현장 단말에서 확인했으면 사번이 온다 */
+            /**
+             * @description 현장 단말에서 확인했으면 사번이 온다
+             * @example 100027
+             */
             workerNo?: string | null;
             /** @description workerNo 와 짝이다 */
             workerName?: string | null;
@@ -37726,8 +38723,12 @@ export interface components {
             };
         };
         DashboardCard: {
-            /** @description 어느 지표인가. 화면이 이 코드로 드릴다운 대상을 안다 */
-            cardCode: string;
+            /**
+             * @description 어느 지표인가 — 생산량 · 양품률 · 성능가동률 · 시간가동률 · 미처리 알람 · OEE. ⭐ 화면이 이 코드로 «드릴다운 대상»을 안다 — 각 카드가 자기 소유 화면으로 간다(W-CO-05 §5). ⛔ 카드가 늘면 드릴다운 대상도 함께 정해야 하므로 계약이 닫는다
+             * @example PRODUCTION_QTY
+             * @enum {string}
+             */
+            cardCode: "PRODUCTION_QTY" | "YIELD_RATE" | "PERFORMANCE_RATE" | "AVAILABILITY_RATE" | "UNHANDLED_ALARM" | "OEE";
             /** @example 오늘 생산 수량 */
             label: string;
             /** @example 1240 */
@@ -37747,7 +38748,7 @@ export interface components {
              * @example AVAILABLE
              * @enum {string}
              */
-            valueStatusCode: "AVAILABLE" | "NOT_YET" | "PARTIAL";
+            valueStatusCode?: "AVAILABLE" | "NOT_YET" | "PARTIAL";
             /**
              * @description 분모에서 제외한 건수. 화면이 「N품목 제외」로 적는다
              * @example 3
@@ -37895,10 +38896,11 @@ export interface components {
             /** @example true */
             valueBoolean?: boolean | null;
             /**
-             * @description 이긴 정책이 어느 축으로 맞았는가 — ITEM · PROCESS · PLANT · BUSINESS_UNIT · ALL 중 하나. resolved 가 거짓이면 비어 있다
+             * @description 이긴 정책이 «어느 축»으로 맞았는가 — 품목 · 공정 · 공장 · 사업부 · 전사. resolved 가 거짓이면 비어 있다. ⛔ 정책 우선순위 축이라 값이 늘면 판정 순서가 함께 늘어야 한다 — 계약이 닫는다
              * @example ITEM
+             * @enum {string|null}
              */
-            matchedScopeCode?: string | null;
+            matchedScopeCode?: "ITEM" | "PROCESS" | "PLANT" | "BUSINESS_UNIT" | "ALL" | null;
         };
         /** @description 다형 참조다 — 창고 도면과 공지 첨부가 현재 사용처다. */
         Attachment: {
@@ -37907,8 +38909,12 @@ export interface components {
              * @example 1001
              */
             attachmentId: number;
-            /** @description 무엇에 붙은 첨부인가. ⚠ 값 문자열은 아직 확정되지 않았다. */
-            targetTypeCode: string;
+            /**
+             * @description 무엇에 붙은 첨부인가 — WAREHOUSE → 창고 도면(W-CO-08 §3) · NOTICE → 공지 첨부(W-CO-04 §4). ⭐ 값 문자열을 확정했다(2026-09-02) — 두 화면이 이미 이 문자열을 스펙에 적어 두고 있었다. ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 고객이 늘릴 수 없고, 붙일 곳이 늘면 계약을 고친다(공유계약 A-10 · A-16 「가」·「나」 참)
+             * @example WAREHOUSE
+             * @enum {string}
+             */
+            targetTypeCode: "WAREHOUSE" | "NOTICE";
             /**
              * Format: int64
              * @example 1001
@@ -37936,7 +38942,10 @@ export interface components {
         };
         /** @description 작업 전 점검 통제를 우회하고 시작할 때 함께 보낸다. 서버가 세션과 work_session_event(통제 우회)를 한 트랜잭션으로 만든다. 별도 액션을 두지 않는 이유는 「우회만 하고 세션을 안 여는」 상태를 없애기 위함이다. 근거: QA #9 · P-02-02 §4 · 공유계약 F-6 */
         ControlOverride: {
-            /** @example 값 */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=CONTROL_OVERRIDE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example EMERGENCY_WORK_ORDER
+             */
             reasonCode: string;
             /** @example 값 */
             note?: string;
@@ -37994,7 +39003,7 @@ export interface components {
              */
             replacedConsumptionId?: number;
             /**
-             * @description 러닝체인지 교체 사유. 근거: P-02-11 §5-2
+             * @description 러닝체인지 교체 사유 — 왜 자재를 바꿔 넣었는가. 근거: P-02-11 §5-2. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=MATERIAL_CHANGE_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NORMAL
              */
             changeReasonCode?: string;
@@ -38040,7 +39049,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             recordedAt?: string;
-            /** @example 값 */
+            /**
+             * @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             lateEntryReasonCode?: string;
             /**
              * Format: int64
@@ -38101,7 +39113,10 @@ export interface components {
              * @example 1001
              */
             actualUseProcessId?: number;
-            /** @example 값 */
+            /**
+             * @description 러닝체인지 교체 사유 — 왜 자재를 바꿔 넣었는가. 근거: P-02-11 §5-2. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=MATERIAL_CHANGE_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             changeReasonCode?: string;
             /**
              * Format: int64
@@ -38134,7 +39149,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             occurredAt: string;
-            /** @example 값 */
+            /**
+             * @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             lateEntryReasonCode?: string;
             /** @example 값 */
             remarks?: string;
@@ -38337,7 +39355,7 @@ export interface components {
              */
             basisInspectionId?: number | null;
             /**
-             * @description ⚠ decisionCode 가 OVERRIDDEN 일 때만 값이 있다
+             * @description ⚠ decisionCode 가 OVERRIDDEN 일 때만 값이 있다 값 = `EMERGENCY_WORK_ORDER`·`OTHER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=CONTROL_OVERRIDE_REASON` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31).
              * @example EMERGENCY_WORK_ORDER
              */
             overrideReasonCode?: string | null;
@@ -38383,7 +39401,7 @@ export interface components {
              */
             basisInspectionId?: number | null;
             /**
-             * @description OVERRIDDEN 일 때만 보낸다. 자유 텍스트가 아니라 코드다
+             * @description OVERRIDDEN 일 때만 보낸다. 자유 텍스트가 아니라 코드다 값 = `EMERGENCY_WORK_ORDER`·`OTHER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=CONTROL_OVERRIDE_REASON` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31).
              * @example EMERGENCY_WORK_ORDER
              */
             overrideReasonCode?: string | null;
@@ -38547,7 +39565,7 @@ export interface components {
              * @example 2026-08-11
              */
             dueDate?: string;
-            /** @description P/O 상태. ⚠ 값 목록은 아직 확정 전이다 — 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. */
+            /** @description P/O(생산오더)의 상태 — 수신(RECEIVED) · 수정됨(UPDATED) · 취소(CANCELLED). ⭐ ERP 가 발행하고 MES 는 수신본을 갖지만 **코드는 우리 어휘로 저장한다** — ERP 코드를 그대로 담거나 매핑 테이블을 두지 않는다(사용자 결정 2026-09-02). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             statusCode: string;
             /**
              * Format: date-time
@@ -38581,7 +39599,9 @@ export interface components {
              * @example 3
              */
             plannedWorkOrderCount?: number;
+            lastChange?: components["schemas"]["ProductionOrderChange"];
         };
+        /** @description 관리자의 판정 한 번. ⭐ 반영이면 W/O 조정을 «같은 요청에» 싣는다 — 「확인만 기록하고 W/O 는 나중에」를 만들지 않는다(공유계약 B-8 규칙 1). ⛔ 잠금 토큰이 둘로 갈린다 — P/O 는 헤더 If-Match, 함께 고치는 W/O 는 workOrderAdjustments[].versionNo 다. 잠그는 대상마다 그 대상의 버전 축을 쓴다(공유계약 B-1-1 ① · A-4-1). */
         ProductionOrderAcknowledge: {
             /**
              * @description 반영 / 강행. 근거: W-02-06 §5
@@ -38594,6 +39614,49 @@ export interface components {
              * @example 값
              */
             reason?: string;
+            /** @description 이 확인이 함께 고치는 W/O. ⭐ P/O 확인과 W/O 조정이 «한 트랜잭션»이다 — 하나라도 실패하면 전부 되돌린다(공유계약 B-8 규칙 1). ⛔ decisionCode=PROCEED(강행)이면 보내지 않는다 — 보내면 400 이다. 강행은 「기존을 유지한다」라 조정이 성립하지 않는다. ⭐ decisionCode=APPLY 인데 비워 보낼 수 있다 — 중단·취소 반영(후속이 :cancel 이라 조정할 수량이 없다)과 계획 시각이 아직 잡히지 않은 W/O 가 그 경우다. 그때 조정되지 않은 영향 W/O 에는 서버가 poMismatch 를 세운다 — 「반영했다고 적혔는데 실제로는 안 맞춘」 W/O 가 표식 없이 남지 않게 한다 */
+            workOrderAdjustments?: components["schemas"]["WorkOrderAdjustment"][];
+        };
+        /** @description 마지막으로 수신한 ERP 변경 «한 건». ⛔ 이력을 쌓지 않는다 — 판정 중 ERP 가 다시 보내면 409 로 막고 다시 불러와 «새 변경분»으로 다시 판정하므로(W-02-06 §5-3) 관리자는 언제나 「지금 상태」로 판단한다. 지나간 변경은 판정 대상이 아니다. 저장 자리는 데이터 모델 담당에게 통지한다 — 기다리지 않는다(공유계약 A-11). 근거: W-02-06 §3·§5-1 */
+        ProductionOrderChange: {
+            /**
+             * Format: date-time
+             * @description 이 변경을 MES 가 수신한 시각. 목록 「수신시각」 열이 쓴다. ⭐ GET /planning/production-orders 의 unacknowledgedOnly 가 acknowledgedAt 과 견주는 값이 바로 이것이다
+             * @example 2026-08-05T09:12:00+09:00
+             */
+            receivedAt: string;
+            /** @description 무엇이 몇에서 몇으로 바뀌었나. 서버가 «수량 → 납기 → 상태» 고정 순으로 낸다 — 화면이 정렬하지 않는다. ⛔ 빈 배열일 수 있다 — 열거한 세 항목 «밖»이 바뀐 경우다. 그때 화면은 그 사실을 그대로 말하고 항목을 지어내지 않는다(공유계약 G-9) */
+            changedFields: components["schemas"]["ProductionOrderChangedField"][];
+        };
+        /** @description ERP 변경 한 항목의 전·후. 화면 2열 비교 표(W-02-06 §3)의 한 행이고 DS 컴포넌트 DiffRow(label·before·after)에 그대로 꽂힌다. */
+        ProductionOrderChangedField: {
+            /**
+             * @description ERP 가 바꾸는 P/O 항목 — 수량·납기·상태(중단·취소) 셋이다. ⭐ 값은 이 항목이 가리키는 ProductionOrder 필드 이름을 그대로 딴다(orderQty·dueDate·statusCode) — 물리 컬럼 이름 채택이 아니라 «이미 확정된 계약 필드명»을 재사용하는 것이다. 이 enum 은 업무 개념의 값 어휘가 아니라 「어느 계약 필드가 바뀌었나」를 가리키는 포인터이므로, 가리키는 대상의 이름과 같게 두는 것이 가장 명확하다(공유계약 §G 2026-09-01 신판 — 물리 이름 채택은 예외이고 출처 확인이 전제인데, 여기서 따르는 것은 물리 모델이 아니라 이미 확정된 계약 스키마다). ⛔ 공통코드가 아니다 — 설계가 닫은 값 집합이라 코드 그룹을 두지 않는다(같은 파일 ProductionOrderAcknowledge.decisionCode 와 같은 형태). ⛔ 그 밖의 항목이 바뀌어도 이 배열에 담지 않는다 — 없는 업무 개념을 만들지 않는다(공유계약 A-21). 넷째가 필요해지면 값을 «더한다» — 값 삭제만 막힌다(공유계약 L-4-1 ⑶). 근거: 요구 REQ-PR-0024 「① 중단 ② 수량 변경」 · W-02-06 §3·§5-5
+             * @example ORDER_QTY
+             * @enum {string}
+             */
+            field: "ORDER_QTY" | "DUE_DATE" | "STATUS_CODE";
+            /**
+             * @description 화면 2열 표 「항목」 열에 그대로 그리는 이름(「수량」·「납기」·「상태」). ⛔ 화면이 코드→이름 대응표를 갖지 않는다 — 계약이 표시명까지 내려 준다(공유계약 A-10 보강). 항목이 늘 때 관리웹을 다시 배포하지 않기 위해서다
+             * @example 수량
+             */
+            label: string;
+            /**
+             * @description 변경 «전» 값의 표시 문자열 — 2열 표의 「기존(MES)」 칸이다. field=ORDER_QTY 면 십진 수치의 문자열이고 «단위는 붙이지 않는다»(단위는 ProductionOrder.uomId 다). DUE_DATE 면 YYYY-MM-DD. STATUS_CODE 면 상태의 표시명이다. ⛔ 자유 형식 객체로 두지 않는다 — 키·값 구조가 정해지지 않아 못 쓰게 된 자리가 이미 있다
+             * @example 5000
+             */
+            beforeText: string;
+            /**
+             * @description 변경 «후» 값의 표시 문자열 — 2열 표의 「변경(ERP)」 칸이다. ⚠ P/O 행에는 이미 변경 후 값이 반영돼 있어(W-02-06 §5-1) field=ORDER_QTY 면 ProductionOrder.orderQty 와, DUE_DATE 면 dueDate 와 같은 값을 가리킨다. 표시 형식이 한 곳에서 정해지도록 두 칸을 다 내린다
+             * @example 4000
+             */
+            afterText: string;
+            /**
+             * Format: double
+             * @description field=ORDER_QTY «일 때만» 채운다 — 나머지 항목에서는 null 이다. 화면 「▼ 1,000 감소」의 감소량을 내는 데만 쓰고 2열 표에는 그리지 않는다(그 칸은 beforeText 다). ⛔ afterQty 는 두지 않는다 — ProductionOrder.orderQty 가 그 값이다(같은 값을 두 자리에 두지 않는다 · 공유계약 L-2-1)
+             * @example 5000
+             */
+            beforeQty?: number | null;
         };
         /** @description BOM·Routing 은 06 기준정보 계약이 소유한다 — 여기서는 참조만 한다. */
         ProductionPlan: {
@@ -38639,7 +39702,10 @@ export interface components {
              * @example 1001
              */
             plannedLineId?: number;
-            /** @example 값 */
+            /**
+             * @description 생산계획의 상태 — 작성중(DRAFT) · 확정(CONFIRMED). ⛔ 확정 뒤에는 수정·삭제가 막힌다(400 STATE_LOCKED) — :confirm 이 그 전이를 만든다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_PLAN_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example DRAFT
+             */
             statusCode: string;
             /**
              * Format: date-time
@@ -38703,7 +39769,7 @@ export interface components {
              * @example 1001
              */
             sourcePlanId?: number;
-            /** @description 러닝체인지 분할 사유. 값 목록은 공통코드 마스터가 갖는다 — 공통코드 그룹 이름은 PRODUCTION_PLAN_SPLIT_REASON 이다. ⛔ 화면이 이 값을 로직에 박지 않는다. */
+            /** @description 러닝체인지 분할 사유. 값 목록은 공통코드 마스터가 갖는다 — 공통코드 그룹 이름은 PRODUCTION_PLAN_SPLIT_REASON 이다. ⛔ 화면이 이 값을 로직에 박지 않는다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_PLAN_SPLIT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             reasonCode?: string;
         };
         ProductionPlanUpdate: {
@@ -38796,8 +39862,12 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /** @description 실적을 무엇이 만들었는가 — 수기 입력 · IoT 자동수집. ⚠ 값 목록·그룹 이름 모두 미확정 — 정해질 때까지 화면은 선택칸을 비활성 + 사유 표시로 둔다. 확정되면 GET /mdm/code-values?codeGroupCode=… 로 받는다. ⛔ enum 으로 못박지 않는다. */
-            resultSourceCode: string;
+            /**
+             * @description 실적을 «무엇이» 만들었는가 — 수기 입력(MANUAL) · IoT 자동수집(IOT). ⭐ 서버가 안다 — 화면이 고르는 값이 아니다. ⛔ 두 갈래뿐이라 계약이 닫는다
+             * @example MANUAL
+             * @enum {string}
+             */
+            resultSourceCode: "MANUAL" | "IOT";
             /**
              * Format: date-time
              * @example 2026-08-11T09:12:00+09:00
@@ -38808,7 +39878,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             recordedAt?: string;
-            /** @example 값 */
+            /**
+             * @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             lateEntryReasonCode?: string;
             /**
              * Format: int64
@@ -38841,7 +39914,10 @@ export interface components {
             remarks?: string;
         };
         ProductionResultCorrect: {
-            /** @example 값 */
+            /**
+             * @description 실적 정정 사유. ⭐ 「정정이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다 — 사유 코드 17자리가 이미 같은 형태다(스키마별 전용 그룹 + 고객이 늘림). 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_RESULT_CORRECT_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             reasonCode: string;
             /** @example 값 */
             note?: string;
@@ -38913,14 +39989,21 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /** @description 실적을 무엇이 만들었는가 — 수기 입력 · IoT 자동수집. ⚠ 값 목록·그룹 이름 모두 미확정 — 정해질 때까지 화면은 선택칸을 비활성 + 사유 표시로 둔다. 확정되면 GET /mdm/code-values?codeGroupCode=… 로 받는다. ⛔ enum 으로 못박지 않는다. */
-            resultSourceCode: string;
+            /**
+             * @description 실적을 «무엇이» 만들었는가 — 수기 입력(MANUAL) · IoT 자동수집(IOT). ⭐ 서버가 안다 — 화면이 고르는 값이 아니다. ⛔ 두 갈래뿐이라 계약이 닫는다
+             * @example MANUAL
+             * @enum {string}
+             */
+            resultSourceCode: "MANUAL" | "IOT";
             /**
              * Format: date-time
              * @example 2026-08-11T09:12:00+09:00
              */
             occurredAt: string;
-            /** @example 값 */
+            /**
+             * @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             lateEntryReasonCode?: string;
             /**
              * Format: int64
@@ -39111,7 +40194,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 작업지시 유형. NORMAL(양산) 기본 · EMERGENCY(긴급) · REWORK(재작업) 셋이다. 공통코드 그룹 이름은 WORK_ORDER_TYPE 이다(공유계약 G-32). ⛔ 화면이 이 값을 로직에 흩어 박지 않는다 — 한 곳에 모아 두고 그 한 곳만 참조한다. ⭐ 이 값으로 갈리는 것이 셋이다 — 긴급 현장 투입 화면(P-02-12)의 진입 목록 · 확정·배포 화면(W-02-04)의 대기 목록 · 자재 출고요청 자동 발행의 긴급 제외(R29).
+             * @description 작업지시 유형. NORMAL(양산) 기본 · EMERGENCY(긴급) · REWORK(재작업) 셋이다. 공통코드 그룹 이름은 WORK_ORDER_TYPE 이다(공유계약 G-32). ⛔ 화면이 이 값을 로직에 흩어 박지 않는다 — 한 곳에 모아 두고 그 한 곳만 참조한다. ⭐ 이 값으로 갈리는 것이 셋이다 — 긴급 현장 투입 화면(P-02-12)의 진입 목록 · 확정·배포 화면(W-02-04)의 대기 목록 · 자재 출고요청 자동 발행의 긴급 제외(R29). 값 = `NORMAL`·`EMERGENCY`·`REWORK`. 값 목록은 `GET /mdm/code-values?codeGroupCode=WORK_ORDER_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NORMAL
              */
             workOrderTypeCode: string;
@@ -39198,7 +40281,7 @@ export interface components {
              *     }
              */
             operationSettingsSnapshot?: Record<string, never>;
-            /** @description 편성 → 확정 → 배포 → 진행 → 완료 → 마감. 중단↕재개 반복. 취소가 값으로 붙는다. ⚠ 진행불가(자원 유효성 NG — 해소되면 배포로 복귀)도 결정 14 그래프의 노드다(W-02-03 §5 · W-02-04 §5 가 쓴다). ⚠ 코드 문자열은 아직 확정되지 않았다 — 뜻과 식별자는 다른 산출물이다(공유계약 G-32 v3.4). ⛔ 화면이 이 값을 로직에 흩어 박지 않는다 — 한 곳에 모아 두고 그 한 곳만 참조한다(omf-mes#247). 근거: ✓설계확정 결정 14 · 예외 E-4 ④ ⭐ 「확정 대기」는 저장하는 상태 값이 아니다 — 아직 배포되지 않은 편성 W/O 를 가리키는 화면 용어이며, 상태는 :release 가 「확정」으로 한 번에 옮긴다. 화면이 별도 전이를 부르지 않는다. */
+            /** @description 작업지시의 진행 상태 — 편성(PLANNED) · 확정(CONFIRMED) · 배포(RELEASED) · 진행(IN_PROGRESS) · 완료(COMPLETED) · 마감(CLOSED) · 중단(SUSPENDED) · 취소(CANCELLED) «8종»(결정 14 · 사용자 확정 2026-09-02). ⛔ 「진행불가」는 상태가 «아니다» — 자원 Validation NG 는 확정 버튼을 막는 게이트이고 W/O 는 편성에 머문다(W-02-04 §5 · W-02-03 §5-3 A-9 3등급). 「재시작」을 상태에서 뺀 것과 같은 논리다(중단→진행 전이 이벤트). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 상태 전이와 버튼 활성이 이 값에 걸린다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             statusCode: string;
             /**
              * Format: date-time
@@ -39210,7 +40293,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             completedAt?: string;
-            /** @example 값 */
+            /**
+             * @description W/O 마감 시의 미달·초과 사유. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_COMPLETION_VARIANCE_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MATERIAL_SHORTAGE
+             */
             completionVarianceReasonCode?: string;
             /**
              * Format: date-time
@@ -39246,7 +40332,7 @@ export interface components {
              */
             itemCode?: string;
             /**
-             * @description P/O 와 어긋난 채 강행된 W/O 인가. 관리자가 「기존 유지(강행)」를 고르면 서버가 참으로 세운다. 마감 화면이 이 값으로 경고를 낸다. ⛔ 화면이 스스로 계산하지 않는다
+             * @description P/O 와 어긋난 채 남은 W/O 인가. 서버가 두 자리에서 세운다 — ⓐ 관리자가 「기존 유지(강행)」를 고를 때 ⓑ 「변경 반영」을 골랐는데 그 W/O 를 workOrderAdjustments 로 조정하지 않았을 때. ⓑ 를 더한 것은 「반영했다고 적혔는데 실제로는 안 맞춘」 W/O 가 표식 없이 남지 않게 하기 위해서다 — 강행에는 표식이 서는데 반영의 미조정에는 안 서면 뒤엣것이 더 위험하다. 마감 화면이 이 값으로 경고를 낸다. ⛔ 화면이 스스로 계산하지 않는다. 근거: W-02-06 §5-2·§6
              * @example false
              */
             poMismatch?: boolean;
@@ -39256,9 +40342,43 @@ export interface components {
             preIssuedLots?: components["schemas"]["PreIssuedLotSummary"];
             validation?: components["schemas"]["ValidationSummary"];
         };
+        /** @description 「변경 반영」이 W/O 하나를 어떻게 고치는가. ⭐ 헤더 If-Match 로 표현할 수 없는 잠금이다 — P/O 확인 한 번이 W/O 여럿을 함께 고쳐 토큰이 여럿이고, 하나라도 어긋나면 전체를 거부한다(공유계약 A-4-1). 토큰은 GET /production/work-orders?productionOrderId= 응답의 versionNo 를 그대로 싣는다 — 화면이 「영향 받는 W/O」 목록을 그릴 때 이미 받는 값이다. 근거: W-02-06 §3·§5-5 */
+        WorkOrderAdjustment: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            workOrderId: number;
+            /**
+             * @description production.work_order 의 낙관적 잠금 토큰
+             * @example 1
+             */
+            versionNo: number;
+            /**
+             * Format: double
+             * @description 조정할 지시 수량. 보내지 않으면 이 W/O 의 수량은 그대로 둔다. ⚠ 이미 생산된 수량보다 작게 보낼 수 있다 — 계획이 실적보다 작아지는 상태를 업무가 허용하고 화면이 저장 전에 경고한다(W-02-06 §6 · 공유계약 A-9 ⓑ). ⛔ 서버가 스스로 나누지 않는다 — P/O 5,000→4,000 인데 영향 W/O 가 셋이면 「어느 것을 얼마나」는 업무 판단이고, 실적이 이미 붙은 W/O 가 섞인다
+             * @example 4000
+             */
+            orderQty?: number;
+            /**
+             * Format: date-time
+             * @description 조정할 계획 시작 시각 — 납기 변경을 반영할 때 쓴다. 보내지 않으면 그대로 둔다
+             * @example 2026-08-20T09:00:00+09:00
+             */
+            plannedStartAt?: string;
+            /**
+             * Format: date-time
+             * @description 조정할 계획 종료 시각 — 동상. ⛔ 납기를 여기에 담지 않는다. 뜻이 다르다(납기는 「언제까지」, 계획 종료는 「언제 끝날 것으로 잡았는가」 · W-02-07 §3-7 과 같은 판단)
+             * @example 2026-08-25T18:00:00+09:00
+             */
+            plannedEndAt?: string;
+        };
         /** @description 취소하면 선발행된 생산LOT 슬롯이 자동 폐번된다 — 화면이 저장 전에 그 파급을 말한다. 근거: DR-007 · 공유계약 G-19 */
         WorkOrderCancel: {
-            /** @example 값 */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_CANCEL_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example CUSTOMER_ORDER_CHANGE
+             */
             reasonCode: string;
             /** @example 값 */
             note?: string;
@@ -39271,8 +40391,8 @@ export interface components {
              */
             remainderDispositionCode?: "CARRY_OVER" | "WRITE_OFF";
             /**
-             * @description 미달·초과 사유 — work_order.completion_variance_reason_code 에 실린다. ⭐ 미달·초과일 때 조건부 필수이고 정상이면 비운다(W-02-05 §5-7 · R80)
-             * @example 값
+             * @description 미달·초과 사유 — work_order.completion_variance_reason_code 에 실린다. ⭐ 미달·초과일 때 조건부 필수이고 정상이면 비운다(W-02-05 §5-7 · R80) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_COMPLETION_VARIANCE_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MATERIAL_SHORTAGE
              */
             reasonCode?: string;
             /** @description 이 마감 건에서 «켠» 생산 실적 부속 항목의 목록이다 — 투입자재·공수·설비시간·비가동 넷. ⛔ 최상위 송신 항목 켜고 끄기(생산 실적·입고·출하·반품·실사조정)와는 다른 축이며 그쪽은 전역 설정이고 이 칸에 싣지 않는다. ⭐ 생산 실적 본체는 필수라 이 목록의 대상이 아니다. ⚠ 넷의 코드 표기는 아직 정하지 않았다. */
@@ -39311,7 +40431,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 작업지시 유형. 보내지 않으면 서버가 NORMAL(양산)로 채운다. ⛔ 긴급 발행 화면(W-02-07)은 이 칸을 반드시 EMERGENCY 로 채워 보낸다 — 비우면 화면이 「유형: 긴급」이라 적어 놓고 양산 작업지시가 만들어지고, 오류가 나지 않아 아무 데서도 드러나지 않는다. 값 집합은 셋이다 — NORMAL(양산) · EMERGENCY(긴급) · REWORK(재작업). 공통코드 그룹 이름은 WORK_ORDER_TYPE 이다(공유계약 G-32).
+             * @description 작업지시 유형. 보내지 않으면 서버가 NORMAL(양산)로 채운다. ⛔ 긴급 발행 화면(W-02-07)은 이 칸을 반드시 EMERGENCY 로 채워 보낸다 — 비우면 화면이 「유형: 긴급」이라 적어 놓고 양산 작업지시가 만들어지고, 오류가 나지 않아 아무 데서도 드러나지 않는다. 값 집합은 셋이다 — NORMAL(양산) · EMERGENCY(긴급) · REWORK(재작업). 공통코드 그룹 이름은 WORK_ORDER_TYPE 이다(공유계약 G-32). 값 = `NORMAL`·`EMERGENCY`·`REWORK`. 값 목록은 `GET /mdm/code-values?codeGroupCode=WORK_ORDER_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example EMERGENCY
              */
             workOrderTypeCode?: string;
@@ -39338,7 +40458,10 @@ export interface components {
         };
         /** @description POP 에서 누른다 — occurredAt 은 단말 시계가 정한다. 근거: 공유계약 C-12 */
         WorkOrderHold: {
-            /** @example 값 */
+            /**
+             * @description 작업지시 보류 사유. ⭐ 사유 코드의 선례를 따른다 — 스키마별 전용 그룹 + 고객이 늘림. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_HOLD_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             reasonCode: string;
             /**
              * Format: date-time
@@ -39547,8 +40670,8 @@ export interface components {
              */
             endedAt?: string;
             /**
-             * @description 세션이 지금 어떤 상태인가 — 진행·중단·종료. START·RESUME 이 「진행」, STOP 이 「중단」, END 가 「종료」로 옮긴다. ⚠ 코드 문자열은 아직 확정되지 않았다 — 뜻과 식별자는 다른 산출물이다. 근거: 공유계약 A-25 · G-16
-             * @example 값
+             * @description 작업 세션의 상태 — 진행(RUNNING) · 중단(STOPPED) · 종료(ENDED). START·RESUME 이 「진행」, STOP 이 「중단」, END 가 「종료」로 옮긴다. ⭐ 뜻 셋은 A-25 전이표가 이미 확정했고 문자열만 없었다 — 2026-09-02 §G 로 도출. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example RUNNING
              */
             statusCode: string;
             /**
@@ -39613,8 +40736,8 @@ export interface components {
              */
             workSessionEventId: number;
             /**
-             * @description 중단·재개·통제 우회 등. 값 목록은 공통코드가 갖는다. 근거: P-02-10 §8-1 · 공유계약 A-16
-             * @example NORMAL
+             * @description 중단·재개·통제 우회 등. 값 목록은 공통코드가 갖는다. 근거: P-02-10 §8-1 · 공유계약 A-16 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_EVENT_TYPE 로 받는다(공유계약 G-32 · 2026-08-31 등재 · ⛔ 시스템 소유 — 고객이 값을 늘리지 않는다). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example START
              */
             eventTypeCode: string;
             /**
@@ -39629,7 +40752,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             recordedAt?: string;
-            /** @example 값 */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_EVENT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example URGENT_ORDER_INTERRUPT
+             */
             reasonCode?: string;
             /** @example 금형 교체 */
             reasonName?: string;
@@ -39646,14 +40772,20 @@ export interface components {
         };
         /** @description 세션 구간 안의 사건 적재. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다. 단말은 요청을 인증한 단말 토큰에서 서버가 푼다. */
         WorkSessionEventCreate: {
-            /** @example 값 */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_EVENT_TYPE 로 받는다(공유계약 G-32 · 2026-08-31 등재 · ⛔ 시스템 소유 — 고객이 값을 늘리지 않는다). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example START
+             */
             eventTypeCode: string;
             /**
              * Format: date-time
              * @example 2026-08-11T09:12:00+09:00
              */
             occurredAt: string;
-            /** @example 값 */
+            /**
+             * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_EVENT_REASON 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example URGENT_ORDER_INTERRUPT
+             */
             reasonCode?: string;
         };
         WorkSessionWorker: {
@@ -39668,8 +40800,9 @@ export interface components {
              */
             workerId: number;
             /**
+             * @description 이 세션에서 «맡은 역할» — 주작업자(MAIN) · 부작업자(SUB). ⛔ 사람의 «직위·권한» 축이 아니다 — 관리자/실무자 구분은 역할·권한(app.role · W-CO-02)이 갖고, 자격은 작업자 자격(W-02-03 4M 배정 유효성)이 갖는다. 여기에 「관리자」를 넣으면 권한 축과 두 벌이 된다(L-2-1). ⭐ 같은 사람이 다른 세션에서 다른 값을 가질 수 있다 — joinedAt·leftAt 이 붙은 «참여 구간»의 속성이다. ⚠ POP 은 로그인 없이 사번만 받으므로(REQ-PR-0023) 계정 권한을 알 수 없다 — 그래서 이 값을 따로 받는다. ⭐ 고객이 늘릴 수 있다 — 위 둘은 초기값(기본값)이지 닫힌 목록이 아니다. 2인 1조인지, 반장이 함께 붙는지가 공장마다 다르다. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_WORKER_ROLE 로 받는다(공유계약 G-32 · 2026-09-03 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @default OPERATOR
-             * @example NORMAL
+             * @example MAIN
              */
             workerRoleCode: string;
             /**
@@ -39690,7 +40823,10 @@ export interface components {
              * @example 1001
              */
             workerId: number;
-            /** @example 값 */
+            /**
+             * @description 이 세션에서 «맡은 역할» — 주작업자(MAIN) · 부작업자(SUB). ⛔ 사람의 «직위·권한» 축이 아니다 — 관리자/실무자 구분은 역할·권한(app.role · W-CO-02)이 갖고, 자격은 작업자 자격(W-02-03 4M 배정 유효성)이 갖는다. 여기에 「관리자」를 넣으면 권한 축과 두 벌이 된다(L-2-1). ⭐ 같은 사람이 다른 세션에서 다른 값을 가질 수 있다 — joinedAt·leftAt 이 붙은 «참여 구간»의 속성이다. ⚠ POP 은 로그인 없이 사번만 받으므로(REQ-PR-0023) 계정 권한을 알 수 없다 — 그래서 이 값을 따로 받는다. ⭐ 고객이 늘릴 수 있다 — 위 둘은 초기값(기본값)이지 닫힌 목록이 아니다. 2인 1조인지, 반장이 함께 붙는지가 공장마다 다르다. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_WORKER_ROLE 로 받는다(공유계약 G-32 · 2026-09-03 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MAIN
+             */
             workerRoleCode?: string;
             /**
              * Format: date-time
@@ -39987,7 +41123,7 @@ export interface components {
              * @example 1001
              */
             inspectionResultId?: number;
-            /** @description 원천 축 — FIELD(현장)·PQC·OQC·REPAIR(수리)·CLAIM(클레임) 5종(공유계약 결정 09). REPAIR 는 M-02-02 착수 전까지 실적 0건. 2026-08-30 되살림 — productionResultId/inspectionResultId 2단 조인 대신 이 축으로 직접 필터한다 */
+            /** @description 불량 기록의 원천 — 현장(FIELD) · 공정검사(PQC) · 출하검사(OQC) · 수리(REPAIR) · 클레임(CLAIM) 5값(✓설계확정 결정 09). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=DEFECT_RECORD_SOURCE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ **2026-09-02 — 이 축이 «유일한» 원천 축이 됐다**(사용자 결정 결정 5). 함께 있던 sourceAxisCode(서버가 유도한 4축)를 지웠다 — 유도로는 결정 09 의 「수리」·「클레임」이 나오지 않아 5축이 서지 않았고, W-03-05 §5-2 가 그래서 이 명시 축을 신설했다. ⚠ workOrderId 의 NOT NULL 해제가 클레임 원천의 전제다 — 데이터 모델 통지 대상이며 기다리지 않는다. */
             sourceCode?: string;
             /**
              * Format: int64
@@ -40015,7 +41151,10 @@ export interface components {
              * @example 1001
              */
             confirmedCauseCodeId?: number;
-            /** @example 값 */
+            /**
+             * @description 귀책 구분 — 이 불량의 책임이 어디에 있는가. responsibleDepartmentId 와 짝이다. ⚠ «원천 축이 아니다» — 어디서 «발견»했나(sourceCode)와 다르다(W-03-05 §5-2). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=DEFECT_RESPONSIBILITY_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             responsibilityTypeCode?: string;
             /**
              * Format: int64
@@ -40069,11 +41208,6 @@ export interface components {
              * @example 2026-08-12T10:22:00+09:00
              */
             detectedAt: string;
-            /**
-             * @description 서버가 유도한 원천 축 — 현장 / PQC / OQC / 원천미상. ⛔ 결정 09 의 5축 중 「수리」와 「클레임」은 나오지 않는다(omf-mes#83 · workOrderId NOT NULL). 근거: W-03-05 §5-2
-             * @example 값
-             */
-            sourceAxisCode?: string;
         };
         /** @description 처분 결정. 부적합 하나에 여러 건이 달릴 수 있다 — 같은 부적합을 수량으로 갈라 일부는 재작업, 일부는 폐기로 정할 수 있다(decisionQty) */
         DispositionDecision: {
@@ -40089,8 +41223,11 @@ export interface components {
             nonconformanceId: number;
             /** @example 값 */
             nonconformanceNo?: string;
-            /** @description 재작업 · 폐기 · 정상. ⛔ 선별은 1차 범위 밖이라 값이 와도 실행 화면이 없다(omf-mes#118) */
-            dispositionTypeCode: string;
+            /**
+             * @description 처분 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — REWORK 재작업 · SCRAP 폐기 · NORMAL 정상 셋이다. ⛔ 선별은 1차 범위 밖이라 값이 와도 실행 화면이 없다(omf-mes#118 종결). ⚠ mdm 계약의 DefectCode.dispositionTypeCode(['REWORKABLE','SCRAP'])와 «같은 그룹이 아니다» — 그쪽은 불량코드가 가진 처분 «성향»이고 이 칸은 실제 처분 «결정»이다. 한 그룹으로 묶지 않는다(공유계약 G-32). ⚠ SCRAP 은 LOT_STATUS 의 SCRAPPED 와 낱말이 닮았으나 축이 다르다 — LOT 의 «상태» ↔ 처분의 «결정». 스키마가 갈려 있어 값 수준에서 섞이지 않는다(✓확정 2026-09-01 사용자). ⛔ 공통코드 그룹으로 받지 않는다 — 진입 목록이 이 값으로 갈리고(W-04-10·W-04-11) 후속 화면이 값마다 붙는다. 고객이 늘리면 후속 없는 처분이 생긴다(공유계약 G-31)
+             * @enum {string}
+             */
+            dispositionTypeCode: "REWORK" | "SCRAP" | "NORMAL";
             /**
              * Format: double
              * @example 30
@@ -40188,8 +41325,11 @@ export interface components {
         };
         /** @description 처분 결정 등록. ⭐ decidedBy·decidedAt 은 받지 않는다 — 서버가 인증 주체와 수신 시각으로 채운다(공유계약 B-6) */
         DispositionDecisionCreate: {
-            /** @description 재작업 · 폐기 · 정상. ⛔ 선별은 받지 않는다(omf-mes#118) */
-            dispositionTypeCode: string;
+            /**
+             * @description 처분 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — REWORK 재작업 · SCRAP 폐기 · NORMAL 정상 셋이다. ⛔ 선별은 1차 범위 밖이라 값이 와도 실행 화면이 없다(omf-mes#118 종결). ⚠ mdm 계약의 DefectCode.dispositionTypeCode(['REWORKABLE','SCRAP'])와 «같은 그룹이 아니다» — 그쪽은 불량코드가 가진 처분 «성향»이고 이 칸은 실제 처분 «결정»이다. 한 그룹으로 묶지 않는다(공유계약 G-32). ⚠ SCRAP 은 LOT_STATUS 의 SCRAPPED 와 낱말이 닮았으나 축이 다르다 — LOT 의 «상태» ↔ 처분의 «결정». 스키마가 갈려 있어 값 수준에서 섞이지 않는다(✓확정 2026-09-01 사용자). ⛔ 공통코드 그룹으로 받지 않는다 — 진입 목록이 이 값으로 갈리고(W-04-10·W-04-11) 후속 화면이 값마다 붙는다. 고객이 늘리면 후속 없는 처분이 생긴다(공유계약 G-31)
+             * @enum {string}
+             */
+            dispositionTypeCode: "REWORK" | "SCRAP" | "NORMAL";
             /**
              * Format: double
              * @description 0 초과다 — 물리 CHECK 가 (> 0) 이고 정수 하한이 아니다. 단위마다 소수 자릿수가 있어(mdm.uom.decimalScale) 1 미만이 성립한다. 남은 수량 이하인지는 서버가 판정한다(409). 근거: W-03-10 §2-1 · §4-B · omf-mes#253
@@ -40202,7 +41342,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description ⭐ 비울 수 없다 — 물리 모델이 NOT NULL 이다. 왜 그렇게 정했는지가 근거로 남는다. 공백만 있는 문자열도 받지 않는다(공유계약 A-12 — 같은 계약의 NonconformanceCreate.description 과 같은 처리)
+             * @description ⭐ 비울 수 없다 — 남이 읽고 판단할 자유 텍스트라 화면이 필수로 만든다. 왜 그렇게 정했는지가 근거로 남는다. 공백만 있는 문자열도 받지 않는다(공유계약 A-12 — 같은 계약의 NonconformanceCreate.description 과 같은 처리)
              * @example 변형 손상이 커 재작업으로 회복되지 않는다
              */
             reason: string;
@@ -40320,10 +41460,11 @@ export interface components {
              */
             inspectionPlanVersionId?: number | null;
             /**
-             * @description 다형 참조의 유형. ⬜ 유형 코드 ↔ 대상 테이블 대응표는 미정이다 — 공유계약 A-10 · omf-mes#68 과 함께 정한다. 값 목록이 정해지기 전까지 이 example 을 값으로 읽지 않는다. 근거: 공유계약 A-10
-             * @example 값
+             * @description A-10 다형 참조 판별자 — 값이 «대상 리소스 이름»이고 짝 id 가 그 리소스의 식별자다. ⭐ 대응표는 «설계»가 정한다(A-10 규칙 1 · 2026-09-03 사용자 결정). 검사 대상 — LOT(IQC 입하 LOT · OQC 제품 LOT) · 작업지시(WORK_ORDER · PQC) · 출하 지시(SHIPMENT_REQUEST · OQC). ⭐ W-04-03 §4 가 「다형 — 출하작업지시 · LOT」로, P-02-13 §4 가 작업지시를 적어 두었다. ⚠ 이 스키마는 lotId · workOrderId · productionResultId 를 «따로» 갖는다 — A-10 규칙 3 대로 둘이 같은 대상을 가리키면 FK 쪽을 쓰고, 다르면 이 판별자로 판정한다.
+             * @example LOT
+             * @enum {string}
              */
-            targetTypeCode: string;
+            targetTypeCode: "LOT" | "WORK_ORDER" | "SHIPMENT_REQUEST";
             /**
              * Format: int64
              * @example 1001
@@ -40373,7 +41514,7 @@ export interface components {
              */
             coverageToAt?: string;
             /**
-             * @description 검사 의뢰의 진행 상태 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⛔ enum 으로 못박지 않는다 — 값 목록은 공통코드가 갖고 늘 수 있다(공유계약 G-2·G-6). 표시명은 06 계약 GET /mdm/code-values 로 채운다. ⭐ 전이는 전부 «이미 있는 액션의 부수 효과»다 — 새 경로가 없다: 서버가 입하·실적·출하 시점에 REQUESTED 로 만들고 · 첫 임시 저장이 IN_PROGRESS (⛔ 「검사 시작」 액션을 두지 않는다 — 화면에 시작 버튼이 없다) · :confirm 이 COMPLETED · 재검사 회차 추가가 다시 IN_PROGRESS · W-01-02 긴급 IQC 생략 한도승인이 SKIPPED · 입고 취소(FR-IM-076)가 CANCELLED. ⚠ SKIPPED 와 CANCELLED 를 합치지 않는다 — 앞은 검사를 안 하기로 «승인»된 정상 종결이고(LOT 은 Release 로 입고된다) 뒤는 의뢰가 «무효»가 된 것이다. 합치면 「검사를 몇 건 생략했나」를 셀 수 없다. ⚠ LOT 품질 상태(정상·불량·검사 대기·폐기)와 «다른 축»이다 — 같이 움직이지 않는다. 근거: 확정 2026-08-21 · FR-QM-050 · omf-mes#170
+             * @description 검사 의뢰의 진행 상태 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⛔ enum 으로 못박지 않는다 — 값 목록은 공통코드가 갖고 늘 수 있다(공유계약 G-2·G-6). 표시명은 06 계약 GET /mdm/code-values 로 채운다. ⭐ 전이는 전부 «이미 있는 액션의 부수 효과»다 — 새 경로가 없다: 서버가 입하·실적·출하 시점에 REQUESTED 로 만들고 · 첫 임시 저장이 IN_PROGRESS (⛔ 「검사 시작」 액션을 두지 않는다 — 화면에 시작 버튼이 없다) · :confirm 이 COMPLETED · 재검사 회차 추가가 다시 IN_PROGRESS · W-01-02 긴급 IQC 생략 한도승인이 SKIPPED · 입고 취소(FR-IM-076)가 CANCELLED. ⚠ SKIPPED 와 CANCELLED 를 합치지 않는다 — 앞은 검사를 안 하기로 «승인»된 정상 종결이고(LOT 은 Release 로 입고된다) 뒤는 의뢰가 «무효»가 된 것이다. 합치면 「검사를 몇 건 생략했나」를 셀 수 없다. ⚠ LOT 품질 상태(정상·불량·검사 대기·폐기)와 «다른 축»이다 — 같이 움직이지 않는다. 근거: 확정 2026-08-21 · FR-QM-050 · omf-mes#170 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_REQUEST_STATUS 로 받는다(공유계약 G-32 · omf-mes#170 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example REQUESTED
              */
             statusCode: string;
@@ -40477,8 +41618,8 @@ export interface components {
              */
             terminalId?: number;
             /**
-             * @description 작성중 · 확정. 임시 저장은 작성중으로 남는다
-             * @example 작성중
+             * @description 검사 성적서의 상태 — 임시저장(DRAFT) · 확정(CONFIRMED). ⛔ **코드 문자열은 영문이다**(§G — 확정된 뜻을 영문 대문자 SNAKE 로 옮긴다). 2026-09-02 이전에는 이 자리에 한국어 enum 「작성중」·「확정」이 박혀 있었고, 계약 7벌에서 «유일한» 한국어 enum 이었다. ⛔ enum 으로 못박지 않는다 — 표시명이 한국어·베트남어 2개국어라 enum 이면 화면이 표시명을 갖게 된다(INSPECTION_REQUEST_STATUS 선례 · K-5). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 확정이면 Lot Status 전이와 보류 해제가 따른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example DRAFT
              */
             statusCode: string;
             /**
@@ -40486,7 +41627,10 @@ export interface components {
              * @example 1001
              */
             previousResultId?: number;
-            /** @example 값 */
+            /**
+             * @description 재검사 사유 — 왜 회차를 더 돌리는가. ⭐ 번복은 「수정」이 아니라 «재검사 회차»라 이 사유가 그 회차의 근거다(W-04-03 §5). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=REINSPECTION_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             reinspectionReasonCode?: string;
             /** @example 값 */
             remarks?: string;
@@ -40561,18 +41705,20 @@ export interface components {
              */
             inspectedAt: string;
             /**
-             * @description ⭐ 오프라인 큐는 언제나 확정으로 보낸다 — 임시 저장은 단말에 남고 서버로 오지 않는다.
-             * @example 작성중
-             * @enum {string}
+             * @description 임시 저장이면 DRAFT, 즉시 확정이면 CONFIRMED 를 보낸다. ⭐ 오프라인 큐는 언제나 CONFIRMED 로 보낸다 — 임시 저장은 단말에 남고 서버로 오지 않는다. 임시저장(DRAFT) · 확정(CONFIRMED). ⛔ **코드 문자열은 영문이다**(§G — 확정된 뜻을 영문 대문자 SNAKE 로 옮긴다). 2026-09-02 이전에는 이 자리에 한국어 enum 「작성중」·「확정」이 박혀 있었고, 계약 7벌에서 «유일한» 한국어 enum 이었다. ⛔ enum 으로 못박지 않는다 — 표시명이 한국어·베트남어 2개국어라 enum 이면 화면이 표시명을 갖게 된다(INSPECTION_REQUEST_STATUS 선례 · K-5). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 확정이면 Lot Status 전이와 보류 해제가 따른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_RESULT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example DRAFT
              */
-            statusCode: "작성중" | "확정";
+            statusCode: string;
             /**
              * Format: int64
              * @description 재검이면 앞 회차를 가리킨다. 회차는 서버가 +1 한다. 근거: 공유계약 B-10
              * @example 1001
              */
             previousResultId?: number;
-            /** @example 값 */
+            /**
+             * @description 재검사 사유 — 왜 회차를 더 돌리는가. ⭐ 번복은 「수정」이 아니라 «재검사 회차»라 이 사유가 그 회차의 근거다(W-04-03 §5). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=REINSPECTION_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             reinspectionReasonCode?: string;
             /** @description 항목별 측정치. ⭐ 필수가 아니다 — 검사 기준이 없는 의뢰(inspectionPlanVersionId 가 빈 의뢰)에는 항목 자체가 없으므로 이 배열을 생략하거나 빈 배열로 보낸다. 그때 검사는 수량 세 칸과 종합 판정, 그리고 remarks 의 자유 입력만으로 성립한다(P-02-13 §5-2). 근거: omf-mes#251 */
             measurements?: components["schemas"]["InspectionMeasurementInput"][];
@@ -40679,7 +41825,10 @@ export interface components {
              * @example 1001
              */
             uomId?: number;
-            /** @example 값 */
+            /**
+             * @description 값 = `INCOMING_INSPECTION_WAIT`·`FOREIGN_MATTER_SUSPECTED`·`DIMENSION_ABNORMAL`·`APPEARANCE_ABNORMAL`·`CLAIM_RECALL`·`OTHER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=LOT_HOLD_REASON` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31).
+             * @example INCOMING_INSPECTION_WAIT
+             */
             reasonCode: string;
             /**
              * @description targetLotStatusCode 가 INSPECTION_PENDING(검사 대기)이면 필수, DEFECTIVE(불량)면 받지 않는다.
@@ -40736,8 +41885,8 @@ export interface components {
              */
             actorName?: string;
             /**
-             * @description 보류 사유. ⚠ 해제 사건에는 없을 수 있다
-             * @example QUALITY_HOLD
+             * @description 보류 사유. ⚠ 해제 사건에는 없을 수 있다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example INCOMING_INSPECTION_WAIT
              */
             reasonCode?: string | null;
             /**
@@ -40756,7 +41905,12 @@ export interface components {
              */
             releaseCondition?: string | null;
             /**
-             * @description 해제 사건이 LOT 을 어느 상태로 보냈나. 값 목록은 LOT_STATUS
+             * @description 보류를 «왜» 풀었는가. ⭐ eventTypeCode=RELEASED 인 사건에만 있다 — 등록(HELD) 사건에는 null 이다(등록 사유는 reasonCode 가 담는다). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_RELEASE_REASON 로 받는다(공유계약 G-32). ⭐ 고객이 늘린다 — 값은 초기 시드다(공유계약 G-31). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example RETEST_PASS
+             */
+            releaseReasonCode?: string | null;
+            /**
+             * @description 해제 사건이 LOT 을 어느 상태로 보냈나 — 값 목록은 LOT_STATUS 다. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example NORMAL
              */
             targetLotStatusCode?: string | null;
@@ -40800,7 +41954,7 @@ export interface components {
             itemId: number;
             /**
              * @description 자재·생산·제품 3종(결정 10). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_TYPE 로 받는다(MATERIAL·PRODUCTION·PRODUCT). ⚠ 셋을 합쳐 집계하지 않는다(공유계약 L-7) — 같은 「보류 38건」이라도 자재와 제품은 대응이 다르다. 근거: omf-mes#176
-             * @example 값
+             * @example MATERIAL
              */
             lotTypeCode?: string;
             /**
@@ -40858,7 +42012,10 @@ export interface components {
              * @example 2026-08-12T10:22:00+09:00
              */
             latestTransitionAt?: string;
-            /** @example 값 */
+            /**
+             * @description 「최근 전이」의 사유. ⛔ 변경이력 표가 없어 «보류» 기록의 최신 건으로 낸다 — 합격·불합격·재판정 전이는 여기 나타나지 않는다(W-03-01 §5-1). 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_HOLD_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example INCOMING_INSPECTION_WAIT
+             */
             latestReasonCode?: string;
         };
         LotStatusCount: {
@@ -40936,7 +42093,10 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example 값 */
+            /**
+             * @description 전이를 걸 때 화면이 «본» 현재 상태. 서버가 이것과 실제가 다르면 409 로 막는다. LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example NORMAL
+             */
             currentLotStatusCode: string;
             transitions: components["schemas"]["LotStatusTransition"][];
             /**
@@ -40991,7 +42151,7 @@ export interface components {
              */
             currentVersion?: string;
             /**
-             * @description VERSION_CONFLICT 일 때 서버의 현재 lot.status_code — 충돌 문구에 최신 상태를 담는다(「다른 사용자가 먼저 전이했습니다. 현재 상태는 불량입니다」 W-03-02 §6). ⛔ message 자유 텍스트에서 파싱하지 않는다 — 이 구조화 필드가 정본이다. 근거: W-03-02 §6 · omf-mes#225
+             * @description VERSION_CONFLICT 일 때 서버의 «현재» LOT 상태 — 충돌 문구에 최신 상태를 담는다(W-03-02 §6). ⛔ message 자유 텍스트에서 파싱하지 않는다 — 이 구조화 필드가 정본이다. LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example DEFECTIVE
              */
             currentLotStatusCode?: string;
@@ -41081,6 +42241,90 @@ export interface components {
             /** @example 값 */
             remarks?: string | null;
         };
+        /** @description 처분 판정 대상 한 건 — «LOT 단위»다. ⭐ 단위가 LOT 인 근거: 부적합 등록이 NonconformanceCreate.lots[](minItems 1)로 LOT 을 받고, W-04-07 §3 목업의 목록 행도 LOT 이다. 상세 머리의 입고번호·입고일·거래처는 «그 LOT 이 들어온 전표»의 정보다. */
+        DispositionCandidate: {
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            lotId: number;
+            /** @example FG-1001-0288 */
+            lotNo: string;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            itemId: number;
+            /** @example FG-1001 */
+            itemCode?: string;
+            /** @example 표시명 */
+            itemName?: string;
+            /**
+             * Format: double
+             * @description 판정 대상 수량 — 그 LOT 이 불량창고에 들어온 수량이다
+             * @example 200
+             */
+            quantity: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            uomId: number;
+            /**
+             * Format: int64
+             * @example 1001
+             */
+            warehouseId: number;
+            /** @example 표시명 */
+            warehouseName?: string;
+            /**
+             * @description 원천 — 제품(PRODUCT · OQC 불합격) · 반품(RETURN · 반품·클레임 입고). ⭐ 서버가 그 LOT 이 들어온 경로로 파생한다 — 화면이 고르지 않는다.
+             * @example RETURN
+             * @enum {string}
+             */
+            sourceCode: "PRODUCT" | "RETURN";
+            /**
+             * Format: int64
+             * @description 반품 갈래의 입고 전표. sourceCode=PRODUCT 면 null 이다
+             * @example 1001
+             */
+            goodsReceiptId?: number | null;
+            /**
+             * @description 반품 갈래의 입고번호 — 화면 상세 머리가 그린다
+             * @example RT-2026-0044
+             */
+            receiptNo?: string | null;
+            /**
+             * Format: date
+             * @description 불량창고에 들어온 날
+             * @example 2026-08-04
+             */
+            receivedAt?: string | null;
+            /**
+             * @description 반품 갈래의 거래처 이름 — 원 출하 고객이다. ⭐ 서버가 원 출하를 거슬러 풀어 준다(화면이 따로 조회하지 않는다 · 공유계약 L-2)
+             * @example 표시명
+             */
+            partnerName?: string | null;
+            /**
+             * Format: int64
+             * @description OQC 갈래의 검사 결과. sourceCode=RETURN 이면 null 이다 — 부적합 등록 시 NonconformanceCreate.inspectionResultId 로 그대로 넘긴다
+             * @example 1001
+             */
+            inspectionResultId?: number | null;
+            /**
+             * Format: int64
+             * @description ⭐ **이 대상에 이미 만들어진 부적합.** null 이면 아직 만들지 않았다 — 화면의 「부적합 없음」 상태다
+             * @example 1001
+             */
+            nonconformanceId?: number | null;
+            /** @example NC-2026-0031 */
+            nonconformanceNo?: string | null;
+            /**
+             * @description 이미 만든 부적합의 진행 상태 — 의뢰 전(NOT_REQUESTED)·판정 대기(PENDING_DECISION)·판정 완료(DECIDED). nonconformanceId 가 null 이면 이 값도 null 이다. 값 = `NOT_REQUESTED`·`PENDING_DECISION`·`DECIDED`. 값 목록은 `GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example PENDING_DECISION
+             */
+            nonconformanceStatusCode?: string | null;
+        };
         /** @description 부적합. W-04-07 「부적합 등록」이 만든다. 판정은 W-03-10 이 한다 — affectedQtyTotal·dispositionProgressCode 는 그 화면의 목록이 쓰는 서버 집계다. sourceCode 는 서버가 항상 파생해 내린다 — lots 가 minItems:1 필수라 대상 LOT 이 반드시 있다 */
         Nonconformance: {
             /**
@@ -41106,9 +42350,16 @@ export interface components {
              * @example 1001
              */
             inspectionResultId?: number | null;
-            /** @description ⭐ 서버 파생 값이다 — 저장 컬럼이 아니고 화면이 보내지 않는다(W-CO-03 의 openable 과 같은 형태). 파생 규칙: 대상 LOT 이 receiptTypeCode=RETURN 인 입고 전표로 들어왔으면 RETURN, 그 밖은 전부 PRODUCT. ⛔ NonconformanceCreate 에 이 칸이 없는 것은 결손이 아니라 이 결정의 귀결이다 — 다음 사람이 또 「Create 에 칸이 없다」로 이슈를 열지 않도록 남긴다. 부적합을 만드는 화면은 W-04-07 하나다(요구서 §3-6 · 2026-08-29 확정). 쓰는 곳: W-03-10 의 원천 필터(§5-4) · W-04-07 상세의 「원천」 표시(§3). ⚠ 값 이름 충돌 주의 — GoodsReceipt.receiptTypeCode 의 PRODUCT(제품입고)와 뜻이 다르다. 이력: 2026-08-30 신설(W-03-10 원천 필터 되살리기) · 2026-09-01 서버 파생으로 재정의(omf-mes#303) */
-            sourceCode: string;
-            /** @example 값 */
+            /**
+             * @description 부적합 원천 — 제품(PRODUCT) · 반품(RETURN). 서버가 대상 LOT 의 입고 유형으로 파생한다
+             * @example PRODUCT
+             * @enum {string}
+             */
+            sourceCode: "PRODUCT" | "RETURN";
+            /**
+             * @description 부적합 심각도 — 중대 · 중 · 경. 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example CRITICAL
+             */
             severityCode: string;
             /**
              * @description ⭐ 판정자의 유일한 입력이다 — 「불량」 두 글자면 뒤에서 판단이 안 된다. 화면이 형식을 유도한다. 근거: W-04-07 §5-3 · 공유계약 A-12
@@ -41138,8 +42389,8 @@ export interface components {
              */
             actionCompletedAt?: string;
             /**
-             * @description 의뢰 전 · 판정 대기 · 판정 완료. ⭐ 세 값짜리 진행 단계라 구간 형이 아니다 — 끝 시각의 부재로는 앞의 둘을 못 가른다. ⭐ 코드 문자열이 아직 확정되지 않아 예시를 못 박지 않는다(omf-mes#145). ⚠ 판정 진행은 이 값으로 가르지 않는다 — dispositionProgressCode 가 그 자리다
-             * @example 값
+             * @description 부적합 건의 진행 상태 — 의뢰 전(NOT_REQUESTED) · 판정 대기(PENDING_DECISION) · 판정 완료(DECIDED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 이 값이 처분 판정 화면의 진입 목록을 가른다(W-04-07 §3 · W-03-10 §5-5). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example NOT_REQUESTED
              */
             statusCode: string;
             /**
@@ -41192,7 +42443,10 @@ export interface components {
              * @example 1001
              */
             inspectionResultId?: number | null;
-            /** @example 값 */
+            /**
+             * @description 부적합 심각도 — 중대 · 중 · 경. 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example CRITICAL
+             */
             severityCode: string;
             /**
              * @description 판정의 유일한 입력이라 비울 수 없다. 근거: 공유계약 A-12
@@ -41229,9 +42483,15 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /** @example 값 */
+            /**
+             * @description 부적합 등록 «전» 의 LOT 품질 상태. LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example NORMAL
+             */
             qualityStatusBeforeCode: string;
-            /** @example 값 */
+            /**
+             * @description 부적합 등록 «후» 의 LOT 품질 상태. LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example NORMAL
+             */
             qualityStatusAfterCode: string;
         };
         NonconformanceLotCreate: {
@@ -41251,7 +42511,7 @@ export interface components {
              */
             uomId: number;
         };
-        /** @description 고객사 출하지시서 수신본. ⛔ 등록 경로를 두지 않는다 — 연계 수신이 기본이라 목록에 그냥 나타난다(W-04-01 §5-6). 파일 업로드는 고객사마다 형식이 달라 요청 본문을 정할 수 없고 화면도 비활성이다. ⭐ 상위지시는 nullable 이 확정이다 — 무지시 standalone 이 예외가 아니라 상시 구조다 */
+        /** @description 고객사 출하지시서 수신본. ⛔ 등록 경로를 두지 않는다 — ⭐ 원천이 «둘»이다 — 고객사 출하지시서(엑셀) import 와 ERP 연계 수신을 «모두» 쓴다(사용자 확정 2026-09-02). 어느 쪽이든 MES 는 받기만 하므로 목록에 그냥 나타난다(W-04-01 §5-6). 파일 업로드는 고객사마다 형식이 달라 요청 본문을 정할 수 없고 화면도 비활성이다. ⭐ 상위지시는 nullable 이 확정이다 — 무지시 standalone 이 예외가 아니라 상시 구조다 */
         SalesOrder: {
             /**
              * Format: int64
@@ -41371,8 +42631,8 @@ export interface components {
              */
             shippedAt?: string | null;
             /**
-             * @description 생애주기는 여기가 갖는다 — 미확정 → 확정 / 취소. 근거: W-04-12 §5
-             * @example SHIPPED
+             * @description 출하의 진행 상태 — 미확정(UNCONFIRMED) · 확정(CONFIRMED) · 취소(CANCELLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 확정이 PGI 송신을 부르고 취소가 그것을 되돌린다(W-04-04 §5-1 · W-04-12 §5-2). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SHIPMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example UNCONFIRMED
              */
             statusCode: string;
             /**
@@ -41456,7 +42716,7 @@ export interface components {
              * @default false
              * @example true
              */
-            expedited: boolean;
+            expedited?: boolean;
             /**
              * @description expedited 가 참이면 필수다. 근거: W-04-05 §5-5 · 공유계약 A-12
              * @example 값
@@ -41967,7 +43227,7 @@ export interface components {
              * @example RETEST_PASS
              */
             releaseReasonCode: string;
-            /** @description 재등록 사유 — 「재등록이 몇 건인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. 근거: 공유계약 §I-41 · omf-mes#84 */
+            /** @description 재등록 사유. ⭐ 「재등록이 몇 건인가」를 세려면 코드 축이어야 한다(§I-41 · omf-mes#84). 값 목록은 GET /mdm/code-values?codeGroupCode=STOCK_REINSTATEMENT_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             reasonCode?: string | null;
             /**
              * Format: date
@@ -42060,22 +43320,23 @@ export interface components {
         InspectionLine: {
             /**
              * Format: int64
-             * @description 점검 항목 마스터
+             * @description 점검 항목 마스터. ⭐ 기준정보 계약 EquipmentInspectionItem 의 equipmentInspectionItemId 를 그대로 싣는다 — 부여 조회 GET /mdm/equipments/{equipmentId}/inspection-items 의 effective[] 가 주는 그 값이고, «이름만 다르고 같은 것»이다(그 응답에 다른 후보는 없다). ⛔ 같은 파일의 CollectionChannel.inspectionItemId 와 이름이 같지만 «다른 표»다 — 그쪽은 품질 «검사» 항목(InspectionItemSpec.inspectionItemSpecId)이다. 「점검(설비) ≠ 검사(품질)」은 W-05-12 §4-C-1 이 테이블을 나눈 기준이다(소유·대상·게이트가 다르다). 근거: omf-mes#338
              * @example 1001
              */
             inspectionItemId: number;
             /** @example 유압 누유 확인 */
             itemName?: string;
             /**
-             * @description 육안(VISUAL) 또는 측정(MEASURE)
+             * @description 판정 방식 — 육안(VISUAL) · 측정값(MEASUREMENT). ⚠ 이름이 기준정보 계약의 judgmentMethodCode 와 다르지만 «같은 값 집합»이다(사용자 확정 2026-08-21 · omf-mes#186 · W-05-12 §4-C-1). 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_JUDGMENT_METHOD 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example VISUAL
              */
             judgeMethodCode?: string;
             /**
-             * @description 합격(OK) 또는 불합격(NG)
-             * @example OK
+             * @description 항목별 판정 — 합격(PASS) · 불합격(FAIL). ⭐ 2026-09-03 정정 — 종전 산문이 「OK / NG」였는데 같은 축의 종합 판정(overallResultCode)이 PASS·FAIL 을 쓴다. 한 화면에서 항목 판정과 종합 판정이 다른 낱말을 쓰면 어느 쪽이 정본인지 갈린다
+             * @example PASS
+             * @enum {string}
              */
-            resultCode: string;
+            resultCode: "PASS" | "FAIL";
             /**
              * Format: double
              * @description 측정 방식일 때만
@@ -42088,14 +43349,16 @@ export interface components {
         InspectionLineCreate: {
             /**
              * Format: int64
+             * @description 점검한 항목. ⭐ 기준정보 계약 EquipmentInspectionItem 의 equipmentInspectionItemId 를 그대로 싣는다 — 부여 조회 GET /mdm/equipments/{equipmentId}/inspection-items 의 effective[] 가 주는 그 값이고, «이름만 다르고 같은 것»이다(그 응답에 다른 후보는 없다). ⛔ 같은 파일의 CollectionChannel.inspectionItemId 와 이름이 같지만 «다른 표»다 — 그쪽은 품질 «검사» 항목(InspectionItemSpec.inspectionItemSpecId)이다. 「점검(설비) ≠ 검사(품질)」은 W-05-12 §4-C-1 이 테이블을 나눈 기준이다(소유·대상·게이트가 다르다). 근거: omf-mes#338
              * @example 1001
              */
             inspectionItemId: number;
             /**
-             * @description 합격(OK) 또는 불합격(NG)
-             * @example OK
+             * @description 항목별 판정 — 합격(PASS) · 불합격(FAIL). ⭐ 2026-09-03 정정 — 종합 판정과 낱말을 맞췄다
+             * @example PASS
+             * @enum {string}
              */
-            resultCode: string;
+            resultCode: "PASS" | "FAIL";
             /**
              * Format: double
              * @example 12.5
@@ -42125,10 +43388,11 @@ export interface components {
              */
             inspectionTypeCode: string;
             /**
-             * @description 라인이 하나라도 불합격이면 불합격이다. 값은 합격(OK)·불합격(NG) 둘이다. ⛔ 작업 전 점검 통제(P-02-02 §5-7)가 이 값으로 «수준과 무관한 차단»을 판정하므로 화면이 문자열을 흩어 박지 않는다
-             * @example NG
+             * @description 점검 종합 판정 — 합격(PASS) · 불합격(FAIL). 보전 지시 발행이 불합격만 트리거로 부른다
+             * @example PASS
+             * @enum {string}
              */
-            overallResultCode: string;
+            overallResultCode: "PASS" | "FAIL";
             /**
              * Format: date-time
              * @description 단말이 찍은 시각
@@ -42233,10 +43497,7 @@ export interface components {
              * @example 유압 누유 · 실린더 하부
              */
             symptom: string;
-            /**
-             * @description 멈췄다(STOPPED) 또는 돌지만 이상하다(ABNORMAL)
-             * @example STOPPED
-             */
+            /** @description 고장 시점의 설비 상태 — 멈췄다(STOPPED) · 돌지만 이상하다(ABNORMAL). ⭐ 현장이 보고할 때 «고르는» 값이다(M-05-02). ⛔ 시스템 소유다 — 비가동 집계에 드는가가 이 값으로 갈린다. 값 목록은 GET /mdm/code-values?codeGroupCode=BREAKDOWN_OCCURRENCE_STATE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             occurrenceStateCode: string;
             /**
              * Format: date-time
@@ -42252,7 +43513,7 @@ export interface components {
             /** @example 3391 */
             reporterWorkerNo: string;
             /**
-             * @description 접수(RECEIVED) · 처리중(HANDLING) · 완료(DONE)
+             * @description 고장 접수의 진행 상태 — 접수(RECEIVED) · 처리중(HANDLING) · 완료(DONE). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=EQUIPMENT_BREAKDOWN_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example RECEIVED
              */
             statusCode: string;
@@ -42287,7 +43548,7 @@ export interface components {
             equipmentId: number;
             /** @example 유압 누유 · 실린더 하부 */
             symptom: string;
-            /** @example STOPPED */
+            /** @description 고장 시점의 설비 상태 — 멈췄다(STOPPED) · 돌지만 이상하다(ABNORMAL). ⭐ 현장이 보고할 때 «고르는» 값이다(M-05-02). ⛔ 시스템 소유다 — 비가동 집계에 드는가가 이 값으로 갈린다. 값 목록은 GET /mdm/code-values?codeGroupCode=BREAKDOWN_OCCURRENCE_STATE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             occurrenceStateCode: string;
             /**
              * Format: date-time
@@ -42330,13 +43591,13 @@ export interface components {
             /** @example 분해 청소 */
             itemName: string;
             /**
-             * @description 계획(PLANNED) · 완료(DONE) · 해당없음(NA)
+             * @description 보전 지시 «항목»의 진행 상태 — 계획(PLANNED) · 완료(DONE) · 해당없음(NA). ⚠ 지시 전체의 상태와 «다른 축»이다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=MAINTENANCE_ORDER_ITEM_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example PLANNED
              */
             statusCode?: string;
             /**
              * Format: int64
-             * @description 가리키는 점검·보전 항목 마스터. 자유 입력 항목이면 비어 있다
+             * @description 가리키는 점검·보전 항목 마스터. 자유 입력 항목이면 비어 있다. ⭐ 기준정보 계약 EquipmentInspectionItem 의 equipmentInspectionItemId 를 그대로 싣는다 — 부여 조회 GET /mdm/equipments/{equipmentId}/inspection-items 의 effective[] 가 주는 그 값이고, «이름만 다르고 같은 것»이다(그 응답에 다른 후보는 없다). ⛔ 같은 파일의 CollectionChannel.inspectionItemId 와 이름이 같지만 «다른 표»다 — 그쪽은 품질 «검사» 항목(InspectionItemSpec.inspectionItemSpecId)이다. 「점검(설비) ≠ 검사(품질)」은 W-05-12 §4-C-1 이 테이블을 나눈 기준이다(소유·대상·게이트가 다르다). 근거: omf-mes#338
              * @example 1001
              */
             inspectionItemId?: number | null;
@@ -42349,7 +43610,7 @@ export interface components {
         MaintenanceOrderItemInput: {
             /**
              * Format: int64
-             * @description 점검·보전 항목 마스터를 가리킨다. targetTypeCode=EQUIPMENT 이면 반드시 채운다 — 부여가 없으면 발행할 수 없다. 근거: W-05-05 §5-B
+             * @description 점검·보전 항목 마스터를 가리킨다. targetTypeCode=EQUIPMENT 이면 반드시 채운다 — 부여가 없으면 발행할 수 없다. 근거: W-05-05 §5-B. ⭐ 기준정보 계약 EquipmentInspectionItem 의 equipmentInspectionItemId 를 그대로 싣는다 — 부여 조회 GET /mdm/equipments/{equipmentId}/inspection-items 의 effective[] 가 주는 그 값이고, «이름만 다르고 같은 것»이다(그 응답에 다른 후보는 없다). ⛔ 같은 파일의 CollectionChannel.inspectionItemId 와 이름이 같지만 «다른 표»다 — 그쪽은 품질 «검사» 항목(InspectionItemSpec.inspectionItemSpecId)이다. 「점검(설비) ≠ 검사(품질)」은 W-05-12 §4-C-1 이 테이블을 나눈 기준이다(소유·대상·게이트가 다르다). 근거: omf-mes#338
              * @example 1001
              */
             inspectionItemId?: number | null;
@@ -42366,7 +43627,7 @@ export interface components {
         };
         MaintenanceOrderTrigger: {
             /**
-             * @description 고장(BREAKDOWN) · 점검 불합격(INSPECTION_NG) · 주기 도래(PM_DUE)
+             * @description 보전 지시를 촉발한 것 — 고장(BREAKDOWN) · 점검 불합격(INSPECTION_NG) · 주기 도래(PM_DUE). ⛔ 연계 정의의 triggerTypeCode(CD-TRIGGER-TYPE · EVENT·TIME_SCHEDULE)와 이름만 같고 축이 다르다. ⭐ 이 조합이 maintenanceTypeCode 를 정한다 — 고장이 하나라도 섞이면 사후로 고정된다(W-05-05 §5-3). 값 목록은 GET /mdm/code-values?codeGroupCode=MAINTENANCE_ORDER_TRIGGER_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example BREAKDOWN
              */
             triggerTypeCode: string;
@@ -42382,10 +43643,11 @@ export interface components {
              */
             snapshotNote?: string | null;
             /**
-             * @description 먼저 도달한 축 — SHOT 또는 DATE. triggerTypeCode=PM_DUE 일 때만 채운다. 근거: W-05-02 §5-A
+             * @description 먼저 도달한 축 — 타발수(SHOT) · 날짜(DATE). 둘 다 쓰는 툴이 있어 「왜 도래했는가」를 화면이 밝힌다. 도래하지 않았으면 null 이다. ⚠ pmTriggerTypeCode 가 «무엇으로 판정할지»라면 이 칸은 «무엇이 먼저 걸렸는지»다. 근거: W-05-02 §5-A
              * @example SHOT
+             * @enum {string|null}
              */
-            pmDueAxisCode?: string | null;
+            pmDueAxisCode?: "SHOT" | "DATE" | null;
             /**
              * Format: int64
              * @description 발행 시점의 누계 타발수 스냅샷. 뒤에 리셋되므로 얼려 둔다. 근거: W-05-02 §5-2
@@ -42408,10 +43670,11 @@ export interface components {
             /** @example MO-2026-0141 */
             maintenanceOrderNo?: string;
             /**
-             * @description 설비(EQUIPMENT) 또는 툴(MOLD)
+             * @description 보전 대상 유형 — EQUIPMENT → 설비(계측기 포함 · 계측기는 설비의 한 종류라 equipmentId 를 그대로 쓴다) · MOLD → 툴·금형. ⭐ 값 문자열을 확정했다(2026-09-02). ⛔ 다형 참조 판별자라 고객이 늘릴 수 없다(A-10 · A-16)
              * @example EQUIPMENT
+             * @enum {string}
              */
-            targetTypeCode: string;
+            targetTypeCode: "EQUIPMENT" | "MOLD";
             /**
              * Format: int64
              * @example 1001
@@ -42420,10 +43683,11 @@ export interface components {
             /** @example PRS-01 */
             targetCode?: string;
             /**
-             * @description 사후(CORRECTIVE) 또는 예방(PREVENTIVE) — 트리거 조합이 정한다
+             * @description 보전 유형 — 사후(CORRECTIVE) · 예방(PREVENTIVE). 트리거 조합이 정하며 사람이 고르지 않는다
              * @example CORRECTIVE
+             * @enum {string}
              */
-            maintenanceTypeCode: string;
+            maintenanceTypeCode: "CORRECTIVE" | "PREVENTIVE";
             /**
              * Format: date
              * @example 2026-08-19
@@ -42435,7 +43699,7 @@ export interface components {
              */
             assigneeUserId?: number;
             /**
-             * @description 발행(ISSUED) · 완료(DONE) · 취소(CANCELLED)
+             * @description 보전 지시의 진행 상태 — 발행(ISSUED) · 완료(DONE) · 취소(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=MAINTENANCE_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example ISSUED
              */
             statusCode: string;
@@ -42466,8 +43730,12 @@ export interface components {
             issuedAt?: string | null;
         };
         MaintenanceOrderCreate: {
-            /** @example EQUIPMENT */
-            targetTypeCode: string;
+            /**
+             * @description 보전 대상 유형 — EQUIPMENT → 설비(계측기 포함 · 계측기는 설비의 한 종류라 equipmentId 를 그대로 쓴다) · MOLD → 툴·금형. ⭐ 값 문자열을 확정했다(2026-09-02). ⛔ 다형 참조 판별자라 고객이 늘릴 수 없다(A-10 · A-16)
+             * @example EQUIPMENT
+             * @enum {string}
+             */
+            targetTypeCode: "EQUIPMENT" | "MOLD";
             /**
              * Format: int64
              * @example 1001
@@ -42512,7 +43780,7 @@ export interface components {
              * @example 게이트 부시
              */
             partName?: string | null;
-            /** @description 항목·부위별 결과. ⚠ 값 집합이 대상에 따라 다르다 — 설비 보전은 완료·미완·해당없음(MaintenanceOrderItem.statusCode 의 PLANNED·DONE·NA 와 같은 집합), 툴 예방보전은 양호·조정·교체·불가다. ⛔ 값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). ⛔ enum 으로 못박지 않는다 */
+            /** @description 보전 실적의 항목·부위별 결과. ⚠ 값 집합이 «대상에 따라 다르다» — 설비 보전은 완료·미완·해당없음, 툴 예방보전은 양호·조정·교체·불가다. ⛔ 설비 점검·계측기 이력의 resultCode 와 이름만 같고 값집합이 다르다(B-28). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=MAINTENANCE_RESULT_LINE_RESULT 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             resultCode: string;
             /**
              * @description 라인 비고
@@ -42573,8 +43841,12 @@ export interface components {
              * @example 1001
              */
             breakdownId?: number | null;
-            /** @example EQUIPMENT */
-            targetTypeCode: string;
+            /**
+             * @description 보전 대상 유형 — EQUIPMENT → 설비(계측기 포함 · 계측기는 설비의 한 종류라 equipmentId 를 그대로 쓴다) · MOLD → 툴·금형. ⭐ 값 문자열을 확정했다(2026-09-02). ⛔ 다형 참조 판별자라 고객이 늘릴 수 없다(A-10 · A-16)
+             * @example EQUIPMENT
+             * @enum {string}
+             */
+            targetTypeCode: "EQUIPMENT" | "MOLD";
             /**
              * Format: int64
              * @example 1001
@@ -42603,7 +43875,7 @@ export interface components {
              * @default false
              * @example false
              */
-            isOutsourced: boolean;
+            isOutsourced?: boolean;
             /**
              * @description 외주처 이름. ⛔ 거래처 마스터를 가리키지 않는다 — 보전 업체는 구매 협력사로 등록돼 있지 않을 가능성이 높고 등록을 강제하면 실적을 못 적는다. 근거: W-05-06 §5-5
              * @example 대성정밀
@@ -42646,8 +43918,12 @@ export interface components {
              * @example 1001
              */
             breakdownId?: number | null;
-            /** @example EQUIPMENT */
-            targetTypeCode: string;
+            /**
+             * @description 보전 대상 유형 — EQUIPMENT → 설비(계측기 포함 · 계측기는 설비의 한 종류라 equipmentId 를 그대로 쓴다) · MOLD → 툴·금형. ⭐ 값 문자열을 확정했다(2026-09-02). ⛔ 다형 참조 판별자라 고객이 늘릴 수 없다(A-10 · A-16)
+             * @example EQUIPMENT
+             * @enum {string}
+             */
+            targetTypeCode: "EQUIPMENT" | "MOLD";
             /**
              * Format: int64
              * @example 1001
@@ -42676,7 +43952,7 @@ export interface components {
              * @default false
              * @example false
              */
-            isOutsourced: boolean;
+            isOutsourced?: boolean;
             /**
              * @description 외주처 이름. ⛔ 거래처 마스터를 가리키지 않는다 — 보전 업체는 구매 협력사로 등록돼 있지 않을 가능성이 높고 등록을 강제하면 실적을 못 적는다. 근거: W-05-06 §5-5
              * @example 대성정밀
@@ -42726,7 +44002,10 @@ export interface components {
             equipmentId: number;
             /** @example PRS-01 */
             equipmentCode?: string;
-            /** @example MOLD_CHANGE */
+            /**
+             * @description 비가동 사유. 값 목록은 GET /mdm/code-values?codeGroupCode=DOWNTIME_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MOLD_CHANGE
+             */
             reasonCode: string;
             /** @example 금형 교체 */
             reasonName?: string;
@@ -42771,7 +44050,10 @@ export interface components {
              * @example 1001
              */
             equipmentId: number;
-            /** @example MOLD_CHANGE */
+            /**
+             * @description 비가동 사유. 값 목록은 GET /mdm/code-values?codeGroupCode=DOWNTIME_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MOLD_CHANGE
+             */
             reasonCode: string;
             /**
              * Format: date-time
@@ -42797,7 +44079,10 @@ export interface components {
             remarks?: string | null;
         };
         DowntimeUpdate: {
-            /** @example MOLD_CHANGE */
+            /**
+             * @description 비가동 사유. 값 목록은 GET /mdm/code-values?codeGroupCode=DOWNTIME_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MOLD_CHANGE
+             */
             reasonCode?: string;
             /**
              * Format: date-time
@@ -42816,7 +44101,10 @@ export interface components {
             remarks?: string | null;
         };
         DowntimeReasonSummary: {
-            /** @example MOLD_CHANGE */
+            /**
+             * @description 값 = `EQUIPMENT_FAILURE`·`MOLD_CHANGE`·`MATERIAL_WAIT`·`LABOR_WAIT`·`PREVENTIVE_MAINTENANCE`·`OTHER`. 값 목록은 `GET /mdm/code-values?codeGroupCode=DOWNTIME_REASON` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31).
+             * @example MOLD_CHANGE
+             */
             reasonCode: string;
             /** @example 금형 교체 */
             reasonName?: string;
@@ -42929,10 +44217,11 @@ export interface components {
              */
             shotCount: number;
             /**
-             * @description 직접 입력(DIRECT) 또는 환산(CONVERTED)
+             * @description 타발수를 어떻게 얻었나 — 직접 입력(DIRECT) · 환산(CONVERTED). ⛔ 두 갈래뿐이라 계약이 닫는다 — 환산 파라미터가 걸리는 갈래가 CONVERTED 하나다
              * @example DIRECT
+             * @enum {string}
              */
-            collectionMethodCode: string;
+            collectionMethodCode: "DIRECT" | "CONVERTED";
             /**
              * Format: double
              * @example 5000
@@ -42978,8 +44267,12 @@ export interface components {
              * @example 1250
              */
             shotCount: number;
-            /** @example DIRECT */
-            collectionMethodCode: string;
+            /**
+             * @description 타발수를 어떻게 얻었나 — 직접 입력(DIRECT) · 환산(CONVERTED). ⛔ 두 갈래뿐이라 계약이 닫는다 — 환산 파라미터가 걸리는 갈래가 CONVERTED 하나다
+             * @example DIRECT
+             * @enum {string}
+             */
+            collectionMethodCode: "DIRECT" | "CONVERTED";
             /**
              * Format: double
              * @example 5000
@@ -43021,7 +44314,7 @@ export interface components {
             unitCode?: string;
             /**
              * Format: int64
-             * @description 연결된 검사 항목
+             * @description 연결된 «검사» 항목 — 품질 검사 항목 규격(InspectionItemSpec.inspectionItemSpecId)을 가리킨다. ⛔ 같은 파일의 InspectionLine.inspectionItemId 와 이름이 같지만 «다른 표»다 — 그쪽은 설비 «점검» 항목(기준정보 계약 EquipmentInspectionItem.equipmentInspectionItemId)이다. 「점검(설비) ≠ 검사(품질)」은 W-05-12 §4-C-1 이 테이블을 나눈 기준이다. 근거: omf-mes#338
              * @example 1001
              */
             inspectionItemId?: number | null;
@@ -43058,7 +44351,7 @@ export interface components {
              */
             inspectionItemCode?: string | null;
             /**
-             * @description 연결된 검사 항목의 «저장» 단위. 이 행의 unitCode(수신값의 단위)와 다르면 화면이 경고한다 — ⛔ 자동 변환하지 않는다(W-05-07 §5-5 · A-8). 이 값이 없으면 그 경고를 판정할 수 없다
+             * @description 연결된 검사 항목의 «저장» 단위. 이 행의 unitCode(수신값의 단위)와 다르면 화면이 경고한다 — ⛔ 자동 변환하지 않는다(W-05-07 §5-5 · A-8). 이 값이 없으면 그 경고를 판정할 수 없다.
              * @example SECOND
              */
             inspectionItemUnitCode?: string | null;
@@ -43095,6 +44388,7 @@ export interface components {
             unitCode?: string;
             /**
              * Format: int64
+             * @description 연결된 «검사» 항목 — 품질 검사 항목 규격(InspectionItemSpec.inspectionItemSpecId)을 가리킨다. ⛔ 같은 파일의 InspectionLine.inspectionItemId 와 이름이 같지만 «다른 표»다 — 그쪽은 설비 «점검» 항목(기준정보 계약 EquipmentInspectionItem.equipmentInspectionItemId)이다. 「점검(설비) ≠ 검사(품질)」은 W-05-12 §4-C-1 이 테이블을 나눈 기준이다. 근거: omf-mes#338
              * @example 1001
              */
             inspectionItemId?: number | null;
@@ -43118,6 +44412,7 @@ export interface components {
             unitCode?: string;
             /**
              * Format: int64
+             * @description 연결된 «검사» 항목 — 품질 검사 항목 규격(InspectionItemSpec.inspectionItemSpecId)을 가리킨다. ⛔ 같은 파일의 InspectionLine.inspectionItemId 와 이름이 같지만 «다른 표»다 — 그쪽은 설비 «점검» 항목(기준정보 계약 EquipmentInspectionItem.equipmentInspectionItemId)이다. 「점검(설비) ≠ 검사(품질)」은 W-05-12 §4-C-1 이 테이블을 나눈 기준이다. 근거: omf-mes#338
              * @example 1001
              */
             inspectionItemId?: number | null;
@@ -43156,7 +44451,7 @@ export interface components {
              */
             calibrationId: number;
             /**
-             * @description 계측기 이력 유형. 확정된 유형은 넷이다 — 검교정(CALIBRATION) · 점검(CHECK) · 수리 · 폐기. ⚠ 뒤 둘의 코드값 이름은 아직 확정되지 않았다 — 관리자 설정형이라 값이 늘 수 있고 공통코드 마스터(W-06-06)가 정한다. ⚠ 「열린 수리 이력이 없다」가 설비 사용 가부 판정식의 한 항이므로 수리 유형을 뺄 수 없다(W-05-11 §5-2). ⛔ enum 으로 좁히지 않는다
+             * @description 계측기 이력 유형 — 검교정(CALIBRATION) · 점검(CHECK) · 그 밖(고객이 늘린다). ⭐ 2026-09-02 사용자 결정으로 «시스템이 이름으로 지목하는 값은 CALIBRATION 하나»가 됐다 — 설비 마스터의 검교정일 갱신과 agencyTypeCode 표시가 그것에 걸린다. ⛔ 사용 가부 판정은 더 이상 이 값을 읽지 않는다 — 「열린 수리 이력이 없다」를 blocksUse + clearedAt 로 바꿨다(W-05-11 §5-2). 그래서 「수리」·「폐기」의 코드 문자열을 우리가 정할 필요가 없고, 계약이 원래 적은 「관리자 설정형」이 그제서야 성립한다. 값 목록은 GET /mdm/code-values?codeGroupCode=CALIBRATION_HISTORY_TYPE 로 받는다.
              * @example CALIBRATION
              */
             historyTypeCode: string;
@@ -43166,13 +44461,13 @@ export interface components {
              */
             performedOn: string;
             /**
-             * @description 이력 결과. ⚠ 값 집합이 이력 유형마다 다르다 — 검교정은 합격·조정 후 합격·불합격, 점검은 정상·이상, 수리는 완료·불가다. 화면은 historyTypeCode 로 걸러 보인다. ⚠ 합격(PASS)·불합격(FAIL) 밖의 코드값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). ⭐ 설비 마스터의 검교정일 갱신은 검교정 유형의 합격 계열에서만 일어난다. ⛔ enum 으로 못박지 않는다. 근거: W-05-10 §5-2·§5-3
+             * @description 계측기 이력의 결과. ⚠ 값 집합이 «이력 유형마다 다르다» — 검교정은 합격·조정 후 합격·불합격, 점검은 정상·이상, 수리는 완료·불가다. 화면은 historyTypeCode 로 걸러 보인다. ⭐ 설비 마스터의 검교정일 갱신은 «검교정 유형의 합격 계열»에서만 일어난다. ⛔ 설비 점검의 resultCode(합격·불합격)와 이름만 같고 값집합이 다르다 — 한 그룹으로 묶으면 화면이 남의 선택지를 본다(B-28). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=CALIBRATION_RESULT 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example PASS
              */
             resultCode: string;
             /** @example CAL-2026-0031 */
             certificateNo?: string | null;
-            /** @description 교정 기관 구분 — 내부 교정인가 외부 기관 교정인가. historyTypeCode 가 검교정일 때만 쓴다. ⛔ 값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). 근거: W-05-10 §3-2·§5-4 */
+            /** @description 교정 기관 구분 — 내부 교정(INTERNAL) · 외부 기관 교정(EXTERNAL). historyTypeCode 가 검교정일 때만 쓴다. ⚠ 외부 기관이면 agencyName 이 필수이고 performedByUserId 를 비운다(A-2 짝 제약). 근거: W-05-10 §3-2·§5-4. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=CALIBRATION_AGENCY_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             agencyTypeCode?: string | null;
             /**
              * @description 교정 기관 이름. 외부 기관 교정일 때 필수다 — 짝 제약은 화면이 진다(공유계약 A-2). ⛔ 거래처 마스터를 가리키지 않는다 — 교정 기관은 구매 협력사로 등록돼 있지 않을 수 있고 등록을 강제하면 이력을 못 적는다. 근거: W-05-10 §5-4
@@ -43211,10 +44506,22 @@ export interface components {
              * @example 정정 재검교정 — 1차 성적서 오기
              */
             remarks?: string | null;
+            /**
+             * @description 이 이력이 해소될 때까지 «이 계측기를 쓸 수 없게» 막는가. ⭐ 2026-09-02 신설 (사용자 결정) — 전에는 W-05-11 §5-2 가 「열린 «수리» 이력이 없다」로 historyTypeCode 의 «뜻»을 읽었는데, ⛔ 그 방식은 두 가지가 깨져 있었다: ① 이력에 열림/닫힘 축이 아예 없어 「한 번이라도 수리하면 영원히 사용 불가」가 됐고 ② 「수리」의 코드 문자열이 고객 몫이라 우리 판정식이 «고객이 지을 이름»을 지목하고 있었다. ⭐ 사람이 직접 정한다 — 고장·수리는 달력이 아니라 사람이 만드는 사건이라 파생으로 둘 이유가 없다(만료는 다르다 — 그쪽은 달력이 만들어 파생으로 남긴다).
+             * @default false
+             * @example false
+             */
+            blocksUse: boolean;
+            /**
+             * Format: date-time
+             * @description 사용 차단이 해소된 시각. 비어 있으면 «아직 막고 있다». ⭐ 구간 형 리소스의 그 방식이다 — LOT 보류(released_at) · 작업 세션(:end) · repair-executions?open=true 와 같다. ⚠ blocksUse 가 false 면 의미가 없다.
+             * @example null
+             */
+            clearedAt?: string | null;
         };
         CalibrationCreate: {
             /**
-             * @description 계측기 이력 유형. 확정된 유형은 넷이다 — 검교정(CALIBRATION) · 점검(CHECK) · 수리 · 폐기. ⚠ 뒤 둘의 코드값 이름은 아직 확정되지 않았다 — 관리자 설정형이라 값이 늘 수 있고 공통코드 마스터(W-06-06)가 정한다. ⚠ 「열린 수리 이력이 없다」가 설비 사용 가부 판정식의 한 항이므로 수리 유형을 뺄 수 없다(W-05-11 §5-2). ⛔ enum 으로 좁히지 않는다
+             * @description 계측기 이력 유형 — 검교정(CALIBRATION) · 점검(CHECK) · 그 밖(고객이 늘린다). ⭐ 2026-09-02 사용자 결정으로 «시스템이 이름으로 지목하는 값은 CALIBRATION 하나»가 됐다 — 설비 마스터의 검교정일 갱신과 agencyTypeCode 표시가 그것에 걸린다. ⛔ 사용 가부 판정은 더 이상 이 값을 읽지 않는다 — 「열린 수리 이력이 없다」를 blocksUse + clearedAt 로 바꿨다(W-05-11 §5-2). 그래서 「수리」·「폐기」의 코드 문자열을 우리가 정할 필요가 없고, 계약이 원래 적은 「관리자 설정형」이 그제서야 성립한다. 값 목록은 GET /mdm/code-values?codeGroupCode=CALIBRATION_HISTORY_TYPE 로 받는다.
              * @example CALIBRATION
              */
             historyTypeCode: string;
@@ -43224,13 +44531,13 @@ export interface components {
              */
             performedOn: string;
             /**
-             * @description 이력 결과. ⚠ 값 집합이 이력 유형마다 다르다 — 검교정은 합격·조정 후 합격·불합격, 점검은 정상·이상, 수리는 완료·불가다. 화면은 historyTypeCode 로 걸러 보인다. ⚠ 합격(PASS)·불합격(FAIL) 밖의 코드값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). ⭐ 설비 마스터의 검교정일 갱신은 검교정 유형의 합격 계열에서만 일어난다. ⛔ enum 으로 못박지 않는다. 근거: W-05-10 §5-2·§5-3
+             * @description 계측기 이력의 결과. ⚠ 값 집합이 «이력 유형마다 다르다» — 검교정은 합격·조정 후 합격·불합격, 점검은 정상·이상, 수리는 완료·불가다. 화면은 historyTypeCode 로 걸러 보인다. ⭐ 설비 마스터의 검교정일 갱신은 «검교정 유형의 합격 계열»에서만 일어난다. ⛔ 설비 점검의 resultCode(합격·불합격)와 이름만 같고 값집합이 다르다 — 한 그룹으로 묶으면 화면이 남의 선택지를 본다(B-28). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=CALIBRATION_RESULT 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example PASS
              */
             resultCode: string;
             /** @example CAL-2026-0031 */
             certificateNo?: string | null;
-            /** @description 교정 기관 구분 — 내부 교정인가 외부 기관 교정인가. historyTypeCode 가 검교정일 때만 쓴다. ⛔ 값 이름은 아직 확정되지 않았다 — 공통코드 마스터(W-06-06)가 정하며 그때까지 화면은 선택칸을 비활성 + 사유로 둔다(공유계약 G-2). 근거: W-05-10 §3-2·§5-4 */
+            /** @description 교정 기관 구분 — 내부 교정(INTERNAL) · 외부 기관 교정(EXTERNAL). historyTypeCode 가 검교정일 때만 쓴다. ⚠ 외부 기관이면 agencyName 이 필수이고 performedByUserId 를 비운다(A-2 짝 제약). 근거: W-05-10 §3-2·§5-4. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=CALIBRATION_AGENCY_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             agencyTypeCode?: string | null;
             /**
              * @description 교정 기관 이름. 외부 기관 교정일 때 필수다 — 짝 제약은 화면이 진다(공유계약 A-2). ⛔ 거래처 마스터를 가리키지 않는다 — 교정 기관은 구매 협력사로 등록돼 있지 않을 수 있고 등록을 강제하면 이력을 못 적는다. 근거: W-05-10 §5-4
@@ -43261,6 +44568,12 @@ export interface components {
              * @example 정정 재검교정 — 1차 성적서 오기
              */
             remarks?: string | null;
+            /**
+             * @description 이 이력이 해소될 때까지 «이 계측기를 쓸 수 없게» 막는가. ⭐ 2026-09-02 신설 (사용자 결정) — 전에는 W-05-11 §5-2 가 「열린 «수리» 이력이 없다」로 historyTypeCode 의 «뜻»을 읽었는데, ⛔ 그 방식은 두 가지가 깨져 있었다: ① 이력에 열림/닫힘 축이 아예 없어 「한 번이라도 수리하면 영원히 사용 불가」가 됐고 ② 「수리」의 코드 문자열이 고객 몫이라 우리 판정식이 «고객이 지을 이름»을 지목하고 있었다. ⭐ 사람이 직접 정한다 — 고장·수리는 달력이 아니라 사람이 만드는 사건이라 파생으로 둘 이유가 없다(만료는 다르다 — 그쪽은 달력이 만들어 파생으로 남긴다). ⚠ 선택이다 — 보내지 않으면 서버가 false 로 기록한다. 요청 스키마에 required 를 더하면 안 보내던 쪽이 400 을 받는다.
+             * @default false
+             * @example false
+             */
+            blocksUse?: boolean;
         };
         /** @description 설비별 묶음 한 줄. 근거: W-05-08 §4 ③ 설비별 탭 */
         DowntimeEquipmentSummary: {
@@ -43310,9 +44623,15 @@ export interface components {
         IfMatchVersion: string;
         /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
         IfMatchVersionOptional: string;
-        /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+        /**
+         * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+         * @example 100027
+         */
         WorkerNo: string;
-        /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+        /**
+         * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+         * @example 100027
+         */
         WorkerNoOptional: string;
     };
     requestBodies: never;
@@ -43324,9 +44643,10 @@ export interface operations {
     listDocumentIssues: {
         parameters: {
             query?: {
-                documentTypeCode?: string;
-                /** @description targetId 와 함께 준다. 하나만 주면 400 이다. */
-                targetTypeCode?: string;
+                /** @description 출력물 종류로 거른다. 값은 DocumentIssue.documentTypeCode 와 같은 9종이다. */
+                documentTypeCode?: "MATERIAL_LOT_LABEL" | "GOODS_ISSUE_QR" | "PRODUCTION_LOT_LABEL" | "IDENTIFICATION_TAG" | "PACKING_LABEL" | "DELIVERY_LABEL" | "CERTIFICATE_OF_ANALYSIS" | "TOOL_LABEL" | "LOCATION_LABEL";
+                /** @description targetId 와 함께 준다. 하나만 주면 400 이다. 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 값 문자열을 확정했다(2026-09-02) — 뜻 일곱은 §3-7 대응표가 이미 못박았고 남은 것은 문자열뿐이었다(공유계약 §G — 확정된 뜻을 영문 SNAKE 로). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다 */
+                targetTypeCode?: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
                 targetId?: number;
                 /** @description 소속 LOT 로 찾는다. 개체 단위 출력물을 LOT 단위로 모아 볼 때 쓴다. */
                 lotId?: number;
@@ -43368,7 +44688,10 @@ export interface operations {
             header: {
                 /** @description 전 쓰기 API 필수. */
                 "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                /** @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 */
+                /**
+                 * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                 * @example 100027
+                 */
                 "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
             };
             path?: never;
@@ -43498,7 +44821,10 @@ export interface operations {
             header: {
                 /** @description 전 쓰기 API 필수. */
                 "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                /** @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 */
+                /**
+                 * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
+                 * @example 100027
+                 */
                 "X-Worker-No": components["parameters"]["WorkerNo"];
             };
             path: {
@@ -43551,7 +44877,7 @@ export interface operations {
                 /** @description 주지 않으면 요청 단말 기준이다. */
                 terminalId?: number;
                 /** @description 이 종류를 찍을 수 있는 프린터만 거른다. */
-                documentTypeCode?: string;
+                documentTypeCode?: "MATERIAL_LOT_LABEL" | "GOODS_ISSUE_QR" | "PRODUCTION_LOT_LABEL" | "IDENTIFICATION_TAG" | "PACKING_LABEL" | "DELIVERY_LABEL" | "CERTIFICATE_OF_ANALYSIS" | "TOOL_LABEL" | "LOCATION_LABEL";
             };
             header?: never;
             path?: never;
@@ -43574,10 +44900,10 @@ export interface operations {
         parameters: {
             query: {
                 /**
-                 * @description 대상 유형. 한 번에 한 유형만 묻는다 — 유형이 섞이면 `targetId` 의 뜻이 갈린다.
+                 * @description 대상 유형. 한 번에 한 유형만 묻는다 — 유형이 섞이면 targetId 의 뜻이 갈린다. 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 값 문자열을 확정했다(2026-09-02) — 뜻 일곱은 §3-7 대응표가 이미 못박았고 남은 것은 문자열뿐이었다(공유계약 §G — 확정된 뜻을 영문 SNAKE 로). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다
                  * @example HANDLING_UNIT
                  */
-                targetTypeCode: string;
+                targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
                 /**
                  * @description 대상 식별자 목록. 발행 상한과 같은 1000 이다.
                  * @example [
@@ -43589,9 +44915,9 @@ export interface operations {
                 targetIds: number[];
                 /**
                  * @description 주면 그 종류만 센다. 한 대상에 라벨과 성적서가 따로 붙을 수 있다.
-                 * @example LABEL
+                 * @example PACKING_LABEL
                  */
-                documentTypeCode?: string;
+                documentTypeCode?: "MATERIAL_LOT_LABEL" | "GOODS_ISSUE_QR" | "PRODUCTION_LOT_LABEL" | "IDENTIFICATION_TAG" | "PACKING_LABEL" | "DELIVERY_LABEL" | "CERTIFICATE_OF_ANALYSIS" | "TOOL_LABEL" | "LOCATION_LABEL";
             };
             header?: never;
             path?: never;
@@ -43616,6 +44942,52 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
+            };
+        };
+    };
+    clearCalibrationBlock: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description 전 쓰기 API 필수. */
+                "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                calibrationId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 해소됨 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Calibration"];
+                };
+            };
+            /** @description 막고 있지 않은 이력이다 */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 없는 이력이다 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 이미 해소됐다 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

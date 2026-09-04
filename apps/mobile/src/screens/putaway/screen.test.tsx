@@ -14,10 +14,16 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { PutawayScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -141,6 +147,7 @@ const chooseTask = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 beforeEach(() => {
+  held.failWrite = null;
   store.clear();
   localStorage.clear();
 });
@@ -257,18 +264,13 @@ describe('적치·입고 완료 화면', () => {
   it('완료는 실제 위치와 업무 기준일을 실어 지시 경로로 보낸다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    const bodies: unknown[] = [];
     mount([
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete' &&
           req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
-          void req
-            .clone()
-            .json()
-            .then((body: unknown) => bodies.push(body));
+          seen.push(req.clone());
           return jsonResponse(task({ actualLocationId: 5 }));
         },
       },
@@ -285,15 +287,61 @@ describe('적치·입고 완료 화면', () => {
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
 
-    await waitFor(() => {
-      expect(bodies).toHaveLength(1);
-    });
-
-    const body = bodies[0] as { actualLocationId: number; confirmedNoRule: boolean; businessDate: string };
+    
+    const body = (await seen[0]!.json()) as { actualLocationId: number; confirmedNoRule: boolean; businessDate: string };
 
     expect(body.actualLocationId).toBe(5);
     expect(body.confirmedNoRule).toBe(false);
     expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(await screen.findByText('적치를 기록했습니다')).toBeTruthy();
+  });
+  const completeRoute = (seen: Request[]): StubRoute => ({
+    match: (req) =>
+      new URL(req.url).pathname === '/logistics/putaway-tasks/90:complete' && req.method === 'POST',
+    respond: (req) => {
+      seen.push(req.clone());
+      return jsonResponse(task({ actualLocationId: 5 }));
+    },
+  });
+
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 상태로 잠그면 다시 그리기 전의 연타를 놓쳐, 멱등키가 다른
+   * 두 건이 담기고 서버가 흡수하지 못해 같은 적치가 두 번 기록된다.
+   */
+  it('같은 틱에 완료를 세 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([completeRoute(seen)]);
+    await chooseTask(user);
+
+    scan('A-01-03');
+    await screen.findByText('권장 위치와 같습니다');
+
+    const button = screen.getByRole('button', { name: '적치 완료' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('적치를 기록했습니다');
+    expect(seen).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 기록된 줄 안다. */
+  it('담아 두지 못하면 기록되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([completeRoute(seen)]);
+    await chooseTask(user);
+
+    scan('A-01-03');
+    await screen.findByText('권장 위치와 같습니다');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '적치 완료' }));
+
+    expect(await screen.findByText('적치를 담아 두지 못했습니다')).toBeTruthy();
+    expect(screen.queryByText('적치를 기록했습니다')).toBeNull();
+    expect(seen).toHaveLength(0);
   });
 });

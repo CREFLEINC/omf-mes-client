@@ -80,23 +80,31 @@ export const ResultOverview = ({
 
   if (isBlocked) {
     return (
-      <EmptyState
-        size="sm"
-        title={
-          queriesEnabled
-            ? '기간을 선택하세요'
-            : validationPending
-              ? '조회 조건 이름을 확인하는 중입니다'
-              : '주소의 날짜 또는 코드 조건이 유효하지 않습니다'
-        }
-        description={
-          queriesEnabled
-            ? '조회 기간은 필수입니다.'
-            : validationPending
-              ? '준비가 끝날 때까지 조회 요청을 보내지 않습니다.'
-              : '날짜를 확인하고 준비된 검사유형·판정 코드로 다시 조회하세요.'
-        }
-      />
+      <section
+        className="pane inspection-results-pane inspection-results-empty-pane"
+        aria-labelledby="inspection-results-title"
+      >
+        <h2 className="pane-title" id="inspection-results-title">
+          검사실적 요약
+        </h2>
+        <EmptyState
+          size="sm"
+          title={
+            queriesEnabled
+              ? '기간을 선택하세요'
+              : validationPending
+                ? '조회 조건 이름을 확인하는 중입니다'
+                : '주소의 날짜 또는 코드 조건이 유효하지 않습니다'
+          }
+          description={
+            queriesEnabled
+              ? '조회 기간은 필수입니다.'
+              : validationPending
+                ? '준비가 끝날 때까지 조회 요청을 보내지 않습니다.'
+                : '날짜를 확인하고 준비된 검사유형·판정 코드로 다시 조회하세요.'
+          }
+        />
+      </section>
     );
   }
 
@@ -152,8 +160,10 @@ export const ResultOverview = ({
     },
   ];
   return (
-    <section aria-labelledby="inspection-results-title">
-      <h2 id="inspection-results-title">검사실적 요약</h2>
+    <section className="pane inspection-results-pane" aria-labelledby="inspection-results-title">
+      <h2 className="pane-title" id="inspection-results-title">
+        검사실적 요약
+      </h2>
       <p className="field-note">
         {filters.finalRoundOnly
           ? '최종 회차만 집계합니다.'
@@ -164,7 +174,7 @@ export const ResultOverview = ({
         queriesEnabled={queriesEnabled}
         onViewExpiredCalibration={onViewExpiredCalibration}
       />
-      <h3>검사 결과</h3>
+      <h3 className="inspection-results-subtitle">검사 결과</h3>
       {(list.isPending || list.isPlaceholderData) && (
         <div role="status" aria-label="검사 결과 페이지를 불러오는 중">
           <SkeletonText lines={3} />
@@ -183,34 +193,43 @@ export const ResultOverview = ({
       )}
       {!list.isError && !list.isPlaceholderData && list.data !== undefined && (
         <>
-          <Table
-            density="compact"
-            caption="검사 결과 목록"
-            columns={columns}
-            rows={toInspectionResultTreeRows(list.data.items)}
-            getRowId={(row) => String(row.result.inspectionResultId)}
-            sort={toTableSort(sort)}
-            onSortChange={(next) => onSortChange(toServerSort(next))}
-            empty={<EmptyState size="sm" title="조건에 맞는 검사 결과가 없습니다" />}
-          />
-          <nav className="form-actions" aria-label="검사 결과 쪽 이동">
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={list.data.page.page <= 1}
-              onClick={() => onPageChange(list.data.page.page - 1)}
-            >
-              이전 쪽
-            </Button>
-            <Button
-              variant="outlined"
-              size="sm"
-              disabled={list.data.page.page * list.data.page.size >= list.data.page.total}
-              onClick={() => onPageChange(list.data.page.page + 1)}
-            >
-              다음 쪽
-            </Button>
-          </nav>
+          <div className="wide-table inspection-results-table" aria-busy={list.isFetching}>
+            <Table
+              density="compact"
+              caption="검사 결과 목록"
+              columns={columns}
+              rows={toInspectionResultTreeRows(list.data.items)}
+              getRowId={(row) => String(row.result.inspectionResultId)}
+              sort={toTableSort(sort)}
+              onSortChange={(next) => onSortChange(toServerSort(next))}
+              empty={<EmptyState size="sm" title="조건에 맞는 검사 결과가 없습니다" />}
+            />
+          </div>
+          <div className="inspection-results-list-footer">
+            <p className="field-note">
+              총 {new Intl.NumberFormat('ko-KR').format(list.data.page.total)}건 ·{' '}
+              {list.data.page.page} /{' '}
+              {Math.max(1, Math.ceil(list.data.page.total / Math.max(1, list.data.page.size)))}쪽
+            </p>
+            <nav className="form-actions" aria-label="검사 결과 쪽 이동">
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={list.data.page.page <= 1}
+                onClick={() => onPageChange(list.data.page.page - 1)}
+              >
+                이전 쪽
+              </Button>
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={list.data.page.page * list.data.page.size >= list.data.page.total}
+                onClick={() => onPageChange(list.data.page.page + 1)}
+              >
+                다음 쪽
+              </Button>
+            </nav>
+          </div>
         </>
       )}
     </section>

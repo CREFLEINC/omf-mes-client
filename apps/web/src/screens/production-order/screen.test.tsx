@@ -96,7 +96,7 @@ const normalRoutes: StubRoute[] = [
           itemName: 'Synthetic item',
           itemTypeCode: 'MATERIAL',
           baseUomId: 8101,
-          lotControlTypeCode: 'NONE',
+          lotControlled: false,
           serialControlTypeCode: 'NONE',
           inspectionRequired: false,
           fifoPolicyCode: 'FIFO',
@@ -200,6 +200,10 @@ describe('ProductionOrderScreen', () => {
     expect(screen.getByRole('link', { name: t.actions.productionPlan })).toHaveAttribute(
       'href',
       '/production/production-plans?productionOrderId=701',
+    );
+    expect(screen.getByRole('heading', { name: t.panes.filters })).toBeInTheDocument();
+    expect(screen.getByLabelText(t.panes.basic).parentElement).toHaveClass(
+      'production-order-detail-grid',
     );
   });
 

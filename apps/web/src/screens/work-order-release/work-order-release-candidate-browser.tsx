@@ -109,9 +109,15 @@ export const WorkOrderReleaseCandidateBrowser = ({
       {messages.httpError.description}
     </AlertBanner>
   ) : null;
+  const selection = renderSelection?.({
+    selectedWorkOrderId: state.selectedWorkOrderId,
+    clearSelection: () => {
+      dispatch({ type: 'CLEAR_SELECTION' });
+    },
+  });
 
   return (
-    <div className="screen-stack">
+    <div className="work-order-release-workspace">
       <WorkOrderReleaseFilterBar
         appliedFilters={state.appliedFilters}
         productionLineOptions={lookups.productionLineOptions}
@@ -125,25 +131,24 @@ export const WorkOrderReleaseCandidateBrowser = ({
           dispatch({ type: 'RESET' });
         }}
       />
-      <WorkOrderReleaseCandidateListPane
-        rows={rows}
-        selectedWorkOrderId={state.selectedWorkOrderId}
-        isLoading={candidatesQuery.isFetching || itemNames.isLoading}
-        loadError={loadError}
-        page={page}
-        onSelect={(workOrderId) => {
-          dispatch({ type: 'SELECT', workOrderId });
-        }}
-        onChangePage={(nextPage) => {
-          dispatch({ type: 'CHANGE_PAGE', page: nextPage });
-        }}
-      />
-      {renderSelection?.({
-        selectedWorkOrderId: state.selectedWorkOrderId,
-        clearSelection: () => {
-          dispatch({ type: 'CLEAR_SELECTION' });
-        },
-      })}
+      <div
+        className={`work-order-release-content${state.selectedWorkOrderId === null ? '' : ' has-selection'}`}
+      >
+        <WorkOrderReleaseCandidateListPane
+          rows={rows}
+          selectedWorkOrderId={state.selectedWorkOrderId}
+          isLoading={candidatesQuery.isFetching || itemNames.isLoading}
+          loadError={loadError}
+          page={page}
+          onSelect={(workOrderId) => {
+            dispatch({ type: 'SELECT', workOrderId });
+          }}
+          onChangePage={(nextPage) => {
+            dispatch({ type: 'CHANGE_PAGE', page: nextPage });
+          }}
+        />
+        <div className="work-order-release-detail">{selection}</div>
+      </div>
     </div>
   );
 };

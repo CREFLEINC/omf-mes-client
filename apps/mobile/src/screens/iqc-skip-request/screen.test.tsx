@@ -9,10 +9,16 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { IqcSkipRequestScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -64,6 +70,7 @@ interface RouteOptions {
   pending?: ReturnType<typeof approval>[];
   mine?: ReturnType<typeof approval>[];
   seen?: URL[];
+  asked?: Request[];
 }
 
 const routes = (options: RouteOptions = {}) => [
@@ -93,6 +100,7 @@ const routes = (options: RouteOptions = {}) => [
     respond: (request: Request) => {
       const url = new URL(request.url);
       options.seen?.push(url);
+      options.asked?.push(request.clone());
       const items =
         url.searchParams.get('pendingOnly') === 'true'
           ? (options.pending ?? [])
@@ -139,6 +147,7 @@ const createRoute = (respond: (request: Request) => Response) => ({
 });
 
 beforeEach(() => {
+  held.failWrite = null;
   store.clear();
 });
 
@@ -212,16 +221,13 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
   it('계약 경로로 사유만 보낸다', async () => {
     const user = userEvent.setup();
-    const bodies: unknown[] = [];
     const seen: URL[] = [];
+    const sent: Request[] = [];
     mount(
       [
         createRoute((request) => {
           seen.push(new URL(request.url));
-          void request
-            .clone()
-            .json()
-            .then((body: unknown) => bodies.push(body));
+          sent.push(request.clone());
           return jsonResponse({ approvalRequestId: 91 }, { status: 202 });
         }),
       ],
@@ -236,8 +242,9 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
     expect(await screen.findByText('요청했습니다')).toBeInTheDocument();
     await waitFor(() => {
-      expect(bodies).toEqual([{ reason: '라인 정지 임박' }]);
+      expect(sent).toHaveLength(1);
     });
+    expect(await sent[0]!.json()).toEqual({ reason: '라인 정지 임박' });
     expect(seen[0]?.pathname).toBe('/trace/lots/7:request-iqc-skip');
   });
 
@@ -324,6 +331,30 @@ describe('긴급 IQC 생략 요청 화면', () => {
     expect(asked?.searchParams.get('targetId')).toBe('7');
   });
 
+  /*
+   * 이 셸에는 계정 로그인이 없어 서버가 상신자를 풀 근거가 사번뿐이다. 한 단말을 여러
+   * 사람이 교대로 쓰므로 없이 부르면 남이 올린 요청이 섞이고, 목록이 비는 것이 아니라
+   * 채워진 채로 틀려 화면으로는 보이지 않는다.
+   */
+  it('내가 올린 요청을 물을 때 사번을 싣는다', async () => {
+    const asked: Request[] = [];
+    mount([], { mine: [approval()], asked });
+
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    await waitFor(() => {
+      expect(
+        asked.some((request) => new URL(request.url).searchParams.get('requestedByMe') === 'true'),
+      ).toBe(true);
+    });
+
+    const mineRequest = asked.find(
+      (request) => new URL(request.url).searchParams.get('requestedByMe') === 'true',
+    );
+
+    expect(mineRequest?.headers.get('X-Worker-No')).toBe('900028');
+  });
+
   it('내가 올린 요청을 상태와 함께 보인다', async () => {
     mount([], { mine: [approval()] });
 
@@ -335,5 +366,57 @@ describe('긴급 IQC 생략 요청 화면', () => {
     mount([], { mine: [] });
 
     expect(await screen.findByText('올린 요청이 없습니다.')).toBeInTheDocument();
+  });
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 상태로 잠그면 다시 그리기 전의 연타를 놓쳐, 멱등키가 다른
+   * 두 건이 담기고 같은 면제 요청이 두 번 결재에 올라간다.
+   */
+  it('같은 틱에 요청을 세 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const sent: Request[] = [];
+    mount([
+      createRoute((request) => {
+        sent.push(request.clone());
+        return jsonResponse({ approvalRequestId: 91 }, { status: 202 });
+      }),
+    ]);
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText('수입검사 대기 중');
+    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+
+    const button = screen.getByRole('button', { name: '요청' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    expect(await screen.findByText('요청했습니다')).toBeInTheDocument();
+    expect(sent).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 요청된 줄 안다. */
+  it('담아 두지 못하면 요청되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    const sent: Request[] = [];
+    mount([
+      createRoute((request) => {
+        sent.push(request.clone());
+        return jsonResponse({ approvalRequestId: 91 }, { status: 202 });
+      }),
+    ]);
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText('수입검사 대기 중');
+    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '요청' }));
+
+    expect(await screen.findByText('요청을 담아 두지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByText('요청했습니다')).toBeNull();
+    expect(sent).toHaveLength(0);
   });
 });

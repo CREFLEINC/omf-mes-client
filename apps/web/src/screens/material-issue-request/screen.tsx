@@ -452,131 +452,141 @@ export const MaterialIssueRequestScreen = () => {
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
 
-      {/*
-       * ⭐ **상수 표시다.** 조건부로 감추지 않는다 — 이 문장이 이 화면의 존재 이유다.
-       */}
-      <div className="banner-slot">
-        <AlertBanner variant="info" title={t.policyNotice.title}>
-          {t.policyNotice.description}
-        </AlertBanner>
-      </div>
+      <div className="material-issue-request-workspace">
+        {/*
+         * ⭐ **상수 표시다.** 조건부로 감추지 않는다 — 이 문장이 이 화면의 존재 이유다.
+         */}
+        <div className="banner-slot">
+          <AlertBanner variant="info" title={t.policyNotice.title}>
+            {t.policyNotice.description}
+          </AlertBanner>
+        </div>
 
-      {workOrders.isError && (
-        <LoadErrorBanner
-          error={workOrders.error}
-          onRetry={() => {
-            void workOrders.refetch();
-          }}
-        />
-      )}
-
-      <TargetPane
-        searchDraft={searchDraft}
-        onChangeSearchDraft={setSearchDraft}
-        onSearch={setAppliedQuery}
-        isSearching={workOrders.isFetching}
-        workOrderOptions={workOrderOptions}
-        workOrderNote={workOrderNote()}
-        workOrderId={workOrderId}
-        onSelectWorkOrder={selectWorkOrder}
-        selectedWorkOrder={selectedWorkOrder}
-        uomLookup={uoms}
-        warehouseOptions={toSelectOptions(warehouses)}
-        warehouseNote={warehouseNote()}
-        warehouseId={form.warehouseId}
-        onChangeWarehouse={(value) => {
-          /*
-           * 창고가 바뀌면 그 창고에 없는 위치가 남지 않게 도착 위치를 비운다.
-           * **비운 것은 화면이므로 만짐으로 적지 않는다** — 사용자는 창고만 건드렸다.
-           */
-          changeForm({ warehouseId: value, destinationLocationId: '' }, ['destinationLocationId']);
-        }}
-        locationOptions={toSelectOptions(locations)}
-        locationNote={lookupNote(locations)}
-        destinationLocationId={form.destinationLocationId}
-        onChangeDestination={(value) => {
-          changeForm({ destinationLocationId: value });
-        }}
-        requiredDate={form.requiredDate}
-        requiredTime={form.requiredTime}
-        onChangeRequiredDate={(value) => {
-          changeForm({ requiredDate: value });
-        }}
-        onChangeRequiredTime={(value) => {
-          changeForm({ requiredTime: value });
-        }}
-        headerErrors={headerErrors}
-        isLocked={isLocked}
-      />
-
-      {/* 실패해도 배너를 세우지 않는다 — 중복 확인은 알림이지 관문이 아니다(스펙 §6). */}
-      <ExistingRequestBanner
-        requests={existing.data?.items ?? EMPTY_EXISTING}
-        total={existing.data?.total ?? 0}
-      />
-
-      {selectedWorkOrder === null ? (
-        <section className="pane" aria-label={t.panes.lines}>
-          <EmptyState
-            title={t.empty.noWorkOrderTitle}
-            description={t.empty.noWorkOrderDescription}
+        {workOrders.isError && (
+          <LoadErrorBanner
+            error={workOrders.error}
+            onRetry={() => {
+              void workOrders.refetch();
+            }}
           />
-        </section>
-      ) : (
-        <>
-          <LinePane
-            rows={resolvedLines}
-            errors={lineErrors}
-            itemLookup={items}
-            uomLookup={uoms}
-            itemOptions={toSelectOptions(items)}
-            uomOptions={toSelectOptions(uoms)}
-            isLocked={isLocked}
-            isLoadingShortage={isLoadPending && shortage.isFetching}
-            linesError={headerErrors.lines}
+        )}
+
+        <TargetPane
+          searchDraft={searchDraft}
+          onChangeSearchDraft={setSearchDraft}
+          onSearch={setAppliedQuery}
+          isSearching={workOrders.isFetching}
+          workOrderOptions={workOrderOptions}
+          workOrderNote={workOrderNote()}
+          workOrderId={workOrderId}
+          onSelectWorkOrder={selectWorkOrder}
+          selectedWorkOrder={selectedWorkOrder}
+          uomLookup={uoms}
+          warehouseOptions={toSelectOptions(warehouses)}
+          warehouseNote={warehouseNote()}
+          warehouseId={form.warehouseId}
+          onChangeWarehouse={(value) => {
             /*
-             * 「다시 시도」는 다시 누르는 것과 같다 — 같은 길(`loadShortage`)로 보낸다. 조회만
-             * 다시 부르면 그 응답을 반영할 자리가 없어 표가 그대로 남는다.
+             * 창고가 바뀌면 그 창고에 없는 위치가 남지 않게 도착 위치를 비운다.
+             * **비운 것은 화면이므로 만짐으로 적지 않는다** — 사용자는 창고만 건드렸다.
              */
-            shortageErrorBanner={
-              shortage.isError ? (
-                <LoadErrorBanner error={shortage.error} onRetry={loadShortage} />
-              ) : null
-            }
-            onLoadShortage={loadShortage}
-            onAddLine={addLine}
-            onPatchLine={patchLine}
-            onRemoveLine={removeLine}
-          />
+            changeForm({ warehouseId: value, destinationLocationId: '' }, [
+              'destinationLocationId',
+            ]);
+          }}
+          locationOptions={toSelectOptions(locations)}
+          locationNote={lookupNote(locations)}
+          destinationLocationId={form.destinationLocationId}
+          onChangeDestination={(value) => {
+            changeForm({ destinationLocationId: value });
+          }}
+          requiredDate={form.requiredDate}
+          requiredTime={form.requiredTime}
+          onChangeRequiredDate={(value) => {
+            changeForm({ requiredDate: value });
+          }}
+          onChangeRequiredTime={(value) => {
+            changeForm({ requiredTime: value });
+          }}
+          headerErrors={headerErrors}
+          isLocked={isLocked}
+        />
 
-          <ReasonPane
-            reasons={reasons}
-            reasonCode={form.reasonCode}
-            onChangeReason={(value) => {
-              changeForm({ reasonCode: value });
-            }}
-            remarks={form.remarks}
-            onChangeRemarks={(value) => {
-              changeForm({ remarks: value });
-            }}
-            reasonError={headerErrors.reasonCode}
-            remarksError={headerErrors.remarks}
-            isLocked={isLocked}
-          />
+        {/* 실패해도 배너를 세우지 않는다 — 중복 확인은 알림이지 관문이 아니다(스펙 §6). */}
+        <ExistingRequestBanner
+          requests={existing.data?.items ?? EMPTY_EXISTING}
+          total={existing.data?.total ?? 0}
+        />
 
-          <ResultPane
-            publishBlockReason={publishBlockReason({
-              header,
-              lines: resolvedLines,
-              isSaving: create.isSaving,
-              hasPublished: boundCreated !== null,
-            })}
-            banner={<SaveErrorBanner error={create.error} />}
-            created={boundCreated}
-            onPublish={publish}
-          />
-        </>
-      )}
+        {selectedWorkOrder === null ? (
+          <section
+            className="pane material-issue-request-pane material-issue-request-empty-pane"
+            aria-label={t.panes.lines}
+          >
+            <h2 className="pane-title">{t.panes.lines}</h2>
+            <EmptyState
+              title={t.empty.noWorkOrderTitle}
+              description={t.empty.noWorkOrderDescription}
+            />
+          </section>
+        ) : (
+          <>
+            <LinePane
+              rows={resolvedLines}
+              errors={lineErrors}
+              itemLookup={items}
+              uomLookup={uoms}
+              itemOptions={toSelectOptions(items)}
+              uomOptions={toSelectOptions(uoms)}
+              isLocked={isLocked}
+              isLoadingShortage={isLoadPending && shortage.isFetching}
+              linesError={headerErrors.lines}
+              /*
+               * 「다시 시도」는 다시 누르는 것과 같다 — 같은 길(`loadShortage`)로 보낸다. 조회만
+               * 다시 부르면 그 응답을 반영할 자리가 없어 표가 그대로 남는다.
+               */
+              shortageErrorBanner={
+                shortage.isError ? (
+                  <LoadErrorBanner error={shortage.error} onRetry={loadShortage} />
+                ) : null
+              }
+              onLoadShortage={loadShortage}
+              onAddLine={addLine}
+              onPatchLine={patchLine}
+              onRemoveLine={removeLine}
+            />
+
+            <div className="material-issue-request-footer">
+              <ReasonPane
+                reasons={reasons}
+                reasonCode={form.reasonCode}
+                onChangeReason={(value) => {
+                  changeForm({ reasonCode: value });
+                }}
+                remarks={form.remarks}
+                onChangeRemarks={(value) => {
+                  changeForm({ remarks: value });
+                }}
+                reasonError={headerErrors.reasonCode}
+                remarksError={headerErrors.remarks}
+                isLocked={isLocked}
+              />
+
+              <ResultPane
+                publishBlockReason={publishBlockReason({
+                  header,
+                  lines: resolvedLines,
+                  isSaving: create.isSaving,
+                  hasPublished: boundCreated !== null,
+                })}
+                banner={<SaveErrorBanner error={create.error} />}
+                created={boundCreated}
+                onPublish={publish}
+              />
+            </div>
+          </>
+        )}
+      </div>
     </>
   );
 };

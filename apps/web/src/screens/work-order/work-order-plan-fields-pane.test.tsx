@@ -59,7 +59,9 @@ describe('WorkOrderPlanFieldsPane', () => {
   it('renders the named pane, bordered card, and three plan fields in order', () => {
     renderPane();
 
-    expect(screen.getByRole('region', { name: t.pane })).toBeInTheDocument();
+    const pane = screen.getByRole('region', { name: t.pane });
+    expect(pane).toHaveClass('work-order-plan-pane');
+    expect(pane.querySelector('.work-order-plan-fields')).not.toBeNull();
     expect(
       screen.getByRole('heading', { level: 2, name: t.heading('SYN-WO-ALPHA') }),
     ).toBeVisible();

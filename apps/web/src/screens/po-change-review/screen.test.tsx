@@ -37,6 +37,10 @@ describe('PoChangeReviewScreen', () => {
     renderScreen();
     await screen.findByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') });
 
+    const listPane = screen.getByLabelText(t.panes.list);
+    expect(listPane).toHaveClass('po-change-review-pane');
+    expect(listPane.parentElement).toHaveClass('po-change-review-layout');
+    expect(screen.getByRole('table', { name: t.panes.list })).toHaveClass('po-change-review-table');
     const paths = requestedPaths();
     expect(paths.some((path) => path.includes('unacknowledgedOnly=true'))).toBe(true);
     /* ⛔ 전산담당 전용 경로다 — 업무 화면이 부르지 않는다(B-4-1 ④). */
@@ -67,6 +71,11 @@ describe('PoChangeReviewScreen', () => {
       ).toBe(true);
     });
     expect(await screen.findByText(/1200 이미 생산됨/)).toBeInTheDocument();
+    expect(screen.getByRole('table', { name: t.panes.workOrders })).toHaveClass(
+      'po-change-review-table',
+    );
+    expect(screen.getByText('CODE-B').closest('td')).toHaveAttribute('data-align', 'center');
+    expect(screen.getByText(/4000/).closest('dl')).toHaveClass('po-change-review-diff-values');
   });
 
   it('⚠ 실적이 변경 후 수량을 넘으면 경고하되 막지 않는다', async () => {

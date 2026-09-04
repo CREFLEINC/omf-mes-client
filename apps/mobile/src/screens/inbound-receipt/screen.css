@@ -15,12 +15,6 @@
   gap: var(--space-3, 12px);
 }
 
-.receipt__section h2 {
-  margin: 0;
-  font: inherit;
-  font-weight: 600;
-  color: var(--on-surface-muted, inherit);
-}
 
 .receipt p {
   margin: 0;
@@ -74,4 +68,24 @@
 
 .receipt__row > *:first-child {
   flex: 1;
+}
+
+/* 발주·누적·이번 도착·남은 예정 네 수. 이름과 값이 짝으로 붙어야 어느 수인지 읽힌다. */
+.receipt__counts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1, 4px) var(--space-3, 12px);
+  margin: var(--space-3, 12px) 0;
+}
+
+.receipt__counts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt__under-choice {
+  display: flex;
+  gap: var(--space-3, 12px);
+  align-items: center;
+  flex-wrap: wrap;
 }

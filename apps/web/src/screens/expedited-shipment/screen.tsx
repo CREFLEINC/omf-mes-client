@@ -223,7 +223,7 @@ export const ExpeditedShipmentScreen = ({
             disabled={lockReason !== undefined}
             onClick={() => {
               setShowErrors(true);
-              const body = toShipmentCreateBody(liveInput);
+              const body = toShipmentCreateBody(liveInput, new Date());
               /* 게이트가 열려 있는데 본문이 없으면 그대로 멈춘다 — 절반짜리 요청을 만들지 않는다. */
               if (body === null) return;
               write.reset();

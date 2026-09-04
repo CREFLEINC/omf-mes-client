@@ -14,10 +14,16 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { EquipmentInspectionScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -134,6 +140,7 @@ const selectEquipment = async () => {
 };
 
 beforeEach(() => {
+  held.failWrite = null;
   store.clear();
 });
 
@@ -237,13 +244,10 @@ describe('설비 점검 입력 화면', () => {
 
   it('계약 경로로 헤더와 라인을 한 번에 보낸다', async () => {
     const user = userEvent.setup();
-    const bodies: unknown[] = [];
+    const seen: Request[] = [];
     mount([
       submitRoute((request) => {
-        void request
-          .clone()
-          .json()
-          .then((body: unknown) => bodies.push(body));
+        seen.push(request.clone());
         return jsonResponse({ inspectionId: 5 }, { status: 201 });
       }),
     ]);
@@ -254,9 +258,9 @@ describe('설비 점검 입력 화면', () => {
 
     expect(await screen.findByText('점검을 기록했습니다')).toBeInTheDocument();
     await waitFor(() => {
-      expect(bodies).toHaveLength(1);
+      expect(seen).toHaveLength(1);
     });
-    expect(bodies[0]).toMatchObject({
+    expect(await seen[0]!.json()).toMatchObject({
       equipmentId: 7,
       inspectionTypeCode: 'DAILY',
       lines: [{ inspectionItemId: 1, resultCode: 'OK', measuredValue: 13.4 }],
@@ -316,5 +320,53 @@ describe('설비 점검 입력 화면', () => {
 
     expect(screen.getByText('사번을 확인해야 점검할 수 있습니다')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeDisabled();
+  });
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 상태로 잠그면 다시 그리기 전의 연타를 놓쳐, 멱등키가 다른
+   * 두 건이 담기고 같은 점검이 두 번 기록된다.
+   */
+  it('같은 틱에 점검 완료를 세 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      submitRoute((request) => {
+        seen.push(request.clone());
+        return jsonResponse({ inspectionId: 5 }, { status: 201 });
+      }),
+    ]);
+    await selectEquipment();
+
+    await user.type(screen.getByLabelText('측정값'), '13.4');
+
+    const button = screen.getByRole('button', { name: '점검 완료' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    expect(await screen.findByText('점검을 기록했습니다')).toBeInTheDocument();
+    expect(seen).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 기록된 줄 안다. */
+  it('담아 두지 못하면 기록되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      submitRoute((request) => {
+        seen.push(request.clone());
+        return jsonResponse({ inspectionId: 5 }, { status: 201 });
+      }),
+    ]);
+    await selectEquipment();
+
+    await user.type(screen.getByLabelText('측정값'), '13.4');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '점검 완료' }));
+
+    expect(await screen.findByText('점검을 담아 두지 못했습니다')).toBeInTheDocument();
+    expect(screen.queryByText('점검을 기록했습니다')).toBeNull();
+    expect(seen).toHaveLength(0);
   });
 });

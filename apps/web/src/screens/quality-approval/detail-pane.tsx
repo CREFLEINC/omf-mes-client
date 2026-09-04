@@ -11,8 +11,8 @@ export const DetailPane = ({ view }: DetailPaneProps) => {
   const t = messages.qualityApproval;
 
   return (
-    <>
-      <dl className="filter-bar">
+    <div className="quality-approval-detail">
+      <dl className="quality-approval-detail-facts">
         {[
           [t.fields.approvalRequestNo, view.approvalRequestNo],
           [t.fields.approvalTypeCode, view.approvalTypeCode],
@@ -27,7 +27,11 @@ export const DetailPane = ({ view }: DetailPaneProps) => {
         ))}
       </dl>
 
-      <div className="field-cell" role="group" aria-label={t.panes.reason}>
+      <div
+        className="field-cell quality-approval-content-card quality-approval-reason"
+        role="group"
+        aria-label={t.panes.reason}
+      >
         <span className="field-label">{t.fields.reason}</span>
         <p>
           {view.reasonLines.map((line) => (
@@ -44,10 +48,14 @@ export const DetailPane = ({ view }: DetailPaneProps) => {
        * 때만 성립하고(스펙 §5-1), 지목할 부적합 식별자는 특채가 들고 있기 때문이다. 여기 두면
        * 한도승인처럼 부적합이 없는 결재에도 갈 곳 없는 버튼이 선다.
        */}
-      <div className="field-cell" role="group" aria-label={t.panes.target}>
+      <div
+        className="field-cell quality-approval-content-card"
+        role="group"
+        aria-label={t.panes.target}
+      >
         <span className="field-label">{t.fields.target}</span>
         <span>{view.targetName}</span>
       </div>
-    </>
+    </div>
   );
 };

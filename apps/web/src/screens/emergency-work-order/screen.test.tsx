@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -16,7 +16,7 @@ const ITEM = {
   itemName: '합성 품목',
   itemTypeCode: 'SYN_PRODUCT',
   baseUomId: 11,
-  lotControlTypeCode: 'SYN_LOT',
+  lotControlled: true,
   serialControlTypeCode: 'SYN_NONE',
   inspectionRequired: false,
   fifoPolicyCode: 'SYN_FIFO',
@@ -195,6 +195,21 @@ const fillForm = async (user: ReturnType<typeof userEvent.setup>): Promise<void>
 };
 
 describe('EmergencyWorkOrderScreen', () => {
+  it('고정 조건·품목·발행 정보·자동 전개·발행 준비를 제목이 있는 구획으로 나눈다', () => {
+    renderScreen();
+
+    for (const title of [
+      t.fixedTerms.title,
+      t.itemPicker.title,
+      t.form.title,
+      t.expansion.title,
+      t.actionTitle,
+    ]) {
+      const region = screen.getByRole('region', { name: title });
+      expect(within(region).getByRole('heading', { level: 2, name: title })).toBeInTheDocument();
+    }
+  });
+
   it('바꿀 수 없는 조건을 먼저 보이고, 발행은 사유와 함께 잠겨 있다', () => {
     renderScreen();
 

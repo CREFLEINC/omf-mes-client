@@ -9,6 +9,8 @@ import {
   isExpiryBeforeManufactured,
   packageProblem,
   qtyProblem,
+  queuedQtyOf,
+  remainingQtyOf,
   toOutboxDraft,
   verdictOf,
   type PurchaseOrder,
@@ -47,6 +49,10 @@ const draft = (overrides: Partial<ReceiptDraft> = {}): ReceiptDraft => ({
   supplierLotNo: SCANNED,
   supplierLotMissing: false,
   substituteLotReasonCode: '',
+  unordered: false,
+  supplierId: null,
+  itemId: null,
+  uomId: null,
   purchaseOrder: po(),
   purchaseOrderLine: poLine(),
   deliveryNoteNo: 'DN-2026-000045',
@@ -79,6 +85,31 @@ describe('입하 검증 세 갈래', () => {
     expect(verdictOf(strict, 500)).toBe(NORMAL);
     expect(verdictOf(strict, 501)).toBe(OVER);
     expect(verdictOf(strict, 499)).toBe(UNDER);
+  });
+
+  /*
+   * 한 발주에 여러 번 도착한다. 발주 총량과 견주면 마지막 회차가 부족으로 읽히고, 누적이
+   * 총량을 넘긴 것도 부족으로 읽힌다. 뒤엣것은 서버가 거부할 초과인데 화면이 입하 오류
+   * 등록으로 보낸다 - 가야 할 곳은 초과 입하 분리다.
+   */
+  describe('여러 번 도착하는 발주', () => {
+    const split = (received: number) => poLine({ orderedQty: 300, receivedQty: received });
+
+    it('분할 납품의 마지막 회차는 정상이다', () => {
+      expect(verdictOf(split(200), 100)).toBe(NORMAL);
+    });
+
+    it('누적이 발주를 넘기면 초과다', () => {
+      expect(verdictOf(split(200), 150)).toBe(OVER);
+    });
+
+    it('남은 예정이 얼마 없는데 많이 오면 초과다', () => {
+      expect(verdictOf(split(280), 200)).toBe(OVER);
+    });
+
+    it('마지막 회차가 남은 예정에 모자라면 부족이다', () => {
+      expect(verdictOf(split(200), 90)).toBe(UNDER);
+    });
   });
 });
 
@@ -224,5 +255,44 @@ describe('등록 본문', () => {
     expect(entry.workerNo).toBe('900028');
     expect(entry.confirmation).toBe('pending');
     expect(entry.path).toBe('/logistics/inbound-receipts');
+  });
+});
+
+describe('담긴 입하 셈', () => {
+  const queued = (purchaseOrderLineId: number | null, receivedQty: number) => ({
+    path: '/logistics/inbound-receipts',
+    body: { lines: [{ purchaseOrderLineId, receivedQty }] },
+  });
+
+  it('같은 발주 라인의 담긴 수량만 더한다', () => {
+    expect(queuedQtyOf([queued(41, 120), queued(99, 500), queued(41, 30)], 41)).toBe(150);
+  });
+
+  /* 큐는 화면을 가리지 않고 한 줄로 쌓인다. 다른 화면의 기록이 입하 셈에 들어가면 안 된다. */
+  it('다른 경로의 기록은 세지 않는다', () => {
+    expect(
+      queuedQtyOf(
+        [
+          {
+            path: '/logistics/goods-issues',
+            body: { lines: [{ purchaseOrderLineId: 41, receivedQty: 200 }] },
+          },
+        ],
+        41,
+      ),
+    ).toBe(0);
+  });
+
+  /* 발주 없이 들어온 라인은 어느 발주에도 매이지 않는다. 아무 라인 셈에나 붙으면 안 된다. */
+  it('발주 라인이 없는 기록은 세지 않는다', () => {
+    expect(queuedQtyOf([queued(null, 300)], 41)).toBe(0);
+  });
+
+  it('담긴 만큼 남은 예정이 줄고 그만큼 초과 판정이 앞당겨진다', () => {
+    const line = poLine();
+
+    expect(remainingQtyOf(line, 500)).toBe(0);
+    expect(verdictOf(line, 500, 0)).toBe(NORMAL);
+    expect(verdictOf(line, 500, 500)).toBe(OVER);
   });
 });

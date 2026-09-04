@@ -105,6 +105,9 @@ describe('ProductionPlanScreen', () => {
     });
 
     expect(await screen.findByText('PO-SYN-701')).toBeVisible();
+    const orderSummary = screen.getByLabelText('선택 생산 P/O');
+    expect(orderSummary).toHaveClass('production-plan-order-summary');
+    expect(orderSummary.parentElement).toHaveClass('production-plan-workspace');
     const add = await screen.findByRole('button', { name: '+ 계획 추가' });
     expect(add).toBeDisabled();
 

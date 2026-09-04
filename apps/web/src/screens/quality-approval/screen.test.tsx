@@ -35,14 +35,14 @@ const requests: ApprovalRequest[] = [
   {
     approvalRequestId: 31,
     approvalRequestNo: 'SYNTH-REQ-031',
-    approvalTypeCode: 'SYNTH-CONCESSION',
+    approvalTypeCode: 'IQC_SKIP',
     requestedBy: 7,
     requestedByName: '합성 사용자',
     requestedAt: '2026-08-22T09:30:00+09:00',
     statusCode: 'SYNTH-PENDING',
     reason: '합성 승인 근거',
     target: {
-      targetTypeCode: 'SYNTH-DOCUMENT',
+      targetTypeCode: 'INBOUND_LOT',
       targetId: 91,
       displayName: '합성 대상',
       openable: false,
@@ -188,7 +188,7 @@ const processRoute = (
           processId: 1_301,
           processCode: 'SYNTH-OP',
           processName: '합성 공정',
-          processTypeCode: 'SYNTH-TYPE',
+          processTypeCode: 'IQC_SKIP',
           isActive: true,
         },
       ]),
@@ -291,7 +291,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
 
   it('승인 유형 기준값이 준비되면 넓은 조회 경고를 거두고 해당 유형을 보낸다', async () => {
     const recorded = recordingFetch(listRoute());
-    renderScreen(recorded.fetch, '/quality/approvals?ty=SYNTH-CONCESSION', ['SYNTH-CONCESSION']);
+    renderScreen(recorded.fetch, '/quality/approvals?ty=IQC_SKIP', ['IQC_SKIP']);
 
     expect(await findRequest()).toBeInTheDocument();
     expect(screen.queryByText(t.scopeWarning)).not.toBeInTheDocument();
@@ -299,7 +299,7 @@ describe('QualityApprovalScreen query and disclosure', () => {
     expect(Object.fromEntries(recorded.urls[0]?.searchParams ?? [])).toEqual({
       assignedToMe: 'true',
       pendingOnly: 'true',
-      approvalTypeCode: 'SYNTH-CONCESSION',
+      approvalTypeCode: 'IQC_SKIP',
     });
   });
 
@@ -470,6 +470,21 @@ describe('QualityApprovalScreen detail', () => {
     await findRequest();
 
     expect(screen.getByRole('region', { name: t.panes.list })).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.list })).getByRole('heading', {
+        name: t.panes.list,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.detail })).getByRole('heading', {
+        name: t.panes.detail,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('region', { name: t.panes.progress })).getByRole('heading', {
+        name: t.panes.progress,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '요청 상세' })).toHaveTextContent(
       '승인 요청을 선택하세요',
     );
@@ -1089,7 +1104,7 @@ describe('QualityApprovalScreen decision action', () => {
 
     const dialog = await openConfirm(user, '  합성 반려 사유  ', '반려');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
-    expect(within(dialog).getByText('승인 유형: SYNTH-CONCESSION')).toBeInTheDocument();
+    expect(within(dialog).getByText('승인 유형: IQC_SKIP')).toBeInTheDocument();
     expect(within(dialog).getByText('대상: 합성 대상')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 반려 사유')).toBeInTheDocument();
     expect(within(dialog).getByText('반려는 상태만 변경합니다')).toBeInTheDocument();
@@ -1156,7 +1171,7 @@ describe('QualityApprovalScreen decision action', () => {
 
     const dialog = await openConfirm(user, '  합성 승인 사유  ');
     expect(within(dialog).getByText('요청번호: SYNTH-REQ-031')).toBeInTheDocument();
-    expect(within(dialog).getByText('승인 유형: SYNTH-CONCESSION')).toBeInTheDocument();
+    expect(within(dialog).getByText('승인 유형: IQC_SKIP')).toBeInTheDocument();
     expect(within(dialog).getByText('대상: 합성 대상')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 승인 사유')).toBeInTheDocument();
     expect(within(dialog).getByText('승인은 되돌릴 수 없습니다')).toBeInTheDocument();

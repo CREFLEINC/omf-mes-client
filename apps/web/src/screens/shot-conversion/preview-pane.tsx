@@ -170,8 +170,8 @@ export const PreviewPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.paneTitle}>
-      <h3>{t.paneTitle}</h3>
+    <section className="pane shot-conversion-pane" aria-label={t.paneTitle}>
+      <h2 className="pane-title">{t.paneTitle}</h2>
       <p className="dialog-lead">{t.description}</p>
 
       {/*
@@ -179,7 +179,7 @@ export const PreviewPane = ({
        * 결과 줄의 라벨이 위 칸에 붙어 읽히고, 안쪽 격자가 바깥 칸 하나에 갇혀 폭이 반이 된다
        * (브라우저 확인 실측). 한 격자면 리듬이 한 벌이다.
        */}
-      <div className="form-grid">
+      <div className="form-grid shot-conversion-preview-grid">
         <SelectField
           label={t.toolLabel}
           options={toolOptions}

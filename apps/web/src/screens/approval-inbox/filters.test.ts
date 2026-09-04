@@ -20,7 +20,7 @@ const t = messages.approvalInbox;
 const params = (query: string): URLSearchParams => new URLSearchParams(query);
 
 const filledFilters: InboxFilters = {
-  approvalTypeCode: 'SAMPLE-TYPE-A',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   statusCode: 'SAMPLE-STATUS-A',
   from: '2026-08-01',
   to: '2026-08-31',
@@ -31,7 +31,9 @@ describe('readFilters', () => {
   it('주소가 담은 조건을 그대로 읽는다', () => {
     expect(
       readFilters(
-        params('ty=SAMPLE-TYPE-A&st=SAMPLE-STATUS-A&from=2026-08-01&to=2026-08-31&q=SYNTH-REQ'),
+        params(
+          'ty=GOODS_ISSUE_DISPOSAL&st=SAMPLE-STATUS-A&from=2026-08-01&to=2026-08-31&q=SYNTH-REQ',
+        ),
       ),
     ).toEqual(filledFilters);
   });
@@ -100,7 +102,7 @@ describe('toSearchParams', () => {
   it('조건을 전부 주소에 싣는다', () => {
     const next = toSearchParams(filledFilters, 'requested', 2);
 
-    expect(next.get('ty')).toBe('SAMPLE-TYPE-A');
+    expect(next.get('ty')).toBe('GOODS_ISSUE_DISPOSAL');
     expect(next.get('st')).toBe('SAMPLE-STATUS-A');
     expect(next.get('from')).toBe('2026-08-01');
     expect(next.get('to')).toBe('2026-08-31');
@@ -150,7 +152,7 @@ describe('toSelectionSearchParams', () => {
     expect(next.get('rq')).toBe('9001');
     expect(next.get('page')).toBe('2');
     expect(next.get('tab')).toBe('requested');
-    expect(next.get('ty')).toBe('SAMPLE-TYPE-A');
+    expect(next.get('ty')).toBe('GOODS_ISSUE_DISPOSAL');
   });
 
   it('고른 것이 없으면 그 자리를 만들지 않는다', () => {
@@ -161,12 +163,12 @@ describe('toSelectionSearchParams', () => {
 describe('withoutSelection', () => {
   it('고른 요청만 뺀다 — 조건·탭·쪽은 그대로다', () => {
     const next = withoutSelection(
-      new URLSearchParams('tab=requested&ty=SAMPLE-TYPE-A&page=2&rq=9001'),
+      new URLSearchParams('tab=requested&ty=GOODS_ISSUE_DISPOSAL&page=2&rq=9001'),
     );
 
     expect(next.has('rq')).toBe(false);
     expect(next.get('tab')).toBe('requested');
-    expect(next.get('ty')).toBe('SAMPLE-TYPE-A');
+    expect(next.get('ty')).toBe('GOODS_ISSUE_DISPOSAL');
     expect(next.get('page')).toBe('2');
   });
 
@@ -195,7 +197,7 @@ describe('toRequestListQuery', () => {
     expect(toRequestListQuery(filledFilters, 'pending', 2)).toEqual({
       assignedToMe: true,
       pendingOnly: true,
-      approvalTypeCode: 'SAMPLE-TYPE-A',
+      approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
       statusCode: 'SAMPLE-STATUS-A',
       requestedAtFrom: '2026-08-01',
       requestedAtTo: '2026-08-31',

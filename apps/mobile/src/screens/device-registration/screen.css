@@ -10,8 +10,10 @@
   margin: 0;
 }
 
+/* 크기와 줄 높이를 함께 주는 축약 토큰을 쓴다. 크기만 키우면 글자가 줄 상자를 넘는다. */
 .device-registration__headline {
-  font-size: var(--type-title-md-size, 1.25rem);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
 }
 
 /*

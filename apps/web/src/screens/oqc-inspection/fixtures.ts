@@ -9,7 +9,7 @@ import type {
  * 출하검사 판정의 시험용 자료.
  *
  * ⛔ **전부 지어낸 값이다.** 이 저장소는 공개이므로 실제 사번·품목코드·LOT 번호·거래처 코드를
- * 픽스처에 넣지 않는다(루트 `CLAUDE.md`). 번호는 형식만 그럴듯하게 만든 합성값이다.
+ * 픽스처에 넣지 않는다(V3 워크플로 공개 저장소 경계). 번호는 형식만 그럴듯하게 만든 합성값이다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -25,7 +25,7 @@ export const waitingRequest: InspectionRequestResponse = {
   inspectionRequestNo: 'IR-OQC-0001',
   inspectionTypeCode: 'OQC',
   inspectionPlanVersionId: 3101,
-  targetTypeCode: 'SHIPMENT_LINE',
+  targetTypeCode: 'SHIPMENT_REQUEST',
   targetId: 6101,
   itemId: 2101,
   lotId: 5101,

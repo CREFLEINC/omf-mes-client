@@ -23,6 +23,9 @@ export const temporaryPutaway = {
     /** 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */
     already: '이미 임시 적치되었습니다',
     alreadyAt: (code: string) => `현재 위치 ${code}`,
+    /** 담아 둔 채 아직 못 간 등록. 서버는 모르지만 이 단말은 안다. */
+    queued: '이 지시의 임시 적치를 이미 담아 두었습니다',
+    queuedWhy: '연결되면 보냅니다. 한 번 더 적으면 두 건이 됩니다.',
   },
   location: {
     legend: '임시 위치',
@@ -65,6 +68,11 @@ export const temporaryPutaway = {
     title: '임시 적치가 되돌아왔습니다',
     description: '되돌아온 건에서 사유를 확인하세요. ',
     action: '되돌아온 건 보기',
+  },
+  /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
+  saveFailed: {
+    title: '임시 적치를 담아 두지 못했습니다',
+    description: '기록되지 않았습니다. 다시 시도하세요.',
   },
   noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
   done: '적치 화면으로',

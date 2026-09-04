@@ -88,8 +88,8 @@ export const EnabledPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.paneTitle}>
-      <h3>{t.paneTitle}</h3>
+    <section className="pane shot-conversion-pane" aria-label={t.paneTitle}>
+      <h2 className="pane-title">{t.paneTitle}</h2>
       {banner}
       {body()}
     </section>

@@ -11,6 +11,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
+import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -18,7 +19,13 @@ import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { useDefectRecords, useDispatchRepair, useOpenRepairs, useReturnRepair } from './queries';
+import {
+  useDefectRecords,
+  useDispatchRepair,
+  useOpenRepairs,
+  useOpenRepairsForLot,
+  useReturnRepair,
+} from './queries';
 import {
   DEFECT_WINDOW_DAYS,
   FAILED,
@@ -63,6 +70,18 @@ export const RepairRoundtripScreen = () => {
   const [typing, setTyping] = useState(false);
   const [result, setResult] = useState<RepairResult | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  /*
+   * 쓰기마다 키를 따로 둔다. 하나를 나눠 쓰면 실패한 투입의 키가 살아 있는 채로 반출에 실려,
+   * 서버가 투입의 응답을 되돌려 주고 화면은 반출을 기록했다고 말한다 - 왕복은 열린 채다.
+   *
+   * 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 키가 스스로 비워지게 한다. 수량과 결과도
+   * 대상에 넣는다 - 값이 달라졌는데 앞 키로 가면 서버가 앞 시도로 보고 흡수한다.
+   *
+   * 친 문자열이 아니라 실제로 보낼 값으로 짓는다. 20 과 20.0 은 같은 쓰기인데 문자열로 재면
+   * 다른 키를 받는다.
+   */
+  const dispatchKey = useIdempotencyKey(`${String(defectId)}:${String(Number(qty.trim()))}`);
+  const returnKey = useIdempotencyKey(`${String(executionId)}:${String(result)}`);
 
   const scanField = useScanField({
     onScan: (value) => {
@@ -80,8 +99,8 @@ export const RepairRoundtripScreen = () => {
   const item = useItem(lot.data?.itemId ?? null);
   const uoms = useUomCodes(true);
   const defects = useDefectRecords(lotId);
-  const scopedOpen = useOpenRepairs(lotId);
-  const allOpen = useOpenRepairs(null);
+  const scopedOpen = useOpenRepairsForLot(lotId);
+  const allOpen = useOpenRepairs();
   const dispatch = useDispatchRepair();
   const returning = useReturnRepair();
 
@@ -109,8 +128,7 @@ export const RepairRoundtripScreen = () => {
   }
 
   const defect = defects.data?.find((each) => each.defectRecordId === defectId) ?? null;
-  const execution =
-    scopedOpen.data?.find((each) => each.repairExecutionId === executionId) ?? null;
+  const execution = scopedOpen.data?.find((each) => each.repairExecutionId === executionId) ?? null;
   const alreadyOpen =
     defect === null ? null : openFor(scopedOpen.data ?? [], defect.defectRecordId);
   const problem = defect === null ? null : qtyProblem(defect, qty);
@@ -143,15 +161,21 @@ export const RepairRoundtripScreen = () => {
     }
 
     await dispatch
-      .mutateAsync({ defect, qty, workerNo: worker.workerNo })
+      .mutateAsync({
+        defect,
+        qty,
+        workerNo: worker.workerNo,
+        idempotencyKey: dispatchKey.current(),
+      })
       .then(() => {
+        dispatchKey.reset();
         setDone(t.dispatch.done);
       })
       .catch(() => null);
   };
 
   const submitReturn = async () => {
-    if (execution === null || result === null || worker === null) {
+    if (execution === null || result === null || worker === null || lotId === null) {
       return;
     }
 
@@ -160,8 +184,10 @@ export const RepairRoundtripScreen = () => {
         repairExecutionId: execution.repairExecutionId,
         result,
         workerNo: worker.workerNo,
+        idempotencyKey: returnKey.current(),
       })
       .then(() => {
+        returnKey.reset();
         setDone(t.return.done);
       })
       .catch(() => null);
@@ -179,7 +205,7 @@ export const RepairRoundtripScreen = () => {
 
   const defectCard = (record: DefectRecord) => (
     <Card bordered>
-      <Card.Body className="repair__card">
+      <Card.Body className="card-body repair__card">
         <strong>{lot.data?.lotNo}</strong>
         <p className="repair__note">{item.data?.itemCode ?? ''}</p>
         <p>{t.defect.qty(String(record.defectQty), uomLabel(uoms.data, record.uomId))}</p>
@@ -260,8 +286,8 @@ export const RepairRoundtripScreen = () => {
 
           {worker === null ? <p className="repair__note">{t.noWorker}</p> : null}
           {dispatch.error === null || dispatch.error === undefined ? null : isAlreadyOpen(
-            toApiError(dispatch.error),
-          ) ? (
+              toApiError(dispatch.error),
+            ) ? (
             <AlertBanner variant="warning" title={t.dispatch.already} />
           ) : (
             <AlertBanner variant="error" title={t.dispatch.failed} />
@@ -286,6 +312,8 @@ export const RepairRoundtripScreen = () => {
   const returnPanel = (
     <div className="repair__panel">
       {scannedCard}
+      {/* 스캔 전에는 어느 LOT 의 건인지 모른다. 빈 화면으로 두지 않고 무엇을 할지 말한다. */}
+      {lotId === null ? <AlertBanner variant="info" title={t.return.needScan} /> : null}
       {scopedOpen.isError ? <AlertBanner variant="error" title={t.open.loadFailed} /> : null}
       {lotId !== null && scopedOpen.isSuccess && scopedOpen.data.length === 0 ? (
         <AlertBanner variant="warning" title={t.return.noOpen} />
@@ -312,11 +340,9 @@ export const RepairRoundtripScreen = () => {
       {execution === null ? null : (
         <>
           <Card bordered>
-            <Card.Body className="repair__card">
+            <Card.Body className="card-body repair__card">
               <strong>{lot.data?.lotNo}</strong>
-              <p>
-                {`${String(execution.repairQty)} ${uomLabel(uoms.data, execution.uomId)}`}
-              </p>
+              <p>{`${String(execution.repairQty)} ${uomLabel(uoms.data, execution.uomId)}`}</p>
               <p className="repair__note">{t.dispatch.alreadyAt(stamp(execution.startedAt))}</p>
             </Card.Body>
           </Card>
@@ -354,7 +380,7 @@ export const RepairRoundtripScreen = () => {
             variant="filled"
             size="2xl"
             loading={returning.isPending}
-            disabled={!canReturn(execution, result, worker !== null)}
+            disabled={!canReturn(execution, result, worker !== null, lotId !== null)}
             onClick={() => void submitReturn()}
           >
             {t.return.submit}

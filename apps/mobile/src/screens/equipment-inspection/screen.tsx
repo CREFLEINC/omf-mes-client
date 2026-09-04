@@ -11,7 +11,7 @@ import {
   TextField,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useEquipments, type Equipment } from '../../patterns/equipments';
@@ -64,7 +64,7 @@ const ItemCard = ({
 
   return (
     <Card bordered>
-      <Card.Body className="inspection__item">
+      <Card.Body className="card-body inspection__item">
         <div className="inspection__item-head">
           <strong>{`${String(item.sequenceNo)}. ${item.itemName}`}</strong>
           {item.requiredFlag ? <Chip size="sm">{t.items.required}</Chip> : null}
@@ -131,7 +131,7 @@ const ItemCard = ({
 export const EquipmentInspectionScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush, countPending } = useOutbox();
+  const { enqueue, flush, countPending, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
   const equipments = useEquipments();
 
@@ -141,6 +141,12 @@ export const EquipmentInspectionScreen = () => {
   const [entries, setEntries] = useState<Record<number, Entry>>({});
   const [remarks, setRemarks] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  /*
+   * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
+   * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 두 건이 기록된다.
+   */
+  const inFlight = useRef(false);
 
   const scanField = useScanField({ onScan: setScanned });
   const items = useInspectionItems(selected?.equipmentId ?? null);
@@ -182,24 +188,44 @@ export const EquipmentInspectionScreen = () => {
   const unsent = countPending(t.record);
 
   const complete = async () => {
-    if (selected === null || worker === null) {
+    if (selected === null || worker === null || inFlight.current) {
       return;
     }
+
+    inFlight.current = true;
+    setSaveFailed(false);
 
     const draft = toOutboxDraft(submission, new Date().toISOString(), worker.workerNo);
 
-    await enqueue(draft);
+    try {
+      /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 기록된 줄 안다. */
+      try {
+        await enqueue(draft);
+      } catch {
+        setSaveFailed(true);
+        return;
+      }
 
-    const result = await flush().catch(() => null);
-    const mine = (entry: { idempotencyKey: string }) =>
-      entry.idempotencyKey === draft.idempotencyKey;
+      const result = await flush().catch(() => null);
+      const mine = (entry: { idempotencyKey: string }) =>
+        entry.idempotencyKey === draft.idempotencyKey;
 
-    if (result !== null && result.rejected.some((item) => mine(item.entry))) {
-      setOutcome('rejected');
-      return;
+      /*
+       * 자기가 부른 보내기의 결과만 보면 딸려 되돌아간 건을 놓친다 - 그 판정은 셸이 도는 다른
+       * 회차에서 내려질 수 있고, 화면은 빈 결과를 받아 담아 두었다고 잘못 말한다.
+       */
+      if (
+        (result !== null && result.rejected.some((item) => mine(item.entry))) ||
+        isRejected(draft.idempotencyKey)
+      ) {
+        setOutcome('rejected');
+        return;
+      }
+
+      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+    } finally {
+      inFlight.current = false;
     }
-
-    setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
   };
 
   const restart = () => {
@@ -226,7 +252,7 @@ export const EquipmentInspectionScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
-        <Button variant="filled" size="lg" onClick={restart}>
+        <Button variant="filled" size="2xl" onClick={restart}>
           {t.another}
         </Button>
       </div>
@@ -353,8 +379,13 @@ export const EquipmentInspectionScreen = () => {
           {remaining === null ? null : (
             <p className="inspection__note">{t.summary.remainingRequired(remaining.itemName)}</p>
           )}
+          {saveFailed ? (
+            <AlertBanner variant="error" title={t.saveFailed.title}>
+              {t.saveFailed.description}
+            </AlertBanner>
+          ) : null}
           {worker === null ? <p className="inspection__note">{t.noWorker}</p> : null}
-          <Button variant="filled" size="lg" disabled={!ready} onClick={() => void complete()}>
+          <Button variant="filled" size="2xl" disabled={!ready} onClick={() => void complete()}>
             {t.submit}
           </Button>
         </section>

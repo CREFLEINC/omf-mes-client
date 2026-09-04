@@ -51,6 +51,27 @@ const expectBanner = (title: string, role: string, icon: string) => {
   expect(within(banner as HTMLElement).getByText(icon)).toBeInTheDocument();
 };
 describe('ProductionPlanEditorPane', () => {
+  it('표 제목을 보조기술에 남기고 편집 컨트롤의 정렬 기준을 한 행으로 묶는다', () => {
+    renderPane([row({ confirmed: true, statusCode: 'CONFIRMED' })]);
+
+    const pane = screen.getByLabelText('생산계획 편집');
+    const heading = within(pane).getByRole('heading', { name: '생산계획' });
+    const table = within(pane).getByRole('table', { name: 'P/O 생산계획 편집 표' });
+    const quantity = within(table).getByRole('spinbutton', { name: 'PLAN-101 계획수량' });
+    const status = within(table).getByText('확정 · 편집 불가');
+
+    expect(pane).toHaveClass('production-plan-section');
+    expect(heading.parentElement).toHaveClass('production-plan-section-heading');
+    expect(table).toHaveClass('production-plan-editor-table');
+    expect(table.closest('.production-plan-table')).not.toBeNull();
+    expect(within(table).getByText('P/O 생산계획 편집 표')).toHaveClass(
+      'production-plan-table-caption',
+    );
+    expect(quantity.closest('td')).toHaveAttribute('data-align', 'end');
+    expect(quantity.closest('.production-plan-quantity-field')).not.toBeNull();
+    expect(status.closest('td')).toHaveAttribute('data-align', 'center');
+  });
+
   it('계획 필드와 일치하는 합계를 한 표에 보인다', () => {
     renderPane([
       row(),

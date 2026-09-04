@@ -14,10 +14,16 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { InboundVarianceScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -147,6 +153,7 @@ const fill = async (user: ReturnType<typeof userEvent.setup>, qty: string) => {
 };
 
 beforeEach(() => {
+  held.failWrite = null;
   store.clear();
   localStorage.clear();
 });
@@ -231,7 +238,7 @@ describe('입하 오류 등록 화면', () => {
           new URL(req.url).pathname === '/logistics/inbound-receipt-lines/55/variances' &&
           req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
+          seen.push(req.clone());
           return jsonResponse({ inboundVarianceId: 9 }, { status: 201 });
         },
       },
@@ -254,7 +261,7 @@ describe('입하 오류 등록 화면', () => {
           new URL(req.url).pathname === '/logistics/inbound-receipt-lines/55/variances' &&
           req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
+          seen.push(req.clone());
           return jsonResponse({ inboundVarianceId: 9 }, { status: 201 });
         },
       },
@@ -272,18 +279,13 @@ describe('입하 오류 등록 화면', () => {
   it('확인하면 유형과 수량을 줄 경로로 보낸다', async () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
-    const bodies: unknown[] = [];
     mount([
       {
         match: (req) =>
           new URL(req.url).pathname === '/logistics/inbound-receipt-lines/55/variances' &&
           req.method === 'POST',
         respond: (req) => {
-          seen.push(req);
-          void req
-            .clone()
-            .json()
-            .then((body: unknown) => bodies.push(body));
+          seen.push(req.clone());
           return jsonResponse({ inboundVarianceId: 9 }, { status: 201 });
         },
       },
@@ -300,11 +302,8 @@ describe('입하 오류 등록 화면', () => {
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
 
-    await waitFor(() => {
-      expect(bodies).toHaveLength(1);
-    });
-
-    const body = bodies[0] as { varianceTypeCode: string; varianceQty: number; reasonCode: unknown };
+    
+    const body = (await seen[0]!.json()) as { varianceTypeCode: string; varianceQty: number; reasonCode: unknown };
 
     expect(body.varianceTypeCode).toBe('SHORT');
     expect(body.varianceQty).toBe(20);
@@ -335,5 +334,55 @@ describe('입하 오류 등록 화면', () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByRole('button', { name: /반품|폐기/ })).toBeNull();
+  });
+  const varianceRoute = (seen: Request[]): StubRoute => ({
+    match: (req) =>
+      new URL(req.url).pathname === '/logistics/inbound-receipt-lines/55/variances' &&
+      req.method === 'POST',
+    respond: (req) => {
+      seen.push(req.clone());
+      return jsonResponse({ inboundVarianceId: 9 }, { status: 201 });
+    },
+  });
+
+  /*
+   * 확인 대화의 단추도 상태로 닫힌다. 같은 틱에 두 번 누르면 닫히기 전에 두 번째가 들어와,
+   * 멱등키가 다른 두 건이 담기고 같은 입하 오류가 두 번 기록된다.
+   */
+  it('같은 틱에 등록합니다를 세 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([varianceRoute(seen)]);
+    await chooseLine(user);
+    await fill(user, '20');
+
+    await user.click(screen.getByRole('button', { name: '오류 등록' }));
+
+    const button = await screen.findByRole('button', { name: '등록합니다' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('입하 오류를 등록했습니다');
+    expect(seen).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 등록된 줄 안다. */
+  it('담아 두지 못하면 등록되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([varianceRoute(seen)]);
+    await chooseLine(user);
+    await fill(user, '20');
+
+    await user.click(screen.getByRole('button', { name: '오류 등록' }));
+
+    held.failWrite = 'outbox';
+    await user.click(await screen.findByRole('button', { name: '등록합니다' }));
+
+    expect(await screen.findByText('오류를 담아 두지 못했습니다')).toBeTruthy();
+    expect(screen.queryByText('입하 오류를 등록했습니다')).toBeNull();
+    expect(seen).toHaveLength(0);
   });
 });

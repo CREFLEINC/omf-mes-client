@@ -10,11 +10,15 @@ import { IqcSkipRequestScreen } from '../screens/iqc-skip-request/screen';
 import { InboundReceiptScreen } from '../screens/inbound-receipt/screen';
 import { InboundVarianceScreen } from '../screens/inbound-variance/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
+import { MaterialPickingScreen } from '../screens/material-picking/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
+import { PackingRepackScreen } from '../screens/packing-repack/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
+import { RecycleEntryScreen } from '../screens/recycle-entry/screen';
 import { TemporaryPutawayScreen } from '../screens/temporary-putaway/screen';
 import { RepairRoundtripScreen } from '../screens/repair-roundtrip/screen';
+import { WipHandoverScreen } from '../screens/wip-handover/screen';
 
 export const appRoutes: RouteObject[] = [
   {
@@ -33,12 +37,16 @@ export const appRoutes: RouteObject[] = [
       { path: 'inbound-variance', element: <InboundVarianceScreen /> },
       { path: 'putaway', element: <PutawayScreen /> },
       { path: 'temporary-putaway', element: <TemporaryPutawayScreen /> },
+      { path: 'recycle-entry', element: <RecycleEntryScreen /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
+      { path: 'material-picking', element: <MaterialPickingScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
       { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
       { path: 'iqc-skip-request', element: <IqcSkipRequestScreen /> },
+      { path: 'wip-handover', element: <WipHandoverScreen /> },
       { path: 'repair-roundtrip', element: <RepairRoundtripScreen /> },
       { path: 'product-picking', element: <ProductPickingScreen /> },
+      { path: 'packing-repack', element: <PackingRepackScreen /> },
       { path: 'rejections', element: <OutboxRejectionsScreen /> },
     ],
   },

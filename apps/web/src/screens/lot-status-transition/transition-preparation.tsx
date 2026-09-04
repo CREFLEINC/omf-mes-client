@@ -10,6 +10,7 @@ import {
 import type { ApiClient, components } from '@omf-mes/api-client';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
+import type { PropsWithChildren } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -27,6 +28,17 @@ export const lotHoldDetailPath = (lotHoldId: number): `/quality/lot-holds/${numb
   `/quality/lot-holds/${lotHoldId}`;
 const transitionKey = (value: Transition): string =>
   `${value.actionCode}:${value.targetLotStatusCode}`;
+const formatDateTime = (value: string): string => {
+  const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
+  return match === null ? value : `${match[1]} ${match[2]}`;
+};
+
+const PreparationPane = ({ children }: PropsWithChildren) => (
+  <section className="pane lot-status-transition-pane" aria-label="상태 전이 준비">
+    <h2 className="pane-title">상태 전이 준비</h2>
+    {children}
+  </section>
+);
 
 const useTransitions = (lotId: number, enabled: boolean) => {
   const { client } = useApiClient();
@@ -183,7 +195,11 @@ export const LotStatusTransitionPreparation = ({
     statuses.data?.items.find((item) => item.code === code)?.label ?? code;
   const holdColumns: Column<LotHold>[] = [
     { key: 'reason', header: '보류 사유', render: (item) => item.reasonCode },
-    { key: 'heldAt', header: '보류 시각', render: (item) => item.heldAt },
+    {
+      key: 'heldAt',
+      header: '보류 시각',
+      render: (item) => <time dateTime={item.heldAt}>{formatDateTime(item.heldAt)}</time>,
+    },
     {
       key: 'quantity',
       header: '보류 수량',
@@ -211,23 +227,29 @@ export const LotStatusTransitionPreparation = ({
 
   if (transitions.isFetching && !confirmationPinned)
     return (
-      <div role="status" aria-label="전이 선택지를 불러오는 중">
-        <SkeletonText lines={1} />
-      </div>
+      <PreparationPane>
+        <div role="status" aria-label="전이 선택지를 불러오는 중">
+          <SkeletonText lines={1} />
+        </div>
+      </PreparationPane>
     );
   if (transitions.isError && !confirmationPinned)
     return (
-      <AlertBanner
-        variant="error"
-        title="전이 선택지를 불러오지 못했습니다."
-        action={<Button onClick={() => void transitions.refetch()}>다시 시도</Button>}
-      />
+      <PreparationPane>
+        <AlertBanner
+          variant="error"
+          title="전이 선택지를 불러오지 못했습니다."
+          action={<Button onClick={() => void transitions.refetch()}>다시 시도</Button>}
+        />
+      </PreparationPane>
     );
   if (allowed.length === 0)
     return (
-      <AlertBanner variant="info">
-        {transitions.data?.note ?? '현재 LOT은 전이할 수 없습니다.'}
-      </AlertBanner>
+      <PreparationPane>
+        <AlertBanner variant="info">
+          {transitions.data?.note ?? '현재 LOT은 전이할 수 없습니다.'}
+        </AlertBanner>
+      </PreparationPane>
     );
 
   let preparation: string | null = null;
@@ -254,34 +276,44 @@ export const LotStatusTransitionPreparation = ({
   }
 
   return (
-    <section className="pane" aria-label="상태 전이 준비">
-      <RadioGroup
-        name={`lot-status-transition-${String(lot.lotId)}`}
-        orientation="horizontal"
-        value={selectedTransitionKey ?? ''}
-        disabled={confirmationPinned}
-        aria-label="전이"
-        onChange={chooseTransition}
-      >
-        {allowed.map((item) => (
-          <Radio key={transitionKey(item)} value={transitionKey(item)}>
-            {targetLabel(item.targetLotStatusCode)}
-          </Radio>
-        ))}
-      </RadioGroup>
+    <PreparationPane>
+      <div className="lot-status-transition-choice">
+        <h3 className="lot-status-transition-subtitle">전이할 상태</h3>
+        <RadioGroup
+          name={`lot-status-transition-${String(lot.lotId)}`}
+          orientation="horizontal"
+          value={selectedTransitionKey ?? ''}
+          disabled={confirmationPinned}
+          aria-label="전이"
+          onChange={chooseTransition}
+        >
+          {allowed.map((item) => (
+            <Radio key={transitionKey(item)} value={transitionKey(item)}>
+              {targetLabel(item.targetLotStatusCode)}
+            </Radio>
+          ))}
+        </RadioGroup>
+      </div>
       {isRelease && holdsData !== undefined && holdsData.items.length > 0 && (
-        <section aria-label="열린 보류 목록">
-          <h3>열린 보류</h3>
-          <Table
-            density="compact"
-            columns={holdColumns}
-            rows={holdsData.items}
-            getRowId={(item) => String(item.lotHoldId)}
-            sort={null}
-          />
+        <section className="lot-status-transition-holds" aria-label="열린 보류 목록">
+          <h3 className="lot-status-transition-subtitle">열린 보류</h3>
+          <div className="wide-table lot-status-transition-table">
+            <Table
+              density="compact"
+              caption="열린 보류"
+              columns={holdColumns}
+              rows={holdsData.items}
+              getRowId={(item) => String(item.lotHoldId)}
+              sort={null}
+            />
+          </div>
         </section>
       )}
-      {preparation !== null && <p role="status">{preparation}</p>}
+      {preparation !== null && (
+        <p className="lot-status-transition-preparation-note" role="status">
+          {preparation}
+        </p>
+      )}
       {isCreate &&
         selectedTransition !== undefined &&
         lot.versionNo !== undefined &&
@@ -328,6 +360,6 @@ export const LotStatusTransitionPreparation = ({
             onStale={reloadExecutionOwner}
           />
         )}
-    </section>
+    </PreparationPane>
   );
 };

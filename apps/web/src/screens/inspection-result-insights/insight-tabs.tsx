@@ -84,20 +84,25 @@ export const InsightTabs = ({
     group === 'detectionProcess' ||
     distribution.data?.nodes.some((node) => node.duplicateRisk === true) === true;
   const distributionContent = (
-    <section aria-label="불량 분포 결과">
-      <Select
-        aria-label="분포 묶음 기준"
-        value={group}
-        options={GROUP_OPTIONS}
-        onChange={(value) => setGroup(value as DistributionGroup)}
-      />
-      <AlertBanner variant="info">
-        목록·요약·추이와 다른 모집단이며 두 수가 다른 것이 정상입니다.
-      </AlertBanner>
-      <AlertBanner variant="warning">현재 담기지 않는 불량 원천이 있을 수 있습니다.</AlertBanner>
-      {duplicateWarning && (
-        <AlertBanner variant="warning">공정별 분포는 중복 계상될 수 있습니다.</AlertBanner>
-      )}
+    <section className="inspection-results-analysis" aria-label="불량 분포 결과">
+      <div className="field-cell wide-select inspection-results-distribution-field">
+        <span className="field-label">분포 묶음 기준</span>
+        <Select
+          aria-label="분포 묶음 기준"
+          value={group}
+          options={GROUP_OPTIONS}
+          onChange={(value) => setGroup(value as DistributionGroup)}
+        />
+      </div>
+      <div className="inspection-results-banner-stack">
+        <AlertBanner variant="info">
+          목록·요약·추이와 다른 모집단이며 두 수가 다른 것이 정상입니다.
+        </AlertBanner>
+        <AlertBanner variant="warning">현재 담기지 않는 불량 원천이 있을 수 있습니다.</AlertBanner>
+        {duplicateWarning && (
+          <AlertBanner variant="warning">공정별 분포는 중복 계상될 수 있습니다.</AlertBanner>
+        )}
+      </div>
       {distribution.isPending && <SkeletonText lines={3} />}
       {distribution.isError && (
         <AlertBanner
@@ -108,14 +113,16 @@ export const InsightTabs = ({
       )}
       {!distribution.isError && distribution.data !== undefined && (
         <>
-          <Table
-            density="compact"
-            caption="불량코드 분포"
-            columns={columns}
-            rows={[...distribution.data.nodes]}
-            getRowId={(node) => String(node.defectCodeId)}
-            empty={<EmptyState size="sm" title="분포 데이터가 없습니다" />}
-          />
+          <div className="wide-table inspection-results-table">
+            <Table
+              density="compact"
+              caption="불량코드 분포"
+              columns={columns}
+              rows={[...distribution.data.nodes]}
+              getRowId={(node) => String(node.defectCodeId)}
+              empty={<EmptyState size="sm" title="분포 데이터가 없습니다" />}
+            />
+          </div>
           <p className="field-note">기준 {dateTime(distribution.data.asOf)}</p>
         </>
       )}

@@ -61,13 +61,11 @@ const t = messages.documentProgress;
 export const APPROVED_APPROVAL_STATUS_CODES: readonly string[] = [];
 
 /**
- * 반려를 뜻하는 결재 결과 코드 — **비어 있는 것이 지금의 사실이다.**
+ * 반려를 뜻하는 결재 결과 코드 — 고정 OpenAPI가 `REJECTED`로 닫았다.
  *
- * 디자인 시스템 `Stepper`에 반려 상태가 있고 X 글리프를 그리지만, 켜려면 결과 코드 문자열을
- * 해석해야 한다. 그것이 공유계약이 금지한 일이다. **값이 확정되면 이 배열만 채우면** 그 코드의
- * 단계가 반려로 그려진다.
+ * 디자인 시스템 `Stepper`는 이 값의 단계를 반려 상태와 X 글리프로 그린다.
  */
-export const REJECTION_DECISION_CODES: readonly string[] = [];
+export const REJECTION_DECISION_CODES = ['REJECTED'] as const;
 
 /**
  * 이 문서에 취소 요청이 올라가 있는가 — **세 갈래**다(전례 `readSubmission` 그대로).
@@ -187,7 +185,7 @@ export const toReasonLines = (reason: string): string[] => reason.split(/\r?\n/)
  * 단계 하나의 상태.
  *
  * **결재했는가와 지금 차례인가, 둘로만 가른다.** 결재 기록이 있으면 완료이며, 그 코드가 반려
- * 자리표시에 들어 있을 때만 반려다 — 자리표시가 빈 지금은 어떤 코드도 반려가 되지 않는다.
+ * 고정 목록의 `REJECTED`일 때만 반려다.
  *
  * **결재 기록이 있으면 `isCurrent`가 참이어도 완료다.** 두 값이 어긋나는 응답이 실재하고
  * (전례가 목에서 실측), 그때 「진행 중」으로 그리면 사용자가 이미 끝난 단계를 기다린다.

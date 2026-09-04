@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import type { DisposalCodeKey, SelectOption, WarehouseEntry } from './types';
 
 /**
- * 값 목록이 확정되지 않은 코드를 **한 파일에 격리한다.**
+ * 고정 OpenAPI가 닫은 구조 코드와 운영 목록을 기다리는 코드를 **한 파일에 격리한다.**
  *
  * **값을 지어내지 않는 것이 이 파일의 목적이다.** 착수 이슈가 미결로 남긴 것을 화면이
  * 그럴듯한 예시로 메우면, 사용자는 고를 수 있다고 믿고 고르는데 서버는 그 값을 모른다 —
@@ -65,15 +65,14 @@ export type DisposalIssueCodeKey = DisposalCodeKey | 'receiptType' | 'status' | 
 /**
  * 계약이 **등록 필수**로 요구하는 셋.
  *
- * `sourceDocumentType`이 여기 있는 것이 눈에 걸릴 수 있다 — 원천이 입고 전표임을 가리키는
- * **구조 값**이라 사용자가 고를 성질이 아니다. 그런데도 자리표시로 두는 이유는, 그 값이
- * 무엇이어야 하는지도 아직 확정되지 않았기 때문이다.
+ * `sourceDocumentType`은 원천이 입고 전표임을 가리키는 **구조 값**이며, 고정
+ * OpenAPI가 닫은 `GOODS_RECEIPT`를 그대로 쓴다.
  *
  * `reason`은 계약 스키마에서 nullable이지만 설명이 「반품·기타 출고에서는 필수」라
  * **설명을 따른다**(계획 §5.4-17).
  *
  * **다섯에서 셋으로 줄었다**(#124·#128). 줄었어도 **등록은 그대로 잠겨 있다** — 남은 셋의
- * 값 목록이 여전히 비어 있기 때문이다. 자리를 지우는 일이 사용자에게 무엇을 열어 주는 일이
+ * 운영 공통코드인 출고 유형·사유 목록이 여전히 비어 있기 때문이다. 자리를 지우는 일이 사용자에게 무엇을 열어 주는 일이
  * 되어서는 안 되고, `code-options.test.ts`가 그 사실을 감지기로 고정한다.
  */
 export const REQUIRED_CODE_KEYS: readonly DisposalCodeKey[] = [
@@ -82,22 +81,16 @@ export const REQUIRED_CODE_KEYS: readonly DisposalCodeKey[] = [
   'reason',
 ];
 
-/** 코드마다의 값 목록. **비어 있는 것이 지금의 사실이다.** */
+/** 코드마다의 값 목록. 구조 enum은 채우고 운영 공통코드는 비워 둔다. */
 export type CodeValueLists = Record<DisposalIssueCodeKey, readonly string[]>;
 
 /** 코드마다의 선택지. */
 export type CodeOptionSets = Record<DisposalIssueCodeKey, SelectOption[]>;
 
-/**
- * 값 목록 — **여섯 다 비어 있다.**
- *
- * 자리표시 값을 하나 넣어 두지 않는다. 넣으면 사용자가 그것을 고를 수 있고, 고르면
- * 서버가 모르는 코드가 되돌릴 수 없는 전표에 실린다. 조회 조건 쪽에 넣으면 결과가 늘
- * 비어 보인다.
- */
+/** 고정 OpenAPI가 닫은 구조 코드만 채운다. 운영 공통코드 축은 실행 시점 조회 전까지 비워 둔다. */
 export const PLACEHOLDER_DISPOSAL_ISSUE_CODES: CodeValueLists = {
   issueType: [],
-  sourceDocumentType: [],
+  sourceDocumentType: ['GOODS_RECEIPT'],
   reason: [],
   receiptType: [],
   status: [],

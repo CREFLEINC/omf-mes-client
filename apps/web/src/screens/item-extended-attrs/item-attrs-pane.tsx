@@ -52,7 +52,6 @@ export const ItemAttrsPane = ({
   onSave,
   onCancel,
 }: ItemAttrsPaneProps) => {
-  const lotId = useId();
   const serialId = useId();
   const shelfLifeDaysId = useId();
   const storageId = useId();
@@ -67,14 +66,12 @@ export const ItemAttrsPane = ({
          * 필수 표시는 디자인 시스템 내장 라벨에 끼울 자리가 없어 라벨을 직접 붙인다(배치 규범 3).
          * 검증이 필수로 막는 칸에 표시가 없으면 저장을 눌러야 필수임을 알게 된다.
          */}
+        {/* 계약이 LOT 관리를 유형 코드가 아니라 여부(불리언)로 받는다(코드 사전 2026-09-03). */}
         <div className="field-cell">
-          <FieldLabel htmlFor={lotId} label={t.attrs.fields.lotControlType} required />
-          <TextField
-            id={lotId}
-            value={values.lotControlTypeCode}
-            onChange={(event) => onChange({ lotControlTypeCode: event.target.value })}
-            error={fieldErrors.lotControlTypeCode}
-            aria-required
+          <Switch
+            label={t.attrs.fields.lotControlled}
+            checked={values.lotControlled}
+            onChange={(event) => onChange({ lotControlled: event.target.checked })}
           />
         </div>
 

@@ -1,7 +1,8 @@
 import { AlertBanner, Button, Card, Chip, NumberPad, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
+import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
@@ -72,7 +73,7 @@ const CandidateCard = ({
 
   return (
     <Card bordered>
-      <Card.Body className="picking__candidate">
+      <Card.Body className="card-body picking__candidate">
         <div className="picking__candidate-head">
           <strong>{candidate.lot.lotNo}</strong>
           {recommended ? <Chip status="success">{t.candidates.recommended}</Chip> : null}
@@ -121,14 +122,35 @@ export const ProductPickingScreen = () => {
   const { worker } = useWorkerSession();
   const today = useMemo(() => new Date(), []);
 
-  const [target, setTarget] = useState<Target | null>(null);
+  /*
+   * 어느 요청의 어느 라인인가만 들고 있는다. 대상 자체를 굳혀 두면 확정 뒤에도 옛 피킹량이
+   * 남아 남은 배정이 줄지 않고, 배정보다 많이 집을 수 있다 - 되돌릴 수 없는 예약 소진이다.
+   */
+  const [chosen, setChosen] = useState<{ requestId: number; lineId: number } | null>(null);
   const [lotId, setLotId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
   const [manual, setManual] = useState('');
   const [missed, setMissed] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  /*
+   * 보내는 동안 잠근다. 상태로 두면 React 가 두 이벤트 사이에 커밋하지 못한 경우를 막지 못한다 -
+   * 셋이 잇달아 들어오면 셋 다 갱신 전의 값을 보고 통과한다. 즉시 바뀌는 자리에 둔다. 단추를
+   * 흐리게 하는 것은 DS 단추의 loading 이 이미 한다.
+   */
+  const inFlight = useRef(false);
 
   const requests = useTodayRequests(today);
+  /* 화면이 보는 값은 늘 새 조회에서 나온다. 상태에 굳은 사본을 두지 않는다. */
+  const target: Target | null = (() => {
+    if (chosen === null) {
+      return null;
+    }
+
+    const request = requests.data?.find((each) => each.shipmentRequestId === chosen.requestId);
+    const line = request?.lines?.find((each) => each.shipmentRequestLineId === chosen.lineId);
+
+    return request === undefined || line === undefined ? null : { request, line };
+  })();
   const itemId = target?.line.itemId ?? null;
   const item = useItem(itemId);
   const uoms = useUomCodes(true);
@@ -164,6 +186,23 @@ export const ProductPickingScreen = () => {
 
   const scanField = useScanField({ onScan: takeScan });
 
+  /*
+   * 한 번의 확정에 키 하나. 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 스스로 비워지게 한다.
+   * 이 화면은 후보 LOT 을 바꿔 가며 고르는 것이 주된 조작이라, 요청·라인·후보·수량이 다 들어가야
+   * 한다. 수량은 친 문자열이 아니라 실제로 보낼 값으로 짓는다.
+   *
+   * 조기 반환보다 위에 둔다. 아래에 두면 연결이 끊겼다 붙는 순간 훅 수가 달라져 화면이 통째로
+   * 던진다.
+   */
+  const idempotency = useIdempotencyKey(
+    [
+      String(target?.request.shipmentRequestId),
+      String(target?.line.shipmentRequestLineId),
+      String(lotId),
+      String(Number(qty.trim())),
+    ].join(':'),
+  );
+
   if (!online) {
     return (
       <div className="picking">
@@ -175,7 +214,8 @@ export const ProductPickingScreen = () => {
   }
 
   const selected = candidates.find((each) => each.lot.lotId === lotId) ?? null;
-  const problem = target === null || selected === null ? null : qtyProblem(selected, target.line, qty);
+  const problem =
+    target === null || selected === null ? null : qtyProblem(selected, target.line, qty);
 
   const qtyMessage = (): string | undefined => {
     if (selected === null || target === null || problem === null) {
@@ -203,22 +243,30 @@ export const ProductPickingScreen = () => {
   };
 
   const confirm = async () => {
-    if (target === null || selected === null || worker === null) {
+    if (target === null || selected === null || worker === null || inFlight.current) {
       return;
     }
 
-    await pick
-      .mutateAsync({
-        shipmentRequestId: target.request.shipmentRequestId,
-        line: target.line,
-        candidate: selected,
-        qty,
-        workerNo: worker.workerNo,
-      })
-      .then(() => {
-        setDone(true);
-      })
-      .catch(() => null);
+    inFlight.current = true;
+
+    try {
+      await pick
+        .mutateAsync({
+          shipmentRequestId: target.request.shipmentRequestId,
+          line: target.line,
+          candidate: selected,
+          qty,
+          workerNo: worker.workerNo,
+          idempotencyKey: idempotency.current(),
+        })
+        .then(() => {
+          idempotency.reset();
+          setDone(true);
+        })
+        .catch(() => null);
+    } finally {
+      inFlight.current = false;
+    }
   };
 
   if (done) {
@@ -239,6 +287,8 @@ export const ProductPickingScreen = () => {
       <div className="picking">
         <section className="picking__section">
           <h2>{t.targets.legend}</h2>
+          {/* 고르던 라인이 빠졌으면 말없이 나가지 않는다. 남겨 두면 나중에 예고 없이 되돌아간다. */}
+          {chosen !== null ? <AlertBanner variant="warning" title={t.targets.dropped} /> : null}
           {requests.isPending ? <p role="status">{t.targets.loading}</p> : null}
           {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
           {requests.data !== undefined && requests.data.length === 0 ? (
@@ -250,13 +300,18 @@ export const ProductPickingScreen = () => {
                 const left = remainingAllocated(line);
 
                 return (
-                  <li key={`${String(request.shipmentRequestId)}-${String(line.shipmentRequestLineId)}`}>
+                  <li
+                    key={`${String(request.shipmentRequestId)}-${String(line.shipmentRequestLineId)}`}
+                  >
                     <Button
                       className="picking__pick"
                       variant="outlined"
                       size="xl"
                       onClick={() => {
-                        setTarget({ request, line });
+                        setChosen({
+                          requestId: request.shipmentRequestId,
+                          lineId: line.shipmentRequestLineId,
+                        });
                         setLotId(null);
                         setQty('');
                         setMissed(null);
@@ -268,7 +323,9 @@ export const ProductPickingScreen = () => {
                         <span>
                           {t.targets.progress(String(line.allocatedQty), String(line.pickedQty))}
                         </span>
-                        <span>{left <= 0 ? t.targets.complete : t.targets.remaining(String(left), '')}</span>
+                        <span>
+                          {left <= 0 ? t.targets.complete : t.targets.remaining(String(left), '')}
+                        </span>
                       </span>
                     </Button>
                   </li>
@@ -288,7 +345,7 @@ export const ProductPickingScreen = () => {
       <section className="picking__section">
         <h2>{t.target.legend}</h2>
         <Card bordered>
-          <Card.Body className="picking__card">
+          <Card.Body className="card-body picking__card">
             <strong>{target.request.shipmentRequestNo}</strong>
             <p>{item.data === undefined ? '' : `${item.data.itemCode} ${item.data.itemName}`}</p>
             {item.isError ? <p className="picking__note">{t.target.itemFailed}</p> : null}
@@ -321,7 +378,7 @@ export const ProductPickingScreen = () => {
           variant="text"
           size="lg"
           onClick={() => {
-            setTarget(null);
+            setChosen(null);
             setLotId(null);
             setQty('');
             setMissed(null);
@@ -329,6 +386,11 @@ export const ProductPickingScreen = () => {
         >
           {t.target.change}
         </Button>
+        {/*
+          이 화면이 보이는 남은 배정은 목록 조회에서 나온다. 그것이 늙은 채로 굳으면 확정 전
+          값이 그대로 남아 배정을 다 채우고도 한 번 더 집게 된다 - 조용히 두지 않는다.
+        */}
+        {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
       </section>
 
       <section className="picking__section">
@@ -357,6 +419,8 @@ export const ProductPickingScreen = () => {
             size="xl"
             onClick={() => {
               takeScan(manual.trim());
+              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+              setManual('');
             }}
           >
             {t.scan.manualSubmit}
@@ -444,13 +508,14 @@ export const ProductPickingScreen = () => {
           <NumberPad
             value={qty}
             onChange={setQty}
-            max={Math.min(selected.availableQty, remainingAllocated(target.line))}
+            /* 남은 배정이 음수로 오면 상한이 음수가 된다. 서버 값이 그럴 수 있다. */
+            max={Math.max(0, Math.min(selected.availableQty, remainingAllocated(target.line)))}
             allowDecimal
           />
           {worker === null ? <p className="picking__note">{t.noWorker}</p> : null}
           {pick.error === null || pick.error === undefined ? null : isConflict(
-            toApiError(pick.error),
-          ) ? (
+              toApiError(pick.error),
+            ) ? (
             <AlertBanner variant="error" title={t.conflict} />
           ) : (
             <AlertBanner variant="error" title={t.failed} />

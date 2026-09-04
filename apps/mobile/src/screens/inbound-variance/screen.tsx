@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Card, Dialog, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useCodeValues } from '../../patterns/code-values';
@@ -39,7 +39,7 @@ const emptyDraft: VarianceDraft = {
 export const InboundVarianceScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush, countPending } = useOutbox();
+  const { enqueue, flush, countPending, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
 
   const [search, setSearch] = useState('');
@@ -47,6 +47,12 @@ export const InboundVarianceScreen = () => {
   const [draft, setDraft] = useState<VarianceDraft>(emptyDraft);
   const [asking, setAsking] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [saveFailed, setSaveFailed] = useState(false);
+  /*
+   * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
+   * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 두 건이 기록된다.
+   */
+  const inFlight = useRef(false);
 
   const patch = (next: Partial<VarianceDraft>) => {
     setDraft((current) => ({ ...current, ...next }));
@@ -75,6 +81,7 @@ export const InboundVarianceScreen = () => {
     setDraft(emptyDraft);
     setAsking(false);
     setOutcome(null);
+    setSaveFailed(false);
   };
 
   const submit = async () => {
@@ -82,23 +89,44 @@ export const InboundVarianceScreen = () => {
 
     setAsking(false);
 
-    if (worker === null || line === null) {
+    if (worker === null || line === null || inFlight.current) {
       return;
     }
 
-    const entry = toOutboxDraft(draft, line, new Date(), worker.workerNo);
+    inFlight.current = true;
+    setSaveFailed(false);
 
-    await enqueue(entry);
+    try {
+      const entry = toOutboxDraft(draft, line, new Date(), worker.workerNo);
 
-    const result = await flush().catch(() => null);
-    const mine = (each: { idempotencyKey: string }) => each.idempotencyKey === entry.idempotencyKey;
+      /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 등록된 줄 안다. */
+      try {
+        await enqueue(entry);
+      } catch {
+        setSaveFailed(true);
+        return;
+      }
 
-    if (result !== null && result.rejected.some((each) => mine(each.entry))) {
-      setOutcome('rejected');
-      return;
+      const result = await flush().catch(() => null);
+      const mine = (each: { idempotencyKey: string }) =>
+        each.idempotencyKey === entry.idempotencyKey;
+
+      /*
+       * 자기가 부른 보내기의 결과만 보면 딸려 되돌아간 건을 놓친다 - 그 판정은 셸이 도는 다른
+       * 회차에서 내려질 수 있고, 화면은 빈 결과를 받아 담아 두었다고 잘못 말한다.
+       */
+      if (
+        (result !== null && result.rejected.some((each) => mine(each.entry))) ||
+        isRejected(entry.idempotencyKey)
+      ) {
+        setOutcome('rejected');
+        return;
+      }
+
+      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+    } finally {
+      inFlight.current = false;
     }
-
-    setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
   };
 
   if (outcome !== null) {
@@ -211,7 +239,7 @@ export const InboundVarianceScreen = () => {
         <>
           <section className="variance__section">
             <Card bordered>
-              <Card.Body className="variance__card">
+              <Card.Body className="card-body variance__card">
                 <strong>
                   {item.data === undefined
                     ? String(draft.line.itemId)
@@ -323,6 +351,11 @@ export const InboundVarianceScreen = () => {
               ) : null}
             </div>
 
+            {saveFailed ? (
+              <AlertBanner variant="error" title={t.saveFailed.title}>
+                {t.saveFailed.description}
+              </AlertBanner>
+            ) : null}
             {worker === null ? <p className="variance__note">{t.noWorker}</p> : null}
             <Button
               className="variance__wide"

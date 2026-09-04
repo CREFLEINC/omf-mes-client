@@ -89,43 +89,50 @@ export const HistoryTab = ({
     }
 
     return (
-      <>
-        <Table
-          density="compact"
-          columns={columns}
-          rows={rows}
-          getRowId={(row) => String(row.dispositionDecisionId)}
-          empty={
-            page.isBeyondLast ? (
-              <EmptyState
-                size="sm"
-                live
-                title={t.empty.beyondTitle}
-                description={t.empty.beyondDescription}
-                action={
-                  <Button variant="outlined" onClick={() => onChangePage(1)}>
-                    {t.actions.goFirstPage}
-                  </Button>
-                }
-              />
-            ) : (
-              <EmptyState
-                size="sm"
-                live
-                title={t.empty.historyTitle}
-                description={t.empty.historyDescription}
-              />
-            )
-          }
-        />
+      <div className="disposition-history-results">
+        <div className="disposition-table disposition-history-table">
+          <Table
+            density="compact"
+            caption={<span className="disposition-table-caption">{t.panes.history}</span>}
+            columns={columns}
+            rows={rows}
+            getRowId={(row) => String(row.dispositionDecisionId)}
+            empty={
+              page.isBeyondLast ? (
+                <EmptyState
+                  size="sm"
+                  live
+                  title={t.empty.beyondTitle}
+                  description={t.empty.beyondDescription}
+                  action={
+                    <Button variant="outlined" onClick={() => onChangePage(1)}>
+                      {t.actions.goFirstPage}
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState
+                  size="sm"
+                  live
+                  title={t.empty.historyTitle}
+                  description={t.empty.historyDescription}
+                />
+              )
+            }
+          />
+        </div>
         <PageNav view={page} label={t.page.label} onChange={onChangePage} />
-      </>
+      </div>
     );
   };
 
   return (
-    <section className="pane" aria-label={t.panes.history}>
-      <div className="filter-bar">
+    <section
+      className="pane disposition-pane disposition-history-pane"
+      aria-label={t.panes.history}
+    >
+      <h2 className="pane-title">{t.panes.history}</h2>
+      <div className="filter-bar disposition-history-filter">
         <div className="field-cell">
           <label className="field-label" htmlFor={periodId}>
             {t.fields.decidedPeriod}
@@ -163,10 +170,8 @@ export const HistoryTab = ({
             </span>
           )}
         </div>
-        <div className="field-cell field-cell-unlabeled">
-          <div className="filter-actions">
-            <Button onClick={() => onApply(draft)}>{messages.common.search}</Button>
-          </div>
+        <div className="filter-actions disposition-history-filter-actions">
+          <Button onClick={() => onApply(draft)}>{messages.common.search}</Button>
         </div>
       </div>
       {results()}

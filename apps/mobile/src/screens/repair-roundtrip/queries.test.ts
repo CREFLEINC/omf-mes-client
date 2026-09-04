@@ -8,7 +8,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { DEFECT_WINDOW_DAYS } from './repair';
-import { useDefectRecords, useOpenRepairs } from './queries';
+import { useDefectRecords, useOpenRepairs, useOpenRepairsForLot } from './queries';
 
 const page = { page: 0, size: 20, totalElements: 0, totalPages: 1 };
 
@@ -23,7 +23,9 @@ const capturing = (pathname: string, body: unknown, seen: URL[]): StubRoute => (
 describe('불량 기록 조회', () => {
   it('이 LOT 으로 좁혀 묻는다', async () => {
     const seen: URL[] = [];
-    const fetch = createStubFetch([capturing('/quality/defect-records', { items: [], page }, seen)]);
+    const fetch = createStubFetch([
+      capturing('/quality/defect-records', { items: [], page }, seen),
+    ]);
 
     const { result } = renderHookWithProviders(() => useDefectRecords(4), { fetch });
 
@@ -36,7 +38,9 @@ describe('불량 기록 조회', () => {
   /* 계약이 기간을 비울 수 없게 해 두었다. 빠뜨리면 서버가 요청 자체를 받지 않는다. */
   it('기간을 비우지 않고 정해진 길이만큼 거슬러 묻는다', async () => {
     const seen: URL[] = [];
-    const fetch = createStubFetch([capturing('/quality/defect-records', { items: [], page }, seen)]);
+    const fetch = createStubFetch([
+      capturing('/quality/defect-records', { items: [], page }, seen),
+    ]);
 
     const { result } = renderHookWithProviders(() => useDefectRecords(4), { fetch });
 
@@ -87,7 +91,7 @@ describe('열린 수리 건 조회', () => {
       capturing('/production/repair-executions', { items: [], page }, seen),
     ]);
 
-    const { result } = renderHookWithProviders(() => useOpenRepairs(4), { fetch });
+    const { result } = renderHookWithProviders(() => useOpenRepairsForLot(4), { fetch });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

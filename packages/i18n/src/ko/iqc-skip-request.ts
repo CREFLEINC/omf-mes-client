@@ -11,6 +11,9 @@ export const iqcSkipRequest = {
   lot: {
     legend: '어느 자재인가',
     scanLabel: '입하 LOT 스캔',
+    /* 스캔 칸은 스캐너 전용이라 손 입력을 여기서 받는다. */
+    manualLabel: '직접 입력',
+    manualSubmit: '넣기',
     scanPlaceholder: 'LOT 라벨을 비추세요',
     loading: 'LOT을 찾는 중입니다',
     loadFailed: 'LOT을 확인할 수 없습니다',
@@ -32,6 +35,11 @@ export const iqcSkipRequest = {
   /** 이름이 긴급이라 누르면 되는 것으로 읽힌다. 무엇이 아직 안 되는지를 먼저 말한다. */
   expectation: '권한자 승인 후에 쓸 수 있습니다. 지금 바로 투입되지 않습니다.',
   submit: '요청',
+  /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
+  saveFailed: {
+    title: '요청을 담아 두지 못했습니다',
+    description: '요청되지 않았습니다. 다시 시도하세요.',
+  },
   noWorker: '사번을 확인해야 요청할 수 있습니다',
   sent: {
     title: '요청했습니다',
@@ -54,8 +62,14 @@ export const iqcSkipRequest = {
   mine: {
     legend: '내가 올린 요청',
     loading: '불러오는 중입니다',
-    loadFailed: '내가 올린 요청을 불러오지 못했습니다',
+    /*
+     * 이 목록은 앞서 받은 것이 그대로 남는다. 이 화면에는 요청 취소·회수가 없어, 빈 목록이
+     * 요청이 없다는 뜻으로 읽히면 같은 요청을 다시 올린다.
+     */
+    loadFailed: '지금은 갱신하지 못했습니다. 연결되면 갱신됩니다.',
     empty: '올린 요청이 없습니다.',
+    /** 사번을 아직 모르면 누구의 요청인지 물을 수 없다. */
+    noWorker: '사번을 확인하면 보입니다',
     requestedAt: (at: string) => `${at} 올림`,
   },
 } as const;

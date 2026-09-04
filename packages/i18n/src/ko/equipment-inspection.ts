@@ -54,6 +54,11 @@ export const equipmentInspection = {
     remainingRequired: (name: string) => `필수 항목 ${name}이(가) 남았습니다`,
   },
   submit: '점검 완료',
+  /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
+  saveFailed: {
+    title: '점검을 담아 두지 못했습니다',
+    description: '기록되지 않았습니다. 다시 시도하세요.',
+  },
   noWorker: '사번을 확인해야 점검할 수 있습니다',
   /** 못 보낸 점검은 서버에 없어 작업 통제가 점검을 안 한 것으로 읽는다. */
   unsent: (count: number) => `미전송 점검 ${String(count)}건 — 작업 통제에 반영되지 않습니다`,

@@ -447,7 +447,7 @@ export const WorkOrderCloseCandidateScreen = () => {
     }));
 
   return (
-    <>
+    <div className="work-order-close-workspace">
       <WorkOrderCloseFilterBar
         appliedFilters={state.appliedFilters}
         productionOrderOptions={toWorkOrderCloseProductionOrderOptions(
@@ -459,77 +459,81 @@ export const WorkOrderCloseCandidateScreen = () => {
         onSearch={(next) => dispatch({ type: 'SEARCH', filters: next })}
         onReset={() => dispatch({ type: 'RESET' })}
       />
-      <WorkOrderCloseCandidateListPane
-        rows={toWorkOrderCloseCandidateRows(candidates, itemNames.items, uoms)}
-        selectedWorkOrderId={state.selectedWorkOrderId}
-        isLoading={initialization.kind === 'CHECKING' || candidate.isFetching}
-        loadError={loadError}
-        page={page}
-        onSelect={(workOrderId) => dispatch({ type: 'SELECT', workOrderId })}
-        onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
-      />
-      <WorkOrderCloseDetailSummaryPane state={detailPaneState} />
-      {judgment === null ? null : (
-        <WorkOrderCloseInputPane
-          completionJudgment={judgment}
-          draft={inputDraft}
-          reasonOptions={reasonOptions}
-          reasonUnavailableReason={null}
-          onRemainderDispositionChange={(value) =>
-            updateDraft((current) => setWorkOrderCloseRemainderDisposition(current, value))
-          }
-          onVarianceReasonCodeChange={(value) =>
-            updateDraft((current) => setWorkOrderCloseVarianceReasonCode(current, value))
-          }
+      <div className="work-order-close-content">
+        <WorkOrderCloseCandidateListPane
+          rows={toWorkOrderCloseCandidateRows(candidates, itemNames.items, uoms)}
+          selectedWorkOrderId={state.selectedWorkOrderId}
+          isLoading={initialization.kind === 'CHECKING' || candidate.isFetching}
+          loadError={loadError}
+          page={page}
+          onSelect={(workOrderId) => dispatch({ type: 'SELECT', workOrderId })}
+          onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
         />
-      )}
-      {readinessState === null ? null : <WorkOrderCloseStatusPane state={readinessState} />}
-      {outboundState.kind === 'HIDDEN' ? null : (
-        <WorkOrderCloseOutboundItemsPane
-          settings={readyOutboundSettings}
-          selection={outboundSelection}
-          isLoading={outboundState.kind === 'CHECKING'}
-          loadError={
-            outboundState.kind === 'UNAVAILABLE' ? (
-              <AlertBanner
-                variant="error"
-                title={messages.httpError.loadTitle}
-                action={
-                  <Button onClick={() => void outboundSettings.refetch()}>
-                    {messages.common.retry}
-                  </Button>
-                }
-              >
-                {messages.httpError.description}
-              </AlertBanner>
-            ) : null
-          }
-          onToggle={(setting) =>
-            setOwnedOutbound((current) => ({
-              workOrderId: state.selectedWorkOrderId,
-              selection: toggleWorkOrderCloseOutboundItem(
-                toWorkOrderCloseSelectedOutboundSelection(
-                  readyOutboundSettings,
-                  current,
-                  state.selectedWorkOrderId,
-                ),
-                setting,
-              ),
-            }))
-          }
-        />
-      )}
-      {state.selectedWorkOrderId === null ? null : (
-        <WorkOrderCloseExecution
-          key={state.selectedWorkOrderId}
-          workOrderId={state.selectedWorkOrderId}
-          workOrderNo={detailState.kind === 'RESOLVED' ? detailState.detail.workOrderNo : ''}
-          request={executionRequest}
-          onClearSelection={() => dispatch({ type: 'CLEAR_SELECTION' })}
-          onReloadCandidates={candidate.refetch}
-          onReloadDetail={detail.refetch}
-        />
-      )}
-    </>
+        <div className="work-order-close-detail">
+          <WorkOrderCloseDetailSummaryPane state={detailPaneState} />
+          {judgment === null ? null : (
+            <WorkOrderCloseInputPane
+              completionJudgment={judgment}
+              draft={inputDraft}
+              reasonOptions={reasonOptions}
+              reasonUnavailableReason={null}
+              onRemainderDispositionChange={(value) =>
+                updateDraft((current) => setWorkOrderCloseRemainderDisposition(current, value))
+              }
+              onVarianceReasonCodeChange={(value) =>
+                updateDraft((current) => setWorkOrderCloseVarianceReasonCode(current, value))
+              }
+            />
+          )}
+          {readinessState === null ? null : <WorkOrderCloseStatusPane state={readinessState} />}
+          {outboundState.kind === 'HIDDEN' ? null : (
+            <WorkOrderCloseOutboundItemsPane
+              settings={readyOutboundSettings}
+              selection={outboundSelection}
+              isLoading={outboundState.kind === 'CHECKING'}
+              loadError={
+                outboundState.kind === 'UNAVAILABLE' ? (
+                  <AlertBanner
+                    variant="error"
+                    title={messages.httpError.loadTitle}
+                    action={
+                      <Button onClick={() => void outboundSettings.refetch()}>
+                        {messages.common.retry}
+                      </Button>
+                    }
+                  >
+                    {messages.httpError.description}
+                  </AlertBanner>
+                ) : null
+              }
+              onToggle={(setting) =>
+                setOwnedOutbound((current) => ({
+                  workOrderId: state.selectedWorkOrderId,
+                  selection: toggleWorkOrderCloseOutboundItem(
+                    toWorkOrderCloseSelectedOutboundSelection(
+                      readyOutboundSettings,
+                      current,
+                      state.selectedWorkOrderId,
+                    ),
+                    setting,
+                  ),
+                }))
+              }
+            />
+          )}
+          {state.selectedWorkOrderId === null ? null : (
+            <WorkOrderCloseExecution
+              key={state.selectedWorkOrderId}
+              workOrderId={state.selectedWorkOrderId}
+              workOrderNo={detailState.kind === 'RESOLVED' ? detailState.detail.workOrderNo : ''}
+              request={executionRequest}
+              onClearSelection={() => dispatch({ type: 'CLEAR_SELECTION' })}
+              onReloadCandidates={candidate.refetch}
+              onReloadDetail={detail.refetch}
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 };

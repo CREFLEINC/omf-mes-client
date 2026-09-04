@@ -235,8 +235,9 @@ export const ToolPmOrderScreen = () => {
         />
       )}
 
-      <section className="pane" aria-label={t.panes.filters}>
-        <div className="filter-bar">
+      <section className="pane tool-pm-order-pane" aria-label={t.panes.filters}>
+        <h2 className="pane-title">{t.panes.filters}</h2>
+        <div className="filter-bar tool-pm-order-filter">
           <SelectField
             label={t.filters.plant}
             options={[{ value: '', label: t.filters.all }, ...toOptions(plants.entries)]}
@@ -263,7 +264,7 @@ export const ToolPmOrderScreen = () => {
             }}
           />
 
-          <div className="field-cell field-cell-unlabeled check-group">
+          <div className="field-cell field-cell-unlabeled check-group tool-pm-order-filter-options">
             <Checkbox
               checked={filters.dueOnly}
               onChange={(event) => {
@@ -290,22 +291,25 @@ export const ToolPmOrderScreen = () => {
             </Checkbox>
           </div>
 
-          <div className="filter-actions">
-            <Button
-              variant="outlined"
-              onClick={() => {
-                apply(DEFAULT_FILTERS);
-              }}
-            >
-              {t.filters.reset}
-            </Button>
+          <div className="field-cell field-cell-unlabeled tool-pm-order-filter-actions">
+            <div className="filter-actions">
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  apply(DEFAULT_FILTERS);
+                }}
+              >
+                {t.filters.reset}
+              </Button>
+            </div>
           </div>
         </div>
         <p className="pane-lead">{t.filters.defaultNote}</p>
       </section>
 
       {!molds.isError && (
-        <section className="pane" aria-label={t.panes.list}>
+        <section className="pane tool-pm-order-pane" aria-label={t.panes.list}>
+          <h2 className="pane-title">{t.panes.list}</h2>
           {molds.isPending ? (
             <Skeleton variant="rect" height="14rem" />
           ) : pageView.isBeyondLast ? (
@@ -327,8 +331,9 @@ export const ToolPmOrderScreen = () => {
             />
           ) : (
             <>
-              <div className="wide-table">
+              <div className="wide-table tool-pm-order-table">
                 <Table
+                  caption={<span className="tool-pm-order-table-caption">{t.panes.list}</span>}
                   columns={columns}
                   rows={rows}
                   getRowId={(row) => String(row.moldId)}
@@ -354,8 +359,11 @@ export const ToolPmOrderScreen = () => {
         </section>
       )}
 
-      <section className="pane" aria-label={t.panes.form}>
-        <h2>{t.panes.form}</h2>
+      <section
+        className="pane tool-pm-order-pane tool-pm-order-form-pane"
+        aria-label={t.panes.form}
+      >
+        <h2 className="pane-title">{t.panes.form}</h2>
         <p className="pane-lead">{t.form.selected(effectiveSelection.length)}</p>
         {/* ⭐ 한 오더 = 한 툴 — 몇 건이 만들어지는지 미리 말한다. */}
         <p className="pane-lead">{t.form.oneOrderPerTool(effectiveSelection.length)}</p>
@@ -371,7 +379,7 @@ export const ToolPmOrderScreen = () => {
           </div>
         )}
 
-        <div className="form-grid">
+        <div className="form-grid tool-pm-order-form-grid">
           <div className="field-cell">
             <FieldLabel htmlFor={plannedId} label={t.form.plannedDate} />
             <DatePicker
@@ -436,7 +444,7 @@ export const ToolPmOrderScreen = () => {
         <p className="pane-lead">{t.form.itemsFreeInput}</p>
 
         {draft.items.map((item, index) => (
-          <div key={item.key} className="filter-bar">
+          <div key={item.key} className="filter-bar tool-pm-order-item-row">
             <div className="field-cell">
               <FieldLabel
                 htmlFor={`${item.key}-name`}
@@ -457,18 +465,20 @@ export const ToolPmOrderScreen = () => {
                 }}
               />
             </div>
-            <div className="filter-actions">
-              <Button
-                variant="text"
-                onClick={() => {
-                  setDraft((prev) => ({
-                    ...prev,
-                    items: prev.items.filter((row) => row.key !== item.key),
-                  }));
-                }}
-              >
-                {t.form.removeItem}
-              </Button>
+            <div className="field-cell field-cell-unlabeled tool-pm-order-item-actions">
+              <div className="filter-actions">
+                <Button
+                  variant="text"
+                  onClick={() => {
+                    setDraft((prev) => ({
+                      ...prev,
+                      items: prev.items.filter((row) => row.key !== item.key),
+                    }));
+                  }}
+                >
+                  {t.form.removeItem}
+                </Button>
+              </div>
             </div>
           </div>
         ))}

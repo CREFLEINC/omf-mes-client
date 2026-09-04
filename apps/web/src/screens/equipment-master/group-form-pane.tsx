@@ -50,7 +50,10 @@ export const GroupFormPane = ({
   const deactivateNoteId = useId();
 
   return (
-    <section aria-label={mode === 'create' ? t.form.createTitle : t.form.editTitle}>
+    <section
+      className="equipment-master-form"
+      aria-label={mode === 'create' ? t.form.createTitle : t.form.editTitle}
+    >
       {banner}
 
       <div className="form-grid">
@@ -89,7 +92,6 @@ export const GroupFormPane = ({
           options={GROUP_TYPE_OPTIONS}
           value={values.groupTypeCode}
           onChange={(value) => onChange({ groupTypeCode: value })}
-          note={messages.pendingCode.note}
           error={fieldErrors.groupTypeCode}
         />
 
