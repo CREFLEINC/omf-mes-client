@@ -78,6 +78,7 @@ function fakeDeps(page: Partial<PrintPage> = {}): {
       openPage: () => built,
       stage: async (_bytes, format) => ({
         path: `/tmp/job.${format}`,
+        filePath: `/tmp/job.${format}`,
         url: `file:///tmp/job.${format}`,
       }),
       discard: async (path) => void discarded.push(path),
@@ -165,5 +166,40 @@ describe('무음 인쇄', () => {
     };
 
     await expect(createSilentPrinter(failing).print('ZD421', label)).resolves.toBeUndefined();
+  });
+});
+
+describe('OS 인쇄 경로', () => {
+  /*
+   * ⭐ 이 묶음이 「급지는 되는데 백지」의 대응을 문다. 브라우저 엔진의 무음 인쇄가 이 라벨
+   *    프린터에서 빈 종이를 냈고, 같은 프린터의 사진 앱 인쇄는 정상이었다.
+   */
+  it('OS 경로가 있으면 창을 열지 않는다 — 열지 않은 창은 비지도 않는다', async () => {
+    const { deps, page } = fakeDeps();
+    const printFile = { print: vi.fn(async () => undefined) };
+
+    await createSilentPrinter({ ...deps, printFile }).print('ZD421', label);
+
+    expect(page.load).not.toHaveBeenCalled();
+    expect(page.print).not.toHaveBeenCalled();
+    expect(printFile.print).toHaveBeenCalledWith({
+      imagePath: '/tmp/job.png',
+      deviceName: 'ZD421',
+      jobName: 'LOT-0001',
+    });
+  });
+
+  it('OS 경로가 실패해도 임시 파일을 지운다', async () => {
+    const { deps, discarded } = fakeDeps();
+    const printFile = {
+      print: vi.fn(async () => {
+        throw new Error('프린터 오프라인');
+      }),
+    };
+
+    await expect(createSilentPrinter({ ...deps, printFile }).print('ZD421', label)).rejects.toThrow(
+      '프린터 오프라인',
+    );
+    expect(discarded).toEqual(['/tmp/job.png']);
   });
 });

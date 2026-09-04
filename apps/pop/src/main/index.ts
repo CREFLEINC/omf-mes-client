@@ -5,6 +5,7 @@
  * `window-options` · `renderer-path` · `file-blob-store` · `secure-store` · `local-db` · `print`.
  * 이 파일이 얇아야 「Electron을 띄워야만 확인 가능한 부분」이 작아진다.
  */
+import { execFile } from 'node:child_process';
 import {
   appendFileSync,
   existsSync,
@@ -32,6 +33,7 @@ import {
 } from './print';
 import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
 import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
+import { buildPrintScript, printScriptArgs } from './windows-print';
 import { resolveRendererPath } from './renderer-path';
 import {
   type PrintPage,
@@ -209,6 +211,42 @@ function openPrintPage(): PrintPage {
   };
 }
 
+/**
+ * Windows 단말의 인쇄 — **OS 의 그림 인쇄에 맡긴다**(`windows-print` 머리말).
+ *
+ * ⚠ 개발 기계(mac 등)에는 이 길이 없다. 거기서는 엔진 경로를 그대로 쓴다.
+ */
+const filePrinter =
+  process.platform === 'win32'
+    ? {
+        print: async ({
+          imagePath,
+          deviceName,
+          jobName,
+        }: {
+          imagePath: string;
+          deviceName?: string;
+          jobName: string;
+        }): Promise<void> => {
+          const scriptPath = join(imagePath, '..', 'print.ps1');
+          writeFileSync(scriptPath, buildPrintScript({ imagePath, deviceName, jobName }), 'utf8');
+
+          await new Promise<void>((resolve, reject) => {
+            execFile(
+              'powershell.exe',
+              printScriptArgs(scriptPath),
+              { windowsHide: true },
+              (error, _stdout, stderr) => {
+                /* 스크립트가 남긴 말을 그대로 사유로 올린다 — 진단 기록이 그것으로 갈린다. */
+                if (error === null) resolve();
+                else reject(new Error(stderr.trim() === '' ? error.message : stderr.trim()));
+              },
+            );
+          });
+        },
+      }
+    : undefined;
+
 async function openLocalDb(dbPath: string): Promise<LocalDb> {
   const SQL = await initSqlJs();
   const existing = existsSync(dbPath) ? readFileSync(dbPath) : undefined;
@@ -264,19 +302,19 @@ async function main(): Promise<void> {
          * ⚠ **PDF 는 감싸지 않는다.** 성적서·보고서는 이미 쪽이 나뉜 문서이고, 그것을 이미지처럼
          *   대지에 채우면 첫 쪽만 늘어난다. 그 형식은 엔진의 문서 보기에 그대로 맡긴다.
          */
+        const filePath = join(jobDir, labelFileName(format));
+
         if (format === 'pdf') {
-          return {
-            path: jobDir,
-            url: pathToFileURL(join(jobDir, labelFileName(format))).toString(),
-          };
+          return { path: jobDir, filePath, url: pathToFileURL(filePath).toString() };
         }
 
         const pagePath = join(jobDir, PRINT_PAGE_FILE);
         writeFileSync(pagePath, renderPrintPage(labelFileName(format)), 'utf8');
 
-        return { path: jobDir, url: pathToFileURL(pagePath).toString() };
+        return { path: jobDir, filePath, url: pathToFileURL(pagePath).toString() };
       },
       discard: async (path) => rmSync(path, { force: true, recursive: true }),
+      printFile: filePrinter,
     }),
   );
 

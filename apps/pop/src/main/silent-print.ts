@@ -78,6 +78,13 @@ export interface StagedRendition {
   path: string;
   /** 인쇄용 창이 띄울 주소. */
   url: string;
+  /** 떨어뜨린 그림 파일 자체. **OS 인쇄 경로가 이 파일을 그대로 찍는다.** */
+  filePath: string;
+}
+
+/** 그림 파일 하나를 OS 에 맡겨 찍는 길. Windows 단말이 쓴다. */
+export interface FilePrinter {
+  print(job: { imagePath: string; deviceName?: string; jobName: string }): Promise<void>;
 }
 
 /** 출력물을 띄워 인쇄하는 창. 작업마다 새로 열고 끝나면 닫는다. */
@@ -95,6 +102,13 @@ export interface PrintPage {
 
 export interface SilentPrintDeps {
   openPage: () => PrintPage;
+  /**
+   * 주면 **창을 띄우지 않고 이 길로 찍는다.**
+   *
+   * ⭐ 브라우저 엔진의 무음 인쇄는 이 라벨 프린터에서 급지만 되고 백지가 나왔다(실측 · 세 회차).
+   *   같은 프린터에서 드라이버 테스트 페이지와 사진 앱 인쇄는 정상이므로 경로 문제다.
+   */
+  printFile?: FilePrinter;
   stage: (bytes: Uint8Array, format: RenditionFormat) => Promise<StagedRendition>;
   discard: (path: string) => Promise<void>;
   /** 인쇄 한 걸음의 시간 상한. 시험이 짧게 줄여 쓴다. */
@@ -145,6 +159,25 @@ export function createSilentPrinter(deps: SilentPrintDeps): SilentPrinter {
     print: async (deviceName, rendition) => {
       const limit = deps.timeoutMs ?? DEFAULT_PRINT_TIMEOUT_MS;
       const staged = await deps.stage(rendition.bytes, rendition.format);
+
+      /* OS 인쇄 경로가 있으면 창을 아예 열지 않는다 — 열지 않은 창은 비지도 않는다. */
+      if (deps.printFile !== undefined) {
+        try {
+          await withLimit(
+            deps.printFile.print({
+              imagePath: staged.filePath,
+              deviceName,
+              jobName: rendition.label,
+            }),
+            limit,
+            '프린터가 응답하지 않는다',
+          );
+        } finally {
+          await deps.discard(staged.path).catch(() => undefined);
+        }
+
+        return;
+      }
       /* ⚠ 창 열기 자체가 던져도 임시 파일은 지워야 한다 — 그래서 `try` 안에서 연다. */
       let page: PrintPage | null = null;
 
