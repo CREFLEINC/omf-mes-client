@@ -115,7 +115,7 @@ export const LineListPane = ({
       width: '132px',
       align: 'center',
       render: (row) => (
-        <Chip variant="status" size="sm" status={STATUS_TONE[row.status.kind]}>
+        <Chip variant="status" size="md" status={STATUS_TONE[row.status.kind]}>
           {statusText(row.status)}
         </Chip>
       ),

@@ -199,7 +199,7 @@ export const PackingResultScreen = () => {
   })();
 
   return (
-    <main className="packing-shell" aria-labelledby={titleId}>
+    <main className="packing-shell pop-ui" aria-labelledby={titleId}>
       {/* 헤더 64 — 「무엇을」이 왼쪽, 「어디서·누가」가 오른쪽이다(스펙 §3). */}
       <header className="pop-header">
         <h1 className="pop-title" id={titleId}>
@@ -209,7 +209,7 @@ export const PackingResultScreen = () => {
           {shipmentId === null ? t.header.shipmentUnknown : t.header.shipment(shipmentId)}
         </p>
         <div className="pop-context-right">
-          <Chip variant="status" size="sm" status={isOnline ? 'success' : 'error'}>
+          <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
             {identity.workerNo === null
               ? t.header.terminalUnknown
               : t.header.worker(identity.workerNo)}
