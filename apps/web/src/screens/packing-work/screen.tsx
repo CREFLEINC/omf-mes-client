@@ -1,6 +1,7 @@
 import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { addLine, findScannedLot, judgeQuantity, toPackingLine } from './contents';
@@ -8,9 +9,11 @@ import { usePackingEntry } from './entry-context';
 import { PackErrorBanner } from './error-banner';
 import { LotListPane } from './lot-list-pane';
 import { useHandlingUnitCreate, useHandlingUnitPack } from './mutations';
+import { usePackingWorkOutbox } from './outbox';
 import { toPackBody } from './pack-request';
 import { PackingPane } from './packing-pane';
 import {
+  packingWorkKeys,
   useCodeLabels,
   useHandlingUnitTypes,
   useParentHandlingUnits,
@@ -36,11 +39,18 @@ const t = messages.packingWork;
  *
  * ⛔ **단말 게이팅을 걸지 않는다** — 8플래그에 포장이 없다(스펙 §5-1). 가까운 것을 임의로
  * 매핑하면 엉뚱한 권한이 걸린다. 집행은 서버의 403 이다.
+ *
+ * ⭐ **오프라인은 절반만 선다**(스펙 §6 · 공유계약 C-1). 확정은 큐에 담기지만 ①은 서버가
+ * 번호를 매겨 돌려주는 쓰기라 끊긴 채로 부를 수 없다 — 계약도 `:pack` 만 오프라인 대상으로
+ * 표시했다. 그래서 **오프라인에서 새 포장을 시작하는 자리만 막고 이유를 말한다.**
  */
 export const PackingWorkScreen = () => {
   const titleId = useId();
   const entry = usePackingEntry();
   const identity = usePopIdentity();
+
+  const queryClient = useQueryClient();
+  const outbox = usePackingWorkOutbox();
 
   const [draft, setDraft] = useState(emptyPackingDraft);
   const [selectedLot, setSelectedLot] = useState<Lot | null>(null);
@@ -103,6 +113,16 @@ export const PackingWorkScreen = () => {
     },
   });
 
+  /*
+   * 큐에 담긴 확정이 뒤늦게 서버에 닿았다 — 그 포장이 상위 포장 후보로 올라온다. 화면이 옛
+   * 목록을 들고 있으면 방금 확정한 팔레트를 다음 포장에서 고를 수 없다.
+   */
+  useEffect(() => {
+    if (outbox.sentCount === 0) return;
+
+    void queryClient.invalidateQueries({ queryKey: packingWorkKeys.parents });
+  }, [outbox.sentCount, queryClient]);
+
   const entryBlockedReason = ((): string | null => {
     if (entry.workOrderId === null) return t.entry.missingWorkOrder;
     if (workerNo === null) return t.entry.missingWorker;
@@ -132,6 +152,12 @@ export const PackingWorkScreen = () => {
   const addBlockedReason = ((): string | null => {
     if (entryBlockedReason !== null) return entryBlockedReason;
     if (draft.handlingUnitTypeCode === null) return t.scan.blockedNoType;
+    /*
+     * ⛔ **첫 줄만 막는다.** 포장 단위가 이미 서 있으면 담기는 화면 안에서만 일어나고
+     * (확정 한 번이 전량을 싣는다) 그 확정은 큐가 받는다 — 여기서 함께 막으면 오프라인에서
+     * 담던 포장을 마저 담지 못한다.
+     */
+    if (!outbox.isOnline && draft.handlingUnit === null) return t.scan.blockedOfflineNoUnit;
 
     return null;
   })();
@@ -198,7 +224,27 @@ export const PackingWorkScreen = () => {
   const confirm = (): void => {
     if (confirmBlockedReason !== null) return;
 
-    pack.write(toPackBody(draft.lines, new Date()));
+    const body = toPackBody(draft.lines, new Date());
+
+    /*
+     * ⭐ **끊겨 있으면 큐에 담고 그 자리에서 확정으로 본다**(C-1 #2 · 스펙 §6). 시각 두 칸은
+     * 담는 «지금»을 박는다 — 서버가 받은 때가 아니라 작업자가 확정한 때다(C-1 #3 · C-8).
+     *
+     * ⛔ **연결돼 있을 때까지 큐로 보내지 않는다.** 서버가 그 자리에서 되돌리는 것 둘(내용물
+     * 없음 400 · 이미 확정 409)은 사용자가 할 일이 갈리는 오류라, 큐에 넣으면 그 말이 한 박자
+     * 늦게 배너로만 온다.
+     */
+    if (!outbox.isOnline) {
+      const handlingUnitId = draft.handlingUnit?.handlingUnitId;
+      if (handlingUnitId === undefined) return;
+
+      outbox.enqueue({ handlingUnitId, workerNo: workerNo ?? '', body });
+      setPacked(true);
+
+      return;
+    }
+
+    pack.write(body);
   };
 
   /** 확정이 끝나면 다음 포장을 새로 시작한다 — 같은 포장 단위를 다시 쓰지 않는다. */
@@ -257,6 +303,51 @@ export const PackingWorkScreen = () => {
           error={writeError}
           title={create.error === null ? t.error.confirmTitle : t.unit.createFailed}
           onRetry={create.error === null ? confirm : add}
+        />
+      )}
+
+      {(outbox.pendingCount > 0 || !outbox.isOnline) && (
+        <div className="banner-slot">
+          {/*
+            ⛔ **보낼 것이 없는데 건수를 제목으로 내지 않는다.** 끊긴 것과 밀리는 것은 다른
+            사정이라 배너가 둘 다에 뜨는데, 그때 「미전송 0건」이 제목이면 작업자는 무엇이
+            0건이라는 것인지 읽을 수 없다 — 끊겼을 뿐이면 끊겼다고 말한다(실측).
+          */}
+          <AlertBanner
+            variant="warning"
+            title={
+              outbox.pendingCount > 0
+                ? t.outbox.pending(outbox.pendingCount)
+                : messages.common.connection.offline
+            }
+          >
+            {outbox.isOnline ? t.outbox.queued : t.outbox.offline}
+          </AlertBanner>
+        </div>
+      )}
+
+      {outbox.isStalled && (
+        <div className="banner-slot">
+          <AlertBanner
+            variant="error"
+            title={t.outbox.stalled}
+            action={
+              /* POP 터치 등급 — 장갑 낀 손이 누른다. */
+              <Button variant="outlined" size="2xl" onClick={outbox.retryNow}>
+                {t.outbox.retryNow}
+              </Button>
+            }
+          >
+            {t.outbox.pending(outbox.pendingCount)}
+          </AlertBanner>
+        </div>
+      )}
+
+      {outbox.rejection !== null && (
+        <PackErrorBanner
+          error={outbox.rejection}
+          title={t.outbox.rejected}
+          onRetry={outbox.clearRejection}
         />
       )}
 

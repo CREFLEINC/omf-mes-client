@@ -12,6 +12,9 @@
 
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
+
+import { toPng } from './label-canvas.mjs';
+import { renderLotLabel, renderShippingLabel } from './label-layout.mjs';
 import { networkInterfaces } from 'node:os';
 
 import { writeMergedSpec } from '../merge-spec.mjs';
@@ -39,14 +42,30 @@ const state = createSeed();
 let nextId = 900001;
 const newId = () => (nextId += 1);
 
+/**
+ * 쪽 나누기. **계약은 1쪽부터 센다** — 목이 0부터 세면 화면이 규약대로 `page=1` 을 보냈을 때
+ * 두 번째 쪽을 받는다.
+ *
+ * ⛔ **0부터로 되돌리지 않는다.** 그 상태에서는 자료가 한 쪽에 다 들어가는 목록이 전부 빈 채로
+ *    떴다 — 재인쇄 사유가 「목록이 아직 준비되지 않았습니다」로 뜬 것이 그것이다(실측).
+ *    저장소의 화면 28자리가 모두 `page: 1` 을 보내므로 조용히 전부 걸렸다.
+ */
 const page = (items, query) => {
   const size = Number(query.get('size') ?? 20);
-  const at = Number(query.get('page') ?? 0);
-  const from = at * size;
+  const asked = Number(query.get('page') ?? 1);
+  /* 0 이나 음수가 와도 첫 쪽을 준다 — 목이 화면보다 먼저 죽을 이유가 없다. */
+  const at = Number.isFinite(asked) && asked >= 1 ? asked : 1;
+  const from = (at - 1) * size;
 
   return {
     items: items.slice(from, from + size),
-    page: { page: at, size, total: items.length, totalElements: items.length, totalPages: 1 },
+    page: {
+      page: at,
+      size,
+      total: items.length,
+      totalElements: items.length,
+      totalPages: Math.max(1, Math.ceil(items.length / size)),
+    },
   };
 };
 
@@ -87,8 +106,16 @@ const on = (method, pattern, handle) => {
 
 /* ── 기준정보 ─────────────────────────────────────────────── */
 
+/*
+ * ⚠ **사번 축을 실제로 건다.** 종전에는 `q` 만 걸어 사번을 무엇으로 쳐도 같은 목록이 왔고,
+ * 진입 화면은 그 안에 정확히 일치하는 행이 있을 때만 통과시키므로 **어느 사번이 통하는지가
+ * 쪽 크기에 따라 달라졌다**(실측). 씨앗의 사번 넷이 모두 같게 동작해야 한다.
+ */
 on('GET', '/mdm/workers', (_p, query) =>
-  page(keep(state.workers, [contains(query, 'q', 'workerNo')]), query),
+  page(
+    keep(state.workers, [byText(query, 'workerNo', 'workerNo'), contains(query, 'q', 'workerNo')]),
+    query,
+  ),
 );
 
 on('GET', '/mdm/items', (_p, query) =>
@@ -225,6 +252,42 @@ on('GET', '/trace/lots/{lotId}/holds', (params, query) =>
   ),
 );
 
+/* ── 개체(일련번호) ───────────────────────────────────────── */
+
+/*
+ * ⭐ **P-02-05 인식표 발행이 여기에 걸려 있었다.** 이 경로가 씨앗에 없어 계약 예시 서버로
+ * 넘어갔고, 그쪽은 첫 예시가 오류라 발번이 항상 400 으로 되돌아왔다 — 화면 잘못이 아니라
+ * 목이 답을 못 준 것이다(실측).
+ *
+ * ⛔ 채번 규칙을 지어내지 않는다. 계약이 「전역 유일」만 정하고 자릿수·구성은 열어 두었으므로
+ *    목은 겹치지만 않게 만든다.
+ */
+on('GET', '/trace/serial-numbers', (_p, query) =>
+  page(keep(state.serialNumbers, [byNum(query, 'lotId', 'lotId')]), query),
+);
+
+on('POST', '/trace/serial-numbers', (_p, _q, body) => {
+  const lot = state.lots.find((row) => row.lotId === body?.lotId);
+  if (lot === undefined) return null;
+
+  const quantity = Number(body?.quantity ?? 0);
+  const made = Array.from({ length: quantity }, () => {
+    const serial = {
+      serialNumberId: newId(),
+      serialNo: `SN-${String(lot.lotNo)}-${String(state.serialNumbers.length + 1).padStart(4, '0')}`,
+      itemId: lot.itemId,
+      lotId: lot.lotId,
+      statusCode: 'ACTIVE',
+      producedAt: body?.producedAt ?? new Date().toISOString(),
+    };
+    state.serialNumbers.push(serial);
+
+    return serial;
+  });
+
+  return { created: { items: made, issuedCount: made.length }, status: 201 };
+});
+
 /* ── 문서 발행·인쇄 ───────────────────────────────────────── */
 
 const targetIds = (query) =>
@@ -295,10 +358,117 @@ on('POST', '/app/document-issues', (_params, _query, body) => {
   return { created: { items, issuedCount: items.length }, status: 201 };
 });
 
-on('GET', '/app/document-issues/{documentIssueLogId}/rendition', () => ({
-  format: 'png',
-  content: 'synthetic-label',
-}));
+/**
+ * 그려 준 출력물 — **라벨 사양서의 서식대로 그린다.**
+ *
+ * ⛔ **이것은 서버의 일을 대신하는 것이다.** 실제 라벨은 서버가 그리고(설계 결정 18) 화면과
+ *    셸은 받은 바이트를 그대로 넘긴다. 씨앗이 그리는 이유는 그 서버가 아직 없어 **실기 인쇄를
+ *    확인할 방법이 없기 때문**이며, 서버가 그리기 시작하면 이 부분은 걷힌다.
+ *
+ * ⚠ **2D 바코드는 읽히지 않는다.** 자리와 크기만 맞춘 모양이다(`label-canvas` 참조).
+ * ⚠ `format=pdf`(성적서·보고서)는 씨앗이 만들지 않는다 — 없는 것을 png 로 대신 주면 셸이
+ *   이름과 내용이 어긋난 파일을 만든다.
+ */
+
+/** 사양의 날짜 형식 — `YY-MM-DD HH:mm`, 24시간제. */
+const labelDateTime = (value) => {
+  const at = value === undefined ? new Date() : new Date(value);
+  const pad = (part) => String(part).padStart(2, '0');
+
+  return (
+    `${pad(at.getFullYear() % 100)}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ` +
+    `${pad(at.getHours())}:${pad(at.getMinutes())}`
+  );
+};
+
+/** 라벨은 영문·숫자만 쓴다(사양 §2-2). 한글이 섞이면 대신할 값을 쓴다. */
+const ascii = (value, fallback) => {
+  const text = String(value ?? '').trim();
+  return text !== '' && /^[\x20-\x7e]+$/.test(text) ? text : fallback;
+};
+
+const itemOf = (itemId) => state.items.find((row) => row.itemId === itemId);
+const uomOf = (uomId) => state.uoms.find((row) => row.uomId === uomId);
+
+/** 출하용 100×60mm 라벨에 실을 값. 씨앗에 없는 자리는 사양 예시의 자리표시를 쓴다. */
+const shippingValues = (issue) => {
+  const unit = state.handlingUnits.find((row) => row.handlingUnitId === issue.targetId);
+  const contents = state.handlingUnitContents.filter(
+    (row) => row.handlingUnitId === issue.targetId,
+  );
+  const first = contents[0];
+  const item = first === undefined ? undefined : itemOf(first.itemId);
+  const lot = state.lots.find((row) => row.lotId === first?.lotId);
+  const quantity = contents.reduce((total, row) => total + Number(row.qty ?? 0), 0);
+
+  return {
+    type: 'SHIP',
+    status: ascii(unit?.statusCode, 'RELEASED'),
+    /*
+     * 납품처는 씨앗에 출하가 없어 채울 자리가 없다.
+     * ⛔ **고객사로 읽힐 값을 두지 않는다**(공개 저장소). 자리를 채우는 합성값이다.
+     */
+    shipTo: 'SAMPLE CUSTOMER CO., LTD.',
+    customerPartNo: ascii(item?.customerItemCode, ascii(item?.itemCode, 'SAMPLE-CP-0001')),
+    partNo: ascii(item?.itemCode, 'SAMPLE-FG-0001'),
+    partName: ascii(item?.labelName, ascii(item?.itemCode, 'SAMPLE PART')),
+    lotNo: ascii(lot?.lotNo, 'SAMPLE-LOT-0001'),
+    qty: `${quantity > 0 ? quantity.toLocaleString('en-US') : '100'} ${ascii(uomOf(first?.uomId)?.uomCode, 'EA')}`,
+    boxNo: ascii(unit?.handlingUnitNo?.slice(-5), '07/40'),
+    shipmentNo: ascii(unit?.handlingUnitNo, 'SAMPLE-SH-0001'),
+    shipDt: labelDateTime(issue.issuedAt),
+    seed: issue.documentIssueLogId,
+  };
+};
+
+/** 표준 80×30mm LOT 라벨에 실을 값. */
+const lotValues = (issue) => {
+  const lot =
+    state.lots.find((row) => row.lotId === issue.lotId) ??
+    state.lots.find((row) => row.lotId === issue.targetId);
+  const item = itemOf(lot?.itemId);
+
+  return {
+    type: ascii(lot?.lotTypeCode === 'MATERIAL' ? 'RAW' : 'WIP', 'WIP'),
+    status: ascii(lot?.statusCode, 'OK'),
+    partNo: ascii(item?.itemCode, 'SAMPLE-INJ-0001'),
+    partName: ascii(item?.labelName, ascii(item?.itemCode, 'SAMPLE PART')),
+    lotNo: ascii(lot?.lotNo, 'SAMPLE-LOT-0002'),
+    qty: `${Number(lot?.initialQty ?? 1000).toLocaleString('en-US')} ${ascii(uomOf(lot?.uomId)?.uomCode, 'EA')}`,
+    mfgDt: labelDateTime(lot?.manufacturedAt ?? issue.issuedAt),
+    seed: issue.documentIssueLogId,
+  };
+};
+
+/** 출하 계열은 100×60, 나머지는 80×30(사양 §2 「라벨 구성안」). */
+const SHIPPING_TYPES = ['PACKING_LABEL', 'DELIVERY_LABEL'];
+
+on('GET', '/app/document-issues/{documentIssueLogId}/rendition', (params, query) => {
+  const format = query.get('format') ?? 'png';
+
+  if (format !== 'png') {
+    return {
+      status: 415,
+      created: { code: 'UNSUPPORTED_FORMAT', message: '씨앗은 png 만 그립니다.' },
+    };
+  }
+
+  const issue = state.documentIssues.find(
+    (row) => row.documentIssueLogId === Number(params.documentIssueLogId),
+  );
+  /* 발행 기록이 없어도 그린다 — 인쇄 경로 확인이 기록 유무에 막히지 않게 한다. */
+  const target = issue ?? {
+    documentIssueLogId: Number(params.documentIssueLogId) || 1,
+    documentTypeCode: 'PACKING_LABEL',
+    issuedAt: new Date().toISOString(),
+  };
+
+  const canvas = SHIPPING_TYPES.includes(target.documentTypeCode)
+    ? renderShippingLabel(shippingValues(target))
+    : renderLotLabel(lotValues(target));
+
+  return { binary: { contentType: 'image/png', bytes: toPng(canvas) } };
+});
 
 on('POST', '/app/document-issues/{documentIssueLogId}:report-print', (params, _query, body) => {
   const issue = state.documentIssues.find(
@@ -1049,6 +1219,35 @@ on('POST', '/production/results', (_p, _q, body) => {
 
 /* ── 품질 ─────────────────────────────────────────────────── */
 
+/**
+ * 검사 의뢰 목록.
+ *
+ * ⭐ **이 경로가 비어 있으면 계약 예시 서버로 넘어가고, 그쪽은 질의를 무시하고 예시 1건을
+ * 그대로 돌려준다.** 그래서 작업실적 등록(P-02-04)이 「PQC 가 남아 있다」로 늘 막혔다 —
+ * 돌아온 것은 다른 작업지시의 IQC 였다(실측 2026-09-04).
+ *
+ * `pendingOnly` 의 정의는 계약이 값으로 못 박았다 — 참이면 REQUESTED · IN_PROGRESS 만.
+ * ⛔ **그 정의를 화면이 아니라 여기서 지킨다**(공유계약 G-6).
+ */
+const PENDING_INSPECTION_STATUSES = ['REQUESTED', 'IN_PROGRESS'];
+
+on('GET', '/quality/inspection-requests', (_p, query) => {
+  const pendingOnly = bool(query, 'pendingOnly');
+
+  return page(
+    keep(state.inspectionRequests, [
+      byText(query, 'inspectionTypeCode', 'inspectionTypeCode'),
+      byText(query, 'statusCode', 'statusCode'),
+      byNum(query, 'itemId', 'itemId'),
+      byNum(query, 'lotId', 'lotId'),
+      byNum(query, 'workOrderId', 'workOrderId'),
+      contains(query, 'q', 'inspectionRequestNo'),
+      (row) => pendingOnly !== true || PENDING_INSPECTION_STATUSES.includes(row.statusCode),
+    ]),
+    query,
+  );
+});
+
 /*
  * W-04-07 — 판정 대기 대상 · 부적합 등록 · 판정 의뢰 · 처분 목록.
  * 부적합 상세는 ETag 를 내고, 의뢰는 If-Match 를 요구한다 — 화면의 낙관적 잠금 흐름을 목에서 밟는다.
@@ -1301,6 +1500,23 @@ const readBody = (request) =>
     });
   });
 
+/**
+ * 그림·문서처럼 **JSON 이 아닌 응답**. 핸들러가 `{ binary: … }` 를 돌려주면 이 길로 간다.
+ *
+ * ⚠ 실기 인쇄 확인에 반드시 필요하다 — 셸이 형식 시그니처를 검사하므로 JSON 을 PNG 라고
+ *   말하면 인쇄 경로가 시작되지 않는다.
+ */
+const sendBinary = (response, { contentType, bytes }) => {
+  response.writeHead(200, {
+    'Content-Type': contentType,
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'Content-Length': bytes.length,
+  });
+  response.end(bytes);
+};
+
 const send = (response, status, payload, headers = {}) => {
   const body = JSON.stringify(payload);
   response.writeHead(status, {
@@ -1371,6 +1587,11 @@ const server = createServer((request, response) => {
 
       if (result === null) {
         send(response, 404, { code: 'NOT_FOUND', message: '씨앗에 없는 자원입니다.' });
+        return;
+      }
+
+      if (result !== null && typeof result === 'object' && 'binary' in result) {
+        sendBinary(response, result.binary);
         return;
       }
 

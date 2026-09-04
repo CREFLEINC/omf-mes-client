@@ -6657,7 +6657,20 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 맞닿아 문장이 잘린 것처럼 보인다. 장갑 낀 손이 누를 자리이므로 사방에 여백이 필요하다.
  */
 .pop-result-banner-text {
-  margin: 0 0 var(--space-3);
+  margin: 0;
+}
+
+/*
+ * 사유는 왼쪽에서 읽고 조치는 오른쪽에서 누른다 — 산업용 패널은 오른손 도달 범위가 오른쪽이다.
+ *
+ * ⚠ **한 줄로 묶어 배너를 낮게 둔다.** 단추를 문구 아래로 내리면 배너가 그만큼 높아지고,
+ * 그 아래 입력 카드가 첫 화면에서 밀려난다 — 작업자가 스크롤해야 수량을 친다.
+ */
+.pop-result-banner-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
 }
 
 /* 스펙 §3-2 — 대상(LOT·제품)과 입력(양품수량·비고)을 가르는 선. */
@@ -7120,6 +7133,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   font: var(--type-body-lg);
 }
 
+/*
+ * 이름이 없는 값(세션 번호)의 라벨 자리. 화면이 빈 `dt` 로 두 칸 격자의 첫 칸을 채우는데,
+ * 규칙이 없으면 그 칸이 `dt` 기본 여백을 그대로 갖는다 — 보일 것이 없으므로 폭을 지운다.
+ */
+.pop-hold-facts-lead {
+  inline-size: 0;
+  margin: 0;
+}
+
 /* 이력은 줄 수가 적고 열이 셋뿐이라 표를 그대로 쓴다. */
 .pop-hold-history {
   width: 100%;
@@ -7553,6 +7575,83 @@ dl.filter-bar.approval-inbox-detail-facts {
   font: var(--type-body-sm);
   letter-spacing: var(--type-body-sm-tracking);
   color: var(--on-surface-muted);
+}
+
+/*
+ * ─────────────────────────────────────────────────────────────────────────────
+ * P-02-06 생산LOT 완료 처리 — 화면 스펙 §3 의 도면을 옮긴다.
+ *
+ * ⚠ **이름을 슬라이스 전용(`pop-lotdone-`)으로 둔다.** `.pop-lot-*` 계열은 이미 임자가 있고
+ * 이 파일 안에서 같은 이름이 두 번 정의된 자리가 실제로 있다 — 나중 정의가 앞 화면의 배치를
+ * 조용히 덮는데, 테스트가 `css: false` 라 게이트가 잡지 못한다.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+/*
+ * 내용이 아니라 **폭이 열 너비를 정한다.** 34자리 번호가 표를 밀어 넓히면 오른쪽 끝의 선택
+ * 버튼이 표 밖으로 나가 보이지 않는다 — 목록이 화면 안에 들어오는 것이 먼저다.
+ */
+.pop-lotdone-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+/* 34자리 번호는 한 줄로 자르고 전체는 툴팁으로 남긴다 — 고른 뒤 오른쪽에서 온전히 다시 읽는다. */
+.pop-lotdone-no {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 상시 사실이라 배너를 쓰지 않는다 — 계획 슬롯 수를 상한으로 읽지 않게 하는 안내다. */
+.pop-lotdone-notice {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 목표·누적·달성률·차이 — 이름과 값을 두 칸으로 세운다. 값이 길어도 이름 칸이 흔들리지 않아
+ * 작업자가 같은 자리에서 같은 수를 읽는다.
+ */
+.pop-lotdone-figures {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0 0 var(--space-3);
+}
+
+.pop-lotdone-figures dt {
+  color: var(--on-surface-muted);
+}
+
+.pop-lotdone-figures dd {
+  margin: 0;
+  font: var(--type-title-md);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 달성률 숫자와 판정 배지는 한 덩이로 읽힌다 — 떨어뜨리면 96%가 어느 판정인지 눈이 왕복한다. */
+.pop-lotdone-rate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/*
+ * 두 결말을 **같은 크기로 나란히** 둔다(스펙 §3 · R71).
+ *
+ * ⛔ 하나를 작게 만들지 않는다 — 크기로 우열을 주면 「미달 마감」이 예외적 조작으로 보여
+ * 미달인 채로 「완료 처리」를 찾게 된다. 되돌릴 수 없는 두 갈래는 대등하게 보여야 한다.
+ */
+.pop-lotdone-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin-block-start: var(--space-3);
 }
 
 /* ---------------------------------------------------------------------------

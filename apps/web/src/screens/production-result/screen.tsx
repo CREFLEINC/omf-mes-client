@@ -264,10 +264,12 @@ export const ProductionResultScreen = () => {
       {hasPendingPqc && (
         <div className="banner-slot">
           <AlertBanner variant="warning" title={t.pqc.blockedTitle}>
-            <p className="pop-result-banner-text">{t.pqc.blockedBody}</p>
-            <Button size="2xl" onClick={goInspect}>
-              {t.pqc.goInspect}
-            </Button>
+            <div className="pop-result-banner-row">
+              <p className="pop-result-banner-text">{t.pqc.blockedBody}</p>
+              <Button size="2xl" onClick={goInspect}>
+                {t.pqc.goInspect}
+              </Button>
+            </div>
           </AlertBanner>
         </div>
       )}

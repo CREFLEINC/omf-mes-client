@@ -62,7 +62,8 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   {
     path: '/pop/tag-issue',
     label: 'P-02-05 인식표 발행',
-    query: '?workOrderId=11002&workerNo=100029',
+    /* 씨앗의 생산LOT 은 전부 이 작업지시에 달려 있다 — 11002 로 열면 대상 LOT 이 비어 뜬다. */
+    query: '?workOrderId=11001&workerNo=100029',
   },
   {
     path: '/pop/production-result',
@@ -77,7 +78,8 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   {
     path: '/pop/lot-label',
     label: 'P-02-07 LOT 라벨 출력·부착',
-    query: '?workOrderId=11002&workerNo=100029',
+    /* 완료 LOT 이 달린 작업지시다(P-02-08 과 같다). 11002 에는 LOT 이 하나도 없다. */
+    query: '?workOrderId=11001&workerNo=100029',
   },
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
@@ -121,6 +123,15 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     query: '?workOrderId=11002',
   },
   /*
+   * ⚠ **씨앗에 출고 전표가 없다** — 이 번호는 계약 예시 서버가 받아 답한다(위 출하와 같은
+   * 사정). 씨앗이 출고를 담게 되면 그때 실제 번호로 바꾼다.
+   */
+  {
+    path: '/pop/goods-issue-qr',
+    label: 'P-01-02 출고 QR 발행',
+    query: '?goodsIssueId=15001&workerNo=100029',
+  },
+  /*
    * ⚠ 이 화면도 진입 컨텍스트를 주소로 받는다(`?workOrderId=`) — 작업지시 선택이 셸에 서기
    * 전까지의 임시 경로다. 사번은 셸·`worker-session` 이 비었을 때만 주소를 본다.
    */
@@ -134,6 +145,12 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
    * 셸이 채우고, 비어 있을 때만 주소를 본다(`entry-context.ts`).
    */
   { path: '/pop/packing', label: 'P-04-01 Packing 실적 등록' },
+  {
+    path: '/pop/lot-complete',
+    label: 'P-02-06 생산LOT 완료 처리',
+    /* 씨앗에서 미완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 대상 목록이 비어 뜬다. */
+    query: '?workOrderId=11002',
+  },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */

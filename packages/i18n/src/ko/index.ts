@@ -34,6 +34,7 @@ import { usersRoles } from './users-roles';
 import { inboundSchedule } from './inbound-schedule';
 import { stockStatus } from './stock-status';
 import { overReceiptSplit } from './over-receipt-split';
+import { goodsIssueQr } from './goods-issue-qr';
 import { goodsReceipt } from './goods-receipt';
 import { stocktaking } from './stocktaking';
 import { supplierReturn } from './supplier-return';
@@ -119,6 +120,7 @@ import { popMaterialLotLabel } from './pop-material-lot-label';
 import { identificationTagIssue } from './identification-tag-issue';
 import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
+import { productionLotComplete } from './production-lot-complete';
 import { popLotLabelPrint } from './pop-lot-label-print';
 import { shippingPackingLabel } from './shipping-packing-label';
 import { repackLabelIssue } from './repack-label-issue';
@@ -146,6 +148,7 @@ export const ko = {
   inboundSchedule,
   stockStatus,
   overReceiptSplit,
+  goodsIssueQr,
   goodsReceipt,
   stocktaking,
   supplierReturn,
@@ -230,6 +233,7 @@ export const ko = {
   workPrecheckGate,
   reworkResultRegister,
   packingLabelReprint,
+  productionLotComplete,
   popLotLabelPrint,
   shippingPackingLabel,
   repackLabelIssue,
