@@ -9,6 +9,7 @@ import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/scre
 import { PackingWorkScreen } from '../screens/packing-work/screen';
 import { PopLotLabelPrintScreen } from '../screens/pop-lot-label-print/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
+import { ProductionLotCompleteScreen } from '../screens/production-lot-complete/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionResultScreen } from '../screens/production-result/screen';
@@ -272,4 +273,16 @@ export const popRoutes: RouteObject[] = [
    * 앞 화면이 무엇을 실어 주지 않아도 서고, 그래서 독립 진입이다(스펙 §1 「범위」).
    */
   { path: '/pop/packing', element: <PackingResultScreen /> },
+  /*
+   * P-02-06 — 생산LOT 완료 처리. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⚠ **진입 작업지시를 질의 문자열로 받는다**(`?workOrderId=`) — 작업지시 선택(`P-02-01`)이
+   * 넘겨주는 형태가 아직 서지 않았다. 사번은 새로 받지 않고 셸(`pop-identity`) → 작업자
+   * 지정(`patterns/worker-session`) 순으로 읽는다.
+   *
+   * ⛔ **이 화면은 되돌릴 수 없는 쓰기를 한다** — 완료를 되돌리는 화면이 인벤토리에 없다
+   * (`omf-mes#87`). 단말 게이팅(`canCompleteWork`)이 닫혀 있거나 판정할 수 없으면 두 버튼이
+   * 모두 막힌 채 뜬다.
+   */
+  { path: '/pop/lot-complete', element: <ProductionLotCompleteScreen /> },
 ];
