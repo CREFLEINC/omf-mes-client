@@ -2,6 +2,7 @@ export { createApiClient, type ApiClient, type ApiClientOptions } from './client
 export { createEtagStore, type EtagStore } from './etag-store';
 export {
   NETWORK_ERROR,
+  isTransientStatus,
   normalizeApiError,
   type ApiError,
   type ConflictCause,

@@ -1,3 +1,5 @@
+import { isTransientStatus } from '@omf-mes/api-client';
+
 import { toApiError } from './request';
 
 /**
@@ -40,12 +42,10 @@ export const MAX_AUTO_ATTEMPTS = 6;
 export const retryDelayOf = (attempts: number): number =>
   Math.min(RETRY_DELAY_MS * 2 ** (attempts - 1), MAX_RETRY_DELAY_MS);
 
-/**
- * 기다리면 풀리는 상태 코드 — 서버가 「지금은 못 받는다」고 말한 것이지 「이것은 안 된다」고
- * 판정한 것이 아니다. 408 요청 시간초과 · 429 요청 과다 · 5xx 서버 오류가 여기 든다.
+/*
+ * 기다리면 풀리는 상태 코드(408 · 429 · 5xx)의 판정은 `@omf-mes/api-client` 가 갖는다 — #789.
+ * 정규화도 같은 판정을 써야 봉투가 실린 5xx 를 `http` 로 남기므로, 두 벌로 두지 않는다.
  */
-const isTransientStatus = (status: number): boolean =>
-  status >= 500 || status === 429 || status === 408;
 
 /**
  * 서버가 **받지 않기로 판정한** 실패인가.

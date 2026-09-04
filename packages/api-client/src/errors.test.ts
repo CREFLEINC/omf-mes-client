@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { NETWORK_ERROR, normalizeApiError } from './errors';
+import { NETWORK_ERROR, isTransientStatus, normalizeApiError } from './errors';
 
 describe('normalizeApiError', () => {
   it('409 + ConflictResponse는 저장 충돌로 정규화한다 — 재로드하면 풀린다', () => {
@@ -91,6 +91,42 @@ describe('normalizeApiError', () => {
     expect(normalizeApiError(404, { detail: 'not found' }).kind).toBe('http');
   });
 
+  /*
+   * #789 — 봉투보다 상태 코드가 먼저다.
+   *
+   * 서버가 「잠시 뒤 풀린다」고 말한 실패를 계약 오류 봉투에 담아 보내도 `validation` 으로 접으면
+   * 상태 코드가 버려지고, 오프라인 큐가 그것을 거부로 읽어 작업자가 친 값을 내린다.
+   */
+  it.each([500, 502, 503, 504, 429, 408])(
+    '%i 은 계약 오류 봉투가 실려 와도 http 로 남기고 상태 코드를 보존한다',
+    (status) => {
+      const result = normalizeApiError(status, {
+        errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '잠시 뒤 다시 시도하세요' }],
+      });
+
+      expect(result).toEqual({ kind: 'http', status });
+    },
+  );
+
+  it('일시 상태에 STATE_LOCKED 가 실려 와도 상태 잠김으로 접지 않는다', () => {
+    const result = normalizeApiError(503, {
+      errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '합성 문구' }],
+    });
+
+    expect(result).toEqual({ kind: 'http', status: 503 });
+  });
+
+  it.each([400, 401, 403, 404, 413, 422, 423])(
+    '계약이 오류 봉투를 두는 %i 의 validation 정규화는 그대로다',
+    (status) => {
+      const result = normalizeApiError(status, {
+        errors: [{ scope: 'field', field: 'name', code: 'REQUIRED', message: '필수' }],
+      });
+
+      expect(result.kind).toBe('validation');
+    },
+  );
+
   it('http 정규화는 상태 코드를 보존한다', () => {
     const result = normalizeApiError(403, undefined);
     expect(result).toEqual({ kind: 'http', status: 403 });
@@ -113,6 +149,16 @@ describe('normalizeApiError', () => {
     if (result.kind === 'http') {
       expect(result.message).toBeUndefined();
     }
+  });
+});
+
+describe('isTransientStatus — 기다리면 풀리는가', () => {
+  it.each([500, 502, 503, 504, 599, 429, 408])('%i 은 기다리면 풀린다', (status) => {
+    expect(isTransientStatus(status)).toBe(true);
+  });
+
+  it.each([400, 403, 404, 409, 422, 423, 499, 0])('%i 은 기다려도 풀리지 않는다', (status) => {
+    expect(isTransientStatus(status)).toBe(false);
   });
 });
 
