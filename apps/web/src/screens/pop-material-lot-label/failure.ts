@@ -16,6 +16,11 @@ export type IssueFailure =
   | 'issueForbidden'
   /** 기록은 남았고 종이만 안 나왔다. */
   | 'printFailed'
+  /**
+   * ⚠ **종이는 나왔는데 결과 보고가 실패했다.** 「끝내지 못했다」로 말하면 작업자가 다시 찍어
+   * 같은 LOT 의 라벨이 두 장 돌아다닌다 — 그쪽이 더 나쁘다.
+   */
+  | 'reportFailedAfterPrint'
   /** 그 밖의 실패 — 값이 틀렸거나(400) 서버가 거부했다. */
   | 'other';
 
@@ -59,6 +64,7 @@ export const toIssueFailure = (result: IssueRunResult): IssueFailure | null => {
 
   if (isPrinted || failedAt === null) return null;
   if (failedAt === 'print') return 'printFailed';
+  if (failedAt === 'report' && result.hasPrintedLabel) return 'reportFailedAfterPrint';
   if (error === null) return 'other';
   if (failedAt === 'register' && isRetryableConflict(error)) return 'registerConflict';
   if (failedAt === 'issue' && isForbidden(error)) return 'issueForbidden';

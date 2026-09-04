@@ -13,6 +13,7 @@ const t = messages.popMaterialLotLabel.target.outcome;
  */
 const FAILURE_MESSAGE: Record<IssueFailure, string> = {
   printFailed: t.printFailed,
+  reportFailedAfterPrint: t.reportFailedAfterPrint,
   issueForbidden: t.issueForbidden,
   registerConflict: t.registerConflict,
   other: t.failed,
@@ -47,7 +48,11 @@ export const IssueOutcome = ({ result, onClose }: IssueOutcomeProps) => {
   if (failedAt === null && !isPrinted && error === null) return null;
 
   const failure = toIssueFailure(result);
-  const variant = isPrinted ? 'success' : failure === 'printFailed' ? 'warning' : 'error';
+  /*
+   * 종이가 나온 실패는 **경고**다. 붉게 내면 「아무것도 안 됐다」로 읽혀 다시 찍게 된다.
+   */
+  const isPaperOut = failure === 'printFailed' || failure === 'reportFailedAfterPrint';
+  const variant = isPrinted ? 'success' : isPaperOut ? 'warning' : 'error';
   /*
    * ⛔ **출력 권한이 없는 단말에서는 닫지 못하게 둔다.** 닫으면 결과가 지워져 단추가 다시
    * 열리는데(`screen` 의 차단이 이 결과를 본다) 서버의 답은 그대로다 — 닫기가 「재시도 단추를

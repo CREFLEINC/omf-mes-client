@@ -80,6 +80,10 @@ interface FlowOptions {
   registerFailStatus?: number;
   /** 등록 실패의 본문. 계약의 `ConflictResponse`(`conflictCause`)를 실을 때 쓴다. */
   registerFailBody?: unknown;
+  /** 발행 호출을 끝나지 않게 붙잡는다 — 실행 중 상태를 재는 데 쓴다. */
+  issueHangs?: boolean;
+  /** 인쇄 결과 보고만 실패시킨다. 종이는 이미 나온 상태다. */
+  reportFails?: boolean;
   /** 셸 인쇄 통로를 심는다. 없으면 브라우저와 같은 상태다. */
   shellPrint?: (() => Promise<string>) | null;
   reissueReasons?: { code: string; codeName: string }[];
@@ -270,6 +274,17 @@ const renderFlow = (options: FlowOptions = {}) => {
           respond: (request) => {
             void record(request);
 
+            /*
+             * 끝나지 않는 응답 — 「실행 중」이 유지된다. 본문을 닫지 않는 흐름으로 준다.
+             * 목의 답은 «동기»로 만들어야 하므로 응답 자체를 미루지 않고 본문에서 멈춘다.
+             */
+            if (options.issueHangs === true) {
+              return new Response(new ReadableStream({ start: () => undefined }), {
+                status: 201,
+                headers: { 'Content-Type': 'application/json' },
+              });
+            }
+
             return options.issueFails === true
               ? jsonResponse(options.issueFailBody ?? { message: '실패' }, {
                   status: options.issueFailStatus ?? 500,
@@ -297,7 +312,9 @@ const renderFlow = (options: FlowOptions = {}) => {
           respond: (request) => {
             void record(request);
 
-            return jsonResponse(issueRecord(1));
+            return options.reportFails === true
+              ? jsonResponse({ message: '보고 실패' }, { status: 500 })
+              : jsonResponse(issueRecord(1));
           },
         },
       ]),
@@ -519,6 +536,69 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
      * 닫기가 「재시도 단추를 주지 않는다」를 무르는 우회로가 된다.
      */
     expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **재시도가 회차를 올리지 않는다**(스펙 §5-2). 매번 새 멱등 키를 만들면 서버가 두 요청을
+   * 다른 쓰기로 보아 「이 라벨이 몇 번째인가」가 어긋난다.
+   */
+  it('발행을 다시 시도해도 같은 멱등 키로 나간다', async () => {
+    const { user, sent } = renderFlow({ lotId: LOT_ID, issueFails: true });
+    await chooseLine(user);
+
+    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+    await user.click(screen.getByRole('button', { name: '인쇄' }));
+
+    await waitFor(() => {
+      expect(sent.filter((entry) => entry.path === '/app/document-issues')).toHaveLength(2);
+    });
+
+    const keys = sent
+      .filter((entry) => entry.path === '/app/document-issues')
+      .map((entry) => entry.headers.get('Idempotency-Key'));
+
+    expect(keys[0]).not.toBeNull();
+    expect(keys[0]).toBe(keys[1]);
+  });
+
+  /**
+   * ⛔ **실행 중에는 줄을 바꾸지 못한다.** 바꾸면 그 실행의 결과가 어느 줄에도 서지 않아
+   * 실패가 소리 없이 사라진다.
+   */
+  it('실행 중에는 다른 자재를 고르지 못한다', async () => {
+    const { user } = renderFlow({ receiptCount: 2, issueHangs: true });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('button', { name: 'SYN-IB-0002 SYN-ITEM-01 · 합성 품목 가 선택' }),
+      ).toBeDisabled();
+    });
+  });
+
+  /**
+   * ⚠ **종이가 나온 뒤의 실패는 다르게 말한다.** 「끝내지 못했습니다」로 내면 작업자가 다시 찍어
+   * 같은 LOT 의 라벨이 두 장 돌아다닌다.
+   */
+  it('인쇄는 됐고 보고만 실패하면 다시 찍지 말라고 말한다', async () => {
+    const { user } = renderFlow({
+      lotId: LOT_ID,
+      reportFails: true,
+      shellPrint: vi.fn(async () => 'C:/syn/label.png'),
+    });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '인쇄' }));
+
+    expect(
+      await screen.findByText(
+        '라벨은 나왔습니다. 인쇄 결과만 서버에 남기지 못했습니다 — 다시 찍지 마세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('등록·인쇄를 끝내지 못했습니다.')).not.toBeInTheDocument();
   });
 });
 

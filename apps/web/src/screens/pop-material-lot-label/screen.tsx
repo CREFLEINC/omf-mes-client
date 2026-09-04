@@ -162,6 +162,8 @@ export const PopMaterialLotLabelScreen = () => {
                 itemLookup={itemLookup}
                 uomLookup={uomLookup}
                 selectedId={selectedLineId}
+                // 실행 중에 줄을 바꾸면 그 실행의 결과가 어디에도 서지 않는다.
+                isLocked={issue.step !== null}
                 onToggleSelect={(lineId) => {
                   // 같은 줄을 다시 누르면 해제한다 — 고른 것을 무를 수단이 없으면 갇힌다.
                   setSelectedLineId((current) => (current === lineId ? null : lineId));

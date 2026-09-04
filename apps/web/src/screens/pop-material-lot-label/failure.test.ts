@@ -16,6 +16,7 @@ const resultOf = (over: Partial<IssueRunResult>): IssueRunResult => ({
   isPrinted: false,
   failedAt: null,
   hasCreatedLot: false,
+  hasPrintedLabel: false,
   issue: null,
   error: null,
   ...over,
