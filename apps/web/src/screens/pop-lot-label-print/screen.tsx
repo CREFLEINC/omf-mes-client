@@ -148,7 +148,7 @@ export const PopLotLabelPrintScreen = () => {
   );
 
   return (
-    <main className="pop-lot-screen" aria-labelledby={titleId}>
+    <main className="pop-lot-screen pop-ui" aria-labelledby={titleId}>
       <header className="pop-lot-head">
         <h1 id={titleId} className="pop-title">
           {t.title}

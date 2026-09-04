@@ -163,7 +163,7 @@ export const PackingLabelReprintScreen = () => {
   const printer = headlinePrinter(printers.data);
 
   return (
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}

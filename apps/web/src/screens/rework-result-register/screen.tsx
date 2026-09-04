@@ -120,7 +120,7 @@ export const ReworkResultRegisterScreen = () => {
     setRejected(false);
   };
   return (
-    <main className="pop-shell rework-result-screen" aria-labelledby="rework-result-title">
+    <main className="pop-shell pop-ui rework-result-screen" aria-labelledby="rework-result-title">
       <header className="pop-header">
         <h1 className="pop-title" id="rework-result-title">
           {t.title}
