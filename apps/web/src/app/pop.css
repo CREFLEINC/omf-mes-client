@@ -81,8 +81,16 @@
   height: 100vh;
   min-height: 0;
   overflow: hidden;
-  /* `main { padding: 24px }`(관리웹 본문 여백)를 턴다 — 머리줄이 화면 끝까지 가야 한다. */
-  padding: 0;
+  /*
+   * `main { padding: 24px }`(관리웹 본문 여백)를 턴다 — 머리줄이 화면 끝까지 가야 한다.
+   * 좌우·위는 0 이고, **바닥 여백만 그릇이 자기 안쪽에 잡아 둔다.**
+   *
+   * ⭐ 처음에는 `:last-child` 에 `margin-block-end` 로 주었는데, 화면이 닫힌 `<dialog>` 를
+   *    끝에 달고 있으면 «그것»이 마지막 자식이라 여백이 보이지 않는 요소로 갔다 — 인식표
+   *    발행 화면에서 본문이 화면 바닥에 딱 붙어 떴다(실측 바닥 여백 0, 다른 화면은 20).
+   *    창은 화면 어디에나 붙을 수 있으므로 「마지막이 무엇인가」에 기대지 않는다.
+   */
+  padding: 0 0 var(--pop-pad);
   /* 최상위 블록 사이 이음매를 한 곳에서 준다 — 블록마다 붙이면 반드시 하나를 빠뜨린다. */
   gap: var(--space-4);
   font-size: var(--pop-text);
@@ -180,11 +188,6 @@
   > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.pop-overlay) {
   box-sizing: border-box;
   margin-inline: var(--pop-pad);
-}
-
-/* 마지막 블록 아래에도 같은 여백 — 없으면 화면 바닥에 붙는다. */
-.pop-ui > :last-child {
-  margin-block-end: var(--pop-pad);
 }
 
 /*
@@ -443,8 +446,13 @@
 .pop-ui > .pop-overlay {
   /* 위 본문 규칙이 밀어 넣은 여백을 턴다 — 덮개는 네 변이 화면에 닿는다. */
   margin: 0;
-  /* `.pop-shell` 의 관리웹 본문 여백(24px)도 턴다 — 남기면 머리줄이 화면 끝까지 못 간다. */
-  padding: 0;
+  /*
+   * `.pop-shell` 의 관리웹 본문 여백(24px)을 턴다 — 남기면 머리줄이 화면 끝까지 못 간다.
+   *
+   * 바닥 여백은 `.pop-ui` 와 같은 방식으로 그릇이 자기 안쪽에 잡아 둔다 — 게이트도 닫힌
+   * 점검 기록 창을 끝에 달고 있어, 마지막 자식에 기대면 액션바가 화면 바닥에 붙는다(실측).
+   */
+  padding: 0 0 var(--pop-pad);
   /* 최상위 블록 사이 이음매는 `.pop-ui` 와 같은 값으로 — 덮개만 붙어 보이면 안 된다. */
   gap: var(--space-4);
 }
@@ -453,10 +461,6 @@
 .pop-ui > .pop-overlay > :not(.pop-header) {
   box-sizing: border-box;
   margin-inline: var(--pop-pad);
-}
-
-.pop-ui > .pop-overlay > :last-child {
-  margin-block-end: var(--pop-pad);
 }
 
 /* ── 화면별 ────────────────────────────────────────────────────────────── */
