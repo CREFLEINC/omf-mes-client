@@ -5,7 +5,16 @@
  * `window-options` · `renderer-path` · `file-blob-store` · `secure-store` · `local-db` · `print`.
  * 이 파일이 얇아야 「Electron을 띄워야만 확인 가능한 부분」이 작아진다.
  */
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -16,12 +25,23 @@ import { createFileBlobStore } from './file-blob-store';
 import { LocalDb, type SqlDatabase } from './local-db';
 import {
   type FileWriter,
+  PrinterUnavailableError,
   RenditionPrinter,
   UnknownFormatError,
   isRenditionFormat,
   toRenditionFileName,
 } from './print';
+import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
+import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
+import { buildPrintScript, printScriptArgs } from './windows-print';
 import { resolveRendererPath } from './renderer-path';
+import {
+  DEFAULT_PRINT_TIMEOUT_MS,
+  type PrintPage,
+  type PrinterChoice,
+  createSilentPrinter,
+  selectPrinter,
+} from './silent-print';
 import { SecureStore } from './secure-store';
 import { createKioskWindowOptions } from './window-options';
 
@@ -87,6 +107,163 @@ const fileWriter: FileWriter = {
   },
 };
 
+/**
+ * 인쇄용 숨은 창. **작업마다 새로 열고 끝나면 닫는다** — 하나를 계속 쓰면 앞 출력물이 남아
+ * 다음 인쇄에 섞인다.
+ *
+ * ⛔ 키오스크 창의 옵션을 물려받지 않는다. 이 창은 사람에게 보이지 않고 우리가 방금 떨어뜨린
+ *    임시 파일 하나만 띄운다 — 통로를 더 열 이유가 없다.
+ */
+/**
+ * 인쇄용 창을 놓는 자리 — **화면 밖.**
+ *
+ * ⛔ **`show: false` 로만 두지 않는다.** 창을 한 번도 보여 주지 않으면 Windows 에서 인쇄 결과가
+ *    **백지로 나간다** — 파일로 뜨는 경로(`printToPDF`)는 멀쩡한데 인쇄 경로만 빈다. 둘이 쓰는
+ *    그림이 다르기 때문이다(실측 — 라벨이 급지는 되는데 아무것도 찍히지 않았고, 앱은 인쇄를
+ *    성공으로 끝냈다).
+ *
+ * ⚠ 그래서 **보여 주되 화면 밖에 둔다.** 작업자 눈에는 아무것도 보이지 않고, 엔진에는
+ *   「보이는 창」이라 제대로 그린다. 키오스크 창을 가리지 않도록 초점도 가져가지 않는다.
+ */
+const PRINT_WINDOW_OFFSCREEN = -20000;
+
+function openPrintPage(): PrintPage {
+  const page = new BrowserWindow({
+    show: false,
+    x: PRINT_WINDOW_OFFSCREEN,
+    y: PRINT_WINDOW_OFFSCREEN,
+    width: 1000,
+    height: 700,
+    frame: false,
+    skipTaskbar: true,
+    focusable: false,
+    /*
+     * ⛔ **숨은 창도 그리게 둔다.** 이 값을 끄면 창은 뜨는데 화면을 한 번도 그리지 않는다.
+     *    사람에게 안 보이는 것과 그리지 않는 것은 다른 축이다.
+     */
+    paintWhenInitiallyHidden: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      devTools: false,
+      /* 보이지 않는 창은 기본으로 그리기를 늦춘다 — 인쇄 직전에 그것이 백지가 된다. */
+      backgroundThrottling: false,
+    },
+  });
+
+  /*
+   * ⛔ 이 창은 우리가 방금 떨어뜨린 파일 하나만 띄운다. 서버가 보낸 바이트를 그리는 자리라,
+   *    키오스크 창과 같은 두 빗장을 여기에도 건다 — 새 창을 열지 못하게 하고 다른 곳으로
+   *    옮겨 가지 못하게 한다.
+   */
+  page.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+
+  return {
+    load: async (url) => {
+      page.webContents.on('will-navigate', (event, target) => {
+        if (target !== url) event.preventDefault();
+      });
+      await page.loadURL(url);
+
+      /*
+       * ⭐ **인쇄 전에 창을 화면에 올린다.** 초점은 가져가지 않는다(`showInactive`) — 작업자가
+       *    보던 화면이 뺏기면 안 된다. 자리는 화면 밖이라 보이지 않는다.
+       */
+      page.showInactive();
+
+      /*
+       * ⭐ **다 그려진 것을 확인하고 나서 인쇄한다.** 문서 로딩이 끝난 것과 그림이 화면에
+       *    올라간 것은 다르다 — 로딩만 보고 인쇄하면 종이가 백지로 나온다. 그림의 디코딩이
+       *    끝나기를 기다리고, 화면 갱신을 두 번 넘긴 뒤에 넘어간다.
+       */
+      await page.webContents.executeJavaScript(
+        `new Promise((done) => {
+           const images = Array.from(document.images ?? []);
+           Promise.all(images.map((image) => image.decode().catch(() => undefined)))
+             .then(() => requestAnimationFrame(() => requestAnimationFrame(() => { done(true); })));
+         })`,
+      );
+    },
+    print: async (deviceName, jobName) =>
+      new Promise((resolve, reject) => {
+        page.webContents.print(
+          {
+            silent: true,
+            /* ⭐ 지정이 없으면 **항목 자체를 싣지 않는다** — 그래야 OS 기본으로 간다. */
+            ...(deviceName === undefined ? {} : { deviceName }),
+            /*
+             * ⚠ **여백을 두지 않는다.** 라벨은 대지 크기가 곧 인쇄 영역이라, 기본 여백이
+             *   들어가면 그림이 줄어 바코드 폭이 규격을 벗어난다.
+             * ⛔ 배경은 찍지 않는다 — 브라우저 엔진이 이미지 문서에 깔아 주는 바탕색이
+             *   라벨 전면을 덮는다.
+             */
+            margins: { marginType: 'none' },
+            printBackground: false,
+          },
+          (success, reason) => {
+            /* 취소도 실패로 다룬다 — 종이가 안 나온 것을 성공으로 두지 않는다(공유계약 F-6). */
+            if (success) resolve();
+            else reject(new Error(reason === '' ? '인쇄가 완료되지 않았다' : reason));
+          },
+        );
+      }),
+    close: () => page.destroy(),
+  };
+}
+
+/**
+ * Windows 단말의 인쇄 — **OS 의 그림 인쇄에 맡긴다**(`windows-print` 머리말).
+ *
+ * ⚠ 개발 기계(mac 등)에는 이 길이 없다. 거기서는 엔진 경로를 그대로 쓴다.
+ */
+const filePrinter =
+  process.platform === 'win32'
+    ? {
+        print: async ({
+          imagePath,
+          deviceName,
+          jobName,
+        }: {
+          imagePath: string;
+          deviceName?: string;
+          jobName: string;
+        }): Promise<void> => {
+          const scriptPath = join(imagePath, '..', 'print.ps1');
+          writeFileSync(scriptPath, buildPrintScript({ imagePath, deviceName, jobName }), 'utf8');
+
+          await new Promise<void>((resolve, reject) => {
+            execFile(
+              'powershell.exe',
+              printScriptArgs(scriptPath),
+              /*
+               * ⛔ **자식에게도 같은 상한을 건다.** 바깥 상한은 약속만 끊고 프로세스는 계속
+               *    산다 — 인쇄가 매달릴 때마다 하나씩 남고, 남은 것이 임시 파일을 잡아 정리도
+               *    실패한다. 며칠씩 켜 두는 단말에서 쌓인다.
+               */
+              { windowsHide: true, timeout: DEFAULT_PRINT_TIMEOUT_MS, killSignal: 'SIGKILL' },
+              (error, _stdout, stderr) => {
+                if (error === null) {
+                  resolve();
+                  return;
+                }
+
+                /* 상한에 걸려 끊긴 것은 사유가 비어 온다 — 무슨 일이었는지 말해 준다. */
+                const spoken =
+                  stderr.trim() !== ''
+                    ? stderr.trim()
+                    : error.killed === true
+                      ? '프린터가 응답하지 않아 인쇄를 끊었다'
+                      : error.message;
+
+                reject(new Error(spoken));
+              },
+            );
+          });
+        },
+      }
+    : undefined;
+
 async function openLocalDb(dbPath: string): Promise<LocalDb> {
   const SQL = await initSqlJs();
   const existing = existsSync(dbPath) ? readFileSync(dbPath) : undefined;
@@ -122,7 +299,64 @@ async function main(): Promise<void> {
   const dbPath = join(userData, 'pop.sqlite');
   const localDb = await openLocalDb(dbPath);
   const renditionDir = join(userData, 'renditions');
-  const printer = new RenditionPrinter(fileWriter);
+  /** 인쇄 진단 기록이 앉는 자리. 사람이 파일로 읽는다. */
+  const logDir = join(userData, 'logs');
+  const stagingDir = join(app.getPath('temp'), 'omf-pop-print');
+  const printer = new RenditionPrinter(
+    fileWriter,
+    createSilentPrinter({
+      openPage: openPrintPage,
+      stage: async (bytes, format) => {
+        /*
+         * 작업마다 **폴더 하나**를 쓴다 — 감싸는 문서와 그림이 같은 자리에 있어야 상대 경로로
+         * 이어진다. 이름은 겹치지 않기만 하면 된다(사람이 읽는 이름은 `renditions/` 쪽이 갖는다).
+         */
+        const jobDir = join(stagingDir, `${String(Date.now())}-${String(process.hrtime.bigint())}`);
+        mkdirSync(jobDir, { recursive: true });
+        writeFileSync(join(jobDir, labelFileName(format)), bytes);
+
+        /*
+         * ⚠ **PDF 는 감싸지 않는다.** 성적서·보고서는 이미 쪽이 나뉜 문서이고, 그것을 이미지처럼
+         *   대지에 채우면 첫 쪽만 늘어난다. 그 형식은 엔진의 문서 보기에 그대로 맡긴다.
+         */
+        const filePath = join(jobDir, labelFileName(format));
+
+        if (format === 'pdf') {
+          return { path: jobDir, filePath, url: pathToFileURL(filePath).toString() };
+        }
+
+        const pagePath = join(jobDir, PRINT_PAGE_FILE);
+        writeFileSync(pagePath, renderPrintPage(labelFileName(format)), 'utf8');
+
+        return { path: jobDir, filePath, url: pathToFileURL(pagePath).toString() };
+      },
+      discard: async (path) => rmSync(path, { force: true, recursive: true }),
+      printFile: filePrinter,
+    }),
+  );
+
+  /**
+   * 어느 프린터로 보내는가. **창이 선 뒤에야 물어볼 수 있다** — 프린터 목록은 `webContents`
+   * 가 준다. 인쇄는 사람이 화면을 조작한 뒤에 일어나므로 그때는 이미 서 있다.
+   *
+   * ⚠ 매번 다시 묻는다. 현장에서 프린터를 갈아 끼우거나 껐다 켜는 일이 있어, 기동 시점의
+   *   목록을 들고 있으면 사라진 장치로 계속 보낸다.
+   */
+  let printHost: BrowserWindow | null = null;
+  const resolvePrinter = async (): Promise<{
+    choice: PrinterChoice;
+    available: LoggedPrinter[];
+  }> => {
+    if (printHost === null) return { choice: { kind: 'none' }, available: [] };
+
+    const printers = await printHost.webContents.getPrintersAsync();
+
+    return {
+      choice: selectPrinter(printers, process.env.POP_PRINTER_NAME),
+      /* 고르지 못했을 때 **무엇이 있었는지**를 기록에 남기려고 함께 들고 나간다. */
+      available: printers.map(({ name, displayName }) => ({ name, displayName })),
+    };
+  };
 
   // 대기열이 사라지면 현장 실적이 사라진다. 창을 만들기 **전에** 등록한다 —
   // 창 생성이나 로드가 실패해도 이미 걸려 있어야 그 세션의 기록이 남는다.
@@ -159,8 +393,65 @@ async function main(): Promise<void> {
     async (_e, bytes: Uint8Array, label: string, now: string, format: unknown) => {
       // 형식은 파일 경로 계산에 들어간다 — 아는 값인지 경계에서 막는다.
       if (!isRenditionFormat(format)) throw new UnknownFormatError(format);
+
+      const rendition = { bytes, label, format };
       const filePath = join(renditionDir, toRenditionFileName(label, now, format));
-      await printer.print({ bytes, label, format }, { kind: 'file', filePath });
+
+      /*
+       * ⛔ 화면에는 기술 사유를 보이지 않는다(사용자 지시). 그래도 사유를 버리지는 않는다 —
+       *    키오스크에는 개발자도구가 없어 이 파일이 무슨 일이 났는지 아는 유일한 자리다.
+       */
+      const noteFailure = (
+        available: readonly LoggedPrinter[],
+        deviceName: string | null,
+        cause: unknown,
+      ) => {
+        try {
+          mkdirSync(logDir, { recursive: true });
+          appendFileSync(
+            join(logDir, 'print.log'),
+            formatPrintLog({
+              at: new Date().toISOString(),
+              label,
+              available,
+              deviceName,
+              preferred: process.env.POP_PRINTER_NAME,
+              reason: reasonOf(cause),
+            }),
+          );
+        } catch {
+          /* 기록을 남기지 못한 것이 인쇄 실패를 덮지 않는다 — 원인은 아래에서 그대로 던진다. */
+        }
+      };
+
+      /*
+       * ⭐ **기록을 먼저 남기고 인쇄한다.** 인쇄가 실패해도 서버가 그려 준 것은 단말에 남아,
+       *    현장에서 무엇이 나왔어야 하는지 확인할 수 있다. 순서를 뒤집으면 프린터가 죽은 날의
+       *    출력물이 아무 데도 남지 않는다.
+       */
+      await printer.print(rendition, { kind: 'file', filePath });
+
+      const { choice, available } = await resolvePrinter();
+
+      /* ⛔ 보낼 곳이 없는 것을 성공으로 두지 않는다(공유계약 F-6) — 화면이 인쇄 실패로 낸다. */
+      if (choice.kind === 'none') {
+        const error = new PrinterUnavailableError(
+          available.map((printer) => printer.displayName ?? printer.name),
+        );
+        noteFailure(available, null, error);
+        throw error;
+      }
+
+      /* 지정이 없으면 장치를 싣지 않는다 — 받는 쪽이 OS 기본으로 보낸다. */
+      const deviceName = choice.kind === 'named' ? choice.deviceName : undefined;
+
+      try {
+        await printer.print(rendition, { kind: 'printer', deviceName });
+      } catch (cause) {
+        noteFailure(available, deviceName ?? '(OS 기본)', cause);
+        throw cause;
+      }
+
       return filePath;
     },
   );
@@ -168,6 +459,7 @@ async function main(): Promise<void> {
   const window = new BrowserWindow(
     createKioskWindowOptions({ preloadPath: PRELOAD_PATH, isDev: IS_DEV }),
   );
+  printHost = window;
 
   // 새 창은 키오스크 옵션을 물려받지 않는다 — 프레임 있는 일반 창에 개발자도구가 열린 채
   // 뜬다. 작업자가 셸 밖으로 빠져나갈 통로라 아예 막는다.

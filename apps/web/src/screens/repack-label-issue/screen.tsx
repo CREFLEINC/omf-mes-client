@@ -223,7 +223,7 @@ export const RepackLabelIssueScreen = () => {
               </Button>
             }
           >
-            {`${t.print.failedBody} ${printRunner.state.reason ?? ''}`.trim()}
+            {t.print.failedBody}
           </AlertBanner>
         </div>
       )}
@@ -253,7 +253,7 @@ export const RepackLabelIssueScreen = () => {
               </Button>
             }
           >
-            {`${t.print.failedBody} ${printRunner.state.reason ?? ''}`.trim()}
+            {t.print.failedBody}
           </AlertBanner>
         </div>
       )}
@@ -279,7 +279,7 @@ export const RepackLabelIssueScreen = () => {
               </Button>
             }
           >
-            {`${t.print.reportFailedBody} ${printRunner.state.reason ?? ''}`.trim()}
+            {t.print.reportFailedBody}
           </AlertBanner>
         </div>
       )}

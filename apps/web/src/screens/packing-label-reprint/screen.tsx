@@ -219,7 +219,7 @@ export const PackingLabelReprintScreen = () => {
               </Button>
             }
           >
-            {`${t.print.failedBody} ${printRunner.state.reason ?? ''}`.trim()}
+            {t.print.failedBody}
           </AlertBanner>
         </div>
       )}

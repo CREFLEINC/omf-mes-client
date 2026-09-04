@@ -62,7 +62,8 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   {
     path: '/pop/tag-issue',
     label: 'P-02-05 인식표 발행',
-    query: '?workOrderId=11002&workerNo=100029',
+    /* 씨앗의 생산LOT 은 전부 이 작업지시에 달려 있다 — 11002 로 열면 대상 LOT 이 비어 뜬다. */
+    query: '?workOrderId=11001&workerNo=100029',
   },
   {
     path: '/pop/production-result',
@@ -77,7 +78,8 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   {
     path: '/pop/lot-label',
     label: 'P-02-07 LOT 라벨 출력·부착',
-    query: '?workOrderId=11002&workerNo=100029',
+    /* 완료 LOT 이 달린 작업지시다(P-02-08 과 같다). 11002 에는 LOT 이 하나도 없다. */
+    query: '?workOrderId=11001&workerNo=100029',
   },
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },

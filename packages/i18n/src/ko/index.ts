@@ -73,6 +73,7 @@ import { returnReceipt } from './return-receipt';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workStart } from './work-start';
+import { workPrecheckGate } from './work-precheck-gate';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
 import { materialPicking } from './material-picking';
@@ -229,6 +230,7 @@ export const ko = {
   popMaterialLotLabel,
   identificationTagIssue,
   workStart,
+  workPrecheckGate,
   reworkResultRegister,
   packingLabelReprint,
   productionLotComplete,

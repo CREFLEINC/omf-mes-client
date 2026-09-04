@@ -211,7 +211,7 @@ export const PopLotLabelPrintScreen = () => {
               </Button>
             }
           >
-            {`${t.print.failedBody} ${printRunner.state.reason ?? ''}`.trim()}
+            {t.print.failedBody}
           </AlertBanner>
         </div>
       ) : null}

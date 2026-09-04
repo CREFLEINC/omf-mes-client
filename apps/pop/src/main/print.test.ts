@@ -104,7 +104,7 @@ describe('빈 출력물 방어', () => {
   });
 });
 
-describe('무음 인쇄 경로 — 실기 도착 후 갈아끼울 자리', () => {
+describe('무음 인쇄 경로', () => {
   it('프린터 구현이 없으면 명확히 던진다', async () => {
     await expect(
       new RenditionPrinter(recordingWriter()).print(rendition(), {
@@ -114,13 +114,14 @@ describe('무음 인쇄 경로 — 실기 도착 후 갈아끼울 자리', () =>
     ).rejects.toThrow(PrinterUnavailableError);
   });
 
-  it('구현이 있으면 원본 바이트·장치명·작업 이름을 넘긴다', async () => {
+  it('구현이 있으면 장치명과 출력물을 그대로 넘긴다', async () => {
     const printer: SilentPrinter = { print: vi.fn(async () => undefined) };
-    await new RenditionPrinter(recordingWriter(), printer).print(rendition('png', PNG, 'LOT-77'), {
+    const target = rendition('png', PNG, 'LOT-77');
+    await new RenditionPrinter(recordingWriter(), printer).print(target, {
       kind: 'printer',
       deviceName: 'ZD421',
     });
-    expect(printer.print).toHaveBeenCalledWith('ZD421', Uint8Array.from(PNG), 'LOT-77');
+    expect(printer.print).toHaveBeenCalledWith('ZD421', target);
   });
 });
 
@@ -186,5 +187,18 @@ describe('파일명 다듬기', () => {
     for (const value of ['..', '../..', 'a/../b']) {
       expect(toRenditionFileName(value, value, 'pdf')).not.toContain('..');
     }
+  });
+});
+
+describe('프린터를 못 고른 사유를 말한다', () => {
+  // ⚠ 현장 단말은 키오스크라 개발자도구가 없다 — 이 문장이 사유를 알 수 있는 유일한 자리다.
+  it('등록된 프린터가 없으면 그렇게 말한다', () => {
+    expect(new PrinterUnavailableError([]).message).toContain('등록된 프린터가 없다');
+  });
+
+  it('여럿인데 못 골랐으면 이름을 함께 보인다', () => {
+    const message = new PrinterUnavailableError(['TSC TH240', 'Microsoft Print to PDF']).message;
+    expect(message).toContain('기본 프린터가 지정돼 있지 않다');
+    expect(message).toContain('TSC TH240');
   });
 });
