@@ -143,6 +143,12 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
    * 셸이 채우고, 비어 있을 때만 주소를 본다(`entry-context.ts`).
    */
   { path: '/pop/packing', label: 'P-04-01 Packing 실적 등록' },
+  {
+    path: '/pop/lot-complete',
+    label: 'P-02-06 생산LOT 완료 처리',
+    /* 씨앗에서 미완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 대상 목록이 비어 뜬다. */
+    query: '?workOrderId=11002',
+  },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
