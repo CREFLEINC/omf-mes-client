@@ -132,13 +132,32 @@ async function dumpPrintSurface(page: BrowserWindow, filePath: string): Promise<
   }
 }
 
+/**
+ * 인쇄용 창을 놓는 자리 — **화면 밖.**
+ *
+ * ⛔ **`show: false` 로만 두지 않는다.** 창을 한 번도 보여 주지 않으면 Windows 에서 인쇄 결과가
+ *    **백지로 나간다** — 파일로 뜨는 경로(`printToPDF`)는 멀쩡한데 인쇄 경로만 빈다. 둘이 쓰는
+ *    그림이 다르기 때문이다(실측 — 라벨이 급지는 되는데 아무것도 찍히지 않았고, 앱은 인쇄를
+ *    성공으로 끝냈다).
+ *
+ * ⚠ 그래서 **보여 주되 화면 밖에 둔다.** 작업자 눈에는 아무것도 보이지 않고, 엔진에는
+ *   「보이는 창」이라 제대로 그린다. 키오스크 창을 가리지 않도록 초점도 가져가지 않는다.
+ */
+const PRINT_WINDOW_OFFSCREEN = -20000;
+
 function openPrintPage(): PrintPage {
   const page = new BrowserWindow({
     show: false,
+    x: PRINT_WINDOW_OFFSCREEN,
+    y: PRINT_WINDOW_OFFSCREEN,
+    width: 1000,
+    height: 700,
+    frame: false,
+    skipTaskbar: true,
+    focusable: false,
     /*
-     * ⛔ **숨은 창도 그리게 둔다.** 이 값을 끄면 창은 뜨는데 화면을 한 번도 그리지 않고,
-     *    인쇄는 성공했다고 하면서 **백지가 나온다**(실측 — 라벨이 급지는 되는데 아무것도
-     *    찍히지 않았다). 사람에게 안 보이는 것과 그리지 않는 것은 다른 축이다.
+     * ⛔ **숨은 창도 그리게 둔다.** 이 값을 끄면 창은 뜨는데 화면을 한 번도 그리지 않는다.
+     *    사람에게 안 보이는 것과 그리지 않는 것은 다른 축이다.
      */
     paintWhenInitiallyHidden: true,
     webPreferences: {
@@ -164,6 +183,12 @@ function openPrintPage(): PrintPage {
         if (target !== url) event.preventDefault();
       });
       await page.loadURL(url);
+
+      /*
+       * ⭐ **인쇄 전에 창을 화면에 올린다.** 초점은 가져가지 않는다(`showInactive`) — 작업자가
+       *    보던 화면이 뺏기면 안 된다. 자리는 화면 밖이라 보이지 않는다.
+       */
+      page.showInactive();
 
       /*
        * ⭐ **다 그려진 것을 확인하고 나서 인쇄한다.** 문서 로딩이 끝난 것과 그림이 화면에
