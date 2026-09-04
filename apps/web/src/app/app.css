@@ -7079,7 +7079,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   justify-items: start;
   gap: var(--space-2);
   margin-block-start: var(--space-4);
-
+}
 /*
  * P-02-10 작업 중단(홀드) 등록 — 슬라이스 전용 이름을 쓴다.
  *
@@ -7339,4 +7339,106 @@ dl.filter-bar.approval-inbox-detail-facts {
   .return-receipt-workspace {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---------------------------------------------------------------------------
+ * P-02-02 작업 전 점검 이력 확인·통제 — `P-02-01` 위에 덮이는 게이트.
+ *
+ * ⚠ **독립 화면이 아니다.** 작업 시작을 누르면 이 판이 «위에» 서고, 통과면 아예 그려지지
+ * 않는다(스펙 §9-3). 그래서 화면 전환이 아니라 덮개(`position: fixed`)로 세운다 — 전환으로
+ * 만들면 통과했을 때 빈 화면이 한 번 스친다.
+ *
+ * 세로 예산(§4-1) — 헤더 64 · 본문 616(① 152 + ② 200 + ③ 144 + ④ 여백 88) · 액션바 88.
+ * ④ 여백은 낭비가 아니라 **문구가 가장 길 때를 위한 자리**다(E-4 반대 형태).
+ *
+ * ⛔ 클래스 이름을 `precheck-gate-` 로 시작한다 — POP 화면들이 같은 파일에 살아 일반명을
+ * 쓰면 다른 화면과 조용히 겹친다.
+ * ------------------------------------------------------------------------ */
+
+.precheck-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto auto 1fr auto;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* ① 판정 — 무엇이 막았는가. 가장 먼저 읽히도록 위에 둔다. */
+.precheck-gate-verdict {
+  min-height: 152px;
+  display: grid;
+  align-content: center;
+}
+
+/* 배너 안의 부연은 줄을 바꿔 세운다 — 한 줄로 이으면 표제가 묻힌다. */
+.precheck-gate-detail {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+.precheck-gate-history {
+  min-height: 200px;
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.precheck-gate-section-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.precheck-gate-scope,
+.precheck-gate-empty,
+.precheck-gate-note {
+  margin: 0;
+}
+
+.precheck-gate-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+/* 유형 · 판정 배지 · 언제·누가 — 배지가 가운데 서서 훑을 때 결과가 한 줄로 읽힌다. */
+.precheck-gate-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.precheck-gate-row-type {
+  min-width: 120px;
+}
+
+.precheck-gate-row-detail {
+  color: var(--on-surface-variant);
+}
+
+.precheck-gate-guide {
+  min-height: 144px;
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+}
+
+.precheck-gate-guide p {
+  margin: 0;
+}
+
+/*
+ * 액션바 — [ 우회하고 시작 ] 이 오른쪽 끝에 선다. 되돌릴 수 없는 조작이라 [ 다시 확인 ] 과
+ * 붙여 두면 장갑 낀 손이 옆 것을 누른다.
+ */
+.precheck-gate-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  min-height: 88px;
+  align-items: center;
 }

@@ -55,6 +55,31 @@ export const WORK_ORDER = {
   plannedStartAt: '2026-09-02T08:00:00+09:00',
 };
 
+/** 이 설비에 부여된 일상 점검 — 하루 주기라 창이 오늘 하루다. */
+export const DAILY_ASSIGNMENT = {
+  equipmentInspectionItemId: 5501,
+  itemCode: 'SYN-DAILY-01',
+  itemName: '합성 일상 점검',
+  inspectionTypeCode: 'DAILY',
+  judgmentMethodCode: 'VISUAL',
+  requiredFlag: true,
+  sequenceNo: 1,
+  cycleTypeCode: 'DAY',
+  cycleInterval: 1,
+  cycleBaseDate: '2026-01-01',
+  isActive: true,
+};
+
+/** 오늘 합격한 점검 한 건. ⚠ 시각은 감지기가 `decidedAt` 을 고정해 넣는다. */
+export const PASSED_INSPECTION = {
+  inspectionId: 6601,
+  equipmentId: EQUIPMENT_ID,
+  inspectionTypeCode: 'DAILY',
+  overallResultCode: 'PASS',
+  inspectedAt: '2026-09-02T08:00:00+09:00',
+  inspectorWorkerNo: '3391',
+};
+
 /** ⚠ `workerNo` 는 숫자 칸이라 `SYN-` 접두를 붙일 수 없다 — **지어낸 값**이다. */
 export const WORKER = {
   workerId: 2101,
@@ -81,6 +106,28 @@ export interface StubOptions {
   workersFailFirst?: boolean;
   /** 세션 열기 응답 상태. 기본 201. */
   startStatus?: number;
+
+  /*
+   * 작업 전 점검 통제 게이트(`P-02-02`)가 부르는 것들. **기본은 통과**다 — 게이트를 재는
+   * 감지기가 아니면 시작이 그대로 이어져야 한다.
+   */
+  /** 통제 수준 정책. 기본은 차단(BLOCK)이고, 점검이 합격이라 통과한다. */
+  controlLevel?: string;
+  /** 적용 정책이 없다고 답한다 — 화면이 경고로 다뤄야 한다. */
+  policyUnresolved?: boolean;
+  policyStatus?: number;
+  /** 이 설비에 부여된 점검 항목. 기본은 일상 점검 하나. */
+  assignments?: Record<string, unknown>[];
+  /** 부여가 어느 층에서 왔는가. `NONE` 이면 점검 대상이 아니다. */
+  resolvedFromLevelCode?: string;
+  assignmentsStatus?: number;
+  /** 주기 내 점검 이력. 기본은 오늘 합격 한 건. */
+  inspections?: Record<string, unknown>[];
+  inspectionsStatus?: number;
+  /** 열린 고장 건수. 기본 0. */
+  openBreakdownCount?: number;
+  /** 판정 기록 응답 상태. 기본 201. */
+  decisionStatus?: number;
 }
 
 export interface Recorded {
@@ -150,6 +197,66 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
           terminalId: TERMINAL_ID,
           startedAt: '2026-09-02T09:00:00+09:00',
           statusCode: 'SYN_RUNNING',
+        },
+        { status: 201 },
+      );
+    }
+
+    if (url.pathname === '/app/operation-policies/effective') {
+      if (options.policyStatus !== undefined) {
+        return jsonResponse({ message: '실패' }, { status: options.policyStatus });
+      }
+
+      return jsonResponse({
+        policyCode: 'PRECHECK_CONTROL_LEVEL',
+        resolved: options.policyUnresolved !== true,
+        valueText: options.controlLevel ?? 'BLOCK',
+      });
+    }
+
+    if (url.pathname === `/mdm/equipments/${String(EQUIPMENT_ID)}/inspection-items`) {
+      if (options.assignmentsStatus !== undefined) {
+        return jsonResponse({ message: '실패' }, { status: options.assignmentsStatus });
+      }
+
+      const effective = options.assignments ?? [DAILY_ASSIGNMENT];
+
+      return jsonResponse({
+        assigned: effective,
+        effective,
+        resolvedFromLevelCode: options.resolvedFromLevelCode ?? 'EQUIPMENT',
+      });
+    }
+
+    if (url.pathname === '/maintenance/inspections') {
+      if (options.inspectionsStatus !== undefined) {
+        return jsonResponse({ message: '실패' }, { status: options.inspectionsStatus });
+      }
+
+      const items = options.inspections ?? [PASSED_INSPECTION];
+
+      return jsonResponse({ items, page: { page: 1, size: 1, total: items.length } });
+    }
+
+    if (url.pathname === '/maintenance/breakdowns') {
+      const total = options.openBreakdownCount ?? 0;
+
+      return jsonResponse({ items: [], page: { page: 1, size: 1, total } });
+    }
+
+    if (url.pathname === '/production/precheck-decisions') {
+      if (options.decisionStatus !== undefined) {
+        return jsonResponse({ message: '실패' }, { status: options.decisionStatus });
+      }
+
+      return jsonResponse(
+        {
+          precheckDecisionId: 7701,
+          workOrderId: WORK_ORDER.workOrderId,
+          equipmentId: EQUIPMENT_ID,
+          decidedAt: '2026-09-02T09:00:00+09:00',
+          controlLevelCode: options.controlLevel ?? 'BLOCK',
+          decisionCode: 'PASSED',
         },
         { status: 201 },
       );

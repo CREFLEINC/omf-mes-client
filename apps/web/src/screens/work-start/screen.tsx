@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
 import { useIsOnline } from './connection';
@@ -13,7 +14,7 @@ import { SelectionCard } from './selection-card';
 import { useOpenSession, useTerminal, useWorkOrders, useWorkerLookup } from './queries';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
-import type { WorkOrder } from './types';
+import type { ControlOverride, WorkOrder } from './types';
 import { WorkOrderList } from './work-order-list';
 import { isHeld } from './work-order-status';
 import { WorkerPanel } from './worker-panel';
@@ -29,7 +30,11 @@ import { verifyWorker } from './worker-verify';
  * 캐시로 진행하면 권한 없는 단말이 열리고 차단해야 할 작업이 열린다. **큐를 만들지 않는다.**
  *
  * ⛔ **점검 통제를 이 화면이 판정하지 않는다**(§5-2 · F-5). 판정하고 막는 것은 「작업 전 점검
- * 이력 확인·통제」(`P-02-02`)이고, 이 화면은 결과를 **보이고** 통과 시 세션을 연다.
+ * 이력 확인·통제」(`P-02-02`)이고, 이 화면은 결과를 **보이고** 통과 시 세션을 연다 —
+ * 시작을 누르면 게이트가 먼저 서고, 게이트가 열어 준 뒤에야 이 화면이 세션을 연다.
+ *
+ * ⚠ **재개는 게이트를 지나지 않는다.** 통제는 「작업을 시작할 수 있는가」를 묻는 것이고
+ * 재개는 이미 열린 세션 «안의» 사건이다(§5-4).
  *
  * ⛔ **재개가 새 세션을 열지 않는다**(§5-4). 중단해도 세션은 열려 있고, 재개는 그 세션 안의
  * 사건이다 — 두 버튼은 **다른 경로**로 간다.
@@ -155,6 +160,14 @@ export const WorkStartScreen = () => {
    */
   const submitAtRef = useRef<string | null>(null);
 
+  /**
+   * 점검 통제 게이트가 열려 있는가 — 열려 있으면 그 시도의 시각이 들어 있다.
+   *
+   * ⭐ **시각을 상태로 든다.** 게이트가 판정 기록에 싣는 값이라, 다시 그리는 사이에 바뀌면
+   * 같은 시도가 두 판정으로 남는다.
+   */
+  const [gateAt, setGateAt] = useState<string | null>(null);
+
   const startWork = useStartWork({
     workerNo: confirmedNo ?? '',
     onSuccess: () => {
@@ -221,12 +234,38 @@ export const WorkStartScreen = () => {
       return;
     }
 
-    startWork.write(toSessionRequest({ workOrder: selected, equipmentId, startedAt: at }));
+    /*
+     * ⛔ **여기서 세션을 열지 않는다.** 작업 시작은 점검 통제 게이트를 지나야 한다(`P-02-02`
+     *    §5-5). 게이트가 통과·경고 진행·우회 중 하나로 판정을 «기록한 뒤» 열어 주고, 그때
+     *    아래 `startSession` 이 부른다.
+     */
+    setGateAt(at);
+  };
+
+  /**
+   * 게이트가 열어 준 뒤에 세션을 연다. 우회면 그 사실이 본문에 함께 실린다.
+   *
+   * ⚠ 게이트가 붙들고 있던 시각을 그대로 쓴다 — 판정과 세션이 같은 시도임을 시각이 말한다.
+   */
+  const startSession = (override: ControlOverride | null) => {
+    setGateAt(null);
+
+    if (selected === null) return;
+
+    startWork.write(
+      toSessionRequest({
+        workOrder: selected,
+        equipmentId,
+        startedAt: submitAtRef.current ?? terminalNow(new Date()),
+        controlOverride: override,
+      }),
+    );
   };
 
   /** 다른 것을 고르면 다른 쓰기다 — 붙들고 있던 시각을 버린다. */
   const selectWorkOrder = (workOrder: WorkOrder) => {
     submitAtRef.current = null;
+    setGateAt(null);
     setOutcome(null);
     setSelectedId(workOrder.workOrderId);
   };
@@ -329,6 +368,32 @@ export const WorkStartScreen = () => {
         }}
         onSubmit={submit}
       />
+
+      {/*
+        점검 통제 게이트 — ⭐ **막을 때만 보인다**(`P-02-02` §9-3). 통과면 아무것도 그리지
+        않고 판정만 남긴 뒤 세션을 연다. 이 화면 위에 덮이므로 여기서 마지막에 그린다.
+      */}
+      {gateAt !== null && selected !== null && confirmedNo !== null && (
+        <PrecheckGate
+          workOrderId={selected.workOrderId}
+          workOrderNo={selected.workOrderNo}
+          workOrderTypeCode={selected.workOrderTypeCode}
+          equipmentId={equipmentId}
+          equipmentCode={equipmentCode}
+          equipmentName={equipmentName}
+          plantId={terminal.data?.plantId ?? null}
+          processId={identity.processId}
+          workerNo={confirmedNo}
+          decidedAt={gateAt}
+          /* 단말 시각의 «날짜»다 — 주기 창이 이 값을 기준으로 열린다. */
+          today={gateAt.slice(0, 10)}
+          isOnline={isOnline}
+          onCleared={startSession}
+          onCancel={() => {
+            setGateAt(null);
+          }}
+        />
+      )}
     </main>
   );
 };

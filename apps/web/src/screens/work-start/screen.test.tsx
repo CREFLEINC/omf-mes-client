@@ -29,6 +29,17 @@ const enterWorkerNo = async (user: ReturnType<typeof renderScreen>['user'], work
 
 const startButton = () => screen.getByRole('button', { name: t.actions.start });
 
+/**
+ * 세션을 여는 쓰기만 골라 낸다.
+ *
+ * ⚠ **시작을 누르면 쓰기가 둘 나간다** — 점검 통제 판정(`P-02-02`)이 먼저 기록되고 그 뒤에
+ * 세션이 열린다. 이 화면의 감지기가 재는 것은 뒤엣것이다.
+ */
+const sessionBodies = (
+  bodies: ReturnType<typeof renderScreen>['recorded']['bodies'],
+): ReturnType<typeof renderScreen>['recorded']['bodies'] =>
+  bodies.filter((sent) => sent.url === '/production/work-sessions');
+
 /* 단말이 들고 있는 사번은 화면 밖 «단일 자리»다 — 감지기가 서로의 상태 위에서 서지 않게 한다. */
 beforeEach(() => {
   setWorkerSession(null);
@@ -328,10 +339,10 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     await user.click(startButton());
 
     await waitFor(() => {
-      expect(recorded.bodies).toHaveLength(1);
+      expect(sessionBodies(recorded.bodies)).toHaveLength(1);
     });
 
-    const sent = recorded.bodies[0];
+    const sent = sessionBodies(recorded.bodies)[0];
     if (sent === undefined) throw new Error('요청이 기록되지 않았습니다.');
 
     expect(sent.url).toBe('/production/work-sessions');
@@ -381,10 +392,10 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     await rendered.user.click(startButton());
 
     await waitFor(() => {
-      expect(rendered.recorded.bodies).toHaveLength(2);
+      expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(2);
     });
 
-    const [first, second] = rendered.recorded.bodies;
+    const [first, second] = sessionBodies(rendered.recorded.bodies);
     if (first === undefined || second === undefined) throw new Error('두 번 나가지 않았습니다.');
 
     expect(second.headers['idempotency-key']).toBe(first.headers['idempotency-key']);
@@ -430,10 +441,10 @@ describe('P-02-01 작업 시작 — 세션 열기', () => {
     await rendered.user.click(startButton());
 
     await waitFor(() => {
-      expect(rendered.recorded.bodies).toHaveLength(2);
+      expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(2);
     });
 
-    const [first, second] = rendered.recorded.bodies;
+    const [first, second] = sessionBodies(rendered.recorded.bodies);
     if (first === undefined || second === undefined) throw new Error('두 번 나가지 않았습니다.');
 
     expect(second.headers['idempotency-key']).not.toBe(first.headers['idempotency-key']);
