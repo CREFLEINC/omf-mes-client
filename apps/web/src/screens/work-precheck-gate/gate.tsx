@@ -318,7 +318,7 @@ export const PrecheckGate = ({
   const isNotTargeted = windows?.length === 0 && assignments.isSuccess;
 
   return (
-    <main className="pop-shell precheck-gate" aria-labelledby={titleId}>
+    <main className="pop-shell pop-overlay precheck-gate" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}

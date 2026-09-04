@@ -101,7 +101,13 @@
  */
 .pop-ui > .pop-header,
 .pop-ui > .pop-terminal-header,
-.pop-ui > .pop-lot-head {
+.pop-ui > .pop-lot-head,
+/*
+ * 덮개(아래 「덮개」 절)의 머리줄도 같은 줄이다 — 화면을 덮고 서는 판이라 「지금 무엇을
+ * 보고 있는가」가 뒷 화면과 같은 자리·같은 크기로 서야 한다. 겨냥을 한 단계 더 내려 잡지
+ * 않으면 머리줄이 18px 로 접히고 표제가 밖으로 넘친다(실측).
+ */
+.pop-ui > .pop-overlay > .pop-header {
   flex: 0 0 auto;
   box-sizing: border-box;
   display: flex;
@@ -168,7 +174,10 @@
  * 않아 구획이 화면 양 끝에 붙고 하단 버튼이 잘렸다(실측). 배치 «형태»가 아니라 «자리»로
  * 겨냥해야 화면이 늘어도 규칙이 따라간다.
  */
-.pop-ui > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head) {
+/* ⚠ 덮개(`.pop-overlay`)는 뺀다 — 화면을 «전부» 덮어야 하는데 여백이 들어가면 네 변으로
+ *    뒷 화면이 새어 나온다(실측 좌우 44px). 덮개의 여백은 아래 「덮개」 절이 안쪽에 준다. */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.pop-overlay) {
   box-sizing: border-box;
   margin-inline: var(--pop-pad);
 }
@@ -194,7 +203,7 @@
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.banner-slot):not(
     dialog
-  ):not([class*='action']) {
+  ):not([class*='action']):not(.pop-overlay) {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -217,14 +226,14 @@
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.banner-slot):not(
     dialog
-  ):not([class*='action']):not(.pane) {
+  ):not([class*='action']):not(.pop-overlay):not(.pane) {
   overflow: hidden;
 }
 
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.banner-slot):not(
     dialog
-  ):not([class*='action']):not(.pane)
+  ):not([class*='action']):not(.pop-overlay):not(.pane)
   > * {
   min-height: 0;
   overflow-y: auto;
@@ -418,6 +427,36 @@
   font-size: var(--pop-value);
   font-weight: 600;
   line-height: 28px;
+}
+
+/* ── 덮개 ──────────────────────────────────────────────────────────────── */
+
+/*
+ * 화면 «위»에 서는 판(작업 전 점검 통제 게이트 등). 화면 전환이 아니라 덮개라서 DOM 상으로는
+ * `.pop-ui` 의 자식이지만, 보이는 것은 독립된 한 판이다.
+ *
+ * ⛔ **덮개에 `pop-ui` 를 붙이지 않는다.** 붙이면 머리줄·여백은 맞지만 위쪽의 「남는 높이를
+ *    나눠 갖는다」 규칙이 덮개 «안»의 구획까지 잡아 `min-height: 0` 을 얹는다 — 덮개가 스스로
+ *    잰 세로 예산이 무너진다(실측: 판정 칸 152 → 64px). 덮개는 자기 구획 배분을 이미 갖고
+ *    있으므로, 여기서는 **머리줄과 좌우 여백만** 준다.
+ */
+.pop-ui > .pop-overlay {
+  /* 위 본문 규칙이 밀어 넣은 여백을 턴다 — 덮개는 네 변이 화면에 닿는다. */
+  margin: 0;
+  /* `.pop-shell` 의 관리웹 본문 여백(24px)도 턴다 — 남기면 머리줄이 화면 끝까지 못 간다. */
+  padding: 0;
+  /* 최상위 블록 사이 이음매는 `.pop-ui` 와 같은 값으로 — 덮개만 붙어 보이면 안 된다. */
+  gap: var(--space-4);
+}
+
+/* 머리줄만 화면 끝까지, 나머지는 같은 좌우 여백 안에 — `.pop-ui` 본문과 같은 규칙이다. */
+.pop-ui > .pop-overlay > :not(.pop-header) {
+  box-sizing: border-box;
+  margin-inline: var(--pop-pad);
+}
+
+.pop-ui > .pop-overlay > :last-child {
+  margin-block-end: var(--pop-pad);
 }
 
 /* ── 화면별 ────────────────────────────────────────────────────────────── */
