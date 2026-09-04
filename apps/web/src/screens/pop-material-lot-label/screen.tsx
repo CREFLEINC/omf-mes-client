@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { toIssueFailure } from './failure';
 import { IssueOutcome } from './issue-outcome';
 import { useItemLookup, useSupplierLookup, useUomLookup } from './lookups';
 import { useLabelIssue } from './mutations';
@@ -89,6 +90,17 @@ export const PopMaterialLotLabelScreen = () => {
       reissueReasonCode,
     });
   };
+
+  /*
+   * ⛔ **결과는 그 결과를 만든 줄의 것이다.** 다른 자재를 고르면 앞 자재의 실패가 따라오지
+   * 않는다 — 그 판정을 여기 한 곳에서 하고, 알림과 단추가 같은 값을 본다.
+   */
+  const isResultOfSelected = issue.result.lineId === selectedRow?.inboundReceiptLineId;
+  /*
+   * 출력 권한이 없는 단말(403)에서는 **재시도 수단을 주지 않는다**(스펙 §5-2). 단말 전체를
+   * 미리 막지는 않는다 — 게이트는 서버가 갖고, 화면은 받은 답에만 반응한다(§5-5).
+   */
+  const isPrintForbidden = isResultOfSelected && toIssueFailure(issue.result) === 'issueForbidden';
 
   /** 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다. */
   const isListError = receipts.isError || targets.isError;
@@ -177,6 +189,7 @@ export const PopMaterialLotLabelScreen = () => {
             isLotNoError={lot.isError}
             hasWorkerNo={workerNo !== null}
             runningStep={issue.step}
+            isPrintForbidden={isPrintForbidden}
             onIssue={() => {
               startIssue(null);
             }}
@@ -188,9 +201,7 @@ export const PopMaterialLotLabelScreen = () => {
            * ⛔ **결과는 그 결과를 만든 줄 밑에만 선다.** 끝난 뒤 다른 자재를 고르면 「인쇄
            * 했습니다」가 아직 찍지 않은 자재 밑에 서게 되고, 사람은 그것을 자기 것으로 읽는다.
            */}
-          {issue.result.lineId === selectedRow?.inboundReceiptLineId ? (
-            <IssueOutcome result={issue.result} onClose={issue.reset} />
-          ) : null}
+          {isResultOfSelected ? <IssueOutcome result={issue.result} onClose={issue.reset} /> : null}
         </section>
       </div>
 

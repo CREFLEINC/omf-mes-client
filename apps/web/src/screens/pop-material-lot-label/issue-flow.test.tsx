@@ -69,6 +69,10 @@ interface FlowOptions {
   identity?: Partial<PopIdentity>;
   /** 발행 기록 호출을 실패시킨다 — LOT 은 생기고 기록은 없는 상태를 만든다. */
   issueFails?: boolean;
+  /** 그 실패의 상태 코드. 403 은 「이 단말에 출력 권한이 없다」라 처리가 갈린다. */
+  issueFailStatus?: number;
+  /** 등록 호출을 이 상태 코드로 실패시킨다. 409 는 채번 충돌이라 **다시 부르면 풀린다.** */
+  registerFailStatus?: number;
   /** 셸 인쇄 통로를 심는다. 없으면 브라우저와 같은 상태다. */
   shellPrint?: (() => Promise<string>) | null;
   reissueReasons?: { code: string; codeName: string }[];
@@ -89,6 +93,13 @@ const renderFlow = (options: FlowOptions = {}) => {
       body: request.body === null ? null : await request.clone().json(),
     });
   };
+
+  /*
+   * 등록이 끝난 뒤 목록을 다시 읽으면 그 라인에는 LOT 이 붙어 있다 — 서버가 그렇게 답한다.
+   * 이 값을 고정으로 두면 「등록은 됐는데 기록이 실패한」 상태에서도 화면이 계속 「등록·인쇄」를
+   * 내어, 실제로는 없는 경로를 시험하게 된다.
+   */
+  let createdLotId: number | null = null;
 
   const user = userEvent.setup();
   const identity: PopIdentity = {
@@ -119,7 +130,7 @@ const renderFlow = (options: FlowOptions = {}) => {
             const receiptNo = Number(matched?.[1] ?? 8101) - 8100;
 
             return jsonResponse({
-              items: [lineOf(receiptNo === 1 ? lotId : null, receiptNo)],
+              items: [lineOf(receiptNo === 1 ? (lotId ?? createdLotId) : null, receiptNo)],
               page: { page: 1, size: 20, total: 1 },
             });
           },
@@ -216,6 +227,12 @@ const renderFlow = (options: FlowOptions = {}) => {
           respond: (request) => {
             void record(request);
 
+            createdLotId = LOT_ID;
+
+            if (options.registerFailStatus !== undefined) {
+              return jsonResponse({ message: '등록 실패' }, { status: options.registerFailStatus });
+            }
+
             return jsonResponse(
               {
                 lot: {
@@ -244,7 +261,7 @@ const renderFlow = (options: FlowOptions = {}) => {
             void record(request);
 
             return options.issueFails === true
-              ? jsonResponse({ message: '실패' }, { status: 500 })
+              ? jsonResponse({ message: '실패' }, { status: options.issueFailStatus ?? 500 })
               : jsonResponse(
                   { items: [issueRecord(lotId === null ? 1 : 2)], issuedCount: 1 },
                   { status: 201 },
@@ -402,6 +419,58 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
         '자재LOT 은 만들어졌습니다. 다시 등록하지 마시고 「인쇄」로 이어가세요.',
       ),
     ).toBeInTheDocument();
+  });
+
+  /**
+   * ⚠ **409 는 400 이 아니다**(변경 통지 #534 §1). 채번 충돌은 서버가 스스로 다시 시도한 끝의
+   * 실패라 **다시 부르면 풀린다** — 사용자가 고칠 값이 아니므로 그렇게 말하지 않는다.
+   */
+  it('등록이 409 면 다시 누르라고 말한다 — 400 과 같은 문구를 쓰지 않는다', async () => {
+    const { user } = renderFlow({ registerFailStatus: 409 });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    expect(
+      await screen.findByText(
+        '지금은 등록을 끝내지 못했습니다. 잠시 뒤 「등록·인쇄」를 다시 누르세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('등록·인쇄를 끝내지 못했습니다.')).not.toBeInTheDocument();
+  });
+
+  it('등록이 400 이면 채번 충돌 문구를 쓰지 않는다', async () => {
+    const { user } = renderFlow({ registerFailStatus: 400 });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **출력 권한이 없는 단말에서는 재시도 수단을 주지 않는다**(스펙 §5-2 · 통지 #534 §2).
+   * 다시 눌러도 같은 답이 오고, LOT 은 이미 생겼으므로 **다른 단말**로 안내한다.
+   */
+  it('발행이 403 이면 다른 단말로 안내하고 재시도 단추를 주지 않는다', async () => {
+    const { user } = renderFlow({ issueFails: true, issueFailStatus: 403 });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    expect(
+      await screen.findByText(
+        '이 단말에서는 라벨을 발행할 수 없습니다. 라벨 프린터가 있는 단말에서 인쇄하세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        '자재LOT 은 만들어졌습니다. 다시 등록하지 마세요 — 다른 단말에서 인쇄할 수 있습니다.',
+      ),
+    ).toBeInTheDocument();
+
+    // 등록이 끝났으므로 단추 이름은 「인쇄」다 — 그 단추도, 재인쇄도 막혀 있어야 한다.
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '인쇄' })).toBeDisabled();
+    });
+    expect(screen.getByRole('button', { name: '재인쇄' })).toBeDisabled();
   });
 });
 
