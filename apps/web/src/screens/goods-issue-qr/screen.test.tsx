@@ -54,6 +54,10 @@ interface Options {
   reasons?: { code: string; codeName: string; displayOrder: number; isActive: boolean }[];
   writes?: Request[];
   issueStatus?: number;
+  /** 발행 거부의 본문. 계약 오류 봉투를 그대로 싣는다 — 필드 오류가 갈리는지 검사한다 */
+  issueErrorBody?: unknown;
+  /** 발행 요약 조회 자체가 실패하는 경우 — 라인 현황이 「모른다」로 남는다 */
+  summaryFails?: boolean;
   /** 인쇄 결과 보고 요청을 담아 둔다 */
   reports?: Request[];
   /** 서버가 그린 것을 못 주는 경우 */
@@ -99,6 +103,10 @@ const routes = (options: Options): StubRoute[] => [
     match: (request) => pathOf(request) === '/app/document-issues/summary',
     respond: (request) => {
       options.summaryRequests?.push(request.clone());
+
+      if (options.summaryFails === true) {
+        return jsonResponse({ message: '조회 실패' }, { status: 500 });
+      }
 
       const counts = options.issueCounts ?? {};
 
@@ -193,7 +201,9 @@ const routes = (options: Options): StubRoute[] => [
       options.writes?.push(request.clone());
 
       if (options.issueStatus !== undefined && options.issueStatus !== 201) {
-        return jsonResponse({ message: '거부' }, { status: options.issueStatus });
+        return jsonResponse(options.issueErrorBody ?? { message: '거부' }, {
+          status: options.issueStatus,
+        });
       }
 
       return jsonResponse(
@@ -367,6 +377,63 @@ describe('GoodsIssueQrScreen', () => {
 
     expect(await screen.findByText(t.errors.forbidden)).toBeInTheDocument();
     expect(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox')).toBeChecked();
+  });
+
+  /*
+   * ⛔ **필드로 갈린 거부가 배너에서 빠져 나간다.** 공용 오류 분류가 이 칸의 오류를
+   * `fieldErrors` 로 빼내고 배너용 오류를 비우므로, 화면이 그 값을 읽지 않으면 **버튼만 멎고
+   * 아무 말도 뜨지 않는다** — 발행은 되돌릴 수 없는 쓰기다.
+   */
+  it('사유를 지목한 422 는 사유 칸 아래에 선다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      issueCounts: { 1001: 0 },
+      issueStatus: 422,
+      issueErrorBody: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'reissueReasonCode',
+            code: 'REQUIRED',
+            message: '재발행 사유가 필요합니다.',
+          },
+        ],
+      },
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    expect(await screen.findByText('재발행 사유가 필요합니다.')).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **막다른 자리를 두지 않는다.** 요약 조회가 실패하면 화면은 「재발행인지」를 모르는데,
+   * 그 라인이 실은 발행된 것이면 서버가 사유를 요구한다. 그때 사유 칸이 서 있지 않으면
+   * 사용자는 고칠 자리를 찾지 못한 채 같은 거부만 반복해서 본다.
+   */
+  it('현황을 못 받은 라인은 사유 칸을 열되 요구하지는 않는다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    renderScreen({ summaryFails: true, writes });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+
+    /* 자리는 섰다 — 그러나 「필수」가 아니라 「모른다」로 말한다 */
+    expect(screen.getByText(t.reissue.unknownStatus)).toBeInTheDocument();
+    expect(screen.queryByText(t.reissue.required)).not.toBeInTheDocument();
+
+    /* 고르지 않아도 발행이 나간다 — 재발행 판정은 서버가 한다 */
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const body = (await writes[0]?.json()) as Record<string, unknown>;
+    expect(body).not.toHaveProperty('reissueReasonCode');
   });
 
   it('발행한 뒤 그린 것을 받아 셸로 보내고 결과를 보고한다', async () => {

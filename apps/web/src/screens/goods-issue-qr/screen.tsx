@@ -6,7 +6,7 @@ import { useId, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner } from '../../patterns/master';
 import { canIssue, issueGuard } from './issue-target';
-import { hasIssuedTarget, rowId, toLineRows } from './line-rows';
+import { hasIssuedTarget, hasUnknownTarget, rowId, toLineRows } from './line-rows';
 import { LineListPane } from './line-list-pane';
 import { useItemNames, useLotNames, useReissueReasonOptions, useUomNames } from './lookups';
 import { useDocumentIssueWrite, usePrintFlow } from './mutations';
@@ -78,6 +78,16 @@ export const GoodsIssueQrScreen = () => {
     },
   });
 
+  /*
+   * 사유 칸을 세우는 세 경우. **필수인 것은 첫째뿐이다.**
+   *
+   * ⛔ 서버가 이 칸을 짚어 거부했는데 칸이 서 있지 않으면, 사용자는 **고칠 자리를 찾지 못한 채**
+   * 같은 거부만 반복해서 본다 — 발행은 되돌릴 수 없는 쓰기이고 정정 경로가 없다.
+   */
+  const reasonServerError = write.fieldErrors.reissueReasonCode ?? null;
+  const showReason =
+    needsReason || hasUnknownTarget(rows, selectedIds) || reasonServerError !== null;
+
   const guard = issueGuard({
     workerNo: entry.workerNo,
     selectedIds,
@@ -100,8 +110,12 @@ export const GoodsIssueQrScreen = () => {
           targetId: row.line.goodsIssueLineId,
           lotId: row.line.lotId,
         })),
-      /* 재발행이 아닐 때는 보내지 않는다 — 신규 기록에 사유가 붙으면 이력이 거짓이 된다. */
-      ...(needsReason ? { reissueReasonCode: reasonCode } : {}),
+      /*
+       * 재발행이 아닐 때는 보내지 않는다 — 신규 기록에 사유가 붙으면 이력이 거짓이 된다.
+       * ⚠ 현황을 모르는 라인이 섞였을 때는 **고른 경우에만** 싣는다: 사용자가 고르지 않았으면
+       * 화면이 대신 정하지 않고, 재발행인지의 판정을 서버에 맡긴다.
+       */
+      ...(showReason && reasonCode !== '' ? { reissueReasonCode: reasonCode } : {}),
     });
   };
 
@@ -179,7 +193,9 @@ export const GoodsIssueQrScreen = () => {
         <TargetPane
           selectedCount={selectedIds.length}
           issuedSeq={firstIssued?.issueSeq ?? null}
+          showReason={showReason}
           needsReason={needsReason}
+          reasonServerError={reasonServerError}
           reasonCode={reasonCode}
           onReasonChange={setReasonCode}
           reasonOptions={reasonOptions}

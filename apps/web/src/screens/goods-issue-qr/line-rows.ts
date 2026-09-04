@@ -54,3 +54,19 @@ export const hasIssuedTarget = (
   selectedIds: readonly string[],
 ): boolean =>
   rows.some((row) => selectedIds.includes(rowId(row.line)) && row.status.kind === 'issued');
+
+/**
+ * 고른 라인 중 **발행 현황을 확인하지 못한 것이 있는가.**
+ *
+ * ⚠ **모르는 것을 「처음 발행」으로 접으면 빠져나올 길이 사라진다.** 요약 조회가 실패한 라인이
+ * 실은 이미 발행된 것이면 서버가 사유 없는 발행을 거부하는데, 사유 칸이 서 있지 않으면 사용자는
+ * **사유를 줄 방법이 없는 채로 같은 거부만 반복해서 본다.**
+ *
+ * 그래서 이때는 사유 칸을 **열되 요구하지는 않는다** — 재발행인지 아닌지를 화면이 단정하지
+ * 않는다. 판정은 서버가 하고, 거부가 오면 그 자리에 사유를 넣어 다시 보낼 수 있다.
+ */
+export const hasUnknownTarget = (
+  rows: readonly LineRow[],
+  selectedIds: readonly string[],
+): boolean =>
+  rows.some((row) => selectedIds.includes(rowId(row.line)) && row.status.kind === 'unknown');

@@ -36,10 +36,6 @@ const parseWorkerNo = (value: string | null): string | null => {
   return trimmed === '' ? null : trimmed;
 };
 
-/** 둘 다 있어야 발행할 수 있다 — 전표만으로는 쓰기가 서지 않는다. */
-export const canIssue = (entry: GoodsIssueQrEntry): boolean =>
-  entry.goodsIssueId !== null && entry.workerNo !== null;
-
 export const useGoodsIssueQrEntry = (): GoodsIssueQrEntry => {
   const [searchParams] = useSearchParams();
 
