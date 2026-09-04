@@ -2,6 +2,7 @@ import { AlertBanner, Button, Dialog, EmptyState, SkeletonText } from '@crefle/w
 
 import { lookupDisplayLabelWithInactive } from '../../patterns/lookup-display';
 import {
+  useInspectionRequestDetail,
   useInspectionResultDetail,
   useMeasurementSummary,
   type MeasurementItemSummary,
@@ -9,6 +10,8 @@ import {
 import type { ResultLabels } from './result-overview';
 
 const EMPTY = '미확인';
+/* 기준 미등록은 「없는 값」이다 — 「모르는 값」(EMPTY)과 같은 모양으로 그리지 않는다(공유계약 G-9 · client#589). */
+const NO_PLAN_VERSION = '기준 없음';
 const dateTime = (value: string): string => {
   const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
   return match === null ? value : `${match[1]} ${match[2]}`;
@@ -71,7 +74,14 @@ export const ResultDetailDialog = ({
   onViewMeasurements,
 }: ResultDetailDialogProps) => {
   const detail = useInspectionResultDetail(inspectionResultId);
+  const request = useInspectionRequestDetail(detail.data?.inspectionRequestId ?? null);
   const summary = useMeasurementSummary(inspectionResultId);
+  const planVersion =
+    request.data === undefined
+      ? EMPTY
+      : (request.data.inspectionPlanVersionId ?? null) === null
+        ? NO_PLAN_VERSION
+        : String(request.data.inspectionPlanVersionId);
   const retry = (label: string, refetch: () => Promise<unknown>) => (
     <Button
       aria-label={`${label} 다시 시도`}
@@ -87,6 +97,7 @@ export const ResultDetailDialog = ({
       ? []
       : [
           ['의뢰번호', detail.data.inspectionRequestNo ?? EMPTY],
+          ['기준 버전', planVersion],
           ['품목', lookupDisplayLabelWithInactive(labels.item, detail.data.itemId)],
           ['LOT', detail.data.lotNo ?? EMPTY],
           ['공정', detail.data.processName ?? EMPTY],
