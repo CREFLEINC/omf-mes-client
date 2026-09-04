@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { GoodsReceiptCodeKey, SelectOption } from './types';
 
 /**
- * 값 목록이 확정되지 않은 코드 다섯을 한 파일에 격리한다.
+ * 고정 OpenAPI가 닫은 구조 코드 둘과 운영 목록을 기다리는 코드 셋을 한 파일에 격리한다.
  *
  * **값을 지어내지 않는 것이 이 파일의 목적이다.** 착수 이슈가 미결로 남긴 것을 화면이
  * 그럴듯한 예시로 메우면, 사용자는 고를 수 있다고 믿고 고르는데 서버는 그 값을 모른다 —
@@ -11,13 +11,9 @@ import type { GoodsReceiptCodeKey, SelectOption } from './types';
  * (`PURCHASE`·`INBOUND_RECEIPT`·`RELEASED`·`AVAILABLE`)도 심지 않는다. 그것은 예시이지
  * 확정이 아니며, 계약 자신이 「enum으로 못박으면 값이 정해질 때 계약이 깨진다」고 적었다.
  *
- * ⚠ **재고 상태는 그 사정이 두 번 바뀌었다.** 계약이 값 넷(`AVAILABLE`·`IN_TRANSIT`·
- * `ON_HOLD`·`BLOCKED`)을 enum으로 못박았고(재동기화 #124·#128), 그 근거가 「1차 제안안」이
- * 아니라 **확정**임이 회신으로 왔다(#175). 그래도 **여기는 여전히 비어 있다** — 값이 확정된
- * 것과 이 화면의 등록을 여는 것은 다른 결정이기 때문이다. 채우는 순간 「입고 처리」가 살아나
- * 사용자 흐름이 바뀌므로, **여는 것은 그 흐름을 책임지는 별도 회차**의 일이다.
- * 값 넷의 목록은 `gr-request.ts`가 생성물 타입에서 파생해 들고 있고, 「확정된 뒤에도 비어 있다」는
- * 사실은 `code-options.test.ts`가 잰다. 품질 상태는 아직 값 목록이 확정되지 않았다(설명문 실측).
+ * 재고 상태는 계약의 enum 넷(`AVAILABLE`·`IN_TRANSIT`·`ON_HOLD`·`BLOCKED`)을
+ * 그대로 쓴다. 원천 문서 유형도 고정된 `INBOUND_RECEIPT`를 쓴다. 입고 유형·품질
+ * 상태·사유는 운영 공통코드 목록을 지어내지 않고 비워 둔다.
  *
  * **앞선 화면들과 다른 점이 하나 있다.** W-01-07·W-01-09·W-01-03에서 자리표시가 놓인 자리는
  * 전부 **조회 조건**이거나 **선택 필드**라 비어 있어도 화면이 돌았다. 여기서는 넷이 **요청의
@@ -35,10 +31,8 @@ import type { GoodsReceiptCodeKey, SelectOption } from './types';
 /**
  * 계약이 **필수**로 요구하는 넷.
  *
- * `sourceDocumentType`이 여기 있는 것이 눈에 걸릴 수 있다 — 원천이 입하 전표임을 가리키는
- * **구조 값**이라 사용자가 고를 성질이 아니다. 그런데도 자리표시로 두는 이유는, 그 값이
- * 무엇이어야 하는지도 아직 확정되지 않았기 때문이다. 화면이 「입하 전표를 뜻하는 코드」를
- * 정해 심으면 그것도 지어내는 것이다.
+ * `sourceDocumentType`은 원천이 입하 전표임을 가리키는 **구조 값**이며, 고정
+ * OpenAPI가 닫은 `INBOUND_RECEIPT`를 그대로 쓴다.
  */
 export const REQUIRED_CODE_KEYS: readonly GoodsReceiptCodeKey[] = [
   'receiptType',
@@ -47,23 +41,18 @@ export const REQUIRED_CODE_KEYS: readonly GoodsReceiptCodeKey[] = [
   'inventoryStatus',
 ];
 
-/** 코드마다의 값 목록. **비어 있는 것이 지금의 사실이다.** */
+/** 코드마다의 값 목록. 구조 enum은 채우고 운영 공통코드는 비워 둔다. */
 export type CodeValueLists = Record<GoodsReceiptCodeKey, readonly string[]>;
 
 /** 코드마다의 선택지. */
 export type CodeOptionSets = Record<GoodsReceiptCodeKey, SelectOption[]>;
 
-/**
- * 값 목록 — **다섯 다 비어 있다.**
- *
- * 자리표시 값을 하나 넣어 두지 않는다. 넣으면 사용자가 그것을 고를 수 있고, 고르면
- * 서버가 모르는 코드가 되돌릴 수 없는 전표에 실린다.
- */
+/** 고정 OpenAPI가 닫은 구조 코드만 채운다. 운영 공통코드 축은 실행 시점 조회 전까지 비워 둔다. */
 export const PLACEHOLDER_GOODS_RECEIPT_CODES: CodeValueLists = {
   receiptType: [],
-  sourceDocumentType: [],
+  sourceDocumentType: ['INBOUND_RECEIPT'],
   qualityStatus: [],
-  inventoryStatus: [],
+  inventoryStatus: ['AVAILABLE', 'IN_TRANSIT', 'ON_HOLD', 'BLOCKED'],
   reason: [],
 };
 

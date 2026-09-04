@@ -9,6 +9,6 @@ describe('approvalScopeWarning', () => {
   });
 
   it('승인 유형 기준값이 하나라도 있으면 준비 중 경고를 내리지 않는다', () => {
-    expect(approvalScopeWarning(['SYNTH-CONCESSION'])).toBeUndefined();
+    expect(approvalScopeWarning(['IQC_SKIP'])).toBeUndefined();
   });
 });

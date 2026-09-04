@@ -4,7 +4,7 @@ import type { EquipmentGroup } from './types';
 
 /**
  * 시험용 합성 자료. **실 운영 값을 쓰지 않는다** — 공장명·코드는 전부 지어낸 것이다.
- * 공개 저장소 경계(루트 `CLAUDE.md`)가 테스트 픽스처에도 그대로 적용된다.
+ * V3 워크플로의 공개 저장소 경계가 테스트 픽스처에도 그대로 적용된다.
  */
 
 type PageMeta = components['schemas']['PageMeta'];
@@ -68,7 +68,7 @@ export const makeGroup = (
   plantId: 11,
   groupCode,
   groupName: `${groupCode} 그룹`,
-  groupTypeCode: 'PENDING',
+  groupTypeCode: 'LINE',
   parentGroupId: null,
   isActive: true,
   ...overrides,

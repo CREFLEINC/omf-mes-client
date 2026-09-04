@@ -129,6 +129,15 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     label: 'P-01-02 출고 QR 발행',
     query: '?goodsIssueId=15001&workerNo=100029',
   },
+  /*
+   * ⚠ 이 화면도 진입 컨텍스트를 주소로 받는다(`?workOrderId=`) — 작업지시 선택이 셸에 서기
+   * 전까지의 임시 경로다. 사번은 셸·`worker-session` 이 비었을 때만 주소를 본다.
+   */
+  {
+    path: '/pop/work-hold',
+    label: 'P-02-10 작업 중단(홀드) 등록',
+    query: '?workOrderId=11002',
+  },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */

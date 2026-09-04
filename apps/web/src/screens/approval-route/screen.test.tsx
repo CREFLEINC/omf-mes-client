@@ -392,7 +392,7 @@ const selectRouteButton = (approvalTypeCode: string, businessUnitLabel: string):
   screen.getByRole('button', { name: t.actions.selectRow(approvalTypeCode, businessUnitLabel) });
 
 const waitForList = async (): Promise<void> => {
-  await screen.findByText('SAMPLE-TYPE-B');
+  await screen.findByText('INVENTORY_ADJUSTMENT');
 };
 
 const waitForForm = async (): Promise<HTMLElement> => screen.findByLabelText(t.fields.minValue);
@@ -443,13 +443,16 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
   });
 
   it('주소의 조건 넷이 그대로 조회에 실린다', async () => {
-    const { requests } = renderScreen(allRoutes(), '?ty=SAMPLE-TYPE-A&bu=9101&q=SAMPLE&page=2');
+    const { requests } = renderScreen(
+      allRoutes(),
+      '?ty=GOODS_ISSUE_DISPOSAL&bu=9101&q=SAMPLE&page=2',
+    );
 
     await waitForList();
 
     const query = listRequests(requests)[0]?.url.searchParams;
 
-    expect(query?.get('approvalTypeCode')).toBe('SAMPLE-TYPE-A');
+    expect(query?.get('approvalTypeCode')).toBe('GOODS_ISSUE_DISPOSAL');
     expect(query?.get('businessUnitId')).toBe('9101');
     expect(query?.get('q')).toBe('SAMPLE');
     expect(query?.get('page')).toBe('2');
@@ -496,7 +499,10 @@ describe('ApprovalRouteScreen — 조회 조건', () => {
   });
 
   it('초기화는 조건을 통째로 비운다', async () => {
-    const { user } = renderScreen(allRoutes(), '?ty=SAMPLE-TYPE-A&q=SAMPLE&inactive=1&page=2');
+    const { user } = renderScreen(
+      allRoutes(),
+      '?ty=GOODS_ISSUE_DISPOSAL&q=SAMPLE&inactive=1&page=2',
+    );
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: messages.common.reset }));
@@ -710,12 +716,16 @@ describe('ApprovalRouteScreen — 목록', () => {
     expect(table.textContent).not.toContain('9101');
   });
 
-  it('승인 유형 선택지가 비어 있고 왜 비었는지 밝힌다', async () => {
-    renderScreen(allRoutes());
+  it('고정 OpenAPI의 승인 유형을 선택지로 제공한다', async () => {
+    const { user } = renderScreen(allRoutes());
 
     await waitForList();
 
-    expect(screen.getByText(messages.pendingCode.note)).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: t.fields.approvalTypeCode }));
+
+    expect(screen.getAllByRole('option')).toHaveLength(9); // 전체 + 고정 enum 8개
+    expect(screen.getByRole('option', { name: 'IQC_SKIP' })).toBeInTheDocument();
+    expect(screen.queryByText(messages.pendingCode.note)).toBeNull();
   });
 });
 
@@ -735,7 +745,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
-    await user.click(selectRouteButton('SAMPLE-TYPE-A', BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('GOODS_ISSUE_DISPOSAL', BUSINESS_UNIT_LABEL));
 
     await screen.findByRole('region', { name: t.panes.steps });
 
@@ -751,7 +761,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
     );
 
     await waitForList();
-    await user.click(selectRouteButton('SAMPLE-TYPE-A', BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('GOODS_ISSUE_DISPOSAL', BUSINESS_UNIT_LABEL));
 
     await waitFor(() => {
       expect(locationText()).toContain('ar=9001');
@@ -883,7 +893,7 @@ describe('ApprovalRouteScreen — 고른 결재선', () => {
 
     expect(await screen.findByText(t.empty.notFoundTitle)).toBeInTheDocument();
 
-    await user.click(selectRouteButton('SAMPLE-TYPE-B', INACTIVE_BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('INVENTORY_ADJUSTMENT', INACTIVE_BUSINESS_UNIT_LABEL));
 
     await screen.findByRole('region', { name: t.panes.steps });
     expect(screen.queryByText(t.empty.notFoundTitle)).not.toBeInTheDocument();
@@ -1238,7 +1248,7 @@ describe('ApprovalRouteScreen — 빈 상태와 실패', () => {
     // 상세는 그대로 읽힌다 — 한쪽 실패가 다른 쪽을 지우지 않는다.
     const detailPane = screen.getByRole('region', { name: t.panes.detail });
 
-    expect(within(detailPane).getByText('SAMPLE-TYPE-A')).toBeInTheDocument();
+    expect(within(detailPane).getByText('GOODS_ISSUE_DISPOSAL')).toBeInTheDocument();
     expect(within(detailPane).queryByText(messages.httpError.loadTitle)).toBeNull();
     expect(
       within(screen.getByRole('region', { name: t.panes.steps })).getByText(
@@ -1345,25 +1355,22 @@ describe('ApprovalRouteScreen — 등록 폼', () => {
     expect(stepsRequests(requests)).toHaveLength(0);
   });
 
-  /**
-   * **잠기는 것은 등록 하나뿐이다**(`omf-mes#64`). 사유가 그 사실을 함께 말해야
-   * 사용자가 화면 전체가 막힌 줄 알지 않는다.
-   */
-  it('승인 유형 값 목록이 없으면 등록이 잠기고 사유가 보이며 요청이 나가지 않는다', async () => {
+  it('등록 폼에서도 고정 승인 유형을 고를 수 있다', async () => {
     const { requests, user } = renderScreen(allRoutes());
 
     await waitForList();
     await user.click(screen.getByRole('button', { name: t.actions.create }));
 
     const createPane = await screen.findByRole('region', { name: t.panes.create });
-    const submit = within(createPane).getByRole('button', { name: t.actions.submitCreate });
+    const approvalType = within(createPane).getByRole('combobox', {
+      name: t.fields.approvalTypeCode,
+    });
+    await user.click(approvalType);
+    await user.click(screen.getByRole('option', { name: 'IQC_SKIP' }));
 
-    expect(submit).toBeDisabled();
-    expect(within(createPane).getByText(t.actionReasons.createPendingCode)).toBeInTheDocument();
-    expect(within(createPane).getByText(messages.pendingCode.note)).toBeInTheDocument();
-
-    await user.click(submit);
-
+    expect(approvalType).toHaveTextContent('IQC_SKIP');
+    expect(within(createPane).queryByText(t.actionReasons.createPendingCode)).toBeNull();
+    expect(within(createPane).queryByText(messages.pendingCode.note)).toBeNull();
     expect(writeRequests(requests)).toHaveLength(0);
   });
 
@@ -1634,7 +1641,7 @@ describe('ApprovalRouteScreen — 활성 중복 선검사', () => {
 
     const query = probeRequests(requests)[0]?.url.searchParams;
 
-    expect(query?.get('approvalTypeCode')).toBe('SAMPLE-TYPE-A');
+    expect(query?.get('approvalTypeCode')).toBe('GOODS_ISSUE_DISPOSAL');
     expect(query?.get('activeOnly')).toBe('true');
     expect(query?.get('size')).toBe('100');
     /* 사업부는 쿼리로 좁히지 않는다 — 「전 사업부 공통」(null)을 표현할 수 없다. */
@@ -1761,7 +1768,7 @@ describe('ApprovalRouteScreen — 사용 전환', () => {
     const dialog = activationDialog();
 
     expect(
-      within(dialog).getByText(t.dialog.deactivateBlocks('SAMPLE-TYPE-A')),
+      within(dialog).getByText(t.dialog.deactivateBlocks('GOODS_ISSUE_DISPOSAL')),
     ).toBeInTheDocument();
     /* 건수는 결재선 응답이 실어 온 값이다 — 화면이 세지 않는다. */
     expect(within(dialog).getByText(t.dialog.deactivateInProgress(3))).toBeInTheDocument();
@@ -2074,7 +2081,7 @@ describe('ApprovalRouteScreen — 전송 중', () => {
       expect(updateRequests(requests)).toHaveLength(1);
     });
 
-    await user.click(selectRouteButton('SAMPLE-TYPE-B', INACTIVE_BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('INVENTORY_ADJUSTMENT', INACTIVE_BUSINESS_UNIT_LABEL));
 
     expect(locationText()).toContain('ar=9001');
     expect(locationText()).not.toContain('ar=9003');
@@ -2207,7 +2214,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
   it('실패 배너가 대상이 바뀌면 사라진다', async () => {
     const { user } = await failThenSelect();
 
-    await user.click(selectRouteButton('SAMPLE-TYPE-B', INACTIVE_BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('INVENTORY_ADJUSTMENT', INACTIVE_BUSINESS_UNIT_LABEL));
 
     await waitFor(() => {
       expect(screen.queryByText(messages.conflict.user)).not.toBeInTheDocument();
@@ -2302,7 +2309,7 @@ describe('ApprovalRouteScreen — 배너 매임과 초안 수명', () => {
     const { user } = renderScreen(allRoutes([detailRoute(routeFixtures[2])]), SELECTED);
 
     await dirtyForm(user, '77');
-    await user.click(selectRouteButton('SAMPLE-TYPE-B', INACTIVE_BUSINESS_UNIT_LABEL));
+    await user.click(selectRouteButton('INVENTORY_ADJUSTMENT', INACTIVE_BUSINESS_UNIT_LABEL));
 
     await waitFor(() => {
       expect(screen.getByLabelText(t.fields.minValue)).toHaveValue('0');

@@ -14,7 +14,7 @@ import type { RemainingQty } from './remaining-qty';
 
 const t = messages.dispositionDecision.form;
 /** ⚠ 지어낸 자리표시다 — 처분 유형의 실제 값 목록은 아직 확정되지 않았다. */
-const CODE = 'CODE-A';
+const CODE = 'REWORK';
 
 const form = (overrides: Partial<DecisionFormValue> = {}): DecisionFormValue => ({
   dispositionTypeCode: CODE,

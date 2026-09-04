@@ -115,7 +115,7 @@ describe('ReturnForm — 반품 정보 구획', () => {
   it('코드 선택지가 비어 있으면 자리표시와 사유가 붙는다', () => {
     renderForm();
 
-    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(4);
+    expect(screen.getAllByText(messages.pendingCode.note)).toHaveLength(2);
     expect(screen.getAllByText(messages.pendingCode.placeholder).length).toBeGreaterThan(0);
   });
 
@@ -184,10 +184,7 @@ describe('ReturnForm — 반품 정보 구획', () => {
     const errorId = errors[0]?.getAttribute('id') ?? '';
 
     expect(errorId).not.toBe('');
-    expect(screen.getByLabelText(t.fields.issuedTime)).toHaveAttribute(
-      'aria-describedby',
-      errorId,
-    );
+    expect(screen.getByLabelText(t.fields.issuedTime)).toHaveAttribute('aria-describedby', errorId);
     expect(issuedDateTrigger()).toHaveAttribute('aria-describedby', errorId);
   });
 
@@ -287,8 +284,7 @@ describe('ReturnForm — 반품 정보 구획', () => {
  * 사라져**, 스크린리더 사용자에게는 잘림 안내가 통째로 없는 것과 같다.
  */
 describe('ReturnForm — 보조 문구와 오류가 함께 있을 때', () => {
-  const supplierBox = (): HTMLElement =>
-    screen.getByRole('combobox', { name: t.fields.supplier });
+  const supplierBox = (): HTMLElement => screen.getByRole('combobox', { name: t.fields.supplier });
 
   it('둘 다 접근 이름에 이어진다', () => {
     renderForm({
@@ -303,9 +299,7 @@ describe('ReturnForm — 보조 문구와 오류가 함께 있을 때', () => {
     expect(supplierBox()).toHaveAccessibleDescription(
       expect.stringContaining(t.reasons.partnersTruncated),
     );
-    expect(supplierBox()).toHaveAccessibleDescription(
-      expect.stringContaining('합성 공급사 오류'),
-    );
+    expect(supplierBox()).toHaveAccessibleDescription(expect.stringContaining('합성 공급사 오류'));
   });
 
   it('하나만 있으면 그것만 이어진다', () => {

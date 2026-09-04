@@ -3,9 +3,9 @@ import type { AuditEventView } from './types';
 /**
  * 필터 선택지 — **조회한 기록에서 만든다.**
  *
- * 계약이 `targetTypeCode`·`eventTypeCode`를 「공통코드 — 값 목록 미정」으로 두어
- * 화면이 고를 값을 알 수 없다. 값을 지어내는 대신 지금까지 남은 기록에서 뽑고,
- * 그 한계(한 번도 기록되지 않은 값·기간 밖의 값은 없다)를 문구로 밝힌다.
+ * `targetTypeCode`는 고정 OpenAPI가 닫은 7개를 제공한다. `eventTypeCode`는 실행 시점
+ * 공통코드이므로 지금까지 남은 기록에서 뽑고, 그 한계
+ * (한 번도 기록되지 않은 값·기간 밖의 값은 없다)를 문구로 밝힌다.
  *
  * **목록 조회 결과에서 뽑으면 안 된다.** 대상 종류를 하나로 좁혀 조회하면 결과의 대상 종류가
  * 하나뿐이라 선택지가 자기 자신으로 줄고 **다른 값으로 바꿀 수 없게 된다** —
@@ -13,10 +13,17 @@ import type { AuditEventView } from './types';
  */
 
 /**
- * 값 목록이 확정되면 **이 배열만** 채운다. 값을 지어내지 않는다.
- * 비어 있어도 자리를 남기는 이유는, 확정됐을 때 고칠 곳이 한눈에 보이게 하기 위해서다.
+ * 고정 enum은 그대로 두고, 실행 시점 목록은 조회 결과와 합친다.
  */
-export const PLACEHOLDER_TARGET_TYPE_CODES: readonly string[] = [];
+export const PLACEHOLDER_TARGET_TYPE_CODES = [
+  'APP_USER',
+  'ROLE',
+  'WORKER',
+  'TERMINAL',
+  'ITEM',
+  'ROUTING',
+  'INSPECTION_PLAN_VERSION',
+] as const;
 export const PLACEHOLDER_EVENT_TYPE_CODES: readonly string[] = [];
 
 /** 한 필드의 값 목록을 뽑는다. 빈 값은 버리고 문자열 오름차순으로 낸다. */

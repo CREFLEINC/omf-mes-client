@@ -167,11 +167,7 @@ export const toLocationView = (data: LocationResponse): LocationView => ({
 
 /** 값 목록이 확정되지 않은 코드 다섯. 선택지와 자리표시는 `code-options.ts`가 소유한다. */
 export type GoodsReceiptCodeKey =
-  | 'receiptType'
-  | 'sourceDocumentType'
-  | 'qualityStatus'
-  | 'inventoryStatus'
-  | 'reason';
+  'receiptType' | 'sourceDocumentType' | 'qualityStatus' | 'inventoryStatus' | 'reason';
 
 /** 사용자가 고른 코드값. 아직 고르지 않은 것은 빈 문자열이다. */
 export type CodeDraft = Record<GoodsReceiptCodeKey, string>;
@@ -234,7 +230,8 @@ export const hasAnyDraftValue = (draft: ReceiptDraft): boolean =>
 export interface GoodsReceiptResultView {
   goodsReceiptNo: string;
   statusCode: string;
-  sourceDocumentTypeCode: string;
+  /** 계약이 원천 문서를 비울 수 있게 했다(2026-08-31 확정). 이 화면은 늘 입하 전표를 원천으로 보내지만, 응답을 지어내지 않는다 */
+  sourceDocumentTypeCode: string | null;
   /** 응답의 `erpMessageQueued`. **키가 없을 수 있어** `undefined`를 그대로 나른다. */
   erpMessageQueued: boolean | undefined;
   lineCount: number;
@@ -252,12 +249,13 @@ export const toGoodsReceiptResultView = (
 ): GoodsReceiptResultView => ({
   goodsReceiptNo: goodsReceipt.goodsReceiptNo,
   statusCode: goodsReceipt.statusCode,
-  sourceDocumentTypeCode: goodsReceipt.sourceDocumentTypeCode,
+  sourceDocumentTypeCode: goodsReceipt.sourceDocumentTypeCode ?? null,
   erpMessageQueued: goodsReceipt.erpMessageQueued,
   lineCount: lines.length,
   /* `null`과 키 없음을 함께 「원장 라인이 없다」로 센다 — 둘 다 낼 번호가 없다는 뜻이다. */
   ledgerLineCount: lines.filter(
-    (line) => line.inventoryTransactionLineId !== undefined && line.inventoryTransactionLineId !== null,
+    (line) =>
+      line.inventoryTransactionLineId !== undefined && line.inventoryTransactionLineId !== null,
   ).length,
 });
 

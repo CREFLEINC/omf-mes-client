@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { toRouteListQuery } from './filters';
+import { toRouteListQuery, type ApprovalTypeCode } from './filters';
 import type { ApprovalRoute, ApprovalRouteStep, PageMeta, RouteFilters } from './types';
 
 /**
@@ -160,7 +160,8 @@ export const useDuplicateProbe = (
         client.GET('/app/approval-routes', {
           params: {
             query: {
-              approvalTypeCode,
+              /* 폼의 선택칸이 서버 코드값을 쓰므로 값은 목록 안에 있다 — 계약이 닫은 형으로 좁힌다. */
+              approvalTypeCode: approvalTypeCode as ApprovalTypeCode,
               /* 판정 대상은 **사용 중인** 결재선뿐이다. 계약에 기본값이 없어 늘 명시해 싣는다. */
               activeOnly: true,
               size: DUPLICATE_PROBE_SIZE,

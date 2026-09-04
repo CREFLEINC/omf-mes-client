@@ -1,3 +1,5 @@
+import type { paths } from '@omf-mes/api-client';
+
 import { SOURCE_CODES } from './disposition-codes';
 import {
   defaultPeriod,
@@ -14,13 +16,18 @@ export interface PendingFilters extends PeriodInput {
   sourceCode: string;
 }
 
+type PendingQueryParams = NonNullable<
+  paths['/quality/nonconformances']['get']['parameters']['query']
+>;
+
 export interface PendingListQuery {
   openedFrom: string;
   openedTo: string;
   itemId?: number;
   severityCode?: string;
   statusCode?: string;
-  sourceCode?: string;
+  /** 원천 축은 계약이 두 값으로 닫았다 — 허용 값은 `SOURCE_CODES`가 주소에서 거른다 */
+  sourceCode?: PendingQueryParams['sourceCode'];
   page?: number;
 }
 
@@ -194,7 +201,9 @@ export const toPendingListQuery = (
     ...(filters.itemId === '' ? {} : { itemId: Number(filters.itemId) }),
     ...(filters.severityCode === '' ? {} : { severityCode: filters.severityCode }),
     ...(filters.statusCode === '' ? {} : { statusCode: filters.statusCode }),
-    ...(filters.sourceCode === '' ? {} : { sourceCode: filters.sourceCode }),
+    ...(filters.sourceCode === ''
+      ? {}
+      : { sourceCode: filters.sourceCode as PendingQueryParams['sourceCode'] }),
     ...(page > 1 ? { page } : {}),
   };
 };

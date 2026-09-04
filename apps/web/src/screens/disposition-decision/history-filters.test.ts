@@ -10,7 +10,7 @@ import {
 const TODAY = new Date(2026, 7, 12);
 const KST = 540;
 /** ⚠ 지어낸 자리표시다 — 처분 유형의 실제 값 목록은 아직 확정되지 않았다. */
-const CODES = ['CODE-A'];
+const CODES = ['REWORK'];
 
 const params = (search: string): URLSearchParams => new URLSearchParams(search);
 
@@ -34,14 +34,14 @@ describe('readHistoryFilters', () => {
   });
 
   it('처분 유형은 아는 값일 때만 읽는다', () => {
-    expect(readHistoryFilters(params('disp=CODE-A'), TODAY, CODES).dispositionTypeCode).toBe(
-      'CODE-A',
+    expect(readHistoryFilters(params('disp=REWORK'), TODAY, CODES).dispositionTypeCode).toBe(
+      'REWORK',
     );
     expect(readHistoryFilters(params('disp=CODE-Z'), TODAY, CODES).dispositionTypeCode).toBe('');
   });
 
   it('값 목록이 비면 어떤 처분 유형도 읽지 않는다', () => {
-    expect(readHistoryFilters(params('disp=CODE-A'), TODAY).dispositionTypeCode).toBe('');
+    expect(readHistoryFilters(params('disp=REWORK'), TODAY).dispositionTypeCode).toBe('');
   });
 
   it('시작이 끝보다 뒤면 기본 기간으로 되돌린다', () => {
@@ -53,18 +53,18 @@ describe('toHistoryAppliedSearchParams', () => {
   it('조건을 주소에 싣고 첫 쪽은 생략한다', () => {
     const next = toHistoryAppliedSearchParams(
       params(''),
-      filters({ dispositionTypeCode: 'CODE-A' }),
+      filters({ dispositionTypeCode: 'REWORK' }),
       1,
     );
 
     expect(next.get('from')).toBe('2026-07-14');
-    expect(next.get('disp')).toBe('CODE-A');
+    expect(next.get('disp')).toBe('REWORK');
     expect(next.get('page')).toBeNull();
   });
 
   it('빈 처분 유형은 주소에서 지운다', () => {
     expect(
-      toHistoryAppliedSearchParams(params('disp=CODE-A'), filters(), 1).get('disp'),
+      toHistoryAppliedSearchParams(params('disp=REWORK'), filters(), 1).get('disp'),
     ).toBeNull();
   });
 
@@ -91,9 +91,9 @@ describe('toHistoryListQuery', () => {
   });
 
   it('고른 처분 유형과 쪽만 더 싣는다', () => {
-    const query = queryOf(toHistoryListQuery(filters({ dispositionTypeCode: 'CODE-A' }), 3, KST));
+    const query = queryOf(toHistoryListQuery(filters({ dispositionTypeCode: 'REWORK' }), 3, KST));
 
-    expect(query.dispositionTypeCode).toBe('CODE-A');
+    expect(query.dispositionTypeCode).toBe('REWORK');
     expect(query.page).toBe(3);
   });
 
