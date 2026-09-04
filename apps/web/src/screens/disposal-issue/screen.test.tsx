@@ -5035,8 +5035,25 @@ describe('DisposalIssueScreen — 떠난 뒤 돌아왔을 때', () => {
       expect(writesTo(requests, CREATED_APPROVAL_PATH)).toHaveLength(1);
     });
 
+    /*
+     * 요청이 스텁에 기록된 것과 화면의 전송 잠금이 풀린 것은 같은 순간이 아니다. 전체 감지기를
+     * 병렬로 돌리면 mutation 성공 상태가 한 렌더 늦게 반영될 수 있으므로, 사용자가 실제로 다시
+     * 고를 수 있는 시점(행 버튼의 잠금 해제)을 기다린다. 임의 시간 대신 화면 계약을 동기화
+     * 지점으로 삼아 「잠긴 버튼을 눌러 아무 일도 없었던」경쟁 조건을 만들지 않는다.
+     */
+    const previousReceipt = screen.getByRole('button', {
+      name: t.actions.selectRow('GR-2026-900001'),
+    });
+
+    await waitFor(() => {
+      expect(previousReceipt).toBeEnabled();
+    });
+
     /* 앞 대상을 다시 고른다 — 그래도 결과는 되살아나지 않는다. */
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await user.click(previousReceipt);
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9001');
+    });
     await waitForLines();
 
     expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
