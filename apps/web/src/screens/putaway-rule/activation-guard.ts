@@ -69,11 +69,13 @@ export const activationIntentOf = (isActive: boolean | null): ActivationIntent |
  * 오늘 화면에서 그 조합에 닿기는 어렵다 — 창을 닫는 길이 나가는 중이 아닌 실패를 이미 걷기
  * 때문이다. **그러나 그 불가능은 이 판정의 성질이 아니라 창 닫기 규칙에 얹혀 있다**(그 규칙은
  * 이 슬라이스에서 한 번 뒤집힌 적이 있다). 그래서 조건을 지우지 않고 **이 층에서 잰다.**
+ * `against`가 `null`인 상세 미도착도 같은 원칙이다 — 견줄 현재 갈래가 없으므로 뒤집힘을
+ * 확인했다고 할 수 없다.
  */
 export const isIntentReversed = (
   sent: ActivationIntent | null,
-  against: ActivationIntent,
-): boolean => sent !== null && sent !== against;
+  against: ActivationIntent | null,
+): boolean => sent !== null && against !== null && sent !== against;
 
 export interface ActivationGate {
   /** 지금 낼 수 있는 전환. `null`이면 상세가 아직 오지 않았다. */

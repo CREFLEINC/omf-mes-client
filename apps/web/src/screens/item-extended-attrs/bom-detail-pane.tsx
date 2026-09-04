@@ -44,7 +44,10 @@ export const BomDetailPane = ({
   isUomLoading,
   isUomError,
 }: BomDetailPaneProps) => (
-  <section className="pane" aria-label={t.detailPaneTitle}>
+  <section className="pane" aria-labelledby="bom-detail-title">
+    <h2 id="bom-detail-title" className="pane-title">
+      {t.detailPaneTitle}
+    </h2>
     <div className="banner-slot">
       <AlertBanner variant="info">{messages.editability.receivedFromErp(null)}</AlertBanner>
     </div>

@@ -52,6 +52,12 @@ describe('대상 열기 판정', () => {
     });
   });
 
+  it('객체 프로토타입 이름도 매핑되지 않은 대상으로 잠긴다', () => {
+    expect(judgeTargetOpen(target(true, 'constructor'), 9001, SCREEN_ROUTES)).toEqual({
+      kind: 'unmapped',
+    });
+  });
+
   it('매핑표에 줄이 생기면 열린다 — 자리표시가 죽은 가지가 아니다', () => {
     /* 전환 감지기(계획 M28). 잠금을 상수로 굳히면 이 단언이 깨진다. */
     expect(judgeTargetOpen(target(true, 'W-99-99'), 9001, FILLED_ROUTES)).toEqual({

@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
-import { NO_BREAK_SPACE, RequestDetailPane } from './request-detail-pane';
+import { RequestDetailPane } from './request-detail-pane';
 import { toRequestDetailView } from './types';
 import type { ApprovalRequest } from './types';
 
@@ -75,7 +75,7 @@ describe('RequestDetailPane', () => {
 
     expect(reason.children).toHaveLength(3);
     expect(reason.children[1]?.textContent).not.toBe('');
-    expect(reason.children[1]?.textContent).toBe(NO_BREAK_SPACE);
+    expect(reason.children[1]?.textContent).toBe('\u00a0');
   });
 
   it('들여쓴 줄이 줄바꿈 없는 공백으로 선다 — 보통 공백은 상자 첫머리에서 축약된다', () => {
@@ -84,7 +84,7 @@ describe('RequestDetailPane', () => {
     const reason = screen.getByRole('group', { name: t.panes.reason });
     const indented = reason.children[1]?.textContent ?? '';
 
-    expect(indented).toBe(`${NO_BREAK_SPACE.repeat(2)}- 항목`);
+    expect(indented).toBe('\u00a0\u00a0- 항목');
     /* 보통 공백으로 남았다면 화면에서 들여쓰기가 사라진다. */
     expect(indented.startsWith('  ')).toBe(false);
   });
@@ -94,7 +94,7 @@ describe('RequestDetailPane', () => {
 
     const reason = screen.getByRole('group', { name: t.panes.reason });
 
-    expect(reason.children[1]?.textContent).toBe(`${NO_BREAK_SPACE.repeat(4)}깊게 들여쓴 줄`);
+    expect(reason.children[1]?.textContent).toBe('\u00a0\u00a0\u00a0\u00a0깊게 들여쓴 줄');
   });
 
   it('줄 가운데·끝 공백은 바꾸지 않는다 — 복사한 글에 보통 공백이 남아야 한다', () => {
@@ -104,7 +104,7 @@ describe('RequestDetailPane', () => {
     const line = reason.children[0]?.textContent ?? '';
 
     expect(line).toBe('앞 뒤 사이 공백  그대로');
-    expect(line).not.toContain(NO_BREAK_SPACE);
+    expect(line).not.toContain('\u00a0');
   });
 
   it('사유를 자르지 않는다 — 긴 한 줄도 전문 그대로다', () => {

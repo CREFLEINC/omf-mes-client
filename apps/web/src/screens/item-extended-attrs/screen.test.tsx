@@ -404,7 +404,7 @@ describe('ItemExtendedAttrsScreen — 좌 목록', () => {
   it('제목과 탐색경로를 낸다', async () => {
     renderScreen([itemListRoute()]);
 
-    expect(await screen.findByRole('heading', { name: '품목 확장속성' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: '품목·자재 명세서' })).toBeInTheDocument();
   });
 
   it('주소의 조건을 그대로 서버에 싣는다 — 새로고침에 살아남는다', async () => {
@@ -692,19 +692,20 @@ describe('ItemExtendedAttrsScreen — 탭', () => {
     await findOriginContent();
 
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      '품목',
+      'BOM',
       '확장 속성',
       '부속 정보',
-      '자재 명세서',
     ]);
   });
 
   /* 「먼저 고르세요」를 두 번 쌓으면 무엇을 하라는 안내인지 오히려 흐려진다. */
-  it('품목을 고르기 전에는 탭을 렌더하지 않는다', async () => {
+  it('품목을 고르기 전에는 상위 탭만 렌더한다', async () => {
     renderScreen([itemListRoute()]);
 
     await screen.findByRole('button', { name: 'SYN-ITEM-01' });
 
-    expect(screen.queryAllByRole('tab')).toHaveLength(0);
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['품목', 'BOM']);
   });
 
   /* 주소를 손으로 고쳐도 빈 화면이 되지 않아야 한다. */
@@ -723,7 +724,7 @@ describe('ItemExtendedAttrsScreen — 탭', () => {
 
     await findOriginContent();
 
-    const tabPanel = screen.getByRole('tabpanel');
+    const tabPanel = screen.getByRole('tabpanel', { name: '확장 속성' });
     expect(within(tabPanel).queryByLabelText('품목코드')).not.toBeInTheDocument();
     expect(within(tabPanel).getByRole('region', { name: '확장 속성' })).toBeInTheDocument();
   });
@@ -767,7 +768,7 @@ const SHELF_LIFE_REQUIRED_TEXT = '유효기한 관리를 켜면 유효기한(일
  * 서버가 원본 열의 편집을 막지 않는다(계약 실측) — 경계를 지키는 곳이 화면뿐이다.
  */
 describe('ItemExtendedAttrsScreen — 저장 본문 (M02·M03)', () => {
-  it('계약의 아홉 키만 실린다', async () => {
+  it('계약의 확장 키만 실린다', async () => {
     const { requests, user } = renderScreen([
       itemListRoute(),
       itemDetailRoute(),
@@ -785,11 +786,16 @@ describe('ItemExtendedAttrsScreen — 저장 본문 (M02·M03)', () => {
 
     expect(Object.keys(savedBodies(requests)[0] as object).sort()).toEqual(
       [
+        'defaultLotStorageUomId',
+        'defaultProductionLotSize',
+        'developmentItem',
         'fifoPolicyCode',
         'inspectionRequired',
         'isActive',
         'lotControlled',
         'negativeStockAllowed',
+        'nameKo',
+        'nameVi',
         'openedShelfLifeHours',
         'serialControlTypeCode',
         'shelfLifeDays',
@@ -3284,11 +3290,14 @@ describe('ItemExtendedAttrsScreen — 자재 명세서 탭을 오가도 잃지 �
 
     await findBuMapPane();
 
-    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await user.click(screen.getByRole('tab', { name: 'BOM' }));
     await findBomListPane();
-    expect(await findOriginContent()).toHaveTextContent('SYN-ITEM-01');
+    expect(screen.getByRole('button', { name: 'SYN-ITEM-01' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
 
-    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+    await user.click(screen.getByRole('tab', { name: '품목' }));
     await findAttrsPane();
     expect(await findOriginContent()).toHaveTextContent('SYN-ITEM-01');
   });
@@ -3301,8 +3310,9 @@ describe('ItemExtendedAttrsScreen — 자재 명세서 탭을 오가도 잃지 �
     await addBuMapRow(user);
     expect(buMapRowCount(pane)).toBe(3);
 
-    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await user.click(screen.getByRole('tab', { name: 'BOM' }));
     await findBomListPane();
+    await user.click(screen.getByRole('tab', { name: '품목' }));
     await user.click(screen.getByRole('tab', { name: '부속 정보' }));
 
     expect(buMapRowCount(await findBuMapPane())).toBe(3);
@@ -3598,10 +3608,10 @@ describe('ItemExtendedAttrsScreen — 자재 명세서 선택의 수명', () => 
     await findBomListPane();
     await openFirstBom(user);
 
-    await user.click(screen.getByRole('tab', { name: '확장 속성' }));
+    await user.click(screen.getByRole('tab', { name: '품목' }));
     await findAttrsPane();
 
-    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await user.click(screen.getByRole('tab', { name: 'BOM' }));
 
     await findBomComponentPane();
     expect(screen.getByLabelText('BOM 코드')).toHaveTextContent('SYN-BOM-01');
@@ -4103,7 +4113,7 @@ const walkWholeScreen = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('tab', { name: '외부 코드' }));
   await findExternalCodePane();
 
-  await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+  await user.click(screen.getByRole('tab', { name: 'BOM' }));
   await findBomListPane();
   await openFirstBom(user);
 };
@@ -4125,7 +4135,6 @@ describe('ItemExtendedAttrsScreen — 화면 전체', () => {
   it.each([
     ['확장 속성', '?item=1001'],
     ['부속 정보', '?item=1001&tab=sub'],
-    ['자재 명세서', '?item=1001&tab=bom'],
   ])('%s 탭에서도 원본 구획에 쓰기 수단이 없다 (M01)', async (_name, search) => {
     renderScreen(wholeScreenRoutes(), search);
 
@@ -4156,10 +4165,7 @@ describe('ItemExtendedAttrsScreen — 화면 전체', () => {
     expect(list.url.searchParams.get('includeInactive')).toBe('true');
 
     /* 고른 탭·자재 명세서가 그대로 열려 있다. */
-    expect(screen.getByRole('tab', { name: '자재 명세서' })).toHaveAttribute(
-      'aria-selected',
-      'true',
-    );
+    expect(screen.getByRole('tab', { name: 'BOM' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('BOM 코드')).toHaveTextContent('SYN-BOM-01');
   });
 
@@ -4169,8 +4175,9 @@ describe('ItemExtendedAttrsScreen — 화면 전체', () => {
 
     await findExternalCodePane();
 
-    await user.click(screen.getByRole('tab', { name: '자재 명세서' }));
+    await user.click(screen.getByRole('tab', { name: 'BOM' }));
     await findBomListPane();
+    await user.click(screen.getByRole('tab', { name: '품목' }));
     await user.click(screen.getByRole('tab', { name: '부속 정보' }));
 
     expect(await screen.findByRole('region', { name: '외부 코드' })).toBeInTheDocument();
