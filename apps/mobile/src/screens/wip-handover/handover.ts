@@ -42,20 +42,28 @@ export const fromWorkOrderIdOf = (lot: Lot): number | null =>
   lotProblemOf(lot) === null ? lot.sourceId : null;
 
 /**
- * 아직 배포되지 않은 공정인가.
+ * 아직 시작하지 않은 W/O 의 상태. 값 목록이 확정돼 있고 시스템이 소유한다.
  *
- * 배포 시각이 있고 없고로 가른다 - 상태 코드 문자열이 아직 확정되지 않았고, 계약이 그 값으로
- * 화면이 분기하지 말라고 못박았다. 배포 전이면 시작도 안 했다는 뜻이라 경고로 족하다.
+ * 중단은 시작한 뒤 멈춘 것이라 여기 넣지 않는다. 취소는 미시작과 사정이 달라 이 경고로
+ * 말하지 않는다 - 취소된 공정으로 넘기는 것은 별도 판정이 필요하다.
  */
-export const isUnreleased = (workOrder: WorkOrder): boolean =>
-  workOrder.releasedAt === null || workOrder.releasedAt === undefined;
+const NOT_STARTED_STATUS = ['PLANNED', 'CONFIRMED', 'RELEASED'];
+
+/**
+ * 도착 W/O 가 아직 시작되지 않았는가.
+ *
+ * 배포 시각이 아니라 상태로 가른다 - 배포됐으나 진행 전인 W/O 가 이 경고가 겨냥한 가장
+ * 흔한 상태인데, 배포 시각으로 재면 그 구간이 통째로 빠진다.
+ */
+export const isNotStarted = (workOrder: WorkOrder): boolean =>
+  NOT_STARTED_STATUS.includes(workOrder.statusCode);
 
 export type QtyProblem = 'notNumber' | 'notPositive' | 'overCompleted';
 
 /**
  * 넘길 수 있는 상한.
  *
- * LOT 이 들고 있는 초기 수량은 «계획»이다. 실제로 만들어 낸 것은 진척의 양품 합계이고, 미달
+ * LOT 이 들고 있는 초기 수량은 계획이다. 실제로 만들어 낸 것은 진척의 양품 합계이고, 미달
  * 마감된 LOT 에서 둘이 갈린다 - 계획으로 재면 만들지 않은 양까지 넘길 수 있다.
  *
  * 진척을 못 받았으면 상한을 모른다. 넉넉한 쪽으로 물러서지 않는다 - 되돌릴 수 없는 쓰기라

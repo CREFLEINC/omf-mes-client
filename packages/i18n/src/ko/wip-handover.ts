@@ -44,8 +44,8 @@ export const wipHandover = {
     loadFailed: '다음 공정을 확인할 수 없습니다. 연결을 확인하세요.',
     /** 최종 공정이면 다음이 없다. 오류가 아니라 여기서 끝났다는 뜻이다. */
     none: '다음 공정이 없습니다. 최종 공정이면 출하로 갑니다.',
-    /** 배포 시각으로 가른다. 상태 코드 문자열은 아직 확정되지 않았다. */
-    unreleased: '아직 배포되지 않은 공정입니다. 미리 보낼 수 있습니다.',
+    /** 배포됐으나 진행 전인 공정이 이 경고가 겨냥한 가장 흔한 상태다. */
+    notStarted: '아직 시작되지 않은 공정입니다. 미리 보낼 수 있습니다.',
     option: (workOrderNo: string, operation: string) =>
       operation === '' ? workOrderNo : `${operation} (${workOrderNo})`,
   },
