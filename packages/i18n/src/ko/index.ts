@@ -34,6 +34,7 @@ import { usersRoles } from './users-roles';
 import { inboundSchedule } from './inbound-schedule';
 import { stockStatus } from './stock-status';
 import { overReceiptSplit } from './over-receipt-split';
+import { goodsIssueQr } from './goods-issue-qr';
 import { goodsReceipt } from './goods-receipt';
 import { stocktaking } from './stocktaking';
 import { supplierReturn } from './supplier-return';
@@ -101,6 +102,7 @@ import { oqcInspection } from './oqc-inspection';
 import { expeditedShipment } from './expedited-shipment';
 import { shipmentConfirm } from './shipment-confirm';
 import { poChangeReview } from './po-change-review';
+import { packingResult } from './packing-result';
 import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
 import { inboundReceipt } from './inbound-receipt';
@@ -145,6 +147,7 @@ export const ko = {
   inboundSchedule,
   stockStatus,
   overReceiptSplit,
+  goodsIssueQr,
   goodsReceipt,
   stocktaking,
   supplierReturn,
@@ -234,6 +237,7 @@ export const ko = {
   repackLabelIssue,
   runningChange,
   workHoldRegister,
+  packingResult,
 } as const;
 
 export type Messages = typeof ko;

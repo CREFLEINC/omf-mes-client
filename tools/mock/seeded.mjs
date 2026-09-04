@@ -893,6 +893,63 @@ on('GET', '/logistics/shipments', (_p, query) => {
   );
 });
 
+/*
+ * 출하 LOT 배분 (P-04-01 Packing 실적 등록) — **판정을 서버가 낸다.**
+ *
+ * 계약 예시 서버로 넘기면 어떤 값에도 `matched: true` 로 답해, 「틀린 LOT 을 읽었을 때」를
+ * 손으로 볼 수 없다(실측). 씨앗이 가진 배분으로 그 갈림을 만든다.
+ */
+const allocationRows = () =>
+  state.shipments.flatMap((shipment) =>
+    (shipment.lines ?? []).flatMap((line) => line.allocations ?? []),
+  );
+
+const shipmentNoOf = (shipmentId) =>
+  state.shipments.find((row) => row.shipmentId === shipmentId)?.shipmentNo ?? '';
+
+on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
+  const shipmentId = num(query, 'shipmentId');
+  const q = query.get('q');
+  const lotQ = query.get('lotQ');
+  const rows = allocationRows();
+  const hit = (value, needle) => String(value ?? '').toUpperCase().includes(needle);
+
+  /* ① 납품라벨 스캔 — 출하번호·LOT 번호로 찾는다. 못 찾으면 «없는 라벨»이라 빈 목록이다. */
+  if (q !== null) {
+    const needle = q.trim().toUpperCase();
+
+    return page(
+      needle === ''
+        ? []
+        : rows.filter(
+            (row) => hit(shipmentNoOf(row.shipmentId), needle) || hit(row.lotNo, needle),
+          ),
+      query,
+    );
+  }
+
+  /* ② 생산LOT 스캔 — 이 출하에 배분된 LOT 인가. 아니면 사유를 붙여 «아니다»로 답한다. */
+  if (lotQ !== null) {
+    const needle = lotQ.trim().toUpperCase();
+    const matched = rows.filter(
+      (row) => row.shipmentId === shipmentId && needle !== '' && hit(row.lotNo, needle),
+    );
+
+    return matched.length > 0
+      ? { ...page(matched, query), match: { matched: true } }
+      : {
+          ...page([], query),
+          match: { matched: false, reasonCode: 'LOT_NOT_ALLOCATED' },
+        };
+  }
+
+  /* ③ 진행 표시 — 이 출하의 배분 전부. */
+  return page(
+    shipmentId === null ? rows : rows.filter((row) => row.shipmentId === shipmentId),
+    query,
+  );
+});
+
 on('GET', '/logistics/shipments/{shipmentId}', (params) => {
   const shipment = state.shipments.find((row) => row.shipmentId === Number(params.shipmentId));
   return shipment === undefined
