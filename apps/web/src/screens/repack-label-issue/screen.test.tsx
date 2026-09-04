@@ -668,4 +668,28 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
     expect(await screen.findByText(t.print.failedTitle)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.print.retry })).toBeInTheDocument();
   });
+
+  /*
+   * ⛔ **셸·서버가 준 오류 문구를 작업자에게 보이지 않는다.** 현장에서 할 일은 「재인쇄」
+   *    하나이고, 기술 사유는 그 판단을 돕지 않으면서 화면만 어지럽힌다.
+   */
+  it('실패 사유 원문을 화면에 싣지 않는다', async () => {
+    (window as unknown as { pop?: { rendition?: RenditionShell } }).pop = {
+      rendition: {
+        save: vi.fn(async () => {
+          throw new Error('용지 걸림');
+        }),
+      },
+    };
+
+    renderScreen({ issueCount: 0 });
+
+    await screen.findByText(HANDLING_UNIT_NO);
+    await clickWhenEnabled(submitButton);
+    await userEvent.click(await screen.findByRole('button', { name: t.preview.print }));
+
+    await screen.findByText(t.print.failedTitle);
+    expect(screen.getByText(t.print.failedBody)).toBeInTheDocument();
+    expect(screen.queryByText(/용지 걸림/)).not.toBeInTheDocument();
+  });
 });
