@@ -491,6 +491,13 @@ const failingIssueDetailRoute = (status: number, pathname = ISSUE_DETAIL_PATH): 
   respond: () => jsonResponse({ message: '' }, { status }),
 });
 
+const disconnectedIssueDetailRoute = (): StubRoute => ({
+  match: (request) => isGet(request, ISSUE_DETAIL_PATH),
+  respond: () => {
+    throw new TypeError('Failed to fetch');
+  },
+});
+
 /**
  * 부를 때마다 **내용이 달라지는** 이력 목록·상세·승인 요청.
  *
@@ -2582,6 +2589,10 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?tab=history`);
     });
+
+    expect(
+      within(historyDetailPane()).queryByRole('button', { name: messages.common.retry }),
+    ).not.toBeInTheDocument();
   });
 
   it('404 정리가 대상 탭의 조건과 선택을 건드리지 않는다', async () => {
@@ -2594,6 +2605,48 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
 
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?tab=history&q=GR&gr=9001`);
+    });
+  });
+
+  it('상세가 500으로 실패하면 사유와 다시 시도가 서고 로딩 뼈대가 남지 않는다', async () => {
+    renderScreen(allRoutes([failingIssueDetailRoute(500)]), `${HISTORY_SEARCH}&gi=9501`);
+
+    const pane = historyDetailPane();
+
+    expect(await within(pane).findByText(messages.httpError.loadTitle)).toBeVisible();
+    expect(within(pane).getByRole('button', { name: messages.common.retry })).toBeEnabled();
+    expect(
+      within(pane).queryByRole('status', { name: t.loading.issueDetail }),
+    ).not.toBeInTheDocument();
+    expect(within(pane).queryByText('GI-2026-950001')).not.toBeInTheDocument();
+  });
+
+  it('상세 요청이 끊기면 오프라인 사유가 서고 로딩 뼈대가 남지 않는다', async () => {
+    renderScreen(allRoutes([disconnectedIssueDetailRoute()]), `${HISTORY_SEARCH}&gi=9501`);
+
+    const pane = historyDetailPane();
+
+    expect(await within(pane).findByText(messages.httpError.offline)).toBeVisible();
+    expect(
+      within(pane).queryByRole('status', { name: t.loading.issueDetail }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('상세 실패의 다시 시도가 같은 품의를 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([failingIssueDetailRoute(500)]),
+      `${HISTORY_SEARCH}&gi=9501`,
+    );
+
+    const pane = historyDetailPane();
+
+    await within(pane).findByText(messages.httpError.loadTitle);
+    expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(1);
+
+    await user.click(within(pane).getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(2);
     });
   });
 
