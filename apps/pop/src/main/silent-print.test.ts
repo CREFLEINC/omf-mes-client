@@ -189,6 +189,22 @@ describe('OS 인쇄 경로', () => {
     });
   });
 
+  /*
+   * ⛔ 이 항목이 「성적서·보고서가 단말에서 언제나 실패하는 것」을 막는다. 그림 인쇄는 파일을
+   *    이미지로 열어 PDF 에서 던진다 — 문서는 문서 보기가 있는 창 경로로 가야 한다.
+   */
+  it('문서(pdf)는 OS 경로로 보내지 않는다', async () => {
+    const { deps, page } = fakeDeps();
+    const printFile = { print: vi.fn(async () => undefined) };
+    const document: Rendition = { bytes: PNG, format: 'pdf', label: 'COA-0001' };
+
+    await createSilentPrinter({ ...deps, printFile }).print('ZD421', document);
+
+    expect(printFile.print).not.toHaveBeenCalled();
+    expect(page.load).toHaveBeenCalledWith('file:///tmp/job.pdf');
+    expect(page.print).toHaveBeenCalledWith('ZD421', 'COA-0001');
+  });
+
   it('OS 경로가 실패해도 임시 파일을 지운다', async () => {
     const { deps, discarded } = fakeDeps();
     const printFile = {

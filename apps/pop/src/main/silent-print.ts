@@ -87,6 +87,15 @@ export interface FilePrinter {
   print(job: { imagePath: string; deviceName?: string; jobName: string }): Promise<void>;
 }
 
+/**
+ * OS 그림 인쇄가 다룰 수 있는 형식.
+ *
+ * ⛔ **문서(pdf)를 이 길로 보내지 않는다.** 그림 인쇄는 파일을 이미지로 열고, PDF 는 거기서
+ *    던진다 — 성적서·보고서가 단말에서 언제나 실패하게 된다. 그 형식은 쪽이 나뉜 문서라
+ *    문서 보기가 있는 창 경로에 맡긴다.
+ */
+const IMAGE_FORMATS: readonly RenditionFormat[] = ['png'];
+
 /** 출력물을 띄워 인쇄하는 창. 작업마다 새로 열고 끝나면 닫는다. */
 export interface PrintPage {
   /** 다 그려진 뒤 resolve 한다 — 그리기 전에 인쇄하면 빈 종이가 나온다. */
@@ -161,7 +170,7 @@ export function createSilentPrinter(deps: SilentPrintDeps): SilentPrinter {
       const staged = await deps.stage(rendition.bytes, rendition.format);
 
       /* OS 인쇄 경로가 있으면 창을 아예 열지 않는다 — 열지 않은 창은 비지도 않는다. */
-      if (deps.printFile !== undefined) {
+      if (deps.printFile !== undefined && IMAGE_FORMATS.includes(rendition.format)) {
         try {
           await withLimit(
             deps.printFile.print({

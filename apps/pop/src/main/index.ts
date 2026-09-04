@@ -36,6 +36,7 @@ import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
 import { buildPrintScript, printScriptArgs } from './windows-print';
 import { resolveRendererPath } from './renderer-path';
 import {
+  DEFAULT_PRINT_TIMEOUT_MS,
   type PrintPage,
   type PrinterChoice,
   createSilentPrinter,
@@ -235,11 +236,27 @@ const filePrinter =
             execFile(
               'powershell.exe',
               printScriptArgs(scriptPath),
-              { windowsHide: true },
+              /*
+               * ⛔ **자식에게도 같은 상한을 건다.** 바깥 상한은 약속만 끊고 프로세스는 계속
+               *    산다 — 인쇄가 매달릴 때마다 하나씩 남고, 남은 것이 임시 파일을 잡아 정리도
+               *    실패한다. 며칠씩 켜 두는 단말에서 쌓인다.
+               */
+              { windowsHide: true, timeout: DEFAULT_PRINT_TIMEOUT_MS, killSignal: 'SIGKILL' },
               (error, _stdout, stderr) => {
-                /* 스크립트가 남긴 말을 그대로 사유로 올린다 — 진단 기록이 그것으로 갈린다. */
-                if (error === null) resolve();
-                else reject(new Error(stderr.trim() === '' ? error.message : stderr.trim()));
+                if (error === null) {
+                  resolve();
+                  return;
+                }
+
+                /* 상한에 걸려 끊긴 것은 사유가 비어 온다 — 무슨 일이었는지 말해 준다. */
+                const spoken =
+                  stderr.trim() !== ''
+                    ? stderr.trim()
+                    : error.killed === true
+                      ? '프린터가 응답하지 않아 인쇄를 끊었다'
+                      : error.message;
+
+                reject(new Error(spoken));
               },
             );
           });
