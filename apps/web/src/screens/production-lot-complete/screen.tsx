@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { CompletePane } from './complete-pane';
@@ -56,10 +56,22 @@ export const ProductionLotCompleteScreen = () => {
     lotSelected: selectedLotId !== null,
   });
 
+  /** 이 시도가 언제 일어났는가. 성공하거나 다른 LOT 을 고를 때까지 붙든다(아래 `submit`). */
+  const submitAtRef = useRef<Date | null>(null);
+  /** 이번 시도가 어느 결말이었는가. 성공 «뒤»에 결과 문구를 고르는 데 쓴다. */
+  const attemptRef = useRef<Outcome | null>(null);
+
   const complete = useLotComplete({
     lotId: selectedLotId,
     workerNo: workerNo ?? '',
     onSuccess: () => {
+      /*
+       * ⛔ **결과는 «성공했을 때» 세운다.** 누를 때 세우면 서버가 거부한 뒤에도 그 값이 남아,
+       * 오류를 지우는 「다시 불러오기」 한 번에 실패가 성공 문구로 뒤집힌다(리뷰 실측).
+       */
+      setOutcome(attemptRef.current);
+      submitAtRef.current = null;
+
       /*
        * 완료한 LOT 은 목록(`completed=false`)에서 빠진다 — 고른 상태로 두면 사라진 행을
        * 가리킨 채 오른쪽만 남는다. 선택을 풀고 결과만 남긴다.
@@ -72,11 +84,21 @@ export const ProductionLotCompleteScreen = () => {
   const submit = (under: boolean): void => {
     if (selectedLotId === null || workerNo === null) return;
 
-    const body = toCompleteRequest({ under, reasonCode, at: new Date() });
+    /*
+     * ⛔ **재시도마다 새 시각을 만들지 않는다.** 시각이 본문에 실리므로(`occurredAt`) 다시
+     * 누를 때 값이 달라지고, 그러면 **멱등 키의 지문도 달라져 같은 완료가 새 쓰기로 나간다** —
+     * 통신이 끊긴 뒤 다시 누르면 되돌릴 수 없는 완료가 두 번 적재된다. 멱등 키를
+     * `until-applied` 로 둔 뜻이 시각 한 줄로 무너지는 자리다(선례 `work-start`·`tool-usage`).
+     *
+     * 값이 실제로 바뀌었을 때만 버린다 — 성공했거나, 다른 LOT 을 골랐거나.
+     */
+    submitAtRef.current ??= new Date();
+    attemptRef.current = under ? 'closedUnder' : 'completed';
+
+    const body = toCompleteRequest({ under, reasonCode, at: submitAtRef.current });
 
     if (body === null) return;
 
-    setOutcome(under ? 'closedUnder' : 'completed');
     complete.write(body);
   };
 
@@ -84,6 +106,7 @@ export const ProductionLotCompleteScreen = () => {
     setSelectedLotId(lotId);
     setReasonCode(null);
     setOutcome(null);
+    submitAtRef.current = null;
   }, []);
 
   const reload = (): void => {
@@ -93,7 +116,7 @@ export const ProductionLotCompleteScreen = () => {
   };
 
   const gateText = gate.verdict === 'allowed' ? null : t.gate[gate.verdict];
-  const succeeded = outcome !== null && complete.error === null && !complete.isSaving;
+  const succeeded = outcome !== null;
 
   return (
     <main className="pop-shell" aria-labelledby={titleId}>
@@ -173,7 +196,9 @@ export const ProductionLotCompleteScreen = () => {
         <Card bordered className="pop-section" aria-label={t.lotList.sectionLabel}>
           <h2 className="pane-title">{t.lotList.sectionLabel}</h2>
           <LotListPane
-            lots={lots.data ?? []}
+            lots={lots.data?.items ?? []}
+            total={lots.data?.total ?? 0}
+            truncated={lots.data?.truncated ?? false}
             selectedLotId={selectedLotId}
             onSelect={selectLot}
             hasWorkOrder={entry.workOrderId !== null}

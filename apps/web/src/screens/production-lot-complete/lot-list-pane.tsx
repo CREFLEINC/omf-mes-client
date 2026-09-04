@@ -11,6 +11,10 @@ export interface LotListPaneProps {
   onSelect: (lotId: number) => void;
   /** 작업지시를 받았는가. 빈 목록의 사유가 갈린다. */
   hasWorkOrder: boolean;
+  /** 서버가 말한 미완료 LOT «전체» 수. 안내 문구는 받은 행 수가 아니라 이것을 쓴다. */
+  total: number;
+  /** 한 쪽에 다 담기지 않았는가. 담기지 않았으면 그 사실을 말한다. */
+  truncated: boolean;
 }
 
 /**
@@ -27,6 +31,8 @@ export const LotListPane = ({
   selectedLotId,
   onSelect,
   hasWorkOrder,
+  total,
+  truncated,
 }: LotListPaneProps) => {
   /*
    * ⛔ **번호 열이 남은 폭을 다 가져가게 두지 않는다.** LOT 번호는 34자리라, 표가 내용대로 폭을
@@ -86,9 +92,12 @@ export const LotListPane = ({
         슬롯 안내는 스펙 §7 이 `AlertBanner`(info) 로 못박았다 — 문단으로 두지 않는다.
         ⛔ 셀 것이 없으면 내지 않는다 — 「0개 있습니다」는 안내가 아니라 잡음이다.
       */}
-      {lots.length > 0 && (
+      {total > 0 && (
         <div className="pop-lotdone-notice">
-          <AlertBanner variant="info">{t.lotList.slotNotice(lots.length)}</AlertBanner>
+          <AlertBanner variant="info">
+            {t.lotList.slotNotice(total)}
+            {truncated ? ` ${t.lotList.truncated(lots.length)}` : ''}
+          </AlertBanner>
         </div>
       )}
     </>

@@ -82,12 +82,6 @@ const toContent = (error: ApiError): BannerContent => {
   }
 };
 
-/**
- * 실패를 사람 말로 푼 줄들. **배너 밖에서도 같은 말을 쓸 수 있게** 내보낸다 — 같은 실패를
- * 두 자리에서 다르게 말하면 사용자는 어느 쪽이 참인지 알 수 없다.
- */
-export const describeError = (error: ApiError): string[] => toContent(error).lines;
-
 export interface ErrorBannerProps {
   error: ApiError;
   title: string;

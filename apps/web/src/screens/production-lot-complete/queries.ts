@@ -16,6 +16,8 @@ import {
  */
 export const lotCompleteKeys = {
   all: ['production-lot-complete'] as const,
+  /** 대상 LOT 목록 전체 — 완료 뒤 이 앞자리로 한 번에 무효화한다. */
+  lotsAll: ['production-lot-complete', 'lots'] as const,
   lots: (workOrderId: number) => ['production-lot-complete', 'lots', workOrderId] as const,
   /** LOT 상세 전체 — 완료 뒤 이 앞자리로 한 번에 무효화한다. */
   lotDetails: ['production-lot-complete', 'lot-detail'] as const,
@@ -23,8 +25,25 @@ export const lotCompleteKeys = {
   reasons: ['production-lot-complete', 'variance-reasons'] as const,
 };
 
+/** 좌단 목록이 받은 것 — 행과, 서버가 말한 «전체» 수. 안내 문구가 후자를 쓴다. */
+export interface TargetLots {
+  items: Lot[];
+  /** 이 작업지시의 미완료 LOT 전체 수. 화면이 받은 행 수와 다를 수 있다. */
+  total: number;
+  /** 한 쪽에 다 담기지 않았는가. 화면이 그 사실을 말한다. */
+  truncated: boolean;
+}
+
 /** 한 번에 받아 둘 사유 값의 상한. 사유 목록이 이보다 길 일은 없다. */
 const REASON_PAGE_SIZE = 200;
+
+/**
+ * 한 쪽에 받아 둘 대상 LOT 수.
+ *
+ * ⛔ **쪽 크기를 서버 기본값에 맡기지 않는다** — 선발행 슬롯이 그보다 많은 W/O 에서 뒷 LOT 이
+ * 조용히 사라지고, 슬롯 안내가 그 «잘린» 수를 남은 수로 단언한다(리뷰 실측).
+ */
+const LOT_PAGE_SIZE = 100;
 
 /**
  * 좌단 《LOT 목록》 — 이 작업지시가 원천인 **아직 완료되지 않은** 생산LOT.
@@ -40,22 +59,26 @@ const REASON_PAGE_SIZE = 200;
  * 상세에만 있다 — `omf-mes#269` 의 잔여이며 이 저장소 #143 이 같은 사유로 기다린다. 그래서
  * 목록은 세우되 양품 열은 비우고 사유를 보인다(검토 요청 `omf-mes#399` 3번).
  */
-export const useTargetLots = (workOrderId: number | null): UseQueryResult<Lot[]> => {
+export const useTargetLots = (workOrderId: number | null): UseQueryResult<TargetLots> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: lotCompleteKeys.lots(workOrderId ?? 0),
     enabled: workOrderId !== null,
-    queryFn: async (): Promise<Lot[]> => {
+    queryFn: async (): Promise<TargetLots> => {
       if (workOrderId === null) {
         throw new Error('작업지시를 모르면 대상 LOT 을 조회하지 않습니다.');
       }
 
       const data = await runRequest(() =>
-        client.GET('/trace/lots', { params: { query: { workOrderId, completed: false } } }),
+        client.GET('/trace/lots', {
+          params: {
+            query: { workOrderId, completed: false, page: 1, size: LOT_PAGE_SIZE },
+          },
+        }),
       );
 
-      return data.items;
+      return { items: data.items, total: data.page.total, truncated: data.page.total > data.items.length };
     },
   });
 };

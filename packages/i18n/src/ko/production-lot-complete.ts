@@ -8,8 +8,6 @@ export const productionLotComplete = {
   title: '생산LOT 완료',
 
   entry: {
-    workOrderLabel: '작업지시',
-    workerLabel: '사번',
     missingWorkOrder: '작업지시를 받지 못해 대상 LOT 을 불러올 수 없습니다.',
   },
 
@@ -60,6 +58,11 @@ export const productionLotComplete = {
      */
     slotNotice: (remaining: number): string =>
       `이 작업지시에 아직 완료하지 않은 LOT 이 ${String(remaining)}개 있습니다. 미리 발행해 둔 수는 계획값이며 상한이 아니라, 더 만들어도 됩니다.`,
+    /**
+     * 한 쪽에 다 담기지 않았을 때. ⛔ **잘린 사실을 말하지 않으면** 사용자는 목록에 보이는 것이
+     * 전부라고 읽고, 화면에 없는 LOT 을 완료하지 못한 채 넘어간다.
+     */
+    truncated: (shown: number): string => `지금 목록에는 ${String(shown)}개만 보입니다.`,
   },
 
   detail: {
@@ -87,7 +90,6 @@ export const productionLotComplete = {
   reason: {
     label: '미달 사유',
     placeholder: '사유를 고르세요',
-    required: '미달 마감은 사유가 필요합니다.',
     loadFailed: '미달 사유 목록을 불러오지 못했습니다. 미달 마감을 할 수 없습니다.',
     empty: '고를 수 있는 미달 사유가 없습니다. 담당자에게 문의하세요.',
   },

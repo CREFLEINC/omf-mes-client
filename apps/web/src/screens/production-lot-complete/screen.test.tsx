@@ -62,6 +62,8 @@ interface Options {
   writeStatus?: number;
   /** 목록이 비어 온다 — 빈 목록 문구를 재는 자리 */
   emptyLots?: boolean;
+  /** 상세 조회의 질의 문자열을 담아 둔다 */
+  detailSearches?: string[];
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -104,14 +106,17 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => request.method === 'GET' && /^\/trace\/lots\/\d+$/.test(pathOf(request)),
-    respond: () =>
-      jsonResponse(
+    respond: (request) => {
+      options.detailSearches?.push(new URL(request.url).search);
+
+      return jsonResponse(
         lotDetailResponse(
           options.progress === undefined ? makeProgress(480, 'UNDER') : options.progress,
           options.completedAt === undefined ? {} : { completedAt: options.completedAt },
         ),
         { headers: options.etag === null ? {} : { ETag: options.etag ?? '"7"' } },
-      ),
+      );
+    },
   },
   {
     match: (request) => request.method === 'POST' && /:complete$/.test(pathOf(request)),
@@ -436,6 +441,75 @@ describe('ProductionLotCompleteScreen — 완료 쓰기', () => {
 
     expect(await screen.findByText(t.error.forbidden)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+  });
+});
+
+describe('ProductionLotCompleteScreen — 되돌릴 수 없는 쓰기의 안전', () => {
+  /**
+   * ⛔ **재시도가 «같은» 멱등 키로 나가야 한다.** 시각을 다시 만들면 본문 지문이 달라져 같은
+   * 완료가 새 쓰기로 나가고, 되돌릴 수 없는 완료가 두 번 적재된다(선례 `work-start`·`tool-usage`).
+   */
+  it('실패 뒤 다시 시도해도 멱등 키가 같다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    renderScreen({ progress: makeProgress(500, 'NORMAL'), writes, writeStatus: 500 });
+
+    await selectLot(user);
+    await waitFor(() => {
+      expect(completeButton()).toBeEnabled();
+    });
+    await user.click(completeButton());
+
+    await screen.findByText(t.error.completeTitle);
+    await user.click(completeButton());
+
+    await waitFor(() => {
+      expect(writes.length).toBe(2);
+    });
+    const keys = writes.map((request) => request.headers.get('Idempotency-Key'));
+    expect(keys[0]).not.toBeNull();
+    expect(keys[0]).toBe(keys[1]);
+  });
+
+  /**
+   * ⛔ **실패한 완료에 성공 문구가 뜨지 않는다.** 「다시 불러오기」가 오류만 지우면 누를 때
+   * 세워 둔 결과가 남아 실패가 성공으로 뒤집힌다 — 남의 완료를 자기 것으로 읽게 된다.
+   */
+  it('충돌 뒤 다시 불러오기를 눌러도 성공 문구가 뜨지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ progress: makeProgress(500, 'NORMAL'), writeStatus: 409 });
+
+    await selectLot(user);
+    await waitFor(() => {
+      expect(completeButton()).toBeEnabled();
+    });
+    await user.click(completeButton());
+
+    await screen.findByText(t.error.conflict);
+    await user.click(screen.getByRole('button', { name: t.error.reload }));
+
+    await waitFor(() => {
+      expect(screen.queryByText(t.error.conflict)).not.toBeInTheDocument();
+    });
+    expect(screen.queryByText(t.result.completed)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.closedUnder)).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⚠ **상세는 `withProgress=true` 로 물어야 한다.** 빠지면 진척이 비어 오고 화면이 사유 없이
+   * 전부 닫힌다 — 스텁이 늘 진척을 내리면 시험이 그 사실을 놓친다.
+   */
+  it('상세를 진척과 함께 묻는다', async () => {
+    const user = userEvent.setup();
+    const seen: string[] = [];
+    renderScreen({ detailSearches: seen });
+
+    await selectLot(user);
+
+    await waitFor(() => {
+      expect(seen.length).toBeGreaterThan(0);
+    });
+    expect(seen.every((search) => search.includes('withProgress=true'))).toBe(true);
   });
 });
 

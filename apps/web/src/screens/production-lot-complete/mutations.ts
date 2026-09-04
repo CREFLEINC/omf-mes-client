@@ -73,7 +73,7 @@ export const useLotComplete = ({
      * 완료하면 그 LOT 이 목록에서 빠지고(`completed=false` 축) 상세의 완료 시각이 채워진다.
      * 둘 다 다시 읽어야 화면이 방금 한 일을 반영한다.
      */
-    invalidateKeys: [lotCompleteKeys.all],
+    invalidateKeys: [lotCompleteKeys.lotsAll, lotCompleteKeys.lotDetails],
     knownFields: COMPLETE_FIELDS,
     keyLifetime: 'until-applied',
     onSuccess,
