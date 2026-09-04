@@ -28,7 +28,7 @@ describe('DecisionSubjectSummary', () => {
 
     for (const [label, value] of [
       [t.fields.approvalRequestNo, 'SYNTH-REQ-001'],
-      [t.fields.approvalTypeCode, 'SAMPLE-TYPE-A'],
+      [t.fields.approvalTypeCode, 'GOODS_ISSUE_DISPOSAL'],
       [t.fields.target, '합성 대상 문서 가'],
       [t.fields.requestedByName, '합성 상신자1'],
       [t.fields.reason, '합성 사유 첫 줄'],
@@ -56,7 +56,7 @@ describe('DecisionSubjectSummary', () => {
     ]);
     expect(details).toEqual([
       'SYNTH-REQ-001',
-      'SAMPLE-TYPE-A',
+      'GOODS_ISSUE_DISPOSAL',
       '합성 대상 문서 가',
       '합성 상신자1',
       '합성 사유 첫 줄',
@@ -85,12 +85,14 @@ describe('DecisionSubjectSummary', () => {
     expect(list?.querySelectorAll('dd')).toHaveLength(5);
   });
 
-  /** 유형 코드는 **코드 그대로**다 — 값 목록이 확정되기 전에 이름을 지어내면 그것이 매핑표다. */
+  /** 유형 코드는 고정 OpenAPI가 정한 코드 그대로 낸다. */
   it('유형 코드를 이름으로 바꾸지 않는다', () => {
-    const other = requestFixtures.find((request) => request.approvalTypeCode === 'SAMPLE-TYPE-B');
+    const other = requestFixtures.find(
+      (request) => request.approvalTypeCode === 'INVENTORY_ADJUSTMENT',
+    );
     const summary = renderSummary(other as ApprovalRequest);
 
-    expect(summary.getByText('SAMPLE-TYPE-B')).toBeVisible();
+    expect(summary.getByText('INVENTORY_ADJUSTMENT')).toBeVisible();
   });
 
   /** 짝 방향 — 이름이 비어 와도 **번호를 대신 내지 않는다**(`omf-mes#44`). */

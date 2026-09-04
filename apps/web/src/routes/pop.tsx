@@ -10,10 +10,13 @@ import { PopLotLabelPrintScreen } from '../screens/pop-lot-label-print/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { ProductionLotCompleteScreen } from '../screens/production-lot-complete/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
+import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionResultScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
+import { RunningChangeScreen } from '../screens/running-change/screen';
 import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
+import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
 import { WorkStartScreen } from '../screens/work-start/screen';
 
@@ -211,6 +214,43 @@ export const popRoutes: RouteObject[] = [
    * 먼저 막으면 「완료 LOT 이 없다」와 구분되지 않는다 — 집행은 서버의 403 이다(F-1).
    */
   { path: '/pop/lot-label', element: <PopLotLabelPrintScreen /> },
+  /*
+   * P-04-04 — 재구성 신규 라벨 발행.
+   *
+   * ⛔ **스펙의 네 구획 중 둘만 서 있다.** ① 발행 대기 목록과 ② 신규 발번은 계약이 「무엇을 몇
+   * 개 만들어야 하는가」와 「이미 처리한 건인가」를 나르지 못해 만들지 않았다(`omf-mes#418` ·
+   * 근거는 `screens/repack-label-issue/types.ts` 머리). 임시 구현으로 메우면 목록이 지워지지
+   * 않아 같은 재구성을 반복 처리하게 된다.
+   *
+   * ⚠ **그래서 대상 포장을 질의 문자열로 받는다**(`?handlingUnitId=&workerNo=`) — 앞단이
+   * 열리면 `entry-context.ts` 하나가 바뀐다(전례 `P-02-09`).
+   */
+  { path: '/pop/repack-label-issue', element: <RepackLabelIssueScreen /> },
+  /*
+   * P-02-11 — 러닝체인지 부품 교체 등록. **설비를 멈추지 않고 같은 세션 안에서** 부품을 간다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=`) — 프로세스상 진입은 메인
+   * 작업 화면의 인라인 「부품 교체」이고(스펙 §2), 그 화면이 아직 이 저장소에 없다. 서면
+   * `screen-params.ts` 하나가 바뀐다.
+   *
+   * ⛔ **사이드바에 올리지 않는다.** 관리웹 사용자가 메뉴로 찾아가는 곳이 아니다.
+   *
+   * ⚠ **계획 분할 지정은 이 주소가 아니다**(§5-5) — 그것은 관리웹에서 지정하면 시스템이
+   * 자동 실행하며 화면이 없다. 이 주소가 다루는 것은 **생산 당일 교체** 하나다.
+   */
+  { path: '/pop/running-change', element: <RunningChangeScreen /> },
+  /*
+   * P-02-10 — 작업 중단(홀드) 등록. 셸 밖에 서는 POP 태스크 화면이다.
+   *
+   * ⛔ **세션이 열려 있어야 성립한다**(스펙 §5-2) — 세션 사건의 세션 참조가 NOT NULL 이라
+   * 세션 없이는 중단을 기록할 자리가 없다. 그래서 이 주소로 바로 들어와도 세션이 없으면
+   * 차단 안내가 선다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=`) — 작업지시 선택(`P-02-01`)이
+   * 아직 이 저장소에 없다. 그 화면이 서면 `entry-context.ts` 하나가 바뀐다. 사번은 셸의
+   * `pop-identity` → `P-CO-01` 의 `worker-session` 순으로 읽고, 둘 다 비면 주소를 본다.
+   */
+  { path: '/pop/work-hold', element: <WorkHoldRegisterScreen /> },
   /*
    * P-02-06 — 생산LOT 완료 처리. 셸 밖에 서는 POP 태스크 화면이다.
    *

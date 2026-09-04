@@ -25,15 +25,20 @@ const row = (overrides: Partial<BalanceView> = {}): BalanceView => ({
   ...overrides,
 });
 
-describe('자리표시 상수 — 값 목록이 확정되기 전', () => {
+describe('고정·운영 코드 목록', () => {
   /*
    * 값 목록이 확정되지 않았다(omf-mes#64). 예시 값을 채우면 **없는 선택지를 지어내는 것**이라
    * 사용자가 고른 값으로 조회했다가 늘 0건을 본다. 자리는 남기고 비워 둔다 —
    * 확정됐을 때 고칠 곳이 한눈에 보이게 하기 위해서다.
    */
-  it('셋 다 빈 배열이다', () => {
+  it('재고 상태는 고정 enum이고 나머지는 운영 목록을 기다린다', () => {
     expect(PLACEHOLDER_QUALITY_STATUS_CODES).toEqual([]);
-    expect(PLACEHOLDER_INVENTORY_STATUS_CODES).toEqual([]);
+    expect(PLACEHOLDER_INVENTORY_STATUS_CODES).toEqual([
+      'AVAILABLE',
+      'BLOCKED',
+      'IN_TRANSIT',
+      'ON_HOLD',
+    ]);
     expect(PLACEHOLDER_OWNERSHIP_TYPE_CODES).toEqual([]);
   });
 });
@@ -88,7 +93,7 @@ describe('withCurrentValue — 지금 걸린 값', () => {
 });
 
 describe('toCodeOptions — 자리표시 · 관측값 · 걸린 값을 한 목록으로', () => {
-  it('자리표시가 비어 있으면 관측값만 나온다', () => {
+  it('고정 목록 뒤에 관측값이 나온다', () => {
     const rows = [row({ inventoryStatusCode: 'SAMPLE_I_A' })];
 
     expect(
@@ -98,7 +103,7 @@ describe('toCodeOptions — 자리표시 · 관측값 · 걸린 값을 한 목�
         (item) => item.inventoryStatusCode,
         '',
       ),
-    ).toEqual(['SAMPLE_I_A']);
+    ).toEqual(['AVAILABLE', 'BLOCKED', 'IN_TRANSIT', 'ON_HOLD', 'SAMPLE_I_A']);
   });
 
   it('자리표시와 관측값이 겹치면 접힌다', () => {
@@ -119,7 +124,7 @@ describe('toCodeOptions — 자리표시 · 관측값 · 걸린 값을 한 목�
         (item) => item.inventoryStatusCode,
         'SAMPLE_I_Z',
       ),
-    ).toEqual(['SAMPLE_I_Z', 'SAMPLE_I_A']);
+    ).toEqual(['SAMPLE_I_Z', 'AVAILABLE', 'BLOCKED', 'IN_TRANSIT', 'ON_HOLD', 'SAMPLE_I_A']);
   });
 
   it('결과가 비어 있어도 걸린 값은 남는다', () => {
@@ -130,6 +135,6 @@ describe('toCodeOptions — 자리표시 · 관측값 · 걸린 값을 한 목�
         (item) => item.inventoryStatusCode,
         'SAMPLE_I_Z',
       ),
-    ).toEqual(['SAMPLE_I_Z']);
+    ).toEqual(['SAMPLE_I_Z', 'AVAILABLE', 'BLOCKED', 'IN_TRANSIT', 'ON_HOLD']);
   });
 });

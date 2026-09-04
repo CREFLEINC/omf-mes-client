@@ -206,7 +206,7 @@ describe('검사 추이·불량 분포', () => {
     expect(calls).toHaveLength(1);
     expect(Object.fromEntries(calls[0]?.searchParams ?? [])).toEqual({
       groupBy: 'defectCode',
-      sourceAxisCode: 'PQC',
+      sourceCode: 'PQC',
       itemId: '101',
       detectedFrom: '2026-08-01',
       detectedTo: '2026-08-31',

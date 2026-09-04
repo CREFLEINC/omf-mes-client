@@ -6837,79 +6837,431 @@ dl.filter-bar.approval-inbox-detail-facts {
   text-align: right;
 }
 
-/*
- * ─────────────────────────────────────────────────────────────────────────────
- * P-02-06 생산LOT 완료 처리 — 화면 스펙 §3 의 도면을 옮긴다.
+/* ───────────────────────────────────────────────────────────────────────────
+ * P-04-04 재구성 신규 라벨 발행 (`screens/repack-label-issue`)
  *
- * ⚠ **이름을 슬라이스 전용(`pop-lotdone-`)으로 둔다.** `.pop-lot-*` 계열은 이미 임자가 있고
- * 이 파일 안에서 같은 이름이 두 번 정의된 자리가 실제로 있다 — 나중 정의가 앞 화면의 배치를
- * 조용히 덮는데, 테스트가 `css: false` 라 게이트가 잡지 못한다.
- * ─────────────────────────────────────────────────────────────────────────────
- */
+ * ⚠ 이름을 `pop-repack-` 으로 묶는다 — 이 파일은 접촉이 가장 몰리는 자리라 짧은 이름은
+ * 다른 POP 슬라이스와 겹친다(전례 실측).
+ * ─────────────────────────────────────────────────────────────────────────── */
 
-/*
- * 내용이 아니라 **폭이 열 너비를 정한다.** 34자리 번호가 표를 밀어 넓히면 오른쪽 끝의 선택
- * 버튼이 표 밖으로 나가 보이지 않는다 — 목록이 화면 안에 들어오는 것이 먼저다.
- */
-.pop-lotdone-table {
-  table-layout: fixed;
-  width: 100%;
-}
-
-/* 34자리 번호는 한 줄로 자르고 전체는 툴팁으로 남긴다 — 고른 뒤 오른쪽에서 온전히 다시 읽는다. */
-.pop-lotdone-no {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono, monospace);
-  font-variant-numeric: tabular-nums;
-}
-
-/* 상시 사실이라 배너를 쓰지 않는다 — 계획 슬롯 수를 상한으로 읽지 않게 하는 안내다. */
-.pop-lotdone-notice {
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-muted);
-}
-
-/*
- * 목표·누적·달성률·차이 — 이름과 값을 두 칸으로 세운다. 값이 길어도 이름 칸이 흔들리지 않아
- * 작업자가 같은 자리에서 같은 수를 읽는다.
- */
-.pop-lotdone-figures {
+/* 대상 포장의 사실 세 줄 — 번호·유형·내용물. 읽는 값이라 입력처럼 보이지 않게 둔다. */
+.pop-repack-facts {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: var(--space-2) var(--space-4);
   margin: 0 0 var(--space-3);
 }
 
-.pop-lotdone-figures dt {
+.pop-repack-facts > dt {
   color: var(--on-surface-muted);
 }
 
-.pop-lotdone-figures dd {
+.pop-repack-facts > dd {
   margin: 0;
-  font: var(--type-title-md);
-  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
-/* 달성률 숫자와 판정 배지는 한 덩이로 읽힌다 — 떨어뜨리면 96%가 어느 판정인지 눈이 왕복한다. */
-.pop-lotdone-rate {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-3);
+/* 발행 현황 한 줄 — 「사유가 필요한가」를 사용자가 먼저 읽는 자리다. */
+.pop-repack-standing {
+  margin: 0 0 var(--space-3);
+}
+
+.pop-repack-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+/* 칸 아래에 붙는 사유·오류. 배너로 올리지 않는다 — 고칠 자리가 바로 위다. */
+.pop-repack-note {
+  margin: 0;
+  color: var(--on-surface-muted);
 }
 
 /*
- * 두 결말을 **같은 크기로 나란히** 둔다(스펙 §3 · R71).
- *
- * ⛔ 하나를 작게 만들지 않는다 — 크기로 우열을 주면 「미달 마감」이 예외적 조작으로 보여
- * 미달인 채로 「완료 처리」를 찾게 된다. 되돌릴 수 없는 두 갈래는 대등하게 보여야 한다.
+ * 미리보기 이미지 — 서버가 그린 것을 그대로 건다.
+ * ⛔ 늘리지 않는다(`max-width`만 건다) — 라벨을 확대하면 실제 인쇄면과 달라 보인다.
  */
-.pop-lotdone-actions {
+.pop-repack-preview-image {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.pop-repack-preview-note {
+  margin: var(--space-3) 0 0;
+  color: var(--on-surface-muted);
+}
+
+/* 막힌 사유 — ⛔ 툴팁에만 두면 터치 패널에서 읽히지 않는다(독립 검증 실측). */
+.pop-repack-blocked {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+  color: var(--semantic-error);
+}
+
+/* 칸 아래의 오류 — 위 `.pop-repack-note`(도움말)와 색으로 갈린다. */
+.pop-repack-error {
+  margin: 0;
+  color: var(--semantic-error);
+}
+
+/*
+ * ⛔ `.pop-section > * > * + *`(구획 안 형제 간격 12)가 액션바의 둘째 버튼까지 때린다 —
+ * 실측으로 두 버튼의 윗변이 12 어긋났다. 이 띠는 `align-items: center` 로 세로를 잡으므로
+ * 형제 간격을 턴다.
+ */
+.pop-repack-actions > * + * {
+  margin-top: 0;
+}
+
+/*
+ * P-02-11 러닝체인지 부품 교체 — **슬라이스 전용 이름(`pop-rc-`)을 쓴다.**
+ *
+ * ⛔ `.pop-pane`·`.pop-screen` 같은 일반명은 이미 임자가 있다. 같은 이름을 다른 값으로 다시
+ * 정의하면 **나중 정의가 앞 화면의 배치를 통째로 덮는데**, 시험이 스타일을 읽지 않아
+ * (`vitest.config.ts`의 `css: false`) 게이트가 잡지 못한다.
+ *
+ * 셸·머리·2단 배치는 먼저 선 POP 화면들의 `.pop-shell`·`.pop-header`·`.pop-panes`를 그대로
+ * 쓴다 — **다시 정의하지 않고 쓰기만 한다.**
+ */
+.pop-rc-inputs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+
+/*
+ * 한 줄에 품목·LOT·수량이 선다. LOT 번호가 34자리까지 가므로(계약) 줄바꿈을 허용하되,
+ * 수량은 오른쪽 끝에 붙여 여러 줄을 위아래로 훑을 때 자릿수가 한 열에 서게 한다.
+ */
+.pop-rc-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.pop-rc-input-item {
+  font-weight: 600;
+}
+
+.pop-rc-input-lot {
+  color: var(--on-surface-muted);
+  word-break: break-all;
+}
+
+.pop-rc-input-qty {
+  margin-inline-start: auto;
+}
+
+/* 지금 물린 금형. 목록과 붙되 한 덩이로 읽히게 사이를 둔다. */
+.pop-rc-mold,
+.pop-rc-part {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.pop-rc-mold-label,
+.pop-rc-part-label {
+  font-weight: 600;
+  color: var(--on-surface-muted);
+}
+
+/*
+ * 라벨과 컨트롤을 위아래로 둔다 — `Select`은 `TextField`와 달리 라벨 층을 스스로 갖지 않아
+ * 외부 `<label htmlFor>`와 짝을 이룬다.
+ */
+.pop-rc-field {
+  display: grid;
+  gap: var(--space-1);
+  margin-block-start: var(--space-4);
+}
+
+.pop-rc-field > label {
+  font: var(--type-label-lg);
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 등록 버튼과 그 사유. **버튼과 사유가 늘 한 덩이로 붙어 있어야** 무엇이 왜 잠겼는지
+ * 시각적으로 끊기지 않는다.
+ */
+.pop-rc-submit {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  margin-block-start: var(--space-4);
+
+/*
+ * P-02-10 작업 중단(홀드) 등록 — 슬라이스 전용 이름을 쓴다.
+ *
+ * ⛔ **`.pop-pane`·`.pop-screen` 류의 일반명을 쓰지 않는다.** 이 파일은 POP 화면 전부가 함께
+ * 쓰고, 같은 이름을 다른 값으로 다시 선언하면 나중 정의가 앞 화면의 배치를 통째로 덮는다 —
+ * 시험이 `css: false` 라 게이트가 잡지 못한다.
+ *
+ * 셸·머리·표제·2단 배치는 이미 있는 것을 쓴다 — `.pop-shell`·`.pop-header`·`.pop-title`·
+ * `.pop-context`·`.pop-context-right`·`.pop-panes`·`.pane-title`·`.banner-slot`.
+ */
+
+/* 왼쪽 단은 두 카드(세션·이력)를 세로로 쌓는다 — `.pop-panes` 는 좌우만 가른다. */
+.pop-hold-column {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+}
+
+/*
+ * 세션 요약은 이름-값 쌍이라 정의 목록으로 그린다. 두 열로 두면 값이 이름 옆에 붙어
+ * 1024 폭에서 좌측 단(2fr)에 들어간다.
+ */
+.pop-hold-facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+
+.pop-hold-facts > dt {
+  color: var(--on-surface-muted);
+  font: var(--type-body-lg);
+}
+
+.pop-hold-facts > dd {
+  margin: 0;
+  font: var(--type-body-lg);
+}
+
+/* 이력은 줄 수가 적고 열이 셋뿐이라 표를 그대로 쓴다. */
+.pop-hold-history {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body-lg);
+}
+
+.pop-hold-history th,
+.pop-hold-history td {
+  padding: var(--space-2) var(--space-3);
+  text-align: start;
+  border-bottom: 1px solid var(--outline-variant);
+}
+
+.pop-hold-history th {
+  color: var(--on-surface-muted);
+  font: var(--type-label-lg);
+}
+
+/*
+ * 상시 서는 안내(임시 목록 · 기록 전용). ⚠ 오류가 아니므로 붉게 칠하지 않는다 — 붉으면
+ * 작업자가 「잘못됐다」로 읽고 멈춰 선다.
+ */
+.pop-hold-note {
+  margin: var(--space-2) 0 0;
+  color: var(--on-surface-muted);
+  font: var(--type-body-md);
+}
+
+/* 라디오 묶음의 이름 — `RadioGroup` 이 `aria-labelledby` 로 이 문단을 가리킨다. */
+.pop-hold-field-label {
+  margin: 0 0 var(--space-2);
+  font: var(--type-label-lg);
+}
+
+/* 중단·재개 버튼은 나란히 두고 터치 폭을 채운다 — 장갑 낀 손이 겨냥하는 자리다. */
+.pop-hold-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-4);
-  margin-block-start: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+/* 등록을 누른 뒤에만 서는 자리라 여백을 위쪽에만 준다. */
+.pop-hold-error {
+  margin: var(--space-2) 0 0;
+  color: var(--semantic-error-text);
+  font: var(--type-body-lg);
+}
+
+/*
+ * W-04-07 재작업/폐기 판정 의뢰 — 이 화면에만 적용되는 조합 배치.
+ * 좌측 목록 · 우측(선택한 대상 → ① 등록 → ② 의뢰 → ③ 결과)의 2단이다. W-03-10과 같은 골격이되
+ * 우측이 넷이라 세로로 쌓는다. DS 컴포넌트의 내부 클래스는 겨냥하지 않는다.
+ */
+.disposition-request-workspace {
+  display: grid;
+  grid-template-columns: minmax(30rem, 5fr) minmax(26rem, 4fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.disposition-request-side,
+.disposition-request-pane,
+.disposition-request-list,
+.disposition-request-target,
+.disposition-request-subsection,
+.disposition-request-form,
+.disposition-request-result,
+.disposition-request-progress {
+  min-width: 0;
+}
+
+.disposition-request-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.disposition-request-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.filter-bar.disposition-request-filter {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: 0;
+}
+
+.disposition-request-filter > *,
+.disposition-request-filter .field-cell {
+  min-width: 0;
+}
+
+.disposition-request-filter .field-cell {
+  align-items: stretch;
+}
+
+.disposition-request-filter-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+}
+
+.disposition-request-list-pane > .banner-slot,
+.disposition-request-subsection > .banner-slot {
+  margin-bottom: 0;
+}
+
+.disposition-request-list,
+.disposition-request-target,
+.disposition-request-subsection,
+.disposition-request-form,
+.disposition-request-result {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+}
+
+.disposition-request-table {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.disposition-request-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* 내용은 여러 줄이라 정의 목록의 한 칸이 아니라 줄 전체를 쓴다. */
+.disposition-request-description {
+  grid-column: 1 / -1;
+}
+
+/* 후속 버튼 넷은 각자 사유를 아래에 단다(규범 4) — 한 줄에 흐르게 두되 사유 폭은 셀이 가둔다. */
+.disposition-request-follow-ups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.disposition-request-follow-ups .field-cell {
+  max-width: 20rem;
+}
+
+@media (max-width: 1280px) {
+  .disposition-request-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── W-04-06 반품·클레임 입고 등록 ─────────────────────────────── */
+
+/* 2단 — 좌 원 출하 찾기 · 우 반품 입고. 좌 칸은 목업의 380px 감각을 최소 폭으로 남긴다. */
+.return-receipt-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 2fr) 3fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.return-receipt-form,
+.return-receipt-outcome {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.return-receipt-filters {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.return-receipt-direct {
+  margin-top: var(--space-3);
+}
+
+.return-receipt-lines .pane-subtitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.return-receipt-lot-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.return-receipt-effect {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.return-receipt-table-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (max-width: 1280px) {
+  .return-receipt-workspace {
+    grid-template-columns: 1fr;
+  }
 }

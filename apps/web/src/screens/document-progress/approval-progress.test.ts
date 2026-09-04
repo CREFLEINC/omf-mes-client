@@ -25,8 +25,8 @@ describe('자리표시 두 벌', () => {
     expect(APPROVED_APPROVAL_STATUS_CODES).toEqual([]);
   });
 
-  it('반려 결과 코드가 비어 있다', () => {
-    expect(REJECTION_DECISION_CODES).toEqual([]);
+  it('고정 OpenAPI의 반려 결과 코드를 쓴다', () => {
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
   });
 });
 
@@ -85,7 +85,7 @@ describe('승인 완료 판정 — C4-6', () => {
 
   it('자리표시에 든 코드만 승인이다', () => {
     expect(isApproved('SYN_APPROVED', ['SYN_APPROVED'])).toBe(true);
-    expect(isApproved('SYN_REJECTED', ['SYN_APPROVED'])).toBe(false);
+    expect(isApproved('REJECTED', ['SYN_APPROVED'])).toBe(false);
   });
 });
 
@@ -125,18 +125,15 @@ describe('toStepProgressViews', () => {
     ]);
   });
 
-  /* 결재 기록이 있으면 완료다. **반려 자리표시가 빈 동안 어떤 코드도 반려가 되지 않는다.** */
-  it('자리표시가 비어 있으면 결재된 단계가 완료로 그려진다', () => {
-    const [first] = toStepProgressViews([approvalStep({ decisionCode: 'SYN_REJECTED' })], []);
+  /* 빈 목록을 명시적으로 주입한 방어 경계에서는 결재된 단계를 완료로 그린다. */
+  it('반려 목록을 비워 주입하면 결재된 단계가 완료로 그려진다', () => {
+    const [first] = toStepProgressViews([approvalStep({ decisionCode: 'REJECTED' })], []);
 
     expect(first?.status).toBe('complete');
   });
 
   it('자리표시를 채우면 그 코드의 단계가 반려가 된다', () => {
-    const [first] = toStepProgressViews(
-      [approvalStep({ decisionCode: 'SYN_REJECTED' })],
-      ['SYN_REJECTED'],
-    );
+    const [first] = toStepProgressViews([approvalStep({ decisionCode: 'REJECTED' })], ['REJECTED']);
 
     expect(first?.status).toBe('rejected');
   });
@@ -172,13 +169,20 @@ describe('toStepProgressViews', () => {
     const [first] = toStepProgressViews([approvalStep()], []);
 
     expect(first?.waitingText).toBeNull();
-    expect(first?.decisionCode).toBe('SYN_DECISION_APPROVED');
+    expect(first?.decisionCode).toBe('APPROVED');
   });
 
   /* 빈 문자열은 값이 아니다 — 계약이 선택으로 둔 자리라 빈 글자가 스키마를 통과한다. */
   it('빈 의견·빈 결과 코드를 값으로 세우지 않는다', () => {
     const [first] = toStepProgressViews(
-      [approvalStep({ decisionCode: '', decisionAt: '', decisionComment: '' })],
+      [
+        approvalStep({
+          decisionCode:
+            '' as never /* 계약 밖 값 — 서버가 빈 판정을 내렸을 때의 화면 동작을 시험한다 */,
+          decisionAt: '',
+          decisionComment: '',
+        }),
+      ],
       [],
     );
 
@@ -199,7 +203,7 @@ describe('toRequestProgressView', () => {
     const view = toRequestProgressView(approvalRequestDetail(), []);
 
     expect(view.requestNo).toBe('SYN-AP-2026-0001');
-    expect(view.approvalTypeCode).toBe('SYN_APPROVAL_TYPE_CANCEL');
+    expect(view.approvalTypeCode).toBe('GOODS_RECEIPT_CANCEL');
     expect(view.statusCode).toBe('SYN_APPROVAL_IN_PROGRESS');
     expect(view.requesterLabel).toBe('이상신');
     expect(view.requestedAtText).toBe('2026-08-06 14:20');
@@ -261,7 +265,7 @@ describe('toRequestProgressView', () => {
   it('반려 자리표시를 채워도 승인 판정은 열리지 않는다', () => {
     const view = toRequestProgressView(
       approvalRequestDetail({ statusCode: 'SYN_APPROVED' }),
-      ['SYN_REJECTED'],
+      ['REJECTED'],
       [],
     );
 

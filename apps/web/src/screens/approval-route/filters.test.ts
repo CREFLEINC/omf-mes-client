@@ -33,8 +33,8 @@ const filters = (patch: Partial<RouteFilters> = {}): RouteFilters => ({
 
 describe('readFilters', () => {
   it('네 조건을 주소에서 읽는다', () => {
-    expect(readFilters(params('?ty=SAMPLE-TYPE-A&bu=9101&inactive=1&q=SAMPLE'))).toEqual({
-      approvalTypeCode: 'SAMPLE-TYPE-A',
+    expect(readFilters(params('?ty=GOODS_ISSUE_DISPOSAL&bu=9101&inactive=1&q=SAMPLE'))).toEqual({
+      approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
       businessUnitId: '9101',
       includeInactive: true,
       q: 'SAMPLE',
@@ -92,11 +92,15 @@ describe('readSelectedRouteId · isCreating', () => {
 describe('toSearchParams', () => {
   it('걸린 조건만 주소에 담는다', () => {
     const next = toSearchParams(
-      filters({ approvalTypeCode: 'SAMPLE-TYPE-A', businessUnitId: '9101', includeInactive: true }),
+      filters({
+        approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
+        businessUnitId: '9101',
+        includeInactive: true,
+      }),
       1,
     );
 
-    expect(next.get('ty')).toBe('SAMPLE-TYPE-A');
+    expect(next.get('ty')).toBe('GOODS_ISSUE_DISPOSAL');
     expect(next.get('bu')).toBe('9101');
     expect(next.get('inactive')).toBe('1');
     expect(next.has('q')).toBe(false);
@@ -240,7 +244,7 @@ describe('toFilterChips', () => {
   it('걸린 조건마다 칩 하나를 낸다', () => {
     const chips = toFilterChips(
       filters({
-        approvalTypeCode: 'SAMPLE-TYPE-A',
+        approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
         businessUnitId: '9101',
         includeInactive: true,
         q: 'SAMPLE',

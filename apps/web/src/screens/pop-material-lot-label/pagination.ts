@@ -10,7 +10,7 @@ import type { PageMeta } from './types';
  *
  * **이 화면 슬라이스가 소유한다** — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  * 디자인 시스템에 페이지 이동 부품이 없어 조합으로 만드는 자리이고, 조합물은 쓰는 화면이
- * 소유한다(루트 CLAUDE.md 갭 분류 `c`).
+ * 소유한다(V3 워크플로 디자인 시스템 규칙).
  */
 
 const t = messages.popMaterialLotLabel.pageNav;

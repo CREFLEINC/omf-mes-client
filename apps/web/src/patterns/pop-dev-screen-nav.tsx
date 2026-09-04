@@ -82,6 +82,15 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
+  /*
+   * ⚠ **씨앗에 출하가 없다** — 이 번호는 씨앗이 아니라 계약 예시 서버가 받아 답한다(씨앗에
+   * 경로가 아예 없으면 그리로 넘어간다). 씨앗이 출하를 담게 되면 그때 실제 번호로 바꾼다.
+   */
+  {
+    path: '/pop/shipping-label',
+    label: 'P-04-02 납품·포장 라벨 출력',
+    query: '?shipmentId=14001&workerNo=100029',
+  },
   { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
   {
     path: '/pop/tool-usage',
@@ -95,8 +104,31 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     /* 씨앗에서 완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 포장 대상이 비어 뜬다. */
     query: '?workOrderId=11001&workerNo=100029',
   },
-  /* 출하는 씨앗에 없어 진입값을 적지 않는다 — 화면은 「출하를 모른다」로 뜬다. */
-  { path: '/pop/shipping-label', label: 'P-04-02 납품·포장 라벨 출력' },
+  {
+    path: '/pop/repack-label-issue',
+    label: 'P-04-04 재구성 라벨 발행',
+    /* P-02-09 와 같은 씨앗 포장을 쓴다 — 씨앗에 실제로 있는 번호여야 한다(위 주석). */
+    query: '?handlingUnitId=13001&workerNo=100029',
+  },
+  /*
+   * ⚠ 이 화면은 사번을 주소로 받지 않는다 — 단말·공정·사번은 셸이 채운다. 개발 셸이 그
+   * 자리를 합성값으로 채우므로(`app/pop-main.tsx`) 화면은 서고, 등록 가부는 그 단말·공정의
+   * 게이팅 조회 결과가 정한다(F-6).
+   */
+  {
+    path: '/pop/running-change',
+    label: 'P-02-11 러닝체인지 부품 교체',
+    query: '?workOrderId=11002',
+  },
+  /*
+   * ⚠ 이 화면도 진입 컨텍스트를 주소로 받는다(`?workOrderId=`) — 작업지시 선택이 셸에 서기
+   * 전까지의 임시 경로다. 사번은 셸·`worker-session` 이 비었을 때만 주소를 본다.
+   */
+  {
+    path: '/pop/work-hold',
+    label: 'P-02-10 작업 중단(홀드) 등록',
+    query: '?workOrderId=11002',
+  },
   {
     path: '/pop/lot-complete',
     label: 'P-02-06 생산LOT 완료 처리',

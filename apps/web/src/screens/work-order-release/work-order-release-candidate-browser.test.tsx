@@ -32,7 +32,7 @@ const item = (itemId: number) => ({
     itemName: `Synthetic Item ${String(itemId)}`,
     itemTypeCode: 'MATERIAL',
     baseUomId: 920001,
-    lotControlTypeCode: 'NONE',
+    lotControlled: false,
     serialControlTypeCode: 'NONE',
     inspectionRequired: false,
     fifoPolicyCode: 'FIFO',

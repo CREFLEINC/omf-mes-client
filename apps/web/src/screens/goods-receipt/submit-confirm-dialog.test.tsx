@@ -16,7 +16,7 @@ const SUMMARY: SubmitSummary = {
   warehouseName: 'SAMPLE-WH-01 · 합성 창고 가',
   locationName: 'SAMPLE-LOC-A1 · 합성 열 가1',
   receiptTypeCode: 'SAMPLE_RECEIPT_TYPE_A',
-  sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   qualityStatusCode: 'SAMPLE_QUALITY_A',
   inventoryStatusCode: 'SAMPLE_INVENTORY_A',
   reasonCode: '',

@@ -10,7 +10,7 @@ const t = messages.goodsReceipt;
 const RESULT: GoodsReceiptResultView = {
   goodsReceiptNo: 'GR-2026-800001',
   statusCode: 'SAMPLE_GR_STATUS_A',
-  sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   erpMessageQueued: true,
   lineCount: 1,
   ledgerLineCount: 1,
@@ -167,7 +167,7 @@ describe('ResultPane — 원천 문서', () => {
     renderPane();
 
     expect(
-      screen.getByText(t.result.sourceDocumentPair('SAMPLE_SOURCE_TYPE_A', 'IR-2026-900001')),
+      screen.getByText(t.result.sourceDocumentPair('INBOUND_RECEIPT', 'IR-2026-900001')),
     ).toBeInTheDocument();
   });
 
