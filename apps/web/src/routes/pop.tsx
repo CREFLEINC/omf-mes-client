@@ -2,6 +2,7 @@ import type { RouteObject } from 'react-router';
 
 import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
+import { GoodsIssueQrScreen } from '../screens/goods-issue-qr/screen';
 import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
@@ -14,6 +15,7 @@ import { ProductionResultScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { RunningChangeScreen } from '../screens/running-change/screen';
 import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';
+import { PackingResultScreen } from '../screens/packing-result/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
@@ -139,6 +141,18 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/tag-issue', element: <IdentificationTagIssueScreen /> },
   /*
+   * P-01-02 — 창고 스테이션 모드의 화면이라 작업지시가 아니라 **출고 전표**에 매인다.
+   *
+   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?goodsIssueId=`·`?workerNo=`) — 전표를 고르는
+   * 자리가 아직 없고, 사번은 `P-CO-01` 이 `patterns/worker-session` 에 두지만 **그 자리를 읽는
+   * 화면은 아직 없다**(`P-02-05` 가 같은 사정을 적어 두었다). 그때 `entry-context.ts` 하나가
+   * 바뀐다.
+   *
+   * ⚠ **단말 권한으로 이 주소를 막지 않는다**(통지 #535). 창고 POP 은 단말 기능 구성의 적용
+   * 범위 밖이고 집행은 서버의 403 이다.
+   */
+  { path: '/pop/goods-issue-qr', element: <GoodsIssueQrScreen /> },
+  /*
    * P-02-01 — **POP 태스크의 시작점이다.** 사번을 받고 이 설비에 배포된 작업지시를 골라
    * 세션을 연다. 다른 POP 화면(`/pop/material-input` 등)이 그 세션 위에서 돈다.
    *
@@ -250,4 +264,12 @@ export const popRoutes: RouteObject[] = [
    * `pop-identity` → `P-CO-01` 의 `worker-session` 순으로 읽고, 둘 다 비면 주소를 본다.
    */
   { path: '/pop/work-hold', element: <WorkHoldRegisterScreen /> },
+  /*
+   * P-04-01 — **매칭 스캔 화면**이라 스캐너를 든 손이 화면 앞에 선다. 관리웹 사이드바에
+   * 올리지 않는 이유는 앞의 둘과 같다.
+   *
+   * ⚠ **진입에 질의 문자열이 없다** — 이 화면은 납품라벨 스캔으로 스스로 출하를 정한다.
+   * 앞 화면이 무엇을 실어 주지 않아도 서고, 그래서 독립 진입이다(스펙 §1 「범위」).
+   */
+  { path: '/pop/packing', element: <PackingResultScreen /> },
 ];

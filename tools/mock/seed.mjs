@@ -835,7 +835,8 @@ export const createSeed = (now = new Date()) => {
     uomId: 1001,
     oqcPassed: true,
     ...allocation,
-    packedQty: allocation.allocatedQty,
+    /* ⚠ 기본은 «아직 안 담았다»(0)다 — 전량 담긴 값으로 두면 P-04-01 이 늘 「잔여 없음」이 된다. */
+    packedQty: allocation.packedQty ?? 0,
   });
   const shipments = [
     {
@@ -870,6 +871,8 @@ export const createSeed = (now = new Date()) => {
               lotId: 8202,
               lotNo: 'FLOT-2026-0305',
               allocatedQty: 120,
+              /* 일부만 담긴 배분 — 잔여 계산이 도는지 손으로 볼 수 있게 한 자리다. */
+              packedQty: 60,
             }),
           ],
         },
