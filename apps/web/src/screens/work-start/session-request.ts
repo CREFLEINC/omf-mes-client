@@ -1,4 +1,4 @@
-import type { WorkOrder, WorkSessionCreate } from './types';
+import type { ControlOverride, WorkOrder, WorkSessionCreate } from './types';
 
 /**
  * 작업 시작 요청 본문을 만드는 **유일한 자리**.
@@ -21,6 +21,10 @@ import type { WorkOrder, WorkSessionCreate } from './types';
  *
  * ⛔ **없는 값을 0 이나 빈 값으로 채우지 않는다** — 키 자체를 싣지 않는다. 채워 보내면
  * 「배정이 없다」가 「0번 설비다」로 기록에 남는다.
+ *
+ * ⭐ **우회는 세션 본문에도 함께 실린다**(`P-02-02` §5-8 · 계약 `ControlOverride`). 서버가
+ * 세션과 「통제 우회」 사건을 한 트랜잭션으로 만든다 — 별도 액션을 두지 않는 이유는
+ * 「우회만 하고 세션을 안 여는」 상태를 없애기 위함이다. ⛔ 우회가 아니면 키를 싣지 않는다.
  */
 export interface SessionRequestInput {
   workOrder: WorkOrder;
@@ -28,15 +32,24 @@ export interface SessionRequestInput {
   equipmentId: number | null;
   /** 단말 시각. `terminal-clock.ts` 가 만든다. */
   startedAt: string;
+  /**
+   * 작업 전 점검 통제를 우회하고 시작하는가. 우회가 아니면 `null` — **키를 싣지 않는다.**
+   *
+   * ⛔ 화면이 이 값을 «정하지» 않는다. 게이트(`P-02-02`)가 긴급 W/O 와 판정을 보고 정한
+   * 결과만 여기로 온다.
+   */
+  controlOverride?: ControlOverride | null;
 }
 
 export const toSessionRequest = ({
   workOrder,
   equipmentId,
   startedAt,
+  controlOverride = null,
 }: SessionRequestInput): WorkSessionCreate => ({
   workOrderId: workOrder.workOrderId,
   startedAt,
   ...(equipmentId === null ? {} : { equipmentId }),
   ...(workOrder.plannedMoldId === undefined ? {} : { moldId: workOrder.plannedMoldId }),
+  ...(controlOverride === null ? {} : { controlOverride }),
 });

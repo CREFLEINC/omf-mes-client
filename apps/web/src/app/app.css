@@ -7653,3 +7653,107 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-4);
   margin-block-start: var(--space-3);
 }
+
+/* ---------------------------------------------------------------------------
+ * P-02-02 작업 전 점검 이력 확인·통제 — `P-02-01` 위에 덮이는 게이트.
+ *
+ * ⚠ **독립 화면이 아니다.** 작업 시작을 누르면 이 판이 «위에» 서고, 통과면 아예 그려지지
+ * 않는다(스펙 §9-3). 그래서 화면 전환이 아니라 덮개(`position: fixed`)로 세운다 — 전환으로
+ * 만들면 통과했을 때 빈 화면이 한 번 스친다.
+ *
+ * 세로 예산(§4-1) — 헤더 64 · 본문 616(① 152 + ② 200 + ③ 144 + ④ 여백 88) · 액션바 88.
+ * ④ 여백은 낭비가 아니라 **문구가 가장 길 때를 위한 자리**다(E-4 반대 형태).
+ *
+ * ⛔ 클래스 이름을 `precheck-gate-` 로 시작한다 — POP 화면들이 같은 파일에 살아 일반명을
+ * 쓰면 다른 화면과 조용히 겹친다.
+ * ------------------------------------------------------------------------ */
+
+.precheck-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  /*
+   * 머리 · 판정 · 이력 · 안내 · 액션바를 세로로 세운다.
+   *
+   * ⛔ **격자(`grid`)를 쓰지 않는다.** `.pop-shell` 이 `align-content: start` 로 남는 세로를
+   *    행에 나누지 않아, 늘어나야 할 구획이 **높이 0 으로 접히고 표가 통째로 사라졌다**(실측).
+   *
+   * 세로 예산(§4-1)은 1024×768 기준이다 — 머리 64 · ① 152 · ② 200 · ③ 144 · ④ 여백 88 ·
+   * 액션바 88. 그보다 낮은 창에서는 **이력만 줄어들고**, ⛔ 액션바는 절대 밀려나지 않는다
+   * (실측 — 밀려나면 [ 돌아가기 ]·[ 다시 확인 ] 을 누를 수 없다).
+   */
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+/* ① 판정 — 무엇이 막았는가. 가장 먼저 읽히도록 위에 둔다. */
+.precheck-gate-verdict {
+  flex: 0 0 auto;
+  min-height: 152px;
+  display: grid;
+  align-content: center;
+}
+
+/* 배너 안의 부연은 줄을 바꿔 세운다 — 한 줄로 이으면 표제가 묻힌다. */
+.precheck-gate-detail {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+/*
+ * ② 이력 — 남는 세로를 받는다. ⛔ **없어지지는 않는다**: 창이 낮을 때 이 구획이 0 으로
+ * 접히면 «무엇이 걸렸는지»가 화면에서 사라진다(실측). 바닥을 두고, 모자라면 여기서 스크롤한다.
+ */
+.precheck-gate-history {
+  flex: 1 1 auto;
+  min-height: 96px;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: var(--space-2);
+}
+
+.precheck-gate-section-title {
+  margin: 0;
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+.precheck-gate-scope,
+.precheck-gate-empty,
+.precheck-gate-note {
+  margin: 0;
+}
+
+/* 점검 이력 표 — 두 행뿐이라 zebra 를 끄고 밀도만 좁힌다(스펙 §7 `Table`). */
+
+/* ③ 안내 — 정해진 안내문이라 자리가 모자라면 여기가 먼저 줄어든다(이력이 더 중요하다). */
+.precheck-gate-guide {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+}
+
+.precheck-gate-guide p {
+  margin: 0;
+}
+
+/*
+ * 액션바 — [ 우회하고 시작 ] 이 오른쪽 끝에 선다. 되돌릴 수 없는 조작이라 [ 다시 확인 ] 과
+ * 붙여 두면 장갑 낀 손이 옆 것을 누른다.
+ */
+/* ④ 여백은 여기서 생긴다 — 남는 세로를 액션바 «위»에 둔다(§4-1). */
+.precheck-gate-actions {
+  flex: 0 0 auto;
+  margin-top: auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+  min-height: 88px;
+  align-items: center;
+}
