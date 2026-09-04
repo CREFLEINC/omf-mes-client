@@ -5,7 +5,7 @@ import {
   canConfirm,
   completedQtyOf,
   fromWorkOrderIdOf,
-  isUnreleased,
+  isNotStarted,
   lotProblemOf,
   qtyProblemOf,
   toBody,
@@ -85,10 +85,27 @@ describe('출발 W/O', () => {
 });
 
 describe('다음 공정', () => {
-  /* 배포 시각으로 가른다. 상태 코드 문자열은 아직 확정되지 않았다. */
-  it('배포 시각이 없으면 아직 배포되지 않은 것이다', () => {
-    expect(isUnreleased(workOrder({ releasedAt: undefined }))).toBe(true);
-    expect(isUnreleased(workOrder())).toBe(false);
+  /* 배포 시각이 있는데도 진행 전인 자리다. 배포 시각으로 재면 통째로 빠진다. */
+  it('배포만 된 공정은 배포 시각이 있어도 아직 시작되지 않은 것이다', () => {
+    expect(
+      isNotStarted(workOrder({ statusCode: 'RELEASED', releasedAt: '2026-08-10T09:00:00+09:00' })),
+    ).toBe(true);
+  });
+
+  it('편성과 확정도 아직 시작되지 않은 것이다', () => {
+    expect(isNotStarted(workOrder({ statusCode: 'PLANNED' }))).toBe(true);
+    expect(isNotStarted(workOrder({ statusCode: 'CONFIRMED' }))).toBe(true);
+  });
+
+  it('진행과 완료와 마감은 시작된 것이다', () => {
+    expect(isNotStarted(workOrder({ statusCode: 'IN_PROGRESS' }))).toBe(false);
+    expect(isNotStarted(workOrder({ statusCode: 'COMPLETED' }))).toBe(false);
+    expect(isNotStarted(workOrder({ statusCode: 'CLOSED' }))).toBe(false);
+  });
+
+  /* 중단은 시작한 뒤 멈춘 것이라 미시작이 아니다. */
+  it('중단은 시작된 것으로 본다', () => {
+    expect(isNotStarted(workOrder({ statusCode: 'SUSPENDED' }))).toBe(false);
   });
 });
 

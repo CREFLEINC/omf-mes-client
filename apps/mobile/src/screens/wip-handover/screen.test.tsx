@@ -270,10 +270,10 @@ describe('WIP 공정 이동 화면', () => {
     ).toBeTruthy();
   });
 
-  /* 배포 시각으로 가른다. 막지 않고 경고만 한다. */
-  it('아직 배포되지 않은 공정을 고르면 경고하되 막지 않는다', async () => {
+  /* 배포 시각이 있는데도 진행 전인 자리다. 막지 않고 경고만 한다. */
+  it('배포만 되고 시작 전인 공정을 고르면 경고하되 막지 않는다', async () => {
     const user = userEvent.setup();
-    mount({ successors: [workOrder({ releasedAt: undefined })] });
+    mount({ successors: [workOrder({ statusCode: 'RELEASED' })] });
     await screen.findByLabelText('LOT 스캔');
 
     scan(LOT_NO);
@@ -284,9 +284,23 @@ describe('WIP 공정 이동 화면', () => {
     await user.type(screen.getByLabelText('인계 수량'), '100');
 
     expect(
-      await screen.findByText('아직 배포되지 않은 공정입니다. 미리 보낼 수 있습니다.'),
+      await screen.findByText('아직 시작되지 않은 공정입니다. 미리 보낼 수 있습니다.'),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: '인계 확정' })).not.toBeDisabled();
+  });
+
+  it('이미 진행 중인 공정에는 경고하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ successors: [workOrder({ statusCode: 'IN_PROGRESS' })] });
+    await screen.findByLabelText('LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+
+    expect(screen.queryByText('아직 시작되지 않은 공정입니다. 미리 보낼 수 있습니다.')).toBeNull();
   });
 
   it('완료 수량을 넘으면 막는다', async () => {
