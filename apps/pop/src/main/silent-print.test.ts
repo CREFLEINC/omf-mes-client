@@ -101,7 +101,7 @@ describe('무음 인쇄', () => {
     const { deps, page } = fakeDeps();
     await createSilentPrinter(deps).print('ZD421', label);
     expect(page.load).toHaveBeenCalledWith('file:///tmp/job.png');
-    expect(page.print).toHaveBeenCalledWith('ZD421', 'LOT-0001', undefined);
+    expect(page.print).toHaveBeenCalledWith('ZD421', 'LOT-0001');
   });
 
   // ⚠ 키오스크는 재시작 없이 며칠씩 돈다. 실패마다 창·파일이 남으면 그 단말이 느려진다.
@@ -153,18 +153,6 @@ describe('무음 인쇄', () => {
     await expect(
       createSilentPrinter({ ...deps, timeoutMs: 20 }).print('ZD421', label),
     ).rejects.toThrow(PrintTimeoutError);
-  });
-
-  // ⚠ 인쇄면 뜨기는 **진단용**이다 — 자리를 준 회차에만 넘어가고, 인쇄 결과를 좌우하지 않는다.
-  it('인쇄면을 뜰 자리를 주면 그 자리를 함께 넘긴다', async () => {
-    const { deps, page } = fakeDeps();
-
-    await createSilentPrinter({ ...deps, surfacePathFor: () => '/tmp/surface.pdf' }).print(
-      'ZD421',
-      label,
-    );
-
-    expect(page.print).toHaveBeenCalledWith('ZD421', 'LOT-0001', '/tmp/surface.pdf');
   });
 
   it('임시 파일 정리가 실패해도 인쇄 성공을 뒤집지 않는다 — 종이는 이미 나왔다', async () => {
