@@ -7574,7 +7574,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   inset: 0;
   z-index: 20;
   grid-template-columns: 1fr;
-  grid-template-rows: auto auto auto 1fr auto;
+  /*
+   * 머리 · 판정 · 이력(늘어나는 자리) · 안내 · 액션바.
+   *
+   * ⛔ **액션바가 잘리지 않게 한다.** 세로 예산은 1024×768 단말을 기준으로 잡았는데, 그보다
+   *    낮은 창에서 열면 88px 액션바가 화면 밖으로 밀려 **누를 수 없는 버튼**이 된다(실측 —
+   *    712px 창에서 [ 돌아가기 ]·[ 다시 확인 ] 이 사라졌다). 남는 세로를 이력 구획이 갖고,
+   *    모자라면 그 구획만 스크롤한다.
+   */
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   background: var(--surface);
   overflow: hidden;
 }
@@ -7593,10 +7601,12 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 .precheck-gate-history {
-  min-height: 200px;
+  min-height: 0;
   display: grid;
   align-content: start;
   gap: var(--space-2);
+  /* 스크롤 구획은 여기 하나다 — 여럿이면 무엇이 더 있는지 읽는 사람이 셀 수 없다. */
+  overflow-y: auto;
 }
 
 .precheck-gate-section-title {
