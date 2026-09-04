@@ -3,10 +3,7 @@ import type { RouteObject } from 'react-router';
 import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { GoodsIssueQrScreen } from '../screens/goods-issue-qr/screen';
-<<<<<<< HEAD
 import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
-=======
->>>>>>> origin/feat/140-pop-shipment-qr-issue
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
 import { PackingWorkScreen } from '../screens/packing-work/screen';
@@ -100,7 +97,6 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/emergency-work-orders', element: <EmergencyWorkOrderFieldScreen /> },
   /*
-<<<<<<< HEAD
    * P-05-02 — 비가동은 **설비에 붙지 작업에 붙지 않는다.** 그래서 진입 컨텍스트가 앞의
    * 것들과 다르다: 작업지시가 아니라 설비를 주소로 받는다(`?equipmentId=`).
    *
@@ -150,20 +146,11 @@ export const popRoutes: RouteObject[] = [
    * 자리가 아직 없고, 사번은 `P-CO-01` 이 `patterns/worker-session` 에 두지만 **그 자리를 읽는
    * 화면은 아직 없다**(`P-02-05` 가 같은 사정을 적어 두었다). 그때 `entry-context.ts` 하나가
    * 바뀐다.
-=======
-   * P-01-02 — 창고 스테이션 모드의 화면이라 작업지시가 아니라 **출고 전표**에 매인다.
-   *
-   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?goodsIssueId=`·`?workerNo=`) — 전표를 고르는
-   * 자리가 아직 없고, 사번 인증(`P-CO-01`)은 섰지만 **고른 사번을 다른 화면에 건네는 자리가
-   * 아직 없다**(`/pop/worker-assignment` 는 자기 화면 안에서 끝난다). 그 통로가 서면
-   * `entry-context.ts` 하나가 바뀐다.
->>>>>>> origin/feat/140-pop-shipment-qr-issue
    *
    * ⚠ **단말 권한으로 이 주소를 막지 않는다**(통지 #535). 창고 POP 은 단말 기능 구성의 적용
    * 범위 밖이고 집행은 서버의 403 이다.
    */
   { path: '/pop/goods-issue-qr', element: <GoodsIssueQrScreen /> },
-<<<<<<< HEAD
   /*
    * P-02-01 — **POP 태스크의 시작점이다.** 사번을 받고 이 설비에 배포된 작업지시를 골라
    * 세션을 연다. 다른 POP 화면(`/pop/material-input` 등)이 그 세션 위에서 돈다.
@@ -276,6 +263,4 @@ export const popRoutes: RouteObject[] = [
    * `pop-identity` → `P-CO-01` 의 `worker-session` 순으로 읽고, 둘 다 비면 주소를 본다.
    */
   { path: '/pop/work-hold', element: <WorkHoldRegisterScreen /> },
-=======
->>>>>>> origin/feat/140-pop-shipment-qr-issue
 ];

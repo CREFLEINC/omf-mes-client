@@ -3,13 +3,8 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import {
-<<<<<<< HEAD
   DOCUMENT_TYPE_CODE,
   LINE_TARGET_TYPE_CODE,
-=======
-  PLACEHOLDER_DOCUMENT_TYPE_CODE,
-  PLACEHOLDER_LINE_TARGET_TYPE_CODE,
->>>>>>> origin/feat/140-pop-shipment-qr-issue
   type DocumentIssueSummary,
   type GoodsIssue,
   type GoodsIssueLine,
@@ -105,15 +100,9 @@ export const useDocumentIssueSummary = (
         client.GET('/app/document-issues/summary', {
           params: {
             query: {
-<<<<<<< HEAD
               targetTypeCode: LINE_TARGET_TYPE_CODE,
               targetIds: sorted,
               documentTypeCode: DOCUMENT_TYPE_CODE,
-=======
-              targetTypeCode: PLACEHOLDER_LINE_TARGET_TYPE_CODE,
-              targetIds: sorted,
-              documentTypeCode: PLACEHOLDER_DOCUMENT_TYPE_CODE,
->>>>>>> origin/feat/140-pop-shipment-qr-issue
             },
           },
         }),
@@ -139,11 +128,7 @@ export const usePrinters = (): UseQueryResult<Printer[]> => {
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/app/printers', {
-<<<<<<< HEAD
           params: { query: { documentTypeCode: DOCUMENT_TYPE_CODE } },
-=======
-          params: { query: { documentTypeCode: PLACEHOLDER_DOCUMENT_TYPE_CODE } },
->>>>>>> origin/feat/140-pop-shipment-qr-issue
         }),
       );
 
