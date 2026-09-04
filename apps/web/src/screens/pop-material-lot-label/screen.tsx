@@ -1,4 +1,4 @@
-import { AlertBanner, Button, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -100,7 +100,12 @@ export const PopMaterialLotLabelScreen = () => {
      */
     <main className="pop-lot-screen pop-ui" aria-label={t.title}>
       <header className="pop-lot-head">
-        <PageHeader title={t.title} size="compact" />
+        {/*
+         * 표제는 **다른 POP 화면과 같은 어휘로 쓴다**(`pop-title`). DS `PageHeader` 로 세우면
+         * 규격이 겨냥하는 자리(머리줄의 첫 자식)가 그 부품의 래퍼가 되어 표제 크기가 이
+         * 화면에만 24px 로 남는다(실측 — 다른 화면은 26px).
+         */}
+        <h1 className="pop-title">{t.title}</h1>
         <PrinterStatusIndicator
           printer={headPrinter}
           hasChoice={(printers.data ?? []).length > 1}

@@ -6699,13 +6699,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-3);
 }
 
-.pop-slabel-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
 /*
  * ① 라벨 종류 구획 — 스펙 §3 의 72px 한 칸이다. 위아래 숨을 주지 않는다(슬랙 0).
  */

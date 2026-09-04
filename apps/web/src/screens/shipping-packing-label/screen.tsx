@@ -1,4 +1,4 @@
-import { AlertBanner, Button, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 
@@ -173,10 +173,16 @@ export const ShippingPackingLabelScreen = () => {
      * `main` 을 세워 주는 바깥이 없다 — 먼저 선 POP 화면들과 같은 형태다.
      */
     <main className="pop-slabel-screen pop-ui" aria-label={t.title}>
-      <header className="pop-slabel-head">
-        <PageHeader title={t.title} size="compact" />
+      {/*
+       * 머리줄은 **다른 POP 화면과 같은 어휘로 쓴다**(`pop-header` · `pop-title` ·
+       * `pop-context-right`). 이 화면만 자기 이름(`pop-slabel-head`)과 DS `PageHeader` 로
+       * 세웠더니 규격(`app/pop.css` 「머리줄」)이 이 화면에만 걸리지 않아, 머리줄이 358px 로
+       * 늘고 배경도 구분선도 없이 떴다(실측 — 다른 화면은 72px).
+       */}
+      <header className="pop-header">
+        <h1 className="pop-title">{t.title}</h1>
         {shipmentId === null ? null : (
-          <p className="field-note">
+          <p className="pop-context pop-context-right">
             {shipment.isPending
               ? t.shipment.loading
               : shipment.isError || shipment.data === undefined
