@@ -13,7 +13,8 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 
-import { makeLabelPng } from './label-png.mjs';
+import { toPng } from './label-canvas.mjs';
+import { renderLotLabel, renderShippingLabel } from './label-layout.mjs';
 import { networkInterfaces } from 'node:os';
 
 import { writeMergedSpec } from '../merge-spec.mjs';
@@ -351,13 +352,87 @@ on('POST', '/app/document-issues', (_params, _query, body) => {
 });
 
 /**
- * 그려 준 출력물. **진짜 PNG 바이트를 돌려준다** — 종전의 JSON 응답으로는 POP 셸의 형식
- * 시그니처 검사를 통과하지 못해 실기 인쇄 확인을 시작할 수 없었다(#798).
+ * 그려 준 출력물 — **라벨 사양서의 서식대로 그린다.**
  *
- * ⛔ 라벨 서식이 아니다. 서식은 서버가 그린다(설계 결정 18) — 여기 그림은 경로 확인용이다.
- * ⚠ `format=pdf`(성적서·보고서)는 씨앗이 만들지 않는다. 없는 것을 png 로 대신 주면 셸이
+ * ⛔ **이것은 서버의 일을 대신하는 것이다.** 실제 라벨은 서버가 그리고(설계 결정 18) 화면과
+ *    셸은 받은 바이트를 그대로 넘긴다. 씨앗이 그리는 이유는 그 서버가 아직 없어 **실기 인쇄를
+ *    확인할 방법이 없기 때문**이며, 서버가 그리기 시작하면 이 부분은 걷힌다.
+ *
+ * ⚠ **2D 바코드는 읽히지 않는다.** 자리와 크기만 맞춘 모양이다(`label-canvas` 참조).
+ * ⚠ `format=pdf`(성적서·보고서)는 씨앗이 만들지 않는다 — 없는 것을 png 로 대신 주면 셸이
  *   이름과 내용이 어긋난 파일을 만든다.
  */
+
+/** 사양의 날짜 형식 — `YY-MM-DD HH:mm`, 24시간제. */
+const labelDateTime = (value) => {
+  const at = value === undefined ? new Date() : new Date(value);
+  const pad = (part) => String(part).padStart(2, '0');
+
+  return (
+    `${pad(at.getFullYear() % 100)}-${pad(at.getMonth() + 1)}-${pad(at.getDate())} ` +
+    `${pad(at.getHours())}:${pad(at.getMinutes())}`
+  );
+};
+
+/** 라벨은 영문·숫자만 쓴다(사양 §2-2). 한글이 섞이면 대신할 값을 쓴다. */
+const ascii = (value, fallback) => {
+  const text = String(value ?? '').trim();
+  return text !== '' && /^[\x20-\x7e]+$/.test(text) ? text : fallback;
+};
+
+const itemOf = (itemId) => state.items.find((row) => row.itemId === itemId);
+const uomOf = (uomId) => state.uoms.find((row) => row.uomId === uomId);
+
+/** 출하용 100×60mm 라벨에 실을 값. 씨앗에 없는 자리는 사양 예시의 자리표시를 쓴다. */
+const shippingValues = (issue) => {
+  const unit = state.handlingUnits.find((row) => row.handlingUnitId === issue.targetId);
+  const contents = state.handlingUnitContents.filter(
+    (row) => row.handlingUnitId === issue.targetId,
+  );
+  const first = contents[0];
+  const item = first === undefined ? undefined : itemOf(first.itemId);
+  const lot = state.lots.find((row) => row.lotId === first?.lotId);
+  const quantity = contents.reduce((total, row) => total + Number(row.qty ?? 0), 0);
+
+  return {
+    type: 'SHIP',
+    status: ascii(unit?.statusCode, 'RELEASED'),
+    /* 납품처는 씨앗에 출하가 없어 채울 자리가 없다 — 사양 예시 값을 그대로 둔다. */
+    shipTo: 'ABC VIETNAM CO., LTD.',
+    customerPartNo: ascii(item?.customerItemCode, ascii(item?.itemCode, 'SDI-552013')),
+    partNo: ascii(item?.itemCode, 'FG-02031'),
+    partName: ascii(item?.labelName, ascii(item?.itemCode, 'CHARGER ASSY')),
+    lotNo: ascii(lot?.lotNo, '260805-A03'),
+    qty: `${quantity > 0 ? quantity.toLocaleString('en-US') : '100'} ${ascii(uomOf(first?.uomId)?.uomCode, 'EA')}`,
+    boxNo: ascii(unit?.handlingUnitNo?.slice(-5), '07/40'),
+    shipmentNo: ascii(unit?.handlingUnitNo, 'SH260805-00124'),
+    shipDt: labelDateTime(issue.issuedAt),
+    seed: issue.documentIssueLogId,
+  };
+};
+
+/** 표준 80×30mm LOT 라벨에 실을 값. */
+const lotValues = (issue) => {
+  const lot =
+    state.lots.find((row) => row.lotId === issue.lotId) ??
+    state.lots.find((row) => row.lotId === issue.targetId);
+  const item = itemOf(lot?.itemId);
+
+  return {
+    type: ascii(lot?.lotTypeCode === 'MATERIAL' ? 'RAW' : 'WIP', 'WIP'),
+    status: ascii(lot?.statusCode, 'OK'),
+    partNo: ascii(item?.itemCode, 'INJ-104852'),
+    partName: ascii(item?.labelName, ascii(item?.itemCode, 'UPPER HSG BLK')),
+    lotNo: ascii(lot?.lotNo, '260805-M12'),
+    qty: `${Number(lot?.initialQty ?? 1000).toLocaleString('en-US')} ${ascii(uomOf(lot?.uomId)?.uomCode, 'EA')}`,
+    mfgDt: labelDateTime(lot?.manufacturedAt ?? issue.issuedAt),
+    seed: issue.documentIssueLogId,
+  };
+};
+
+/** 출하 계열은 100×60, 나머지는 80×30(사양 §2 「라벨 구성안」). */
+const SHIPPING_TYPES = ['PACKING_LABEL', 'DELIVERY_LABEL'];
+
 on('GET', '/app/document-issues/{documentIssueLogId}/rendition', (params, query) => {
   const format = query.get('format') ?? 'png';
 
@@ -368,12 +443,21 @@ on('GET', '/app/document-issues/{documentIssueLogId}/rendition', (params, query)
     };
   }
 
-  return {
-    binary: {
-      contentType: 'image/png',
-      bytes: makeLabelPng(Number(params.documentIssueLogId) || 1),
-    },
+  const issue = state.documentIssues.find(
+    (row) => row.documentIssueLogId === Number(params.documentIssueLogId),
+  );
+  /* 발행 기록이 없어도 그린다 — 인쇄 경로 확인이 기록 유무에 막히지 않게 한다. */
+  const target = issue ?? {
+    documentIssueLogId: Number(params.documentIssueLogId) || 1,
+    documentTypeCode: 'PACKING_LABEL',
+    issuedAt: new Date().toISOString(),
   };
+
+  const canvas = SHIPPING_TYPES.includes(target.documentTypeCode)
+    ? renderShippingLabel(shippingValues(target))
+    : renderLotLabel(lotValues(target));
+
+  return { binary: { contentType: 'image/png', bytes: toPng(canvas) } };
 });
 
 on('POST', '/app/document-issues/{documentIssueLogId}:report-print', (params, _query, body) => {

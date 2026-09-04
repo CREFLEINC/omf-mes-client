@@ -53,10 +53,32 @@ export const createSeed = (now = new Date()) => {
     { uomId: 1002, uomCode: 'KG', uomName: '킬로그램', isActive: true },
   ];
 
+  /*
+   * `labelName` 은 **라벨에 찍는 영문명**이다(라벨 사양 §7 — 라벨용 영문명을 별도로 관리한다).
+   * 라벨은 영문·숫자만 쓰므로 화면에 보이는 한글 품명을 그대로 찍을 수 없다.
+   */
   const items = [
-    { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
-    { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징 커버 A', fifoPolicyCode: 'FIFO' },
-    { itemId: 2003, itemCode: 'FG-1001', itemName: '외장 커버', fifoPolicyCode: 'FEFO' },
+    {
+      itemId: 2001,
+      itemCode: 'RM-1001',
+      itemName: '수지A',
+      labelName: 'PC RESIN BLK',
+      fifoPolicyCode: 'FEFO',
+    },
+    {
+      itemId: 2002,
+      itemCode: 'ABC-123',
+      itemName: '하우징 커버 A',
+      labelName: 'UPPER HSG BLK',
+      fifoPolicyCode: 'FIFO',
+    },
+    {
+      itemId: 2003,
+      itemCode: 'FG-1001',
+      itemName: '외장 커버',
+      labelName: 'CHARGER ASSY',
+      fifoPolicyCode: 'FEFO',
+    },
   ].map((item) => ({
     ...item,
     plantId: PLANT_ID,

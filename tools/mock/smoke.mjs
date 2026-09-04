@@ -29,9 +29,7 @@ const REPRESENTATIVE_PATHS = [
 const spec = JSON.parse(readFileSync(mergedSpecPath, 'utf-8'));
 
 const resolveParameter = (parameter) =>
-  '$ref' in parameter
-    ? spec.components.parameters[parameter.$ref.split('/').at(-1)]
-    : parameter;
+  '$ref' in parameter ? spec.components.parameters[parameter.$ref.split('/').at(-1)] : parameter;
 
 // 필수 쿼리 파라미터를 계약에서 읽어 형식에 맞는 고정값으로 채운다 — 경로별 지식을 하드코딩하지 않는다.
 const sampleValue = (name, schema) => {
