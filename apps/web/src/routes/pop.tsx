@@ -251,6 +251,7 @@ export const popRoutes: RouteObject[] = [
    * `pop-identity` → `P-CO-01` 의 `worker-session` 순으로 읽고, 둘 다 비면 주소를 본다.
    */
   { path: '/pop/work-hold', element: <WorkHoldRegisterScreen /> },
+  /*
    * P-04-01 — **매칭 스캔 화면**이라 스캐너를 든 손이 화면 앞에 선다. 관리웹 사이드바에
    * 올리지 않는 이유는 앞의 둘과 같다.
    *

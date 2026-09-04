@@ -39,8 +39,6 @@ const nonconformance = (overrides: Partial<Nonconformance> = {}): Nonconformance
   severityCode: 'CODE-B',
   description: '도장 표면 박리',
   statusCode: 'CODE-C',
-  /* 계약이 원천을 필수로 올렸다(04 계약 2026-09-01) — 서버가 파생해 항상 내린다. */
-  sourceCode: 'PRODUCT',
   openedAt: '2026-08-12T09:30:00+09:00',
   /*
    * 계약이 요구하는 필수 넷이다(집계·단위·처분 진행·LOT). `affectedQtyTotal`·

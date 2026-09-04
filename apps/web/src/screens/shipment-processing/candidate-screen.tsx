@@ -42,7 +42,6 @@ import { useShipmentRequestCandidates, useShipmentRequestDetail } from './querie
 import { useShipmentProcessingMutation } from './mutations';
 import { OutcomePane } from './outcome-pane';
 import { ShipmentLinesPane } from './shipment-lines-pane';
-import { withOccurrence, type ShipmentCreate } from './occurrence';
 import { toShipmentCreatePayload } from './shipment-request-payload';
 import { SubmitConfirmDialog } from './submit-confirm-dialog';
 import type { ShipmentRequestCandidate } from './types';
@@ -251,8 +250,7 @@ export const ShipmentProcessingCandidateScreen = () => {
 
   const [confirmation, setConfirmation] = useState<{
     shipmentRequestNo: string;
-    /** **시각까지 찍힌 완성본**이다 — 재전송에서 같은 값이어야 멱등 키가 갈리지 않는다. */
-    payload: ShipmentCreate;
+    payload: NonNullable<typeof payload>;
   } | null>(null);
   const write = useShipmentProcessingMutation({
     onSuccess: () => {
@@ -416,12 +414,7 @@ export const ShipmentProcessingCandidateScreen = () => {
                 write.reset();
                 setConfirmation({
                   shipmentRequestNo: detailState.detail.shipmentRequestNo,
-                  /*
-                   * ⭐ 시각은 **확정 창을 여는 순간 한 번만** 찍는다. 보내는 자리에서 찍으면
-                   * 실패한 요청을 다시 보낼 때 값이 달라져 **멱등 키가 갈리고 전표가 두 벌
-                   * 생긴다.** 본문을 만드는 자리(렌더마다 도는 곳)에서도 찍지 않는다.
-                   */
-                  payload: withOccurrence(payload, new Date()),
+                  payload,
                 });
               }}
             >

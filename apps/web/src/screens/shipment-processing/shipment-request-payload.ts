@@ -1,9 +1,9 @@
 import type { components } from '@omf-mes/api-client';
 
 import type { LoadingInfoDraft } from './loading-info-pane';
-import type { ShipmentCreateDraft } from './occurrence';
 import { lineAllocationIssues, type LineAllocationDraft } from './line-allocation-draft';
 
+type ShipmentCreate = components['schemas']['ShipmentCreate'];
 type ShipmentLineCreate = components['schemas']['ShipmentLineCreate'];
 
 /**
@@ -66,7 +66,7 @@ const toLineCreate = (line: LineAllocationDraft): ShipmentLineCreate => ({
 
 export const toShipmentCreatePayload = (
   input: ShipmentRequestPayloadInput,
-): ShipmentCreateDraft | null => {
+): ShipmentCreate | null => {
   if (input.warehouseId === null) return null;
   if (input.lineDrafts.length === 0) return null;
   if (input.lineDrafts.some((line) => lineAllocationIssues(line).length > 0)) return null;

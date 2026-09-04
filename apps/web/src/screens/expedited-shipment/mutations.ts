@@ -3,8 +3,8 @@ import type { components } from '@omf-mes/api-client';
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { expeditedShipmentKeys } from './queries';
+import type { ShipmentCreateBody } from './submission';
 
-type ShipmentCreate = components['schemas']['ShipmentCreate'];
 type Shipment = components['schemas']['Shipment'];
 
 /**
@@ -34,10 +34,10 @@ export interface ExpeditedShipmentMutationOptions {
 
 export const useExpeditedShipmentMutation = (
   options: ExpeditedShipmentMutationOptions,
-): MasterWriteResult<ShipmentCreate> => {
+): MasterWriteResult<ShipmentCreateBody> => {
   const { client } = useApiClient();
 
-  return useMasterWrite<ShipmentCreate, Shipment>({
+  return useMasterWrite<ShipmentCreateBody, Shipment>({
     request: (body, headers) =>
       client.POST('/logistics/shipments', {
         params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
