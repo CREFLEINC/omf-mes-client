@@ -3,7 +3,13 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { ItemFilters, LookupEntry } from './types';
+import type {
+  ItemFilters,
+  LookupEntry,
+  Process,
+  ProcessDetailResponse,
+  ProcessFilters,
+} from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
 type Item = components['schemas']['Item'];
@@ -151,6 +157,80 @@ export const useRoutingOperations = (
 
 export const processKeys = {
   all: ['routing-processes'] as const,
+  list: (filters: ProcessFilters) => ['routing-processes', 'list', filters] as const,
+  detail: (processId: number) => ['routing-processes', 'detail', processId] as const,
+  options: ['routing-processes', 'options'] as const,
+  types: ['routing-processes', 'types'] as const,
+};
+
+export const processDetailPath = (processId: number): string =>
+  `/mdm/processes/${String(processId)}`;
+
+export interface ProcessListResponse {
+  items: Process[];
+  page: PageMeta;
+}
+
+export const useProcessList = (filters: ProcessFilters): UseQueryResult<ProcessListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: processKeys.list(filters),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/processes', {
+          params: {
+            query: {
+              ...(filters.q === '' ? {} : { q: filters.q }),
+              ...(filters.includeInactive ? { includeInactive: true } : {}),
+            },
+          },
+        }),
+      ),
+  });
+};
+
+export const useProcessDetail = (
+  processId: number | null,
+): UseQueryResult<ProcessDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: processKeys.detail(processId ?? 0),
+    enabled: processId !== null,
+    queryFn: () => {
+      if (processId === null) throw new Error('공정을 고르기 전에는 상세를 조회하지 않습니다.');
+
+      return runRequest(() =>
+        client.GET('/mdm/processes/{processId}', { params: { path: { processId } } }),
+      );
+    },
+  });
+};
+
+export interface ProcessTypeOption {
+  value: string;
+  label: string;
+}
+
+export const useProcessTypeOptions = (): UseQueryResult<ProcessTypeOption[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: processKeys.types,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode: 'PROCESS_TYPE' } },
+        }),
+      );
+
+      return data.items
+        .filter((item) => item.isActive)
+        .sort((left, right) => left.displayOrder - right.displayOrder)
+        .map((item) => ({ value: item.code, label: item.codeName }));
+    },
+  });
 };
 
 export interface ProcessLookupResult {
@@ -172,7 +252,7 @@ export const useProcessOptions = (): ProcessLookupResult => {
   const { client } = useApiClient();
 
   const processes = useQuery({
-    queryKey: processKeys.all,
+    queryKey: processKeys.options,
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/processes', { params: { query: { includeInactive: true } } }),

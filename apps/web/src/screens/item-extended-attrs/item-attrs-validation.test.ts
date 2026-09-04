@@ -22,6 +22,39 @@ describe('ITEM_ATTRS_FORM_FIELDS', () => {
   it('계약 필드가 아닌 토글 이름을 담지 않는다', () => {
     expect(ITEM_ATTRS_FORM_FIELDS).not.toContain('shelfLifeManaged');
   });
+
+  it('최신 계약의 편집 필드를 담는다', () => {
+    for (const field of [
+      'nameKo',
+      'nameVi',
+      'developmentItem',
+      'defaultLotStorageUomId',
+      'defaultProductionLotSize',
+    ]) {
+      expect(ITEM_ATTRS_FORM_FIELDS).toContain(field);
+    }
+  });
+});
+
+describe('validateItemAttrsForm — LOT 기본값', () => {
+  it('보관 단위는 비우거나 양의 정수 식별자를 선택한다', () => {
+    expect(validateItemAttrsForm(withValues({ defaultLotStorageUomId: '' }))).toEqual({});
+    expect(validateItemAttrsForm(withValues({ defaultLotStorageUomId: '7003' }))).toEqual({});
+
+    for (const value of ['0', '-1', '1.5', 'abc']) {
+      expect(validateItemAttrsForm(withValues({ defaultLotStorageUomId: value }))).toHaveProperty(
+        'defaultLotStorageUomId',
+      );
+    }
+  });
+
+  it('생산 LOT 기본크기는 비우거나 유한한 숫자다', () => {
+    expect(validateItemAttrsForm(withValues({ defaultProductionLotSize: '' }))).toEqual({});
+    expect(validateItemAttrsForm(withValues({ defaultProductionLotSize: '0.5' }))).toEqual({});
+    expect(
+      validateItemAttrsForm(withValues({ defaultProductionLotSize: 'not-a-number' })),
+    ).toHaveProperty('defaultProductionLotSize');
+  });
 });
 
 describe('validateItemAttrsForm — 필수 코드', () => {

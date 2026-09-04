@@ -18,7 +18,12 @@ const NON_NEGATIVE_INTEGER = /^\d+$/;
  * 보이지 않는 칸에 붙인 오류는 어디에도 표시되지 않는다.
  */
 export const ITEM_ATTRS_FORM_FIELDS: readonly string[] = [
+  'nameKo',
+  'nameVi',
+  'developmentItem',
   'lotControlled',
+  'defaultLotStorageUomId',
+  'defaultProductionLotSize',
   'serialControlTypeCode',
   'shelfLifeDays',
   'inspectionRequired',
@@ -55,6 +60,21 @@ export const validateItemAttrsForm = (values: ItemAttrsFormValues): Record<strin
     errors.fifoPolicyCode = t.required;
   } else if (values.fifoPolicyCode.trim().length > CODE_MAX) {
     errors.fifoPolicyCode = t.codeTooLong;
+  }
+
+  const defaultLotStorageUomId = values.defaultLotStorageUomId.trim();
+
+  if (
+    defaultLotStorageUomId !== '' &&
+    (!NON_NEGATIVE_INTEGER.test(defaultLotStorageUomId) || Number(defaultLotStorageUomId) <= 0)
+  ) {
+    errors.defaultLotStorageUomId = t.defaultLotStorageUomInvalid;
+  }
+
+  const defaultProductionLotSize = values.defaultProductionLotSize.trim();
+
+  if (defaultProductionLotSize !== '' && !Number.isFinite(Number(defaultProductionLotSize))) {
+    errors.defaultProductionLotSize = t.defaultProductionLotSizeInvalid;
   }
 
   /*

@@ -206,6 +206,81 @@ main > * + * {
   min-width: 0;
 }
 
+/* W-06-05 품목·BOM — 상위 탭과 상세 페인이 서로 붙지 않게 블록 간격을 분명히 둔다. */
+.item-extended-sections,
+.item-extended-layout {
+  min-width: 0;
+}
+
+.item-extended-layout {
+  margin-top: var(--space-4);
+}
+
+.item-attrs-pane {
+  display: grid;
+  gap: var(--space-4);
+  align-content: start;
+}
+
+.item-attrs-pane > .pane-title,
+.item-attrs-pane > .form-actions {
+  margin: 0;
+}
+
+.item-attrs-form {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.item-attrs-section {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4) 0 0;
+  border: 0;
+  border-top: 1px solid var(--outline-variant);
+}
+
+.item-attrs-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.item-attrs-section > legend {
+  padding: 0;
+  margin-bottom: var(--space-3);
+  color: var(--on-surface);
+  font: var(--type-title-sm);
+  letter-spacing: var(--type-title-sm-tracking);
+}
+
+/* W-06-01 공정 마스터 — 목록과 편집의 축이 대등하므로 1:1로 나눈다. */
+.two-pane.routing-process-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pane-heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.pane-heading-row > .pane-title {
+  margin-bottom: 0;
+}
+
+.routing-process-form p {
+  margin: 0;
+}
+
+@media (max-width: 1280px) {
+  .two-pane.routing-process-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 /*
  * W/O 전개·편성 — 이 화면에만 적용되는 조합 배치.
  * DS 컴포넌트의 내부 클래스는 겨냥하지 않고, 공개 className과 HTML 표 요소만 사용한다.

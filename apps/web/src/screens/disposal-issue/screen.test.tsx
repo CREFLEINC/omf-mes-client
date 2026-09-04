@@ -491,6 +491,13 @@ const failingIssueDetailRoute = (status: number, pathname = ISSUE_DETAIL_PATH): 
   respond: () => jsonResponse({ message: '' }, { status }),
 });
 
+const disconnectedIssueDetailRoute = (): StubRoute => ({
+  match: (request) => isGet(request, ISSUE_DETAIL_PATH),
+  respond: () => {
+    throw new TypeError('Failed to fetch');
+  },
+});
+
 /**
  * 부를 때마다 **내용이 달라지는** 이력 목록·상세·승인 요청.
  *
@@ -2582,6 +2589,10 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?tab=history`);
     });
+
+    expect(
+      within(historyDetailPane()).queryByRole('button', { name: messages.common.retry }),
+    ).not.toBeInTheDocument();
   });
 
   it('404 정리가 대상 탭의 조건과 선택을 건드리지 않는다', async () => {
@@ -2594,6 +2605,48 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
 
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?tab=history&q=GR&gr=9001`);
+    });
+  });
+
+  it('상세가 500으로 실패하면 사유와 다시 시도가 서고 로딩 뼈대가 남지 않는다', async () => {
+    renderScreen(allRoutes([failingIssueDetailRoute(500)]), `${HISTORY_SEARCH}&gi=9501`);
+
+    const pane = historyDetailPane();
+
+    expect(await within(pane).findByText(messages.httpError.loadTitle)).toBeVisible();
+    expect(within(pane).getByRole('button', { name: messages.common.retry })).toBeEnabled();
+    expect(
+      within(pane).queryByRole('status', { name: t.loading.issueDetail }),
+    ).not.toBeInTheDocument();
+    expect(within(pane).queryByText('GI-2026-950001')).not.toBeInTheDocument();
+  });
+
+  it('상세 요청이 끊기면 오프라인 사유가 서고 로딩 뼈대가 남지 않는다', async () => {
+    renderScreen(allRoutes([disconnectedIssueDetailRoute()]), `${HISTORY_SEARCH}&gi=9501`);
+
+    const pane = historyDetailPane();
+
+    expect(await within(pane).findByText(messages.httpError.offline)).toBeVisible();
+    expect(
+      within(pane).queryByRole('status', { name: t.loading.issueDetail }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('상세 실패의 다시 시도가 같은 품의를 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([failingIssueDetailRoute(500)]),
+      `${HISTORY_SEARCH}&gi=9501`,
+    );
+
+    const pane = historyDetailPane();
+
+    await within(pane).findByText(messages.httpError.loadTitle);
+    expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(1);
+
+    await user.click(within(pane).getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(2);
     });
   });
 
@@ -4982,8 +5035,25 @@ describe('DisposalIssueScreen — 떠난 뒤 돌아왔을 때', () => {
       expect(writesTo(requests, CREATED_APPROVAL_PATH)).toHaveLength(1);
     });
 
+    /*
+     * 요청이 스텁에 기록된 것과 화면의 전송 잠금이 풀린 것은 같은 순간이 아니다. 전체 감지기를
+     * 병렬로 돌리면 mutation 성공 상태가 한 렌더 늦게 반영될 수 있으므로, 사용자가 실제로 다시
+     * 고를 수 있는 시점(행 버튼의 잠금 해제)을 기다린다. 임의 시간 대신 화면 계약을 동기화
+     * 지점으로 삼아 「잠긴 버튼을 눌러 아무 일도 없었던」경쟁 조건을 만들지 않는다.
+     */
+    const previousReceipt = screen.getByRole('button', {
+      name: t.actions.selectRow('GR-2026-900001'),
+    });
+
+    await waitFor(() => {
+      expect(previousReceipt).toBeEnabled();
+    });
+
     /* 앞 대상을 다시 고른다 — 그래도 결과는 되살아나지 않는다. */
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await user.click(previousReceipt);
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9001');
+    });
     await waitForLines();
 
     expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
