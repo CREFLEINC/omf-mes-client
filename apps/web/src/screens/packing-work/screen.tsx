@@ -308,7 +308,19 @@ export const PackingWorkScreen = () => {
 
       {(outbox.pendingCount > 0 || !outbox.isOnline) && (
         <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.outbox.pending(outbox.pendingCount)}>
+          {/*
+            ⛔ **보낼 것이 없는데 건수를 제목으로 내지 않는다.** 끊긴 것과 밀리는 것은 다른
+            사정이라 배너가 둘 다에 뜨는데, 그때 「미전송 0건」이 제목이면 작업자는 무엇이
+            0건이라는 것인지 읽을 수 없다 — 끊겼을 뿐이면 끊겼다고 말한다(실측).
+          */}
+          <AlertBanner
+            variant="warning"
+            title={
+              outbox.pendingCount > 0
+                ? t.outbox.pending(outbox.pendingCount)
+                : messages.common.connection.offline
+            }
+          >
             {outbox.isOnline ? t.outbox.queued : t.outbox.offline}
           </AlertBanner>
         </div>

@@ -597,6 +597,13 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
 
     expect(await screen.findByText(t.scan.blockedOfflineNoUnit)).toBeInTheDocument();
     expect(writes).toHaveLength(0);
+
+    /*
+     * ⛔ **보낼 것이 없는데 건수를 제목으로 내지 않는다.** 「미전송 0건」은 무엇이 0건이라는
+     * 것인지 읽을 수 없는 말이다 — 끊겼을 뿐이면 끊겼다고 말한다(실측).
+     */
+    expect(screen.getByText(messages.common.connection.offline)).toBeInTheDocument();
+    expect(screen.queryByText(t.outbox.pending(0))).not.toBeInTheDocument();
   });
 
   /*
