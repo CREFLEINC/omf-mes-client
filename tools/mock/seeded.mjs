@@ -1049,6 +1049,35 @@ on('POST', '/production/results', (_p, _q, body) => {
 
 /* ── 품질 ─────────────────────────────────────────────────── */
 
+/**
+ * 검사 의뢰 목록.
+ *
+ * ⭐ **이 경로가 비어 있으면 계약 예시 서버로 넘어가고, 그쪽은 질의를 무시하고 예시 1건을
+ * 그대로 돌려준다.** 그래서 작업실적 등록(P-02-04)이 「PQC 가 남아 있다」로 늘 막혔다 —
+ * 돌아온 것은 다른 작업지시의 IQC 였다(실측 2026-09-04).
+ *
+ * `pendingOnly` 의 정의는 계약이 값으로 못 박았다 — 참이면 REQUESTED · IN_PROGRESS 만.
+ * ⛔ **그 정의를 화면이 아니라 여기서 지킨다**(공유계약 G-6).
+ */
+const PENDING_INSPECTION_STATUSES = ['REQUESTED', 'IN_PROGRESS'];
+
+on('GET', '/quality/inspection-requests', (_p, query) => {
+  const pendingOnly = bool(query, 'pendingOnly');
+
+  return page(
+    keep(state.inspectionRequests, [
+      byText(query, 'inspectionTypeCode', 'inspectionTypeCode'),
+      byText(query, 'statusCode', 'statusCode'),
+      byNum(query, 'itemId', 'itemId'),
+      byNum(query, 'lotId', 'lotId'),
+      byNum(query, 'workOrderId', 'workOrderId'),
+      contains(query, 'q', 'inspectionRequestNo'),
+      (row) => pendingOnly !== true || PENDING_INSPECTION_STATUSES.includes(row.statusCode),
+    ]),
+    query,
+  );
+});
+
 /*
  * W-04-07 — 판정 대기 대상 · 부적합 등록 · 판정 의뢰 · 처분 목록.
  * 부적합 상세는 ETag 를 내고, 의뢰는 If-Match 를 요구한다 — 화면의 낙관적 잠금 흐름을 목에서 밟는다.

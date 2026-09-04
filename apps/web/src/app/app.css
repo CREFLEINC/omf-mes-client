@@ -6657,7 +6657,20 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 맞닿아 문장이 잘린 것처럼 보인다. 장갑 낀 손이 누를 자리이므로 사방에 여백이 필요하다.
  */
 .pop-result-banner-text {
-  margin: 0 0 var(--space-3);
+  margin: 0;
+}
+
+/*
+ * 사유는 왼쪽에서 읽고 조치는 오른쪽에서 누른다 — 산업용 패널은 오른손 도달 범위가 오른쪽이다.
+ *
+ * ⚠ **한 줄로 묶어 배너를 낮게 둔다.** 단추를 문구 아래로 내리면 배너가 그만큼 높아지고,
+ * 그 아래 입력 카드가 첫 화면에서 밀려난다 — 작업자가 스크롤해야 수량을 친다.
+ */
+.pop-result-banner-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
 }
 
 /* 스펙 §3-2 — 대상(LOT·제품)과 입력(양품수량·비고)을 가르는 선. */
