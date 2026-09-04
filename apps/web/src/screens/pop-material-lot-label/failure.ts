@@ -64,10 +64,20 @@ export const toIssueFailure = (result: IssueRunResult): IssueFailure | null => {
 
   if (isPrinted || failedAt === null) return null;
   if (failedAt === 'print') return 'printFailed';
-  if (failedAt === 'report' && result.hasPrintedLabel) return 'reportFailedAfterPrint';
+  /*
+   * 보고에서 멈춘 것은 **종이가 나왔는가**로 갈린다. 안 나왔으면 인쇄 실패와 같은 자리다 —
+   * 기록은 남았으니 재인쇄로 이어간다.
+   */
+  if (failedAt === 'report')
+    return result.hasPrintedLabel ? 'reportFailedAfterPrint' : 'printFailed';
   if (error === null) return 'other';
   if (failedAt === 'register' && isRetryableConflict(error)) return 'registerConflict';
-  if (failedAt === 'issue' && isForbidden(error)) return 'issueForbidden';
+  /*
+   * ⚠ **권한 거부는 걸음을 가리지 않는다.** 라벨을 받는 걸음이나 등록에서 나와도 이 단말에
+   * 권한이 없다는 뜻은 같다 — 갈래를 발행 걸음으로 좁히면 나머지가 「그 밖의 실패」로 접혀
+   * 서버가 영영 허락하지 않을 일에 재시도 단추가 열린다.
+   */
+  if (isForbidden(error)) return 'issueForbidden';
 
   return 'other';
 };

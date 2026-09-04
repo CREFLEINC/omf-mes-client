@@ -209,13 +209,18 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
    */
   const lotKeys = useRef(new Map<number, string>());
   /*
-   * 발행의 멱등 키 — **기록이 남을 때까지 줄마다 같은 값을 쓴다**(스펙 §5-2).
+   * 발행의 멱등 키 — **같은 요청을 다시 보낼 때만 같은 값을 쓴다**(스펙 §5-2).
    *
    * 매번 새 키를 만들면 통신이 끊긴 뒤 다시 시도한 발행을 서버가 «다른 쓰기»로 보아
    * **회차가 두 번 오른다.** 회차는 「이 라벨이 몇 번째인가」를 추적하는 값이라 한 번 어긋나면
-   * 이력이 거짓이 된다. 성공하면 지운다 — 뒤이은 재인쇄는 새 회차이므로 새 키여야 한다.
+   * 이력이 거짓이 된다.
+   *
+   * ⛔ **줄만 보고 붙잡지 않는다.** 발행이 실패하면 그 줄은 「등록됐고 기록 없음」이 되어 **재인쇄**
+   * 경로가 열리는데, 재인쇄는 본문에 사유가 붙는다 — 같은 키에 다른 본문을 실으면 서버는 앞선
+   * 쓰기를 되돌려 주거나 거절한다. 둘 다 사유 없는 발행이 재인쇄로 둔갑하는 길이다. 그래서
+   * **본문이 같을 때만** 키를 물려준다. 성공하면 지운다.
    */
-  const issueKeysRef = useRef(new Map<number, string>());
+  const issueKeysRef = useRef(new Map<number, { key: string; signature: string }>());
 
   const reset = useCallback(() => {
     setStep(null);
@@ -276,8 +281,13 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
 
           enter('issue');
           const issueKeys = issueKeysRef.current;
-          const issueKey = issueKeys.get(row.inboundReceiptLineId) ?? crypto.randomUUID();
-          issueKeys.set(row.inboundReceiptLineId, issueKey);
+          /*
+           * 본문을 가르는 값 전부다 — 어느 하나라도 다르면 **다른 쓰기**이고 키를 물려주면 안 된다.
+           */
+          const signature = `${String(lotId)}|${printerName ?? ''}|${reissueReasonCode ?? ''}`;
+          const held = issueKeys.get(row.inboundReceiptLineId);
+          const issueKey = held?.signature === signature ? held.key : crypto.randomUUID();
+          issueKeys.set(row.inboundReceiptLineId, { key: issueKey, signature });
 
           issue = await createIssue(
             client,

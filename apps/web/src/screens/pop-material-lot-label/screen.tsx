@@ -173,6 +173,11 @@ export const PopMaterialLotLabelScreen = () => {
               {pageView === null ? null : (
                 <PageNav
                   view={pageView}
+                  /*
+                   * ⛔ 쪽을 옮기면 고른 줄이 풀린다 — 실행 중에 풀리면 그 실행의 결과가 어느 줄에도
+                   * 서지 않는다. 목록 줄을 잠그면서 이 자리를 열어 두면 같은 구멍이 남는다.
+                   */
+                  isLocked={issue.step !== null}
                   onChange={(nextPage) => {
                     // 쪽을 옮기면 고른 줄이 화면에서 사라진다 — 남겨 두면 보이지 않는 것을 가리킨다.
                     setSelectedLineId(null);

@@ -565,6 +565,47 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
   });
 
   /**
+   * ⛔ **다른 본문에 같은 키를 실지 않는다.** 발행이 실패한 줄은 재인쇄 경로가 열리는데, 재인쇄
+   * 본문에는 사유가 붙는다 — 키를 그대로 물려주면 사유 없는 앞선 발행이 되돌아오거나 거절된다.
+   */
+  it('재인쇄는 본문이 달라지므로 새 멱등 키로 나간다', async () => {
+    const { user, sent } = renderFlow({ lotId: LOT_ID, issueFails: true });
+    await chooseLine(user);
+
+    await user.click(screen.getByRole('button', { name: '인쇄' }));
+    expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+
+    await user.click(screen.getByRole('button', { name: '재인쇄' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    await user.click(dialog.getByRole('combobox', { name: '사유' }));
+    await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
+    await user.click(dialog.getByRole('button', { name: '재인쇄' }));
+
+    await waitFor(() => {
+      expect(sent.filter((entry) => entry.path === '/app/document-issues')).toHaveLength(2);
+    });
+
+    const issues = sent.filter((entry) => entry.path === '/app/document-issues');
+    expect(issues[1]?.body).toMatchObject({ reissueReasonCode: 'SYN_REISSUE_01' });
+    expect(issues[0]?.headers.get('Idempotency-Key')).not.toBe(
+      issues[1]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /**
+   * ⚠ **종이가 안 나온 채 보고까지 실패한 것은 인쇄 실패다.** 기록은 남았으니 재인쇄로 이어간다 —
+   * 「끝내지 못했습니다」로 접으면 다음에 무엇을 할지가 사라진다.
+   */
+  it('셸이 없어 못 찍고 보고까지 실패하면 재인쇄로 안내한다', async () => {
+    const { user } = renderFlow({ lotId: LOT_ID, reportFails: true });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '인쇄' }));
+
+    expect(await screen.findByText(/라벨이 나오지 않았습니다/u)).toBeInTheDocument();
+  });
+
+  /**
    * ⛔ **실행 중에는 줄을 바꾸지 못한다.** 바꾸면 그 실행의 결과가 어느 줄에도 서지 않아
    * 실패가 소리 없이 사라진다.
    */
