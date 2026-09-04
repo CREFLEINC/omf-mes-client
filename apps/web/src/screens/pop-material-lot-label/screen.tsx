@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { popTouchClass } from '../../patterns/pop-touch';
+import { toIssueFailure } from './failure';
 import { IssueOutcome } from './issue-outcome';
 import { useItemLookup, useSupplierLookup, useUomLookup } from './lookups';
 import { useLabelIssue } from './mutations';
@@ -73,6 +74,17 @@ export const PopMaterialLotLabelScreen = () => {
   const headPrinter = toHeadPrinter(printers.data ?? []);
   const issue = useLabelIssue({ workerNo });
 
+  /*
+   * ⛔ **결과는 그 결과를 만든 줄의 것이다.** 다른 자재를 고르면 앞 자재의 실패가 따라오지
+   * 않는다 — 그 판정을 여기 한 곳에서 하고, 알림과 단추가 같은 값을 본다.
+   */
+  const isResultOfSelected = issue.result.lineId === selectedRow?.inboundReceiptLineId;
+  /*
+   * 출력 권한이 없는 단말(403)에서는 **재시도 수단을 주지 않는다**(스펙 §5-2). 단말 전체를
+   * 미리 막지는 않는다 — 게이트는 서버가 갖고, 화면은 받은 답에만 반응한다(§5-5).
+   */
+  const isPrintForbidden = isResultOfSelected && toIssueFailure(issue.result) === 'issueForbidden';
+
   /**
    * 등록·인쇄 한 번을 시작한다.
    *
@@ -81,6 +93,11 @@ export const PopMaterialLotLabelScreen = () => {
    */
   const startIssue = (reissueReasonCode: string | null): void => {
     if (selectedRow === null || workerNo === null) return;
+    /*
+     * ⛔ **막힌 단말에서는 나가지 않는다.** 단추도 함께 막혀 있지만, 판정을 나가는 자리에도 두어
+     * 다른 경로(대화상자·스캐너)가 생겨도 새지 않게 한다 — `mutations` 의 사번 판정과 같은 규율.
+     */
+    if (isPrintForbidden) return;
 
     issue.run({
       row: selectedRow,
@@ -145,6 +162,8 @@ export const PopMaterialLotLabelScreen = () => {
                 itemLookup={itemLookup}
                 uomLookup={uomLookup}
                 selectedId={selectedLineId}
+                // 실행 중에 줄을 바꾸면 그 실행의 결과가 어디에도 서지 않는다.
+                isLocked={issue.step !== null}
                 onToggleSelect={(lineId) => {
                   // 같은 줄을 다시 누르면 해제한다 — 고른 것을 무를 수단이 없으면 갇힌다.
                   setSelectedLineId((current) => (current === lineId ? null : lineId));
@@ -154,6 +173,11 @@ export const PopMaterialLotLabelScreen = () => {
               {pageView === null ? null : (
                 <PageNav
                   view={pageView}
+                  /*
+                   * ⛔ 쪽을 옮기면 고른 줄이 풀린다 — 실행 중에 풀리면 그 실행의 결과가 어느 줄에도
+                   * 서지 않는다. 목록 줄을 잠그면서 이 자리를 열어 두면 같은 구멍이 남는다.
+                   */
+                  isLocked={issue.step !== null}
                   onChange={(nextPage) => {
                     // 쪽을 옮기면 고른 줄이 화면에서 사라진다 — 남겨 두면 보이지 않는 것을 가리킨다.
                     setSelectedLineId(null);
@@ -177,6 +201,7 @@ export const PopMaterialLotLabelScreen = () => {
             isLotNoError={lot.isError}
             hasWorkerNo={workerNo !== null}
             runningStep={issue.step}
+            isPrintForbidden={isPrintForbidden}
             onIssue={() => {
               startIssue(null);
             }}
@@ -188,9 +213,7 @@ export const PopMaterialLotLabelScreen = () => {
            * ⛔ **결과는 그 결과를 만든 줄 밑에만 선다.** 끝난 뒤 다른 자재를 고르면 「인쇄
            * 했습니다」가 아직 찍지 않은 자재 밑에 서게 되고, 사람은 그것을 자기 것으로 읽는다.
            */}
-          {issue.result.lineId === selectedRow?.inboundReceiptLineId ? (
-            <IssueOutcome result={issue.result} onClose={issue.reset} />
-          ) : null}
+          {isResultOfSelected ? <IssueOutcome result={issue.result} onClose={issue.reset} /> : null}
         </section>
       </div>
 

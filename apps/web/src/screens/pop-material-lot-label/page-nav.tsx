@@ -8,6 +8,11 @@ const t = messages.popMaterialLotLabel.pageNav;
 
 export interface PageNavProps {
   view: PageView;
+  /**
+   * ⛔ **실행 중에는 쪽을 옮기지 못한다.** 옮기면 고른 줄이 풀려, 끝난 실행의 결과가 어느 줄에도
+   * 서지 않는다 — 목록 줄을 잠그는 것과 같은 이유다.
+   */
+  isLocked: boolean;
   onChange: (page: number) => void;
 }
 
@@ -22,14 +27,14 @@ export interface PageNavProps {
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const PageNav = ({ view, onChange }: PageNavProps) => (
+export const PageNav = ({ view, isLocked, onChange }: PageNavProps) => (
   <nav className="pop-page-nav" aria-label={t.label}>
     <p className="field-note">{view.rangeLabel}</p>
     <Button
       className={popTouchClass('normal')}
       variant="outlined"
       size="xl"
-      disabled={!view.canPrev}
+      disabled={isLocked || !view.canPrev}
       onClick={() => {
         onChange(view.page - 1);
       }}
@@ -40,7 +45,7 @@ export const PageNav = ({ view, onChange }: PageNavProps) => (
       className={popTouchClass('normal')}
       variant="outlined"
       size="xl"
-      disabled={!view.canNext}
+      disabled={isLocked || !view.canNext}
       onClick={() => {
         onChange(view.page + 1);
       }}
