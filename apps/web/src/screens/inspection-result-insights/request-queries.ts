@@ -20,6 +20,30 @@ export type DefectDistributionQuery = NonNullable<
 >;
 export type DistributionGroup = NonNullable<DefectDistributionQuery['groupBy']>;
 
+const pad = (value: number): string => String(value).padStart(2, '0');
+
+/**
+ * 화면이 고른 **날짜**를 계약이 받는 **시각**으로 바꾼다.
+ *
+ * ⛔ 날짜 그대로 보내면 조회가 서지 않는다 — 계약이 기간의 두 끝을 `date-time` 으로 정했고,
+ * `2026-08-01` 을 그대로 실으면 형식에서 막힌다(목 서버 실측 400). 화면은 날짜만 고르므로
+ * 하루의 시작과 끝을 여기서 만든다.
+ *
+ * ⚠ **끝을 다음 날 0시가 아니라 그날 23:59:59 로 잡는다.** 계약이 이 경계를 포함으로 보는지
+ * 밝히지 않았다 — 포함이면 그대로 맞고, 미포함이어도 다음 날을 끌어오지 않는다.
+ *
+ * ⚠ DST 가 없는 대상 지역(한국 UTC+9 · 베트남 UTC+7)을 전제로 두 끝에 같은 오프셋을 찍는다.
+ */
+const zone = (): string => {
+  const offsetMinutes = -new Date().getTimezoneOffset();
+  const absolute = Math.abs(offsetMinutes);
+
+  return `${offsetMinutes < 0 ? '-' : '+'}${pad(Math.floor(absolute / 60))}:${pad(absolute % 60)}`;
+};
+
+const startOfDay = (date: string): string => `${date}T00:00:00${zone()}`;
+const endOfDay = (date: string): string => `${date}T23:59:59${zone()}`;
+
 const toIdentifier = (raw: string): number | undefined => {
   if (!/^\d+$/.test(raw)) return undefined;
   const value = Number(raw);
@@ -36,8 +60,8 @@ const toCommonQuery = (
   if (!hasValidPeriod(filters) || (requireInspectionType && filters.inspectionTypeCode === ''))
     return null;
   const query: InspectionSummaryQuery = {
-    inspectedFrom: filters.from,
-    inspectedTo: filters.to,
+    inspectedFrom: startOfDay(filters.from),
+    inspectedTo: endOfDay(filters.to),
     finalRoundOnly: filters.finalRoundOnly,
   };
   if (filters.inspectionTypeCode !== '') query.inspectionTypeCode = filters.inspectionTypeCode;
@@ -77,8 +101,8 @@ export const toDefectDistributionQuery = (
 ): DefectDistributionQuery | null => {
   if (!hasValidPeriod(filters)) return null;
   const query: DefectDistributionQuery = {
-    detectedFrom: filters.from,
-    detectedTo: filters.to,
+    detectedFrom: startOfDay(filters.from),
+    detectedTo: endOfDay(filters.to),
     groupBy,
   };
   const itemId = toIdentifier(filters.itemId);
