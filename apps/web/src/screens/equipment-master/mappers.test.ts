@@ -47,12 +47,12 @@ describe('groupToFormValues', () => {
 });
 
 describe('emptyGroupFormValues', () => {
-  it('그룹유형만 자리표시 값으로 두고 나머지는 비운다', () => {
+  it('그룹유형을 포함해 전부 비운다 — 기본값을 심지 않는다', () => {
     expect(emptyGroupFormValues()).toEqual({
       plantId: '',
       groupCode: '',
       groupName: '',
-      groupTypeCode: PENDING_CODE_VALUE,
+      groupTypeCode: '',
       parentGroupId: '',
     });
   });

@@ -19,7 +19,12 @@ import {
   type ReferenceSource,
 } from './lookups';
 import type { AssignmentMode, SelectOption, ShipmentRequestLineDraft } from './types';
-import { lineFieldId, readQty, type LineFieldName } from './validation';
+import {
+  CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH,
+  lineFieldId,
+  readQty,
+  type LineFieldName,
+} from './validation';
 
 const t = messages.shipmentRequestCreate;
 
@@ -205,16 +210,18 @@ export const LineTable = ({
       width: WIDTH.customerLotRequirement,
       /*
        * 상용구 마스터가 없어(미결 항목 표) 200자 자유 텍스트로 받는다 — 계약에 길이 제약이
-       * 없어 서버가 거절하지는 않지만, 화면이 정한 실용적 상한을 `maxLength`로 안내한다.
+       * 없어 형식은 제한하지 않되, 고정 설계의 varchar(200) 상한을 `maxLength`로 안내하고
+       * 화면 검증으로 제출을 막는다.
        */
       render: (row, rowIndex) => (
         <TextArea
           rows={2}
           fullWidth
-          maxLength={200}
+          maxLength={CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH}
           aria-label={t.lineTable.customerLotRequirementLabel(rowIndex + 1)}
           value={row.customerLotRequirement}
           disabled={isLocked}
+          error={errorOf(row, 'customerLotRequirement')}
           onChange={(event) => {
             onPatch(row.key, { customerLotRequirement: event.target.value });
           }}

@@ -128,15 +128,15 @@ describe('GroupListPane', () => {
 
   /*
    * 그룹유형은 스펙 §4-A 의 필드이고 목록이 그것을 훑는 자리다.
-   * 값 목록이 확정되지 않아 지금은 서버가 준 코드가 그대로 나온다 — 「알 수 없음」이 아니다.
+   * 계약이 두 값으로 닫혔으므로(코드 사전 2026-09-03) 아는 값은 표시명으로 보인다.
    */
-  it('그룹유형 열에 서버가 준 코드를 그대로 보인다', () => {
+  it('그룹유형 열에 계약 값의 표시명을 보인다', () => {
     renderPane({
       rows: buildGroupRows([makeGroup(301, 'GRP-T', { groupTypeCode: 'WORK_AREA' })], new Set()),
     });
 
     expect(screen.getByRole('columnheader', { name: t.fields.groupType })).toBeInTheDocument();
-    expect(screen.getByText('WORK_AREA')).toBeInTheDocument();
+    expect(screen.getByText(t.groupTypes.WORK_AREA)).toBeInTheDocument();
   });
 
   /* 공장 이름은 좁힌 선택지가 아니라 전체 목록에서 푼다 — 좁힘 밖의 정상 자료가 「알 수 없음」이 되면 안 된다. */

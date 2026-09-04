@@ -167,10 +167,7 @@ export const RouteFormPane = ({
 
       <div className="form-grid">
         {isCreate && (
-          /*
-           * **등록에서만 입력칸이다.** 값 목록이 확정되지 않아 선택지가 비어 있고
-           * (`omf-mes#64`), 왜 비었는지는 안내가 말한다 — 값을 지어내지 않는다.
-           */
+          /* 등록에서만 입력칸이다. 고정 OpenAPI enum 선택지를 그대로 사용한다. */
           <SelectField
             required
             label={t.fields.approvalTypeCode}

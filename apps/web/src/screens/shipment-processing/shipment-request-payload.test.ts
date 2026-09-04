@@ -22,10 +22,14 @@ const loadingInfo = (overrides: Partial<LoadingInfoDraft> = {}): LoadingInfoDraf
   ...overrides,
 });
 
+/* 현지 시각으로 만든다 — 영업일은 단말의 현지 날짜이고 오프셋은 실행 환경을 따른다. */
+const NOW = new Date(2026, 8, 3, 17, 5, 0);
+
 describe('toShipmentCreatePayload', () => {
   it('창고가 없으면 null을 낸다', () => {
     expect(
       toShipmentCreatePayload({
+        now: NOW,
         shipmentRequestId: 501,
         warehouseId: null,
         loadingInfo: loadingInfo(),
@@ -37,6 +41,7 @@ describe('toShipmentCreatePayload', () => {
   it('라인이 없으면 null을 낸다', () => {
     expect(
       toShipmentCreatePayload({
+        now: NOW,
         shipmentRequestId: 501,
         warehouseId: 1001,
         loadingInfo: loadingInfo(),
@@ -48,6 +53,7 @@ describe('toShipmentCreatePayload', () => {
   it('한 라인이라도 어긋나면 null을 낸다', () => {
     expect(
       toShipmentCreatePayload({
+        now: NOW,
         shipmentRequestId: 501,
         warehouseId: 1001,
         loadingInfo: loadingInfo(),
@@ -58,6 +64,7 @@ describe('toShipmentCreatePayload', () => {
 
   it('전부 유효하면 ShipmentCreate를 낸다 — expedited는 항상 false', () => {
     const payload = toShipmentCreatePayload({
+      now: NOW,
       shipmentRequestId: 501,
       warehouseId: 1001,
       loadingInfo: loadingInfo(),
@@ -74,6 +81,10 @@ describe('toShipmentCreatePayload', () => {
       loadingWorkerId: undefined,
       carrierId: undefined,
       expedited: false,
+      businessDate: '2026-09-03',
+      occurredAt: expect.stringMatching(
+        /^2026-09-03T17:05:00[+-]\d{2}:\d{2}$/,
+      ) as unknown as string,
       lines: [
         {
           shipmentRequestLineId: 701,
@@ -87,6 +98,7 @@ describe('toShipmentCreatePayload', () => {
 
   it('빈 문자열 상차정보는 싣지 않고, 값이 있으면 다듬어 싣는다', () => {
     const payload = toShipmentCreatePayload({
+      now: NOW,
       shipmentRequestId: 501,
       warehouseId: 1001,
       loadingInfo: loadingInfo({
@@ -106,6 +118,7 @@ describe('toShipmentCreatePayload', () => {
 
   it('여러 라인·여러 LOT 배분을 그대로 옮긴다', () => {
     const payload = toShipmentCreatePayload({
+      now: NOW,
       shipmentRequestId: 501,
       warehouseId: 1001,
       loadingInfo: loadingInfo(),

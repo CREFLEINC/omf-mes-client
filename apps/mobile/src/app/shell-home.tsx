@@ -24,6 +24,7 @@ const tiles = [
     screens: [
       { to: '/inbound-receipt', label: messages.inboundReceipt.title },
       { to: '/inbound-variance', label: messages.inboundVariance.title },
+      { to: '/recycle-entry', label: messages.recycleEntry.title },
     ],
   },
   {

@@ -11,17 +11,23 @@ import {
 } from './document-types';
 import { documentTypeFixtures } from './fixtures';
 
-describe('DOCUMENT_TYPES — 자리표시', () => {
-  /*
-   * **비어 있는 것이 지금의 사실이다.** 하나라도 심으면 사용자가 그것으로 조회하는데
-   * 서버는 그 유형을 모르고, 계약은 그때 400을 돌려준다.
-   */
-  it('비어 있다', () => {
-    expect(DOCUMENT_TYPES).toEqual([]);
+describe('DOCUMENT_TYPES — 고정 OpenAPI 목록', () => {
+  it('계약이 닫은 9종을 담는다', () => {
+    expect(DOCUMENT_TYPES.map((entry) => entry.code)).toEqual([
+      'PURCHASE_ORDER',
+      'INBOUND_RECEIPT',
+      'GOODS_RECEIPT',
+      'MATERIAL_ISSUE_REQUEST',
+      'PICKING_ORDER',
+      'STOCK_TRANSFER',
+      'SUBCONTRACT_ISSUE',
+      'SUBCONTRACT_RECEIPT',
+      'GOODS_ISSUE',
+    ]);
   });
 
-  it('비어 있는 동안 「값 목록이 오지 않았다」로 판정된다', () => {
-    expect(isDocumentTypeListPending(DOCUMENT_TYPES)).toBe(true);
+  it('더 이상 값 목록 대기로 판정하지 않는다', () => {
+    expect(isDocumentTypeListPending(DOCUMENT_TYPES)).toBe(false);
   });
 
   /* 표를 인자로 받는 것이 자리표시 규율의 핵심이다 — 채우면 판정이 뒤집힌다. */
@@ -32,23 +38,22 @@ describe('DOCUMENT_TYPES — 자리표시', () => {
 
 describe('findDocumentType', () => {
   it('표에 있는 코드의 줄을 준다', () => {
-    expect(findDocumentType('SYN_DOC_TYPE_B', documentTypeFixtures)?.label).toBe('합성 유형 나');
+    expect(findDocumentType('GOODS_ISSUE', documentTypeFixtures)?.label).toBe('합성 유형 나');
   });
 
   it('표에 없는 코드는 null이다', () => {
     expect(findDocumentType('SYN_DOC_TYPE_Z', documentTypeFixtures)).toBeNull();
   });
 
-  /* 표가 비어 있으면 어떤 코드로도 찾을 수 없다 — 주소를 손으로 고쳐도 마찬가지다. */
-  it('빈 표에서는 어떤 코드도 찾지 못한다', () => {
-    expect(findDocumentType('SYN_DOC_TYPE_A', DOCUMENT_TYPES)).toBeNull();
+  it('고정 표에서 발주 유형을 찾는다', () => {
+    expect(findDocumentType('PURCHASE_ORDER', DOCUMENT_TYPES)?.code).toBe('PURCHASE_ORDER');
   });
 });
 
 describe('findSelectableDocumentType', () => {
   it('고를 수 있는 유형은 그대로 준다', () => {
-    expect(findSelectableDocumentType('SYN_DOC_TYPE_A', documentTypeFixtures)?.code).toBe(
-      'SYN_DOC_TYPE_A',
+    expect(findSelectableDocumentType('GOODS_RECEIPT', documentTypeFixtures)?.code).toBe(
+      'GOODS_RECEIPT',
     );
   });
 
@@ -57,8 +62,8 @@ describe('findSelectableDocumentType', () => {
    * 비활성은 화면이 정한 사실이므로 화면의 어느 경로에서도 같게 지켜져야 한다.
    */
   it('고를 수 없는 유형은 null이다 — 표에 있어도 마찬가지다', () => {
-    expect(findDocumentType('SYN_DOC_TYPE_C', documentTypeFixtures)).not.toBeNull();
-    expect(findSelectableDocumentType('SYN_DOC_TYPE_C', documentTypeFixtures)).toBeNull();
+    expect(findDocumentType('INBOUND_RECEIPT', documentTypeFixtures)).not.toBeNull();
+    expect(findSelectableDocumentType('INBOUND_RECEIPT', documentTypeFixtures)).toBeNull();
   });
 
   it('표에 없는 코드도 null이다', () => {
@@ -67,16 +72,16 @@ describe('findSelectableDocumentType', () => {
 });
 
 describe('toDocumentTypeOptions', () => {
-  it('빈 표는 빈 선택지가 된다', () => {
-    expect(toDocumentTypeOptions(DOCUMENT_TYPES)).toEqual([]);
+  it('고정 표는 9개 선택지가 된다', () => {
+    expect(toDocumentTypeOptions(DOCUMENT_TYPES)).toHaveLength(9);
   });
 
   /* 차례를 바꾸지 않는다 — 값이 어떤 차례로 오는지가 뜻일 수 있다. */
   it('표의 차례 그대로 옮긴다', () => {
     expect(toDocumentTypeOptions(documentTypeFixtures).map((option) => option.value)).toEqual([
-      'SYN_DOC_TYPE_A',
-      'SYN_DOC_TYPE_B',
-      'SYN_DOC_TYPE_C',
+      'GOODS_RECEIPT',
+      'GOODS_ISSUE',
+      'INBOUND_RECEIPT',
     ]);
   });
 
@@ -94,12 +99,12 @@ describe('describeDisabledTypes', () => {
   it('막힌 유형이 없으면 안내를 만들지 않는다', () => {
     expect(
       describeDisabledTypes([
-        { code: 'SYN_DOC_TYPE_A', label: '가', cancelResource: null, disabledReason: null },
+        { code: 'PURCHASE_ORDER', label: '가', cancelResource: null, disabledReason: null },
       ]),
     ).toBeUndefined();
   });
 
-  it('빈 표에서도 안내를 만들지 않는다', () => {
+  it('고정 표에는 막힌 유형 안내가 없다', () => {
     expect(describeDisabledTypes(DOCUMENT_TYPES)).toBeUndefined();
   });
 
@@ -118,8 +123,8 @@ describe('describeDisabledTypes', () => {
    */
   it('막힌 유형이 둘이면 경계가 보이게 가른다', () => {
     const note = describeDisabledTypes([
-      { code: 'A', label: '가', cancelResource: null, disabledReason: '사유 하나' },
-      { code: 'B', label: '나', cancelResource: null, disabledReason: '사유 둘' },
+      { code: 'PURCHASE_ORDER', label: '가', cancelResource: null, disabledReason: '사유 하나' },
+      { code: 'GOODS_RECEIPT', label: '나', cancelResource: null, disabledReason: '사유 둘' },
     ]);
 
     expect(note).toBe('가: 사유 하나 · 나: 사유 둘');
@@ -132,13 +137,13 @@ describe('cancelResourceOf', () => {
    * 계약이 내려 주지 않아 표가 비어 있는 것이 지금의 사실이고, 그 상태에서 리소스를 지어내면
    * 화면이 **없는 주소로 취소 요청을 보낸다.**
    */
-  it('빈 표에서는 어떤 유형도 취소 리소스를 얻지 못한다', () => {
-    expect(cancelResourceOf('SYN_DOC_TYPE_B', DOCUMENT_TYPES)).toBeNull();
+  it('고정 표에서 입고 취소 리소스를 얻는다', () => {
+    expect(cancelResourceOf('GOODS_RECEIPT', DOCUMENT_TYPES)).toBe('goods-receipts');
   });
 
   /* ⭐ 표에 값이 생기면 **그것만으로** 취소 경로가 정해진다 — 다른 자리는 바뀌지 않는다. */
   it('표를 채우면 그 유형의 리소스를 낸다', () => {
-    expect(cancelResourceOf('SYN_DOC_TYPE_B', documentTypeFixtures)).toBe('goods-receipts');
+    expect(cancelResourceOf('GOODS_ISSUE', documentTypeFixtures)).toBe('goods-receipts');
   });
 
   /**
@@ -146,7 +151,7 @@ describe('cancelResourceOf', () => {
    * 아무 리소스나 채워 넣으면 취소가 없는 문서에 취소 요청이 나간다.
    */
   it('취소 리소스가 없는 유형은 null이다', () => {
-    expect(cancelResourceOf('SYN_DOC_TYPE_A', documentTypeFixtures)).toBeNull();
+    expect(cancelResourceOf('GOODS_RECEIPT', documentTypeFixtures)).toBeNull();
   });
 
   /* 표에 아예 없는 코드도 마찬가지다 — 이 화면이 다루는 유형이 아니다. */
@@ -161,9 +166,9 @@ describe('cancelResourceOf', () => {
    * 픽스처의 「합성 유형 다」가 **비활성인데 리소스를 갖고 있어** 이 가드가 실제로 재어진다.
    */
   it('고를 수 없는 유형은 리소스가 있어도 null이다', () => {
-    expect(findDocumentType('SYN_DOC_TYPE_C', documentTypeFixtures)?.cancelResource).toBe(
+    expect(findDocumentType('INBOUND_RECEIPT', documentTypeFixtures)?.cancelResource).toBe(
       'goods-issues',
     );
-    expect(cancelResourceOf('SYN_DOC_TYPE_C', documentTypeFixtures)).toBeNull();
+    expect(cancelResourceOf('INBOUND_RECEIPT', documentTypeFixtures)).toBeNull();
   });
 });

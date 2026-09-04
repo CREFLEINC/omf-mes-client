@@ -197,7 +197,7 @@ export const toSearchParams = (filters: ProgressFilters, page: number): URLSearc
  * 답할 수 있다.** 그래서 늘 실린다.
  */
 export interface DocumentProgressListQuery {
-  documentTypeCode: string;
+  documentTypeCode: DocumentTypeEntry['code'];
   statusCode?: string;
   documentDateFrom?: string;
   documentDateTo?: string;

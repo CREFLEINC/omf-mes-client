@@ -51,7 +51,7 @@ export const makeSerial = (index: number): SerialNumber => ({
 
 export const makeIssue = (index: number): DocumentIssue => ({
   documentIssueLogId: 44000 + index,
-  documentTypeCode: 'TAG',
+  documentTypeCode: 'IDENTIFICATION_TAG',
   target: {
     targetTypeCode: 'SERIAL_NUMBER',
     targetId: 770000 + index,

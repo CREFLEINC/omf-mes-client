@@ -91,7 +91,7 @@ describe('SuccessorsPane', () => {
     );
 
     expect(screen.getByText('SYN-GI-2026-0101')).toBeInTheDocument();
-    expect(screen.getAllByText('SYN_DOC_TYPE_B')).toHaveLength(2);
+    expect(screen.getAllByText('GOODS_ISSUE')).toHaveLength(2);
     expect(screen.getByText('400')).toBeInTheDocument();
   });
 
@@ -255,7 +255,7 @@ describe('SuccessorsPane', () => {
     const { rerender } = render(
       <SuccessorsPane
         successors={[
-          documentSuccessor({ successorTypeCode: 'SYN_DOC_TYPE_B', successorId: 9101 }),
+          documentSuccessor({ successorTypeCode: 'GOODS_ISSUE', successorId: 9101 }),
           documentSuccessor({ successorTypeCode: 'SYN_DOC_TYPE_D', successorId: 9101 }),
         ]}
         routes={SCREEN_ROUTES}

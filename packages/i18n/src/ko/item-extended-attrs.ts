@@ -9,14 +9,19 @@
  * 충돌·상태 잠금·권한 문구도 공통 규약 문구(`conflict.*`·`stateLocked.*`·`httpError.*`)를 그대로 쓴다.
  */
 export const itemExtendedAttrs = {
-  title: '품목 확장속성',
+  title: '품목·자재 명세서',
   breadcrumbRoot: '기준정보',
   /** 탭 라벨. **만든 탭만 둔다** — 없는 탭의 라벨을 미리 두면 무엇이 렌더되는지 흐려진다. */
   tabs: {
-    label: '품목 확장속성',
+    label: '품목 상세 구획',
     attrs: '확장 속성',
     subsidiary: '부속 정보',
     bom: '자재 명세서',
+  },
+  sections: {
+    label: '품목·자재 명세서 구분',
+    item: '품목',
+    bom: 'BOM',
   },
   /**
    * 부속 정보 안의 하위 탭. 계약이 인용한 화면 스펙의 구획 이름을 그대로 옮긴 것이다 —
@@ -117,8 +122,19 @@ export const itemExtendedAttrs = {
    * 두 항목을 한 줄로 붙여 놓아 무엇이 무엇을 켜는지 보이게 한다.
    */
   attrs: {
+    groups: {
+      names: '다국어 명칭',
+      lot: 'LOT 기본값·식별',
+      shelfLife: '유효기한·선출',
+      inventory: '검사·재고·보관',
+    },
     fields: {
-      lotControlType: 'LOT 관리 유형',
+      nameKo: '품목명(한국어)',
+      nameVi: '품목명(베트남어)',
+      developmentItem: '개발품',
+      lotControlled: 'LOT 관리',
+      defaultLotStorageUom: 'LOT 보관 단위 기본값',
+      defaultProductionLotSize: '생산 LOT 기본크기',
       serialControlType: '시리얼 관리 유형',
       shelfLifeManaged: '유효기한 관리',
       shelfLifeDays: '유효기한(일)',
@@ -132,6 +148,7 @@ export const itemExtendedAttrs = {
     values: {
       active: '사용 중',
       inactive: '미사용',
+      unspecified: '지정하지 않음',
     },
     /**
      * 사용 여부에 컨트롤을 두지 않는 이유. **감추지 않고 밝힌다** —
@@ -147,6 +164,8 @@ export const itemExtendedAttrs = {
       shelfLifeDaysInvalid: '유효기한(일)은 0 이상의 정수로 입력하세요.',
       /* 계약 exclusiveMinimum: 0 — 유효기한(일)과 규칙이 다르다. 0을 받지 않는다. */
       openedShelfLifeHoursInvalid: '개봉 후 유효시간(시간)은 1 이상의 정수로 입력하세요.',
+      defaultLotStorageUomInvalid: 'LOT 보관 단위 기본값을 다시 선택하세요.',
+      defaultProductionLotSizeInvalid: '생산 LOT 기본크기는 숫자로 입력하세요.',
     },
   },
   /**
@@ -314,11 +333,9 @@ export const itemExtendedAttrs = {
       confirm: '확인',
       notSavedNotice: '확인을 눌러도 아직 저장되지 않습니다. 표를 확인한 뒤 저장하세요.',
     },
-    /* 값 목록이 확정되지 않아 자유 입력으로 받는다(결정 4) — 그 사실을 밝힌다. */
-    externalSystemNote: '코드 목록이 확정되지 않아 직접 입력합니다. 값은 서버가 확인합니다.',
+    externalSystemPlaceholder: '외부 시스템을 선택하세요',
     validation: {
       required: '필수 입력 항목입니다.',
-      externalSystemCodeTooLong: '외부 시스템 코드는 50자를 넘을 수 없습니다.',
       externalItemCodeTooLong: '외부 품목코드는 100자를 넘을 수 없습니다.',
       /* 계약 uq_item_external_code — COALESCE(partner_id,0) 접기를 문구가 밝힌다(A-7). */
       duplicateKey:

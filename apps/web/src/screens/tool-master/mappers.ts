@@ -21,7 +21,7 @@ export const formValuesFrom = (tool: Mold): ToolFormValues => ({
   plantId: String(tool.plantId),
   cavityCount: String(tool.cavityCount),
   guaranteedShotCount: numberToText(tool.guaranteedShotCount),
-  pmTriggerTypeCode: tool.pmTriggerTypeCode,
+  pmTriggerTypeCode: tool.pmTriggerTypeCode ?? PM_TRIGGER.none,
   pmCycleInterval: numberToText(tool.pmCycleInterval),
   pmCycleUnitCode: tool.pmCycleUnitCode ?? '',
 });

@@ -93,7 +93,8 @@ import {
 import {
   DEFAULT_SUBSIDIARY_TAB_ID,
   DEFAULT_TAB_ID,
-  ITEM_EXTENDED_ATTRS_TABS,
+  ITEM_DETAIL_TABS,
+  ITEM_EXTENDED_ATTRS_SECTIONS,
   SUBSIDIARY_TABS,
   SUBSIDIARY_TAB_KEY,
   TAB_KEY,
@@ -200,13 +201,9 @@ interface BomComponentFormState {
  * 조회 조건과 선택은 URL이 소유한다(`?tab=&q=&inactive=1&page=&item=`) —
  * 새로고침·뒤로가기·공유가 같은 화면을 낸다.
  *
- * **좌 칸은 탭 밖에 있다**(결정 2). 앞선 화면(W-06-06)은 탭마다 좌 목록이 통째로 달라
- * 탭이 화면 전체를 갈랐지만, 이 화면은 탭이 전부 「지금 고른 품목」의 다른 면이다.
- * 그래서 **탭을 옮겨도 아무것도 비우지 않는다** — 같은 규칙(「보이는 행이 달라지면 비운다」)에서
- * 나온 반대 결론이다.
- *
- * **탭은 만든 것만 렌더한다**(`tabs.ts`). 자재 명세서 탭은 그 내용이 생길 때 붙는다 —
- * 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다.
+ * 고정 설계의 품목/BOM 상위 탭이 화면 전체를 가르고, 두 구획은 같은 품목 선택을 공유한다.
+ * 품목 안에서는 원본 정보 위에 확장 속성/부속 정보 세부 탭을 둔다. 탭을 옮겨도 조건·선택·초안은
+ * 비우지 않아 같은 품목의 다른 면을 오갈 수 있다.
  */
 export const ItemExtendedAttrsScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -811,12 +808,7 @@ export const ItemExtendedAttrsScreen = () => {
     for (const field of Object.keys(patch)) componentWrite.clearFieldError(field);
   };
 
-  /**
-   * 탭을 옮긴다. **아무것도 비우지 않는다**(M09).
-   *
-   * 좌 목록도 고른 품목도 달라지지 않는다 — 같은 품목의 다른 면을 보는 것이다.
-   * 앞선 화면(W-06-06)은 탭마다 목록이 통째로 달라 전부 비웠고, 여기는 반대다.
-   */
+  /** 주소의 보기를 옮긴다. 같은 품목의 다른 면이므로 선택과 초안은 비우지 않는다. */
   const changeTab = (value: string) => {
     patchSearchParams((next) => {
       if (value === DEFAULT_TAB_ID) {
@@ -918,7 +910,10 @@ export const ItemExtendedAttrsScreen = () => {
   const renderOriginPane = (): ReactNode => {
     if (selectedItemId === null) {
       return (
-        <section className="pane" aria-label={t.panes.itemOrigin}>
+        <section className="pane" aria-labelledby="item-origin-title">
+          <h2 id="item-origin-title" className="pane-title">
+            {t.panes.itemOrigin}
+          </h2>
           <EmptyState size="sm" title={t.empty.notSelected} />
         </section>
       );
@@ -926,7 +921,10 @@ export const ItemExtendedAttrsScreen = () => {
 
     if (itemDetail.isError) {
       return (
-        <section className="pane" aria-label={t.panes.itemOrigin}>
+        <section className="pane" aria-labelledby="item-origin-title">
+          <h2 id="item-origin-title" className="pane-title">
+            {t.panes.itemOrigin}
+          </h2>
           <LoadErrorBanner error={itemDetail.error} onRetry={() => void itemDetail.refetch()} />
         </section>
       );
@@ -934,7 +932,10 @@ export const ItemExtendedAttrsScreen = () => {
 
     if (itemDetail.data === undefined) {
       return (
-        <section className="pane" aria-label={t.panes.itemOrigin}>
+        <section className="pane" aria-labelledby="item-origin-title">
+          <h2 id="item-origin-title" className="pane-title">
+            {t.panes.itemOrigin}
+          </h2>
           <div role="status" aria-label={t.loading.itemDetail}>
             <SkeletonText lines={4} />
           </div>
@@ -966,6 +967,7 @@ export const ItemExtendedAttrsScreen = () => {
         values={formState.values}
         /* 되돌려 싣는 값과 화면에 내는 값이 **같은 출처**여야 한다. */
         isActive={formState.source.item.isActive}
+        uomOptions={selectableOptions(uomOptions, formState.values.defaultLotStorageUomId)}
         onChange={changeAttrsValues}
         // 로컬 검증 결과가 서버 오류를 덮는다 — 지금 고칠 수 있는 것을 먼저 보인다.
         fieldErrors={{ ...attrsWrite.fieldErrors, ...attrsFieldErrors }}
@@ -1167,7 +1169,10 @@ export const ItemExtendedAttrsScreen = () => {
        * 빈 폼·빈 표를 보이면 사용자가 그것을 자료로 읽는다.
        */}
       {selectedBom === null ? (
-        <section className="pane" aria-label={t.bom.detailPaneTitle}>
+        <section className="pane" aria-labelledby="bom-detail-title">
+          <h2 id="bom-detail-title" className="pane-title">
+            {t.bom.detailPaneTitle}
+          </h2>
           <EmptyState size="sm" title={t.bom.empty.notSelected} />
         </section>
       ) : (
@@ -1259,10 +1264,68 @@ export const ItemExtendedAttrsScreen = () => {
   const tabContentOf = (tabId: string): ReactNode => {
     if (tabId === 'attrs') return renderAttrsPane();
     if (tabId === 'sub') return renderSubsidiaryPane();
-    if (tabId === 'bom') return renderBomPane();
 
     return null;
   };
+
+  const renderItemListPane = (): ReactNode => (
+    <ItemListPane
+      items={items}
+      isLoading={itemList.isPending}
+      appliedFilters={filters}
+      onApplyFilters={applyFilters}
+      pageView={pageView}
+      onChangePage={changePage}
+      selectedItemId={selectedItemId}
+      onSelect={handleSelectItem}
+      loadError={
+        itemList.isError ? (
+          <LoadErrorBanner error={itemList.error} onRetry={() => void itemList.refetch()} />
+        ) : null
+      }
+    />
+  );
+
+  const renderItemSection = (): ReactNode => (
+    <div className="two-pane item-extended-layout">
+      {renderItemListPane()}
+      <div className="pane-stack">
+        {selectedItemId !== null && renderOptionsNotice([uomOptions])}
+        {renderOriginPane()}
+        {selectedItemId !== null && (
+          <Tabs
+            aria-label={t.tabs.label}
+            value={tab.id}
+            onChange={changeTab}
+            items={ITEM_DETAIL_TABS.map((definition) => ({
+              value: definition.id,
+              label: definition.label,
+              content: definition.id === tab.id ? tabContentOf(definition.id) : null,
+            }))}
+          />
+        )}
+      </div>
+    </div>
+  );
+
+  const renderBomSection = (): ReactNode => (
+    <div className="two-pane item-extended-layout">
+      {renderItemListPane()}
+      {selectedItemId === null ? (
+        <section className="pane" aria-labelledby="bom-list-title">
+          <h2 id="bom-list-title" className="pane-title">
+            {t.bom.paneTitle}
+          </h2>
+          <EmptyState size="sm" title={t.empty.notSelected} />
+        </section>
+      ) : (
+        renderBomPane()
+      )}
+    </div>
+  );
+
+  const sectionId = tab.id === 'bom' ? 'bom' : 'item';
+  const changeSection = (value: string) => changeTab(value === 'bom' ? 'bom' : DEFAULT_TAB_ID);
 
   return (
     <>
@@ -1271,53 +1334,22 @@ export const ItemExtendedAttrsScreen = () => {
         breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
 
-      <div className="two-pane">
-        <ItemListPane
-          items={items}
-          isLoading={itemList.isPending}
-          appliedFilters={filters}
-          onApplyFilters={applyFilters}
-          pageView={pageView}
-          onChangePage={changePage}
-          selectedItemId={selectedItemId}
-          onSelect={handleSelectItem}
-          loadError={
-            itemList.isError ? (
-              <LoadErrorBanner error={itemList.error} onRetry={() => void itemList.refetch()} />
-            ) : null
-          }
+      <div className="item-extended-sections">
+        <Tabs
+          aria-label={t.sections.label}
+          value={sectionId}
+          onChange={changeSection}
+          items={ITEM_EXTENDED_ATTRS_SECTIONS.map((definition) => ({
+            value: definition.id,
+            label: definition.label,
+            content:
+              definition.id === sectionId
+                ? definition.id === 'item'
+                  ? renderItemSection()
+                  : renderBomSection()
+                : null,
+          }))}
         />
-
-        {/*
-         * 우 칸은 구획을 세로로 쌓는다 — 원본 구획 위, 탭 페인 아래.
-         * 원본 구획을 **탭 밖 맨 위**에 두는 것이 결정 2다: 어느 탭에 있어도 지금 어느 품목인지
-         * 보이고, 원본에 저장 버튼이 없다는 사실이 항상 눈에 보인다.
-         */}
-        <div className="pane-stack">
-          {selectedItemId !== null && renderOptionsNotice([uomOptions])}
-          {renderOriginPane()}
-
-          {/*
-           * 품목을 고르기 전에는 탭을 렌더하지 않는다 — 「먼저 고르세요」를 두 번 쌓으면
-           * 무엇을 하라는 안내인지 오히려 흐려진다.
-           */}
-          {selectedItemId !== null && (
-            <Tabs
-              aria-label={t.tabs.label}
-              value={tab.id}
-              onChange={changeTab}
-              items={ITEM_EXTENDED_ATTRS_TABS.map((definition) => ({
-                value: definition.id,
-                label: definition.label,
-                /*
-                 * 활성 탭의 내용만 만든다. 디자인 시스템 Tabs는 비활성 패널도 DOM에 두므로
-                 * 모두 만들면 보이지 않는 폼이 함께 살아 있게 된다.
-                 */
-                content: definition.id === tab.id ? tabContentOf(definition.id) : null,
-              }))}
-            />
-          )}
-        </div>
       </div>
 
       {/*

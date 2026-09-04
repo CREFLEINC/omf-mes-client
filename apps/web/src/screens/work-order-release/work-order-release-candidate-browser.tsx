@@ -30,10 +30,13 @@ export interface WorkOrderReleaseSelectionContext {
 
 export interface WorkOrderReleaseCandidateBrowserProps {
   renderSelection?: (context: WorkOrderReleaseSelectionContext) => ReactNode;
+  /** 기본은 브라우저 시간대. 테스트나 셸이 명시하면 그 오프셋으로 날짜 경계를 만든다. */
+  timezoneOffsetMinutes?: number;
 }
 
 export const WorkOrderReleaseCandidateBrowser = ({
   renderSelection,
+  timezoneOffsetMinutes = -new Date().getTimezoneOffset(),
 }: WorkOrderReleaseCandidateBrowserProps) => {
   const statusValues = useWorkOrderReleaseStatusValues();
   const productionLines = useWorkOrderReleaseProductionLines();
@@ -65,7 +68,7 @@ export const WorkOrderReleaseCandidateBrowser = ({
     undefined,
     createWorkOrderReleaseScreenState,
   );
-  const filters = toWorkOrderReleaseFilters(state);
+  const filters = toWorkOrderReleaseFilters(state, timezoneOffsetMinutes);
   const candidatesQuery = useWorkOrderReleaseCandidates(filters);
   const candidates = candidatesQuery.data?.items ?? [];
   const itemNames = useProductionOrderItemNames(candidates.map((candidate) => candidate.itemId));

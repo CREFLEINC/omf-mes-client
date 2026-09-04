@@ -1,3 +1,5 @@
+import type { paths } from '@omf-mes/api-client';
+
 export interface RequestFilters {
   approvalTypeCode: string;
   statusCode: string;
@@ -6,10 +8,13 @@ export interface RequestFilters {
   q: string;
 }
 
+type ListQueryParams = NonNullable<paths['/app/approval-requests']['get']['parameters']['query']>;
+
 export interface RequestListQuery {
   assignedToMe: true;
   pendingOnly?: true;
-  approvalTypeCode?: string;
+  /** 계약이 값 목록을 닫았다(코드 사전 2026-09-03). 허용 값은 `allowedCode`가 목록으로 거른다 */
+  approvalTypeCode?: ListQueryParams['approvalTypeCode'];
   statusCode?: string;
   requestedAtFrom?: string;
   requestedAtTo?: string;
@@ -135,7 +140,9 @@ export const toRequestListQuery = (
   return {
     assignedToMe: true,
     ...(pendingOnly ? { pendingOnly: true } : {}),
-    ...(filters.approvalTypeCode === '' ? {} : { approvalTypeCode: filters.approvalTypeCode }),
+    ...(filters.approvalTypeCode === ''
+      ? {}
+      : { approvalTypeCode: filters.approvalTypeCode as ListQueryParams['approvalTypeCode'] }),
     ...(filters.statusCode === '' ? {} : { statusCode: filters.statusCode }),
     ...(from === '' ? {} : { requestedAtFrom: from }),
     ...(to === '' ? {} : { requestedAtTo: to }),

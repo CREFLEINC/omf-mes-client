@@ -69,7 +69,9 @@ describe('CodeFormPane — 입력칸', () => {
     renderPane();
 
     expect(
-      screen.getByText('대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.'),
+      screen.getByText(
+        '대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -109,7 +111,10 @@ describe('CodeFormPane — 대분류 경고', () => {
 
 describe('CodeFormPane — 잠금과 사유', () => {
   it('코드가 잠기면 입력이 비활성이고 사유가 보인다', () => {
-    renderPane({ mode: 'edit', codeLockReason: '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.' });
+    renderPane({
+      mode: 'edit',
+      codeLockReason: '이미 3건에서 사용 중이라 코드를 바꿀 수 없습니다.',
+    });
 
     expect(screen.getByLabelText('코드')).toBeDisabled();
     expect(
@@ -128,7 +133,9 @@ describe('CodeFormPane — 잠금과 사유', () => {
     const parent = screen.getByRole('combobox', { name: '상위 대분류' });
     expect(parent).toBeDisabled();
     expect(parent).toHaveAttribute('aria-describedby');
-    expect(screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/),
+    ).toBeInTheDocument();
   });
 });
 
@@ -201,7 +208,7 @@ describe('CodeFormPane — 탭', () => {
   it('폼에 그 탭의 이름이 붙는다', () => {
     renderPane({ adapter: causeCodeAdapter });
 
-    expect(screen.getByRole('region', { name: '원인코드' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: '원인코드 등록·편집' })).toBeInTheDocument();
   });
 
   it('배너 슬롯을 그대로 낸다', () => {

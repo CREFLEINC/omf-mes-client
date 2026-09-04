@@ -68,7 +68,7 @@ const lookupRoutes: StubRoute[] = [
             itemName: '합성 자재',
             itemTypeCode: 'MATERIAL',
             baseUomId: 1,
-            lotControlTypeCode: 'LOT',
+            lotControlled: true,
             serialControlTypeCode: 'NONE',
             inspectionRequired: false,
             fifoPolicyCode: 'FIFO',

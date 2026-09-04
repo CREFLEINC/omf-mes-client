@@ -50,7 +50,7 @@ export const notificationFixtures: Notification[] = [
     message: '합성 알림 문구 나입니다.',
     occurredAt: '2026-08-16T09:30:00+09:00',
     read: true,
-    targetTypeCode: 'SYN-TARGET-TYPE',
+    targetTypeCode: 'LOT',
     targetId: 7201,
   }),
   notificationFixture({

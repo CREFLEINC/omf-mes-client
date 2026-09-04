@@ -1,3 +1,4 @@
+import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { EMPTY_PERIOD, isBusinessDate, type BusinessPeriod } from './business-period';
@@ -251,13 +252,16 @@ export const toSearchParams = (
 };
 
 /** 계약이 쓰는 쿼리 이름. 네 번호만 숫자로 보낸다 — 계약이 정수를 요구한다. */
+type BalanceQueryParams = NonNullable<paths['/inventory/balances']['get']['parameters']['query']>;
+
 export interface BalanceFilterQuery {
   warehouseId?: number;
   itemId?: number;
   lotId?: number;
   locationId?: number;
   qualityStatusCode?: string;
-  inventoryStatusCode?: string;
+  /** 재고 상태는 계약이 네 값으로 닫았다(코드 사전 2026-09-03). 선택지는 서버 코드값이다 */
+  inventoryStatusCode?: BalanceQueryParams['inventoryStatusCode'];
   ownershipTypeCode?: string;
   includeZero?: true;
 }
@@ -274,7 +278,11 @@ export const toBalanceFilterQuery = (filters: BalanceFilters): BalanceFilterQuer
     ...(lot === '' ? {} : { lotId: Number(lot) }),
     ...(location === '' ? {} : { locationId: Number(location) }),
     ...(filters.qualityStatus === '' ? {} : { qualityStatusCode: filters.qualityStatus }),
-    ...(filters.inventoryStatus === '' ? {} : { inventoryStatusCode: filters.inventoryStatus }),
+    ...(filters.inventoryStatus === ''
+      ? {}
+      : {
+          inventoryStatusCode: filters.inventoryStatus as BalanceQueryParams['inventoryStatusCode'],
+        }),
     ...(filters.ownership === '' ? {} : { ownershipTypeCode: filters.ownership }),
     /* 계약 기본값이 거짓이라 꺼진 상태를 실을 이유가 없다. */
     ...(filters.includeZero ? { includeZero: true as const } : {}),

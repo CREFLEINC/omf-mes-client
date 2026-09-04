@@ -15,7 +15,7 @@ const item = (overrides: Partial<Item> = {}): Item => ({
   itemName: '합성 품목',
   itemTypeCode: 'SYN_PRODUCT',
   baseUomId: 11,
-  lotControlTypeCode: 'SYN_LOT',
+  lotControlled: true,
   serialControlTypeCode: 'SYN_NONE',
   inspectionRequired: false,
   fifoPolicyCode: 'SYN_FIFO',

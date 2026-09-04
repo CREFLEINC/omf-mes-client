@@ -75,7 +75,7 @@ describe('ApprovalProgressPane — 다섯 갈래', () => {
     renderPane();
 
     expect(screen.getByText('AP-2026-800001')).toBeInTheDocument();
-    expect(screen.getByText('SAMPLE_AP_TYPE_A')).toBeInTheDocument();
+    expect(screen.getByText('GOODS_ISSUE_DISPOSAL')).toBeInTheDocument();
     expect(screen.getByText('합성 상신자 가')).toBeInTheDocument();
     expect(screen.getByText('2026-08-08 14:35')).toBeInTheDocument();
     expect(screen.getByText(t.progress.position(4, 4))).toBeInTheDocument();
@@ -175,7 +175,7 @@ describe('ApprovalProgressPane — 단계 표기', () => {
   it('결재 결과와 대기 상태가 보이는 글자로 선다', () => {
     renderPane();
 
-    expect(screen.getByText('SAMPLE_DECISION_A')).toBeInTheDocument();
+    expect(screen.getByText('APPROVED')).toBeInTheDocument();
     expect(screen.getByText('2026-08-08 15:02')).toBeInTheDocument();
     expect(screen.getByText('합성 결재 의견')).toBeInTheDocument();
     expect(screen.getByText(t.progress.waitingCurrent)).toBeInTheDocument();

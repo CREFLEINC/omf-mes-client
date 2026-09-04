@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyLineDraft } from './line-draft';
 import { toShipmentRequestCreateBody } from './shipment-request-create-body';
 import type { ShipmentRequestLineDraft } from './types';
+import { CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH } from './validation';
 
 const line = (patch: Partial<ShipmentRequestLineDraft>): ShipmentRequestLineDraft => ({
   ...emptyLineDraft(),
@@ -134,5 +135,24 @@ describe('toShipmentRequestCreateBody', () => {
 
     expect(body?.lines[0]).not.toHaveProperty('customerLotRequirement');
     expect(body?.lines[0]).not.toHaveProperty('minimumRemainingShelfLifeDays');
+  });
+
+  it('고객 LOT 요구가 200자를 넘으면 요청 본문을 만들지 않는다', () => {
+    const body = toShipmentRequestCreateBody({
+      ...baseInput,
+      mode: 'standalone',
+      salesOrderId: null,
+      lines: [
+        line({
+          itemId: '8301',
+          requestedQty: '10',
+          allocatedQty: '10',
+          uomId: '8401',
+          customerLotRequirement: '가'.repeat(CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH + 1),
+        }),
+      ],
+    });
+
+    expect(body).toBeNull();
   });
 });

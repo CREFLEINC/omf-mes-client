@@ -290,7 +290,7 @@ export const PutawayRuleScreen = () => {
 
   /**
    * 마지막으로 보낸 **전환의 갈래**. 두 자리가 읽는다 — 성공 문면(끄기/켜기)과
-   * **갈래 뒤집힘 판정**(`openActivationDialog`).
+   * **갈래 뒤집힘 판정**(`activationFailureSlot`).
    *
    * ⚠ **성공 문면 자리에서는 창의 `intent`를 읽어도 오늘은 같은 답이 나온다.** 공통 쓰기 훅이
    * 성공 콜백을 **보낸 렌더의 클로저로** 부르기 때문이다(`write()` 안의 `mutation.mutate`가 그
@@ -903,7 +903,7 @@ export const PutawayRuleScreen = () => {
    * 한 렌더 안에서 답이 흔들리지 않는다. 같은 이유로 이 슬라이스는 대상 참조 둘도 렌더에서
    * 다룬다(`editTargetKeyRef`).
    */
-  const isSentIntentReversed = (against: ActivationIntent): boolean =>
+  const isSentIntentReversed = (against: ActivationIntent | null): boolean =>
     isIntentReversed(sentIntentRef.current, against);
 
   /**
@@ -1044,9 +1044,7 @@ export const PutawayRuleScreen = () => {
   const activationFailureSlot = (): ReactNode =>
     writeFailureSlot(
       activationWrite,
-      activationIntent !== null && isSentIntentReversed(activationIntent)
-        ? null
-        : t.notes.activationUnconfirmed,
+      isSentIntentReversed(activationIntent) ? null : t.notes.activationUnconfirmed,
       /* 409는 재조회로 풀린다 — 이 쓰기에는 잠글 대상이 있다(계약이 `If-Match`를 요구한다). */
       reloadDetail,
     );

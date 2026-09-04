@@ -15,9 +15,7 @@ const t = messages.goodsReceipt;
  * 판정하면 값이 정해질 때 조용히 틀린다.
  */
 export type LotStatusState =
-  | { kind: 'loading' }
-  | { kind: 'failed' }
-  | { kind: 'known'; statusCode: string };
+  { kind: 'loading' } | { kind: 'failed' } | { kind: 'known'; statusCode: string };
 
 export interface ResultPaneProps {
   result: GoodsReceiptResultView;
@@ -116,7 +114,10 @@ export const ResultPane = ({ result, sourceInboundReceiptNo, lotStatus }: Result
         <div className="field-cell">
           <dt className="field-label">{t.result.sourceDocument}</dt>
           <dd>
-            {t.result.sourceDocumentPair(result.sourceDocumentTypeCode, sourceInboundReceiptNo)}
+            {/* 원천 유형이 비어 오면 지어내지 않고 입하번호만 보인다 — 이 화면은 늘 채워 보내므로 실제로는 오지 않는 갈래다. */}
+            {result.sourceDocumentTypeCode === null
+              ? sourceInboundReceiptNo
+              : t.result.sourceDocumentPair(result.sourceDocumentTypeCode, sourceInboundReceiptNo)}
           </dd>
         </div>
       </dl>

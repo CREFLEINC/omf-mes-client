@@ -117,17 +117,17 @@ export const defaultEquipmentFilters: EquipmentFilters = {
  */
 export const PENDING_CODE_VALUE = 'PENDING';
 
-const pendingOptions = (): CodeOption[] => [
-  { value: PENDING_CODE_VALUE, label: messages.pendingCode.placeholder },
-];
-
 /**
- * 그룹유형 — 공통코드 미확정(추적 omf-mes#145).
+ * 그룹유형 — ✅ 계약이 `LINE`·`WORK_AREA` 둘로 닫았다(코드 사전 2026-09-03 · `EquipmentGroupUpdate.groupTypeCode`).
  *
- * ⚠ 물리 모델에는 라인·작업구역 두 값이 있으나 **고객사가 자기 분류 체계를 정해야 하는 값**이라
- * 그 둘을 선택지로 내지 않는다. 값을 지어내는 것과 남의 스키마를 화면 문구로 옮기는 것 둘 다 피한다.
+ * 그전까지는 「고객사가 정할 값」으로 보고 자리표시 하나만 냈는데, 계약이 `enum`으로 못박으면서
+ * 그 전제가 뒤집혔다 — 자리표시를 그대로 보내면 서버가 400으로 거부한다. 표시명은 계약 설명
+ * (「라인과 작업구역을 가른다」)의 낱말이라 화면이 지어낸 이름이 아니다.
  */
-export const GROUP_TYPE_OPTIONS: CodeOption[] = pendingOptions();
+export const GROUP_TYPE_OPTIONS: CodeOption[] = [
+  { value: 'LINE', label: messages.equipmentMaster.groupTypes.LINE },
+  { value: 'WORK_AREA', label: messages.equipmentMaster.groupTypes.WORK_AREA },
+];
 
 /**
  * 운용 상태 코드의 라벨.
@@ -147,8 +147,8 @@ export const cycleTypeLabel = (code: string, options: readonly CodeOption[]): st
   options.find((option) => option.value === code)?.label ?? code;
 
 /**
- * 그룹유형 코드의 라벨. **값 목록이 확정되지 않아 지금은 늘 코드가 그대로 나온다.**
- * 「알 수 없음」으로 그리지 않는다 — 모르는 값과 없는 값이 같은 모양이 되면 안 된다(G-9).
+ * 그룹유형 코드의 라벨. 계약이 닫은 두 값은 표시명으로, **그 밖의 값은 코드 그대로** 보인다 —
+ * 「알 수 없음」으로 그리지 않는다. 모르는 값과 없는 값이 같은 모양이 되면 안 된다(G-9).
  */
 export const groupTypeLabel = (code: string): string =>
   GROUP_TYPE_OPTIONS.find((option) => option.value === code)?.label ?? code;

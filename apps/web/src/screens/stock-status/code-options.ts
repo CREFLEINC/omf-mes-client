@@ -3,9 +3,9 @@ import type { BalanceView } from './types';
 /**
  * 코드 조건의 선택지 — **조회 결과에서 만든다.**
  *
- * 품질 상태·재고 상태·소유 구분은 계약이 전부 「확정된 값 목록이 아직 없다 — 서버가 내려주는
- * 값을 그대로 쓴다」로 두었다(이슈 #21 §4 · omf-mes#64). 값을 지어내면 **없는 선택지를
- * 만드는 것**이라 사용자가 고른 값으로 조회했다가 늘 0건을 본다.
+ * 재고 상태는 고정 OpenAPI가 닫은 네 값을 제공한다. 품질 상태·소유 구분은 실행 시점
+ * 공통코드이므로 서버가 내려주는 값을 그대로 쓴다. 값을 지어내면 **없는 선택지를 만드는
+ * 것**이라 사용자가 고른 값으로 조회했다가 늘 0건을 본다.
  *
  * 그래서 자리표시 상수를 **빈 배열로 두고** 이번 결과에 나온 코드에서 뽑으며, 그 한계
  * (결과에 없는 값은 목록에 없다)를 조건 줄의 안내 문구가 밝힌다.
@@ -18,11 +18,15 @@ import type { BalanceView } from './types';
  */
 
 /**
- * 값 목록이 확정되면(omf-mes#64) **이 배열들만** 채운다. 값을 지어내지 않는다.
- * 비어 있어도 자리를 남기는 이유는, 확정됐을 때 고칠 곳이 한눈에 보이게 하기 위해서다.
+ * 고정 enum은 그대로 두고, 실행 시점 목록은 조회 결과와 합친다.
  */
 export const PLACEHOLDER_QUALITY_STATUS_CODES: readonly string[] = [];
-export const PLACEHOLDER_INVENTORY_STATUS_CODES: readonly string[] = [];
+export const PLACEHOLDER_INVENTORY_STATUS_CODES = [
+  'AVAILABLE',
+  'BLOCKED',
+  'IN_TRANSIT',
+  'ON_HOLD',
+] as const;
 export const PLACEHOLDER_OWNERSHIP_TYPE_CODES: readonly string[] = [];
 
 /** 한 줄에서 코드 하나를 꺼내는 방법. 코드마다 필드가 다르므로 호출부가 준다. */

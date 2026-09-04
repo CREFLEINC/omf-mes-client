@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import type { LookupSource } from '../../patterns/lookup-display';
 import {
   GROUP_TYPE_OPTIONS,
-  PENDING_CODE_VALUE,
   ensureOption,
   groupDeactivateImpact,
   groupTypeLabel,
@@ -29,30 +28,29 @@ const source = (
   isLoading: state === 'loading',
 });
 
-describe('자리표시 선택지', () => {
+describe('그룹유형 선택지', () => {
   /*
-   * 값 목록이 확정되지 않은 코드는 값을 지어내지 않는다. 물리 모델에 값이 있어도
-   * 고객사가 자기 분류 체계를 정해야 하는 값이라 그것을 선택지로 내면 안 된다.
+   * 계약이 `LINE`·`WORK_AREA` 둘로 닫았다(코드 사전 2026-09-03). 자리표시를 그대로 보내면
+   * 서버가 400으로 거부하므로 선택지는 계약 값 그대로이고, 표시명은 계약 설명의 낱말이다.
    */
-  it('그룹유형은 자리표시 하나만 낸다', () => {
-    expect(GROUP_TYPE_OPTIONS).toHaveLength(1);
-    expect(GROUP_TYPE_OPTIONS[0]?.value).toBe(PENDING_CODE_VALUE);
-    expect(GROUP_TYPE_OPTIONS[0]?.label).toBe(messages.pendingCode.placeholder);
+  it('계약이 닫은 두 값을 그 순서로 낸다', () => {
+    expect(GROUP_TYPE_OPTIONS.map((option) => option.value)).toEqual(['LINE', 'WORK_AREA']);
+    expect(GROUP_TYPE_OPTIONS.map((option) => option.label)).toEqual([
+      messages.equipmentMaster.groupTypes.LINE,
+      messages.equipmentMaster.groupTypes.WORK_AREA,
+    ]);
   });
 });
 
 describe('groupTypeLabel', () => {
-  /*
-   * 값 목록이 확정되지 않아 서버가 준 코드는 어느 것도 선택지에 없다.
-   * 그때 「알 수 없음」으로 그리면 모르는 값과 없는 값이 같은 모양이 된다(G-9).
-   */
-  it('선택지에 없는 코드는 코드를 그대로 보인다', () => {
-    expect(groupTypeLabel('LINE')).toBe('LINE');
-    expect(groupTypeLabel('WORK_AREA')).toBe('WORK_AREA');
+  it('계약 값은 표시명으로 보인다', () => {
+    expect(groupTypeLabel('LINE')).toBe(messages.equipmentMaster.groupTypes.LINE);
+    expect(groupTypeLabel('WORK_AREA')).toBe(messages.equipmentMaster.groupTypes.WORK_AREA);
   });
 
-  it('자리표시 값은 자리표시 문구로 보인다', () => {
-    expect(groupTypeLabel(PENDING_CODE_VALUE)).toBe(messages.pendingCode.placeholder);
+  /* 선택지에 없는 코드를 「알 수 없음」으로 그리면 모르는 값과 없는 값이 같은 모양이 된다(G-9). */
+  it('선택지에 없는 코드는 코드를 그대로 보인다', () => {
+    expect(groupTypeLabel('SYN-UNLISTED')).toBe('SYN-UNLISTED');
   });
 });
 

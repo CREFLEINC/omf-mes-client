@@ -10,18 +10,16 @@ import { duplicateKeyOf, type ExternalCodeDraft } from './external-code-draft';
  * | 로컬에서 막는 것 | 계약 근거 |
  * | --- | --- |
  * | 필수 둘(외부 시스템·외부 품목코드) | 스키마 `required` |
- * | 길이 50 / 100 | `maxLength` |
+ * | 외부 품목코드 길이 100 | `maxLength` |
  * | 중복(외부 시스템 + `COALESCE(거래처,0)`) | `uq_item_external_code` — **A-7** |
  *
  * **거래처는 필수가 아니다.** 비우는 것이 「(전체)」라는 정상 값이다.
- * **외부 시스템 코드의 값 목록을 만들지 않는다** — 계약이 「공통코드」라고만 적었고
- * 값을 지어내면 그 코드로 저장된 자료가 남는다(결정 4).
+ * **외부 시스템 코드는 OpenAPI enum을 그대로 쓴다.** 화면이 별도 값을 만들지 않는다.
  */
 
 const t = messages.itemExtendedAttrs.externalCode.validation;
 
 /** 계약이 정한 상한. 상한 자체는 허용값이며 그것을 **넘을 때만** 막는다. */
-const EXTERNAL_SYSTEM_CODE_MAX = 50;
 const EXTERNAL_ITEM_CODE_MAX = 100;
 
 export const validateExternalCodeDraft = (
@@ -30,13 +28,10 @@ export const validateExternalCodeDraft = (
 ): Record<string, string> => {
   const errors: Record<string, string> = {};
 
-  const systemCode = draft.externalSystemCode.trim();
   const itemCode = draft.externalItemCode.trim();
 
-  if (systemCode === '') {
+  if (draft.externalSystemCode === '') {
     errors.externalSystemCode = t.required;
-  } else if (systemCode.length > EXTERNAL_SYSTEM_CODE_MAX) {
-    errors.externalSystemCode = t.externalSystemCodeTooLong;
   }
 
   if (itemCode === '') {

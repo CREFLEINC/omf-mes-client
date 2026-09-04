@@ -3,28 +3,21 @@ import { messages } from '@omf-mes/i18n';
 import type { SelectOption } from './types';
 
 /**
- * 값 목록이 확정되지 않은 코드를 한 파일에 격리한다.
- *
- * **값을 지어내지 않는 것이 이 파일의 목적이다.** 착수 이슈가 미결로 남긴 것을 화면이
- * 그럴듯한 예시로 메우면, 사용자는 고를 수 있다고 믿고 고르는데 서버는 그 값을 모른다.
- * 결재선에는 **물리 삭제 경로가 없어**(사용 중지만 있다) 잘못 만든 결재선을 지울 수 없고,
- * 그 결재선은 어떤 상신과도 매칭되지 않는다 — 지어낸 값의 비용이 유난히 크다.
- * 계약의 `@example` 값도 심지 않는다. 그것은 예시이지 확정이 아니다.
- *
- * **이 화면에서 잠기는 범위는 좁다.** 승인 유형은 **등록의 유일한 필수 필드**이고 수정 요청에는
- * 아예 없다 — 값 목록이 비어 있어도 이미 있는 결재선을 고치고 단계를 세우고 끄고 켤 수 있다.
- * 이 회차(읽기)에서는 조회 조건의 선택칸 하나가 빌 뿐이다.
- *
- * **값이 확정되면 이 파일의 배열만 채우면 된다.** 조건 줄은 배열을 읽을 뿐이라 다른 자리를
- * 고칠 필요가 없고, 채우는 순간 선택칸이 저절로 살아난다.
- *
- * 추적: 승인 유형 값 목록 미확정 — **`omf-mes#64`**. 비공개 저장소이므로 번호로만 참조한다.
- *
- * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
+ * 고정 OpenAPI가 닫은 승인 유형 8개를 조회와 등록에서 함께 쓰는 단일 목록이다.
+ * 이 화면이 소유하며 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
-/** 승인 유형 값 목록 — **비어 있는 것이 지금의 사실이다.** */
-export const PLACEHOLDER_APPROVAL_TYPE_CODES: readonly string[] = [];
+/** OpenAPI가 고객 확장 불가 enum으로 닫은 승인 유형 값 목록. */
+export const PLACEHOLDER_APPROVAL_TYPE_CODES = [
+  'GOODS_ISSUE_DISPOSAL',
+  'INVENTORY_ADJUSTMENT',
+  'PURCHASE_ORDER',
+  'INBOUND_RECEIPT_CANCEL',
+  'GOODS_RECEIPT_CANCEL',
+  'GOODS_ISSUE_CANCEL',
+  'SHIPMENT_CANCEL',
+  'IQC_SKIP',
+] as const;
 
 /**
  * 값 목록을 선택지로 옮긴다.
@@ -47,7 +40,7 @@ export const codePlaceholder = (): string => messages.pendingCode.placeholder;
 /**
  * 승인자 구분 — **승인 유형과 사정이 다르다.**
  *
- * 승인 유형은 값 목록 자체가 없어 선택지가 비지만, 승인자 구분은 **계약이 셋을 못 박았고
+ * 승인 유형은 고정 OpenAPI가 값 목록을 닫았지만, 승인자 구분은 **계약이 셋을 못 박았고
  * 그중 하나만 1차에 열린다.** 계약이 그 이유까지 적었다 — 역할·부서는 상신할 때 사람을 고를
  * 입력이 물리 모델에 없다. 그래서 여기서는 **지어낼 것이 없고, 감출 이유도 없다.**
  *
@@ -64,7 +57,7 @@ export type ApproverTypeCode = (typeof APPROVER_TYPE_CODES)[number];
  * 1차에 고를 수 있는 구분 — **여기 하나가 잠금의 유일한 근거다.**
  *
  * `omf-mes#69`가 열리면 이 배열에 값을 더하는 것만으로 선택지가 살아난다. 잠금을 부품 안에
- * 상수로 굳히면 그때 고칠 자리를 찾아 헤매게 된다(승인 유형의 자리표시 배열과 같은 규율).
+ * 상수로 굳히면 그때 고칠 자리를 찾아 헤매게 된다.
  */
 export const ENABLED_APPROVER_TYPE_CODES: readonly ApproverTypeCode[] = ['USER'];
 

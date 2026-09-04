@@ -63,7 +63,7 @@ const item: components['schemas']['Item'] = {
   itemName: '합성 품목',
   itemTypeCode: 'SAMPLE_TYPE',
   baseUomId: 401,
-  lotControlTypeCode: 'SAMPLE_LOT',
+  lotControlled: true,
   serialControlTypeCode: 'SAMPLE_SERIAL',
   inspectionRequired: false,
   fifoPolicyCode: 'SAMPLE_FIFO',

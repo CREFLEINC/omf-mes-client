@@ -7,16 +7,25 @@
 export const routing = {
   title: 'Routing(공정)',
   breadcrumbRoot: '기준정보',
+  tabs: {
+    label: 'Routing·공정 마스터',
+    routing: 'Routing',
+    processes: '공정 마스터',
+  },
   panes: {
     item: '품목',
     revision: 'Rev 목록',
     header: 'Routing 정보',
     operations: '공정 라인',
+    processList: '공정 목록',
+    processForm: '공정 등록·편집',
   },
   actions: {
     newRevision: '신규 Rev 발행',
     createRouting: 'Routing 등록',
     addOperation: '공정 추가',
+    addProcess: '공정 추가',
+    activateProcess: '다시 사용',
     confirm: '확정',
     obsolete: '폐기',
     dependencies: '선후행 설정',
@@ -80,6 +89,8 @@ export const routing = {
     searchLabel: '품목 검색',
     searchPlaceholder: '품목코드 또는 품목명',
     onlyWithoutRouting: 'Routing 미보유만',
+    processSearchLabel: '공정 검색',
+    processSearchPlaceholder: '공정코드 또는 공정명',
     chipRemoveKeyword: '검색어 조건 제거',
     chipRemoveOnlyWithoutRouting: 'Routing 미보유만 조건 제거',
     chipKeyword: (value: string): string => `검색어: ${value}`,
@@ -89,6 +100,8 @@ export const routing = {
     revisions: 'Rev 목록을 불러오는 중',
     header: 'Routing 정보를 불러오는 중',
     operations: '공정 라인을 불러오는 중',
+    processes: '공정 목록을 불러오는 중',
+    processDetail: '공정 상세를 불러오는 중',
   },
   listTruncated: (shown: number, total: number): string =>
     `전체 ${total}건 중 ${shown}건을 표시합니다. 조건을 좁혀 조회하세요.`,
@@ -105,6 +118,11 @@ export const routing = {
     revisionNotSelected: '가운데에서 Rev를 먼저 고르세요',
     operationNoneTitle: '등록된 공정이 없습니다',
     operationNoneDescription: '「공정 추가」로 첫 공정을 등록하세요.',
+    processNoneTitle: '등록된 공정이 없습니다',
+    processNoneDescription: '「공정 추가」로 첫 공정을 등록하세요.',
+    processNoMatchTitle: '조건에 맞는 공정이 없습니다',
+    processNoMatchDescription: '조건을 줄이거나 초기화한 뒤 다시 조회하세요.',
+    processNotSelected: '좌측에서 공정을 고르거나 새 공정을 추가하세요',
   },
   fields: {
     item: '품목',
@@ -117,6 +135,10 @@ export const routing = {
     effectiveTo: '유효종료',
     operationNo: '순서',
     process: '공정',
+    processCode: '공정코드',
+    processName: '공정명',
+    processType: '공정 유형',
+    isActive: '사용여부',
     operationName: '공정명',
     managedItems: '관리 항목',
     /** 단위를 라벨에 적는다 — 값만 보고는 분·초를 구분할 수 없다. */
@@ -151,6 +173,9 @@ export const routing = {
     codeBlank: 'Routing 코드는 공백만으로 지정할 수 없습니다.',
     effectiveRangeReversed: '유효종료는 유효시작과 같거나 그 뒤여야 합니다.',
     operationNameBlank: '공정명은 공백만으로 지정할 수 없습니다.',
+    processCodeBlank: '공정코드는 공백만으로 지정할 수 없습니다.',
+    processNameBlank: '공정명은 공백만으로 지정할 수 없습니다.',
+    processTypeRequired: '공정 유형을 고르세요.',
     /** 단위가 초이고 0은 불가다 — 라벨과 같은 말을 오류에도 적어야 무엇을 고칠지 알 수 있다. */
     cycleTimeInvalid: '표준 C/T는 0보다 큰 초 단위 숫자여야 합니다.',
     /** 퍼센트로 넣으면 여기서 막힌다. 막지 않으면 100배 오입력이 조용히 통과한다. */
@@ -173,5 +198,12 @@ export const routing = {
      * 이 창의 확인은 표에만 반영되고 서버 반영은 「저장」 한 번뿐이다. 그 사실을 감추지 않는다.
      */
     operationLocalNote: '확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.',
+    deactivateProcessTitle: '이 공정을 사용 중지할까요?',
+    deactivateProcessDescription:
+      '기존 확정 Routing은 그대로 유지되고, 앞으로 새 공정 라인에서만 고를 수 없게 됩니다.',
+    deactivateProcessReferences: (count: number): string =>
+      `이 공정을 참조하는 곳이 ${String(count)}건 있습니다.`,
+    activateProcessTitle: '이 공정을 다시 사용할까요?',
+    activateProcessDescription: '앞으로 새 공정 라인에서도 이 공정을 다시 고를 수 있습니다.',
   },
 } as const;

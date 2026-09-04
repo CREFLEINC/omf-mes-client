@@ -19,6 +19,7 @@ const toStatus = (view: DashboardCardView): { status?: StatCardStatus; statusLab
     case 'NOT_YET':
       return { status: 'idle', statusLabel: t.cards.statusNotYet };
     case 'AVAILABLE':
+    case undefined:
       return {};
   }
 };

@@ -43,7 +43,7 @@ export const appliedRatio = (effective: OperationPolicyEffective | null): number
 export const matchedScopeText = (effective: OperationPolicyEffective | null): string | null => {
   const code = effective?.matchedScopeCode;
 
-  if (code === null || code === undefined || code === '') return null;
+  if (code === null || code === undefined) return null;
 
   const known = t.matchedScope as Record<string, string | undefined>;
 

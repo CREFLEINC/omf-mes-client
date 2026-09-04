@@ -10,8 +10,8 @@ import {
 import type { DocumentTypeEntry } from './document-types';
 import { DEFAULT_PROGRESS_FILTERS, toSearchParams, type ProgressFilters } from './filters';
 
-const SELECTABLE = 'SYN_DOC_TYPE_A';
-const DISABLED = 'SYN_DOC_TYPE_C';
+const SELECTABLE = 'GOODS_RECEIPT';
+const DISABLED = 'INBOUND_RECEIPT';
 
 const entries: readonly DocumentTypeEntry[] = [
   { code: SELECTABLE, label: '합성 유형 가', cancelResource: null, disabledReason: null },

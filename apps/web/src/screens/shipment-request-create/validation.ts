@@ -18,6 +18,9 @@ import type { AssignmentMode, ShipmentRequestLineDraft } from './types';
 
 const t = messages.shipmentRequestCreate;
 
+/** 고정 설계의 `customer_lot_requirement varchar(200)`와 같은 화면 입력 상한. */
+export const CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH = 200;
+
 export const HEADER_FORM_FIELDS: readonly string[] = [
   'customerId',
   'shipToPartnerId',
@@ -25,7 +28,12 @@ export const HEADER_FORM_FIELDS: readonly string[] = [
 ];
 
 export type LineFieldName =
-  'itemId' | 'uomId' | 'requestedQty' | 'allocatedQty' | 'minimumRemainingShelfLifeDays';
+  | 'itemId'
+  | 'uomId'
+  | 'requestedQty'
+  | 'allocatedQty'
+  | 'customerLotRequirement'
+  | 'minimumRemainingShelfLifeDays';
 
 /** 줄 단위 오류의 열쇠. 줄 키가 앞에 온다 — 잘못 친 줄이 둘일 때 서로 섞이지 않는다. */
 export const lineFieldId = (key: string, field: LineFieldName): string => `${key}.${field}`;
@@ -128,6 +136,11 @@ export const validateLines = (lines: readonly ShipmentRequestLineDraft[]): LineV
     const allocatedError = allocatedQtyError(line);
 
     if (allocatedError !== null) errors[lineFieldId(line.key, 'allocatedQty')] = allocatedError;
+
+    if (line.customerLotRequirement.length > CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH) {
+      errors[lineFieldId(line.key, 'customerLotRequirement')] =
+        t.errors.customerLotRequirementTooLong(CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH);
+    }
 
     const shelfError = shelfLifeError(line.minimumRemainingShelfLifeDays);
 

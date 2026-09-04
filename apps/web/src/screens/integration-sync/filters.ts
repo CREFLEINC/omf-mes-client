@@ -1,3 +1,4 @@
+import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { PeriodInput } from './period';
@@ -88,10 +89,13 @@ export const toSearchParams = (
 };
 
 /** 계약이 쓰는 쿼리 이름. 시도 하한만 숫자로 보낸다 — 계약이 정수를 요구한다. */
+type MessageQueryParams = NonNullable<paths['/integration/messages']['get']['parameters']['query']>;
+
 export interface MessageFilterQuery {
   statusCode?: string;
   interfaceCode?: string;
-  directionCode?: string;
+  /** 계약이 방향을 두 값으로 닫았다(코드 사전 2026-09-03). 선택지는 서버 코드값이다 */
+  directionCode?: MessageQueryParams['directionCode'];
   targetTypeCode?: string;
   retryCountMin?: number;
 }
@@ -102,7 +106,9 @@ export const toFilterQuery = (filters: MessageFilters): MessageFilterQuery => {
   return {
     ...(filters.status === '' ? {} : { statusCode: filters.status }),
     ...(filters.iface === '' ? {} : { interfaceCode: filters.iface }),
-    ...(filters.direction === '' ? {} : { directionCode: filters.direction }),
+    ...(filters.direction === ''
+      ? {}
+      : { directionCode: filters.direction as MessageQueryParams['directionCode'] }),
     ...(filters.targetType === '' ? {} : { targetTypeCode: filters.targetType }),
     ...(retryMin === '' ? {} : { retryCountMin: Number(retryMin) }),
   };

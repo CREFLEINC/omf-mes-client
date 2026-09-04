@@ -59,8 +59,8 @@ export interface MoldView {
   /** 기준일이나 주기가 없으면 `null`이다. */
   nextPmDate: string | null;
   pmDue: boolean;
-  /** 도래하지 않았으면 `null`. 도래했으면 먼저 도달한 축을 서버가 밝힌다. */
-  pmDueAxisCode: string | null;
+  /** 도래하지 않았으면 `null`. 도래했으면 먼저 도달한 축을 서버가 밝힌다 — 계약이 두 값으로 닫았다. */
+  pmDueAxisCode: NonNullable<Mold['pmDueAxisCode']> | null;
 }
 
 export interface MoldListResult {

@@ -6,14 +6,14 @@ import { toRequestDetailView, toRequestRow, type ApprovalRequest } from './types
 const request = (): ApprovalRequest => ({
   approvalRequestId: 31,
   approvalRequestNo: 'SYNTH-REQ-031',
-  approvalTypeCode: 'SYNTH-CONCESSION',
+  approvalTypeCode: 'IQC_SKIP',
   requestedBy: 7,
   requestedByName: '합성 사용자',
   requestedAt: '2026-08-22T09:30:00+09:00',
   statusCode: 'SYNTH-PENDING',
   reason: '\n반복\r\n\r\n반복\n',
   target: {
-    targetTypeCode: 'SYNTH-DOCUMENT',
+    targetTypeCode: 'INBOUND_LOT',
     targetId: 91,
     displayName: '합성 대상',
     openable: false,
@@ -30,7 +30,7 @@ it('계약 응답을 안정 ID와 원시 유형 코드를 가진 표시 행으�
   expect(toRequestRow(source)).toEqual({
     approvalRequestId: 31,
     approvalRequestNo: 'SYNTH-REQ-031',
-    approvalTypeCode: 'SYNTH-CONCESSION',
+    approvalTypeCode: 'IQC_SKIP',
     targetName: '합성 대상',
     statusCode: 'SYNTH-PENDING',
     isMyTurn: true,
@@ -55,7 +55,7 @@ it('상세 표시값은 사유의 원문 offset과 중복·빈 줄·CRLF를 보�
 
   expect(toRequestDetailView(source)).toEqual({
     approvalRequestNo: 'SYNTH-REQ-031',
-    approvalTypeCode: 'SYNTH-CONCESSION',
+    approvalTypeCode: 'IQC_SKIP',
     requesterName: '합성 사용자',
     requestedAtText: '2026-08-22 09:30',
     statusCode: 'SYNTH-PENDING',

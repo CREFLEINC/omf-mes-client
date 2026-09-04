@@ -42,7 +42,7 @@ describe('work-order release screen state', () => {
       page: 1,
       selectedWorkOrderId: null,
     });
-    expect(toWorkOrderReleaseFilters(state).statusCode).toBeNull();
+    expect(toWorkOrderReleaseFilters(state, 540).statusCode).toBeNull();
   });
 
   it('owns search, page, selection, and reset lifetimes without mutating inputs', () => {
@@ -97,18 +97,21 @@ describe('work-order release filter projection', () => {
     const state = selectedState();
     const snapshot = structuredClone(state);
 
-    expect(toWorkOrderReleaseFilters(state)).toEqual({
+    expect(toWorkOrderReleaseFilters(state, 540)).toEqual({
       statusCode: 'CONFIRMED',
       productionLineId: 501,
-      plannedStartFrom: '2026-08-26',
-      plannedStartTo: '2026-08-28',
+      plannedStartFrom: '2026-08-26T00:00:00+09:00',
+      plannedStartTo: '2026-08-29T00:00:00+09:00',
       page: 3,
     });
     expect(
-      toWorkOrderReleaseFilters({
-        ...state,
-        appliedFilters: { ...searchedFilters, productionLineId: '', plannedStartFrom: '' },
-      }),
+      toWorkOrderReleaseFilters(
+        {
+          ...state,
+          appliedFilters: { ...searchedFilters, productionLineId: '', plannedStartFrom: '' },
+        },
+        540,
+      ),
     ).toMatchObject({ productionLineId: null, plannedStartFrom: null });
     expect(state).toEqual(snapshot);
   });
@@ -132,6 +135,28 @@ describe('work-order release filter projection', () => {
   ] as const)('fails closed for %s', (_name, overrides) => {
     const state = { ...selectedState(), ...overrides } as WorkOrderReleaseScreenState;
 
-    expect(toWorkOrderReleaseFilters(state).statusCode).toBeNull();
+    expect(toWorkOrderReleaseFilters(state, 540).statusCode).toBeNull();
+  });
+
+  it('브라우저 시간대 오프셋을 두 경계에 함께 붙인다', () => {
+    expect(toWorkOrderReleaseFilters(selectedState(), -300)).toMatchObject({
+      plannedStartFrom: '2026-08-26T00:00:00-05:00',
+      plannedStartTo: '2026-08-29T00:00:00-05:00',
+    });
+  });
+
+  it.each([
+    ['month', '2026-08-31', '2026-09-01T00:00:00+09:00'],
+    ['year', '2026-12-31', '2027-01-01T00:00:00+09:00'],
+    ['leap year', '2028-02-29', '2028-03-01T00:00:00+09:00'],
+  ])('moves the exclusive end across a %s boundary', (_name, to, expected) => {
+    const state = selectedState();
+    state.appliedFilters = {
+      ...state.appliedFilters,
+      plannedStartFrom: to,
+      plannedStartTo: to,
+    };
+
+    expect(toWorkOrderReleaseFilters(state, 540).plannedStartTo).toBe(expected);
   });
 });

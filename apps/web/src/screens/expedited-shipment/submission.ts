@@ -121,7 +121,30 @@ const trimmedOrUndefined = (value: string): string | undefined => {
  * 전기를 같은 트랜잭션에서 함께 만든다 — 화면이 01 계약을 따로 부르지 않는다(계약 주석 ·
  * §5-1). ⛔ 참이면 사유가 필수이고, 없으면 서버가 400으로 막는다.
  */
-export const toShipmentCreateBody = (input: SubmissionInput): ShipmentCreateBody | null => {
+const pad2 = (value: number): string => String(value).padStart(2, '0');
+
+/** `YYYY-MM-DD` — 단말의 현지 날짜다. 계약이 `format: date`라 시각·시간대를 붙이면 400이다. */
+const toLocalDate = (at: Date): string =>
+  `${String(at.getFullYear())}-${pad2(at.getMonth() + 1)}-${pad2(at.getDate())}`;
+
+/** RFC3339 with offset — `2026-09-03T17:05:00+09:00`. 서버가 시간대를 잃지 않게 오프셋을 붙인다. */
+const toOffsetDateTime = (at: Date): string => {
+  const offsetMinutes = -at.getTimezoneOffset();
+  const sign = offsetMinutes >= 0 ? '+' : '-';
+  const absolute = Math.abs(offsetMinutes);
+  const local = `${toLocalDate(at)}T${pad2(at.getHours())}:${pad2(at.getMinutes())}:${pad2(at.getSeconds())}`;
+
+  return `${local}${sign}${pad2(Math.floor(absolute / 60))}:${pad2(absolute % 60)}`;
+};
+
+/**
+ * @param now 영업일·발생시각의 기준 시각. ⛔ 안에서 만들지 않는다 — 확인 대화상자가 본문을 한 번
+ *   얼려 두고 재시도에도 그대로 보내야 멱등이 선다(변경 통지 #666 · 공유계약 C-8).
+ */
+export const toShipmentCreateBody = (
+  input: SubmissionInput,
+  now: Date,
+): ShipmentCreateBody | null => {
   if (submitLockReason(input) !== undefined) return null;
 
   const line = targetLineOf(input);
@@ -155,6 +178,9 @@ export const toShipmentCreateBody = (input: SubmissionInput): ShipmentCreateBody
       : { sealNo: input.draft.loading.sealNo.trim() }),
     expedited: true,
     expediteReason: input.draft.reason.trim(),
+    /* 영업일·발생시각 — 계약 필수. 서버가 수신 시각으로 다시 잡지 않는다(#666). */
+    businessDate: toLocalDate(now),
+    occurredAt: toOffsetDateTime(now),
     lines: [lineCreate],
   };
 };

@@ -14,7 +14,7 @@ import { externalCodeFixtures } from './fixtures';
 
 const draftOf = (overrides: Partial<ExternalCodeDraft> = {}): ExternalCodeDraft => ({
   draftId: 'new:1',
-  externalSystemCode: 'SYN-EXT-01',
+  externalSystemCode: 'UNIERP',
   partnerId: '6001',
   externalItemCode: 'SYN-EXT-ITEM-01',
   ...overrides,
@@ -24,7 +24,7 @@ describe('toExternalCodeDrafts', () => {
   it('서버 목록을 초안으로 옮긴다', () => {
     expect(toExternalCodeDrafts(externalCodeFixtures)[0]).toEqual({
       draftId: 'saved:5501',
-      externalSystemCode: 'SYN-EXT-01',
+      externalSystemCode: 'UNIERP',
       partnerId: '6001',
       externalItemCode: 'SYN-EXT-ITEM-01',
     });
@@ -136,13 +136,10 @@ describe('toExternalCodesPayload (M15·M16·M28)', () => {
     expect(toExternalCodesPayload([draftOf({ partnerId: '6001' })])[0]?.partnerId).toBe(6001);
   });
 
-  /* 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 값이 되어 조회에 걸리지 않는다. */
-  it('코드의 앞뒤 공백을 뗀다', () => {
-    const [payload] = toExternalCodesPayload([
-      draftOf({ externalSystemCode: '  SYN-EXT-01 ', externalItemCode: ' SYN-EXT-ITEM-01  ' }),
-    ]);
+  it('외부 품목코드의 앞뒤 공백을 뗀다', () => {
+    const [payload] = toExternalCodesPayload([draftOf({ externalItemCode: ' SYN-EXT-ITEM-01  ' })]);
 
-    expect(payload?.externalSystemCode).toBe('SYN-EXT-01');
+    expect(payload?.externalSystemCode).toBe('UNIERP');
     expect(payload?.externalItemCode).toBe('SYN-EXT-ITEM-01');
   });
 
@@ -179,14 +176,7 @@ describe('duplicateKeyOf — COALESCE 접기 (M29)', () => {
   });
 
   it('외부 시스템이 다르면 다른 키다', () => {
-    expect(duplicateKeyOf(draftOf({ externalSystemCode: 'SYN-EXT-02' }))).not.toBe(
-      duplicateKeyOf(draftOf()),
-    );
-  });
-
-  /* 본문에서 공백을 떼므로 판정도 같은 기준으로 해야 한다 — 아니면 저장 시점에야 거부된다. */
-  it('앞뒤 공백만 다른 코드는 같은 키다', () => {
-    expect(duplicateKeyOf(draftOf({ externalSystemCode: ' SYN-EXT-01 ' }))).toBe(
+    expect(duplicateKeyOf(draftOf({ externalSystemCode: 'TRACKING_SYSTEM' }))).not.toBe(
       duplicateKeyOf(draftOf()),
     );
   });
@@ -209,7 +199,7 @@ describe('isSameExternalCodeDrafts', () => {
   });
 
   it.each([
-    ['externalSystemCode', { externalSystemCode: 'SYN-EXT-02' }],
+    ['externalSystemCode', { externalSystemCode: 'TRACKING_SYSTEM' }],
     ['partnerId', { partnerId: '6002' }],
     ['externalItemCode', { externalItemCode: 'SYN-EXT-ITEM-09' }],
   ] as [string, Partial<ExternalCodeDraft>][])('%s 하나만 달라도 다르다', (_field, patch) => {

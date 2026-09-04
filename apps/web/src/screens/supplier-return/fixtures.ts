@@ -67,9 +67,7 @@ const BASE_LINE: ReceiptLineView = {
   destinationLocationId: 9801,
 };
 
-export const goodsReceiptLine = (
-  overrides: Partial<ReceiptLineView> = {},
-): ReceiptLineView => ({
+export const goodsReceiptLine = (overrides: Partial<ReceiptLineView> = {}): ReceiptLineView => ({
   ...BASE_LINE,
   ...overrides,
 });
@@ -250,7 +248,7 @@ const BASE_ISSUE: IssueResponse = {
   goodsIssueId: 9951,
   goodsIssueNo: 'GI-2026-950001',
   issueTypeCode: 'SAMPLE_ISSUE_TYPE_A',
-  sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+  sourceDocumentTypeCode: 'GOODS_RECEIPT',
   sourceDocumentId: 9001,
   sourceWarehouseId: 9701,
   destinationTypeCode: 'PARTNER',

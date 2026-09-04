@@ -1,4 +1,4 @@
-import { createApiClient } from '@omf-mes/api-client';
+import { createApiClient, type components } from '@omf-mes/api-client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createStubFetch, jsonResponse } from '../../test/api-harness';
@@ -14,11 +14,11 @@ import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } fro
 
 const PATH = '/production/production-results';
 
-const BODY = {
+const BODY: components['schemas']['ProductionResultCreate'] = {
   workOrderId: 1001,
   goodQty: 12,
   uomId: 1001,
-  resultSourceCode: 'MANUAL',
+  resultSourceCode: 'MANUAL' as const,
   occurredAt: '2026-09-03T09:12:00+09:00',
 };
 

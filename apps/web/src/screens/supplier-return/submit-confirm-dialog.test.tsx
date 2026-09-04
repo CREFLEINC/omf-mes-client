@@ -14,8 +14,8 @@ const LOT_LABEL = 'LOT-2026-900010';
 const SUMMARY: SubmitSummary = {
   supplierName: PARTNER_LABEL,
   issueTypeCode: 'SAMPLE_ISSUE_TYPE_A',
-  sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
-  destinationTypeCode: 'SAMPLE_DESTINATION_TYPE_A',
+  sourceDocumentTypeCode: 'GOODS_RECEIPT',
+  destinationTypeCode: 'PARTNER',
   reasonCode: 'SAMPLE_REASON_A',
   issuedAt: '2026-08-06 09:12',
   businessDate: '2026-08-06',
@@ -52,8 +52,8 @@ describe('SubmitConfirmDialog — 반품 처리 확인', () => {
 
     expect(body).toHaveTextContent(PARTNER_LABEL);
     expect(body).toHaveTextContent('SAMPLE_ISSUE_TYPE_A');
-    expect(body).toHaveTextContent('SAMPLE_SOURCE_TYPE_A');
-    expect(body).toHaveTextContent('SAMPLE_DESTINATION_TYPE_A');
+    expect(body).toHaveTextContent('GOODS_RECEIPT');
+    expect(body).toHaveTextContent('PARTNER');
     expect(body).toHaveTextContent('SAMPLE_REASON_A');
     expect(body).toHaveTextContent('2026-08-06 09:12');
     expect(within(body).getByText(t.fields.replacementExpected)).toBeInTheDocument();
@@ -64,7 +64,9 @@ describe('SubmitConfirmDialog — 반품 처리 확인', () => {
   it('영업일을 파생값이라고 밝힌다', () => {
     renderDialog();
 
-    expect(within(dialog()).getByText(t.dialog.businessDateDerived('2026-08-06'))).toBeInTheDocument();
+    expect(
+      within(dialog()).getByText(t.dialog.businessDateDerived('2026-08-06')),
+    ).toBeInTheDocument();
   });
 
   it('참·거짓을 글자로 낸다', () => {

@@ -114,7 +114,9 @@ export const toCreateBody = (draft: ToolOrderDraft, mold: MoldView): Maintenance
   triggers: [
     {
       triggerTypeCode: PM_DUE_TRIGGER,
-      ...(mold.pmDueAxisCode === null ? {} : { pmDueAxisCode: mold.pmDueAxisCode }),
+      ...(mold.pmDueAxisCode === null || mold.pmDueAxisCode === undefined
+        ? {}
+        : { pmDueAxisCode: mold.pmDueAxisCode }),
       shotCountAtDue: mold.currentShotCount,
       ...(mold.guaranteedShotCount === null
         ? {}

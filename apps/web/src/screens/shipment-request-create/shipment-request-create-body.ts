@@ -1,4 +1,4 @@
-import { readQty } from './validation';
+import { CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH, readQty } from './validation';
 import type {
   AssignmentMode,
   ShipmentRequestCreate,
@@ -85,6 +85,13 @@ export const toShipmentRequestCreateBody = (
   const requestedShipDate = input.requestedShipDate.trim();
 
   if (customerId === null || shipToPartnerId === null || requestedShipDate === '') return null;
+  if (
+    input.lines.some(
+      (line) => line.customerLotRequirement.length > CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH,
+    )
+  ) {
+    return null;
+  }
 
   const lines: ShipmentRequestLineCreate[] = [];
 

@@ -5,6 +5,7 @@ import {
   EmptyState,
   PageHeader,
   SkeletonText,
+  Tabs,
   useToast,
 } from '@crefle/web-ui';
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
@@ -38,6 +39,7 @@ import {
 } from './operation-order';
 import { hasIncompleteDraft, validateOperationDraft } from './operation-validation';
 import { OperationsPane } from './operations-pane';
+import { ProcessMasterPane } from './process-master-pane';
 import {
   isTruncated,
   routingDetailPath,
@@ -188,7 +190,7 @@ const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => (
  * 조회 조건과 선택은 URL이 소유한다(`?item=&rev=&q=&noRouting=1`) —
  * 새로고침·뒤로가기·공유가 같은 화면을 낸다.
  */
-export const RoutingScreen = () => {
+const RoutingWorkspace = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
@@ -760,11 +762,6 @@ export const RoutingScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
-      />
-
       {/*
        * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
        * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
@@ -907,6 +904,46 @@ export const RoutingScreen = () => {
           banner={<SaveErrorBanner error={transitionWrite.error} />}
         />
       )}
+    </>
+  );
+};
+
+type RoutingTab = 'routing' | 'processes';
+
+/** W-06-01은 축이 다른 두 업무를 최상위 탭으로 가른다. 비활성 탭은 요청도 렌더도 하지 않는다. */
+export const RoutingScreen = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab: RoutingTab = searchParams.get('tab') === 'processes' ? 'processes' : 'routing';
+
+  const changeTab = (value: string) => {
+    const next: RoutingTab = value === 'processes' ? 'processes' : 'routing';
+    // 서로 다른 축의 선택·필터를 넘기지 않는다. 탭만 남겨 각 화면의 첫 상태로 들어간다.
+    setSearchParams(new URLSearchParams({ tab: next }));
+  };
+
+  return (
+    <>
+      <PageHeader
+        title={t.title}
+        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+      />
+      <Tabs
+        aria-label={t.tabs.label}
+        value={tab}
+        onChange={changeTab}
+        items={[
+          {
+            value: 'routing',
+            label: t.tabs.routing,
+            content: tab === 'routing' ? <RoutingWorkspace /> : null,
+          },
+          {
+            value: 'processes',
+            label: t.tabs.processes,
+            content: tab === 'processes' ? <ProcessMasterPane /> : null,
+          },
+        ]}
+      />
     </>
   );
 };

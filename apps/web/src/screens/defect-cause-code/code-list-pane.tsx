@@ -150,7 +150,8 @@ export const CodeListPane = ({
   };
 
   return (
-    <section className="pane" aria-label={adapter.labels.tab}>
+    <section className="pane" aria-label={t.panes.list(adapter.labels.tab)}>
+      <h2 className="pane-title">{t.panes.list(adapter.labels.tab)}</h2>
       {/* 결과가 없어도 필터 바는 감추지 않는다 — 조건을 고칠 수단이 사라지면 안 된다. */}
       <div className="filter-bar">
         <SearchInput

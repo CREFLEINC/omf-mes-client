@@ -28,7 +28,7 @@ import { normalizeText, type ProgressFilters } from './filters';
 export const DETAIL_SELECTION_KEY = 'sel';
 
 export interface DetailSelection {
-  documentTypeCode: string;
+  documentTypeCode: DocumentTypeEntry['code'];
   documentId: number;
 }
 

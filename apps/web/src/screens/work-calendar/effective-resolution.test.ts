@@ -37,7 +37,7 @@ describe('resolutionSummary', () => {
   });
 
   /* ⛔ 정해졌는데 층을 모르면 층을 지어내지 않는다(G-9). */
-  it.each([undefined, null, ''])('층이 %s 면 층을 모른다고 말한다', (level) => {
+  it.each([undefined, null])('층이 %s 면 층을 모른다고 말한다', (level) => {
     expect(
       resolutionSummary(
         effective({ calendarCode: 'CAL-A', resolvedFromLevelCode: level }),

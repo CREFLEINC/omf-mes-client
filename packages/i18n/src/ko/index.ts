@@ -67,6 +67,8 @@ import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { shipmentSchedule } from './shipment-schedule';
 import { materialInputScan } from './material-input-scan';
 import { dispositionDecision } from './disposition-decision';
+import { dispositionRequest } from './disposition-request';
+import { returnReceipt } from './return-receipt';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workStart } from './work-start';
@@ -105,6 +107,7 @@ import { inboundReceipt } from './inbound-receipt';
 import { packingRepack } from './packing-repack';
 import { packingWork } from './packing-work';
 import { putaway } from './putaway';
+import { recycleEntry } from './recycle-entry';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
@@ -116,6 +119,9 @@ import { reworkResultRegister } from './rework-result-register';
 import { packingLabelReprint } from './packing-label-reprint';
 import { popLotLabelPrint } from './pop-lot-label-print';
 import { shippingPackingLabel } from './shipping-packing-label';
+import { repackLabelIssue } from './repack-label-issue';
+import { runningChange } from './running-change';
+import { workHoldRegister } from './work-hold-register';
 
 export const ko = {
   common,
@@ -171,6 +177,8 @@ export const ko = {
   shipmentSchedule,
   materialInputScan,
   dispositionDecision,
+  dispositionRequest,
+  returnReceipt,
   emergencyWorkOrder,
   emergencyWorkOrderField,
   workOrderProgress,
@@ -207,6 +215,7 @@ export const ko = {
   packingRepack,
   packingWork,
   putaway,
+  recycleEntry,
   inboundVariance,
   temporaryPutaway,
   poChangeReview,
@@ -220,6 +229,9 @@ export const ko = {
   packingLabelReprint,
   popLotLabelPrint,
   shippingPackingLabel,
+  repackLabelIssue,
+  runningChange,
+  workHoldRegister,
 } as const;
 
 export type Messages = typeof ko;

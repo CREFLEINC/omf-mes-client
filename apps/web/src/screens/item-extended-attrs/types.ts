@@ -58,7 +58,17 @@ export interface ItemFilters {
  * 기본값이 끼어들어 미사용 품목이 조용히 되살아난다.
  */
 export interface ItemAttrsFormValues {
-  lotControlTypeCode: string;
+  /** MES가 소유하는 다국어 표시명. 비우면 요청에 `null`이 실린다. */
+  nameKo: string;
+  nameVi: string;
+  /** 개발품이면 생산 실적 ERP 송신 대상에서 제외된다. */
+  developmentItem: boolean;
+  /** 계약이 「LOT 관리 유형」 코드를 「LOT 관리 여부」 불리언으로 바꿨다(코드 사전 2026-09-03). */
+  lotControlled: boolean;
+  /** LOT 생성 시 쓰는 기본 보관 단위. 비우면 요청에 `null`이 실린다. */
+  defaultLotStorageUomId: string;
+  /** 생산 LOT 기본크기. 비우면 요청에 `null`이 실린다. */
+  defaultProductionLotSize: string;
   serialControlTypeCode: string;
   /**
    * 「유효기한 관리」 토글. **계약 필드가 아니다** —

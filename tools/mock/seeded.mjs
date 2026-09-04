@@ -16,7 +16,7 @@ import { networkInterfaces } from 'node:os';
 
 import { writeMergedSpec } from '../merge-spec.mjs';
 import { resolveSpecPaths } from './resolve-spec.mjs';
-import { createSeed } from './seed.mjs';
+import { createSeed, dayOf } from './seed.mjs';
 
 const PORT = Number(process.env.MOCK_PORT ?? 4010);
 /*
@@ -101,7 +101,14 @@ on('GET', '/mdm/items/{itemId}', (params) => {
 
 on('GET', '/mdm/uoms', (_p, query) => page(state.uoms, query));
 
-on('GET', '/mdm/warehouses', (_p, query) => page(state.warehouses, query));
+on('GET', '/mdm/warehouses', (_p, query) =>
+  page(
+    keep(state.warehouses, [
+      (row) => bool(query, 'isDefect') === null || row.isDefect === bool(query, 'isDefect'),
+    ]),
+    query,
+  ),
+);
 on('GET', '/mdm/warehouses/{warehouseId}', (params) => {
   const warehouse = state.warehouses.find(
     (each) => each.warehouseId === Number(params.warehouseId),
@@ -410,9 +417,7 @@ on('POST', '/inventory/handling-units/{handlingUnitId}:pack', (params, _q, body)
     return {
       status: 400,
       created: {
-        errors: [
-          { scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' },
-        ],
+        errors: [{ scope: 'request', code: 'EMPTY_CONTENTS', message: '담은 것이 없습니다.' }],
       },
     };
   }
@@ -777,6 +782,124 @@ on(
 
 on('GET', '/logistics/goods-receipts', (_p, query) => page(state.goodsReceipts, query));
 
+/*
+ * W-04-06 — 반품 입고 등록. 생성과 전기가 한 순간이다. 반품(RETURN)이면 그 LOT 이 W-04-07 의
+ * 판정 후보에 함께 실린다 — 두 화면이 한 흐름이다.
+ */
+on('POST', '/logistics/goods-receipts', (_p, _q, body) => {
+  const goodsReceiptId = newId();
+  const receiptNo = `RT-2026-${String(goodsReceiptId).slice(-4)}`;
+  const goodsReceipt = {
+    goodsReceiptId,
+    goodsReceiptNo: receiptNo,
+    receiptTypeCode: body?.receiptTypeCode,
+    plantId: body?.plantId,
+    warehouseId: body?.warehouseId,
+    receiptDatetime: body?.receiptDatetime,
+    statusCode: 'POSTED',
+    sourceDocumentTypeCode: body?.sourceDocumentTypeCode ?? null,
+    sourceDocumentId: body?.sourceDocumentId ?? null,
+    reasonCode: body?.reasonCode ?? null,
+    remarks: body?.remarks ?? null,
+    erpMessageQueued: true,
+  };
+  const lines = (body?.lines ?? []).map((line, index) => ({
+    goodsReceiptLineId: goodsReceiptId * 10 + index,
+    goodsReceiptId,
+    lineNo: index + 1,
+    inboundReceiptLineId: line.inboundReceiptLineId ?? null,
+    itemId: line.itemId,
+    lotId: line.lotId,
+    receiptQty: line.receiptQty,
+    uomId: line.uomId,
+    qualityStatusCode: line.qualityStatusCode,
+    inventoryStatusCode: line.inventoryStatusCode,
+    destinationLocationId: line.destinationLocationId,
+    originalShipmentLotAllocationId: line.originalShipmentLotAllocationId ?? null,
+  }));
+  state.goodsReceipts.push(goodsReceipt);
+  state.goodsReceiptLines.push(...lines);
+
+  if (body?.receiptTypeCode === 'RETURN') {
+    const warehouse = state.warehouses.find((row) => row.warehouseId === body.warehouseId);
+    const shipment =
+      body.sourceDocumentTypeCode === 'SHIPMENT'
+        ? state.shipments.find((row) => row.shipmentId === body.sourceDocumentId)
+        : undefined;
+    const request = state.shipmentRequests.find(
+      (row) => row.shipmentRequestId === shipment?.shipmentRequestId,
+    );
+    const partner = state.partners.find((row) => row.partnerId === request?.customerId);
+    for (const line of lines) {
+      const lot = state.lots.find((row) => row.lotId === line.lotId);
+      const item = state.items.find((row) => row.itemId === line.itemId);
+      state.dispositionCandidates.push({
+        lotId: line.lotId,
+        lotNo: lot?.lotNo ?? String(line.lotId),
+        itemId: line.itemId,
+        itemCode: item?.itemCode ?? String(line.itemId),
+        itemName: item?.itemName ?? '',
+        quantity: line.receiptQty,
+        uomId: line.uomId,
+        warehouseId: body.warehouseId,
+        warehouseName: warehouse?.warehouseName ?? '',
+        sourceCode: 'RETURN',
+        goodsReceiptId,
+        receiptNo,
+        receivedAt: dayOf(new Date()),
+        partnerName: partner?.partnerName ?? null,
+        inspectionResultId: null,
+        nonconformanceId: null,
+        nonconformanceNo: null,
+        nonconformanceStatusCode: null,
+      });
+    }
+  }
+
+  return { created: { goodsReceipt, lines }, status: 201 };
+});
+
+/* ── 출하 (W-04-06 원 출하 찾기 · W-04-12 확정) ───────────────── */
+
+const shipmentEtag = (shipment) => `W/"${String(shipment.versionNo ?? 1)}"`;
+
+on('GET', '/logistics/shipments', (_p, query) => {
+  const customerId = num(query, 'customerId');
+  const lotId = num(query, 'lotId');
+  const from = query.get('shipDateFrom');
+  const to = query.get('shipDateTo');
+  const q = query.get('q');
+  const unconfirmedOnly = bool(query, 'unconfirmedOnly');
+  const requestOf = (shipment) =>
+    state.shipmentRequests.find((row) => row.shipmentRequestId === shipment.shipmentRequestId);
+  const allocationsOf = (shipment) =>
+    (shipment.lines ?? []).flatMap((line) => line.allocations ?? []);
+
+  return page(
+    keep(state.shipments, [
+      byText(query, 'statusCode', 'statusCode'),
+      (row) => customerId === null || requestOf(row)?.customerId === customerId,
+      (row) => unconfirmedOnly !== true || row.statusCode === 'UNCONFIRMED',
+      (row) => from === null || (row.shippedAt ?? '').slice(0, 10) >= from,
+      (row) => to === null || (row.shippedAt ?? '').slice(0, 10) <= to,
+      (row) => lotId === null || allocationsOf(row).some((each) => each.lotId === lotId),
+      (row) =>
+        q === null ||
+        q === '' ||
+        row.shipmentNo.includes(q) ||
+        allocationsOf(row).some((each) => String(each.lotNo ?? '').includes(q)),
+    ]),
+    query,
+  );
+});
+
+on('GET', '/logistics/shipments/{shipmentId}', (params) => {
+  const shipment = state.shipments.find((row) => row.shipmentId === Number(params.shipmentId));
+  return shipment === undefined
+    ? null
+    : { created: shipment, status: 200, headers: { ETag: shipmentEtag(shipment) } };
+});
+
 /* ── 생산 ─────────────────────────────────────────────────── */
 
 on('GET', '/production/work-orders', (_p, query) => {
@@ -869,6 +992,172 @@ on('POST', '/production/results', (_p, _q, body) => {
 
 /* ── 품질 ─────────────────────────────────────────────────── */
 
+/*
+ * W-04-07 — 판정 대기 대상 · 부적합 등록 · 판정 의뢰 · 처분 목록.
+ * 부적합 상세는 ETag 를 내고, 의뢰는 If-Match 를 요구한다 — 화면의 낙관적 잠금 흐름을 목에서 밟는다.
+ */
+const nonconformanceEtag = (nonconformance) => `W/"${String(nonconformance.versionNo ?? 1)}"`;
+
+const withCandidateStatus = (candidate) => {
+  const nonconformance = state.nonconformances.find(
+    (row) => row.lots.length === 1 && row.lots[0].lotId === candidate.lotId,
+  );
+  return nonconformance === undefined
+    ? {
+        ...candidate,
+        nonconformanceId: null,
+        nonconformanceNo: null,
+        nonconformanceStatusCode: null,
+      }
+    : {
+        ...candidate,
+        nonconformanceId: nonconformance.nonconformanceId,
+        nonconformanceNo: nonconformance.nonconformanceNo,
+        nonconformanceStatusCode: nonconformance.statusCode,
+      };
+};
+
+on('GET', '/quality/disposition-candidates', (_p, query) => {
+  const q = query.get('q');
+  const rows = state.dispositionCandidates.map(withCandidateStatus);
+
+  return page(
+    keep(rows, [
+      byText(query, 'sourceCode', 'sourceCode'),
+      byNum(query, 'warehouseId', 'warehouseId'),
+      byNum(query, 'itemId', 'itemId'),
+      byNum(query, 'lotId', 'lotId'),
+      (row) => bool(query, 'withoutNonconformanceOnly') !== true || row.nonconformanceId === null,
+      (row) =>
+        q === null ||
+        q === '' ||
+        [row.lotNo, row.receiptNo, row.itemCode, row.itemName].some((value) =>
+          String(value ?? '').includes(q),
+        ),
+    ]),
+    query,
+  );
+});
+
+on('GET', '/quality/nonconformances', (_p, query) =>
+  page(
+    keep(state.nonconformances, [
+      byText(query, 'statusCode', 'statusCode'),
+      byText(query, 'sourceCode', 'sourceCode'),
+      byNum(query, 'itemId', 'itemId'),
+      (row) =>
+        num(query, 'lotId') === null || row.lots.some((lot) => lot.lotId === num(query, 'lotId')),
+    ]),
+    query,
+  ),
+);
+
+on('POST', '/quality/nonconformances', (_p, _q, body) => {
+  const firstLot = body?.lots?.[0];
+  const candidate = state.dispositionCandidates.find((row) => row.lotId === firstLot?.lotId);
+  const nonconformanceId = newId();
+  const created = {
+    nonconformanceId,
+    nonconformanceNo: `NC-2026-${String(nonconformanceId).slice(-4)}`,
+    itemId: body?.itemId,
+    inspectionResultId: body?.inspectionResultId ?? null,
+    /* 원천은 화면이 보내지 않는다 — 서버가 대상 LOT 의 입고 경로로 정한다(W-04-07 §5-1-1). */
+    sourceCode: candidate?.sourceCode ?? 'PRODUCT',
+    severityCode: body?.severityCode,
+    description: body?.description,
+    ...(body?.responsibleDepartmentId
+      ? { responsibleDepartmentId: body.responsibleDepartmentId }
+      : {}),
+    statusCode: 'NOT_REQUESTED',
+    openedAt: new Date().toISOString(),
+    affectedQtyTotal: (body?.lots ?? []).reduce(
+      (sum, lot) => sum + Number(lot.affectedQty ?? 0),
+      0,
+    ),
+    uomId: firstLot?.uomId ?? 1001,
+    dispositionProgressCode: 'NOT_STARTED',
+    lots: (body?.lots ?? []).map((lot, index) => ({
+      nonconformanceLotId: nonconformanceId * 10 + index,
+      lotId: lot.lotId,
+      lotNo: state.lots.find((each) => each.lotId === lot.lotId)?.lotNo ?? String(lot.lotId),
+      affectedQty: lot.affectedQty,
+      uomId: lot.uomId,
+      qualityStatusBeforeCode: 'NORMAL',
+      qualityStatusAfterCode: 'DEFECTIVE',
+    })),
+    versionNo: 1,
+  };
+  state.nonconformances.push(created);
+  return { created, status: 201 };
+});
+
+on('GET', '/quality/nonconformances/{nonconformanceId}', (params) => {
+  const nonconformance = state.nonconformances.find(
+    (row) => row.nonconformanceId === Number(params.nonconformanceId),
+  );
+  return nonconformance === undefined
+    ? null
+    : {
+        created: nonconformance,
+        status: 200,
+        headers: { ETag: nonconformanceEtag(nonconformance) },
+      };
+});
+
+on(
+  'POST',
+  '/quality/nonconformances/{nonconformanceId}:request-disposition',
+  (params, _q, body, headers) => {
+    const nonconformance = state.nonconformances.find(
+      (row) => row.nonconformanceId === Number(params.nonconformanceId),
+    );
+    if (nonconformance === undefined) return null;
+    if (headers['if-match'] === undefined) {
+      return {
+        created: { code: 'IF_MATCH_REQUIRED', message: 'If-Match 가 필요합니다.' },
+        status: 400,
+      };
+    }
+    if (headers['if-match'] !== nonconformanceEtag(nonconformance)) {
+      return {
+        created: { code: 'VERSION_CONFLICT', message: '다른 곳에서 먼저 바뀌었습니다.' },
+        status: 409,
+      };
+    }
+    if (nonconformance.statusCode !== 'NOT_REQUESTED') {
+      return {
+        created: { code: 'INVALID_STATE', message: '의뢰할 수 없는 상태입니다.' },
+        status: 409,
+      };
+    }
+    if (Number(body?.requestedQty ?? 0) > nonconformance.affectedQtyTotal) {
+      return {
+        created: { code: 'REQUESTED_QTY_EXCEEDED', message: '의뢰 수량이 대상 수량을 넘습니다.' },
+        status: 409,
+      };
+    }
+    nonconformance.statusCode = 'PENDING_DECISION';
+    nonconformance.versionNo = (nonconformance.versionNo ?? 1) + 1;
+    return {
+      created: nonconformance,
+      status: 200,
+      headers: { ETag: nonconformanceEtag(nonconformance) },
+    };
+  },
+);
+
+on('GET', '/quality/disposition-decisions', (_p, query) =>
+  page(
+    keep(state.dispositionDecisions, [
+      byNum(query, 'nonconformanceId', 'nonconformanceId'),
+      byNum(query, 'lotId', 'lotId'),
+      byNum(query, 'itemId', 'itemId'),
+      byText(query, 'dispositionTypeCode', 'dispositionTypeCode'),
+    ]),
+    query,
+  ),
+);
+
 on('GET', '/quality/defect-records', (_p, query) => {
   const from = query.get('occurredFrom');
   const to = query.get('occurredTo');
@@ -955,13 +1244,16 @@ const readBody = (request) =>
     });
   });
 
-const send = (response, status, payload) => {
+const send = (response, status, payload, headers = {}) => {
   const body = JSON.stringify(payload);
   response.writeHead(status, {
+    ...headers,
     'Content-Type': 'application/json; charset=utf-8',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': '*',
     'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    /* 브라우저는 노출 목록에 없는 응답 헤더를 읽지 못한다 — 낙관적 잠금 토큰(ETag)을 화면이 받게 연다. */
+    'Access-Control-Expose-Headers': 'ETag, Location',
     'Content-Length': Buffer.byteLength(body),
   });
   response.end(body);
@@ -1026,7 +1318,8 @@ const server = createServer((request, response) => {
       }
 
       if (result !== null && typeof result === 'object' && 'status' in result) {
-        send(response, result.status, result.created);
+        /* 핸들러가 헤더(ETag 등)를 함께 낼 수 있다 — 낙관적 잠금 흐름을 목에서도 밟게 한다. */
+        send(response, result.status, result.created, result.headers ?? {});
         return;
       }
 

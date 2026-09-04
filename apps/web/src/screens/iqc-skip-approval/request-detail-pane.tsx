@@ -53,9 +53,8 @@ export interface RequestDetailPaneProps {
  * (수량·금액 컬럼이 물리 모델에 0건이다) 결재 판단의 근거가 거기에만 있다 — 대상 이름보다
  * 먼저 읽혀야 한다. 목록이 첫 줄만 낸 그 값의 **전문**이 여기서 처음 보인다.
  *
- * **오결재 방어 ②가 여기에도 선다** — 승인 유형 코드를 이 구획이 그대로 낸다. 유형 코드가
- * 확정되기 전이라 이 화면에는 다른 유형의 요청도 섞여 오고(`omf-mes#64`), 목록의 유형 열과
- * 이 칸이 함께 「지금 결재하려는 것이 무엇인가」를 말한다.
+ * **오결재 방어 ②가 여기에도 선다** — 목록을 `IQC_SKIP`으로 좁혀도 승인 유형 코드를 그대로
+ * 보여 요청 조건과 응답이 어긋나지 않았는지 확인할 수 있게 한다.
  *
  * **내부 번호를 그리지 않는다.** 그럴 수도 없다 — `RequestDetailView`가 번호를 아예 나르지
  * 않아 이 파일에는 꺼낼 값 자체가 없다.
@@ -71,7 +70,7 @@ export const RequestDetailPane = ({ view }: RequestDetailPaneProps) => (
       </div>
       <div className="field-cell">
         <dt className="field-label">{t.fields.approvalTypeCode}</dt>
-        {/* 코드 문자열 그대로다 — 값 목록이 확정되기 전에 화면이 이름을 지어내지 않는다. */}
+        {/* 고정 계약 코드 문자열을 그대로 보여 별도 이름을 발명하지 않는다. */}
         <dd>{view.approvalTypeCode}</dd>
       </div>
       <div className="field-cell">

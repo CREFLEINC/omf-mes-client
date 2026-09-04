@@ -29,6 +29,7 @@ describe('toCalibrationView', () => {
       performedOn: '2026-08-11',
       resultCode: 'PASS',
       recordedByUserId: 8201,
+      blocksUse: false,
     });
 
     expect(converted).toMatchObject({

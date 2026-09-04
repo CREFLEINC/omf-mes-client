@@ -212,7 +212,10 @@ export const BomComponentPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.paneTitle}>
+    <section className="pane" aria-labelledby="bom-component-title">
+      <h2 id="bom-component-title" className="pane-title">
+        {t.paneTitle}
+      </h2>
       {optionsNotice}
       {listSlot()}
     </section>

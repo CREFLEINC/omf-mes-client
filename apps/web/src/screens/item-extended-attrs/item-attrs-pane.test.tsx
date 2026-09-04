@@ -16,7 +16,6 @@ import type { ItemAttrsFormValues } from './types';
  * 아래에서 **그 몫이 실제로 목록에 있는지** 함께 확인한다(목록과 화면이 갈리지 않도록).
  */
 const FREE_TEXT_LABELS: Record<string, string> = {
-  lotControlTypeCode: 'LOT 관리 유형',
   serialControlTypeCode: '시리얼 관리 유형',
   storageConditionCode: '보관 조건',
 };
@@ -30,6 +29,10 @@ const renderPane = (overrides: Partial<Parameters<typeof ItemAttrsPane>[0]> = {}
     <ItemAttrsPane
       values={itemToAttrsFormValues(itemFixtures[0]!)}
       isActive
+      uomOptions={[
+        { value: '7001', label: '합성 단위 A' },
+        { value: '7003', label: '합성 단위 C' },
+      ]}
       onChange={onChange}
       fieldErrors={{}}
       banner={null}
@@ -51,6 +54,14 @@ describe('ItemAttrsPane — 폼 구성', () => {
     expect(screen.getByRole('region', { name: '확장 속성' })).toBeInTheDocument();
   });
 
+  it('확장 속성을 의미별 네 구획으로 묶는다', () => {
+    renderPane();
+
+    for (const name of ['다국어 명칭', 'LOT 기본값·식별', '유효기한·선출', '검사·재고·보관']) {
+      expect(screen.getByRole('group', { name })).toBeInTheDocument();
+    }
+  });
+
   /*
    * 값 목록이 확정되지 않은 코드는 **자유 입력**이다(결정 4).
    * 빈 선택지로 두면 저장 자체가 막히고, 값을 지어내면 화면이 코드 체계를 주장하게 된다.
@@ -68,12 +79,12 @@ describe('ItemAttrsPane — 폼 구성', () => {
     }
   });
 
-  /* 계약이 이름으로 밝힌 두 값이 있으므로 이것만 선택칸이다. */
-  it('선출 정책만 선택칸이다', () => {
+  it('선출 정책과 LOT 보관 단위를 선택칸으로 낸다', () => {
     renderPane();
 
-    expect(screen.getAllByRole('combobox')).toHaveLength(1);
+    expect(screen.getAllByRole('combobox')).toHaveLength(2);
     expect(screen.getByLabelText('선출 정책')).toBeInTheDocument();
+    expect(screen.getByLabelText('LOT 보관 단위 기본값')).toBeInTheDocument();
   });
 
   it('원본 4열을 이 구획에 두지 않는다', () => {
@@ -84,13 +95,19 @@ describe('ItemAttrsPane — 폼 구성', () => {
     }
   });
 
-  /* 이슈 #14 §4 — 네 항목 모두 입력을 두지 않는다. 계약에도 그 필드가 없다. */
-  it('계약에 자리가 없는 확장 속성 넷을 만들지 않는다', () => {
+  it('최신 계약의 확장 속성을 내고 계약에 없는 재생재 입력은 만들지 않는다', () => {
     renderPane();
 
-    for (const label of ['보관 단위 기본값', '생산 단위 기본 크기', '개발품 표시', '재생재']) {
-      expect(screen.queryByLabelText(label)).not.toBeInTheDocument();
+    for (const label of [
+      '품목명(한국어)',
+      '품목명(베트남어)',
+      'LOT 보관 단위 기본값',
+      '생산 LOT 기본크기',
+      '개발품',
+    ]) {
+      expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
+    expect(screen.queryByLabelText('재생재')).not.toBeInTheDocument();
   });
 });
 
@@ -128,9 +145,37 @@ describe('ItemAttrsPane — 사용 여부는 값 표기다', () => {
 
     const switches = screen.getAllByRole('switch').map((element) => element.getAttribute('id'));
 
-    // 스위치는 유효기한 관리·입고검사 대상·마이너스 재고 허용 셋뿐이다.
-    expect(switches).toHaveLength(3);
+    // 스위치는 개발품을 포함한 다섯 확장 불리언뿐이다.
+    expect(switches).toHaveLength(5);
     expect(screen.queryByRole('switch', { name: '사용 여부' })).not.toBeInTheDocument();
+  });
+});
+
+describe('ItemAttrsPane — LOT 관리 여부', () => {
+  it('토글을 바꾸면 boolean 계약 필드만 알린다', async () => {
+    const { onChange, user } = renderPane();
+
+    await user.click(screen.getByRole('switch', { name: 'LOT 관리' }));
+
+    expect(onChange).toHaveBeenCalledWith({ lotControlled: false });
+  });
+});
+
+describe('ItemAttrsPane — 최신 확장 속성', () => {
+  it('다국어명을 고치면 해당 계약 필드만 알린다', async () => {
+    const { onChange, user } = renderPane();
+
+    await user.type(screen.getByLabelText('품목명(한국어)'), 'X');
+
+    expect(onChange).toHaveBeenLastCalledWith({ nameKo: '합성 품목 A 표시명X' });
+  });
+
+  it('개발품을 바꾸면 boolean 계약 필드만 알린다', async () => {
+    const { onChange, user } = renderPane();
+
+    await user.click(screen.getByRole('switch', { name: '개발품' }));
+
+    expect(onChange).toHaveBeenCalledWith({ developmentItem: false });
   });
 });
 

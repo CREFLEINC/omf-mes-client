@@ -1,7 +1,7 @@
 import type { Mold, OperationPolicyEffective } from './types';
 
 /**
- * 지어낸 값만 쓴다 — 실 운영 코드·사번을 넣지 않는다(루트 `CLAUDE.md` 공개 저장소 경계).
+ * 지어낸 값만 쓴다 — 실 운영 코드·사번을 넣지 않는다(V3 워크플로 공개 저장소 경계).
  */
 
 export const TOOL_CODE = 'MLD-0207';

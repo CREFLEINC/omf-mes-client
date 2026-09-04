@@ -21,13 +21,12 @@ import {
 const t = messages.stockAdjust;
 
 /**
- * ⭐ **자리표시 둘**(D-13). 값 목록이 공통코드 소관이라(`omf-mes#64`) 어떤 코드가 승인이고
- * 반려인지 화면이 알 근거가 없다 — **비어 있는 것이 지금의 사실이다.**
+ * 승인 완료 상태는 운영 목록을 기다리고, 반려 결과는 고정 OpenAPI 값을 쓴다.
  */
 describe('자리표시 배열', () => {
-  it('두 자리표시가 비어 있다', () => {
+  it('승인 완료 상태는 운영 목록을 기다리고 반려는 고정 OpenAPI 값을 쓴다', () => {
     expect(APPROVED_APPROVAL_STATUS_CODES).toEqual([]);
-    expect(REJECTION_DECISION_CODES).toEqual([]);
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
   });
 
   /** 비어 있는 동안에는 **어떤 코드도 승인이 되지 않는다.** 짐작해 채우면 그것이 사실로 보인다. */
@@ -145,7 +144,7 @@ describe('toStepProgressViews', () => {
     const [view] = toStepProgressViews([approvalStep()], REJECTION_DECISION_CODES);
 
     expect(view?.status).toBe('complete');
-    expect(view?.decisionCode).toBe(SAMPLE_REJECTION_DECISION);
+    expect(view?.decisionCode).toBe('APPROVED');
   });
 
   /**
@@ -181,19 +180,21 @@ describe('toStepProgressViews', () => {
     expect(view?.waitingText).toBe(t.progress.waitingPending);
   });
 
-  /** 자리표시가 빈 지금은 **어떤 코드도 반려가 되지 않는다.** */
-  it('반려 자리표시가 비어 있으면 반려로 그리지 않는다', () => {
+  it('고정 반려 코드는 반려로 그린다', () => {
     const [view] = toStepProgressViews(
       [approvalStep({ decisionCode: SAMPLE_REJECTION_DECISION })],
       REJECTION_DECISION_CODES,
     );
 
-    expect(view?.status).toBe('complete');
+    expect(view?.status).toBe('rejected');
   });
 
   /** ⭐ **채우면 그 코드의 단계가 반려로 그려진다** — 자리표시가 죽은 가지가 아니다. */
   it('반려 자리표시를 채우면 그 코드가 반려가 된다', () => {
-    const [view] = toStepProgressViews([approvalStep()], [SAMPLE_REJECTION_DECISION]);
+    const [view] = toStepProgressViews(
+      [approvalStep({ decisionCode: SAMPLE_REJECTION_DECISION })],
+      [SAMPLE_REJECTION_DECISION],
+    );
 
     expect(view?.status).toBe('rejected');
   });
@@ -240,7 +241,7 @@ describe('toRequestProgressView', () => {
     );
 
     expect(view.requestNo).toBe('SAMPLE-AP-0001');
-    expect(view.approvalTypeCode).toBe('SAMPLE_AT_A');
+    expect(view.approvalTypeCode).toBe('INVENTORY_ADJUSTMENT');
     expect(view.statusCode).toBe('SAMPLE_AP_STATUS_A');
     expect(view.requesterLabel).toBe('합성 상신자 가');
     expect(view.requestedAtText).toBe('2026-08-18 14:35');

@@ -35,11 +35,10 @@ describe('자리표시 — 지금의 사실', () => {
    * **값을 지어내지 않는 것이 이 파일의 목적이다.** 계약의 `@example`도 심지 않는다 —
    * 그것은 예시이지 확정이 아니다.
    */
-  it('코드 여섯의 값 목록이 전부 비어 있다', () => {
-    expect(
-      Object.values(PLACEHOLDER_DISPOSAL_ISSUE_CODES).every((values) => values.length === 0),
-    ).toBe(true);
-    /* 짝 방향 — 키가 실제로 여섯이다(빈 객체라 통과한 것이 아니다). */
+  it('닫힌 원천 유형만 고정 계약 값으로 채운다', () => {
+    expect(PLACEHOLDER_DISPOSAL_ISSUE_CODES.sourceDocumentType).toEqual(['GOODS_RECEIPT']);
+    for (const key of ['issueType', 'reason', 'receiptType', 'status', 'issueStatus'] as const)
+      expect(PLACEHOLDER_DISPOSAL_ISSUE_CODES[key]).toEqual([]);
     expect(Object.keys(PLACEHOLDER_DISPOSAL_ISSUE_CODES)).toHaveLength(6);
   });
 
@@ -134,7 +133,7 @@ describe('isRequiredCodeListPending — 두 방향', () => {
   const filledRequired = (): CodeValueLists => ({
     ...PLACEHOLDER_DISPOSAL_ISSUE_CODES,
     issueType: ['SAMPLE_ISSUE_TYPE_A'],
-    sourceDocumentType: ['SAMPLE_SRC_TYPE_A'],
+    sourceDocumentType: ['INBOUND_RECEIPT'],
     reason: ['SAMPLE_REASON_A'],
   });
 

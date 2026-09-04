@@ -124,7 +124,7 @@ interface StepDraftState {
  *
  * ## 단계 전이 표 (계획 결정 3)
  *
- * 화면이 `approvalTypeCode` **값으로는 분기하지 않는다**(값 목록 미확정). 반면
+ * 화면이 `approvalTypeCode` **값으로는 분기하지 않는다**. 고정 enum은 조회·등록 값 목록이고, 반면
  * `isActive`·`stepCount`·`inProgressCount`로는 분기한다 — 셋은 열린 코드가 아니라 계약이
  * 뜻을 정의한 불리언·정수이고, 계약이 화면에 그 판정을 명시적으로 요구한다.
  *

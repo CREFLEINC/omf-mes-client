@@ -63,11 +63,17 @@ const printerChipText = (printer: Printer | null, failed: boolean): string => {
  * ⚠ **사유는 필요할 때만 싣는다.** 이력이 없는 대상만 골랐으면 최초 발행이고(스펙 §6), 신규
  * 기록에 재발행 사유가 붙으면 이력이 거짓이 된다(계약).
  */
-const issueBody = (selected: readonly ReprintTarget[], reasonCode: string): DocumentIssueCreate => {
+const issueBody = (
+  selected: readonly ReprintTarget[],
+  reasonCode: string,
+): DocumentIssueCreate | null => {
   const first = selected[0];
 
+  /* 고른 줄이 없으면 본문도 없다 — 문서 유형은 계약 `enum`이라 빈 값으로 채울 수 없다. */
+  if (first === undefined) return null;
+
   return {
-    documentTypeCode: first === undefined ? '' : first.documentTypeCode,
+    documentTypeCode: first.documentTypeCode,
     targets: selected.map((target) => ({
       targetTypeCode: target.targetTypeCode,
       targetId: target.targetId,
@@ -141,8 +147,11 @@ export const PackingLabelReprintScreen = () => {
     if (workerNo === null || selected.length === 0) return;
     if (needsReason(selected) && reasonCode === '') return;
 
+    const body = issueBody(selected, reasonCode);
+    if (body === null) return;
+
     printRunner.reset();
-    reissue.write(issueBody(selected, reasonCode));
+    reissue.write(body);
   };
 
   const toggle = (rowId: string): void => {

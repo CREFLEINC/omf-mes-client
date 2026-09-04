@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { formatDateTime, type ApprovalRequestDetail, type ApprovalStep } from './types';
 
-export const REJECTION_DECISION_CODES: readonly string[] = [];
+export const REJECTION_DECISION_CODES = ['REJECTED'] as const;
 
 export interface ApprovalStepView {
   stepNo: number;

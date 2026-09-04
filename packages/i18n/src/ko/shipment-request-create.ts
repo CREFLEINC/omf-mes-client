@@ -97,6 +97,8 @@ export const shipmentRequestCreate = {
     allocatedQtyNegative: '배정 수량은 0 이상이어야 합니다.',
     allocatedQtyOverRequested: (requestedQty: number): string =>
       `배정 수량은 요청 수량(${String(requestedQty)}) 을 넘을 수 없습니다.`,
+    customerLotRequirementTooLong: (maxLength: number): string =>
+      `고객 LOT 요구는 ${String(maxLength)}자를 넘을 수 없습니다.`,
     shelfLifeNegative: '잔여 유효기간은 0일 이상이어야 합니다.',
   },
   actionReasons: {

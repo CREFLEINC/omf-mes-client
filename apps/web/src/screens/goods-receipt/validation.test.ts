@@ -18,7 +18,7 @@ const FILLED_DRAFT: ReceiptDraft = {
   location: '9802',
   codes: {
     receiptType: 'SAMPLE_RECEIPT_TYPE_A',
-    sourceDocumentType: 'SAMPLE_SOURCE_TYPE_A',
+    sourceDocumentType: 'INBOUND_RECEIPT',
     qualityStatus: 'SAMPLE_QUALITY_A',
     inventoryStatus: 'SAMPLE_INVENTORY_A',
     reason: '',
@@ -43,7 +43,9 @@ describe('postBlockReason — 무엇이 막고 있는가', () => {
    * 고를 수 없는 것을 고르라고 하면 사용자는 자기가 무엇을 놓쳤는지 찾다가 화면을 고장으로 읽는다.
    */
   it('코드 목록이 확정되지 않았으면 그 사정을 먼저 말한다', () => {
-    expect(postBlockReason(gate({ isCodeListPending: true }))).toBe(t.actionReasons.postCodeListPending);
+    expect(postBlockReason(gate({ isCodeListPending: true }))).toBe(
+      t.actionReasons.postCodeListPending,
+    );
   });
 
   it('코드 목록이 차면 그 사유가 사라진다', () => {
@@ -72,7 +74,12 @@ describe('postBlockReason — 무엇이 막고 있는가', () => {
   });
 
   it('필수 코드가 하나라도 비면 막는다', () => {
-    for (const key of ['receiptType', 'sourceDocumentType', 'qualityStatus', 'inventoryStatus'] as const) {
+    for (const key of [
+      'receiptType',
+      'sourceDocumentType',
+      'qualityStatus',
+      'inventoryStatus',
+    ] as const) {
       const draft = { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, [key]: '' } };
 
       expect(postBlockReason(gate({ draft }))).toBe(t.actionReasons.postNeedsCodes);
@@ -91,7 +98,11 @@ describe('postBlockReason — 무엇이 막고 있는가', () => {
 
   /* 사유는 계약상 선택이다 — 비어 있다고 막으면 넣을 수 없는 값을 요구하게 된다. */
   it('사유가 비어 있어도 막지 않는다', () => {
-    expect(postBlockReason(gate({ draft: { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, reason: '' } } }))).toBeNull();
+    expect(
+      postBlockReason(
+        gate({ draft: { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, reason: '' } } }),
+      ),
+    ).toBeNull();
   });
 
   it('사유가 다섯 갈래로 서로 다르다', () => {
@@ -99,7 +110,9 @@ describe('postBlockReason — 무엇이 막고 있는가', () => {
       postBlockReason(gate({ isCodeListPending: true })),
       postBlockReason(gate({ draft: { ...FILLED_DRAFT, warehouse: '' } })),
       postBlockReason(gate({ draft: { ...FILLED_DRAFT, location: '' } })),
-      postBlockReason(gate({ draft: { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, receiptType: '' } } })),
+      postBlockReason(
+        gate({ draft: { ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, receiptType: '' } } }),
+      ),
       postBlockReason(gate({ draft: { ...FILLED_DRAFT, receiptDatetime: '' } })),
     ];
 
@@ -123,7 +136,10 @@ describe('validateDraft — 보내기 전에 화면이 잡는 것', () => {
   /* 계약이 코드에 `maxLength: 50`을 둔다. 상한을 넘긴 값은 보내지 않고 사유를 낸다. */
   it('코드가 상한을 넘으면 그 칸의 오류가 된다', () => {
     const long = 'S'.repeat(CODE_MAX + 1);
-    const errors = validateDraft({ ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, receiptType: long } });
+    const errors = validateDraft({
+      ...FILLED_DRAFT,
+      codes: { ...FILLED_DRAFT.codes, receiptType: long },
+    });
 
     expect(errors[CODE_FIELD_NAMES.receiptType]).toBe(t.errors.codeTooLong(CODE_MAX));
   });
@@ -131,14 +147,18 @@ describe('validateDraft — 보내기 전에 화면이 잡는 것', () => {
   it('상한과 같은 길이는 통과한다', () => {
     const exact = 'S'.repeat(CODE_MAX);
 
-    expect(validateDraft({ ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, receiptType: exact } })).toEqual({});
+    expect(
+      validateDraft({ ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, receiptType: exact } }),
+    ).toEqual({});
   });
 
   /* 보낼 값의 길이를 잰다 — 요청 조립이 앞뒤 공백을 떼고 보내므로 여기서도 뗀 값을 잰다. */
   it('앞뒤 공백을 뗀 길이로 잰다', () => {
     const padded = `  ${'S'.repeat(CODE_MAX)}  `;
 
-    expect(validateDraft({ ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, receiptType: padded } })).toEqual({});
+    expect(
+      validateDraft({ ...FILLED_DRAFT, codes: { ...FILLED_DRAFT.codes, receiptType: padded } }),
+    ).toEqual({});
   });
 
   it('여러 코드가 상한을 넘으면 각각 오류가 된다', () => {

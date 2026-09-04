@@ -15,13 +15,13 @@ import {
  * 확정되지 않았다. 감지기가 「코드가 오면 이렇게 다룬다」를 보이기 위한 것이지
  * 확정값이 아니므로, 제품 상수로 옮기지 않는다.
  */
-const PLACEHOLDER_DISPOSITION_CODE = 'CODE-A';
+const PLACEHOLDER_DISPOSITION_CODE = 'REWORK';
 const PLACEHOLDER_SEVERITY_CODE = 'CODE-B';
 const PLACEHOLDER_STATUS_CODE = 'CODE-C';
 
 describe('코드 상수', () => {
-  it('값 목록이 확정되기 전에는 코드를 지어내지 않는다', () => {
-    expect(DISPOSITION_TYPE_CODES).toEqual([]);
+  it('고정 OpenAPI의 처분 유형 3종을 담는다', () => {
+    expect(DISPOSITION_TYPE_CODES).toEqual(['REWORK', 'SCRAP', 'NORMAL']);
     expect(SEVERITY_CODES).toEqual([]);
     expect(NONCONFORMANCE_STATUS_CODES).toEqual([]);
   });

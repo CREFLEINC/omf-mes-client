@@ -92,7 +92,6 @@ export const GroupFormPane = ({
           options={GROUP_TYPE_OPTIONS}
           value={values.groupTypeCode}
           onChange={(value) => onChange({ groupTypeCode: value })}
-          note={messages.pendingCode.note}
           error={fieldErrors.groupTypeCode}
         />
 

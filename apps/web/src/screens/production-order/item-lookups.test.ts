@@ -19,7 +19,7 @@ const itemResponse = (itemId: number) => ({
     itemName: `Synthetic item ${String(itemId)}`,
     itemTypeCode: 'MATERIAL',
     baseUomId: 8001,
-    lotControlTypeCode: 'NONE',
+    lotControlled: false,
     serialControlTypeCode: 'NONE',
     inspectionRequired: false,
     fifoPolicyCode: 'FIFO',

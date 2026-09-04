@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  PLACEHOLDER_DIRECTION_CODES,
   PLACEHOLDER_STATUS_CODES,
   distinctValues,
   toCodeOptions,
@@ -56,7 +57,8 @@ describe('toCodeOptions', () => {
     ]);
   });
 
-  it('자리표시 상수는 아직 비어 있다 — 값이 확정되면 이 배열만 채운다', () => {
+  it('방향은 고정 enum이고 상태는 운영 목록을 기다린다', () => {
+    expect(PLACEHOLDER_DIRECTION_CODES).toEqual(['INBOUND', 'OUTBOUND']);
     expect(PLACEHOLDER_STATUS_CODES).toEqual([]);
   });
 

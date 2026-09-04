@@ -1,3 +1,4 @@
+import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { RequestFilters } from './types';
@@ -218,10 +219,13 @@ export const withoutSelection = (params: URLSearchParams): URLSearchParams => {
  * **`requestedByMe`·`myTurnOnly`가 없다.** 이 화면은 상신하지 않으므로 「내가 올린 것」 축이
  * 존재할 수 없고, 대기 건수는 **결재함이 세는 자리**라 같은 수를 여기서 다시 세지 않는다.
  */
+type ListQueryParams = NonNullable<paths['/app/approval-requests']['get']['parameters']['query']>;
+
 export interface RequestListQuery {
   assignedToMe?: boolean;
   pendingOnly?: boolean;
-  approvalTypeCode?: string;
+  /** 계약이 값 목록을 닫았다(코드 사전 2026-09-03). 이 화면의 값은 `code-options.ts`가 서버에서 받는다 */
+  approvalTypeCode?: ListQueryParams['approvalTypeCode'];
   statusCode?: string;
   requestedAtFrom?: string;
   requestedAtTo?: string;
@@ -260,7 +264,9 @@ export const toRequestListQuery = (
     /* 고정 축 — 조건이 아니라 이 화면의 전제라 사용자가 풀 수 없다. */
     assignedToMe: true,
     ...(pendingOnly ? { pendingOnly: true } : {}),
-    ...(typeCode === '' ? {} : { approvalTypeCode: typeCode }),
+    ...(typeCode === ''
+      ? {}
+      : { approvalTypeCode: typeCode as ListQueryParams['approvalTypeCode'] }),
     ...(filters.statusCode === '' ? {} : { statusCode: filters.statusCode }),
     ...(from === '' ? {} : { requestedAtFrom: from }),
     ...(to === '' ? {} : { requestedAtTo: to }),

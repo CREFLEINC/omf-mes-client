@@ -181,7 +181,9 @@ describe('InspectionStandardScreen — 기준 목록 조회', () => {
     ]);
 
     expect(
-      await screen.findByText('이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.'),
+      await screen.findByText(
+        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -264,7 +266,10 @@ describe('InspectionStandardScreen — 쪽 이동', () => {
 
   /* 경계 — 전체 건수가 쪽 크기의 배수면 마지막 쪽이 꽉 찬다. 여기서 다음이 열리면 빈 쪽으로 간다. */
   it('전체가 쪽 크기의 배수여도 마지막 쪽에서 다음이 비활성이다', async () => {
-    renderScreen([planListRoute(inspectionPlanFixtures, { page: 2, size: 3, total: 6 })], '?page=2');
+    renderScreen(
+      [planListRoute(inspectionPlanFixtures, { page: 2, size: 3, total: 6 })],
+      '?page=2',
+    );
     await screen.findByRole('button', { name: 'SYN-PLAN-01' });
 
     expect(within(planPane()).getByRole('button', { name: '다음' })).toBeDisabled();
@@ -352,7 +357,9 @@ describe('InspectionStandardScreen — 만들지 않기로 한 것', () => {
 
     expect(screen.getByRole('button', { name: '엑셀 올리기' })).toBeDisabled();
     expect(
-      screen.getByText('엑셀 올리기는 아직 할 수 없습니다. 양식이 정해지면 이 버튼을 쓸 수 있습니다.'),
+      screen.getByText(
+        '엑셀 올리기는 아직 할 수 없습니다. 양식이 정해지면 이 버튼을 쓸 수 있습니다.',
+      ),
     ).toBeInTheDocument();
   });
 });
@@ -374,8 +381,7 @@ const planDetailRoute = (
   editability: EditabilityStub = DEFAULT_EDITABILITY,
   etag = '"7"',
 ): StubRoute => ({
-  match: (request) =>
-    isGet(request, `${PLANS_PATH}/${String(plan.inspectionPlanId)}`),
+  match: (request) => isGet(request, `${PLANS_PATH}/${String(plan.inspectionPlanId)}`),
   respond: () => jsonResponse({ inspectionPlan: plan, editability }, { headers: { ETag: etag } }),
 });
 
@@ -390,7 +396,7 @@ const itemOptionsRoute = (): StubRoute => ({
           itemName: '합성 품목 A',
           itemTypeCode: 'PRODUCT',
           baseUomId: 41,
-          lotControlTypeCode: 'LOT',
+          lotControlled: true,
           serialControlTypeCode: 'NONE',
           shelfLifeDays: null,
           inspectionRequired: true,
@@ -406,7 +412,7 @@ const itemOptionsRoute = (): StubRoute => ({
           itemName: '합성 품목 B',
           itemTypeCode: 'PRODUCT',
           baseUomId: 41,
-          lotControlTypeCode: 'LOT',
+          lotControlled: true,
           serialControlTypeCode: 'NONE',
           shelfLifeDays: null,
           inspectionRequired: true,
@@ -459,7 +465,8 @@ const routingOptionsRoute = (): StubRoute => ({
 const planSaveRoute = (
   respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanFixtures[0]),
 ): StubRoute => ({
-  match: (request) => request.method === 'PUT' && new URL(request.url).pathname === PLAN_DETAIL_PATH,
+  match: (request) =>
+    request.method === 'PUT' && new URL(request.url).pathname === PLAN_DETAIL_PATH,
   respond,
 });
 
@@ -867,12 +874,20 @@ describe('InspectionStandardScreen — 라우팅 선택의 품목 의존', () =>
   /* 알리지 않으면 이름이 이유 없이 비어 보이고 사용자는 값이 사라진 줄 안다. */
   it('선택 목록이 잘리면 그 사실을 폼 위에 낸다', async () => {
     renderScreen(
-      [planListRoute(), planDetailRoute(), itemOptionsRoute(), processOptionsRoute(120), routingOptionsRoute()],
+      [
+        planListRoute(),
+        planDetailRoute(),
+        itemOptionsRoute(),
+        processOptionsRoute(120),
+        routingOptionsRoute(),
+      ],
       '?plan=3001',
     );
 
     expect(
-      await screen.findByText('선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.'),
+      await screen.findByText(
+        '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+      ),
     ).toBeInTheDocument();
   });
 });
@@ -885,8 +900,7 @@ const planActionRoute = (
   respond: StubRoute['respond'] = () => jsonResponse(inspectionPlanFixtures[0]),
 ): StubRoute => ({
   match: (request) =>
-    request.method === 'POST' &&
-    new URL(request.url).pathname === `${PLANS_PATH}/3001:${action}`,
+    request.method === 'POST' && new URL(request.url).pathname === `${PLANS_PATH}/3001:${action}`,
   respond,
 });
 
@@ -923,7 +937,10 @@ describe('InspectionStandardScreen — 기준 승인', () => {
   it('멱등 키는 요청마다 새로 만든다', async () => {
     const { requests, user } = renderSelectedPlan([
       planActionRoute('approve', () =>
-        jsonResponse({ errors: [{ scope: 'screen', code: 'STANDARD', message: '거부' }] }, { status: 400 }),
+        jsonResponse(
+          { errors: [{ scope: 'screen', code: 'STANDARD', message: '거부' }] },
+          { status: 400 },
+        ),
       ),
     ]);
 
@@ -959,7 +976,9 @@ describe('InspectionStandardScreen — 기준 승인', () => {
     await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
 
     expect(
-      await screen.findByText('승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.'),
+      await screen.findByText(
+        '승인은 확정된 버전이 있어야 할 수 있습니다. 버전을 먼저 확정하세요.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -973,7 +992,9 @@ describe('InspectionStandardScreen — 기준 승인', () => {
     await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
 
     expect(
-      await screen.findByText('이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.'),
+      await screen.findByText(
+        '이 작업을 수행할 권한이 없습니다. 권한이 필요하면 담당자에게 문의하세요.',
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
@@ -1228,9 +1249,7 @@ describe('InspectionStandardScreen — 버전 목록', () => {
   });
 
   it('빈 상태 코드는 작성중으로 낸다', async () => {
-    renderVersions([
-      versionListRoute([{ ...inspectionPlanVersionFixtures[0]!, statusCode: '' }]),
-    ]);
+    renderVersions([versionListRoute([{ ...inspectionPlanVersionFixtures[0]!, statusCode: '' }])]);
 
     expect(await screen.findByText('작성중')).toBeInTheDocument();
   });
@@ -1240,7 +1259,9 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
   it('버전이 0건이면 중 페인 액션이 「버전 등록」이다', async () => {
     renderVersions([versionListRoute([])]);
 
-    expect(await within(versionPane()).findByRole('button', { name: '버전 등록' })).toBeInTheDocument();
+    expect(
+      await within(versionPane()).findByRole('button', { name: '버전 등록' }),
+    ).toBeInTheDocument();
     expect(
       within(versionPane()).queryByRole('button', { name: '신규 버전 발행' }),
     ).not.toBeInTheDocument();
@@ -1252,7 +1273,9 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     expect(
       await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
     ).toBeInTheDocument();
-    expect(within(versionPane()).queryByRole('button', { name: '버전 등록' })).not.toBeInTheDocument();
+    expect(
+      within(versionPane()).queryByRole('button', { name: '버전 등록' }),
+    ).not.toBeInTheDocument();
   });
 
   /* 버전이 0건이면 복사할 원본이 없다 — 생성 경로를 쓴다. */
@@ -1287,9 +1310,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
   it('「신규 버전 발행」은 개정 경로로 나가고 본문이 없다', async () => {
     const { requests, user } = renderVersions([newRevisionRoute()]);
 
-    await user.click(
-      await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
-    );
+    await user.click(await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }));
 
     await screen.findByText('등록했습니다');
 
@@ -1298,7 +1319,9 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     expect(posts[0]?.body).toBe('');
     expect(posts[0]?.headers.get('If-Match')).toBeNull();
     // 생성 경로를 부르지 않는다.
-    expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(0);
+    expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(
+      0,
+    );
   });
 
   /*
@@ -1308,9 +1331,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
   it('아무것도 고르지 않았으면 목록 첫 행을 원본으로 삼는다', async () => {
     const { requests, user } = renderVersions([newRevisionRoute(4002)]);
 
-    await user.click(
-      await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
-    );
+    await user.click(await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }));
     await screen.findByText('등록했습니다');
 
     expect(requestsTo(requests, `${VERSIONS_PATH}/4002:new-revision`)).toHaveLength(1);
@@ -1320,9 +1341,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
   it('버전을 골랐으면 그 버전을 원본으로 삼는다', async () => {
     const { requests, user } = renderVersions([newRevisionRoute(4001)], '?plan=3001&ver=4001');
 
-    await user.click(
-      await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
-    );
+    await user.click(await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }));
     await screen.findByText('등록했습니다');
 
     expect(requestsTo(requests, `${VERSIONS_PATH}/4001:new-revision`)).toHaveLength(1);
@@ -1367,9 +1386,7 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
       ),
     ]);
 
-    await user.click(
-      await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }),
-    );
+    await user.click(await within(versionPane()).findByRole('button', { name: '신규 버전 발행' }));
 
     expect(
       await screen.findByText('확정된 버전에서만 신규 버전을 발행할 수 있습니다.'),
@@ -1401,7 +1418,9 @@ describe('InspectionStandardScreen — 신규 버전 두 갈래', () => {
     await user.click(within(form).getByRole('button', { name: '버전 등록' }));
 
     expect(await screen.findAllByText('필수 입력 항목입니다.')).toHaveLength(2);
-    expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(0);
+    expect(versionRequests(requests).filter((request) => request.method === 'POST')).toHaveLength(
+      0,
+    );
   });
 });
 
@@ -1412,8 +1431,7 @@ const versionDetailRoute = (
   version = inspectionPlanVersionFixtures[0]!,
   etag = '"11"',
 ): StubRoute => ({
-  match: (request) =>
-    isGet(request, `${VERSIONS_PATH}/${String(version.inspectionPlanVersionId)}`),
+  match: (request) => isGet(request, `${VERSIONS_PATH}/${String(version.inspectionPlanVersionId)}`),
   respond: () =>
     jsonResponse(
       { inspectionPlanVersion: version, editability: DEFAULT_EDITABILITY },
@@ -1439,10 +1457,7 @@ const itemSpecFixture = {
   automaticJudgment: true,
 };
 
-const itemListRoute = (
-  versionId = 4002,
-  items: unknown[] = [itemSpecFixture],
-): StubRoute => ({
+const itemListRoute = (versionId = 4002, items: unknown[] = [itemSpecFixture]): StubRoute => ({
   match: (request) => isGet(request, `${VERSIONS_PATH}/${String(versionId)}/items`),
   respond: () => jsonResponse({ items }),
 });
@@ -1491,14 +1506,17 @@ const renderSelectedVersion = (extraRoutes: StubRoute[] = [], search = '?plan=30
 
 describe('InspectionStandardScreen — 버전 상세와 샘플 비율 표기', () => {
   it('버전을 고르면 상세 요청이 한 번 나가고 폼이 응답 값으로 채워진다', async () => {
-    const { requests, user } = renderScreen([
-      planListRoute(),
-      planDetailRoute(),
-      versionListRoute(),
-      versionDetailRoute(),
-      itemListRoute(),
-      ...lookupRoutes(),
-    ], '?plan=3001');
+    const { requests, user } = renderScreen(
+      [
+        planListRoute(),
+        planDetailRoute(),
+        versionListRoute(),
+        versionDetailRoute(),
+        itemListRoute(),
+        ...lookupRoutes(),
+      ],
+      '?plan=3001',
+    );
 
     await user.click(await screen.findByRole('button', { name: '버전 2' }));
 
@@ -1559,7 +1577,8 @@ describe('InspectionStandardScreen — 버전 상세와 샘플 비율 표기', (
     renderSelectedVersion([
       {
         match: (request) => isGet(request, VERSION_DETAIL_PATH),
-        respond: () => jsonResponse({ message: '버전 정보를 불러오지 못했습니다.' }, { status: 500 }),
+        respond: () =>
+          jsonResponse({ message: '버전 정보를 불러오지 못했습니다.' }, { status: 500 }),
       },
     ]);
 
@@ -1663,7 +1682,9 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     fireEvent.change(within(form).getByLabelText('샘플 비율(%)'), { target: { value: '0' } });
     await user.click(within(form).getByRole('button', { name: '저장' }));
 
-    expect(await screen.findByText('불합격판정개수는 0보다 큰 숫자여야 합니다.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('불합격판정개수는 0보다 큰 숫자여야 합니다.'),
+    ).toBeInTheDocument();
     expect(
       screen.getByText('샘플 비율(%)은 0보다 크고 100 이하인 값이어야 합니다.'),
     ).toBeInTheDocument();
@@ -1685,7 +1706,9 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     await user.click(within(form).getByRole('button', { name: '저장' }));
 
     expect(
-      await screen.findByText('다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.'),
+      await screen.findByText(
+        '다른 사용자가 먼저 저장했습니다. 최신 내용을 불러온 뒤 다시 저장하세요.',
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
   });
@@ -1790,7 +1813,9 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     await user.click(within(form).getByRole('button', { name: '확정' }));
     await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
 
-    expect(await screen.findByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
@@ -1803,7 +1828,9 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     await waitFor(() => {
       expect(within(form).getByRole('button', { name: '확정' })).toBeDisabled();
     });
-    expect(screen.getByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.'),
+    ).toBeInTheDocument();
   });
 
   /* 확정하면 되돌릴 수 없다 — 저장하지 않은 편집은 그 순간 영영 사라진다. */
@@ -1816,7 +1843,9 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(within(form).getByRole('button', { name: '확정' })).toBeDisabled();
     expect(within(versionPane()).getByRole('button', { name: '신규 버전 발행' })).toBeDisabled();
     expect(
-      screen.getByText('확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.'),
+      screen.getByText(
+        '확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -1826,7 +1855,9 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     const form = await awaitVersionForm();
 
     expect(within(form).getByRole('button', { name: '폐기' })).toBeDisabled();
-    expect(screen.getByText('폐기는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.')).toBeInTheDocument();
+    expect(
+      screen.getByText('폐기는 확정된 버전에만 할 수 있습니다. 먼저 확정하세요.'),
+    ).toBeInTheDocument();
   });
 
   it('확정 버전에서는 폐기가 활성이고 확인하면 요청이 나간다', async () => {
@@ -1860,7 +1891,9 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(within(form).getByRole('button', { name: '버전 비교' })).toBeDisabled();
     expect(within(form).getByRole('button', { name: '변경 이력' })).toBeDisabled();
     expect(
-      screen.getByText('버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.'),
+      screen.getByText(
+        '버전 비교는 아직 할 수 없습니다. 비교 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+      ),
     ).toBeInTheDocument();
   });
 });
@@ -2006,7 +2039,8 @@ describe('InspectionStandardScreen — 검사 항목 조회', () => {
     renderItems([
       {
         match: (request) => isGet(request, ITEMS_PATH),
-        respond: () => jsonResponse({ message: '검사 항목을 불러오지 못했습니다.' }, { status: 500 }),
+        respond: () =>
+          jsonResponse({ message: '검사 항목을 불러오지 못했습니다.' }, { status: 500 }),
       },
     ]);
 
@@ -2157,7 +2191,11 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     expect(put?.headers.get('If-Match')).toBeNull();
 
     const body = JSON.parse(put?.body ?? '{}') as {
-      items: { sequenceNo: number; inspectionPlanVersionId: number; inspectionItemSpecId?: number }[];
+      items: {
+        sequenceNo: number;
+        inspectionPlanVersionId: number;
+        inspectionItemSpecId?: number;
+      }[];
     };
 
     expect(body.items.map((item) => item.sequenceNo)).toEqual([1, 2, 3]);
@@ -2217,9 +2255,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
     const { user } = renderItems([
       itemsSaveRoute(() =>
         jsonResponse({
-          items: [
-            { ...itemSpecFixture, sequenceNo: 100, inspectionItemName: '서버가 고친 이름' },
-          ],
+          items: [{ ...itemSpecFixture, sequenceNo: 100, inspectionItemName: '서버가 고친 이름' }],
         }),
       ),
     ]);
@@ -2249,7 +2285,9 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     expect(within(itemPane()).getByRole('button', { name: '저장' })).toBeDisabled();
     expect(
-      screen.getByText('항목 저장은 저장할 수 없는 항목이 섞여 있으면 할 수 없습니다. 표에서 그 항목을 수정하세요.'),
+      screen.getByText(
+        '항목 저장은 저장할 수 없는 항목이 섞여 있으면 할 수 없습니다. 표에서 그 항목을 수정하세요.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -2273,10 +2311,7 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
   it('확정 버전에서는 항목 편집이 잠기고 순서 이동 열이 사라진다', async () => {
     renderItems(
-      [
-        versionDetailRoute(inspectionPlanVersionFixtures[1]),
-        itemListRoute(4001, itemFixtures),
-      ],
+      [versionDetailRoute(inspectionPlanVersionFixtures[1]), itemListRoute(4001, itemFixtures)],
       '?plan=3001&ver=4001',
     );
 
@@ -2284,7 +2319,9 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
 
     expect(within(itemPane()).getByRole('button', { name: '항목 추가' })).toBeDisabled();
     expect(within(itemPane()).getByRole('button', { name: '1번 항목 수정' })).toBeDisabled();
-    expect(within(itemPane()).queryByRole('button', { name: /아래로|위로/ })).not.toBeInTheDocument();
+    expect(
+      within(itemPane()).queryByRole('button', { name: /아래로|위로/ }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getAllByText(
         '검사 항목은 작성중 버전에서만 편집할 수 있습니다. 변경하려면 신규 버전을 발행하세요.',
@@ -2310,9 +2347,13 @@ describe('InspectionStandardScreen — 검사 항목 저장', () => {
      * 사유가 「1건 이상 저장해야」여야 한다 — 초안으로 세면 이 사유가 사라지고
      * 「저장하지 않은 변경」 사유로 바뀐다. 그 차이가 곧 「저장된 건수로 센다」의 증거다.
      */
-    expect(screen.getByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.')).toBeInTheDocument();
     expect(
-      screen.queryByText('확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.'),
+      screen.getByText('확정은 검사 항목을 1건 이상 저장해야 할 수 있습니다.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        '확정은 저장하지 않은 변경이 있으면 할 수 없습니다. 먼저 저장하거나 취소하세요.',
+      ),
     ).not.toBeInTheDocument();
   });
 });
@@ -2347,7 +2388,9 @@ describe('InspectionStandardScreen — 선택 목록 조회 실패', () => {
     const form = await awaitPlanForm();
 
     expect(
-      await within(form).findByText('선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.'),
+      await within(form).findByText(
+        '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+      ),
     ).toBeInTheDocument();
     expect(
       within(form).queryByText(

@@ -231,7 +231,9 @@ describe('toLocationView', () => {
 
   /* 키 없음과 `null`을 한 값으로 모은다 — 갈리면 「상위가 없다」 판정이 자리마다 달라진다. */
   it('상위가 없거나 키가 없으면 둘 다 null이다', () => {
-    expect(toLocationView(locationResponse({ parentLocationId: null })).parentLocationId).toBeNull();
+    expect(
+      toLocationView(locationResponse({ parentLocationId: null })).parentLocationId,
+    ).toBeNull();
     expect(
       toLocationView(locationResponse({ parentLocationId: undefined })).parentLocationId,
     ).toBeNull();
@@ -248,7 +250,7 @@ const goodsReceiptResult = (
   warehouseId: 9701,
   receiptDatetime: '2026-08-06T09:12:00+09:00',
   statusCode: 'SAMPLE_GR_STATUS_A',
-  sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   sourceDocumentId: 9001,
   ...overrides,
 });
@@ -283,7 +285,12 @@ describe('toGoodsReceiptResultView', () => {
   it('내부 번호를 담을 자리가 없다', () => {
     const view = toGoodsReceiptResultView(goodsReceiptResult(), [goodsReceiptLine()]);
 
-    for (const key of ['goodsReceiptId', 'goodsReceiptLineId', 'lotId', 'inventoryTransactionLineId']) {
+    for (const key of [
+      'goodsReceiptId',
+      'goodsReceiptLineId',
+      'lotId',
+      'inventoryTransactionLineId',
+    ]) {
       expect(Object.keys(view)).not.toContain(key);
     }
   });
@@ -297,7 +304,8 @@ describe('toGoodsReceiptResultView', () => {
       toGoodsReceiptResultView(goodsReceiptResult(), [goodsReceiptLine()]).erpMessageQueued,
     ).toBeUndefined();
     expect(
-      toGoodsReceiptResultView(goodsReceiptResult({ erpMessageQueued: false }), []).erpMessageQueued,
+      toGoodsReceiptResultView(goodsReceiptResult({ erpMessageQueued: false }), [])
+        .erpMessageQueued,
     ).toBe(false);
   });
 

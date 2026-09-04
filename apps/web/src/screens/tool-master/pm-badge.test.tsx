@@ -57,11 +57,6 @@ describe('PmBadge', () => {
     );
   });
 
-  /* ⛔ 모르는 축의 이름을 지어내지 않는다 — 코드를 그대로 보인다(G-9). */
-  it('모르는 축은 코드를 그대로 보인다', () => {
-    expect(renderBadge({ status: 'due', axis: 'HOURS' })).toHaveTextContent('HOURS');
-  });
-
   it('축이 없으면 축을 붙이지 않는다', () => {
     const label = renderBadge({ status: 'due', axis: null }).textContent;
 

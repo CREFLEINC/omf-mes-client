@@ -68,6 +68,9 @@ export const gaugeCalibration = {
     nextDueOn: '유효기한(차기 검교정 예정일)',
     tolerance: '허용오차 메모',
     remarks: '비고',
+    /** 계약 필수(2026-09-02) — 이 이력이 계측기 사용을 막는가. 켜면 해제될 때까지 사용 불가로 판정된다. */
+    blocksUse: '이 이력으로 사용을 차단',
+    blocksUseNote: '켜면 해제 전까지 이 계측기는 사용할 수 없는 것으로 판정됩니다.',
     selectPlaceholder: '고르세요',
     submit: '이력 등록',
     reset: '입력 지우기',

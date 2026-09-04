@@ -36,7 +36,7 @@ const BackProbe = () => {
   );
 };
 
-const APPROVAL = { targetTypeCode: 'APPROVAL_REQUEST', targetId: 7201 };
+const APPROVAL = { targetTypeCode: 'APPROVAL_REQUEST', targetId: 7201 } as const;
 
 /** 카드 제목 — 풀린 이름이다. 링크 이름이 이것을 쓰는지가 이 파일의 한 축이다. */
 const TITLE = '합성 이벤트 가';
@@ -114,7 +114,8 @@ describe('NotificationRow — 이동 버튼이 서지 않는 갈래', () => {
   });
 
   it('모르는 코드에도 서지 않는다', () => {
-    renderRow({ targetTypeCode: 'SYN-UNKNOWN', targetId: 7201 });
+    /* 계약 밖 값 — 서버가 대상 유형을 더했을 때 화면이 링크를 지어내지 않는지 잰다. */
+    renderRow({ targetTypeCode: 'SYN-UNKNOWN' as never, targetId: 7201 });
 
     expectNoMoveLink();
   });

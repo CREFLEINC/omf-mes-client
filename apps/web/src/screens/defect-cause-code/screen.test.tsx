@@ -108,7 +108,10 @@ const defectDetailRoute = (
 ): StubRoute => ({
   match: (request) => isGet(request, `${DEFECT_LIST_PATH}/${String(code.defectCodeId)}`),
   respond: () =>
-    jsonResponse({ defectCode: code, editability }, etag === null ? {} : { headers: { ETag: etag } }),
+    jsonResponse(
+      { defectCode: code, editability },
+      etag === null ? {} : { headers: { ETag: etag } },
+    ),
 });
 
 const defectUpdateRoute = (id: number, respond: StubRoute['respond']): StubRoute => ({
@@ -379,7 +382,9 @@ describe('DefectCauseCodeScreen — 등록 폼 열기', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.'),
+      screen.getByText(
+        '대분류 목록은 아직 임시입니다. 확정되면 이 항목의 선택지가 바뀔 수 있습니다.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -472,10 +477,7 @@ describe('DefectCauseCodeScreen — 상위 선택지', () => {
 
   /* 빼 버리면 선택칸이 비어 보여 사용자가 값이 사라진 줄 안다. */
   it('지금 상위로 지정된 미사용 대분류는 표식과 함께 남는다', async () => {
-    renderScreen(
-      [defectOptionsRoute(), defectListRoute()],
-      '?inactive=1&sel=1006&mode=create',
-    );
+    renderScreen([defectOptionsRoute(), defectListRoute()], '?inactive=1&sel=1006&mode=create');
 
     // 선택지가 도착하기 전에는 번호만 보인다 — 라벨이 붙는 것까지 기다린다.
     expect(await screen.findByText('DF-90 · 사용하지 않는 축 (미사용)')).toBeInTheDocument();
@@ -488,7 +490,9 @@ describe('DefectCauseCodeScreen — 상위 선택지', () => {
     );
 
     expect(
-      await screen.findByText('선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.'),
+      await screen.findByText(
+        '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -930,9 +934,12 @@ describe('DefectCauseCodeScreen — 수정 저장', () => {
     await waitFor(() => {
       expect(requests.filter((request) => request.method === 'PUT')).toHaveLength(2);
     });
-    expect(requests.filter((request) => request.method === 'PUT').at(-1)?.headers.get('If-Match')).toBe(
-      '"8"',
-    );
+    expect(
+      requests
+        .filter((request) => request.method === 'PUT')
+        .at(-1)
+        ?.headers.get('If-Match'),
+    ).toBe('"8"');
   });
 
   /* 빈 If-Match는 계약 위반이라 서버가 거부한다. 보내지 않고 멈춘다. */
@@ -1011,7 +1018,9 @@ describe('DefectCauseCodeScreen — 이미 3계층인 기존 데이터', () => {
     await screen.findByLabelText('명칭');
 
     expect(screen.getByRole('combobox', { name: '상위 대분류' })).toBeDisabled();
-    expect(screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/상위 대분류는 하위 코드가 있는 동안 바꿀 수 없습니다/),
+    ).toBeInTheDocument();
   });
 
   /* 3계층의 막내 DF-42는 상위가 상세 코드다. 그래도 명칭만 고치는 것은 막지 않는다. */
@@ -1227,7 +1236,9 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
       '?sel=1002',
     );
 
-    expect(within(screen.getByRole('dialog')).queryByText(/하위 상세 코드/)).not.toBeInTheDocument();
+    expect(
+      within(screen.getByRole('dialog')).queryByText(/하위 상세 코드/),
+    ).not.toBeInTheDocument();
   });
 
   /* If-Match를 요청 경로(`…:deactivate`)로 꺼내면 언제나 비어 있어 전부 실패한다. */
@@ -1242,9 +1253,7 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
       '?sel=1001',
     );
 
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
-    );
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
     expect(await screen.findByText('저장했습니다')).toBeInTheDocument();
 
     const request = requests.find((candidate) => candidate.method === 'POST');
@@ -1265,9 +1274,7 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
     );
 
     const before = requests.filter((request) => request.method === 'GET').length;
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
-    );
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
     await screen.findByText('저장했습니다');
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -1278,16 +1285,12 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
     const { user } = await openDialog(
       editFlowRoutes(
         defectDetailRoute(),
-        defectDeactivateRoute(1001, () =>
-          jsonResponse({ message: '' }, { status: 422 }),
-        ),
+        defectDeactivateRoute(1001, () => jsonResponse({ message: '' }, { status: 422 })),
       ),
       '?sel=1001',
     );
 
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
-    );
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
 
     const dialog = await screen.findByRole('dialog');
     expect(
@@ -1306,9 +1309,7 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
       '?sel=1001',
     );
 
-    await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }),
-    );
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: '사용 중지' }));
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByRole('button', { name: '최신 불러오기' })).toBeInTheDocument();
@@ -1316,11 +1317,7 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
 
   it('이미 미사용인 코드에서는 사용 중지를 쓸 수 없다', async () => {
     renderScreen(
-      [
-        defectOptionsRoute(),
-        defectListRoute(),
-        defectDetailRoute(defectCodeFixtures[5]),
-      ],
+      [defectOptionsRoute(), defectListRoute(), defectDetailRoute(defectCodeFixtures[5])],
       '?inactive=1&sel=1006',
     );
 
@@ -1332,8 +1329,8 @@ describe('DefectCauseCodeScreen — 사용 중지', () => {
 });
 
 /*
- * 탭 정의 배열을 순회한다 — 탭이 셋으로 늘면 이 테스트도 함께 는다.
- * 탭마다 경로·필드 이름이 다르므로 어댑터별 응답을 만들어 준다.
+ * 코드 마스터 탭 정의 배열을 순회한다. 공정 매핑 탭은 별도 계약과 쓰기 흐름을 가지므로
+ * process-mapping-pane.test.tsx에서 독립적으로 검증한다.
  */
 describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, definition] as const))(
   'DefectCauseCodeScreen — %s 탭',
@@ -1374,7 +1371,9 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
       renderScreen(routes, `?tab=${definition.kind}`);
       await screen.findByRole('button', { name: firstCode });
 
-      const pane = screen.getByRole('region', { name: definition.adapter.labels.tab });
+      const pane = screen.getByRole('region', {
+        name: `${definition.adapter.labels.tab} 목록`,
+      });
       expect(within(pane).getByRole('button', { name: firstCode })).toBeInTheDocument();
     });
 
@@ -1446,7 +1445,10 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
           new URL(request.url).searchParams.get('includeInactive') === 'true',
         respond: () => jsonResponse(listBody([codeRow()])),
       },
-      { match: (request) => isGet(request, listPath), respond: () => jsonResponse(listBody([codeRow()])) },
+      {
+        match: (request) => isGet(request, listPath),
+        respond: () => jsonResponse(listBody([codeRow()])),
+      },
       {
         match: (request) => isGet(request, detailPath),
         respond: () => jsonResponse(detailBody(), { headers: { ETag: TAB_ETAG } }),
@@ -1457,10 +1459,12 @@ describe.each(CODE_TABS.map((definition) => [definition.adapter.labels.tab, defi
     it('수정 요청이 그 탭의 경로·필드 이름으로 나가고 공정 번호가 보존된다', async () => {
       const { requests, user } = renderScreen(
         tabEditRoutes({
-          match: (request) => request.method === 'PUT' && new URL(request.url).pathname === detailPath,
-          respond: () => jsonResponse(codeRow({ [editFields.name]: '대분류가' }), {
-            headers: { ETag: '"10"' },
-          }),
+          match: (request) =>
+            request.method === 'PUT' && new URL(request.url).pathname === detailPath,
+          respond: () =>
+            jsonResponse(codeRow({ [editFields.name]: '대분류가' }), {
+              headers: { ETag: '"10"' },
+            }),
         }),
         `?tab=${definition.kind}&sel=${String(SELECTED_ID)}`,
       );

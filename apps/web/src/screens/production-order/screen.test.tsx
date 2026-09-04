@@ -96,7 +96,7 @@ const normalRoutes: StubRoute[] = [
           itemName: 'Synthetic item',
           itemTypeCode: 'MATERIAL',
           baseUomId: 8101,
-          lotControlTypeCode: 'NONE',
+          lotControlled: false,
           serialControlTypeCode: 'NONE',
           inspectionRequired: false,
           fifoPolicyCode: 'FIFO',

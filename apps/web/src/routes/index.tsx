@@ -44,6 +44,8 @@ import { LotStatusTransitionScreen } from '../screens/lot-status-transition/scre
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { NoticeScreen } from '../screens/notice/screen';
 import { NotificationCenterScreen } from '../screens/notification-center/screen';
+import { DispositionRequestScreen } from '../screens/disposition-request/screen';
+import { ReturnReceiptScreen } from '../screens/return-receipt/screen';
 import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
@@ -550,6 +552,17 @@ export const appRouter = createBrowserRouter([
        * 업무 순서(예정 목록 → 이 화면 → 출하 처리)와 별개이며, 그 차례는 사이드바가 든다.
        */
       { path: 'shipment/oqc-inspection', element: <OqcInspectionScreen /> },
+      /*
+       * W-04-07 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/quality/**`이지만 IA가 이 화면을
+       * 「출하 > 반품·재고」에 두었다. 이 화면은 부적합을 등록하고 판정을 «의뢰»만 한다 — 판정 자체는
+       * `quality/dispositions`(W-03-10)이고, 이 화면의 「판정 결과 보기」가 그리로 연다.
+       */
+      { path: 'shipment/disposition-requests', element: <DispositionRequestScreen /> },
+      /*
+       * W-04-06 — 같은 규칙(사이드바 섹션)이다. 입고 계약 경로는 `/logistics/goods-receipts`지만 IA가
+       * 이 화면을 「출하 > 반품·재고」에 두었다 — 확정된 출하가 돌아오는 유일한 입구라 출하 섹션이다.
+       */
+      { path: 'shipment/return-receipts', element: <ReturnReceiptScreen /> },
     ],
   },
   /*

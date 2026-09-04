@@ -147,7 +147,7 @@ describe('검사실적·검사결과 공개 페이지 셸', () => {
       expect(
         calls
           .find((url) => url.pathname === '/quality/defect-records/distribution')
-          ?.searchParams.get('sourceAxisCode'),
+          ?.searchParams.get('sourceCode'),
       ).toBe('PQC'),
     );
     await user.click(screen.getByRole('button', { name: 'REQUEST-801 상세 보기' }));

@@ -15,6 +15,7 @@ import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
 import { PackingRepackScreen } from '../screens/packing-repack/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
+import { RecycleEntryScreen } from '../screens/recycle-entry/screen';
 import { TemporaryPutawayScreen } from '../screens/temporary-putaway/screen';
 import { RepairRoundtripScreen } from '../screens/repair-roundtrip/screen';
 import { WipHandoverScreen } from '../screens/wip-handover/screen';
@@ -36,6 +37,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'inbound-variance', element: <InboundVarianceScreen /> },
       { path: 'putaway', element: <PutawayScreen /> },
       { path: 'temporary-putaway', element: <TemporaryPutawayScreen /> },
+      { path: 'recycle-entry', element: <RecycleEntryScreen /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
       { path: 'material-picking', element: <MaterialPickingScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },

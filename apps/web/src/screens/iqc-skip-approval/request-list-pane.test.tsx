@@ -196,9 +196,9 @@ describe('RequestListPane — 확정된 여섯 열', () => {
     expect(
       screen.getByRole('columnheader', { name: t.fields.approvalTypeCode }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('SAMPLE-TYPE-A').length).toBe(2);
-    expect(screen.getByText('SAMPLE-TYPE-B')).toBeInTheDocument();
-    expect(screen.getByText('SAMPLE-TYPE-C')).toBeInTheDocument();
+    expect(screen.getAllByText('GOODS_ISSUE_DISPOSAL').length).toBe(2);
+    expect(screen.getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
+    expect(screen.getByText('PURCHASE_ORDER')).toBeInTheDocument();
   });
 
   it('대상 열이 서고 서버가 만든 표시명을 그대로 낸다', () => {
@@ -216,7 +216,7 @@ describe('RequestListPane — 확정된 여섯 열', () => {
 
     /* 선행 단언 — 열이 실제로 서 있어야 「그 값이 없다」가 뜻을 갖는다. */
     expect(screen.getAllByRole('columnheader')).toHaveLength(6);
-    expect(text).toContain('SAMPLE-TYPE-A');
+    expect(text).toContain('GOODS_ISSUE_DISPOSAL');
 
     for (const request of requestFixtures) {
       expect(text).not.toContain(request.statusCode);
@@ -297,7 +297,7 @@ describe('RequestListPane — 유형 미확정 안내', () => {
   });
 
   it('안내가 없으면 그 자리도 없다', () => {
-    renderPane({ typeNote: typePendingNote('SAMPLE-TYPE-A') });
+    renderPane({ typeNote: typePendingNote('GOODS_ISSUE_DISPOSAL') });
 
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.queryByText(t.typePendingNote)).not.toBeInTheDocument();

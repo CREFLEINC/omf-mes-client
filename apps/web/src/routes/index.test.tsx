@@ -486,7 +486,7 @@ const workOrderCloseRoutes = (): StubRoute[] => [
           itemName: '합성 마감 품목',
           itemTypeCode: 'MATERIAL',
           baseUomId: 9901,
-          lotControlTypeCode: 'NONE',
+          lotControlled: false,
           serialControlTypeCode: 'NONE',
           inspectionRequired: false,
           fifoPolicyCode: 'FIFO',
@@ -1530,7 +1530,7 @@ describe('appRouter — 알림센터의 진입 경로', () => {
 describe('appRouter — 물류 문서 진행현황·취소의 진입 경로', () => {
   const docProgress = messages.documentProgress;
 
-  /** 합성 문서번호다 — 실 운영 값을 쓰지 않는다(루트 `CLAUDE.md`). */
+  /** 합성 문서번호다 — 실 운영 값을 쓰지 않는다(V3 워크플로 공개 저장소 경계). */
   const SYNTHETIC_DOCUMENT_NO = 'SYN-GR-2026-0001';
 
   /*
@@ -1559,7 +1559,7 @@ describe('appRouter — 물류 문서 진행현황·취소의 진입 경로', ()
       await screen.findByRole('heading', { level: 1, name: docProgress.title }),
     ).toBeInTheDocument();
     /* 빈 표가 아니라 **왜 비었는지 말하는 안내**가 선다 — 화면이 자기 첫 상태로 섰다는 사실이다. */
-    expect(screen.getByText(docProgress.empty.typesPendingTitle)).toBeInTheDocument();
+    expect(screen.getByText(docProgress.empty.noDocumentTypeTitle)).toBeInTheDocument();
   });
 
   /*
@@ -1585,7 +1585,7 @@ describe('appRouter — 물류 문서 진행현황·취소의 진입 경로', ()
     expect(
       await screen.findByRole('heading', { level: 1, name: docProgress.title }),
     ).toBeInTheDocument();
-    expect(screen.getByText(docProgress.empty.typesPendingTitle)).toBeInTheDocument();
+    expect(screen.getByText(docProgress.empty.noDocumentTypeTitle)).toBeInTheDocument();
 
     expect(requests).toHaveLength(0);
   });

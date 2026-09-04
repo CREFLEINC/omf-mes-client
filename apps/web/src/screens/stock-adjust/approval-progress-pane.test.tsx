@@ -67,7 +67,7 @@ describe('ApprovalProgressPane — 갈래', () => {
     renderPane({ kind: 'ready', view: readyView() });
 
     expect(within(pane()).getByText('SAMPLE-AP-0001')).toBeInTheDocument();
-    expect(within(pane()).getByText('SAMPLE_AT_A')).toBeInTheDocument();
+    expect(within(pane()).getByText('INVENTORY_ADJUSTMENT')).toBeInTheDocument();
     expect(within(pane()).getByText('합성 상신자 가')).toBeInTheDocument();
     expect(within(pane()).getByText('2026-08-18 14:35')).toBeInTheDocument();
     expect(within(pane()).getByText(t.progress.position(4, 4))).toBeInTheDocument();

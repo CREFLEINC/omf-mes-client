@@ -164,7 +164,7 @@ describe('ApprovalProgressPane — 단계 그림 · C4-5', () => {
   it('결재 결과 코드가 그대로 보인다', () => {
     renderPane();
 
-    expect(screen.getByText('SYN_DECISION_APPROVED')).toBeInTheDocument();
+    expect(screen.getByText('APPROVED')).toBeInTheDocument();
   });
 
   /**

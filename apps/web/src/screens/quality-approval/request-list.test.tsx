@@ -12,7 +12,7 @@ const rows: RequestRow[] = [
   {
     approvalRequestId: 31,
     approvalRequestNo: 'SYNTH-REQ-031',
-    approvalTypeCode: 'SYNTH-CONCESSION',
+    approvalTypeCode: 'IQC_SKIP',
     targetName: '합성 대상 A',
     statusCode: 'SYNTH-PENDING',
     isMyTurn: true,
@@ -67,7 +67,7 @@ describe('RequestList compact selection', () => {
       t.fields.target,
       t.fields.statusCode,
     ]);
-    expect(dataRow('SYNTH-REQ-031')).toHaveTextContent('SYNTH-CONCESSION');
+    expect(dataRow('SYNTH-REQ-031')).toHaveTextContent('IQC_SKIP');
     expect(dataRow('SYNTH-REQ-031')).toHaveTextContent('SYNTH-PENDING');
     expect(dataRow('SYNTH-REQ-031')).toHaveTextContent(t.values.myTurn);
     expect(dataRow('SYNTH-REQ-032')).not.toHaveTextContent(t.values.myTurn);

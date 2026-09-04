@@ -1,6 +1,9 @@
+import type { paths } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import type { PeriodInput } from './period';
+
+type EventQueryParams = NonNullable<paths['/audit/events']['get']['parameters']['query']>;
 
 /**
  * 조회 조건 — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -96,7 +99,8 @@ export const toSearchParams = (
 
 /** 계약이 쓰는 쿼리 이름. 두 번호만 숫자로 보낸다 — 계약이 정수를 요구한다. */
 export interface EventFilterQuery {
-  targetTypeCode?: string;
+  /** 대상 유형은 계약이 마스터 7종으로 닫았다(코드 사전 2026-09-03). 선택지는 서버 코드값이다 */
+  targetTypeCode?: EventQueryParams['targetTypeCode'];
   targetId?: number;
   eventTypeCode?: string;
   performedBy?: number;
@@ -108,7 +112,9 @@ export const toFilterQuery = (filters: EventFilters): EventFilterQuery => {
   const performedBy = readNumberFilter(filters.performedBy);
 
   return {
-    ...(filters.targetType === '' ? {} : { targetTypeCode: filters.targetType }),
+    ...(filters.targetType === ''
+      ? {}
+      : { targetTypeCode: filters.targetType as EventQueryParams['targetTypeCode'] }),
     ...(targetId === '' ? {} : { targetId: Number(targetId) }),
     ...(filters.eventType === '' ? {} : { eventTypeCode: filters.eventType }),
     ...(performedBy === '' ? {} : { performedBy: Number(performedBy) }),

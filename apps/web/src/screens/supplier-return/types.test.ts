@@ -25,7 +25,7 @@ const receiptResponse: ReceiptResponse = {
   warehouseId: 9701,
   receiptDatetime: '2026-08-06T09:12:00+09:00',
   statusCode: 'SAMPLE_GR_STATUS_A',
-  sourceDocumentTypeCode: 'SAMPLE_SOURCE_TYPE_A',
+  sourceDocumentTypeCode: 'INBOUND_RECEIPT',
   sourceDocumentId: 9051,
   reasonCode: 'SAMPLE_REASON_A',
   remarks: '합성 비고',

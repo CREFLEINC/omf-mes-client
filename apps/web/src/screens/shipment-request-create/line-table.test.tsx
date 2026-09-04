@@ -8,6 +8,7 @@ import type { AvailableQtyLookup } from './lookups';
 import { LineTable } from './line-table';
 import { salesOrderDetailFixture } from './fixtures';
 import { toSalesOrderDetailView } from './types';
+import { lineFieldId } from './validation';
 
 const t = messages.shipmentRequestCreate;
 
@@ -163,5 +164,31 @@ describe('LineTable — 단독 생성', () => {
 
     expect(screen.getByLabelText(t.lineTable.allocatedQtyLabel(1))).toBeEnabled();
     expect(screen.getAllByText(t.shortage.title).length).toBeGreaterThan(0);
+  });
+
+  it('고객 LOT 요구 길이 오류를 입력칸에 연결한다', () => {
+    const row = { ...emptyLineDraft(), customerLotRequirement: '가'.repeat(201) };
+    const message = t.errors.customerLotRequirementTooLong(200);
+
+    render(
+      <LineTable
+        mode="standalone"
+        rows={[row]}
+        errors={{ [lineFieldId(row.key, 'customerLotRequirement')]: message }}
+        itemLookup={itemLookup}
+        uomLookup={uomLookup}
+        itemOptions={itemOptions}
+        uomOptions={uomOptions}
+        availableQty={noAvailableQty}
+        onPatch={vi.fn()}
+        onRemove={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText(t.lineTable.customerLotRequirementLabel(1))).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    );
+    expect(screen.getByText(message)).toBeInTheDocument();
   });
 });

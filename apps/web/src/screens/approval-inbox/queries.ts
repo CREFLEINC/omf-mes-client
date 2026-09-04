@@ -52,6 +52,9 @@ export const requestDetailPath = (approvalRequestId: number): string =>
  */
 export const PENDING_COUNT_SIZE = 1;
 
+/** 비활성 상세 쿼리의 경로 자리를 타입으로 채우는 값. `enabled`가 실제 요청을 막는다. */
+const NO_SELECTION_PATH_ID = 0;
+
 /**
  * 승인 요청 목록. 조건은 서버로 보낸다 — 클라이언트에서 거르면 서버가 자른 뒤의 결과만 걸러진다.
  *
@@ -117,16 +120,11 @@ export const useRequestDetail = (
   return useQuery({
     queryKey: inboxKeys.detail(approvalRequestId ?? 0),
     enabled: approvalRequestId !== null,
-    queryFn: () => {
-      if (approvalRequestId === null) {
-        throw new Error('요청을 고르기 전에는 상세를 조회하지 않습니다.');
-      }
-
-      return runRequest(() =>
+    queryFn: () =>
+      runRequest(() =>
         client.GET('/app/approval-requests/{approvalRequestId}', {
-          params: { path: { approvalRequestId } },
+          params: { path: { approvalRequestId: approvalRequestId ?? NO_SELECTION_PATH_ID } },
         }),
-      );
-    },
+      ),
   });
 };

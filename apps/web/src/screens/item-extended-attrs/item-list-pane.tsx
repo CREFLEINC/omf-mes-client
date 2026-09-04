@@ -161,7 +161,10 @@ export const ItemListPane = ({
   const chips = toFilterChips(appliedFilters);
 
   return (
-    <section className="pane" aria-label={t.panes.item}>
+    <section className="pane" aria-labelledby="item-list-title">
+      <h2 id="item-list-title" className="pane-title">
+        {t.panes.item}
+      </h2>
       <div className="filter-bar">
         <SearchInput
           label={t.filters.itemSearchLabel}

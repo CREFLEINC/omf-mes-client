@@ -2166,7 +2166,7 @@ export const DisposalIssueScreen = () => {
         )}
       </section>
 
-      {/* 아래 구획 — 대상 탭과 **같은 네 갈래**다. 형태를 맞춰야 규칙이 둘로 갈리지 않는다. */}
+      {/* 아래 구획 — 미선택·404·그 밖의 실패·로딩·정상의 다섯 갈래다. */}
       <section className="pane" aria-label={t.panes.historyDetail}>
         {hasIssueNotFoundNotice && selectedIssueId === null && (
           <EmptyState
@@ -2185,13 +2185,22 @@ export const DisposalIssueScreen = () => {
           />
         )}
 
-        {selectedIssueId !== null && issueDetailData === undefined && (
+        {selectedIssueId !== null && issueDetail.isError && !isIssueDetailNotFound && (
+          <LoadErrorBanner
+            error={issueDetail.error}
+            onRetry={() => {
+              void issueDetail.refetch();
+            }}
+          />
+        )}
+
+        {selectedIssueId !== null && !issueDetail.isError && issueDetailData === undefined && (
           <div role="status" aria-label={t.loading.issueDetail}>
             <SkeletonText lines={3} />
           </div>
         )}
 
-        {issueDetailData !== undefined && (
+        {!issueDetail.isError && issueDetailData !== undefined && (
           <>
             <IssueDetailPane issue={issueDetailData.issue} warehouseName={issueWarehouseName} />
 

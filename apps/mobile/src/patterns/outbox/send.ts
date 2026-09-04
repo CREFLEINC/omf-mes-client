@@ -16,6 +16,13 @@ export interface OutboxRejection {
 
 export interface FlushResult {
   sent: number;
+  /**
+   * 이번 회차에 서버가 돌려준 응답. 멱등키로 찾는다.
+   *
+   * 서버가 매기는 값을 화면이 보여야 할 때가 있다 - 자재 묶음 번호처럼 화면이 미리 지어낼
+   * 수 없는 것이다. 큐를 타는 쓰기는 응답이 여기서 끊기면 그 값을 다시 얻을 길이 없다.
+   */
+  responses: Map<string, unknown>;
   rejected: OutboxRejection[];
   remaining: OutboxEntry[];
   /** 큐를 비운 것과 도중에 멈춘 것은 다르다. 뒤엣것은 남은 것을 그대로 둔다. */
@@ -54,6 +61,8 @@ export const flushQueue = async (
   const rejected: OutboxRejection[] = [];
   const brokenBatches = new Map<string, ApiError>();
   const responses = new Map<string, unknown>();
+  /* 화면은 자기 건을 멱등키로 찾는다. 큐 안쪽 식별자는 화면이 알지 못한다. */
+  const byKey = new Map<string, unknown>();
   /*
    * 앞 건의 값을 알게 되는 즉시 뒤 건에 굳혀 둔다. 여기서 멈추면 남는 것은 이 목록이고,
    * 다음 회차에는 앞 건이 큐에 없어 값을 다시 얻을 길이 없다.
@@ -95,11 +104,15 @@ export const flushQueue = async (
     }
 
     try {
-      responses.set(entry.id, await send(ready));
+      const response = await send(ready);
+
+      responses.set(entry.id, response);
+      byKey.set(entry.idempotencyKey, response);
       sent += 1;
     } catch (cause) {
       const stop = (): FlushResult => ({
         sent,
+        responses: byKey,
         rejected,
         remaining: pending.slice(index),
         outcome: 'unreachable',
@@ -123,5 +136,5 @@ export const flushQueue = async (
     }
   }
 
-  return { sent, rejected, remaining: [], outcome: 'drained' };
+  return { sent, responses: byKey, rejected, remaining: [], outcome: 'drained' };
 };

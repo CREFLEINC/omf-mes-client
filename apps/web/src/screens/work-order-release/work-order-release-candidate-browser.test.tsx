@@ -32,7 +32,7 @@ const item = (itemId: number) => ({
     itemName: `Synthetic Item ${String(itemId)}`,
     itemTypeCode: 'MATERIAL',
     baseUomId: 920001,
-    lotControlTypeCode: 'NONE',
+    lotControlled: false,
     serialControlTypeCode: 'NONE',
     inspectionRequired: false,
     fifoPolicyCode: 'FIFO',
@@ -119,6 +119,7 @@ describe('WorkOrderReleaseCandidateBrowser', () => {
     const user = userEvent.setup();
     const { queryClient } = renderWithProviders(
       <WorkOrderReleaseCandidateBrowser
+        timezoneOffsetMinutes={540}
         renderSelection={({ selectedWorkOrderId, clearSelection }) => (
           <div>
             <p>SELECTION:{selectedWorkOrderId === null ? 'NONE' : String(selectedWorkOrderId)}</p>
@@ -140,6 +141,7 @@ describe('WorkOrderReleaseCandidateBrowser', () => {
     await user.click(screen.getByRole('combobox', { name: t.filter.productionLine }));
     await user.click(screen.getByRole('option', { name: /SYN-LINE/ }));
     await user.type(screen.getByLabelText(t.filter.plannedStartFrom), '2026-08-26');
+    await user.type(screen.getByLabelText(t.filter.plannedStartTo), '2026-08-28');
     await user.click(screen.getByRole('button', { name: t.filter.search }));
     expect(
       await screen.findByRole('button', { name: t.candidateList.actions.select('SYN-WO-701') }),
@@ -148,7 +150,8 @@ describe('WorkOrderReleaseCandidateBrowser', () => {
     expect(Array.from(firstRequest?.searchParams.entries() ?? [])).toEqual([
       ['statusCode', 'SYN-READY'],
       ['productionLineId', '301'],
-      ['plannedStartFrom', '2026-08-26'],
+      ['plannedStartFrom', '2026-08-26T00:00:00+09:00'],
+      ['plannedStartTo', '2026-08-29T00:00:00+09:00'],
       ['page', '1'],
     ]);
 
