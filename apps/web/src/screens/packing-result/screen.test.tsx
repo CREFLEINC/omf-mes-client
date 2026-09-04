@@ -266,6 +266,21 @@ const pack = async (user: ReturnType<typeof userEvent.setup>, digits: string): P
 };
 
 describe('PackingResultScreen — 담기와 확정', () => {
+  it('키패드로 친 수량이 화면에 보인다 — 누른 값이 어디로 갔는지 보이지 않으면 오입력을 못 알아챈다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scanUntilMatched(user);
+
+    const pad = screen.getByLabelText(t.qty.label);
+
+    await user.click(within(pad).getByRole('button', { name: '1' }));
+    await user.click(within(pad).getByRole('button', { name: '2' }));
+
+    expect(screen.getByText('12')).toBeTruthy();
+  });
+
+
   it('같은 LOT 을 다시 담으면 «합쳤다고 말한다» — 조용히 합치면 중복 스캔을 못 알아챈다', async () => {
     const user = userEvent.setup();
     renderScreen();

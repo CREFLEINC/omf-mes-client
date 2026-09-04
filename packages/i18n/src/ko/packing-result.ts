@@ -54,6 +54,16 @@ export const packingResult = {
   },
   qty: {
     label: '수량',
+    /**
+     * 키패드가 친 값을 그대로 보이는 자리.
+     *
+     * ⭐ **키패드는 키만 그린다**(DS `NumberPad`) — 친 값을 어디에도 보이지 않으면 작업자는
+     * 자기가 무엇을 눌렀는지 모른 채 담게 된다(실측 지적).
+     */
+    entryLabel: '담을 수량',
+    /** 아직 아무것도 치지 않았다. 0 으로 적으면 「0 을 담는다」로 읽힌다. */
+    entryEmpty: '—',
+    room: (room: number): string => `남은 ${String(room)}`,
     /** 잔여를 넘겼을 때. 넘긴 값이 아니라 **한도**를 말한다 — 작업자가 고칠 목표가 그것이다. */
     overRemaining: (remaining: number): string => `배분 ${String(remaining)} 을 넘을 수 없습니다`,
     notPositive: '수량은 0보다 커야 합니다',

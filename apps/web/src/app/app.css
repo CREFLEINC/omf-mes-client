@@ -7401,6 +7401,37 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
+ * 친 값을 보이는 한 줄 — 키패드 «위»에 둔다. 아래에 두면 키를 누르는 손이 값을 가린다.
+ * 세로 88 안에서 캡션·값·남은 수량이 한 줄로 선다.
+ */
+.packing-qty-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.packing-qty-caption {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/* 값은 크게 — 장갑 낀 손이 키패드를 보는 거리에서 읽힌다. */
+.packing-qty-value {
+  margin-inline-end: auto;
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+  font-variant-numeric: tabular-nums;
+}
+
+.packing-qty-room {
+  font: var(--type-body-sm);
+  letter-spacing: var(--type-body-sm-tracking);
+  color: var(--on-surface-muted);
+}
+
+/*
  * ⭐ **③ 구획 «안에서» 스크롤한다**(§3-1). 화면 전체가 스크롤하면 액션바가 밀려 담을 것을
  * 다 담고도 확정할 수 없는 상태가 된다.
  */

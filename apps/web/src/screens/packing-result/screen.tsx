@@ -8,7 +8,7 @@ import { confirmLockReason } from './confirm-lock';
 import { ContentsTable } from './contents-table';
 import { usePackingIdentity } from './entry-context';
 import { useHandlingUnitCreate, usePackingConfirm, type OpenHandlingUnit } from './mutations';
-import { addLine, qtyError, removeLine, toProgress } from './packing-draft';
+import { addLine, lineOf, qtyError, remainingOf, removeLine, toProgress } from './packing-draft';
 import {
   useHandlingUnitTypeOptions,
   useLabelScan,
@@ -126,6 +126,11 @@ export const PackingResultScreen = () => {
   /** 담을 수 있는 배분 — **판정이 «맞다»일 때만** 선다. */
   const packable = matched?.verdict.matched === true ? matched.allocation : undefined;
   const qtyIssue = packable === undefined ? undefined : qtyError(qty, packable, lines);
+  /** 이 배분에 아직 더 칠 수 있는 수량 — 잔여에서 «이미 담은 줄»을 뺀 값이다(`qtyError` 와 같은 한도). */
+  const qtyRoom =
+    packable === undefined
+      ? 0
+      : remainingOf(packable) - (lineOf(lines, packable.shipmentLotAllocationId)?.qty ?? 0);
 
   /**
    * 아직 포장이 없으면 만든다 — **담을 것과 유형이 정해진 뒤 한 번**.
@@ -332,6 +337,16 @@ export const PackingResultScreen = () => {
               <p className="field-note">{t.notes.qtyWaiting}</p>
             ) : (
               <>
+                {/*
+                 * ⭐ **친 값을 여기서 보인다.** DS 키패드는 키만 그리고 버퍼를 보이지 않는다 —
+                 * 누른 숫자가 어디로 갔는지 보이지 않으면 작업자가 오입력을 눈치채지 못한다.
+                 * 남은 수량을 옆에 붙여 「얼마까지 칠 수 있는가」를 같은 눈길에 둔다.
+                 */}
+                <p className="packing-qty-readout">
+                  <span className="packing-qty-caption">{t.qty.entryLabel}</span>
+                  <span className="packing-qty-value">{qty === '' ? t.qty.entryEmpty : qty}</span>
+                  <span className="packing-qty-room">{t.qty.room(qtyRoom)}</span>
+                </p>
                 <NumberPad
                   aria-label={t.qty.label}
                   value={qty}
