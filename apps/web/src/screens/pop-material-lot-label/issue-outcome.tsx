@@ -2,11 +2,21 @@ import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { popTouchClass } from '../../patterns/pop-touch';
-import { toIssueFailure } from './failure';
+import { toIssueFailure, type IssueFailure } from './failure';
 import type { IssueRunResult } from './mutations';
 import { formatLotNo } from './types';
 
 const t = messages.popMaterialLotLabel.target.outcome;
+
+/**
+ * 멈춘 자리마다의 문구. **표로 둔다** — 갈래가 늘 때 분기를 더 깊게 하지 않고 칸만 는다.
+ */
+const FAILURE_MESSAGE: Record<IssueFailure, string> = {
+  printFailed: t.printFailed,
+  issueForbidden: t.issueForbidden,
+  registerConflict: t.registerConflict,
+  other: t.failed,
+};
 
 export interface IssueOutcomeProps {
   result: IssueRunResult;
@@ -38,25 +48,34 @@ export const IssueOutcome = ({ result, onClose }: IssueOutcomeProps) => {
 
   const failure = toIssueFailure(result);
   const variant = isPrinted ? 'success' : failure === 'printFailed' ? 'warning' : 'error';
+  /*
+   * ⛔ **출력 권한이 없는 단말에서는 닫지 못하게 둔다.** 닫으면 결과가 지워져 단추가 다시
+   * 열리는데(`screen` 의 차단이 이 결과를 본다) 서버의 답은 그대로다 — 닫기가 「재시도 단추를
+   * 주지 않는다」(스펙 §5-2)를 무르는 우회로가 된다. 다른 자재를 고르면 자연히 사라진다.
+   */
+  const isDismissable = failure !== 'issueForbidden';
 
   return (
     <AlertBanner
       variant={variant}
       action={
-        <Button className={popTouchClass('normal')} variant="outlined" size="xl" onClick={onClose}>
-          {t.close}
-        </Button>
+        isDismissable ? (
+          <Button
+            className={popTouchClass('normal')}
+            variant="outlined"
+            size="xl"
+            onClick={onClose}
+          >
+            {t.close}
+          </Button>
+        ) : undefined
       }
     >
       {isPrinted && issue !== null
         ? t.printed(issue.lotNo === null ? '' : formatLotNo(issue.lotNo), issue.issueSeq)
-        : failure === 'printFailed'
-          ? t.printFailed
-          : failure === 'issueForbidden'
-            ? t.issueForbidden
-            : failure === 'registerConflict'
-              ? t.registerConflict
-              : t.failed}
+        : failure === null
+          ? t.failed
+          : FAILURE_MESSAGE[failure]}
       {/*
        * ⚠ **LOT 이 생겼다는 사실은 실패 문구와 «함께» 말한다.** 실패만 보이면 사용자가 다시
        * 등록을 누르고, 그러면 같은 자재에 LOT 이 둘 생긴다.

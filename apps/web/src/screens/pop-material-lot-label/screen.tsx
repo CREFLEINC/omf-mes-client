@@ -74,23 +74,6 @@ export const PopMaterialLotLabelScreen = () => {
   const headPrinter = toHeadPrinter(printers.data ?? []);
   const issue = useLabelIssue({ workerNo });
 
-  /**
-   * 등록·인쇄 한 번을 시작한다.
-   *
-   * ⛔ **사번이 없으면 부르지 않는다** — 서버가 거부한다. 단추도 함께 막혀 있지만, 판정을
-   * 부르는 자리에도 두어 다른 경로로 새는 것을 막는다.
-   */
-  const startIssue = (reissueReasonCode: string | null): void => {
-    if (selectedRow === null || workerNo === null) return;
-
-    issue.run({
-      row: selectedRow,
-      // 프린터 배정이 정해지기 전에는 한 대 전제다 — 고른 것이 없으면 서버 기본값에 맡긴다.
-      printerName: headPrinter?.printerName ?? null,
-      reissueReasonCode,
-    });
-  };
-
   /*
    * ⛔ **결과는 그 결과를 만든 줄의 것이다.** 다른 자재를 고르면 앞 자재의 실패가 따라오지
    * 않는다 — 그 판정을 여기 한 곳에서 하고, 알림과 단추가 같은 값을 본다.
@@ -101,6 +84,28 @@ export const PopMaterialLotLabelScreen = () => {
    * 미리 막지는 않는다 — 게이트는 서버가 갖고, 화면은 받은 답에만 반응한다(§5-5).
    */
   const isPrintForbidden = isResultOfSelected && toIssueFailure(issue.result) === 'issueForbidden';
+
+  /**
+   * 등록·인쇄 한 번을 시작한다.
+   *
+   * ⛔ **사번이 없으면 부르지 않는다** — 서버가 거부한다. 단추도 함께 막혀 있지만, 판정을
+   * 부르는 자리에도 두어 다른 경로로 새는 것을 막는다.
+   */
+  const startIssue = (reissueReasonCode: string | null): void => {
+    if (selectedRow === null || workerNo === null) return;
+    /*
+     * ⛔ **막힌 단말에서는 나가지 않는다.** 단추도 함께 막혀 있지만, 판정을 나가는 자리에도 두어
+     * 다른 경로(대화상자·스캐너)가 생겨도 새지 않게 한다 — `mutations` 의 사번 판정과 같은 규율.
+     */
+    if (isPrintForbidden) return;
+
+    issue.run({
+      row: selectedRow,
+      // 프린터 배정이 정해지기 전에는 한 대 전제다 — 고른 것이 없으면 서버 기본값에 맡긴다.
+      printerName: headPrinter?.printerName ?? null,
+      reissueReasonCode,
+    });
+  };
 
   /** 한 건이라도 실패하면 목록이 불완전하다 — 일부만 보이는 것을 「전부」로 내지 않는다. */
   const isListError = receipts.isError || targets.isError;

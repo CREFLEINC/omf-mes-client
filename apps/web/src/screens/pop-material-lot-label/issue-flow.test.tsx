@@ -71,8 +71,15 @@ interface FlowOptions {
   issueFails?: boolean;
   /** 그 실패의 상태 코드. 403 은 「이 단말에 출력 권한이 없다」라 처리가 갈린다. */
   issueFailStatus?: number;
+  /**
+   * 그 실패의 본문. ⚠ **계약은 403·422 를 오류 봉투로 정의한다** — 봉투를 실어야 정규화가
+   * 실서버와 같은 갈래를 내고, 그때도 화면이 권한 거부를 알아보는지 잴 수 있다.
+   */
+  issueFailBody?: unknown;
   /** 등록 호출을 이 상태 코드로 실패시킨다. 409 는 채번 충돌이라 **다시 부르면 풀린다.** */
   registerFailStatus?: number;
+  /** 등록 실패의 본문. 계약의 `ConflictResponse`(`conflictCause`)를 실을 때 쓴다. */
+  registerFailBody?: unknown;
   /** 셸 인쇄 통로를 심는다. 없으면 브라우저와 같은 상태다. */
   shellPrint?: (() => Promise<string>) | null;
   reissueReasons?: { code: string; codeName: string }[];
@@ -227,11 +234,14 @@ const renderFlow = (options: FlowOptions = {}) => {
           respond: (request) => {
             void record(request);
 
-            createdLotId = LOT_ID;
-
             if (options.registerFailStatus !== undefined) {
-              return jsonResponse({ message: '등록 실패' }, { status: options.registerFailStatus });
+              // ⛔ 실패한 등록이 LOT 을 남기지 않는다 — 남기면 단추가 「인쇄」로 바뀌어 안내가 어긋난다.
+              return jsonResponse(options.registerFailBody ?? { message: '등록 실패' }, {
+                status: options.registerFailStatus,
+              });
             }
+
+            createdLotId = LOT_ID;
 
             return jsonResponse(
               {
@@ -261,7 +271,9 @@ const renderFlow = (options: FlowOptions = {}) => {
             void record(request);
 
             return options.issueFails === true
-              ? jsonResponse({ message: '실패' }, { status: options.issueFailStatus ?? 500 })
+              ? jsonResponse(options.issueFailBody ?? { message: '실패' }, {
+                  status: options.issueFailStatus ?? 500,
+                })
               : jsonResponse(
                   { items: [issueRecord(lotId === null ? 1 : 2)], issuedCount: 1 },
                   { status: 201 },
@@ -425,7 +437,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
    * ⚠ **409 는 400 이 아니다**(변경 통지 #534 §1). 채번 충돌은 서버가 스스로 다시 시도한 끝의
    * 실패라 **다시 부르면 풀린다** — 사용자가 고칠 값이 아니므로 그렇게 말하지 않는다.
    */
-  it('등록이 409 면 다시 누르라고 말한다 — 400 과 같은 문구를 쓰지 않는다', async () => {
+  it('등록이 409 면 다시 누르라고 말하고, 다시 누를 수 있게 둔다', async () => {
     const { user } = renderFlow({ registerFailStatus: 409 });
     await chooseLine(user);
     await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
@@ -436,6 +448,27 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText('등록·인쇄를 끝내지 못했습니다.')).not.toBeInTheDocument();
+    // 「다시 누르면 풀린다」가 말뿐이 아니어야 한다 — 단추가 실제로 열려 있어야 한다.
+    expect(screen.getByRole('button', { name: '등록·인쇄' })).not.toBeDisabled();
+  });
+
+  /**
+   * ⚠ **계약대로 온 409 도 같은 갈래여야 한다.** `/trace/lots` 의 409 는 `ConflictResponse`
+   * 봉투이고, 정규화는 그것을 `conflict` 로 접는다 — 상태 코드만 보는 판정은 여기서 갈라진다.
+   */
+  it('계약 봉투로 온 409 도 재시도 가능으로 읽는다', async () => {
+    const { user } = renderFlow({
+      registerFailStatus: 409,
+      registerFailBody: { conflictCause: 'user', message: '충돌' },
+    });
+    await chooseLine(user);
+    await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
+
+    expect(
+      await screen.findByText(
+        '지금은 등록을 끝내지 못했습니다. 잠시 뒤 「등록·인쇄」를 다시 누르세요.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('등록이 400 이면 채번 충돌 문구를 쓰지 않는다', async () => {
@@ -451,7 +484,17 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
    * 다시 눌러도 같은 답이 오고, LOT 은 이미 생겼으므로 **다른 단말**로 안내한다.
    */
   it('발행이 403 이면 다른 단말로 안내하고 재시도 단추를 주지 않는다', async () => {
-    const { user } = renderFlow({ issueFails: true, issueFailStatus: 403 });
+    const { user } = renderFlow({
+      issueFails: true,
+      issueFailStatus: 403,
+      /*
+       * ⛔ **계약 모양으로 답하게 한다.** 계약은 이 403 을 오류 봉투로 정의하고, 정규화는 봉투를
+       * 보면 상태 코드를 버린다 — 계약 밖 본문으로 재면 실서버에서 죽는 판정이 통과한다.
+       */
+      issueFailBody: {
+        errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '출력 권한이 없습니다.' }],
+      },
+    });
     await chooseLine(user);
     await user.click(screen.getByRole('button', { name: '등록·인쇄' }));
 
@@ -471,6 +514,11 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
       expect(screen.getByRole('button', { name: '인쇄' })).toBeDisabled();
     });
     expect(screen.getByRole('button', { name: '재인쇄' })).toBeDisabled();
+    /*
+     * ⛔ **닫기를 주지 않는다.** 닫으면 결과가 지워져 차단이 함께 풀리는데 서버의 답은 그대로다 —
+     * 닫기가 「재시도 단추를 주지 않는다」를 무르는 우회로가 된다.
+     */
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
   });
 });
 

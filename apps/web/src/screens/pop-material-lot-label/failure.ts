@@ -29,8 +29,27 @@ export type IssueFailure =
 const isRetryableConflict = (error: ApiError): boolean =>
   error.kind === 'conflict' || (error.kind === 'http' && error.status === 409);
 
-/** 이 단말에 출력 권한이 없다 — 게이트는 화면이 아니라 서버가 갖는다(스펙 §5-5). */
-const isForbidden = (error: ApiError): boolean => error.kind === 'http' && error.status === 403;
+/**
+ * 계약이 권한 거부에 붙이는 코드. 계약이 `ErrorItem.code` 설명에 이름째 적어 둔 값이고,
+ * 정규화가 같은 자리에서 `STATE_LOCKED` 를 리터럴로 보는 것과 같은 취급이다.
+ */
+const PERMISSION_DENIED = 'PERMISSION_DENIED';
+
+/**
+ * 이 단말에 출력 권한이 없다 — 게이트는 화면이 아니라 서버가 갖는다(스펙 §5-5).
+ *
+ * ⛔ **상태 코드만 보면 이 판정은 실서버에서 한 번도 참이 되지 않는다.** 계약은 이 403 을
+ * 오류 봉투(`ErrorResponse`)로 정의하는데, 정규화(`normalizeApiError`)는 봉투를 보면
+ * `validation`·`stateLocked` 로 접으면서 **상태 코드를 버린다** — `http` 403 은 계약 밖 응답에만
+ * 남는다. 그래서 봉투 안의 코드도 함께 본다. 둘 중 하나라도 맞으면 권한 거부다.
+ */
+const isForbidden = (error: ApiError): boolean => {
+  if (error.kind === 'http') return error.status === 403;
+  if (error.kind === 'validation' || error.kind === 'stateLocked')
+    return error.errors.some((item) => item.code === PERMISSION_DENIED);
+
+  return false;
+};
 
 /**
  * 한 번의 등록·인쇄가 어떤 실패로 끝났는가. 끝까지 갔거나 아직 아무것도 하지 않았으면 `null`.
