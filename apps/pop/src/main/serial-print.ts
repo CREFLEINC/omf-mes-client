@@ -184,3 +184,27 @@ function numberOf(value: string | undefined, name: string): number | undefined {
 
   return parsed;
 }
+
+/**
+ * 설정 파일에서 읽는다. **설치본에는 환경값을 넣을 자리가 마땅치 않다** — 현장 단말은 바로
+ * 가기로 켜지고, 거기에 환경값을 붙이려면 사람이 바로가기 속성을 고쳐야 한다. 파일 한 장을
+ * 고치는 편이 실기에서 포트·통신 설정을 바꿔 가며 맞추기에 낫다.
+ *
+ * ⚠ 검사는 환경값과 **같은 것을 쓴다** — 두 벌로 두면 한쪽만 고쳐져 갈라진다.
+ */
+export function readSerialPortSettingsFile(source: unknown): SerialPortSettings | undefined {
+  if (typeof source !== 'object' || source === null) return undefined;
+
+  const value = source as Record<string, unknown>;
+  const text = (name: string): string | undefined =>
+    value[name] === undefined || value[name] === null ? undefined : String(value[name]);
+
+  return readSerialPortSettings({
+    POP_PRINTER_PORT: text('port'),
+    POP_PRINTER_BAUD: text('baud'),
+    POP_PRINTER_PARITY: text('parity'),
+    POP_PRINTER_DATA_BITS: text('dataBits'),
+    POP_PRINTER_STOP_BITS: text('stopBits'),
+    POP_PRINTER_HANDSHAKE: text('handshake'),
+  });
+}

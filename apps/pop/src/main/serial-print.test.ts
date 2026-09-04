@@ -4,6 +4,7 @@ import {
   InvalidSerialSettingError,
   buildSerialPrintScript,
   readSerialPortSettings,
+  readSerialPortSettingsFile,
   serialPrintScriptArgs,
 } from './serial-print';
 
@@ -119,6 +120,35 @@ describe('시리얼 설정 읽기', () => {
    */
   it.each([['NINE'], ['0'], ['9.6']])('숫자가 아닌 통신 속도는 던진다 (%s)', (value) => {
     expect(() => readSerialPortSettings({ POP_PRINTER_PORT: 'COM3', POP_PRINTER_BAUD: value })).toThrow(
+      InvalidSerialSettingError,
+    );
+  });
+});
+
+describe('설정 파일에서 읽기', () => {
+  it('파일 값을 환경값과 같은 규칙으로 읽는다', () => {
+    expect(
+      readSerialPortSettingsFile({ port: 'COM5', baud: 19200, handshake: 'RequestToSend' }),
+    ).toEqual({
+      portName: 'COM5',
+      baudRate: 19_200,
+      parity: undefined,
+      dataBits: undefined,
+      stopBits: undefined,
+      handshake: 'RequestToSend',
+    });
+  });
+
+  it.each([[null], ['COM3'], [{}], [{ port: '  ' }]])(
+    '포트를 알 수 없으면 쓰지 않는다 (%s)',
+    (source) => {
+      expect(readSerialPortSettingsFile(source)).toBeUndefined();
+    },
+  );
+
+  // ⛔ 파일 쪽만 검사가 느슨하면 그쪽으로 잘못된 값이 새어 들어온다.
+  it('잘못 적힌 값은 파일에서도 던진다', () => {
+    expect(() => readSerialPortSettingsFile({ port: 'COM3', baud: 'fast' })).toThrow(
       InvalidSerialSettingError,
     );
   });

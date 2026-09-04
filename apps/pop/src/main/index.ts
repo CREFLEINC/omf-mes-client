@@ -18,7 +18,7 @@ import {
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { BrowserWindow, app, dialog, ipcMain, net, protocol, safeStorage } from 'electron';
+import { BrowserWindow, app, dialog, globalShortcut, ipcMain, net, protocol, safeStorage } from 'electron';
 import initSqlJs from 'sql.js';
 
 import { createFileBlobStore } from './file-blob-store';
@@ -33,10 +33,13 @@ import {
 } from './print';
 import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
 import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
+import { type TestLabelSize, buildTestLabel } from './serial-diagnostic';
 import {
   type SerialPortSettings,
+  type SerialPrinter,
   buildSerialPrintScript,
   readSerialPortSettings,
+  readSerialPortSettingsFile,
   serialPrintScriptArgs,
 } from './serial-print';
 import { buildPrintScript, printScriptArgs } from './windows-print';
@@ -257,31 +260,45 @@ async function runPrintScript(
   });
 }
 
+/** 포트 설정이 앉는 파일. 사람이 열어 고친다. */
+const PRINTER_SETTINGS_FILE = 'printer.json';
+
+/**
+ * 어느 포트로 보내는가. **설정 파일이 먼저고 환경값이 뒤다** — 설치본은 바로가기로 켜져
+ * 환경값을 붙이기 어렵고, 개발 중에는 환경값이 빠르다.
+ *
+ * ⚠ **포트를 알 수 없으면 아무것도 돌려주지 않는다.** 아무 포트나 골라 보내면 프린터가 아닌
+ *   장치에 명령이 들어간다 — 어느 포트인지는 단말이 알고 설정으로 준다.
+ */
+function resolveSerialPort(userData: string): SerialPortSettings | undefined {
+  const path = join(userData, PRINTER_SETTINGS_FILE);
+
+  if (existsSync(path)) {
+    const fromFile = readSerialPortSettingsFile(JSON.parse(readFileSync(path, 'utf8')));
+
+    if (fromFile !== undefined) return fromFile;
+  }
+
+  return readSerialPortSettings(process.env);
+}
+
 /**
  * 직렬 포트로 제어 명령을 보내는 길(#831).
  *
- * ⚠ **포트가 설정되지 않았으면 이 길을 만들지 않는다.** 아무 포트나 골라 보내면 프린터가
- *   아닌 장치에 명령이 들어간다 — 어느 포트인지는 단말이 알고 설정으로 준다.
- * ⚠ 개발 기계(mac 등)에는 이 길이 없다.
+ * ⚠ 개발 기계(mac 등)에는 PowerShell 도 이 포트도 없다.
  */
-const serialPort: SerialPortSettings | undefined =
-  process.platform === 'win32' ? readSerialPortSettings(process.env) : undefined;
+function createSerialPrinter(port: SerialPortSettings | undefined): SerialPrinter | undefined {
+  if (port === undefined || process.platform !== 'win32') return undefined;
 
-const serialPrinter =
-  serialPort === undefined
-    ? undefined
-    : {
-        print: async ({ dataPath }: { dataPath: string }): Promise<void> =>
-          runPrintScript(
-            join(dataPath, '..', 'serial-print.ps1'),
-            buildSerialPrintScript({
-              dataPath,
-              port: serialPort,
-              timeoutMs: DEFAULT_PRINT_TIMEOUT_MS,
-            }),
-            serialPrintScriptArgs,
-          ),
-      };
+  return {
+    print: async ({ dataPath }: { dataPath: string }): Promise<void> =>
+      runPrintScript(
+        join(dataPath, '..', 'serial-print.ps1'),
+        buildSerialPrintScript({ dataPath, port, timeoutMs: DEFAULT_PRINT_TIMEOUT_MS }),
+        serialPrintScriptArgs,
+      ),
+  };
+}
 
 /**
  * Windows 단말의 인쇄 — **OS 의 그림 인쇄에 맡긴다**(`windows-print` 머리말).
@@ -346,6 +363,8 @@ async function main(): Promise<void> {
   /** 인쇄 진단 기록이 앉는 자리. 사람이 파일로 읽는다. */
   const logDir = join(userData, 'logs');
   const stagingDir = join(app.getPath('temp'), 'omf-pop-print');
+  const serialPort = resolveSerialPort(userData);
+  const serialPrinter = createSerialPrinter(serialPort);
   const printer = new RenditionPrinter(
     fileWriter,
     createSilentPrinter({
@@ -515,7 +534,80 @@ async function main(): Promise<void> {
   });
 
   await window.loadURL(DEV_SERVER_URL ?? RENDERER_ORIGIN);
+
+  registerPrinterDiagnostic(serialPort, serialPrinter, stagingDir);
 }
+
+/**
+ * 실기 진단 — **Ctrl+Alt+P 로 시험 라벨 한 장을 찍어 본다**(#831).
+ *
+ * ⭐ **왜 단축키인가.** 단말은 키오스크라 메뉴도 개발자도구도 없고, 서버가 명령형을 내려 주기
+ *   전까지는 화면을 눌러서 이 경로에 닿을 수 없다. 그런데 실기에서만 알 수 있는 것이 셋
+ *   있다 — 포트 이름 · 프린터 쪽 통신 설정 · TSPL 로 보내면 정말 찍히는가. 그것을 사람이
+ *   확인할 유일한 창구다.
+ *
+ * ⛔ **업무 라벨을 여기서 뽑지 않는다.** 나오는 것은 고정된 시험 문구뿐이다
+ *    (`serial-diagnostic` 머리말).
+ *
+ * ⚠ **결과를 반드시 말한다.** 사유를 삼키면 「눌렀는데 아무 일도 안 난다」가 되고, 그때
+ *   포트가 틀린 것인지 프린터가 죽은 것인지 가릴 방법이 단말에 남지 않는다.
+ */
+function registerPrinterDiagnostic(
+  port: SerialPortSettings | undefined,
+  serialPrinter: SerialPrinter | undefined,
+  stagingDir: string,
+): void {
+  globalShortcut.register('CommandOrControl+Alt+P', () => {
+    void (async () => {
+      if (port === undefined || serialPrinter === undefined) {
+        await dialog.showMessageBox({
+          type: 'warning',
+          title: '라벨 프린터 진단',
+          message: '보낼 포트가 지정돼 있지 않습니다',
+          detail: `설정 파일에 포트를 적어 주세요.\n\n${join(app.getPath('userData'), PRINTER_SETTINGS_FILE)}\n\n예: { "port": "COM3", "baud": 9600 }`,
+        });
+
+        return;
+      }
+
+      const sizes: TestLabelSize[] = ['80x30', '100x60'];
+      const { response } = await dialog.showMessageBox({
+        type: 'question',
+        title: '라벨 프린터 진단',
+        message: '시험 라벨을 찍습니다',
+        detail: `포트 ${port.portName} · 속도 ${String(port.baudRate ?? 9600)}\n라벨을 그 규격으로 끼운 뒤 골라 주세요.`,
+        buttons: ['80 × 30 mm', '100 × 60 mm', '취소'],
+        cancelId: 2,
+      });
+
+      const size = sizes[response];
+
+      if (size === undefined) return;
+
+      /* 인쇄 스크립트가 같은 폴더에 앉는다 — 업무 인쇄와 같은 방식이다. */
+      const jobDir = join(stagingDir, `diagnostic-${String(Date.now())}`);
+      mkdirSync(jobDir, { recursive: true });
+      const dataPath = join(jobDir, 'test-label.prn');
+      writeFileSync(dataPath, buildTestLabel(size), 'ascii');
+
+      try {
+        await serialPrinter.print({ dataPath });
+        await dialog.showMessageBox({
+          type: 'info',
+          title: '라벨 프린터 진단',
+          message: '포트로 보냈습니다',
+          detail: `${size} 시험 라벨이 나왔는지, 바코드가 스캐너에 읽히는지 확인해 주세요.\n종이가 나오지 않았다면 통신 설정이 프린터 쪽과 다를 수 있습니다.`,
+        });
+      } catch (cause) {
+        dialog.showErrorBox('라벨 프린터 진단 — 보내지 못했습니다', reasonOf(cause));
+      } finally {
+        rmSync(jobDir, { force: true, recursive: true });
+      }
+    })();
+  });
+}
+
+app.on('will-quit', () => globalShortcut.unregisterAll());
 
 app.on('window-all-closed', () => app.quit());
 
