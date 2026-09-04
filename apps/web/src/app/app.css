@@ -206,6 +206,34 @@ main > * + * {
   min-width: 0;
 }
 
+/* W-06-01 공정 마스터 — 목록과 편집의 축이 대등하므로 1:1로 나눈다. */
+.two-pane.routing-process-layout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pane-heading-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.pane-heading-row > .pane-title {
+  margin-bottom: 0;
+}
+
+.routing-process-form p {
+  margin: 0;
+}
+
+@media (max-width: 1280px) {
+  .two-pane.routing-process-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 /*
  * W/O 전개·편성 — 이 화면에만 적용되는 조합 배치.
  * DS 컴포넌트의 내부 클래스는 겨냥하지 않고, 공개 className과 HTML 표 요소만 사용한다.
