@@ -129,6 +129,11 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     label: 'P-02-10 작업 중단(홀드) 등록',
     query: '?workOrderId=11002',
   },
+  /*
+   * ⚠ 진입값이 없다 — 이 화면은 납품라벨 스캔으로 스스로 출하를 정한다. 단말·공정·사번은
+   * 셸이 채우고, 비어 있을 때만 주소를 본다(`entry-context.ts`).
+   */
+  { path: '/pop/packing', label: 'P-04-01 Packing 실적 등록' },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */
