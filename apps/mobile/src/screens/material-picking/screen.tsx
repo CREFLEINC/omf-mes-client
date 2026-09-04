@@ -357,6 +357,10 @@ export const MaterialPickingScreen = () => {
             <p>{t.orders.type(detail.data?.order.pickingTypeCode ?? '')}</p>
           </Card.Body>
         </Card>
+        {/* 진입 자리에서 말한다. 아래에서만 말하면 다 집어 놓고 마지막에 막힌 것을 안다. */}
+        {order !== null && !isOpenOrder(order) ? (
+          <AlertBanner variant="error" title={t.orders.closed} />
+        ) : null}
         <Button
           variant="text"
           size="xl"
@@ -545,9 +549,6 @@ export const MaterialPickingScreen = () => {
         {worker === null ? <p className="picking-out__note">{t.noWorker}</p> : null}
         {saveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
         {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
-        {order !== null && !isOpenOrder(order) ? (
-          <AlertBanner variant="error" title={t.orders.closed} />
-        ) : null}
         {alreadyIssued.size > 0 &&
         !lines.some((each) => issuableQtyOf(each, queued, alreadyIssued) > 0) ? (
           <AlertBanner variant="info" title={t.allIssued} />

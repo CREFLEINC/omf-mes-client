@@ -729,11 +729,14 @@ describe('자재 출고·피킹 화면', () => {
       lines: [line({ pickedQty: 120 })],
     });
     await chooseOrder(user);
-    await chooseIssueType(user);
 
+    /* 다 집어 놓고 마지막에 막힌 것을 알게 두지 않는다. 진입 자리에서 보여야 한다. */
     expect(
       await screen.findByText('이미 출고가 끝난 지시입니다. 다시 내보낼 수 없습니다.'),
     ).toBeTruthy();
+
+    await chooseIssueType(user);
+
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
     expect(sent.issues).toHaveLength(0);
   });
