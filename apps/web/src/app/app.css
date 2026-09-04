@@ -7079,6 +7079,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   justify-items: start;
   gap: var(--space-2);
   margin-block-start: var(--space-4);
+}
 
 /*
  * P-02-10 작업 중단(홀드) 등록 — 슬라이스 전용 이름을 쓴다.
