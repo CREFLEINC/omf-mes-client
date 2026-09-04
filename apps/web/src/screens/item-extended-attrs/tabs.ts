@@ -1,17 +1,27 @@
 import { messages } from '@omf-mes/i18n';
 
 /**
- * 우 칸 탭 정의. **이 배열이 정본이다** — 화면과 테스트가 모두 이 배열을 순회하므로
- * 탭이 늘면 검증도 함께 는다.
- *
- * **만든 탭만 넣는다.** 탭은 그 탭의 내용이 생기는 작업에서 한 줄씩 더한다 —
- * 자리만 먼저 두면 「탭은 있는데 눌러도 빈 화면인」 상태가 된다.
- *
- * **탭이 좌 목록을 가르지 않는다.** 세 탭이 전부 「지금 고른 품목」의 다른 면이라
- * 좌 목록은 탭 밖에 있고, 탭을 옮겨도 조건·선택은 그대로다(결정 2·M09).
+ * 주소의 보기 상태. 기존 공유 주소(`attrs`·`sub`·`bom`)를 유지하면서 화면에서는
+ * 고정 설계에 맞게 품목/BOM 상위 구획과 품목 세부 구획으로 나눠 그린다.
  */
 
 const t = messages.itemExtendedAttrs;
+
+export type ItemExtendedAttrsSectionId = 'item' | 'bom';
+
+export interface ItemExtendedAttrsSectionDefinition {
+  id: ItemExtendedAttrsSectionId;
+  label: string;
+}
+
+/** 고정 설계의 최상위 정보 구조. 품목의 세부 편집 탭과 섞지 않는다. */
+export const ITEM_EXTENDED_ATTRS_SECTIONS: readonly [
+  ItemExtendedAttrsSectionDefinition,
+  ItemExtendedAttrsSectionDefinition,
+] = [
+  { id: 'item', label: t.sections.item },
+  { id: 'bom', label: t.sections.bom },
+];
 
 export type ItemExtendedAttrsTabId = 'attrs' | 'sub' | 'bom';
 
@@ -33,6 +43,9 @@ export const ITEM_EXTENDED_ATTRS_TABS: readonly [
   { id: 'sub', label: t.tabs.subsidiary },
   { id: 'bom', label: t.tabs.bom },
 ];
+
+/** 품목 상위 구획 안에서만 보이는 세부 탭. */
+export const ITEM_DETAIL_TABS = ITEM_EXTENDED_ATTRS_TABS.filter((tab) => tab.id !== 'bom');
 
 /**
  * 기본 탭. **주소에 쓰지 않는다** — 「빈 조건·기본값은 키 자체를 두지 않는다」는

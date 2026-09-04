@@ -174,7 +174,10 @@ export const BomListPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.paneTitle}>
+    <section className="pane" aria-labelledby="bom-list-title">
+      <h2 id="bom-list-title" className="pane-title">
+        {t.paneTitle}
+      </h2>
       {listSlot()}
     </section>
   );

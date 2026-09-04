@@ -43,7 +43,10 @@ export const ItemOriginPane = ({
   isUomLoading,
   isUomError,
 }: ItemOriginPaneProps) => (
-  <section className="pane" aria-label={t.panes.itemOrigin}>
+  <section className="pane" aria-labelledby="item-origin-title">
+    <h2 id="item-origin-title" className="pane-title">
+      {t.panes.itemOrigin}
+    </h2>
     <div className="banner-slot">
       <AlertBanner variant="info">{messages.editability.receivedFromErp(null)}</AlertBanner>
     </div>
