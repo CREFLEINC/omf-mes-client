@@ -54,6 +54,24 @@ export interface SerialPrinter {
   print(job: { dataPath: string }): Promise<void>;
 }
 
+/**
+ * 명령형 출력물이 왔는데 **보낼 포트가 이 단말에 설정돼 있지 않다.**
+ *
+ * ⛔ 이때 그림 인쇄 경로로 흘려보내지 않는다 — 드라이버가 TSPL 명령을 그림으로 읽어 아무
+ *    말이나 찍거나 빈 라벨을 뽑는다. 나온 종이는 자재에 붙어 되돌릴 수 없다. 인쇄하지 않고
+ *    실패로 말하는 편이 낫다(공유계약 F-6 · #831 완료 조건 ④).
+ *
+ * ⚠ 현장 단말은 키오스크라 개발자도구가 없다 — 이 문장이 사유를 알 수 있는 유일한 자리다.
+ */
+export class SerialPortUnavailableError extends Error {
+  constructor() {
+    super(
+      '라벨을 보낼 포트가 지정돼 있지 않다 — 이 단말에 프린터 포트 설정이 없다. 출력물은 파일로 남았다',
+    );
+    this.name = 'SerialPortUnavailableError';
+  }
+}
+
 export interface SerialPrintJob {
   /** 프린터로 흘려보낼 바이트가 담긴 파일의 절대 경로. */
   dataPath: string;

@@ -13,7 +13,7 @@
  *    그 결과를 드라이버가 받는다. 임시 파일은 작업이 끝나면 지운다.
  */
 import type { Rendition, RenditionFormat, SilentPrinter } from './print';
-import type { SerialPrinter } from './serial-print';
+import { type SerialPrinter, SerialPortUnavailableError } from './serial-print';
 
 /**
  * OS 가 알려 주는 프린터 한 대. Electron `PrinterInfo` 중 **이 모듈이 쓰는 것만** 적는다 —
@@ -194,7 +194,13 @@ export function createSilentPrinter(deps: SilentPrintDeps): SilentPrinter {
        * ⭐ **명령형이 먼저다.** 프린터가 알아듣는 언어로 온 것은 드라이버에 넘길 것이 아니라
        *    포트로 그대로 흘려보낸다. 그림 경로로 새면 드라이버가 명령을 그림으로 읽는다.
        */
-      if (deps.printSerial !== undefined && COMMAND_FORMATS.includes(rendition.format)) {
+      if (COMMAND_FORMATS.includes(rendition.format)) {
+        /* ⛔ 포트가 없다고 그림 경로로 떨어뜨리지 않는다 — 드라이버가 명령을 그림으로 읽는다. */
+        if (deps.printSerial === undefined) {
+          await deps.discard(staged.path).catch(() => undefined);
+          throw new SerialPortUnavailableError();
+        }
+
         try {
           await withLimit(
             deps.printSerial.print({ dataPath: staged.filePath }),
