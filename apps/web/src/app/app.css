@@ -7079,6 +7079,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   justify-items: start;
   gap: var(--space-2);
   margin-block-start: var(--space-4);
+}
 
 /*
  * P-02-10 작업 중단(홀드) 등록 — 슬라이스 전용 이름을 쓴다.
@@ -7117,6 +7118,15 @@ dl.filter-bar.approval-inbox-detail-facts {
 .pop-hold-facts > dd {
   margin: 0;
   font: var(--type-body-lg);
+}
+
+/*
+ * 이름이 없는 값(세션 번호)의 라벨 자리. 화면이 빈 `dt` 로 두 칸 격자의 첫 칸을 채우는데,
+ * 규칙이 없으면 그 칸이 `dt` 기본 여백을 그대로 갖는다 — 보일 것이 없으므로 폭을 지운다.
+ */
+.pop-hold-facts-lead {
+  inline-size: 0;
+  margin: 0;
 }
 
 /* 이력은 줄 수가 적고 열이 셋뿐이라 표를 그대로 쓴다. */
