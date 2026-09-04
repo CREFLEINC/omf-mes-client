@@ -404,15 +404,18 @@ const shippingValues = (issue) => {
   return {
     type: 'SHIP',
     status: ascii(unit?.statusCode, 'RELEASED'),
-    /* 납품처는 씨앗에 출하가 없어 채울 자리가 없다 — 사양 예시 값을 그대로 둔다. */
-    shipTo: 'ABC VIETNAM CO., LTD.',
-    customerPartNo: ascii(item?.customerItemCode, ascii(item?.itemCode, 'SDI-552013')),
-    partNo: ascii(item?.itemCode, 'FG-02031'),
-    partName: ascii(item?.labelName, ascii(item?.itemCode, 'CHARGER ASSY')),
-    lotNo: ascii(lot?.lotNo, '260805-A03'),
+    /*
+     * 납품처는 씨앗에 출하가 없어 채울 자리가 없다.
+     * ⛔ **고객사로 읽힐 값을 두지 않는다**(공개 저장소). 자리를 채우는 합성값이다.
+     */
+    shipTo: 'SAMPLE CUSTOMER CO., LTD.',
+    customerPartNo: ascii(item?.customerItemCode, ascii(item?.itemCode, 'SAMPLE-CP-0001')),
+    partNo: ascii(item?.itemCode, 'SAMPLE-FG-0001'),
+    partName: ascii(item?.labelName, ascii(item?.itemCode, 'SAMPLE PART')),
+    lotNo: ascii(lot?.lotNo, 'SAMPLE-LOT-0001'),
     qty: `${quantity > 0 ? quantity.toLocaleString('en-US') : '100'} ${ascii(uomOf(first?.uomId)?.uomCode, 'EA')}`,
     boxNo: ascii(unit?.handlingUnitNo?.slice(-5), '07/40'),
-    shipmentNo: ascii(unit?.handlingUnitNo, 'SH260805-00124'),
+    shipmentNo: ascii(unit?.handlingUnitNo, 'SAMPLE-SH-0001'),
     shipDt: labelDateTime(issue.issuedAt),
     seed: issue.documentIssueLogId,
   };
@@ -428,9 +431,9 @@ const lotValues = (issue) => {
   return {
     type: ascii(lot?.lotTypeCode === 'MATERIAL' ? 'RAW' : 'WIP', 'WIP'),
     status: ascii(lot?.statusCode, 'OK'),
-    partNo: ascii(item?.itemCode, 'INJ-104852'),
-    partName: ascii(item?.labelName, ascii(item?.itemCode, 'UPPER HSG BLK')),
-    lotNo: ascii(lot?.lotNo, '260805-M12'),
+    partNo: ascii(item?.itemCode, 'SAMPLE-INJ-0001'),
+    partName: ascii(item?.labelName, ascii(item?.itemCode, 'SAMPLE PART')),
+    lotNo: ascii(lot?.lotNo, 'SAMPLE-LOT-0002'),
     qty: `${Number(lot?.initialQty ?? 1000).toLocaleString('en-US')} ${ascii(uomOf(lot?.uomId)?.uomCode, 'EA')}`,
     mfgDt: labelDateTime(lot?.manufacturedAt ?? issue.issuedAt),
     seed: issue.documentIssueLogId,
