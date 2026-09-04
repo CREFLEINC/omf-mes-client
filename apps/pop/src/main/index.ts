@@ -111,6 +111,27 @@ const fileWriter: FileWriter = {
  * ⛔ 키오스크 창의 옵션을 물려받지 않는다. 이 창은 사람에게 보이지 않고 우리가 방금 떨어뜨린
  *    임시 파일 하나만 띄운다 — 통로를 더 열 이유가 없다.
  */
+/**
+ * 인쇄면을 그대로 파일로 뜬다 — **프린터에 무엇이 갔는지 눈으로 볼 수 있게.**
+ *
+ * ⚠ 현장 단말은 키오스크라 인쇄 미리보기가 없다. 종이가 백지로 나올 때 「앱이 빈 것을 보냈나,
+ *   프린터가 못 찍었나」를 가릴 방법이 이것뿐이다 — 이 파일이 제대로면 앱은 제 일을 한 것이다.
+ *
+ * ⛔ 인쇄 결과를 좌우하지 않는다. 뜨는 데 실패해도 인쇄는 그대로 간다.
+ */
+async function dumpPrintSurface(page: BrowserWindow, filePath: string): Promise<void> {
+  try {
+    const pdf = await page.webContents.printToPDF({
+      margins: { marginType: 'none' },
+      printBackground: false,
+    });
+    mkdirSync(join(filePath, '..'), { recursive: true });
+    writeFileSync(filePath, pdf);
+  } catch {
+    /* 진단용이다 — 실패해도 인쇄를 막지 않는다. */
+  }
+}
+
 function openPrintPage(): PrintPage {
   const page = new BrowserWindow({
     show: false,
@@ -157,8 +178,10 @@ function openPrintPage(): PrintPage {
          })`,
       );
     },
-    print: async (deviceName, jobName) =>
-      new Promise((resolve, reject) => {
+    print: async (deviceName, jobName, surfacePath) => {
+      if (surfacePath !== undefined) await dumpPrintSurface(page, surfacePath);
+
+      return new Promise<void>((resolve, reject) => {
         page.webContents.print(
           {
             silent: true,
@@ -179,7 +202,8 @@ function openPrintPage(): PrintPage {
             else reject(new Error(reason === '' ? '인쇄가 완료되지 않았다' : reason));
           },
         );
-      }),
+      });
+    },
     close: () => page.destroy(),
   };
 }
@@ -252,6 +276,15 @@ async function main(): Promise<void> {
         return { path: jobDir, url: pathToFileURL(pagePath).toString() };
       },
       discard: async (path) => rmSync(path, { force: true, recursive: true }),
+      /*
+       * 인쇄면을 출력물 옆에 함께 남긴다 — 백지가 나왔을 때 앱이 보낸 것이 비어 있었는지
+       * 사람이 열어 볼 수 있어야 한다. 이름을 출력물과 나란히 두어 짝을 찾기 쉽게 한다.
+       */
+      surfacePathFor: (rendition) =>
+        join(
+          renditionDir,
+          `${toRenditionFileName(rendition.label, new Date().toISOString(), 'png')}.print.pdf`,
+        ),
     }),
   );
 

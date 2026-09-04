@@ -89,12 +89,17 @@ export interface PrintPage {
    *
    * `deviceName` 이 `undefined` 면 **장치를 싣지 않는다** — 받는 쪽이 OS 기본으로 보낸다.
    */
-  print(deviceName: string | undefined, jobName: string): Promise<void>;
+  print(deviceName: string | undefined, jobName: string, surfacePath?: string): Promise<void>;
   close(): void;
 }
 
 export interface SilentPrintDeps {
   openPage: () => PrintPage;
+  /**
+   * 인쇄면을 뜰 자리. **진단용이며 인쇄 결과를 좌우하지 않는다** — 키오스크에는 미리보기가
+   * 없어, 백지가 나왔을 때 앱이 보낸 것이 비어 있었는지 여기서만 가릴 수 있다.
+   */
+  surfacePathFor?: (rendition: Rendition) => string;
   stage: (bytes: Uint8Array, format: RenditionFormat) => Promise<StagedRendition>;
   discard: (path: string) => Promise<void>;
   /** 인쇄 한 걸음의 시간 상한. 시험이 짧게 줄여 쓴다. */
@@ -151,7 +156,11 @@ export function createSilentPrinter(deps: SilentPrintDeps): SilentPrinter {
       try {
         page = deps.openPage();
         await withLimit(page.load(staged.url), limit, '출력물을 띄우지 못했다');
-        await withLimit(page.print(deviceName, rendition.label), limit, '프린터가 응답하지 않는다');
+        await withLimit(
+          page.print(deviceName, rendition.label, deps.surfacePathFor?.(rendition)),
+          limit,
+          '프린터가 응답하지 않는다',
+        );
       } finally {
         page?.close();
         /* 임시 파일 정리가 인쇄 결과를 뒤집지 않는다 — 종이는 이미 나왔거나 안 나왔다. */
