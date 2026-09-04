@@ -60,6 +60,14 @@ export const workPrecheckGate = {
      * 따로 적는다.
      */
     levelUnresolved: '통제 수준: 경고 (적용 정책 없음)',
+
+    /**
+     * 판정은 통과인데 **기록만 실패한** 상태.
+     *
+     * ⛔ 이때 「경고」로 적으면 안 된다 — 있지도 않았던 경고 판정이 기록에 남는 길이 열린다.
+     */
+    recordRetry: '점검 확인은 통과했지만 기록을 남기지 못했습니다',
+    recordRetryDetail: '기록이 남아야 작업을 시작할 수 있습니다. 다시 시도해 주세요.',
   },
 
   /** ② 점검 이력 구획. */
@@ -110,6 +118,8 @@ export const workPrecheckGate = {
     recheck: '다시 확인',
     proceed: '진행',
     override: '우회하고 시작',
+    /** ⛔ 「진행」과 다른 이름이어야 한다 — 판정을 바꾸는 것이 아니라 같은 판정을 다시 보낸다. */
+    retryRecord: '기록 다시 시도',
     working: '기록하는 중',
   },
 

@@ -104,6 +104,35 @@ describe('P-02-02 작업 전 점검 통제 — 통과', () => {
     expect(sessions(recorded.bodies)).toHaveLength(0);
   });
 
+  /**
+   * ⛔ **통과인데 기록만 실패한 상태를 「경고」로 그리지 않는다.**
+   *
+   * 그렇게 그리면 [ 진행 ] 이 붙고, 누르면 **있지도 않았던 경고 판정**이 기록에 남는다 —
+   * 통제를 뚫는 것은 아니지만 판정 근거가 사실과 달라진다.
+   */
+  it('통과 판정의 기록만 실패하면 경고로 바꿔 그리지 않는다', async () => {
+    await pressStart({ decisionStatus: 500 });
+
+    expect(await screen.findByText(t.verdict.recordRetry)).toBeInTheDocument();
+    expect(screen.queryByText(t.verdict.warned)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.actions.proceed })).not.toBeInTheDocument();
+  });
+
+  /** ⭐ 다시 시도는 **같은 판정**을 다시 보낸다 — 판정을 바꾸지 않는다. */
+  it('기록 다시 시도는 같은 판정으로 나간다', async () => {
+    const { user, recorded } = await pressStart({ decisionStatus: 500 });
+
+    await user.click(await screen.findByRole('button', { name: t.actions.retryRecord }));
+
+    await waitFor(() => {
+      expect(decisions(recorded.bodies).length).toBeGreaterThan(1);
+    });
+
+    for (const decision of decisions(recorded.bodies)) {
+      expect(decision.decisionCode).toBe('PASSED');
+    }
+  });
+
   /** ⛔ 부여가 없으면 점검 대상이 아니다 — 「이력 없음」으로 막지 않는다. */
   it('부여된 점검 항목이 없으면 통과한다', async () => {
     const { recorded } = await pressStart({ assignments: [], resolvedFromLevelCode: 'NONE' });

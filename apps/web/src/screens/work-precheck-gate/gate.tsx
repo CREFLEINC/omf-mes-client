@@ -201,12 +201,19 @@ export const PrecheckGate = ({
   const record = useRecordDecision({
     workerNo,
     onSuccess: () => {
-      /* 기록이 남은 뒤에만 세션을 연다 — 판정 없이 열린 세션을 만들지 않는다. */
+      /*
+       * 기록이 남은 뒤에만 세션을 연다 — 판정 없이 열린 세션을 만들지 않는다.
+       *
+       * ⚠ **어느 판정의 응답인지 대조한다.** 판정이 짧은 사이에 두 번 바뀌면 뒤엣것이
+       *   `settledRef` 를 덮어쓰는데, 그때 앞엣것의 응답이 먼저 와 **뒤 판정이 기록되기도
+       *   전에 세션이 열릴 수 있다.**
+       */
       const settled = settledRef.current;
 
-      settledRef.current = null;
+      if (settled === null || settled.stamp !== recordedRef.current) return;
 
-      if (settled !== null) onCleared(settled.override);
+      settledRef.current = null;
+      onCleared(settled.override);
     },
   });
 
@@ -217,7 +224,7 @@ export const PrecheckGate = ({
    * 그 `null` 을 「이어지지 않음」과 같은 모양으로 두면 **통과가 세션을 열지 못한다**
    * (실측 — 여섯 감지기가 이 한 줄로 함께 깨졌다). 감싸서 두 상태를 가른다.
    */
-  const settledRef = useRef<{ override: ControlOverride | null } | null>(null);
+  const settledRef = useRef<{ stamp: string; override: ControlOverride | null } | null>(null);
 
   /**
    * 같은 판정을 두 번 남기지 않기 위한 자리.
@@ -227,14 +234,19 @@ export const PrecheckGate = ({
    */
   const recordedRef = useRef<string | null>(null);
 
-  const send = (decisionCode: DecisionCode, override: ControlOverride | null) => {
+  const send = (
+    decisionCode: DecisionCode,
+    override: ControlOverride | null,
+    { force = false }: { force?: boolean } = {},
+  ) => {
     const stamp = `${workOrderId}:${decidedAt}:${decisionCode}`;
 
-    if (recordedRef.current === stamp) return;
+    /* ⛔ 같은 판정을 두 번 남기지 않는다. 다만 «실패한» 기록의 재시도는 같은 판정이어야 한다. */
+    if (!force && recordedRef.current === stamp) return;
 
     recordedRef.current = stamp;
     /* 차단은 여기에 오지만 세션으로 이어지지 않는다 — 그때만 «이어지지 않음»으로 둔다. */
-    settledRef.current = decisionCode === 'BLOCKED' ? null : { override };
+    settledRef.current = decisionCode === 'BLOCKED' ? null : { stamp, override };
 
     record.write({
       workOrderId,
@@ -271,6 +283,14 @@ export const PrecheckGate = ({
    *    세션이 열리지 않는데, 화면까지 없으면 작업자는 **아무 일도 일어나지 않은 것으로**
    *    본다 — 사유와 다시 시도할 자리를 남긴다.
    */
+  /**
+   * 판정은 통과인데 **기록만 실패한** 상태인가.
+   *
+   * ⛔ 이때 「경고」로 그리면 안 된다 — 사용자가 [ 진행 ] 을 누르면 **있지도 않았던 경고
+   * 판정이 기록에 남는다.** 판정을 바꾸지 않고 같은 판정을 다시 보내게 한다.
+   */
+  const isRecordRetry = verdict !== null && !verdict.isGateShown && record.error !== null;
+
   if (verdict !== null && !verdict.isGateShown && record.error === null) return null;
 
   const recheck = () => {
@@ -324,6 +344,11 @@ export const PrecheckGate = ({
           <AlertBanner variant="error">{unavailable}</AlertBanner>
         ) : isChecking ? (
           <AlertBanner variant="info">{t.verdict.checking}</AlertBanner>
+        ) : isRecordRetry ? (
+          <AlertBanner variant="error">
+            <strong>{t.verdict.recordRetry}</strong>
+            <span className="precheck-gate-detail">{t.verdict.recordRetryDetail}</span>
+          </AlertBanner>
         ) : verdict?.reason === 'failed' ? (
           <AlertBanner variant="error">
             <strong>{t.verdict.blockedFailed}</strong>
@@ -420,7 +445,22 @@ export const PrecheckGate = ({
           {t.actions.recheck}
         </Button>
 
-        {verdict?.canProceed === true && (
+        {isRecordRetry && (
+          <Button
+            type="button"
+            variant="filled"
+            size={POP_TOUCH_SIZE}
+            disabled={record.isSaving}
+            onClick={() => {
+              /* ⛔ 판정을 바꾸지 않는다 — 같은 판정을 다시 보낸다. */
+              if (verdict !== null) send(verdict.decisionCode, null, { force: true });
+            }}
+          >
+            {record.isSaving ? t.actions.working : t.actions.retryRecord}
+          </Button>
+        )}
+
+        {verdict?.decisionCode === 'WARNED' && (
           <Button
             type="button"
             variant="filled"
@@ -485,7 +525,8 @@ export const PrecheckGate = ({
                   return;
                 }
 
-                if (mode === 'proceed') send('WARNED', null);
+                /* ⛔ 판정 코드를 손으로 적지 않는다 — 실제 판정을 그대로 남긴다. */
+                if (mode === 'proceed' && verdict !== null) send(verdict.decisionCode, null);
               }}
             >
               {t.confirm.confirm}
