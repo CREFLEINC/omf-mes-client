@@ -506,11 +506,11 @@ const PqcFrame = ({
          * 결정의 전제가 이것이라, 없으면 서버에 닿지 않은 사실을 알 방법이 사라진다.
          * **연결 상태도 함께 낸다 — 끊긴 것과 밀리는 것은 다르다**(`P-02-03` 전례).
          */}
-        <Chip variant="status" size="sm" status={pendingCount > 0 ? 'warning' : 'success'}>
+        <Chip variant="status" size="md" status={pendingCount > 0 ? 'warning' : 'success'}>
           {pendingCount > 0 ? messages.common.connection.unsent(pendingCount) : t.header.synced}
         </Chip>
         {!isOnline && (
-          <Chip variant="status" size="sm" status="error">
+          <Chip variant="status" size="md" status="error">
             {messages.common.connection.offline}
           </Chip>
         )}

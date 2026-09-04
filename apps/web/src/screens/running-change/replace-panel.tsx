@@ -157,7 +157,7 @@ export const ReplacePanel = ({
           <>
             <span>{`${labels.describeItem(part.itemId)} ${part.lotNo}`}</span>
             {part.isHeld && (
-              <Chip variant="status" size="sm" status="warning">
+              <Chip variant="status" size="md" status="warning">
                 {part.statusCode}
               </Chip>
             )}

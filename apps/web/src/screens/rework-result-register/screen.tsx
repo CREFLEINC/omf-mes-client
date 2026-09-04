@@ -128,7 +128,7 @@ export const ReworkResultRegisterScreen = () => {
         <p className="pop-context">{selected?.workOrderNo ?? t.selectWorkOrder}</p>
         <p className="pop-context pop-context-right">
           <span>{identity.workerNo ?? '—'}</span>
-          <Chip variant="status" size="sm" status={isOnline ? 'success' : 'warning'}>
+          <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
             {isOnline ? messages.common.connection.online : messages.common.connection.offline}
           </Chip>
           <span>{t.pending(pendingCount)}</span>

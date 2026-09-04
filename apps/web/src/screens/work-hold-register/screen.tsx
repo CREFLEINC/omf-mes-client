@@ -133,7 +133,7 @@ export const WorkHoldRegisterScreen = () => {
           </span>
 
           {session.session !== null && (
-            <Chip variant="status" size="sm" status="success">
+            <Chip variant="status" size="md" status="success">
               {t.session.sessionNo(session.session.sessionNo)}
             </Chip>
           )}

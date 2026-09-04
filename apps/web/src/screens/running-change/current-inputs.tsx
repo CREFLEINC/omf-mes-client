@@ -58,7 +58,7 @@ export const CurrentInputs = ({
                 {`${row.inputQty} ${labels.describeUom(row.uomId)}`.trim()}
               </span>
               {alreadyReplaced.includes(row.materialConsumptionId) && (
-                <Chip variant="status" size="sm" status="info">
+                <Chip variant="status" size="md" status="info">
                   {t.current.replacedBadge}
                 </Chip>
               )}
@@ -93,7 +93,7 @@ export const CurrentInputs = ({
              * 규칙이 현장에 굳는다.
              */}
             {isShotCountExceeded(mold) && (
-              <Chip variant="status" size="sm" status="warning">
+              <Chip variant="status" size="md" status="warning">
                 {t.current.moldShotExceeded}
               </Chip>
             )}

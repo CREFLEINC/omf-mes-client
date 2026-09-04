@@ -267,7 +267,7 @@ export const DowntimeRegisterScreen = () => {
            * ⭐ **미전송 건수는 필수 요건이다.** 「담긴 순간 성공」이라는 표시를 택한 근거가
            * 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
            */}
-          <Chip variant="status" size="sm" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
+          <Chip variant="status" size="md" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
             {outbox.pendingCount > 0 ? t.header.unsent(outbox.pendingCount) : t.header.sent}
           </Chip>
           {/*
@@ -276,7 +276,7 @@ export const DowntimeRegisterScreen = () => {
             선다 — 같은 도메인의 P-05-01 도 연결 상태를 `warning` 으로 낸다.
           */}
           {!outbox.isOnline && (
-            <Chip variant="status" size="sm" status="warning">
+            <Chip variant="status" size="md" status="warning">
               {t.header.offline}
             </Chip>
           )}

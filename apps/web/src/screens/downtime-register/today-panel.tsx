@@ -65,7 +65,7 @@ export const TodayPanel = ({
 
             {isLocalOnly && (
               <p className="downtime-today-scope">
-                <Chip variant="status" size="sm" status="warning">
+                <Chip variant="status" size="md" status="warning">
                   {t.today.localOnly}
                 </Chip>
                 <span>{t.today.localOnlyDescription}</span>

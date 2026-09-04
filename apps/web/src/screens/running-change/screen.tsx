@@ -218,11 +218,11 @@ export const RunningChangeScreen = () => {
            * ⭐ **미전송 건수는 필수 요건이다**(공유계약 C-1 #4). 「즉시 성공 표시」를 택한
            * 결정의 전제가 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
            */}
-          <Chip variant="status" size="sm" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
+          <Chip variant="status" size="md" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
             {outbox.pendingCount > 0 ? t.header.unsynced(outbox.pendingCount) : t.header.synced}
           </Chip>
           {!outbox.isOnline && (
-            <Chip variant="status" size="sm" status="error">
+            <Chip variant="status" size="md" status="error">
               {t.header.offline}
             </Chip>
           )}

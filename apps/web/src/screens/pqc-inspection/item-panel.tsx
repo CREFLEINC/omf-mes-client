@@ -182,7 +182,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions }: ItemRowProps) => {
        * 사람이 고르기 전까지 아무 판정도 저장되지 않는다.
        */}
       {outOfSpec && (
-        <Chip variant="status" size="sm" status="error">
+        <Chip variant="status" size="md" status="error">
           {t.outOfSpec}
         </Chip>
       )}
