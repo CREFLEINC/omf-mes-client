@@ -42,6 +42,18 @@ export interface SerialPortSettings {
   handshake?: string;
 }
 
+/**
+ * 직렬 포트로 한 덩이를 보내는 길. 구현은 `index.ts` 가 준다(스크립트를 써서 PowerShell 로).
+ *
+ * ⚠ **포트는 이 안에 있다.** 부르는 쪽이 포트를 고르지 않는다 — 어느 포트인지는 단말 설정이
+ *   정하고, 인쇄를 시키는 쪽은 「무엇을 보내는가」만 안다.
+ * ⚠ **작업 이름을 받지 않는다.** 직렬에는 대기열이 없어 이름이 앉을 자리가 없다 — 대기열
+ *   이름은 스풀러 경로의 것이고, 여기서 받으면 어디에도 쓰이지 않는 값이 흘러다닌다.
+ */
+export interface SerialPrinter {
+  print(job: { dataPath: string }): Promise<void>;
+}
+
 export interface SerialPrintJob {
   /** 프린터로 흘려보낼 바이트가 담긴 파일의 절대 경로. */
   dataPath: string;

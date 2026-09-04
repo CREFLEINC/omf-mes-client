@@ -33,6 +33,12 @@ import {
 } from './print';
 import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
 import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
+import {
+  type SerialPortSettings,
+  buildSerialPrintScript,
+  readSerialPortSettings,
+  serialPrintScriptArgs,
+} from './serial-print';
 import { buildPrintScript, printScriptArgs } from './windows-print';
 import { resolveRendererPath } from './renderer-path';
 import {
@@ -213,6 +219,71 @@ function openPrintPage(): PrintPage {
 }
 
 /**
+ * 스크립트를 파일로 두고 PowerShell 로 부른다. 그림 인쇄와 직렬 인쇄가 같은 방식을 쓴다.
+ *
+ * ⛔ **자식에게도 같은 상한을 건다.** 바깥 상한은 약속만 끊고 프로세스는 계속 산다 — 인쇄가
+ *    매달릴 때마다 하나씩 남고, 남은 것이 임시 파일을 잡아 정리도 실패한다. 며칠씩 켜 두는
+ *    단말에서 쌓인다.
+ */
+async function runPrintScript(
+  scriptPath: string,
+  script: string,
+  args: (path: string) => string[],
+): Promise<void> {
+  writeFileSync(scriptPath, script, 'utf8');
+
+  await new Promise<void>((resolve, reject) => {
+    execFile(
+      'powershell.exe',
+      args(scriptPath),
+      { windowsHide: true, timeout: DEFAULT_PRINT_TIMEOUT_MS, killSignal: 'SIGKILL' },
+      (error, _stdout, stderr) => {
+        if (error === null) {
+          resolve();
+          return;
+        }
+
+        /* 상한에 걸려 끊긴 것은 사유가 비어 온다 — 무슨 일이었는지 말해 준다. */
+        const spoken =
+          stderr.trim() !== ''
+            ? stderr.trim()
+            : error.killed === true
+              ? '프린터가 응답하지 않아 인쇄를 끊었다'
+              : error.message;
+
+        reject(new Error(spoken));
+      },
+    );
+  });
+}
+
+/**
+ * 직렬 포트로 제어 명령을 보내는 길(#831).
+ *
+ * ⚠ **포트가 설정되지 않았으면 이 길을 만들지 않는다.** 아무 포트나 골라 보내면 프린터가
+ *   아닌 장치에 명령이 들어간다 — 어느 포트인지는 단말이 알고 설정으로 준다.
+ * ⚠ 개발 기계(mac 등)에는 이 길이 없다.
+ */
+const serialPort: SerialPortSettings | undefined =
+  process.platform === 'win32' ? readSerialPortSettings(process.env) : undefined;
+
+const serialPrinter =
+  serialPort === undefined
+    ? undefined
+    : {
+        print: async ({ dataPath }: { dataPath: string }): Promise<void> =>
+          runPrintScript(
+            join(dataPath, '..', 'serial-print.ps1'),
+            buildSerialPrintScript({
+              dataPath,
+              port: serialPort,
+              timeoutMs: DEFAULT_PRINT_TIMEOUT_MS,
+            }),
+            serialPrintScriptArgs,
+          ),
+      };
+
+/**
  * Windows 단말의 인쇄 — **OS 의 그림 인쇄에 맡긴다**(`windows-print` 머리말).
  *
  * ⚠ 개발 기계(mac 등)에는 이 길이 없다. 거기서는 엔진 경로를 그대로 쓴다.
@@ -228,39 +299,12 @@ const filePrinter =
           imagePath: string;
           deviceName?: string;
           jobName: string;
-        }): Promise<void> => {
-          const scriptPath = join(imagePath, '..', 'print.ps1');
-          writeFileSync(scriptPath, buildPrintScript({ imagePath, deviceName, jobName }), 'utf8');
-
-          await new Promise<void>((resolve, reject) => {
-            execFile(
-              'powershell.exe',
-              printScriptArgs(scriptPath),
-              /*
-               * ⛔ **자식에게도 같은 상한을 건다.** 바깥 상한은 약속만 끊고 프로세스는 계속
-               *    산다 — 인쇄가 매달릴 때마다 하나씩 남고, 남은 것이 임시 파일을 잡아 정리도
-               *    실패한다. 며칠씩 켜 두는 단말에서 쌓인다.
-               */
-              { windowsHide: true, timeout: DEFAULT_PRINT_TIMEOUT_MS, killSignal: 'SIGKILL' },
-              (error, _stdout, stderr) => {
-                if (error === null) {
-                  resolve();
-                  return;
-                }
-
-                /* 상한에 걸려 끊긴 것은 사유가 비어 온다 — 무슨 일이었는지 말해 준다. */
-                const spoken =
-                  stderr.trim() !== ''
-                    ? stderr.trim()
-                    : error.killed === true
-                      ? '프린터가 응답하지 않아 인쇄를 끊었다'
-                      : error.message;
-
-                reject(new Error(spoken));
-              },
-            );
-          });
-        },
+        }): Promise<void> =>
+          runPrintScript(
+            join(imagePath, '..', 'print.ps1'),
+            buildPrintScript({ imagePath, deviceName, jobName }),
+            printScriptArgs,
+          ),
       }
     : undefined;
 
@@ -332,6 +376,7 @@ async function main(): Promise<void> {
       },
       discard: async (path) => rmSync(path, { force: true, recursive: true }),
       printFile: filePrinter,
+      printSerial: serialPrinter,
     }),
   );
 
