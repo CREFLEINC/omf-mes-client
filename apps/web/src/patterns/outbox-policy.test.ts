@@ -1,4 +1,4 @@
-import { NETWORK_ERROR } from '@omf-mes/api-client';
+import { NETWORK_ERROR, normalizeApiError } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
 import { MAX_AUTO_ATTEMPTS, isRejected, retryDelayOf } from './outbox-policy';
@@ -48,23 +48,34 @@ describe('isRejected — 기다리면 풀리는가, 아닌가', () => {
   });
 
   /*
-   * ⚠ **알려진 구멍을 여기에 못 박아 둔다** — `omf-mes-client#789`.
+   * ⭐ **#789 가 막은 구멍** — 봉투에 담겨 온 5xx.
    *
-   * `normalizeApiError` 는 본문이 계약 오류 봉투(`errors[]`)면 **상태 코드보다 그 모양을 먼저
-   * 본다.** 그래서 503 이 그 봉투로 오면 `validation` 으로 접히고, 이 판정은 상태를 볼 기회가
-   * 없어 거부로 떨어진다 — 담긴 것이 큐에서 내려간다.
+   * 서버가 「잠시 뒤 풀린다」는 실패를 계약 오류 봉투(`errors[]`)에 담아 보내도, 정규화가
+   * 상태 코드를 먼저 보므로 `http` 로 남는다. 그래서 이 판정이 상태를 보고 「기다림」으로
+   * 읽는다 — 담긴 것이 큐에 남는다.
    *
-   * 지금 이것이 터지지 않는 근거는 **계약에 5xx·429·408 응답 정의가 한 건도 없다**는 것이다
-   * (실측 2026-09-03 — 계약 7벌 · 응답 정의 1,303건 중 0건). 서버가 그 모양을 낼 근거가 없다.
-   *
-   * ⛔ **이 시험이 「올바른 동작」을 적은 것이 아니다.** 지금 동작을 적어 둔 것이고, #789 가
-   * 정규화 순서를 고치면 **이 시험이 먼저 깨져야 한다** — 그때 기대값을 뒤집는다.
+   * ⛔ **정규화를 거쳐 확인한다.** `ApiRequestError` 에 갈래를 직접 넣으면 정작 고친 자리
+   * (`normalizeApiError` 의 순서)를 통과하지 않아 되돌아가도 이 시험이 깨지지 않는다.
    */
-  it('[알려진 구멍 #789] 5xx 가 계약 오류 봉투로 오면 거부로 떨어진다', () => {
-    const enveloped = new ApiRequestError({
-      kind: 'validation',
-      errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '잠시 뒤 다시' }],
-    });
+  it.each([500, 503, 429, 408])(
+    '%i 이 계약 오류 봉투로 와도 거부가 아니다 — 담긴 것을 큐에 남긴다',
+    (status) => {
+      const enveloped = new ApiRequestError(
+        normalizeApiError(status, {
+          errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '잠시 뒤 다시' }],
+        }),
+      );
+
+      expect(isRejected(enveloped)).toBe(false);
+    },
+  );
+
+  it('400 이 계약 오류 봉투로 오면 그대로 거부다 — 기다려도 풀리지 않는다', () => {
+    const enveloped = new ApiRequestError(
+      normalizeApiError(400, {
+        errors: [{ scope: 'field', field: 'quantity', code: 'REQUIRED', message: '필수' }],
+      }),
+    );
 
     expect(isRejected(enveloped)).toBe(true);
   });

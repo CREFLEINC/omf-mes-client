@@ -1063,6 +1063,63 @@ on('GET', '/logistics/shipments', (_p, query) => {
   );
 });
 
+/*
+ * 출하 LOT 배분 (P-04-01 Packing 실적 등록) — **판정을 서버가 낸다.**
+ *
+ * 계약 예시 서버로 넘기면 어떤 값에도 `matched: true` 로 답해, 「틀린 LOT 을 읽었을 때」를
+ * 손으로 볼 수 없다(실측). 씨앗이 가진 배분으로 그 갈림을 만든다.
+ */
+const allocationRows = () =>
+  state.shipments.flatMap((shipment) =>
+    (shipment.lines ?? []).flatMap((line) => line.allocations ?? []),
+  );
+
+const shipmentNoOf = (shipmentId) =>
+  state.shipments.find((row) => row.shipmentId === shipmentId)?.shipmentNo ?? '';
+
+on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
+  const shipmentId = num(query, 'shipmentId');
+  const q = query.get('q');
+  const lotQ = query.get('lotQ');
+  const rows = allocationRows();
+  const hit = (value, needle) => String(value ?? '').toUpperCase().includes(needle);
+
+  /* ① 납품라벨 스캔 — 출하번호·LOT 번호로 찾는다. 못 찾으면 «없는 라벨»이라 빈 목록이다. */
+  if (q !== null) {
+    const needle = q.trim().toUpperCase();
+
+    return page(
+      needle === ''
+        ? []
+        : rows.filter(
+            (row) => hit(shipmentNoOf(row.shipmentId), needle) || hit(row.lotNo, needle),
+          ),
+      query,
+    );
+  }
+
+  /* ② 생산LOT 스캔 — 이 출하에 배분된 LOT 인가. 아니면 사유를 붙여 «아니다»로 답한다. */
+  if (lotQ !== null) {
+    const needle = lotQ.trim().toUpperCase();
+    const matched = rows.filter(
+      (row) => row.shipmentId === shipmentId && needle !== '' && hit(row.lotNo, needle),
+    );
+
+    return matched.length > 0
+      ? { ...page(matched, query), match: { matched: true } }
+      : {
+          ...page([], query),
+          match: { matched: false, reasonCode: 'LOT_NOT_ALLOCATED' },
+        };
+  }
+
+  /* ③ 진행 표시 — 이 출하의 배분 전부. */
+  return page(
+    shipmentId === null ? rows : rows.filter((row) => row.shipmentId === shipmentId),
+    query,
+  );
+});
+
 on('GET', '/logistics/shipments/{shipmentId}', (params) => {
   const shipment = state.shipments.find((row) => row.shipmentId === Number(params.shipmentId));
   return shipment === undefined
@@ -1161,6 +1218,35 @@ on('POST', '/production/results', (_p, _q, body) => {
 });
 
 /* ── 품질 ─────────────────────────────────────────────────── */
+
+/**
+ * 검사 의뢰 목록.
+ *
+ * ⭐ **이 경로가 비어 있으면 계약 예시 서버로 넘어가고, 그쪽은 질의를 무시하고 예시 1건을
+ * 그대로 돌려준다.** 그래서 작업실적 등록(P-02-04)이 「PQC 가 남아 있다」로 늘 막혔다 —
+ * 돌아온 것은 다른 작업지시의 IQC 였다(실측 2026-09-04).
+ *
+ * `pendingOnly` 의 정의는 계약이 값으로 못 박았다 — 참이면 REQUESTED · IN_PROGRESS 만.
+ * ⛔ **그 정의를 화면이 아니라 여기서 지킨다**(공유계약 G-6).
+ */
+const PENDING_INSPECTION_STATUSES = ['REQUESTED', 'IN_PROGRESS'];
+
+on('GET', '/quality/inspection-requests', (_p, query) => {
+  const pendingOnly = bool(query, 'pendingOnly');
+
+  return page(
+    keep(state.inspectionRequests, [
+      byText(query, 'inspectionTypeCode', 'inspectionTypeCode'),
+      byText(query, 'statusCode', 'statusCode'),
+      byNum(query, 'itemId', 'itemId'),
+      byNum(query, 'lotId', 'lotId'),
+      byNum(query, 'workOrderId', 'workOrderId'),
+      contains(query, 'q', 'inspectionRequestNo'),
+      (row) => pendingOnly !== true || PENDING_INSPECTION_STATUSES.includes(row.statusCode),
+    ]),
+    query,
+  );
+});
 
 /*
  * W-04-07 — 판정 대기 대상 · 부적합 등록 · 판정 의뢰 · 처분 목록.

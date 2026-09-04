@@ -457,6 +457,31 @@ export const createSeed = (now = new Date()) => {
       completedAt: iso(-5, 17),
       held: false,
     },
+    /*
+     * 아직 끝나지 않은 생산 LOT — **진행 중인 W/O(11002)의 실적 입력 대상이다.**
+     * 다른 생산 LOT 은 모두 완료된 W/O(11001)에 매여 있어, 실적을 「넣어 볼」 대상이 없었다.
+     */
+    {
+      lotId: 8103,
+      lotNo: 'PLOT-2026-0033',
+      itemId: 2003,
+      lotTypeCode: 'PRODUCTION',
+      initialQty: 500,
+      uomId: 1001,
+      manufacturedAt: iso(0),
+      expiryDate: null,
+      sourceTypeCode: 'WORK_ORDER',
+      sourceId: 11002,
+      statusCode: 'NORMAL',
+      completedAt: null,
+      held: false,
+      progress: {
+        goodQty: 120,
+        defectQty: 0,
+        achievementRate: 0.24,
+        completionJudgmentCode: null,
+      },
+    },
   ].map((lot) => ({
     plantId: PLANT_ID,
     lifecycleStatusCode: null,
@@ -832,7 +857,8 @@ export const createSeed = (now = new Date()) => {
     uomId: 1001,
     oqcPassed: true,
     ...allocation,
-    packedQty: allocation.allocatedQty,
+    /* ⚠ 기본은 «아직 안 담았다»(0)다 — 전량 담긴 값으로 두면 P-04-01 이 늘 「잔여 없음」이 된다. */
+    packedQty: allocation.packedQty ?? 0,
   });
   const shipments = [
     {
@@ -867,6 +893,8 @@ export const createSeed = (now = new Date()) => {
               lotId: 8202,
               lotNo: 'FLOT-2026-0305',
               allocatedQty: 120,
+              /* 일부만 담긴 배분 — 잔여 계산이 도는지 손으로 볼 수 있게 한 자리다. */
+              packedQty: 60,
             }),
           ],
         },
@@ -1050,6 +1078,57 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /**
+   * 검사 의뢰. **실적 입력의 선행 판정이 이 목록으로 갈린다** — 아직 끝나지 않은 PQC 가 있으면
+   * 작업실적 등록(P-02-04)이 막히고 검사 화면으로 보낸다.
+   *
+   * 그래서 진행 중인 W/O 를 둘로 갈라 둔다 — **11002 는 남은 PQC 가 없어 실적을 넣을 수 있고,
+   * 11003 은 남아 있어 막힌다.** 한쪽만 두면 둘 중 한 갈래를 화면에서 볼 수 없다.
+   *
+   * ⛔ **의뢰를 만드는 경로는 계약에 없다**(서버가 만든다). 여기서도 씨앗으로만 둔다.
+   */
+  const inspectionRequests = [
+    {
+      inspectionRequestId: 16001,
+      inspectionRequestNo: 'IR-2026-0903-0001',
+      inspectionTypeCode: 'PQC',
+      inspectionPlanVersionId: 1001,
+      targetTypeCode: 'LOT',
+      targetId: 8103,
+      itemId: 2003,
+      lotId: 8103,
+      workOrderId: 11003,
+      productionResultId: null,
+      targetQty: 120,
+      uomId: 1001,
+      coverageFromAt: iso(0, 8),
+      coverageToAt: iso(0, 12),
+      statusCode: 'REQUESTED',
+      requestedAt: iso(0, 12),
+      versionNo: 1,
+    },
+    /* 끝난 의뢰. `pendingOnly=true` 가 이것을 걸러 내는지 확인할 자리다. */
+    {
+      inspectionRequestId: 16002,
+      inspectionRequestNo: 'IR-2026-0902-0007',
+      inspectionTypeCode: 'PQC',
+      inspectionPlanVersionId: 1001,
+      targetTypeCode: 'LOT',
+      targetId: 8101,
+      itemId: 2003,
+      lotId: 8101,
+      workOrderId: 11002,
+      productionResultId: null,
+      targetQty: 480,
+      uomId: 1001,
+      coverageFromAt: iso(-1, 8),
+      coverageToAt: iso(-1, 17),
+      statusCode: 'COMPLETED',
+      requestedAt: iso(-1, 17),
+      versionNo: 1,
+    },
+  ];
+
   const approvalRequests = [
     {
       approvalRequestId: 15001,
@@ -1210,6 +1289,7 @@ export const createSeed = (now = new Date()) => {
     handlingUnitContents,
     defectRecords,
     repairExecutions: [],
+    inspectionRequests,
     inspections: [],
     breakdowns: [],
     operationHandovers: [],
