@@ -49,6 +49,12 @@ export interface IssueRunResult {
    * (변경 통지 #534 §3). 다시 등록하면 같은 자재에 LOT 이 둘 생긴다.
    */
   hasCreatedLot: boolean;
+  /**
+   * ⚠ **라벨이 실제로 나왔는가.** 셸이 인쇄를 마친 뒤에도 결과 보고가 실패할 수 있는데
+   * (`report` 걸음), 그것을 「끝내지 못했다」로만 말하면 작업자가 **같은 라벨을 한 장 더 찍는다.**
+   * 종이는 이미 나왔다는 사실을 결과가 들고 있어야 그 말을 할 수 있다.
+   */
+  hasPrintedLabel: boolean;
   /** 만들어진 발행 기록. `issue` 를 넘겼을 때만 있다. */
   issue: IssueView | null;
   error: ApiError | null;
@@ -59,6 +65,7 @@ const IDLE: IssueRunResult = {
   isPrinted: false,
   failedAt: null,
   hasCreatedLot: false,
+  hasPrintedLabel: false,
   issue: null,
   error: null,
 };
@@ -97,11 +104,12 @@ const createIssue = async (
   client: Client,
   input: { lotId: number; printerName: string | null; reissueReasonCode: string | null },
   workerNo: string,
+  idempotencyKey: string,
 ): Promise<IssueView> => {
   const data = await runRequest(() =>
     client.POST('/app/document-issues', {
       params: {
-        header: { 'Idempotency-Key': crypto.randomUUID(), 'X-Worker-No': workerNo },
+        header: { 'Idempotency-Key': idempotencyKey, 'X-Worker-No': workerNo },
       },
       body: toDocumentIssueBody(input),
     }),
@@ -200,6 +208,19 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
    * (`patterns/master` 의 `until-applied` 와 같은 규율).
    */
   const lotKeys = useRef(new Map<number, string>());
+  /*
+   * 발행의 멱등 키 — **같은 요청을 다시 보낼 때만 같은 값을 쓴다**(스펙 §5-2).
+   *
+   * 매번 새 키를 만들면 통신이 끊긴 뒤 다시 시도한 발행을 서버가 «다른 쓰기»로 보아
+   * **회차가 두 번 오른다.** 회차는 「이 라벨이 몇 번째인가」를 추적하는 값이라 한 번 어긋나면
+   * 이력이 거짓이 된다.
+   *
+   * ⛔ **줄만 보고 붙잡지 않는다.** 발행이 실패하면 그 줄은 「등록됐고 기록 없음」이 되어 **재인쇄**
+   * 경로가 열리는데, 재인쇄는 본문에 사유가 붙는다 — 같은 키에 다른 본문을 실으면 서버는 앞선
+   * 쓰기를 되돌려 주거나 거절한다. 둘 다 사유 없는 발행이 재인쇄로 둔갑하는 길이다. 그래서
+   * **본문이 같을 때만** 키를 물려준다. 성공하면 지운다.
+   */
+  const issueKeysRef = useRef(new Map<number, { key: string; signature: string }>());
 
   const reset = useCallback(() => {
     setStep(null);
@@ -221,6 +242,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
 
       const execute = async (): Promise<void> => {
         let hasCreatedLot = false;
+        let hasPrintedLabel = false;
         let issue: IssueView | null = null;
         /*
          * ⛔ **멈춘 자리는 이 변수로 센다.** `setStep` 은 그리기 위한 것이라 다음 렌더에서야
@@ -258,7 +280,23 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           }
 
           enter('issue');
-          issue = await createIssue(client, { lotId, printerName, reissueReasonCode }, workerNo);
+          const issueKeys = issueKeysRef.current;
+          /*
+           * 본문을 가르는 값 전부다 — 어느 하나라도 다르면 **다른 쓰기**이고 키를 물려주면 안 된다.
+           */
+          const signature = `${String(lotId)}|${printerName ?? ''}|${reissueReasonCode ?? ''}`;
+          const held = issueKeys.get(row.inboundReceiptLineId);
+          const issueKey = held?.signature === signature ? held.key : crypto.randomUUID();
+          issueKeys.set(row.inboundReceiptLineId, { key: issueKey, signature });
+
+          issue = await createIssue(
+            client,
+            { lotId, printerName, reissueReasonCode },
+            workerNo,
+            issueKey,
+          );
+          // 기록이 남았다 — 이 줄의 키는 제 몫을 다했다. 다음 재인쇄는 새 회차라 새 키여야 한다.
+          issueKeys.delete(row.inboundReceiptLineId);
 
           enter('render');
           const bytes = await fetchRendition(client, issue.documentIssueLogId);
@@ -285,6 +323,8 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
                     cause instanceof Error ? cause.message : '셸 인쇄가 실패했습니다.',
                   );
 
+          hasPrintedLabel = failureReason === null;
+
           enter('report');
           await reportPrint(client, issue.documentIssueLogId, failureReason, workerNo);
 
@@ -293,6 +333,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
             isPrinted: failureReason === null,
             failedAt: failureReason === null ? null : 'print',
             hasCreatedLot,
+            hasPrintedLabel,
             issue,
             error: null,
           });
@@ -302,6 +343,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
             isPrinted: false,
             failedAt: at,
             hasCreatedLot,
+            hasPrintedLabel,
             issue,
             error: toApiError(cause),
           });

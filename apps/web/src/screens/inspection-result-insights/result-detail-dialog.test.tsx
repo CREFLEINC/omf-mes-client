@@ -44,6 +44,36 @@ const detail = {
   processName: '합성 공정',
 };
 
+const request = {
+  inspectionRequestId: 801,
+  inspectionRequestNo: 'SAMPLE-REQUEST-801',
+  inspectionTypeCode: 'PQC',
+  targetTypeCode: 'WORK_ORDER',
+  targetId: 601,
+  itemId: 101,
+  targetQty: 30,
+  requestedAt: '2026-08-12T09:00:00+09:00',
+  statusCode: '접수',
+};
+
+const renderDialog = (routes: StubRoute[]) =>
+  renderWithProviders(
+    <ResultDetailDialog
+      inspectionResultId={701}
+      labels={{
+        item: source('101', '합성 품목', false),
+        judgment: source('REJECTED', '불합격'),
+      }}
+      onClose={vi.fn()}
+      onViewMeasurements={vi.fn()}
+    />,
+    { fetch: createStubFetch(routes) },
+  );
+
+const emptySummary = route('/quality/inspection-results/701/measurement-summary', () =>
+  jsonResponse({ asOf: '2026-08-31T11:30:00+09:00', items: [] }),
+);
+
 describe('검사 결과 상세 Dialog', () => {
   it('상세와 항목별 측정 요약을 서버 값으로 표시하고 남은 예시 수를 전체 건수로 계산한다', async () => {
     const onClose = vi.fn();
@@ -62,6 +92,9 @@ describe('검사 결과 상세 Dialog', () => {
       {
         fetch: createStubFetch([
           route('/quality/inspection-results/701', () => jsonResponse(detail)),
+          route('/quality/inspection-requests/801', () =>
+            jsonResponse({ ...request, inspectionPlanVersionId: 4101 }),
+          ),
           route('/quality/inspection-results/701/measurement-summary', () => {
             summaryRequests += 1;
             if (summaryRequests > 1)
@@ -106,6 +139,7 @@ describe('검사 결과 상세 Dialog', () => {
 
     const dialog = await screen.findByRole('dialog', { name: '검사 결과 상세' });
     expect(await within(dialog).findByText('SAMPLE-REQUEST-801')).toBeInTheDocument();
+    expect(await within(dialog).findByText('4101')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 품목 (미사용)')).toBeInTheDocument();
     expect(within(dialog).getByText('합성 치수')).toBeInTheDocument();
     const [summary, countOnlySummary] = within(dialog).getAllByRole('listitem');
@@ -130,5 +164,33 @@ describe('검사 결과 상세 Dialog', () => {
     expect(onViewMeasurements).toHaveBeenCalledWith(701);
     await userEvent.click(within(dialog).getAllByRole('button', { name: '닫기' })[1]!);
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('기준 버전이 빈 의뢰는 「기준 없음」으로 그린다 — 못 읽은 값과 다른 모양이다', async () => {
+    renderDialog([
+      route('/quality/inspection-results/701', () => jsonResponse(detail)),
+      route('/quality/inspection-requests/801', () =>
+        jsonResponse({ ...request, inspectionPlanVersionId: null }),
+      ),
+      emptySummary,
+    ]);
+
+    const dialog = await screen.findByRole('dialog', { name: '검사 결과 상세' });
+    expect(await within(dialog).findByText('기준 없음')).toBeInTheDocument();
+  });
+
+  it('의뢰를 못 읽으면 「기준 없음」이 아니라 모르는 값으로 그린다', async () => {
+    renderDialog([
+      route('/quality/inspection-results/701', () => jsonResponse(detail)),
+      route('/quality/inspection-requests/801', () =>
+        jsonResponse({ message: 'synthetic error' }, { status: 500 }),
+      ),
+      emptySummary,
+    ]);
+
+    const dialog = await screen.findByRole('dialog', { name: '검사 결과 상세' });
+    expect(await within(dialog).findByText('SAMPLE-REQUEST-801')).toBeInTheDocument();
+    expect(within(dialog).queryByText('기준 없음')).not.toBeInTheDocument();
+    expect(within(dialog).getAllByText('미확인').length).toBeGreaterThan(0);
   });
 });

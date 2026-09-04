@@ -14,6 +14,7 @@ import {
 
 type Client = ApiClient['client'];
 export type InspectionResult = components['schemas']['InspectionResult'];
+export type InspectionRequest = components['schemas']['InspectionRequest'];
 export type InspectionSummary = components['schemas']['InspectionSummary'];
 export type DefectRateTrend = components['schemas']['DefectRateTrend'];
 export type DefectDistribution = components['schemas']['DefectDistribution'];
@@ -129,6 +130,30 @@ export const useInspectionResultDetail = (
       return runRequest(() =>
         client.GET('/quality/inspection-results/{inspectionResultId}', {
           params: { path: { inspectionResultId } },
+        }),
+      );
+    },
+  });
+};
+
+/**
+ * 고른 결과의 검사 의뢰를 부른다.
+ *
+ * ⚠ 「기준 버전」은 `InspectionResult` 계약에 없고 `InspectionRequest` 에만 있다 — 그리려면
+ * 의뢰를 한 번 더 읽어야 한다. 결과를 고르기 전에는 부르지 않는다(client#589).
+ */
+export const useInspectionRequestDetail = (
+  inspectionRequestId: number | null,
+): UseQueryResult<InspectionRequest> => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: ['inspection-result-insights', 'request-detail', inspectionRequestId],
+    enabled: inspectionRequestId !== null,
+    queryFn: () => {
+      if (inspectionRequestId === null) throw new Error('검사 결과를 고르기 전입니다.');
+      return runRequest(() =>
+        client.GET('/quality/inspection-requests/{inspectionRequestId}', {
+          params: { path: { inspectionRequestId } },
         }),
       );
     },
