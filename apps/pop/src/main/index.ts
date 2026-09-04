@@ -31,6 +31,7 @@ import {
   toRenditionFileName,
 } from './print';
 import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
+import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
 import { resolveRendererPath } from './renderer-path';
 import {
   type PrintPage,
@@ -226,16 +227,31 @@ async function main(): Promise<void> {
     createSilentPrinter({
       openPage: openPrintPage,
       stage: async (bytes, format) => {
-        mkdirSync(stagingDir, { recursive: true });
-        /* 이름은 겹치지 않기만 하면 된다 — 사람이 읽는 이름은 `renditions/` 쪽이 갖는다. */
-        const path = join(
-          stagingDir,
-          `${String(Date.now())}-${String(process.hrtime.bigint())}.${format}`,
-        );
-        writeFileSync(path, bytes);
-        return { path, url: pathToFileURL(path).toString() };
+        /*
+         * 작업마다 **폴더 하나**를 쓴다 — 감싸는 문서와 그림이 같은 자리에 있어야 상대 경로로
+         * 이어진다. 이름은 겹치지 않기만 하면 된다(사람이 읽는 이름은 `renditions/` 쪽이 갖는다).
+         */
+        const jobDir = join(stagingDir, `${String(Date.now())}-${String(process.hrtime.bigint())}`);
+        mkdirSync(jobDir, { recursive: true });
+        writeFileSync(join(jobDir, labelFileName(format)), bytes);
+
+        /*
+         * ⚠ **PDF 는 감싸지 않는다.** 성적서·보고서는 이미 쪽이 나뉜 문서이고, 그것을 이미지처럼
+         *   대지에 채우면 첫 쪽만 늘어난다. 그 형식은 엔진의 문서 보기에 그대로 맡긴다.
+         */
+        if (format === 'pdf') {
+          return {
+            path: jobDir,
+            url: pathToFileURL(join(jobDir, labelFileName(format))).toString(),
+          };
+        }
+
+        const pagePath = join(jobDir, PRINT_PAGE_FILE);
+        writeFileSync(pagePath, renderPrintPage(labelFileName(format)), 'utf8');
+
+        return { path: jobDir, url: pathToFileURL(pagePath).toString() };
       },
-      discard: async (path) => rmSync(path, { force: true }),
+      discard: async (path) => rmSync(path, { force: true, recursive: true }),
     }),
   );
 
