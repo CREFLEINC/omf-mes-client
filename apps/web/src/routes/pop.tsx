@@ -14,6 +14,7 @@ import { ProductionResultScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { RunningChangeScreen } from '../screens/running-change/screen';
 import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';
+import { PackingResultScreen } from '../screens/packing-result/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
 import { WorkerAssignmentScreen } from '../screens/worker-assignment/screen';
@@ -250,4 +251,12 @@ export const popRoutes: RouteObject[] = [
    * `pop-identity` → `P-CO-01` 의 `worker-session` 순으로 읽고, 둘 다 비면 주소를 본다.
    */
   { path: '/pop/work-hold', element: <WorkHoldRegisterScreen /> },
+  /*
+   * P-04-01 — **매칭 스캔 화면**이라 스캐너를 든 손이 화면 앞에 선다. 관리웹 사이드바에
+   * 올리지 않는 이유는 앞의 둘과 같다.
+   *
+   * ⚠ **진입에 질의 문자열이 없다** — 이 화면은 납품라벨 스캔으로 스스로 출하를 정한다.
+   * 앞 화면이 무엇을 실어 주지 않아도 서고, 그래서 독립 진입이다(스펙 §1 「범위」).
+   */
+  { path: '/pop/packing', element: <PackingResultScreen /> },
 ];
