@@ -102,8 +102,8 @@ export const PrecheckGate = ({
 
   const inspections = useLatestInspections(
     equipmentId,
-    windows,
-    canAsk && assignments.isSuccess,
+    windows ?? [],
+    canAsk && assignments.isSuccess && windows !== null,
   );
   const breakdowns = useOpenBreakdownCount(equipmentId, canAsk);
 
@@ -119,6 +119,8 @@ export const PrecheckGate = ({
     if (equipmentId === null) return t.blocked.equipmentUnknown;
     if (workerNo.trim() === '') return t.blocked.workerMissing;
     if (policy.isError || assignments.isError || inspections.isError) return t.blocked.lookupFailed;
+    /* ⛔ 부여를 읽지 못한 것을 「점검 대상 아님」으로 넘기지 않는다. */
+    if (assignments.isSuccess && windows === null) return t.blocked.lookupFailed;
 
     return null;
   })();
@@ -214,7 +216,7 @@ export const PrecheckGate = ({
   };
 
   const openBreakdownCount = breakdowns.data?.page?.total ?? 0;
-  const isNotTargeted = windows.length === 0 && assignments.isSuccess;
+  const isNotTargeted = windows?.length === 0 && assignments.isSuccess;
 
   return (
     <main className="pop-shell precheck-gate" aria-labelledby={titleId}>
@@ -276,7 +278,7 @@ export const PrecheckGate = ({
         <p className="precheck-gate-scope">
           {t.history.scope(
             equipmentCode ?? t.history.equipmentUnknown,
-            windows[0]?.windowFrom ?? today,
+            windows?.[0]?.windowFrom ?? today,
           )}
         </p>
 

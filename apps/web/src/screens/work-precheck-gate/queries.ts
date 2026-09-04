@@ -126,7 +126,8 @@ export interface PrecheckTypeWindow {
 }
 
 /**
- * 부여 목록을 **유형별 주기 창**으로 접는다.
+ * 부여 목록을 **유형별 주기 창**으로 접는다. ⛔ 응답이 계약의 모양이 아니면 `null` —
+ * 「부여가 없다」와 같은 모양으로 두지 않는다.
  *
  * ⚠ 한 유형에 항목이 여럿 부여돼 있고 주기가 서로 다를 수 있다. 그때는 **가장 늦게 시작하는
  * 창**(=가장 좁은 창)을 쓴다 — 넓은 쪽을 쓰면 짧은 주기 항목의 지난 점검이 오늘 것으로
@@ -137,8 +138,16 @@ export interface PrecheckTypeWindow {
 export const toTypeWindows = (
   response: EquipmentInspectionItemAssignmentsResponse | undefined,
   today: string,
-): PrecheckTypeWindow[] => {
-  if (response === undefined) return [];
+): PrecheckTypeWindow[] | null => {
+  if (response === undefined) return null;
+
+  /*
+   * ⛔ **모양이 다르면 「부여 없음」으로 읽지 않는다.** 「부여가 없다」는 통과로 이어지는
+   *    판정이라, 읽지 못한 응답을 그 자리에 놓으면 **통제가 조용히 꺼진다**(F-6). 실측으로
+   *    목 서버가 이 경로를 쪽 목록 모양으로 답한 적이 있다.
+   */
+  if (!Array.isArray(response.effective)) return null;
+
   /* 부여가 어느 층에도 없으면 점검 대상이 아니다 — 빈 목록이 그 뜻이다. */
   if (response.resolvedFromLevelCode === 'NONE') return [];
 
