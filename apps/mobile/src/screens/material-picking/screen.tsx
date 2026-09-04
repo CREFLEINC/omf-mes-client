@@ -15,6 +15,7 @@ import {
   ISSUE_TYPE,
   canConfirmIssue,
   canPick,
+  isOpenOrder,
   isOutOfSequence,
   isOfOrder,
   issuedLinesOf,
@@ -99,6 +100,7 @@ export const MaterialPickingScreen = () => {
   const detail = usePickingOrder(orderId);
   const issueTypes = useCodeValues(ISSUE_TYPE);
 
+  const order = detail.data?.order ?? null;
   const lines = detail.data?.lines ?? [];
   const line = lines.find((each) => each.pickingLineId === lineId) ?? null;
   /*
@@ -543,6 +545,9 @@ export const MaterialPickingScreen = () => {
         {worker === null ? <p className="picking-out__note">{t.noWorker}</p> : null}
         {saveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
         {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
+        {order !== null && !isOpenOrder(order) ? (
+          <AlertBanner variant="error" title={t.orders.closed} />
+        ) : null}
         {alreadyIssued.size > 0 &&
         !lines.some((each) => issuableQtyOf(each, queued, alreadyIssued) > 0) ? (
           <AlertBanner variant="info" title={t.allIssued} />
@@ -554,7 +559,7 @@ export const MaterialPickingScreen = () => {
           disabled={
             busy ||
             !loaded ||
-            !canConfirmIssue(lines, worker !== null, queued, queuedIssues, alreadyIssued) ||
+            !canConfirmIssue(order, lines, worker !== null, queued, queuedIssues, alreadyIssued) ||
             issueTypeCode === null
           }
           onClick={() => void confirm()}

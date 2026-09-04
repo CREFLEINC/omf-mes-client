@@ -44,7 +44,7 @@ const line = (overrides: Partial<PickingLine> = {}): PickingLine =>
     ...overrides,
   }) as PickingLine;
 
-const order = (): PickingOrder =>
+const order = (overrides: Partial<PickingOrder> = {}): PickingOrder =>
   ({
     pickingOrderId: 7,
     pickingOrderNo: 'PK-2026-000077',
@@ -52,7 +52,8 @@ const order = (): PickingOrder =>
     sourceDocumentTypeCode: 'MATERIAL_ISSUE_REQUEST',
     sourceDocumentId: 3,
     warehouseId: 11,
-    statusCode: 'ASSIGNED',
+    statusCode: 'REGISTERED',
+    ...overrides,
   }) as PickingOrder;
 
 describe('집을 수 있는 라인인가', () => {
@@ -154,17 +155,40 @@ describe('피킹 가능 여부', () => {
 describe('출고 확정 가능 여부', () => {
   /* 모자라면 부분 출고로 두고 부족분을 남긴다. */
   it('한 건이라도 집었으면 확정한다', () => {
-    expect(canConfirmIssue([line({ pickedQty: 50 }), line({ pickingLineId: 42 })], true)).toBe(
-      true,
-    );
+    expect(
+      canConfirmIssue(order(), [line({ pickedQty: 50 }), line({ pickingLineId: 42 })], true),
+    ).toBe(true);
   });
 
   it('아무것도 안 집었으면 확정할 수 없다', () => {
-    expect(canConfirmIssue([line(), line({ pickingLineId: 42 })], true)).toBe(false);
+    expect(canConfirmIssue(order(), [line(), line({ pickingLineId: 42 })], true)).toBe(false);
   });
 
   it('사번이 없으면 확정할 수 없다', () => {
-    expect(canConfirmIssue([line({ pickedQty: 50 })], false)).toBe(false);
+    expect(canConfirmIssue(order(), [line({ pickedQty: 50 })], false)).toBe(false);
+  });
+
+  /*
+   * 라인의 집은 양이 출고 뒤에도 그대로 내려와, 전기된 지시를 다시 열면 같은 수량이 한 번 더
+   * 나간다. 단말이 기억하는 것으로는 재시작을 넘지 못한다.
+   */
+  it('이미 전기된 지시로는 확정할 수 없다', () => {
+    expect(canConfirmIssue(order({ statusCode: 'POSTED' }), [line({ pickedQty: 50 })], true)).toBe(
+      false,
+    );
+  });
+
+  it('취소 요청과 취소 완료도 확정할 수 없다', () => {
+    expect(
+      canConfirmIssue(order({ statusCode: 'CANCEL_REQUESTED' }), [line({ pickedQty: 50 })], true),
+    ).toBe(false);
+    expect(
+      canConfirmIssue(order({ statusCode: 'CANCELLED' }), [line({ pickedQty: 50 })], true),
+    ).toBe(false);
+  });
+
+  it('지시를 못 받았으면 확정할 수 없다', () => {
+    expect(canConfirmIssue(null, [line({ pickedQty: 50 })], true)).toBe(false);
   });
 });
 
@@ -293,8 +317,8 @@ describe('담긴 피킹', () => {
   it('담아 둔 것만 있어도 출고를 확정할 수 있다', () => {
     const picks = queuedPicksOf([entry(7, 41, 50)], 7);
 
-    expect(canConfirmIssue([line()], true)).toBe(false);
-    expect(canConfirmIssue([line()], true, picks)).toBe(true);
+    expect(canConfirmIssue(order(), [line()], true)).toBe(false);
+    expect(canConfirmIssue(order(), [line()], true, picks)).toBe(true);
   });
 
   it('출고에 담아 둔 만큼을 합쳐 싣는다', () => {
@@ -372,8 +396,8 @@ describe('이미 내보낸 양', () => {
   it('내보낼 것이 남지 않으면 확정할 수 없다', () => {
     const lines = [line({ pickedQty: 120 })];
 
-    expect(canConfirmIssue(lines, true, [], 0, new Map([[41, 120]]))).toBe(false);
-    expect(canConfirmIssue(lines, true, [], 0, new Map([[41, 50]]))).toBe(true);
+    expect(canConfirmIssue(order(), lines, true, [], 0, new Map([[41, 120]]))).toBe(false);
+    expect(canConfirmIssue(order(), lines, true, [], 0, new Map([[41, 50]]))).toBe(true);
   });
 
   it('출고에는 아직 내보내지 않은 만큼만 싣는다', () => {

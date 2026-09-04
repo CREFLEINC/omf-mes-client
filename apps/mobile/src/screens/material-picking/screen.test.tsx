@@ -75,15 +75,16 @@ const line = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const order = {
+const order = (overrides: Record<string, unknown> = {}) => ({
   pickingOrderId: 7,
   pickingOrderNo: 'PK-2026-000077',
   pickingTypeCode: 'PRODUCTION',
   sourceDocumentTypeCode: 'MATERIAL_ISSUE_REQUEST',
   sourceDocumentId: 3,
   warehouseId: 11,
-  statusCode: 'ASSIGNED',
-};
+  statusCode: 'REGISTERED',
+  ...overrides,
+});
 
 const codeValue = (code: string, nameKo: string, displayOrder: number) => ({
   code,
@@ -110,6 +111,8 @@ interface Options {
   pick?: Behaviour;
   issue?: Behaviour;
   issueTypes?: unknown[];
+  /** 전표 상태를 바꿔 이미 전기된 지시를 만든다. */
+  order?: ReturnType<typeof order>;
 }
 
 const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] => [
@@ -123,14 +126,14 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
   },
   {
     match: (req) => new URL(req.url).pathname === '/logistics/picking-orders',
-    respond: () => jsonResponse({ items: [order], page }),
+    respond: () => jsonResponse({ items: [options.order ?? order()], page }),
   },
   {
     /* 보낸 피킹을 서버가 기억한다. 기억하지 않으면 다시 조회해도 안 집은 값이 돌아온다. */
     match: (req) => new URL(req.url).pathname === '/logistics/picking-orders/7',
     respond: () =>
       jsonResponse({
-        pickingOrder: order,
+        pickingOrder: options.order ?? order(),
         lines: (options.lines ?? [line()]).map((each) => ({
           ...each,
           pickedQty: each.pickedQty + (serverPicked.get(each.pickingLineId) ?? 0),
@@ -177,6 +180,8 @@ const SignedIn = ({ children }: { children: ReactNode }) => {
 };
 
 interface Mounted {
+  /** 조회가 어떤 축을 실었는지 보려면 응답이 아니라 요청을 봐야 한다. */
+  asked: string[];
   picks: Request[];
   issues: Request[];
   /** 시험 도중에 갈아 끼운다 - 오프라인에 담아 둔 뒤 다시 붙었을 때를 재기 위해서다. */
@@ -252,16 +257,31 @@ const mount = (options: Options = {}): Mounted => {
     ...rest(options, serverPicked),
   ];
 
+  /* 조회가 어떤 축을 실었는지 보려면 응답이 아니라 요청을 봐야 한다. */
+  const asked: string[] = [];
+  const recording: StubRoute[] = routes.map((route) => ({
+    match: (req) => {
+      if (route.match(req)) {
+        asked.push(req.url);
+        return true;
+      }
+
+      return false;
+    },
+    respond: route.respond,
+  }));
+
   renderWithProviders(
     <MemoryRouter>
       <SignedIn>
         <MaterialPickingScreen />
       </SignedIn>
     </MemoryRouter>,
-    { fetch: createStubFetch(routes) },
+    { fetch: createStubFetch(recording) },
   );
 
   return {
+    asked,
     picks,
     issues,
     set: (next) => {
@@ -696,6 +716,37 @@ describe('자재 출고·피킹 화면', () => {
     expect(await screen.findByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeTruthy();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
     expect(sent.issues).toHaveLength(1);
+  });
+
+  /*
+   * 단말이 기억하는 것으로는 재시작을 넘지 못한다. 앱을 다시 켜거나 다른 단말로 열면 기억이
+   * 비어 있어, 전표 상태로 가르지 않으면 같은 수량이 한 번 더 나간다.
+   */
+  it('이미 전기된 지시로 들어오면 확정을 막고 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    const sent = mount({
+      order: order({ statusCode: 'POSTED' }),
+      lines: [line({ pickedQty: 120 })],
+    });
+    await chooseOrder(user);
+    await chooseIssueType(user);
+
+    expect(
+      await screen.findByText('이미 출고가 끝난 지시입니다. 다시 내보낼 수 없습니다.'),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
+    expect(sent.issues).toHaveLength(0);
+  });
+
+  /* 전기된 지시가 목록에 남으면 작업자가 그것을 연다. 서버에서 걸러 오게 한다. */
+  it('내 지시 목록은 아직 출고할 수 있는 것만 묻는다', async () => {
+    const sent = mount();
+    await screen.findByRole('button', { name: /PK-2026-000077/ });
+
+    const url = sent.asked.find((each) => each.includes('/logistics/picking-orders?'));
+
+    expect(url).toBeTruthy();
+    expect(new URL(url!).searchParams.get('statusCode')).toBe('REGISTERED');
   });
 
   /*
