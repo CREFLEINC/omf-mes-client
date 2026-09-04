@@ -193,12 +193,13 @@ export const RequestListPane = ({
        * (배치 규범 문서의 `.wide-table`). 넘침이 곧 가로 스크롤이 되는 상자는 디자인 시스템
        * `Table`이 이미 갖고 있다 — 우리가 만들지 않는다.
        */}
-      <div className="wide-table">
+      <div className="wide-table approval-inbox-table">
         <Table
           density="compact"
           columns={columns}
           rows={rows}
           getRowId={(row) => String(row.approvalRequestId)}
+          caption={t.panes.list}
           /* 0건을 바깥에서 가르지 않는다 — 가르면 표의 빈 자리가 닿을 수 없는 가지가 된다. */
           empty={emptySlot}
         />

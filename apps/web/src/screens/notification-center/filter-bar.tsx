@@ -52,7 +52,7 @@ export const NotificationFilterBar = ({
   const periodId = useId();
 
   return (
-    <div className="filter-bar">
+    <div className="filter-bar notification-center-filter">
       {/*
        * 기간은 **한 컨트롤**이다 — 시작·종료 두 칸이 아니라 `mode="range"` 하나다.
        * 주소 키(`from`·`to`)와 요청 인자는 그대로다. 바뀐 것은 고르는 수단뿐이다.
@@ -91,7 +91,7 @@ export const NotificationFilterBar = ({
        * ⚠ 정보 설계가 달라지는 점을 함께 적어 둔다 — 선택칸은 「전체」라는 말을 화면에 보이고
        * 체크상자는 보이지 않는다. 그 차이가 이 질문의 실질이다.
        */}
-      <div className="field-cell field-cell-unlabeled">
+      <div className="field-cell field-cell-unlabeled notification-center-unread-filter">
         <Checkbox
           checked={filters.unreadOnly}
           onChange={(event) => {

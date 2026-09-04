@@ -4,28 +4,42 @@ import { appRouter } from './index';
 import { popRoutes } from './pop';
 
 /**
- * POP 라우트가 **실제로 라우터에 붙어 있는지**를 지킨다.
+ * POP 라우트가 **관리웹 라우트 표에 섞여 들어가지 않는지**를 지킨다.
  *
- * `popRoutes`를 따로 두면 라우트 표와 라우터 사이에 「펼쳐 넣는다」는 한 단계가 생긴다.
- * 그 한 줄(`...popRoutes`)이 병합 중에 사라져도 타입 검사도 빌드도 통과한다 —
- * 배열은 여전히 옳고, 아무도 그것을 쓰지 않을 뿐이다. 증상은 런타임에 「POP 주소가
- * 관리웹 첫 화면으로 튕긴다」로만 나타난다(`*` 라우트가 `/`로 되돌린다).
+ * ⚠ **이 잣대는 전에 정반대를 지켰다.** `index.tsx`가 `...popRoutes`로 펼쳐 넣던 동안에는
+ * 그 한 줄이 병합 중에 사라지는 것이 사고였다. #752 가 그 줄을 뺀 뒤로는 **되돌아오는 것**이
+ * 사고다 — 관리웹 번들에 현장 단말 화면이 실리고, 브라우저에서 `/pop/...`이 관리웹 번들로
+ * 열려 검증 대상이 실제 POP 셸이 아니게 된다.
  *
- * 그래서 화면을 그리지 않고 **라우트 표의 모양만** 본다. 렌더까지 가면 POP 화면의
- * 데이터·셸 의존을 전부 세워야 해서, 정작 지키려던 「붙어 있는가」가 다른 실패에 묻힌다.
+ * 되돌아오는 길은 조용하다. 새 P- 화면을 `index.tsx`에 직접 붙이거나, 병합 중에 옛 줄이
+ * 되살아나도 타입 검사도 빌드도 통과한다. 그래서 화면을 그리지 않고 **라우트 표의 모양만**
+ * 본다.
+ *
+ * POP 라우트가 실제로 서 있는 곳은 POP 진입점이며, 그쪽 배선은 `app/pop-main.test.ts`가
+ * 지킨다.
  */
-describe('POP 라우트 편입', () => {
-  it('popRoutes의 모든 경로가 appRouter의 최상위 라우트로 서 있다', () => {
+describe('POP 라우트 분리', () => {
+  it('관리웹 라우터에 POP 경로가 하나도 없다', () => {
     const topLevelPaths = appRouter.routes.map((route) => route.path);
 
     expect(popRoutes.length).toBeGreaterThan(0);
     for (const { path } of popRoutes) {
-      expect(topLevelPaths).toContain(path);
+      expect(topLevelPaths).not.toContain(path);
     }
   });
 
   /**
-   * ⚠ **위 둘은 「배열에 든 것」만 본다** — 배열에서 라우트가 통째로 빠지면 아무 일도
+   * ⛔ **경로 앞머리로도 막는다.** 위 잣대는 `popRoutes`에 «든» 것만 본다 — 새 P- 화면을
+   * `pop.tsx`가 아니라 `index.tsx`에 직접 붙이면 배열에 없으므로 걸리지 않는다.
+   */
+  it('관리웹 라우터에 `/pop`으로 시작하는 주소가 없다', () => {
+    for (const route of appRouter.routes) {
+      expect(route.path ?? '').not.toMatch(/^\/pop(\/|$)/);
+    }
+  });
+
+  /**
+   * ⚠ **아래는 「배열에 든 것」만 본다** — 배열에서 라우트가 통째로 빠지면 아무 일도
    * 일어나지 않는다(실측: 지워도 타입 검사·시험 전건 통과). 주소가 사라진 것은 그 화면을
    * 여는 사람만 알게 되고, POP은 그 사람이 현장에 있다.
    *
@@ -49,6 +63,10 @@ describe('POP 라우트 편입', () => {
 
   it('P-04-03 재작업 실적 등록 주소가 서 있다', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/rework-results');
+  });
+
+  it('P-02-08 포장 작업 주소가 서 있다', () => {
+    expect(popRoutes.map(({ path }) => path)).toContain('/pop/packing-work');
   });
 
   it('POP 경로는 `/pop`으로 시작한다 — 관리웹 셸 주소와 섞이지 않는다', () => {

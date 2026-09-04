@@ -17,7 +17,7 @@ const t = messages.dispositionDecision;
 const TODAY = new Date(2026, 7, 12);
 const KST = 540;
 /** ⚠ 지어낸 자리표시다 — 처분 유형의 실제 값 목록은 아직 확정되지 않았다. */
-const CODE = 'CODE-A';
+const CODE = 'REWORK';
 
 type User = ReturnType<typeof userEvent.setup>;
 

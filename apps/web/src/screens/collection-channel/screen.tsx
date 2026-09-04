@@ -527,7 +527,7 @@ export const CollectionChannelScreen = () => {
         </div>
       )}
 
-      <div className="two-pane">
+      <div className="two-pane collection-channel-layout">
         <EquipmentPane
           items={equipmentItems}
           isLoading={equipments.isPending}

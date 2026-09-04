@@ -135,22 +135,28 @@ export const InspectionItemPane = ({
     }
 
     return (
-      <Table
-        density="compact"
-        columns={columns}
-        rows={items}
-        getRowId={(row) => String(row.equipmentInspectionItemId)}
-        empty={emptySlot}
-      />
+      <div className="equipment-master-table equipment-master-inspection-master-table">
+        <Table
+          density="compact"
+          caption={<span className="equipment-master-table-caption">{t.paneTitle}</span>}
+          columns={columns}
+          rows={items}
+          getRowId={(row) => String(row.equipmentInspectionItemId)}
+          empty={emptySlot}
+        />
+      </div>
     );
   };
 
   return (
-    <section className="pane" aria-label={t.paneTitle}>
-      <h3>{t.paneTitle}</h3>
+    <section
+      className="pane equipment-master-pane equipment-master-inspection-master-pane"
+      aria-label={t.paneTitle}
+    >
+      <h2 className="pane-title">{t.paneTitle}</h2>
       <p className="dialog-lead">{t.description}</p>
 
-      <div className="filter-bar">
+      <div className="filter-bar equipment-master-filter">
         <SearchInput
           label={t.searchLabel}
           placeholder={t.searchPlaceholder}
@@ -164,7 +170,7 @@ export const InspectionItemPane = ({
           value={draft.inspectionTypeCode}
           onChange={(value) => applyDraft({ inspectionTypeCode: value })}
         />
-        <div className="field-cell field-cell-unlabeled">
+        <div className="equipment-master-filter-footer">
           {/* 해제 축이라 변경 즉시 적용한다. */}
           <Checkbox
             checked={draft.includeInactive}
@@ -172,13 +178,13 @@ export const InspectionItemPane = ({
           >
             {messages.common.includeInactive}
           </Checkbox>
+          <div className="filter-actions">
+            <Button onClick={() => applyDraft()}>{messages.common.search}</Button>
+            <Button variant="outlined" onClick={onAdd}>
+              {t.addAction}
+            </Button>
+          </div>
         </div>
-        <Button className="field-cell-unlabeled" onClick={() => applyDraft()}>
-          {messages.common.search}
-        </Button>
-        <Button className="field-cell-unlabeled" variant="outlined" onClick={onAdd}>
-          {t.addAction}
-        </Button>
       </div>
 
       {listSlot()}

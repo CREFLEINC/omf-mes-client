@@ -32,7 +32,7 @@ const BLOCKED: DisposalReadyState = { kind: 'blocked', reason: '고른 줄이 �
 const FILLED_DRAFT: DisposalDraft = {
   codes: {
     issueType: 'SAMPLE_GI_TYPE_A',
-    sourceDocumentType: 'SAMPLE_SRC_TYPE_A',
+    sourceDocumentType: 'INBOUND_RECEIPT',
     reason: 'SAMPLE_GI_REASON_A',
   },
   issuedDate: '2026-08-11',
@@ -68,7 +68,7 @@ const READY_PARTNERS: DisposalPartnerCondition = 'ready';
 /** 값 목록이 확정된 상태. **셋을 다 채운다** — 하나만 비어도 판정이 「준비 중」으로 접힌다. */
 const FILLED_LISTS: CodeValueLists = {
   issueType: ['SAMPLE_GI_TYPE_A'],
-  sourceDocumentType: ['SAMPLE_SRC_TYPE_A'],
+  sourceDocumentType: ['INBOUND_RECEIPT'],
   reason: ['SAMPLE_GI_REASON_A'],
   receiptType: [],
   status: [],

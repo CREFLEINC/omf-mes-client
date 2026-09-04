@@ -37,11 +37,31 @@ const ENTRIES = [
   ['M-01-07 임시 사유', '/mdm/code-values?codeGroupCode=PUTAWAY_TASK_TEMPORARY_REASON', 1],
   ['M-01-13 대기 요청', '/app/approval-requests?targetTypeCode=INBOUND_LOT&targetId=8003', 1],
   ['M-02-01 생산LOT', '/trace/lots?lotNo=PLOT-2026-0031', 1],
+  [
+    'P-02-07 완료 생산LOT',
+    '/trace/lots?workOrderId=11001&lotTypeCode=PRODUCTION&completed=true',
+    2,
+  ],
+  [
+    'P-02-07 발행 현황',
+    '/app/document-issues/summary?targetTypeCode=LOT&targetIds=8101,8102&documentTypeCode=PRODUCTION_LOT_LABEL',
+    2,
+  ],
   ['M-02-01 다음 공정', '/production/work-orders?successorOfWorkOrderId=11001', 2],
   ['M-02-02 불량 기록', '/quality/defect-records?lotId=8102', 1],
-  ['M-04-01 오늘 출하', `/logistics/shipment-requests?shipDateFrom=${today()}&shipDateTo=${today()}`, 1],
+  [
+    'M-04-01 오늘 출하',
+    `/logistics/shipment-requests?shipDateFrom=${today()}&shipDateTo=${today()}`,
+    1,
+  ],
   ['M-04-01 제품 재고', '/inventory/balances?itemId=2003&includeZero=true', 2],
   ['M-04-03 포장 검색', '/inventory/handling-units?q=HU-2026-000058', 1],
+  ['W-04-06 원 출하', '/logistics/shipments?customerId=4002', 2],
+  ['W-04-06 불량창고 위치', '/mdm/locations?warehouseId=1003', 2],
+  ['W-04-06 반품 사유', '/mdm/code-values?codeGroupCode=GOODS_RECEIPT_REASON', 1],
+  ['W-04-07 판정 대기 대상', '/quality/disposition-candidates?warehouseId=1003', 2],
+  ['W-04-07 불량창고', '/mdm/warehouses?isDefect=true', 1],
+  ['W-04-07 심각도', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY', 1],
   ['M-05-01 설비', '/mdm/equipments', 2],
   ['M-05-01 점검 항목', '/mdm/equipments/5001/inspection-items', 3],
 ];
@@ -49,13 +69,24 @@ const ENTRIES = [
 /** 목록이 아닌 상세는 형태로 본다. */
 const DETAILS = [
   ['M-04-03 포장 내용물', '/inventory/handling-units/13001', (body) => body.contents.length >= 2],
-  ['M-01-04 품목명', '/mdm/items/2002', (body) => typeof body.item.itemName === 'string'],
+  [
+    'M-01-04 품목 계약 필드',
+    '/mdm/items/2002',
+    (body) =>
+      typeof body.item.itemName === 'string' &&
+      typeof body.item.lotControlled === 'boolean' &&
+      typeof body.item.serialControlTypeCode === 'string' &&
+      typeof body.item.inspectionRequired === 'boolean' &&
+      typeof body.item.negativeStockAllowed === 'boolean',
+  ],
   [
     'M-01-08 라인 표시값',
     '/logistics/picking-orders/16001',
     (body) =>
       body.lines.length >= 3 &&
-      body.lines.every((line) => typeof line.itemCode === 'string' && typeof line.lotNo === 'string') &&
+      body.lines.every(
+        (line) => typeof line.itemCode === 'string' && typeof line.lotNo === 'string',
+      ) &&
       body.lines.some((line) => line.held === true),
   ],
 ];
@@ -80,7 +111,7 @@ const reachable = async () => {
   return false;
 };
 
-const server = spawn('node', ['tools/mock/seeded.mjs'], {
+const server = spawn(process.execPath, ['tools/mock/seeded.mjs'], {
   env: { ...process.env, MOCK_PORT: String(PORT) },
   stdio: ['ignore', 'ignore', 'inherit'],
 });

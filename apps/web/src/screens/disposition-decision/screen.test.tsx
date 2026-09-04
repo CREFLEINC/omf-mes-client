@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -31,6 +31,10 @@ const selectRow = async (user: ReturnType<typeof userEvent.setup>): Promise<void
 describe('DispositionDecisionScreen 조회', () => {
   it('기간을 반열림으로 실어 조회한다 — 조건 없는 조회를 만들지 않는다', async () => {
     renderScreen();
+
+    expect(await screen.findByRole('heading', { name: t.panes.list })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.panes.detail })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: t.panes.decision })).toBeInTheDocument();
 
     await waitFor(() => {
       const url = requestedPaths().find((path) => path.startsWith('/quality/nonconformances?'));
@@ -112,16 +116,17 @@ describe('DispositionDecisionScreen 조회', () => {
     expect(requestsSent().every((request) => request.method === 'GET')).toBe(true);
   });
 
-  it('처분 선택지가 비면 저장을 잠그고 사유를 보인다(G-2)', async () => {
+  it('고정 OpenAPI의 처분 유형으로 판정을 입력할 수 있다', async () => {
     const { user } = renderScreen();
     await selectRow(user);
 
     const save = screen.getByRole('button', { name: t.actions.save });
     await waitFor(() => {
-      expect(save).toBeDisabled();
+      expect(save).toBeEnabled();
     });
-    expect(save).toHaveAccessibleDescription(
-      new RegExp(t.dispositionPending.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
-    );
+    const group = screen.getByRole('radiogroup', { name: t.fields.dispositionTypeCode });
+    expect(within(group).getAllByRole('radio')).toHaveLength(3);
+    expect(within(group).getByRole('radio', { name: 'REWORK' })).toBeEnabled();
+    expect(screen.queryByText(t.dispositionPending)).toBeNull();
   });
 });

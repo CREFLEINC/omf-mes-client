@@ -110,7 +110,7 @@ const mergePathsInto = (merged, next, nextSpecPath) => {
         ...collisions.map((key) => `  ${key}`),
         '',
         '같은 경로를 두 계약이 각각 정의했습니다. 어느 쪽이 정본인지는 설계 저장소가 정합니다.',
-        '설계 저장소에 [client→uiux] 질문 이슈를 올리세요.',
+        '정보 요청서를 만들어 사용자에게 전달을 부탁하세요.',
       ].join('\n'),
     );
   }
@@ -151,7 +151,7 @@ const mergeComponentsInto = (merged, next, nextSpecPath, foldedKeys) => {
         ...conflicts.map((key) => `  ${key}`),
         '',
         '설명·예시만 다른 것은 접지만, 형태가 다르면 어느 쪽을 골라도 다른 계약의 타입이 틀어집니다.',
-        '설계 저장소에 [client→uiux] 질문 이슈를 올리세요.',
+        '정보 요청서를 만들어 사용자에게 전달을 부탁하세요.',
       ].join('\n'),
     );
   }
@@ -204,7 +204,7 @@ const mergeRemainingInto = (merged, next, nextSpecPath) => {
         '앞 계약의 값을 그대로 두면 뒤 계약의 값이 말없이 사라집니다.',
         'servers 가 다르면 그 계약의 경로 전부가 잘못된 base 로 서빙되고,',
         'openapi 버전이 다르면 생성 타입이 조용히 틀어집니다.',
-        '설계 저장소에 [client→uiux] 질문 이슈를 올리세요.',
+        '정보 요청서를 만들어 사용자에게 전달을 부탁하세요.',
       ].join('\n'),
     );
   }

@@ -432,78 +432,82 @@ export const ShotConversionScreen = () => {
         </div>
       )}
 
-      <EnabledPane
-        state={enabled}
-        isLoading={enabledPolicies.isPending}
-        /*
-         * ⛔ **토큰을 «받았을 때»만 연다.** 창이 없는 조작이라 「잠시 뒤 다시 저장하세요」로
-         * 되돌아오면 사용자는 무엇을 기다리는지 알 수 없다 — 아예 누르지 못하게 한다.
-         *
-         * ⚠ **「불러오는 중인가」가 아니라 「받았는가」로 잰다.** 상세가 실패로 끝나면
-         * 불러오는 중은 아니지만 **토큰은 여전히 없다** — 그때 열어 두면 눌러도 저장이
-         * 시작조차 되지 않는다. 정한 적이 없으면(새로 만드는 길) 토큰이 필요 없어 잠그지 않는다.
-         */
-        isSaving={
-          enabledWrite.isSaving || (enabledTarget !== null && enabledDetail.data === undefined)
-        }
-        /*
-         * ⚠ **기준일로 좁힌 목록으로는 세지 않는다** — 그 날에 유효한 것이 없다고 정책이
-         * 없는 것은 아니다. 셀 수 없을 때는 `null` 을 주고, 받는 쪽이 **모르면 경고하지
-         * 않는다**(없다고 단정하지 않는다 · 공유계약 G-9).
-         */
-        ratioCount={filters.effectiveOn === '' ? rows.length : null}
-        onChange={(next) => enabledWrite.write(next)}
-        banner={
-          <SaveErrorBanner
-            error={enabledWrite.error}
-            onReload={enabledTarget === null ? undefined : () => void enabledDetail.refetch()}
-          />
-        }
-        loadError={
-          enabledPolicies.isError ? (
-            <LoadErrorBanner
-              error={toApiError(enabledPolicies.error)}
-              onRetry={() => void enabledPolicies.refetch()}
+      <div className="shot-conversion-workspace">
+        <EnabledPane
+          state={enabled}
+          isLoading={enabledPolicies.isPending}
+          /*
+           * ⛔ **토큰을 «받았을 때»만 연다.** 창이 없는 조작이라 「잠시 뒤 다시 저장하세요」로
+           * 되돌아오면 사용자는 무엇을 기다리는지 알 수 없다 — 아예 누르지 못하게 한다.
+           *
+           * ⚠ **「불러오는 중인가」가 아니라 「받았는가」로 잰다.** 상세가 실패로 끝나면
+           * 불러오는 중은 아니지만 **토큰은 여전히 없다** — 그때 열어 두면 눌러도 저장이
+           * 시작조차 되지 않는다. 정한 적이 없으면(새로 만드는 길) 토큰이 필요 없어 잠그지 않는다.
+           */
+          isSaving={
+            enabledWrite.isSaving || (enabledTarget !== null && enabledDetail.data === undefined)
+          }
+          /*
+           * ⚠ **기준일로 좁힌 목록으로는 세지 않는다** — 그 날에 유효한 것이 없다고 정책이
+           * 없는 것은 아니다. 셀 수 없을 때는 `null` 을 주고, 받는 쪽이 **모르면 경고하지
+           * 않는다**(없다고 단정하지 않는다 · 공유계약 G-9).
+           */
+          ratioCount={filters.effectiveOn === '' ? rows.length : null}
+          onChange={(next) => enabledWrite.write(next)}
+          banner={
+            <SaveErrorBanner
+              error={enabledWrite.error}
+              onReload={enabledTarget === null ? undefined : () => void enabledDetail.refetch()}
             />
-          ) : null
-        }
-      />
+          }
+          loadError={
+            enabledPolicies.isError ? (
+              <LoadErrorBanner
+                error={toApiError(enabledPolicies.error)}
+                onRetry={() => void enabledPolicies.refetch()}
+              />
+            ) : null
+          }
+        />
 
-      <RatioListPane
-        items={rows}
-        isLoading={ratios.isPending}
-        /*
-         * ⛔ **여기서 잘림을 판정하지 않는다** — 표가 그 일을 이미 한다(`total > items.length`).
-         * 두 곳에서 판정하면 한쪽을 고쳐도 다른 쪽이 덮어 주어 고장이 드러나지 않는다.
-         */
-        total={ratios.data?.page.total ?? null}
-        appliedFilters={filters}
-        onApplyFilters={setFilters}
-        lookups={lookups}
-        today={todayText()}
-        onAdd={openCreate}
-        onEdit={openEdit}
-        onEnd={openEnd}
-        loadError={loadError}
-      />
+        <div className="shot-conversion-main-grid">
+          <RatioListPane
+            items={rows}
+            isLoading={ratios.isPending}
+            /*
+             * ⛔ **여기서 잘림을 판정하지 않는다** — 표가 그 일을 이미 한다(`total > items.length`).
+             * 두 곳에서 판정하면 한쪽을 고쳐도 다른 쪽이 덮어 주어 고장이 드러나지 않는다.
+             */
+            total={ratios.data?.page.total ?? null}
+            appliedFilters={filters}
+            onApplyFilters={setFilters}
+            lookups={lookups}
+            today={todayText()}
+            onAdd={openCreate}
+            onEdit={openEdit}
+            onEnd={openEnd}
+            loadError={loadError}
+          />
 
-      <PreviewPane
-        toolId={preview.toolId}
-        onChangeTool={(toolId) => setPreview((prev) => ({ ...prev, toolId }))}
-        itemId={preview.itemId}
-        onChangeItem={(itemId) => setPreview((prev) => ({ ...prev, itemId }))}
-        processId={preview.processId}
-        onChangeProcess={(processId) => setPreview((prev) => ({ ...prev, processId }))}
-        quantity={preview.quantity}
-        onChangeQuantity={(quantity) => setPreview((prev) => ({ ...prev, quantity }))}
-        toolOptions={selectableLookupOptions(toolSource, preview.toolId)}
-        itemOptions={selectableLookupOptions(items, preview.itemId)}
-        processOptions={selectableLookupOptions(processes, preview.processId)}
-        tool={selectedTool}
-        effective={effective.data ?? null}
-        isLoading={effective.isPending}
-        isError={effective.isError}
-      />
+          <PreviewPane
+            toolId={preview.toolId}
+            onChangeTool={(toolId) => setPreview((prev) => ({ ...prev, toolId }))}
+            itemId={preview.itemId}
+            onChangeItem={(itemId) => setPreview((prev) => ({ ...prev, itemId }))}
+            processId={preview.processId}
+            onChangeProcess={(processId) => setPreview((prev) => ({ ...prev, processId }))}
+            quantity={preview.quantity}
+            onChangeQuantity={(quantity) => setPreview((prev) => ({ ...prev, quantity }))}
+            toolOptions={selectableLookupOptions(toolSource, preview.toolId)}
+            itemOptions={selectableLookupOptions(items, preview.itemId)}
+            processOptions={selectableLookupOptions(processes, preview.processId)}
+            tool={selectedTool}
+            effective={effective.data ?? null}
+            isLoading={effective.isPending}
+            isError={effective.isError}
+          />
+        </div>
+      </div>
 
       {ending !== null && (
         <EndPolicyDialog

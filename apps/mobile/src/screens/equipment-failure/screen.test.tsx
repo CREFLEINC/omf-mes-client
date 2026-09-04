@@ -9,6 +9,8 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { EquipmentFailureScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
 vi.mock('../../patterns/photo-capture', () => ({
   capturePhoto: () => Promise.resolve({ type: 'photo', uri: 'file:///syn.jpg' }),
@@ -26,6 +28,10 @@ vi.mock('../../patterns/photo-capture', () => ({
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -102,6 +108,7 @@ const scan = (code: string) => {
 };
 
 beforeEach(() => {
+  held.failWrite = null;
   store.clear();
 });
 
@@ -563,5 +570,51 @@ describe('설비 고장 보고 화면', () => {
     expect(screen.queryByText('보고를 담아 두었습니다')).not.toBeInTheDocument();
     expect(screen.queryByText('고장을 보고했습니다')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '되돌아온 기록 보기' })).toBeInTheDocument();
+  });
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 상태로 잠그면 다시 그리기 전의 연타를 놓쳐, 같은 고장이
+   * 두 건으로 서고 설비담당이 두 번 불려 간다.
+   */
+  it('같은 틱에 고장 보고를 세 번 눌러도 한 건만 담긴다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
+
+    const button = screen.getByRole('button', { name: '고장 보고' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await waitFor(() => {
+      expect(store.get('outbox')).toBeDefined();
+    });
+
+    const queued = JSON.parse(store.get('outbox') ?? '[]') as { path: string }[];
+
+    expect(queued.filter((item) => item.path === '/maintenance/breakdowns')).toHaveLength(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 보고된 줄 안다. */
+  it('담아 두지 못하면 보고되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('설비 스캔');
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '고장 보고' }));
+
+    expect(await screen.findByText('보고를 담아 두지 못했습니다')).toBeInTheDocument();
+    expect(store.get('outbox')).toBeUndefined();
   });
 });

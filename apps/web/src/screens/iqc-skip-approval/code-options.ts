@@ -3,31 +3,17 @@ import { messages } from '@omf-mes/i18n';
 import type { SelectOption } from './types';
 
 /**
- * 값 목록이 확정되지 않은 코드를 한 파일에 격리한다.
- *
- * **값을 지어내지 않는 것이 이 파일의 목적이다.** 화면이 그럴듯한 예시로 메우면 사용자는
- * 고를 수 있다고 믿고 고르는데 서버는 그 값을 모른다. 계약의 `@example` 값도 심지 않는다 —
- * 그것은 예시이지 확정이 아니다.
- *
- * **이 화면에서는 잠기는 범위가 다르다.** 앞선 화면(W-CO-09)에서 승인 유형은 조건 하나였지만
- * 여기서는 **화면이 자기 대상을 좁히는 유일한 축**이다. 그래도 **아무것도 잠그지 않는다** —
- * 근거는 `screen.tsx`의 G1 주석에 있다.
- *
- * 추적: 승인 유형·상태 값 목록 미확정 — **`omf-mes#64`**. 비공개 저장소이므로 번호로만 참조한다.
- *
- * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
+ * 긴급 IQC 생략은 고정 OpenAPI의 `IQC_SKIP` 승인 유형만 조회한다. 요청 상태는 운영 공통코드
+ * 조회 대상이라 값 목록을 발명하지 않고 비워 둔다.
  */
 
 /**
  * 긴급 IQC 생략의 **승인 유형 코드** — 이 화면의 정체이자 유일한 고정 축.
  *
- * **값이 오면 이 한 줄만 채우면 된다.** 조회는 이 값을 인자로 받고(`filters.ts`) 안내는
- * 이 값으로 갈린다(`typePendingNote`) — 채우는 순간 조건이 실리고 안내가 사라진다.
- *
  * `string | null`로 넓혀 두는 것은 의도다. `null` 리터럴로 좁으면 「값이 있을 때」를 다루는
  * 코드가 닿을 수 없는 가지로 보이고, 그러면 전환을 재는 시험이 성립하지 않는다.
  */
-export const IQC_SKIP_APPROVAL_TYPE_CODE: string | null = null;
+export const IQC_SKIP_APPROVAL_TYPE_CODE: string | null = 'IQC_SKIP';
 
 /** 요청 상태 값 목록 — 같은 사정이다. 계약이 「값 목록은 공통코드 소관」이라고 적었다. */
 export const PLACEHOLDER_REQUEST_STATUS_CODES: readonly string[] = [];

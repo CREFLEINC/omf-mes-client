@@ -25,11 +25,11 @@ export type Verdict = typeof NORMAL | typeof OVER | typeof UNDER;
  * 분할 납품의 마지막 회차가 부족으로 읽히고, 누적이 총량을 넘긴 것도 부족으로 읽힌다.
  * 뒤엣것이 더 무겁다 - 서버가 거부할 초과인데 화면이 입하 오류 등록으로 보낸다.
  */
-export const remainingQtyOf = (line: PurchaseOrderLine): number =>
-  line.orderedQty - line.receivedQty;
+export const remainingQtyOf = (line: PurchaseOrderLine, queuedQty = 0): number =>
+  line.orderedQty - line.receivedQty - queuedQty;
 
-export const verdictOf = (line: PurchaseOrderLine, arrivedQty: number): Verdict => {
-  const remaining = remainingQtyOf(line);
+export const verdictOf = (line: PurchaseOrderLine, arrivedQty: number, queuedQty = 0): Verdict => {
+  const remaining = remainingQtyOf(line, queuedQty);
 
   if (arrivedQty > remaining + line.toleranceOverQty) {
     return OVER;
@@ -37,6 +37,38 @@ export const verdictOf = (line: PurchaseOrderLine, arrivedQty: number): Verdict 
 
   return arrivedQty < remaining - line.toleranceUnderQty ? UNDER : NORMAL;
 };
+
+/** 큐에서 이 화면이 셈에 넣을 만큼만 읽는다. 큐는 화면을 가리지 않고 한 줄로 쌓인다. */
+export interface QueuedReceipt {
+  path: string;
+  body: unknown;
+}
+
+export const RECEIPT_PATH = '/logistics/inbound-receipts';
+
+/**
+ * 담긴 채 아직 못 간 입하 수량.
+ *
+ * 서버가 주는 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 오프라인에서 같은 발주
+ * 라인에 두 번 적었을 때 둘 다 남은 예정 안으로 읽혀, 서버가 거부할 초과가 정상으로 보인다.
+ */
+export const queuedQtyOf = (entries: QueuedReceipt[], purchaseOrderLineId: number): number =>
+  entries
+    .filter((entry) => entry.path === RECEIPT_PATH)
+    .flatMap((entry) => {
+      const body = entry.body as { lines?: unknown } | null;
+
+      return Array.isArray(body?.lines) ? body.lines : [];
+    })
+    .reduce((sum: number, raw) => {
+      const line = raw as { purchaseOrderLineId?: unknown; receivedQty?: unknown };
+
+      if (line.purchaseOrderLineId !== purchaseOrderLineId) {
+        return sum;
+      }
+
+      return sum + (typeof line.receivedQty === 'number' ? line.receivedQty : 0);
+    }, 0);
 
 export type QtyProblem = 'empty' | 'notNumber' | 'notPositive';
 
@@ -82,6 +114,17 @@ export interface ReceiptDraft {
   substituteLotReasonCode: string;
   purchaseOrder: PurchaseOrder | null;
   purchaseOrderLine: PurchaseOrderLine | null;
+  /**
+   * 발주 없이 도착한 건인가.
+   *
+   * 발주가 없으면 공급사도 품목도 단위도 승계할 곳이 없어 담당자가 고른다. 발주를 고르지
+   * 않은 것과 무발주로 넣겠다는 것은 다른 상태다 - 앞엣것은 아직 안 고른 것이고 뒤엣것은
+   * 고를 발주가 없다는 뜻이라, 하나로 뭉치면 덜 고른 채로 등록이 열린다.
+   */
+  unordered: boolean;
+  supplierId: number | null;
+  itemId: number | null;
+  uomId: number | null;
   deliveryNoteNo: string;
   receivedQty: string;
   packageCount: string;
@@ -107,7 +150,36 @@ export const canSubmit = (draft: ReceiptDraft, hasWorker: boolean): boolean => {
     return false;
   }
 
+  /*
+   * 무발주는 승계할 곳이 없어 셋을 사람이 고른다. 하나라도 비면 서버가 거부하는데, 그 거부는
+   * 담아 둔 뒤에야 오므로 화면에서 막는다.
+   */
+  if (draft.unordered) {
+    return draft.supplierId !== null && draft.itemId !== null && draft.uomId !== null;
+  }
+
   return draft.purchaseOrder !== null && draft.purchaseOrderLine !== null;
+};
+
+/** 이 건이 실을 품목·단위·공급사. 발주가 있으면 승계하고 없으면 고른 값을 쓴다. */
+export interface ReceiptSource {
+  itemId: number;
+  uomId: number;
+  supplierId: number;
+}
+
+export const sourceOf = (draft: ReceiptDraft): ReceiptSource | null => {
+  if (draft.unordered) {
+    return draft.supplierId === null || draft.itemId === null || draft.uomId === null
+      ? null
+      : { itemId: draft.itemId, uomId: draft.uomId, supplierId: draft.supplierId };
+  }
+
+  const line = draft.purchaseOrderLine;
+
+  return line === null || draft.purchaseOrder === null
+    ? null
+    : { itemId: line.itemId, uomId: line.uomId, supplierId: draft.purchaseOrder.supplierId };
 };
 
 const optional = (value: string): string | null => (value.trim() === '' ? null : value.trim());
@@ -154,7 +226,7 @@ export const toOutboxDraft = (
     workerNo,
     idempotencyKey: createIdempotencyKey(),
     method: 'POST',
-    path: '/logistics/inbound-receipts',
+    path: RECEIPT_PATH,
     body,
     occurredAt,
     confirmation: 'pending',

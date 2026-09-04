@@ -1,7 +1,6 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
-import { popRoutes } from './pop';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
@@ -45,6 +44,8 @@ import { LotStatusTransitionScreen } from '../screens/lot-status-transition/scre
 import { MasterChangeScreen } from '../screens/master-change/screen';
 import { NoticeScreen } from '../screens/notice/screen';
 import { NotificationCenterScreen } from '../screens/notification-center/screen';
+import { DispositionRequestScreen } from '../screens/disposition-request/screen';
+import { ReturnReceiptScreen } from '../screens/return-receipt/screen';
 import { OqcInspectionScreen } from '../screens/oqc-inspection/screen';
 import { OverReceiptSplitScreen } from '../screens/over-receipt-split/screen';
 import { PasswordChangeScreen } from '../screens/password-change/screen';
@@ -551,6 +552,17 @@ export const appRouter = createBrowserRouter([
        * 업무 순서(예정 목록 → 이 화면 → 출하 처리)와 별개이며, 그 차례는 사이드바가 든다.
        */
       { path: 'shipment/oqc-inspection', element: <OqcInspectionScreen /> },
+      /*
+       * W-04-07 — 같은 규칙(사이드바 섹션)이다. 계약 경로는 `/quality/**`이지만 IA가 이 화면을
+       * 「출하 > 반품·재고」에 두었다. 이 화면은 부적합을 등록하고 판정을 «의뢰»만 한다 — 판정 자체는
+       * `quality/dispositions`(W-03-10)이고, 이 화면의 「판정 결과 보기」가 그리로 연다.
+       */
+      { path: 'shipment/disposition-requests', element: <DispositionRequestScreen /> },
+      /*
+       * W-04-06 — 같은 규칙(사이드바 섹션)이다. 입고 계약 경로는 `/logistics/goods-receipts`지만 IA가
+       * 이 화면을 「출하 > 반품·재고」에 두었다 — 확정된 출하가 돌아오는 유일한 입구라 출하 섹션이다.
+       */
+      { path: 'shipment/return-receipts', element: <ReturnReceiptScreen /> },
     ],
   },
   /*
@@ -576,11 +588,15 @@ export const appRouter = createBrowserRouter([
    */
   { path: '/login', element: <LoginScreen /> },
   /*
-   * POP(현장 단말) 화면. 표는 `./pop`이 들고 여기서는 펼치기만 한다 — POP은 관리웹의 한
-   * 구역이 아니라 다른 프로그램이고, 라우트의 소유도 그쪽에 있다.
+   * ⛔ **POP(현장 단말) 화면은 이 표에 없다.** POP은 관리웹의 한 구역이 아니라 다른
+   * 프로그램이고, 라우트 표(`routes/pop.tsx`)도 진입점(`app/pop-main.tsx`)도 번들도
+   * 그쪽이 따로 갖는다 — 모바일(`apps/mobile`)이 자기 표를 갖는 것과 같은 형태다.
    *
-   * ⛔ **새 P- 화면을 이 파일에 직접 추가하지 않는다.** `routes/pop.tsx`에만 붙인다.
+   * 여기서 펼쳐 넣으면 관리웹 번들에 현장 단말 화면 전부가 실리고, 브라우저에서 `/pop/...`이
+   * 관리웹 번들로 열려 **검증 대상이 실제 POP 셸이 아니게 된다**(#752).
+   *
+   * ⛔ **새 P- 화면을 이 파일에 추가하지 않는다.** `routes/pop.tsx`에만 붙인다.
+   * 개발 중 브라우저로 POP 화면을 여는 길은 `pnpm --filter @omf-mes/web dev:pop`이다.
    */
-  ...popRoutes,
   { path: '*', element: <Navigate to="/" replace /> },
 ]);

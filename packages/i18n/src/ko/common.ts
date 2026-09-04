@@ -19,6 +19,14 @@ export const common = {
     unsent: (count: number) => `미동기 ${String(count)}`,
     /** 되돌아온 것은 기다려도 가지 않는다. 미동기와 같은 셈에 넣으면 갈 것으로 읽힌다. */
     returned: (count: number) => `되돌아옴 ${String(count)}`,
+    /*
+     * 자동 재전송을 멈춘 상태. ⛔ **「사라졌다」로 읽히면 안 된다** — 담긴 것은 그대로 있고
+     * 보내기만 멈춘 것이라, 본문이 그 사실을 먼저 말한다.
+     */
+    stalledTitle: '서버가 계속 받지 않습니다',
+    stalledBody:
+      '담긴 것은 그대로 남아 있습니다. 서버 상태를 확인한 뒤 「다시 보내기」를 누르세요.',
+    stalledRetry: '다시 보내기',
   },
   reference: {
     empty: '—',

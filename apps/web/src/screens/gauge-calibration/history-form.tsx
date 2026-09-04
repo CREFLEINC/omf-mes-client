@@ -1,4 +1,4 @@
-import { AlertBanner, Button, DatePicker, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, DatePicker, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -82,7 +82,7 @@ export const HistoryForm = ({
         </AlertBanner>
       </div>
 
-      <div className="form-grid">
+      <div className="form-grid gauge-calibration-form-grid">
         <SelectField
           label={t.form.equipment}
           options={equipmentOptions}
@@ -239,6 +239,21 @@ export const HistoryForm = ({
               set({ remarks: event.target.value });
             }}
           />
+        </div>
+
+        {/*
+         * 계약 필수(2026-09-02 사용자 결정). 사용 가부 판정이 이력 유형 문자열이 아니라 이 값과
+         * 해제 시각을 읽는다(W-05-11 §5-2) — 그래서 유형과 별개로 사람이 켠다. 기본은 꺼짐이다.
+         */}
+        <div className="field-cell form-grid-full">
+          <Switch
+            label={t.form.blocksUse}
+            checked={draft.blocksUse}
+            onChange={(event) => {
+              set({ blocksUse: event.target.checked });
+            }}
+          />
+          <span className="field-note">{t.form.blocksUseNote}</span>
         </div>
       </div>
 

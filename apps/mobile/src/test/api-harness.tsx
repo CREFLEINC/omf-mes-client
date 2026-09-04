@@ -52,7 +52,17 @@ export const createStubFetch =
 
 export interface ProviderOptions {
   fetch: StubFetch;
+  /**
+   * 여러 번 렌더하는 사이에 캐시를 이어 붙일 때 쓴다.
+   *
+   * 기본은 렌더마다 새 캐시다. 앱에서 화면을 오가는 것은 캐시를 버리지 않으므로, 다시 들어온
+   * 화면이 낡은 응답을 보는 자리는 같은 캐시를 넘겨야 잴 수 있다.
+   */
+  queryClient?: QueryClient;
 }
+
+export const createTestQueryClient = (): QueryClient =>
+  new QueryClient({ defaultOptions: appQueryDefaults });
 
 export type ProvidedRenderHookResult<TResult> = RenderHookResult<TResult, unknown> & {
   apiClient: ApiClient;
@@ -65,8 +75,8 @@ export type ProvidedRenderHookResult<TResult> = RenderHookResult<TResult, unknow
  * 을 0 으로 덮으면 앱보다 자주 다시 조회하게 되어, 낡은 응답이 화면에 남는 실패가 시험에
  * 잡히지 않는다 — 다시 조회해야 하는 자리는 화면이 스스로 정하게 두고 여기서 덮지 않는다.
  */
-const createProviders = (fetch: StubFetch) => {
-  const queryClient = new QueryClient({ defaultOptions: appQueryDefaults });
+const createProviders = (fetch: StubFetch, shared?: QueryClient) => {
+  const queryClient = shared ?? createTestQueryClient();
   const apiClient = createApiClient({ baseUrl: TEST_BASE_URL, fetch });
 
   const Providers = ({ children }: { children: ReactNode }): ReactNode => (
@@ -92,7 +102,7 @@ export const renderHookWithProviders = <TResult,>(
   hook: () => TResult,
   options: ProviderOptions,
 ): ProvidedRenderHookResult<TResult> => {
-  const { apiClient, Providers } = createProviders(options.fetch);
+  const { apiClient, Providers } = createProviders(options.fetch, options.queryClient);
   const result = renderHook(hook, { wrapper: Providers });
 
   return { ...result, apiClient };
@@ -105,7 +115,7 @@ export const renderWithProviders = (
   ui: ReactNode,
   options: ProviderOptions,
 ): ProvidedRenderResult => {
-  const { apiClient, Providers } = createProviders(options.fetch);
+  const { apiClient, Providers } = createProviders(options.fetch, options.queryClient);
   const result = render(<Providers>{ui}</Providers>);
 
   return { ...result, apiClient };

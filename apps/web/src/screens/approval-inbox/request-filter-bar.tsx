@@ -38,8 +38,8 @@ export interface RequestFilterBarProps {
  * 방출하므로 이 칸을 거친 역전은 생기지 않는다. 그래도 주소로 들어온 한쪽만의 구간은
  * 조건으로 살아 있다 — 그 표기는 조건 칩이 맡는다(`filters.ts`).
  *
- * **승인 유형·상태 선택지는 비어 있다**(값 목록 미확정). 값을 지어내지 않고, 왜 비어 있는지를
- * `aria-describedby`로 이어 붙인다.
+ * **승인 유형은 고정 OpenAPI enum을 쓰고, 상태 선택지는 비어 있다.** 운영
+ * 공통코드인 상태를 지어내지 않고, 왜 비어 있는지를 `aria-describedby`로 이어 붙인다.
  *
  * 이 화면 슬라이스가 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
@@ -114,7 +114,7 @@ export const RequestFilterBar = ({
 
   return (
     <>
-      <div className="filter-bar">
+      <div className="filter-bar approval-inbox-filter">
         <SelectField
           label={t.fields.approvalTypeCode}
           options={optionsOf(approvalTypeOptions)}
@@ -178,7 +178,7 @@ export const RequestFilterBar = ({
          * 조회와 초기화는 짝이라 함께 줄바꿈되게 묶는다(배치 규범 2-1).
          * 조건 없이도 조회가 열려 있다 — 이 화면은 들어오자마자 내 결재 대기를 보여야 한다.
          */}
-        <div className="field-cell field-cell-unlabeled">
+        <div className="field-cell field-cell-unlabeled approval-inbox-filter-actions">
           <div className="filter-actions">
             <Button onClick={search}>{messages.common.search}</Button>
             <Button variant="outlined" onClick={reset}>
@@ -189,7 +189,7 @@ export const RequestFilterBar = ({
       </div>
 
       {chips.length > 0 && (
-        <div className="filter-bar">
+        <div className="filter-bar approval-inbox-filter-chips">
           {chips.map((chip) => (
             <Chip
               key={chip.key}

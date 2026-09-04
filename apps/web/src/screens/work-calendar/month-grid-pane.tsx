@@ -111,6 +111,7 @@ export const MonthGridPane = ({
       <div className="wide-table">
         <Table
           density="compact"
+          caption={<span className="work-calendar-table-caption">{t.title}</span>}
           columns={columns}
           rows={buildMonthWeeks(yearMonth)}
           getRowId={(week) => week.key}
@@ -120,9 +121,10 @@ export const MonthGridPane = ({
   };
 
   return (
-    <section className="pane" aria-label={t.title}>
-      <div className="filter-bar">
-        <div className="field-cell field-cell-unlabeled">
+    <section className="pane work-calendar-pane work-calendar-grid-pane" aria-label={t.title}>
+      <h2 className="pane-title">{t.title}</h2>
+      <div className="work-calendar-month-toolbar">
+        <div className="work-calendar-month-navigation">
           <div className="filter-actions">
             <Button variant="outlined" onClick={() => onChangeMonth(shiftMonth(yearMonth, -1))}>
               {t.previousMonth}
@@ -131,22 +133,16 @@ export const MonthGridPane = ({
               {t.nextMonth}
             </Button>
           </div>
-        </div>
-        {/* 지금 무슨 달을 보고 있는지 — 앞뒤로 옮기다 보면 금세 잃는다. */}
-        <div className="field-cell field-cell-unlabeled">
+          {/* 지금 무슨 달을 보고 있는지 — 앞뒤로 옮기다 보면 금세 잃는다. */}
           <strong>{t.monthLabel(yearMonth.year, yearMonth.month)}</strong>
         </div>
         {calendarName !== null && (
-          <div className="field-cell field-cell-unlabeled">
+          <div className="work-calendar-month-context">
             <span className="field-note">{calendarName}</span>
-          </div>
-        )}
-        {/*
-         * ⭐ **수정은 고른 캘린더의 것이다** — 목록 줄마다 단추를 세우지 않고 여기 한 자리에
-         * 둔다. 무엇을 고치는지가 옆의 이름으로 드러난다.
-         */}
-        {calendarName !== null && (
-          <div className="field-cell field-cell-unlabeled">
+            {/*
+             * ⭐ **수정은 고른 캘린더의 것이다** — 목록 줄마다 단추를 세우지 않고 여기 한 자리에
+             * 둔다. 무엇을 고치는지가 옆의 이름으로 드러난다.
+             */}
             <div className="filter-actions">
               <Button variant="outlined" onClick={onBulkApply}>
                 {bulkText.open}

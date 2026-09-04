@@ -37,9 +37,9 @@ export interface SelectOption {
  * (`tabs.ts`가 소유한다) 쪽은 조건이 바뀔 때마다 되돌아가는 별개의 값이다.
  */
 export interface InboxFilters {
-  /** 승인 유형 코드. 값 목록이 확정되지 않아 지금은 고를 선택지가 없다(`code-options.ts`). */
+  /** 승인 유형 코드. 고정 OpenAPI가 닫은 enum을 `code-options.ts`에서 선택지로 제공한다. */
   approvalTypeCode: string;
-  /** 요청 상태 코드. 같은 위. */
+  /** 요청 상태 코드. 운영 공통코드 목록은 아직 비어 있다. */
   statusCode: string;
   /** 상신일 구간 시작. 계약이 `format: date`라 `YYYY-MM-DD` 그대로 나간다. */
   from: string;
@@ -63,7 +63,7 @@ export interface InboxFilters {
 export interface RequestRow {
   approvalRequestId: number;
   approvalRequestNo: string;
-  /** 코드 문자열 그대로. 값 목록이 확정되면 사람이 읽는 이름이 이 자리에 온다(`omf-mes#64`). */
+  /** 고정 OpenAPI의 코드 문자열 그대로. */
   approvalTypeCode: string;
   requesterName: string;
   /** `2026-08-06 09:12`. **시각까지 담는다** — 계약이 이 값을 `date-time`으로 둔다. */

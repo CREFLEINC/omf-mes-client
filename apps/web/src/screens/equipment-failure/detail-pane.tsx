@@ -22,7 +22,7 @@ interface ReadOnlyRowProps {
 
 /** 현장이 적은 칸. **입력칸으로 그리지 않는다** — 고칠 수 있을 것처럼 보이면 안 된다. */
 const ReadOnlyRow = ({ label, value }: ReadOnlyRowProps) => (
-  <div className="field-cell">
+  <div className="field-cell equipment-failure-readonly">
     <span className="field-label">{label}</span>
     <span>{value}</span>
   </div>

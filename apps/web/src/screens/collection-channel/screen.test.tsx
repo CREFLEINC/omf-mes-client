@@ -160,6 +160,12 @@ describe('W-05-07 수집 채널 매핑 — 첫 조회', () => {
 
     expect(await screen.findByText('EQ-101')).toBeInTheDocument();
     expect(within(equipmentPane()).getByText('가상 성형기 2호')).toBeInTheDocument();
+    expect(
+      within(equipmentPane()).getByRole('heading', { name: t.equipment.paneTitle }),
+    ).toBeInTheDocument();
+    expect(
+      within(equipmentPane()).getByRole('table', { name: t.equipment.paneTitle }),
+    ).toBeInTheDocument();
   });
 
   /** 사용 여부는 칸이 아니라 이름에 붙는 표식이다 — 좁은 페인에 칸을 더 두지 않는다. */
@@ -221,6 +227,14 @@ describe('W-05-07 — 설비를 고르면', () => {
 
     expect(
       await screen.findByRole('heading', { name: t.channels.paneOf('EQ-101', '가상 성형기 1호') }),
+    ).toBeInTheDocument();
+    expect(
+      within(channelPane()).getByRole('heading', { name: t.channels.paneTitle }),
+    ).toBeInTheDocument();
+    expect(
+      within(channelPane()).getByRole('table', {
+        name: t.channels.paneOf('EQ-101', '가상 성형기 1호'),
+      }),
     ).toBeInTheDocument();
   });
 

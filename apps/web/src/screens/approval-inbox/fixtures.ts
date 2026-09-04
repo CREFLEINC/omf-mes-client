@@ -21,7 +21,7 @@ const target = (
   openable: boolean,
   screenId?: string,
 ): ApprovalRequest['target'] => ({
-  targetTypeCode: 'SAMPLE-TARGET-A',
+  targetTypeCode: 'INBOUND_LOT',
   targetId,
   displayName,
   ...(screenId === undefined ? {} : { screenId }),
@@ -40,7 +40,7 @@ const target = (
 const multilineReasonRequest: ApprovalRequest = {
   approvalRequestId: 9001,
   approvalRequestNo: 'SYNTH-REQ-001',
-  approvalTypeCode: 'SAMPLE-TYPE-A',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-06T14:20:00+09:00',
@@ -57,7 +57,7 @@ const multilineReasonRequest: ApprovalRequest = {
 const singleLineReasonRequest: ApprovalRequest = {
   approvalRequestId: 9002,
   approvalRequestNo: 'SYNTH-REQ-002',
-  approvalTypeCode: 'SAMPLE-TYPE-B',
+  approvalTypeCode: 'INVENTORY_ADJUSTMENT',
   requestedBy: 9302,
   requestedByName: '합성 상신자2',
   requestedAt: '2026-08-05T09:05:00+09:00',
@@ -74,7 +74,7 @@ const singleLineReasonRequest: ApprovalRequest = {
 const namelessRequest: ApprovalRequest = {
   approvalRequestId: 9003,
   approvalRequestNo: 'SYNTH-REQ-003',
-  approvalTypeCode: 'SAMPLE-TYPE-A',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   requestedBy: 9303,
   /** 이름이 비어 왔다 — **번호를 대신 내지 않는다**(`omf-mes#44`). */
   requestedByName: '',
@@ -95,7 +95,7 @@ const namelessRequest: ApprovalRequest = {
 const blankLeadingReasonRequest: ApprovalRequest = {
   approvalRequestId: 9004,
   approvalRequestNo: 'SYNTH-REQ-004',
-  approvalTypeCode: 'SAMPLE-TYPE-C',
+  approvalTypeCode: 'PURCHASE_ORDER',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-03T11:00:00+09:00',
@@ -161,7 +161,7 @@ export const contradictoryMyTurnDetail: ApprovalRequestDetail = {
   request: multilineReasonRequest,
   steps: [
     step(1, '합성 승인자1', {
-      decisionCode: 'SAMPLE-DECISION-APPROVED',
+      decisionCode: 'APPROVED',
       decisionAt: '2026-08-06T15:02:00+09:00',
       decisionComment: '합성 결재 의견 하나',
       isCurrent: true,
@@ -183,12 +183,12 @@ export const finishedDetail: ApprovalRequestDetail = {
   request: singleLineReasonRequest,
   steps: [
     step(1, '합성 승인자1', {
-      decisionCode: 'SAMPLE-DECISION-APPROVED',
+      decisionCode: 'APPROVED',
       decisionAt: '2026-08-05T10:00:00+09:00',
       decisionComment: '합성 결재 의견 둘',
     }),
     step(2, '합성 승인자2', {
-      decisionCode: 'SAMPLE-DECISION-APPROVED',
+      decisionCode: 'APPROVED',
       decisionAt: '2026-08-05T11:30:00+09:00',
       decisionComment: null,
       isMine: true,
@@ -221,7 +221,7 @@ export const decidedDetail: ApprovalRequestDetail = {
   steps: [
     ...contradictoryMyTurnDetail.steps,
     step(2, '합성 승인자2', {
-      decisionCode: 'SAMPLE-DECISION-APPROVED',
+      decisionCode: 'APPROVED',
       decisionAt: '2026-08-06T16:10:00+09:00',
       /** 이 글자가 화면에 나타나는 것이 곧 「응답으로 갈아 끼웠다」의 증거다. */
       decisionComment: '합성 결재 직후에 남은 의견',
