@@ -24,10 +24,9 @@ export const DOCUMENT_TYPE_CODE = 'GOODS_ISSUE_QR';
 /**
  * 대상 유형 — 이 화면 몫은 둘이다(스펙 §4-A · §5-2).
  *
- * 설계 계약이 일곱 값으로 닫았고 그중 라인 단위가 `GOODS_ISSUE_LINE`, 파렛트 단위가
- * `HANDLING_UNIT` 이다. ⚠ **이 저장소의 생성 타입은 아직 그 판이 아니다** — `api.d.ts` 의
- * `targetTypeCode` 가 여전히 `string` 이라 타입이 값을 지켜 주지 못한다. 계약 생성물을 다시
- * 뽑으면 그때 타입이 이 상수를 검사한다.
+ * 계약이 일곱 값으로 닫았고 그중 라인 단위가 `GOODS_ISSUE_LINE`, 파렛트 단위가
+ * `HANDLING_UNIT` 이다. 생성 타입이 그 `enum` 을 들고 있어 **틀린 값은 타입 검사가 잡는다**
+ * (설계 변동 공지 `CREFLEINC/omf-mes#425` 로 편입).
  *
  * ⚠ **파렛트 단위는 값이 아니라 대상을 고를 조회 축이 없어 서지 못한다** —
  * 전표에 딸린 취급 단위를 좁혀 주는 질의가 계약에 없다(`GET /inventory/handling-units` 는
