@@ -1278,7 +1278,10 @@ describe('고름 ≠ 보임 — 주소가 가리키는 것을 읽을 수 있는�
       '?rq=9909&q=SYNTH',
     );
 
-    expect(await screen.findByText(t.empty.notFoundTitle)).toBeVisible();
+    const missing = await screen.findByText(t.empty.notFoundTitle);
+
+    expect(missing).toBeVisible();
+    expect(missing.closest('[role="status"]')).not.toBeNull();
     await waitFor(() => {
       expect(currentLocation()).not.toContain('rq=');
     });
@@ -1397,7 +1400,10 @@ describe('고름 ≠ 보임 — 주소가 가리키는 것을 읽을 수 있는�
       '?rq=9909',
     );
 
-    expect(await screen.findByText(t.empty.forbiddenTitle)).toBeVisible();
+    const forbidden = await screen.findByText(t.empty.forbiddenTitle);
+
+    expect(forbidden).toBeVisible();
+    expect(forbidden.closest('[role="status"]')).not.toBeNull();
 
     /*
      * **「사라지지 않았다」는 가라앉은 뒤에 잰다.** 안내가 뜨자마자 동기로 재면 아직
