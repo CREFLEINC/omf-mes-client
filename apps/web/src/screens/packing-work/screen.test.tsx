@@ -1,7 +1,8 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { act } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import {
@@ -556,5 +557,113 @@ describe('P-02-08 포장 작업', () => {
     expect(screen.getByRole('combobox', { name: t.unit.typeLabel })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.unit.parentLabel })).toBeDisabled();
     expect(screen.getByText(t.unit.lockedNotice)).toBeInTheDocument();
+  });
+});
+
+/**
+ * 오프라인 — 스펙 §6 「오프라인 → 큐잉」 · 공유계약 C-1.
+ *
+ * ⭐ **이 화면에서 큐가 받는 것은 확정 하나다.** 앞의 등록은 서버가 번호를 매겨 돌려주는
+ * 쓰기라 끊긴 채로 부를 수 없다 — 그 자리는 막고 이유를 말한다.
+ */
+describe('P-02-08 포장 작업 — 오프라인', () => {
+  const setOnline = (value: boolean): void => {
+    Object.defineProperty(globalThis.navigator, 'onLine', { value, configurable: true });
+  };
+
+  afterEach(() => {
+    setOnline(true);
+    globalThis.localStorage.clear();
+  });
+
+  /*
+   * ⛔ **끊긴 채로 등록을 던지지 않는다.** 번호가 오지 않으면 담은 줄이 화면에서 사라지고,
+   * 작업자는 무엇이 잘못됐는지 알 수 없다.
+   */
+  it('끊겨 있으면 새 포장을 시작하지 못하고 이유를 말한다', async () => {
+    setOnline(false);
+
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+
+    renderScreen({ writes });
+
+    await chooseUnitType(user);
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+
+    expect(await screen.findByText(t.scan.blockedOfflineNoUnit)).toBeInTheDocument();
+    expect(writes).toHaveLength(0);
+  });
+
+  /*
+   * ⭐ **담긴 순간이 곧 확정이다**(C-1 #2). 통신을 기다리게 하면 포장대 앞에서 손이 멈춘다.
+   */
+  it('담는 중에 끊기면 확정이 큐로 가고 화면은 확정으로 본다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+
+    renderScreen({ writes });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    /* 여기서 망이 끊긴다 — 포장 번호는 이미 받아 두었다. */
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    expect(await screen.findByText(t.confirm.done)).toBeInTheDocument();
+    /* 아직 닿지 않았다는 사실을 함께 말한다 — 건수를 감추면 보냈다고 믿는다(C-1 #4). */
+    expect(screen.getByText(t.outbox.pending(1))).toBeInTheDocument();
+    /* 등록 한 건뿐 — 확정은 나가지 않았다. */
+    expect(writes).toHaveLength(1);
+  });
+
+  it('연결이 돌아오면 큐에 담긴 확정이 같은 멱등 키로 나간다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+
+    renderScreen({ writes });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    setOnline(true);
+    act(() => {
+      globalThis.dispatchEvent(new Event('online'));
+    });
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(2);
+    });
+
+    const packRequest = writeAt(writes, 1);
+
+    expect(new URL(packRequest.url).pathname.endsWith(':pack')).toBe(true);
+    expect(packRequest.headers.get('X-Worker-No')).toBe(WORKER_NO);
+    /* ⛔ 큐에 쌓인 요청은 잠금 토큰을 싣지 않는다(C-9). */
+    expect(packRequest.headers.get('If-Match')).toBeNull();
+
+    const body = await bodyOf(packRequest);
+
+    expect(body.contents).toHaveLength(1);
+    /* ⭐ 시각은 «담을 때»의 것이다 — 서버가 받은 때가 아니다(C-1 #3 · C-8). */
+    expect(typeof body.occurredAt).toBe('string');
+    expect(typeof body.businessDate).toBe('string');
   });
 });
