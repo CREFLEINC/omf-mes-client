@@ -383,6 +383,38 @@
   width: 100%;
 }
 
+/*
+ * 개발용 화면 이동 — **개발 서버에서만 선다**(`patterns/pop-dev-screen-nav.tsx`).
+ * 이름을 칸 «위»에 세운다. 옆으로 세우면 좁은 자리에서 이름과 칸이 서로 폭을 뺏어 둘 다
+ * 잘린다(실측 —「개발…」).
+ */
+.pop-dev-screen-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.pop-dev-screen-nav > .field-label {
+  white-space: nowrap;
+}
+
+/*
+ * ⭐ **개발용 칸이 낀 액션 줄은 위아래로 쌓는다.** 배포본에서 이 자리의 짝은 버튼 둘이라
+ * 나란히 서는 것이 맞지만, 개발 서버에서는 [ 교대 ] 버튼과 고르는 칸이라 성격이 다르다 —
+ * 나란히 두면 좁은 폭을 반씩 나눠 버튼 글자가 두 줄로 접힌다(실측).
+ *
+ * ⛔ 배포본의 배치를 바꾸지 않는다 — 이 줄은 개발용 칸이 있을 때만 걸린다.
+ */
+.pop-ui-actions:has(> .pop-dev-screen-nav) {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.pop-ui-actions:has(> .pop-dev-screen-nav) > * {
+  flex: 0 0 auto;
+}
+
 /* `<Link>` 로 감싼 버튼은 링크가 폭을 갖지 않으면 늘어나지 않는다. */
 .pop-ui-actions > a {
   display: block;
