@@ -121,6 +121,15 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     query: '?workOrderId=11002',
   },
   /*
+   * ⚠ **씨앗에 출고 전표가 없다** — 이 번호는 계약 예시 서버가 받아 답한다(위 출하와 같은
+   * 사정). 씨앗이 출고를 담게 되면 그때 실제 번호로 바꾼다.
+   */
+  {
+    path: '/pop/goods-issue-qr',
+    label: 'P-01-02 출고 QR 발행',
+    query: '?goodsIssueId=15001&workerNo=100029',
+  },
+  /*
    * ⚠ 이 화면도 진입 컨텍스트를 주소로 받는다(`?workOrderId=`) — 작업지시 선택이 셸에 서기
    * 전까지의 임시 경로다. 사번은 셸·`worker-session` 이 비었을 때만 주소를 본다.
    */
