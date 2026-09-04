@@ -29,6 +29,8 @@ export interface TargetPaneProps {
   showReason: boolean;
   /** 사유가 **필수**인가. 현황을 모를 때는 자리만 열고 요구하지 않는다. */
   needsReason: boolean;
+  /** 고른 라인 중 발행 현황을 확인하지 못한 것이 있는가. 안내 문구가 이 값으로 갈린다. */
+  hasUnknownStatus: boolean;
   /** 서버가 사유 칸을 짚어 거부한 말. 없으면 `null`. */
   reasonServerError: string | null;
   reasonCode: string;
@@ -43,6 +45,7 @@ export const TargetPane = ({
   issuedSeq,
   showReason,
   needsReason,
+  hasUnknownStatus,
   reasonServerError,
   reasonCode,
   onReasonChange,
@@ -70,7 +73,9 @@ export const TargetPane = ({
         ? t.reissue.empty
         : needsReason
           ? t.reissue.required
-          : t.reissue.unknownStatus;
+          : hasUnknownStatus
+            ? t.reissue.unknownStatus
+            : t.reissue.serverAsked;
 
   return (
     <Card bordered className="pop-section" aria-label={t.target.sectionLabel}>

@@ -384,11 +384,13 @@ describe('GoodsIssueQrScreen', () => {
    * `fieldErrors` 로 빼내고 배너용 오류를 비우므로, 화면이 그 값을 읽지 않으면 **버튼만 멎고
    * 아무 말도 뜨지 않는다** — 발행은 되돌릴 수 없는 쓰기다.
    */
-  it('사유를 지목한 422 는 사유 칸 아래에 선다', async () => {
+  it('사유를 지목한 422 는 사유 칸에 서고, 고쳐서 다시 보낼 수 있다', async () => {
     const user = userEvent.setup();
+    const writes: Request[] = [];
     renderScreen({
       issueCounts: { 1001: 0 },
       issueStatus: 422,
+      writes,
       issueErrorBody: {
         errors: [
           {
@@ -405,7 +407,27 @@ describe('GoodsIssueQrScreen', () => {
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
-    expect(await screen.findByText('재발행 사유가 필요합니다.')).toBeInTheDocument();
+    /* ⛔ 배너가 아니라 **그 칸 안에** 서야 한다 — 고칠 자리를 짚어 주는 것이 이 문구의 일이다. */
+    const pane = await screen.findByLabelText(t.target.sectionLabel);
+    expect(await within(pane).findByText('재발행 사유가 필요합니다.')).toBeInTheDocument();
+
+    /* 현황은 읽혔다 — 「확인하지 못했다」고 말하지 않는다 */
+    expect(within(pane).getByText(t.reissue.serverAsked)).toBeInTheDocument();
+
+    /* ⭐ 이 시험의 핵심은 **빠져나올 수 있는가**다. 사유를 골라 다시 보내면 실려 나가야 한다. */
+    await user.click(within(pane).getByRole('combobox', { name: t.reissue.label }));
+    await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
+
+    /* 값을 고치면 옛 거부는 사라진다 */
+    expect(within(pane).queryByText('재발행 사유가 필요합니다.')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(2);
+    });
+
+    expect(await writes[1]?.json()).toMatchObject({ reissueReasonCode: 'PRINT_FAILURE' });
   });
 
   /*
@@ -434,6 +456,38 @@ describe('GoodsIssueQrScreen', () => {
 
     const body = (await writes[0]?.json()) as Record<string, unknown>;
     expect(body).not.toHaveProperty('reissueReasonCode');
+  });
+
+  /*
+   * ⛔ **접힌 칸의 값이 따라 나가지 않는다.** 「모른다」 라인에서 고른 사유가 남아 있다가 사유가
+   * 필요 없는 라인의 발행에 실리면, 최초 발행 기록에 재발행 사유가 붙어 이력이 거짓이 된다.
+   */
+  it('사유 칸이 접히면 고른 값도 함께 빠진다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    renderScreen({ issueCounts: { 1001: 0 }, writes });
+
+    await screen.findByText('LOT-SAMPLE-21');
+
+    /* 요약에 없는 라인 — 현황을 모른다. 사유 칸이 서고 값을 고를 수 있다 */
+    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox'));
+    await user.click(screen.getByRole('combobox', { name: t.reissue.label }));
+    await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
+
+    /* 미발행으로 읽힌 라인으로 갈아탄다 — 사유 칸이 접힌다 */
+    await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox'));
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+
+    expect(screen.getByText(t.reissue.notNeeded)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const kept = (await writes[0]?.json()) as Record<string, unknown>;
+    expect(kept).not.toHaveProperty('reissueReasonCode');
   });
 
   it('발행한 뒤 그린 것을 받아 셸로 보내고 결과를 보고한다', async () => {

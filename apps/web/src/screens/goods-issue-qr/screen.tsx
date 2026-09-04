@@ -1,7 +1,7 @@
 import type { ApiError } from '@omf-mes/api-client';
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner } from '../../patterns/master';
@@ -51,6 +51,14 @@ export const GoodsIssueQrScreen = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [reasonCode, setReasonCode] = useState('');
   const [issued, setIssued] = useState<DocumentIssue[] | null>(null);
+  /**
+   * 서버가 이 발행을 재발행으로 보고 사유를 물었다.
+   *
+   * ⛔ **거부 문구가 사라진다고 칸까지 접지 않는다.** 값을 고치면 옛 거부는 지워지는데, 칸이
+   * 그 오류에만 매여 있으면 **사용자가 방금 고른 사유와 함께 칸이 사라지고** 다시 사유 없는
+   * 요청이 나간다 — 같은 거부를 무한히 반복한다. 발행이 실제로 성공할 때까지 열어 둔다.
+   */
+  const [reasonAsked, setReasonAsked] = useState(false);
 
   const goodsIssue = useGoodsIssue(entry.goodsIssueId);
   const lines = useGoodsIssueLines(entry.goodsIssueId);
@@ -73,6 +81,7 @@ export const GoodsIssueQrScreen = () => {
     workerNo: entry.workerNo ?? '',
     onSuccess: (records) => {
       setIssued(records);
+      setReasonAsked(false);
       /* 발행이 끝나면 곧바로 그린 것을 받아 셸로 보낸다 — 사용자가 한 번 더 누르지 않는다. */
       printFlow.mutate(records);
     },
@@ -85,8 +94,12 @@ export const GoodsIssueQrScreen = () => {
    * 같은 거부만 반복해서 본다 — 발행은 되돌릴 수 없는 쓰기이고 정정 경로가 없다.
    */
   const reasonServerError = write.fieldErrors.reissueReasonCode ?? null;
-  const showReason =
-    needsReason || hasUnknownTarget(rows, selectedIds) || reasonServerError !== null;
+  const hasUnknownStatus = hasUnknownTarget(rows, selectedIds);
+  const showReason = needsReason || hasUnknownStatus || reasonAsked;
+
+  useEffect(() => {
+    if (reasonServerError !== null) setReasonAsked(true);
+  }, [reasonServerError]);
 
   const guard = issueGuard({
     workerNo: entry.workerNo,
@@ -183,7 +196,12 @@ export const GoodsIssueQrScreen = () => {
         <LineListPane
           rows={rows}
           selectedIds={selectedIds}
-          onSelectionChange={setSelectedIds}
+          onSelectionChange={(ids) => {
+            setSelectedIds(ids);
+            /* 대상이 바뀌면 앞 거부는 이 발행의 것이 아니다 — 물음도 함께 내린다. */
+            setReasonAsked(false);
+            write.clearFieldError('reissueReasonCode');
+          }}
           itemNames={itemNames}
           lotNames={lotNames}
           uomNames={uomNames}
@@ -195,9 +213,14 @@ export const GoodsIssueQrScreen = () => {
           issuedSeq={firstIssued?.issueSeq ?? null}
           showReason={showReason}
           needsReason={needsReason}
+          hasUnknownStatus={hasUnknownStatus}
           reasonServerError={reasonServerError}
           reasonCode={reasonCode}
-          onReasonChange={setReasonCode}
+          onReasonChange={(code) => {
+            setReasonCode(code);
+            /* 고친 값 옆에 옛 거부를 남기지 않는다 — 저장소의 다른 화면들과 같은 처리다. */
+            write.clearFieldError('reissueReasonCode');
+          }}
           reasonOptions={reasonOptions}
           previewSrc={previewSrc}
         />
