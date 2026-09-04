@@ -14,7 +14,18 @@ type ItemUpdate = components['schemas']['ItemUpdate'];
 
 /** 계약 표현을 폼 표현으로. 널·없음을 빈 문자열로 모은다 — 「지정하지 않음」이 하나의 값이어야 한다. */
 export const itemToAttrsFormValues = (item: Item): ItemAttrsFormValues => ({
-  lotControlTypeCode: item.lotControlTypeCode,
+  nameKo: item.nameKo ?? '',
+  nameVi: item.nameVi ?? '',
+  developmentItem: item.developmentItem ?? false,
+  lotControlled: item.lotControlled,
+  defaultLotStorageUomId:
+    item.defaultLotStorageUomId === null || item.defaultLotStorageUomId === undefined
+      ? ''
+      : String(item.defaultLotStorageUomId),
+  defaultProductionLotSize:
+    item.defaultProductionLotSize === null || item.defaultProductionLotSize === undefined
+      ? ''
+      : String(item.defaultProductionLotSize),
   serialControlTypeCode: item.serialControlTypeCode,
   /*
    * 계약에 「유효기한 관리」 컬럼이 없다 — `shelfLifeDays`의 널 여부가 그 토글이다(§8-2).
@@ -50,12 +61,22 @@ export const itemToAttrsFormValues = (item: Item): ItemAttrsFormValues => ({
  * 한 번 넣은 값을 지울 방법이 사라진다.
  */
 export const toItemUpdate = (values: ItemAttrsFormValues, source: Item): ItemUpdate => {
+  const nameKo = values.nameKo.trim();
+  const nameVi = values.nameVi.trim();
+  const defaultLotStorageUomId = values.defaultLotStorageUomId.trim();
+  const defaultProductionLotSize = values.defaultProductionLotSize.trim();
   const storageConditionCode = values.storageConditionCode.trim();
   const openedShelfLifeHours = values.openedShelfLifeHours.trim();
 
   return {
+    nameKo: nameKo === '' ? null : nameKo,
+    nameVi: nameVi === '' ? null : nameVi,
+    developmentItem: values.developmentItem,
+    lotControlled: values.lotControlled,
+    defaultLotStorageUomId: defaultLotStorageUomId === '' ? null : Number(defaultLotStorageUomId),
+    defaultProductionLotSize:
+      defaultProductionLotSize === '' ? null : Number(defaultProductionLotSize),
     // 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 값이 된다.
-    lotControlTypeCode: values.lotControlTypeCode.trim(),
     serialControlTypeCode: values.serialControlTypeCode.trim(),
     // 토글 OFF는 「값을 비운다」가 아니라 「유효기한을 관리하지 않는다」다 — 널을 명시해 보낸다.
     shelfLifeDays: values.shelfLifeManaged ? Number(values.shelfLifeDays.trim()) : null,
@@ -70,7 +91,12 @@ export const toItemUpdate = (values: ItemAttrsFormValues, source: Item): ItemUpd
 
 /** 기준값과 현재 값의 비교. 「고친 것이 있는가」의 판정 근거다. */
 export const isSameItemAttrsValues = (a: ItemAttrsFormValues, b: ItemAttrsFormValues): boolean =>
-  a.lotControlTypeCode === b.lotControlTypeCode &&
+  a.nameKo === b.nameKo &&
+  a.nameVi === b.nameVi &&
+  a.developmentItem === b.developmentItem &&
+  a.lotControlled === b.lotControlled &&
+  a.defaultLotStorageUomId === b.defaultLotStorageUomId &&
+  a.defaultProductionLotSize === b.defaultProductionLotSize &&
   a.serialControlTypeCode === b.serialControlTypeCode &&
   a.shelfLifeManaged === b.shelfLifeManaged &&
   a.shelfLifeDays === b.shelfLifeDays &&

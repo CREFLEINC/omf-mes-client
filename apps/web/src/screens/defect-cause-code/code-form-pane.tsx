@@ -71,7 +71,8 @@ export const CodeFormPane = ({
   const showCategoryWarning = mode === 'create' && values.parentId === '';
 
   return (
-    <section aria-label={adapter.labels.tab}>
+    <section aria-label={t.panes.form(adapter.labels.tab)}>
+      <h2 className="pane-title">{t.panes.form(adapter.labels.tab)}</h2>
       {banner}
 
       {showCategoryWarning && (

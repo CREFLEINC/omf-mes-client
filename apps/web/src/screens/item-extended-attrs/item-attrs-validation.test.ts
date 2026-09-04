@@ -22,6 +22,39 @@ describe('ITEM_ATTRS_FORM_FIELDS', () => {
   it('계약 필드가 아닌 토글 이름을 담지 않는다', () => {
     expect(ITEM_ATTRS_FORM_FIELDS).not.toContain('shelfLifeManaged');
   });
+
+  it('최신 계약의 편집 필드를 담는다', () => {
+    for (const field of [
+      'nameKo',
+      'nameVi',
+      'developmentItem',
+      'defaultLotStorageUomId',
+      'defaultProductionLotSize',
+    ]) {
+      expect(ITEM_ATTRS_FORM_FIELDS).toContain(field);
+    }
+  });
+});
+
+describe('validateItemAttrsForm — LOT 기본값', () => {
+  it('보관 단위는 비우거나 양의 정수 식별자를 선택한다', () => {
+    expect(validateItemAttrsForm(withValues({ defaultLotStorageUomId: '' }))).toEqual({});
+    expect(validateItemAttrsForm(withValues({ defaultLotStorageUomId: '7003' }))).toEqual({});
+
+    for (const value of ['0', '-1', '1.5', 'abc']) {
+      expect(validateItemAttrsForm(withValues({ defaultLotStorageUomId: value }))).toHaveProperty(
+        'defaultLotStorageUomId',
+      );
+    }
+  });
+
+  it('생산 LOT 기본크기는 비우거나 유한한 숫자다', () => {
+    expect(validateItemAttrsForm(withValues({ defaultProductionLotSize: '' }))).toEqual({});
+    expect(validateItemAttrsForm(withValues({ defaultProductionLotSize: '0.5' }))).toEqual({});
+    expect(
+      validateItemAttrsForm(withValues({ defaultProductionLotSize: 'not-a-number' })),
+    ).toHaveProperty('defaultProductionLotSize');
+  });
 });
 
 describe('validateItemAttrsForm — 필수 코드', () => {
@@ -29,14 +62,14 @@ describe('validateItemAttrsForm — 필수 코드', () => {
     expect(validateItemAttrsForm(base)).toEqual({});
   });
 
-  it.each(['lotControlTypeCode', 'serialControlTypeCode', 'fifoPolicyCode'] as const)(
+  it.each(['serialControlTypeCode', 'fifoPolicyCode'] as const)(
     '%s가 비면 필수 오류다',
     (field) => {
       expect(validateItemAttrsForm(withValues({ [field]: '' }))).toHaveProperty(field);
     },
   );
 
-  it.each(['lotControlTypeCode', 'serialControlTypeCode', 'fifoPolicyCode'] as const)(
+  it.each(['serialControlTypeCode', 'fifoPolicyCode'] as const)(
     '%s가 공백만이면 필수 오류다',
     (field) => {
       expect(validateItemAttrsForm(withValues({ [field]: '   ' }))).toHaveProperty(field);
@@ -45,10 +78,12 @@ describe('validateItemAttrsForm — 필수 코드', () => {
 
   /* 상한 자체는 허용값이며 그것을 넘을 때만 막는다. */
   it('코드 50자는 통과하고 51자는 막힌다', () => {
-    expect(validateItemAttrsForm(withValues({ lotControlTypeCode: 'a'.repeat(50) }))).toEqual({});
+    expect(validateItemAttrsForm(withValues({ serialControlTypeCode: 'a'.repeat(50) }))).toEqual(
+      {},
+    );
     expect(
-      validateItemAttrsForm(withValues({ lotControlTypeCode: 'a'.repeat(51) })),
-    ).toHaveProperty('lotControlTypeCode');
+      validateItemAttrsForm(withValues({ serialControlTypeCode: 'a'.repeat(51) })),
+    ).toHaveProperty('serialControlTypeCode');
   });
 
   /*
@@ -58,7 +93,7 @@ describe('validateItemAttrsForm — 필수 코드', () => {
   it('코드가 어떤 목록에 속하는지 검사하지 않는다', () => {
     expect(
       validateItemAttrsForm(
-        withValues({ lotControlTypeCode: 'SYN-ANY-CODE', fifoPolicyCode: 'SYN-POLICY-X' }),
+        withValues({ serialControlTypeCode: 'SYN-ANY-CODE', fifoPolicyCode: 'SYN-POLICY-X' }),
       ),
     ).toEqual({});
   });

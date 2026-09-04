@@ -384,8 +384,14 @@ const failingReferenceRoute = (pathname: string): StubRoute => ({
 });
 
 const lineReferenceRoutes = (): StubRoute[] => [
-  { match: (request) => isGet(request, ITEMS_PATH), respond: () => jsonResponse(listBody(itemFixtures)) },
-  { match: (request) => isGet(request, UOMS_PATH), respond: () => jsonResponse(listBody(uomFixtures)) },
+  {
+    match: (request) => isGet(request, ITEMS_PATH),
+    respond: () => jsonResponse(listBody(itemFixtures)),
+  },
+  {
+    match: (request) => isGet(request, UOMS_PATH),
+    respond: () => jsonResponse(listBody(uomFixtures)),
+  },
   {
     match: (request) => isGet(request, LOTS_PATH),
     respond: (request) => {
@@ -483,6 +489,13 @@ const issueDetailRoute = (
 const failingIssueDetailRoute = (status: number, pathname = ISSUE_DETAIL_PATH): StubRoute => ({
   match: (request) => isGet(request, pathname),
   respond: () => jsonResponse({ message: '' }, { status }),
+});
+
+const disconnectedIssueDetailRoute = (): StubRoute => ({
+  match: (request) => isGet(request, ISSUE_DETAIL_PATH),
+  respond: () => {
+    throw new TypeError('Failed to fetch');
+  },
 });
 
 /**
@@ -586,11 +599,7 @@ const failingApprovalSubmitRoute = (
 });
 
 /** 연쇄가 통째로 성공하는 한 벌. 세 요청이 이 차례로 나간다. */
-const chainRoutes = (): StubRoute[] => [
-  createRoute(),
-  createdDetailRoute(),
-  approvalSubmitRoute(),
-];
+const chainRoutes = (): StubRoute[] => [createRoute(), createdDetailRoute(), approvalSubmitRoute()];
 
 /**
  * 이 회차가 부르지 않아야 하는 경로들. **부를 수 있게 둔다** — 스텁이 없으면 하네스가 던져
@@ -601,9 +610,7 @@ const laterPhaseRoutes = (): StubRoute[] => [
   {
     match: (request) => isGet(request, LINES_PATH),
     respond: () =>
-      jsonResponse(
-        listBody([{ ...receiptLineResponseFixtures[0], receiptQty: LINES_ONLY_QTY }]),
-      ),
+      jsonResponse(listBody([{ ...receiptLineResponseFixtures[0], receiptQty: LINES_ONLY_QTY }])),
   },
   {
     match: (request) => isGet(request, ISSUE_LINES_PATH),
@@ -717,10 +724,10 @@ const renderScreen = (
     </>
   );
 
-  const { queryClient } = renderWithProviders(
-    strict ? <StrictMode>{tree}</StrictMode> : tree,
-    { fetch, route: `${ROUTE}${search}` },
-  );
+  const { queryClient } = renderWithProviders(strict ? <StrictMode>{tree}</StrictMode> : tree, {
+    fetch,
+    route: `${ROUTE}${search}`,
+  });
 
   return { requests, queryClient, user: userEvent.setup(), release };
 };
@@ -1164,9 +1171,7 @@ describe('DisposalIssueScreen — 수명 표', () => {
     const { user } = renderScreen(allRoutes(), '?gr=9001');
 
     await waitForList();
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }),
-    );
+    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -1453,9 +1458,9 @@ describe('DisposalIssueScreen — 폐기 대상 창고 좁힘', () => {
 
     await waitForList();
 
-    expect(requestsTo(requests, WAREHOUSES_PATH)[0]?.url.searchParams.has('warehouseTypeCode')).toBe(
-      false,
-    );
+    expect(
+      requestsTo(requests, WAREHOUSES_PATH)[0]?.url.searchParams.has('warehouseTypeCode'),
+    ).toBe(false);
     expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.has('warehouseId')).toBe(false);
   });
 
@@ -1479,9 +1484,7 @@ describe('DisposalIssueScreen — 폐기 대상 창고 좁힘', () => {
 
     /* ① 칩이 그 창고를 **이름으로** 말한다 — 번호도 「알 수 없음」도 아니다. */
     expect(screen.getByText(t.filters.chipWarehouse(OTHER_WAREHOUSE_LABEL))).toBeInTheDocument();
-    expect(
-      screen.queryByText(t.filters.chipWarehouse(t.values.unknown)),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(t.filters.chipWarehouse(t.values.unknown))).not.toBeInTheDocument();
 
     /* ② 조건은 실제로 걸려 있다 — 칩만 뜨고 조회는 그대로인 상태가 아니다. */
     expect(requestsTo(requests, LIST_PATH)[0]?.url.searchParams.get('warehouseId')).toBe('9702');
@@ -2121,9 +2124,7 @@ describe('DisposalIssueScreen — 줄 초안의 수명', () => {
     await user.type(qtyInput(1), '5');
 
     /* 같은 전표를 풀었다 다시 고르는 것도 「대상이 바뀐 것」이다. */
-    await user.click(
-      screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }),
-    );
+    await user.click(screen.getByRole('button', { name: t.actions.deselectRow('GR-2026-900001') }));
 
     await waitFor(() => {
       expect(currentLocation()).toBe(ROUTE);
@@ -2210,10 +2211,7 @@ const selectIssue = async (
   await user.click(screen.getByRole('button', { name: t.actions.selectIssueRow(goodsIssueNo) }));
 };
 
-const openTab = async (
-  user: ReturnType<typeof userEvent.setup>,
-  label: string,
-): Promise<void> => {
+const openTab = async (user: ReturnType<typeof userEvent.setup>, label: string): Promise<void> => {
   await user.click(screen.getByRole('tab', { name: label }));
 };
 
@@ -2450,7 +2448,9 @@ describe('DisposalIssueScreen — 이력 조건', () => {
       expect(currentLocation()).toBe(`${ROUTE}?tab=history&iq=GI`);
     });
 
-    expect(within(historyDetailPane()).getByText(t.empty.historyNoSelectionTitle)).toBeInTheDocument();
+    expect(
+      within(historyDetailPane()).getByText(t.empty.historyNoSelectionTitle),
+    ).toBeInTheDocument();
   });
 
   it('초기화도 고른 품의를 푼다', async () => {
@@ -2589,6 +2589,10 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?tab=history`);
     });
+
+    expect(
+      within(historyDetailPane()).queryByRole('button', { name: messages.common.retry }),
+    ).not.toBeInTheDocument();
   });
 
   it('404 정리가 대상 탭의 조건과 선택을 건드리지 않는다', async () => {
@@ -2601,6 +2605,48 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
 
     await waitFor(() => {
       expect(currentLocation()).toBe(`${ROUTE}?tab=history&q=GR&gr=9001`);
+    });
+  });
+
+  it('상세가 500으로 실패하면 사유와 다시 시도가 서고 로딩 뼈대가 남지 않는다', async () => {
+    renderScreen(allRoutes([failingIssueDetailRoute(500)]), `${HISTORY_SEARCH}&gi=9501`);
+
+    const pane = historyDetailPane();
+
+    expect(await within(pane).findByText(messages.httpError.loadTitle)).toBeVisible();
+    expect(within(pane).getByRole('button', { name: messages.common.retry })).toBeEnabled();
+    expect(
+      within(pane).queryByRole('status', { name: t.loading.issueDetail }),
+    ).not.toBeInTheDocument();
+    expect(within(pane).queryByText('GI-2026-950001')).not.toBeInTheDocument();
+  });
+
+  it('상세 요청이 끊기면 오프라인 사유가 서고 로딩 뼈대가 남지 않는다', async () => {
+    renderScreen(allRoutes([disconnectedIssueDetailRoute()]), `${HISTORY_SEARCH}&gi=9501`);
+
+    const pane = historyDetailPane();
+
+    expect(await within(pane).findByText(messages.httpError.offline)).toBeVisible();
+    expect(
+      within(pane).queryByRole('status', { name: t.loading.issueDetail }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('상세 실패의 다시 시도가 같은 품의를 다시 조회한다', async () => {
+    const { requests, user } = renderScreen(
+      allRoutes([failingIssueDetailRoute(500)]),
+      `${HISTORY_SEARCH}&gi=9501`,
+    );
+
+    const pane = historyDetailPane();
+
+    await within(pane).findByText(messages.httpError.loadTitle);
+    expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(1);
+
+    await user.click(within(pane).getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => {
+      expect(requestsTo(requests, ISSUE_DETAIL_PATH)).toHaveLength(2);
     });
   });
 
@@ -2631,7 +2677,10 @@ describe('DisposalIssueScreen — 고른 품의의 상세 조회', () => {
   });
 
   it('이력 목록 조회 실패는 배너와 다시 시도를 낸다', async () => {
-    const { requests, user } = renderScreen(allRoutes([failingIssueListRoute(500)]), HISTORY_SEARCH);
+    const { requests, user } = renderScreen(
+      allRoutes([failingIssueListRoute(500)]),
+      HISTORY_SEARCH,
+    );
 
     expect(await screen.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
     /* 실패를 빈 상태로 오인시키지 않는다 — 짝으로 단언한다. */
@@ -2674,10 +2723,7 @@ describe('DisposalIssueScreen — 이력 라인 표의 참조 실패', () => {
   });
 
   it('위치만 실패해도 사유가 선다', async () => {
-    renderScreen(
-      allRoutes([failingReferenceRoute(LOCATIONS_PATH)]),
-      `${HISTORY_SEARCH}&gi=9501`,
-    );
+    renderScreen(allRoutes([failingReferenceRoute(LOCATIONS_PATH)]), `${HISTORY_SEARCH}&gi=9501`);
 
     expect(
       await within(historyDetailPane()).findByText(t.reasons.lineReferencesFailed),
@@ -2723,7 +2769,11 @@ describe('DisposalIssueScreen — 결재 진행', () => {
   it('미상신 품의에는 승인 조회가 나가지 않고 그 사실을 밝힌다', async () => {
     const { requests } = renderScreen(
       allRoutes([
-        issueDetailRoute(goodsIssueLineResponseFixtures, goodsIssueResponseFixtures[1], MISSING_ISSUE_DETAIL_PATH),
+        issueDetailRoute(
+          goodsIssueLineResponseFixtures,
+          goodsIssueResponseFixtures[1],
+          MISSING_ISSUE_DETAIL_PATH,
+        ),
       ]),
       `${HISTORY_SEARCH}&gi=9502`,
     );
@@ -2764,7 +2814,7 @@ describe('DisposalIssueScreen — 결재 진행', () => {
      * 배열 인덱스+1로 다시 매기는 결함이 여기서 값으로 갈린다 — 연속이면 가려진다.
      */
     expect(within(progress).getByText('4')).toBeInTheDocument();
-    expect(within(progress).getByText('SAMPLE_DECISION_A')).toBeInTheDocument();
+    expect(within(progress).getByText('APPROVED')).toBeInTheDocument();
     expect(within(progress).getByText(t.progress.waitingCurrent)).toBeInTheDocument();
   });
 
@@ -2849,7 +2899,9 @@ describe('DisposalIssueScreen — 결재 진행을 못 읽었을 때', () => {
     expect(within(pane).getByText(ITEM_LABEL)).toBeInTheDocument();
     expect(screen.queryByText(messages.httpError.loadTitle)).not.toBeInTheDocument();
     /* 403에는 다시 시도를 내지 않는다 — 같은 권한으로 다시 불러도 같은 답이 온다. */
-    expect(within(pane).queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
+    expect(
+      within(pane).queryByRole('button', { name: messages.common.retry }),
+    ).not.toBeInTheDocument();
   });
 
   it('404·500에는 다시 시도가 있고 누르면 다시 부른다', async () => {
@@ -2905,7 +2957,14 @@ describe('DisposalIssueScreen — 승인 뒤에 남은 일', () => {
     fillApprovedStatusCodes();
 
     renderScreen(
-      allRoutes([issueDetailRoute(goodsIssueLineResponseFixtures.map((line) => ({ ...line, inventoryTransactionLineId: null })))]),
+      allRoutes([
+        issueDetailRoute(
+          goodsIssueLineResponseFixtures.map((line) => ({
+            ...line,
+            inventoryTransactionLineId: null,
+          })),
+        ),
+      ]),
       `${HISTORY_SEARCH}&gi=9501`,
     );
 
@@ -3042,9 +3101,7 @@ const confirmSubmit = async (user: ReturnType<typeof userEvent.setup>): Promise<
 
 /** 실제로 나간 쓰기. **경로와 method를 함께** 본다 — 한쪽만 세면 다른 경로의 쓰기를 놓친다. */
 const writesTo = (requests: RecordedRequest[], pathname: string): RecordedRequest[] =>
-  requests.filter(
-    (request) => request.method === 'POST' && request.url.pathname === pathname,
-  );
+  requests.filter((request) => request.method === 'POST' && request.url.pathname === pathname);
 
 const resultPane = (): HTMLElement => screen.getByRole('region', { name: t.result.label });
 
@@ -3201,9 +3258,7 @@ describe('DisposalIssueScreen — 확인 창을 지나야 나간다', () => {
     expect(within(dialog).getByText('2026-08-11 09:30')).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.lineCount(1))).toBeInTheDocument();
     expect(
-      within(dialog).getByText(
-        t.dialog.linePair(ITEM_LABEL, 'SAMPLE-LOT-0001', `10 ${UOM_LABEL}`),
-      ),
+      within(dialog).getByText(t.dialog.linePair(ITEM_LABEL, 'SAMPLE-LOT-0001', `10 ${UOM_LABEL}`)),
     ).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.reasonSummaryNote)).toBeInTheDocument();
     expect(within(dialog).getByText(t.dialog.submitEffects)).toBeInTheDocument();
@@ -3472,7 +3527,8 @@ describe('DisposalIssueScreen — 연쇄가 끝난 뒤', () => {
         ...chainRoutes(),
         {
           match: (request) => isGet(request, CREATED_DETAIL_PATH),
-          respond: () => jsonResponse(createdDetailBody(), { headers: { ETag: CREATED_DETAIL_ETAG } }),
+          respond: () =>
+            jsonResponse(createdDetailBody(), { headers: { ETag: CREATED_DETAIL_ETAG } }),
         },
       ]),
     );
@@ -3524,9 +3580,7 @@ describe('DisposalIssueScreen — 부분 실패', () => {
     expect(within(resultPane()).getByText(t.result.notSubmittedYet)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.actions.openIssue })).toBeInTheDocument();
     /* 짝 방향 — 성공으로도 말하지 않는다. */
-    expect(
-      screen.queryByText(t.result.submittedTitle('GI-2026-950004')),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.submittedTitle('GI-2026-950004'))).not.toBeInTheDocument();
   });
 
   /**
@@ -3930,7 +3984,9 @@ describe('DisposalIssueScreen — 재상신도 보내는 자리가 다시 본다
     await user.click(resubmitButton());
 
     /* 창 뒤의 칸을 비운다 — 창은 그 사실을 모른다. */
-    fireEvent.change(screen.getByLabelText(t.formFields.submitReason), { target: { value: '   ' } });
+    fireEvent.change(screen.getByLabelText(t.formFields.submitReason), {
+      target: { value: '   ' },
+    });
     await confirmSubmit(user);
 
     expect(writesTo(requests, RESUBMIT_APPROVAL_PATH)).toHaveLength(0);
@@ -4202,9 +4258,7 @@ describe('DisposalIssueScreen — 열린 창이 갱신에 닫히지 않는다', 
    * 유지해 이 결함이 드러나지 않는다.
    */
   it('상세가 다시 도착해도 확인 창이 열려 있다', async () => {
-    const { user } = await setupReadyToSubmit(
-      allRoutes([...chainRoutes(), changingDetailRoute()]),
-    );
+    const { user } = await setupReadyToSubmit(allRoutes([...chainRoutes(), changingDetailRoute()]));
 
     await openSubmitConfirm(user);
 
@@ -4246,9 +4300,7 @@ describe('DisposalIssueScreen — 400이 필드에 매겨져 올 때', () => {
    */
   it('등록 400의 필드 오류가 그 칸 옆에 서고 배너로 새지 않는다', async () => {
     const { user } = await setupReadyToSubmit(
-      allRoutes([
-        failingCreateRoute(400, fieldErrorBody('issuedAt', SAMPLE_ISSUED_AT_ERROR)),
-      ]),
+      allRoutes([failingCreateRoute(400, fieldErrorBody('issuedAt', SAMPLE_ISSUED_AT_ERROR))]),
     );
 
     await openSubmitConfirm(user);
@@ -4320,9 +4372,7 @@ describe('DisposalIssueScreen — 400이 필드에 매겨져 올 때', () => {
 });
 
 describe('DisposalIssueScreen — 재상신의 실패 갈래', () => {
-  const setupResubmit = async (
-    extra: StubRoute[],
-  ): Promise<ReturnType<typeof renderScreen>> => {
+  const setupResubmit = async (extra: StubRoute[]): Promise<ReturnType<typeof renderScreen>> => {
     const rendered = renderScreen(
       allRoutes([...extra, notSubmittedDetailRoute()]),
       `${HISTORY_SEARCH}&gi=9502`,
@@ -4985,8 +5035,25 @@ describe('DisposalIssueScreen — 떠난 뒤 돌아왔을 때', () => {
       expect(writesTo(requests, CREATED_APPROVAL_PATH)).toHaveLength(1);
     });
 
+    /*
+     * 요청이 스텁에 기록된 것과 화면의 전송 잠금이 풀린 것은 같은 순간이 아니다. 전체 감지기를
+     * 병렬로 돌리면 mutation 성공 상태가 한 렌더 늦게 반영될 수 있으므로, 사용자가 실제로 다시
+     * 고를 수 있는 시점(행 버튼의 잠금 해제)을 기다린다. 임의 시간 대신 화면 계약을 동기화
+     * 지점으로 삼아 「잠긴 버튼을 눌러 아무 일도 없었던」경쟁 조건을 만들지 않는다.
+     */
+    const previousReceipt = screen.getByRole('button', {
+      name: t.actions.selectRow('GR-2026-900001'),
+    });
+
+    await waitFor(() => {
+      expect(previousReceipt).toBeEnabled();
+    });
+
     /* 앞 대상을 다시 고른다 — 그래도 결과는 되살아나지 않는다. */
-    await user.click(screen.getByRole('button', { name: t.actions.selectRow('GR-2026-900001') }));
+    await user.click(previousReceipt);
+    await waitFor(() => {
+      expect(currentLocation()).toContain('gr=9001');
+    });
     await waitForLines();
 
     expect(screen.queryByRole('region', { name: t.result.label })).not.toBeInTheDocument();
@@ -5022,10 +5089,9 @@ const postableDetailRoute = (etag = ISSUE_DETAIL_ETAG): StubRoute => ({
 const sameUomDetailRoute = (): StubRoute => ({
   match: (request) => isGet(request, ISSUE_DETAIL_PATH),
   respond: () =>
-    jsonResponse(
-      issueDetailBody(postableIssueLines.map((line) => ({ ...line, uomId: 9801 }))),
-      { headers: { ETag: ISSUE_DETAIL_ETAG } },
-    ),
+    jsonResponse(issueDetailBody(postableIssueLines.map((line) => ({ ...line, uomId: 9801 }))), {
+      headers: { ETag: ISSUE_DETAIL_ETAG },
+    }),
 });
 
 /**
@@ -5110,10 +5176,7 @@ describe('DisposalIssueScreen — 기타출고 처리가 열리는 조건', () =
    * 감추면 「왜 여기서는 처리할 수 없는가」에 화면이 답하지 못한다.
    */
   it('미상신 품의에서는 잠기고 사유가 버튼 옆에서 읽힌다', async () => {
-    await setupReadyToPost(
-      allRoutes([notSubmittedDetailRoute()]),
-      `${HISTORY_SEARCH}&gi=9502`,
-    );
+    await setupReadyToPost(allRoutes([notSubmittedDetailRoute()]), `${HISTORY_SEARCH}&gi=9502`);
 
     expect(postButton()).toBeDisabled();
     expect(postButton()).toHaveAccessibleDescription(t.actionReasons.postNeedsSubmission);
@@ -5787,7 +5850,9 @@ describe('DisposalIssueScreen — 처리 실패의 갈래', () => {
       allRoutes([
         postableDetailRoute(),
         failingPostRoute(400, {
-          errors: [{ scope: 'screen', code: 'STATE_LOCKED', message: '승인이 끝나야 처리할 수 있습니다.' }],
+          errors: [
+            { scope: 'screen', code: 'STATE_LOCKED', message: '승인이 끝나야 처리할 수 있습니다.' },
+          ],
         }),
       ]),
     );
@@ -5959,11 +6024,7 @@ describe('DisposalIssueScreen — 처리 배너의 매임', () => {
    */
   it('보내는 동안 주소로 품의를 바꾸면 뒤늦게 온 실패가 서지 않는다', async () => {
     const { user, release } = await setupReadyToPost(
-      allRoutes([
-        postableDetailRoute(),
-        failingPostRoute(403),
-        notSubmittedDetailRoute(),
-      ]),
+      allRoutes([postableDetailRoute(), failingPostRoute(403), notSubmittedDetailRoute()]),
       `${HISTORY_SEARCH}&gi=9501`,
       `${HISTORY_SEARCH.slice(1)}&gi=9502`,
       [POST_PATH],

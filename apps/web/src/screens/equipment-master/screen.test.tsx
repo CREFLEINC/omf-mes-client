@@ -748,6 +748,9 @@ describe('EquipmentMasterScreen — 그룹 등록·수정', () => {
       form('create').getByRole('textbox', { name: new RegExp(t.fields.groupName) }),
       '새 구역',
     );
+    /* 그룹유형은 계약이 닫은 두 값 중 하나를 골라야 저장이 열린다(코드 사전 2026-09-03). */
+    await user.click(form('create').getByRole('combobox', { name: t.fields.groupType }));
+    await user.click(await screen.findByRole('option', { name: t.groupTypes.LINE }));
     await user.click(form('create').getByRole('combobox', { name: t.fields.plant }));
     await user.click(await screen.findByRole('option', { name: /제1공장/ }));
     await user.click(form('create').getByRole('button', { name: messages.common.save }));

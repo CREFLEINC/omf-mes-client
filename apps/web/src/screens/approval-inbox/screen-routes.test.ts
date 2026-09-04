@@ -13,6 +13,11 @@ describe('화면 ID 매핑표', () => {
     expect(screenPathOf('W-99-99', 9001, SCREEN_ROUTES)).toBeNull();
   });
 
+  it('객체 프로토타입 이름은 표의 경로로 읽지 않는다', () => {
+    expect(screenPathOf('constructor', 9001, SCREEN_ROUTES)).toBeNull();
+    expect(screenPathOf('toString', 9001, SCREEN_ROUTES)).toBeNull();
+  });
+
   it('표에 줄이 생기면 그 경로가 나온다 — 자리표시가 죽은 가지가 아니다', () => {
     /* 전환 감지기: 매핑표를 채우는 것만으로 열기가 살아나야 한다(계획 M28). */
     expect(

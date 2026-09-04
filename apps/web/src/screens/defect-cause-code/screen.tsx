@@ -37,6 +37,7 @@ import {
   toServerFieldName,
 } from './mappers';
 import { isTruncated, useCodeDetail, useCodeList, useCodeOptions } from './queries';
+import { ProcessMappingPane } from './process-mapping-pane';
 import { CODE_TABS, resolveTab } from './tabs';
 import type { CodeDetailResult, CodeFilters, CodeFormValues, HierarchyCode } from './types';
 
@@ -107,7 +108,7 @@ interface CodeFormState {
  * W-06-03 컨테이너. 불량 코드와 원인 코드를 같은 부품으로 그리고,
  * 탭·조회 조건·선택을 주소에 둔다.
  */
-export const DefectCauseCodeScreen = () => {
+const CodeMasterWorkspace = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { client } = useApiClient();
@@ -245,14 +246,6 @@ export const DefectCauseCodeScreen = () => {
       q: next.q === '' ? null : next.q,
       inactive: next.includeInactive ? '1' : null,
     });
-  };
-
-  /*
-   * 탭이 바뀌면 그 탭의 처음 상태로 간다. 한쪽 탭의 코드 번호가 남으면
-   * 다른 탭에는 없는 리소스의 상세를 조회하게 된다.
-   */
-  const handleChangeTab = (value: string) => {
-    setSearchParams(new URLSearchParams({ tab: value }));
   };
 
   const openCreateForm = (patch: Record<string, string | null>) => {
@@ -460,11 +453,6 @@ export const DefectCauseCodeScreen = () => {
 
   return (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
-      />
-
       {/*
        * 목록이 잘렸다는 사실을 감추지 않는다. 페이지 이동 컨트롤은 아직 없으므로
        * 조건을 좁히는 것이 사용자가 할 수 있는 조치다.
@@ -480,20 +468,7 @@ export const DefectCauseCodeScreen = () => {
         </div>
       )}
 
-      <Tabs
-        aria-label={t.title}
-        value={tab.kind}
-        onChange={handleChangeTab}
-        items={CODE_TABS.map((definition) => ({
-          value: definition.kind,
-          label: definition.adapter.labels.tab,
-          /*
-           * 활성 탭의 내용만 만든다. 디자인 시스템 Tabs는 비활성 패널도 DOM에 두므로
-           * 모두 만들면 보이지 않는 표가 함께 살아 있게 된다.
-           */
-          content: definition.kind === tab.kind ? tabContent : null,
-        }))}
-      />
+      {tabContent}
 
       <DeactivateConfirmDialog
         open={isDeactivateOpen}
@@ -503,6 +478,49 @@ export const DefectCauseCodeScreen = () => {
         childCount={deactivateChildCount}
         // 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다. 버릴 입력이 없다.
         banner={<SaveErrorBanner error={deactivateWrite.error} onReload={handleReloadDetail} />}
+      />
+    </>
+  );
+};
+
+type ScreenTab = 'defect' | 'cause' | 'mapping';
+
+const resolveScreenTab = (value: string | null): ScreenTab => {
+  if (value === 'cause' || value === 'mapping') return value;
+  return 'defect';
+};
+
+/** W-06-03의 현상·원인·공정 매핑 세 축. 비활성 탭은 렌더하지 않아 숨은 요청을 만들지 않는다. */
+export const DefectCauseCodeScreen = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = resolveScreenTab(searchParams.get('tab'));
+
+  const changeTab = (value: string) => {
+    setSearchParams(new URLSearchParams({ tab: resolveScreenTab(value) }));
+  };
+
+  return (
+    <>
+      <PageHeader
+        title={t.title}
+        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+      />
+      <Tabs
+        aria-label={t.title}
+        value={activeTab}
+        onChange={changeTab}
+        items={[
+          ...CODE_TABS.map((definition) => ({
+            value: definition.kind,
+            label: definition.adapter.labels.tab,
+            content: definition.kind === activeTab ? <CodeMasterWorkspace /> : null,
+          })),
+          {
+            value: 'mapping',
+            label: t.tabs.mapping,
+            content: activeTab === 'mapping' ? <ProcessMappingPane /> : null,
+          },
+        ]}
       />
     </>
   );

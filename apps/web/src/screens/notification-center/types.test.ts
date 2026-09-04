@@ -60,18 +60,16 @@ describe('toNotificationView', () => {
   });
 
   it('대상 두 칸이 오면 그대로 나른다', () => {
-    const view = toNotificationView(
-      notificationFixture({ targetTypeCode: 'SYN-TARGET-TYPE', targetId: 7201 }),
-    );
+    const view = toNotificationView(notificationFixture({ targetTypeCode: 'LOT', targetId: 7201 }));
 
-    expect(view.targetTypeCode).toBe('SYN-TARGET-TYPE');
+    expect(view.targetTypeCode).toBe('LOT');
     expect(view.targetId).toBe(7201);
   });
 
   it('한쪽만 온 대상도 그대로 나른다 — 여기서 짝을 판정하지 않는다', () => {
-    const onlyType = toNotificationView(notificationFixture({ targetTypeCode: 'SYN-TARGET-TYPE' }));
+    const onlyType = toNotificationView(notificationFixture({ targetTypeCode: 'LOT' }));
 
-    expect(onlyType.targetTypeCode).toBe('SYN-TARGET-TYPE');
+    expect(onlyType.targetTypeCode).toBe('LOT');
     expect(onlyType.targetId).toBeNull();
   });
 });

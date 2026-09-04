@@ -17,7 +17,7 @@ describe('toDocumentProgressView', () => {
     const view = toDocumentProgressView(response);
 
     expect(view).toEqual({
-      documentTypeCode: 'SYN_DOC_TYPE_A',
+      documentTypeCode: 'GOODS_RECEIPT',
       documentId: 9001,
       documentNo: 'SYN-GR-2026-0001',
       documentDate: '2026-08-06',
@@ -48,7 +48,7 @@ describe('toDocumentProgressView', () => {
   /* 계약이 선택으로 둔 두 자리 — 없이 오는 문서가 실재한다. 없음을 없음으로 옮긴다. */
   it('세부구분과 취소 불가 사유가 오지 않으면 null이다', () => {
     const view = toDocumentProgressView({
-      documentTypeCode: 'SYN_DOC_TYPE_A',
+      documentTypeCode: 'GOODS_RECEIPT',
       documentId: 9004,
       documentNo: 'SYN-GR-2026-0004',
       documentDate: '2026-08-08',
@@ -90,14 +90,14 @@ describe('toDocumentProgressDetailView', () => {
       ],
       successors: [
         {
-          successorTypeCode: 'SYN_DOC_TYPE_B',
+          successorTypeCode: 'GOODS_ISSUE',
           successorId: 9101,
           successorNo: 'SYN-GI-2026-0101',
           qty: 400,
           screenId: 'SYN-SCREEN-02',
         },
         {
-          successorTypeCode: 'SYN_DOC_TYPE_B',
+          successorTypeCode: 'GOODS_ISSUE',
           successorId: 9102,
           successorNo: 'SYN-GI-2026-0102',
           qty: 100,
@@ -190,7 +190,7 @@ describe('toDocumentProgressDetailView', () => {
 
 describe('toCancelExecutionView', () => {
   const response = (overrides: Partial<CancelResultResponse> = {}): CancelResultResponse => ({
-    documentTypeCode: 'SYN_DOC_TYPE_B',
+    documentTypeCode: 'GOODS_ISSUE',
     documentId: 9001,
     statusCode: 'SYN_STATUS_CANCELLED',
     reversed: true,

@@ -67,6 +67,8 @@ import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { shipmentSchedule } from './shipment-schedule';
 import { materialInputScan } from './material-input-scan';
 import { dispositionDecision } from './disposition-decision';
+import { dispositionRequest } from './disposition-request';
+import { returnReceipt } from './return-receipt';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { emergencyWorkOrderField } from './emergency-work-order-field';
 import { workStart } from './work-start';
@@ -119,6 +121,7 @@ import { popLotLabelPrint } from './pop-lot-label-print';
 import { shippingPackingLabel } from './shipping-packing-label';
 import { repackLabelIssue } from './repack-label-issue';
 import { runningChange } from './running-change';
+import { workHoldRegister } from './work-hold-register';
 
 export const ko = {
   common,
@@ -174,6 +177,8 @@ export const ko = {
   shipmentSchedule,
   materialInputScan,
   dispositionDecision,
+  dispositionRequest,
+  returnReceipt,
   emergencyWorkOrder,
   emergencyWorkOrderField,
   workOrderProgress,
@@ -226,6 +231,7 @@ export const ko = {
   shippingPackingLabel,
   repackLabelIssue,
   runningChange,
+  workHoldRegister,
 } as const;
 
 export type Messages = typeof ko;

@@ -1,5 +1,11 @@
+import type { paths } from '@omf-mes/api-client';
+
 import { defaultPeriod, isPeriodDate, periodLockReason, resolvePeriod } from './period';
 import type { PeriodInput } from './period';
+
+type HistoryQueryParams = NonNullable<
+  paths['/quality/disposition-decisions']['get']['parameters']['query']
+>;
 
 export interface HistoryFilters extends PeriodInput {
   dispositionTypeCode: string;
@@ -8,7 +14,8 @@ export interface HistoryFilters extends PeriodInput {
 export interface HistoryListQuery {
   decidedFrom: string;
   decidedTo: string;
-  dispositionTypeCode?: string;
+  /** 처분 유형은 계약이 세 값으로 닫았다(`REWORK`·`SCRAP`·`NORMAL` · omf-mes#336) */
+  dispositionTypeCode?: HistoryQueryParams['dispositionTypeCode'];
   page?: number;
 }
 
@@ -83,7 +90,10 @@ export const toHistoryListQuery = (
     decidedTo: period.bounds.to,
     ...(filters.dispositionTypeCode === ''
       ? {}
-      : { dispositionTypeCode: filters.dispositionTypeCode }),
+      : {
+          dispositionTypeCode:
+            filters.dispositionTypeCode as HistoryQueryParams['dispositionTypeCode'],
+        }),
     ...(page > 1 ? { page } : {}),
   };
 };

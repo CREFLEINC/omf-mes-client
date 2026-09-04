@@ -241,6 +241,8 @@ export const ShipmentProcessingCandidateScreen = () => {
           warehouseId,
           loadingInfo,
           lineDrafts,
+          /* 확인 대화상자가 여는 순간의 본문을 얼려 쓰므로 렌더마다 새 시각이어도 보내는 값은 하나다. */
+          now: new Date(),
         })
       : null;
   const canSubmit =

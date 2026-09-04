@@ -21,14 +21,14 @@ const step = (overrides: Partial<ApprovalStep> = {}): ApprovalStep => ({
 const request = (overrides: Partial<ApprovalRequest> = {}): ApprovalRequest => ({
   approvalRequestId: 9001,
   approvalRequestNo: 'SYNTH-REQ-001',
-  approvalTypeCode: 'SAMPLE-TYPE-A',
+  approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
   requestedBy: 9301,
   requestedByName: '합성 상신자1',
   requestedAt: '2026-08-06T14:20:00+09:00',
   statusCode: 'SAMPLE-STATUS-OPEN',
   reason: '합성 사유',
   target: {
-    targetTypeCode: 'SAMPLE-TARGET-A',
+    targetTypeCode: 'INBOUND_LOT',
     targetId: 9401,
     displayName: '합성 대상 문서 가',
     openable: false,
@@ -276,7 +276,7 @@ describe('ProgressPane — 단계', () => {
 });
 
 describe('ProgressPane — 반려 자리표시', () => {
-  it('자리표시가 빈 동안에는 어떤 단계도 반려로 그려지지 않는다', () => {
+  it('고정 반려 코드만 반려로 그린다', () => {
     const pane = renderPane([
       step({ decisionCode: SAMPLE_DECISION_CODE_B }),
       step({ stepNo: 2, decisionCode: SAMPLE_DECISION_CODE_A }),
@@ -286,7 +286,7 @@ describe('ProgressPane — 반려 자리표시', () => {
 
     /* 선행 단언 — 두 단계가 실제로 그려졌다. */
     expect(items).toHaveLength(2);
-    expect(items.map((item) => item.getAttribute('data-status'))).toEqual(['complete', 'complete']);
+    expect(items.map((item) => item.getAttribute('data-status'))).toEqual(['rejected', 'complete']);
   });
 
   it('자리표시를 채우면 그 코드의 단계가 반려로 그려진다', () => {

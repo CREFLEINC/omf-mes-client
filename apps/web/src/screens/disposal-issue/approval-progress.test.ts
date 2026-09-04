@@ -47,9 +47,9 @@ describe('자리표시 — 지금은 비어 있다', () => {
    * **비어 있는 것이 지금의 사실이다.** 값을 하나 넣어 두면 화면이 「승인됐다」·「반려됐다」를
    * 지어내고, 그 짐작이 사용자에게는 사실로 보인다.
    */
-  it('승인 완료·반려 코드 집합이 비어 있다', () => {
+  it('승인 완료 상태는 운영 목록을 기다리고 반려는 고정 OpenAPI 값을 쓴다', () => {
     expect(APPROVED_APPROVAL_STATUS_CODES).toEqual([]);
-    expect(REJECTION_DECISION_CODES).toEqual([]);
+    expect(REJECTION_DECISION_CODES).toEqual(['REJECTED']);
   });
 
   it('비어 있으면 승인 판정을 할 수 없다고 말한다', () => {
@@ -193,15 +193,12 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
    * (목 실측), 그때 「진행 중」으로 그리면 사용자가 이미 끝난 단계를 기다린다.
    */
   it('결재 기록이 있으면 차례 표시보다 그것이 앞선다', () => {
-    const views = toStepProgressViews(
-      [step({ decisionCode: 'SAMPLE_DECISION_A', isCurrent: true })],
-      [],
-    );
+    const views = toStepProgressViews([step({ decisionCode: 'APPROVED', isCurrent: true })], []);
 
     expect(views[0]?.status).toBe('complete');
   });
 
-  it('반려 자리표시가 비어 있는 동안 어떤 코드도 반려가 되지 않는다', () => {
+  it('반려 목록을 비워 주입하면 어떤 코드도 반려가 되지 않는다', () => {
     const views = toStepProgressViews([step({ decisionCode: SAMPLE_REJECTION_DECISION })], []);
 
     expect(views[0]?.status).toBe('complete');
@@ -218,15 +215,22 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
   });
 
   it('결재 결과 코드를 그대로 낸다', () => {
-    const views = toStepProgressViews([step({ decisionCode: 'SAMPLE_DECISION_A' })], []);
+    const views = toStepProgressViews([step({ decisionCode: 'APPROVED' })], []);
 
-    expect(views[0]?.decisionCode).toBe('SAMPLE_DECISION_A');
+    expect(views[0]?.decisionCode).toBe('APPROVED');
   });
 
   /* 계약이 선택으로 둔 값은 널·없음·빈 문자열이 모두 「없음」이다. */
   it('빈 문자열로 온 값은 없음으로 읽는다', () => {
     const views = toStepProgressViews(
-      [step({ decisionCode: '', decisionAt: '', decisionComment: '' })],
+      [
+        step({
+          decisionCode:
+            '' as never /* 계약 밖 값 — 서버가 빈 판정을 내렸을 때의 화면 동작을 시험한다 */,
+          decisionAt: '',
+          decisionComment: '',
+        }),
+      ],
       [],
     );
 
@@ -261,7 +265,7 @@ describe('toStepProgressViews — 단계 배열을 그릴 값으로', () => {
       t.progress.waitingPending,
     );
     expect(
-      toStepProgressViews([step({ decisionCode: 'SAMPLE_DECISION_A' })], [])[0]?.waitingText,
+      toStepProgressViews([step({ decisionCode: 'APPROVED' })], [])[0]?.waitingText,
     ).toBeNull();
   });
 
@@ -283,7 +287,7 @@ describe('toRequestProgressView — 구획이 그리는 것 전부', () => {
 
   it('요청번호·유형·상태를 서버 값 그대로 낸다', () => {
     expect(view.requestNo).toBe('AP-2026-800001');
-    expect(view.approvalTypeCode).toBe('SAMPLE_AP_TYPE_A');
+    expect(view.approvalTypeCode).toBe('GOODS_ISSUE_DISPOSAL');
     expect(view.statusCode).toBe('SAMPLE_AP_STATUS_A');
   });
 

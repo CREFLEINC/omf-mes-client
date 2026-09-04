@@ -41,7 +41,7 @@ export interface SelectOption {
  * 화면 어휘를 다른 화면과 맞추고(「미사용 포함」) 뒤집는 자리를 `filters.ts` 한 곳에 둔다.
  */
 export interface RouteFilters {
-  /** 승인 유형 코드. 값 목록이 확정되지 않아 지금은 고를 선택지가 없다(`code-options.ts`). */
+  /** 승인 유형 코드. 고정 OpenAPI가 닫은 enum을 `code-options.ts`에서 선택지로 제공한다. */
   approvalTypeCode: string;
   /** 비면 「전체 사업부」다 — 결재선의 「전 사업부 공통」과 다른 뜻이다. */
   businessUnitId: string;

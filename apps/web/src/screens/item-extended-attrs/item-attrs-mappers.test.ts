@@ -8,9 +8,14 @@ const activeItem = itemFixtures[0]!;
 const nullableItem = itemFixtures[1]!;
 const inactiveItem = itemFixtures[2]!;
 
-/** 계약이 `ItemUpdate`에 두는 키 아홉. 이 집합에서 하나라도 어긋나면 잡힌다. */
+/** 계약이 `ItemUpdate`에 두는 키. 이 집합에서 하나라도 어긋나면 잡힌다. */
 const UPDATE_KEYS = [
-  'lotControlTypeCode',
+  'nameKo',
+  'nameVi',
+  'developmentItem',
+  'lotControlled',
+  'defaultLotStorageUomId',
+  'defaultProductionLotSize',
   'serialControlTypeCode',
   'shelfLifeDays',
   'inspectionRequired',
@@ -27,7 +32,12 @@ const ORIGIN_KEYS = ['itemCode', 'itemName', 'itemTypeCode', 'baseUomId', 'itemI
 describe('itemToAttrsFormValues', () => {
   it('계약 표현을 폼 표현으로 옮긴다', () => {
     expect(itemToAttrsFormValues(activeItem)).toEqual<ItemAttrsFormValues>({
-      lotControlTypeCode: 'SYN-LOT-01',
+      nameKo: '합성 품목 A 표시명',
+      nameVi: 'Ten san pham tong hop A',
+      developmentItem: true,
+      lotControlled: true,
+      defaultLotStorageUomId: '7001',
+      defaultProductionLotSize: '500',
       serialControlTypeCode: 'NONE',
       shelfLifeManaged: true,
       shelfLifeDays: '30',
@@ -58,6 +68,10 @@ describe('itemToAttrsFormValues', () => {
   it('널 선택 항목을 빈 문자열로 모은다', () => {
     const values = itemToAttrsFormValues(nullableItem);
 
+    expect(values.nameKo).toBe('');
+    expect(values.nameVi).toBe('');
+    expect(values.defaultLotStorageUomId).toBe('');
+    expect(values.defaultProductionLotSize).toBe('');
     expect(values.storageConditionCode).toBe('');
     expect(values.openedShelfLifeHours).toBe('');
   });
@@ -104,7 +118,7 @@ describe('toItemUpdate — isActive를 되돌려 싣는다 (M03)', () => {
   it('폼을 고쳐도 사용 여부는 조회한 값을 따른다', () => {
     const edited: ItemAttrsFormValues = {
       ...itemToAttrsFormValues(inactiveItem),
-      lotControlTypeCode: 'SYN-LOT-99',
+      lotControlled: true,
     };
 
     expect(toItemUpdate(edited, inactiveItem).isActive).toBe(false);
@@ -143,6 +157,10 @@ describe('toItemUpdate — 널 허용 항목', () => {
 
     expect(body.storageConditionCode).toBeNull();
     expect(body.openedShelfLifeHours).toBeNull();
+    expect(body.nameKo).toBeNull();
+    expect(body.nameVi).toBeNull();
+    expect(body.defaultLotStorageUomId).toBeNull();
+    expect(body.defaultProductionLotSize).toBeNull();
     expect(Object.keys(body)).toContain('storageConditionCode');
     expect(Object.keys(body)).toContain('openedShelfLifeHours');
   });
@@ -152,22 +170,31 @@ describe('toItemUpdate — 널 허용 항목', () => {
 
     expect(body.storageConditionCode).toBe('SYN-STORAGE-01');
     expect(body.openedShelfLifeHours).toBe(48);
+    expect(body.nameKo).toBe('합성 품목 A 표시명');
+    expect(body.nameVi).toBe('Ten san pham tong hop A');
+    expect(body.developmentItem).toBe(true);
+    expect(body.defaultLotStorageUomId).toBe(7001);
+    expect(body.defaultProductionLotSize).toBe(500);
   });
 
   /* 앞뒤 공백이 붙은 코드는 눈으로 구분되지 않는 다른 값이 된다. */
   it('코드의 앞뒤 공백을 턴다', () => {
     const values: ItemAttrsFormValues = {
       ...itemToAttrsFormValues(activeItem),
-      lotControlTypeCode: '  SYN-LOT-01  ',
+      serialControlTypeCode: '  SYN-SERIAL-01  ',
       fifoPolicyCode: ' FEFO ',
       storageConditionCode: '  ',
+      nameKo: '  표시명  ',
+      nameVi: '  Ten hien thi  ',
     };
     const body = toItemUpdate(values, activeItem);
 
-    expect(body.lotControlTypeCode).toBe('SYN-LOT-01');
+    expect(body.serialControlTypeCode).toBe('SYN-SERIAL-01');
     expect(body.fifoPolicyCode).toBe('FEFO');
     // 공백만 남은 칸은 「지정하지 않음」이다.
     expect(body.storageConditionCode).toBeNull();
+    expect(body.nameKo).toBe('표시명');
+    expect(body.nameVi).toBe('Ten hien thi');
   });
 });
 
@@ -178,9 +205,14 @@ describe('isSameItemAttrsValues', () => {
     ).toBe(true);
   });
 
-  /* 아홉 필드 중 하나라도 빠뜨리면 「고친 것이 없다」로 읽혀 저장 버튼이 열리지 않는다. */
+  /* 필드 중 하나라도 빠뜨리면 「고친 것이 없다」로 읽혀 저장 버튼이 열리지 않는다. */
   it.each([
-    ['lotControlTypeCode', { lotControlTypeCode: 'SYN-LOT-99' }],
+    ['nameKo', { nameKo: '다른 표시명' }],
+    ['nameVi', { nameVi: 'Ten khac' }],
+    ['developmentItem', { developmentItem: false }],
+    ['lotControlled', { lotControlled: false }],
+    ['defaultLotStorageUomId', { defaultLotStorageUomId: '7003' }],
+    ['defaultProductionLotSize', { defaultProductionLotSize: '250' }],
     ['serialControlTypeCode', { serialControlTypeCode: 'SYN-SERIAL-99' }],
     ['shelfLifeManaged', { shelfLifeManaged: false }],
     ['shelfLifeDays', { shelfLifeDays: '90' }],
@@ -205,7 +237,7 @@ describe('toItemUpdate — 없는 값을 지어내지 않는다', () => {
       itemName: '합성 품목 I',
       itemTypeCode: 'SYN-TYPE-C',
       baseUomId: 7001,
-      lotControlTypeCode: 'SYN-LOT-09',
+      lotControlled: true,
       serialControlTypeCode: 'NONE',
       inspectionRequired: false,
       fifoPolicyCode: 'FIFO',
