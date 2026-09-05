@@ -2,6 +2,7 @@ import { AlertBanner, type Column, EmptyState, Table } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { codeValueLabel } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
 import type { NonconformanceDetailView, NonconformanceLotRow } from './types';
 
@@ -9,9 +10,12 @@ export interface DetailPaneProps {
   view: NonconformanceDetailView;
   items: DispositionLookup;
   uoms: DispositionLookup;
+  /** 심각도·상태의 표시명(G-32) — 목록 열과 같은 조회를 받는다. 모르는 코드는 코드 그대로(G-9). */
+  severity: DispositionLookup;
+  status: DispositionLookup;
 }
 
-export const DetailPane = ({ view, items, uoms }: DetailPaneProps) => {
+export const DetailPane = ({ view, items, uoms, severity, status }: DetailPaneProps) => {
   const t = messages.dispositionDecision;
   const columns: Column<NonconformanceLotRow>[] = [
     { key: 'lotNo', header: t.fields.lotNo, render: (row) => row.lotNoText },
@@ -30,8 +34,8 @@ export const DetailPane = ({ view, items, uoms }: DetailPaneProps) => {
         {[
           [t.fields.nonconformanceNo, view.nonconformanceNo],
           [t.fields.item, lookupDisplayLabel(items, view.itemId)],
-          [t.fields.severityCode, view.severityCode],
-          [t.fields.statusCode, view.statusCode],
+          [t.fields.severityCode, codeValueLabel(severity, view.severityCode)],
+          [t.fields.statusCode, codeValueLabel(status, view.statusCode)],
           [t.fields.openedAt, view.openedAtText],
         ].map(([label, value]) => (
           <div className="field-cell" key={label}>

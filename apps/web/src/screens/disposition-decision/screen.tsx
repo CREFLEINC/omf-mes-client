@@ -396,6 +396,8 @@ export const DispositionDecisionScreen = ({
                       }}
                       remaining={remaining}
                       items={items}
+                      severity={severity}
+                      status={status}
                       uoms={uoms}
                       onRetry={() => void detail.refetch()}
                     />
