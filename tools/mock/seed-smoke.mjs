@@ -57,6 +57,7 @@ const ENTRIES = [
   ['M-04-01 제품 재고', '/inventory/balances?itemId=2003&includeZero=true', 2],
   ['M-04-03 포장 검색', '/inventory/handling-units?q=HU-2026-000058', 1],
   ['W-02-05 마감 상태', '/mdm/code-values?codeGroupCode=WORK_ORDER_STATUS', 4],
+  ['W-03-02 해제 사유', '/mdm/code-values?codeGroupCode=LOT_HOLD_RELEASE_REASON', 4],
   ['W-04-06 원 출하', '/logistics/shipments?customerId=4002', 2],
   ['W-04-06 불량창고 위치', '/mdm/locations?warehouseId=1003', 2],
   ['W-04-06 반품 사유', '/mdm/code-values?codeGroupCode=GOODS_RECEIPT_REASON', 1],

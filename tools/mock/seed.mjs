@@ -304,6 +304,13 @@ export const createSeed = (now = new Date()) => {
       ['INSPECTION_PENDING', '수입검사 대기'],
       ['SUSPECT', '의심 자재'],
     ],
+    /* W-03-02 — 해제 사유는 등록 사유와 대칭인 필수 축(고객 시드 4값). */
+    LOT_HOLD_RELEASE_REASON: [
+      ['RETEST_PASS', '재검사 합격'],
+      ['RETEST_FAIL', '재검사 불합격'],
+      ['INVESTIGATION_CLEARED', '조사 종결'],
+      ['MANAGER_OVERRIDE', '관리자 판단'],
+    ],
     PICKING_TYPE: [
       ['PRODUCTION', '생산 투입'],
       ['SHIPMENT', '출하'],

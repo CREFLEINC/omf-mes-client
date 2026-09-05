@@ -59,6 +59,35 @@ const transitionRoute = (
   note?: string,
 ): StubRoute =>
   route(TRANSITIONS, { lotId: 701, currentLotStatusCode: 'NORMAL', transitions, note });
+/* 사유 선택지 — 보류(`LOT_HOLD_REASON`)·해제(`LOT_HOLD_RELEASE_REASON`)는 그룹으로 나눠 답한다. */
+const REASON_LABELS: Record<string, string> = {
+  SYN_REASON: 'Synthetic hold reason',
+  SYN_RELEASE_REASON: 'Synthetic release reason',
+};
+const reasonRoute = (group: string, code: string): StubRoute => ({
+  match: (request) => {
+    const url = new URL(request.url);
+    return url.pathname === '/mdm/code-values' && url.searchParams.get('codeGroupCode') === group;
+  },
+  respond: () =>
+    jsonResponse({
+      items: [
+        {
+          codeValueId: 903,
+          codeGroupId: 904,
+          code,
+          codeName: REASON_LABELS[code],
+          displayOrder: 1,
+          isActive: true,
+        },
+      ],
+      page: { page: 1, size: 100, total: 1 },
+    }),
+});
+const reasonRoutes = [
+  reasonRoute('LOT_HOLD_REASON', 'SYN_REASON'),
+  reasonRoute('LOT_HOLD_RELEASE_REASON', 'SYN_RELEASE_REASON'),
+];
 const statusRoute = route('/mdm/code-values', {
   items: [
     ['NORMAL', '정상'],
@@ -117,7 +146,7 @@ const VersionHarness = ({ selected }: { selected: LotStatusCandidate }) => {
 const renderPreparation = (routes: StubRoute[], selected = lot(), tracksVersion = false) => {
   const urls: URL[] = [];
   const requests: Request[] = [];
-  const stub = createStubFetch([statusRoute, ...routes]);
+  const stub = createStubFetch([...reasonRoutes, statusRoute, ...routes]);
   const view = renderWithProviders(
     tracksVersion ? (
       <VersionHarness selected={selected} />
@@ -201,6 +230,17 @@ const prepareRelease = async (
   await screen.findByText('보류 해제 준비가 완료되었습니다.');
   return view;
 };
+/** 사유 Select — 선택지가 서기(질의 완료) 전엔 잠겨 있어 열리기를 기다린 뒤 코드에 맞는 이름을 고른다. */
+const chooseReason = async (
+  user: ReturnType<typeof userEvent.setup>,
+  label: '보류 사유' | '해제 사유',
+  code: string,
+) => {
+  const field = screen.getByLabelText(label);
+  await waitFor(() => expect(field).toBeEnabled());
+  await user.click(field);
+  await user.click(await screen.findByRole('option', { name: REASON_LABELS[code] }));
+};
 const fillRelease = async (
   user: ReturnType<typeof userEvent.setup>,
   quantity = '5',
@@ -209,7 +249,7 @@ const fillRelease = async (
 ) => {
   await user.click(await screen.findByRole('radio', { name: '일부 해제' }));
   await user.type(screen.getByLabelText('해제 수량'), quantity);
-  if (reason !== '') await user.type(screen.getByLabelText('해제 사유'), reason);
+  if (reason !== '') await chooseReason(user, '해제 사유', reason);
   if (remarks !== '') await user.type(screen.getByLabelText('비고'), remarks);
 };
 const fillFullRelease = async (
@@ -217,7 +257,7 @@ const fillFullRelease = async (
   reason = 'SYN_RELEASE_REASON',
   remarks = '재검사 합격으로 전량 해제',
 ) => {
-  await user.type(screen.getByLabelText('해제 사유'), reason);
+  await chooseReason(user, '해제 사유', reason);
   await user.type(screen.getByLabelText('비고'), remarks);
 };
 const prepareCreate = async (
@@ -238,7 +278,7 @@ const fillCreate = async (
 ) => {
   await user.click(screen.getByRole('radio', { name: '일부 보류' }));
   await user.type(screen.getByLabelText('보류 수량'), quantity);
-  if (reason !== '') await user.type(screen.getByLabelText('보류 사유'), reason);
+  if (reason !== '') await chooseReason(user, '보류 사유', reason);
   if (remarks !== '') await user.type(screen.getByLabelText('보류 비고'), remarks);
 };
 const fillFullCreate = async (
@@ -246,7 +286,7 @@ const fillFullCreate = async (
   reason = 'SYN_REASON',
   remarks = '',
 ) => {
-  if (reason !== '') await user.type(screen.getByLabelText('보류 사유'), reason);
+  if (reason !== '') await chooseReason(user, '보류 사유', reason);
   if (remarks !== '') await user.type(screen.getByLabelText('보류 비고'), remarks);
 };
 
@@ -297,7 +337,7 @@ describe('Lot Status 전이 준비', () => {
   it.each([
     ['0', 'SYN_REASON', '보류 수량은 0보다 커야 합니다.'],
     ['21', 'SYN_REASON', '보류 수량은 보류 가능 수량 20 이하여야 합니다.'],
-    ['5', '', '보류 사유를 입력하세요.'],
+    ['5', '', '사유를 선택하세요.'],
   ])('CREATE_HOLD 입력 %s/%s를 fail-closed한다', async (quantity, reason, message) => {
     const { requests, user } = await prepareCreate();
     await fillCreate(user, quantity, reason);
@@ -316,7 +356,7 @@ describe('Lot Status 전이 준비', () => {
 
     await user.click(screen.getByRole('radio', { name: '전량 보류' }));
     expect(screen.queryByLabelText('보류 수량')).toBeNull();
-    expect(screen.getByLabelText('보류 사유')).toHaveValue('');
+    expect(screen.getByLabelText('보류 사유')).toHaveTextContent('사유를 선택하세요');
     expect(screen.getByLabelText('보류 비고')).toHaveValue('');
     expect(screen.getByRole('button', { name: '등록 확인' })).toBeDisabled();
   });
@@ -500,13 +540,13 @@ describe('Lot Status 전이 준비', () => {
     expect(screen.getByRole('radio', { name: '검사 대기' })).toBeDisabled();
     await view.user.click(within(dialog).getByRole('button', { name: '취소' }));
     await chooseTransition(view.user, '검사 대기');
-    expect(screen.getByLabelText('보류 사유')).toHaveValue('');
+    expect(screen.getByLabelText('보류 사유')).toHaveTextContent('사유를 선택하세요');
 
     await fillCreate(view.user);
     await view.user.click(screen.getByRole('button', { name: 'LOT 버전 갱신' }));
     expect(await screen.findByRole('radio', { name: '전량 보류' })).toBeChecked();
     expect(screen.queryByLabelText('보류 수량')).toBeNull();
-    expect(screen.getByLabelText('보류 사유')).toHaveValue('');
+    expect(screen.getByLabelText('보류 사유')).toHaveTextContent('사유를 선택하세요');
   });
 
   it('열린 보류가 하나면 자동 선택하고 상세 ETag가 있을 때만 준비한다', async () => {
@@ -542,7 +582,7 @@ describe('Lot Status 전이 준비', () => {
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
     expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
-    expect(screen.getByLabelText('해제 사유')).toHaveValue('');
+    expect(screen.getByLabelText('해제 사유')).toHaveTextContent('사유를 선택하세요');
     expect(screen.getByLabelText('비고')).toHaveValue('');
     expect(urls.filter((url) => url.pathname === lotHoldDetailPath(502))).toHaveLength(1);
   });
@@ -750,7 +790,7 @@ describe('Lot Status 전이 준비', () => {
     expect(await screen.findByText('보류 해제 준비가 완료되었습니다.')).toBeVisible();
     expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
-    expect(screen.getByLabelText('해제 사유')).toHaveValue('');
+    expect(screen.getByLabelText('해제 사유')).toHaveTextContent('사유를 선택하세요');
     expect(screen.getByLabelText('비고')).toHaveValue('');
   });
 
@@ -761,7 +801,7 @@ describe('Lot Status 전이 준비', () => {
 
     await user.click(screen.getByRole('radio', { name: '전량 해제' }));
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
-    expect(screen.getByLabelText('해제 사유')).toHaveValue('');
+    expect(screen.getByLabelText('해제 사유')).toHaveTextContent('사유를 선택하세요');
     expect(screen.getByLabelText('비고')).toHaveValue('');
     expect(screen.getByRole('button', { name: '해제 확인' })).toBeDisabled();
   });
@@ -774,7 +814,7 @@ describe('Lot Status 전이 준비', () => {
       '재검사 합격으로 해제',
       '해제 수량은 보류 수량 10 이하여야 합니다.',
     ],
-    ['5', '', '재검사 합격으로 해제', '해제 사유를 입력하세요.'],
+    ['5', '', '재검사 합격으로 해제', '사유를 선택하세요.'],
     ['5', 'SYN_RELEASE_REASON', '', '비고를 입력하세요.'],
   ])('해제 입력 %s/%s/%s를 fail-closed한다', async (quantity, reason, remarks, message) => {
     const { requests, user } = await prepareRelease(releaseRoute());
@@ -948,7 +988,7 @@ describe('Lot Status 전이 준비', () => {
     await screen.findByText('보류 해제 준비가 완료되었습니다.');
     expect(screen.getByRole('radio', { name: '전량 해제' })).toBeChecked();
     expect(screen.queryByLabelText('해제 수량')).toBeNull();
-    expect(screen.getByLabelText('해제 사유')).toHaveValue('');
+    expect(screen.getByLabelText('해제 사유')).toHaveTextContent('사유를 선택하세요');
     expect(screen.getByLabelText('비고')).toHaveValue('');
     expect(screen.queryByRole('dialog')).toBeNull();
   });
