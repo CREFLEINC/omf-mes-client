@@ -1331,6 +1331,12 @@ describe('appRouter — 처분 판정 처리의 진입 경로', () => {
   });
 });
 
+describe('appRouter — 재고 재등록의 진입 경로', () => {
+  it('출하 반품·재고 갈래의 정식 route가 등록돼 있다', () => {
+    expect(routedPaths()).toContain('/shipment/stock-reinstatements');
+  });
+});
+
 describe('appRouter — W/O 마감·ERP 실적 송신의 진입 경로', () => {
   it('생산 메뉴를 키보드로 열면 실제 마감 화면의 첫 상태가 선다', async () => {
     const user = userEvent.setup();

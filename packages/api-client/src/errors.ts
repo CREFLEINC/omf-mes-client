@@ -20,7 +20,7 @@ export type ApiError =
     }
   | { kind: 'stateLocked'; errors: ErrorItem[] }
   | { kind: 'validation'; errors: ErrorItem[] }
-  | { kind: 'http'; status: number; message?: string; currentLotStatusCode?: string }
+  | { kind: 'http'; status: number; code?: string; message?: string; currentLotStatusCode?: string }
   | { kind: 'network' };
 
 /**
@@ -56,6 +56,7 @@ const isErrorItem = (value: unknown): value is ErrorItem =>
   typeof value.message === 'string';
 
 export const normalizeApiError = (status: number, body: unknown): ApiError => {
+  const code = isRecord(body) && typeof body.code === 'string' ? body.code : undefined;
   const currentLotStatusCode =
     isRecord(body) &&
     typeof body.currentLotStatusCode === 'string' &&
@@ -103,6 +104,7 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
     return {
       kind: 'http',
       status,
+      ...(code === undefined ? {} : { code }),
       message: body.message,
       ...(currentLotStatusCode === undefined ? {} : { currentLotStatusCode }),
     };
@@ -111,6 +113,7 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
   return {
     kind: 'http',
     status,
+    ...(code === undefined ? {} : { code }),
     ...(currentLotStatusCode === undefined ? {} : { currentLotStatusCode }),
   };
 };

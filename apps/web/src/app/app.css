@@ -7333,6 +7333,95 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /* ── W-04-06 반품·클레임 입고 등록 ─────────────────────────────── */
 
+/* ── W-04-11 재고 재등록 ─────────────────────────────────────── */
+.stock-reinstatement-workspace {
+  display: grid;
+  grid-template-columns: minmax(32rem, 5fr) minmax(30rem, 6fr);
+  gap: var(--space-5);
+  align-items: start;
+  min-width: 0;
+}
+
+.stock-reinstatement-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-5);
+  padding: var(--space-5);
+  min-width: 0;
+}
+
+.stock-reinstatement-pane > .pane-title,
+.stock-reinstatement-section > h3 {
+  margin: 0;
+}
+
+.stock-reinstatement-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--space-4);
+}
+
+.stock-reinstatement-table {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.stock-reinstatement-summary,
+.stock-reinstatement-confirm-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.stock-reinstatement-summary > div,
+.stock-reinstatement-confirm-summary > div {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.stock-reinstatement-summary dt,
+.stock-reinstatement-confirm-summary dt {
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.stock-reinstatement-summary dd,
+.stock-reinstatement-confirm-summary dd {
+  margin: 0;
+}
+
+.stock-reinstatement-section {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.stock-reinstatement-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.stock-reinstatement-remarks {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 1280px) {
+  .stock-reinstatement-workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .stock-reinstatement-filter,
+  .stock-reinstatement-summary,
+  .stock-reinstatement-confirm-summary,
+  .stock-reinstatement-form {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* 2단 — 좌 원 출하 찾기 · 우 반품 입고. 좌 칸은 목업의 380px 감각을 최소 폭으로 남긴다. */
 .return-receipt-workspace {
   display: grid;
