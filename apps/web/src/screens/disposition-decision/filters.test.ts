@@ -93,6 +93,13 @@ describe('readPendingFilters', () => {
     expect(readPendingFilters(params('sev=CODE-B'), TODAY).severityCode).toBe('');
   });
 
+  /* 공통코드 조회가 끝나기 전(null)에 주소의 코드를 버리면 새로고침마다 필터가 풀린다. */
+  it('목록이 아직 서기 전(null)에는 코드 꼴이면 그대로 읽고, 꼴이 아니면 버린다', () => {
+    expect(readPendingFilters(params('sev=CODE-B'), TODAY, null).severityCode).toBe('CODE-B');
+    expect(readPendingFilters(params('sev=CODE B'), TODAY, null).severityCode).toBe('');
+    expect(readPendingFilters(params('st=CODE-C'), TODAY, [], null).statusCode).toBe('CODE-C');
+  });
+
   /*
    * ⭐ 원천은 **값 목록을 주입받지 않는데도** 읽혀야 한다 — 계약이 두 값을 열거한 축이라
    * 공통코드 확정을 기다리지 않는다. 심각도·상태와 같은 자리에 두면 값 목록이 비었다고

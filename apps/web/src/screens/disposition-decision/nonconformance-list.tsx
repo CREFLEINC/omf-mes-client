@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { codeValueLabel } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -11,6 +12,9 @@ import { dispositionProgressLabel, type NonconformanceRow } from './types';
 export interface NonconformanceListProps {
   rows: NonconformanceRow[];
   items: DispositionLookup;
+  /** 심각도·상태 열의 표시명(G-32). 모르는 코드는 코드 그대로 보인다(G-9). */
+  severity: DispositionLookup;
+  status: DispositionLookup;
   isLoading: boolean;
   error: ReactNode;
   page: PageView;
@@ -27,6 +31,8 @@ export interface NonconformanceListProps {
 export const NonconformanceList = ({
   rows,
   items,
+  severity,
+  status,
   isLoading,
   error,
   page,
@@ -62,9 +68,17 @@ export const NonconformanceList = ({
       header: t.fields.dispositionProgressCode,
       render: (row) => dispositionProgressLabel(row.dispositionProgressCode),
     },
-    { key: 'severity', header: t.fields.severityCode, render: (row) => row.severityCode },
+    {
+      key: 'severity',
+      header: t.fields.severityCode,
+      render: (row) => codeValueLabel(severity, row.severityCode),
+    },
     { key: 'openedAt', header: t.fields.openedAt, render: (row) => row.openedAtText },
-    { key: 'status', header: t.fields.statusCode, render: (row) => row.statusCode },
+    {
+      key: 'status',
+      header: t.fields.statusCode,
+      render: (row) => codeValueLabel(status, row.statusCode),
+    },
   ];
 
   if (error !== null && error !== undefined) return error;

@@ -39,9 +39,18 @@ const rows: NonconformanceRow[] = [
   },
 ];
 
+const codes = (pairs: [string, string][]): DispositionLookup => ({
+  entries: pairs.map(([value, label]) => ({ value, label, isActive: true })),
+  truncated: false,
+  isError: false,
+  isLoading: false,
+});
+
 const baseProps = (): NonconformanceListProps => ({
   rows,
   items: items(),
+  severity: codes([['CODE-B', '합성 심각도 B']]),
+  status: codes([['CODE-C', '합성 상태 C']]),
   isLoading: false,
   error: null,
   page: {
@@ -148,5 +157,20 @@ describe('NonconformanceList', () => {
 
     expect(screen.getByText('합성 오류')).toBeInTheDocument();
     expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('심각도·상태 열은 공통코드 이름으로 보인다(G-32)', () => {
+    renderList();
+
+    expect(screen.getAllByText('합성 심각도 B').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('합성 상태 C').length).toBeGreaterThan(0);
+    expect(screen.queryByText('CODE-B')).toBeNull();
+  });
+
+  it('이름이 없는 코드는 코드를 그대로 보인다 — 뜻을 지어내지 않는다(G-9)', () => {
+    renderList({ severity: codes([]), status: codes([]) });
+
+    expect(screen.getAllByText('CODE-B').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('CODE-C').length).toBeGreaterThan(0);
   });
 });

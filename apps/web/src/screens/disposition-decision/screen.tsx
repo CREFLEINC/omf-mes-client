@@ -1,4 +1,4 @@
-import { AlertBanner, Breadcrumb, PageHeader, Tabs, useToast } from '@crefle/web-ui';
+import { Breadcrumb, PageHeader, Tabs, useToast } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
@@ -19,13 +19,7 @@ import {
 import { DecisionFormPane } from './decision-form-pane';
 import { toDecisionLock } from './decision-lock';
 import { DetailSlot } from './detail-slot';
-import {
-  DISPOSITION_TYPE_CODES,
-  NONCONFORMANCE_STATUS_CODES,
-  SEVERITY_CODES,
-  scopeWarning,
-  toCodeOptions,
-} from './disposition-codes';
+import { codeOptionsOf, DISPOSITION_TYPE_CODES, dispositionTypeOptions } from './disposition-codes';
 import { FilterBar } from './filter-bar';
 import {
   readPage,
@@ -47,7 +41,13 @@ import {
 } from './history-filters';
 import { HistoryTab } from './history-tab';
 import { LoadErrorBanner } from './load-error';
-import { useItemLookup, useUomLookup } from './lookups';
+import {
+  type DispositionLookup,
+  useItemLookup,
+  useNonconformanceStatusLookup,
+  useSeverityLookup,
+  useUomLookup,
+} from './lookups';
 import { NonconformanceList } from './nonconformance-list';
 import { toPageView } from './pagination';
 import { defaultPeriod } from './period';
@@ -89,10 +89,12 @@ interface PendingWriteTarget {
   nonconformanceNo: string;
 }
 
+/** 조회가 끝나기 전엔 `null` — 주소의 코드를 아직 판정할 수 없다. 끝나면 활성 코드 목록(빈 배열 포함). */
+const settledCodes = (lookup: DispositionLookup): readonly string[] | null =>
+  lookup.isLoading ? null : codeOptionsOf(lookup).map((option) => option.value);
+
 export interface DispositionDecisionScreenProps {
   dispositionTypeCodes?: readonly string[];
-  severityCodes?: readonly string[];
-  statusCodes?: readonly string[];
   /** 기본 기간을 정하는 기준 날. 감지기가 실행하는 날에 결과가 좌우되지 않게 밖에서 받는다. */
   today?: Date;
   /** UTC 기준 분. 기본은 브라우저의 시간대다. */
@@ -101,8 +103,6 @@ export interface DispositionDecisionScreenProps {
 
 export const DispositionDecisionScreen = ({
   dispositionTypeCodes = DISPOSITION_TYPE_CODES,
-  severityCodes = SEVERITY_CODES,
-  statusCodes = NONCONFORMANCE_STATUS_CODES,
   today,
   offsetMinutes,
 }: DispositionDecisionScreenProps = {}) => {
@@ -114,6 +114,14 @@ export const DispositionDecisionScreen = ({
     [baseDate, offsetMinutes],
   );
 
+  /* 심각도·상태 선택지는 공통코드 조회가 채운다(G-32). 주소의 코드는 목록이 서기 전(null)엔 버리지 않는다. */
+  const severity = useSeverityLookup();
+  const status = useNonconformanceStatusLookup();
+  const severityCodes = useMemo(
+    () => settledCodes(severity),
+    [severity.entries, severity.isLoading],
+  );
+  const statusCodes = useMemo(() => settledCodes(status), [status.entries, status.isLoading]);
   const filters = useMemo(
     () => readPendingFilters(searchParams, baseDate, severityCodes, statusCodes),
     [baseDate, searchParams, severityCodes, statusCodes],
@@ -311,7 +319,6 @@ export const DispositionDecisionScreen = ({
   };
 
   const historyRows = useMemo(() => (history.data?.items ?? []).map(toDecisionRow), [history.data]);
-  const codeNotice = scopeWarning(severityCodes, statusCodes);
 
   return (
     <>
@@ -335,8 +342,8 @@ export const DispositionDecisionScreen = ({
                   <h2 className="pane-title">{t.panes.list}</h2>
                   <FilterBar
                     applied={filters}
-                    severityOptions={toCodeOptions(severityCodes)}
-                    statusOptions={toCodeOptions(statusCodes)}
+                    severity={severity}
+                    status={status}
                     items={items}
                     onApply={(next) => apply(next)}
                     onReset={() =>
@@ -349,14 +356,11 @@ export const DispositionDecisionScreen = ({
                       })
                     }
                   />
-                  {codeNotice !== undefined && (
-                    <div className="banner-slot">
-                      <AlertBanner variant="info">{codeNotice}</AlertBanner>
-                    </div>
-                  )}
                   <NonconformanceList
                     rows={rows}
                     items={items}
+                    severity={severity}
+                    status={status}
                     isLoading={list.isPending}
                     error={
                       list.isError ? (
@@ -405,7 +409,7 @@ export const DispositionDecisionScreen = ({
                       lockReason={lock.reason}
                       isUncertain={lock.isUncertain}
                       onCheckOutcome={checkOutcome}
-                      dispositionOptions={toCodeOptions(dispositionTypeCodes)}
+                      dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
                       uomId={uomId}
                       uoms={uoms}
                       writeError={write.error}
@@ -439,7 +443,7 @@ export const DispositionDecisionScreen = ({
             content: (
               <HistoryTab
                 applied={historyFilters}
-                dispositionOptions={toCodeOptions(dispositionTypeCodes)}
+                dispositionOptions={dispositionTypeOptions(dispositionTypeCodes)}
                 rows={historyRows}
                 uoms={uoms}
                 page={toPageView(

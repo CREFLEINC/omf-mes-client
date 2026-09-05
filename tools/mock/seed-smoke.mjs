@@ -64,6 +64,7 @@ const ENTRIES = [
   ['W-04-07 판정 대기 대상', '/quality/disposition-candidates?warehouseId=1003', 2],
   ['W-04-07 불량창고', '/mdm/warehouses?isDefect=true', 1],
   ['W-04-07 심각도', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY', 1],
+  ['W-03-10 상태', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS', 3],
   ['M-05-01 설비', '/mdm/equipments', 2],
   ['M-05-01 점검 항목', '/mdm/equipments/5001/inspection-items', 3],
 ];
