@@ -593,11 +593,6 @@ main > * + * {
   letter-spacing: var(--type-title-lg-tracking);
 }
 
-.po-change-review-diff-values {
-  display: grid;
-  margin: 0 0 var(--space-4);
-}
-
 .po-change-review-diff-values > div {
   display: grid;
   gap: var(--space-1);
