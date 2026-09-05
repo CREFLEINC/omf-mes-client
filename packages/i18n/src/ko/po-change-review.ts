@@ -27,29 +27,36 @@ export const poChangeReview = {
     emptyDescription: 'ERP가 변경을 보내면 여기에 나타납니다.',
     selectRow: (productionOrderNo: string): string => `${productionOrderNo} 선택`,
     fields: {
+      receivedAt: '수신시각',
       productionOrderNo: 'P/O',
       changedFields: '변경 항목',
       acknowledged: '확인',
     },
+    /** 변경 내역을 못 받은 행 — 지어내지 않고 모른다고 적는다(G-9). */
+    changedFieldsUnknown: '변경 내역 없음',
+    /** 열거 밖 항목만 바뀐 행 — 서버가 빈 배열을 내린다. */
+    changedFieldsOutOfScope: '항목 미상',
     unacknowledgedChip: '미확인',
     acknowledgedChip: '확인됨',
   },
   diff: {
-    /**
-     * ⚠ **지금 확실히 아는 값은 「변경 «후»」 하나다.** 왼쪽(기존)은 `lastChange` 가 와야
-     * 채워진다 — 2열 비교표와 「▼ 1,000 감소」 표기, 그리고 항목이 빈 배열일 때의 문구는
-     * **그 계약과 함께 선다.** 지금 적어 두면 아무 데서도 읽지 않는 글이 남는다.
-     */
     columns: {
+      field: '항목',
+      before: '기존(MES)',
       after: '변경(ERP)',
+      note: '비고',
     },
+    receivedAt: (at: string): string => `수신 시각 ${at}`,
+    /** 감소량은 화면이 뺀다(§4-A) — 단순 뺄셈이라 실패가 성립하지 않는다. */
+    decrease: (qty: string): string => `▼ ${qty} 감소`,
+    increase: (qty: string): string => `▲ ${qty} 증가`,
+    same: '(동일)',
     selectFirst: '변경 알림 목록에서 변경 알림을 선택하세요',
-    /**
-     * ⚠ **아직 안 오는 것이지 만들지 않은 것이 아니다.** 변경 항목을 담아 내릴 계약 자리가
-     * 생성물에 아직 반영되지 않았다 — 도착하면 이 구획이 그대로 채워진다.
-     */
-    pendingContract:
-      '변경 항목을 아직 받지 못합니다. 계약이 반영되면 이 자리에 기존 값과 변경 값이 나란히 표시됩니다.',
+    /** 목록은 미확인 기준이라 뜨는데 변경 내역이 함께 오지 않은 갈래 — 다시 불러와도 없으면 원문으로. */
+    noLastChange:
+      '변경 내역이 함께 오지 않았습니다. 다시 불러와도 없으면 연계 동기화 현황에서 원문을 확인하세요.',
+    /** §5-1 — 항목은 열거 셋(수량·납기·상태)이다. 그 밖이 바뀌면 빈 배열로 오고 화면은 이 사실을 적는다(G-9). */
+    outOfScope: '이 변경의 항목을 낼 수 없습니다 — 원문은 연계 동기화 현황에서 봅니다.',
   },
   workOrders: {
     loading: '영향 받는 W/O 불러오는 중',
@@ -61,12 +68,19 @@ export const poChangeReview = {
       status: '상태',
       produced: '실적',
       mismatch: '불일치',
+      adjustQty: '조정 수량',
     },
     /** §6 — 실적이 이미 붙은 W/O 는 반영이 계획을 실적 아래로 내린다. 막지 않고 경고한다(A-9 ⓑ). */
     alreadyProduced: '이미 생산됨',
     mismatchChip: 'P/O와 불일치',
     producedOverWarning: (produced: string, changed: string): string =>
       `이미 ${produced}개가 생산됐습니다. 반영하면 계획(${changed})이 실적보다 작아집니다.`,
+    /** 서버가 스스로 나누지 않는다 — 어느 W/O 를 얼마나 줄일지는 여기서 사람이 정한다(계약). */
+    adjustHelp: '반영할 W/O에만 새 지시 수량을 적습니다. 비우면 그 W/O는 그대로 둡니다.',
+    adjustLabel: (workOrderNo: string): string => `${workOrderNo} 조정 수량`,
+    adjustLocked: '판번호가 없어 이 W/O는 조정할 수 없습니다',
+    adjustNotNumber: '숫자로 입력하세요',
+    adjustNegative: '0 이상 입력하세요',
   },
   decision: {
     label: '판정',
@@ -79,12 +93,9 @@ export const poChangeReview = {
     reasonTooLong: '사유가 너무 깁니다. 500자까지 입력하세요',
     /** ⓘ 강행의 파급을 저장 «전»에 말한다(G-19). 서버가 플래그를 세우고 마감 화면이 읽는다. */
     proceedNote: '강행하면 영향 받는 W/O에 P/O 불일치 표식이 남습니다.',
-    /**
-     * §6 — ⚠ **반영인데 조정을 하나도 지정하지 않은 상태**. 지금은 조정 입력을 아직 못 만들어
-     * **항상 이 상태다.** 막지 않고 파급을 말한다 — 중단·취소 반영이 정당하게 이 상태다.
-     */
+    /** §6 — 반영인데 조정을 하나도 적지 않은 상태. 중단·취소 반영이 정당하게 이 상태라 막지 않는다. */
     applyWithoutAdjustment:
-      '조정하지 않은 작업지시에는 불일치 표식이 남습니다. 수량·계획 시각 조정은 계약이 반영된 뒤에 이 화면에서 함께 보낼 수 있습니다.',
+      '조정 수량을 적지 않은 작업지시는 그대로 두고, 그 W/O에는 P/O 불일치 표식이 남습니다. 중단·취소 반영처럼 조정할 수량이 없으면 그대로 진행해도 됩니다.',
     submit: '확인 처리',
     submitted: '확인 처리를 저장했습니다.',
   },
@@ -92,6 +103,7 @@ export const poChangeReview = {
     selectNone: '변경 알림을 선택하세요',
     decisionNone: '반영 또는 강행을 고르세요',
     reason: '강행 사유를 입력하세요',
+    adjustment: '조정 수량 오류를 고치세요',
     saving: '확인 처리를 저장하는 중입니다',
   },
   /**
@@ -106,9 +118,6 @@ export const poChangeReview = {
   },
   /** A-11 — 물러난 수준. **문구만 두지 않고 화면에 낸다.** */
   withdrawn: {
-    /** ⛔ W/O 조정 입력은 계약이 반영된 뒤에 붙인다. 자리만 잡아 둔다. */
-    adjustment:
-      'W/O별 수량·계획 시각 조정은 아직 이 화면에서 보내지 못합니다. 계약이 반영되면 여기에 붙습니다.',
     /** §5-5 — 중단·취소 반영의 후속은 W/O 취소이고, 그것은 건별 액션이라 이 화면에 두지 않는다. */
     cancelFollowUp:
       '중단·취소를 반영한 뒤 작업지시를 취소하는 일은 이 화면에 두지 않았습니다. 취소는 선발행 LOT 슬롯을 함께 폐번하므로 건별로 확인하고 진행합니다.',
