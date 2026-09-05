@@ -250,6 +250,22 @@ export const createSeed = (now = new Date()) => {
       ['PENDING_DECISION', '판정 대기'],
       ['DECIDED', '판정 완료'],
     ],
+    /* W-02-05 · W-02-08 — 작업지시 상태(시스템 값 · 8값 중 화면이 쓰는 넷)와 마감 변동 사유(고객 시드). */
+    WORK_ORDER_STATUS: [
+      ['RELEASED', '배포'],
+      ['IN_PROGRESS', '진행 중'],
+      ['COMPLETED', '생산 완료'],
+      ['CLOSED', '마감'],
+    ],
+    WORK_ORDER_COMPLETION_VARIANCE_REASON: [
+      ['MATERIAL_SHORTAGE', '자재 부족'],
+      ['EQUIPMENT_FAILURE', '설비 고장'],
+      ['PLAN_CHANGE', '계획 변경'],
+    ],
+    PRODUCTION_RESULT_CORRECT_REASON: [
+      ['COUNT_ERROR', '집계 오류'],
+      ['REINSPECTION', '검사 재판정'],
+    ],
     /* W-04-06 — 입고 유형·사유는 고객이 늘리는 값(시드), 출하 상태는 시스템 값. */
     RECEIPT_TYPE: [
       ['MATERIAL', '자재 입고'],

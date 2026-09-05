@@ -12,11 +12,14 @@ export type WorkOrderCloseRemainderDisposition = NonNullable<
 export interface WorkOrderCloseInputDraft {
   remainderDisposition: WorkOrderCloseRemainderDisposition | null;
   varianceReasonCode: string;
+  /** 소멸을 골랐을 때의 이유 — 계약 `remarks`. 소멸이 아니면 보내지 않는다. */
+  remarks: string;
 }
 
 export const EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT: WorkOrderCloseInputDraft = {
   remainderDisposition: null,
   varianceReasonCode: '',
+  remarks: '',
 };
 
 export const setWorkOrderCloseRemainderDisposition = (
@@ -28,6 +31,11 @@ export const setWorkOrderCloseVarianceReasonCode = (
   draft: WorkOrderCloseInputDraft,
   value: string,
 ): WorkOrderCloseInputDraft => ({ ...draft, varianceReasonCode: value });
+
+export const setWorkOrderCloseRemarks = (
+  draft: WorkOrderCloseInputDraft,
+  value: string,
+): WorkOrderCloseInputDraft => ({ ...draft, remarks: value });
 
 export const workOrderCloseReadinessInputFrom = (
   draft: WorkOrderCloseInputDraft,

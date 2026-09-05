@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { Radio, Select, type SelectItems } from '@crefle/web-ui';
+import { Radio, Select, TextArea, type SelectItems } from '@crefle/web-ui';
 import { type JSX, useId } from 'react';
 
 import type {
@@ -21,6 +21,7 @@ export interface WorkOrderCloseInputPaneProps {
   reasonUnavailableReason: string | null;
   onRemainderDispositionChange: (value: WorkOrderCloseRemainderDisposition) => void;
   onVarianceReasonCodeChange: (value: string) => void;
+  onRemarksChange: (value: string) => void;
 }
 
 export const WorkOrderCloseInputPane = ({
@@ -30,6 +31,7 @@ export const WorkOrderCloseInputPane = ({
   reasonUnavailableReason,
   onRemainderDispositionChange,
   onVarianceReasonCodeChange,
+  onRemarksChange,
 }: WorkOrderCloseInputPaneProps): JSX.Element => {
   const t = messages.workOrderClose.input;
   const reasonId = useId();
@@ -69,6 +71,18 @@ export const WorkOrderCloseInputPane = ({
             </Radio>
           </div>
         </fieldset>
+      ) : null}
+      {/* 소멸은 다른 전표를 만들지 않는다 — 고른 이유는 마감 비고(remarks)와 처분 코드에만 남는다. */}
+      {completionJudgment === 'UNDER' && draft.remainderDisposition === 'WRITE_OFF' ? (
+        <TextArea
+          label={t.remarks.label}
+          value={draft.remarks}
+          rows={2}
+          fullWidth
+          placeholder={t.remarks.placeholder}
+          helperText={t.remarks.help}
+          onChange={(event) => onRemarksChange(event.target.value)}
+        />
       ) : null}
       {completionJudgment !== 'NORMAL' ? (
         <div className="field-cell">
