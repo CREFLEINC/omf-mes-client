@@ -22,6 +22,7 @@ export interface WorkOrderCloseCandidateListPaneProps {
   page: WorkOrderPageView;
   onSelect: (workOrderId: number) => void;
   onChangePage: (page: number) => void;
+  variant?: 'close' | 'correction';
 }
 
 const itemLabel = (value: WorkOrderCloseCandidateRow['itemLabel']): string =>
@@ -35,7 +36,9 @@ export const WorkOrderCloseCandidateListPane = ({
   page,
   onSelect,
   onChangePage,
+  variant = 'close',
 }: WorkOrderCloseCandidateListPaneProps) => {
+  const copy = variant === 'correction' ? messages.workOrderClose.closedCandidateList : t;
   const columns: Column<WorkOrderCloseCandidateRow>[] = [
     {
       key: 'workOrderNo',
@@ -60,7 +63,7 @@ export const WorkOrderCloseCandidateListPane = ({
 
   if (loadError !== null && loadError !== undefined) {
     return (
-      <section className="pane" aria-label={t.pane}>
+      <section className="pane" aria-label={copy.pane}>
         {loadError}
       </section>
     );
@@ -68,8 +71,8 @@ export const WorkOrderCloseCandidateListPane = ({
 
   if (isLoading) {
     return (
-      <section className="pane" aria-label={t.pane}>
-        <div role="status" aria-label={t.loading}>
+      <section className="pane" aria-label={copy.pane}>
+        <div role="status" aria-label={copy.loading}>
           <SkeletonText lines={3} />
         </div>
       </section>
@@ -77,12 +80,12 @@ export const WorkOrderCloseCandidateListPane = ({
   }
 
   return (
-    <section className="pane work-order-close-list-pane" aria-label={t.pane}>
-      <h2 className="pane-title">{t.pane}</h2>
+    <section className="pane work-order-close-list-pane" aria-label={copy.pane}>
+      <h2 className="pane-title">{copy.pane}</h2>
       <div className="wide-table work-order-close-table">
         <Table
           density="compact"
-          caption={<span className="work-order-close-table-caption">{t.pane}</span>}
+          caption={<span className="work-order-close-table-caption">{copy.pane}</span>}
           columns={columns}
           rows={rows}
           getRowId={(row) => String(row.workOrderId)}
@@ -91,8 +94,10 @@ export const WorkOrderCloseCandidateListPane = ({
             <EmptyState
               size="sm"
               live
-              title={page.isBeyondLast ? t.empty.beyondTitle : t.empty.title}
-              description={page.isBeyondLast ? t.empty.beyondDescription : t.empty.description}
+              title={page.isBeyondLast ? copy.empty.beyondTitle : copy.empty.title}
+              description={
+                page.isBeyondLast ? copy.empty.beyondDescription : copy.empty.description
+              }
             />
           }
         />

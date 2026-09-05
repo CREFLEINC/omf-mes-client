@@ -3,6 +3,7 @@ import type { WorkOrderCloseCodeValue, WorkOrderCloseProductionOrder } from './q
 export const WORK_ORDER_CLOSE_CODE_GROUPS = {
   status: 'WORK_ORDER_STATUS',
   varianceReason: 'WORK_ORDER_COMPLETION_VARIANCE_REASON',
+  correctionReason: 'PRODUCTION_RESULT_CORRECT_REASON',
 } as const;
 
 export interface WorkOrderCloseOption {

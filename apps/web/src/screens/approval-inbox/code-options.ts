@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { SelectOption } from './types';
 
 /**
- * 승인 유형은 고정 OpenAPI가 닫은 8개 enum을 그대로 쓴다. 요청 상태는 운영 공통코드 조회
+ * 승인 유형은 고정 OpenAPI가 닫은 9개 enum을 그대로 쓴다. 요청 상태는 운영 공통코드 조회
  * 대상이라 값 목록을 발명하지 않고 비워 둔다. 이 화면이 소유하며 다른 화면의 목록을 빌리지 않는다.
  */
 
@@ -17,6 +17,7 @@ export const PLACEHOLDER_APPROVAL_TYPE_CODES = [
   'GOODS_ISSUE_CANCEL',
   'SHIPMENT_CANCEL',
   'IQC_SKIP',
+  'PRODUCTION_RESULT_CORRECT',
 ] as const;
 
 /** 요청 상태 값 목록 — 같은 사정이다. 계약이 「값 목록은 공통코드 소관」이라고 적었다. */

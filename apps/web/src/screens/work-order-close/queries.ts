@@ -4,6 +4,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { toWorkOrderFact, type WorkOrderFact } from '../work-order/queries';
+import { toProductionResultRow, type ProductionResultRow } from './result-correction-model';
 
 type WorkOrder = components['schemas']['WorkOrder'];
 type WorkOrderProgress = components['schemas']['WorkOrderProgress'];
@@ -12,6 +13,8 @@ type PageMeta = components['schemas']['PageMeta'];
 type OutboundItemSetting = components['schemas']['OutboundItemSetting'];
 type CodeValue = components['schemas']['CodeValue'];
 type ProductionOrder = components['schemas']['ProductionOrder'];
+type ProductionResult = components['schemas']['ProductionResult'];
+type Worker = components['schemas']['Worker'];
 
 const LOOKUP_PAGE_SIZE = 200;
 
@@ -69,6 +72,11 @@ export interface WorkOrderCloseLookupList<T> {
   truncated: boolean;
 }
 
+export interface WorkOrderCloseWorker {
+  workerId: number;
+  workerName: string;
+}
+
 export const workOrderCloseKeys = {
   all: ['work-order-close'] as const,
   candidates: (filters: WorkOrderCloseFilters) =>
@@ -88,6 +96,9 @@ export const workOrderCloseKeys = {
   productionOrders: () => ['work-order-close', 'lookups', 'production-orders'] as const,
   codeValues: (codeGroupCode: string) =>
     ['work-order-close', 'lookups', 'code-values', codeGroupCode] as const,
+  results: (workOrderId: number | null) =>
+    ['work-order-close', 'production-results', workOrderId] as const,
+  workers: () => ['work-order-close', 'lookups', 'workers'] as const,
 };
 
 export const workOrderCloseDetailPath = (workOrderId: number): string =>
@@ -265,6 +276,56 @@ export const useWorkOrderCloseCodeValues = (
           codeName: value.codeName,
           displayOrder: value.displayOrder,
           isActive: value.isActive,
+        })),
+        truncated: isTruncated(data.page, data.items.length),
+      };
+    },
+  });
+};
+
+export const useWorkOrderCloseProductionResults = (
+  workOrderId: number | null,
+): UseQueryResult<WorkOrderCloseLookupList<ProductionResultRow>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderCloseKeys.results(workOrderId),
+    enabled: workOrderId !== null,
+    queryFn: async () => {
+      if (workOrderId === null) throw new Error('A work order is required to load results.');
+
+      const data = await runRequest(() =>
+        client.GET('/production/production-results', {
+          params: { query: { workOrderId, page: 1, size: LOOKUP_PAGE_SIZE } },
+        }),
+      );
+
+      return {
+        items: data.items.map((result: ProductionResult) => toProductionResultRow(result)),
+        truncated: isTruncated(data.page, data.items.length),
+      };
+    },
+  });
+};
+
+export const useWorkOrderCloseWorkers = (): UseQueryResult<
+  WorkOrderCloseLookupList<WorkOrderCloseWorker>
+> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workOrderCloseKeys.workers(),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/workers', {
+          params: { query: { includeInactive: true, page: 1, size: LOOKUP_PAGE_SIZE } },
+        }),
+      );
+
+      return {
+        items: data.items.map((worker: Worker) => ({
+          workerId: worker.workerId,
+          workerName: worker.workerName,
         })),
         truncated: isTruncated(data.page, data.items.length),
       };

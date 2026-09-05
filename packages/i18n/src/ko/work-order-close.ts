@@ -52,6 +52,16 @@ export const workOrderClose = {
       beyondDescription: '첫 쪽 또는 이전 쪽으로 이동해 다시 확인하세요.',
     },
   },
+  closedCandidateList: {
+    pane: '마감된 작업지시 목록',
+    loading: '마감된 작업지시 목록을 불러오는 중입니다.',
+    empty: {
+      title: '마감된 작업지시가 없습니다.',
+      description: '조회 조건을 바꿔 다시 확인하세요.',
+      beyondTitle: '현재 쪽에 마감된 작업지시가 없습니다.',
+      beyondDescription: '첫 쪽 또는 이전 쪽으로 이동해 다시 확인하세요.',
+    },
+  },
   candidateReferences: {
     item: {
       loading: '품목 표시명을 확인하는 중입니다.',
@@ -141,5 +151,63 @@ export const workOrderClose = {
     },
     lockedFallback: '이 송신 항목은 변경할 수 없습니다.',
     sendTiming: (note: string): string => `송신 시점: ${note}`,
+  },
+  correction: {
+    pane: '생산실적 정정',
+    heading: (workOrderNo: string): string => `실적 목록 — ${workOrderNo}`,
+    selection: {
+      title: '마감된 W/O를 선택하세요.',
+      description: '마감된 작업지시를 선택하면 등록된 생산실적을 확인할 수 있습니다.',
+    },
+    loading: '생산실적을 불러오는 중입니다.',
+    loadFailed: '생산실적을 불러오지 못했습니다.',
+    truncated: '실적 목록 일부만 불러와 정정을 시작할 수 없습니다.',
+    workersUnavailable: '등록자 표시명을 확인할 수 없어 일부 행을 미확인으로 표시합니다.',
+    reasonUnavailable: '정정 사유 목록을 확인할 수 없어 저장할 수 없습니다.',
+    empty: {
+      title: '등록된 생산실적이 없습니다.',
+      description: '정정할 원본 실적이 없습니다.',
+    },
+    fields: {
+      sequence: '순번',
+      occurredAt: '발생 시각',
+      goodQty: '양품',
+      defectQty: '불량',
+      holdQty: '보류',
+      scrapQty: '스크랩',
+      reworkQty: '재작업',
+      worker: '등록자',
+      relation: '정정 관계',
+      reason: '정정 사유',
+      note: '비고',
+    },
+    values: {
+      original: '원본',
+      correctionOf: (sequence: number | null): string =>
+        sequence === null ? '정정 실적' : `순번 ${String(sequence)} 정정`,
+      unknownWorker: '등록자 미확인',
+    },
+    actions: {
+      select: (sequence: number): string => `순번 ${String(sequence)} 실적 선택`,
+      correct: '정정',
+      cancel: '취소',
+      save: '정정 저장',
+      requestApproval: '상신',
+    },
+    immutable: '정정 실적도 같은 목록에 추가됩니다. 원본 실적은 삭제하거나 덮어쓰지 않습니다.',
+    dialog: {
+      title: (workOrderNo: string, sequence: number): string =>
+        `정정 입력 — ${workOrderNo} 순번 ${String(sequence)}`,
+      serverGrade: '정정 등급은 서버가 입력 내용을 기준으로 판정합니다.',
+    },
+    saved: '정정 실적이 추가되었습니다.',
+    approval: {
+      title: '생산실적 정정 승인 상신',
+      required: '이 정정은 승인이 필요합니다. 승인자가 판단할 수 있도록 변경 사유를 적어 주세요.',
+      reason: '상신 사유',
+      reasonHint: '무엇을 얼마나 정정하는지 구체적으로 작성하세요.',
+      reasonRequired: '상신 사유를 입력하세요.',
+      submitted: '승인 요청을 상신했습니다. 승인 완료 후 정정 내용을 다시 입력해 저장하세요.',
+    },
   },
 } as const;
