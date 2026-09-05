@@ -30,6 +30,21 @@ describe('work-order close code options', () => {
     expect(toWorkOrderCloseCodeOptions([])).toEqual([]);
   });
 
+  /* G-33 — 고객이 늘리는 코드의 표시명은 다국어 컬럼이 먼저고 기본 이름은 fallback이다. */
+  it('prefers the localized name and falls back to the base name, then the code', () => {
+    expect(
+      toWorkOrderCloseCodeOptions([
+        { code: 'LOCAL', codeName: 'Base', nameKo: '현지 이름', displayOrder: 1, isActive: true },
+        { code: 'BLANK_LOCAL', codeName: 'Base', nameKo: '   ', displayOrder: 2, isActive: true },
+        { code: 'NULL_LOCAL', codeName: '  ', nameKo: null, displayOrder: 3, isActive: true },
+      ]),
+    ).toEqual([
+      { value: 'LOCAL', label: '현지 이름' },
+      { value: 'BLANK_LOCAL', label: 'Base' },
+      { value: 'NULL_LOCAL', label: 'NULL_LOCAL' },
+    ]);
+  });
+
   it('preserves P/O server order', () => {
     expect(
       toWorkOrderCloseProductionOrderOptions([

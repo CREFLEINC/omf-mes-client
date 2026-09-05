@@ -18,9 +18,10 @@ import {
   useWorkOrderCloseUomLookup,
 } from './candidate-references';
 import {
+  WORK_ORDER_CLOSE_CODE_GROUPS,
+  toWorkOrderCloseCodeLabel,
   toWorkOrderCloseCodeOptions,
   toWorkOrderCloseProductionOrderOptions,
-  WORK_ORDER_CLOSE_CODE_GROUPS,
 } from './code-options';
 import { WorkOrderCloseFilterBar } from './filter-bar';
 import { toWorkOrderCloseFilterInitialization } from './filter-initialization';
@@ -369,7 +370,7 @@ export const WorkOrderCloseCandidateScreen = () => {
         .filter((reason) => reason.isActive && reason.codeName.trim() !== '')
         .slice()
         .sort((left, right) => left.displayOrder - right.displayOrder)
-        .map((reason) => ({ value: reason.code, label: reason.codeName })),
+        .map((reason) => ({ value: reason.code, label: toWorkOrderCloseCodeLabel(reason) })),
     [reasons.data],
   );
   let judgment: WorkOrderCloseCompletionJudgment | null = null;

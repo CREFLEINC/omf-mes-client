@@ -68,6 +68,25 @@ describe('LOT 코드 선택지', () => {
     });
   });
 
+  /* G-33 — 고객이 늘리는 코드의 표시명은 다국어 컬럼이 먼저고 기본 이름은 fallback이다. */
+  it('다국어 이름이 있으면 그것을 라벨로 쓰고, 비면 기본 이름으로 물러난다', async () => {
+    const items = [
+      { ...value('SAMPLE_L', 1), nameKo: '현지 이름' },
+      { ...value('SAMPLE_M', 3), nameKo: '   ' },
+      { ...value('SAMPLE_N', 4), nameKo: null },
+    ];
+    const { result } = renderHookWithProviders(() => useLotCodeOptions(LOT_STATUS_GROUP_CODE), {
+      fetch: createStubFetch([route(listBody(items, 3))]),
+    });
+
+    await waitFor(() => expect(result.current.data).toBeDefined());
+    expect(result.current.data?.items.map((item) => item.label)).toEqual([
+      '현지 이름',
+      'SAMPLE_M 이름',
+      'SAMPLE_N 이름',
+    ]);
+  });
+
   it('성공한 빈 seed와 조회 실패를 구분한다', async () => {
     const empty = renderHookWithProviders(() => useLotCodeOptions(LOT_STATUS_GROUP_CODE), {
       fetch: createStubFetch([route(listBody([]))]),

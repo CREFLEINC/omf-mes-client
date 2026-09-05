@@ -58,6 +58,8 @@ export interface WorkOrderCloseOutboundItemSetting {
 export interface WorkOrderCloseCodeValue {
   code: string;
   codeName: string;
+  /** 다국어 표시명(한국어). 표시명은 이 칸이 먼저고 `codeName`이 fallback이다(G-33). */
+  nameKo?: string | null;
   displayOrder: number;
   isActive: boolean;
 }
@@ -274,6 +276,7 @@ export const useWorkOrderCloseCodeValues = (
         items: data.items.map((value: CodeValue) => ({
           code: value.code,
           codeName: value.codeName,
+          nameKo: value.nameKo ?? null,
           displayOrder: value.displayOrder,
           isActive: value.isActive,
         })),

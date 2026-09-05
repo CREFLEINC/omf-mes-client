@@ -514,6 +514,7 @@ describe('work-order close lookups', () => {
         {
           code: 'SYN-CLOSED',
           codeName: 'Synthetic closed',
+          nameKo: null,
           displayOrder: 20,
           isActive: true,
         },

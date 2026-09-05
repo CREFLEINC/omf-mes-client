@@ -39,7 +39,8 @@ const fetchLotCodeOptions = async (
   return {
     items: data.items.map((item) => ({
       code: item.code,
-      label: item.codeName,
+      /* 표시명은 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). 로케일 스위치 전이라 한국어만 본다. */
+      label: (item.nameKo ?? '').trim() || item.codeName,
       displayOrder: item.displayOrder,
       isActive: item.isActive,
     })),

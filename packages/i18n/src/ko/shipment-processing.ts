@@ -37,6 +37,15 @@ export const shipmentProcessing = {
       PICKING_INCOMPLETE: '피킹 미완료',
       INSPECTION_NOT_PASSED: '출하검사 미완료',
     },
+    /** 진행 상태 6값 — 계약이 닫은 값이라 표시명은 화면이 갖는다. 낱말은 출하 예정 목록과 같다. */
+    progressCodes: {
+      NOT_ALLOCATED: '미편성',
+      PARTIALLY_ALLOCATED: '부분 편성',
+      PICKING: '피킹중',
+      PICKED: '피킹 완료',
+      PARTIALLY_SHIPPED: '부분 출하',
+      SHIPPED: '출하 완료',
+    },
     empty: {
       title: '조회 결과가 없습니다.',
       description: '출하일을 확인하고 다시 조회해 주세요.',
