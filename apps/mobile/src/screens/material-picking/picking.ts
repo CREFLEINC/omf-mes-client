@@ -20,6 +20,23 @@ export const SOURCE_DOCUMENT_TYPE = 'PICKING_ORDER';
 /** 출고 유형 값 목록을 받는 그룹. */
 export const ISSUE_TYPE = 'ISSUE_TYPE';
 
+/**
+ * 아직 출고할 수 있는 지시의 상태. 값 목록이 확정돼 있고 시스템이 소유한다.
+ *
+ * 전기완료는 재고가 이미 나간 것이고 취소 요청과 취소 완료는 나갈 것이 아니다. 셋 다 여기
+ * 담지 않는다.
+ */
+export const OPEN_ORDER_STATUS = 'REGISTERED';
+
+/**
+ * 이 지시로 아직 출고할 수 있는가.
+ *
+ * 라인의 집은 양은 출고 뒤에도 그대로 내려와, 전기된 지시를 다시 열면 화면이 같은 수량을 한
+ * 번 더 실을 수 있다 - 즉시 전기라 되돌릴 수 없다. 단말이 기억하는 것으로는 재시작을 넘지
+ * 못해 전표 상태로 가른다.
+ */
+export const isOpenOrder = (order: PickingOrder): boolean => order.statusCode === OPEN_ORDER_STATUS;
+
 /** 큐에 담긴 피킹 한 건. 경로와 본문에서 뽑아 낸다. */
 export interface QueuedPick {
   pickingLineId: number;
@@ -214,12 +231,15 @@ export const issuableQtyOf = (
  * 몰라 조회로는 드러나지 않는다.
  */
 export const canConfirmIssue = (
+  order: PickingOrder | null,
   lines: PickingLine[],
   hasWorker: boolean,
   queued: QueuedPick[] = [],
   queuedIssues = 0,
   alreadyIssued: ReadonlyMap<number, number> = new Map(),
 ): boolean =>
+  order !== null &&
+  isOpenOrder(order) &&
   hasWorker &&
   queuedIssues === 0 &&
   lines.some((line) => issuableQtyOf(line, queued, alreadyIssued) > 0);
