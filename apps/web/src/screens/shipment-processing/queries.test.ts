@@ -22,6 +22,7 @@ const filters = (
 ): ShipmentProcessingCandidateFilters => ({
   shipDateFrom: '2026-08-24',
   shipDateTo: '2026-08-31',
+  pickingCompleteOnly: true,
   page: 1,
   ...overrides,
 });
@@ -33,6 +34,7 @@ const request = (overrides: Record<string, unknown> = {}) => ({
   shipToPartnerId: 602,
   requestedShipDate: '2026-08-28',
   statusCode: 'SYN-STATUS',
+  shipmentProgressCode: 'PICKED',
   shippingInspectionStatusCode: 'PASSED',
   ...overrides,
 });
@@ -52,6 +54,7 @@ describe('shipmentProcessingKeys', () => {
       'candidates',
       '2026-08-24',
       '2026-08-31',
+      true,
       1,
     ]);
     expect(shipmentProcessingKeys.detail(501)).toEqual(['shipment-processing', 'detail', 501]);
@@ -70,8 +73,18 @@ describe('useShipmentRequestCandidates', () => {
   });
 
   it('shipDateFrom이 있으면 목록을 옮긴다', async () => {
+    let sent: URL | null = null;
     const fetch = createStubFetch([
-      getRoute(LIST_PATH, { items: [request()], page: { page: 1, size: 20, total: 1 } }),
+      {
+        match: (req) => req.method === 'GET' && new URL(req.url).pathname === LIST_PATH,
+        respond: (req) => {
+          sent = new URL(req.url);
+          return jsonResponse({
+            items: [request()],
+            page: { page: 1, size: 20, total: 1 },
+          });
+        },
+      },
     ]);
     const { result } = renderHookWithProviders(() => useShipmentRequestCandidates(filters()), {
       fetch,
@@ -84,6 +97,9 @@ describe('useShipmentRequestCandidates', () => {
     expect(result.current.data?.items).toHaveLength(1);
     expect(result.current.data?.items[0]?.shipmentRequestId).toBe(501);
     expect(result.current.data?.items[0]?.lines).toBeNull();
+    expect(sent).not.toBeNull();
+    expect((sent as URL | null)?.searchParams.get('pickingCompleteOnly')).toBe('true');
+    expect((sent as URL | null)?.searchParams.get('shippableRemainderOnly')).toBe('true');
   });
 
   it('lines가 응답에 있으면 라인마다 옮긴다', async () => {

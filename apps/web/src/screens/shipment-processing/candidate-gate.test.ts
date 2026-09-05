@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  isCandidateVisible,
-  isInspectionPassed,
-  isPickingComplete,
-  shipmentGateBlockers,
-} from './candidate-gate';
+import { isInspectionPassed, isPickingComplete, shipmentGateBlockers } from './candidate-gate';
 import type { ShipmentRequestLineCandidate } from './types';
 
 const line = (
@@ -24,16 +19,23 @@ const line = (
 });
 
 describe('isPickingComplete', () => {
-  it('라인이 없으면 완료가 아니다', () => {
-    expect(isPickingComplete([])).toBe(false);
-  });
+  it.each(['PICKED', 'PARTIALLY_SHIPPED', 'SHIPPED'] as const)(
+    '%s는 피킹 완료다',
+    (progressCode) => {
+      expect(isPickingComplete(progressCode)).toBe(true);
+    },
+  );
 
-  it('전 라인의 pickedQty가 allocatedQty와 같으면 완료다', () => {
-    expect(isPickingComplete([line(), line({ lineNo: 2 })])).toBe(true);
-  });
+  it.each(['NOT_ALLOCATED', 'PARTIALLY_ALLOCATED', 'PICKING'] as const)(
+    '%s는 피킹 미완료다',
+    (progressCode) => {
+      expect(isPickingComplete(progressCode)).toBe(false);
+    },
+  );
 
-  it('한 라인이라도 어긋나면 미완료다', () => {
-    expect(isPickingComplete([line(), line({ lineNo: 2, pickedQty: 80 })])).toBe(false);
+  it('라인 수량과 무관하게 서버 롤업 값만 본다', () => {
+    expect(isPickingComplete('PICKED')).toBe(true);
+    expect(isPickingComplete('PICKING')).toBe(false);
   });
 });
 
@@ -49,43 +51,32 @@ describe('isInspectionPassed', () => {
 
 describe('shipmentGateBlockers', () => {
   it('lines가 null이면 LINES_UNAVAILABLE 하나만 낸다', () => {
-    expect(shipmentGateBlockers({ lines: null, shippingInspectionStatusCode: 'PENDING' })).toEqual([
-      'LINES_UNAVAILABLE',
-    ]);
+    expect(
+      shipmentGateBlockers({
+        lines: null,
+        shipmentProgressCode: 'PICKED',
+        shippingInspectionStatusCode: 'PENDING',
+      }),
+    ).toEqual(['LINES_UNAVAILABLE']);
   });
 
   it('전부 통과하면 빈 배열이다', () => {
     expect(
-      shipmentGateBlockers({ lines: [line()], shippingInspectionStatusCode: 'PASSED' }),
+      shipmentGateBlockers({
+        lines: [line()],
+        shipmentProgressCode: 'PICKED',
+        shippingInspectionStatusCode: 'PASSED',
+      }),
     ).toEqual([]);
   });
 
   it('피킹 미완료와 검사 미완료를 함께 낸다', () => {
     expect(
       shipmentGateBlockers({
-        lines: [line({ pickedQty: 50 })],
+        lines: [line()],
+        shipmentProgressCode: 'PICKING',
         shippingInspectionStatusCode: 'PENDING',
       }),
     ).toEqual(['PICKING_INCOMPLETE', 'INSPECTION_NOT_PASSED']);
-  });
-});
-
-describe('isCandidateVisible', () => {
-  const complete = { lines: [line()], shippingInspectionStatusCode: 'PASSED' as const };
-  const incomplete = {
-    lines: [line({ pickedQty: 0 })],
-    shippingInspectionStatusCode: 'PASSED' as const,
-  };
-  const unavailable = { lines: null, shippingInspectionStatusCode: 'PASSED' as const };
-
-  it('체크가 꺼져 있으면 전부 보인다', () => {
-    expect(isCandidateVisible(incomplete, false)).toBe(true);
-    expect(isCandidateVisible(unavailable, false)).toBe(true);
-  });
-
-  it('체크가 켜져 있으면 피킹완료만 보인다', () => {
-    expect(isCandidateVisible(complete, true)).toBe(true);
-    expect(isCandidateVisible(incomplete, true)).toBe(false);
-    expect(isCandidateVisible(unavailable, true)).toBe(false);
   });
 });

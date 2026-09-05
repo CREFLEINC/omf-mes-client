@@ -19,7 +19,7 @@ import { useShipmentScheduleList } from './queries';
 import { ShipmentFilterBar } from './shipment-filter-bar';
 import { ShipmentTable } from './shipment-table';
 import { nextSortKey, readSortKey, toSortQuery } from './sort';
-import { PLACEHOLDER_SHIPMENT_STATUS_CODES, toStatusOptions } from './status-options';
+import { SHIPMENT_PROGRESS_CODES } from './status-options';
 import type { SelectOption, ShipmentRequestView } from './types';
 import {
   EMPTY_FILTERS,
@@ -142,7 +142,7 @@ export const ShipmentScheduleScreen = () => {
           appliedFilters={filters}
           customerOptions={toSelectOptions(customers)}
           shipToPartnerOptions={toSelectOptions(shipToPartners)}
-          statusOptions={toStatusOptions(PLACEHOLDER_SHIPMENT_STATUS_CODES, rows, filters.status)}
+          progressOptions={SHIPMENT_PROGRESS_CODES}
           chipNames={{
             customer: describeReference(customerReference),
             shipToPartner: describeReference(shipToPartnerReference),

@@ -16,8 +16,8 @@ export interface ShipmentProcessingFilterBarProps {
  * 좌측 목록의 조회 조건 줄 — 출하일 범위(시작 필수, 공유계약 L-3)와 「피킹완료만」 체크.
  *
  * 트리거 모델은 「모아서 적용」이다(work-order-close와 같다) — 조회를 눌러야 적용된다.
- * `pickingCompleteOnly`는 서버 쿼리가 아니라 클라이언트 판정(`candidate-gate.ts`)의 필터라
- * 조회를 다시 부르지 않아도 되지만, 같은 트리거 모델을 쓰는 편이 사용자에게 일관적이다.
+ * `pickingCompleteOnly`도 서버 조회 조건이다. 페이지 전체와 총 건수가 같은 조건을 반영하도록
+ * 조회를 눌렀을 때 다른 기간 조건과 함께 적용한다.
  */
 export const ShipmentProcessingFilterBar = ({
   appliedFilters,

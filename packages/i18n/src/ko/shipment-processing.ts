@@ -13,8 +13,7 @@ export const shipmentProcessing = {
     shipDateFrom: '출하일 시작',
     shipDateTo: '출하일 종료',
     pickingCompleteOnly: '피킹완료만',
-    pickingCompleteOnlyNote:
-      '이 조건은 이번 쪽에 받은 결과 안에서만 적용됩니다 — 쪽 이동의 총 건수는 이 조건을 반영하지 않습니다.',
+    pickingCompleteOnlyNote: '서버가 계산한 출하 진행 상태를 기준으로 전체 결과에 적용됩니다.',
     search: '조회',
     reset: '초기화',
     shipDateFromRequired: '출하일 시작은 필수입니다.',
