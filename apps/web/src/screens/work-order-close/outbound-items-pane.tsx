@@ -65,8 +65,9 @@ export const WorkOrderCloseOutboundItemsPane = ({
                     {setting.enabled ? t.state.on : t.state.off}
                   </Chip>
                 </dd>
-                {timing === null ? null : <p className="field-note">{timing}</p>}
-                {lock === null ? null : <p className="field-note">{lock}</p>}
+                {/* 설명은 dd 로 — dl 안에 p 를 두지 않는다(마크업 유효성). */}
+                {timing === null ? null : <dd className="field-note">{timing}</dd>}
+                {lock === null ? null : <dd className="field-note">{lock}</dd>}
               </div>
             );
           })}
