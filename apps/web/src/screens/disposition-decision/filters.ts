@@ -81,9 +81,18 @@ const identifierOf = (raw: string | null): string => {
   return isIdentifier(value) ? value : '';
 };
 
-const allowedCode = (value: string | null, allowed: readonly string[]): string => {
+/** 주소에서 읽어도 되는 코드의 꼴 — 목록이 서기 전에 값을 버리지 않기 위한 최소 검사다. */
+const isCodeLike = (value: string): boolean => /^[A-Za-z0-9_.-]{1,64}$/.test(value);
+
+/**
+ * 허용 목록이 `null` 이면 **아직 서지 않은 것**이다(공통코드 조회 중) — 주소의 코드를 버리지 않고
+ * 꼴만 본다. 목록이 서면(빈 배열 포함) 아는 값만 읽는다.
+ */
+const allowedCode = (value: string | null, allowed: readonly string[] | null): string => {
   const code = value?.trim() ?? '';
-  return code !== '' && allowed.includes(code) ? code : '';
+  if (code === '') return '';
+  if (allowed === null) return isCodeLike(code) ? code : '';
+  return allowed.includes(code) ? code : '';
 };
 
 const dateOf = (value: string | null): string => {
@@ -101,8 +110,8 @@ const dateOf = (value: string | null): string => {
 export const readPendingFilters = (
   params: URLSearchParams,
   today: Date,
-  severityCodes: readonly string[] = [],
-  statusCodes: readonly string[] = [],
+  severityCodes: readonly string[] | null = [],
+  statusCodes: readonly string[] | null = [],
 ): PendingFilters => {
   const from = dateOf(params.get(KEYS.from));
   const to = dateOf(params.get(KEYS.to));
@@ -116,7 +125,7 @@ export const readPendingFilters = (
     statusCode: allowedCode(params.get(KEYS.statusCode), statusCodes),
     /*
      * ⭐ 원천만 값 목록을 밖에서 받지 않는다 — **계약이 두 값을 열거했기** 때문이다.
-     * 심각도·상태는 공통코드가 확정돼야 채워지므로 주입받지만, 이 축은 그럴 대기가 없다.
+     * 심각도·상태는 공통코드 조회가 채우므로 주입받지만(조회 중엔 `null`), 이 축은 그럴 대기가 없다.
      */
     sourceCode: allowedCode(params.get(KEYS.sourceCode), SOURCE_CODES),
   };

@@ -126,7 +126,7 @@ describe('DispositionDecisionScreen 조회', () => {
     });
     const group = screen.getByRole('radiogroup', { name: t.fields.dispositionTypeCode });
     expect(within(group).getAllByRole('radio')).toHaveLength(3);
-    expect(within(group).getByRole('radio', { name: 'REWORK' })).toBeEnabled();
+    expect(within(group).getByRole('radio', { name: '재작업' })).toBeEnabled();
     expect(screen.queryByText(t.dispositionPending)).toBeNull();
   });
 });

@@ -26,10 +26,21 @@ const items = (): DispositionLookup => ({
   isLoading: false,
 });
 
+const emptyLookup = (): DispositionLookup => ({
+  entries: [],
+  truncated: false,
+  isError: false,
+  isLoading: false,
+});
+const codes = (pairs: [string, string][]): DispositionLookup => ({
+  ...emptyLookup(),
+  entries: pairs.map(([value, label]) => ({ value, label, isActive: true })),
+});
+
 const baseProps = (): FilterBarProps => ({
   applied,
-  severityOptions: [],
-  statusOptions: [],
+  severity: emptyLookup(),
+  status: emptyLookup(),
   items: items(),
   onApply: vi.fn(),
   onReset: vi.fn(),
@@ -54,7 +65,7 @@ describe('FilterBar', () => {
 
     const severity = screen.getByLabelText(t.fields.severityCode);
     expect(severity).toHaveTextContent(t.codePlaceholder);
-    expect(severity).toHaveAccessibleDescription(t.codePending);
+    expect(severity).toHaveAccessibleDescription(t.codeLock.empty);
   });
 
   it('기간과 품목을 함께 적용한다', async () => {
@@ -127,5 +138,32 @@ describe('FilterBar', () => {
     expect(screen.getByRole('option', { name: t.all })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: t.values.sourceCode.PRODUCT })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: t.values.sourceCode.RETURN })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['조회 중', { isLoading: true }, t.codeLock.loading],
+    ['실패', { isError: true }, t.codeLock.failed],
+  ])('심각도 기준값이 %s이면 칸을 잠그고 그 사유를 밝힌다(G-2)', (_state, overrides, message) => {
+    renderBar({ severity: { ...emptyLookup(), ...overrides } });
+
+    const severity = screen.getByLabelText(t.fields.severityCode);
+    expect(severity).toHaveTextContent(t.codePlaceholder);
+    expect(severity).toHaveAccessibleDescription(message);
+  });
+
+  it('기준값이 오면 이름으로 고르고 코드를 적용값에 싣는다', async () => {
+    const { props, user } = renderBar({ severity: codes([['CODE-B', '합성 심각도 B']]) });
+
+    await user.click(screen.getByLabelText(t.fields.severityCode));
+    await user.click(screen.getByRole('option', { name: '합성 심각도 B' }));
+    await user.click(screen.getByRole('button', { name: messages.common.search }));
+
+    expect(props.onApply).toHaveBeenCalledWith(expect.objectContaining({ severityCode: 'CODE-B' }));
+  });
+
+  it('잘려 온 기준값은 고를 수 있되 안내를 단다', () => {
+    renderBar({ status: { ...codes([['CODE-C', '합성 상태 C']]), truncated: true } });
+
+    expect(screen.getByLabelText(t.fields.statusCode)).toHaveAccessibleDescription(t.codeTruncated);
   });
 });

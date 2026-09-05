@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
 import { runRequest } from '../../patterns/request';
+import { NONCONFORMANCE_STATUS_CODE_GROUP, SEVERITY_CODE_GROUP } from './disposition-codes';
 import type { PageMeta } from './types';
 
 export interface DispositionLookup extends LookupSource {
@@ -27,6 +28,50 @@ const toLookup = (
 
 const nameOr = (value: string): string =>
   value.trim() === '' ? messages.common.reference.unknown : value;
+
+/** 코드값 표시명 — 다국어 컬럼이 먼저, 기본 이름이 fallback, 둘 다 비면 코드(G-33). 로케일 스위치 전이라 한국어만 본다. */
+const codeLabelOf = (value: { code: string; codeName: string; nameKo?: string | null }): string => {
+  const localized = (value.nameKo ?? '').trim();
+  if (localized !== '') return localized;
+  const base = value.codeName.trim();
+  return base === '' ? value.code : base;
+};
+
+/**
+ * 심각도·상태의 공통코드 조회(G-32). 비활성 값도 받는다 — 목록 셀은 지난 값의 이름도 보여야 하고,
+ * 필터 선택지는 `codeOptionsOf` 가 활성 값만 고른다.
+ */
+const useCodeValueLookup = (group: string): DispositionLookup => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: ['disposition-lookups', 'code-values', group],
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: { query: { codeGroupCode: group, includeInactive: true } },
+        }),
+      );
+
+      return {
+        entries: [...data.items]
+          .sort((left, right) => left.displayOrder - right.displayOrder)
+          .map((value) => ({
+            value: value.code,
+            label: codeLabelOf(value),
+            isActive: value.isActive,
+          })),
+        page: data.page,
+      };
+    },
+  });
+
+  return toLookup(query.data, query.isError, query.isPending);
+};
+
+export const useSeverityLookup = (): DispositionLookup => useCodeValueLookup(SEVERITY_CODE_GROUP);
+
+export const useNonconformanceStatusLookup = (): DispositionLookup =>
+  useCodeValueLookup(NONCONFORMANCE_STATUS_CODE_GROUP);
 
 /** 품목 이름은 코드와 함께 보인다 — 코드만으로는 현장에서 같은 품목인지 가리기 어렵다. */
 export const useItemLookup = (): DispositionLookup => {

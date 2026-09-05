@@ -157,6 +157,31 @@ export const dispositionStub = (options: DispositionStubOptions = {}): StubFetch
           : jsonResponse({ message: '권한이 없습니다' }, { status: options.detailStatus }),
     },
     {
+      /* 심각도·상태 공통코드 — 목록 행의 합성 코드(CODE-B·CODE-C)에 이름을 붙인다. */
+      match: (request) => pathOf(request) === '/mdm/code-values',
+      respond: (request) => {
+        const group = new URL(request.url).searchParams.get('codeGroupCode');
+        const values: [string, string][] =
+          group === 'NONCONFORMANCE_SEVERITY'
+            ? [['CODE-B', '합성 심각도 B']]
+            : group === 'NONCONFORMANCE_STATUS'
+              ? [['CODE-C', '합성 상태 C']]
+              : [];
+        return jsonResponse(
+          listBody(
+            values.map(([code, codeName], index) => ({
+              codeValueId: index + 1,
+              codeGroupId: 9,
+              code,
+              codeName,
+              displayOrder: index + 1,
+              isActive: true,
+            })),
+          ),
+        );
+      },
+    },
+    {
       match: (request) => pathOf(request) === '/mdm/items',
       respond: () => jsonResponse(listBody([itemFixture])),
     },

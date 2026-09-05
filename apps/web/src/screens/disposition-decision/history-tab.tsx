@@ -11,7 +11,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState, type ReactNode } from 'react';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
-import type { CodeOption } from './disposition-codes';
+import { dispositionTypeLabel, type CodeOption } from './disposition-codes';
 import type { HistoryFilters } from './history-filters';
 import { LoadErrorBanner } from './load-error';
 import type { DispositionLookup } from './lookups';
@@ -59,7 +59,7 @@ export const HistoryTab = ({
     {
       key: 'dispositionTypeCode',
       header: t.fields.dispositionTypeCode,
-      render: (row) => row.dispositionTypeCode,
+      render: (row) => dispositionTypeLabel(row.dispositionTypeCode),
     },
     {
       key: 'qty',

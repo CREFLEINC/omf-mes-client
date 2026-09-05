@@ -2,7 +2,13 @@ import { Button, DatePicker, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import { sourceCodeOptions, type CodeOption } from './disposition-codes';
+import {
+  codeLockReason,
+  codeOptionsOf,
+  codeTruncatedNote,
+  sourceCodeOptions,
+  type CodeOption,
+} from './disposition-codes';
 import type { PendingFilters } from './filters';
 import type { DispositionLookup } from './lookups';
 
@@ -69,8 +75,9 @@ const SelectCell = ({
 
 export interface FilterBarProps {
   applied: PendingFilters;
-  severityOptions: CodeOption[];
-  statusOptions: CodeOption[];
+  /** 심각도·상태는 공통코드 조회 결과를 그대로 받는다 — 선택지·잠금 사유를 여기서 가른다. */
+  severity: DispositionLookup;
+  status: DispositionLookup;
   items: DispositionLookup;
   onApply: (filters: PendingFilters) => void;
   onReset: () => void;
@@ -78,8 +85,8 @@ export interface FilterBarProps {
 
 export const FilterBar = ({
   applied,
-  severityOptions,
-  statusOptions,
+  severity,
+  status,
   items,
   onApply,
   onReset,
@@ -126,18 +133,21 @@ export const FilterBar = ({
         wide
         onChange={(value) => setDraft((current) => ({ ...current, itemId: value }))}
       />
+      {/* 심각도·상태 — 공통코드가 채운다(G-32). 못 채운 사유(조회 중·실패·빈 목록)는 칸 옆에 밝힌다(G-2). */}
       <SelectCell
         label={t.fields.severityCode}
-        options={severityOptions}
+        options={codeOptionsOf(severity)}
         value={draft.severityCode}
-        pendingNote={t.codePending}
+        pendingNote={codeLockReason(severity)}
+        note={codeTruncatedNote(severity)}
         onChange={(value) => setDraft((current) => ({ ...current, severityCode: value }))}
       />
       <SelectCell
         label={t.fields.statusCode}
-        options={statusOptions}
+        options={codeOptionsOf(status)}
         value={draft.statusCode}
-        pendingNote={t.codePending}
+        pendingNote={codeLockReason(status)}
+        note={codeTruncatedNote(status)}
         onChange={(value) => setDraft((current) => ({ ...current, statusCode: value }))}
       />
       {/*

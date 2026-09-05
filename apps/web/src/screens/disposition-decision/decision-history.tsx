@@ -2,6 +2,7 @@ import { Chip, type Column, EmptyState, SkeletonText, Table } from '@crefle/web-
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel } from '../../patterns/lookup-display';
+import { dispositionTypeLabel } from './disposition-codes';
 import type { DispositionLookup } from './lookups';
 import type { RemainingQty } from './remaining-qty';
 import type { DecisionRow } from './types';
@@ -26,7 +27,7 @@ export const DecisionHistory = ({
     {
       key: 'dispositionTypeCode',
       header: t.fields.dispositionTypeCode,
-      render: (row) => row.dispositionTypeCode,
+      render: (row) => dispositionTypeLabel(row.dispositionTypeCode),
     },
     {
       key: 'qty',
