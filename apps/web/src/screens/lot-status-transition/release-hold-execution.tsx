@@ -129,7 +129,7 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           path: { lotHoldId: props.lotHoldId },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
-            /* 토큰이 없으면 보내지 않는다 — 빈 If-Match 로 나가면 서버가 판정할 대상이 없다(B-1). */
+            /* 토큰이 없으면 보내지 않는다 — 빈 If-Match 로 나가면 서버가 판정할 대상이 없다. */
             'If-Match': requireIfMatch(headers),
           },
         },
