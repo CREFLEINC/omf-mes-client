@@ -66,6 +66,7 @@ import { ShipmentScheduleScreen } from '../screens/shipment-schedule/screen';
 import { StockAdjustScreen } from '../screens/stock-adjust/screen';
 import { StockStatusScreen } from '../screens/stock-status/screen';
 import { StocktakingScreen } from '../screens/stocktaking/screen';
+import { StockReinstatementScreen } from '../screens/stock-reinstatement/screen';
 import { SuspiciousMaterialHoldScreen } from '../screens/suspicious-material-hold/screen';
 import { SupplierReturnScreen } from '../screens/supplier-return/screen';
 import { UsersRolesScreen } from '../screens/users-roles/screen';
@@ -335,6 +336,8 @@ export const appRouter = createBrowserRouter([
        * 앞머리는 계약 경로가 아니라 사이드바 업무 섹션(품질관리)을 따른다.
        */
       { path: 'quality/dispositions', element: <DispositionDecisionScreen /> },
+      /* W-04-11 — 품질에서 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */
+      { path: 'shipment/stock-reinstatements', element: <StockReinstatementScreen /> },
       /*
        * W-CO-09 — 앞머리는 같은 규칙(사이드바 섹션)이고 계약 경로(`/app/**`)를 따르지 않는다.
        * 결재함은 기준정보도 시스템 운영도 아니라 **일하는 자리**여서 섹션을 새로 연다.

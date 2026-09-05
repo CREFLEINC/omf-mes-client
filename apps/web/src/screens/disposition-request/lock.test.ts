@@ -123,6 +123,14 @@ describe('toFollowUpStates — ③ 후속', () => {
     expect(states.rework.reason).toBe(t.result.followUp.reworkUnavailable);
     expect(states.disposal.reason).toBe(t.result.followUp.disposalNotDecided);
   });
+
+  it('정상 처분이 있으면 재고 재등록 후속 작업을 연다', () => {
+    const states = toFollowUpStates([
+      toDecisionRow(decisionFixture({ dispositionTypeCode: 'NORMAL' })),
+    ]);
+
+    expect(states.reinstate.reason).toBeUndefined();
+  });
 });
 
 describe('toProgressSteps', () => {

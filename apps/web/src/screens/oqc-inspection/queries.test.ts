@@ -164,6 +164,7 @@ describe('useSaveInspectionResult — 409 되말하기(V5)', () => {
     expect(result.current.error).toEqual({
       kind: 'http',
       status: 409,
+      code: 'DUPLICATE_KEY',
       message: t.save.duplicateRound,
     });
   });
@@ -174,6 +175,7 @@ describe('useSaveInspectionResult — 409 되말하기(V5)', () => {
     expect(result.current.error).toEqual({
       kind: 'http',
       status: 409,
+      code: 'INVALID_STATE',
       message: t.save.invalidState,
     });
   });
