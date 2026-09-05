@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import {
+  adjustmentErrors,
   decisionLockReason,
   decisionWarnings,
   EMPTY_DECISION,
@@ -21,11 +22,12 @@ const t = messages.poChangeReview;
  * W-02-06 P/O 변경 관리자 확인.
  *
  * ⚠ **변경은 이미 반영된 뒤에 화면에 온다**(§5-1) — P/O 는 ERP 수신본이라(R07) 화면이 열릴 때
- * 수량은 «이미» 바뀐 값이다. 그래서 「무엇이 바뀌었나」는 서버가 내리는 `lastChange` 로만 말할
- * 수 있고, 그 계약이 생성물에 아직 안 들어와 **그 구획은 비운 채 사유를 적는다.**
+ * 수량은 «이미» 바뀐 값이다. 그래서 「무엇이 바뀌었나」는 서버가 내리는 `lastChange` 로만 말한다
+ * (`withLastChange=true`) — 2열 비교표가 그것을 그린다. 못 받으면 그 사실을 적고 간접 비교로
+ * 채우지 않는다.
  *
- * ⛔ **간접 비교로 채우지 않는다** — W/O 수량으로 견주면 수량만 되고 납기·중단을 말하지 못해
- * 세 행 중 둘이 빈다. 「계약이 늦으면 비워 두는 편이 낫다」가 설계의 지시다.
+ * ⭐ **반영은 W/O 조정을 함께 싣는다** — P/O 확인과 W/O 조정이 한 트랜잭션이다(B-8). 어느 W/O 를
+ * 얼마나 줄일지는 서버가 나누지 않으므로 ③ 구획에서 사람이 적는다.
  *
  * ⭐ **이 화면이 ERP 배치와 부딪치는 첫 화면이다**(§5-3) — 판정하는 사이 ERP 가 같은 P/O 를 또
  * 바꿔 보내면 409 다. 그때 문구가 「남이 고쳤다」가 아니라 **「ERP 가 다시 변경했습니다」**여야
@@ -69,10 +71,11 @@ export const PoChangeReviewScreen = () => {
     },
   });
 
-  const gate = { selected, draft, isSaving: write.isSaving };
-  const lock = decisionLockReason(gate);
   const affected = workOrders.data ?? [];
+  const gate = { selected, draft, workOrders: affected, isSaving: write.isSaving };
+  const lock = decisionLockReason(gate);
   const warnings = decisionWarnings(draft, affected, selected?.orderQty ?? null);
+  const adjustmentErrorMap = adjustmentErrors(draft, affected);
   const unacknowledged = rows.filter((row) => row.acknowledgedAt === null).length;
 
   /*
@@ -124,6 +127,15 @@ export const PoChangeReviewScreen = () => {
             hasSelection={selectedId !== null}
             overProduced={warnings.overProduced}
             changedQty={selected?.orderQty ?? null}
+            showAdjustments={draft.decision === 'APPLY'}
+            adjustments={draft.adjustments}
+            adjustmentErrors={adjustmentErrorMap}
+            onChangeAdjustment={(workOrderId, value) =>
+              setDraft((current) => ({
+                ...current,
+                adjustments: { ...current.adjustments, [String(workOrderId)]: value },
+              }))
+            }
           />
 
           <DecisionPane

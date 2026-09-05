@@ -13,6 +13,7 @@ import type { AffectedWorkOrder, ChangeNotification } from './types';
  */
 
 export type AcknowledgeBody = components['schemas']['ProductionOrderAcknowledge'];
+export type WorkOrderAdjustment = components['schemas']['WorkOrderAdjustment'];
 
 /** 계약이 열거한 둘. 손으로 적은 유니온을 두지 않는다 — 계약이 값을 바꾸면 컴파일이 잡는다. */
 export type DecisionCode = AcknowledgeBody['decisionCode'];
@@ -24,9 +25,14 @@ export interface DecisionDraft {
   /** 아직 고르지 않았으면 `null`. */
   decision: DecisionCode | null;
   reason: string;
+  /**
+   * W/O별 조정 수량 — 키는 `workOrderId`, 값은 입력 문자열. **비우면 그 W/O 는 그대로 둔다.**
+   * 서버가 스스로 나누지 않는다(계약) — 어느 W/O 를 얼마나 줄일지는 여기서 사람이 정한다.
+   */
+  adjustments: Readonly<Record<string, string>>;
 }
 
-export const EMPTY_DECISION: DecisionDraft = { decision: null, reason: '' };
+export const EMPTY_DECISION: DecisionDraft = { decision: null, reason: '', adjustments: {} };
 
 /**
  * 사유 검증.
@@ -45,9 +51,61 @@ export const reasonError = (draft: DecisionDraft): string | undefined => {
   return undefined;
 };
 
+/** 조정 수량 한 칸의 오류. 빈 칸은 「그대로 둔다」라 오류가 아니다. */
+export const adjustmentError = (text: string): string | undefined => {
+  const t = messages.poChangeReview.workOrders;
+  const trimmed = text.trim();
+  if (trimmed === '') return undefined;
+  const value = Number(trimmed.replace(/,/g, ''));
+  if (Number.isNaN(value)) return t.adjustNotNumber;
+  if (value < 0) return t.adjustNegative;
+
+  return undefined;
+};
+
+/** 줄마다의 조정 오류 — 키는 `workOrderId`. 반영이 아닐 때는 조정을 보내지 않으니 오류도 없다. */
+export const adjustmentErrors = (
+  draft: DecisionDraft,
+  workOrders: readonly AffectedWorkOrder[],
+): Record<string, string> => {
+  if (draft.decision !== 'APPLY') return {};
+  const errors: Record<string, string> = {};
+  for (const workOrder of workOrders) {
+    const error = adjustmentError(draft.adjustments[String(workOrder.workOrderId)] ?? '');
+    if (error !== undefined) errors[String(workOrder.workOrderId)] = error;
+  }
+
+  return errors;
+};
+
+/**
+ * 보낼 조정 — 수량을 적은 줄만, 잠금 토큰(`versionNo`)이 있는 줄만.
+ *
+ * ⛔ 토큰이 없는 W/O 는 싣지 않는다 — 계약이 `versionNo`를 필수로 두었고 화면은 그 칸을 잠근다.
+ */
+export const toAdjustments = (
+  draft: DecisionDraft,
+  workOrders: readonly AffectedWorkOrder[],
+): WorkOrderAdjustment[] =>
+  workOrders.flatMap((workOrder) => {
+    const text = (draft.adjustments[String(workOrder.workOrderId)] ?? '').trim();
+    if (text === '' || workOrder.versionNo === null || adjustmentError(text) !== undefined) {
+      return [];
+    }
+
+    return [
+      {
+        workOrderId: workOrder.workOrderId,
+        versionNo: workOrder.versionNo,
+        orderQty: Number(text.replace(/,/g, '')),
+      },
+    ];
+  });
+
 export interface DecisionGateInput {
   selected: ChangeNotification | null;
   draft: DecisionDraft;
+  workOrders: readonly AffectedWorkOrder[];
   isSaving: boolean;
 }
 
@@ -57,6 +115,7 @@ export interface DecisionGateInput {
  * ⛔ **활성 조건을 넓히지 않는다**(§5-6) — 「판정 선택됨 AND (반영 **또는** 사유 입력됨)」이
  * 전부다. 반영인데 W/O 조정을 하나도 안 한 상태로도 저장할 수 있어야 한다 — **중단·취소
  * 반영이 정당하게 그 상태**이고, 막으면 그 갈래가 아예 못 지나간다. 대신 경고가 진다.
+ * 조정 칸에 «잘못된» 값이 있으면 막는다 — 반쪽짜리 조정을 보내지 않는다.
  */
 export const decisionLockReason = (input: DecisionGateInput): string | undefined => {
   const t = messages.poChangeReview.lock;
@@ -65,6 +124,7 @@ export const decisionLockReason = (input: DecisionGateInput): string | undefined
   if (input.selected === null) return t.selectNone;
   if (input.draft.decision === null) return t.decisionNone;
   if (reasonError(input.draft) !== undefined) return t.reason;
+  if (Object.keys(adjustmentErrors(input.draft, input.workOrders)).length > 0) return t.adjustment;
 
   return undefined;
 };
@@ -75,17 +135,25 @@ export const decisionLockReason = (input: DecisionGateInput): string | undefined
  * ⚠ **반영에는 사유를 싣지 않는다** — 계약이 「강행이면 사유가 필요하다」로 적었고, 반영에
  * 빈 글자를 실어 보내면 서버가 「사유를 적었는데 비어 있다」로 읽는다.
  *
- * ⛔ **`workOrderAdjustments` 를 아직 싣지 못한다** — 그 칸이 생성물에 반영되지 않았다.
- * 지금은 조정 없이 보내고, 서버가 조정되지 않은 W/O 에 불일치 표식을 세운다. 화면은 저장
- * 전에 그 파급을 말한다(G-19).
+ * ⭐ **반영은 W/O 조정을 함께 싣는다** — P/O 확인과 W/O 조정이 «한 트랜잭션»이다(B-8).
+ * 적은 줄이 없으면 칸을 내지 않는다(중단·취소 반영이 그 경우다).
+ * ⛔ **강행에는 조정을 싣지 않는다** — 보내면 400 이다. 강행은 「기존을 유지한다」라 조정이
+ * 성립하지 않는다.
  */
 export const toAcknowledgeBody = (input: DecisionGateInput): AcknowledgeBody | null => {
   if (decisionLockReason(input) !== undefined) return null;
   if (input.draft.decision === null) return null;
 
-  return input.draft.decision === 'PROCEED'
-    ? { decisionCode: 'PROCEED', reason: input.draft.reason.trim() }
-    : { decisionCode: 'APPLY' };
+  if (input.draft.decision === 'PROCEED') {
+    return { decisionCode: 'PROCEED', reason: input.draft.reason.trim() };
+  }
+
+  const workOrderAdjustments = toAdjustments(input.draft, input.workOrders);
+
+  return {
+    decisionCode: 'APPLY',
+    ...(workOrderAdjustments.length === 0 ? {} : { workOrderAdjustments }),
+  };
 };
 
 /**
@@ -97,9 +165,9 @@ export const toAcknowledgeBody = (input: DecisionGateInput): AcknowledgeBody | n
 export interface DecisionWarnings {
   /** 강행이라 불일치 표식이 남는다. */
   mismatch: boolean;
-  /** 반영인데 조정을 못 보낸다 — 조정되지 않은 W/O 에 표식이 남는다. */
+  /** 반영인데 조정을 하나도 적지 않았다 — 조정되지 않은 W/O 에 표식이 남는다. */
   applyWithoutAdjustment: boolean;
-  /** 실적이 변경 후 수량을 넘는 W/O 들. */
+  /** 실적이 계획을 넘게 되는 W/O 들 — 조정을 적었으면 그 수량과, 아니면 변경 후 P/O 수량과 견준다. */
   overProduced: AffectedWorkOrder[];
 }
 
@@ -107,15 +175,19 @@ export const decisionWarnings = (
   draft: DecisionDraft,
   workOrders: readonly AffectedWorkOrder[],
   changedQty: number | null,
-): DecisionWarnings => ({
-  mismatch: draft.decision === 'PROCEED',
-  /*
-   * ⚠ 지금은 조정을 «보낼 수가» 없어 반영을 고르면 언제나 참이다. 조정 칸이 계약에 앉으면
-   * 「하나도 지정하지 않았을 때만」으로 좁아진다.
-   */
-  applyWithoutAdjustment: draft.decision === 'APPLY' && workOrders.length > 0,
-  overProduced:
-    changedQty === null
-      ? []
-      : workOrders.filter((one) => one.producedQty !== null && one.producedQty > changedQty),
-});
+): DecisionWarnings => {
+  const adjustments = toAdjustments(draft, workOrders);
+  const adjustedQtyOf = new Map(adjustments.map((one) => [one.workOrderId, one.orderQty]));
+
+  return {
+    mismatch: draft.decision === 'PROCEED',
+    applyWithoutAdjustment:
+      draft.decision === 'APPLY' && workOrders.length > 0 && adjustments.length === 0,
+    overProduced: workOrders.filter((one) => {
+      if (one.producedQty === null) return false;
+      const target = adjustedQtyOf.get(one.workOrderId);
+      if (target !== undefined) return one.producedQty > target;
+      return adjustments.length === 0 && changedQty !== null && one.producedQty > changedQty;
+    }),
+  };
+};
