@@ -13,7 +13,7 @@ export interface ShipmentProcessingCandidateRow {
   shipmentRequestNo: string;
   customerLabel: string | null;
   requestedShipDate: string;
-  statusCode: string;
+  shipmentProgressCode: string;
   blockers: readonly ShipmentGateBlocker[];
 }
 
@@ -89,7 +89,7 @@ export const ShipmentProcessingCandidateListPane = ({
       header: t.fields.status,
       render: (row) => (
         <Chip variant="status" size="sm">
-          {row.statusCode}
+          {row.shipmentProgressCode}
         </Chip>
       ),
     },

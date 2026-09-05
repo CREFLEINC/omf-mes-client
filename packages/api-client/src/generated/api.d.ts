@@ -13611,7 +13611,7 @@ export interface paths {
          *
          *     이 화면이 덮는 것은 9종이다 — 발주·입하·입고·출고요청·피킹·이동요청·외주출고·외주입고(2026-08-30 되살림 — subcontract_issue/receipt 도 동형으로 status_code 를 둔다) + 출고(2026-09-02 — FR-IM-078 출고취소가 이 화면 소관이고, POST /logistics/goods-issues/{goodsIssueId}:request-cancel 이 후속 목록의 원천으로 이 경로를 지목한다). 셈 — 물류 12테이블 − 출하 2 = 10, 10 − 생산품 입고 1 = 9. 출하·생산품 입고는 다른 도메인이라 범위 밖이다. 근거: W-01-13 §5-2·§5-3·§5-6
          *
-         *     취소 실행 경로는 3종에만 있다 — INBOUND_RECEIPT 는 /logistics/inbound-receipts/{id}, GOODS_RECEIPT 는 /logistics/goods-receipts/{id}, GOODS_ISSUE 는 /logistics/goods-issues/{id} 의 :request-cancel · :cancel 을 쓴다. 그 밖 6종은 취소 경로가 없다. ⚠ 이 대응은 설명이라 생성 타입에 실리지 않는다 — 화면이 옮겨 적는 것은 한시적이고, 계약 필드로 내리는 안을 따로 세운다.
+         *     취소 주소는 **하나다** — POST /logistics/document-progress/{documentTypeCode}/{documentId}:request-cancel · :cancel. 어느 유형이 취소를 받는지는 그 경로의 값 목록 3개가 말한다 — 화면이 유형↔리소스 표를 갖지 않는다(공유계약 A-10 보강 · omf-mes#352).
          */
         get: {
             parameters: {
@@ -14015,96 +14015,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/logistics/goods-issues/{goodsIssueId}:cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                goodsIssueId: number;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 출고 취소 실행
-         * @description 취소 실행. 승인이 끝난 요청만 받는다.
-         *
-         *     ⭐ 서버가 후속 유무를 다시 판정한다 — 승인을 기다리는 사이에 후속이 생겼을 수 있고, 자동 실행이면 그것을 못 본다. 재판정에 걸리면 400(code=SUCCESSOR_EXISTS)이고 승인은 그대로 유효하다 — 새 요청을 다시 올리지 않는다(공유계약 J-8).
-         *
-         *     전기된 문서는 원장에 역트랜잭션을 만든다. 전기 전이었으면 상태만 바뀌고 원장에는 아무것도 생기지 않는다. 역처리가 재고 잔액을 음수로 만들면 400 이다.
-         *
-         *     승인 전이면 400 이다 — :post 가 승인 전이면 400 인 것과 같은 형태다. 근거: W-01-13 §5-1·§5-4
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description 전 쓰기 API 필수. */
-                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
-                    "If-Match": components["parameters"]["IfMatchVersion"];
-                };
-                path: {
-                    goodsIssueId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 취소됨 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CancelResult"];
-                    };
-                };
-                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 권한 없음 */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 대상 없음 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ConflictResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/logistics/goods-issues/{goodsIssueId}:post": {
         parameters: {
             query?: never;
@@ -14241,100 +14151,6 @@ export interface paths {
                 };
                 /** @description 권한 없음 */
                 403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ConflictResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/goods-issues/{goodsIssueId}:request-cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                goodsIssueId: number;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 출고 취소 요청
-         * @description 취소 요청 상신. 문서 상태를 취소요청으로 옮기고 승인 요청을 만든다.
-         *
-         *     ⚠ 취소는 반드시 승인을 탄다 — 물류 문서 테이블에 취소 시각·취소자·취소 사유를 담을 컬럼이 하나도 없어(실측 0건), 승인 기록이 그 이력을 대신한다. 승인 없는 취소 경로를 두면 흔적 없는 취소가 생긴다(공유계약 A-11 보강).
-         *
-         *     다음이면 400 이다 — 후속 문서·재고 사용이 있다(code=SUCCESSOR_EXISTS) · 이미 취소됐다 · 취소 요청이 이미 진행 중이다 · 취소 결재선이 없다. 후속 목록은 GET /logistics/document-progress/{documentTypeCode}/{documentId} 가 내려 준다.
-         *
-         *     근거: W-01-13 §5-1·§5-4·§5-5
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description 전 쓰기 API 필수. */
-                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
-                    "If-Match": components["parameters"]["IfMatchVersion"];
-                };
-                path: {
-                    goodsIssueId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ApprovalRequestCreate"];
-                };
-            };
-            responses: {
-                /** @description 상신됨 */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApprovalRequestRef"];
-                    };
-                };
-                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 권한 없음 */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 대상 없음 */
-                404: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -14560,190 +14376,6 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/goods-receipts/{goodsReceiptId}:cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                goodsReceiptId: number;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 입고 취소 실행
-         * @description 취소 실행. 승인이 끝난 요청만 받는다.
-         *
-         *     ⭐ 서버가 후속 유무를 다시 판정한다 — 승인을 기다리는 사이에 후속이 생겼을 수 있고, 자동 실행이면 그것을 못 본다. 재판정에 걸리면 400(code=SUCCESSOR_EXISTS)이고 승인은 그대로 유효하다 — 새 요청을 다시 올리지 않는다(공유계약 J-8).
-         *
-         *     전기된 문서는 원장에 역트랜잭션을 만든다. 전기 전이었으면 상태만 바뀌고 원장에는 아무것도 생기지 않는다. 역처리가 재고 잔액을 음수로 만들면 400 이다.
-         *
-         *     승인 전이면 400 이다 — :post 가 승인 전이면 400 인 것과 같은 형태다. 근거: W-01-13 §5-1·§5-4
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description 전 쓰기 API 필수. */
-                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
-                    "If-Match": components["parameters"]["IfMatchVersion"];
-                };
-                path: {
-                    goodsReceiptId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 취소됨 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CancelResult"];
-                    };
-                };
-                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 권한 없음 */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 대상 없음 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ConflictResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/goods-receipts/{goodsReceiptId}:request-cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                goodsReceiptId: number;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 입고 취소 요청
-         * @description 취소 요청 상신. 문서 상태를 취소요청으로 옮기고 승인 요청을 만든다.
-         *
-         *     ⚠ 취소는 반드시 승인을 탄다 — 물류 문서 테이블에 취소 시각·취소자·취소 사유를 담을 컬럼이 하나도 없어(실측 0건), 승인 기록이 그 이력을 대신한다. 승인 없는 취소 경로를 두면 흔적 없는 취소가 생긴다(공유계약 A-11 보강).
-         *
-         *     다음이면 400 이다 — 후속 문서·재고 사용이 있다(code=SUCCESSOR_EXISTS) · 이미 취소됐다 · 취소 요청이 이미 진행 중이다 · 취소 결재선이 없다. 후속 목록은 GET /logistics/document-progress/{documentTypeCode}/{documentId} 가 내려 준다.
-         *
-         *     근거: W-01-13 §5-1·§5-4·§5-5
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description 전 쓰기 API 필수. */
-                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
-                    "If-Match": components["parameters"]["IfMatchVersion"];
-                };
-                path: {
-                    goodsReceiptId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ApprovalRequestCreate"];
-                };
-            };
-            responses: {
-                /** @description 상신됨 */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApprovalRequestRef"];
-                    };
-                };
-                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 권한 없음 */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 대상 없음 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ConflictResponse"];
-                    };
-                };
-            };
-        };
         delete?: never;
         options?: never;
         head?: never;
@@ -15195,190 +14827,6 @@ export interface paths {
             };
         };
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/inbound-receipts/{inboundReceiptId}:cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                inboundReceiptId: number;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 입하 취소 실행
-         * @description 취소 실행. 승인이 끝난 요청만 받는다.
-         *
-         *     ⭐ 서버가 후속 유무를 다시 판정한다 — 승인을 기다리는 사이에 후속이 생겼을 수 있고, 자동 실행이면 그것을 못 본다. 재판정에 걸리면 400(code=SUCCESSOR_EXISTS)이고 승인은 그대로 유효하다 — 새 요청을 다시 올리지 않는다(공유계약 J-8).
-         *
-         *     전기된 문서는 원장에 역트랜잭션을 만든다. 전기 전이었으면 상태만 바뀌고 원장에는 아무것도 생기지 않는다. 역처리가 재고 잔액을 음수로 만들면 400 이다.
-         *
-         *     승인 전이면 400 이다 — :post 가 승인 전이면 400 인 것과 같은 형태다. 근거: W-01-13 §5-1·§5-4
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description 전 쓰기 API 필수. */
-                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
-                    "If-Match": components["parameters"]["IfMatchVersion"];
-                };
-                path: {
-                    inboundReceiptId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 취소됨 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CancelResult"];
-                    };
-                };
-                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 권한 없음 */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 대상 없음 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ConflictResponse"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/logistics/inbound-receipts/{inboundReceiptId}:request-cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                inboundReceiptId: number;
-            };
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * 입하 취소 요청
-         * @description 취소 요청 상신. 문서 상태를 취소요청으로 옮기고 승인 요청을 만든다.
-         *
-         *     ⚠ 취소는 반드시 승인을 탄다 — 물류 문서 테이블에 취소 시각·취소자·취소 사유를 담을 컬럼이 하나도 없어(실측 0건), 승인 기록이 그 이력을 대신한다. 승인 없는 취소 경로를 두면 흔적 없는 취소가 생긴다(공유계약 A-11 보강).
-         *
-         *     다음이면 400 이다 — 후속 문서·재고 사용이 있다(code=SUCCESSOR_EXISTS) · 이미 취소됐다 · 취소 요청이 이미 진행 중이다 · 취소 결재선이 없다. 후속 목록은 GET /logistics/document-progress/{documentTypeCode}/{documentId} 가 내려 준다.
-         *
-         *     근거: W-01-13 §5-1·§5-4·§5-5
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description 전 쓰기 API 필수. */
-                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
-                    "If-Match": components["parameters"]["IfMatchVersion"];
-                };
-                path: {
-                    inboundReceiptId: number;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ApprovalRequestCreate"];
-                };
-            };
-            responses: {
-                /** @description 상신됨 */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApprovalRequestRef"];
-                    };
-                };
-                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 권한 없음 */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 대상 없음 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ConflictResponse"];
-                    };
-                };
-            };
-        };
         delete?: never;
         options?: never;
         head?: never;
@@ -17850,6 +17298,208 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/logistics/document-progress/{documentTypeCode}/{documentId}:request-cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 취소할 수 있는 문서 유형만 받는다 — 입하·입고·출고 3종. ⛔ 조회 축(DocumentProgress)의 9종 중 취소 실행 경로가 있는 것만 닫았다 — 값 목록 자체가 「어느 유형이 취소를 받는가」를 말한다(공유계약 A-10 보강 · omf-mes#352). */
+                documentTypeCode: "INBOUND_RECEIPT" | "GOODS_RECEIPT" | "GOODS_ISSUE";
+                documentId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 물류 문서 취소 요청
+         * @description 취소 요청 상신. 문서 상태를 취소요청으로 옮기고 승인 요청을 만든다.
+         *
+         *     ⚠ 취소는 반드시 승인을 탄다 — 물류 문서 테이블에 취소 시각·취소자·취소 사유를 담을 컬럼이 하나도 없어(실측 0건), 승인 기록이 그 이력을 대신한다. 승인 없는 취소 경로를 두면 흔적 없는 취소가 생긴다(공유계약 A-11 보강).
+         *
+         *     다음이면 400 이다 — 후속 문서·재고 사용이 있다(code=SUCCESSOR_EXISTS) · 이미 취소됐다 · 취소 요청이 이미 진행 중이다 · 취소 결재선이 없다. 후속 목록은 GET /logistics/document-progress/{documentTypeCode}/{documentId} 가 내려 준다.
+         *
+         *     ⭐ 취소 주소가 유형 축 하나다 — documentTypeCode 로 입하·입고·출고 3종을 함께 받는다. 리소스별 6경로(옛 /logistics/inbound-receipts·goods-receipts·goods-issues 의 :request-cancel·:cancel)는 이 경로로 흡수되며 폐기됐다(공유계약 A-10 보강 · omf-mes#352). ⚠ 파생 조회 뷰(document-progress)에 동사를 붙인 것은 리소스 축 규약의 예외다 — 유형이 늘어도 화면이 유형↔리소스 표를 갖지 않게 하려는 것이 그 이유다.
+         *
+         *     ⚠ If-Match 토큰은 이 경로가 «아니다» — 대상 문서 리소스의 상세 GET(입하 /logistics/inbound-receipts/{inboundReceiptId} · 입고 /logistics/goods-receipts/{goodsReceiptId} · 출고 /logistics/goods-issues/{goodsIssueId})이 내려주는 ETag 다 — 공유계약 B-1·A-4.
+         *
+         *     근거: W-01-13 §5-1·§5-4·§5-5
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    /** @description 취소할 수 있는 문서 유형만 받는다 — 입하·입고·출고 3종. ⛔ 조회 축(DocumentProgress)의 9종 중 취소 실행 경로가 있는 것만 닫았다 — 값 목록 자체가 「어느 유형이 취소를 받는가」를 말한다(공유계약 A-10 보강 · omf-mes#352). */
+                    documentTypeCode: "INBOUND_RECEIPT" | "GOODS_RECEIPT" | "GOODS_ISSUE";
+                    documentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestCreate"];
+                };
+            };
+            responses: {
+                /** @description 상신됨 */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestRef"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/logistics/document-progress/{documentTypeCode}/{documentId}:cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 취소할 수 있는 문서 유형만 받는다 — 입하·입고·출고 3종. ⛔ 조회 축(DocumentProgress)의 9종 중 취소 실행 경로가 있는 것만 닫았다 — 값 목록 자체가 「어느 유형이 취소를 받는가」를 말한다(공유계약 A-10 보강 · omf-mes#352). */
+                documentTypeCode: "INBOUND_RECEIPT" | "GOODS_RECEIPT" | "GOODS_ISSUE";
+                documentId: number;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 물류 문서 취소 실행
+         * @description 취소 실행. 승인이 끝난 요청만 받는다.
+         *
+         *     ⭐ 서버가 후속 유무를 다시 판정한다 — 승인을 기다리는 사이에 후속이 생겼을 수 있고, 자동 실행이면 그것을 못 본다. 재판정에 걸리면 400(code=SUCCESSOR_EXISTS)이고 승인은 그대로 유효하다 — 새 요청을 다시 올리지 않는다(공유계약 J-8).
+         *
+         *     전기된 문서는 원장에 역트랜잭션을 만든다. 전기 전이었으면 상태만 바뀌고 원장에는 아무것도 생기지 않는다. 역처리가 재고 잔액을 음수로 만들면 400 이다.
+         *
+         *     승인 전이면 400 이다 — :post 가 승인 전이면 400 인 것과 같은 형태다.
+         *
+         *     ⭐ 취소 주소가 유형 축 하나다 — documentTypeCode 로 입하·입고·출고 3종을 함께 받는다. 리소스별 6경로(옛 /logistics/inbound-receipts·goods-receipts·goods-issues 의 :request-cancel·:cancel)는 이 경로로 흡수되며 폐기됐다(공유계약 A-10 보강 · omf-mes#352). ⚠ 파생 조회 뷰(document-progress)에 동사를 붙인 것은 리소스 축 규약의 예외다 — 유형이 늘어도 화면이 유형↔리소스 표를 갖지 않게 하려는 것이 그 이유다.
+         *
+         *     ⚠ If-Match 토큰은 이 경로가 «아니다» — 대상 문서 리소스의 상세 GET(입하 /logistics/inbound-receipts/{inboundReceiptId} · 입고 /logistics/goods-receipts/{goodsReceiptId} · 출고 /logistics/goods-issues/{goodsIssueId})이 내려주는 ETag 다 — 공유계약 B-1·A-4.
+         *
+         *     근거: W-01-13 §5-1·§5-4
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                    /** @description 낙관적 잠금용 version_no. 값은 그 쓰기가 «잠그는 대상»의 조회가 내려주는 ETag 응답 헤더에서 받는다 — 보통은 같은 리소스의 상세 GET 200 이고, 하위 자원이 자기 판 번호를 갖지 않으면 부모 마스터의 상세 GET 200 이다. 어느 쪽인지는 그 오퍼레이션의 설명이 밝힌다 — version_no 는 공유계약 A-4 에 따라 본문 필드로 노출하지 않는다. 근거: 공유계약 B-1 · B-1-1 */
+                    "If-Match": components["parameters"]["IfMatchVersion"];
+                };
+                path: {
+                    /** @description 취소할 수 있는 문서 유형만 받는다 — 입하·입고·출고 3종. ⛔ 조회 축(DocumentProgress)의 9종 중 취소 실행 경로가 있는 것만 닫았다 — 값 목록 자체가 「어느 유형이 취소를 받는가」를 말한다(공유계약 A-10 보강 · omf-mes#352). */
+                    documentTypeCode: "INBOUND_RECEIPT" | "GOODS_RECEIPT" | "GOODS_ISSUE";
+                    documentId: number;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 취소됨 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CancelResult"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — code=SUCCESSOR_EXISTS 는 후속을 먼저 취소해야 풀린다 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 대상 없음 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/app/approval-routes": {
         parameters: {
             query?: never;
@@ -17865,7 +17515,7 @@ export interface paths {
             parameters: {
                 query?: {
                     /** @description 승인 유형 */
-                    approvalTypeCode?: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
+                    approvalTypeCode?: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP" | "PRODUCTION_RESULT_CORRECT";
                     businessUnitId?: number;
                     /** @description 참이면 사용 중만 */
                     activeOnly?: boolean;
@@ -18397,11 +18047,11 @@ export interface paths {
                     pendingOnly?: boolean;
                     /** @description 참이면 지금 「나」가 결재할 수 있는 것만 — 상단 대기 건수의 근거. ⚠ 「나」의 해석은 assignedToMe 와 같다 */
                     myTurnOnly?: boolean;
-                    approvalTypeCode?: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
+                    approvalTypeCode?: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP" | "PRODUCTION_RESULT_CORRECT";
                     /** @description 결재 요청 상태로 거른다 — 대기(PENDING) · 승인(APPROVED) · 반려(REJECTED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=APPROVAL_REQUEST_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 업무 화면이 자기 문서의 승인 상태를 찾을 때 targetId 와 함께 쓴다 */
-                    targetTypeCode?: "GOODS_ISSUE" | "GOODS_RECEIPT" | "INBOUND_RECEIPT" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "SHIPMENT" | "INBOUND_LOT";
+                    targetTypeCode?: "GOODS_ISSUE" | "GOODS_RECEIPT" | "INBOUND_RECEIPT" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "SHIPMENT" | "INBOUND_LOT" | "PRODUCTION_RESULT";
                     targetId?: number;
                     /** @description 상신일 시작 */
                     requestedAtFrom?: string;
@@ -22003,11 +21653,6 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /**
-                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
-                     * @example 100027
-                     */
-                    "X-Worker-No": components["parameters"]["WorkerNo"];
                 };
                 path: {
                     productionResultId: number;
@@ -22057,6 +21702,90 @@ export interface paths {
                     };
                 };
                 /** @description 충돌 */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ProductionConflictResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/production/production-results/{productionResultId}:request-approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 실적 정정 상신
+         * @description A급 보정(수불·기간업무시스템에 영향을 주는 정정)을 승인에 올린다. **등급은 서버가 정정 내용으로 판정한다** — 화면이 등급을 보내지 않는다. 결재선이 없으면 400(code=ROUTE_NOT_FOUND)이다 — 상신할 곳이 없는 요청을 만들지 않는다. 진행 중인 승인 요청이 이미 있으면 400 이다 — 한 실적에 살아 있는 요청은 하나다. 반려된 요청은 진행 중이 아니므로 다시 상신할 수 있고 그때는 새 요청이 만들어진다(공유계약 J-6). 승인이 끝나면 정정은 `POST /production/production-results/{productionResultId}:correct` 로 기록한다 — 이 오퍼레이션은 «승인 요청»만 만든다. 근거: W-02-05 §5-4 · 공유계약 J-4 · G-18 · 2026-08-31 사용자 확정(A급 보정부터 승인)
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header: {
+                    /** @description 전 쓰기 API 필수. */
+                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
+                };
+                path: {
+                    productionResultId: number;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ApprovalRequestCreate"];
+                };
+            };
+            responses: {
+                /** @description 상신됨 */
+                202: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApprovalRequestRef"];
+                    };
+                };
+                /** @description 검증 실패. 고쳐야 풀린다 — 결재선 부재·진행 중 요청 존재·B급이라 승인이 필요 없는 정정 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 없다 — 원본 실적이 없다 */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 저장 충돌. 다시 읽어 오면 풀린다 */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -25897,7 +25626,10 @@ export interface paths {
                     shipToPartnerId?: number;
                     /** @description 이 품목이 담긴 라인이 있는 작업지시만. ⭐ 긴급 직행 출하(W-04-05)가 고른 제품 LOT 의 품목으로 지시를 좁히는 축이다 — 이 축이 없으면 화면이 이번 쪽 안에서만 거를 수 있어 맞는 지시가 있는데도 안 보인다(공유계약 L-11). 근거: W-04-05 §5-7 */
                     itemId?: number;
+                    /** @description ⛔ 이 축으로는 거를 수 없다 — 「칸 불필요」로 닫힌 칸이다(A-21 · 사용자 결정 2026-09-02). 진행은 shipmentProgressCode, 검사 대상 여부는 shippingInspectionRequired 가 받는다. 근거: omf-mes#402 */
                     statusCode?: string;
+                    /** @description 진행 축 필터 — W-04-02 §3 「상태」 드롭다운이 이 축이다. ⛔ statusCode 로는 거를 수 없다(그 칸은 「칸 불필요」로 닫혔다). ⭐ 서버가 라인 수량으로 판정한다 — 같은 리소스의 pickingCompleteOnly·shippableRemainderOnly 와 같은 방식이고 저장 칸이 없다(공유계약 L-2 · A-17). 값 뜻은 응답 ShipmentRequest.shipmentProgressCode 의 설명이 정본이다. 근거: W-04-02 §5-5 · omf-mes#402 */
+                    shipmentProgressCode?: "NOT_ALLOCATED" | "PARTIALLY_ALLOCATED" | "PICKING" | "PICKED" | "PARTIALLY_SHIPPED" | "SHIPPED";
                     /** @description 출하 희망 시간대 필터 — 공통코드 그룹 `SHIPMENT_TIME_SLOT`(`MORNING`·`AFTERNOON`·`NIGHT`). W-04-02 시간대 필터 축. 근거: W-04-02 §5-2, 2026-08-31 결정(omf-mes-server#41) 값 = `MORNING`·`AFTERNOON`·`NIGHT`. 값 목록은 `GET /mdm/code-values?codeGroupCode=SHIPMENT_TIME_SLOT` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     timeSlotCode?: string;
                     /** @description 검사 상태 필터 */
@@ -26017,7 +25749,10 @@ export interface paths {
                 query?: {
                     customerId?: number;
                     shipToPartnerId?: number;
+                    /** @description ⛔ 이 축으로는 거를 수 없다 — 「칸 불필요」로 닫힌 칸이다(A-21 · 사용자 결정 2026-09-02). 진행은 shipmentProgressCode, 검사 대상 여부는 shippingInspectionRequired 가 받는다. 근거: omf-mes#402 */
                     statusCode?: string;
+                    /** @description 진행 축 필터 — W-04-02 §3 「상태」 드롭다운이 이 축이다. ⛔ statusCode 로는 거를 수 없다(그 칸은 「칸 불필요」로 닫혔다). ⭐ 서버가 라인 수량으로 판정한다 — 같은 리소스의 pickingCompleteOnly·shippableRemainderOnly 와 같은 방식이고 저장 칸이 없다(공유계약 L-2 · A-17). 값 뜻은 응답 ShipmentRequest.shipmentProgressCode 의 설명이 정본이다. 근거: W-04-02 §5-5 · omf-mes#402 */
+                    shipmentProgressCode?: "NOT_ALLOCATED" | "PARTIALLY_ALLOCATED" | "PICKING" | "PICKED" | "PARTIALLY_SHIPPED" | "SHIPPED";
                     /** @description 출하 희망 시간대 필터 — 목록(GET /logistics/shipment-requests)과 같은 축. 공통코드 그룹 `SHIPMENT_TIME_SLOT`(`MORNING`·`AFTERNOON`·`NIGHT`). 근거: W-04-02 §5-2, 2026-08-31 결정(omf-mes-server#41) 값 = `MORNING`·`AFTERNOON`·`NIGHT`. 값 목록은 `GET /mdm/code-values?codeGroupCode=SHIPMENT_TIME_SLOT` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     timeSlotCode?: string;
                     /** @description 검사 상태 필터 */
@@ -34110,7 +33845,7 @@ export interface components {
         /** @description 물류 문서 한 건의 진행현황. 문서 유형마다 테이블이 다르므로 서버가 한 형태로 맞춰 내린다 — 화면이 유형별 응답을 각각 다루지 않는다. 근거: W-01-13 §3·§4-A */
         DocumentProgress: {
             /**
-             * @description 이 화면이 다루는 물류 문서의 종류 — 발주·입하·입고·출고요청·피킹·이동요청·외주출고·외주입고·출고 9종. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 고객이 늘릴 수 있는 값이 아니다(공유계약 A-16 「가르는 물음 넷」 — 「가」 거짓 · 「라」 거짓 · 2026-09-02 판정). 선례는 같은 갈래에서 approval_type_code 8값을 enum 으로 닫은 omf-mes#336 이다. 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다. ⚠ 같은 이름의 다른 자리는 값 집합이 다르다 — 자리마다 닫는다.
+             * @description 이 화면이 다루는 물류 문서의 종류 — 발주·입하·입고·출고요청·피킹·이동요청·외주출고·외주입고·출고 9종. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 고객이 늘릴 수 있는 값이 아니다(공유계약 A-16 「가르는 물음 넷」 — 「가」 거짓 · 「라」 거짓 · 2026-09-02 판정). 선례는 같은 갈래에서 approval_type_code 8값을 enum 으로 닫은 omf-mes#336 이다. 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다. ⚠ 같은 이름의 다른 자리는 값 집합이 다르다 — 자리마다 닫는다. ⭐ **2026-09-04 재확정**(`omf-mes#352`) — 이 9값은 `enum` 으로 그대로 둔다. 문서 유형은 취소 리소스가 갈리는 «동작이 걸리는» 값이라 설계가 정한다(`G-31` · `#351`). ⛔ **표시명은 계약에 싣지 않는다** — 화면 문구·설계가 정하는 코드 값의 표시명은 별도 다국어 사전이 진다(`G-33`).
              * @example GOODS_RECEIPT
              * @enum {string}
              */
@@ -34158,16 +33893,16 @@ export interface components {
              */
             successorCount: number;
             /**
-             * @description 지금 취소 요청을 낼 수 있는가. 후속 유무·상태·진행 중 취소 요청을 함께 본 결과다
+             * @description 지금 취소 요청을 낼 수 있는가. 유형에 취소 경로가 있는가 · 후속 유무 · 상태 · 진행 중 취소 요청을 함께 본 결과다
              * @example false
              */
             cancellable: boolean;
             /**
-             * @description cancellable 이 «거짓인 이유» — 후속 문서가 있다 · 이미 취소됐다 · 취소 진행 중이다 · 상태가 잠겼다. ⭐ 화면이 이 값으로 안내 문구와 다음 경로를 가른다(G-3). ⛔ 서버가 판정한다 — 화면이 조건을 따로 조합하면 화면마다 갈린다
+             * @description cancellable 이 «거짓인 이유» — 후속 문서가 있다 · 이미 취소됐다 · 취소 진행 중이다 · 상태가 잠겼다 · 이 문서 유형에 취소 경로가 없다(`TYPE_NOT_CANCELABLE` — 취소 실행 경로가 있는 것은 입하·입고·출고 3종뿐이다). ⭐ 화면이 이 값으로 안내 문구와 다음 경로를 가른다(G-3). ⛔ 서버가 판정한다 — 화면이 조건을 따로 조합하면 화면마다 갈린다
              * @example SUCCESSOR_EXISTS
              * @enum {string|null}
              */
-            cancelBlockedReasonCode?: "SUCCESSOR_EXISTS" | "ALREADY_CANCELLED" | "CANCEL_IN_PROGRESS" | "STATE_LOCKED" | null;
+            cancelBlockedReasonCode?: "SUCCESSOR_EXISTS" | "ALREADY_CANCELLED" | "CANCEL_IN_PROGRESS" | "STATE_LOCKED" | "TYPE_NOT_CANCELABLE" | null;
             /**
              * Format: int64
              * @description 취소 요청이 진행 중이면 그 승인 요청 번호. 결재함으로 이어진다
@@ -37861,11 +37596,11 @@ export interface components {
              */
             approvalRouteId: number;
             /**
-             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — 8값이다. ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 8개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
+             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — **9값이다**(2026-09-04 — 실적 정정 승인이 늘었다). ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 9개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · PRODUCTION_RESULT_CORRECT 작업실적 A급 정정(수불·기간업무시스템 영향 — 2026-08-31 사용자 확정 · 등급은 서버가 판정한다) · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
              * @example GOODS_ISSUE_DISPOSAL
              * @enum {string}
              */
-            approvalTypeCode: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
+            approvalTypeCode: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP" | "PRODUCTION_RESULT_CORRECT";
             /**
              * Format: int64
              * @description 비우면 전 사업부 공통 결재선이다
@@ -37901,11 +37636,11 @@ export interface components {
         /** @description 결재선 등록. isActive 는 받지 않는다 — 신규는 항상 사용 중이다. 같은 (approvalTypeCode, businessUnitId) 로 활성 결재선이 이미 있으면 400 이다. */
         ApprovalRouteCreate: {
             /**
-             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — 8값이다. ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 8개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
+             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — **9값이다**(2026-09-04 — 실적 정정 승인이 늘었다). ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 9개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · PRODUCTION_RESULT_CORRECT 작업실적 A급 정정(수불·기간업무시스템 영향 — 2026-08-31 사용자 확정 · 등급은 서버가 판정한다) · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
              * @example GOODS_ISSUE_DISPOSAL
              * @enum {string}
              */
-            approvalTypeCode: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
+            approvalTypeCode: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP" | "PRODUCTION_RESULT_CORRECT";
             /**
              * Format: int64
              * @description 비우면 전 사업부 공통
@@ -38036,11 +37771,11 @@ export interface components {
         /** @description 승인 대상. approval_request 는 target_type_code + target_id 다형 참조로 대상을 가리키고 유형↔테이블 규약이 아직 없다(omf-mes#68 — 그 이슈는 2026-08-25 후속 없이 닫혔고 지금 살아 있는 곳은 omf-mes-server#74 다). 그래서 계약이 표시명과 열 화면을 함께 내려 준다 — 화면이 「이 유형은 저 화면」 표를 갖지 않는다. 근거: W-CO-09 §5-2 · 공유계약 A-10 보강 */
         ApprovalTarget: {
             /**
-             * @description 승인 대상 유형. **A-10 다형 참조 판별자**이고 값은 **상신 오퍼레이션이 정한다** — 화면이 고르는 값이 아니라 서버가 채운다(예: `POST /trace/lots/{lotId}:request-iqc-skip` 이 `INBOUND_LOT` 을 채운다). 업무 화면이 「이 문서의 승인 상태」를 찾을 때 `GET /app/approval-requests?targetTypeCode=&targetId=` 에 싣는다. ⚠ **`INBOUND_LOT` 이 어느 표를 가리키는지는 아직 정하지 않았다**(`omf-mes-server#74`) — 값은 확정이고 대응 표만 남았다. ⛔ 같은 이름의 다른 자리(`DocumentTarget`·`Attachment`·`AuditEvent`·`MaintenanceOrder`·`InspectionRequest`·`Notification`·`IntegrationMessage`)는 **값 집합이 다르다** — 이 목록을 그쪽에 쓰지 않는다(공유계약 G-32).
+             * @description 승인 대상 유형. **A-10 다형 참조 판별자**이고 값은 **상신 오퍼레이션이 정한다** — 화면이 고르는 값이 아니라 서버가 채운다(예: `POST /trace/lots/{lotId}:request-iqc-skip` 이 `INBOUND_LOT` 을, `POST /production/production-results/{productionResultId}:request-approval` 이 `PRODUCTION_RESULT` 를 채운다). 업무 화면이 「이 문서의 승인 상태」를 찾을 때 `GET /app/approval-requests?targetTypeCode=&targetId=` 에 싣는다. ⚠ **`INBOUND_LOT` 이 어느 표를 가리키는지는 아직 정하지 않았다**(`omf-mes-server#74`) — 값은 확정이고 대응 표만 남았다. ⛔ 같은 이름의 다른 자리(`DocumentTarget`·`Attachment`·`AuditEvent`·`MaintenanceOrder`·`InspectionRequest`·`Notification`·`IntegrationMessage`)는 **값 집합이 다르다** — 이 목록을 그쪽에 쓰지 않는다(공유계약 G-32).
              * @example GOODS_ISSUE
              * @enum {string}
              */
-            targetTypeCode: "GOODS_ISSUE" | "GOODS_RECEIPT" | "INBOUND_RECEIPT" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "SHIPMENT" | "INBOUND_LOT";
+            targetTypeCode: "GOODS_ISSUE" | "GOODS_RECEIPT" | "INBOUND_RECEIPT" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "SHIPMENT" | "INBOUND_LOT" | "PRODUCTION_RESULT";
             /**
              * Format: int64
              * @example 4412
@@ -38114,11 +37849,11 @@ export interface components {
              */
             approvalRequestNo: string;
             /**
-             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — 8값이다. ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 8개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
+             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — **9값이다**(2026-09-04 — 실적 정정 승인이 늘었다). ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 9개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · PRODUCTION_RESULT_CORRECT 작업실적 A급 정정(수불·기간업무시스템 영향 — 2026-08-31 사용자 확정 · 등급은 서버가 판정한다) · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
              * @example GOODS_ISSUE_DISPOSAL
              * @enum {string}
              */
-            approvalTypeCode: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP";
+            approvalTypeCode: "GOODS_ISSUE_DISPOSAL" | "INVENTORY_ADJUSTMENT" | "PURCHASE_ORDER" | "INBOUND_RECEIPT_CANCEL" | "GOODS_RECEIPT_CANCEL" | "GOODS_ISSUE_CANCEL" | "SHIPMENT_CANCEL" | "IQC_SKIP" | "PRODUCTION_RESULT_CORRECT";
             /**
              * Format: int64
              * @example 1001
@@ -42540,7 +42275,6 @@ export interface components {
              * @example 2026-08-13
              */
             orderDate: string;
-            /** @example 값 */
             statusCode: string;
             lines?: components["schemas"]["SalesOrderLine"][];
             /** @example 1 */
@@ -42928,7 +42662,6 @@ export interface components {
              * @example MORNING
              */
             timeSlotCode?: string | null;
-            /** @example 값 */
             statusCode: string;
             /**
              * @description ⭐ W-04-02 「검사」 열의 판정 근거 — 라인 전체(shippingInspectionRequired + 03 품질 inspection-results)를 서버가 롤업해 하나로 낸다. NOT_REQUIRED=대상 라인 없음(「—」) · PENDING=대상인데 결과 없음(「● 대기」) · PASSED=전 대상 라인 합격(「✅ 합격」) · REJECTED=불합격 라인 존재(「⛔ 불합격」) · HELD=보류 라인 존재, 불합격 없음(「⚠ 보류」). ⭐ 롤업 우선순위(가장 나쁜 것이 이긴다): REJECTED > HELD > PENDING > PASSED > NOT_REQUIRED. ⛔ 화면이 라인을 순회해 판정하지 않는다(공유계약 G-8과 같은 결 — W-04-02 §5-3) — 03 계약과의 조인은 서버 몫이다. ⚠ 이 필드를 이미 소비 중인 코드는 PASSED 외 값을 몰라도 PENDING과 동일하게(대기 취급) 두면 당장은 안전하다. 근거: W-04-02 §5-3·§5-4 · omf-mes#232 · omf-mes#235
@@ -42936,6 +42669,12 @@ export interface components {
              * @enum {string}
              */
             shippingInspectionStatusCode: "NOT_REQUIRED" | "PENDING" | "PASSED" | "REJECTED" | "HELD";
+            /**
+             * @description ⭐ W-04-02 「진행」 열의 판정 근거 — 출하작업지시 «한 건»의 진행이다. 라인 전체의 요청·배정·피킹·출하 4수량을 서버가 롤업해 하나로 낸다. ⛔ 서버가 계산한다 — 화면이 다시 계산하지 않는다(공유계약 L-2 · L-2-1 ⑴). ⛔ 저장하지 않는다 — A-17 의 두 질문이 둘 다 「아니오」다(달력이 값을 바꾸지 않고, 과거 값을 얼릴 이유도 없다). NOT_ALLOCATED=배정 합 0 · PARTIALLY_ALLOCATED=0 보다 크고 요청 합보다 작은 배정 합 · PICKING=배정 합이 요청 합과 같고 피킹 합이 배정 합보다 작다 · PICKED=피킹 합이 배정 합과 같고 출하 합 0 · PARTIALLY_SHIPPED=출하 합이 0 보다 크고 배정 합보다 작다 · SHIPPED=출하 합이 배정 합과 같다. ⭐ 판정 순서는 뒤가 이긴다 — NOT_ALLOCATED, PARTIALLY_ALLOCATED, PICKING, PICKED, PARTIALLY_SHIPPED, SHIPPED. ⚠ statusCode 와 축이 다르다 — 그 칸은 「칸 불필요」로 닫혔고(x-no-code-key) 값이 없다. ⚠ shippingInspectionStatusCode 와도 축이 다르다 — 「검사 대기」는 이 축의 값이 아니라 그 축의 PENDING 이다. 한 칸에 두 축을 담으면 어느 쪽도 못 읽는다. ⛔ 화면이 라인을 순회해 판정하지 않는다 — W-04-01·W-04-02·W-04-04 가 각자 접으면 같은 건을 다르게 부른다(W-04-02 §9-1). 근거: W-04-02 §3·§4-A·§5-3 · W-04-04 §3·§5-4 · omf-mes#402
+             * @example PICKING
+             * @enum {string}
+             */
+            shipmentProgressCode: "NOT_ALLOCATED" | "PARTIALLY_ALLOCATED" | "PICKING" | "PICKED" | "PARTIALLY_SHIPPED" | "SHIPPED";
             lines?: components["schemas"]["ShipmentRequestLine"][];
             /** @example 1 */
             versionNo?: number;

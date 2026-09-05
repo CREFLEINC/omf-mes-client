@@ -15,6 +15,8 @@ import type { components } from '@omf-mes/api-client';
 type ShipmentRequestResponse = components['schemas']['ShipmentRequest'];
 type ShipmentRequestLineResponse = components['schemas']['ShipmentRequestLine'];
 
+export type ShipmentProgressCode = ShipmentRequestResponse['shipmentProgressCode'];
+
 export type PageMeta = components['schemas']['PageMeta'];
 
 /** 한 행의 요청/배정/출하 합계 — **그 행 자신의 `lines`만 더한다**(다른 행·페이지를 넘나들지 않는다). */
@@ -57,7 +59,7 @@ export interface ShipmentRequestView {
   customerId: number;
   shipToPartnerId: number;
   requestedShipDate: string;
-  statusCode: string;
+  shipmentProgressCode: ShipmentProgressCode;
   inspectionStatus: ShipmentRequestResponse['shippingInspectionStatusCode'];
   lineTotals: LineQtyTotals | null;
 }
@@ -69,7 +71,7 @@ export const toShipmentRequestView = (data: ShipmentRequestResponse): ShipmentRe
   customerId: data.customerId,
   shipToPartnerId: data.shipToPartnerId,
   requestedShipDate: data.requestedShipDate,
-  statusCode: data.statusCode,
+  shipmentProgressCode: data.shipmentProgressCode,
   inspectionStatus: data.shippingInspectionStatusCode,
   lineTotals: toLineQtyTotals(data.lines),
 });

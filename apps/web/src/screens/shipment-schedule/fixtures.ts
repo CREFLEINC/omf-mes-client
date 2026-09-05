@@ -26,6 +26,7 @@ const BASE_SHIPMENT_REQUEST = {
   shipToPartnerId: 9111,
   requestedShipDate: '2026-08-13',
   statusCode: 'SAMPLE_STATUS_A',
+  shipmentProgressCode: 'PICKED',
   shippingInspectionStatusCode: 'NOT_REQUIRED',
   lines: [BASE_LINE],
 };

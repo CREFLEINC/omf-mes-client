@@ -97,6 +97,7 @@ export const toShipmentProcessingCandidateFilters = (
   return {
     shipDateFrom: canLoad ? shipDateFrom : null,
     shipDateTo: canLoad ? shipDateTo : null,
+    pickingCompleteOnly: state.appliedFilters.pickingCompleteOnly,
     page: state.page,
   };
 };

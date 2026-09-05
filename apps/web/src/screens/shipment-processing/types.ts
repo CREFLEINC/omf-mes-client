@@ -12,6 +12,8 @@ import type { components } from '@omf-mes/api-client';
 type ShipmentRequestResponse = components['schemas']['ShipmentRequest'];
 type ShipmentRequestLineResponse = components['schemas']['ShipmentRequestLine'];
 
+export type ShipmentProgressCode = ShipmentRequestResponse['shipmentProgressCode'];
+
 /** 출하작업지시 한 라인. `pickedQty`만 있고 `picks[]`(LOT별 내역)는 baseline에 없다(계획서 미결 항목). */
 export interface ShipmentRequestLineCandidate {
   shipmentRequestLineId: number;
@@ -53,7 +55,7 @@ export interface ShipmentRequestCandidate {
   customerId: number;
   shipToPartnerId: number;
   requestedShipDate: string;
-  statusCode: string;
+  shipmentProgressCode: ShipmentProgressCode;
   shippingInspectionStatusCode: ShipmentRequestResponse['shippingInspectionStatusCode'];
   lines: ShipmentRequestLineCandidate[] | null;
 }
@@ -67,7 +69,7 @@ export const toShipmentRequestCandidate = (
   customerId: data.customerId,
   shipToPartnerId: data.shipToPartnerId,
   requestedShipDate: data.requestedShipDate,
-  statusCode: data.statusCode,
+  shipmentProgressCode: data.shipmentProgressCode,
   shippingInspectionStatusCode: data.shippingInspectionStatusCode,
   lines: data.lines === undefined ? null : data.lines.map(toShipmentRequestLineCandidate),
 });

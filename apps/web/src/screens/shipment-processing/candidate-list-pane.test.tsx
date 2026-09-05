@@ -15,7 +15,7 @@ const row = (
   shipmentRequestNo: 'SYN-SR-501',
   customerLabel: 'CUS-01 · Synthetic Customer',
   requestedShipDate: '2026-08-28',
-  statusCode: 'SYN-STATUS',
+  shipmentProgressCode: 'PICKED',
   blockers: [],
   ...overrides,
 });

@@ -8,7 +8,7 @@ import {
   type StubFetch,
   type StubRoute,
 } from '../../test/api-harness';
-import type { CancelResource } from './document-types';
+import type { CancelableDocumentTypeCode, CancelResource } from './document-types';
 import {
   approvalKeys,
   cancelResourceDetailPath,
@@ -21,9 +21,8 @@ import {
 } from './queries';
 
 /**
- * ⭐ **리소스 세 값을 고르는 자리는 이 화면에 하나뿐이다**(`queries.ts`의 `cancelResourceApiOf`).
- * 그 자리가 값마다 다른 주소를 두드리는지 **이 파일이 값마다 잰다** — 화면 수준 감지기는 유형
- * 표에 실린 값 하나만 지나므로, 나머지 두 값이 조용히 같은 경로로 접혀도 전부 통과한다.
+ * ⭐ 원 자원 상세는 리소스별 경로에서 잠금 토큰을 얻고, 쓰기는 문서 유형 기반 공통 경로로
+ * 나간다. 이 파일이 세 유형 모두에서 두 경로 역할이 섞이지 않는지 값마다 잰다.
  *
  * **주소를 리터럴로 적는다.** `cancelResourceDetailPath`로 기대값을 만들면 그 함수가 틀렸을 때
  * 기대값도 함께 틀려 감지기가 아무 말도 하지 않는다(동어반복).
@@ -35,6 +34,21 @@ const RESOURCE_PATHS: Record<CancelResource, string> = {
   'inbound-receipts': '/logistics/inbound-receipts/9001',
   'goods-issues': '/logistics/goods-issues/9001',
 };
+
+const DOCUMENT_TYPES_BY_RESOURCE: Record<CancelResource, CancelableDocumentTypeCode> = {
+  'goods-receipts': 'GOODS_RECEIPT',
+  'inbound-receipts': 'INBOUND_RECEIPT',
+  'goods-issues': 'GOODS_ISSUE',
+};
+
+const cancelTargetOf = (resource: CancelResource): CancelTarget => ({
+  documentTypeCode: DOCUMENT_TYPES_BY_RESOURCE[resource],
+  resource,
+  documentId: DOCUMENT_ID,
+});
+
+const cancelActionPath = (resource: CancelResource, action: 'request-cancel' | 'cancel'): string =>
+  `/logistics/document-progress/${DOCUMENT_TYPES_BY_RESOURCE[resource]}/${String(DOCUMENT_ID)}:${action}`;
 
 const RESOURCES = Object.keys(RESOURCE_PATHS) as CancelResource[];
 
@@ -88,8 +102,8 @@ const anyResourceDetailRoute: StubRoute = {
 const anyRequestCancelRoute: StubRoute = {
   match: (request) =>
     request.method === 'POST' &&
-    Object.values(RESOURCE_PATHS).some(
-      (path) => new URL(request.url).pathname === `${path}:request-cancel`,
+    RESOURCES.some(
+      (resource) => new URL(request.url).pathname === cancelActionPath(resource, 'request-cancel'),
     ),
   respond: () => jsonResponse({ approvalRequestId: 9601 }, { status: 202 }),
 };
@@ -98,8 +112,8 @@ const anyRequestCancelRoute: StubRoute = {
 const anyExecuteCancelRoute: StubRoute = {
   match: (request) =>
     request.method === 'POST' &&
-    Object.values(RESOURCE_PATHS).some(
-      (path) => new URL(request.url).pathname === `${path}:cancel`,
+    RESOURCES.some(
+      (resource) => new URL(request.url).pathname === cancelActionPath(resource, 'cancel'),
     ),
   respond: () =>
     jsonResponse({
@@ -192,7 +206,7 @@ describe('cancelResourceKeys', () => {
 describe('useCancelResourceLock — 값마다 다른 주소를 두드린다', () => {
   it.each(RESOURCES)('%s면 그 리소스의 상세를 부른다', async (resource) => {
     const { fetch, requests } = recordingFetch([anyResourceDetailRoute]);
-    const target: CancelTarget = { resource, documentId: DOCUMENT_ID };
+    const target = cancelTargetOf(resource);
 
     const { result } = renderHookWithProviders(() => useCancelResourceLock(target), { fetch });
 
@@ -217,17 +231,16 @@ describe('useCancelResourceLock — 값마다 다른 주소를 두드린다', ()
   });
 });
 
-describe('useRequestDocumentCancel — 값마다 다른 주소로 상신한다', () => {
-  it.each(RESOURCES)('%s면 그 리소스의 취소 요청 경로로 나간다', async (resource) => {
+describe('useRequestDocumentCancel — 문서 유형 기반 공통 주소로 상신한다', () => {
+  it.each(RESOURCES)('%s의 유형과 번호를 공통 취소 요청 경로에 싣는다', async (resource) => {
     const { fetch, requests } = recordingFetch([anyResourceDetailRoute, anyRequestCancelRoute]);
 
     const { result } = renderHookWithProviders(
       () => ({
         /* 토큰을 먼저 확보한다 — 계약이 `If-Match`를 필수로 두어 없으면 요청이 나가지 않는다. */
-        lock: useCancelResourceLock({ resource, documentId: DOCUMENT_ID }),
+        lock: useCancelResourceLock(cancelTargetOf(resource)),
         write: useRequestDocumentCancel({
-          resource,
-          documentId: DOCUMENT_ID,
+          target: cancelTargetOf(resource),
           onSuccess: () => undefined,
         }),
       }),
@@ -246,7 +259,7 @@ describe('useRequestDocumentCancel — 값마다 다른 주소로 상신한다',
 
     const sent = requests.filter((request) => request.method === 'POST')[0];
 
-    expect(sent?.pathname).toBe(`${RESOURCE_PATHS[resource]}:request-cancel`);
+    expect(sent?.pathname).toBe(cancelActionPath(resource, 'request-cancel'));
     expect(sent?.headers.get('If-Match')).toBe(ETAG);
     expect(sent?.body).toEqual({ reason: '합성 사유' });
   });
@@ -262,8 +275,7 @@ describe('useRequestDocumentCancel — 값마다 다른 주소로 상신한다',
     const { result } = renderHookWithProviders(
       () =>
         useRequestDocumentCancel({
-          resource: null,
-          documentId: null,
+          target: null,
           onSuccess: () => undefined,
         }),
       { fetch },
@@ -336,22 +348,19 @@ describe('useCancelApprovalRequest — C4-1 · C4-2', () => {
   });
 });
 
-describe('useExecuteDocumentCancel — 값마다 다른 주소로 실행한다 · C4-11', () => {
+describe('useExecuteDocumentCancel — 문서 유형 기반 공통 주소로 실행한다 · C4-11', () => {
   /**
-   * ⭐ **리소스 세 값을 고르는 자리가 상신과 같은 하나다**(`cancelResourceApiOf`). 화면 수준
-   * 감지기는 유형 표에 실린 값 하나만 지나므로, 나머지 두 값이 조용히 같은 경로로 접혀도
-   * 전부 통과한다 — 그래서 여기서 **값마다** 잰다.
+   * ⭐ 세 원 자원 모두 유형 코드로 바뀌어 공통 실행 경로에 실리는지 값마다 잰다.
    */
-  it.each(RESOURCES)('%s면 그 리소스의 취소 실행 경로로 나간다', async (resource) => {
+  it.each(RESOURCES)('%s의 유형과 번호를 공통 취소 실행 경로에 싣는다', async (resource) => {
     const { fetch, requests } = recordingFetch([anyResourceDetailRoute, anyExecuteCancelRoute]);
 
     const { result } = renderHookWithProviders(
       () => ({
         /* 토큰을 먼저 확보한다 — 계약이 `If-Match`를 필수로 두어 없으면 요청이 나가지 않는다. */
-        lock: useCancelResourceLock({ resource, documentId: DOCUMENT_ID }),
+        lock: useCancelResourceLock(cancelTargetOf(resource)),
         write: useExecuteDocumentCancel({
-          resource,
-          documentId: DOCUMENT_ID,
+          target: cancelTargetOf(resource),
           onSuccess: () => undefined,
         }),
       }),
@@ -370,7 +379,7 @@ describe('useExecuteDocumentCancel — 값마다 다른 주소로 실행한다 �
 
     const sent = requests.filter((request) => request.method === 'POST')[0];
 
-    expect(sent?.pathname).toBe(`${RESOURCE_PATHS[resource]}:cancel`);
+    expect(sent?.pathname).toBe(cancelActionPath(resource, 'cancel'));
     expect(sent?.headers.get('If-Match')).toBe(ETAG);
     expect(sent?.headers.get('Idempotency-Key')).not.toBeNull();
   });
@@ -384,10 +393,9 @@ describe('useExecuteDocumentCancel — 값마다 다른 주소로 실행한다 �
 
     const { result } = renderHookWithProviders(
       () => ({
-        lock: useCancelResourceLock({ resource: 'goods-receipts', documentId: DOCUMENT_ID }),
+        lock: useCancelResourceLock(cancelTargetOf('goods-receipts')),
         write: useExecuteDocumentCancel({
-          resource: 'goods-receipts',
-          documentId: DOCUMENT_ID,
+          target: cancelTargetOf('goods-receipts'),
           onSuccess: () => undefined,
         }),
       }),
@@ -414,10 +422,9 @@ describe('useExecuteDocumentCancel — 값마다 다른 주소로 실행한다 �
 
     const { result } = renderHookWithProviders(
       () => ({
-        lock: useCancelResourceLock({ resource: 'goods-receipts', documentId: DOCUMENT_ID }),
+        lock: useCancelResourceLock(cancelTargetOf('goods-receipts')),
         write: useExecuteDocumentCancel({
-          resource: 'goods-receipts',
-          documentId: DOCUMENT_ID,
+          target: cancelTargetOf('goods-receipts'),
           onSuccess: (view) => received.push(view),
         }),
       }),
@@ -451,8 +458,7 @@ describe('useExecuteDocumentCancel — 값마다 다른 주소로 실행한다 �
     const { fetch, requests } = recordingFetch([anyResourceDetailRoute, anyExecuteCancelRoute]);
 
     const { result } = renderHookWithProviders(
-      () =>
-        useExecuteDocumentCancel({ resource: null, documentId: null, onSuccess: () => undefined }),
+      () => useExecuteDocumentCancel({ target: null, onSuccess: () => undefined }),
       { fetch },
     );
 

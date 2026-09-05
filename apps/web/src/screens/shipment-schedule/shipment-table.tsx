@@ -80,8 +80,7 @@ const SORTABLE_KEYS = new Set<string>(CONTRACT_SORT_KEYS);
  *
  * **「검사」는 서버 롤업(`shippingInspectionStatusCode`)을 그대로 옮긴다**(omf-mes#232 ·
  * omf-mes#235). `REJECTED`·`HELD` 전용 배지는 이번 슬라이스에서 두지 않는다 — 「대기」로 같이
- * 표시한다(다음 착수에서 분리). **「진행」은 원문 코드를 그대로 낸다** — 값
- * 집합이 확정되지 않아(omf-mes#64) 색이나 문구를 지어내지 않는다.
+ * 표시한다(다음 착수에서 분리). **「진행」은 서버가 계산한 원문 코드를 그대로 낸다.**
  */
 export const ShipmentTable = ({
   rows,
@@ -137,10 +136,10 @@ export const ShipmentTable = ({
       key: 'progress',
       header: t.table.progress,
       width: '120px',
-      /* 값 집합이 확정되지 않아(omf-mes#64) 색 변형을 가르지 않는다 — 코드를 그대로 낸다. */
+      /* 진행과 검사를 섞지 않는다. 서버가 계산한 진행 코드를 손실 없이 그대로 낸다. */
       render: (row) => (
         <Chip variant="status" size="sm">
-          {orEmptyMark(row.statusCode)}
+          {orEmptyMark(row.shipmentProgressCode)}
         </Chip>
       ),
     },

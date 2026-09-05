@@ -28,6 +28,7 @@ export const KNOWN_BLOCK_REASON_CODES: readonly string[] = [
   'ALREADY_CANCELLED',
   'CANCEL_IN_PROGRESS',
   'STATE_LOCKED',
+  'TYPE_NOT_CANCELABLE',
 ];
 
 /**
@@ -62,6 +63,7 @@ const BLOCK_REASON_TEXTS: Readonly<Record<string, string>> = {
   ALREADY_CANCELLED: t.blockReasons.ALREADY_CANCELLED,
   CANCEL_IN_PROGRESS: t.blockReasons.CANCEL_IN_PROGRESS,
   STATE_LOCKED: t.blockReasons.STATE_LOCKED,
+  TYPE_NOT_CANCELABLE: t.blockReasons.TYPE_NOT_CANCELABLE,
 };
 
 /**

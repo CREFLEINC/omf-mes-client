@@ -15,8 +15,8 @@ export interface ShipmentFilterBarProps {
   appliedFilters: ShipmentFilters;
   customerOptions: SelectOption[];
   shipToPartnerOptions: SelectOption[];
-  /** 상태 선택지. 값 목록이 확정되지 않아 조회 결과에서 만든다. */
-  statusOptions: readonly string[];
+  /** 고정 계약이 정의한 출하 진행 상태 선택지. */
+  progressOptions: readonly string[];
   chipNames: FilterChipNames;
   customerNote?: string;
   shipToPartnerNote?: string;
@@ -39,7 +39,7 @@ export const ShipmentFilterBar = ({
   appliedFilters,
   customerOptions,
   shipToPartnerOptions,
-  statusOptions,
+  progressOptions,
   chipNames,
   customerNote,
   shipToPartnerNote,
@@ -60,7 +60,7 @@ export const ShipmentFilterBar = ({
   const {
     customer: appliedCustomer,
     shipToPartner: appliedShipToPartner,
-    status: appliedStatus,
+    progress: appliedProgress,
     inspection: appliedInspection,
   } = appliedFilters;
 
@@ -72,10 +72,10 @@ export const ShipmentFilterBar = ({
     setFilters({
       customer: appliedCustomer,
       shipToPartner: appliedShipToPartner,
-      status: appliedStatus,
+      progress: appliedProgress,
       inspection: appliedInspection,
     });
-  }, [appliedCustomer, appliedShipToPartner, appliedStatus, appliedInspection]);
+  }, [appliedCustomer, appliedShipToPartner, appliedProgress, appliedInspection]);
 
   const searchReason = validatePeriod(period);
 
@@ -141,12 +141,11 @@ export const ShipmentFilterBar = ({
         />
         <SelectField
           wide
-          label={t.fields.status}
-          options={withAll(statusOptions.map((code) => ({ value: code, label: code })))}
-          value={filters.status}
-          note={t.filters.statusNote}
+          label={t.fields.progress}
+          options={withAll(progressOptions.map((code) => ({ value: code, label: code })))}
+          value={filters.progress}
           onChange={(value) => {
-            setFilters((prev) => ({ ...prev, status: value }));
+            setFilters((prev) => ({ ...prev, progress: value as ShipmentFilters['progress'] }));
           }}
         />
         <SelectField
