@@ -33,6 +33,7 @@ const renderDialog = (overrides: Partial<DetailDialogProps> = {}) => {
       isError={false}
       isOpen
       itemLabel={(id) => `품목 ${id}`}
+      statusLabel={(code) => `상태 ${code}`}
       onClose={onClose}
       {...overrides}
     />,
@@ -54,7 +55,7 @@ describe('DetailDialog', () => {
     renderDialog();
     const panel = dialog();
 
-    expect(within(panel).getByText('SYN_RUN')).toBeInTheDocument();
+    expect(within(panel).getByText('상태 SYN_RUN')).toBeInTheDocument();
     expect(within(panel).getByText('품목 5001')).toBeInTheDocument();
     expect(within(panel).getByText('3000')).toBeInTheDocument();
   });

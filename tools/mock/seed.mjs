@@ -816,7 +816,10 @@ export const createSeed = (now = new Date()) => {
       customerId: 4001,
       plantId: PLANT_ID,
       shipDate: today,
+      requestedShipDate: today,
       statusCode: 'RELEASED',
+      /* 서버 롤업 진행 상태(계약 필수) — 피킹이 끝나 출하 처리(W-04-04) 관문을 통과하는 갈래. */
+      shipmentProgressCode: 'PICKED',
       minimumShelfLifeDays: 90,
     },
     /* W-04-06 — 고객사 B 의 지시서. 확정된 출하 둘이 여기서 나갔다. */
@@ -827,7 +830,9 @@ export const createSeed = (now = new Date()) => {
       customerId: 4002,
       plantId: PLANT_ID,
       shipDate: dayOf(shift(now, -7)),
+      requestedShipDate: dayOf(shift(now, -7)),
       statusCode: 'COMPLETED',
+      shipmentProgressCode: 'SHIPPED',
       minimumShelfLifeDays: 90,
     },
   ];

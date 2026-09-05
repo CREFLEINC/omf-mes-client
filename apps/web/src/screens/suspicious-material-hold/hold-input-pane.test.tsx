@@ -91,7 +91,9 @@ describe('의심자재 보류 body', () => {
 });
 
 const reasons = (
-  items = [{ code: 'DAMAGE', codeName: '파손', isActive: true }],
+  items: { code: string; codeName: string; isActive: boolean; nameKo?: string | null }[] = [
+    { code: 'DAMAGE', codeName: '파손', isActive: true },
+  ],
   total = items.length,
 ) => jsonResponse({ items, page: { page: 1, size: 100, total } });
 const renderPane = (
@@ -139,6 +141,24 @@ describe('의심자재 보류 입력 pane', () => {
     renderPane([display(701), display(702)]);
     expect(await screen.findByRole('radio', { name: '전량 보류' })).toBeChecked();
     expect(screen.queryByRole('radio', { name: '일부 보류' })).toBeNull();
+  });
+
+  /* G-33 — 사유 선택지의 표시명은 다국어 컬럼이 먼저다. 값(reasonCode)은 그대로 코드다. */
+  it('다국어 이름이 있으면 선택지 라벨로 쓰고 값은 코드로 보낸다', async () => {
+    const { onBodyChange, user } = renderPane(
+      [display(701)],
+      reasons([{ code: 'DAMAGE', codeName: '파손', nameKo: '파손(현지)', isActive: true }]),
+    );
+    const reason = await screen.findByLabelText('보류 사유');
+    await waitFor(() => expect(reason).toBeEnabled());
+    await user.click(reason);
+    await user.click(screen.getByRole('option', { name: '파손(현지)' }));
+    await user.type(screen.getByLabelText('해제 조건'), '재검 완료');
+    await waitFor(() =>
+      expect(onBodyChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ reasonCode: 'DAMAGE' }),
+      ),
+    );
   });
 
   it('사유·해제 조건과 일부 수량이 유효할 때만 exact body를 알린다', async () => {

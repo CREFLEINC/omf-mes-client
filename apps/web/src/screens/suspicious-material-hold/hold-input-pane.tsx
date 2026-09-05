@@ -112,8 +112,12 @@ export const SuspiciousMaterialHoldInputPane = ({
           (value: CodeValue) =>
             value.isActive && value.code.trim() !== '' && value.codeName.trim() !== '',
         )
-        .map((value) => ({ ...value, code: value.code.trim(), codeName: value.codeName.trim() })) ??
-      [],
+        /* 표시명은 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). 로케일 스위치 전이라 한국어만 본다. */
+        .map((value) => ({
+          ...value,
+          code: value.code.trim(),
+          codeName: (value.nameKo ?? '').trim() || value.codeName.trim(),
+        })) ?? [],
     [reasons.data],
   );
   const reasonUnavailable =

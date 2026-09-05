@@ -15,7 +15,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
-import { WORK_ORDER_CLOSE_CODE_GROUPS } from './code-options';
+import { WORK_ORDER_CLOSE_CODE_GROUPS, toWorkOrderCloseCodeLabel } from './code-options';
 import {
   isProductionResultApprovalRequired,
   useProductionResultApprovalRequest,
@@ -336,10 +336,7 @@ export const WorkOrderResultCorrectionWorkspace = ({
         .filter((reason) => reason.isActive)
         .slice()
         .sort((left, right) => left.displayOrder - right.displayOrder)
-        .map((reason) => ({
-          value: reason.code,
-          label: reason.codeName.trim() === '' ? reason.code : reason.codeName,
-        })),
+        .map((reason) => ({ value: reason.code, label: toWorkOrderCloseCodeLabel(reason) })),
     [reasons.data],
   );
   const reasonUnavailable =

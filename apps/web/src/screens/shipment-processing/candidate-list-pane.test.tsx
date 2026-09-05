@@ -76,6 +76,32 @@ describe('ShipmentProcessingCandidateListPane', () => {
     expect(onSelect).toHaveBeenCalledWith(501);
   });
 
+  /* 진행 상태는 계약이 닫은 값이라 표시명은 화면이 갖는다 — 코드 원문을 배지에 그리지 않는다. 모르는 값은 코드 그대로(G-9). */
+  it('진행 상태 배지는 표시명을, 모르는 값은 코드를 그대로 낸다', () => {
+    render(
+      <ShipmentProcessingCandidateListPane
+        rows={[
+          row(),
+          row({
+            shipmentRequestId: 502,
+            shipmentRequestNo: 'SYN-SR-502',
+            shipmentProgressCode: 'SYN_NEW' as never,
+          }),
+        ]}
+        selectedShipmentRequestId={null}
+        isLoading={false}
+        loadError={null}
+        page={page()}
+        onSelect={vi.fn()}
+        onChangePage={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('피킹 완료')).toBeInTheDocument();
+    expect(screen.queryByText('PICKED')).not.toBeInTheDocument();
+    expect(screen.getByText('SYN_NEW')).toBeInTheDocument();
+  });
+
   it('고객 정보가 없으면 자리표시 문구를 낸다', () => {
     render(
       <ShipmentProcessingCandidateListPane
