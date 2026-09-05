@@ -7,7 +7,7 @@ import { runRequest, toApiError, type ApiCallResult } from '../../patterns/reque
 import type { Submission } from './approval-progress';
 import { CANCEL_FORM_FIELDS } from './cancel-reason-draft';
 import type { DetailSelection } from './detail-selection';
-import type { CancelResource } from './document-types';
+import type { CancelableDocumentTypeCode, CancelResource } from './document-types';
 import type { DocumentProgressListQuery } from './filters';
 import {
   toCancelExecutionView,
@@ -245,10 +245,11 @@ export const isUnsupportedDocumentType = (error: unknown): boolean => {
 /**
  * 취소 조작의 대상. **리소스와 번호가 함께여야 성립한다.**
  *
- * 리소스는 유형 표가 정하고(`cancelResourceOf`) 번호는 주소가 정한다 — 둘 중 하나라도 없으면
+ * 유형과 잠금 조회 리소스는 유형 표가 함께 정하고 번호는 주소가 정한다. 어느 하나라도 없으면
  * 이 화면에는 취소할 대상이 없다.
  */
 export interface CancelTarget {
+  documentTypeCode: CancelableDocumentTypeCode;
   resource: CancelResource;
   documentId: number;
 }
@@ -287,7 +288,11 @@ export const cancelResourceKeys = {
  * ⛔ **이 메움은 캐시 키에만 쓴다.** 쓰기의 `etagPath`와 경로 조각에는 없는 값을 메우지 않는다 —
  * 거기서 메우면 `…/0:request-cancel`이 **실제로 나갈 수 있는 모양**이 된다.
  */
-const NO_CANCEL_TARGET: CancelTarget = { resource: 'goods-receipts', documentId: 0 };
+const NO_CANCEL_TARGET: CancelTarget = {
+  documentTypeCode: 'GOODS_RECEIPT',
+  resource: 'goods-receipts',
+  documentId: 0,
+};
 
 /**
  * ⭐ **잠금 토큰을 꺼낼 경로 — 이 화면에서 가장 조용히 틀릴 수 있는 자리다.**
@@ -301,13 +306,11 @@ export const cancelResourceDetailPath = (resource: CancelResource, documentId: n
   `/logistics/${resource}/${String(documentId)}`;
 
 /**
- * 리소스별 오퍼레이션 묶음.
+ * 원 자원별 잠금 토큰 조회 오퍼레이션 묶음.
  *
  * ⭐ **리소스 세 값을 고르는 `switch`가 이 화면에 하나뿐이다.** `openapi-fetch`가 경로를 리터럴
- * 타입으로 요구해 오퍼레이션마다 주소를 적어야 하는데, 그 갈림을 여기 한 곳에 모아 두면
- * ① 값이 늘 때 고칠 자리가 하나이고 ② 「어느 리소스로 나가는가」를 재는 감지기의 대상이 하나다.
- * ⭐ **취소 실행(단위 ④)이 이 묶음에 오퍼레이션을 더했다** — 앞 회차가 예고한 대로 **새 `switch`를
- * 만들지 않았다.** 세 리소스 × 세 오퍼레이션이 한 표로 읽힌다.
+ * 타입으로 요구하므로 원 자원 상세 조회의 갈림을 여기 한 곳에 모은다. 취소 요청과 실행은 이
+ * 분기를 사용하지 않고 문서 유형 기반 공통 경로로 나간다.
  *
  * ⛔ **유형 코드로 분기하지 않는다.** 유형↔리소스는 `document-types.ts`의 표가 정하고, 여기서는
  * 이미 정해진 리소스를 받아 주소로 옮기기만 한다 — 유형에서 리소스를 지어내는 분기가 곧
@@ -321,19 +324,6 @@ interface CancelResourceApi {
    * 본문까지 화면에 들이면 입고·출고 상세의 표시 규약을 이 화면이 함께 떠안게 된다.
    */
   fetchDetail: () => Promise<ApiCallResult<unknown>>;
-  /** 취소 요청 상신 — 본문은 사유 하나이고 헤더 둘이 필수다. */
-  requestCancel: (
-    body: ApprovalRequestCreate,
-    headers: WriteHeaders,
-  ) => Promise<ApiCallResult<ApprovalRequestRef>>;
-  /**
-   * ⛔ **취소 실행** — 원장에서 수량을 되돌리는, 화면에서 되돌릴 수 없는 쓰기다.
-   *
-   * ⭐ **본문이 없다**(계약이 `requestBody`를 두지 않았다 — 완료 조건 C4-11). 보낼 값이 없다는
-   * 사실이 곧 이 조작의 성질이다: 무엇을 되돌릴지는 이미 승인된 요청이 정했고, 지금 남은 것은
-   * 「그것을 지금 실행한다」는 사람의 확인뿐이다. 헤더 둘은 그대로 필수다.
-   */
-  executeCancel: (headers: WriteHeaders) => Promise<ApiCallResult<CancelResultResponse>>;
 }
 
 const cancelResourceApiOf = (
@@ -341,30 +331,12 @@ const cancelResourceApiOf = (
   resource: CancelResource,
   documentId: number,
 ): CancelResourceApi => {
-  /*
-   * 헤더는 공통 훅이 만들어 준다. `If-Match`가 비어 있는 모양은 여기까지 오지 않는다 —
-   * 훅이 토큰을 못 찾으면 요청을 만들지 않고 멈추기 때문이다(전례와 같은 형태).
-   */
-  const headerOf = (headers: WriteHeaders) => ({
-    'Idempotency-Key': headers['Idempotency-Key'],
-    'If-Match': headers['If-Match'] ?? '',
-  });
-
   switch (resource) {
     case 'goods-receipts':
       return {
         fetchDetail: () =>
           client.GET('/logistics/goods-receipts/{goodsReceiptId}', {
             params: { path: { goodsReceiptId: documentId } },
-          }),
-        requestCancel: (body, headers) =>
-          client.POST('/logistics/goods-receipts/{goodsReceiptId}:request-cancel', {
-            params: { path: { goodsReceiptId: documentId }, header: headerOf(headers) },
-            body,
-          }),
-        executeCancel: (headers) =>
-          client.POST('/logistics/goods-receipts/{goodsReceiptId}:cancel', {
-            params: { path: { goodsReceiptId: documentId }, header: headerOf(headers) },
           }),
       };
     case 'inbound-receipts':
@@ -373,15 +345,6 @@ const cancelResourceApiOf = (
           client.GET('/logistics/inbound-receipts/{inboundReceiptId}', {
             params: { path: { inboundReceiptId: documentId } },
           }),
-        requestCancel: (body, headers) =>
-          client.POST('/logistics/inbound-receipts/{inboundReceiptId}:request-cancel', {
-            params: { path: { inboundReceiptId: documentId }, header: headerOf(headers) },
-            body,
-          }),
-        executeCancel: (headers) =>
-          client.POST('/logistics/inbound-receipts/{inboundReceiptId}:cancel', {
-            params: { path: { inboundReceiptId: documentId }, header: headerOf(headers) },
-          }),
       };
     case 'goods-issues':
       return {
@@ -389,18 +352,46 @@ const cancelResourceApiOf = (
           client.GET('/logistics/goods-issues/{goodsIssueId}', {
             params: { path: { goodsIssueId: documentId } },
           }),
-        requestCancel: (body, headers) =>
-          client.POST('/logistics/goods-issues/{goodsIssueId}:request-cancel', {
-            params: { path: { goodsIssueId: documentId }, header: headerOf(headers) },
-            body,
-          }),
-        executeCancel: (headers) =>
-          client.POST('/logistics/goods-issues/{goodsIssueId}:cancel', {
-            params: { path: { goodsIssueId: documentId }, header: headerOf(headers) },
-          }),
       };
   }
 };
+
+const cancelHeaders = (headers: WriteHeaders) => ({
+  'Idempotency-Key': headers['Idempotency-Key'],
+  'If-Match': headers['If-Match'] ?? '',
+});
+
+const requestDocumentCancel = (
+  client: Client,
+  target: CancelTarget,
+  body: ApprovalRequestCreate,
+  headers: WriteHeaders,
+): Promise<ApiCallResult<ApprovalRequestRef>> =>
+  client.POST('/logistics/document-progress/{documentTypeCode}/{documentId}:request-cancel', {
+    params: {
+      path: {
+        documentTypeCode: target.documentTypeCode,
+        documentId: target.documentId,
+      },
+      header: cancelHeaders(headers),
+    },
+    body,
+  });
+
+const executeDocumentCancel = (
+  client: Client,
+  target: CancelTarget,
+  headers: WriteHeaders,
+): Promise<ApiCallResult<CancelResultResponse>> =>
+  client.POST('/logistics/document-progress/{documentTypeCode}/{documentId}:cancel', {
+    params: {
+      path: {
+        documentTypeCode: target.documentTypeCode,
+        documentId: target.documentId,
+      },
+      header: cancelHeaders(headers),
+    },
+  });
 
 /**
  * 잠금 토큰을 확보했다는 사실.
@@ -588,10 +579,8 @@ export const isApprovalNotFound = (error: unknown): boolean => {
 };
 
 export interface RequestDocumentCancelOptions {
-  /** 어느 계약 경로로 나가는가. 유형 표가 정한다 — `null`이면 이 유형에 취소 경로가 없다. */
-  resource: CancelResource | null;
-  /** 어느 문서인가. 주소가 정한다. */
-  documentId: number | null;
+  /** 취소 유형·잠금 리소스·문서 번호의 검증된 묶음. */
+  target: CancelTarget | null;
   onSuccess: (data: ApprovalRequestRef) => void;
 }
 
@@ -617,7 +606,7 @@ export const useRequestDocumentCancel = (
   options: RequestDocumentCancelOptions,
 ): MasterWriteResult<ApprovalRequestCreate> => {
   const { client } = useApiClient();
-  const { resource, documentId } = options;
+  const { target } = options;
 
   return useMasterWrite<ApprovalRequestCreate, ApprovalRequestRef>({
     request: (body, headers) => {
@@ -629,16 +618,13 @@ export const useRequestDocumentCancel = (
        * 리소스까지 메우면 **남의 문서에 취소를 상신하는** 요청이 된다. 지금은 호출부가 그렇게
        * 부르지 않지만, 그 사실에 기대는 대신 **여기서 멈춘다**(조회 훅의 가드와 같은 형태).
        */
-      if (resource === null || documentId === null) {
+      if (target === null) {
         throw new Error('취소할 문서를 고르기 전에는 취소 요청을 올리지 않습니다.');
       }
 
-      return cancelResourceApiOf(client, resource, documentId).requestCancel(body, headers);
+      return requestDocumentCancel(client, target, body, headers);
     },
-    etagPath:
-      resource === null || documentId === null
-        ? null
-        : cancelResourceDetailPath(resource, documentId),
+    etagPath: target === null ? null : cancelResourceDetailPath(target.resource, target.documentId),
     invalidateKeys: [documentProgressKeys.all, cancelResourceKeys.all, approvalKeys.all],
     knownFields: CANCEL_FORM_FIELDS,
     onSuccess: options.onSuccess,
@@ -646,10 +632,8 @@ export const useRequestDocumentCancel = (
 };
 
 export interface ExecuteDocumentCancelOptions {
-  /** 어느 계약 경로로 나가는가. 유형 표가 정한다 — `null`이면 이 유형에 취소 경로가 없다. */
-  resource: CancelResource | null;
-  /** 어느 문서인가. 주소가 정한다. */
-  documentId: number | null;
+  /** 취소 유형·잠금 리소스·문서 번호의 검증된 묶음. */
+  target: CancelTarget | null;
   onSuccess: (data: CancelExecutionView) => void;
 }
 
@@ -677,7 +661,7 @@ export const useExecuteDocumentCancel = (
   options: ExecuteDocumentCancelOptions,
 ): MasterWriteResult<void> => {
   const { client } = useApiClient();
-  const { resource, documentId } = options;
+  const { target } = options;
 
   return useMasterWrite<void, CancelResultResponse>({
     request: (_variables, headers) => {
@@ -686,16 +670,13 @@ export const useExecuteDocumentCancel = (
        * `etagPath`가 `null`이면 공통 훅이 「잠금이 필요 없다」로 읽어 요청을 **그대로 내보내는데**,
        * 이 요청은 원장에서 수량을 되돌린다. 리소스까지 메우면 **남의 문서를 되돌리는** 요청이 된다.
        */
-      if (resource === null || documentId === null) {
+      if (target === null) {
         throw new Error('취소할 문서를 고르기 전에는 취소를 실행하지 않습니다.');
       }
 
-      return cancelResourceApiOf(client, resource, documentId).executeCancel(headers);
+      return executeDocumentCancel(client, target, headers);
     },
-    etagPath:
-      resource === null || documentId === null
-        ? null
-        : cancelResourceDetailPath(resource, documentId),
+    etagPath: target === null ? null : cancelResourceDetailPath(target.resource, target.documentId),
     invalidateKeys: [documentProgressKeys.all, cancelResourceKeys.all, approvalKeys.all],
     knownFields: [],
     onSuccess: (data) => {

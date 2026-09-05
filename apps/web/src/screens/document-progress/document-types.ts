@@ -6,6 +6,10 @@ import type { SelectOption } from './types';
 export type DocumentTypeCode =
   paths['/logistics/document-progress']['get']['parameters']['query']['documentTypeCode'];
 
+/** 통합 취소 경로가 받는 세 문서 유형. 조회의 9종보다 좁으며 계약에서 직접 가져온다. */
+export type CancelableDocumentTypeCode =
+  paths['/logistics/document-progress/{documentTypeCode}/{documentId}:request-cancel']['post']['parameters']['path']['documentTypeCode'];
+
 /**
  * 고정 OpenAPI가 닫은 문서 유형을 한 표에서 관리한다. 이 값은 세 가지 일을 한꺼번에 한다.
  *
@@ -14,26 +18,29 @@ export type DocumentTypeCode =
  * | 유형 선택지 | 고를 수 있는 유형을 정한다 | 아무것도 고를 수 없다 |
  * | 목록 질의값·상세 경로 조각 | 계약에 **그대로** 실린다 | **목록 조회가 한 번도 나가지 않는다** |
  * | 고를 수 없는 유형 | 외주 2문서를 비활성하고 사유를 보인다(omf-mes#82) | 비활성할 대상이 없다 |
- * | **취소 리소스** | 취소 요청이 어느 계약 경로로 나가는지 정한다 | **취소 조작이 서지 않는다** |
+ * | **취소 리소스** | 원 자원 상세에서 `ETag`를 얻을 경로를 정한다 | **취소 조작이 서지 않는다** |
  *
  * 넷을 따로 두면 서로 어긋날 수 있으므로 한 표에 담는다.
  *
- * ⭐ **취소 리소스 열은 계약이 주지 않는 값이다.** 목록·상세의 열쇠는 `documentTypeCode` 하나인데
- * 취소 오퍼레이션은 **리소스별 경로 셋**(`goods-receipts`·`inbound-receipts`·`goods-issues`)에
- * 걸려 있고, 둘을 잇는 값을 계약이 내려주지 않는다(계약 본문 스스로 「유형↔테이블 규약이 아직
- * 없다」고 적었다). 그래서 화면이 그 표를 자리표시로 **소유**한다 — ⛔ 유형 코드에서 리소스를
- * **지어내는 분기**를 만들지 않는다. 그것이 금지된 「유형↔후속 관계표」와 같은 형태다.
+ * ⭐ **취소 리소스 열은 잠금 토큰 조회를 위한 값이다.** 취소 쓰기는 `documentTypeCode` 기반 공통
+ * 경로로 통합됐지만 `If-Match`는 원 자원 상세에서 받은 `ETag`를 사용한다. 어느 유형의 토큰을
+ * 어느 원 자원에서 얻는지는 이 표 한 곳만 정본으로 둔다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
 /**
- * 취소 오퍼레이션이 걸린 계약 경로 조각. **계약에 있는 셋뿐이다**(실측).
+ * 취소 대상 원 자원 상세의 계약 경로 조각. **계약에 있는 셋뿐이다**(실측).
  *
  * 문자열이 아니라 세 값의 합집합인 이유: 이 값이 **경로로 그대로 나가므로**, 표에 오타가 들어가면
  * 화면이 없는 주소로 요청을 보낸다. 세 값으로 좁혀 두면 그 오타를 `tsc`가 잡는다.
  */
 export type CancelResource = 'goods-receipts' | 'inbound-receipts' | 'goods-issues';
+
+export interface CancelTargetDescriptor {
+  documentTypeCode: CancelableDocumentTypeCode;
+  resource: CancelResource;
+}
 
 export interface DocumentTypeEntry {
   /** 계약에 실을 코드값 — 목록 질의값·상세 경로 조각으로 그대로 나간다 */
@@ -139,6 +146,30 @@ export const cancelResourceOf = (
   code: string,
   entries: readonly DocumentTypeEntry[],
 ): CancelResource | null => findSelectableDocumentType(code, entries)?.cancelResource ?? null;
+
+/**
+ * 통합 취소 경로의 문서 유형과 잠금 토큰 조회용 리소스를 한 번에 고른다.
+ *
+ * 취소 리소스가 적힌 행은 고정 계약의 취소 가능 유형 세 개뿐이다. 이 함수가 그 관계를 한곳에서
+ * 검증해, 쓰기 훅이 유형에서 리소스를 다시 추론하거나 리소스에서 유형을 역산하지 않게 한다.
+ */
+export const cancelTargetOf = (
+  code: string,
+  entries: readonly DocumentTypeEntry[],
+): CancelTargetDescriptor | null => {
+  const entry = findSelectableDocumentType(code, entries);
+
+  if (entry === null || entry.cancelResource === null) return null;
+  if (
+    entry.code !== 'INBOUND_RECEIPT' &&
+    entry.code !== 'GOODS_RECEIPT' &&
+    entry.code !== 'GOODS_ISSUE'
+  ) {
+    return null;
+  }
+
+  return { documentTypeCode: entry.code, resource: entry.cancelResource };
+};
 
 /**
  * 표를 선택지로 옮긴다.

@@ -35,7 +35,7 @@ import {
   withSelection,
 } from './detail-selection';
 import {
-  cancelResourceOf,
+  cancelTargetOf,
   describeDisabledTypes,
   DOCUMENT_TYPES,
   isDocumentTypeListPending,
@@ -193,13 +193,14 @@ export const DocumentProgressScreen = () => {
    *
    * 표에 취소 리소스가 없으면 `null`이고, 그러면 조회도 조작도 서지 않는다(완료 조건 C3-1).
    */
-  const cancelResource =
-    selection === null ? null : cancelResourceOf(selection.documentTypeCode, documentTypes);
+  const cancelDescriptor =
+    selection === null ? null : cancelTargetOf(selection.documentTypeCode, documentTypes);
+  const cancelResource = cancelDescriptor?.resource ?? null;
 
   const cancelTarget: CancelTarget | null =
-    cancelResource === null || selection === null
+    cancelDescriptor === null || selection === null
       ? null
-      : { resource: cancelResource, documentId: selection.documentId };
+      : { ...cancelDescriptor, documentId: selection.documentId };
 
   /**
    * ⭐ **잠금 토큰은 진행현황 상세가 아니라 리소스 상세에서 온다**(계획 §5-1). 두 조회는 역할이
@@ -228,7 +229,9 @@ export const DocumentProgressScreen = () => {
    * 들어가야 한다 — 번호만 견주면 리소스가 다른 같은 번호의 문서가 남의 결과를 받는다.
    */
   const cancelTargetKey =
-    cancelTarget === null ? '' : `${cancelTarget.resource}:${String(cancelTarget.documentId)}`;
+    cancelTarget === null
+      ? ''
+      : `${cancelTarget.documentTypeCode}:${cancelTarget.resource}:${String(cancelTarget.documentId)}`;
 
   /**
    * 마지막으로 **보낸** 대상.
@@ -244,8 +247,7 @@ export const DocumentProgressScreen = () => {
   const [cancelDialog, setCancelDialog] = useState<CancelDialogState | null>(null);
 
   const cancelWrite = useRequestDocumentCancel({
-    resource: cancelResource,
-    documentId: selection?.documentId ?? null,
+    target: cancelTarget,
     onSuccess: () => {
       /*
        * 요청은 올라갔다 — 대상이 그 사이에 바뀌었어도 그 사실까지 감추지 않는다.
@@ -278,8 +280,7 @@ export const DocumentProgressScreen = () => {
   const [executionState, setExecutionState] = useState<CancelExecutionState | null>(null);
 
   const executeWrite = useExecuteDocumentCancel({
-    resource: cancelResource,
-    documentId: selection?.documentId ?? null,
+    target: cancelTarget,
     onSuccess: (view) => {
       toast.show({ variant: 'success', description: t.executeCancel.executed });
 

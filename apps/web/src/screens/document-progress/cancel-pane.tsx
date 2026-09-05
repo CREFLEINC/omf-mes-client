@@ -27,7 +27,7 @@ export type CancelLock =
 
 export interface CancelPaneProps {
   /**
-   * 이 유형에 취소 경로가 있는가. **판정은 유형 표가 한다**(`cancelResourceOf`) — 부품은 결과만
+   * 이 유형에 취소 경로가 있는가. **판정은 유형 표가 한다**(`cancelTargetOf`) — 부품은 결과만
    * 받는다. 리소스 값 자체를 넘기지 않는 이유는 부품이 그 값으로 분기할 길을 아예 두지 않기
    * 위해서다(리소스를 고르는 자리는 `queries.ts` 한 곳이다).
    */

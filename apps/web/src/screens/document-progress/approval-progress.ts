@@ -106,7 +106,7 @@ export const readSubmission = (approvalRequestId: number | null | undefined): Su
  * 요청이 진행 중인 때가 바로 실행이 필요한 때다.
  *
  * ⭐ **`unusable`에서도 참이다.** 값이 실려 왔다는 것은 요청이 있었을 수 있다는 뜻이고, 실행은
- * 그 값을 **쓰지 않는다**(경로가 `/logistics/{리소스}/{번호}:cancel`이다). 여기서 거짓을 내면
+ * 그 값을 **쓰지 않는다**(경로가 `/logistics/document-progress/{유형}/{번호}:cancel`이다). 여기서 거짓을 내면
  * 조회 하나가 막혔다는 이유로 **실행 자체가 사라진다** — 조회의 조건과 버튼의 조건은 다른
  * 물음이고, 잠금의 정본은 서버다(승인 전이면 400).
  */

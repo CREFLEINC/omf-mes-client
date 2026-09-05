@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   cancelResourceOf,
+  cancelTargetOf,
   describeDisabledTypes,
   DOCUMENT_TYPES,
   findDocumentType,
@@ -170,5 +171,19 @@ describe('cancelResourceOf', () => {
       'goods-issues',
     );
     expect(cancelResourceOf('INBOUND_RECEIPT', documentTypeFixtures)).toBeNull();
+  });
+});
+
+describe('cancelTargetOf', () => {
+  it('고를 수 있고 취소 가능한 유형이면 유형 코드와 잠금 조회 리소스를 함께 낸다', () => {
+    expect(cancelTargetOf('GOODS_RECEIPT', DOCUMENT_TYPES)).toEqual({
+      documentTypeCode: 'GOODS_RECEIPT',
+      resource: 'goods-receipts',
+    });
+  });
+
+  it('취소 리소스가 없거나 고를 수 없는 유형이면 null이다', () => {
+    expect(cancelTargetOf('GOODS_RECEIPT', documentTypeFixtures)).toBeNull();
+    expect(cancelTargetOf('INBOUND_RECEIPT', documentTypeFixtures)).toBeNull();
   });
 });
