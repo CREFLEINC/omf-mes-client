@@ -908,6 +908,33 @@ main > * + * {
   padding: var(--space-5);
 }
 
+.work-order-close-result-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-5);
+}
+
+.work-order-close-result-pane > .pane-title {
+  margin: 0;
+  color: var(--on-surface);
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
+}
+
+.production-result-correction-table table {
+  min-width: 64rem;
+}
+
+.production-result-correction-grid {
+  align-items: start;
+}
+
+.production-result-correction-reason {
+  grid-column: 1 / -1;
+}
+
 .work-order-close-filter-pane > .pane-title,
 .work-order-close-list-pane > .pane-title,
 .work-order-close-summary-pane > .pane-title,

@@ -11,6 +11,7 @@ describe('work-order close code options', () => {
     expect(WORK_ORDER_CLOSE_CODE_GROUPS).toEqual({
       status: 'WORK_ORDER_STATUS',
       varianceReason: 'WORK_ORDER_COMPLETION_VARIANCE_REASON',
+      correctionReason: 'PRODUCTION_RESULT_CORRECT_REASON',
     });
   });
 
