@@ -2,14 +2,25 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
+import { popTouchClass } from '../../patterns/pop-touch';
 import { normalizeScanCode } from './scan';
 
 const t = messages.materialInputScan;
+
+/**
+ * 스캔 한 번의 결과. **무게(`tone`)를 함께 든다** — 성공과 실패가 같은 모양이면 실패를 놓친다.
+ */
+export interface ScanOutcomeView {
+  tone: 'success' | 'warning' | 'error';
+  text: string;
+}
 
 export interface ScanFieldProps {
   /** 조회가 나가는 중인가. 그동안 같은 코드가 두 번 나가지 않게 잠근다. */
   isScanning: boolean;
   onScan: (code: string) => void;
+  /** 직전 스캔의 결과. 아직 읽은 것이 없으면 `null` — 자리는 그대로 둔다(아래 참조). */
+  outcome: ScanOutcomeView | null;
 }
 
 /**
@@ -26,7 +37,7 @@ export interface ScanFieldProps {
  * ⛔ **숫자 키패드를 여기 두지 않는다.** 그 부품은 다른 화면(`P-CO-01`)이 소유하고 있고,
  * 여기서 또 만들면 같은 것이 둘이 된다.
  */
-export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
+export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -94,10 +105,18 @@ export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
         {/*
          * 장갑 낀 손으로 누른다 — 착수 이슈 6번이 정한 72px 하한을 함께 건다.
          * DS 의 `xl` 은 60px 이라 12px 이 모자라고, 그 부족분을 제품이 임시로 채운다.
+         *
+         * ⭐ **채움(`filled`)을 쓰지 않는다.** 스캐너는 코드를 치고 Enter 까지 보내고, 이 칸은
+         * 들어오자마자·읽을 때마다 스스로 포커스를 되찾는다 — **정상 작업 흐름에서 이 버튼은
+         * 눌리지 않는다.** 그런데 채움으로 두면 화면에서 가장 강한 것이 「안 눌러도 되는 것」이
+         * 되고, 이 화면이 향하는 [ 투입 확정 ]이 그 뒤로 밀린다. 이 버튼은 **스캐너가 Enter 를
+         * 못 보냈거나 손으로 친 경우의 대체 경로**이므로 그 무게로 세운다.
+         *
+         * ⛔ 크기는 낮추지 않는다 — 대체 경로라도 장갑 낀 손이 누르는 자리다.
          */}
         <Button
           type="submit"
-          variant="filled"
+          variant="outlined"
           size="xl"
           className="pop-touch-target"
           disabled={isScanning}
@@ -114,11 +133,27 @@ export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
        * ⛔ 별도 입력창을 열지 않는다. 스캐너가 살아 있을 때 그 창이 스캔값을 가로챈다.
        */}
       <div className="scan-manual">
+        {/*
+         * ⭐ **세 단계로 내려온다** — [ 투입 확정 ] 채움 · [ 읽기 ] 테두리 · 이것은 글자만.
+         *
+         * 하는 일이 **칸으로 포커스를 옮기는 것 하나**인데, 그 칸은 화면에 들어오자마자·읽을
+         * 때마다 스스로 포커스를 되찾는다 — **평소에는 눌러도 아무 변화가 없다.** 포커스를
+         * 잃었을 때만 쓸모가 있는 조작이라 세 중 가장 약하게 세운다.
+         *
+         * ⭐ **일반 등급(56)이다.** 설계가 「큰 타겟」이라고 못박은 것은 [ 투입 확정 ] 하나뿐이고
+         * (§7 DS 매핑), 이 버튼은 그 표에 항목조차 없다. 되돌리기 쉬운 보조 조작이므로 터치
+         * 등급의 「일반 56↑」을 쓴다 — 한때 72(핵심)로 서 있어 옆의 [ 읽기 ]와 같은 덩치였다.
+         *
+         * ⚠ **테두리는 남긴다.** 크기로 이미 한 급 내려왔으므로 테두리까지 걷으면 누를 수 있는
+         *    것인지가 흐려진다 — 무게는 «크기»로 가르고, 눌리는 자리라는 사실은 테두리가 말한다.
+         *
+         * ⚠ 없애지 않는다 — 스캐너가 죽은 단말에서 이 길이 유일한 입력 경로다(스펙 §3 · D-3).
+         */}
         <Button
           type="button"
           variant="outlined"
-          size="xl"
-          className="pop-touch-target"
+          size="lg"
+          className={popTouchClass('normal')}
           onClick={() => {
             inputRef.current?.focus();
           }}
@@ -127,6 +162,28 @@ export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
         </Button>
         <p className="field-note">{t.notes.manualEntry}</p>
       </div>
+
+      {/*
+       * 결과 — **대체 경로 줄 아래**에 선다.
+       *
+       * 칸 바로 밑에 두면 읽을 때마다 그 줄이 나타났다 사라지면서 아래의 안내·버튼이 밀린다.
+       * 입력 묶음(칸 · 읽기 · 직접 입력 · 안내)을 먼저 한 덩어리로 닫고, 그 «다음»에 결과가
+       * 선다 — 무엇에 대한 답인지는 바로 위 묶음이 말해 준다.
+       *
+       * ⛔ **없을 때도 자리를 지운다.** 뜨고 지면 아래의 목록·버튼이 위아래로 움직이고, 다음
+       * 코드를 읽으려던 손이 옆 것을 누른다(이 슬라이스가 `.worker-no-notice` 에서 같은 문제를
+       * 같은 방법으로 막고 있다). 그래서 «내용»만 바뀌고 상자는 늘 서 있다.
+       *
+       * `role="status"` 라 화면을 보지 않는 작업자도 읽힌 결과를 듣는다 — 이 화면의 사용자는
+       * 손과 눈이 자재에 가 있다.
+       */}
+      <p
+        className="scan-outcome"
+        role="status"
+        data-tone={outcome === null ? undefined : outcome.tone}
+      >
+        {outcome !== null && <span className="scan-outcome-text">{outcome.text}</span>}
+      </p>
     </form>
   );
 };

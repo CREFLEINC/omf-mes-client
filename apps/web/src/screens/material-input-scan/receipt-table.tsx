@@ -138,8 +138,6 @@ export const ReceiptTable = ({
           )
         }
       />
-
-      <p className="field-note">{t.notes.shortAllowed}</p>
     </>
   );
 };

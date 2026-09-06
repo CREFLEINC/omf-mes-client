@@ -143,7 +143,6 @@ export const workStart = {
 
   /** 액션바 — 되돌릴 수 없는 조작이라 72px 급이다. */
   actions: {
-    reset: '다시 선택',
     start: '작업 시작',
     resume: '재개',
     starting: '시작 중',

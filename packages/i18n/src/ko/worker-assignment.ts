@@ -24,7 +24,7 @@ export const workerAssignment = {
      * 같은 설계 자료 전체에서 제품명은 「OMF-MES」·「OMF MES」로 쓰이고 이 표기는 도면 두
      * 곳에만 있다. 사용자 지시로 제품명 쪽에 맞춘다.
      *
-     * 요청서: `.client-dev/requests/2026-09-04-설계개선-진입화면-제품명표기.md` (회신 대기)
+     * 요청서: `.client-dev/requests/2026-09-04-설계개선-POP표시규격.md` (회신 대기)
      * — 답이 오면 그 결과로 이 값을 확정한다. ⛔ 임의로 되돌리지 않는다.
      */
     brand: 'OMF MES',

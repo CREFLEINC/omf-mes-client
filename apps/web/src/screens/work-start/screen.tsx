@@ -1,4 +1,4 @@
-import { AlertBanner } from '@crefle/web-ui';
+import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
@@ -262,8 +262,33 @@ export const WorkStartScreen = () => {
     );
   };
 
-  /** 다른 것을 고르면 다른 쓰기다 — 붙들고 있던 시각을 버린다. */
+  /**
+   * 고른 것을 «비운다» — 시각·판정·결과 문구까지 함께 버린다.
+   *
+   * ⛔ `setSelectedId(null)` 만 하지 않는다. 붙들고 있던 시각(`submitAtRef`)은 멱등 키의
+   * 지문이라 다음 선택으로 새어 가면 «다른 지시의 시작»이 같은 쓰기로 나간다.
+   */
+  const clearSelection = () => {
+    submitAtRef.current = null;
+    setGateAt(null);
+    setOutcome(null);
+    setSelectedId(null);
+  };
+
+  /**
+   * 다른 것을 고르면 다른 쓰기다 — 붙들고 있던 시각을 버린다.
+   *
+   * ⭐ **고른 것을 한 번 더 누르면 해제한다.** 이 화면은 지시를 «하나»만 고른다(§5-A 가
+   * `work_order_id` 한 건이고 상태도 「선택됨」 하나다). 고른 것을 무르는 길이 액션바
+   * 버튼뿐이면, 손이 카드에 있는 채로 눈만 화면 아래 끝까지 다녀와야 한다.
+   */
   const selectWorkOrder = (workOrder: WorkOrder) => {
+    if (workOrder.workOrderId === selectedId) {
+      clearSelection();
+
+      return;
+    }
+
     submitAtRef.current = null;
     setGateAt(null);
     setOutcome(null);
@@ -289,6 +314,33 @@ export const WorkStartScreen = () => {
          */
         isConnected={connectionVerdict}
       />
+
+      {/*
+       * 막힘 사유 — **머리줄 바로 아래**에 선다.
+       *
+       * ⭐ 「왜 못 하는지 + 무엇을 하면 되는지」를 함께 낸다(G-3 · §5-1 · §9-2). ⛔ 회색 버튼만
+       *    두지 않는다 — 작업자는 단말이 고장 난 줄 안다.
+       *
+       * ⚠ **자리는 설계가 정해 두지 않았다.** §6 은 사번 오류만 「인라인」으로 못박았고 시작
+       *    불가 사유의 자리는 비어 있으며, §4 도면에도 이 배너가 없다. 한때 액션바 안에 두었는데
+       *    ② 목록이 긴 화면에서 사유가 화면 맨 아래에 있어, 「왜 안 눌리지」 하고 버튼을 먼저
+       *    보게 된다. 머리줄 아래는 이 셸이 「지금 이 화면에 걸린 것」을 말해 온 자리다.
+       */}
+      {blockReason !== null && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">
+            {blockReason}
+            {retryLabel !== null && (
+              <>
+                {' '}
+                <Button type="button" variant="text" size="lg" onClick={gate.retry}>
+                  {retryLabel}
+                </Button>
+              </>
+            )}
+          </AlertBanner>
+        </div>
+      )}
 
       <WorkerPanel
         draft={draft}
@@ -357,15 +409,8 @@ export const WorkStartScreen = () => {
 
       <ActionBar
         mode={isResume ? 'resume' : 'start'}
-        blockReason={blockReason}
-        retryLabel={retryLabel}
-        onRetry={gate.retry}
+        isBlocked={blockReason !== null}
         isSaving={isResume ? resumeWork.isSaving : startWork.isSaving}
-        onReset={() => {
-          submitAtRef.current = null;
-          setSelectedId(null);
-          setOutcome(null);
-        }}
         onSubmit={submit}
       />
 

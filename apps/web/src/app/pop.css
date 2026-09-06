@@ -182,10 +182,18 @@
  * 않아 구획이 화면 양 끝에 붙고 하단 버튼이 잘렸다(실측). 배치 «형태»가 아니라 «자리»로
  * 겨냥해야 화면이 늘어도 규칙이 따라간다.
  */
-/* ⚠ 덮개(`.pop-overlay`)는 뺀다 — 화면을 «전부» 덮어야 하는데 여백이 들어가면 네 변으로
- *    뒷 화면이 새어 나온다(실측 좌우 44px). 덮개의 여백은 아래 「덮개」 절이 안쪽에 준다. */
+/*
+ * ⚠ 덮개(`.pop-overlay`)는 뺀다 — 화면을 «전부» 덮어야 하는데 여백이 들어가면 네 변으로
+ *    뒷 화면이 새어 나온다(실측 좌우 44px). 덮개의 여백은 아래 「덮개」 절이 안쪽에 준다.
+ * ⚠ 바닥의 액션 줄(`[class*='action']`)도 뺀다 — 머리줄과 같은 띠라 좌우 끝까지 간다
+ *    (파일 아래 「액션바는 화면 바닥에 붙는 띠다」). ⛔ **여기서 빼지 않으면 그 규칙이 죽는다** —
+ *    이 선택자가 `:not()` 을 넷 달아 더 좁아서, 뒤에 `margin-inline: 0` 을 적어도 이기지
+ *    못한다(실측 — 그 규칙이 그대로 있는데도 띠가 좌우로 끊긴 채였다).
+ */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.pop-overlay) {
+  > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.pop-overlay):not(
+    [class*='action']
+  ) {
   box-sizing: border-box;
   margin-inline: var(--pop-pad);
 }
@@ -206,8 +214,26 @@
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.banner-slot):not(
     dialog
-  ):not([class*='action']):not(.pop-overlay) {
+  ):not([class*='action']):not(.pop-overlay):not(.pop-fixed) {
   flex: 1 1 auto;
+  min-height: 0;
+}
+
+/*
+ * ⭐ **내용만큼만 서는 구획** — `pop-fixed`.
+ *
+ * 위 규칙은 「무엇이 늘어나지 «않는가»」를 적어 두고 나머지가 남는 높이를 나눠 갖게 한다.
+ * 그런데 구획 중에는 **내용이 한 줄뿐인데도 자기 몫을 받아 커지는 것**이 있다 — 작업 시작
+ * 화면의 사번 구획이 그렇다. 사번이 확인된 뒤에는 「사번 100027 [ 변경 ]」 한 줄만 남는데,
+ * 그 한 줄이 96px 짜리 칸 안에 떠 있어 화면에서 가장 헐거운 자리가 된다(실측).
+ *
+ * 이름을 하나씩 적어 두면 화면이 늘 때마다 빠뜨리므로, **구획이 스스로 밝히게** 한다.
+ * 남는 높이는 그 옆의 늘어나는 구획(목록 등)이 가져간다.
+ *
+ * ⛔ 스크롤이 필요한 구획에 붙이지 않는다 — 내용만큼 커져 화면 밖으로 밀린다.
+ */
+.pop-ui > .pop-fixed {
+  flex: 0 0 auto;
   min-height: 0;
 }
 
@@ -229,14 +255,14 @@
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.banner-slot):not(
     dialog
-  ):not([class*='action']):not(.pop-overlay):not(.pane) {
+  ):not([class*='action']):not(.pop-overlay):not(.pop-fixed):not(.pane) {
   overflow: hidden;
 }
 
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.banner-slot):not(
     dialog
-  ):not([class*='action']):not(.pop-overlay):not(.pane)
+  ):not([class*='action']):not(.pop-overlay):not(.pop-fixed):not(.pane)
   > * {
   min-height: 0;
   overflow-y: auto;
@@ -254,6 +280,14 @@
 /* 머리줄과 본문 사이에 끼는 배너(작업지시 없음 등)는 늘어나지 않는다. */
 .pop-ui > .banner-slot {
   flex: 0 0 auto;
+  /*
+   * ⛔ **자기 여백을 갖지 않는다.** 화면 블록 사이 이음매는 `.pop-ui` 의 `gap` 이 «한 곳에서»
+   * 준다(위 「최상위 블록 사이 이음매를 한 곳에서 준다」). 배너는 `app.css` 의 전역 규칙에서
+   * 아래 여백 20 을 물려받는데, 그대로 두면 **배너 아래만 다른 블록 사이보다 넓어진다**
+   * (실측 — 다른 이음매 16, 배너 아래 36). 구획 «안»의 배너는 `gap` 이 닿지 않아 아래
+   * 규칙이 따로 여백을 준다.
+   */
+  margin-block-end: 0;
 }
 
 /*
@@ -305,9 +339,196 @@
 /*
  * 안내 배너의 아래 이음매를 줄인다(20 → 12). 규범 6 의 20px 은 관리웹 밀도 기준인데,
  * POP 은 배너가 구획의 절반을 차지하는 일이 잦아 그만큼 본문이 밀린다.
+ *
+ * ⛔ **화면 최상위에 선 배너는 뺀다.** 그 자리는 `.pop-ui` 가 `gap` 으로 이미 이음매를 주고
+ * 있어, 여기서 아래 여백을 또 주면 **배너 아래만 다른 화면 블록보다 넓어진다**(실측 —
+ * 머리줄·구획 사이는 16 인데 배너 아래만 28 이었다). 이 규칙이 겨냥하는 것은 구획 «안»의
+ * 배너다 — 그쪽은 `gap` 이 닿지 않아 자기가 여백을 가져야 한다.
  */
-.pop-ui .banner-slot {
+.pop-ui :not(.pop-ui) > .banner-slot {
   margin-bottom: var(--space-3);
+}
+
+/*
+ * 스캔 구획의 소구획 사이에 **선을 긋는다** — 「스캔」·「담은 자재」·「지정한 금형」.
+ *
+ * 셋은 한 상자(`.pane`) 안에 제목만으로 나열된다(설계 §3 도면이 각각을 상자로 감싸지 않았다).
+ * 제목 크기만으로는 어디서 끊기는지가 흐려, 목록이 길어지면 아래 제목이 그 목록의 일부로
+ * 읽힌다. 상자를 더하지 않고 **선 하나로** 가른다 — 도면과 어긋나지 않는 가장 얕은 구분이다.
+ */
+.pop-ui .scan-pane > .pane-title:not(:first-child) {
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+/*
+ * 스캔 결과 — **무게를 색으로 가른다.** 다섯 결과가 같은 회색 한 줄이면 「찾을 수 없습니다」가
+ * 「담았습니다」와 구분되지 않아, 화면을 보지 않고 연달아 읽는 작업자가 **담긴 줄 알고 넘어간다.**
+ *
+ * ⛔ 배너로 만들지 않는다 — 배너는 높이가 결과마다 달라 아래 목록이 위아래로 움직인다.
+ *    한 줄의 «색»만 바꾼다.
+ */
+.pop-ui .scan-outcome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+
+.pop-ui .scan-outcome[data-tone] .scan-outcome-text::before {
+  margin-inline-end: var(--space-2);
+  font-weight: 700;
+}
+
+.pop-ui .scan-outcome[data-tone='success'] .scan-outcome-text {
+  color: var(--semantic-success-text);
+}
+
+.pop-ui .scan-outcome[data-tone='success'] .scan-outcome-text::before {
+  content: '✓';
+}
+
+.pop-ui .scan-outcome[data-tone='warning'] .scan-outcome-text {
+  color: var(--semantic-warning);
+}
+
+.pop-ui .scan-outcome[data-tone='warning'] .scan-outcome-text::before {
+  content: '!';
+}
+
+.pop-ui .scan-outcome[data-tone='error'] .scan-outcome-text {
+  color: var(--semantic-error-text);
+}
+
+.pop-ui .scan-outcome[data-tone='error'] .scan-outcome-text::before {
+  content: '✕';
+}
+
+/*
+ * 구획 이름 줄에 붙는 도움말 — 이름은 왼쪽, 도움말은 그 옆에 붙는다(오른쪽 끝이 아니다).
+ * 오른쪽 끝으로 보내면 구획 «전체»에 대한 조작으로 읽혀, 이름이 가리키는 것과 멀어진다.
+ */
+.receipt-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  /* 표제가 갖고 있던 아래 여백을 줄이 대신 받는다(아래 참조). */
+  margin-block-end: var(--space-3);
+}
+
+/*
+ * ⭐ **표식을 이름 쪽으로 당긴다.** 누르는 자리가 56 이고 그 안에 28 짜리 표식이 가운데 서므로
+ * 표식 «왼쪽»에 14px 의 빈 자리가 생긴다. 줄 간격까지 더하면 이름과 표식이 멀어져, 이 표식이
+ * 이름에 붙은 것인지 그 옆 무언가인지 흐려진다. 누르는 넓이는 그대로 두고 상자만 당긴다.
+ */
+.receipt-pane-head > .receipt-pane-help-anchor {
+  margin-inline-start: calc(-1 * var(--space-2));
+}
+
+/*
+ * ⛔ **표제의 아래 여백을 여기서 0 으로 만든다.**
+ *
+ * `.pane-title` 은 `margin: 0 0 12px` 을 갖는다. 줄을 `align-items: center` 로 세우면 «여백을
+ * 포함한 상자»가 가운데 맞춰지므로, 글자는 12px 만큼 위로 올라가고 옆의 동그라미만 아래로
+ * 처진 것처럼 보인다(실측 — 이름과 표식의 중심이 어긋났다). 여백은 줄이 갖게 하고 표제는
+ * 글자만 갖게 한다.
+ */
+.receipt-pane-head > .pane-title {
+  margin: 0;
+}
+
+/*
+ * ⭐ **누르는 자리와 보이는 표식을 가른다.**
+ *
+ * 누르는 자리는 터치 하한 56 을 지켜야 한다 — 장갑 낀 손이 누른다. 그런데 그 56 을 그대로
+ * 동그라미로 «그리면» 구획 이름 옆에서 표제만큼 커져, 보조 안내가 이름보다 세게 읽힌다
+ * (실측 — 「계획 대비 수령」 옆에 같은 크기의 원이 섰다).
+ *
+ * 그래서 **버튼은 56 으로 두되 테두리를 지우고**, 안쪽 표식만 28 로 그린다. 손에 닿는 넓이는
+ * 그대로이고 눈에 보이는 것만 작아진다.
+ */
+.pop-ui .receipt-pane-help {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 56px;
+  min-block-size: 56px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.pop-ui .receipt-pane-help__mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 28px;
+  block-size: 28px;
+  border: 1px solid var(--outline-variant);
+  border-radius: 50%;
+  color: var(--on-surface-variant);
+  font-size: var(--pop-label);
+  font-weight: 600;
+  line-height: 1;
+}
+
+/*
+ * 말풍선 — **누른 표식 아래에 매달린다.**
+ *
+ * ⛔ 구획 위를 덮지 않는다. 단말에는 덮개를 치울 마땅한 길이 없어, 한 번 덮이면 그 아래 값을
+ *    보려고 화면을 벗어났다 돌아와야 한다(DS `Tooltip` 으로 겪었다). 표식 바로 아래에 서서
+ *    표 «머리» 정도만 가리고, 다시 누르거나 시간이 지나면 사라진다.
+ */
+.receipt-pane-help-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.pop-ui .receipt-pane-help-bubble {
+  position: absolute;
+  /*
+   * 표식 **오른쪽**에 선다. 아래에 세우면 바로 밑의 표 머리를 가리는데, 이 구획에서 가장 먼저
+   * 읽는 것이 그 줄이다. 오른쪽은 이름 줄의 남는 자리라 가리는 것이 없다.
+   */
+  inset-inline-start: calc(100% - var(--space-2));
+  inset-block-start: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  display: block;
+  /*
+   * ⭐ **상자가 글자를 감싼다.** 폭을 «상한»으로만 묶으면 접힌 줄이 짧아도 상자는 늘 상한만큼
+   * 서서 오른쪽이 빈다(실측 — `text-wrap: balance` 로 줄은 고르게 나뉘었지만 상자는 그대로였다).
+   * 그래서 줄 나눔을 글이 갖고(`\n` — 문구 쪽 주석), 상자는 «가장 긴 줄»에 맞춘다.
+   *
+   * ⚠ **구획 폭을 넘기지 않는다** — `.pane` 이 스크롤 칸이라(`overflow-y: auto`) 가로로 넘친
+   *    만큼은 «잘린다». 상한은 줄 나눔이 무너졌을 때를 받는 안전선이다.
+   */
+  inline-size: max-content;
+  max-inline-size: 17rem;
+  white-space: pre-line;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-high, var(--surface-container-low));
+  color: var(--on-surface);
+  font-size: var(--pop-text);
+  font-weight: 400;
+  line-height: 24px;
+}
+
+/* 꼬리 — 어느 표식이 낸 말인지 자리로 말한다. 테두리 위에 얹어 선이 이어져 보이게 한다. */
+.pop-ui .receipt-pane-help-bubble::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: -5px;
+  inset-block-start: calc(50% - 4px);
+  inline-size: 8px;
+  block-size: 8px;
+  transform: rotate(45deg);
+  border-block-end: 1px solid var(--outline-variant);
+  border-inline-start: 1px solid var(--outline-variant);
+  background: inherit;
 }
 
 /* ── 조작부 ────────────────────────────────────────────────────────────── */
@@ -345,9 +566,13 @@
  * 선택자도 함께 줄인다.
  */
 /*
- * 화면 내장 키패드 — **숫자를 키운다.** 키는 72px 인데 숫자가 14px 이라 멀리서 어느 키인지
- * 분간되지 않았다. 색도 본문색으로 되돌린다 — 붉은 액센트는 「주의」를 뜻하는 자리이고
+ * 화면 내장 키패드 — 색을 본문색으로 되돌린다. 붉은 액센트는 「주의」를 뜻하는 자리이고
  * 숫자 열 개가 전부 주의일 수는 없다.
+ *
+ * ⭐ **글자 크기는 여기서 정하지 않는다** — 위 `.pop-ui button` 의 17px 을 그대로 받는다.
+ *    한때 28px 로 키웠는데(DS 기본 14px 이 72px 키 위에서 분간되지 않아서), 그러면 같은 구획
+ *    안에서 키패드만 다른 크기로 서서 [ 확인 ]·[ 교대 ]·고르는 칸과 글자가 제각각이 된다.
+ *    14px 문제는 `.pop-ui button` 이 이미 17px 로 받아 두었으므로 되돌아가지 않는다.
  */
 .pop-ui .omf-numeric-keypad,
 .pop-ui .numeric-keypad {
@@ -357,9 +582,18 @@
 
 .pop-ui .omf-numeric-keypad > button,
 .pop-ui .numeric-keypad > button {
-  font-size: 28px;
-  font-weight: 600;
+  /* 숫자가 자리마다 같은 폭으로 서야 값이 늘 때 칸이 흔들리지 않는다. */
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * ⚠ **`:not(:disabled)` 가 있어야 한다.** 이 규칙의 겨냥이 위 `.pop-ui button:disabled` 보다
+ *    좁아, 색까지 함께 주면 **잠긴 키의 잠금색을 되돌린다** — [ ← ]·[ 지움 ] 이 입력이 빌 때
+ *    실제로 `disabled` 인데도 숫자 키와 색·투명도·테두리가 «완전히 같게» 떴다(실측). 누를 수
+ *    없다는 것이 화면에 전혀 드러나지 않는다.
+ */
+.pop-ui .omf-numeric-keypad > button:not(:disabled),
+.pop-ui .numeric-keypad > button:not(:disabled) {
   color: var(--on-surface);
 }
 
@@ -490,7 +724,7 @@
 }
 
 /* 머리줄만 화면 끝까지, 나머지는 같은 좌우 여백 안에 — `.pop-ui` 본문과 같은 규칙이다. */
-.pop-ui > .pop-overlay > :not(.pop-header) {
+.pop-ui > .pop-overlay > :not(.pop-header):not([class*='action']) {
   box-sizing: border-box;
   margin-inline: var(--pop-pad);
 }
@@ -536,8 +770,11 @@
  * 오른쪽 끝만 맞고 왼쪽이 들쭉날쭉해진다(실측 128 vs 113.5). 같은 자리에 위아래로 놓인
  * 것은 같은 폭이어야 열로 읽힌다 — 무게는 색으로 가르지 크기로 가르지 않는다.
  */
-.pop-ui .scan-row > button,
-.pop-ui .scan-manual > button {
+/*
+ * ⚠ **`.scan-manual` 은 빠졌다.** 두 버튼이 위아래로 한 열을 이루던 때의 규칙인데, 이제 그
+ * 버튼은 아래 줄에서 안내 문구와 나란히 서는 작은 조작이다 — 같은 폭으로 묶을 짝이 없다.
+ */
+.pop-ui .scan-row > button {
   min-width: 8rem;
 }
 
@@ -843,16 +1080,18 @@
   gap: var(--space-4);
 }
 
+/*
+ * 대체 경로 줄 — **[ 직접 입력 ] 이 앞에 서고 안내가 뒤를 잇는다.** 한때 안내를 앞에 두었는데,
+ * 조작보다 설명이 먼저 읽혀 「무엇을 누르면 되는가」가 문장 뒤로 밀렸다. 누르는 것이 먼저다.
+ */
+.pop-ui .scan-manual > button {
+  flex: none;
+}
+
 .pop-ui .scan-manual > .field-note {
-  order: 1;
   flex: 1 1 auto;
   max-width: none;
   margin: 0;
-}
-
-.pop-ui .scan-manual > button {
-  order: 2;
-  flex: none;
 }
 
 /*
@@ -874,9 +1113,11 @@
  * ⛔ **크기는 줄이지 않는다.** 장갑 낀 손이 누르는 것은 그대로이고 72px 하한은 터치 규격
  * 이지 강조가 아니다(E-3). 낮추는 것은 **색과 무게**다 — 면을 비우고 글자를 본문색으로.
  */
+/*
+ * ⚠ 이 버튼은 [ 읽기 ]와 같은 테두리형이지만 **한 급 작다**(일반 56 · `scan-field.tsx` 참조).
+ * 무게는 크기가 가르고, 테두리는 「눌리는 자리」임을 말한다. 색만 한 단계 낮춘다.
+ */
 .pop-ui .scan-manual > button {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--outline-variant);
   color: var(--on-surface-variant);
   font-weight: 500;
 }
@@ -1010,17 +1251,32 @@
 /*
  * 액션바는 **화면 바닥에 붙는 띠**다 — 머리줄의 짝이다.
  *
- * ⛔ **바닥에 «닿지» 않게 한다.** 실측에서 바 아래 여유가 **0px** 이었다 — 이 화면의 마지막
- * 자식이 `<dialog>` 라 「마지막 블록 아래 여백」 규칙이 액션바에 걸리지 않았다. 단말은 베젤
- * 안쪽에 화면이 있어, 끝에 닿은 버튼은 잘린 것처럼 보이고 실제로 가장자리가 눌리지 않는다.
+ * ⛔ **위쪽 「본문」 절의 좌우 여백 규칙에서 액션 줄을 «빼 두어야» 이 규칙이 산다.** 그쪽이
+ * `:not()` 을 넷 달아 더 좁아, 여기서 `margin-inline: 0` 을 적어도 이기지 못한다 — 실측에서
+ * 이 규칙이 그대로 있는데도 띠가 좌우로 끊긴 채였다. 파일 뒤에 적었다고 이기는 것이 아니다.
  *
- * 머리줄처럼 **좌우 끝까지 가되 안쪽 여백을 자기가 갖는다.** 위 경계선이 「여기서부터
- * 조작」임을 말해, 본문이 짧아 바가 멀리 떨어져 있어도 떠 있는 것으로 읽히지 않는다.
+ * 머리줄처럼 **네 변 중 셋(좌·우·아래)이 화면 끝에 닿되 안쪽 여백을 자기가 갖는다.** 위
+ * 경계선이 「여기서부터 조작」임을 말해, 본문이 짧아 바가 멀리 떨어져 있어도 떠 있는 것으로
+ * 읽히지 않는다.
+ *
+ * ⭐ **바닥에 붙인다.** 한때 「단말 베젤 안쪽이라 끝에 닿은 버튼은 눌리지 않는다」는 이유로
+ * 띄워 두었는데, 그 실측은 **바가 띠가 아니어서 버튼이 화면 끝에 직접 닿던 때**의 것이다.
+ * 지금은 띠가 자기 안쪽 여백(위아래 8)을 가져 버튼이 끝에 닿지 않는다. 그런데도 띠를 띄우면
+ * **띠 아래에 정체를 알 수 없는 빈 줄이 남는다**(실측 20px — 화면을 닫는 띠로 읽히지 않는다).
+ *
+ * ⚠ 세로 예산과도 그래야 맞는다 — 설계는 「헤더 64 + 본문 616 + 액션바 88 = 768, 슬랙 0」으로
+ * 검산했다(`P-02-01` §4-1). 띠 아래 여백은 그 검산에 자리가 없다.
+ *
+ * ⚠ **그릇의 바닥 여백을 여기서 되돌린다.** `.pop-ui` 는 바닥 여백을 자기 안쪽에 잡아 두는데
+ * (「마지막 자식이 닫힌 `<dialog>` 면 여백이 그리로 간다」는 결함 때문이다), 바닥 줄이 있는
+ * 화면에서는 그 자리를 이 띠가 대신 채운다.
  */
-.pop-ui > [class*='action'] {
+/* 덮개(점검 통제 게이트 등)의 바닥 줄도 같은 띠다 — 덮개는 자기 화면 하나로 서기 때문이다. */
+.pop-ui > [class*='action'],
+.pop-ui > .pop-overlay > [class*='action'] {
   box-sizing: border-box;
   margin-inline: 0;
-  margin-block-end: 0;
+  margin-block-end: calc(-1 * var(--pop-pad));
   /* 위아래 8 + 버튼 72 = 88 — 설계가 잡아 둔 액션바 높이다. 더 두면 본문이 그만큼 눌린다. */
   padding: var(--space-2) var(--pop-pad);
   background: var(--surface-container-low);
