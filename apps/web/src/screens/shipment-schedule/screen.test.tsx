@@ -67,8 +67,9 @@ const failingListRoute = (status: number, body: unknown = { message: '' }): Stub
 const filteringListRoute = (): StubRoute => ({
   match: (request) => isGet(request, LIST_PATH),
   respond: (request) => {
-    const status = new URL(request.url).searchParams.get('statusCode');
-    const items = status === null ? ROWS : ROWS.filter((row) => row.statusCode === status);
+    const progress = new URL(request.url).searchParams.get('shipmentProgressCode');
+    const items =
+      progress === null ? ROWS : ROWS.filter((row) => row.shipmentProgressCode === progress);
 
     return jsonResponse(listBody(items));
   },
@@ -183,7 +184,7 @@ describe('ShipmentScheduleScreen — 조건과 주소', () => {
   it('주소의 조건이 요청 쿼리에 그대로 실린다', async () => {
     const { requests } = renderScreen(
       [listRoute(), ...partnerRoutes()],
-      '?shipDateFrom=2026-08-01&shipDateTo=2026-08-31&customer=9101&shipToPartner=9111&status=SAMPLE_STATUS_A&inspection=true',
+      '?shipDateFrom=2026-08-01&shipDateTo=2026-08-31&customer=9101&shipToPartner=9111&progress=PARTIALLY_SHIPPED&inspection=true',
     );
 
     await screen.findByText('SAMPLE-SR-0001');
@@ -194,7 +195,8 @@ describe('ShipmentScheduleScreen — 조건과 주소', () => {
     expect(query?.get('shipDateTo')).toBe('2026-08-31');
     expect(query?.get('customerId')).toBe('9101');
     expect(query?.get('shipToPartnerId')).toBe('9111');
-    expect(query?.get('statusCode')).toBe('SAMPLE_STATUS_A');
+    expect(query?.get('shipmentProgressCode')).toBe('PARTIALLY_SHIPPED');
+    expect(query?.has('statusCode')).toBe(false);
     expect(query?.get('shippingInspectionRequired')).toBe('true');
   });
 
@@ -414,13 +416,30 @@ describe('ShipmentScheduleScreen — 요청/배정/출하·검사 열', () => {
     },
   );
 
-  /* 값 집합이 확정되지 않아 「진행」 열은 원문 코드를 그대로 낸다. */
-  it('진행 열은 상태 코드를 그대로 보인다', async () => {
-    renderScreen([listRoute(), ...partnerRoutes()], SHIP_DATE_FROM);
+  it('진행 열은 서버의 6개 진행 코드를 모두 손실 없이 보인다', async () => {
+    const progressCodes = [
+      'NOT_ALLOCATED',
+      'PARTIALLY_ALLOCATED',
+      'PICKING',
+      'PICKED',
+      'PARTIALLY_SHIPPED',
+      'SHIPPED',
+    ] as const;
+    const rows = progressCodes.map((shipmentProgressCode, index) =>
+      shipmentRequest({
+        shipmentRequestId: 9100 + index,
+        shipmentRequestNo: `SAMPLE-SR-${String(index + 10)}`,
+        shipmentProgressCode,
+      }),
+    );
 
-    await screen.findByText('SAMPLE-SR-0001');
+    renderScreen([listRoute(rows), ...partnerRoutes()], SHIP_DATE_FROM);
 
-    expect(within(listTable()).getAllByText('SAMPLE_STATUS_A').length).toBeGreaterThan(0);
+    await screen.findByText('SAMPLE-SR-10');
+
+    for (const code of progressCodes) {
+      expect(within(listTable()).getByText(code)).toBeInTheDocument();
+    }
   });
 });
 
@@ -430,14 +449,14 @@ describe('ShipmentScheduleScreen — 조건 초안의 수명', () => {
     const { user } = renderScreen(
       [filteringListRoute(), ...partnerRoutes()],
       SHIP_DATE_FROM,
-      `shipDateFrom=2026-08-01&status=SAMPLE_STATUS_B`,
+      `shipDateFrom=2026-08-01&progress=PICKED`,
     );
 
     await screen.findByText('SAMPLE-SR-0001');
     await user.click(screen.getByRole('button', { name: '주소 이동' }));
 
     await waitFor(() => {
-      expect(currentLocation()).toContain('status=SAMPLE_STATUS_B');
+      expect(currentLocation()).toContain('progress=PICKED');
     });
   });
 });

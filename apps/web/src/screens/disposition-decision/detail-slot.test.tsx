@@ -20,6 +20,8 @@ const lookup = (): DispositionLookup => ({
 });
 
 const baseProps = (): DetailSlotProps => ({
+  severity: { entries: [], truncated: false, isError: false, isLoading: false },
+  status: { entries: [], truncated: false, isError: false, isLoading: false },
   selectedId: 41,
   detail: {
     isPending: false,

@@ -180,6 +180,7 @@ const shipmentRequest = (overrides: Record<string, unknown> = {}) => ({
   shipToPartnerId: 602,
   requestedShipDate: '2026-08-28',
   statusCode: 'SYN-PENDING-SHIPMENT',
+  shipmentProgressCode: 'PICKED',
   shippingInspectionStatusCode: 'PASSED',
   ...overrides,
 });

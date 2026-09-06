@@ -15,6 +15,8 @@ export interface PoChangeStubOptions {
   producedQty?: number | null;
   /** 목록 조회를 실패시킨다. */
   listStatus?: number;
+  /** 변경 내역 갈래 — 기본은 수량·납기 두 항목, `absent`는 칸이 없음, `empty`는 열거 밖(빈 배열). */
+  lastChange?: 'default' | 'absent' | 'empty';
 }
 
 let sent: Request[] = [];
@@ -26,7 +28,7 @@ export const requestedPaths = (): string[] =>
     return `${url.pathname}${url.search}`;
   });
 
-const productionOrder = {
+const productionOrderBase = {
   productionOrderId: 31,
   productionOrderNo: 'SYNTH-PO-0031',
   itemId: 5001,
@@ -37,9 +39,42 @@ const productionOrder = {
   versionNo: 3,
 };
 
+/** 마지막 ERP 변경 — 수량 5000→4000(감소 1000) · 납기 동일. 계약이 표시명까지 내린다. */
+const lastChangeBody = (mode: NonNullable<PoChangeStubOptions['lastChange']>) =>
+  mode === 'absent'
+    ? {}
+    : {
+        lastChange: {
+          receivedAt: '2026-08-05T09:12:00+09:00',
+          changedFields:
+            mode === 'empty'
+              ? []
+              : [
+                  {
+                    field: 'ORDER_QTY',
+                    label: '수량',
+                    beforeText: '5000',
+                    afterText: '4000',
+                    beforeQty: 5000,
+                  },
+                  {
+                    field: 'DUE_DATE',
+                    label: '납기',
+                    beforeText: '2026-08-20',
+                    afterText: '2026-08-20',
+                    beforeQty: null,
+                  },
+                ],
+        },
+      };
+
 export const poChangeStub = (options: PoChangeStubOptions = {}): StubFetch => {
   sent = [];
   const producedQty = options.producedQty === undefined ? 1200 : options.producedQty;
+  const productionOrder = {
+    ...productionOrderBase,
+    ...lastChangeBody(options.lastChange ?? 'default'),
+  };
 
   const workOrder = {
     workOrderId: 13,

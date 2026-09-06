@@ -24,6 +24,12 @@ export interface TargetCardProps {
   hasWorkerNo: boolean;
   /** 진행 중인 걸음. 쉬는 중이면 `null`. */
   runningStep: IssueStep | null;
+  /**
+   * 방금 이 자재의 발행이 **403** 으로 막혔는가. ⛔ **그때는 재시도 수단을 주지 않는다**
+   * (스펙 §5-2 · 변경 통지 #534 §2) — 이 단말에는 출력 권한이 없어 다시 눌러도 같은 답이 온다.
+   * 사유는 바로 아래 결과 알림이 말한다.
+   */
+  isPrintForbidden: boolean;
   onIssue: () => void;
   onReissue: () => void;
 }
@@ -49,6 +55,7 @@ export const TargetCard = ({
   isLotNoError,
   hasWorkerNo,
   runningStep,
+  isPrintForbidden,
   onIssue,
   onReissue,
 }: TargetCardProps) => {
@@ -60,7 +67,7 @@ export const TargetCard = ({
    */
   const isRegistered = toIssueStage(row) === 'registered';
   const isRunning = runningStep !== null;
-  const isBlocked = !hasWorkerNo || isRunning;
+  const isBlocked = !hasWorkerNo || isRunning || isPrintForbidden;
 
   return (
     <>

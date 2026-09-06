@@ -1,11 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 
-import type { WorkOrderCloseOutboundItemSetting } from './queries';
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
-import type { WorkOrderCloseOutboundSelection } from './outbound-selection';
+import type { WorkOrderCloseOutboundItemSetting } from './queries';
 
 const t = messages.workOrderClose.outboundItems;
 
@@ -23,66 +21,35 @@ const setting = (
 
 const renderPane = ({
   settings = [setting()],
-  selection = {},
   isLoading = false,
   loadError = null,
-  onToggle = vi.fn(),
-}: Partial<React.ComponentProps<typeof WorkOrderCloseOutboundItemsPane>> = {}) => {
+}: Partial<React.ComponentProps<typeof WorkOrderCloseOutboundItemsPane>> = {}) =>
   render(
     <WorkOrderCloseOutboundItemsPane
       settings={settings}
-      selection={selection}
       isLoading={isLoading}
       loadError={loadError}
-      onToggle={onToggle}
     />,
   );
-  return { onToggle };
-};
 
 describe('WorkOrderCloseOutboundItemsPane', () => {
   it('shows only the supplied error before loading or stale content', () => {
-    renderPane({
-      isLoading: true,
-      loadError: <p>Synthetic load error</p>,
-    });
+    renderPane({ isLoading: true, loadError: <p>Synthetic load error</p> });
 
     expect(screen.getByRole('region', { name: t.pane })).toHaveClass('pane');
     expect(screen.getByText('Synthetic load error')).toBeVisible();
     expect(screen.queryByRole('status', { name: t.loading })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: t.heading })).not.toBeInTheDocument();
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-    expect(screen.queryByText(t.empty.title)).not.toBeInTheDocument();
   });
 
   it('shows named loading before stale content', () => {
     renderPane({ isLoading: true });
 
-    expect(screen.getByRole('region', { name: t.pane })).toHaveClass('pane');
     expect(screen.getByRole('status', { name: t.loading })).toBeVisible();
     expect(screen.queryByRole('heading', { name: t.heading })).not.toBeInTheDocument();
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-    expect(screen.queryByText(t.empty.title)).not.toBeInTheDocument();
   });
 
-  it('treats an undefined load error as absent for loading and content', () => {
-    const props = {
-      settings: [setting()],
-      selection: {},
-      loadError: undefined,
-      onToggle: vi.fn(),
-    };
-    const { rerender } = render(<WorkOrderCloseOutboundItemsPane {...props} isLoading />);
-
-    expect(screen.getByRole('status', { name: t.loading })).toBeVisible();
-
-    rerender(<WorkOrderCloseOutboundItemsPane {...props} isLoading={false} />);
-
-    expect(screen.getByRole('heading', { name: t.heading })).toBeVisible();
-    expect(screen.getByRole('switch', { name: props.settings[0]!.outboundItemName })).toBeVisible();
-  });
-
-  it('shows the content heading and live empty state without a switch group', () => {
+  it('shows the content heading, the global-setting lead and a live empty state', () => {
     renderPane({ settings: [] });
 
     expect(screen.getByRole('region', { name: t.pane })).toHaveClass(
@@ -90,109 +57,46 @@ describe('WorkOrderCloseOutboundItemsPane', () => {
       'work-order-close-outbound-pane',
     );
     expect(screen.getByRole('heading', { name: t.heading })).toBeVisible();
+    expect(screen.getByText(t.lead)).toBeVisible();
     expect(screen.getByText(t.empty.title)).toBeVisible();
-    expect(screen.getByText(t.empty.description)).toBeVisible();
-    expect(screen.queryByRole('group', { name: t.group })).not.toBeInTheDocument();
+    expect(screen.getByText(t.appendixPending)).toBeVisible();
   });
 
-  it('keeps server order, does not show codes, and reads checked state from selection', () => {
+  /* 전역 설정은 마감 한 건이 바꾸지 않는다 — 토글이 없고 상태만 읽힌다. */
+  it('renders each setting read-only with its send state, keeps server order and hides codes', () => {
     const settings = [
       setting({ outboundItemCode: 'RETURN', outboundItemName: 'Synthetic first item' }),
       setting({
         outboundItemCode: 'PRODUCTION_RESULT',
         outboundItemName: 'Synthetic second item',
         enabled: true,
+        locked: true,
+        lockReason: 'Synthetic lock reason',
+        sendTimingNote: 'Synthetic timing note',
       }),
     ];
-    const selection: WorkOrderCloseOutboundSelection = {
-      RETURN: true,
-      PRODUCTION_RESULT: false,
-    };
 
-    renderPane({ settings, selection });
+    renderPane({ settings });
 
-    const switches = screen.getAllByRole('switch');
-    expect(switches).toHaveLength(2);
-    expect(switches[0]!).toHaveAccessibleName(settings[0]!.outboundItemName);
-    expect(switches[1]!).toHaveAccessibleName(settings[1]!.outboundItemName);
-    expect(switches[0]!).toBeChecked();
-    expect(switches[1]!).not.toBeChecked();
+    const group = screen.getByRole('group', { name: t.group });
+    const terms = within(group).getAllByRole('term');
+    expect(terms.map((term) => term.textContent)).toEqual([
+      'Synthetic first item',
+      'Synthetic second item',
+    ]);
+    expect(within(group).getByText(t.state.off)).toBeVisible();
+    expect(within(group).getByText(t.state.on)).toBeVisible();
+    expect(within(group).getByText('Synthetic lock reason')).toBeVisible();
+    expect(within(group).getByText(t.sendTiming('Synthetic timing note'))).toBeVisible();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
     expect(screen.queryByText('RETURN')).not.toBeInTheDocument();
     expect(screen.queryByText('PRODUCTION_RESULT')).not.toBeInTheDocument();
   });
 
-  it('delegates an unlocked setting exactly once without owning its checked state', async () => {
-    const user = userEvent.setup();
-    const first = setting({ enabled: true });
-    const { onToggle } = renderPane({ selection: { RETURN: false }, settings: [first] });
-    const input = screen.getByRole('switch', { name: first.outboundItemName });
+  it('falls back to the generic lock note when the server gives no reason', () => {
+    renderPane({ settings: [setting({ locked: true })] });
 
-    await user.click(input);
-
-    expect(onToggle).toHaveBeenCalledTimes(1);
-    expect(onToggle).toHaveBeenCalledWith(first);
-    expect(input).not.toBeChecked();
-  });
-
-  it('renders timing and lock descriptions and blocks locked callbacks', async () => {
-    const user = userEvent.setup();
-    const lockedWithReason = setting({
-      enabled: true,
-      locked: true,
-      lockReason: 'Synthetic lock reason',
-      sendTimingNote: 'Synthetic timing note',
-    });
-    const lockedWithFallback = setting({
-      outboundItemCode: 'GOODS_RECEIPT',
-      outboundItemName: 'Synthetic fallback item',
-      enabled: false,
-      locked: true,
-    });
-    const timingOnly = setting({
-      outboundItemCode: 'PRODUCTION_RESULT',
-      outboundItemName: 'Synthetic timing item',
-      sendTimingNote: 'Synthetic timing only',
-    });
-    const noDescription = setting({
-      outboundItemCode: 'STOCK_ADJUSTMENT',
-      outboundItemName: 'Synthetic plain item',
-    });
-    const { onToggle } = renderPane({
-      settings: [lockedWithReason, lockedWithFallback, timingOnly, noDescription],
-    });
-
-    const locked = screen.getByRole('switch', { name: lockedWithReason.outboundItemName });
-    expect(locked).toBeDisabled();
-    expect(screen.getByText(t.sendTiming(lockedWithReason.sendTimingNote!))).toBeVisible();
-    expect(screen.getByText(lockedWithReason.lockReason!)).toBeVisible();
-    expect(locked).toHaveAttribute(
-      'aria-describedby',
-      'work-order-close-outbound-RETURN-timing work-order-close-outbound-RETURN-lock',
-    );
-    expect(locked).toHaveAccessibleDescription(
-      `${t.sendTiming(lockedWithReason.sendTimingNote!)} ${lockedWithReason.lockReason}`,
-    );
-
-    const fallback = screen.getByRole('switch', { name: lockedWithFallback.outboundItemName });
-    expect(fallback).toBeDisabled();
     expect(screen.getByText(t.lockedFallback)).toBeVisible();
-    expect(fallback).toHaveAttribute(
-      'aria-describedby',
-      'work-order-close-outbound-GOODS_RECEIPT-lock',
-    );
-    expect(fallback).toHaveAccessibleDescription(t.lockedFallback);
-
-    const timing = screen.getByRole('switch', { name: timingOnly.outboundItemName });
-    expect(timing).toHaveAttribute(
-      'aria-describedby',
-      'work-order-close-outbound-PRODUCTION_RESULT-timing',
-    );
-    expect(
-      screen.getByRole('switch', { name: noDescription.outboundItemName }),
-    ).not.toHaveAttribute('aria-describedby');
-
-    await user.click(locked);
-    await user.click(fallback);
-    expect(onToggle).not.toHaveBeenCalled();
   });
 });

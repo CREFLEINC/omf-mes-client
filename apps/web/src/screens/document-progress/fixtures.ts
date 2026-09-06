@@ -337,7 +337,7 @@ export const cancelResult = (
  * | --- | --- |
  * | 가 | **취소 리소스가 없는 유형** — 계약의 취소 경로가 셋뿐이라 덮는 유형 중 일부에는 취소가 없다. 그 유형에서 취소 조작이 서지 않는 것을 잰다 |
  * | 나 | **취소 리소스가 있는 유형** — 취소 축의 주 무대다 |
- * | 다 | **고를 수 없는데 리소스는 있다**(외주 문서 자리 — omf-mes#82). 「비활성 + 사유 표시」와 함께, `cancelResourceOf`가 **고를 수 있는 줄에서만 읽는지**를 잰다 — 두 값이 같은 줄에 있어야 그 가드가 재어진다 |
+ * | 다 | **고를 수 없는데 리소스는 있다**(외주 문서 자리 — omf-mes#82). 「비활성 + 사유 표시」와 함께, 취소 대상 판정이 **고를 수 있는 줄에서만 읽는지**를 잰다 — 두 값이 같은 줄에 있어야 그 가드가 재어진다 |
  */
 export const documentTypeFixtures: readonly DocumentTypeEntry[] = [
   { code: 'GOODS_RECEIPT', label: '합성 유형 가', cancelResource: null, disabledReason: null },

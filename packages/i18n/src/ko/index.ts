@@ -69,6 +69,7 @@ import { shipmentSchedule } from './shipment-schedule';
 import { materialInputScan } from './material-input-scan';
 import { dispositionDecision } from './disposition-decision';
 import { dispositionRequest } from './disposition-request';
+import { stockReinstatement } from './stock-reinstatement';
 import { returnReceipt } from './return-receipt';
 import { emergencyWorkOrder } from './emergency-work-order';
 import { emergencyWorkOrderField } from './emergency-work-order-field';
@@ -183,6 +184,7 @@ export const ko = {
   materialInputScan,
   dispositionDecision,
   dispositionRequest,
+  stockReinstatement,
   returnReceipt,
   emergencyWorkOrder,
   emergencyWorkOrderField,

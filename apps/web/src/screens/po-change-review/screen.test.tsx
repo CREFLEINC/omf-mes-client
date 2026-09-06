@@ -47,15 +47,37 @@ describe('PoChangeReviewScreen', () => {
     expect(paths.some((path) => path.startsWith('/integration/'))).toBe(false);
   });
 
-  /*
-   * ⛔ **간접 비교로 채우지 않는다.** W/O 수량으로 견주면 수량만 되고 납기·중단을 말하지 못해
-   * 세 행 중 둘이 빈다 — 설계가 「계약이 늦으면 비워 두는 편이 낫다」로 못박았다.
-   */
-  it('⛔ 변경 항목을 아직 못 받는다는 사실을 적는다 — 지어내지 않는다', async () => {
-    renderScreen();
+  /* ⭐ 「무엇이 몇에서 몇으로」는 lastChange 로만 온다 — withLastChange 를 켜고, 표시명은 계약이 준 그대로 그린다. */
+  it('⭐ 변경 내역을 함께 받아 목록 열과 2열 비교표를 그린다 — 감소량은 화면이 뺀다', async () => {
+    const { user } = renderScreen();
     await screen.findByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') });
 
-    expect(screen.getAllByText(t.diff.pendingContract).length).toBeGreaterThan(0);
+    expect(requestedPaths().some((path) => path.includes('withLastChange=true'))).toBe(true);
+    expect(screen.getByText('수량 5000→4000 · 납기 2026-08-20→2026-08-20')).toBeInTheDocument();
+
+    await selectRow(user);
+    const diff = await screen.findByRole('table', { name: t.panes.diff });
+    expect(diff).toHaveClass('po-change-review-diff');
+    expect(screen.getByText('5000 EA')).toBeInTheDocument();
+    expect(screen.getByText('4000 EA')).toBeInTheDocument();
+    expect(screen.getByText(t.diff.decrease('1000'))).toBeInTheDocument();
+    expect(screen.getByText(t.diff.same)).toBeInTheDocument();
+    expect(screen.getByText(t.diff.receivedAt('2026-08-05 09:12'))).toBeInTheDocument();
+  });
+
+  /* 못 받은 것과 열거 밖(빈 배열)을 가른다 — 둘 다 지어내지 않고 사실을 적는다(G-9). */
+  it('변경 내역이 없으면 그 사실을, 열거 밖이면 원문 안내를 적는다', async () => {
+    const absent = renderScreen({ lastChange: 'absent' });
+    await selectRow(absent.user);
+    expect(await screen.findByText(t.diff.noLastChange)).toBeInTheDocument();
+    expect(screen.getByText(t.list.changedFieldsUnknown)).toBeInTheDocument();
+  });
+
+  it('열거 밖 항목만 바뀌면 항목을 낼 수 없다고 적는다', async () => {
+    const { user } = renderScreen({ lastChange: 'empty' });
+    await selectRow(user);
+    expect(await screen.findByText(t.diff.outOfScope)).toBeInTheDocument();
+    expect(screen.getByText(t.list.changedFieldsOutOfScope)).toBeInTheDocument();
   });
 
   /* ⭐ `withProgress` 없이는 「이미 생산됨」이 그려지지 않는다 — 그 경고가 판단 근거다. */
@@ -75,7 +97,6 @@ describe('PoChangeReviewScreen', () => {
       'po-change-review-table',
     );
     expect(screen.getByText('CODE-B').closest('td')).toHaveAttribute('data-align', 'center');
-    expect(screen.getByText(/4000/).closest('dl')).toHaveClass('po-change-review-diff-values');
   });
 
   it('⚠ 실적이 변경 후 수량을 넘으면 경고하되 막지 않는다', async () => {
@@ -195,13 +216,41 @@ describe('PoChangeReviewScreen', () => {
     });
   });
 
-  /* A-11 — 못 보내는 것을 못 보낸다고 «화면에» 적는다. */
-  it('⚠ 아직 못 보내는 것 둘을 화면에 적는다', async () => {
+  /* A-11 — 이 화면에 두지 않은 것을 두지 않았다고 «화면에» 적는다. */
+  it('⚠ 취소 후속을 이 화면에 두지 않았다고 적는다', async () => {
     renderScreen();
     await screen.findByRole('button', { name: t.list.selectRow('SYNTH-PO-0031') });
 
-    const text = document.body.textContent ?? '';
-    expect(text).toContain(t.withdrawn.adjustment);
-    expect(text).toContain(t.withdrawn.cancelFollowUp);
+    expect(document.body.textContent ?? '').toContain(t.withdrawn.cancelFollowUp);
+  });
+
+  /* ⭐ 반영은 W/O 조정을 함께 싣는다 — 한 트랜잭션(B-8). 서버가 나누지 않으니 사람이 적는다. */
+  it('⭐ 반영에서 조정 수량을 적으면 잠금 토큰과 함께 본문에 싣는다', async () => {
+    const { user } = renderScreen();
+    await selectRow(user);
+    await user.click(await screen.findByRole('radio', { name: t.decision.apply }));
+    expect(screen.getByText(t.decision.applyWithoutAdjustment)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.workOrders.adjustLabel('SYNTH-WO-013')), '2500');
+    expect(screen.queryByText(t.decision.applyWithoutAdjustment)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.decision.submit }));
+
+    await waitFor(async () => {
+      expect(await body()).toEqual({
+        decisionCode: 'APPLY',
+        workOrderAdjustments: [{ workOrderId: 13, versionNo: 4, orderQty: 2500 }],
+      });
+    });
+  });
+
+  it('조정 칸에 잘못된 값이 있으면 저장을 막고 그 줄에 오류를 붙인다', async () => {
+    const { user } = renderScreen();
+    await selectRow(user);
+    await user.click(await screen.findByRole('radio', { name: t.decision.apply }));
+    await user.type(screen.getByLabelText(t.workOrders.adjustLabel('SYNTH-WO-013')), 'abc');
+
+    expect(screen.getByText(t.workOrders.adjustNotNumber)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.decision.submit })).toBeDisabled();
+    expect(screen.getByText(t.lock.adjustment)).toBeInTheDocument();
   });
 });

@@ -1,7 +1,14 @@
 import type { components } from '@omf-mes/api-client';
 import { describe, expect, it } from 'vitest';
 
-import { overProducedOf, toAffectedWorkOrder, toChangeNotification } from './types';
+import {
+  changedFieldsSummary,
+  overProducedOf,
+  qtyDeltaOf,
+  toAffectedWorkOrder,
+  toChangeNotification,
+  type ChangedField,
+} from './types';
 
 /**
  * ⭐ **픽스처를 계약 타입에서 파생한다** — 손으로 적은 객체를 두면 계약에 필수 필드가 늘어도
@@ -105,5 +112,77 @@ describe('overProducedOf', () => {
 
   it('실적을 모르는 건은 경고 대상이 아니다 — 모른다고 단정하지 않는다', () => {
     expect(overProducedOf([one(13, null)], 4000)).toEqual([]);
+  });
+});
+
+describe('lastChange — 「무엇이 몇에서 몇으로」의 유일한 출처', () => {
+  const base = {
+    productionOrderId: 31,
+    productionOrderNo: 'SYNTH-PO-0031',
+    itemId: 5001,
+    orderQty: 4000,
+    uomId: 7001,
+    statusCode: 'CODE-A',
+  };
+  const qtyField: ChangedField = {
+    field: 'ORDER_QTY',
+    label: '수량',
+    beforeText: '5000',
+    afterText: '4000',
+    beforeQty: 5000,
+  };
+  const dueField: ChangedField = {
+    field: 'DUE_DATE',
+    label: '납기',
+    beforeText: '2026-08-20',
+    afterText: '2026-08-20',
+    beforeQty: null,
+  };
+
+  it('칸이 없으면 null 이다 — 빈 배열(항목을 낼 수 없음)과 가른다', () => {
+    expect(toChangeNotification(base).lastChange).toBeNull();
+    expect(
+      toChangeNotification({
+        ...base,
+        lastChange: { receivedAt: '2026-08-05T09:12:00+09:00', changedFields: [] },
+      }).lastChange,
+    ).toEqual({ receivedAt: '2026-08-05T09:12:00+09:00', changedFields: [] });
+  });
+
+  it('항목은 계약이 준 표시명 그대로 들고 beforeQty 가 없으면 null 이다', () => {
+    const row = toChangeNotification({
+      ...base,
+      lastChange: {
+        receivedAt: '2026-08-05T09:12:00+09:00',
+        changedFields: [
+          {
+            field: 'ORDER_QTY',
+            label: '수량',
+            beforeText: '5000',
+            afterText: '4000',
+            beforeQty: 5000,
+          },
+          { field: 'DUE_DATE', label: '납기', beforeText: '2026-08-20', afterText: '2026-08-20' },
+        ],
+      },
+    });
+
+    expect(row.lastChange?.changedFields).toEqual([qtyField, dueField]);
+  });
+
+  /* §4-A — 감소량은 화면이 뺀다(단순 뺄셈). 수량 항목이 아니면 셀 것이 없다. */
+  it('수량 변화는 이전 수량 − 변경 후 수량이고, 수량 항목이 아니면 null 이다', () => {
+    expect(qtyDeltaOf(qtyField, 4000)).toBe(1000);
+    expect(qtyDeltaOf(qtyField, 6000)).toBe(-1000);
+    expect(qtyDeltaOf({ ...qtyField, beforeQty: null }, 4000)).toBeNull();
+    expect(qtyDeltaOf(dueField, 4000)).toBeNull();
+  });
+
+  it('목록 요약은 「항목 전→후」를 잇고, 못 받았으면 null, 열거 밖이면 빈 문자열이다', () => {
+    expect(changedFieldsSummary(null)).toBeNull();
+    expect(changedFieldsSummary({ receivedAt: 'x', changedFields: [] })).toBe('');
+    expect(changedFieldsSummary({ receivedAt: 'x', changedFields: [qtyField, dueField] })).toBe(
+      '수량 5000→4000 · 납기 2026-08-20→2026-08-20',
+    );
   });
 });

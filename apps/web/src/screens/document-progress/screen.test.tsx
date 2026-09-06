@@ -208,7 +208,9 @@ const failingDetailRoute = (status: number, pathname = DETAIL_PATH): StubRoute =
 });
 
 const detailRequests = (requests: RecordedRequest[]): RecordedRequest[] =>
-  requests.filter((request) => request.url.pathname.startsWith(`${LIST_PATH}/`));
+  requests.filter(
+    (request) => request.method === 'GET' && request.url.pathname.startsWith(`${LIST_PATH}/`),
+  );
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * 취소 축(단위 ③)의 자리 — 유형 표의 **취소 리소스 열**이 정하는 경로들
@@ -226,7 +228,7 @@ const CANCEL_TYPE = 'GOODS_ISSUE';
 /** 잠금 토큰이 오는 자리 — **진행현황 상세가 아니라 문서 리소스 상세**다(계획 §5-1). */
 const CANCEL_RESOURCE_PATH = '/logistics/goods-receipts/9001';
 const OTHER_CANCEL_RESOURCE_PATH = '/logistics/goods-receipts/9002';
-const REQUEST_CANCEL_PATH = `${CANCEL_RESOURCE_PATH}:request-cancel`;
+const REQUEST_CANCEL_PATH = `${LIST_PATH}/${CANCEL_TYPE}/9001:request-cancel`;
 
 const CANCEL_DETAIL_PATH = detailPathOf(CANCEL_TYPE, 9001);
 const OTHER_CANCEL_DETAIL_PATH = detailPathOf(CANCEL_TYPE, 9002);
@@ -2242,7 +2244,7 @@ describe('나가는 중 — C3-13의 두 축', () => {
 const CANCEL_APPROVAL_REQUEST_ID = 9501;
 const APPROVAL_PATH = `/app/approval-requests/${String(CANCEL_APPROVAL_REQUEST_ID)}`;
 
-const EXECUTE_CANCEL_PATH = `${CANCEL_RESOURCE_PATH}:cancel`;
+const EXECUTE_CANCEL_PATH = `${LIST_PATH}/${CANCEL_TYPE}/9001:cancel`;
 
 const approvalRoute = (detail = approvalRequestDetail()): StubRoute => ({
   match: (request) => isGet(request, APPROVAL_PATH),
@@ -2372,7 +2374,7 @@ describe('승인 진행 조회를 부르는 조건 — C4-1 · C4-2', () => {
 
     /*
      * ⭐ **그런데 실행 버튼은 선다** — 조회의 조건과 버튼의 조건은 **다른 물음**이다(계획 §5-2).
-     * 실행은 이 값을 쓰지 않고 `/logistics/{리소스}/{번호}:cancel`로 나가므로, 조회 하나가
+     * 실행은 이 값을 쓰지 않고 `/logistics/document-progress/{유형}/{번호}:cancel`로 나가므로, 조회 하나가
      * 막혔다는 이유로 실행 자체가 사라지면 **값이 이상하게 온 문서는 영영 되돌릴 수 없다.**
      *
      * ⚠ 이 한 줄이 없으면 그 결정을 **순수 층 한 벌**만 지킨다 — 화면이 `hasCancelRequest`의

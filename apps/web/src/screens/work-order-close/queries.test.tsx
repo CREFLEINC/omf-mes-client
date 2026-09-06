@@ -120,6 +120,12 @@ describe('workOrderCloseKeys', () => {
     expect(workOrderCloseKeys.codeValues('SYN-A')).not.toEqual(
       workOrderCloseKeys.codeValues('SYN-B'),
     );
+    expect(workOrderCloseKeys.results(702)).toEqual([
+      'work-order-close',
+      'production-results',
+      702,
+    ]);
+    expect(workOrderCloseKeys.workers()).toEqual(['work-order-close', 'lookups', 'workers']);
   });
 });
 
@@ -508,6 +514,7 @@ describe('work-order close lookups', () => {
         {
           code: 'SYN-CLOSED',
           codeName: 'Synthetic closed',
+          nameKo: null,
           displayOrder: 20,
           isActive: true,
         },

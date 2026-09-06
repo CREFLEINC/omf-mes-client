@@ -11,15 +11,16 @@ const t = messages.documentProgress;
 
 describe('KNOWN_BLOCK_REASON_CODES', () => {
   /*
-   * 계약이 설명문에 **열거한** 넷이다. 여기에 값을 더하려면 계약이 먼저 늘어야 한다 —
+   * 계약이 설명문에 **열거한** 다섯 값이다. 여기에 값을 더하려면 계약이 먼저 늘어야 한다 —
    * 화면이 코드를 지어내면 그 뜻도 화면이 지어낸 것이 된다.
    */
-  it('계약이 열거한 네 값이다', () => {
+  it('계약이 열거한 다섯 값이다', () => {
     expect(KNOWN_BLOCK_REASON_CODES).toEqual([
       'SUCCESSOR_EXISTS',
       'ALREADY_CANCELLED',
       'CANCEL_IN_PROGRESS',
       'STATE_LOCKED',
+      'TYPE_NOT_CANCELABLE',
     ]);
   });
 });
@@ -61,7 +62,7 @@ describe('describeCancelBlockReason', () => {
     expect(describeCancelBlockReason({ kind: 'available' })).toBe('');
   });
 
-  it('아는 네 코드는 우리말 문면을 낸다', () => {
+  it('아는 다섯 코드는 우리말 문면을 낸다', () => {
     const texts = KNOWN_BLOCK_REASON_CODES.map((code) =>
       describeCancelBlockReason({ kind: 'blocked', reasonCode: code, known: true }),
     );
@@ -71,9 +72,10 @@ describe('describeCancelBlockReason', () => {
       t.blockReasons.ALREADY_CANCELLED,
       t.blockReasons.CANCEL_IN_PROGRESS,
       t.blockReasons.STATE_LOCKED,
+      t.blockReasons.TYPE_NOT_CANCELABLE,
     ]);
-    /* 넷이 서로 다른 문면이어야 사용자가 무엇을 해야 하는지 갈린다. */
-    expect(new Set(texts).size).toBe(4);
+    /* 다섯 값이 서로 다른 문면이어야 사용자가 무엇을 해야 하는지 갈린다. */
+    expect(new Set(texts).size).toBe(5);
   });
 
   /*

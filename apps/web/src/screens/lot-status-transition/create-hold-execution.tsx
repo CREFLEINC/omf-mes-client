@@ -4,16 +4,24 @@ import {
   Dialog,
   Radio,
   RadioGroup,
+  Select,
   TextArea,
   TextField,
   useToast,
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import {
+  isKnownReason,
+  LOT_HOLD_REASON_GROUP,
+  useLotHoldReasonOptions,
+  type ReasonOptions,
+} from './code-options';
 import { isTransitionStale, transitionStaleMessage } from './transition-error';
 
 type LotHold = components['schemas']['LotHold'];
@@ -35,7 +43,16 @@ interface Validation {
   reasonError?: string;
 }
 
-const validate = (draft: Draft, props: CreateHoldExecutionProps): Validation => {
+/**
+ * 보류 사유는 공통코드 선택지다(스펙 §5-4 · G-31) — 목록이 서지 않으면 그 사유로 잠그고, 선택지에
+ * 없는 값은 보내지 않는다(fail-closed). 자유 입력으로 물러나지 않는다.
+ */
+const validate = (
+  draft: Draft,
+  props: CreateHoldExecutionProps,
+  reasons: ReasonOptions,
+): Validation => {
+  const tReason = messages.lotStatusTransition.reason;
   const text = draft.holdQty.trim();
   const quantity = Number(text);
   const quantityError =
@@ -49,7 +66,13 @@ const validate = (draft: Draft, props: CreateHoldExecutionProps): Validation => 
             ? `보류 수량은 보류 가능 수량 ${String(props.maxHoldQty)} 이하여야 합니다.`
             : undefined;
   const reasonCode = draft.reasonCode.trim();
-  const reasonError = reasonCode === '' ? '보류 사유를 입력하세요.' : undefined;
+  const reasonError =
+    reasons.unavailableReason ??
+    (reasonCode === ''
+      ? tReason.required
+      : isKnownReason(reasons.options, reasonCode)
+        ? undefined
+        : tReason.unknown);
   const remarks = draft.remarks.trim();
   return {
     quantityError,
@@ -93,7 +116,10 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
     remarks: '',
   });
   const [confirmation, setConfirmation] = useState<LotHoldCreate | null>(null);
-  const validation = validate(draft, props);
+  const reasons = useLotHoldReasonOptions(LOT_HOLD_REASON_GROUP);
+  const reasonId = useId();
+  const reasonNoteId = `${reasonId}-note`;
+  const validation = validate(draft, props, reasons);
   const write = useMasterWrite<LotHoldCreate, LotHold[]>({
     request: (body, headers) =>
       client.POST('/quality/lot-holds', {
@@ -159,15 +185,28 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
             }
           />
         )}
-        <TextField
-          label="보류 사유"
-          required
-          value={draft.reasonCode}
-          error={validation.reasonError}
-          onChange={(event) =>
-            setDraft((current) => ({ ...current, reasonCode: event.target.value }))
-          }
-        />
+        {/* 규범 3 — Select 에 label prop 이 없어 라벨을 직접 세운다. 잠긴 사유는 상시 텍스트(규범 4). */}
+        <div className="field-cell wide-select">
+          <label className="field-label" htmlFor={reasonId}>
+            {messages.lotStatusTransition.reason.holdLabel}
+          </label>
+          <Select
+            id={reasonId}
+            options={reasons.options}
+            value={draft.reasonCode === '' ? null : draft.reasonCode}
+            placeholder={messages.lotStatusTransition.reason.placeholder}
+            disabled={write.isSaving || reasons.unavailableReason !== undefined}
+            invalid={validation.reasonError !== undefined && draft.reasonCode !== ''}
+            aria-required
+            aria-describedby={validation.reasonError === undefined ? undefined : reasonNoteId}
+            onChange={(value) => setDraft((current) => ({ ...current, reasonCode: value ?? '' }))}
+          />
+          {validation.reasonError === undefined ? null : (
+            <p className="field-note" id={reasonNoteId}>
+              {validation.reasonError}
+            </p>
+          )}
+        </div>
         <TextArea
           label="보류 비고"
           fullWidth

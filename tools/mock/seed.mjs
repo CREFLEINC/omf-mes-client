@@ -250,6 +250,22 @@ export const createSeed = (now = new Date()) => {
       ['PENDING_DECISION', '판정 대기'],
       ['DECIDED', '판정 완료'],
     ],
+    /* W-02-05 · W-02-08 — 작업지시 상태(시스템 값 · 8값 중 화면이 쓰는 넷)와 마감 변동 사유(고객 시드). */
+    WORK_ORDER_STATUS: [
+      ['RELEASED', '배포'],
+      ['IN_PROGRESS', '진행 중'],
+      ['COMPLETED', '생산 완료'],
+      ['CLOSED', '마감'],
+    ],
+    WORK_ORDER_COMPLETION_VARIANCE_REASON: [
+      ['MATERIAL_SHORTAGE', '자재 부족'],
+      ['EQUIPMENT_FAILURE', '설비 고장'],
+      ['PLAN_CHANGE', '계획 변경'],
+    ],
+    PRODUCTION_RESULT_CORRECT_REASON: [
+      ['COUNT_ERROR', '집계 오류'],
+      ['REINSPECTION', '검사 재판정'],
+    ],
     /* W-04-06 — 입고 유형·사유는 고객이 늘리는 값(시드), 출하 상태는 시스템 값. */
     RECEIPT_TYPE: [
       ['MATERIAL', '자재 입고'],
@@ -287,6 +303,13 @@ export const createSeed = (now = new Date()) => {
     LOT_HOLD_REASON: [
       ['INSPECTION_PENDING', '수입검사 대기'],
       ['SUSPECT', '의심 자재'],
+    ],
+    /* W-03-02 — 해제 사유는 등록 사유와 대칭인 필수 축(고객 시드 4값). */
+    LOT_HOLD_RELEASE_REASON: [
+      ['RETEST_PASS', '재검사 합격'],
+      ['RETEST_FAIL', '재검사 불합격'],
+      ['INVESTIGATION_CLEARED', '조사 종결'],
+      ['MANAGER_OVERRIDE', '관리자 판단'],
     ],
     PICKING_TYPE: [
       ['PRODUCTION', '생산 투입'],
@@ -816,7 +839,10 @@ export const createSeed = (now = new Date()) => {
       customerId: 4001,
       plantId: PLANT_ID,
       shipDate: today,
+      requestedShipDate: today,
       statusCode: 'RELEASED',
+      /* 서버 롤업 진행 상태(계약 필수) — 피킹이 끝나 출하 처리(W-04-04) 관문을 통과하는 갈래. */
+      shipmentProgressCode: 'PICKED',
       minimumShelfLifeDays: 90,
     },
     /* W-04-06 — 고객사 B 의 지시서. 확정된 출하 둘이 여기서 나갔다. */
@@ -827,7 +853,9 @@ export const createSeed = (now = new Date()) => {
       customerId: 4002,
       plantId: PLANT_ID,
       shipDate: dayOf(shift(now, -7)),
+      requestedShipDate: dayOf(shift(now, -7)),
       statusCode: 'COMPLETED',
+      shipmentProgressCode: 'SHIPPED',
       minimumShelfLifeDays: 90,
     },
   ];

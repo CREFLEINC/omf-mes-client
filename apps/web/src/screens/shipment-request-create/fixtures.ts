@@ -81,6 +81,7 @@ export const createdShipmentRequestFixture: ShipmentRequestResponse = {
   shipToPartnerId: 8211,
   requestedShipDate: '2026-08-20',
   statusCode: 'SAMPLE_SR_S_A',
+  shipmentProgressCode: 'NOT_ALLOCATED',
   shippingInspectionStatusCode: 'NOT_REQUIRED',
   lines: [
     {

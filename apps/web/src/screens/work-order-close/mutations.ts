@@ -12,7 +12,7 @@ import {
 type WorkOrder = components['schemas']['WorkOrder'];
 type WorkOrderClose = components['schemas']['WorkOrderClose'];
 
-const WORK_ORDER_CLOSE_FIELDS = ['remainderDispositionCode', 'reasonCode', 'erpSendItems'] as const;
+const WORK_ORDER_CLOSE_FIELDS = ['remainderDispositionCode', 'reasonCode', 'remarks'] as const;
 
 export interface WorkOrderCloseMutationOptions {
   workOrderId: number;

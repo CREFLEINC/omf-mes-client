@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { PickingLine, PickingOrder } from './picking';
+import { OPEN_ORDER_STATUS, type PickingLine, type PickingOrder } from './picking';
 
 export const pickingKeys = {
   orders: (workerId: number | null) => ['picking-orders', workerId] as const,
@@ -14,6 +14,9 @@ export const pickingKeys = {
  *
  * 담당자를 실어 묻는다. 비우면 남의 지시까지 오는데, 이 셸에는 계정 로그인이 없어 서버가
  * 본인을 풀 근거가 없다 - 사번으로 얻은 작업자 식별자를 화면이 싣는다.
+ *
+ * 아직 출고할 수 있는 것만 받는다. 전기된 지시가 목록에 남으면 작업자가 그것을 다시 열고,
+ * 라인의 집은 양이 출고 뒤에도 그대로라 같은 수량이 한 번 더 나간다.
  */
 export const useAssignedPickingOrders = (
   workerId: number | null,
@@ -30,7 +33,9 @@ export const useAssignedPickingOrders = (
 
       const data = await runRequest(() =>
         client.GET('/logistics/picking-orders', {
-          params: { query: { assignedWorkerId: workerId, size: 100 } },
+          params: {
+            query: { assignedWorkerId: workerId, statusCode: OPEN_ORDER_STATUS, size: 100 },
+          },
         }),
       );
 

@@ -43,6 +43,20 @@ describe('normalizeApiError', () => {
     });
   });
 
+  it('업무 충돌의 구조화된 코드를 http 오류에 보존한다', () => {
+    const result = normalizeApiError(409, {
+      code: 'ALREADY_REINSTATED',
+      message: '이미 재등록됐습니다.',
+    });
+
+    expect(result).toEqual({
+      kind: 'http',
+      status: 409,
+      code: 'ALREADY_REINSTATED',
+      message: '이미 재등록됐습니다.',
+    });
+  });
+
   it('STATE_LOCKED 오류는 상태 잠김으로 정규화한다 — 재로드해도 안 풀린다', () => {
     const result = normalizeApiError(400, {
       errors: [

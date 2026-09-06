@@ -9,7 +9,6 @@ import {
   toWorkOrderCloseDetailScreenState,
   toWorkOrderCloseExecutionRequest,
   toWorkOrderCloseOutboundScreenState,
-  toWorkOrderCloseSelectedOutboundSelection,
   toWorkOrderCloseSelectedDraft,
   WorkOrderCloseCandidateScreen,
 } from './candidate-screen';
@@ -34,14 +33,14 @@ type OutboundMode =
 type CloseMode = 'success' | 'pending' | 'pending-error' | CloseErrorMode;
 type CloseErrorMode = 'network' | '403' | '500' | 'conflict' | 'validation';
 type CloseRecord = { path: string; etag: string | null; key: string | null; body: unknown };
-const closeFields = ['remainderDispositionCode', 'reasonCode', 'erpSendItems'] as const;
+const closeFields = ['remainderDispositionCode', 'reasonCode', 'remarks'] as const;
 const fieldMessage = (field: string) => `Synthetic ${field} error`;
 const issue = (f: string) => ({ scope: 'field', field: f, code: 'X', message: fieldMessage(f) });
 const detailEtag = '"synthetic-close-version-7"';
 const reasonGroup = 'WORK_ORDER_COMPLETION_VARIANCE_REASON';
 const reasonQueryKey = ['work-order-close', 'lookups', 'code-values', reasonGroup] as const;
 const outboundQueryKey = ['work-order-close', 'outbound-item-settings'] as const;
-const emptyDraft = { remainderDisposition: null, varianceReasonCode: '' };
+const emptyDraft = { remainderDisposition: null, varianceReasonCode: '', remarks: '' };
 const page = (total = 1, current = 1) => ({ page: current, size: 20, total });
 const statusBody = (total = 1) => ({
   items: [{ code: 'COMPLETED', codeName: '마감 완료', displayOrder: 1, isActive: true }],
@@ -331,7 +330,6 @@ const underBlockers = [
 ];
 const View = WorkOrderCloseCandidateScreen;
 
-const orderedItems = ['PRODUCTION_RESULT', 'GOODS_RECEIPT'] as const;
 const reloadAction = messages.conflict.reloadAction;
 const executionSource = (judgment: Exclude<Judgment, null> = 'NORMAL') => ({
   selectedWorkOrderId: 701,
@@ -342,9 +340,7 @@ const executionSource = (judgment: Exclude<Judgment, null> = 'NORMAL') => ({
   },
   judgment,
   blockers: [],
-  outboundState: { kind: 'READY' as const, settings: outboundBody('ready').items },
   draft: emptyDraft,
-  outboundSelection: { RETURN: true },
 });
 const selectCloseTarget = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
@@ -363,24 +359,32 @@ const prepareClose = async (judgment: Exclude<Judgment, null>, mode: CloseMode =
   const rendered = renderWithProviders(<View />, { fetch: api.fetch });
   return { ...rendered, user, api, action: await selectCloseTarget(user) };
 };
-const stale = { remainderDisposition: 'CARRY_OVER', varianceReasonCode: 'SYN-STALE' } as const;
+const stale = {
+  remainderDisposition: 'CARRY_OVER',
+  varianceReasonCode: 'SYN-STALE',
+  remarks: '낡은 비고',
+} as const;
 const requestCases = [
   [
     'UNDER',
-    { remainderDisposition: 'WRITE_OFF', varianceReasonCode: '  SYN-FIRST  ' },
-    { remainderDispositionCode: 'WRITE_OFF', reasonCode: 'SYN-FIRST', erpSendItems: orderedItems },
+    {
+      remainderDisposition: 'WRITE_OFF',
+      varianceReasonCode: '  SYN-FIRST  ',
+      remarks: ' 규격 변경 ',
+    },
+    { remainderDispositionCode: 'WRITE_OFF', reasonCode: 'SYN-FIRST', remarks: '규격 변경' },
   ],
   [
     'OVER',
-    { remainderDisposition: 'CARRY_OVER', varianceReasonCode: '  SYN-SECOND  ' },
-    { reasonCode: 'SYN-SECOND', erpSendItems: orderedItems },
+    { remainderDisposition: 'CARRY_OVER', varianceReasonCode: '  SYN-SECOND  ', remarks: '' },
+    { reasonCode: 'SYN-SECOND' },
   ],
-  ['NORMAL', stale, { erpSendItems: orderedItems }],
+  ['NORMAL', stale, {}],
 ] as const;
 const postCases = [
-  ['UNDER', { ...requestCases[0][2], erpSendItems: ['RETURN'] }],
-  ['OVER', { reasonCode: 'SYN-FIRST', erpSendItems: ['RETURN'] }],
-  ['NORMAL', { erpSendItems: ['RETURN'] }],
+  ['UNDER', { remainderDispositionCode: 'WRITE_OFF', reasonCode: 'SYN-FIRST' }],
+  ['OVER', { reasonCode: 'SYN-FIRST' }],
+  ['NORMAL', {}],
 ] as const;
 describe('WorkOrderCloseCandidateScreen', () => {
   it('maps disabled, fetching, error, absent and settled snapshots in strict priority', () => {
@@ -404,7 +408,11 @@ describe('WorkOrderCloseCandidateScreen', () => {
   });
 
   it('projects an empty draft immediately when the selection differs from its owner', () => {
-    const draft = { remainderDisposition: 'WRITE_OFF' as const, varianceReasonCode: 'SYN-FIRST' };
+    const draft = {
+      remainderDisposition: 'WRITE_OFF' as const,
+      varianceReasonCode: 'SYN-FIRST',
+      remarks: '',
+    };
     const owned = { workOrderId: 701, draft };
     expect(toWorkOrderCloseSelectedDraft(owned, 702)).toEqual(emptyDraft);
     expect(toWorkOrderCloseSelectedDraft(owned, 701)).toBe(draft);
@@ -453,20 +461,6 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(state({ settings: [] })).toEqual({ kind: 'READY', settings: [] });
   });
 
-  it('projects server defaults before a new outbound owner effect and preserves the current owner', () => {
-    const settings = outboundBody('ready').items;
-    const owned = { workOrderId: 701, selection: { RETURN: false } } as const;
-
-    expect(toWorkOrderCloseSelectedOutboundSelection(settings, owned, 702)).toEqual({
-      RETURN: true,
-      PRODUCTION_RESULT: false,
-    });
-    expect(toWorkOrderCloseSelectedOutboundSelection(settings, owned, 701)).toEqual({
-      RETURN: false,
-      PRODUCTION_RESULT: false,
-    });
-  });
-
   it('fails the close request gate for every unresolved or stale prerequisite', () => {
     const source = executionSource();
     const detail = source.detailState.detail;
@@ -477,22 +471,12 @@ describe('WorkOrderCloseCandidateScreen', () => {
       { detailState: { kind: 'UNAVAILABLE' } },
       { judgment: null },
       { blockers: ['OPEN_SESSION'] },
-      { outboundState: { kind: 'CHECKING' } },
-      { outboundState: { kind: 'UNAVAILABLE' } },
-      { outboundState: { kind: 'READY', settings: [] } },
     ];
     for (const overrides of blocked)
       expect(toWorkOrderCloseExecutionRequest({ ...source, ...overrides })).toBeNull();
   });
   it.each(requestCases)('builds %s from server facts', (judgment, draft, want) => {
-    expect(
-      toWorkOrderCloseExecutionRequest({
-        ...executionSource(judgment),
-        outboundState: { kind: 'READY', settings: outboundBody('changed').items },
-        draft,
-        outboundSelection: { RETURN: true, PRODUCTION_RESULT: true, GOODS_RECEIPT: true },
-      }),
-    ).toEqual(want);
+    expect(toWorkOrderCloseExecutionRequest({ ...executionSource(judgment), draft })).toEqual(want);
   });
   it.each(postCases)('posts exact %s body and clears on success', async (judgment, body) => {
     const { user, api, action } = await prepareClose(judgment);
@@ -533,10 +517,12 @@ describe('WorkOrderCloseCandidateScreen', () => {
     api.setOutboundMode('pending-ready');
     void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
     expect(await screen.findByRole('status', { name: t.outboundItems.loading })).toBeVisible();
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    /* 송신 설정은 관문이 아니다 — 설정을 다시 읽는 동안에도 열어 둔 확인 창은 닫히지 않는다. */
+    expect(screen.getByRole('dialog')).toBeVisible();
     api.releaseOutbound();
-    await screen.findByRole('switch', { name: 'Synthetic return' });
-    expect([screen.queryByRole('dialog'), api.closeRequests.length]).toEqual([null, 1]);
+    await screen.findByText('Synthetic return');
+    expect(screen.getByRole('dialog')).toBeVisible();
+    expect(api.closeRequests).toHaveLength(1);
   });
   it.each(['network', '403', '500'] as const)(
     'retries %s with the same body and key without reload',
@@ -593,81 +579,20 @@ describe('WorkOrderCloseCandidateScreen', () => {
     expect(screen.getByText(t.detailSummary.selection.title)).toBeVisible();
     await waitFor(() => expect(readCounts(api.urls)).toEqual(before.map((value) => value + 1)));
   });
-  it('owns outbound choices per W/O and reconciles same-owner settings by server rules', async () => {
-    const user = userEvent.setup();
-    const api = makeApi();
-    const { queryClient } = renderWithProviders(<View />, { fetch: api.fetch });
-    expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
-    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
-    let returnSwitch = await screen.findByRole('switch', { name: 'Synthetic return' });
-    const production = screen.getByRole('switch', { name: 'Synthetic production result' });
-    expect(returnSwitch).toBeChecked();
-    expect(production).not.toBeChecked();
-    expect(production).toBeDisabled();
-    expect(screen.getAllByRole('switch')[0]).toHaveAccessibleName('Synthetic return');
-    expect(screen.getAllByRole('switch')[1]).toHaveAccessibleName('Synthetic production result');
-    expect(document.body).not.toHaveTextContent('RETURN');
-    expect(document.body).not.toHaveTextContent('PRODUCTION_RESULT');
-    await user.click(returnSwitch);
-    expect(returnSwitch).not.toBeChecked();
-    const candidateCount = candidateUrls(api.urls).length;
-    void queryClient.invalidateQueries({ queryKey: ['work-order-close', 'candidates'] });
-    await waitFor(() => expect(candidateUrls(api.urls)).toHaveLength(candidateCount + 1));
-    expect(returnSwitch).not.toBeChecked();
-    await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.next }));
-    expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
-    await user.click(await screen.findByRole('button', { name: 'SYN-WO-702 선택' }));
-    expect(await screen.findByRole('switch', { name: 'Synthetic return' })).toBeChecked();
-    await user.click(screen.getByRole('button', { name: messages.workOrder.pageNav.previous }));
-    expect(screen.queryByRole('region', { name: t.outboundItems.pane })).not.toBeInTheDocument();
-    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
-    returnSwitch = await screen.findByRole('switch', { name: 'Synthetic return' });
-    expect(returnSwitch).toBeChecked();
-    await user.click(returnSwitch);
-    api.setOutboundMode('changed');
-    void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
-    const added = await screen.findByRole('switch', { name: 'Synthetic goods receipt' });
-    expect(added).toBeChecked();
-    expect(screen.getByRole('switch', { name: 'Synthetic production result' })).toBeChecked();
-    expect(screen.queryByRole('switch', { name: 'Synthetic return' })).not.toBeInTheDocument();
-    expect(document.body).not.toHaveTextContent('GOODS_RECEIPT');
-    api.setOutboundMode('reappeared');
-    void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
-    expect(await screen.findByRole('switch', { name: 'Synthetic return' })).toBeChecked();
-  });
-
-  it('hides stale outbound rows through refetch failure and retries only settings', async () => {
-    const user = userEvent.setup();
-    const api = makeApi();
-    const { queryClient } = renderWithProviders(<View />, { fetch: api.fetch });
-    await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
-    const selected = await screen.findByRole('switch', { name: 'Synthetic return' });
-    await user.click(selected);
-    api.setOutboundMode('pending-error');
-    void queryClient.invalidateQueries({ queryKey: outboundQueryKey });
-    expect(await screen.findByRole('status', { name: t.outboundItems.loading })).toBeVisible();
-    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-    api.releaseOutbound();
-    const pane = screen.getByRole('region', { name: t.outboundItems.pane });
-    expect(await within(pane).findByRole('alert')).toHaveTextContent(messages.httpError.loadTitle);
-    expect(within(pane).queryByRole('switch')).not.toBeInTheDocument();
-    const before = api.urls.length;
-    api.setOutboundMode('ready');
-    await user.click(within(pane).getByRole('button', { name: messages.common.retry }));
-    expect(await within(pane).findByRole('switch', { name: 'Synthetic return' })).not.toBeChecked();
-    expect(api.urls.slice(before).map((url) => url.pathname)).toEqual([paths.outbound]);
-  });
-
   it('renders a successful empty outbound setting list only after W/O selection', async () => {
     const user = userEvent.setup();
     const api = makeApi();
     api.setOutboundMode('empty');
+    api.setJudgment('NORMAL');
     renderWithProviders(<View />, { fetch: api.fetch });
     expect(screen.queryByText(t.outboundItems.empty.title)).not.toBeInTheDocument();
     await user.click(await screen.findByRole('button', { name: 'SYN-WO-701 선택' }));
     expect(await screen.findByText(t.outboundItems.empty.title)).toBeVisible();
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.confirm.confirm })).toBeDisabled();
+    /* 송신 설정은 관문이 아니다 — 비어 있어도 마감은 막히지 않는다(정상 판정 · 열린 세션 없음). */
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: t.confirm.confirm })).toBeEnabled(),
+    );
   });
 
   it('keeps detail idle until selection then reads exact server facts with a named unit', async () => {

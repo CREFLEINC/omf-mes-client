@@ -18,6 +18,7 @@ export interface ShipmentProcessingCandidateFilters {
   /** null이면 아직 조회 조건이 갖춰지지 않았다(출하일 시작 필수 — 공유계약 L-3). */
   shipDateFrom: string | null;
   shipDateTo: string | null;
+  pickingCompleteOnly: boolean;
   page: number;
 }
 
@@ -34,6 +35,7 @@ export const shipmentProcessingKeys = {
       'candidates',
       filters.shipDateFrom,
       filters.shipDateTo,
+      filters.pickingCompleteOnly,
       filters.page,
     ] as const,
   detail: (shipmentRequestId: number | null) =>
@@ -42,8 +44,8 @@ export const shipmentProcessingKeys = {
 
 /**
  * 후보 목록. **출하일 시작이 없으면 부르지 않는다**(공유계약 L-3, 계약이 `shipDateFrom`을
- * 필수로 표시). `pickingCompleteOnly`·`shippableRemainderOnly` 쿼리는 baseline에 없어
- * 싣지 않는다 — 클라이언트가 `candidate-gate.ts`로 같은 판정을 재현한다(계획서 미결 항목).
+ * 필수로 표시). 피킹 완료와 출하 잔여 판정은 서버가 수행한다. 화면은 이번 쪽의 라인 수량으로
+ * 후보를 다시 거르지 않는다.
  */
 export const useShipmentRequestCandidates = (
   filters: ShipmentProcessingCandidateFilters,
@@ -65,6 +67,8 @@ export const useShipmentRequestCandidates = (
             query: {
               shipDateFrom,
               ...(filters.shipDateTo === null ? {} : { shipDateTo: filters.shipDateTo }),
+              ...(filters.pickingCompleteOnly ? { pickingCompleteOnly: true } : {}),
+              shippableRemainderOnly: true,
               page: filters.page,
             },
           },

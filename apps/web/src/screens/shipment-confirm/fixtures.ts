@@ -46,7 +46,7 @@ const shipmentBody = (stub: ShipmentStub) => ({
   shipmentNo: stub.shipmentNo,
   shipmentRequestId: 3001,
   warehouseId: 2001,
-  statusCode: 'CODE-UNCONFIRMED',
+  statusCode: 'UNCONFIRMED',
   expedited: false,
   ...(stub.shippedAt === null ? {} : { shippedAt: stub.shippedAt }),
   lines: [
@@ -66,6 +66,40 @@ export const confirmStub = (options: ConfirmStubOptions = {}): StubFetch => {
   const shipments = options.shipments ?? DEFAULT_SHIPMENTS;
 
   const routes = [
+    {
+      /* 출하 상태 표시명 — 시스템 값 셋. 화면은 코드가 아니라 이 이름을 보인다. */
+      match: (request: Request) => new URL(request.url).pathname === '/mdm/code-values',
+      respond: () =>
+        jsonResponse({
+          items: [
+            {
+              codeValueId: 1,
+              codeGroupId: 1,
+              code: 'UNCONFIRMED',
+              codeName: '미확정',
+              displayOrder: 1,
+              isActive: true,
+            },
+            {
+              codeValueId: 2,
+              codeGroupId: 1,
+              code: 'CONFIRMED',
+              codeName: '확정',
+              displayOrder: 2,
+              isActive: true,
+            },
+            {
+              codeValueId: 3,
+              codeGroupId: 1,
+              code: 'CANCELLED',
+              codeName: '취소',
+              displayOrder: 3,
+              isActive: true,
+            },
+          ],
+          page: { page: 1, size: 50, total: 3 },
+        }),
+    },
     {
       match: (request: Request) =>
         new URL(request.url).pathname === '/logistics/shipments' && request.method === 'GET',

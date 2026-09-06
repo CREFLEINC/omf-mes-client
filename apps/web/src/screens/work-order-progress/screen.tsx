@@ -214,6 +214,7 @@ export const WorkOrderProgressScreen = ({ now }: WorkOrderProgressScreenProps) =
         isLoading={selectedWorkOrderId !== null && detail.isPending}
         isOpen={selectedWorkOrderId !== null}
         itemLabel={(itemIdText) => items.labelOf(itemIdText)}
+        statusLabel={(statusCode) => statuses.labelOf(statusCode)}
         workOrder={detail.data ?? null}
         onClose={() => {
           setSearchParams(withSelectedWorkOrder(searchParams, null));

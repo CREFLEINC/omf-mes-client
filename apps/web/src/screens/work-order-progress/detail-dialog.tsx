@@ -11,6 +11,8 @@ export interface DetailDialogProps {
   /** 고른 것이 있는가. 받는 중에도 창은 열려 있어야 한다. */
   isOpen: boolean;
   itemLabel: (itemIdText: string) => string;
+  /** 표의 상태 열과 같은 표시명 — 상세만 코드 원문을 찍지 않는다. */
+  statusLabel: (statusCode: string) => string;
   onClose: () => void;
 }
 
@@ -51,6 +53,7 @@ export const DetailDialog = ({
   isError,
   isOpen,
   itemLabel,
+  statusLabel,
   onClose,
 }: DetailDialogProps) => (
   <Dialog
@@ -72,7 +75,7 @@ export const DetailDialog = ({
           {(
             [
               [t.workOrderNo, workOrder.workOrderNo],
-              [t.statusCode, workOrder.statusCode],
+              [t.statusCode, statusLabel(workOrder.statusCode)],
               [messages.workOrderProgress.list.columns.itemId, itemLabel(String(workOrder.itemId))],
               [t.orderQty, String(workOrder.orderQty)],
               [t.plannedStartAt, dateTimeText(workOrder.plannedStartAt)],

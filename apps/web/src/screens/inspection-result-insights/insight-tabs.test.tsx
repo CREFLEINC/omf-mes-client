@@ -208,8 +208,12 @@ describe('검사 추이·불량 분포', () => {
       groupBy: 'defectCode',
       sourceCode: 'PQC',
       itemId: '101',
-      detectedFrom: '2026-08-01',
-      detectedTo: '2026-08-31',
+      detectedFrom: expect.stringMatching(
+        /^2026-08-01T00:00:00[+-]\d{2}:\d{2}$/,
+      ) as unknown as string,
+      detectedTo: expect.stringMatching(
+        /^2026-08-31T23:59:59[+-]\d{2}:\d{2}$/,
+      ) as unknown as string,
     });
   });
 
