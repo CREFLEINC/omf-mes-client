@@ -55,8 +55,11 @@ export const EventHistoryPanel = ({ events, isPending }: EventHistoryPanelProps)
           </tbody>
         </table>
       )}
-
-      <p className="pop-hold-note">{t.history.recordOnlyNotice}</p>
+        {/*
+         * ⛔ **「이벤트는 정정할 수 없습니다」를 늘 세우지 않는다.** 스펙 §4-A 는 그것을
+         * «데이터 규칙»으로 적었지 화면 문구로 정하지 않았고, 정정하려는 사람에게만 필요한
+         * 말이 목록 아래에 상주하고 있었다.
+         */}
     </section>
   </Card>
 );

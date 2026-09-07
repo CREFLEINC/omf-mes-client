@@ -119,14 +119,16 @@ describe('P-02-10 작업 중단 등록', () => {
     expect(within(rows[1]!).getByText('금형 교체')).toBeInTheDocument();
     /* 재개는 사유가 없다 — 「없음」이라 적지 않는다. */
     expect(within(rows[2]!).getByText(t.eventTypes.RESUME)).toBeInTheDocument();
-    /* 이력은 기록 전용이다 — 정정할 수 없다는 사실이 이력 옆에 상시 서 있어야 한다. */
-    expect(within(history).getByText(t.history.recordOnlyNotice)).toBeInTheDocument();
+    /* ⛔ 「정정할 수 없습니다」를 상시 세우지 않는다 — 데이터 규칙이지 화면 문구가 아니다. */
+    expect(within(history).queryByText(/정정할 수 없습니다/u)).not.toBeInTheDocument();
   });
 
-  it('사유 목록이 임시라는 사실을 상시 세운다', async () => {
+  /* ⛔ 스펙 §5-4 가 7값을 확정했다(2026-08-23) — 확정된 것을 「임시」라 말하지 않는다. */
+  it('사유 목록을 임시라고 말하지 않는다', async () => {
     renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
-    expect(await screen.findByText(t.form.reasonProvisional)).toBeInTheDocument();
+    expect(await screen.findByText(t.form.reasonLabel)).toBeInTheDocument();
+    expect(screen.queryByText(/임시 목록/u)).not.toBeInTheDocument();
   });
 
   /* ⛔ 코드 문자열은 코드 사전(`CD-WORK-SESSION-EVENT-REASON`)이 정본이다 — 지어내지 않는다. */
@@ -383,10 +385,15 @@ describe('P-02-10 작업 중단 등록', () => {
       expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
     });
 
-    it('비고가 아직 저장되지 않는다는 사실을 상시 세운다', async () => {
+    /*
+     * ⛔ **버릴 것을 받는 칸을 두지 않는다.** 스펙 §3 도면은 비고를 그리지만 §4-A 필드 표에
+     * 그 컬럼이 없고 계약에도 자리가 없다 — 적어도 아무 데도 안 간다(#77 열림).
+     */
+    it('담을 자리가 없는 비고 칸을 두지 않는다', async () => {
       renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
-      expect(await screen.findByText(t.form.remarksNotSaved)).toBeInTheDocument();
+      expect(await screen.findByText(t.form.reasonLabel)).toBeInTheDocument();
+      expect(screen.queryByText(/비고/u)).not.toBeInTheDocument();
     });
   });
 });

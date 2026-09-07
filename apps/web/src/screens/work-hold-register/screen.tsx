@@ -227,20 +227,39 @@ export const WorkHoldRegisterScreen = () => {
         <HoldForm
           draft={draft}
           disabled={inputDisabled}
-          canStop={canStop}
-          canResume={canResume}
           error={draftError}
-          workerUnknown={workerNo === null}
           onReasonChange={(code) => {
             setDraft((prev) => ({ ...prev, reasonCode: code }));
             setDraftError(null);
           }}
-          onRemarksChange={(value) => {
-            setDraft((prev) => ({ ...prev, remarks: value }));
-          }}
-          onStop={handleStop}
-          onResume={handleResume}
         />
+      </div>
+      {/*
+       * ⭐ **조작은 화면 바닥에 선다.** 구획 안에 두었더니 사유 7값이 칸을 넘겨 [ 중단 등록 ]이
+       * 화면 밖(761~833)으로 밀렸다 — 중단을 등록할 수 없는 화면이었다(실측). 액션바는 늘
+       * 같은 자리에 있고 본문이 아무리 길어져도 밀리지 않는다(다른 POP 화면과 같은 어휘).
+       *
+       * ⭐ **두 버튼을 함께 세우고 상태로 가른다.** 하나를 숨기면 지금 세션이 어느 쪽인지
+       * 화면에서 사라져, 눌러 본 뒤에야 안다(스펙 §6 — 「이미 중단 상태면 재개만 활성」).
+       */}
+      <div className="pop-actions">
+        {/* 사번을 모르면 서버가 거부한다(D-5) — 큐에 담긴 뒤의 거부는 작업자가 떠난 뒤에 온다. */}
+        {workerNo === null && <p className="field-note">{t.form.workerRequired}</p>}
+        <Button
+          variant="outlined"
+          size="2xl"
+          disabled={inputDisabled || workerNo === null || !canResume}
+          onClick={handleResume}
+        >
+          {t.form.resumeAction}
+        </Button>
+        <Button
+          size="2xl"
+          disabled={inputDisabled || workerNo === null || !canStop}
+          onClick={handleStop}
+        >
+          {t.form.stopAction}
+        </Button>
       </div>
     </main>
   );
