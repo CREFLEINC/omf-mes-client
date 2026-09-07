@@ -88,8 +88,13 @@ describe('saveDisabledReason', () => {
     expect(saveDisabledReason(openGuard({ isOnline: false }))).toBe(t.actionReasons.offline);
   });
 
-  it('툴을 고르기 전에는 툴을 말한다', () => {
-    expect(saveDisabledReason(openGuard({ hasTool: false }))).toBe(t.actionReasons.noTool);
+  /*
+   * ⛔ 툴 미선택에는 사유를 적지 않는다 — 스펙 §6-1 이 인라인 사유를 정한 것은 「타발수 0
+   * 또는 음수」 하나뿐이고, 스캔 칸이 비어 스스로 말한다. 다만 **저장은 그대로 막힌다.**
+   */
+  it('툴을 고르기 전에는 사유를 적지 않되 저장은 막는다', () => {
+    expect(saveDisabledReason(openGuard({ hasTool: false }))).toBeUndefined();
+    expect(canSave(openGuard({ hasTool: false }))).toBe(false);
   });
 
   it('타발수가 없으면 마지막으로 그것을 말한다', () => {

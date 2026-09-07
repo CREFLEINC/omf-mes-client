@@ -166,6 +166,7 @@ export const ToolUsageScreen = () => {
   };
 
   const blockReason = saveDisabledReason(guard);
+  const isSaveOpen = canSave(guard);
 
   /**
    * 지금 화면이 아는 서버 누계. **저장 응답이 조회 응답보다 새롭다.**
@@ -333,7 +334,6 @@ export const ToolUsageScreen = () => {
                 ref={scanRef}
                 label={t.scan.inputLabel}
                 placeholder={t.scan.placeholder}
-                helperText={isManualEntry ? t.scan.manualHint : undefined}
                 size="xl"
                 fullWidth
                 autoFocus
@@ -351,6 +351,14 @@ export const ToolUsageScreen = () => {
                 {t.scan.manualEntry}
               </Button>
             </form>
+
+            {/*
+             * ⚠ **안내를 칸 «안»에 넣지 않는다.** `helperText` 는 칸 아래에 붙어 칸 덩어리를
+             * 키우는데, 스캔 줄은 아래끝을 맞춰 세운다(`.scan-row`) — 덩어리가 커지면 옆의
+             * [ 코드 직접 입력 ]이 칸보다 한 층 «내려가» 어긋난다(실측 · 사용자 지적).
+             * 줄 아래에 따로 세우면 두 조각의 높이가 서로를 흔들지 않는다.
+             */}
+            {isManualEntry && <p className="field-note">{t.scan.manualHint}</p>}
 
             {submittedCode !== '' && !lookup.isPending && tool === null && (
               <p className="field-note">{t.scan.notFound}</p>
@@ -575,12 +583,7 @@ export const ToolUsageScreen = () => {
         <Button variant="outlined" size="2xl" disabled={!hasInput(draft)} onClick={resetDraft}>
           {t.actions.reset}
         </Button>
-        <Button
-          size="2xl"
-          loading={write.isSaving}
-          disabled={blockReason !== undefined}
-          onClick={save}
-        >
+        <Button size="2xl" loading={write.isSaving} disabled={!isSaveOpen} onClick={save}>
           {t.actions.save}
         </Button>
       </div>

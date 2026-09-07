@@ -82,7 +82,6 @@ export const toolUsage = {
 
   actionReasons: {
     saving: '실적 저장 — 저장하는 중입니다.',
-    noTool: '실적 저장 — 툴을 먼저 스캔하세요.',
     noShot: '실적 저장 — 타발수를 1 이상 기입하세요.',
     noEntry:
       '실적 저장 — 작업지시와 사번이 있어야 저장할 수 있습니다. 작업 시작 화면을 거쳐 들어오세요.',
