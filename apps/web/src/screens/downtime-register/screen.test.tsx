@@ -363,16 +363,31 @@ describe('DowntimeRegisterScreen — 저장', () => {
     expect(screen.getAllByText(t.errors.endedBeforeStarted).length).toBeGreaterThan(0);
   });
 
-  it('사유를 고르지 않으면 저장하지 않고 무엇이 모자란지 말한다', async () => {
-    const { requests } = renderScreen(baseRoutes());
+  it('시작 시각과 사유가 차기 전에는 「실적 저장」이 잠긴다 (스펙 §5-1 활성 조건)', async () => {
+    renderScreen(baseRoutes());
 
     await flush();
+    const saveButton = screen.getByRole('button', { name: t.actions.save });
+    expect(saveButton).toBeDisabled();
+
+    /* 시작만으로는 아직 모자라다 — 사유가 `NOT NULL` 이다. */
     typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
-    save();
-    await flush();
+    expect(saveButton).toBeDisabled();
 
-    expect(postedBodies(requests)).toHaveLength(0);
-    expect(screen.getByText(t.errors.reasonRequired)).toBeTruthy();
+    await chooseReason();
+    expect(saveButton).toBeEnabled();
+  });
+
+  it('날짜만 치고 시각을 비우면 아직 「시작 시각」이 아니다 — 잠긴 채로 둔다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
+    fireEvent.change(screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`), {
+      target: { value: '2026-08-11' },
+    });
+    await chooseReason();
+
+    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
   });
 
   it('아직 아무것도 적지 않았으면 「다시 입력」이 잠긴다 — 비울 것이 없다', async () => {

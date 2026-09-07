@@ -91,7 +91,6 @@ export const DowntimeRegisterScreen = () => {
   const titleId = useId();
 
   const [draft, setDraft] = useState<DowntimeDraft>(EMPTY_DRAFT);
-  const [saveAttempted, setSaveAttempted] = useState(false);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
   const outbox = useOutbox();
@@ -165,15 +164,14 @@ export const DowntimeRegisterScreen = () => {
   /*
    * 오류를 언제 보일지 갈래가 둘이다.
    *
-   * - **잘못 친 것**(끝이 시작보다 앞섬 · 미래 시각)은 바로 보인다. 이미 틀린 값이 칸에 있고,
-   *   저장을 누를 때까지 숨기면 작업자가 다음 칸으로 넘어간 뒤에 되돌아와야 한다.
-   * - **아직 안 친 것**(시작 필수 · 사유 필수)은 저장을 누른 뒤에 보인다. 빈 화면을 붉은
+   * - **잘못 친 것**(끝이 시작보다 앞섬 · 미래 시각 · 덜 친 것)은 바로 보인다. 이미 틀린 값이
+   *   칸에 있고, 저장을 누를 때까지 숨기면 작업자가 다음 칸으로 넘어간 뒤에 되돌아와야 한다.
+   * - **아직 «안» 친 것**은 아예 글로 말하지 않는다. 스펙 §5-1 이 그 자리에 정한 것은 「활성
+   *   조건」뿐이고(시작 시각 + 사유), 저장 버튼이 잠긴 것이 곧 그 말이다 — 빈 화면을 붉은
    *   글씨로 맞이하지 않는다.
    */
   const shownIntervalErrors: IntervalErrors = {
-    /* 「안 친 것」만 누르기 전에는 숨긴다 — 빈 화면을 붉은 글씨로 맞이하지 않는다. */
-    startedAt:
-      !saveAttempted && intervalErrors.startedAt === 'required' ? null : intervalErrors.startedAt,
+    startedAt: intervalErrors.startedAt === 'required' ? null : intervalErrors.startedAt,
     /*
      * ⛔ **끝 칸의 오류를 시작 칸 사정으로 숨기지 않는다.** 한 덩이로 숨겼더니 시작을 아직
      * 치지 않은 동안 끝 칸의 문제가 통째로 가려졌다 — 실사용에서 나온 자리다.
@@ -183,7 +181,6 @@ export const DowntimeRegisterScreen = () => {
 
   const resetDraft = (): void => {
     setDraft(EMPTY_DRAFT);
-    setSaveAttempted(false);
     setSavedNotice(null);
   };
 
@@ -195,7 +192,6 @@ export const DowntimeRegisterScreen = () => {
    * 갖춰지지 않은 값이 기록에 실리지 않아야 한다 — 비가동은 정정 경로가 없다.
    */
   const save = (): void => {
-    setSaveAttempted(true);
     /* 앞 회차의 거부는 이 회차의 사실이 아니다 — 남겨 두면 방금 저장한 것이 거부된 것처럼 읽힌다. */
     outbox.clearRejections();
     if (block !== null || workerNo === null) return;
@@ -208,7 +204,6 @@ export const DowntimeRegisterScreen = () => {
     outbox.enqueueCreate(workerNo, body);
     setSavedNotice(outbox.isOnline ? t.actions.saved : t.actions.queued);
     setDraft(EMPTY_DRAFT);
-    setSaveAttempted(false);
   };
 
   /** 「지금 종료」 — 끝 시각은 서버가 지금으로 박는다. 화면이 시각을 실어 보내지 않는다. */
@@ -354,7 +349,6 @@ export const DowntimeRegisterScreen = () => {
         breakdowns={breakdowns.breakdowns}
         breakdownsUnavailable={breakdowns.isError}
         isOffline={!outbox.isOnline}
-        reasonInvalid={saveAttempted && reasonMissing}
         onReasonChange={(code) => {
           setDraft((prev) => ({ ...prev, reasonCode: code }));
         }}
@@ -402,7 +396,15 @@ export const DowntimeRegisterScreen = () => {
 
       <ActionBar
         block={block}
-        isEmpty={isDraftEmpty(draft) && !saveAttempted}
+        isEmpty={isDraftEmpty(draft)}
+        /*
+         * 스펙 §5-1 의 활성 조건은 **시작 시각 + 사유** 둘이다.
+         *
+         * ⚠ 「시작 시각」은 «온전한» 것을 말한다 — 날짜만 치고 시각을 비운 상태는 아직 시각이
+         *    아니다(`readInterval` 이 `null` 을 낸다). ⛔ 끝 시각·겹침처럼 «누른 뒤에 말할»
+         *    것은 여기 넣지 않는다: 그것들은 눌러야 무엇이 문제인지 칸 옆에서 말할 수 있다.
+         */
+        isIncomplete={moments.started === null || reasonMissing}
         onReset={resetDraft}
         onSave={save}
       />

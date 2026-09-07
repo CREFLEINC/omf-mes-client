@@ -16,8 +16,13 @@ const t = messages.downtimeRegister;
 /** 시작 칸의 오류 문구. **끝 칸과 「덜 친 것」의 안내가 다르다** — 고칠 칸을 가리켜야 한다. */
 const describeStartedError = (kind: IntervalErrors['startedAt']): string | undefined => {
   switch (kind) {
+    /*
+     * ⛔ **「아직 안 친 것」은 글로 말하지 않는다.** 스펙 §5-1 이 그 자리에 정한 것은 저장의
+     *    「활성 조건」뿐이라 **버튼이 잠긴 것이 곧 그 말**이고, 빈 화면을 붉은 글씨로 맞이하지
+     *    않는다. 화면이 이 갈래를 걸러 넘기지 않는다(`shownIntervalErrors`).
+     */
     case 'required':
-      return t.errors.startedRequired;
+      return undefined;
     case 'incomplete':
       return t.errors.startedIncomplete;
     case 'future':

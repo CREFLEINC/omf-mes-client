@@ -28,9 +28,11 @@ export interface SaveBlockInput {
 }
 
 /**
- * ⛔ **입력 오류는 여기 들어오지 않는다.** 덜 채운 칸 때문에 버튼을 잠그면 눌러 볼 수 없고,
- * 눌러 볼 수 없으면 **무엇이 모자란지 말할 계기가 사라진다** — 작업자는 잠긴 버튼 앞에서
- * 이유를 모른 채 선다. 채우지 못한 것은 누른 뒤 칸 옆에서 말한다.
+ * ⛔ **여기 담는 것은 「이 단말·이 작업자로는 안 된다」뿐이다.** 덜 채운 칸은 담지 않는다 —
+ * 그쪽은 사유를 글로 적지 않고 버튼을 잠그는 것으로 말한다(`isIncomplete`).
+ *
+ * 두 갈래를 가르는 이유: 여기 담기는 것들은 **작업자가 화면에서 고칠 수 없다**(권한·사번·설비)
+ * 라 무엇이 막는지 글로 말해야 하지만, 덜 채운 칸은 **화면에 그 자리가 보인다.**
  */
 export const resolveSaveBlock = ({
   workerNo,
@@ -75,6 +77,8 @@ export interface ActionBarProps {
   block: SaveBlock;
   /** 아직 아무것도 적지 않았다 — 비울 것이 없으면 「다시 입력」을 잠근다. */
   isEmpty: boolean;
+  /** 저장에 필요한 것이 덜 찼다 — **시작 시각과 사유**다(스펙 §5-1 활성 조건). */
+  isIncomplete: boolean;
   onReset: () => void;
   onSave: () => void;
 }
@@ -85,7 +89,13 @@ export interface ActionBarProps {
  * ⛔ **「다시 입력」은 서버를 부르지 않는다.** 저장 전 화면 안의 초기화이고, 계약에 대응하는
  * 오퍼레이션이 없는 것도 그래서다.
  */
-export const ActionBar = ({ block, isEmpty, onReset, onSave }: ActionBarProps) => {
+export const ActionBar = ({
+  block,
+  isEmpty,
+  isIncomplete,
+  onReset,
+  onSave,
+}: ActionBarProps) => {
   const reason = describeSaveBlock(block);
 
   return (
@@ -103,8 +113,22 @@ export const ActionBar = ({ block, isEmpty, onReset, onSave }: ActionBarProps) =
       <Button variant="outlined" size="2xl" disabled={isEmpty} onClick={onReset}>
         {t.actions.reset}
       </Button>
-      {/* 큐에 담는 것이 곧 성공이라 「저장하는 중」이 없다 — 통신을 기다리지 않는다. */}
-      <Button variant="filled" size="2xl" disabled={block !== null} onClick={onSave}>
+      {/*
+       * 큐에 담는 것이 곧 성공이라 「저장하는 중」이 없다 — 통신을 기다리지 않는다.
+       *
+       * ⛔ **시작 시각과 사유가 차기 전에는 잠긴다**(스펙 §5-1 활성 조건 · 사용자 지적
+       *    2026-09-07). 빈 화면에서 눌리면 「눌러도 되는 것」으로 읽힌다.
+       *
+       * ⚠ **덜 찼다는 사유를 버튼 옆에 적지 않는다.** 스펙이 이 셋에 정한 처리는 「활성 조건」
+       *    뿐이고(§5-1), 비어 있는 칸은 화면에 이미 보인다 — 선례 `P-02-04` 도 같은 자리의
+       *    상주 사유를 걷었다(2026-09-07).
+       */}
+      <Button
+        variant="filled"
+        size="2xl"
+        disabled={block !== null || isIncomplete}
+        onClick={onSave}
+      >
         {t.actions.save}
       </Button>
     </div>

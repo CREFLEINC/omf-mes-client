@@ -19,7 +19,6 @@ export interface ReasonFieldsProps {
   breakdowns: readonly BreakdownView[];
   breakdownsUnavailable: boolean;
   isOffline: boolean;
-  reasonInvalid: boolean;
   onReasonChange: (code: string) => void;
   onRemarksChange: (value: string) => void;
   onBreakdownChange: (breakdownId: number | null) => void;
@@ -49,7 +48,6 @@ export const ReasonFields = ({
   breakdowns,
   breakdownsUnavailable,
   isOffline,
-  reasonInvalid,
   onReasonChange,
   onRemarksChange,
   onBreakdownChange,
@@ -83,7 +81,6 @@ export const ReasonFields = ({
             aria-labelledby={reasonLabelId}
             placeholder={t.reason.detailPlaceholder}
             value={reasonCode}
-            invalid={reasonInvalid}
             /*
              * ⛔ **고를 것이 없으면 칸을 감추지 않고 잠근다**(스펙 §6-1 · `G-2`). 감추면
              * 저장이 왜 막히는지 화면에 남는 것이 없다 — 사유는 `NOT NULL` 이다.
@@ -98,12 +95,6 @@ export const ReasonFields = ({
             <p className="downtime-field-error">{t.errors.reasonsUnavailable}</p>
           )}
         </div>
-
-        {/*
-          사유를 고르지 않은 채 저장을 누른 상태. 칸 테두리만 붉히면 무엇이 모자란지 말하지
-          않는 것이라, 문장을 함께 세운다.
-        */}
-        {reasonInvalid && <p className="downtime-field-error">{t.errors.reasonRequired}</p>}
 
         <div className="downtime-field-row">
           <span className="downtime-field-label" id={breakdownLabelId}>
