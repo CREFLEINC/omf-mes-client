@@ -2644,6 +2644,37 @@
  */
 .pop-ui .pack-work-scan .scan-row > button,
 .pop-ui .pack-work-scan .pack-work-add-row > button {
-  --pop-touch-size: 72px;
   min-inline-size: 9rem;
+}
+
+/*
+ * 스캔 줄 — **칸과 버튼이 같은 높이로 한 덩어리를 이룬다**(사용자 지적).
+ *
+ * DS `TextField` 는 `xl`(60)이 가장 크고 버튼은 `2xl`(72)까지 간다. 그대로 두면 아래끝만
+ * 맞고 **버튼 머리가 칸보다 12px 솟아** 두 조각이 한 줄로 안 읽힌다(실측). 둘을 72 로
+ * 맞춘다 — 스캔 줄은 POP 다섯 화면이 같은 이름으로 쓰는 형태라 한 곳에서 정한다.
+ *
+ * ⛔ DS 내부 클래스를 이름으로 겨냥하지 않는다 — **자리로 잡는다.** 칸의 첫 자식은 라벨
+ *    줄이고 둘째가 입력 상자다(`> :first-child > div`).
+ * ⚠ 내리지 않고 «올린다» — 담기·확정처럼 기록을 남기는 조작이 72 아래로 못 내려간다(E-3).
+ */
+.pop-ui .scan-row > :first-child > div,
+.pop-ui .scan-row > button,
+.pop-ui .pack-work-add-row > :first-child > div,
+.pop-ui .pack-work-add-row > button {
+  min-block-size: 72px;
+}
+
+/*
+ * ⭐ **굴려도 구획 표제는 남는다.**
+ *
+ * 위 「스크롤은 구획 하나가 한다」 규칙이 `.pop-section > .pane-title` 을 붙박이로 세우는데,
+ * 이 화면은 표제가 안쪽 `.downtime-section` 의 자식이라 그 겨냥에 걸리지 않는다 — 오늘 목록을
+ * 굴리면 「무엇을 보고 있는 구획인가」가 사라졌다(실측). 한 겹 안쪽에도 같은 값을 건다.
+ */
+.pop-ui .pop-section > .downtime-section > .pane-title {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  background: var(--surface-container-low);
 }
