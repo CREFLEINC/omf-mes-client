@@ -252,6 +252,26 @@ describe('P-02-08 포장 작업', () => {
    * 앞선 판은 담기를 잠그고 그 아래에 사유를 늘 띄웠는데, 말하는 곳(왼쪽)과 고치는 곳
    * (오른쪽 유형 칸)이 갈려 있었다(사용자 지적).
    */
+  /*
+   * ⛔ **[ 직접 입력 ]은 «제출»이 아니라 «칸으로 옮기는» 버튼이다.** `type="submit"` 이면
+   * 빈 코드로 폼이 제출돼 아무 일도 일어나지 않는다 — 손으로 치려고 눌렀는데 커서가 안
+   * 간다(사용자 지적). 다른 스캔 화면 셋이 이미 이 동작이다.
+   */
+  it('[ 직접 입력 ]을 누르면 스캔 칸으로 커서가 간다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+
+    const scanInput = await screen.findByLabelText(t.scan.label);
+    /* 처음 커서는 이미 칸에 있다 — 다른 곳으로 옮겨 두고 버튼이 되돌리는지 본다. */
+    await user.click(screen.getByLabelText(t.scan.quantityLabel));
+    expect(scanInput).not.toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: t.scan.manualEntry }));
+
+    expect(scanInput).toHaveFocus();
+  });
+
   it('유형을 고르기 전에 담기를 누르면 유형 칸이 사유를 말한다', async () => {
     const user = userEvent.setup();
 
