@@ -2280,3 +2280,26 @@
 .pop-ui .pop-figure-usage > :nth-child(3) {
   flex: 1 0 100%;
 }
+
+/*
+ * 툴 사용실적 키패드 — 마지막 줄은 [ C ] · [ 0 ] · [ ⌫ ] 다(스펙 §3 도면).
+ * 공용 부품은 «지움»을 끝에 그리므로 자리만 되돌린다. ⛔ 부품의 마크업을 바꾸지 않는다 —
+ * 작업실적 등록·인식표 발행도 같은 방식으로 자리만 잡는다.
+ * ⛔ 한 키에만 `order` 를 주지 않는다 — 격자 전체의 차례가 다시 매겨져 숫자가 밀린다.
+ */
+.pop-ui .tool-usage-pad > .omf-numeric-keypad__clear {
+  order: 1;
+}
+
+.pop-ui .tool-usage-pad > .omf-numeric-keypad__zero {
+  order: 2;
+}
+
+.pop-ui .tool-usage-pad > .omf-numeric-keypad__backspace {
+  order: 3;
+}
+
+/* 소수점은 그 아래 줄 가운데 — 환산을 켰을 때만 선다. */
+.pop-ui .tool-usage-pad > .omf-numeric-keypad__decimal {
+  order: 4;
+}

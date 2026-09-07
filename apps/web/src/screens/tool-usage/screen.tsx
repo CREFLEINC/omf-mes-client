@@ -1,14 +1,6 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  Chip,
-  NumberPad,
-  Progress,
-  Switch,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, Progress, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { NumericKeypad } from '@omf-mes/ui';
 import { useId, useRef, useState, type FormEvent } from 'react';
 
 import { toApiError } from '../../patterns/request';
@@ -474,11 +466,27 @@ export const ToolUsageScreen = () => {
                   )}
                 </div>
 
-                <NumberPad
-                  aria-label={t.shot.keypadLabel}
-                  maxLength={SHOT_MAX_LENGTH}
-                  allowDecimal={isConverted}
+                {/*
+                 * ⭐ **POP 이 공유하는 키패드를 쓴다**(`@omf-mes/ui`). DS `NumberPad` 는 «전체
+                 * 잠금»만 있어 키마다 조건을 걸 수 없다 — 타발수가 비었는데도 [ C ]·[ ⌫ ]가
+                 * 눌렸다(사용자 지적). 작업실적 등록·인식표 발행이 같은 이유로 먼저 갈아탔고,
+                 * **같은 부품을 써야 POP 안에서 같게 동작한다.**
+                 *
+                 * ⚠ 모양과 자리는 그대로다 — 마지막 줄 [ C ] · [ 0 ] · [ ⌫ ](스펙 §3).
+                 */}
+                <NumericKeypad
+                  className="tool-usage-pad"
+                  label={t.shot.keypadLabel}
                   value={isConverted ? draft.baseQty : draft.shotCount}
+                  maxLength={SHOT_MAX_LENGTH}
+                  /* 스펙 §3-1 — 키는 64px 요구이고 64와 72 사이에 단이 없어 `2xl` 로 올린다. */
+                  keySize="2xl"
+                  /* 환산 기준 수량만 소수를 받는다 — 타발수는 정수다(스펙 §4-A `bigint`). */
+                  allowDecimal={isConverted}
+                  decimalLabel={t.shot.decimalKey}
+                  backspaceLabel={t.shot.backspace}
+                  backspaceGlyph="⌫"
+                  clearLabel={t.shot.clearGlyph}
                   onChange={(value) => {
                     changeDraft(isConverted ? { baseQty: value } : { shotCount: value });
                   }}

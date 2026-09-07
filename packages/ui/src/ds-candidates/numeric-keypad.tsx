@@ -17,6 +17,16 @@ export interface NumericKeypadProps {
    */
   max?: number;
   disabled?: boolean;
+  /**
+   * 소수점 키를 그린다. 기본은 그리지 않는다 — 수량·타발수처럼 정수만 받는 자리가 대부분이라,
+   * 키가 늘 있으면 넣을 수 없는 값을 넣게 된다.
+   *
+   * ⚠ 켜도 **소수점은 하나뿐**이다. 둘째 점을 누르면 없던 일로 둔다 — 넣었다가 지우게 하면
+   * 손이 두 번 간다(자릿수 상한과 같은 처리).
+   */
+  allowDecimal?: boolean;
+  /** 소수점 키의 접근 이름. `allowDecimal` 일 때만 쓴다. */
+  decimalLabel?: string;
   /** 한 자 지움 키의 접근 이름. 화면 문구는 소비처가 갖는다. */
   backspaceLabel: string;
   /**
@@ -46,6 +56,8 @@ export const NumericKeypad = ({
   maxLength,
   max,
   disabled = false,
+  allowDecimal = false,
+  decimalLabel,
   backspaceLabel,
   backspaceGlyph = '←',
   clearLabel,
@@ -121,6 +133,22 @@ export const NumericKeypad = ({
       >
         {clearLabel}
       </Button>
+      {allowDecimal ? (
+        <Button
+          type="button"
+          variant="outlined"
+          size={keySize}
+          className="omf-numeric-keypad__decimal"
+          disabled={disabled || full || value.includes('.')}
+          aria-label={decimalLabel}
+          onClick={() => {
+            /* 빈 칸에서 누르면 `.5` 가 아니라 `0.5` 로 시작한다 — 계약에 보내는 값이 수다. */
+            onChange(value === '' ? '0.' : `${value}.`);
+          }}
+        >
+          .
+        </Button>
+      ) : null}
     </div>
   );
 };
