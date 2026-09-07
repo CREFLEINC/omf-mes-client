@@ -82,7 +82,8 @@ export const TargetPane = ({
       <Card.Body>
         <h2 className="pane-title">{t.target.sectionLabel}</h2>
 
-        <div>
+        {/* 유형과 그 사유는 **한 줄**이다(사용자 지시 2026-09-07) — 사유가 아래로 내려가면 값과 멀어진다. */}
+        <div className="pop-giqr-unit">
           <span id={unitLabelId}>{t.target.unitLabel}</span>
           <RadioGroup
             name="goods-issue-qr-unit"
@@ -135,26 +136,47 @@ export const TargetPane = ({
               </p>
             )}
           </div>
-        ) : (
-          <p className="field-note">{t.reissue.notNeeded}</p>
-        )}
+        ) : /*
+           * ⛔ **사유가 필요 없다는 말을 굳이 내지 않는다**(사용자 지시 2026-09-07). 최초
+           *    발행이 이 화면의 보통 상태라, 그때마다 한 줄을 더 읽히면 정작 필요한 자리
+           *    (회차·미리보기)와 자리를 다툰다. 사유가 «필요할 때»만 칸이 선다.
+           */
+        null}
 
-        <div>
+        {/*
+         * 미리보기 — **상자를 늘 세우고 그 «안»이 바뀐다**(설계 §3 도면 · 사용자 지시
+         * 2026-09-07). 발행 전에는 무엇이 들어올 자리인지 한 줄로 말하고, 발행하면 서버가
+         * 그린 그림이 같은 상자에 들어온다.
+         *
+         * ⛔ 있을 때만 상자를 만들지 않는다 — 그러면 발행하는 순간 상자가 생기며 아래가
+         *    밀리고, 발행 전에는 이 자리가 무엇인지 알 수 없다.
+         */}
+        <div className="pop-giqr-preview-row">
           <span>{t.target.previewLabel}</span>
-          {previewSrc === null ? (
-            <p className="field-note">{t.target.previewEmpty}</p>
-          ) : previewFailed ? (
-            <p className="field-note">{t.target.previewFailed}</p>
-          ) : (
-            <img
-              src={previewSrc}
-              alt={t.target.previewAlt}
-              onError={() => {
-                setPreviewFailed(true);
-              }}
-            />
-          )}
+          <div className="pop-giqr-preview">
+            {previewSrc === null ? (
+              <p className="field-note">{t.target.previewEmpty}</p>
+            ) : previewFailed ? (
+              <p className="field-note">{t.target.previewFailed}</p>
+            ) : (
+              <img
+                className="pop-giqr-preview-image"
+                src={previewSrc}
+                alt={t.target.previewAlt}
+                onError={() => {
+                  setPreviewFailed(true);
+                }}
+              />
+            )}
+          </div>
+
+          {/*
+           * 「왜 전량인데도 찍나」에 답할 근거(스펙 §5-3 · G-5)를 **미리보기 옆에** 둔다
+           * (사용자 지시 2026-09-07) — 발행하기 직전에 보는 자리다.
+           */}
+          <p className="field-note">{t.alwaysIssueNote}</p>
         </div>
+
       </Card.Body>
     </Card>
   );

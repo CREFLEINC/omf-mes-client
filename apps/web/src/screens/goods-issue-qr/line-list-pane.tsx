@@ -123,7 +123,7 @@ export const LineListPane = ({
   ];
 
   return (
-    <Card bordered className="pop-section" aria-label={t.lines.sectionLabel}>
+    <Card bordered className="pop-section pop-giqr-lines-pane" aria-label={t.lines.sectionLabel}>
       <Card.Body>
         <h2 className="pane-title">{t.lines.sectionLabel}</h2>
 
@@ -133,7 +133,11 @@ export const LineListPane = ({
           </div>
         ) : (
           <Table
-            caption={t.lines.caption}
+            /*
+             * ⛔ 표에 이름표(caption)를 달지 않는다 — 바로 위 구획 표제 「출고 라인」이 같은
+             *    말이고, 설계 §3 도면에도 없다(사용자 지적 2026-09-07).
+             */
+            className="pop-giqr-lines"
             density="compact"
             selectable
             getRowId={(row: LineRow) => rowId(row.line)}
@@ -156,6 +160,7 @@ export const LineListPane = ({
          * 같은 일을 하지만, 장갑을 낀 손이 누르기에는 그 체크박스가 작다 — 큰 타겟을 따로 둔다.
          */}
         <Button
+          className="pop-giqr-select-all"
           variant="outlined"
           size="2xl"
           type="button"

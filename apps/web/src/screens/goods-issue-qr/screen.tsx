@@ -194,6 +194,20 @@ export const GoodsIssueQrScreen = () => {
         <SaveErrorBanner error={write.error} />
       )}
 
+      {/*
+       * ⚠ **인쇄 통로가 없는 것은 배너로 먼저 말한다.** 액션바 «아래»에 작은 글로 달아 두었는데,
+       *    설계 §3 의 세로 예산은 액션바에서 끝나(768 슬랙 0) 그 줄이 화면 밖으로 밀렸다 —
+       *    단말에서는 없는 문구가 된다.
+       *
+       * ⛔ 프린터가 0건인 것과 뭉치지 않는다 — 전자는 이 셸에서 찍을 수 없다는 뜻이고 후자는
+       *    이 단말에 등록된 프린터가 없다는 뜻이라, 사용자가 손댈 곳이 다르다.
+       */}
+      {!hasPrintBridge() && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.printer.noShell}</AlertBanner>
+        </div>
+      )}
+
       {issued !== null && (
         <div className="banner-slot">
           <AlertBanner variant="success">{t.result.issued(issued.length)}</AlertBanner>
@@ -238,7 +252,12 @@ export const GoodsIssueQrScreen = () => {
         />
       </div>
 
-      <div className="pop-actions">
+      {/*
+       * 액션바 — **화면 바닥의 띠**(설계 §3 · 88). 다른 POP 화면과 같은 이름(`pop-action-bar`)
+       * 을 쓴다: `.pop-actions` 는 단추만 오른쪽으로 미는 줄이라 띠의 높이·경계선을 갖지 않아,
+       * 이 화면만 바닥이 없는 것처럼 떠 있었다.
+       */}
+      <div className="pop-action-bar pop-giqr-actions">
         {guard.kind !== 'ready' && <p className="field-note">{guardNote(guard.kind)}</p>}
         <Button
           variant="filled"
@@ -252,14 +271,6 @@ export const GoodsIssueQrScreen = () => {
         </Button>
       </div>
 
-      {/* 「왜 전량인데도 찍나」에 답할 근거를 화면에 남긴다(스펙 §5-3 · G-5). */}
-      <p className="field-note">{t.alwaysIssueNote}</p>
-      {/*
-       * 인쇄 통로가 없는 것과 프린터가 0건인 것은 **다른 사정**이다 — 전자는 이 셸에서 찍을 수
-       * 없다는 뜻이고 후자는 이 단말에 등록된 프린터가 없다는 뜻이다. 한 문구로 뭉치면
-       * 사용자가 무엇을 고쳐야 하는지 알 수 없다.
-       */}
-      {!hasPrintBridge() && <p className="field-note">{t.printer.noShell}</p>}
     </main>
   );
 };
