@@ -115,6 +115,26 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   });
 
   /*
+   * ⛔ **①·③·④는 내용만큼만 서야 한다.** POP 규격의 기본은 「머리줄·액션 줄이 아닌 것이 남는
+   *    높이를 나눠 갖는다」인데, 본문이 구획 넷인 이 화면에서는 그 규칙이 넷 모두에 걸려
+   *    **각자 1/4 을 받고 내용이 잘린다**(실측 — 대상 카드에 두 줄만 남았다).
+   *
+   *    남는 높이는 ②가 받아 그 안에서 스크롤한다 — 스펙 §3 의 ⚠ E-4 다.
+   */
+  it('대상·결과 LOT·진행은 내용만큼만 서고 남는 높이는 실적 입력이 받는다', async () => {
+    const { container, user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await screen.findByRole('heading', { name: t.quantities.title });
+
+    expect(container.querySelector('.rework-target-card')).toHaveClass('pop-fixed');
+    expect(container.querySelector('.rework-result-lot')).toHaveClass('pop-fixed');
+    expect(container.querySelector('.rework-result-summary')).toHaveClass('pop-fixed');
+    /* ⛔ ②에는 붙이지 않는다 — 붙이면 남는 높이를 아무도 받지 않는다. */
+    expect(container.querySelector('.rework-result-input')).not.toHaveClass('pop-fixed');
+  });
+
+  /*
    * ⭐ **머리줄 왼쪽은 «값»이다** — 스펙 §3 의 `W/O-2026-R012 · FG-1001`.
    *    ⛔ 「고르세요」 같은 안내문을 두지 않는다(본문 목록이 이미 말한다) · 사번에는 라벨을
    *    붙인다(숫자만 두면 무슨 번호인지 알 수 없다 · `P-02-01`·`P-02-02` §3).

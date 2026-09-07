@@ -228,7 +228,7 @@ export const ReworkResultRegisterScreen = () => {
         </section>
       ) : (
         <>
-              <Card bordered className="rework-target-card">
+              <Card bordered className="rework-target-card pop-fixed">
                 <Card.Body>
                   <div className="rework-target-head">
                     <h2 className="pane-title">{t.target}</h2>
@@ -329,7 +329,7 @@ export const ReworkResultRegisterScreen = () => {
                * 고치는 것이라 LOT 이 갈리지 않는데(§5-4), 그 사실을 넣은 수량으로 즉시 보인다.
                * ⛔ 접지 않는다 — 수량을 넣으면 바로 바뀌어야 한다(§3 ⚠ E-4).
                */}
-              <section className="rework-result-lot" aria-label={t.resultLot.title}>
+              <section className="rework-result-lot pop-fixed" aria-label={t.resultLot.title}>
                 <h2 className="pane-title">{t.resultLot.title}</h2>
                 <p>
                   {t.resultLot.good(drafts.goodQty === '' ? '0' : drafts.goodQty)} ·{' '}
@@ -344,7 +344,7 @@ export const ReworkResultRegisterScreen = () => {
               </section>
 
               {/* ④ 진행 — 이 W/O 의 누계다. ②의 합계가 이번 입력이라면 이쪽은 지금까지의 몫이다. */}
-              <section className="rework-result-summary" aria-label={t.progress.title}>
+              <section className="rework-result-summary pop-fixed" aria-label={t.progress.title}>
                 <h2 className="pane-title">{t.progress.title}</h2>
                 <Progress
                   max={Math.max(progress.target, 1)}
