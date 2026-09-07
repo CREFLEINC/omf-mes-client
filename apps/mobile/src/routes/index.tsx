@@ -13,6 +13,7 @@ import { MaterialLocationScreen } from '../screens/material-location/screen';
 import { MaterialPickingScreen } from '../screens/material-picking/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
 import { PackingRepackScreen } from '../screens/packing-repack/screen';
+import { ShopfloorReceiptScreen } from '../screens/shopfloor-receipt/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
 import { RecycleEntryScreen } from '../screens/recycle-entry/screen';
@@ -40,6 +41,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'recycle-entry', element: <RecycleEntryScreen /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
       { path: 'material-picking', element: <MaterialPickingScreen /> },
+      { path: 'shopfloor-receipt', element: <ShopfloorReceiptScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
       { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
       { path: 'iqc-skip-request', element: <IqcSkipRequestScreen /> },

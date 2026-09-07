@@ -91,19 +91,83 @@ hw.keyboard=yes
 
 `hw.keyboard=yes` 는 키보드 입력 스캐너를 에뮬레이터에서 두드려 보기 위한 것이다.
 
+여기까지가 한 번만 하는 준비다. 그 뒤로는 아래 스크립트가 같은 일을 한다.
+
+## 에뮬레이터에서 실기기처럼 보기
+
+목 서버를 먼저 띄우고(다른 창), 그다음 앱을 올린다. 서버를 스크립트가 들고 있지 않은 이유는
+앱을 다시 설치할 때마다 씨앗이 초기화되기 때문이다.
+
 ```bash
-emulator -avd omf-pda-api33 &
-adb wait-for-device
-adb install -r apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
-adb shell am start -n com.crefle.omfmes.mobile/.MainActivity
+pnpm mock                              # 창 1 — 목 서버 (4010)
+apps/mobile/scripts/emulator-run.sh    # 창 2 — 부팅 → 빌드 → 동기화 → 설치 → 실행
 ```
+
+`emulator-run.sh` 는 웹을 빌드할 때 `VITE_API_BASE_URL=http://10.0.2.2:4010` 을 준다.
+단말 안의 `127.0.0.1` 은 **단말 자신**이라 목 서버에 닿지 않는다 — `10.0.2.2` 가 호스트다.
+
+평문 HTTP 는 디버그 빌드에서만, 그 세 주소로만 열려 있다
+(`android/app/src/debug/`). 운영 서버의 HTTPS 여부는 아직 정해지지 않았고(#580) 릴리스
+빌드는 이 설정을 받지 않는다.
+
+| 스크립트 | 무엇을 하나 |
+| --- | --- |
+| `emulator-run.sh [AVD]` | 부팅·빌드·동기화·설치·실행. 이미 떠 있으면 그것을 쓴다 |
+| `emulator-register.sh` | 기기 등록 관문을 넘겨 준다 |
+| `emulator-scan.sh <값>` | 스캐너 일체형 PDA 처럼 스캔값을 넣는다 |
+| `emulator-qr.sh <값>` | 카메라가 읽을 QR 을 가상 장면 벽에 건다 |
+| `emulator-inspect.sh` | 앱 안의 화면을 개발자 도구로 연다 |
+
+### 기기 등록 관문 넘기
+
+앱은 등록되지 않은 기기에서 **아무 화면도 열지 않는다.** 등록은 카메라로 단말 QR 을 읽는
+것인데, 이 호스트의 에뮬레이터 카메라가 프레임을 내지 못해(`Camera3-Stream: timestamp is not
+increasing`) 그 경로가 서지 않는다.
+
+```bash
+apps/mobile/scripts/emulator-register.sh
+```
+
+⚠ **이것은 지름길이다.** 앱이 이미 쓰는 보관 API 를 개발자 도구로 불러 단말 토큰과 작업자
+명부를 넣는다 — 앱 코드에 시험용 뒷문을 만들지 않는다. **등록 경로 자체를 재지 않으므로**
+`M-CO-01` 의 검증으로 삼지 않는다.
+
+넘고 나면 사번 확인이 나온다. 목 서버의 씨앗 사번은 `100028`(김영수)이다.
+
+### 스캔을 실기기와 같은 형태로 넣기
+
+이 단말의 스캐너는 **키보드 입력**으로 들어온다. 앱은 그것을 일반 키보드와 구별하지 못해
+「빠른 버스트」로 판정한다(`patterns/scanner.ts` — 평균 간격 60ms 이하 · 입력 3건 이상).
+`adb shell input text` 가 문자를 한 묶음으로 밀어 넣어 그 기준 안에 든다.
+
+```bash
+apps/mobile/scripts/emulator-scan.sh GI-2026-000402            # 종료 문자까지
+apps/mobile/scripts/emulator-scan.sh --no-enter CTN-2026-0091  # 종료 문자 없는 단말
+apps/mobile/scripts/emulator-scan.sh --slow ABC-1              # 사람이 손으로 친 속도
+```
+
+⭐ **`--slow` 는 통과하면 결함이다.** 사람 손을 스캔으로 오인하지 않는지 보는 자리다.
+
+### 카메라 QR — 기기등록만
+
+기기등록(`M-CO-01`)만 카메라로 QR 을 읽는다. 값을 코드로 밀어 넣으면 MLKit 이 프레임에서
+코드를 찾는 부분을 통째로 건너뛰므로, **카메라 앞에 진짜 QR 을 둔다.**
+
+```bash
+brew install qrencode
+apps/mobile/scripts/emulator-qr.sh 'DEV-2026-0001'
+adb emu kill && apps/mobile/scripts/emulator-run.sh
+```
+
+에뮬레이터가 가상 장면으로 뜨고(`-camera-back virtualscene`), 그 벽에 QR 이 걸린다. 앱에서
+카메라를 열고 방향키로 시점을 벽 쪽으로 돌리면 읽힌다.
 
 ### 앱 안의 화면을 개발자 도구로 보기
 
 디버그 빌드는 WebView 디버깅이 켜져 있다.
 
 ```bash
-adb forward tcp:9444 localabstract:$(adb shell cat /proc/net/unix | grep -o "webview_devtools_remote_[0-9]*" | head -1)
+apps/mobile/scripts/emulator-inspect.sh
 ```
 
 `chrome://inspect` 또는 `http://127.0.0.1:9444/json/list` 로 붙는다.

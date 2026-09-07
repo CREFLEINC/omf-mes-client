@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  디버그 빌드에만 얹힌다. 개발 기기의 목 서버로 평문 HTTP 를 보내기 위한 것이고,
+  허용 대상은 network_security_config.xml 이 세 주소로 좁힌다.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:replace="android:networkSecurityConfig" />
+</manifest>
