@@ -61,8 +61,12 @@ export const TargetCard = ({
     );
   }
 
+  /*
+   * ⛔ **아직 안 고른 자리에 안내를 두지 않는다.** 스펙 §3 의 우단은 고른 LOT 의 상세뿐이고,
+   * 「고르면 여기에 나타납니다」는 우리가 덧붙였던 말이다 — 왼쪽 목록이 이미 그 일을 한다.
+   */
   if (lot === null) {
-    return <p className="field-note">{isLoading ? t.loading : t.placeholder}</p>;
+    return isLoading ? <p className="field-note">{t.loading}</p> : null;
   }
 
   /* 조회 중에는 값을 단정하지 않는다 — 「모른다」로 잠깐 보이면 그 사이 오해가 생긴다. */
@@ -71,7 +75,7 @@ export const TargetCard = ({
 
   return (
     <div className="pop-lot-detail">
-      <h2 className="pop-lot-pane-title">{lot.lotNo}</h2>
+      <h2 className="pane-title">{lot.lotNo}</h2>
 
       <dl className="pop-lot-facts">
         <dt>{t.itemLabel}</dt>
