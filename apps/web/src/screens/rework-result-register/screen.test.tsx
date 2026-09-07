@@ -250,6 +250,34 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   });
 
   /*
+   * ⭐ **네 구획이 모두 상자다** — 스펙 §3 이 ①②③④를 전부 `┌ … ┐` 로 그렸다. §7 이 `Card` 를
+   *    ① 에만 적은 것은 «어떤 DS 부품을 쓰는가»의 표이기 때문이고, 구획 상자는 화면 골격이라
+   *    그 표에 나오지 않는다 — 자매 화면(`P-02-01`)도 같은 도면을 실제 테두리로 구현했다.
+   *
+   * ⭐ 합계는 §7 이 지정한 `Chip` 이다(「합계 표시 | Chip + AlertBanner」).
+   */
+  it('네 구획이 모두 상자로 서고 합계가 칩으로 든다', async () => {
+    const { container, user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await screen.findByRole('heading', { name: t.quantities.title });
+
+    for (const selector of [
+      '.rework-target-card',
+      '.rework-input-card',
+      '.rework-lot-card',
+      '.rework-progress-card',
+    ]) {
+      expect(container.querySelector(selector)).toHaveClass('pop-section');
+    }
+
+    const total = container.querySelector('.rework-qty-total');
+
+    expect(total?.firstElementChild).not.toBeNull();
+    expect(total).toHaveTextContent(`${t.total} 0 / 160`);
+  });
+
+  /*
    * ⛔ **액션바는 화면의 최상위 자식이어야 한다** — POP 규격의 바닥 띠 규칙이 그 자리만
    *    겨냥한다(`.pop-ui > [class*='action']`). 구획 안으로 들어가면 띠가 서지 않고 본문의
    *    일부로 흐른다. 스펙 §3 의 세로 예산(헤더 64 + 본문 616 + 액션바 88)이 그 전제다.

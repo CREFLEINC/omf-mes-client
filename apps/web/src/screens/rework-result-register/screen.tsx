@@ -296,8 +296,16 @@ export const ReworkResultRegisterScreen = () => {
                 </Card.Body>
               </Card>
 
-              <div className="rework-result-input">
-                <div className="rework-result-fields">
+              {/*
+               * ⭐ **네 구획이 모두 상자다** — 스펙 §3 이 ①②③④를 전부 `┌ … ┐` 로 그렸다.
+               *    §7 이 `Card` 를 ① 에만 적은 것은 «어떤 DS 부품을 쓰는가»의 표이기 때문이고,
+               *    구획 상자는 화면 골격이라 그 표에 나오지 않는다 — 자매 화면(`P-02-01`)도
+               *    같은 도면을 세 구획의 실제 테두리로 구현했다.
+               */}
+              <Card bordered className="pop-section rework-input-card">
+                <Card.Body>
+                  <div className="rework-result-input">
+                    <div className="rework-result-fields">
                   <h2 className="pane-title">{t.quantities.title}</h2>
 
                   {/*
@@ -329,8 +337,24 @@ export const ReworkResultRegisterScreen = () => {
                    *    ④의 진행은 이 W/O 의 누계다. 둘을 한 자리에 두면 어느 숫자가 방금 친
                    *    것인지 알 수 없다.
                    */}
+                  {/*
+                   * §7 이 합계를 **`Chip`** 으로 적었다(「합계 표시 | Chip + AlertBanner」).
+                   * 넘침·부족을 «말하는» 것은 아래 배너이므로 칩은 숫자만 들고 색으로만 거든다.
+                   */}
                   <p className="rework-qty-total">
-                    {t.total} {total} / {progress.remaining}
+                    <Chip
+                      variant="status"
+                      size="md"
+                      status={
+                        verdict === 'exceeded'
+                          ? 'error'
+                          : verdict === 'complete'
+                            ? 'success'
+                            : 'info'
+                      }
+                    >
+                      {`${t.total} ${String(total)} / ${String(progress.remaining)}`}
+                    </Chip>
                   </p>
                   {/*
                    * ⭐ **스펙 §3 ②가 이 안내를 구획 «안»에 둔다** — 「재작업 후 다시 불량이면
@@ -374,14 +398,18 @@ export const ReworkResultRegisterScreen = () => {
                   clearLabel={t.quantities.clearGlyph}
                   onChange={(value) => setDrafts((current) => ({ ...current, [activeKey]: value }))}
                 />
-              </div>
+                  </div>
+                </Card.Body>
+              </Card>
 
               {/*
                * ③ 결과 LOT — **스펙 §3 이 독립 구획으로 둔 자리다.** 재작업은 같은 물건을
                * 고치는 것이라 LOT 이 갈리지 않는데(§5-4), 그 사실을 넣은 수량으로 즉시 보인다.
                * ⛔ 접지 않는다 — 수량을 넣으면 바로 바뀌어야 한다(§3 ⚠ E-4).
                */}
-              <section className="rework-result-lot" aria-label={t.resultLot.title}>
+              <Card bordered className="pop-section rework-lot-card">
+                <Card.Body>
+                  <section className="rework-result-lot" aria-label={t.resultLot.title}>
                 <h2 className="pane-title">{t.resultLot.title}</h2>
                 <p>
                   {t.resultLot.good(drafts.goodQty === '' ? '0' : drafts.goodQty)} ·{' '}
@@ -393,10 +421,14 @@ export const ReworkResultRegisterScreen = () => {
                     drafts.holdQty === '' ? '0' : drafts.holdQty,
                   )}
                 </p>
-              </section>
+                  </section>
+                </Card.Body>
+              </Card>
 
               {/* ④ 진행 — 이 W/O 의 누계다. ②의 합계가 이번 입력이라면 이쪽은 지금까지의 몫이다. */}
-              <section className="rework-result-summary" aria-label={t.progress.title}>
+              <Card bordered className="pop-section rework-progress-card">
+                <Card.Body>
+                  <section className="rework-result-summary" aria-label={t.progress.title}>
                 <h2 className="pane-title">{t.progress.title}</h2>
                 <Progress
                   max={Math.max(progress.target, 1)}
@@ -426,7 +458,9 @@ export const ReworkResultRegisterScreen = () => {
                 {queued && <AlertBanner variant="success">{t.queued}</AlertBanner>}
                 {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
                 {rejected && <AlertBanner variant="error">{t.rejected}</AlertBanner>}
-              </section>
+                  </section>
+                </Card.Body>
+              </Card>
         </div>
       )}
 
