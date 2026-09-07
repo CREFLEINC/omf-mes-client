@@ -115,6 +115,27 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   });
 
   /*
+   * ⭐ **머리줄 왼쪽은 «값»이다** — 스펙 §3 의 `W/O-2026-R012 · FG-1001`.
+   *    ⛔ 「고르세요」 같은 안내문을 두지 않는다(본문 목록이 이미 말한다) · 사번에는 라벨을
+   *    붙인다(숫자만 두면 무슨 번호인지 알 수 없다 · `P-02-01`·`P-02-02` §3).
+   */
+  it('머리줄이 W/O·품목을 값으로 보이고 사번에 라벨을 붙인다', async () => {
+    const { container, user } = renderScreen();
+
+    const header = container.querySelector('.pop-header');
+
+    expect(header).toHaveTextContent(t.workerLabel('100027'));
+    expect(header).toHaveTextContent(t.workOrderUnknown);
+    expect(header).not.toHaveTextContent(t.selectWorkOrder);
+
+    await pickWorkOrder(user);
+
+    expect(header).toHaveTextContent(
+      t.headerContext(WORK_ORDER.workOrderNo, WORK_ORDER.itemCode),
+    );
+  });
+
+  /*
    * ⭐ **목록은 고르기 «전»에만 선다** — §5-6 이 W/O 선택을 「진입 시」로 적었고 §3 도면에는
    *    목록 구획이 없다. 좌우 2단으로 목록을 상시 두면 왼쪽 절반이 늘 목록이라 §3-1 의 세로
    *    검산(① 120 + ② 280 + ③ 96 + ④ 88 = 616)이 성립하지 않는다.

@@ -135,9 +135,19 @@ export const ReworkResultRegisterScreen = () => {
         <h1 className="pop-title" id="rework-result-title">
           {t.title}
         </h1>
-        <p className="pop-context">{selected?.workOrderNo ?? t.selectWorkOrder}</p>
+        {/*
+         * 머리줄 왼쪽은 **맥락 값**이다 — 스펙 §3 의 `W/O-2026-R012 · FG-1001`.
+         * ⛔ 「고르세요」 같은 안내문을 여기 두지 않는다 — 본문 목록이 이미 말한다.
+         */}
+        <p className="pop-context">
+          {selected === null
+            ? t.workOrderUnknown
+            : t.headerContext(selected.workOrderNo, selected.itemCode ?? `#${selected.itemId}`)}
+        </p>
         <p className="pop-context pop-context-right">
-          <span>{identity.workerNo ?? '—'}</span>
+          <span>
+            {identity.workerNo === null ? t.workerUnknown : t.workerLabel(identity.workerNo)}
+          </span>
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
             {isOnline ? messages.common.connection.online : messages.common.connection.offline}
           </Chip>
