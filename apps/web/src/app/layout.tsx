@@ -495,6 +495,9 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/notification/center" icon="notifications">
               알림센터
             </NavItem>
+            <NavItem to="/notification/recipient-settings" icon="notifications_active">
+              알람 수신자 설정
+            </NavItem>
             {/* W-CO-04 — 알림센터가 받는 자리이고 이쪽이 보내는 자리다. */}
             <NavItem to="/notification/notices" icon="campaign">
               공지·전달

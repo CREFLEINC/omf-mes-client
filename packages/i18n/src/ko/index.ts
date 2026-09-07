@@ -49,6 +49,7 @@ import { passwordChange } from './password-change';
 import { putawayRule } from './putaway-rule';
 import { documentProgress } from './document-progress';
 import { notificationCenter } from './notification-center';
+import { alarmRecipientSettings } from './alarm-recipient-settings';
 import { iqcInspection } from './iqc-inspection';
 import { pqcInspection } from './pqc-inspection';
 import { productionResult } from './production-result';
@@ -165,6 +166,7 @@ export const ko = {
   putawayRule,
   documentProgress,
   notificationCenter,
+  alarmRecipientSettings,
   iqcInspection,
   pqcInspection,
   productionResult,
