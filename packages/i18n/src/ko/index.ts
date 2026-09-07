@@ -127,6 +127,7 @@ import { shippingPackingLabel } from './shipping-packing-label';
 import { repackLabelIssue } from './repack-label-issue';
 import { runningChange } from './running-change';
 import { workHoldRegister } from './work-hold-register';
+import { shopfloorReceipt } from './shopfloor-receipt';
 
 export const ko = {
   common,
@@ -242,6 +243,7 @@ export const ko = {
   runningChange,
   workHoldRegister,
   packingResult,
+  shopfloorReceipt,
 } as const;
 
 export type Messages = typeof ko;
