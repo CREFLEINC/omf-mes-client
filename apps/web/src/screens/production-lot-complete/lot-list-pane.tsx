@@ -22,8 +22,10 @@ export interface LotListPaneProps {
  * 좌단 《LOT 목록》.
  *
  * ⚠ **양품 열을 채우지 못한다.** 목록 조회가 생산 진척을 함께 내리지 않는다(`omf-mes#269` 잔여 ·
- * 이 저장소 #143 · 검토 요청 `omf-mes#399` 3번). **비워 두고 사유를 말한다** — 말없이 비우면
- * 「양품이 없다」로 읽히고, 행마다 상세를 따로 부르는 것은 설계가 정한 방식이 아니다.
+ * 이 저장소 #143 · 검토 요청 `omf-mes#399` 3번). **「—」로 비워 둔다.**
+ *
+ * ⛔ 사유를 문단으로 덧붙이지 않는다 — 스펙 §3·§7 에 그런 안내가 없다(사용자 지시 2026-09-07).
+ * 값은 LOT 을 고르면 오른쪽 《완료 판정》에 나온다.
  *
  * 열 자체는 남긴다. 지웠다가 값이 도착하면 표의 폭과 순서가 다시 흔들린다.
  */
@@ -113,7 +115,6 @@ export const LotListPane = ({
           empty={hasWorkOrder ? t.lotList.empty : t.lotList.emptyNoWorkOrder}
         />
       </div>
-      <p className="field-note">{t.lotList.goodQtyPending}</p>
       {/*
         슬롯 안내는 스펙 §7 이 `AlertBanner`(info) 로 못박았다 — 문단으로 두지 않는다.
         ⛔ 셀 것이 없으면 내지 않는다 — 「0개 있습니다」는 안내가 아니라 잡음이다.

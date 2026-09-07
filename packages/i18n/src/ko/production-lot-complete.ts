@@ -42,11 +42,6 @@ export const productionLotComplete = {
     sectionLabel: 'LOT 목록',
     lotNoColumn: 'LOT',
     goodQtyColumn: '양품',
-    /**
-     * 양품 열을 채우지 못하는 사유. **비워 두고 말한다** — 값이 없는 칸을 말없이 두면
-     * 「양품이 없다」로 읽힌다.
-     */
-    goodQtyPending: '목록에서는 양품 수를 표시할 수 없습니다. LOT 을 고르면 오른쪽에 나옵니다.',
     goodQtyPlaceholder: '—',
     select: '선택',
     empty: '이 작업지시에 완료할 LOT 이 없습니다.',
@@ -124,13 +119,6 @@ export const productionLotComplete = {
     reasonRequired: '미달 사유를 고르면 미달 마감을 할 수 있습니다.',
     targetNotMet: '목표에 미달해 완료 처리할 수 없습니다. 미달 마감을 쓰세요.',
     targetMet: '목표를 채워 미달 마감 대상이 아닙니다.',
-  },
-
-  /**
-   * ⛔ **되돌릴 수 없다는 것을 누르기 «전»에 말한다.** 완료를 되돌리는 화면이 인벤토리에 없다
-   * (스펙 §8-5 · `omf-mes#87`) — 끝난 뒤에 알리면 사용자가 할 수 있는 것이 없다.
-   */
-  warning: {
   },
 
   result: {

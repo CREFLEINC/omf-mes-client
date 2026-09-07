@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -576,11 +576,20 @@ describe('ProductionLotCompleteScreen — 목록', () => {
     expect(screen.queryByText(t.lotList.slotNotice(0))).not.toBeInTheDocument();
   });
 
-  /** ⚠ 목록 조회에 진척 질의가 없다 — 비워 두고 사유를 말한다(`omf-mes#399` 3번). */
-  it('목록의 양품 열은 비우고 사유를 말한다', async () => {
+  /**
+   * ⚠ 목록 조회에 진척 질의가 없다 — 「—」로 비운다(`omf-mes#399` 3번).
+   *
+   * ⛔ **사유를 문단으로 덧붙이지 않는다** — 스펙 §3·§7 에 없는 안내다(사용자 지시 2026-09-07).
+   */
+  it('목록의 양품 열은 「—」로 비우고 안내 문단을 두지 않는다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.lotList.goodQtyPending)).toBeInTheDocument();
+    const row = (
+      await screen.findByRole('button', { name: `${LOT_NO} ${t.lotList.select}` })
+    ).closest('tr');
+
+    expect(within(row as HTMLElement).getByText(t.lotList.goodQtyPlaceholder)).toBeInTheDocument();
+    expect(screen.queryByText(/목록에서는 양품 수를 표시할 수 없습니다/)).not.toBeInTheDocument();
   });
 
   it('완료되지 않은 LOT 만 조회한다', async () => {
@@ -649,6 +658,28 @@ describe('ProductionLotCompleteScreen — 스펙 §3 의 머리줄과 상세', (
     await waitFor(() => {
       expect(header).toHaveTextContent(messages.common.connection.online);
     });
+  });
+
+  /*
+   * ⭐ **오른쪽 끝의 차례가 다른 POP 화면과 같다** — 사번 · 연결 · 단말
+   *    (사용자 지시 2026-09-07 「다른 화면이랑 맞춰라」).
+   *
+   * 한 사람이 화면을 옮겨 다니며 쓰므로, 같은 값이 화면마다 다른 자리에 있으면 그때마다
+   * 눈이 다시 찾는다. **단말이 맨 끝**인 것이 자재LOT 라벨·인식표 발행 화면과 같다.
+   */
+  it('머리줄 오른쪽이 사번 · 연결 · 단말 차례로 선다', async () => {
+    const { container } = renderScreen({});
+    const right = container.querySelector('.pop-context-right') as HTMLElement;
+
+    await waitFor(() => {
+      expect(right).toHaveTextContent(messages.common.connection.online);
+    });
+
+    const order = [...right.children].map((child) => child.textContent ?? '');
+
+    expect(order[0]).toContain(WORKER_NO);
+    expect(order[1]).toBe(messages.common.connection.online);
+    expect(order[order.length - 1]).toContain(t.device.terminalLabel);
   });
 
   /*

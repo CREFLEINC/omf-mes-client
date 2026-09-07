@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useCallback, useId, useRef, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { CompletePane } from './complete-pane';
 import { toCompleteRequest } from './complete-request';
 import { judgeCompletion } from './completion-judgment';
@@ -149,10 +150,17 @@ export const ProductionLotCompleteScreen = () => {
                 headerWorkOrder.data.routingOperationName ?? '',
               ])}
         </p>
+        {/*
+          * ⭐ **오른쪽 끝의 차례를 다른 POP 화면과 같게 둔다** — 사번 · 연결 · 단말
+          *    (사용자 지시 2026-09-07 「다른 화면이랑 맞춰라」).
+          *
+          * 한 사람이 화면을 옮겨 다니며 쓰는 자리라, 같은 값이 화면마다 다른 자리에 있으면
+          * 그때마다 눈이 다시 찾는다. **단말이 맨 끝**인 것은 자재LOT 라벨·인식표 발행 화면과
+          * 같다.
+          */}
         <div className="pop-context-right">
-          <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
-            {`${t.device.terminalLabel} ${identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)}`}
-          </Chip>
+          {/* 사번은 칩이 아니다 — 상태가 아니라 맥락 값이다(`PopWorkerTag` 주석). */}
+          <PopWorkerTag workerNo={identity.workerNo} />
           {/*
             * ⭐ **연결 상태를 상시 보인다** — 스펙 §3 머리줄의 `●` 다. 끊긴 것을 모르면
             *    목록이 비었을 때 「완료할 LOT 이 없다」로 읽는다.
@@ -161,12 +169,15 @@ export const ProductionLotCompleteScreen = () => {
             *    닿는다(산업용 패널 PC). **마지막 조회가 서버에 닿았는가**로 말한다.
             */}
           {(lots.isSuccess || lots.isError) && (
-            <Chip variant="status" size="md" status={lots.isError ? 'error' : 'success'}>
+            <Chip status={lots.isError ? 'error' : 'success'}>
               {lots.isError
                 ? messages.common.connection.offline
                 : messages.common.connection.online}
             </Chip>
           )}
+          <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
+            {`${t.device.terminalLabel} ${identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)}`}
+          </Chip>
         </div>
       </header>
 
