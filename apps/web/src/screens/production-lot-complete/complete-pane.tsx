@@ -123,8 +123,7 @@ export const CompletePane = ({
           )}
         </dd>
 
-        <dt>{t.detail.varianceLabel}</dt>
-        <dd>{progress === null ? t.detail.unknownValue : progress.varianceQty}</dd>
+
       </dl>
 
       {percent !== null && (
@@ -180,7 +179,6 @@ export const CompletePane = ({
         ⛔ **되돌릴 수 없다는 것을 버튼 «위»에 둔다**(§8-5 · `omf-mes#87`). 누른 뒤에 알리면
         사용자가 할 수 있는 것이 없다 — 완료를 되돌리는 화면이 인벤토리에 없다.
       */}
-      <p className="field-note">{t.warning.irreversible}</p>
 
       <div className="pop-lotdone-actions">
         <Button

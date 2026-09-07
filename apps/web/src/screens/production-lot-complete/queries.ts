@@ -59,6 +59,28 @@ const LOT_PAGE_SIZE = 100;
  * 상세에만 있다 — `omf-mes#269` 의 잔여이며 이 저장소 #143 이 같은 사유로 기다린다. 그래서
  * 목록은 세우되 양품 열은 비우고 사유를 보인다(검토 요청 `omf-mes#399` 3번).
  */
+/**
+ * 이 화면이 매인 작업지시 — **번호·품목·공정**을 머리줄에 세우기 위해 받는다.
+ *
+ * 스펙 §3 머리줄이 「`WO-…013 · ABC-123 · 사출`」이다. 주소가 주는 것은 `workOrderId`(숫자)
+ * 뿐이라, 그것을 그대로 그리면 **작업자가 손에 든 지시서와 맞출 수 없다.**
+ */
+export const useHeaderWorkOrder = (workOrderId: number | null) => {
+  const { client } = useApiClient();
+  return useQuery({
+    queryKey: ['production-lot-complete', 'work-order', workOrderId ?? 0] as const,
+    enabled: workOrderId !== null,
+    queryFn: () => {
+      if (workOrderId === null) throw new Error('작업지시가 없습니다.');
+      return runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}', {
+          params: { path: { workOrderId } },
+        }),
+      );
+    },
+  });
+};
+
 export const useTargetLots = (workOrderId: number | null): UseQueryResult<TargetLots> => {
   const { client } = useApiClient();
 

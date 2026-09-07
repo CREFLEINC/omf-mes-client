@@ -10,7 +10,12 @@ import { useLotCompleteEntry } from './entry-context';
 import { ErrorBanner } from './error-banner';
 import { LotListPane } from './lot-list-pane';
 import { useLotComplete } from './mutations';
-import { useLotDetail, useTargetLots, useVarianceReasons } from './queries';
+import {
+  useHeaderWorkOrder,
+  useLotDetail,
+  useTargetLots,
+  useVarianceReasons,
+} from './queries';
 import { useTerminalGate } from './terminal-gating';
 
 const t = messages.productionLotComplete;
@@ -41,6 +46,7 @@ export const ProductionLotCompleteScreen = () => {
   const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
+  const headerWorkOrder = useHeaderWorkOrder(entry.workOrderId);
   const lots = useTargetLots(entry.workOrderId);
   const detail = useLotDetail(selectedLotId);
   const reasons = useVarianceReasons();
@@ -118,20 +124,49 @@ export const ProductionLotCompleteScreen = () => {
   const gateText = gate.verdict === 'allowed' ? null : t.gate[gate.verdict];
   const succeeded = outcome !== null;
 
+  /* 고른 LOT 의 번호 — 우 구획의 제목이 된다(스펙 §3). 아직 못 받았으면 `null`. */
+  const selectedLotNo = detail.data?.lot.lotNo ?? null;
+
   return (
     <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        {/* 맥락은 화면명 옆이다 — 오른쪽 끝은 단말 같은 상태 자리다(스펙 §3 머리줄). */}
-        {entry.workOrderId === null ? null : (
-          <p className="pop-context">{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</p>
-        )}
+        {/*
+          * 맥락은 화면명 옆이다 — 오른쪽 끝은 단말 같은 상태 자리다(스펙 §3 머리줄).
+          *
+          * ⭐ **값으로 적는다 — 식별자 숫자가 아니라.** 스펙은 이 자리를
+          *    「`WO-…013 · ABC-123 · 사출`」로 그린다. 주소가 주는 것은 `workOrderId`(숫자)
+          *    뿐이라 작업지시를 따로 받아 번호·품목·공정을 잇는다.
+          */}
+        <p className="pop-context">
+          {headerWorkOrder.data === undefined
+            ? t.entry.workOrderUnknown
+            : t.entry.headerContext([
+                headerWorkOrder.data.workOrderNo,
+                headerWorkOrder.data.itemCode ?? '',
+                headerWorkOrder.data.routingOperationName ?? '',
+              ])}
+        </p>
         <div className="pop-context-right">
           <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
             {`${t.device.terminalLabel} ${identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)}`}
           </Chip>
+          {/*
+            * ⭐ **연결 상태를 상시 보인다** — 스펙 §3 머리줄의 `●` 다. 끊긴 것을 모르면
+            *    목록이 비었을 때 「완료할 LOT 이 없다」로 읽는다.
+            *
+            * ⛔ 브라우저의 온라인 표시로 판정하지 않는다 — 랜선이 빠져도 같은 기기의 서버에는
+            *    닿는다(산업용 패널 PC). **마지막 조회가 서버에 닿았는가**로 말한다.
+            */}
+          {(lots.isSuccess || lots.isError) && (
+            <Chip variant="status" size="md" status={lots.isError ? 'error' : 'success'}>
+              {lots.isError
+                ? messages.common.connection.offline
+                : messages.common.connection.online}
+            </Chip>
+          )}
         </div>
       </header>
 
@@ -209,8 +244,14 @@ export const ProductionLotCompleteScreen = () => {
           />
         </Card>
 
-        <Card bordered className="pop-section" aria-label={t.detail.sectionLabel}>
-          <h2 className="pane-title">{t.detail.sectionLabel}</h2>
+        {/*
+          * ⭐ **구획의 제목이 곧 LOT 번호다** — 스펙 §3 이 이 자리에 「완료 판정」 같은 이름표가
+          *    아니라 **번호 자체**(《LOT-2026-0804-0031》)를 두었다. 현장에서 확인해야 하는 것은
+          *    「지금 무엇을 마감하는가」이고 그것은 손에 든 LOT 라벨과 눈으로 맞춰진다.
+          *    전례도 같다 — 긴급 W/O 현장(`P-02-12`)의 상세 구획.
+          */}
+        <Card bordered className="pop-section" aria-label={selectedLotNo ?? t.detail.sectionLabel}>
+          <h2 className="pane-title">{selectedLotNo ?? t.detail.sectionLabel}</h2>
           {detail.isError ? (
             <p className="field-error">{t.detail.loadFailed}</p>
           ) : (

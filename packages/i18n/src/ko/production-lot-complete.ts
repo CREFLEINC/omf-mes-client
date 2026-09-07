@@ -10,6 +10,16 @@ export const productionLotComplete = {
   entry: {
     /** 머리줄 왼쪽의 맥락 — 「무엇을 보고 있는가」다(스펙 §3 머리줄). */
     workOrderLabel: '작업지시',
+    /**
+     * 머리줄 맥락 — **스펙 §3 의 「`WO-…013 · ABC-123 · 사출`」**.
+     *
+     * ⛔ **라벨을 붙이지 않는다.** POP 스펙들은 맥락 값(작업지시·품목·공정)을 값만 두고
+     * 가운뎃점으로 잇는다 — 라벨은 사번에만 붙는다(`P-02-01`·`P-02-02` §3).
+     * ⛔ 못 받은 조각은 «빼고» 잇는다 — 「—」를 끼워 넣으면 없는 값이 있는 것처럼 읽힌다.
+     */
+    headerContext: (parts: readonly string[]): string => parts.filter(Boolean).join(' · '),
+    /** 아직 못 받았을 때. 주소의 식별자 숫자를 그대로 내지 않는다. */
+    workOrderUnknown: '작업지시 —',
     missingWorkOrder: '작업지시를 받지 못해 대상 LOT 을 불러올 수 없습니다.',
   },
 
@@ -24,7 +34,8 @@ export const productionLotComplete = {
 
   device: {
     terminalLabel: '단말',
-    terminalUnknown: '확인되지 않음',
+    /* 값 없음 표기는 POP 한 벌로 「— 」다(사용자 확정 · 전례 `P-CO-01` 의 「단말 —」). */
+    terminalUnknown: '—',
   },
 
   lotList: {
@@ -72,7 +83,6 @@ export const productionLotComplete = {
     targetLabel: '목표 양품',
     goodQtyLabel: '누적 양품',
     achievementLabel: '달성률',
-    varianceLabel: '차이',
     unknownValue: '확인할 수 없음',
     notSelected: 'LOT 을 고르면 완료 판정이 나옵니다.',
     loadFailed: '고른 LOT 의 진척을 불러오지 못했습니다.',
@@ -121,7 +131,6 @@ export const productionLotComplete = {
    * (스펙 §8-5 · `omf-mes#87`) — 끝난 뒤에 알리면 사용자가 할 수 있는 것이 없다.
    */
   warning: {
-    irreversible: '완료·미달 마감은 되돌릴 수 없습니다.',
   },
 
   result: {
