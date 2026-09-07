@@ -1,0 +1,347 @@
+import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useEffect, type ReactNode } from 'react';
+import { MemoryRouter } from 'react-router';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubRoute,
+} from '../../test/api-harness';
+import { useWorkerSession } from '../../patterns/worker-session';
+import { PhysicalCountScreen } from './screen';
+
+const store = vi.hoisted(() => new Map<string, string>());
+/** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
+const held = vi.hoisted(() => ({ failWrite: null as string | null }));
+
+vi.mock('../../patterns/local-store', () => ({
+  readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
+  writeLocal: (key: string, value: string) => {
+    if (held.failWrite === key) {
+      return Promise.reject(new Error('보관소가 가득 찼습니다'));
+    }
+
+    store.set(key, value);
+    return Promise.resolve();
+  },
+  removeLocal: (key: string) => {
+    store.delete(key);
+    return Promise.resolve();
+  },
+}));
+
+const page = { page: 1, size: 200, total: 1, totalElements: 1, totalPages: 1 };
+
+const COUNT_NO = 'IC-2026-000031';
+const LOC_CODE = 'A-01-03';
+
+interface Options {
+  /** 장부를 감춘 실사로 답한다 - 서버가 장부 수량을 내려보내지 않는다. */
+  blind?: boolean;
+  /** 첫 줄을 이미 센 것으로 답한다. */
+  firstCounted?: boolean;
+  /** 이 위치에 실사 라인이 없다고 답한다. */
+  emptyLocation?: boolean;
+  /** 보낸 요청을 모은다. */
+  seen?: Request[];
+}
+
+const line = (overrides: Record<string, unknown> = {}) => ({
+  inventoryCountLineId: 5101,
+  inventoryCountId: 5001,
+  lineNo: 1,
+  locationId: 3001,
+  itemId: 2002,
+  lotId: 8001,
+  systemQty: 120,
+  countedQty: 0,
+  varianceQty: 0,
+  uomId: 1001,
+  counted: false,
+  countedAt: '2026-09-07T09:00:00+09:00',
+  ...overrides,
+});
+
+const routes = (options: Options = {}): StubRoute[] => [
+  {
+    match: (req) => new URL(req.url).pathname === '/inventory/counts',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            inventoryCountId: 5001,
+            inventoryCountNo: COUNT_NO,
+            countTypeCode: 'PERIODIC',
+            warehouseId: 1001,
+            plannedDate: '2026-09-07',
+            blindCount: options.blind === true,
+            statusCode: 'IN_PROGRESS',
+          },
+        ],
+        page,
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/locations',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            locationId: 3001,
+            warehouseId: 1001,
+            locationCode: LOC_CODE,
+            locationName: 'A구역 01열 03단',
+            isActive: true,
+          },
+        ],
+        page,
+      }),
+  },
+  {
+    match: (req) => /\/inventory\/counts\/\d+\/lines/.test(new URL(req.url).pathname),
+    respond: (req) => {
+      if (req.method === 'PUT') {
+        options.seen?.push(req.clone());
+        return jsonResponse({ items: [] });
+      }
+
+      if (options.emptyLocation === true) {
+        return jsonResponse({ items: [], page });
+      }
+
+      /* 블라인드 실사는 어느 줄에도 장부가 오지 않는다. */
+      const hideSystemQty = options.blind === true ? { systemQty: undefined } : {};
+
+      return jsonResponse({
+        items: [
+          line({
+            ...hideSystemQty,
+            counted: options.firstCounted === true,
+            countedQty: options.firstCounted === true ? 118 : 0,
+          }),
+          line({
+            ...hideSystemQty,
+            inventoryCountLineId: 5102,
+            lineNo: 2,
+            itemId: 2001,
+            lotId: null,
+            systemQty: options.blind === true ? undefined : 40,
+          }),
+        ],
+        page,
+      });
+    },
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/items',
+    respond: () =>
+      jsonResponse({
+        items: [
+          { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' },
+          { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
+        ],
+        page,
+      }),
+  },
+];
+
+const SignedIn = ({ children }: { children: ReactNode }) => {
+  const { worker, signIn } = useWorkerSession();
+
+  useEffect(() => {
+    if (worker === null) {
+      signIn({ workerNo: '100028', workerName: '김영수' });
+    }
+  }, [signIn, worker]);
+
+  return worker === null ? null : children;
+};
+
+const mount = (options: Options = {}) =>
+  renderWithProviders(
+    <MemoryRouter>
+      <SignedIn>
+        <PhysicalCountScreen />
+      </SignedIn>
+    </MemoryRouter>,
+    { fetch: createStubFetch(routes(options)) },
+  );
+
+const scanLocation = (code: string) => {
+  const field = screen.getByLabelText('위치 스캔') as HTMLInputElement;
+  field.focus();
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
+  field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+};
+
+const openLocation = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('combobox', { name: '실사' }));
+  await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+  scanLocation(LOC_CODE);
+  await screen.findByText(`위치 ${LOC_CODE}`);
+};
+
+beforeEach(() => {
+  held.failWrite = null;
+  store.clear();
+  localStorage.clear();
+});
+
+describe('실물 카운트 화면', () => {
+  it('진행 중인 실사를 고르면 위치를 스캔할 수 있다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await user.click(await screen.findByRole('combobox', { name: '실사' }));
+    await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
+
+    expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
+  });
+
+  it('위치를 스캔하면 그 위치의 라인이 뜬다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    expect(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/)).toBeTruthy();
+    expect(screen.getByText('장부 120')).toBeTruthy();
+  });
+
+  /*
+   * 이 화면의 핵심이다. 안 센 것을 0 으로 보내면 관리웹이 그것을 전량 손실로 잡는다.
+   */
+  it('안 센 줄은 보내지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen });
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]?.json()) as {
+      locationId: number;
+      lines: { inventoryCountLineId: number }[];
+    };
+
+    expect(body.lines).toHaveLength(1);
+    expect(body.lines[0]?.inventoryCountLineId).toBe(5101);
+    expect(body.locationId).toBe(3001);
+  });
+
+  /* 세어 보니 없더라는 유효한 답이다. 0 을 못 적으면 그 사실을 남길 길이 없다. */
+  it('0 을 적으면 센 것으로 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen });
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '0');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '이 위치 완료' })).not.toBeDisabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]?.json()) as { lines: { countedQty: number }[] };
+
+    expect(body.lines[0]?.countedQty).toBe(0);
+  });
+
+  /* 안 센 줄과 0 으로 센 줄이 화면에서도 갈려야 한다. */
+  it('아직 세지 않은 줄임을 화면이 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    expect(await screen.findAllByText('아직 세지 않음')).toHaveLength(2);
+  });
+
+  it('이미 센 줄은 이전 값을 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ firstCounted: true });
+    await openLocation(user);
+
+    expect(await screen.findByText('이전 값 118')).toBeTruthy();
+  });
+
+  /* 장부를 보고 그대로 적는 것을 막는 실사다. 서버가 장부를 안 내려보낸다. */
+  it('장부를 감춘 실사에서는 장부를 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ blind: true });
+    await openLocation(user);
+
+    expect(await screen.findByText(/장부 수량을 감춘 실사입니다/)).toBeTruthy();
+    expect(screen.queryByText(/^장부 \d/)).toBeNull();
+  });
+
+  it('한 줄도 적지 않으면 완료할 수 없다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    await screen.findByLabelText(/ABC-123 · 8001 실물 수량/);
+
+    expect(screen.getByRole('button', { name: '이 위치 완료' })).toBeDisabled();
+  });
+
+  it('라인이 없는 위치는 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ emptyLocation: true });
+    await openLocation(user);
+
+    expect(await screen.findByText(/이 위치에는 실사 라인이 없습니다/)).toBeTruthy();
+  });
+
+  /*
+   * 연타는 button.click() 을 연속으로 불러야 갈린다. await user.click() 세 번은 클릭 사이에
+   * 다시 그리기가 끼어 결함이 있어도 통과한다.
+   */
+  it('연타해도 한 건만 담는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen });
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+
+    const button = screen.getByRole('button', { name: '이 위치 완료' });
+    button.click();
+    button.click();
+    button.click();
+
+    await waitFor(() => {
+      expect(seen.length).toBeGreaterThan(0);
+    });
+
+    const keys = new Set(seen.map((each) => each.headers.get('Idempotency-Key')));
+
+    expect(keys.size).toBe(1);
+  });
+
+  /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 센 줄 안다. */
+  it('단말 보관소가 거절하면 기록되지 않았다고 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+
+    held.failWrite = 'outbox';
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+
+    expect(await screen.findByText('센 것을 담아 두지 못했습니다')).toBeTruthy();
+  });
+});

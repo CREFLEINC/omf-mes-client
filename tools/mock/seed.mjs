@@ -801,6 +801,63 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /*
+   * 돌고 있는 실사 하나. 실물 카운트(M-01-11)가 이것을 골라 위치를 스캔한다.
+   *
+   * 장부를 감추지 않는다 - 감춘 실사도 한 벌 두면 어느 쪽이 기본인지 흐려진다. 감춘 쪽은
+   * blindCount 를 바꿔 재 본다.
+   */
+  const inventoryCounts = [
+    {
+      inventoryCountId: 5001,
+      inventoryCountNo: 'IC-2026-000031',
+      countTypeCode: 'PERIODIC',
+      warehouseId: 1001,
+      plannedDate: today,
+      blindCount: false,
+      statusCode: 'IN_PROGRESS',
+    },
+  ];
+
+  /*
+   * 한 위치에 두 줄을 둔다. 한 줄만 적고 완료했을 때 나머지가 미실사로 남는지를 재려면
+   * 안 적을 줄이 있어야 한다.
+   */
+  const inventoryCountLines = [
+    {
+      inventoryCountLineId: 5101,
+      inventoryCountId: 5001,
+      lineNo: 1,
+      locationId: 3001,
+      itemId: 2002,
+      lotId: 8001,
+      systemQty: 200,
+      countedQty: 0,
+      varianceQty: 0,
+      uomId: 1001,
+      varianceReasonCode: null,
+      countedBy: null,
+      countedAt: iso(0),
+      counted: false,
+    },
+    {
+      inventoryCountLineId: 5102,
+      inventoryCountId: 5001,
+      lineNo: 2,
+      locationId: 3001,
+      itemId: 2001,
+      lotId: 8002,
+      systemQty: 80,
+      countedQty: 0,
+      varianceQty: 0,
+      uomId: 1001,
+      varianceReasonCode: null,
+      countedBy: null,
+      countedAt: iso(0),
+      counted: false,
+    },
+  ];
+
   const pickingLines = [
     {
       pickingLineId: 16201,
@@ -1376,6 +1433,8 @@ export const createSeed = (now = new Date()) => {
     reservations,
     goodsIssues,
     goodsIssueLines,
+    inventoryCounts,
+    inventoryCountLines,
     /* 아직 아무것도 받지 않았다. 첫 수령이 서는지, 두 번째가 막히는지를 재는 자리다. */
     shopfloorReceipts: [],
     shipmentRequests,
