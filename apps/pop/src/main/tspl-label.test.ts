@@ -82,12 +82,12 @@ describe('표준 LOT 라벨 항목', () => {
   it.each([
     ['라벨 유형', 'WIP'],
     ['품질 상태', 'OK'],
-    ['품번', 'PART NO.: INJ-104852'],
-    ['품명', 'UPPER HSG BLK'],
-    ['LOT 번호', 'LOT NO.: 260805-M12'],
+    ['품번', 'PART NO.: PRT-000001'],
+    ['품명', 'SAMPLE PART BLK'],
+    ['LOT 번호', 'LOT NO.: 000000-A01'],
     ['수량과 단위', 'QTY: 1000 EA'],
     ['기준 일시', 'MFG DT: 26-08-05 14:25'],
-    ['유형별 추가 항목', 'WO NO.: WO260805017'],
+    ['유형별 추가 항목', 'WO NO.: WO000000001'],
   ])('%s 가 실린다', (_name, expected) => {
     expect(lot).toContain(`"${expected}"`);
   });
@@ -97,27 +97,27 @@ describe('표준 LOT 라벨 항목', () => {
    *    작업자가 먼저 봐야 할 것을 나중에 본다.
    */
   it('시각적 우선순위대로 크기를 준다', () => {
-    expect(pointOf(lot, 'PART NO.')).toBeGreaterThan(pointOf(lot, 'UPPER HSG BLK'));
+    expect(pointOf(lot, 'PART NO.')).toBeGreaterThan(pointOf(lot, 'SAMPLE PART BLK'));
     expect(pointOf(lot, 'QTY:')).toBeGreaterThan(pointOf(lot, 'MFG DT'));
-    expect(pointOf(lot, 'LOT NO.')).toBeGreaterThanOrEqual(pointOf(lot, 'UPPER HSG BLK'));
+    expect(pointOf(lot, 'LOT NO.')).toBeGreaterThanOrEqual(pointOf(lot, 'SAMPLE PART BLK'));
   });
 
   /* ⛔ 사양서 §10 — 조회에 필요한 최소 식별정보만. 상세 이력을 싣지 않는다. */
   it('바코드에 최소 식별정보만 싣는다', () => {
-    expect(lot).toContain('"L1|WIP|INJ-104852|260805-M12|1000|EA"');
+    expect(lot).toContain('"L1|WIP|PRT-000001|000000-A01|1000|EA"');
   });
 });
 
 describe('출하용 라벨 항목', () => {
   it.each([
-    ['납품처', 'SHIP TO: ABC VIETNAM CO., LTD.'],
-    ['고객 품번', 'CUSTOMER P/N: SDI-552013'],
-    ['내부 품번', 'PART NO.: FG-02031'],
-    ['품명', 'CHARGER ASSY'],
-    ['LOT 번호', 'LOT NO.: 260805-A03'],
+    ['납품처', 'SHIP TO: SAMPLE BUYER CO., LTD.'],
+    ['고객 품번', 'CUSTOMER P/N: CPN-000001'],
+    ['내부 품번', 'PART NO.: FGD-000001'],
+    ['품명', 'SAMPLE ASSY'],
+    ['LOT 번호', 'LOT NO.: 000000-B01'],
     ['출하 수량', 'QTY: 100 EA'],
     ['박스 번호', 'BOX NO.: 07/40'],
-    ['출하번호', 'SHIPMENT NO.: SH260805-00124'],
+    ['출하번호', 'SHIPMENT NO.: SHP-000001'],
     ['출하 일시', 'SHIP DT: 26-08-05 17:40'],
   ])('%s 가 실린다', (_name, expected) => {
     expect(shipping).toContain(`"${expected}"`);
@@ -133,7 +133,7 @@ describe('출하용 라벨 항목', () => {
   });
 
   it('바코드에 박스 순번까지 싣는다', () => {
-    expect(shipping).toContain('"S1|SH260805-00124|SDI-552013|260805-A03|100|EA|07"');
+    expect(shipping).toContain('"S1|SHP-000001|CPN-000001|000000-B01|100|EA|07"');
   });
 });
 

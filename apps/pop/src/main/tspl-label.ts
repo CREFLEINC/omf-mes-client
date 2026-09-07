@@ -38,7 +38,7 @@ export class LabelTooSmallError extends Error {
  *
  * ⚠ **덧말과 값을 한 덩이로 적는다.** 사양서는 덧말(Field Caption)에 더 작은 크기를 주지만,
  *   내장 scalable font 는 글자 폭을 우리가 잴 수 없어 값을 어디서 시작할지 계산할 수 없다.
- *   예시 그림도 `PART NO.: INJ-104852` 처럼 한 줄로 붙여 놓았다 — 그 모양을 따르고, 나누는
+ *   예시 그림도 `PART NO.: PRT-000001` 처럼 한 줄로 붙여 놓았다 — 그 모양을 따르고, 나누는
  *   것은 실기 샘플로 좌표를 보정할 때 함께 본다.
  */
 function text(x: number, y: number, point: number, content: string): string {
@@ -190,31 +190,36 @@ function shippingBarcode(fields: ShippingLabelFields): string {
 const join = (parts: readonly string[]): string =>
   parts.map((part) => part.replace(/\|/g, ' ')).join('|');
 
-/** 실기 시험용 견본. 사양서 §5.4·§8 의 예시를 그대로 옮겼다 — 업무 자료가 아니다. */
+/**
+ * 실기 시험용 견본. 자리와 크기를 눈으로 재려고 두는 값이다.
+ *
+ * ⛔ **실제 품번·거래처를 넣지 않는다.** 이 저장소는 공개다 — 견본이라도 실 운영 값이
+ *    들어가면 그대로 공개된다. 길이만 실물과 비슷하게 맞춘 합성값을 쓴다.
+ */
 export const SAMPLE_LOT: LotLabelFields = {
   type: 'WIP',
   status: 'OK',
-  partNo: 'INJ-104852',
-  partName: 'UPPER HSG BLK',
-  lotNo: '260805-M12',
+  partNo: 'PRT-000001',
+  partName: 'SAMPLE PART BLK',
+  lotNo: '000000-A01',
   qty: '1000',
   uom: 'EA',
   dateCaption: 'MFG DT',
   dateTime: '26-08-05 14:25',
-  extra: 'WO NO.: WO260805017',
+  extra: 'WO NO.: WO000000001',
 };
 
 export const SAMPLE_SHIPPING: ShippingLabelFields = {
   type: 'SHIP',
   status: 'RELEASED',
-  shipTo: 'ABC VIETNAM CO., LTD.',
-  customerPartNo: 'SDI-552013',
-  partNo: 'FG-02031',
-  partName: 'CHARGER ASSY',
-  lotNo: '260805-A03',
+  shipTo: 'SAMPLE BUYER CO., LTD.',
+  customerPartNo: 'CPN-000001',
+  partNo: 'FGD-000001',
+  partName: 'SAMPLE ASSY',
+  lotNo: '000000-B01',
   qty: '100',
   uom: 'EA',
   boxNo: '07/40',
-  shipmentNo: 'SH260805-00124',
+  shipmentNo: 'SHP-000001',
   shipDateTime: '26-08-05 17:40',
 };
