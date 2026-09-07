@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import type { VersionFormValues } from './types';
-import { validateVersionForm } from './version-validation';
+import { emptyVersionFormValues } from './version-mappers';
+import { VERSION_FORM_FIELDS, validateVersionForm } from './version-validation';
 
 const values = (overrides: Partial<VersionFormValues> = {}): VersionFormValues => ({
   effectiveFrom: '2026-08-01',
@@ -15,6 +16,21 @@ const values = (overrides: Partial<VersionFormValues> = {}): VersionFormValues =
   frequencyIntervalValue: '',
   frequencyIntervalUomCode: '',
   ...overrides,
+});
+
+describe('VERSION_FORM_FIELDS — 서버 필드 오류 배선', () => {
+  /**
+   * ⭐ **목록은 폼 입력칸 전체와 정확히 같다.** 한 이름이 빠지면 그 칸의 서버 오류가 배너로
+   * 새고, 다른 이름을 넣으면 놓을 칸이 없는 오류를 인라인으로 분류해 화면에서 잃는다.
+   * 타입 좁힘은 오타를, 이 집합 대조는 유효한 키의 누락·오삽입을 각각 문다.
+   */
+  it('버전 폼의 모든 키를 한 번씩만 담는다', () => {
+    const formFields = Object.keys(emptyVersionFormValues()).sort();
+    const knownFields = [...VERSION_FORM_FIELDS].sort();
+
+    expect(new Set(VERSION_FORM_FIELDS).size).toBe(VERSION_FORM_FIELDS.length);
+    expect(knownFields).toEqual(formFields);
+  });
 });
 
 describe('validateVersionForm — 필수', () => {
@@ -78,7 +94,9 @@ describe('validateVersionForm — 주기 짝', () => {
   it('주기 값만 채우면 두 칸 모두에 오류를 낸다', () => {
     const errors = validateVersionForm(values({ frequencyIntervalValue: '4' }));
 
-    expect(errors.frequencyIntervalValue).toBe('주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.');
+    expect(errors.frequencyIntervalValue).toBe(
+      '주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
+    );
     expect(errors.frequencyIntervalUomCode).toBe(
       '주기 값과 주기 단위는 함께 채우거나 함께 비워야 합니다.',
     );

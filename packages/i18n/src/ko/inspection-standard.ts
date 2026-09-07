@@ -119,6 +119,13 @@ export const inspectionStandard = {
      */
     itemLocalNote: '확인을 누르면 표에만 반영됩니다. 「저장」을 눌러야 서버에 반영됩니다.',
   },
+  /** 되돌리기 어려운 상태 변경은 일반 저장과 구별해 방금 끝난 일을 그대로 말한다. */
+  result: {
+    approved: '검사기준을 승인했습니다.',
+    deactivated: '검사기준 사용을 중지했습니다.',
+    confirmed: '버전을 확정했습니다.',
+    obsoleted: '버전을 폐기했습니다.',
+  },
   filters: {
     searchLabel: '검사기준 검색',
     searchPlaceholder: '기준코드 또는 기준명',
@@ -201,11 +208,6 @@ export const inspectionStandard = {
     defaultInspectionEquipment: '지정 검사장비',
     requiredFlag: '필수',
     automaticJudgment: '자동판정',
-  },
-  /** 입력칸 아래 한 줄 보조 안내. */
-  fieldNotes: {
-    /* 상태 값 목록이 확정되지 않았다는 사실을 감추지 않는다. */
-    statusTemporary: '상태 표시는 임시입니다 — 상태 값 목록이 확정되면 이 표시가 바뀔 수 있습니다.',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */

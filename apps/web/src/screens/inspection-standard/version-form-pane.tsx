@@ -67,7 +67,8 @@ export const VersionFormPane = ({
   const samplingRatioId = useId();
 
   const isLocked = status !== null && !status.isEditable;
-  const stateLockMessage = status?.status === 'obsolete' ? t.stateLock.obsolete : t.stateLock.confirmed;
+  const stateLockMessage =
+    status?.status === 'obsolete' ? t.stateLock.obsolete : t.stateLock.confirmed;
 
   return (
     <section className="pane" aria-label={t.panes.versionForm}>
@@ -92,10 +93,7 @@ export const VersionFormPane = ({
           </div>
         )}
 
-        {/*
-         * 상태 값 목록이 확정되지 않았다는 사실을 감추지 않는다.
-         * 안내는 **여기 한 번만** 낸다 — 버전 목록 표의 행마다 되풀이하면 좁은 페인에서 표가 읽히지 않는다.
-         */}
+        {/* 상태 값은 공통 코드의 확정된 표시명을 쓴다. */}
         {status !== null && (
           <div className="field-cell">
             <span className="field-label" id={statusLabelId}>
@@ -106,7 +104,6 @@ export const VersionFormPane = ({
                 {status.label}
               </Chip>
             </p>
-            <span className="field-note">{t.fieldNotes.statusTemporary}</span>
           </div>
         )}
 
