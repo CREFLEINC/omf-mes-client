@@ -278,6 +278,37 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   });
 
   /*
+   * ⛔ **네 제목이 같은 자리에서 시작해야 한다** — 카드 본문 바로 아래다. ②의 제목만 «입력 칸
+   *    묶음 안»에 있으면 좌우 2단(칸 · 키패드)의 왼쪽 칸 폭에 갇혀 혼자 안쪽으로 들어간다
+   *    (사용자 지적).
+   */
+  it('네 구획의 제목이 모두 카드 본문 바로 아래에 선다', async () => {
+    const { container, user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await screen.findByRole('heading', { name: t.quantities.title });
+
+    for (const [selector, title] of [
+      ['.rework-target-card', t.target],
+      ['.rework-input-card', t.quantities.title],
+      ['.rework-lot-card', t.resultLot.title],
+      ['.rework-progress-card', t.progress.title],
+    ] as const) {
+      const card = container.querySelector(selector) as HTMLElement;
+      const heading = within(card).getByRole('heading', { name: title });
+
+      /*
+       * ⛔ 좌우 2단(칸 · 키패드) «안»에 들어가면 왼쪽 칸 폭에 갇혀 혼자 안쪽에서 시작한다 —
+       *    ②가 그랬다. 구획을 나누는 `section` 은 여백이 없어 자리를 밀지 않는다.
+       */
+      expect(heading.closest('.rework-result-input')).toBeNull();
+      expect(heading.closest('.rework-result-fields')).toBeNull();
+      /* 카드 본문에서 «맨 처음» 나온다 — 앞에 무엇이 오면 제목이 그만큼 밀린다. */
+      expect(card.querySelector('.pane-title')).toBe(heading);
+    }
+  });
+
+  /*
    * ⛔ **액션바는 화면의 최상위 자식이어야 한다** — POP 규격의 바닥 띠 규칙이 그 자리만
    *    겨냥한다(`.pop-ui > [class*='action']`). 구획 안으로 들어가면 띠가 서지 않고 본문의
    *    일부로 흐른다. 스펙 §3 의 세로 예산(헤더 64 + 본문 616 + 액션바 88)이 그 전제다.

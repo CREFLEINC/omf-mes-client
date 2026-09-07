@@ -304,9 +304,16 @@ export const ReworkResultRegisterScreen = () => {
                */}
               <Card bordered className="pop-section rework-input-card">
                 <Card.Body>
+                  {/*
+                   * ⭐ **제목은 카드 본문 바로 아래다** — ①③④와 같은 자리다. 앞선 판은 이
+                   *    제목만 «입력 칸 묶음 안»에 있어, 좌우 2단(칸 · 키패드)의 왼쪽 칸 폭에
+                   *    갇히고 칸들과 같은 줄에서 시작했다 — 네 구획 중 이것만 제목이 안쪽으로
+                   *    들어가 보였다(사용자 지적).
+                   */}
+                  <h2 className="pane-title">{t.quantities.title}</h2>
+
                   <div className="rework-result-input">
                     <div className="rework-result-fields">
-                  <h2 className="pane-title">{t.quantities.title}</h2>
 
                   {/*
                    * ⭐ **네 칸을 2×2 로 세운다** — 스펙 §3 ②의 「양품 [ ] 불량 [ ] / 보류 [ ]
