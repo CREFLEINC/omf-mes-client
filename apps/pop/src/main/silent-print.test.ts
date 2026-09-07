@@ -12,6 +12,7 @@ import {
 
 const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const label: Rendition = { bytes: PNG, format: 'png', label: 'LOT-0001' };
+const report: Rendition = { bytes: PNG, format: 'pdf', label: 'RPT-0001' };
 
 const printer = (name: string, extra: Partial<AvailablePrinter> = {}): AvailablePrinter => ({
   name,
@@ -217,5 +218,28 @@ describe('OS 인쇄 경로', () => {
       '프린터 오프라인',
     );
     expect(discarded).toEqual(['/tmp/job.png']);
+  });
+});
+
+/*
+ * ⭐ 대기열의 RAW 자리는 **받은 바이트를 프린터에 그대로 밀어 넣는 길**이다(#831). 그래서
+ *    여기로 무엇이 가는지가 곧 프린터가 무엇을 명령으로 읽는지다 — 그림이 새면 프린터가
+ *    그림의 바이트를 명령으로 읽고 아무 말이나 찍거나 멈춘다.
+ */
+describe('대기열 RAW 로 보내는 것', () => {
+  it.each([
+    ['그림(png)', label],
+    ['문서(pdf)', report],
+  ])('%s 는 RAW 로 보내지 않는다 — 계약이 명령형을 내려 주기 전까지 보낼 것이 없다', async (
+    _name,
+    rendition,
+  ) => {
+    const { deps } = fakeDeps();
+    const printRaw = { print: vi.fn(async () => undefined) };
+    const printFile = { print: vi.fn(async () => undefined) };
+
+    await createSilentPrinter({ ...deps, printFile, printRaw }).print('ZD421', rendition);
+
+    expect(printRaw.print).not.toHaveBeenCalled();
   });
 });
