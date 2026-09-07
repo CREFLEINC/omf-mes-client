@@ -30,6 +30,7 @@ const tiles = [
   {
     label: t.tiles.putaway,
     screens: [
+      { to: '/stock-transfer', label: messages.stockTransfer.title },
       { to: '/material-location', label: messages.materialLocation.title },
       { to: '/putaway', label: messages.putaway.title },
       { to: '/temporary-putaway', label: messages.temporaryPutaway.title },

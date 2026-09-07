@@ -1,0 +1,100 @@
+/**
+ * M-01-10 재고이동·불량 반출 — 창고에서 창고로 물건을 옮긴다.
+ *
+ * 반출과 도착 사이에 시간이 있다. 그 사이에 그만두거나 앱이 꺼지면 반쪽만 저장된 이동이
+ * 남는데, 데이터베이스가 그것을 막지 않는다 - 화면이 되살려 보여야 한다.
+ *
+ * 같은 창고 안의 위치 이동은 이 슬라이스에 없다. 계약에 그것을 적을 쓰기 경로가 없다.
+ * 파렛트 단위도 없다 - 단위 정책 값 목록이 아직 확정 전이다.
+ */
+export const stockTransfer = {
+  title: '재고 이동',
+  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  record: {
+    shipped: '재고 이동 반출',
+    arrived: '재고 이동 도착',
+  },
+  /** 반출과 도착 사이에 남은 것. 진입에서 먼저 보이지 않으면 같은 물건을 또 반출한다. */
+  unfinished: {
+    legend: '이어할 이동',
+    loading: '이어할 이동을 찾는 중입니다',
+    loadFailed: '이어할 이동을 확인하지 못했습니다. 연결을 확인하세요.',
+    none: '이어할 이동이 없습니다',
+    item: (no: string, count: number) => `${no} · ${String(count)}라인`,
+    resume: '이어하기',
+    /** 다른 단말이 반출한 것은 오프라인에서 오지 않는다. 없다고 단정하면 안 된다. */
+    offline: '연결이 없어 다른 단말이 반출한 이동은 보이지 않습니다.',
+  },
+  type: {
+    legend: '이동 유형',
+    normal: '일반 이동',
+    defect: '불량 반출',
+  },
+  from: {
+    legend: '① 반출 스캔',
+    scanLabel: '반출 LOT 스캔',
+    scanPlaceholder: 'LOT QR을 비추세요',
+    manualLabel: '직접 입력',
+    manualSubmit: '넣기',
+    loading: 'LOT을 불러오는 중입니다',
+    notFound: (code: string) => `${code} LOT을 찾지 못했습니다`,
+    loadFailed: 'LOT을 확인할 수 없습니다. 연결을 확인하세요.',
+    already: '이미 담은 LOT입니다',
+    /** 재고가 없는 LOT을 옮기면 반출 수량이 재고를 넘어 서버가 되돌린다. */
+    noStock: '이 LOT은 옮길 재고가 없습니다',
+    /* 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. */
+    name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
+    onHand: (qty: string) => `재고 ${qty}`,
+    qtyLabel: (name: string) => `${name} 반출 수량`,
+    remove: '빼기',
+    problem: {
+      notNumber: '수량을 숫자로 적으세요',
+      notPositive: '수량은 0보다 커야 합니다',
+      overStock: (limit: string) => `재고 ${limit} 을(를) 넘을 수 없습니다`,
+    },
+  },
+  /** 결정 14 — 보류는 막지 않고 알린다. 막으면 현장이 물건을 못 옮긴다. */
+  hold: {
+    title: (numbers: string) => `${numbers} 은(는) 보류 중인 LOT입니다`,
+    description: '옮길 수는 있습니다. 보류 사유는 품질에서 풉니다.',
+  },
+  to: {
+    legend: '② 도착 스캔',
+    scanLabel: '도착 위치 스캔',
+    scanPlaceholder: '위치 QR을 비추세요',
+    manualLabel: '직접 입력',
+    manualSubmit: '넣기',
+    loading: '위치를 불러오는 중입니다',
+    notFound: (code: string) => `${code} 위치를 찾지 못했습니다`,
+    picked: (code: string) => `도착 위치 ${code}`,
+    /** 같은 창고 안 이동은 이 슬라이스에 없다. 계약에 적을 자리가 없다. */
+    sameWarehouse: '같은 창고 안의 위치 이동은 아직 이 화면에서 할 수 없습니다.',
+  },
+  submitShip: '반출 기록',
+  submitArrive: '이동 완료',
+  noWorker: '사번을 확인한 뒤에 이동할 수 있습니다',
+  noLine: '한 LOT 이상 반출 수량을 적으세요',
+  noDestination: '도착 위치를 스캔하세요',
+  /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
+  saveFailed: {
+    title: '이동을 담아 두지 못했습니다',
+    description: '기록되지 않았습니다. 다시 시도하세요.',
+  },
+  shipped: {
+    title: '반출을 기록했습니다',
+    description: '도착 위치에 놓은 뒤 도착 스캔으로 이동을 끝냅니다.',
+  },
+  sent: {
+    title: '이동을 마쳤습니다',
+  },
+  held: {
+    title: '이동을 담아 두었습니다',
+    description: '연결되면 보냅니다. 반출과 도착은 순서대로 나갑니다.',
+  },
+  rejected: {
+    title: '이동이 되돌아왔습니다',
+    description: '되돌아온 건에서 사유를 확인하세요. ',
+    action: '되돌아온 건 보기',
+  },
+  another: '다음 이동',
+} as const;
