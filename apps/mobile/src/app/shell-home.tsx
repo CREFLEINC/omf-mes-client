@@ -48,6 +48,10 @@ const tiles = [
     screens: [{ to: '/iqc-skip-request', label: messages.iqcSkipRequest.title }],
   },
   {
+    label: t.tiles.stocktaking,
+    screens: [{ to: '/physical-count', label: messages.physicalCount.title }],
+  },
+  {
     label: t.tiles.productionMove,
     screens: [
       { to: '/wip-handover', label: messages.wipHandover.title },

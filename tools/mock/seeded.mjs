@@ -948,6 +948,110 @@ on('POST', '/logistics/shopfloor-receipts', (_p, _q, body) => {
   return { status: 201, created };
 });
 
+/*
+ * 실사 목록 · 라인 · 한 위치 치환 — M-01-11.
+ *
+ * `inProgressOnly` 의 정의는 여기서 지킨다(공유계약 G-6). 마감된 실사를 목록에 섞어 주면
+ * 화면이 그것을 골라 쓰고 쓰기가 서버에서 되돌아온다.
+ */
+on('GET', '/inventory/counts', (_p, query) => {
+  const inProgressOnly = bool(query, 'inProgressOnly');
+
+  return page(
+    keep(state.inventoryCounts, [
+      byNum(query, 'warehouseId', 'warehouseId'),
+      byText(query, 'countTypeCode', 'countTypeCode'),
+      byText(query, 'statusCode', 'statusCode'),
+      (row) => inProgressOnly !== true || row.statusCode === 'IN_PROGRESS',
+    ]),
+    query,
+  );
+});
+
+/*
+ * 장부를 감춘 실사는 systemQty 를 빼고 내린다. 그대로 내리면 화면이 감췄다고 말하면서
+ * 값은 그려, 감춘 실사가 실제로 감춰지는지 여기서 잴 수 없다.
+ */
+on('GET', '/inventory/counts/{inventoryCountId}/lines', (params, query) => {
+  const inventoryCountId = Number(params.inventoryCountId);
+  const count = state.inventoryCounts.find((each) => each.inventoryCountId === inventoryCountId);
+  const uncountedOnly = bool(query, 'uncountedOnly');
+  const varianceOnly = bool(query, 'varianceOnly');
+
+  const rows = keep(
+    state.inventoryCountLines.filter((line) => line.inventoryCountId === inventoryCountId),
+    [
+      byNum(query, 'locationId', 'locationId'),
+      byNum(query, 'itemId', 'itemId'),
+      (row) => uncountedOnly !== true || row.counted === false,
+      (row) => varianceOnly !== true || row.varianceQty !== 0,
+    ],
+  ).map((row) => {
+    if (count?.blindCount !== true) {
+      return { ...row };
+    }
+
+    const { systemQty: _systemQty, varianceQty: _varianceQty, ...hidden } = row;
+    return hidden;
+  });
+
+  return page(rows, query);
+});
+
+on('PUT', '/inventory/counts/{inventoryCountId}/lines', (params, query, body) => {
+  const inventoryCountId = Number(params.inventoryCountId);
+  const count = state.inventoryCounts.find((each) => each.inventoryCountId === inventoryCountId);
+
+  /* 마감된 실사는 바꿀 수 없다. 화면이 통과시키더라도 정본은 여기다. */
+  if (count === undefined || count.statusCode !== 'IN_PROGRESS') {
+    return {
+      status: 400,
+      created: {
+        code: 'STATE_LOCKED',
+        message: '진행 중인 실사가 아닙니다.',
+        errors: [],
+      },
+    };
+  }
+
+  const locationId = body?.locationId;
+  const sent = new Map((body?.lines ?? []).map((line) => [line.inventoryCountLineId, line]));
+
+  /*
+   * 본문에 없는 이 위치의 기존 라인은 미실사로 되돌린다 — 계약이 치환이라고 못 박았다.
+   * 덮어쓰기만 하면 안 센 줄을 보내지 않는 화면의 판단을 목이 재현하지 못한다.
+   */
+  for (const row of state.inventoryCountLines) {
+    if (row.inventoryCountId !== inventoryCountId || row.locationId !== locationId) {
+      continue;
+    }
+
+    const line = sent.get(row.inventoryCountLineId);
+
+    if (line === undefined) {
+      row.countedQty = 0;
+      row.varianceQty = 0;
+      row.counted = false;
+      row.countedBy = null;
+      continue;
+    }
+
+    row.countedQty = line.countedQty;
+    row.varianceQty = line.countedQty - row.systemQty;
+    row.varianceReasonCode = line.varianceReasonCode ?? null;
+    row.countedAt = line.countedAt;
+    row.countedBy = 1001;
+    row.counted = true;
+  }
+
+  return page(
+    state.inventoryCountLines.filter(
+      (row) => row.inventoryCountId === inventoryCountId && row.locationId === locationId,
+    ),
+    query,
+  );
+});
+
 on('POST', '/logistics/goods-issues', (_p, _q, body) => {
   const goodsIssueId = newId();
   const created = {

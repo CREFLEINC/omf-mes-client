@@ -13,6 +13,7 @@ import { MaterialLocationScreen } from '../screens/material-location/screen';
 import { MaterialPickingScreen } from '../screens/material-picking/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
 import { PackingRepackScreen } from '../screens/packing-repack/screen';
+import { PhysicalCountScreen } from '../screens/physical-count/screen';
 import { ShopfloorReceiptScreen } from '../screens/shopfloor-receipt/screen';
 import { StockTransferScreen } from '../screens/stock-transfer/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
@@ -44,6 +45,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'material-picking', element: <MaterialPickingScreen /> },
       { path: 'shopfloor-receipt', element: <ShopfloorReceiptScreen /> },
       { path: 'stock-transfer', element: <StockTransferScreen /> },
+      { path: 'physical-count', element: <PhysicalCountScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
       { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
       { path: 'iqc-skip-request', element: <IqcSkipRequestScreen /> },

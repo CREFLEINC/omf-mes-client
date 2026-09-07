@@ -130,6 +130,7 @@ import { runningChange } from './running-change';
 import { workHoldRegister } from './work-hold-register';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stockTransfer } from './stock-transfer';
+import { physicalCount } from './physical-count';
 
 export const ko = {
   common,
@@ -248,6 +249,7 @@ export const ko = {
   packingResult,
   shopfloorReceipt,
   stockTransfer,
+  physicalCount,
 } as const;
 
 export type Messages = typeof ko;
