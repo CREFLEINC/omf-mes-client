@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { Lot } from '../../patterns/lots';
 import {
-  statusLabelOf,
   canConfirm,
   completedQtyOf,
   fromWorkOrderIdOf,
   isNotStarted,
   lotProblemOf,
   qtyProblemOf,
+  statusLabelOf,
   toBody,
   type WorkOrder,
 } from './handover';
