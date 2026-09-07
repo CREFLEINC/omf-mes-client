@@ -371,7 +371,7 @@ export const PackingWorkScreen = () => {
       )}
 
       <div className="pop-panes">
-        <Card bordered className="pop-section" aria-label={t.scan.sectionLabel}>
+        <Card bordered className="pop-section pack-work-scan" aria-label={t.scan.sectionLabel}>
           <h2 className="pane-title">{t.scan.sectionLabel}</h2>
           <ScanPane
             selectedLotNo={selectedLot?.lotNo ?? null}
