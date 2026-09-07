@@ -7,14 +7,20 @@
  *   「최종 좌표와 폰트 크기는 실물 출력 검증 후 보정한다」고 그 절차를 전제한다.
  *
  * ```
- * "OMF-MES POP.exe" --print-sample lot
+ * "OMF-MES POP.exe" --print-sample lot --port COM3 --baud 9600
  * "OMF-MES POP.exe" --print-label C:\label.json
  * ```
+ *
+ * ⭐ **포트를 명령에 실을 수 있다.** 설정 파일이 앉는 폴더 이름은 앱 이름이 그대로 들어가
+ *   사람이 맞추기 어렵고, 실기에서는 통신 속도를 바꿔 가며 여러 번 찍어 봐야 한다 — 그때마다
+ *   파일을 고치는 것보다 명령에 붙이는 편이 빠르고 틀릴 자리가 없다. 주지 않으면 설정 파일을
+ *   본다.
  *
  * ⛔ **값이 빠진 라벨을 찍지 않는다.** 라벨은 나오는 순간 자재에 붙고, 빈 칸이 있는 라벨은
  *    그 자재의 이력을 끊는다 — 무엇이 없는지 말하고 아무것도 찍지 않는 편이 낫다.
  */
 
+import { type SerialPortSettings, readSerialPortSettings } from './serial-print';
 import {
   type LotLabelFields,
   SAMPLE_LOT,
@@ -27,11 +33,20 @@ import {
 /** 어떤 라벨인가. 사양서가 정의한 두 가지다. */
 export type LabelKind = 'lot' | 'shipping';
 
-export type LabelCommand =
+export type LabelSource =
   /** 사양서 예시 그대로의 견본. 실기에서 규격·판독을 볼 때 쓴다. */
   | { kind: 'sample'; label: LabelKind }
   /** 값을 담은 파일. 좌표·크기를 맞추며 여러 장을 뽑을 때 쓴다. */
   | { kind: 'file'; path: string };
+
+export interface LabelCommand {
+  source: LabelSource;
+  /**
+   * 명령에 실린 포트 설정. **없으면 설정 파일에 맡긴다** — 여기서 기본값을 지어내지 않는다.
+   * 검사는 설정 파일과 같은 것을 쓴다(`readSerialPortSettings`).
+   */
+  port?: SerialPortSettings;
+}
 
 export class LabelCommandError extends Error {
   constructor(message: string) {
@@ -53,31 +68,51 @@ const isKind = (value: string | undefined): value is LabelKind =>
 export function parseLabelCommand(argv: readonly string[]): LabelCommand | undefined {
   const at = (flag: string): string | undefined => {
     const index = argv.indexOf(flag);
+    const next = index === -1 ? undefined : argv[index + 1];
 
-    return index === -1 ? undefined : argv[index + 1];
+    /* 다음 깃발을 값으로 집어삼키지 않는다 — 값을 빠뜨린 것을 값이 있는 것처럼 다루면 안 된다. */
+    return next?.startsWith('--') === true ? undefined : next;
   };
 
-  if (argv.includes('--print-sample')) {
-    const label = at('--print-sample');
+  const source = ((): LabelSource | undefined => {
+    if (argv.includes('--print-sample')) {
+      const label = at('--print-sample');
 
-    if (!isKind(label)) {
-      throw new LabelCommandError(`--print-sample 은 ${KINDS.join(' 또는 ')} 다: ${String(label)}`);
+      if (!isKind(label)) {
+        throw new LabelCommandError(
+          `--print-sample 은 ${KINDS.join(' 또는 ')} 다: ${String(label)}`,
+        );
+      }
+
+      return { kind: 'sample', label };
     }
 
-    return { kind: 'sample', label };
-  }
+    if (argv.includes('--print-label')) {
+      const path = at('--print-label');
 
-  if (argv.includes('--print-label')) {
-    const path = at('--print-label');
+      if (path === undefined) throw new LabelCommandError('--print-label 에 값 파일 경로가 없다');
 
-    if (path === undefined || path.startsWith('--')) {
-      throw new LabelCommandError('--print-label 에 값 파일 경로가 없다');
+      return { kind: 'file', path };
     }
 
-    return { kind: 'file', path };
-  }
+    return undefined;
+  })();
 
-  return undefined;
+  if (source === undefined) return undefined;
+
+  return { source, port: portFrom(at) };
+}
+
+/** 명령에 실린 포트 설정. 설정 파일과 **같은 검사**를 태운다. */
+function portFrom(at: (flag: string) => string | undefined): SerialPortSettings | undefined {
+  return readSerialPortSettings({
+    POP_PRINTER_PORT: at('--port'),
+    POP_PRINTER_BAUD: at('--baud'),
+    POP_PRINTER_PARITY: at('--parity'),
+    POP_PRINTER_DATA_BITS: at('--data-bits'),
+    POP_PRINTER_STOP_BITS: at('--stop-bits'),
+    POP_PRINTER_HANDSHAKE: at('--handshake'),
+  });
 }
 
 /**

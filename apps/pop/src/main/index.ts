@@ -633,7 +633,8 @@ app.on('window-all-closed', () => app.quit());
  */
 async function runLabelCommand(command: LabelCommand): Promise<void> {
   const settingsPath = join(app.getPath('userData'), PRINTER_SETTINGS_FILE);
-  const printer = createSerialPrinter(resolveSerialPort(app.getPath('userData')));
+  /* ⭐ 명령에 실린 포트가 설정 파일보다 앞선다 — 실기에서 값을 바꿔 가며 찍는 자리다. */
+  const printer = createSerialPrinter(command.port ?? resolveSerialPort(app.getPath('userData')));
 
   /*
    * ⚠ **경로를 문장에 실어 준다.** 이 폴더 이름은 사람이 짐작할 수 있는 모양이 아니고
@@ -642,14 +643,18 @@ async function runLabelCommand(command: LabelCommand): Promise<void> {
    */
   if (printer === undefined) {
     throw new LabelCommandError(
-      `보낼 포트가 지정돼 있지 않다 — 설정 파일에 포트를 적어라: ${settingsPath}\n예: { "port": "COM3", "baud": 9600 }`,
+      [
+        '보낼 포트가 지정돼 있지 않다.',
+        '명령에 붙이거나:  --port COM3 --baud 9600',
+        `설정 파일에 적어라:  ${settingsPath}`,
+      ].join('\n'),
     );
   }
 
   const tspl =
-    command.kind === 'sample'
-      ? sampleLabel(command.label)
-      : buildLabelFromFields(readJsonFile(command.path));
+    command.source.kind === 'sample'
+      ? sampleLabel(command.source.label)
+      : buildLabelFromFields(readJsonFile(command.source.path));
 
   const jobDir = join(app.getPath('temp'), 'omf-pop-print', `label-${String(Date.now())}`);
   mkdirSync(jobDir, { recursive: true });
@@ -677,8 +682,7 @@ function start(): void {
     command = parseLabelCommand(process.argv);
   } catch (error: unknown) {
     /* 깃발을 잘못 적은 것과 인쇄가 실패한 것을 종료 코드로 가른다. */
-    process.stderr.write(`${reasonOf(error)}\n`);
-    app.exit(2);
+    sayAndExit(reasonOf(error), 2);
 
     return;
   }
@@ -699,14 +703,35 @@ function start(): void {
 
   runLabelCommand(command).then(
     () => {
-      process.stdout.write('라벨을 포트로 보냈습니다\n');
-      app.exit(0);
+      sayAndExit('라벨을 포트로 보냈습니다', 0);
     },
     (error: unknown) => {
-      process.stderr.write(`${reasonOf(error)}\n`);
-      app.exit(1);
+      sayAndExit(reasonOf(error), 1);
     },
   );
+}
+
+/** 명령 결과가 남는 자리. 창 프로그램이라 화면에 안 보이는 것을 여기서 읽는다. */
+const LABEL_LOG = 'omf-pop-label.log';
+
+/**
+ * 결과를 말하고 끝낸다.
+ *
+ * ⚠ **파일에도 적는다.** 이 앱은 창 프로그램이라 명령 프롬프트에 글이 보이지 않는다 —
+ *   종료 코드만으로는 「왜 실패했는가」를 알 수 없고, 현장에서 그것을 물어볼 곳이 없다.
+ */
+function sayAndExit(message: string, code: number): void {
+  const path = join(app.getPath('temp'), LABEL_LOG);
+
+  process.stdout.write(`${message}\n`);
+
+  try {
+    writeFileSync(path, `${new Date().toISOString()}  ${message}\n`, 'utf8');
+  } catch {
+    /* 기록을 남기지 못한 것이 결과를 뒤집지 않는다 — 종료 코드는 그대로 나간다. */
+  }
+
+  app.exit(code);
 }
 
 start();
