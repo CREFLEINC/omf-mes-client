@@ -77,9 +77,6 @@ export const packingWork = {
   confirm: {
     submit: '포장 확정',
     submitting: '확정하는 중',
-    blockedNoType: '포장 확정 — 포장 유형을 고르십시오.',
-    blockedNoContents: '포장 확정 — 담은 것이 없습니다.',
-    blockedNoUnit: '포장 확정 — 포장 단위가 아직 만들어지지 않았습니다.',
     blockedPacked: '이 포장은 확정을 마쳤습니다. 「다음 포장 시작」을 누르십시오.',
     done: '포장을 확정했습니다.',
     startNext: '다음 포장 시작',

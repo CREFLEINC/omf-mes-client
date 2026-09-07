@@ -440,9 +440,10 @@ describe('P-02-08 포장 작업', () => {
 
     expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.confirm.submit })).toBeDisabled();
+    /* 사유는 «화면이 이미 말하는 자리»에 있다 — 빈 유형 칸과 이 문장이다. */
     expect(screen.getByText(t.contents.empty)).toBeInTheDocument();
-    expect(screen.queryByText(t.confirm.blockedNoType)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.confirm.blockedNoContents)).not.toBeInTheDocument();
+    /* ⛔ 액션바에는 「포장 확정 — …」로 시작하는 사유 문장이 서지 않는다. */
+    expect(screen.queryByText(/^포장 확정 —/u)).not.toBeInTheDocument();
   });
 
   it('확정이 담은 것 전량과 멱등 키·사번을 싣는다', async () => {
