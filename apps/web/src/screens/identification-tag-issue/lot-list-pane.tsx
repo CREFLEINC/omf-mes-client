@@ -1,6 +1,7 @@
-import { Button, Table, type Column } from '@crefle/web-ui';
+import { Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { popTouchClass } from '../../patterns/pop-touch';
 import type { Lot } from './types';
 
 const t = messages.identificationTagIssue;
@@ -27,27 +28,41 @@ export interface LotListPaneProps {
 export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps) => {
   /*
    * ⛔ **번호 열이 남은 폭을 다 가져가게 두지 않는다.** LOT 번호는 34자리라, 표가 내용대로
-   * 폭을 잡으면 행이 옆으로 늘어나 **선택 버튼이 표 밖으로 밀려난다**(실측 — 가로로 밀어야
-   * 나왔다). 누를 것이 보이지 않는 목록은 목록이 아니다.
-   *
-   * 그래서 표를 **고정 폭**으로 두고(`.pop-lot-table`) 뒤 두 열의 너비를 못박는다 — 남는
-   * 폭이 번호 열이고, 넘치는 번호는 잘린다. 잘린 번호 전체는 마우스를 올리면 보이고, 고른
-   * 뒤에는 오른쪽 《발행》이 온전히 다시 보인다.
+   * 폭을 잡으면 행이 옆으로 늘어난다. 표를 **고정 폭**으로 두고(`.pop-lot-table`) 뒤 열의
+   * 너비를 못박는다 — 남는 폭이 번호 열이고, 넘치는 번호는 잘린다. 잘린 번호 전체는 마우스를
+   * 올리면 보이고, 고른 뒤에는 오른쪽 《발행》이 온전히 다시 보인다.
    */
   /*
-   * ⚠ **세 열 모두 가운데로 세운다**(사용자 지시). 설계는 이 표의 정렬을 정하지 않았다 —
-   * `P-02-05` 에 「정렬」을 말하는 조항이 없고, §3 도면의 좌단은 표가 아니라 두 값짜리 목록이다.
+   * ⚠ **번호 열의 가운데 맞춤이 풀렸다.** 앞서 사용자 지시로 세 열을 가운데로 세웠는데, 그때는
+   * 선택 버튼이 열 하나를 차지하던 판이었다. 지금은 번호 칸 자체가 누르는 자리이고 **다른 POP
+   * 목록이 모두 왼쪽 정렬**이라, 여기만 가운데로 두면 화면마다 목록이 다르게 보인다.
+   * 「양품」 열은 지시대로 가운데를 지킨다.
    */
   const columns: Column<Lot>[] = [
     {
       key: 'lotNo',
       header: t.lotList.lotNoColumn,
-      align: 'center',
-      render: (lot) => (
-        <span className="pop-lot-no" title={lot.lotNo}>
-          {lot.lotNo}
-        </span>
-      ),
+      render: (lot) => {
+        const isSelected = lot.lotId === selectedLotId;
+
+        return (
+          <button
+            type="button"
+            className={`pop-row-select pop-lot-row ${popTouchClass('normal')}${
+              isSelected ? ' pop-row-select-on' : ''
+            }`}
+            aria-pressed={isSelected}
+            aria-label={`${lot.lotNo} ${t.lotList.select}`}
+            onClick={() => {
+              onSelect(lot.lotId);
+            }}
+          >
+            <span className="pop-lot-no" title={lot.lotNo}>
+              {lot.lotNo}
+            </span>
+          </button>
+        );
+      },
     },
     {
       key: 'goodQty',
@@ -56,43 +71,35 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
       width: '72px',
       render: () => t.lotList.goodQtyPlaceholder,
     },
-    {
-      key: 'select',
-      header: '',
-      align: 'center',
-      width: '116px',
-      render: (lot) => (
-        <Button
-          /*
-           * ⚠ **두 상태의 크기가 같아야 한다.** 글자 수가 다르고(「선택」·「선택됨」) 채움과
-           * 테두리라 폭이 서로 다르게 잡혀, 고른 줄만 버튼이 커 보였다(실측). 크기가 상태를
-           * 말하면 목록이 들썩이고, 무엇이 골라졌는지는 «색»이 이미 말한다.
-           */
-          className="pop-lot-select"
-          variant={lot.lotId === selectedLotId ? 'filled' : 'outlined'}
-          size="xl"
-          aria-pressed={lot.lotId === selectedLotId}
-          aria-label={`${lot.lotNo} ${t.lotList.select}`}
-          onClick={() => {
-            onSelect(lot.lotId);
-          }}
-        >
-          {lot.lotId === selectedLotId ? t.lotList.selected : t.lotList.select}
-        </Button>
-      ),
-    },
   ];
 
   return (
     <>
-      <Table
-        className="pop-lot-table"
-        columns={columns}
-        rows={[...lots]}
-        getRowId={(lot) => String(lot.lotId)}
-        density="comfortable"
-        empty={t.lotList.empty}
-      />
+      {/*
+       * ⛔ **선택 칸을 따로 두지 않는다.** 스펙 §3 의 목록에 그런 칸이 없고 §7 도 `Table` 하나만
+       * 적는다. 대신 **줄 전체가 누르는 자리**다 — 다른 POP 목록과 같은 방식이고, 다른 칸을
+       * 누르면 그 줄의 버튼을 대신 누른다.
+       */}
+      <div
+        role="presentation"
+        className="pop-row-target"
+        onClick={(event) => {
+          const from = event.target as HTMLElement;
+
+          if (from.closest('.pop-row-select') !== null) return;
+
+          from.closest('tr')?.querySelector<HTMLButtonElement>('.pop-row-select')?.click();
+        }}
+      >
+        <Table
+          className="pop-lot-table"
+          columns={columns}
+          rows={[...lots]}
+          getRowId={(lot) => String(lot.lotId)}
+          density="comfortable"
+          empty={t.lotList.empty}
+        />
+      </div>
 
       {/* 설계 §3 도면이 목록 아래에 그린 문구다(R69·R70). ⛔ 지우지 않는다. */}
       <p className="pop-notice">{t.lotList.goodOnlyNotice}</p>

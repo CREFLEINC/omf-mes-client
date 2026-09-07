@@ -259,13 +259,20 @@ export const ProductionResultScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/*
+         * 맥락은 화면명 옆이다 — 오른쪽 끝은 사번·연결·미전송 같은 상태 자리다(스펙 §3 머리줄).
+         * 작업지시와 품목은 「무엇을 보고 있는가」이므로 왼쪽에 함께 선다.
+         */}
+        {entry.workOrderId === null ? null : (
+          <p className="pop-context">
+            {`${t.entry.workOrderLabel} ${workOrder.data?.workOrderNo ?? String(entry.workOrderId)}${
+              workOrder.data?.itemCode === undefined
+                ? ''
+                : ` · ${t.entry.itemLabel} ${workOrder.data.itemCode}`
+            }`}
+          </p>
+        )}
         <div className="pop-context-right">
-          {entry.workOrderId !== null && (
-            <span>{`${t.entry.workOrderLabel} ${workOrder.data?.workOrderNo ?? String(entry.workOrderId)}`}</span>
-          )}
-          {workOrder.data?.itemCode !== undefined && (
-            <span>{`${t.entry.itemLabel} ${workOrder.data.itemCode}`}</span>
-          )}
           {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
           {/* 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다. */}
           <Chip status={outbox.isOnline ? 'success' : 'warning'}>

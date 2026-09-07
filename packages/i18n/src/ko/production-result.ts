@@ -43,7 +43,6 @@ export const productionResult = {
     itemLabel: '제품',
     change: '변경',
     select: '선택',
-    selected: '선택됨',
     empty: '이 작업지시에 대상 LOT 이 없습니다.',
     loadFailed: '대상 LOT 을 불러오지 못했습니다.',
   },
