@@ -41,6 +41,18 @@ export const lotProblemOf = (lot: Lot): LotProblem | null => {
 export const fromWorkOrderIdOf = (lot: Lot): number | null =>
   lotProblemOf(lot) === null ? lot.sourceId : null;
 
+/** 작업지시 상태의 값 목록을 받는 그룹. 시스템 소유라 고객이 편집하지 않는다. */
+export const WORK_ORDER_STATUS = 'WORK_ORDER_STATUS';
+
+/**
+ * 후속 W/O 의 상태를 사람이 읽는 말로 바꾼다.
+ *
+ * 찾은 것만 이름으로 바꾸고 못 찾으면 받은 코드를 그대로 돌려준다 - 상태 코드는 그 자체가
+ * 사람이 읽을 수 있는 말이라 숨기면 오히려 정보가 준다.
+ */
+export const statusLabelOf = (statusCode: string, names: Map<string, string>): string =>
+  names.get(statusCode) ?? statusCode;
+
 /**
  * 아직 시작하지 않은 W/O 의 상태. 값 목록이 확정돼 있고 시스템이 소유한다.
  *

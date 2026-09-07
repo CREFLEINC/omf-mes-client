@@ -2,6 +2,7 @@ import { AlertBanner, Button, Card, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { useCodeValues } from '../../patterns/code-values';
 import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
@@ -13,7 +14,9 @@ import {
   canConfirm,
   completedQtyOf,
   fromWorkOrderIdOf,
+  WORK_ORDER_STATUS,
   isNotStarted,
+  statusLabelOf,
   lotProblemOf,
   qtyProblemOf,
 } from './handover';
@@ -42,6 +45,8 @@ export const WipHandoverScreen = () => {
   const problem = found === null ? null : lotProblemOf(found);
   const fromWorkOrderId = found === null ? null : fromWorkOrderIdOf(found);
   const successors = useSuccessors(fromWorkOrderId);
+  const statusNames = useCodeValues(WORK_ORDER_STATUS);
+  const statusNameOf = new Map((statusNames.data ?? []).map((value) => [value.code, value.name]));
   const progress = useLotProgress(found === null || problem !== null ? null : found.lotId);
   const completedQty = completedQtyOf(progress.data ?? null);
 
@@ -236,7 +241,11 @@ export const WipHandoverScreen = () => {
                   }}
                   options={successors.data.map((each) => ({
                     value: String(each.workOrderId),
-                    label: t.next.option(each.workOrderNo, each.routingOperationName ?? ''),
+                    label: t.next.option(
+                      each.workOrderNo,
+                      each.routingOperationName ?? '',
+                      statusLabelOf(each.statusCode, statusNameOf),
+                    ),
                   }))}
                 />
               </div>
