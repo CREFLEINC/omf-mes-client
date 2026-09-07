@@ -218,12 +218,15 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
     const target = await screen.findByLabelText(t.detail.heading);
 
     expect(target.closest('.pop-header')).not.toBeNull();
-    expect([...target.children].map((child) => child.textContent)).toEqual([
-      /* 이 픽스처의 의뢰에는 작업지시가 없다 — 지어내지 않고 빈 값 표식을 세운다. */
-      `${t.detail.fields.workOrderId} ${t.emptyValue}`,
-      `${t.detail.fields.itemId} ${String(waitingRequest.itemId)}`,
-      `${t.detail.fields.lotId} ${String(waitingRequest.lotId)}`,
-    ]);
+    /* 왼쪽 맥락은 한 문장으로 읽히는 자리다 — 조각을 나란히 두면 값끼리 붙어 읽힌다. */
+    expect(target.textContent).toBe(
+      [
+        /* 이 픽스처의 의뢰에는 작업지시가 없다 — 지어내지 않고 빈 값 표식을 세운다. */
+        `${t.detail.fields.workOrderId} ${t.emptyValue}`,
+        `${t.detail.fields.itemId} ${String(waitingRequest.itemId)}`,
+        `${t.detail.fields.lotId} ${String(waitingRequest.lotId)}`,
+      ].join(' · '),
+    );
   });
 
   /*
