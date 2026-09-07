@@ -109,6 +109,7 @@ import { poChangeReview } from './po-change-review';
 import { packingResult } from './packing-result';
 import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
+import { productReceipt } from './product-receipt';
 import { inboundReceipt } from './inbound-receipt';
 import { packingRepack } from './packing-repack';
 import { packingWork } from './packing-work';
@@ -225,6 +226,7 @@ export const ko = {
   toolUsage,
   repairRoundtrip,
   productPicking,
+  productReceipt,
   inboundReceipt,
   packingRepack,
   packingWork,
