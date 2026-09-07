@@ -46,9 +46,6 @@ export const productionResult = {
     selected: '선택됨',
     empty: '이 작업지시에 대상 LOT 이 없습니다.',
     loadFailed: '대상 LOT 을 불러오지 못했습니다.',
-    /** 34자리 무구분 숫자는 육안 대조가 안 된다 — 표시만 분절한다(저장은 원문 그대로). */
-    groupedNote: '화면 표시는 읽기 쉽게 끊어 보입니다. 저장되는 번호는 끊지 않은 원문입니다.',
-    unselected: '대상 LOT 을 먼저 고르세요.',
   },
 
   quantity: {
@@ -62,12 +59,12 @@ export const productionResult = {
      *
      * ⚠ **숫자 둘을 빗금으로만 잇지 않는다.** 어느 쪽이 잔여이고 어느 쪽이 지시인지 화면에서
      * 알 수 없어 읽는 사람이 멈춘다(실기 확인에서 나온 지적). 각 숫자에 이름을 붙인다.
+     *
+     * ⛔ **앞에 「잔여수량」 라벨을 따로 세우지 않는다** — 값이 이미 이름을 갖고 있어 화면에
+     * 「잔여수량잔여 150 / 지시 120」으로 붙어 나온다(실측 · 사용자 지적).
      */
-    remaining: '잔여수량',
     remainingValue: (remaining: string, ordered: string) => `잔여 ${remaining} / 지시 ${ordered}`,
     remainingUnknown: '잔여수량을 확인할 수 없습니다.',
-    empty: '양품수량을 입력하세요.',
-    zero: '양품수량은 0보다 커야 합니다.',
   },
 
   /** 초과 생산은 허용이다 — 막지 않고 한 번 확인한다(✓확정 QA #27). */

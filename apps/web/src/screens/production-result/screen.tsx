@@ -48,21 +48,31 @@ const gateMessage = (verdict: GateVerdict): string | null => {
   }
 };
 
+/**
+ * 저장이 잠긴 사유 중 **화면이 «말하는» 것만** 고른다.
+ *
+ * ⛔ **스펙에 없는 안내문을 새로 만들지 않는다.** §5-1 은 저장의 활성 조건을 적고, §6 은
+ * 사유를 «표시하라»고 한 자리를 딱 하나 지정한다 — `can_input_result` 없음이다. 나머지
+ * (대상 LOT 미선택 · 수량 0 · 빈 수량)에 대해 스펙이 정한 처리는 **「저장 버튼 비활성」뿐**이고,
+ * 우리가 덧붙인 문장이 액션바에 상주하면서 바를 88 에서 123px 로 밀어 올려 본문을 눌렀다
+ * (실측 · 사용자 지적).
+ *
+ * 남기는 둘은 **화면이 아예 성립하지 않는** 경우다 — 작업지시나 사번이 없으면 무엇을 눌러도
+ * 저장이 일어나지 않는데 그 사실을 말하는 자리가 화면에 달리 없다.
+ */
 const blockMessage = (reason: BlockReason): string | null => {
   switch (reason) {
     case 'noWorkOrder':
       return t.entry.missingWorkOrder;
     case 'noWorker':
       return t.entry.missingWorker;
-    case 'noLot':
-      return t.lot.unselected;
-    case 'emptyQty':
-      return t.quantity.empty;
-    case 'zeroQty':
-      return t.quantity.zero;
     /* 게이팅·검사 선행은 각자 자기 배너가 이미 말한다 — 두 번 말하지 않는다. */
     case 'gate':
     case 'pendingPqc':
+    /* 스펙이 「비활성」만 정한 자리 — 버튼이 잠긴 것으로 말한다(§5-1·§6). */
+    case 'noLot':
+    case 'emptyQty':
+    case 'zeroQty':
       return null;
   }
 };
@@ -381,8 +391,14 @@ export const ProductionResultScreen = () => {
               }}
             />
 
+            {/*
+              * 스펙 §3-2 의 「잔여수량 380 / 500」.
+              *
+              * ⛔ **라벨을 따로 두지 않는다.** 값이 이미 두 숫자에 각각 이름을 붙이고 있어
+              * (「잔여 150 / 지시 120」) 앞에 라벨을 세우면 화면에 「잔여수량잔여 150 …」로
+              * 붙어 나온다(실측 · 사용자 지적).
+              */}
             <p className="pop-result-remaining">
-              <span>{t.quantity.remaining}</span>
               <strong>
                 {remaining === null || workOrder.data === undefined
                   ? t.quantity.remainingUnknown

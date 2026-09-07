@@ -66,16 +66,18 @@ export const LotPicker = ({
       {isLoadFailed ? (
         <p className="field-error">{t.lot.loadFailed}</p>
       ) : (
-        <>
-          <Table
-            columns={columns}
-            rows={[...lots]}
-            getRowId={(lot) => String(lot.lotId)}
-            density="comfortable"
-            empty={t.lot.empty}
-          />
-          <p className="field-note">{t.lot.groupedNote}</p>
-        </>
+        /*
+         * ⛔ **표시 규칙을 설명하는 문장을 두지 않는다.** §3-3 이 요구한 것은 34자리를 «끊어
+         * 보이는 것»이고, 그것을 설명하는 안내문은 스펙에 없다. 고르는 창에서 매번 읽히는
+         * 상주 문장이라 정작 골라야 할 목록보다 먼저 눈에 든다(사용자 지적).
+         */
+        <Table
+          columns={columns}
+          rows={[...lots]}
+          getRowId={(lot) => String(lot.lotId)}
+          density="comfortable"
+          empty={t.lot.empty}
+        />
       )}
     </Dialog>
   );

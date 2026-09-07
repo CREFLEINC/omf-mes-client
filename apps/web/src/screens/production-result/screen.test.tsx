@@ -264,10 +264,18 @@ describe('ProductionResultScreen 검사 선행 (R54)', () => {
 });
 
 describe('ProductionResultScreen 수량 입력', () => {
-  it('LOT 을 고르지 않으면 그 사유를 말한다', async () => {
+  /*
+   * ⛔ **사유 «문장»을 기대하지 않는다.** 스펙 §5-1·§6 이 이 셋에 정한 처리는 「저장 버튼
+   * 비활성」뿐이고, 화면도 그렇게 말한다. 문장을 찾는 감지기는 스펙에 없는 안내문을 도로
+   * 불러들인다 — 잠긴 «상태»를 본다.
+   */
+  it('LOT 을 고르지 않으면 저장이 잠긴다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.lot.unselected)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(saveButton()).toBeDisabled();
+    });
+    expect(screen.queryByText(t.lot.lotLabel, { selector: 'p' })).not.toBeInTheDocument();
   });
 
   it('수량이 비어 있으면 저장이 열리지 않는다', async () => {
@@ -276,18 +284,21 @@ describe('ProductionResultScreen 수량 입력', () => {
 
     await selectLot(user);
 
-    expect(await screen.findByText(t.quantity.empty)).toBeInTheDocument();
-    expect(saveButton()).toBeDisabled();
+    await waitFor(() => {
+      expect(saveButton()).toBeDisabled();
+    });
   });
 
-  it('0 은 «0보다 커야 한다»고 말한다 — 빈 것과 다른 사유다', async () => {
+  it('0 을 쳐도 저장이 열리지 않는다 — 빈 것과 같은 처리다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await selectLot(user);
     await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '0');
 
-    expect(await screen.findByText(t.quantity.zero)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(saveButton()).toBeDisabled();
+    });
   });
 
   it('빠른 입력은 이어 붙이지 않고 더한다', async () => {
