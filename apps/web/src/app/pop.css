@@ -393,6 +393,26 @@
 }
 
 /*
+ * 불량 코드 — **라벨과 잠긴 사유를 한 줄에 둔다**(사용자 결정 2026-09-07).
+ *
+ * 사유가 칸 «아래»에 있으면 「고르고 나서 읽는 말」이 되는데, 이 문장은 «고를 수 없다»는
+ * 사실이라 손을 대기 전에 읽혀야 한다. 라벨 옆이 그 자리다.
+ *
+ * ⚠ `.field-note` 는 규범 4 가 **비활성 사유**용으로 `max-width: 20rem` 에 가둔 클래스다 —
+ *   여기서는 라벨 옆 남는 폭을 그대로 쓴다.
+ */
+.pop-ui .rework-defect-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.pop-ui .rework-defect-head > .field-note {
+  margin: 0;
+  max-width: none;
+}
+
+/*
  * 키패드를 **라벨 한 층만큼** 내린다(사용자 결정 2026-09-07).
  *
  * `app.css` 가 두 단을 `align-items: start` 로 두어 키패드가 왼쪽 칸 «머리»에 붙어 있었다 —
@@ -409,6 +429,23 @@
 .pop-ui .rework-result-input > .rework-result-pad {
   align-self: start;
   margin-block-start: var(--field-label-layer);
+}
+
+/*
+ * 키 **자체**를 높인다 — 72 → 84(사용자 결정 2026-09-07).
+ *
+ * ⛔ **격자의 줄 높이를 올리는 것으로는 안 된다.** 한때 `grid-auto-rows` 를 84 로 두었는데,
+ *    DS `Button` 이 자기 높이를 갖고 있어 키는 72 그대로이고 **줄만 벌어졌다**(사용자 지적) —
+ *    키가 커진 것이 아니라 키 사이가 벌어진 것이다. 키에 직접 건다.
+ *
+ * 폭을 넓히면서 키가 옆으로만 커져 납작해 보였다. 세로도 함께 올려 정사각에 가깝게 둔다.
+ *
+ * ⚠ 72 는 터치 «하한»이지 상한이 아니다 — 등급표(56·64·72)는 「이보다 작으면 안 된다」를
+ *   정하고 위쪽은 열어 둔다. 이 화면에서 키패드는 주 입력 수단이라 더 줄 자리가 있다.
+ */
+.pop-ui .rework-result-pad > button {
+  block-size: 84px;
+  min-block-size: 84px;
 }
 
 /*

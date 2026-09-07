@@ -381,31 +381,7 @@ export const ReworkResultRegisterScreen = () => {
                       {`${t.total} ${String(total)} / ${String(progress.remaining)}`}
                     </Chip>
                   </p>
-                  {/*
-                   * ⭐ **스펙 §3 ②가 이 안내를 구획 «안»에 둔다** — 「재작업 후 다시 불량이면
-                   *    「불량」입니다」. §7 이 안내를 `AlertBanner`(info)로 지정하므로 보조
-                   *    문구(`field-note`)가 아니라 배너로 세운다. ⛔ 결과 LOT 이야기는 여기서
-                   *    빼고 ③ 구획이 맡는다 — 스펙이 그 둘을 다른 구획으로 갈랐다.
-                   */}
-                  <AlertBanner variant="info">{t.reworkHint}</AlertBanner>
 
-                  {/*
-                   * ⛔ **라벨을 칸에 «이어» 둔다.** 앞선 판은 맨 `<label>` 이라 칸과 연결이
-                   *    없었다 — 눌러도 칸으로 가지 않고, 위의 수량 칸들이 DS 가 그리는 라벨을
-                   *    쓰는 것과 줄 간격·글자가 어긋났다(사용자 지적).
-                   */}
-                  <label className="field-label" htmlFor={defectCodeId}>
-                    {t.defectCode}
-                  </label>
-                  {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
-                  <Select
-                    id={defectCodeId}
-                    size="xl"
-                    options={[]}
-                    placeholder={t.defectCodePlaceholder}
-                    disabled
-                  />
-                  <p className="field-note">{t.defectCodeReason}</p>
                 </div>
                 {/*
                   * ⭐ **POP 이 공유하는 키패드를 쓴다**(`@omf-mes/ui`). DS `NumberPad` 는 키가
@@ -439,6 +415,39 @@ export const ReworkResultRegisterScreen = () => {
                   onChange={(value) => setDrafts((current) => ({ ...current, [activeKey]: value }))}
                 />
                   </div>
+
+                  {/*
+                   * ⭐ **스펙 §3 ②가 이 안내를 구획 «안»에 둔다** — 「재작업 후 다시 불량이면
+                   *    「불량」입니다」. §7 이 안내를 `AlertBanner`(info)로 지정하므로 보조
+                   *    문구(`field-note`)가 아니라 배너로 세운다. ⛔ 결과 LOT 이야기는 여기서
+                   *    빼고 ③ 구획이 맡는다 — 스펙이 그 둘을 다른 구획으로 갈랐다.
+                   */}
+                  <AlertBanner variant="info">{t.reworkHint}</AlertBanner>
+
+                  {/*
+                   * ⛔ **라벨을 칸에 «이어» 둔다.** 앞선 판은 맨 `<label>` 이라 칸과 연결이
+                   *    없었다 — 눌러도 칸으로 가지 않고, 위의 수량 칸들이 DS 가 그리는 라벨을
+                   *    쓰는 것과 줄 간격·글자가 어긋났다(사용자 지적).
+                   */}
+                  {/*
+                   * ⭐ **잠긴 사유를 라벨 옆에 둔다**(사용자 결정 2026-09-07). 칸 아래에 두면
+                   *    「고르고 나서 읽는 말」이 되는데, 이 문장은 «고를 수 없다»는 사실이라
+                   *    칸에 손을 대기 «전»에 읽혀야 한다.
+                   */}
+                  <div className="rework-defect-head">
+                    <label className="field-label" htmlFor={defectCodeId}>
+                      {t.defectCode}
+                    </label>
+                    <p className="field-note">{t.defectCodeReason}</p>
+                  </div>
+                  {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
+                  <Select
+                    id={defectCodeId}
+                    size="xl"
+                    options={[]}
+                    placeholder={t.defectCodePlaceholder}
+                    disabled
+                  />
                 </Card.Body>
               </Card>
 
