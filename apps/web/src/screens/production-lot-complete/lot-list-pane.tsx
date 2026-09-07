@@ -78,7 +78,8 @@ export const LotListPane = ({
     {
       key: 'goodQty',
       header: t.lotList.goodQtyColumn,
-      align: 'center',
+      /* 두 열을 같은 쪽에 맞춘다 — 한쪽만 가운데면 표가 두 규칙으로 읽힌다(사용자 결정). */
+      align: 'start',
       width: '72px',
       render: () => t.lotList.goodQtyPlaceholder,
     },
