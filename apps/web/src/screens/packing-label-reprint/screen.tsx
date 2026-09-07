@@ -12,6 +12,7 @@ import {
   useHandlingUnit,
   useIssueSummary,
   usePrinters,
+  useHandlingUnitTypes,
   useReissueReasons,
 } from './queries';
 import { ReprintPane } from './reprint-pane';
@@ -104,6 +105,7 @@ export const PackingLabelReprintScreen = () => {
   const contents = useContentRows(handlingUnit.data?.contents ?? []);
   const printers = usePrinters();
   const reasons = useReissueReasons();
+  const handlingUnitTypes = useHandlingUnitTypes();
   const printRunner = usePrintRunner(entry.workerNo);
 
   const targets = useMemo(() => buildTargets(contents.rows), [contents.rows]);
@@ -238,6 +240,11 @@ export const PackingLabelReprintScreen = () => {
           {handlingUnit.data === undefined ? null : (
             <HandlingUnitPane
               handlingUnit={handlingUnit.data.handlingUnit}
+              typeName={
+                handlingUnitTypes.data?.find(
+                  (type) => type.code === handlingUnit.data.handlingUnit.handlingUnitTypeCode,
+                )?.codeName ?? null
+              }
               rows={contents.rows}
               namesFailed={contents.isNameError}
             />

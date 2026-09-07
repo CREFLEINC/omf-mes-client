@@ -52,7 +52,12 @@ export const packingLabelReprint = {
   /** 우단 《재출력 대상》 — 줄 하나가 라벨 한 장이다. */
   targets: {
     sectionLabel: '재출력 대상',
-    packingLabel: '포장 라벨',
+    /*
+     * ⚠ **「LOT 라벨」이다** — 설계 §3 도면과 §5-2 표가 그 이름으로 부른다. 한때 「포장 라벨」
+     * 로 적었는데 그것은 화면 «제목»(포장 라벨 재출력)이지 대상 줄의 이름이 아니다. LOT 번호
+     * 옆에 「포장」이 붙어 무엇을 가리키는지 흐려졌다.
+     */
+    packingLabel: 'LOT 라벨',
     identificationTag: '인식표',
     unknownLot: 'LOT 확인 불가',
     /** 개체를 데이터로 좁힐 수 없다. 감추지 않고 사유를 보인다 */
@@ -82,7 +87,6 @@ export const packingLabelReprint = {
   action: {
     submit: '재출력',
     submitting: '재출력 중…',
-    noSelection: '재출력할 대상을 고르세요.',
   },
 
   error: {

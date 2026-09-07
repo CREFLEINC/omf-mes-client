@@ -5,6 +5,7 @@ import { runRequest } from '../../patterns/request';
 import {
   DOCUMENT_TYPE_CODES,
   MAX_TARGETS,
+  HANDLING_UNIT_TYPE_GROUP_CODE,
   REISSUE_REASON_GROUP_CODE,
   TARGET_TYPE_CODES,
   type HandlingUnit,
@@ -31,6 +32,7 @@ export const reprintKeys = {
   summary: (targetIds: readonly number[]) =>
     ['packing-label-reprint', 'issue-summary', targetIds.join(',')] as const,
   reissueReasons: ['packing-label-reprint', 'reissue-reasons'] as const,
+  handlingUnitTypes: ['packing-label-reprint', 'handling-unit-types'] as const,
 };
 
 export interface HandlingUnitView {
@@ -242,6 +244,35 @@ export const useReissueReasons = (): UseQueryResult<CodeValue[]> => {
           params: {
             query: {
               codeGroupCode: REISSUE_REASON_GROUP_CODE,
+              page: 1,
+              size: REASON_PAGE_SIZE,
+            },
+          },
+        }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+/**
+ * 포장 유형 이름. **코드를 그대로 내지 않는다** — 설계 §3 도면이 이 자리를 「박스」로 그렸다.
+ *
+ * ⛔ 이름을 화면이 지어내지 않는다. 못 받으면 코드를 그대로 두는 편이 낫다 — 지어낸 이름은
+ * 현장에서 다른 것을 가리킬 수 있다.
+ */
+export const useHandlingUnitTypes = (): UseQueryResult<CodeValue[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: reprintKeys.handlingUnitTypes,
+    queryFn: async (): Promise<CodeValue[]> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: {
+            query: {
+              codeGroupCode: HANDLING_UNIT_TYPE_GROUP_CODE,
               page: 1,
               size: REASON_PAGE_SIZE,
             },

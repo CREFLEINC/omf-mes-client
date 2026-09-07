@@ -124,6 +124,12 @@ export const ReprintPane = ({
 
       {summaryFailed && <p className="field-error">{t.targets.summaryFailed}</p>}
 
+      {/*
+       * 구분선 — 설계 §3 도면이 대상 목록과 재출력 사유 사이에 그은 선이다. 위는 «무엇을
+       * 다시 뽑을 것인가»이고 아래는 «왜 다시 뽑는가»라, 선 하나가 그 경계를 말한다.
+       */}
+      <div className="pop-reprint-rule" />
+
       <div className="field-cell">
         <label className="field-label" htmlFor={reasonId}>
           {t.reason.label}
@@ -157,11 +163,13 @@ export const ReprintPane = ({
         {isSubmitting ? t.action.submitting : t.action.submit}
       </Button>
 
-      {/* 막힌 사유는 버튼 옆에 둔다 — 누를 수 없는 자리에서 이유를 찾는다 */}
+      {/*
+       * 막힌 사유는 버튼 옆에 둔다 — 누를 수 없는 자리에서 이유를 찾는다.
+       *
+       * ⛔ **「대상을 고르세요」를 두지 않는다**(사용자 지시). 설계에 없는 문구였다 — 이 문서에
+       *    「고르세요 · 선택하세요」가 0 건이다. 무엇을 고르는 자리인지는 바로 위 목록이 말한다.
+       */}
       {blockedReason !== null && <p className="field-error">{blockedReason}</p>}
-      {blockedReason === null && !hasSelection && (
-        <p className="field-note">{t.action.noSelection}</p>
-      )}
     </>
   );
 };
