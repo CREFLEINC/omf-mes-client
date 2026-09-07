@@ -28,7 +28,7 @@ export const HoldForm = ({ draft, disabled, error, onReasonChange }: HoldFormPro
   const legendId = useId();
 
   return (
-    <Card bordered className="pop-section" aria-label={t.form.sectionLabel}>
+    <Card bordered className="pop-section pop-hold-form-card" aria-label={t.form.sectionLabel}>
       <h2 className="pane-title">{t.form.sectionLabel}</h2>
 
       <p className="pop-hold-field-label" id={legendId}>
