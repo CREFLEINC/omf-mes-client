@@ -1,4 +1,4 @@
-import { Button, NumberPad, TextField } from '@crefle/web-ui';
+import { Button, EmptyState, NumberPad, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -79,7 +79,12 @@ export const IssuePane = ({
   const quantityId = useId();
   const preview = previewRange(issuedSerials);
 
-  if (lotNo === null) return <p className="field-note">{t.issue.notSelected}</p>;
+  /*
+   * 고른 LOT 이 없을 때 — **빈 상태로 세운다.** 맨 문단 하나로 두면 구획이 통째로 비어 보여
+   * 「아직 아무것도 없다」인지 「못 불러왔다」인지 구분되지 않는다(다른 POP 화면이 같은 자리에
+   * `EmptyState` 를 쓴다). 문구는 그대로 — 무엇을 하면 되는지를 말하는 문장이다.
+   */
+  if (lotNo === null) return <EmptyState size="sm" title={t.issue.notSelected} />;
 
   /* 양품이 아예 없으면 수량 사유보다 이것이 먼저다 — 고칠 것이 입력칸에 없다. */
   const noGoodQty = goodQty === 0;
