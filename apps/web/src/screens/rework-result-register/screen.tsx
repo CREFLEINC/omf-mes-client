@@ -399,8 +399,16 @@ export const ReworkResultRegisterScreen = () => {
                   className="rework-result-pad"
                   label={t.quantities.keypadLabel}
                   value={drafts[activeKey]}
-                  /* 수량은 `numeric(20,6)` 이라 소수를 받는다(스펙 §4-B). */
-                  allowDecimal
+                  /*
+                   * ⭐ **소수점 키는 «단위»가 정한다.** 수량 컬럼이 `numeric(20,6)` 이라 소수를
+                   *    담을 수는 있지만, 담을 수 있다는 것과 그 단위에 소수가 뜻이 있다는 것은
+                   *    다르다 — `EA`(개)는 `decimalScale` 이 0 이라 1.5개가 없다(사용자 지적).
+                   *    계약이 단위마다 그 값을 갖고 있으므로 우리가 정하지 않는다.
+                   *
+                   * ⚠ 전례 `P-05-01` 도 같은 판단이다 — 타발수는 정수라 소수점을 세우지 않고,
+                   *   환산 기준 수량일 때만 세운다.
+                   */
+                  allowDecimal={uom.decimalScaleOf(selected.uomId) > 0}
                   decimalLabel={t.quantities.decimalKey}
                   max={progress.remaining}
                   /* 스펙 §7 이 「큰 터치 타겟」을 지정한다 — 64와 72 사이에 단이 없어 `2xl` 이다. */

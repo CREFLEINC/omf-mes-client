@@ -74,8 +74,11 @@ const stubFetch: StubFetch = async (request) => {
 
   if (url.pathname === '/mdm/uoms') {
     return jsonResponse({
-      items: [{ uomId: 11, uomCode: 'EA', uomName: '개', isActive: true }],
-      page: { page: 1, size: 200, total: 1 },
+      items: [
+        { uomId: 11, uomCode: 'EA', uomName: '개', decimalScale: 0, isActive: true },
+        { uomId: 12, uomCode: 'KG', uomName: '킬로그램', decimalScale: 3, isActive: true },
+      ],
+      page: { page: 1, size: 200, total: 2 },
     });
   }
 
@@ -97,6 +100,34 @@ const renderScreen = () => {
       <ReworkResultRegisterScreen />
     </PopIdentityProvider>,
     { fetch: stubFetch, route: '/pop/rework-results' },
+  );
+
+  return { ...rendered, user: userEvent.setup() };
+};
+
+/** 소수를 받는 단위(`KG` · `decimalScale` 3)의 W/O. */
+const renderWithFractionalUom = () => {
+  const rendered = renderWithProviders(
+    <PopIdentityProvider
+      value={{ terminalId: TERMINAL_ID, processId: PROCESS_ID, workerNo: '100027' }}
+    >
+      <ReworkResultRegisterScreen />
+    </PopIdentityProvider>,
+    {
+      fetch: async (request) => {
+        const url = new URL(request.url);
+
+        if (url.pathname === '/production/work-orders') {
+          return jsonResponse({
+            items: [{ ...WORK_ORDER, uomId: 12 }],
+            page: { page: 1, size: 20, total: 1 },
+          });
+        }
+
+        return stubFetch(request);
+      },
+      route: '/pop/rework-results',
+    },
   );
 
   return { ...rendered, user: userEvent.setup() };
@@ -275,6 +306,31 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
 
     expect(total?.firstElementChild).not.toBeNull();
     expect(total).toHaveTextContent(`${t.total} 0 / 160`);
+  });
+
+  /*
+   * ⛔ **소수점 키는 «단위»가 정한다.** 수량 컬럼이 `numeric(20,6)` 이라 소수를 담을 수는
+   *    있지만, 담을 수 있다는 것과 그 단위에 소수가 뜻이 있다는 것은 다르다 — `EA`(개)는
+   *    `decimalScale` 이 0 이라 1.5개가 없다(사용자 지적). 계약이 단위마다 그 값을 갖는다.
+   */
+  it('개 단위에는 소수점 키를 세우지 않는다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await screen.findByRole('heading', { name: t.quantities.title });
+
+    expect(screen.queryByRole('button', { name: t.quantities.decimalKey })).not.toBeInTheDocument();
+  });
+
+  it('소수를 받는 단위에는 소수점 키가 선다', async () => {
+    const { user } = renderWithFractionalUom();
+    await pickWorkOrder(user);
+
+    await screen.findByRole('heading', { name: t.quantities.title });
+
+    expect(
+      await screen.findByRole('button', { name: t.quantities.decimalKey }),
+    ).toBeInTheDocument();
   });
 
   /*

@@ -18,6 +18,18 @@ import { runRequest } from '../../patterns/request';
 export interface UomLookup {
   /** 이름을 모르면 `null`. 붙일 것이 없다는 뜻이다. */
   labelOf: (uomId: number | undefined) => string | null;
+  /**
+   * 이 단위가 허용하는 **소수 자릿수**. 계약이 단위마다 갖고 있다(`decimalScale` ·
+   * `CHECK BETWEEN 0 AND 6` · 기본 `0`).
+   *
+   * ⭐ **키패드의 소수점 키를 이 값이 정한다.** 수량 컬럼이 `numeric(20,6)` 이라 소수를
+   * «담을 수는» 있지만, 담을 수 있다는 것과 **그 단위에 소수가 뜻이 있다**는 것은 다르다 —
+   * `EA`(개)는 0 이라 1.5개가 없다(사용자 지적).
+   *
+   * ⛔ **모르면 0 으로 본다.** 계약이 기본값을 0 으로 못박았고, 정수만 받는 쪽이 안전하다 —
+   * 소수를 받아 두면 서버에 닿아서야 거부된다.
+   */
+  decimalScaleOf: (uomId: number | undefined) => number;
 }
 
 export const useUomLookup = (): UomLookup => {
@@ -30,11 +42,19 @@ export const useUomLookup = (): UomLookup => {
         client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),
       );
 
-      return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));
+      return new Map(
+        data.items.map((uom) => [
+          uom.uomId,
+          /* 목·구버전 응답이 값을 빼고 보낼 수 있다 — 계약의 기본값(0)으로 받는다. */
+          { code: uom.uomCode, decimalScale: uom.decimalScale ?? 0 },
+        ]),
+      );
     },
   });
 
   return {
-    labelOf: (uomId) => (uomId === undefined ? null : (query.data?.get(uomId) ?? null)),
+    labelOf: (uomId) => (uomId === undefined ? null : (query.data?.get(uomId)?.code ?? null)),
+    decimalScaleOf: (uomId) =>
+      uomId === undefined ? 0 : (query.data?.get(uomId)?.decimalScale ?? 0),
   };
 };
