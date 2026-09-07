@@ -48,7 +48,7 @@ export const TodayPanel = ({
   const basisLabel = toClockLabel(now.toISOString());
 
   return (
-    <Card>
+    <Card className="downtime-today">
       <section className="downtime-section" aria-label={t.today.title}>
         <h2 className="pane-title">{t.today.title}</h2>
 

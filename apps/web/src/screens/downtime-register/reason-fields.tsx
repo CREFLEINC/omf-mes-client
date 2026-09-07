@@ -60,13 +60,14 @@ export const ReasonFields = ({
   const categoryLabelId = useId();
   const reasonLabelId = useId();
   const breakdownLabelId = useId();
+  const remarksLabelId = useId();
 
   const linked = breakdowns.find((one) => one.breakdownId === breakdownId) ?? null;
   const suggestion = linked?.stoppedAt ?? null;
   const suggestionLabel = suggestion === null ? null : toClockLabel(suggestion);
 
   return (
-    <Card>
+    <Card className="pop-fixed">
       <section className="downtime-section" aria-label={t.reason.title}>
         <h2 className="pane-title">{t.reason.title}</h2>
 
@@ -173,17 +174,29 @@ export const ReasonFields = ({
         )}
 
         {/* 여러 줄 입력은 `TextArea`다 — `TextField`에 그런 변형이 있었던 적이 없다. */}
-        <TextArea
-          label={t.reason.remarks}
-          size="xl"
-          fullWidth
-          rows={2}
-          placeholder={t.reason.remarksPlaceholder}
-          value={remarks}
-          onChange={(event) => {
-            onRemarksChange(event.target.value);
-          }}
-        />
+        {/*
+         * ⭐ **메모는 한 줄이다**(스펙 §3 도면 —「메모 [ ]」). 두 줄로 두고 라벨까지 위에
+         *    얹으면 ③ 이 몫 200px 을 52px 넘기고, 그만큼 아래 ④ 「오늘 이 설비」가 줄어든다.
+         *    긴 사연은 칸 안에서 스크롤한다 — 적는 일이 드물고, 늘 자리를 차지할 일은 아니다.
+         *
+         * ⚠ 라벨을 줄 왼쪽으로 옮겨도 **읽어 주는 이름은 그대로 「메모」**다.
+         */}
+        <div className="downtime-field-row downtime-remarks-row">
+          <span className="downtime-field-label" id={remarksLabelId}>
+            {t.reason.remarks}
+          </span>
+          <TextArea
+            aria-labelledby={remarksLabelId}
+            size="xl"
+            fullWidth
+            rows={1}
+            placeholder={t.reason.remarksPlaceholder}
+            value={remarks}
+            onChange={(event) => {
+              onRemarksChange(event.target.value);
+            }}
+          />
+        </div>
       </section>
     </Card>
   );

@@ -91,15 +91,24 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
   };
 
   return (
-    <Card>
+    <Card className="pop-fixed">
       <section className="downtime-section" aria-label={t.interval.title}>
         <h2 className="pane-title">{t.interval.title}</h2>
 
         <div className="downtime-time-row">
+          {/*
+           * ⭐ **라벨은 칸 «위»가 아니라 줄 «왼쪽»이다**(스펙 §3 도면 —「시작 [08-11] [14:20]
+           *    [지금]」). 칸 위에 얹으면 줄마다 라벨 층 20px 이 더 붙어 두 줄이 184px 을 쓰고,
+           *    ② 의 몫 160px 을 넘겨 아래 ④ 가 통째로 밀려 사라진다(실측 — 오늘 목록 높이 0).
+           *
+           * ⚠ 읽어 주는 이름은 그대로 「시작 날짜」·「시작 시각」이다 — 눈에 보이는 「시작」
+           *    하나로는 두 칸이 같은 이름이 되어 무엇을 고치라는 것인지 말하지 못한다.
+           */}
+          <span className="downtime-time-label">{t.interval.startedAt}</span>
           <TextField
             type="date"
             size="xl"
-            label={`${t.interval.startedAt} ${t.interval.date}`}
+            aria-label={`${t.interval.startedAt} ${t.interval.date}`}
             value={draft.startedAt.date}
             error={describeStartedError(errors.startedAt)}
             onChange={(event) => {
@@ -109,7 +118,7 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           <TextField
             type="time"
             size="xl"
-            label={`${t.interval.startedAt} ${t.interval.time}`}
+            aria-label={`${t.interval.startedAt} ${t.interval.time}`}
             value={draft.startedAt.time}
             /* 오류 글은 한 번만 낸다 — 같은 문장을 두 칸에 쓰면 읽는 사람이 두 문제로 센다. */
             error={errors.startedAt === null ? undefined : ' '}
@@ -129,10 +138,11 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
         </div>
 
         <div className="downtime-time-row">
+          <span className="downtime-time-label">{t.interval.endedAt}</span>
           <TextField
             type="date"
             size="xl"
-            label={`${t.interval.endedAt} ${t.interval.date}`}
+            aria-label={`${t.interval.endedAt} ${t.interval.date}`}
             value={draft.endedAt.date}
             disabled={draft.stillOngoing}
             error={describeEndedError(errors.endedAt)}
@@ -143,7 +153,7 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           <TextField
             type="time"
             size="xl"
-            label={`${t.interval.endedAt} ${t.interval.time}`}
+            aria-label={`${t.interval.endedAt} ${t.interval.time}`}
             value={draft.endedAt.time}
             disabled={draft.stillOngoing}
             error={errors.endedAt === null ? undefined : ' '}
