@@ -684,6 +684,27 @@ export const createSeed = (now = new Date()) => {
       lotId: 8003,
       labelIssued: true,
     },
+    /*
+     * 도착 때 라벨을 못 스캔한 사전부착 라인. 자재LOT 스캔·등록(M-01-02)이 이것을 골라 채운다.
+     *
+     * 부착인데 LOT 이 비어 있는 라인이 하나도 없으면 그 화면이 대상을 하나도 못 받아,
+     * 대상을 고르는 자리부터 재 볼 수 없다.
+     */
+    {
+      inboundReceiptLineId: 9303,
+      inboundReceiptId: 9002,
+      lineNo: 2,
+      purchaseOrderLineId: null,
+      itemId: 2001,
+      receivedQty: 60,
+      uomId: 1001,
+      packageCount: 1,
+      supplierLotNo: null,
+      supplierLotMissing: false,
+      substituteLotReasonCode: null,
+      lotId: null,
+      labelIssued: false,
+    },
   ];
 
   /* 적치 지시는 사번에 매인다 — 목록이 assignedWorkerId 로 걸린다. */

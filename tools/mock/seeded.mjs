@@ -652,21 +652,95 @@ on('GET', '/logistics/purchase-orders/{purchaseOrderId}/lines', (params) => ({
   ),
 }));
 
-on('GET', '/logistics/inbound-receipts', (_p, query) =>
-  page(
+/*
+ * 헤더 목록인데 판정은 라인 단위다 - 건 안에 사전부착과 미부착이 섞여 있을 수 있어, 그런
+ * 라인을 하나라도 가진 건을 남긴다. 헤더에 없는 축이라 화면이 흉내 낼 수 없다.
+ */
+on('GET', '/logistics/inbound-receipts', (_p, query) => {
+  const supplierLotMissing = bool(query, 'supplierLotMissing');
+
+  return page(
     keep(state.inboundReceipts, [
       byNum(query, 'supplierId', 'supplierId'),
       contains(query, 'q', 'inboundReceiptNo'),
+      (row) =>
+        supplierLotMissing === null ||
+        state.inboundReceiptLines.some(
+          (line) =>
+            line.inboundReceiptId === row.inboundReceiptId &&
+            line.supplierLotMissing === supplierLotMissing,
+        ),
     ]),
     query,
-  ),
-);
+  );
+});
 
-on('GET', '/logistics/inbound-receipts/{inboundReceiptId}/lines', (params) => ({
-  items: state.inboundReceiptLines.filter(
-    (line) => line.inboundReceiptId === Number(params.inboundReceiptId),
-  ),
-}));
+on('GET', '/logistics/inbound-receipts/{inboundReceiptId}/lines', (params, query) => {
+  const supplierLotMissing = bool(query, 'supplierLotMissing');
+  const labelIssued = bool(query, 'labelIssued');
+
+  return {
+    items: state.inboundReceiptLines.filter(
+      (line) =>
+        line.inboundReceiptId === Number(params.inboundReceiptId) &&
+        (supplierLotMissing === null || line.supplierLotMissing === supplierLotMissing) &&
+        (labelIssued === null || line.labelIssued === labelIssued),
+    ),
+  };
+});
+
+/*
+ * 자재 LOT 등록. 같은 공장에 같은 번호가 있으면 400 이다 - 409 가 아니다. 스캔값이 곧 번호라
+ * 다시 불러도 풀리지 않고 사람이 다른 라벨을 스캔해야 한다.
+ */
+on('POST', '/trace/lots', (_p, _q, body) => {
+  const lotNo = body?.lotNo;
+
+  if (
+    body?.numberSourceCode === 'SUPPLIER' &&
+    state.lots.some((lot) => lot.lotNo === lotNo && lot.plantId === body?.plantId)
+  ) {
+    return {
+      status: 400,
+      created: {
+        code: 'DUPLICATE_LOT_NO',
+        message: '이미 등록된 LOT 번호입니다.',
+        errors: [],
+      },
+    };
+  }
+
+  const lotId = newId();
+  const created = {
+    lotId,
+    lotNo,
+    itemId: body?.itemId,
+    lotTypeCode: body?.lotTypeCode,
+    plantId: body?.plantId,
+    initialQty: body?.initialQty,
+    currentQty: body?.initialQty,
+    uomId: body?.uomId,
+    sourceTypeCode: body?.sourceTypeCode,
+    sourceId: body?.sourceId,
+    /* 등록 즉시 검사 대기로 선다. 입하는 합격 전에 쓸 수 없다. */
+    statusCode: 'INSPECTION_PENDING',
+    completedAt: null,
+  };
+
+  state.lots.push(created);
+
+  /* 라인이 그 LOT 을 가리키게 한다. 안 이으면 같은 라인을 다시 채울 수 있는 것으로 보인다. */
+  const line = state.inboundReceiptLines.find(
+    (each) => each.inboundReceiptLineId === body?.sourceId,
+  );
+
+  if (line !== undefined) {
+    line.lotId = lotId;
+    line.supplierLotNo = lotNo;
+  }
+
+  return { status: 201, created };
+});
 
 on('POST', '/logistics/inbound-receipts', (_p, _q, body) => {
   const inboundReceiptId = newId();

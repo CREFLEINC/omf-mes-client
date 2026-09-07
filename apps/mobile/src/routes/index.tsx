@@ -10,6 +10,7 @@ import { IqcSkipRequestScreen } from '../screens/iqc-skip-request/screen';
 import { InboundReceiptScreen } from '../screens/inbound-receipt/screen';
 import { InboundVarianceScreen } from '../screens/inbound-variance/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
+import { MaterialLotScanScreen } from '../screens/material-lot-scan/screen';
 import { MaterialPickingScreen } from '../screens/material-picking/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
 import { PackingRepackScreen } from '../screens/packing-repack/screen';
@@ -42,6 +43,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'temporary-putaway', element: <TemporaryPutawayScreen /> },
       { path: 'recycle-entry', element: <RecycleEntryScreen /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
+      { path: 'material-lot-scan', element: <MaterialLotScanScreen /> },
       { path: 'material-picking', element: <MaterialPickingScreen /> },
       { path: 'shopfloor-receipt', element: <ShopfloorReceiptScreen /> },
       { path: 'stock-transfer', element: <StockTransferScreen /> },
