@@ -71,13 +71,25 @@ const filled = (lines: DraftLine[]): DraftLine[] =>
   lines.filter((line) => line.receivedQty.trim() !== '');
 
 /**
+ * 이 라인이 모자란가.
+ *
+ * 출고보다 많이 받은 것은 모자란 것이 아니다. 부호를 보지 않고 차이로 뭉치면 초과일 때
+ * 모자란 양이 음수로 적히고, 이미 막힌 라인에 사유까지 묻게 된다.
+ */
+export const isShort = (line: DraftLine): boolean =>
+  line.receivedQty.trim() !== '' && qtyProblemOf(line) === null && varianceOf(line) > 0;
+
+/**
  * 사유를 물어야 하는 라인.
  *
  * 데이터베이스는 사유를 비워 두게 두지만 화면은 요구한다 - 왜 모자란지를 아는 사람은 물건을
  * 받은 그 자리에 있고, 전표만 남으면 수량이 왜 갈렸는지가 사라진다.
+ *
+ * 다만 고를 것이 없으면 요구하지 않는다. 사유 값 목록은 아직 확정 전이라 실서버에서 빈
+ * 목록이 오는데, 그때도 요구하면 부족 수령을 영영 확정하지 못한다 - 물건은 이미 와 있다.
  */
-export const needsReason = (line: DraftLine): boolean =>
-  line.receivedQty.trim() !== '' && varianceOf(line) !== 0 && line.reasonCode === '';
+export const needsReason = (line: DraftLine, hasReasonOptions: boolean): boolean =>
+  hasReasonOptions && isShort(line) && line.reasonCode === '';
 
 export const canConfirm = (
   issue: GoodsIssue | null,
@@ -85,6 +97,7 @@ export const canConfirm = (
   hasWorker: boolean,
   alreadyReceived: boolean,
   queuedReceipts: number,
+  hasReasonOptions: boolean,
 ): boolean => {
   if (issue === null || !hasWorker || alreadyReceived || queuedReceipts > 0) {
     return false;
@@ -93,7 +106,8 @@ export const canConfirm = (
   const entered = filled(lines);
 
   return (
-    entered.length > 0 && entered.every((line) => qtyProblemOf(line) === null && !needsReason(line))
+    entered.length > 0 &&
+    entered.every((line) => qtyProblemOf(line) === null && !needsReason(line, hasReasonOptions))
   );
 };
 

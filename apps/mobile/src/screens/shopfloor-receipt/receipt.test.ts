@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   canConfirm,
+  isShort,
   needsReason,
   qtyProblemOf,
   queuedReceiptsFor,
@@ -68,20 +69,62 @@ describe('차이와 사유', () => {
   });
 
   it('차이가 있는데 사유가 비면 물어야 한다', () => {
-    expect(needsReason(line({ receivedQty: '480' }))).toBe(true);
+    expect(needsReason(line({ receivedQty: '480' }), true)).toBe(true);
   });
 
   it('사유를 고르면 더 묻지 않는다', () => {
-    expect(needsReason(line({ receivedQty: '480', reasonCode: 'DAMAGED' }))).toBe(false);
+    expect(needsReason(line({ receivedQty: '480', reasonCode: 'DAMAGED' }), true)).toBe(false);
   });
 
   it('차이가 없으면 사유를 묻지 않는다', () => {
-    expect(needsReason(line({ receivedQty: '500' }))).toBe(false);
+    expect(needsReason(line({ receivedQty: '500' }), true)).toBe(false);
   });
 
   /* 안 적은 라인은 이번 수령에 없다. 없는 것에 사유를 물으면 확정이 영영 막힌다. */
   it('안 적은 라인에는 사유를 묻지 않는다', () => {
-    expect(needsReason(line())).toBe(false);
+    expect(needsReason(line(), true)).toBe(false);
+  });
+});
+
+/*
+ * 에뮬레이터에서 드러난 자리다. 초과를 차이로 뭉치면 모자란 양이 음수로 적히고, 이미 막힌
+ * 라인에 사유까지 묻는다.
+ */
+describe('초과 수령은 모자란 것이 아니다', () => {
+  it('출고보다 많이 받은 라인은 모자란 라인이 아니다', () => {
+    expect(isShort(line({ receivedQty: '501' }))).toBe(false);
+  });
+
+  it('출고보다 많이 받은 라인에는 사유를 묻지 않는다', () => {
+    expect(needsReason(line({ receivedQty: '501' }), true)).toBe(false);
+  });
+
+  it('모자란 라인만 모자란 것으로 본다', () => {
+    expect(isShort(line({ receivedQty: '480' }))).toBe(true);
+    expect(isShort(line({ receivedQty: '500' }))).toBe(false);
+  });
+});
+
+/*
+ * 사유 값 목록은 아직 확정 전이라 실서버에서 빈 목록이 온다. 고를 것이 없는데 요구하면
+ * 부족 수령을 영영 확정하지 못한다 - 물건은 이미 와 있다.
+ */
+describe('고를 사유가 없을 때', () => {
+  it('사유를 요구하지 않는다', () => {
+    expect(needsReason(line({ receivedQty: '480' }), false)).toBe(false);
+  });
+
+  it('사유 없이 부족 수령을 확정한다', () => {
+    const short = [line({ receivedQty: '480' })];
+
+    expect(canConfirm(issue(), short, true, false, 0, false)).toBe(true);
+  });
+
+  /* 고를 것이 있으면 다시 요구한다 - 값 목록이 확정되면 저절로 되돌아와야 한다. */
+  it('사유가 생기면 다시 요구한다', () => {
+    const short = [line({ receivedQty: '480' })];
+
+    expect(canConfirm(issue(), short, true, false, 0, true)).toBe(false);
   });
 });
 
@@ -89,33 +132,33 @@ describe('확정 가능 여부', () => {
   const lines = [line({ receivedQty: '500' })];
 
   it('사번이 없으면 확정할 수 없다', () => {
-    expect(canConfirm(issue(), lines, false, false, 0)).toBe(false);
+    expect(canConfirm(issue(), lines, false, false, 0, true)).toBe(false);
   });
 
   it('출고 전표가 없으면 확정할 수 없다', () => {
-    expect(canConfirm(null, lines, true, false, 0)).toBe(false);
+    expect(canConfirm(null, lines, true, false, 0, true)).toBe(false);
   });
 
   it('한 라인도 적지 않으면 확정할 수 없다', () => {
-    expect(canConfirm(issue(), [line()], true, false, 0)).toBe(false);
+    expect(canConfirm(issue(), [line()], true, false, 0, true)).toBe(false);
   });
 
   it('수량이 잘못된 라인이 있으면 확정할 수 없다', () => {
-    expect(canConfirm(issue(), [line({ receivedQty: '501' })], true, false, 0)).toBe(false);
+    expect(canConfirm(issue(), [line({ receivedQty: '501' })], true, false, 0, true)).toBe(false);
   });
 
   it('사유 없는 차이가 있으면 확정할 수 없다', () => {
-    expect(canConfirm(issue(), [line({ receivedQty: '480' })], true, false, 0)).toBe(false);
+    expect(canConfirm(issue(), [line({ receivedQty: '480' })], true, false, 0, true)).toBe(false);
   });
 
   it('사유를 고르면 모자라도 확정한다', () => {
     const short = [line({ receivedQty: '480', reasonCode: 'DAMAGED' })];
 
-    expect(canConfirm(issue(), short, true, false, 0)).toBe(true);
+    expect(canConfirm(issue(), short, true, false, 0, true)).toBe(true);
   });
 
   it('전량 받으면 확정한다', () => {
-    expect(canConfirm(issue(), lines, true, false, 0)).toBe(true);
+    expect(canConfirm(issue(), lines, true, false, 0, true)).toBe(true);
   });
 });
 
@@ -127,12 +170,12 @@ describe('이미 받은 출고 전표', () => {
   const lines = [line({ receivedQty: '500' })];
 
   it('서버가 이미 받았다고 하면 확정할 수 없다', () => {
-    expect(canConfirm(issue(), lines, true, true, 0)).toBe(false);
+    expect(canConfirm(issue(), lines, true, true, 0, true)).toBe(false);
   });
 
   /* 서버 응답에는 아직 안 간 건이 없다. 큐를 세지 않으면 오프라인에서 둘 다 통과한다. */
   it('큐에 이 전표의 입고가 담겨 있으면 확정할 수 없다', () => {
-    expect(canConfirm(issue(), lines, true, false, 1)).toBe(false);
+    expect(canConfirm(issue(), lines, true, false, 1, true)).toBe(false);
   });
 
   it('큐에서 이 전표의 입고만 센다', () => {

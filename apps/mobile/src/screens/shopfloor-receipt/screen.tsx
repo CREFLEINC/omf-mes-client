@@ -13,6 +13,7 @@ import { useAlreadyReceived, useLineLotLabels, useScannedGoodsIssue } from './qu
 import {
   RECEIPT_LABEL,
   canConfirm,
+  isShort,
   needsReason,
   qtyProblemOf,
   queuedReceiptsFor,
@@ -53,6 +54,11 @@ export const ShopfloorReceiptScreen = () => {
   const itemLabels = useItemLabels(issue !== null);
   const lotLabels = useLineLotLabels(issue?.lines ?? []);
   const reasons = useCodeValues(VARIANCE_REASON);
+  /*
+   * 사유 값 목록은 아직 확정 전이라 실서버에서 빈 목록이 온다. 고를 것이 없는데 사유를
+   * 요구하면 부족 수령을 영영 확정하지 못한다 - 물건은 이미 와 있다.
+   */
+  const hasReasonOptions = (reasons.data ?? []).length > 0;
 
   /*
    * 큐에 담긴 것은 서버 응답에 없다. 읽기 전에는 담긴 것이 없는 것과 구별되지 않아 그 사이에
@@ -72,6 +78,7 @@ export const ShopfloorReceiptScreen = () => {
       worker !== null,
       received === 'received' || received === 'checking',
       queuedReceipts,
+      hasReasonOptions,
     ) && issue !== null;
 
   /* 전표를 열면 그 라인으로 적을 자리를 만든다. 조회가 끝난 뒤라 렌더 중에 하지 않는다. */
@@ -293,9 +300,12 @@ export const ShopfloorReceiptScreen = () => {
                     }
                   />
                   <p className="shopfloor-receipt__issued">{t.lines.issued(unit)}</p>
-                  {line.receivedQty.trim() !== '' && short !== 0 ? (
+                  {/* 모자란 사실은 고를 사유가 있든 없든 보인다. 숨기면 그냥 덜 받은 것이 된다. */}
+                  {isShort(line) ? (
+                    <p className="shopfloor-receipt__short">{t.lines.short(String(short))}</p>
+                  ) : null}
+                  {isShort(line) && hasReasonOptions ? (
                     <>
-                      <p className="shopfloor-receipt__short">{t.lines.short(String(short))}</p>
                       <label htmlFor={`reason-${String(line.goodsIssueLineId)}`}>
                         {t.lines.reasonLabel(nameOf(line))}
                       </label>
@@ -331,7 +341,7 @@ export const ShopfloorReceiptScreen = () => {
               </AlertBanner>
             ) : null}
             {worker === null ? <p className="shopfloor-receipt__note">{t.noWorker}</p> : null}
-            {lines.some((line) => needsReason(line)) ? (
+            {lines.some((line) => needsReason(line, hasReasonOptions)) ? (
               <p className="shopfloor-receipt__note">{t.lines.reasonRequired}</p>
             ) : null}
             <Button
