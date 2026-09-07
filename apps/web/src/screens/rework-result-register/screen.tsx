@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Card,
-  NumberPad,
   Progress,
   Select,
   Table,
@@ -10,6 +9,7 @@ import {
 } from '@crefle/web-ui';
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { NumericKeypad } from '@omf-mes/ui';
 import { useEffect, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -345,12 +345,28 @@ export const ReworkResultRegisterScreen = () => {
                   />
                   <p className="field-note">{t.defectCodeReason}</p>
                 </div>
-                <NumberPad
+                {/*
+                  * ⭐ **POP 이 공유하는 키패드를 쓴다**(`@omf-mes/ui`). DS `NumberPad` 는 키가
+                  *    작고(60px — 현장 터치 하한 72 에 못 미친다) «전체 잠금»만 있어 키마다
+                  *    조건을 걸 수 없다 — 칸이 비었는데도 [ C ]·[ ⌫ ]가 눌렸다(사용자 지적).
+                  *
+                  * ⚠ 마지막 줄은 [ C ] · [ 0 ] · [ ⌫ ] 그대로다 — 부품이 «지움»을 끝에 그리므로
+                  *   자리는 `pop.css` 가 되돌린다(전례 `P-05-01`·`P-02-04`).
+                  */}
+                <NumericKeypad
+                  className="rework-result-pad"
+                  label={t.quantities.keypadLabel}
                   value={drafts[activeKey]}
+                  /* 수량은 `numeric(20,6)` 이라 소수를 받는다(스펙 §4-B). */
                   allowDecimal
+                  decimalLabel={t.quantities.decimalKey}
                   max={progress.remaining}
+                  /* 스펙 §7 이 「큰 터치 타겟」을 지정한다 — 64와 72 사이에 단이 없어 `2xl` 이다. */
+                  keySize="2xl"
+                  backspaceLabel={t.quantities.backspace}
+                  backspaceGlyph="⌫"
+                  clearLabel={t.quantities.clearGlyph}
                   onChange={(value) => setDrafts((current) => ({ ...current, [activeKey]: value }))}
-                  size="lg"
                 />
               </div>
 

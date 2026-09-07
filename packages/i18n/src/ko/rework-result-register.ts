@@ -42,6 +42,12 @@ export const reworkResultRegister = {
   disposition: '처분 수량',
   quantities: {
     title: '실적 입력',
+    /** 키 묶음의 접근 이름. */
+    keypadLabel: '수량 키패드',
+    /* 읽는 기계에는 이름이 가고 눈에는 기호가 보인다 — 전례 `P-05-01`·`P-02-04`. */
+    backspace: '한 자 지움',
+    clearGlyph: 'C',
+    decimalKey: '소수점',
     goodQty: '양품',
     defectQty: '불량',
     holdQty: '보류',

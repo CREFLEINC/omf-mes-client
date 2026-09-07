@@ -7,7 +7,7 @@
  * 여기 있는 값은 전부 지어낸 합성값이다(`SYN-` 접두).
  */
 import { messages } from '@omf-mes/i18n';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -192,6 +192,31 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     await user.click(screen.getByRole('button', { name: t.changeWorkOrder }));
 
     expect(await screen.findByRole('heading', { name: t.workOrders })).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **칸이 비면 [ C ]·[ ⌫ ] 는 잠긴다**(사용자 지적). 지울 것이 없는데 열려 있으면 눌러도
+   *    아무 일이 없어 「눌리는데 안 되는 키」가 된다. DS `NumberPad` 는 «전체 잠금»만 있어
+   *    키마다 조건을 걸 수 없다 — POP 이 공유하는 키패드로 바꿔야 풀린다.
+   */
+  it('칸이 비면 지움 키 둘이 잠기고 값이 들어오면 열린다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    const clearKey = () => screen.getByRole('button', { name: t.quantities.clearGlyph });
+    const backspaceKey = () => screen.getByRole('button', { name: t.quantities.backspace });
+
+    await waitFor(() => {
+      expect(clearKey()).toBeDisabled();
+    });
+    expect(backspaceKey()).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+
+    await waitFor(() => {
+      expect(clearKey()).toBeEnabled();
+    });
+    expect(backspaceKey()).toBeEnabled();
   });
 
   /*
