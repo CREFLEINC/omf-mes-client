@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -34,11 +35,19 @@ const renderPane = (overrides: Partial<Parameters<typeof VersionFormPane>[0]> = 
 };
 
 describe('VersionFormPane — 샘플 비율 표기', () => {
-  /* 단위를 라벨에 박지 않으면 30을 30개로 읽는다 — 받는 값은 백분율이다(#201). */
-  it('라벨이 단위를 담는다', () => {
+  /**
+   * ⭐ **라벨의 뜻 자체를 잰다.** 구현과 같은 문면 상수만 질의하면 그 상수가 「샘플 수량」으로
+   * 돌아가도 시험이 함께 움직인다. 비율·백분율을 담고 수량을 배제하는 것이 이 칸의 잣대다.
+   */
+  it('라벨이 비율과 백분율 단위를 담고 수량으로 읽히지 않는다', () => {
     renderPane();
 
-    expect(screen.getByLabelText('샘플 비율(%)')).toBeInTheDocument();
+    const label = messages.inspectionStandard.fields.samplingRatio;
+
+    expect(label).toContain('비율');
+    expect(label).toContain('%');
+    expect(label).not.toMatch(/수량|개수/);
+    expect(screen.getByLabelText(label)).toBeInTheDocument();
     expect(screen.queryByLabelText(/샘플 수량/)).not.toBeInTheDocument();
   });
 
@@ -72,12 +81,13 @@ describe('VersionFormPane — 샘플 비율 표기', () => {
    * `validity.stepMismatch` 가 거짓이다). 그래서 여기서는 속성이 실제 잣대이고,
    * 브라우저가 소수를 받는지는 사람 확인 몫이다. 대신 소수 값이 자릿수 그대로 그려지는지는 잰다.
    */
-  it('입력칸이 소수를 막지 않는다', () => {
+  it('숫자 입력칸이 소수를 막지 않는다', () => {
     renderPane({ values: versionToFormValues(inspectionPlanVersionFixtures[1]!) });
 
     const input = screen.getByLabelText<HTMLInputElement>('샘플 비율(%)');
 
     expect(input).toHaveValue(2.5);
+    expect(input).toHaveAttribute('type', 'number');
     expect(input).toHaveAttribute('step', 'any');
   });
 
@@ -93,15 +103,11 @@ describe('VersionFormPane — 샘플 비율 표기', () => {
 });
 
 describe('VersionFormPane — 상태 표기', () => {
-  it('상태 배지와 임시 안내를 함께 낸다', () => {
+  it('확정된 상태 배지만 낸다', () => {
     renderPane();
 
     expect(screen.getByText('작성중')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        '상태 표시는 임시입니다 — 상태 값 목록이 확정되면 이 표시가 바뀔 수 있습니다.',
-      ),
-    ).toBeInTheDocument();
+    expect(screen.queryByText(/상태 표시는 임시입니다/)).not.toBeInTheDocument();
   });
 
   /* 서버가 채우는 값을 미리 지어내 보이지 않는다. */
@@ -115,7 +121,6 @@ describe('VersionFormPane — 상태 표기', () => {
 
     expect(screen.queryByText('버전 2')).not.toBeInTheDocument();
     expect(screen.queryByText('작성중')).not.toBeInTheDocument();
-    expect(screen.queryByText(/상태 표시는 임시입니다/)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '버전 등록' })).toBeInTheDocument();
   });
 });
@@ -183,8 +188,9 @@ describe('VersionFormPane — 편집', () => {
     renderPane();
 
     expect(
-      screen.getAllByText('선택지 준비 중입니다. 코드 목록이 확정되면 이 항목에서 고를 수 있습니다.')
-        .length,
+      screen.getAllByText(
+        '선택지 준비 중입니다. 코드 목록이 확정되면 이 항목에서 고를 수 있습니다.',
+      ).length,
     ).toBeGreaterThan(0);
   });
 });

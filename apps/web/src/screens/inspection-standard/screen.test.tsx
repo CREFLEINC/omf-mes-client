@@ -16,6 +16,7 @@ import { inspectionPlanFixtures, inspectionPlanVersionFixtures } from './fixture
 import { InspectionStandardScreen } from './screen';
 
 const ROUTE = '/master-data/inspection-standard';
+const t = messages.inspectionStandard;
 
 const PLANS_PATH = '/quality/inspection-plans';
 
@@ -924,7 +925,7 @@ describe('InspectionStandardScreen — 기준 승인', () => {
     await user.click(within(await awaitPlanForm()).getByRole('button', { name: '승인' }));
     await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
 
-    await screen.findByText('저장했습니다');
+    await screen.findByText(t.result.approved);
 
     const posts = requestsTo(requests, APPROVE_PATH);
     expect(posts).toHaveLength(1);
@@ -1011,7 +1012,7 @@ describe('InspectionStandardScreen — 기준 승인', () => {
 
     await user.click(within(planForm()).getByRole('button', { name: '승인' }));
     await user.click(within(await dialog()).getByRole('button', { name: '승인' }));
-    await screen.findByText('저장했습니다');
+    await screen.findByText(t.result.approved);
 
     await waitFor(() => {
       expect(requestsTo(requests, PLAN_DETAIL_PATH).length).toBeGreaterThan(before.detail);
@@ -1060,7 +1061,7 @@ describe('InspectionStandardScreen — 기준 사용 중지', () => {
     await user.click(within(await awaitPlanForm()).getByRole('button', { name: '사용 중지' }));
     await user.click(within(await dialog()).getByRole('button', { name: '사용 중지' }));
 
-    await screen.findByText('저장했습니다');
+    await screen.findByText(t.result.deactivated);
 
     const posts = requestsTo(requests, DEACTIVATE_PATH);
     expect(posts).toHaveLength(1);
@@ -1560,17 +1561,13 @@ describe('InspectionStandardScreen — 버전 상세와 샘플 비율 표기', (
     expect(await screen.findByLabelText('합격판정개수')).toHaveValue(0);
   });
 
-  /* 상태 값 목록이 확정되지 않았다는 사실을 감추지 않는다. 되풀이하지도 않는다. */
-  it('상태 임시 안내가 화면에 한 번만 보인다', async () => {
+  /* 2026-09-03 확정된 공통 상태 코드이므로 이전의 임시 안내를 더는 노출하지 않는다. */
+  it('상태 임시 안내가 남지 않는다', async () => {
     renderSelectedVersion();
 
     await awaitVersionForm();
 
-    expect(
-      screen.getAllByText(
-        '상태 표시는 임시입니다 — 상태 값 목록이 확정되면 이 표시가 바뀔 수 있습니다.',
-      ),
-    ).toHaveLength(1);
+    expect(screen.queryByText(/상태 표시는 임시입니다/)).not.toBeInTheDocument();
   });
 
   it('버전 상세 조회에 실패하면 폼 대신 오류 배너가 나온다', async () => {
@@ -1632,6 +1629,41 @@ describe('InspectionStandardScreen — 버전 저장', () => {
     expect(body.samplingRatio).toBe(30.5);
     expect(Object.keys(body)).toContain('samplingRatio');
     expect(Object.keys(body)).not.toContain('samplingQty');
+  });
+
+  /**
+   * ⭐ **계약의 `samplingRatio` 오류가 그 칸에 붙는다.** 글자가 화면 어딘가에 있는지만 재면
+   * `VERSION_FORM_FIELDS`의 이름이 어긋나 오류가 배너로 밀려도 통과한다. 접근 설명과
+   * `aria-invalid`를 함께 재서 서버 필드 이름 → 공용 분해 → 입력칸의 전선을 끝까지 문다.
+   */
+  it('서버의 샘플 비율 필드 오류가 입력칸에 인라인으로 붙는다', async () => {
+    const { user } = renderSelectedVersion([
+      versionSaveRoute(() =>
+        jsonResponse(
+          {
+            errors: [
+              {
+                scope: 'field',
+                field: 'samplingRatio',
+                code: 'INVALID',
+                message: '합성 샘플 비율 서버 오류',
+              },
+            ],
+          },
+          { status: 400 },
+        ),
+      ),
+    ]);
+
+    const form = await awaitVersionForm();
+    const input = within(form).getByLabelText('샘플 비율(%)');
+    fireEvent.change(input, { target: { value: '40' } });
+    await user.click(within(form).getByRole('button', { name: '저장' }));
+
+    await screen.findByText('합성 샘플 비율 서버 오류');
+    expect(input).toHaveAccessibleDescription('합성 샘플 비율 서버 오류');
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getAllByText('합성 샘플 비율 서버 오류')).toHaveLength(1);
   });
 
   it('유효기간이 역전되면 두 칸 모두에 오류를 내고 보내지 않는다', async () => {
@@ -1766,7 +1798,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
     expect(requestsTo(requests, `${VERSIONS_PATH}/4002:confirm`)).toHaveLength(0);
 
     await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
-    await screen.findByText('저장했습니다');
+    await screen.findByText(t.result.confirmed);
 
     const posts = requestsTo(requests, `${VERSIONS_PATH}/4002:confirm`);
     expect(posts).toHaveLength(1);
@@ -1788,7 +1820,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
 
     await user.click(within(form).getByRole('button', { name: '확정' }));
     await user.click(within(await dialog()).getByRole('button', { name: '확정' }));
-    await screen.findByText('저장했습니다');
+    await screen.findByText(t.result.confirmed);
 
     await waitFor(() => {
       expect(requestsTo(requests, VERSION_DETAIL_PATH).length).toBeGreaterThan(before.detail);
@@ -1875,7 +1907,7 @@ describe('InspectionStandardScreen — 확정과 폐기', () => {
 
     await user.click(within(form).getByRole('button', { name: '폐기' }));
     await user.click(within(await dialog()).getByRole('button', { name: '폐기' }));
-    await screen.findByText('저장했습니다');
+    await screen.findByText(t.result.obsoleted);
 
     const posts = requestsTo(requests, `${VERSIONS_PATH}/4001:obsolete`);
     expect(posts).toHaveLength(1);

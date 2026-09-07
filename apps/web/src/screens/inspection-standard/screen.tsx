@@ -301,7 +301,7 @@ export const InspectionStandardScreen = () => {
     knownFields: [],
     onSuccess: () => {
       setPlanAction(null);
-      toast.show({ variant: 'success', description: messages.common.saved });
+      toast.show({ variant: 'success', description: t.result.approved });
     },
   });
 
@@ -325,7 +325,7 @@ export const InspectionStandardScreen = () => {
     knownFields: [],
     onSuccess: () => {
       setPlanAction(null);
-      toast.show({ variant: 'success', description: messages.common.saved });
+      toast.show({ variant: 'success', description: t.result.deactivated });
     },
   });
 
@@ -458,23 +458,23 @@ export const InspectionStandardScreen = () => {
   /*
    * 전이 두 갈래의 훅을 나눈다 — 하나로 묶으면 확정 실패 문구가 폐기 창에 남는다.
    */
-  const finishVersionTransition = () => {
+  const finishVersionTransition = (description: string) => {
     setVersionTransition(null);
-    toast.show({ variant: 'success', description: messages.common.saved });
+    toast.show({ variant: 'success', description });
   };
 
   const confirmWrite = useVersionTransition({
     client,
     inspectionPlanVersionId: selectedVersionId,
     path: '/quality/inspection-plan-versions/{inspectionPlanVersionId}:confirm',
-    onDone: finishVersionTransition,
+    onDone: () => finishVersionTransition(t.result.confirmed),
   });
 
   const obsoleteWrite = useVersionTransition({
     client,
     inspectionPlanVersionId: selectedVersionId,
     path: '/quality/inspection-plan-versions/{inspectionPlanVersionId}:obsolete',
-    onDone: finishVersionTransition,
+    onDone: () => finishVersionTransition(t.result.obsoleted),
   });
 
   const versionTransitionWrite = versionTransition === 'obsolete' ? obsoleteWrite : confirmWrite;
