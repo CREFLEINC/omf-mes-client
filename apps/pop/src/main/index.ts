@@ -241,7 +241,11 @@ async function runPrintScript(
   args: (path: string) => string[],
 ): Promise<string> {
   mkdirSync(join(scriptPath, '..'), { recursive: true });
-  writeFileSync(scriptPath, script, 'utf8');
+  /*
+   * ⚠ **BOM 을 붙여 쓴다.** PowerShell 5.1 은 표식이 없는 `.ps1` 을 ANSI 로 읽어 한글이
+   *   깨진다 — 작업 이름이 한글이라 대기열에 깨진 이름이 남고, 사유 문장도 못 읽게 된다.
+   */
+  writeFileSync(scriptPath, `\ufeff${script}`, 'utf8');
 
   return new Promise<string>((resolve, reject) => {
     execFile(

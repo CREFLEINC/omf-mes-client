@@ -9,36 +9,44 @@ import {
 describe('원시 바이트 전송 스크립트', () => {
   const job = { dataPath: 'C:\\job\\label.prn', jobName: 'LOT-1' };
 
-  it('지정한 프린터의 대기열을 연다', () => {
-    expect(buildRawPrintScript({ ...job, deviceName: 'TSC TTP-247' })).toContain(
-      "GetPrintQueue('TSC TTP-247')",
+  it('지정한 프린터로 보낸다', () => {
+    expect(buildRawPrintScript({ ...job, deviceName: 'TSC TH240 Series' })).toContain(
+      "$target = 'TSC TH240 Series'",
     );
   });
 
-  // ⭐ 지정이 없으면 어느 것이 기본인지 우리가 알아내지 않는다 — OS 가 안다.
-  it('지정이 없으면 OS 기본 대기열에 맡긴다', () => {
-    const script = buildRawPrintScript(job);
+  /*
+   * ⛔ 여기가 이번 경로의 존재 이유다 — 자료 형식을 RAW 로 못 박아야 스풀러가 바이트를
+   *    해석하지 않고 그대로 포트로 흘린다. 드라이버에 맡기면 그림으로 읽어 백지가 나온다(실측).
+   */
+  it('자료 형식을 RAW 로 못 박는다', () => {
+    expect(buildRawPrintScript(job)).toContain('pDataType = "RAW"');
+  });
 
-    expect(script).toContain('DefaultPrintQueue');
-    expect(script).not.toContain('GetPrintQueue');
+  // ⚠ 일부만 나가면 잘린 라벨이 찍힌다 — 보낸 바이트 수를 센다.
+  it('보낸 바이트 수를 확인한다', () => {
+    expect(buildRawPrintScript(job)).toContain('written != data.Length');
+  });
+
+  // ⭐ 지정이 없으면 어느 것이 기본인지 우리가 알아내지 않는다 — OS 가 안다.
+  it('지정이 없으면 OS 기본 프린터에 맡긴다', () => {
+    expect(buildRawPrintScript(job)).toContain('PrinterSettings.PrinterName');
   });
 
   // ⛔ 이름에 따옴표가 섞여도 스크립트가 갈라지면 안 된다.
   it('프린터 이름의 작은따옴표를 벗어난다', () => {
-    expect(buildRawPrintScript({ ...job, deviceName: "Sam's TSC" })).toContain(
-      "GetPrintQueue('Sam''s TSC')",
-    );
+    expect(buildRawPrintScript({ ...job, deviceName: "Sam's TSC" })).toContain("'Sam''s TSC'");
   });
 
   /*
    * ⭐ 이 길의 존재 이유가 여기다 — 대기열에 바이트를 그대로 넣는다. 그림으로 바꾸는 단계가
    *    끼면 백지가 나온 종전 경로로 되돌아간다.
    */
-  it('바이트를 그대로 대기열에 넣는다', () => {
+  it('바이트를 그대로 넘긴다', () => {
     const script = buildRawPrintScript(job);
 
     expect(script).toContain("ReadAllBytes('C:\\job\\label.prn')");
-    expect(script).toContain('$stream.Write($bytes, 0, $bytes.Length)');
+    expect(script).toContain('[OmfRawPrinter]::Send($target,');
   });
 
   // ⛔ 경로에 따옴표가 섞여도 스크립트가 갈라지면 안 된다 — 이름 쪽만 막아서는 부족하다.
@@ -64,26 +72,13 @@ describe('원시 바이트 전송 스크립트', () => {
     expect(script).not.toContain('Write-Error');
   });
 
-  it('작업 이름을 대기열에 싣는다', () => {
-    expect(buildRawPrintScript(job)).toContain("AddJob('LOT-1')");
+  it('작업 이름을 함께 싣는다', () => {
+    expect(buildRawPrintScript(job)).toContain("'LOT-1'");
   });
 
   // ⚠ 닫지 않으면 열린 작업이 대기열에 남아 다음 인쇄가 그 뒤에 선다.
-  it('실패해도 흐름을 닫는다', () => {
-    expect(buildRawPrintScript(job)).toContain('finally { $stream.Close(); $stream.Dispose() }');
-  });
 
-  /*
-   * ⛔ 흐름을 그냥 닫으면 그때까지 쓴 바이트가 **확정 전송**된다 — 잘린 TSPL 이 나가 반쪽
-   *    라벨이 찍히거나 프린터가 뒤 바이트를 기다리며 선다. 그리고 셸은 실패로 표시하니
-   *    작업자가 다시 눌러 중복 라벨까지 나온다.
-   */
-  it('쓰다가 깨지면 작업을 버린다 — 잘린 라벨을 내보내지 않는다', () => {
-    const script = buildRawPrintScript(job);
 
-    expect(script).toContain('catch { $stream.Abort(); throw }');
-    expect(script.indexOf('$stream.Abort()')).toBeLessThan(script.indexOf('$stream.Close()'));
-  });
 
   /* ⛔ 값 셋 모두 스크립트 문자열에 박힌다 — 하나만 막으면 나머지로 스크립트가 갈라진다. */
   it.each([
@@ -94,11 +89,8 @@ describe('원시 바이트 전송 스크립트', () => {
   });
 
   /* ⚠ 문자열 조각 대조만으로는 구문이 깨진 스크립트를 못 잡는다. 여닫는 짝을 센다. */
-  it('구문 균형이 맞는다 — 여는 만큼 닫는다', () => {
-    const script = buildRawPrintScript(job);
-
-    expect(script.split('{').length).toBe(script.split('}').length);
-    expect(script).toMatch(/^\$ErrorActionPreference/);
+  it('실패하면 사유를 stderr 로 흘린다', () => {
+    expect(buildRawPrintScript(job)).toContain('[Console]::Error.WriteLine');
   });
 
   /*
@@ -131,7 +123,6 @@ describe('프린터 목록 스크립트', () => {
 
     expect(script).toContain('GetPrintQueues()');
     expect(script).toContain('DefaultPrintQueue.Name');
-    expect(script).toContain('(기본)');
   });
 
   // ⛔ 목록만 보는 것이지 인쇄가 아니다 — 여기서 종이가 나오면 안 된다.

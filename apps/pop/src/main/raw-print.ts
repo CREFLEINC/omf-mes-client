@@ -27,21 +27,80 @@
 import { psQuote } from './windows-print';
 
 /**
- * 대기열을 다루는 스크립트의 머리. `LocalPrintServer`·`PrintQueue` 가 이 어셈블리에 있다.
+ * 스풀러에 **자료 형식을 `RAW` 로 못 박아** 바이트를 넣는 도우미(C#).
  *
- * ⛔ **어셈블리 적재를 `try` 안에 둔다.** 밖에 두면 그 줄이 실패했을 때 아래 `catch` 가 받지
- *    못해 종료 코드가 서지 않고, 부르는 쪽은 인쇄가 성공한 것으로 읽는다 — 아무 일도 일어나지
- *    않았는데 성공으로 보이는 가장 나쁜 자리다(#831 완료 조건 ④).
+ * ⭐ **왜 P/Invoke 인가.** 종전에는 `PrintQueue.AddJob` 을 썼는데, 실기에서 작업은 성공으로
+ *   끝나고 대기열도 비었는데 **종이가 나오지 않았다**. 윈도 테스트 페이지는 정상이므로 대기열
+ *   에서 프린터까지는 살아 있고, 드라이버가 우리 바이트를 그림으로 해석해 버린 것이다.
+ *   `StartDocPrinter` 에 `pDataType = "RAW"` 를 직접 실으면 스풀러가 **해석하지 않고 그대로**
+ *   포트로 흘린다 — 드라이버 설정에 좌우되지 않는다.
+ *
+ * ⛔ **메시지를 영문으로 둔다.** PowerShell 5.1 은 `.ps1` 을 ANSI 로 읽어 한글이 깨지고,
+ *    깨진 사유는 사유가 아니다.
+ * ⚠ **몇 바이트를 보냈는지 세어 확인한다.** 일부만 나가면 잘린 라벨이 찍힌다.
  */
+const RAW_PRINTER_HELPER = String.raw`
+using System;
+using System.Runtime.InteropServices;
+public static class OmfRawPrinter {
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  public class DocInfo {
+    [MarshalAs(UnmanagedType.LPWStr)] public string pDocName;
+    [MarshalAs(UnmanagedType.LPWStr)] public string pOutputFile;
+    [MarshalAs(UnmanagedType.LPWStr)] public string pDataType;
+  }
+  [DllImport("winspool.Drv", EntryPoint = "OpenPrinterW", SetLastError = true, CharSet = CharSet.Unicode)]
+  static extern bool OpenPrinter(string src, out IntPtr h, IntPtr pd);
+  [DllImport("winspool.Drv", EntryPoint = "ClosePrinter", SetLastError = true)]
+  static extern bool ClosePrinter(IntPtr h);
+  [DllImport("winspool.Drv", EntryPoint = "StartDocPrinterW", SetLastError = true, CharSet = CharSet.Unicode)]
+  static extern bool StartDocPrinter(IntPtr h, int level, [In, MarshalAs(UnmanagedType.LPStruct)] DocInfo di);
+  [DllImport("winspool.Drv", EntryPoint = "EndDocPrinter", SetLastError = true)]
+  static extern bool EndDocPrinter(IntPtr h);
+  [DllImport("winspool.Drv", EntryPoint = "StartPagePrinter", SetLastError = true)]
+  static extern bool StartPagePrinter(IntPtr h);
+  [DllImport("winspool.Drv", EntryPoint = "EndPagePrinter", SetLastError = true)]
+  static extern bool EndPagePrinter(IntPtr h);
+  [DllImport("winspool.Drv", EntryPoint = "WritePrinter", SetLastError = true)]
+  static extern bool WritePrinter(IntPtr h, IntPtr bytes, int count, out int written);
+
+  static void Fail(string what) {
+    throw new Exception(what + " (win32 error " + Marshal.GetLastWin32Error() + ")");
+  }
+
+  public static void Send(string printer, string job, byte[] data) {
+    IntPtr h;
+    if (!OpenPrinter(printer, out h, IntPtr.Zero)) Fail("cannot open printer: " + printer);
+    try {
+      DocInfo di = new DocInfo();
+      di.pDocName = job;
+      di.pDataType = "RAW";
+      if (!StartDocPrinter(h, 1, di)) Fail("cannot start document");
+      try {
+        if (!StartPagePrinter(h)) Fail("cannot start page");
+        IntPtr buffer = Marshal.AllocCoTaskMem(data.Length);
+        try {
+          Marshal.Copy(data, 0, buffer, data.Length);
+          int written;
+          if (!WritePrinter(h, buffer, data.Length, out written)) Fail("cannot write to printer");
+          if (written != data.Length) {
+            throw new Exception("sent only " + written + " of " + data.Length + " bytes");
+          }
+        } finally { Marshal.FreeCoTaskMem(buffer); }
+        EndPagePrinter(h);
+      } finally { EndDocPrinter(h); }
+    } finally { ClosePrinter(h); }
+  }
+}
+`;
+
+/** 대기열 목록을 다루는 스크립트의 머리. `LocalPrintServer` 가 이 어셈블리에 있다. */
 const PRINT_SERVER_HEAD = [
   '$ErrorActionPreference = ' + psQuote('Stop'),
   'try {',
   '  Add-Type -AssemblyName System.Printing',
 ];
 
-/**
- * 대기열로 한 덩이를 보내는 길. 구현은 `index.ts` 가 준다(스크립트를 써서 PowerShell 로).
- */
 export interface RawPrinter {
   print(job: { dataPath: string; jobName: string }): Promise<void>;
 }
@@ -88,27 +147,22 @@ export interface RawPrintJob {
  *   알아내려다 있지도 않은 항목을 읽어 전부 막은 적이 있다(`silent-print.ts` 실측).
  */
 export function buildRawPrintScript({ dataPath, deviceName, jobName }: RawPrintJob): string {
-  const chooseQueue =
+  /* 이름을 주지 않으면 OS 기본 프린터를 그 자리에서 물어본다 — 어느 것이 기본인지는 윈도가 안다. */
+  const chooseTarget =
     deviceName === undefined
-      ? '$queue = $server.DefaultPrintQueue'
-      : `$queue = $server.GetPrintQueue(${psQuote(deviceName)})`;
+      ? [
+          '  Add-Type -AssemblyName System.Drawing',
+          '  $target = (New-Object System.Drawing.Printing.PrintDocument).PrinterSettings.PrinterName',
+        ]
+      : [`  $target = ${psQuote(deviceName)}`];
 
   return [
-    ...PRINT_SERVER_HEAD,
-    '  $server = New-Object System.Printing.LocalPrintServer',
-    '  ' + chooseQueue,
+    '$ErrorActionPreference = ' + psQuote('Stop'),
+    'try {',
+    `  Add-Type -TypeDefinition @'${RAW_PRINTER_HELPER}'@`,
+    ...chooseTarget,
     `  $bytes = [System.IO.File]::ReadAllBytes(${psQuote(dataPath)})`,
-    `  $job = $queue.AddJob(${psQuote(jobName)})`,
-    '  $stream = $job.JobStream',
-    /*
-     * ⛔ **깨지면 작업을 버린다.** 대기열 흐름은 닫을 때 그때까지 쓴 바이트를 **확정 전송**
-     *    한다 — 그냥 닫으면 잘린 TSPL 이 프린터로 나가 반쪽 라벨이 찍히거나 프린터가 뒤
-     *    바이트를 기다리며 선다. 그리고 셸은 실패로 표시하니 작업자가 다시 눌러 **중복 라벨**
-     *    까지 나온다. `Abort` 가 그 작업을 취소한다.
-     */
-    '  try { $stream.Write($bytes, 0, $bytes.Length) }',
-    '  catch { $stream.Abort(); throw }',
-    '  finally { $stream.Close(); $stream.Dispose() }',
+    `  [OmfRawPrinter]::Send($target, ${psQuote(jobName)}, $bytes)`,
     /*
      * ⛔ `Write-Error` 를 쓰지 않는다 — 위의 `Stop` 이 그것마저 멈추는 오류로 올려 `exit` 에
      *    닿지 못한다. 사유를 그대로 stderr 로 흘리고 종료 코드를 세운다.
@@ -141,7 +195,8 @@ export function buildListPrintersScript(): string {
     '  $default = $server.DefaultPrintQueue.Name',
     '  foreach ($q in $server.GetPrintQueues()) {',
     /* 기본 프린터에 표를 달아 준다 — 목록만으로는 어디로 가는지 알 수 없다. */
-    '    $mark = if ($q.Name -eq $default) { " (기본)" } else { "" }',
+    /* ⚠ 표시를 영문으로 둔다 — 명령 프롬프트 문자표가 한글을 깨뜨려 이름을 못 읽는다(실측). */
+    '    $mark = if ($q.Name -eq $default) { " (default)" } else { "" }',
     '    [Console]::Out.WriteLine($q.Name + $mark)',
     '  }',
     '} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }',
