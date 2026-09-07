@@ -664,7 +664,10 @@ describe('PopMaterialLotLabelScreen — 이미 등록된 자재', () => {
     const { user } = renderFlow({ lotId: LOT_ID });
     await chooseLine(user);
 
-    expect(await screen.findByText('000999999 000000500 260827 000011 0001')).toBeInTheDocument();
+    /* 구분 문자는 가운뎃점이다 — 스펙 §3 이 그렇게 적었다(공백만으로는 자간과 구별되지 않는다). */
+    expect(
+      await screen.findByText('000999999 · 000000500 · 260827 · 000011 · 0001'),
+    ).toBeInTheDocument();
   });
 });
 

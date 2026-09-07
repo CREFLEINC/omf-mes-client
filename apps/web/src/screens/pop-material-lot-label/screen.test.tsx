@@ -493,14 +493,17 @@ describe('PopMaterialLotLabelScreen — 등록이 어디까지 갔는가', () =>
   /**
    * ⛔ 이미 등록된 자재에 「등록·인쇄」를 보이면 이미 있는 LOT 위에 또 만든다고 읽힌다.
    * 실제로 다시 부르면 같은 자재에 LOT 이 둘 생기고 되돌릴 화면이 없다(변경 통지 #534 §3).
+   *
+   * ⛔ **문장으로 되풀이하지 않는다** — 단추 이름이 바뀐 것이 곧 그 사실이다. 스펙 §3 이
+   *    이 아래를 「하단에 상시 구획을 두지 않는다」로 못박았다(여유 119px).
    */
-  it('이미 등록된 자재는 「인쇄」로 보이고 왜 그런지 말한다', async () => {
+  it('이미 등록된 자재는 「인쇄」로 보인다 — 문장을 덧붙이지 않는다', async () => {
     const { user } = renderScreen({ lines: [line(8501, 8101, 8601, 500, true, 9001)] });
 
     await selectRow(user);
 
     expect(await screen.findByRole('button', { name: '인쇄' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '등록·인쇄' })).not.toBeInTheDocument();
-    expect(screen.getByText(/이미 등록된 자재입니다/u)).toBeInTheDocument();
+    expect(screen.queryByText(/이미 등록된 자재입니다/u)).not.toBeInTheDocument();
   });
 });
