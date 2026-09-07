@@ -75,6 +75,11 @@ export const reworkResultRegister = {
      */
     keypadTitle: (field: string): string => `${field} 입력`,
     keypadDone: '확인',
+    /**
+     * ⛔ **X 를 쓰지 않는다**(사용자 결정 2026-09-07). 장갑 낀 손에 20px 짜리 기호는 작고,
+     * 「닫기」와 「친 값을 버리기」가 같은 뜻인지도 기호로는 알 수 없다. 이름을 붙인다.
+     */
+    keypadCancel: '취소',
     /* 읽는 기계에는 이름이 가고 눈에는 기호가 보인다 — 전례 `P-05-01`·`P-02-04`. */
     backspace: '한 자 지움',
     clearGlyph: 'C',

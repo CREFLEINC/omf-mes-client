@@ -7,7 +7,7 @@
  * 여기 있는 값은 전부 지어낸 합성값이다(`SYN-` 접두).
  */
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -464,6 +464,60 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
     });
+  });
+
+  /*
+   * ⛔ **창이 닫혀야 한다.** 앞선 판은 칸의 `onFocus` 로도 창을 열었는데, 닫으면 포커스가
+   *    그 칸으로 돌아오면서 **다시 열렸다** — 확인·취소 어느 쪽을 눌러도 창이 그대로였다
+   *    (사용자 지적). 감지기 24개가 이것을 통과했다 — 닫는 것을 «확인»하지 않았기 때문이다.
+   */
+  it('확인을 누르면 창이 닫히고 친 값이 남는다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+    await openKeypad(user);
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+
+    /*
+     * ⛔ **포커스만으로는 열리지 않는다.** 실기에서는 창을 닫으면 포커스가 그 칸으로
+     *    돌아오는데, 칸이 `onFocus` 로도 열게 되어 있으면 **닫자마자 다시 열린다.**
+     *    시험 환경은 그 포커스 복귀를 흉내내지 않으므로 여기서 직접 준다.
+     */
+    fireEvent.focus(screen.getByLabelText(t.quantities.goodQty));
+
+    expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **「취소」는 «연 시점»으로 되돌린다.** 창이 뜬 동안의 입력은 칸에 바로 반영되므로
+   *    (합계·결과 LOT 이 즉시 따라 움직여야 한다) 되돌릴 값을 따로 들고 있어야 한다.
+   *
+   * ⛔ X 기호를 쓰지 않는다 — 장갑 낀 손에 작고, 「닫기」와 「버리기」가 같은 뜻인지 기호로는
+   *    알 수 없다(사용자 결정).
+   */
+  it('취소를 누르면 연 시점으로 되돌리고 닫는다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await openKeypad(user);
+    await user.click(screen.getByRole('button', { name: '7' }));
+    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
+
+    /* 다시 열어 고친 뒤 취소하면 7 로 돌아온다. */
+    await openKeypad(user);
+    await user.click(screen.getByRole('button', { name: '9' }));
+    await user.click(screen.getByRole('button', { name: t.quantities.keypadCancel }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '9' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
   });
 
   /*

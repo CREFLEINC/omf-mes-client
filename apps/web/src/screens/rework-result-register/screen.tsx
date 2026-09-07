@@ -47,6 +47,13 @@ export const ReworkResultRegisterScreen = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   /** 지금 치고 있는 칸. **`null` 이면 키패드가 닫혀 있다.** */
   const [activeKey, setActiveKey] = useState<QuantityKey | null>(null);
+  /**
+   * 창을 열 때의 값 — **「취소」가 되돌릴 자리**다.
+   *
+   * 창이 뜬 동안의 입력은 그 칸에 바로 반영된다(뒤의 합계·결과 LOT 이 즉시 따라 움직여야
+   * 하기 때문이다). 그래서 되돌리려면 **연 시점의 값을 따로 들고 있어야** 한다.
+   */
+  const [keypadOpenedWith, setKeypadOpenedWith] = useState('');
   const [drafts, setDrafts] = useState<QuantityDrafts>(EMPTY_QUANTITIES);
   const [queued, setQueued] = useState(false);
   const [queueError, setQueueError] = useState(false);
@@ -146,6 +153,23 @@ export const ReworkResultRegisterScreen = () => {
   const hasSomethingToReset =
     selected !== null &&
     (quantityKeys.some((key) => drafts[key] !== '') || queued || queueError || rejected);
+  const openKeypad = (key: QuantityKey) => {
+    setKeypadOpenedWith(drafts[key]);
+    setActiveKey(key);
+  };
+
+  /** 친 값을 그대로 두고 닫는다. */
+  const closeKeypad = () => setActiveKey(null);
+
+  /** 연 시점으로 되돌리고 닫는다 — 「취소」가 하는 일이다. */
+  const cancelKeypad = () => {
+    if (activeKey !== null) {
+      const key = activeKey;
+      setDrafts((current) => ({ ...current, [key]: keypadOpenedWith }));
+    }
+    setActiveKey(null);
+  };
+
   const reset = () => {
     setDrafts(EMPTY_QUANTITIES);
     setQueued(false);
@@ -393,9 +417,18 @@ export const ReworkResultRegisterScreen = () => {
                         /*
                          * 칸을 누르면 키패드 창이 열린다 — 칸 자체는 읽기 전용이라 단말의
                          * 운영체제 키보드가 뜨지 않는다(POP 은 그것을 쓸 수 없다).
+                         *
+                         * ⛔ **`onFocus` 로 열지 않는다.** 창을 닫으면 포커스가 이 칸으로
+                         *    돌아오는데, 그때 `onFocus` 가 다시 열어 **닫히지 않는다**
+                         *    (실측 — 확인·취소 어느 쪽을 눌러도 창이 그대로였다. 사용자 지적).
                          */
-                        onClick={() => setActiveKey(key)}
-                        onFocus={() => setActiveKey(key)}
+                        onClick={() => openKeypad(key)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            openKeypad(key);
+                          }
+                        }}
                       />
                     ))}
                   </div>
@@ -538,13 +571,21 @@ export const ReworkResultRegisterScreen = () => {
        */}
       <Dialog
         open={activeKey !== null}
-        onClose={() => setActiveKey(null)}
+        /* 스크림·Escape·X 가 모두 이리로 온다 — 셋 다 「버리고 닫기」다. */
+        onClose={cancelKeypad}
         title={activeKey === null ? '' : t.quantities.keypadTitle(t.quantities[activeKey])}
         size="sm"
+        /* ⛔ X 를 쓰지 않는다 — 장갑 낀 손에 기호 하나는 작고 뜻도 흐리다(사용자 결정). */
+        showCloseButton={false}
         footer={
-          <Button size="2xl" onClick={() => setActiveKey(null)}>
-            {t.quantities.keypadDone}
-          </Button>
+          <>
+            <Button size="2xl" variant="outlined" onClick={cancelKeypad}>
+              {t.quantities.keypadCancel}
+            </Button>
+            <Button size="2xl" onClick={closeKeypad}>
+              {t.quantities.keypadDone}
+            </Button>
+          </>
         }
       >
         {activeKey !== null && (
