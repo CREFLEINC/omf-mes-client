@@ -377,13 +377,11 @@ export const ProductionResultScreen = () => {
             />
 
             {/*
-              * 스펙 §3-2 의 「잔여수량 380 / 500」.
-              *
-              * ⛔ **라벨을 따로 두지 않는다.** 값이 이미 두 숫자에 각각 이름을 붙이고 있어
-              * (「잔여 150 / 지시 120」) 앞에 라벨을 세우면 화면에 「잔여수량잔여 150 …」로
-              * 붙어 나온다(실측 · 사용자 지적).
+              * 스펙 §3-2 의 「잔여수량 380 / 500」 — 좌단 **맨 아래**, 비고 다음이다(설계
+              * 검증본 `.col-l` 의 마지막 행). 다른 줄과 같은 「라벨 | 값」 격자에 세운다.
               */}
             <p className="pop-result-remaining">
+              <span>{t.quantity.remaining}</span>
               <strong>
                 {remaining === null || workOrder.data === undefined
                   ? t.quantity.remainingUnknown

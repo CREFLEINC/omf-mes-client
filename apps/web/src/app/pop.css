@@ -101,8 +101,15 @@
   font-size: var(--pop-text);
 }
 
-/* 규범 1의 블록 이음매(`main > * + *`)를 받지 않는다 — 여백은 아래에서 직접 준다. */
-.pop-ui > * + * {
+/*
+ * 규범 1의 블록 이음매(`main > * + *`)를 받지 않는다 — 여백은 아래에서 직접 준다.
+ *
+ * ⚠ 창(`dialog`)은 뺀다 — **`margin-top: 0` 이 세로 가운데 정렬을 이긴다.** DS 는 창을
+ *    `margin: auto` 로 세우는데, 첫 자식이 아니면 이 규칙이 위 여백을 0 으로 못박아 창이
+ *    화면 위로 붙는다(실측 — 대상 LOT 고르는 창이 top 8px 에 섰다. 사용자 지적).
+ *    창은 흐름 밖에 서므로 애초에 블록 이음매의 대상이 아니다.
+ */
+.pop-ui > *:not(dialog) + *:not(dialog) {
   margin-top: 0;
 }
 
@@ -195,10 +202,16 @@
  *    이 선택자가 `:not()` 을 넷 달아 더 좁아서, 뒤에 `margin-inline: 0` 을 적어도 이기지
  *    못한다(실측 — 그 규칙이 그대로 있는데도 띠가 좌우로 끊긴 채였다).
  */
+/*
+ * ⚠ 창(`dialog`)도 뺀다 — **좌우 여백이 가운데 정렬을 이긴다.** DS 는 창을 `margin: auto` 로
+ *    세워 화면 가운데에 두는데, 여기서 `margin-inline` 을 주면 그 `auto` 가 지워져 창이
+ *    화면 왼쪽 위로 붙는다(실측 — 대상 LOT 고르는 창이 left 20px 에 섰다. 사용자 지적).
+ *    아래 두 규칙(늘어남·넘침)은 이미 `dialog` 를 빼 두었는데 이 규칙만 빠뜨렸다.
+ */
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.pop-overlay):not(
-    [class*='action']
-  ) {
+    dialog
+  ):not([class*='action']) {
   box-sizing: border-box;
   margin-inline: var(--pop-pad);
 }
@@ -281,11 +294,34 @@
   flex-direction: column;
   align-items: center;
   gap: var(--space-4);
+  /*
+   * ⛔ **세로 가운데로 두지 않는다.** `app.css` 의 `justify-content: center` 가 그대로 걸리면
+   * 칸보다 큰 내용이 위아래로 «똑같이» 넘치는데, 스크롤은 아래로만 간다 — 넘친 위쪽(키 1·2·3
+   * 줄)에 영원히 닿을 수 없다(실측 — 칸 296 에 내용 324, 첫 키가 칸 위 28px 밖에 섰다.
+   * 사용자 지적).
+   *
+   * 위에서부터 쌓는다. 설계 검증본의 우단도 같다(`.col-r` — 세로 정렬을 주지 않는다).
+   */
+  justify-content: flex-start;
 }
 
 /* 키 블록 폭(3열)에 맞춰 선다. 위 `gap` 이 이음매를 주므로 자기 여백은 갖지 않는다. */
 .pop-ui .pop-result-keypad .pop-result-quick {
   margin: 0;
+}
+
+/*
+ * 잔여수량 줄을 **위의 「대상 LOT」·「제품」과 같은 격자**에 세운다.
+ *
+ * `app.css` 는 이 줄을 `space-between` 으로 두어 라벨과 값이 화면 양 끝으로 갈라졌다.
+ * 설계 검증본은 좌단 네 줄을 전부 같은 「라벨 | 값」 행으로 그린다 — 라벨 열이 어긋나면
+ * 마지막 한 줄만 다른 이야기로 읽힌다(위 `.pop-result-target > div` 와 같은 104px 다).
+ */
+.pop-ui .pop-result-remaining {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 /*
@@ -373,6 +409,19 @@
 .pop-ui .pop-section > *:not(.pane-title) {
   min-height: 0;
   overflow-y: auto;
+}
+
+/*
+ * 대상 LOT 의 [ 선택 ] — **고른 상태와 아닌 상태가 같은 크기로 선다.**
+ *
+ * 글자 수가 다르고(「선택」·「선택됨」) 채움과 테두리라, 폭이 내용대로 잡히면 고른 줄만 버튼이
+ * 커진다(실측). 목록에서 줄마다 버튼 크기가 달라지면 눈이 그 차이를 «상태»가 아니라 «종류»로
+ * 읽는다 — 무엇이 골라졌는지는 색이 이미 말한다.
+ *
+ * 열 폭이 고정(116px)이라 칸을 채우면 두 상태가 같아진다.
+ */
+.pop-ui .pop-lot-select {
+  inline-size: 100%;
 }
 
 /*
