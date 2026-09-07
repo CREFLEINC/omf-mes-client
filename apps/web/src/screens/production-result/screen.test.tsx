@@ -329,6 +329,32 @@ describe('ProductionResultScreen 수량 입력', () => {
     expect(screen.getByLabelText(t.quantity.goodQtyLabel)).toHaveValue('');
   });
 
+  /*
+   * ⛔ **수량이 비면 [ C ]·[ ⌫ ] 는 잠긴다.** 지울 것이 없는데 열려 있으면 눌러도 아무 일이
+   * 일어나지 않아, 「눌리는데 안 되는 키」가 된다(사용자 지적). 사번 화면·인식표 발행과
+   * 같은 부품을 써서 같게 동작한다.
+   */
+  it('수량이 비면 지움 키 둘이 잠기고, 값이 들어오면 열린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const clearKey = () => screen.getByRole('button', { name: t.quantity.clearGlyph });
+    const backspaceKey = () => screen.getByRole('button', { name: t.quantity.backspace });
+
+    await waitFor(() => {
+      expect(clearKey()).toBeDisabled();
+    });
+    expect(backspaceKey()).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+
+    await waitFor(() => {
+      expect(clearKey()).toBeEnabled();
+    });
+    expect(backspaceKey()).toBeEnabled();
+    expect(screen.getByLabelText(t.quantity.goodQtyLabel)).toHaveValue('7');
+  });
+
   it('빠른 입력은 이어 붙이지 않고 더한다', async () => {
     const user = userEvent.setup();
     renderScreen();
@@ -367,16 +393,25 @@ describe('ProductionResultScreen 수량 입력', () => {
   it('단위 조회가 실패하면 아무것도 붙이지 않는다 — 식별자로 대신하지 않는다', async () => {
     renderScreen({ uomsFail: true });
 
-    await screen.findByText(t.quantity.remainingValue('380', '500'));
+    await screen.findByText(t.quantity.orderedSuffix('500', null));
 
     expect(screen.queryByText('EA')).not.toBeInTheDocument();
     expect(screen.queryByText(String(UOM_ID))).not.toBeInTheDocument();
   });
 
-  it('잔여수량을 잔여 / 지시로 보인다', async () => {
+  /*
+   * 스펙 §3-2 「잔여수량 380 / 500」. ⛔ 뒤 숫자에 「지시」라고 적지 않는다 — 스펙에 없는
+   * 낱말이고, 설계는 무게로 가른다(검증본 `.val` / `.unit`).
+   */
+  it('잔여수량과 지시수량을 두 조각으로 보인다', async () => {
     renderScreen({ goodQty: 120 });
 
-    expect(await screen.findByText(t.quantity.remainingValue('380', '500'))).toBeInTheDocument();
+    expect(await screen.findByText('380')).toBeInTheDocument();
+    /* ⚠ 머리줄의 「작업지시」가 걸리므로 화면 전체에서 「지시」를 찾지 않는다 — 이 줄만 본다. */
+    const suffix = screen.getByText(t.quantity.orderedSuffix('500', 'EA'));
+
+    expect(suffix).toBeInTheDocument();
+    expect(suffix.textContent).not.toContain('지시');
   });
 
   it('진척이 없으면 «확인할 수 없다»고 말한다 — 0 으로 접지 않는다', async () => {

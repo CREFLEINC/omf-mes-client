@@ -325,6 +325,48 @@
 }
 
 /*
+ * ⭐ **두 숫자를 낱말이 아니라 «무게»로 가른다.** 설계 검증본이 그렇게 그린다 —
+ *
+ * | 자리 | 검증본 | 값 |
+ * | --- | --- | --- |
+ * | 잔여 | `.val` | `--type-body-lg` (400 16px) · `--on-surface` |
+ * | 지시·단위 | `.unit` | `--type-body-sm` (400 14px) · `--on-surface-muted` |
+ *
+ * ⛔ **굵게 하지 않는다.** 검증본의 두 자리 모두 굵기 400 이고, 굵힌 것은 이 줄이 아니라
+ *    양품수량(`.val.num` — `title-lg`)이다. 잔여수량까지 굵히면 이 화면에서 «치는 값»과
+ *    «참고 값»이 같은 무게로 서서 강조가 뜻을 잃는다(사용자 지적).
+ *
+ * ⚠ 작은 쪽 14px 은 POP 글자 바닥과 «같다» — 그 아래로는 내리지 않는다.
+ */
+/*
+ * 값을 **오른쪽 끝에 맞춘다**(사용자 결정). 위 양품수량·비고 칸의 «테두리 오른쪽»과 같은
+ * 선에 선다(실측 593) — 좌단에서 가장 굵은 세로선이라, 거기에 맞으면 「친 수량」과 「남은
+ * 수량」이 한 줄기로 읽힌다.
+ *
+ * ⚠ 칸 «안»의 단위 글자(`EA`)와는 20px 어긋난다 — DS 입력 부품의 안쪽 여백이다. 그 20 을
+ *   여기서 빼서 맞추지 않는다. 부품이 여백을 바꾸면 조용히 틀어지는 값이다.
+ */
+.pop-ui .pop-result-remaining-value {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pop-ui .pop-result-remaining-current {
+  font: var(--type-body-lg);
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface);
+}
+
+.pop-ui .pop-result-remaining-ordered {
+  font: var(--type-body-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface-muted);
+}
+
+/*
  * 늘어난 블록 «안»에서 스크롤이 일어나게 한다.
  *
  * 남는 높이를 나눠 갖게 한 것만으로는 모자라다 — 블록이 줄어도 그 «내용»이 줄지 않으면
@@ -398,17 +440,40 @@
 }
 
 /*
- * ⛔ **표제는 스크롤 상자로 만들지 않는다.** 카드의 직계 자식을 한꺼번에 스크롤시켰더니 표제
- * 까지 상자가 되어 **글자의 위아래가 잘렸다**(실측 —「발행」). 표제는 제자리에 서 있고 본문만
- * 움직인다 — 무엇을 보고 있는 구획인지는 스크롤해도 사라지면 안 된다.
+ * ⭐ **구획 안 블록 사이에 이음매를 준다.**
+ *
+ * `app.css` 의 `.pop-section > * > * + *`(간격 12)는 **한 단계 아래**를 겨냥한다 — DS `Card`
+ * 가 자식을 감싸는 상자를 하나 두던 시절의 선택자다. 지금 `Card` 는 **자식을 감싸지 않고 그대로
+ * 그리므로**(부품 소스 확인) 그 규칙은 블록 «안»의 형제에만 걸리고 **블록끼리는 붙는다** —
+ * 사유 고르는 칸과 [ 재출력 ]이 서로 겹쳐 보였다(실측 — 포장 라벨 재출력).
+ *
+ * ⚠ `app.css` 쪽 규칙은 그대로 둔다 — 관리웹과 함께 쓰는 파일이고, 그쪽 구조가 어떤지는
+ *    이 작업의 범위 밖이다. 여기서는 POP 이 쓰는 자리만 메운다.
  */
-.pop-ui .pop-section > .pane-title {
-  flex: 0 0 auto;
+.pop-ui .pop-section > * + * {
+  margin-block-start: var(--space-4);
 }
 
-.pop-ui .pop-section > *:not(.pane-title) {
-  min-height: 0;
+/*
+ * ⛔ **자식마다 스크롤 상자를 만들지 않는다.**
+ *
+ * 구획 내용을 «조각»(`<>…</>`)으로 내보내는 화면이 있어, 카드의 직계 자식이 여럿이다. 자식
+ * 하나하나를 스크롤시키면 **블록마다 따로 잘린다** — 대상 줄이 중간에서 끊기고, 그 아래 사유·
+ * 버튼이 겹쳐 보였다(실측 — 포장 라벨 재출력). 표제 하나만 걸렸을 때는 글자가 잘렸다(「발행」).
+ *
+ * 스크롤은 **구획 하나가** 한다. 표제는 그 안에서 제자리에 붙어 있어, 굴려도 「무엇을 보고
+ * 있는 구획인가」가 사라지지 않는다.
+ */
+.pop-ui .pop-section {
   overflow-y: auto;
+}
+
+.pop-ui .pop-section > .pane-title {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  /* 굴러 올라온 내용이 표제 뒤로 비치지 않게 구획 바닥색을 깐다. */
+  background: var(--surface-container-low);
 }
 
 /*
@@ -422,6 +487,21 @@
  */
 .pop-ui .pop-lot-select {
   inline-size: 100%;
+}
+
+/*
+ * 재출력 대상 줄 — **줄 전체가 누르는 자리다.**
+ *
+ * 설계 §7 이 이 선택을 `Checkbox`(다중) 로 지정했는데 상자 자체는 손가락보다 작다. 라벨을
+ * 부품에 넘겨 상자·종류·번호가 한 덩어리가 되게 하고, 그 덩어리 높이를 터치 하한까지 올린다 —
+ * **부품은 설계대로 두고 누를 넓이만** 넓힌다.
+ *
+ * ⛔ 줄마다 버튼을 세우지 않는다 — 설계가 지정한 부품이 아니고, 72px 버튼이 줄마다 서면 대상
+ *    셋만으로 구획이 화면 밖으로 넘친다(실측 — 사유·[ 재출력 ]이 잘렸다).
+ */
+.pop-ui .pop-reprint-target-head label,
+.pop-ui .pop-reprint-target-head > * {
+  min-block-size: 56px;
 }
 
 /*
@@ -1362,19 +1442,11 @@
 /* ── 화면 내장 키패드(세 번째 구현) ───────────────────────────────────── */
 
 /*
- * ⚠ **키패드가 이제 세 벌이다** — `.omf-numeric-keypad`(작업자 지정) · `.numeric-keypad`
- * (자재 투입) · 그리고 작업실적 등록이 쓰는 DS 부품(`.pop-result-keypad` 안). 셋째는 키가
- * **60px** 이라 현장 터치 하한(72)에 못 미쳤다(실측 80×60).
+ * ⚠ **키패드가 이제 세 벌이다** — `.omf-numeric-keypad`(작업자 지정·인식표 발행·작업실적
+ * 등록) · `.numeric-keypad`(자재 투입) · 그리고 자리를 잡아 주는 껍데기(`.pop-result-keypad`).
  *
- * ⛔ DS 내부 클래스를 겨냥하지 않는다 — 제품이 소유한 껍데기 클래스로 그 안의 키만 잡는다.
- */
-/*
- * ⛔ **키만 키우면 키가 서로 겹친다.** 아래 규칙이 키를 60 → 72px 로 올리는데, 격자의 «행»은
- * DS 가 잡은 60px 그대로였다. 행 간격 8 을 더해도 한 행이 68px 이라 72px 짜리 키가 다음 줄로
- * 4px 씩 파고든다(실측 — 사용자 지적. 네 줄이 서로 물려 보였다).
- *
- * 행을 키 높이가 정하게 한다. 간격은 설계 값(12)으로 벌린다 — 장갑 낀 손이 옆 키를 함께
- * 누르지 않게 하는 값이다(검증본 `.pad { gap: var(--space-3) }`).
+ * ⛔ **행 높이를 키가 정하게 한다.** 키를 72px 로 올려 놓고 격자의 행을 그대로 두면 키가
+ * 다음 줄로 파고든다(실측 4px — 사용자 지적). 간격은 설계 값 12 다(검증본 `.pad`).
  *
  * ⛔ DS 내부 클래스를 이름으로 겨냥하지 않는다 — 칸의 «자리»로 잡는다. 칸의 자식은 둘뿐이고
  * (키 격자 · 빠른 입력) 빠른 입력은 자기 이름을 갖는다.
@@ -1385,6 +1457,16 @@
   gap: var(--space-3);
 }
 
+/*
+ * ⛔ **`:not(:disabled)` 가 있어야 한다.** 이 겨냥이 위 `.pop-ui button:disabled` 와 굵기가
+ *    같고 파일에서 «뒤»에 있어, 색까지 함께 주면 **잠긴 키의 잠금색을 되돌린다** — 수량이
+ *    비어 [ C ]·[ ⌫ ] 가 실제로 잠겼는데도 숫자 키와 똑같이 떠서 잠긴 줄 모른다.
+ *    같은 함정을 공용 키패드 절에서 이미 한 번 겪었다(위 「화면 내장 키패드」).
+ */
+.pop-ui .pop-result-keypad button:not(:disabled) {
+  color: var(--on-surface);
+}
+
 .pop-ui .pop-result-keypad button {
   min-height: 72px;
   border-radius: var(--radius-md);
@@ -1392,7 +1474,23 @@
   font-size: 28px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--on-surface);
+}
+
+/*
+ * ⭐ **마지막 줄은 [ C ] · [ 0 ] · [ ⌫ ] 다** — 스펙 §3-2 가 그린 순서이고 이 화면이 지금까지
+ * 보여 온 자리다. 공용 부품은 «지움»을 끝에 그리므로 자리만 되돌린다. ⛔ 부품의 마크업을
+ * 바꾸지 않는다 — 인식표 발행도 같은 방식으로 자리만 잡는다(`.pop-issue-keypad`).
+ */
+.pop-ui .pop-result-pad > .omf-numeric-keypad__clear {
+  order: 1;
+}
+
+.pop-ui .pop-result-pad > .omf-numeric-keypad__zero {
+  order: 2;
+}
+
+.pop-ui .pop-result-pad > .omf-numeric-keypad__backspace {
+  order: 3;
 }
 
 /* ── PQC 수량 판정 ────────────────────────────────────────────────────── */

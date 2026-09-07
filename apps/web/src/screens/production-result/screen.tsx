@@ -1,4 +1,5 @@
-import { AlertBanner, Button, Card, Chip, Dialog, NumberPad, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, Dialog, TextField } from '@crefle/web-ui';
+import { NumericKeypad } from '@omf-mes/ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -395,14 +396,17 @@ export const ProductionResultScreen = () => {
               */}
             <p className="pop-result-remaining">
               <span>{t.quantity.remaining}</span>
-              <strong>
-                {remaining === null || workOrder.data === undefined
-                  ? t.quantity.remainingUnknown
-                  : t.quantity.remainingValue(
-                      formatQty(remaining),
-                      formatQty(workOrder.data.orderQty),
-                    )}
-              </strong>
+              {remaining === null || workOrder.data === undefined ? (
+                <span>{t.quantity.remainingUnknown}</span>
+              ) : (
+                <span className="pop-result-remaining-value">
+                  <span className="pop-result-remaining-current">{formatQty(remaining)}</span>
+                  {/* 지시 수량은 딸린 정보다 — 설계 검증본의 `.unit` 자리(한 급 흐리고 작다). */}
+                  <span className="pop-result-remaining-ordered">
+                    {t.quantity.orderedSuffix(formatQty(workOrder.data.orderQty), uomLabel)}
+                  </span>
+                </span>
+              )}
             </p>
           </Card.Body>
         </Card>
@@ -414,10 +418,25 @@ export const ProductionResultScreen = () => {
           aria-label={t.quantity.keypadLabel}
         >
           <Card.Body>
-            <NumberPad
-              aria-label={t.quantity.keypadLabel}
-              maxLength={GOOD_QTY_MAX_LENGTH}
+            {/*
+              * ⭐ **POP 이 공유하는 키패드를 쓴다**(`@omf-mes/ui`). DS `NumberPad` 는 «전체
+              * 잠금»만 있어 키마다 조건을 걸 수 없다 — 수량이 비었는데도 [ C ]·[ ⌫ ]가
+              * 눌렸다(사용자 지적). 인식표 발행(`P-02-05`)이 같은 이유로 먼저 갈아탔고,
+              * **같은 부품을 써야 POP 안에서 같게 동작한다.**
+              *
+              * ⚠ 모양은 그대로다 — [ C ] · [ 0 ] · [ ⌫ ] (스펙 §3-2 의 마지막 줄).
+              *   자리는 `pop.css` 가 잡는다.
+              */}
+            <NumericKeypad
+              className="pop-result-pad"
               value={draft.goodQty}
+              maxLength={GOOD_QTY_MAX_LENGTH}
+              /* 스펙 §7-1 — 키패드 키는 64px 요구이고 64와 72 사이에 단이 없어 `2xl` 로 올린다. */
+              keySize="2xl"
+              label={t.quantity.keypadLabel}
+              backspaceLabel={t.quantity.backspace}
+              backspaceGlyph="⌫"
+              clearLabel={t.quantity.clearGlyph}
               onChange={(value) => {
                 changeDraft({ goodQty: value });
               }}
