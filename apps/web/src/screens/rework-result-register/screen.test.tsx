@@ -240,6 +240,13 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     expect(change.closest('.rework-target-card')).toBe(
       container.querySelector('.rework-target-card'),
     );
+
+    /*
+     * ⛔ DS `Card` 는 여백을 «본문 상자»에만 주고 그 위쪽이 0 이라, 카드에 직접 놓인 제목이
+     *    모서리에 붙는다. POP 규격의 `pop-section` 이 그 자리를 고친다 — 빠지면 제목이 다시
+     *    붙는다(사용자 지적).
+     */
+    expect(container.querySelector('.rework-target-card')).toHaveClass('pop-section');
   });
 
   /*

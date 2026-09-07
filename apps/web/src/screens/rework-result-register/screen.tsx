@@ -243,7 +243,13 @@ export const ReworkResultRegisterScreen = () => {
          *    실제 높이는 바로 아래 `pop.css` 규칙이 정한다.
          */
         <div className="pop-fixed rework-result-body">
-              <Card bordered className="rework-target-card">
+              {/*
+               * ⭐ **`pop-section` 을 함께 붙인다.** DS `Card` 는 여백을 «본문 상자»에만 주고
+               *    그 위쪽이 0 이라, 카드에 직접 놓인 제목이 모서리에 붙어 선다(사용자 지적).
+               *    POP 규격이 그 자리를 고치는 규칙을 이미 갖고 있다 — 여백을 카드가 갖게 하고
+               *    본문 상자의 것은 턴다.
+               */}
+              <Card bordered className="pop-section rework-target-card">
                 <Card.Body>
                   <h2 className="pane-title">{t.target}</h2>
                   {(source.isError || dispositions.isError) && (
