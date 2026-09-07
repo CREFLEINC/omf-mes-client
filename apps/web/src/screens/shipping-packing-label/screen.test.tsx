@@ -187,11 +187,34 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     expect(screen.queryByText(t.targets.empty)).not.toBeInTheDocument();
   });
 
+  it('고른 종류를 한 번 더 누르면 해제되고 대상도 함께 비워진다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await chooseKind(user, '포장라벨');
+    expect(await screen.findByRole('radio', { name: /포장라벨/u })).toBeChecked();
+
+    await chooseKind(user, '포장라벨');
+
+    // ⚠ 점만 꺼지고 값이 남는 갈래가 실제로 있었다 — 표시와 상태를 함께 본다.
+    expect(screen.getByRole('radio', { name: /포장라벨/u })).not.toBeChecked();
+    expect(await screen.findByText(t.targets.beforeKind)).toBeInTheDocument();
+  });
+
   it('종류를 고르기 전에는 프린터가 «없다»고 단정하지 않는다 — 아직 조회하지 않았다', async () => {
     renderScreen();
 
     expect(await screen.findByText(t.targets.beforeKind)).toBeInTheDocument();
     expect(screen.queryByText(t.printer.none)).not.toBeInTheDocument();
+  });
+
+  it('종류를 고르기 전에도 프린터 자리는 서 있고 잠겨 있다', async () => {
+    renderScreen();
+
+    const select = await screen.findByRole('combobox', { name: t.printer.label });
+
+    // 자리를 감췄다 세우면 그 순간 아래가 밀린다 — 자리는 두고 잠근다(사용자 지시).
+    expect(select).toBeDisabled();
   });
 
   it('납품라벨은 미합격 건도 목록에 남기되 고를 수 없게 한다', async () => {

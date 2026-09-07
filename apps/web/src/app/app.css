@@ -5821,13 +5821,6 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 오른쪽 정렬 칸에 쌓는 두 줄.
- *
- * `.stacked-cell`은 줄이 칸 너비로 늘어나지 않게 `align-items: flex-start`를 준다. 그런데
- * 수량처럼 **칸 자체가 오른쪽 정렬**인 자리에서는 그것이 칸 정렬을 거슬러, 머리글은 오른쪽
- * 끝에 있는데 값은 왼쪽에 붙는다(실기에서 드러났다). 그 자리만 정렬을 맞춘다.
- */
-/*
  * 표가 비었을 때의 안내 — **칸 가운데에 세운다.**
  *
  * `.field-note`를 그대로 쓰면 왼쪽 끝에 붙어 표 머리 아래 빈 넓이와 어긋나 보인다
@@ -6864,8 +6857,7 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /* ④ 프린터 — 이름·상태를 한 줄에 둔다. 인쇄가 안 될 때 가장 먼저 보는 자리다. */
-.pop-slabel-printer,
-.pop-slabel-printer-pane {
+.pop-slabel-printer {
   display: flex;
   align-items: center;
   gap: var(--space-3);

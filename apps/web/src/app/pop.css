@@ -652,6 +652,170 @@
 }
 
 /*
+ * 납품·포장 라벨 출력의 네 구획 — **상자 안에서 제 배치를 지키고, 세로 예산을 나눈다.**
+ *
+ * ⚠ **늘어나지 않는다는 말은 여기서 하지 못한다.** 위 「남는 높이를 가져갈 블록」 규칙이
+ *    `:not()` 을 여덟 겹 쌓아 이 자리보다 힘이 세다 — 여기에 `flex: none` 을 적어도 지지
+ *    않고 밀린다. 그래서 ①③④ 는 **표시에서 `pop-fixed` 를 달아** 그 규칙의 겨냥에서
+ *    빠진다(실측 — 종류를 고르면 ④ 가 생기면서 남는 높이를 셋이 나눠 갖게 되어 ① 상자가
+ *    선택할 때마다 커졌다 작아졌다 했다. 사용자 지적).
+ *
+ * 설계 §3-1 이 검산한 몫은 ① 72 · ② 240 · ③ 184 · ④ 88 이고 슬랙이 0 이다. 그런데 그 표에
+ * 딸린 단서가 하나 더 있다 —
+ *
+ * > ⚠ **③ 재출력 구획은 재발행일 때만 펼친다.** 최초 발행이면 그 184px 가 ② 로 간다 —
+ * >   구획을 늘 띄워 두면 목록이 3 줄로 줄어든다.
+ *
+ * 즉 ①·④ 는 제 높이를 지키고 **②가 남는 것을 전부 가져간다.** 픽셀을 그대로 박으면 창이
+ * 768 이 아닐 때 어긋나므로, 「무엇이 늘어나지 «않는가»」로 적는다.
+ */
+.pop-ui .pop-slabel-kind {
+  row-gap: var(--space-3);
+}
+
+/*
+ * ④ 프린터 — **대상 구획 안 바닥에 붙는다**(사용자 지시 2026-09-07 · 설계 §3 은 상자 하나로
+ * 따로 그렸다 · 요청서).
+ *
+ * 표가 길어져도 **같이 밀려 올라가지 않는다** — 위쪽에 구분선을 두어 목록과 갈라 놓고, 자기
+ * 높이만 지킨다(`flex: none`). 남는 높이는 목록이 가져간다.
+ */
+.pop-ui .pop-slabel-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pop-ui .pop-slabel-printer-row {
+  flex: none;
+  margin-block-start: var(--space-4);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+/*
+ * 프린터 고르는 칸은 **폭이 고정이다.**
+ *
+ * DS `Select` 는 안에 든 글자만큼만 서므로, 안내 문구를 걷어 내자 잠긴 상태에서 칸이
+ * 손톱만 해졌다(사용자 지적 2026-09-07). 고른 이름의 길이에 따라 칸이 늘었다 줄었다 하는
+ * 것도 같은 문제다 — 무엇이 들었든 자리는 같아야 한다.
+ */
+.pop-ui .pop-slabel-printer [role='combobox'] {
+  min-width: 14rem;
+}
+
+.pop-ui .pop-slabel-targets {
+  flex: 1 1 auto;
+  min-height: 0;
+  row-gap: var(--space-3);
+}
+
+/* 라벨 종류 둘은 한 줄에 — 세로 예산이 72px 라 쌓을 자리가 없다(§3 ①). */
+/*
+ * ① 라벨 종류 — **한 줄짜리 둘이 나란히 선다**(설계 §3 · §3-1 의 72px).
+ *
+ * `app.css` 는 설명을 이름 «아래»에 두는데(`display: block`), 그러면 고르는 것 하나가 두 줄이
+ * 되어 둘이 나란히 서지 못하고 세로로 쌓인다 — 카드 두 장처럼 커져 구획이 도면의 세 배가
+ * 됐다(실측). 도면은 「( ) 포장라벨 — 포장하면 바로 발행」 한 줄이다.
+ *
+ * ⛔ **구획의 `align-items: center` 를 푼다.** `app.css` 가 이 구획을 «가로 한 줄»로 세우던
+ *    때의 값인데, 상자(`.pane`)가 되면서 세로 flex 가 되어 그 값이 **자식을 가운데로 밀었다** —
+ *    표제가 한가운데 섰다(실측).
+ */
+.pop-ui .pop-slabel-kind {
+  align-items: stretch;
+}
+
+/*
+ * ⛔ **POP 공통 라디오 규칙을 이 구획에서만 되돌린다.**
+ *
+ * 위 「라디오는 글자가 아니라 누르는 자리다」가 모든 라디오 묶음을 **세로 격자**로 세우고 줄
+ * 마다 테두리를 두른다(불합격 처분처럼 «세로로 고르는» 자리를 위한 값이다). 그 겨냥
+ * (`[role='radiogroup']`)이 이 구획 이름보다 좁아, `orientation="horizontal"` 을 넘겨도
+ * 둘이 세로로 카드처럼 섰다(실측).
+ *
+ * 설계 §3 은 이 자리를 **한 행 두 칸**으로 그렸고 몫은 72px 다(§3-1) — 카드로 쌓을 자리가 없다.
+ * 누르는 넓이(56)는 그대로 두고 방향과 테두리만 되돌린다.
+ */
+.pop-ui [role='radiogroup'].pop-slabel-kinds {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+/* 둘이 남는 폭을 반씩 나눈다 — 글자 길이로 정하면 왼쪽에 몰리고 오른쪽이 빈다. */
+.pop-ui [role='radiogroup'].pop-slabel-kinds > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+/*
+ * 칸마다 테두리를 두른다 — 한 행에 둘이 서므로 **어디까지가 한 칸인가**를 선이 말한다.
+ * 누르는 자리는 줄 전체이고(위 공통 규칙의 56), 그 넓이를 눈에 보이게 하는 것이 이 테두리다.
+ */
+.pop-ui [role='radiogroup'].pop-slabel-kinds label {
+  justify-content: flex-start;
+}
+
+/*
+ * 목록이 비었을 때의 문구 — **표 «안»에서 가운데로 선다.**
+ *
+ * `.field-note` 가 폭을 `20rem` 으로 가두어(규범 4), 가운데 정렬이 그 좁은 상자 «안»에서만
+ * 일어나 왼쪽에 치우쳐 보였다(실측). 이 문구는 표 전체를 대신하는 자리라 가두지 않는다.
+ */
+.pop-ui .pop-slabel-empty {
+  max-width: none;
+  /* 폭 제한이 남더라도 «상자째» 가운데 선다 — 글자만 가운데면 왼쪽에 치우친 채로 보인다. */
+  margin-inline: auto;
+  text-align: center;
+}
+
+/*
+ * ⚠ **배너 아이콘 정렬은 `.banner-slot` 밖에서도 걸려야 한다.**
+ *
+ * 위 「배너 첫 줄 높이」 규칙이 `.banner-slot` 을 겨냥하는데, 배너를 그 묶음 없이 구획 안에
+ * 바로 세우는 화면이 있다 — 그런 자리에서는 아이콘이 글자 첫 줄과 어긋난 채로 남는다
+ * (실측 — 납품·포장 라벨 출력). 같은 값 셋을 여기서 한 번 더 건다.
+ *
+ * ⛔ **`[class*='alert']` 로 겨냥하지 않는다 — 걸리지 않는다.** DS 배너의 겉 이름은
+ *    `_root_f6a42_1` 이라 「alert」라는 글자가 없다. 그렇게 적어 둔 첫 판은 **아무 것도
+ *    고치지 않은 채 고친 것처럼 보였다**(사용자 지적 2026-09-07). 공개 속성인 역할
+ *    (`role="status"` — 알림 / `role="alert"` — 경고·오류)로 잡는다.
+ */
+.pop-ui .pop-slabel-targets > [role='status'] > :first-child,
+.pop-ui .pop-slabel-targets > [role='alert'] > :first-child,
+.pop-ui .pop-slabel-kind > [role='status'] > :first-child,
+.pop-ui .pop-slabel-kind > [role='alert'] > :first-child {
+  margin-block-start: 2px;
+}
+
+/* 첫 줄 높이를 24 로 맞춘다 — 그래야 20px 아이콘의 오프셋이 2px 하나로 성립한다. */
+.pop-ui .pop-slabel-targets > [role='status'] > :last-child > *,
+.pop-ui .pop-slabel-targets > [role='alert'] > :last-child > *,
+.pop-ui .pop-slabel-kind > [role='status'] > :last-child > *,
+.pop-ui .pop-slabel-kind > [role='alert'] > :last-child > * {
+  line-height: 24px;
+}
+
+.pop-ui .pop-slabel-targets > [role='status'] > :last-child > :last-child,
+.pop-ui .pop-slabel-targets > [role='alert'] > :last-child > :last-child,
+.pop-ui .pop-slabel-kind > [role='status'] > :last-child > :last-child,
+.pop-ui .pop-slabel-kind > [role='alert'] > :last-child > :last-child {
+  font-size: var(--pop-label);
+}
+
+.pop-ui .pop-slabel-kind-note {
+  display: inline;
+}
+
+/* 이름과 설명을 잇는 줄표 — 도면의 「—」다. 글에 넣지 않고 그림이 낸다. */
+.pop-ui .pop-slabel-kind-note::before {
+  content: ' — ';
+}
+
+/*
  * PQC 두 구획 — **블록 사이에 이음매를 준다.**
  *
  * `.pane` 은 세로 flex 인데 `gap` 이 없어, 구획 안에 블록을 여럿 세우면 서로 **붙는다** —

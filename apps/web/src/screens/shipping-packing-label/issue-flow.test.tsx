@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -216,7 +217,7 @@ describe('발행 → 미리보기 → 인쇄', () => {
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
-    await user.click(screen.getByRole('button', { name: '발행' }));
+    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
 
     await waitFor(() => {
       expect(sentTo(sent, '/app/document-issues')).toBeDefined();
@@ -236,7 +237,7 @@ describe('발행 → 미리보기 → 인쇄', () => {
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
-    await user.click(screen.getByRole('button', { name: '발행' }));
+    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '미리보기' })).toBeEnabled();
@@ -259,7 +260,7 @@ describe('발행 → 미리보기 → 인쇄', () => {
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
-    await user.click(screen.getByRole('button', { name: '발행' }));
+    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '미리보기' })).toBeEnabled();
@@ -286,7 +287,7 @@ describe('재발행', () => {
 
     expect(await screen.findByText('재발행 사유를 고르면 발행할 수 있습니다.')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '발행' }));
+    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
 
     /* ⛔ 사유 없이 나가면 DB 제약이 저장을 막는다 — 화면이 먼저 멈춰야 한다. */
     expect(sentTo(sent, '/app/document-issues')).toBeUndefined();
@@ -300,7 +301,7 @@ describe('사번', () => {
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
-    await user.click(screen.getByRole('button', { name: '발행' }));
+    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
 
     expect(sentTo(sent, '/app/document-issues')).toBeUndefined();
     expect(screen.getByText('사번을 확인한 뒤에 발행할 수 있습니다.')).toBeInTheDocument();

@@ -42,7 +42,7 @@ export const ReissuePane = ({
   const isChoosable = !isLoading && !isError && reasons.length > 0;
 
   return (
-    <section className="pop-slabel-reissue" aria-label={t.title}>
+    <section className="pop-fixed pop-slabel-reissue" aria-label={t.title}>
       <AlertBanner variant="warning">{t.notice(alreadyIssuedCount)}</AlertBanner>
 
       {isError ? <AlertBanner variant="error">{t.loadFailed}</AlertBanner> : null}

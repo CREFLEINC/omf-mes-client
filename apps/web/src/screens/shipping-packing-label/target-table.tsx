@@ -51,9 +51,17 @@ export const TargetTable = ({
       header: t.columns.target,
       render: (row) => row.displayName,
     },
+    /*
+     * ⚠ **값 열 셋은 «가운데»로 세운다**(사용자 지시 2026-09-07 · `P-02-05` 와 같은 처리).
+     *
+     * 열을 왼쪽·오른쪽 끝에 붙여 두면 대상 열이 남는 폭을 다 가져가, 이름과 값 사이가 손바닥
+     * 만큼 벌어지고 상태·회차가 화면 오른쪽 끝에 매달린다(실측 — 사용자 지적). 값을 열 가운데에
+     * 두면 눈이 열 이름 아래에서 값을 바로 찾는다.
+     */
     {
       key: 'status',
       header: t.columns.status,
+      align: 'center',
       width: '160px',
       render: (row) =>
         row.isIssuable ? (
@@ -69,6 +77,7 @@ export const TargetTable = ({
     {
       key: 'lastIssued',
       header: t.columns.lastIssued,
+      align: 'center',
       width: '150px',
       render: (row) => {
         const summary = summaryOf(summaries, row.issueTargetId);
@@ -81,7 +90,7 @@ export const TargetTable = ({
     {
       key: 'seq',
       header: t.columns.seq,
-      align: 'end',
+      align: 'center',
       width: '140px',
       render: (row) => {
         const summary = summaryOf(summaries, row.issueTargetId);
@@ -107,7 +116,6 @@ export const TargetTable = ({
 
   return (
     <Table
-      caption={t.caption}
       columns={columns}
       rows={rows}
       density="comfortable"
