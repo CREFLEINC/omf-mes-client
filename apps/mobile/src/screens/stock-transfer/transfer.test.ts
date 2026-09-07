@@ -7,6 +7,8 @@ import {
   canShip,
   heldLines,
   isSameWarehouse,
+  mixedSourceWarehouses,
+  sourceEndOf,
   qtyProblemOf,
   queuedShipsFor,
   toArriveDraft,
@@ -23,6 +25,7 @@ const line = (overrides: Partial<DraftLine> = {}): DraftLine => ({
   uomId: 1001,
   fromLocationId: 3001,
   warehouseId: 1001,
+  businessUnitId: 1001,
   onHandQty: 120,
   held: false,
   qty: '',
@@ -147,6 +150,70 @@ describe('같은 창고 안 이동', () => {
   it('출발과 도착 창고가 같으면 같은 창고 안이다', () => {
     expect(isSameWarehouse(1001, 1001)).toBe(true);
     expect(isSameWarehouse(1001, 1003)).toBe(false);
+  });
+});
+
+/*
+ * 이동 헤더는 출발 창고를 하나만 받는다. 섞어 담으면 헤더가 첫 줄의 창고를 말하는데 나머지
+ * 줄의 재고는 다른 창고에 있어, 있지도 않은 자리에서 빼는 것이 된다.
+ */
+describe('서로 다른 창고의 LOT 을 섞으면', () => {
+  const mixed = [
+    line({ qty: '80' }),
+    line({ lotId: 8002, lotNo: 'B', warehouseId: 1002, businessUnitId: 1002, qty: '10' }),
+  ];
+
+  it('섞였다고 판정한다', () => {
+    expect(mixedSourceWarehouses(mixed)).toBe(true);
+    expect(mixedSourceWarehouses([line({ qty: '80' })])).toBe(false);
+  });
+
+  it('반출을 막는다', () => {
+    expect(canShip(mixed, true, 0)).toBe(false);
+  });
+
+  /* 안 적은 줄은 이번 이동에 없다. 그것 때문에 막으면 옮길 수 있는 것도 못 옮긴다. */
+  it('안 적은 줄이 다른 창고여도 막지 않는다', () => {
+    const idle = [
+      line({ qty: '80' }),
+      line({ lotId: 8002, warehouseId: 1002, businessUnitId: 1002 }),
+    ];
+
+    expect(mixedSourceWarehouses(idle)).toBe(false);
+    expect(canShip(idle, true, 0)).toBe(true);
+  });
+});
+
+/*
+ * 출발 사업장을 도착 쪽에서 빌리면, 두 창고가 다른 사업장일 때 틀린 값이 기록된다.
+ * 되돌릴 수 없는 재고 이동이라 뒤에 고칠 수 없다.
+ */
+describe('출발 쪽 사업장', () => {
+  it('적은 줄에서 창고와 사업장을 함께 꺼낸다', () => {
+    const end = sourceEndOf([line({ qty: '80', warehouseId: 1002, businessUnitId: 1002 })]);
+
+    expect(end).toEqual({ warehouseId: 1002, businessUnitId: 1002 });
+  });
+
+  it('적은 줄이 없으면 아직 정해지지 않았다', () => {
+    expect(sourceEndOf([line()])).toBeNull();
+  });
+
+  it('도착 사업장과 다른 값이 그대로 실린다', () => {
+    const now = new Date('2026-09-07T09:12:00+09:00');
+    const draft = toShipDraft(
+      NORMAL,
+      { warehouseId: 1001, businessUnitId: 1001 },
+      { warehouseId: 1003, businessUnitId: 2002 },
+      3005,
+      [line({ qty: '80' })],
+      now,
+      '100028',
+    );
+    const body = draft.body as { fromBusinessUnitId: number; toBusinessUnitId: number };
+
+    expect(body.fromBusinessUnitId).toBe(1001);
+    expect(body.toBusinessUnitId).toBe(2002);
   });
 });
 

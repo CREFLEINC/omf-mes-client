@@ -33,9 +33,22 @@ export interface DraftLine {
   fromLocationId: number;
   /** 이 LOT 이 있는 창고. 이동 헤더가 창고 간만 받아 출발 창고를 여기서 얻는다. */
   warehouseId: number;
+  /**
+   * 그 창고가 속한 사업장.
+   *
+   * 도착 쪽 값을 빌려 쓰지 않는다 - 두 창고가 다른 사업장이면 출발 사업장이 틀린 채로
+   * 기록되고, 되돌릴 수 없는 재고 이동이라 뒤에 고칠 수 없다.
+   */
+  businessUnitId: number;
   onHandQty: number;
   held: boolean;
   qty: string;
+}
+
+/** 이동의 한쪽 끝. 사업장 식별자를 창고가 갖고 있어 창고째로 든다. */
+export interface TransferEnd {
+  warehouseId: number;
+  businessUnitId: number;
 }
 
 export type QtyProblem = 'notNumber' | 'notPositive' | 'overStock';
@@ -77,8 +90,26 @@ const filled = (lines: DraftLine[]): DraftLine[] => lines.filter((line) => line.
 export const heldLines = (lines: DraftLine[]): DraftLine[] =>
   filled(lines).filter((line) => line.held);
 
+/**
+ * 적은 줄들이 서로 다른 창고에 있는가.
+ *
+ * 이동 헤더는 출발 창고를 하나만 받는다. 섞어 담으면 헤더가 첫 줄의 창고를 말하는데
+ * 나머지 줄의 재고는 다른 창고에 있어, 있지도 않은 자리에서 빼는 것이 된다.
+ */
+export const mixedSourceWarehouses = (lines: DraftLine[]): boolean =>
+  new Set(filled(lines).map((line) => line.warehouseId)).size > 1;
+
+/** 출발 쪽 창고와 사업장. 적은 줄이 없으면 아직 정해지지 않았다. */
+export const sourceEndOf = (lines: DraftLine[]): TransferEnd | null => {
+  const first = filled(lines)[0];
+
+  return first === undefined
+    ? null
+    : { warehouseId: first.warehouseId, businessUnitId: first.businessUnitId };
+};
+
 export const canShip = (lines: DraftLine[], hasWorker: boolean, queuedShips: number): boolean => {
-  if (!hasWorker || queuedShips > 0) {
+  if (!hasWorker || queuedShips > 0 || mixedSourceWarehouses(lines)) {
     return false;
   }
 
@@ -120,12 +151,6 @@ export const canArrive = (
  */
 export const isSameWarehouse = (fromWarehouseId: number, toWarehouseId: number): boolean =>
   fromWarehouseId === toWarehouseId;
-
-/** 이동의 한쪽 끝. 사업장 식별자를 창고가 갖고 있어 창고째로 든다. */
-export interface TransferEnd {
-  warehouseId: number;
-  businessUnitId: number;
-}
 
 /**
  * 반출을 만든다.

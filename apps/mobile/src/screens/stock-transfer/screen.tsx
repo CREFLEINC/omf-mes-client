@@ -20,8 +20,10 @@ import {
   canShip,
   heldLines,
   isSameWarehouse,
+  mixedSourceWarehouses,
   qtyProblemOf,
   queuedShipsFor,
+  sourceEndOf,
   toArriveDraft,
   toShipDraft,
   type DraftLine,
@@ -91,12 +93,10 @@ export const StockTransferScreen = () => {
       )
     : 1;
 
-  const fromWarehouseId =
-    lines[0]?.fromLocationId === undefined ? null : (lines[0]?.warehouseId ?? null);
+  const source = sourceEndOf(lines);
   const sameWarehouse =
-    fromWarehouseId !== null &&
-    toWarehouseId !== null &&
-    isSameWarehouse(fromWarehouseId, toWarehouseId);
+    source !== null && toWarehouseId !== null && isSameWarehouse(source.warehouseId, toWarehouseId);
+  const mixed = mixedSourceWarehouses(lines);
 
   const shipReady =
     canShip(lines, worker !== null, queuedShips) && toLocation !== null && !sameWarehouse;
@@ -131,14 +131,18 @@ export const StockTransferScreen = () => {
         row.locationId !== undefined &&
         row.locationId !== null &&
         row.warehouseId !== undefined &&
-        row.warehouseId !== null,
+        row.warehouseId !== null &&
+        row.businessUnitId !== undefined &&
+        row.businessUnitId !== null,
     );
 
     if (
       at?.locationId === undefined ||
       at.locationId === null ||
       at.warehouseId === undefined ||
-      at.warehouseId === null
+      at.warehouseId === null ||
+      at.businessUnitId === undefined ||
+      at.businessUnitId === null
     ) {
       setNoStock(true);
       return;
@@ -146,6 +150,8 @@ export const StockTransferScreen = () => {
 
     const fromLocationId = at.locationId;
     const warehouseId = at.warehouseId;
+    /* 사업장은 도착 쪽에서 빌리지 않는다. 두 창고가 다른 사업장이면 출발이 틀리게 적힌다. */
+    const businessUnitId = at.businessUnitId;
 
     setNoStock(false);
     setLines((current) => {
@@ -165,6 +171,7 @@ export const StockTransferScreen = () => {
           uomId: at.uomId,
           fromLocationId,
           warehouseId,
+          businessUnitId,
           onHandQty: at.onHandQty,
           held: lot.held === true,
           qty: '',
@@ -239,15 +246,13 @@ export const StockTransferScreen = () => {
     setSaveFailed(false);
 
     try {
-      const from = lines[0];
-
-      if (from === undefined) {
+      if (source === null) {
         return;
       }
 
       const draft = toShipDraft(
         type,
-        { warehouseId: from.warehouseId, businessUnitId: toWarehouse.businessUnitId },
+        source,
         { warehouseId: toWarehouse.warehouseId, businessUnitId: toWarehouse.businessUnitId },
         toLocation.locationId,
         lines,
@@ -433,6 +438,8 @@ export const StockTransferScreen = () => {
         {toLocation !== null ? <p>{t.to.picked(toLocation.locationCode)}</p> : null}
         {/* 이동 헤더가 창고 간만 받는다. 같은 창고 안은 적을 자리가 없다. */}
         {sameWarehouse ? <AlertBanner variant="error" title={t.to.sameWarehouse} /> : null}
+        {/* 헤더는 출발 창고를 하나만 받는다. 섞으면 없는 자리에서 빼는 것이 된다. */}
+        {mixed ? <AlertBanner variant="error" title={t.from.mixedWarehouse} /> : null}
       </section>
 
       {shipped !== null ? (

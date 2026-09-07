@@ -42,6 +42,8 @@ export const stockTransfer = {
     already: '이미 담은 LOT입니다',
     /** 재고가 없는 LOT을 옮기면 반출 수량이 재고를 넘어 서버가 되돌린다. */
     noStock: '이 LOT은 옮길 재고가 없습니다',
+    /** 이동 헤더는 출발 창고를 하나만 받는다. 섞으면 없는 자리에서 빼는 것이 된다. */
+    mixedWarehouse: '서로 다른 창고의 LOT을 한 번에 옮길 수 없습니다. 창고별로 나누세요.',
     /* 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. */
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
     onHand: (qty: string) => `재고 ${qty}`,
