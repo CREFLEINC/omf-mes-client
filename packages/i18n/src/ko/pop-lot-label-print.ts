@@ -43,6 +43,12 @@ export const popLotLabelPrint = {
     tagNotice: '인식표는 인식표 발행 화면에서 개체 단위로 발행합니다.',
   },
 
+  /** 머리줄 오른쪽의 상태 묶음. 다른 POP 화면과 같은 말을 쓴다. */
+  device: {
+    terminalLabel: '단말',
+    terminalUnknown: '확인되지 않음',
+  },
+
   printer: {
     label: '프린터',
     none: '등록된 프린터가 없습니다',

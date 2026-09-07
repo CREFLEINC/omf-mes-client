@@ -8,6 +8,8 @@ export const productionLotComplete = {
   title: '생산LOT 완료',
 
   entry: {
+    /** 머리줄 왼쪽의 맥락 — 「무엇을 보고 있는가」다(스펙 §3 머리줄). */
+    workOrderLabel: '작업지시',
     missingWorkOrder: '작업지시를 받지 못해 대상 LOT 을 불러올 수 없습니다.',
   },
 
@@ -36,7 +38,6 @@ export const productionLotComplete = {
     goodQtyPending: '목록에서는 양품 수를 표시할 수 없습니다. LOT 을 고르면 오른쪽에 나옵니다.',
     goodQtyPlaceholder: '—',
     select: '선택',
-    selected: '선택됨',
     empty: '이 작업지시에 완료할 LOT 이 없습니다.',
     /**
      * 작업지시를 받지 못했을 때의 빈 목록 문구.

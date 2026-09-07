@@ -15,6 +15,12 @@ export const goodsIssueQr = {
     missingWorker: '사번이 확인되지 않아 발행할 수 없습니다. 사번 인증을 먼저 하세요.',
   },
 
+  /** 머리줄 오른쪽의 상태 묶음. 다른 POP 화면과 같은 말을 쓴다. */
+  device: {
+    terminalLabel: '단말',
+    terminalUnknown: '확인되지 않음',
+  },
+
   printer: {
     label: '프린터',
     /** 계약이 상태 문구를 함께 내려 준다 — 화면이 상태값으로 문장을 조립하지 않는다. */

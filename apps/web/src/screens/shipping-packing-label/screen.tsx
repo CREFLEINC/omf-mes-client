@@ -182,7 +182,8 @@ export const ShippingPackingLabelScreen = () => {
       <header className="pop-header">
         <h1 className="pop-title">{t.title}</h1>
         {shipmentId === null ? null : (
-          <p className="pop-context pop-context-right">
+          /* 맥락은 화면명 옆이다 — 오른쪽 끝은 상태 자리다(스펙 §3 머리줄). */
+          <p className="pop-context">
             {shipment.isPending
               ? t.shipment.loading
               : shipment.isError || shipment.data === undefined

@@ -447,8 +447,8 @@ describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
   it('머리에 프린터와 그 상태를 상시 보인다 — 인쇄가 안 될 때 가장 먼저 보는 자리다', async () => {
     renderScreen();
 
-    expect(await screen.findByText('합성 라벨 프린터 가')).toBeInTheDocument();
-    expect(screen.getByText('대기 중')).toBeInTheDocument();
+    // 이름과 상태가 칩 하나에 든다(다른 POP 화면과 같은 모양).
+    expect(await screen.findByText(/합성 라벨 프린터 가 · 대기 중/)).toBeInTheDocument();
   });
 
   it('프린터가 한 대도 없으면 빈 상태를 그린다 — 오류로 다루지 않는다', async () => {

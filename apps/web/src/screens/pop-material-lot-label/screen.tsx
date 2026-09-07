@@ -1,4 +1,4 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -18,6 +18,7 @@ import { TargetCard } from './target-card';
 import { toHeadPrinter } from './types';
 
 const t = messages.popMaterialLotLabel;
+const tDevice = messages.popMaterialLotLabel.device;
 
 /**
  * 빈 목록의 안내를 고른다 — **왜 비었는지가 셋으로 갈린다.**
@@ -49,7 +50,7 @@ export const PopMaterialLotLabelScreen = () => {
    * 귀속 사번은 **셸이 아는 값**이다(진입점 화면 소관 · 이 저장소 #157). 쓰기가 헤더로
    * 요구하므로 없으면 부를 수 없고, 그 사실을 감추지 않고 사유로 보인다(공유계약 F-1·F-6).
    */
-  const { workerNo } = usePopIdentity();
+  const { workerNo, terminalId } = usePopIdentity();
 
   // 첫 쪽이면 조건을 싣지 않는다 — 서버 기본값이 1이라 URL에 없는 편이 조건을 정직하게 드러낸다.
   const receipts = useReceipts(page === 1 ? {} : { page });
@@ -116,22 +117,31 @@ export const PopMaterialLotLabelScreen = () => {
      * `main`을 세워 주는 바깥이 없다 — 먼저 선 POP 화면들과 같은 형태다.
      */
     <main className="pop-lot-screen pop-ui" aria-label={t.title}>
-      <header className="pop-lot-head">
+      {/* 머리줄 어휘를 다른 POP 화면과 맞춘다 — 이름이 달라도 보이는 자리는 같아야 한다. */}
+      <header className="pop-header">
         {/*
          * 표제는 **다른 POP 화면과 같은 어휘로 쓴다**(`pop-title`). DS `PageHeader` 로 세우면
          * 규격이 겨냥하는 자리(머리줄의 첫 자식)가 그 부품의 래퍼가 되어 표제 크기가 이
          * 화면에만 24px 로 남는다(실측 — 다른 화면은 26px).
          */}
         <h1 className="pop-title">{t.title}</h1>
-        <PrinterStatusIndicator
-          printer={headPrinter}
-          hasChoice={(printers.data ?? []).length > 1}
-          isLoading={printers.isPending}
-          isError={printers.isError}
-          onRetry={() => {
-            void printers.refetch();
-          }}
-        />
+        <div className="pop-context-right">
+          <PrinterStatusIndicator
+            printer={headPrinter}
+            hasChoice={(printers.data ?? []).length > 1}
+            isLoading={printers.isPending}
+            isError={printers.isError}
+            onRetry={() => {
+              void printers.refetch();
+            }}
+          />
+          {/* 단말도 상시 보인다(스펙 §3 머리줄 `단말 POP-L1 ●`) — 다른 POP 화면과 같은 자리·순서다. */}
+          <Chip status={terminalId === null ? 'warning' : 'info'}>
+            {`${tDevice.terminalLabel} ${
+              terminalId === null ? tDevice.terminalUnknown : String(terminalId)
+            }`}
+          </Chip>
+        </div>
       </header>
 
       <div className="pop-lot-panes">

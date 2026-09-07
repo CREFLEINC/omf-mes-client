@@ -288,10 +288,15 @@ export const ToolUsageScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/*
+         * ⭐ **맥락은 왼쪽, 상태는 오른쪽이다**(스펙 §3 머리줄). 「무엇을 보고 있는가」(작업지시)와
+         * 「지금 어떤 상태인가」(사번·연결)는 다른 축이고, 설계 도면은 POP 전 화면에서 둘을
+         * 화면명 쪽과 오른쪽 끝으로 갈라 그린다. 섞으면 화면마다 눈이 다른 곳을 본다.
+         */}
+        {entry.workOrderId === null ? null : (
+          <p className="pop-context">{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</p>
+        )}
         <div className="pop-context-right">
-          {entry.workOrderId !== null && (
-            <span>{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</span>
-          )}
           {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
           {/* 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다(모바일 셸 전례). */}
           <Chip status={isOnline ? 'success' : 'warning'}>

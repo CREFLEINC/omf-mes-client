@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { usePopIdentity } from '../../patterns/pop-identity';
 import { SaveErrorBanner } from '../../patterns/master';
 import { canIssue, issueGuard } from './issue-target';
 import { hasIssuedTarget, hasUnknownTarget, rowId, toLineRows } from './line-rows';
@@ -47,6 +48,7 @@ export const GoodsIssueQrScreen = () => {
   const { baseUrl } = useApiClient();
 
   const entry = useGoodsIssueQrEntry();
+  const identity = usePopIdentity();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [reasonCode, setReasonCode] = useState('');
@@ -144,10 +146,11 @@ export const GoodsIssueQrScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/* 맥락은 화면명 옆이다 — 오른쪽 끝은 사번·단말·프린터 같은 상태 자리다(스펙 §3 머리줄). */}
+        {goodsIssue.data === undefined ? null : (
+          <p className="pop-context">{`${t.entry.issueLabel} ${goodsIssue.data.goodsIssueNo}`}</p>
+        )}
         <div className="pop-context-right">
-          {goodsIssue.data !== undefined && (
-            <span>{`${t.entry.issueLabel} ${goodsIssue.data.goodsIssueNo}`}</span>
-          )}
           {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
           <PrinterChip
             isLoading={printers.isPending}
@@ -155,6 +158,15 @@ export const GoodsIssueQrScreen = () => {
             statusMessage={defaultPrinter(printers.data)?.statusMessage ?? null}
             hasPrinter={(printers.data?.length ?? 0) > 0}
           />
+          {/*
+           * 단말도 상시 보인다(스펙 §3 머리줄 `POP-W1 ●`). 인쇄가 안 될 때 「이 단말이 무엇인가」가
+           * 프린터 상태와 함께 있어야 현장이 어느 자리를 봐야 하는지 안다.
+           */}
+          <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
+            {`${t.device.terminalLabel} ${
+              identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)
+            }`}
+          </Chip>
         </div>
       </header>
 

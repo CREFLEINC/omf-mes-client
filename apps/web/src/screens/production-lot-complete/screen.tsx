@@ -124,6 +124,10 @@ export const ProductionLotCompleteScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/* 맥락은 화면명 옆이다 — 오른쪽 끝은 단말 같은 상태 자리다(스펙 §3 머리줄). */}
+        {entry.workOrderId === null ? null : (
+          <p className="pop-context">{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</p>
+        )}
         <div className="pop-context-right">
           <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
             {`${t.device.terminalLabel} ${identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)}`}

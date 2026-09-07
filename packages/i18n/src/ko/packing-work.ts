@@ -26,7 +26,6 @@ export const packingWork = {
     lotNoColumn: 'LOT 번호',
     initialQtyColumn: '최초 수량',
     select: '선택',
-    selected: '선택됨',
     empty: '포장할 수 있는 완료 LOT 이 없습니다.',
     loadFailed: '포장 대상 목록을 불러오지 못했습니다.',
     completedOnlyNotice:

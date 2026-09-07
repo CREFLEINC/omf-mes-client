@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useId, useMemo, useState } from 'react';
@@ -26,6 +26,7 @@ import { toHeadPrinter, toLotRows } from './types';
 import { usePrintRunner } from './use-print';
 
 const t = messages.popLotLabelPrint;
+const tDevice = messages.popLotLabelPrint.device;
 
 const describeIssueError = (error: ApiError): string => {
   if (error.kind === 'network') return messages.httpError.offline;
@@ -52,6 +53,7 @@ export const PopLotLabelPrintScreen = () => {
   const titleId = useId();
   const entry = useLotLabelEntry();
   const identity = usePopIdentity();
+  const terminalId = identity.terminalId;
   const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
   const [reissueOpen, setReissueOpen] = useState(false);
 
@@ -171,6 +173,12 @@ export const PopLotLabelPrintScreen = () => {
               void printers.refetch();
             }}
           />
+          {/* 단말도 상시 보인다(스펙 §3 머리줄 `단말 POP-L1 ●`) — 다른 POP 화면과 같은 자리·순서다. */}
+          <Chip status={terminalId === null ? 'warning' : 'info'}>
+            {`${tDevice.terminalLabel} ${
+              terminalId === null ? tDevice.terminalUnknown : String(terminalId)
+            }`}
+          </Chip>
         </div>
       </header>
 

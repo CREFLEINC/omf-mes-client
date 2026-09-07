@@ -270,12 +270,17 @@ export const PackingWorkScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/*
+         * ⛔ **작업지시를 상태 칩으로 그리지 않는다.** 칩은 「지금 어떤 상태인가」를 색으로 말하는
+         * 자리이고, 작업지시는 색이 붙을 상태가 아니라 **무엇을 보고 있는가**다. 스펙 §3 머리줄이
+         * 그것을 화면명 옆 평문으로 그린다 — 오른쪽 끝은 단말·연결 같은 상태만 선다.
+         */}
+        <p className="pop-context">
+          {`${t.device.workOrderLabel} ${
+            entry.workOrderId === null ? t.device.workOrderUnknown : String(entry.workOrderId)
+          }`}
+        </p>
         <div className="pop-context-right">
-          <Chip status={entry.workOrderId === null ? 'warning' : 'info'}>
-            {`${t.device.workOrderLabel} ${
-              entry.workOrderId === null ? t.device.workOrderUnknown : String(entry.workOrderId)
-            }`}
-          </Chip>
           <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
             {`${t.device.terminalLabel} ${
               identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)

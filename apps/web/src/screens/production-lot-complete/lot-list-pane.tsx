@@ -1,6 +1,7 @@
-import { AlertBanner, Button, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { popTouchClass } from '../../patterns/pop-touch';
 import type { Lot } from './types';
 
 const t = messages.productionLotComplete;
@@ -36,18 +37,33 @@ export const LotListPane = ({
 }: LotListPaneProps) => {
   /*
    * ⛔ **번호 열이 남은 폭을 다 가져가게 두지 않는다.** LOT 번호는 34자리라, 표가 내용대로 폭을
-   * 잡으면 선택 버튼이 표 밖으로 밀려난다(전례 `P-02-05` 실측). 뒤 두 열의 너비를 못박아 남는
-   * 폭을 번호 열이 갖게 한다.
+   * 잡으면 행이 옆으로 늘어난다. 뒤 열의 너비를 못박아 남는 폭을 번호 열이 갖게 한다.
    */
   const columns: Column<Lot>[] = [
     {
       key: 'lotNo',
       header: t.lotList.lotNoColumn,
-      render: (lot) => (
-        <span className="pop-lotdone-no" title={lot.lotNo}>
-          {lot.lotNo}
-        </span>
-      ),
+      render: (lot) => {
+        const isSelected = lot.lotId === selectedLotId;
+
+        return (
+          <button
+            type="button"
+            className={`pop-row-select pop-lot-row ${popTouchClass('normal')}${
+              isSelected ? ' pop-row-select-on' : ''
+            }`}
+            aria-pressed={isSelected}
+            aria-label={`${lot.lotNo} ${t.lotList.select}`}
+            onClick={() => {
+              onSelect(lot.lotId);
+            }}
+          >
+            <span className="pop-lotdone-no" title={lot.lotNo}>
+              {lot.lotNo}
+            </span>
+          </button>
+        );
+      },
     },
     {
       key: 'goodQty',
@@ -56,37 +72,36 @@ export const LotListPane = ({
       width: '72px',
       render: () => t.lotList.goodQtyPlaceholder,
     },
-    {
-      key: 'select',
-      header: '',
-      align: 'end',
-      width: '116px',
-      render: (lot) => (
-        <Button
-          variant={lot.lotId === selectedLotId ? 'filled' : 'outlined'}
-          size="xl"
-          aria-pressed={lot.lotId === selectedLotId}
-          aria-label={`${lot.lotNo} ${t.lotList.select}`}
-          onClick={() => {
-            onSelect(lot.lotId);
-          }}
-        >
-          {lot.lotId === selectedLotId ? t.lotList.selected : t.lotList.select}
-        </Button>
-      ),
-    },
   ];
 
   return (
     <>
-      <Table
-        className="pop-lotdone-table"
-        columns={columns}
-        rows={[...lots]}
-        getRowId={(lot) => String(lot.lotId)}
-        density="comfortable"
-        empty={hasWorkOrder ? t.lotList.empty : t.lotList.emptyNoWorkOrder}
-      />
+      {/*
+       * ⛔ **선택 칸을 따로 두지 않는다.** 스펙 §3 의 목록에 그런 칸이 없고 §7 도 `Table` 하나만
+       * 적는다. 116px 열이 남은 폭을 가져가 34자리 LOT 번호를 잘랐다. 대신 **줄 전체가 누르는
+       * 자리**다 — 자재LOT·LOT 라벨 출력 화면과 같은 방식이고, 장갑 낀 손을 전제하므로 타겟을
+       * 칸 하나로 좁히지 않는다. 다른 칸을 누르면 그 줄의 버튼을 대신 누른다.
+       */}
+      <div
+        role="presentation"
+        className="pop-row-target"
+        onClick={(event) => {
+          const from = event.target as HTMLElement;
+
+          if (from.closest('.pop-row-select') !== null) return;
+
+          from.closest('tr')?.querySelector<HTMLButtonElement>('.pop-row-select')?.click();
+        }}
+      >
+        <Table
+          className="pop-lotdone-table"
+          columns={columns}
+          rows={[...lots]}
+          getRowId={(lot) => String(lot.lotId)}
+          density="comfortable"
+          empty={hasWorkOrder ? t.lotList.empty : t.lotList.emptyNoWorkOrder}
+        />
+      </div>
       <p className="field-note">{t.lotList.goodQtyPending}</p>
       {/*
         슬롯 안내는 스펙 §7 이 `AlertBanner`(info) 로 못박았다 — 문단으로 두지 않는다.

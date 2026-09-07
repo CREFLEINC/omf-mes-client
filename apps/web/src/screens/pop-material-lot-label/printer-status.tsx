@@ -32,8 +32,8 @@ export interface PrinterStatusProps {
  * 인쇄가 안 될 때 사용자가 가장 먼저 보는 곳이고, 그것이 없으면 「등록이 안 됐다」고 오해한다
  * (스펙 §3).
  *
- * ⛔ **단말 이름은 그리지 않는다.** 스펙은 머리에 함께 그리지만 계약에 단말 이름을 받을 경로가
- * 없다 — `GET /app/sessions/current`의 `Session`에 단말 축이 없다. 없는 값을 지어내지 않는다.
+ * ⚠ **단말은 이 부품이 그리지 않는다 — 화면이 옆에 칩으로 세운다.** 이름을 받을 경로는 아직
+ * 없지만 **단말 번호는 사번 귀속 문맥이 갖고 있고**, 다른 POP 화면이 이미 그것으로 세운다.
  *
  * 세 상태를 **다른 모양으로** 낸다(공유계약 G-9) — 프린터가 없는 것 · 상태를 확인하지 못한 것 ·
  * 상태를 아는 것. 조회 실패를 「없음」으로 내면 사용자가 설치 문제로 오해한다.
@@ -60,20 +60,14 @@ export const PrinterStatusIndicator = ({
   if (isLoading) return null;
 
   if (printer === null) {
-    return (
-      <div className="pop-lot-status">
-        <Chip status="warning">{t.none}</Chip>
-      </div>
-    );
+    return <Chip status="warning">{t.none}</Chip>;
   }
 
   return (
     <div className="pop-lot-status">
-      <p className="pop-printer-name">
-        <span className="pop-printer-label">{t.label}</span>
-        <span>{printer.displayName}</span>
-      </p>
-      <Chip status={CHIP_STATUS[printer.status]}>{printer.statusMessage ?? t.noStatusMessage}</Chip>
+      <Chip status={CHIP_STATUS[printer.status]}>
+      {`${t.label} ${printer.displayName} · ${printer.statusMessage ?? t.noStatusMessage}`}
+    </Chip>
       {/*
        * 프린터가 둘 이상일 때만 자리를 둔다(스펙 §5-1 활성 조건). ⛔ **고르는 동작을 만들지
        * 않는다** — 설치 구성이 고객 정리 대기라 §8-4 가 「선택 UI 는 자리만」으로 정했다.

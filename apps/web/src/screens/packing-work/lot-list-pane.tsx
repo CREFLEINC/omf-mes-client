@@ -1,6 +1,7 @@
-import { Button, Table, type Column } from '@crefle/web-ui';
+import { Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { popTouchClass } from '../../patterns/pop-touch';
 import type { Lot } from './types';
 
 const t = messages.packingWork;
@@ -24,18 +25,33 @@ export interface LotListPaneProps {
 export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps) => {
   /*
    * ⛔ **번호 열이 남은 폭을 다 가져가게 두지 않는다.** LOT 번호가 길어 표가 내용대로 폭을
-   * 잡으면 행이 옆으로 늘어나 **선택 버튼이 표 밖으로 밀려난다**(전례 `P-02-05` 실측).
-   * 뒤 두 열의 너비를 못박아 남는 폭이 번호 열이 되게 한다.
+   * 잡으면 행이 옆으로 늘어난다. 뒤 열의 너비를 못박아 남는 폭이 번호 열이 되게 한다.
    */
   const columns: Column<Lot>[] = [
     {
       key: 'lotNo',
       header: t.lotList.lotNoColumn,
-      render: (lot) => (
-        <span className="pack-work-lot-no" title={lot.lotNo}>
-          {lot.lotNo}
-        </span>
-      ),
+      render: (lot) => {
+        const isSelected = lot.lotId === selectedLotId;
+
+        return (
+          <button
+            type="button"
+            className={`pop-row-select pop-lot-row ${popTouchClass('normal')}${
+              isSelected ? ' pop-row-select-on' : ''
+            }`}
+            aria-pressed={isSelected}
+            aria-label={`${lot.lotNo} ${t.lotList.select}`}
+            onClick={() => {
+              onSelect(lot);
+            }}
+          >
+            <span className="pack-work-lot-no" title={lot.lotNo}>
+              {lot.lotNo}
+            </span>
+          </button>
+        );
+      },
     },
     {
       key: 'initialQty',
@@ -44,37 +60,35 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
       width: '96px',
       render: (lot) => String(lot.initialQty),
     },
-    {
-      key: 'select',
-      header: '',
-      align: 'end',
-      width: '116px',
-      render: (lot) => (
-        <Button
-          variant={lot.lotId === selectedLotId ? 'filled' : 'outlined'}
-          size="xl"
-          aria-pressed={lot.lotId === selectedLotId}
-          aria-label={`${lot.lotNo} ${t.lotList.select}`}
-          onClick={() => {
-            onSelect(lot);
-          }}
-        >
-          {lot.lotId === selectedLotId ? t.lotList.selected : t.lotList.select}
-        </Button>
-      ),
-    },
   ];
 
   return (
     <>
-      <Table
-        className="pack-work-lot-table"
-        columns={columns}
-        rows={[...lots]}
-        getRowId={(lot) => String(lot.lotId)}
-        density="comfortable"
-        empty={t.lotList.empty}
-      />
+      {/*
+       * ⛔ **선택 칸을 따로 두지 않는다.** 스펙 §3 의 목록에 그런 칸이 없고 §7 도 `Table` 하나만
+       * 적는다. 대신 **줄 전체가 누르는 자리**다 — 다른 POP 목록과 같은 방식이고, 다른 칸을
+       * 누르면 그 줄의 버튼을 대신 누른다.
+       */}
+      <div
+        role="presentation"
+        className="pop-row-target"
+        onClick={(event) => {
+          const from = event.target as HTMLElement;
+
+          if (from.closest('.pop-row-select') !== null) return;
+
+          from.closest('tr')?.querySelector<HTMLButtonElement>('.pop-row-select')?.click();
+        }}
+      >
+        <Table
+          className="pack-work-lot-table"
+          columns={columns}
+          rows={[...lots]}
+          getRowId={(lot) => String(lot.lotId)}
+          density="comfortable"
+          empty={t.lotList.empty}
+        />
+      </div>
       <p className="field-note">{t.lotList.remainingPending}</p>
       <p className="pop-notice">{t.lotList.completedOnlyNotice}</p>
     </>
