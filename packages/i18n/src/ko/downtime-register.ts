@@ -82,6 +82,12 @@ export const downtimeRegister = {
       `비가동 ${String(count)}건 · 합계 ${totalLabel}`,
     basis: (timeLabel: string): string => `${timeLabel} 기준`,
     empty: '오늘 기록된 비가동이 없습니다',
+    /* ④ 목록의 열 이름 — 스펙 §7 이 이 자리를 `Table` 로 지정했다. */
+    columns: {
+      interval: '구간',
+      duration: '길이',
+      reason: '사유',
+    },
     /** 오프라인 집계의 범위를 이름으로 말한다(스펙 §6-2 · §9-3). */
     localOnly: '내 단말 입력분만',
     localOnlyDescription: '다른 단말·관리웹 입력분은 반영되지 않았습니다.',

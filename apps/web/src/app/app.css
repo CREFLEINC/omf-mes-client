@@ -6347,12 +6347,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow-y: auto;
 }
 
-.downtime-today-row {
-  display: grid;
-  grid-template-columns: 8rem 6rem 1fr;
-  gap: var(--space-3);
-}
-
 .downtime-actions {
   display: flex;
   align-items: center;
