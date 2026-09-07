@@ -215,6 +215,19 @@ export const ProductionResultScreen = () => {
     void navigate(`/pop/pqc-inspection?ir=${String(request.inspectionRequestId)}`);
   };
 
+  /**
+   * 취소가 열리는 조건 — 스펙 §5-1 이 「**입력 있음**」으로 정한 자리다.
+   *
+   * 빈 화면에서 취소가 눌리면 «되돌릴 것이 없는데 되돌리는 버튼»이 서 있게 된다. 저장은
+   * 잠겨 있는데 취소만 열려 있어 어느 쪽이 지금 할 일인지 흐려진다(사용자 지적).
+   *
+   * ⭐ **드래프트만 보지 않는다.** 취소는 저장 결과·거부 진술도 함께 지우는데, 저장 직후에는
+   * 드래프트가 비고 그 진술만 남는다(`commit` 이 수량만 비운다). 드래프트만 보면 그때 취소가
+   * 잠겨 **화면에 남은 말을 걷을 방법이 없어진다.**
+   */
+  const hasSomethingToClear =
+    draft.goodQty !== '' || draft.remarks !== '' || outcome !== null || outbox.rejection !== null;
+
   const enteredQty = parseGoodQty(draft.goodQty);
   /* 단위는 품목 기본 단위다 — 고른 LOT 이 없으면 W/O 의 것을 쓴다(둘은 같은 품목이다). */
   const uomLabel = uom.labelOf(selectedLot?.uomId ?? workOrder.data?.uomId);
@@ -439,7 +452,12 @@ export const ProductionResultScreen = () => {
       </div>
 
       <div className="pop-actions">
-        <Button variant="outlined" size="2xl" onClick={cancel}>
+        <Button
+          variant="outlined"
+          size="2xl"
+          disabled={!hasSomethingToClear}
+          onClick={cancel}
+        >
           {t.actions.cancel}
         </Button>
         <Button size="2xl" disabled={blockReason !== null} onClick={save}>

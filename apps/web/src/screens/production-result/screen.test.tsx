@@ -157,6 +157,7 @@ const selectLot = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 const saveButton = () => screen.getByRole('button', { name: t.actions.save });
+const cancelButton = () => screen.getByRole('button', { name: t.actions.cancel });
 
 beforeEach(() => {
   globalThis.localStorage.clear();
@@ -299,6 +300,33 @@ describe('ProductionResultScreen 수량 입력', () => {
     await waitFor(() => {
       expect(saveButton()).toBeDisabled();
     });
+  });
+
+  /* 스펙 §5-1 — 취소의 활성 조건은 「입력 있음」이다. 되돌릴 것이 없으면 잠긴다. */
+  it('빈 화면에서는 취소가 잠긴다', async () => {
+    renderScreen();
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeDisabled();
+    });
+  });
+
+  it('수량을 치면 취소가 열리고, 누르면 다시 잠긴다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '10');
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeEnabled();
+    });
+
+    await user.click(cancelButton());
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeDisabled();
+    });
+    expect(screen.getByLabelText(t.quantity.goodQtyLabel)).toHaveValue('');
   });
 
   it('빠른 입력은 이어 붙이지 않고 더한다', async () => {

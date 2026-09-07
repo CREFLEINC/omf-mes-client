@@ -1,9 +1,11 @@
-import { Button, EmptyState, NumberPad, TextField } from '@crefle/web-ui';
+import { Button, EmptyState, TextField } from '@crefle/web-ui';
+import { NumericKeypad } from '@omf-mes/ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { MAX_ISSUE_QUANTITY, type SerialNumber } from './types';
 import type { QuantityRejection } from './issue-quantity';
+import { POP_TOUCH_SIZE } from './touch-spec';
 
 const t = messages.identificationTagIssue;
 
@@ -115,6 +117,12 @@ export const IssuePane = ({
             <dt>{t.issue.unissuedLabel}</dt>
             <dd>{figure(unissued, t.issue.countUnit)}</dd>
           </div>
+
+          {/*
+           * 구분선 — 설계 §3 도면이 그은 선이다. 위는 «지금 사실»이고 아래는 «저장하면 그렇게
+           * 된다»라, 선 하나가 그 경계를 말한다. 선례는 공구 사용 화면(`pop-figures-rule`).
+           */}
+          <div className="pop-figures-rule" />
         </dl>
 
         <div className="pop-issue-input">
@@ -132,21 +140,6 @@ export const IssuePane = ({
           />
         </div>
 
-        <p className="pop-preview">
-          <span className="pop-preview-label">{t.preview.label}</span>
-          <span>{preview ?? t.preview.beforeIssue}</span>
-        </p>
-
-        {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
-
-        <div className="pop-actions">
-          <Button size="2xl" loading={isSubmitting} disabled={!canSubmit} onClick={onSubmit}>
-            {t.issue.submit}
-          </Button>
-          <Button variant="outlined" size="2xl" onClick={onReissue}>
-            {t.issue.reissue}
-          </Button>
-        </div>
       </div>
 
       {/*
@@ -154,14 +147,82 @@ export const IssuePane = ({
         내려간다 — 스펙 §3 이 세로 여유를 119px 로 못박은 화면이고, 주 액션이 스크롤 밖에 있는
         것은 현장에서 없는 것과 같다(실측: 쌓았을 때 구획 높이가 830px 였다).
       */}
-      <NumberPad
+      {/*
+       * ⭐ **POP 이 공유하는 키패드를 쓴다**(공유계약 D-4 · `@omf-mes/ui`). 한때 DS `NumberPad`
+       * 였는데, 그쪽은 «전체 잠금»만 있어 키마다 조건을 걸 수 없다 — 입력이 비었는데도
+       * [ C ]·[ ← ]가 눌렸다. 사번 화면(`P-CO-01`)과 **같은 부품을 써야 같게 동작한다.**
+       *
+       * ⚠ 상한(`max`)은 이 부품에 새로 더한 값이다 — 자릿수(`maxLength`)만으로는 `9999` 를
+       *    막지 못한다.
+       */}
+      <NumericKeypad
+        className="pop-issue-keypad"
         value={quantity}
         onChange={onQuantityChange}
         maxLength={QUANTITY_MAX_LENGTH}
         max={MAX_ISSUE_QUANTITY}
-        size="xl"
-        aria-label={t.issue.quantityLabel}
+        keySize={POP_TOUCH_SIZE}
+        label={t.keypad.label}
+        /*
+         * ⚠ **모양은 이 화면이 쓰던 그대로다** — [ C ] · [ 0 ] · [ ⌫ ]. 부품을 바꾼 것은
+         *   «동작»(입력이 비면 두 키가 잠긴다) 때문이지 모양 때문이 아니다.
+         *   읽는 기계에는 글자 이름이 가고(`backspaceLabel`) 눈에는 기호가 보인다.
+         */
+        backspaceLabel={t.keypad.backspace}
+        backspaceGlyph="⌫"
+        clearLabel={t.keypad.clearGlyph}
       />
+
+      {/*
+       * ⭐ **미리보기와 조작은 아래 «전체 폭»으로 내린다.**
+       *
+       * 위쪽은 「무엇을 얼마나」를 정하는 자리(수치 · 발행 수량 · 키패드)이고, 아래는 그 결과와
+       * 그것을 실행하는 자리다. 미리보기를 왼쪽 좁은 칸에 두면 일련번호 범위가 접혀 **한눈에
+       * 읽히지 않고**(실측 — 마지막 줄이 잘렸다), 조작도 키패드 옆에 눌려 작게 선다.
+       *
+       * 가로 한 줄을 통째로 쓰면 번호 범위가 한 줄로 서고 조작이 오른쪽 끝에 온전히 선다.
+       */}
+      <div className="pop-issue-foot">
+        {/*
+         * ⛔ **발행 «전»에는 아무것도 그리지 않는다.** 설계 §3 도면이 이 자리에 그린 것은
+         * 번호 «범위» 하나이고, 범위가 없는 상태를 무엇으로 채우라는 지시는 없다. 한때
+         * 「일련번호는 발행할 때 서버가 매깁니다」를 우리가 지어 넣었는데, 설계가 정하지 않은
+         * 자리를 화면이 스스로 메운 것이었다.
+         *
+         * 발행 전 이 자리를 무엇으로 둘지는 요청서로 확인을 올렸다.
+         */}
+        {preview !== null && (
+          <p className="pop-preview">
+            <span className="pop-preview-label">{t.preview.label}</span>
+            <span>{preview}</span>
+          </p>
+        )}
+
+        {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
+
+        <div className="pop-actions">
+          <Button size={POP_TOUCH_SIZE} loading={isSubmitting} disabled={!canSubmit} onClick={onSubmit}>
+            {t.issue.submit}
+          </Button>
+          {/*
+           * ⭐ **기발행이 0 이면 누를 수 없다.** 재인쇄는 «이미 발행된 개체»의 회차를 올리는
+           * 것이다(§5-5 — `issue_seq = 1` 최초 발행 · `issue_seq ≥ 2` 재인쇄). 발행된 개체가
+           * 없으면 회차를 올릴 대상 자체가 없다.
+           *
+           * ⚠ **`can_print_label` 은 여기에 걸지 않았다.** §6 이 「비활성」이라고 적은 것은
+           *    **발행**이고, 재인쇄까지 같은 규칙인지는 자료에 없다 — 「재인쇄도 인쇄다」는
+           *    추론이라 설계 회신 전에는 넣지 않는다(요청서 G-4).
+           */}
+          <Button
+            variant="outlined"
+            size={POP_TOUCH_SIZE}
+            disabled={issuedCount === 0}
+            onClick={onReissue}
+          >
+            {t.issue.reissue}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };

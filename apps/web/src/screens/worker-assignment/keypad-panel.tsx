@@ -44,16 +44,26 @@ export const KeypadPanel = ({
     <h2 className="field-label">{t.heading}</h2>
 
     {/*
-     * 읽기 전용 표시 칸이다. 높이는 `xl`(60px) — 터치 규격의 「56~60픽셀 급」이며,
-     * ⚠ 「큰 글자」는 글자 크기 요구이지 높이 요구가 아니다(§7).
+     * 높이는 `xl`(60px) — 터치 규격의 「56~60픽셀 급」이며, ⚠ 「큰 글자」는 글자 크기 요구이지
+     * 높이 요구가 아니다(§7).
+     *
+     * ⭐ **키보드로도 칠 수 있다.** 한때 읽기 전용이라 키패드로만 값이 들어왔는데, 자판이 붙은
+     * 단말과 개발 중 확인에서 **숫자를 쳐도 아무 일이 없었다.** 넣는 길이 둘이어도 값의 주인은
+     * 하나(`workerNo`)라 서로 어긋나지 않는다.
+     *
+     * ⛔ **숫자만 받는다.** 사번은 숫자라 그 밖의 글자는 «치는 순간» 버린다 — 받아 두고 나중에
+     *    「형식이 다릅니다」로 되돌리면, 다 치고 나서야 틀린 것을 안다.
      */}
     <TextField
       label={t.workerNo}
       value={workerNo}
       size="xl"
-      readOnly
+      inputMode="numeric"
+      autoComplete="off"
       className="worker-no-field"
-      onChange={() => undefined}
+      onChange={(event) => {
+        onChange(event.target.value.replace(/\D/gu, ''));
+      }}
     />
 
     {/*

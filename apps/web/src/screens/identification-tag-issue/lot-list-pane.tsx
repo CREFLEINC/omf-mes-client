@@ -15,10 +15,14 @@ export interface LotListPaneProps {
  * 좌단 《대상 LOT》.
  *
  * ⚠ **양품 열을 채우지 못한다.** 목록 조회가 생산 진척을 함께 내리지 않아(이 저장소 #143 이
- * 같은 사유로 설계 회신을 기다린다) 값이 없다. **비워 두고 사유를 말한다** — 말없이 비우면
- * 「양품이 없다」로 읽히고, 행마다 상세를 따로 부르는 것은 설계가 정한 방식이 아니다.
+ * 같은 사유로 설계 회신을 기다린다) 값이 없다. 열 자체는 남긴다 — 지웠다가 값이 도착하면
+ * 표의 폭과 순서가 다시 흔들린다.
  *
- * 열 자체는 남긴다. 지웠다가 값이 도착하면 표의 폭과 순서가 다시 흔들린다.
+ * ⛔ **사유를 목록 옆에 적지 않는다**(사용자 지시). 설계에 없는 문구였고, 고른 뒤 오른쪽
+ * 《발행》이 양품 수를 온전히 말한다 — 같은 말을 두 자리에서 하지 않는다.
+ *
+ * ⚠ 아래 「양품 개체마다 1장」은 **설계 §3 도면에 있는 문구**라 그대로 둔다. 둘을 같이
+ * 걷지 않는다 — 하나는 우리 것이고 하나는 설계 것이다.
  */
 export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps) => {
   /*
@@ -59,6 +63,12 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
       width: '116px',
       render: (lot) => (
         <Button
+          /*
+           * ⚠ **두 상태의 크기가 같아야 한다.** 글자 수가 다르고(「선택」·「선택됨」) 채움과
+           * 테두리라 폭이 서로 다르게 잡혀, 고른 줄만 버튼이 커 보였다(실측). 크기가 상태를
+           * 말하면 목록이 들썩이고, 무엇이 골라졌는지는 «색»이 이미 말한다.
+           */
+          className="pop-lot-select"
           variant={lot.lotId === selectedLotId ? 'filled' : 'outlined'}
           size="xl"
           aria-pressed={lot.lotId === selectedLotId}
@@ -75,13 +85,6 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
 
   return (
     <>
-      {/*
-       * ⭐ **양품 열이 비어 있는 사유는 표 «앞»에 선다.** 표 아래에 두었을 때는 읽는 사람이
-       * 「—」를 먼저 만나고 그 뜻을 찾으러 아래로 내려가야 했다. 구획 안내는 그 구획을 읽기
-       * 전에 놓는다 — 작업 시작 화면의 목록 안내(`work-start-scope-note`)와 같은 자리다.
-       */}
-      <p className="field-note pop-lot-list-note">{t.lotList.goodQtyPending}</p>
-
       <Table
         className="pop-lot-table"
         columns={columns}
@@ -90,6 +93,8 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
         density="comfortable"
         empty={t.lotList.empty}
       />
+
+      {/* 설계 §3 도면이 목록 아래에 그린 문구다(R69·R70). ⛔ 지우지 않는다. */}
       <p className="pop-notice">{t.lotList.goodOnlyNotice}</p>
     </>
   );

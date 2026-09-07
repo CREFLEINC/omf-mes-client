@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { Button, type ButtonSize } from '@crefle/web-ui';
 
 import './numeric-keypad.css';
@@ -9,9 +11,19 @@ export interface NumericKeypadProps {
   onChange: (value: string) => void;
   /** 넘기면 그 길이에서 더 받지 않는다. */
   maxLength?: number;
+  /**
+   * 넘기면 그 «수»를 넘기는 입력을 받지 않는다. 자릿수(`maxLength`)와 다른 축이다 —
+   * 1000 이 상한이면 자릿수는 4 지만 `9999` 는 받으면 안 된다.
+   */
+  max?: number;
   disabled?: boolean;
   /** 한 자 지움 키의 접근 이름. 화면 문구는 소비처가 갖는다. */
   backspaceLabel: string;
+  /**
+   * 한 자 지움 키에 «보이는» 기호. 접근 이름(`backspaceLabel`)과 다른 축이다 — 화면마다
+   * 쓰던 기호가 달라, 부품을 바꿔 끼울 때 모양까지 바뀌지 않게 밖에서 받는다.
+   */
+  backspaceGlyph?: ReactNode;
   /** 전체 지움 키의 접근 이름. */
   clearLabel: string;
   /** 키 묶음 전체의 접근 이름. */
@@ -32,8 +44,10 @@ export const NumericKeypad = ({
   value,
   onChange,
   maxLength,
+  max,
   disabled = false,
   backspaceLabel,
+  backspaceGlyph = '←',
   clearLabel,
   label,
   keySize = 'xl',
@@ -42,7 +56,12 @@ export const NumericKeypad = ({
   const full = maxLength !== undefined && value.length >= maxLength;
 
   const append = (digit: string) => {
-    onChange(value + digit);
+    const next = value + digit;
+
+    /* 상한을 넘기는 입력은 «없던 일»로 둔다 — 넣었다가 지우게 하면 손이 두 번 간다. */
+    if (max !== undefined && Number(next) > max) return;
+
+    onChange(next);
   };
 
   return (
@@ -69,18 +88,20 @@ export const NumericKeypad = ({
         type="button"
         variant="outlined"
         size={keySize}
+        className="omf-numeric-keypad__backspace"
         disabled={disabled || value === ''}
         aria-label={backspaceLabel}
         onClick={() => {
           onChange(value.slice(0, -1));
         }}
       >
-        ←
+        {backspaceGlyph}
       </Button>
       <Button
         type="button"
         variant="outlined"
         size={keySize}
+        className="omf-numeric-keypad__zero"
         disabled={disabled || full}
         onClick={() => {
           append('0');
@@ -92,6 +113,7 @@ export const NumericKeypad = ({
         type="button"
         variant="outlined"
         size={keySize}
+        className="omf-numeric-keypad__clear"
         disabled={disabled || value === ''}
         onClick={() => {
           onChange('');
