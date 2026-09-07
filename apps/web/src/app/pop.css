@@ -3015,3 +3015,9 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-2);
 }
+
+/* 길이는 줄의 맨 끝에 못박는다 — 오류 문구가 함께 떠도 값의 자리가 바뀌지 않는다. */
+.pop-ui .downtime-time-row > .downtime-duration {
+  order: 1;
+  flex: none;
+}

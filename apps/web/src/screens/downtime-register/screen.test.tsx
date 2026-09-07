@@ -781,31 +781,34 @@ describe('DowntimeRegisterScreen — 시간이 흐른 뒤', () => {
 });
 
 describe('DowntimeRegisterScreen — 구간을 치기 전', () => {
-  it('빈 화면이 「진행 중」이라고 말하지 않는다', async () => {
+  it('산출할 수 없으면 이유를 적지 않고 「—」로 둔다 — 0분과도 갈라진다', async () => {
     renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
 
     await flush();
 
     /*
-     * 아무것도 치지 않은 상태는 진행 중이 아니라 **아직 아무것도 아닌 상태**다. 그 자리에
-     * 쓸 문구는 스펙에 없으므로 비워 두되, 자리 자체는 남아 있어야 한다 — 글자가 생길 때마다
-     * 아래 구획이 밀리면 터치 화면에서 손가락이 빗나간다.
+     * ⛔ 산출 불가의 «이유»를 문장으로 적지 않는다 — 옆의 「아직 진행 중」이 이미 말하고,
+     *    오류 문구와 같은 줄이라 경고처럼 읽혔다(사용자 지적).
+     * ⚠ 자리 자체는 늘 남는다 — 글자가 들고 날 때마다 줄이 흔들리면 손가락이 빗나간다.
      */
-    expect(screen.queryByText(t.interval.durationUnknown)).toBeNull();
+    const empty = t.interval.duration(t.interval.durationEmpty);
+    expect(screen.getByText(empty)).toBeTruthy();
 
-    const duration = document.querySelector('.downtime-duration');
-    expect(duration).not.toBeNull();
-    expect(duration?.textContent).toBe('');
+    /* 시작만 찍어도, 「아직 진행 중」을 켜도 여전히 산출할 수 없다 — 표기는 같다. */
+    typeInterval(['2026-08-11', '14:20']);
+    expect(screen.getByText(empty)).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText(t.interval.stillOngoing));
+    expect(screen.getByText(empty)).toBeTruthy();
   });
 
-  it('시작을 찍고 「아직 진행 중」을 켜면 그때 산출 불가라고 말한다', async () => {
+  it('구간이 갖춰지면 길이를 낸다', async () => {
     renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
 
     await flush();
-    typeInterval(['2026-08-11', '14:20']);
-    fireEvent.click(screen.getByLabelText(t.interval.stillOngoing));
+    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
 
-    expect(await screen.findByText(t.interval.durationUnknown)).toBeTruthy();
+    expect(screen.getByText(t.interval.duration('47분'))).toBeTruthy();
   });
 });
 

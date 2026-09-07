@@ -50,7 +50,16 @@ export const downtimeRegister = {
     /** 단말 시각을 그대로 넣는 기본 경로다(스펙 §5-2). */
     now: '지금',
     stillOngoing: '아직 진행 중',
-    durationUnknown: '진행 중이라 산출할 수 없습니다',
+    /*
+     * 길이 — **도면이 「길이 47 분」으로 그린 자리다**(스펙 §3).
+     *
+     * ⛔ 산출할 수 없을 때 그 «이유»를 문장으로 적지 않는다. 끝 시각이 비어 있는 것을 옆의
+     *    「아직 진행 중」이 이미 말하고 있고, 오류 문구와 같은 자리에 서서 경고처럼 읽혔다
+     *    (사용자 지적 2026-09-07). 값 없음은 이 저장소의 공용 표기 「—」로 적는다.
+     * ⛔ 「0분」으로 채우지 않는다 — 없는 값과 0을 같은 모양으로 만들지 않는다(G-9).
+     */
+    duration: (value: string): string => `길이 ${value}`,
+    durationEmpty: common.reference.empty,
   },
   reason: {
     title: '사유',

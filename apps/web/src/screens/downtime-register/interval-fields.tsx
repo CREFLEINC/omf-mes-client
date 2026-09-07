@@ -88,21 +88,20 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
   const endedError = describeEndedError(errors.endedAt);
 
   /*
-   * 길이 자리는 세 갈래다.
+   * 길이 — 도면이 「길이 47 분」으로 그린 자리다(스펙 §3).
    *
-   * ⛔ **아직 아무것도 치지 않은 상태를 「진행 중」이라 부르지 않는다** — 실사용에서 빈 화면이
-   * 「진행 중이라 산출할 수 없습니다」라고 말했다. 진행 중은 시작을 찍은 뒤에야 성립한다.
+   * ⛔ **산출할 수 없는 «이유»를 문장으로 적지 않는다.** 끝 시각이 비어 있는 것은 옆의
+   *    「아직 진행 중」이 이미 말하고, 오류 문구와 같은 줄에 서니 경고처럼 읽혔다(사용자 지적
+   *    2026-09-07). 값 없음은 공용 표기 「—」다.
    *
-   * ⚠ 그 상태에 쓸 문구는 **스펙에 없다**(스펙이 정한 것은 「47 분」과 진행 중의 산출 불가
-   * 둘뿐이다). 없는 문구를 지어내지 않고 **비워 둔다** — 다만 자리는 남긴다(CSS 최소 높이):
-   * 글자가 생길 때마다 아래 구획이 밀리면 터치 화면에서 손가락이 빗나간다.
+   * ⛔ **0분으로 채우지 않는다** — 없는 값과 0을 같은 모양으로 만들지 않는다(`G-9`).
+   *
+   * ⚠ 값이 들고 나도 **자리는 늘 지킨다** — 글자가 생길 때마다 줄이 흔들리면 터치 화면에서
+   *    손가락이 빗나간다.
    */
-  const durationLabel =
-    minutes !== null
-      ? toDurationLabel(minutes)
-      : moments.started !== null
-        ? t.interval.durationUnknown
-        : '';
+  const durationLabel = t.interval.duration(
+    minutes === null ? t.interval.durationEmpty : toDurationLabel(minutes),
+  );
 
   const setStarted = (part: 'date' | 'time', value: string): void => {
     onChange({ ...draft, startedAt: { ...draft.startedAt, [part]: value } });
@@ -233,12 +232,14 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           )}
 
           {/*
-           * 길이는 **입력 확인용**이다 — 저장되는 값은 서버가 낸다. 진행 중이면 산출 불가라고
-           * 말하고 비워 두지 않는다: 빈 자리는 「0분」과 「모른다」를 같은 모양으로 만든다.
+           * 길이는 **입력 확인용**이다 — 저장되는 값은 서버가 낸다(§4-A · L-2).
            *
            * ⭐ **끝 시각 줄의 오른쪽 끝에 선다** — 제 줄을 가지면 36px 을 쓰는데, 이 화면은
            *    그만큼이 아래 「오늘 이 설비」에서 나온다(§3-1 예산 초과 · 요청서). 값이 나오는
            *    바탕이 바로 이 줄의 두 시각이라 옆에 두어도 읽히는 자리가 흐려지지 않는다.
+           *
+           * ⚠ 오류 문구도 같은 줄 오른쪽에 서므로 **길이가 늘 맨 끝**이다 — 둘이 함께 뜰 때
+           *    자리가 바뀌면 눈이 값을 다시 찾는다.
            */}
           <p className="downtime-duration">{durationLabel}</p>
         </div>
