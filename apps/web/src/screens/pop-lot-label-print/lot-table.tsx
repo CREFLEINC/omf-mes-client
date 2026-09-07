@@ -31,6 +31,10 @@ export interface LotTableProps {
  *
  * ⛔ **번호 열이 남은 폭을 다 가져가게 두지 않는다.** LOT 번호는 34자리라, 표가 내용대로 폭을
  * 잡으면 행이 옆으로 늘어난다. 뒤 세 열의 너비를 못박아 남는 폭을 번호 열에 준다.
+ *
+ * ⚠ **그 못을 넉넉히 박지 않는다.** 1024 에서 이 구획 안쪽은 410px 뿐이라, 뒤 세 열이 232 를
+ * 가져가면 번호 칸에 122 밖에 남지 않아 번호가 잘렸다(실측 「PLOT-202…」). 세 열이 담는 것은
+ * 「—」·「미출력」 정도라 60·60·80 으로 충분하다.
  */
 export const LotTable = ({
   rows,
@@ -41,6 +45,7 @@ export const LotTable = ({
   const columns: Column<LotRow>[] = [
     {
       key: 'lotNo',
+      align: 'center',
       header: t.lotList.lotNoColumn,
       render: (row) => {
         const isSelected = row.lotId === selectedLotId;
@@ -66,22 +71,23 @@ export const LotTable = ({
     },
     {
       key: 'status',
+      align: 'center',
       header: t.lotList.statusColumn,
-      width: '72px',
+      width: '60px',
       render: () => t.lotList.valuePending,
     },
     {
       key: 'goodQty',
       header: t.lotList.goodQtyColumn,
-      align: 'end',
-      width: '72px',
+      align: 'center',
+      width: '60px',
       render: () => t.lotList.valuePending,
     },
     {
       key: 'issueCount',
       header: t.lotList.issueCountColumn,
-      align: 'end',
-      width: '88px',
+      align: 'center',
+      width: '80px',
       /*
        * 셋을 가른다 — 「한 번도 안 찍힘」 · 「N회 찍힘」 · 「모른다」.
        * ⛔ 모르는 것을 미출력으로 그리지 않는다. 이미 찍은 라벨을 다시 찍게 된다.

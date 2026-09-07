@@ -42,6 +42,7 @@ export const LotListPane = ({
   const columns: Column<Lot>[] = [
     {
       key: 'lotNo',
+      align: 'center',
       header: t.lotList.lotNoColumn,
       render: (lot) => {
         const isSelected = lot.lotId === selectedLotId;
@@ -68,7 +69,7 @@ export const LotListPane = ({
     {
       key: 'goodQty',
       header: t.lotList.goodQtyColumn,
-      align: 'end',
+      align: 'center',
       width: '72px',
       render: () => t.lotList.goodQtyPlaceholder,
     },

@@ -34,6 +34,7 @@ export const LotPicker = ({
   const columns: Column<Lot>[] = [
     {
       key: 'lotNo',
+      align: 'center',
       header: t.lot.lotLabel,
       /*
        * ⛔ **선택 칸을 따로 두지 않는다.** 다른 POP 목록과 같이 **줄 전체가 누르는 자리**다 —

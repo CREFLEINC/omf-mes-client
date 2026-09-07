@@ -30,6 +30,7 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
   const columns: Column<Lot>[] = [
     {
       key: 'lotNo',
+      align: 'center',
       header: t.lotList.lotNoColumn,
       render: (lot) => {
         const isSelected = lot.lotId === selectedLotId;
@@ -56,7 +57,7 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
     {
       key: 'initialQty',
       header: t.lotList.initialQtyColumn,
-      align: 'end',
+      align: 'center',
       width: '96px',
       render: (lot) => String(lot.initialQty),
     },
