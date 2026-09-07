@@ -28,6 +28,7 @@ const DOWNTIMES_PATH = '/maintenance/downtimes';
 const SUMMARY_PATH = '/maintenance/downtimes/summary';
 const BREAKDOWNS_PATH = '/maintenance/breakdowns';
 const TERMINAL_PATH = `/mdm/terminals/${String(TERMINAL_ID)}/processes`;
+const CODE_VALUES_PATH = '/mdm/code-values';
 const closePath = (downtimeId: number): string => `${DOWNTIMES_PATH}/${String(downtimeId)}:close`;
 
 const ROUTE = `/pop/downtime?equipmentId=${String(EQUIPMENT_ID)}&equipmentCode=${EQUIPMENT_CODE}`;
@@ -99,6 +100,20 @@ const breakdownsRoute = (items: unknown[] = []): StubRoute => ({
   respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
 });
 
+/**
+ * ③ 사유 선택지 — **고객의 코드 마스터에서 온다**(스펙 §4-A · `G-32`). 시드 여섯 중 둘만
+ * 세운다: 목록의 «출처»가 서버라는 것만 확인하면 되고, 값을 다 적으면 시드가 늘 때 함께 는다.
+ */
+const reasonsRoute = (
+  items: { code: string; codeName: string }[] = [
+    { code: 'EQUIPMENT_FAILURE', codeName: '설비 고장' },
+    { code: 'MOLD_CHANGE', codeName: '금형 교체' },
+  ],
+): StubRoute => ({
+  match: (request) => isGet(request, CODE_VALUES_PATH),
+  respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
+});
+
 const gateRoute = (canInputResult = true): StubRoute => ({
   match: (request) => isGet(request, TERMINAL_PATH),
   respond: () =>
@@ -125,8 +140,13 @@ const IDENTIFIED: PopIdentity = {
   workerNo: WORKER_NO,
 };
 
+/**
+ * ⚠ **사유 선택지 라우트는 늘 붙인다.** 이 화면의 저장은 사유가 필수라, 그 목록을 세우지 않은
+ * 시험은 「고를 것이 없다」로 막혀 정작 보려던 것을 못 본다. 다른 응답을 보려는 시험은
+ * `reasonsRoute(...)` 를 «먼저» 넘겨 덮는다(앞선 라우트가 이긴다).
+ */
 const renderScreen = (routes: StubRoute[], identity: PopIdentity = IDENTIFIED) => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  const { fetch, requests } = createRecordingFetch([...routes, reasonsRoute()]);
   const result = renderWithProviders(
     <PopIdentityProvider value={identity}>
       <DowntimeRegisterScreen />
@@ -355,10 +375,12 @@ describe('DowntimeRegisterScreen — 저장', () => {
     expect(screen.getByText(t.errors.reasonRequired)).toBeTruthy();
   });
 
-  it('사유 목록이 임시라는 사실을 감추지 않는다', async () => {
-    renderScreen(baseRoutes());
+  it('고를 사유가 하나도 없으면 칸을 감추지 않고 잠근 뒤 사유를 말한다', async () => {
+    /* ⛔ 스펙 §6-1 — 감추면 저장이 왜 막히는지 화면에 남는 것이 없다(사유는 `NOT NULL`). */
+    renderScreen([reasonsRoute([]), ...baseRoutes()]);
 
-    expect(await screen.findByText(t.reason.placeholderNotice)).toBeTruthy();
+    expect(await screen.findByText(t.errors.reasonsUnavailable)).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: t.reason.detail })).toBeDisabled();
   });
 
   it('사번을 모르면 저장을 막고 그 사유를 말한다', async () => {

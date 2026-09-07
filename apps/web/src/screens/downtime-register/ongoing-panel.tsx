@@ -1,7 +1,6 @@
 import { Button, Card, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { reasonName } from './downtime-reasons';
 import { elapsedMinutes, toClockLabel, toDurationLabel } from './formatting';
 import type { DowntimeView } from './types';
 
@@ -44,7 +43,12 @@ export const OngoingPanel = ({
   const minutes = elapsedMinutes(downtime.startedAt, now);
   /* 시작 시각을 읽을 수 없으면 경과도 말하지 않는다 — 0분이라고 하면 방금 선 것으로 읽힌다. */
   const elapsedLabel = minutes === null ? null : toDurationLabel(minutes);
-  const name = downtime.reasonName ?? reasonName(downtime.reasonCode) ?? downtime.reasonCode;
+  /*
+   * ⛔ **코드를 이름으로 바꾸는 표를 화면이 갖지 않는다.** 이름은 서버가 준다(계약 `reasonName`)
+   * — 고객이 사유를 늘리는 목록이라(`G-31`) 화면이 표를 들면 늘어난 값만 이름이 없다.
+   * 서버가 이름을 비웠으면 코드를 그대로 보인다: 지어내지 않는다.
+   */
+  const name = downtime.reasonName ?? downtime.reasonCode;
 
   return (
     <Card bordered className="pop-section pop-fixed downtime-pane">

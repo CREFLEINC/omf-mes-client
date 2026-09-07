@@ -57,11 +57,6 @@ export const downtimeRegister = {
     /* ⛔ 대분류를 두지 않는다 — 사유는 평면 1단이다(스펙 §7 확정 2026-09-03). */
     detail: '비가동 사유',
     detailPlaceholder: '사유 선택',
-    /*
-     * 값 «목록»은 확정됐고(2026-09-03) 아직 서버에서 받아 오지 않았을 뿐이다. 고객이 늘리는
-     * 목록이라(G-31) 「이것이 전부」로 읽히지 않게 그 사실을 적는다.
-     */
-    placeholderNotice: '사유 목록을 아직 서버에서 받지 않습니다. 초기 값만 보입니다.',
     remarks: '메모',
     remarksPlaceholder: '사유 코드로 담기지 않는 사연을 적습니다',
   },
@@ -112,6 +107,8 @@ export const downtimeRegister = {
     /** 시작 칸을 적으려다 만 상태. 「안 친 것」과 달라 누르기 전에도 말한다. */
     startedIncomplete: '시작 날짜와 시각을 함께 입력하세요.',
     reasonRequired: '비가동 사유를 고르세요.',
+    /* 고를 것이 없다 — 저장이 막히는 이유다(스펙 §6-1 · 사유는 `NOT NULL`). */
+    reasonsUnavailable: '비가동 사유 목록을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     /** 겹침은 경고다 — 저장을 막지 않는다(스펙 §6-1 · 미결 처리 「만들지 않는다」). */
     overlapWarning: (rangeLabel: string): string => `${rangeLabel} 과 겹칩니다. 그대로 저장됩니다.`,
     workerMissing: '실적 저장 — 사번을 확인할 수 없어 저장할 수 없습니다.',

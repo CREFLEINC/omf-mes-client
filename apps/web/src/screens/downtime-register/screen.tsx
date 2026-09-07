@@ -29,6 +29,7 @@ import {
   toLocalDay,
   useOngoingDowntime,
   useOpenBreakdowns,
+  useReasonOptions,
   useTodayDowntimes,
 } from './queries';
 import { ReasonFields } from './reason-fields';
@@ -108,6 +109,7 @@ export const DowntimeRegisterScreen = () => {
   const day = toLocalDay(now);
   const today = useTodayDowntimes(equipmentId, day, outbox.isOnline);
   const breakdowns = useOpenBreakdowns(equipmentId, outbox.isOnline);
+  const reasonOptions = useReasonOptions();
 
   /*
    * ④의 줄. 온라인이면 서버 목록이 정본이고, 끊겨 있으면 **이 단말이 아는 것만** 세운다.
@@ -118,14 +120,22 @@ export const DowntimeRegisterScreen = () => {
    */
   const isLocalOnly = !outbox.isOnline;
 
+  /* 코드 → 이름. 받아 온 목록이 정본이고, 아직 서버에 닿지 않은 줄이 이것으로 이름을 얻는다. */
+  const reasonNames = useMemo(
+    () => new Map(reasonOptions.options.map((option) => [option.code, option.name])),
+    [reasonOptions.options],
+  );
+
   const rows: TodayRow[] = useMemo(() => {
     const local = [
-      ...outbox.accepted.map(fromAccepted),
-      ...outbox.pendingCreates.map((entry) => fromPending(entry.idempotencyKey, entry.body)),
+      ...outbox.accepted.map((entry) => fromAccepted(entry, reasonNames)),
+      ...outbox.pendingCreates.map((entry) =>
+        fromPending(entry.idempotencyKey, entry.body, reasonNames),
+      ),
     ].filter((row) => startedOn(row, day));
 
     if (outbox.isOnline) {
-      const server = today.downtimes.map(fromDowntimeView);
+      const server = today.downtimes.map((one) => fromDowntimeView(one, reasonNames));
       const known = new Set(server.map((row) => row.key));
 
       /* 서버가 이미 아는 건은 두 번 세지 않는다 — 방금 보낸 건이 응답과 목록에 함께 잡힌다. */
@@ -133,7 +143,7 @@ export const DowntimeRegisterScreen = () => {
     }
 
     return local.sort(byStartedAtDesc);
-  }, [day, outbox.accepted, outbox.isOnline, outbox.pendingCreates, today.downtimes]);
+  }, [day, outbox.accepted, outbox.isOnline, outbox.pendingCreates, reasonNames, today.downtimes]);
 
   const moments = readInterval(draft.interval);
   const intervalErrors = validateInterval(draft.interval, now);
@@ -337,6 +347,8 @@ export const DowntimeRegisterScreen = () => {
 
       <ReasonFields
         reasonCode={draft.reasonCode}
+        reasons={reasonOptions.options}
+        reasonsUnavailable={reasonOptions.isUnavailable}
         remarks={draft.remarks}
         breakdownId={draft.breakdownId}
         breakdowns={breakdowns.breakdowns}

@@ -1,6 +1,5 @@
 import type { components } from '@omf-mes/api-client';
 
-import { reasonName } from './downtime-reasons';
 import { toDowntimeView, type DowntimeView } from './types';
 
 /**
@@ -24,21 +23,42 @@ export interface TodayRow {
   reasonLabel: string;
 }
 
-const toReasonLabel = (reasonCode: string, serverName: string | null): string =>
-  serverName ?? reasonName(reasonCode) ?? reasonCode;
+/**
+ * ⛔ **코드를 이름으로 바꾸는 표를 화면이 갖지 않는다.** 이름은 서버가 준다(계약 `reasonName`).
+ * 고객이 늘리는 목록이라(`G-31`) 화면이 표를 들면 늘어난 값만 이름이 없다 — 서버가 비웠으면
+ * 코드를 그대로 보인다.
+ */
+/**
+ * 코드 → 이름. **받아 온 목록에서 찾는다.**
+ *
+ * 아직 서버에 닿지 않은 줄(오프라인 큐)에는 서버가 붙여 줄 이름이 없다. 그렇다고 코드를
+ * 그대로 보이면 방금 적은 사유가 `MOLD_CHANGE` 로 서서 다른 줄과 다르게 읽힌다 — 조금 전
+ * 자기가 고른 «그 이름»이 목록에 있으므로 거기서 찾는다.
+ */
+export type ReasonNames = ReadonlyMap<string, string>;
 
-export const fromDowntimeView = (downtime: DowntimeView): TodayRow => ({
+const toReasonLabel = (
+  reasonCode: string,
+  serverName: string | null,
+  names: ReasonNames,
+): string => serverName ?? names.get(reasonCode) ?? reasonCode;
+
+export const fromDowntimeView = (downtime: DowntimeView, names: ReasonNames): TodayRow => ({
   key: `downtime:${String(downtime.downtimeId)}`,
   startedAt: downtime.startedAt,
   endedAt: downtime.endedAt,
   durationMinutes: downtime.durationMinutes,
-  reasonLabel: toReasonLabel(downtime.reasonCode, downtime.reasonName),
+  reasonLabel: toReasonLabel(downtime.reasonCode, downtime.reasonName, names),
 });
 
-export const fromAccepted = (downtime: Downtime): TodayRow =>
-  fromDowntimeView(toDowntimeView(downtime));
+export const fromAccepted = (downtime: Downtime, names: ReasonNames): TodayRow =>
+  fromDowntimeView(toDowntimeView(downtime), names);
 
-export const fromPending = (idempotencyKey: string, body: DowntimeCreate): TodayRow => ({
+export const fromPending = (
+  idempotencyKey: string,
+  body: DowntimeCreate,
+  names: ReasonNames,
+): TodayRow => ({
   key: `pending:${idempotencyKey}`,
   startedAt: body.startedAt,
   endedAt: body.endedAt ?? null,
@@ -47,7 +67,7 @@ export const fromPending = (idempotencyKey: string, body: DowntimeCreate): Today
    * 표시할 때 구간에서 재는 것과, 저장된 값으로 말하는 것은 다른 사실이다.
    */
   durationMinutes: null,
-  reasonLabel: toReasonLabel(body.reasonCode, null),
+  reasonLabel: toReasonLabel(body.reasonCode, null, names),
 });
 
 /** 같은 날에 시작한 것만. 날짜 글자는 지역 시각 기준(`yyyy-mm-dd`)이다. */

@@ -2,7 +2,7 @@ import { AlertBanner, Button, Card, Select, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
-import { PLACEHOLDER_REASONS, type DowntimeReason } from './downtime-reasons';
+import type { ReasonOption } from './queries';
 import { toClockLabel } from './formatting';
 import type { BreakdownView } from './types';
 
@@ -10,6 +10,10 @@ const t = messages.downtimeRegister;
 
 export interface ReasonFieldsProps {
   reasonCode: string | null;
+  /** ③ 선택지 — 고객의 코드 마스터에서 온다(스펙 §4-A). */
+  reasons: readonly ReasonOption[];
+  /** 고를 것이 하나도 없다 — 칸을 감추지 않고 «잠근다»(스펙 §6-1 · G-2). */
+  reasonsUnavailable: boolean;
   remarks: string;
   breakdownId: number | null;
   breakdowns: readonly BreakdownView[];
@@ -22,13 +26,13 @@ export interface ReasonFieldsProps {
   onApplyStoppedAt: (stoppedAt: string) => void;
 }
 
-const toOption = (reason: DowntimeReason) => ({ value: reason.code, label: reason.name });
+const toOption = (reason: ReasonOption) => ({ value: reason.code, label: reason.name });
 
 /**
  * ③ 사유 · 연결 고장 · 메모.
  *
- * ⛔ **사유 목록이 임시라는 사실을 감추지 않는다.** 필드를 숨기면 왜 저장이 안 되는지 알 수
- * 없고, 아무 말 없이 목록만 보이면 확정된 체계로 읽힌다. 칸은 그대로 두고 **임시임을 적는다.**
+ * ⛔ **고를 것이 없어도 칸을 감추지 않는다**(스펙 §6-1 · `G-2`). 숨기면 왜 저장이 안 되는지
+ * 알 수 없다 — 칸은 그대로 두고 **잠그고 사유를 적는다.**
  *
  * ⭐ **사유는 평면 1단이다**(스펙 §7 확정 2026-09-03) — 서버로 가는 것은 `reasonCode` 하나다.
  *
@@ -38,6 +42,8 @@ const toOption = (reason: DowntimeReason) => ({ value: reason.code, label: reaso
  */
 export const ReasonFields = ({
   reasonCode,
+  reasons,
+  reasonsUnavailable,
   remarks,
   breakdownId,
   breakdowns,
@@ -78,15 +84,19 @@ export const ReasonFields = ({
             placeholder={t.reason.detailPlaceholder}
             value={reasonCode}
             invalid={reasonInvalid}
-            options={PLACEHOLDER_REASONS.map(toOption)}
+            /*
+             * ⛔ **고를 것이 없으면 칸을 감추지 않고 잠근다**(스펙 §6-1 · `G-2`). 감추면
+             * 저장이 왜 막히는지 화면에 남는 것이 없다 — 사유는 `NOT NULL` 이다.
+             */
+            disabled={reasonsUnavailable}
+            options={reasons.map(toOption)}
             onChange={onReasonChange}
           />
 
-          {/*
-           * 목록이 아직 서버에서 오지 않았다는 사실은 **고르는 칸 옆**에 선다 — 제 줄을 가지면
-           * 36px 을 쓰고, 그만큼이 아래 「오늘 이 설비」에서 나온다(§3-1 예산 초과 · 요청서).
-           */}
-          <p className="downtime-placeholder-notice">{t.reason.placeholderNotice}</p>
+          {/* 고를 것이 없는 «이유»는 칸 옆에 선다 — 잠긴 칸만으로는 무엇이 잘못인지 모른다. */}
+          {reasonsUnavailable && (
+            <p className="downtime-field-error">{t.errors.reasonsUnavailable}</p>
+          )}
         </div>
 
         {/*
