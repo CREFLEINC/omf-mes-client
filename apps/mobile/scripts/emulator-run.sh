@@ -40,13 +40,19 @@ else
 
   # 카메라 QR 을 넣으려면 가상 장면이어야 한다. emulator-qr.sh 가 구워 둔 그림이 있으면
   # 그것을 벽에 건다 - 기기 등록은 카메라로만 넘을 수 있는 관문이다.
+  #
+  # 배열로 인자를 모으지 않는다. macOS 기본 bash 는 3.2 이고, 거기서는 set -u 아래 빈 배열을
+  # 펼치는 순간 죽는다 - QR 을 아직 굽지 않은 사람, 그러니까 처음 쓰는 모두가 여기서 멈춘다.
   QR_PNG="$HOME/.android/avd/${AVD_NAME}.avd/omf-qr.png"
-  POSTER=()
+
   if [ -f "$QR_PNG" ]; then
-    POSTER=(-virtualscene-poster "wall=$QR_PNG")
     echo "      벽에 걸 QR: $QR_PNG"
+    emulator -avd "$AVD_NAME" -camera-back virtualscene -no-snapshot-load \
+      -virtualscene-poster "wall=$QR_PNG" >/dev/null 2>&1 &
+  else
+    emulator -avd "$AVD_NAME" -camera-back virtualscene -no-snapshot-load >/dev/null 2>&1 &
   fi
-  emulator -avd "$AVD_NAME" -camera-back virtualscene -no-snapshot-load "${POSTER[@]}" >/dev/null 2>&1 &
+
   adb wait-for-device
   until booted; do
     sleep 2
