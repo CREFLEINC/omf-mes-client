@@ -326,7 +326,7 @@ export const ToolUsageScreen = () => {
         )}
 
         {/* ① 툴 스캔 — QR 이 실패해도 코드를 손으로 칠 수 있어야 한다(스펙 §6-1 · D-3). */}
-        <Card bordered className="pop-section" aria-label={t.scan.sectionLabel}>
+        <Card bordered className="pop-section pop-fixed" aria-label={t.scan.sectionLabel}>
           <Card.Body>
             <form className="scan-row" onSubmit={submitCode}>
               <TextField
@@ -370,178 +370,208 @@ export const ToolUsageScreen = () => {
           </Card.Body>
         </Card>
 
-        {/* ② 타발수 입력 — 타발수 칸은 늘 서고, 환산은 그 아래에서 값을 만든다(스펙 §3). */}
-        <Card bordered className="pop-section" aria-label={t.shot.sectionLabel}>
-          <Card.Body>
-            <div className="pop-shot">
-              <div className="pop-shot-fields">
-                {/*
-                 * ⭐ **환산을 켜면 이 칸은 «결과»를 보인다.** 사람이 고칠 수 있는 자리가 둘이면
-                 * 어느 값이 나가는지 알 수 없다 — 환산 중에는 읽기 전용이다.
-                 */}
-                <TextField
-                  id={shotInputId}
-                  label={t.shot.inputLabel}
-                  size="xl"
-                  fullWidth
-                  inputMode="numeric"
-                  readOnly={isConverted}
-                  value={
-                    isConverted
-                      ? increment === null
-                        ? ''
-                        : formatShots(increment)
-                      : draft.shotCount
-                  }
-                  error={write.fieldErrors.shotCount}
-                  /* 단위는 칸 오른쪽 안에 붙인다 — 스펙 §3 의 「타발수 [1,250] 회」 */
-                  trailingIcon={t.shot.unit}
-                  onChange={(event) => {
-                    changeDraft({ shotCount: digitsOnly(event.target.value) });
-                  }}
-                />
-
-                <Switch
-                  label={t.shot.convertedLabel}
-                  checked={isConverted}
-                  disabled={conversion.kind !== 'ready'}
-                  onChange={(event) => {
-                    changeDraft({
-                      method: event.target.checked
-                        ? COLLECTION_METHOD.converted
-                        : COLLECTION_METHOD.direct,
-                      shotCount: '',
-                      baseQty: '',
-                    });
-                  }}
-                />
-
-                {conversion.kind === 'loading' && (
-                  <p className="field-note">{t.shot.conversionLoading}</p>
-                )}
-                {conversion.kind === 'off' && <p className="field-note">{t.shot.conversionOff}</p>}
-                {conversion.kind === 'unset' && (
-                  <p className="field-note">{t.shot.conversionUnavailable}</p>
-                )}
-
-                {isConverted && conversion.kind === 'ready' && (
-                  <div className="pop-conversion">
-                    <TextField
-                      label={t.shot.baseQtyLabel}
-                      size="xl"
-                      inputMode="decimal"
-                      value={draft.baseQty}
-                      error={write.fieldErrors.conversionBaseQty}
-                      onChange={(event) => {
-                        changeDraft({ baseQty: decimalOnly(event.target.value) });
-                      }}
-                    />
-                    <p className="field-note">
-                      {t.shot.convertedExpression(
-                        draft.baseQty === '' ? '—' : draft.baseQty,
-                        String(conversion.ratio),
-                        increment === null ? '—' : formatShots(increment),
-                      )}
-                    </p>
-                    <p className="field-note">{t.shot.roundedNote}</p>
-                  </div>
-                )}
-              </div>
-
-              <NumberPad
-                aria-label={t.shot.keypadLabel}
-                maxLength={SHOT_MAX_LENGTH}
-                allowDecimal={isConverted}
-                value={isConverted ? draft.baseQty : draft.shotCount}
-                onChange={(value) => {
-                  changeDraft(isConverted ? { baseQty: value } : { shotCount: value });
-                }}
-              />
-            </div>
-          </Card.Body>
-        </Card>
-
-        {/* ③ 누계 — 저장 전에 「저장하면 얼마가 남는가」를 보인다(스펙 §3 · §3-2). */}
-        <Card bordered className="pop-section" aria-label={t.cumulative.sectionLabel}>
-          <Card.Body>
-            <dl className="pop-figures">
-              <div>
-                <dt>{t.cumulative.guaranteed}</dt>
-                <dd>{guaranteedText}</dd>
-              </div>
-              <div>
-                <dt>{t.cumulative.current}</dt>
-                <dd>
-                  {usableTool === null ? '—' : `${formatShots(serverShotCount)} ${t.shot.unit}`}
-                  {usableTool !== null && asOfText !== null && (
-                    <span className="pop-figure-note">{asOfText}</span>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>{t.cumulative.increment}</dt>
-                <dd>{increment === null ? '—' : `+${formatShots(increment)} ${t.shot.unit}`}</dd>
-              </div>
-
-              {/* 구분선 — 위 셋은 「지금 사실」이고 아래 둘은 「저장하면 그렇게 된다」다. */}
-              <div className="pop-figures-rule" />
-
-              <div>
-                <dt>{t.cumulative.projected}</dt>
-                <dd>
-                  {usableTool === null
-                    ? '—'
-                    : figureText(
-                        projectedTotal(figures),
-                        t.cumulative.offlineProjection,
-                        t.cumulative.guaranteedMissing,
-                      )}
-                </dd>
-              </div>
-              <div>
-                <dt>{t.cumulative.available}</dt>
-                <dd className="pop-figure-usage">
-                  <span>
-                    {usableTool === null
-                      ? '—'
-                      : figureText(
-                          availableShots(figures),
-                          t.cumulative.offlineProjection,
-                          t.cumulative.guaranteedMissing,
-                        )}
-                  </span>
+        {/*
+         * ⛔ **스펙 §3-1 의 세로 예산이 터치 규격과 동시에 서지 않는다.**
+         *
+         * §3-1 은 ① 96 · ② 200 · ③ 200 · ④ 88 을 세로로 쌓아 슬랙 0 이라 적었는데, 같은 절이
+         * ② 의 숫자 키패드를 **핵심 등급 64~72px** 로 못박았다. 4행 키패드는 그것만으로 264px
+         * 이라(실측 · 키 60×80) ② 가 200 에 들어가지 못한다. 넷을 그대로 쌓으면 **네 구획이
+         * 모두 잘린다** — 실측으로 키패드는 첫 줄(1·2·3)만, 누계는 두 줄만 보였다.
+         *
+         * ⛔ 키를 줄여 맞추지 않는다(터치 하한을 깨뜨린다) · ⛔ 구획을 접거나 스크롤시키지
+         * 않는다(§3-1 E-4 가 금지한다) · ⛔ 잘린 채 두지 않는다.
+         *
+         * **읽는 차례를 지키면서 가로로 편다** — ① 은 그대로 위에 두고, ② 왼쪽 · ③④ 오른쪽이다.
+         * 도면의 위아래가 왼쪽·오른쪽이 될 뿐 순서와 내용은 그대로다. 설계 회신이 오면 그때
+         * 정한 대로 되돌린다(요청서 2026-09-07-설계개선-P0501세로예산).
+         */}
+        <div className="pop-panes tool-usage-body">
+          {/* ② 타발수 입력 — 타발수 칸은 늘 서고, 환산은 그 아래에서 값을 만든다(스펙 §3). */}
+          <Card bordered className="pop-section" aria-label={t.shot.sectionLabel}>
+            <Card.Body>
+              <div className="pop-shot">
+                <div className="pop-shot-fields">
                   {/*
-                   * ⛔ **적정타수가 없거나 연결이 끊기면 막대를 그리지 않는다**(스펙 §5-3 · §6-2).
-                   * 0% 로 그리면 「다 썼다」로, 캐시 값으로 그리면 실제보다 여유 있게 읽힌다.
+                   * ⭐ **환산을 켜면 이 칸은 «결과»를 보인다.** 사람이 고칠 수 있는 자리가 둘이면
+                   * 어느 값이 나가는지 알 수 없다 — 환산 중에는 읽기 전용이다.
                    */}
-                  {usagePercentFigure.kind === 'value' && (
-                    <span className="pop-usage-label">{t.cumulative.usageBarLabel}</span>
+                  <TextField
+                    id={shotInputId}
+                    label={t.shot.inputLabel}
+                    size="xl"
+                    fullWidth
+                    inputMode="numeric"
+                    readOnly={isConverted}
+                    value={
+                      isConverted
+                        ? increment === null
+                          ? ''
+                          : formatShots(increment)
+                        : draft.shotCount
+                    }
+                    error={write.fieldErrors.shotCount}
+                    /* 단위는 칸 오른쪽 안에 붙인다 — 스펙 §3 의 「타발수 [1,250] 회」 */
+                    trailingIcon={t.shot.unit}
+                    onChange={(event) => {
+                      changeDraft({ shotCount: digitsOnly(event.target.value) });
+                    }}
+                  />
+
+                  <Switch
+                    label={t.shot.convertedLabel}
+                    checked={isConverted}
+                    disabled={conversion.kind !== 'ready'}
+                    onChange={(event) => {
+                      changeDraft({
+                        method: event.target.checked
+                          ? COLLECTION_METHOD.converted
+                          : COLLECTION_METHOD.direct,
+                        shotCount: '',
+                        baseQty: '',
+                      });
+                    }}
+                  />
+
+                  {conversion.kind === 'loading' && (
+                    <p className="field-note">{t.shot.conversionLoading}</p>
                   )}
-                  {usagePercentFigure.kind === 'value' && (
-                    <Progress
-                      label={t.cumulative.usageLabel}
-                      value={usagePercentFigure.value}
-                      showValue
-                      tone={isOver ? 'error' : 'primary'}
-                    />
+                  {conversion.kind === 'off' && (
+                    <p className="field-note">{t.shot.conversionOff}</p>
                   )}
-                </dd>
+                  {conversion.kind === 'unset' && (
+                    <p className="field-note">{t.shot.conversionUnavailable}</p>
+                  )}
+
+                  {isConverted && conversion.kind === 'ready' && (
+                    <div className="pop-conversion">
+                      <TextField
+                        label={t.shot.baseQtyLabel}
+                        size="xl"
+                        inputMode="decimal"
+                        value={draft.baseQty}
+                        error={write.fieldErrors.conversionBaseQty}
+                        onChange={(event) => {
+                          changeDraft({ baseQty: decimalOnly(event.target.value) });
+                        }}
+                      />
+                      <p className="field-note">
+                        {t.shot.convertedExpression(
+                          draft.baseQty === '' ? '—' : draft.baseQty,
+                          String(conversion.ratio),
+                          increment === null ? '—' : formatShots(increment),
+                        )}
+                      </p>
+                      <p className="field-note">{t.shot.roundedNote}</p>
+                    </div>
+                  )}
+                </div>
+
+                <NumberPad
+                  aria-label={t.shot.keypadLabel}
+                  maxLength={SHOT_MAX_LENGTH}
+                  allowDecimal={isConverted}
+                  value={isConverted ? draft.baseQty : draft.shotCount}
+                  onChange={(value) => {
+                    changeDraft(isConverted ? { baseQty: value } : { shotCount: value });
+                  }}
+                />
               </div>
-            </dl>
+            </Card.Body>
+          </Card>
 
-            {!isOnline && usableTool !== null && (
-              <p className="field-note">{t.cumulative.offlineBase}</p>
-            )}
-          </Card.Body>
-        </Card>
+          {/* ③④ 는 한 기둥으로 선다 — 누계를 보고 그 아래 안내를 읽는 차례가 도면과 같다. */}
+          <div className="tool-usage-side">
+            {/* ③ 누계 — 저장 전에 「저장하면 얼마가 남는가」를 보인다(스펙 §3 · §3-2). */}
+            <Card bordered className="pop-section" aria-label={t.cumulative.sectionLabel}>
+              <Card.Body>
+                <dl className="pop-figures">
+                  <div>
+                    <dt>{t.cumulative.guaranteed}</dt>
+                    <dd>{guaranteedText}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.cumulative.current}</dt>
+                    <dd>
+                      {usableTool === null ? '—' : `${formatShots(serverShotCount)} ${t.shot.unit}`}
+                      {usableTool !== null && asOfText !== null && (
+                        <span className="pop-figure-note">{asOfText}</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{t.cumulative.increment}</dt>
+                    <dd>
+                      {increment === null ? '—' : `+${formatShots(increment)} ${t.shot.unit}`}
+                    </dd>
+                  </div>
 
-        {/* ④ 안내 — 누계를 서버가 더한다는 사실을 상시 밝힌다(스펙 §3-2). */}
-        <Card bordered className="pop-section pop-notice" aria-label={t.notice.sectionLabel}>
-          <Card.Body>{t.notice.serverAdds}</Card.Body>
-        </Card>
+                  {/* 구분선 — 위 셋은 「지금 사실」이고 아래 둘은 「저장하면 그렇게 된다」다. */}
+                  <div className="pop-figures-rule" />
+
+                  <div>
+                    <dt>{t.cumulative.projected}</dt>
+                    <dd>
+                      {usableTool === null
+                        ? '—'
+                        : figureText(
+                            projectedTotal(figures),
+                            t.cumulative.offlineProjection,
+                            t.cumulative.guaranteedMissing,
+                          )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{t.cumulative.available}</dt>
+                    <dd className="pop-figure-usage">
+                      <span>
+                        {usableTool === null
+                          ? '—'
+                          : figureText(
+                              availableShots(figures),
+                              t.cumulative.offlineProjection,
+                              t.cumulative.guaranteedMissing,
+                            )}
+                      </span>
+                      {/*
+                       * ⛔ **적정타수가 없거나 연결이 끊기면 막대를 그리지 않는다**(스펙 §5-3 · §6-2).
+                       * 0% 로 그리면 「다 썼다」로, 캐시 값으로 그리면 실제보다 여유 있게 읽힌다.
+                       */}
+                      {usagePercentFigure.kind === 'value' && (
+                        <span className="pop-usage-label">{t.cumulative.usageBarLabel}</span>
+                      )}
+                      {usagePercentFigure.kind === 'value' && (
+                        <Progress
+                          label={t.cumulative.usageLabel}
+                          value={usagePercentFigure.value}
+                          showValue
+                          tone={isOver ? 'error' : 'primary'}
+                        />
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+
+                {!isOnline && usableTool !== null && (
+                  <p className="field-note">{t.cumulative.offlineBase}</p>
+                )}
+              </Card.Body>
+            </Card>
+
+            {/* ④ 안내 — 누계를 서버가 더한다는 사실을 상시 밝힌다(스펙 §3-2). */}
+            <Card bordered className="pop-section pop-notice" aria-label={t.notice.sectionLabel}>
+              <Card.Body>{t.notice.serverAdds}</Card.Body>
+            </Card>
+          </div>
+        </div>
       </>
 
       <div className="pop-actions">
+        {/*
+         * ⚠ **막는 사유를 버튼 «아래»에 두지 않는다.** 공용 규칙이 액션 줄의 `.field-note` 를
+         * 한 줄 통째로 쓰게 해(`flex-basis: 100%`) 액션바가 88 에서 123 으로 늘어난다 —
+         * 세로 예산이 0 인 화면이라 그만큼이 본문에서 빠진다(실측). 같은 줄 왼쪽에 세운다.
+         */}
+        {blockReason !== undefined && <p className="field-note tool-usage-block">{blockReason}</p>}
         <Button variant="outlined" size="2xl" disabled={!hasInput(draft)} onClick={resetDraft}>
           {t.actions.reset}
         </Button>
@@ -553,7 +583,6 @@ export const ToolUsageScreen = () => {
         >
           {t.actions.save}
         </Button>
-        {blockReason !== undefined && <p className="field-note">{blockReason}</p>}
       </div>
     </main>
   );

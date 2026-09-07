@@ -2000,3 +2000,94 @@
 .pop-ui .pop-row-target tbody tr[data-parity]:has(.pop-row-select-on) > td {
   background: var(--primary-container);
 }
+
+/*
+ * 툴 사용실적(P-05-01) 오른쪽 기둥 — 누계와 안내가 한 줄기로 선다.
+ *
+ * ⚠ 스펙 §3 의 ③·④ 는 세로로 이어지는 두 구획이다. 가로로 편 뒤에도 **그 차례를 지키려면**
+ * 오른쪽 칸 안에서 다시 세로로 쌓아야 한다 — 칸을 둘로 더 가르면 읽는 차례가 갈린다.
+ */
+.pop-ui .tool-usage-side {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/*
+ * ⚠ 오른쪽 기둥 «안»의 구획은 남는 높이를 나눠 갖지 않는다 — 누계가 내용만큼만 서고 남는
+ * 높이는 안내가 아니라 «빈자리»로 둔다. 안내는 한 줄이라 늘어나면 글이 가운데 뜬다.
+ */
+.pop-ui .tool-usage-side > * {
+  flex: 0 0 auto;
+}
+
+/* 액션 줄 왼쪽의 「왜 못 누르는가」 — 줄을 새로 만들지 않는다(액션바 88 고정). */
+.pop-ui .pop-actions > .tool-usage-block {
+  flex: 1 1 auto;
+  margin-inline-end: auto;
+  text-align: start;
+}
+
+/*
+ * 툴 사용실적(P-05-01) 2단 — **왼쪽이 넓다.**
+ *
+ * 공용 비율(1 : 1.15)은 오른쪽이 넓은데, 이 화면은 왼쪽에 키패드(256px 고정)가 들어간다.
+ * 그대로 두면 타발수 칸에 130px 밖에 남지 않아 「1,250 회」가 칸을 꽉 채운다(실측).
+ * 오른쪽은 이름·값 두 열이라 좁아도 선다.
+ */
+.pop-ui > .tool-usage-body {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+/*
+ * 툴 사용실적(P-05-01) 오른쪽 기둥 — 누계와 안내가 한 줄기로 선다.
+ *
+ * ⚠ 스펙 §3 의 ③·④ 는 세로로 이어지는 두 구획이다. 가로로 편 뒤에도 **그 차례를 지키려면**
+ * 오른쪽 칸 안에서 다시 세로로 쌓아야 한다 — 칸을 둘로 더 가르면 읽는 차례가 갈린다.
+ */
+.pop-ui .tool-usage-side {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* 오른쪽 기둥 «안»의 구획은 남는 높이를 나눠 갖지 않는다 — 안내가 늘어나면 글이 가운데 뜬다. */
+.pop-ui .tool-usage-side > * {
+  flex: 0 0 auto;
+}
+
+/*
+ * 툴 사용실적 2단 — **왼쪽이 넓다.**
+ *
+ * 공용 비율(1 : 1.15)은 오른쪽이 넓은데, 이 화면은 왼쪽에 키패드(256px 고정)가 들어간다.
+ * 그대로 두면 타발수 칸에 130px 밖에 남지 않아 값이 칸을 꽉 채운다(실측).
+ */
+.pop-ui > .tool-usage-body {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+}
+
+/* 액션 줄 왼쪽의 「왜 못 누르는가」 — 줄을 새로 만들지 않는다(액션바 88 고정). */
+.pop-ui .pop-actions > .tool-usage-block {
+  flex: 1 1 auto;
+  margin-inline-end: auto;
+  text-align: start;
+}
+
+/*
+ * 사용률 막대는 **제 줄을 갖는다**(스펙 §3 의 `[████████░░] 82.7%`).
+ *
+ * 「사용 가능 498,750 회」와 한 줄에 세우면 남는 폭이 26px 뿐이라 막대가 사라진다(실측).
+ * 막대는 숫자보다 «남았는가»를 먼저 말하는 자리라, 보이지 않으면 있으나 마나다.
+ *
+ * ⛔ DS 내부 클래스를 이름으로 겨냥하지 않는다 — 자리(세 번째 자식)로 잡는다. 적정타수가
+ * 없거나 연결이 끊기면 막대와 라벨이 함께 빠지므로(§5-3 · §6-2) 세 번째 자식도 없다.
+ */
+.pop-ui .pop-figure-usage {
+  flex-wrap: wrap;
+}
+
+.pop-ui .pop-figure-usage > :nth-child(3) {
+  flex: 1 0 100%;
+}
