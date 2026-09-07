@@ -29,6 +29,16 @@ export const packingRepack = {
     add: '포장 더 스캔',
     remove: '빼기',
   },
+  /** 재구성하면 출하 배분이 가리키던 물건이 사라지고 되돌릴 길이 없다. */
+  allocated: {
+    title: (numbers: string) => `${numbers} 은(는) 이미 출하에 배분된 포장입니다`,
+    description: '재구성하면 출하에서 이 물건을 찾지 못합니다. 이 포장은 재구성할 수 없습니다.',
+  },
+  /** 안 밝히면 확인된 줄 알고 배분된 포장을 재구성한다. 되돌아와도 이미 늦다. */
+  unverified: {
+    title: (numbers: string) => `${numbers} 의 출하 배분 여부를 확인하지 못했습니다`,
+    description: '연결된 뒤에 다시 확인하세요. 이미 배분된 포장이면 재구성이 되돌아옵니다.',
+  },
   type: {
     legend: '재구성 유형',
     merge: '합병 — 여러 포장을 하나로',
