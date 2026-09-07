@@ -33,13 +33,20 @@ import {
 } from './print';
 import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
 import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
-import { type TestLabelSize, buildTestLabel } from './serial-diagnostic';
+import {
+  type LabelCommand,
+  type LabelKind,
+  buildLabelFromFields,
+  parseLabelCommand,
+  sampleLabel,
+} from './label-command';
 import {
   type SerialPortSettings,
   type SerialPrinter,
   buildSerialPrintScript,
   readSerialPortSettings,
   readSerialPortSettingsFile,
+  SerialPortUnavailableError,
   serialPrintScriptArgs,
 } from './serial-print';
 import { buildPrintScript, printScriptArgs } from './windows-print';
@@ -570,25 +577,25 @@ function registerPrinterDiagnostic(
         return;
       }
 
-      const sizes: TestLabelSize[] = ['80x30', '100x60'];
+      const kinds: LabelKind[] = ['lot', 'shipping'];
       const { response } = await dialog.showMessageBox({
         type: 'question',
         title: '라벨 프린터 진단',
-        message: '시험 라벨을 찍습니다',
+        message: '견본 라벨을 찍습니다',
         detail: `포트 ${port.portName} · 속도 ${String(port.baudRate ?? 9600)}\n라벨을 그 규격으로 끼운 뒤 골라 주세요.`,
-        buttons: ['80 × 30 mm', '100 × 60 mm', '취소'],
+        buttons: ['표준 LOT 라벨 80 × 30', '출하용 라벨 100 × 60', '취소'],
         cancelId: 2,
       });
 
-      const size = sizes[response];
+      const kind = kinds[response];
 
-      if (size === undefined) return;
+      if (kind === undefined) return;
 
       /* 인쇄 스크립트가 같은 폴더에 앉는다 — 업무 인쇄와 같은 방식이다. */
       const jobDir = join(stagingDir, `diagnostic-${String(Date.now())}`);
       mkdirSync(jobDir, { recursive: true });
-      const dataPath = join(jobDir, 'test-label.prn');
-      writeFileSync(dataPath, buildTestLabel(size), 'ascii');
+      const dataPath = join(jobDir, 'label.prn');
+      writeFileSync(dataPath, sampleLabel(kind), 'ascii');
 
       try {
         await serialPrinter.print({ dataPath });
@@ -596,7 +603,8 @@ function registerPrinterDiagnostic(
           type: 'info',
           title: '라벨 프린터 진단',
           message: '포트로 보냈습니다',
-          detail: `${size} 시험 라벨이 나왔는지, 바코드가 스캐너에 읽히는지 확인해 주세요.\n종이가 나오지 않았다면 통신 설정이 프린터 쪽과 다를 수 있습니다.`,
+          detail:
+            '견본이 규격대로 나왔는지, DataMatrix 가 스캐너에 읽히는지 확인해 주세요.\n종이가 나오지 않았다면 통신 설정이 프린터 쪽과 다를 수 있습니다.',
         });
       } catch (cause) {
         dialog.showErrorBox('라벨 프린터 진단 — 보내지 못했습니다', reasonOf(cause));
@@ -611,12 +619,78 @@ app.on('will-quit', () => globalShortcut.unregisterAll());
 
 app.on('window-all-closed', () => app.quit());
 
-// 기동 실패를 조용히 삼키지 않는다. 프레임 없는 키오스크 창에 개발자도구도 없어,
-// 여기서 알리지 않으면 현장에서 무슨 일이 났는지 판별할 수단이 없다.
-main().catch((error: unknown) => {
-  const detail =
-    error instanceof Error ? `${error.message}\n\n${error.stack ?? ''}` : String(error);
-  console.error('POP 셸 기동 실패:', error);
-  if (app.isReady()) dialog.showErrorBox('POP 셸을 시작할 수 없습니다', detail);
-  app.exit(1);
-});
+/**
+ * 명령줄로 라벨 한 장을 찍는다 — **창을 띄우지 않는다**(`label-command` 머리말).
+ *
+ * ⚠ **결과를 종료 코드로 낸다.** 이 앱은 창 프로그램이라 콘솔에 글이 보이지 않을 수 있다 —
+ *   부르는 쪽이 기댈 수 있는 것은 종료 코드다(`%ERRORLEVEL%`). 사유는 함께 흘려보낸다.
+ */
+async function runLabelCommand(command: LabelCommand): Promise<void> {
+  const printer = createSerialPrinter(resolveSerialPort(app.getPath('userData')));
+
+  if (printer === undefined) throw new SerialPortUnavailableError();
+
+  const tspl =
+    command.kind === 'sample'
+      ? sampleLabel(command.label)
+      : buildLabelFromFields(JSON.parse(readFileSync(command.path, 'utf8')));
+
+  const jobDir = join(app.getPath('temp'), 'omf-pop-print', `label-${String(Date.now())}`);
+  mkdirSync(jobDir, { recursive: true });
+  const dataPath = join(jobDir, 'label.prn');
+  /* ⚠ TSPL 은 바이트 그대로 간다 — 인코딩을 붙이면 프린터가 명령을 못 읽는다. */
+  writeFileSync(dataPath, tspl, 'ascii');
+
+  try {
+    await printer.print({ dataPath });
+  } finally {
+    rmSync(jobDir, { force: true, recursive: true });
+  }
+}
+
+/**
+ * 창을 띄울지, 라벨 한 장만 찍고 끝낼지 여기서 갈린다.
+ *
+ * ⛔ **라벨 명령이 붙었으면 셸을 세우지 않는다.** 키오스크 창·DB·인쇄 대기까지 딸려 오면
+ *    한 장 찍자고 단말 하나를 통째로 점유하고, 이미 켜져 있는 셸과 겹친다.
+ */
+function start(): void {
+  let command: LabelCommand | undefined;
+
+  try {
+    command = parseLabelCommand(process.argv);
+  } catch (error: unknown) {
+    /* 깃발을 잘못 적은 것과 인쇄가 실패한 것을 종료 코드로 가른다. */
+    process.stderr.write(`${reasonOf(error)}\n`);
+    app.exit(2);
+
+    return;
+  }
+
+  if (command === undefined) {
+    // 기동 실패를 조용히 삼키지 않는다. 프레임 없는 키오스크 창에 개발자도구도 없어,
+    // 여기서 알리지 않으면 현장에서 무슨 일이 났는지 판별할 수단이 없다.
+    main().catch((error: unknown) => {
+      const detail =
+        error instanceof Error ? `${error.message}\n\n${error.stack ?? ''}` : String(error);
+      console.error('POP 셸 기동 실패:', error);
+      if (app.isReady()) dialog.showErrorBox('POP 셸을 시작할 수 없습니다', detail);
+      app.exit(1);
+    });
+
+    return;
+  }
+
+  runLabelCommand(command).then(
+    () => {
+      process.stdout.write('라벨을 포트로 보냈습니다\n');
+      app.exit(0);
+    },
+    (error: unknown) => {
+      process.stderr.write(`${reasonOf(error)}\n`);
+      app.exit(1);
+    },
+  );
+}
+
+start();
