@@ -65,6 +65,10 @@ interface Options {
   rejectReplace?: boolean;
   /** 확정 뒤 서버가 답할 내용. 다시 스캔했을 때 이것이 보여야 한다. */
   contentsAfter?: Record<number, ReturnType<typeof content>[]>;
+  /** 이미 출하에 배분된 포장의 식별자. */
+  allocated?: number[];
+  /** 배분 조회가 닿지 않는 상황 - 오프라인에서 이 판정을 할 수 없는 자리다. */
+  allocationUnreachable?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => {
@@ -143,6 +147,26 @@ const routes = (options: Options = {}): StubRoute[] => {
       match: (req) => new URL(req.url).pathname === '/mdm/uoms',
       respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
     },
+    {
+      match: (req) => new URL(req.url).pathname === '/logistics/shipment-lot-allocations',
+      respond: (req) => {
+        if (options.allocationUnreachable === true) {
+          return jsonResponse(
+            { code: 'SERVICE_UNAVAILABLE', message: '연결할 수 없습니다.', errors: [] },
+            { status: 503 },
+          );
+        }
+
+        const handlingUnitId = Number(new URL(req.url).searchParams.get('handlingUnitId'));
+
+        return jsonResponse({
+          items: (options.allocated ?? []).includes(handlingUnitId)
+            ? [{ shipmentLotAllocationId: 1, handlingUnitId }]
+            : [],
+          page,
+        });
+      },
+    },
   ];
 };
 
@@ -220,6 +244,93 @@ describe('포장 재구성 화면', () => {
 
     expect(await screen.findByText('이미 고른 포장입니다')).toBeTruthy();
     expect(screen.getAllByText(CARTON)).toHaveLength(1);
+  });
+
+  /*
+   * 재구성하면 출하 배분이 가리키던 물건이 사라지고 되돌릴 길이 없다 - 새 포장은 이미
+   * 만들어진 뒤라 치환이 거부돼도 원 포장이 그대로 남는다.
+   */
+  it('이미 출하에 배분된 포장이면 그 사실을 말하고 확정을 막는다', async () => {
+    const user = userEvent.setup();
+    mount({ allocated: [10] });
+    await screen.findByLabelText('포장 스캔');
+
+    scan(CARTON);
+    await screen.findByText(CARTON);
+
+    expect(
+      await screen.findByText(`${CARTON} 은(는) 이미 출하에 배분된 포장입니다`),
+    ).toBeTruthy();
+
+    await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
+
+    expect(screen.getByRole('button', { name: '재구성 확정' })).toBeDisabled();
+  });
+
+  /* 합병은 원 포장이 여럿이다. 뒤쪽만 배분돼 있어도 그 물건이 사라지는 것은 같다. */
+  it('합병에서 둘째 포장만 배분돼 있어도 확정을 막는다', async () => {
+    const user = userEvent.setup();
+    mount({
+      units: [unit(10, CARTON), unit(11, OTHER)],
+      contents: {
+        10: [content({ qty: 80 })],
+        11: [content({ handlingUnitContentId: 2, handlingUnitId: 11, lotId: 1001, qty: 60 })],
+      },
+      allocated: [11],
+    });
+    await screen.findByLabelText('포장 스캔');
+
+    scan(CARTON);
+    await screen.findByText(CARTON);
+    scan(OTHER);
+    await screen.findByText(OTHER);
+
+    expect(await screen.findByText(`${OTHER} 은(는) 이미 출하에 배분된 포장입니다`)).toBeTruthy();
+
+    await user.click(screen.getByLabelText('합병 — 여러 포장을 하나로'));
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
+
+    expect(screen.getByRole('button', { name: '재구성 확정' })).toBeDisabled();
+  });
+
+  it('배분되지 않은 포장은 그대로 확정할 수 있다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('포장 스캔');
+
+    scan(CARTON);
+    await screen.findByText(CARTON);
+    await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '재구성 확정' })).not.toBeDisabled();
+    });
+    expect(screen.queryByText(/이미 출하에 배분된 포장입니다/)).toBeNull();
+    expect(screen.queryByText(/출하 배분 여부를 확인하지 못했습니다/)).toBeNull();
+  });
+
+  /*
+   * 공유계약 C-6 이 판정용 값의 캐시를 막아 오프라인에서는 이 판정을 할 수 없다. 막으면
+   * 오프라인 재구성 자체가 죽으므로 막지 않고 말한다 - 안 밝히면 확인된 줄 안다.
+   */
+  it('배분을 확인하지 못하면 그 사실을 밝히되 막지는 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ allocationUnreachable: true });
+    await screen.findByLabelText('포장 스캔');
+
+    scan(CARTON);
+    await screen.findByText(CARTON);
+
+    expect(
+      await screen.findByText(`${CARTON} 의 출하 배분 여부를 확인하지 못했습니다`),
+    ).toBeTruthy();
+
+    await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
+
+    expect(screen.getByRole('button', { name: '재구성 확정' })).not.toBeDisabled();
   });
 
   it('유형을 고르기 전에는 확정할 수 없다', async () => {
