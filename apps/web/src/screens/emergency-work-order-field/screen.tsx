@@ -85,8 +85,9 @@ export const EmergencyWorkOrderFieldScreen = ({
           isError={list.isError}
           selectedId={selected?.workOrderId ?? null}
           uomLabel={(uomId) => uoms.labelOf(uomId)}
-          onSelect={(workOrder: WorkOrder) => {
-            setSelectedId(workOrder.workOrderId);
+          /* 고른 줄을 다시 누르면 해제한다(`null`) — 정본 목록이 그렇게 동작한다. */
+          onSelect={(workOrder: WorkOrder | null) => {
+            setSelectedId(workOrder?.workOrderId ?? null);
           }}
         />
 

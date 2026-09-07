@@ -77,7 +77,6 @@
  * .pop-empty-note   표가 비었을 때의 안내 — 칸 가운데
  * .pop-row-select(-on) 목록에서 한 줄을 고르는 자리 — 줄 전체가 누르는 곳
  * .pop-row-target 그 표를 감싸 줄 클릭을 버튼으로 넘기는 자리
- * .pop-stacked-end  오른쪽 정렬 칸에 쌓는 두 줄(.stacked-cell 보조)
  * .pop-wide-note    구획 폭을 그대로 쓰는 보조 안내(.field-note 의 20rem 제한 밖)
  * .pop-lot-pane-title   구획 제목
  * .pop-target-fields 발번 대상의 읽기 전용 라벨·값 두 열
@@ -5748,10 +5747,6 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 수량처럼 **칸 자체가 오른쪽 정렬**인 자리에서는 그것이 칸 정렬을 거슬러, 머리글은 오른쪽
  * 끝에 있는데 값은 왼쪽에 붙는다(실기에서 드러났다). 그 자리만 정렬을 맞춘다.
  */
-.pop-stacked-end {
-  align-items: flex-end;
-}
-
 /*
  * 표가 비었을 때의 안내 — **칸 가운데에 세운다.**
  *

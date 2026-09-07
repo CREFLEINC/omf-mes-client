@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { EMERGENCY_WORK_ORDER, renderScreen } from './screen-harness';
@@ -26,6 +26,38 @@ describe('긴급 W/O 현장 화면', () => {
     expect(screen.getAllByText(t.detail.notSelected)).toHaveLength(1);
     expect(screen.getByRole('button', { name: t.handoff.materialInput })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.handoff.productionResult })).toBeDisabled();
+  });
+
+  /*
+   * ⭐ **POP 목록 정본** — 표 · 선택 칸 없음 · 줄 전체가 누르는 자리 · 다시 누르면 해제
+   *    (스펙 §7 `Table` · 정본 통일 `913a82c`). 카드 목록으로 되돌아가면 이 감지기가 잡는다.
+   */
+  it('목록이 표이고 줄 아무 데나 눌러 고르며 다시 누르면 해제한다', async () => {
+    const { user } = renderScreen();
+
+    const row = await screen.findByRole('row', {
+      name: new RegExp(EMERGENCY_WORK_ORDER.workOrderNo, 'u'),
+    });
+    const selectKey = () =>
+      screen.getByRole('button', { name: new RegExp(EMERGENCY_WORK_ORDER.workOrderNo, 'u') });
+
+    /* 선택 칸을 따로 두지 않는다 — 조작은 첫 칸의 버튼 하나뿐이다. */
+    expect(within(row).getAllByRole('button')).toHaveLength(1);
+
+    /* 번호가 아닌 칸(수량)을 눌러도 그 줄이 골라진다. */
+    await user.click(within(row).getByText(/EA$/u));
+
+    await waitFor(() => {
+      expect(selectKey()).toHaveAttribute('aria-pressed', 'true');
+    });
+    expect(screen.getByRole('link', { name: t.handoff.materialInput })).toBeInTheDocument();
+
+    await user.click(selectKey());
+
+    await waitFor(() => {
+      expect(selectKey()).toHaveAttribute('aria-pressed', 'false');
+    });
+    expect(screen.getByRole('button', { name: t.handoff.materialInput })).toBeDisabled();
   });
 
   it('고르면 두 정상 화면으로 가는 주소에 W/O 를 싣는다', async () => {

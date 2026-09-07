@@ -188,19 +188,26 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     expect(within(row).getByText('SYN-P-01 · 합성 공급사 가')).toBeInTheDocument();
     expect(within(row).getByText('SYN-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
     expect(within(row).getByText('500 EA')).toBeInTheDocument();
-    expect(within(row).getByText('2026-08-27')).toBeInTheDocument();
+    expect(within(row).getByText('08-27')).toBeInTheDocument();
   });
 
   /**
-   * 칸은 오른쪽 정렬인데 쌓는 줄이 왼쪽에 붙어, 머리글과 값이 어긋나 보였다(실기에서
-   * 드러났다). `.stacked-cell`의 기본값이 칸 정렬을 거스르는 자리다.
+   * ⭐ **날짜는 품목 아래에 쌓인다** — 스펙 §3 도면의 둘째 줄이 `(주)…    08-04` 이고
+   * `08-04` 가 첫 줄 품목 자리에 맞춰 선다. 수량 아래에 두면 「그날의 수량」으로 읽힌다.
+   *
+   * 칸 정렬(가운데)을 쌓는 줄도 따라야 머리글과 값이 어긋나지 않는다 —
+   * `.stacked-cell` 의 기본값이 칸 정렬을 거스르는 자리다.
    */
-  it('수량 칸의 쌓인 두 줄이 칸 정렬을 따른다', async () => {
+  it('입하일이 품목 아래에 쌓이고 칸 정렬을 따른다', async () => {
     renderScreen();
 
-    const quantity = await screen.findByText('500 EA');
+    const date = await screen.findByText('08-27');
+    const stacked = date.closest('.stacked-cell');
 
-    expect(quantity.closest('.stacked-cell')).toHaveClass('pop-stacked-end');
+    expect(stacked).toHaveClass('pop-stacked-center');
+    expect(stacked).toHaveTextContent('SYN-ITEM-01 · 합성 품목 가');
+    /* 수량 칸에는 쌓지 않는다 — 한 줄이다. */
+    expect((await screen.findByText('500 EA')).closest('.stacked-cell')).toBeNull();
   });
 
   /**

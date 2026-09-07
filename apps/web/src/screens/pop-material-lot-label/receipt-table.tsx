@@ -59,6 +59,13 @@ export const ReceiptTable = ({
     {
       key: 'receipt',
       header: t.columns.receipt,
+      /*
+       * ⚠ **세 칸을 모두 가운데로 둔다**(사용자 결정 2026-09-07). 스펙은 §3 도면에도 §7 에도
+       *    정렬을 적지 않아 정할 자리가 비어 있었고, 그 사이 칸마다 다른 정렬로 자랐다.
+       *
+       * ⚠ 수량은 오른쪽 정렬이 자릿수 비교에 유리하다는 점을 알린 뒤 받은 결정이다.
+       */
+      align: 'center',
       render: (row) => {
         const isSelected = row.inboundReceiptLineId === selectedId;
         const itemName = lookupDisplayLabel(itemLookup, row.itemId);
@@ -89,20 +96,28 @@ export const ReceiptTable = ({
     {
       key: 'item',
       header: t.columns.item,
-      render: (row) => lookupDisplayLabel(itemLookup, row.itemId),
+      align: 'center',
+      /*
+       * ⭐ **날짜는 품목 아래다** — 스펙 §3 도면이 둘째 줄을 `(주)…    08-04` 로 그렸고,
+       *    `08-04` 가 첫 줄의 `ABC-123` 자리에 맞춰 서 있다. 수량 아래에 두면 「이 수량이
+       *    그날 것」처럼 읽혀 두 값이 한 덩어리로 묶인다 — 날짜는 «입하»의 속성이지 수량의
+       *    속성이 아니다(사용자 지적).
+       */
+      render: (row) => (
+        <span className="stacked-cell pop-stacked-center">
+          <span>{lookupDisplayLabel(itemLookup, row.itemId)}</span>
+          <span>{formatReceiptDate(row.receiptDatetime)}</span>
+        </span>
+      ),
     },
     {
       key: 'quantity',
       header: t.columns.quantity,
-      align: 'end',
+      align: 'center',
       width: '140px',
       render: (row) => (
-        // 칸이 오른쪽 정렬이라 쌓는 줄도 오른쪽에 맞춘다 — 기본값은 왼쪽에 붙는다.
-        <span className="stacked-cell pop-stacked-end">
-          <span>
-            {row.receivedQty} {lookupDisplayLabel(uomLookup, row.uomId)}
-          </span>
-          <span>{formatReceiptDate(row.receiptDatetime)}</span>
+        <span>
+          {row.receivedQty} {lookupDisplayLabel(uomLookup, row.uomId)}
         </span>
       ),
     },
