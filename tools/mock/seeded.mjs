@@ -1202,7 +1202,9 @@ on('GET', '/logistics/goods-receipts', (_p, query) => page(state.goodsReceipts, 
  */
 on('POST', '/logistics/goods-receipts', (_p, _q, body) => {
   const goodsReceiptId = newId();
-  const receiptNo = `RT-2026-${String(goodsReceiptId).slice(-4)}`;
+  /* 번호 앞머리가 유형을 말한다. 제품 입고에 반품 번호가 붙으면 화면이 다른 것을 보인다. */
+  const prefix = body?.receiptTypeCode === 'RETURN' ? 'RT' : 'GR';
+  const receiptNo = `${prefix}-2026-${String(goodsReceiptId).slice(-4)}`;
   const goodsReceipt = {
     goodsReceiptId,
     goodsReceiptNo: receiptNo,
@@ -1217,20 +1219,50 @@ on('POST', '/logistics/goods-receipts', (_p, _q, body) => {
     remarks: body?.remarks ?? null,
     erpMessageQueued: true,
   };
-  const lines = (body?.lines ?? []).map((line, index) => ({
-    goodsReceiptLineId: goodsReceiptId * 10 + index,
-    goodsReceiptId,
-    lineNo: index + 1,
-    inboundReceiptLineId: line.inboundReceiptLineId ?? null,
-    itemId: line.itemId,
-    lotId: line.lotId,
-    receiptQty: line.receiptQty,
-    uomId: line.uomId,
-    qualityStatusCode: line.qualityStatusCode,
-    inventoryStatusCode: line.inventoryStatusCode,
-    destinationLocationId: line.destinationLocationId,
-    originalShipmentLotAllocationId: line.originalShipmentLotAllocationId ?? null,
-  }));
+  /*
+   * 적치 지시는 라인마다 서버가 함께 만들고 응답이 그 식별자를 싣는다. 안 만들면 화면이
+   * 적치를 이어 부를 수 없어, 입고만 서고 적치가 남는 갈래와 구별되지 않는다.
+   */
+  const lines = (body?.lines ?? []).map((line, index) => {
+    const goodsReceiptLineId = goodsReceiptId * 10 + index;
+    const putawayTaskId = newId();
+
+    state.putawayTasks.push({
+      putawayTaskId,
+      putawayTaskNo: `PT-2026-${String(putawayTaskId).slice(-6)}`,
+      goodsReceiptLineId,
+      itemId: line.itemId,
+      lotId: line.lotId,
+      taskQty: line.receiptQty,
+      uomId: line.uomId,
+      fromLocationId: line.destinationLocationId,
+      recommendedLocationId: line.destinationLocationId,
+      appliedPutawayRuleId: null,
+      actualLocationId: null,
+      warehouseId: body?.warehouseId,
+      warehouseManagementLevelCode: 'ZONE',
+      priorityNo: index + 1,
+      statusCode: 'ASSIGNED',
+      assignedWorkerId: null,
+      completedAt: null,
+    });
+
+    return {
+      goodsReceiptLineId,
+      goodsReceiptId,
+      lineNo: index + 1,
+      inboundReceiptLineId: line.inboundReceiptLineId ?? null,
+      itemId: line.itemId,
+      lotId: line.lotId,
+      receiptQty: line.receiptQty,
+      uomId: line.uomId,
+      qualityStatusCode: line.qualityStatusCode,
+      inventoryStatusCode: line.inventoryStatusCode,
+      destinationLocationId: line.destinationLocationId,
+      putawayTaskId,
+      originalShipmentLotAllocationId: line.originalShipmentLotAllocationId ?? null,
+    };
+  });
   state.goodsReceipts.push(goodsReceipt);
   state.goodsReceiptLines.push(...lines);
 

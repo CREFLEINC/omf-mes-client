@@ -18,6 +18,7 @@ import { PhysicalCountScreen } from '../screens/physical-count/screen';
 import { ShopfloorReceiptScreen } from '../screens/shopfloor-receipt/screen';
 import { StockTransferScreen } from '../screens/stock-transfer/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
+import { ProductReceiptScreen } from '../screens/product-receipt/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
 import { RecycleEntryScreen } from '../screens/recycle-entry/screen';
 import { TemporaryPutawayScreen } from '../screens/temporary-putaway/screen';
@@ -54,6 +55,7 @@ export const appRoutes: RouteObject[] = [
       { path: 'wip-handover', element: <WipHandoverScreen /> },
       { path: 'repair-roundtrip', element: <RepairRoundtripScreen /> },
       { path: 'product-picking', element: <ProductPickingScreen /> },
+      { path: 'product-receipt', element: <ProductReceiptScreen /> },
       { path: 'packing-repack', element: <PackingRepackScreen /> },
       { path: 'rejections', element: <OutboxRejectionsScreen /> },
     ],

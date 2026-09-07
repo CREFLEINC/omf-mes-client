@@ -62,6 +62,7 @@ const tiles = [
   {
     label: t.tiles.shipment,
     screens: [
+      { to: '/product-receipt', label: messages.productReceipt.title },
       { to: '/product-picking', label: messages.productPicking.title },
       { to: '/packing-repack', label: messages.packingRepack.title },
     ],
