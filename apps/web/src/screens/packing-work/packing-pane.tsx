@@ -1,5 +1,6 @@
 import { AlertBanner, Button, Select, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { RefObject } from 'react';
 
 import { popTouchClass } from '../../patterns/pop-touch';
 import { isMixedLot, totalQty } from './contents';
@@ -24,7 +25,13 @@ export interface PackingPaneProps {
   onConfirm: () => void;
   /** 품목코드·단위 — 담은 줄에 붙는다(스펙 §3 · §4-B). */
   labels: CodeLabels;
-  /** 확정이 막혀 있으면 그 사유. 없으면 `null` */
+  /** 「담기」를 눌렀는데 유형이 비어 있을 때 이 칸에 붙는 사유. */
+  typeError: string | null;
+  /** 사유를 붙이면서 이 칸으로 데려가기 위한 자리. */
+  typeRef: RefObject<HTMLButtonElement | null>;
+  /** 확정을 누를 수 있는가. **사유 문장과 다른 축이다** — 말하지 않아도 막는다(스펙 §6). */
+  canConfirm: boolean;
+  /** 확정이 막혀 있으면서 «화면 어디에도 없는» 사유. 없으면 `null` */
   blockedReason: string | null;
   isConfirming: boolean;
 }
@@ -45,6 +52,9 @@ export const PackingPane = ({
   parents,
   parentsFailed,
   locked,
+  typeError,
+  canConfirm,
+  typeRef,
   onTypeChange,
   onParentChange,
   onConfirm,
@@ -102,6 +112,8 @@ export const PackingPane = ({
         <label className="pack-work-field">
           <span className="pack-work-field-label">{t.unit.typeLabel}</span>
           <Select
+            ref={typeRef}
+            invalid={typeError !== null}
             options={unitTypes.map((value) => ({
               value: value.code,
               label: value.nameKo ?? value.codeName,
@@ -144,6 +156,7 @@ export const PackingPane = ({
         </label>
       </div>
 
+      {typeError !== null && <p className="field-error">{typeError}</p>}
       {unitTypesFailed && <p className="field-error">{t.unit.typeLoadFailed}</p>}
       {parentsFailed && <p className="field-error">{t.unit.parentLoadFailed}</p>}
       {locked && <p className="field-note">{t.unit.lockedNotice}</p>}
@@ -197,7 +210,7 @@ export const PackingPane = ({
           variant="filled"
           size="xl"
           className={popTouchClass('destructive')}
-          disabled={blockedReason !== null || isConfirming}
+          disabled={!canConfirm || isConfirming}
           onClick={onConfirm}
         >
           {isConfirming ? t.confirm.submitting : t.confirm.submit}

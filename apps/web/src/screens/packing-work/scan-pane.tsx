@@ -138,6 +138,7 @@ export const ScanPane = ({
       </div>
 
       {quantityError !== null && <p className="field-error">{quantityError}</p>}
+      {/* ⛔ 유형 미선택은 여기서 말하지 않는다 — 누르면 고칠 칸(오른쪽 「유형」)이 말한다. */}
       {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
     </>
   );

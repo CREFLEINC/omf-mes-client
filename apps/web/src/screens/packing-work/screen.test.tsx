@@ -247,7 +247,12 @@ describe('P-02-08 포장 작업', () => {
     expect(screen.queryByText('잔여')).not.toBeInTheDocument();
   });
 
-  it('유형을 고르기 전에는 담기가 막히고 사유가 보인다', async () => {
+  /*
+   * ⭐ **유형 미선택은 담기를 잠그지 않는다** — 누를 수 있게 두고 «고칠 칸»으로 데려간다.
+   * 앞선 판은 담기를 잠그고 그 아래에 사유를 늘 띄웠는데, 말하는 곳(왼쪽)과 고치는 곳
+   * (오른쪽 유형 칸)이 갈려 있었다(사용자 지적).
+   */
+  it('유형을 고르기 전에 담기를 누르면 유형 칸이 사유를 말한다', async () => {
     const user = userEvent.setup();
 
     renderScreen();
@@ -255,9 +260,19 @@ describe('P-02-08 포장 작업', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
     );
+    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
 
-    expect(screen.getByRole('button', { name: t.scan.submit })).toBeDisabled();
-    expect(screen.getByText(t.scan.blockedNoType)).toBeInTheDocument();
+    const submit = screen.getByRole('button', { name: t.scan.submit });
+    expect(submit).toBeEnabled();
+    expect(screen.queryByText(t.unit.typeRequired)).not.toBeInTheDocument();
+
+    await user.click(submit);
+
+    /* DS `Select` 는 트리거를 `combobox` 로 낸다 — 버튼으로 찾으면 못 잡는다. */
+    const typeSelect = screen.getByRole('combobox', { name: t.unit.typeLabel });
+    expect(screen.getByText(t.unit.typeRequired)).toBeInTheDocument();
+    expect(typeSelect).toHaveFocus();
+    expect(typeSelect).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('첫 담기가 포장 단위를 만들고 번호를 보인다', async () => {
@@ -415,12 +430,19 @@ describe('P-02-08 포장 작업', () => {
     expect(screen.getByRole('button', { name: t.confirm.submit })).toBeEnabled();
   });
 
-  it('담은 것이 없으면 확정이 막히고 사유가 보인다', async () => {
+  /*
+   * 스펙 §6 —「포장 유형 미선택 · 내용물 0 → 확정 비활성」. **막는 것과 말하는 것은 다른
+   * 축이다** — 둘 다 화면이 이미 말하고 있어(빈 유형 칸 · 「내용물이 비어 있습니다」)
+   * 액션바가 되풀이하지 않는다(사용자 지적).
+   */
+  it('담은 것이 없으면 확정이 막힌다 — 사유를 액션바가 되풀이하지 않는다', async () => {
     renderScreen();
 
     expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.confirm.submit })).toBeDisabled();
-    expect(screen.getByText(t.confirm.blockedNoType)).toBeInTheDocument();
+    expect(screen.getByText(t.contents.empty)).toBeInTheDocument();
+    expect(screen.queryByText(t.confirm.blockedNoType)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.confirm.blockedNoContents)).not.toBeInTheDocument();
   });
 
   it('확정이 담은 것 전량과 멱등 키·사번을 싣는다', async () => {

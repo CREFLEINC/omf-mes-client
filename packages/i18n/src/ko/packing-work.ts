@@ -40,7 +40,6 @@ export const packingWork = {
     quantityRequired: '수량을 넣으십시오.',
     quantityPositive: '수량은 0보다 커야 합니다.',
     quantityNumber: '수량은 숫자로 넣으십시오.',
-    blockedNoType: '담기 — 오른쪽에서 포장 유형을 먼저 고르십시오.',
     creating: '포장 단위를 만드는 중입니다.',
     /*
      * ⛔ **오프라인에서 새 포장을 시작할 수 없다.** 포장 번호는 서버가 매겨 돌려주는 값이라
@@ -53,6 +52,8 @@ export const packingWork = {
   unit: {
     sectionLabel: '포장 단위',
     typeLabel: '유형',
+    /** 「담기」를 눌렀는데 유형이 비어 있을 때 이 칸에 붙는다 — 고칠 곳에서 말한다. */
+    typeRequired: '포장 유형을 고르십시오.',
     typePlaceholder: '고르십시오',
     typeLoadFailed: '포장 유형 목록을 불러오지 못했습니다.',
     parentLabel: '상위 포장',
