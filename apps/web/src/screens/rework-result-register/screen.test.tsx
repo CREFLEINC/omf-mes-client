@@ -38,6 +38,9 @@ const WORK_ORDER = {
   reworkSourceWorkOrderId: 8800,
 };
 
+/** 단위 조회가 실제로 실은 질의. 아래 「첫 쪽만 받지 않는다」가 본다. */
+let uomQuery: URLSearchParams | null = null;
+
 const stubFetch: StubFetch = async (request) => {
   const url = new URL(request.url);
 
@@ -92,6 +95,8 @@ const stubFetch: StubFetch = async (request) => {
   }
 
   if (url.pathname === '/mdm/uoms') {
+    uomQuery = url.searchParams;
+
     return jsonResponse({
       items: [
         { uomId: 11, uomCode: 'EA', uomName: '개', decimalScale: 0, isActive: true },
@@ -259,9 +264,7 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
 
     await pickWorkOrder(user);
 
-    expect(header).toHaveTextContent(
-      t.headerContext(WORK_ORDER.workOrderNo, WORK_ORDER.itemCode),
-    );
+    expect(header).toHaveTextContent(t.headerContext(WORK_ORDER.workOrderNo, WORK_ORDER.itemCode));
   });
 
   /*
@@ -646,5 +649,21 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
 
     expect(grid).not.toBeNull();
     expect(grid?.querySelectorAll('input')).toHaveLength(4);
+  });
+
+  /*
+   * ⛔ **단위를 첫 쪽만 받지 않는다.** `/mdm/uoms` 는 쪽 응답이라 상한이 없으면 서버 기본
+   * 크기에서 잘리고, 잘린 단위는 소수 자릿수를 0 으로 떨어뜨려 **소수점 키를 지운다** —
+   * `KG` 자리에서 값을 넣을 길이 사라지는데 화면은 멀쩡해 보인다.
+   */
+  it('단위 조회가 상한을 실어 첫 쪽에서 잘리지 않는다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await waitFor(() => {
+      expect(uomQuery).not.toBeNull();
+    });
+
+    expect(Number(uomQuery?.get('size'))).toBeGreaterThanOrEqual(100);
   });
 });

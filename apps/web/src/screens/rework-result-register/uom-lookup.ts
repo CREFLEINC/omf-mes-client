@@ -32,6 +32,18 @@ export interface UomLookup {
   decimalScaleOf: (uomId: number | undefined) => number;
 }
 
+/**
+ * 한 번에 받아 오는 단위 수.
+ *
+ * ⛔ **상한을 주지 않으면 첫 쪽만 받는다.** `/mdm/uoms` 는 쪽 응답이라 상한이 없으면 서버
+ * 기본 크기에서 잘리는데, 잘린 단위는 `decimalScaleOf` 가 0 으로 떨어뜨려 **소수점 키를
+ * 지운다** — `KG`·`L` 자리에서 값을 넣을 길이 사라지고, 화면은 「원래 정수만 받는다」로
+ * 보인다. 이름이 안 붙는 것(`labelOf` → `null`)과 달리 이쪽은 **넣지 못하게 만든다.**
+ *
+ * 전례를 따른다 — `packing-result` 가 같은 끝점을 같은 목적으로 부르며 100 을 준다.
+ */
+const UOM_OPTION_SIZE = 100;
+
 export const useUomLookup = (): UomLookup => {
   const { client } = useApiClient();
 
@@ -39,7 +51,9 @@ export const useUomLookup = (): UomLookup => {
     queryKey: ['rework-result-register', 'uoms'] as const,
     queryFn: async () => {
       const data = await runRequest(() =>
-        client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),
+        client.GET('/mdm/uoms', {
+          params: { query: { includeInactive: true, size: UOM_OPTION_SIZE } },
+        }),
       );
 
       return new Map(
