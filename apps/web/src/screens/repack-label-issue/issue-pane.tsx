@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Select, Tooltip } from '@crefle/web-ui';
+import { AlertBanner, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -23,20 +23,14 @@ export interface IssuePaneProps {
   printerName: string;
   onPrinterChange: (value: string) => void;
 
-  /** 발행을 막는 사유. `null` 이면 막지 않는다 */
-  blockedReason: string | null;
-  /** 판정을 다시 물을 수 있으면 그 경로. 「확인할 수 없다」에만 준다 */
-  onRetryGate: (() => void) | null;
-  isSubmitting: boolean;
-  onSubmit: () => void;
-
-  /** 발행 이력이 있어야 볼 것이 있다(착수 이슈 §6) */
-  canPreview: boolean;
-  onPreview: () => void;
 }
 
 /**
- * 《라벨 발행》 — ③ 인쇄 대상 · ④ 프린터 · 액션바.
+ * 《라벨 발행》 — ③ 인쇄 대상 · ④ 프린터.
+ *
+ * ⛔ **액션바는 여기 없다.** 설계 §3 은 [ 미리보기 ]·[ 발번·인쇄 ]를 구획 «안»이 아니라
+ * **화면 바닥의 띠(88)** 로 그렸다 — 다른 POP 화면도 모두 그 자리다. 구획 안에 두면 구획이
+ * 길어질 때 단추가 함께 밀려 내려가 화면 밖으로 나간다.
  *
  * ⛔ **회차를 화면이 세지 않는다**(계약 「서버가 매긴다」). 화면이 발행 현황으로 정하는 것은
  * **사유 칸을 요구할 것인가** 하나이고, 이번이 몇 회차가 될지는 말하지 않는다.
@@ -58,12 +52,6 @@ export const IssuePane = ({
   printersFailed,
   printerName,
   onPrinterChange,
-  blockedReason,
-  onRetryGate,
-  isSubmitting,
-  onSubmit,
-  canPreview,
-  onPreview,
 }: IssuePaneProps) => {
   const reasonId = useId();
   const printerId = useId();
@@ -82,20 +70,16 @@ export const IssuePane = ({
   /* 사유가 필요한데 아직 고르지 않았다 — 화면이 먼저 막는다(스펙 §6). */
   const reasonMissing = reasonRequired && reasonCode === '';
 
-  const disabled = blockedReason !== null || isSubmitting || reasonMissing;
-
   return (
     <>
-      {standingFailed ? (
+      {/*
+        ⚠ **몇 회차인가는 구획 «표제 옆»에 선다**(사용자 지시 2026-09-07) — 이 구획이 무엇을
+        하는 자리인지와 한눈에 함께 읽힌다. 여기 남는 것은 그것을 «못 받았을 때»뿐이다.
+      */}
+      {standingFailed && (
         <div className="banner-slot">
           <AlertBanner variant="warning" title={t.summaryFailed} />
         </div>
-      ) : (
-        <p className="pop-repack-standing">
-          {standing.issueCount === null || standing.issueCount === 0
-            ? t.firstIssue
-            : t.reissue(standing.issueCount)}
-        </p>
       )}
 
       {/* 앞선 인쇄가 실패로 남아 있다 — 라벨이 안 나왔을 수 있다는 사실을 먼저 말한다. */}
@@ -120,7 +104,13 @@ export const IssuePane = ({
           value={reasonCode === '' ? null : reasonCode}
           onChange={onReasonChange}
           placeholder={t.reasonPlaceholder}
-          size="lg"
+          /*
+           * ⛔ **`lg`(48) 로 두지 않는다.** POP 은 고르는 칸의 터치 하한을 56 으로 올리는데,
+           *    부품이 «키»를 48 로 못박고 있어 하한만 늘어난다 — 겉 상자는 48 인 채 안의 단추가
+           *    56 이라 **아래가 잘려 보였다**(실측 · 사용자 지적). 하한보다 큰 등급을 준다.
+           */
+          size="xl"
+          className="pop-repack-select"
           disabled={!reasonRequired || reasons.length === 0}
           invalid={reasonMissing || reasonServerError !== null}
           aria-describedby={reasonServerError === null ? undefined : reasonErrorId}
@@ -146,7 +136,13 @@ export const IssuePane = ({
           value={printerName === '' ? null : printerName}
           onChange={onPrinterChange}
           placeholder={t.printerPlaceholder}
-          size="lg"
+          /*
+           * ⛔ **`lg`(48) 로 두지 않는다.** POP 은 고르는 칸의 터치 하한을 56 으로 올리는데,
+           *    부품이 «키»를 48 로 못박고 있어 하한만 늘어난다 — 겉 상자는 48 인 채 안의 단추가
+           *    56 이라 **아래가 잘려 보였다**(실측 · 사용자 지적). 하한보다 큰 등급을 준다.
+           */
+          size="xl"
+          className="pop-repack-select"
           disabled={printers.length === 0}
         />
         {printersFailed && <p className="pop-repack-note">{t.printersFailed}</p>}
@@ -155,54 +151,6 @@ export const IssuePane = ({
         )}
       </div>
 
-      {/*
-        ⛔ **막힌 사유를 툴팁에만 두지 않는다.** 감싼 버튼이 `disabled` 라 포커스를 못 받고,
-        터치 패널에는 hover 가 없어 **문구가 사용자에게 도달하지 않는다**(독립 검증 실측).
-        전례 `P-02-09` 도 본문에 세운다.
-      */}
-      {blockedReason !== null && (
-        <p className="pop-repack-blocked" role="status">
-          {blockedReason}
-          {onRetryGate !== null && (
-            <Button variant="outlined" size="sm" onClick={onRetryGate}>
-              {t.gateRetry}
-            </Button>
-          )}
-        </p>
-      )}
-
-      <div className="pop-action-bar pop-repack-actions">
-        {/*
-          ⚠ **발행 전에는 볼 것이 없다.** 그리기 경로가 발행 기록 번호를 받는다(착수 이슈 §6) —
-          비활성으로 두되 **사유를 말한다.**
-        */}
-        {canPreview ? (
-          <Button variant="outlined" size="2xl" onClick={onPreview}>
-            {t.preview}
-          </Button>
-        ) : (
-          <Tooltip content={t.previewBeforeIssue}>
-            <Button variant="outlined" size="2xl" disabled>
-              {t.preview}
-            </Button>
-          </Tooltip>
-        )}
-
-        {/*
-          ⭐ **`size="2xl"` 이 72px 이다** — 스펙 §7 이 지목한 치수이고 고정 커밋의 설치본에
-          실제로 있다. `patterns/pop-touch` 의 부족분 보충은 `xl`(60px)까지이던 시절의 것이라
-          여기서는 쓰지 않는다.
-        */}
-        <Button
-          variant="filled"
-          size="2xl"
-          onClick={onSubmit}
-          loading={isSubmitting}
-          disabled={disabled}
-        >
-          {t.submit}
-        </Button>
-      </div>
     </>
   );
 };

@@ -726,6 +726,138 @@
 }
 
 /*
+ * P-04-04 재구성 신규 라벨 발행 — **구획을 세로로 쌓는다**(설계 §3 도면 ①②③④).
+ *
+ * 좌우 2단(`.pop-panes`)으로 서 있었는데, 도면은 위에서 아래다. 2단으로 두면 오른쪽 단이
+ * 발행과 이력을 함께 안아 왼쪽 상자의 두 배가 되고, 읽는 차례도 도면과 어긋난다.
+ *
+ * 남는 높이는 **위의 대상 포장 구획**이 가져간다 — 그 안이 내용물 목록이라 길어질 수 있다
+ * (§3-1 「① 목록이 넘치면 ① 안에서 스크롤한다」 · E-4). 발행 구획은 표시에서 `pop-fixed`
+ * 를 달아 제 내용만큼만 선다.
+ */
+/*
+ * 재구성 라벨 발행의 구획 표제 — **띠가 구획의 안쪽 여백까지 덮는다.**
+ *
+ * 표제는 붙박이(`sticky`)인데 그 배경이 글자 줄만큼만 깔려 있었다. 구획의 안쪽 여백(20)과
+ * 표제 아래 여백(16)이 «비어 있는 채로» 남아, 굴러 올라온 내용이 그 틈으로 비쳐 **표제와
+ * 글자가 겹쳐 보였다**(실측 · 사용자 지적).
+ *
+ * 여백을 «표제 안»으로 옮긴다 — 밖으로 밀어 낸 만큼(음수 여백) 안쪽에 되돌려 주므로 자리는
+ * 그대로이고, 덮는 넓이만 구획 전체가 된다.
+ */
+.pop-ui .pop-repack-panes > .pop-section > .pane-title:first-child {
+  inset-block-start: calc(var(--space-5) * -1);
+  margin: calc(var(--space-5) * -1) calc(var(--space-5) * -1) var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-2);
+}
+
+/*
+ * ⛔ **구획 «안»의 둘째 표제는 붙박이가 아니다.**
+ *
+ * 위 규칙(`.pop-section > .pane-title`)이 표제를 모두 붙박이로 세우고 바탕을 깐다. 한 구획에
+ * 표제가 둘인 화면이 있는데(발행 · 발행 이력), 둘째 표제까지 위로 끌려 올라가 **바로 위 칸의
+ * 아랫변을 제 바탕으로 덮었다** — 프린터 칸의 밑줄이 사라져 「잘렸다」로 보였다(실측 · 사용자
+ * 지적 3회). 둘째부터는 제자리에 둔다.
+ */
+.pop-ui .pop-repack-panes > .pop-section > .pane-title:not(:first-child) {
+  position: static;
+  background: none;
+}
+
+/*
+ * 발행 구획의 표제 줄 — **이름과 회차가 한 줄에 선다**(사용자 지시 2026-09-07).
+ *
+ * 회차 문장이 표제 아래 제 줄을 차지하고 있었다. 한 줄로 합치면 세로 한 줄(24)이 아래
+ * 구획으로 가고, 「이 자리가 무엇인가」와 「이번이 몇 회차인가」가 함께 읽힌다.
+ */
+.pop-ui .pop-repack-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* 이름은 표제 줄의 글자를 그대로 쓴다 — 제 크기를 다시 정하지 않는다. */
+.pop-ui .pop-repack-head > .pop-repack-head-name {
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+/* 회차는 이름보다 한 급 작고 옅다 — 표제와 겨루지 않는다. */
+.pop-ui .pop-repack-head > .pop-repack-standing {
+  margin: 0;
+  font-size: var(--pop-label);
+  font-weight: 400;
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 대상 포장의 사실 줄 — **이름과 값이 같은 줄에 앉는다.**
+ *
+ * POP 이 값(`dd`)을 이름(`dt`)보다 크게 세우는데, 격자가 칸을 «늘려» 맞추다 보니 큰 값은
+ * 위에, 작은 이름은 아래에 놓여 **한 줄이 두 줄처럼 어긋나 보였다**(실측 · 사용자 지적).
+ * 글자의 밑선을 맞춘다.
+ */
+.pop-ui .pop-repack-facts {
+  align-items: baseline;
+}
+
+/*
+ * 재구성 라벨 발행의 고르는 칸 — **줄 전체로 늘리지 않는다.**
+ *
+ * `app.css` 의 `.pop-repack-field` 가 세로 flex 라, 안의 `Select` 가 구획 폭을 통째로
+ * 가져가 **1024 폭에서 칸 하나가 900px 넘게 섰다**(실측 · 사용자 지적). 설계 §3 도면은
+ * 이 자리를 `[ 출하장-라벨-01 ▾ ]` 한 칸으로 그렸다. 칸은 내용만큼만 서고, 짧아도 손이
+ * 닿게 하한만 준다.
+ */
+.pop-ui .pop-repack-field {
+  align-items: flex-start;
+}
+
+/*
+ * ⛔ **폭을 «안쪽 단추»에 주지 않는다.** `Select` 는 겉을 `inline-block` 한 겹으로 감싸고
+ *    그 안의 단추가 `width: 100%` 다. 단추에 하한을 주면 **겉은 글자만큼, 안은 하한만큼**이
+ *    되어 두 상자가 어긋나고 모서리가 잘려 보였다(실측 · 사용자 지적). 겉에 준다.
+ */
+.pop-ui .pop-repack-field > .pop-repack-select {
+  min-width: 20rem;
+}
+
+/*
+ * 재구성 라벨 발행의 액션바 — **막힌 사유는 띠의 왼쪽 끝**(전례 `P-04-02`).
+ *
+ * `app.css` 가 이 문장에 아래 여백 12 를 주는데, 그때는 구획 «안»에서 단추 위에 서던
+ * 문장이었다. 띠로 옮기면 그 여백이 문장만 위로 밀어 단추와 밑줄이 어긋난다.
+ */
+.pop-ui > .pop-action-bar > .pop-repack-blocked {
+  margin: 0 auto 0 0;
+}
+
+.pop-ui > .pop-repack-panes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+}
+
+/*
+ * ① 대상 포장이 **남는 높이를 갖고, 눌리지 않는다.** 설계 §3-1 이 이 구획에 200 을 잡았다 —
+ * 그 아래로 내려가면 포장 번호 한 줄조차 잘린다(실측 · 사용자 지적). 넘치면 구획 «안»에서
+ * 스크롤한다(E-4).
+ */
+.pop-ui .pop-repack-panes > .pop-section:first-child {
+  flex: 1 1 auto;
+  min-height: 200px;
+}
+
+/* ②③④ 는 제 내용만큼 서되, 자리가 모자라면 자기 안에서 스크롤한다 — 위를 밀어내지 않는다. */
+.pop-ui .pop-repack-panes > .pop-section:last-child {
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+/*
  * 고르는 칸(맨 왼쪽 열)은 **머리와 줄이 같은 자리에 선다.**
  *
  * DS 는 그 열을 가운데로 두지만, 표머리 전체를 왼쪽으로 세우는 규칙이 더 세서
