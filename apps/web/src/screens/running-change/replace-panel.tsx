@@ -1,12 +1,14 @@
 import { AlertBanner, Button, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 
 import { validateQty, type QtyDraft, type QtyProblem } from './input-qty';
 import type { ReferenceLabels } from './reference-labels';
 import type { ScannedPart } from './scan';
 import type { GateVerdict } from './terminal-gating';
 import type { CurrentInputView } from './types';
+
+import { QuantityPad } from './quantity-pad';
 
 const t = messages.runningChange;
 
@@ -34,6 +36,13 @@ export interface ReplacePanelProps {
   labels: ReferenceLabels;
   /** 등록을 담은 뒤의 안내. 담지 않았으면 `false`. */
   recorded: boolean;
+  /** 교체 사유 선택지 — 고객이 마스터에서 채운다. 비어 올 수 있다(스펙 §6). */
+  reasons: readonly { code: string; codeName: string }[];
+  reasonsPending: boolean;
+  reasonsFailed: boolean;
+  reasonCode: string | null;
+  onReasonChange: (code: string) => void;
+
   /** 서버가 거부했으면 그 사유 한 줄. */
   rejection: string | null;
   onClearPart: () => void;
@@ -117,9 +126,9 @@ const describeBlock = (reason: BlockReason): string | null => {
 /**
  * 《부품 교체》 — 스펙 §3 우단. 읽은 부품·교체 대상·수량·사유를 모아 **한 건**을 등록한다.
  *
- * ⛔ **교체 사유는 고를 수 없는 상태로 선다.** 값 목록이 확정 전이라(검토 요청 omf-mes#397 ②)
- * 지어낸 값을 넣으면 승인된 적 없는 코드가 **지워지지 않는 기록**에 남는다. 감추지 않고
- * 사유를 말한다 — 칸만 비워 두면 「고를 것이 없다」와 「아직 안 골랐다」가 같은 모양이 된다.
+ * ⭐ **교체 사유는 열려 있다.** 값 목록은 고객이 마스터(`W-06-06`)에서 채우고 받는 곳은 이미
+ * 있다(스펙 §4-A · §8 미결 1 · 2026-09-03 판정). 비어서 오면 그때만 잠그고 «왜» 비었는지
+ * 말한다 — 칸만 비워 두면 「고를 것이 없다」와 「아직 안 골랐다」가 같은 모양이 된다(`G-2`).
  * 사유 없이도 등록은 선다(스펙 §6 — 권고).
  */
 export const ReplacePanel = ({
@@ -130,6 +139,11 @@ export const ReplacePanel = ({
   targets,
   selectedTargetId,
   qty,
+  reasons,
+  reasonsPending,
+  reasonsFailed,
+  reasonCode,
+  onReasonChange,
   labels,
   recorded,
   rejection,
@@ -141,6 +155,11 @@ export const ReplacePanel = ({
 }: ReplacePanelProps) => {
   const reasonId = useId();
   const targetId = useId();
+  /*
+   * ⭐ **수량은 화면 내장 키패드로 받는다**(공유계약 D-4). 단말에는 자판이 없다 — 칸을 누르면
+   *    그때 키패드가 뜬다(사용자 결정 2026-09-07 · 전례 PQC 제품 검사).
+   */
+  const [isPadOpen, setPadOpen] = useState(false);
 
   const qtyProblem = toQtyProblem({ qty, part, selectedTargetId });
   const blocked = toBlockReason({ gate, hasWorkOrder, hasWorker, part, selectedTargetId, qty });
@@ -172,6 +191,7 @@ export const ReplacePanel = ({
         <label htmlFor={targetId}>{t.replace.targetLabel}</label>
         <Select
           id={targetId}
+          className="pop-rc-select"
           size="xl"
           placeholder={t.replace.targetPlaceholder}
           value={selectedTargetId === null ? null : String(selectedTargetId)}
@@ -189,32 +209,51 @@ export const ReplacePanel = ({
         />
       </div>
 
-      <TextField
-        size="xl"
-        label={t.replace.qtyLabel}
-        value={qty}
-        inputMode="decimal"
-        autoComplete="off"
-        fullWidth
-        error={qtyProblem === null ? undefined : t.replace.qtyProblems[qtyProblem]}
-        onChange={(event) => {
-          onQtyChange(event.target.value);
-        }}
-      />
+      {/* 수량도 같은 칸 규격으로 감싼다 — 감싸지 않으면 위 칸과 사이가 다르게 벌어진다. */}
+      <div className="pop-rc-field">
+        <TextField
+          size="xl"
+          label={t.replace.qtyLabel}
+          value={qty}
+          inputMode="decimal"
+          autoComplete="off"
+          fullWidth
+          error={qtyProblem === null ? undefined : t.replace.qtyProblems[qtyProblem]}
+          /*
+           * 칸을 «누르면» 키패드가 뜬다. ⛔ 칸을 잠그지 않는다 — 자판이 달린 자리(개발·검수)
+           * 에서 그대로 칠 수 있어야 한다.
+           *
+           * ⛔ **포커스로 열지 않는다.** 창이 닫히면 포커스가 이 칸으로 돌아오는데, 그것을
+           *    열림 신호로 삼으면 [ 취소 ]·[ 확인 ]을 누르는 순간 창이 다시 뜬다 — 닫을 수
+           *    없는 창이 된다(실측 · 사용자 지적 2026-09-07).
+           */
+          onClick={() => {
+            setPadOpen(true);
+          }}
+          onChange={(event) => {
+            onQtyChange(event.target.value);
+          }}
+        />
+      </div>
 
       <div className="pop-rc-field">
         <label htmlFor={reasonId}>{t.replace.reasonLabel}</label>
         <Select
           id={reasonId}
+          className="pop-rc-select"
           size="xl"
           placeholder={t.replace.reasonPlaceholder}
-          options={[]}
-          disabled
-          onChange={() => {
-            /* 고를 것이 없다 — 이 자리는 값 목록이 정해지면 열린다. */
-          }}
+          value={reasonCode}
+          options={reasons.map((reason) => ({ value: reason.code, label: reason.codeName }))}
+          disabled={reasons.length === 0}
+          onChange={onReasonChange}
         />
-        <p className="field-note">{t.replace.reasonUnavailable}</p>
+        {/* 셋을 갈라 말한다 — 받는 중 · 못 받음 · 아직 안 채움. 셋의 다음 행동이 다르다. */}
+        {reasonsPending && <p className="field-note">{t.replace.reasonLoading}</p>}
+        {!reasonsPending && reasonsFailed && <p className="field-note">{t.replace.reasonFailed}</p>}
+        {!reasonsPending && !reasonsFailed && reasons.length === 0 && (
+          <p className="field-note">{t.replace.reasonEmpty}</p>
+        )}
       </div>
 
       {/* W/O 가 나뉘지 않는다는 안내 — 스펙 §3 이 등록 버튼 위에 세워 둔 자리다. */}
@@ -230,8 +269,28 @@ export const ReplacePanel = ({
         </div>
       )}
 
+      <QuantityPad
+        open={isPadOpen}
+        value={qty}
+        /* 소수점 키는 **읽은 부품의 단위**가 정한다 — 개수로 세는 자재에는 그리지 않는다. */
+        allowDecimal={labels.allowsDecimal(part?.uomId ?? null)}
+        onCommit={(next) => {
+          onQtyChange(next);
+          setPadOpen(false);
+        }}
+        onClose={() => {
+          setPadOpen(false);
+        }}
+      />
+
       <div className="pop-rc-submit">
-        <Button variant="filled" size="2xl" disabled={blocked !== null} onClick={onSubmit}>
+        <Button
+          variant="filled"
+          size="2xl"
+          className="pop-rc-submit-button"
+          disabled={blocked !== null}
+          onClick={onSubmit}
+        >
           {t.replace.submit}
         </Button>
         {/*
@@ -248,7 +307,6 @@ export const ReplacePanel = ({
             {t.retry}
           </Button>
         )}
-        <p className="field-note">{t.replace.keepsHistory}</p>
         {recorded && (
           <p className="field-note" role="status">
             {t.replace.recorded}

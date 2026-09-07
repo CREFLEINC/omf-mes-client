@@ -26,7 +26,19 @@ export const runningChangeKeys = {
   all: ['running-change'] as const,
   currentInputs: (workOrderId: number) =>
     ['running-change', 'current-inputs', workOrderId] as const,
+  changeReasons: ['running-change', 'change-reasons'] as const,
 };
+
+/**
+ * 교체 사유 값이 사는 공통코드 그룹(스펙 §4-A · 공유계약 `G-32` 2026-09-03 등재).
+ *
+ * ⛔ **값을 화면이 지어내지 않는다** — 고객이 `W-06-06` 에서 운영 중에 채우는 갈래다
+ * (`G-31` 마스터안전형). 화면이 하는 일은 받아서 보여 주는 것까지다.
+ */
+const CHANGE_REASON_GROUP_CODE = 'MATERIAL_CHANGE_REASON';
+
+/** 사유는 한 화면에 다 보여야 한다 — 쪽을 넘기게 두지 않는다. */
+const REASON_PAGE_SIZE = 100;
 
 /**
  * 한 화면에 담을 투입 줄 수의 상한.
@@ -96,5 +108,54 @@ export const useCurrentInputs = (workOrderId: number | null): CurrentInputsResul
     isError: query.isError,
     error: query.error,
     refetch: refetchRows,
+  };
+};
+
+export interface ChangeReason {
+  code: string;
+  codeName: string;
+}
+
+export interface ChangeReasonsResult {
+  reasons: ChangeReason[];
+  isPending: boolean;
+  isError: boolean;
+}
+
+/**
+ * 교체 사유 선택지.
+ *
+ * ⭐ **「값 목록 미확정」이 아니다**(스펙 §8 미결 1 · 2026-09-03 판정). 값은 고객이 정하고
+ * **받는 곳은 있다** — 그래서 칸을 잠가 두지 않고 조회해서 연다.
+ *
+ * ⚠ **비어서 올 수 있다.** 고객이 아직 채우지 않았으면 0건이 정상이고, 그때만 「고를 것이
+ * 없다」로 잠근다(스펙 §6 · `G-2`). 사유는 `nullable` 이라 없이도 등록은 선다.
+ */
+export const useChangeReasons = (): ChangeReasonsResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: runningChangeKeys.changeReasons,
+    queryFn: async (): Promise<ChangeReason[]> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: {
+            query: {
+              codeGroupCode: CHANGE_REASON_GROUP_CODE,
+              page: 1,
+              size: REASON_PAGE_SIZE,
+            },
+          },
+        }),
+      );
+
+      return data.items.map((item) => ({ code: item.code, codeName: item.codeName }));
+    },
+  });
+
+  return {
+    reasons: query.data ?? [],
+    isPending: query.isPending,
+    isError: query.isError,
   };
 };

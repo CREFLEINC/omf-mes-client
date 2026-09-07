@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -52,6 +52,8 @@ interface Options {
   inputs?: ReturnType<typeof makeConsumption>[];
   /** 열린 세션이 없다 */
   noSession?: boolean;
+  /** 고객이 교체 사유를 아직 채우지 않았다 — 0건이 정상이다(스펙 §6) */
+  noChangeReasons?: boolean;
   /** 교체 등록 요청을 담아 둔다 */
   writes?: Request[];
   /** 교체 등록 응답 상태. 기본 201 */
@@ -160,6 +162,17 @@ const routes = (options: Options): StubRoute[] => [
       }),
   },
   {
+    /* 교체 사유 값 목록 — 고객이 마스터에서 채운다(스펙 §4-A). 기본 목에서는 한 건 온다. */
+    match: (request) => pathOf(request) === '/mdm/code-values',
+    respond: () =>
+      jsonResponse({
+        items: options.noChangeReasons
+          ? []
+          : [{ codeValueId: 1, code: 'DEFECT', codeName: '부품 불량' }],
+        page: { page: 1, size: 100, total: options.noChangeReasons ? 0 : 1 },
+      }),
+  },
+  {
     match: (request) => pathOf(request) === '/mdm/uoms',
     respond: () =>
       jsonResponse({
@@ -188,7 +201,19 @@ const fillReplacement = async (user: ReturnType<typeof userEvent.setup>): Promis
   await user.click(screen.getByLabelText(t.replace.targetLabel));
   await user.click(await screen.findByRole('option', { name: /ITEM-SAMPLE/ }));
 
-  await user.type(screen.getByLabelText(t.replace.qtyLabel), '120');
+  /*
+   * 수량은 **키패드로** 넣는다(공유계약 D-4) — 칸을 누르면 창이 뜨고, 거기서 눌러 [ 확인 ]으로
+   * 넘긴다. 단말에는 자판이 없어 이것이 현장에서 실제로 가능한 유일한 경로다.
+   */
+  await user.click(screen.getByRole('textbox', { name: t.replace.qtyLabel }));
+
+  const pad = await screen.findByRole('dialog');
+
+  for (const digit of ['1', '2', '0']) {
+    await user.click(within(pad).getByRole('button', { name: digit }));
+  }
+
+  await user.click(within(pad).getByRole('button', { name: t.pad.confirm }));
 };
 
 beforeEach(() => {
@@ -232,12 +257,66 @@ describe('러닝체인지 화면 — 읽기', () => {
     expect(screen.getByText(t.current.moldNoSession)).toBeInTheDocument();
   });
 
-  /* 값 목록이 확정 전이다(omf-mes#397 ②) — 감추지 않고 사유를 말한다. */
-  it('교체 사유는 고를 수 없는 상태로 사유와 함께 선다', async () => {
+  /*
+   * ⭐ 값은 고객이 마스터에서 채우고 받는 곳은 있다(스펙 §4-A · §8 미결 1) — 칸을 잠가 두지
+   *    않는다. 비어서 올 때만 잠그고 «왜» 비었는지 말한다(§6 · G-2).
+   */
+  it('교체 사유를 받아 오면 고를 수 있다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.replace.reasonUnavailable)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.replace.reasonLabel)).toBeEnabled();
+    });
+    expect(screen.queryByText(t.replace.reasonEmpty)).not.toBeInTheDocument();
+  });
+
+  it('고객이 아직 채우지 않았으면 잠그고 그 사실을 말한다', async () => {
+    renderScreen({ noChangeReasons: true });
+
+    expect(await screen.findByText(t.replace.reasonEmpty)).toBeInTheDocument();
     expect(screen.getByLabelText(t.replace.reasonLabel)).toBeDisabled();
+  });
+});
+
+/*
+ * 공유계약 D-4 — POP 숫자 입력은 화면 내장 키패드다. 단말에는 자판이 없어, 칸만 두면 수량을
+ * 넣을 방법이 없다.
+ */
+describe('러닝체인지 화면 — 수량 키패드', () => {
+  it('수량 칸을 누르면 키패드가 뜨고, 취소하면 닫힌 채로 있다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.click(await screen.findByRole('textbox', { name: t.replace.qtyLabel }));
+
+    const pad = await screen.findByRole('dialog');
+    await user.click(within(pad).getByRole('button', { name: t.pad.cancel }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { hidden: true })).not.toBeVisible();
+    });
+
+    /*
+     * ⛔ **포커스가 창을 열지 않는다.** 창이 닫히면 포커스가 수량 칸으로 돌아오는데, 그
+     *    포커스를 열림 신호로 삼았더니 [ 취소 ]·[ 확인 ]이 창을 다시 띄워 **닫을 수 없는
+     *    창**이 됐다(사용자 지적 2026-09-07). 여기서 그 신호를 그대로 재현한다.
+     */
+    fireEvent.focus(screen.getByRole('textbox', { name: t.replace.qtyLabel }));
+
+    expect(screen.getByRole('dialog', { hidden: true })).not.toBeVisible();
+  });
+
+  it('키패드로 넣은 값이 수량 칸에 들어간다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.click(await screen.findByRole('textbox', { name: t.replace.qtyLabel }));
+
+    const pad = await screen.findByRole('dialog');
+    await user.click(within(pad).getByRole('button', { name: '7' }));
+    await user.click(within(pad).getByRole('button', { name: t.pad.confirm }));
+
+    expect(screen.getByRole('textbox', { name: t.replace.qtyLabel })).toHaveValue('7');
   });
 });
 

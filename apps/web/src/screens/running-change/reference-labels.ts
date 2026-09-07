@@ -63,13 +63,22 @@ const fetchLotNo = async (client: Client, lotId: number): Promise<string> => {
   return data.lot.lotNo;
 };
 
+/** 화면이 단위에서 쓰는 것 둘 — 표시할 코드와 **소수를 받는가**. */
+interface UomView {
+  code: string;
+  /** 소수 자릿수. 0 이면 개수로 세는 단위라 소수점을 받지 않는다. */
+  decimalScale: number;
+}
+
 /** 단위는 마스터가 작고 잘 바뀌지 않아 **한 번에 받아 둔다.** */
-const fetchUomCodes = async (client: Client): Promise<Map<number, string>> => {
+const fetchUoms = async (client: Client): Promise<Map<number, UomView>> => {
   const data = await runRequest(() =>
     client.GET('/mdm/uoms', { params: { query: { size: 200 } } }),
   );
 
-  return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));
+  return new Map(
+    data.items.map((uom) => [uom.uomId, { code: uom.uomCode, decimalScale: uom.decimalScale }]),
+  );
 };
 
 export interface ReferenceLabels {
@@ -79,6 +88,11 @@ export interface ReferenceLabels {
   describeLot: (lotId: number) => string;
   /** 단위 번호를 코드로 옮긴다. **모르면 빈 문자열** — 수량 뒤에 번호가 붙으면 값처럼 읽힌다. */
   describeUom: (uomId: number) => string;
+  /**
+   * 그 단위가 소수를 받는가. **모르면 받지 않는 쪽으로 둔다** — 개수 단위에 소수점 키를
+   * 그리면 서버가 거부할 값을 넣게 된다.
+   */
+  allowsDecimal: (uomId: number | null) => boolean;
 }
 
 /**
@@ -112,7 +126,7 @@ export const useReferenceLabels = (
 
   const uoms = useQuery({
     queryKey: referenceLabelKeys.uoms,
-    queryFn: () => fetchUomCodes(client),
+    queryFn: () => fetchUoms(client),
   });
 
   const itemCodes = new Map(
@@ -134,6 +148,7 @@ export const useReferenceLabels = (
   return {
     describeItem: (itemId) => itemCodes.get(itemId) ?? String(itemId),
     describeLot: (lotId) => lotNos.get(lotId) ?? String(lotId),
-    describeUom: (uomId) => uoms.data?.get(uomId) ?? '',
+    describeUom: (uomId) => uoms.data?.get(uomId)?.code ?? '',
+    allowsDecimal: (uomId) => (uomId === null ? false : (uoms.data?.get(uomId)?.decimalScale ?? 0) > 0),
   };
 };

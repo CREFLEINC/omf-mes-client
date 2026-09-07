@@ -11,10 +11,10 @@ import { LoadErrorBanner, describeLoadError } from './load-error-banner';
 import { useCurrentMold } from './mold';
 import { toReplacementConsumption } from './post-request';
 import { useOutbox } from './outbox';
-import { useCurrentInputs } from './queries';
+import { useChangeReasons, useCurrentInputs } from './queries';
 import { ReplacePanel } from './replace-panel';
 import { type ScanOutcome, type ScannedPart } from './scan';
-import { ScanField } from './scan-field';
+import { ScanField, type ScanOutcomeView } from './scan-field';
 import { useScanLookup } from './scan-queries';
 import { readWorkOrderId } from './screen-params';
 import { useOpenWorkSession } from './session';
@@ -74,6 +74,7 @@ export const RunningChangeScreen = () => {
   const titleId = useId();
 
   const current = useCurrentInputs(workOrderId);
+  const reasons = useChangeReasons();
   const session = useOpenWorkSession(workOrderId);
   const mold = useCurrentMold(session.moldId);
   /* 교체도 자재 투입이므로 `P-02-03`과 같은 플래그를 쓴다(§5-1). */
@@ -82,6 +83,8 @@ export const RunningChangeScreen = () => {
   const [part, setPart] = useState<ScannedPart | null>(null);
   const [selectedTargetId, setSelectedTargetId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
+  /* 교체 사유는 고르지 않아도 등록이 선다(스펙 §6) — 고르지 않은 상태가 `null` 이다. */
+  const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [recorded, setRecorded] = useState(false);
 
   const scan = useScanLookup();
@@ -149,6 +152,7 @@ export const RunningChangeScreen = () => {
       part,
       replacedConsumptionId: selectedTargetId,
       qty,
+      changeReasonCode: reasonCode,
       workSessionId: session.workSessionId,
       occurredAt: new Date(),
     });
@@ -165,6 +169,7 @@ export const RunningChangeScreen = () => {
     setPart(null);
     setSelectedTargetId(null);
     setQty('');
+    setReasonCode(null);
   };
 
   /*
@@ -186,6 +191,32 @@ export const RunningChangeScreen = () => {
   }, [acceptedCount, refetchCurrent]);
 
   const outcome = scan.data;
+  /*
+   * 읽은 결과를 **무게와 함께** 든다(전례 `P-02-03`) — 못 찾은 것과 찾은 것이 같은 모양이면
+   * 실패를 놓친다. 끊긴 것과 조회가 실패한 것도 갈라 말한다(G-3) — 앞은 기다려야 풀리고
+   * 뒤는 다시 읽으면 풀린다.
+   */
+  const outcomeView: ScanOutcomeView | null = scan.isError
+    ? {
+        tone: 'error',
+        text: outbox.isOnline ? t.scan.outcomes.failed : t.scan.outcomes.offline,
+      }
+    : outcome === undefined
+      ? null
+      : {
+          /*
+           * 자매 화면 `P-02-03` 과 같은 가름이다 — 담긴 것은 ✓, 여러 건이 걸린 것은 ! (다시
+           * 읽으면 풀린다), **못 찾은 것은 ✕** 다. 못 찾음을 주황으로 두면 「걸리긴 했다」로
+           * 읽혀 작업자가 담긴 줄 알고 넘어간다.
+           */
+          tone:
+            outcome.kind === 'part'
+              ? 'success'
+              : outcome.kind === 'ambiguous'
+                ? 'warning'
+                : 'error',
+          text: describeOutcome(outcome),
+        };
   const rejection = outbox.rejections.at(-1);
 
   return (
@@ -262,28 +293,11 @@ export const RunningChangeScreen = () => {
           )}
         </section>
 
-        <section className="pane" aria-label={t.panes.replace}>
+        <section className="pane scan-pane" aria-label={t.panes.replace}>
           <h2 className="pane-title">{t.panes.replace}</h2>
 
-          <ScanField isScanning={scan.isPending} onScan={handleScan} />
-
-          {/*
-           * 스캔 결과는 **한 자리에서만** 말한다. `role="status"`라 화면을 보지 않는 작업자도
-           * 읽힌 결과를 듣는다 — 이 화면의 사용자는 손과 눈이 설비에 가 있다.
-           */}
-          <p className="scan-outcome" role="status">
-            {scan.isError
-              ? /*
-                 * 끊긴 것과 조회가 실패한 것은 **작업자가 할 일이 다르다**(G-3). 앞은 기다려야
-                 * 풀리고 뒤는 다시 읽으면 풀린다.
-                 */
-                outbox.isOnline
-                ? t.scan.outcomes.failed
-                : t.scan.outcomes.offline
-              : outcome === undefined
-                ? ''
-                : describeOutcome(outcome)}
-          </p>
+          {/* 스캔 결과는 부품이 자기 자리에 세운다 — 자매 화면 `P-02-03` 과 같은 구조다. */}
+          <ScanField isScanning={scan.isPending} onScan={handleScan} outcome={outcomeView} />
 
           <ReplacePanel
             gate={gate.verdict}
@@ -293,6 +307,11 @@ export const RunningChangeScreen = () => {
             targets={current.rows}
             selectedTargetId={selectedTargetId}
             qty={qty}
+            reasons={reasons.reasons}
+            reasonsPending={reasons.isPending}
+            reasonsFailed={reasons.isError}
+            reasonCode={reasonCode}
+            onReasonChange={setReasonCode}
             labels={labels}
             recorded={recorded}
             rejection={
