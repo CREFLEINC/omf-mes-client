@@ -78,6 +78,7 @@ import { workStart } from './work-start';
 import { workPrecheckGate } from './work-precheck-gate';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
+import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
 import { toolUsage } from './tool-usage';
 import { productStockStatus } from './product-stock-status';
@@ -195,6 +196,7 @@ export const ko = {
   emergencyWorkOrderField,
   workOrderProgress,
   materialLocation,
+  materialLotScan,
   materialPicking,
   productStockStatus,
   shipmentRequestCreate,

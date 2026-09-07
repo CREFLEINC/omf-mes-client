@@ -1,0 +1,54 @@
+.material-lot-scan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 20px);
+  padding: var(--space-4, 16px);
+}
+
+.material-lot-scan__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+/* 스캐너가 죽었을 때 손으로 넣는 자리. 칸과 단추가 밑선을 맞춘다. */
+.material-lot-scan__row {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-end;
+}
+
+.material-lot-scan__row > *:first-child {
+  flex: 1;
+}
+
+.material-lot-scan__counter {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다. */
+.material-lot-scan__scanned {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.material-lot-scan__note {
+  margin: 0;
+}
+
+.material-lot-scan__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 핵심 단추는 장갑 낀 손으로 누른다. 폭을 꽉 채워 겨냥하지 않아도 닿게 한다. */
+.material-lot-scan__wide {
+  width: 100%;
+}

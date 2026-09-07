@@ -23,6 +23,7 @@ const tiles = [
     label: t.tiles.inbound,
     screens: [
       { to: '/inbound-receipt', label: messages.inboundReceipt.title },
+      { to: '/material-lot-scan', label: messages.materialLotScan.title },
       { to: '/inbound-variance', label: messages.inboundVariance.title },
       { to: '/recycle-entry', label: messages.recycleEntry.title },
     ],
