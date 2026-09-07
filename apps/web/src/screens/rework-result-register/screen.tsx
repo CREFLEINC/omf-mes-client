@@ -214,8 +214,10 @@ export const ReworkResultRegisterScreen = () => {
                     />
                   ))}
                   <label>{t.defectCode}</label>
+                  {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
                   <Select
                     aria-label={t.defectCode}
+                    size="xl"
                     options={[]}
                     placeholder={t.defectCodePlaceholder}
                     disabled

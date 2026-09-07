@@ -236,8 +236,10 @@ export const ResultPanel = ({
           <label className="field-label" htmlFor={judgmentId}>
             {t.judgment}
           </label>
+          {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
           <Select
             id={judgmentId}
+            size="xl"
             options={judgmentOptions}
             value={judgment}
             placeholder={t.judgmentPlaceholder}
