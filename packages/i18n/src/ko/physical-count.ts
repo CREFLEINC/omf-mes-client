@@ -56,7 +56,6 @@ export const physicalCount = {
   },
   submit: '이 위치 완료',
   noWorker: '사번을 확인한 뒤에 셀 수 있습니다',
-  noLine: '한 줄 이상 실물 수량을 적으세요',
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
     title: '센 것을 담아 두지 못했습니다',

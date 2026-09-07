@@ -74,8 +74,14 @@ export const PhysicalCountScreen = () => {
       return;
     }
 
-    setLines(
-      rows.map((row) => ({
+    /*
+     * 적어 둔 것은 다시 읽어와도 남긴다 - 재접속이나 재조회가 돌 때 덮어쓰면 한 선반을 다
+     * 센 사람이 아무 말 없이 처음부터 다시 세게 된다.
+     */
+    setLines((current) => {
+      const typed = new Map(current.map((line) => [line.inventoryCountLineId, line.qty]));
+
+      return rows.map((row) => ({
         inventoryCountLineId: row.inventoryCountLineId,
         locationId: row.locationId,
         itemId: row.itemId,
@@ -85,9 +91,9 @@ export const PhysicalCountScreen = () => {
         systemQty: row.systemQty ?? null,
         counted: row.counted,
         previousQty: row.counted ? row.countedQty : null,
-        qty: '',
-      })),
-    );
+        qty: typed.get(row.inventoryCountLineId) ?? '',
+      }));
+    });
   }, [planned.data]);
 
   const scanField = useScanField({

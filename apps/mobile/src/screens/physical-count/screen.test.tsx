@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
+  createTestQueryClient,
   jsonResponse,
   renderWithProviders,
   type StubRoute,
@@ -45,8 +46,22 @@ interface Options {
   firstCounted?: boolean;
   /** 이 위치에 실사 라인이 없다고 답한다. */
   emptyLocation?: boolean;
+  /**
+   * 다음 조회부터 둘째 줄이 이미 센 것으로 바뀐다 - 다른 단말이 그 줄을 센 상황이다.
+   *
+   * 같은 응답을 그대로 돌려주면 조회 캐시가 같은 배열을 그대로 내주어 화면이 다시 세우지
+   * 않는다. 덮어쓰는 결함이 있어도 그 자리에서는 드러나지 않는다.
+   */
+  otherDevice?: { counted: boolean };
   /** 보낸 요청을 모은다. */
   seen?: Request[];
+  /**
+   * 물어본 주소를 모은다.
+   *
+   * 응답만 돌려주는 스텁은 조회 축이 빠진 것을 잡지 못한다 - 마감된 실사까지 목록에 서도
+   * 스텁이 진행 중인 것만 답하면 시험이 통과한다.
+   */
+  asked?: string[];
 }
 
 const line = (overrides: Record<string, unknown> = {}) => ({
@@ -68,8 +83,10 @@ const line = (overrides: Record<string, unknown> = {}) => ({
 const routes = (options: Options = {}): StubRoute[] => [
   {
     match: (req) => new URL(req.url).pathname === '/inventory/counts',
-    respond: () =>
-      jsonResponse({
+    respond: (req) => {
+      options.asked?.push(req.url);
+
+      return jsonResponse({
         items: [
           {
             inventoryCountId: 5001,
@@ -82,7 +99,8 @@ const routes = (options: Options = {}): StubRoute[] => [
           },
         ],
         page,
-      }),
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/locations',
@@ -103,6 +121,8 @@ const routes = (options: Options = {}): StubRoute[] => [
   {
     match: (req) => /\/inventory\/counts\/\d+\/lines/.test(new URL(req.url).pathname),
     respond: (req) => {
+      options.asked?.push(req.url);
+
       if (req.method === 'PUT') {
         options.seen?.push(req.clone());
         return jsonResponse({ items: [] });
@@ -129,6 +149,8 @@ const routes = (options: Options = {}): StubRoute[] => [
             itemId: 2001,
             lotId: null,
             systemQty: options.blind === true ? undefined : 40,
+            counted: options.otherDevice?.counted === true,
+            countedQty: options.otherDevice?.counted === true ? 37 : 0,
           }),
         ],
         page,
@@ -160,14 +182,14 @@ const SignedIn = ({ children }: { children: ReactNode }) => {
   return worker === null ? null : children;
 };
 
-const mount = (options: Options = {}) =>
+const mount = (options: Options = {}, queryClient?: ReturnType<typeof createTestQueryClient>) =>
   renderWithProviders(
     <MemoryRouter>
       <SignedIn>
         <PhysicalCountScreen />
       </SignedIn>
     </MemoryRouter>,
-    { fetch: createStubFetch(routes(options)) },
+    { fetch: createStubFetch(routes(options)), queryClient },
   );
 
 const scanLocation = (code: string) => {
@@ -199,6 +221,31 @@ describe('실물 카운트 화면', () => {
     await user.click(await screen.findByRole('option', { name: `${COUNT_NO} · 2026-09-07` }));
 
     expect(await screen.findByLabelText('위치 스캔')).toBeTruthy();
+  });
+
+  /*
+   * 마감된 실사를 고르면 쓰기가 서버에서 되돌아온다. 화면이 목록에서 미리 거르지 않으면
+   * 사람은 한 위치를 다 센 뒤에야 그 사실을 안다.
+   */
+  it('진행 중인 실사만 물어본다', async () => {
+    const asked: string[] = [];
+    mount({ asked });
+
+    await screen.findByRole('combobox', { name: '실사' });
+
+    expect(asked.some((url) => url.includes('inProgressOnly=true'))).toBe(true);
+  });
+
+  /* 창고 하나의 라인이 수천 건이다. 위치로 끊어 묻지 않으면 옆 선반의 줄까지 적게 된다. */
+  it('그 위치의 라인만 물어본다', async () => {
+    const user = userEvent.setup();
+    const asked: string[] = [];
+    mount({ asked });
+    await openLocation(user);
+
+    expect(asked.some((url) => url.includes('/lines') && url.includes('locationId=3001'))).toBe(
+      true,
+    );
   });
 
   it('위치를 스캔하면 그 위치의 라인이 뜬다', async () => {
@@ -295,6 +342,29 @@ describe('실물 카운트 화면', () => {
     await screen.findByLabelText(/ABC-123 · 8001 실물 수량/);
 
     expect(screen.getByRole('button', { name: '이 위치 완료' })).toBeDisabled();
+  });
+
+  /*
+   * 단말이 재접속하면 조회가 다시 돈다. 그때 적어 둔 것을 덮어쓰면 한 선반을 다 센 사람이
+   * 아무 말 없이 처음부터 다시 센다.
+   */
+  it('다시 읽어와도 적어 둔 수량이 남는다', async () => {
+    const user = userEvent.setup();
+    const queryClient = createTestQueryClient();
+    const otherDevice = { counted: false };
+    mount({ otherDevice }, queryClient);
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+
+    /* 다른 단말이 둘째 줄을 센다. 그 사실은 받아 오되 내가 적은 것은 그대로여야 한다. */
+    otherDevice.counted = true;
+    await queryClient.invalidateQueries({ queryKey: ['physical-count-lines'] });
+
+    expect(await screen.findByText('이전 값 37')).toBeTruthy();
+    expect((screen.getByLabelText(/ABC-123 · 8001 실물 수량/) as HTMLInputElement).value).toBe(
+      '118',
+    );
   });
 
   it('라인이 없는 위치는 그 사실을 말한다', async () => {
