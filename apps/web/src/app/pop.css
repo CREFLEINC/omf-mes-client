@@ -121,7 +121,6 @@
  */
 .pop-ui > .pop-header,
 .pop-ui > .pop-terminal-header,
-.pop-ui > .pop-lot-head,
 /*
  * 덮개(아래 「덮개」 절)의 머리줄도 같은 줄이다 — 화면을 덮고 서는 판이라 「지금 무엇을
  * 보고 있는가」가 뒷 화면과 같은 자리·같은 크기로 서야 한다. 겨냥을 한 단계 더 내려 잡지
@@ -146,8 +145,7 @@
  * 비슷해져 「무슨 화면인가」가 밀린다. `headline-lg` 급으로 올린다.
  */
 .pop-ui .pop-title,
-.pop-ui .pop-terminal-header__brand,
-.pop-ui .pop-lot-head > :first-child {
+.pop-ui .pop-terminal-header__brand {
   margin: 0;
   font: 700 26px/32px var(--font-sans);
   letter-spacing: -0.02em;
@@ -209,9 +207,9 @@
  *    아래 두 규칙(늘어남·넘침)은 이미 `dialog` 를 빼 두었는데 이 규칙만 빠뜨렸다.
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.pop-overlay):not(
-    dialog
-  ):not([class*='action']) {
+  > :not(.pop-header):not(.pop-terminal-header):not(.pop-overlay):not(dialog):not(
+    [class*='action']
+  ) {
   box-sizing: border-box;
   margin-inline: var(--pop-pad);
 }
@@ -230,9 +228,9 @@
  * 화면에서 액션 줄이 늘어난다 — 그때 이 선택자를 고친다.
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.banner-slot):not(
-    dialog
-  ):not([class*='action']):not(.pop-overlay):not(.pop-fixed) {
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed) {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -669,16 +667,16 @@
  * ⚠ `.pane` 은 제외한다 — 그쪽은 자기가 이미 스크롤 칸이다(위 구획 규칙).
  */
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.banner-slot):not(
-    dialog
-  ):not([class*='action']):not(.pop-overlay):not(.pop-fixed):not(.pane) {
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane) {
   overflow: hidden;
 }
 
 .pop-ui
-  > :not(.pop-header):not(.pop-terminal-header):not(.pop-lot-head):not(.banner-slot):not(
-    dialog
-  ):not([class*='action']):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
   > * {
   min-height: 0;
   overflow-y: auto;
@@ -767,19 +765,6 @@
   z-index: 1;
   /* 굴러 올라온 내용이 표제 뒤로 비치지 않게 구획 바닥색을 깐다. */
   background: var(--surface-container-low);
-}
-
-/*
- * 대상 LOT 의 [ 선택 ] — **고른 상태와 아닌 상태가 같은 크기로 선다.**
- *
- * 글자 수가 다르고(「선택」·「선택됨」) 채움과 테두리라, 폭이 내용대로 잡히면 고른 줄만 버튼이
- * 커진다(실측). 목록에서 줄마다 버튼 크기가 달라지면 눈이 그 차이를 «상태»가 아니라 «종류»로
- * 읽는다 — 무엇이 골라졌는지는 색이 이미 말한다.
- *
- * 열 폭이 고정(116px)이라 칸을 채우면 두 상태가 같아진다.
- */
-.pop-ui .pop-lot-select {
-  inline-size: 100%;
 }
 
 /*

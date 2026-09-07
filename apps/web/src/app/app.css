@@ -69,9 +69,7 @@
  * POP(1024×768 터치 키오스크) — 관리웹과 폼팩터가 다르다
  * .pop-lot-screen   자재LOT 화면 최상위 — 남은 높이를 그대로 쓴다
  *                  ⚠ 이 화면 전용 이름이다. `.pop-screen`(P-CO-01)과 규칙이 다르다
- * .pop-lot-head  화면명과 프린터·단말 상태를 한 줄에 두는 머리
  * .pop-lot-status 머리 오른쪽의 상태 묶음 — 이름과 표식 사이를 벌린다
- * .pop-printer-name  프린터 라벨 + 이름 한 덩어리
  * .pop-lot-panes POP 좌우 2단 — 접힘 기준점이 없다. 구획이 하나면 줄 전체를 쓴다
  * .pop-pane         2단의 각 칸 — 안에서 표가 스크롤한다
  * .pop-empty-note   표가 비었을 때의 안내 — 칸 가운데
@@ -5555,14 +5553,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-4);
 }
 
-/* 머리 — 화면명 왼쪽, 프린터·단말 상태 오른쪽. 인쇄가 안 될 때 가장 먼저 보는 자리다. */
-.pop-lot-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
 .alert-code {
   font-weight: 600;
 }
@@ -5702,20 +5692,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: flex;
   align-items: center;
   gap: var(--space-5);
-}
-
-/* 라벨과 이름은 한 덩어리다 — 사이를 좁게 둔다. */
-.pop-printer-name {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  margin: 0;
-}
-
-.pop-printer-name > .pop-printer-label {
-  font: var(--type-body-sm);
-  letter-spacing: var(--type-body-sm-tracking);
-  color: var(--on-surface-muted);
 }
 
 /* LOT 번호 자리의 라벨 — 값이 아직 없으므로 라벨만 또렷이 둔다. */
@@ -7237,28 +7213,10 @@ dl.filter-bar.approval-inbox-detail-facts {
   font: var(--type-label-lg);
 }
 
-/*
- * 상시 서는 안내(임시 목록 · 기록 전용). ⚠ 오류가 아니므로 붉게 칠하지 않는다 — 붉으면
- * 작업자가 「잘못됐다」로 읽고 멈춰 선다.
- */
-.pop-hold-note {
-  margin: var(--space-2) 0 0;
-  color: var(--on-surface-muted);
-  font: var(--type-body-md);
-}
-
 /* 라디오 묶음의 이름 — `RadioGroup` 이 `aria-labelledby` 로 이 문단을 가리킨다. */
 .pop-hold-field-label {
   margin: 0 0 var(--space-2);
   font: var(--type-label-lg);
-}
-
-/* 중단·재개 버튼은 나란히 두고 터치 폭을 채운다 — 장갑 낀 손이 겨냥하는 자리다. */
-.pop-hold-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
-  margin-top: var(--space-4);
 }
 
 /* 등록을 누른 뒤에만 서는 자리라 여백을 위쪽에만 준다. */
