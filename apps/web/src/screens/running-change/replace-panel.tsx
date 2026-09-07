@@ -190,6 +190,7 @@ export const ReplacePanel = ({
       </div>
 
       <TextField
+        size="xl"
         label={t.replace.qtyLabel}
         value={qty}
         inputMode="decimal"

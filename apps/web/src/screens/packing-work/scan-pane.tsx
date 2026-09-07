@@ -88,6 +88,7 @@ export const ScanPane = ({
       <form onSubmit={submitScan}>
         <div className="scan-row">
           <TextField
+            size="xl"
             ref={scanRef}
             label={t.scan.label}
             value={code}
@@ -115,6 +116,7 @@ export const ScanPane = ({
 
       <div className="pack-work-add-row">
         <TextField
+          size="xl"
           label={t.scan.quantityLabel}
           value={quantity}
           inputMode="decimal"

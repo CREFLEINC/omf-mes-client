@@ -88,6 +88,7 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
     <form onSubmit={submit}>
       <div className="scan-row">
         <TextField
+          size="xl"
           ref={inputRef}
           label={t.scan.label}
           value={value}

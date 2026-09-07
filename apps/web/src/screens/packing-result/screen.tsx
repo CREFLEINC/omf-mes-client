@@ -281,6 +281,7 @@ export const PackingResultScreen = () => {
                 {openUnit === null ? t.fields.handlingUnitPending : openUnit.handlingUnitNo}
               </p>
               <Select
+                size="xl"
                 aria-label={t.fields.handlingUnitType}
                 placeholder={t.fields.handlingUnitType}
                 value={handlingUnitTypeCode === '' ? null : handlingUnitTypeCode}
@@ -304,6 +305,7 @@ export const PackingResultScreen = () => {
 
             <div className="packing-parent">
               <Select
+                size="xl"
                 aria-label={t.fields.parentHandlingUnit}
                 placeholder={t.fields.parentNone}
                 value={parentId === NO_PARENT ? null : parentId}

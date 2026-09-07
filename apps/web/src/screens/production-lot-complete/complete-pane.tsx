@@ -158,6 +158,7 @@ export const CompletePane = ({
             {t.reason.label}
           </label>
           <Select
+            size="xl"
             id={reasonFieldId}
             options={reasons.map((reason) => ({ value: reason.value, label: reason.label }))}
             value={reasonCode}

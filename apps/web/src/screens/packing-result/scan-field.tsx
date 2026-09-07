@@ -64,6 +64,7 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
        */}
       <div className="scan-row">
         <TextField
+          size="xl"
           ref={inputRef}
           label={label}
           value={value}

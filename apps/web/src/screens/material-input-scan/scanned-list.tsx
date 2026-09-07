@@ -171,6 +171,7 @@ export const ScannedList = ({
                * 고쳤다고 믿고 넘어간다.
                */}
               <TextField
+                size="xl"
                 label={t.scanned.qtyLabel(material.lotNo)}
                 value={readQty(qtyDrafts, material.lotId)}
                 inputMode="decimal"
