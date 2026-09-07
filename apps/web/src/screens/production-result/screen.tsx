@@ -365,21 +365,6 @@ export const ProductionResultScreen = () => {
               }}
             />
 
-            <div className="pop-result-quick">
-              {QUICK_ADD_STEPS.map((step) => (
-                <Button
-                  key={step}
-                  variant="tonal"
-                  size="2xl"
-                  onClick={() => {
-                    changeDraft({ goodQty: addQuickStep(draft.goodQty, step) });
-                  }}
-                >
-                  {t.quantity.quickAdd(step)}
-                </Button>
-              ))}
-            </div>
-
             <TextField
               label={t.quantity.remarksLabel}
               size="xl"
@@ -426,6 +411,31 @@ export const ProductionResultScreen = () => {
                 changeDraft({ goodQty: value });
               }}
             />
+
+            {/*
+              * ⭐ **빠른 입력은 키패드의 짝이다 — 수량 칸의 짝이 아니다.**
+              *
+              * 설계 레이아웃 검증본이 이 둘을 우단 키패드 «바로 아래»에 둔다(`.col-r > .quick`).
+              * 스펙도 같은 편에 세운다 — §5-1 이 활성 조건을 키패드 키와 「동상」(수량 필드
+              * 포커스 시)으로 적고, §9-4 는 「숫자 키패드 동작 규약 — 포커스 연동·버퍼·`C`/`←`·
+              * **빠른 입력 버튼**」으로 아예 한 규약에 묶는다.
+              *
+              * 좌단 양품수량 아래에 두면 «치는 것»과 «더하는 것»이 갈려 손이 좌우로 오간다.
+              */}
+            <div className="pop-result-quick">
+              {QUICK_ADD_STEPS.map((step) => (
+                <Button
+                  key={step}
+                  variant="tonal"
+                  size="2xl"
+                  onClick={() => {
+                    changeDraft({ goodQty: addQuickStep(draft.goodQty, step) });
+                  }}
+                >
+                  {t.quantity.quickAdd(step)}
+                </Button>
+              ))}
+            </div>
           </Card.Body>
         </Card>
       </div>
