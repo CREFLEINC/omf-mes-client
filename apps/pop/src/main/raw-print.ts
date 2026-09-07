@@ -26,11 +26,17 @@
 
 import { psQuote } from './windows-print';
 
-/** 대기열을 다루는 스크립트의 머리. `LocalPrintServer`·`PrintQueue` 가 이 어셈블리에 있다. */
+/**
+ * 대기열을 다루는 스크립트의 머리. `LocalPrintServer`·`PrintQueue` 가 이 어셈블리에 있다.
+ *
+ * ⛔ **어셈블리 적재를 `try` 안에 둔다.** 밖에 두면 그 줄이 실패했을 때 아래 `catch` 가 받지
+ *    못해 종료 코드가 서지 않고, 부르는 쪽은 인쇄가 성공한 것으로 읽는다 — 아무 일도 일어나지
+ *    않았는데 성공으로 보이는 가장 나쁜 자리다(#831 완료 조건 ④).
+ */
 const PRINT_SERVER_HEAD = [
   '$ErrorActionPreference = ' + psQuote('Stop'),
-  'Add-Type -AssemblyName System.Printing',
   'try {',
+  '  Add-Type -AssemblyName System.Printing',
 ];
 
 /**

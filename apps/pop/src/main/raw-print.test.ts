@@ -146,3 +146,16 @@ describe('프린터 목록 스크립트', () => {
     expect(buildListPrintersScript()).toContain('exit 1');
   });
 });
+
+describe('실패를 삼키지 않는다', () => {
+  /*
+   * ⛔ 어셈블리 적재가 `try` 밖에 있으면 그 줄의 실패를 `catch` 가 못 받아 종료 코드가 서지
+   *    않는다 — 아무 일도 일어나지 않았는데 부르는 쪽은 성공으로 읽는다.
+   */
+  it.each([
+    ['라벨 인쇄', buildRawPrintScript({ dataPath: 'C:\\a.prn', jobName: 'J' })],
+    ['프린터 목록', buildListPrintersScript()],
+  ])('%s — 어셈블리 적재가 try 안에 있다', (_name, script) => {
+    expect(script.indexOf('try {')).toBeLessThan(script.indexOf('Add-Type'));
+  });
+});
