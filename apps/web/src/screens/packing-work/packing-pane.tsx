@@ -125,9 +125,15 @@ export const PackingPane = ({
                 label: unit.handlingUnitNo,
               })),
             ]}
+            /*
+             * ⚠ **고르기 전에는 비워 둔다**(사용자 지시 2026-09-07). 스펙 §3 도면은 이 자리를
+             * 「(없음)」으로 그리지만, 고른 적 없는 칸이 값을 고른 것처럼 서면 「없음을 골랐다」와
+             * 구분되지 않는다. 목록에는 「(없음)」을 그대로 두어 **고른 상위를 무를 길**은 남긴다.
+             */
             value={
-              draft.parentHandlingUnitId === null ? NO_PARENT : String(draft.parentHandlingUnitId)
+              draft.parentHandlingUnitId === null ? null : String(draft.parentHandlingUnitId)
             }
+            placeholder=""
             size="xl"
             aria-label={t.unit.parentLabel}
             disabled={locked || parentsFailed}

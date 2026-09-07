@@ -80,7 +80,12 @@ export const PackingWorkScreen = () => {
    */
   const labels = useCodeLabels(
     draft.lines.map((line) => line.itemId),
-    draft.lines.map((line) => line.uomId),
+    /*
+     * ⚠ **단위는 대상 목록 것도 함께 묻는다.** 스펙 §3 이 좌단 목록에도 「잔여 380 EA」로
+     * 단위를 그린다. 품목과 달리 단위는 **한 번의 조회로 전부** 받으므로(`GET /mdm/uoms`)
+     * 목록이 길어도 요청이 늘지 않는다 — 품목만 담은 줄로 좁히는 이유가 여기엔 없다.
+     */
+    [...draft.lines.map((line) => line.uomId), ...(lots.data ?? []).map((lot) => lot.uomId)],
   );
 
   const workerNo = entry.workerNo;
@@ -390,6 +395,7 @@ export const PackingWorkScreen = () => {
           <LotListPane
             lots={lots.data ?? []}
             selectedLotId={selectedLot?.lotId ?? null}
+            uomCodeOf={labels.uomCodeOf}
             onSelect={selectLot}
           />
         </Card>

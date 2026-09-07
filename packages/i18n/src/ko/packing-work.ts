@@ -68,7 +68,7 @@ export const packingWork = {
     itemColumn: '품목',
     qtyColumn: '수량',
     unknownCode: '—',
-    empty: '아직 담은 것이 없습니다.',
+    empty: '내용물이 비어 있습니다.',
     totalLabel: '합계',
     mixedTitle: '한 포장에 여러 LOT 이 섞였습니다',
   },

@@ -9,6 +9,8 @@ const t = messages.packingWork;
 export interface LotListPaneProps {
   lots: readonly Lot[];
   selectedLotId: number | null;
+  /** 단위 코드를 찾는 자리. 아직 안 왔으면 `null` — 지어낸 단위를 붙이지 않는다. */
+  uomCodeOf: (uomId: number) => string | null;
   onSelect: (lot: Lot) => void;
 }
 
@@ -24,7 +26,7 @@ export interface LotListPaneProps {
  * 조각뿐이고, 늘 떠 있는 두 문단이 «포장 대상» 목록을 화면 밖으로 밀고 있었다(실측 164px).
  * 열 이름이 이미 다른 값이라고 말한다.
  */
-export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps) => {
+export const LotListPane = ({ lots, selectedLotId, uomCodeOf, onSelect }: LotListPaneProps) => {
   /*
    * ⛔ **번호 열이 남은 폭을 다 가져가게 두지 않는다.** LOT 번호가 길어 표가 내용대로 폭을
    * 잡으면 행이 옆으로 늘어난다. 뒤 열의 너비를 못박아 남는 폭이 번호 열이 되게 한다.
@@ -61,7 +63,12 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
       header: t.lotList.initialQtyColumn,
       align: 'center',
       width: '96px',
-      render: (lot) => String(lot.initialQty),
+      /* 스펙 §3 이 이 자리를 「잔여 380 EA」로 그린다 — 수는 단위와 함께 읽힌다. */
+      render: (lot) => {
+        const uomCode = uomCodeOf(lot.uomId);
+
+        return uomCode === null ? String(lot.initialQty) : `${String(lot.initialQty)} ${uomCode}`;
+      },
     },
   ];
 
