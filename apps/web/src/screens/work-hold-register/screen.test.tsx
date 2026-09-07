@@ -50,7 +50,12 @@ describe('P-02-10 작업 중단 등록', () => {
   it('열린 세션의 번호·시작 시각을 세운다', async () => {
     renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
-    const panel = await screen.findByRole('region', { name: t.session.sectionLabel });
+    /*
+     * ⚠ **구획은 `region` 이 아니라 이름으로 찾는다.** 다른 POP 화면과 같은 상자
+     * (`Card bordered` + `pop-section`)로 세우면서 `<section>` 래퍼를 걷었다 — 카드는
+     * `div` 라 `role=region` 이 붙지 않는다. 포장 작업도 `getByLabelText` 로 찾는다.
+     */
+    const panel = await screen.findByLabelText(t.session.sectionLabel);
 
     expect(within(panel).getByText(t.session.sessionNo(2))).toBeInTheDocument();
     expect(within(panel).getByText('09-02 08:00')).toBeInTheDocument();
@@ -110,7 +115,7 @@ describe('P-02-10 작업 중단 등록', () => {
       ]),
     ]);
 
-    const history = await screen.findByRole('region', { name: t.history.sectionLabel });
+    const history = await screen.findByLabelText(t.history.sectionLabel);
     const rows = (await within(history).findAllByRole('row')).slice(1);
 
     expect(rows).toHaveLength(3);
@@ -135,7 +140,7 @@ describe('P-02-10 작업 중단 등록', () => {
   it('사유 7값을 스펙의 순서대로 세운다', async () => {
     renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
 
-    await screen.findByRole('region', { name: t.form.sectionLabel });
+    await screen.findByLabelText(t.form.sectionLabel);
 
     const labels = screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'));
 

@@ -25,7 +25,12 @@ export interface SessionPanelProps {
 export const SessionPanel = ({ session, isPending, now }: SessionPanelProps) => {
   if (isPending) {
     return (
-      <Card>
+      /*
+       * ⚠ **기다리는 카드에 구획 이름을 붙이지 않는다.** 붙이면 이름으로 구획을 찾는 검사가
+       * «내용이 오기 전» 이 카드에 먼저 걸려 빈 상자 안에서 값을 찾는다(실측). 기다리는
+       * 중이라는 것은 안쪽 `Skeleton` 이 이미 말한다.
+       */
+      <Card bordered className="pop-section">
         <Skeleton height="96px" aria-label={t.session.loading} />
       </Card>
     );
@@ -47,29 +52,27 @@ export const SessionPanel = ({ session, isPending, now }: SessionPanelProps) => 
   const elapsedLabel = minutes === null ? null : toDurationLabel(minutes);
 
   return (
-    <Card>
-      <section aria-label={t.session.sectionLabel}>
-        <h2 className="pane-title">{t.session.sectionLabel}</h2>
+    <Card bordered className="pop-section" aria-label={t.session.sectionLabel}>
+      <h2 className="pane-title">{t.session.sectionLabel}</h2>
 
-        <dl className="pop-hold-facts">
-          {/* 세션 번호는 이름 없는 값이라 한 칸으로 둔다 — 빈 `dd` 를 읽히지 않는다. */}
-          <dt className="pop-hold-facts-lead" />
-          <dd>{t.session.sessionNo(session.sessionNo)}</dd>
+      <dl className="pop-hold-facts">
+        {/* 세션 번호는 이름 없는 값이라 한 칸으로 둔다 — 빈 `dd` 를 읽히지 않는다. */}
+        <dt className="pop-hold-facts-lead" />
+        <dd>{t.session.sessionNo(session.sessionNo)}</dd>
 
-          <dt>{t.session.startedLabel}</dt>
-          <dd>{startedLabel}</dd>
+        <dt>{t.session.startedLabel}</dt>
+        <dd>{startedLabel}</dd>
 
-          <dt>{t.session.elapsedLabel}</dt>
-          <dd>{elapsedLabel ?? t.session.unknownValue}</dd>
+        <dt>{t.session.elapsedLabel}</dt>
+        <dd>{elapsedLabel ?? t.session.unknownValue}</dd>
 
-          {/*
-           * 상태 문자열은 계약이 셋으로 확정했다 — 사람 말로 옮겨 보이고, **모르는 값이면
-           * 코드를 그대로 보인다**(임의로 「진행」으로 접으면 화면이 없는 사실을 말한다).
-           */}
-          <dt>{t.session.statusLabel}</dt>
-          <dd>{sessionStatusName(session.statusCode)}</dd>
-        </dl>
-      </section>
+        {/*
+         * 상태 문자열은 계약이 셋으로 확정했다 — 사람 말로 옮겨 보이고, **모르는 값이면
+         * 코드를 그대로 보인다**(임의로 「진행」으로 접으면 화면이 없는 사실을 말한다).
+         */}
+        <dt>{t.session.statusLabel}</dt>
+        <dd>{sessionStatusName(session.statusCode)}</dd>
+      </dl>
     </Card>
   );
 };
