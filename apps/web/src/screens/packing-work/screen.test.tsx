@@ -272,6 +272,25 @@ describe('P-02-08 포장 작업', () => {
     expect(scanInput).toHaveFocus();
   });
 
+  /*
+   * ⭐ **가까운 것부터 말한다.** 담기는 대상만 고르면 열리므로 빠진 것이 둘일 수 있다 —
+   * 수량(버튼 옆)과 유형(건너편). 유형을 먼저 말하면 옆 칸을 비워 둔 채 건너편으로 보내고,
+   * 돌아와 다시 눌러야 수량을 안다(사용자 지적).
+   */
+  it('수량이 비어 있으면 유형보다 수량을 먼저 말한다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+
+    expect(screen.getByText(t.scan.quantityRequired)).toBeInTheDocument();
+    expect(screen.queryByText(t.unit.typeRequired)).not.toBeInTheDocument();
+  });
+
   it('유형을 고르기 전에 담기를 누르면 유형 칸이 사유를 말한다', async () => {
     const user = userEvent.setup();
 

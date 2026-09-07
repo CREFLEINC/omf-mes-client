@@ -185,14 +185,14 @@ export const PackingWorkScreen = () => {
   const add = (): void => {
     if (addBlockedReason !== null || selectedLot === null || workerNo === null) return;
 
-    /* 고칠 곳으로 데려간다 — 왼쪽에서 말하고 오른쪽에서 고치게 하지 않는다. */
-    if (addNeedsType) {
-      setTypeError(t.unit.typeRequired);
-      typeRef.current?.focus();
-
-      return;
-    }
-
+    /*
+     * ⭐ **가까운 것부터 말한다.** 담기는 대상만 고르면 열리므로 누른 사람에게 빠진 것이 둘일
+     * 수 있다 — 수량과 유형이다. 유형을 먼저 말하면 **바로 옆 수량 칸을 비워 둔 채 오른쪽으로
+     * 보내고**, 고쳐서 돌아와 다시 누르면 그제서야 수량을 말한다(두 번 눌러야 둘을 안다).
+     *
+     * 수량은 버튼 «옆»이라 인라인 한 줄이면 눈이 닿고, 유형은 «건너편»이라 데려가야 한다 —
+     * 그래서 순서도 거리 순이다.
+     */
     const verdict = judgeQuantity(quantity);
 
     if (!verdict.ok) {
@@ -210,6 +210,14 @@ export const PackingWorkScreen = () => {
     }
 
     setQuantityError(null);
+
+    /* 수량이 채워진 다음에야 건너편으로 데려간다. */
+    if (addNeedsType) {
+      setTypeError(t.unit.typeRequired);
+      typeRef.current?.focus();
+
+      return;
+    }
 
     const line = toPackingLine(selectedLot, verdict.qty);
 
