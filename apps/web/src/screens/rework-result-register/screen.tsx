@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   Card,
+  Dialog,
   Progress,
   Select,
   Table,
@@ -44,7 +45,8 @@ export const ReworkResultRegisterScreen = () => {
   const workOrders = useReworkWorkOrders();
   const defectCodeId = useId();
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [activeKey, setActiveKey] = useState<QuantityKey>('goodQty');
+  /** 지금 치고 있는 칸. **`null` 이면 키패드가 닫혀 있다.** */
+  const [activeKey, setActiveKey] = useState<QuantityKey | null>(null);
   const [drafts, setDrafts] = useState<QuantityDrafts>(EMPTY_QUANTITIES);
   const [queued, setQueued] = useState(false);
   const [queueError, setQueueError] = useState(false);
@@ -388,6 +390,11 @@ export const ReworkResultRegisterScreen = () => {
                          * ⛔ 이름을 못 받으면 아무것도 붙이지 않는다(숫자 식별자를 내지 않는다).
                          */
                         trailingIcon={uom.labelOf(selected.uomId) ?? undefined}
+                        /*
+                         * 칸을 누르면 키패드 창이 열린다 — 칸 자체는 읽기 전용이라 단말의
+                         * 운영체제 키보드가 뜨지 않는다(POP 은 그것을 쓸 수 없다).
+                         */
+                        onClick={() => setActiveKey(key)}
                         onFocus={() => setActiveKey(key)}
                       />
                     ))}
@@ -419,46 +426,7 @@ export const ReworkResultRegisterScreen = () => {
                   </p>
 
                 </div>
-                {/*
-                  * ⭐ **POP 이 공유하는 키패드를 쓴다**(`@omf-mes/ui`). DS `NumberPad` 는 키가
-                  *    작고(60px — 현장 터치 하한 72 에 못 미친다) «전체 잠금»만 있어 키마다
-                  *    조건을 걸 수 없다 — 칸이 비었는데도 [ C ]·[ ⌫ ]가 눌렸다(사용자 지적).
-                  *
-                  * ⚠ 마지막 줄은 [ C ] · [ 0 ] · [ ⌫ ] 그대로다 — 부품이 «지움»을 끝에 그리므로
-                  *   자리는 `pop.css` 가 되돌린다(전례 `P-05-01`·`P-02-04`).
-                  */}
-                <NumericKeypad
-                  className="rework-result-pad"
-                  label={t.quantities.keypadLabel}
-                  value={drafts[activeKey]}
-                  /*
-                   * ⭐ **소수점 키는 «단위»가 정한다.** 수량 컬럼이 `numeric(20,6)` 이라 소수를
-                   *    담을 수는 있지만, 담을 수 있다는 것과 그 단위에 소수가 뜻이 있다는 것은
-                   *    다르다 — `EA`(개)는 `decimalScale` 이 0 이라 1.5개가 없다(사용자 지적).
-                   *    계약이 단위마다 그 값을 갖고 있으므로 우리가 정하지 않는다.
-                   *
-                   * ⚠ 전례 `P-05-01` 도 같은 판단이다 — 타발수는 정수라 소수점을 세우지 않고,
-                   *   환산 기준 수량일 때만 세운다.
-                   */
-                  allowDecimal={uom.decimalScaleOf(selected.uomId) > 0}
-                  decimalLabel={t.quantities.decimalKey}
-                  /*
-                   * ⛔ **상한(`max`)을 넘기지 않는다.** 공용 키패드는 상한을 넘기는 입력을
-                   *    «없던 일»로 되돌리는데, 처분을 못 받았거나 이미 다 처리된 W/O 는
-                   *    `remaining` 이 0 이라 **모든 키가 조용히 죽는다**(실측 — 아무 키도
-                   *    들어가지 않았다. 사용자 지적).
-                   *
-                   * ⭐ **넘치는 것은 막지 않고 «말한다»** — 스펙 §6 이 「합계 > 처분 수량」에
-                   *    「처분 수량 160 을 넘을 수 없습니다」를 세우라고 적었고, 그 배너는 ④에
-                   *    이미 서 있다. 저장도 그때 잠긴다. 키를 죽이는 것은 그 조항이 아니다.
-                   */
-                  /* 스펙 §7 이 「큰 터치 타겟」을 지정한다 — 64와 72 사이에 단이 없어 `2xl` 이다. */
-                  keySize="2xl"
-                  backspaceLabel={t.quantities.backspace}
-                  backspaceGlyph="⌫"
-                  clearLabel={t.quantities.clearGlyph}
-                  onChange={(value) => setDrafts((current) => ({ ...current, [activeKey]: value }))}
-                />
+
                   </div>
 
                   {/*
@@ -557,6 +525,51 @@ export const ReworkResultRegisterScreen = () => {
               </Card>
         </div>
       )}
+
+      {/*
+       * ⭐ **키패드는 칸을 누를 때만 뜬다**(사용자 결정 2026-09-07).
+       *
+       * 스펙 §3 ②는 구획 전체 폭을 입력 칸이 쓰고 **280px 로 검산**돼 있다 — 키패드를 옆에
+       * 상시로 붙이면 그 예산이 성립하지 않는다(넷의 합이 본문 616 을 넘어 스크롤이 생겼다).
+       * §5-6·§7 은 키패드를 «요구»하지만 **자리는 정하지 않는다** — 도면이 비운 자리다.
+       *
+       * ⛔ 칸을 직접 치게 두지 않는다 — 단말의 운영체제 키보드가 화면을 덮고 닫기 어렵다
+       *    (결정 16 · 전례 `P-02-04` §3-4).
+       */}
+      <Dialog
+        open={activeKey !== null}
+        onClose={() => setActiveKey(null)}
+        title={activeKey === null ? '' : t.quantities.keypadTitle(t.quantities[activeKey])}
+        size="sm"
+        footer={
+          <Button size="2xl" onClick={() => setActiveKey(null)}>
+            {t.quantities.keypadDone}
+          </Button>
+        }
+      >
+        {activeKey !== null && (
+          <div className="rework-keypad-dialog">
+            <p className="rework-keypad-value">
+              {drafts[activeKey] === '' ? '0' : drafts[activeKey]}{' '}
+              <span>{uom.labelOf(selected?.uomId) ?? ''}</span>
+            </p>
+            <NumericKeypad
+              className="rework-result-pad"
+              label={t.quantities.keypadLabel}
+              value={drafts[activeKey]}
+              allowDecimal={uom.decimalScaleOf(selected?.uomId) > 0}
+              decimalLabel={t.quantities.decimalKey}
+              keySize="2xl"
+              backspaceLabel={t.quantities.backspace}
+              backspaceGlyph="⌫"
+              clearLabel={t.quantities.clearGlyph}
+              onChange={(value) =>
+                setDrafts((current) => ({ ...current, [activeKey]: value }))
+              }
+            />
+          </div>
+        )}
+      </Dialog>
 
       {/*
        * ⭐ **액션바는 화면 바닥에 붙는 띠다**(스펙 §3 — 헤더 64 + 본문 616 + 액션바 88 = 768).

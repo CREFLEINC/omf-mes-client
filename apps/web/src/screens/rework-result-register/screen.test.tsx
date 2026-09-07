@@ -180,6 +180,20 @@ const renderWithoutDisposition = () => {
   return { ...rendered, user: userEvent.setup() };
 };
 
+/**
+ * 수량 칸을 눌러 **키패드 창을 연다.**
+ *
+ * ⭐ 키패드는 상시가 아니다 — 스펙 §3 ②가 구획 전체 폭을 입력 칸에 주고 280px 로 검산했기
+ * 때문이다(사용자 결정 2026-09-07). 칸을 누르면 뜬다.
+ */
+const openKeypad = async (
+  user: ReturnType<typeof userEvent.setup>,
+  field: string = t.quantities.goodQty,
+) => {
+  await user.click(await screen.findByLabelText(field));
+  await screen.findByRole('button', { name: t.quantities.clearGlyph });
+};
+
 const pickWorkOrder = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByText(WORK_ORDER.workOrderNo));
 };
@@ -281,6 +295,7 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
+    await openKeypad(user);
     const clearKey = () => screen.getByRole('button', { name: t.quantities.clearGlyph });
     const backspaceKey = () => screen.getByRole('button', { name: t.quantities.backspace });
 
@@ -369,7 +384,9 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
       expect(resetButton()).toBeDisabled();
     });
 
+    await openKeypad(user);
     await user.click(screen.getByRole('button', { name: '7' }));
+    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
 
     await waitFor(() => {
       expect(resetButton()).toBeEnabled();
@@ -419,6 +436,37 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   });
 
   /*
+   * ⭐ **키패드는 칸을 누를 때만 뜬다**(사용자 결정 2026-09-07).
+   *
+   * 스펙 §3 ②는 구획 전체 폭을 입력 칸이 쓰고 **280px 로 검산**돼 있다 — 키패드를 옆에
+   * 상시로 붙이면 넷의 합이 본문 616 을 넘어 스크롤이 생긴다. §5-6·§7 은 키패드를 «요구»하되
+   * **자리는 정하지 않는다.**
+   */
+  it('키패드는 상시가 아니라 칸을 눌러야 뜬다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await screen.findByRole('heading', { name: t.quantities.title });
+
+    /* 고른 직후에는 키가 없다 — ②는 입력 칸이 폭을 다 쓴다. */
+    expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
+
+    await openKeypad(user);
+
+    expect(screen.getByRole('button', { name: '7' })).toBeInTheDocument();
+    /* 어느 칸을 치는지 창이 말한다 — 칸이 창에 가려지기 때문이다. */
+    expect(
+      screen.getByRole('heading', { name: t.quantities.keypadTitle(t.quantities.goodQty) }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
+    });
+  });
+
+  /*
    * ⛔ **키가 조용히 죽으면 안 된다.** 공용 키패드에 상한을 넘기면 그 부품은 넘치는 입력을
    *    «없던 일»로 되돌리는데, 처분을 못 받았거나 이미 다 처리된 W/O 는 남은 수량이 0 이라
    *    **모든 키가 먹통이 된다**(실측 — 아무 키도 들어가지 않았다. 사용자 지적).
@@ -432,7 +480,9 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
 
     await screen.findByRole('heading', { name: t.quantities.title });
 
+    await openKeypad(user);
     await user.click(screen.getByRole('button', { name: '7' }));
+    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
 
     expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
     /* 저장은 잠긴 채다 — 키가 사는 것과 저장이 열리는 것은 다른 축이다. */
@@ -448,7 +498,7 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
-    await screen.findByRole('heading', { name: t.quantities.title });
+    await openKeypad(user);
 
     expect(screen.queryByRole('button', { name: t.quantities.decimalKey })).not.toBeInTheDocument();
   });
@@ -457,7 +507,7 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     const { user } = renderWithFractionalUom();
     await pickWorkOrder(user);
 
-    await screen.findByRole('heading', { name: t.quantities.title });
+    await openKeypad(user);
 
     expect(
       await screen.findByRole('button', { name: t.quantities.decimalKey }),
@@ -525,7 +575,9 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     expect(section).toHaveTextContent(t.resultLot.keep);
     expect(section).toHaveTextContent(t.resultLot.good('0'));
 
+    await openKeypad(user);
     await user.click(await screen.findByRole('button', { name: '5' }));
+    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
 
     expect(section).toHaveTextContent(t.resultLot.good('5'));
   });
