@@ -43,14 +43,11 @@ import {
   sampleLabel,
 } from './label-command';
 import {
-  type SerialPortSettings,
-  type SerialPrinter,
-  buildSerialPrintScript,
-  readSerialPortSettings,
-  readSerialPortSettingsFile,
-  SerialPortUnavailableError,
-  serialPrintScriptArgs,
-} from './serial-print';
+  type RawPrinter,
+  RawPrinterUnavailableError,
+  buildRawPrintScript,
+  rawPrintScriptArgs,
+} from './raw-print';
 import { buildPrintScript, printScriptArgs } from './windows-print';
 import { resolveRendererPath } from './renderer-path';
 import {
@@ -269,46 +266,25 @@ async function runPrintScript(
   });
 }
 
-/** 포트 설정이 앉는 파일. 사람이 열어 고친다. */
-const PRINTER_SETTINGS_FILE = 'printer.json';
-
-/** 사람이 손으로 적은 설정·값 파일. BOM 처리는 `label-command` 가 안다. */
-const readJsonFile = (path: string): unknown =>
-  parseHandWrittenJson(readFileSync(path, 'utf8'));
+/** 사람이 손으로 적은 값 파일. BOM 처리는 `label-command` 가 안다. */
+const readJsonFile = (path: string): unknown => parseHandWrittenJson(readFileSync(path, 'utf8'));
 
 /**
- * 어느 포트로 보내는가. **설정 파일이 먼저고 환경값이 뒤다** — 설치본은 바로가기로 켜져
- * 환경값을 붙이기 어렵고, 개발 중에는 환경값이 빠르다.
+ * 대기열의 RAW 자리로 제어 명령을 보내는 길(#831).
  *
- * ⚠ **포트를 알 수 없으면 아무것도 돌려주지 않는다.** 아무 포트나 골라 보내면 프린터가 아닌
- *   장치에 명령이 들어간다 — 어느 포트인지는 단말이 알고 설정으로 준다.
+ * ⚠ **이름을 주지 않으면 OS 기본 프린터로 간다.** 어느 것이 기본인지는 윈도가 알고, 우리가
+ *   목록에서 알아내려다 있지도 않은 항목을 읽어 전부 막은 적이 있다(`silent-print.ts` 실측).
+ * ⚠ 개발 기계(mac 등)에는 PowerShell 도 이 대기열도 없다.
  */
-function resolveSerialPort(userData: string): SerialPortSettings | undefined {
-  const path = join(userData, PRINTER_SETTINGS_FILE);
-
-  if (existsSync(path)) {
-    const fromFile = readSerialPortSettingsFile(readJsonFile(path));
-
-    if (fromFile !== undefined) return fromFile;
-  }
-
-  return readSerialPortSettings(process.env);
-}
-
-/**
- * 직렬 포트로 제어 명령을 보내는 길(#831).
- *
- * ⚠ 개발 기계(mac 등)에는 PowerShell 도 이 포트도 없다.
- */
-function createSerialPrinter(port: SerialPortSettings | undefined): SerialPrinter | undefined {
-  if (port === undefined || process.platform !== 'win32') return undefined;
+function createRawPrinter(deviceName?: string): RawPrinter | undefined {
+  if (process.platform !== 'win32') return undefined;
 
   return {
-    print: async ({ dataPath }: { dataPath: string }): Promise<void> =>
+    print: async ({ dataPath, jobName }: { dataPath: string; jobName: string }): Promise<void> =>
       runPrintScript(
-        join(dataPath, '..', 'serial-print.ps1'),
-        buildSerialPrintScript({ dataPath, port, timeoutMs: DEFAULT_PRINT_TIMEOUT_MS }),
-        serialPrintScriptArgs,
+        join(dataPath, '..', 'raw-print.ps1'),
+        buildRawPrintScript({ dataPath, deviceName, jobName }),
+        rawPrintScriptArgs,
       ),
   };
 }
@@ -376,8 +352,7 @@ async function main(): Promise<void> {
   /** 인쇄 진단 기록이 앉는 자리. 사람이 파일로 읽는다. */
   const logDir = join(userData, 'logs');
   const stagingDir = join(app.getPath('temp'), 'omf-pop-print');
-  const serialPort = resolveSerialPort(userData);
-  const serialPrinter = createSerialPrinter(serialPort);
+  const rawPrinter = createRawPrinter(process.env.POP_PRINTER_NAME);
   const printer = new RenditionPrinter(
     fileWriter,
     createSilentPrinter({
@@ -408,7 +383,7 @@ async function main(): Promise<void> {
       },
       discard: async (path) => rmSync(path, { force: true, recursive: true }),
       printFile: filePrinter,
-      printSerial: serialPrinter,
+      printRaw: rawPrinter,
     }),
   );
 
@@ -548,7 +523,7 @@ async function main(): Promise<void> {
 
   await window.loadURL(DEV_SERVER_URL ?? RENDERER_ORIGIN);
 
-  registerPrinterDiagnostic(serialPort, serialPrinter, stagingDir);
+  registerPrinterDiagnostic(rawPrinter, stagingDir);
 }
 
 /**
@@ -565,19 +540,15 @@ async function main(): Promise<void> {
  * ⚠ **결과를 반드시 말한다.** 사유를 삼키면 「눌렀는데 아무 일도 안 난다」가 되고, 그때
  *   포트가 틀린 것인지 프린터가 죽은 것인지 가릴 방법이 단말에 남지 않는다.
  */
-function registerPrinterDiagnostic(
-  port: SerialPortSettings | undefined,
-  serialPrinter: SerialPrinter | undefined,
-  stagingDir: string,
-): void {
+function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDir: string): void {
   globalShortcut.register('CommandOrControl+Alt+P', () => {
     void (async () => {
-      if (port === undefined || serialPrinter === undefined) {
+      if (rawPrinter === undefined) {
         await dialog.showMessageBox({
           type: 'warning',
           title: '라벨 프린터 진단',
-          message: '보낼 포트가 지정돼 있지 않습니다',
-          detail: `설정 파일에 포트를 적어 주세요.\n\n${join(app.getPath('userData'), PRINTER_SETTINGS_FILE)}\n\n예: { "port": "COM3", "baud": 9600 }`,
+          message: '보낼 프린터를 찾을 수 없습니다',
+          detail: '이 단말에 등록된 프린터가 없거나, Windows 가 아닙니다.',
         });
 
         return;
@@ -588,7 +559,7 @@ function registerPrinterDiagnostic(
         type: 'question',
         title: '라벨 프린터 진단',
         message: '견본 라벨을 찍습니다',
-        detail: `포트 ${port.portName} · 속도 ${String(port.baudRate ?? 9600)}\n라벨을 그 규격으로 끼운 뒤 골라 주세요.`,
+        detail: `보낼 곳: ${process.env.POP_PRINTER_NAME ?? 'OS 기본 프린터'}\n라벨을 그 규격으로 끼운 뒤 골라 주세요.`,
         buttons: ['표준 LOT 라벨 80 × 30', '출하용 라벨 100 × 60', '취소'],
         cancelId: 2,
       });
@@ -604,7 +575,7 @@ function registerPrinterDiagnostic(
       writeFileSync(dataPath, sampleLabel(kind), 'ascii');
 
       try {
-        await serialPrinter.print({ dataPath });
+        await rawPrinter.print({ dataPath, jobName: `POP 진단 ${kind}` });
         await dialog.showMessageBox({
           type: 'info',
           title: '라벨 프린터 진단',
@@ -632,24 +603,10 @@ app.on('window-all-closed', () => app.quit());
  *   부르는 쪽이 기댈 수 있는 것은 종료 코드다(`%ERRORLEVEL%`). 사유는 함께 흘려보낸다.
  */
 async function runLabelCommand(command: LabelCommand): Promise<void> {
-  const settingsPath = join(app.getPath('userData'), PRINTER_SETTINGS_FILE);
-  /* ⭐ 명령에 실린 포트가 설정 파일보다 앞선다 — 실기에서 값을 바꿔 가며 찍는 자리다. */
-  const printer = createSerialPrinter(command.port ?? resolveSerialPort(app.getPath('userData')));
+  /* ⭐ 명령에 실린 이름이 먼저다. 없으면 환경값, 그것도 없으면 OS 기본 프린터로 간다. */
+  const printer = createRawPrinter(command.printerName ?? process.env.POP_PRINTER_NAME);
 
-  /*
-   * ⚠ **경로를 문장에 실어 준다.** 이 폴더 이름은 사람이 짐작할 수 있는 모양이 아니고
-   *   (앱 이름이 그대로 들어간다), 창 프로그램이라 화면에 남는 단서도 없다. 여기서 말하지
-   *   않으면 「포트가 없다」만 보고 어디를 고쳐야 하는지 알 수 없다.
-   */
-  if (printer === undefined) {
-    throw new LabelCommandError(
-      [
-        '보낼 포트가 지정돼 있지 않다.',
-        '명령에 붙이거나:  --port COM3 --baud 9600',
-        `설정 파일에 적어라:  ${settingsPath}`,
-      ].join('\n'),
-    );
-  }
+  if (printer === undefined) throw new RawPrinterUnavailableError();
 
   const tspl =
     command.source.kind === 'sample'
@@ -663,7 +620,7 @@ async function runLabelCommand(command: LabelCommand): Promise<void> {
   writeFileSync(dataPath, tspl, 'ascii');
 
   try {
-    await printer.print({ dataPath });
+    await printer.print({ dataPath, jobName: 'POP 라벨' });
   } finally {
     rmSync(jobDir, { force: true, recursive: true });
   }

@@ -33,53 +33,37 @@ describe('명령줄 읽기', () => {
   ])('견본 %s 을 읽는다', (given, expected) => {
     expect(parseLabelCommand(['app', '--print-sample', given])).toEqual({
       source: { kind: 'sample', label: expected },
-      port: undefined,
+      printerName: undefined,
     });
   });
 
   it('값 파일 경로를 읽는다', () => {
     expect(parseLabelCommand(['app', '--print-label', 'C:\\label.json'])).toEqual({
       source: { kind: 'file', path: 'C:\\label.json' },
-      port: undefined,
+      printerName: undefined,
     });
   });
 
-  /*
-   * ⭐ 실기에서 통신 속도를 바꿔 가며 여러 번 찍는다. 설정 파일을 고치는 것보다 명령에
-   *    붙이는 편이 빠르고, 폴더 이름을 사람이 맞출 필요도 없다.
-   */
-  it('포트 설정을 명령에서 읽는다', () => {
+  /* ⭐ 여러 대가 물린 단말에서만 이름으로 고른다. */
+  it('보낼 프린터 이름을 명령에서 읽는다', () => {
     expect(
-      parseLabelCommand([
-        'app',
-        '--print-sample',
-        'lot',
-        '--port',
-        'COM7',
-        '--baud',
-        '115200',
-        '--handshake',
-        'RequestToSend',
-      ])?.port,
-    ).toEqual({
-      portName: 'COM7',
-      baudRate: 115_200,
-      parity: undefined,
-      dataBits: undefined,
-      stopBits: undefined,
-      handshake: 'RequestToSend',
-    });
+      parseLabelCommand(['app', '--print-sample', 'lot', '--printer', 'TSC TTP-247'])?.printerName,
+    ).toBe('TSC TTP-247');
   });
 
-  // ⚠ 포트를 안 주면 설정 파일에 맡긴다 — 여기서 기본값을 지어내지 않는다.
-  it('포트를 주지 않으면 비운다', () => {
-    expect(parseLabelCommand(['app', '--print-sample', 'lot'])?.port).toBeUndefined();
+  // ⚠ 이름을 안 주면 OS 기본 프린터로 간다 — 여기서 이름을 지어내지 않는다.
+  it.each([
+    [['app', '--print-sample', 'lot']],
+    [['app', '--print-sample', 'lot', '--printer', '   ']],
+  ])('이름을 주지 않으면 비운다', (argv) => {
+    expect(parseLabelCommand(argv)?.printerName).toBeUndefined();
   });
 
-  /* ⛔ 값을 빠뜨린 깃발이 다음 깃발을 값으로 삼키면 엉뚱한 포트로 보낸다. */
+  /* ⛔ 값을 빠뜨린 깃발이 다음 깃발을 값으로 삼키면 엉뚱한 프린터로 보낸다. */
   it('값을 빠뜨린 깃발이 다음 깃발을 삼키지 않는다', () => {
-    expect(parseLabelCommand(['app', '--print-sample', 'lot', '--port', '--baud', '9600'])?.port)
-      .toBeUndefined();
+    expect(
+      parseLabelCommand(['app', '--print-sample', 'lot', '--printer', '--print-label'])?.printerName,
+    ).toBeUndefined();
   });
 
   /*

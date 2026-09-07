@@ -13,7 +13,7 @@
  *    그 결과를 드라이버가 받는다. 임시 파일은 작업이 끝나면 지운다.
  */
 import type { Rendition, RenditionFormat, SilentPrinter } from './print';
-import { type SerialPrinter, SerialPortUnavailableError } from './serial-print';
+import { type RawPrinter, RawPrinterUnavailableError } from './raw-print';
 
 /**
  * OS 가 알려 주는 프린터 한 대. Electron `PrinterInfo` 중 **이 모듈이 쓰는 것만** 적는다 —
@@ -133,12 +133,12 @@ export interface SilentPrintDeps {
    */
   printFile?: FilePrinter;
   /**
-   * 주면 **명령형 출력물을 직렬 포트로 보낸다**(`COMMAND_FORMATS`).
+   * 주면 **명령형 출력물을 대기열의 RAW 자리로 보낸다**(`COMMAND_FORMATS`).
    *
-   * ⭐ 드라이버를 아예 거치지 않는 길이다 — 그림을 드라이버에 넘기는 경로가 TTP-247 에서
+   * ⭐ 드라이버의 그리기를 거치지 않는 길이다 — 그림을 드라이버에 넘기는 경로가 TTP-247 에서
    *   백지를 냈고(#798 · 세 회차), 프린터가 직접 알아듣는 언어로 보내는 것이 그 답이다.
    */
-  printSerial?: SerialPrinter;
+  printRaw?: RawPrinter;
   stage: (bytes: Uint8Array, format: RenditionFormat) => Promise<StagedRendition>;
   discard: (path: string) => Promise<void>;
   /** 인쇄 한 걸음의 시간 상한. 시험이 짧게 줄여 쓴다. */
@@ -191,19 +191,19 @@ export function createSilentPrinter(deps: SilentPrintDeps): SilentPrinter {
       const staged = await deps.stage(rendition.bytes, rendition.format);
 
       /*
-       * ⭐ **명령형이 먼저다.** 프린터가 알아듣는 언어로 온 것은 드라이버에 넘길 것이 아니라
-       *    포트로 그대로 흘려보낸다. 그림 경로로 새면 드라이버가 명령을 그림으로 읽는다.
+       * ⭐ **명령형이 먼저다.** 프린터가 알아듣는 언어로 온 것은 드라이버가 그릴 것이 아니라
+       *    대기열의 RAW 자리로 그대로 보낸다. 그림 경로로 새면 드라이버가 명령을 그림으로 읽는다.
        */
       if (COMMAND_FORMATS.includes(rendition.format)) {
-        /* ⛔ 포트가 없다고 그림 경로로 떨어뜨리지 않는다 — 드라이버가 명령을 그림으로 읽는다. */
-        if (deps.printSerial === undefined) {
+        /* ⛔ 보낼 곳이 없다고 그림 경로로 떨어뜨리지 않는다 — 빈 라벨이 자재에 붙는다. */
+        if (deps.printRaw === undefined) {
           await deps.discard(staged.path).catch(() => undefined);
-          throw new SerialPortUnavailableError();
+          throw new RawPrinterUnavailableError();
         }
 
         try {
           await withLimit(
-            deps.printSerial.print({ dataPath: staged.filePath }),
+            deps.printRaw.print({ dataPath: staged.filePath, jobName: rendition.label }),
             limit,
             '프린터가 응답하지 않는다',
           );

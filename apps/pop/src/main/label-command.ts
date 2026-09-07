@@ -7,20 +7,19 @@
  *   「최종 좌표와 폰트 크기는 실물 출력 검증 후 보정한다」고 그 절차를 전제한다.
  *
  * ```
- * "OMF-MES POP.exe" --print-sample lot --port COM3 --baud 9600
+ * "OMF-MES POP.exe" --print-sample lot
+ * "OMF-MES POP.exe" --print-sample lot --printer "TSC TTP-247"
  * "OMF-MES POP.exe" --print-label C:\label.json
  * ```
  *
- * ⭐ **포트를 명령에 실을 수 있다.** 설정 파일이 앉는 폴더 이름은 앱 이름이 그대로 들어가
- *   사람이 맞추기 어렵고, 실기에서는 통신 속도를 바꿔 가며 여러 번 찍어 봐야 한다 — 그때마다
- *   파일을 고치는 것보다 명령에 붙이는 편이 빠르고 틀릴 자리가 없다. 주지 않으면 설정 파일을
- *   본다.
+ * ⭐ **프린터를 지정하지 않으면 OS 기본 프린터로 간다.** 어느 것이 기본인지는 윈도가 알고,
+ *   단말에 프린터가 하나뿐이면 사람이 이름을 적을 일이 없다. 여러 대가 물린 단말에서만
+ *   `--printer` 로 고른다.
  *
  * ⛔ **값이 빠진 라벨을 찍지 않는다.** 라벨은 나오는 순간 자재에 붙고, 빈 칸이 있는 라벨은
  *    그 자재의 이력을 끊는다 — 무엇이 없는지 말하고 아무것도 찍지 않는 편이 낫다.
  */
 
-import { type SerialPortSettings, readSerialPortSettings } from './serial-print';
 import {
   type LotLabelFields,
   SAMPLE_LOT,
@@ -42,10 +41,12 @@ export type LabelSource =
 export interface LabelCommand {
   source: LabelSource;
   /**
-   * 명령에 실린 포트 설정. **없으면 설정 파일에 맡긴다** — 여기서 기본값을 지어내지 않는다.
-   * 검사는 설정 파일과 같은 것을 쓴다(`readSerialPortSettings`).
+   * 보낼 프린터 이름. **없으면 OS 기본 프린터로 간다** — 여기서 이름을 지어내지 않는다.
+   *
+   * ⛔ 지정한 이름이 단말에 없으면 다른 프린터로 대신 보내지 않는다. 라벨은 나오는 순간
+   *    자재에 붙어 되돌릴 수 없다(`silent-print.ts` 의 같은 규칙).
    */
-  port?: SerialPortSettings;
+  printerName?: string;
 }
 
 export class LabelCommandError extends Error {
@@ -100,19 +101,9 @@ export function parseLabelCommand(argv: readonly string[]): LabelCommand | undef
 
   if (source === undefined) return undefined;
 
-  return { source, port: portFrom(at) };
-}
+  const printerName = at('--printer')?.trim();
 
-/** 명령에 실린 포트 설정. 설정 파일과 **같은 검사**를 태운다. */
-function portFrom(at: (flag: string) => string | undefined): SerialPortSettings | undefined {
-  return readSerialPortSettings({
-    POP_PRINTER_PORT: at('--port'),
-    POP_PRINTER_BAUD: at('--baud'),
-    POP_PRINTER_PARITY: at('--parity'),
-    POP_PRINTER_DATA_BITS: at('--data-bits'),
-    POP_PRINTER_STOP_BITS: at('--stop-bits'),
-    POP_PRINTER_HANDSHAKE: at('--handshake'),
-  });
+  return { source, printerName: printerName === '' ? undefined : printerName };
 }
 
 /**
