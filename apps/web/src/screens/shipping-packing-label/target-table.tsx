@@ -49,6 +49,7 @@ export const TargetTable = ({
     {
       key: 'target',
       header: t.columns.target,
+      align: 'center',
       render: (row) => row.displayName,
     },
     /*
