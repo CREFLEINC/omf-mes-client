@@ -23,13 +23,20 @@ export interface EventHistoryPanelProps {
  * «직계 자식»이다. 맨 `Card` 에 `<section>` 을 덧대면 테두리가 없고 표제 여백이 어긋난다.
  */
 export const EventHistoryPanel = ({ events, isPending }: EventHistoryPanelProps) => (
-  <Card bordered className="pop-section" aria-label={t.history.sectionLabel}>
+  <Card bordered className="pop-section pop-hold-history-card" aria-label={t.history.sectionLabel}>
     <h2 className="pane-title">{t.history.sectionLabel}</h2>
 
     {isPending ? (
       <Skeleton height="96px" aria-label={t.history.sectionLabel} />
     ) : events.length === 0 ? (
-      <EmptyState size="sm" title={t.history.empty} />
+      /*
+       * ⚠ **빈 안내는 남은 자리의 «한가운데» 선다**(사용자 지시 2026-09-07). 그냥 흘려 두면
+       * 제목 바로 아래에 붙어, 카드가 세로로 길어질수록 위쪽에 매달린 것처럼 보인다.
+       * 가로 가운데는 부품이 이미 하고, 세로는 이 자리가 남은 높이를 채워야 생긴다.
+       */
+      <div className="pop-hold-empty">
+        <EmptyState size="sm" title={t.history.empty} />
+      </div>
     ) : (
       <table className="pop-hold-history">
         <thead>

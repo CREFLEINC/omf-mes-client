@@ -3021,3 +3021,29 @@
   order: 1;
   flex: none;
 }
+
+/*
+ * 작업 중단(P-02-10) 이벤트 이력 — **빈 안내가 카드의 남은 자리 한가운데 선다.**
+ *
+ * 가로 가운데는 DS `EmptyState` 가 이미 한다. 세로는 «채울 자리»가 있어야 생기므로 카드가
+ * 남는 높이를 갖고(왼쪽 기둥에서 늘어나는 쪽은 이력이다 — 세션 요약은 내용만큼만 선다),
+ * 그 안에서 안내가 남은 만큼을 채워 가운데로 간다.
+ */
+.pop-ui .pop-hold-column {
+  align-content: stretch;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.pop-ui .pop-hold-history-card {
+  display: flex;
+  min-block-size: 0;
+  flex-direction: column;
+}
+
+.pop-ui .pop-hold-empty {
+  display: flex;
+  min-block-size: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+}
