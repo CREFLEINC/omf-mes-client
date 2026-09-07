@@ -304,6 +304,15 @@
   flex-direction: column;
   align-items: center;
   gap: 0;
+  /*
+   * ⛔ **`app.css` 의 `justify-content: center` 를 여기서 꺼야 한다.**
+   *
+   * 아래 `auto` 여백이 남는 높이를 먼저 가져가므로 «들어갈 때»는 둘의 결과가 같다. 갈리는
+   * 것은 **넘칠 때**다 — `auto` 는 0 이 되어 물러나는데, 그때 `center` 가 살아 있으면 음수
+   * 여백으로 내용을 위아래로 똑같이 밀어내 **위쪽 키에 닿을 수 없게** 만든다. 앞서 고친
+   * 결함이 그대로 되살아나는 자리다.
+   */
+  justify-content: flex-start;
 }
 
 /*
@@ -508,6 +517,25 @@
  */
 .pop-ui .pop-lot-select {
   inline-size: 100%;
+}
+
+/*
+ * 재출력 사유 고르는 칸 — **[ 재출력 ]과 같은 폭으로 선다**(설계 §3 도면의 넓은 상자).
+ *
+ * DS `Select` 는 뿌리가 `inline-block` 이라 «글자 길이만큼»만 선다 — 폭을 정하는 항목이 부품에
+ * 없다. 사유는 이 화면의 필수 입력이고 아래 버튼과 한 쌍으로 읽히므로 폭을 맞춘다.
+ */
+.pop-ui .pop-section > .field-cell,
+.pop-ui .pop-section > .field-cell > * {
+  inline-size: 100%;
+}
+
+/* 포장 번호 옆의 유형 — 같은 줄에 서되 번호보다 약하다(설계 §3 「HU-…0007  박스」). */
+.pop-ui .pop-reprint-hu-type {
+  margin-inline-start: var(--space-4);
+  font-size: var(--pop-label);
+  font-weight: 400;
+  color: var(--on-surface-variant);
 }
 
 /* 대상 목록과 재출력 사유를 가르는 선(설계 §3). 위는 「무엇을」, 아래는 「왜」다. */
@@ -1753,4 +1781,20 @@
  */
 .pop-ui [role='combobox'] {
   min-height: 56px;
+}
+
+/*
+ * 《완료 LOT》 목록의 줄 선택 — 번호 한 줄이 칸을 꽉 채우고 넘치면 말줄임으로 잘린다.
+ *
+ * `.pop-row-select` 는 두 줄(번호·거래처)을 쌓는 자재LOT 화면을 겨냥해 `align-items:
+ * flex-start` 로 서 있다. 그대로 두면 자식이 **내용 폭으로 오그라들어** `.pop-lot-no` 의
+ * 말줄임이 걸릴 자리가 없다 — 34자리 번호가 칸을 밀고 나간다(실측). 여기는 줄이 하나뿐이라
+ * 칸 폭을 그대로 쓰게 편다.
+ */
+.pop-ui .pop-lot-row {
+  align-items: stretch;
+}
+
+.pop-ui .pop-lot-row > .pop-lot-no {
+  min-inline-size: 0;
 }
