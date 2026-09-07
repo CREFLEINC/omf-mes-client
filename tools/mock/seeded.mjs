@@ -882,6 +882,72 @@ on(
   },
 );
 
+on('GET', '/logistics/goods-issues', (_p, query) =>
+  page(
+    keep(state.goodsIssues, [
+      byNum(query, 'sourceWarehouseId', 'sourceWarehouseId'),
+      byText(query, 'statusCode', 'statusCode'),
+      byText(query, 'issueTypeCode', 'issueTypeCode'),
+      contains(query, 'q', 'goodsIssueNo'),
+    ]),
+    query,
+  ),
+);
+
+on('GET', '/logistics/goods-issues/{goodsIssueId}/lines', (params, query) =>
+  page(
+    state.goodsIssueLines.filter((line) => line.goodsIssueId === Number(params.goodsIssueId)),
+    query,
+  ),
+);
+
+/*
+ * 수령 전표는 출고 전표 하나에 하나다. 화면이 재수령을 사전에 막으려면 이 축으로 물어야
+ * 하는데, 계약 예시로 답하면 늘 있는 것으로 보여 모든 전표가 막힌다.
+ */
+on('GET', '/logistics/shopfloor-receipts', (_p, query) =>
+  page(
+    keep(state.shopfloorReceipts, [
+      byNum(query, 'goodsIssueId', 'goodsIssueId'),
+      byNum(query, 'workOrderId', 'workOrderId'),
+      byText(query, 'statusCode', 'statusCode'),
+    ]),
+    query,
+  ),
+);
+
+on('POST', '/logistics/shopfloor-receipts', (_p, _q, body) => {
+  const goodsIssueId = body?.goodsIssueId;
+
+  /* 둘째 수령을 서버가 막는다. 화면이 통과시키더라도 정본은 여기다. */
+  if (state.shopfloorReceipts.some((each) => each.goodsIssueId === goodsIssueId)) {
+    return {
+      status: 400,
+      created: {
+        code: 'ALREADY_RECEIVED',
+        message: '이미 입고된 출고 전표입니다.',
+        errors: [],
+      },
+    };
+  }
+
+  const shopfloorReceiptId = newId();
+  const created = {
+    shopfloorReceiptId,
+    shopfloorReceiptNo: `SR-2026-${String(shopfloorReceiptId).slice(-6)}`,
+    goodsIssueId,
+    workOrderId: body?.workOrderId,
+    destinationLocationId: body?.destinationLocationId,
+    receivedAt: body?.receivedAt,
+    receivedBy: 1001,
+    statusCode: 'POSTED',
+  };
+
+  state.shopfloorReceipts.push(created);
+
+  return { status: 201, created };
+});
+
 on('POST', '/logistics/goods-issues', (_p, _q, body) => {
   const goodsIssueId = newId();
   const created = {

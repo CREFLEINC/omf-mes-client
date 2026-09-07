@@ -1,0 +1,50 @@
+.shopfloor-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 20px);
+  padding: var(--space-4, 16px);
+}
+
+.shopfloor-receipt__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+/* 스캔이 실패했을 때 손으로 넣는 자리. 칸과 단추가 밑선을 맞춘다. */
+.shopfloor-receipt__row {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-end;
+}
+
+.shopfloor-receipt__row > *:first-child {
+  flex: 1;
+}
+
+.shopfloor-receipt__line {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}
+
+.shopfloor-receipt__issued {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 모자란 것은 사유를 물어야 하는 자리라 눈에 들어와야 한다. */
+.shopfloor-receipt__short {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--semantic-warning);
+}
+
+.shopfloor-receipt__note {
+  margin: 0;
+}
+
+/* 핵심 단추는 장갑 낀 손으로 누른다. 폭을 꽉 채워 겨냥하지 않아도 닿게 한다. */
+.shopfloor-receipt__wide {
+  width: 100%;
+}

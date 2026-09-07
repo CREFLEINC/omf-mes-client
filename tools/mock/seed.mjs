@@ -734,6 +734,61 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /*
+   * 전기된 출고 전표 하나. 생산창고 입고(M-01-09)가 이것을 스캔해 받는다.
+   *
+   * 피킹 지시를 가리킨다 - 수령 전표가 필수로 요구하는 작업지시와 도착 위치가 출고 전표에
+   * 없어, 화면이 피킹 지시를 거쳐 자재출고요청까지 따라가야 나온다. 가리키는 곳이 씨앗에
+   * 없으면 그 사슬이 중간에 끊긴다.
+   */
+  const goodsIssues = [
+    {
+      goodsIssueId: 16401,
+      goodsIssueNo: 'GI-2026-000401',
+      issueTypeCode: 'PRODUCTION',
+      sourceDocumentTypeCode: 'PICKING_ORDER',
+      sourceDocumentId: 16001,
+      sourceWarehouseId: 1001,
+      destinationTypeCode: 'LOCATION',
+      destinationId: 3001,
+      issuedAt: iso(-2),
+      statusCode: 'POSTED',
+      reasonCode: null,
+      replacementExpected: false,
+      approvalRequestId: null,
+      erpMessageQueued: false,
+      remarks: null,
+    },
+  ];
+
+  const goodsIssueLines = [
+    {
+      goodsIssueLineId: 16501,
+      goodsIssueId: 16401,
+      lineNo: 1,
+      pickingLineId: 16201,
+      itemId: 2002,
+      lotId: 8001,
+      issueQty: 200,
+      uomId: 1001,
+      sourceLocationId: 3001,
+      inventoryTransactionLineId: null,
+    },
+    /* 둘째 라인이 있어야 「한 라인만 적고 확정」과 부족 수령을 함께 재 볼 수 있다. */
+    {
+      goodsIssueLineId: 16502,
+      goodsIssueId: 16401,
+      lineNo: 2,
+      pickingLineId: 16203,
+      itemId: 2001,
+      lotId: 8002,
+      issueQty: 80,
+      uomId: 1001,
+      sourceLocationId: 3001,
+      inventoryTransactionLineId: null,
+    },
+  ];
+
   const pickingLines = [
     {
       pickingLineId: 16201,
@@ -1307,7 +1362,10 @@ export const createSeed = (now = new Date()) => {
     pickingOrders,
     pickingLines,
     reservations,
-    goodsIssues: [],
+    goodsIssues,
+    goodsIssueLines,
+    /* 아직 아무것도 받지 않았다. 첫 수령이 서는지, 두 번째가 막히는지를 재는 자리다. */
+    shopfloorReceipts: [],
     shipmentRequests,
     shipmentRequestLines,
     shipments,
