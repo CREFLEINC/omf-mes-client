@@ -115,23 +115,33 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   });
 
   /*
-   * ⛔ **①·③·④는 내용만큼만 서야 한다.** POP 규격의 기본은 「머리줄·액션 줄이 아닌 것이 남는
-   *    높이를 나눠 갖는다」인데, 본문이 구획 넷인 이 화면에서는 그 규칙이 넷 모두에 걸려
-   *    **각자 1/4 을 받고 내용이 잘린다**(실측 — 대상 카드에 두 줄만 남았다).
+   * ⛔ **네 구획이 남는 높이를 나눠 가지면 안 된다.** POP 규격의 기본이 그렇게 배분하는데,
+   *    본문이 구획 넷인 이 화면에서는 각자 1/4 을 받아 **한 구획이 90px 로 눌리고 그 안에서
+   *    또 잘린다**(실측 — 대상 카드가 두 줄, 실적 입력이 라벨 줄만 남았다).
    *
-   *    남는 높이는 ②가 받아 그 안에서 스크롤한다 — 스펙 §3 의 ⚠ E-4 다.
+   *    네 구획을 **한 겹**으로 묶어 그 겹만 스크롤한다. 머리줄과 액션바는 제자리에 선다.
+   *    겹에 붙인 `pop-fixed` 는 「내용만큼만」이 아니라 «규격의 높이 배분에서 뺀다»는 뜻이다 —
+   *    그 규칙이 걸리면 `overflow: hidden` 이 스크롤을 죽인다.
    */
-  it('대상·결과 LOT·진행은 내용만큼만 서고 남는 높이는 실적 입력이 받는다', async () => {
+  it('네 구획이 한 겹에 묶여 그 겹만 스크롤한다', async () => {
     const { container, user } = renderScreen();
     await pickWorkOrder(user);
 
     await screen.findByRole('heading', { name: t.quantities.title });
 
-    expect(container.querySelector('.rework-target-card')).toHaveClass('pop-fixed');
-    expect(container.querySelector('.rework-result-lot')).toHaveClass('pop-fixed');
-    expect(container.querySelector('.rework-result-summary')).toHaveClass('pop-fixed');
-    /* ⛔ ②에는 붙이지 않는다 — 붙이면 남는 높이를 아무도 받지 않는다. */
-    expect(container.querySelector('.rework-result-input')).not.toHaveClass('pop-fixed');
+    const body = container.querySelector('.rework-result-body');
+
+    expect(body).toHaveClass('pop-fixed');
+    expect(body?.parentElement).toBe(container.querySelector('.pop-ui'));
+    /* 네 구획이 전부 그 겹 «안»에 있다 — 하나라도 밖에 나가면 규격이 그것만 늘린다. */
+    for (const selector of [
+      '.rework-target-card',
+      '.rework-result-input',
+      '.rework-result-lot',
+      '.rework-result-summary',
+    ]) {
+      expect(body?.querySelector(selector)).not.toBeNull();
+    }
   });
 
   /*

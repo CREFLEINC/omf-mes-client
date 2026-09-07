@@ -227,8 +227,21 @@ export const ReworkResultRegisterScreen = () => {
           )}
         </section>
       ) : (
-        <>
-              <Card bordered className="rework-target-card pop-fixed">
+        /*
+         * ⭐ **본문 한 겹이 스크롤한다.** 스펙 §3-1 의 세로 예산은 1024×768 에서 정확히
+         *    맞지만(① 120 + ② 280 + ③ 96 + ④ 88 = 584), 그보다 낮은 창에서는 넷을 다
+         *    세울 수 없다. 구획마다 스크롤시키면 한 구획이 90px 로 눌려 «그 안에서» 또
+         *    잘린다(실측 — 실적 입력이 라벨 줄만 남았다. 사용자 지적).
+         *
+         *    머리줄과 액션바는 제자리에 두고 **본문만** 한 겹으로 스크롤한다 — 대상 해상도
+         *    에서는 예산이 맞아 스크롤이 서지 않는다.
+         *
+         * ⚠ `pop-fixed` 는 「내용만큼만」이 아니라 **「POP 규격의 높이 배분에서 빠진다」**는
+         *    뜻으로 쓴다 — 그 규칙이 이 겹에 걸리면 `overflow: hidden` 이 스크롤을 죽인다.
+         *    실제 높이는 바로 아래 `pop.css` 규칙이 정한다.
+         */
+        <div className="pop-fixed rework-result-body">
+              <Card bordered className="rework-target-card">
                 <Card.Body>
                   <div className="rework-target-head">
                     <h2 className="pane-title">{t.target}</h2>
@@ -329,7 +342,7 @@ export const ReworkResultRegisterScreen = () => {
                * 고치는 것이라 LOT 이 갈리지 않는데(§5-4), 그 사실을 넣은 수량으로 즉시 보인다.
                * ⛔ 접지 않는다 — 수량을 넣으면 바로 바뀌어야 한다(§3 ⚠ E-4).
                */}
-              <section className="rework-result-lot pop-fixed" aria-label={t.resultLot.title}>
+              <section className="rework-result-lot" aria-label={t.resultLot.title}>
                 <h2 className="pane-title">{t.resultLot.title}</h2>
                 <p>
                   {t.resultLot.good(drafts.goodQty === '' ? '0' : drafts.goodQty)} ·{' '}
@@ -344,7 +357,7 @@ export const ReworkResultRegisterScreen = () => {
               </section>
 
               {/* ④ 진행 — 이 W/O 의 누계다. ②의 합계가 이번 입력이라면 이쪽은 지금까지의 몫이다. */}
-              <section className="rework-result-summary pop-fixed" aria-label={t.progress.title}>
+              <section className="rework-result-summary" aria-label={t.progress.title}>
                 <h2 className="pane-title">{t.progress.title}</h2>
                 <Progress
                   max={Math.max(progress.target, 1)}
@@ -375,7 +388,7 @@ export const ReworkResultRegisterScreen = () => {
                 {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
                 {rejected && <AlertBanner variant="error">{t.rejected}</AlertBanner>}
               </section>
-        </>
+        </div>
       )}
 
       {/*
