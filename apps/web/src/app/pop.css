@@ -393,6 +393,25 @@
 }
 
 /*
+ * ⚠ **배너 아이콘이 글자 첫 줄과 어긋난다** — 재작업 실적의 안내 배너가 `.banner-slot` 없이
+ *    구획 안에 바로 서 있어, 그 묶음을 겨냥한 정렬 규칙이 걸리지 않았다(사용자 지적 3회).
+ *    납품·포장 라벨 출력에서 같은 결함을 이미 겪었고 값도 그때 확인한 것을 그대로 쓴다.
+ *
+ * ⛔ **`[class*='alert']` 로 겨냥하지 않는다 — 걸리지 않는다.** DS 배너의 겉 이름에는
+ *    「alert」라는 글자가 없다. 공개 속성인 역할(`role`)로 잡는다.
+ */
+.pop-ui .rework-input-card [role='status'] > :first-child,
+.pop-ui .rework-input-card [role='alert'] > :first-child {
+  margin-block-start: 2px;
+}
+
+/* 첫 줄 높이를 24 로 맞춘다 — 그래야 20px 아이콘의 오프셋이 2px 하나로 성립한다. */
+.pop-ui .rework-input-card [role='status'] > :last-child > *,
+.pop-ui .rework-input-card [role='alert'] > :last-child > * {
+  line-height: 24px;
+}
+
+/*
  * 불량 코드 — **라벨과 잠긴 사유를 한 줄에 둔다**(사용자 결정 2026-09-07).
  *
  * 사유가 칸 «아래»에 있으면 「고르고 나서 읽는 말」이 되는데, 이 문장은 «고를 수 없다»는
