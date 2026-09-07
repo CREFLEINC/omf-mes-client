@@ -22,8 +22,9 @@ export interface DetailPaneProps {
  * ⭐ **이 화면은 저장하지 않는다.** 투입과 실적은 정상 경로 화면의 일이고, 여기서 하는 것은
  * 「어느 W/O 로 그 화면에 들어가는가」를 정하는 것뿐이다.
  *
- * ⛔ **고르지 않았을 때 버튼을 감추지 않는다** — 무엇을 하면 열리는지를 사유와 함께 보인다
- * (공유계약 G-2·G-3 의 원리: 「할 수 없다」는 감추지 않고 푸는 방법과 함께 적는다).
+ * ⛔ **고르지 않았을 때 버튼을 감추지 않는다** — 무엇이 있는지는 보이되 잠가 둔다. 푸는
+ * 방법은 이 구획이 위에서 이미 한 번 말한다(「왼쪽 목록에서 긴급 W/O 를 고르세요」) —
+ * 버튼 옆에 한 번 더 적으면 한쪽만 고쳐질 때 화면이 스스로와 어긋난다.
  */
 export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
   const t = messages.emergencyWorkOrderField.detail;
@@ -35,11 +36,16 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
         {workOrder === null ? (
           t.title
         ) : (
+          /*
+           * ⭐ **번호가 먼저, 표식이 뒤다** — 스펙 §3 도면이 이 자리를 `《WO-…E-002》 🚨 긴급`
+           *    으로 적었다. 목록에서는 «긴급인지»를 먼저 훑고, 상세에서는 «어느 지시인지»를
+           *    손에 든 지시서와 맞추므로 앞에 서는 것이 다르다(도면도 그렇게 갈라 그렸다).
+           */
           <>
+            {workOrder.workOrderNo}{' '}
             <Chip status="error" size="md">
               {messages.emergencyWorkOrderField.list.emergencyBadge}
-            </Chip>{' '}
-            {workOrder.workOrderNo}
+            </Chip>
           </>
         )}
       </h2>
@@ -63,23 +69,23 @@ export const DetailPane = ({ workOrder, uomLabel }: DetailPaneProps) => {
           <hr />
 
           {/*
-           * ⭐ 통제 우회는 «긴급이면 언제나»다 — 판정은 서버가 유형을 보고 하고 화면은
-           *    그 사실을 알린다. 배정 유무와는 다른 축이라 문장을 이어 붙인다.
+           * ⭐ 통제 우회는 «긴급이면 언제나»다 — 판정은 서버가 유형을 보고 하고 화면은 그
+           *    사실을 알린다. 배정 유무는 다른 축이라 **머리말에서만** 갈린다.
+           *
+           * ⛔ 자재 부족 안내를 여기 상주시키지 않는다 — §5-4 는 「**부족을 감지하면** 안내」
+           *    이고, 이 화면은 자재를 조회하지 않아 감지할 수 없다. 감지 없이 늘 띄우면
+           *    「지금 부족하다」로 읽힌다. §3 도면에도 없는 문장이다.
            */}
           <div className="banner-slot">
-            <AlertBanner variant="warning">
-              {hasNoAssignment(workOrder)
-                ? `${t.noAssignment} ${t.controlBypass}`
-                : t.controlBypass}
+            <AlertBanner
+              variant="warning"
+              title={hasNoAssignment(workOrder) ? t.bypassTitle : t.bypassTitleAssigned}
+            >
+              {t.bypassBody}
             </AlertBanner>
           </div>
-
-          {/* 자재가 부족할 때 갈 곳. 이 화면은 안내만 하고 요청을 만들지 않는다. */}
-          <p>{t.shortageGuide}</p>
         </>
       )}
-
-      <p>{workOrder === null ? handoff.locked : handoff.lead}</p>
 
       <div className="pop-handoff pop-ui-actions">
         {workOrder === null ? (

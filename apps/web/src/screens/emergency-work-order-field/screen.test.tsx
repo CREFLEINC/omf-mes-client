@@ -17,12 +17,13 @@ describe('긴급 W/O 현장 화면', () => {
     expect(screen.queryByText(t.list.loadError)).not.toBeInTheDocument();
   });
 
-  it('고르기 전에는 이동 버튼이 잠기고 푸는 방법을 말한다', async () => {
+  /* ⛔ 푸는 방법은 구획이 «한 번만» 말한다 — 버튼 옆에 되풀이하지 않는다(스펙 §3 도면). */
+  it('고르기 전에는 이동 버튼이 잠기고 푸는 방법을 한 번만 말한다', async () => {
     renderScreen();
 
     await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) });
 
-    expect(screen.getByText(t.handoff.locked)).toBeInTheDocument();
+    expect(screen.getAllByText(t.detail.notSelected)).toHaveLength(1);
     expect(screen.getByRole('button', { name: t.handoff.materialInput })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.handoff.productionResult })).toBeDisabled();
   });
@@ -51,9 +52,7 @@ describe('긴급 W/O 현장 화면', () => {
       await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
     );
 
-    expect(
-      screen.getByText(`${t.detail.noAssignment} ${t.detail.controlBypass}`),
-    ).toBeInTheDocument();
+    expect(screen.getByText(t.detail.bypassTitle)).toBeInTheDocument();
   });
 
   it('배정이 하나라도 있으면 「배정 없음」을 세우지 않는다', async () => {
@@ -65,10 +64,10 @@ describe('긴급 W/O 현장 화면', () => {
       await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
     );
 
-    expect(screen.getByText(t.detail.shortageGuide)).toBeInTheDocument();
-    expect(
-      screen.queryByText(`${t.detail.noAssignment} ${t.detail.controlBypass}`),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText(t.detail.bypassTitleAssigned)).toBeInTheDocument();
+    expect(screen.queryByText(t.detail.bypassTitle)).not.toBeInTheDocument();
+    /* ⛔ 자재 부족 안내는 상주하지 않는다 — 이 화면은 부족을 감지하지 못한다(§5-4). */
+    expect(screen.queryByText(/자재가 부족/u)).not.toBeInTheDocument();
   });
 
   it('단위 이름을 못 받으면 숫자 식별자를 보이지 않는다', async () => {
@@ -127,7 +126,7 @@ describe('통제 우회 표시', () => {
       await screen.findByRole('button', { name: selectName(EMERGENCY_WORK_ORDER.workOrderNo) }),
     );
 
-    expect(screen.getByText(t.detail.controlBypass)).toBeInTheDocument();
+    expect(screen.getByText(t.detail.bypassBody)).toBeInTheDocument();
   });
 });
 
