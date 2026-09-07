@@ -833,6 +833,29 @@ describe('DowntimeRegisterScreen — 덜 친 종료 시각', () => {
     expect(screen.getByText(t.errors.endedIncomplete)).toBeTruthy();
   });
 
+  it('오류가 떠도 구간 줄의 높이가 변하지 않는다 — 치는 동안 아래가 밀리면 안 된다', async () => {
+    renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
+
+    await flush();
+    /* 날짜만 치면 「덜 친 것」이 된다. */
+    fireEvent.change(screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`), {
+      target: { value: '2026-08-11' },
+    });
+
+    /*
+     * ⛔ 문구는 칸 «아래»가 아니라 줄 «안»에 선다 — 부품이 그리는 자리를 쓰면 줄이 60 에서
+     *    120 으로 뛴다(실측). 시험 환경에는 스타일이 없으므로 **어디에 붙었는지**로 잰다.
+     */
+    const message = screen.getByText(t.errors.startedIncomplete);
+    expect(message.closest('.downtime-time-row')).not.toBeNull();
+    expect(message.parentElement).toHaveClass('downtime-time-row');
+
+    /* 읽어 주는 연결은 유지한다 — 자리를 옮겼다고 관계까지 끊지 않는다. */
+    const dateField = screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`);
+    expect(dateField).toHaveAttribute('aria-invalid', 'true');
+    expect(dateField.getAttribute('aria-describedby')).toContain(message.id);
+  });
+
   it('시작을 아직 안 쳤어도 끝 칸의 문제를 바로 말한다', async () => {
     renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
 

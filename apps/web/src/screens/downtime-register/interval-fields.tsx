@@ -1,4 +1,5 @@
 import { Button, Card, Checkbox, TextField } from '@crefle/web-ui';
+import { useId } from 'react';
 import { messages } from '@omf-mes/i18n';
 
 import { toDurationLabel } from './formatting';
@@ -67,8 +68,24 @@ export interface IntervalFieldsProps {
  * 「진행 중」이라는 별도 값이 있는 것이 아니라 **끝이 비어 있는 것**이 그 뜻이다.
  */
 export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps) => {
+  const startedErrorId = useId();
+  const endedErrorId = useId();
   const moments = readInterval(draft);
   const minutes = intervalMinutes(moments);
+
+  /*
+   * ⭐ **오류 문구를 칸 «아래»에 두지 않는다**(사용자 지적 2026-09-07).
+   *
+   * DS `TextField` 는 `error` 를 받으면 칸 밑에 한 줄을 «더» 그린다 — 줄 높이가 60 에서 120 으로
+   * 뛰고 구간 구획이 188 → 248 로 부풀어, 글자를 치는 동안 아래 것들이 밀려 내려간다(실측).
+   * 터치 화면에서는 누르려던 자리가 손가락 아래에서 움직인다.
+   *
+   * 그래서 **줄 오른쪽 빈자리**에 세운다 — `[지금]` 뒤가 비어 있어 높이가 늘지 않는다. 칸에는
+   * `error` 로 붉은 테두리(`aria-invalid`)만 남기고, 읽어 주는 연결은 `aria-describedby` 가
+   * 우리 문장을 가리켜 유지한다.
+   */
+  const startedError = describeStartedError(errors.startedAt);
+  const endedError = describeEndedError(errors.endedAt);
 
   /*
    * 길이 자리는 세 갈래다.
@@ -113,9 +130,12 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           <TextField
             type="date"
             size="xl"
+            containerClassName="downtime-time-field"
             aria-label={`${t.interval.startedAt} ${t.interval.date}`}
+            aria-describedby={startedError === undefined ? undefined : startedErrorId}
             value={draft.startedAt.date}
-            error={describeStartedError(errors.startedAt)}
+            /* 칸에는 붉은 테두리만 남긴다 — 문장은 줄 오른쪽에 한 번만 선다. */
+            error={startedError === undefined ? undefined : ' '}
             onChange={(event) => {
               setStarted('date', event.target.value);
             }}
@@ -123,10 +143,12 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           <TextField
             type="time"
             size="xl"
+            containerClassName="downtime-time-field"
             aria-label={`${t.interval.startedAt} ${t.interval.time}`}
+            aria-describedby={startedError === undefined ? undefined : startedErrorId}
             value={draft.startedAt.time}
-            /* 오류 글은 한 번만 낸다 — 같은 문장을 두 칸에 쓰면 읽는 사람이 두 문제로 센다. */
-            error={errors.startedAt === null ? undefined : ' '}
+            /* 짝 제약이라 두 칸에 함께 붙는다(스펙 §6-1) — 다만 문장은 한 번만 낸다. */
+            error={startedError === undefined ? undefined : ' '}
             onChange={(event) => {
               setStarted('time', event.target.value);
             }}
@@ -146,6 +168,12 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           >
             {t.interval.now}
           </Button>
+
+          {startedError !== undefined && (
+            <p id={startedErrorId} className="downtime-field-error downtime-time-error">
+              {startedError}
+            </p>
+          )}
         </div>
 
         <div className="downtime-time-row">
@@ -153,10 +181,12 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           <TextField
             type="date"
             size="xl"
+            containerClassName="downtime-time-field"
             aria-label={`${t.interval.endedAt} ${t.interval.date}`}
+            aria-describedby={endedError === undefined ? undefined : endedErrorId}
             value={draft.endedAt.date}
             disabled={draft.stillOngoing}
-            error={describeEndedError(errors.endedAt)}
+            error={endedError === undefined ? undefined : ' '}
             onChange={(event) => {
               setEnded('date', event.target.value);
             }}
@@ -164,10 +194,12 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           <TextField
             type="time"
             size="xl"
+            containerClassName="downtime-time-field"
             aria-label={`${t.interval.endedAt} ${t.interval.time}`}
+            aria-describedby={endedError === undefined ? undefined : endedErrorId}
             value={draft.endedAt.time}
             disabled={draft.stillOngoing}
-            error={errors.endedAt === null ? undefined : ' '}
+            error={endedError === undefined ? undefined : ' '}
             onChange={(event) => {
               setEnded('time', event.target.value);
             }}
@@ -193,6 +225,12 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           >
             {t.interval.stillOngoing}
           </Checkbox>
+
+          {endedError !== undefined && (
+            <p id={endedErrorId} className="downtime-field-error downtime-time-error">
+              {endedError}
+            </p>
+          )}
 
           {/*
            * 길이는 **입력 확인용**이다 — 저장되는 값은 서버가 낸다. 진행 중이면 산출 불가라고
