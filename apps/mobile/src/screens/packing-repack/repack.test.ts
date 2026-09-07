@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { HandlingUnitContent, ScannedHandlingUnit } from '../../patterns/handling-units';
 import {
+  allocatedSources,
   canConfirm,
   mergedPairs,
   pooledContents,
@@ -10,6 +11,8 @@ import {
   sumOf,
   toCreateDraft,
   toReplaceDraft,
+  unverifiedSources,
+  type AllocationCheck,
   type DraftLine,
 } from './repack';
 
@@ -131,32 +134,120 @@ describe('남는 것', () => {
   });
 });
 
+/** 배분 판정이 끝나 막을 것이 없는 상태. 이 묶음이 재려는 것은 배분이 아니다. */
+const cleared = (sources: ScannedHandlingUnit[]): Map<number, AllocationCheck> =>
+  new Map(sources.map((source) => [source.handlingUnit.handlingUnitId, 'clear' as const]));
+
 describe('확정 가능 여부', () => {
   const sources = [unit(10, [content({ qty: 180 })])];
+  const checks = cleared(sources);
 
   it('사번이 없으면 확정할 수 없다', () => {
-    expect(canConfirm(sources, [line(1000, '80')], false)).toBe(false);
+    expect(canConfirm(sources, [line(1000, '80')], false, checks)).toBe(false);
   });
 
   it('원 포장이 없으면 확정할 수 없다', () => {
-    expect(canConfirm([], [line(1000, '80')], true)).toBe(false);
+    expect(canConfirm([], [line(1000, '80')], true, new Map())).toBe(false);
   });
 
   /* 아무것도 옮기지 않으면 바뀌는 것이 없다. 빈 재구성을 기록으로 남기지 않는다. */
   it('아무것도 옮기지 않으면 확정할 수 없다', () => {
-    expect(canConfirm(sources, [line(1000, '0')], true)).toBe(false);
+    expect(canConfirm(sources, [line(1000, '0')], true, checks)).toBe(false);
   });
 
   it('원 포장보다 많이 담으면 확정할 수 없다', () => {
-    expect(canConfirm(sources, [line(1000, '181')], true)).toBe(false);
+    expect(canConfirm(sources, [line(1000, '181')], true, checks)).toBe(false);
   });
 
   it('원 포장에 없는 LOT 은 확정할 수 없다', () => {
-    expect(canConfirm(sources, [line(9999, '10')], true)).toBe(false);
+    expect(canConfirm(sources, [line(9999, '10')], true, checks)).toBe(false);
   });
 
   it('허용치 안이면 확정한다', () => {
-    expect(canConfirm(sources, [line(1000, '80')], true)).toBe(true);
+    expect(canConfirm(sources, [line(1000, '80')], true, checks)).toBe(true);
+  });
+});
+
+describe('출하에 배분된 원 포장', () => {
+  const first = unit(10, [content({ qty: 180 })], 'CTN-0010');
+  const second = unit(
+    11,
+    [content({ handlingUnitContentId: 2, lotId: 1001, qty: 60 })],
+    'CTN-0011',
+  );
+  const sources = [first, second];
+  const lines = [line(1000, '80')];
+
+  const checks = (...pairs: [number, AllocationCheck][]): Map<number, AllocationCheck> =>
+    new Map(pairs);
+
+  it('배분된 포장이 있으면 확정할 수 없다', () => {
+    expect(canConfirm(sources, lines, true, checks([10, 'allocated'], [11, 'clear']))).toBe(false);
+  });
+
+  /* 합병은 원 포장이 여럿이다. 뒤쪽만 배분돼 있어도 그 물건이 사라지는 것은 같다. */
+  it('합병에서 둘째 포장만 배분돼 있어도 확정할 수 없다', () => {
+    expect(canConfirm(sources, lines, true, checks([10, 'clear'], [11, 'allocated']))).toBe(false);
+  });
+
+  it('배분된 포장을 번호로 짚는다', () => {
+    const blocked = allocatedSources(sources, checks([10, 'clear'], [11, 'allocated']));
+
+    expect(blocked.map((each) => each.handlingUnit.handlingUnitNo)).toEqual(['CTN-0011']);
+  });
+
+  it('배분되지 않은 포장은 그대로 진행한다', () => {
+    expect(canConfirm(sources, lines, true, checks([10, 'clear'], [11, 'clear']))).toBe(true);
+  });
+});
+
+/*
+ * 공유계약 C-6 이 판정용 값의 캐시를 막아 오프라인에서는 이 판정을 할 수 없다. 막으면
+ * 오프라인 재구성 자체가 죽고, 조용히 넘기면 배분된 포장이 재구성된다.
+ */
+describe('배분을 확인하지 못한 원 포장', () => {
+  const sources = [unit(10, [content({ qty: 180 })], 'CTN-0010')];
+  const lines = [line(1000, '80')];
+
+  it('확인하지 못해도 확정을 막지 않는다', () => {
+    expect(canConfirm(sources, lines, true, new Map([[10, 'unknown' as const]]))).toBe(true);
+  });
+
+  it('확인하지 못한 포장을 번호로 짚는다', () => {
+    const unverified = unverifiedSources(sources, new Map([[10, 'unknown' as const]]));
+
+    expect(unverified.map((each) => each.handlingUnit.handlingUnitNo)).toEqual(['CTN-0010']);
+  });
+
+  /* 판정이 아예 오지 않은 것과 배분되지 않은 것이 같아 보이면 안 된다. */
+  it('판정이 없는 포장은 확인하지 못한 것으로 본다', () => {
+    expect(unverifiedSources(sources, new Map())).toHaveLength(1);
+  });
+
+  it('확인된 포장은 짚지 않는다', () => {
+    expect(unverifiedSources(sources, new Map([[10, 'clear' as const]]))).toHaveLength(0);
+  });
+});
+
+/*
+ * 묻는 중을 확인 못 함으로 세면 스캔할 때마다 경고가 깜빡인다. 매번 뜨는 경고는 읽히지 않아
+ * 정말 확인하지 못한 회차가 함께 묻힌다.
+ */
+describe('배분을 묻는 중인 원 포장', () => {
+  const sources = [unit(10, [content({ qty: 180 })], 'CTN-0010')];
+  const lines = [line(1000, '80')];
+
+  it('묻는 중에는 확인하지 못했다고 짚지 않는다', () => {
+    expect(unverifiedSources(sources, new Map([[10, 'checking' as const]]))).toHaveLength(0);
+  });
+
+  it('묻는 중에는 배분됐다고도 하지 않는다', () => {
+    expect(allocatedSources(sources, new Map([[10, 'checking' as const]]))).toHaveLength(0);
+  });
+
+  /* 아직 모르는 것을 통과시키면 사전 판정이 없는 것과 같다. */
+  it('묻는 중에는 확정할 수 없다', () => {
+    expect(canConfirm(sources, lines, true, new Map([[10, 'checking' as const]]))).toBe(false);
   });
 });
 
