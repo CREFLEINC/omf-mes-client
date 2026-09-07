@@ -46,6 +46,8 @@ interface Options {
   seen?: Request[];
   /** 출고 라인 수량. */
   issueQty?: number;
+  /** 이미 받았는지 묻는 조회가 닿지 않는다 - 오프라인에서 이 판정을 할 수 없는 자리다. */
+  receivedCheckUnreachable?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -132,6 +134,13 @@ const routes = (options: Options = {}): StubRoute[] => [
         }
 
         return jsonResponse({ shopfloorReceiptId: 900 }, { status: 201 });
+      }
+
+      if (options.receivedCheckUnreachable === true) {
+        return jsonResponse(
+          { code: 'SERVICE_UNAVAILABLE', message: '연결할 수 없습니다.', errors: [] },
+          { status: 503 },
+        );
       }
 
       return jsonResponse({
@@ -285,6 +294,40 @@ describe('생산창고 입고 화면', () => {
 
     expect(await screen.findByText('이미 입고된 출고 전표입니다')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '입고 확정' })).toBeNull();
+  });
+
+  /*
+   * 막지 않는다 - 오프라인 입고 자체가 이 화면이 하는 일이다. 다만 조용히 넘기면 작업자는
+   * 확인된 줄 알고 이미 받은 전표를 또 받는다.
+   */
+  it('이미 받았는지 확인하지 못하면 그 사실을 밝히되 막지는 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ receivedCheckUnreachable: true });
+    await screen.findByLabelText('출고 QR 스캔');
+
+    scan(ISSUE_NO);
+
+    expect(await screen.findByText('이미 받은 전표인지 확인하지 못했습니다')).toBeTruthy();
+
+    await user.type(await receivedField(), '500');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '입고 확정' })).not.toBeDisabled();
+    });
+  });
+
+  it('확인이 끝나면 확인하지 못했다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('출고 QR 스캔');
+
+    scan(ISSUE_NO);
+    await user.type(await receivedField(), '500');
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '입고 확정' })).not.toBeDisabled();
+    });
+    expect(screen.queryByText('이미 받은 전표인지 확인하지 못했습니다')).toBeNull();
   });
 
   it('확정하면 작업지시와 도착 위치를 함께 보낸다', async () => {

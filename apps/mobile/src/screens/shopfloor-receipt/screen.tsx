@@ -248,6 +248,15 @@ export const ShopfloorReceiptScreen = () => {
             {t.queued.description}
           </AlertBanner>
         ) : null}
+        {/*
+          막지 않는다 - 오프라인 입고 자체가 이 화면이 하는 일이다. 다만 확인하지 못했다는 것을
+          말하지 않으면 작업자는 확인된 줄 알고 이미 받은 전표를 또 받는다.
+        */}
+        {received === 'unknown' && issue !== null ? (
+          <AlertBanner variant="warning" title={t.unverified.title}>
+            {t.unverified.description}
+          </AlertBanner>
+        ) : null}
       </section>
 
       {issue === null || received === 'received' ? null : (
