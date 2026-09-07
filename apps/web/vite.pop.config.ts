@@ -1,5 +1,7 @@
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
+
+import { apiProxy } from './vite.api-proxy';
 
 /**
  * 개발 서버가 **POP 진입 문서를 돌려주게** 한다.
@@ -14,7 +16,8 @@ const popDevEntry = (): Plugin => ({
   name: 'pop-dev-entry',
   configureServer(server) {
     server.middlewares.use((req, _res, next) => {
-      if (req.headers.accept?.includes('text/html')) {
+      /* ⚠ 백엔드 프록시 경로는 건드리지 않는다 — 바꾸면 API 요청이 화면 문서로 답한다. */
+      if (req.url?.startsWith('/api') !== true && req.headers.accept?.includes('text/html')) {
         req.url = '/pop.html';
       }
       next();
@@ -44,10 +47,11 @@ const popDevEntry = (): Plugin => ({
  * (실측), 고정하면 그때 서버가 아예 뜨지 않는다. 밀리면 vite 가 다음 포트로 옮겨 가며
  * 터미널에 실제 주소를 찍는다 — **그 주소를 쓴다.**
  */
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), popDevEntry()],
   server: {
     port: 5174,
+    proxy: apiProxy(loadEnv(mode, process.cwd(), 'VITE_').VITE_API_PROXY_TARGET),
   },
   build: {
     outDir: 'dist-pop',
@@ -56,4 +60,4 @@ export default defineConfig({
       input: 'pop.html',
     },
   },
-});
+}));

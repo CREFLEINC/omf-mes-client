@@ -69,6 +69,30 @@ pnpm --filter @omf-mes/mobile dev   # 모바일 셸 개발 서버 (브라우저)
 관리웹의 기본 기준 URL은 목 서버 주소(`http://127.0.0.1:4010`)이며, 다른 서버에 붙이려면
 `VITE_API_BASE_URL`로 덮는다(예: `VITE_API_BASE_URL=http://127.0.0.1:4011 pnpm --filter @omf-mes/web dev`).
 
+### 개발 백엔드에 붙여 실행
+
+개발 백엔드는 CORS 응답 헤더를 내리지 않는다 — 브라우저가 직접 부르면 요청이 서버에 닿기
+전에 막힌다. 그래서 **dev 서버가 `/api` 요청을 대신 넘긴다**(같은 출처가 되어 preflight가
+없다). `apps/web/.env.example`을 `apps/web/.env.local`로 복사하고 두 값을 채운다.
+
+```bash
+cp apps/web/.env.example apps/web/.env.local   # 주소를 채운다 — .local 은 커밋되지 않는다
+pnpm --filter @omf-mes/web dev                 # 관리웹
+pnpm --filter @omf-mes/web dev:pop             # POP
+```
+
+붙었는지 확인 — dev 서버 주소로 부른 응답이 백엔드에서 와야 한다.
+
+```bash
+curl -s http://localhost:5173/api/health       # POP 은 5174
+```
+
+⚠ **프록시는 개발 서버 전용이다.** 빌드 산출물에는 이 경로가 없으므로, 설치본·배포본은
+백엔드가 CORS를 열어 주거나 화면과 같은 출처로 서비스돼야 한다.
+
+⚠ **계약 경로는 로그인을 요구한다.** 인증 배선은 세션 운반 수단(쿠키/Bearer)이 확정된
+뒤에 붙인다 — 그 전까지 조회 화면은 `401`로 답한다.
+
 ## 작업 규칙
 
 `main` 직접 push는 차단돼 있다 — 팀 전용 워크트리와 브랜치에서 작업하고 PR로 병합한다. 업무 규칙과 절차의 정본은 `docs/client-dev-workflow/multi-agent-team-workflow-v3.md`다. 루트의 `AGENTS.md`와 `CLAUDE.md`는 부트스트랩으로 만드는 개인별 로컬 파일이며 커밋하지 않는다.
