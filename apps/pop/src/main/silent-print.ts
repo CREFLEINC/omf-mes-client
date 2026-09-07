@@ -13,6 +13,7 @@
  *    그 결과를 드라이버가 받는다. 임시 파일은 작업이 끝나면 지운다.
  */
 import type { Rendition, RenditionFormat, SilentPrinter } from './print';
+import { type RawPrinter, RawPrinterUnavailableError } from './raw-print';
 
 /**
  * OS 가 알려 주는 프린터 한 대. Electron `PrinterInfo` 중 **이 모듈이 쓰는 것만** 적는다 —
@@ -96,6 +97,19 @@ export interface FilePrinter {
  */
 const IMAGE_FORMATS: readonly RenditionFormat[] = ['png'];
 
+/**
+ * 프린터가 직접 알아듣는 **제어 명령**으로 오는 형식. 이것만 대기열의 RAW 자리로 간다(#831).
+ *
+ * ⛔ **비어 있는 것이 지금의 사실이다.** 계약(`rendition` 의 `format`)이 `png|pdf` 뿐이라
+ *    명령형 출력물이 셸에 도착할 길이 없고, 그 자리를 여는 것은 **서버·계약 소관**이다
+ *    (#831 완료 조건 ①). 값 이름을 셸이 발명하면 서버와 어긋난다 — 계약이 값을 정하면
+ *    여기에 그 값을 적는 것으로 길이 열린다.
+ *
+ * ⛔ **그림·문서를 이 목록에 넣지 않는다.** RAW 는 받은 바이트를 그대로 프린터에 밀어 넣는
+ *    길이라, 그림을 보내면 프린터가 그 바이트를 명령으로 읽고 아무 말이나 찍거나 멈춘다.
+ */
+const COMMAND_FORMATS: readonly RenditionFormat[] = [];
+
 /** 출력물을 띄워 인쇄하는 창. 작업마다 새로 열고 끝나면 닫는다. */
 export interface PrintPage {
   /** 다 그려진 뒤 resolve 한다 — 그리기 전에 인쇄하면 빈 종이가 나온다. */
@@ -118,6 +132,13 @@ export interface SilentPrintDeps {
    *   같은 프린터에서 드라이버 테스트 페이지와 사진 앱 인쇄는 정상이므로 경로 문제다.
    */
   printFile?: FilePrinter;
+  /**
+   * 주면 **명령형 출력물을 대기열의 RAW 자리로 보낸다**(`COMMAND_FORMATS`).
+   *
+   * ⭐ 드라이버의 그리기를 거치지 않는 길이다 — 그림을 드라이버에 넘기는 경로가 TTP-247 에서
+   *   백지를 냈고(#798 · 세 회차), 프린터가 직접 알아듣는 언어로 보내는 것이 그 답이다.
+   */
+  printRaw?: RawPrinter;
   stage: (bytes: Uint8Array, format: RenditionFormat) => Promise<StagedRendition>;
   discard: (path: string) => Promise<void>;
   /** 인쇄 한 걸음의 시간 상한. 시험이 짧게 줄여 쓴다. */
@@ -168,6 +189,30 @@ export function createSilentPrinter(deps: SilentPrintDeps): SilentPrinter {
     print: async (deviceName, rendition) => {
       const limit = deps.timeoutMs ?? DEFAULT_PRINT_TIMEOUT_MS;
       const staged = await deps.stage(rendition.bytes, rendition.format);
+
+      /*
+       * ⭐ **명령형이 먼저다.** 프린터가 알아듣는 언어로 온 것은 드라이버가 그릴 것이 아니라
+       *    대기열의 RAW 자리로 그대로 보낸다. 그림 경로로 새면 드라이버가 명령을 그림으로 읽는다.
+       */
+      if (COMMAND_FORMATS.includes(rendition.format)) {
+        /* ⛔ 보낼 곳이 없다고 그림 경로로 떨어뜨리지 않는다 — 빈 라벨이 자재에 붙는다. */
+        if (deps.printRaw === undefined) {
+          await deps.discard(staged.path).catch(() => undefined);
+          throw new RawPrinterUnavailableError();
+        }
+
+        try {
+          await withLimit(
+            deps.printRaw.print({ dataPath: staged.filePath, jobName: rendition.label }),
+            limit,
+            '프린터가 응답하지 않는다',
+          );
+        } finally {
+          await deps.discard(staged.path).catch(() => undefined);
+        }
+
+        return;
+      }
 
       /* OS 인쇄 경로가 있으면 창을 아예 열지 않는다 — 열지 않은 창은 비지도 않는다. */
       if (deps.printFile !== undefined && IMAGE_FORMATS.includes(rendition.format)) {

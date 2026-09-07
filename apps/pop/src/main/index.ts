@@ -18,7 +18,7 @@ import {
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { BrowserWindow, app, dialog, ipcMain, net, protocol, safeStorage } from 'electron';
+import { BrowserWindow, app, dialog, globalShortcut, ipcMain, net, protocol, safeStorage } from 'electron';
 import initSqlJs from 'sql.js';
 
 import { createFileBlobStore } from './file-blob-store';
@@ -33,6 +33,22 @@ import {
 } from './print';
 import { type LoggedPrinter, formatPrintLog, reasonOf } from './print-log';
 import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
+import {
+  type LabelCommand,
+  type LabelKind,
+  LabelCommandError,
+  buildLabelFromFields,
+  parseHandWrittenJson,
+  parseLabelCommand,
+  sampleLabel,
+} from './label-command';
+import {
+  type RawPrinter,
+  RawPrinterUnavailableError,
+  buildListPrintersScript,
+  buildRawPrintScript,
+  rawPrintScriptArgs,
+} from './raw-print';
 import { buildPrintScript, printScriptArgs } from './windows-print';
 import { resolveRendererPath } from './renderer-path';
 import {
@@ -213,6 +229,74 @@ function openPrintPage(): PrintPage {
 }
 
 /**
+ * 스크립트를 파일로 두고 PowerShell 로 부른다. 그림 인쇄와 라벨 인쇄가 같은 방식을 쓴다.
+ *
+ * ⛔ **자식에게도 같은 상한을 건다.** 바깥 상한은 약속만 끊고 프로세스는 계속 산다 — 인쇄가
+ *    매달릴 때마다 하나씩 남고, 남은 것이 임시 파일을 잡아 정리도 실패한다. 며칠씩 켜 두는
+ *    단말에서 쌓인다.
+ */
+async function runPrintScript(
+  scriptPath: string,
+  script: string,
+  args: (path: string) => string[],
+): Promise<string> {
+  mkdirSync(join(scriptPath, '..'), { recursive: true });
+  /*
+   * ⚠ **BOM 을 붙여 쓴다.** PowerShell 5.1 은 표식이 없는 `.ps1` 을 ANSI 로 읽어 한글이
+   *   깨진다 — 작업 이름이 한글이라 대기열에 깨진 이름이 남고, 사유 문장도 못 읽게 된다.
+   */
+  writeFileSync(scriptPath, `\ufeff${script}`, 'utf8');
+
+  return new Promise<string>((resolve, reject) => {
+    execFile(
+      'powershell.exe',
+      args(scriptPath),
+      { windowsHide: true, timeout: DEFAULT_PRINT_TIMEOUT_MS, killSignal: 'SIGKILL' },
+      (error, stdout, stderr) => {
+        if (error === null) {
+          resolve(stdout);
+          return;
+        }
+
+        /* 상한에 걸려 끊긴 것은 사유가 비어 온다 — 무슨 일이었는지 말해 준다. */
+        const spoken =
+          stderr.trim() !== ''
+            ? stderr.trim()
+            : error.killed === true
+              ? '프린터가 응답하지 않아 인쇄를 끊었다'
+              : error.message;
+
+        reject(new Error(spoken));
+      },
+    );
+  });
+}
+
+/** 사람이 손으로 적은 값 파일. BOM 처리는 `label-command` 가 안다. */
+const readJsonFile = (path: string): unknown => parseHandWrittenJson(readFileSync(path, 'utf8'));
+
+/**
+ * 대기열의 RAW 자리로 제어 명령을 보내는 길(#831).
+ *
+ * ⚠ **이름을 주지 않으면 OS 기본 프린터로 간다.** 어느 것이 기본인지는 윈도가 알고, 우리가
+ *   목록에서 알아내려다 있지도 않은 항목을 읽어 전부 막은 적이 있다(`silent-print.ts` 실측).
+ * ⚠ 개발 기계(mac 등)에는 PowerShell 도 이 대기열도 없다.
+ */
+function createRawPrinter(deviceName?: string): RawPrinter | undefined {
+  if (process.platform !== 'win32') return undefined;
+
+  return {
+    print: async ({ dataPath, jobName }: { dataPath: string; jobName: string }): Promise<void> => {
+      await runPrintScript(
+        join(dataPath, '..', 'raw-print.ps1'),
+        buildRawPrintScript({ dataPath, deviceName, jobName }),
+        rawPrintScriptArgs,
+      );
+    },
+  };
+}
+
+/**
  * Windows 단말의 인쇄 — **OS 의 그림 인쇄에 맡긴다**(`windows-print` 머리말).
  *
  * ⚠ 개발 기계(mac 등)에는 이 길이 없다. 거기서는 엔진 경로를 그대로 쓴다.
@@ -229,37 +313,11 @@ const filePrinter =
           deviceName?: string;
           jobName: string;
         }): Promise<void> => {
-          const scriptPath = join(imagePath, '..', 'print.ps1');
-          writeFileSync(scriptPath, buildPrintScript({ imagePath, deviceName, jobName }), 'utf8');
-
-          await new Promise<void>((resolve, reject) => {
-            execFile(
-              'powershell.exe',
-              printScriptArgs(scriptPath),
-              /*
-               * ⛔ **자식에게도 같은 상한을 건다.** 바깥 상한은 약속만 끊고 프로세스는 계속
-               *    산다 — 인쇄가 매달릴 때마다 하나씩 남고, 남은 것이 임시 파일을 잡아 정리도
-               *    실패한다. 며칠씩 켜 두는 단말에서 쌓인다.
-               */
-              { windowsHide: true, timeout: DEFAULT_PRINT_TIMEOUT_MS, killSignal: 'SIGKILL' },
-              (error, _stdout, stderr) => {
-                if (error === null) {
-                  resolve();
-                  return;
-                }
-
-                /* 상한에 걸려 끊긴 것은 사유가 비어 온다 — 무슨 일이었는지 말해 준다. */
-                const spoken =
-                  stderr.trim() !== ''
-                    ? stderr.trim()
-                    : error.killed === true
-                      ? '프린터가 응답하지 않아 인쇄를 끊었다'
-                      : error.message;
-
-                reject(new Error(spoken));
-              },
-            );
-          });
+          await runPrintScript(
+            join(imagePath, '..', 'print.ps1'),
+            buildPrintScript({ imagePath, deviceName, jobName }),
+            printScriptArgs,
+          );
         },
       }
     : undefined;
@@ -302,6 +360,7 @@ async function main(): Promise<void> {
   /** 인쇄 진단 기록이 앉는 자리. 사람이 파일로 읽는다. */
   const logDir = join(userData, 'logs');
   const stagingDir = join(app.getPath('temp'), 'omf-pop-print');
+  const rawPrinter = createRawPrinter(process.env.POP_PRINTER_NAME);
   const printer = new RenditionPrinter(
     fileWriter,
     createSilentPrinter({
@@ -332,6 +391,7 @@ async function main(): Promise<void> {
       },
       discard: async (path) => rmSync(path, { force: true, recursive: true }),
       printFile: filePrinter,
+      printRaw: rawPrinter,
     }),
   );
 
@@ -470,16 +530,194 @@ async function main(): Promise<void> {
   });
 
   await window.loadURL(DEV_SERVER_URL ?? RENDERER_ORIGIN);
+
+  registerPrinterDiagnostic(rawPrinter, stagingDir);
 }
+
+/**
+ * 실기 진단 — **Ctrl+Alt+P 로 시험 라벨 한 장을 찍어 본다**(#831).
+ *
+ * ⭐ **왜 단축키인가.** 단말은 키오스크라 메뉴도 개발자도구도 없고, 서버가 명령형을 내려 주기
+ *   전까지는 화면을 눌러서 이 경로에 닿을 수 없다. 그런데 실기에서만 알 수 있는 것이 셋
+ *   있다 — 포트 이름 · 프린터 쪽 통신 설정 · TSPL 로 보내면 정말 찍히는가. 그것을 사람이
+ *   확인할 유일한 창구다.
+ *
+ * ⛔ **업무 라벨을 여기서 뽑지 않는다.** 나오는 것은 고정된 시험 문구뿐이다
+ *    (`serial-diagnostic` 머리말).
+ *
+ * ⚠ **결과를 반드시 말한다.** 사유를 삼키면 「눌렀는데 아무 일도 안 난다」가 되고, 그때
+ *   포트가 틀린 것인지 프린터가 죽은 것인지 가릴 방법이 단말에 남지 않는다.
+ */
+function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDir: string): void {
+  globalShortcut.register('CommandOrControl+Alt+P', () => {
+    void (async () => {
+      if (rawPrinter === undefined) {
+        await dialog.showMessageBox({
+          type: 'warning',
+          title: '라벨 프린터 진단',
+          message: '보낼 프린터를 찾을 수 없습니다',
+          detail: '이 단말에 등록된 프린터가 없거나, Windows 가 아닙니다.',
+        });
+
+        return;
+      }
+
+      const kinds: LabelKind[] = ['lot', 'shipping'];
+      const { response } = await dialog.showMessageBox({
+        type: 'question',
+        title: '라벨 프린터 진단',
+        message: '견본 라벨을 찍습니다',
+        detail: `보낼 곳: ${process.env.POP_PRINTER_NAME ?? 'OS 기본 프린터'}\n라벨을 그 규격으로 끼운 뒤 골라 주세요.`,
+        buttons: ['표준 LOT 라벨 80 × 30', '출하용 라벨 100 × 60', '취소'],
+        cancelId: 2,
+      });
+
+      const kind = kinds[response];
+
+      if (kind === undefined) return;
+
+      /* 인쇄 스크립트가 같은 폴더에 앉는다 — 업무 인쇄와 같은 방식이다. */
+      const jobDir = join(stagingDir, `diagnostic-${String(Date.now())}`);
+      mkdirSync(jobDir, { recursive: true });
+      const dataPath = join(jobDir, 'label.prn');
+      writeFileSync(dataPath, sampleLabel(kind), 'ascii');
+
+      try {
+        await rawPrinter.print({ dataPath, jobName: `POP 진단 ${kind}` });
+        await dialog.showMessageBox({
+          type: 'info',
+          title: '라벨 프린터 진단',
+          message: '프린터로 보냈습니다',
+          detail:
+            '견본이 규격대로 나왔는지, DataMatrix 가 스캐너에 읽히는지 확인해 주세요.\n종이가 나오지 않았다면 통신 설정이 프린터 쪽과 다를 수 있습니다.',
+        });
+      } catch (cause) {
+        dialog.showErrorBox('라벨 프린터 진단 — 보내지 못했습니다', reasonOf(cause));
+      } finally {
+        rmSync(jobDir, { force: true, recursive: true });
+      }
+    })();
+  });
+}
+
+app.on('will-quit', () => globalShortcut.unregisterAll());
 
 app.on('window-all-closed', () => app.quit());
 
-// 기동 실패를 조용히 삼키지 않는다. 프레임 없는 키오스크 창에 개발자도구도 없어,
-// 여기서 알리지 않으면 현장에서 무슨 일이 났는지 판별할 수단이 없다.
-main().catch((error: unknown) => {
-  const detail =
-    error instanceof Error ? `${error.message}\n\n${error.stack ?? ''}` : String(error);
-  console.error('POP 셸 기동 실패:', error);
-  if (app.isReady()) dialog.showErrorBox('POP 셸을 시작할 수 없습니다', detail);
-  app.exit(1);
-});
+/**
+ * 명령줄로 라벨 한 장을 찍는다 — **창을 띄우지 않는다**(`label-command` 머리말).
+ *
+ * ⚠ **결과를 종료 코드로 낸다.** 이 앱은 창 프로그램이라 콘솔에 글이 보이지 않을 수 있다 —
+ *   부르는 쪽이 기댈 수 있는 것은 종료 코드다(`%ERRORLEVEL%`). 사유는 함께 흘려보낸다.
+ */
+async function runLabelCommand(command: LabelCommand): Promise<string> {
+  if (process.platform !== 'win32') throw new RawPrinterUnavailableError();
+
+  const jobDir = join(app.getPath('temp'), 'omf-pop-print', `label-${String(Date.now())}`);
+  mkdirSync(jobDir, { recursive: true });
+
+  if (command.source.kind === 'list') {
+    const listed = await runPrintScript(
+      join(jobDir, 'list-printers.ps1'),
+      buildListPrintersScript(),
+      rawPrintScriptArgs,
+    );
+    rmSync(jobDir, { force: true, recursive: true });
+
+    return `이 단말의 프린터\n${listed.trim()}`;
+  }
+
+  /* ⭐ 명령에 실린 이름이 먼저다. 없으면 환경값, 그것도 없으면 OS 기본 프린터로 간다. */
+  const target = command.printerName ?? process.env.POP_PRINTER_NAME;
+  const printer = createRawPrinter(target);
+
+  if (printer === undefined) throw new RawPrinterUnavailableError();
+
+  const tspl =
+    command.source.kind === 'sample'
+      ? sampleLabel(command.source.label)
+      : buildLabelFromFields(readJsonFile(command.source.path));
+
+  const dataPath = join(jobDir, 'label.prn');
+  /* ⚠ TSPL 은 바이트 그대로 간다 — 인코딩을 붙이면 프린터가 명령을 못 읽는다. */
+  writeFileSync(dataPath, tspl, 'ascii');
+
+  try {
+    await printer.print({ dataPath, jobName: 'POP 라벨' });
+  } finally {
+    rmSync(jobDir, { force: true, recursive: true });
+  }
+
+  /*
+   * ⚠ **어디로 보냈는지 함께 말한다.** 「보냈다」만 남기면 종이가 안 나왔을 때 프린터가
+   *   문제인지 엉뚱한 대기열로 간 것인지 가릴 수 없다 — 실측으로 여기서 한 번 막혔다.
+   */
+  return `라벨을 보냈습니다 → ${target ?? 'OS 기본 프린터'}`;
+}
+
+/**
+ * 창을 띄울지, 라벨 한 장만 찍고 끝낼지 여기서 갈린다.
+ *
+ * ⛔ **라벨 명령이 붙었으면 셸을 세우지 않는다.** 키오스크 창·DB·인쇄 대기까지 딸려 오면
+ *    한 장 찍자고 단말 하나를 통째로 점유하고, 이미 켜져 있는 셸과 겹친다.
+ */
+function start(): void {
+  let command: LabelCommand | undefined;
+
+  try {
+    command = parseLabelCommand(process.argv);
+  } catch (error: unknown) {
+    /* 깃발을 잘못 적은 것과 인쇄가 실패한 것을 종료 코드로 가른다. */
+    sayAndExit(reasonOf(error), 2);
+
+    return;
+  }
+
+  if (command === undefined) {
+    // 기동 실패를 조용히 삼키지 않는다. 프레임 없는 키오스크 창에 개발자도구도 없어,
+    // 여기서 알리지 않으면 현장에서 무슨 일이 났는지 판별할 수단이 없다.
+    main().catch((error: unknown) => {
+      const detail =
+        error instanceof Error ? `${error.message}\n\n${error.stack ?? ''}` : String(error);
+      console.error('POP 셸 기동 실패:', error);
+      if (app.isReady()) dialog.showErrorBox('POP 셸을 시작할 수 없습니다', detail);
+      app.exit(1);
+    });
+
+    return;
+  }
+
+  runLabelCommand(command).then(
+    (said) => {
+      sayAndExit(said, 0);
+    },
+    (error: unknown) => {
+      sayAndExit(reasonOf(error), 1);
+    },
+  );
+}
+
+/** 명령 결과가 남는 자리. 창 프로그램이라 화면에 안 보이는 것을 여기서 읽는다. */
+const LABEL_LOG = 'omf-pop-label.log';
+
+/**
+ * 결과를 말하고 끝낸다.
+ *
+ * ⚠ **파일에도 적는다.** 이 앱은 창 프로그램이라 명령 프롬프트에 글이 보이지 않는다 —
+ *   종료 코드만으로는 「왜 실패했는가」를 알 수 없고, 현장에서 그것을 물어볼 곳이 없다.
+ */
+function sayAndExit(message: string, code: number): void {
+  const path = join(app.getPath('temp'), LABEL_LOG);
+
+  process.stdout.write(`${message}\n`);
+
+  try {
+    writeFileSync(path, `${new Date().toISOString()}  ${message}\n`, 'utf8');
+  } catch {
+    /* 기록을 남기지 못한 것이 결과를 뒤집지 않는다 — 종료 코드는 그대로 나간다. */
+  }
+
+  app.exit(code);
+}
+
+start();
