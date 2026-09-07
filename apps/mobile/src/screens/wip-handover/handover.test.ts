@@ -8,6 +8,7 @@ import {
   isNotStarted,
   lotProblemOf,
   qtyProblemOf,
+  statusLabelOf,
   toBody,
   type WorkOrder,
 } from './handover';
@@ -196,5 +197,25 @@ describe('보낼 것', () => {
   /* 받는 쪽 화면이 없어 서버가 인계와 같은 시각으로 함께 찍는다. */
   it('수령 시각을 싣지 않는다', () => {
     expect(toBody(lot(), 13, 27, '100', now)).not.toHaveProperty('receivedAt');
+  });
+});
+
+describe('후속 W/O 의 상태 표시', () => {
+  const names = new Map([
+    ['RELEASED', '배포'],
+    ['CANCELLED', '취소'],
+  ]);
+
+  it('받은 표시명으로 바꾼다', () => {
+    expect(statusLabelOf('CANCELLED', names)).toBe('취소');
+  });
+
+  /* 코드 자체가 사람이 읽을 수 있는 말이다. 숨기면 오히려 정보가 준다. */
+  it('표시명을 못 받으면 코드를 그대로 보인다', () => {
+    expect(statusLabelOf('SUSPENDED', names)).toBe('SUSPENDED');
+  });
+
+  it('목록을 아예 못 받아도 코드를 보인다', () => {
+    expect(statusLabelOf('CANCELLED', new Map())).toBe('CANCELLED');
   });
 });
