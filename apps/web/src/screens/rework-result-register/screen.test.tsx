@@ -72,6 +72,13 @@ const stubFetch: StubFetch = async (request) => {
     });
   }
 
+  if (url.pathname === '/mdm/uoms') {
+    return jsonResponse({
+      items: [{ uomId: 11, uomCode: 'EA', uomName: '개', isActive: true }],
+      page: { page: 1, size: 200, total: 1 },
+    });
+  }
+
   if (url.pathname === `/mdm/terminals/${String(TERMINAL_ID)}/processes`) {
     return jsonResponse({
       items: [{ processId: PROCESS_ID, canInputResult: true }],
@@ -185,6 +192,29 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     await user.click(screen.getByRole('button', { name: t.changeWorkOrder }));
 
     expect(await screen.findByRole('heading', { name: t.workOrders })).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **수량 칸에 단위를 붙인다**(사용자 결정) — 네 칸이 모두 수량이라 단위 없이 숫자만
+   *    서면 무엇의 몫인지가 칸 이름에만 걸린다. 전례는 `P-02-04` 의 「양품수량 [ 120 ] EA」.
+   *
+   * ⚠ **[ 변경 ] 은 ① 구획의 오른쪽 «아래»다**(사용자 결정). 스펙에는 없는 조작이라 자리를
+   *    우리가 정한다 — 오른쪽 위는 120px 짜리 구획에서 세 줄을 왼쪽으로 몰아붙인다.
+   */
+  it('수량 칸에 단위가 붙고 「변경」이 대상 구획의 발치에 선다', async () => {
+    const { container, user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await screen.findByRole('heading', { name: t.quantities.title });
+
+    expect(await screen.findAllByText('EA')).toHaveLength(4);
+
+    const change = screen.getByRole('button', { name: t.changeWorkOrder });
+
+    expect(change.closest('.rework-target-foot')).not.toBeNull();
+    expect(change.closest('.rework-target-card')).toBe(
+      container.querySelector('.rework-target-card'),
+    );
   });
 
   /*

@@ -353,16 +353,18 @@
 }
 
 /*
- * ① 재작업 대상의 머리 — 제목 왼쪽 · [ 변경 ] 오른쪽.
+ * ① 재작업 대상의 [ 변경 ] — **구획의 오른쪽 아래**(사용자 결정 2026-09-07).
  *
- * 다른 W/O 로 옮기는 조작이라 «대상»을 말하는 자리에 붙어야 한다. 화면 바닥의 액션바는
- * 이번 입력을 저장·초기화하는 자리이므로 성격이 다르다.
+ * 오른쪽 «위»에 두면 72px 짜리 버튼이 제목과 같은 높이를 차지해, 세 줄이 왼쪽으로 몰리고
+ * 그 옆이 통째로 비어 보인다 — ①의 세로 예산이 120px 뿐이라 그 낭비가 눈에 띈다.
+ *
+ * 다른 W/O 로 옮기는 조작이라 «대상»을 말하는 구획에 붙는다 — 화면 바닥의 액션바는 이번
+ * 입력을 저장·초기화하는 자리라 성격이 다르다.
  */
-.pop-ui .rework-target-head {
+.pop-ui .rework-target-foot {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
+  justify-content: flex-end;
+  margin-block-start: var(--space-3);
 }
 
 /*

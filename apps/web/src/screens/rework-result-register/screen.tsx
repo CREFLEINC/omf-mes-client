@@ -31,6 +31,7 @@ import {
   type QuantityDrafts,
   type QuantityKey,
 } from './result';
+import { useUomLookup } from './uom-lookup';
 
 const quantityKeys: QuantityKey[] = ['goodQty', 'defectQty', 'holdQty', 'scrapQty'];
 
@@ -53,6 +54,7 @@ export const ReworkResultRegisterScreen = () => {
   const source = useReworkSource(nonconformanceId);
   const dispositions = useDispositionDecisions(nonconformanceId);
   const gate = useResultGate(identity.terminalId, identity.processId);
+  const uom = useUomLookup();
   const progress = reworkDispositionProgress(dispositions.data?.items ?? []);
   const total = quantityTotal(drafts);
   const verdict = quantityVerdict(total, progress.remaining);
@@ -243,13 +245,7 @@ export const ReworkResultRegisterScreen = () => {
         <div className="pop-fixed rework-result-body">
               <Card bordered className="rework-target-card">
                 <Card.Body>
-                  <div className="rework-target-head">
-                    <h2 className="pane-title">{t.target}</h2>
-                    {/* 다른 W/O 로 옮겨 간다 — 목록을 다시 편다(전례 `P-02-04`). */}
-                    <Button variant="outlined" size="2xl" onClick={() => setSelectedId(null)}>
-                      {t.changeWorkOrder}
-                    </Button>
-                  </div>
+                  <h2 className="pane-title">{t.target}</h2>
                   {(source.isError || dispositions.isError) && (
                     <AlertBanner variant="error">{t.loadError}</AlertBanner>
                   )}
@@ -275,6 +271,22 @@ export const ReworkResultRegisterScreen = () => {
                       <dd>{progress.target}</dd>
                     </div>
                   </dl>
+
+                  {/*
+                   * ⚠ **스펙에 없는 조작이다.** §3 의 ① 은 읽기 전용 세 줄이고 §5-6 액션표에도
+                   *    「변경」이 없다 — 스펙은 W/O 고르기가 「진입 시」 한 번으로 끝난다고 본다.
+                   *    목록을 고른 뒤 접게 되면서 잘못 고른 것을 되돌릴 길이 없어져 우리가
+                   *    더했다.
+                   *
+                   * ⭐ **자리는 구획의 오른쪽 «아래»다**(사용자 결정). 오른쪽 위에 두면 세 줄이
+                   *    왼쪽으로 몰리고 그 옆이 통째로 비어 보인다 — 120px 짜리 구획에서 72px
+                   *    버튼이 머리줄과 같은 높이를 차지하기 때문이다.
+                   */}
+                  <div className="rework-target-foot">
+                    <Button variant="outlined" size="2xl" onClick={() => setSelectedId(null)}>
+                      {t.changeWorkOrder}
+                    </Button>
+                  </div>
                 </Card.Body>
               </Card>
 
@@ -296,6 +308,11 @@ export const ReworkResultRegisterScreen = () => {
                         inputMode="decimal"
                         readOnly
                         fullWidth
+                        /*
+                         * 단위를 칸 «안» 오른쪽에 붙인다 — 전례 `P-02-04` 의 「양품수량 [ 120 ] EA」.
+                         * ⛔ 이름을 못 받으면 아무것도 붙이지 않는다(숫자 식별자를 내지 않는다).
+                         */
+                        trailingIcon={uom.labelOf(selected.uomId) ?? undefined}
                         onFocus={() => setActiveKey(key)}
                       />
                     ))}
