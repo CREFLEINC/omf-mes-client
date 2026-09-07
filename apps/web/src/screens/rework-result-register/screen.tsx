@@ -1,10 +1,20 @@
-import { AlertBanner, Button, Card, NumberPad, Progress, Select, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  NumberPad,
+  Progress,
+  Select,
+  Table,
+  TextField,
+} from '@crefle/web-ui';
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { popTouchClass } from '../../patterns/pop-touch';
 import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } from './outbox';
 import {
   useDispositionDecisions,
@@ -135,42 +145,88 @@ export const ReworkResultRegisterScreen = () => {
         </p>
       </header>
 
-      <div className="pop-panes">
+      {/*
+       * ⭐ **본문은 세로 네 구획이다** — 스펙 §3 이 ① 재작업 대상 120 · ② 실적 입력 280 ·
+       *    ③ 결과 LOT 96 · ④ 진행 88 로 그렸고 그 합이 본문 예산 616 을 정확히 채운다(§3-1
+       *    슬랙 0). 앞선 판은 좌우 2단이라 **왼쪽 절반을 목록이 상시 차지**했고, 남은 절반에
+       *    네 구획을 넣느라 스펙의 세로 검산이 성립하지 않았다.
+       *
+       * ⭐ **목록은 고르기 «전»에만 선다.** §5-6 이 W/O 선택을 「**진입 시** — 내 재작업 W/O
+       *    목록」으로 적었고, §3 도면에는 목록 구획이 없다 — 고른 뒤에는 본문이 온전히
+       *    실적 입력의 것이다. 다른 W/O 로 옮기려면 ① 구획의 [ 변경 ] 으로 목록을 다시 편다
+       *    (전례 `P-02-04` 의 대상 LOT 「변경」).
+       */}
+      {selected === null ? (
         <section className="pane" aria-label={t.workOrders}>
           <h2 className="pane-title">{t.workOrders}</h2>
           {workOrders.isError && <AlertBanner variant="error">{t.loadError}</AlertBanner>}
           {workOrders.isSuccess && workOrders.data.items.length === 0 && (
             <AlertBanner variant="info">{t.empty}</AlertBanner>
           )}
-          <ul className="pop-card-list">
-            {(workOrders.data?.items ?? []).map((row) => (
-              <li key={row.workOrderId}>
-                <Card
-                  interactive
-                  bordered
-                  surface={row.workOrderId === selectedId ? 'high' : 'low'}
-                  onClick={() => setSelectedId(row.workOrderId)}
-                >
-                  <Card.Body>
-                    <strong>{row.workOrderNo}</strong>
-                    <p className="field-note">
-                      {row.itemCode ?? `#${row.itemId}`} · {row.orderQty}
-                    </p>
-                  </Card.Body>
-                </Card>
-              </li>
-            ))}
-          </ul>
+          {(workOrders.data?.items ?? []).length > 0 && (
+            /*
+             * 줄의 어느 칸을 눌러도 그 줄의 버튼을 대신 누른다 — POP 목록 정본이다
+             * (표 · 선택 칸 없음 · 줄 전체가 누르는 자리 · `913a82c`).
+             */
+            <div
+              role="presentation"
+              className="pop-row-target"
+              onClick={(event) => {
+                const from = event.target as HTMLElement;
+                if (from.closest('.pop-row-select') !== null) return;
+                from.closest('tr')?.querySelector<HTMLButtonElement>('.pop-row-select')?.click();
+              }}
+            >
+              <Table
+                aria-label={t.workOrderCaption}
+                density="comfortable"
+                getRowId={(row) => String(row.workOrderId)}
+                rows={workOrders.data?.items ?? []}
+                columns={[
+                  {
+                    key: 'workOrder',
+                    header: t.columns.workOrder,
+                    align: 'center',
+                    render: (row) => (
+                      <button
+                        type="button"
+                        className={`pop-row-select ${popTouchClass('normal')}`}
+                        aria-label={t.selectRow(row.workOrderNo)}
+                        onClick={() => setSelectedId(row.workOrderId)}
+                      >
+                        <span>{row.workOrderNo}</span>
+                      </button>
+                    ),
+                  },
+                  {
+                    key: 'item',
+                    header: t.columns.item,
+                    align: 'center',
+                    render: (row) => row.itemCode ?? `#${row.itemId}`,
+                  },
+                  {
+                    key: 'quantity',
+                    header: t.columns.quantity,
+                    align: 'center',
+                    width: '140px',
+                    render: (row) => row.orderQty,
+                  },
+                ]}
+              />
+            </div>
+          )}
         </section>
-
-        <section className="pane rework-result-pane" aria-label={t.target}>
-          {selected === null ? (
-            <AlertBanner variant="info">{t.selectWorkOrder}</AlertBanner>
-          ) : (
-            <>
+      ) : (
+        <>
               <Card bordered className="rework-target-card">
                 <Card.Body>
-                  <h2 className="pane-title">{t.target}</h2>
+                  <div className="rework-target-head">
+                    <h2 className="pane-title">{t.target}</h2>
+                    {/* 다른 W/O 로 옮겨 간다 — 목록을 다시 편다(전례 `P-02-04`). */}
+                    <Button variant="outlined" size="2xl" onClick={() => setSelectedId(null)}>
+                      {t.changeWorkOrder}
+                    </Button>
+                  </div>
                   {(source.isError || dispositions.isError) && (
                     <AlertBanner variant="error">{t.loadError}</AlertBanner>
                   )}
@@ -309,10 +365,8 @@ export const ReworkResultRegisterScreen = () => {
                 {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
                 {rejected && <AlertBanner variant="error">{t.rejected}</AlertBanner>}
               </section>
-            </>
-          )}
-        </section>
-      </div>
+        </>
+      )}
 
       {/*
        * ⭐ **액션바는 화면 바닥에 붙는 띠다**(스펙 §3 — 헤더 64 + 본문 616 + 액션바 88 = 768).

@@ -353,6 +353,33 @@
 }
 
 /*
+ * ① 재작업 대상의 머리 — 제목 왼쪽 · [ 변경 ] 오른쪽.
+ *
+ * 다른 W/O 로 옮기는 조작이라 «대상»을 말하는 자리에 붙어야 한다. 화면 바닥의 액션바는
+ * 이번 입력을 저장·초기화하는 자리이므로 성격이 다르다.
+ */
+.pop-ui .rework-target-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+/*
+ * 본문을 **세로 네 구획**으로 세운다 — 스펙 §3 의 ① 120 · ② 280 · ③ 96 · ④ 88 이다.
+ * 앞선 판은 좌우 2단(`.pop-panes`)이라 왼쪽 절반을 목록이 상시 차지했고, 그래서 §3-1 의
+ * 세로 검산(합 616 · 슬랙 0)이 성립하지 않았다.
+ *
+ * ⛔ 이름을 하나 더 적는 자리다 — `app.css` 가 이 화면의 옛 2단 배치를 갖고 있어(관리웹과
+ *    함께 쓰는 파일이라 고치지 않는다) 여기서 덮는다.
+ */
+.pop-ui.rework-result-screen > .pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/*
  * 잔여수량 줄을 **위의 「대상 LOT」·「제품」과 같은 격자**에 세운다.
  *
  * `app.css` 는 이 줄을 `space-between` 으로 두어 라벨과 값이 화면 양 끝으로 갈라졌다.

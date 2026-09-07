@@ -4,6 +4,16 @@ export const reworkResultRegister = {
   empty: '진행할 재작업 W/O가 없습니다.',
   loadError: '재작업 정보를 불러오지 못했습니다.',
   selectWorkOrder: '재작업 W/O를 선택해 주세요.',
+  /** 고른 뒤 다른 W/O 로 옮겨 갈 때. 목록을 다시 편다 — 전례 `P-02-04` 의 「변경」. */
+  changeWorkOrder: '변경',
+  /** 표의 접근 이름. 화면에는 구획 제목이 이미 같은 이름으로 서 있다. */
+  workOrderCaption: '진행할 수 있는 재작업 작업지시',
+  columns: {
+    workOrder: '작업지시',
+    item: '품목',
+    quantity: '수량',
+  },
+  selectRow: (workOrderNo: string): string => `${workOrderNo} 선택`,
   target: '재작업 대상',
   sourceLot: '원 LOT',
   sourceWorkOrder: '원 W/O',

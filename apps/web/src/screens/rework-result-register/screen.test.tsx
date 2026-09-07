@@ -115,6 +115,28 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   });
 
   /*
+   * ⭐ **목록은 고르기 «전»에만 선다** — §5-6 이 W/O 선택을 「진입 시」로 적었고 §3 도면에는
+   *    목록 구획이 없다. 좌우 2단으로 목록을 상시 두면 왼쪽 절반이 늘 목록이라 §3-1 의 세로
+   *    검산(① 120 + ② 280 + ③ 96 + ④ 88 = 616)이 성립하지 않는다.
+   */
+  it('고르기 전에는 목록만, 고른 뒤에는 목록이 접히고 「변경」이 선다', async () => {
+    const { user } = renderScreen();
+
+    expect(await screen.findByRole('heading', { name: t.workOrders })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.quantities.title })).not.toBeInTheDocument();
+
+    await pickWorkOrder(user);
+
+    expect(await screen.findByRole('heading', { name: t.quantities.title })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.workOrders })).not.toBeInTheDocument();
+
+    /* 다른 W/O 로 옮기려면 ① 구획의 [ 변경 ] 이 목록을 다시 편다. */
+    await user.click(screen.getByRole('button', { name: t.changeWorkOrder }));
+
+    expect(await screen.findByRole('heading', { name: t.workOrders })).toBeInTheDocument();
+  });
+
+  /*
    * ⛔ **액션바는 화면의 최상위 자식이어야 한다** — POP 규격의 바닥 띠 규칙이 그 자리만
    *    겨냥한다(`.pop-ui > [class*='action']`). 구획 안으로 들어가면 띠가 서지 않고 본문의
    *    일부로 흐른다. 스펙 §3 의 세로 예산(헤더 64 + 본문 616 + 액션바 88)이 그 전제다.
