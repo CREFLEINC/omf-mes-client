@@ -807,7 +807,7 @@ describe('DowntimeRegisterScreen — 터치 타겟', () => {
    */
   const isExtraLarge = (button: HTMLElement): boolean => /xxl/.test(button.className);
 
-  it('시각을 찍는 버튼과 액션바 버튼이 72픽셀 급으로 선다', async () => {
+  it('구획을 닫고 저장하는 버튼이 72픽셀 급으로 선다', async () => {
     renderScreen([
       downtimeListRoute({ ongoing: [ongoingDowntime()] }),
       summaryRoute(),
@@ -817,8 +817,13 @@ describe('DowntimeRegisterScreen — 터치 타겟', () => {
 
     await screen.findByRole('region', { name: t.ongoing.title });
 
+    /*
+     * ⚠ **`[지금]`은 여기서 빠진다**(사용자 결정 2026-09-07). 스펙 §7 은 72픽셀 급으로
+     *    적었지만, 같은 줄에 선 날짜·시각 칸이 56 이라 버튼만 커 보이고 줄 높이도 그 버튼이
+     *    정해 ② 구획이 몫을 넘긴다. 터치 하한(일반 등급 56)은 지킨다.
+     */
     screen.getAllByRole('button', { name: t.interval.now }).forEach((button) => {
-      expect(isExtraLarge(button)).toBe(true);
+      expect(isExtraLarge(button)).toBe(false);
     });
 
     expect(isExtraLarge(screen.getByRole('button', { name: t.ongoing.close }))).toBe(true);

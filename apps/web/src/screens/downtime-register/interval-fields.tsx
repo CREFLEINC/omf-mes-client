@@ -126,9 +126,15 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
               setStarted('time', event.target.value);
             }}
           />
+          {/*
+           * ⚠ **`xl`(56) 이다 — 스펙 §7 이 적은 `2xl`(72) 이 아니다**(사용자 결정 2026-09-07).
+           *    옆의 날짜·시각 칸이 56 이라 버튼만 72 면 줄 안에서 혼자 커 보이고, 줄 높이도
+           *    그 버튼이 정해 ② 가 몫을 넘긴다. 터치 하한(일반 등급 56)은 지킨다.
+           *    ⛔ 되돌리려면 사용자에게 묻는다 — 스펙 값과 다른 것은 알고 한 것이다.
+           */}
           <Button
             variant="tonal"
-            size="2xl"
+            size="xl"
             onClick={() => {
               onChange({ ...draft, startedAt: toTimeFieldDraft(new Date()) });
             }}
@@ -163,7 +169,7 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           />
           <Button
             variant="tonal"
-            size="2xl"
+            size="xl"
             disabled={draft.stillOngoing}
             onClick={() => {
               onChange({ ...draft, endedAt: toTimeFieldDraft(new Date()) });
