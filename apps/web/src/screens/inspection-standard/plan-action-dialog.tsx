@@ -42,9 +42,10 @@ export const PlanActionDialog = ({
     size="sm"
     title={kind === 'approve' ? t.dialog.approveTitle : t.dialog.deactivateTitle}
     closeOnBackdropClick={false}
+    showCloseButton={false}
     footer={
       <>
-        <Button variant="outlined" onClick={onClose}>
+        <Button variant="outlined" disabled={isSaving} onClick={onClose}>
           {messages.common.cancel}
         </Button>
         <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>

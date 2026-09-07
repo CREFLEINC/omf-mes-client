@@ -8,7 +8,7 @@ const t = messages.inspectionStandard.validation;
  * 버전 헤더 폼이 소유한 입력칸 이름. 서버가 준 필드 오류를 인라인으로 낼지
  * 배너로 올릴지 가르는 기준이며, 목록에 없는 필드명은 삼키지 않고 배너로 간다.
  */
-export const VERSION_FORM_FIELDS: readonly string[] = [
+export const VERSION_FORM_FIELDS = [
   'effectiveFrom',
   'effectiveTo',
   'samplingMethodCode',
@@ -19,7 +19,7 @@ export const VERSION_FORM_FIELDS: readonly string[] = [
   'inspectionFrequencyCode',
   'frequencyIntervalValue',
   'frequencyIntervalUomCode',
-];
+] as const satisfies readonly (keyof VersionFormValues)[];
 
 /** 빈 값은 「지정하지 않음」이라 검사 대상이 아니다. 0과 구분해야 한다. */
 const isBlank = (value: string): boolean => value === '';

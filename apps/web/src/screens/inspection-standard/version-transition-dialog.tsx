@@ -37,9 +37,10 @@ export const VersionTransitionDialog = ({
     size="sm"
     title={kind === 'confirm' ? t.dialog.confirmTitle : t.dialog.obsoleteTitle}
     closeOnBackdropClick={false}
+    showCloseButton={false}
     footer={
       <>
-        <Button variant="outlined" onClick={onClose}>
+        <Button variant="outlined" disabled={isSaving} onClick={onClose}>
           {messages.common.cancel}
         </Button>
         <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
