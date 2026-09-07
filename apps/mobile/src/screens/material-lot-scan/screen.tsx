@@ -31,6 +31,8 @@ interface Registered {
   lotNo: string;
   qty: number;
   inboundReceiptLineId: number;
+  /** 나중에 되돌아온 건을 알아보려고 든다. 오프라인 등록은 그 판정이 한참 뒤에 선다. */
+  idempotencyKey: string;
 }
 
 /** 목록에 보이는 수량은 실제로 담긴 본문의 것이다. 다시 세면 화면과 기록이 갈릴 수 있다. */
@@ -82,10 +84,11 @@ export const MaterialLotScanScreen = () => {
   );
   const line = openLines.find((each) => each.inboundReceiptLineId === lineId) ?? null;
 
-  const problem = scanned.trim() === '' ? null : scanProblemOf(scanned, queuedLotNos);
+  /* 이 회차에 보낸 번호는 큐에 없다. 다시 스캔하면 서버가 400 으로 되돌린다. */
+  const usedLotNos = [...queuedLotNos, ...registered.map((each) => each.lotNo)];
+  const problem = scanned.trim() === '' ? null : scanProblemOf(scanned, usedLotNos);
   const labelQty = labelQtyOf(scanned);
-  const ready =
-    loaded && canRegister(line, scanned, worker !== null, plantId, queuedLotNos, filled);
+  const ready = loaded && canRegister(line, scanned, worker !== null, plantId, usedLotNos, filled);
 
   const scanField = useScanField({
     onScan: (value) => {
@@ -147,6 +150,7 @@ export const MaterialLotScanScreen = () => {
           lotNo: scanned.trim(),
           qty: initialQtyOf(draft),
           inboundReceiptLineId: line.inboundReceiptLineId,
+          idempotencyKey: draft.idempotencyKey,
         },
         ...current,
       ]);
@@ -158,8 +162,18 @@ export const MaterialLotScanScreen = () => {
     }
   };
 
-  /* 서버를 부르지 않는다. 건별로 이미 담겼고 이 단추는 화면을 닫는 행위다. */
+  /*
+   * 서버를 부르지 않는다. 건별로 이미 담겼고 이 단추는 화면을 닫는 행위다.
+   *
+   * 되돌아온 것이 있는지 여기서 다시 본다 - 오프라인에서 담은 건의 판정은 한참 뒤 셸이 도는
+   * 회차에 서고, 그때 화면은 이미 「등록됨」을 보이고 있다.
+   */
   const finish = () => {
+    if (registered.some((each) => isRejected(each.idempotencyKey))) {
+      setOutcome('rejected');
+      return;
+    }
+
     setOutcome(pendingOf(LOT_LABEL).length > 0 ? 'held' : 'sent');
   };
 

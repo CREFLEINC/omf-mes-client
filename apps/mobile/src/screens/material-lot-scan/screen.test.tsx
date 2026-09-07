@@ -53,7 +53,22 @@ interface Options {
   asked?: string[];
   /** 보내기가 끝나지 않는다 - 담긴 채로 남은 건을 화면이 어떻게 보는지 재는 자리다. */
   sendHangs?: boolean;
+  /** 서버가 같은 번호를 거절한다 - 스캔값이 곧 번호라 다시 불러도 풀리지 않는다. */
+  duplicateLotNo?: boolean;
+  /**
+   * 보내기의 답을 회차마다 바꾼다.
+   *
+   * 오프라인에서 담은 건의 판정은 한참 뒤 셸이 도는 회차에 선다. 처음부터 거절로 답하면 그
+   * 시차가 없어져, 화면이 뒤늦은 되돌아옴을 알아보는지 잴 수 없다.
+   */
+  mode?: { value: 'ok' | 'error' | 'duplicate' };
 }
+
+const DUPLICATE = {
+  code: 'DUPLICATE_LOT_NO',
+  message: '이미 등록된 LOT 번호입니다.',
+  errors: [],
+};
 
 const line = (overrides: Record<string, unknown> = {}) => ({
   inboundReceiptLineId: 7101,
@@ -114,8 +129,19 @@ const routes = (options: Options = {}): StubRoute[] => [
     respond: (req) => {
       options.seen?.push(req.clone());
 
-      return options.sendHangs === true
-        ? new Promise<Response>(() => undefined)
+      if (options.sendHangs === true) {
+        return new Promise<Response>(() => undefined);
+      }
+
+      const mode = options.mode?.value;
+
+      if (mode === 'error') {
+        return Promise.reject(new Error('연결이 끊겼습니다'));
+      }
+
+      /* 409 가 아니라 400 이다. 다시 시도가 아니라 다른 번호를 요구해야 한다. */
+      return options.duplicateLotNo === true || mode === 'duplicate'
+        ? jsonResponse(DUPLICATE, { status: 400 })
         : jsonResponse({ lotId: 8101 }, { status: 201 });
     },
   },
@@ -333,6 +359,58 @@ describe('자재LOT 스캔·등록 화면', () => {
 
     expect(screen.queryByRole('option', { name: '#2 · ABC-123 · 480' })).toBeNull();
     expect(screen.getByRole('option', { name: '#3 · RM-1001 · 60' })).toBeTruthy();
+  });
+
+  /* 서버가 되돌리면 400 이다. 다시 보내도 풀리지 않으니 다른 라벨을 요구해야 한다. */
+  it('서버가 같은 번호를 거절하면 되돌아왔다고 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ duplicateLotNo: true });
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+    await user.click(screen.getByRole('button', { name: '이 라인 등록' }));
+
+    expect(await screen.findByText('등록이 되돌아왔습니다')).toBeTruthy();
+  });
+
+  /*
+   * 오프라인에서 담은 건은 한참 뒤 셸이 도는 회차에 판정된다. 그때 화면은 이미 「등록됨」을
+   * 보이고 있어, 완료할 때 다시 보지 않으면 사람은 되돌아온 것을 모른 채 화면을 닫는다.
+   */
+  it('뒤늦게 되돌아온 건을 완료할 때 알아본다', async () => {
+    const user = userEvent.setup();
+    const mode = { value: 'error' as 'ok' | 'error' | 'duplicate' };
+    mount({ mode });
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+    await user.click(screen.getByRole('button', { name: '이 라인 등록' }));
+    await screen.findByText(/등록됨 \(1건\)/);
+
+    mode.value = 'duplicate';
+    window.dispatchEvent(new Event('online'));
+
+    await user.click(screen.getByRole('button', { name: '등록 완료' }));
+
+    expect(await screen.findByText('등록이 되돌아왔습니다')).toBeTruthy();
+  });
+
+  /* 같은 라벨을 두 번 스캔하면 서버가 400 으로 되돌린다. 화면이 미리 막는다. */
+  it('이 회차에 이미 등록한 번호는 다시 등록할 수 없다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+    await user.click(screen.getByRole('button', { name: '이 라인 등록' }));
+    await screen.findByText(/등록됨 \(1건\)/);
+
+    await user.click(await screen.findByRole('combobox', { name: '입하 라인' }));
+    await user.click(await screen.findByRole('option', { name: '#3 · RM-1001 · 60' }));
+    scan(LOT_NO);
+
+    expect(await screen.findByText('이미 담아 둔 LOT 번호입니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '이 라인 등록' })).toBeDisabled();
   });
 
   /* 유일성은 공장과 번호의 짝이다. 공장을 모르면 어느 짝인지 정할 수 없다. */
