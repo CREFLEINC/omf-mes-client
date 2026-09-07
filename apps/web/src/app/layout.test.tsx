@@ -501,6 +501,14 @@ describe('AppLayout', () => {
     expect(links.indexOf('/shipment/disposition-requests')).toBe(
       links.indexOf('/shipment/return-receipts') + 1,
     );
+    /* W-04-11 — 판정 결과를 재고에 반영하므로 판정 의뢰 뒤에 둔다. */
+    expect(within(sidebar).getByRole('link', { name: '재고 재등록' })).toHaveAttribute(
+      'href',
+      '/shipment/stock-reinstatements',
+    );
+    expect(links.indexOf('/shipment/stock-reinstatements')).toBe(
+      links.indexOf('/shipment/disposition-requests') + 1,
+    );
     /* 편성이 예정보다 먼저다 — 지시서를 편성해야 예정이 생긴다(업무 순서). */
     expect(links.indexOf('/shipment/shipment-request-create')).toBe(
       links.indexOf('/logistics/document-progress') + 1,
@@ -577,7 +585,7 @@ describe('AppLayout', () => {
       '/production/work-order-progress',
     );
     expect(links.indexOf('/production/production-orders')).toBe(
-      links.indexOf('/shipment/disposition-requests') + 1,
+      links.indexOf('/shipment/stock-reinstatements') + 1,
     );
     /* 변경 판정은 수신·조회 바로 뒤다 — 그 화면이 만든 목록 위에서 이어진다(W-02-06). */
     expect(links.indexOf('/production/po-change-review')).toBe(
@@ -783,6 +791,8 @@ describe('AppLayout', () => {
       '/shipment/return-receipts',
       /* W-04-07 — 반품 입고 뒤에 판정 의뢰가 온다. */
       '/shipment/disposition-requests',
+      /* W-04-11 — 정상 판정된 반품 LOT을 출하 가능 재고로 되돌린다. */
+      '/shipment/stock-reinstatements',
       '/production/production-orders',
       /* W-02-06 — 받은 P/O 가 «바뀌었을 때» 판정하는 자리라 수신·조회 바로 뒤다. */
       '/production/po-change-review',

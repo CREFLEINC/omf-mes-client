@@ -13,8 +13,7 @@ export const shipmentProcessing = {
     shipDateFrom: '출하일 시작',
     shipDateTo: '출하일 종료',
     pickingCompleteOnly: '피킹완료만',
-    pickingCompleteOnlyNote:
-      '이 조건은 이번 쪽에 받은 결과 안에서만 적용됩니다 — 쪽 이동의 총 건수는 이 조건을 반영하지 않습니다.',
+    pickingCompleteOnlyNote: '서버가 계산한 출하 진행 상태를 기준으로 전체 결과에 적용됩니다.',
     search: '조회',
     reset: '초기화',
     shipDateFromRequired: '출하일 시작은 필수입니다.',
@@ -37,6 +36,15 @@ export const shipmentProcessing = {
       LINES_UNAVAILABLE: '라인 정보 없음',
       PICKING_INCOMPLETE: '피킹 미완료',
       INSPECTION_NOT_PASSED: '출하검사 미완료',
+    },
+    /** 진행 상태 6값 — 계약이 닫은 값이라 표시명은 화면이 갖는다. 낱말은 출하 예정 목록과 같다. */
+    progressCodes: {
+      NOT_ALLOCATED: '미편성',
+      PARTIALLY_ALLOCATED: '부분 편성',
+      PICKING: '피킹중',
+      PICKED: '피킹 완료',
+      PARTIALLY_SHIPPED: '부분 출하',
+      SHIPPED: '출하 완료',
     },
     empty: {
       title: '조회 결과가 없습니다.',

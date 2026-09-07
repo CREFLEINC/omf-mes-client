@@ -23,6 +23,7 @@ const RESPONSE = {
   shipToPartnerId: 9201,
   requestedShipDate: '2026-08-13',
   statusCode: 'SAMPLE_STATUS_A',
+  shipmentProgressCode: 'PARTIALLY_SHIPPED' as const,
   shippingInspectionStatusCode: 'NOT_REQUIRED' as const,
   lines: [LINE],
 };
@@ -65,7 +66,7 @@ describe('toShipmentRequestView', () => {
       customerId: 9101,
       shipToPartnerId: 9201,
       requestedShipDate: '2026-08-13',
-      statusCode: 'SAMPLE_STATUS_A',
+      shipmentProgressCode: 'PARTIALLY_SHIPPED',
       inspectionStatus: 'NOT_REQUIRED',
       lineTotals: { requestedQty: 100, allocatedQty: 80, shippedQty: 20 },
     });
@@ -76,6 +77,13 @@ describe('toShipmentRequestView', () => {
       toShipmentRequestView({ ...RESPONSE, shippingInspectionStatusCode: 'REJECTED' })
         .inspectionStatus,
     ).toBe('REJECTED');
+  });
+
+  it('출하 진행 상태를 서버가 낸 그대로 옮긴다 — 화면이 라인 수량으로 재계산하지 않는다', () => {
+    expect(
+      toShipmentRequestView({ ...RESPONSE, shipmentProgressCode: 'NOT_ALLOCATED' })
+        .shipmentProgressCode,
+    ).toBe('NOT_ALLOCATED');
   });
 
   it('lines가 없어도 검사 상태는 응답 값 그대로다 — 합계만 null이 된다', () => {

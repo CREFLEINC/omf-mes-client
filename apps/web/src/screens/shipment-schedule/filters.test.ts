@@ -27,13 +27,13 @@ describe('readFilters', () => {
     expect(
       readFilters(
         new URLSearchParams(
-          'customer=9101&shipToPartner=9201&status=SAMPLE_STATUS_A&inspection=true',
+          'customer=9101&shipToPartner=9201&progress=PARTIALLY_SHIPPED&inspection=true',
         ),
       ),
     ).toEqual({
       customer: '9101',
       shipToPartner: '9201',
-      status: 'SAMPLE_STATUS_A',
+      progress: 'PARTIALLY_SHIPPED',
       inspection: 'true',
     });
   });
@@ -58,8 +58,8 @@ describe('readFilters', () => {
     expect(readFilters(new URLSearchParams(`inspection=${raw}`)).inspection).toBe('');
   });
 
-  it('상태는 자유 문자열로 받는다', () => {
-    expect(readFilters(new URLSearchParams('status=%EA%B0%80'))).toMatchObject({ status: '가' });
+  it('계약에 없는 진행 상태는 전체로 본다', () => {
+    expect(readFilters(new URLSearchParams('progress=UNKNOWN'))).toMatchObject({ progress: '' });
   });
 });
 
@@ -75,9 +75,9 @@ describe('readPage', () => {
 
 describe('toSearchParams', () => {
   it('채운 조건만 주소에 적는다', () => {
-    const params = toSearchParams(EMPTY_PERIOD, filters({ status: 'SAMPLE_STATUS_A' }), null, 1);
+    const params = toSearchParams(EMPTY_PERIOD, filters({ progress: 'PICKED' }), null, 1);
 
-    expect(params.toString()).toBe('status=SAMPLE_STATUS_A');
+    expect(params.toString()).toBe('progress=PICKED');
   });
 
   it('조건이 하나도 없으면 주소가 비어 있다', () => {
@@ -129,14 +129,14 @@ describe('toFilterQuery', () => {
         filters({
           customer: '9101',
           shipToPartner: '9201',
-          status: 'SAMPLE_STATUS_A',
+          progress: 'PARTIALLY_SHIPPED',
           inspection: 'true',
         }),
       ),
     ).toEqual({
       customerId: 9101,
       shipToPartnerId: 9201,
-      statusCode: 'SAMPLE_STATUS_A',
+      shipmentProgressCode: 'PARTIALLY_SHIPPED',
       shippingInspectionRequired: true,
     });
   });
@@ -160,14 +160,14 @@ describe('toFilterQuery', () => {
 describe('toFilterChips', () => {
   it('걸린 조건마다 칩 하나를 만든다', () => {
     const chips = toFilterChips(
-      filters({ customer: '9101', shipToPartner: '9201', status: 'A', inspection: 'true' }),
+      filters({ customer: '9101', shipToPartner: '9201', progress: 'PICKED', inspection: 'true' }),
       NAMES,
     );
 
     expect(chips.map((chip) => chip.key)).toEqual([
       'customer',
       'shipToPartner',
-      'status',
+      'progress',
       'inspection',
     ]);
   });
@@ -188,7 +188,7 @@ describe('toFilterChips', () => {
 
   it('제거 버튼의 접근 이름이 조건마다 다르다', () => {
     const chips = toFilterChips(
-      filters({ customer: '9101', shipToPartner: '9201', status: 'A', inspection: 'true' }),
+      filters({ customer: '9101', shipToPartner: '9201', progress: 'PICKED', inspection: 'true' }),
       NAMES,
     );
     const labels = chips.map((chip) => chip.removeLabel);

@@ -79,6 +79,30 @@ const lookupRoutes: StubRoute[] = [
         page: { page: 1, size: 50, total: 1 },
       }),
   },
+  /* 보류 사유는 공통코드 `LOT_HOLD_REASON` 선택지 — 그룹으로 나눠 답한다(앞선 라우트가 이긴다). */
+  {
+    match: (request) => {
+      const url = new URL(request.url);
+      return (
+        url.pathname === '/mdm/code-values' &&
+        url.searchParams.get('codeGroupCode') === 'LOT_HOLD_REASON'
+      );
+    },
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            codeValueId: 903,
+            codeGroupId: 904,
+            code: 'SYN_REASON',
+            codeName: 'Synthetic hold reason',
+            displayOrder: 1,
+            isActive: true,
+          },
+        ],
+        page: { page: 1, size: 100, total: 1 },
+      }),
+  },
   {
     match: (request) => new URL(request.url).pathname === '/mdm/code-values',
     respond: () =>
@@ -97,6 +121,14 @@ const lookupRoutes: StubRoute[] = [
       }),
   },
 ];
+
+/** 사유 Select — 선택지가 서기(질의 완료) 전엔 잠겨 있어 열리기를 기다린 뒤 고른다. */
+const chooseHoldReason = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  const field = screen.getByLabelText('보류 사유');
+  await waitFor(() => expect(field).toBeEnabled());
+  await user.click(field);
+  await user.click(await screen.findByRole('option', { name: 'Synthetic hold reason' }));
+};
 
 type FetchInterceptor = (request: Request) => Response | Promise<Response> | undefined;
 const renderScreen = (routes: StubRoute[], intercept?: FetchInterceptor) => {
@@ -294,7 +326,7 @@ describe('Lot Status 전이 후보', () => {
     });
     await view.user.click(await screen.findByRole('button', { name: 'SYN-LOT-ALPHA 선택' }));
     await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
-    await view.user.type(screen.getByLabelText('보류 사유'), 'SYN_REASON');
+    await chooseHoldReason(view.user);
 
     void view.queryClient.invalidateQueries({ queryKey: ['lot-status-transition', 'candidates'] });
     await waitFor(() => expect(listCalls).toBe(2));
@@ -309,7 +341,7 @@ describe('Lot Status 전이 후보', () => {
     expect(valueOf(current, '보류 수량')).toBe('4');
     expect(valueOf(current, '가용 수량')).toBe('26');
     await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
-    await view.user.type(screen.getByLabelText('보류 사유'), 'SYN_REASON');
+    await chooseHoldReason(view.user);
     await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
     await view.user.click(
       within(await screen.findByRole('dialog')).getByRole('button', { name: '보류 등록' }),
@@ -342,7 +374,7 @@ describe('Lot Status 전이 후보', () => {
     ];
     const openConfirmation = async (): Promise<HTMLElement> => {
       await view.user.click(await screen.findByRole('radio', { name: 'DEFECTIVE' }));
-      await view.user.type(screen.getByLabelText('보류 사유'), 'SYN_REASON');
+      await chooseHoldReason(view.user);
       await view.user.click(screen.getByRole('button', { name: '등록 확인' }));
       return screen.findByRole('dialog');
     };

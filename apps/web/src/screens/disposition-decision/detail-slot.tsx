@@ -27,6 +27,8 @@ export interface DetailSlotProps {
   };
   remaining: RemainingQty;
   items: DispositionLookup;
+  severity: DispositionLookup;
+  status: DispositionLookup;
   uoms: DispositionLookup;
   onRetry: () => void;
 }
@@ -50,6 +52,8 @@ export const DetailSlot = ({
   decisions,
   remaining,
   items,
+  severity,
+  status,
   uoms,
   onRetry,
 }: DetailSlotProps): ReactNode => {
@@ -84,7 +88,13 @@ export const DetailSlot = ({
 
   return (
     <>
-      <DetailPane view={detail.view} items={items} uoms={uoms} />
+      <DetailPane
+        view={detail.view}
+        items={items}
+        uoms={uoms}
+        severity={severity}
+        status={status}
+      />
       <DecisionHistory
         rows={decisions.rows}
         remaining={remaining}

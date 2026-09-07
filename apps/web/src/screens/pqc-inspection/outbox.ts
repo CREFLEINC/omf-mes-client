@@ -121,6 +121,8 @@ const postEntry = async (client: Client, entry: OutboxEntry): Promise<Inspection
 export interface Outbox {
   /** 아직 서버에 닿지 않은 건수. **상시 표시가 필수 요건이다**(C-1 #4). */
   pendingCount: number;
+  /** 서버가 받은 횟수. 늘어나면 화면이 조회를 다시 한다(#601 1-7). */
+  sentCount: number;
   /** 지금 연결돼 있는가. 건수와 함께 낸다 — 끊긴 것과 밀리는 것은 다르다. */
   isOnline: boolean;
   /** 큐에 담는다. **이것이 곧 성공이다** — 통신을 기다리지 않는다(C-1 #2). */
@@ -149,6 +151,16 @@ export const useOutbox = (): Outbox => {
 
   const [entries, setEntries] = useState<OutboxEntry[]>(readStored);
   const [rejection, setRejection] = useState<SplitError | null>(null);
+
+  /**
+   * 서버가 실제로 받은 횟수. **화면이 조회를 다시 할 계기다**(#601 1-7).
+   *
+   * ⛔ 확정 뒤 화면 상태를 손으로 칠하지 않는다. PQC 표본 검사에서 불합격 수가 공정별
+   * 합격판정개수를 넘으면 **서버가 같은 작업지시의 생산LOT 전체를 「검사 대기」로 일괄
+   * 전이**한다 — 방금 보낸 한 건 말고도 상태가 바뀌어 있을 수 있다. 경로도 필드도 그대로라
+   * 컴파일러가 알려 주지 않는 자리다.
+   */
+  const [sentTick, setSentTick] = useState(0);
   const [isOnline, setIsOnline] = useState(() => globalThis.navigator.onLine);
 
   /* 비우는 작업이 겹쳐 돌면 같은 항목이 두 번 나간다 — 키가 같아 서버가 흡수하지만, 굳이. */
@@ -211,8 +223,11 @@ export const useOutbox = (): Outbox => {
         const entry = entries[0];
         if (entry === undefined) return;
 
+        let sent = false;
+
         try {
           await postEntry(client, entry);
+          sent = true;
         } catch (error) {
           /*
            * 통신이 끊긴 것이면 큐에 그대로 둔다 — 기다리면 풀린다. 다만 **가만히 두지는
@@ -252,6 +267,7 @@ export const useOutbox = (): Outbox => {
 
         /* 받아졌든 거부됐든 큐에서는 내린다. 거부는 **그 건만** 내린다(C-2). */
         attempts.current.delete(entry.idempotencyKey);
+        if (sent) setSentTick((tick) => tick + 1);
         setEntries((prev) => {
           const next = prev.filter((one) => one.idempotencyKey !== entry.idempotencyKey);
           writeStored(next);
@@ -286,6 +302,7 @@ export const useOutbox = (): Outbox => {
 
   return {
     pendingCount: entries.length,
+    sentCount: sentTick,
     isOnline,
     enqueue,
     rejection,

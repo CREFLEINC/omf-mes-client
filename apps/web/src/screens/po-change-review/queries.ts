@@ -52,7 +52,10 @@ export const useChangeNotifications = (): UseQueryResult<NotificationListResult>
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/planning/production-orders', {
-          params: { query: { unacknowledgedOnly: true, page: 1, size: PAGE_SIZE } },
+          /* ⭐ withLastChange — 「무엇이 몇에서 몇으로」는 이 축으로만 온다. 행마다 따로 부르지 않는다. */
+          params: {
+            query: { unacknowledgedOnly: true, withLastChange: true, page: 1, size: PAGE_SIZE },
+          },
         }),
       );
 
@@ -82,7 +85,7 @@ export const useProductionOrderDetail = (
       return toChangeNotification(
         await runRequest(() =>
           client.GET('/planning/production-orders/{productionOrderId}', {
-            params: { path: { productionOrderId } },
+            params: { path: { productionOrderId }, query: { withLastChange: true } },
           }),
         ),
       );

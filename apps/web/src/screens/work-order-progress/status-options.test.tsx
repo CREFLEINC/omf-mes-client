@@ -12,6 +12,7 @@ const codeValue = (
   code: string,
   codeName: string,
   displayOrder: number,
+  nameKo?: string | null,
 ): Record<string, unknown> => ({
   codeValueId: 9000 + displayOrder,
   codeGroupId: 42,
@@ -19,6 +20,7 @@ const codeValue = (
   codeName,
   displayOrder,
   isActive: true,
+  ...(nameKo === undefined ? {} : { nameKo }),
 });
 
 const stub = (
@@ -65,6 +67,24 @@ describe('useWorkOrderStatusOptions', () => {
       { value: 'SYN_RUN', label: '진행중' },
       { value: 'SYN_WAIT', label: '대기' },
     ]);
+  });
+
+  /* G-33 — 고객이 늘리는 코드의 표시명은 다국어 컬럼이 먼저고 기본 이름은 fallback이다. */
+  it('다국어 이름이 있으면 그것을 표시명으로 쓰고, 비면 기본 이름으로 물러난다', async () => {
+    const { result } = renderOptions({
+      items: [
+        codeValue('SYN_RUN', '진행중', 1, '진행 중(현지)'),
+        codeValue('SYN_WAIT', '대기', 2, '   '),
+        codeValue('SYN_DONE', '완료', 3, null),
+      ],
+    });
+
+    await waitFor(() => {
+      expect(result.current.isPending).toBe(false);
+    });
+    expect(result.current.labelOf('SYN_RUN')).toBe('진행 중(현지)');
+    expect(result.current.labelOf('SYN_WAIT')).toBe('대기');
+    expect(result.current.labelOf('SYN_DONE')).toBe('완료');
   });
 
   it('코드를 표시명으로 바꾼다', async () => {

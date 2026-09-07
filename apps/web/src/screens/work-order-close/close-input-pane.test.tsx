@@ -16,11 +16,12 @@ const reasonOptions: SelectItems = [
 
 const renderPane = ({
   completionJudgment = 'UNDER',
-  draft = { remainderDisposition: null, varianceReasonCode: '' },
+  draft = { remainderDisposition: null, varianceReasonCode: '', remarks: '' },
   reasonOptions: options = reasonOptions,
   reasonUnavailableReason = null,
   onRemainderDispositionChange = vi.fn(),
   onVarianceReasonCodeChange = vi.fn(),
+  onRemarksChange = vi.fn(),
 }: Partial<React.ComponentProps<typeof WorkOrderCloseInputPane>> = {}) => {
   render(
     <WorkOrderCloseInputPane
@@ -30,9 +31,10 @@ const renderPane = ({
       reasonUnavailableReason={reasonUnavailableReason}
       onRemainderDispositionChange={onRemainderDispositionChange}
       onVarianceReasonCodeChange={onVarianceReasonCodeChange}
+      onRemarksChange={onRemarksChange}
     />,
   );
-  return { onRemainderDispositionChange, onVarianceReasonCodeChange };
+  return { onRemainderDispositionChange, onVarianceReasonCodeChange, onRemarksChange };
 };
 
 describe('WorkOrderCloseInputPane', () => {
@@ -68,7 +70,11 @@ describe('WorkOrderCloseInputPane', () => {
   it('keeps exact drafts hidden and does not expose editable controls', () => {
     const callbacks = renderPane({
       completionJudgment: 'NORMAL',
-      draft: { remainderDisposition: 'CARRY_OVER', varianceReasonCode: 'reason-first' },
+      draft: {
+        remainderDisposition: 'CARRY_OVER',
+        varianceReasonCode: 'reason-first',
+        remarks: '',
+      },
     });
 
     expect(screen.getByText(t.exactNote)).toBeVisible();
@@ -87,7 +93,7 @@ describe('WorkOrderCloseInputPane', () => {
   ] as const)(
     'controls shortfall radio selection from %s',
     (remainderDisposition, carryOver, writeOff) => {
-      renderPane({ draft: { remainderDisposition, varianceReasonCode: '' } });
+      renderPane({ draft: { remainderDisposition, varianceReasonCode: '', remarks: '' } });
 
       const radios = screen.getAllByRole('radio');
       expect(radios).toHaveLength(2);
@@ -129,10 +135,11 @@ describe('WorkOrderCloseInputPane', () => {
     const second = vi.fn();
     const props = {
       completionJudgment: 'UNDER' as const,
-      draft: { remainderDisposition: null, varianceReasonCode: '' },
+      draft: { remainderDisposition: null, varianceReasonCode: '', remarks: '' },
       reasonOptions,
       reasonUnavailableReason: null,
       onVarianceReasonCodeChange: vi.fn(),
+      onRemarksChange: vi.fn(),
     };
     render(
       <>
@@ -157,7 +164,7 @@ describe('WorkOrderCloseInputPane', () => {
   it('keeps caller option order and controlled reason selection', async () => {
     const user = userEvent.setup();
     const callbacks = renderPane({
-      draft: { remainderDisposition: null, varianceReasonCode: 'reason-first' },
+      draft: { remainderDisposition: null, varianceReasonCode: 'reason-first', remarks: '' },
     });
     const select = screen.getByRole('combobox', { name: t.reason.label });
 
@@ -218,4 +225,33 @@ describe('WorkOrderCloseInputPane', () => {
       'aria-describedby',
     );
   });
+});
+
+describe('WorkOrderCloseInputPane — 소멸 비고', () => {
+  /* 소멸은 아무 자원도 만들지 않아 이유가 remarks 에만 남는다 — 소멸을 골랐을 때만 칸을 연다. */
+  it('shows the remarks field only for WRITE_OFF and reports typed text', async () => {
+    const user = userEvent.setup();
+    const onRemarksChange = vi.fn();
+    renderPane({
+      draft: { remainderDisposition: 'WRITE_OFF', varianceReasonCode: '', remarks: '' },
+      onRemarksChange,
+    });
+
+    const field = screen.getByLabelText(t.remarks.label);
+    await user.type(field, '규격');
+
+    /* 통제된 입력이라 부모가 값을 되돌려 주지 않으면 글자마다 그 글자만 올라온다 — 첫 호출이 첫 글자다. */
+    expect(onRemarksChange).toHaveBeenCalled();
+    expect(onRemarksChange.mock.calls[0]?.[0]).toBe('규');
+    expect(screen.getByText(t.remarks.help)).toBeVisible();
+  });
+
+  it.each(['CARRY_OVER', null] as const)(
+    'hides the remarks field when disposition is %s',
+    (remainderDisposition) => {
+      renderPane({ draft: { remainderDisposition, varianceReasonCode: '', remarks: '' } });
+
+      expect(screen.queryByLabelText(t.remarks.label)).not.toBeInTheDocument();
+    },
+  );
 });

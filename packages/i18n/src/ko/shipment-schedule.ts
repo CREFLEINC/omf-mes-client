@@ -21,7 +21,7 @@ export const shipmentSchedule = {
     periodTo: '출하일 종료',
     customer: '고객',
     shipToPartner: '납품처',
-    status: '상태',
+    progress: '진행 상태',
     inspection: '검사 상태',
   },
   actions: {
@@ -65,17 +65,15 @@ export const shipmentSchedule = {
     /* 저장 컬럼이 없다는 사실은 스펙 §5-2가 확정한 것이다 — 없다고만 말하지 않고 왜 없는지를 밝힌다. */
     timeSlotNote: '시간대 필터는 저장 자리가 없어 제공하지 않습니다.',
     summaryNote: '집계 요약은 설계 확인 후 제공될 예정입니다.',
-    statusNote:
-      '상태는 아직 확정되지 않은 임시 목록입니다. 이번 조회 결과에 나온 값으로 만들어, 결과에 없는 값은 목록에 없습니다.',
     lookupTruncated: '선택지가 앞쪽 일부만 보입니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
     lookupFailed: '선택지를 불러오지 못했습니다.',
     chipCustomer: (value: string): string => `고객: ${value}`,
     chipShipToPartner: (value: string): string => `납품처: ${value}`,
-    chipStatus: (value: string): string => `상태: ${value}`,
+    chipProgress: (value: string): string => `진행: ${value}`,
     chipInspection: (value: string): string => `검사: ${value}`,
     chipRemoveCustomer: '고객 조건 제거',
     chipRemoveShipToPartner: '납품처 조건 제거',
-    chipRemoveStatus: '상태 조건 제거',
+    chipRemoveProgress: '진행 조건 제거',
     chipRemoveInspection: '검사 조건 제거',
   },
   pageNav: {

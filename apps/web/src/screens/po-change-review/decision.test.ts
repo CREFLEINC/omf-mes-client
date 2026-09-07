@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import {
+  adjustmentErrors,
   decisionLockReason,
   decisionWarnings,
   EMPTY_DECISION,
@@ -23,6 +24,7 @@ const selected: ChangeNotification = {
   dueDate: '2026-08-20',
   statusCode: 'CODE-A',
   acknowledgedAt: null,
+  lastChange: null,
 };
 
 const workOrder = (id: number, producedQty: number | null): AffectedWorkOrder => ({
@@ -37,7 +39,8 @@ const workOrder = (id: number, producedQty: number | null): AffectedWorkOrder =>
 
 const input = (overrides: Partial<DecisionGateInput> = {}): DecisionGateInput => ({
   selected,
-  draft: { decision: 'APPLY', reason: '' },
+  draft: { decision: 'APPLY', reason: '', adjustments: {} },
+  workOrders: [],
   isSaving: false,
   ...overrides,
 });
@@ -180,5 +183,68 @@ describe('decisionWarnings', () => {
     expect(
       decisionWarnings(draft({ decision: 'APPLY' }), [workOrder(13, 5000)], null).overProduced,
     ).toEqual([]);
+  });
+});
+
+describe('W/O 조정 — 반영은 조정을 함께 싣는다(한 트랜잭션)', () => {
+  const affected = [
+    workOrder(13, 1200),
+    workOrder(14, 0),
+    { ...workOrder(15, 0), versionNo: null },
+  ];
+
+  it('적은 줄만, 잠금 토큰이 있는 줄만 싣는다', () => {
+    const body = toAcknowledgeBody(
+      input({
+        draft: draft({
+          decision: 'APPLY',
+          adjustments: { '13': ' 2,500 ', '14': '', '15': '100' },
+        }),
+        workOrders: affected,
+      }),
+    );
+
+    expect(body).toEqual({
+      decisionCode: 'APPLY',
+      workOrderAdjustments: [{ workOrderId: 13, versionNo: 1, orderQty: 2500 }],
+    });
+  });
+
+  /* ⛔ 강행에 조정을 실으면 400 이다 — 강행은 「기존을 유지한다」라 조정이 성립하지 않는다. */
+  it('강행은 적어 둔 조정을 버린다', () => {
+    const body = toAcknowledgeBody(
+      input({
+        draft: draft({ decision: 'PROCEED', reason: '납기 우선', adjustments: { '13': '2500' } }),
+        workOrders: affected,
+      }),
+    );
+
+    expect(body).toEqual({ decisionCode: 'PROCEED', reason: '납기 우선' });
+  });
+
+  it('조정 칸에 잘못된 값이 있으면 그 사유로 막고 본문을 만들지 않는다', () => {
+    const bad = input({
+      draft: draft({ decision: 'APPLY', adjustments: { '13': 'abc', '14': '-1' } }),
+      workOrders: affected,
+    });
+
+    expect(decisionLockReason(bad)).toBe(t.lock.adjustment);
+    expect(toAcknowledgeBody(bad)).toBeNull();
+    expect(adjustmentErrors(bad.draft, affected)).toEqual({
+      '13': t.workOrders.adjustNotNumber,
+      '14': t.workOrders.adjustNegative,
+    });
+  });
+
+  it('조정을 적으면 「조정 없음」 경고가 꺼지고 실적 경고는 조정 수량과 견준다', () => {
+    const warnings = decisionWarnings(
+      draft({ decision: 'APPLY', adjustments: { '13': '1000' } }),
+      [workOrder(13, 1200), workOrder(14, 5000)],
+      4000,
+    );
+
+    expect(warnings.applyWithoutAdjustment).toBe(false);
+    /* 조정하지 않은 14는 수량이 그대로라 경고 대상이 아니다 — 13은 실적 1200 > 조정 1000. */
+    expect(warnings.overProduced.map((one) => one.workOrderId)).toEqual([13]);
   });
 });

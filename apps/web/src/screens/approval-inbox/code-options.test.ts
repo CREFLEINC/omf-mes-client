@@ -10,9 +10,10 @@ import {
 } from './code-options';
 
 describe('자리표시 상수', () => {
-  it('고정 OpenAPI의 승인 유형 8종을 담는다', () => {
-    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toHaveLength(8);
+  it('고정 OpenAPI의 승인 유형 9종을 담는다', () => {
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toHaveLength(9);
     expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toContain('IQC_SKIP');
+    expect(PLACEHOLDER_APPROVAL_TYPE_CODES).toContain('PRODUCTION_RESULT_CORRECT');
   });
 
   it('요청 상태 값 목록이 비어 있다', () => {

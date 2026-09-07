@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import type { SelectOption } from './types';
 
 /**
- * 고정 OpenAPI가 닫은 승인 유형 8개를 조회와 등록에서 함께 쓰는 단일 목록이다.
+ * 고정 OpenAPI가 닫은 승인 유형 9개를 조회와 등록에서 함께 쓰는 단일 목록이다.
  * 이 화면이 소유하며 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
@@ -17,6 +17,7 @@ export const PLACEHOLDER_APPROVAL_TYPE_CODES = [
   'GOODS_ISSUE_CANCEL',
   'SHIPMENT_CANCEL',
   'IQC_SKIP',
+  'PRODUCTION_RESULT_CORRECT',
 ] as const;
 
 /**

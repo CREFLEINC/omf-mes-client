@@ -13,7 +13,7 @@ import {
   canConfirm,
   completedQtyOf,
   fromWorkOrderIdOf,
-  isUnreleased,
+  isNotStarted,
   lotProblemOf,
   qtyProblemOf,
 } from './handover';
@@ -241,8 +241,8 @@ export const WipHandoverScreen = () => {
                 />
               </div>
             ) : null}
-            {chosen !== null && isUnreleased(chosen) ? (
-              <AlertBanner variant="warning" title={t.next.unreleased} />
+            {chosen !== null && isNotStarted(chosen) ? (
+              <AlertBanner variant="warning" title={t.next.notStarted} />
             ) : null}
           </section>
 

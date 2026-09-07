@@ -15,10 +15,12 @@ import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useShipmentAllocations } from './queries';
 import {
   MERGE,
   RECONFIGURE,
   SPLIT,
+  allocatedSources,
   canConfirm,
   mergedPairs,
   pooledContents,
@@ -26,10 +28,14 @@ import {
   remainderOf,
   toCreateDraft,
   toReplaceDraft,
+  unverifiedSources,
   type DraftLine,
   type RepackType,
 } from './repack';
 import './screen.css';
+
+const numbersOf = (units: ScannedHandlingUnit[]): string =>
+  units.map((unit) => unit.handlingUnit.handlingUnitNo).join(' · ');
 
 const t = messages.packingRepack;
 
@@ -68,10 +74,14 @@ export const PackingRepackScreen = () => {
   const itemLabels = useItemLabels(sources.length > 0);
   const lotLabels = useLotLabels(sources);
 
+  const allocations = useShipmentAllocations(sources);
+
   const pooled = pooledContents(sources);
   const merged = mergedPairs(sources);
   const remainder = remainderOf(sources, lines);
-  const ready = canConfirm(sources, lines, worker !== null) && type !== null;
+  const blocked = allocatedSources(sources, allocations);
+  const unverified = unverifiedSources(sources, allocations);
+  const ready = canConfirm(sources, lines, worker !== null, allocations) && type !== null;
 
   const uomOf = (uomId: number): string => uoms.data?.get(uomId) ?? '';
 
@@ -315,6 +325,18 @@ export const PackingRepackScreen = () => {
             </Card.Body>
           </Card>
         ))}
+
+        {/* 스캔 자리에서 말한다. 아래에서만 말하면 수량을 다 적고 마지막에 막힌 것을 안다. */}
+        {blocked.length > 0 ? (
+          <AlertBanner variant="error" title={t.allocated.title(numbersOf(blocked))}>
+            {t.allocated.description}
+          </AlertBanner>
+        ) : null}
+        {blocked.length === 0 && unverified.length > 0 ? (
+          <AlertBanner variant="warning" title={t.unverified.title(numbersOf(unverified))}>
+            {t.unverified.description}
+          </AlertBanner>
+        ) : null}
       </section>
 
       {sources.length === 0 ? null : (

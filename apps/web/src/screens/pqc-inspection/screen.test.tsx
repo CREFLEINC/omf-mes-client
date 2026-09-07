@@ -58,6 +58,8 @@ const renderScreen = (
   beside: ReactNode = null,
 ) => {
   const writes: Request[] = [];
+  /** 의뢰 상세를 몇 번 읽었는가. 저장 뒤 다시 읽는지가 #601 1-7 의 판정 자료다. */
+  const detailReads: Request[] = [];
 
   const fetch = createStubFetch([
     {
@@ -92,7 +94,10 @@ const renderScreen = (
     },
     {
       match: (request) => new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
-      respond: () => jsonResponse(waitingRequest),
+      respond: (request) => {
+        detailReads.push(request.clone() as Request);
+        return jsonResponse(waitingRequest);
+      },
     },
     {
       match: (request) => new URL(request.url).pathname === '/mdm/code-values',
@@ -108,7 +113,7 @@ const renderScreen = (
     { route, fetch },
   );
 
-  return { writes };
+  return { writes, detailReads };
 };
 
 /**
@@ -399,6 +404,28 @@ describe('PqcInspectionScreen — 검사 항목 구획', () => {
   });
 });
 
+describe('PqcInspectionScreen — 서버가 받은 뒤', () => {
+  /*
+   * ⛔ **확정 뒤 화면 상태를 손으로 칠하지 않고 다시 읽는다**(#601 1-7). PQC 표본 검사에서
+   * 불합격 수가 공정별 합격판정개수를 넘으면 서버가 같은 작업지시의 생산LOT 전체를
+   * 「검사 대기」로 일괄 전이한다 — 방금 보낸 한 건 말고도 상태가 바뀌어 있다.
+   *
+   * ⚠ 경로도 필드도 타입도 그대로라 컴파일러가 잡지 못하는 자리다. 이 시험이 그 자리를 잡는다.
+   */
+  it('서버가 저장을 받으면 의뢰 상세를 다시 읽는다', async () => {
+    const { writes, detailReads } = renderScreen();
+
+    await screen.findByLabelText(t.result.fields.rejected);
+    const before = detailReads.length;
+
+    await userEvent.type(screen.getByLabelText(t.result.fields.rejected), '2');
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+    await waitFor(() => expect(detailReads.length).toBeGreaterThan(before));
+  });
+});
+
 describe('PqcInspectionScreen — 저장이 실어 가는 것', () => {
   /*
    * ⛔ **처분은 잠정이라 저장하지 않는다**(REQ-PR-0025). 보내면 정본이 둘이 되고, 뒤에 오는
@@ -610,11 +637,12 @@ describe('PqcInspectionScreen — 서버가 거부하면 (공유계약 C-7)', ()
    * 배너가 없으면 **아무 흔적도 남지 않는** 갈래다.
    */
   it('거부되면 성공 표시를 거두고 사유를 배너로 올린다', async () => {
-    renderScreen(undefined, undefined, undefined, () =>
+    const { detailReads } = renderScreen(undefined, undefined, undefined, () =>
       jsonResponse({ errors: [{ scope: 'screen', code: 'FORBIDDEN' }] }, { status: 403 }),
     );
 
     await screen.findByRole('button', { name: t.result.save });
+    const readsBefore = detailReads.length;
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     /*
@@ -630,6 +658,14 @@ describe('PqcInspectionScreen — 서버가 거부하면 (공유계약 C-7)', ()
     expect(
       within(await screen.findByRole('banner')).getByText(t.header.synced),
     ).toBeInTheDocument();
+
+    /*
+     * ⛔ **거부는 다시 읽을 계기가 아니다**(#601 1-7). 재조회는 서버가 저장을 «받았을 때»의
+     * 부수 효과를 따라잡으려는 것인데, 거부는 서버가 아무것도 바꾸지 않았다는 뜻이다.
+     * 여기서도 다시 읽으면 4xx 가 돌아올 때마다 조회가 한 번씩 더 나가고, 그것을 「서버가
+     * 무언가 바꿨다」는 신호로 읽을 근거가 사라진다.
+     */
+    expect(detailReads.length).toBe(readsBefore);
   });
 
   /*

@@ -2,6 +2,8 @@ import { messages } from '@omf-mes/i18n';
 
 import type { PeriodInput } from './period';
 import type { SortKey } from './sort';
+import { SHIPMENT_PROGRESS_CODES } from './status-options';
+import type { ShipmentProgressCode } from './types';
 
 /**
  * 조회 조건(기간 제외) — **주소가 정본이다.** 새로고침·뒤로가기·공유가 같은 결과를 내게 하려면
@@ -17,7 +19,8 @@ export interface ShipmentFilters {
   customer: string;
   /** 납품처 번호. 고객과 같은 이유로 정수만 받는다. */
   shipToPartner: string;
-  status: string;
+  /** 서버가 라인 수량으로 계산한 출하 진행 상태. */
+  progress: ShipmentProgressCode | '';
   /** 검사 상태. `''`(전체) · `'true'`(대상) · `'false'`(대상 아님) 세 값만 갖는다. */
   inspection: string;
 }
@@ -25,7 +28,7 @@ export interface ShipmentFilters {
 export const EMPTY_FILTERS: ShipmentFilters = {
   customer: '',
   shipToPartner: '',
-  status: '',
+  progress: '',
   inspection: '',
 };
 
@@ -33,7 +36,7 @@ export const EMPTY_FILTERS: ShipmentFilters = {
 const URL_KEYS: Record<keyof ShipmentFilters, string> = {
   customer: 'customer',
   shipToPartner: 'shipToPartner',
-  status: 'status',
+  progress: 'progress',
   inspection: 'inspection',
 };
 
@@ -48,10 +51,13 @@ const readNumberFilter = (raw: string): string => (POSITIVE_INTEGER.test(raw) ? 
 const readInspectionFilter = (raw: string): string =>
   raw === 'true' || raw === 'false' ? raw : '';
 
+const readProgressFilter = (raw: string): ShipmentProgressCode | '' =>
+  SHIPMENT_PROGRESS_CODES.some((code) => code === raw) ? (raw as ShipmentProgressCode) : '';
+
 export const readFilters = (params: URLSearchParams): ShipmentFilters => ({
   customer: readNumberFilter(params.get(URL_KEYS.customer) ?? ''),
   shipToPartner: readNumberFilter(params.get(URL_KEYS.shipToPartner) ?? ''),
-  status: params.get(URL_KEYS.status) ?? '',
+  progress: readProgressFilter(params.get(URL_KEYS.progress) ?? ''),
   inspection: readInspectionFilter(params.get(URL_KEYS.inspection) ?? ''),
 });
 
@@ -82,7 +88,7 @@ export const toSearchParams = (
     ['shipDateTo', period.to],
     [URL_KEYS.customer, readNumberFilter(filters.customer)],
     [URL_KEYS.shipToPartner, readNumberFilter(filters.shipToPartner)],
-    [URL_KEYS.status, filters.status],
+    [URL_KEYS.progress, filters.progress],
     [URL_KEYS.inspection, readInspectionFilter(filters.inspection)],
   ];
 
@@ -100,7 +106,7 @@ export const toSearchParams = (
 export interface ShipmentFilterQuery {
   customerId?: number;
   shipToPartnerId?: number;
-  statusCode?: string;
+  shipmentProgressCode?: ShipmentProgressCode;
   shippingInspectionRequired?: boolean;
 }
 
@@ -111,7 +117,7 @@ export const toFilterQuery = (filters: ShipmentFilters): ShipmentFilterQuery => 
   return {
     ...(customer === '' ? {} : { customerId: Number(customer) }),
     ...(shipToPartner === '' ? {} : { shipToPartnerId: Number(shipToPartner) }),
-    ...(filters.status === '' ? {} : { statusCode: filters.status }),
+    ...(filters.progress === '' ? {} : { shipmentProgressCode: filters.progress }),
     ...(filters.inspection === ''
       ? {}
       : { shippingInspectionRequired: filters.inspection === 'true' }),
@@ -148,9 +154,9 @@ export const toFilterChips = (filters: ShipmentFilters, names: FilterChipNames):
       removeLabel: t.filters.chipRemoveShipToPartner,
     },
     {
-      key: 'status',
-      label: t.filters.chipStatus(filters.status),
-      removeLabel: t.filters.chipRemoveStatus,
+      key: 'progress',
+      label: t.filters.chipProgress(filters.progress),
+      removeLabel: t.filters.chipRemoveProgress,
     },
     {
       key: 'inspection',

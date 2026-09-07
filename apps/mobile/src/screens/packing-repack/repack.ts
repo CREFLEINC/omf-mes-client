@@ -111,12 +111,58 @@ export const remainderOf = (
     .filter((content) => content.qty > 0);
 };
 
+/**
+ * 이 포장이 이미 출하에 배분됐는가.
+ *
+ * 넷이다. 확인하지 못한 것은 배분되지 않은 것과 다르고, 아직 묻는 중인 것은 확인하지 못한
+ * 것과 다르다 - 셋을 뭉치면 스캔할 때마다 확인하지 못했다는 경고가 깜빡여 진짜 경고가 묻힌다.
+ */
+export type AllocationCheck = 'allocated' | 'clear' | 'unknown' | 'checking';
+
+const checkOf = (
+  source: ScannedHandlingUnit,
+  checks: ReadonlyMap<number, AllocationCheck>,
+): AllocationCheck => checks.get(source.handlingUnit.handlingUnitId) ?? 'unknown';
+
+/**
+ * 이미 출하에 배분돼 재구성할 수 없는 원 포장.
+ *
+ * 재구성하면 출하 쪽 배분이 가리키던 물건이 사라진다. 합병은 원 포장이 여럿이라 전건을
+ * 본다 - 하나만 배분돼 있어도 그 물건이 사라지는 것은 같다.
+ */
+export const allocatedSources = (
+  sources: ScannedHandlingUnit[],
+  checks: ReadonlyMap<number, AllocationCheck>,
+): ScannedHandlingUnit[] => sources.filter((source) => checkOf(source, checks) === 'allocated');
+
+/**
+ * 배분 여부를 확인하지 못한 원 포장.
+ *
+ * 공유계약 C-6 이 판정용 값의 캐시를 막아 오프라인에서는 이 판정을 할 수 없다. 막지는
+ * 않는다 - 오프라인 재구성 자체는 이 화면이 하는 일이다. 다만 확인하지 못했다는 것을
+ * 말하지 않으면 작업자는 확인된 줄 안다.
+ */
+export const unverifiedSources = (
+  sources: ScannedHandlingUnit[],
+  checks: ReadonlyMap<number, AllocationCheck>,
+): ScannedHandlingUnit[] => sources.filter((source) => checkOf(source, checks) === 'unknown');
+
 export const canConfirm = (
   sources: ScannedHandlingUnit[],
   lines: DraftLine[],
   hasWorker: boolean,
+  checks: ReadonlyMap<number, AllocationCheck>,
 ): boolean => {
   if (!hasWorker || sources.length === 0 || lines.length === 0) {
+    return false;
+  }
+
+  /* 묻는 중에는 아직 모른다. 짧게 막히고 답이 오면 풀린다. */
+  if (sources.some((source) => checkOf(source, checks) === 'checking')) {
+    return false;
+  }
+
+  if (allocatedSources(sources, checks).length > 0) {
     return false;
   }
 

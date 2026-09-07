@@ -10,9 +10,12 @@ import {
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
+import type { LookupSource } from '../../patterns/lookup-display';
+
 import type { ConfirmOutcome } from './confirm-run';
 import { failureReason } from './confirm-run';
 import { elapsedOf, formatElapsed } from './elapsed';
+import { shipmentStatusText } from './lookups';
 import { isBatchExcluded } from './selection';
 import type { ShipmentRow } from './types';
 
@@ -26,6 +29,8 @@ export interface ShipmentListProps {
   error: ReactNode;
   /** 직전 확정에서 실패한 건들. 행에 사유를 붙인다. */
   failures: readonly ConfirmOutcome[];
+  /** 출하 상태 표시명(`SHIPMENT_STATUS`). 없으면 코드를 그대로 보인다. */
+  statusLookup: LookupSource;
   onToggle: (shipmentId: number) => void;
   onToggleAll: () => void;
 }
@@ -58,6 +63,7 @@ export const ShipmentList = ({
   isLoading,
   error,
   failures,
+  statusLookup,
   onToggle,
   onToggleAll,
 }: ShipmentListProps) => {
@@ -94,7 +100,11 @@ export const ShipmentList = ({
       header: t.list.fields.elapsed,
       render: (row) => <ElapsedCell row={row} now={now} />,
     },
-    { key: 'status', header: t.list.fields.status, render: (row) => row.statusCode },
+    {
+      key: 'status',
+      header: t.list.fields.status,
+      render: (row) => shipmentStatusText(statusLookup, row.statusCode),
+    },
     {
       key: 'erpDeliveryNo',
       header: t.list.fields.erpDeliveryNo,

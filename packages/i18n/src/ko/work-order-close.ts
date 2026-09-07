@@ -52,6 +52,16 @@ export const workOrderClose = {
       beyondDescription: '첫 쪽 또는 이전 쪽으로 이동해 다시 확인하세요.',
     },
   },
+  closedCandidateList: {
+    pane: '마감된 작업지시 목록',
+    loading: '마감된 작업지시 목록을 불러오는 중입니다.',
+    empty: {
+      title: '마감된 작업지시가 없습니다.',
+      description: '조회 조건을 바꿔 다시 확인하세요.',
+      beyondTitle: '현재 쪽에 마감된 작업지시가 없습니다.',
+      beyondDescription: '첫 쪽 또는 이전 쪽으로 이동해 다시 확인하세요.',
+    },
+  },
   candidateReferences: {
     item: {
       loading: '품목 표시명을 확인하는 중입니다.',
@@ -129,11 +139,26 @@ export const workOrderClose = {
       placeholder: '사유를 선택하세요.',
       empty: '선택할 사유가 없습니다.',
     },
+    /** 소멸을 골랐을 때만 — 소멸은 아무 자원도 만들지 않아 이유가 여기와 처분 코드에만 남는다. */
+    remarks: {
+      label: '소멸 사유(비고)',
+      placeholder: '잔량을 소멸 처리하는 이유',
+      help: '소멸은 다른 전표를 만들지 않습니다. 이유를 남기면 마감 비고로 저장됩니다.',
+    },
   },
   outboundItems: {
     pane: '작업지시 마감 ERP 송신 항목',
     heading: 'ERP 송신 항목',
-    group: 'ERP 송신 항목 선택',
+    group: 'ERP 송신 항목 현황',
+    /** 전역 설정이다 — 마감 한 건이 바꾸지 않는다(규범 4: 바꿀 수 없는 것에는 근거가 함께 보인다). */
+    lead: '전역 송신 설정입니다. 마감 요청에 싣지 않으며, 바꾸려면 연계 설정 화면에서 합니다.',
+    /** 부속 항목(투입자재·공수·설비시간·비가동)의 코드가 정해지기 전에는 선택칸을 열지 않는다(G-2). */
+    appendixPending:
+      '생산 실적 부속 항목(투입자재·공수·설비시간·비가동)의 선택은 항목 코드가 정해지면 열립니다.',
+    state: {
+      on: '송신',
+      off: '송신 안 함',
+    },
     loading: 'ERP 송신 항목 설정을 불러오는 중입니다.',
     empty: {
       title: '설정된 ERP 송신 항목이 없습니다.',
@@ -141,5 +166,63 @@ export const workOrderClose = {
     },
     lockedFallback: '이 송신 항목은 변경할 수 없습니다.',
     sendTiming: (note: string): string => `송신 시점: ${note}`,
+  },
+  correction: {
+    pane: '생산실적 정정',
+    heading: (workOrderNo: string): string => `실적 목록 — ${workOrderNo}`,
+    selection: {
+      title: '마감된 W/O를 선택하세요.',
+      description: '마감된 작업지시를 선택하면 등록된 생산실적을 확인할 수 있습니다.',
+    },
+    loading: '생산실적을 불러오는 중입니다.',
+    loadFailed: '생산실적을 불러오지 못했습니다.',
+    truncated: '실적 목록 일부만 불러와 정정을 시작할 수 없습니다.',
+    workersUnavailable: '등록자 표시명을 확인할 수 없어 일부 행을 미확인으로 표시합니다.',
+    reasonUnavailable: '정정 사유 목록을 확인할 수 없어 저장할 수 없습니다.',
+    empty: {
+      title: '등록된 생산실적이 없습니다.',
+      description: '정정할 원본 실적이 없습니다.',
+    },
+    fields: {
+      sequence: '순번',
+      occurredAt: '발생 시각',
+      goodQty: '양품',
+      defectQty: '불량',
+      holdQty: '보류',
+      scrapQty: '스크랩',
+      reworkQty: '재작업',
+      worker: '등록자',
+      relation: '정정 관계',
+      reason: '정정 사유',
+      note: '비고',
+    },
+    values: {
+      original: '원본',
+      correctionOf: (sequence: number | null): string =>
+        sequence === null ? '정정 실적' : `순번 ${String(sequence)} 정정`,
+      unknownWorker: '등록자 미확인',
+    },
+    actions: {
+      select: (sequence: number): string => `순번 ${String(sequence)} 실적 선택`,
+      correct: '정정',
+      cancel: '취소',
+      save: '정정 저장',
+      requestApproval: '상신',
+    },
+    immutable: '정정 실적도 같은 목록에 추가됩니다. 원본 실적은 삭제하거나 덮어쓰지 않습니다.',
+    dialog: {
+      title: (workOrderNo: string, sequence: number): string =>
+        `정정 입력 — ${workOrderNo} 순번 ${String(sequence)}`,
+      serverGrade: '정정 등급은 서버가 입력 내용을 기준으로 판정합니다.',
+    },
+    saved: '정정 실적이 추가되었습니다.',
+    approval: {
+      title: '생산실적 정정 승인 상신',
+      required: '이 정정은 승인이 필요합니다. 승인자가 판단할 수 있도록 변경 사유를 적어 주세요.',
+      reason: '상신 사유',
+      reasonHint: '무엇을 얼마나 정정하는지 구체적으로 작성하세요.',
+      reasonRequired: '상신 사유를 입력하세요.',
+      submitted: '승인 요청을 상신했습니다. 승인 완료 후 정정 내용을 다시 입력해 저장하세요.',
+    },
   },
 } as const;

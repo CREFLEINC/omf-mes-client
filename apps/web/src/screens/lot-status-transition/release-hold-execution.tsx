@@ -4,16 +4,24 @@ import {
   Dialog,
   Radio,
   RadioGroup,
+  Select,
   TextArea,
   TextField,
   useToast,
 } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import { requireIfMatch, SaveErrorBanner, useMasterWrite } from '../../patterns/master';
+import {
+  isKnownReason,
+  LOT_HOLD_RELEASE_REASON_GROUP,
+  useLotHoldReasonOptions,
+  type ReasonOptions,
+} from './code-options';
 import { isTransitionStale, transitionStaleMessage } from './transition-error';
 
 type LotHold = components['schemas']['LotHold'];
@@ -36,11 +44,17 @@ interface Validation {
 }
 
 /**
- * client#601 2-2 — `releaseReasonCode`가 2026-08-30 되살아나 필수가 됐다(등록 사유와 대칭 축).
- * 값 목록이 아직 확정되지 않아 자유 입력으로 받는다 — 형제 폼(`create-hold-execution.tsx`의
- * `reasonCode`)이 같은 사정(등록 사유)에 이미 쓰고 있는 형태를 그대로 옮겼다.
+ * `releaseReasonCode`는 등록 사유와 대칭인 필수 축이고(스펙 §5-4) 값 목록은 공통코드
+ * `LOT_HOLD_RELEASE_REASON`이 준다(코드 사전 등재). 목록이 서지 않으면 그 사유로 잠그고, 선택지에
+ * 없는 값은 보내지 않는다(fail-closed) — 자유 입력으로 물러나지 않는다.
  */
-const validate = (draft: Draft, maximum: number | undefined, target: string): Validation => {
+const validate = (
+  draft: Draft,
+  maximum: number | undefined,
+  target: string,
+  reasons: ReasonOptions,
+): Validation => {
+  const tReason = messages.lotStatusTransition.reason;
   const text = draft.releaseQty.trim();
   const quantity = Number(text);
   const quantityError =
@@ -54,7 +68,13 @@ const validate = (draft: Draft, maximum: number | undefined, target: string): Va
             ? `해제 수량은 보류 수량 ${String(maximum)} 이하여야 합니다.`
             : undefined;
   const releaseReasonCode = draft.releaseReasonCode.trim();
-  const releaseReasonError = releaseReasonCode === '' ? '해제 사유를 입력하세요.' : undefined;
+  const releaseReasonError =
+    reasons.unavailableReason ??
+    (releaseReasonCode === ''
+      ? tReason.required
+      : isKnownReason(reasons.options, releaseReasonCode)
+        ? undefined
+        : tReason.unknown);
   const remarks = draft.remarks.trim();
   const remarksError = remarks === '' ? '비고를 입력하세요.' : undefined;
   return {
@@ -98,7 +118,10 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
     remarks: '',
   });
   const [confirmation, setConfirmation] = useState<LotHoldRelease | null>(null);
-  const validation = validate(draft, props.maxReleaseQty, props.targetLotStatusCode);
+  const reasons = useLotHoldReasonOptions(LOT_HOLD_RELEASE_REASON_GROUP);
+  const reasonId = useId();
+  const reasonNoteId = `${reasonId}-note`;
+  const validation = validate(draft, props.maxReleaseQty, props.targetLotStatusCode, reasons);
   const write = useMasterWrite<LotHoldRelease, LotHold>({
     request: (body, headers) =>
       client.POST('/quality/lot-holds/{lotHoldId}:release', {
@@ -106,7 +129,8 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
           path: { lotHoldId: props.lotHoldId },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
+            /* 토큰이 없으면 보내지 않는다 — 빈 If-Match 로 나가면 서버가 판정할 대상이 없다. */
+            'If-Match': requireIfMatch(headers),
           },
         },
         body,
@@ -170,15 +194,32 @@ export const ReleaseHoldExecution = (props: ReleaseHoldExecutionProps) => {
             }
           />
         )}
-        <TextField
-          label="해제 사유"
-          required
-          value={draft.releaseReasonCode}
-          error={validation.releaseReasonError}
-          onChange={(event) =>
-            setDraft((current) => ({ ...current, releaseReasonCode: event.target.value }))
-          }
-        />
+        {/* 규범 3 — Select 에 label prop 이 없어 라벨을 직접 세운다. 잠긴 사유는 상시 텍스트(규범 4). */}
+        <div className="field-cell wide-select">
+          <label className="field-label" htmlFor={reasonId}>
+            {messages.lotStatusTransition.reason.releaseLabel}
+          </label>
+          <Select
+            id={reasonId}
+            options={reasons.options}
+            value={draft.releaseReasonCode === '' ? null : draft.releaseReasonCode}
+            placeholder={messages.lotStatusTransition.reason.placeholder}
+            disabled={write.isSaving || reasons.unavailableReason !== undefined}
+            invalid={validation.releaseReasonError !== undefined && draft.releaseReasonCode !== ''}
+            aria-required
+            aria-describedby={
+              validation.releaseReasonError === undefined ? undefined : reasonNoteId
+            }
+            onChange={(value) =>
+              setDraft((current) => ({ ...current, releaseReasonCode: value ?? '' }))
+            }
+          />
+          {validation.releaseReasonError === undefined ? null : (
+            <p className="field-note" id={reasonNoteId}>
+              {validation.releaseReasonError}
+            </p>
+          )}
+        </div>
         <TextArea
           label="비고"
           required

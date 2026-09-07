@@ -23,25 +23,30 @@ export interface ResultPaneProps {
 interface FollowUpButtonProps {
   label: string;
   reason: string | undefined;
+  to?: string;
 }
 
 /**
  * 비활성 컨트롤의 사유 — 규범 4: 항상 보이는 텍스트로 렌더하고 `aria-describedby`로 잇는다.
  * 사유가 붙는 비활성 보조 액션은 `outlined`를 쓴다(`text`는 라벨로 읽힌다).
  */
-const FollowUpButton = ({ label, reason }: FollowUpButtonProps) => {
+const FollowUpButton = ({ label, reason, to }: FollowUpButtonProps) => {
   const reasonId = useId();
 
   return (
     <div className="field-cell">
-      <Button
-        variant="outlined"
-        size="sm"
-        disabled={reason !== undefined}
-        aria-describedby={reason === undefined ? undefined : reasonId}
-      >
-        {label}
-      </Button>
+      {reason === undefined && to !== undefined ? (
+        <Link to={to}>{label}</Link>
+      ) : (
+        <Button
+          variant="outlined"
+          size="sm"
+          disabled={reason !== undefined}
+          aria-describedby={reason === undefined ? undefined : reasonId}
+        >
+          {label}
+        </Button>
+      )}
       {reason !== undefined && (
         <span id={reasonId} className="field-note">
           {reason}
@@ -140,7 +145,15 @@ export const ResultPane = ({
         </div>
         <FollowUpButton label={t.actions.reworkResult} reason={followUp.rework.reason} />
         <FollowUpButton label={t.actions.disposalRequest} reason={followUp.disposal.reason} />
-        <FollowUpButton label={t.actions.reinstate} reason={followUp.reinstate.reason} />
+        <FollowUpButton
+          label={t.actions.reinstate}
+          reason={followUp.reinstate.reason}
+          to={
+            followUp.reinstate.reason === undefined
+              ? `/shipment/stock-reinstatements?decision=${String(decisions.rows.find((row) => row.dispositionTypeCode === 'NORMAL')?.dispositionDecisionId ?? '')}`
+              : undefined
+          }
+        />
       </div>
     </div>
   );

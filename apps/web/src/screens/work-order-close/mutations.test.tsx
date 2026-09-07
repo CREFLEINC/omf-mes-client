@@ -18,7 +18,7 @@ const DETAIL_ETAG = '"synthetic-close-version-11"';
 const CLOSE_BODY = {
   remainderDispositionCode: 'WRITE_OFF' as const,
   reasonCode: 'SYN_SHORTFALL',
-  erpSendItems: ['PRODUCTION_RESULT', 'MATERIAL_CONSUMPTION'],
+  remarks: '잔량은 규격 변경으로 쓸 수 없음',
 };
 
 const workOrder = (overrides: Record<string, unknown> = {}) => ({

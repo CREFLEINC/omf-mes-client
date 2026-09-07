@@ -140,7 +140,12 @@ describe('toShipmentProcessingCandidateFilters', () => {
       state({ shipDateFrom: '2026-08-01', shipDateTo: '2026-08-31', pickingCompleteOnly: true }, 3),
     );
 
-    expect(filters).toEqual({ shipDateFrom: '2026-08-01', shipDateTo: '2026-08-31', page: 3 });
+    expect(filters).toEqual({
+      shipDateFrom: '2026-08-01',
+      shipDateTo: '2026-08-31',
+      pickingCompleteOnly: true,
+      page: 3,
+    });
   });
 
   it('종료일이 없어도 유효하다', () => {
@@ -150,5 +155,6 @@ describe('toShipmentProcessingCandidateFilters', () => {
 
     expect(filters.shipDateFrom).toBe('2026-08-01');
     expect(filters.shipDateTo).toBeNull();
+    expect(filters.pickingCompleteOnly).toBe(false);
   });
 });

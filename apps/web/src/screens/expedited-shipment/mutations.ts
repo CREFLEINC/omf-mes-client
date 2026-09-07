@@ -18,9 +18,9 @@ type Shipment = components['schemas']['Shipment'];
  * 멱등 키가 나가야 원장의 `uq_inventory_idempotency`가 중복을 막는다(§5-6 · 공유계약 C-1).
  * 키를 새로 만들면 **전표가 두 벌 생긴다.**
  *
- * ⚠ **`business_date`가 멱등 키의 일부다**(C-8). 스펙 §5-6은 「클라이언트가 영업일까지 정해
- * 보낸다」고 적었으나 **계약의 `ShipmentCreate`에 그 칸이 없다**(실측) — 서버가 정한다. 자정을
- * 넘겨 재시도하면 같은 키로도 두 벌이 생길 수 있다는 사실은 그대로 남는다(설계에 물어 두었다).
+ * ⚠ **`business_date`가 멱등 키의 일부다**(C-8). 계약의 `ShipmentCreate`가 `businessDate`·
+ * `occurredAt`을 필수로 두어(2026-09-01 신설) 화면이 제출 순간의 값을 정해 보낸다 — `submission.ts`가
+ * 만든다. 재시도 때는 **처음 보낸 값을 그대로** 보내야 멱등이 선다(자정을 넘겨 다시 계산하지 않는다).
  *
  * baseline에서 이 오퍼레이션은 `Idempotency-Key`만 요구한다 — `If-Match`·`X-Worker-No` 없음.
  * 그래서 `etagPath: null`이다.

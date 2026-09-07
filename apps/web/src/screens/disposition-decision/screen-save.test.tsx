@@ -32,7 +32,7 @@ const renderScreen = (options: Parameters<typeof dispositionStub>[0] = {}): { us
 
 const fillDecision = async (user: User, qty: string, reason = '표면만 손상됐다'): Promise<void> => {
   await screen.findByText('LOT-TEST-0088');
-  await user.click(screen.getByRole('radio', { name: CODE }));
+  await user.click(screen.getByRole('radio', { name: '재작업' }));
   await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), qty);
   await user.type(screen.getByLabelText(t.form.reasonLabel), reason);
 };
@@ -137,7 +137,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
   it('사유가 비면 서버로 보내지 않는다', async () => {
     const { user } = renderScreen();
     await screen.findByText('LOT-TEST-0088');
-    await user.click(screen.getByRole('radio', { name: CODE }));
+    await user.click(screen.getByRole('radio', { name: '재작업' }));
     await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), '120');
     await save(user);
 
@@ -282,7 +282,7 @@ describe('DispositionDecisionScreen 판정 저장', () => {
 
     await user.click(screen.getByRole('button', { name: t.actions.selectRow('NC-TEST-0042') }));
     await screen.findByText('LOT-TEST-0088');
-    await user.click(screen.getByRole('radio', { name: CODE }));
+    await user.click(screen.getByRole('radio', { name: '재작업' }));
     await user.type(screen.getByLabelText(`${t.form.qtyLabel} (EA)`), '120');
     await user.type(screen.getByLabelText(t.form.reasonLabel), '표면만 손상됐다');
     await save(user);

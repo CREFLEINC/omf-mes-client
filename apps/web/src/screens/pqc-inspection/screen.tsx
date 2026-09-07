@@ -1,5 +1,6 @@
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
@@ -32,6 +33,7 @@ import { judgeAutomatically } from './auto-judgment';
 import { toMeasurementRows, type MeasurementRow } from './measurement-rows';
 import {
   RESULT_STATUS,
+  pqcInspectionKeys,
   useCodeValues,
   useInspectionItemSpecs,
   useInspectionRequestDetail,
@@ -119,6 +121,21 @@ export const PqcInspectionScreen = () => {
    */
   const outbox = useOutbox();
   const { clearRejection } = outbox;
+  const queryClient = useQueryClient();
+
+  /*
+   * ⛔ **서버가 받았으면 의뢰를 다시 읽는다**(#601 1-7). PQC 표본 검사에서 불합격 수가
+   * 공정별 합격판정개수를 넘으면 서버가 같은 작업지시의 생산LOT 전체를 「검사 대기」로 일괄
+   * 전이한다 — 방금 보낸 한 건 말고도 상태가 바뀌어 있다. 화면이 옛 상태를 들고 있으면
+   * 검사자는 이미 검사 대기로 내려간 LOT 을 확정된 것으로 읽는다.
+   *
+   * ⛔ 확정 직후 상태를 **손으로 칠하지 않는다** — 무엇이 함께 바뀌었는지는 서버만 안다.
+   */
+  useEffect(() => {
+    if (outbox.sentCount === 0) return;
+
+    void queryClient.invalidateQueries({ queryKey: pqcInspectionKeys.detail(targetId ?? 0) });
+  }, [outbox.sentCount, queryClient, targetId]);
 
   /*
    * ⛔ **거부가 서면 성공 표시를 거둔다.** 담는 순간 성공을 말하는 것은 옳지만(C-1 #2),

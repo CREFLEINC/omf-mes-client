@@ -281,6 +281,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             <NavItem to="/shipment/disposition-requests" icon="assignment_return">
               재작업/폐기 판정 의뢰
             </NavItem>
+            {/* W-04-11 — 판정이 끝난 반품 LOT을 원 LOT 그대로 판매 가능 재고로 되돌린다. */}
+            <NavItem to="/shipment/stock-reinstatements" icon="move_to_inbox">
+              재고 재등록
+            </NavItem>
           </SidebarSection>
           {/* W-02-01 — 생산의 계획·지시 첫 화면이며 현재 생산 블록의 첫 항목으로 둔다. */}
           <SidebarSection label="생산">

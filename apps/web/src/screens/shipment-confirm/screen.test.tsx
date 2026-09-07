@@ -241,3 +241,13 @@ describe('ShipmentConfirmScreen', () => {
     expect(body).toContain(t.withdrawn.executeCancel);
   });
 });
+
+describe('ShipmentConfirmScreen — 상태 표시명', () => {
+  /* 계약은 코드만 내린다 — 표시명은 공통코드 SHIPMENT_STATUS 가 준다(G-32). 코드 원문을 사용자에게 보이지 않는다. */
+  it('출하 상태를 공통코드 표시명으로 그린다', async () => {
+    renderScreen();
+
+    expect((await screen.findAllByText('미확정')).length).toBeGreaterThan(0);
+    expect(screen.queryByText('UNCONFIRMED')).not.toBeInTheDocument();
+  });
+});

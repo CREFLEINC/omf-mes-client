@@ -14,6 +14,12 @@ export interface ReceiptTableProps {
   itemLookup: LookupSource;
   uomLookup: LookupSource;
   selectedId: number | null;
+  /**
+   * ⛔ **실행 중에는 줄을 바꾸지 못한다.** 바꾸면 끝난 뒤 결과가 「고른 줄의 것」이 아니게 되어
+   * 알림도 차단도 서지 않는다 — 작업자는 아무 일도 없었다고 읽고, 그 실패는 다음 실행이 결과를
+   * 덮으며 사라진다.
+   */
+  isLocked: boolean;
   onToggleSelect: (inboundReceiptLineId: number) => void;
   /** 결과가 없을 때 그 자리에 보일 안내. 「없음」과 「이 쪽에 없음」이 갈린다. */
   empty: string;
@@ -45,6 +51,7 @@ export const ReceiptTable = ({
   itemLookup,
   uomLookup,
   selectedId,
+  isLocked,
   onToggleSelect,
   empty,
 }: ReceiptTableProps) => {
@@ -63,6 +70,7 @@ export const ReceiptTable = ({
               isSelected ? ' pop-row-select-on' : ''
             }`}
             aria-pressed={isSelected}
+            disabled={isLocked}
             aria-label={
               isSelected
                 ? t.deselectRow(row.inboundReceiptNo, itemName)

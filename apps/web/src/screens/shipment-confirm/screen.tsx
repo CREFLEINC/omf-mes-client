@@ -9,6 +9,7 @@ import { retryableIds, summaryMessage } from './confirm-run';
 import { elapsedOf, summarize } from './elapsed';
 import { FilterBar } from './filter-bar';
 import { defaultFilters, toListQuery, type ConfirmFilters } from './filters';
+import { useShipmentStatusLookup } from './lookups';
 import { useCancelRequestMutation, useConfirmRunner } from './mutations';
 import { OutcomePane } from './outcome-pane';
 import { useShipmentDetail, useUnconfirmedShipments } from './queries';
@@ -46,6 +47,7 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
 
   const query = useMemo(() => toListQuery(filters, 1), [filters]);
   const list = useUnconfirmedShipments(query);
+  const statusLookup = useShipmentStatusLookup();
   const rows = useMemo(() => list.data?.items ?? [], [list.data]);
 
   /*
@@ -122,6 +124,7 @@ export const ShipmentConfirmScreen = ({ now }: ShipmentConfirmScreenProps = {}) 
           rows={rows}
           now={baseNow}
           selected={selected}
+          statusLookup={statusLookup}
           isLoading={list.isPending && query !== null}
           error={
             list.isError ? (

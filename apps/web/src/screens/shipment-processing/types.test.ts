@@ -24,6 +24,7 @@ const request = (overrides: Partial<Parameters<typeof toShipmentRequestCandidate
   shipToPartnerId: 602,
   requestedShipDate: '2026-08-31',
   statusCode: 'SYN-STATUS',
+  shipmentProgressCode: 'PICKED' as const,
   shippingInspectionStatusCode: 'PASSED' as const,
   ...overrides,
 });
@@ -49,6 +50,14 @@ describe('toShipmentRequestCandidate', () => {
     const candidate = toShipmentRequestCandidate(request());
 
     expect(candidate.lines).toBeNull();
+  });
+
+  it('서버가 계산한 출하 진행 상태를 그대로 옮긴다', () => {
+    const candidate = toShipmentRequestCandidate(
+      request({ shipmentProgressCode: 'PARTIALLY_SHIPPED' }),
+    );
+
+    expect(candidate.shipmentProgressCode).toBe('PARTIALLY_SHIPPED');
   });
 
   it('lines가 빈 배열이면 빈 배열 그대로 낸다', () => {

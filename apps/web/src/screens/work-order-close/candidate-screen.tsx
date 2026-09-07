@@ -1,7 +1,7 @@
 import { AlertBanner, Button, EmptyState } from '@crefle/web-ui';
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 
 import { toWorkOrderPageView } from '../work-order/pagination';
 import { WorkOrderCloseCandidateListPane } from './candidate-list-pane';
@@ -18,9 +18,10 @@ import {
   useWorkOrderCloseUomLookup,
 } from './candidate-references';
 import {
+  WORK_ORDER_CLOSE_CODE_GROUPS,
+  toWorkOrderCloseCodeLabel,
   toWorkOrderCloseCodeOptions,
   toWorkOrderCloseProductionOrderOptions,
-  WORK_ORDER_CLOSE_CODE_GROUPS,
 } from './code-options';
 import { WorkOrderCloseFilterBar } from './filter-bar';
 import { toWorkOrderCloseFilterInitialization } from './filter-initialization';
@@ -28,6 +29,7 @@ import { WorkOrderCloseExecution } from './close-execution';
 import {
   EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT,
   setWorkOrderCloseRemainderDisposition,
+  setWorkOrderCloseRemarks,
   setWorkOrderCloseVarianceReasonCode,
   workOrderCloseReadinessInputFrom,
   type WorkOrderCloseInputDraft,
@@ -45,12 +47,7 @@ import {
   type WorkOrderCloseDetailSummaryState,
 } from './detail-summary-pane';
 import { WorkOrderCloseOutboundItemsPane } from './outbound-items-pane';
-import {
-  reconcileWorkOrderCloseOutboundSelection,
-  selectedWorkOrderCloseOutboundItemCodes,
-  toggleWorkOrderCloseOutboundItem,
-  type WorkOrderCloseOutboundSelection,
-} from './outbound-selection';
+import { WorkOrderResultCorrectionWorkspace } from './result-correction-workspace';
 import {
   useWorkOrderCloseCandidates,
   useWorkOrderCloseCodeValues,
@@ -144,25 +141,19 @@ export const toWorkOrderCloseOutboundScreenState = ({
   return { kind: 'READY', settings };
 };
 
-export const toWorkOrderCloseSelectedOutboundSelection = (
-  settings: readonly WorkOrderCloseOutboundItemSetting[],
-  owned: { workOrderId: number | null; selection: WorkOrderCloseOutboundSelection },
-  selectedWorkOrderId: number | null,
-): WorkOrderCloseOutboundSelection =>
-  reconcileWorkOrderCloseOutboundSelection(
-    settings,
-    owned.workOrderId === selectedWorkOrderId ? owned.selection : {},
-  );
-
 interface WorkOrderCloseExecutionRequestSource {
   selectedWorkOrderId: number | null;
   detailState: WorkOrderCloseDetailScreenState;
   judgment: WorkOrderCloseCompletionJudgment | null;
   blockers: readonly WorkOrderCloseBlocker[];
-  outboundState: WorkOrderCloseOutboundScreenState;
   draft: WorkOrderCloseInputDraft;
-  outboundSelection: WorkOrderCloseOutboundSelection;
 }
+/**
+ * 마감 요청 — 상세가 «고른 W/O의 것»으로 서 있고 판정·차단이 풀려야 만든다.
+ *
+ * ERP 송신 항목 설정은 관문이 아니다 — 전역 설정의 «읽기 표시»이고 마감 본문에 싣지 않는다
+ * (`close-request.ts`). 설정 조회가 실패해도 마감 자체는 막지 않는다.
+ */
 export const toWorkOrderCloseExecutionRequest = (
   source: WorkOrderCloseExecutionRequestSource,
 ): components['schemas']['WorkOrderClose'] | null => {
@@ -171,19 +162,14 @@ export const toWorkOrderCloseExecutionRequest = (
     source.detailState.kind !== 'RESOLVED' ||
     source.detailState.detail.workOrderId !== source.selectedWorkOrderId ||
     source.judgment === null ||
-    source.blockers.length > 0 ||
-    source.outboundState.kind !== 'READY' ||
-    source.outboundState.settings.length === 0
+    source.blockers.length > 0
   )
     return null;
   return toWorkOrderCloseRequest({
     completionJudgmentCode: source.judgment,
     remainderDispositionCode: source.draft.remainderDisposition,
     reasonCode: source.draft.varianceReasonCode,
-    erpSendItems: selectedWorkOrderCloseOutboundItemCodes(
-      source.outboundState.settings,
-      source.outboundSelection,
-    ),
+    remarks: source.draft.remarks,
   });
 };
 export const toWorkOrderCloseSelectedDraft = (
@@ -215,10 +201,6 @@ export const WorkOrderCloseCandidateScreen = () => {
     workOrderId: state.selectedWorkOrderId,
     draft: { ...EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT },
   }));
-  const [ownedOutbound, setOwnedOutbound] = useState<{
-    workOrderId: number | null;
-    selection: WorkOrderCloseOutboundSelection;
-  }>(() => ({ workOrderId: state.selectedWorkOrderId, selection: {} }));
   const draft = toWorkOrderCloseSelectedDraft(ownedDraft, state.selectedWorkOrderId);
   useEffect(() => {
     dispatch({ type: 'SYNCHRONIZE_INITIALIZATION', initialization });
@@ -228,16 +210,17 @@ export const WorkOrderCloseCandidateScreen = () => {
       workOrderId: state.selectedWorkOrderId,
       draft: { ...EMPTY_WORK_ORDER_CLOSE_INPUT_DRAFT },
     });
-    setOwnedOutbound({ workOrderId: state.selectedWorkOrderId, selection: {} });
   }, [state.selectedWorkOrderId]);
 
   const filters = toWorkOrderCloseCandidateFilters(state);
+  const correctionMode = state.appliedFilters.statusCode === 'CLOSED';
+  const closeSelectedWorkOrderId = correctionMode ? null : state.selectedWorkOrderId;
   const candidate = useWorkOrderCloseCandidates(filters);
   const candidates = candidate.data?.items ?? [];
   const itemNames = useWorkOrderCloseItemNames(candidates.map((item) => item.itemId));
   const uoms = useWorkOrderCloseUomLookup();
-  const detail = useWorkOrderCloseDetail(state.selectedWorkOrderId);
-  const openSession = useWorkOrderCloseOpenSession(state.selectedWorkOrderId);
+  const detail = useWorkOrderCloseDetail(closeSelectedWorkOrderId);
+  const openSession = useWorkOrderCloseOpenSession(closeSelectedWorkOrderId);
   const snapshot = useMemo(
     () =>
       toWorkOrderCloseCandidateSnapshot({
@@ -280,50 +263,19 @@ export const WorkOrderCloseCandidateScreen = () => {
   const detailUom =
     detail.data === undefined ? null : resolveWorkOrderCloseUomReference(uoms, detail.data.uomId);
   const detailState = toWorkOrderCloseDetailScreenState({
-    selectedWorkOrderId: state.selectedWorkOrderId,
+    selectedWorkOrderId: closeSelectedWorkOrderId,
     isFetching: detail.isFetching,
     isError: detail.isError,
     detail: detail.data,
     unitLabel: detailUom?.kind === 'named' ? detailUom.label : null,
   });
   const outboundState = toWorkOrderCloseOutboundScreenState({
-    selectedWorkOrderId: state.selectedWorkOrderId,
+    selectedWorkOrderId: closeSelectedWorkOrderId,
     isFetching: outboundSettings.isFetching,
     isError: outboundSettings.isError,
     settings: outboundSettings.data,
   });
   const readyOutboundSettings = outboundState.kind === 'READY' ? outboundState.settings : [];
-  const readyOutboundRevision =
-    outboundState.kind === 'READY'
-      ? JSON.stringify(
-          outboundState.settings.map((setting) => [
-            setting.outboundItemCode,
-            setting.enabled,
-            setting.locked,
-          ]),
-        )
-      : null;
-  const readyOutboundSettingsRef = useRef(readyOutboundSettings);
-  readyOutboundSettingsRef.current = readyOutboundSettings;
-  useEffect(() => {
-    if (readyOutboundRevision === null || state.selectedWorkOrderId === null) return;
-    setOwnedOutbound((current) =>
-      current.workOrderId === state.selectedWorkOrderId
-        ? {
-            ...current,
-            selection: reconcileWorkOrderCloseOutboundSelection(
-              readyOutboundSettingsRef.current,
-              current.selection,
-            ),
-          }
-        : current,
-    );
-  }, [readyOutboundRevision, state.selectedWorkOrderId]);
-  const outboundSelection = toWorkOrderCloseSelectedOutboundSelection(
-    readyOutboundSettings,
-    ownedOutbound,
-    state.selectedWorkOrderId,
-  );
   const detailPaneState: WorkOrderCloseDetailSummaryState =
     detailState.kind === 'NOT_SELECTED'
       ? {
@@ -366,7 +318,7 @@ export const WorkOrderCloseCandidateScreen = () => {
         .filter((reason) => reason.isActive && reason.codeName.trim() !== '')
         .slice()
         .sort((left, right) => left.displayOrder - right.displayOrder)
-        .map((reason) => ({ value: reason.code, label: reason.codeName })),
+        .map((reason) => ({ value: reason.code, label: toWorkOrderCloseCodeLabel(reason) })),
     [reasons.data],
   );
   let judgment: WorkOrderCloseCompletionJudgment | null = null;
@@ -434,9 +386,7 @@ export const WorkOrderCloseCandidateScreen = () => {
     detailState,
     judgment,
     blockers,
-    outboundState,
     draft: inputDraft,
-    outboundSelection,
   });
   const updateDraft = (
     update: (current: WorkOrderCloseInputDraft) => WorkOrderCloseInputDraft,
@@ -466,73 +416,73 @@ export const WorkOrderCloseCandidateScreen = () => {
           isLoading={initialization.kind === 'CHECKING' || candidate.isFetching}
           loadError={loadError}
           page={page}
+          variant={correctionMode ? 'correction' : 'close'}
           onSelect={(workOrderId) => dispatch({ type: 'SELECT', workOrderId })}
           onChangePage={(nextPage) => dispatch({ type: 'CHANGE_PAGE', page: nextPage })}
         />
-        <div className="work-order-close-detail">
-          <WorkOrderCloseDetailSummaryPane state={detailPaneState} />
-          {judgment === null ? null : (
-            <WorkOrderCloseInputPane
-              completionJudgment={judgment}
-              draft={inputDraft}
-              reasonOptions={reasonOptions}
-              reasonUnavailableReason={null}
-              onRemainderDispositionChange={(value) =>
-                updateDraft((current) => setWorkOrderCloseRemainderDisposition(current, value))
-              }
-              onVarianceReasonCodeChange={(value) =>
-                updateDraft((current) => setWorkOrderCloseVarianceReasonCode(current, value))
-              }
-            />
-          )}
-          {readinessState === null ? null : <WorkOrderCloseStatusPane state={readinessState} />}
-          {outboundState.kind === 'HIDDEN' ? null : (
-            <WorkOrderCloseOutboundItemsPane
-              settings={readyOutboundSettings}
-              selection={outboundSelection}
-              isLoading={outboundState.kind === 'CHECKING'}
-              loadError={
-                outboundState.kind === 'UNAVAILABLE' ? (
-                  <AlertBanner
-                    variant="error"
-                    title={messages.httpError.loadTitle}
-                    action={
-                      <Button onClick={() => void outboundSettings.refetch()}>
-                        {messages.common.retry}
-                      </Button>
-                    }
-                  >
-                    {messages.httpError.description}
-                  </AlertBanner>
-                ) : null
-              }
-              onToggle={(setting) =>
-                setOwnedOutbound((current) => ({
-                  workOrderId: state.selectedWorkOrderId,
-                  selection: toggleWorkOrderCloseOutboundItem(
-                    toWorkOrderCloseSelectedOutboundSelection(
-                      readyOutboundSettings,
-                      current,
-                      state.selectedWorkOrderId,
-                    ),
-                    setting,
-                  ),
-                }))
-              }
-            />
-          )}
-          {state.selectedWorkOrderId === null ? null : (
-            <WorkOrderCloseExecution
-              key={state.selectedWorkOrderId}
-              workOrderId={state.selectedWorkOrderId}
-              workOrderNo={detailState.kind === 'RESOLVED' ? detailState.detail.workOrderNo : ''}
-              request={executionRequest}
-              onClearSelection={() => dispatch({ type: 'CLEAR_SELECTION' })}
-              onReloadCandidates={candidate.refetch}
-              onReloadDetail={detail.refetch}
-            />
-          )}
-        </div>
+        {correctionMode ? (
+          <WorkOrderResultCorrectionWorkspace
+            workOrderId={state.selectedWorkOrderId}
+            workOrderNo={
+              candidates.find((item) => item.workOrderId === state.selectedWorkOrderId)
+                ?.workOrderNo ?? ''
+            }
+          />
+        ) : (
+          <div className="work-order-close-detail">
+            <WorkOrderCloseDetailSummaryPane state={detailPaneState} />
+            {judgment === null ? null : (
+              <WorkOrderCloseInputPane
+                completionJudgment={judgment}
+                draft={inputDraft}
+                reasonOptions={reasonOptions}
+                reasonUnavailableReason={null}
+                onRemainderDispositionChange={(value) =>
+                  updateDraft((current) => setWorkOrderCloseRemainderDisposition(current, value))
+                }
+                onVarianceReasonCodeChange={(value) =>
+                  updateDraft((current) => setWorkOrderCloseVarianceReasonCode(current, value))
+                }
+                onRemarksChange={(value) =>
+                  updateDraft((current) => setWorkOrderCloseRemarks(current, value))
+                }
+              />
+            )}
+            {readinessState === null ? null : <WorkOrderCloseStatusPane state={readinessState} />}
+            {outboundState.kind === 'HIDDEN' ? null : (
+              <WorkOrderCloseOutboundItemsPane
+                settings={readyOutboundSettings}
+                isLoading={outboundState.kind === 'CHECKING'}
+                loadError={
+                  outboundState.kind === 'UNAVAILABLE' ? (
+                    <AlertBanner
+                      variant="error"
+                      title={messages.httpError.loadTitle}
+                      action={
+                        <Button onClick={() => void outboundSettings.refetch()}>
+                          {messages.common.retry}
+                        </Button>
+                      }
+                    >
+                      {messages.httpError.description}
+                    </AlertBanner>
+                  ) : null
+                }
+              />
+            )}
+            {state.selectedWorkOrderId === null ? null : (
+              <WorkOrderCloseExecution
+                key={state.selectedWorkOrderId}
+                workOrderId={state.selectedWorkOrderId}
+                workOrderNo={detailState.kind === 'RESOLVED' ? detailState.detail.workOrderNo : ''}
+                request={executionRequest}
+                onClearSelection={() => dispatch({ type: 'CLEAR_SELECTION' })}
+                onReloadCandidates={candidate.refetch}
+                onReloadDetail={detail.refetch}
+              />
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

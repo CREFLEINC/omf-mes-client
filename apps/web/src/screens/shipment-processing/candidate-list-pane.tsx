@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import type { ShipmentGateBlocker } from './candidate-gate';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
+import { shipmentProgressLabel } from './progress-label';
 
 const t = messages.shipmentProcessing.list;
 
@@ -13,7 +14,7 @@ export interface ShipmentProcessingCandidateRow {
   shipmentRequestNo: string;
   customerLabel: string | null;
   requestedShipDate: string;
-  statusCode: string;
+  shipmentProgressCode: string;
   blockers: readonly ShipmentGateBlocker[];
 }
 
@@ -89,7 +90,7 @@ export const ShipmentProcessingCandidateListPane = ({
       header: t.fields.status,
       render: (row) => (
         <Chip variant="status" size="sm">
-          {row.statusCode}
+          {shipmentProgressLabel(row.shipmentProgressCode)}
         </Chip>
       ),
     },

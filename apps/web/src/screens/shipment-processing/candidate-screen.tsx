@@ -3,11 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useReducer, useState } from 'react';
 
 import { SaveErrorBanner } from '../../patterns/master';
-import {
-  isCandidateVisible,
-  shipmentGateBlockers,
-  type ShipmentGateBlocker,
-} from './candidate-gate';
+import { shipmentGateBlockers, type ShipmentGateBlocker } from './candidate-gate';
 import { ShipmentProcessingCandidateListPane } from './candidate-list-pane';
 import {
   createShipmentProcessingCandidateScreenState,
@@ -137,9 +133,6 @@ export const ShipmentProcessingCandidateScreen = () => {
   const filters = toShipmentProcessingCandidateFilters(state);
   const candidateQuery = useShipmentRequestCandidates(filters);
   const allCandidates = candidateQuery.data?.items ?? [];
-  const visibleCandidates = allCandidates.filter((candidate) =>
-    isCandidateVisible(candidate, state.appliedFilters.pickingCompleteOnly),
-  );
 
   const snapshot = toShipmentProcessingCandidateSnapshot({
     enabled: filters.shipDateFrom !== null,
@@ -299,12 +292,12 @@ export const ShipmentProcessingCandidateScreen = () => {
     </AlertBanner>
   ) : null;
 
-  const rows = visibleCandidates.map((candidate) => ({
+  const rows = allCandidates.map((candidate) => ({
     shipmentRequestId: candidate.shipmentRequestId,
     shipmentRequestNo: candidate.shipmentRequestNo,
     customerLabel: lookupLabel(partnerLookup.entries, candidate.customerId),
     requestedShipDate: candidate.requestedShipDate,
-    statusCode: candidate.statusCode,
+    shipmentProgressCode: candidate.shipmentProgressCode,
     blockers: shipmentGateBlockers(candidate),
   }));
 
