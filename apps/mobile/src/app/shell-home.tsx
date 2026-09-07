@@ -37,7 +37,10 @@ const tiles = [
   },
   {
     label: t.tiles.picking,
-    screens: [{ to: '/material-picking', label: messages.materialPicking.title }],
+    screens: [
+      { to: '/material-picking', label: messages.materialPicking.title },
+      { to: '/shopfloor-receipt', label: messages.shopfloorReceipt.title },
+    ],
   },
   {
     label: t.tiles.urgent,
