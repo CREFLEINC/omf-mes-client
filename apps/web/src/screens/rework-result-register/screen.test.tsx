@@ -152,6 +152,34 @@ const renderWithFractionalUom = () => {
   return { ...rendered, user: userEvent.setup() };
 };
 
+/** 재작업 처분이 없는 W/O — `remaining` 이 0 이 되는 자리다. */
+const renderWithoutDisposition = () => {
+  const rendered = renderWithProviders(
+    <PopIdentityProvider
+      value={{ terminalId: TERMINAL_ID, processId: PROCESS_ID, workerNo: '100027' }}
+    >
+      <ReworkResultRegisterScreen />
+    </PopIdentityProvider>,
+    {
+      fetch: async (request) => {
+        const url = new URL(request.url);
+
+        if (
+          url.pathname ===
+          `/quality/nonconformances/${String(NONCONFORMANCE_ID)}/disposition-decisions`
+        ) {
+          return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
+        }
+
+        return stubFetch(request);
+      },
+      route: '/pop/rework-results',
+    },
+  );
+
+  return { ...rendered, user: userEvent.setup() };
+};
+
 const pickWorkOrder = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByText(WORK_ORDER.workOrderNo));
 };
@@ -388,6 +416,27 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     expect(card).not.toHaveTextContent('6001');
     /* ⛔ 스펙에 없는 「원 W/O」 행을 두지 않는다 — 세 줄뿐이다. */
     expect(container.querySelectorAll('.rework-target-card dt')).toHaveLength(3);
+  });
+
+  /*
+   * ⛔ **키가 조용히 죽으면 안 된다.** 공용 키패드에 상한을 넘기면 그 부품은 넘치는 입력을
+   *    «없던 일»로 되돌리는데, 처분을 못 받았거나 이미 다 처리된 W/O 는 남은 수량이 0 이라
+   *    **모든 키가 먹통이 된다**(실측 — 아무 키도 들어가지 않았다. 사용자 지적).
+   *
+   *    넘치는 것은 막지 않고 «말한다» — 스펙 §6 이 그 자리에 배너를 세우라고 적었고 저장도
+   *    그때 잠긴다. 키를 죽이는 것은 그 조항이 아니다.
+   */
+  it('처분이 없어도 키가 살아 있다 — 넘침은 배너가 말한다', async () => {
+    const { user } = renderWithoutDisposition();
+    await pickWorkOrder(user);
+
+    await screen.findByRole('heading', { name: t.quantities.title });
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+
+    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
+    /* 저장은 잠긴 채다 — 키가 사는 것과 저장이 열리는 것은 다른 축이다. */
+    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
   });
 
   /*

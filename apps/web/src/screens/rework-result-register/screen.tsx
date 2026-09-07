@@ -442,7 +442,16 @@ export const ReworkResultRegisterScreen = () => {
                    */
                   allowDecimal={uom.decimalScaleOf(selected.uomId) > 0}
                   decimalLabel={t.quantities.decimalKey}
-                  max={progress.remaining}
+                  /*
+                   * ⛔ **상한(`max`)을 넘기지 않는다.** 공용 키패드는 상한을 넘기는 입력을
+                   *    «없던 일»로 되돌리는데, 처분을 못 받았거나 이미 다 처리된 W/O 는
+                   *    `remaining` 이 0 이라 **모든 키가 조용히 죽는다**(실측 — 아무 키도
+                   *    들어가지 않았다. 사용자 지적).
+                   *
+                   * ⭐ **넘치는 것은 막지 않고 «말한다»** — 스펙 §6 이 「합계 > 처분 수량」에
+                   *    「처분 수량 160 을 넘을 수 없습니다」를 세우라고 적었고, 그 배너는 ④에
+                   *    이미 서 있다. 저장도 그때 잠긴다. 키를 죽이는 것은 그 조항이 아니다.
+                   */
                   /* 스펙 §7 이 「큰 터치 타겟」을 지정한다 — 64와 72 사이에 단이 없어 `2xl` 이다. */
                   keySize="2xl"
                   backspaceLabel={t.quantities.backspace}
