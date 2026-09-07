@@ -3,6 +3,8 @@ import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useState } from 'react';
 
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
+
 import { resolveActions } from './actions';
 import { useNow } from './use-now';
 import { useWorkHoldEntry } from './entry-context';
@@ -128,9 +130,7 @@ export const WorkHoldRegisterScreen = () => {
 
         <p className="pop-context pop-context-right">
           {/* 귀속 사번은 상시 보인다 — 단말을 넘겨받은 다음 작업자가 남의 이름으로 찍지 않게. */}
-          <span>
-            {workerNo === null ? t.entry.workerUnknown : `${t.entry.workerLabel} ${workerNo}`}
-          </span>
+          <PopWorkerTag workerNo={workerNo} />
 
           {session.session !== null && (
             <Chip variant="status" size="md" status="success">

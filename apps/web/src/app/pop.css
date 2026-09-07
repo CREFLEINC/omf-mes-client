@@ -927,6 +927,158 @@
 }
 
 /*
+ * POP 머리줄의 사번 — **화면마다 같은 모양으로 선다**(`patterns/pop-worker-tag` · 사용자 지시
+ * 2026-09-07). 칩이 아니라 글자다 — 칩은 상태의 어휘이고 사번은 맥락 값이다.
+ */
+.pop-ui .pop-worker-tag {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/*
+ * P-04-01 Packing 실적 등록 — **네 구획을 각각 상자로 세운다**(설계 §3 도면 ①②③④).
+ *
+ * 테두리 없이 늘어놓으니 스캔 둘·구성·진행이 한 덩어리로 보여, 어디서 한 묶음이 끝나는지가
+ * 크기로만 갈렸다. 다른 POP 화면(`.pane`)과 같은 값을 쓴다 — 이 화면은 구획마다 안쪽 배치가
+ * 달라(격자·2단) `.pane` 을 그대로 붙이면 그 배치가 무너지므로 **겉모양만** 준다.
+ */
+.pop-ui .packing-scan,
+.pop-ui .packing-compose,
+.pop-ui .packing-progress {
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+/*
+ * 액션바도 다른 POP 화면과 같은 띠다 — 폭을 화면 끝까지 쓰고 위쪽 선 하나로 본문과 갈린다.
+ * `app.css` 가 이미 높이(88)와 윗선을 주고 있어 여기서는 안쪽 여백만 맞춘다.
+ */
+.pop-ui .packing-actions {
+  padding-inline: var(--pop-pad);
+}
+
+/*
+ * ① 상자 — **읽은 라벨이 칸 옆에 남는다**(설계 §3 도면 `DL-2026-0455-001`).
+ *
+ * 칸은 읽고 나면 스스로 비우므로, 남기지 않으면 무엇을 읽었는지 확인할 길이 없다. 값이라
+ * 크게, 멀리서 실물 라벨과 대조할 수 있게 둔다.
+ */
+/*
+ * ⚠ **위 여백을 넉넉히 준다.** 스캔 칸의 이름표가 칸 «위»에 떠 있는 부품이라, 상자 안쪽
+ * 여백이 얕으면 그 이름표가 상자 테두리에 걸려 잘린다(실측 · 사용자 지적 2026-09-07).
+ */
+.pop-ui .packing-scan {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding-block-start: var(--space-5);
+}
+
+/* 읽는 칸이 줄의 남는 폭을 갖는다 — 34자리 코드가 들어오는 자리다. */
+.pop-ui .packing-scan > :first-child {
+  flex: 1 1 20rem;
+  min-width: 0;
+}
+
+/*
+ * ⛔ **판정 자리는 스캔 줄에 끼지 않는다.** ② 구획은 자식이 셋(읽는 줄 · 읽은 값 · 판정)인데,
+ *    구획을 가로 flex 로 세우면서 판정 자리까지 같은 줄에 서서 **② 의 읽는 칸만 좁아졌다**
+ *    (사용자 지적 2026-09-07 — ①·② 의 칸 길이가 달라 보였다). 판정은 늘 제 줄을 쓴다.
+ */
+.pop-ui .packing-scan > .packing-verdict {
+  flex: 1 0 100%;
+  /*
+   * ⛔ **빈 자리를 잡아 두지 않는다**(사용자 지시 2026-09-07). 판정이 뜰 자리를 48px 로
+   *    비워 두었더니 아직 읽지 않은 상자 아래가 통째로 비어 보였다 — 판정은 «읽은 직후»
+   *    잠깐 보이는 것이고, 그 순간에는 아래를 밀어도 손이 이미 스캐너에 가 있다.
+   */
+  min-height: 0;
+}
+
+.pop-ui .packing-scanned-code {
+  margin: 0;
+  /*
+   * ⛔ **자리를 미리 잡아 두지 않는다.** 비워 두었더니 아직 읽지 않은 상자 오른쪽이 통째로
+   *    빈 구멍으로 보였다(사용자 지적 2026-09-07). 없으면 읽는 칸이 상자 폭을 다 가져간다.
+   */
+  white-space: nowrap;
+  font: 600 20px/28px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface);
+}
+
+/*
+ * ③ 왼쪽 단 — **위에서부터 쌓는다.**
+ *
+ * 표 자리에 남는 높이를 전부 주고 있어, 목록이 짧으면 합계와 「상위 포장」 사이가 손바닥만큼
+ * 벌어졌다(실측 · 사용자 지적 2026-09-07 — 창이 768 보다 높을 때 특히 크다). 세 덩이를 위에
+ * 붙이고 남는 높이는 «아래»에 둔다. 목록이 길어지면 표 자리가 그 안에서 스크롤한다(§3-1).
+ */
+.pop-ui .packing-compose-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.pop-ui .packing-compose-main > .packing-contents {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.pop-ui .packing-compose-main > .packing-parent {
+  flex: none;
+}
+
+/*
+ * ③ 오른쪽 단(키패드 자리) — **기다리는 동안에도 빈 기둥으로 두지 않는다.**
+ *
+ * 담을 LOT 이 정해져야 키패드가 서는데, 그때까지 이 단이 위쪽에 한 줄만 두고 통째로 비어
+ * 있었다(실측 · 사용자 지적 2026-09-07). 안내를 단 «가운데»에 세워, 무엇을 기다리는 자리인지
+ * 가 비어 있음보다 먼저 읽히게 한다.
+ */
+.pop-ui .packing-keypad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+
+.pop-ui .packing-keypad > .field-note {
+  max-width: 16rem;
+  text-align: center;
+}
+
+/*
+ * ③ 머리줄 아래 **선을 긋는다** — 설계 §3 도면이 「포장 단위 … 유형」 아래에 구분선을 그리고
+ * 그 아래를 표로 두었다. 선이 없으면 포장 단위 정보와 담긴 줄이 한 덩어리로 읽힌다.
+ */
+.pop-ui .packing-compose-head {
+  padding-block-end: var(--space-3);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+/*
+ * ⭐ **값이 있으면 두 상자가 같은 폭을 쓴다.** 값 길이대로 자리를 잡으면 ①·② 의 읽는 칸이
+ * 서로 다른 길이가 되어 두 줄이 어긋나 보인다(실측 — `SH-2026-0455` 와 `FLOT-2026-0311`.
+ * 사용자 지적 2026-09-07). 값이 «있을 때만» 같은 자리를 쓰므로, 읽기 전의 빈 구멍은 생기지
+ * 않는다.
+ */
+.pop-ui .packing-scanned-code:not(:empty) {
+  flex: 0 0 13rem;
+}
+
+/* 이름–칸 짝은 한 줄에 — 설계 §3 의 「유형 [ 카톤 ▾ ]」·「상위 포장 [ (없음) ▾ ]」 꼴이다. */
+.pop-ui .packing-compose-head,
+.pop-ui .packing-parent {
+  align-items: center;
+}
+
+/*
  * 유형 구획 — **이름과 사유가 윗줄, 고르는 자리는 그 «아래»**(사용자 지시 2026-09-07).
  *
  * 설계 §3 도면도 「유형」 오른쪽에 두 선택지를 세로로 쌓아 두었다. 이름·사유·선택지를 한 줄에

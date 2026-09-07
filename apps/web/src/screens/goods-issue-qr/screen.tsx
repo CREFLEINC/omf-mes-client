@@ -4,6 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { SaveErrorBanner } from '../../patterns/master';
 import { canIssue, issueGuard } from './issue-target';
@@ -151,7 +152,7 @@ export const GoodsIssueQrScreen = () => {
           <p className="pop-context">{`${t.entry.issueLabel} ${goodsIssue.data.goodsIssueNo}`}</p>
         )}
         <div className="pop-context-right">
-          {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
+          <PopWorkerTag workerNo={entry.workerNo} />
           <PrinterChip
             isLoading={printers.isPending}
             isError={printers.isError}

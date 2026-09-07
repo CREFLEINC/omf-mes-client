@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { useIsOnline } from './connection';
 import { useRepackLabelEntry } from './entry-context';
 import { ErrorBanner } from './error-banner';
@@ -177,9 +178,7 @@ export const RepackLabelIssueScreen = () => {
          *    막는 사유로 이미 본문에 선다(§6).
          */}
         <div className="pop-context-right">
-          <Chip status={entry.workerNo === null ? 'warning' : 'info'}>
-            {`${t.entry.workerLabel} ${entry.workerNo ?? t.device.terminalUnknown}`}
-          </Chip>
+          <PopWorkerTag workerNo={entry.workerNo} />
           {/* 스펙 §3 헤더의 연결 표시. 발행을 막는 조건이기도 해서 상시 보인다. */}
           <Chip status={isOnline ? 'success' : 'error'}>
             {isOnline ? t.device.online : t.device.offline}

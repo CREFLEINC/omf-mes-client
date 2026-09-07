@@ -162,8 +162,11 @@ describe('PackingResultScreen', () => {
 
     expect(screen.getByRole('heading', { name: t.title })).toBeTruthy();
     expect(screen.getByLabelText(t.scan.label.deliveryLabel)).toBeTruthy();
-    expect(screen.getByLabelText(t.scan.label.productionLot)).toHaveProperty('disabled', true);
-    expect(screen.getByText(t.scan.lotLocked)).toBeTruthy();
+    /* 잠긴 사유는 칸 «안»에 선다 — 아래 한 줄로 달면 구획이 그만큼 커진다(§3 예산 88). */
+    const lotField = screen.getByLabelText(t.scan.label.productionLot);
+
+    expect(lotField).toHaveProperty('disabled', true);
+    expect(lotField).toHaveAttribute('placeholder', t.scan.lotLocked);
   });
 
   it('납품라벨을 읽으면 어느 출하인지 서고 생산LOT 칸이 열린다', async () => {
@@ -311,8 +314,8 @@ describe('PackingResultScreen — 담기와 확정', () => {
     const user = userEvent.setup();
     renderScreen();
 
-    /* 담기 전에는 번호가 없다는 사실을 적는다 — 빈 자리로 두지 않는다. */
-    expect(screen.getByText(t.fields.handlingUnitPending)).toBeTruthy();
+    /* 담기 전에는 번호가 아예 없다 — 서버가 담는 순간 매긴다(사용자 지시로 설명을 걷었다). */
+    expect(screen.queryByText('SYN-CTN-0091')).toBeNull();
 
     await scanUntilMatched(user);
     await pack(user, '60');

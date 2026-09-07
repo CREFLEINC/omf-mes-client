@@ -5,6 +5,7 @@ import { useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { SaveErrorBanner } from '../../patterns/master';
 import { canWrite, useResultEntry } from './entry-context';
@@ -273,7 +274,7 @@ export const ProductionResultScreen = () => {
           </p>
         )}
         <div className="pop-context-right">
-          {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
+          <PopWorkerTag workerNo={entry.workerNo} />
           {/* 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다. */}
           <Chip status={outbox.isOnline ? 'success' : 'warning'}>
             {outbox.isOnline

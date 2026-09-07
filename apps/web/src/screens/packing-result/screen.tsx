@@ -2,15 +2,17 @@ import { AlertBanner, Button, Chip, NumberPad, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { toApiError } from '../../patterns/request';
 
 import { confirmLockReason } from './confirm-lock';
-import { ContentsTable } from './contents-table';
+import { ContentsTable, segmentLotNo } from './contents-table';
 import { usePackingIdentity } from './entry-context';
 import { useHandlingUnitCreate, usePackingConfirm, type OpenHandlingUnit } from './mutations';
 import { addLine, lineOf, qtyError, remainingOf, removeLine, toProgress } from './packing-draft';
 import {
   useHandlingUnitTypeOptions,
+  useUomDecimals,
   useLabelScan,
   useLotScan,
   useParentCandidates,
@@ -41,12 +43,21 @@ const NO_PARENT = '';
  */
 export const PackingResultScreen = () => {
   const titleId = useId();
+  const typeLabelId = useId();
+  const parentLabelId = useId();
   const identity = usePackingIdentity();
   const isOnline = useOnline();
   const gate = useTerminalGate(identity.terminalId, identity.processId);
 
   /** ① 이 라벨이 정한 출하. 둘째 스캔의 질의 축이며 **첫 스캔 응답에서 그대로 온다**. */
   const [label, setLabel] = useState<ShipmentLotAllocation | null>(null);
+  /**
+   * 읽은 납품라벨 «코드» 그대로. 설계 §3 도면이 ① 상자 오른쪽에 `DL-2026-0455-001` 을 세워
+   * 두었다 — 칸은 읽고 나면 스스로 비우므로, 남겨 두지 않으면 **무엇을 읽었는지 확인할 길이
+   * 없다.** ② 의 판정이 「이 납품라벨의 LOT 이 맞다」인데 그 납품라벨이 안 보이면 판정을
+   * 대조할 수 없다.
+   */
+  const [labelCode, setLabelCode] = useState<string | null>(null);
   const [labelMissing, setLabelMissing] = useState(false);
   /** ② 마지막 판정. 담은 뒤에도 남겨 둔다 — 방금 읽은 것이 무엇이었는지가 사라지면 안 된다. */
   const [matched, setMatched] = useState<MatchedLot | null>(null);
@@ -65,6 +76,8 @@ export const PackingResultScreen = () => {
   const labelScan = useLabelScan();
   const lotScan = useLotScan();
   const typeOptions = useHandlingUnitTypeOptions();
+  /* 소수점 키는 **담을 LOT 의 단위**가 정한다 — 개수로 세는 자재에는 그리지 않는다. */
+  const allowsDecimal = useUomDecimals();
   const shipmentId = label?.shipmentId ?? null;
   const warehouseId = label?.warehouseId ?? null;
   const parents = useParentCandidates(warehouseId);
@@ -91,6 +104,7 @@ export const PackingResultScreen = () => {
   const scanLabel = (code: string): void => {
     setMergeNote(null);
     setConfirmedNo(null);
+    setLabelCode(code);
     labelScan.mutate(code, {
       onSuccess: (outcome) => {
         if (outcome.kind === 'not-found') {
@@ -205,14 +219,22 @@ export const PackingResultScreen = () => {
         <h1 className="pop-title" id={titleId}>
           {t.title}
         </h1>
-        <p className="pop-context">
-          {shipmentId === null ? t.header.shipmentUnknown : t.header.shipment(shipmentId)}
-        </p>
+        {/*
+         * ⛔ **읽기 전에는 이 자리를 비운다**(사용자 지시 2026-09-07). 「납품라벨을 읽으면
+         *    어느 출하인지 표시됩니다」로 채우고 있었는데 설계에 없는 문장이고, 바로 아래
+         *    ① 상자가 「납품라벨」 칸으로 같은 말을 이미 하고 있다.
+         */}
+        {shipmentId !== null && <p className="pop-context">{t.header.shipment(shipmentId)}</p>}
+        {/*
+         * ⛔ **사번과 연결을 한 표식에 묶지 않는다.** 사번을 담은 칩의 «색»으로 온·오프를
+         *    말하고 있었다 — 연결이 끊기면 사번 칩이 붉어져 «사번이 잘못된 것»처럼 보이고,
+         *    정작 연결 상태는 색 말고 아무 데도 적히지 않는다. 다른 POP 화면과 같이 둘로
+         *    갈라 세운다(설계 §3 머리줄도 「박출하  ●온」 둘이다).
+         */}
         <div className="pop-context-right">
+          <PopWorkerTag workerNo={identity.workerNo} />
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
-            {identity.workerNo === null
-              ? t.header.terminalUnknown
-              : t.header.worker(identity.workerNo)}
+            {isOnline ? t.header.online : t.header.offline}
           </Chip>
         </div>
       </header>
@@ -241,6 +263,14 @@ export const PackingResultScreen = () => {
             isScanning={labelScan.isPending}
             onScan={scanLabel}
           />
+          {/*
+           * 읽은 라벨은 칸 옆에 남는다(설계 §3 도면).
+           *
+           * ⛔ **비었을 때 표식을 그리지 않는다** — 「—」를 두었더니 줄 끝에 뜻 모를 글자가
+           *    떠 있었다(사용자 지적 2026-09-07). 자리는 그대로 지킨다 — 읽는 «순간» 칸이
+           *    좁아지면 다음 스캔을 받을 자리가 흔들린다.
+           */}
+          <p className="packing-scanned-code">{labelCode}</p>
         </section>
 
         {/* ② 생산LOT 스캔 — 판정 문구가 칸 바로 아래 붙는다. 떨어뜨리면 어느 스캔의 답인지 흐려진다. */}
@@ -251,6 +281,13 @@ export const PackingResultScreen = () => {
             lockReason={shipmentId === null ? t.scan.lotLocked : undefined}
             onScan={scanLot}
           />
+          {/*
+           * 읽은 생산LOT 도 칸 옆에 남는다(설계 §3 도면 — 34자리를 «분절»해 그렸다). ① 과 같은
+           * 자리·같은 폭이라 두 상자가 같은 짜임으로 읽힌다.
+           */}
+          <p className="packing-scanned-code">
+            {segmentLotNo(matched?.allocation?.lotNo ?? '')}
+          </p>
           {/*
            * 판정은 **배너**로 낸다(스펙 §7 DS 매핑 · G-1). 장갑을 낀 작업자가 스캐너에서 눈을
            * 떼는 순간이라 한 줄 글자로는 「맞다·다르다」가 눈에 걸리지 않는다.
@@ -277,13 +314,20 @@ export const PackingResultScreen = () => {
                * 않았으면 그 사실을 적는다. 빈 자리로 두면 번호가 없는 것인지 화면이 덜 그려진
                * 것인지 알 수 없다.
                */}
-              <p className="packing-unit-no">
-                {openUnit === null ? t.fields.handlingUnitPending : openUnit.handlingUnitNo}
-              </p>
+              {/*
+               * 스펙 §3 의 「포장 단위 CTN-…」 자리. ⛔ **아직 없을 때 문장으로 채우지 않는다**
+               * (사용자 지적 2026-09-07) — 번호는 담는 순간 서버가 매기므로, 그때까지는 이
+               * 자리가 비어 있는 것이 정상이다. 설명을 상시로 두면 표제 옆이 늘 붐빈다.
+               */}
+              {openUnit !== null && <p className="packing-unit-no">{openUnit.handlingUnitNo}</p>}
+              {/* 이름은 칸 «옆»이다(설계 §3 「유형 [ 카톤 ▾ ]」) — 안내 글로만 두면 고른 뒤 사라진다. */}
+              <span className="field-label" id={typeLabelId}>
+                {t.fields.handlingUnitType}
+              </span>
               <Select
                 size="xl"
-                aria-label={t.fields.handlingUnitType}
-                placeholder={t.fields.handlingUnitType}
+                aria-labelledby={typeLabelId}
+                placeholder={t.fields.typePlaceholder}
                 value={handlingUnitTypeCode === '' ? null : handlingUnitTypeCode}
                 onChange={(value) => {
                   const nextType = value ?? '';
@@ -304,9 +348,12 @@ export const PackingResultScreen = () => {
             />
 
             <div className="packing-parent">
+              <span className="field-label" id={parentLabelId}>
+                {t.fields.parentHandlingUnit}
+              </span>
               <Select
                 size="xl"
-                aria-label={t.fields.parentHandlingUnit}
+                aria-labelledby={parentLabelId}
                 placeholder={t.fields.parentNone}
                 value={parentId === NO_PARENT ? null : parentId}
                 onChange={(value) => {
@@ -352,7 +399,7 @@ export const PackingResultScreen = () => {
                 <NumberPad
                   aria-label={t.qty.label}
                   value={qty}
-                  allowDecimal
+                  allowDecimal={allowsDecimal(packable.uomId)}
                   onChange={setQty}
                   onConfirm={addToPacking}
                 />
@@ -387,11 +434,16 @@ export const PackingResultScreen = () => {
           </Button>
         )}
 
+        {/*
+         * ⛔ **읽은 것이 없으면 무를 것도 없다.** 아무것도 읽지 않은 채로 열려 있어, 눌러도
+         *    아무 일이 없는 단추였다(사용자 지적 2026-09-07). 되돌릴 것이 있을 때만 연다.
+         */}
         <Button
           type="button"
           variant="outlined"
           size="xl"
           className="pop-touch-target"
+          disabled={labelCode === null && matched === null}
           onClick={() => {
             /* 「다시 스캔」은 **마지막 스캔을 취소한다** — 담긴 것은 표에서 줄 단위로 뺀다. */
             setMatched(null);
