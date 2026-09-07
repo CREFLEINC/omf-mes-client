@@ -379,16 +379,29 @@
 /*
  * ① 재작업 대상의 [ 변경 ] — **구획의 오른쪽 아래**(사용자 결정 2026-09-07).
  *
- * 오른쪽 «위»에 두면 72px 짜리 버튼이 제목과 같은 높이를 차지해, 세 줄이 왼쪽으로 몰리고
- * 그 옆이 통째로 비어 보인다 — ①의 세로 예산이 120px 뿐이라 그 낭비가 눈에 띈다.
+ * ⛔ **자기 줄을 갖지 않는다**(사용자 지적). 값 줄 아래에 한 줄을 더 만들면 ①이 그만큼
+ *    높아지는데, 세로 예산이 120px 뿐인 구획이라 그 한 줄이 곧 다른 구획의 몫이다.
+ *    값 줄 오른쪽은 어차피 비어 있으므로 **그 빈자리의 바닥**에 세운다.
+ *
+ * 오른쪽 «위»도 아니다 — 72px 짜리 버튼이 제목과 같은 높이를 차지해 세 줄이 왼쪽으로 몰린다.
  *
  * 다른 W/O 로 옮기는 조작이라 «대상»을 말하는 구획에 붙는다 — 화면 바닥의 액션바는 이번
  * 입력을 저장·초기화하는 자리라 성격이 다르다.
  */
+.pop-ui .rework-target-card > * {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: var(--space-4);
+}
+
+/* 제목은 한 줄을 통째로 쓴다 — 값과 조작이 그 아래에서 좌우로 갈린다. */
+.pop-ui .rework-target-card > * > .pane-title {
+  grid-column: 1 / -1;
+}
+
 .pop-ui .rework-target-foot {
-  display: flex;
-  justify-content: flex-end;
-  margin-block-start: var(--space-3);
+  margin: 0;
 }
 
 /*
