@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  디버그 빌드에서만 평문 HTTP 를 연다. 대상은 개발 기기 자신뿐이다 -
+  10.0.2.2 는 에뮬레이터에서 호스트를 가리키는 주소이고, 목 서버가 그 자리에 선다.
+
+  운영 서버를 HTTPS 로 할지는 아직 정해지지 않았다(omf-mes-client#580). 이 파일은
+  그 결정과 무관하다 - 릴리스 빌드는 이 설정을 받지 않으므로 평문이 그대로 막힌다.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>
