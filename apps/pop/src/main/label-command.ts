@@ -81,6 +81,22 @@ export function parseLabelCommand(argv: readonly string[]): LabelCommand | undef
 }
 
 /**
+ * 사람이 손으로 적은 JSON 을 읽는다.
+ *
+ * ⚠ **맨 앞의 BOM 을 걷어낸다.** 메모장은 UTF-8 로 저장할 때 보이지 않는 표식을 앞에 붙이고,
+ *   그대로 넘기면 `JSON.parse` 가 첫 글자에서 던진다 — 파일은 멀쩡해 보이는데 앱만 「형식이
+ *   틀렸다」고 해서 사람이 원인을 찾을 수 없다.
+ * ⚠ 무엇이 틀렸는지 말한다. 「Unexpected token」만 나오면 어느 파일인지도 알 수 없다.
+ */
+export function parseHandWrittenJson(text: string): unknown {
+  try {
+    return JSON.parse(text.replace(/^\ufeff/, ''));
+  } catch {
+    throw new LabelCommandError('JSON 형식이 아니다 — 쉼표·따옴표를 확인해라');
+  }
+}
+
+/**
  * 값 파일을 라벨로 바꾼다.
  *
  * 파일은 `{ "label": "lot" | "shipping", ... }` 꼴이고 나머지 칸은 사양서 §5.2·§6.2 의

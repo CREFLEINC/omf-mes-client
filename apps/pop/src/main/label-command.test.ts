@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   LabelCommandError,
   buildLabelFromFields,
+  parseHandWrittenJson,
   parseLabelCommand,
   sampleLabel,
 } from './label-command';
@@ -113,5 +114,23 @@ describe('견본', () => {
     ['shipping', 'SIZE 100 mm,60 mm'],
   ] as const)('%s 견본은 사양서 규격이다', (kind, expected) => {
     expect(sampleLabel(kind)).toContain(expected);
+  });
+});
+
+describe('손으로 적은 JSON', () => {
+  it('보통 파일을 읽는다', () => {
+    expect(parseHandWrittenJson('{ "port": "COM3" }')).toEqual({ port: 'COM3' });
+  });
+
+  /*
+   * ⚠ 메모장이 UTF-8 로 저장하면 보이지 않는 표식이 앞에 붙는다. 그대로 넘기면 파일은
+   *   멀쩡해 보이는데 앱만 형식이 틀렸다고 해서 사람이 원인을 찾을 수 없다.
+   */
+  it('메모장이 붙인 BOM 을 견딘다', () => {
+    expect(parseHandWrittenJson('﻿{ "port": "COM3" }')).toEqual({ port: 'COM3' });
+  });
+
+  it('진짜로 틀린 것은 무엇이 틀렸는지 말한다', () => {
+    expect(() => parseHandWrittenJson('{ port: COM3 ')).toThrow(/쉼표·따옴표/);
   });
 });

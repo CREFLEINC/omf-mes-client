@@ -36,7 +36,9 @@ import { PRINT_PAGE_FILE, labelFileName, renderPrintPage } from './print-page';
 import {
   type LabelCommand,
   type LabelKind,
+  LabelCommandError,
   buildLabelFromFields,
+  parseHandWrittenJson,
   parseLabelCommand,
   sampleLabel,
 } from './label-command';
@@ -270,6 +272,10 @@ async function runPrintScript(
 /** 포트 설정이 앉는 파일. 사람이 열어 고친다. */
 const PRINTER_SETTINGS_FILE = 'printer.json';
 
+/** 사람이 손으로 적은 설정·값 파일. BOM 처리는 `label-command` 가 안다. */
+const readJsonFile = (path: string): unknown =>
+  parseHandWrittenJson(readFileSync(path, 'utf8'));
+
 /**
  * 어느 포트로 보내는가. **설정 파일이 먼저고 환경값이 뒤다** — 설치본은 바로가기로 켜져
  * 환경값을 붙이기 어렵고, 개발 중에는 환경값이 빠르다.
@@ -281,7 +287,7 @@ function resolveSerialPort(userData: string): SerialPortSettings | undefined {
   const path = join(userData, PRINTER_SETTINGS_FILE);
 
   if (existsSync(path)) {
-    const fromFile = readSerialPortSettingsFile(JSON.parse(readFileSync(path, 'utf8')));
+    const fromFile = readSerialPortSettingsFile(readJsonFile(path));
 
     if (fromFile !== undefined) return fromFile;
   }
@@ -626,14 +632,24 @@ app.on('window-all-closed', () => app.quit());
  *   부르는 쪽이 기댈 수 있는 것은 종료 코드다(`%ERRORLEVEL%`). 사유는 함께 흘려보낸다.
  */
 async function runLabelCommand(command: LabelCommand): Promise<void> {
+  const settingsPath = join(app.getPath('userData'), PRINTER_SETTINGS_FILE);
   const printer = createSerialPrinter(resolveSerialPort(app.getPath('userData')));
 
-  if (printer === undefined) throw new SerialPortUnavailableError();
+  /*
+   * ⚠ **경로를 문장에 실어 준다.** 이 폴더 이름은 사람이 짐작할 수 있는 모양이 아니고
+   *   (앱 이름이 그대로 들어간다), 창 프로그램이라 화면에 남는 단서도 없다. 여기서 말하지
+   *   않으면 「포트가 없다」만 보고 어디를 고쳐야 하는지 알 수 없다.
+   */
+  if (printer === undefined) {
+    throw new LabelCommandError(
+      `보낼 포트가 지정돼 있지 않다 — 설정 파일에 포트를 적어라: ${settingsPath}\n예: { "port": "COM3", "baud": 9600 }`,
+    );
+  }
 
   const tspl =
     command.kind === 'sample'
       ? sampleLabel(command.label)
-      : buildLabelFromFields(JSON.parse(readFileSync(command.path, 'utf8')));
+      : buildLabelFromFields(readJsonFile(command.path));
 
   const jobDir = join(app.getPath('temp'), 'omf-pop-print', `label-${String(Date.now())}`);
   mkdirSync(jobDir, { recursive: true });
