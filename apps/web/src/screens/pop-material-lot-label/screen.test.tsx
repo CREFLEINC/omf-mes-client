@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -233,12 +234,19 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     expect(screen.getByText('200 EA')).toBeInTheDocument();
   });
 
-  it('거른다는 사실을 화면이 밝힌다 — 보이는 것을 전부로 오해하지 않게 한다', async () => {
+  /*
+   * ⭐ **무엇만 담긴 목록인지는 «제목»이 말한다** — 스펙 §3 도면의 `《입하 라인》 (미부착)`.
+   *
+   * ⛔ 같은 뜻을 아래 배너로 또 세우지 않는다. 세로 여유가 119px 뿐인 화면이라(§3) 배너 한
+   *    줄이 목록에서 그만큼을 가져가고, 제목과 배너가 같은 말을 두 번 한다(사용자 지적).
+   */
+  it('무엇만 담긴 목록인지를 제목이 말한다 — 배너로 되풀이하지 않는다', async () => {
     renderScreen();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      /공급사 LOT 이 붙어 온 자재와 이미 발행한 자재는 보이지 않습니다/u,
-    );
+    expect(
+      await screen.findByRole('heading', { name: messages.popMaterialLotLabel.receipts.title }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/보이지 않습니다/u)).not.toBeInTheDocument();
   });
 
   /**

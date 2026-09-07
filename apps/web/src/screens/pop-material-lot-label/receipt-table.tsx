@@ -128,8 +128,14 @@ export const ReceiptTable = ({
         from.closest('tr')?.querySelector<HTMLButtonElement>('.pop-row-select')?.click();
       }}
     >
+      {/*
+       * ⛔ **캡션을 보이게 두지 않는다.** DS `Table` 의 `caption` 은 열 이름 줄 «위 가운데»에
+       * 서는데, 구획 제목이 이미 왼쪽 위에 같은 이름으로 서 있어 이름이 두 번 나오고 두
+       * 구획의 제목 자리가 어긋난다(사용자 지적). 읽는 기계에는 이름이 필요하므로 표의
+       * 접근 이름으로 옮긴다.
+       */}
       <Table
-        caption={t.caption}
+        aria-label={t.caption}
         columns={columns}
         rows={rows}
         density="comfortable"

@@ -146,6 +146,16 @@ export const PopMaterialLotLabelScreen = () => {
 
       <div className="pop-lot-panes">
         <section className="pane pop-lot-pane" aria-label={t.receipts.paneLabel}>
+          {/*
+           * ⭐ **좌우 구획의 제목이 같은 자리·같은 급으로 선다** — 스펙 §3 도면이 둘을 나란히
+           *    그렸다(`《입하 라인》 (미부착)` · `《채번 대상》`). 한쪽만 표의 캡션으로 서
+           *    가운데에 있으면 같은 급으로 읽히지 않고, 안내 배너 «아래»에 놓여 차례도
+           *    뒤집힌다(사용자 지적).
+           *
+           * ⛔ 오류일 때도 감추지 않는다 — 구획의 이름은 내용의 성패와 무관하다.
+           */}
+          <h2 className="pop-lot-pane-title">{t.receipts.title}</h2>
+
           {isListError ? (
             <AlertBanner
               variant="error"
@@ -167,10 +177,10 @@ export const PopMaterialLotLabelScreen = () => {
           ) : (
             <>
               {/*
-               * ⛔ `.field-note`를 쓰지 않는다 — 그 클래스는 규범 4가 **비활성 사유**용으로
-               * 정의한 것이라 `max-width: 20rem`에 갇힌다. 구획 전체에 걸리는 안내다.
+               * ⛔ **「무엇이 걸러졌는가」를 문장으로 두지 않는다.** 제목의 「(미부착)」이 그
+               *    일을 한다(스펙 §3 도면). 세로 여유가 119px 뿐인 화면이라 배너 한 줄이
+               *    목록에서 그만큼을 가져간다.
                */}
-              <AlertBanner variant="info">{t.receipts.filterNotice}</AlertBanner>
               <ReceiptTable
                 rows={targets.rows}
                 supplierLookup={supplierLookup}
