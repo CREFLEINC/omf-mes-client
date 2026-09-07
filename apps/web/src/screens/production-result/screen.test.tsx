@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { formatLotNo } from './lot-display';
 import { STORAGE_KEY } from './outbox';
 import { GOOD_QTY_MAX_LENGTH } from './quantity-draft';
 import { ProductionResultScreen } from './screen';
@@ -327,6 +328,39 @@ describe('ProductionResultScreen 수량 입력', () => {
       expect(cancelButton()).toBeDisabled();
     });
     expect(screen.getByLabelText(t.quantity.goodQtyLabel)).toHaveValue('');
+  });
+
+  /*
+   * 취소는 **화면이 들고 있는 것을 전부** 되돌린다(사용자 결정) — 고른 대상 LOT 도 든다.
+   * ⚠ 스펙이 비워 둔 자리라 감지기가 그 결정의 유일한 기록이다.
+   */
+  it('LOT 만 골라도 취소가 열리고, 누르면 고른 LOT 이 풀린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await selectLot(user);
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeEnabled();
+    });
+    /*
+     * ⚠ 화면 문구로 찾지 않는다 — 고르는 창이 닫힌 뒤에도 목록이 DOM 에 남아 같은 번호가
+     *   둘이다. **대상 LOT 줄 자체**를 본다.
+     */
+    const lotCell = () => document.querySelector('.pop-result-lot-no')?.textContent;
+
+    await waitFor(() => {
+      expect(lotCell()).toBe(formatLotNo(LOT_NO));
+    });
+
+    await user.click(cancelButton());
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeDisabled();
+    });
+    expect(lotCell()).toBe('—');
+    /* LOT 이 풀렸으니 저장도 다시 잠긴다 — 지우는 목록과 여는 조건이 짝을 이룬다. */
+    expect(saveButton()).toBeDisabled();
   });
 
   /*

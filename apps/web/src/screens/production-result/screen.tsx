@@ -202,8 +202,23 @@ export const ProductionResultScreen = () => {
     commit();
   };
 
+  /**
+   * 취소 — **화면이 들고 있는 것을 전부 되돌린다**(사용자 결정 2026-09-07).
+   *
+   * ⚠ **스펙이 정하지 않은 자리다.** §5-1 은 취소의 크기·배치·활성 조건까지만 적고 「무엇을
+   * 지우는가」를 비워 두었다 — 다른 화면 스펙들은 그것을 적는다(`W-03-10` 「폼 초기화」·
+   * `W-01-03` 「원 도착으로 복귀」). 그 빈칸을 사용자가 「전부」로 채웠다.
+   *
+   * ⭐ **대상 LOT 도 지운다.** §4 가 LOT 을 「진입 시 선택」으로 두고 §5-2 가 저장 후 잔여가
+   * 남으면 «제품 선택»으로 회귀시키므로 LOT 을 남기는 읽기도 성립하지만, 취소가 「이 화면에서
+   * 한 일을 없던 것으로」라는 뜻이면 고른 LOT 도 그 일에 든다. 남기고 싶으면 다시 고른다.
+   *
+   * ⛔ **이미 저장한 실적은 되돌리지 않는다.** 저장은 누르는 순간 큐에 담기고, 잘못 담은 것은
+   * 취소가 아니라 정정 실적으로 다룬다(§6 — 원본을 고치지 않고 새 행으로 남긴다).
+   */
   const cancel = (): void => {
     setDraft(emptyResultDraft);
+    setSelectedLotId(null);
     occurredAtRef.current = null;
     setOutcome(null);
     outbox.clearRejection();
@@ -222,12 +237,17 @@ export const ProductionResultScreen = () => {
    * 빈 화면에서 취소가 눌리면 «되돌릴 것이 없는데 되돌리는 버튼»이 서 있게 된다. 저장은
    * 잠겨 있는데 취소만 열려 있어 어느 쪽이 지금 할 일인지 흐려진다(사용자 지적).
    *
-   * ⭐ **드래프트만 보지 않는다.** 취소는 저장 결과·거부 진술도 함께 지우는데, 저장 직후에는
-   * 드래프트가 비고 그 진술만 남는다(`commit` 이 수량만 비운다). 드래프트만 보면 그때 취소가
-   * 잠겨 **화면에 남은 말을 걷을 방법이 없어진다.**
+   * ⭐ **취소가 지우는 것과 짝을 맞춘다.** 지우는 것이 하나라도 있으면 열린다 — 지우는 목록과
+   * 여는 조건이 어긋나면 「눌러도 아무 일 없는 취소」나 「지울 게 있는데 잠긴 취소」가 생긴다.
+   * 저장 직후가 그 자리다: 드래프트는 비고 안내만 남는데(`commit` 이 수량만 비운다), 드래프트만
+   * 보면 그때 취소가 잠겨 **화면에 남은 말을 걷을 방법이 없어진다.**
    */
   const hasSomethingToClear =
-    draft.goodQty !== '' || draft.remarks !== '' || outcome !== null || outbox.rejection !== null;
+    draft.goodQty !== '' ||
+    draft.remarks !== '' ||
+    selectedLotId !== null ||
+    outcome !== null ||
+    outbox.rejection !== null;
 
   const enteredQty = parseGoodQty(draft.goodQty);
   /* 단위는 품목 기본 단위다 — 고른 LOT 이 없으면 W/O 의 것을 쓴다(둘은 같은 품목이다). */
