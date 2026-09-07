@@ -52,7 +52,6 @@ export const packingWork = {
 
   unit: {
     sectionLabel: '포장 단위',
-    numberPending: '번호는 첫 내용물을 담을 때 부여됩니다',
     typeLabel: '유형',
     typePlaceholder: '고르십시오',
     typeLoadFailed: '포장 유형 목록을 불러오지 못했습니다.',
@@ -72,18 +71,16 @@ export const packingWork = {
     empty: '아직 담은 것이 없습니다.',
     totalLabel: '합계',
     mixedTitle: '한 포장에 여러 LOT 이 섞였습니다',
-    mixedBody: '막지 않습니다 — 어느 LOT 이 들어갔는지는 내용물 행으로 남습니다.',
   },
 
   confirm: {
     submit: '포장 확정',
     submitting: '확정하는 중',
     blockedNoType: '포장 확정 — 포장 유형을 고르십시오.',
-    blockedNoContents: '포장 확정 — 담은 것이 없습니다. 빈 포장은 만들지 않습니다.',
+    blockedNoContents: '포장 확정 — 담은 것이 없습니다.',
     blockedNoUnit: '포장 확정 — 포장 단위가 아직 만들어지지 않았습니다.',
     blockedPacked: '이 포장은 확정을 마쳤습니다. 「다음 포장 시작」을 누르십시오.',
     done: '포장을 확정했습니다.',
-    doneBody: '라벨·인식표 재출력은 이 화면 밖에서 합니다.',
     startNext: '다음 포장 시작',
   },
 

@@ -266,7 +266,12 @@ describe('P-02-08 포장 작업', () => {
 
     renderScreen({ writes });
 
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    /*
+     * 포장 번호는 첫 내용물을 담을 때 서버가 매긴다(스펙 §4-A 「자동」). 번호가 붙으면 구획
+     * 표제가 「포장 단위 HU-…」가 되므로, **표제가 이름 그대로면 아직 번호가 없다는 뜻**이다.
+     * ⛔ 그 사정을 문단으로 적지 않는다 — 스펙 §3 에 없다.
+     */
+    expect(unitPane().getByRole('heading', { name: t.unit.sectionLabel })).toBeInTheDocument();
 
     await packOneLine(user, LOT_A_NO, '100');
 
@@ -391,7 +396,7 @@ describe('P-02-08 포장 작업', () => {
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(screen.getByText(t.scan.quantityPositive)).toBeInTheDocument();
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(unitPane().getByRole('heading', { name: t.unit.sectionLabel })).toBeInTheDocument();
   });
 
   it('LOT 이 둘 이상 담기면 혼적을 경고하되 확정을 막지 않는다', async () => {
@@ -470,7 +475,7 @@ describe('P-02-08 포장 작업', () => {
 
     await user.click(screen.getByRole('button', { name: t.confirm.startNext }));
 
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(unitPane().getByRole('heading', { name: t.unit.sectionLabel })).toBeInTheDocument();
     expect(unitPane().getByText(t.contents.empty)).toBeInTheDocument();
   });
 
@@ -547,7 +552,7 @@ describe('P-02-08 포장 작업', () => {
     await packOneLine(user, LOT_A_NO, '100');
 
     expect(await screen.findByText(t.unit.createFailed)).toBeInTheDocument();
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(unitPane().getByRole('heading', { name: t.unit.sectionLabel })).toBeInTheDocument();
     expect(unitPane().getByText(t.contents.empty)).toBeInTheDocument();
   });
 

@@ -138,7 +138,6 @@ export const PackingPane = ({
         </label>
       </div>
 
-      {draft.handlingUnit === null && <p className="field-note">{t.unit.numberPending}</p>}
       {unitTypesFailed && <p className="field-error">{t.unit.typeLoadFailed}</p>}
       {parentsFailed && <p className="field-error">{t.unit.parentLoadFailed}</p>}
       {locked && <p className="field-note">{t.unit.lockedNotice}</p>}
@@ -176,11 +175,13 @@ export const PackingPane = ({
         혼적 — **막지 않는다**(스펙 §5-5). 추적은 내용물 행으로 남는다. 여기서 막으면 실물로는
         가능한 포장을 화면이 거부하게 된다.
       */}
+      {/*
+        ⛔ **본문을 덧대지 않는다.** 스펙 §3 이 그린 것은 「⚠ 한 포장에 여러 LOT 이 섞였습니다」
+        한 줄이고, 「막지 않는다」는 것은 **막지 않는 것으로** 이미 말한다.
+      */}
       {isMixedLot(draft.lines) && (
         <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.contents.mixedTitle}>
-            {t.contents.mixedBody}
-          </AlertBanner>
+          <AlertBanner variant="warning" title={t.contents.mixedTitle} />
         </div>
       )}
 

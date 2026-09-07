@@ -366,9 +366,7 @@ export const PackingWorkScreen = () => {
                 {t.confirm.startNext}
               </Button>
             }
-          >
-            {t.confirm.doneBody}
-          </AlertBanner>
+          />
         </div>
       )}
 
