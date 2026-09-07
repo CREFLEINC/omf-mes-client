@@ -30,7 +30,7 @@ import './screen.css';
 
 const t = messages.productReceipt;
 
-type Outcome = 'held' | 'sent' | 'receivedOnly' | 'rejected';
+type Outcome = 'held' | 'sent' | 'receivedOnly' | 'putawayRejected' | 'rejected';
 
 export const ProductReceiptScreen = () => {
   useScreenTitle(t.title);
@@ -58,7 +58,8 @@ export const ProductReceiptScreen = () => {
     (warehouses.data ?? []).find((each) => each.warehouseId === warehouseId) ?? null;
 
   const unit = useHandlingUnitByNo(scannedUnit);
-  const contents = useUnitContents(unit.data?.handlingUnitId ?? null);
+  const foundUnit = unit.data ?? null;
+  const contents = useUnitContents(foundUnit?.handlingUnitId ?? null);
   const lots = useLots((contents.data ?? []).map((each) => each.lotId));
 
   const locations = useLocations(warehouseId);
@@ -188,13 +189,33 @@ export const ProductReceiptScreen = () => {
         return;
       }
 
-      for (const taskId of taskIds) {
-        await enqueue(toPutawayDraft(taskId, destination, now, worker.workerNo));
+      const putawayDrafts = taskIds.map((taskId) =>
+        toPutawayDraft(taskId, destination, now, worker.workerNo),
+      );
+
+      for (const putawayDraft of putawayDrafts) {
+        await enqueue(putawayDraft);
       }
 
       const putaway = await flush().catch(() => null);
+      const keys = putawayDrafts.map((each) => each.idempotencyKey);
+      const isMine = (each: { idempotencyKey: string }) => keys.includes(each.idempotencyKey);
 
-      setOutcome(putaway === null || putaway.remaining.length > 0 ? 'receivedOnly' : 'sent');
+      /*
+       * 적치가 되돌아왔는데 입고까지 섰다고 말하면 사람은 물건이 자리에 든 줄 안다. 내 것만
+       * 본다 - 남의 화면이 담아 둔 건까지 세면 다 간 적치를 안 갔다고 말한다.
+       */
+      if (putaway !== null && putaway.rejected.some((each) => isMine(each.entry))) {
+        setOutcome('putawayRejected');
+        return;
+      }
+
+      if (keys.some((key) => isRejected(key))) {
+        setOutcome('putawayRejected');
+        return;
+      }
+
+      setOutcome(putaway === null || putaway.remaining.some(isMine) ? 'receivedOnly' : 'sent');
     } finally {
       inFlight.current = false;
     }
@@ -208,6 +229,12 @@ export const ProductReceiptScreen = () => {
           <AlertBanner variant="warning" title={t.receivedOnly.title}>
             {t.receivedOnly.description}
             <Link to="/putaway">{t.receivedOnly.action}</Link>
+          </AlertBanner>
+        ) : null}
+        {outcome === 'putawayRejected' ? (
+          <AlertBanner variant="error" title={t.putawayRejected.title}>
+            {t.putawayRejected.description}
+            <Link to="/rejections">{t.putawayRejected.action}</Link>
           </AlertBanner>
         ) : null}
         {outcome === 'held' ? (
@@ -289,8 +316,8 @@ export const ProductReceiptScreen = () => {
           {scannedUnit !== null && unit.data === null ? (
             <AlertBanner variant="error" title={t.unit.notFound(scannedUnit)} />
           ) : null}
-          {unit.data == null ? null : <p>{t.unit.picked(unit.data.handlingUnitNo)}</p>}
-          {unit.data != null && contents.data?.length === 0 ? (
+          {foundUnit === null ? null : <p>{t.unit.picked(foundUnit.handlingUnitNo)}</p>}
+          {foundUnit !== null && contents.data?.length === 0 ? (
             <AlertBanner variant="warning" title={t.unit.empty} />
           ) : null}
         </section>

@@ -85,6 +85,12 @@ export const productReceipt = {
     description: '적치 완료는 적치·입고 완료 화면에서 잇습니다.',
     action: '적치 화면으로',
   },
+  /* 입고는 섰고 적치만 되돌아왔다. 둘을 한 문구로 뭉치면 무엇이 섰는지 알 수 없다. */
+  putawayRejected: {
+    title: '입고했습니다. 적치가 되돌아왔습니다',
+    description: '되돌아온 건에서 사유를 확인하고 적치 화면에서 다시 하세요. ',
+    action: '되돌아온 건 보기',
+  },
   held: {
     title: '입고를 담아 두었습니다',
     description: '연결되면 보냅니다. 적치 완료는 그 뒤 적치 화면에서 잇습니다.',

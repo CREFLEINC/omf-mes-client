@@ -53,6 +53,8 @@ interface Options {
   pending?: boolean;
   /** 입고 응답이 적치 지시를 싣지 않는다. */
   noPutawayTask?: boolean;
+  /** 적치 완료를 서버가 거절한다 - 입고는 섰고 적치만 되돌아온다. */
+  putawayRejected?: boolean;
   /** 인식표에 담긴 것이 없다. */
   emptyUnit?: boolean;
   /** 보낸 요청을 모은다. */
@@ -204,7 +206,14 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => /\/logistics\/putaway-tasks\/\d+:complete$/.test(new URL(req.url).pathname),
     respond: (req) => {
       options.seen?.push(req.clone());
-      return jsonResponse({ putawayTaskId: 7701, statusCode: 'COMPLETED' });
+
+      /* 고쳐야 풀리는 거절이다. 다시 보내도 같은 답이 온다. */
+      return options.putawayRejected === true
+        ? jsonResponse(
+            { code: 'STATE_LOCKED', message: '완료할 수 없는 지시입니다.', errors: [] },
+            { status: 400 },
+          )
+        : jsonResponse({ putawayTaskId: 7701, statusCode: 'COMPLETED' });
     },
   },
   {
@@ -394,6 +403,22 @@ describe('제품 입고·적치 화면', () => {
 
     expect(paths).toContain('/logistics/goods-receipts');
     expect(paths).toContain('/logistics/putaway-tasks/7701:complete');
+  });
+
+  /*
+   * 적치가 되돌아왔는데 입고까지 섰다고 말하면 사람은 물건이 자리에 든 줄 안다. 입고는 실제로
+   * 섰으므로 되돌아온 것이 적치라는 사실이 문구에 남아야 한다.
+   */
+  it('적치가 되돌아오면 입고만 섰다고 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ putawayRejected: true });
+    await openUnit(user);
+    await pickLocation(user);
+    await readyToSubmit();
+
+    await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
+
+    expect(await screen.findByText('입고했습니다. 적치가 되돌아왔습니다')).toBeTruthy();
   });
 
   /* 적치 지시 식별자는 입고 응답에만 있다. 없으면 적치를 이어 담을 수 없다. */
