@@ -91,7 +91,7 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
   };
 
   return (
-    <Card className="pop-fixed">
+    <Card bordered className="pop-section pop-fixed downtime-pane">
       <section className="downtime-section" aria-label={t.interval.title}>
         <h2 className="pane-title">{t.interval.title}</h2>
 
@@ -182,13 +182,17 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           >
             {t.interval.stillOngoing}
           </Checkbox>
-        </div>
 
-        {/*
-         * 길이는 **입력 확인용**이다 — 저장되는 값은 서버가 낸다. 진행 중이면 산출 불가라고
-         * 말하고 비워 두지 않는다: 빈 자리는 「0분」과 「모른다」를 같은 모양으로 만든다.
-         */}
-        <p className="downtime-duration">{durationLabel}</p>
+          {/*
+           * 길이는 **입력 확인용**이다 — 저장되는 값은 서버가 낸다. 진행 중이면 산출 불가라고
+           * 말하고 비워 두지 않는다: 빈 자리는 「0분」과 「모른다」를 같은 모양으로 만든다.
+           *
+           * ⭐ **끝 시각 줄의 오른쪽 끝에 선다** — 제 줄을 가지면 36px 을 쓰는데, 이 화면은
+           *    그만큼이 아래 「오늘 이 설비」에서 나온다(§3-1 예산 초과 · 요청서). 값이 나오는
+           *    바탕이 바로 이 줄의 두 시각이라 옆에 두어도 읽히는 자리가 흐려지지 않는다.
+           */}
+          <p className="downtime-duration">{durationLabel}</p>
+        </div>
       </section>
     </Card>
   );

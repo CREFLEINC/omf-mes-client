@@ -32,7 +32,7 @@ export const OngoingPanel = ({
 }: OngoingPanelProps) => {
   if (isPending) {
     return (
-      <Card className="pop-fixed">
+      <Card bordered className="pop-section pop-fixed downtime-pane">
         <Skeleton height="64px" aria-label={t.ongoing.title} />
       </Card>
     );
@@ -47,7 +47,7 @@ export const OngoingPanel = ({
   const name = downtime.reasonName ?? reasonName(downtime.reasonCode) ?? downtime.reasonCode;
 
   return (
-    <Card className="pop-fixed">
+    <Card bordered className="pop-section pop-fixed downtime-pane">
       <section className="downtime-ongoing" aria-label={t.ongoing.title}>
         <div>
           <p className="downtime-ongoing-line">

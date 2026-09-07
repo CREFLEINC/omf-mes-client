@@ -58,7 +58,7 @@ export const ReasonFields = ({
   const suggestionLabel = suggestion === null ? null : toClockLabel(suggestion);
 
   return (
-    <Card className="pop-fixed">
+    <Card bordered className="pop-section pop-fixed downtime-pane">
       <section className="downtime-section" aria-label={t.reason.title}>
         <h2 className="pane-title">{t.reason.title}</h2>
 
@@ -81,6 +81,12 @@ export const ReasonFields = ({
             options={PLACEHOLDER_REASONS.map(toOption)}
             onChange={onReasonChange}
           />
+
+          {/*
+           * 목록이 아직 서버에서 오지 않았다는 사실은 **고르는 칸 옆**에 선다 — 제 줄을 가지면
+           * 36px 을 쓰고, 그만큼이 아래 「오늘 이 설비」에서 나온다(§3-1 예산 초과 · 요청서).
+           */}
+          <p className="downtime-placeholder-notice">{t.reason.placeholderNotice}</p>
         </div>
 
         {/*
@@ -88,9 +94,6 @@ export const ReasonFields = ({
           않는 것이라, 문장을 함께 세운다.
         */}
         {reasonInvalid && <p className="downtime-field-error">{t.errors.reasonRequired}</p>}
-
-        {/* 값 목록이 확정되기 전이라는 사실. 저장이 막히는 이유가 여기 있다. */}
-        <p className="downtime-placeholder-notice">{t.reason.placeholderNotice}</p>
 
         <div className="downtime-field-row">
           <span className="downtime-field-label" id={breakdownLabelId}>
