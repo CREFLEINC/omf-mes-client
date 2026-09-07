@@ -73,6 +73,8 @@ export const describeSaveBlock = (block: SaveBlock): string | null => {
 
 export interface ActionBarProps {
   block: SaveBlock;
+  /** 아직 아무것도 적지 않았다 — 비울 것이 없으면 「다시 입력」을 잠근다. */
+  isEmpty: boolean;
   onReset: () => void;
   onSave: () => void;
 }
@@ -83,7 +85,7 @@ export interface ActionBarProps {
  * ⛔ **「다시 입력」은 서버를 부르지 않는다.** 저장 전 화면 안의 초기화이고, 계약에 대응하는
  * 오퍼레이션이 없는 것도 그래서다.
  */
-export const ActionBar = ({ block, onReset, onSave }: ActionBarProps) => {
+export const ActionBar = ({ block, isEmpty, onReset, onSave }: ActionBarProps) => {
   const reason = describeSaveBlock(block);
 
   return (
@@ -91,7 +93,14 @@ export const ActionBar = ({ block, onReset, onSave }: ActionBarProps) => {
       {/* 막힌 이유는 버튼 옆에 **항상 보이는 글자**로 둔다 — 눌러 봐야 아는 잠금은 잠금이 아니다. */}
       {reason !== null && <p className="downtime-block-reason">{reason}</p>}
 
-      <Button variant="outlined" size="2xl" onClick={onReset}>
+      {/*
+       * ⛔ **비울 것이 없으면 잠근다**(사용자 지적 2026-09-07 · 선례 `P-02-04` §5-2 「입력 있음」).
+       *    아무것도 적지 않은 채로 눌리면 눌러도 아무 일이 없어 버튼이 고장 난 것처럼 보인다.
+       *
+       * ⚠ 저장 버튼과 달리 **사유를 적지 않는다** — 비울 것이 없다는 사실은 화면이 이미
+       *    보이고 있고, 「입력이 없습니다」는 작업자가 할 일을 말하지 않는다.
+       */}
+      <Button variant="outlined" size="2xl" disabled={isEmpty} onClick={onReset}>
         {t.actions.reset}
       </Button>
       {/* 큐에 담는 것이 곧 성공이라 「저장하는 중」이 없다 — 통신을 기다리지 않는다. */}

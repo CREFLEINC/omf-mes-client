@@ -23,7 +23,7 @@ import { IntervalFields } from './interval-fields';
 import { LoadErrorBanner } from './load-error-banner';
 import { OngoingPanel } from './ongoing-panel';
 import { useOutbox } from './outbox';
-import { toDowntimeCreate, type DowntimeDraft } from './post-request';
+import { isDraftEmpty, toDowntimeCreate, type DowntimeDraft } from './post-request';
 import {
   downtimeRegisterKeys,
   toLocalDay,
@@ -400,7 +400,12 @@ export const DowntimeRegisterScreen = () => {
         </div>
       )}
 
-      <ActionBar block={block} onReset={resetDraft} onSave={save} />
+      <ActionBar
+        block={block}
+        isEmpty={isDraftEmpty(draft) && !saveAttempted}
+        onReset={resetDraft}
+        onSave={save}
+      />
     </main>
   );
 };

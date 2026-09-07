@@ -375,6 +375,17 @@ describe('DowntimeRegisterScreen — 저장', () => {
     expect(screen.getByText(t.errors.reasonRequired)).toBeTruthy();
   });
 
+  it('아직 아무것도 적지 않았으면 「다시 입력」이 잠긴다 — 비울 것이 없다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
+    expect(screen.getByRole('button', { name: t.actions.reset })).toBeDisabled();
+
+    /* 한 칸이라도 적으면 되돌릴 것이 생긴다. */
+    typeInterval(['2026-08-11', '14:20']);
+    expect(screen.getByRole('button', { name: t.actions.reset })).toBeEnabled();
+  });
+
   it('고를 사유가 하나도 없으면 칸을 감추지 않고 잠근 뒤 사유를 말한다', async () => {
     /* ⛔ 스펙 §6-1 — 감추면 저장이 왜 막히는지 화면에 남는 것이 없다(사유는 `NOT NULL`). */
     renderScreen([reasonsRoute([]), ...baseRoutes()]);
