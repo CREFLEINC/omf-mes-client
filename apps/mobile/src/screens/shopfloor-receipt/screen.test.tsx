@@ -48,6 +48,10 @@ interface Options {
   issueQty?: number;
   /** 이미 받았는지 묻는 조회가 닿지 않는다 - 오프라인에서 이 판정을 할 수 없는 자리다. */
   receivedCheckUnreachable?: boolean;
+  /** 차이 사유 값 목록을 비워 답한다 - 아직 확정 전이라 실서버가 그렇게 답한다. */
+  noReasonOptions?: boolean;
+  /** 차이 사유 값 목록이 늦게 답한다 - 아직 모르는 것과 없는 것이 갈리는 자리다. */
+  reasonsPending?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -171,19 +175,29 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () =>
-      jsonResponse({
-        items: [
-          {
-            code: 'TRANSPORT_DAMAGE',
-            codeName: 'Transport damage',
-            nameKo: '운반 중 파손',
-            isActive: true,
-            displayOrder: 1,
-          },
-        ],
+    respond: () => {
+      if (options.reasonsPending === true) {
+        return new Promise<Response>(() => {
+          /* 답하지 않는다. 목록을 기다리는 동안 화면이 무엇을 허락하는지 재는 자리다. */
+        });
+      }
+
+      return jsonResponse({
+        items:
+          options.noReasonOptions === true
+            ? []
+            : [
+                {
+                  code: 'TRANSPORT_DAMAGE',
+                  codeName: 'Transport damage',
+                  nameKo: '운반 중 파손',
+                  isActive: true,
+                  displayOrder: 1,
+                },
+              ],
         page,
-      }),
+      });
+    },
   },
 ];
 
@@ -266,6 +280,57 @@ describe('생산창고 입고 화면', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '입고 확정' })).not.toBeDisabled();
     });
+  });
+
+  /*
+   * 사유 값 목록은 아직 확정 전이라 실서버에서 빈 목록이 온다. 고를 것이 없는데 요구하면
+   * 부족 수령을 영영 확정하지 못한다 - 물건은 이미 와 있다.
+   */
+  it('고를 사유가 없으면 모자라도 확정할 수 있다', async () => {
+    const user = userEvent.setup();
+    mount({ noReasonOptions: true });
+    await screen.findByLabelText('출고 QR 스캔');
+
+    scan(ISSUE_NO);
+    await user.type(await receivedField(), '480');
+
+    /* 모자란 사실은 고를 사유가 있든 없든 보인다. 숨기면 그냥 덜 받은 것이 된다. */
+    expect(await screen.findByText('차이 20 모자람')).toBeTruthy();
+    expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '입고 확정' })).not.toBeDisabled();
+    });
+  });
+
+  /*
+   * 아직 묻는 중인 것을 없는 것으로 세면, 목록이 오기 전 그 짧은 창에 사유 없이 확정된다.
+   * 왜 모자랐는지는 그 자리에서만 알 수 있어 뒤에 채울 수 없다.
+   */
+  it('사유 목록을 기다리는 동안에는 모자란 수령을 확정하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ reasonsPending: true });
+    await screen.findByLabelText('출고 QR 스캔');
+
+    scan(ISSUE_NO);
+    await user.type(await receivedField(), '480');
+
+    expect(await screen.findByText('차이 20 모자람')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입고 확정' })).toBeDisabled();
+  });
+
+  /* 초과는 모자란 것이 아니다. 부호를 보지 않고 뭉치면 모자란 양이 음수로 적힌다. */
+  it('출고보다 많이 받으면 모자라다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('출고 QR 스캔');
+
+    scan(ISSUE_NO);
+    await user.type(await receivedField(), '501');
+
+    expect(await screen.findByText(/출고한 500 보다 많이 받을 수 없습니다/)).toBeTruthy();
+    expect(screen.queryByText(/모자람/)).toBeNull();
+    expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
   });
 
   it('전량 받으면 사유 없이 확정한다', async () => {

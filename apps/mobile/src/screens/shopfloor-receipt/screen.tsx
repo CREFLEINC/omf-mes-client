@@ -57,8 +57,11 @@ export const ShopfloorReceiptScreen = () => {
   /*
    * 사유 값 목록은 아직 확정 전이라 실서버에서 빈 목록이 온다. 고를 것이 없는데 사유를
    * 요구하면 부족 수령을 영영 확정하지 못한다 - 물건은 이미 와 있다.
+   *
+   * 다만 아직 묻는 중인 것을 없는 것으로 세지 않는다. 목록이 오기 전에 요구를 걷으면 그 짧은
+   * 창에 사유 없이 확정되고, 왜 모자랐는지가 그대로 사라진다.
    */
-  const hasReasonOptions = (reasons.data ?? []).length > 0;
+  const hasReasonOptions = reasons.isPending || (reasons.data ?? []).length > 0;
 
   /*
    * 큐에 담긴 것은 서버 응답에 없다. 읽기 전에는 담긴 것이 없는 것과 구별되지 않아 그 사이에
