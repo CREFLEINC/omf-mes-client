@@ -2371,6 +2371,12 @@
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  /*
+   * ⚠ **목록만 스크롤시키면 부족하다.** ②③ 이 스펙 예산(160·200)을 넘겨 ④ 에 55px 밖에
+   *    남지 않는 창이 있고(1024×768 실측 · 설계 개선 요청서), 그때는 요약 한 줄조차 들어가지
+   *    못해 목록에 0 이 배당된다. 구획째 스크롤시켜 **적어도 손으로 닿을 수 있게** 둔다.
+   */
+  overflow-y: auto;
 }
 
 /*
@@ -2383,8 +2389,9 @@
  */
 .pop-ui .downtime-today .downtime-today-list {
   max-height: none;
-  flex: 1 1 auto;
-  min-height: 0;
+  /* 구획이 스크롤을 맡았으므로 목록은 제 줄 수만큼 선다 — 안에서 또 접으면 두 겹이 된다. */
+  flex: none;
+  overflow: visible;
 }
 
 /*

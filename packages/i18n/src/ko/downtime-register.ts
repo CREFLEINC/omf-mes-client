@@ -54,12 +54,14 @@ export const downtimeRegister = {
   },
   reason: {
     title: '사유',
-    category: '대분류',
-    detail: '소분류',
-    categoryPlaceholder: '대분류 선택',
-    detailPlaceholder: '소분류 선택',
-    /** 값 목록이 확정되기 전의 임시 표시다(미결 처리 — 자리표시 상수 + 안내). */
-    placeholderNotice: '사유 코드 목록이 아직 확정되지 않았습니다. 임시 목록입니다.',
+    /* ⛔ 대분류를 두지 않는다 — 사유는 평면 1단이다(스펙 §7 확정 2026-09-03). */
+    detail: '비가동 사유',
+    detailPlaceholder: '사유 선택',
+    /*
+     * 값 «목록»은 확정됐고(2026-09-03) 아직 서버에서 받아 오지 않았을 뿐이다. 고객이 늘리는
+     * 목록이라(G-31) 「이것이 전부」로 읽히지 않게 그 사실을 적는다.
+     */
+    placeholderNotice: '사유 목록을 아직 서버에서 받지 않습니다. 초기 값만 보입니다.',
     remarks: '메모',
     remarksPlaceholder: '사유 코드로 담기지 않는 사연을 적습니다',
   },

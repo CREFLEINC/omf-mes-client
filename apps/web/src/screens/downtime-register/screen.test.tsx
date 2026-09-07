@@ -167,12 +167,9 @@ const typeInterval = (start: [string, string], end?: [string, string]): void => 
   });
 };
 
-/** 사유 두 단을 고른다 — 보내는 것은 소분류 하나다. */
+/** 사유를 고른다 — **선택칸 하나뿐이다**(스펙 §7 확정 2026-09-03 · 평면 1단). */
 const chooseReason = async (): Promise<void> => {
   /* 선택 칸은 `combobox`로 서고, 접근 이름은 옆에 선 라벨이 준다. */
-  fireEvent.click(screen.getByRole('combobox', { name: t.reason.category }));
-  fireEvent.click(await screen.findByRole('option', { name: '설비' }));
-
   fireEvent.click(screen.getByRole('combobox', { name: t.reason.detail }));
   fireEvent.click(await screen.findByRole('option', { name: '금형 교체' }));
 };

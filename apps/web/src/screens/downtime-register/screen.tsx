@@ -90,7 +90,6 @@ export const DowntimeRegisterScreen = () => {
   const titleId = useId();
 
   const [draft, setDraft] = useState<DowntimeDraft>(EMPTY_DRAFT);
-  const [categoryCode, setCategoryCode] = useState<string | null>(null);
   const [saveAttempted, setSaveAttempted] = useState(false);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
@@ -174,7 +173,6 @@ export const DowntimeRegisterScreen = () => {
 
   const resetDraft = (): void => {
     setDraft(EMPTY_DRAFT);
-    setCategoryCode(null);
     setSaveAttempted(false);
     setSavedNotice(null);
   };
@@ -200,7 +198,6 @@ export const DowntimeRegisterScreen = () => {
     outbox.enqueueCreate(workerNo, body);
     setSavedNotice(outbox.isOnline ? t.actions.saved : t.actions.queued);
     setDraft(EMPTY_DRAFT);
-    setCategoryCode(null);
     setSaveAttempted(false);
   };
 
@@ -339,7 +336,6 @@ export const DowntimeRegisterScreen = () => {
       )}
 
       <ReasonFields
-        categoryCode={categoryCode}
         reasonCode={draft.reasonCode}
         remarks={draft.remarks}
         breakdownId={draft.breakdownId}
@@ -347,11 +343,6 @@ export const DowntimeRegisterScreen = () => {
         breakdownsUnavailable={breakdowns.isError}
         isOffline={!outbox.isOnline}
         reasonInvalid={saveAttempted && reasonMissing}
-        onCategoryChange={(code) => {
-          setCategoryCode(code);
-          /* 대분류가 바뀌면 앞서 고른 소분류는 그 대분류의 것이 아니다 — 들고 있지 않는다. */
-          setDraft((prev) => ({ ...prev, reasonCode: null }));
-        }}
         onReasonChange={(code) => {
           setDraft((prev) => ({ ...prev, reasonCode: code }));
         }}

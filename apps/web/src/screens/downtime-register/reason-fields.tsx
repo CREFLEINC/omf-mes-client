@@ -2,18 +2,13 @@ import { AlertBanner, Button, Card, Select, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
-import {
-  PLACEHOLDER_REASON_CATEGORIES,
-  reasonsOfCategory,
-  type DowntimeReason,
-} from './downtime-reasons';
+import { PLACEHOLDER_REASONS, type DowntimeReason } from './downtime-reasons';
 import { toClockLabel } from './formatting';
 import type { BreakdownView } from './types';
 
 const t = messages.downtimeRegister;
 
 export interface ReasonFieldsProps {
-  categoryCode: string | null;
   reasonCode: string | null;
   remarks: string;
   breakdownId: number | null;
@@ -21,7 +16,6 @@ export interface ReasonFieldsProps {
   breakdownsUnavailable: boolean;
   isOffline: boolean;
   reasonInvalid: boolean;
-  onCategoryChange: (code: string) => void;
   onReasonChange: (code: string) => void;
   onRemarksChange: (value: string) => void;
   onBreakdownChange: (breakdownId: number | null) => void;
@@ -36,14 +30,13 @@ const toOption = (reason: DowntimeReason) => ({ value: reason.code, label: reaso
  * ⛔ **사유 목록이 임시라는 사실을 감추지 않는다.** 필드를 숨기면 왜 저장이 안 되는지 알 수
  * 없고, 아무 말 없이 목록만 보이면 확정된 체계로 읽힌다. 칸은 그대로 두고 **임시임을 적는다.**
  *
- * ⭐ **대분류는 소분류를 좁히는 화면의 장치다** — 서버로 가는 것은 소분류 코드 하나다.
+ * ⭐ **사유는 평면 1단이다**(스펙 §7 확정 2026-09-03) — 서버로 가는 것은 `reasonCode` 하나다.
  *
  * ⚠ **고장 연결은 선택이다.** 비가동의 다수는 고장이 아니다(자재 대기·금형 교체). 연결하면
  * 그 고장의 정지 시각을 시작 시각으로 **제안**만 한다 — 자동으로 넣으면 작업자가 확인하지 않은
  * 시각이 구간의 한쪽 끝이 된다.
  */
 export const ReasonFields = ({
-  categoryCode,
   reasonCode,
   remarks,
   breakdownId,
@@ -51,13 +44,11 @@ export const ReasonFields = ({
   breakdownsUnavailable,
   isOffline,
   reasonInvalid,
-  onCategoryChange,
   onReasonChange,
   onRemarksChange,
   onBreakdownChange,
   onApplyStoppedAt,
 }: ReasonFieldsProps) => {
-  const categoryLabelId = useId();
   const reasonLabelId = useId();
   const breakdownLabelId = useId();
   const remarksLabelId = useId();
@@ -71,22 +62,13 @@ export const ReasonFields = ({
       <section className="downtime-section" aria-label={t.reason.title}>
         <h2 className="pane-title">{t.reason.title}</h2>
 
+        {/*
+         * ⭐ **선택칸은 하나다**(스펙 §7 —「사유 선택 · Select · 1단(2026-09-03 확정)」).
+         *    한때 대분류로 한 번 좁히고 소분류를 골랐는데, 서버로 가는 것은 `reasonCode`
+         *    하나이고 대분류 값을 정한 문서가 없다 — 있지도 않은 축을 손이 한 번 더 거쳐야
+         *    했다.
+         */}
         <div className="downtime-field-row">
-          <span className="downtime-field-label" id={categoryLabelId}>
-            {t.reason.category}
-          </span>
-          <Select
-            size="xl"
-            aria-labelledby={categoryLabelId}
-            placeholder={t.reason.categoryPlaceholder}
-            value={categoryCode}
-            options={PLACEHOLDER_REASON_CATEGORIES.map((category) => ({
-              value: category.code,
-              label: category.name,
-            }))}
-            onChange={onCategoryChange}
-          />
-
           <span className="downtime-field-label" id={reasonLabelId}>
             {t.reason.detail}
           </span>
@@ -96,9 +78,7 @@ export const ReasonFields = ({
             placeholder={t.reason.detailPlaceholder}
             value={reasonCode}
             invalid={reasonInvalid}
-            /* 대분류를 고르기 전에는 고를 것이 없다 — 빈 목록을 열어 보이지 않는다. */
-            disabled={categoryCode === null}
-            options={reasonsOfCategory(categoryCode).map(toOption)}
+            options={PLACEHOLDER_REASONS.map(toOption)}
             onChange={onReasonChange}
           />
         </div>

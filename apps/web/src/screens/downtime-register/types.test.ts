@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { resolveSaveBlock } from './action-bar';
-import { reasonName, reasonsOfCategory } from './downtime-reasons';
+import { PLACEHOLDER_REASONS, reasonName } from './downtime-reasons';
 import { breakdown, downtime, ongoingDowntime } from './fixtures';
 import { byStartedAtDesc, fromPending, startedOn } from './today-rows';
 import { isOngoing, toBreakdownView, toDowntimeView } from './types';
@@ -126,11 +126,16 @@ describe('today-rows', () => {
 });
 
 describe('자리표시 사유 목록', () => {
-  it('대분류가 소분류를 좁힌다', () => {
-    expect(reasonsOfCategory('EQUIPMENT').length).toBeGreaterThan(0);
-    /* 모르는 대분류에 목록을 지어내지 않는다. */
-    expect(reasonsOfCategory('NOT_A_CATEGORY')).toHaveLength(0);
-    expect(reasonsOfCategory(null)).toHaveLength(0);
+  it('평면 1단이다 — 스펙이 적어 둔 초기 시드 6값', () => {
+    /* ⛔ 대분류 축을 두지 않는다(스펙 §7·§8-2 확정 2026-09-03). */
+    expect(PLACEHOLDER_REASONS.map((reason) => reason.code)).toEqual([
+      'EQUIPMENT_FAILURE',
+      'MOLD_CHANGE',
+      'MATERIAL_WAIT',
+      'LABOR_WAIT',
+      'PREVENTIVE_MAINTENANCE',
+      'OTHER',
+    ]);
   });
 
   it('임시 목록에 없는 코드는 이름을 지어내지 않는다', () => {
