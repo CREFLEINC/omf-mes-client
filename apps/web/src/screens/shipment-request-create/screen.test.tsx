@@ -202,12 +202,14 @@ describe('ShipmentRequestCreateScreen — 고객 LOT 요구 길이 검증', () =
       await screen.findByRole('button', { name: t.table.selectRow('SAMPLE-SO-0001') }),
     );
 
+    /*
+     * 지시서를 고르면 라인이 서버에서 온다 — 클릭이 돌아온 시점에 아직 없다. 동기 조회로
+     * 집으면 기계가 밀릴 때만 못 찾아, 화면은 멀쩡한데 시험이 간헐로 깨진다.
+     */
+    const lotInput = await screen.findByLabelText(t.lineTable.customerLotRequirementLabel(1));
     const submitButton = screen.getByRole('button', { name: t.actions.submit });
 
-    await user.type(
-      screen.getByLabelText(t.lineTable.customerLotRequirementLabel(1)),
-      '가'.repeat(201),
-    );
+    await user.type(lotInput, '가'.repeat(201));
 
     expect(
       await screen.findByText(t.errors.customerLotRequirementTooLong(200)),
