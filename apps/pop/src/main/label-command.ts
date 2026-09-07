@@ -10,6 +10,7 @@
  * "OMF-MES POP.exe" --print-sample lot
  * "OMF-MES POP.exe" --print-sample lot --printer "TSC TTP-247"
  * "OMF-MES POP.exe" --print-label C:\label.json
+ * "OMF-MES POP.exe" --list-printers
  * ```
  *
  * ⭐ **프린터를 지정하지 않으면 OS 기본 프린터로 간다.** 어느 것이 기본인지는 윈도가 알고,
@@ -33,6 +34,8 @@ import {
 export type LabelKind = 'lot' | 'shipping';
 
 export type LabelSource =
+  /** 무엇이 있는지만 본다. 종이는 나오지 않는다. */
+  | { kind: 'list' }
   /** 사양서 예시 그대로의 견본. 실기에서 규격·판독을 볼 때 쓴다. */
   | { kind: 'sample'; label: LabelKind }
   /** 값을 담은 파일. 좌표·크기를 맞추며 여러 장을 뽑을 때 쓴다. */
@@ -76,6 +79,9 @@ export function parseLabelCommand(argv: readonly string[]): LabelCommand | undef
   };
 
   const source = ((): LabelSource | undefined => {
+    /* ⭐ 어디로 가는지 모를 때 가장 먼저 부르는 것 — 그래서 다른 깃발보다 앞에 본다. */
+    if (argv.includes('--list-printers')) return { kind: 'list' };
+
     if (argv.includes('--print-sample')) {
       const label = at('--print-sample');
 

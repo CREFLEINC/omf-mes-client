@@ -45,6 +45,7 @@ import {
 import {
   type RawPrinter,
   RawPrinterUnavailableError,
+  buildListPrintersScript,
   buildRawPrintScript,
   rawPrintScriptArgs,
 } from './raw-print';
@@ -238,17 +239,18 @@ async function runPrintScript(
   scriptPath: string,
   script: string,
   args: (path: string) => string[],
-): Promise<void> {
+): Promise<string> {
+  mkdirSync(join(scriptPath, '..'), { recursive: true });
   writeFileSync(scriptPath, script, 'utf8');
 
-  await new Promise<void>((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     execFile(
       'powershell.exe',
       args(scriptPath),
       { windowsHide: true, timeout: DEFAULT_PRINT_TIMEOUT_MS, killSignal: 'SIGKILL' },
-      (error, _stdout, stderr) => {
+      (error, stdout, stderr) => {
         if (error === null) {
-          resolve();
+          resolve(stdout);
           return;
         }
 
@@ -280,12 +282,13 @@ function createRawPrinter(deviceName?: string): RawPrinter | undefined {
   if (process.platform !== 'win32') return undefined;
 
   return {
-    print: async ({ dataPath, jobName }: { dataPath: string; jobName: string }): Promise<void> =>
-      runPrintScript(
+    print: async ({ dataPath, jobName }: { dataPath: string; jobName: string }): Promise<void> => {
+      await runPrintScript(
         join(dataPath, '..', 'raw-print.ps1'),
         buildRawPrintScript({ dataPath, deviceName, jobName }),
         rawPrintScriptArgs,
-      ),
+      );
+    },
   };
 }
 
@@ -305,12 +308,13 @@ const filePrinter =
           imagePath: string;
           deviceName?: string;
           jobName: string;
-        }): Promise<void> =>
-          runPrintScript(
+        }): Promise<void> => {
+          await runPrintScript(
             join(imagePath, '..', 'print.ps1'),
             buildPrintScript({ imagePath, deviceName, jobName }),
             printScriptArgs,
-          ),
+          );
+        },
       }
     : undefined;
 
@@ -602,9 +606,26 @@ app.on('window-all-closed', () => app.quit());
  * ⚠ **결과를 종료 코드로 낸다.** 이 앱은 창 프로그램이라 콘솔에 글이 보이지 않을 수 있다 —
  *   부르는 쪽이 기댈 수 있는 것은 종료 코드다(`%ERRORLEVEL%`). 사유는 함께 흘려보낸다.
  */
-async function runLabelCommand(command: LabelCommand): Promise<void> {
+async function runLabelCommand(command: LabelCommand): Promise<string> {
+  if (process.platform !== 'win32') throw new RawPrinterUnavailableError();
+
+  const jobDir = join(app.getPath('temp'), 'omf-pop-print', `label-${String(Date.now())}`);
+  mkdirSync(jobDir, { recursive: true });
+
+  if (command.source.kind === 'list') {
+    const listed = await runPrintScript(
+      join(jobDir, 'list-printers.ps1'),
+      buildListPrintersScript(),
+      rawPrintScriptArgs,
+    );
+    rmSync(jobDir, { force: true, recursive: true });
+
+    return `이 단말의 프린터\n${listed.trim()}`;
+  }
+
   /* ⭐ 명령에 실린 이름이 먼저다. 없으면 환경값, 그것도 없으면 OS 기본 프린터로 간다. */
-  const printer = createRawPrinter(command.printerName ?? process.env.POP_PRINTER_NAME);
+  const target = command.printerName ?? process.env.POP_PRINTER_NAME;
+  const printer = createRawPrinter(target);
 
   if (printer === undefined) throw new RawPrinterUnavailableError();
 
@@ -613,8 +634,6 @@ async function runLabelCommand(command: LabelCommand): Promise<void> {
       ? sampleLabel(command.source.label)
       : buildLabelFromFields(readJsonFile(command.source.path));
 
-  const jobDir = join(app.getPath('temp'), 'omf-pop-print', `label-${String(Date.now())}`);
-  mkdirSync(jobDir, { recursive: true });
   const dataPath = join(jobDir, 'label.prn');
   /* ⚠ TSPL 은 바이트 그대로 간다 — 인코딩을 붙이면 프린터가 명령을 못 읽는다. */
   writeFileSync(dataPath, tspl, 'ascii');
@@ -624,6 +643,12 @@ async function runLabelCommand(command: LabelCommand): Promise<void> {
   } finally {
     rmSync(jobDir, { force: true, recursive: true });
   }
+
+  /*
+   * ⚠ **어디로 보냈는지 함께 말한다.** 「보냈다」만 남기면 종이가 안 나왔을 때 프린터가
+   *   문제인지 엉뚱한 대기열로 간 것인지 가릴 수 없다 — 실측으로 여기서 한 번 막혔다.
+   */
+  return `라벨을 보냈습니다 → ${target ?? 'OS 기본 프린터'}`;
 }
 
 /**
@@ -659,8 +684,8 @@ function start(): void {
   }
 
   runLabelCommand(command).then(
-    () => {
-      sayAndExit('라벨을 포트로 보냈습니다', 0);
+    (said) => {
+      sayAndExit(said, 0);
     },
     (error: unknown) => {
       sayAndExit(reasonOf(error), 1);

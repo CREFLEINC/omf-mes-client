@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildRawPrintScript, rawPrintScriptArgs } from './raw-print';
+import {
+  buildListPrintersScript,
+  buildRawPrintScript,
+  rawPrintScriptArgs,
+} from './raw-print';
 
 describe('원시 바이트 전송 스크립트', () => {
   const job = { dataPath: 'C:\\job\\label.prn', jobName: 'LOT-1' };
@@ -114,5 +118,31 @@ describe('원시 바이트 전송 스크립트', () => {
       '-File',
       'C:\\job\\raw-print.ps1',
     ]);
+  });
+});
+
+describe('프린터 목록 스크립트', () => {
+  /*
+   * ⭐ 어디로 갔는지 모르는 것이 가장 막막하다 — 지정이 없으면 OS 기본으로 가는데, 기본이
+   *    라벨 프린터가 아니면 명령이 조용히 다른 대기열로 들어가고 종이는 나오지 않는다.
+   */
+  it('이름과 기본 여부를 함께 보여 준다', () => {
+    const script = buildListPrintersScript();
+
+    expect(script).toContain('GetPrintQueues()');
+    expect(script).toContain('DefaultPrintQueue.Name');
+    expect(script).toContain('(기본)');
+  });
+
+  // ⛔ 목록만 보는 것이지 인쇄가 아니다 — 여기서 종이가 나오면 안 된다.
+  it('인쇄하지 않는다', () => {
+    const script = buildListPrintersScript();
+
+    expect(script).not.toContain('AddJob');
+    expect(script).not.toContain('$stream');
+  });
+
+  it('실패하면 0 이 아닌 종료 코드를 낸다', () => {
+    expect(buildListPrintersScript()).toContain('exit 1');
   });
 });

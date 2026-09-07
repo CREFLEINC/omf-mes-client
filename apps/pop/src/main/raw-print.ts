@@ -26,6 +26,13 @@
 
 import { psQuote } from './windows-print';
 
+/** 대기열을 다루는 스크립트의 머리. `LocalPrintServer`·`PrintQueue` 가 이 어셈블리에 있다. */
+const PRINT_SERVER_HEAD = [
+  '$ErrorActionPreference = ' + psQuote('Stop'),
+  'Add-Type -AssemblyName System.Printing',
+  'try {',
+];
+
 /**
  * 대기열로 한 덩이를 보내는 길. 구현은 `index.ts` 가 준다(스크립트를 써서 PowerShell 로).
  */
@@ -81,10 +88,7 @@ export function buildRawPrintScript({ dataPath, deviceName, jobName }: RawPrintJ
       : `$queue = $server.GetPrintQueue(${psQuote(deviceName)})`;
 
   return [
-    '$ErrorActionPreference = ' + psQuote('Stop'),
-    /* `LocalPrintServer`·`PrintQueue`·`PrintSystemJobInfo` 가 모두 이 어셈블리에 있다. */
-    'Add-Type -AssemblyName System.Printing',
-    'try {',
+    ...PRINT_SERVER_HEAD,
     '  $server = New-Object System.Printing.LocalPrintServer',
     '  ' + chooseQueue,
     `  $bytes = [System.IO.File]::ReadAllBytes(${psQuote(dataPath)})`,
@@ -116,3 +120,24 @@ export const rawPrintScriptArgs = (scriptPath: string): string[] => [
   '-File',
   scriptPath,
 ];
+
+/**
+ * 단말에 등록된 프린터를 훑는 스크립트.
+ *
+ * ⭐ **어디로 갔는지 모르는 것이 가장 막막하다.** 지정하지 않으면 OS 기본 프린터로 가는데,
+ *   기본이 라벨 프린터가 아니면 명령이 조용히 다른 대기열로 들어가고 종이는 나오지 않는다.
+ *   그때 현장에서 확인할 수단이 필요하다 — 이름과 기본 여부를 그대로 보여 준다.
+ */
+export function buildListPrintersScript(): string {
+  return [
+    ...PRINT_SERVER_HEAD,
+    '  $server = New-Object System.Printing.LocalPrintServer',
+    '  $default = $server.DefaultPrintQueue.Name',
+    '  foreach ($q in $server.GetPrintQueues()) {',
+    /* 기본 프린터에 표를 달아 준다 — 목록만으로는 어디로 가는지 알 수 없다. */
+    '    $mark = if ($q.Name -eq $default) { " (기본)" } else { "" }',
+    '    [Console]::Out.WriteLine($q.Name + $mark)',
+    '  }',
+    '} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }',
+  ].join('\n');
+}
