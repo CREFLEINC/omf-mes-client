@@ -20,6 +20,7 @@ import {
   useDispositionDecisions,
   useResultGate,
   useReworkSource,
+  useReworkSourceLot,
   useReworkWorkOrders,
 } from './queries';
 import {
@@ -27,6 +28,7 @@ import {
   quantityTotal,
   quantityVerdict,
   reworkDispositionProgress,
+  decidedOnText,
   toProductionResult,
   type QuantityDrafts,
   type QuantityKey,
@@ -54,9 +56,13 @@ export const ReworkResultRegisterScreen = () => {
   const nonconformanceId = selected?.reworkSourceNonconformanceId ?? null;
   const source = useReworkSource(nonconformanceId);
   const dispositions = useDispositionDecisions(nonconformanceId);
+  const sourceLot = useReworkSourceLot(selected?.reworkSourceLotId ?? null);
   const gate = useResultGate(identity.terminalId, identity.processId);
   const uom = useUomLookup();
   const progress = reworkDispositionProgress(dispositions.data?.items ?? []);
+  /* 이 화면이 보이는 처분은 «재작업» 한 건이다 — 다른 유형은 이 W/O 의 근거가 아니다. */
+  const reworkDecision =
+    dispositions.data?.items.find((item) => item.dispositionTypeCode === 'REWORK') ?? null;
   const total = quantityTotal(drafts);
   const verdict = quantityVerdict(total, progress.remaining);
   const remaining = Math.max(0, progress.remaining - total);
@@ -269,25 +275,55 @@ export const ReworkResultRegisterScreen = () => {
                     <AlertBanner variant="error">{t.loadError}</AlertBanner>
                   )}
                   <dl className="pop-figures">
+                    {/*
+                      * ⭐ **번호를 보인다 — 식별자 숫자가 아니라.** 스펙 §3 ①이 이 줄을
+                      *    「원 LOT  FG-…-0288  160 EA」로 그렸다. 작업지시가 주는 것은
+                      *    `reworkSourceLotId`(숫자)뿐이라 LOT 을 따로 받아 번호를 쓴다 —
+                      *    작업자가 실물 라벨과 대조하는 자리다.
+                      *
+                      * ⛔ **「원 W/O」 행을 두지 않는다** — 스펙 ①은 원 LOT · 근거 · 처분 세
+                      *    줄이고 원본 작업지시는 그리지 않는다. 이 화면이 다루는 것은 반품
+                      *    재작업이라 원본 W/O 가 아예 없는 경우가 정상이다(§5-1).
+                      */}
                     <div>
                       <dt>{t.sourceLot}</dt>
-                      <dd>{selected.reworkSourceLotId ?? '—'}</dd>
-                    </div>
-                    <div>
-                      <dt>{t.sourceWorkOrder}</dt>
-                      <dd>{selected.reworkSourceWorkOrderId ?? '—'}</dd>
+                      <dd>
+                        {/* ⚠ 계약이 LOT 을 `lot` 아래에 감싸 준다 — 겉 응답이 곧 LOT 이 아니다. */}
+                        {sourceLot.data === undefined
+                          ? t.unknown
+                          : t.sourceLotValue(
+                              sourceLot.data.lot.lotNo,
+                              String(sourceLot.data.lot.initialQty),
+                              uom.labelOf(sourceLot.data.lot.uomId) ?? '',
+                            )}
+                      </dd>
                     </div>
                     <div>
                       <dt>{t.nonconformance}</dt>
                       <dd>
-                        {source.data
-                          ? `${source.data.nonconformanceNo} · ${source.data.description}`
-                          : '—'}
+                        {source.data === undefined
+                          ? t.unknown
+                          : t.nonconformanceValue(
+                              source.data.nonconformanceNo,
+                              source.data.description,
+                            )}
                       </dd>
                     </div>
+                    {/*
+                      * 「처분  재작업 160 EA  (08-07)」 — 판정을 그대로 옮긴다.
+                      * ⛔ 판정한 사람은 적지 않는다 — 계약이 주는 것은 식별자 숫자뿐이다.
+                      */}
                     <div>
                       <dt>{t.disposition}</dt>
-                      <dd>{progress.target}</dd>
+                      <dd>
+                        {reworkDecision === null
+                          ? t.unknown
+                          : t.dispositionValue(
+                              String(reworkDecision.decisionQty),
+                              uom.labelOf(reworkDecision.uomId) ?? '',
+                              decidedOnText(reworkDecision.decidedAt),
+                            )}
+                      </dd>
                     </div>
                   </dl>
 

@@ -44,6 +44,17 @@ export const reworkDispositionProgress = (items: DispositionList['items']) =>
       { target: 0, completed: 0, remaining: 0 },
     );
 
+/**
+ * 판정 일자 — **월·일까지만**(스펙 §3 ①의 `08-07`).
+ *
+ * ⛔ 계약이 준 문자열에서 **글자 그대로** 꺼낸다. `Date` 로 바꿔 다시 찍으면 표시가 단말
+ * 시간대에 따라 흔들려 같은 판정이 단말마다 다른 날로 보인다(전례 `P-02-12`).
+ */
+const DECIDED_ON_PATTERN = /^\d{4}-(\d{2}-\d{2})/u;
+
+export const decidedOnText = (value: string): string =>
+  DECIDED_ON_PATTERN.exec(value)?.[1] ?? value;
+
 const pad = (value: number, length: number): string => String(value).padStart(length, '0');
 
 export const toOffsetDateTime = (at: Date): string => {

@@ -65,10 +65,29 @@ const stubFetch: StubFetch = async (request) => {
           dispositionDecisionId: 1,
           dispositionTypeCode: 'REWORK',
           decisionQty: 160,
+          uomId: 11,
+          decidedBy: 900001,
+          decidedAt: '2026-08-07T09:12:00+09:00',
           followUpQty: 0,
         },
       ],
       page: { page: 1, size: 20, total: 1 },
+    });
+  }
+
+  if (url.pathname === '/trace/lots/6001') {
+    return jsonResponse({
+      lot: {
+        lotId: 6001,
+        lotNo: 'SYN-LOT-0288',
+        itemId: 5001,
+        lotTypeCode: 'PRODUCT',
+        plantId: 1,
+        initialQty: 160,
+        uomId: 11,
+        statusCode: 'NORMAL',
+        held: false,
+      },
     });
   }
 
@@ -346,6 +365,29 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     const field = await screen.findByLabelText(t.defectCode);
 
     expect(field).toBeDisabled();
+  });
+
+  /*
+   * ⭐ **① 은 스펙 §3 의 세 줄이다** — 원 LOT(번호+수량) · 근거(부적합) · 처분(수량+판정일).
+   *
+   * ⛔ 앞선 판은 원 LOT 에 **내부 식별자 숫자**를 그대로 보였다 — 작업자가 실물 라벨과 대조할
+   *    수 없다. 「원 W/O」 행도 스펙에 없는데 세워 두었다(반품 재작업은 원본 W/O 가 아예 없는
+   *    것이 정상이다 · §5-1).
+   */
+  it('재작업 대상이 LOT 번호·근거·처분 세 줄로 선다', async () => {
+    const { container, user } = renderScreen();
+    await pickWorkOrder(user);
+
+    await screen.findByText(/SYN-LOT-0288/u);
+    const card = container.querySelector('.rework-target-card') as HTMLElement;
+    expect(card).toHaveTextContent(t.sourceLotValue('SYN-LOT-0288', '160', 'EA'));
+    expect(card).toHaveTextContent(t.nonconformanceValue('SYN-NC-0071', '합성 외관 결함'));
+    expect(card).toHaveTextContent(t.dispositionValue('160', 'EA', '08-07'));
+
+    /* ⛔ 식별자 숫자가 새어 나오지 않는다. */
+    expect(card).not.toHaveTextContent('6001');
+    /* ⛔ 스펙에 없는 「원 W/O」 행을 두지 않는다 — 세 줄뿐이다. */
+    expect(container.querySelectorAll('.rework-target-card dt')).toHaveLength(3);
   });
 
   /*

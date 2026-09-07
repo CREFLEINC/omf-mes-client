@@ -37,9 +37,31 @@ export const reworkResultRegister = {
   selectRow: (workOrderNo: string): string => `${workOrderNo} 선택`,
   target: '재작업 대상',
   sourceLot: '원 LOT',
-  sourceWorkOrder: '원 W/O',
-  nonconformance: '근거 부적합',
-  disposition: '처분 수량',
+  /**
+   * 근거·처분 — **스펙 §3 ①의 라벨 그대로다**(「근거」·「처분」). 앞선 판은 「근거 부적합」·
+   * 「처분 수량」이었는데, 값이 이미 「부적합 NC-… 」·「재작업 160 EA」로 무엇인지 말한다.
+   */
+  nonconformance: '근거',
+  disposition: '처분',
+
+  /** 「원 LOT  FG-…-0288  160 EA」 — 번호와 초기 수량을 잇는다. */
+  /* ⚠ 겹공백을 쓰지 않는다 — 화면이 하나로 접어 감지기와 어긋난다(도면의 정렬은 표기일 뿐이다). */
+  sourceLotValue: (lotNo: string, qty: string, uom: string): string =>
+    uom === '' ? `${lotNo} ${qty}` : `${lotNo} ${qty} ${uom}`,
+  /** 「근거  부적합 NC-2026-0071 · 외관 스크래치」 */
+  nonconformanceValue: (no: string, description: string): string =>
+    `부적합 ${no} · ${description}`,
+  /**
+   * 「처분  재작업 160 EA  (08-07)」
+   *
+   * ⛔ **판정한 사람을 적지 않는다.** 스펙 도면은 「(08-07 김품질)」로 이름까지 그렸지만
+   * 계약이 주는 것은 `decidedBy`(사용자 «식별자» 숫자)뿐이다 — 숫자를 사람 이름 자리에 두면
+   * 그것이 사번인지 무엇인지 알 수 없다. 이름을 받는 경로가 생기면 그때 붙인다.
+   */
+  dispositionValue: (qty: string, uom: string, decidedOn: string): string =>
+    `재작업 ${uom === '' ? qty : `${qty} ${uom}`} (${decidedOn})`,
+  /** 값을 아직 못 받았을 때. ⛔ 빈칸으로 두면 「없다」로 읽힌다. */
+  unknown: '확인 중',
   quantities: {
     title: '실적 입력',
     /** 키 묶음의 접근 이름. */
