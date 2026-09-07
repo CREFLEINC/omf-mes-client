@@ -31,7 +31,7 @@ interface Registered {
   lotNo: string;
   qty: number;
   inboundReceiptLineId: number;
-  /** 나중에 되돌아온 건을 알아보려고 든다. 오프라인 등록은 그 판정이 한참 뒤에 선다. */
+  /** 되돌아온 건을 알아보려고 든다. 오프라인 등록은 그 판정이 늦게 선다. */
   idempotencyKey: string;
 }
 
@@ -165,8 +165,8 @@ export const MaterialLotScanScreen = () => {
   /*
    * 서버를 부르지 않는다. 건별로 이미 담겼고 이 단추는 화면을 닫는 행위다.
    *
-   * 되돌아온 것이 있는지 여기서 다시 본다 - 오프라인에서 담은 건의 판정은 한참 뒤 셸이 도는
-   * 회차에 서고, 그때 화면은 이미 「등록됨」을 보이고 있다.
+   * 되돌아온 것이 있는지 여기서 다시 본다 - 오프라인에서 담은 건의 판정은 셸이 도는 다른
+   * 회차에 서고, 그때 화면은 이미 등록됨을 보이고 있다.
    */
   const finish = () => {
     if (registered.some((each) => isRejected(each.idempotencyKey))) {
