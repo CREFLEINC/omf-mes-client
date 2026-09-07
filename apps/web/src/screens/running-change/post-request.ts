@@ -27,9 +27,6 @@ import type { ScannedPart } from './scan';
  *
  * - **투입 유형(`consumptionTypeCode`)** — 통지 #563. 상수를 박는 것도 하지 않는다. 값 목록이
  *   확정되면 다시 알린다고 했다
- * - **교체 사유(`changeReasonCode`)** — 값 목록이 아직 없다(검토 요청 omf-mes#397 ②). 계약이
- *   nullable 로 두었고 §6 이 「미선택은 권고」라 등록을 막지 않는다. 지어낸 값을 넣으면
- *   승인된 적 없는 코드가 지워지지 않는 기록에 남는다
  * - **작업자 · 단말** — 서버가 인증에서 이미 안다. 작업자는 귀속 헤더(`X-Worker-No`)에서,
  *   단말은 요청을 인증한 토큰에서 서버가 푼다
  * - **`bomComponentId` · `shopfloorReceiptLineId` · `actualUseProcessId`** — 계약이 「화면은
@@ -69,6 +66,13 @@ export interface ReplacementDraft {
   /** 교체 대상 — 《현재 투입》에서 고른 줄의 `materialConsumptionId`. */
   replacedConsumptionId: number | null;
   qty: QtyDraft;
+  /**
+   * 교체 사유 — **고르지 않았으면 보내지 않는다.**
+   *
+   * 계약이 `nullable` 이고 §6 이 「미선택은 권고」라 등록을 막지 않는다. ⛔ 빈 문자열을
+   * 보내지 않는다 — 「고르지 않았다」와 「빈 값을 골랐다」가 기록에서 갈라지지 않는다.
+   */
+  changeReasonCode: string | null;
   workSessionId: number | null;
   occurredAt: Date;
 }
@@ -100,6 +104,9 @@ export const toReplacementConsumption = (
     replacedConsumptionId,
     inputQty,
     uomId: part.uomId,
+    ...(draft.changeReasonCode === null || draft.changeReasonCode === ''
+      ? {}
+      : { changeReasonCode: draft.changeReasonCode }),
     occurredAt: toOffsetDateTime(draft.occurredAt),
   };
 };

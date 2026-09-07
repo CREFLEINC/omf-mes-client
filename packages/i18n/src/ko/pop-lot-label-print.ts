@@ -2,8 +2,11 @@
  * P-02-07 · LOT 라벨 출력·부착 (POP)
  *
  * ⚠ **목록의 「상태」·「양품」 열을 채우지 못한다.** 목록 조회에 생산 진척을 함께 받는 질의가
- * 없고 상세에만 있다(#143 · #151 이 같은 회신을 기다린다). 비어 있는 열에는 반드시 사유를
- * 붙인다 — 말없이 비우면 「미달이 없다」·「양품이 0이다」로 읽힌다.
+ * 없고 상세에만 있다(#143 · #151 이 같은 회신을 기다린다). 값 자리에는 「—」를 둔다.
+ *
+ * ⛔ **스펙에 없는 안내 문구를 두지 않는다.** 화면이 스스로 사정을 설명하는 문장(빈 열의 사유 ·
+ * 「고르면 여기에 나타납니다」)은 걷었다 — 스펙 §3 이 그리지 않은 것이고, 늘 떠 있는 문장은
+ * 정작 읽어야 할 오류·차단 사유의 무게를 깎는다.
  */
 export const popLotLabelPrint = {
   title: 'LOT 라벨 출력',
@@ -21,18 +24,11 @@ export const popLotLabelPrint = {
     statusColumn: '상태',
     goodQtyColumn: '양품',
     issueCountColumn: '발행',
+    /** 줄 전체가 누르는 자리다. 읽어 주는 도구에 「무엇을 고르는가」를 말한다. */
     select: '선택',
-    selected: '선택됨',
 
     /** 값이 없는 자리에 넣는 표시. 숫자 0 과 구분되어야 한다. */
     valuePending: '—',
-    /**
-     * 「상태」·「양품」이 비어 있는 이유. 두 열이 같은 사유를 공유하므로 안내도 하나다.
-     * ⛔ 내부 이슈 번호를 넣지 않는다 — 사용자가 쓰지 않는 말이다.
-     */
-    progressPending:
-      '상태(완료·미달)와 양품 수는 아직 목록에 표시할 수 없습니다. LOT 을 고르면 오른쪽에서 확인할 수 있습니다.',
-
     /** 발행 이력 — 「한 번도 안 찍힌 것」이 현장의 관심사라 따로 말한다. */
     notIssued: '미출력',
     issuedCount: (count: number) => `${String(count)}회`,
@@ -47,6 +43,12 @@ export const popLotLabelPrint = {
     tagNotice: '인식표는 인식표 발행 화면에서 개체 단위로 발행합니다.',
   },
 
+  /** 머리줄 오른쪽의 상태 묶음. 다른 POP 화면과 같은 말을 쓴다. */
+  device: {
+    terminalLabel: '단말',
+    terminalUnknown: '확인되지 않음',
+  },
+
   printer: {
     label: '프린터',
     none: '등록된 프린터가 없습니다',
@@ -56,7 +58,6 @@ export const popLotLabelPrint = {
   },
 
   detail: {
-    placeholder: 'LOT 을 고르면 상세와 출력 조작이 여기에 나타납니다.',
     loading: 'LOT 상세를 불러오는 중입니다.',
     loadFailed: 'LOT 상세를 불러오지 못했습니다.',
     retry: '다시 시도',

@@ -7,3 +7,11 @@
 .omf-numeric-keypad > button {
   width: 100%;
 }
+
+/*
+ * 소수점 키는 **0 아래 가운데**에 선다. 격자가 3열이라 열두 번째 키는 다음 줄 첫 칸으로
+ * 흘러 왼쪽 끝에 홀로 서는데, 0 과 세로로 맞춰야 손이 같은 자리를 찾는다.
+ */
+.omf-numeric-keypad__decimal {
+  grid-column: 2;
+}

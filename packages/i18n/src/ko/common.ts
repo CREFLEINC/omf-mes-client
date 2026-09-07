@@ -40,4 +40,15 @@ export const common = {
    * 마스크를 그려 줬지만 `DatePicker`의 트리거는 우리가 넣지 않으면 빈 칸으로 남는다.
    */
   selectDate: '날짜 선택',
+
+  /**
+   * POP 머리줄의 사번 — **화면마다 같은 말로 적는다**(`patterns/pop-worker-tag`).
+   *
+   * 화면 슬라이스마다 제 문구를 갖고 있어 「사번 100029」·「사번 —」·아예 감춤으로 갈렸다.
+   */
+  popWorker: {
+    label: '사번',
+    /** 아직 못 받았다 — 「없다」가 아니라 「모른다」다. */
+    unknown: '사번 미확인',
+  },
 } as const;

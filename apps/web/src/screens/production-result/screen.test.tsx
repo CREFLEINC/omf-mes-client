@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { formatLotNo } from './lot-display';
 import { STORAGE_KEY } from './outbox';
 import { GOOD_QTY_MAX_LENGTH } from './quantity-draft';
 import { ProductionResultScreen } from './screen';
@@ -157,6 +158,7 @@ const selectLot = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 const saveButton = () => screen.getByRole('button', { name: t.actions.save });
+const cancelButton = () => screen.getByRole('button', { name: t.actions.cancel });
 
 beforeEach(() => {
   globalThis.localStorage.clear();
@@ -264,10 +266,18 @@ describe('ProductionResultScreen 검사 선행 (R54)', () => {
 });
 
 describe('ProductionResultScreen 수량 입력', () => {
-  it('LOT 을 고르지 않으면 그 사유를 말한다', async () => {
+  /*
+   * ⛔ **사유 «문장»을 기대하지 않는다.** 스펙 §5-1·§6 이 이 셋에 정한 처리는 「저장 버튼
+   * 비활성」뿐이고, 화면도 그렇게 말한다. 문장을 찾는 감지기는 스펙에 없는 안내문을 도로
+   * 불러들인다 — 잠긴 «상태»를 본다.
+   */
+  it('LOT 을 고르지 않으면 저장이 잠긴다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.lot.unselected)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(saveButton()).toBeDisabled();
+    });
+    expect(screen.queryByText(t.lot.lotLabel, { selector: 'p' })).not.toBeInTheDocument();
   });
 
   it('수량이 비어 있으면 저장이 열리지 않는다', async () => {
@@ -276,18 +286,107 @@ describe('ProductionResultScreen 수량 입력', () => {
 
     await selectLot(user);
 
-    expect(await screen.findByText(t.quantity.empty)).toBeInTheDocument();
-    expect(saveButton()).toBeDisabled();
+    await waitFor(() => {
+      expect(saveButton()).toBeDisabled();
+    });
   });
 
-  it('0 은 «0보다 커야 한다»고 말한다 — 빈 것과 다른 사유다', async () => {
+  it('0 을 쳐도 저장이 열리지 않는다 — 빈 것과 같은 처리다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await selectLot(user);
     await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '0');
 
-    expect(await screen.findByText(t.quantity.zero)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(saveButton()).toBeDisabled();
+    });
+  });
+
+  /* 스펙 §5-1 — 취소의 활성 조건은 「입력 있음」이다. 되돌릴 것이 없으면 잠긴다. */
+  it('빈 화면에서는 취소가 잠긴다', async () => {
+    renderScreen();
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeDisabled();
+    });
+  });
+
+  it('수량을 치면 취소가 열리고, 누르면 다시 잠긴다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.type(screen.getByLabelText(t.quantity.goodQtyLabel), '10');
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeEnabled();
+    });
+
+    await user.click(cancelButton());
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeDisabled();
+    });
+    expect(screen.getByLabelText(t.quantity.goodQtyLabel)).toHaveValue('');
+  });
+
+  /*
+   * 취소는 **화면이 들고 있는 것을 전부** 되돌린다(사용자 결정) — 고른 대상 LOT 도 든다.
+   * ⚠ 스펙이 비워 둔 자리라 감지기가 그 결정의 유일한 기록이다.
+   */
+  it('LOT 만 골라도 취소가 열리고, 누르면 고른 LOT 이 풀린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await selectLot(user);
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeEnabled();
+    });
+    /*
+     * ⚠ 화면 문구로 찾지 않는다 — 고르는 창이 닫힌 뒤에도 목록이 DOM 에 남아 같은 번호가
+     *   둘이다. **대상 LOT 줄 자체**를 본다.
+     */
+    const lotCell = () => document.querySelector('.pop-result-lot-no')?.textContent;
+
+    await waitFor(() => {
+      expect(lotCell()).toBe(formatLotNo(LOT_NO));
+    });
+
+    await user.click(cancelButton());
+
+    await waitFor(() => {
+      expect(cancelButton()).toBeDisabled();
+    });
+    expect(lotCell()).toBe('—');
+    /* LOT 이 풀렸으니 저장도 다시 잠긴다 — 지우는 목록과 여는 조건이 짝을 이룬다. */
+    expect(saveButton()).toBeDisabled();
+  });
+
+  /*
+   * ⛔ **수량이 비면 [ C ]·[ ⌫ ] 는 잠긴다.** 지울 것이 없는데 열려 있으면 눌러도 아무 일이
+   * 일어나지 않아, 「눌리는데 안 되는 키」가 된다(사용자 지적). 사번 화면·인식표 발행과
+   * 같은 부품을 써서 같게 동작한다.
+   */
+  it('수량이 비면 지움 키 둘이 잠기고, 값이 들어오면 열린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const clearKey = () => screen.getByRole('button', { name: t.quantity.clearGlyph });
+    const backspaceKey = () => screen.getByRole('button', { name: t.quantity.backspace });
+
+    await waitFor(() => {
+      expect(clearKey()).toBeDisabled();
+    });
+    expect(backspaceKey()).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+
+    await waitFor(() => {
+      expect(clearKey()).toBeEnabled();
+    });
+    expect(backspaceKey()).toBeEnabled();
+    expect(screen.getByLabelText(t.quantity.goodQtyLabel)).toHaveValue('7');
   });
 
   it('빠른 입력은 이어 붙이지 않고 더한다', async () => {
@@ -328,16 +427,25 @@ describe('ProductionResultScreen 수량 입력', () => {
   it('단위 조회가 실패하면 아무것도 붙이지 않는다 — 식별자로 대신하지 않는다', async () => {
     renderScreen({ uomsFail: true });
 
-    await screen.findByText(t.quantity.remainingValue('380', '500'));
+    await screen.findByText(t.quantity.orderedSuffix('500', null));
 
     expect(screen.queryByText('EA')).not.toBeInTheDocument();
     expect(screen.queryByText(String(UOM_ID))).not.toBeInTheDocument();
   });
 
-  it('잔여수량을 잔여 / 지시로 보인다', async () => {
+  /*
+   * 스펙 §3-2 「잔여수량 380 / 500」. ⛔ 뒤 숫자에 「지시」라고 적지 않는다 — 스펙에 없는
+   * 낱말이고, 설계는 무게로 가른다(검증본 `.val` / `.unit`).
+   */
+  it('잔여수량과 지시수량을 두 조각으로 보인다', async () => {
     renderScreen({ goodQty: 120 });
 
-    expect(await screen.findByText(t.quantity.remainingValue('380', '500'))).toBeInTheDocument();
+    expect(await screen.findByText('380')).toBeInTheDocument();
+    /* ⚠ 머리줄의 「작업지시」가 걸리므로 화면 전체에서 「지시」를 찾지 않는다 — 이 줄만 본다. */
+    const suffix = screen.getByText(t.quantity.orderedSuffix('500', 'EA'));
+
+    expect(suffix).toBeInTheDocument();
+    expect(suffix.textContent).not.toContain('지시');
   });
 
   it('진척이 없으면 «확인할 수 없다»고 말한다 — 0 으로 접지 않는다', async () => {

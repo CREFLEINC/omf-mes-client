@@ -25,6 +25,8 @@ export interface PrinterSelectProps {
   isError: boolean;
   onRetry: () => void;
   disabled: boolean;
+  /** 아직 라벨 종류를 고르지 않았다 — 조회 자체를 하지 않은 상태다. */
+  awaitingKind: boolean;
 }
 
 /**
@@ -48,7 +50,25 @@ export const PrinterSelect = ({
   isError,
   onRetry,
   disabled,
+  awaitingKind,
 }: PrinterSelectProps) => {
+  /*
+   * ⭐ **종류를 고르기 전에도 자리를 비우지 않는다** — 칸을 감췄다가 고르는 «순간» 나타나면
+   *    아래 구획들이 밀려 화면이 한 번 출렁인다. 무엇을 더 해야 이 칸이 열리는지도 보이지
+   *    않는다. 자리는 그대로 두고 **잠가 둔다**(사용자 지시 2026-09-07).
+   *
+   * ⛔ 여기서 「찍을 수 있는 프린터가 없다」로 그리지 않는다 — 아직 조회하지 않았을 뿐이라
+   *    없다고 «단정할» 수 없다(공유계약 G-9).
+   */
+  if (awaitingKind) {
+    return (
+      <div className="pop-slabel-printer">
+        <span className="field-label">{t.label}</span>
+        <Select aria-label={t.label} size="xl" options={[]} disabled />
+      </div>
+    );
+  }
+
   if (isError) {
     return (
       <div className="pop-slabel-printer">
@@ -79,7 +99,6 @@ export const PrinterSelect = ({
       <Select
         aria-label={t.label}
         size="xl"
-        placeholder={t.placeholder}
         value={value}
         disabled={disabled}
         options={printers.map((printer) => ({

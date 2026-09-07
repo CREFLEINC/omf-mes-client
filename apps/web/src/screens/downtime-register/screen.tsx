@@ -23,12 +23,13 @@ import { IntervalFields } from './interval-fields';
 import { LoadErrorBanner } from './load-error-banner';
 import { OngoingPanel } from './ongoing-panel';
 import { useOutbox } from './outbox';
-import { toDowntimeCreate, type DowntimeDraft } from './post-request';
+import { isDraftEmpty, toDowntimeCreate, type DowntimeDraft } from './post-request';
 import {
   downtimeRegisterKeys,
   toLocalDay,
   useOngoingDowntime,
   useOpenBreakdowns,
+  useReasonOptions,
   useTodayDowntimes,
 } from './queries';
 import { ReasonFields } from './reason-fields';
@@ -90,8 +91,6 @@ export const DowntimeRegisterScreen = () => {
   const titleId = useId();
 
   const [draft, setDraft] = useState<DowntimeDraft>(EMPTY_DRAFT);
-  const [categoryCode, setCategoryCode] = useState<string | null>(null);
-  const [saveAttempted, setSaveAttempted] = useState(false);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
   const outbox = useOutbox();
@@ -109,6 +108,7 @@ export const DowntimeRegisterScreen = () => {
   const day = toLocalDay(now);
   const today = useTodayDowntimes(equipmentId, day, outbox.isOnline);
   const breakdowns = useOpenBreakdowns(equipmentId, outbox.isOnline);
+  const reasonOptions = useReasonOptions();
 
   /*
    * ④의 줄. 온라인이면 서버 목록이 정본이고, 끊겨 있으면 **이 단말이 아는 것만** 세운다.
@@ -119,14 +119,22 @@ export const DowntimeRegisterScreen = () => {
    */
   const isLocalOnly = !outbox.isOnline;
 
+  /* 코드 → 이름. 받아 온 목록이 정본이고, 아직 서버에 닿지 않은 줄이 이것으로 이름을 얻는다. */
+  const reasonNames = useMemo(
+    () => new Map(reasonOptions.options.map((option) => [option.code, option.name])),
+    [reasonOptions.options],
+  );
+
   const rows: TodayRow[] = useMemo(() => {
     const local = [
-      ...outbox.accepted.map(fromAccepted),
-      ...outbox.pendingCreates.map((entry) => fromPending(entry.idempotencyKey, entry.body)),
+      ...outbox.accepted.map((entry) => fromAccepted(entry, reasonNames)),
+      ...outbox.pendingCreates.map((entry) =>
+        fromPending(entry.idempotencyKey, entry.body, reasonNames),
+      ),
     ].filter((row) => startedOn(row, day));
 
     if (outbox.isOnline) {
-      const server = today.downtimes.map(fromDowntimeView);
+      const server = today.downtimes.map((one) => fromDowntimeView(one, reasonNames));
       const known = new Set(server.map((row) => row.key));
 
       /* 서버가 이미 아는 건은 두 번 세지 않는다 — 방금 보낸 건이 응답과 목록에 함께 잡힌다. */
@@ -134,7 +142,7 @@ export const DowntimeRegisterScreen = () => {
     }
 
     return local.sort(byStartedAtDesc);
-  }, [day, outbox.accepted, outbox.isOnline, outbox.pendingCreates, today.downtimes]);
+  }, [day, outbox.accepted, outbox.isOnline, outbox.pendingCreates, reasonNames, today.downtimes]);
 
   const moments = readInterval(draft.interval);
   const intervalErrors = validateInterval(draft.interval, now);
@@ -156,15 +164,14 @@ export const DowntimeRegisterScreen = () => {
   /*
    * 오류를 언제 보일지 갈래가 둘이다.
    *
-   * - **잘못 친 것**(끝이 시작보다 앞섬 · 미래 시각)은 바로 보인다. 이미 틀린 값이 칸에 있고,
-   *   저장을 누를 때까지 숨기면 작업자가 다음 칸으로 넘어간 뒤에 되돌아와야 한다.
-   * - **아직 안 친 것**(시작 필수 · 사유 필수)은 저장을 누른 뒤에 보인다. 빈 화면을 붉은
+   * - **잘못 친 것**(끝이 시작보다 앞섬 · 미래 시각 · 덜 친 것)은 바로 보인다. 이미 틀린 값이
+   *   칸에 있고, 저장을 누를 때까지 숨기면 작업자가 다음 칸으로 넘어간 뒤에 되돌아와야 한다.
+   * - **아직 «안» 친 것**은 아예 글로 말하지 않는다. 스펙 §5-1 이 그 자리에 정한 것은 「활성
+   *   조건」뿐이고(시작 시각 + 사유), 저장 버튼이 잠긴 것이 곧 그 말이다 — 빈 화면을 붉은
    *   글씨로 맞이하지 않는다.
    */
   const shownIntervalErrors: IntervalErrors = {
-    /* 「안 친 것」만 누르기 전에는 숨긴다 — 빈 화면을 붉은 글씨로 맞이하지 않는다. */
-    startedAt:
-      !saveAttempted && intervalErrors.startedAt === 'required' ? null : intervalErrors.startedAt,
+    startedAt: intervalErrors.startedAt === 'required' ? null : intervalErrors.startedAt,
     /*
      * ⛔ **끝 칸의 오류를 시작 칸 사정으로 숨기지 않는다.** 한 덩이로 숨겼더니 시작을 아직
      * 치지 않은 동안 끝 칸의 문제가 통째로 가려졌다 — 실사용에서 나온 자리다.
@@ -174,8 +181,6 @@ export const DowntimeRegisterScreen = () => {
 
   const resetDraft = (): void => {
     setDraft(EMPTY_DRAFT);
-    setCategoryCode(null);
-    setSaveAttempted(false);
     setSavedNotice(null);
   };
 
@@ -187,7 +192,6 @@ export const DowntimeRegisterScreen = () => {
    * 갖춰지지 않은 값이 기록에 실리지 않아야 한다 — 비가동은 정정 경로가 없다.
    */
   const save = (): void => {
-    setSaveAttempted(true);
     /* 앞 회차의 거부는 이 회차의 사실이 아니다 — 남겨 두면 방금 저장한 것이 거부된 것처럼 읽힌다. */
     outbox.clearRejections();
     if (block !== null || workerNo === null) return;
@@ -200,8 +204,6 @@ export const DowntimeRegisterScreen = () => {
     outbox.enqueueCreate(workerNo, body);
     setSavedNotice(outbox.isOnline ? t.actions.saved : t.actions.queued);
     setDraft(EMPTY_DRAFT);
-    setCategoryCode(null);
-    setSaveAttempted(false);
   };
 
   /** 「지금 종료」 — 끝 시각은 서버가 지금으로 박는다. 화면이 시각을 실어 보내지 않는다. */
@@ -248,7 +250,7 @@ export const DowntimeRegisterScreen = () => {
 
   return (
     /* 표제가 본문의 이름이 된다 — 셸이 없어 줄 사람이 이 화면뿐이다. */
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
@@ -267,7 +269,7 @@ export const DowntimeRegisterScreen = () => {
            * ⭐ **미전송 건수는 필수 요건이다.** 「담긴 순간 성공」이라는 표시를 택한 근거가
            * 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
            */}
-          <Chip variant="status" size="sm" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
+          <Chip variant="status" size="md" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
             {outbox.pendingCount > 0 ? t.header.unsent(outbox.pendingCount) : t.header.sent}
           </Chip>
           {/*
@@ -276,7 +278,7 @@ export const DowntimeRegisterScreen = () => {
             선다 — 같은 도메인의 P-05-01 도 연결 상태를 `warning` 으로 낸다.
           */}
           {!outbox.isOnline && (
-            <Chip variant="status" size="sm" status="warning">
+            <Chip variant="status" size="md" status="warning">
               {t.header.offline}
             </Chip>
           )}
@@ -339,19 +341,14 @@ export const DowntimeRegisterScreen = () => {
       )}
 
       <ReasonFields
-        categoryCode={categoryCode}
         reasonCode={draft.reasonCode}
+        reasons={reasonOptions.options}
+        reasonsUnavailable={reasonOptions.isUnavailable}
         remarks={draft.remarks}
         breakdownId={draft.breakdownId}
         breakdowns={breakdowns.breakdowns}
         breakdownsUnavailable={breakdowns.isError}
         isOffline={!outbox.isOnline}
-        reasonInvalid={saveAttempted && reasonMissing}
-        onCategoryChange={(code) => {
-          setCategoryCode(code);
-          /* 대분류가 바뀌면 앞서 고른 소분류는 그 대분류의 것이 아니다 — 들고 있지 않는다. */
-          setDraft((prev) => ({ ...prev, reasonCode: null }));
-        }}
         onReasonChange={(code) => {
           setDraft((prev) => ({ ...prev, reasonCode: code }));
         }}
@@ -397,7 +394,20 @@ export const DowntimeRegisterScreen = () => {
         </div>
       )}
 
-      <ActionBar block={block} onReset={resetDraft} onSave={save} />
+      <ActionBar
+        block={block}
+        isEmpty={isDraftEmpty(draft)}
+        /*
+         * 스펙 §5-1 의 활성 조건은 **시작 시각 + 사유** 둘이다.
+         *
+         * ⚠ 「시작 시각」은 «온전한» 것을 말한다 — 날짜만 치고 시각을 비운 상태는 아직 시각이
+         *    아니다(`readInterval` 이 `null` 을 낸다). ⛔ 끝 시각·겹침처럼 «누른 뒤에 말할»
+         *    것은 여기 넣지 않는다: 그것들은 눌러야 무엇이 문제인지 칸 옆에서 말할 수 있다.
+         */
+        isIncomplete={moments.started === null || reasonMissing}
+        onReset={resetDraft}
+        onSave={save}
+      />
     </main>
   );
 };

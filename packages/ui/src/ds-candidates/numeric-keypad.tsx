@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { Button, type ButtonSize } from '@crefle/web-ui';
 
 import './numeric-keypad.css';
@@ -9,9 +11,29 @@ export interface NumericKeypadProps {
   onChange: (value: string) => void;
   /** 넘기면 그 길이에서 더 받지 않는다. */
   maxLength?: number;
+  /**
+   * 넘기면 그 «수»를 넘기는 입력을 받지 않는다. 자릿수(`maxLength`)와 다른 축이다 —
+   * 1000 이 상한이면 자릿수는 4 지만 `9999` 는 받으면 안 된다.
+   */
+  max?: number;
   disabled?: boolean;
+  /**
+   * 소수점 키를 그린다. 기본은 그리지 않는다 — 수량·타발수처럼 정수만 받는 자리가 대부분이라,
+   * 키가 늘 있으면 넣을 수 없는 값을 넣게 된다.
+   *
+   * ⚠ 켜도 **소수점은 하나뿐**이다. 둘째 점을 누르면 없던 일로 둔다 — 넣었다가 지우게 하면
+   * 손이 두 번 간다(자릿수 상한과 같은 처리).
+   */
+  allowDecimal?: boolean;
+  /** 소수점 키의 접근 이름. `allowDecimal` 일 때만 쓴다. */
+  decimalLabel?: string;
   /** 한 자 지움 키의 접근 이름. 화면 문구는 소비처가 갖는다. */
   backspaceLabel: string;
+  /**
+   * 한 자 지움 키에 «보이는» 기호. 접근 이름(`backspaceLabel`)과 다른 축이다 — 화면마다
+   * 쓰던 기호가 달라, 부품을 바꿔 끼울 때 모양까지 바뀌지 않게 밖에서 받는다.
+   */
+  backspaceGlyph?: ReactNode;
   /** 전체 지움 키의 접근 이름. */
   clearLabel: string;
   /** 키 묶음 전체의 접근 이름. */
@@ -32,8 +54,12 @@ export const NumericKeypad = ({
   value,
   onChange,
   maxLength,
+  max,
   disabled = false,
+  allowDecimal = false,
+  decimalLabel,
   backspaceLabel,
+  backspaceGlyph = '←',
   clearLabel,
   label,
   keySize = 'xl',
@@ -42,7 +68,12 @@ export const NumericKeypad = ({
   const full = maxLength !== undefined && value.length >= maxLength;
 
   const append = (digit: string) => {
-    onChange(value + digit);
+    const next = value + digit;
+
+    /* 상한을 넘기는 입력은 «없던 일»로 둔다 — 넣었다가 지우게 하면 손이 두 번 간다. */
+    if (max !== undefined && Number(next) > max) return;
+
+    onChange(next);
   };
 
   return (
@@ -69,18 +100,20 @@ export const NumericKeypad = ({
         type="button"
         variant="outlined"
         size={keySize}
+        className="omf-numeric-keypad__backspace"
         disabled={disabled || value === ''}
         aria-label={backspaceLabel}
         onClick={() => {
           onChange(value.slice(0, -1));
         }}
       >
-        ←
+        {backspaceGlyph}
       </Button>
       <Button
         type="button"
         variant="outlined"
         size={keySize}
+        className="omf-numeric-keypad__zero"
         disabled={disabled || full}
         onClick={() => {
           append('0');
@@ -92,6 +125,7 @@ export const NumericKeypad = ({
         type="button"
         variant="outlined"
         size={keySize}
+        className="omf-numeric-keypad__clear"
         disabled={disabled || value === ''}
         onClick={() => {
           onChange('');
@@ -99,6 +133,22 @@ export const NumericKeypad = ({
       >
         {clearLabel}
       </Button>
+      {allowDecimal ? (
+        <Button
+          type="button"
+          variant="outlined"
+          size={keySize}
+          className="omf-numeric-keypad__decimal"
+          disabled={disabled || full || value.includes('.')}
+          aria-label={decimalLabel}
+          onClick={() => {
+            /* 빈 칸에서 누르면 `.5` 가 아니라 `0.5` 로 시작한다 — 계약에 보내는 값이 수다. */
+            onChange(value === '' ? '0.' : `${value}.`);
+          }}
+        >
+          .
+        </Button>
+      ) : null}
     </div>
   );
 };

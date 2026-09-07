@@ -1,10 +1,45 @@
-import { Card, Chip, EmptyState, Skeleton } from '@crefle/web-ui';
+import { Card, Chip, Skeleton, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { toClockLabel, toDurationLabel, toRangeLabel } from './formatting';
 import type { TodayRow } from './today-rows';
 
 const t = messages.downtimeRegister;
+
+/*
+ * ⚠ **열은 모두 가운데로 세운다**(사용자 결정 2026-09-07 · 다섯 POP 목록에 같은 처리). 열을
+ *    양 끝에 붙여 두면 첫 열이 남는 폭을 다 가져가 값과 값 사이가 손바닥만큼 벌어진다.
+ */
+const TODAY_COLUMNS: Column<TodayRow>[] = [
+  {
+    key: 'interval',
+    header: t.today.columns.interval,
+    align: 'center',
+    render: (row) => toRangeLabel(row.startedAt, row.endedAt),
+  },
+  {
+    key: 'duration',
+    header: t.today.columns.duration,
+    align: 'center',
+    width: '120px',
+    /*
+     * 끝나지 않은 줄에는 길이 대신 「진행 중」이 선다 — 서버가 그 값을 내지 않고(끝나지
+     * 않았다), 화면이 지어내면 아직 늘고 있는 구간이 끝난 것처럼 보인다.
+     */
+    render: (row) =>
+      row.endedAt === null
+        ? t.today.ongoingRow
+        : row.durationMinutes === null
+          ? ''
+          : toDurationLabel(row.durationMinutes),
+  },
+  {
+    key: 'reason',
+    header: t.today.columns.reason,
+    align: 'center',
+    render: (row) => row.reasonLabel,
+  },
+];
 
 export interface TodayPanelProps {
   rows: readonly TodayRow[];
@@ -48,7 +83,7 @@ export const TodayPanel = ({
   const basisLabel = toClockLabel(now.toISOString());
 
   return (
-    <Card>
+    <Card bordered className="pop-section pop-fixed downtime-today">
       <section className="downtime-section" aria-label={t.today.title}>
         <h2 className="pane-title">{t.today.title}</h2>
 
@@ -65,37 +100,31 @@ export const TodayPanel = ({
 
             {isLocalOnly && (
               <p className="downtime-today-scope">
-                <Chip variant="status" size="sm" status="warning">
+                <Chip variant="status" size="md" status="warning">
                   {t.today.localOnly}
                 </Chip>
                 <span>{t.today.localOnlyDescription}</span>
               </p>
             )}
 
-            {rows.length === 0 ? (
-              <EmptyState size="sm" title={t.today.empty} />
-            ) : (
-              <ul className="downtime-today-list">
-                {rows.map((row) => (
-                  <li key={row.key} className="downtime-today-row">
-                    <span>{toRangeLabel(row.startedAt, row.endedAt)}</span>
-                    {/*
-                     * 끝나지 않은 줄에는 길이 대신 「진행 중」이 선다 — 서버가 그 값을 내지
-                     * 않고(끝나지 않았다), 화면이 지어내면 아직 늘고 있는 구간이 끝난 것처럼
-                     * 보인다.
-                     */}
-                    <span>
-                      {row.endedAt === null
-                        ? t.today.ongoingRow
-                        : row.durationMinutes === null
-                          ? ''
-                          : toDurationLabel(row.durationMinutes)}
-                    </span>
-                    <span>{row.reasonLabel}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
+            {/*
+             * ⭐ **목록은 `Table` 이다**(스펙 §7 DS 매핑 —「오늘 목록 | a | `Table`」). 줄을
+             *    `<ul>` 로 직접 그리면 열 폭·줄무늬·빈 상태가 다른 POP 목록과 따로 놀고,
+             *    같은 화면 안에서 열이 어긋나 보인다.
+             *
+             * ⚠ 스펙 §3 도면에는 열 이름 줄이 없다. DS `Table` 은 머리 줄을 끄지 못하므로
+             *    그대로 서고, 그만큼(약 40px) ④ 의 몫을 더 쓴다 — 이 구획은 남는 높이를
+             *    갖고 제 안에서 굴리므로 잘리지는 않는다(§3-1 예산은 요청서로 올렸다).
+             */}
+            <div className="downtime-today-list">
+              <Table
+                columns={TODAY_COLUMNS}
+                rows={[...rows]}
+                getRowId={(row) => row.key}
+                density="compact"
+                empty={t.today.empty}
+              />
+            </div>
           </>
         )}
       </section>

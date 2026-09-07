@@ -57,6 +57,10 @@ export const PackingWorkScreen = () => {
   const [quantity, setQuantity] = useState('');
   const [scanError, setScanError] = useState<string | null>(null);
   const [quantityError, setQuantityError] = useState<string | null>(null);
+  /** 「담기」를 눌렀는데 유형이 비어 있을 때 그 칸에 붙는 사유. 고르면 사라진다. */
+  const [typeError, setTypeError] = useState<string | null>(null);
+  /** 사유를 붙이면서 그 칸으로 데려간다 — 고칠 곳이 오른쪽이라 눈으로만 알려선 부족하다. */
+  const typeRef = useRef<HTMLButtonElement>(null);
   /*
    * 담기가 ①을 기다리는 동안 들고 있는 줄. 포장 단위가 서면 이 줄이 들어간다.
    *
@@ -80,7 +84,12 @@ export const PackingWorkScreen = () => {
    */
   const labels = useCodeLabels(
     draft.lines.map((line) => line.itemId),
-    draft.lines.map((line) => line.uomId),
+    /*
+     * ⚠ **단위는 대상 목록 것도 함께 묻는다.** 스펙 §3 이 좌단 목록에도 「잔여 380 EA」로
+     * 단위를 그린다. 품목과 달리 단위는 **한 번의 조회로 전부** 받으므로(`GET /mdm/uoms`)
+     * 목록이 길어도 요청이 늘지 않는다 — 품목만 담은 줄로 좁히는 이유가 여기엔 없다.
+     */
+    [...draft.lines.map((line) => line.uomId), ...(lots.data ?? []).map((lot) => lot.uomId)],
   );
 
   const workerNo = entry.workerNo;
@@ -149,9 +158,20 @@ export const PackingWorkScreen = () => {
     selectLot(found);
   };
 
+  /*
+   * ⭐ **유형 미선택은 「막는 사유」가 아니다**(사용자 결정 2026-09-07 · UI/UX).
+   *
+   * 앞선 판은 담기를 잠그고 그 아래에 「오른쪽에서 포장 유형을 먼저 고르십시오」를 **늘**
+   * 띄웠다. 아직 아무것도 안 한 사람에게 먼저 말을 거는 자리이고, 고칠 곳(오른쪽 유형 칸)과
+   * 말하는 곳(왼쪽 담기 아래)이 갈려 있었다.
+   *
+   * 이제 **담기를 누를 수 있게 두고, 누르면 고칠 칸으로 데려간다** — 사유는 그 칸에 붙는다.
+   * ⚠ 스펙은 어느 쪽도 정하지 않았다(§6 은 「확정」만 유형으로 막는다).
+   */
+  const addNeedsType = draft.handlingUnitTypeCode === null;
+
   const addBlockedReason = ((): string | null => {
     if (entryBlockedReason !== null) return entryBlockedReason;
-    if (draft.handlingUnitTypeCode === null) return t.scan.blockedNoType;
     /*
      * ⛔ **첫 줄만 막는다.** 포장 단위가 이미 서 있으면 담기는 화면 안에서만 일어나고
      * (확정 한 번이 전량을 싣는다) 그 확정은 큐가 받는다 — 여기서 함께 막으면 오프라인에서
@@ -165,6 +185,14 @@ export const PackingWorkScreen = () => {
   const add = (): void => {
     if (addBlockedReason !== null || selectedLot === null || workerNo === null) return;
 
+    /*
+     * ⭐ **가까운 것부터 말한다.** 담기는 대상만 고르면 열리므로 누른 사람에게 빠진 것이 둘일
+     * 수 있다 — 수량과 유형이다. 유형을 먼저 말하면 **바로 옆 수량 칸을 비워 둔 채 오른쪽으로
+     * 보내고**, 고쳐서 돌아와 다시 누르면 그제서야 수량을 말한다(두 번 눌러야 둘을 안다).
+     *
+     * 수량은 버튼 «옆»이라 인라인 한 줄이면 눈이 닿고, 유형은 «건너편»이라 데려가야 한다 —
+     * 그래서 순서도 거리 순이다.
+     */
     const verdict = judgeQuantity(quantity);
 
     if (!verdict.ok) {
@@ -182,6 +210,14 @@ export const PackingWorkScreen = () => {
     }
 
     setQuantityError(null);
+
+    /* 수량이 채워진 다음에야 건너편으로 데려간다. */
+    if (addNeedsType) {
+      setTypeError(t.unit.typeRequired);
+      typeRef.current?.focus();
+
+      return;
+    }
 
     const line = toPackingLine(selectedLot, verdict.qty);
 
@@ -206,6 +242,14 @@ export const PackingWorkScreen = () => {
     setAddedCount((count) => count + 1);
   };
 
+  /** 스펙 §6 의 확정 차단 조건. **문장과 다른 축이다** — 말하지 않아도 막는다. */
+  const canConfirm =
+    !packed &&
+    entryBlockedReason === null &&
+    draft.handlingUnitTypeCode !== null &&
+    draft.lines.length > 0 &&
+    draft.handlingUnit !== null;
+
   const confirmBlockedReason = ((): string | null => {
     /*
      * ⛔ **확정을 마친 포장에 다시 손대지 않는다.** 확정해도 담은 것은 화면에 그대로 남아
@@ -214,15 +258,20 @@ export const PackingWorkScreen = () => {
      */
     if (packed) return t.confirm.blockedPacked;
     if (entryBlockedReason !== null) return entryBlockedReason;
-    if (draft.handlingUnitTypeCode === null) return t.confirm.blockedNoType;
-    if (draft.lines.length === 0) return t.confirm.blockedNoContents;
-    if (draft.handlingUnit === null) return t.confirm.blockedNoUnit;
-
+    /*
+     * ⛔ **유형 미선택·내용물 없음은 말로 적지 않는다.** 둘 다 **바로 위 화면이 이미 말하고
+     * 있다** — 유형 칸이 비어 있고(누르면 그 칸이 사유를 낸다) 내용물 표가 「내용물이 비어
+     * 있습니다」라고 적혀 있다. 액션바에서 되풀이하면 늘 떠 있는 문장이 되고, 정작 읽어야
+     * 할 사유(확정 마침·진입 인자)의 무게를 깎는다(사용자 지적 2026-09-07).
+     *
+     * ⚠ **막는 것은 그대로다** — 스펙 §6 이 「포장 유형 미선택 · 내용물 0 → 확정 비활성」로
+     * 정했다. 걷은 것은 «문장»이지 «차단»이 아니다.
+     */
     return null;
   })();
 
   const confirm = (): void => {
-    if (confirmBlockedReason !== null) return;
+    if (confirmBlockedReason !== null || !canConfirm) return;
 
     const body = toPackBody(draft.lines, new Date());
 
@@ -265,17 +314,22 @@ export const PackingWorkScreen = () => {
   const writeError = create.error ?? pack.error;
 
   return (
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/*
+         * ⛔ **작업지시를 상태 칩으로 그리지 않는다.** 칩은 「지금 어떤 상태인가」를 색으로 말하는
+         * 자리이고, 작업지시는 색이 붙을 상태가 아니라 **무엇을 보고 있는가**다. 스펙 §3 머리줄이
+         * 그것을 화면명 옆 평문으로 그린다 — 오른쪽 끝은 단말·연결 같은 상태만 선다.
+         */}
+        <p className="pop-context">
+          {`${t.device.workOrderLabel} ${
+            entry.workOrderId === null ? t.device.workOrderUnknown : String(entry.workOrderId)
+          }`}
+        </p>
         <div className="pop-context-right">
-          <Chip status={entry.workOrderId === null ? 'warning' : 'info'}>
-            {`${t.device.workOrderLabel} ${
-              entry.workOrderId === null ? t.device.workOrderUnknown : String(entry.workOrderId)
-            }`}
-          </Chip>
           <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
             {`${t.device.terminalLabel} ${
               identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)
@@ -361,14 +415,12 @@ export const PackingWorkScreen = () => {
                 {t.confirm.startNext}
               </Button>
             }
-          >
-            {t.confirm.doneBody}
-          </AlertBanner>
+          />
         </div>
       )}
 
       <div className="pop-panes">
-        <Card bordered className="pop-section" aria-label={t.scan.sectionLabel}>
+        <Card bordered className="pop-section pack-work-scan" aria-label={t.scan.sectionLabel}>
           <h2 className="pane-title">{t.scan.sectionLabel}</h2>
           <ScanPane
             selectedLotNo={selectedLot?.lotNo ?? null}
@@ -387,6 +439,7 @@ export const PackingWorkScreen = () => {
           <LotListPane
             lots={lots.data ?? []}
             selectedLotId={selectedLot?.lotId ?? null}
+            uomCodeOf={labels.uomCodeOf}
             onSelect={selectLot}
           />
         </Card>
@@ -409,7 +462,10 @@ export const PackingWorkScreen = () => {
             parents={parents.data ?? []}
             parentsFailed={parents.isError}
             locked={locked}
+            typeError={typeError}
+            typeRef={typeRef}
             onTypeChange={(code) => {
+              setTypeError(null);
               setDraft((current) => ({ ...current, handlingUnitTypeCode: code }));
             }}
             onParentChange={(parentId) => {
@@ -418,6 +474,7 @@ export const PackingWorkScreen = () => {
             onConfirm={confirm}
             labels={labels}
             blockedReason={confirmBlockedReason}
+            canConfirm={canConfirm}
             isConfirming={pack.isSaving}
           />
         </Card>

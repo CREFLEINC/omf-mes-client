@@ -56,6 +56,17 @@ const fetchDetail = (
   ).then(toInspectionRequestDetail);
 
 /** 고른 의뢰의 상세를 부른다. **고르기 전에는 부르지 않는다** — 부를 대상이 없다. */
+/** 계량 단위 — 이름을 푸는 데만 쓴다. */
+type Uom = components['schemas']['Uom'];
+
+/** 좌단 머리에 서는 기준 표기 — 코드·버전·샘플 비율. */
+export interface PlanVersionView {
+  planCode: string;
+  planVersion: number;
+  /** 샘플 비율(%). 못 받으면 `null` — 지어내지 않는다. */
+  samplingRatio: number | null;
+}
+
 export const useInspectionRequestDetail = (
   inspectionRequestId: number | null,
 ): UseQueryResult<InspectionRequestDetail> => {
@@ -212,3 +223,67 @@ const toCreateBody = (v: SaveResultVariables): InspectionResultCreate => ({
   ...remarksOf(v.remarks),
   ...measurementsOf(v.measurements),
 });
+
+/**
+ * 계량 단위 이름. **설계가 「화면에 단위 명시 «필수»」로 못박은 자리다**(§8 미결 5 · 공유계약
+ * A-8). 「30」이 30 개인지 30 % 인지 화면만 보고 알 수 없던 문제에서 나온 규칙이다.
+ *
+ * ⛔ 이름을 지어내지 않는다 — 못 받으면 단위 없이 수량만 낸다. 단위 없는 수량은 참이고,
+ * 지어낸 단위는 거짓이다.
+ */
+export const useUoms = (): UseQueryResult<Uom[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['pqc-inspection', 'uoms'] as const,
+    queryFn: async (): Promise<Uom[]> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+/**
+ * 검사기준 버전과 그 기준의 이름. **설계 §3 이 좌단 머리에 「기준 IP-ABC-123 v2」와
+ * 「샘플 30」을 그린 자리다** — 지금까지 화면은 내부 id 만 내고 샘플은 아예 내지 않았다.
+ *
+ * ⭐ **샘플은 «비율(%)»이다.** §8 미결 5 가 「30 이 30 개인가 30 % 인가」를 물었고
+ * **2026-09-02 에 닫혔다** — 계약이 「샘플 비율(%)이 정본이다(`samplingRatio`) · 수량은 로트
+ * 크기를 알아야 나오는 파생값이라 두지 않는다」로 못박았다. 화면이 그 답을 그린다.
+ *
+ * ⚠ 두 번 부른다 — 버전 응답이 기준 «코드»를 주지 않고 `inspectionPlanId` 만 준다.
+ */
+export const useInspectionPlanVersion = (
+  inspectionPlanVersionId: number | null,
+): UseQueryResult<PlanVersionView> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['pqc-inspection', 'plan-version', inspectionPlanVersionId] as const,
+    enabled: inspectionPlanVersionId !== null,
+    queryFn: async (): Promise<PlanVersionView> => {
+      if (inspectionPlanVersionId === null) throw new Error('기준 버전 없이 조회하지 않습니다.');
+
+      const version = await runRequest(() =>
+        client.GET('/quality/inspection-plan-versions/{inspectionPlanVersionId}', {
+          params: { path: { inspectionPlanVersionId } },
+        }),
+      );
+
+      const plan = await runRequest(() =>
+        client.GET('/quality/inspection-plans/{inspectionPlanId}', {
+          params: { path: { inspectionPlanId: version.inspectionPlanVersion.inspectionPlanId } },
+        }),
+      );
+
+      return {
+        planCode: plan.inspectionPlan.inspectionPlanCode,
+        planVersion: version.inspectionPlanVersion.planVersion,
+        samplingRatio: version.inspectionPlanVersion.samplingRatio ?? null,
+      };
+    },
+  });
+};

@@ -35,14 +35,23 @@ export const pqcInspection = {
       itemId: '품목',
       workOrderId: '작업지시',
     },
-    planVersionNote: '검사 시점의 기준 버전으로 고정됩니다.',
 
     /**
      * ⚠ **샘플 수의 단위가 확정되지 않았다** — 「샘플 30」이 30개인지 30%인지 상류가 정하지
      * 않았다(스펙 §8 #5). 화면은 **단위를 반드시 함께 표기**해 사용자가 무엇을 보고 있는지
      * 알게 한다(공유계약 A-8). ⛔ 어느 한쪽으로 읽어 계산하지 않는다.
      */
-    sampleUnitPending: '샘플 수의 단위(개/%)가 확정되지 않았습니다. 검사기준을 함께 확인하세요.',
+    /*
+     * 기준 표기 — 설계 §3 이 좌단 머리에 그린 「기준 IP-ABC-123 v2」 형태다.
+     * ⛔ 내부 id 를 그대로 내지 않는다 — 현장에서 그 숫자는 아무것도 가리키지 않는다.
+     */
+    planLabel: (code: string, version: number): string => `기준 ${code} v${String(version)}`,
+    /*
+     * ⭐ **샘플은 «비율(%)»이다.** 「30 이 개인가 %인가」를 묻던 미결(§8 #5)이 2026-09-02 에
+     * 닫혔고, 계약이 「샘플 비율(%)이 정본」으로 못박았다. 단위를 함께 적는 것이 A-8 이 이
+     * 화면에 요구한 것이다.
+     */
+    sample: (ratio: number): string => `샘플 ${String(ratio)}%`,
   },
 
   /**
@@ -59,21 +68,42 @@ export const pqcInspection = {
     invalidOrder: '종료가 시작보다 앞설 수 없습니다.',
   },
 
+  /** 수량·측정값 키패드 팝업 — 설계 §7 이 이 화면의 입력 수단으로 지정한 것이다(G-6 · D-4). */
+  pad: {
+    keypadLabel: '수량 키패드',
+    backspace: '한 자 지움',
+    clear: '지움',
+    confirm: '확인',
+    cancel: '취소',
+    /** 아직 아무것도 안 눌렀다 — 빈 칸을 말없이 두면 「0 이 들어갔나」로 읽힌다. */
+    empty: '—',
+  },
+
   result: {
-    heading: '수량 판정',
+    /*
+     * ⚠ **설계가 이 구획을 「결과 입력」이라 부른다**(§3 도면 · §1 화면명 · §5). 「수량 판정」은
+     * 우리가 붙인 이름이었는데, 이 구획은 수량뿐 아니라 종합 판정·불합격 처분까지 담는다 —
+     * 이름이 담는 것보다 좁았다.
+     */
+    heading: '결과 입력',
     loading: '검사 결과를 불러오는 중입니다.',
     confirmed: '이 회차는 확정되어 고칠 수 없습니다. 다시 검사하려면 재검사 회차를 추가합니다.',
     fields: {
-      inspectedQty: '검사수량',
-      accepted: '합격수량',
-      rejected: '불합격수량',
-      held: '보류수량',
+      /*
+       * ⚠ 설계 §3 도면·§4 필드표의 이름 그대로다 — 「검사 수량」·「합격」·「불합격」·「보류」.
+       * 한때 뒤에 「수량」을 붙여 적었는데(합격수량…), 세 칸이 모두 수량이라 그 말이 세 번
+       * 되풀이되면서 정작 다른 부분(합격·불합격·보류)이 늦게 읽힌다.
+       */
+      inspectedQty: '검사 수량',
+      accepted: '합격',
+      rejected: '불합격',
+      held: '보류',
     },
     sum: '합계',
     remaining: '잔여',
-    matched: '검사수량과 일치합니다.',
-    short: (remaining: string): string => `검사수량보다 ${remaining} 모자랍니다.`,
-    over: (over: string): string => `검사수량보다 ${over} 많습니다.`,
+    matched: '검사 수량과 일치합니다.',
+    short: (remaining: string): string => `검사 수량보다 ${remaining} 모자랍니다.`,
+    over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
     save: '임시 저장',
     saved: '저장했습니다.',
@@ -85,17 +115,16 @@ export const pqcInspection = {
     judgmentUnknown: (code: string): string => `저장된 판정(${code})이 목록에 없습니다.`,
 
     confirm: '검사 확정',
-    confirmNote: '확정하면 LOT 상태가 바뀌고 되돌릴 수 없습니다.',
-    confirmBlockedByTotals: '검사 확정 — 수량 합계가 검사수량과 맞아야 확정할 수 있습니다.',
-    confirmBlockedByJudgment: '검사 확정 — 종합 판정을 골라야 확정할 수 있습니다.',
+    confirmBlockedByTotals: '수량 합계가 검사 수량과 맞아야 확정할 수 있습니다.',
+    confirmBlockedByJudgment: '종합 판정을 골라야 확정할 수 있습니다.',
     /** 스펙 §5-9 「전 항목 판정」 — 무엇이 남았는지는 좌측 「진행 n / m」이 말한다. */
-    confirmBlockedByItems: '검사 확정 — 검사 항목을 모두 판정해야 확정할 수 있습니다.',
+    confirmBlockedByItems: '검사 항목을 모두 판정해야 확정할 수 있습니다.',
     /**
      * ⛔ 단말에 검사 입력 권한이 없다(스펙 §5-1 · 공유계약 F-1). **감추지 않는다** —
      * 어떻게 푸는지를 함께 말한다(G-3).
      */
     confirmBlockedByTerminal:
-      '검사 확정 — 이 단말은 이 공정의 검사 입력 권한이 없습니다. 단말 설정에서 권한을 부여하세요.',
+      '이 단말은 이 공정의 검사 입력 권한이 없습니다. 단말 설정에서 권한을 부여하세요.',
     confirmSucceeded: '검사를 확정했습니다.',
   },
 
@@ -110,7 +139,7 @@ export const pqcInspection = {
     /** 순서가 뒤집힌다는 사실을 화면이 먼저 말한다 — 안 말하면 고른 값이 확정인 줄 안다. */
     note: '처분은 불량창고 입고 후 확정됩니다. 여기서 고른 값은 저장되지 않습니다.',
     /** 불합격이 0이면 고를 것이 없다. 감추지 않고 왜 비활성인지 밝힌다. */
-    disabledNote: '불합격 처분 — 불합격수량이 있어야 고를 수 있습니다.',
+    disabledNote: '불합격 수량이 있어야 고를 수 있습니다.',
   },
 
   /**

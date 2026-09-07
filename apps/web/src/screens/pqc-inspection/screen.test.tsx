@@ -103,6 +103,24 @@ const renderScreen = (
       match: (request) => new URL(request.url).pathname === '/mdm/code-values',
       respond: () => jsonResponse(codeValuesResponse(overallJudgmentCodeValues)),
     },
+    /* 좌단 머리의 「기준 … v…」·「샘플 …%」가 이 둘에서 나온다(§3). */
+    {
+      match: (request) =>
+        /^\/quality\/inspection-plan-versions\/\d+$/.test(new URL(request.url).pathname),
+      respond: () =>
+        jsonResponse({
+          inspectionPlanVersion: { inspectionPlanId: 1001, planVersion: 2, samplingRatio: 30 },
+        }),
+    },
+    {
+      match: (request) =>
+        /^\/quality\/inspection-plans\/\d+$/.test(new URL(request.url).pathname),
+      respond: () => jsonResponse({ inspectionPlan: { inspectionPlanCode: 'IP-ABC-123' } }),
+    },
+    {
+      match: (request) => new URL(request.url).pathname === '/mdm/uoms',
+      respond: () => jsonResponse({ items: [{ uomId: 1001, uomCode: 'EA' }] }),
+    },
   ]);
 
   renderWithProviders(
@@ -186,17 +204,14 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
 
   /*
    * ⚠ 검사 시점의 기준 버전이 고정된다 — 감추면 어느 기준으로 잰 값인지 알 수 없다.
-   * §3 도면이 이 값을 **좌측 구획 머리**에 두므로 거기서 찾는다.
+   * §3 도면이 이 값을 **좌측 구획 머리**에 「기준 IP-ABC-123 v2」 형태로 둔다.
+   *
+   * ⛔ 내부 id 로 내지 않는다 — 현장에서 그 숫자는 아무것도 가리키지 않는다.
    */
-  it('검사기준 버전을 좌측 구획 머리에 상시 보인다', async () => {
+  it('검사기준을 코드와 버전으로 좌측 구획 머리에 보인다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.detail.planVersionNote)).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        `${t.detail.fields.inspectionPlanVersionId} ${waitingRequest.inspectionPlanVersionId}`,
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(t.detail.planLabel('IP-ABC-123', 2))).toBeInTheDocument();
   });
 
   /*
@@ -218,12 +233,15 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
     const target = await screen.findByLabelText(t.detail.heading);
 
     expect(target.closest('.pop-header')).not.toBeNull();
-    expect([...target.children].map((child) => child.textContent)).toEqual([
-      /* 이 픽스처의 의뢰에는 작업지시가 없다 — 지어내지 않고 빈 값 표식을 세운다. */
-      `${t.detail.fields.workOrderId} ${t.emptyValue}`,
-      `${t.detail.fields.itemId} ${String(waitingRequest.itemId)}`,
-      `${t.detail.fields.lotId} ${String(waitingRequest.lotId)}`,
-    ]);
+    /* 왼쪽 맥락은 한 문장으로 읽히는 자리다 — 조각을 나란히 두면 값끼리 붙어 읽힌다. */
+    expect(target.textContent).toBe(
+      [
+        /* 이 픽스처의 의뢰에는 작업지시가 없다 — 지어내지 않고 빈 값 표식을 세운다. */
+        `${t.detail.fields.workOrderId} ${t.emptyValue}`,
+        `${t.detail.fields.itemId} ${String(waitingRequest.itemId)}`,
+        `${t.detail.fields.lotId} ${String(waitingRequest.lotId)}`,
+      ].join(' · '),
+    );
   });
 
   /*
@@ -247,11 +265,14 @@ describe('PqcInspectionScreen — 대상을 받는 방식', () => {
     }
   });
 
-  /* ⚠ 샘플 수의 단위가 미확정이다 — 어느 한쪽으로 읽어 계산하지 않고 그 사실을 밝힌다. */
-  it('샘플 단위가 미확정이라는 사실을 밝힌다', async () => {
+  /*
+   * ⭐ **샘플은 «비율(%)»이다.** 「30 이 개인가 %인가」를 묻던 미결(§8 #5)이 2026-09-02 에
+   * 닫혔다 — 계약이 「샘플 비율(%)이 정본」으로 못박았다. 화면은 그 답을 단위와 함께 낸다(A-8).
+   */
+  it('샘플을 비율로 보인다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.detail.sampleUnitPending)).toBeInTheDocument();
+    expect(await screen.findByText(t.detail.sample(30))).toBeInTheDocument();
   });
 });
 
@@ -750,10 +771,4 @@ describe('PqcInspectionScreen — 액션바', () => {
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
   });
 
-  /* ⛔ 되돌릴 수 없는 쓰기다 — 누르기 «전에» 그 사실을 알린다. */
-  it('확정 경고를 누르기 전에 보인다', async () => {
-    renderScreen();
-
-    expect(await screen.findByText(t.result.confirmNote)).toBeInTheDocument();
-  });
 });

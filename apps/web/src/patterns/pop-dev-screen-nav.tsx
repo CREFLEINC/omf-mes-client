@@ -169,7 +169,13 @@ export const PopDevScreenNav = ({ disabled }: PopDevScreenNavProps) => {
   const labelId = useId();
 
   return (
-    <>
+    /*
+     * ⭐ **라벨과 칸을 한 덩어리로 내보낸다.** 조각(`<>`)으로 두 형제를 내보냈더니 액션 줄
+     * (`.pop-ui-actions`)이 자식을 똑같이 나눠 갖는 줄이라 **라벨이 버튼 하나만큼의 칸을
+     * 차지했다** — 옆의 [ 교대 ] 글자가 두 줄로 접히고 이 칸의 이름이 「개발…」로 잘렸다
+     * (실측). 부르는 쪽의 배치를 아는 것은 이 부품이 아니므로, 자리를 하나만 쓴다.
+     */
+    <div className="pop-dev-screen-nav">
       {/*
        * ⛔ **`aria-label` 로 때우지 않는다**(`docs/layout-conventions.md` 규범 3). 디자인
        * 시스템의 `Select` 는 `label` prop 을 주지 않으므로 보이는 이름을 직접 만들어 잇는다 —
@@ -203,6 +209,6 @@ export const PopDevScreenNav = ({ disabled }: PopDevScreenNavProps) => {
           void navigate(target);
         }}
       />
-    </>
+    </div>
   );
 };

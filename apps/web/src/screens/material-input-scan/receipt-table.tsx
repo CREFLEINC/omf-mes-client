@@ -99,7 +99,7 @@ export const ReceiptTable = ({
       width: '120px',
       align: 'center',
       render: (row) => (
-        <Chip variant="status" size="sm" status={STATUS_TONE[row.status]}>
+        <Chip variant="status" size="md" status={STATUS_TONE[row.status]}>
           {STATUS_LABEL[row.status]}
         </Chip>
       ),
@@ -138,8 +138,6 @@ export const ReceiptTable = ({
           )
         }
       />
-
-      <p className="field-note">{t.notes.shortAllowed}</p>
     </>
   );
 };

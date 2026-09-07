@@ -128,10 +128,17 @@ export const TargetCard = ({
         </Button>
       </div>
 
-      {isRegistered ? <p className="field-note pop-wide-note">{t.actions.registeredNote}</p> : null}
-      {!isRegistered ? (
-        <p className="field-note pop-wide-note">{t.actions.reissueNeedsIssue}</p>
-      ) : null}
+      {/*
+       * ⛔ **버튼 이름이 이미 말하는 것을 문장으로 되풀이하지 않는다.**
+       *
+       * 「이미 등록된 자재입니다」는 버튼이 「등록·인쇄」에서 「인쇄」로 바뀐 것과 같은 말이고,
+       * 「먼저 등록·인쇄를 하세요」는 재인쇄가 잠긴 것과 같은 말이다. 스펙 §3 은 이 아래를
+       * **「여유 119px — 하단에 상시 구획을 두지 않는다」**로 못박았는데, 두 문장이 바로 그
+       * 자리에 상주하고 있었다.
+       *
+       * ⭐ 사번 사유는 남긴다 — 그것은 버튼 «모양»으로 알 수 없는 사실이고, 잠긴 사유를
+       *    감추지 않는다는 규약(F-1)이 문장을 요구한다.
+       */}
       {!hasWorkerNo ? <p className="field-note pop-wide-note">{t.actions.workerRequired}</p> : null}
       {runningStep === null ? null : (
         <p className="field-note pop-wide-note" role="status">

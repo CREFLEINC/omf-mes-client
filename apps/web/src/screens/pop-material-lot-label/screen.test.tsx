@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -187,19 +188,26 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     expect(within(row).getByText('SYN-P-01 · 합성 공급사 가')).toBeInTheDocument();
     expect(within(row).getByText('SYN-ITEM-01 · 합성 품목 가')).toBeInTheDocument();
     expect(within(row).getByText('500 EA')).toBeInTheDocument();
-    expect(within(row).getByText('2026-08-27')).toBeInTheDocument();
+    expect(within(row).getByText('08-27')).toBeInTheDocument();
   });
 
   /**
-   * 칸은 오른쪽 정렬인데 쌓는 줄이 왼쪽에 붙어, 머리글과 값이 어긋나 보였다(실기에서
-   * 드러났다). `.stacked-cell`의 기본값이 칸 정렬을 거스르는 자리다.
+   * ⭐ **날짜는 품목 아래에 쌓인다** — 스펙 §3 도면의 둘째 줄이 `(주)…    08-04` 이고
+   * `08-04` 가 첫 줄 품목 자리에 맞춰 선다. 수량 아래에 두면 「그날의 수량」으로 읽힌다.
+   *
+   * 칸 정렬(가운데)을 쌓는 줄도 따라야 머리글과 값이 어긋나지 않는다 —
+   * `.stacked-cell` 의 기본값이 칸 정렬을 거스르는 자리다.
    */
-  it('수량 칸의 쌓인 두 줄이 칸 정렬을 따른다', async () => {
+  it('입하일이 품목 아래에 쌓이고 칸 정렬을 따른다', async () => {
     renderScreen();
 
-    const quantity = await screen.findByText('500 EA');
+    const date = await screen.findByText('08-27');
+    const stacked = date.closest('.stacked-cell');
 
-    expect(quantity.closest('.stacked-cell')).toHaveClass('pop-stacked-end');
+    expect(stacked).toHaveClass('pop-stacked-center');
+    expect(stacked).toHaveTextContent('SYN-ITEM-01 · 합성 품목 가');
+    /* 수량 칸에는 쌓지 않는다 — 한 줄이다. */
+    expect((await screen.findByText('500 EA')).closest('.stacked-cell')).toBeNull();
   });
 
   /**
@@ -233,12 +241,19 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     expect(screen.getByText('200 EA')).toBeInTheDocument();
   });
 
-  it('거른다는 사실을 화면이 밝힌다 — 보이는 것을 전부로 오해하지 않게 한다', async () => {
+  /*
+   * ⭐ **무엇만 담긴 목록인지는 «제목»이 말한다** — 스펙 §3 도면의 `《입하 라인》 (미부착)`.
+   *
+   * ⛔ 같은 뜻을 아래 배너로 또 세우지 않는다. 세로 여유가 119px 뿐인 화면이라(§3) 배너 한
+   *    줄이 목록에서 그만큼을 가져가고, 제목과 배너가 같은 말을 두 번 한다(사용자 지적).
+   */
+  it('무엇만 담긴 목록인지를 제목이 말한다 — 배너로 되풀이하지 않는다', async () => {
     renderScreen();
 
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      /공급사 LOT 이 붙어 온 자재와 이미 발행한 자재는 보이지 않습니다/u,
-    );
+    expect(
+      await screen.findByRole('heading', { name: messages.popMaterialLotLabel.receipts.title }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/보이지 않습니다/u)).not.toBeInTheDocument();
   });
 
   /**
@@ -447,8 +462,8 @@ describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
   it('머리에 프린터와 그 상태를 상시 보인다 — 인쇄가 안 될 때 가장 먼저 보는 자리다', async () => {
     renderScreen();
 
-    expect(await screen.findByText('합성 라벨 프린터 가')).toBeInTheDocument();
-    expect(screen.getByText('대기 중')).toBeInTheDocument();
+    // 이름과 상태가 칩 하나에 든다(다른 POP 화면과 같은 모양).
+    expect(await screen.findByText(/합성 라벨 프린터 가 · 대기 중/)).toBeInTheDocument();
   });
 
   it('프린터가 한 대도 없으면 빈 상태를 그린다 — 오류로 다루지 않는다', async () => {
@@ -493,14 +508,17 @@ describe('PopMaterialLotLabelScreen — 등록이 어디까지 갔는가', () =>
   /**
    * ⛔ 이미 등록된 자재에 「등록·인쇄」를 보이면 이미 있는 LOT 위에 또 만든다고 읽힌다.
    * 실제로 다시 부르면 같은 자재에 LOT 이 둘 생기고 되돌릴 화면이 없다(변경 통지 #534 §3).
+   *
+   * ⛔ **문장으로 되풀이하지 않는다** — 단추 이름이 바뀐 것이 곧 그 사실이다. 스펙 §3 이
+   *    이 아래를 「하단에 상시 구획을 두지 않는다」로 못박았다(여유 119px).
    */
-  it('이미 등록된 자재는 「인쇄」로 보이고 왜 그런지 말한다', async () => {
+  it('이미 등록된 자재는 「인쇄」로 보인다 — 문장을 덧붙이지 않는다', async () => {
     const { user } = renderScreen({ lines: [line(8501, 8101, 8601, 500, true, 9001)] });
 
     await selectRow(user);
 
     expect(await screen.findByRole('button', { name: '인쇄' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '등록·인쇄' })).not.toBeInTheDocument();
-    expect(screen.getByText(/이미 등록된 자재입니다/u)).toBeInTheDocument();
+    expect(screen.queryByText(/이미 등록된 자재입니다/u)).not.toBeInTheDocument();
   });
 });

@@ -167,7 +167,12 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     await user.type(await screen.findByLabelText(t.shot.inputLabel), '1250');
 
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.noTool)).toBeInTheDocument();
+    /*
+     * 사유는 **스캔 구획이** 말한다(스펙 §6-1 「폐기된 툴입니다」) — 액션바가 아니다.
+     * ⛔ 「타발수를 기입하세요」로 말하면 안 된다: 값을 이미 넣었는데 그것을 탓하게 된다.
+     */
+    expect(screen.getByText(t.scan.disposed)).toBeInTheDocument();
+    expect(screen.queryByText(t.actionReasons.noShot)).not.toBeInTheDocument();
   });
 
   it('「코드 직접 입력」은 칸을 비우고 안내를 «보이는 자리»에 세운다 — 눌렀는데 아무 일도 없으면 안 된다', async () => {
@@ -199,7 +204,8 @@ describe('ToolUsageScreen — 툴 스캔', () => {
     expect(screen.queryByText(TOOL_CODE)).not.toBeInTheDocument();
     expect(screen.getByLabelText(t.scan.inputLabel)).toHaveValue('');
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
-    expect(screen.getByText(t.actionReasons.noTool)).toBeInTheDocument();
+    /* 스캔 칸이 비어 스스로 「금형 QR 을 읽혀주세요」라고 말한다 — 액션바가 되풀이하지 않는다. */
+    expect(screen.queryByText(t.actionReasons.noShot)).not.toBeInTheDocument();
   });
 
   it('「다시 입력」은 친 값만 지우고 고른 툴은 남긴다 — 오타 하나에 재스캔시키지 않는다', async () => {
@@ -319,6 +325,44 @@ describe('ToolUsageScreen — 연결이 끊겼을 때', () => {
     expect(field).toHaveValue('1250');
     expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
     expect(screen.getByText(t.actionReasons.offline)).toBeInTheDocument();
+  });
+});
+
+describe('ToolUsageScreen — 키패드', () => {
+  /*
+   * ⛔ **타발수가 비면 [ C ]·[ ⌫ ] 는 잠긴다.** 지울 것이 없는데 열려 있으면 눌러도 아무 일이
+   * 일어나지 않아 「눌리는데 안 되는 키」가 된다(사용자 지적). 작업실적 등록·인식표 발행과
+   * 같은 부품을 써서 POP 안에서 같게 동작한다.
+   */
+  it('타발수가 비면 지움 키 둘이 잠기고, 값이 들어오면 열린다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    const clearKey = () => screen.getByRole('button', { name: t.shot.clearGlyph });
+    const backspaceKey = () => screen.getByRole('button', { name: t.shot.backspace });
+
+    await waitFor(() => {
+      expect(clearKey()).toBeDisabled();
+    });
+    expect(backspaceKey()).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+
+    await waitFor(() => {
+      expect(clearKey()).toBeEnabled();
+    });
+    expect(backspaceKey()).toBeEnabled();
+    expect(screen.getByLabelText(t.shot.inputLabel)).toHaveValue('7');
+  });
+
+  /* 타발수는 정수다(스펙 §4-A `bigint`) — 직접 입력에서는 소수점 키를 그리지 않는다. */
+  it('직접 입력에서는 소수점 키가 없다', async () => {
+    renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '7' })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('button', { name: t.shot.decimalKey })).not.toBeInTheDocument();
   });
 });
 

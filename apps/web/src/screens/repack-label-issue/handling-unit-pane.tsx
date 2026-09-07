@@ -13,20 +13,23 @@ export interface HandlingUnitPaneProps {
 }
 
 const columns: Column<PackingContentRow>[] = [
+  /* 값은 열 가운데에 선다 — 다른 POP 목록과 같다(사용자 지시 2026-09-07 · 전례 `P-04-02`). */
   {
     key: 'lotNo',
     header: t.lotColumn,
+    align: 'center',
     render: (row) => row.lotNo ?? t.unknownValue,
   },
   {
     key: 'itemCode',
     header: t.itemColumn,
+    align: 'center',
     render: (row) => row.itemCode ?? t.unknownValue,
   },
   {
     key: 'qty',
     header: t.qtyColumn,
-    align: 'end',
+    align: 'center',
     render: (row) => `${String(row.qty)} ${row.uomCode ?? t.unknownValue}`,
   },
 ];
@@ -59,12 +62,12 @@ export const HandlingUnitPane = ({ handlingUnit, rows, namesFailed }: HandlingUn
     {rows.length === 0 ? (
       <p className="pop-empty-note">{t.empty}</p>
     ) : (
+      // ⛔ 표에 이름표(caption)를 다시 달지 않는다 — 바로 위 「내용물 · LOT n건」이 같은 말이다.
       <Table
         columns={columns}
         rows={[...rows]}
         getRowId={(row) => String(row.handlingUnitContentId)}
         density="compact"
-        caption={t.contentsLabel}
       />
     )}
   </>

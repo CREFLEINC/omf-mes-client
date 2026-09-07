@@ -239,6 +239,18 @@ export const createSeed = (now = new Date()) => {
    * 실서버에서는 빈 목록을 받는다 - 그 차이를 시험 자리에서 감추지 않는다.
    */
   const codeValues = {
+    /*
+     * P-05-02 — 비가동 사유. **평면 1단**이고 아래 여섯은 계약이 적어 둔 초기 시드다
+     * (`omf-mes#198` · 공유계약 G-32). 고객이 늘리는 목록이라(G-31) 이것이 전부가 아니다.
+     */
+    DOWNTIME_REASON: [
+      ['EQUIPMENT_FAILURE', '설비 고장'],
+      ['MOLD_CHANGE', '금형 교체'],
+      ['MATERIAL_WAIT', '자재 대기'],
+      ['LABOR_WAIT', '작업자 대기'],
+      ['PREVENTIVE_MAINTENANCE', '예방 보전'],
+      ['OTHER', '기타'],
+    ],
     /* W-04-07 — 심각도는 고객이 늘리는 값(시드 셋), 상태는 시스템 값(고객 편집 불가). */
     NONCONFORMANCE_SEVERITY: [
       ['CRITICAL', '중대'],

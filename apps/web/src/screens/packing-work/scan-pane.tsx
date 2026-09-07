@@ -88,6 +88,7 @@ export const ScanPane = ({
       <form onSubmit={submitScan}>
         <div className="scan-row">
           <TextField
+            size="xl"
             ref={scanRef}
             label={t.scan.label}
             value={code}
@@ -101,16 +102,40 @@ export const ScanPane = ({
               setCode(event.target.value);
             }}
           />
-          <Button type="submit" variant="outlined" size="xl" className={popTouchClass('normal')}>
+          {/*
+           * ⛔ **이 버튼은 «제출»이 아니라 «칸으로 옮기는» 버튼이다.**
+           *
+           * `type="submit"` 으로 두었더니 누를 때마다 빈 코드로 폼이 제출돼 **아무 일도
+           * 일어나지 않았다** — 손으로 치려고 눌렀는데 칸에 커서가 안 갔다(사용자 지적).
+           * 스캐너는 코드 끝에 Enter 를 붙여 보내므로 «제출»은 폼이 알아서 한다(칸이 하나뿐인
+           * 폼은 Enter 로 제출된다). 이 버튼이 할 일은 **칸에 커서를 놓는 것**뿐이다.
+           *
+           * 자재 투입·포장 실적·러닝체인지가 이미 그렇게 서 있다 — 같은 이름의 버튼이
+           * 화면마다 다르게 동작하지 않게 맞춘다.
+           */}
+          <Button
+            type="button"
+            variant="outlined"
+            size="xl"
+            className={popTouchClass('normal')}
+            onClick={() => {
+              scanRef.current?.focus();
+            }}
+          >
             {t.scan.manualEntry}
           </Button>
         </div>
+        {/*
+          ⛔ **늘 떠 있는 사용법 안내를 두지 않는다.** 스펙 §3 의 좌단은 스캔 칸과 [ 직접 입력 ]
+          둘뿐이고, 이 화면은 좌단 세로가 모자라 «포장 대상» 목록이 화면 밖으로 밀려 있었다
+          (실측 164px). 버튼 이름이 이미 그 일을 말한다.
+        */}
         {scanError !== null && <p className="field-error">{scanError}</p>}
-        <p className="field-note">{t.scan.manualEntryNote}</p>
       </form>
 
       <div className="pack-work-add-row">
         <TextField
+          size="xl"
           label={t.scan.quantityLabel}
           value={quantity}
           inputMode="decimal"
@@ -132,6 +157,7 @@ export const ScanPane = ({
       </div>
 
       {quantityError !== null && <p className="field-error">{quantityError}</p>}
+      {/* ⛔ 유형 미선택은 여기서 말하지 않는다 — 누르면 고칠 칸(오른쪽 「유형」)이 말한다. */}
       {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
     </>
   );

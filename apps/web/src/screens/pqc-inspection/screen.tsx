@@ -36,7 +36,9 @@ import {
   pqcInspectionKeys,
   useCodeValues,
   useInspectionItemSpecs,
+  useInspectionPlanVersion,
   useInspectionRequestDetail,
+  useUoms,
   toResultBody,
 } from './queries';
 import { ResultPanel } from './result-panel';
@@ -119,6 +121,8 @@ export const PqcInspectionScreen = () => {
    * 저장 — **임시 저장과 검사 확정이 한 훅이다**(요구서 §3-7). 무엇으로 저장했는지에 따라
    * 알리는 문장이 갈린다.
    */
+  const uoms = useUoms();
+  const planVersion = useInspectionPlanVersion(detail.data?.inspectionPlanVersionId ?? null);
   const outbox = useOutbox();
   const { clearRejection } = outbox;
   const queryClient = useQueryClient();
@@ -403,6 +407,7 @@ export const PqcInspectionScreen = () => {
         ) : (
           <ItemPanel
             inspectionPlanVersionId={planVersionId}
+            planVersion={planVersion.data ?? null}
             rows={rows}
             drafts={drafts}
             onChange={changeMeasurement}
@@ -415,6 +420,9 @@ export const PqcInspectionScreen = () => {
           inspectedDraft={inspectedDraft}
           onInspectedChange={changeInspected}
           inspectedQty={inspectedQty}
+          uomCode={
+            uoms.data?.find((uom) => uom.uomId === detail.data.uomId)?.uomCode ?? null
+          }
           draft={draft}
           onChange={changeDraft}
           fieldErrors={outbox.rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}
@@ -509,7 +517,7 @@ const PqcFrame = ({
   const titleId = useId();
 
   return (
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
@@ -522,15 +530,21 @@ const PqcFrame = ({
          * ⭐ **미동기 건수가 필수 요건이다**(공유계약 C-1 #4). 「담는 순간 성공」을 택한
          * 결정의 전제가 이것이라, 없으면 서버에 닿지 않은 사실을 알 방법이 사라진다.
          * **연결 상태도 함께 낸다 — 끊긴 것과 밀리는 것은 다르다**(`P-02-03` 전례).
+         *
+         * ⭐ **`pop-context-right` 로 묶는다.** 묶지 않으면 오른쪽 끝으로 미는 여백이 대상
+         * 맥락에 붙어, 「무엇을 보고 있는가」와 「지금 어떤 상태인가」가 한 덩어리로 읽힌다.
+         * 다른 POP 화면 전부가 상태를 이 묶음에 넣는다.
          */}
-        <Chip variant="status" size="sm" status={pendingCount > 0 ? 'warning' : 'success'}>
-          {pendingCount > 0 ? messages.common.connection.unsent(pendingCount) : t.header.synced}
-        </Chip>
-        {!isOnline && (
-          <Chip variant="status" size="sm" status="error">
-            {messages.common.connection.offline}
+        <div className="pop-context-right">
+          <Chip variant="status" size="md" status={pendingCount > 0 ? 'warning' : 'success'}>
+            {pendingCount > 0 ? messages.common.connection.unsent(pendingCount) : t.header.synced}
           </Chip>
-        )}
+          {!isOnline && (
+            <Chip variant="status" size="md" status="error">
+              {messages.common.connection.offline}
+            </Chip>
+          )}
+        </div>
       </header>
       {/* ⭐ 「밀리는 중」과 「멈춤」은 다르다 — 건수만으로는 그 차이가 보이지 않는다. */}
       {isStalled && <OutboxStallBanner onRetry={onRetry} />}

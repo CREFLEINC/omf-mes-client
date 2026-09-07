@@ -44,37 +44,56 @@ export const KeypadPanel = ({
     <h2 className="field-label">{t.heading}</h2>
 
     {/*
-     * 읽기 전용 표시 칸이다. 높이는 `xl`(60px) — 터치 규격의 「56~60픽셀 급」이며,
-     * ⚠ 「큰 글자」는 글자 크기 요구이지 높이 요구가 아니다(§7).
+     * 높이는 `xl`(60px) — 터치 규격의 「56~60픽셀 급」이며, ⚠ 「큰 글자」는 글자 크기 요구이지
+     * 높이 요구가 아니다(§7).
+     *
+     * ⭐ **키보드로도 칠 수 있다.** 한때 읽기 전용이라 키패드로만 값이 들어왔는데, 자판이 붙은
+     * 단말과 개발 중 확인에서 **숫자를 쳐도 아무 일이 없었다.** 넣는 길이 둘이어도 값의 주인은
+     * 하나(`workerNo`)라 서로 어긋나지 않는다.
+     *
+     * ⛔ **숫자만 받는다.** 사번은 숫자라 그 밖의 글자는 «치는 순간» 버린다 — 받아 두고 나중에
+     *    「형식이 다릅니다」로 되돌리면, 다 치고 나서야 틀린 것을 안다.
      */}
     <TextField
       label={t.workerNo}
       value={workerNo}
       size="xl"
-      readOnly
+      inputMode="numeric"
+      autoComplete="off"
       className="worker-no-field"
-      onChange={() => undefined}
+      onChange={(event) => {
+        onChange(event.target.value.replace(/\D/gu, ''));
+      }}
     />
 
-    {/* ⚠ 경고일 뿐 확인을 막지 않는다. */}
-    {looksUnusual(workerNo) && (
-      <div className="banner-slot">
-        <AlertBanner variant="warning">{t.unusual}</AlertBanner>
-      </div>
-    )}
+    {/*
+     * 알림 자리 — **비어 있을 때도 높이를 지킨다.**
+     *
+     * 배너가 뜨고 지는 대로 키패드가 위아래로 움직이면, 다음 숫자를 누르려던 손가락이 한 줄
+     * 옆의 키를 누른다(실측으로 잡았다: 「6자리와 다릅니다」 경고가 뜬 순간 키패드가 밀렸다).
+     * `.scan-outcome` 이 스캔 결과 줄에서 같은 문제를 같은 방법으로 막고 있다.
+     */}
+    <div className="worker-no-notice">
+      {/* ⚠ 경고일 뿐 확인을 막지 않는다. */}
+      {looksUnusual(workerNo) && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.unusual}</AlertBanner>
+        </div>
+      )}
 
-    {/* ⚠ 오프라인이어도 확인은 눌린다 — 미리 받아 둔 목록으로 본다(§5-6). */}
-    {offlineNote !== null && (
-      <div className="banner-slot">
-        <AlertBanner variant="info">{offlineNote}</AlertBanner>
-      </div>
-    )}
+      {/* ⚠ 오프라인이어도 확인은 눌린다 — 미리 받아 둔 목록으로 본다(§5-6). */}
+      {offlineNote !== null && (
+        <div className="banner-slot">
+          <AlertBanner variant="info">{offlineNote}</AlertBanner>
+        </div>
+      )}
 
-    {error !== null && (
-      <div className="banner-slot">
-        <AlertBanner variant="error">{error}</AlertBanner>
-      </div>
-    )}
+      {error !== null && (
+        <div className="banner-slot">
+          <AlertBanner variant="error">{error}</AlertBanner>
+        </div>
+      )}
+    </div>
 
     <NumericKeypad
       value={workerNo}

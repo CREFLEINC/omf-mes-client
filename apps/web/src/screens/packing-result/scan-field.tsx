@@ -64,6 +64,7 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
        */}
       <div className="scan-row">
         <TextField
+          size="xl"
           ref={inputRef}
           label={label}
           value={value}
@@ -74,6 +75,12 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
            * 읽힌 코드가 사라진다. 읽을 «차례»가 아닐 때만 잠근다.
            */
           disabled={locked}
+          /*
+           * ⭐ **잠긴 사유를 칸 «안»에 둔다**(사용자 지시 2026-09-07). 아래에 한 줄로 달면
+           *    구획이 한 줄 커지고(§3 이 이 구획에 88 만 준다), 무엇 때문에 못 치는지가 칸에서
+           *    떨어져 선다. 잠긴 칸은 어차피 비어 있으므로 그 자리가 비어 있을 이유가 없다.
+           */
+          placeholder={lockReason}
           onChange={(event) => {
             setValue(event.target.value);
           }}
@@ -107,11 +114,6 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
         </Button>
       </div>
 
-      {/*
-       * ⚠ 잠긴 사유만 낸다. 상시 안내(「직접 칠 수 있습니다」)는 [직접 입력] 버튼이 이미 눈에
-       * 보이는 자리에 있어 없어도 길을 잃지 않고, 한 줄이 늘 때마다 ③ 포장 구성이 줄어든다.
-       */}
-      {locked && <p className="field-note">{lockReason}</p>}
     </form>
   );
 };

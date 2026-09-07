@@ -1,4 +1,5 @@
 import { Button, Card, Checkbox, TextField } from '@crefle/web-ui';
+import { useId } from 'react';
 import { messages } from '@omf-mes/i18n';
 
 import { toDurationLabel } from './formatting';
@@ -16,8 +17,13 @@ const t = messages.downtimeRegister;
 /** 시작 칸의 오류 문구. **끝 칸과 「덜 친 것」의 안내가 다르다** — 고칠 칸을 가리켜야 한다. */
 const describeStartedError = (kind: IntervalErrors['startedAt']): string | undefined => {
   switch (kind) {
+    /*
+     * ⛔ **「아직 안 친 것」은 글로 말하지 않는다.** 스펙 §5-1 이 그 자리에 정한 것은 저장의
+     *    「활성 조건」뿐이라 **버튼이 잠긴 것이 곧 그 말**이고, 빈 화면을 붉은 글씨로 맞이하지
+     *    않는다. 화면이 이 갈래를 걸러 넘기지 않는다(`shownIntervalErrors`).
+     */
     case 'required':
-      return t.errors.startedRequired;
+      return undefined;
     case 'incomplete':
       return t.errors.startedIncomplete;
     case 'future':
@@ -62,25 +68,40 @@ export interface IntervalFieldsProps {
  * 「진행 중」이라는 별도 값이 있는 것이 아니라 **끝이 비어 있는 것**이 그 뜻이다.
  */
 export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps) => {
+  const startedErrorId = useId();
+  const endedErrorId = useId();
   const moments = readInterval(draft);
   const minutes = intervalMinutes(moments);
 
   /*
-   * 길이 자리는 세 갈래다.
+   * ⭐ **오류 문구를 칸 «아래»에 두지 않는다**(사용자 지적 2026-09-07).
    *
-   * ⛔ **아직 아무것도 치지 않은 상태를 「진행 중」이라 부르지 않는다** — 실사용에서 빈 화면이
-   * 「진행 중이라 산출할 수 없습니다」라고 말했다. 진행 중은 시작을 찍은 뒤에야 성립한다.
+   * DS `TextField` 는 `error` 를 받으면 칸 밑에 한 줄을 «더» 그린다 — 줄 높이가 60 에서 120 으로
+   * 뛰고 구간 구획이 188 → 248 로 부풀어, 글자를 치는 동안 아래 것들이 밀려 내려간다(실측).
+   * 터치 화면에서는 누르려던 자리가 손가락 아래에서 움직인다.
    *
-   * ⚠ 그 상태에 쓸 문구는 **스펙에 없다**(스펙이 정한 것은 「47 분」과 진행 중의 산출 불가
-   * 둘뿐이다). 없는 문구를 지어내지 않고 **비워 둔다** — 다만 자리는 남긴다(CSS 최소 높이):
-   * 글자가 생길 때마다 아래 구획이 밀리면 터치 화면에서 손가락이 빗나간다.
+   * 그래서 **줄 오른쪽 빈자리**에 세운다 — `[지금]` 뒤가 비어 있어 높이가 늘지 않는다. 칸에는
+   * `error` 로 붉은 테두리(`aria-invalid`)만 남기고, 읽어 주는 연결은 `aria-describedby` 가
+   * 우리 문장을 가리켜 유지한다.
    */
-  const durationLabel =
-    minutes !== null
-      ? toDurationLabel(minutes)
-      : moments.started !== null
-        ? t.interval.durationUnknown
-        : '';
+  const startedError = describeStartedError(errors.startedAt);
+  const endedError = describeEndedError(errors.endedAt);
+
+  /*
+   * 길이 — 도면이 「길이 47 분」으로 그린 자리다(스펙 §3).
+   *
+   * ⛔ **산출할 수 없는 «이유»를 문장으로 적지 않는다.** 끝 시각이 비어 있는 것은 옆의
+   *    「아직 진행 중」이 이미 말하고, 오류 문구와 같은 줄에 서니 경고처럼 읽혔다(사용자 지적
+   *    2026-09-07). 값 없음은 공용 표기 「—」다.
+   *
+   * ⛔ **0분으로 채우지 않는다** — 없는 값과 0을 같은 모양으로 만들지 않는다(`G-9`).
+   *
+   * ⚠ 값이 들고 나도 **자리는 늘 지킨다** — 글자가 생길 때마다 줄이 흔들리면 터치 화면에서
+   *    손가락이 빗나간다.
+   */
+  const durationLabel = t.interval.duration(
+    minutes === null ? t.interval.durationEmpty : toDurationLabel(minutes),
+  );
 
   const setStarted = (part: 'date' | 'time', value: string): void => {
     onChange({ ...draft, startedAt: { ...draft.startedAt, [part]: value } });
@@ -91,17 +112,29 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
   };
 
   return (
-    <Card>
+    <Card bordered className="pop-section pop-fixed downtime-pane">
       <section className="downtime-section" aria-label={t.interval.title}>
         <h2 className="pane-title">{t.interval.title}</h2>
 
         <div className="downtime-time-row">
+          {/*
+           * ⭐ **라벨은 칸 «위»가 아니라 줄 «왼쪽»이다**(스펙 §3 도면 —「시작 [08-11] [14:20]
+           *    [지금]」). 칸 위에 얹으면 줄마다 라벨 층 20px 이 더 붙어 두 줄이 184px 을 쓰고,
+           *    ② 의 몫 160px 을 넘겨 아래 ④ 가 통째로 밀려 사라진다(실측 — 오늘 목록 높이 0).
+           *
+           * ⚠ 읽어 주는 이름은 그대로 「시작 날짜」·「시작 시각」이다 — 눈에 보이는 「시작」
+           *    하나로는 두 칸이 같은 이름이 되어 무엇을 고치라는 것인지 말하지 못한다.
+           */}
+          <span className="downtime-time-label">{t.interval.startedAt}</span>
           <TextField
             type="date"
             size="xl"
-            label={`${t.interval.startedAt} ${t.interval.date}`}
+            containerClassName="downtime-time-field"
+            aria-label={`${t.interval.startedAt} ${t.interval.date}`}
+            aria-describedby={startedError === undefined ? undefined : startedErrorId}
             value={draft.startedAt.date}
-            error={describeStartedError(errors.startedAt)}
+            /* 칸에는 붉은 테두리만 남긴다 — 문장은 줄 오른쪽에 한 번만 선다. */
+            error={startedError === undefined ? undefined : ' '}
             onChange={(event) => {
               setStarted('date', event.target.value);
             }}
@@ -109,33 +142,50 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           <TextField
             type="time"
             size="xl"
-            label={`${t.interval.startedAt} ${t.interval.time}`}
+            containerClassName="downtime-time-field"
+            aria-label={`${t.interval.startedAt} ${t.interval.time}`}
+            aria-describedby={startedError === undefined ? undefined : startedErrorId}
             value={draft.startedAt.time}
-            /* 오류 글은 한 번만 낸다 — 같은 문장을 두 칸에 쓰면 읽는 사람이 두 문제로 센다. */
-            error={errors.startedAt === null ? undefined : ' '}
+            /* 짝 제약이라 두 칸에 함께 붙는다(스펙 §6-1) — 다만 문장은 한 번만 낸다. */
+            error={startedError === undefined ? undefined : ' '}
             onChange={(event) => {
               setStarted('time', event.target.value);
             }}
           />
+          {/*
+           * ⚠ **`xl`(56) 이다 — 스펙 §7 이 적은 `2xl`(72) 이 아니다**(사용자 결정 2026-09-07).
+           *    옆의 날짜·시각 칸이 56 이라 버튼만 72 면 줄 안에서 혼자 커 보이고, 줄 높이도
+           *    그 버튼이 정해 ② 가 몫을 넘긴다. 터치 하한(일반 등급 56)은 지킨다.
+           *    ⛔ 되돌리려면 사용자에게 묻는다 — 스펙 값과 다른 것은 알고 한 것이다.
+           */}
           <Button
             variant="tonal"
-            size="2xl"
+            size="xl"
             onClick={() => {
               onChange({ ...draft, startedAt: toTimeFieldDraft(new Date()) });
             }}
           >
             {t.interval.now}
           </Button>
+
+          {startedError !== undefined && (
+            <p id={startedErrorId} className="downtime-field-error downtime-time-error">
+              {startedError}
+            </p>
+          )}
         </div>
 
         <div className="downtime-time-row">
+          <span className="downtime-time-label">{t.interval.endedAt}</span>
           <TextField
             type="date"
             size="xl"
-            label={`${t.interval.endedAt} ${t.interval.date}`}
+            containerClassName="downtime-time-field"
+            aria-label={`${t.interval.endedAt} ${t.interval.date}`}
+            aria-describedby={endedError === undefined ? undefined : endedErrorId}
             value={draft.endedAt.date}
             disabled={draft.stillOngoing}
-            error={describeEndedError(errors.endedAt)}
+            error={endedError === undefined ? undefined : ' '}
             onChange={(event) => {
               setEnded('date', event.target.value);
             }}
@@ -143,17 +193,19 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           <TextField
             type="time"
             size="xl"
-            label={`${t.interval.endedAt} ${t.interval.time}`}
+            containerClassName="downtime-time-field"
+            aria-label={`${t.interval.endedAt} ${t.interval.time}`}
+            aria-describedby={endedError === undefined ? undefined : endedErrorId}
             value={draft.endedAt.time}
             disabled={draft.stillOngoing}
-            error={errors.endedAt === null ? undefined : ' '}
+            error={endedError === undefined ? undefined : ' '}
             onChange={(event) => {
               setEnded('time', event.target.value);
             }}
           />
           <Button
             variant="tonal"
-            size="2xl"
+            size="xl"
             disabled={draft.stillOngoing}
             onClick={() => {
               onChange({ ...draft, endedAt: toTimeFieldDraft(new Date()) });
@@ -172,13 +224,25 @@ export const IntervalFields = ({ draft, errors, onChange }: IntervalFieldsProps)
           >
             {t.interval.stillOngoing}
           </Checkbox>
-        </div>
 
-        {/*
-         * 길이는 **입력 확인용**이다 — 저장되는 값은 서버가 낸다. 진행 중이면 산출 불가라고
-         * 말하고 비워 두지 않는다: 빈 자리는 「0분」과 「모른다」를 같은 모양으로 만든다.
-         */}
-        <p className="downtime-duration">{durationLabel}</p>
+          {endedError !== undefined && (
+            <p id={endedErrorId} className="downtime-field-error downtime-time-error">
+              {endedError}
+            </p>
+          )}
+
+          {/*
+           * 길이는 **입력 확인용**이다 — 저장되는 값은 서버가 낸다(§4-A · L-2).
+           *
+           * ⭐ **끝 시각 줄의 오른쪽 끝에 선다** — 제 줄을 가지면 36px 을 쓰는데, 이 화면은
+           *    그만큼이 아래 「오늘 이 설비」에서 나온다(§3-1 예산 초과 · 요청서). 값이 나오는
+           *    바탕이 바로 이 줄의 두 시각이라 옆에 두어도 읽히는 자리가 흐려지지 않는다.
+           *
+           * ⚠ 오류 문구도 같은 줄 오른쪽에 서므로 **길이가 늘 맨 끝**이다 — 둘이 함께 뜰 때
+           *    자리가 바뀌면 눈이 값을 다시 찾는다.
+           */}
+          <p className="downtime-duration">{durationLabel}</p>
+        </div>
       </section>
     </Card>
   );

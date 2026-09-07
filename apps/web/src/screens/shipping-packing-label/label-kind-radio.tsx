@@ -8,7 +8,8 @@ const t = messages.shippingPackingLabel.kind;
 export interface LabelKindRadioProps {
   /** 아직 고르지 않았으면 `null` — 스펙 §5-7 이 종류 이전의 상태를 인정한다. */
   value: LabelKind | null;
-  onChange: (kind: LabelKind) => void;
+  /** 고른 것을 다시 누르면 `null` 이 온다 — 종류를 무르는 길이다. */
+  onChange: (kind: LabelKind | null) => void;
   /** 발행이 진행 중이면 바꾸지 못한다 — 종류가 바뀌면 만들던 기록의 대상이 달라진다. */
   disabled: boolean;
 }
@@ -30,18 +31,48 @@ export const LabelKindRadio = ({ value, onChange, disabled }: LabelKindRadioProp
     name="shipping-label-kind"
     orientation="horizontal"
     aria-label={t.legend}
-    value={value ?? undefined}
+    /*
+     * ⚠ **고르지 않은 상태를 `undefined` 로 넘기지 않는다.** `RadioGroup` 은 `value`
+     *    가 `undefined` 이면 «비제어»로 돌아서 직전에 고른 값을 스스로 들고 있는다 —
+     *    해제해도 점이 그대로 남는다. 어느 것과도 맞지 않는 빈 문자열로 넘겨 제어를
+     *    유지한다.
+     */
+    value={value ?? ''}
     disabled={disabled}
     onChange={(next) => {
       onChange(next as LabelKind);
     }}
     className="pop-slabel-kinds"
   >
-    <Radio value={PACKING_LABEL}>
+    {/*
+     * ⭐ **이름과 설명을 한 줄로 잇는다**(설계 §3 —「( ) 포장라벨 — 포장하면 바로 발행」).
+     *    설명을 아래로 내리면 고르는 것 하나가 두 줄이 되고, 둘이 나란히 서지 못해 세로로
+     *    쌓인다 — ① 구획의 몫은 72px 두 줄뿐이다(§3-1).
+     */}
+    {/*
+     * ⭐ **고른 것을 한 번 더 누르면 해제한다.** 라디오는 스스로 풀리지 않아, 잘못 고르면
+     *    다른 것을 고르는 수밖에 없다 — 이 화면은 종류를 고르기 «전» 상태를 인정하므로
+     *    (§5-7) 그 자리로 돌아갈 길이 있어야 한다.
+     *
+     * ⚠ `onClick` 으로 잡는다 — 이미 켜진 라디오를 눌러도 `change` 는 일어나지 않는다.
+     *    꺼진 것을 누르면 `change` 가 먼저 값을 바꾸지만, 이 자리의 `value` 는 아직 누르기
+     *    «전» 값이라 서로 얽히지 않는다.
+     */}
+    <Radio
+      value={PACKING_LABEL}
+      onClick={() => {
+        if (value === PACKING_LABEL) onChange(null);
+      }}
+    >
       <span className="pop-slabel-kind-name">{t.packing}</span>
       <span className="pop-slabel-kind-note">{t.packingNote}</span>
     </Radio>
-    <Radio value={DELIVERY_LABEL}>
+    <Radio
+      value={DELIVERY_LABEL}
+      onClick={() => {
+        if (value === DELIVERY_LABEL) onChange(null);
+      }}
+    >
       <span className="pop-slabel-kind-name">{t.delivery}</span>
       <span className="pop-slabel-kind-note">{t.deliveryNote}</span>
     </Radio>

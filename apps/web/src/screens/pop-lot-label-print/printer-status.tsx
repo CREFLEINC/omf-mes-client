@@ -29,8 +29,8 @@ export interface PrinterStatusProps {
  *
  * 인쇄가 안 될 때 사용자가 가장 먼저 보는 곳이고, 그것이 없으면 「등록이 안 됐다」고 오해한다.
  *
- * ⛔ **단말 이름은 그리지 않는다.** 스펙은 머리에 함께 그리지만 계약에 단말 이름을 받을 경로가
- * 없다 — 없는 값을 지어내지 않는다(전례 `P-01-01` 과 같은 판단).
+ * ⚠ **단말은 이 부품이 그리지 않는다 — 화면이 옆에 칩으로 세운다.** 이름을 받을 경로는 아직
+ * 없지만 **단말 번호는 사번 귀속 문맥이 갖고 있고**, 다른 POP 화면이 이미 그것으로 세운다.
  *
  * ⚠ **프린터 오프라인은 출력을 막지 않는다**(스펙 §6 · K-4). 기록은 남고 인쇄만 실패하므로
  * 여기서는 **빨강으로 알리기만** 한다 — 액션 비활성은 이 부품의 일이 아니다.
@@ -58,20 +58,12 @@ export const PrinterStatusIndicator = ({
   if (isLoading) return null;
 
   if (printer === null) {
-    return (
-      <div className="pop-lot-status">
-        <Chip status="warning">{t.none}</Chip>
-      </div>
-    );
+    return <Chip status="warning">{t.none}</Chip>;
   }
 
   return (
-    <div className="pop-lot-status">
-      <p className="pop-printer-name">
-        <span className="pop-printer-label">{t.label}</span>
-        <span>{printer.displayName}</span>
-      </p>
-      <Chip status={CHIP_STATUS[printer.status]}>{printer.statusMessage ?? t.noStatusMessage}</Chip>
-    </div>
+    <Chip status={CHIP_STATUS[printer.status]}>
+      {`${t.label} ${printer.displayName} · ${printer.statusMessage ?? t.noStatusMessage}`}
+    </Chip>
   );
 };

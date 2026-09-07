@@ -40,7 +40,19 @@ export const downtimeRegisterKeys = {
     ['downtime-register', 'today-summary', equipmentId, day] as const,
   openBreakdowns: (equipmentId: number) =>
     ['downtime-register', 'open-breakdowns', equipmentId] as const,
+  reasonOptions: ['downtime-register', 'reason-options'] as const,
 };
+
+/**
+ * 사유 코드 그룹 — **이름으로 가리킨다.**
+ *
+ * ⛔ 채번 식별자(`codeGroupId`)를 박지 않는다 — 환경마다 다르다(계약 주). 이름은 고객의
+ * 코드 마스터에 등재된 그룹 코드이고 이 화면이 그룹을 안정적으로 가리킬 유일한 수단이다.
+ */
+const DOWNTIME_REASON_GROUP_CODE = 'DOWNTIME_REASON';
+
+/** 한 번에 받아 오는 값 수. 고객이 늘리는 목록이라(G-31) 넉넉히 받아 화면에서 자르지 않는다. */
+const REASON_OPTION_SIZE = 100;
 
 const pad = (value: number, length: number): string => String(value).padStart(length, '0');
 
@@ -263,4 +275,60 @@ export const useOpenBreakdowns = (
   });
 
   return { breakdowns: query.data ?? [], isError: query.isError };
+};
+
+export interface ReasonOption {
+  code: string;
+  name: string;
+}
+
+export interface ReasonOptionsResult {
+  options: ReasonOption[];
+  isPending: boolean;
+  /**
+   * 고를 것이 하나도 없다 — 조회가 실패했거나 값이 오지 않았다. **작업자가 할 일이 같으므로
+   * 묶는다**(스펙 §6-1 —「필드를 감추지 않고 비활성 + 사유」).
+   */
+  isUnavailable: boolean;
+}
+
+/**
+ * ③ 사유 선택지 — **고객의 공통코드 마스터에서 받는다**(스펙 §4-A · 공유계약 `G-32`).
+ *
+ * ⛔ **값 목록을 화면에 박지 않는다.** 박아 두면 고객이 사유를 늘린 날 그 사유로는 비가동을
+ * 적을 수 없는데 화면은 멀쩡해 보인다 — 초기 여섯은 시드일 뿐이다(`G-31`).
+ *
+ * ⚠ **끊겼다고 부르기를 멈추지 않는다.** 스펙 §6-2 가 오프라인에 끄라고 한 것은 ④ 집계
+ * 하나뿐이고, 이 목록은 W/O 선배포 때 내려와 있어야 하는 «선행 자료»다(C-11). 한 번 받아
+ * 두었으면 조회가 실패해도 그 값이 남아 그대로 고를 수 있고, 한 번도 못 받았으면 §6-1 대로
+ * 칸을 잠근다 — 스펙도 그 경우를 「오프라인에서 저장 자체가 불가」로 적었다.
+ */
+export const useReasonOptions = (): ReasonOptionsResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: downtimeRegisterKeys.reasonOptions,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: {
+            query: {
+              codeGroupCode: DOWNTIME_REASON_GROUP_CODE,
+              size: REASON_OPTION_SIZE,
+            },
+          },
+        }),
+      );
+
+      return data.items.map((item) => ({ code: item.code, name: item.codeName }));
+    },
+  });
+
+  const options = query.data ?? [];
+
+  return {
+    options,
+    isPending: query.isPending,
+    isUnavailable: !query.isPending && options.length === 0,
+  };
 };

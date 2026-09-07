@@ -49,7 +49,7 @@ export const toOffsetDateTime = (at: Date): string =>
 
 export interface DowntimeDraft {
   interval: IntervalDraft;
-  /** 사유 소분류 코드. **이것만 보낸다** — 대분류는 화면이 좁히는 장치다. */
+  /** 사유 코드. **평면 1단이라 이것 하나뿐이다**(스펙 §7 확정 2026-09-03). */
   reasonCode: string | null;
   /** 연결한 고장. 선택이며 비우면 연결하지 않는다. */
   breakdownId: number | null;
@@ -57,6 +57,24 @@ export interface DowntimeDraft {
 }
 
 export const EMPTY_REMARKS = '';
+
+/**
+ * 아직 아무것도 적지 않았다 — **「다시 입력」을 잠글 기준이다.**
+ *
+ * ⛔ 비울 것이 없는데 누를 수 있으면, 눌러도 아무 일이 없어 **버튼이 고장 난 것처럼 보인다.**
+ * 선례 `P-02-04` 도 그 자리의 활성 조건을 「입력 있음」으로 정했다(§5-2).
+ *
+ * ⚠ 「아직 진행 중」 체크도 «적은 것»으로 센다 — 되돌릴 것이 생겼다는 뜻이다.
+ */
+export const isDraftEmpty = (draft: DowntimeDraft): boolean =>
+  draft.reasonCode === null &&
+  draft.breakdownId === null &&
+  draft.remarks === EMPTY_REMARKS &&
+  !draft.interval.stillOngoing &&
+  draft.interval.startedAt.date === '' &&
+  draft.interval.startedAt.time === '' &&
+  draft.interval.endedAt.date === '' &&
+  draft.interval.endedAt.time === '';
 
 /**
  * 등록 본문. **갖춰지지 않았으면 만들지 않는다**(`null`).

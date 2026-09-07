@@ -96,7 +96,7 @@ export const ScannedList = ({
                  * 작업자가 지웠다고 믿고 넘어간다.
                  */}
                 {isRecorded ? (
-                  <Chip variant="status" size="sm" status="success">
+                  <Chip variant="status" size="md" status="success">
                     {t.scanned.recordedMark}
                   </Chip>
                 ) : (
@@ -135,7 +135,7 @@ export const ScannedList = ({
                   {t.scanned.statusLabel} · {statusLabels.describe(material.statusCode)}
                 </span>
                 {material.isHeld && (
-                  <Chip variant="status" size="sm" status="warning">
+                  <Chip variant="status" size="md" status="warning">
                     {t.scanned.heldMark}
                   </Chip>
                 )}
@@ -149,12 +149,12 @@ export const ScannedList = ({
                   .map((note) => (
                     <span key={note.lotId} className="scanned-item-notes">
                       {note.unlinkedIssue && (
-                        <Chip variant="status" size="sm" status="info">
+                        <Chip variant="status" size="md" status="info">
                           {t.scanned.unlinkedIssue}
                         </Chip>
                       )}
                       {note.crossProcess && (
-                        <Chip variant="status" size="sm" status="info">
+                        <Chip variant="status" size="md" status="info">
                           {t.scanned.crossProcess}
                         </Chip>
                       )}
@@ -171,6 +171,7 @@ export const ScannedList = ({
                * 고쳤다고 믿고 넘어간다.
                */}
               <TextField
+                size="xl"
                 label={t.scanned.qtyLabel(material.lotNo)}
                 value={readQty(qtyDrafts, material.lotId)}
                 inputMode="decimal"

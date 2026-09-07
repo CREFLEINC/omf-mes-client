@@ -234,15 +234,50 @@ describe('P-02-08 포장 작업', () => {
     expect(await screen.findByText(t.lotList.loadFailed)).toBeInTheDocument();
   });
 
-  it('「잔여」 열을 세우지 않고 그 사실을 밝힌다', async () => {
+  /*
+   * ⛔ **「잔여」라고 적지 않는다.** 계약이 그 값을 안 내려 주는데 그 자리에 최초 수량을 놓으면
+   * 두 번 포장한 LOT 이 아직 다 남은 것으로 읽힌다. **열 이름이 다른 값임을 말한다** — 스펙
+   * §3 의 좌단은 LOT 과 수량 두 조각뿐이라 따로 문단을 두지 않는다.
+   */
+  it('「잔여」 대신 「최초 수량」으로 이름을 밝힌다', async () => {
     renderScreen();
 
     expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
-    expect(screen.getByText(t.lotList.remainingPending)).toBeInTheDocument();
     expect(screen.getByText(t.lotList.initialQtyColumn)).toBeInTheDocument();
+    expect(screen.queryByText('잔여')).not.toBeInTheDocument();
   });
 
-  it('유형을 고르기 전에는 담기가 막히고 사유가 보인다', async () => {
+  /*
+   * ⭐ **유형 미선택은 담기를 잠그지 않는다** — 누를 수 있게 두고 «고칠 칸»으로 데려간다.
+   * 앞선 판은 담기를 잠그고 그 아래에 사유를 늘 띄웠는데, 말하는 곳(왼쪽)과 고치는 곳
+   * (오른쪽 유형 칸)이 갈려 있었다(사용자 지적).
+   */
+  /*
+   * ⛔ **[ 직접 입력 ]은 «제출»이 아니라 «칸으로 옮기는» 버튼이다.** `type="submit"` 이면
+   * 빈 코드로 폼이 제출돼 아무 일도 일어나지 않는다 — 손으로 치려고 눌렀는데 커서가 안
+   * 간다(사용자 지적). 다른 스캔 화면 셋이 이미 이 동작이다.
+   */
+  it('[ 직접 입력 ]을 누르면 스캔 칸으로 커서가 간다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+
+    const scanInput = await screen.findByLabelText(t.scan.label);
+    /* 처음 커서는 이미 칸에 있다 — 다른 곳으로 옮겨 두고 버튼이 되돌리는지 본다. */
+    await user.click(screen.getByLabelText(t.scan.quantityLabel));
+    expect(scanInput).not.toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: t.scan.manualEntry }));
+
+    expect(scanInput).toHaveFocus();
+  });
+
+  /*
+   * ⭐ **가까운 것부터 말한다.** 담기는 대상만 고르면 열리므로 빠진 것이 둘일 수 있다 —
+   * 수량(버튼 옆)과 유형(건너편). 유형을 먼저 말하면 옆 칸을 비워 둔 채 건너편으로 보내고,
+   * 돌아와 다시 눌러야 수량을 안다(사용자 지적).
+   */
+  it('수량이 비어 있으면 유형보다 수량을 먼저 말한다', async () => {
     const user = userEvent.setup();
 
     renderScreen();
@@ -250,9 +285,33 @@ describe('P-02-08 포장 작업', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
     );
+    await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
-    expect(screen.getByRole('button', { name: t.scan.submit })).toBeDisabled();
-    expect(screen.getByText(t.scan.blockedNoType)).toBeInTheDocument();
+    expect(screen.getByText(t.scan.quantityRequired)).toBeInTheDocument();
+    expect(screen.queryByText(t.unit.typeRequired)).not.toBeInTheDocument();
+  });
+
+  it('유형을 고르기 전에 담기를 누르면 유형 칸이 사유를 말한다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen();
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+
+    const submit = screen.getByRole('button', { name: t.scan.submit });
+    expect(submit).toBeEnabled();
+    expect(screen.queryByText(t.unit.typeRequired)).not.toBeInTheDocument();
+
+    await user.click(submit);
+
+    /* DS `Select` 는 트리거를 `combobox` 로 낸다 — 버튼으로 찾으면 못 잡는다. */
+    const typeSelect = screen.getByRole('combobox', { name: t.unit.typeLabel });
+    expect(screen.getByText(t.unit.typeRequired)).toBeInTheDocument();
+    expect(typeSelect).toHaveFocus();
+    expect(typeSelect).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('첫 담기가 포장 단위를 만들고 번호를 보인다', async () => {
@@ -261,7 +320,12 @@ describe('P-02-08 포장 작업', () => {
 
     renderScreen({ writes });
 
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    /*
+     * 포장 번호는 첫 내용물을 담을 때 서버가 매긴다(스펙 §4-A 「자동」). 번호가 붙으면 구획
+     * 표제가 「포장 단위 HU-…」가 되므로, **표제가 이름 그대로면 아직 번호가 없다는 뜻**이다.
+     * ⛔ 그 사정을 문단으로 적지 않는다 — 스펙 §3 에 없다.
+     */
+    expect(unitPane().getByRole('heading', { name: t.unit.sectionLabel })).toBeInTheDocument();
 
     await packOneLine(user, LOT_A_NO, '100');
 
@@ -386,7 +450,7 @@ describe('P-02-08 포장 작업', () => {
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(screen.getByText(t.scan.quantityPositive)).toBeInTheDocument();
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(unitPane().getByRole('heading', { name: t.unit.sectionLabel })).toBeInTheDocument();
   });
 
   it('LOT 이 둘 이상 담기면 혼적을 경고하되 확정을 막지 않는다', async () => {
@@ -405,12 +469,20 @@ describe('P-02-08 포장 작업', () => {
     expect(screen.getByRole('button', { name: t.confirm.submit })).toBeEnabled();
   });
 
-  it('담은 것이 없으면 확정이 막히고 사유가 보인다', async () => {
+  /*
+   * 스펙 §6 —「포장 유형 미선택 · 내용물 0 → 확정 비활성」. **막는 것과 말하는 것은 다른
+   * 축이다** — 둘 다 화면이 이미 말하고 있어(빈 유형 칸 · 「내용물이 비어 있습니다」)
+   * 액션바가 되풀이하지 않는다(사용자 지적).
+   */
+  it('담은 것이 없으면 확정이 막힌다 — 사유를 액션바가 되풀이하지 않는다', async () => {
     renderScreen();
 
     expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.confirm.submit })).toBeDisabled();
-    expect(screen.getByText(t.confirm.blockedNoType)).toBeInTheDocument();
+    /* 사유는 «화면이 이미 말하는 자리»에 있다 — 빈 유형 칸과 이 문장이다. */
+    expect(screen.getByText(t.contents.empty)).toBeInTheDocument();
+    /* ⛔ 액션바에는 「포장 확정 — …」로 시작하는 사유 문장이 서지 않는다. */
+    expect(screen.queryByText(/^포장 확정 —/u)).not.toBeInTheDocument();
   });
 
   it('확정이 담은 것 전량과 멱등 키·사번을 싣는다', async () => {
@@ -465,7 +537,7 @@ describe('P-02-08 포장 작업', () => {
 
     await user.click(screen.getByRole('button', { name: t.confirm.startNext }));
 
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(unitPane().getByRole('heading', { name: t.unit.sectionLabel })).toBeInTheDocument();
     expect(unitPane().getByText(t.contents.empty)).toBeInTheDocument();
   });
 
@@ -542,7 +614,7 @@ describe('P-02-08 포장 작업', () => {
     await packOneLine(user, LOT_A_NO, '100');
 
     expect(await screen.findByText(t.unit.createFailed)).toBeInTheDocument();
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(unitPane().getByRole('heading', { name: t.unit.sectionLabel })).toBeInTheDocument();
     expect(unitPane().getByText(t.contents.empty)).toBeInTheDocument();
   });
 

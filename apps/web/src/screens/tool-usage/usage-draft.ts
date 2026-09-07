@@ -61,22 +61,39 @@ export interface SaveGuard {
 }
 
 /**
- * 저장이 막힌 사유. 열려 있으면 `undefined`.
+ * 저장을 열 수 있는가. **차단 여부와 사유 문구는 다른 축이다.**
+ *
+ * ⛔ 사유가 없다고 열지 않는다 — 스펙이 문구를 정하지 않은 조건에도 활성 조건은 그대로다
+ * (§5-1 「실적 저장 — 툴 선택 + 타발수 > 0」). 둘을 한 함수로 묶었더니 문구를 걷는 순간
+ * 버튼이 열렸다.
+ */
+export const canSave = (guard: SaveGuard): boolean =>
+  !guard.isSaving &&
+  guard.hasEntry &&
+  guard.isOnline &&
+  guard.hasTool &&
+  guard.increment !== null;
+
+/**
+ * 저장이 막힌 사유 중 **화면이 말해야 하는 것**. 말할 것이 없으면 `undefined`.
  *
  * **순서가 뜻을 정한다** — 나가는 중 → 화면이 지는 사정(진입·연결) → 값의 사정. 값의 사정을
  * 앞에 두면 애초에 저장할 수 없는 화면에서 「타발수를 기입하세요」를 읽고 기입하게 된다.
+ *
+ * ⛔ **툴 미선택에는 사유를 적지 않는다.** 스펙 §6-1 이 인라인 사유를 정한 것은 「타발수 0
+ * 또는 음수」 하나뿐이고, §5-1 은 활성 조건만 적는다. 화면 맨 위의 스캔 칸이 비어 「금형 QR
+ * 을 읽혀주세요」라고 이미 말하고, 폐기 툴이면 그 자리가 「폐기된 툴입니다」로 답한다 — 액션바가
+ * 같은 말을 되풀이하면 정작 읽어야 할 사유의 무게만 깎인다(사용자 지적).
  */
 export const saveDisabledReason = (guard: SaveGuard): string | undefined => {
   if (guard.isSaving) return t.actionReasons.saving;
   if (!guard.hasEntry) return t.actionReasons.noEntry;
   if (!guard.isOnline) return t.actionReasons.offline;
-  if (!guard.hasTool) return t.actionReasons.noTool;
+  if (!guard.hasTool) return undefined;
   if (guard.increment === null) return t.actionReasons.noShot;
 
   return undefined;
 };
-
-export const canSave = (guard: SaveGuard): boolean => saveDisabledReason(guard) === undefined;
 
 /** 「다시 입력」이 열리는 조건 — 지울 것이 있을 때만(스펙 §5-1). */
 export const hasInput = (draft: UsageDraft): boolean =>

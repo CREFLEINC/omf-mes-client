@@ -1,6 +1,7 @@
-import { AlertBanner, Card, Chip } from '@crefle/web-ui';
+import { AlertBanner, Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { popTouchClass } from '../../patterns/pop-touch';
 import { dateTimeText, itemText, qtyText } from './row-view';
 import type { WorkOrder } from './types';
 
@@ -16,14 +17,17 @@ export interface WorkOrderListProps {
   isError: boolean;
   selectedId: number | null;
   uomLabel: (uomId: number | undefined) => string;
-  onSelect: (workOrder: WorkOrder) => void;
+  onSelect: (workOrder: WorkOrder | null) => void;
 }
 
 /**
  * 긴급 W/O 목록 구획 — 2단 배치의 **좌 칸**.
  *
- * ⭐ **표가 아니라 카드다.** 좌 칸이 좁아 열 다섯을 세우면 열 이름이 접히고 누를 자리가
- * 잘게 쪼개진다. 장갑 낀 손이 누르는 화면이라 **줄 전체가 하나의 누를 자리**여야 한다.
+ * ⭐ **표다.** 스펙 §7 이 이 목록을 `Table`(comfortable)로 적었고, POP 목록의 정본이
+ * 「표 + 선택 칸 없음 + 줄 전체를 누르는 자리」로 한 벌로 모였다(`913a82c` — §3 목록 그림에
+ * 선택 칸이 없고 §7 이 `Table` 하나만 적는다. 여러 건을 고르는 화면만 `Checkbox`·`RadioGroup`
+ * 을 지정한다). 앞선 판은 카드 목록이었는데, 「좁은 칸에 열을 세우면 접힌다」는 그 판의 근거는
+ * **줄 전체가 누르는 자리가 되면서 해소됐다** — 자재LOT 등록 화면이 같은 형태로 선다.
  *
  * ⛔ **빈 목록을 오류로 다루지 않는다.** 긴급 W/O 는 없는 것이 정상이고, 발행은 관리웹의
  * 몫이다 — 그래서 빈 상태 문구가 「어디서 만들어지는지」까지 말한다.
@@ -50,6 +54,61 @@ export const WorkOrderList = ({
   const rows = workOrders ?? [];
   const isTruncated = total !== undefined && total > rows.length;
 
+  const columns: Column<WorkOrder>[] = [
+    {
+      key: 'workOrder',
+      header: t.columns.workOrder,
+      align: 'center',
+      /*
+       * ⚠ **조작은 첫 칸의 버튼 하나가 갖는다.** 칸마다 버튼을 두면 한 줄에 탭 정지가 셋
+       *    생기고 읽어 주는 이름도 셋이 된다 — 정본 목록과 같은 구조다.
+       */
+      render: (row) => {
+        const isSelected = row.workOrderId === selectedId;
+
+        return (
+          <button
+            type="button"
+            className={`pop-row-select ${popTouchClass('normal')}${
+              isSelected ? ' pop-row-select-on' : ''
+            }`}
+            aria-pressed={isSelected}
+            aria-label={`${isSelected ? t.deselect : t.select} ${row.workOrderNo}`}
+            onClick={() => {
+              onSelect(isSelected ? null : row);
+            }}
+          >
+            <span>
+              <Chip status="error" size="md">
+                {t.emergencyBadge}
+              </Chip>{' '}
+              {row.workOrderNo}
+            </span>
+          </button>
+        );
+      },
+    },
+    {
+      key: 'item',
+      header: t.columns.item,
+      align: 'center',
+      /* 발행 시각은 품목 아래에 쌓는다 — 정본 목록이 날짜를 그 자리에 둔다. */
+      render: (row) => (
+        <span className="stacked-cell pop-stacked-center">
+          <span>{itemText(row)}</span>
+          <span>{`${t.columns.releasedAt} ${dateTimeText(row.releasedAt)}`}</span>
+        </span>
+      ),
+    },
+    {
+      key: 'quantity',
+      header: t.columns.quantity,
+      align: 'center',
+      width: '140px',
+      render: (row) => `${qtyText(row.orderQty)} ${uomLabel(row.uomId)}`,
+    },
+  ];
+
   return (
     <section className="pane" aria-label={t.title}>
       <h2>{t.title}</h2>
@@ -71,34 +130,33 @@ export const WorkOrderList = ({
               </div>
             ) : null
           ) : (
-            <ul className="pop-card-list" aria-label={t.caption}>
-              {rows.map((row) => (
-                <li key={String(row.workOrderId)}>
-                  <Card
-                    interactive
-                    bordered
-                    surface={selectedId === row.workOrderId ? 'high' : 'low'}
-                    aria-label={`${t.select} ${row.workOrderNo}`}
-                    aria-pressed={selectedId === row.workOrderId}
-                    onClick={() => {
-                      onSelect(row);
-                    }}
-                  >
-                    <Card.Body>
-                      <p>
-                        <Chip status="error" size="sm">
-                          {t.emergencyBadge}
-                        </Chip>{' '}
-                        {row.workOrderNo} · {itemText(row)}
-                      </p>
-                      <p className="field-note">
-                        {`${qtyText(row.orderQty)} ${uomLabel(row.uomId)} · ${t.columns.releasedAt} ${dateTimeText(row.releasedAt)}`}
-                      </p>
-                    </Card.Body>
-                  </Card>
-                </li>
-              ))}
-            </ul>
+            /*
+             * 줄의 어느 칸을 눌러도 그 줄의 버튼을 대신 누른다.
+             *
+             * 디자인 시스템의 `Table` 은 행 클릭을 받지 않고 행에 식별자도 남기지 않는다.
+             * 그래서 눌린 자리에서 «위로» 행을 찾아 그 안의 버튼을 누른다 — 정렬·그룹이
+             * 켜져도 같은 행 안에서만 움직인다.
+             */
+            <div
+              role="presentation"
+              className="pop-row-target"
+              onClick={(event) => {
+                const from = event.target as HTMLElement;
+
+                // 버튼을 직접 눌렀으면 그쪽이 이미 처리한다 — 여기서 또 누르면 두 번 뒤집힌다.
+                if (from.closest('.pop-row-select') !== null) return;
+
+                from.closest('tr')?.querySelector<HTMLButtonElement>('.pop-row-select')?.click();
+              }}
+            >
+              <Table
+                aria-label={t.caption}
+                columns={columns}
+                rows={rows}
+                density="comfortable"
+                getRowId={(row) => String(row.workOrderId)}
+              />
+            </div>
           )}
 
           {isTruncated && <p>{t.truncated(rows.length, total)}</p>}

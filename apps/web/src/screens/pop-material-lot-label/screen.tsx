@@ -1,4 +1,4 @@
-import { AlertBanner, Button, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -18,6 +18,7 @@ import { TargetCard } from './target-card';
 import { toHeadPrinter } from './types';
 
 const t = messages.popMaterialLotLabel;
+const tDevice = messages.popMaterialLotLabel.device;
 
 /**
  * 빈 목록의 안내를 고른다 — **왜 비었는지가 셋으로 갈린다.**
@@ -49,7 +50,7 @@ export const PopMaterialLotLabelScreen = () => {
    * 귀속 사번은 **셸이 아는 값**이다(진입점 화면 소관 · 이 저장소 #157). 쓰기가 헤더로
    * 요구하므로 없으면 부를 수 없고, 그 사실을 감추지 않고 사유로 보인다(공유계약 F-1·F-6).
    */
-  const { workerNo } = usePopIdentity();
+  const { workerNo, terminalId } = usePopIdentity();
 
   // 첫 쪽이면 조건을 싣지 않는다 — 서버 기본값이 1이라 URL에 없는 편이 조건을 정직하게 드러낸다.
   const receipts = useReceipts(page === 1 ? {} : { page });
@@ -115,22 +116,46 @@ export const PopMaterialLotLabelScreen = () => {
      * ⚠ **이 화면이 최상위 랜드마크다.** POP 라우트는 관리웹 셸을 지나지 않으므로(`routes/pop`)
      * `main`을 세워 주는 바깥이 없다 — 먼저 선 POP 화면들과 같은 형태다.
      */
-    <main className="pop-lot-screen" aria-label={t.title}>
-      <header className="pop-lot-head">
-        <PageHeader title={t.title} size="compact" />
-        <PrinterStatusIndicator
-          printer={headPrinter}
-          hasChoice={(printers.data ?? []).length > 1}
-          isLoading={printers.isPending}
-          isError={printers.isError}
-          onRetry={() => {
-            void printers.refetch();
-          }}
-        />
+    <main className="pop-lot-screen pop-ui" aria-label={t.title}>
+      {/* 머리줄 어휘를 다른 POP 화면과 맞춘다 — 이름이 달라도 보이는 자리는 같아야 한다. */}
+      <header className="pop-header">
+        {/*
+         * 표제는 **다른 POP 화면과 같은 어휘로 쓴다**(`pop-title`). DS `PageHeader` 로 세우면
+         * 규격이 겨냥하는 자리(머리줄의 첫 자식)가 그 부품의 래퍼가 되어 표제 크기가 이
+         * 화면에만 24px 로 남는다(실측 — 다른 화면은 26px).
+         */}
+        <h1 className="pop-title">{t.title}</h1>
+        <div className="pop-context-right">
+          <PrinterStatusIndicator
+            printer={headPrinter}
+            hasChoice={(printers.data ?? []).length > 1}
+            isLoading={printers.isPending}
+            isError={printers.isError}
+            onRetry={() => {
+              void printers.refetch();
+            }}
+          />
+          {/* 단말도 상시 보인다(스펙 §3 머리줄 `단말 POP-L1 ●`) — 다른 POP 화면과 같은 자리·순서다. */}
+          <Chip status={terminalId === null ? 'warning' : 'info'}>
+            {`${tDevice.terminalLabel} ${
+              terminalId === null ? tDevice.terminalUnknown : String(terminalId)
+            }`}
+          </Chip>
+        </div>
       </header>
 
       <div className="pop-lot-panes">
         <section className="pane pop-lot-pane" aria-label={t.receipts.paneLabel}>
+          {/*
+           * ⭐ **좌우 구획의 제목이 같은 자리·같은 급으로 선다** — 스펙 §3 도면이 둘을 나란히
+           *    그렸다(`《입하 라인》 (미부착)` · `《채번 대상》`). 한쪽만 표의 캡션으로 서
+           *    가운데에 있으면 같은 급으로 읽히지 않고, 안내 배너 «아래»에 놓여 차례도
+           *    뒤집힌다(사용자 지적).
+           *
+           * ⛔ 오류일 때도 감추지 않는다 — 구획의 이름은 내용의 성패와 무관하다.
+           */}
+          <h2 className="pop-lot-pane-title">{t.receipts.title}</h2>
+
           {isListError ? (
             <AlertBanner
               variant="error"
@@ -152,10 +177,10 @@ export const PopMaterialLotLabelScreen = () => {
           ) : (
             <>
               {/*
-               * ⛔ `.field-note`를 쓰지 않는다 — 그 클래스는 규범 4가 **비활성 사유**용으로
-               * 정의한 것이라 `max-width: 20rem`에 갇힌다. 구획 전체에 걸리는 안내다.
+               * ⛔ **「무엇이 걸러졌는가」를 문장으로 두지 않는다.** 제목의 「(미부착)」이 그
+               *    일을 한다(스펙 §3 도면). 세로 여유가 119px 뿐인 화면이라 배너 한 줄이
+               *    목록에서 그만큼을 가져간다.
                */}
-              <AlertBanner variant="info">{t.receipts.filterNotice}</AlertBanner>
               <ReceiptTable
                 rows={targets.rows}
                 supplierLookup={supplierLookup}

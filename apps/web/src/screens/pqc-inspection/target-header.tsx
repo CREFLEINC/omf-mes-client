@@ -14,7 +14,11 @@ import type { InspectionRequestDetail } from './types';
  * 가운뎃점을 「라벨 없이 이으라」로 읽었다가 되돌린 자리다 — 스케치는 그 말을 하지 않는다.
  *
  * 그래서 **POP 화면의 전례를 따른다** — 도면의 64 짜리 한 줄을 `pop-header` 안의
- * `pop-context-right` 로 그린다(`P-02-03`·`P-05-01` 과 같은 형태). 관리웹의 `PageHeader` +
+ * `pop-context` 로 그린다(`P-02-03`·`P-05-01` 과 같은 형태).
+ *
+ * ⭐ **맥락은 왼쪽이다.** 앞선 판은 `pop-context-right` 로 두어 W/O·품목·LOT 이 오른쪽 끝
+ * 상태 표식과 한 덩어리로 붙었다. 스펙 §3 도면은 POP 전 화면에서 「무엇을 보고 있는가」를
+ * 화면명 옆에, 「지금 어떤 상태인가」(동기·연결)를 오른쪽 끝에 갈라 그린다. 관리웹의 `PageHeader` +
  * `Breadcrumb` 는 쓰지 않는다: 이 화면은 셸 밖에 서고, 사이드바로 오가지 않아 돌아갈 경로가
  * 없다. 라벨을 값 앞에 붙이는 것도 그 전례를 따른다 — 도면의 가운뎃점은 라벨을 지우라는
  * 말이 아니고, 라벨이 없으면 정수 셋이 무엇인지 구분되지 않는다.
@@ -55,11 +59,14 @@ export const TargetHeader = ({ detail }: TargetHeaderProps) => {
     },
   ];
 
+  /*
+   * ⛔ **조각을 나란히 두지 않는다.** `pop-context-right` 는 항목 사이를 벌리는 묶음이라
+   * 조각을 그대로 늘어놓아도 갈렸는데, 왼쪽 맥락은 한 문장으로 읽히는 자리다 — 그대로
+   * 옮겼더니 「작업지시 1001품목 1001」로 붙었다(실측). 도면의 가운뎃점으로 잇는다.
+   */
   return (
-    <div className="pop-context-right" aria-label={t.heading} role="group">
-      {items.map((item) => (
-        <span key={item.key}>{`${item.label} ${item.value}`}</span>
-      ))}
-    </div>
+    <p className="pop-context" aria-label={t.heading}>
+      {items.map((item) => `${item.label} ${item.value}`).join(' · ')}
+    </p>
   );
 };

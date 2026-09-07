@@ -28,6 +28,7 @@ const DOWNTIMES_PATH = '/maintenance/downtimes';
 const SUMMARY_PATH = '/maintenance/downtimes/summary';
 const BREAKDOWNS_PATH = '/maintenance/breakdowns';
 const TERMINAL_PATH = `/mdm/terminals/${String(TERMINAL_ID)}/processes`;
+const CODE_VALUES_PATH = '/mdm/code-values';
 const closePath = (downtimeId: number): string => `${DOWNTIMES_PATH}/${String(downtimeId)}:close`;
 
 const ROUTE = `/pop/downtime?equipmentId=${String(EQUIPMENT_ID)}&equipmentCode=${EQUIPMENT_CODE}`;
@@ -99,6 +100,20 @@ const breakdownsRoute = (items: unknown[] = []): StubRoute => ({
   respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
 });
 
+/**
+ * ③ 사유 선택지 — **고객의 코드 마스터에서 온다**(스펙 §4-A · `G-32`). 시드 여섯 중 둘만
+ * 세운다: 목록의 «출처»가 서버라는 것만 확인하면 되고, 값을 다 적으면 시드가 늘 때 함께 는다.
+ */
+const reasonsRoute = (
+  items: { code: string; codeName: string }[] = [
+    { code: 'EQUIPMENT_FAILURE', codeName: '설비 고장' },
+    { code: 'MOLD_CHANGE', codeName: '금형 교체' },
+  ],
+): StubRoute => ({
+  match: (request) => isGet(request, CODE_VALUES_PATH),
+  respond: () => jsonResponse({ items, page: { page: 1, size: 50, total: items.length } }),
+});
+
 const gateRoute = (canInputResult = true): StubRoute => ({
   match: (request) => isGet(request, TERMINAL_PATH),
   respond: () =>
@@ -125,8 +140,13 @@ const IDENTIFIED: PopIdentity = {
   workerNo: WORKER_NO,
 };
 
+/**
+ * ⚠ **사유 선택지 라우트는 늘 붙인다.** 이 화면의 저장은 사유가 필수라, 그 목록을 세우지 않은
+ * 시험은 「고를 것이 없다」로 막혀 정작 보려던 것을 못 본다. 다른 응답을 보려는 시험은
+ * `reasonsRoute(...)` 를 «먼저» 넘겨 덮는다(앞선 라우트가 이긴다).
+ */
 const renderScreen = (routes: StubRoute[], identity: PopIdentity = IDENTIFIED) => {
-  const { fetch, requests } = createRecordingFetch(routes);
+  const { fetch, requests } = createRecordingFetch([...routes, reasonsRoute()]);
   const result = renderWithProviders(
     <PopIdentityProvider value={identity}>
       <DowntimeRegisterScreen />
@@ -167,12 +187,9 @@ const typeInterval = (start: [string, string], end?: [string, string]): void => 
   });
 };
 
-/** 사유 두 단을 고른다 — 보내는 것은 소분류 하나다. */
+/** 사유를 고른다 — **선택칸 하나뿐이다**(스펙 §7 확정 2026-09-03 · 평면 1단). */
 const chooseReason = async (): Promise<void> => {
   /* 선택 칸은 `combobox`로 서고, 접근 이름은 옆에 선 라벨이 준다. */
-  fireEvent.click(screen.getByRole('combobox', { name: t.reason.category }));
-  fireEvent.click(await screen.findByRole('option', { name: '설비' }));
-
   fireEvent.click(screen.getByRole('combobox', { name: t.reason.detail }));
   fireEvent.click(await screen.findByRole('option', { name: '금형 교체' }));
 };
@@ -346,22 +363,50 @@ describe('DowntimeRegisterScreen — 저장', () => {
     expect(screen.getAllByText(t.errors.endedBeforeStarted).length).toBeGreaterThan(0);
   });
 
-  it('사유를 고르지 않으면 저장하지 않고 무엇이 모자란지 말한다', async () => {
-    const { requests } = renderScreen(baseRoutes());
-
-    await flush();
-    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
-    save();
-    await flush();
-
-    expect(postedBodies(requests)).toHaveLength(0);
-    expect(screen.getByText(t.errors.reasonRequired)).toBeTruthy();
-  });
-
-  it('사유 목록이 임시라는 사실을 감추지 않는다', async () => {
+  it('시작 시각과 사유가 차기 전에는 「실적 저장」이 잠긴다 (스펙 §5-1 활성 조건)', async () => {
     renderScreen(baseRoutes());
 
-    expect(await screen.findByText(t.reason.placeholderNotice)).toBeTruthy();
+    await flush();
+    const saveButton = screen.getByRole('button', { name: t.actions.save });
+    expect(saveButton).toBeDisabled();
+
+    /* 시작만으로는 아직 모자라다 — 사유가 `NOT NULL` 이다. */
+    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
+    expect(saveButton).toBeDisabled();
+
+    await chooseReason();
+    expect(saveButton).toBeEnabled();
+  });
+
+  it('날짜만 치고 시각을 비우면 아직 「시작 시각」이 아니다 — 잠긴 채로 둔다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
+    fireEvent.change(screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`), {
+      target: { value: '2026-08-11' },
+    });
+    await chooseReason();
+
+    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
+  });
+
+  it('아직 아무것도 적지 않았으면 「다시 입력」이 잠긴다 — 비울 것이 없다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
+    expect(screen.getByRole('button', { name: t.actions.reset })).toBeDisabled();
+
+    /* 한 칸이라도 적으면 되돌릴 것이 생긴다. */
+    typeInterval(['2026-08-11', '14:20']);
+    expect(screen.getByRole('button', { name: t.actions.reset })).toBeEnabled();
+  });
+
+  it('고를 사유가 하나도 없으면 칸을 감추지 않고 잠근 뒤 사유를 말한다', async () => {
+    /* ⛔ 스펙 §6-1 — 감추면 저장이 왜 막히는지 화면에 남는 것이 없다(사유는 `NOT NULL`). */
+    renderScreen([reasonsRoute([]), ...baseRoutes()]);
+
+    expect(await screen.findByText(t.errors.reasonsUnavailable)).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: t.reason.detail })).toBeDisabled();
   });
 
   it('사번을 모르면 저장을 막고 그 사유를 말한다', async () => {
@@ -736,31 +781,34 @@ describe('DowntimeRegisterScreen — 시간이 흐른 뒤', () => {
 });
 
 describe('DowntimeRegisterScreen — 구간을 치기 전', () => {
-  it('빈 화면이 「진행 중」이라고 말하지 않는다', async () => {
+  it('산출할 수 없으면 이유를 적지 않고 「—」로 둔다 — 0분과도 갈라진다', async () => {
     renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
 
     await flush();
 
     /*
-     * 아무것도 치지 않은 상태는 진행 중이 아니라 **아직 아무것도 아닌 상태**다. 그 자리에
-     * 쓸 문구는 스펙에 없으므로 비워 두되, 자리 자체는 남아 있어야 한다 — 글자가 생길 때마다
-     * 아래 구획이 밀리면 터치 화면에서 손가락이 빗나간다.
+     * ⛔ 산출 불가의 «이유»를 문장으로 적지 않는다 — 옆의 「아직 진행 중」이 이미 말하고,
+     *    오류 문구와 같은 줄이라 경고처럼 읽혔다(사용자 지적).
+     * ⚠ 자리 자체는 늘 남는다 — 글자가 들고 날 때마다 줄이 흔들리면 손가락이 빗나간다.
      */
-    expect(screen.queryByText(t.interval.durationUnknown)).toBeNull();
+    const empty = t.interval.duration(t.interval.durationEmpty);
+    expect(screen.getByText(empty)).toBeTruthy();
 
-    const duration = document.querySelector('.downtime-duration');
-    expect(duration).not.toBeNull();
-    expect(duration?.textContent).toBe('');
+    /* 시작만 찍어도, 「아직 진행 중」을 켜도 여전히 산출할 수 없다 — 표기는 같다. */
+    typeInterval(['2026-08-11', '14:20']);
+    expect(screen.getByText(empty)).toBeTruthy();
+
+    fireEvent.click(screen.getByLabelText(t.interval.stillOngoing));
+    expect(screen.getByText(empty)).toBeTruthy();
   });
 
-  it('시작을 찍고 「아직 진행 중」을 켜면 그때 산출 불가라고 말한다', async () => {
+  it('구간이 갖춰지면 길이를 낸다', async () => {
     renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
 
     await flush();
-    typeInterval(['2026-08-11', '14:20']);
-    fireEvent.click(screen.getByLabelText(t.interval.stillOngoing));
+    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
 
-    expect(await screen.findByText(t.interval.durationUnknown)).toBeTruthy();
+    expect(screen.getByText(t.interval.duration('47분'))).toBeTruthy();
   });
 });
 
@@ -788,6 +836,29 @@ describe('DowntimeRegisterScreen — 덜 친 종료 시각', () => {
     expect(screen.getByText(t.errors.endedIncomplete)).toBeTruthy();
   });
 
+  it('오류가 떠도 구간 줄의 높이가 변하지 않는다 — 치는 동안 아래가 밀리면 안 된다', async () => {
+    renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
+
+    await flush();
+    /* 날짜만 치면 「덜 친 것」이 된다. */
+    fireEvent.change(screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`), {
+      target: { value: '2026-08-11' },
+    });
+
+    /*
+     * ⛔ 문구는 칸 «아래»가 아니라 줄 «안»에 선다 — 부품이 그리는 자리를 쓰면 줄이 60 에서
+     *    120 으로 뛴다(실측). 시험 환경에는 스타일이 없으므로 **어디에 붙었는지**로 잰다.
+     */
+    const message = screen.getByText(t.errors.startedIncomplete);
+    expect(message.closest('.downtime-time-row')).not.toBeNull();
+    expect(message.parentElement).toHaveClass('downtime-time-row');
+
+    /* 읽어 주는 연결은 유지한다 — 자리를 옮겼다고 관계까지 끊지 않는다. */
+    const dateField = screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`);
+    expect(dateField).toHaveAttribute('aria-invalid', 'true');
+    expect(dateField.getAttribute('aria-describedby')).toContain(message.id);
+  });
+
   it('시작을 아직 안 쳤어도 끝 칸의 문제를 바로 말한다', async () => {
     renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()]);
 
@@ -810,7 +881,7 @@ describe('DowntimeRegisterScreen — 터치 타겟', () => {
    */
   const isExtraLarge = (button: HTMLElement): boolean => /xxl/.test(button.className);
 
-  it('시각을 찍는 버튼과 액션바 버튼이 72픽셀 급으로 선다', async () => {
+  it('구획을 닫고 저장하는 버튼이 72픽셀 급으로 선다', async () => {
     renderScreen([
       downtimeListRoute({ ongoing: [ongoingDowntime()] }),
       summaryRoute(),
@@ -820,8 +891,13 @@ describe('DowntimeRegisterScreen — 터치 타겟', () => {
 
     await screen.findByRole('region', { name: t.ongoing.title });
 
+    /*
+     * ⚠ **`[지금]`은 여기서 빠진다**(사용자 결정 2026-09-07). 스펙 §7 은 72픽셀 급으로
+     *    적었지만, 같은 줄에 선 날짜·시각 칸이 56 이라 버튼만 커 보이고 줄 높이도 그 버튼이
+     *    정해 ② 구획이 몫을 넘긴다. 터치 하한(일반 등급 56)은 지킨다.
+     */
     screen.getAllByRole('button', { name: t.interval.now }).forEach((button) => {
-      expect(isExtraLarge(button)).toBe(true);
+      expect(isExtraLarge(button)).toBe(false);
     });
 
     expect(isExtraLarge(screen.getByRole('button', { name: t.ongoing.close }))).toBe(true);

@@ -32,6 +32,12 @@ export const MAX_TARGETS = 1000;
 export const REISSUE_REASON_GROUP_CODE = 'REISSUE_REASON';
 
 /**
+ * 포장 유형 코드그룹. **설계 도면이 이 자리를 「박스」처럼 읽을 수 있는 말로 그렸다**(§3) —
+ * `CARTON` 을 그대로 내면 현장에서 무엇인지 알 수 없다.
+ */
+export const HANDLING_UNIT_TYPE_GROUP_CODE = 'HANDLING_UNIT_TYPE';
+
+/**
  * 출력물 종류 — **2026-09-02 에 계약이 `enum` 9종으로 닫았다**(요구서 §3-8 · `omf-mes#145`).
  *
  * 이 화면은 두 값을 다룬다. 착수 이슈(2026-09-01)의 미결표는 이 축을 아직 「자리표시」로 적고

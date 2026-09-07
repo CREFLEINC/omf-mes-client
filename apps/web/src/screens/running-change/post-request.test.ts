@@ -10,6 +10,7 @@ import {
   makePart,
 } from './fixtures';
 import { toOffsetDateTime, toReplacementConsumption } from './post-request';
+import { stripLeadingZeros } from './quantity-pad';
 
 const OCCURRED_AT = new Date(2026, 8, 2, 9, 12, 0);
 
@@ -18,6 +19,7 @@ const draft = (overrides: Partial<Parameters<typeof toReplacementConsumption>[0]
   part: makePart(),
   replacedConsumptionId: OLD_CONSUMPTION_ID,
   qty: '120',
+  changeReasonCode: null,
   workSessionId: WORK_SESSION_ID,
   occurredAt: OCCURRED_AT,
   ...overrides,
@@ -98,5 +100,38 @@ describe('발생 시각', () => {
     expect(toOffsetDateTime(new Date(2026, 0, 3, 4, 5, 6))).toMatch(
       /^2026-01-03T04:05:06[+-]\d{2}:\d{2}$/,
     );
+  });
+});
+
+/*
+ * 사유는 «고르지 않아도» 등록이 서고(스펙 §6 — 권고), 골랐으면 그대로 실린다. ⛔ 「안 골랐다」를
+ * 빈 값으로 보내지 않는다 — 기록에서 둘이 갈라지지 않는다.
+ */
+describe('교체 사유', () => {
+  it('고르지 않았으면 칸 자체를 싣지 않는다', () => {
+    expect(toReplacementConsumption(draft())).not.toHaveProperty('changeReasonCode');
+    expect(toReplacementConsumption(draft({ changeReasonCode: '' }))).not.toHaveProperty(
+      'changeReasonCode',
+    );
+  });
+
+  it('골랐으면 그 코드를 싣는다', () => {
+    expect(toReplacementConsumption(draft({ changeReasonCode: 'DEFECT' }))).toMatchObject({
+      changeReasonCode: 'DEFECT',
+    });
+  });
+});
+
+/*
+ * 키패드가 앞자리 0 을 흘리지 않는지. 계약이 받는 것은 «수»라 `011` 은 `11` 로 실리는데,
+ * 화면이 `011` 을 그대로 보여 주면 친 값과 남는 값이 달라진다.
+ */
+describe('수량의 앞자리 0', () => {
+  it('앞의 0 은 털고 값의 일부인 0 은 남긴다', () => {
+    expect(stripLeadingZeros('011')).toBe('11');
+    expect(stripLeadingZeros('0011')).toBe('11');
+    expect(stripLeadingZeros('0')).toBe('0');
+    expect(stripLeadingZeros('0.5')).toBe('0.5');
+    expect(stripLeadingZeros('120')).toBe('120');
   });
 });

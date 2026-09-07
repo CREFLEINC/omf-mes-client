@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { resolveSaveBlock } from './action-bar';
-import { reasonName, reasonsOfCategory } from './downtime-reasons';
 import { breakdown, downtime, ongoingDowntime } from './fixtures';
 import { byStartedAtDesc, fromPending, startedOn } from './today-rows';
 import { isOngoing, toBreakdownView, toDowntimeView } from './types';
@@ -65,32 +64,47 @@ describe('resolveSaveBlock', () => {
 
 describe('today-rows', () => {
   it('아직 안 나간 건은 멱등키를 이름으로 쓴다 — 순번을 쓰면 앞 건이 나갈 때 이름이 밀린다', () => {
-    const row = fromPending('key-1', {
-      equipmentId: 1,
-      reasonCode: 'MOLD_CHANGE',
-      startedAt: '2026-08-11T09:40:00+09:00',
-    });
+    const row = fromPending(
+      'key-1',
+      {
+        equipmentId: 1,
+        reasonCode: 'MOLD_CHANGE',
+        startedAt: '2026-08-11T09:40:00+09:00',
+      },
+      new Map(),
+    );
 
     expect(row.key).toBe('pending:key-1');
     /* 서버가 보지 못한 건이라 저장된 길이가 없다. */
     expect(row.durationMinutes).toBeNull();
   });
 
-  it('사유 코드는 임시 목록의 이름으로 풀되, 없으면 코드를 그대로 보인다', () => {
+  it('아직 서버에 닿지 않은 줄은 «받아 온 목록»에서 이름을 얻고, 없으면 코드를 그대로 보인다', () => {
+    /* ⛔ 화면이 코드 → 이름 표를 갖지 않는다 — 고객이 늘리는 목록이다(`G-31`). */
+    const names = new Map([['MOLD_CHANGE', '금형 교체']]);
+
     expect(
-      fromPending('k', {
-        equipmentId: 1,
-        reasonCode: 'MOLD_CHANGE',
-        startedAt: '2026-08-11T09:40:00+09:00',
-      }).reasonLabel,
+      fromPending(
+        'k',
+        {
+          equipmentId: 1,
+          reasonCode: 'MOLD_CHANGE',
+          startedAt: '2026-08-11T09:40:00+09:00',
+        },
+        names,
+      ).reasonLabel,
     ).toBe('금형 교체');
 
     expect(
-      fromPending('k', {
-        equipmentId: 1,
-        reasonCode: 'UNKNOWN_CODE',
-        startedAt: '2026-08-11T09:40:00+09:00',
-      }).reasonLabel,
+      fromPending(
+        'k',
+        {
+          equipmentId: 1,
+          reasonCode: 'UNKNOWN_CODE',
+          startedAt: '2026-08-11T09:40:00+09:00',
+        },
+        names,
+      ).reasonLabel,
     ).toBe('UNKNOWN_CODE');
   });
 
@@ -122,19 +136,5 @@ describe('today-rows', () => {
     const today = rows.filter((row) => startedOn(row, '2026-08-11')).sort(byStartedAtDesc);
 
     expect(today.map((row) => row.key)).toEqual(['b', 'a']);
-  });
-});
-
-describe('자리표시 사유 목록', () => {
-  it('대분류가 소분류를 좁힌다', () => {
-    expect(reasonsOfCategory('EQUIPMENT').length).toBeGreaterThan(0);
-    /* 모르는 대분류에 목록을 지어내지 않는다. */
-    expect(reasonsOfCategory('NOT_A_CATEGORY')).toHaveLength(0);
-    expect(reasonsOfCategory(null)).toHaveLength(0);
-  });
-
-  it('임시 목록에 없는 코드는 이름을 지어내지 않는다', () => {
-    expect(reasonName('MOLD_CHANGE')).toBe('금형 교체');
-    expect(reasonName('UNKNOWN_CODE')).toBeNull();
   });
 });

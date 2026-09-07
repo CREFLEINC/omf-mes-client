@@ -15,11 +15,14 @@ export const packingResult = {
     progress: '진행',
   },
   header: {
-    /** 스캔 전에는 어느 출하인지 모른다 — 빈 자리로 두지 않고 그 사실을 적는다. */
-    shipmentUnknown: '납품라벨을 읽으면 어느 출하인지 표시됩니다',
     shipment: (shipmentId: number): string => `출하 #${String(shipmentId)}`,
     worker: (workerNo: string): string => `사번 ${workerNo}`,
+    /** 사번을 아직 못 받았다 — 「없다」가 아니라 「모른다」다. */
+    workerUnknown: '사번 미확인',
     terminalUnknown: '단말 미확인',
+    /** 연결 상태는 사번과 «다른» 표식으로 낸다 — 하나로 묶으면 색이 무엇을 말하는지 흐려진다. */
+    online: '연결됨',
+    offline: '오프라인',
   },
   scan: {
     label: {
@@ -72,10 +75,10 @@ export const packingResult = {
   },
   fields: {
     handlingUnitType: '유형',
+    /** 이름은 칸 옆에 있으므로 안내 글은 「무엇을 하라」만 남긴다. */
+    typePlaceholder: '고르세요',
     parentHandlingUnit: '상위 포장',
     parentNone: '(없음)',
-    /** 번호는 서버가 매긴다 — 담기 시작 전에는 존재하지 않는 값이다. */
-    handlingUnitPending: '포장 번호 — 담으면 매겨집니다',
   },
   notes: {
     parentHint: '팔레트에 담으면 지정합니다',
@@ -89,21 +92,28 @@ export const packingResult = {
     unpacked: (qty: number): string => `미포장 ${String(qty)}`,
   },
   actions: {
-    rescan: '다시 스캔',
+    /** 읽은 것을 무르고 다시 읽는다 — 이 화면의 입력은 «읽기»다(사용자 지시 2026-09-07). */
+    rescan: '다시 읽기',
     confirm: '포장 확정',
     confirming: '확정 중…',
     retry: '다시 시도',
   },
+  /**
+   * 확정이 막힌 사유 — 「어떻게 풀 것인가」를 담는다(공유계약 G-3).
+   *
+   * ⛔ **조작 이름(「포장 확정 —」)을 앞에 붙이지 않는다.** 이 문구는 [ 포장 확정 ] 바로 옆에
+   * 서므로 무엇에 대한 말인지는 «자리»가 말한다(사용자 지시 2026-09-07 · 전례 `P-01-02`).
+   */
   locks: {
-    noContents: '포장 확정 — 포장에 담긴 것이 없습니다',
-    noType: '포장 확정 — 유형을 고르세요',
-    offline: '포장 확정 — 연결이 끊겨 있습니다. 이 화면은 연결된 상태에서만 확정할 수 있습니다',
+    noContents: '포장에 담긴 것이 없습니다',
+    noType: '유형을 고르세요',
+    offline: '연결이 끊겨 있습니다. 이 화면은 연결된 상태에서만 확정할 수 있습니다',
     /** 게이팅 판정별 사유. 「모른다」와 「막혔다」를 갈라 적는다(공유계약 F-6). */
-    gateChecking: '포장 확정 — 단말 권한을 확인하는 중입니다',
-    gateDenied: '포장 확정 — 이 단말·공정에는 실적 입력 권한이 없습니다',
-    gateUnavailable: '포장 확정 — 단말 권한을 확인할 수 없습니다',
-    gateUnidentified: '포장 확정 — 단말·공정이 확인되지 않았습니다',
-    workerMissing: '포장 확정 — 사번이 확인되지 않았습니다',
+    gateChecking: '단말 권한을 확인하는 중입니다',
+    gateDenied: '이 단말·공정에는 실적 입력 권한이 없습니다',
+    gateUnavailable: '단말 권한을 확인할 수 없습니다',
+    gateUnidentified: '단말·공정이 확인되지 않았습니다',
+    workerMissing: '사번이 확인되지 않았습니다',
   },
   confirmed: (handlingUnitNo: string): string => `포장 ${handlingUnitNo} 을 확정했습니다`,
 } as const;

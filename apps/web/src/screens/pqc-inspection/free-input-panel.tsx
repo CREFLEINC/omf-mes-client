@@ -36,6 +36,7 @@ export const FreeInputPanel = ({ remarks, onRemarksChange }: FreeInputPanelProps
 
     {/* 기준이 없어 적을 곳이 여기뿐이다 — 무엇을 보고 판정했는지 사람이 남긴다. */}
     <TextField
+      size="xl"
       label={t.remarks}
       value={remarks}
       onChange={(event) => onRemarksChange(event.target.value)}

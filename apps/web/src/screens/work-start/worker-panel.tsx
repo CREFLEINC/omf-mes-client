@@ -51,7 +51,12 @@ export const WorkerPanel = ({
   isChecking,
   error,
 }: WorkerPanelProps) => (
-  <section className="pane work-start-worker" aria-label={t.title}>
+  /*
+   * `pop-fixed` — **내용만큼만 선다**(`app/pop.css` 「내용만큼만 서는 구획」). 사번이 확인된
+   * 뒤에는 이 구획에 한 줄만 남는데, 남는 높이를 나눠 받으면 그 한 줄이 빈 칸 가운데 떠서
+   * 화면에서 가장 헐거운 자리가 된다. 남는 높이는 아래 작업지시 목록이 가져가는 편이 맞다.
+   */
+  <section className="pane pop-fixed work-start-worker" aria-label={t.title}>
     <h2 className="pane-title">{t.title}</h2>
 
     {confirmed === null ? (

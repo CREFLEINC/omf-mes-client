@@ -23,7 +23,6 @@ export const shippingPackingLabel = {
   },
   targets: {
     paneLabel: '대상',
-    caption: '발행 대상',
     columns: {
       target: '대상',
       status: '상태',
@@ -68,7 +67,6 @@ export const shippingPackingLabel = {
   },
   printer: {
     label: '프린터',
-    placeholder: '프린터를 고르세요',
     /** 목록이 비어 올 수 있다 — 서버가 무엇을 보고 목록을 만드는지가 아직 미결이다. */
     none: '이 라벨을 찍을 수 있는 프린터가 없습니다.',
     /** ⛔ 「없다」와 「모른다」를 같은 모양으로 그리지 않는다. */
@@ -80,7 +78,8 @@ export const shippingPackingLabel = {
     noStatusMessage: '상태 설명이 없습니다.',
   },
   actions: {
-    issue: '발행',
+    /* 설계 §3 액션바가 「발행·인쇄」다 — 이 조작은 기록을 만들고 프린터로 보내는 두 가지를 한다. */
+    issue: '발행·인쇄',
     preview: '미리보기',
     print: '인쇄',
     /** 그리기 경로가 발행 기록 번호를 받는다 — 발행 전에는 볼 것이 없다. */

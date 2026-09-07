@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useId, useMemo, useState } from 'react';
@@ -26,6 +26,7 @@ import { toHeadPrinter, toLotRows } from './types';
 import { usePrintRunner } from './use-print';
 
 const t = messages.popLotLabelPrint;
+const tDevice = messages.popLotLabelPrint.device;
 
 const describeIssueError = (error: ApiError): string => {
   if (error.kind === 'network') return messages.httpError.offline;
@@ -52,6 +53,7 @@ export const PopLotLabelPrintScreen = () => {
   const titleId = useId();
   const entry = useLotLabelEntry();
   const identity = usePopIdentity();
+  const terminalId = identity.terminalId;
   const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
   const [reissueOpen, setReissueOpen] = useState(false);
 
@@ -148,25 +150,36 @@ export const PopLotLabelPrintScreen = () => {
   );
 
   return (
-    <main className="pop-lot-screen" aria-labelledby={titleId}>
-      <header className="pop-lot-head">
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
+      {/*
+       * 머리줄 — 스펙 §3 의 「화면명 · 맥락 · 프린터 상태」 한 줄이다. POP 공통 어휘
+       * (`.pop-header` · `.pop-context` · `.pop-context-right`)를 그대로 쓴다: 화면마다 이름이
+       * 달라도 **보이는 자리는 같아야** 작업자가 단말을 옮겨 다녀도 눈이 같은 곳을 본다.
+       */}
+      <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
         {entry.workOrderId === null ? null : (
-          <p className="pop-context">
-            <span>{t.entry.workOrderLabel}</span>
-            <span>{entry.workOrderId}</span>
-          </p>
+          /* 라벨과 번호를 한 문장으로 붙인다 — 조각을 나란히 두면 「작업지시11001」로 붙어 읽힌다. */
+          <p className="pop-context">{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</p>
         )}
-        <PrinterStatusIndicator
-          printer={headPrinter}
-          isLoading={printers.isPending}
-          isError={printers.isError}
-          onRetry={() => {
-            void printers.refetch();
-          }}
-        />
+        <div className="pop-context-right">
+          <PrinterStatusIndicator
+            printer={headPrinter}
+            isLoading={printers.isPending}
+            isError={printers.isError}
+            onRetry={() => {
+              void printers.refetch();
+            }}
+          />
+          {/* 단말도 상시 보인다(스펙 §3 머리줄 `단말 POP-L1 ●`) — 다른 POP 화면과 같은 자리·순서다. */}
+          <Chip status={terminalId === null ? 'warning' : 'info'}>
+            {`${tDevice.terminalLabel} ${
+              terminalId === null ? tDevice.terminalUnknown : String(terminalId)
+            }`}
+          </Chip>
+        </div>
       </header>
 
       {entry.workOrderId === null ? (
@@ -224,9 +237,9 @@ export const PopLotLabelPrintScreen = () => {
         </div>
       ) : null}
 
-      <div className="pop-lot-panes">
-        <Card bordered className="pop-lot-pane" aria-label={t.lotList.heading}>
-          <h2 className="pop-lot-pane-title">{t.lotList.heading}</h2>
+      <div className="pop-panes">
+        <Card bordered className="pop-section" aria-label={t.lotList.heading}>
+          <h2 className="pane-title">{t.lotList.heading}</h2>
 
           {lots.isError ? (
             <div className="banner-slot">
@@ -258,7 +271,7 @@ export const PopLotLabelPrintScreen = () => {
           )}
         </Card>
 
-        <Card bordered className="pop-lot-pane" aria-label={t.title}>
+        <Card bordered className="pop-section" aria-label={t.title}>
           <TargetCard
             lot={detail.data ?? null}
             item={item.data ?? null}

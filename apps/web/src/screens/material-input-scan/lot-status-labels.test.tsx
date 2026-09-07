@@ -70,7 +70,7 @@ const flush = async (): Promise<void> => {
 
 const scanOnce = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
-  await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001', 'SAMPLE-LOT-0001'));
+  await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
 };
 
 describe('자재 상태 표시명', () => {

@@ -24,10 +24,21 @@ const WEB_ROOT = resolve(process.cwd(), 'src');
  * `app.css` 머리의 클래스 색인이 같은 이름을 주석으로 적고 있어, 원문 그대로 훑으면 규칙을
  * 통째로 지워도 「정의돼 있다」로 통과한다(뮤테이션으로 확인했다).
  */
-const CSS_RULES = readFileSync(join(WEB_ROOT, 'app/app.css'), 'utf8').replace(
-  /\/\*[\s\S]*?\*\//gu,
-  '',
-);
+/**
+ * POP 규칙이 사는 파일 **둘 다**를 본다.
+ *
+ * ⚠ 한쪽만 읽으면 감지기가 거꾸로 틀린다 — 다른 파일에 정의된 클래스를 「정의 없이 쓴다」로
+ * 잡고, 그 파일에만 있는 고아를 놓친다. POP 셸이 자기 스타일시트를 갖게 되면서(`pop.css`)
+ * 정의처가 둘이 됐고, 감지기의 목적은 「쓰는 곳과 정의한 곳이 어긋나지 않는지」이므로 **정의처
+ * 전체**를 모집단으로 삼아야 한다.
+ */
+const POP_CSS_FILES = ['app/app.css', 'app/pop.css'] as const;
+
+const readCss = (relative: string): string => readFileSync(join(WEB_ROOT, relative), 'utf8');
+
+const CSS_RULES = POP_CSS_FILES.map(readCss)
+  .join('\n')
+  .replace(/\/\*[\s\S]*?\*\//gu, '');
 
 /** `pop-touch-${grade}` 처럼 조각으로 만들어지는 이름. 이 파일이 등급을 붙여 완성한다. */
 const TOUCH_MODULE = 'patterns/pop-touch.ts';
@@ -90,8 +101,8 @@ const isDefined = (name: string): boolean =>
  * 타입 검사도 테스트도 이것을 잡지 못한다 — CSS 는 컴파일되지 않고, `css: false` 설정이라
  * 스타일이 렌더 테스트에 도달하지도 않는다. 그래서 **원문을 직접 센다.**
  */
-describe('app.css 구조', () => {
-  const source = readFileSync(join(WEB_ROOT, 'app/app.css'), 'utf8');
+describe.each(POP_CSS_FILES)('%s 구조', (relative) => {
+  const source = readCss(relative);
 
   it('중괄호 짝이 맞는다 — 하나만 어긋나도 그 뒤 규칙이 통째로 죽는다', () => {
     expect(source.split('{').length).toBe(source.split('}').length);

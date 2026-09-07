@@ -4,6 +4,8 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
+import { usePopIdentity } from '../../patterns/pop-identity';
 import { SaveErrorBanner } from '../../patterns/master';
 import { canIssue, issueGuard } from './issue-target';
 import { hasIssuedTarget, hasUnknownTarget, rowId, toLineRows } from './line-rows';
@@ -47,6 +49,7 @@ export const GoodsIssueQrScreen = () => {
   const { baseUrl } = useApiClient();
 
   const entry = useGoodsIssueQrEntry();
+  const identity = usePopIdentity();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [reasonCode, setReasonCode] = useState('');
@@ -139,22 +142,32 @@ export const GoodsIssueQrScreen = () => {
       : `${baseUrl}/app/document-issues/${String(firstIssued.documentIssueLogId)}/rendition?format=png`;
 
   return (
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/* 맥락은 화면명 옆이다 — 오른쪽 끝은 사번·단말·프린터 같은 상태 자리다(스펙 §3 머리줄). */}
+        {goodsIssue.data === undefined ? null : (
+          <p className="pop-context">{`${t.entry.issueLabel} ${goodsIssue.data.goodsIssueNo}`}</p>
+        )}
         <div className="pop-context-right">
-          {goodsIssue.data !== undefined && (
-            <span>{`${t.entry.issueLabel} ${goodsIssue.data.goodsIssueNo}`}</span>
-          )}
-          {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
+          <PopWorkerTag workerNo={entry.workerNo} />
           <PrinterChip
             isLoading={printers.isPending}
             isError={printers.isError}
             statusMessage={defaultPrinter(printers.data)?.statusMessage ?? null}
             hasPrinter={(printers.data?.length ?? 0) > 0}
           />
+          {/*
+           * 단말도 상시 보인다(스펙 §3 머리줄 `POP-W1 ●`). 인쇄가 안 될 때 「이 단말이 무엇인가」가
+           * 프린터 상태와 함께 있어야 현장이 어느 자리를 봐야 하는지 안다.
+           */}
+          <Chip status={identity.terminalId === null ? 'warning' : 'info'}>
+            {`${t.device.terminalLabel} ${
+              identity.terminalId === null ? t.device.terminalUnknown : String(identity.terminalId)
+            }`}
+          </Chip>
         </div>
       </header>
 
@@ -180,6 +193,20 @@ export const GoodsIssueQrScreen = () => {
         </div>
       ) : (
         <SaveErrorBanner error={write.error} />
+      )}
+
+      {/*
+       * ⚠ **인쇄 통로가 없는 것은 배너로 먼저 말한다.** 액션바 «아래»에 작은 글로 달아 두었는데,
+       *    설계 §3 의 세로 예산은 액션바에서 끝나(768 슬랙 0) 그 줄이 화면 밖으로 밀렸다 —
+       *    단말에서는 없는 문구가 된다.
+       *
+       * ⛔ 프린터가 0건인 것과 뭉치지 않는다 — 전자는 이 셸에서 찍을 수 없다는 뜻이고 후자는
+       *    이 단말에 등록된 프린터가 없다는 뜻이라, 사용자가 손댈 곳이 다르다.
+       */}
+      {!hasPrintBridge() && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.printer.noShell}</AlertBanner>
+        </div>
       )}
 
       {issued !== null && (
@@ -226,7 +253,12 @@ export const GoodsIssueQrScreen = () => {
         />
       </div>
 
-      <div className="pop-actions">
+      {/*
+       * 액션바 — **화면 바닥의 띠**(설계 §3 · 88). 다른 POP 화면과 같은 이름(`pop-action-bar`)
+       * 을 쓴다: `.pop-actions` 는 단추만 오른쪽으로 미는 줄이라 띠의 높이·경계선을 갖지 않아,
+       * 이 화면만 바닥이 없는 것처럼 떠 있었다.
+       */}
+      <div className="pop-action-bar pop-giqr-actions">
         {guard.kind !== 'ready' && <p className="field-note">{guardNote(guard.kind)}</p>}
         <Button
           variant="filled"
@@ -240,14 +272,6 @@ export const GoodsIssueQrScreen = () => {
         </Button>
       </div>
 
-      {/* 「왜 전량인데도 찍나」에 답할 근거를 화면에 남긴다(스펙 §5-3 · G-5). */}
-      <p className="field-note">{t.alwaysIssueNote}</p>
-      {/*
-       * 인쇄 통로가 없는 것과 프린터가 0건인 것은 **다른 사정**이다 — 전자는 이 셸에서 찍을 수
-       * 없다는 뜻이고 후자는 이 단말에 등록된 프린터가 없다는 뜻이다. 한 문구로 뭉치면
-       * 사용자가 무엇을 고쳐야 하는지 알 수 없다.
-       */}
-      {!hasPrintBridge() && <p className="field-note">{t.printer.noShell}</p>}
     </main>
   );
 };

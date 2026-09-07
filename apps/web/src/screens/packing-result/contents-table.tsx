@@ -55,13 +55,24 @@ export interface ContentsTableProps {
 const renderQty = (value: number): ReactNode => String(value);
 
 export const ContentsTable = ({ lines, onRemove }: ContentsTableProps) => {
+  /* 값은 열 가운데에 선다 — 다른 POP 목록과 같다(사용자 지시 2026-09-07 · 전례 `P-04-02`). */
   const columns: Column<PackedLine>[] = [
-    { key: 'itemCode', header: t.contents.columns.itemCode, render: (row) => row.itemCode },
-    { key: 'lotNo', header: t.contents.columns.lotNo, render: (row) => segmentLotNo(row.lotNo) },
+    {
+      key: 'itemCode',
+      header: t.contents.columns.itemCode,
+      align: 'center',
+      render: (row) => row.itemCode,
+    },
+    {
+      key: 'lotNo',
+      header: t.contents.columns.lotNo,
+      align: 'center',
+      render: (row) => segmentLotNo(row.lotNo),
+    },
     {
       key: 'qty',
       header: t.contents.columns.qty,
-      align: 'end',
+      align: 'center',
       render: (row) => renderQty(row.qty),
     },
     {

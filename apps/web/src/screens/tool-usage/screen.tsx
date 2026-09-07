@@ -1,14 +1,6 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  Chip,
-  NumberPad,
-  Progress,
-  Switch,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, Progress, Switch, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { NumericKeypad } from '@omf-mes/ui';
 import { useId, useRef, useState, type FormEvent } from 'react';
 
 import { toApiError } from '../../patterns/request';
@@ -166,6 +158,7 @@ export const ToolUsageScreen = () => {
   };
 
   const blockReason = saveDisabledReason(guard);
+  const isSaveOpen = canSave(guard);
 
   /**
    * 지금 화면이 아는 서버 누계. **저장 응답이 조회 응답보다 새롭다.**
@@ -283,15 +276,20 @@ export const ToolUsageScreen = () => {
   };
 
   return (
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/*
+         * ⭐ **맥락은 왼쪽, 상태는 오른쪽이다**(스펙 §3 머리줄). 「무엇을 보고 있는가」(작업지시)와
+         * 「지금 어떤 상태인가」(사번·연결)는 다른 축이고, 설계 도면은 POP 전 화면에서 둘을
+         * 화면명 쪽과 오른쪽 끝으로 갈라 그린다. 섞으면 화면마다 눈이 다른 곳을 본다.
+         */}
+        {entry.workOrderId === null ? null : (
+          <p className="pop-context">{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</p>
+        )}
         <div className="pop-context-right">
-          {entry.workOrderId !== null && (
-            <span>{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</span>
-          )}
           {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
           {/* 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다(모바일 셸 전례). */}
           <Chip status={isOnline ? 'success' : 'warning'}>
@@ -321,14 +319,13 @@ export const ToolUsageScreen = () => {
         )}
 
         {/* ① 툴 스캔 — QR 이 실패해도 코드를 손으로 칠 수 있어야 한다(스펙 §6-1 · D-3). */}
-        <Card bordered className="pop-section" aria-label={t.scan.sectionLabel}>
+        <Card bordered className="pop-section pop-fixed" aria-label={t.scan.sectionLabel}>
           <Card.Body>
             <form className="scan-row" onSubmit={submitCode}>
               <TextField
                 ref={scanRef}
                 label={t.scan.inputLabel}
                 placeholder={t.scan.placeholder}
-                helperText={isManualEntry ? t.scan.manualHint : undefined}
                 size="xl"
                 fullWidth
                 autoFocus
@@ -346,6 +343,14 @@ export const ToolUsageScreen = () => {
                 {t.scan.manualEntry}
               </Button>
             </form>
+
+            {/*
+             * ⚠ **안내를 칸 «안»에 넣지 않는다.** `helperText` 는 칸 아래에 붙어 칸 덩어리를
+             * 키우는데, 스캔 줄은 아래끝을 맞춰 세운다(`.scan-row`) — 덩어리가 커지면 옆의
+             * [ 코드 직접 입력 ]이 칸보다 한 층 «내려가» 어긋난다(실측 · 사용자 지적).
+             * 줄 아래에 따로 세우면 두 조각의 높이가 서로를 흔들지 않는다.
+             */}
+            {isManualEntry && <p className="field-note">{t.scan.manualHint}</p>}
 
             {submittedCode !== '' && !lookup.isPending && tool === null && (
               <p className="field-note">{t.scan.notFound}</p>
@@ -365,190 +370,230 @@ export const ToolUsageScreen = () => {
           </Card.Body>
         </Card>
 
-        {/* ② 타발수 입력 — 타발수 칸은 늘 서고, 환산은 그 아래에서 값을 만든다(스펙 §3). */}
-        <Card bordered className="pop-section" aria-label={t.shot.sectionLabel}>
-          <Card.Body>
-            <div className="pop-shot">
-              <div className="pop-shot-fields">
-                {/*
-                 * ⭐ **환산을 켜면 이 칸은 «결과»를 보인다.** 사람이 고칠 수 있는 자리가 둘이면
-                 * 어느 값이 나가는지 알 수 없다 — 환산 중에는 읽기 전용이다.
-                 */}
-                <TextField
-                  id={shotInputId}
-                  label={t.shot.inputLabel}
-                  size="xl"
-                  fullWidth
-                  inputMode="numeric"
-                  readOnly={isConverted}
-                  value={
-                    isConverted
-                      ? increment === null
-                        ? ''
-                        : formatShots(increment)
-                      : draft.shotCount
-                  }
-                  error={write.fieldErrors.shotCount}
-                  /* 단위는 칸 오른쪽 안에 붙인다 — 스펙 §3 의 「타발수 [1,250] 회」 */
-                  trailingIcon={t.shot.unit}
-                  onChange={(event) => {
-                    changeDraft({ shotCount: digitsOnly(event.target.value) });
-                  }}
-                />
-
-                <Switch
-                  label={t.shot.convertedLabel}
-                  checked={isConverted}
-                  disabled={conversion.kind !== 'ready'}
-                  onChange={(event) => {
-                    changeDraft({
-                      method: event.target.checked
-                        ? COLLECTION_METHOD.converted
-                        : COLLECTION_METHOD.direct,
-                      shotCount: '',
-                      baseQty: '',
-                    });
-                  }}
-                />
-
-                {conversion.kind === 'loading' && (
-                  <p className="field-note">{t.shot.conversionLoading}</p>
-                )}
-                {conversion.kind === 'off' && <p className="field-note">{t.shot.conversionOff}</p>}
-                {conversion.kind === 'unset' && (
-                  <p className="field-note">{t.shot.conversionUnavailable}</p>
-                )}
-
-                {isConverted && conversion.kind === 'ready' && (
-                  <div className="pop-conversion">
-                    <TextField
-                      label={t.shot.baseQtyLabel}
-                      size="xl"
-                      inputMode="decimal"
-                      value={draft.baseQty}
-                      error={write.fieldErrors.conversionBaseQty}
-                      onChange={(event) => {
-                        changeDraft({ baseQty: decimalOnly(event.target.value) });
-                      }}
-                    />
-                    <p className="field-note">
-                      {t.shot.convertedExpression(
-                        draft.baseQty === '' ? '—' : draft.baseQty,
-                        String(conversion.ratio),
-                        increment === null ? '—' : formatShots(increment),
-                      )}
-                    </p>
-                    <p className="field-note">{t.shot.roundedNote}</p>
-                  </div>
-                )}
-              </div>
-
-              <NumberPad
-                aria-label={t.shot.keypadLabel}
-                maxLength={SHOT_MAX_LENGTH}
-                allowDecimal={isConverted}
-                value={isConverted ? draft.baseQty : draft.shotCount}
-                onChange={(value) => {
-                  changeDraft(isConverted ? { baseQty: value } : { shotCount: value });
-                }}
-              />
-            </div>
-          </Card.Body>
-        </Card>
-
-        {/* ③ 누계 — 저장 전에 「저장하면 얼마가 남는가」를 보인다(스펙 §3 · §3-2). */}
-        <Card bordered className="pop-section" aria-label={t.cumulative.sectionLabel}>
-          <Card.Body>
-            <dl className="pop-figures">
-              <div>
-                <dt>{t.cumulative.guaranteed}</dt>
-                <dd>{guaranteedText}</dd>
-              </div>
-              <div>
-                <dt>{t.cumulative.current}</dt>
-                <dd>
-                  {usableTool === null ? '—' : `${formatShots(serverShotCount)} ${t.shot.unit}`}
-                  {usableTool !== null && asOfText !== null && (
-                    <span className="pop-figure-note">{asOfText}</span>
-                  )}
-                </dd>
-              </div>
-              <div>
-                <dt>{t.cumulative.increment}</dt>
-                <dd>{increment === null ? '—' : `+${formatShots(increment)} ${t.shot.unit}`}</dd>
-              </div>
-
-              {/* 구분선 — 위 셋은 「지금 사실」이고 아래 둘은 「저장하면 그렇게 된다」다. */}
-              <div className="pop-figures-rule" />
-
-              <div>
-                <dt>{t.cumulative.projected}</dt>
-                <dd>
-                  {usableTool === null
-                    ? '—'
-                    : figureText(
-                        projectedTotal(figures),
-                        t.cumulative.offlineProjection,
-                        t.cumulative.guaranteedMissing,
-                      )}
-                </dd>
-              </div>
-              <div>
-                <dt>{t.cumulative.available}</dt>
-                <dd className="pop-figure-usage">
-                  <span>
-                    {usableTool === null
-                      ? '—'
-                      : figureText(
-                          availableShots(figures),
-                          t.cumulative.offlineProjection,
-                          t.cumulative.guaranteedMissing,
-                        )}
-                  </span>
+        {/*
+         * ⛔ **스펙 §3-1 의 세로 예산이 터치 규격과 동시에 서지 않는다.**
+         *
+         * §3-1 은 ① 96 · ② 200 · ③ 200 · ④ 88 을 세로로 쌓아 슬랙 0 이라 적었는데, 같은 절이
+         * ② 의 숫자 키패드를 **핵심 등급 64~72px** 로 못박았다. 4행 키패드는 그것만으로 264px
+         * 이라(실측 · 키 60×80) ② 가 200 에 들어가지 못한다. 넷을 그대로 쌓으면 **네 구획이
+         * 모두 잘린다** — 실측으로 키패드는 첫 줄(1·2·3)만, 누계는 두 줄만 보였다.
+         *
+         * ⛔ 키를 줄여 맞추지 않는다(터치 하한을 깨뜨린다) · ⛔ 구획을 접거나 스크롤시키지
+         * 않는다(§3-1 E-4 가 금지한다) · ⛔ 잘린 채 두지 않는다.
+         *
+         * **읽는 차례를 지키면서 가로로 편다** — ① 은 그대로 위에 두고, ② 왼쪽 · ③④ 오른쪽이다.
+         * 도면의 위아래가 왼쪽·오른쪽이 될 뿐 순서와 내용은 그대로다. 설계 회신이 오면 그때
+         * 정한 대로 되돌린다(요청서 2026-09-07-설계개선-P0501세로예산).
+         */}
+        <div className="pop-panes tool-usage-body">
+          {/* ② 타발수 입력 — 타발수 칸은 늘 서고, 환산은 그 아래에서 값을 만든다(스펙 §3). */}
+          <Card bordered className="pop-section" aria-label={t.shot.sectionLabel}>
+            <Card.Body>
+              <div className="pop-shot">
+                <div className="pop-shot-fields">
                   {/*
-                   * ⛔ **적정타수가 없거나 연결이 끊기면 막대를 그리지 않는다**(스펙 §5-3 · §6-2).
-                   * 0% 로 그리면 「다 썼다」로, 캐시 값으로 그리면 실제보다 여유 있게 읽힌다.
+                   * ⭐ **환산을 켜면 이 칸은 «결과»를 보인다.** 사람이 고칠 수 있는 자리가 둘이면
+                   * 어느 값이 나가는지 알 수 없다 — 환산 중에는 읽기 전용이다.
                    */}
-                  {usagePercentFigure.kind === 'value' && (
-                    <span className="pop-usage-label">{t.cumulative.usageBarLabel}</span>
+                  <TextField
+                    id={shotInputId}
+                    label={t.shot.inputLabel}
+                    size="xl"
+                    fullWidth
+                    inputMode="numeric"
+                    readOnly={isConverted}
+                    value={
+                      isConverted
+                        ? increment === null
+                          ? ''
+                          : formatShots(increment)
+                        : draft.shotCount
+                    }
+                    error={write.fieldErrors.shotCount}
+                    /* 단위는 칸 오른쪽 안에 붙인다 — 스펙 §3 의 「타발수 [1,250] 회」 */
+                    trailingIcon={t.shot.unit}
+                    onChange={(event) => {
+                      changeDraft({ shotCount: digitsOnly(event.target.value) });
+                    }}
+                  />
+
+                  <Switch
+                    label={t.shot.convertedLabel}
+                    checked={isConverted}
+                    disabled={conversion.kind !== 'ready'}
+                    onChange={(event) => {
+                      changeDraft({
+                        method: event.target.checked
+                          ? COLLECTION_METHOD.converted
+                          : COLLECTION_METHOD.direct,
+                        shotCount: '',
+                        baseQty: '',
+                      });
+                    }}
+                  />
+
+                  {conversion.kind === 'loading' && (
+                    <p className="field-note">{t.shot.conversionLoading}</p>
                   )}
-                  {usagePercentFigure.kind === 'value' && (
-                    <Progress
-                      label={t.cumulative.usageLabel}
-                      value={usagePercentFigure.value}
-                      showValue
-                      tone={isOver ? 'error' : 'primary'}
-                    />
+                  {conversion.kind === 'off' && (
+                    <p className="field-note">{t.shot.conversionOff}</p>
                   )}
-                </dd>
+                  {conversion.kind === 'unset' && (
+                    <p className="field-note">{t.shot.conversionUnavailable}</p>
+                  )}
+
+                  {isConverted && conversion.kind === 'ready' && (
+                    <div className="pop-conversion">
+                      <TextField
+                        label={t.shot.baseQtyLabel}
+                        size="xl"
+                        inputMode="decimal"
+                        value={draft.baseQty}
+                        error={write.fieldErrors.conversionBaseQty}
+                        onChange={(event) => {
+                          changeDraft({ baseQty: decimalOnly(event.target.value) });
+                        }}
+                      />
+                      <p className="field-note">
+                        {t.shot.convertedExpression(
+                          draft.baseQty === '' ? '—' : draft.baseQty,
+                          String(conversion.ratio),
+                          increment === null ? '—' : formatShots(increment),
+                        )}
+                      </p>
+                      <p className="field-note">{t.shot.roundedNote}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/*
+                 * ⭐ **POP 이 공유하는 키패드를 쓴다**(`@omf-mes/ui`). DS `NumberPad` 는 «전체
+                 * 잠금»만 있어 키마다 조건을 걸 수 없다 — 타발수가 비었는데도 [ C ]·[ ⌫ ]가
+                 * 눌렸다(사용자 지적). 작업실적 등록·인식표 발행이 같은 이유로 먼저 갈아탔고,
+                 * **같은 부품을 써야 POP 안에서 같게 동작한다.**
+                 *
+                 * ⚠ 모양과 자리는 그대로다 — 마지막 줄 [ C ] · [ 0 ] · [ ⌫ ](스펙 §3).
+                 */}
+                <NumericKeypad
+                  className="tool-usage-pad"
+                  label={t.shot.keypadLabel}
+                  value={isConverted ? draft.baseQty : draft.shotCount}
+                  maxLength={SHOT_MAX_LENGTH}
+                  /* 스펙 §3-1 — 키는 64px 요구이고 64와 72 사이에 단이 없어 `2xl` 로 올린다. */
+                  keySize="2xl"
+                  /* 환산 기준 수량만 소수를 받는다 — 타발수는 정수다(스펙 §4-A `bigint`). */
+                  allowDecimal={isConverted}
+                  decimalLabel={t.shot.decimalKey}
+                  backspaceLabel={t.shot.backspace}
+                  backspaceGlyph="⌫"
+                  clearLabel={t.shot.clearGlyph}
+                  onChange={(value) => {
+                    changeDraft(isConverted ? { baseQty: value } : { shotCount: value });
+                  }}
+                />
               </div>
-            </dl>
+            </Card.Body>
+          </Card>
 
-            {!isOnline && usableTool !== null && (
-              <p className="field-note">{t.cumulative.offlineBase}</p>
-            )}
-          </Card.Body>
-        </Card>
+          {/* ③④ 는 한 기둥으로 선다 — 누계를 보고 그 아래 안내를 읽는 차례가 도면과 같다. */}
+          <div className="tool-usage-side">
+            {/* ③ 누계 — 저장 전에 「저장하면 얼마가 남는가」를 보인다(스펙 §3 · §3-2). */}
+            <Card bordered className="pop-section" aria-label={t.cumulative.sectionLabel}>
+              <Card.Body>
+                <dl className="pop-figures">
+                  <div>
+                    <dt>{t.cumulative.guaranteed}</dt>
+                    <dd>{guaranteedText}</dd>
+                  </div>
+                  <div>
+                    <dt>{t.cumulative.current}</dt>
+                    <dd>
+                      {usableTool === null ? '—' : `${formatShots(serverShotCount)} ${t.shot.unit}`}
+                      {usableTool !== null && asOfText !== null && (
+                        <span className="pop-figure-note">{asOfText}</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{t.cumulative.increment}</dt>
+                    <dd>
+                      {increment === null ? '—' : `+${formatShots(increment)} ${t.shot.unit}`}
+                    </dd>
+                  </div>
 
-        {/* ④ 안내 — 누계를 서버가 더한다는 사실을 상시 밝힌다(스펙 §3-2). */}
-        <Card bordered className="pop-section pop-notice" aria-label={t.notice.sectionLabel}>
-          <Card.Body>{t.notice.serverAdds}</Card.Body>
-        </Card>
+                  {/* 구분선 — 위 셋은 「지금 사실」이고 아래 둘은 「저장하면 그렇게 된다」다. */}
+                  <div className="pop-figures-rule" />
+
+                  <div>
+                    <dt>{t.cumulative.projected}</dt>
+                    <dd>
+                      {usableTool === null
+                        ? '—'
+                        : figureText(
+                            projectedTotal(figures),
+                            t.cumulative.offlineProjection,
+                            t.cumulative.guaranteedMissing,
+                          )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{t.cumulative.available}</dt>
+                    <dd className="pop-figure-usage">
+                      <span>
+                        {usableTool === null
+                          ? '—'
+                          : figureText(
+                              availableShots(figures),
+                              t.cumulative.offlineProjection,
+                              t.cumulative.guaranteedMissing,
+                            )}
+                      </span>
+                      {/*
+                       * ⛔ **적정타수가 없거나 연결이 끊기면 막대를 그리지 않는다**(스펙 §5-3 · §6-2).
+                       * 0% 로 그리면 「다 썼다」로, 캐시 값으로 그리면 실제보다 여유 있게 읽힌다.
+                       */}
+                      {usagePercentFigure.kind === 'value' && (
+                        <span className="pop-usage-label">{t.cumulative.usageBarLabel}</span>
+                      )}
+                      {usagePercentFigure.kind === 'value' && (
+                        <Progress
+                          label={t.cumulative.usageLabel}
+                          value={usagePercentFigure.value}
+                          showValue
+                          tone={isOver ? 'error' : 'primary'}
+                        />
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+
+                {!isOnline && usableTool !== null && (
+                  <p className="field-note">{t.cumulative.offlineBase}</p>
+                )}
+              </Card.Body>
+            </Card>
+
+            {/* ④ 안내 — 누계를 서버가 더한다는 사실을 상시 밝힌다(스펙 §3-2). */}
+            <Card bordered className="pop-section pop-notice" aria-label={t.notice.sectionLabel}>
+              <Card.Body>{t.notice.serverAdds}</Card.Body>
+            </Card>
+          </div>
+        </div>
       </>
 
       <div className="pop-actions">
+        {/*
+         * ⚠ **막는 사유를 버튼 «아래»에 두지 않는다.** 공용 규칙이 액션 줄의 `.field-note` 를
+         * 한 줄 통째로 쓰게 해(`flex-basis: 100%`) 액션바가 88 에서 123 으로 늘어난다 —
+         * 세로 예산이 0 인 화면이라 그만큼이 본문에서 빠진다(실측). 같은 줄 왼쪽에 세운다.
+         */}
+        {blockReason !== undefined && <p className="field-note tool-usage-block">{blockReason}</p>}
         <Button variant="outlined" size="2xl" disabled={!hasInput(draft)} onClick={resetDraft}>
           {t.actions.reset}
         </Button>
-        <Button
-          size="2xl"
-          loading={write.isSaving}
-          disabled={blockReason !== undefined}
-          onClick={save}
-        >
+        <Button size="2xl" loading={write.isSaving} disabled={!isSaveOpen} onClick={save}>
           {t.actions.save}
         </Button>
-        {blockReason !== undefined && <p className="field-note">{blockReason}</p>}
       </div>
     </main>
   );

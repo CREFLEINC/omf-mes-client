@@ -14,7 +14,7 @@ import { ReceiptSummary } from './receipt-summary';
 import { useReferenceLabels } from './reference-labels';
 import { ReceiptTable } from './receipt-table';
 import { applyScan, EMPTY_SCAN_DRAFT, type ScanDraft, type ScanOutcome } from './scan';
-import { ScanField } from './scan-field';
+import { ScanField, type ScanOutcomeView } from './scan-field';
 import { useScanLookup } from './scan-queries';
 import { ScannedList } from './scanned-list';
 import { dropQty, EMPTY_QTY_DRAFTS, writeQty, type QtyDrafts } from './input-qty';
@@ -28,18 +28,28 @@ import { useTerminalGate } from './terminal-gating';
 const t = messages.materialInputScan;
 
 /** 스캔 한 번의 결과를 사람의 말로 옮긴다. 실패도 성공과 **같은 자리**에 선다. */
-const describeOutcome = (outcome: ScanOutcome): string => {
+/**
+ * 스캔 한 번의 결과 — **무게까지 함께 정한다.**
+ *
+ * ⭐ **성공과 실패가 같은 모양이면 실패를 놓친다.** 이 화면 사용자는 손과 눈이 자재에 가 있고
+ * 연달아 읽는다. 다섯 결과가 모두 같은 회색 한 줄이던 때는 「찾을 수 없습니다」가 「담았습니다」와
+ * 구분되지 않아 **담긴 줄 알고 넘어갈** 수 있었다 — 이 슬라이스가 다른 자리에서 계속 경계해 온
+ * 바로 그 형태다(`scan-field.tsx` 머리말 「읽었다고 믿고 넘어간다」).
+ */
+const describeOutcome = (outcome: ScanOutcome): ScanOutcomeView => {
   switch (outcome.kind) {
     case 'material':
-      return t.scan.outcomes.material(outcome.code, outcome.material.lotNo);
+      return { tone: 'success', text: t.scan.outcomes.material(outcome.material.lotNo) };
     case 'mold':
-      return t.scan.outcomes.mold(outcome.code, outcome.mold.moldCode);
+      return { tone: 'success', text: t.scan.outcomes.mold(outcome.mold.moldCode) };
+    /* 담기지 «않았다» — 실패는 아니지만 그냥 넘어가면 같은 것을 또 읽는다. */
     case 'duplicate':
-      return t.scan.outcomes.duplicate(outcome.code, outcome.lotNo);
+      return { tone: 'warning', text: t.scan.outcomes.duplicate(outcome.lotNo) };
     case 'ambiguous':
-      return t.scan.outcomes.ambiguous(outcome.count);
+      return { tone: 'warning', text: t.scan.outcomes.ambiguous(outcome.count) };
     case 'not-found':
-      return t.scan.outcomes.notFound(outcome.code);
+      /* 못 찾은 것만 코드를 담는다 — 오타 확인이 실제로 필요한 유일한 경우다. */
+      return { tone: 'error', text: t.scan.outcomes.notFound(outcome.code) };
   }
 };
 
@@ -78,6 +88,25 @@ export const MaterialInputScanScreen = () => {
   const { terminalId, processId, workerNo } = usePopIdentity();
 
   const titleId = useId();
+
+  /**
+   * 「계획 대비 수령」 도움말이 열려 있는가. **잠깐 보였다 사라진다** — 상시 문구에서 옮겨 온
+   * 말이라 자리를 계속 차지하면 옮긴 뜻이 없다. 다시 누르면 바로 닫힌다.
+   */
+  const [isReceiptHelpOpen, setReceiptHelpOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isReceiptHelpOpen) return undefined;
+
+    /* 읽고 손을 떼는 데 걸리는 시간. 더 짧으면 다 읽기 전에 사라진다. */
+    const timer = setTimeout(() => {
+      setReceiptHelpOpen(false);
+    }, 6000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isReceiptHelpOpen]);
 
   const receipt = useReceiptLines(workOrderId);
 
@@ -241,12 +270,25 @@ export const MaterialInputScanScreen = () => {
 
   const outcome = scan.data;
 
+  /*
+   * 끊긴 것과 조회가 실패한 것은 **작업자가 할 일이 다르다**(G-3). 앞은 기다려야 풀리고 뒤는
+   * 다시 읽으면 풀린다 — 합치면 끊긴 단말에서 되읽기를 반복한다.
+   */
+  const outcomeView: ScanOutcomeView | null = scan.isError
+    ? {
+        tone: 'error',
+        text: outbox.isOnline ? t.scan.outcomes.failed : t.scan.outcomes.offline,
+      }
+    : outcome === undefined
+      ? null
+      : describeOutcome(outcome);
+
   return (
     /*
      * **표제가 본문의 이름이 된다.** 셸이 있는 화면은 `AppShell`이 본문 이름을 주지만
      * 이 화면에는 줄 사람이 없다 — 이름 없는 랜드마크로 남으면 무엇인지 알 수 없다.
      */
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
@@ -274,11 +316,11 @@ export const MaterialInputScanScreen = () => {
            * 결정의 전제가 이것이라, 없으면 서버에 도달하지 않은 사실을 알 방법이 사라진다.
            * 연결 상태도 함께 낸다 — 끊긴 것과 밀리는 것은 다르다.
            */}
-          <Chip variant="status" size="sm" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
+          <Chip variant="status" size="md" status={outbox.pendingCount > 0 ? 'warning' : 'success'}>
             {outbox.pendingCount > 0 ? t.header.unsynced(outbox.pendingCount) : t.header.synced}
           </Chip>
           {!outbox.isOnline && (
-            <Chip variant="status" size="sm" status="error">
+            <Chip variant="status" size="md" status="error">
               {t.header.offline}
             </Chip>
           )}
@@ -304,7 +346,54 @@ export const MaterialInputScanScreen = () => {
 
       <div className="pop-panes">
         <section className="pane" aria-label={t.panes.receipt}>
-          <h2 className="pane-title">{t.panes.receipt}</h2>
+          {/*
+           * 구획 이름 + 도움말. **「부족·미수령이어도 투입할 수 있다」는 상시 문구였다.**
+           *
+           * ⚠ 그 말은 스펙에 없다 — §3 도면이 표 아래에 그린 것은 「⚠ MAT-B 20 부족」처럼
+           *   «어느 품목이 얼마나» 모자라는지뿐이고, 「막지 않는다」(§5)는 규칙이지 화면 문구가
+           *   아니다. 그래서 자리는 우리가 정한다.
+           *
+           * ⭐ **필요할 때만 보이게 한다.** ⚠·⛔ 가 붙은 줄을 보고 「그럼 못 하는 건가」를
+           *   의심한 사람만 눌러 확인하면 되는 말인데, 상시로 두면 매번 읽히면서 정작 급한
+           *   「무엇이 모자라나」와 자리를 다툰다.
+           */}
+          <div className="receipt-pane-head">
+            <h2 className="pane-title">{t.panes.receipt}</h2>
+
+            {/*
+             * ⛔ **DS `Tooltip` 을 쓰지 않는다.** 그쪽은 hover·focus 로 «떠 있는 판»을 띄우는데,
+             *   단말에는 hover 가 없고 실측에서 그 판이 구획 위를 덮은 채 문구가 보이지 않았다.
+             *   여기서 필요한 것은 떠 있는 판이 아니라 **잠깐 보였다 사라지는 한 줄**이다.
+             *
+             * ⚠ **누르는 자리는 56 을 지키고 «보이는» 표식만 줄인다** — 장갑 낀 손이 누르는
+             *   자리라 크기를 줄이면 못 누른다. 표식이 커 보이는 문제는 그림으로 푼다.
+             */}
+            {/*
+             * 말풍선은 **누른 자리에 매달린다** — 그래서 버튼과 한 상자 안에 둔다. 구획 밖에
+             * 띄우면 무엇에 대한 설명인지가 자리로 드러나지 않는다.
+             */}
+            <span className="receipt-pane-help-anchor">
+              <button
+                type="button"
+                className="receipt-pane-help"
+                aria-expanded={isReceiptHelpOpen}
+                aria-label={t.notes.shortAllowedLabel}
+                onClick={() => {
+                  setReceiptHelpOpen((open) => !open);
+                }}
+              >
+                <span aria-hidden="true" className="receipt-pane-help__mark">
+                  ?
+                </span>
+              </button>
+
+              {isReceiptHelpOpen && (
+                <span className="receipt-pane-help-bubble" role="status">
+                  {t.notes.shortAllowed}
+                </span>
+              )}
+            </span>
+          </div>
           {!receipt.isError && (
             <>
               <ReceiptTable
@@ -318,28 +407,19 @@ export const MaterialInputScanScreen = () => {
           )}
         </section>
 
-        <section className="pane" aria-label={t.panes.scan}>
+        <section className="pane scan-pane" aria-label={t.panes.scan}>
           <h2 className="pane-title">{t.panes.scan}</h2>
 
-          <ScanField isScanning={scan.isPending} onScan={handleScan} />
-
-          {/*
-           * 스캔 결과는 **한 자리에서만** 말한다. `role="status"`라 화면을 보지 않는 작업자도
-           * 읽힌 결과를 듣는다 — 이 화면의 사용자는 손과 눈이 자재에 가 있다.
-           */}
-          <p className="scan-outcome" role="status">
-            {scan.isError
-              ? /*
-                 * 끊긴 것과 조회가 실패한 것은 **작업자가 할 일이 다르다**(G-3). 앞은 기다려야
-                 * 풀리고 뒤는 다시 읽으면 풀린다 — 합치면 끊긴 단말에서 되읽기를 반복한다.
-                 */
-                outbox.isOnline
-                ? t.scan.outcomes.failed
-                : t.scan.outcomes.offline
-              : outcome === undefined
-                ? ''
-                : describeOutcome(outcome)}
-          </p>
+          <ScanField
+            isScanning={scan.isPending}
+            onScan={handleScan}
+            /*
+             * 스캔 결과는 **한 자리에서만** 말하고, 그 자리는 **읽는 칸 바로 아래**다. 한때
+             * 대체 경로 안내 아래에 서 있었는데(칸에서 두 블록 떨어진 자리) 무엇에 대한 답인지가
+             * 자리로 드러나지 않았다.
+             */
+            outcome={outcomeView}
+          />
 
           <ScannedList
             draft={draft}

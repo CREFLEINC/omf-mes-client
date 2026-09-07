@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
@@ -89,6 +89,25 @@ const routes = (options: Options): StubRoute[] => [
         ],
       });
     },
+  },
+  {
+    /* 머리줄이 쓰는 작업지시 한 건 — 번호·품목·공정. */
+    match: (request) => /^\/production\/work-orders\/\d+$/.test(pathOf(request)),
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'SYN-WO-0013',
+        productionPlanId: 1,
+        routingOperationId: 1,
+        routingOperationName: '합성 사출',
+        itemId: 1,
+        itemCode: 'SYN-ABC-123',
+        orderQty: 500,
+        uomId: 11,
+        workOrderTypeCode: 'NORMAL',
+        statusCode: 'RELEASED',
+        priorityNo: 1,
+      }),
   },
   {
     match: (request) => pathOf(request) === '/mdm/code-values',
@@ -557,11 +576,20 @@ describe('ProductionLotCompleteScreen — 목록', () => {
     expect(screen.queryByText(t.lotList.slotNotice(0))).not.toBeInTheDocument();
   });
 
-  /** ⚠ 목록 조회에 진척 질의가 없다 — 비워 두고 사유를 말한다(`omf-mes#399` 3번). */
-  it('목록의 양품 열은 비우고 사유를 말한다', async () => {
+  /**
+   * ⚠ 목록 조회에 진척 질의가 없다 — 「—」로 비운다(`omf-mes#399` 3번).
+   *
+   * ⛔ **사유를 문단으로 덧붙이지 않는다** — 스펙 §3·§7 에 없는 안내다(사용자 지시 2026-09-07).
+   */
+  it('목록의 양품 열은 「—」로 비우고 안내 문단을 두지 않는다', async () => {
     renderScreen();
 
-    expect(await screen.findByText(t.lotList.goodQtyPending)).toBeInTheDocument();
+    const row = (
+      await screen.findByRole('button', { name: `${LOT_NO} ${t.lotList.select}` })
+    ).closest('tr');
+
+    expect(within(row as HTMLElement).getByText(t.lotList.goodQtyPlaceholder)).toBeInTheDocument();
+    expect(screen.queryByText(/목록에서는 양품 수를 표시할 수 없습니다/)).not.toBeInTheDocument();
   });
 
   it('완료되지 않은 LOT 만 조회한다', async () => {
@@ -599,5 +627,87 @@ describe('ProductionLotCompleteScreen — 목록', () => {
     /* ⛔ 값 목록이 확정되지 않은 축을 얹으면 목록이 조용히 빈다 */
     expect(seen[0]).not.toContain('statusCode');
     expect(seen[0]).not.toContain('lotTypeCode');
+  });
+});
+
+describe('ProductionLotCompleteScreen — 스펙 §3 의 머리줄과 상세', () => {
+  /*
+   * ⭐ **머리줄은 값이다** — 스펙 §3 의 「`WO-…013 · ABC-123 · 사출`」.
+   * ⛔ 주소가 주는 `workOrderId`(숫자)를 그대로 그리면 작업자가 손에 든 지시서와 맞출 수 없다.
+   */
+  it('머리줄이 작업지시 번호·품목·공정을 값으로 잇는다', async () => {
+    const { container } = renderScreen({});
+
+    const header = container.querySelector('.pop-header') as HTMLElement;
+
+    await waitFor(() => {
+      expect(header).toHaveTextContent('SYN-WO-0013 · SYN-ABC-123 · 합성 사출');
+    });
+    /* ⛔ 식별자 숫자가 새어 나오지 않는다. */
+    expect(header).not.toHaveTextContent(String(WORK_ORDER_ID));
+  });
+
+  /*
+   * ⭐ **연결 상태를 상시 보인다** — 스펙 §3 머리줄의 `●`. 끊긴 것을 모르면 목록이 비었을 때
+   *    「완료할 LOT 이 없다」로 읽는다.
+   */
+  it('머리줄에 연결 상태가 선다', async () => {
+    const { container } = renderScreen({});
+    const header = container.querySelector('.pop-header') as HTMLElement;
+
+    await waitFor(() => {
+      expect(header).toHaveTextContent(messages.common.connection.online);
+    });
+  });
+
+  /*
+   * ⭐ **오른쪽 끝의 차례가 다른 POP 화면과 같다** — 사번 · 연결 · 단말
+   *    (사용자 지시 2026-09-07 「다른 화면이랑 맞춰라」).
+   *
+   * 한 사람이 화면을 옮겨 다니며 쓰므로, 같은 값이 화면마다 다른 자리에 있으면 그때마다
+   * 눈이 다시 찾는다. **단말이 맨 끝**인 것이 자재LOT 라벨·인식표 발행 화면과 같다.
+   */
+  it('머리줄 오른쪽이 사번 · 연결 · 단말 차례로 선다', async () => {
+    const { container } = renderScreen({});
+    const right = container.querySelector('.pop-context-right') as HTMLElement;
+
+    await waitFor(() => {
+      expect(right).toHaveTextContent(messages.common.connection.online);
+    });
+
+    const order = [...right.children].map((child) => child.textContent ?? '');
+
+    expect(order[0]).toContain(WORKER_NO);
+    expect(order[1]).toBe(messages.common.connection.online);
+    expect(order[order.length - 1]).toContain(t.device.terminalLabel);
+  });
+
+  /*
+   * ⭐ **구획의 제목이 곧 LOT 번호다** — 스펙 §3 이 이 자리에 이름표가 아니라 번호 자체를
+   *    두었다(《LOT-2026-0804-0031》). 전례는 긴급 W/O 현장(`P-02-12`)의 상세 구획.
+   */
+  it('고른 LOT 의 번호가 상세 구획의 제목이 된다', async () => {
+    const user = userEvent.setup();
+    renderScreen({});
+
+    await selectLot(user);
+
+    expect(await screen.findByRole('heading', { name: LOT_NO })).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **스펙에 없는 줄을 두지 않는다.** §3 우단은 목표 양품 · 누적 양품 · 달성률 셋이고
+   *    「차이」는 그리지 않는다 — 달성률이 이미 그 관계를 말한다. 「되돌릴 수 없습니다」도
+   *    도면에 없다(두 버튼을 나눈 것이 R71 이 요구한 «명시»다).
+   */
+  it('차이 줄과 되돌림 경고를 두지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({});
+
+    await selectLot(user);
+    await screen.findByRole('heading', { name: LOT_NO });
+
+    expect(screen.queryByText(/되돌릴 수 없/u)).not.toBeInTheDocument();
+    expect(screen.queryByText('차이')).not.toBeInTheDocument();
   });
 });

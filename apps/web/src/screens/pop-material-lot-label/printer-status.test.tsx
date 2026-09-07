@@ -40,13 +40,14 @@ describe('PrinterStatusIndicator', () => {
   it('서버가 준 상태 설명을 그대로 쓴다 — 화면이 상태 값으로 문구를 조립하지 않는다', () => {
     renderIndicator({ printer: printer('READY', '용지 부족') });
 
-    expect(screen.getByText('용지 부족')).toBeInTheDocument();
+    // 이름과 상태가 칩 하나에 든다 — 다른 POP 화면과 같은 모양이다.
+    expect(screen.getByText(/용지 부족/)).toBeInTheDocument();
   });
 
   it('설명이 없으면 없다고 말한다 — 상태 값을 한국어로 옮기지 않는다', () => {
     renderIndicator({ printer: printer('OFFLINE', null) });
 
-    expect(screen.getByText('상태 설명이 없습니다.')).toBeInTheDocument();
+    expect(screen.getByText(/상태 설명이 없습니다\./)).toBeInTheDocument();
   });
 
   it('프린터가 없는 것과 상태를 확인하지 못한 것을 다른 문구로 낸다', () => {

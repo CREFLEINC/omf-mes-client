@@ -1,9 +1,11 @@
-import { AlertBanner, Button, Card, Chip, Dialog, NumberPad, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, Dialog, TextField } from '@crefle/web-ui';
+import { NumericKeypad } from '@omf-mes/ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
+import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { SaveErrorBanner } from '../../patterns/master';
 import { canWrite, useResultEntry } from './entry-context';
@@ -48,21 +50,31 @@ const gateMessage = (verdict: GateVerdict): string | null => {
   }
 };
 
+/**
+ * 저장이 잠긴 사유 중 **화면이 «말하는» 것만** 고른다.
+ *
+ * ⛔ **스펙에 없는 안내문을 새로 만들지 않는다.** §5-1 은 저장의 활성 조건을 적고, §6 은
+ * 사유를 «표시하라»고 한 자리를 딱 하나 지정한다 — `can_input_result` 없음이다. 나머지
+ * (대상 LOT 미선택 · 수량 0 · 빈 수량)에 대해 스펙이 정한 처리는 **「저장 버튼 비활성」뿐**이고,
+ * 우리가 덧붙인 문장이 액션바에 상주하면서 바를 88 에서 123px 로 밀어 올려 본문을 눌렀다
+ * (실측 · 사용자 지적).
+ *
+ * 남기는 둘은 **화면이 아예 성립하지 않는** 경우다 — 작업지시나 사번이 없으면 무엇을 눌러도
+ * 저장이 일어나지 않는데 그 사실을 말하는 자리가 화면에 달리 없다.
+ */
 const blockMessage = (reason: BlockReason): string | null => {
   switch (reason) {
     case 'noWorkOrder':
       return t.entry.missingWorkOrder;
     case 'noWorker':
       return t.entry.missingWorker;
-    case 'noLot':
-      return t.lot.unselected;
-    case 'emptyQty':
-      return t.quantity.empty;
-    case 'zeroQty':
-      return t.quantity.zero;
     /* 게이팅·검사 선행은 각자 자기 배너가 이미 말한다 — 두 번 말하지 않는다. */
     case 'gate':
     case 'pendingPqc':
+    /* 스펙이 「비활성」만 정한 자리 — 버튼이 잠긴 것으로 말한다(§5-1·§6). */
+    case 'noLot':
+    case 'emptyQty':
+    case 'zeroQty':
       return null;
   }
 };
@@ -191,8 +203,23 @@ export const ProductionResultScreen = () => {
     commit();
   };
 
+  /**
+   * 취소 — **화면이 들고 있는 것을 전부 되돌린다**(사용자 결정 2026-09-07).
+   *
+   * ⚠ **스펙이 정하지 않은 자리다.** §5-1 은 취소의 크기·배치·활성 조건까지만 적고 「무엇을
+   * 지우는가」를 비워 두었다 — 다른 화면 스펙들은 그것을 적는다(`W-03-10` 「폼 초기화」·
+   * `W-01-03` 「원 도착으로 복귀」). 그 빈칸을 사용자가 「전부」로 채웠다.
+   *
+   * ⭐ **대상 LOT 도 지운다.** §4 가 LOT 을 「진입 시 선택」으로 두고 §5-2 가 저장 후 잔여가
+   * 남으면 «제품 선택»으로 회귀시키므로 LOT 을 남기는 읽기도 성립하지만, 취소가 「이 화면에서
+   * 한 일을 없던 것으로」라는 뜻이면 고른 LOT 도 그 일에 든다. 남기고 싶으면 다시 고른다.
+   *
+   * ⛔ **이미 저장한 실적은 되돌리지 않는다.** 저장은 누르는 순간 큐에 담기고, 잘못 담은 것은
+   * 취소가 아니라 정정 실적으로 다룬다(§6 — 원본을 고치지 않고 새 행으로 남긴다).
+   */
   const cancel = (): void => {
     setDraft(emptyResultDraft);
+    setSelectedLotId(null);
     occurredAtRef.current = null;
     setOutcome(null);
     outbox.clearRejection();
@@ -205,24 +232,49 @@ export const ProductionResultScreen = () => {
     void navigate(`/pop/pqc-inspection?ir=${String(request.inspectionRequestId)}`);
   };
 
+  /**
+   * 취소가 열리는 조건 — 스펙 §5-1 이 「**입력 있음**」으로 정한 자리다.
+   *
+   * 빈 화면에서 취소가 눌리면 «되돌릴 것이 없는데 되돌리는 버튼»이 서 있게 된다. 저장은
+   * 잠겨 있는데 취소만 열려 있어 어느 쪽이 지금 할 일인지 흐려진다(사용자 지적).
+   *
+   * ⭐ **취소가 지우는 것과 짝을 맞춘다.** 지우는 것이 하나라도 있으면 열린다 — 지우는 목록과
+   * 여는 조건이 어긋나면 「눌러도 아무 일 없는 취소」나 「지울 게 있는데 잠긴 취소」가 생긴다.
+   * 저장 직후가 그 자리다: 드래프트는 비고 안내만 남는데(`commit` 이 수량만 비운다), 드래프트만
+   * 보면 그때 취소가 잠겨 **화면에 남은 말을 걷을 방법이 없어진다.**
+   */
+  const hasSomethingToClear =
+    draft.goodQty !== '' ||
+    draft.remarks !== '' ||
+    selectedLotId !== null ||
+    outcome !== null ||
+    outbox.rejection !== null;
+
   const enteredQty = parseGoodQty(draft.goodQty);
   /* 단위는 품목 기본 단위다 — 고른 LOT 이 없으면 W/O 의 것을 쓴다(둘은 같은 품목이다). */
   const uomLabel = uom.labelOf(selectedLot?.uomId ?? workOrder.data?.uomId);
 
   return (
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/*
+         * 맥락은 화면명 옆이다 — 오른쪽 끝은 사번·연결·미전송 같은 상태 자리다(스펙 §3 머리줄).
+         * 작업지시와 품목은 「무엇을 보고 있는가」이므로 왼쪽에 함께 선다.
+         */}
+        {entry.workOrderId === null ? null : (
+          <p className="pop-context">
+            {`${t.entry.workOrderLabel} ${workOrder.data?.workOrderNo ?? String(entry.workOrderId)}${
+              workOrder.data?.itemCode === undefined
+                ? ''
+                : ` · ${t.entry.itemLabel} ${workOrder.data.itemCode}`
+            }`}
+          </p>
+        )}
         <div className="pop-context-right">
-          {entry.workOrderId !== null && (
-            <span>{`${t.entry.workOrderLabel} ${workOrder.data?.workOrderNo ?? String(entry.workOrderId)}`}</span>
-          )}
-          {workOrder.data?.itemCode !== undefined && (
-            <span>{`${t.entry.itemLabel} ${workOrder.data.itemCode}`}</span>
-          )}
-          {entry.workerNo !== null && <span>{`${t.entry.workerLabel} ${entry.workerNo}`}</span>}
+          <PopWorkerTag workerNo={entry.workerNo} />
           {/* 연결 표시는 셸이 이미 쓰는 것과 같은 말·같은 색을 쓴다. */}
           <Chip status={outbox.isOnline ? 'success' : 'warning'}>
             {outbox.isOnline
@@ -355,6 +407,79 @@ export const ProductionResultScreen = () => {
               }}
             />
 
+            <TextField
+              label={t.quantity.remarksLabel}
+              size="xl"
+              fullWidth
+              value={draft.remarks}
+              error={outbox.rejection?.fieldErrors.remarks}
+              onChange={(event) => {
+                changeDraft({ remarks: event.target.value });
+              }}
+            />
+
+            {/*
+              * 스펙 §3-2 의 「잔여수량 380 / 500」 — 좌단 **맨 아래**, 비고 다음이다(설계
+              * 검증본 `.col-l` 의 마지막 행). 다른 줄과 같은 「라벨 | 값」 격자에 세운다.
+              */}
+            <p className="pop-result-remaining">
+              <span>{t.quantity.remaining}</span>
+              {remaining === null || workOrder.data === undefined ? (
+                <span>{t.quantity.remainingUnknown}</span>
+              ) : (
+                <span className="pop-result-remaining-value">
+                  <span className="pop-result-remaining-current">{formatQty(remaining)}</span>
+                  {/* 지시 수량은 딸린 정보다 — 설계 검증본의 `.unit` 자리(한 급 흐리고 작다). */}
+                  <span className="pop-result-remaining-ordered">
+                    {t.quantity.orderedSuffix(formatQty(workOrder.data.orderQty), uomLabel)}
+                  </span>
+                </span>
+              )}
+            </p>
+          </Card.Body>
+        </Card>
+
+        {/* 우단 — 숫자 키패드. 화면 안에 고정한다(OS 터치 키보드가 입력칸을 덮는다). */}
+        <Card
+          bordered
+          className="pop-section pop-result-keypad"
+          aria-label={t.quantity.keypadLabel}
+        >
+          <Card.Body>
+            {/*
+              * ⭐ **POP 이 공유하는 키패드를 쓴다**(`@omf-mes/ui`). DS `NumberPad` 는 «전체
+              * 잠금»만 있어 키마다 조건을 걸 수 없다 — 수량이 비었는데도 [ C ]·[ ⌫ ]가
+              * 눌렸다(사용자 지적). 인식표 발행(`P-02-05`)이 같은 이유로 먼저 갈아탔고,
+              * **같은 부품을 써야 POP 안에서 같게 동작한다.**
+              *
+              * ⚠ 모양은 그대로다 — [ C ] · [ 0 ] · [ ⌫ ] (스펙 §3-2 의 마지막 줄).
+              *   자리는 `pop.css` 가 잡는다.
+              */}
+            <NumericKeypad
+              className="pop-result-pad"
+              value={draft.goodQty}
+              maxLength={GOOD_QTY_MAX_LENGTH}
+              /* 스펙 §7-1 — 키패드 키는 64px 요구이고 64와 72 사이에 단이 없어 `2xl` 로 올린다. */
+              keySize="2xl"
+              label={t.quantity.keypadLabel}
+              backspaceLabel={t.quantity.backspace}
+              backspaceGlyph="⌫"
+              clearLabel={t.quantity.clearGlyph}
+              onChange={(value) => {
+                changeDraft({ goodQty: value });
+              }}
+            />
+
+            {/*
+              * ⭐ **빠른 입력은 키패드의 짝이다 — 수량 칸의 짝이 아니다.**
+              *
+              * 설계 레이아웃 검증본이 이 둘을 우단 키패드 «바로 아래»에 둔다(`.col-r > .quick`).
+              * 스펙도 같은 편에 세운다 — §5-1 이 활성 조건을 키패드 키와 「동상」(수량 필드
+              * 포커스 시)으로 적고, §9-4 는 「숫자 키패드 동작 규약 — 포커스 연동·버퍼·`C`/`←`·
+              * **빠른 입력 버튼**」으로 아예 한 규약에 묶는다.
+              *
+              * 좌단 양품수량 아래에 두면 «치는 것»과 «더하는 것»이 갈려 손이 좌우로 오간다.
+              */}
             <div className="pop-result-quick">
               {QUICK_ADD_STEPS.map((step) => (
                 <Button
@@ -369,53 +494,17 @@ export const ProductionResultScreen = () => {
                 </Button>
               ))}
             </div>
-
-            <TextField
-              label={t.quantity.remarksLabel}
-              size="xl"
-              fullWidth
-              value={draft.remarks}
-              error={outbox.rejection?.fieldErrors.remarks}
-              onChange={(event) => {
-                changeDraft({ remarks: event.target.value });
-              }}
-            />
-
-            <p className="pop-result-remaining">
-              <span>{t.quantity.remaining}</span>
-              <strong>
-                {remaining === null || workOrder.data === undefined
-                  ? t.quantity.remainingUnknown
-                  : t.quantity.remainingValue(
-                      formatQty(remaining),
-                      formatQty(workOrder.data.orderQty),
-                    )}
-              </strong>
-            </p>
-          </Card.Body>
-        </Card>
-
-        {/* 우단 — 숫자 키패드. 화면 안에 고정한다(OS 터치 키보드가 입력칸을 덮는다). */}
-        <Card
-          bordered
-          className="pop-section pop-result-keypad"
-          aria-label={t.quantity.keypadLabel}
-        >
-          <Card.Body>
-            <NumberPad
-              aria-label={t.quantity.keypadLabel}
-              maxLength={GOOD_QTY_MAX_LENGTH}
-              value={draft.goodQty}
-              onChange={(value) => {
-                changeDraft({ goodQty: value });
-              }}
-            />
           </Card.Body>
         </Card>
       </div>
 
       <div className="pop-actions">
-        <Button variant="outlined" size="2xl" onClick={cancel}>
+        <Button
+          variant="outlined"
+          size="2xl"
+          disabled={!hasSomethingToClear}
+          onClick={cancel}
+        >
           {t.actions.cancel}
         </Button>
         <Button size="2xl" disabled={blockReason !== null} onClick={save}>

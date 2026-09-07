@@ -316,12 +316,6 @@ describe('IdentificationTagIssueScreen — 서버가 준 사유', () => {
 });
 
 describe('IdentificationTagIssueScreen — 대상 LOT 과 미발행 양품', () => {
-  it('목록의 양품 열을 채우지 못하는 사유를 보인다 — 비운 칸을 말없이 두지 않는다', async () => {
-    renderScreen();
-
-    expect(await screen.findByText(t.lotList.goodQtyPending)).toBeInTheDocument();
-  });
-
   it('고른 LOT 의 양품·기발행·미발행을 세운다', async () => {
     const user = userEvent.setup();
     renderScreen({ goodQty: 480, issuedCount: 200 });
@@ -367,7 +361,8 @@ describe('IdentificationTagIssueScreen — 대상 LOT 과 미발행 양품', () 
 
     await selectLot(user);
 
-    expect(await screen.findByText(t.preview.beforeIssue)).toBeInTheDocument();
+    /* 설계가 이 자리에 그린 것은 번호 «범위» 하나다 — 범위가 없으면 자리 자체가 서지 않는다. */
+    expect(screen.queryByText(t.preview.label)).toBeNull();
   });
 });
 

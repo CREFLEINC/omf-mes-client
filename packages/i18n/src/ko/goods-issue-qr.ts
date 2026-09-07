@@ -15,6 +15,12 @@ export const goodsIssueQr = {
     missingWorker: '사번이 확인되지 않아 발행할 수 없습니다. 사번 인증을 먼저 하세요.',
   },
 
+  /** 머리줄 오른쪽의 상태 묶음. 다른 POP 화면과 같은 말을 쓴다. */
+  device: {
+    terminalLabel: '단말',
+    terminalUnknown: '확인되지 않음',
+  },
+
   printer: {
     label: '프린터',
     /** 계약이 상태 문구를 함께 내려 준다 — 화면이 상태값으로 문장을 조립하지 않는다. */
@@ -27,7 +33,6 @@ export const goodsIssueQr = {
 
   lines: {
     sectionLabel: '출고 라인',
-    caption: '이 전표의 출고 라인 목록',
     columnItem: '품목',
     columnLot: 'LOT',
     columnQty: '수량',
@@ -48,16 +53,28 @@ export const goodsIssueQr = {
     unitLabel: '유형',
     unitLine: '라인 단위',
     unitPallet: '파렛트 단위',
-    /** 파렛트 단위는 고를 대상을 찾을 길이 없어 아직 못 연다. 감추지 않고 사유를 적는다. */
-    unitPalletPending:
-      '유형: 파렛트 단위는 아직 고를 수 없습니다. 이 출고 전표에 실린 파렛트를 찾는 조회가 없습니다. 지금은 라인 단위로 발행합니다.',
+    /**
+     * 파렛트 단위는 고를 대상을 찾을 길이 없어 아직 못 연다. 감추지 않고 사유를 적는다.
+     *
+     * ⛔ 조작 이름(「유형:」)을 앞에 붙이지 않는다 — 바로 위가 그 칸이라 자리가 이미 말한다.
+     */
+    unitPalletPending: '파렛트 단위는 아직 고를 수 없습니다. 지금은 라인 단위로 발행합니다.',
     selectedCount: (count: number) => `${String(count)}개 라인`,
-    none: '발행할 라인을 고르세요.',
+    /**
+     * 아직 고르지 않았다. ⛔ **「고르세요」로 쓰지 않는다** — 같은 말이 액션바의 막힌 사유로
+     * 이미 서 있어 한 화면에 두 번 나온다(사용자 지적 2026-09-07).
+     */
+    none: '—',
     seqLabel: '회차',
-    /** 회차는 서버가 매긴다 — 화면은 발행 뒤에야 값을 안다. */
-    seqUnknown: '발행하면 서버가 매깁니다.',
+    /**
+     * 발행 전에는 회차를 모른다 — 서버가 매긴다.
+     *
+     * ⛔ **문장으로 설명하지 않는다.** 설계 §3 도면은 이 자리에 「1 (최초)」처럼 값만 그렸다.
+     * 전례 `P-02-05` 에서도 같은 종류의 설명을 걷었다(사용자 지시).
+     */
+    seqUnknown: '—',
     previewLabel: '미리보기',
-    previewEmpty: '발행하면 인쇄될 모습을 여기에 보여 줍니다.',
+    previewEmpty: '발행 시 미리보기가 가능합니다.',
     previewFailed: '미리보기를 불러오지 못했습니다. 인쇄는 그대로 진행할 수 있습니다.',
     previewAlt: '출고 QR 미리보기',
   },
@@ -67,7 +84,6 @@ export const goodsIssueQr = {
     placeholder: '사유를 고르세요',
     /** 고른 라인 중 이미 발행된 것이 있을 때만 뜬다. */
     required: '이미 발행된 라인이 있어 재발행 사유가 필요합니다.',
-    notNeeded: '재발행 사유: 처음 발행하는 라인이라 사유가 필요 없습니다.',
     /** ⚠ 발행 현황을 못 읽은 라인이 섞였다. 재발행인지 화면이 단정하지 않고 자리만 연다. */
     unknownStatus:
       '발행 현황을 확인하지 못한 라인이 있습니다. 이미 발행된 라인이면 사유를 골라야 발행됩니다.',
@@ -80,10 +96,15 @@ export const goodsIssueQr = {
 
   action: {
     issue: '발행·인쇄',
-    /** 비활성 사유는 그 컨트롤의 이름으로 시작한다. */
-    disabledNoSelection: '발행·인쇄: 발행할 라인을 먼저 고르세요.',
-    disabledNoReason: '발행·인쇄: 재발행 사유를 고르세요.',
-    disabledNoWorker: '발행·인쇄: 사번이 확인되지 않았습니다.',
+    /**
+     * 막힌 사유 — 「어떻게 풀 것인가」를 담는다(공유계약 G-3).
+     *
+     * ⛔ **조작 이름을 앞에 붙이지 않는다.** 이 문구는 단추 바로 옆 한 줄에 서므로 무엇에
+     * 대한 말인지는 «자리»가 말한다. 다른 POP 화면도 앞머리 없이 쓴다(사용자 지시 2026-09-07).
+     */
+    disabledNoSelection: '발행할 라인을 먼저 고르세요.',
+    disabledNoReason: '재발행 사유를 고르세요.',
+    disabledNoWorker: '사번이 확인되지 않았습니다.',
   },
 
   result: {

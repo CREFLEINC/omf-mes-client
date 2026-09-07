@@ -7,6 +7,8 @@
  * - 겹침은 **막지 않고 알리기만 한다**(스펙 §6-1). 경고 문구가 저장을 막는 것처럼 읽히면 안 된다.
  * - 오프라인에서 오늘 집계는 **이 단말이 넣은 것만** 보인다. 그 범위를 문구가 말한다(§6-2).
  */
+import { common } from './common';
+
 export const downtimeRegister = {
   title: '비가동 실적 입력',
   header: {
@@ -19,7 +21,14 @@ export const downtimeRegister = {
     /** 미전송 건수는 즉시 성공 표시의 전제라 상시 보인다(공유계약 C-1 #4). */
     unsent: (count: number): string => `미전송 ${String(count)}건`,
     sent: '전송 완료',
-    offline: '연결 끊김',
+    /*
+     * ⚠ **연결 상태 문구는 공용 어휘를 쓴다**(`common.connection`). 화면마다 자기 낱말을
+     * 가지고 있어 「연결됨/오프라인」·「연결됨/연결 끊김」·「온라인/오프라인」 셋으로 갈려
+     * 있었고, 한 칩 안에서 반대말이 아닌 짝이 서기도 했다(실측). 설계는 「연결 상태를 상시
+     * 표시」까지만 요구하고 낱말을 정하지 않았으므로(공유계약 C-1), 이미 다수가 쓰던 공용
+     * 어휘로 모은다(사용자 확정 2026-09-03).
+     */
+    offline: common.connection.offline,
   },
   ongoing: {
     title: '진행 중 비가동',
@@ -41,16 +50,22 @@ export const downtimeRegister = {
     /** 단말 시각을 그대로 넣는 기본 경로다(스펙 §5-2). */
     now: '지금',
     stillOngoing: '아직 진행 중',
-    durationUnknown: '진행 중이라 산출할 수 없습니다',
+    /*
+     * 길이 — **도면이 「길이 47 분」으로 그린 자리다**(스펙 §3).
+     *
+     * ⛔ 산출할 수 없을 때 그 «이유»를 문장으로 적지 않는다. 끝 시각이 비어 있는 것을 옆의
+     *    「아직 진행 중」이 이미 말하고 있고, 오류 문구와 같은 자리에 서서 경고처럼 읽혔다
+     *    (사용자 지적 2026-09-07). 값 없음은 이 저장소의 공용 표기 「—」로 적는다.
+     * ⛔ 「0분」으로 채우지 않는다 — 없는 값과 0을 같은 모양으로 만들지 않는다(G-9).
+     */
+    duration: (value: string): string => `길이 ${value}`,
+    durationEmpty: common.reference.empty,
   },
   reason: {
     title: '사유',
-    category: '대분류',
-    detail: '소분류',
-    categoryPlaceholder: '대분류 선택',
-    detailPlaceholder: '소분류 선택',
-    /** 값 목록이 확정되기 전의 임시 표시다(미결 처리 — 자리표시 상수 + 안내). */
-    placeholderNotice: '사유 코드 목록이 아직 확정되지 않았습니다. 임시 목록입니다.',
+    /* ⛔ 대분류를 두지 않는다 — 사유는 평면 1단이다(스펙 §7 확정 2026-09-03). */
+    detail: '비가동 사유',
+    detailPlaceholder: '사유 선택',
     remarks: '메모',
     remarksPlaceholder: '사유 코드로 담기지 않는 사연을 적습니다',
   },
@@ -71,6 +86,12 @@ export const downtimeRegister = {
       `비가동 ${String(count)}건 · 합계 ${totalLabel}`,
     basis: (timeLabel: string): string => `${timeLabel} 기준`,
     empty: '오늘 기록된 비가동이 없습니다',
+    /* ④ 목록의 열 이름 — 스펙 §7 이 이 자리를 `Table` 로 지정했다. */
+    columns: {
+      interval: '구간',
+      duration: '길이',
+      reason: '사유',
+    },
     /** 오프라인 집계의 범위를 이름으로 말한다(스펙 §6-2 · §9-3). */
     localOnly: '내 단말 입력분만',
     localOnlyDescription: '다른 단말·관리웹 입력분은 반영되지 않았습니다.',
@@ -91,10 +112,10 @@ export const downtimeRegister = {
     endedIncomplete: '종료 날짜와 시각을 함께 입력하거나, 「아직 진행 중」을 선택하세요.',
     /** 목록은 받았는데 합계만 못 받은 상태. 합계 자리를 0으로 채우지 않는다. */
     summaryUnavailable: '합계를 불러오지 못했습니다',
-    startedRequired: '시작 시각을 입력하세요.',
     /** 시작 칸을 적으려다 만 상태. 「안 친 것」과 달라 누르기 전에도 말한다. */
     startedIncomplete: '시작 날짜와 시각을 함께 입력하세요.',
-    reasonRequired: '비가동 사유를 고르세요.',
+    /* 고를 것이 없다 — 저장이 막히는 이유다(스펙 §6-1 · 사유는 `NOT NULL`). */
+    reasonsUnavailable: '비가동 사유 목록을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     /** 겹침은 경고다 — 저장을 막지 않는다(스펙 §6-1 · 미결 처리 「만들지 않는다」). */
     overlapWarning: (rangeLabel: string): string => `${rangeLabel} 과 겹칩니다. 그대로 저장됩니다.`,
     workerMissing: '실적 저장 — 사번을 확인할 수 없어 저장할 수 없습니다.',

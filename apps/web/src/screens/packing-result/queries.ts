@@ -34,6 +34,7 @@ export const packingResultKeys = {
   parentsRoot: ['packing-result', 'parents'] as const,
   parents: (warehouseId: number) => ['packing-result', 'parents', warehouseId] as const,
   progress: (shipmentId: number) => ['packing-result', 'progress', shipmentId] as const,
+  uoms: ['packing-result', 'uoms'] as const,
 };
 
 /** 첫 스캔의 결과. **빈 목록이 「없는 납품라벨」이다** — 계약이 404 를 내지 않는다. */
@@ -205,4 +206,30 @@ export const useShipmentAllocations = (
       void query.refetch();
     },
   };
+};
+
+/**
+ * 단위별 **소수 자릿수** — 수량 키패드에 소수점 키를 그릴지 정한다.
+ *
+ * ⛔ **화면이 정하지 않는다.** 개수로 세는 단위(EA·BOX)에 소수점 키를 두면 서버가 거부할 값을
+ * 넣게 되고, 무게·부피 단위(KG·L)에 없으면 값을 넣을 길이 사라진다. 마스터가 그 자릿수를
+ * 들고 있으므로 그대로 따른다.
+ *
+ * ⚠ **모르면 «받지 않는» 쪽으로 둔다** — 못 받은 상태에서 소수를 열어 두면 쓰기가 거부된다.
+ */
+export const useUomDecimals = (): ((uomId: number | undefined) => boolean) => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: packingResultKeys.uoms,
+    queryFn: async (): Promise<Map<number, number>> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/uoms', { params: { query: { size: OPTION_SIZE } } }),
+      );
+
+      return new Map(data.items.map((uom) => [uom.uomId, uom.decimalScale]));
+    },
+  });
+
+  return (uomId) => (uomId === undefined ? false : (query.data?.get(uomId) ?? 0) > 0);
 };

@@ -1,4 +1,4 @@
-import { AlertBanner, Button, PageHeader } from '@crefle/web-ui';
+import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useState } from 'react';
 
@@ -172,11 +172,18 @@ export const ShippingPackingLabelScreen = () => {
      * ⚠ **이 화면이 최상위 랜드마크다.** POP 라우트는 관리웹 셸을 지나지 않으므로(`routes/pop`)
      * `main` 을 세워 주는 바깥이 없다 — 먼저 선 POP 화면들과 같은 형태다.
      */
-    <main className="pop-slabel-screen" aria-label={t.title}>
-      <header className="pop-slabel-head">
-        <PageHeader title={t.title} size="compact" />
+    <main className="pop-slabel-screen pop-ui" aria-label={t.title}>
+      {/*
+       * 머리줄은 **다른 POP 화면과 같은 어휘로 쓴다**(`pop-header` · `pop-title` ·
+       * `pop-context-right`). 이 화면만 자기 이름(`pop-slabel-head`)과 DS `PageHeader` 로
+       * 세웠더니 규격(`app/pop.css` 「머리줄」)이 이 화면에만 걸리지 않아, 머리줄이 358px 로
+       * 늘고 배경도 구분선도 없이 떴다(실측 — 다른 화면은 72px).
+       */}
+      <header className="pop-header">
+        <h1 className="pop-title">{t.title}</h1>
         {shipmentId === null ? null : (
-          <p className="field-note">
+          /* 맥락은 화면명 옆이다 — 오른쪽 끝은 상태 자리다(스펙 §3 머리줄). */
+          <p className="pop-context">
             {shipment.isPending
               ? t.shipment.loading
               : shipment.isError || shipment.data === undefined
@@ -191,7 +198,12 @@ export const ShippingPackingLabelScreen = () => {
         <AlertBanner variant="warning">{t.shipment.missing}</AlertBanner>
       ) : (
         <>
-          <section className="pop-slabel-kind" aria-label={t.kind.legend}>
+          {/*
+           * ⭐ **네 구획을 각각 상자로 세운다**(설계 §3 도면의 ①②③④). 테두리 없이 늘어놓으면
+           * 어디서 한 묶음이 끝나는지가 크기로만 갈려, 세로가 빌 때 화면이 통째로 흩어져 보인다.
+           */}
+          <section className="pane pop-fixed pop-slabel-kind" aria-label={t.kind.legend}>
+            <h2 className="pane-title">{t.kind.legend}</h2>
             <LabelKindRadio
               value={kind}
               onChange={(next) => {
@@ -206,7 +218,9 @@ export const ShippingPackingLabelScreen = () => {
             />
           </section>
 
-          <section className="pop-slabel-targets" aria-label={t.targets.paneLabel}>
+          <section className="pane pop-slabel-targets" aria-label={t.targets.paneLabel}>
+            {/* 구획 이름은 왼쪽이다 — 표 가운데 caption 으로 두면 다른 POP 화면과 자리가 다르다. */}
+            <h2 className="pane-title">{t.targets.paneLabel}</h2>
             {isListError ? (
               <AlertBanner
                 variant="error"
@@ -233,20 +247,53 @@ export const ShippingPackingLabelScreen = () => {
                  * 뽑은 것도 「없음」으로 보인다. 감추면 사용자가 그 값을 믿고 재발행을 놓친다.
                  */}
                 <AlertBanner variant="info">{t.targets.seqNotice}</AlertBanner>
-                <TargetTable
-                  rows={rows}
-                  summaries={summaryItems}
-                  selectedIds={selectedIds}
-                  onSelectionChange={setSelectedIds}
-                  onOpenHistory={setHistoryTargetId}
-                  empty={isListPending ? '' : emptyMessage}
-                />
+                {/* 표만 스크롤한다 — 구획째 스크롤하면 바닥의 프린터 줄이 같이 밀려 사라진다. */}
+                <div className="pop-slabel-table">
+                  <TargetTable
+                    rows={rows}
+                    summaries={summaryItems}
+                    selectedIds={selectedIds}
+                    onSelectionChange={setSelectedIds}
+                    onOpenHistory={setHistoryTargetId}
+                    empty={isListPending ? '' : emptyMessage}
+                  />
+                </div>
                 {/* 고를 수 없는 줄이 목록에 남아 있는 이유를 말한다(G-3 — 어떻게 풀 것인가). */}
                 {kind !== null && isDelivery(kind) && rows.some((row) => !row.isIssuable) ? (
                   <p className="field-note pop-slabel-wide-note">{t.targets.status.blockedNote}</p>
                 ) : null}
               </>
             )}
+
+            {/*
+             * ④ 프린터 — **대상 구획 «안» 바닥에 둔다**(사용자 지시 2026-09-07).
+             *
+             * ⚠ 설계 §3 도면은 이 자리를 상자 하나(④ · 88)로 따로 그렸다. 「무엇을 뽑을지」
+             *    고른 바로 그 자리에서 「어디로 보낼지」까지 마치는 편이 손이 덜 움직이고,
+             *    상자 넷이 서던 세로도 셋으로 준다. **도면과 어긋나므로 요청서로 알린다.**
+             *
+             * 자리는 늘 세우고, 종류를 고르기 전이면 잠가 둔다 — 감췄다 세우면 그 순간
+             * 아래가 밀려 화면이 출렁이고, 무엇을 더 해야 열리는지도 보이지 않는다.
+             */}
+            <div className="pop-slabel-printer-row">
+              <PrinterSelect
+                printers={printerItems}
+                value={effectivePrinterName}
+                onChange={setPrinterName}
+                /*
+                 * ⛔ 종류를 고르기 전에는 「찍을 수 있는 프린터가 없다」고 «단정하지» 않는다 —
+                 * 그때는 조회 자체를 하지 않아 모르는 상태다. 모르는 것을 없음으로 그리면
+                 * 사용자가 설치 문제로 오해한다(공유계약 G-9 · 실측 2026-09-03).
+                 */
+                awaitingKind={kind === null}
+                isLoading={printers.isPending}
+                isError={printers.isError}
+                onRetry={() => {
+                  void printers.refetch();
+                }}
+                disabled={isBusy}
+              />
+            </div>
           </section>
 
           {/* ③ 재출력 — 고른 대상 중 이미 발행된 것이 있을 때만 펼친다(스펙 §3-1). */}
@@ -260,25 +307,6 @@ export const ShippingPackingLabelScreen = () => {
               onChange={setReissueReasonCode}
             />
           ) : null}
-
-          <section className="pop-slabel-printer-pane" aria-label={t.printer.label}>
-            <PrinterSelect
-              printers={printerItems}
-              value={effectivePrinterName}
-              onChange={setPrinterName}
-              /*
-               * ⛔ 종류를 고르기 전에는 「찍을 수 있는 프린터가 없다」고 «단정하지» 않는다 —
-               * 그때는 조회 자체를 하지 않아 모르는 상태다. 모르는 것을 없음으로 그리면
-               * 사용자가 설치 문제로 오해한다(공유계약 G-9 · 실측 2026-09-03).
-               */
-              isLoading={kind === null || printers.isPending}
-              isError={printers.isError}
-              onRetry={() => {
-                void printers.refetch();
-              }}
-              disabled={isBusy}
-            />
-          </section>
 
           <IssueOutcome
             phase={issue.phase}

@@ -160,11 +160,15 @@ export const IdentificationTagIssueScreen = () => {
   const writeError = serialIssue.error ?? documentIssue.error;
 
   return (
-    <main className="pop-shell" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/* 맥락은 화면명 옆이다(스펙 §3 머리줄 `WO-…013 · ABC-123`) — 오른쪽 끝은 상태 자리다. */}
+        {entry.workOrderId === null ? null : (
+          <p className="pop-context">{`${t.entry.workOrderLabel} ${String(entry.workOrderId)}`}</p>
+        )}
         <div className="pop-context-right">
           <Chip status={printer === null ? 'warning' : printerTone(printer.status)}>
             {printerChipText(printer, printers.isError)}

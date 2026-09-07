@@ -36,17 +36,14 @@ export const identificationTagIssue = {
     sectionLabel: '대상 LOT',
     lotNoColumn: 'LOT',
     goodQtyColumn: '양품',
-    /**
-     * 양품 열을 채우지 못하는 사유. **비워 두고 말한다** — 값이 없는 칸을 말없이 두면
-     * 「양품이 없다」로 읽힌다.
-     */
-    goodQtyPending: '목록에서는 양품 수를 표시할 수 없습니다. LOT 을 고르면 오른쪽에 나옵니다.',
     goodQtyPlaceholder: '—',
     select: '선택',
-    selected: '선택됨',
     empty: '이 작업지시에 대상 LOT 이 없습니다.',
     loadFailed: '대상 LOT 을 불러오지 못했습니다.',
-    /** 불량품에는 붙이지 않는다(R69·R70). 목록 옆에 상시 세운다. */
+    /*
+     * 불량품에는 붙이지 않는다(R69·R70). **설계 §3 도면이 목록 아래에 그린 문구다** —
+     * ⛔ 지우지 않는다.
+     */
     goodOnlyNotice: '인식표는 양품 개체마다 1장입니다(불량 미부착).',
   },
 
@@ -82,9 +79,17 @@ export const identificationTagIssue = {
    * 번호 미리보기. **발행 «전»에는 그리지 않는다** — 번호를 서버가 매기고 채번 규칙이 아직
    * 정해지지 않아, 화면이 지어낸 번호를 보이면 실제와 다른 것을 미리 본 것이 된다.
    */
+  /** 발행 수량 키패드의 키 이름 — 글자가 없거나 기호뿐이라 보이는 이름을 대신할 것이 필요하다. */
+  keypad: {
+    label: '발행 수량 숫자 키패드',
+    backspace: '한 자 지움',
+    /* ⚠ 보이는 글자는 「C」다 — 이 화면이 쓰던 모양이다. 읽는 기계에는 위 이름이 간다. */
+    clear: '지움',
+    clearGlyph: 'C',
+  },
+
   preview: {
     label: '번호 미리보기',
-    beforeIssue: '일련번호는 발행할 때 서버가 매깁니다.',
     rangeSeparator: ' ~ ',
   },
 

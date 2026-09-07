@@ -15,11 +15,16 @@ export const toolUsage = {
   scan: {
     sectionLabel: '툴 스캔',
     inputLabel: '금형 QR',
-    placeholder: '금형 QR 을 비추세요',
+    /*
+     * ⚠ **스펙 §3 도면은 「금형 QR 을 비추세요」다.** 사용자 지시로 「읽혀주세요」로 바꿨다
+     * (2026-09-07) — 스캐너에 «대는» 동작을 현장 말로 옮긴 것이다. 설계 문구와 갈리므로
+     * 되돌릴 일이 생기면 여기다.
+     */
+    placeholder: '금형 QR 을 읽혀주세요',
     /** QR 이 안 읽힐 때의 폴백. 같은 칸에 손으로 친다 — 스캐너와 입력 자리를 나누지 않는다. */
     manualEntry: '코드 직접 입력',
     /** 버튼을 누른 뒤 칸 아래에 «계속» 보이는 안내. placeholder 는 칸이 비었을 때만 보인다. */
-    manualHint: '툴 코드를 치고 Enter 를 누르세요.',
+    manualHint: '금형 코드를 치고 Enter 를 누르세요.',
     cavity: '캐비티',
     notFound: '그 코드의 툴이 없습니다. 코드를 다시 확인하세요.',
     disposed: '폐기된 툴입니다. 다른 툴을 스캔하세요.',
@@ -31,6 +36,10 @@ export const toolUsage = {
     inputLabel: '타발수',
     unit: '회',
     keypadLabel: '타발수 숫자 키패드',
+    /** 키패드 키 — 화면에 보이는 기호와 읽어 주는 이름을 가른다. */
+    clearGlyph: 'C',
+    backspace: '한 자 지움',
+    decimalKey: '소수점',
     convertedLabel: '생산 수량으로 환산',
     baseQtyLabel: '수량',
     /** 환산이 어떻게 나온 값인지 식 그대로 보인다 — 「수량 500 × 2.5 = 1,250 회」 */
@@ -72,7 +81,8 @@ export const toolUsage = {
   notice: {
     sectionLabel: '안내',
     /** 화면이 누계를 계산해 보내지 않는다는 사실을 상시 밝힌다. */
-    serverAdds: '누계는 저장할 때 서버가 더합니다 — 이 화면은 미리 계산만 합니다.',
+    /* 스펙 §3 도면 ④ 의 문구 그대로다 — ⛔ 고쳐 쓰지 않는다. */
+    serverAdds: '누계는 저장 시 서버가 더합니다 — 이 화면은 미리 계산만 합니다.',
   },
 
   actions: {
@@ -82,7 +92,6 @@ export const toolUsage = {
 
   actionReasons: {
     saving: '실적 저장 — 저장하는 중입니다.',
-    noTool: '실적 저장 — 툴을 먼저 스캔하세요.',
     noShot: '실적 저장 — 타발수를 1 이상 기입하세요.',
     noEntry:
       '실적 저장 — 작업지시와 사번이 있어야 저장할 수 있습니다. 작업 시작 화면을 거쳐 들어오세요.',

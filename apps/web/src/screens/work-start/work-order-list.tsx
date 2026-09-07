@@ -153,7 +153,7 @@ export const WorkOrderList = ({
                         <p>
                           {isEmergency(row) && (
                             <>
-                              <Chip status="error" size="sm">
+                              <Chip status="error" size="md">
                                 {t.emergencyBadge}
                               </Chip>{' '}
                             </>
@@ -165,7 +165,7 @@ export const WorkOrderList = ({
                            */}
                           {isHeldRow && (
                             <>
-                              <Chip status="warning" size="sm">
+                              <Chip status="warning" size="md">
                                 {t.heldBadge}
                               </Chip>{' '}
                             </>

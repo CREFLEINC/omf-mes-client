@@ -121,11 +121,21 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
     expect(within(rows[2] as HTMLElement).getByText(t.receiptStatus.none)).toBeTruthy();
   });
 
-  /* 부족·미수령이 투입을 막지 않는다는 사실을 화면이 말하지 않으면 작업자가 그 자리에서 멈춘다. */
-  it('부족·미수령이 있어도 투입할 수 있다는 안내를 함께 낸다', async () => {
+  /*
+   * 부족·미수령이 투입을 막지 않는다는 사실을 화면이 «말할 수 있어야» 한다. 상시 문구에서
+   * 도움말로 옮겼으므로, 보는 것은 「문구가 떠 있는가」가 아니라 **「물어볼 자리가 있는가」**다.
+   *
+   * ⛔ 뜬 문구를 단언하지 않는다 — DS `Tooltip` 이 hover·focus 로 띄우는데, 단언이 그 경로를
+   *    타면 이 시험이 DS 의 «표시 방식»에 묶인다. 여기서 지킬 것은 그 말에 닿는 길이 있고
+   *    그 길에 이름이 붙어 있는지다.
+   */
+  it('부족·미수령이 있어도 투입할 수 있다는 안내에 닿는 길을 둔다', async () => {
     renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
 
-    expect(await screen.findByText(t.notes.shortAllowed)).toBeTruthy();
+    const help = await screen.findByRole('button', { name: t.notes.shortAllowedLabel });
+
+    expect(help).toBeTruthy();
+    expect(help.textContent).toBe('?');
   });
 
   it('전표가 여럿이면 상세를 각각 불러 줄을 모은다', async () => {

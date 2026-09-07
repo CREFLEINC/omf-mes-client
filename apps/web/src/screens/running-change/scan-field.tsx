@@ -2,14 +2,26 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
+import { popTouchClass } from '../../patterns/pop-touch';
 import { normalizeScanCode } from './scan';
 
 const t = messages.runningChange;
+
+/**
+ * 스캔 한 번의 결과. **무게(`tone`)를 함께 든다** — 성공과 실패가 같은 모양이면 실패를 놓친다
+ * (전례 `P-02-03`).
+ */
+export interface ScanOutcomeView {
+  tone: 'success' | 'warning' | 'error';
+  text: string;
+}
 
 export interface ScanFieldProps {
   /** 조회가 나가는 중인가. 그동안 같은 코드가 두 번 나가지 않게 잠근다. */
   isScanning: boolean;
   onScan: (code: string) => void;
+  /** 직전 스캔의 결과. 아직 읽은 것이 없으면 `null` — 자리는 그대로 둔다(아래 참조). */
+  outcome: ScanOutcomeView | null;
 }
 
 /**
@@ -24,7 +36,7 @@ export interface ScanFieldProps {
  *
  * 이 부품은 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 부품을 참조하지 않는다.
  */
-export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
+export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -72,6 +84,7 @@ export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
     <form onSubmit={submit}>
       <div className="scan-row">
         <TextField
+          size="xl"
           ref={inputRef}
           label={t.scan.label}
           value={value}
@@ -86,10 +99,20 @@ export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
           }}
         />
         {/*
-         * 장갑 낀 손으로 누른다 — **DS 의 `2xl`(72px)을 그대로 쓴다.** 착수 이슈 6항이
-         * 「터치 타겟도 해소됐다 · 제품 측 임시 지정은 폐기됐다」로 정했다.
+         * ⭐ **채움(`filled`)을 쓰지 않는다**(자매 화면 `P-02-03` 과 같은 이유). 스캐너는 코드를
+         * 치고 Enter 까지 보내고, 이 칸은 들어오자마자·읽을 때마다 스스로 포커스를 되찾는다 —
+         * **정상 흐름에서 이 버튼은 눌리지 않는다.** 채움으로 두면 화면에서 가장 강한 것이
+         * 「안 눌러도 되는 것」이 되고, 이 화면이 향하는 [ 교체 등록 ]이 그 뒤로 밀린다.
+         *
+         * ⛔ 크기는 낮추지 않는다 — 대체 경로라도 장갑 낀 손이 누르는 자리다.
          */}
-        <Button type="submit" variant="filled" size="2xl" disabled={isScanning}>
+        <Button
+          type="submit"
+          variant="outlined"
+          size="xl"
+          className="pop-touch-target"
+          disabled={isScanning}
+        >
           {isScanning ? t.scan.scanning : t.scan.submit}
         </Button>
       </div>
@@ -101,10 +124,16 @@ export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
        * ⛔ 별도 입력창을 열지 않는다. 스캐너가 살아 있을 때 그 창이 스캔값을 가로챈다.
        */}
       <div className="scan-manual">
+        {/*
+         * ⭐ **세 단계로 내려온다** — [ 교체 등록 ] 채움 · [ 읽기 ] 테두리 큰 것 · 이것은 작은
+         *    테두리. 하는 일이 칸으로 포커스를 옮기는 것 하나라 셋 중 가장 약하게 세운다.
+         *    설계가 「큰 타겟」으로 지목한 것은 [ 교체 등록 ] 하나뿐이다(§7).
+         */}
         <Button
           type="button"
           variant="outlined"
-          size="2xl"
+          size="lg"
+          className={popTouchClass('normal')}
           onClick={() => {
             inputRef.current?.focus();
           }}
@@ -112,6 +141,24 @@ export const ScanField = ({ isScanning, onScan }: ScanFieldProps) => {
           {t.scan.manualEntry}
         </Button>
       </div>
+
+      {/*
+       * 스캔 결과는 **입력 묶음 «다음»에** 한 자리에서만 선다(자매 화면 `P-02-03` 과 같은 자리).
+       * 칸 바로 밑에 두면 읽을 때마다 그 줄이 나타났다 사라지면서 아래의 칸·버튼이 밀린다.
+       *
+       * ⛔ **없을 때도 자리를 지운다.** 뜨고 지면 아래가 위아래로 움직여, 다음 코드를 읽으려던
+       *    손이 옆 것을 누른다. 그래서 «내용»만 바뀌고 상자는 늘 서 있다.
+       *
+       * `role="status"` 라 화면을 보지 않는 작업자도 읽힌 결과를 듣는다 — 이 화면의 사용자는
+       * 손과 눈이 설비에 가 있다.
+       */}
+      <p
+        className="scan-outcome"
+        role="status"
+        data-tone={outcome === null ? undefined : outcome.tone}
+      >
+        {outcome !== null && <span className="scan-outcome-text">{outcome.text}</span>}
+      </p>
     </form>
   );
 };

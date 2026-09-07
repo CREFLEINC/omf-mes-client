@@ -186,7 +186,7 @@ const prepare = async (
 ): Promise<void> => {
   for (const [code, qty] of entries) {
     await user.type(screen.getByLabelText(t.scan.label), `${code}{Enter}`);
-    await screen.findByText(t.scan.outcomes.material(code, code));
+    await screen.findByText(t.scan.outcomes.material(code));
     await user.type(screen.getByLabelText(t.scanned.qtyLabel(code)), qty);
     await user.click(screen.getByRole('button', { name: t.scanned.keypadSubmit }));
   }
@@ -199,7 +199,7 @@ const prepareWithoutRecord = async (
   qty: string,
 ): Promise<void> => {
   await user.type(screen.getByLabelText(t.scan.label), `${code}{Enter}`);
-  await screen.findByText(t.scan.outcomes.material(code, code));
+  await screen.findByText(t.scan.outcomes.material(code));
   if (qty !== '') await user.type(screen.getByLabelText(t.scanned.qtyLabel(code)), qty);
 };
 

@@ -316,8 +316,11 @@ describe('GoodsIssueQrScreen', () => {
     await screen.findByText('LOT-SAMPLE-20');
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
 
-    expect(await screen.findByText(t.reissue.notNeeded)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.action.issue })).toBeEnabled();
+    /* 사유가 필요 없으면 칸 자체가 서지 않는다 — 「필요 없다」는 말도 내지 않는다. */
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.action.issue })).toBeEnabled();
+    });
+    expect(screen.queryByRole('combobox', { name: t.reissue.label })).not.toBeInTheDocument();
   });
 
   it('발행 본문에 회차를 싣지 않고, 사번·멱등 키를 헤더로 보낸다', async () => {
@@ -478,7 +481,7 @@ describe('GoodsIssueQrScreen', () => {
     await user.click(within(rowFor('LOT-SAMPLE-21')).getByRole('checkbox'));
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
 
-    expect(screen.getByText(t.reissue.notNeeded)).toBeInTheDocument();
+    expect(screen.queryByRole('combobox', { name: t.reissue.label })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
