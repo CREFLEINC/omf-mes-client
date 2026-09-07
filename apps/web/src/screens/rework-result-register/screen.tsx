@@ -202,17 +202,42 @@ export const ReworkResultRegisterScreen = () => {
               <div className="rework-result-input">
                 <div className="rework-result-fields">
                   <h2 className="pane-title">{t.quantities.title}</h2>
-                  {quantityKeys.map((key) => (
-                    <TextField
-                      key={key}
-                      label={t.quantities[key]}
-                      value={drafts[key]}
-                      inputMode="decimal"
-                      readOnly
-                      fullWidth
-                      onFocus={() => setActiveKey(key)}
-                    />
-                  ))}
+
+                  {/*
+                   * ⭐ **네 칸을 2×2 로 세운다** — 스펙 §3 ②의 「양품 [ ] 불량 [ ] / 보류 [ ]
+                   *    폐기 [ ]」 배치다. 세로로 넷을 쌓으면 ② 구획이 280px 예산을 넘어 아래의
+                   *    ③·④가 밀린다(§3-1 슬랙 0).
+                   */}
+                  <div className="rework-qty-grid">
+                    {quantityKeys.map((key) => (
+                      <TextField
+                        key={key}
+                        label={t.quantities[key]}
+                        value={drafts[key]}
+                        inputMode="decimal"
+                        readOnly
+                        fullWidth
+                        onFocus={() => setActiveKey(key)}
+                      />
+                    ))}
+                  </div>
+
+                  {/*
+                   * ⭐ **합계는 ② 안이다** — 스펙 §3 ②의 「합계 160 / 160」. 이번 입력의 몫이고,
+                   *    ④의 진행은 이 W/O 의 누계다. 둘을 한 자리에 두면 어느 숫자가 방금 친
+                   *    것인지 알 수 없다.
+                   */}
+                  <p className="rework-qty-total">
+                    {t.total} {total} / {progress.remaining}
+                  </p>
+                  {/*
+                   * ⭐ **스펙 §3 ②가 이 안내를 구획 «안»에 둔다** — 「재작업 후 다시 불량이면
+                   *    「불량」입니다」. §7 이 안내를 `AlertBanner`(info)로 지정하므로 보조
+                   *    문구(`field-note`)가 아니라 배너로 세운다. ⛔ 결과 LOT 이야기는 여기서
+                   *    빼고 ③ 구획이 맡는다 — 스펙이 그 둘을 다른 구획으로 갈랐다.
+                   */}
+                  <AlertBanner variant="info">{t.reworkHint}</AlertBanner>
+
                   <label>{t.defectCode}</label>
                   {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
                   <Select
@@ -223,9 +248,6 @@ export const ReworkResultRegisterScreen = () => {
                     disabled
                   />
                   <p className="field-note">{t.defectCodeReason}</p>
-                  <p className="field-note">
-                    {t.reworkHint} {t.lotHint}
-                  </p>
                 </div>
                 <NumberPad
                   value={drafts[activeKey]}
@@ -236,7 +258,28 @@ export const ReworkResultRegisterScreen = () => {
                 />
               </div>
 
-              <section className="rework-result-summary" aria-label={t.total}>
+              {/*
+               * ③ 결과 LOT — **스펙 §3 이 독립 구획으로 둔 자리다.** 재작업은 같은 물건을
+               * 고치는 것이라 LOT 이 갈리지 않는데(§5-4), 그 사실을 넣은 수량으로 즉시 보인다.
+               * ⛔ 접지 않는다 — 수량을 넣으면 바로 바뀌어야 한다(§3 ⚠ E-4).
+               */}
+              <section className="rework-result-lot" aria-label={t.resultLot.title}>
+                <h2 className="pane-title">{t.resultLot.title}</h2>
+                <p>
+                  {t.resultLot.good(drafts.goodQty === '' ? '0' : drafts.goodQty)} ·{' '}
+                  {t.resultLot.keep}
+                </p>
+                <p>
+                  {t.resultLot.rest(
+                    drafts.defectQty === '' ? '0' : drafts.defectQty,
+                    drafts.holdQty === '' ? '0' : drafts.holdQty,
+                  )}
+                </p>
+              </section>
+
+              {/* ④ 진행 — 이 W/O 의 누계다. ②의 합계가 이번 입력이라면 이쪽은 지금까지의 몫이다. */}
+              <section className="rework-result-summary" aria-label={t.progress.title}>
+                <h2 className="pane-title">{t.progress.title}</h2>
                 <Progress
                   max={Math.max(progress.target, 1)}
                   tone={
@@ -247,13 +290,12 @@ export const ReworkResultRegisterScreen = () => {
                         : 'warning'
                   }
                   value={progress.completed + total}
-                  valueText={`${t.total} ${progress.completed + total} / ${progress.target}`}
+                  valueText={`${t.progress.line(
+                    String(progress.completed + total),
+                    String(progress.target),
+                  )} · ${t.remaining} ${String(remaining)}`}
                   showValue
                 />
-                <p>
-                  {t.total} {progress.completed + total} / {progress.target} · {t.remaining}{' '}
-                  {remaining}
-                </p>
                 {verdict === 'empty' && (
                   <AlertBanner variant="error">{t.emptyQuantity}</AlertBanner>
                 )}
@@ -267,19 +309,28 @@ export const ReworkResultRegisterScreen = () => {
                 {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
                 {rejected && <AlertBanner variant="error">{t.rejected}</AlertBanner>}
               </section>
-
-              <div className="pop-action-bar">
-                <div className="pop-action-note">{gateReason && <p>{gateReason}</p>}</div>
-                <Button size="2xl" variant="outlined" onClick={reset}>
-                  {t.reset}
-                </Button>
-                <Button size="2xl" disabled={!canSave} onClick={save}>
-                  {t.save}
-                </Button>
-              </div>
             </>
           )}
         </section>
+      </div>
+
+      {/*
+       * ⭐ **액션바는 화면 바닥에 붙는 띠다**(스펙 §3 — 헤더 64 + 본문 616 + 액션바 88 = 768).
+       *
+       * ⛔ 구획 «안»에 두면 그 띠가 서지 않는다 — POP 규격의 액션바 규칙은 화면의 **최상위
+       *    자식**만 겨냥한다(`.pop-ui > [class*='action']`). 앞선 판은 오른쪽 구획 안에 있어
+       *    본문의 일부로 흘렀고, 고르기 전에는 아예 없었다.
+       *
+       * ⭐ **고르기 전에도 자리를 지킨다** — 조작이 사라졌다 나타나면 본문이 그만큼 움직인다.
+       */}
+      <div className="pop-action-bar">
+        <div className="pop-action-note">{gateReason && <p>{gateReason}</p>}</div>
+        <Button size="2xl" variant="outlined" disabled={selected === null} onClick={reset}>
+          {t.reset}
+        </Button>
+        <Button size="2xl" disabled={!canSave} onClick={save}>
+          {t.save}
+        </Button>
       </div>
     </main>
   );

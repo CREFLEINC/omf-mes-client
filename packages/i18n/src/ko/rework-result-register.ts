@@ -18,6 +18,32 @@ export const reworkResultRegister = {
   },
   total: '합계',
   remaining: '미처리',
+
+  /**
+   * ③ 결과 LOT — **스펙 §3 이 독립 구획으로 둔 자리다**(96px).
+   *
+   * ⭐ **재작업은 같은 물건을 고치는 것이라 LOT 이 갈리지 않는다**(§5-4). 선별과 다르다 —
+   * 선별은 양품·불량을 다른 LOT 으로 가르지만 재작업은 원 LOT 에 그대로 남는다. 작업자가
+   * 「새 번호가 생기나」를 묻지 않도록 **넣은 수량으로 그 결과를 즉시 보인다.**
+   *
+   * ⛔ 「Lot Status」라고 적지 않는다 — 컬럼 이름이지 작업자의 말이 아니다.
+   */
+  resultLot: {
+    title: '결과 LOT',
+    good: (qty: string): string => `양품 ${qty} → 원 LOT 유지`,
+    keep: '새 LOT 을 만들지 않습니다.',
+    rest: (defect: string, hold: string): string =>
+      `불량 ${defect} · 보류 ${hold} → 원 LOT 에 남고 상태가 갈립니다`,
+  },
+
+  /**
+   * ④ 진행 — 이 W/O 의 **누계**다. ②의 「합계」가 이번 입력이라면 이쪽은 지금까지의 몫이다
+   * (스펙 §3 ④ · §5-3 「④ 진행 구획이 누계를 보인다」).
+   */
+  progress: {
+    title: '진행',
+    line: (done: string, target: string): string => `이 W/O 재작업 ${done} / ${target}`,
+  },
   emptyQuantity: '하나 이상 입력해 주세요.',
   exceeded: (target: number) => `처분 수량 ${target}을 넘을 수 없습니다.`,
   partial: (remaining: number) => `부분 실적입니다. 미처리 ${remaining}이 남습니다.`,

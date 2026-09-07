@@ -335,6 +335,24 @@
 }
 
 /*
+ * 재작업 실적의 수량 네 칸 — **2×2**. 스펙 §3 ②가 「양품 · 불량 / 보류 · 폐기」로 그렸고,
+ * 세로로 넷을 쌓으면 ② 구획이 280px 예산을 넘어 아래 ③·④가 밀린다(§3-1 슬랙 0).
+ */
+.pop-ui .rework-qty-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+/* 이번 입력의 합계 — ④ 누계와 구별되게 구획 오른쪽 끝에 붙인다(스펙 §3 ② 도면). */
+.pop-ui .rework-qty-total {
+  margin: 0;
+  text-align: end;
+  font: var(--type-body-lg);
+  color: var(--on-surface);
+}
+
+/*
  * 잔여수량 줄을 **위의 「대상 LOT」·「제품」과 같은 격자**에 세운다.
  *
  * `app.css` 는 이 줄을 `space-between` 으로 두어 라벨과 값이 화면 양 끝으로 갈라졌다.
