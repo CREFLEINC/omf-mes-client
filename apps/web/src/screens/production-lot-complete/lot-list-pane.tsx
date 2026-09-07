@@ -42,7 +42,16 @@ export const LotListPane = ({
   const columns: Column<Lot>[] = [
     {
       key: 'lotNo',
-      align: 'center',
+      /*
+       * ⭐ **번호 열은 왼쪽에서 시작한다**(사용자 결정 2026-09-07).
+       *
+       * 이 표는 열이 둘뿐이고 뒤 열이 72px 로 못박혀 있어 **번호 열이 남는 폭을 거의 다
+       * 가져간다.** 가운데로 두면 넓은 칸 한복판에 번호가 떠 왼쪽이 통째로 빈다.
+       *
+       * ⚠ 다른 POP 표는 가운데 정렬이다(같은 회차의 결정) — 그쪽은 열이 셋이라 각 열이 좁아
+       *   가운데가 곧 그 열의 자리다. 여기만 다른 이유가 그것이다.
+       */
+      align: 'start',
       header: t.lotList.lotNoColumn,
       render: (lot) => {
         const isSelected = lot.lotId === selectedLotId;
