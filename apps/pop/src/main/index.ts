@@ -229,7 +229,7 @@ function openPrintPage(): PrintPage {
 }
 
 /**
- * 스크립트를 파일로 두고 PowerShell 로 부른다. 그림 인쇄와 직렬 인쇄가 같은 방식을 쓴다.
+ * 스크립트를 파일로 두고 PowerShell 로 부른다. 그림 인쇄와 라벨 인쇄가 같은 방식을 쓴다.
  *
  * ⛔ **자식에게도 같은 상한을 건다.** 바깥 상한은 약속만 끊고 프로세스는 계속 산다 — 인쇄가
  *    매달릴 때마다 하나씩 남고, 남은 것이 임시 파일을 잡아 정리도 실패한다. 며칠씩 켜 두는
@@ -587,7 +587,7 @@ function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDi
         await dialog.showMessageBox({
           type: 'info',
           title: '라벨 프린터 진단',
-          message: '포트로 보냈습니다',
+          message: '프린터로 보냈습니다',
           detail:
             '견본이 규격대로 나왔는지, DataMatrix 가 스캐너에 읽히는지 확인해 주세요.\n종이가 나오지 않았다면 통신 설정이 프린터 쪽과 다를 수 있습니다.',
         });
