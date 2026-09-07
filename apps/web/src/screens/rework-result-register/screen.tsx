@@ -317,6 +317,11 @@ export const ReworkResultRegisterScreen = () => {
                     {quantityKeys.map((key) => (
                       <TextField
                         key={key}
+                        /*
+                         * ⚠ **크기를 넘겨야 한다** — 안 넘기면 DS 기본 40px 으로 그려져 POP 터치
+                         *    하한 56 에도 미달한다(입력류는 `xl`=60 이 최대다 · 전례 `P-02-04`).
+                         */
+                        size="xl"
                         label={t.quantities[key]}
                         value={drafts[key]}
                         inputMode="decimal"
