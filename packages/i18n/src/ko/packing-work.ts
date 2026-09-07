@@ -28,10 +28,6 @@ export const packingWork = {
     select: '선택',
     empty: '포장할 수 있는 완료 LOT 이 없습니다.',
     loadFailed: '포장 대상 목록을 불러오지 못했습니다.',
-    completedOnlyNotice:
-      '완료된 생산LOT 만 보입니다. 미달로 마감된 LOT 도 실물이 있으므로 함께 포장할 수 있습니다.',
-    remainingPending:
-      '「잔여」 열은 아직 세우지 않았습니다 — 이미 포장된 수량을 뺀 값을 서버가 내려 주지 않습니다.',
   },
 
   scan: {
@@ -39,22 +35,19 @@ export const packingWork = {
     label: 'LOT / 인식표 스캔',
     submit: '담기',
     manualEntry: '직접 입력',
-    manualEntryNote: '스캔이 되지 않으면 이 버튼을 눌러 칸으로 옮긴 뒤 손으로 칩니다.',
     quantityLabel: '수량',
     unknownLot: '포장 대상 목록에 없는 LOT 입니다. 이 작업지시의 완료 LOT 만 담을 수 있습니다.',
     quantityRequired: '수량을 넣으십시오.',
     quantityPositive: '수량은 0보다 커야 합니다.',
     quantityNumber: '수량은 숫자로 넣으십시오.',
-    blockedNoType:
-      '담기 — 포장 유형을 먼저 고르십시오. 유형이 정해져야 포장 단위를 만들 수 있습니다.',
+    blockedNoType: '담기 — 오른쪽에서 포장 유형을 먼저 고르십시오.',
     creating: '포장 단위를 만드는 중입니다.',
     /*
      * ⛔ **오프라인에서 새 포장을 시작할 수 없다.** 포장 번호는 서버가 매겨 돌려주는 값이라
      * (스펙 §4-A 「자동」) 끊긴 채로는 얻을 길이 없고, 계약도 등록을 오프라인 대상으로 두지
      * 않았다. 담긴 뒤의 확정만 큐에 들어간다 — 그 차이를 작업자가 알아야 헛손질을 안 한다.
      */
-    blockedOfflineNoUnit:
-      '담기 — 연결이 끊겨 새 포장을 시작할 수 없습니다. 포장 번호는 서버가 매깁니다. 연결된 뒤에 다시 담으십시오.',
+    blockedOfflineNoUnit: '담기 — 연결이 끊겨 새 포장을 시작할 수 없습니다.',
   },
 
   unit: {

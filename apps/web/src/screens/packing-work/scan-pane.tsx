@@ -105,8 +105,12 @@ export const ScanPane = ({
             {t.scan.manualEntry}
           </Button>
         </div>
+        {/*
+          ⛔ **늘 떠 있는 사용법 안내를 두지 않는다.** 스펙 §3 의 좌단은 스캔 칸과 [ 직접 입력 ]
+          둘뿐이고, 이 화면은 좌단 세로가 모자라 «포장 대상» 목록이 화면 밖으로 밀려 있었다
+          (실측 164px). 버튼 이름이 이미 그 일을 말한다.
+        */}
         {scanError !== null && <p className="field-error">{scanError}</p>}
-        <p className="field-note">{t.scan.manualEntryNote}</p>
       </form>
 
       <div className="pack-work-add-row">

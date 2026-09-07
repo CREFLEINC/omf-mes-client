@@ -234,12 +234,17 @@ describe('P-02-08 포장 작업', () => {
     expect(await screen.findByText(t.lotList.loadFailed)).toBeInTheDocument();
   });
 
-  it('「잔여」 열을 세우지 않고 그 사실을 밝힌다', async () => {
+  /*
+   * ⛔ **「잔여」라고 적지 않는다.** 계약이 그 값을 안 내려 주는데 그 자리에 최초 수량을 놓으면
+   * 두 번 포장한 LOT 이 아직 다 남은 것으로 읽힌다. **열 이름이 다른 값임을 말한다** — 스펙
+   * §3 의 좌단은 LOT 과 수량 두 조각뿐이라 따로 문단을 두지 않는다.
+   */
+  it('「잔여」 대신 「최초 수량」으로 이름을 밝힌다', async () => {
     renderScreen();
 
     expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
-    expect(screen.getByText(t.lotList.remainingPending)).toBeInTheDocument();
     expect(screen.getByText(t.lotList.initialQtyColumn)).toBeInTheDocument();
+    expect(screen.queryByText('잔여')).not.toBeInTheDocument();
   });
 
   it('유형을 고르기 전에는 담기가 막히고 사유가 보인다', async () => {

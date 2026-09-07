@@ -17,10 +17,12 @@ export interface LotListPaneProps {
  *
  * ⛔ **「잔여」 열을 세우지 않는다.** 스펙 §3 은 행마다 잔여를 그리지만, 이미 포장된 수량을
  * 뺀 값을 계약이 내려 주지 않는다(설계 회신 대기). `initialQty` 를 잔여 자리에 놓으면 두 번
- * 포장한 LOT 이 아직 다 남은 것처럼 보인다 — **이름을 바꿔 최초 수량으로 보이고** 잔여가
- * 아직 없다는 것을 아래에 말한다.
+ * 포장한 LOT 이 아직 다 남은 것처럼 보인다 — **열 이름을 「최초 수량」으로 바꿔** 다른 값임을
+ * 이름이 말하게 한다.
  *
- * ⚠ 말없이 비우지 않는다 — 비어 있으면 「잔여가 0」으로 읽힌다.
+ * ⛔ **그 사정을 목록 아래에 적지 않는다.** 스펙 §3 의 좌단 《포장 대상》은 LOT 과 수량 두
+ * 조각뿐이고, 늘 떠 있는 두 문단이 «포장 대상» 목록을 화면 밖으로 밀고 있었다(실측 164px).
+ * 열 이름이 이미 다른 값이라고 말한다.
  */
 export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps) => {
   /*
@@ -90,8 +92,6 @@ export const LotListPane = ({ lots, selectedLotId, onSelect }: LotListPaneProps)
           empty={t.lotList.empty}
         />
       </div>
-      <p className="field-note">{t.lotList.remainingPending}</p>
-      <p className="pop-notice">{t.lotList.completedOnlyNotice}</p>
     </>
   );
 };
