@@ -1,10 +1,12 @@
 import { Radio, RadioGroup, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useId, type ReactElement, type ReactNode } from 'react';
+
+import { useId, useState, type ReactElement, type ReactNode } from 'react';
 
 import { isKnownCode, type CodeOption } from './code-options';
 import { isCoverageOutOfOrder, type CoverageDraft } from './coverage';
 import { canChooseDisposition, type DispositionState } from './disposition';
+import { QuantityPad } from './quantity-pad';
 import {
   formatMicro,
   toMicro,
@@ -39,6 +41,9 @@ const tCoverage = messages.pqcInspection.coverage;
 const tDisposition = messages.pqcInspection.disposition;
 const unknownValue = messages.pqcInspection.emptyValue;
 
+/** 키패드가 고치는 칸. `inspected` 는 검사 수량이고 나머지는 그것을 나눈 셋이다. */
+type PadTarget = { key: keyof QuantityDraft | 'inspected'; label: string };
+
 export interface ResultPanelProps {
   /**
    * 검사 수량 — **사람이 넣는 칸이다**(§3 도면 `검사 수량 [ 30 ] EA` · §4-B `inspected_qty`).
@@ -48,6 +53,12 @@ export interface ResultPanelProps {
   onInspectedChange: (raw: string) => void;
   /** 합계 판정의 오른쪽 변. 초안이 수량이 아니면 판정이 서지 않는다 */
   inspectedQty: number;
+  /**
+   * 수량의 단위. **설계가 「화면에 단위 명시 «필수»」로 못박은 자리다**(§8 미결 5 · A-8) —
+   * 「30」이 30 개인지 30 % 인지 화면만 보고 알 수 없던 문제에서 나온 규칙이다.
+   * 못 받았으면 `null` — 그때는 수량만 낸다(지어내지 않는다).
+   */
+  uomCode: string | null;
 
   draft: QuantityDraft;
   onChange: (draft: QuantityDraft) => void;
@@ -97,6 +108,7 @@ export const ResultPanel = ({
   inspectedDraft,
   onInspectedChange,
   inspectedQty,
+  uomCode,
   draft,
   onChange,
   fieldErrors,
@@ -133,24 +145,55 @@ export const ResultPanel = ({
    * ⛔ **셀 수 없으면 아무 말도 하지 않는다.** 한 칸이라도 수량이 아니면 합계는 알 수 없는
    * 것이고, 그때 「일치합니다」든 「모자랍니다」든 내면 **거짓을 말하는 것**이다.
    */
+  /*
+   * 어느 칸을 키패드로 고치는 중인가. **`null` 이면 팝업이 닫혀 있다.**
+   *
+   * ⭐ 설계가 이 화면의 입력 수단을 키패드로 지정했다(§7 · G-6 · 공유계약 D-4). 단말에는
+   *    자판이 없어 칸만 두면 넣을 방법이 없다. 상시로 세울 자리가 없어(세로 예산 슬랙 0)
+   *    **누른 그때만** 뜬다.
+   */
+  const [padField, setPadField] = useState<PadTarget | null>(null);
+
+  /*
+   * 수량에는 **늘 단위를 붙인다** — 칸 안이든 문장 안이든 같다(§8 미결 5 · 공유계약 A-8).
+   * 「30 모자랍니다」만으로는 30 개인지 30 % 인지 알 수 없다.
+   *
+   * ⛔ 단위를 못 받았으면 숫자만 낸다 — 지어낸 단위는 거짓이다.
+   */
+  const withUnit = (value: string): string => (uomCode === null ? value : `${value} ${uomCode}`);
+
   const totalsNote =
     totals.kind === 'uncountable'
       ? null
       : totals.matches
         ? t.matched
         : totals.remaining > 0n
-          ? t.short(formatMicro(totals.remaining))
-          : t.over(formatMicro(-totals.remaining));
+          ? t.short(withUnit(formatMicro(totals.remaining)))
+          : t.over(withUnit(formatMicro(-totals.remaining)));
 
+  /*
+   * 단위는 **칸 «안» 오른쪽 끝**에 붙는다 — 값 바로 옆이라 「이 숫자가 무엇인가」가 한눈에 읽힌다.
+   * 라벨 뒤에 괄호로 달면 값에서 멀어져, 칸이 여럿일 때 어느 단위인지 다시 눈이 올라간다.
+   *
+   * ⛔ 값에 섞어 넣지 않는다 — 치는 값은 숫자뿐이어야 한다.
+   */
+  const uomSuffix = uomCode === null ? undefined : <span className="pop-uom">{uomCode}</span>;
+
+  /*
+   * ⚠ **자판으로도 칠 수 있게 둔다.** 키패드가 주 수단이지만 칸을 잠그면 자판이 붙은 단말과
+   *    개발 중 확인에서 값을 넣을 수 없다 — 두 길의 값 주인은 하나라 어긋나지 않는다.
+   */
   const field = (key: keyof QuantityDraft, label: string, invalid: boolean): ReactElement => (
     <TextField
+      size="xl"
       label={label}
+      trailingIcon={uomSuffix}
       inputMode="decimal"
       value={draft[key]}
       disabled={false}
-
       /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
       error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
+      onFocus={() => setPadField({ key, label })}
       onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
     />
   );
@@ -161,61 +204,46 @@ export const ResultPanel = ({
 
       {errorBanner}
 
+
       {/*
-       * 적용 생산구간 — 이 검사가 «어느 시간대의 생산분»을 대표하는가(§5-5). 불합격일 때
-       * 회수 범위가 이 구간으로 정해지므로, 자동으로 채우되 **사람이 고칠 수 있게** 둔다.
+       * ⭐ **설계 §3 도면의 차례 그대로다** — 검사 수량이 먼저 서고, 그것을 나눈 셋(합격·
+       * 불합격·보류)이 아래에 붙고, 선 하나를 사이에 두고 합계가 그 셋을 되짚는다.
+       *
+       * 한때 셋을 먼저 가로로 늘어놓고 검사 수량을 그 «아래»에 두었는데, 나누는 값이 나뉜
+       * 값보다 뒤에 서서 「무엇을 30 으로 나눈 것인가」가 늦게 읽혔다.
        */}
-      <div className="form-grid">
-        <TextField
-          label={tCoverage.from}
-          value={coverage.from}
-          disabled={false}
+      <TextField
+        size="xl"
+        label={t.fields.inspectedQty}
+        trailingIcon={uomSuffix}
+        inputMode="decimal"
+        value={inspectedDraft}
+        disabled={false}
+        error={showErrors && inspectedInvalid ? t.quantityInvalid : undefined}
+        onFocus={() => setPadField({ key: 'inspected', label: t.fields.inspectedQty })}
+        onChange={(event) => onInspectedChange(event.target.value)}
+      />
 
-          onChange={(event) => onCoverageChange({ ...coverage, from: event.target.value })}
-        />
-        <TextField
-          label={tCoverage.to}
-          value={coverage.to}
-          disabled={false}
-
-          /* ⛔ 조용히 뒤집어 고치지 않는다 — 무엇을 넣었는지 사용자가 알아야 고칠 수 있다. */
-          error={isCoverageOutOfOrder(coverage) ? tCoverage.invalidOrder : undefined}
-          onChange={(event) => onCoverageChange({ ...coverage, to: event.target.value })}
-        />
-      </div>
-      <p className="field-note">{tCoverage.note}</p>
-
-      <div className="form-grid">
+      <div className="pqc-qty-split">
         {field('accepted', t.fields.accepted, errors.accepted)}
         {field('rejected', t.fields.rejected, errors.rejected)}
         {field('held', t.fields.held, errors.held)}
       </div>
 
-      {/*
-       * 읽기 전용 숫자 셋을 한 줄에 둔다 — 검사수량이 «오른쪽 변»이고 합계·잔여가 그것과
-       * 견준 결과라 나란히 있어야 읽힌다. 세로로 쌓으면 예산(E-1 슬랙 0)을 넘긴다.
-       */}
-      <div className="form-grid">
-        <TextField
-          label={t.fields.inspectedQty}
-          inputMode="decimal"
-          value={inspectedDraft}
-          disabled={false}
-
-          error={showErrors && inspectedInvalid ? t.quantityInvalid : undefined}
-          onChange={(event) => onInspectedChange(event.target.value)}
-        />
-      </div>
+      {/* 구분선 — 위는 「넣는 값」이고 아래는 「그 값을 되짚은 결과」다(도면의 `─────`). */}
+      <div className="pqc-rule" />
 
       <dl className="filter-bar">
         {/* 셀 수 없을 때 0으로 읽은 합을 보이면 그 숫자 자체가 거짓이다. 없음 표시를 낸다. */}
         <div className="field-cell">
           <dt className="field-label">{t.sum}</dt>
-          <dd>{totals.kind === 'counted' ? formatMicro(totals.sum) : unknownValue}</dd>
+          <dd>{totals.kind === 'counted' ? withUnit(formatMicro(totals.sum)) : unknownValue}</dd>
         </div>
         <div className="field-cell">
           <dt className="field-label">{t.remaining}</dt>
-          <dd>{totals.kind === 'counted' ? formatMicro(totals.remaining) : unknownValue}</dd>
+          <dd>
+            {totals.kind === 'counted' ? withUnit(formatMicro(totals.remaining)) : unknownValue}
+          </dd>
         </div>
       </dl>
 
@@ -280,6 +308,53 @@ export const ResultPanel = ({
           {!canChoose && <p className="field-note">{tDisposition.disabledNote}</p>}
         </div>
       </div>
+
+      {/*
+       * ⚠ **설계 §3 도면에 이 칸이 없다.** `coverage_from_at`/`_to_at` 은 「모델이 앞선」
+       *    자리라(§5-5) 도면이 그려지기 전에 생겼다. 도면이 그린 것을 먼저 세우고 그 뒤에 둔다 —
+       *    검사 결과를 넣는 사람이 먼저 하는 일은 수량과 판정이다.
+       */}
+      {/*
+       * 적용 생산구간 — 이 검사가 «어느 시간대의 생산분»을 대표하는가(§5-5). 불합격일 때
+       * 회수 범위가 이 구간으로 정해지므로, 자동으로 채우되 **사람이 고칠 수 있게** 둔다.
+       */}
+      <div className="form-grid">
+        <TextField
+          size="xl"
+          label={tCoverage.from}
+          value={coverage.from}
+          disabled={false}
+
+          onChange={(event) => onCoverageChange({ ...coverage, from: event.target.value })}
+        />
+        <TextField
+          size="xl"
+          label={tCoverage.to}
+          value={coverage.to}
+          disabled={false}
+
+          /* ⛔ 조용히 뒤집어 고치지 않는다 — 무엇을 넣었는지 사용자가 알아야 고칠 수 있다. */
+          error={isCoverageOutOfOrder(coverage) ? tCoverage.invalidOrder : undefined}
+          onChange={(event) => onCoverageChange({ ...coverage, to: event.target.value })}
+        />
+      </div>
+      <p className="field-note">{tCoverage.note}</p>
+      <QuantityPad
+        label={padField?.label ?? null}
+        value={padField === null ? '' : padField.key === 'inspected' ? inspectedDraft : draft[padField.key]}
+        uomCode={uomCode}
+        onCommit={(next) => {
+          if (padField === null) return;
+
+          if (padField.key === 'inspected') onInspectedChange(next);
+          else onChange({ ...draft, [padField.key]: next });
+
+          setPadField(null);
+        }}
+        onClose={() => {
+          setPadField(null);
+        }}
+      />
     </section>
   );
 };

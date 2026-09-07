@@ -36,7 +36,9 @@ import {
   pqcInspectionKeys,
   useCodeValues,
   useInspectionItemSpecs,
+  useInspectionPlanVersion,
   useInspectionRequestDetail,
+  useUoms,
   toResultBody,
 } from './queries';
 import { ResultPanel } from './result-panel';
@@ -119,6 +121,8 @@ export const PqcInspectionScreen = () => {
    * 저장 — **임시 저장과 검사 확정이 한 훅이다**(요구서 §3-7). 무엇으로 저장했는지에 따라
    * 알리는 문장이 갈린다.
    */
+  const uoms = useUoms();
+  const planVersion = useInspectionPlanVersion(detail.data?.inspectionPlanVersionId ?? null);
   const outbox = useOutbox();
   const { clearRejection } = outbox;
   const queryClient = useQueryClient();
@@ -403,6 +407,7 @@ export const PqcInspectionScreen = () => {
         ) : (
           <ItemPanel
             inspectionPlanVersionId={planVersionId}
+            planVersion={planVersion.data ?? null}
             rows={rows}
             drafts={drafts}
             onChange={changeMeasurement}
@@ -415,6 +420,9 @@ export const PqcInspectionScreen = () => {
           inspectedDraft={inspectedDraft}
           onInspectedChange={changeInspected}
           inspectedQty={inspectedQty}
+          uomCode={
+            uoms.data?.find((uom) => uom.uomId === detail.data.uomId)?.uomCode ?? null
+          }
           draft={draft}
           onChange={changeDraft}
           fieldErrors={outbox.rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}

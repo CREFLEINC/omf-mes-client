@@ -1,5 +1,7 @@
 import { Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+
+import type { PlanVersionView } from './queries';
 import { useId } from 'react';
 
 import { lacksLimits } from './auto-judgment';
@@ -35,6 +37,8 @@ const tDetail = messages.pqcInspection.detail;
 export interface ItemPanelProps {
   /** 검사 시점에 고정된 기준 버전. §3 도면이 이 구획 머리에 둔다 */
   inspectionPlanVersionId: number;
+  /** 기준 표기와 샘플 비율. 아직 못 받았으면 `null` — 그 줄을 세우지 않는다. */
+  planVersion: PlanVersionView | null;
   rows: MeasurementRow[];
   drafts: MeasurementDrafts;
   onChange: (key: string, draft: MeasurementDraft) => void;
@@ -45,6 +49,7 @@ export interface ItemPanelProps {
 
 export const ItemPanel = ({
   inspectionPlanVersionId,
+  planVersion,
   rows,
   drafts,
   onChange,
@@ -59,16 +64,23 @@ export const ItemPanel = ({
      * 검사 시점의 기준 버전이 그 검사에 고정되고, 이후 기준이 바뀌어도 이 검사는 당시
      * 버전으로 남는다 — 감추면 어느 기준으로 잰 값인지 아무도 모른다.
      */}
-    <p className="field-note">
-      {tDetail.fields.inspectionPlanVersionId} {inspectionPlanVersionId}
-    </p>
-    <p className="field-note">{tDetail.planVersionNote}</p>
-
     {/*
-     * ⚠ **샘플 수의 단위가 확정되지 않았다**(§8 #5 · 공유계약 A-8). ⛔ 어느 한쪽으로 읽어
-     * 계산하지 않고 **단위가 미확정이라는 사실을 화면에 밝힌다.**
+     * 기준과 샘플 — 설계 §3 이 좌단 머리에 그린 두 줄이다(「기준 IP-ABC-123 v2」·「샘플 30」).
+     *
+     * ⛔ **내부 id 를 그대로 내지 않는다.** 한때 `검사기준 버전 1001` 로 냈는데 그 숫자는
+     *    현장에서 아무것도 가리키지 않는다.
+     *
+     * ⭐ **샘플은 비율(%)이다** — 「개인가 %인가」를 묻던 미결이 닫혔다(§8 #5 · 2026-09-02).
+     *    못 받았으면 그 줄을 세우지 않는다(지어내지 않는다).
      */}
-    <p className="field-note">{tDetail.sampleUnitPending}</p>
+    {planVersion !== null && (
+      <p className="field-note">
+        {tDetail.planLabel(planVersion.planCode, planVersion.planVersion)}
+      </p>
+    )}
+    {planVersion?.samplingRatio != null && (
+      <p className="field-note">{tDetail.sample(planVersion.samplingRatio)}</p>
+    )}
 
     {/* ⭐ 무엇이 남았는지가 이 구획의 정보다(§3 「진행 2 / 3」). */}
     <p className="field-note">{t.progress(judgedCount(rows, drafts), rows.length)}</p>
@@ -131,6 +143,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions }: ItemRowProps) => {
          */}
         {row.dataTypeCode === DATA_TYPES.boolean ? (
           <Select
+            size="xl"
             aria-label={`${row.itemName} ${t.columns.value}`}
             options={BOOLEAN_OPTIONS}
             value={draft.value}
@@ -140,6 +153,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions }: ItemRowProps) => {
           />
         ) : (
           <TextField
+            size="xl"
             label={t.columns.value}
             inputMode={row.dataTypeCode === DATA_TYPES.numeric ? 'decimal' : 'text'}
             value={draft.value}
@@ -154,6 +168,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions }: ItemRowProps) => {
             {t.columns.judgment}
           </label>
           <Select
+            size="xl"
             id={judgmentId}
             options={judgmentOptions}
             value={draft.judgment}

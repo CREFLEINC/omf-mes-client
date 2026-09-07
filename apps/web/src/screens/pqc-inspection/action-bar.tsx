@@ -46,10 +46,12 @@ export const ActionBar = ({
   <div className="pop-action-bar">
     <div className="pop-action-note">
       {/*
-       * ⛔ **확정은 되돌릴 수 없다** — 누르기 전에 그 사실을 알린다. 이 순간 LOT 상태가
-       * 전이하고 되돌릴 경로가 없다.
+       * ⛔ **확정 경고 문구를 두지 않는다**(사용자 지시). 설계에 없는 문장이었다 — 문서에
+       *    「되돌릴 수 없 · LOT 상태가 바」가 0 건이다.
+       *
+       * ⚠ 말하던 «사실»은 그대로다 — 확정은 LOT 상태를 전이시키고 되돌릴 경로가 없다.
+       *    그것을 누르기 전에 알릴지, 알린다면 어떤 문구로 할지는 요청서로 올렸다.
        */}
-      <p className="field-note">{t.confirmNote}</p>
 
       {/* 눌렀는데 아무 일도 없어 보이지 않게 결과를 한 줄로 알린다. */}
       {isSaved && <p className="field-note">{t.saved}</p>}
