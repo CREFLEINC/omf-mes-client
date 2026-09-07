@@ -229,6 +229,28 @@ describe('배분을 확인하지 못한 원 포장', () => {
   });
 });
 
+/*
+ * 묻는 중을 확인 못 함으로 세면 스캔할 때마다 경고가 깜빡인다. 매번 뜨는 경고는 읽히지 않아
+ * 정말 확인하지 못한 회차가 함께 묻힌다.
+ */
+describe('배분을 묻는 중인 원 포장', () => {
+  const sources = [unit(10, [content({ qty: 180 })], 'CTN-0010')];
+  const lines = [line(1000, '80')];
+
+  it('묻는 중에는 확인하지 못했다고 짚지 않는다', () => {
+    expect(unverifiedSources(sources, new Map([[10, 'checking' as const]]))).toHaveLength(0);
+  });
+
+  it('묻는 중에는 배분됐다고도 하지 않는다', () => {
+    expect(allocatedSources(sources, new Map([[10, 'checking' as const]]))).toHaveLength(0);
+  });
+
+  /* 아직 모르는 것을 통과시키면 사전 판정이 없는 것과 같다. */
+  it('묻는 중에는 확정할 수 없다', () => {
+    expect(canConfirm(sources, lines, true, new Map([[10, 'checking' as const]]))).toBe(false);
+  });
+});
+
 describe('보낼 것', () => {
   const sources = [unit(10, [content({ qty: 180 })], 'CTN-2026-0091')];
   const lines = [line(1000, '80')];

@@ -69,6 +69,8 @@ interface Options {
   allocated?: number[];
   /** 배분 조회가 닿지 않는 상황 - 오프라인에서 이 판정을 할 수 없는 자리다. */
   allocationUnreachable?: boolean;
+  /** 배분 조회가 늦게 답하는 상황 - 묻는 중과 확인 못 함이 갈리는 자리다. */
+  allocationPending?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => {
@@ -150,6 +152,12 @@ const routes = (options: Options = {}): StubRoute[] => {
     {
       match: (req) => new URL(req.url).pathname === '/logistics/shipment-lot-allocations',
       respond: (req) => {
+        if (options.allocationPending === true) {
+          return new Promise<Response>(() => {
+            /* 답하지 않는다. 묻는 중에 화면이 무엇을 말하는지 재는 자리다. */
+          });
+        }
+
         if (options.allocationUnreachable === true) {
           return jsonResponse(
             { code: 'SERVICE_UNAVAILABLE', message: '연결할 수 없습니다.', errors: [] },
@@ -331,6 +339,26 @@ describe('포장 재구성 화면', () => {
     await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
 
     expect(screen.getByRole('button', { name: '재구성 확정' })).not.toBeDisabled();
+  });
+
+  /*
+   * 매번 뜨는 경고는 읽히지 않는다. 묻는 중을 확인 못 함으로 세면 스캔마다 깜빡여, 정말
+   * 확인하지 못한 회차가 그 사이에 묻힌다.
+   */
+  it('배분을 묻는 중에는 확인하지 못했다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ allocationPending: true });
+    await screen.findByLabelText('포장 스캔');
+
+    scan(CARTON);
+    await screen.findByText(CARTON);
+    await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
+    await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
+
+    expect(screen.queryByText(/출하 배분 여부를 확인하지 못했습니다/)).toBeNull();
+    expect(screen.queryByText(/이미 출하에 배분된 포장입니다/)).toBeNull();
+    /* 아직 모르는 것을 통과시키면 사전 판정이 없는 것과 같다. */
+    expect(screen.getByRole('button', { name: '재구성 확정' })).toBeDisabled();
   });
 
   it('유형을 고르기 전에는 확정할 수 없다', async () => {

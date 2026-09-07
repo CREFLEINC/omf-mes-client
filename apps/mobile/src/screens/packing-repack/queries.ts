@@ -8,8 +8,13 @@ import type { AllocationCheck } from './repack';
 /** 배분이 하나라도 있으면 막힌다. 세어 볼 것이 아니라 있는지만 보면 된다. */
 const PROBE_SIZE = 1;
 
-const verdictOf = (data: boolean | undefined): AllocationCheck =>
-  data === undefined ? 'unknown' : data ? 'allocated' : 'clear';
+const verdictOf = (result: { isPending: boolean; data?: boolean } | undefined): AllocationCheck => {
+  if (result === undefined || result.isPending) {
+    return 'checking';
+  }
+
+  return result.data === undefined ? 'unknown' : result.data ? 'allocated' : 'clear';
+};
 
 /**
  * 원 포장이 이미 출하에 배분됐는가.
@@ -45,7 +50,7 @@ export const useShipmentAllocations = (
     combine: (results) =>
       new Map(
         handlingUnitIds.map(
-          (handlingUnitId, index) => [handlingUnitId, verdictOf(results[index]?.data)] as const,
+          (handlingUnitId, index) => [handlingUnitId, verdictOf(results[index])] as const,
         ),
       ),
   });

@@ -111,8 +111,13 @@ export const remainderOf = (
     .filter((content) => content.qty > 0);
 };
 
-/** 이 포장이 이미 출하에 배분됐는가. 확인하지 못한 것은 배분되지 않은 것과 다르다. */
-export type AllocationCheck = 'allocated' | 'clear' | 'unknown';
+/**
+ * 이 포장이 이미 출하에 배분됐는가.
+ *
+ * 넷이다. 확인하지 못한 것은 배분되지 않은 것과 다르고, 아직 묻는 중인 것은 확인하지 못한
+ * 것과 다르다 - 셋을 뭉치면 스캔할 때마다 확인하지 못했다는 경고가 깜빡여 진짜 경고가 묻힌다.
+ */
+export type AllocationCheck = 'allocated' | 'clear' | 'unknown' | 'checking';
 
 const checkOf = (
   source: ScannedHandlingUnit,
@@ -149,6 +154,11 @@ export const canConfirm = (
   checks: ReadonlyMap<number, AllocationCheck>,
 ): boolean => {
   if (!hasWorker || sources.length === 0 || lines.length === 0) {
+    return false;
+  }
+
+  /* 묻는 중에는 아직 모른다. 짧게 막히고 답이 오면 풀린다. */
+  if (sources.some((source) => checkOf(source, checks) === 'checking')) {
     return false;
   }
 
