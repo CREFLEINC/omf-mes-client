@@ -1,4 +1,4 @@
-import { Button, Chip, Select } from '@crefle/web-ui';
+import { Button, Checkbox, Chip, Select } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -85,21 +85,26 @@ export const ReprintPane = ({
 
             return (
               <li key={target.rowId} className="pop-reprint-target">
+                {/*
+                 * ⭐ **줄 전체가 누르는 자리다.** 설계 §7 이 이 선택을 `Checkbox`(다중) 로
+                 * 지정했는데, 상자 자체는 손가락보다 작다. `<label>` 로 줄을 감싸면 종류·번호
+                 * 어디를 눌러도 골라지므로 **부품은 설계대로 두고 누를 넓이만** 넓힌다.
+                 *
+                 * ⛔ 줄마다 [ 선택 ] 버튼을 세우지 않는다 — 설계가 지정한 부품이 아니고,
+                 *    72px 짜리 버튼이 줄마다 서면 대상 셋만으로도 구획이 화면 밖으로 넘친다
+                 *    (실측 — 사유·[ 재출력 ]이 잘려 보이지 않았다).
+                 */}
                 <div className="pop-reprint-target-head">
-                  <span className="pop-reprint-kind">{kind}</span>
-                  <span className="pop-reprint-name">{target.displayName}</span>
-                  <Button
-                    variant={selected ? 'filled' : 'outlined'}
-                    size="xl"
+                  <Checkbox
+                    checked={selected}
                     disabled={target.disabledReason !== null}
-                    aria-pressed={selected}
-                    aria-label={`${kind} ${target.displayName} ${t.targets.select}`}
-                    onClick={() => {
+                    onChange={() => {
                       onToggle(target.rowId);
                     }}
                   >
-                    {selected ? t.targets.selected : t.targets.select}
-                  </Button>
+                    <span className="pop-reprint-kind">{kind}</span>{' '}
+                    <span className="pop-reprint-name">{target.displayName}</span>
+                  </Checkbox>
                 </div>
                 <div className="pop-reprint-target-meta">
                   <Chip status={target.issueCount === null ? 'warning' : 'info'}>
@@ -123,8 +128,14 @@ export const ReprintPane = ({
         <label className="field-label" htmlFor={reasonId}>
           {t.reason.label}
         </label>
+        {/*
+         * ⚠ **크기를 넘긴다.** 안 넘기면 DS 가 기본(40px)으로 그리고, POP 규칙이 트리거만
+         *   56 으로 늘려 **칸이 자기 상자를 넘친다** — 아래 [ 재출력 ]과 겹쳐 보였다(실측).
+         *   부품이 스스로 배치하게 두는 것이 맞다.
+         */}
         <Select
           id={reasonId}
+          size="xl"
           options={reasons.map((reason) => ({ value: reason.code, label: reason.codeName }))}
           value={reasonCode === '' ? null : reasonCode}
           onChange={onReasonChange}

@@ -285,16 +285,20 @@ describe('P-02-09 포장 라벨·인식표 재출력', () => {
 });
 
 describe('P-02-09 재출력 대상·실행', () => {
-  const selectLabel = (lotNo: string) => `${t.targets.packingLabel} ${lotNo} ${t.targets.select}`;
+  /*
+   * 대상 선택은 **체크상자**다(설계 §7 — `RadioGroup` 또는 `Checkbox` 다중). 접근 이름은 줄에
+   * 적힌 그대로 「종류 + 번호」이고, 「선택」 같은 덧말을 붙이지 않는다.
+   */
+  const selectLabel = (lotNo: string) => `${t.targets.packingLabel} ${lotNo}`;
 
   it('대상마다 포장 라벨과 인식표 두 줄이 서고 인식표는 고를 수 없다', async () => {
     renderScreen();
 
-    const tagButton = await reprintPane().findByRole('button', {
-      name: `${t.targets.identificationTag} ${LOT_A_NO} ${t.targets.select}`,
+    const tagBox = await reprintPane().findByRole('checkbox', {
+      name: `${t.targets.identificationTag} ${LOT_A_NO}`,
     });
 
-    expect(tagButton).toBeDisabled();
+    expect(tagBox).toBeDisabled();
     expect(reprintPane().getByText(t.targets.serialUnavailable)).toBeInTheDocument();
   });
 
@@ -316,7 +320,7 @@ describe('P-02-09 재출력 대상·실행', () => {
   it('대상을 고르지 않으면 재출력이 비활성이다', async () => {
     renderScreen();
 
-    await reprintPane().findByRole('button', { name: selectLabel(LOT_A_NO) });
+    await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) });
 
     expect(screen.getByRole('button', { name: t.action.submit })).toBeDisabled();
   });
@@ -325,7 +329,7 @@ describe('P-02-09 재출력 대상·실행', () => {
     const user = userEvent.setup();
     renderScreen({ issueCounts: { [LOT_A_ID]: 1 } });
 
-    await user.click(await reprintPane().findByRole('button', { name: selectLabel(LOT_A_NO) }));
+    await user.click(await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) }));
 
     expect(reprintPane().getByText(t.reason.required)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.action.submit })).toBeDisabled();
@@ -336,7 +340,7 @@ describe('P-02-09 재출력 대상·실행', () => {
     const issueWrites: Request[] = [];
     renderScreen({ issueWrites });
 
-    await user.click(await reprintPane().findByRole('button', { name: selectLabel(LOT_A_NO) }));
+    await user.click(await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) }));
 
     const submit = screen.getByRole('button', { name: t.action.submit });
     expect(submit).toBeEnabled();
@@ -362,7 +366,7 @@ describe('P-02-09 재출력 대상·실행', () => {
     const issueWrites: Request[] = [];
     renderScreen({ issueWrites });
 
-    await user.click(await reprintPane().findByRole('button', { name: selectLabel(LOT_A_NO) }));
+    await user.click(await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) }));
     await user.click(screen.getByRole('button', { name: t.action.submit }));
 
     await waitFor(() => {
@@ -377,7 +381,7 @@ describe('P-02-09 재출력 대상·실행', () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await user.click(await reprintPane().findByRole('button', { name: selectLabel(LOT_A_NO) }));
+    await user.click(await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) }));
     await user.click(screen.getByRole('button', { name: t.action.submit }));
 
     expect(await screen.findByText(t.print.shellUnavailable)).toBeInTheDocument();
@@ -388,14 +392,11 @@ describe('P-02-09 재출력 대상·실행', () => {
     const user = userEvent.setup();
     renderScreen({ issueStatus: 403 });
 
-    await user.click(await reprintPane().findByRole('button', { name: selectLabel(LOT_A_NO) }));
+    await user.click(await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) }));
     await user.click(screen.getByRole('button', { name: t.action.submit }));
 
     expect(await screen.findByText(t.error.forbidden)).toBeInTheDocument();
-    expect(reprintPane().getByRole('button', { name: selectLabel(LOT_A_NO) })).toHaveAttribute(
-      'aria-pressed',
-      'true',
-    );
+    expect(reprintPane().getByRole('checkbox', { name: selectLabel(LOT_A_NO) })).toBeChecked();
   });
 
   it('사유 목록이 비면 칸을 감추지 않고 비활성 + 사유로 둔다', async () => {
@@ -414,7 +415,7 @@ describe('P-02-09 재출력 대상·실행', () => {
     const issueWrites: Request[] = [];
     renderScreen({ issueCounts: { [LOT_A_ID]: 2 }, issueWrites });
 
-    await user.click(await reprintPane().findByRole('button', { name: selectLabel(LOT_A_NO) }));
+    await user.click(await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) }));
     await user.click(reprintPane().getByLabelText(t.reason.label));
     await user.click(screen.getByRole('option', { name: REASON_NAME }));
 
@@ -434,7 +435,7 @@ describe('P-02-09 재출력 대상·실행', () => {
     const user = userEvent.setup();
     renderScreen({ canPrintLabel: false });
 
-    await user.click(await reprintPane().findByRole('button', { name: selectLabel(LOT_A_NO) }));
+    await user.click(await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) }));
 
     expect(screen.getByRole('button', { name: t.action.submit })).toBeDisabled();
   });
@@ -443,7 +444,7 @@ describe('P-02-09 재출력 대상·실행', () => {
     const user = userEvent.setup();
     renderScreen({}, `/pop/packing-label-reprint?handlingUnitId=${String(HANDLING_UNIT_ID)}`);
 
-    await user.click(await reprintPane().findByRole('button', { name: selectLabel(LOT_A_NO) }));
+    await user.click(await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) }));
 
     expect(screen.getByRole('button', { name: t.action.submit })).toBeDisabled();
   });
