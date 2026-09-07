@@ -309,6 +309,46 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   });
 
   /*
+   * ⛔ **되돌릴 것이 없으면 「다시 입력」이 잠긴다**(사용자 지적). 빈 화면에서 열려 있으면
+   *    «되돌릴 것이 없는데 되돌리는 버튼»이 선다. 지우는 것과 여는 조건이 짝을 이뤄야 한다.
+   */
+  it('입력이 없으면 「다시 입력」이 잠기고 수량을 치면 열린다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    const resetButton = () => screen.getByRole('button', { name: t.reset });
+
+    await waitFor(() => {
+      expect(resetButton()).toBeDisabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: '7' }));
+
+    await waitFor(() => {
+      expect(resetButton()).toBeEnabled();
+    });
+
+    await user.click(resetButton());
+
+    await waitFor(() => {
+      expect(resetButton()).toBeDisabled();
+    });
+  });
+
+  /*
+   * ⛔ **불량 코드 라벨은 칸에 이어져 있어야 한다** — 맨 `<label>` 이면 눌러도 칸으로 가지
+   *    않고, 위의 수량 칸들이 DS 라벨을 쓰는 것과 줄이 어긋난다(사용자 지적).
+   */
+  it('불량 코드 라벨이 칸에 이어져 있다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    const field = await screen.findByLabelText(t.defectCode);
+
+    expect(field).toBeDisabled();
+  });
+
+  /*
    * ⛔ **소수점 키는 «단위»가 정한다.** 수량 컬럼이 `numeric(20,6)` 이라 소수를 담을 수는
    *    있지만, 담을 수 있다는 것과 그 단위에 소수가 뜻이 있다는 것은 다르다 — `EA`(개)는
    *    `decimalScale` 이 0 이라 1.5개가 없다(사용자 지적). 계약이 단위마다 그 값을 갖는다.

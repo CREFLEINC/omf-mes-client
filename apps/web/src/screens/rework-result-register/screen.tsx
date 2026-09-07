@@ -10,7 +10,7 @@ import {
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { usePopIdentity } from '../../patterns/pop-identity';
@@ -40,6 +40,7 @@ export const ReworkResultRegisterScreen = () => {
   const { client } = useApiClient();
   const identity = usePopIdentity();
   const workOrders = useReworkWorkOrders();
+  const defectCodeId = useId();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [activeKey, setActiveKey] = useState<QuantityKey>('goodQty');
   const [drafts, setDrafts] = useState<QuantityDrafts>(EMPTY_QUANTITIES);
@@ -125,6 +126,18 @@ export const ReworkResultRegisterScreen = () => {
         .catch(() => setPendingCount(pendingReworkResultCount()));
     }
   };
+  /**
+   * 「다시 입력」이 열리는 조건 — **되돌릴 것이 있을 때만**.
+   *
+   * 빈 화면에서 열려 있으면 «되돌릴 것이 없는데 되돌리는 버튼»이 선다(사용자 지적).
+   *
+   * ⭐ **지우는 것과 짝을 맞춘다.** `reset` 은 수량뿐 아니라 저장 결과·오류 표시도 함께
+   * 걷으므로, 저장 직후처럼 수량이 비고 진술만 남은 자리에서도 열려 있어야 한다 — 수량만
+   * 보면 그때 화면에 남은 말을 걷을 방법이 없어진다(전례 `P-02-04` 의 「취소」).
+   */
+  const hasSomethingToReset =
+    selected !== null &&
+    (quantityKeys.some((key) => drafts[key] !== '') || queued || queueError || rejected);
   const reset = () => {
     setDrafts(EMPTY_QUANTITIES);
     setQueued(false);
@@ -376,10 +389,17 @@ export const ReworkResultRegisterScreen = () => {
                    */}
                   <AlertBanner variant="info">{t.reworkHint}</AlertBanner>
 
-                  <label>{t.defectCode}</label>
+                  {/*
+                   * ⛔ **라벨을 칸에 «이어» 둔다.** 앞선 판은 맨 `<label>` 이라 칸과 연결이
+                   *    없었다 — 눌러도 칸으로 가지 않고, 위의 수량 칸들이 DS 가 그리는 라벨을
+                   *    쓰는 것과 줄 간격·글자가 어긋났다(사용자 지적).
+                   */}
+                  <label className="field-label" htmlFor={defectCodeId}>
+                    {t.defectCode}
+                  </label>
                   {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
                   <Select
-                    aria-label={t.defectCode}
+                    id={defectCodeId}
                     size="xl"
                     options={[]}
                     placeholder={t.defectCodePlaceholder}
@@ -495,7 +515,7 @@ export const ReworkResultRegisterScreen = () => {
        */}
       <div className="pop-action-bar">
         <div className="pop-action-note">{gateReason && <p>{gateReason}</p>}</div>
-        <Button size="2xl" variant="outlined" disabled={selected === null} onClick={reset}>
+        <Button size="2xl" variant="outlined" disabled={!hasSomethingToReset} onClick={reset}>
           {t.reset}
         </Button>
         <Button size="2xl" disabled={!canSave} onClick={save}>
