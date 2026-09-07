@@ -3,6 +3,7 @@ import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 import { AppLayout } from '../app/layout';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
+import { AlarmRecipientSettingsScreen } from '../screens/alarm-recipient-settings/screen';
 import { JudgmentCodeScreen } from '../screens/common-code/judgment-code-screen';
 import { CommonCodeScreen } from '../screens/common-code/screen';
 import { DefectCauseCodeScreen } from '../screens/defect-cause-code/screen';
@@ -510,6 +511,8 @@ export const appRouter = createBrowserRouter([
        * 알림은 계속 쌓이는데 지울 수도 읽음으로 바꿀 수도 없으면 화면이 늘 밀린 것으로 보인다.
        */
       { path: 'notification/center', element: <NotificationCenterScreen /> },
+      /* W-CO-11 — 알림 이벤트별 수신 규칙을 관리한다. 이벤트 목록 자체는 계약이 소유한다. */
+      { path: 'notification/recipient-settings', element: <AlarmRecipientSettingsScreen /> },
       /* W-CO-04 — 알림 묶음이다. 알림센터가 받는 자리이고 이쪽이 보내는 자리다. */
       { path: 'notification/notices', element: <NoticeScreen /> },
       /*

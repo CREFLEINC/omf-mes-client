@@ -825,6 +825,7 @@ describe('AppLayout', () => {
       '/equipment/downtime-summary',
       '/approval/inbox',
       '/notification/center',
+      '/notification/recipient-settings',
       '/notification/notices',
       '/system/users-roles',
       '/system/approval-route',

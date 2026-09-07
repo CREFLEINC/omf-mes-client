@@ -5234,6 +5234,86 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-top: var(--space-5);
 }
 
+/* W-CO-11 알람 수신자 설정 — 이벤트 목록과 편집 규칙의 위계를 유지한다. */
+.alarm-recipient-layout {
+  grid-template-columns: minmax(18rem, 2fr) minmax(32rem, 5fr);
+}
+
+.alarm-recipient-pane {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+
+.alarm-recipient-pane > .pane-title,
+.alarm-recipient-heading > .pane-title {
+  margin: 0;
+}
+
+.alarm-recipient-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.alarm-recipient-rules {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.alarm-recipient-rule {
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.alarm-recipient-rule > legend {
+  padding: 0 var(--space-1);
+  color: var(--on-surface-variant);
+  font: var(--type-label-md);
+}
+
+.alarm-recipient-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.alarm-recipient-rule-grid > .field-cell {
+  align-items: stretch;
+}
+
+.alarm-recipient-remove {
+  margin-top: var(--field-label-layer);
+}
+
+.alarm-zalo-setting {
+  display: grid;
+  gap: var(--space-1);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.alarm-zalo-setting > p,
+.alarm-preview-meta {
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .alarm-recipient-rule-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .alarm-recipient-remove {
+    margin-top: 0;
+  }
+}
+
 /* 규범 2 — 컨트롤 상자의 윗선에 맞춘다. 버튼에는 라벨 층이 없어 그만큼 내려 준다. */
 .scan-row {
   display: flex;
