@@ -73,7 +73,19 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
   const [state, setState] = useState<PrintState>(IDLE);
   const reportKeys = useRef(new Map<string, string>());
   const pendingSuccessReport = useRef<PendingSuccessReport | null>(null);
+  const isExecuting = useRef(false);
   const format = labelRenditionFormat();
+
+  const executeOnce = useCallback(async (operation: () => Promise<void>): Promise<void> => {
+    if (isExecuting.current) return;
+
+    isExecuting.current = true;
+    try {
+      await operation();
+    } finally {
+      isExecuting.current = false;
+    }
+  }, []);
 
   const reportKeyFor = useCallback((issueId: number, failed: boolean): string => {
     const slot = `${String(issueId)}:${failed ? 'FAILED' : 'SUCCEEDED'}`;
@@ -189,28 +201,32 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
 
   const run = useCallback(
     async (targets: readonly PrintTarget[]): Promise<void> => {
-      pendingSuccessReport.current = null;
-      await continueRun(targets, 0);
+      await executeOnce(async () => {
+        pendingSuccessReport.current = null;
+        await continueRun(targets, 0);
+      });
     },
-    [continueRun],
+    [continueRun, executeOnce],
   );
 
   const retryReport = useCallback(async (): Promise<void> => {
-    const pending = pendingSuccessReport.current;
-    if (pending === null) return;
+    await executeOnce(async () => {
+      const pending = pendingSuccessReport.current;
+      if (pending === null) return;
 
-    setState({ phase: 'sending', printed: pending.printed, reason: null });
+      setState({ phase: 'sending', printed: pending.printed, reason: null });
 
-    try {
-      await report(pending.target, null);
-    } catch (error) {
-      setState({ phase: 'reportFailed', printed: pending.printed, reason: reasonOf(error) });
-      return;
-    }
+      try {
+        await report(pending.target, null);
+      } catch (error) {
+        setState({ phase: 'reportFailed', printed: pending.printed, reason: reasonOf(error) });
+        return;
+      }
 
-    pendingSuccessReport.current = null;
-    await continueRun(pending.remainingTargets, pending.printed);
-  }, [continueRun, report]);
+      pendingSuccessReport.current = null;
+      await continueRun(pending.remainingTargets, pending.printed);
+    });
+  }, [continueRun, executeOnce, report]);
 
   return {
     state,
