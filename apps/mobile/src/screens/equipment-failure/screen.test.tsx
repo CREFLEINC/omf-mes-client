@@ -420,7 +420,8 @@ describe('설비 고장 보고 화면', () => {
     expect(paths[1]).toBe('/maintenance/breakdowns/:breakdownId/attachments');
   });
 
-  it('세 장을 채우면 더 찍을 수 없고 이유를 말한다', async () => {
+  it('같은 파일명 세 장도 key 경고 없이 순서대로 보이고 더 찍을 수 없다', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('설비 스캔');
@@ -437,6 +438,7 @@ describe('설비 고장 보고 화면', () => {
 
     expect(screen.getByRole('button', { name: /촬영/ })).toBeDisabled();
     expect(screen.getByText('사진은 세 장까지 붙일 수 있습니다.')).toBeInTheDocument();
+    expect(consoleError.mock.calls.flat().join(' ')).not.toContain('same key');
   });
 
   /* 보고를 마치면 화면은 비지만 큐는 그대로다 - 이 화면 것만 세면 큐가 끝없이 커진다. */
