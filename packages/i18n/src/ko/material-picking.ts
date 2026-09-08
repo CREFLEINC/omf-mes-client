@@ -89,7 +89,7 @@ export const materialPicking = {
       description: '연결되면 보냅니다. 아직 서버에 없습니다.',
     },
     rejected: {
-      title: '피킹이 되돌아왔습니다',
+      title: '피킹을 전송하지 못했습니다',
       description: '서버가 받지 않았습니다.',
     },
   },
@@ -101,7 +101,7 @@ export const materialPicking = {
   issueQueued: '이 지시의 출고가 이미 담겨 있습니다. 연결되면 나갑니다.',
   /* 셸이 배경으로 보내다 거부당한 건은 화면이 스스로 본 적이 없다. 그래도 사유는 보여야 한다. */
   returned: {
-    title: (count: string) => `이 지시에서 되돌아온 건 ${count}`,
+    title: (count: string) => `이 지시에서 전송 실패한 건 ${count}`,
     description: '서버가 받지 않았습니다. 사유를 확인하세요. ',
   },
   noWorker: '사번을 확인한 뒤에 피킹할 수 있습니다',
@@ -117,10 +117,10 @@ export const materialPicking = {
     description: '연결되면 보냅니다. 아직 확정이 아니며 서버가 되돌릴 수 있습니다.',
   },
   rejected: {
-    title: '출고가 되돌아왔습니다',
+    title: '출고를 전송하지 못했습니다',
     /** 실물이 이미 나갔을 수 있다. 그 사실을 감추지 않는다. */
-    description: '물건이 이미 나갔다면 회수해야 합니다. 되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    description: '물건이 이미 나갔다면 회수해야 합니다. 전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   another: '다음 지시',
 } as const;

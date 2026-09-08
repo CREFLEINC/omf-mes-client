@@ -70,9 +70,9 @@ export const equipmentInspection = {
     description: '연결되면 보냅니다. 아직 작업 통제에 반영되지 않습니다.',
   },
   rejected: {
-    title: '점검이 되돌아왔습니다',
+    title: '점검을 전송하지 못했습니다',
     description: '서버가 받지 않았습니다. 작업 통제에 반영되지 않습니다.',
-    action: '되돌아온 기록 보기',
+    action: '전송 실패한 기록 보기',
   },
   another: '다른 설비 점검',
 } as const;

@@ -61,9 +61,9 @@ export const recycleEntry = {
     labelLater: '라벨은 번호가 정해진 뒤에 인쇄할 수 있습니다',
   },
   rejected: {
-    title: '재생재 등록이 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '재생재 등록을 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   saveFailed: {
     title: '재생재 등록을 담아 두지 못했습니다',

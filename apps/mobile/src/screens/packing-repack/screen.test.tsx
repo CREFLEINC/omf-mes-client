@@ -492,7 +492,7 @@ describe('포장 재구성 화면', () => {
     await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
     await user.click(screen.getByRole('button', { name: '재구성 확정' }));
 
-    expect(await screen.findByText('재구성이 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('재구성을 전송하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('재구성을 기록했습니다')).toBeNull();
   });
 

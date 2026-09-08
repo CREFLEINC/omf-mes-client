@@ -100,9 +100,9 @@ export const stockTransfer = {
     description: '연결되면 보냅니다. 반출과 도착은 순서대로 나갑니다.',
   },
   rejected: {
-    title: '이동이 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '이동을 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   another: '다음 이동',
 } as const;

@@ -58,7 +58,7 @@ beforeEach(() => {
   store.clear();
 });
 
-describe('되돌아온 기록 화면', () => {
+describe('전송 실패한 기록 화면', () => {
   it('무엇이 언제 왜 되돌아왔는지 보인다', async () => {
     seed([record()]);
 
@@ -83,7 +83,7 @@ describe('되돌아온 기록 화면', () => {
 
     render();
 
-    expect(await screen.findByText('앞 기록이 되돌아와 함께 되돌아왔습니다')).toBeInTheDocument();
+    expect(await screen.findByText('앞 기록이 실패해 함께 실패했습니다')).toBeInTheDocument();
     expect(screen.getByText('앞 기록이 가지 못해 붙을 곳이 없습니다.')).toBeInTheDocument();
   });
 
@@ -114,6 +114,6 @@ describe('되돌아온 기록 화면', () => {
   it('되돌아온 것이 없으면 없다고 말한다', async () => {
     render();
 
-    expect(await screen.findByText('되돌아온 기록이 없습니다.')).toBeInTheDocument();
+    expect(await screen.findByText('전송 실패한 기록이 없습니다.')).toBeInTheDocument();
   });
 });
