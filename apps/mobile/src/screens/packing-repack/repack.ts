@@ -7,7 +7,13 @@ import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 export type HandlingUnitContentUpsert = components['schemas']['HandlingUnitContentUpsert'];
 export type HandlingUnitCreate = components['schemas']['HandlingUnitCreate'];
 
-/** 계약이 열어 둔 세 값. 합병·분할·재구성이고 그 밖은 없다. */
+/**
+ * 계약이 열어 둔 세 값. 합병·분할·재구성이고 그 밖은 없다.
+ *
+ * 고른 값이 서버로 가지 않는다 - 기록 자리는 `HandlingUnitRepackEvent.repackTypeCode` 로
+ * 있는데 이 화면이 보내는 `HandlingUnitCreate` 에 그 칸이 없다. 고르게 하는 것 자체는 설계가
+ * 정한 것이라 걷지 않고, 실을 자리가 서면 그때 본문에 넣는다.
+ */
 export const MERGE = 'MERGE';
 export const SPLIT = 'SPLIT';
 export const RECONFIGURE = 'RECONFIGURE';
