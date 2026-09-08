@@ -69,6 +69,37 @@ pnpm --filter @omf-mes/mobile dev   # 모바일 셸 개발 서버 (브라우저)
 관리웹의 기본 기준 URL은 목 서버 주소(`http://127.0.0.1:4010`)이며, 다른 서버에 붙이려면
 `VITE_API_BASE_URL`로 덮는다(예: `VITE_API_BASE_URL=http://127.0.0.1:4011 pnpm --filter @omf-mes/web dev`).
 
+### 개발 백엔드에 붙여 실행
+
+개발 백엔드는 서버가 등록한 오리진에만 CORS를 연다. 이 저장소는 워크트리마다 dev 포트가
+밀려 오리진이 고정되지 않으므로, 브라우저가 백엔드를 직접 부르면 preflight에서 막히기 쉽다.
+그래서 **dev 서버가 `/api` 요청을 대신 넘긴다** — 같은 출처가 되어 preflight 자체가 없다.
+
+**인증이 쿠키(`omf_session`, HttpOnly)라 이 편이 맞기도 하다.** 같은 출처면 쿠키가 그대로
+실려 화면 코드를 고치지 않아도 로그인 세션이 유지된다.
+
+`apps/web/.env.example`을 `apps/web/.env.local`로 복사하고 두 값을 채운다.
+
+```bash
+cp apps/web/.env.example apps/web/.env.local   # 주소를 채운다 — .local 은 커밋되지 않는다
+pnpm --filter @omf-mes/web dev                 # 관리웹
+pnpm --filter @omf-mes/web dev:pop             # POP
+```
+
+붙었는지 확인 — dev 서버 주소로 부른 응답이 백엔드에서 와야 한다.
+
+```bash
+curl -s http://localhost:5173/api/health       # POP 은 5174
+```
+
+⚠ **프록시는 개발 서버 전용이다.** 빌드 산출물에는 이 경로가 없으므로, 설치본·배포본은
+백엔드가 CORS를 열어 주거나 화면과 같은 출처로 서비스돼야 한다.
+
+⚠ **계약 경로는 로그인을 요구한다.** 로그인하지 않으면 모든 조회가 `401`로 답한다.
+로그인은 `POST /api/app/sessions`이며 성공하면 서버가 세션 쿠키를 내린다 — 프록시를 거치면
+브라우저가 그 쿠키를 이후 요청에 자동으로 싣는다. 계정·초기 자료 준비 절차는 서버 저장소의
+`docs/client-local-api.md`에 있다.
+
 ## 작업 규칙
 
 `main` 직접 push는 차단돼 있다 — 팀 전용 워크트리와 브랜치에서 작업하고 PR로 병합한다. 업무 규칙과 절차의 정본은 `docs/client-dev-workflow/multi-agent-team-workflow-v3.md`다. 루트의 `AGENTS.md`와 `CLAUDE.md`는 부트스트랩으로 만드는 개인별 로컬 파일이며 커밋하지 않는다.
