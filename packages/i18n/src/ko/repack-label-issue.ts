@@ -1,20 +1,33 @@
 /**
  * P-04-04 재구성 신규 라벨 발행.
  *
- * ⚠ **지금 서 있는 것은 발행·인쇄뿐이다**(`omf-mes#418`). ① 발행 대기 목록과 ② 신규 발번은
- * 계약이 「무엇을 몇 개 만들어야 하는가」와 「이미 처리한 건인가」를 나르지 못해 만들지 않았다 —
- * 그래서 이 문구 묶음에도 그 두 구획의 말이 없다.
+ * 고정 설계 P-04-04의 발행 대기 → 대상 선택 → 발행·미리보기·인쇄 흐름.
  */
 export const repackLabelIssue = {
   /* 설계 §3 머리줄이 「재구성 신규 라벨 발행」이다 — 「신규」가 이 화면이 무엇을 뽑는지 가른다. */
   title: '재구성 신규 라벨 발행',
 
-  /** 진입 — 대상 포장·사번을 받는다. 없으면 그 사실을 사유로 말한다. */
+  /** 진입 — 작업자만 단말 세션에서 받는다. 대상은 발행 대기 목록에서 고른다. */
   entry: {
     handlingUnitLabel: '포장',
     workerLabel: '사번',
-    missingHandlingUnit: '대상 포장을 받지 못해 라벨을 발행할 수 없습니다.',
+    missingHandlingUnit: '발행 대기 목록에서 대상 포장을 선택하세요.',
     missingWorker: '사번이 확인되지 않아 라벨을 발행할 수 없습니다. 사번 인증을 먼저 하세요.',
+  },
+
+  pending: {
+    sectionLabel: '발행 대기',
+    caption: '라벨을 아직 발행하지 않은 신규 포장',
+    numberColumn: '신규 포장 번호',
+    newNumber: (handlingUnitNo: string): string => `${handlingUnitNo} · 신규 발번`,
+    typeColumn: '유형',
+    actionColumn: '선택',
+    select: (handlingUnitNo: string): string => `${handlingUnitNo} 선택`,
+    selectAction: '선택',
+    selected: '선택됨',
+    loading: '발행 대기 포장을 불러오는 중입니다.',
+    empty: '현재 발행을 기다리는 포장이 없습니다.',
+    loadFailed: '발행 대기 목록을 불러오지 못했습니다.',
   },
 
   /** 단말 기능 구성 판정. 「확인할 수 없다」와 「권한이 없다」를 다르게 말한다. */
@@ -64,6 +77,15 @@ export const repackLabelIssue = {
   /** 발행 구획 — 회차·사유·프린터. */
   issue: {
     sectionLabel: '라벨 발행',
+    targetsLabel: '인쇄 대상',
+    newLabelWaiting: '신규 포장을 선택하면 새 라벨이 기본 선택됩니다.',
+    newLabel: (handlingUnitNo: string): string => `새 포장 라벨 · ${handlingUnitNo}`,
+    remainderLabel: (handlingUnitNo: string, issueCount: number): string =>
+      `잔량 라벨 재출력 · ${handlingUnitNo} (기존 ${String(issueCount)}회)`,
+    remainderNumberNote: '원 번호를 그대로 씁니다 — 새 번호를 발번하지 않습니다.',
+    remainderWarning: '수량이 바뀌었으면 다시 뽑아야 합니다.',
+    remainderFailed: '잔량 라벨 재출력 대상을 확인하지 못했습니다.',
+    targetRequired: '인쇄할 라벨을 하나 이상 선택하세요.',
     /** 회차는 서버가 매긴다. 화면은 「이번이 몇 번째가 될 것인가」를 세지 않는다. */
     firstIssue: '이 포장의 라벨을 처음 발행합니다.',
     reissue: (issueCount: number): string =>
@@ -126,9 +148,9 @@ export const repackLabelIssue = {
     issued: '발행됐습니다',
     succeeded: '라벨이 인쇄됐습니다.',
     failedTitle: '인쇄하지 못했습니다',
-    /** ⛔ 인쇄 실패를 발행 실패로 말하지 않는다. 복구는 「다시 인쇄」다. */
-    failedBody: '발행 기록은 남았습니다. 프린터를 확인하고 다시 인쇄하세요.',
-    retry: '다시 인쇄',
+    /** 인쇄 실패는 새 회차와 PRINT_FAILURE 사유로 재발행한다(K-7). */
+    failedBody: '발행 기록은 남았습니다. 프린터를 확인하고 실패 사유로 재발행하세요.',
+    retry: '재발행 후 다시 인쇄',
     /**
      * ⛔ **종이는 나왔다.** 「인쇄하지 못했다」고 말하면 사용자가 한 장을 더 뽑는다 —
      * 여기서 할 일은 결과 보고를 다시 보내는 것뿐이다.

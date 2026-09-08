@@ -13,7 +13,7 @@ const CONTRACT_DOCUMENT_TYPE = 'PACKING_LABEL';
 const CONTRACT_TARGET_TYPE = 'HANDLING_UNIT';
 
 const base = {
-  handlingUnitId: HANDLING_UNIT_ID,
+  handlingUnitIds: [HANDLING_UNIT_ID],
   printerName: readyPrinter.printerName,
   reasonCode: '',
   reasonRequired: false,
@@ -27,6 +27,12 @@ describe('발행 요청 본문', () => {
     expect(body.targets).toHaveLength(1);
     expect(body.targets[0]?.targetTypeCode).toBe(CONTRACT_TARGET_TYPE);
     expect(body.targets[0]?.targetId).toBe(HANDLING_UNIT_ID);
+  });
+
+  it('신규 포장과 선택한 잔량 포장을 한 배치에 담는다', () => {
+    const body = issueBody({ ...base, handlingUnitIds: [HANDLING_UNIT_ID, 6603] });
+
+    expect(body.targets.map((target) => target.targetId)).toEqual([HANDLING_UNIT_ID, 6603]);
   });
 
   /*

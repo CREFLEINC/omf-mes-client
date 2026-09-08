@@ -2,11 +2,15 @@ import { act, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { DOCUMENT_ISSUE_LOG_ID, HANDLING_UNIT_NO, WORKER_NO } from './fixtures';
+import { DOCUMENT_ISSUE_LOG_ID, HANDLING_UNIT_ID, HANDLING_UNIT_NO, WORKER_NO } from './fixtures';
 import type { RenditionShell } from './print';
 import { useIssuePrintRunner } from './use-issue-print';
 
-const TARGET = { documentIssueLogId: DOCUMENT_ISSUE_LOG_ID, label: HANDLING_UNIT_NO };
+const TARGET = {
+  documentIssueLogId: DOCUMENT_ISSUE_LOG_ID,
+  targetId: HANDLING_UNIT_ID,
+  label: HANDLING_UNIT_NO,
+};
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 

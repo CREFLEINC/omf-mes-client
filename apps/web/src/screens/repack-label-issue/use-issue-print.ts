@@ -23,7 +23,7 @@ export type IssuePrintPhase =
   /** 프린터로 보내는 중 */
   | 'printing'
   | 'succeeded'
-  /** 프린터로 보내지 못했다. **발행 기록은 남아 있다** — 복구는 다시 인쇄다 */
+  /** 프린터로 보내지 못했다. **발행 기록은 남아 있다** — 복구는 새 회차 재발행이다 */
   | 'failed'
   /**
    * **종이는 나왔고 결과 보고만 실패했다.**
@@ -39,6 +39,8 @@ export type IssuePrintPhase =
 
 export interface IssuePrintTarget {
   documentIssueLogId: number;
+  /** 물리 인쇄 실패 때 `PRINT_FAILURE` 사유의 새 회차를 발행할 계약 대상. */
+  targetId: number;
   /** 인쇄 작업 이름. 현장에서 어느 출력물인지 가리는 값이라 포장 번호를 쓴다. */
   label: string;
 }
@@ -49,10 +51,7 @@ export interface IssuePrintState {
   imageUrl: string | null;
   /** 실패 사유. 서버·셸이 준 말이다 */
   reason: string | null;
-  /**
-   * 방금 발행한 것. **다시 인쇄가 여기서 나온다** — 복구는 「다시 «인쇄»」이지 「다시 «발행»」이
-   * 아니다(다시 발행하면 회차가 또 오른다).
-   */
+  /** 방금 발행한 것. 렌디션 재조회와 물리 인쇄 실패 후 재발행 대상이 여기서 나온다. */
   target: IssuePrintTarget | null;
 }
 
