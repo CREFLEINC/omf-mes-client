@@ -544,9 +544,15 @@ async function main(): Promise<void> {
     if (!isAllowedNavigation(url, DEV_SERVER_URL ?? RENDERER_ORIGIN)) event.preventDefault();
   });
 
-  lockKiosk(window);
-
   await window.loadURL(DEV_SERVER_URL ?? RENDERER_ORIGIN);
+
+  /*
+   * ⛔ **화면이 뜬 뒤에 잠근다.** 앞에서 잠그면 로드가 실패했을 때 빠져나올 수 없다 — 창은
+   *    맨 앞에 못 박힌 채 닫히지 않고, 기동 실패를 알리는 상자는 그 뒤에 깔려 누를 수 없으며,
+   *    그 상자가 응답을 기다리느라 종료 호출에도 닿지 못한다. 남는 수단이 전원 차단뿐인데
+   *    그것이 이 잠금이 피하려던 상태다(`docs/decisions.md` 15).
+   */
+  lockKiosk(window);
 
   registerPrinterDiagnostic(rawPrinter, stagingDir, window);
 }
