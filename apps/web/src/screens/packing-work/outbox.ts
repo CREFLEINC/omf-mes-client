@@ -4,34 +4,27 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { MAX_AUTO_ATTEMPTS, isRejected, retryDelayOf } from '../../patterns/outbox-policy';
 import { runRequest, toApiError } from '../../patterns/request';
-import type { HandlingUnitPack } from './types';
+import type { HandlingUnitCreate } from './types';
 
 /**
  * 포장 확정 outbox — **공유계약 C-1** · 스펙 §6 「오프라인 → 큐잉」.
  *
- * ⭐ **큐에 담는 것은 확정(`:pack`) 하나다.** 이 화면의 쓰기는 둘인데 앞의 등록
- * (`POST …/handling-units`)은 서버가 번호를 매겨 돌려주는 쓰기라 오프라인에서 부를 수 없고,
- * 계약도 그것을 오프라인 대상으로 표시하지 않았다 — 오프라인 표시가 붙은 것은 `:pack` 뿐이다.
- * 번호를 이미 받은 뒤라면 경로 인자가 갖춰져 있어 큐잉이 성립한다. 성립하지 않는 것은
- * **오프라인 상태에서 포장을 새로 시작하는 것** 하나이며, 그 자리는 화면이 막고 말한다.
+ * ⭐ **큐에 담는 것은 확정 한 건이다.** 확정은 `POST /inventory/handling-units` 한 번으로
+ * 끝나므로(등록 시점을 확정 시점으로 옮겼다 · 사용자 결정 2026-09-08) 앞뒤가 매인 호출이
+ * 없고, **끊긴 채로도 포장을 시작해 확정까지 마칠 수 있다.**
  *
- * ⚠ **등록 호출의 시점 자체는 설계 회신에 달려 있다**(#796). 회신이 「확정 시점에 만든다」로
- * 오면 등록이 이 큐 앞으로 합쳐지고, 그때 바뀌는 것은 담기는 항목의 모양이지 이 훅의 골격이
- * 아니다.
- *
- * 조항이 정한 다섯을 여기서 지킨다.
+ * 조항이 정한 다섯 중 넷을 여기서 지킨다.
  *
  * | # | 규칙 | 여기서 |
  * | :-: | --- | --- |
  * | 1 | `idempotency_key` 는 **클라이언트가 생성**해 outbox 에 담는다 | 담을 때 한 번 만든다 |
  * | 2 | **로컬 저장 후 즉시 성공 피드백** | `enqueue` 가 곧 확정이다 |
- * | 3 | 발생 시각과 서버 수신 시각을 분리 | `occurredAt`·`businessDate` 를 담을 때 박는다 |
  * | 4 | **연결 상태와 미동기 건수를 상시 표시** | `pendingCount`·`isOnline` 을 화면이 낸다 |
  * | 5 | 재전송은 **같은 키로** | 키가 항목에 붙어 시도마다 바뀌지 않는다 |
  *
- * ⛔ **`If-Match` 를 싣지 않는다**(C-9). 계약이 확정의 잠금 토큰을 선택으로 두었고, 큐에 쌓인
- * 요청은 잠글 판본을 들고 있을 수 없다 — 담긴 뒤 서버가 앞서 나가면 **기다렸다는 이유로**
- * 거부된다.
+ * ⛔ **#3(발생 시각과 서버 수신 시각을 분리)은 지킬 수 없다.** 계약의 `HandlingUnitCreate` 에
+ * 시각 칸이 없고 헤더에도 없다 — 큐에 밀린 확정은 **서버가 받은 때**로 기록된다. 계약이 그
+ * 자리를 열어 주어야 풀린다(공유계약 C-8).
  *
  * ⚠ **사번을 항목에 함께 담는다** — 헤더를 채우지 못하면 서버가 거부하고, 나중 값으로 대신할
  * 수도 없다. 그 포장을 「누가 한 일」로 만드는 값이다(귀속 조항 D-5).
@@ -45,11 +38,9 @@ type Client = ApiClient['client'];
 /** 큐에 담긴 확정 한 건. */
 export interface OutboxEntry {
   idempotencyKey: string;
-  /** 확정할 포장 단위. **담을 때의 번호다** — 재전송 시점에 다시 고르지 않는다. */
-  handlingUnitId: number;
   /** 이 쓰기의 귀속 사번. 헤더로만 나가고 본문에는 실리지 않는다. */
   workerNo: string;
-  body: HandlingUnitPack;
+  body: HandlingUnitCreate;
 }
 
 export const STORAGE_KEY = 'omf-mes.packing-work.outbox';
@@ -60,13 +51,24 @@ export const STORAGE_KEY = 'omf-mes.packing-work.outbox';
  * ⛔ **믿고 넘기지 않는다.** 지난 판의 화면이 썼거나 손으로 고쳐졌을 수 있고, 그 끝에 있는
  * 것은 해체 경로가 없는 확정이다(스펙 §8-4). 계약이 필수로 둔 것과 헤더가 요구하는 것만
  * 확인한다.
+ *
+ * ⛔ **지난 판(`:pack` 을 부르던 판)이 남긴 항목은 여기서 떨어져 버려진다 — 알고 그렇게
+ * 둔다.** 그 항목은 `handlingUnitId` 와 시각 두 칸을 들고 있고 본문에 `handlingUnitTypeCode`
+ * 가 없어 이 검사를 통과하지 못한다. 저장 키(`STORAGE_KEY`)는 그대로라 갱신해도 값이 남는다.
+ *
+ * 마저 보내려면 이미 만들어진 포장 단위에 `:pack` 을 부르는 경로를 한 판 더 들고 있어야 한다.
+ * 서버가 `/inventory/handling-units` 계열을 아직 구현하지 않았고(#885) POP 이 현장에 나가
+ * 있지도 않아 **그 값이 존재할 수 있는 단말이 없다** — 되살리는 코드가 지킬 것보다 무겁다고
+ * 보고 버리기로 했다(사용자 결정 2026-09-08 · PR 리뷰).
+ *
+ * ⚠ **현장 배포 뒤에는 이 판단이 성립하지 않는다.** 그때는 저장 형식을 다시 바꾸기 전에
+ * 지난 모양을 함께 받는 경로부터 세운다.
  */
 export const isSendableEntry = (value: unknown): value is OutboxEntry => {
   if (typeof value !== 'object' || value === null) return false;
 
   const entry = value as Record<string, unknown>;
   if (typeof entry.idempotencyKey !== 'string' || entry.idempotencyKey === '') return false;
-  if (typeof entry.handlingUnitId !== 'number') return false;
   if (typeof entry.workerNo !== 'string' || entry.workerNo === '') return false;
 
   const body = entry.body;
@@ -74,10 +76,12 @@ export const isSendableEntry = (value: unknown): value is OutboxEntry => {
 
   const fields = body as Record<string, unknown>;
 
-  /* 내용물이 비면 서버가 400 이다(계약) — 빈 확정을 큐에 남겨 두면 매번 거부된다. */
-  if (!Array.isArray(fields.contents) || fields.contents.length === 0) return false;
+  if (typeof fields.handlingUnitTypeCode !== 'string' || fields.handlingUnitTypeCode === '') {
+    return false;
+  }
 
-  return typeof fields.businessDate === 'string' && typeof fields.occurredAt === 'string';
+  /* 내용물이 비면 확정이 아니다 — 빈 포장을 큐에 남겨 두면 뜻 없는 포장이 선다. */
+  return Array.isArray(fields.contents) && fields.contents.length > 0;
 };
 
 /**
@@ -113,9 +117,8 @@ const writeStored = (entries: readonly OutboxEntry[]): void => {
 
 const postEntry = async (client: Client, entry: OutboxEntry): Promise<void> => {
   await runRequest(() =>
-    client.POST('/inventory/handling-units/{handlingUnitId}:pack', {
+    client.POST('/inventory/handling-units', {
       params: {
-        path: { handlingUnitId: entry.handlingUnitId },
         header: {
           /* ⛔ 시도마다 새로 만들지 않는다 — 재전송이 새 확정이 된다(C-1 #5). */
           'Idempotency-Key': entry.idempotencyKey,

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MAX_AUTO_ATTEMPTS, retryDelayOf } from '../../patterns/outbox-policy';
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { HANDLING_UNIT_ID, ITEM_ID, LOT_A_ID, UOM_ID, WORKER_NO } from './fixtures';
+import { BOX_CODE, ITEM_ID, LOT_A_ID, UOM_ID, WORKER_NO } from './fixtures';
 import { STORAGE_KEY, isSendableEntry, usePackingWorkOutbox, type OutboxEntry } from './outbox';
 
 /**
@@ -14,18 +14,17 @@ import { STORAGE_KEY, isSendableEntry, usePackingWorkOutbox, type OutboxEntry } 
  * **이 화면의 큐**만 겨눈다.
  */
 
-const PACK_PATH = `/inventory/handling-units/${String(HANDLING_UNIT_ID)}:pack`;
+const PACK_PATH = '/inventory/handling-units';
 
 const body = {
+  handlingUnitTypeCode: BOX_CODE,
+  parentHandlingUnitId: null,
   contents: [{ lotId: LOT_A_ID, itemId: ITEM_ID, uomId: UOM_ID, qty: 100 }],
-  businessDate: '2026-09-04',
-  occurredAt: '2026-09-04T10:30:00+09:00',
 } satisfies OutboxEntry['body'];
 
 describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', () => {
   const entry = {
     idempotencyKey: 'key-1',
-    handlingUnitId: HANDLING_UNIT_ID,
     workerNo: WORKER_NO,
     body,
   };
@@ -38,12 +37,9 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
     expect(isSendableEntry({ ...entry, idempotencyKey: '' })).toBe(false);
   });
 
-  /*
-   * ⭐ **포장 번호는 경로에 실린다.** 없으면 보낼 주소가 없고, 재전송 시점에 「지금 담고 있는
-   * 포장」으로 대신하면 엉뚱한 포장이 확정된다.
-   */
-  it('포장 단위가 없으면 보내지 않는다', () => {
-    expect(isSendableEntry({ idempotencyKey: 'key-1', workerNo: WORKER_NO, body })).toBe(false);
+  /* ⛔ 유형 없이는 서버가 받지 않는다 — 계약이 필수로 둔 유일한 칸이다. */
+  it('포장 유형이 없으면 보내지 않는다', () => {
+    expect(isSendableEntry({ ...entry, body: { ...body, handlingUnitTypeCode: '' } })).toBe(false);
   });
 
   it('사번이 없으면 보내지 않는다 — 없으면 서버가 거부한다', () => {
@@ -53,15 +49,6 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
   /* ⛔ 내용물이 비면 서버가 400 이다(계약) — 큐 맨 앞에서 매번 거부돼 뒤엣것까지 막는다. */
   it('내용물이 빈 확정은 보내지 않는다', () => {
     expect(isSendableEntry({ ...entry, body: { ...body, contents: [] } })).toBe(false);
-  });
-
-  it('계약이 필수로 둔 칸이 빠지면 보내지 않는다', () => {
-    for (const field of ['businessDate', 'occurredAt']) {
-      const broken: Record<string, unknown> = { ...body };
-      delete broken[field];
-
-      expect(isSendableEntry({ ...entry, body: broken })).toBe(false);
-    }
   });
 
   it('객체가 아닌 값은 보내지 않는다', () => {
@@ -100,7 +87,7 @@ describe('usePackingWorkOutbox', () => {
 
   const enqueueOne = (result: { current: ReturnType<typeof usePackingWorkOutbox> }): void => {
     act(() => {
-      result.current.enqueue({ handlingUnitId: HANDLING_UNIT_ID, workerNo: WORKER_NO, body });
+      result.current.enqueue({ workerNo: WORKER_NO, body });
     });
   };
 
@@ -186,7 +173,7 @@ describe('usePackingWorkOutbox', () => {
     });
 
     expect(result.current.pendingCount).toBe(1);
-    expect(globalThis.localStorage.getItem(STORAGE_KEY)).toContain(String(HANDLING_UNIT_ID));
+    expect(globalThis.localStorage.getItem(STORAGE_KEY)).toContain(BOX_CODE);
   });
 
   it('사람이 다시 보내라고 하면 멈춤이 풀린다', async () => {
