@@ -1471,6 +1471,38 @@ export const createSeed = (now = new Date()) => {
     inspections: [],
     breakdowns: [],
     operationHandovers: [],
+    /**
+     * 작업 세션 — P-02-10 이 중단·재개를 거는 자리다.
+     *
+     * 진행 중인 것 하나만 둔다(W/O 11002). ⚠ **끝 시각을 비운다** — 화면은 「열려 있는가」를
+     * 끝 시각의 부재로 판정하므로, 값이 있으면 세션이 없는 것으로 걸러진다.
+     */
+    workSessions: [
+      {
+        workSessionId: 9001,
+        workOrderId: 11002,
+        sessionNo: 1,
+        shiftId: 1001,
+        equipmentId: 5001,
+        terminalId: 7001,
+        startedAt: '2026-09-08T08:00:00+09:00',
+        endedAt: null,
+        statusCode: 'RUNNING',
+        versionNo: 1,
+      },
+    ],
+    /** 세션 사건 — 구간을 연 「시작」 하나로 둔다. 중단·재개는 화면이 쌓는다. */
+    workSessionEvents: [
+      {
+        workSessionEventId: 9101,
+        workSessionId: 9001,
+        eventTypeCode: 'START',
+        occurredAt: '2026-09-08T08:00:00+09:00',
+        recordedAt: '2026-09-08T08:00:00+09:00',
+        performedBy: 1001,
+        terminalId: 7001,
+      },
+    ],
     approvalRequests,
     goodsReceipts: [],
     productionResults: [],
