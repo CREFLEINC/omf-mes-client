@@ -194,6 +194,12 @@ export const WorkStartScreen = () => {
       setOutcome(t.result.started(selected?.workOrderNo ?? ''));
       setSelectedId(null);
 
+      /*
+       * ⚠ **문구가 화면에 남는 시간은 이동 전까지다.** 시작이 되면 자재 투입으로 넘어가므로
+       *   (사용자 지시 2026-09-08) 이 문구를 실제로 읽는 것은 이동이 막혔을 때뿐이다.
+       *   ⛔ 그렇다고 걷지 않는다 — 「시작하면 그 사실을 작업지시 번호와 함께 알린다」가
+       *      스펙으로 못박혀 있고, 이동 없이 서는 갈래에서 유일한 확인 수단이다.
+       */
       if (selected !== null) goToMaterialInput(selected.workOrderId);
     },
   });
@@ -206,6 +212,12 @@ export const WorkStartScreen = () => {
       setOutcome(t.result.resumed(selected?.workOrderNo ?? ''));
       setSelectedId(null);
 
+      /*
+       * ⚠ **문구가 화면에 남는 시간은 이동 전까지다.** 시작이 되면 자재 투입으로 넘어가므로
+       *   (사용자 지시 2026-09-08) 이 문구를 실제로 읽는 것은 이동이 막혔을 때뿐이다.
+       *   ⛔ 그렇다고 걷지 않는다 — 「시작하면 그 사실을 작업지시 번호와 함께 알린다」가
+       *      스펙으로 못박혀 있고, 이동 없이 서는 갈래에서 유일한 확인 수단이다.
+       */
       if (selected !== null) goToMaterialInput(selected.workOrderId);
     },
   });
@@ -214,25 +226,32 @@ export const WorkStartScreen = () => {
    * 시작·재개를 막는 사유. **순서가 뜻이다** — 단말이 못 하는 일이면 사번을 아무리 잘 넣어도
    * 열리지 않으므로 그 사실을 먼저 말한다.
    */
-  const blockReason = ((): string | null => {
-    if (gate.verdict === 'unidentified') return t.blocked.unidentified;
-    if (gate.verdict === 'checking') return t.blocked.checking;
-    if (gate.verdict === 'unavailable') return t.blocked.unavailable;
-    if (gate.verdict === 'denied') return t.blocked.denied;
-    /* ⛔ 오프라인은 큐가 아니라 거부다 — 사유와 다음 행동을 함께 보인다. */
-    if (!isOnline) return t.blocked.offline;
-    if (confirmedNo === null) return t.blocked.workerMissing;
-    if (selected === null) return t.blocked.notSelected;
+  const block = ((): { code: 'notSelected' | 'other'; text: string } | null => {
+    /*
+     * ⚠ **사유를 «코드»와 함께 낸다.** 배너를 세울지는 「아무것도 안 골랐다」인지로 갈리는데,
+     *   그것을 번역 문구가 같은지로 판정하면 다른 사유가 같은 문장을 쓰게 되는 날 그 배너까지
+     *   함께 사라진다 — 화면이 조용히 말을 잃는다(리뷰 지적 2026-09-08).
+     */
+    const other = (text: string) => ({ code: 'other' as const, text });
 
-    if (openSession.isError) return t.resume.sessionLookupFailed;
-    if (openSession.isPending) return t.resume.checking;
+    if (gate.verdict === 'unidentified') return other(t.blocked.unidentified);
+    if (gate.verdict === 'checking') return other(t.blocked.checking);
+    if (gate.verdict === 'unavailable') return other(t.blocked.unavailable);
+    if (gate.verdict === 'denied') return other(t.blocked.denied);
+    /* ⛔ 오프라인은 큐가 아니라 거부다 — 사유와 다음 행동을 함께 보인다. */
+    if (!isOnline) return other(t.blocked.offline);
+    if (confirmedNo === null) return other(t.blocked.workerMissing);
+    if (selected === null) return { code: 'notSelected', text: t.blocked.notSelected };
+
+    if (openSession.isError) return other(t.resume.sessionLookupFailed);
+    if (openSession.isPending) return other(t.resume.checking);
 
     if (isResume) {
       /* ⛔ 열린 세션이 없으면 재개하지 않는다 — 새로 열면 중단 구간이 사라진다. */
-      if (openSession.data === null) return t.resume.sessionNotFound;
+      if (openSession.data === null) return other(t.resume.sessionNotFound);
     } else if (openSession.data !== null) {
       /* ⛔ 세션이 이미 열려 있으면 새로 열지 않는다(§6). */
-      return t.blocked.alreadyOpen;
+      return other(t.blocked.alreadyOpen);
     }
 
     return null;
@@ -354,10 +373,10 @@ export const WorkStartScreen = () => {
        *    ② 목록이 긴 화면에서 사유가 화면 맨 아래에 있어, 「왜 안 눌리지」 하고 버튼을 먼저
        *    보게 된다. 머리줄 아래는 이 셸이 「지금 이 화면에 걸린 것」을 말해 온 자리다.
        */}
-      {blockReason !== null && blockReason !== t.blocked.notSelected && (
+      {block !== null && block.code !== 'notSelected' && (
         <div className="banner-slot">
           <AlertBanner variant="warning">
-            {blockReason}
+            {block.text}
             {retryLabel !== null && (
               <>
                 {' '}
@@ -452,7 +471,7 @@ export const WorkStartScreen = () => {
 
       <ActionBar
         mode={isResume ? 'resume' : 'start'}
-        isBlocked={blockReason !== null}
+        isBlocked={block !== null}
         isSaving={isResume ? resumeWork.isSaving : startWork.isSaving}
         onSubmit={submit}
       />

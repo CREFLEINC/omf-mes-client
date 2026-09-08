@@ -343,8 +343,15 @@ function createRawPrinter(fallbackName?: string): RawPrinter | undefined {
        */
       const probed = await probeMedia(deviceName ?? fallbackName, join(dataPath, '..'));
       const media = withProbedSize(readLabelMedia(), probed);
-      const sent = applyLabelMedia(readFileSync(dataPath, 'ascii'), media);
-      writeFileSync(dataPath, sent, 'ascii');
+      /*
+       * ⛔ **`ascii` 로 읽고 쓰지 않는다.** Node 의 `ascii` 는 바이트마다 최상위 비트를
+       *    떨어뜨린다 — 서버가 보낸 명령에 한글이나 코드페이지 바이트가 한 자라도 섞이면
+       *    프린터로 나가는 파일에서 그 자리가 «다른 글자»가 된다(리뷰 지적 2026-09-08).
+       *    `latin1` 은 바이트를 그대로 옮긴다. 지금은 목이 ASCII 만 내려 드러나지 않지만,
+       *    서버가 붙는 순간(#891) 재현된다.
+       */
+      const sent = applyLabelMedia(readFileSync(dataPath, 'latin1'), media);
+      writeFileSync(dataPath, sent, 'latin1');
 
       await runPrintScript(
         join(dataPath, '..', 'raw-print.ps1'),

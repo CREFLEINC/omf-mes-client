@@ -110,7 +110,22 @@ export const applyLabelMedia = (commands: string, media: LabelMedia): string => 
     'REFERENCE 0,0',
   ];
 
-  return [...header, ...body].join('\r\n');
+  /*
+   * ⛔ **머리말을 맨 앞에 «한 번만» 붙이지 않는다.** 한 작업에 라벨이 둘 이상이면 명령이
+   *    `…CLS…PRINT` 덩이로 이어져 오는데, 앞에서 걷어낸 대지 선언이 둘째 덩이부터 통째로
+   *    사라진다 — 첫 장만 제대로 나오고 그 뒤가 어긋난다(리뷰 지적 2026-09-08).
+   *
+   * `CLS` 가 한 장의 시작이라, **덩이마다** 그 앞에 다시 세운다.
+   */
+  const starts = body.filter((line) => line.trim().toUpperCase() === 'CLS').length;
+
+  if (starts === 0) return [...header, ...body].join('\r\n');
+
+  const laid = body.flatMap((line) =>
+    line.trim().toUpperCase() === 'CLS' ? [...header, line] : [line],
+  );
+
+  return laid.join('\r\n');
 };
 
 /**

@@ -48,9 +48,6 @@ const finish = (lines) => [...lines, 'PRINT 1'].join('\r\n') + '\r\n';
  */
 const MIN_POINT = 7;
 
-const fits = (content, point, available) =>
-  String(content).length * point * 0.5 * (203 / 72) <= available;
-
 function fit(content, point, available) {
   const widthAt = (pt) => String(content).length * pt * 0.5 * (203 / 72);
 

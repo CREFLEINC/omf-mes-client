@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { useId, useState, type ReactElement, type ReactNode } from 'react';
 
-import type { CodeOption } from './code-options';
+import { isKnownCode, type CodeOption } from './code-options';
 import { isCoverageOutOfOrder, type CoverageDraft } from './coverage';
 import { canChooseDisposition, type DispositionState } from './disposition';
 import {
@@ -299,6 +299,16 @@ export const ResultPanel = ({
             disabled={judgmentOptions.length === 0}
             onChange={onJudgmentChange}
           />
+          {/*
+           * ⚠ **목록은 왔는데 그 안에 저장된 판정이 없다**(사용 중지된 코드일 수 있다).
+           *   조용히 비우면 «사용자가 지우지 않았는데 고른 것이 사라진다» — 그 사실을 밝힌다.
+           *
+           * ⛔ 목록 자체가 없을 때는 말하지 않는다 — 그때는 셀렉터가 이미 「준비되지
+           *    않았다」로 서 있고, 여기서 한 줄을 더 붙이면 두 사유가 겹쳐 읽힌다.
+           */}
+          {judgmentOptions.length > 0 && !isKnownCode(judgmentOptions, judgment) && (
+            <p className="field-note">{t.judgmentUnknown(judgment)}</p>
+          )}
         </div>
 
         {/*

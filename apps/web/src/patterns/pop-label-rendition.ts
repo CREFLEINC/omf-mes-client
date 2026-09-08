@@ -25,10 +25,30 @@ interface ShellCarrier {
 export const labelRenditionFormat = (): LabelRenditionFormat => {
   if (typeof window === 'undefined') return 'png';
 
+  /*
+   * ⛔ **개발 서버(브라우저)에서는 언제나 그림이다.**
+   *
+   * `pop-main` 이 브라우저에서 `window.pop` 대역을 심는다 — 셸 없이도 흐름을 끝까지 볼 수
+   * 있게 하려는 것인데, 그 대역을 셸로 읽으면 **계약에 아직 없는 형식(`tspl`)을 진짜 개발
+   * 백엔드에 묻게 된다**(415). 목 서버에서만 통하고 실서버에서는 발행이 죽는다.
+   *
+   * ⚠ `DEV` 를 쓰는 것이 여기서는 맞다 — 참인 곳이 개발 «서버»뿐이고, 대역을 심는 조건도
+   *   같다. 설치본은 `--mode development` 로 구워도 거짓이라 셸의 진짜 통로를 쓴다.
+   */
+  if (import.meta.env.DEV) return 'png';
+
   const carrier = window as unknown as ShellCarrier;
 
   return carrier.pop?.rendition === undefined ? 'png' : 'tspl';
 };
+
+/**
+ * ⚠ **모듈 최상위에서 한 번만 불러도 된다** — 화면 여섯이 그렇게 쓴다.
+ *
+ * 셸에서는 `preload` 가 화면 모듈보다 «먼저» 돌아 `window.pop` 이 이미 서 있고, 개발
+ * 서버에서는 위 `DEV` 가름이 대역을 심는 시점과 무관하게 그림으로 답한다 — 두 자리 다
+ * 부르는 시점에 흔들리지 않는다. (앞서는 대역이 늦게 심겨 화면마다 형식이 갈렸다.)
+ */
 
 /**
  * 계약 질의에 실을 값.

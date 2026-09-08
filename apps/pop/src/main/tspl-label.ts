@@ -94,10 +94,6 @@ export function escapeTspl(value: string): string {
  * ⛔ **7pt 아래로는 내리지 않는다**(사양서 §4.2). 그 아래는 203dpi 에서 읽히지 않으므로,
  *    더 줄여야 들어갈 글자는 **넘치게 두고** 사람이 보고 알아채게 한다.
  */
-function fits(content: string, point: number, available: number): boolean {
-  return content.length * point * 0.5 * (203 / 72) <= available;
-}
-
 function fit(content: string, point: number, available: number): number {
   const widthAt = (pt: number): number => content.length * pt * 0.5 * (203 / 72);
 

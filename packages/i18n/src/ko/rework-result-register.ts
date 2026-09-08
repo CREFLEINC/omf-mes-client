@@ -73,7 +73,6 @@ export const reworkResultRegister = {
      * 도면은 구획 전체 폭을 입력 칸이 쓰고 280px 로 검산돼 있다 — 키패드를 옆에 붙이면
      * 그 예산이 성립하지 않는다(사용자 결정 2026-09-07).
      */
-    keypadTitle: (field: string): string => `${field} 입력`,
     keypadDone: '확인',
     /**
      * ⛔ **X 를 쓰지 않는다**(사용자 결정 2026-09-07). 장갑 낀 손에 20px 짜리 기호는 작고,

@@ -162,3 +162,42 @@ describe('드라이버에 설정된 용지 읽기', () => {
     expect(withProbedSize(readLabelMedia(), { widthMm: 100, heightMm: 60 }).widthMm).toBe(80);
   });
 });
+
+/*
+ * ⛔ **한 작업에 라벨이 둘이어도 둘째 장이 대지 선언을 잃지 않는다**(리뷰 지적 2026-09-08).
+ *    머리말을 맨 앞에 한 번만 붙이면 둘째 덩이는 걷어낸 채로 나간다.
+ */
+it('라벨 덩이마다 대지 선언을 다시 세운다', () => {
+  const two = [
+    'SIZE 80 mm,30 mm',
+    'GAP 3 mm,0 mm',
+    'CLS',
+    'TEXT 10,10,"0",0,10,10,"첫 장"',
+    'PRINT 1',
+    'SIZE 80 mm,30 mm',
+    'CLS',
+    'TEXT 10,10,"0",0,10,10,"둘째 장"',
+    'PRINT 1',
+  ].join('\r\n');
+
+  const applied = applyLabelMedia(two, {
+    widthMm: 100,
+    heightMm: 60,
+    kind: 'gap',
+    gapMm: 2,
+    offsetMm: 0,
+    speed: 4,
+    density: 8,
+  });
+
+  expect(applied.match(/^SIZE 100 mm,60 mm$/gm)).toHaveLength(2);
+  expect(applied.match(/^CLS$/gm)).toHaveLength(2);
+
+  /* 대지 선언이 «자기» CLS 앞에 선다 — 뒤에 서면 그 장에는 적용되지 않는다. */
+  const lines = applied.split('\r\n');
+  lines.forEach((line, index) => {
+    if (line !== 'CLS') return;
+
+    expect(lines.slice(0, index).at(-1)).toBe('REFERENCE 0,0');
+  });
+});
