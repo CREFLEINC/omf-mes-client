@@ -63,6 +63,10 @@ export const inboundReceipt = {
     uomLabel: '단위',
     uomPlaceholder: '단위를 고르세요',
     uomLoadFailed: '단위를 확인할 수 없습니다',
+    typeLabel: '예외입하 유형',
+    typePlaceholder: '예외 유형을 고르세요',
+    typeLoadFailed: '예외입하 유형을 불러오지 못했습니다',
+    reasonLabel: '예외 사유',
     /** 예정 수량이 없으므로 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */
     noVerdict: '발주가 없어 예정 수량과 비교하지 않습니다',
     /** 공장은 단말 토큰이 싣고 온다. 없으면 지어내지 않고 막는다. */
@@ -97,10 +101,24 @@ export const inboundReceipt = {
   },
   verdict: {
     normal: '남은 예정과 맞습니다',
-    /** 판정 결과를 먼저 보인 뒤에 넘긴다. 넘어갈 화면은 아직 이 앱에 없다. */
+    /** 판정 결과를 먼저 보인 뒤 같은 화면의 분리 단계로 이어 간다. */
     over: (remaining: string, arrived: string) =>
       `수량 초과 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
-    overNext: '초과분은 담당자가 따로 처리합니다.',
+    overNext: '정량분과 초과분을 확인하고 이번 화면에서 등록 방식을 고르세요.',
+    split: {
+      legend: '초과 입하 분리',
+      remaining: '남은 예정수량',
+      normal: '정량분',
+      excess: '초과분',
+      exceptionType: '초과 예외 유형',
+      exceptionTypePlaceholder: '예외 유형을 고르세요',
+      exceptionTypeLoadFailed: '초과 예외 유형을 불러오지 못했습니다',
+      exceptionReason: '초과 사유',
+      both: '정량+초과 분리 등록',
+      normalOnly: '정량분만 등록',
+      excessOnly: '초과분만 등록',
+      atomic: '정량분과 초과분은 한 번에 저장되며 일부만 성공하지 않습니다.',
+    },
     under: (remaining: string, arrived: string) =>
       `수량 부족 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
     /*
