@@ -80,12 +80,18 @@ export function isBlockedKey(input: KeyInput): boolean {
  * ⚠ **앞자리만 같은지 보면 새어 나간다.** `startsWith(allowed)` 하나로 재면 `pop://app` 을
  *   허용한 것이 `pop://appevil` 까지 허용한다. 오리진은 앞자리가 아니라 **경계**로 끊어야 한다 —
  *   허용값과 똑같거나, 그 뒤가 `/` · `?` · `#` 로 이어질 때만 같은 곳이다.
+ *
+ * ⚠ **끝 슬래시를 먼저 떼고 잰다.** 허용값이 `POP_DEV_SERVER_URL` 로 들어오는데 그 값의 표기를
+ *   강제하는 곳이 없다. 떼지 않으면 `http://localhost:5173/` 을 준 개발자에게 **화면 이동이
+ *   통째로 막힌다** — 경계 문자를 재는 자리에 경로 첫 글자가 와서 판정이 뒤집힌다.
  */
 export function isAllowedNavigation(url: string, allowedOrigin: string): boolean {
-  if (url === allowedOrigin) return true;
-  if (!url.startsWith(allowedOrigin)) return false;
+  const origin = allowedOrigin.endsWith('/') ? allowedOrigin.slice(0, -1) : allowedOrigin;
 
-  return ['/', '?', '#'].includes(url.charAt(allowedOrigin.length));
+  if (url === origin) return true;
+  if (!url.startsWith(origin)) return false;
+
+  return ['/', '?', '#'].includes(url.charAt(origin.length));
 }
 
 /**

@@ -112,6 +112,12 @@ describe('화면 안 링크 — 허용된 곳 밖으로 못 나간다', () => {
     expect(isAllowedNavigation('http://localhost:5173/pop', 'http://localhost:5173')).toBe(true);
     expect(isAllowedNavigation('http://localhost:51730/', 'http://localhost:5173')).toBe(false);
   });
+
+  it('허용값이 끝 슬래시로 와도 같게 판정한다 — 그 표기를 막는 곳이 없다', () => {
+    expect(isAllowedNavigation('http://localhost:5173/pop', 'http://localhost:5173/')).toBe(true);
+    expect(isAllowedNavigation('http://localhost:5173', 'http://localhost:5173/')).toBe(true);
+    expect(isAllowedNavigation('http://localhost:51730/', 'http://localhost:5173/')).toBe(false);
+  });
 });
 
 describe('언제 잠그는가', () => {

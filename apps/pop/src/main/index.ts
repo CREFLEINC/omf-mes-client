@@ -548,16 +548,26 @@ async function main(): Promise<void> {
 
   await window.loadURL(DEV_SERVER_URL ?? RENDERER_ORIGIN);
 
-  registerPrinterDiagnostic(rawPrinter, stagingDir);
+  registerPrinterDiagnostic(rawPrinter, stagingDir, window);
 }
 
 /**
- * 정비 목적으로 스스로 나가는 중인가. 이때만 창이 닫히는 것을 허용한다.
+ * 앱이 정말로 끝나는 중인가. 이때만 창이 닫히는 것을 허용한다.
  *
- * ⚠ 창 안에서 판정하지 않고 모듈에 둔다 — `close` 는 `app.quit()` 이 부른 것과 작업자가
- *   `Alt+F4` 로 부른 것을 구분해 주지 않는다. 구분은 이 깃발이 한다.
+ * ⚠ 창 안에서 판정하지 않고 모듈에 둔다 — `close` 는 종료 절차가 부른 것과 작업자가 `Alt+F4`
+ *   로 부른 것을 구분해 주지 않는다. 구분은 이 깃발이 한다.
+ *
+ * ⛔ **직접 세우지 않는다.** 세우는 것은 아래 `before-quit` · `session-end` 둘뿐이다. 손으로
+ *    세우면 「세워 놓고 종료가 안 끝난」 상태가 남고, 그때부터 Alt+F4 가 그냥 통한다 —
+ *    실패했을 때 열리는 쪽으로 넘어가는 것은 키오스크가 원하는 방향과 반대다.
  */
 let leavingOnPurpose = false;
+
+/* 종료 절차가 실제로 시작될 때만 빗장을 푼다. */
+app.on('before-quit', () => {
+  leavingOnPurpose = true;
+});
+
 
 /**
  * 화면을 가리는 대화상자가 떠 있는 깊이.
@@ -596,7 +606,6 @@ function lockKiosk(window: BrowserWindow): void {
 
   window.webContents.on('before-input-event', (event, input) => {
     if (isMaintenanceExit(input)) {
-      leavingOnPurpose = true;
       app.quit();
 
       return;
@@ -608,13 +617,25 @@ function lockKiosk(window: BrowserWindow): void {
   /* 기본 메뉴가 F11·Ctrl+W 같은 가속기를 들고 있다. 메뉴를 없애 그 출처를 끊는다. */
   Menu.setApplicationMenu(null);
 
-  /* 정비용 탈출구로 나가는 중이 아니면 창은 닫히지 않는다. */
+  /* 종료 절차가 시작된 것이 아니면 창은 닫히지 않는다. */
   window.on('close', (event) => {
     if (!leavingOnPurpose) event.preventDefault();
   });
 
+  /*
+   * ⭐ **Windows 종료·로그오프도 통과시킨다.** 안 그러면 현장에서 단말을 정상 종료할 수 없고,
+   *   OS 가 강제로 끊는 시점까지 `before-quit` 의 저장이 끝난다는 보장이 없다 — 대기열에 남은
+   *   실적이 걸린 자리다. 이 이벤트는 되돌릴 수 없으므로 막으려 해도 소용이 없다.
+   */
+  window.on('session-end', () => {
+    leavingOnPurpose = true;
+  });
+
   /* 어떤 경로로든 전체 화면이 풀리면 되돌린다 — 키 말고 다른 길로 풀릴 수도 있다. */
   window.on('leave-full-screen', () => {
+    if (window.isDestroyed()) return;
+    if (leavingOnPurpose) return;
+
     window.setFullScreen(true);
     window.setKiosk(true);
   });
@@ -622,6 +643,7 @@ function lockKiosk(window: BrowserWindow): void {
   window.setAlwaysOnTop(true, 'screen-saver');
   window.on('blur', () => {
     if (modalDepth > 0) return;
+    if (leavingOnPurpose) return;
     if (window.isDestroyed()) return;
 
     window.focus();
@@ -642,12 +664,23 @@ function lockKiosk(window: BrowserWindow): void {
  * ⚠ **결과를 반드시 말한다.** 사유를 삼키면 「눌렀는데 아무 일도 안 난다」가 되고, 그때
  *   포트가 틀린 것인지 프린터가 죽은 것인지 가릴 방법이 단말에 남지 않는다.
  */
-function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDir: string): void {
+function registerPrinterDiagnostic(
+  rawPrinter: RawPrinter | undefined,
+  stagingDir: string,
+  /**
+   * 상자를 띄울 부모 창.
+   *
+   * ⚠ **부모를 주지 않으면 상자가 키오스크 창 뒤로 깔린다.** 잠금이 창을 항상 맨 앞에 두는데
+   *   (`lockKiosk`) 소유자 없는 상자는 그 위로 못 올라온다 — 눌러도 아무 일이 없고 앱은 응답을
+   *   기다린 채 멈춘다. 부모가 있는 상자는 부모 위에 뜬다.
+   */
+  parent: BrowserWindow,
+): void {
   globalShortcut.register('CommandOrControl+Alt+P', () => {
     /* 대화상자가 떠 있는 동안은 초점 회복을 재운다 — 아니면 이 상자가 창 뒤로 밀린다. */
     void whileModalIsUp(async () => {
       if (rawPrinter === undefined) {
-        await dialog.showMessageBox({
+        await dialog.showMessageBox(parent, {
           type: 'warning',
           title: '라벨 프린터 진단',
           message: '보낼 프린터를 찾을 수 없습니다',
@@ -658,7 +691,7 @@ function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDi
       }
 
       const kinds: LabelKind[] = ['lot', 'shipping'];
-      const { response } = await dialog.showMessageBox({
+      const { response } = await dialog.showMessageBox(parent, {
         type: 'question',
         title: '라벨 프린터 진단',
         message: '견본 라벨을 찍습니다',
@@ -679,7 +712,7 @@ function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDi
 
       try {
         await rawPrinter.print({ dataPath, jobName: `POP 진단 ${kind}` });
-        await dialog.showMessageBox({
+        await dialog.showMessageBox(parent, {
           type: 'info',
           title: '라벨 프린터 진단',
           message: '프린터로 보냈습니다',
@@ -687,7 +720,14 @@ function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDi
             '견본이 규격대로 나왔는지, DataMatrix 가 스캐너에 읽히는지 확인해 주세요.\n종이가 나오지 않았다면 통신 설정이 프린터 쪽과 다를 수 있습니다.',
         });
       } catch (cause) {
-        dialog.showErrorBox('라벨 프린터 진단 — 보내지 못했습니다', reasonOf(cause));
+        /* `showErrorBox` 는 부모를 받지 못해 맨 앞 창 뒤로 깔린다 — 같은 내용을 부모 있는
+           상자로 낸다. 사유를 삼키면 포트가 틀린 것인지 프린터가 죽은 것인지 가릴 수 없다. */
+        await dialog.showMessageBox(parent, {
+          type: 'error',
+          title: '라벨 프린터 진단',
+          message: '보내지 못했습니다',
+          detail: reasonOf(cause),
+        });
       } finally {
         rmSync(jobDir, { force: true, recursive: true });
       }
