@@ -71,3 +71,29 @@ describe('POP 덮개', () => {
     }
   });
 });
+
+/**
+ * 눌림 감지기 — **구획 안에서 줄어들면 안 되는 블록이 목록에 들어 있는지** 본다.
+ *
+ * `.pop-ui .pop-pane` 은 세로 flex 라, 내용이 남는 높이를 넘으면 flex 가 「줄일 수 있는
+ * 것」을 줄여 맞춘다. 눌린 블록은 상자만 작아지고 안의 배너는 그대로 그려져 **아래 블록과
+ * 겹친다** — 실측으로 잡았다: 사번 입력에서 경고와 오류가 함께 뜨자 알림 자리가 배너 한
+ * 장 분(58px)까지 눌리고, 두 번째 배너가 키패드 첫 줄 위에 그려졌다.
+ *
+ * 렌더 테스트로는 잡히지 않는다(`css: false` — 위 머리말과 같은 이유). 자리가 모자라면
+ * 눌리는 것이 아니라 **구획이 스크롤하는 쪽이 옳다.**
+ */
+describe('POP 구획 눌림', () => {
+  /** `flex: none` 을 내는 규칙들의 선택자 원문. */
+  const noShrinkSelectors = rules
+    .split('}')
+    .filter((block) => /flex:\s*none/u.test(block))
+    .map((block) => block.split('{')[0] ?? '');
+
+  it.each(['.omf-numeric-keypad', '.worker-no-notice'])(
+    '`%s` 가 눌리지 않는다',
+    (selector) => {
+      expect(noShrinkSelectors.some((list) => list.includes(selector))).toBe(true);
+    },
+  );
+});
