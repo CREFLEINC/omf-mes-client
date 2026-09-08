@@ -8,7 +8,7 @@
  */
 export const packingRepack = {
   title: '포장 재구성',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     created: '새 포장',
     replaced: '원 포장 구성',

@@ -8,7 +8,7 @@
  */
 export const shopfloorReceipt = {
   title: '생산창고 입고',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     received: '생산창고 입고',
   },

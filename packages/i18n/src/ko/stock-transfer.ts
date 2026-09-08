@@ -9,7 +9,7 @@
  */
 export const stockTransfer = {
   title: '재고 이동',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     shipped: '재고 이동 반출',
     arrived: '재고 이동 도착',

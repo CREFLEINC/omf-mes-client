@@ -6,7 +6,7 @@
  */
 export const iqcSkipRequest = {
   title: '긴급 IQC 생략 요청',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: '긴급 IQC 생략 요청',
   lot: {
     legend: '어느 자재인가',

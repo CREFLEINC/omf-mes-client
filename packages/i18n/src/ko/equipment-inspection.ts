@@ -8,7 +8,7 @@
  */
 export const equipmentInspection = {
   title: '설비 점검',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: '설비 점검',
   equipment: {
     legend: '설비 선택',

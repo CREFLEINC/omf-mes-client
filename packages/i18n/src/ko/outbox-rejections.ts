@@ -10,7 +10,7 @@ export const outboxRejections = {
   empty: '전송 실패한 기록이 없습니다.',
   /** 무엇이 언제 있었던 일인지. 기록을 다시 적으려면 그때를 알아야 한다. */
   occurredAt: (at: string) => `${at}에 적음`,
-  cascaded: '앞 기록이 실패해 함께 실패했습니다',
+  cascaded: '앞 기록이 실패해 이 기록도 보내지 못했습니다',
   dismiss: '목록에서 내리기',
   reason: {
     invalid: '적은 내용을 서버가 받지 않았습니다.',
