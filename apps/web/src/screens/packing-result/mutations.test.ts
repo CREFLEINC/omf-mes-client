@@ -6,6 +6,8 @@ import { createApiClient } from '@omf-mes/api-client';
 import {
   confirmPacking,
   createHandlingUnit,
+  keptCreateKey,
+  keptPackingAttempt,
   type ConfirmPackingInput,
   type CreateHandlingUnitInput,
 } from './mutations';
@@ -27,13 +29,29 @@ const line = (overrides: Partial<PackedLine> = {}): PackedLine => ({
 
 const OPEN_UNIT = { handlingUnitId: 4001, handlingUnitNo: 'SYN-CTN-0091', etag: '"7"' };
 
-const input = (overrides: Partial<ConfirmPackingInput> = {}): ConfirmPackingInput => ({
-  handlingUnit: OPEN_UNIT,
-  lines: [line()],
-  workerNo: '3391',
-  now: new Date('2026-08-12T10:22:00+09:00'),
-  ...overrides,
-});
+const CONFIRMED_AT = new Date('2026-08-12T10:22:00+09:00');
+
+const input = (overrides: Partial<ConfirmPackingInput> = {}): ConfirmPackingInput => {
+  const base: ConfirmPackingInput = {
+    handlingUnit: OPEN_UNIT,
+    lines: [line()],
+    workerNo: '3391',
+    attempt: keptPackingAttempt(null, { handlingUnit: OPEN_UNIT, lines: [line()] }, CONFIRMED_AT),
+    ...overrides,
+  };
+
+  return overrides.lines === undefined
+    ? base
+    : {
+        ...base,
+        attempt: keptPackingAttempt(
+          null,
+          { handlingUnit: base.handlingUnit, lines: base.lines },
+          CONFIRMED_AT,
+        ),
+        ...overrides,
+      };
+};
 
 const createInput = (
   overrides: Partial<CreateHandlingUnitInput> = {},
@@ -42,6 +60,7 @@ const createInput = (
   parentHandlingUnitId: null,
   warehouseId: 1001,
   workerNo: '3391',
+  idempotencyKey: 'SYN-KEY-CREATE',
   ...overrides,
 });
 
@@ -182,7 +201,7 @@ describe('confirmPacking', () => {
     expect(calls[0]?.headers.get('If-Match')).toBe('"7"');
   });
 
-  it('세 요청 모두 사번을 싣고 멱등 키는 «단계마다 다르다»', async () => {
+  it('두 요청 모두 사번을 싣고 멱등 키는 «단계마다 다르다»', async () => {
     const { calls, client } = harness();
 
     await confirmPacking(client.client, input());
@@ -222,5 +241,82 @@ describe('confirmPacking', () => {
       '/logistics/shipment-lot-allocations/9001',
       '/logistics/shipment-lot-allocations/9002',
     ]);
+  });
+});
+
+describe('멱등 키 — 재전송에도 갈리지 않는다', () => {
+  it('같은 포장을 다시 확정하면 «같은 키»가 나간다 — 통신이 끊긴 뒤 다시 눌러도 재시도로 읽힌다', async () => {
+    const variables = { handlingUnit: OPEN_UNIT, lines: [line()] };
+    const first = keptPackingAttempt(null, variables, new Date('2026-08-12T10:22:00+09:00'));
+    const second = keptPackingAttempt(first, variables, new Date('2026-08-12T10:22:40+09:00'));
+
+    const failed = harness({ pack: 503 });
+    await expect(
+      confirmPacking(failed.client.client, { ...input(), attempt: first }),
+    ).rejects.toThrow();
+
+    const retried = harness();
+    await confirmPacking(retried.client.client, { ...input(), attempt: second });
+
+    expect(retried.calls[0]?.headers.get('Idempotency-Key')).toBe(
+      failed.calls[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  it('본문도 «그대로» 다시 나간다 — 발생 시각이 갈리면 서버가 다른 쓰기로 본다', () => {
+    const variables = { handlingUnit: OPEN_UNIT, lines: [line()] };
+    const first = keptPackingAttempt(null, variables, new Date('2026-08-12T10:22:00+09:00'));
+    const second = keptPackingAttempt(first, variables, new Date('2026-08-12T10:22:40+09:00'));
+
+    expect(second.now).toBe(first.now);
+  });
+
+  it('담은 것이 달라지면 «새 키»를 준다 — 줄을 더하고 누른 것은 다른 쓰기다', () => {
+    const first = keptPackingAttempt(
+      null,
+      { handlingUnit: OPEN_UNIT, lines: [line()] },
+      new Date('2026-08-12T10:22:00+09:00'),
+    );
+    const second = keptPackingAttempt(
+      first,
+      { handlingUnit: OPEN_UNIT, lines: [line(), line({ shipmentLotAllocationId: 9002 })] },
+      new Date('2026-08-12T10:23:00+09:00'),
+    );
+
+    expect(second.packKey).not.toBe(first.packKey);
+  });
+
+  it('배분 연결 키는 줄마다 따로이면서 재전송에는 그대로다', () => {
+    const variables = {
+      handlingUnit: OPEN_UNIT,
+      lines: [line(), line({ shipmentLotAllocationId: 9002 })],
+    };
+    const first = keptPackingAttempt(null, variables, new Date('2026-08-12T10:22:00+09:00'));
+    const second = keptPackingAttempt(first, variables, new Date('2026-08-12T10:22:40+09:00'));
+
+    expect(first.linkKeys[9001]).not.toBe(first.linkKeys[9002]);
+    expect(second.linkKeys[9001]).toBe(first.linkKeys[9001]);
+  });
+
+  it('취급 단위 생성도 다시 눌러 같은 키로 나간다 — 되돌릴 수 없는 빈 포장이 두 벌 생기지 않는다', () => {
+    const variables = {
+      handlingUnitTypeCode: 'CARTON',
+      parentHandlingUnitId: null,
+      warehouseId: 1001,
+    };
+    const first = keptCreateKey(null, variables);
+    const second = keptCreateKey(first, variables);
+    const other = keptCreateKey(first, { ...variables, handlingUnitTypeCode: 'PALLET' });
+
+    expect(second.key).toBe(first.key);
+    expect(other.key).not.toBe(first.key);
+  });
+
+  it('생성 요청은 받은 키를 그대로 싣는다', async () => {
+    const { calls, client } = harness();
+
+    await createHandlingUnit(client.client, createInput({ idempotencyKey: 'SYN-KEY-42' }));
+
+    expect(calls[0]?.headers.get('Idempotency-Key')).toBe('SYN-KEY-42');
   });
 });

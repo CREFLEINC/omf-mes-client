@@ -1,5 +1,6 @@
 import type { ApiClient } from '@omf-mes/api-client';
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
+import { useRef } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequestWithResponse, runRequest } from '../../patterns/request';
@@ -34,9 +35,14 @@ import type { PackedLine } from './types';
  * ⭐ **`If-Match` 는 ① 응답의 `ETag` 다.** 잠그는 단위가 취급 단위 자신이고(공유계약 B-1),
  * 그 토큰은 방금 만든 자원의 것이라 경로별 보관소를 거치지 않고 손에서 손으로 넘긴다.
  *
- * ⭐ **멱등 키는 단계마다 «따로»다.** 세 요청이 서로 다른 쓰기이므로 같은 키를 쓰면 서버가
- * 두 번째를 재시도로 본다. 통신이 끊긴 뒤 다시 누르면 같은 포장이 두 벌 생기는 것은 막지
- * 못하나, 그것은 이 화면의 재시도 규약이 아니라 계약의 몫이다.
+ * ⭐ **멱등 키는 단계마다 «따로»이면서 재전송에는 «그대로»다.** 세 요청이 서로 다른 쓰기이므로
+ * 같은 키를 쓰면 서버가 뒤엣것을 재시도로 본다. 반대로 매번 새 키를 만들면 통신이 끊긴 뒤 다시
+ * 누른 것이 **새 쓰기로 읽혀 같은 포장이 두 벌 생긴다** — 되돌릴 조작이 이 화면에 없으므로
+ * (§5-6 포장 해체 없음) 그 중복은 지워지지 않는다. 그래서 키의 수명은 `until-applied` 다:
+ * 담은 것이 그대로면 앞 시도의 키를 다시 쓰고, 달라지면 새 키를 준다.
+ *
+ * ⭐ **발생 시각도 함께 얼린다.** 키만 같고 본문이 다르면 서버가 재시도로 묶어 줄 근거가 없다 —
+ * 재전송은 **처음 누른 순간**을 그대로 다시 보낸다.
  *
  * ⚠ **사번 헤더는 인증이 아니라 귀속이다**(공유계약 D-5 · 통지 #563). 없으면 서버가 거부하므로
  * 부르는 쪽이 값을 확보한 뒤에만 확정을 연다.
@@ -48,14 +54,53 @@ import type { PackedLine } from './types';
 
 type Client = ApiClient['client'];
 
-/** ① 취급 단위를 만들 때 필요한 것. */
-export interface CreateHandlingUnitInput {
+/** ① 취급 단위를 만들 때 서버에 보내는 값. 이것이 같으면 «같은 쓰기»다. */
+export interface CreateHandlingUnitBody {
   handlingUnitTypeCode: string;
   parentHandlingUnitId: number | null;
   /** 배분 응답의 `warehouseId` 를 그대로 보낸다(`omf-mes#330` D). ⛔ 비우지 않는다. */
   warehouseId: number;
-  workerNo: string;
 }
+
+/** ① 취급 단위를 만들 때 필요한 것. */
+export interface CreateHandlingUnitInput extends CreateHandlingUnitBody {
+  workerNo: string;
+  /** 이 생성의 멱등 키. **부르는 쪽이 쥐고 있다** — 재전송이면 앞의 것을 그대로 넘긴다. */
+  idempotencyKey: string;
+}
+
+/** 살아 있는 멱등 키와 그것이 매인 값의 지문. */
+export interface KeptKey {
+  signature: string;
+  key: string;
+}
+
+/**
+ * 같은 값이면 같은 지문 — 칸 이름을 붙여 잇는다.
+ *
+ * ⛔ **객체를 그대로 직렬화하지 않는다.** 칸 순서가 다르면 같은 쓰기가 다른 지문이 되어,
+ * 재전송에 새 키가 나가고 이중 실행을 막지 못한다.
+ */
+const signatureOf = (parts: readonly (string | number | null)[]): string =>
+  parts.map((part) => String(part)).join('|');
+
+/**
+ * ① 생성의 키 — **보낼 값이 그대로면 앞 키를 다시 쓴다.**
+ *
+ * 되돌릴 수 없는 쓰기다. 담기 시작이 실패한 뒤 사용자가 줄을 하나 더 읽어 다시 시도할 때
+ * 새 키가 나가면, 앞의 요청이 서버에 닿아 있었을 경우 **내용물 0 인 포장이 한 벌 남는다.**
+ */
+export const keptCreateKey = (previous: KeptKey | null, body: CreateHandlingUnitBody): KeptKey => {
+  const signature = signatureOf([
+    body.handlingUnitTypeCode,
+    body.parentHandlingUnitId,
+    body.warehouseId,
+  ]);
+
+  return previous !== null && previous.signature === signature
+    ? previous
+    : { signature, key: crypto.randomUUID() };
+};
 
 /** 만들어진 포장 — **번호를 화면이 보이고, 토큰은 확정이 쓴다.** */
 export interface OpenHandlingUnit {
@@ -65,15 +110,54 @@ export interface OpenHandlingUnit {
   etag: string | null;
 }
 
-export interface ConfirmPackingInput {
+/** 확정이 무엇을 쓰는가 — 이것이 같으면 «같은 쓰기»다. */
+export interface PackingTarget {
   handlingUnit: OpenHandlingUnit;
   lines: readonly PackedLine[];
-  workerNo: string;
-  /** 확정을 누른 순간. 시험이 시각을 고정할 수 있도록 부르는 쪽이 넘긴다. */
-  now: Date;
 }
 
-const newIdempotencyKey = (): string => crypto.randomUUID();
+/** 확정 한 «시도». 재전송이면 앞의 것을 그대로 다시 쓴다. */
+export interface PackingAttempt {
+  signature: string;
+  /** 확정을 **처음** 누른 순간. 재전송에도 이 값이 나간다. */
+  now: Date;
+  /** ② 포장 확정의 키. */
+  packKey: string;
+  /** ③ 배분 연결의 키 — 배분마다 «따로»다. 서로 다른 쓰기이기 때문이다. */
+  linkKeys: Readonly<Record<number, string>>;
+}
+
+export interface ConfirmPackingInput extends PackingTarget {
+  workerNo: string;
+  attempt: PackingAttempt;
+}
+
+/**
+ * 확정의 키와 발생 시각 — **담은 것이 그대로면 앞 시도를 다시 쓴다.**
+ *
+ * ⚠ 줄이 하나 늘거나 수량이 바뀌면 다른 쓰기다 — 새 시도를 준다. 그때 시각도 다시 찍힌다.
+ */
+export const keptPackingAttempt = (
+  previous: PackingAttempt | null,
+  target: PackingTarget,
+  now: Date,
+): PackingAttempt => {
+  const signature = signatureOf([
+    target.handlingUnit.handlingUnitId,
+    ...target.lines.flatMap((line) => [line.shipmentLotAllocationId, line.lotId, line.qty]),
+  ]);
+
+  if (previous !== null && previous.signature === signature) return previous;
+
+  return {
+    signature,
+    now,
+    packKey: crypto.randomUUID(),
+    linkKeys: Object.fromEntries(
+      target.lines.map((line) => [line.shipmentLotAllocationId, crypto.randomUUID()]),
+    ),
+  };
+};
 
 export const createHandlingUnit = async (
   client: Client,
@@ -82,7 +166,7 @@ export const createHandlingUnit = async (
   const { data, response } = await runRequestWithResponse(() =>
     client.POST('/inventory/handling-units', {
       params: {
-        header: { 'Idempotency-Key': newIdempotencyKey(), 'X-Worker-No': input.workerNo },
+        header: { 'Idempotency-Key': input.idempotencyKey, 'X-Worker-No': input.workerNo },
       },
       body: {
         handlingUnitTypeCode: input.handlingUnitTypeCode,
@@ -116,13 +200,13 @@ const packHandlingUnit = async (client: Client, input: ConfirmPackingInput): Pro
       params: {
         path: { handlingUnitId: input.handlingUnit.handlingUnitId },
         header: {
-          'Idempotency-Key': newIdempotencyKey(),
+          'Idempotency-Key': input.attempt.packKey,
           'X-Worker-No': input.workerNo,
           /* 계약이 선택으로 두었다 — 만들 때 받은 토큰이라 없을 수 없으나, 없으면 그냥 보낸다. */
           ...(input.handlingUnit.etag === null ? {} : { 'If-Match': input.handlingUnit.etag }),
         },
       },
-      body: withOccurrence(draft, input.now),
+      body: withOccurrence(draft, input.attempt.now),
     }),
   );
 };
@@ -133,11 +217,19 @@ const linkAllocations = async (client: Client, input: ConfirmPackingInput): Prom
    * 막혔을 때 나머지가 이미 나가 버려, 어디까지 이어졌는지 화면이 말할 수 없게 된다.
    */
   for (const line of input.lines) {
+    const key = input.attempt.linkKeys[line.shipmentLotAllocationId];
+
+    /* 빈 키는 계약 위반이라 서버가 400 으로 되돌린다 — 짝이 어긋났으면 보내지 않고 멈춘다. */
+    if (key === undefined) throw new Error('이 줄의 멱등 키가 없습니다.');
+
     await runRequest(() =>
       client.PUT('/logistics/shipment-lot-allocations/{shipmentLotAllocationId}', {
         params: {
           path: { shipmentLotAllocationId: line.shipmentLotAllocationId },
-          header: { 'Idempotency-Key': newIdempotencyKey(), 'X-Worker-No': input.workerNo },
+          header: {
+            'Idempotency-Key': key,
+            'X-Worker-No': input.workerNo,
+          },
         },
         body: { handlingUnitId: input.handlingUnit.handlingUnitId },
       }),
@@ -155,15 +247,33 @@ export const confirmPacking = async (
   return input.handlingUnit;
 };
 
+/** 화면이 넘기는 값 — **멱등 키는 넘기지 않는다.** 훅이 쥐고 재전송에 다시 쓴다. */
+export type CreateHandlingUnitVariables = Omit<CreateHandlingUnitInput, 'idempotencyKey'>;
+
 /** ① 취급 단위 생성 — 담기 시작에 한 번. 번호가 ③ 구획에 선다. */
 export const useHandlingUnitCreate = (): UseMutationResult<
   OpenHandlingUnit,
   Error,
-  CreateHandlingUnitInput
+  CreateHandlingUnitVariables
 > => {
   const { client } = useApiClient();
 
-  return useMutation({ mutationFn: (input) => createHandlingUnit(client, input) });
+  /*
+   * 살아 있는 키. **성공하면 버린다**(`until-applied`) — 그 뒤의 생성은 다른 포장이다.
+   * ⛔ 상태로 두지 않는다. 키가 바뀐다고 화면을 다시 그릴 일이 없다.
+   */
+  const kept = useRef<KeptKey | null>(null);
+
+  return useMutation({
+    mutationFn: (variables) => {
+      kept.current = keptCreateKey(kept.current, variables);
+
+      return createHandlingUnit(client, { ...variables, idempotencyKey: kept.current.key });
+    },
+    onSuccess: () => {
+      kept.current = null;
+    },
+  });
 };
 
 export interface PackingWriteOptions {
@@ -171,16 +281,27 @@ export interface PackingWriteOptions {
   onSuccess: (handlingUnit: OpenHandlingUnit) => void;
 }
 
+/** 화면이 넘기는 값 — **키도 발생 시각도 넘기지 않는다.** 훅이 쥐고 재전송에 다시 쓴다. */
+export type ConfirmPackingVariables = Omit<ConfirmPackingInput, 'attempt'>;
+
 export const usePackingConfirm = ({
   shipmentId,
   onSuccess,
-}: PackingWriteOptions): UseMutationResult<OpenHandlingUnit, Error, ConfirmPackingInput> => {
+}: PackingWriteOptions): UseMutationResult<OpenHandlingUnit, Error, ConfirmPackingVariables> => {
   const { client } = useApiClient();
   const queryClient = useQueryClient();
 
+  /* 살아 있는 시도. **확정이 서버에 닿으면 버린다** — 그 뒤의 확정은 다음 포장의 것이다. */
+  const attempt = useRef<PackingAttempt | null>(null);
+
   return useMutation({
-    mutationFn: (input: ConfirmPackingInput) => confirmPacking(client, input),
+    mutationFn: (variables: ConfirmPackingVariables) => {
+      attempt.current = keptPackingAttempt(attempt.current, variables, new Date());
+
+      return confirmPacking(client, { ...variables, attempt: attempt.current });
+    },
     onSuccess: (handlingUnit) => {
+      attempt.current = null;
       /* 확정하면 이 출하의 잔여·포장 수가 바뀐다 — 다시 읽어야 ④ 진행이 방금 담은 것을 반영한다. */
       if (shipmentId !== null) {
         void queryClient.invalidateQueries({ queryKey: packingResultKeys.progress(shipmentId) });
