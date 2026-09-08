@@ -66,7 +66,7 @@ export const productPicking = {
   scan: {
     legend: 'LOT 스캔',
     label: '제품 LOT 스캔',
-    placeholder: '제품 LOT QR을 비추세요',
+    placeholder: '제품 LOT QR을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '찾기',
     notFound: (code: string) => `${code} LOT을 이 품목에서 찾지 못했습니다`,

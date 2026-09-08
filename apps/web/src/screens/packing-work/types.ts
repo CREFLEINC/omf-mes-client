@@ -11,7 +11,6 @@ import type { components } from '@omf-mes/api-client';
 export type Lot = components['schemas']['Lot'];
 export type HandlingUnit = components['schemas']['HandlingUnit'];
 export type HandlingUnitCreate = components['schemas']['HandlingUnitCreate'];
-export type HandlingUnitPack = components['schemas']['HandlingUnitPack'];
 export type HandlingUnitContentUpsert = components['schemas']['HandlingUnitContentUpsert'];
 export type HandlingUnitDetailResponse = components['schemas']['HandlingUnitDetailResponse'];
 export type CodeValue = components['schemas']['CodeValue'];

@@ -6,7 +6,7 @@
  */
 export const iqcSkipRequest = {
   title: '긴급 IQC 생략 요청',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: '긴급 IQC 생략 요청',
   lot: {
     legend: '어느 자재인가',
@@ -14,7 +14,7 @@ export const iqcSkipRequest = {
     /* 스캔 칸은 스캐너 전용이라 손 입력을 여기서 받는다. */
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
-    scanPlaceholder: 'LOT 라벨을 비추세요',
+    scanPlaceholder: 'LOT 라벨을 스캔하세요',
     loading: 'LOT을 찾는 중입니다',
     loadFailed: 'LOT을 확인할 수 없습니다',
     notFound: (code: string) => `${code} LOT을 찾지 못했습니다`,
@@ -52,9 +52,9 @@ export const iqcSkipRequest = {
     urgent: '급하면 유선으로 함께 알리세요.',
   },
   rejected: {
-    title: '요청이 되돌아왔습니다',
+    title: '요청을 전송하지 못했습니다',
     description: '서버가 받지 않았습니다. 아직 아무에게도 가지 않았습니다.',
-    action: '되돌아온 기록 보기',
+    action: '전송 실패한 기록 보기',
   },
   /** 결재선이 없으면 승인자가 정해지지 않아 요청이 설 자리가 없다. */
   noRoute: '결재선이 없어 요청할 수 없습니다. 전산담당에게 문의하세요.',

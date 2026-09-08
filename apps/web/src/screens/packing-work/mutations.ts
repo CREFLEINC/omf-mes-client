@@ -5,20 +5,19 @@ import type {
   HandlingUnit,
   HandlingUnitCreate,
   HandlingUnitDetailResponse,
-  HandlingUnitPack,
 } from './types';
 
 /**
- * 사람이 누르는 쓰기 둘. **하나로 묶지 않는다** — 계약이 두 오퍼레이션으로 갈라 두었고
- * (`POST …/handling-units` 로 만들고 `:pack` 으로 닫는다), 그 경계가 곧 「번호를 언제 아는가」의
- * 자리다(스펙 §3 · §5-6).
+ * 사람이 누르는 쓰기 **하나**.
  *
- * ⚠ **둘 다 사번 헤더가 필요하다**(공유계약 D-5). 인증이 아니라 귀속이며, 없으면 서버가
- * 거부한다 — 부르는 쪽이 값을 확보한 뒤에만 포장을 연다.
+ * ⭐ **확정 한 번이 포장을 만들고 내용물을 싣는다** — `POST /inventory/handling-units` 에
+ * `contents`(「초기 구성」)를 통째로 실어 보내고 `:pack` 을 부르지 않는다(사용자 결정
+ * 2026-09-08). 앞선 판은 첫 줄을 담을 때 등록해 번호를 받고 확정에서 닫았는데, 뒤엣것이
+ * 앞엣것의 응답을 «경로»로 받는 구조라 **오프라인에서는 포장을 시작조차 하지 못했다.**
  *
- * ⛔ **낙관적 잠금을 걸지 않는다**(`etagPath: null`). 등록은 새 행을 만드는 쓰기라 잠글 대상이
- * 없고, 확정의 `If-Match` 는 계약이 **선택**으로 두었다. 이 화면은 자기가 방금 만든 포장만
- * 확정하므로 그사이 남이 고칠 자원이 아니다 — 겹치면 서버가 409 로 되돌린다.
+ * ⚠ **사번 헤더가 필요하다**(공유계약 D-5). 인증이 아니라 귀속이며, 없으면 서버가 거부한다.
+ *
+ * ⛔ **낙관적 잠금을 걸지 않는다**(`etagPath: null`). 새 행을 만드는 쓰기라 잠글 대상이 없다.
  */
 
 /**
@@ -35,19 +34,16 @@ export interface CreateOptions {
 }
 
 /**
- * ① 취급 단위 등록 — **첫 내용물을 담을 때 부른다.**
+ * 포장 확정 — **확정 버튼에서 한 번 부른다.**
  *
- * ⭐ **번호를 서버가 매기므로 화면이 지어낼 수 없다**(스펙 §4-A 「자동」). 스펙 §3 이 담는
- * 동안 번호를 보이라 해서 이 시점에 만든다.
+ * ⭐ **번호를 서버가 매기므로 화면이 지어낼 수 없다**(스펙 §4-A 「자동」). 담는 동안에는
+ * 부르지 않으므로 **번호도 확정 뒤에야 생긴다** — 스펙 §3 이 담는 동안 번호를 보이라 한 것과
+ * 어긋나며, 그 자리는 화면이 「확정하면 매겨진다」로 채운다.
  *
- * ⚠ **중단하면 빈 포장이 남는다** — 포장 해체 경로가 없다(스펙 §8-4). 설계 회신
- * (`omf-mes#392` ②)이 오면 이 호출의 시점이 바뀔 수 있다. 그때 바뀌는 것은 부르는 자리이지
- * 이 훅이 아니다.
+ * ⭐ **중단해도 빈 포장이 남지 않는다** — 확정을 누르기 전에는 서버에 아무것도 만들지 않는다.
+ * 포장 해체 경로가 없는 계약에서(스펙 §8-4) 이것이 이 시점의 값이다.
  *
- * ⛔ **`contents` 를 여기 싣지 않는다.** 계약이 「초기 구성」으로 받아 주지만, 담는 동안
- * 내용물이 계속 바뀌므로 확정 한 번에 전량을 싣는 쪽이 집합 치환(A-5)과 어긋나지 않는다.
- *
- * ⭐ **멱등 키의 수명은 `until-applied`** — 되돌릴 수 없는 쓰기다. 통신이 끊긴 뒤 다시 담으면
+ * ⭐ **멱등 키의 수명은 `until-applied`** — 되돌릴 수 없는 쓰기다. 통신이 끊긴 뒤 다시 누르면
  * 서버가 다른 쓰기로 보고 **포장을 두 번 만든다.**
  */
 export const useHandlingUnitCreate = ({
@@ -75,52 +71,5 @@ export const useHandlingUnitCreate = ({
     onSuccess: (data) => {
       onSuccess(data.handlingUnit);
     },
-  });
-};
-
-export interface PackOptions {
-  handlingUnitId: number | null;
-  workerNo: string;
-  onSuccess: () => void;
-}
-
-/**
- * ② 포장 확정 — 포장 단위와 내용물 N 행이 **한 트랜잭션**으로 닫힌다(스펙 §5-6 · 공유계약 B-8).
- *
- * ⛔ **되돌릴 수 없다.** 포장 해체 화면이 인벤토리에 없다(스펙 §8-4). 그래서 멱등 키 수명이
- * `until-applied` 이고, 담은 것이 바뀌면 지문이 새 키를 준다.
- *
- * ⚠ **내용물이 비면 400, 이미 확정된 포장이면 409 다**(계약). 둘은 사용자가 할 일이 갈리므로
- * 배너에서 따로 말한다(`error-banner.ts`).
- */
-export const useHandlingUnitPack = ({
-  handlingUnitId,
-  workerNo,
-  onSuccess,
-}: PackOptions): MasterWriteResult<HandlingUnitPack> => {
-  const { client } = useApiClient();
-
-  return useMasterWrite<HandlingUnitPack, HandlingUnitDetailResponse>({
-    request: (body, headers) => {
-      if (handlingUnitId === null) {
-        throw new Error('포장 단위가 없으면 확정하지 않습니다.');
-      }
-
-      return client.POST('/inventory/handling-units/{handlingUnitId}:pack', {
-        params: {
-          path: { handlingUnitId },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'X-Worker-No': workerNo,
-          },
-        },
-        body,
-      });
-    },
-    etagPath: null,
-    invalidateKeys: [packingWorkKeys.parents],
-    knownFields: NO_INLINE_FIELDS,
-    keyLifetime: 'until-applied',
-    onSuccess,
   });
 };

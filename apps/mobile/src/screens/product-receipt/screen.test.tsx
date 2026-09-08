@@ -267,6 +267,7 @@ const openUnit = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 const pickLocation = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: '위치 직접 입력' }));
   await user.type(await screen.findByLabelText('위치 직접 입력'), LOC_CODE);
   await user.click(screen.getByRole('button', { name: '위치 넣기' }));
   await screen.findByText(`위치 ${LOC_CODE}`);
@@ -418,7 +419,7 @@ describe('제품 입고·적치 화면', () => {
 
     await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
 
-    expect(await screen.findByText('입고했습니다. 적치가 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('입고했습니다. 적치를 전송하지 못했습니다')).toBeTruthy();
   });
 
   /* 적치 지시 식별자는 입고 응답에만 있다. 없으면 적치를 이어 담을 수 없다. */

@@ -8,13 +8,13 @@
  */
 export const inboundReceipt = {
   title: '입하 등록',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: '입하 등록',
   scan: {
     legend: '자재 LOT 스캔',
     /* 구획 제목과 같은 말을 쓰지 않는다. 좁은 화면에 같은 줄이 둘로 붙는다. */
     label: 'LOT 번호',
-    placeholder: '자재 LOT 라벨을 비추세요',
+    placeholder: '자재 LOT 라벨을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     /** 자릿수와 숫자 전용은 저장소가 막지 않는다. 화면이 지킨다. */
@@ -79,7 +79,12 @@ export const inboundReceipt = {
   qty: {
     legend: '품목·수량 확인',
     itemLoadFailed: '품목을 확인할 수 없습니다',
-    ordered: (qty: string, uom: string) => `예정 ${qty} ${uom}`,
+    /*
+     * 발주 총량과 남은 예정을 같은 말로 부르지 않는다. 판정이 견주는 것은 남은 예정인데
+     * 총량까지 예정이라 부르면 칸 옆의 수와 판정에 나오는 수가 다른 뜻의 같은 이름이 된다.
+     */
+    ordered: (qty: string, uom: string) => `발주 ${qty} ${uom}`,
+    remaining: (qty: string, uom: string) => `남은 예정 ${qty} ${uom}`,
     received: '실입하 수량',
     packageCount: '포장 수',
     manufactured: '제조일',
@@ -127,9 +132,9 @@ export const inboundReceipt = {
     description: '연결되면 보냅니다. 아직 서버에 없습니다.',
   },
   rejected: {
-    title: '입하가 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '입하를 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 등록되지 않았다고 말한다. */
   saveFailed: {

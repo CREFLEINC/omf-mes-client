@@ -370,7 +370,7 @@ describe('자재LOT 스캔·등록 화면', () => {
     await scanAndWait(LOT_NO);
     await user.click(screen.getByRole('button', { name: '이 라인 등록' }));
 
-    expect(await screen.findByText('등록이 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('등록을 전송하지 못했습니다')).toBeTruthy();
   });
 
   /*
@@ -392,7 +392,7 @@ describe('자재LOT 스캔·등록 화면', () => {
 
     await user.click(screen.getByRole('button', { name: '등록 완료' }));
 
-    expect(await screen.findByText('등록이 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('등록을 전송하지 못했습니다')).toBeTruthy();
   });
 
   /* 같은 라벨을 두 번 스캔하면 서버가 400 으로 되돌린다. 화면이 미리 막는다. */

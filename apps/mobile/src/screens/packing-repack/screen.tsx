@@ -12,6 +12,7 @@ import {
 } from '../../patterns/handling-units';
 import { useItemLabels, useUomCodes } from '../../patterns/masters';
 import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -110,7 +111,11 @@ export const PackingRepackScreen = () => {
     setScanned(null);
 
     setSources((current) => {
-      if (current.some((each) => each.handlingUnit.handlingUnitId === unit.handlingUnit.handlingUnitId)) {
+      if (
+        current.some(
+          (each) => each.handlingUnit.handlingUnitId === unit.handlingUnit.handlingUnitId,
+        )
+      ) {
         setDuplicate(true);
         return current;
       }
@@ -272,29 +277,17 @@ export const PackingRepackScreen = () => {
           size="xl"
           fullWidth
         />
-        {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="repack__row">
-          <TextField
-            label={t.source.manualLabel}
-            size="xl"
-            fullWidth
-            value={manual}
-            onChange={(event) => {
-              setManual(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              setDuplicate(false);
-              setScanned(manual.trim());
-              setManual('');
-            }}
-          >
-            {t.source.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.source.manualLabel}
+          submitLabel={t.source.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            setDuplicate(false);
+            setScanned(manual.trim());
+            setManual('');
+          }}
+        />
 
         {scanned !== null && found.isPending ? <p role="status">{t.source.loading}</p> : null}
         {found.isError ? <AlertBanner variant="warning" title={t.source.loadFailed} /> : null}

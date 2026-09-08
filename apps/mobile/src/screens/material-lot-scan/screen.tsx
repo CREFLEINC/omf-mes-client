@@ -7,6 +7,7 @@ import { useItemLabels } from '../../patterns/masters';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -266,29 +267,17 @@ export const MaterialLotScanScreen = () => {
               size="xl"
               fullWidth
             />
-            {/* 스캔 칸은 스캐너 전용이다. 스캐너가 죽었을 때 손으로 넣을 길을 함께 둔다. */}
-            <div className="material-lot-scan__row">
-              <TextField
-                label={t.scan.manualLabel}
-                size="xl"
-                fullWidth
-                inputMode="numeric"
-                value={manual}
-                onChange={(event) => {
-                  setManual(event.target.value);
-                }}
-              />
-              <Button
-                variant="outlined"
-                size="xl"
-                onClick={() => {
-                  setScanned(manual.trim());
-                  setManual('');
-                }}
-              >
-                {t.scan.manualSubmit}
-              </Button>
-            </div>
+            <ManualEntry
+              label={t.scan.manualLabel}
+              submitLabel={t.scan.manualSubmit}
+              inputMode="numeric"
+              value={manual}
+              onChange={setManual}
+              onSubmit={() => {
+                setScanned(manual.trim());
+                setManual('');
+              }}
+            />
 
             {scanned.trim() === '' ? null : (
               <p className="material-lot-scan__counter">

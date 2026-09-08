@@ -11,7 +11,7 @@ export const materialLocation = {
   title: '자재 위치 확인',
   scan: {
     label: '스캔 대기',
-    placeholder: '자재 LOT을 읽어 주세요',
+    placeholder: '자재 LOT 라벨을 스캔하세요',
     /* 스캔 칸은 스캐너 전용이라 손 입력을 여기서 받는다. */
     manualEntry: '직접 입력',
     manualSubmit: '넣기',

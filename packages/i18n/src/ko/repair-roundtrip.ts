@@ -20,7 +20,7 @@ export const repairRoundtrip = {
   },
   scan: {
     label: '불량 LOT 스캔',
-    placeholder: '불량 LOT 라벨을 비추세요',
+    placeholder: '불량 LOT 라벨을 스캔하세요',
     loading: 'LOT을 찾는 중입니다',
     loadFailed: 'LOT을 확인할 수 없습니다. 연결을 확인한 뒤 다시 스캔하세요.',
     notFound: (code: string) => `${code} LOT을 찾지 못했습니다`,

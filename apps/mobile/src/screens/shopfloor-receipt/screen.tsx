@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { useCodeValues } from '../../patterns/code-values';
 import { useItemLabels } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -207,28 +208,16 @@ export const ShopfloorReceiptScreen = () => {
           size="xl"
           fullWidth
         />
-        {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="shopfloor-receipt__row">
-          <TextField
-            label={t.issue.manualLabel}
-            size="xl"
-            fullWidth
-            value={manual}
-            onChange={(event) => {
-              setManual(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              setScanned(manual.trim());
-              setManual('');
-            }}
-          >
-            {t.issue.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.issue.manualLabel}
+          submitLabel={t.issue.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            setScanned(manual.trim());
+            setManual('');
+          }}
+        />
 
         {scanned !== null && found.isPending ? <p role="status">{t.issue.loading}</p> : null}
         {found.isError ? <AlertBanner variant="error" title={t.issue.loadFailed} /> : null}

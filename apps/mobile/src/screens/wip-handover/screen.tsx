@@ -7,6 +7,7 @@ import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -85,7 +86,13 @@ export const WipHandoverScreen = () => {
      * 다시 보내기도 여기로 온다. null 만 보고 넘기면 실패한 뒤 수량을 고쳐 놓고 눌렀을 때
      * 상한을 넘긴 값이 그대로 나간다 - 본 단추는 막혀 있는데 이 길만 열려 있었다.
      */
-    if (!ready || found === null || chosen === null || fromWorkOrderId === null || worker === null) {
+    if (
+      !ready ||
+      found === null ||
+      chosen === null ||
+      fromWorkOrderId === null ||
+      worker === null
+    ) {
       return;
     }
 
@@ -165,30 +172,18 @@ export const WipHandoverScreen = () => {
           size="xl"
           fullWidth
         />
-        {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="handover__row">
-          <TextField
-            label={t.lot.manualLabel}
-            size="xl"
-            fullWidth
-            value={manual}
-            onChange={(event) => {
-              setManual(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              setScanned(manual.trim());
-              setToWorkOrderId(null);
-              setQty('');
-              setManual('');
-            }}
-          >
-            {t.lot.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.lot.manualLabel}
+          submitLabel={t.lot.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            setScanned(manual.trim());
+            setToWorkOrderId(null);
+            setQty('');
+            setManual('');
+          }}
+        />
 
         {scanned !== null && lot.isPending ? <p role="status">{t.lot.loading}</p> : null}
         {lot.isError ? <AlertBanner variant="warning" title={t.lot.loadFailed} /> : null}

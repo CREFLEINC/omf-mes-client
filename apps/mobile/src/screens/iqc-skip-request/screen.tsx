@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -182,29 +183,17 @@ export const IqcSkipRequestScreen = () => {
           size="xl"
           fullWidth
         />
-        {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="iqc-skip__manual">
-          <TextField
-            label={t.lot.manualLabel}
-            size="xl"
-            fullWidth
-            value={manual}
-            onChange={(event) => {
-              setManual(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              setScanned(manual.trim() === '' ? null : manual.trim());
-              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-              setManual('');
-            }}
-          >
-            {t.lot.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.lot.manualLabel}
+          submitLabel={t.lot.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            setScanned(manual.trim() === '' ? null : manual.trim());
+            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+            setManual('');
+          }}
+        />
         {lot.isPending && scanned !== null ? <p role="status">{t.lot.loading}</p> : null}
         {lot.isError ? <AlertBanner variant="error" title={t.lot.loadFailed} /> : null}
         {scanned !== null && !lot.isPending && found === null && !lot.isError ? (

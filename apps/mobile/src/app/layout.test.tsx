@@ -143,7 +143,7 @@ describe('AppLayout', () => {
 
     await user.click(screen.getByRole('button', { name: '담기' }));
 
-    expect(await screen.findByText('미동기 1')).toBeInTheDocument();
+    expect(await screen.findByText('전송 대기 1')).toBeInTheDocument();
   });
 
   it('상시 메뉴를 두지 않아 navigation 랜드마크가 없다', () => {
@@ -193,7 +193,10 @@ describe('AppLayout', () => {
     await user.click(screen.getByRole('button', { name: '담기' }));
     window.dispatchEvent(new Event('online'));
 
-    expect(await screen.findByText('되돌아옴 1')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '되돌아옴 1' })).toHaveAttribute('href', '/rejections');
+    expect(await screen.findByText('전송 실패 1')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '전송 실패 1' })).toHaveAttribute(
+      'href',
+      '/rejections',
+    );
   });
 });

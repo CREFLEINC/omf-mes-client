@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { useLocationByCode } from '../../patterns/locations';
 import { useItemLabels } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -218,28 +219,16 @@ export const PhysicalCountScreen = () => {
             size="xl"
             fullWidth
           />
-          {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-          <div className="physical-count__row">
-            <TextField
-              label={t.location.manualLabel}
-              size="xl"
-              fullWidth
-              value={manual}
-              onChange={(event) => {
-                setManual(event.target.value);
-              }}
-            />
-            <Button
-              variant="outlined"
-              size="xl"
-              onClick={() => {
-                setScanned(manual.trim());
-                setManual('');
-              }}
-            >
-              {t.location.manualSubmit}
-            </Button>
-          </div>
+          <ManualEntry
+            label={t.location.manualLabel}
+            submitLabel={t.location.manualSubmit}
+            value={manual}
+            onChange={setManual}
+            onSubmit={() => {
+              setScanned(manual.trim());
+              setManual('');
+            }}
+          />
 
           {scanned !== null && location.isPending ? (
             <p role="status">{t.location.loading}</p>
@@ -287,14 +276,19 @@ export const PhysicalCountScreen = () => {
                       {t.lines.systemQty(String(line.systemQty))}
                     </p>
                   )}
-                  {/* 안 센 것과 0 으로 센 것을 화면이 갈라 말한다. */}
+                  {/*
+                   * 안 센 것과 0 으로 센 것을 화면이 갈라 말한다.
+                   *
+                   * 이 줄은 서버에 저장된 상태다. 지금 적고 있는 값 옆에 그대로 두면 적은 것이
+                   * 안 먹은 것처럼 읽히므로, 칸이 빈 동안에만 말한다.
+                   */}
                   {line.counted ? (
                     <p className="physical-count__previous">
                       {t.lines.already(String(line.previousQty ?? 0))}
                     </p>
-                  ) : (
+                  ) : line.qty.trim() === '' ? (
                     <p className="physical-count__previous">{t.lines.uncounted}</p>
-                  )}
+                  ) : null}
                 </div>
               );
             })}

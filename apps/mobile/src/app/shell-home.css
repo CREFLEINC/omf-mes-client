@@ -11,13 +11,6 @@
   gap: var(--space-2, 8px);
 }
 
-.shell-home__group h2 {
-  margin: 0;
-  font: inherit;
-  font-weight: 600;
-  color: var(--on-surface-muted, inherit);
-}
-
 .shell-home__tiles {
   display: flex;
   flex-direction: column;

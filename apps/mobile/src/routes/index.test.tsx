@@ -49,13 +49,13 @@ describe('모바일 라우트', () => {
   });
 
   /* 되돌아온 것을 볼 자리가 없으면 되돌아왔다는 사실만 알고 무엇이었는지는 알 수 없다. */
-  it('셸 홈에서 되돌아온 기록으로 갈 수 있다', async () => {
+  it('셸 홈에서 전송 실패한 기록으로 갈 수 있다', async () => {
     const user = userEvent.setup();
     renderAt('/screens');
 
-    await user.click(await screen.findByRole('link', { name: '되돌아온 기록' }));
+    await user.click(await screen.findByRole('link', { name: '전송 실패한 기록' }));
 
-    expect(await screen.findByText('되돌아온 기록이 없습니다.')).toBeInTheDocument();
+    expect(await screen.findByText('전송 실패한 기록이 없습니다.')).toBeInTheDocument();
   });
 
   it('셸 홈에서 설비 점검으로 갈 수 있다', async () => {
