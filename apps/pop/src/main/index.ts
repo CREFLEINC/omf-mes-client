@@ -637,6 +637,14 @@ function lockKiosk(window: BrowserWindow): void {
     leavingOnPurpose = true;
   });
 
+  /*
+   * ⭐ **거는 순간 상태를 한 번 확정한다.** 아래 핸들러는 **앞으로의 전환**에만 반응한다 —
+   *   창이 뜨고 잠기기 전 짧은 구간에 이미 풀려 버렸다면 되돌릴 사람이 없어, 프레임 없는
+   *   축소 창이 맨 앞에 못 박힌 채 남는다.
+   */
+  window.setFullScreen(true);
+  window.setKiosk(true);
+
   /* 어떤 경로로든 전체 화면이 풀리면 되돌린다 — 키 말고 다른 길로 풀릴 수도 있다. */
   window.on('leave-full-screen', () => {
     if (window.isDestroyed()) return;
