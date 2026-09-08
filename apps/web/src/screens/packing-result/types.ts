@@ -10,6 +10,14 @@ import type { components } from '@omf-mes/api-client';
 
 /** 출하 LOT 배분. 이 화면의 모든 판단이 여기서 나온다. */
 export type ShipmentLotAllocation = components['schemas']['ShipmentLotAllocation'];
+export type Shipment = components['schemas']['Shipment'];
+
+/** P-04-01이 선택한 출하와 화면 머리글에 필요한 배분 문맥. */
+export interface ShipmentEntry {
+  shipmentId: number;
+  shipmentNo: string;
+  allocations: ShipmentLotAllocation[];
+}
 
 export type HandlingUnit = components['schemas']['HandlingUnit'];
 export type HandlingUnitContentUpsert = components['schemas']['HandlingUnitContentUpsert'];

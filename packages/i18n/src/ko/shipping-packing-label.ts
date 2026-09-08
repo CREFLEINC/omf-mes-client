@@ -1,5 +1,5 @@
 export const shippingPackingLabel = {
-  title: '납품·포장 라벨 출력',
+  title: '라벨 상태·재출력',
   /** 머리에 출하를 고정으로 그린다 — 어느 출하의 라벨을 뽑는 중인지가 항상 보여야 한다. */
   shipment: {
     label: '출하',
@@ -10,8 +10,7 @@ export const shippingPackingLabel = {
      * 골라서 들어오는 화면이라 화면 안에 출하를 고르는 자리가 없다(세로 예산 슬랙 0).
      * ⛔ 아무 출하나 골라 보이지 않는다 — 다른 출하의 라벨을 뽑게 된다.
      */
-    missing:
-      '출하를 고른 뒤에 들어오는 화면입니다. 포장 실적 등록 화면에서 「라벨 출력」으로 오세요.',
+    missing: '출하 실적 등록에서 출하 대상을 먼저 선택하세요.',
   },
   kind: {
     legend: '라벨 종류',
@@ -44,7 +43,7 @@ export const shippingPackingLabel = {
      * ⚠ 발행 현황 조회가 대상 유형 코드를 조건으로 받는데 그 값이 아직 확정되지 않았다.
      * 값이 서버와 다르면 이미 뽑은 것도 「없음」으로 보인다 — 감추지 않고 밝힌다.
      */
-    seqNotice: '회차와 최근 발행은 아직 확인용입니다. 종이에 인쇄된 회차를 함께 확인하세요.',
+    seqNotice: '회차와 최근 인쇄 결과는 서버 발행 이력을 기준으로 표시합니다.',
     /** ⛔ 「없다」와 「아직 고르지 않았다」를 같은 모양으로 그리지 않는다(공유계약 G-9). */
     beforeKind: '라벨 종류를 먼저 고르세요.',
     empty: '이 출하에는 발행할 대상이 없습니다.',
@@ -52,6 +51,18 @@ export const shippingPackingLabel = {
     loadFailed: '대상 목록을 불러오지 못했습니다.',
     retry: '다시 불러오기',
     selectionLimited: '출하검사에 합격하지 않은 대상은 고를 수 없습니다.',
+  },
+  recovery: {
+    title: '누락 라벨 이어서 출력',
+    packingMissing: (count: number) => `미발행 포장 라벨 ${String(count)}건`,
+    deliveryMissing: (count: number) => `발행 가능한 미발행 납품 라벨 ${String(count)}건`,
+    oqcWaiting: (count: number) => `OQC 판정 대기 납품 라벨 ${String(count)}건`,
+    reissueRequired: (count: number) =>
+      `${String(count)}건은 발행 기록이 있지만 인쇄 완료가 아니므로 아래 재출력 흐름에서 처리해야 합니다.`,
+    complete: '현재 발행 가능한 누락 라벨이 없습니다.',
+    loadFailed: '누락 라벨을 확인하지 못했습니다. 확인 전에는 발행하지 않습니다.',
+    packingAction: '누락 포장 라벨 출력',
+    deliveryAction: '납품 라벨 출력',
   },
   reissue: {
     /** ③ 구획은 재발행일 때만 펼친다 — 늘 띄우면 목록이 줄어든다. */
@@ -89,6 +100,7 @@ export const shippingPackingLabel = {
     checkingHistory: '대상의 발행 이력을 확인하고 있습니다.',
     historyUnavailable: '대상의 발행 이력을 확인할 수 없어 발행할 수 없습니다.',
     needsReason: '재발행 사유를 고르면 발행할 수 있습니다.',
+    mixedIssueModes: '최초 발행 대상과 재출력 대상은 나누어 선택하세요.',
     /** 사번은 진입점 화면이 단말에 두는 값이다 — 없다는 것은 아직 사번을 대지 않았다는 뜻. */
     needsWorker: '사번을 확인한 뒤에 발행할 수 있습니다.',
     finishCurrentIssue: '현재 발행 결과를 확인한 뒤 다음 라벨을 발행하세요.',

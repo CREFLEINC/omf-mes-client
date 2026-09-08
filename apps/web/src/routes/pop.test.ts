@@ -65,6 +65,13 @@ describe('POP 라우트 분리', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/rework-results');
   });
 
+  it('P-04-02 독립 주소는 제거되고 P-04-01 통합 주소만 남는다', () => {
+    const paths = popRoutes.map(({ path }) => path);
+
+    expect(paths).toContain('/pop/packing');
+    expect(paths).not.toContain('/pop/shipping-label');
+  });
+
   it('P-02-08 포장 작업 주소가 서 있다', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/packing-work');
   });

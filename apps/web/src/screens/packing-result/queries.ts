@@ -4,7 +4,13 @@ import { useMutation, useQuery, type UseMutationResult } from '@tanstack/react-q
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 
-import type { HandlingUnit, MatchedLot, ShipmentLotAllocation } from './types';
+import type {
+  HandlingUnit,
+  MatchedLot,
+  Shipment,
+  ShipmentEntry,
+  ShipmentLotAllocation,
+} from './types';
 
 /**
  * 이 화면의 읽기 — **스캔 둘 · 상위 포장 후보 · 포장 유형 · 진행**.
@@ -29,12 +35,124 @@ export const HANDLING_UNIT_TYPE_GROUP_CODE = 'HANDLING_UNIT_TYPE';
 /** 한 번에 받아 둘 최대 건수. 포장 유형·상위 후보가 이보다 많을 일은 없다. */
 const OPTION_SIZE = 100;
 
+interface PageResponse<T> {
+  items: T[];
+  page: { page: number; size: number; total: number };
+}
+
+/**
+ * 목록을 화면 로컬 기본 쪽으로 잘라 쓰지 않는다. P-04-01은 출하 전체 진행과 배분을 판단하므로
+ * `page.total`까지 전건을 완성하지 못하면 부분 목록을 성공으로 내보내지 않는다.
+ */
+const collectAllPages = async <T>(
+  fetchPage: (page: number, size: number) => Promise<PageResponse<T>>,
+): Promise<T[]> => {
+  const first = await fetchPage(1, OPTION_SIZE);
+  const pageSize = Math.max(1, first.page.size);
+  const totalPages = Math.ceil(first.page.total / pageSize);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2).map((page) =>
+      fetchPage(page, pageSize),
+    ),
+  );
+  const items = [first, ...rest].flatMap((response) => response.items);
+
+  if (items.length < first.page.total) {
+    throw new Error('출하 관련 목록 전체를 불러오지 못했습니다.');
+  }
+
+  return items.slice(0, first.page.total);
+};
+
 export const packingResultKeys = {
   typeOptions: ['packing-result', 'handling-unit-types'] as const,
   parentsRoot: ['packing-result', 'parents'] as const,
   parents: (warehouseId: number) => ['packing-result', 'parents', warehouseId] as const,
   progress: (shipmentId: number) => ['packing-result', 'progress', shipmentId] as const,
   uoms: ['packing-result', 'uoms'] as const,
+  todayShipments: (businessDate: string) =>
+    ['packing-result', 'today-shipments', businessDate] as const,
+};
+
+const localDate = (now: Date): string => {
+  const year = String(now.getFullYear());
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const unpackedAllocations = async (
+  client: Client,
+  shipmentId: number,
+): Promise<ShipmentLotAllocation[]> =>
+  collectAllPages((page, size) =>
+    runRequest(() =>
+      client.GET('/logistics/shipment-lot-allocations', {
+        params: { query: { shipmentId, unpackedOnly: true, page, size } },
+      }),
+    ),
+  );
+
+const entryOfShipment = async (client: Client, shipment: Shipment): Promise<ShipmentEntry> => ({
+  shipmentId: shipment.shipmentId,
+  shipmentNo: shipment.shipmentNo,
+  allocations: await unpackedAllocations(client, shipment.shipmentId),
+});
+
+/** 출하번호 정확 일치 스캔. 부분 검색이나 납품 라벨 q와 의미를 섞지 않는다. */
+export const useShipmentScan = (): UseMutationResult<ShipmentEntry | null, Error, string> => {
+  const { client } = useApiClient();
+
+  return useMutation({
+    mutationFn: async (shipmentNo: string) => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/shipments', {
+          params: { query: { pickedOnly: true, shipmentNo, page: 1, size: 1 } },
+        }),
+      );
+      const shipment = data.items[0];
+
+      return shipment === undefined ? null : entryOfShipment(client, shipment);
+    },
+  });
+};
+
+/** 현재 영업일 피킹 완료 출하. 선택 팝업의 검색은 PopSelect가 로컬에서만 수행한다. */
+export const useTodayShipments = (): {
+  shipments: Shipment[];
+  isPending: boolean;
+  isError: boolean;
+} => {
+  const { client } = useApiClient();
+  const businessDate = localDate(new Date());
+  const query = useQuery({
+    queryKey: packingResultKeys.todayShipments(businessDate),
+    queryFn: () =>
+      collectAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/logistics/shipments', {
+            params: {
+              query: {
+                pickedOnly: true,
+                shipDateFrom: businessDate,
+                shipDateTo: businessDate,
+                page,
+                size,
+              },
+            },
+          }),
+        ),
+      ),
+  });
+
+  return { shipments: query.data ?? [], isPending: query.isPending, isError: query.isError };
+};
+
+export const useShipmentSelection = (): UseMutationResult<ShipmentEntry, Error, Shipment> => {
+  const { client } = useApiClient();
+
+  return useMutation({ mutationFn: (shipment: Shipment) => entryOfShipment(client, shipment) });
 };
 
 /** 첫 스캔의 결과. **빈 목록이 「없는 납품라벨」이다** — 계약이 404 를 내지 않는다. */
@@ -42,11 +160,13 @@ export type LabelScanOutcome =
   { kind: 'found'; allocations: ShipmentLotAllocation[] } | { kind: 'not-found' };
 
 const lookupLabel = async (client: Client, code: string): Promise<LabelScanOutcome> => {
-  const data = await runRequest(() =>
-    client.GET('/logistics/shipment-lot-allocations', { params: { query: { q: code } } }),
+  const allocations = await collectAllPages((page, size) =>
+    runRequest(() =>
+      client.GET('/logistics/shipment-lot-allocations', {
+        params: { query: { q: code, page, size } },
+      }),
+    ),
   );
-
-  const allocations = data.items ?? [];
 
   return allocations.length === 0 ? { kind: 'not-found' } : { kind: 'found', allocations };
 };
@@ -190,13 +310,13 @@ export const useShipmentAllocations = (
     queryFn: async () => {
       if (shipmentId === null) throw new Error('출하를 모르면 진행을 조회하지 않습니다.');
 
-      const data = await runRequest(() =>
-        client.GET('/logistics/shipment-lot-allocations', {
-          params: { query: { shipmentId, size: OPTION_SIZE } },
-        }),
+      return collectAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/logistics/shipment-lot-allocations', {
+            params: { query: { shipmentId, page, size } },
+          }),
+        ),
       );
-
-      return data.items ?? [];
     },
   });
 

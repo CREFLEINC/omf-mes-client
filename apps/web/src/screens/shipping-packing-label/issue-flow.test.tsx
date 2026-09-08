@@ -29,8 +29,8 @@ import { ShippingPackingLabelScreen } from './screen';
  */
 
 const ALLOCATION_PASSED = 9401;
-/** 서버가 아는 대상은 LOT 이다 — 회차 조회와 발행이 이 값으로 나간다. */
-const LOT_PASSED = 9801;
+/** 납품 라벨 발행과 회차 조회는 출하 LOT 배분 식별자로 나간다. */
+const DELIVERY_TARGET_PASSED = ALLOCATION_PASSED;
 const ALLOCATION_WAITING = 9402;
 const HANDLING_UNIT_ID = 9501;
 const ISSUE_LOG_ID = 9601;
@@ -176,7 +176,9 @@ describe('진입', () => {
   it('출하 없이 들어오면 대상을 조회하지 않는다 — 남의 출하 라벨을 뽑게 된다', async () => {
     renderFlow({ withoutShipment: true });
 
-    expect(await screen.findByText(/포장 실적 등록 화면에서/u)).toBeInTheDocument();
+    expect(
+      await screen.findByText(messages.shippingPackingLabel.shipment.missing),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: /포장라벨/u })).not.toBeInTheDocument();
   });
 
@@ -217,7 +219,9 @@ describe('발행 → 미리보기 → 인쇄', () => {
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
-    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
+    await user.click(
+      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
+    );
 
     await waitFor(() => {
       expect(sentTo(sent, '/app/document-issues')).toBeDefined();
@@ -225,7 +229,7 @@ describe('발행 → 미리보기 → 인쇄', () => {
 
     expect(sentTo(sent, '/app/document-issues')?.body).toMatchObject({
       documentTypeCode: 'DELIVERY_LABEL',
-      targets: [{ targetId: LOT_PASSED }],
+      targets: [{ targetId: DELIVERY_TARGET_PASSED }],
     });
     /* ⛔ 인쇄 결과 보고가 여기서 나가면 「나오지 않은 라벨」이 나온 것으로 남는다. */
     expect(sentTo(sent, ':report-print')).toBeUndefined();
@@ -237,7 +241,9 @@ describe('발행 → 미리보기 → 인쇄', () => {
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
-    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
+    await user.click(
+      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '미리보기' })).toBeEnabled();
@@ -260,7 +266,9 @@ describe('발행 → 미리보기 → 인쇄', () => {
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
-    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
+    await user.click(
+      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
+    );
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '미리보기' })).toBeEnabled();
@@ -279,7 +287,7 @@ describe('발행 → 미리보기 → 인쇄', () => {
 
 describe('재발행', () => {
   it('이미 발행된 대상을 고르면 사유를 받기 전까지 발행이 막힌다', async () => {
-    const { user, sent } = renderFlow({ issued: { [LOT_PASSED]: 1 } });
+    const { user, sent } = renderFlow({ issued: { [DELIVERY_TARGET_PASSED]: 1 } });
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
@@ -287,7 +295,9 @@ describe('재발행', () => {
 
     expect(await screen.findByText('재발행 사유를 고르면 발행할 수 있습니다.')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
+    await user.click(
+      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
+    );
 
     /* ⛔ 사유 없이 나가면 DB 제약이 저장을 막는다 — 화면이 먼저 멈춰야 한다. */
     expect(sentTo(sent, '/app/document-issues')).toBeUndefined();
@@ -301,7 +311,9 @@ describe('사번', () => {
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
-    await user.click(screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }));
+    await user.click(
+      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
+    );
 
     expect(sentTo(sent, '/app/document-issues')).toBeUndefined();
     expect(screen.getByText('사번을 확인한 뒤에 발행할 수 있습니다.')).toBeInTheDocument();

@@ -825,12 +825,31 @@
  * 달라(격자·2단) `.pane` 을 그대로 붙이면 그 배치가 무너지므로 **겉모양만** 준다.
  */
 .pop-ui .packing-scan,
+.pop-ui .packing-reentry,
 .pop-ui .packing-compose,
 .pop-ui .packing-progress {
   padding: var(--space-4) var(--space-5);
   background: var(--surface-container-low);
   border: 1px solid var(--outline-variant);
   border-radius: var(--radius-md);
+}
+
+.pop-ui .packing-reentry {
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-container-low);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+}
+
+.pop-ui .packing-label-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pop-ui .packing-label-status > [role='alert'] {
+  flex: 1 1 28rem;
 }
 
 /*
@@ -1277,6 +1296,23 @@
   flex: 1 1 auto;
   min-height: 0;
   row-gap: var(--space-3);
+}
+
+/* 재진입 복구는 발행 현황과 액션을 한 줄에 짝지어 1024×768 세로 예산을 지킨다. */
+.pop-ui .pop-slabel-recovery {
+  row-gap: var(--space-3);
+}
+
+.pop-ui .pop-slabel-recovery-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.pop-ui .pop-slabel-recovery-actions > .field-note {
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 /* 라벨 종류 둘은 한 줄에 — 세로 예산이 72px 라 쌓을 자리가 없다(§3 ①). */

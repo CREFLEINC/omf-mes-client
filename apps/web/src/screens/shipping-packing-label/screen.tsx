@@ -1,9 +1,9 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { popTouchClass } from '../../patterns/pop-touch';
-import { DELIVERY_LABEL, type LabelKind } from './codes';
+import { DELIVERY_LABEL, PACKING_LABEL, type LabelKind } from './codes';
 import { useShippingLabelEntry } from './entry-context';
 import { HistoryDialog } from './history-dialog';
 import { IssueOutcome } from './issue-outcome';
@@ -33,8 +33,14 @@ import {
 
 const t = messages.shippingPackingLabel;
 
+export interface ShipmentLabelPanelProps {
+  shipmentId?: number | null;
+  workerNo?: string | null;
+  embedded?: boolean;
+}
+
 /**
- * `P-04-02` 납품·포장 라벨 출력 (POP).
+ * `P-04-01` 안의 납품·포장 라벨 상태·재출력 구획.
  *
  * 스펙 §3 배치를 따른다 — **세로 네 구획**: ① 라벨 종류 · ② 대상 · ③ 재출력 · ④ 프린터.
  * 좌우로 펴지 않는다. 1024×768 에서 세로 예산의 슬랙이 0 이라 ③은 **재발행일 때만 펼친다**
@@ -46,7 +52,11 @@ const t = messages.shippingPackingLabel;
  * ⭐ **화면 순서가 「발행 → 미리보기 → 인쇄」다.** 그리기 경로가 발행 기록 번호를 받으므로
  * 발행 전 미리보기는 이번 계약에 없다(착수 이슈 §6).
  */
-export const ShippingPackingLabelScreen = () => {
+export const ShippingPackingLabelScreen = ({
+  shipmentId: shipmentIdOverride,
+  workerNo: workerNoOverride,
+  embedded = false,
+}: ShipmentLabelPanelProps = {}) => {
   /*
    * 귀속 사번은 **셸이 아는 값**이다(진입점 화면 소관). 쓰기가 헤더로 요구하므로 없으면
    * 부를 수 없고, 그 사실을 감추지 않고 사유로 보인다(공유계약 F-1 · F-6).
@@ -54,7 +64,9 @@ export const ShippingPackingLabelScreen = () => {
    * ⚠ 셸이 채우는 자리(`pop-identity`)는 저장소에 공급자가 아직 없어 **항상 비어 있다** —
    * 진입 주소에서 받는다(전례 `P-02-05`). 셸이 서면 `entry-context` 하나가 바뀐다.
    */
-  const { shipmentId, workerNo } = useShippingLabelEntry();
+  const entry = useShippingLabelEntry();
+  const shipmentId = shipmentIdOverride === undefined ? entry.shipmentId : shipmentIdOverride;
+  const workerNo = workerNoOverride === undefined ? entry.workerNo : workerNoOverride;
   const shipment = useShipment(shipmentId);
 
   /*
@@ -68,10 +80,25 @@ export const ShippingPackingLabelScreen = () => {
   const [printerName, setPrinterName] = useState<string | null>(null);
   const [historyTargetId, setHistoryTargetId] = useState<number | null>(null);
   const [isPreviewOpen, setPreviewOpen] = useState(false);
+  const [isRecoveryPrintQueued, setRecoveryPrintQueued] = useState(false);
 
   const allocations = useAllocations(shipmentId);
   const allocationItems = useMemo(() => allocations.data ?? [], [allocations.data]);
-  const units = useHandlingUnits(allocationItems, kind !== null && !isDelivery(kind));
+  const units = useHandlingUnits(allocationItems, embedded || (kind !== null && !isDelivery(kind)));
+
+  const packingRows = useMemo(() => units.units.map(toPackingRow), [units.units]);
+  const deliveryRows = useMemo(
+    () =>
+      allocationItems.map((allocation) =>
+        toDeliveryRow(
+          allocation,
+          t.targets.status.passed,
+          t.targets.status.waiting,
+          t.targets.unnamed,
+        ),
+      ),
+    [allocationItems],
+  );
 
   /*
    * 목록 줄은 종류마다 다른 것에서 나오지만(배분 ↔ 취급 단위) **같은 모양으로 편다** —
@@ -80,27 +107,35 @@ export const ShippingPackingLabelScreen = () => {
   const rows: TargetRow[] = useMemo(() => {
     if (kind === null) return [];
 
-    return isDelivery(kind)
-      ? allocationItems.map((allocation) =>
-          toDeliveryRow(
-            allocation,
-            t.targets.status.passed,
-            t.targets.status.waiting,
-            t.targets.unnamed,
-          ),
-        )
-      : units.units.map(toPackingRow);
-  }, [allocationItems, kind, units.units]);
+    return isDelivery(kind) ? deliveryRows : packingRows;
+  }, [deliveryRows, kind, packingRows]);
 
   /*
    * ⛔ **서버에 묻는 것은 줄 식별자가 아니라 대상 식별자다**(`issueTargetId`). 납품 라벨은
    * 한 LOT 이 여러 배분으로 갈릴 수 있어 유일하게 만든다 — 같은 값을 두 번 물으면 서버가
    * 같은 회차를 두 줄로 돌려주고 화면이 그중 하나만 보게 된다.
    */
-  const targetIds = useMemo(() => [...new Set(rows.map((row) => row.issueTargetId))], [rows]);
-  const summaries = useIssueSummaries(kind, targetIds);
+  const packingTargetIds = useMemo(
+    () => [...new Set(packingRows.map((row) => row.issueTargetId))],
+    [packingRows],
+  );
+  const deliveryTargetIds = useMemo(
+    () => [...new Set(deliveryRows.map((row) => row.issueTargetId))],
+    [deliveryRows],
+  );
+  const packingSummaries = useIssueSummaries(
+    embedded || kind === PACKING_LABEL ? PACKING_LABEL : null,
+    packingTargetIds,
+  );
+  const deliverySummaries = useIssueSummaries(
+    embedded || kind === DELIVERY_LABEL ? DELIVERY_LABEL : null,
+    deliveryTargetIds,
+  );
+  const summaries = kind === DELIVERY_LABEL ? deliverySummaries : packingSummaries;
   const summaryItems = useMemo(() => summaries.data ?? [], [summaries.data]);
-  const printers = usePrinters(kind);
+  const packingPrinters = usePrinters(embedded || kind === PACKING_LABEL ? PACKING_LABEL : null);
+  const deliveryPrinters = usePrinters(embedded || kind === DELIVERY_LABEL ? DELIVERY_LABEL : null);
+  const printers = kind === DELIVERY_LABEL ? deliveryPrinters : packingPrinters;
 
   /*
    * ⛔ **재발행 여부를 화면이 세지 않는다.** 서버가 준 발행 횟수로만 가른다 — 화면이 세면
@@ -118,18 +153,71 @@ export const ShippingPackingLabelScreen = () => {
   const alreadyIssuedCount = selectedIssueTargetIds.filter((id) =>
     summaryItems.some((summary) => summary.targetId === id && summary.issueCount > 0),
   ).length;
+  const firstIssueCount = selectedIssueTargetIds.length - alreadyIssuedCount;
+  const hasMixedIssueModes = alreadyIssuedCount > 0 && firstIssueCount > 0;
 
   const reissueReasons = useReissueReasons(isReissue);
   const history = useIssueHistory(kind, historyTargetId);
   const issue = useLabelIssue({ workerNo });
+
+  const missingPackingRows = useMemo(
+    () =>
+      packingRows.filter((row) =>
+        packingSummaries.data?.some(
+          (summary) => summary.targetId === row.issueTargetId && summary.issueCount === 0,
+        ),
+      ),
+    [packingRows, packingSummaries.data],
+  );
+  const missingDeliveryRows = useMemo(
+    () =>
+      deliveryRows.filter(
+        (row) =>
+          row.isIssuable &&
+          deliverySummaries.data?.some(
+            (summary) => summary.targetId === row.issueTargetId && summary.issueCount === 0,
+          ),
+      ),
+    [deliveryRows, deliverySummaries.data],
+  );
+  const oqcWaitingCount = deliveryRows.filter((row) => !row.isIssuable).length;
+  const recoveryReissueCount = [
+    ...(packingSummaries.data ?? []),
+    ...(deliverySummaries.data ?? []),
+  ].filter((summary) => summary.issueCount > 0 && summary.lastPrintOutcome !== 'SUCCEEDED').length;
 
   const printerItems = printers.data ?? [];
   /* 고르지 않았으면 기본 프린터를 쓴다 — 계약이 `printer_name` 을 선택으로 둔다(스펙 §6). */
   const effectivePrinterName = printerName ?? toDefaultPrinterName(printerItems);
 
   const isBusy = issue.phase === 'issuing' || issue.phase === 'printing';
-  const isListError = allocations.isError || units.isError;
-  const isListPending = allocations.isPending || units.isPending;
+  const isListError = allocations.isError || units.isError || (kind !== null && summaries.isError);
+  const isListPending =
+    allocations.isPending || units.isPending || (kind !== null && summaries.isPending);
+  const isRecoveryError =
+    allocations.isError ||
+    units.isError ||
+    (packingTargetIds.length > 0 && packingSummaries.isError) ||
+    (deliveryTargetIds.length > 0 && deliverySummaries.isError);
+  const isRecoveryPending =
+    allocations.isPending ||
+    units.isPending ||
+    (packingTargetIds.length > 0 && packingSummaries.isPending) ||
+    (deliveryTargetIds.length > 0 && deliverySummaries.isPending);
+
+  /* 복구 액션은 이름 그대로 물리 인쇄까지 이어 간다. 발행만 남기면 다음 재진입 때 재출력이 된다. */
+  useEffect(() => {
+    if (!isRecoveryPrintQueued) return;
+    if (issue.result.failedAt === 'issue') {
+      setRecoveryPrintQueued(false);
+
+      return;
+    }
+    if (issue.phase !== 'issued' || issue.labels.length === 0) return;
+
+    setRecoveryPrintQueued(false);
+    issue.print();
+  }, [isRecoveryPrintQueued, issue]);
   /**
    * 발행할 수 있는가 — **막는 사유가 넷이다.**
    *
@@ -142,6 +230,7 @@ export const ShippingPackingLabelScreen = () => {
     if (selectedRows.length === 0) return t.actions.needsTarget;
     if (summaries.isPending) return t.actions.checkingHistory;
     if (summaries.isError) return t.actions.historyUnavailable;
+    if (hasMixedIssueModes) return t.actions.mixedIssueModes;
     if (isReissue && reissueReasonCode === null) return t.actions.needsReason;
 
     return null;
@@ -172,32 +261,127 @@ export const ShippingPackingLabelScreen = () => {
      * ⚠ **이 화면이 최상위 랜드마크다.** POP 라우트는 관리웹 셸을 지나지 않으므로(`routes/pop`)
      * `main` 을 세워 주는 바깥이 없다 — 먼저 선 POP 화면들과 같은 형태다.
      */
-    <main className="pop-slabel-screen pop-ui" aria-label={t.title}>
+    <section
+      className={`pop-slabel-screen pop-ui${embedded ? ' pop-slabel-screen--embedded' : ''}`}
+      aria-label={t.title}
+    >
       {/*
        * 머리줄은 **다른 POP 화면과 같은 어휘로 쓴다**(`pop-header` · `pop-title` ·
        * `pop-context-right`). 이 화면만 자기 이름(`pop-slabel-head`)과 DS `PageHeader` 로
        * 세웠더니 규격(`app/pop.css` 「머리줄」)이 이 화면에만 걸리지 않아, 머리줄이 358px 로
        * 늘고 배경도 구분선도 없이 떴다(실측 — 다른 화면은 72px).
        */}
-      <header className="pop-header">
-        <h1 className="pop-title">{t.title}</h1>
-        {shipmentId === null ? null : (
-          /* 맥락은 화면명 옆이다 — 오른쪽 끝은 상태 자리다(스펙 §3 머리줄). */
-          <p className="pop-context">
-            {shipment.isPending
-              ? t.shipment.loading
-              : shipment.isError || shipment.data === undefined
-                ? t.shipment.loadFailed
-                : t.shipment.context(shipment.data.shipmentNo)}
-          </p>
-        )}
-      </header>
+      {!embedded ? (
+        <header className="pop-header">
+          <h1 className="pop-title">{t.title}</h1>
+          {shipmentId === null ? null : (
+            /* 맥락은 화면명 옆이다 — 오른쪽 끝은 상태 자리다(스펙 §3 머리줄). */
+            <p className="pop-context">
+              {shipment.isPending
+                ? t.shipment.loading
+                : shipment.isError || shipment.data === undefined
+                  ? t.shipment.loadFailed
+                  : t.shipment.context(shipment.data.shipmentNo)}
+            </p>
+          )}
+        </header>
+      ) : null}
 
       {shipmentId === null ? (
         // ⛔ 출하가 없으면 아무 목록도 그리지 않는다 — 남의 출하 라벨을 뽑게 된다.
         <AlertBanner variant="warning">{t.shipment.missing}</AlertBanner>
       ) : (
         <>
+          {embedded ? (
+            <section className="pane pop-fixed pop-slabel-recovery" aria-label={t.recovery.title}>
+              <h2 className="pane-title">{t.recovery.title}</h2>
+              {isRecoveryError ? (
+                <AlertBanner
+                  variant="error"
+                  action={
+                    <Button
+                      className={popTouchClass('normal')}
+                      variant="outlined"
+                      size="xl"
+                      onClick={() => {
+                        void allocations.refetch();
+                        units.refetch();
+                        void packingSummaries.refetch();
+                        void deliverySummaries.refetch();
+                      }}
+                    >
+                      {t.targets.retry}
+                    </Button>
+                  }
+                >
+                  {t.recovery.loadFailed}
+                </AlertBanner>
+              ) : (
+                <div className="pop-slabel-recovery-actions">
+                  <span>{t.recovery.packingMissing(missingPackingRows.length)}</span>
+                  <Button
+                    className={popTouchClass('normal')}
+                    variant="outlined"
+                    size="xl"
+                    disabled={
+                      isRecoveryPending ||
+                      missingPackingRows.length === 0 ||
+                      workerNo === null ||
+                      issue.phase !== 'idle'
+                    }
+                    onClick={() => {
+                      setRecoveryPrintQueued(true);
+                      issue.issue({
+                        kind: PACKING_LABEL,
+                        rows: missingPackingRows,
+                        printerName: toDefaultPrinterName(packingPrinters.data ?? []),
+                        reissueReasonCode: null,
+                      });
+                    }}
+                  >
+                    {t.recovery.packingAction}
+                  </Button>
+                  <span>{t.recovery.deliveryMissing(missingDeliveryRows.length)}</span>
+                  <Button
+                    className={popTouchClass('critical')}
+                    size="xl"
+                    disabled={
+                      isRecoveryPending ||
+                      missingDeliveryRows.length === 0 ||
+                      workerNo === null ||
+                      issue.phase !== 'idle'
+                    }
+                    onClick={() => {
+                      setRecoveryPrintQueued(true);
+                      issue.issue({
+                        kind: DELIVERY_LABEL,
+                        rows: missingDeliveryRows,
+                        printerName: toDefaultPrinterName(deliveryPrinters.data ?? []),
+                        reissueReasonCode: null,
+                      });
+                    }}
+                  >
+                    {t.recovery.deliveryAction}
+                  </Button>
+                  {oqcWaitingCount > 0 ? (
+                    <span className="field-note">{t.recovery.oqcWaiting(oqcWaitingCount)}</span>
+                  ) : null}
+                  {recoveryReissueCount > 0 ? (
+                    <span className="field-note">
+                      {t.recovery.reissueRequired(recoveryReissueCount)}
+                    </span>
+                  ) : null}
+                  {!isRecoveryPending &&
+                  missingPackingRows.length === 0 &&
+                  missingDeliveryRows.length === 0 &&
+                  recoveryReissueCount === 0 ? (
+                    <span className="field-note">{t.recovery.complete}</span>
+                  ) : null}
+                </div>
+              )}
+            </section>
+          ) : null}
+
           {/*
            * ⭐ **네 구획을 각각 상자로 세운다**(설계 §3 도면의 ①②③④). 테두리 없이 늘어놓으면
            * 어디서 한 묶음이 끝나는지가 크기로만 갈려, 세로가 빌 때 화면이 통째로 흩어져 보인다.
@@ -233,6 +417,7 @@ export const ShippingPackingLabelScreen = () => {
                     onClick={() => {
                       void allocations.refetch();
                       units.refetch();
+                      void summaries.refetch();
                     }}
                   >
                     {t.targets.retry}
@@ -241,12 +426,6 @@ export const ShippingPackingLabelScreen = () => {
               />
             ) : (
               <>
-                {/*
-                 * ⚠ **회차 열의 한계를 밝힌다.** 발행 현황 조회가 대상 유형 코드를 조건으로
-                 * 받는데 그 값이 아직 확정되지 않았다 — 서버가 가진 문자열과 다르면 이미
-                 * 뽑은 것도 「없음」으로 보인다. 감추면 사용자가 그 값을 믿고 재발행을 놓친다.
-                 */}
-                <AlertBanner variant="info">{t.targets.seqNotice}</AlertBanner>
                 {/* 표만 스크롤한다 — 구획째 스크롤하면 바닥의 프린터 줄이 같이 밀려 사라진다. */}
                 <div className="pop-slabel-table">
                   <TargetTable
@@ -375,6 +554,6 @@ export const ShippingPackingLabelScreen = () => {
           }}
         />
       )}
-    </main>
+    </section>
   );
 };
