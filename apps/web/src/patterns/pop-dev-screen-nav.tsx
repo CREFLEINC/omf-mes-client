@@ -90,8 +90,6 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   {
     path: '/pop/repack-label-issue',
     label: 'P-04-04 재구성 라벨 발행',
-    /* P-02-09 와 같은 씨앗 포장을 쓴다 — 씨앗에 실제로 있는 번호여야 한다(위 주석). */
-    query: '?handlingUnitId=13001&workerNo=100029',
   },
   /*
    * ⚠ 이 화면은 사번을 주소로 받지 않는다 — 단말·공정·사번은 셸이 채운다. 개발 셸이 그
