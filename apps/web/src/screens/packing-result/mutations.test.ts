@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { createStubFetch, jsonResponse, type StubRoute } from '../../test/api-harness';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderHookWithProviders,
+  type StubRoute,
+} from '../../test/api-harness';
 import { createApiClient } from '@omf-mes/api-client';
 
 import {
@@ -8,6 +13,8 @@ import {
   createHandlingUnit,
   keptCreateKey,
   keptPackingAttempt,
+  useHandlingUnitCreate,
+  usePackingConfirm,
   type ConfirmPackingInput,
   type CreateHandlingUnitInput,
 } from './mutations';
@@ -86,7 +93,11 @@ interface Recorded {
 /** 세 단계를 모두 받아 «순서대로» 담는다. 실패를 넣고 싶으면 상태 코드를 준다. */
 const harness = (
   statuses: { create?: number; pack?: number; link?: number } = {},
-): { calls: Recorded[]; client: ReturnType<typeof createApiClient> } => {
+): {
+  calls: Recorded[];
+  client: ReturnType<typeof createApiClient>;
+  fetch: ReturnType<typeof createStubFetch>;
+} => {
   const calls: Recorded[] = [];
 
   const record = async (request: Request): Promise<void> => {
@@ -129,10 +140,9 @@ const harness = (
     },
   ];
 
-  return {
-    calls,
-    client: createApiClient({ baseUrl: BASE_URL, fetch: createStubFetch(routes) }),
-  };
+  const fetch = createStubFetch(routes);
+
+  return { calls, fetch, client: createApiClient({ baseUrl: BASE_URL, fetch }) };
 };
 
 describe('createHandlingUnit', () => {
@@ -286,6 +296,22 @@ describe('멱등 키 — 재전송에도 갈리지 않는다', () => {
     expect(second.packKey).not.toBe(first.packKey);
   });
 
+  it('수량만 고쳐 다시 눌러도 «새 키»다 — 담은 양이 달라졌으면 다른 쓰기다', () => {
+    const first = keptPackingAttempt(
+      null,
+      { handlingUnit: OPEN_UNIT, lines: [line({ qty: 120 })] },
+      new Date('2026-08-12T10:22:00+09:00'),
+    );
+    const second = keptPackingAttempt(
+      first,
+      { handlingUnit: OPEN_UNIT, lines: [line({ qty: 60 })] },
+      new Date('2026-08-12T10:23:00+09:00'),
+    );
+
+    expect(second.packKey).not.toBe(first.packKey);
+    expect(second.linkKeys[9001]).not.toBe(first.linkKeys[9001]);
+  });
+
   it('배분 연결 키는 줄마다 따로이면서 재전송에는 그대로다', () => {
     const variables = {
       handlingUnit: OPEN_UNIT,
@@ -318,5 +344,50 @@ describe('멱등 키 — 재전송에도 갈리지 않는다', () => {
     await createHandlingUnit(client.client, createInput({ idempotencyKey: 'SYN-KEY-42' }));
 
     expect(calls[0]?.headers.get('Idempotency-Key')).toBe('SYN-KEY-42');
+  });
+});
+
+describe('멱등 키의 수명 — 서버에 «닿으면» 버린다', () => {
+  it('포장 하나를 끝내고 «같은 유형으로» 다음 포장을 시작하면 새 키로 나간다', async () => {
+    const { calls, fetch: stub } = harness();
+    const variables = {
+      handlingUnitTypeCode: 'CARTON',
+      parentHandlingUnitId: null,
+      warehouseId: 1001,
+      workerNo: '3391',
+    };
+
+    const { result } = renderHookWithProviders(() => useHandlingUnitCreate(), { fetch: stub });
+
+    await result.current.mutateAsync(variables);
+    await result.current.mutateAsync(variables);
+
+    /*
+     * ⛔ 앞 포장의 키가 남아 있으면 서버가 재시도로 보고 **이미 닫힌 포장을 돌려준다** —
+     * 다음 물건이 그 포장에 담기고, 이 화면에는 되돌릴 조작이 없다(§5-6).
+     */
+    expect(calls[1]?.headers.get('Idempotency-Key')).not.toBe(
+      calls[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  it('확정이 서버에 닿으면 다음 확정은 새 키로 나간다', async () => {
+    const { calls, fetch: stub } = harness();
+    const variables = { handlingUnit: OPEN_UNIT, lines: [line()], workerNo: '3391' };
+
+    const { result } = renderHookWithProviders(
+      () => usePackingConfirm({ shipmentId: 7001, onSuccess: () => undefined }),
+      { fetch: stub },
+    );
+
+    await result.current.mutateAsync(variables);
+    await result.current.mutateAsync(variables);
+
+    const packKeys = calls
+      .filter((call) => call.path.endsWith(':pack'))
+      .map((call) => call.headers.get('Idempotency-Key'));
+
+    expect(packKeys).toHaveLength(2);
+    expect(packKeys[1]).not.toBe(packKeys[0]);
   });
 });
