@@ -12,11 +12,24 @@ import type { CapacitorConfig } from '@capacitor/cli';
  */
 const allowLocalHttp = process.env.CAP_ALLOW_LOCAL_HTTP === '1';
 
+/*
+ * 요청을 WebView 대신 네이티브로 보낸다.
+ *
+ * 개발 백엔드가 CORS 응답 헤더를 주지 않아 WebView 의 fetch 로는 닿지 않는다. 실기·에뮬레이터
+ * 에는 브라우저 프록시가 없어 우회할 자리가 여기뿐이다 - 네이티브 요청에는 동일 출처 정책이
+ * 걸리지 않는다.
+ *
+ * 기본은 끈다. 목 서버는 CORS 를 열어 두어 지금 경로가 그대로 돌고, 켜면 그 경로까지 함께
+ * 바뀐다.
+ */
+const nativeHttp = process.env.CAP_NATIVE_HTTP === '1';
+
 const config: CapacitorConfig = {
   appId: 'com.crefle.omfmes.mobile',
   appName: 'OMF-MES',
   webDir: 'dist',
   ...(allowLocalHttp ? { server: { cleartext: true }, android: { allowMixedContent: true } } : {}),
+  ...(nativeHttp ? { plugins: { CapacitorHttp: { enabled: true } } } : {}),
 };
 
 export default config;
