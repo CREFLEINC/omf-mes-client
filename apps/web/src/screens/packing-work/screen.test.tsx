@@ -2,7 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import {
@@ -647,7 +647,18 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
   afterEach(() => {
     setOnline(true);
     globalThis.localStorage.clear();
+    vi.useRealTimers();
   });
+
+  /*
+   * 시각만 가짜로 돌린다 — 타이머는 진짜로 둔다(`userEvent` 가 실제 타이머 위에서 돈다).
+   * 확정 본문의 `occurredAt` 은 «누른 순간»이라, 시각을 움직여야 「본문을 새로 지었는가」가
+   * 드러난다.
+   */
+  const freezeClockAt = (iso: string): void => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(iso));
+  };
 
   /*
    * ⛔ **끊긴 채로 등록을 던지지 않는다.** 번호가 오지 않으면 담은 줄이 화면에서 사라지고,
@@ -757,6 +768,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     const user = userEvent.setup();
 
     /* 5xx — 서버가 받았는지 알 수 없는 실패다. */
+    freezeClockAt('2026-09-08T23:59:50+09:00');
     renderScreen({ writes, packStatus: 503 });
 
     await packOneLine(user, LOT_A_NO, '100');
@@ -770,6 +782,12 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
 
     const attempt = writeAt(writes, 1);
     const attemptBody = await bodyOf(attempt);
+
+    /*
+     * ⭐ **날짜를 넘긴다.** 큐가 본문을 새로 지으면 같은 키에 영업일이 갈리고, 서버의
+     * `UNIQUE(idempotency_key, business_date)` 를 둘 다 통과해 **두 건으로 적재된다**(C-8).
+     */
+    vi.setSystemTime(new Date('2026-09-09T00:00:10+09:00'));
 
     setOnline(false);
     act(() => {
@@ -908,6 +926,61 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     /* 앞 포장은 자기 시도를 이어받는 것이 맞다 — 다음 포장이 그것을 물려받으면 안 된다. */
     expect(keys[0]).toBe(firstAttempt.headers.get('Idempotency-Key'));
     expect(keys[1]).not.toBe(firstAttempt.headers.get('Idempotency-Key'));
+  });
+
+  /*
+   * ⛔ **다음 포장이 앞 포장과 «같은 것»을 담아도 키를 물려받으면 안 된다.** 담은 것이 같으면
+   * 내용 대조로는 갈라지지 않는다 — 포장이 바뀔 때 키를 버려야만 갈라진다.
+   */
+  it('앞 포장과 같은 것을 담아도 다음 포장은 새 키로 담긴다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+
+    renderScreen({ writes, packStatus: 503 });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(2);
+    });
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    setOnline(true);
+    act(() => {
+      globalThis.dispatchEvent(new Event('online'));
+    });
+    await user.click(screen.getByRole('button', { name: t.confirm.startNext }));
+
+    /* 다음 포장에 «같은 LOT 을 같은 수량으로» 담는다. */
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    const queued: { idempotencyKey: string }[] = JSON.parse(
+      globalThis.localStorage.getItem(OUTBOX_STORAGE_KEY) ?? '[]',
+    ) as { idempotencyKey: string }[];
+    const keys = queued.map((one) => one.idempotencyKey);
+
+    expect(keys).toHaveLength(2);
+    /* 같은 키면 앞 건이 성공하는 순간 뒤엣것까지 큐에서 내려간다. */
+    expect(new Set(keys).size).toBe(2);
   });
 
   /*
