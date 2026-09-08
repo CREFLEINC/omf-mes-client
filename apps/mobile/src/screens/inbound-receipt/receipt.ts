@@ -6,6 +6,8 @@ import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 export type PurchaseOrder = components['schemas']['PurchaseOrder'];
 export type PurchaseOrderLine = components['schemas']['PurchaseOrderLine'];
 export type InboundReceiptCreate = components['schemas']['InboundReceiptCreate'];
+export type InboundReceiptSplitRequest = components['schemas']['InboundReceiptSplitRequest'];
+export type SplitMode = InboundReceiptSplitRequest['mode'];
 
 /**
  * 입하 검증 세 갈래.
@@ -45,6 +47,7 @@ export interface QueuedReceipt {
 }
 
 export const RECEIPT_PATH = '/logistics/inbound-receipts';
+export const SPLIT_RECEIPT_PATH = '/logistics/inbound-receipts:split';
 
 /**
  * 담긴 채 아직 못 간 입하 수량.
@@ -54,11 +57,18 @@ export const RECEIPT_PATH = '/logistics/inbound-receipts';
  */
 export const queuedQtyOf = (entries: QueuedReceipt[], purchaseOrderLineId: number): number =>
   entries
-    .filter((entry) => entry.path === RECEIPT_PATH)
     .flatMap((entry) => {
-      const body = entry.body as { lines?: unknown } | null;
+      const body = entry.body as { lines?: unknown; normal?: { lines?: unknown } } | null;
 
-      return Array.isArray(body?.lines) ? body.lines : [];
+      if (entry.path === RECEIPT_PATH) {
+        return Array.isArray(body?.lines) ? body.lines : [];
+      }
+
+      if (entry.path === SPLIT_RECEIPT_PATH) {
+        return Array.isArray(body?.normal?.lines) ? body.normal.lines : [];
+      }
+
+      return [];
     })
     .reduce((sum: number, raw) => {
       const line = raw as { purchaseOrderLineId?: unknown; receivedQty?: unknown };
@@ -125,6 +135,8 @@ export interface ReceiptDraft {
   supplierId: number | null;
   itemId: number | null;
   uomId: number | null;
+  exceptionTypeCode: string;
+  exceptionReason: string;
   deliveryNoteNo: string;
   receivedQty: string;
   packageCount: string;
@@ -155,7 +167,13 @@ export const canSubmit = (draft: ReceiptDraft, hasWorker: boolean): boolean => {
    * 담아 둔 뒤에야 오므로 화면에서 막는다.
    */
   if (draft.unordered) {
-    return draft.supplierId !== null && draft.itemId !== null && draft.uomId !== null;
+    return (
+      draft.supplierId !== null &&
+      draft.itemId !== null &&
+      draft.uomId !== null &&
+      draft.exceptionTypeCode.trim() !== '' &&
+      draft.exceptionReason.trim() !== ''
+    );
   }
 
   return draft.purchaseOrder !== null && draft.purchaseOrderLine !== null;
@@ -184,6 +202,25 @@ export const sourceOf = (draft: ReceiptDraft): ReceiptSource | null => {
 
 const optional = (value: string): string | null => (value.trim() === '' ? null : value.trim());
 
+const toLine = (
+  draft: ReceiptDraft,
+  itemId: number,
+  uomId: number,
+  receivedQty: number,
+  purchaseOrderLineId: number | null,
+) => ({
+  purchaseOrderLineId,
+  itemId,
+  receivedQty,
+  uomId,
+  packageCount: draft.packageCount.trim() === '' ? null : Number(draft.packageCount.trim()),
+  supplierLotNo: draft.supplierLotMissing ? null : optional(draft.supplierLotNo),
+  supplierLotMissing: draft.supplierLotMissing,
+  substituteLotReasonCode: draft.supplierLotMissing ? draft.substituteLotReasonCode : null,
+  manufacturedDate: optional(draft.manufacturedDate),
+  expiryDate: optional(draft.expiryDate),
+});
+
 export const toOutboxDraft = (
   draft: ReceiptDraft,
   itemId: number,
@@ -199,25 +236,23 @@ export const toOutboxDraft = (
     plantId,
     receiptDatetime: occurredAt,
     deliveryNoteNo: optional(draft.deliveryNoteNo),
+    ...(draft.unordered
+      ? {
+          exceptionTypeCode: draft.exceptionTypeCode.trim(),
+          exceptionReason: draft.exceptionReason.trim(),
+        }
+      : {}),
     /* 업무 기준일은 단말이 정한다. 서버가 수신 시각으로 잡으면 날짜 경계에서 이중 계상이 난다. */
     businessDate: businessDateOf(now),
     occurredAt,
     lines: [
-      {
-        purchaseOrderLineId: draft.purchaseOrderLine?.purchaseOrderLineId ?? null,
+      toLine(
+        draft,
         itemId,
-        receivedQty: Number(draft.receivedQty.trim()),
         uomId,
-        packageCount:
-          draft.packageCount.trim() === '' ? null : Number(draft.packageCount.trim()),
-        supplierLotNo: draft.supplierLotMissing ? null : optional(draft.supplierLotNo),
-        supplierLotMissing: draft.supplierLotMissing,
-        substituteLotReasonCode: draft.supplierLotMissing
-          ? draft.substituteLotReasonCode
-          : null,
-        manufacturedDate: optional(draft.manufacturedDate),
-        expiryDate: optional(draft.expiryDate),
-      },
+        Number(draft.receivedQty.trim()),
+        draft.purchaseOrderLine?.purchaseOrderLineId ?? null,
+      ),
     ],
   };
 
@@ -227,6 +262,103 @@ export const toOutboxDraft = (
     idempotencyKey: createIdempotencyKey(),
     method: 'POST',
     path: RECEIPT_PATH,
+    body,
+    occurredAt,
+    confirmation: 'pending',
+  };
+};
+
+export interface SplitQuantities {
+  remaining: number;
+  normal: number;
+  excess: number;
+}
+
+/** 초과 허용치까지는 ERP W/O에 귀속하고, 그보다 많이 온 수량만 비귀속으로 가른다. */
+export const splitQuantitiesOf = (
+  line: PurchaseOrderLine,
+  arrivedQty: number,
+  queuedQty = 0,
+): SplitQuantities => {
+  const remaining = remainingQtyOf(line, queuedQty);
+  const normal = Math.min(arrivedQty, Math.max(0, remaining + line.toleranceOverQty));
+
+  return { remaining, normal, excess: arrivedQty - normal };
+};
+
+const splitPart = (
+  draft: ReceiptDraft,
+  itemId: number,
+  uomId: number,
+  plantId: number,
+  supplierId: number,
+  receiptDatetime: string,
+  receivedQty: number,
+  purchaseOrderLineId: number | null,
+) => ({
+  supplierId,
+  plantId,
+  receiptDatetime,
+  deliveryNoteNo: optional(draft.deliveryNoteNo),
+  lines: [toLine(draft, itemId, uomId, receivedQty, purchaseOrderLineId)],
+});
+
+/**
+ * 모바일 초과 입하를 한 트랜잭션 요청으로 만든다.
+ *
+ * 정량분만 원 ERP W/O 라인에 귀속한다. 초과분에 그 식별자를 싣으면 초과가 원 발주 누적에
+ * 다시 더해져 분리 자체가 무효가 된다.
+ */
+export const toSplitOutboxDraft = (
+  draft: ReceiptDraft,
+  itemId: number,
+  uomId: number,
+  plantId: number,
+  supplierId: number,
+  now: Date,
+  workerNo: string,
+  mode: SplitMode,
+  exceptionTypeCode: string,
+  exceptionReason: string,
+  queuedQty = 0,
+): OutboxDraft => {
+  const line = draft.purchaseOrderLine;
+
+  if (line === null) {
+    throw new Error('초과 입하 분리는 ERP W/O 라인을 고른 뒤에만 만들 수 있습니다.');
+  }
+
+  const occurredAt = now.toISOString();
+  const quantities = splitQuantitiesOf(line, Number(draft.receivedQty.trim()), queuedQty);
+  const normal = splitPart(
+    draft,
+    itemId,
+    uomId,
+    plantId,
+    supplierId,
+    occurredAt,
+    quantities.normal,
+    line.purchaseOrderLineId,
+  );
+  const excess = {
+    ...splitPart(draft, itemId, uomId, plantId, supplierId, occurredAt, quantities.excess, null),
+    exceptionTypeCode: exceptionTypeCode.trim(),
+    exceptionReason: exceptionReason.trim(),
+  };
+  const shared = { businessDate: businessDateOf(now), occurredAt };
+  const body: InboundReceiptSplitRequest =
+    mode === 'BOTH'
+      ? { ...shared, mode: 'BOTH', normal, excess }
+      : mode === 'NORMAL_ONLY'
+        ? { ...shared, mode: 'NORMAL_ONLY', normal }
+        : { ...shared, mode: 'EXCESS_ONLY', excess };
+
+  return {
+    label: messages.inboundReceipt.record,
+    workerNo,
+    idempotencyKey: createIdempotencyKey(),
+    method: 'POST',
+    path: SPLIT_RECEIPT_PATH,
     body,
     occurredAt,
     confirmation: 'pending',

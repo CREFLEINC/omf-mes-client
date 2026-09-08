@@ -11,7 +11,9 @@ import {
   qtyProblem,
   queuedQtyOf,
   remainingQtyOf,
+  splitQuantitiesOf,
   toOutboxDraft,
+  toSplitOutboxDraft,
   verdictOf,
   type PurchaseOrder,
   type PurchaseOrderLine,
@@ -53,6 +55,8 @@ const draft = (overrides: Partial<ReceiptDraft> = {}): ReceiptDraft => ({
   supplierId: null,
   itemId: null,
   uomId: null,
+  exceptionTypeCode: '',
+  exceptionReason: '',
   purchaseOrder: po(),
   purchaseOrderLine: poLine(),
   deliveryNoteNo: 'DN-2026-000045',
@@ -179,6 +183,30 @@ describe('등록 조건', () => {
   it('발주를 골랐는데 라인을 고르지 않으면 등록할 수 없다', () => {
     expect(canSubmit(draft({ purchaseOrderLine: null }), true)).toBe(false);
   });
+
+  it('무발주 입하는 공급사·품목·단위와 예외 유형·사유를 모두 받아야 한다', () => {
+    const unordered = draft({
+      unordered: true,
+      purchaseOrder: null,
+      purchaseOrderLine: null,
+      supplierId: 2,
+      itemId: 31,
+      uomId: 9,
+    });
+
+    expect(canSubmit(unordered, true)).toBe(false);
+    expect(canSubmit({ ...unordered, exceptionTypeCode: 'URGENT_RECEIPT' }, true)).toBe(false);
+    expect(
+      canSubmit(
+        {
+          ...unordered,
+          exceptionTypeCode: 'URGENT_RECEIPT',
+          exceptionReason: '발주서 도착 전 긴급 입하',
+        },
+        true,
+      ),
+    ).toBe(true);
+  });
 });
 
 describe('등록 본문', () => {
@@ -237,7 +265,12 @@ describe('등록 본문', () => {
   });
 
   it('비워 둔 항목은 빈 문자가 아니라 비운 값으로 싣는다', () => {
-    const bare = draft({ deliveryNoteNo: '', packageCount: '', manufacturedDate: '', expiryDate: '' });
+    const bare = draft({
+      deliveryNoteNo: '',
+      packageCount: '',
+      manufacturedDate: '',
+      expiryDate: '',
+    });
     const body = toOutboxDraft(bare, 31, 9, 1, 2, NOW, '900028').body as {
       deliveryNoteNo: unknown;
       lines: Record<string, unknown>[];
@@ -256,6 +289,104 @@ describe('등록 본문', () => {
     expect(entry.confirmation).toBe('pending');
     expect(entry.path).toBe('/logistics/inbound-receipts');
   });
+
+  it('무발주는 예외 유형과 사유를 함께 싣고 승인 값을 만들지 않는다', () => {
+    const unordered = draft({
+      unordered: true,
+      purchaseOrder: null,
+      purchaseOrderLine: null,
+      supplierId: 2,
+      itemId: 31,
+      uomId: 9,
+      exceptionTypeCode: 'URGENT_RECEIPT',
+      exceptionReason: '발주서 도착 전 긴급 입하',
+    });
+    const body = toOutboxDraft(unordered, 31, 9, 1, 2, NOW, '900028').body as Record<
+      string,
+      unknown
+    >;
+
+    expect(body.exceptionTypeCode).toBe('URGENT_RECEIPT');
+    expect(body.exceptionReason).toBe('발주서 도착 전 긴급 입하');
+    expect(body).not.toHaveProperty('approvalRequestId');
+  });
+});
+
+describe('초과 입하 분리 본문', () => {
+  const NOW = new Date(2026, 8, 1, 9, 12);
+
+  it('허용 가능한 수량과 비귀속 초과분을 가른다', () => {
+    expect(splitQuantitiesOf(poLine(), 511)).toEqual({ remaining: 500, normal: 510, excess: 1 });
+    expect(splitQuantitiesOf(poLine({ receivedQty: 490 }), 30)).toEqual({
+      remaining: 10,
+      normal: 20,
+      excess: 10,
+    });
+  });
+
+  it('BOTH는 정량과 초과를 한 본문에 싣고 초과분의 발주 귀속을 끊는다', () => {
+    const entry = toSplitOutboxDraft(
+      draft({ receivedQty: '511' }),
+      31,
+      9,
+      1,
+      2,
+      NOW,
+      '900028',
+      'BOTH',
+      'OVER_DELIVERY',
+      '허용치 초과',
+    );
+    const body = entry.body as {
+      mode: string;
+      normal: { lines: Record<string, unknown>[] };
+      excess: {
+        exceptionTypeCode: string;
+        exceptionReason: string;
+        lines: Record<string, unknown>[];
+      };
+    };
+
+    expect(entry.path).toBe('/logistics/inbound-receipts:split');
+    expect(entry.workerNo).toBe('900028');
+    expect(body.mode).toBe('BOTH');
+    expect(body.normal.lines[0]).toMatchObject({ purchaseOrderLineId: 41, receivedQty: 510 });
+    expect(body.excess.lines[0]).toMatchObject({ purchaseOrderLineId: null, receivedQty: 1 });
+    expect(body.excess.exceptionTypeCode).toBe('OVER_DELIVERY');
+    expect(body.excess.exceptionReason).toBe('허용치 초과');
+  });
+
+  it('선택한 모드에 없는 part는 요청에 싣지 않는다', () => {
+    const normalOnly = toSplitOutboxDraft(
+      draft({ receivedQty: '511' }),
+      31,
+      9,
+      1,
+      2,
+      NOW,
+      '900028',
+      'NORMAL_ONLY',
+      '',
+      '',
+    ).body as Record<string, unknown>;
+    const excessOnly = toSplitOutboxDraft(
+      draft({ receivedQty: '511' }),
+      31,
+      9,
+      1,
+      2,
+      NOW,
+      '900028',
+      'EXCESS_ONLY',
+      'OVER_DELIVERY',
+      '허용치 초과',
+    ).body as Record<string, unknown>;
+
+    expect(normalOnly).toHaveProperty('normal');
+    expect(normalOnly).not.toHaveProperty('excess');
+    expect(excessOnly).toHaveProperty('excess');
+    expect(excessOnly).not.toHaveProperty('normal');
+  });
 });
 
 describe('담긴 입하 셈', () => {
@@ -266,6 +397,24 @@ describe('담긴 입하 셈', () => {
 
   it('같은 발주 라인의 담긴 수량만 더한다', () => {
     expect(queuedQtyOf([queued(41, 120), queued(99, 500), queued(41, 30)], 41)).toBe(150);
+  });
+
+  it('분리 요청은 원 발주에 귀속되는 정량분만 센다', () => {
+    expect(
+      queuedQtyOf(
+        [
+          {
+            path: '/logistics/inbound-receipts:split',
+            body: {
+              mode: 'BOTH',
+              normal: { lines: [{ purchaseOrderLineId: 41, receivedQty: 510 }] },
+              excess: { lines: [{ purchaseOrderLineId: null, receivedQty: 1 }] },
+            },
+          },
+        ],
+        41,
+      ),
+    ).toBe(510);
   });
 
   /* 큐는 화면을 가리지 않고 한 줄로 쌓인다. 다른 화면의 기록이 입하 셈에 들어가면 안 된다. */

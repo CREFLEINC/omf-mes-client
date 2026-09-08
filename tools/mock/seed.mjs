@@ -406,7 +406,15 @@ export const createSeed = (now = new Date()) => {
     SUBSTITUTE_LOT_REASON: [
       ['NO_LABEL', '라벨 미부착'],
       ['LABEL_DAMAGED', '라벨 훼손'],
-      ['UNREADABLE', '판독 불가'],
+      ['FORMAT_UNRECOGNIZED', '형식 미인식'],
+      ['BULK_UNLABELED', '벌크 미부착'],
+      ['OTHER', '기타'],
+    ],
+    INBOUND_RECEIPT_EXCEPTION_TYPE: [
+      ['CUSTOMER_SUPPLY', '고객 지급'],
+      ['FREE_SAMPLE', '무상 샘플'],
+      ['URGENT_RECEIPT', '긴급 입하'],
+      ['OVER_DELIVERY', '초과 납품'],
     ],
     INBOUND_VARIANCE_TYPE: [
       ['SHORTAGE', '수량 부족'],

@@ -846,6 +846,20 @@ on('GET', '/logistics/purchase-orders', (_p, query) =>
   ),
 );
 
+on('GET', '/logistics/purchase-orders/{purchaseOrderId}', (params) => {
+  const purchaseOrderId = Number(params.purchaseOrderId);
+  const purchaseOrder = state.purchaseOrders.find(
+    (each) => each.purchaseOrderId === purchaseOrderId,
+  );
+
+  return purchaseOrder === undefined
+    ? null
+    : {
+        purchaseOrder,
+        lines: state.purchaseOrderLines.filter((line) => line.purchaseOrderId === purchaseOrderId),
+      };
+});
+
 on('GET', '/logistics/purchase-orders/{purchaseOrderId}/lines', (params) => ({
   items: state.purchaseOrderLines.filter(
     (line) => line.purchaseOrderId === Number(params.purchaseOrderId),
@@ -956,7 +970,7 @@ on('POST', '/trace/lots', (_p, _q, body) => {
   return { status: 201, created: { lot: created, externalIdentifiers: [], holds: [] } };
 });
 
-on('POST', '/logistics/inbound-receipts', (_p, _q, body) => {
+const registerInboundReceipt = (body) => {
   const inboundReceiptId = newId();
   const created = {
     inboundReceiptId,
@@ -1028,7 +1042,62 @@ on('POST', '/logistics/inbound-receipts', (_p, _q, body) => {
   });
 
   state.inboundReceiptLines.push(...lines);
-  return { created: { inboundReceipt: created, lines }, status: 201 };
+  return { inboundReceipt: created, lines };
+};
+
+on('POST', '/logistics/inbound-receipts', (_p, _q, body) => ({
+  created: registerInboundReceipt(body),
+  status: 201,
+}));
+
+on('POST', '/logistics/inbound-receipts:split', (_p, _q, body) => {
+  const mode = body?.mode;
+  const parts =
+    mode === 'BOTH'
+      ? [body?.normal, body?.excess]
+      : mode === 'NORMAL_ONLY'
+        ? [body?.normal]
+        : mode === 'EXCESS_ONLY'
+          ? [body?.excess]
+          : [];
+  const includesExcess = mode === 'BOTH' || mode === 'EXCESS_ONLY';
+
+  /* 어느 한쪽이라도 틀리면 상태를 바꾸기 전에 전부 거부한다 — 부분 성공은 허용하지 않는다. */
+  if (
+    parts.length === 0 ||
+    parts.some(
+      (part) =>
+        part === undefined ||
+        !Array.isArray(part.lines) ||
+        part.lines.length === 0 ||
+        part.lines.some((line) => !(Number(line.receivedQty) > 0)),
+    ) ||
+    (includesExcess &&
+      (typeof body?.excess?.exceptionTypeCode !== 'string' ||
+        body.excess.exceptionTypeCode.trim() === '' ||
+        typeof body?.excess?.exceptionReason !== 'string' ||
+        body.excess.exceptionReason.trim() === ''))
+  ) {
+    return {
+      status: 400,
+      created: {
+        code: 'INVALID_SPLIT',
+        message: '분리 등록 값을 확인하세요.',
+        errors: [],
+      },
+    };
+  }
+
+  const created = parts.map(
+    (part) =>
+      registerInboundReceipt({
+        ...part,
+        businessDate: body.businessDate,
+        occurredAt: body.occurredAt,
+      }).inboundReceipt,
+  );
+
+  return { status: 201, created: { created } };
 });
 
 on('GET', '/logistics/inbound-receipt-lines/{inboundReceiptLineId}/variances', (params) => ({

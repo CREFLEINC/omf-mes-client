@@ -24,15 +24,19 @@ import {
   queuedQtyOf,
   remainingQtyOf,
   sourceOf,
+  splitQuantitiesOf,
   toOutboxDraft,
+  toSplitOutboxDraft,
   verdictOf,
   type PurchaseOrder,
   type PurchaseOrderLine,
   type ReceiptDraft,
+  type SplitMode,
 } from './receipt';
 import './screen.css';
 
 const t = messages.inboundReceipt;
+const INBOUND_RECEIPT_EXCEPTION_TYPE = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
@@ -44,6 +48,8 @@ const emptyDraft: ReceiptDraft = {
   supplierId: null,
   itemId: null,
   uomId: null,
+  exceptionTypeCode: '',
+  exceptionReason: '',
   purchaseOrder: null,
   purchaseOrderLine: null,
   deliveryNoteNo: '',
@@ -65,6 +71,8 @@ export const InboundReceiptScreen = () => {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   /* 부족한데도 그대로 등록하겠다는 사람의 답. 화면은 더 올 것인지 알지 못한다. */
   const [continueUnder, setContinueUnder] = useState(false);
+  const [splitExceptionType, setSplitExceptionType] = useState('');
+  const [splitExceptionReason, setSplitExceptionReason] = useState('');
   const [saveFailed, setSaveFailed] = useState(false);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
@@ -79,6 +87,8 @@ export const InboundReceiptScreen = () => {
      */
     if ('receivedQty' in next || 'purchaseOrderLine' in next) {
       setContinueUnder(false);
+      setSplitExceptionType('');
+      setSplitExceptionReason('');
     }
 
     setDraft((current) => ({ ...current, ...next }));
@@ -101,6 +111,7 @@ export const InboundReceiptScreen = () => {
   const orders = useOpenPurchaseOrders();
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
+  const exceptionTypes = useCodeValues(INBOUND_RECEIPT_EXCEPTION_TYPE);
   const item = useItem((draft.unordered ? draft.itemId : draft.purchaseOrderLine?.itemId) ?? null);
   const uoms = useUomCodes(true);
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
@@ -120,6 +131,10 @@ export const InboundReceiptScreen = () => {
     draft.purchaseOrderLine === null || qtyProblem(draft.receivedQty) !== null
       ? null
       : verdictOf(draft.purchaseOrderLine, received, queuedQty);
+  const splitQuantities =
+    verdict === OVER && draft.purchaseOrderLine !== null
+      ? splitQuantitiesOf(draft.purchaseOrderLine, received, queuedQty)
+      : null;
   /*
    * 부족은 더 올 것이 남았다고 사람이 답해야 넘어간다. 마지막 회차면 갈 곳이 다르다.
    *
@@ -130,7 +145,10 @@ export const InboundReceiptScreen = () => {
     loaded &&
     plantId !== null &&
     canSubmit(draft, worker !== null) &&
+    verdict !== OVER &&
     (verdict !== UNDER || continueUnder);
+  const splitReady =
+    loaded && plantId !== null && canSubmit(draft, worker !== null) && splitQuantities !== null;
   const uom =
     uoms.data?.get((draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId) ?? -1) ?? '';
 
@@ -153,11 +171,13 @@ export const InboundReceiptScreen = () => {
     setManual('');
     setOutcome(null);
     setContinueUnder(false);
+    setSplitExceptionType('');
+    setSplitExceptionReason('');
     setSaveFailed(false);
     scanField.focus();
   };
 
-  const submit = async () => {
+  const submit = async (splitMode?: SplitMode) => {
     const source = sourceOf(draft);
 
     if (worker === null || source === null || plantId === null || inFlight.current) {
@@ -168,15 +188,31 @@ export const InboundReceiptScreen = () => {
     setSaveFailed(false);
 
     try {
-      const entry = toOutboxDraft(
-        draft,
-        source.itemId,
-        source.uomId,
-        plantId,
-        source.supplierId,
-        new Date(),
-        worker.workerNo,
-      );
+      const now = new Date();
+      const entry =
+        splitMode === undefined
+          ? toOutboxDraft(
+              draft,
+              source.itemId,
+              source.uomId,
+              plantId,
+              source.supplierId,
+              now,
+              worker.workerNo,
+            )
+          : toSplitOutboxDraft(
+              draft,
+              source.itemId,
+              source.uomId,
+              plantId,
+              source.supplierId,
+              now,
+              worker.workerNo,
+              splitMode,
+              splitExceptionType,
+              splitExceptionReason,
+              queuedQty,
+            );
 
       /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 등록된 줄 안다. */
       try {
@@ -344,6 +380,8 @@ export const InboundReceiptScreen = () => {
                       supplierId: null,
                       itemId: null,
                       uomId: null,
+                      exceptionTypeCode: '',
+                      exceptionReason: '',
                     });
                   }}
                   options={orders.data.map((each) => ({
@@ -419,6 +457,8 @@ export const InboundReceiptScreen = () => {
                     unordered: true,
                     purchaseOrder: null,
                     purchaseOrderLine: null,
+                    exceptionTypeCode: '',
+                    exceptionReason: '',
                   });
                 }}
               >
@@ -510,6 +550,35 @@ export const InboundReceiptScreen = () => {
                 </div>
               )}
 
+              <div className="receipt__field">
+                <label htmlFor="receipt-unordered-exception-type">{t.exception.typeLabel}</label>
+                <Select
+                  id="receipt-unordered-exception-type"
+                  placeholder={t.exception.typePlaceholder}
+                  size="xl"
+                  value={draft.exceptionTypeCode === '' ? null : draft.exceptionTypeCode}
+                  onChange={(value) => {
+                    patch({ exceptionTypeCode: String(value) });
+                  }}
+                  options={(exceptionTypes.data ?? []).map((each) => ({
+                    value: each.code,
+                    label: each.name,
+                  }))}
+                />
+                {exceptionTypes.isError ? (
+                  <p className="receipt__note">{t.exception.typeLoadFailed}</p>
+                ) : null}
+              </div>
+              <TextField
+                label={t.exception.reasonLabel}
+                size="xl"
+                fullWidth
+                value={draft.exceptionReason}
+                onChange={(event) => {
+                  patch({ exceptionReason: event.target.value });
+                }}
+              />
+
               {/* 예정 수량이 없어 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */}
               <p className="receipt__note">{t.exception.noVerdict}</p>
 
@@ -517,7 +586,14 @@ export const InboundReceiptScreen = () => {
                 variant="text"
                 size="lg"
                 onClick={() => {
-                  patch({ unordered: false, supplierId: null, itemId: null, uomId: null });
+                  patch({
+                    unordered: false,
+                    supplierId: null,
+                    itemId: null,
+                    uomId: null,
+                    exceptionTypeCode: '',
+                    exceptionReason: '',
+                  });
                 }}
               >
                 {t.exception.close}
@@ -641,15 +717,101 @@ export const InboundReceiptScreen = () => {
               {verdict === null || draft.purchaseOrderLine === null ? null : verdict === NORMAL ? (
                 <AlertBanner variant="success" title={t.verdict.normal} />
               ) : verdict === OVER ? (
-                <AlertBanner
-                  variant="warning"
-                  title={t.verdict.over(
-                    String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
-                    String(received),
+                <>
+                  <AlertBanner
+                    variant="warning"
+                    title={t.verdict.over(
+                      String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
+                      String(received),
+                    )}
+                  >
+                    {t.verdict.overNext}
+                  </AlertBanner>
+                  {splitQuantities === null ? null : (
+                    <section className="receipt__split">
+                      <h2>{t.verdict.split.legend}</h2>
+                      <dl className="receipt__counts">
+                        <dt>{t.verdict.split.remaining}</dt>
+                        <dd>{`${String(splitQuantities.remaining)} ${uom}`}</dd>
+                        <dt>{t.verdict.split.normal}</dt>
+                        <dd>{`${String(splitQuantities.normal)} ${uom}`}</dd>
+                        <dt>{t.verdict.split.excess}</dt>
+                        <dd>{`${String(splitQuantities.excess)} ${uom}`}</dd>
+                      </dl>
+
+                      <div className="receipt__field">
+                        <label htmlFor="receipt-split-exception-type">
+                          {t.verdict.split.exceptionType}
+                        </label>
+                        <Select
+                          id="receipt-split-exception-type"
+                          placeholder={t.verdict.split.exceptionTypePlaceholder}
+                          size="xl"
+                          value={splitExceptionType === '' ? null : splitExceptionType}
+                          onChange={(value) => {
+                            setSplitExceptionType(String(value));
+                          }}
+                          options={(exceptionTypes.data ?? []).map((each) => ({
+                            value: each.code,
+                            label: each.name,
+                          }))}
+                        />
+                        {exceptionTypes.isError ? (
+                          <p className="receipt__note">{t.verdict.split.exceptionTypeLoadFailed}</p>
+                        ) : null}
+                      </div>
+
+                      <TextField
+                        label={t.verdict.split.exceptionReason}
+                        size="xl"
+                        fullWidth
+                        value={splitExceptionReason}
+                        onChange={(event) => {
+                          setSplitExceptionReason(event.target.value);
+                        }}
+                      />
+
+                      <div className="receipt__split-actions">
+                        <Button
+                          variant="filled"
+                          size="xl"
+                          disabled={
+                            !splitReady ||
+                            splitQuantities.normal <= 0 ||
+                            splitQuantities.excess <= 0 ||
+                            splitExceptionType === '' ||
+                            splitExceptionReason.trim() === ''
+                          }
+                          onClick={() => void submit('BOTH')}
+                        >
+                          {t.verdict.split.both}
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="xl"
+                          disabled={!splitReady || splitQuantities.normal <= 0}
+                          onClick={() => void submit('NORMAL_ONLY')}
+                        >
+                          {t.verdict.split.normalOnly}
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="xl"
+                          disabled={
+                            !splitReady ||
+                            splitQuantities.excess <= 0 ||
+                            splitExceptionType === '' ||
+                            splitExceptionReason.trim() === ''
+                          }
+                          onClick={() => void submit('EXCESS_ONLY')}
+                        >
+                          {t.verdict.split.excessOnly}
+                        </Button>
+                      </div>
+                      <p className="receipt__note">{t.verdict.split.atomic}</p>
+                    </section>
                   )}
-                >
-                  {t.verdict.overNext}
-                </AlertBanner>
+                </>
               ) : (
                 <AlertBanner
                   variant="warning"
@@ -698,15 +860,17 @@ export const InboundReceiptScreen = () => {
               </AlertBanner>
             ) : null}
             {worker === null ? <p className="receipt__note">{t.noWorker}</p> : null}
-            <Button
-              className="receipt__wide"
-              variant="filled"
-              size="2xl"
-              disabled={!ready}
-              onClick={() => void submit()}
-            >
-              {t.submit}
-            </Button>
+            {verdict === OVER ? null : (
+              <Button
+                className="receipt__wide"
+                variant="filled"
+                size="2xl"
+                disabled={!ready}
+                onClick={() => void submit()}
+              >
+                {t.submit}
+              </Button>
+            )}
           </section>
         </>
       )}
