@@ -120,6 +120,8 @@ export const MaterialPickingScreen = () => {
   const queued = queuedPicksOf(pendingOf(t.record.picked), orderId ?? -1);
   const queuedIssues = queuedIssueCountOf(pendingOf(t.record.issued), orderId ?? -1);
   const done = lines.filter((each) => lineProblemOf(each, queued) === 'done').length;
+  /* 잠긴 라인 수. 셈의 분모에는 들어가지만 분자가 될 수 없어 따로 말해 준다. */
+  const held = lines.filter((each) => lineProblemOf(each, queued) === 'held').length;
   /* 배경 보내기가 거부당하면 큐에서 빠진다. 화면이 읽지 않으면 사유가 어디에도 보이지 않는다. */
   const returned = rejected.filter((record) => isOfOrder(record.entry, orderId ?? -1));
 
@@ -402,7 +404,14 @@ export const MaterialPickingScreen = () => {
       )}
 
       <section className="picking-out__section">
-        <h2>{`${t.lines.legend} ${t.lines.progress(done, lines.length)}`}</h2>
+        {/*
+         * 보류 라인은 집을 수 없어 셈의 분자가 될 수 없다. 분모에만 넣어 두면 남은 수가 영영
+         * 줄지 않아, 다 집고도 아직 할 일이 남은 것처럼 읽힌다. 몇이 잠겨 있는지 함께 적는다.
+         */}
+        <h2>
+          {`${t.lines.legend} ${t.lines.progress(done, lines.length)}`}
+          {held === 0 ? '' : ` · ${t.lines.heldCount(String(held))}`}
+        </h2>
         {detail.isPending ? <p role="status">{t.lines.loading}</p> : null}
         {detail.isError ? <AlertBanner variant="error" title={t.lines.loadFailed} /> : null}
         {detail.data !== undefined && lines.length === 0 ? (

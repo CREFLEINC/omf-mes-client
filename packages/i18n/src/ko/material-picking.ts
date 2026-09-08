@@ -31,6 +31,8 @@ export const materialPicking = {
     legend: '피킹 라인',
     /** 몇 건 중 몇 건을 집었는지. 남은 일이 얼마인지가 이 줄로 보인다. */
     progress: (done: number, total: number) => `${String(done)} / ${String(total)}`,
+    /** 분모에 들어가지만 집을 수 없는 라인. 남은 수가 안 줄어 보이는 까닭을 말한다. */
+    heldCount: (count: string) => `보류 ${count}`,
     loading: '라인을 불러오는 중입니다',
     loadFailed: '라인을 확인할 수 없습니다. 연결을 확인하세요.',
     none: '이 지시에 라인이 없습니다',

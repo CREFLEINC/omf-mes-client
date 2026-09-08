@@ -276,14 +276,19 @@ export const PhysicalCountScreen = () => {
                       {t.lines.systemQty(String(line.systemQty))}
                     </p>
                   )}
-                  {/* 안 센 것과 0 으로 센 것을 화면이 갈라 말한다. */}
+                  {/*
+                   * 안 센 것과 0 으로 센 것을 화면이 갈라 말한다.
+                   *
+                   * 이 줄은 서버에 저장된 상태다. 지금 적고 있는 값 옆에 그대로 두면 적은 것이
+                   * 안 먹은 것처럼 읽히므로, 칸이 빈 동안에만 말한다.
+                   */}
                   {line.counted ? (
                     <p className="physical-count__previous">
                       {t.lines.already(String(line.previousQty ?? 0))}
                     </p>
-                  ) : (
+                  ) : line.qty.trim() === '' ? (
                     <p className="physical-count__previous">{t.lines.uncounted}</p>
-                  )}
+                  ) : null}
                 </div>
               );
             })}
