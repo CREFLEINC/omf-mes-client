@@ -20,8 +20,8 @@ export interface QualificationItemPayload {
  * 자격 한 줄의 로컬 초안.
  *
  * 값이 문자열인 이유는 디자인 시스템 입력·선택이 문자열을 다루기 때문이다.
- * `certifiedBy`만 예외로 숫자·널을 그대로 들고 다닌다 — **화면에 입력칸이 없는 값**이라
- * 사용자가 고칠 일이 없고, 문자열로 바꿨다 되돌리는 변환이 값을 잃을 여지만 만든다.
+ * `certifiedBy`만 예외로 숫자·널을 그대로 들고 다닌다. 선택 컴포넌트 경계에서만 문자열로
+ * 바꾸고, 계약 값은 `AppUser.appUserId` 그대로 보존한다.
  */
 export interface QualificationDraft {
   /**
@@ -38,9 +38,8 @@ export interface QualificationDraft {
   /** 비우면 무기한이다. */
   validTo: string;
   /**
-   * 서버가 준 인증자. **화면에 입력칸이 없다.**
-   * 되돌려 싣지 않으면 저장할 때 서버에 있던 값이 조용히 지워진다 —
-   * `certifiedBy`는 FK가 없는 정수라 화면이 뜻을 만들 수도, 다시 만들 수도 없다(omf-mes#64).
+   * 서버가 준 인증자(`AppUser.appUserId`). 기존 값을 보존하면서 사용자가 활성 사용자를
+   * 새 인증자로 선택하거나 명시적으로 비울 수 있다.
    */
   certifiedBy: number | null;
 }
@@ -77,7 +76,7 @@ export const createQualificationDraft = (): QualificationDraft => {
     certificateNo: '',
     validFrom: '',
     validTo: '',
-    // 화면이 만들 수 없는 값이다 — 저장 본문에서는 키 자체를 뺀다.
+    // 새 줄에서 고르지 않으면 저장 본문에서는 키 자체를 뺀다.
     certifiedBy: null,
   };
 };
@@ -116,8 +115,8 @@ const textToOptionalText = (value: string): string | null =>
  * 전체 치환 요청 본문의 항목 목록.
  *
  * **식별자를 싣지 않는다** — 계약의 요청 항목이 여섯뿐이다(§5.2 실측).
- * **기존 행의 인증자는 되돌려 싣고, 새 행에는 그 키 자체를 두지 않는다** —
- * 새 행에 널을 실으면 「인증자를 비우라」는 뜻이 되는데 화면이 그것을 정한 적이 없다.
+ * **기존 행은 널도 명시적으로 싣고, 새 행에서 고르지 않았을 때만 키를 뺀다** —
+ * 그래야 기존 인증자를 비우는 사용자 선택과 새 행의 미지정을 구분할 수 있다.
  */
 export const toQualificationsPayload = (
   drafts: readonly QualificationDraft[],
@@ -129,7 +128,9 @@ export const toQualificationsPayload = (
     certificateNo: textToOptionalText(draft.certificateNo),
     validFrom: draft.validFrom,
     validTo: textToOptionalText(draft.validTo),
-    ...(draft.certifiedBy === null ? {} : { certifiedBy: draft.certifiedBy }),
+    ...(draft.draftId.startsWith('saved:') || draft.certifiedBy !== null
+      ? { certifiedBy: draft.certifiedBy }
+      : {}),
   }));
 
 /**

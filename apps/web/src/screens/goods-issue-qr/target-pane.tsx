@@ -1,8 +1,9 @@
-import { Card, Radio, RadioGroup, Select } from '@crefle/web-ui';
+import { Card, Radio, RadioGroup } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import type { LookupSource } from '../../patterns/lookup-display';
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { ISSUE_UNIT } from './types';
 
 const t = messages.goodsIssueQr;
@@ -137,10 +138,10 @@ export const TargetPane = ({
             )}
           </div>
         ) : /*
-           * ⛔ **사유가 필요 없다는 말을 굳이 내지 않는다**(사용자 지시 2026-09-07). 최초
-           *    발행이 이 화면의 보통 상태라, 그때마다 한 줄을 더 읽히면 정작 필요한 자리
-           *    (회차·미리보기)와 자리를 다툰다. 사유가 «필요할 때»만 칸이 선다.
-           */
+         * ⛔ **사유가 필요 없다는 말을 굳이 내지 않는다**(사용자 지시 2026-09-07). 최초
+         *    발행이 이 화면의 보통 상태라, 그때마다 한 줄을 더 읽히면 정작 필요한 자리
+         *    (회차·미리보기)와 자리를 다툰다. 사유가 «필요할 때»만 칸이 선다.
+         */
         null}
 
         {/*
@@ -176,7 +177,6 @@ export const TargetPane = ({
            */}
           <p className="field-note">{t.alwaysIssueNote}</p>
         </div>
-
       </Card.Body>
     </Card>
   );

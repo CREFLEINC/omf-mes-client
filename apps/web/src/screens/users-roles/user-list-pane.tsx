@@ -11,7 +11,6 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useState } from 'react';
 
-import { pendingCodeOptions } from './code-options';
 import { clearUserFilter, hasAnyUserFilter, toUserFilterChips } from './filters';
 import { PageNav } from './page-nav';
 import type { PageView } from './pagination';
@@ -21,14 +20,12 @@ import type { AppUser, SelectOption, UserFilters } from './types';
 const t = messages.usersRoles;
 
 /** 화면을 처음 열었을 때의 조회 조건. 「초기화」가 돌아가는 자리이기도 하다. */
-export const EMPTY_USER_FILTERS: UserFilters = { q: '', departmentId: '', includeInactive: false };
-
-/**
- * 상태 조건의 선택지 — **자리표시 하나뿐이다.** 값 목록이 확정되지 않았고
- * 이 조건은 요청에 실리지도 않으므로 고른 값이라는 것 자체가 없다.
- * 모듈 상수로 고정해 매 렌더 새 참조가 만들어지지 않게 한다.
- */
-const STATUS_FILTER_OPTIONS: SelectOption[] = pendingCodeOptions('');
+export const EMPTY_USER_FILTERS: UserFilters = {
+  q: '',
+  departmentId: '',
+  statusCode: '',
+  includeInactive: false,
+};
 
 export interface UserListPaneProps {
   users: AppUser[];
@@ -38,10 +35,14 @@ export interface UserListPaneProps {
   /** 조회 버튼·Enter·칩 제거·초기화가 호출한다. 쪽은 늘 1로 돌아간다 */
   onApplyFilters: (next: UserFilters) => void;
   departmentOptions: SelectOption[];
+  statusOptions: SelectOption[];
+  statusDisabledReason: string | null;
   /** 조건 칩에 낼 부서 이름. 번호를 그대로 보이면 무엇을 걸었는지 모른다 */
   departmentLabel: (departmentId: string) => string;
   /** 표의 부서 셀에 낼 이름. 값이 없으면 미지정 표기를 낸다 */
   departmentNameOf: (departmentId: number | null | undefined) => string;
+  /** 상태 코드의 표시명. 값 목록에 없으면 숫자·코드 대신 공통 「알 수 없음」을 낸다. */
+  statusNameOf: (statusCode: string) => string;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   pageView: PageView;
@@ -83,8 +84,11 @@ export const UserListPane = ({
   appliedFilters,
   onApplyFilters,
   departmentOptions,
+  statusOptions,
+  statusDisabledReason,
   departmentLabel,
   departmentNameOf,
+  statusNameOf,
   optionsNotice,
   pageView,
   onChangePage,
@@ -102,6 +106,7 @@ export const UserListPane = ({
   const {
     q: appliedQ,
     departmentId: appliedDepartmentId,
+    statusCode: appliedStatusCode,
     includeInactive: appliedIncludeInactive,
   } = appliedFilters;
 
@@ -109,9 +114,10 @@ export const UserListPane = ({
     setDraft({
       q: appliedQ,
       departmentId: appliedDepartmentId,
+      statusCode: appliedStatusCode,
       includeInactive: appliedIncludeInactive,
     });
-  }, [appliedQ, appliedDepartmentId, appliedIncludeInactive]);
+  }, [appliedQ, appliedDepartmentId, appliedStatusCode, appliedIncludeInactive]);
 
   const columns: Column<AppUser>[] = [
     {
@@ -141,14 +147,10 @@ export const UserListPane = ({
       render: (row) => departmentNameOf(row.departmentId),
     },
     {
-      /*
-       * 값 목록이 미정이라 **원본 문자열을 그대로** 낸다 — 이름을 지어내지 않는다.
-       * 서버가 빈 값을 주는 일이 실제로 있어 미지정 표기로 받는다.
-       */
       key: 'statusCode',
       header: t.user.fields.status,
       width: '112px',
-      render: (row) => orEmptyMark(row.statusCode),
+      render: (row) => (row.statusCode === '' ? orEmptyMark('') : statusNameOf(row.statusCode)),
     },
   ];
 
@@ -231,7 +233,7 @@ export const UserListPane = ({
     );
   };
 
-  const chips = toUserFilterChips(appliedFilters, departmentLabel);
+  const chips = toUserFilterChips(appliedFilters, departmentLabel, statusNameOf);
 
   return (
     <section className="pane" aria-label={t.panes.userList}>
@@ -259,18 +261,13 @@ export const UserListPane = ({
           onChange={(value) => setDraft((prev) => ({ ...prev, departmentId: value }))}
         />
 
-        {/*
-         * 상태 조건은 **비활성 + 사유**다(배치 규범 4). 값 목록이 확정되지 않아 고를 값이 없고,
-         * 자리표시 값을 쿼리로 보내면 언제나 0건이 온다 — 그래서 조건 타입에도 자리가 없다.
-         * 문구가 짧아 `.wide-select`를 붙이지 않는다(규범 3-2의 이탈 조건).
-         */}
         <SelectField
           label={t.filters.status}
-          options={STATUS_FILTER_OPTIONS}
-          value=""
-          onChange={() => undefined}
-          disabled
-          disabledReason={t.actionReasons.statusFilterPending}
+          options={[{ value: '', label: t.filters.statusAll }, ...statusOptions]}
+          value={draft.statusCode}
+          onChange={(value) => setDraft((prev) => ({ ...prev, statusCode: value }))}
+          disabled={statusDisabledReason !== null}
+          disabledReason={statusDisabledReason ?? undefined}
         />
 
         {/* 해제 축이라 변경 즉시 적용한다. */}

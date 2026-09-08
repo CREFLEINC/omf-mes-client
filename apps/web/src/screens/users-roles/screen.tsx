@@ -45,6 +45,7 @@ import {
   useDepartmentOptions,
   usePlantOptions,
   useRoleOptions,
+  useUserStatusOptions,
   type LookupResult,
 } from './lookups';
 import { toPageView } from './pagination';
@@ -197,6 +198,7 @@ export const UsersRolesScreen = () => {
   const userDetail = useUserDetail(selectedAppUserId);
 
   const departmentOptions = useDepartmentOptions(isUsersTab);
+  const userStatusOptions = useUserStatusOptions(isUsersTab);
 
   const [formState, setFormState] = useState<UserFormState | null>(null);
 
@@ -872,6 +874,19 @@ export const UsersRolesScreen = () => {
     ...selectableOptions(departmentOptions, formState?.values.departmentId ?? ''),
   ];
 
+  const statusDisabledReason = userStatusOptions.isError
+    ? t.actionReasons.statusLookupFailed
+    : userStatusOptions.isLoading
+      ? t.actionReasons.statusLookupLoading
+      : userStatusOptions.entries.length === 0
+        ? t.actionReasons.statusLookupEmpty
+        : null;
+
+  const userStatusSelectOptions = selectableOptions(
+    userStatusOptions,
+    formState?.values.statusCode ?? '',
+  );
+
   /**
    * 우 칸 — 사용자 정보.
    *
@@ -891,6 +906,8 @@ export const UsersRolesScreen = () => {
           /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={<SaveErrorBanner error={userCreateWrite.error} />}
           departmentOptions={userDepartmentOptions}
+          statusOptions={userStatusSelectOptions}
+          statusDisabledReason={statusDisabledReason}
           deactivateDisabledReason={null}
           isDirty={isUserDirty}
           isSaving={userCreateWrite.isSaving}
@@ -936,6 +953,8 @@ export const UsersRolesScreen = () => {
         fieldErrors={{ ...userWrite.fieldErrors, ...userFieldErrors }}
         banner={<SaveErrorBanner error={userWrite.error} onReload={reloadUserDetail} />}
         departmentOptions={userDepartmentOptions}
+        statusOptions={userStatusSelectOptions}
+        statusDisabledReason={statusDisabledReason}
         deactivateDisabledReason={
           userDetail.data.appUser.isActive === false ? t.actionReasons.deactivateAlreadyDone : null
         }
@@ -1059,6 +1078,8 @@ export const UsersRolesScreen = () => {
         appliedFilters={filters}
         onApplyFilters={applyFilters}
         departmentOptions={selectableOptions(departmentOptions, filters.departmentId)}
+        statusOptions={selectableOptions(userStatusOptions, filters.statusCode)}
+        statusDisabledReason={statusDisabledReason}
         /*
          * 조건 칩에는 번호가 아니라 이름을 낸다. 선택 목록을 아직 받지 못했으면
          * 「알 수 없음」이 나오고 목록이 도착하면 이름으로 바뀐다 —
@@ -1066,7 +1087,8 @@ export const UsersRolesScreen = () => {
          */
         departmentLabel={(departmentId) => lookupLabel(departmentOptions, Number(departmentId))}
         departmentNameOf={(departmentId) => lookupLabel(departmentOptions, departmentId)}
-        optionsNotice={renderOptionsNotice([departmentOptions])}
+        statusNameOf={(statusCode) => lookupLabel(userStatusOptions, statusCode)}
+        optionsNotice={renderOptionsNotice([departmentOptions, userStatusOptions])}
         pageView={userPageView}
         onChangePage={changeUserPage}
         selectedAppUserId={selectedAppUserId}

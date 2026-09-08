@@ -1,7 +1,8 @@
-import { AlertBanner, Button, Select, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Button, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { RefObject } from 'react';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { isMixedLot, totalQty } from './contents';
 import type { CodeLabels } from './queries';
@@ -142,9 +143,7 @@ export const PackingPane = ({
              * 「(없음)」으로 그리지만, 고른 적 없는 칸이 값을 고른 것처럼 서면 「없음을 골랐다」와
              * 구분되지 않는다. 목록에는 「(없음)」을 그대로 두어 **고른 상위를 무를 길**은 남긴다.
              */
-            value={
-              draft.parentHandlingUnitId === null ? null : String(draft.parentHandlingUnitId)
-            }
+            value={draft.parentHandlingUnitId === null ? null : String(draft.parentHandlingUnitId)}
             placeholder=""
             size="xl"
             aria-label={t.unit.parentLabel}

@@ -14,18 +14,18 @@ const draft = (overrides: Partial<QualificationDraft> = {}): QualificationDraft 
 const renderDialog = (overrides: Partial<Parameters<typeof QualificationFormDialog>[0]> = {}) => {
   const onClose = vi.fn<() => void>();
   const onConfirm = vi.fn<(next: QualificationDraft) => void>();
+  const props: Parameters<typeof QualificationFormDialog>[0] = {
+    draft: draft(),
+    isNew: true,
+    otherDrafts: [],
+    processOptions: [{ value: '6001', label: '합성 공정 A' }],
+    certifierOptions: [{ value: '7001', label: 'SYN-LOGIN-01 · 합성 사용자 A' }],
+    onClose,
+    onConfirm,
+    ...overrides,
+  };
 
-  render(
-    <QualificationFormDialog
-      draft={draft()}
-      isNew
-      otherDrafts={[]}
-      processOptions={[{ value: '6001', label: '합성 공정 A' }]}
-      onClose={onClose}
-      onConfirm={onConfirm}
-      {...overrides}
-    />,
-  );
+  render(<QualificationFormDialog {...props} />);
 
   return { onClose, onConfirm, user: userEvent.setup() };
 };
@@ -77,6 +77,28 @@ describe('QualificationFormDialog — 자리표시 (C73)', () => {
     await user.click(screen.getByLabelText('공정'));
 
     expect(screen.getByRole('option', { name: /\(전체 공정\)/ })).toBeInTheDocument();
+  });
+
+  it('활성 사용자를 인증자로 선택하거나 비울 수 있다', async () => {
+    const { onConfirm, user } = renderDialog({
+      draft: draft({ qualificationTypeCode: 'PENDING', validFrom: '2026-08-01' }),
+    });
+
+    await user.click(screen.getByLabelText('인증자'));
+    await user.click(screen.getByRole('option', { name: /SYN-LOGIN-01/ }));
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(onConfirm.mock.calls[0]?.[0].certifiedBy).toBe(7001);
+  });
+
+  it('인증자 조회가 실패하면 인증자 선택만 막고 사유를 보인다', () => {
+    renderDialog({
+      certifierOptions: [],
+      certifierDisabledReason: '인증자 목록을 불러오지 못했습니다.',
+    });
+
+    expect(screen.getByLabelText('인증자')).toBeDisabled();
+    expect(screen.getByText('인증자 목록을 불러오지 못했습니다.')).toBeInTheDocument();
   });
 });
 

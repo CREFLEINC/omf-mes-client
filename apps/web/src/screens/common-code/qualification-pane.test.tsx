@@ -8,6 +8,9 @@ import { QualificationPane } from './qualification-pane';
 import type { LookupEntry } from './types';
 
 const processEntries: LookupEntry[] = [{ value: '6001', label: '합성 공정 A', isActive: true }];
+const certifierEntries: LookupEntry[] = [
+  { value: '7001', label: 'SYN-LOGIN-01 · 합성 사용자 A', isActive: true },
+];
 
 const source = (
   entries: LookupEntry[] = processEntries,
@@ -35,27 +38,27 @@ const renderPane = (overrides: Partial<Parameters<typeof QualificationPane>[0]> 
   const onRemove = vi.fn<(draftId: string) => void>();
   const onSave = vi.fn<() => void>();
   const onCancel = vi.fn<() => void>();
+  const props: Parameters<typeof QualificationPane>[0] = {
+    drafts: [draft()],
+    isLoading: false,
+    isWorkerSelected: true,
+    processes: source(),
+    certifiers: source(certifierEntries),
+    optionsNotice: null,
+    loadError: null,
+    banner: null,
+    isDirty: true,
+    isLocked: false,
+    isSaving: false,
+    onAdd,
+    onEdit,
+    onRemove,
+    onSave,
+    onCancel,
+    ...overrides,
+  };
 
-  render(
-    <QualificationPane
-      drafts={[draft()]}
-      isLoading={false}
-      isWorkerSelected
-      processes={source()}
-      optionsNotice={null}
-      loadError={null}
-      banner={null}
-      isDirty
-      isLocked={false}
-      isSaving={false}
-      onAdd={onAdd}
-      onEdit={onEdit}
-      onRemove={onRemove}
-      onSave={onSave}
-      onCancel={onCancel}
-      {...overrides}
-    />,
-  );
+  render(<QualificationPane {...props} />);
 
   return { onAdd, onEdit, onRemove, onSave, onCancel, user: userEvent.setup() };
 };
@@ -98,11 +101,11 @@ describe('QualificationPane — 표', () => {
     expect(screen.queryByText('9999')).not.toBeInTheDocument();
   });
 
-  /* 값만 표시한다 — 무엇을 가리키는 번호인지 근거가 없어 이름을 만들 수 없다(omf-mes#64). */
-  it('인증자를 값 그대로 낸다', () => {
+  it('인증자 번호를 활성 사용자 이름으로 낸다', () => {
     renderPane();
 
-    expect(screen.getByText('7001')).toBeInTheDocument();
+    expect(screen.getByText('SYN-LOGIN-01 · 합성 사용자 A')).toBeInTheDocument();
+    expect(screen.queryByText('7001')).not.toBeInTheDocument();
   });
 
   it('인증자가 없으면 미지정 표기다', () => {

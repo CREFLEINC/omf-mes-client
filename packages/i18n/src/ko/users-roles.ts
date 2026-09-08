@@ -35,16 +35,10 @@ export const usersRoles = {
   },
   /** 비활성 사유는 배치 규범 4의 문형을 따른다 — 그 컨트롤의 이름으로 시작한다. */
   actionReasons: {
-    /*
-     * 상태 코드의 값 목록이 확정되지 않았다. **값을 지어내지 않는다** —
-     * 자리표시 값을 조회 조건으로 보내면 언제나 0건이 온다.
-     */
-    statusFilterPending:
-      '상태 조건은 상태 코드 목록이 확정되지 않아 쓸 수 없습니다. 목록이 확정되면 이 조건으로 좁힐 수 있습니다.',
-    statusFieldPending:
-      '상태는 상태 코드 목록이 확정되지 않아 고를 수 없습니다. 지금 저장된 값이 그대로 유지됩니다.',
-    statusFieldOnCreate:
-      '상태는 사용자를 등록할 때 정해집니다. 상태 코드 목록이 확정되면 이 칸에서 고를 수 있습니다.',
+    statusLookupLoading: '상태 목록을 불러오는 동안에는 상태를 고를 수 없습니다.',
+    statusLookupFailed:
+      '상태 목록을 불러오지 못했습니다. 다른 정보는 저장할 수 있으며 기존 상태는 유지됩니다.',
+    statusLookupEmpty: '등록된 사용자 상태가 없어 상태를 고를 수 없습니다.',
     /*
      * 계약의 수정 요청 본문에 로그인 ID가 아예 없다 — 「언젠가 풀린다」가 아니라
      * 보낼 자리가 없다는 뜻이다. 그 사실을 그대로 밝힌다.
@@ -110,10 +104,13 @@ export const usersRoles = {
     /* 선택지에 빈 값을 두어 고른 부서를 다시 「전체」로 되돌릴 수 있게 한다. */
     departmentAll: '전체 부서',
     status: '상태',
+    statusAll: '전체 상태',
     chipKeyword: (value: string): string => `검색어: ${value}`,
     chipRemoveKeyword: '검색어 조건 제거',
     chipDepartment: (label: string): string => `부서: ${label}`,
     chipRemoveDepartment: '부서 조건 제거',
+    chipStatus: (label: string): string => `상태: ${label}`,
+    chipRemoveStatus: '상태 조건 제거',
     chipRemoveIncludeInactive: '미사용 포함 조건 제거',
     roleSearchLabel: '역할 검색',
     roleSearchPlaceholder: '역할 코드 또는 역할명',
@@ -164,6 +161,7 @@ export const usersRoles = {
       email: '전자우편',
       status: '상태',
     },
+    statusDefault: '기본값(재직)',
     /* 부서를 고르지 않은 상태. 계약이 널을 허용하므로 비우는 것이 정상 값이다. */
     departmentNone: '지정하지 않음',
     empty: {

@@ -1,6 +1,7 @@
-import { AlertBanner, Select } from '@crefle/web-ui';
+import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import type { ReissueReasonOption } from './queries';
 
 const t = messages.shippingPackingLabel.reissue;

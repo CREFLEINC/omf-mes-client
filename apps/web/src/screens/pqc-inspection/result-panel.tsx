@@ -1,8 +1,9 @@
-import { Radio, RadioGroup, Select, TextField } from '@crefle/web-ui';
+import { Radio, RadioGroup, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { useId, useState, type ReactElement, type ReactNode } from 'react';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { isKnownCode, type CodeOption } from './code-options';
 import { isCoverageOutOfOrder, type CoverageDraft } from './coverage';
 import { canChooseDisposition, type DispositionState } from './disposition';
@@ -215,7 +216,6 @@ export const ResultPanel = ({
       <h2 className="field-label">{t.heading}</h2>
 
       {errorBanner}
-
 
       {/*
        * ⭐ **설계 §3 도면의 차례 그대로다** — 검사 수량이 먼저 서고, 그것을 나눈 셋(합격·

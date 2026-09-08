@@ -9,7 +9,7 @@ import { PackingWorkScreen } from '../screens/packing-work/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
-import { ProductionFlowScreen } from '../screens/production-result/production-flow-screen';
+import { ProductionFlowScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { RunningChangeScreen } from '../screens/running-change/screen';
 import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';

@@ -21,14 +21,14 @@ const EMAIL_MAX = 200;
  *
  * 계약이 쓰는 이름 그대로 둔다 — 폼 값과 계약 필드가 1:1이라 옮길 자리가 없다.
  *
- * **`statusCode`가 없다.** 화면에 그 값을 고치는 입력칸이 없어 인라인으로 낼 자리가 없다 —
- * 서버가 그 필드의 오류를 주면 배너로 올라가야 사용자에게 닿는다.
+ * `statusCode`도 공통코드 선택칸이 있으므로 서버의 해당 필드 오류를 인라인으로 낸다.
  */
 export const USER_FORM_FIELDS: readonly string[] = [
   'loginId',
   'userName',
   'departmentId',
   'email',
+  'statusCode',
 ];
 
 /**

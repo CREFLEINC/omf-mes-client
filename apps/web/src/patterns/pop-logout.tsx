@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router';
 
 import { setWorkerSession } from './worker-session';
 
-/** 진입 화면 — 여기서는 「로그아웃」이 할 일이 없다. */
+/** 진입 화면 — 여기서는 「사용자 전환」이 할 일이 없다. */
 const ENTRY_PATH = '/pop/worker-assignment';
 
 /**
@@ -16,7 +16,7 @@ const ENTRY_PATH = '/pop/worker-assignment';
 const HEADER_FLAG = 'popLogout';
 
 /**
- * **화면 어디서나 사번을 놓고 나가는 자리**(사용자 지시 2026-09-08).
+ * **화면 어디서나 현재 사번만 놓고 나가는 사용자 전환 자리**(공유계약 G-34).
  *
  * ⭐ **왜 화면 밖에 두는가.** POP 은 한 사람이 화면을 옮겨 다니며 쓰는 자리인데, 사번을 놓는
  * 길이 진입 화면에만 있었다 — 다른 화면으로 넘어가면 되돌아올 방법이 없어 단말을 껐다 켜야
@@ -63,7 +63,7 @@ export const PopLogoutButton = () => {
           void navigate(ENTRY_PATH, { replace: true });
         }}
       >
-        로그아웃
+        사용자 전환
       </Button>
     </div>
   );

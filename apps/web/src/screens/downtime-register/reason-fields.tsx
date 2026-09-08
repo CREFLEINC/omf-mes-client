@@ -1,7 +1,8 @@
-import { AlertBanner, Button, Card, Select, TextArea } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, TextArea } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import type { ReasonOption } from './queries';
 import { toClockLabel } from './formatting';
 import type { BreakdownView } from './types';

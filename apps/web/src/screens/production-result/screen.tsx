@@ -1,19 +1,11 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  Checkbox,
-  Chip,
-  Dialog,
-  Select,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Checkbox, Chip, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { useResultEntry } from './entry-context';
 import { useFlowGates } from './flow-gating';

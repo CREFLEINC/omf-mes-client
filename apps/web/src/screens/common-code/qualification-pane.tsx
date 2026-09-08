@@ -24,6 +24,8 @@ export interface QualificationPaneProps {
   isWorkerSelected: boolean;
   /** 공정 번호를 사람이 읽는 이름으로. 비운 값은 「(전체 공정)」이다 */
   processes: LookupSource<LookupEntry>;
+  /** 인증자 번호를 활성 사용자 이름으로 표시한다. 기존 값은 조회 실패 때도 원본을 보존한다 */
+  certifiers: LookupSource<LookupEntry>;
   /** 선택 목록이 잘렸거나 실패했다는 안내 슬롯 */
   optionsNotice: ReactNode;
   loadError: ReactNode;
@@ -63,14 +65,15 @@ const orEmptyMark = (value: string): string =>
  *
  * **쪽 이동을 두지 않는다** — 계약의 자격 목록에 쪽 나눔이 없다(`items`만 온다).
  *
- * **인증자는 값만 보인다.** 무엇을 가리키는 번호인지 근거가 없어(omf-mes#64) 이름을 만들 수 없고,
- * 화면에 입력칸도 두지 않는다 — 저장할 때 서버가 준 값을 그대로 되돌려 싣는다.
+ * **인증자는 활성 사용자 목록으로 푼다.** 목록 조회가 실패해도 기존 번호는 초안에 남아
+ * 저장 과정에서 조용히 사라지지 않는다.
  */
 export const QualificationPane = ({
   drafts,
   isLoading,
   isWorkerSelected,
   processes,
+  certifiers,
   optionsNotice,
   loadError,
   banner,
@@ -134,9 +137,7 @@ export const QualificationPane = ({
       header: t.fields.certifiedBy,
       width: '96px',
       align: 'end',
-      /* 값만 표시한다 — 선택 목록을 두지 않기로 확정됐다(omf-mes#64). */
-      render: (row) =>
-        row.certifiedBy === null ? messages.commonCode.values.empty : String(row.certifiedBy),
+      render: (row) => lookupDisplayLabel(certifiers, row.certifiedBy),
     },
     {
       key: 'edit',

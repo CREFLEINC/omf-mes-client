@@ -10,7 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
-import { ProductionFlowScreen } from './production-flow-screen';
+import { ProductionFlowScreen } from './screen';
 
 const t = messages.productionResult;
 const LOT_ID = 90101;

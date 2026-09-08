@@ -307,6 +307,7 @@ export const commonCode = {
     values: {
       /** 공정을 비운 자격은 모든 공정에 걸린다 — 계약이 그 뜻을 널로 표현한다(A-7). */
       allProcesses: '(전체 공정)',
+      certifierNone: '지정하지 않음',
       period: (from: string, to: string): string => `${from} ~ ${to}`,
     },
     actions: {
@@ -330,6 +331,10 @@ export const commonCode = {
        * 두 번째를 내면 앞 저장의 성공·실패가 통째로 사라지기 때문이다.
        */
       saveLockedByOtherWorker: '저장은 다른 작업자의 저장이 끝난 뒤에 할 수 있습니다.',
+      certifierLookupLoading: '인증자 목록을 불러오는 동안에는 인증자를 변경할 수 없습니다.',
+      certifierLookupFailed:
+        '인증자 목록을 불러오지 못해 새 인증자를 선택할 수 없습니다. 기존 값은 유지됩니다.',
+      certifierLookupEmpty: '선택할 수 있는 활성 사용자가 없습니다.',
     },
     /*
      * 창의 확인은 **저장이 아니다.** 표에만 반영되고 서버로는 「저장」에서 한 번에 나간다 —

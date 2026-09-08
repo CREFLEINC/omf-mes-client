@@ -27,6 +27,7 @@ const URL_KEYS = {
   tab: 'tab',
   q: 'q',
   departmentId: 'dept',
+  statusCode: 'status',
   includeInactive: 'inactive',
   page: 'page',
   appUserId: 'usr',
@@ -60,7 +61,6 @@ const isIdentifier = (raw: string): boolean => POSITIVE_INTEGER.test(raw) && Num
  * 걸러 내지 않으면 `?dept=abc` 같은 주소가 **`departmentId=NaN`을 서버로 보낸다.**
  * 고를 수 없는 값은 「전체」(`''`)로 본다 — 주소는 손으로 고쳐지는 자리다.
  *
- * **상태 코드를 읽지 않는다.** 값 목록이 확정되지 않아 고를 수 있는 값이 없다(계획 결정 16).
  */
 export const readUserFilters = (params: URLSearchParams): UserFilters => {
   const department = params.get(URL_KEYS.departmentId) ?? '';
@@ -68,6 +68,7 @@ export const readUserFilters = (params: URLSearchParams): UserFilters => {
   return {
     q: params.get(URL_KEYS.q) ?? '',
     departmentId: isIdentifier(department) ? department : '',
+    statusCode: params.get(URL_KEYS.statusCode) ?? '',
     includeInactive: params.get(URL_KEYS.includeInactive) === ON,
   };
 };
@@ -163,6 +164,7 @@ export const toUserSearchParams = (
 
   if (filters.q !== '') next.set(URL_KEYS.q, filters.q);
   if (filters.departmentId !== '') next.set(URL_KEYS.departmentId, filters.departmentId);
+  if (filters.statusCode !== '') next.set(URL_KEYS.statusCode, filters.statusCode);
   if (filters.includeInactive) next.set(URL_KEYS.includeInactive, ON);
   if (page > 1) next.set(URL_KEYS.page, String(page));
 
@@ -172,12 +174,11 @@ export const toUserSearchParams = (
 /**
  * 계약이 쓰는 쿼리 이름. 값이 없는 조건은 키 자체를 넣지 않는다.
  *
- * **`statusCode`가 없다.** 계약에는 그 쿼리가 있으나 값 목록이 확정되지 않아
- * 화면이 고를 수 있는 값이 하나도 없다(계획 결정 16).
  */
 export interface UserListQuery {
   q?: string;
   departmentId?: number;
+  statusCode?: string;
   includeInactive?: boolean;
   page?: number;
 }
@@ -192,6 +193,7 @@ export interface UserListQuery {
 export const toUserListQuery = (filters: UserFilters, page: number): UserListQuery => ({
   ...(filters.q === '' ? {} : { q: filters.q }),
   ...(filters.departmentId === '' ? {} : { departmentId: Number(filters.departmentId) }),
+  ...(filters.statusCode === '' ? {} : { statusCode: filters.statusCode }),
   ...(filters.includeInactive ? { includeInactive: true } : {}),
   ...(page > 1 ? { page } : {}),
 });
@@ -212,6 +214,7 @@ export interface UserFilterChip {
 export const toUserFilterChips = (
   filters: UserFilters,
   departmentLabel: (departmentId: string) => string,
+  statusLabel: (statusCode: string) => string,
 ): UserFilterChip[] => {
   const chips: UserFilterChip[] = [];
 
@@ -231,6 +234,14 @@ export const toUserFilterChips = (
     });
   }
 
+  if (filters.statusCode !== '') {
+    chips.push({
+      key: 'statusCode',
+      label: t.filters.chipStatus(statusLabel(filters.statusCode)),
+      removeLabel: t.filters.chipRemoveStatus,
+    });
+  }
+
   if (filters.includeInactive) {
     chips.push({
       key: 'includeInactive',
@@ -243,7 +254,10 @@ export const toUserFilterChips = (
 };
 
 export const hasAnyUserFilter = (filters: UserFilters): boolean =>
-  filters.q !== '' || filters.departmentId !== '' || filters.includeInactive;
+  filters.q !== '' ||
+  filters.departmentId !== '' ||
+  filters.statusCode !== '' ||
+  filters.includeInactive;
 
 /**
  * 조건 하나만 푼다. 칩의 제거 버튼이 쓴다.

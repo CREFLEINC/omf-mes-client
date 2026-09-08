@@ -45,9 +45,56 @@ const isTruncated = (page: PageMeta, shown: number): boolean => page.total > sho
  */
 export const lookupKeys = {
   departments: ['users-roles-lookups', 'departments'] as const,
+  userStatuses: ['users-roles-lookups', 'user-statuses'] as const,
   roles: ['users-roles-lookups', 'roles'] as const,
   businessUnits: ['users-roles-lookups', 'business-units'] as const,
   plants: ['users-roles-lookups', 'plants'] as const,
+};
+
+const codeLabel = (value: { code: string; codeName: string; nameKo?: string | null }): string =>
+  value.nameKo?.trim() || value.codeName.trim() || value.code;
+
+/** 사용자 인사 상태 — APP_USER_STATUS는 고객이 늘리는 마스터안전형 목록이다. */
+export const useUserStatusOptions = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.userStatuses,
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: {
+            query: {
+              codeGroupCode: 'APP_USER_STATUS',
+              includeInactive: true,
+              size: 200,
+            },
+          },
+        }),
+      ),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items
+        .slice()
+        .sort((left, right) => left.displayOrder - right.displayOrder)
+        .map((item) => ({
+          value: item.code,
+          label: codeLabel(item),
+          isActive: item.isActive,
+        })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    error: query.error,
+    refetch: () => {
+      void query.refetch();
+    },
+    isLoading: query.isPending,
+  };
 };
 
 /**

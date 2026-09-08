@@ -1,7 +1,8 @@
-import { AlertBanner, Button, Chip, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { validateQty, type QtyDraft, type QtyProblem } from './input-qty';
 import type { ReferenceLabels } from './reference-labels';
 import type { ScannedPart } from './scan';
