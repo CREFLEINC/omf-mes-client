@@ -1,9 +1,10 @@
-import { Chip, Select, TextField } from '@crefle/web-ui';
+import { Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { PlanVersionView } from './queries';
 import { useId } from 'react';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { lacksLimits } from './auto-judgment';
 import { isKnownCode, type CodeOption } from './code-options';
 import {

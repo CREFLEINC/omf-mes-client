@@ -1,6 +1,7 @@
-import { Select } from '@crefle/web-ui';
 import { useId } from 'react';
 import { useNavigate } from 'react-router';
+
+import { PopSelect as Select } from './pop-select';
 
 /**
  * **개발 서버에서만 서는** POP 화면 이동 셀렉터 — 진입 화면(P-CO-01)의 「작업 화면으로

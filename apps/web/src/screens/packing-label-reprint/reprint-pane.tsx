@@ -1,7 +1,8 @@
-import { Button, Checkbox, Chip, Select } from '@crefle/web-ui';
+import { Button, Checkbox, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { DOCUMENT_TYPE_CODES, type CodeValue, type ReprintTarget } from './types';
 
 const t = messages.packingLabelReprint;
