@@ -33,6 +33,8 @@ import './screen.css';
 
 const t = messages.equipmentFailureReport;
 
+type PendingPhoto = CapturedPhoto & { listKey: string };
+
 /**
  * 보고가 어디까지 갔는가.
  *
@@ -87,7 +89,7 @@ export const EquipmentFailureScreen = () => {
   const [state, setState] = useState<OccurrenceState | null>(null);
   const [stoppedAt, setStoppedAt] = useState('');
   const [notify, setNotify] = useState(true);
-  const [photos, setPhotos] = useState<CapturedPhoto[]>([]);
+  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -134,7 +136,7 @@ export const EquipmentFailureScreen = () => {
   const takePhoto = async () => {
     try {
       const captured = await readCapturedPhoto(await capturePhoto());
-      setPhotos((current) => [...current, captured]);
+      setPhotos((current) => [...current, { ...captured, listKey: crypto.randomUUID() }]);
       setPhotoError(null);
     } catch {
       setPhotoError(t.photo.failed);
@@ -150,7 +152,6 @@ export const EquipmentFailureScreen = () => {
     setSaveFailed(false);
 
     try {
-
       const occurredAt = new Date().toISOString();
       const reportId = crypto.randomUUID();
       const draft = toOutboxDraft(
@@ -311,7 +312,7 @@ export const EquipmentFailureScreen = () => {
         {photos.length === 0 ? null : (
           <ul className="equipment-failure__photos">
             {photos.map((photo) => (
-              <li key={photo.fileName}>
+              <li key={photo.listKey}>
                 <img src={photo.previewUrl} alt={t.photo.thumbnail} />
               </li>
             ))}
