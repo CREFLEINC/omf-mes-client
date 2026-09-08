@@ -108,7 +108,7 @@ const IMAGE_FORMATS: readonly RenditionFormat[] = ['png'];
  * ⛔ **그림·문서를 이 목록에 넣지 않는다.** RAW 는 받은 바이트를 그대로 프린터에 밀어 넣는
  *    길이라, 그림을 보내면 프린터가 그 바이트를 명령으로 읽고 아무 말이나 찍거나 멈춘다.
  */
-const COMMAND_FORMATS: readonly RenditionFormat[] = [];
+const COMMAND_FORMATS: readonly RenditionFormat[] = ['tspl'];
 
 /** 출력물을 띄워 인쇄하는 창. 작업마다 새로 열고 끝나면 닫는다. */
 export interface PrintPage {
@@ -203,7 +203,12 @@ export function createSilentPrinter(deps: SilentPrintDeps): SilentPrinter {
 
         try {
           await withLimit(
-            deps.printRaw.print({ dataPath: staged.filePath, jobName: rendition.label }),
+            /* 고른 프린터를 그대로 싣는다 — 없으면 받는 쪽이 OS 기본으로 보낸다. */
+            deps.printRaw.print({
+              dataPath: staged.filePath,
+              jobName: rendition.label,
+              deviceName,
+            }),
             limit,
             '프린터가 응답하지 않는다',
           );

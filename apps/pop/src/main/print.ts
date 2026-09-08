@@ -14,8 +14,14 @@
  * 지금도 `rendition.save(bytes, label, now, format)` 하나만 부른다.
  */
 
-/** 서버가 돌려주는 출력물 형식. 계약의 `format` 파라미터와 같은 값이다. */
-export type RenditionFormat = 'png' | 'pdf';
+/**
+ * 서버가 돌려주는 출력물 형식. 계약의 `format` 파라미터와 같은 값이다.
+ *
+ * ⚠ **`tspl` 은 아직 계약에 없다**(#891 — 서버 구현 대기). 실기에서 라벨을 프린터 글꼴로
+ *   보려면 명령형이 필요한데 계약이 `png`·`pdf` 뿐이라, **시험 서버가 내려주는 값**으로 먼저
+ *   받는다(사용자 지시 2026-09-08). 계약에 형식이 서면 이 줄은 그대로 두고 시험용 표시만 걷는다.
+ */
+export type RenditionFormat = 'png' | 'pdf' | 'tspl';
 
 export type PrintTarget =
   | { kind: 'file'; filePath: string }
@@ -86,6 +92,11 @@ export class FormatMismatchError extends Error {
 const SIGNATURES: Record<RenditionFormat, number[]> = {
   png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
   pdf: [0x25, 0x50, 0x44, 0x46, 0x2d], // %PDF-
+  /*
+   * TSPL 은 대지 크기를 먼저 선언한다 — `SIZE ` 로 시작하지 않는 것은 이 형식이 아니다.
+   * ⛔ 검사를 건너뛰지 않는다. 그림을 RAW 자리로 밀어 넣으면 프린터가 라벨을 수백 장 토해낸다.
+   */
+  tspl: [0x53, 0x49, 0x5a, 0x45, 0x20], // "SIZE "
 };
 
 /**
@@ -106,7 +117,7 @@ export function matchesFormat(bytes: Uint8Array, format: RenditionFormat): boole
  * 막히지만 그것은 가드가 아니라 우연이다 — 조회에 기본값을 넣는 「수선」 하나면 열린다.
  */
 export function isRenditionFormat(value: unknown): value is RenditionFormat {
-  return value === 'png' || value === 'pdf';
+  return value === 'png' || value === 'pdf' || value === 'tspl';
 }
 
 export class RenditionPrinter {

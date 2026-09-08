@@ -32,6 +32,17 @@ const api = {
     /** 전송이 확정된 뒤에만 부른다 — 보내기 전에 지우면 현장 실적이 사라진다. */
     dequeue: (id: number): Promise<void> => ipcRenderer.invoke('outbox:dequeue', id),
   },
+  printers: {
+    /**
+     * 이 단말에 붙어 있는 프린터와, 실제로 인쇄가 나갈 곳.
+     *
+     * `target` 이 `null` 이면 **OS 기본 프린터**로 나간다 — 어느 것인지는 OS 가 안다.
+     */
+    list: (): Promise<{
+      printers: { name: string; displayName?: string }[];
+      target: string | null;
+    }> => ipcRenderer.invoke('printers:list'),
+  },
   rendition: {
     /**
      * 서버가 그려 준 출력물을 파일로 저장하고 만들어진 경로를 돌려준다.
@@ -42,7 +53,12 @@ const api = {
      * ⛔ 저장 경로를 렌더러가 정하지 않는다 — 메인이 소유한다.
      * ⛔ 셸이 출력물을 다시 그리지 않는다(설계 결정 18).
      */
-    save: (bytes: Uint8Array, label: string, now: string, format: 'png' | 'pdf'): Promise<string> =>
+    save: (
+      bytes: Uint8Array,
+      label: string,
+      now: string,
+      format: 'png' | 'pdf' | 'tspl',
+    ): Promise<string> =>
       ipcRenderer.invoke('rendition:save', bytes, label, now, format),
   },
 };

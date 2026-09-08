@@ -59,6 +59,14 @@ import {
   selectPrinter,
 } from './silent-print';
 import { SecureStore } from './secure-store';
+import {
+  applyLabelMedia,
+  buildMediaProbeScript,
+  calibrationCommands,
+  parseMediaProbe,
+  readLabelMedia,
+  withProbedSize,
+} from './label-media';
 import { createKioskWindowOptions } from './window-options';
 
 // ⚠ `import.meta.url`을 쓰지 않는다 — 이 파일은 CJS로 번들되고(Electron preload가 ESM을
@@ -282,14 +290,66 @@ const readJsonFile = (path: string): unknown => parseHandWrittenJson(readFileSyn
  *   목록에서 알아내려다 있지도 않은 항목을 읽어 전부 막은 적이 있다(`silent-print.ts` 실측).
  * ⚠ 개발 기계(mac 등)에는 PowerShell 도 이 대기열도 없다.
  */
-function createRawPrinter(deviceName?: string): RawPrinter | undefined {
+/**
+ * 드라이버에 설정된 용지 크기를 읽어 온다. **못 읽으면 `null`** — 부르는 쪽이 물러선다.
+ *
+ * ⚠ 한 장 뽑을 때마다 묻는다. 현장에서 라벨지를 갈고 프린터 설정만 바꾼 뒤 앱을 다시 켜지
+ *   않는 일이 잦아, 기동 시 한 번만 읽어 두면 그때부터 어긋난다.
+ */
+async function probeMedia(
+  deviceName: string | undefined,
+  jobDir: string,
+): Promise<{ widthMm: number; heightMm: number } | null> {
+  if (process.platform !== 'win32') return null;
+
+  try {
+    const output = await runPrintScript(
+      join(jobDir, 'media-probe.ps1'),
+      buildMediaProbeScript(deviceName),
+      rawPrintScriptArgs,
+    );
+
+    return parseMediaProbe(output);
+  } catch {
+    /* 못 물어본 것이 인쇄를 막지 않는다 — 설정값·기본값으로 간다. */
+    return null;
+  }
+}
+
+function createRawPrinter(fallbackName?: string): RawPrinter | undefined {
   if (process.platform !== 'win32') return undefined;
 
   return {
-    print: async ({ dataPath, jobName }: { dataPath: string; jobName: string }): Promise<void> => {
+    print: async ({
+      dataPath,
+      jobName,
+      deviceName,
+    }: {
+      dataPath: string;
+      jobName: string;
+      deviceName?: string;
+    }): Promise<void> => {
+      /*
+       * ⭐ **보내기 «직전»에 용지 설정을 이 단말의 것으로 갈아 끼운다**(`label-media`).
+       *
+       * 서버는 그 단말에 무엇이 걸려 있는지 모른다 — 대지·갭이 어긋나면 프린터가 다음 장의
+       * 경계를 못 찾아 **용지를 밀다가 선다**(실기 실측 2026-09-08). 글자·바코드는 손대지
+       * 않는다 — 바꾸는 것은 용지 줄뿐이다.
+       */
+      /*
+       * ⭐ **용지 크기는 드라이버에 물어본다**(사용자 지시 2026-09-08). 사람이 값을 적어 주지
+       *    않아도 그 단말에 걸린 라벨지에 맞는다 — 현장에서 갈아 끼워도 프린터 설정만 맞으면
+       *    그대로 따라간다. 못 읽으면 설정값·기본값으로 물러선다.
+       */
+      const probed = await probeMedia(deviceName ?? fallbackName, join(dataPath, '..'));
+      const media = withProbedSize(readLabelMedia(), probed);
+      const sent = applyLabelMedia(readFileSync(dataPath, 'ascii'), media);
+      writeFileSync(dataPath, sent, 'ascii');
+
       await runPrintScript(
         join(dataPath, '..', 'raw-print.ps1'),
-        buildRawPrintScript({ dataPath, deviceName, jobName }),
+        /* 작업이 준 이름이 먼저다. 없으면 기동 시 지정값, 그것도 없으면 OS 기본이다. */
+        buildRawPrintScript({ dataPath, deviceName: deviceName ?? fallbackName, jobName }),
         rawPrintScriptArgs,
       );
     },
@@ -410,9 +470,32 @@ async function main(): Promise<void> {
     if (printHost === null) return { choice: { kind: 'none' }, available: [] };
 
     const printers = await printHost.webContents.getPrintersAsync();
+    const chosen = selectPrinter(printers, process.env.POP_PRINTER_NAME);
+
+    /*
+     * ⭐ **「OS 기본에 맡긴다」를 이름으로 바꿔 못 박는다**(실기 실측 2026-09-08).
+     *
+     * 지정값이 없으면 장치 이름을 싣지 않고 OS 기본에 맡겨 왔는데, 그 단말의 기본 프린터가
+     * 라벨 프린터가 아니면 **명령이 엉뚱한 장치로 가서 아무것도 나오지 않는다** — 기록에는
+     * 「고른 프린터=(OS 기본)」만 남아 어디로 갔는지도 알 수 없었다.
+     *
+     * 그래서 여기서 **한 대를 골라 이름을 싣는다** — 화면이 보이는 것과 같은 규칙이다
+     * (`patterns/pop-terminal-printers`: 기본으로 표시된 것, 없으면 첫 번째).
+     * ⛔ 이름을 못 고르면 「보낼 곳 없음」이다 — 조용히 OS 에 떠넘기지 않는다.
+     */
+    /*
+     * ⚠ **Electron 은 「어느 것이 OS 기본인가」를 알려 주지 않는다**(`PrinterInfo` 에 그 자리가
+     *   없다). 그래서 **화면이 고르는 것과 같은 규칙**을 쓴다 — 목록의 첫 대
+     *   (`patterns/pop-terminal-printers` 가 화면에 그렇게 보인다). 화면에 보이는 프린터와
+     *   실제로 나가는 프린터가 갈리지 않는 것이 여기서 가장 중요하다.
+     *
+     * ⭐ **한 대로 못 박으려면 `POP_PRINTER_NAME` 을 준다** — 그 값이 있으면 위에서 이미 정해진다.
+     */
+    const named = chosen.kind === 'systemDefault' ? printers[0] : undefined;
 
     return {
-      choice: selectPrinter(printers, process.env.POP_PRINTER_NAME),
+      choice:
+        named === undefined ? chosen : { kind: 'named' as const, deviceName: named.name },
       /* 고르지 못했을 때 **무엇이 있었는지**를 기록에 남기려고 함께 들고 나간다. */
       available: printers.map(({ name, displayName }) => ({ name, displayName })),
     };
@@ -423,6 +506,27 @@ async function main(): Promise<void> {
   app.on('before-quit', () => persist(localDb, dbPath));
 
   // 통로는 contextBridge 하나뿐이다(preload 참조). 여기 등록한 채널 밖으로는 아무것도 열지 않는다.
+  /*
+   * 이 단말에 붙어 있는 프린터. **화면 머리에 실제 이름을 보이려고 연다**(사용자 지시
+   * 2026-09-08).
+   *
+   * ⚠ **계약은 이 목록을 서버가 갖는 것으로 적고 있다**(`/app/printers`). 그런데 그 경로가
+   *   아직 서버에 없어, 화면이 계약 예시의 「샘플 라벨 프린터 A」를 그대로 보였다 — 단말에
+   *   프린터가 하나도 없어도 「대기 중」이라 말하고, 눌러도 아무 데서도 나오지 않았다.
+   *
+   * ⛔ **여기서 상태를 지어내지 않는다.** 우리가 아는 것은 「등록돼 있다」와 「어디로 보낼
+   *    것인가」뿐이다. 프린터가 켜졌는지 종이가 있는지는 모른다 — 화면이 그 이상을 말하지
+   *    않게 아는 것만 넘긴다.
+   */
+  ipcMain.handle('printers:list', async () => {
+    const { choice, available } = await resolvePrinter();
+
+    return {
+      printers: available,
+      target: choice.kind === 'named' ? choice.deviceName : null,
+    };
+  });
+
   ipcMain.handle('device-token:get', () => secureStore.get());
   ipcMain.handle('device-token:set', (_e, value: string) => secureStore.set(value));
   ipcMain.handle('cache:get', (_e, key: string) => localDb.getCache(key));
@@ -461,6 +565,29 @@ async function main(): Promise<void> {
        * ⛔ 화면에는 기술 사유를 보이지 않는다(사용자 지시). 그래도 사유를 버리지는 않는다 —
        *    키오스크에는 개발자도구가 없어 이 파일이 무슨 일이 났는지 아는 유일한 자리다.
        */
+      const noteOutcome = (
+        available: readonly LoggedPrinter[],
+        deviceName: string | null,
+        reason: string,
+      ) => {
+        try {
+          mkdirSync(logDir, { recursive: true });
+          appendFileSync(
+            join(logDir, 'print.log'),
+            formatPrintLog({
+              at: new Date().toISOString(),
+              label,
+              available,
+              deviceName,
+              preferred: process.env.POP_PRINTER_NAME,
+              reason,
+            }),
+          );
+        } catch {
+          /* 기록을 남기지 못한 것이 인쇄를 막지 않는다. */
+        }
+      };
+
       const noteFailure = (
         available: readonly LoggedPrinter[],
         deviceName: string | null,
@@ -507,6 +634,12 @@ async function main(): Promise<void> {
 
       try {
         await printer.print(rendition, { kind: 'printer', deviceName });
+        /*
+         * ⭐ **성공도 남긴다**(사용자 지시 2026-09-08). 「아무 일도 안 일어난다」를 가리려면
+         *    «보내기는 했는가»부터 알아야 하는데, 실패만 남기면 그 줄이 아예 없는 것과
+         *    보낸 적 없는 것이 구분되지 않는다. 키오스크에는 개발자도구가 없다.
+         */
+        noteOutcome(available, deviceName ?? '(OS 기본)', `보냄(${rendition.format})`);
       } catch (cause) {
         noteFailure(available, deviceName ?? '(OS 기본)', cause);
         throw cause;
@@ -549,6 +682,53 @@ async function main(): Promise<void> {
  *   포트가 틀린 것인지 프린터가 죽은 것인지 가릴 방법이 단말에 남지 않는다.
  */
 function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDir: string): void {
+  /*
+   * 라벨지 보정 — **Ctrl+Alt+G**. 프린터가 걸린 라벨지를 스스로 재고 그 값을 기억한다.
+   *
+   * ⭐ 「인쇄가 나오다가 멈춘다」가 설정이 아니라 보정 문제일 때 이것이 답이다. 라벨지를
+   *    갈아 끼운 뒤 한 번 돌린다 — 라벨 한두 장이 빈 채로 밀려 나오는 것이 정상이다.
+   */
+  globalShortcut.register('CommandOrControl+Alt+G', () => {
+    void (async () => {
+      if (rawPrinter === undefined) {
+        await dialog.showMessageBox({
+          type: 'warning',
+          title: '라벨지 보정',
+          message: '보낼 프린터를 찾을 수 없습니다',
+          detail: '이 단말에 등록된 프린터가 없거나, Windows 가 아닙니다.',
+        });
+
+        return;
+      }
+
+      const media = readLabelMedia();
+      const jobDir = join(stagingDir, `calibrate-${String(Date.now())}`);
+
+      try {
+        mkdirSync(jobDir, { recursive: true });
+        const dataPath = join(jobDir, 'calibrate.tspl');
+        writeFileSync(dataPath, calibrationCommands(media), 'ascii');
+        await rawPrinter.print({ dataPath, jobName: 'OMF 라벨지 보정' });
+
+        await dialog.showMessageBox({
+          type: 'info',
+          title: '라벨지 보정',
+          message: '보정 명령을 보냈습니다',
+          detail: `대지 ${String(media.widthMm)} × ${String(media.heightMm)} mm · ${media.kind}\n라벨 한두 장이 밀려 나온 뒤 멈추면 정상입니다.`,
+        });
+      } catch (cause) {
+        await dialog.showMessageBox({
+          type: 'error',
+          title: '라벨지 보정',
+          message: '보정을 보내지 못했습니다',
+          detail: cause instanceof Error ? cause.message : String(cause),
+        });
+      } finally {
+        rmSync(jobDir, { force: true, recursive: true });
+      }
+    })();
+  });
+
   globalShortcut.register('CommandOrControl+Alt+P', () => {
     void (async () => {
       if (rawPrinter === undefined) {

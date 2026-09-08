@@ -102,7 +102,12 @@ const PRINT_SERVER_HEAD = [
 ];
 
 export interface RawPrinter {
-  print(job: { dataPath: string; jobName: string }): Promise<void>;
+  /**
+   * ⚠ **보낼 프린터를 «작업마다» 받는다.** 예전에는 앱이 켜질 때의 `POP_PRINTER_NAME` 하나만
+   *   들고 있었다 — 그 값이 없으면 스크립트가 스스로 기본 프린터를 물었고, 앱이 이미 고른
+   *   프린터와 갈릴 수 있었다. 고른 곳과 보내는 곳은 한 값이어야 한다(실측 2026-09-08).
+   */
+  print(job: { dataPath: string; jobName: string; deviceName?: string }): Promise<void>;
 }
 
 /**
