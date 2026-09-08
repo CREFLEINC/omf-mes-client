@@ -4,7 +4,7 @@ import { useEffect, useMemo } from 'react';
 
 import { DELIVERY_LABEL, PACKING_LABEL } from '../shipping-packing-label/codes';
 import { useLabelIssue, type LabelIssueHandle } from '../shipping-packing-label/mutations';
-import { usePrinters } from '../shipping-packing-label/queries';
+import { useIssueSummaries, usePrinters } from '../shipping-packing-label/queries';
 import {
   toAllocationView,
   toDefaultPrinterName,
@@ -68,44 +68,132 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
         ),
     [run.allocations],
   );
+  const packingSummaries = useIssueSummaries(
+    PACKING_LABEL,
+    packingRows.map((row) => row.issueTargetId),
+  );
+  const deliverySummaries = useIssueSummaries(
+    DELIVERY_LABEL,
+    deliveryRows.map((row) => row.issueTargetId),
+  );
+  const missingPackingRows = packingRows.filter((row) =>
+    packingSummaries.data?.some(
+      (summary) => summary.targetId === row.issueTargetId && summary.issueCount === 0,
+    ),
+  );
+  const missingDeliveryRows = deliveryRows.filter((row) =>
+    deliverySummaries.data?.some(
+      (summary) => summary.targetId === row.issueTargetId && summary.issueCount === 0,
+    ),
+  );
   const waiting = run.allocations.filter((allocation) => !allocation.oqcPassed);
+  const packingHistoryComplete =
+    packingSummaries.data !== undefined &&
+    packingRows.every((row) =>
+      packingSummaries.data.some(
+        (summary) =>
+          summary.targetId === row.issueTargetId &&
+          summary.issueCount > 0 &&
+          summary.lastPrintOutcome === 'SUCCEEDED',
+      ),
+    );
+  const deliveryHistoryComplete =
+    deliverySummaries.data !== undefined &&
+    deliveryRows.every((row) =>
+      deliverySummaries.data.some(
+        (summary) =>
+          summary.targetId === row.issueTargetId &&
+          summary.issueCount > 0 &&
+          summary.lastPrintOutcome === 'SUCCEEDED',
+      ),
+    );
+  const packingHistoryRecoveryCount = (packingSummaries.data ?? []).filter(
+    (summary) => summary.issueCount > 0 && summary.lastPrintOutcome !== 'SUCCEEDED',
+  ).length;
+  const deliveryHistoryRecoveryCount = (deliverySummaries.data ?? []).filter(
+    (summary) => summary.issueCount > 0 && summary.lastPrintOutcome !== 'SUCCEEDED',
+  ).length;
+  const historyRecoveryCount = packingHistoryRecoveryCount + deliveryHistoryRecoveryCount;
 
   useEffect(() => {
-    if (packing.phase !== 'idle' || packing.result.failedAt !== null) return;
+    if (
+      packingSummaries.isPending ||
+      packingSummaries.isError ||
+      packingHistoryComplete ||
+      packingHistoryRecoveryCount > 0 ||
+      packing.phase !== 'idle' ||
+      packing.result.failedAt !== null
+    ) {
+      return;
+    }
 
     packing.issue({
       kind: PACKING_LABEL,
-      rows: packingRows,
+      rows: missingPackingRows,
       printerName: toDefaultPrinterName(packingPrinters.data ?? []),
       reissueReasonCode: null,
     });
-  }, [packing, packingPrinters.data, packingRows]);
+  }, [
+    missingPackingRows,
+    packing,
+    packingHistoryRecoveryCount,
+    packingHistoryComplete,
+    packingPrinters.data,
+    packingSummaries,
+  ]);
 
   useAutomaticPrint(packing);
   useAutomaticPrint(delivery);
 
   useEffect(() => {
-    if (packing.phase !== 'printed' || packing.result.failedAt !== null) return;
-    if (deliveryRows.length === 0 || delivery.phase !== 'idle') return;
+    const packingFinished =
+      packingHistoryComplete || (packing.phase === 'printed' && packing.result.failedAt === null);
+    if (!packingFinished || deliverySummaries.isPending || deliverySummaries.isError) return;
+    if (
+      deliveryHistoryComplete ||
+      deliveryHistoryRecoveryCount > 0 ||
+      missingDeliveryRows.length === 0 ||
+      delivery.phase !== 'idle'
+    ) {
+      return;
+    }
 
     delivery.issue({
       kind: DELIVERY_LABEL,
-      rows: deliveryRows,
+      rows: missingDeliveryRows,
       printerName: toDefaultPrinterName(deliveryPrinters.data ?? []),
       reissueReasonCode: null,
     });
-  }, [delivery, deliveryPrinters.data, deliveryRows, packing.phase, packing.result.failedAt]);
+  }, [
+    delivery,
+    deliveryPrinters.data,
+    deliverySummaries.isError,
+    deliverySummaries.isPending,
+    deliveryHistoryComplete,
+    deliveryHistoryRecoveryCount,
+    missingDeliveryRows,
+    packing.phase,
+    packing.result.failedAt,
+    packingHistoryComplete,
+  ]);
 
   const packingFailure = failureText(packing);
   const deliveryFailure = failureText(delivery);
-  const isComplete =
-    packing.phase === 'printed' &&
-    packing.result.failedAt === null &&
-    (deliveryRows.length === 0 ||
-      (delivery.phase === 'printed' && delivery.result.failedAt === null));
+  const packingComplete =
+    packingHistoryComplete || (packing.phase === 'printed' && packing.result.failedAt === null);
+  const deliveryComplete =
+    deliveryRows.length === 0 ||
+    deliveryHistoryComplete ||
+    (delivery.phase === 'printed' && delivery.result.failedAt === null);
+  const isComplete = packingComplete && deliveryComplete && historyRecoveryCount === 0;
+  const isSummaryError = packingSummaries.isError || deliverySummaries.isError;
 
   return (
     <section className="packing-label-status" aria-label={t.region}>
+      {isSummaryError ? <AlertBanner variant="error">{t.failures.summary}</AlertBanner> : null}
+      {historyRecoveryCount > 0 ? (
+        <AlertBanner variant="warning">{t.reissueRequired(historyRecoveryCount)}</AlertBanner>
+      ) : null}
       {packingFailure !== null ? (
         <AlertBanner variant="error">{t.packingFailure(packingFailure)}</AlertBanner>
       ) : null}
@@ -124,7 +212,7 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
           onClick={() => {
             packing.issue({
               kind: PACKING_LABEL,
-              rows: packingRows,
+              rows: missingPackingRows,
               printerName: toDefaultPrinterName(packingPrinters.data ?? []),
               reissueReasonCode: null,
             });
@@ -146,7 +234,7 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
           onClick={() => {
             delivery.issue({
               kind: DELIVERY_LABEL,
-              rows: deliveryRows,
+              rows: missingDeliveryRows,
               printerName: toDefaultPrinterName(deliveryPrinters.data ?? []),
               reissueReasonCode: null,
             });
@@ -163,7 +251,8 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
       {packing.result.failedAt === 'print' ||
       packing.result.failedAt === 'report' ||
       delivery.result.failedAt === 'print' ||
-      delivery.result.failedAt === 'report' ? (
+      delivery.result.failedAt === 'report' ||
+      historyRecoveryCount > 0 ? (
         <Button type="button" variant="outlined" size="md" onClick={onOpenManagement}>
           {t.openReissue}
         </Button>

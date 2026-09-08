@@ -35,6 +35,35 @@ export const HANDLING_UNIT_TYPE_GROUP_CODE = 'HANDLING_UNIT_TYPE';
 /** 한 번에 받아 둘 최대 건수. 포장 유형·상위 후보가 이보다 많을 일은 없다. */
 const OPTION_SIZE = 100;
 
+interface PageResponse<T> {
+  items: T[];
+  page: { page: number; size: number; total: number };
+}
+
+/**
+ * 목록을 화면 로컬 기본 쪽으로 잘라 쓰지 않는다. P-04-01은 출하 전체 진행과 배분을 판단하므로
+ * `page.total`까지 전건을 완성하지 못하면 부분 목록을 성공으로 내보내지 않는다.
+ */
+const collectAllPages = async <T>(
+  fetchPage: (page: number, size: number) => Promise<PageResponse<T>>,
+): Promise<T[]> => {
+  const first = await fetchPage(1, OPTION_SIZE);
+  const pageSize = Math.max(1, first.page.size);
+  const totalPages = Math.ceil(first.page.total / pageSize);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2).map((page) =>
+      fetchPage(page, pageSize),
+    ),
+  );
+  const items = [first, ...rest].flatMap((response) => response.items);
+
+  if (items.length < first.page.total) {
+    throw new Error('출하 관련 목록 전체를 불러오지 못했습니다.');
+  }
+
+  return items.slice(0, first.page.total);
+};
+
 export const packingResultKeys = {
   typeOptions: ['packing-result', 'handling-unit-types'] as const,
   parentsRoot: ['packing-result', 'parents'] as const,
@@ -56,15 +85,14 @@ const localDate = (now: Date): string => {
 const unpackedAllocations = async (
   client: Client,
   shipmentId: number,
-): Promise<ShipmentLotAllocation[]> => {
-  const data = await runRequest(() =>
-    client.GET('/logistics/shipment-lot-allocations', {
-      params: { query: { shipmentId, unpackedOnly: true, size: OPTION_SIZE } },
-    }),
+): Promise<ShipmentLotAllocation[]> =>
+  collectAllPages((page, size) =>
+    runRequest(() =>
+      client.GET('/logistics/shipment-lot-allocations', {
+        params: { query: { shipmentId, unpackedOnly: true, page, size } },
+      }),
+    ),
   );
-
-  return data.items ?? [];
-};
 
 const entryOfShipment = async (client: Client, shipment: Shipment): Promise<ShipmentEntry> => ({
   shipmentId: shipment.shipmentId,
@@ -100,23 +128,22 @@ export const useTodayShipments = (): {
   const businessDate = localDate(new Date());
   const query = useQuery({
     queryKey: packingResultKeys.todayShipments(businessDate),
-    queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/logistics/shipments', {
-          params: {
-            query: {
-              pickedOnly: true,
-              shipDateFrom: businessDate,
-              shipDateTo: businessDate,
-              page: 1,
-              size: OPTION_SIZE,
+    queryFn: () =>
+      collectAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/logistics/shipments', {
+            params: {
+              query: {
+                pickedOnly: true,
+                shipDateFrom: businessDate,
+                shipDateTo: businessDate,
+                page,
+                size,
+              },
             },
-          },
-        }),
-      );
-
-      return data.items;
-    },
+          }),
+        ),
+      ),
   });
 
   return { shipments: query.data ?? [], isPending: query.isPending, isError: query.isError };
@@ -133,11 +160,13 @@ export type LabelScanOutcome =
   { kind: 'found'; allocations: ShipmentLotAllocation[] } | { kind: 'not-found' };
 
 const lookupLabel = async (client: Client, code: string): Promise<LabelScanOutcome> => {
-  const data = await runRequest(() =>
-    client.GET('/logistics/shipment-lot-allocations', { params: { query: { q: code } } }),
+  const allocations = await collectAllPages((page, size) =>
+    runRequest(() =>
+      client.GET('/logistics/shipment-lot-allocations', {
+        params: { query: { q: code, page, size } },
+      }),
+    ),
   );
-
-  const allocations = data.items ?? [];
 
   return allocations.length === 0 ? { kind: 'not-found' } : { kind: 'found', allocations };
 };
@@ -281,13 +310,13 @@ export const useShipmentAllocations = (
     queryFn: async () => {
       if (shipmentId === null) throw new Error('출하를 모르면 진행을 조회하지 않습니다.');
 
-      const data = await runRequest(() =>
-        client.GET('/logistics/shipment-lot-allocations', {
-          params: { query: { shipmentId, size: OPTION_SIZE } },
-        }),
+      return collectAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/logistics/shipment-lot-allocations', {
+            params: { query: { shipmentId, page, size } },
+          }),
+        ),
       );
-
-      return data.items ?? [];
     },
   });
 

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { summary } from '../shipping-packing-label/fixtures';
 
 import { AutomaticLabels, type AutomaticLabelRun } from './automatic-labels';
 
@@ -55,6 +56,17 @@ describe('AutomaticLabels', () => {
       <AutomaticLabels run={run} workerNo="SYN-W-01" onOpenManagement={() => undefined} />,
       {
         fetch: createStubFetch([
+          {
+            match: (request) => new URL(request.url).pathname === '/app/document-issues/summary',
+            respond: (request) => {
+              const ids = new URL(request.url).searchParams
+                .getAll('targetIds')
+                .flatMap((value) => value.split(','))
+                .map(Number);
+
+              return jsonResponse({ items: ids.map((id) => summary(id, 0)) });
+            },
+          },
           {
             match: (request) =>
               request.method === 'GET' && new URL(request.url).pathname === '/app/printers',
@@ -143,6 +155,17 @@ describe('AutomaticLabels', () => {
       {
         fetch: createStubFetch([
           {
+            match: (request) => new URL(request.url).pathname === '/app/document-issues/summary',
+            respond: (request) => {
+              const ids = new URL(request.url).searchParams
+                .getAll('targetIds')
+                .flatMap((value) => value.split(','))
+                .map(Number);
+
+              return jsonResponse({ items: ids.map((id) => summary(id, 0)) });
+            },
+          },
+          {
             match: (request) => new URL(request.url).pathname === '/app/printers',
             respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
           },
@@ -195,4 +218,57 @@ describe('AutomaticLabels', () => {
     });
     expect(document.body.textContent).not.toContain('포장을 다시');
   });
+
+  it.each(['PENDING', 'FAILED'] as const)(
+    '기발행 포장 라벨의 최근 인쇄가 %s이면 완료로 보지 않고 재출력 흐름으로 보낸다',
+    async (outcome) => {
+      const issued: Request[] = [];
+
+      renderWithProviders(
+        <AutomaticLabels run={run} workerNo="SYN-W-01" onOpenManagement={() => undefined} />,
+        {
+          fetch: createStubFetch([
+            {
+              match: (request) => new URL(request.url).pathname === '/app/document-issues/summary',
+              respond: (request) => {
+                const url = new URL(request.url);
+                const ids = url.searchParams
+                  .getAll('targetIds')
+                  .flatMap((value) => value.split(','))
+                  .map(Number);
+                const kind = url.searchParams.get('documentTypeCode');
+
+                return jsonResponse({
+                  items: ids.map((id) =>
+                    kind === 'PACKING_LABEL'
+                      ? summary(id, 1, '2026-09-09T03:00:00+09:00', outcome)
+                      : summary(id, 0),
+                  ),
+                });
+              },
+            },
+            {
+              match: (request) => new URL(request.url).pathname === '/app/printers',
+              respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
+            },
+            {
+              match: (request) =>
+                request.method === 'POST' &&
+                new URL(request.url).pathname === '/app/document-issues',
+              respond: (request) => {
+                issued.push(request.clone());
+
+                return jsonResponse({ items: [] }, { status: 201 });
+              },
+            },
+          ]),
+        },
+      );
+
+      expect(await screen.findByText(t.reissueRequired(1))).toBeInTheDocument();
+      expect(screen.queryByText(t.complete)).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: t.openReissue })).toBeEnabled();
+      expect(issued).toHaveLength(0);
+    },
+  );
 });

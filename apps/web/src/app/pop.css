@@ -1298,6 +1298,23 @@
   row-gap: var(--space-3);
 }
 
+/* 재진입 복구는 발행 현황과 액션을 한 줄에 짝지어 1024×768 세로 예산을 지킨다. */
+.pop-ui .pop-slabel-recovery {
+  row-gap: var(--space-3);
+}
+
+.pop-ui .pop-slabel-recovery-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.pop-ui .pop-slabel-recovery-actions > .field-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
 /* 라벨 종류 둘은 한 줄에 — 세로 예산이 72px 라 쌓을 자리가 없다(§3 ①). */
 /*
  * ① 라벨 종류 — **한 줄짜리 둘이 나란히 선다**(설계 §3 · §3-1 의 72px).

@@ -80,7 +80,21 @@ const routes = (options: Options): StubRoute[] => {
     },
     {
       match: (request) => pathOf(request) === '/app/document-issues/summary',
-      respond: () => jsonResponse({ items: options.summaries ?? [] }),
+      respond: (request) => {
+        const requestedIds = new URL(request.url).searchParams
+          .getAll('targetIds')
+          .flatMap((value) => value.split(','))
+          .map(Number);
+        const configured = options.summaries ?? [];
+
+        return jsonResponse({
+          items: requestedIds.map(
+            (targetId) =>
+              configured.find((item) => (item as { targetId?: number }).targetId === targetId) ??
+              summary(targetId, 0),
+          ),
+        });
+      },
     },
     {
       match: (request) => pathOf(request) === '/app/printers',
@@ -89,7 +103,14 @@ const routes = (options: Options): StubRoute[] => {
     {
       match: (request) => pathOf(request) === '/mdm/code-values',
       respond: () =>
-        jsonResponse({ items: options.reasons ?? [reissueReason('SYN_REASON', '인쇄 실패')] }),
+        jsonResponse({
+          items: options.reasons ?? [reissueReason('SYN_REASON', '인쇄 실패')],
+          page: {
+            page: 1,
+            size: 20,
+            total: (options.reasons ?? [reissueReason('SYN_REASON', '인쇄 실패')]).length,
+          },
+        }),
     },
     {
       match: (request) => /\/rendition$/u.test(pathOf(request)),
@@ -125,7 +146,7 @@ const routes = (options: Options): StubRoute[] => {
     },
     {
       match: (request) => request.method === 'GET' && pathOf(request) === '/app/document-issues',
-      respond: () => jsonResponse({ items: [] }),
+      respond: () => jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } }),
     },
   ];
 };
@@ -266,6 +287,20 @@ describe('ShippingPackingLabelScreen — 재발행', () => {
     await user.click(await rowCheckbox(0));
 
     expect(await screen.findByText(t.reissue.empty)).toBeInTheDocument();
+  });
+
+  it('최초 발행과 재출력 대상을 섞어 고르면 같은 사유로 보내지 않고 분리하도록 막는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      allocations: [PASSED, allocation(9402, 9502, 'SYN-LOT-0002', true, 9602)],
+      summaries: [summary(9401, 1)],
+    });
+
+    await chooseKind(user, '납품라벨');
+    await user.click(await screen.findByRole('checkbox', { name: '전체 선택' }));
+
+    expect(await screen.findByText(t.actions.mixedIssueModes)).toBeInTheDocument();
+    expect(issueButton()).toBeDisabled();
   });
 });
 
@@ -475,5 +510,56 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
     expect(save).toHaveBeenCalledOnce();
     expect(Array.from(nth(save.mock.calls, 0)[0])).toEqual([1, 2, 3]);
     expect(JSON.parse(nth(requests, 1).body)).toEqual({ outcome: 'SUCCEEDED' });
+  });
+});
+
+describe('ShippingPackingLabelScreen — 재진입 복구', () => {
+  it('summary에서 누락된 OQC 통과 납품 라벨만 최초 발행하고 Electron 인쇄까지 이어 간다', async () => {
+    const user = userEvent.setup();
+    const requests: { request: Request; body: string }[] = [];
+    const save = vi.fn(async () => 'syn://printed');
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save } },
+    });
+
+    renderWithProviders(
+      <ShippingPackingLabelScreen embedded shipmentId={SHIPMENT_ID} workerNo={WORKER_NO} />,
+      {
+        fetch: createStubFetch(
+          routes({
+            requests,
+            summaries: [
+              summary(9601, 1, '2026-09-09T01:00:00Z', 'SUCCEEDED'),
+              summary(9602, 1, '2026-09-09T01:00:00Z', 'SUCCEEDED'),
+              summary(9401, 0),
+              summary(9402, 0),
+            ],
+          }),
+        ),
+      },
+    );
+
+    const deliveryAction = await screen.findByRole('button', {
+      name: t.recovery.deliveryAction,
+    });
+    await waitFor(() => {
+      expect(deliveryAction).toBeEnabled();
+    });
+    await user.click(deliveryAction);
+
+    await waitFor(() => {
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(requests.some(({ request }) => pathOf(request).endsWith(':report-print'))).toBe(true);
+    });
+    const issueRequest = requests.find(
+      ({ request }) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
+    );
+    const issueBody = JSON.parse(issueRequest?.body ?? '{}') as Record<string, unknown>;
+    expect(issueBody).toMatchObject({
+      documentTypeCode: 'DELIVERY_LABEL',
+      targets: [{ targetId: 9401 }],
+    });
+    expect(issueBody).not.toHaveProperty('reissueReasonCode');
   });
 });

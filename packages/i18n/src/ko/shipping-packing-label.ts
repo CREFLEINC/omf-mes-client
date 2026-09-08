@@ -52,6 +52,18 @@ export const shippingPackingLabel = {
     retry: '다시 불러오기',
     selectionLimited: '출하검사에 합격하지 않은 대상은 고를 수 없습니다.',
   },
+  recovery: {
+    title: '누락 라벨 이어서 출력',
+    packingMissing: (count: number) => `미발행 포장 라벨 ${String(count)}건`,
+    deliveryMissing: (count: number) => `발행 가능한 미발행 납품 라벨 ${String(count)}건`,
+    oqcWaiting: (count: number) => `OQC 판정 대기 납품 라벨 ${String(count)}건`,
+    reissueRequired: (count: number) =>
+      `${String(count)}건은 발행 기록이 있지만 인쇄 완료가 아니므로 아래 재출력 흐름에서 처리해야 합니다.`,
+    complete: '현재 발행 가능한 누락 라벨이 없습니다.',
+    loadFailed: '누락 라벨을 확인하지 못했습니다. 확인 전에는 발행하지 않습니다.',
+    packingAction: '누락 포장 라벨 출력',
+    deliveryAction: '납품 라벨 출력',
+  },
   reissue: {
     /** ③ 구획은 재발행일 때만 펼친다 — 늘 띄우면 목록이 줄어든다. */
     title: '재출력',
@@ -88,6 +100,7 @@ export const shippingPackingLabel = {
     checkingHistory: '대상의 발행 이력을 확인하고 있습니다.',
     historyUnavailable: '대상의 발행 이력을 확인할 수 없어 발행할 수 없습니다.',
     needsReason: '재발행 사유를 고르면 발행할 수 있습니다.',
+    mixedIssueModes: '최초 발행 대상과 재출력 대상은 나누어 선택하세요.',
     /** 사번은 진입점 화면이 단말에 두는 값이다 — 없다는 것은 아직 사번을 대지 않았다는 뜻. */
     needsWorker: '사번을 확인한 뒤에 발행할 수 있습니다.',
     finishCurrentIssue: '현재 발행 결과를 확인한 뒤 다음 라벨을 발행하세요.',

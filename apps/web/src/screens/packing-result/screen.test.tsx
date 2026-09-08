@@ -67,21 +67,24 @@ const renderScreen = (options: Options = {}) => {
       match: (request) => pathOf(request) === '/logistics/shipments',
       respond: (request) => {
         options.reads?.push(request.clone());
+        const requestedNo = queryOf(request).get('shipmentNo');
+        const missing =
+          queryOf(request).has('shipmentNo') &&
+          (options.shipmentNotFound === true || requestedNo?.includes('없음') === true);
 
         return jsonResponse({
-          items:
-            options.shipmentNotFound === true && queryOf(request).has('shipmentNo')
-              ? []
-              : [
-                  {
-                    shipmentId: 501,
-                    shipmentNo: 'SYN-SH-0501',
-                    shipmentRequestId: 1,
-                    warehouseId: 1001,
-                    statusCode: 'CONFIRMED',
-                    expedited: false,
-                  },
-                ],
+          items: missing
+            ? []
+            : [
+                {
+                  shipmentId: requestedNo === 'SYN-SH-0502' ? 502 : 501,
+                  shipmentNo: requestedNo ?? 'SYN-SH-0501',
+                  shipmentRequestId: 1,
+                  warehouseId: 1001,
+                  statusCode: 'CONFIRMED',
+                  expedited: false,
+                },
+              ],
           page: { page: 1, size: 50, total: 1 },
         });
       },
@@ -128,6 +131,15 @@ const renderScreen = (options: Options = {}) => {
     },
     {
       match: (request) =>
+        request.method === 'DELETE' && pathOf(request) === '/inventory/handling-units/4001',
+      respond: (request) => {
+        options.writes?.push(request.clone());
+
+        return new Response(null, { status: 204 });
+      },
+    },
+    {
+      match: (request) =>
         request.method === 'PUT' &&
         pathOf(request).startsWith('/logistics/shipment-lot-allocations/'),
       respond: (request) => {
@@ -146,8 +158,11 @@ const renderScreen = (options: Options = {}) => {
 
         /* ① 납품라벨 스캔 — 빈 목록이 「없는 라벨」이다(계약이 404 를 내지 않는다). */
         if (query.has('q')) {
-          return options.labelNotFound === true
-            ? jsonResponse({ items: [], page })
+          const missing =
+            options.labelNotFound === true || query.get('q')?.includes('없음') === true;
+
+          return missing
+            ? jsonResponse({ items: [], page: { ...page, total: 0 } })
             : jsonResponse({ items: [allocation()], page });
         }
 
@@ -250,6 +265,37 @@ describe('PackingResultScreen', () => {
     expect(await screen.findByText(t.match.labelNotFound)).toBeTruthy();
   });
 
+  it('새 출하번호 조회가 실패하면 이전 출하 문맥을 폐기해 그 출하로 계속 작업하지 못한다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
+    });
+    await scan(user, t.scan.label.shipment, 'SYN-SH-없음');
+
+    expect(await screen.findByText(t.match.shipmentNotFound)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.scan.label.productionLot)).toBeDisabled();
+    expect(screen.queryByText(t.header.shipment(501))).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.confirm })).toBeDisabled();
+  });
+
+  it('새 납품라벨 조회가 실패해도 이전 출하 문맥으로 LOT을 담을 수 없다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
+    });
+    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-없음');
+
+    expect(await screen.findByText(t.match.labelNotFound)).toBeInTheDocument();
+    expect(screen.getByLabelText(t.scan.label.productionLot)).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.actions.confirm })).toBeDisabled();
+  });
+
   it('매칭되면 «서버가 준 판정»을 그대로 보이고 수량 패드가 선다', async () => {
     const user = userEvent.setup();
     renderScreen();
@@ -329,6 +375,43 @@ const pack = async (user: ReturnType<typeof userEvent.setup>, digits: string): P
 };
 
 describe('PackingResultScreen — 담기와 확정', () => {
+  it('열린 포장이 있으면 다른 출하 전환을 막고 취소 성공 뒤에만 새 출하를 조회한다', async () => {
+    const user = userEvent.setup();
+    const reads: Request[] = [];
+    renderScreen({ reads });
+
+    await scanUntilMatched(user);
+    await pack(user, '60');
+    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
+    await user.click(await screen.findByRole('option', { name: '카톤' }));
+    await screen.findByText('SYN-CTN-0091');
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0502');
+    expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
+    expect(
+      reads.some(
+        (request) =>
+          pathOf(request) === '/logistics/shipments' &&
+          queryOf(request).get('shipmentNo') === 'SYN-SH-0502',
+      ),
+    ).toBe(false);
+
+    await user.click(screen.getByRole('button', { name: t.actions.cancelUnit }));
+    await waitFor(() => {
+      expect(screen.queryByText('SYN-CTN-0091')).not.toBeInTheDocument();
+    });
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0502');
+    await waitFor(() => {
+      expect(
+        reads.some(
+          (request) =>
+            pathOf(request) === '/logistics/shipments' &&
+            queryOf(request).get('shipmentNo') === 'SYN-SH-0502',
+        ),
+      ).toBe(true);
+    });
+  });
+
   it('키패드로 친 수량이 화면에 보인다 — 누른 값이 어디로 갔는지 보이지 않으면 오입력을 못 알아챈다', async () => {
     const user = userEvent.setup();
     renderScreen();

@@ -71,7 +71,7 @@ export const PackingResultScreen = () => {
    * 대조할 수 없다.
    */
   const [labelCode, setLabelCode] = useState<string | null>(null);
-  const [entryError, setEntryError] = useState<'shipment' | 'label' | null>(null);
+  const [entryError, setEntryError] = useState<'shipment' | 'label' | 'open-unit' | null>(null);
   /** ② 마지막 판정. 담은 뒤에도 남겨 둔다 — 방금 읽은 것이 무엇이었는지가 사라지면 안 된다. */
   const [matched, setMatched] = useState<MatchedLot | null>(null);
   const [lines, setLines] = useState<PackedLine[]>([]);
@@ -142,7 +142,36 @@ export const PackingResultScreen = () => {
     setAutomaticLabelRun(null);
   };
 
+  /**
+   * 새 출하 조회를 시작하는 순간 이전 출하 문맥을 폐기한다. 조회 실패 뒤에도 이전 출하의 LOT을
+   * 계속 담을 수 있으면 화면에 읽힌 값과 쓰기 대상이 달라진다. 다만 열린 포장은 서버 자원이므로
+   * 화면 상태만 버리지 않고 명시적 취소가 성공할 때까지 전환 자체를 막는다.
+   */
+  const prepareEntryChange = (): boolean => {
+    if (openUnit !== null) {
+      setEntryError('open-unit');
+
+      return false;
+    }
+
+    setEntry(null);
+    setLabel(null);
+    setLabelCode(null);
+    setEntryError(null);
+    setMatched(null);
+    setLines([]);
+    setQty('');
+    setMergeNote(null);
+    setParentId(NO_PARENT);
+    setAutomaticLabelRun(null);
+
+    return true;
+  };
+
   const scanShipment = (shipmentNo: string): void => {
+    const isSameEntry = entry?.shipmentNo === shipmentNo;
+    if (!isSameEntry && !prepareEntryChange()) return;
+
     setMergeNote(null);
     setConfirmedNo(null);
     shipmentScan.mutate(shipmentNo, {
@@ -158,6 +187,9 @@ export const PackingResultScreen = () => {
   };
 
   const scanLabel = (code: string): void => {
+    const isSameEntry = labelCode === code && shipmentId !== null;
+    if (!isSameEntry && !prepareEntryChange()) return;
+
     setMergeNote(null);
     setConfirmedNo(null);
     setLabelCode(code);
@@ -257,6 +289,9 @@ export const PackingResultScreen = () => {
   });
 
   const matchMessage = ((): { tone: 'success' | 'error'; text: string } | null => {
+    if (entryError === 'open-unit') {
+      return { tone: 'error', text: t.match.openUnitBlocksShipmentChange };
+    }
     if (entryError === 'shipment') return { tone: 'error', text: t.match.shipmentNotFound };
     if (entryError === 'label') return { tone: 'error', text: t.match.labelNotFound };
     if (labelScan.isError || lotScan.isError) return { tone: 'error', text: t.match.lookupFailed };
@@ -380,6 +415,7 @@ export const PackingResultScreen = () => {
                 (shipment) => String(shipment.shipmentId) === value,
               );
               if (selected === undefined) return;
+              if (!prepareEntryChange()) return;
               shipmentSelection.mutate(selected, { onSuccess: applyEntry });
             }}
             options={todayShipments.shipments.map((shipment) => ({

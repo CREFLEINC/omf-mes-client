@@ -50,6 +50,7 @@ export const packingResult = {
     unknownReason: '이 납품라벨과 맞지 않는 LOT 입니다',
     labelNotFound: '등록되지 않은 납품라벨입니다',
     shipmentNotFound: '피킹 완료된 출하번호를 찾지 못했습니다',
+    openUnitBlocksShipmentChange: '열린 포장을 먼저 취소한 뒤 다른 출하를 읽으세요',
     lookupFailed: '조회하지 못했습니다. 다시 읽어 주세요',
   },
   contents: {
@@ -126,6 +127,7 @@ export const packingResult = {
     oqcWaiting: '검사 대기',
     lotUnavailable: 'LOT 미표시',
     failures: {
+      summary: '기존 발행 이력을 확인하지 못해 자동 출력을 중단했습니다.',
       issue: '발행 기록을 만들지 못했습니다.',
       render: '발행은 완료됐지만 라벨 이미지를 받지 못했습니다.',
       print: '발행은 완료됐지만 프린터로 출력하지 못했습니다.',
@@ -134,6 +136,8 @@ export const packingResult = {
     packingFailure: (reason: string): string => `포장 라벨: ${reason}`,
     deliveryFailure: (reason: string): string => `납품 라벨: ${reason}`,
     complete: '포장 라벨과 발행 가능한 납품 라벨의 자동 출력을 마쳤습니다.',
+    reissueRequired: (count: number): string =>
+      `${String(count)}건은 발행 기록이 있지만 인쇄 완료가 아닙니다. 라벨 재출력에서 사유를 골라 처리하세요.`,
     waiting: (count: number): string =>
       `납품 라벨 ${String(count)}건은 OQC 합격 또는 검사 비대상으로 바뀐 뒤 출력할 수 있습니다.`,
     retryPackingIssue: '포장 라벨 발행 다시 시도',

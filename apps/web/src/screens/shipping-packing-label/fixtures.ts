@@ -56,11 +56,12 @@ export const summary = (
   targetId: number,
   issueCount: number,
   lastIssuedAt: string | null = null,
+  lastPrintOutcome: 'PENDING' | 'SUCCEEDED' | 'FAILED' | null = null,
 ) => ({
   targetId,
   issueCount,
   ...(lastIssuedAt === null ? {} : { lastIssuedAt }),
-  lastPrintOutcome: null,
+  lastPrintOutcome,
 });
 
 /** 발행 기록 한 건. */

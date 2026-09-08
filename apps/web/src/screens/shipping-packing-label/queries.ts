@@ -38,6 +38,39 @@ import {
 type Client = ApiClient['client'];
 
 const ROOT = 'shipping-packing-label';
+const PAGE_SIZE = 100;
+/** `GET /app/document-issues/summary` 계약의 `targetIds` 상한. */
+const SUMMARY_TARGET_LIMIT = 1_000;
+
+interface PageResponse<T> {
+  items: T[];
+  page: { page: number; size: number; total: number };
+}
+
+const collectAllPages = async <T>(
+  fetchPage: (page: number, size: number) => Promise<PageResponse<T>>,
+): Promise<T[]> => {
+  const first = await fetchPage(1, PAGE_SIZE);
+  const pageSize = Math.max(1, first.page.size);
+  const totalPages = Math.ceil(first.page.total / pageSize);
+  const rest = await Promise.all(
+    Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2).map((page) =>
+      fetchPage(page, pageSize),
+    ),
+  );
+  const items = [first, ...rest].flatMap((response) => response.items);
+
+  if (items.length < first.page.total) {
+    throw new Error('라벨 관련 목록 전체를 불러오지 못했습니다.');
+  }
+
+  return items.slice(0, first.page.total);
+};
+
+const chunkTargets = (targetIds: readonly number[]): number[][] =>
+  Array.from({ length: Math.ceil(targetIds.length / SUMMARY_TARGET_LIMIT) }, (_, index) =>
+    targetIds.slice(index * SUMMARY_TARGET_LIMIT, (index + 1) * SUMMARY_TARGET_LIMIT),
+  );
 
 export const labelKeys = {
   shipment: (shipmentId: number | null) => [ROOT, 'shipment', shipmentId] as const,
@@ -88,15 +121,18 @@ export const useAllocations = (shipmentId: number | null): UseQueryResult<Alloca
   return useQuery({
     queryKey: labelKeys.allocations(shipmentId),
     enabled: shipmentId !== null,
-    queryFn: async () => {
+    queryFn: () => {
       if (shipmentId === null) throw new Error('출하 없이 배분을 조회하지 않습니다.');
 
-      const data = await runRequest(() =>
-        client.GET('/logistics/shipment-lot-allocations', { params: { query: { shipmentId } } }),
+      return collectAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/logistics/shipment-lot-allocations', {
+            params: { query: { shipmentId, page, size } },
+          }),
+        ),
       );
-
-      return data.items.map(toAllocationView);
     },
+    select: (items) => items.map(toAllocationView),
   });
 };
 
@@ -186,28 +222,42 @@ export const useIssueSummaries = (
 ): UseQueryResult<IssueSummaryView[]> => {
   const { client } = useApiClient();
   const targetTypeCode = kind === null ? '' : targetTypeCodeOf(kind);
+  const ids = [...new Set(targetIds)].sort((left, right) => left - right);
 
   return useQuery({
-    queryKey: labelKeys.summary(targetTypeCode, kind ?? '', targetIds),
-    enabled: kind !== null && targetIds.length > 0,
+    queryKey: labelKeys.summary(targetTypeCode, kind ?? '', ids),
+    enabled: kind !== null && ids.length > 0,
     queryFn: async () => {
       if (kind === null) throw new Error('라벨 종류 없이 발행 현황을 조회하지 않습니다.');
 
-      const data = await runRequest(() =>
-        client.GET('/app/document-issues/summary', {
-          params: {
-            query: {
-              /* 종류가 정해진 뒤에만 여기 온다 — 계약이 닫은 대상 유형 형으로 다시 뽑는다. */
-              targetTypeCode: targetTypeCodeOf(kind),
-              targetIds: [...targetIds],
-              // 한 대상에 라벨과 성적서가 따로 붙을 수 있다 — 이 화면 몫만 센다(계약 명시).
-              documentTypeCode: kind,
-            },
-          },
-        }),
+      const responses = await Promise.all(
+        chunkTargets(ids).map((targetChunk) =>
+          runRequest(() =>
+            client.GET('/app/document-issues/summary', {
+              params: {
+                query: {
+                  targetTypeCode: targetTypeCodeOf(kind),
+                  targetIds: targetChunk,
+                  documentTypeCode: kind,
+                },
+              },
+            }),
+          ),
+        ),
       );
+      const summaries = responses.flatMap((response) => response.items.map(toIssueSummaryView));
+      const receivedIds = new Set(summaries.map((summary) => summary.targetId));
 
-      return data.items.map(toIssueSummaryView);
+      /* 계약은 요청한 전건을 돌려준다. 하나라도 없으면 0회로 추정하지 않고 발행을 닫는다. */
+      if (ids.some((targetId) => !receivedIds.has(targetId))) {
+        throw new Error('대상별 발행 현황이 일부 누락됐습니다.');
+      }
+
+      if (receivedIds.size !== summaries.length) {
+        throw new Error('대상별 발행 현황에 중복 대상이 있습니다.');
+      }
+
+      return summaries;
     },
   });
 };
@@ -242,7 +292,6 @@ export const usePrinters = (kind: LabelKind | null): UseQueryResult<PrinterView[
 
       if (local !== null) return local.map(toPrinterView);
 
-
       const data = await runRequest(() =>
         client.GET('/app/printers', { params: { query: { documentTypeCode: kind } } }),
       );
@@ -273,15 +322,15 @@ export const useReissueReasons = (enabled: boolean): UseQueryResult<ReissueReaso
   return useQuery({
     queryKey: labelKeys.reissueReasons,
     enabled,
-    queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/code-values', {
-          params: { query: { codeGroupCode: REISSUE_REASON_CODE_GROUP } },
-        }),
-      );
-
-      return data.items.map((item) => ({ code: item.code, name: item.codeName }));
-    },
+    queryFn: () =>
+      collectAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: { query: { codeGroupCode: REISSUE_REASON_CODE_GROUP, page, size } },
+          }),
+        ),
+      ),
+    select: (items) => items.map((item) => ({ code: item.code, name: item.codeName })),
   });
 };
 
@@ -307,15 +356,23 @@ export const useIssueHistory = (
       if (kind === null || targetId === null)
         throw new Error('대상 없이 이력을 조회하지 않습니다.');
 
-      const data = await runRequest(() =>
-        client.GET('/app/document-issues', {
-          params: {
-            query: { targetTypeCode: targetTypeCodeOf(kind), targetId, documentTypeCode: kind },
-          },
-        }),
+      const items = await collectAllPages((page, size) =>
+        runRequest(() =>
+          client.GET('/app/document-issues', {
+            params: {
+              query: {
+                targetTypeCode: targetTypeCodeOf(kind),
+                targetId,
+                documentTypeCode: kind,
+                page,
+                size,
+              },
+            },
+          }),
+        ),
       );
 
-      return data.items.map(toIssueView);
+      return items.map(toIssueView);
     },
   });
 };
