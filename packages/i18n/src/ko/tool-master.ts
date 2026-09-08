@@ -26,6 +26,9 @@ export const toolMaster = {
     partialWarning:
       '성공한 행은 그대로 등록되고 실패한 행만 돌아옵니다. 잘못 올려도 되돌리는 수단이 없으니 파일을 먼저 확인하세요.',
     noLabelNote: '올리기는 마스터 행만 만듭니다. 라벨은 발행되지 않습니다.',
+    plantLabel: '대상 공장',
+    plantPlaceholder: '공장을 고르세요',
+    plantRequired: '올릴 공장을 먼저 고르세요.',
     fileLabel: '툴 엑셀 파일',
     filePlaceholder: '파일 고르기',
     fileNone: '고른 파일이 없습니다.',

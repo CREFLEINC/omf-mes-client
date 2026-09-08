@@ -1,9 +1,7 @@
 import type { LotComplete } from './types';
 
 /**
- * 완료 요청 본문을 짓는 자리. **화면이 아니라 여기서 짓는다** — 「완료」와 「미달 마감」이 같은
- * 오퍼레이션을 부르고 **사유 하나로만 갈리므로**, 두 곳에서 지으면 미달인데 사유가 빠진 본문이
- * 나갈 수 있다.
+ * 완료 요청 본문을 짓는 자리. **화면이 아니라 여기서 짓는다.**
  *
  * ⛔ **202 분기를 만들지 않는다.** 착수 통지의 「즉시 처리 201 · 큐 접수 202」 줄은 2026-08-12 에
  * 무효화됐다 — 오프라인이면 HTTP 요청 자체가 일어나지 않아 서버가 202 를 보낼 수 없다. 계약의
@@ -41,7 +39,7 @@ export const toOccurredAt = (at: Date): string =>
   )}${offsetText(at)}`;
 
 export interface CompleteRequestInput {
-  /** 미달 마감인가. 참이면 사유가 반드시 실린다 */
+  /** 통합 화면 전환 전 구 화면에서 누른 완료 분기. 최신 계약 본문에는 싣지 않는다. */
   under: boolean;
   /** 고른 미달 사유. 완료 처리에서는 쓰이지 않는다 */
   reasonCode: string | null;
@@ -50,20 +48,14 @@ export interface CompleteRequestInput {
 }
 
 /**
- * 본문을 만든다. **만들 수 없으면 `null`** — 미달인데 사유가 없으면 보내지 않는다.
- *
- * ⛔ **완료 처리에 사유를 싣지 않는다.** 목표를 채운 LOT 에 미달 사유가 붙으면 나중에 수율을
- * 분석할 때 달성분이 미달로 집계된다 — 서버는 값이 오면 그대로 기록한다.
+ * 최신 계약 본문을 만든다. 구 화면의 미달 마감은 최신 계약으로 표현할 수 없으므로 `null`을
+ * 돌려 요청을 막는다. 버튼과 화면 흐름의 통합은 별도 P-02-04 화면 작업에서 정리한다.
  */
 export const toCompleteRequest = (input: CompleteRequestInput): LotComplete | null => {
   const businessDate = toBusinessDate(input.at);
   const occurredAt = toOccurredAt(input.at);
 
-  if (!input.under) return { businessDate, occurredAt };
+  if (input.under) return null;
 
-  const reasonCode = input.reasonCode?.trim() ?? '';
-
-  if (reasonCode === '') return null;
-
-  return { businessDate, occurredAt, completionVarianceReasonCode: reasonCode };
+  return { businessDate, occurredAt };
 };

@@ -46,6 +46,7 @@ export const ProductionLotCompleteScreen = () => {
   const [selectedLotId, setSelectedLotId] = useState<number | null>(null);
   const [reasonCode, setReasonCode] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [underCloseBlocked, setUnderCloseBlocked] = useState(false);
 
   const headerWorkOrder = useHeaderWorkOrder(entry.workOrderId);
   const lots = useTargetLots(entry.workOrderId);
@@ -104,8 +105,14 @@ export const ProductionLotCompleteScreen = () => {
 
     const body = toCompleteRequest({ under, reasonCode, at: submitAtRef.current });
 
-    if (body === null) return;
+    if (body === null) {
+      submitAtRef.current = null;
+      attemptRef.current = null;
+      setUnderCloseBlocked(true);
+      return;
+    }
 
+    setUnderCloseBlocked(false);
     complete.write(body);
   };
 
@@ -113,6 +120,7 @@ export const ProductionLotCompleteScreen = () => {
     setSelectedLotId(lotId);
     setReasonCode(null);
     setOutcome(null);
+    setUnderCloseBlocked(false);
     submitAtRef.current = null;
   }, []);
 
@@ -229,6 +237,12 @@ export const ProductionLotCompleteScreen = () => {
           }}
           onReload={reload}
         />
+      )}
+
+      {underCloseBlocked && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning">{t.action.closeUnderMoved}</AlertBanner>
+        </div>
       )}
 
       {succeeded && (

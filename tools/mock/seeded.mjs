@@ -87,10 +87,17 @@ const byText = (query, key, field) => {
 
 const contains = (query, key, field) => {
   const value = query.get(key);
-  return (row) => value === null || value === '' || String(row[field] ?? '').includes(value);
+  const needle = value?.toUpperCase();
+  return (row) =>
+    needle === undefined ||
+    needle === '' ||
+    String(row[field] ?? '')
+      .toUpperCase()
+      .includes(needle);
 };
 
 const withProgress = (lot) => ({ ...lot, progress: lot.progress ?? undefined });
+const withoutProgress = ({ progress: _progress, ...lot }) => lot;
 
 const routes = [];
 const on = (method, pattern, handle) => {
@@ -217,20 +224,50 @@ on('GET', '/mdm/terminals/{terminalId}/processes', () => ({
 on('GET', '/trace/lots', (_p, query) => {
   const completed = bool(query, 'completed');
   const heldOnly = bool(query, 'heldOnly');
+  const currentOnly = bool(query, 'currentOnly');
+  const workOrderId = num(query, 'workOrderId');
+  const includeProgress = bool(query, 'withProgress') === true;
 
-  return page(
-    keep(state.lots, [
-      byText(query, 'lotNo', 'lotNo'),
-      contains(query, 'q', 'lotNo'),
-      byNum(query, 'itemId', 'itemId'),
-      byText(query, 'lotTypeCode', 'lotTypeCode'),
-      byText(query, 'statusCode', 'statusCode'),
-      byNum(query, 'workOrderId', 'sourceId'),
-      (row) => completed === null || (row.completedAt !== null) === completed,
-      (row) => heldOnly === null || row.held === heldOnly,
-    ]).map(withProgress),
-    query,
-  );
+  if (currentOnly === true && workOrderId === null) {
+    return {
+      status: 400,
+      created: {
+        code: 'WORK_ORDER_REQUIRED',
+        message: '현재 생산 LOT 조회에는 작업 지시가 필요합니다.',
+        errors: [],
+      },
+    };
+  }
+
+  let lots = keep(state.lots, [
+    byText(query, 'lotNo', 'lotNo'),
+    contains(query, 'q', 'lotNo'),
+    byNum(query, 'itemId', 'itemId'),
+    byText(query, 'lotTypeCode', 'lotTypeCode'),
+    byText(query, 'statusCode', 'statusCode'),
+    (row) =>
+      workOrderId === null || (row.sourceTypeCode === 'WORK_ORDER' && row.sourceId === workOrderId),
+    (row) => completed === null || (row.completedAt !== null) === completed,
+    (row) => heldOnly === null || row.held === heldOnly,
+  ]);
+
+  if (currentOnly === true) {
+    lots = lots
+      .filter(
+        (row) =>
+          row.lotTypeCode === 'PRODUCTION' &&
+          row.completedAt === null &&
+          (row.lifecycleStatusCode === 'WAITING' || row.lifecycleStatusCode === 'ACTIVE'),
+      )
+      .sort(
+        (left, right) =>
+          (left.workOrderSequenceNo ?? Number.MAX_SAFE_INTEGER) -
+          (right.workOrderSequenceNo ?? Number.MAX_SAFE_INTEGER),
+      )
+      .slice(0, 1);
+  }
+
+  return page(lots.map(includeProgress ? withProgress : withoutProgress), query);
 });
 
 on('GET', '/trace/lots/{lotId}', (params) => {
@@ -499,6 +536,14 @@ on('POST', '/trace/lots/{lotId}:request-iqc-skip', (params, _q, body) => {
 
 /* ── 재고 ─────────────────────────────────────────────────── */
 
+const withLabelIssued = (handlingUnit) => ({
+  ...handlingUnit,
+  labelIssued: state.documentIssues.some(
+    (issue) =>
+      issue.targetTypeCode === 'HANDLING_UNIT' && issue.targetId === handlingUnit.handlingUnitId,
+  ),
+});
+
 on('GET', '/inventory/balances', (_p, query) =>
   page(
     keep(state.balances, [
@@ -514,10 +559,25 @@ on('GET', '/inventory/balances', (_p, query) =>
 
 on('GET', '/inventory/handling-units', (_p, query) =>
   page(
-    keep(state.handlingUnits, [
+    keep(state.handlingUnits.map(withLabelIssued), [
       contains(query, 'q', 'handlingUnitNo'),
       byNum(query, 'warehouseId', 'warehouseId'),
       byNum(query, 'locationId', 'locationId'),
+      byText(query, 'handlingUnitTypeCode', 'handlingUnitTypeCode'),
+      byText(query, 'statusCode', 'statusCode'),
+      (row) => {
+        const asked = bool(query, 'labelIssued');
+        return asked === null || row.labelIssued === asked;
+      },
+      (row) => {
+        const lotId = num(query, 'lotId');
+        return (
+          lotId === null ||
+          state.handlingUnitContents.some(
+            (content) => content.handlingUnitId === row.handlingUnitId && content.lotId === lotId,
+          )
+        );
+      },
     ]),
     query,
   ),
@@ -530,7 +590,7 @@ on('GET', '/inventory/handling-units/{handlingUnitId}', (params) => {
   return handlingUnit === undefined
     ? null
     : {
-        handlingUnit,
+        handlingUnit: withLabelIssued(handlingUnit),
         contents: state.handlingUnitContents.filter((each) => each.handlingUnitId === id),
       };
 });
@@ -564,7 +624,31 @@ on('POST', '/inventory/handling-units', (_p, _q, body) => {
   state.handlingUnitContents.push(...contents);
 
   /* 계약의 201 은 HandlingUnitDetailResponse 다 — 취급 단위만 내리면 화면이 번호를 못 읽는다. */
-  return { created: { handlingUnit: created, contents }, status: 201 };
+  return { created: { handlingUnit: withLabelIssued(created), contents }, status: 201 };
+});
+
+on('DELETE', '/inventory/handling-units/{handlingUnitId}', (params) => {
+  const id = Number(params.handlingUnitId);
+  const index = state.handlingUnits.findIndex((each) => each.handlingUnitId === id);
+
+  if (index < 0) return null;
+
+  const handlingUnit = state.handlingUnits[index];
+  const hasContents = state.handlingUnitContents.some((each) => each.handlingUnitId === id);
+
+  if (hasContents || handlingUnit.statusCode === 'PACKED') {
+    return {
+      status: 409,
+      created: {
+        code: 'HANDLING_UNIT_DELETE_CONFLICT',
+        message: '내용물이 있거나 이미 확정된 포장 단위는 취소할 수 없습니다.',
+        errors: [],
+      },
+    };
+  }
+
+  state.handlingUnits.splice(index, 1);
+  return { status: 204, created: undefined };
 });
 
 /*
@@ -614,7 +698,7 @@ on('POST', '/inventory/handling-units/{handlingUnitId}:pack', (params, _q, body)
   state.handlingUnitContents.push(...contents);
   handlingUnit.statusCode = 'PACKED';
 
-  return { handlingUnit, contents };
+  return { handlingUnit: withLabelIssued(handlingUnit), contents };
 });
 
 /* 치환이라 요청에서 빠진 줄은 지워진다. 실서버와 같은 성격이어야 화면이 그것을 시험할 수 있다. */
@@ -722,6 +806,9 @@ on('POST', '/trace/lots', (_p, _q, body) => {
     uomId: body?.uomId,
     sourceTypeCode: body?.sourceTypeCode,
     sourceId: body?.sourceId,
+    lifecycleStatusCode: null,
+    workOrderSequenceNo: null,
+    workOrderLotCount: null,
     /* 등록 즉시 검사 대기로 선다. 입하는 합격 전에 쓸 수 없다. */
     statusCode: 'INSPECTION_PENDING',
     completedAt: null,
@@ -1310,7 +1397,10 @@ on('POST', '/logistics/goods-receipts', (_p, _q, body) => {
 const shipmentEtag = (shipment) => `W/"${String(shipment.versionNo ?? 1)}"`;
 
 on('GET', '/logistics/shipments', (_p, query) => {
+  const shipmentNo = query.get('shipmentNo');
+  const shipmentRequestId = num(query, 'shipmentRequestId');
   const customerId = num(query, 'customerId');
+  const warehouseId = num(query, 'warehouseId');
   const lotId = num(query, 'lotId');
   const from = query.get('shipDateFrom');
   const to = query.get('shipDateTo');
@@ -1323,17 +1413,16 @@ on('GET', '/logistics/shipments', (_p, query) => {
 
   return page(
     keep(state.shipments, [
+      (row) => shipmentNo === null || shipmentNo === '' || row.shipmentNo === shipmentNo,
+      (row) => shipmentRequestId === null || row.shipmentRequestId === shipmentRequestId,
       byText(query, 'statusCode', 'statusCode'),
       (row) => customerId === null || requestOf(row)?.customerId === customerId,
+      (row) => warehouseId === null || row.warehouseId === warehouseId,
       (row) => unconfirmedOnly !== true || row.statusCode === 'UNCONFIRMED',
       (row) => from === null || (row.shippedAt ?? '').slice(0, 10) >= from,
       (row) => to === null || (row.shippedAt ?? '').slice(0, 10) <= to,
       (row) => lotId === null || allocationsOf(row).some((each) => each.lotId === lotId),
-      (row) =>
-        q === null ||
-        q === '' ||
-        row.shipmentNo.includes(q) ||
-        allocationsOf(row).some((each) => String(each.lotNo ?? '').includes(q)),
+      (row) => q === null || q === '' || row.shipmentNo.toUpperCase().includes(q.toUpperCase()),
     ]),
     query,
   );
@@ -1346,9 +1435,22 @@ on('GET', '/logistics/shipments', (_p, query) => {
  * 손으로 볼 수 없다(실측). 씨앗이 가진 배분으로 그 갈림을 만든다.
  */
 const allocationRows = () =>
-  state.shipments.flatMap((shipment) =>
-    (shipment.lines ?? []).flatMap((line) => line.allocations ?? []),
-  );
+  state.shipments.flatMap((shipment) => {
+    const request = state.shipmentRequests.find(
+      (row) => row.shipmentRequestId === shipment.shipmentRequestId,
+    );
+    const customer = state.partners.find((row) => row.partnerId === request?.customerId);
+
+    return (shipment.lines ?? []).flatMap((line) =>
+      (line.allocations ?? []).map((allocation) => ({
+        ...allocation,
+        shipmentRequestNo: request?.shipmentRequestNo,
+        customerName: customer?.partnerName,
+        shippingInspectionStatusCode:
+          allocation.shippingInspectionStatusCode ?? (allocation.oqcPassed ? 'PASSED' : 'PENDING'),
+      })),
+    );
+  });
 
 const shipmentNoOf = (shipmentId) =>
   state.shipments.find((row) => row.shipmentId === shipmentId)?.shipmentNo ?? '';
@@ -1358,7 +1460,10 @@ on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
   const q = query.get('q');
   const lotQ = query.get('lotQ');
   const rows = allocationRows();
-  const hit = (value, needle) => String(value ?? '').toUpperCase().includes(needle);
+  const hit = (value, needle) =>
+    String(value ?? '')
+      .toUpperCase()
+      .includes(needle);
 
   /* ① 납품라벨 스캔 — 출하번호·LOT 번호로 찾는다. 못 찾으면 «없는 라벨»이라 빈 목록이다. */
   if (q !== null) {
@@ -1367,9 +1472,7 @@ on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
     return page(
       needle === ''
         ? []
-        : rows.filter(
-            (row) => hit(shipmentNoOf(row.shipmentId), needle) || hit(row.lotNo, needle),
-          ),
+        : rows.filter((row) => hit(shipmentNoOf(row.shipmentId), needle) || hit(row.lotNo, needle)),
       query,
     );
   }
@@ -1394,6 +1497,43 @@ on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
     shipmentId === null ? rows : rows.filter((row) => row.shipmentId === shipmentId),
     query,
   );
+});
+
+on(
+  'GET',
+  '/logistics/shipment-lot-allocations/{shipmentLotAllocationId}',
+  (params) =>
+    allocationRows().find(
+      (row) => row.shipmentLotAllocationId === Number(params.shipmentLotAllocationId),
+    ) ?? null,
+);
+
+on('PUT', '/logistics/shipment-lot-allocations/{shipmentLotAllocationId}', (params, _q, body) => {
+  const id = Number(params.shipmentLotAllocationId);
+  const allocation = state.shipments
+    .flatMap((shipment) => shipment.lines ?? [])
+    .flatMap((line) => line.allocations ?? [])
+    .find((row) => row.shipmentLotAllocationId === id);
+
+  if (allocation === undefined) return null;
+
+  if (
+    allocation.handlingUnitId !== undefined &&
+    allocation.handlingUnitId !== null &&
+    allocation.handlingUnitId !== body?.handlingUnitId
+  ) {
+    return {
+      status: 409,
+      created: {
+        code: 'ALLOCATION_ALREADY_PACKED',
+        message: '이미 다른 포장 단위에 연결된 배분입니다.',
+        errors: [],
+      },
+    };
+  }
+
+  allocation.handlingUnitId = body?.handlingUnitId;
+  return allocationRows().find((row) => row.shipmentLotAllocationId === id);
 });
 
 on('GET', '/logistics/shipments/{shipmentId}', (params) => {
@@ -1896,6 +2036,18 @@ const sendBinary = (response, { contentType, bytes }) => {
 };
 
 const send = (response, status, payload, headers = {}) => {
+  if (status === 204) {
+    response.writeHead(status, {
+      ...headers,
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      'Access-Control-Expose-Headers': 'ETag, Location',
+    });
+    response.end();
+    return;
+  }
+
   const body = JSON.stringify(payload);
   response.writeHead(status, {
     ...headers,

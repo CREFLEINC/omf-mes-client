@@ -126,6 +126,8 @@ describe('toLotDetailView', () => {
         sourceId: 9021,
         initialQty: 10,
         uomId: 9501,
+        workOrderSequenceNo: null,
+        workOrderLotCount: null,
       },
       externalIdentifiers: [
         {

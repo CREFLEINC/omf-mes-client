@@ -59,6 +59,8 @@ export const makeLot = (overrides: Partial<Lot> = {}): Lot => ({
   sourceTypeCode: 'INBOUND_RECEIPT_LINE',
   sourceId: 12345,
   statusCode: 'NORMAL',
+  workOrderSequenceNo: null,
+  workOrderLotCount: null,
   ...overrides,
 });
 

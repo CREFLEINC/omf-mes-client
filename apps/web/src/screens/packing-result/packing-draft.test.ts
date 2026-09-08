@@ -27,6 +27,7 @@ const allocation = (overrides: Partial<ShipmentLotAllocation> = {}): ShipmentLot
   warehouseId: 1001,
   allocatedQty: 180,
   uomId: 920001,
+  shippingInspectionStatusCode: 'PASSED',
   oqcPassed: true,
   packedQty: 0,
   ...overrides,

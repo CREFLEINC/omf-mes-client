@@ -152,6 +152,8 @@ const MINIMAL_LOT_DETAIL: LotDetailResponse = {
     sourceTypeCode: 'SAMPLE_SRC_A',
     sourceId: 9701,
     statusCode: 'SAMPLE_LOT_S_A',
+    workOrderSequenceNo: null,
+    workOrderLotCount: null,
   },
   externalIdentifiers: [],
   holds: [],

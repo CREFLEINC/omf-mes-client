@@ -22,22 +22,9 @@ describe('toCompleteRequest', () => {
     expect(body).not.toHaveProperty('completionVarianceReasonCode');
   });
 
-  it('미달 마감은 사유를 싣는다', () => {
-    const body = toCompleteRequest({ under: true, reasonCode: 'MATERIAL_SHORTAGE', at });
-
-    expect(body?.completionVarianceReasonCode).toBe('MATERIAL_SHORTAGE');
-  });
-
-  /** 서버도 400 으로 막지만, 화면이 먼저 막아야 사용자가 보내기 전에 안다. */
-  it('미달인데 사유가 없으면 본문을 만들지 않는다', () => {
+  it('구 화면의 미달 마감은 최신 LOT 완료 계약으로 보내지 않는다', () => {
+    expect(toCompleteRequest({ under: true, reasonCode: 'MATERIAL_SHORTAGE', at })).toBeNull();
     expect(toCompleteRequest({ under: true, reasonCode: null, at })).toBeNull();
-    expect(toCompleteRequest({ under: true, reasonCode: '  ', at })).toBeNull();
-  });
-
-  it('사유의 앞뒤 공백을 떼고 싣는다', () => {
-    const body = toCompleteRequest({ under: true, reasonCode: ' SHORT ', at });
-
-    expect(body?.completionVarianceReasonCode).toBe('SHORT');
   });
 });
 
