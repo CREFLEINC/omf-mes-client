@@ -1,11 +1,32 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
+import { setWorkerSession } from '../../patterns/worker-session';
 import { renderHookWithProviders } from '../../test/api-harness';
 
 import { mergeIdentity, usePackingIdentity } from './entry-context';
 
 describe('usePackingIdentity', () => {
+  afterEach(() => {
+    setWorkerSession(null);
+  });
+
+  const assignWorker = (workerNo: string): void => {
+    setWorkerSession({
+      worker: {
+        workerId: 1001,
+        workerNo,
+        workerName: '김작업',
+        businessUnitId: 1,
+        plantId: 10,
+        statusCode: 'ACTIVE',
+        isActive: true,
+      },
+      assignedAt: '2026-09-09T08:00:00+09:00',
+      isOtherPlant: false,
+    });
+  };
+
   it('셸이 모를 때 주소에서 받는다 — 단말·인증이 서기 전의 임시 통로다', () => {
     const { result } = renderHookWithProviders(() => usePackingIdentity(), {
       route: '/pop/packing?terminalId=101&processId=301&workerNo=3391',
@@ -30,6 +51,33 @@ describe('usePackingIdentity', () => {
     );
 
     expect(merged).toEqual({ terminalId: 101, processId: 301, workerNo: '3391' });
+  });
+
+  it('P-CO-01이 지정한 작업자를 주소 없이 이어받는다', () => {
+    assignWorker('900044');
+
+    const { result } = renderHookWithProviders(() => usePackingIdentity(), {
+      route: '/pop/packing?terminalId=101&processId=301',
+    });
+
+    expect(result.current).toEqual({ terminalId: 101, processId: 301, workerNo: '900044' });
+  });
+
+  it('셸이 사번을 알면 현재 작업자 세션과 주소보다 먼저 쓴다', () => {
+    expect(
+      mergeIdentity(
+        { terminalId: 101, processId: 301, workerNo: '900028' },
+        new URLSearchParams('workerNo=900099'),
+        '900044',
+      ).workerNo,
+    ).toBe('900028');
+  });
+
+  it('셸이 비어 있으면 현재 작업자 세션을 주소보다 먼저 쓴다', () => {
+    expect(
+      mergeIdentity(UNKNOWN_POP_IDENTITY, new URLSearchParams('workerNo=900099'), '900044')
+        .workerNo,
+    ).toBe('900044');
   });
 
   it('⛔ 없는 값을 지어내지 않는다 — 빈 주소는 «모른다»로 남는다', () => {
