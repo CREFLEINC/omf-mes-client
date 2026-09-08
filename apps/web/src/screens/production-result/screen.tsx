@@ -55,6 +55,7 @@ type OutputPhase =
   | 'scanReady'
   | 'issueFailed'
   | 'printFailed'
+  | 'legacyMismatch'
   | 'completing'
   | 'completed';
 
@@ -99,6 +100,7 @@ export const ProductionFlowScreen = () => {
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
   const [completedPage, setCompletedPage] = useState(1);
   const [appliedLotId, setAppliedLotId] = useState<number | null>(null);
+  const [confirmedResultLotId, setConfirmedResultLotId] = useState<number | null>(null);
   const [lotPrintTargets, setLotPrintTargets] = useState<PrintTarget[]>([]);
   const [tagPrintTargets, setTagPrintTargets] = useState<PrintTarget[]>([]);
   const [pendingTagIssue, setPendingTagIssue] = useState<DocumentIssueCreate | null>(null);
@@ -124,6 +126,10 @@ export const ProductionFlowScreen = () => {
     parsedQty === null || serialCount === null
       ? null
       : missingIdentificationCount(parsedQty, serialCount);
+  const lot = currentLot.data ?? null;
+  const serverAppliedQty = appliedGoodQty(lot);
+  const hasAppliedResult =
+    lot !== null && (serverAppliedQty !== null || confirmedResultLotId === lot.lotId);
 
   const lotPrint = useLabelPrintRunner(entry.workerNo);
   const tagPrint = useLabelPrintRunner(entry.workerNo);
@@ -181,6 +187,7 @@ export const ProductionFlowScreen = () => {
     if (lotId === undefined) return;
 
     setAppliedLotId(lotId);
+    setConfirmedResultLotId(lotId);
     setOutputPhase('issuing');
   };
 
@@ -188,20 +195,43 @@ export const ProductionFlowScreen = () => {
 
   useEffect(() => {
     const lot = currentLot.data;
-    if (lot === null || lot === undefined || appliedLotId !== lot.lotId) return;
+    if (
+      lot === null ||
+      lot === undefined ||
+      appliedLotId !== lot.lotId ||
+      lotIssues.data === undefined
+    ) {
+      return;
+    }
 
     setAppliedLotId(null);
+    if (currentIssue !== null) {
+      const targets = targetsOf([currentIssue]);
+      setLotPrintTargets(targets);
+      setOutputPhase('printing');
+      void lotPrint.run(targets);
+      return;
+    }
+
     lotIssue.write(buildLotIssue(lot.lotId, lotPrinter?.printerName ?? null));
-    // `write`는 렌더마다 달라지는 이벤트 함수다. 적용 LOT 변화만 한 번 처리한다.
+    // 쓰기·인쇄 함수는 렌더마다 달라진다. 적용 LOT과 서버 이력 변화만 한 번 처리한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedLotId, currentLot.data?.lotId, lotPrinter?.printerName]);
+  }, [
+    appliedLotId,
+    currentIssue?.documentIssueLogId,
+    currentLot.data?.lotId,
+    lotIssues.data,
+    lotPrinter?.printerName,
+  ]);
 
   useEffect(() => {
-    if (lotPrint.state.phase === 'succeeded') setOutputPhase('scanReady');
+    if (lotPrint.state.phase === 'succeeded') {
+      setOutputPhase(hasAppliedResult ? 'scanReady' : 'legacyMismatch');
+    }
     if (lotPrint.state.phase === 'failed' || lotPrint.state.phase === 'shellUnavailable') {
       setOutputPhase('printFailed');
     }
-  }, [lotPrint.state.phase]);
+  }, [hasAppliedResult, lotPrint.state.phase]);
 
   useEffect(() => {
     if (lotIssue.error !== null && outputPhase === 'issuing') setOutputPhase('issueFailed');
@@ -217,12 +247,6 @@ export const ProductionFlowScreen = () => {
   useEffect(() => {
     if (outbox.rejection !== null && outputPhase === 'queued') setOutputPhase('idle');
   }, [outbox.rejection, outputPhase]);
-
-  useEffect(() => {
-    if (outputPhase === 'idle' && currentIssue?.printOutcome === 'SUCCEEDED') {
-      setOutputPhase('scanReady');
-    }
-  }, [currentIssue?.printOutcome, outputPhase]);
 
   useEffect(() => {
     const lot = currentLot.data;
@@ -244,14 +268,18 @@ export const ProductionFlowScreen = () => {
     setTagReissueReason(null);
     setPendingSerialQuantity(0);
     setPendingTagDocuments([]);
+    setConfirmedResultLotId((confirmedLotId) =>
+      confirmedLotId === nextLotId ? confirmedLotId : null,
+    );
   }, [currentLot.data]);
 
-  const lot = currentLot.data ?? null;
-  const serverAppliedQty = appliedGoodQty(lot);
-
   useEffect(() => {
-    if (lot === null || serverAppliedQty === null || lotIssues.data === undefined) return;
-    if (!['idle', 'issueFailed', 'printFailed'].includes(outputPhase)) return;
+    if (lot === null || lotIssues.data === undefined || outputPhase !== 'idle') return;
+
+    if (serverAppliedQty === null) {
+      if (currentIssue !== null) setOutputPhase('legacyMismatch');
+      return;
+    }
 
     setActualQty(String(serverAppliedQty));
     if (currentIssue?.printOutcome === 'SUCCEEDED') {
@@ -323,7 +351,7 @@ export const ProductionFlowScreen = () => {
     isTagTarget !== true || (hasCompleteTagSummary && printedSerials.length === serialItems.length);
   const isQuantityLocked =
     outputPhase !== 'idle' ||
-    serverAppliedQty !== null ||
+    hasAppliedResult ||
     (lot !== null && outbox.isPendingForLot(lot.lotId));
   const canOutput =
     lot !== null &&
@@ -341,7 +369,7 @@ export const ProductionFlowScreen = () => {
     outputPhase === 'idle' &&
     !outbox.isPendingForLot(lot.lotId) &&
     currentIssue === null &&
-    serverAppliedQty === null;
+    !hasAppliedResult;
 
   const queueOutput = (): void => {
     if (!canOutput || lot === null || parsedQty === null || entry.workOrderId === null) return;
@@ -483,6 +511,8 @@ export const ProductionFlowScreen = () => {
         return lotPrint.state.phase === 'shellUnavailable'
           ? t.flow.output.shellUnavailable
           : t.flow.output.printFailed;
+      case 'legacyMismatch':
+        return t.flow.output.legacyMismatch;
       case 'completing':
         return t.flow.scan.completing;
       case 'completed':
@@ -557,7 +587,11 @@ export const ProductionFlowScreen = () => {
         <div className="banner-slot">
           <AlertBanner
             variant={
-              outputPhase === 'issueFailed' || outputPhase === 'printFailed' ? 'error' : 'info'
+              outputPhase === 'issueFailed' ||
+              outputPhase === 'printFailed' ||
+              outputPhase === 'legacyMismatch'
+                ? 'error'
+                : 'info'
             }
             title={outputStatus}
           />
@@ -755,7 +789,9 @@ export const ProductionFlowScreen = () => {
               </div>
             </dl>
 
-            {outputPhase === 'issueFailed' ? (
+            {outputPhase === 'legacyMismatch' ? (
+              <Button disabled>{t.flow.output.mismatchBlocked}</Button>
+            ) : outputPhase === 'issueFailed' ? (
               <Button onClick={retryLotIssue}>{t.flow.output.retryIssue}</Button>
             ) : outputPhase === 'printFailed' ||
               (outputPhase === 'idle' && currentIssue !== null) ? (

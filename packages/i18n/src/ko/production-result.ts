@@ -76,6 +76,8 @@ export const productionResult = {
       printed: '생산 LOT 라벨 인쇄 완료 · 부착한 라벨을 스캔하세요.',
       issueFailed: '생산 실적은 저장됐지만 라벨 발행에 실패했습니다.',
       printFailed: '라벨 발행은 완료됐지만 물리 인쇄에 실패했습니다.',
+      legacyMismatch: '생산 실적 없이 생성된 이전 라벨 이력이 있습니다. LOT 마감을 열지 않습니다.',
+      mismatchBlocked: '실적·라벨 상태 확인 필요',
       shellUnavailable: 'Electron POP 셸의 인쇄 통로를 확인할 수 없습니다.',
       printerUnavailable: '사용 가능한 라벨 프린터가 없습니다.',
     },

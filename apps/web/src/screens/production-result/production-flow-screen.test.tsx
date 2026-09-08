@@ -11,6 +11,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { ProductionFlowScreen } from './screen';
+import { STORAGE_KEY } from './outbox';
 
 const t = messages.productionResult;
 const LOT_ID = 90101;
@@ -287,6 +288,101 @@ describe('ProductionFlowScreen', () => {
     expect(writes.some((request) => pathOf(request) === '/production/production-results')).toBe(
       false,
     );
+  });
+
+  it('구 라벨 이력만 있고 서버 적용 실적이 없으면 스캔과 LOT 마감을 차단한다', async () => {
+    const writes: Request[] = [];
+    const legacyIssue: StubRoute = {
+      match: (request) => request.method === 'GET' && pathOf(request) === '/app/document-issues',
+      respond: () =>
+        jsonResponse({
+          items: [
+            {
+              documentIssueLogId: 44001,
+              documentTypeCode: 'PRODUCTION_LOT_LABEL',
+              target: { targetTypeCode: 'LOT', targetId: LOT_ID, displayName: LOT_NO },
+              lotId: LOT_ID,
+              lotNo: LOT_NO,
+              issueSeq: 1,
+              issuedBy: 1001,
+              issuedByName: '합성 작업자',
+              issuedAt: '2026-09-08T09:00:00+09:00',
+              printOutcome: 'SUCCEEDED',
+            },
+          ],
+          page: { page: 1, size: 100, total: 1 },
+        }),
+    };
+    const user = userEvent.setup();
+    renderScreen(writes, [legacyIssue]);
+
+    expect(await screen.findByText(t.flow.output.legacyMismatch)).toBeVisible();
+    expect(screen.getByRole('button', { name: t.flow.output.mismatchBlocked })).toBeDisabled();
+    const scan = screen.getByLabelText(t.flow.scan.label);
+    expect(scan).toBeDisabled();
+    await user.type(scan, LOT_NO);
+
+    expect(writes.some((request) => pathOf(request) === '/production/production-results')).toBe(
+      false,
+    );
+    expect(writes.some((request) => pathOf(request).endsWith(':complete'))).toBe(false);
+  });
+
+  it('구 라벨 이력과 대기 실적이 함께 있으면 서버 적용 뒤 기존 이력만 재인쇄한다', async () => {
+    const writes: Request[] = [];
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          idempotencyKey: 'legacy-result-key',
+          workerNo: '100029',
+          body: {
+            workOrderId: WORK_ORDER_ID,
+            goodQty: 12,
+            uomId: 1,
+            resultSourceCode: 'MANUAL',
+            occurredAt: '2026-09-08T09:00:00+09:00',
+            lotAllocations: [{ lotId: LOT_ID, allocatedQty: 12 }],
+          },
+        },
+      ]),
+    );
+    const legacyIssue: StubRoute = {
+      match: (request) => request.method === 'GET' && pathOf(request) === '/app/document-issues',
+      respond: () =>
+        jsonResponse({
+          items: [
+            {
+              documentIssueLogId: 44001,
+              documentTypeCode: 'PRODUCTION_LOT_LABEL',
+              target: { targetTypeCode: 'LOT', targetId: LOT_ID, displayName: LOT_NO },
+              lotId: LOT_ID,
+              lotNo: LOT_NO,
+              issueSeq: 1,
+              issuedBy: 1001,
+              issuedByName: '합성 작업자',
+              issuedAt: '2026-09-08T09:00:00+09:00',
+              printOutcome: 'SUCCEEDED',
+            },
+          ],
+          page: { page: 1, size: 100, total: 1 },
+        }),
+    };
+    renderScreen(writes, [legacyIssue]);
+
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+    expect(
+      writes.filter((request) => pathOf(request) === '/production/production-results'),
+    ).toHaveLength(1);
+    expect(
+      writes.filter(
+        (request) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
+      ),
+    ).toHaveLength(0);
+    expect(
+      writes.filter((request) => pathOf(request) === '/app/document-issues/44001:report-print'),
+    ).toHaveLength(1);
   });
 
   it('LOT 마감 실패 뒤 스캔값을 비워 같은 라벨을 다시 스캔할 수 있다', async () => {
