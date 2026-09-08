@@ -15,6 +15,7 @@ import { Link } from 'react-router';
 
 import { useCodeValues } from '../../patterns/code-values';
 import { useOutbox } from '../../patterns/outbox';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
@@ -502,28 +503,16 @@ export const MaterialPickingScreen = () => {
               size="xl"
               fullWidth
             />
-            {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-            <div className="picking-out__row">
-              <TextField
-                label={t.scan.manualLabel}
-                size="xl"
-                fullWidth
-                value={manual}
-                onChange={(event) => {
-                  setManual(event.target.value);
-                }}
-              />
-              <Button
-                variant="outlined"
-                size="xl"
-                onClick={() => {
-                  setScanned(manual.trim());
-                  setManual('');
-                }}
-              >
-                {t.scan.manualSubmit}
-              </Button>
-            </div>
+            <ManualEntry
+              label={t.scan.manualLabel}
+              submitLabel={t.scan.manualSubmit}
+              value={manual}
+              onChange={setManual}
+              onSubmit={() => {
+                setScanned(manual.trim());
+                setManual('');
+              }}
+            />
 
             {scanned === null ? null : matched ? (
               <Chip status="success">{t.scan.matched}</Chip>

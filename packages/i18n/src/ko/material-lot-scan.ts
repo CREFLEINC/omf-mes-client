@@ -33,7 +33,7 @@ export const materialLotScan = {
   scan: {
     legend: '스캔',
     scanLabel: '자재LOT 스캔',
-    scanPlaceholder: '라벨을 비추세요',
+    scanPlaceholder: '자재 LOT 라벨을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     /** 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다. */

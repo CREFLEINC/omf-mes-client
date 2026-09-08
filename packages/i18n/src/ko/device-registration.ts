@@ -9,7 +9,7 @@ export const deviceRegistration = {
   checking: '등록 상태를 확인하는 중입니다',
   unregistered: {
     title: '이 기기는 아직 등록되지 않았습니다',
-    description: '관리자 화면의 등록 QR을 비추세요.',
+    description: '관리자 화면의 등록 QR을 스캔하세요.',
     /** 어디서 만드는지 알아야 작업자가 관리자에게 무엇을 요청할지 안다. */
     where: '등록은 관리자가 관리웹 > 시스템 > 설정에서 만듭니다.',
   },

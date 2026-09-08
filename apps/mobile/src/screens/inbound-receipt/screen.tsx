@@ -7,6 +7,7 @@ import { isMaterialLotNo } from '../../patterns/material-lot-no';
 import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -245,29 +246,17 @@ export const InboundReceiptScreen = () => {
           fullWidth
           error={malformed === null ? undefined : t.scan.malformed(malformed.length)}
         />
-        {/* 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="receipt__row">
-          <TextField
-            label={t.scan.manualLabel}
-            size="xl"
-            fullWidth
-            value={manual}
-            onChange={(event) => {
-              setManual(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              take(manual);
-              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-              setManual('');
-            }}
-          >
-            {t.scan.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.scan.manualLabel}
+          submitLabel={t.scan.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            take(manual);
+            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+            setManual('');
+          }}
+        />
 
         {draft.supplierLotMissing ? (
           <>

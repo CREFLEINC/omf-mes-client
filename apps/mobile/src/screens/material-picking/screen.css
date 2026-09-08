@@ -11,17 +11,6 @@
   gap: var(--space-3, 12px);
 }
 
-/* 스캔이 실패했을 때 손으로 넣는 자리. 칸과 단추가 밑선을 맞춘다. */
-.picking-out__row {
-  display: flex;
-  gap: var(--space-2, 8px);
-  align-items: flex-end;
-}
-
-.picking-out__row > *:first-child {
-  flex: 1;
-}
-
 /*
  * 라인 목록. 줄마다 고르는 표시를 왼쪽에 두고 내용은 그 오른쪽에 쌓는다. 내용이 여러 줄이라
  * 가운데 정렬로 두면 표시가 글 덩이 한가운데로 내려가 어느 줄의 것인지 흐려진다.

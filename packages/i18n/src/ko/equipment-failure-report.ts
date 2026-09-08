@@ -11,7 +11,7 @@ export const equipmentFailureReport = {
   equipment: {
     legend: '설비',
     scanLabel: '설비 스캔',
-    scanPlaceholder: '설비 QR을 비추세요',
+    scanPlaceholder: '설비 QR을 스캔하세요',
     pickLabel: '목록에서 고르기',
     pickPlaceholder: '설비를 고르세요',
     loading: '설비 목록을 불러오는 중입니다',

@@ -50,7 +50,7 @@ export const materialPicking = {
   scan: {
     legend: 'LOT 스캔',
     label: 'LOT 번호',
-    placeholder: 'LOT 라벨을 비추세요',
+    placeholder: 'LOT 라벨을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     /** 계획과 다른 LOT 을 집으면 서버도 막는다. 눌러 보고 알게 두지 않는다. */

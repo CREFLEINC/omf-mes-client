@@ -17,12 +17,6 @@
   font-weight: 600;
 }
 
-.recycle__row {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2, 8px);
-}
-
 .recycle__field {
   display: flex;
   flex-direction: column;

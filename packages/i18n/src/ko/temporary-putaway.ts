@@ -30,7 +30,7 @@ export const temporaryPutaway = {
   location: {
     legend: '임시 위치',
     scanLabel: '임시 위치 코드 스캔',
-    scanPlaceholder: '위치 라벨을 비추세요',
+    scanPlaceholder: '위치 라벨을 스캔하세요',
     pickLabel: '목록에서 고르기',
     pickPlaceholder: '위치를 고르세요',
     loading: '위치를 불러오는 중입니다',

@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { useLocations } from '../../patterns/locations';
 import { useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -199,28 +200,16 @@ export const RecycleEntryScreen = () => {
           size="xl"
           fullWidth
         />
-        {/* 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="recycle__row">
-          <TextField
-            label={t.item.manualLabel}
-            size="xl"
-            fullWidth
-            value={manual}
-            onChange={(event) => {
-              setManual(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              take(manual);
-              setManual('');
-            }}
-          >
-            {t.item.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.item.manualLabel}
+          submitLabel={t.item.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            take(manual);
+            setManual('');
+          }}
+        />
 
         {rows.isPending && searching !== null ? <p role="status">{t.item.searching}</p> : null}
         {rows.isError ? <AlertBanner variant="error" title={t.item.loadFailed} /> : null}

@@ -15,7 +15,7 @@ export const shopfloorReceipt = {
   issue: {
     legend: '출고 전표 스캔',
     scanLabel: '출고 QR 스캔',
-    scanPlaceholder: '출고 전표 QR을 비추세요',
+    scanPlaceholder: '출고 전표 QR을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     loading: '출고 전표를 불러오는 중입니다',

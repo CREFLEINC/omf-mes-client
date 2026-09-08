@@ -8,6 +8,7 @@ import { useItemLabels } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -289,28 +290,16 @@ export const ProductReceiptScreen = () => {
             size="xl"
             fullWidth
           />
-          {/* 스캔 칸은 스캐너 전용이다. 스캐너가 죽었을 때 손으로 넣을 길을 함께 둔다. */}
-          <div className="product-receipt__row">
-            <TextField
-              label={t.unit.manualLabel}
-              size="xl"
-              fullWidth
-              value={manualUnit}
-              onChange={(event) => {
-                setManualUnit(event.target.value);
-              }}
-            />
-            <Button
-              variant="outlined"
-              size="xl"
-              onClick={() => {
-                setScannedUnit(manualUnit.trim());
-                setManualUnit('');
-              }}
-            >
-              {t.unit.manualSubmit}
-            </Button>
-          </div>
+          <ManualEntry
+            label={t.unit.manualLabel}
+            submitLabel={t.unit.manualSubmit}
+            value={manualUnit}
+            onChange={setManualUnit}
+            onSubmit={() => {
+              setScannedUnit(manualUnit.trim());
+              setManualUnit('');
+            }}
+          />
           {scannedUnit !== null && unit.isPending ? <p role="status">{t.unit.loading}</p> : null}
           {unit.isError ? <AlertBanner variant="error" title={t.unit.loadFailed} /> : null}
           {scannedUnit !== null && unit.data === null ? (
@@ -384,28 +373,16 @@ export const ProductReceiptScreen = () => {
                   size="xl"
                   fullWidth
                 />
-                {/* 스캔 칸은 스캐너 전용이다. 스캐너가 죽었을 때 손으로 넣을 길을 함께 둔다. */}
-                <div className="product-receipt__row">
-                  <TextField
-                    label={t.location.manualLabel}
-                    size="xl"
-                    fullWidth
-                    value={manualLocation}
-                    onChange={(event) => {
-                      setManualLocation(event.target.value);
-                    }}
-                  />
-                  <Button
-                    variant="outlined"
-                    size="xl"
-                    onClick={() => {
-                      setScannedLocation(manualLocation.trim());
-                      setManualLocation('');
-                    }}
-                  >
-                    {t.location.manualSubmit}
-                  </Button>
-                </div>
+                <ManualEntry
+                  label={t.location.manualLabel}
+                  submitLabel={t.location.manualSubmit}
+                  value={manualLocation}
+                  onChange={setManualLocation}
+                  onSubmit={() => {
+                    setScannedLocation(manualLocation.trim());
+                    setManualLocation('');
+                  }}
+                />
                 {scannedLocation !== null && atLocation.isPending ? (
                   <p role="status">{t.location.loading}</p>
                 ) : null}

@@ -26,7 +26,7 @@ export const physicalCount = {
   location: {
     legend: '위치 스캔',
     scanLabel: '위치 스캔',
-    scanPlaceholder: '위치 QR을 비추세요',
+    scanPlaceholder: '위치 QR을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     loading: '이 위치의 라인을 불러오는 중입니다',

@@ -6,6 +6,7 @@ import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -403,29 +404,17 @@ export const ProductPickingScreen = () => {
           fullWidth
           error={missed === null ? undefined : t.scan.notFound(missed)}
         />
-        {/* 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="picking__manual">
-          <TextField
-            label={t.scan.manualLabel}
-            size="xl"
-            fullWidth
-            value={manual}
-            onChange={(event) => {
-              setManual(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              takeScan(manual.trim());
-              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-              setManual('');
-            }}
-          >
-            {t.scan.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.scan.manualLabel}
+          submitLabel={t.scan.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            takeScan(manual.trim());
+            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+            setManual('');
+          }}
+        />
       </section>
 
       <section className="picking__section">

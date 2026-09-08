@@ -267,6 +267,7 @@ const openUnit = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 const pickLocation = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: '위치 직접 입력' }));
   await user.type(await screen.findByLabelText('위치 직접 입력'), LOC_CODE);
   await user.click(screen.getByRole('button', { name: '위치 넣기' }));
   await screen.findByText(`위치 ${LOC_CODE}`);
