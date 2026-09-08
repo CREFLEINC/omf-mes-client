@@ -1358,7 +1358,10 @@ on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
   const q = query.get('q');
   const lotQ = query.get('lotQ');
   const rows = allocationRows();
-  const hit = (value, needle) => String(value ?? '').toUpperCase().includes(needle);
+  const hit = (value, needle) =>
+    String(value ?? '')
+      .toUpperCase()
+      .includes(needle);
 
   /* ① 납품라벨 스캔 — 출하번호·LOT 번호로 찾는다. 못 찾으면 «없는 라벨»이라 빈 목록이다. */
   if (q !== null) {
@@ -1367,9 +1370,7 @@ on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
     return page(
       needle === ''
         ? []
-        : rows.filter(
-            (row) => hit(shipmentNoOf(row.shipmentId), needle) || hit(row.lotNo, needle),
-          ),
+        : rows.filter((row) => hit(shipmentNoOf(row.shipmentId), needle) || hit(row.lotNo, needle)),
       query,
     );
   }
@@ -1417,6 +1418,84 @@ on('GET', '/production/work-orders', (_p, query) => {
     ]),
     query,
   );
+});
+
+/**
+ * 작업 세션 — P-02-10 이 중단·재개를 거는 자리다.
+ *
+ * ⚠ **`open=true` 를 실제로 건다.** 화면은 이 축으로 물은 뒤 끝 시각으로 한 번 더 거르므로,
+ * 목이 축을 무시하면 「끝난 세션에 중단을 건다」는 갈래가 목에서 아예 서지 않는다.
+ */
+on('GET', '/production/work-sessions', (_p, query) =>
+  page(
+    keep(state.workSessions, [
+      byNum(query, 'workOrderId', 'workOrderId'),
+      (row) => bool(query, 'open') !== true || row.endedAt === null,
+    ]),
+    query,
+  ),
+);
+
+/** 세션 사건 이력. ⚠ 계약이 **쪽 나누기 없이 배열 그대로** 낸다. */
+on('GET', '/production/work-sessions/{workSessionId}/events', (params) => {
+  const sessionId = Number(params.workSessionId);
+
+  return state.workSessions.some((row) => row.workSessionId === sessionId)
+    ? state.workSessionEvents.filter((row) => row.workSessionId === sessionId)
+    : null;
+});
+
+/**
+ * 세션 구간 «안의» 사건 적재 — 단말이 보내는 것은 `STOP`·`RESUME` 뿐이다.
+ *
+ * ⛔ **같은 방향을 두 번 받지 않는다.** 화면이 버튼을 잠가 막지만 큐가 늦게 도착하는 갈래가
+ * 있어 서버도 막아야 한다 — 세션 사건은 정정 경로가 없다. 목이 이걸 통과시키면 화면의
+ * 마지막 방어선을 시험할 수 없다.
+ */
+on('POST', '/production/work-sessions/{workSessionId}/events', (params, _q, body, headers) => {
+  const session = state.workSessions.find(
+    (row) => row.workSessionId === Number(params.workSessionId),
+  );
+
+  if (session === undefined) {
+    return null;
+  }
+
+  /* ⚠ 노드가 준 헤더 객체다 — 키는 소문자이고 `Headers` 가 아니다. */
+  const workerNo = headers['x-worker-no'];
+
+  if (workerNo === undefined) {
+    return {
+      status: 400,
+      created: { code: 'WORKER_NO_REQUIRED', message: '사번이 없으면 사건을 적재하지 않습니다.' },
+    };
+  }
+
+  const type = body?.eventTypeCode;
+  const running = session.statusCode === 'RUNNING';
+
+  if ((type === 'STOP' && !running) || (type === 'RESUME' && running)) {
+    return {
+      status: 409,
+      created: { code: 'SESSION_STATE_CONFLICT', message: '지금 상태에서 걸 수 없는 사건입니다.' },
+    };
+  }
+
+  const created = {
+    workSessionEventId: newId(),
+    workSessionId: session.workSessionId,
+    eventTypeCode: type,
+    occurredAt: body?.occurredAt ?? new Date().toISOString(),
+    recordedAt: new Date().toISOString(),
+    reasonCode: body?.reasonCode,
+    performedBy: state.workers.find((row) => row.workerNo === workerNo)?.workerId,
+    terminalId: session.terminalId,
+  };
+
+  state.workSessionEvents.push(created);
+  session.statusCode = type === 'STOP' ? 'STOPPED' : 'RUNNING';
+
+  return { created, status: 201 };
 });
 
 on('POST', '/production/operation-handovers', (_p, _q, body) => {
