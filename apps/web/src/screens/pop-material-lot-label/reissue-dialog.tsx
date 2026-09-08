@@ -1,7 +1,8 @@
-import { AlertBanner, Button, Dialog, Select } from '@crefle/web-ui';
+import { AlertBanner, Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
 import type { ReissueReasonOption } from './queries';
 
@@ -56,9 +57,9 @@ export const ReissueDialog = ({
       footer={
         <>
           {/*
-            * ⭐ **둘의 크기를 맞춘다**(사용자 결정 2026-09-08) — 글자 수가 달라 폭이 갈리면
-            *    「큰 쪽이 옳은 쪽」으로 읽힌다. 여기서 고르는 것은 옳고 그름이 아니다.
-            */}
+           * ⭐ **둘의 크기를 맞춘다**(사용자 결정 2026-09-08) — 글자 수가 달라 폭이 갈리면
+           *    「큰 쪽이 옳은 쪽」으로 읽힌다. 여기서 고르는 것은 옳고 그름이 아니다.
+           */}
           <Button
             className={`${popTouchClass('normal')} pop-reissue-action`}
             variant="outlined"

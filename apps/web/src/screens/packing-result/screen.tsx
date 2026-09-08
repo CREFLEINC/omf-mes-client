@@ -1,8 +1,9 @@
-import { AlertBanner, Button, Chip, NumberPad, Select } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, NumberPad } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { toApiError } from '../../patterns/request';
 
 import { confirmLockReason } from './confirm-lock';
@@ -285,9 +286,7 @@ export const PackingResultScreen = () => {
            * 읽은 생산LOT 도 칸 옆에 남는다(설계 §3 도면 — 34자리를 «분절»해 그렸다). ① 과 같은
            * 자리·같은 폭이라 두 상자가 같은 짜임으로 읽힌다.
            */}
-          <p className="packing-scanned-code">
-            {segmentLotNo(matched?.allocation?.lotNo ?? '')}
-          </p>
+          <p className="packing-scanned-code">{segmentLotNo(matched?.allocation?.lotNo ?? '')}</p>
           {/*
            * 판정은 **배너**로 낸다(스펙 §7 DS 매핑 · G-1). 장갑을 낀 작업자가 스캐너에서 눈을
            * 떼는 순간이라 한 줄 글자로는 「맞다·다르다」가 눈에 걸리지 않는다.

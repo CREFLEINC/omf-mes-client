@@ -28,23 +28,17 @@
 /*
  * ══ POP 현장 단말 표시 규격 — `.pop-ui` ══════════════════════════════════════
  *
- * **옵트인이다.** 이 클래스가 붙은 화면에만 걸린다. POP 화면 전체에 한꺼번에 걸지 않는
- * 이유는 지금이 «방향을 정하는 샘플» 단계이기 때문이다 — 방향이 확정되기 전에 11장에
- * 걸면, 되돌릴 때 11장을 되돌려야 한다.
+ * **공개 POP 라우트 전체의 공통 겹이다.** 2026-09-08 현장 테스트 확정(E-3)에 따라 POP
+ * 전용 확대 밀도를 폐기하고 관리웹 기본 토큰을 그대로 쓴다.
  *
  * ## 무엇을 고치는가
  *
  * 화면들을 1024×768 로 띄워 보고 잡은 것 넷이다.
  *
- * 1. **글자가 작다.** 디자인 시스템의 본문·라벨은 관리웹(마우스·근거리) 기준이라 12~14px
- *    인데, 이 화면은 장갑 낀 사람이 한 걸음 떨어져 읽는다. POP 안에서만 바닥을 올린다.
- * 2. **버튼 글자가 14px 로 고정돼 있다.** DS Button 이 `--type-label-lg` 를 못박아, 72px
- *    짜리 버튼 위에 14px 글자가 앉는다. 크기는 손을 위한 것이고 글자는 눈을 위한 것이라
- *    둘이 따로 논다. (DS 갈래 **b** — 변형 부족. 방향 확정 후 DS 이슈 후보다.)
- * 3. **세로 예산이 화면마다 다르다.** 어떤 화면은 아래 250px 를 비우고 어떤 화면은 넘쳐
+ * 1. **세로 예산이 화면마다 다르다.** 어떤 화면은 아래 250px 를 비우고 어떤 화면은 넘쳐
  *    스크롤이 생긴다. 단말에는 주소창도 스크롤바도 없어, 넘친 것은 «없는 것»이 된다.
  *    → 화면 높이를 뷰포트에 고정하고 **구획 안에서만** 스크롤시킨다.
- * 4. **머리줄이 화면마다 다르게 생겼다.** 표제 크기·상태 표시 위치가 제각각이라, 단말을
+ * 2. **머리줄이 화면마다 다르게 생겼다.** 표제 크기·상태 표시 위치가 제각각이라, 단말을
  *    옮겨 다니는 사람이 매번 「지금 무슨 화면인가」를 다시 찾는다.
  *
  * ⛔ **장식을 더하지 않는다.** 그림자·그라데이션·전환 효과를 새로 넣지 않았다. 바뀐 것은
@@ -53,24 +47,20 @@
 
 /*
  * POP 표시 치수 — **한 곳에 모은다.** 화면마다 적으면 한쪽만 고쳐진다.
- * 값의 근거는 「1024×768 패널 PC · 시거리 50~70cm · 장갑」이다.
+ * 컨트롤 높이는 관리웹 기본 `md` 토큰으로 수렴시킨다. 기존 화면이 넘긴 `xl`·`2xl`은
+ * 업무 중요도 표식으로만 남고 렌더 높이를 키우지 않는다.
  */
 .pop-ui {
-  /*
-   * 머리줄 64 — **설계가 잡은 값이다.** 세로 예산이 「헤더 64 + 본문 616 + 액션바 88 = 768」로
-   * 슬랙 0 이라(`P-02-04` §3-1 · `P-02-01` §4-1) 여기서 8 을 더 쓰면 본문이 그만큼 눌린다.
-   * POP 화면 스펙 전부가 같은 값을 그린다(`P-02-01`·`P-02-02`·`P-02-04`).
-   */
-  --pop-header-h: 64px;
+  --control-height-lg: var(--control-height-md);
+  --control-height-xl: var(--control-height-md);
+  --control-height-2xl: var(--control-height-md);
+  --pop-header-h: calc(var(--control-height-md) + var(--space-4));
   --pop-pad: var(--space-5);
 
-  /* 글자 바닥 — 이 아래로 내려가는 문자는 이 화면에 두지 않는다. */
   --pop-text: 16px;
-  --pop-label: 15px;
-  /* 목록에서 «찾는» 값(지시 번호·LOT 번호) */
-  --pop-value: 20px;
-  /* 화면이 지금 말하는 단 하나의 값(현재 작업자 등) */
-  --pop-value-lg: 30px;
+  --pop-label: 14px;
+  --pop-value: 16px;
+  --pop-value-lg: 16px;
 }
 
 /*
@@ -147,8 +137,8 @@
 .pop-ui .pop-title,
 .pop-ui .pop-terminal-header__brand {
   margin: 0;
-  font: 700 26px/32px var(--font-sans);
-  letter-spacing: -0.02em;
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
   white-space: nowrap;
 }
 
@@ -3318,6 +3308,125 @@
 
 .pop-logout button:hover {
   background: #8f1d17;
+}
+
+/* G-34 화면 이동 — 모든 공개 POP 화면의 같은 머리줄 자리를 쓴다. */
+[data-pop-screen-nav='on'] .pop-ui > .pop-header,
+[data-pop-screen-nav='on'] .pop-ui > .pop-terminal-header {
+  padding-right: 332px;
+}
+
+[data-pop-screen-nav='on'][data-pop-logout='on'] .pop-ui > .pop-header,
+[data-pop-screen-nav='on'][data-pop-logout='on'] .pop-ui > .pop-terminal-header {
+  padding-right: 452px;
+}
+
+.pop-screen-navigation {
+  position: fixed;
+  top: 0;
+  right: 12px;
+  z-index: 21;
+  display: flex;
+  align-items: center;
+  width: 308px;
+  height: var(--pop-header-h, 56px);
+}
+
+[data-pop-logout='on'] .pop-screen-navigation {
+  right: 124px;
+}
+
+.pop-screen-navigation .pop-select {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+.pop-screen-navigation .pop-select__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* G-34 선택 필드 — 현재 값과 조작 버튼을 서로 다른 정보로 보인다. */
+.pop-ui .pop-select {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+}
+
+.pop-ui .pop-select__value {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: var(--control-height-md);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--outline);
+  border-radius: var(--radius-sm);
+  color: var(--on-surface);
+  background: var(--surface);
+}
+
+.pop-ui .pop-select__value > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pop-ui .pop-select__placeholder {
+  color: var(--on-surface-muted);
+}
+
+.pop-ui .pop-select__trigger[aria-invalid='true'] {
+  color: var(--semantic-error-text);
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+.pop-select-dialog__search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+  align-items: start;
+}
+
+.pop-select-dialog__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: calc(var(--control-height-md) * 5);
+  overflow-y: auto;
+}
+
+.pop-select-dialog__option {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.pop-select-dialog__empty {
+  margin: 0;
+  padding: var(--space-5);
+  text-align: center;
+  color: var(--on-surface-muted);
+}
+
+.pop-select-dialog__paging {
+  display: grid;
+  grid-template-columns: auto minmax(8rem, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.pop-select-dialog__paging output {
+  text-align: center;
+  color: var(--on-surface-variant);
+  font-variant-numeric: tabular-nums;
 }
 
 /*

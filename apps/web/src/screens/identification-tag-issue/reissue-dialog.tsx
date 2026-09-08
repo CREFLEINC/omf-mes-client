@@ -1,5 +1,7 @@
-import { Button, Dialog, Select } from '@crefle/web-ui';
+import { Button, Dialog } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+
+import { PopSelect as Select } from '../../patterns/pop-select';
 
 const t = messages.identificationTagIssue;
 

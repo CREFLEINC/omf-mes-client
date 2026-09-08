@@ -3,7 +3,6 @@ import {
   Button,
   Card,
   Progress,
-  Select,
   Table,
   TextField,
 } from '@crefle/web-ui';
@@ -11,6 +10,8 @@ import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useEffect, useId, useState } from 'react';
+
+import { PopSelect as Select } from '../../patterns/pop-select';
 
 import { useApiClient } from '../../patterns/api-context';
 import { usePopIdentity } from '../../patterns/pop-identity';

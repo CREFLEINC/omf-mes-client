@@ -55,7 +55,7 @@
  * .scanned-code  LOT·금형 코드 — 멀리서 읽는다
  * .scanned-mold  물린 금형 구획
  * .confirm-row   투입 확정 버튼과 잠금 사유
- * .pop-touch-target  현장 단말의 터치 타겟 하한 — DS xl(60px)이 12px 모자란 자리를 채운다
+ * .pop-touch-target  현장 단말의 업무 중요도 표식 — 렌더 높이는 관리웹 기본 토큰을 쓴다
  *
  * P-CO-01(작업자 지정) — ⚠ 위 `.pop-shell` 계열과 «다른» 어휘다. 그 화면들은 헤더에 표제를
  * 두지만 이 화면은 세로 예산이 768 로 딱 맞아(§3/E-1 슬랙 0) 표제를 두지 않는다.
@@ -82,7 +82,7 @@
  * .pop-lot-label    LOT 번호 자리의 라벨
  * .pop-target-actions 등록·인쇄와 재인쇄를 나란히 두는 줄
  * .pop-page-nav     쪽 이동 줄 — 위치 표시와 이전·다음
- * .pop-touch(-등급) 터치 타겟 최소 높이 — ⚠ 제품이 임시로 채우는 치수
+ * .pop-touch(-등급) 업무 중요도 표식 — 크기를 키우지 않는다
  */
 
 :root {
@@ -5322,21 +5322,9 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-top: var(--field-label-layer);
 }
 
-/*
- * 현장 단말의 터치 타겟 하한 — **72px**.
- *
- * 착수 이슈 6번이 「위험 등급 버튼은 72px가 필요한데 DS의 `xl`은 60px다 — 12px 부족분은
- * 제품이 임시로 채운다」로 처리 방법을 정했다. 그 12px을 여기서 채운다.
- *
- * ⚠ **임시다.** 디자인 시스템에 그 크기가 서면 이 규칙을 지우고 DS 변형을 쓴다 —
- * 제품이 치수를 오래 들고 있으면 화면마다 다른 값이 굳는다.
- *
- * ⛔ **모든 버튼에 걸지 않는다.** 목록의 「빼기」처럼 되돌릴 수 있는 조작까지 키우면
- * 화면이 버튼으로 덮이고, 정작 큰 것이 눈에 띄지 않아 크기가 뜻을 잃는다.
- * 장갑 낀 손으로 눌러야 하는 것 — 스캔을 보내는 것과 투입을 확정하는 것 — 에만 건다.
- */
+/* POP 업무 중요도 표식. E-3에 따라 관리웹 기본 hit area보다 키우지 않는다. */
 .pop-touch-target {
-  min-height: 72px;
+  min-height: var(--control-height-md);
 }
 
 /*
@@ -5836,36 +5824,27 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * 터치 타겟 등급 — ⚠ **제품이 임시로 채우는 치수다.**
- *
- * 디자인 시스템 고정 커밋의 `Button`은 `xl`(60px)까지라 **일반 등급까지만 덮는다.**
- * 나머지 세 등급의 부족분을 여기서 채운다(착수 이슈 #139 6항 · design-system-v2-webui#67).
- *
- * ⛔ 이 값을 화면 파일에 옮겨 적지 않는다 — 등급 이름은 `patterns/pop-touch.ts`가 낸다.
- * 디자인 시스템이 72px 변형을 내려 주면 이 블록과 그 모듈을 함께 걷어낸다.
- *
- * 변수에 폴백을 둔다 — 등급 클래스 없이 `.pop-touch`만 붙으면 변수가 미정의라 높이가
- * 통째로 무효가 된다. 손으로 클래스를 적은 경우에도 최소 등급은 서야 한다.
+ * 업무 중요도 등급은 색·문구·배치 검증을 위한 이름만 남긴다. E-3 개정 뒤에는 네 등급 모두
+ * 관리웹 기본 hit area를 사용하며 이 클래스가 픽셀 크기를 만들지 않는다.
  */
 .pop-touch {
-  min-height: var(--pop-touch-size, 56px);
+  min-height: var(--control-height-md);
 }
 
 .pop-touch-normal {
-  --pop-touch-size: 56px;
+  --pop-touch-grade: normal;
 }
 
 .pop-touch-primary {
-  --pop-touch-size: 64px;
+  --pop-touch-grade: primary;
 }
 
-/* 핵심·위험은 같은 치수이나 등급을 합치지 않는다 — 합치면 무엇이 위험인지 코드에서 사라진다. */
 .pop-touch-critical {
-  --pop-touch-size: 72px;
+  --pop-touch-grade: critical;
 }
 
 .pop-touch-destructive {
-  --pop-touch-size: 72px;
+  --pop-touch-grade: destructive;
 }
 
 /*
@@ -6486,7 +6465,6 @@ dl.filter-bar.approval-inbox-detail-facts {
     grid-template-columns: 1fr;
     height: auto;
   }
-
 
   .pop-inspect-scroll {
     overflow-y: visible;

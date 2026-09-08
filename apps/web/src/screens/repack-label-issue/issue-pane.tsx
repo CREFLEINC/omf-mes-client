@@ -1,7 +1,8 @@
-import { AlertBanner, Select } from '@crefle/web-ui';
+import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import type { CodeValue, IssueStanding, Printer } from './types';
 
 const t = messages.repackLabelIssue.issue;
@@ -22,7 +23,6 @@ export interface IssuePaneProps {
   printersFailed: boolean;
   printerName: string;
   onPrinterChange: (value: string) => void;
-
 }
 
 /**
@@ -150,7 +150,6 @@ export const IssuePane = ({
           <p className="pop-repack-note">{t.printersEmpty}</p>
         )}
       </div>
-
     </>
   );
 };

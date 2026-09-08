@@ -1,6 +1,7 @@
-import { AlertBanner, Button, Chip, Select } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
 import type { PrinterStatus, PrinterView } from './types';
 
