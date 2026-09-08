@@ -11,16 +11,43 @@ import {
   type DocumentIssue,
   type HandlingUnit,
   type HandlingUnitContent,
+  type HandlingUnitRepackEvent,
   type IssueStanding,
   type PackingContentRow,
   type Printer,
+  type RemainderCandidate,
 } from './types';
 
-/** 사유 선택지는 한 화면에 다 보여야 한다 — 쪽을 넘기게 두지 않는다. */
+/** 목록을 한 번에 너무 크게 받지 않으면서 전체 계약 건수를 이어 받는 서버 페이지 크기. */
 const REASON_PAGE_SIZE = 100;
-
-/** 발행 이력은 회차가 쌓인 그대로 받는다. 한 포장의 회차가 이 수를 넘는 일은 없다. */
 const HISTORY_PAGE_SIZE = 50;
+const PENDING_PAGE_SIZE = 50;
+
+interface PageResult<T> {
+  items: T[];
+  page: { total: number };
+}
+
+/** 페이지 UI가 없는 내부 스크롤 목록은 계약의 total까지 빠짐없이 이어 받는다. */
+const readAllPages = async <T>(
+  pageSize: number,
+  read: (page: number, size: number) => Promise<PageResult<T>>,
+): Promise<T[]> => {
+  const rows: T[] = [];
+  let page = 1;
+
+  while (true) {
+    const data = await read(page, pageSize);
+
+    rows.push(...data.items);
+    if (rows.length >= data.page.total) return rows;
+    if (data.items.length === 0) {
+      throw new Error('목록 전체 건수를 받기 전에 빈 페이지가 반환됐습니다.');
+    }
+
+    page += 1;
+  }
+};
 
 /**
  * 이 화면이 쓰는 조회와 캐시 키. 이 화면이 소유한다 — 다른 화면 슬라이스의 키 모듈을
@@ -28,6 +55,7 @@ const HISTORY_PAGE_SIZE = 50;
  */
 export const repackLabelKeys = {
   all: ['repack-label-issue'] as const,
+  pending: ['repack-label-issue', 'pending'] as const,
   handlingUnit: (handlingUnitId: number) =>
     ['repack-label-issue', 'handling-unit', handlingUnitId] as const,
   lot: (lotId: number) => ['repack-label-issue', 'lot', lotId] as const,
@@ -39,12 +67,35 @@ export const repackLabelKeys = {
   history: (handlingUnitId: number) =>
     ['repack-label-issue', 'issue-history', handlingUnitId] as const,
   reissueReasons: ['repack-label-issue', 'reissue-reasons'] as const,
+  remainderCandidates: (handlingUnitId: number) =>
+    ['repack-label-issue', 'remainder-candidates', handlingUnitId] as const,
 };
 
 export interface HandlingUnitView {
   handlingUnit: HandlingUnit;
   contents: HandlingUnitContent[];
 }
+
+/**
+ * 모바일에서 재구성을 끝냈지만 아직 포장 라벨을 발행하지 않은 신규 포장(§4-A·§5-1).
+ *
+ * ⛔ `statusCode` 를 추측하지 않는다. 고정 설계와 물류 계약이 함께 확정한 boolean 축만 쓴다.
+ */
+export const usePendingHandlingUnits = (): UseQueryResult<HandlingUnit[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: repackLabelKeys.pending,
+    queryFn: (): Promise<HandlingUnit[]> =>
+      readAllPages(PENDING_PAGE_SIZE, (page, size) =>
+        runRequest(() =>
+          client.GET('/inventory/handling-units', {
+            params: { query: { labelIssued: false, page, size } },
+          }),
+        ),
+      ),
+  });
+};
 
 /**
  * 대상 포장과 그 내용물.
@@ -191,16 +242,129 @@ export const useIssueStanding = (handlingUnitId: number | null): UseQueryResult<
 
       const row = data.items.find((item) => item.targetId === handlingUnitId);
 
-      /*
-       * ⭐ **행이 없으면 「발행한 적 없음」이다.** 계약이 「발행한 적 없는 대상도 issueCount: 0
-       * 으로 함께 돌려준다」고 적었으므로 빠진 행은 0 으로 읽는다 — 「모른다」로 두면 조회가
-       * 성공했는데도 사유 판정을 못 한다.
-       */
+      /* 계약은 미발행 대상도 0으로 돌려준다. 행 누락은 최초 발행이 아니라 불완전 응답이다. */
+      if (row === undefined) {
+        throw new Error('발행 요약에 요청한 포장이 없습니다.');
+      }
+
       return {
-        issueCount: row?.issueCount ?? 0,
-        lastIssuedAt: row?.lastIssuedAt ?? null,
-        lastPrintOutcome: row?.lastPrintOutcome ?? null,
+        issueCount: row.issueCount,
+        lastIssuedAt: row.lastIssuedAt ?? null,
+        lastPrintOutcome: row.lastPrintOutcome ?? null,
       };
+    },
+  });
+};
+
+const standingOf = (
+  handlingUnitId: number,
+  summaries: readonly {
+    targetId: number;
+    issueCount: number;
+    lastIssuedAt?: string | null;
+    lastPrintOutcome?: IssueStanding['lastPrintOutcome'];
+  }[],
+): IssueStanding => {
+  const row = summaries.find((summary) => summary.targetId === handlingUnitId);
+
+  return {
+    issueCount: row?.issueCount ?? null,
+    lastIssuedAt: row?.lastIssuedAt ?? null,
+    lastPrintOutcome: row?.lastPrintOutcome ?? null,
+  };
+};
+
+/**
+ * 선택한 신규 포장과 같은 SPLIT 사건의 다른 RESULT 포장 중 이미 라벨이 있는 포장.
+ *
+ * 그 포장이 바로 원 번호를 유지한 잔량이다. 합병·재구성 사건에는 잔량 선택을 만들지 않고,
+ * 발행 이력이 없는 결과는 재출력 대상이 아니므로 제외한다. 이 판정은 계약의 사건 역할과
+ * DocumentIssue 요약만 사용하며 포장 번호 형태나 상태값을 추측하지 않는다.
+ */
+export const useRemainderCandidates = (
+  handlingUnitId: number | null,
+): UseQueryResult<RemainderCandidate[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: repackLabelKeys.remainderCandidates(handlingUnitId ?? 0),
+    enabled: handlingUnitId !== null,
+    queryFn: async (): Promise<RemainderCandidate[]> => {
+      if (handlingUnitId === null) return [];
+
+      const repacks = await runRequest<{ items: HandlingUnitRepackEvent[] }>(() =>
+        client.GET('/inventory/handling-units/{handlingUnitId}/repack-events', {
+          params: { path: { handlingUnitId } },
+        }),
+      );
+      const split = [...repacks.items]
+        .filter(
+          (event) =>
+            event.repackTypeCode === 'SPLIT' &&
+            event.lines.some(
+              (line) =>
+                line.handlingUnitId === handlingUnitId &&
+                line.roleCode === 'RESULT' &&
+                line.qtyBefore === 0 &&
+                line.qtyAfter > 0,
+            ),
+        )
+        .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0];
+
+      if (split === undefined) return [];
+
+      const remainderIds = distinct(
+        split.lines
+          .filter(
+            (line) =>
+              line.roleCode === 'RESULT' &&
+              line.handlingUnitId !== handlingUnitId &&
+              line.qtyBefore > 0 &&
+              line.qtyAfter > 0,
+          )
+          .map((line) => line.handlingUnitId),
+      );
+
+      if (remainderIds.length === 0) return [];
+
+      const summary = await runRequest(() =>
+        client.GET('/app/document-issues/summary', {
+          params: {
+            query: {
+              targetTypeCode: TARGET_TYPE_CODE,
+              targetIds: remainderIds,
+              documentTypeCode: DOCUMENT_TYPE_CODE,
+            },
+          },
+        }),
+      );
+      if (
+        remainderIds.some(
+          (candidateId) => !summary.items.some((item) => item.targetId === candidateId),
+        )
+      ) {
+        throw new Error('잔량 포장의 발행 요약이 완전하지 않습니다.');
+      }
+      const issuedIds = remainderIds.filter(
+        (candidateId) => (standingOf(candidateId, summary.items).issueCount ?? 0) > 0,
+      );
+
+      const details = await Promise.all(
+        issuedIds.map(async (candidateId) => {
+          const data = await runRequest(() =>
+            client.GET('/inventory/handling-units/{handlingUnitId}', {
+              params: { path: { handlingUnitId: candidateId } },
+            }),
+          );
+
+          return {
+            handlingUnit: data.handlingUnit,
+            standing: standingOf(candidateId, summary.items),
+          };
+        }),
+      );
+
+      return details;
     },
   });
 };
@@ -221,21 +385,21 @@ export const useIssueHistory = (handlingUnitId: number | null): UseQueryResult<D
         throw new Error('대상 포장을 모르면 발행 이력을 조회하지 않습니다.');
       }
 
-      const data = await runRequest(() =>
-        client.GET('/app/document-issues', {
-          params: {
-            query: {
-              targetTypeCode: TARGET_TYPE_CODE,
-              targetId: handlingUnitId,
-              documentTypeCode: DOCUMENT_TYPE_CODE,
-              page: 1,
-              size: HISTORY_PAGE_SIZE,
+      return readAllPages(HISTORY_PAGE_SIZE, (page, size) =>
+        runRequest(() =>
+          client.GET('/app/document-issues', {
+            params: {
+              query: {
+                targetTypeCode: TARGET_TYPE_CODE,
+                targetId: handlingUnitId,
+                documentTypeCode: DOCUMENT_TYPE_CODE,
+                page,
+                size,
+              },
             },
-          },
-        }),
+          }),
+        ),
       );
-
-      return data.items;
     },
   });
 };
@@ -288,19 +452,19 @@ export const useReissueReasons = (): UseQueryResult<CodeValue[]> => {
   return useQuery({
     queryKey: repackLabelKeys.reissueReasons,
     queryFn: async (): Promise<CodeValue[]> => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/code-values', {
-          params: {
-            query: {
-              codeGroupCode: REISSUE_REASON_GROUP_CODE,
-              page: 1,
-              size: REASON_PAGE_SIZE,
+      return readAllPages(REASON_PAGE_SIZE, (page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: {
+              query: {
+                codeGroupCode: REISSUE_REASON_GROUP_CODE,
+                page,
+                size,
+              },
             },
-          },
-        }),
+          }),
+        ),
       );
-
-      return data.items;
     },
   });
 };

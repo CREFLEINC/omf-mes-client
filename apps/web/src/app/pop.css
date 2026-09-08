@@ -1173,23 +1173,75 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  flex: 1 1 auto;
   min-height: 0;
+}
+
+/* 카드 높이 예산에는 안쪽 여백과 테두리까지 포함한다. */
+.pop-ui .pop-repack-panes > .pop-section {
+  box-sizing: border-box;
 }
 
 /*
- * ① 대상 포장이 **남는 높이를 갖고, 눌리지 않는다.** 설계 §3-1 이 이 구획에 200 을 잡았다 —
- * 그 아래로 내려가면 포장 번호 한 줄조차 잘린다(실측 · 사용자 지적). 넘치면 구획 «안»에서
- * 스크롤한다(E-4).
+ * ① 발행 대기는 목록이므로 남는 높이를 먼저 받고 자기 안에서 스크롤한다(E-4).
+ * ② 신규 발번값·내용물과 ③④ 발행 조건은 제 최소 높이를 지키되, 1024×768 에서 넘치면 각
+ * 카드가 이미 가진 내부 스크롤로 읽는다. 화면 문서 자체에는 스크롤을 만들지 않는다.
  */
-.pop-ui .pop-repack-panes > .pop-section:first-child {
-  flex: 1 1 auto;
+.pop-ui .pop-repack-panes > .pop-repack-pending {
+  flex: 0 1 200px;
   min-height: 200px;
 }
 
-/* ②③④ 는 제 내용만큼 서되, 자리가 모자라면 자기 안에서 스크롤한다 — 위를 밀어내지 않는다. */
-.pop-ui .pop-repack-panes > .pop-section:last-child {
-  flex: 0 1 auto;
+/* 서버가 매긴 신규 번호와 내용물 — 값 한 줄이 사라지지 않을 바닥. */
+.pop-ui .pop-repack-panes > .pop-repack-numbering {
+  flex: 0 1 144px;
+  min-height: 132px;
+}
+
+/* 인쇄 대상·사유·프린터·이력 — 자리가 모자라면 이 카드 안에서만 굴린다. */
+.pop-ui .pop-repack-panes > .pop-repack-issue {
+  flex: 1 1 auto;
+  min-height: 160px;
+}
+
+.pop-ui .pop-repack-pending-table {
   min-height: 0;
+  overflow-y: auto;
+}
+
+.pop-ui .pop-repack-pending-state {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.pop-ui .pop-repack-pending-state > p {
+  margin: 0;
+  color: var(--semantic-error);
+}
+
+.pop-ui .pop-repack-targets {
+  display: grid;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
+}
+
+.pop-ui .pop-repack-targets > legend {
+  margin-block-end: var(--space-2);
+  font-weight: 600;
+}
+
+.pop-ui .pop-repack-remainder {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.pop-ui .pop-repack-remainder > .pop-repack-note {
+  padding-inline-start: var(--space-6);
 }
 
 /*

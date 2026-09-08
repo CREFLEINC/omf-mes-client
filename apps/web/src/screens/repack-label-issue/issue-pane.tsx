@@ -1,15 +1,24 @@
-import { AlertBanner } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
 import { PopSelect as Select } from '../../patterns/pop-select';
-import type { CodeValue, IssueStanding, Printer } from './types';
+import type { CodeValue, IssueStanding, Printer, RemainderCandidate } from './types';
 
 const t = messages.repackLabelIssue.issue;
 
 export interface IssuePaneProps {
+  selectedHandlingUnitNo: string | null;
+  includeNewLabel: boolean;
+  onIncludeNewLabelChange: (checked: boolean) => void;
+  remainderCandidates: readonly RemainderCandidate[];
+  selectedRemainderIds: readonly number[];
+  onRemainderChange: (handlingUnitId: number, checked: boolean) => void;
+  remainderFailed: boolean;
+
   standing: IssueStanding;
   standingFailed: boolean;
+  onStandingRetry: () => void;
 
   reasons: readonly CodeValue[];
   reasonsFailed: boolean;
@@ -35,13 +44,18 @@ export interface IssuePaneProps {
  * ⛔ **회차를 화면이 세지 않는다**(계약 「서버가 매긴다」). 화면이 발행 현황으로 정하는 것은
  * **사유 칸을 요구할 것인가** 하나이고, 이번이 몇 회차가 될지는 말하지 않는다.
  *
- * ⛔ **스펙 ③ 의 「인쇄 대상 체크박스」가 여기 없다.** 그 구획은 「새 포장 라벨」과 「잔량 라벨
- * 재출력」을 가르는데, 새 포장이 아직 서지 않아(`types.ts` 머리 · `omf-mes#418`) 고를 갈래가
- * 하나뿐이다 — **체크박스 하나짜리 선택은 선택이 아니다.** 앞단이 열리면 이 구획에 붙는다.
  */
 export const IssuePane = ({
+  selectedHandlingUnitNo,
+  includeNewLabel,
+  onIncludeNewLabelChange,
+  remainderCandidates,
+  selectedRemainderIds,
+  onRemainderChange,
+  remainderFailed,
   standing,
   standingFailed,
+  onStandingRetry,
   reasons,
   reasonsFailed,
   reasonCode,
@@ -72,13 +86,48 @@ export const IssuePane = ({
 
   return (
     <>
+      <fieldset className="pop-repack-targets">
+        <legend>{t.targetsLabel}</legend>
+        <Checkbox
+          checked={selectedHandlingUnitNo !== null && includeNewLabel}
+          disabled={selectedHandlingUnitNo === null}
+          onChange={(event) => onIncludeNewLabelChange(event.target.checked)}
+        >
+          {selectedHandlingUnitNo === null ? t.newLabelWaiting : t.newLabel(selectedHandlingUnitNo)}
+        </Checkbox>
+
+        {remainderCandidates.map(({ handlingUnit, standing: remainderStanding }) => (
+          <div className="pop-repack-remainder" key={handlingUnit.handlingUnitId}>
+            <Checkbox
+              checked={selectedRemainderIds.includes(handlingUnit.handlingUnitId)}
+              onChange={(event) =>
+                onRemainderChange(handlingUnit.handlingUnitId, event.target.checked)
+              }
+            >
+              {t.remainderLabel(handlingUnit.handlingUnitNo, remainderStanding.issueCount ?? 0)}
+            </Checkbox>
+            <p className="pop-repack-note">{t.remainderNumberNote}</p>
+            <p className="pop-repack-note">{t.remainderWarning}</p>
+          </div>
+        ))}
+        {remainderFailed && <p className="pop-repack-note">{t.remainderFailed}</p>}
+      </fieldset>
+
       {/*
         ⚠ **몇 회차인가는 구획 «표제 옆»에 선다**(사용자 지시 2026-09-07) — 이 구획이 무엇을
         하는 자리인지와 한눈에 함께 읽힌다. 여기 남는 것은 그것을 «못 받았을 때»뿐이다.
       */}
       {standingFailed && (
         <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.summaryFailed} />
+          <AlertBanner
+            variant="warning"
+            title={t.summaryFailed}
+            action={
+              <Button variant="outlined" size="sm" onClick={onStandingRetry}>
+                {messages.common.retry}
+              </Button>
+            }
+          />
         </div>
       )}
 
@@ -104,12 +153,6 @@ export const IssuePane = ({
           value={reasonCode === '' ? null : reasonCode}
           onChange={onReasonChange}
           placeholder={t.reasonPlaceholder}
-          /*
-           * ⛔ **`lg`(48) 로 두지 않는다.** POP 은 고르는 칸의 터치 하한을 56 으로 올리는데,
-           *    부품이 «키»를 48 로 못박고 있어 하한만 늘어난다 — 겉 상자는 48 인 채 안의 단추가
-           *    56 이라 **아래가 잘려 보였다**(실측 · 사용자 지적). 하한보다 큰 등급을 준다.
-           */
-          size="xl"
           className="pop-repack-select"
           disabled={!reasonRequired || reasons.length === 0}
           invalid={reasonMissing || reasonServerError !== null}
@@ -136,12 +179,6 @@ export const IssuePane = ({
           value={printerName === '' ? null : printerName}
           onChange={onPrinterChange}
           placeholder={t.printerPlaceholder}
-          /*
-           * ⛔ **`lg`(48) 로 두지 않는다.** POP 은 고르는 칸의 터치 하한을 56 으로 올리는데,
-           *    부품이 «키»를 48 로 못박고 있어 하한만 늘어난다 — 겉 상자는 48 인 채 안의 단추가
-           *    56 이라 **아래가 잘려 보였다**(실측 · 사용자 지적). 하한보다 큰 등급을 준다.
-           */
-          size="xl"
           className="pop-repack-select"
           disabled={printers.length === 0}
         />

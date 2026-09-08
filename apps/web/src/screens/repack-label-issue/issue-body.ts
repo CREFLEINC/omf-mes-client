@@ -1,7 +1,7 @@
 import { DOCUMENT_TYPE_CODE, TARGET_TYPE_CODE, type DocumentIssueCreate } from './types';
 
 export interface IssueBodyInput {
-  handlingUnitId: number;
+  handlingUnitIds: readonly number[];
   /** 고른 프린터. 아직 없으면 빈 문자열 */
   printerName: string;
   /** 고른 재발행 사유. 아직 없으면 빈 문자열 */
@@ -11,7 +11,7 @@ export interface IssueBodyInput {
 }
 
 /**
- * 발행 요청 본문 — **대상은 포장 하나**다(스펙 §4-B).
+ * 발행 요청 본문 — **대상 유형은 포장 하나**이고 선택한 포장은 한 배치에 담는다(§4-B).
  *
  * ⛔ **`lotId` 를 싣지 않는다.** 한 포장에 LOT 이 여럿일 수 있어 스펙이 그 칸을 「⛔ 비운다」로
  * 못박았다(§4-B) — 아무 LOT 이나 골라 채우면 발행 이력이 그 LOT 의 것으로 굳고, 나중에 LOT
@@ -23,13 +23,13 @@ export interface IssueBodyInput {
  * ⚠ **회차를 싣지 않는다.** 서버가 매긴다(계약 · 스펙 §6).
  */
 export const issueBody = ({
-  handlingUnitId,
+  handlingUnitIds,
   printerName,
   reasonCode,
   reasonRequired,
 }: IssueBodyInput): DocumentIssueCreate => ({
   documentTypeCode: DOCUMENT_TYPE_CODE,
-  targets: [{ targetTypeCode: TARGET_TYPE_CODE, targetId: handlingUnitId }],
+  targets: handlingUnitIds.map((targetId) => ({ targetTypeCode: TARGET_TYPE_CODE, targetId })),
   ...(printerName === '' ? {} : { printerName }),
   ...(reasonRequired && reasonCode !== '' ? { reissueReasonCode: reasonCode } : {}),
 });
