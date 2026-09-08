@@ -134,8 +134,14 @@ describe('toQualificationsPayload', () => {
     expect(toQualificationsPayload(toQualificationDrafts([saved()]))[0]?.certifiedBy).toBe(7001);
   });
 
-  /* C68 — 새 행에는 그 값을 만들 수 없다. 널을 싣지 않고 **키 자체를 빼**야 한다. */
-  it('새 행에는 인증자 키 자체가 없다', () => {
+  it('기존 행에서 인증자를 비우면 널을 명시한다', () => {
+    const body = toQualificationsPayload(toQualificationDrafts([saved({ certifiedBy: null })]))[0];
+
+    expect(body).toHaveProperty('certifiedBy', null);
+  });
+
+  /* 새 행에서 선택하지 않은 값은 서버 기본 동작을 지키도록 키 자체를 뺀다. */
+  it('새 행에서 인증자를 고르지 않으면 키 자체가 없다', () => {
     const body = toQualificationsPayload([createQualificationDraft()])[0] as unknown as Record<
       string,
       unknown

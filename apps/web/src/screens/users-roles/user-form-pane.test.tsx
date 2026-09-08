@@ -17,30 +17,35 @@ const departmentOptions = [
   { value: '', label: '지정하지 않음' },
   { value: '3001', label: 'SYN-DEPT-01 · 합성 부서 A' },
 ];
+const statusOptions = [
+  { value: 'SYN-STATUS-A', label: '재직' },
+  { value: 'SYN-STATUS-B', label: '휴직' },
+];
 
 const renderPane = (overrides: Partial<UserFormPaneProps> = {}) => {
   const onChange = vi.fn<(patch: Partial<UserFormValues>) => void>();
   const onSave = vi.fn<() => void>();
   const onCancel = vi.fn<() => void>();
   const onDeactivate = vi.fn<() => void>();
+  const props: UserFormPaneProps = {
+    mode: 'edit',
+    values,
+    onChange,
+    fieldErrors: {},
+    banner: null,
+    departmentOptions,
+    statusOptions,
+    statusDisabledReason: null,
+    deactivateDisabledReason: null,
+    isDirty: true,
+    isSaving: false,
+    onSave,
+    onCancel,
+    onDeactivate,
+    ...overrides,
+  };
 
-  render(
-    <UserFormPane
-      mode="edit"
-      values={values}
-      onChange={onChange}
-      fieldErrors={{}}
-      banner={null}
-      departmentOptions={departmentOptions}
-      deactivateDisabledReason={null}
-      isDirty
-      isSaving={false}
-      onSave={onSave}
-      onCancel={onCancel}
-      onDeactivate={onDeactivate}
-      {...overrides}
-    />,
-  );
+  render(<UserFormPane {...props} />);
 
   return { onChange, onSave, onCancel, onDeactivate, user: userEvent.setup() };
 };
@@ -59,9 +64,7 @@ describe('UserFormPane 로그인 ID', () => {
   it('수정에서는 값 아래에 잠금 사유가 보인다', () => {
     renderPane({ mode: 'edit' });
 
-    expect(
-      within(pane()).getByText(/로그인 ID는 등록할 때만 정할 수 있고/),
-    ).toBeInTheDocument();
+    expect(within(pane()).getByText(/로그인 ID는 등록할 때만 정할 수 있고/)).toBeInTheDocument();
   });
 
   it('등록에서만 입력칸이다', async () => {
@@ -82,26 +85,26 @@ describe('UserFormPane 로그인 ID', () => {
 });
 
 describe('UserFormPane 상태', () => {
-  /** 값 목록이 확정되지 않았다 — 화면이 값을 지어내지 않는다(계획 결정 16). */
-  it('수정에서 상태가 비활성이고 사유가 보인다', () => {
-    renderPane({ mode: 'edit' });
+  it('상태 목록에서 값을 고르면 상위에 알린다', async () => {
+    const { onChange, user } = renderPane();
 
-    expect(within(pane()).getByLabelText('상태')).toBeDisabled();
-    expect(within(pane()).getByText(/상태는 상태 코드 목록이 확정되지 않아/)).toBeInTheDocument();
+    await user.click(within(pane()).getByLabelText('상태'));
+    await user.click(screen.getByRole('option', { name: '휴직' }));
+
+    expect(onChange).toHaveBeenCalledWith({ statusCode: 'SYN-STATUS-B' });
   });
 
-  it('등록에서는 사유가 달라진다 — 서버가 기본값으로 채우는 자리다', () => {
+  it('등록에서 상태를 비우면 재직 기본값 안내를 보인다', () => {
     renderPane({ mode: 'create', values: { ...values, loginId: '', statusCode: '' } });
 
-    expect(within(pane()).getByLabelText('상태')).toBeDisabled();
-    expect(within(pane()).getByText(/상태는 사용자를 등록할 때 정해집니다/)).toBeInTheDocument();
+    expect(within(pane()).getByLabelText('상태')).toHaveTextContent('기본값(재직)');
   });
 
-  /** 선택지에 없다고 지우면 사용자가 값이 사라진 줄 안다. */
-  it('서버가 준 상태 코드가 선택지에 없어도 그대로 보인다', () => {
-    renderPane({ mode: 'edit' });
+  it('상태 목록 조회 실패 때만 선택을 막고 사유를 보인다', () => {
+    renderPane({ statusOptions: [], statusDisabledReason: '상태 목록을 불러오지 못했습니다.' });
 
-    expect(within(pane()).getByLabelText('상태')).toHaveTextContent('SYN-STATUS-A');
+    expect(within(pane()).getByLabelText('상태')).toBeDisabled();
+    expect(within(pane()).getByText('상태 목록을 불러오지 못했습니다.')).toBeInTheDocument();
   });
 });
 
@@ -218,7 +221,9 @@ describe('UserFormPane 액션', () => {
   });
 
   it('이미 미사용이면 사용 중지가 비활성이고 사유가 보인다', () => {
-    renderPane({ deactivateDisabledReason: '사용 중지는 이미 미사용인 사용자에게 다시 할 수 없습니다.' });
+    renderPane({
+      deactivateDisabledReason: '사용 중지는 이미 미사용인 사용자에게 다시 할 수 없습니다.',
+    });
 
     expect(within(pane()).getByRole('button', { name: '사용 중지' })).toBeDisabled();
     expect(

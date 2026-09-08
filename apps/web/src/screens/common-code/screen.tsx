@@ -71,6 +71,7 @@ import {
 } from './filters';
 import { LoadErrorBanner } from './load-error-banner';
 import {
+  useActiveUserOptions,
   useBusinessUnitOptions,
   useDepartmentOptions,
   usePlantOptions,
@@ -1103,6 +1104,15 @@ export const CommonCodeScreen = () => {
 
   const qualificationList = useWorkerQualifications(selectedWorkerId);
   const processOptions = useProcessOptions(selectedWorkerId !== null);
+  const certifierOptions = useActiveUserOptions(selectedWorkerId !== null);
+
+  const certifierDisabledReason = certifierOptions.isError
+    ? messages.commonCode.qualification.actionReasons.certifierLookupFailed
+    : certifierOptions.isLoading
+      ? messages.commonCode.qualification.actionReasons.certifierLookupLoading
+      : certifierOptions.entries.length === 0
+        ? messages.commonCode.qualification.actionReasons.certifierLookupEmpty
+        : undefined;
 
   const [qualificationState, setQualificationState] = useState<QualificationState | null>(null);
 
@@ -2024,7 +2034,8 @@ export const CommonCodeScreen = () => {
           isLoading={selectedWorkerId !== null && qualificationList.isPending}
           isWorkerSelected={selectedWorkerId !== null}
           processes={processOptions}
-          optionsNotice={renderOptionsNotice([processOptions])}
+          certifiers={certifierOptions}
+          optionsNotice={renderOptionsNotice([processOptions, certifierOptions])}
           loadError={
             qualificationList.isError ? (
               <LoadErrorBanner
@@ -2236,6 +2247,13 @@ export const CommonCodeScreen = () => {
           isNew={isEditingNewQualification}
           otherDrafts={qualificationDrafts}
           processOptions={selectableOptions(processOptions, editingQualification.processId)}
+          certifierOptions={selectableOptions(
+            certifierOptions,
+            editingQualification.certifiedBy === null
+              ? ''
+              : String(editingQualification.certifiedBy),
+          )}
+          certifierDisabledReason={certifierDisabledReason}
           onClose={() => setEditingQualification(null)}
           onConfirm={(next) => {
             changeQualificationDrafts((drafts) => upsertQualificationDraft(drafts, next));

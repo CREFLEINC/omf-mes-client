@@ -75,17 +75,16 @@ describe('toAppUserUpdate', () => {
     expect(keys).not.toContain('isActive');
   });
 
-  it('계약이 필수로 둔 두 키가 반드시 실린다', () => {
+  it('계약이 필수로 둔 이름과 선택한 상태가 실린다', () => {
     const body = toAppUserUpdate(filled);
 
     expect(body.userName).toBe('합성 사용자 A');
     expect(Object.keys(body)).toContain('statusCode');
   });
 
-  /** 화면이 고른 적이 없는 값이다 — 지어내지도, 빼지도 않는다. */
-  it('상태 코드를 받은 그대로 되돌려 싣는다', () => {
+  it('선택한 상태 코드를 싣고 비운 값은 기존 상태 보존을 위해 뺀다', () => {
     expect(toAppUserUpdate(filled).statusCode).toBe('SYN-STATUS-A');
-    expect(toAppUserUpdate({ ...filled, statusCode: '' }).statusCode).toBe('');
+    expect(Object.keys(toAppUserUpdate({ ...filled, statusCode: '' }))).not.toContain('statusCode');
   });
 
   /** 키를 빼면 서버가 이전 값을 남길 수 있어 한 번 넣은 값을 지울 방법이 사라진다. */
@@ -104,7 +103,11 @@ describe('toAppUserUpdate', () => {
 
   /** 앞뒤 공백이 붙은 이름은 눈으로 구분되지 않는 다른 값이 된다. */
   it('이름과 전자우편의 앞뒤 공백을 턴다', () => {
-    const body = toAppUserUpdate({ ...filled, userName: '  합성 사용자 A  ', email: '  a@b.invalid  ' });
+    const body = toAppUserUpdate({
+      ...filled,
+      userName: '  합성 사용자 A  ',
+      email: '  a@b.invalid  ',
+    });
 
     expect(body.userName).toBe('합성 사용자 A');
     expect(body.email).toBe('a@b.invalid');
@@ -120,12 +123,9 @@ describe('toAppUserCreate', () => {
     expect(toAppUserCreate(filled).loginId).toBe('SYN-LOGIN-01');
   });
 
-  /** 계약이 「미지정 시 서버가 기본값으로 채운다」고 명시했고, 화면이 고를 수 있는 값이 없다. */
-  it('상태 코드를 싣지 않는다', () => {
-    expect(Object.keys(toAppUserCreate(filled))).not.toContain('statusCode');
-    expect(Object.keys(toAppUserCreate({ ...filled, statusCode: 'SYN-STATUS-A' }))).not.toContain(
-      'statusCode',
-    );
+  it('고른 상태는 싣고 미지정이면 서버의 재직 기본값을 쓴다', () => {
+    expect(toAppUserCreate(filled).statusCode).toBe('SYN-STATUS-A');
+    expect(Object.keys(toAppUserCreate({ ...filled, statusCode: '' }))).not.toContain('statusCode');
   });
 
   it('사용 여부를 싣지 않는다 — 신규는 항상 사용 중이다', () => {
@@ -140,7 +140,9 @@ describe('toAppUserCreate', () => {
   });
 
   it('로그인 ID의 앞뒤 공백을 턴다', () => {
-    expect(toAppUserCreate({ ...filled, loginId: '  SYN-LOGIN-01  ' }).loginId).toBe('SYN-LOGIN-01');
+    expect(toAppUserCreate({ ...filled, loginId: '  SYN-LOGIN-01  ' }).loginId).toBe(
+      'SYN-LOGIN-01',
+    );
   });
 });
 
