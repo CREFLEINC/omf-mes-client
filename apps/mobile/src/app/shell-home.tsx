@@ -23,6 +23,7 @@ const tiles = [
     label: t.tiles.inbound,
     screens: [
       { to: '/inbound-receipt', label: messages.inboundReceipt.title },
+      { to: '/material-lot-scan', label: messages.materialLotScan.title },
       { to: '/inbound-variance', label: messages.inboundVariance.title },
       { to: '/recycle-entry', label: messages.recycleEntry.title },
     ],
@@ -48,6 +49,10 @@ const tiles = [
     screens: [{ to: '/iqc-skip-request', label: messages.iqcSkipRequest.title }],
   },
   {
+    label: t.tiles.stocktaking,
+    screens: [{ to: '/physical-count', label: messages.physicalCount.title }],
+  },
+  {
     label: t.tiles.productionMove,
     screens: [
       { to: '/wip-handover', label: messages.wipHandover.title },
@@ -57,6 +62,7 @@ const tiles = [
   {
     label: t.tiles.shipment,
     screens: [
+      { to: '/product-receipt', label: messages.productReceipt.title },
       { to: '/product-picking', label: messages.productPicking.title },
       { to: '/packing-repack', label: messages.packingRepack.title },
     ],

@@ -652,21 +652,95 @@ on('GET', '/logistics/purchase-orders/{purchaseOrderId}/lines', (params) => ({
   ),
 }));
 
-on('GET', '/logistics/inbound-receipts', (_p, query) =>
-  page(
+/*
+ * 헤더 목록인데 판정은 라인 단위다 - 건 안에 사전부착과 미부착이 섞여 있을 수 있어, 그런
+ * 라인을 하나라도 가진 건을 남긴다. 헤더에 없는 축이라 화면이 흉내 낼 수 없다.
+ */
+on('GET', '/logistics/inbound-receipts', (_p, query) => {
+  const supplierLotMissing = bool(query, 'supplierLotMissing');
+
+  return page(
     keep(state.inboundReceipts, [
       byNum(query, 'supplierId', 'supplierId'),
       contains(query, 'q', 'inboundReceiptNo'),
+      (row) =>
+        supplierLotMissing === null ||
+        state.inboundReceiptLines.some(
+          (line) =>
+            line.inboundReceiptId === row.inboundReceiptId &&
+            line.supplierLotMissing === supplierLotMissing,
+        ),
     ]),
     query,
-  ),
-);
+  );
+});
 
-on('GET', '/logistics/inbound-receipts/{inboundReceiptId}/lines', (params) => ({
-  items: state.inboundReceiptLines.filter(
-    (line) => line.inboundReceiptId === Number(params.inboundReceiptId),
-  ),
-}));
+on('GET', '/logistics/inbound-receipts/{inboundReceiptId}/lines', (params, query) => {
+  const supplierLotMissing = bool(query, 'supplierLotMissing');
+  const labelIssued = bool(query, 'labelIssued');
+
+  return {
+    items: state.inboundReceiptLines.filter(
+      (line) =>
+        line.inboundReceiptId === Number(params.inboundReceiptId) &&
+        (supplierLotMissing === null || line.supplierLotMissing === supplierLotMissing) &&
+        (labelIssued === null || line.labelIssued === labelIssued),
+    ),
+  };
+});
+
+/*
+ * 자재 LOT 등록. 같은 공장에 같은 번호가 있으면 400 이다 - 409 가 아니다. 스캔값이 곧 번호라
+ * 다시 불러도 풀리지 않고 사람이 다른 라벨을 스캔해야 한다.
+ */
+on('POST', '/trace/lots', (_p, _q, body) => {
+  const lotNo = body?.lotNo;
+
+  if (
+    body?.numberSourceCode === 'SUPPLIER' &&
+    state.lots.some((lot) => lot.lotNo === lotNo && lot.plantId === body?.plantId)
+  ) {
+    return {
+      status: 400,
+      created: {
+        code: 'DUPLICATE_LOT_NO',
+        message: '이미 등록된 LOT 번호입니다.',
+        errors: [],
+      },
+    };
+  }
+
+  const lotId = newId();
+  const created = {
+    lotId,
+    lotNo,
+    itemId: body?.itemId,
+    lotTypeCode: body?.lotTypeCode,
+    plantId: body?.plantId,
+    initialQty: body?.initialQty,
+    currentQty: body?.initialQty,
+    uomId: body?.uomId,
+    sourceTypeCode: body?.sourceTypeCode,
+    sourceId: body?.sourceId,
+    /* 등록 즉시 검사 대기로 선다. 입하는 합격 전에 쓸 수 없다. */
+    statusCode: 'INSPECTION_PENDING',
+    completedAt: null,
+  };
+
+  state.lots.push(created);
+
+  /* 라인이 그 LOT 을 가리키게 한다. 안 이으면 같은 라인을 다시 채울 수 있는 것으로 보인다. */
+  const line = state.inboundReceiptLines.find(
+    (each) => each.inboundReceiptLineId === body?.sourceId,
+  );
+
+  if (line !== undefined) {
+    line.lotId = lotId;
+    line.supplierLotNo = lotNo;
+  }
+
+  return { status: 201, created };
+});
 
 on('POST', '/logistics/inbound-receipts', (_p, _q, body) => {
   const inboundReceiptId = newId();
@@ -948,6 +1022,110 @@ on('POST', '/logistics/shopfloor-receipts', (_p, _q, body) => {
   return { status: 201, created };
 });
 
+/*
+ * 실사 목록 · 라인 · 한 위치 치환 — M-01-11.
+ *
+ * `inProgressOnly` 의 정의는 여기서 지킨다(공유계약 G-6). 마감된 실사를 목록에 섞어 주면
+ * 화면이 그것을 골라 쓰고 쓰기가 서버에서 되돌아온다.
+ */
+on('GET', '/inventory/counts', (_p, query) => {
+  const inProgressOnly = bool(query, 'inProgressOnly');
+
+  return page(
+    keep(state.inventoryCounts, [
+      byNum(query, 'warehouseId', 'warehouseId'),
+      byText(query, 'countTypeCode', 'countTypeCode'),
+      byText(query, 'statusCode', 'statusCode'),
+      (row) => inProgressOnly !== true || row.statusCode === 'IN_PROGRESS',
+    ]),
+    query,
+  );
+});
+
+/*
+ * 장부를 감춘 실사는 systemQty 를 빼고 내린다. 그대로 내리면 화면이 감췄다고 말하면서
+ * 값은 그려, 감춘 실사가 실제로 감춰지는지 여기서 잴 수 없다.
+ */
+on('GET', '/inventory/counts/{inventoryCountId}/lines', (params, query) => {
+  const inventoryCountId = Number(params.inventoryCountId);
+  const count = state.inventoryCounts.find((each) => each.inventoryCountId === inventoryCountId);
+  const uncountedOnly = bool(query, 'uncountedOnly');
+  const varianceOnly = bool(query, 'varianceOnly');
+
+  const rows = keep(
+    state.inventoryCountLines.filter((line) => line.inventoryCountId === inventoryCountId),
+    [
+      byNum(query, 'locationId', 'locationId'),
+      byNum(query, 'itemId', 'itemId'),
+      (row) => uncountedOnly !== true || row.counted === false,
+      (row) => varianceOnly !== true || row.varianceQty !== 0,
+    ],
+  ).map((row) => {
+    if (count?.blindCount !== true) {
+      return { ...row };
+    }
+
+    const { systemQty: _systemQty, varianceQty: _varianceQty, ...hidden } = row;
+    return hidden;
+  });
+
+  return page(rows, query);
+});
+
+on('PUT', '/inventory/counts/{inventoryCountId}/lines', (params, query, body) => {
+  const inventoryCountId = Number(params.inventoryCountId);
+  const count = state.inventoryCounts.find((each) => each.inventoryCountId === inventoryCountId);
+
+  /* 마감된 실사는 바꿀 수 없다. 화면이 통과시키더라도 정본은 여기다. */
+  if (count === undefined || count.statusCode !== 'IN_PROGRESS') {
+    return {
+      status: 400,
+      created: {
+        code: 'STATE_LOCKED',
+        message: '진행 중인 실사가 아닙니다.',
+        errors: [],
+      },
+    };
+  }
+
+  const locationId = body?.locationId;
+  const sent = new Map((body?.lines ?? []).map((line) => [line.inventoryCountLineId, line]));
+
+  /*
+   * 본문에 없는 이 위치의 기존 라인은 미실사로 되돌린다 — 계약이 치환이라고 못 박았다.
+   * 덮어쓰기만 하면 안 센 줄을 보내지 않는 화면의 판단을 목이 재현하지 못한다.
+   */
+  for (const row of state.inventoryCountLines) {
+    if (row.inventoryCountId !== inventoryCountId || row.locationId !== locationId) {
+      continue;
+    }
+
+    const line = sent.get(row.inventoryCountLineId);
+
+    if (line === undefined) {
+      row.countedQty = 0;
+      row.varianceQty = 0;
+      row.counted = false;
+      row.countedBy = null;
+      continue;
+    }
+
+    row.countedQty = line.countedQty;
+    row.varianceQty = line.countedQty - row.systemQty;
+    row.varianceReasonCode = line.varianceReasonCode ?? null;
+    row.countedAt = line.countedAt;
+    row.countedBy = 1001;
+    row.counted = true;
+  }
+
+  return page(
+    state.inventoryCountLines.filter(
+      (row) => row.inventoryCountId === inventoryCountId && row.locationId === locationId,
+    ),
+    query,
+  );
+});
+
 on('POST', '/logistics/goods-issues', (_p, _q, body) => {
   const goodsIssueId = newId();
   const created = {
@@ -1024,7 +1202,9 @@ on('GET', '/logistics/goods-receipts', (_p, query) => page(state.goodsReceipts, 
  */
 on('POST', '/logistics/goods-receipts', (_p, _q, body) => {
   const goodsReceiptId = newId();
-  const receiptNo = `RT-2026-${String(goodsReceiptId).slice(-4)}`;
+  /* 번호 앞머리가 유형을 말한다. 제품 입고에 반품 번호가 붙으면 화면이 다른 것을 보인다. */
+  const prefix = body?.receiptTypeCode === 'RETURN' ? 'RT' : 'GR';
+  const receiptNo = `${prefix}-2026-${String(goodsReceiptId).slice(-4)}`;
   const goodsReceipt = {
     goodsReceiptId,
     goodsReceiptNo: receiptNo,
@@ -1039,20 +1219,50 @@ on('POST', '/logistics/goods-receipts', (_p, _q, body) => {
     remarks: body?.remarks ?? null,
     erpMessageQueued: true,
   };
-  const lines = (body?.lines ?? []).map((line, index) => ({
-    goodsReceiptLineId: goodsReceiptId * 10 + index,
-    goodsReceiptId,
-    lineNo: index + 1,
-    inboundReceiptLineId: line.inboundReceiptLineId ?? null,
-    itemId: line.itemId,
-    lotId: line.lotId,
-    receiptQty: line.receiptQty,
-    uomId: line.uomId,
-    qualityStatusCode: line.qualityStatusCode,
-    inventoryStatusCode: line.inventoryStatusCode,
-    destinationLocationId: line.destinationLocationId,
-    originalShipmentLotAllocationId: line.originalShipmentLotAllocationId ?? null,
-  }));
+  /*
+   * 적치 지시는 라인마다 서버가 함께 만들고 응답이 그 식별자를 싣는다. 안 만들면 화면이
+   * 적치를 이어 부를 수 없어, 입고만 서고 적치가 남는 갈래와 구별되지 않는다.
+   */
+  const lines = (body?.lines ?? []).map((line, index) => {
+    const goodsReceiptLineId = goodsReceiptId * 10 + index;
+    const putawayTaskId = newId();
+
+    state.putawayTasks.push({
+      putawayTaskId,
+      putawayTaskNo: `PT-2026-${String(putawayTaskId).slice(-6)}`,
+      goodsReceiptLineId,
+      itemId: line.itemId,
+      lotId: line.lotId,
+      taskQty: line.receiptQty,
+      uomId: line.uomId,
+      fromLocationId: line.destinationLocationId,
+      recommendedLocationId: line.destinationLocationId,
+      appliedPutawayRuleId: null,
+      actualLocationId: null,
+      warehouseId: body?.warehouseId,
+      warehouseManagementLevelCode: 'ZONE',
+      priorityNo: index + 1,
+      statusCode: 'ASSIGNED',
+      assignedWorkerId: null,
+      completedAt: null,
+    });
+
+    return {
+      goodsReceiptLineId,
+      goodsReceiptId,
+      lineNo: index + 1,
+      inboundReceiptLineId: line.inboundReceiptLineId ?? null,
+      itemId: line.itemId,
+      lotId: line.lotId,
+      receiptQty: line.receiptQty,
+      uomId: line.uomId,
+      qualityStatusCode: line.qualityStatusCode,
+      inventoryStatusCode: line.inventoryStatusCode,
+      destinationLocationId: line.destinationLocationId,
+      putawayTaskId,
+      originalShipmentLotAllocationId: line.originalShipmentLotAllocationId ?? null,
+    };
+  });
   state.goodsReceipts.push(goodsReceipt);
   state.goodsReceiptLines.push(...lines);
 
@@ -1207,6 +1417,108 @@ on('GET', '/production/work-orders', (_p, query) => {
     ]),
     query,
   );
+});
+
+/**
+ * 작업 세션 — P-02-10 이 중단·재개를 거는 자리다.
+ *
+ * ⚠ **`open=true` 를 실제로 건다.** 화면은 이 축으로 물은 뒤 끝 시각으로 한 번 더 거르므로,
+ * 목이 축을 무시하면 「끝난 세션에 중단을 건다」는 갈래가 목에서 아예 서지 않는다.
+ */
+on('GET', '/production/work-sessions', (_p, query) =>
+  page(
+    keep(state.workSessions, [
+      byNum(query, 'workOrderId', 'workOrderId'),
+      (row) => bool(query, 'open') !== true || row.endedAt === null,
+    ]),
+    query,
+  ),
+);
+
+/** 세션 사건 이력. ⚠ 계약이 **쪽 나누기 없이 배열 그대로** 낸다. */
+on('GET', '/production/work-sessions/{workSessionId}/events', (params) => {
+  const sessionId = Number(params.workSessionId);
+
+  return state.workSessions.some((row) => row.workSessionId === sessionId)
+    ? state.workSessionEvents.filter((row) => row.workSessionId === sessionId)
+    : null;
+});
+
+/**
+ * 세션 구간 «안의» 사건 적재 — 단말이 보내는 것은 `STOP`·`RESUME` 뿐이다.
+ *
+ * ⛔ **같은 방향을 두 번 받지 않는다.** 화면이 버튼을 잠가 막지만 큐가 늦게 도착하는 갈래가
+ * 있어 서버도 막아야 한다 — 세션 사건은 정정 경로가 없다. 목이 이걸 통과시키면 화면의
+ * 마지막 방어선을 시험할 수 없다.
+ */
+on('POST', '/production/work-sessions/{workSessionId}/events', (params, _q, body, headers) => {
+  const session = state.workSessions.find(
+    (row) => row.workSessionId === Number(params.workSessionId),
+  );
+
+  if (session === undefined) {
+    return null;
+  }
+
+  /* ⚠ 노드가 준 헤더 객체다 — 키는 소문자이고 `Headers` 가 아니다. */
+  const workerNo = headers['x-worker-no'];
+
+  if (workerNo === undefined) {
+    return {
+      status: 400,
+      created: { code: 'WORKER_NO_REQUIRED', message: '사번이 없으면 사건을 적재하지 않습니다.' },
+    };
+  }
+
+  const type = body?.eventTypeCode;
+
+  /* ⛔ 구간의 경계(START·END)는 세션을 열고 닫는 오퍼레이션이 만든다 — 단말이 보내지 않는다. */
+  if (type !== 'STOP' && type !== 'RESUME') {
+    return {
+      status: 400,
+      created: { code: 'EVENT_TYPE_NOT_ALLOWED', message: '단말이 적재할 수 없는 유형입니다.' },
+    };
+  }
+
+  /*
+   * ⭐ **멱등 키로 먼저 거른다.** 큐는 재전송에 같은 키를 다시 쓴다 — 목이 이걸 무시하면
+   * 재전송 갈래를 밟을 때마다 사건이 늘어, 「닿았는데 실패로 읽히는가」를 목에서 볼 수 없다.
+   */
+  const idempotencyKey = headers['idempotency-key'];
+  const seen =
+    idempotencyKey === undefined
+      ? undefined
+      : state.workSessionEvents.find((row) => row.idempotencyKey === idempotencyKey);
+
+  if (seen !== undefined) {
+    return { created: seen, status: 200 };
+  }
+
+  const running = session.statusCode === 'RUNNING';
+
+  if ((type === 'STOP' && !running) || (type === 'RESUME' && running)) {
+    return {
+      status: 409,
+      created: { code: 'SESSION_STATE_CONFLICT', message: '지금 상태에서 걸 수 없는 사건입니다.' },
+    };
+  }
+
+  const created = {
+    workSessionEventId: newId(),
+    workSessionId: session.workSessionId,
+    idempotencyKey,
+    eventTypeCode: type,
+    occurredAt: body?.occurredAt ?? new Date().toISOString(),
+    recordedAt: new Date().toISOString(),
+    reasonCode: body?.reasonCode,
+    performedBy: state.workers.find((row) => row.workerNo === workerNo)?.workerId,
+    terminalId: session.terminalId,
+  };
+
+  state.workSessionEvents.push(created);
+  session.statusCode = type === 'STOP' ? 'STOPPED' : 'RUNNING';
+
+  return { created, status: 201 };
 });
 
 on('POST', '/production/operation-handovers', (_p, _q, body) => {

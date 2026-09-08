@@ -9,6 +9,9 @@ export type OperationHandoverCreate = components['schemas']['OperationHandoverCr
 /** 생산LOT 만 공정을 넘어간다. 값 목록이 계약에 적혀 있다. */
 export const PRODUCTION = 'PRODUCTION';
 
+/** 작업지시 상태의 값 목록을 받는 그룹. 시스템 소유라 고객이 편집하지 않는다. */
+export const WORK_ORDER_STATUS = 'WORK_ORDER_STATUS';
+
 export type LotProblem = 'notProduction' | 'notCompleted' | 'held';
 
 /**
@@ -57,6 +60,15 @@ const NOT_STARTED_STATUS = ['PLANNED', 'CONFIRMED', 'RELEASED'];
  */
 export const isNotStarted = (workOrder: WorkOrder): boolean =>
   NOT_STARTED_STATUS.includes(workOrder.statusCode);
+
+/**
+ * 후속 W/O 의 상태를 사람이 읽는 말로 바꾼다.
+ *
+ * 찾은 것만 이름으로 바꾸고 못 찾으면 받은 코드를 그대로 돌려준다 - 상태 코드는 그 자체가
+ * 사람이 읽을 수 있는 말이라 숨기면 오히려 정보가 준다.
+ */
+export const statusLabelOf = (statusCode: string, names: Map<string, string>): string =>
+  names.get(statusCode) ?? statusCode;
 
 export type QtyProblem = 'notNumber' | 'notPositive' | 'overCompleted';
 

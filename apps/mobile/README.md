@@ -172,6 +172,71 @@ apps/mobile/scripts/emulator-inspect.sh
 
 `chrome://inspect` 또는 `http://127.0.0.1:9444/json/list` 로 붙는다.
 
+## 개발 백엔드에 붙이기
+
+기본값은 로컬 목 서버(`http://127.0.0.1:4010`)다. 사내 개발 백엔드에 붙이려면 주소를 준다.
+
+⛔ **주소를 파일에 적어 커밋하지 않는다.** 이 저장소는 공개다. 값은 `.env.local` 에 두고,
+그 이름은 `.gitignore` 의 `*.local` 에 걸린다. 본보기는 `.env.example` 에 있다.
+
+### 브라우저에서
+
+그 서버는 **CORS 응답 헤더를 주지 않는다** — preflight(`OPTIONS`)가 404 로 떨어져 직접
+부르면 닿지 않는다. 같은 출처로 부르게 해서 우회한다.
+
+```bash
+# .env.local
+VITE_API_BASE_URL=/api
+
+MOBILE_API_PROXY_TARGET=http://<사내-주소> pnpm --filter @omf-mes/mobile dev
+```
+
+`MOBILE_API_PROXY_TARGET` 이 없으면 프록시를 걸지 않는다 — 목 서버로 도는 경로가 그대로
+남는다.
+
+⚠ **상대 기준 주소는 브라우저에서만 선다.** `new Request('/api/...')` 를 브라우저는 문서
+주소로 풀지만 Node 는 던진다(`Failed to parse URL`). 시험(vitest·node 환경)에서 이 설정을
+재려다 실패하거든 설정이 틀린 것이 아니다 — 브라우저에서 실제로 도는 것을 확인했다.
+
+### 에뮬레이터·실기에서
+
+프록시가 없으므로 절대 주소를 주고, 요청을 네이티브로 보내 CORS 를 우회한다.
+
+```bash
+# .env.local
+VITE_API_BASE_URL=http://<사내-주소>/api
+
+CAP_NATIVE_HTTP=1 CAP_ALLOW_LOCAL_HTTP=1 pnpm --filter @omf-mes/mobile build
+CAP_NATIVE_HTTP=1 CAP_ALLOW_LOCAL_HTTP=1 npx cap sync android
+```
+
+`CAP_NATIVE_HTTP` 는 기본이 꺼짐이다. 켜면 목 서버로 도는 경로까지 함께 바뀐다.
+
+### 붙었는지 확인하기
+
+인증이 필요 없는 것은 상태 확인 경로 하나다. 나머지 계약 경로는 전부 `401` 이다.
+
+```bash
+curl -s http://<사내-주소>/api/health
+# {"status":"ok","db":"up","uptime":...}
+```
+
+브라우저에서 프록시가 도는지는 dev 서버를 띄운 뒤 같은 경로를 상대 주소로 부른다.
+
+```bash
+curl -s http://127.0.0.1:5173/api/health
+```
+
+### 지금 막혀 있는 것
+
+| 무엇        | 상태                                                                                             |
+| ----------- | ------------------------------------------------------------------------------------------------ |
+| 인증        | 계약 경로 전건 `401`. 세션 운반 수단이 계약에 없고(`securitySchemes` 비어 있음) 시험 계정도 없다 |
+| 미구현 경로 | 모바일이 부르는 47개 중 17개가 아직 서버에 없다                                                  |
+
+배선은 서 있고 상태 확인 경로로 검증된다. 화면이 실제 응답으로 도는 것은 위 둘이 풀린
+뒤다. 진행은 착수 이슈에 적는다.
+
 ## 버전 조합
 
 바꾸기 전에 `docs/decisions.md` 14 번을 읽는다. 조합이 어긋나면 원인을 알기 어려운 빌드 오류가 난다.

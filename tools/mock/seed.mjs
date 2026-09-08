@@ -684,6 +684,27 @@ export const createSeed = (now = new Date()) => {
       lotId: 8003,
       labelIssued: true,
     },
+    /*
+     * 도착 때 라벨을 못 스캔한 사전부착 라인. 자재LOT 스캔·등록(M-01-02)이 이것을 골라 채운다.
+     *
+     * 부착인데 LOT 이 비어 있는 라인이 하나도 없으면 그 화면이 대상을 하나도 못 받아,
+     * 대상을 고르는 자리부터 재 볼 수 없다.
+     */
+    {
+      inboundReceiptLineId: 9303,
+      inboundReceiptId: 9002,
+      lineNo: 2,
+      purchaseOrderLineId: null,
+      itemId: 2001,
+      receivedQty: 60,
+      uomId: 1001,
+      packageCount: 1,
+      supplierLotNo: null,
+      supplierLotMissing: false,
+      substituteLotReasonCode: null,
+      lotId: null,
+      labelIssued: false,
+    },
   ];
 
   /* 적치 지시는 사번에 매인다 — 목록이 assignedWorkerId 로 걸린다. */
@@ -798,6 +819,63 @@ export const createSeed = (now = new Date()) => {
       uomId: 1001,
       sourceLocationId: 3001,
       inventoryTransactionLineId: null,
+    },
+  ];
+
+  /*
+   * 돌고 있는 실사 하나. 실물 카운트(M-01-11)가 이것을 골라 위치를 스캔한다.
+   *
+   * 장부를 감추지 않는다 - 감춘 실사도 한 벌 두면 어느 쪽이 기본인지 흐려진다. 감춘 쪽은
+   * blindCount 를 바꿔 재 본다.
+   */
+  const inventoryCounts = [
+    {
+      inventoryCountId: 5001,
+      inventoryCountNo: 'IC-2026-000031',
+      countTypeCode: 'PERIODIC',
+      warehouseId: 1001,
+      plannedDate: today,
+      blindCount: false,
+      statusCode: 'IN_PROGRESS',
+    },
+  ];
+
+  /*
+   * 한 위치에 두 줄을 둔다. 한 줄만 적고 완료했을 때 나머지가 미실사로 남는지를 재려면
+   * 안 적을 줄이 있어야 한다.
+   */
+  const inventoryCountLines = [
+    {
+      inventoryCountLineId: 5101,
+      inventoryCountId: 5001,
+      lineNo: 1,
+      locationId: 3001,
+      itemId: 2002,
+      lotId: 8001,
+      systemQty: 200,
+      countedQty: 0,
+      varianceQty: 0,
+      uomId: 1001,
+      varianceReasonCode: null,
+      countedBy: null,
+      countedAt: iso(0),
+      counted: false,
+    },
+    {
+      inventoryCountLineId: 5102,
+      inventoryCountId: 5001,
+      lineNo: 2,
+      locationId: 3001,
+      itemId: 2001,
+      lotId: 8002,
+      systemQty: 80,
+      countedQty: 0,
+      varianceQty: 0,
+      uomId: 1001,
+      varianceReasonCode: null,
+      countedBy: null,
+      countedAt: iso(0),
+      counted: false,
     },
   ];
 
@@ -1376,6 +1454,8 @@ export const createSeed = (now = new Date()) => {
     reservations,
     goodsIssues,
     goodsIssueLines,
+    inventoryCounts,
+    inventoryCountLines,
     /* 아직 아무것도 받지 않았다. 첫 수령이 서는지, 두 번째가 막히는지를 재는 자리다. */
     shopfloorReceipts: [],
     shipmentRequests,
@@ -1391,6 +1471,38 @@ export const createSeed = (now = new Date()) => {
     inspections: [],
     breakdowns: [],
     operationHandovers: [],
+    /**
+     * 작업 세션 — P-02-10 이 중단·재개를 거는 자리다.
+     *
+     * 진행 중인 것 하나만 둔다(W/O 11002). ⚠ **끝 시각을 비운다** — 화면은 「열려 있는가」를
+     * 끝 시각의 부재로 판정하므로, 값이 있으면 세션이 없는 것으로 걸러진다.
+     */
+    workSessions: [
+      {
+        workSessionId: 9001,
+        workOrderId: 11002,
+        sessionNo: 1,
+        shiftId: 1001,
+        equipmentId: 5001,
+        terminalId: 7001,
+        startedAt: '2026-09-08T08:00:00+09:00',
+        endedAt: null,
+        statusCode: 'RUNNING',
+        versionNo: 1,
+      },
+    ],
+    /** 세션 사건 — 구간을 연 「시작」 하나로 둔다. 중단·재개는 화면이 쌓는다. */
+    workSessionEvents: [
+      {
+        workSessionEventId: 9101,
+        workSessionId: 9001,
+        eventTypeCode: 'START',
+        occurredAt: '2026-09-08T08:00:00+09:00',
+        recordedAt: '2026-09-08T08:00:00+09:00',
+        performedBy: 1001,
+        terminalId: 7001,
+      },
+    ],
     approvalRequests,
     goodsReceipts: [],
     productionResults: [],

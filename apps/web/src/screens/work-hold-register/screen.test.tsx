@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
@@ -11,6 +11,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { sessionEvent, WORK_ORDER_ID, WORK_SESSION_ID, WORKER_NO, workSession } from './fixtures';
+import { workHoldKeys } from './queries';
 import { WorkHoldRegisterScreen } from './screen';
 
 const t = messages.workHoldRegister;
@@ -342,6 +343,57 @@ describe('P-02-10 작업 중단 등록', () => {
       await waitFor(() => {
         expect(sessionReads).toBeGreaterThan(before);
       });
+    });
+
+    /*
+     * ⛔ **보낸 유형은 그 전송의 다시 읽기까지만 쓴다.** 세션 값이 새로 오면 판정 근거는
+     * 서버가 말하는 상태로 넘어가야 하는데, 옛 유형이 남아 있으면 **뒤에 다른 이유로 세션을
+     * 다시 읽는 동안 반대 방향 버튼이 열린다** — 돌고 있는 설비에 재개가 열리는 식이다.
+     */
+    it('보낸 유형은 다음 다시 읽기까지 남지 않는다', async () => {
+      const user = userEvent.setup();
+      let sessionHangs = false;
+
+      const { queryClient } = renderScreen([
+        {
+          match: (request) => isGet(request, SESSIONS_PATH),
+          respond: () =>
+            sessionHangs
+              ? /* 끝나지 않는 응답 — 「다시 읽는 중」이 유지된다. */
+                new Response(new ReadableStream({ start: () => undefined }), {
+                  status: 200,
+                  headers: { 'Content-Type': 'application/json' },
+                })
+              : jsonResponse({
+                  items: [workSession()],
+                  page: { page: 1, size: 50, total: 1 },
+                }),
+        },
+        eventsRoute([]),
+        eventPost([]),
+      ]);
+
+      await user.click(await screen.findByRole('radio', { name: t.reasons.MOLD_CHANGE }));
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+
+      /* 전송이 닿고 다시 읽기가 끝나 서버 상태(진행 중)로 돌아온 지점. */
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: t.form.stopAction })).toBeEnabled();
+      });
+
+      sessionHangs = true;
+      await act(async () => {
+        void queryClient.invalidateQueries({ queryKey: workHoldKeys.all });
+      });
+      /* 다시 읽기가 «시작된» 것을 화면이 실제로 받아 그리는 지점까지 흘린다. */
+      await act(async () => {
+        await new Promise((resolve) => {
+          globalThis.setTimeout(resolve, 0);
+        });
+      });
+
+      expect(screen.getByRole('button', { name: t.form.stopAction })).toBeEnabled();
+      expect(screen.getByRole('button', { name: t.form.resumeAction })).toBeDisabled();
     });
 
     /* ⛔ 사번이 없으면 서버가 거부한다 — 누르고 나서가 아니라 누르기 전에 막는다. */

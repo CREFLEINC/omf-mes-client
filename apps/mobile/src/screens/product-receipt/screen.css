@@ -1,0 +1,44 @@
+.product-receipt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 20px);
+  padding: var(--space-4, 16px);
+}
+
+.product-receipt__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+/* 스캐너가 죽었을 때 손으로 넣는 자리. 칸과 단추가 밑선을 맞춘다. */
+.product-receipt__row {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: flex-end;
+}
+
+.product-receipt__row > *:first-child {
+  flex: 1;
+}
+
+.product-receipt__line {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1, 4px);
+}
+
+.product-receipt__expected,
+.product-receipt__meta {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.product-receipt__note {
+  margin: 0;
+}
+
+/* 핵심 단추는 장갑 낀 손으로 누른다. 폭을 꽉 채워 겨냥하지 않아도 닿게 한다. */
+.product-receipt__wide {
+  width: 100%;
+}
