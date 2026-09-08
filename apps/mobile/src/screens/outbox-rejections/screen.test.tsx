@@ -75,7 +75,7 @@ describe('전송 실패한 기록 화면', () => {
 
     render();
 
-    expect(await screen.findByText(/서버가 받지 않았습니다/)).toBeInTheDocument();
+    expect(await screen.findByText(/보냈지만 등록되지 않았습니다/)).toBeInTheDocument();
   });
 
   it('앞 기록에 딸려 실패한 것임을 말한다', async () => {

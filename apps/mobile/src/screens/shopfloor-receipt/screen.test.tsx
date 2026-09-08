@@ -461,7 +461,7 @@ describe('생산창고 입고 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '입고 확정' }));
 
-    expect(await screen.findByText('입고를 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('입고를 저장하지 못했습니다')).toBeTruthy();
   });
 
   it('서버가 되돌리면 되돌아왔다고 말한다', async () => {

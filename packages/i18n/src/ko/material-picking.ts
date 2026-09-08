@@ -38,7 +38,7 @@ export const materialPicking = {
     none: '이 지시에 라인이 없습니다',
     planned: (planned: string, picked: string) => `요청 ${planned} / 피킹 ${picked}`,
     /* 담긴 것은 아직 서버에 없다. 끝난 것으로 보이면 같은 라인을 다시 집는다. */
-    queued: (qty: string) => `${qty} 미확정 — 아직 서버에 없습니다`,
+    queued: (qty: string) => `${qty} 전송 대기 — 아직 반영되지 않았습니다`,
     at: (locationCode: string) => `위치 ${locationCode}`,
     expiry: (date: string) => `유효 ${date}`,
     manufactured: (date: string) => `제조 ${date}`,
@@ -80,43 +80,43 @@ export const materialPicking = {
    */
   issueTypeLabel: '출고 유형',
   issueTypePlaceholder: '출고 유형을 고르세요',
-  issueTypeNote: '어느 값이 이 출고인지 아직 정해지지 않아 담당자가 고릅니다.',
+  issueTypeNote: '출고 유형은 담당자가 고릅니다.',
   issueTypeLoadFailed: '출고 유형을 불러오지 못했습니다',
-  noIssueType: '보낼 출고 유형이 없습니다. 공통코드를 확인하세요.',
+  noIssueType: '고를 수 있는 출고 유형이 없습니다. 관리자에게 문의하세요.',
   /* 담긴 것을 끝난 것으로 말하지 않는다. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
   pickOutcome: {
     sent: { title: '집었습니다', description: '' },
     queued: {
-      title: '피킹을 담아 두었습니다',
-      description: '연결되면 보냅니다. 아직 서버에 없습니다.',
+      title: '피킹을 전송 대기에 넣었습니다',
+      description: '연결되면 보냅니다. 아직 보내지 않았습니다.',
     },
     rejected: {
       title: '피킹을 전송하지 못했습니다',
-      description: '서버가 받지 않았습니다.',
+      description: '보냈지만 등록되지 않았습니다.',
     },
   },
   /* 단말 보관소가 차면 담기 자체가 실패한다. 조용히 넘기면 적은 것이 어디에도 없다. */
-  saveFailed: '단말에 담지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.',
+  saveFailed: '이 기기에 저장하지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.',
   /* 서버는 출고 뒤에도 집은 양을 그대로 내려준다. 남은 것이 없다는 말을 화면이 대신 한다. */
   allIssued: '이 지시에서 내보낼 것이 남아 있지 않습니다.',
   /* 담긴 출고는 서버가 아직 몰라 조회로 드러나지 않는다. 또 확정하면 재고가 두 번 깎인다. */
-  issueQueued: '이 지시의 출고가 이미 담겨 있습니다. 연결되면 나갑니다.',
+  issueQueued: '이 지시의 출고가 이미 전송 대기 중입니다. 연결되면 보냅니다.',
   /* 셸이 배경으로 보내다 거부당한 건은 화면이 스스로 본 적이 없다. 그래도 사유는 보여야 한다. */
   returned: {
     title: (count: string) => `이 지시에서 전송 실패한 건 ${count}`,
-    description: '서버가 받지 않았습니다. 사유를 확인하세요. ',
+    description: '보냈지만 등록되지 않았습니다. 사유를 확인하세요. ',
   },
-  noWorker: '사번을 확인한 뒤에 피킹할 수 있습니다',
+  noWorker: '사번을 먼저 확인하세요',
   sent: {
     title: '출고를 확정했습니다',
   },
   queued: {
-    title: '출고를 담아 두었습니다',
+    title: '출고를 전송 대기에 넣었습니다',
     /*
      * 되돌릴 수 없는 실물 이동이라 담긴 것을 끝난 것으로 말하지 않는다. 서버가 거부하면
      * 물건은 이미 라인에 가 있고, 되돌리는 것은 화면이 아니라 사람이다.
      */
-    description: '연결되면 보냅니다. 아직 확정이 아니며 서버가 되돌릴 수 있습니다.',
+    description: '연결되면 보냅니다. 아직 확정이 아니라 보낸 뒤에 되돌아올 수 있습니다.',
   },
   rejected: {
     title: '출고를 전송하지 못했습니다',

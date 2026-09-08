@@ -77,13 +77,13 @@ describe('사번 확인 화면', () => {
     const user = userEvent.setup();
     mount();
 
-    expect(await screen.findByText('기준정보를 아직 받지 못했습니다')).toBeInTheDocument();
+    expect(await screen.findByText('작업자 정보를 아직 받지 못했습니다')).toBeInTheDocument();
 
     await press(user, '900028');
 
     expect(screen.getByRole('button', { name: '확인' })).toBeDisabled();
     // 같은 문장을 배너와 입력 칸에 두 번 두지 않는다.
-    expect(screen.getAllByText('기준정보를 아직 받지 못했습니다')).toHaveLength(1);
+    expect(screen.getAllByText('작업자 정보를 아직 받지 못했습니다')).toHaveLength(1);
     expect(
       screen.queryByText('등록되지 않았거나 재직 중이 아닌 사번입니다'),
     ).not.toBeInTheDocument();

@@ -33,7 +33,7 @@ export const inboundVariance = {
     none: '이 줄에 적힌 오류가 없습니다',
     item: (type: string, qty: string) => `${type} ${qty}`,
     /** 담아 둔 것은 서버에 없다. 목록에 나오지 않는다는 사실을 함께 적는다. */
-    pending: (count: number) => `담아 둔 오류 ${String(count)}건 — 아직 서버에 없습니다`,
+    pending: (count: number) => `전송 대기 중인 오류 ${String(count)}건`,
   },
   form: {
     legend: '오류 내용',
@@ -52,7 +52,7 @@ export const inboundVariance = {
     reasonOptional: '사유는 비워도 됩니다',
     reasonLoadFailed: '사유를 불러오지 못했습니다',
     /** 예정 수량이 이 화면에 닿지 않아 차이와 견주지 못한다. 못 하는 것을 감추지 않는다. */
-    noExpectedQty: '예정 수량이 이 화면에 오지 않아 차이와 견주지 못합니다',
+    noExpectedQty: '예정 수량이 없어 차이를 비교하지 못합니다',
   },
   confirm: {
     title: '등록하면 고칠 수 없습니다',
@@ -67,8 +67,8 @@ export const inboundVariance = {
     description: '담당자 확인을 기다립니다. 반품과 폐기는 이 화면에서 정하지 않습니다.',
   },
   queued: {
-    title: '입하 오류를 담아 두었습니다',
-    description: '연결되면 보냅니다. 아직 서버에 없습니다.',
+    title: '입하 오류를 전송 대기에 넣었습니다',
+    description: '연결되면 보냅니다. 아직 보내지 않았습니다.',
   },
   rejected: {
     title: '입하 오류를 전송하지 못했습니다',
@@ -77,9 +77,9 @@ export const inboundVariance = {
   },
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 등록되지 않았다고 말한다. */
   saveFailed: {
-    title: '오류를 담아 두지 못했습니다',
+    title: '오류를 저장하지 못했습니다',
     description: '등록되지 않았습니다. 다시 시도하세요.',
   },
-  noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
+  noWorker: '사번을 먼저 확인하세요',
   another: '다음 오류',
 } as const;

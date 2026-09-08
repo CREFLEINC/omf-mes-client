@@ -157,7 +157,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
     mount();
 
     expect(
-      await screen.findByText('권한자 승인 후에 쓸 수 있습니다. 지금 바로 투입되지 않습니다.'),
+      await screen.findByText('승인을 받아야 쓸 수 있습니다. 지금 바로 투입되지 않습니다.'),
     ).toBeInTheDocument();
   });
 
@@ -263,7 +263,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
     await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
     await user.click(screen.getByRole('button', { name: '요청' }));
 
-    expect(await screen.findByText('요청을 담아 두었습니다')).toBeInTheDocument();
+    expect(await screen.findByText('요청을 전송 대기에 넣었습니다')).toBeInTheDocument();
     expect(screen.getByText(/급하면 유선으로 함께 알리세요/)).toBeInTheDocument();
     expect(screen.queryByText('요청했습니다')).not.toBeInTheDocument();
   });
@@ -292,7 +292,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
     expect(
       screen.getByText('결재선이 없어 요청할 수 없습니다. 전산담당에게 문의하세요.'),
     ).toBeInTheDocument();
-    expect(screen.queryByText('요청을 담아 두었습니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('요청을 전송 대기에 넣었습니다')).not.toBeInTheDocument();
   });
 
   /* 누가 올린 요청인지 없이 기록을 남길 수 없다 - 계약이 사번 없는 쓰기를 받지 않는다. */
@@ -310,7 +310,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
     await screen.findByText('수입검사 대기 중');
     await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
 
-    expect(screen.getByText('사번을 확인해야 요청할 수 있습니다')).toBeInTheDocument();
+    expect(screen.getByText('사번을 먼저 확인하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '요청' })).toBeDisabled();
   });
 
@@ -415,7 +415,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '요청' }));
 
-    expect(await screen.findByText('요청을 담아 두지 못했습니다')).toBeInTheDocument();
+    expect(await screen.findByText('요청을 저장하지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('요청했습니다')).toBeNull();
     expect(sent).toHaveLength(0);
   });

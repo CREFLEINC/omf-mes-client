@@ -255,7 +255,9 @@ describe('적치·입고 완료 화면', () => {
     scan('A-01-03');
 
     expect(
-      await screen.findByText('이 위치는 단일 품목만 보관합니다. 다른 품목이 있으면 서버가 막습니다.'),
+      await screen.findByText(
+        '이 위치는 한 품목만 보관합니다. 다른 품목이 있으면 적치할 수 없습니다.',
+      ),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: '적치 완료' }).hasAttribute('disabled')).toBe(false);
   });
@@ -340,7 +342,7 @@ describe('적치·입고 완료 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '적치 완료' }));
 
-    expect(await screen.findByText('적치를 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('적치를 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('적치를 기록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
   });

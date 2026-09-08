@@ -28,7 +28,7 @@ export const inboundReceipt = {
     back: '스캔으로 되돌리기',
   },
   po: {
-    legend: 'P/O 선택',
+    legend: '발주 선택',
     selectLabel: '발주 번호',
     loading: '미마감 발주를 불러오는 중입니다',
     loadFailed: '발주를 확인할 수 없습니다. 연결을 확인하세요.',
@@ -59,14 +59,14 @@ export const inboundReceipt = {
     itemLoadFailed: '품목을 확인할 수 없습니다',
     /** 품목 마스터의 주인은 ERP 다. 이 화면이 품목을 만들 길은 계약에 없다. */
     itemUnregistered: '목록에 없는 품목은 여기서 만들 수 없습니다',
-    itemUnregisteredWhy: 'ERP 에 품목이 선 뒤에 등록할 수 있습니다.',
+    itemUnregisteredWhy: 'ERP에 품목이 만들어진 뒤에 고를 수 있습니다.',
     uomLabel: '단위',
     uomPlaceholder: '단위를 고르세요',
     uomLoadFailed: '단위를 확인할 수 없습니다',
     /** 예정 수량이 없으므로 견줄 것이 없다. 판정하지 않는다는 사실을 말한다. */
-    noVerdict: '발주가 없어 예정과 견주지 않습니다',
+    noVerdict: '발주가 없어 예정 수량과 비교하지 않습니다',
     /** 공장은 단말 토큰이 싣고 온다. 없으면 지어내지 않고 막는다. */
-    noPlant: '이 단말의 공장을 확인할 수 없어 등록할 수 없습니다',
+    noPlant: '이 기기의 공장을 확인할 수 없어 등록할 수 없습니다',
   },
   note: {
     legend: '거래명세서',
@@ -100,7 +100,7 @@ export const inboundReceipt = {
     /** 판정 결과를 먼저 보인 뒤에 넘긴다. 넘어갈 화면은 아직 이 앱에 없다. */
     over: (remaining: string, arrived: string) =>
       `수량 초과 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
-    overNext: '초과분은 초과 입하 분리에서 나눕니다. 그 화면은 아직 이 앱에 없습니다.',
+    overNext: '초과분은 담당자가 따로 처리합니다.',
     under: (remaining: string, arrived: string) =>
       `수량 부족 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
     /*
@@ -113,7 +113,7 @@ export const inboundReceipt = {
       arrived: '이번 도착',
       remaining: '남은 예정',
     },
-    underAsk: '더 올 것이 남았습니까?',
+    underAsk: '더 들어올 물량이 있습니까?',
     /** 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. */
     underContinue: '계속 등록',
     underContinueNote: '분할 납품이면 그대로 등록합니다. 발주는 열린 채 남습니다.',
@@ -121,15 +121,15 @@ export const inboundReceipt = {
     underVarianceNote: '이번이 마지막인데 모자라면 입하 오류로 넘어갑니다.',
   },
   /** 검사 대상 여부는 서버가 라인마다 정한다. 화면이 보내지 않는다. */
-  inspectionNote: '검사 대상 여부는 등록 뒤 서버가 라인마다 정합니다',
+  inspectionNote: '검사 대상 여부는 등록한 뒤에 줄마다 정해집니다',
   submit: '입하 등록',
   sent: {
     title: '입하를 등록했습니다',
-    description: '사전부착 라인의 자재 LOT이 보류 상태로 함께 생겼습니다',
+    description: '라벨이 붙어 온 줄의 자재 LOT도 함께 만들어졌습니다. 모두 보류 상태입니다.',
   },
   queued: {
-    title: '입하를 담아 두었습니다',
-    description: '연결되면 보냅니다. 아직 서버에 없습니다.',
+    title: '입하를 전송 대기에 넣었습니다',
+    description: '연결되면 보냅니다. 아직 보내지 않았습니다.',
   },
   rejected: {
     title: '입하를 전송하지 못했습니다',
@@ -138,9 +138,9 @@ export const inboundReceipt = {
   },
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 등록되지 않았다고 말한다. */
   saveFailed: {
-    title: '입하를 담아 두지 못했습니다',
+    title: '입하를 저장하지 못했습니다',
     description: '등록되지 않았습니다. 다시 시도하세요.',
   },
-  noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
+  noWorker: '사번을 먼저 확인하세요',
   another: '다음 입하',
 } as const;
