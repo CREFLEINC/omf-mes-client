@@ -194,6 +194,10 @@ MOBILE_API_PROXY_TARGET=http://<사내-주소> pnpm --filter @omf-mes/mobile dev
 `MOBILE_API_PROXY_TARGET` 이 없으면 프록시를 걸지 않는다 — 목 서버로 도는 경로가 그대로
 남는다.
 
+⚠ **상대 기준 주소는 브라우저에서만 선다.** `new Request('/api/...')` 를 브라우저는 문서
+주소로 풀지만 Node 는 던진다(`Failed to parse URL`). 시험(vitest·node 환경)에서 이 설정을
+재려다 실패하거든 설정이 틀린 것이 아니다 — 브라우저에서 실제로 도는 것을 확인했다.
+
 ### 에뮬레이터·실기에서
 
 프록시가 없으므로 절대 주소를 주고, 요청을 네이티브로 보내 CORS 를 우회한다.
