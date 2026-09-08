@@ -176,7 +176,11 @@ export const useReferenceNames = (
 
   /*
    * 스캔한 LOT 의 품목만 되짚어 부른다 - 그 LOT 의 잔액이 한 자리도 없으면 응답에 품목 코드가
-   * 실려 올 곳이 없다. 잔액이 있으면 부르지 않는다.
+   * 실려 올 곳이 없다.
+   *
+   * 잔액이 LOT 보다 늦게 오면 그 사이에 한 번 나갈 수 있다. 잔액이 온 뒤에는 멈추고, 나간
+   * 요청도 같은 코드를 돌려준다 - 로딩 여부를 여기서 가르려면 부르는 쪽이 그 상태를 함께
+   * 넘겨야 해서 이 정도로 둔다.
    */
   const missingItemIds =
     itemId === null || itemId === undefined || itemCodes.has(itemId) ? [] : [itemId];
