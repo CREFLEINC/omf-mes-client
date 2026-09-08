@@ -79,7 +79,20 @@ export const createSeed = (now = new Date()) => {
       labelName: 'CHARGER ASSY',
       fifoPolicyCode: 'FEFO',
     },
+    /*
+     * 같은 품목코드로 신재 행과 재생재 행이 함께 온다. 재생재 등록은 그 둘 중 재생재 행을
+     * 골라 재고를 세우므로, 재생재 행이 없으면 그 화면은 늘 등록되지 않은 품목이라고만 말한다.
+     */
+    {
+      itemId: 2004,
+      itemCode: 'RM-1001',
+      itemName: '수지A',
+      labelName: 'PC RESIN BLK',
+      fifoPolicyCode: 'FEFO',
+      mesCategoryCode: 'RECYCLED',
+    },
   ].map((item) => ({
+    mesCategoryCode: 'NEW',
     ...item,
     plantId: PLANT_ID,
     baseUomId: 1001,
@@ -348,6 +361,19 @@ export const createSeed = (now = new Date()) => {
       ['DAMAGED', '파손'],
       ['WRONG_ITEM', '품목 상이'],
     ],
+    /* 적는 것은 선택이지만, 비어 있으면 고르는 칸이 빈 채로 열려 시험할 것이 없다. */
+    INBOUND_VARIANCE_REASON: [
+      ['TRANSPORT_DAMAGE', '운송 중 파손'],
+      ['SUPPLIER_SHORTAGE', '공급사 결품'],
+      ['PACKING_ERROR', '포장 오류'],
+      ['ETC', '기타'],
+    ],
+    VARIANCE_REASON: [
+      ['MISCOUNT', '계수 착오'],
+      ['SPILLAGE', '운반 중 손실'],
+      ['LEFT_BEHIND', '잔량 미인계'],
+      ['ETC', '기타'],
+    ],
     PUTAWAY_TASK_TEMPORARY_REASON: [
       ['FULL', '정위치 포화'],
       ['INSPECTION', '검사 대기'],
@@ -548,20 +574,37 @@ export const createSeed = (now = new Date()) => {
     { lotId: 8003, itemId: 2002, warehouseId: 1001, locationId: 3003, onHandQty: 120 },
     { lotId: 8201, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 500 },
     { lotId: 8202, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 300 },
-  ].map((balance, index) => ({
-    inventoryBalanceId: 8600 + index,
-    ...balance,
-    uomId: 1001,
-    reservedQty: 0,
-    pickedQty: 0,
-    blockedQty: balance.lotId === 8003 ? balance.onHandQty : 0,
-    availableQty: balance.lotId === 8003 ? 0 : balance.onHandQty,
-    qualityStatusCode: balance.lotId === 8003 ? 'INSPECTION_PENDING' : 'NORMAL',
-    inventoryStatusCode: 'AVAILABLE',
-    ownershipTypeCode: 'OWNED',
-    ownerPartnerId: null,
-    lastTransactionAt: iso(-1, 14),
-  }));
+  ].map((balance, index) => {
+    /*
+     * 사람이 읽는 값을 잔액 줄에 함께 싣는다. 계약이 「이 값이 있으므로 마스터를 다시 부르지
+     * 않는다」로 못 박은 자리라, 여기가 비면 화면은 부를 곳도 없이 「알 수 없음」만 보인다.
+     */
+    const item = items.find((each) => each.itemId === balance.itemId);
+    const warehouse = warehouses.find((each) => each.warehouseId === balance.warehouseId);
+    const location = locations.find((each) => each.locationId === balance.locationId);
+    const lot = lots.find((each) => each.lotId === balance.lotId);
+
+    return {
+      inventoryBalanceId: 8600 + index,
+      ...balance,
+      uomId: 1001,
+      reservedQty: 0,
+      pickedQty: 0,
+      blockedQty: balance.lotId === 8003 ? balance.onHandQty : 0,
+      availableQty: balance.lotId === 8003 ? 0 : balance.onHandQty,
+      qualityStatusCode: balance.lotId === 8003 ? 'INSPECTION_PENDING' : 'NORMAL',
+      inventoryStatusCode: 'AVAILABLE',
+      ownershipTypeCode: 'OWNED',
+      ownerPartnerId: null,
+      lastTransactionAt: iso(-1, 14),
+      itemCode: item?.itemCode,
+      itemName: item?.itemName,
+      lotNo: lot?.lotNo ?? null,
+      warehouseName: warehouse?.warehouseName ?? null,
+      locationCode: location?.locationCode ?? null,
+      locationName: location?.locationName ?? null,
+    };
+  });
 
   const purchaseOrders = [
     {
@@ -762,7 +805,8 @@ export const createSeed = (now = new Date()) => {
       sourceDocumentTypeCode: 'MATERIAL_ISSUE_REQUEST',
       sourceDocumentId: 16101,
       warehouseId: 1001,
-      statusCode: 'ASSIGNED',
+      /* 화면은 아직 출고할 수 있는 지시만 담는다 - 그 판정에 쓰는 값이 이것이다. */
+      statusCode: 'REGISTERED',
       assignedWorkerId: 1001,
     },
   ];
@@ -1302,16 +1346,31 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /*
+   * 계약이 필수로 둔 칸을 빠짐없이 싣는다. 화면은 필수 칸을 그대로 읽으므로 target 이 비면
+   * 렌더가 죽어 요청 목록 자리가 통째로 열리지 않는다.
+   */
   const approvalRequests = [
     {
       approvalRequestId: 15001,
+      approvalRequestNo: 'AP-2026-000031',
       approvalTypeCode: 'IQC_SKIP',
       targetTypeCode: 'INBOUND_LOT',
       targetId: 8003,
+      target: {
+        targetTypeCode: 'INBOUND_LOT',
+        targetId: 8003,
+        displayName: '0001234500000012002607310001230009',
+        openable: false,
+      },
+      requestedBy: 1001,
+      requestedByName: '홍길동',
       requestedByWorkerNo: '100027',
       requestedAt: iso(-1, 13),
       reason: '긴급 생산 투입 — 수입검사 대기 중',
       statusCode: 'PENDING',
+      currentStepNo: 1,
+      totalStepNo: 2,
       isMyTurn: false,
     },
   ];
