@@ -85,13 +85,13 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
   /*
-   * ⚠ **씨앗에 출하가 없다** — 이 번호는 씨앗이 아니라 계약 예시 서버가 받아 답한다(씨앗에
-   * 경로가 아예 없으면 그리로 넘어간다). 씨앗이 출하를 담게 되면 그때 실제 번호로 바꾼다.
+   * 씨앗의 확정 출하(`SH-2026-0455`)다. ⚠ **번호를 바꾸면 화면이 「없는 자원」으로 비어 뜬다**
+   * — 씨앗에 없는 번호는 서버가 404 로 답한다(실측 2026-09-08).
    */
   {
     path: '/pop/shipping-label',
     label: 'P-04-02 납품·포장 라벨 출력',
-    query: '?shipmentId=14001&workerNo=100029',
+    query: '?shipmentId=9901&workerNo=100029',
   },
   { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
   {
@@ -123,13 +123,13 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     query: '?workOrderId=11002',
   },
   /*
-   * ⚠ **씨앗에 출고 전표가 없다** — 이 번호는 계약 예시 서버가 받아 답한다(위 출하와 같은
-   * 사정). 씨앗이 출고를 담게 되면 그때 실제 번호로 바꾼다.
+   * 씨앗의 전기된 출고 전표(`GI-2026-000401`)다. ⚠ **번호를 바꾸면 화면이 빈 채로 뜬다** —
+   * 씨앗에 없는 번호는 계약 예시가 받아 답하므로 머리와 줄이 서로 다른 전표를 말한다(실측).
    */
   {
     path: '/pop/goods-issue-qr',
     label: 'P-01-02 출고 QR 발행',
-    query: '?goodsIssueId=15001&workerNo=100029',
+    query: '?goodsIssueId=16401&workerNo=100029',
   },
   /*
    * ⚠ 이 화면도 진입 컨텍스트를 주소로 받는다(`?workOrderId=`) — 작업지시 선택이 셸에 서기

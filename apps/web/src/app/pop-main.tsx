@@ -34,26 +34,34 @@ import './app.css';
  */
 import './pop.css';
 
-import { StrictMode } from 'react';
+import { StrictMode, useEffect, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Navigate, RouterProvider, createBrowserRouter } from 'react-router';
+import { Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router';
 
 import { popRoutes } from '../routes/pop';
-import {
-  PopIdentityProvider,
-  UNKNOWN_POP_IDENTITY,
-  type PopIdentity,
-} from '../patterns/pop-identity';
+import { applyPopFit } from '../patterns/pop-fit';
+import { PopLogoutButton } from '../patterns/pop-logout';
+import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../patterns/pop-identity';
 import { AppProviders } from './providers';
 
-/** 브라우저 수동 검증에서만 쓰는 합성 셸 값. 설치본에는 들어가지 않는다. */
-const DEV_POP_IDENTITY: PopIdentity = {
-  terminalId: 10,
-  processId: 1001,
-  workerNo: '100027',
-};
-
-const popIdentity = import.meta.env.DEV ? DEV_POP_IDENTITY : UNKNOWN_POP_IDENTITY;
+/**
+ * 셸이 아직 채우지 못하는 단말 신원의 자리.
+ *
+ * ⛔ **개발 모드에서는 이 겹을 씌우지 않는다.** `AppProviders` 가 개발용 신원 공급자를
+ * 이미 세우는데(`patterns/pop-dev-identity`), 그 «안쪽» 에 이 겹을 한 번 더 씌우면 안쪽이
+ * 이겨 단말이 도로 「모름」이 된다 — 그러면 저장·발행이 전부 「단말이 확인되지 않았습니다」로
+ * 잠긴다(2026-09-08 설치본에서 실측).
+ *
+ * ⛔ **가름은 `MODE` 로 한다.** `import.meta.env.DEV` 는 개발 서버에서만 참이라
+ * `--mode development` 로 구운 확인용 설치본에서 조용히 거짓이 됐다. 이 저장소의 빌드 시점
+ * 가름은 `MODE === 'development'` 한 표기로 통일돼 있다(`pop-dev-guard.test.ts`).
+ */
+const PopShellIdentity = ({ children }: { children: ReactNode }) =>
+  import.meta.env.MODE === 'development' ? (
+    children
+  ) : (
+    <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>{children}</PopIdentityProvider>
+  );
 
 if (import.meta.env.DEV && window.pop === undefined) {
   window.pop = {
@@ -71,15 +79,74 @@ if (import.meta.env.DEV && window.pop === undefined) {
  */
 const POP_ENTRY_PATH = '/pop/worker-assignment';
 
+/**
+ * 화면 위에 늘 서 있는 것 — 지금은 **로그아웃 한 자리**뿐이다.
+ *
+ * ⭐ **길 위에 두어야 길을 안다.** 라우터 «안» 겹이라 지금 어느 화면인지 알 수 있고, 그래야
+ * 진입 화면에서 스스로 빠질 수 있다. 라우터 밖에 두면 주소를 직접 읽어야 하고, 화면을 옮겨도
+ * 다시 그려지지 않는다.
+ */
+const PopChrome = () => (
+  <>
+    <Outlet />
+    <PopLogoutButton />
+  </>
+);
+
 const popRouter = createBrowserRouter([
-  { path: '/', element: <Navigate to={POP_ENTRY_PATH} replace /> },
-  ...popRoutes,
-  /*
-   * 알 수 없는 주소는 진입 화면으로 되돌린다. 키오스크에는 주소창도 뒤로가기도 없어,
-   * 여기서 되돌리지 않으면 빈 화면 앞에서 단말이 멈춘다.
-   */
-  { path: '*', element: <Navigate to={POP_ENTRY_PATH} replace /> },
+  {
+    element: <PopChrome />,
+    children: [
+      { path: '/', element: <Navigate to={POP_ENTRY_PATH} replace /> },
+      ...popRoutes,
+      /*
+       * 알 수 없는 주소는 진입 화면으로 되돌린다. 키오스크에는 주소창도 뒤로가기도 없어,
+       * 여기서 되돌리지 않으면 빈 화면 앞에서 단말이 멈춘다.
+       */
+      { path: '*', element: <Navigate to={POP_ENTRY_PATH} replace /> },
+    ],
+  },
 ]);
+
+/*
+ * ⚠ **개발 빌드에서만 듣는 되돌림 단축키(`Ctrl+Alt+H`).** 화면 이동 선택기는 진입 화면
+ * 안에만 있어, 다른 화면으로 나가면 사번 입력 화면으로 돌아올 길이 없다 — 키오스크에는
+ * 주소창도 뒤로가기도 없기 때문이다.
+ *
+ * ⛔ **화면에 버튼을 두지 않는다.** 처음에는 떠 있는 버튼으로 두었는데 어느 자리에 놓아도
+ * 화면마다 다른 조작 버튼을 가렸다(실측). 단축키는 무엇도 가리지 않는다.
+ *
+ * ⛔ **`MODE`로 가른다.** 빌드 시점에 상수로 접혀 배포 번들에서 이 가지째 걷힌다 —
+ * 현장 단말에서 이 손짓이 통하면 작업자가 작업 중에 세션을 버릴 수 있다.
+ *
+ * ⭐ **사번은 놓지 않는다**(사용자 지시 2026-09-08). 사번을 비우는 것은 이제 머리줄의
+ *    **로그아웃**이 맡는다 — 이 손짓은 「사번 확인을 마친 그 화면으로 돌아간다」이지
+ *    「작업자를 바꾼다」가 아니다. 그래서 문서를 다시 열지 않고 **라우터로만** 옮긴다.
+ */
+const PopDevHomeShortcut = () => {
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      // `event.key` 는 배열(레이아웃)에 따라 달라지므로 물리 키(`code`)로 판정한다.
+      if (!event.ctrlKey || !event.altKey || event.code !== 'KeyH') return;
+
+      event.preventDefault();
+      window.history.pushState(null, '', POP_ENTRY_PATH);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  return null;
+};
+
+/*
+ * 화면을 단말 크기에 맞춘다. **라우터를 세우기 전에 건다** — 첫 그림부터 맞은 크기로 서야
+ * 열자마자 넘쳤다가 줄어드는 것이 보이지 않는다(`patterns/pop-fit`).
+ */
+applyPopFit();
 
 const container = document.getElementById('root');
 if (!container) {
@@ -89,9 +156,10 @@ if (!container) {
 createRoot(container).render(
   <StrictMode>
     <AppProviders>
-      <PopIdentityProvider value={popIdentity}>
+      <PopShellIdentity>
         <RouterProvider router={popRouter} />
-      </PopIdentityProvider>
+        {import.meta.env.MODE === 'development' ? <PopDevHomeShortcut /> : null}
+      </PopShellIdentity>
     </AppProviders>
   </StrictMode>,
 );

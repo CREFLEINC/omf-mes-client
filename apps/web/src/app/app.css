@@ -6371,7 +6371,12 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 .pop-inspect {
   display: grid;
-  grid-template-columns: 464fr 544fr;
+  /*
+   * ⭐ **3단이다**(설계 2차 공지 `a6a87e1` · `omf-mes#286` §3-1) — 검사 항목 464 ·
+   *    결과 입력 312 · 숫자 키패드 216. 앞선 판은 2단(464 · 544)이었고 키패드는 팝업이었다.
+   *    그 판이 키패드 자리를 «가로»로 내면서 세로 예산(616)은 그대로 남았다.
+   */
+  grid-template-columns: 464fr 312fr 216fr;
   gap: var(--space-4);
   align-items: stretch;
   height: 616px;
@@ -6481,6 +6486,7 @@ dl.filter-bar.approval-inbox-detail-facts {
     grid-template-columns: 1fr;
     height: auto;
   }
+
 
   .pop-inspect-scroll {
     overflow-y: visible;
