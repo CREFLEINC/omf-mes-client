@@ -50,9 +50,9 @@ export interface RuleListPaneProps {
    */
   balanceOf: (rule: RuleView) => RuleBalance;
   /**
-   * 같은 조합의 활성 규칙이 이 쪽에 둘 이상인 규칙 번호.
+   * 같은 조합의 활성 규칙이 이 창고에 둘 이상인 규칙 번호.
    *
-   * ⚠ **지금 보이는 쪽 안의 사실이다.** 판정은 화면이 하고 표는 결과만 받는다 —
+   * 판정은 화면이 전건을 모아 하고 표는 결과만 받는다 —
    * 표가 스스로 세면 「어느 범위에서 센 것인가」가 표 안에 갇혀 다른 쪽에서 읽을 수 없다.
    */
   duplicatedRuleIds: ReadonlySet<number>;

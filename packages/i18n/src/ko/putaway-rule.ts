@@ -46,6 +46,7 @@ export const putawayRule = {
     lastReceivedAt: '마지막 입고',
   },
   actions: {
+    openExistingRule: '기존 규칙 열기',
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
@@ -263,21 +264,9 @@ export const putawayRule = {
      * 말하지 않으면 사용자는 「고르다 만 것」으로 읽는다.
      */
     locationEmptyMeansWarehouseWide: '위치를 비우면 그 창고 전체에 적용되는 규칙입니다.',
-    /**
-     * 창고 관리수준 값 목록이 확정되기 전이다(`omf-mes#64`). **지금은 모든 창고에서 위치를
-     * 고를 수 있다** — 값이 정해지면 위치를 쓰지 않는 창고에서 이 칸이 잠긴다.
-     */
-    managementLevelPending:
-      '창고별 위치 관리 여부가 아직 정해지지 않아 모든 창고에서 위치를 고를 수 있습니다.',
-    /**
-     * 위치 칸이 **실제로 잠긴** 사유. 위 문장과 **반드시 달라야 한다** —
-     * 「모든 창고에서 고를 수 있습니다」를 잠긴 칸의 사유로 쓰면 값이 정해지는 날
-     * 화면이 자기모순을 말한다(잠겼는데 「고를 수 있다」).
-     *
-     * ⛔ 지금은 **뜰 수 없다.** `LOCATION_MANAGED_LEVEL_CODES`가 비어 있는 동안 칸이
-     * 잠기지 않기 때문이다. 값이 채워지는 날 이 문장이 처음 화면에 선다.
-     */
-    locationNotManaged: '이 창고는 위치를 관리하지 않습니다.',
+    /** `WAREHOUSE` 수준에서는 Location을 받지 않는다. 해제 위치도 함께 안내한다(G-10). */
+    locationNotManaged:
+      '이 창고는 위치를 관리하지 않습니다. 창고·Location 화면에서 관리수준을 변경할 수 있습니다.',
     /** 우선순위 방향은 **데이터에 적혀 있지 않고 계약이 정한 것**이라 화면이 말해야 한다. */
     priorityDirection: '작을수록 먼저 권장합니다.',
     /**
@@ -389,6 +378,7 @@ export const putawayRule = {
      * 사유가 이름과 어긋나면 사용자가 어느 버튼 이야기인지 되짚어야 한다.
      */
     addNeedsWarehouse: '규칙 추가는 창고를 고른 뒤에 쓸 수 있습니다.',
+    addNeedsActiveWarehouse: '규칙 추가는 사용 중인 창고에서만 할 수 있습니다.',
     addLockedByOtherSave: '규칙 추가는 보내는 중인 요청이 끝난 뒤에 쓸 수 있습니다.',
     /**
      * 전환을 아직 낼 수 없다 — **잠금 토큰이 상세 응답에서만 온다**(위험 R2).

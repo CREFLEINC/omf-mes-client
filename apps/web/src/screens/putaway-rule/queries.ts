@@ -9,6 +9,7 @@ import {
   type TargetBalance,
 } from './balance-lookup';
 import type { DuplicateProbe } from './duplicate-check';
+import { fetchAllPages } from './fetch-all-pages';
 import { toRuleListQuery, toUncoveredQuery } from './filters';
 import type { PageMeta, PutawayRule, PutawayRuleDetail, RuleFilters, UncoveredItem } from './types';
 
@@ -46,15 +47,14 @@ export const putawayRuleKeys = {
    */
   all: ['putaway-rules'] as const,
   list: (filters: RuleFilters, page: number) => ['putaway-rules', 'list', filters, page] as const,
-  /**
-   * 규칙 없는 품목은 **창고마다** 캐시가 갈린다. 쪽은 키에 두지 않는다 — 이 화면은 첫 쪽만
-   * 부르고 나머지는 잘림 문구가 말한다(`uncovered-items-pane.tsx`).
-   */
+  /** 규칙 없는 품목은 **창고마다** 캐시가 갈린다. 내부에서 끝 쪽까지 모아 한 결과로 낸다. */
   uncovered: (warehouseId: number) => ['putaway-rules', 'uncovered', warehouseId] as const,
   detail: (putawayRuleId: number) => ['putaway-rules', 'detail', putawayRuleId] as const,
   /** 조준 조회는 **창고·품목 짝마다** 갈린다 — 그 둘이 요청 쿼리에 실리는 전부다. */
   duplicateProbe: (warehouseId: number, itemId: number) =>
     ['putaway-rules', 'duplicate-probe', warehouseId, itemId] as const,
+  duplicateIndex: (warehouseId: number) =>
+    ['putaway-rules', 'duplicate-index', warehouseId] as const,
 };
 
 /**
@@ -71,13 +71,15 @@ export const ruleDetailPath = (putawayRuleId: number): string =>
   `/logistics/putaway-rules/${String(putawayRuleId)}`;
 
 /**
- * 조준 조회가 한 번에 받아 오는 최대 건수.
+ * 조준 조회가 한 요청에서 받아 오는 건수.
  *
  * **목록 조회와 달리 크기를 명시한다.** 서버 기본값에 기대면 같은 창고·품목의 규칙이 그보다
- * 많을 때 조용히 잘리는데, 판정하는 자리에서 잘림은 「없다」로 읽힌다. 여기서 명시하면
- * 잘렸는지를 `page.total`과 견줘 알 수 있다(`judgeDuplicate`의 `truncated`).
+ * 많을 때 조용히 잘리는데, 판정하는 자리에서 잘림은 「없다」로 읽힌다. 이 크기로 끝 쪽까지
+ * 이어 받아 판정 자료를 완성한다.
  */
 export const DUPLICATE_PROBE_SIZE = 100;
+export const RULE_INDEX_PAGE_SIZE = 200;
+export const UNCOVERED_PAGE_SIZE = 200;
 
 /**
  * 적치 규칙 목록.
@@ -125,9 +127,8 @@ export const useRuleList = (
  * 계약이 `warehouseId`를 **필수 쿼리**로 요구한다 — 세는 범위가 정해지지 않으면 요청 자체가
  * 성립하지 않는다.
  *
- * **쪽 인자를 두지 않는다.** 이 화면은 첫 쪽만 부르고 나머지는 잘림 문구가 말하는 설계다 —
- * 옮길 손잡이가 없는데 인자만 두면 「쪽을 옮길 수 있다」는 통로가 열린 채로 굳는다
- * (사본 체크리스트 7번). 쪽 이동이 필요해지는 회차가 그때 인자와 손잡이를 함께 가져온다.
+ * **쪽 인자를 외부에 두지 않는다.** 화면은 건수와 전체 목록을 한 덩어리로 소비하고, 훅이
+ * 내부에서 마지막 쪽까지 이어 받는다.
  */
 export const useUncoveredItems = (
   warehouseId: number | null,
@@ -142,10 +143,14 @@ export const useUncoveredItems = (
         throw new Error('창고를 고르기 전에는 규칙 없는 품목을 조회하지 않습니다.');
       }
 
-      return runRequest(() =>
-        client.GET('/logistics/putaway-rules/uncovered-items', {
-          params: { query: toUncoveredQuery(warehouseId) },
-        }),
+      return fetchAllPages((page) =>
+        runRequest(() =>
+          client.GET('/logistics/putaway-rules/uncovered-items', {
+            params: {
+              query: { ...toUncoveredQuery(warehouseId), page, size: UNCOVERED_PAGE_SIZE },
+            },
+          }),
+        ),
       );
     },
   });
@@ -176,6 +181,42 @@ export const useRuleDetail = (putawayRuleId: number | null): UseQueryResult<Puta
         client.GET('/logistics/putaway-rules/{putawayRuleId}', {
           params: { path: { putawayRuleId } },
         }),
+      );
+    },
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  });
+};
+
+/** 현재 쪽 밖의 중복 표식까지 계산하기 위한 창고별 활성 규칙 전건. */
+export const useRuleDuplicateIndex = (
+  warehouseId: number | null,
+): UseQueryResult<RuleListResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: putawayRuleKeys.duplicateIndex(warehouseId ?? 0),
+    enabled: warehouseId !== null,
+    queryFn: () => {
+      if (warehouseId === null) {
+        throw new Error('창고를 고르기 전에는 중복 판정 목록을 조회하지 않습니다.');
+      }
+
+      return fetchAllPages(
+        (page) =>
+          runRequest(() =>
+            client.GET('/logistics/putaway-rules', {
+              params: {
+                query: {
+                  warehouseId,
+                  includeInactive: false,
+                  page,
+                  size: RULE_INDEX_PAGE_SIZE,
+                },
+              },
+            }),
+          ),
+        { requireComplete: true },
       );
     },
   });
@@ -217,17 +258,20 @@ export const useDuplicateProbe = (
         throw new Error('창고와 품목이 정해지기 전에는 중복을 조회하지 않습니다.');
       }
 
-      return runRequest(() =>
-        client.GET('/logistics/putaway-rules', {
-          params: {
-            query: {
-              warehouseId,
-              itemId,
-              includeInactive: false,
-              size: DUPLICATE_PROBE_SIZE,
+      return fetchAllPages((page) =>
+        runRequest(() =>
+          client.GET('/logistics/putaway-rules', {
+            params: {
+              query: {
+                warehouseId,
+                itemId,
+                includeInactive: false,
+                page,
+                size: DUPLICATE_PROBE_SIZE,
+              },
             },
-          },
-        }),
+          }),
+        ),
       );
     },
   });

@@ -67,6 +67,15 @@ const route = (
   respond: () => jsonResponse(listBody(items, page)),
 });
 
+/** 화면 목록만 바꾼다. 같은 경로의 전건 중복 인덱스 조회는 기본 스텁에 맡긴다. */
+const ruleListRoute = (
+  items: unknown[],
+  page?: Partial<{ page: number; size: number; total: number }>,
+): StubRoute => ({
+  match: (request) => isGet(request, RULES_PATH) && !new URL(request.url).searchParams.has('size'),
+  respond: () => jsonResponse(listBody(items, page)),
+});
+
 const failing = (pathname: string, status = 500): StubRoute => ({
   match: (request) => isGet(request, pathname),
   respond: () => jsonResponse({ message: '' }, { status }),
@@ -270,18 +279,29 @@ const countOf = (urls: URL[], pathname: string): number =>
   urls.filter((url) => url.pathname === pathname).length;
 
 const lastOf = (urls: URL[], pathname: string): URL | undefined =>
-  urls.filter((url) => url.pathname === pathname).at(-1);
+  urls
+    .filter(
+      (url) =>
+        url.pathname === pathname && (pathname !== RULES_PATH || !url.searchParams.has('size')),
+    )
+    .at(-1);
 
 /**
  * 목록 조회와 **조준 조회**는 같은 경로를 쓴다 — 조준 조회만 `size`를 명시해 실으므로 그것으로
  * 가른다. 가르지 않으면 「목록을 다시 부르지 않았다」가 조준 조회 한 번에 헛깨진다.
  */
-const isProbe = (url: URL): boolean => url.pathname === RULES_PATH && url.searchParams.has('size');
+const isProbe = (url: URL): boolean =>
+  url.pathname === RULES_PATH && url.searchParams.has('itemId');
 
 const listCountOf = (urls: URL[]): number =>
-  urls.filter((url) => url.pathname === RULES_PATH && !isProbe(url)).length;
+  urls.filter((url) => url.pathname === RULES_PATH && !url.searchParams.has('size')).length;
 
 const probeUrls = (urls: URL[]): URL[] => urls.filter(isProbe);
+
+const isDuplicateIndex = (url: URL): boolean =>
+  url.pathname === RULES_PATH && url.searchParams.has('size') && !url.searchParams.has('itemId');
+
+const duplicateIndexCountOf = (urls: URL[]): number => urls.filter(isDuplicateIndex).length;
 
 const writesOf = (requests: Request[], method: 'POST' | 'PUT'): Request[] =>
   requests.filter((request) => request.method === method);
@@ -842,7 +862,8 @@ describe('PutawayRuleScreen — 조건과 쪽', () => {
   it('쪽을 옮기면 주소와 조회에 그 쪽이 실린다', async () => {
     const { urls, user } = renderScreen(WITH_WAREHOUSE, [
       route(UNCOVERED_PATH, uncoveredItemFixtures),
-      route(RULES_PATH, ruleFixtures, { total: 45 }),
+      ruleListRoute(ruleFixtures, { total: 45 }),
+      route(RULES_PATH, ruleFixtures),
       balancesRoute,
       route(WAREHOUSES_PATH, warehouseFixtures),
       route(LOCATIONS_PATH, locationFixtures),
@@ -863,7 +884,8 @@ describe('PutawayRuleScreen — 조건과 쪽', () => {
   it('쪽을 옮기면 고른 규칙이 풀린다', async () => {
     const { user } = renderScreen('/?wh=9201&rule=9001', [
       route(UNCOVERED_PATH, uncoveredItemFixtures),
-      route(RULES_PATH, ruleFixtures, { total: 45 }),
+      ruleListRoute(ruleFixtures, { total: 45 }),
+      route(RULES_PATH, ruleFixtures),
       balancesRoute,
       route(WAREHOUSES_PATH, warehouseFixtures),
       route(LOCATIONS_PATH, locationFixtures),
@@ -1145,6 +1167,19 @@ describe('PutawayRuleScreen — 중복 표식', () => {
 });
 
 describe('PutawayRuleScreen — 실패와 다시 조회', () => {
+  const failingDuplicateIndex: StubRoute = {
+    match: (request) => {
+      const url = new URL(request.url);
+      return (
+        request.method === 'GET' &&
+        url.pathname === RULES_PATH &&
+        url.searchParams.has('size') &&
+        !url.searchParams.has('itemId')
+      );
+    },
+    respond: () => jsonResponse({ message: '중복 인덱스 조회 실패' }, { status: 500 }),
+  };
+
   /** **C1-2.** 실패를 「등록된 규칙이 없습니다」로 보이면 사실과 다른 안내가 된다. */
   it('목록 실패에 배너가 서고 빈 상태를 함께 보이지 않는다', async () => {
     renderScreen(WITH_WAREHOUSE, allRoutes([failing(RULES_PATH)]));
@@ -1164,6 +1199,25 @@ describe('PutawayRuleScreen — 실패와 다시 조회', () => {
     await waitFor(() => {
       expect(countOf(urls, RULES_PATH)).toBe(before + 1);
     });
+  });
+
+  it('창고 전체 중복 인덱스가 실패하면 거짓 음성 표 대신 오류와 재시도를 낸다', async () => {
+    const { urls, user } = renderScreen(WITH_WAREHOUSE, allRoutes([failingDuplicateIndex]));
+
+    expect(await screen.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /선택$/ })).not.toBeInTheDocument();
+    const countIndex = (): number =>
+      urls.filter(
+        (url) =>
+          url.pathname === RULES_PATH &&
+          url.searchParams.has('size') &&
+          !url.searchParams.has('itemId'),
+      ).length;
+    const before = countIndex();
+
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+
+    await waitFor(() => expect(countIndex()).toBe(before + 1));
   });
 
   /** 권한 없음에는 같은 권한으로 다시 불러도 같은 답이 온다 — 헛돌 길을 주지 않는다. */
@@ -1196,14 +1250,16 @@ describe('PutawayRuleScreen — 실패와 다시 조회', () => {
     const { urls, user } = renderScreen(WITH_WAREHOUSE);
 
     await waitForRows();
-    const beforeList = countOf(urls, RULES_PATH);
+    const beforeList = listCountOf(urls);
+    const beforeDuplicateIndex = duplicateIndexCountOf(urls);
     const beforeUncovered = countOf(urls, UNCOVERED_PATH);
 
     await user.click(screen.getByRole('button', { name: t.actions.reload }));
 
     await waitFor(() => {
-      expect(countOf(urls, RULES_PATH)).toBe(beforeList + 1);
+      expect(listCountOf(urls)).toBe(beforeList + 1);
     });
+    expect(duplicateIndexCountOf(urls)).toBe(beforeDuplicateIndex + 1);
     expect(countOf(urls, UNCOVERED_PATH)).toBe(beforeUncovered + 1);
   });
 
@@ -1310,6 +1366,18 @@ describe('PutawayRuleScreen — 편집 자리가 서는 순서', () => {
 
     expect(createButton()).toBeEnabled();
     expect(screen.queryByText(t.actionReasons.addNeedsWarehouse)).not.toBeInTheDocument();
+  });
+
+  /** 주소를 직접 고쳐 버튼의 진입 가드를 우회해도 미사용 창고에는 등록할 수 없다. */
+  it('미사용 창고의 신규 주소로 직접 들어오면 등록을 사유와 함께 막는다', async () => {
+    renderScreen('/?wh=9202&new=1');
+
+    await within(formPane()).findByLabelText(t.fields.priorityNo);
+
+    expect(submitCreateButton()).toBeDisabled();
+    expect(
+      within(formPane()).getByText(t.actionReasons.addNeedsActiveWarehouse),
+    ).toBeInTheDocument();
   });
 
   /** 빈 폼을 두면 「값이 없는 규칙」으로 읽힌다 — 고르라는 안내가 정확하다. */
@@ -1497,34 +1565,26 @@ describe('PutawayRuleScreen — 폼의 위치 칸 (C3-3 · C3-4)', () => {
     expect(await screen.findByRole('option', { name: t.values.warehouseWide })).toBeInTheDocument();
   });
 
-  /** **C3-4.** 자리표시 배열이 비어 있는 동안 **모든 창고에서** 위치 입력이 열린다. */
-  it('관리수준이 정해지지 않았다는 안내가 서면서 위치 칸이 열려 있다', async () => {
+  /** **C3-4.** `ZONE` 수준 창고는 고정 설계에 따라 Location을 받는다. */
+  it('구역 관리 창고에서는 위치 칸이 열린다', async () => {
     const { user } = renderScreen(WITH_WAREHOUSE);
 
     await openCreateForm(user);
 
-    expect(within(formPane()).getByText(t.notes.managementLevelPending)).toBeInTheDocument();
     expect(within(formPane()).getByRole('combobox', { name: t.fields.location })).toBeEnabled();
   });
 
-  /**
-   * 다른 창고의 위치를 실은 규칙은 성립하지 않는다 — 창고를 바꾸면 위치를 비우고
-   * **그 창고의 위치를** 다시 받는다.
-   */
-  it('폼에서 창고를 바꾸면 그 창고의 위치를 부른다', async () => {
-    const { urls, user } = renderScreen(WITH_WAREHOUSE);
+  /** 미사용 창고는 과거 규칙 조회에는 남지만 신규 규칙의 참조로 고를 수 없다. */
+  it('신규 폼에서는 미사용 창고를 고를 수 없다', async () => {
+    const { user } = renderScreen(WITH_WAREHOUSE);
 
     await openCreateForm(user);
     await user.click(within(formPane()).getByRole('combobox', { name: t.fields.warehouse }));
-    await user.click(
-      await screen.findByRole('option', {
+    expect(
+      screen.queryByRole('option', {
         name: `SYN-WH-02 · 합성창고 나${t.values.inactiveSuffix}`,
       }),
-    );
-
-    await waitFor(() => {
-      expect(lastOf(urls, LOCATIONS_PATH)?.searchParams.get('warehouseId')).toBe('9202');
-    });
+    ).not.toBeInTheDocument();
   });
 
   /**
@@ -1740,6 +1800,19 @@ describe('PutawayRuleScreen — 수정 저장 (C3-11 · C3-12)', () => {
     expect(new URL(request?.url ?? '').pathname).toBe(detailPathOf(9001));
   });
 
+  it('상세 재조회가 토큰 저장소를 바꿔도 초안과 함께 잡은 If-Match를 보낸다', async () => {
+    const { apiClient, requests, user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]));
+
+    await dirtyForm(user);
+    apiClient.etags.capture(detailPathOf(9001), '99');
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(writesOf(requests, 'PUT')).toHaveLength(1);
+    });
+    expect(writesOf(requests, 'PUT')[0]?.headers.get('If-Match')).toBe(DETAIL_ETAG);
+  });
+
   /** 계약이 「바꾸면 다른 규칙이다」로 두 키를 뺐다 — 폼이 값을 들고 있어도 실리지 않는다. */
   it('수정 본문에 품목과 창고가 실리지 않는다', async () => {
     const { requests, user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]));
@@ -1774,14 +1847,60 @@ describe('PutawayRuleScreen — 수정 저장 (C3-11 · C3-12)', () => {
     expect(listCountOf(urls)).toBeGreaterThan(beforeList);
   });
 
+  it('수정 성공 뒤 최신 상세를 받는 동안 다음 입력 폼을 열지 않는다', async () => {
+    let detailCalls = 0;
+    const holdLatestDetail = (request: Request): boolean => {
+      if (request.method !== 'GET' || !isDetailPath(new URL(request.url).pathname)) return false;
+      detailCalls += 1;
+      return detailCalls > 1;
+    };
+    const { release, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([updateRoute()]),
+      holdLatestDetail,
+    );
+
+    await dirtyForm(user);
+    await user.click(saveButton());
+
+    await waitFor(() => {
+      expect(within(formPane()).queryByLabelText(t.fields.capacity)).not.toBeInTheDocument();
+    });
+
+    release();
+    await waitFor(() => expect(capacityField()).toHaveValue('500'));
+  });
+
   /**
    * **C3-12.** 충돌은 상세를 다시 받아 잠금 토큰을 갱신하면 풀린다 — 그 길을 배너가 낸다.
    */
-  it('409에서 최신 불러오기가 서고 누르면 상세를 다시 부른다', async () => {
-    const conflict = updateRoute(() =>
-      jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 }),
+  it('409에서 최신 본문·ETag를 함께 받아 다음 저장에 새 If-Match를 쓴다', async () => {
+    let detailCalls = 0;
+    const latestEtag = '8';
+    const changingDetail: StubRoute = {
+      match: detailRoute.match,
+      respond: (request) => {
+        detailCalls += 1;
+        return jsonResponse(
+          {
+            putawayRule: ruleFixtureAt(ruleIdOf(new URL(request.url))),
+            editability: { codeEditable: false, reason: 'REFERENCED', referenceCount: 2 },
+          },
+          { headers: { ETag: detailCalls === 1 ? DETAIL_ETAG : latestEtag } },
+        );
+      },
+    };
+    let updateCalls = 0;
+    const conflictThenSuccess = updateRoute(() => {
+      updateCalls += 1;
+      return updateCalls === 1
+        ? jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })
+        : jsonResponse(ruleFixtureAt(9001));
+    });
+    const { requests, urls, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([changingDetail, conflictThenSuccess]),
     );
-    const { urls, user } = renderScreen(WITH_WAREHOUSE, allRoutes([conflict]));
 
     await dirtyForm(user);
     await user.click(saveButton());
@@ -1796,6 +1915,96 @@ describe('PutawayRuleScreen — 수정 저장 (C3-11 · C3-12)', () => {
     await waitFor(() => {
       expect(countOf(urls, detailPathOf(9001))).toBe(before + 1);
     });
+
+    await waitFor(() => expect(capacityField()).toHaveValue('500'));
+    await user.clear(capacityField());
+    await user.type(capacityField(), '650');
+    await user.click(saveButton());
+
+    await waitFor(() => expect(writesOf(requests, 'PUT')).toHaveLength(2));
+    expect(writesOf(requests, 'PUT')[1]?.headers.get('If-Match')).toBe(latestEtag);
+  });
+
+  it('409 복구 조회가 실패해도 재시도 성공 뒤 새 본문·ETag로 저장한다', async () => {
+    let detailCalls = 0;
+    const latestEtag = '10';
+    const flakyDetail: StubRoute = {
+      match: detailRoute.match,
+      respond: (request) => {
+        detailCalls += 1;
+        if (detailCalls === 2) throw new Error('합성 상세 재조회 실패');
+        return jsonResponse(
+          {
+            putawayRule: ruleFixtureAt(ruleIdOf(new URL(request.url))),
+            editability: { codeEditable: false, reason: 'REFERENCED', referenceCount: 2 },
+          },
+          { headers: { ETag: detailCalls === 1 ? DETAIL_ETAG : latestEtag } },
+        );
+      },
+    };
+    let updateCalls = 0;
+    const conflictThenSuccess = updateRoute(() => {
+      updateCalls += 1;
+      return updateCalls === 1
+        ? jsonResponse({ conflictCause: 'user', message: '' }, { status: 409 })
+        : jsonResponse(ruleFixtureAt(9001));
+    });
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([flakyDetail, conflictThenSuccess]),
+    );
+
+    await dirtyForm(user);
+    await user.click(saveButton());
+    await user.click(
+      await within(formPane()).findByRole('button', { name: messages.conflict.reloadAction }),
+    );
+
+    expect(await screen.findByText(messages.httpError.loadTitle)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: messages.common.retry }));
+    await waitFor(() => expect(capacityField()).toHaveValue('500'));
+
+    await user.clear(capacityField());
+    await user.type(capacityField(), '675');
+    await user.click(saveButton());
+
+    await waitFor(() => expect(writesOf(requests, 'PUT')).toHaveLength(2));
+    expect(writesOf(requests, 'PUT')[1]?.headers.get('If-Match')).toBe(latestEtag);
+  });
+
+  /** 성공 응답이 ETag를 생략해도 상세 재조회가 다음 저장의 새 토큰을 채운다. */
+  it('ETag 없는 수정 성공 뒤 상세에서 받은 새 토큰으로 다시 저장한다', async () => {
+    let detailCalls = 0;
+    const latestEtag = '9';
+    const changingDetail: StubRoute = {
+      match: detailRoute.match,
+      respond: (request) => {
+        detailCalls += 1;
+        return jsonResponse(
+          {
+            putawayRule: ruleFixtureAt(ruleIdOf(new URL(request.url))),
+            editability: { codeEditable: false, reason: 'REFERENCED', referenceCount: 2 },
+          },
+          { headers: { ETag: detailCalls === 1 ? DETAIL_ETAG : latestEtag } },
+        );
+      },
+    };
+    const { requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([changingDetail, updateRoute()]),
+    );
+
+    await dirtyForm(user);
+    await user.click(saveButton());
+    await waitFor(() => expect(detailCalls).toBeGreaterThan(1));
+    await waitFor(() => expect(capacityField()).toHaveValue('500'));
+
+    await user.clear(capacityField());
+    await user.type(capacityField(), '700');
+    await user.click(saveButton());
+
+    await waitFor(() => expect(writesOf(requests, 'PUT')).toHaveLength(2));
+    expect(writesOf(requests, 'PUT')[1]?.headers.get('If-Match')).toBe(latestEtag);
   });
 
   /** 서버가 그 칸에 붙여 보낸 오류는 **인라인**으로 낸다 — 배너로 올리면 어느 칸인지 사라진다. */
@@ -1884,8 +2093,7 @@ describe('PutawayRuleScreen — 활성 중복 선검사 (C3-8 · C3-9)', () => {
    */
   it('조준 조회가 실패해도 저장을 막지 않고 그 사실을 밝힌다', async () => {
     const failingProbe: StubRoute = {
-      match: (request) =>
-        isGet(request, RULES_PATH) && new URL(request.url).searchParams.has('size'),
+      match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
       respond: () => jsonResponse({ message: '' }, { status: 500 }),
     };
     const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([failingProbe, updateRoute()]));
@@ -1989,26 +2197,20 @@ describe('PutawayRuleScreen — 위치 자체 용량 (C3-6 · C3-7)', () => {
     expect(within(formPane()).queryByText(t.notes.locationCapacityOver)).not.toBeInTheDocument();
   });
 
-  /** **C3-7.** 용량이 없는 위치를 고르면 그 경고를 만들지 않는다. */
-  it('용량이 없는 위치를 고르면 경고를 만들지 않는다', async () => {
+  /** 미사용 위치는 조회 이름에는 남지만 새 값으로 선택할 수 없다. */
+  it('미사용 위치를 새로 선택할 수 없다', async () => {
     const { user } = renderScreen(WITH_WAREHOUSE, allRoutes([updateRoute()]));
 
     await waitForRows();
     await selectRow(user);
     await waitForEditForm();
     await user.click(within(formPane()).getByRole('combobox', { name: t.fields.location }));
-    await user.click(
-      await screen.findByRole('option', {
+
+    expect(
+      screen.queryByRole('option', {
         name: `${INACTIVE_LOCATION_LABEL}${t.values.inactiveSuffix}`,
       }),
-    );
-    await user.clear(capacityField());
-    await user.type(capacityField(), '900');
-
-    await waitFor(() => {
-      expect(within(formPane()).queryByText(/이 위치의 용량/)).not.toBeInTheDocument();
-    });
-    expect(within(formPane()).queryByText(t.notes.locationCapacityOver)).not.toBeInTheDocument();
+    ).not.toBeInTheDocument();
   });
 
   /** 단위가 다르면 두 수는 애초에 같은 종류가 아니다 — 실값은 보이되 견주지 않았다고 말한다. */
@@ -2076,7 +2278,7 @@ describe('PutawayRuleScreen — 나가는 중인 저장의 잠금 (C3-13)', () =
   it('쪽 이동이 잠긴다', async () => {
     const { requests, user } = renderScreen(
       WITH_WAREHOUSE,
-      allRoutes([updateRoute(), route(RULES_PATH, ruleFixtures, { total: 45 })]),
+      allRoutes([updateRoute(), ruleListRoute(ruleFixtures, { total: 45 })]),
       holdUpdate,
     );
 
@@ -2460,7 +2662,7 @@ describe('PutawayRuleScreen — 갓 연 등록 폼의 문면', () => {
     const holdProbe = (request: Request): boolean =>
       request.method === 'GET' &&
       new URL(request.url).pathname === RULES_PATH &&
-      new URL(request.url).searchParams.has('size');
+      isProbe(new URL(request.url));
     const { urls, user } = renderScreen(WITH_WAREHOUSE, allRoutes(), holdProbe);
 
     await openCreateForm(user);
@@ -2484,8 +2686,7 @@ describe('PutawayRuleScreen — 갓 연 등록 폼의 문면', () => {
    */
   it('고르기만 하고 고치지 않은 규칙에는 판정 안내가 서지 않는다', async () => {
     const failingProbe: StubRoute = {
-      match: (request) =>
-        isGet(request, RULES_PATH) && new URL(request.url).searchParams.has('size'),
+      match: (request) => isGet(request, RULES_PATH) && isProbe(new URL(request.url)),
       respond: () => jsonResponse({ message: '' }, { status: 500 }),
     };
     const { urls, user } = renderScreen(WITH_WAREHOUSE, allRoutes([failingProbe]));
@@ -3129,6 +3330,80 @@ describe('PutawayRuleScreen — 전환의 성공과 실패 (C4-7 · C4-8)', () =
     });
   });
 
+  it('전환 성공 뒤 최신 상세·ETag를 받을 때까지 잠그고 고치던 값을 유지한다', async () => {
+    let deactivated = false;
+    let detailCalls = 0;
+    const latestEtag = '8';
+    const changingDetail: StubRoute = {
+      match: detailRoute.match,
+      respond: (request) => {
+        detailCalls += 1;
+        return jsonResponse(
+          {
+            putawayRule: {
+              ...ruleFixtureAt(ruleIdOf(new URL(request.url))),
+              isActive: deactivated
+                ? false
+                : ruleFixtureAt(ruleIdOf(new URL(request.url))).isActive,
+              remarks: deactivated
+                ? '다른 사용자가 바꾼 메모'
+                : ruleFixtureAt(ruleIdOf(new URL(request.url))).remarks,
+            },
+            editability: { codeEditable: false, reason: 'REFERENCED', referenceCount: 2 },
+          },
+          { headers: { ETag: deactivated ? latestEtag : DETAIL_ETAG } },
+        );
+      },
+    };
+    const holdLatestDetail = (request: Request): boolean =>
+      deactivated && request.method === 'GET' && isDetailPath(new URL(request.url).pathname);
+    const { release, requests, user } = renderScreen(
+      WITH_WAREHOUSE,
+      allRoutes([
+        changingDetail,
+        updateRoute(),
+        activationRoute('deactivate', () => {
+          deactivated = true;
+          return jsonResponse({ ...ruleFixtureAt(9001), isActive: false });
+        }),
+      ]),
+      holdLatestDetail,
+    );
+
+    await waitForRows();
+    await selectRow(user);
+    await waitForEditForm();
+    await user.clear(capacityField());
+    await user.type(capacityField(), '600');
+    await user.click(
+      within(ACTIVATION_PANE()).getByRole('button', { name: messages.common.deactivate }),
+    );
+    await user.click(
+      within(activationDialog()).getByRole('button', { name: messages.common.deactivate }),
+    );
+
+    await waitFor(() => {
+      expect(within(formPane()).queryByLabelText(t.fields.capacity)).not.toBeInTheDocument();
+    });
+    expect(createButton()).toBeDisabled();
+
+    release();
+
+    await waitFor(() => expect(capacityField()).toHaveValue('600'));
+    expect(within(formPane()).getByLabelText(t.fields.remarks)).toHaveValue(
+      '다른 사용자가 바꾼 메모',
+    );
+    await user.click(saveButton());
+
+    await waitFor(() => expect(writesOf(requests, 'PUT')).toHaveLength(1));
+    expect(writesOf(requests, 'PUT')[0]?.headers.get('If-Match')).toBe(latestEtag);
+    expect(await bodyOf(writesOf(requests, 'PUT')[0] as Request)).toMatchObject({
+      capacityQty: 600,
+      remarks: '다른 사용자가 바꾼 메모',
+    });
+    expect(detailCalls).toBeGreaterThan(1);
+  });
+
   /**
    * ⭐ **C4-7.** 실패에서 **창을 닫지 않는다** — 닫으면 사용자는 무엇이 막았는지 모른 채
    * 같은 버튼을 다시 누른다. 켜기의 400은 서버가 밝힌 활성 중복이며 그 문구를 그대로 낸다.
@@ -3349,7 +3624,7 @@ describe('PutawayRuleScreen — 전환이 나가는 중 (G-30)', () => {
   it('전환이 나가는 중에는 규칙 추가와 쪽 이동도 잠긴다', async () => {
     const { requests, user } = renderScreen(
       WITH_WAREHOUSE,
-      allRoutes([activationRoute('deactivate'), route(RULES_PATH, ruleFixtures, { total: 45 })]),
+      allRoutes([activationRoute('deactivate'), ruleListRoute(ruleFixtures, { total: 45 })]),
       holdDeactivate,
     );
 

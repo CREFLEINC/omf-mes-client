@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   createStubFetch,
@@ -20,13 +20,7 @@ import {
 import { PutawayRuleScreen } from './screen';
 
 /**
- * **창고 관리수준 값 목록이 확정된 뒤의 위치 칸**을 미리 재는 자리.
- *
- * 지금 `management-level.ts`의 배열은 비어 있고(`omf-mes#64`) 그동안 위치 칸은 **어느
- * 창고에서도 잠기지 않는다** — 그래서 「잠겼을 때 화면이 무엇을 사유로 내는가」를 다른 어떤
- * 방법으로도 볼 수 없다. 값 목록이 확정되는 회차가 이 파일을 지우는 회차이고, 그때까지
- * 이 파일이 **「배열만 채우면 살아난다」를 화면 수준에서 증명한다**(전례
- * `approval-route/screen-create.test.tsx`와 같은 형태).
+ * 고정 설계의 창고 관리수준에 따른 위치 칸을 화면 배선 수준에서 잰다.
  *
  * ## 왜 부품 시험으로는 모자란가
  *
@@ -35,15 +29,9 @@ import { PutawayRuleScreen } from './screen';
  * 엉뚱한 문장을 넘기고 있어도 부품 시험은 초록불이었다.** 이 파일은 **배선 층**을 잰다:
  * 화면이 상수를 읽고 · 고른 창고의 관리수준을 찾고 · 판정을 거쳐 · **어느 문장을 고르는가**.
  *
- * **자리표시 상수 하나만 갈아 끼운다.** 판정 함수도 조회도 실물 그대로다 —
- * 그래야 「배열만 채우면」이 참인지가 증명된다.
+ * `ZONE`은 위치 입력을 열고 `WAREHOUSE`는 잠근다. 부품 시험은 전달받은 문자열만 확인하므로
+ * 여기서 실제 창고 응답 → 판정 → 안내 문구의 연결을 고정한다.
  */
-vi.mock('./management-level', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./management-level')>();
-
-  return { ...actual, LOCATION_MANAGED_LEVEL_CODES: ['SYN-LEVEL'] };
-});
-
 const t = messages.putawayRule;
 
 const RULES_PATH = '/logistics/putaway-rules';
@@ -57,7 +45,7 @@ const UOMS_PATH = '/mdm/uoms';
 /**
  * **위치를 관리하지 않는 창고** — 관리수준이 위 목록에 없다.
  *
- * 픽스처의 두 창고는 둘 다 `SYN-LEVEL`이라 「목록에 있는 창고」만 있고, 그것만으로는
+ * 픽스처의 두 창고는 둘 다 `ZONE`이라 「위치를 관리하는 창고」만 있고, 그것만으로는
  * 「잠기는 갈래」에 닿을 수 없다. 여기 하나를 더해 **양성·음성 짝**을 같은 파일에서 잰다 —
  * 한쪽만 재면 「늘 열린다」나 「늘 잠긴다」로 배선해도 통과한다.
  */
@@ -68,7 +56,7 @@ const UNMANAGED_WAREHOUSE = {
   warehouseCode: 'SYN-WH-03',
   warehouseName: '합성창고 다',
   warehouseTypeCode: 'SYN-WH-TYPE',
-  managementLevelCode: 'SYN-LEVEL-NO-LOCATION',
+  managementLevelCode: 'WAREHOUSE',
   isExternal: false,
   isActive: true,
 };
@@ -124,33 +112,40 @@ const openCreateForm = async () => {
     route: '/?wh=9201',
   });
 
-  await user.click(await screen.findByRole('button', { name: t.actions.create }));
+  await waitFor(() =>
+    expect(
+      screen
+        .getAllByRole('button', { name: t.actions.create })
+        .some((button) => !button.hasAttribute('disabled')),
+    ).toBe(true),
+  );
+  const create = screen
+    .getAllByRole('button', { name: t.actions.create })
+    .find((button) => !button.hasAttribute('disabled'));
+  if (create === undefined) throw new Error('사용 가능한 규칙 추가 버튼이 없습니다.');
+  await user.click(create);
   await within(formPane()).findByLabelText(t.fields.priorityNo);
 
   return { user };
 };
 
-describe('PutawayRuleScreen — 관리수준 값이 확정된 뒤의 위치 칸', () => {
+describe('PutawayRuleScreen — 고정 관리수준에 따른 위치 칸', () => {
   /**
    * **양성 짝.** 목록에 든 관리수준의 창고에서는 위치 칸이 그대로 열린다 —
    * 「값이 채워지면 무조건 잠긴다」로 배선해도 통과하지 않게 한다.
    *
-   * 「아직 정해지지 않았다」 안내도 **함께 사라진다** — 그 문장은 미정 상태의 사실이라
-   * 값이 정해진 뒤에 남아 있으면 화면이 지난 사정을 계속 말하게 된다.
+   * 과거의 「아직 정해지지 않았다」 안내는 더 이상 존재하지 않는다.
    */
   it('위치를 관리하는 창고에서는 칸이 열리고 미정 안내가 사라진다', async () => {
     await openCreateForm();
 
     expect(locationSelect()).toBeEnabled();
-    expect(within(formPane()).queryByText(t.notes.managementLevelPending)).not.toBeInTheDocument();
   });
 
   /**
    * ⛔ **음성 짝 — 이 회차가 고친 자리다.**
    *
-   * 잠긴 칸의 사유로 「…아직 정해지지 않아 **모든 창고에서 위치를 고를 수 있습니다**」를
-   * 넘기면 화면이 자기모순을 말한다. **화면이 무엇을 넘기는지**를 여기서 잰다 —
-   * 부품 시험은 시험이 직접 넘긴 문자열을 되읽을 뿐이라 이 배선을 보지 못한다.
+   * 잠긴 칸은 사유와 해제 위치를 함께 말한다(G-10).
    */
   it('위치를 관리하지 않는 창고로 바꾸면 잠기고 그 창고의 사유가 선다', async () => {
     const { user } = await openCreateForm();
@@ -160,7 +155,6 @@ describe('PutawayRuleScreen — 관리수준 값이 확정된 뒤의 위치 칸'
 
     expect(locationSelect()).toBeDisabled();
     expect(within(formPane()).getByText(t.notes.locationNotManaged)).toBeInTheDocument();
-    /* 잠긴 칸이 「고를 수 있습니다」라고 말하지 않는다. */
-    expect(within(formPane()).queryByText(t.notes.managementLevelPending)).not.toBeInTheDocument();
+    expect(within(formPane()).getByText(/창고·Location 화면/)).toBeInTheDocument();
   });
 });

@@ -30,16 +30,25 @@ describe('toLocationChoices', () => {
     expect(choices).toHaveLength(2);
   });
 
-  /** 미사용 위치에 남은 규칙을 정리하는 것이 이 마스터의 정상 업무다 — 빼지 않고 표식만 붙인다. */
-  it('미사용 위치가 표식과 함께 남는다', () => {
+  /** 신규 선택에서는 미사용 위치를 고를 수 없고, 현재 상세가 가리킬 때만 보존한다. */
+  it('미사용 위치는 현재 참조일 때만 표식과 함께 남는다', () => {
     const choices = toLocationChoices(
       source([{ value: '9302', label: 'SYN-LOC-02 · 합성위치 나', isActive: false }]),
+      '9302',
     );
 
     expect(choices[1]).toEqual({
       value: '9302',
       label: `SYN-LOC-02 · 합성위치 나${t.values.inactiveSuffix}`,
     });
+  });
+
+  it('신규 선택지에서는 미사용 위치를 뺀다', () => {
+    const choices = toLocationChoices(
+      source([{ value: '9302', label: 'SYN-LOC-02 · 합성위치 나', isActive: false }]),
+    );
+
+    expect(choices).toEqual([{ value: '', label: t.values.warehouseWide }]);
   });
 
   /**

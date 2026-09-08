@@ -20,6 +20,7 @@ import {
   useDuplicateProbe,
   useRuleBalances,
   useRuleDetail,
+  useRuleDuplicateIndex,
   useRuleList,
   useUncoveredItems,
 } from './queries';
@@ -188,6 +189,45 @@ describe('useUncoveredItems', () => {
       expect(result.current.isSuccess).toBe(true);
     });
     expect(result.current.data?.page.total).toBe(0);
+  });
+
+  it('마지막 쪽까지 이어 받아 모든 미설정 품목을 낸다', async () => {
+    const paged: StubRoute = {
+      match: (request) => isExactly(request, UNCOVERED_PATH),
+      respond: (request) => {
+        const page = Number(new URL(request.url).searchParams.get('page'));
+        return jsonResponse({
+          items: page === 1 ? [uncoveredItemFixtures[0]] : [uncoveredItemFixtures[1]],
+          page: { page, size: 1, total: 2 },
+        });
+      },
+    };
+    const { fetch, urls } = recordingFetch([paged]);
+    const { result } = renderHookWithProviders(() => useUncoveredItems(9201), { fetch });
+
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    expect(urls.map((url) => url.searchParams.get('page'))).toEqual(['1', '2']);
+  });
+});
+
+describe('useRuleDuplicateIndex', () => {
+  it('현재 표 쪽과 무관하게 창고의 활성 규칙을 끝 쪽까지 받는다', async () => {
+    const paged: StubRoute = {
+      match: (request) => isExactly(request, RULES_PATH),
+      respond: (request) => {
+        const page = Number(new URL(request.url).searchParams.get('page'));
+        return jsonResponse({
+          items: page === 1 ? [ruleFixtures[0]] : [ruleFixtures[1]],
+          page: { page, size: 1, total: 2 },
+        });
+      },
+    };
+    const { fetch, urls } = recordingFetch([paged]);
+    const { result } = renderHookWithProviders(() => useRuleDuplicateIndex(9201), { fetch });
+
+    await waitFor(() => expect(result.current.data?.items).toHaveLength(2));
+    expect(urls[0]?.searchParams.get('includeInactive')).toBe('false');
+    expect(urls.map((url) => url.searchParams.get('page'))).toEqual(['1', '2']);
   });
 });
 

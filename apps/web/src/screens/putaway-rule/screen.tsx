@@ -49,16 +49,13 @@ import {
   toLocation,
   toReference,
   toSelectOptions,
+  toWritableSelectOptions,
   useItemLookup,
   useLocationLookup,
   useUomLookup,
   useWarehouseLookup,
 } from './lookups';
-import {
-  LOCATION_MANAGED_LEVEL_CODES,
-  isLocationInputOpen,
-  locationInputPendingNote,
-} from './management-level';
+import { isLocationInputOpen } from './management-level';
 import { toPageView } from './pagination';
 import {
   putawayRuleKeys,
@@ -66,12 +63,14 @@ import {
   useDuplicateProbe,
   useRuleBalances,
   useRuleDetail,
+  useRuleDuplicateIndex,
   useRuleList,
   useUncoveredItems,
 } from './queries';
 import {
   emptyRuleFormValues,
   isSameRuleValues,
+  rebaseRuleFormValues,
   ruleToFormValues,
   withWarehouse,
   type RuleFormValues,
@@ -141,6 +140,13 @@ interface FormDraft {
    * 방금 고른 품목이 폼에서 「알 수 없음」으로 보인다.
    */
   pickedItemLabel: string | null;
+  /** 기준 상세와 같은 응답에서 얻은 잠금 토큰. 초안과 함께 수명이 움직인다. */
+  sourceEtag: string | null;
+}
+
+interface RuleUpdateRequest {
+  body: PutawayRuleUpdate;
+  ifMatch: string;
 }
 
 /**
@@ -226,7 +232,7 @@ interface FormDraft {
 export const PutawayRuleScreen = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
-  const { client } = useApiClient();
+  const { client, etags } = useApiClient();
 
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
   const page = readPage(searchParams);
@@ -237,11 +243,15 @@ export const PutawayRuleScreen = () => {
   const warehouseId = filters.warehouseId === '' ? null : Number(filters.warehouseId);
 
   const list = useRuleList(filters, page);
+  const duplicateIndex = useRuleDuplicateIndex(warehouseId);
   const uncovered = useUncoveredItems(warehouseId);
   const detail = useRuleDetail(isCreating ? null : selectedRuleId);
 
   /* 창고 선택지는 첫 진입에 받는다 — 이 화면은 창고를 고르는 것으로 시작한다. */
   const warehouses = useWarehouseLookup();
+  const selectedWarehouseIsActive =
+    warehouseId !== null &&
+    warehouses.entries.some((entry) => entry.value === String(warehouseId) && entry.isActive);
   const locations = useLocationLookup(warehouseId);
   const items = useItemLookup(warehouseId !== null);
   const uoms = useUomLookup(warehouseId !== null);
@@ -252,7 +262,10 @@ export const PutawayRuleScreen = () => {
   const balanceTargets = useMemo(() => toBalanceTargets(rules), [rules]);
   const balances = useRuleBalances(warehouseId, balanceTargets);
 
-  const duplicatedRuleIds = useMemo(() => duplicateRuleIds(rules), [rules]);
+  const duplicatedRuleIds = useMemo(
+    () => duplicateRuleIds((duplicateIndex.data?.items ?? EMPTY_RULES).map(toRuleView)),
+    [duplicateIndex.data],
+  );
 
   /**
    * 404 안내가 매인 대상. **조건·쪽의 서명**이며, 그것이 바뀌면 안내가 가리킬 것이 없다.
@@ -276,6 +289,8 @@ export const PutawayRuleScreen = () => {
       : String(selectedRuleId);
 
   const [draft, setDraft] = useState<FormDraft | null>(null);
+  /** 최신 상세와 잠금 토큰을 한 짝으로 다시 잡는 동안 폼을 편집하지 못하게 한다. */
+  const [isRefreshingLatest, setIsRefreshingLatest] = useState(false);
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<DialogKind | null>(null);
@@ -338,13 +353,69 @@ export const PutawayRuleScreen = () => {
       /* 등록 폼은 **고른 창고만** 미리 채운다 — 나머지 기본값을 지어내면 고르지 않은 값이 저장된다. */
       const seeded = emptyRuleFormValues(filters.warehouseId);
 
-      setDraft({ key: editTargetKey, baseline: seeded, values: seeded, pickedItemLabel: null });
+      setDraft({
+        key: editTargetKey,
+        baseline: seeded,
+        values: seeded,
+        pickedItemLabel: null,
+        sourceEtag: null,
+      });
     } else if (rule !== null) {
       const seeded = ruleToFormValues(rule);
 
-      setDraft({ key: editTargetKey, baseline: seeded, values: seeded, pickedItemLabel: null });
+      setDraft({
+        key: editTargetKey,
+        baseline: seeded,
+        values: seeded,
+        pickedItemLabel: null,
+        sourceEtag:
+          selectedRuleId === null ? null : (etags.ifMatch(ruleDetailPath(selectedRuleId)) ?? null),
+      });
     }
   }
+
+  /**
+   * 상세 본문과 ETag를 **한 응답 회차에서** 다시 잡아 초안을 갈아 끼운다.
+   *
+   * 409 뒤에는 사용자가 보던 본문과 잠금 토큰이 둘 다 낡았다. 토큰 저장소만 갱신하면 다음
+   * 저장이 최신 토큰으로 옛 본문을 덮을 수 있고, 본문만 갱신하면 같은 낡은 토큰으로 409를
+   * 반복한다. 성공 응답에 ETag가 없는 서버에서도 무효화 뒤 이 경로로 새 짝을 확보한다.
+   */
+  const refreshDraftFromLatestDetail = (preserveDirtyValues = false): void => {
+    const targetId = selectedRuleId;
+    const targetKey = editTargetKey;
+
+    if (targetId === null || targetKey === null || isCreating) return;
+
+    setIsRefreshingLatest(true);
+    void detail
+      .refetch()
+      .then((result) => {
+        if (!result.isSuccess || editTargetKeyRef.current !== targetKey) return;
+
+        const seeded = ruleToFormValues(toRuleView(result.data.putawayRule));
+        setDraft((previous) => {
+          if (previous === null || previous.key !== targetKey) return previous;
+
+          /* 전환은 폼 값을 저장하지 않는다. 사용자가 고치던 값은 두고 기준과 토큰만 최신화한다. */
+          const keepsValues =
+            preserveDirtyValues && !isSameRuleValues(previous.values, previous.baseline);
+
+          return {
+            key: targetKey,
+            baseline: seeded,
+            values: keepsValues
+              ? rebaseRuleFormValues(previous.values, previous.baseline, seeded)
+              : seeded,
+            pickedItemLabel: keepsValues ? previous.pickedItemLabel : null,
+            sourceEtag: etags.ifMatch(ruleDetailPath(targetId)) ?? null,
+          };
+        });
+      })
+      .finally(() => {
+        setIsRefreshingLatest(false);
+      });
+  };
 
   const isDirty = draft !== null && !isSameRuleValues(draft.values, draft.baseline);
 
@@ -364,6 +435,9 @@ export const PutawayRuleScreen = () => {
    * 창고에 없는 위치가 선택지에 서고, 그 조합은 계약이 받지 않는다.
    */
   const formWarehouseId = parseIdentifier(draft?.values.warehouseId ?? '');
+  const formWarehouseIsActive =
+    formWarehouseId !== null &&
+    warehouses.entries.some((entry) => entry.value === String(formWarehouseId) && entry.isActive);
   /*
    * 캐시 열쇠가 창고 번호라 조건 줄과 폼이 같은 창고를 보는 동안에는 **요청이 한 번**만 나간다.
    * 폼이 다른 창고를 고른 순간에만 그 창고의 위치가 따로 선다.
@@ -515,17 +589,17 @@ export const PutawayRuleScreen = () => {
    * 계약이 200의 `ETag`를 **선택**으로 두었다. 응답이 토큰을 주지 않는 서버에서도 두 번째
    * 저장이 살아야 하므로 성공 뒤 무효화해 **재조회가 새 토큰을 확보하게** 한다.
    */
-  const updateWrite = useMasterWrite<PutawayRuleUpdate, PutawayRule>({
-    request: (body, headers) =>
+  const updateWrite = useMasterWrite<RuleUpdateRequest, PutawayRule>({
+    request: (variables, headers) =>
       client.PUT('/logistics/putaway-rules/{putawayRuleId}', {
         params: {
           path: { putawayRuleId: selectedRuleId ?? 0 },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
-            'If-Match': headers['If-Match'] ?? '',
+            'If-Match': variables.ifMatch,
           },
         },
-        body,
+        body: variables.body,
       }),
     etagPath: selectedRuleId === null ? null : ruleDetailPath(selectedRuleId),
     invalidateKeys: [putawayRuleKeys.all],
@@ -544,7 +618,21 @@ export const PutawayRuleScreen = () => {
       /* **서버 응답이 정본이다.** 보낸 값을 그대로 두면 서버가 조정한 결과를 놓친다. */
       const next = ruleToFormValues(toRuleView(saved));
 
-      setDraft((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      setDraft((prev) =>
+        prev === null
+          ? prev
+          : {
+              ...prev,
+              baseline: next,
+              values: next,
+              sourceEtag:
+                selectedRuleId === null
+                  ? null
+                  : (etags.ifMatch(ruleDetailPath(selectedRuleId)) ?? prev.sourceEtag),
+            },
+      );
+      /* PUT 응답이 ETag를 생략할 수 있으므로 상세에서 본문·토큰 짝을 다시 확보한다. */
+      refreshDraftFromLatestDetail();
     },
   });
 
@@ -597,6 +685,8 @@ export const PutawayRuleScreen = () => {
       if (writeTargetKeyRef.current !== editTargetKeyRef.current) return;
 
       setDialog(null);
+      /* 액션 응답의 ETag는 액션 경로에 남는다. 상세 본문·토큰을 다시 짝지어 다음 수정을 연다. */
+      refreshDraftFromLatestDetail(true);
     },
   });
 
@@ -604,7 +694,8 @@ export const PutawayRuleScreen = () => {
    * **세 쓰기가 한 벌의 잠금을 나눠 쓴다**(공유계약 G-30). 하나가 나가는 중에는 나머지도
    * 잠근다 — 동시에 나가면 뒤엣것이 409이고, 그 실패는 사용자가 한 일과 이어지지 않는다.
    */
-  const isLocked = createWrite.isSaving || updateWrite.isSaving || activationWrite.isSaving;
+  const isLocked =
+    createWrite.isSaving || updateWrite.isSaving || activationWrite.isSaving || isRefreshingLatest;
 
   /** 지금 모드의 폼 쓰기. 등록과 수정이 한 폼을 쓰므로 배너·오류도 한 곳에서 골라 쓴다. */
   const activeWrite = isCreating ? createWrite : updateWrite;
@@ -728,6 +819,7 @@ export const PutawayRuleScreen = () => {
   };
 
   const handleCreate = (): void => {
+    if (!selectedWarehouseIsActive) return;
     navigateWithDraftGuard(toCreateSearchParams(filters, page));
   };
 
@@ -735,8 +827,20 @@ export const PutawayRuleScreen = () => {
     void list.refetch();
   };
 
+  const reloadDuplicateIndex = (): void => {
+    void duplicateIndex.refetch();
+  };
+
   const reloadDetail = (): void => {
     void detail.refetch();
+  };
+
+  /** 충돌 복구는 단순 재조회가 아니라 현재 초안과 잠금 토큰을 최신 상세로 함께 교체한다. */
+  const reloadLatestDetail = (): void => {
+    resetIfIdle(updateWrite);
+    resetIfIdle(activationWrite);
+    setFieldErrors({});
+    refreshDraftFromLatestDetail();
   };
 
   /**
@@ -749,6 +853,7 @@ export const PutawayRuleScreen = () => {
    */
   const handleReload = (): void => {
     reloadList();
+    reloadDuplicateIndex();
     void uncovered.refetch();
     balances.refetch();
 
@@ -804,11 +909,13 @@ export const PutawayRuleScreen = () => {
   const saveDisabledReason =
     draft === null
       ? null
-      : saveBlockedReason({
-          mode: isCreating ? 'create' : 'edit',
-          isDirty,
-          duplicate: saveDuplicate,
-        });
+      : isCreating && !formWarehouseIsActive
+        ? t.actionReasons.addNeedsActiveWarehouse
+        : saveBlockedReason({
+            mode: isCreating ? 'create' : 'edit',
+            isDirty,
+            duplicate: saveDuplicate,
+          });
 
   /**
    * 저장. **화면이 잡을 수 있는 오류가 있으면 요청을 보내지 않는다** — 보내 놓고 서버가
@@ -828,7 +935,11 @@ export const PutawayRuleScreen = () => {
     if (Object.keys(errors).length > 0) return;
 
     if (isCreating) {
-      const body = toRuleCreate(draft.values);
+      const body = toRuleCreate(draft.values, {
+        locationAllowed: isLocationInputOpen(
+          findWarehouseLevel(warehouses.levels, formWarehouseId),
+        ),
+      });
 
       if (body === null) return;
 
@@ -849,7 +960,8 @@ export const PutawayRuleScreen = () => {
 
     setWriteTargetKey(editTargetKey);
     writeTargetKeyRef.current = editTargetKey;
-    updateWrite.write(body);
+    /* 토큰이 없으면 공통 쓰기 훅이 요청을 내지 않고 재조회 가능한 충돌 배너를 세운다. */
+    updateWrite.write({ body, ifMatch: draft.sourceEtag ?? '' });
   };
 
   /** 취소. **고친 것이 있으면 한 걸음 둔다** — 되돌리면 친 값이 사라진다. */
@@ -1046,7 +1158,7 @@ export const PutawayRuleScreen = () => {
       activationWrite,
       isSentIntentReversed(activationIntent) ? null : t.notes.activationUnconfirmed,
       /* 409는 재조회로 풀린다 — 이 쓰기에는 잠글 대상이 있다(계약이 `If-Match`를 요구한다). */
-      reloadDetail,
+      reloadLatestDetail,
     );
 
   const listSlot = () => {
@@ -1064,7 +1176,7 @@ export const PutawayRuleScreen = () => {
     return (
       <RuleListPane
         rules={rules}
-        isLoading={list.isPending}
+        isLoading={list.isPending || duplicateIndex.isPending}
         pageView={pageView}
         onChangePage={handleChangePage}
         selectedRuleId={selectedRuleId}
@@ -1076,7 +1188,11 @@ export const PutawayRuleScreen = () => {
         duplicatedRuleIds={duplicatedRuleIds}
         nameLookupNote={nameLookupTruncatedNote(locations, uoms)}
         loadError={
-          list.isError ? <LoadErrorBanner error={list.error} onRetry={reloadList} /> : null
+          list.isError ? (
+            <LoadErrorBanner error={list.error} onRetry={reloadList} />
+          ) : duplicateIndex.isError ? (
+            <LoadErrorBanner error={duplicateIndex.error} onRetry={reloadDuplicateIndex} />
+          ) : null
         }
       />
     );
@@ -1113,29 +1229,26 @@ export const PutawayRuleScreen = () => {
         banner={writeFailureSlot(
           activeWrite,
           t.notes.networkUnconfirmed,
-          isCreating ? undefined : reloadDetail,
+          isCreating ? undefined : reloadLatestDetail,
         )}
-        warehouseOptions={toSelectOptions(warehouses)}
+        warehouseOptions={toWritableSelectOptions(
+          warehouses,
+          isCreating ? null : draft.values.warehouseId,
+        )}
         warehouseNote={lookupNote(warehouses)}
         warehousePlaceholder={optionsPlaceholder(warehouses, t.filters.noWarehouseOptions)}
-        locationChoices={toLocationChoices(formLocations)}
+        locationChoices={toLocationChoices(
+          formLocations,
+          isCreating ? null : draft.values.locationId,
+        )}
         locationNote={lookupNote(formLocations)}
-        /*
-         * 잠긴 사유는 **「아직 정해지지 않았다」가 아니다.** 자리표시가 채워져 칸이 잠기는 날
-         * 그 문장을 세우면 화면이 「잠겼는데 **모든 창고에서 고를 수 있습니다**」라는
-         * 자기모순을 말한다 — 두 문장을 처음부터 갈라 두었고, **이 자리가 그 갈래를 고르는
-         * 유일한 배선**이다(`screen-managed-level.test.tsx`가 소생 상태를 모의해 잰다).
-         */
+        /* 고정 설계의 관리수준을 그대로 읽는다. WAREHOUSE면 사유와 해제 위치를 함께 보인다. */
         locationDisabledReason={
-          isLocationInputOpen(
-            LOCATION_MANAGED_LEVEL_CODES,
-            findWarehouseLevel(warehouses.levels, formWarehouseId),
-          )
+          isLocationInputOpen(findWarehouseLevel(warehouses.levels, formWarehouseId))
             ? null
             : t.notes.locationNotManaged
         }
-        locationPendingNote={locationInputPendingNote(LOCATION_MANAGED_LEVEL_CODES)}
-        uomOptions={toSelectOptions(uoms)}
+        uomOptions={toWritableSelectOptions(uoms, isCreating ? null : draft.values.uomId)}
         uomNote={lookupNote(uoms)}
         uomPlaceholder={optionsPlaceholder(uoms, t.form.noUomOptions)}
         capacityNote={capacityNote}
@@ -1157,6 +1270,10 @@ export const PutawayRuleScreen = () => {
             ? t.notes.duplicateUnknown
             : null
         }
+        duplicateTargetId={
+          saveDuplicate.kind === 'blocked' ? (saveDuplicate.existingRuleIds[0] ?? null) : null
+        }
+        onOpenDuplicate={handleSelect}
         saveDisabledReason={saveDisabledReason}
         isDirty={isDirty}
         isLocked={isLocked}
@@ -1173,6 +1290,14 @@ export const PutawayRuleScreen = () => {
    */
   const editSlot = () => {
     if (isCreating) return formPane();
+
+    if (isRefreshingLatest) {
+      return (
+        <section className="pane" aria-label={t.panes.form}>
+          <SkeletonText lines={4} />
+        </section>
+      );
+    }
 
     if (isRuleNotFound || isRuleMissing) {
       return (
@@ -1202,7 +1327,7 @@ export const PutawayRuleScreen = () => {
     if (detail.isError) {
       return (
         <section className="pane" aria-label={t.panes.form}>
-          <LoadErrorBanner error={detail.error} onRetry={reloadDetail} />
+          <LoadErrorBanner error={detail.error} onRetry={() => refreshDraftFromLatestDetail()} />
         </section>
       );
     }
@@ -1239,6 +1364,12 @@ export const PutawayRuleScreen = () => {
               ? t.notes.activateDuplicateUnknown
               : null
           }
+          duplicateTargetId={
+            activationIntent === 'activate' && activateDuplicate.kind === 'blocked'
+              ? (activateDuplicate.existingRuleIds[0] ?? null)
+              : null
+          }
+          onOpenDuplicate={handleSelect}
           isLocked={isLocked}
           isSaving={isActivationSavingMine}
           onStart={openActivationDialog}
@@ -1264,6 +1395,11 @@ export const PutawayRuleScreen = () => {
              */}
             {warehouseId === null ? (
               <DisabledAction label={t.actions.create} reason={t.actionReasons.addNeedsWarehouse} />
+            ) : !selectedWarehouseIsActive ? (
+              <DisabledAction
+                label={t.actions.create}
+                reason={t.actionReasons.addNeedsActiveWarehouse}
+              />
             ) : isLocked ? (
               <DisabledAction
                 label={t.actions.create}

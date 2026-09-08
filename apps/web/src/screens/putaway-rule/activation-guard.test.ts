@@ -15,7 +15,11 @@ import type { PutawayRule } from './types';
 const t = messages.putawayRule;
 
 const CLEAR: DuplicateCheck = { kind: 'clear' };
-const BLOCKED: DuplicateCheck = { kind: 'blocked', existingCount: 2 };
+const BLOCKED: DuplicateCheck = {
+  kind: 'blocked',
+  existingCount: 2,
+  existingRuleIds: [9001, 9002],
+};
 
 /** 규칙 9001 — 창고 9201 · 품목 9101 · 사용 중. 조준 조회가 실어 오는 모양 그대로다. */
 const ACTIVE_RULE = ruleFixtureAt(9001);

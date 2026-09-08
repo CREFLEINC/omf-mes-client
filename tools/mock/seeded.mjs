@@ -45,6 +45,7 @@ const newId = () => (nextId += 1);
 
 const warehouseVersions = new Map(state.warehouses.map((row) => [row.warehouseId, 1]));
 const locationVersions = new Map(state.locations.map((row) => [row.locationId, 1]));
+const putawayRuleVersions = new Map(state.putawayRules.map((row) => [row.putawayRuleId, 1]));
 const idempotentResults = new Map();
 
 const resourceEtag = (kind, id, versions) =>
@@ -173,7 +174,21 @@ on('GET', '/mdm/workers', (_p, query) =>
 );
 
 on('GET', '/mdm/items', (_p, query) =>
-  page(keep(state.items, [contains(query, 'q', 'itemCode')]), query),
+  page(
+    keep(state.items, [
+      (row) => {
+        const needle = query.get('q')?.trim().toUpperCase();
+        return (
+          needle === undefined ||
+          needle === '' ||
+          row.itemCode.toUpperCase().includes(needle) ||
+          row.itemName.toUpperCase().includes(needle)
+        );
+      },
+      (row) => bool(query, 'includeInactive') === true || row.isActive,
+    ]),
+    query,
+  ),
 );
 on('GET', '/mdm/items/{itemId}', (params) => {
   const item = state.items.find((each) => each.itemId === Number(params.itemId));
@@ -367,6 +382,258 @@ on('POST', '/mdm/locations/{locationId}:deactivate', (params, _query, _body, hea
   idempotent(`mdm.locations:${params.locationId}:deactivate`, headers, () =>
     setLocationActive(params, headers, false),
   ),
+);
+
+/* ── 적치 규칙 ───────────────────────────────────────────── */
+
+const duplicatePutawayRule = (candidate, selfId = null) =>
+  state.putawayRules.find(
+    (row) =>
+      row.isActive &&
+      row.putawayRuleId !== selfId &&
+      row.itemId === candidate.itemId &&
+      row.warehouseId === candidate.warehouseId &&
+      (row.locationId ?? null) === (candidate.locationId ?? null) &&
+      row.priorityNo === candidate.priorityNo,
+  );
+
+const putawayDuplicateError = () => ({
+  status: 400,
+  created: {
+    code: 'UNIQUE_VIOLATION',
+    message: '같은 품목·창고·위치·우선순위의 활성 규칙이 이미 있습니다.',
+    errors: [],
+  },
+});
+
+const putawayFieldError = (field, message) => ({
+  scope: 'field',
+  field,
+  code: 'INVALID',
+  message,
+});
+
+const validatePutawayRule = (candidate, body, mode, existing = null) => {
+  const errors = [];
+  const required =
+    mode === 'create'
+      ? ['itemId', 'warehouseId', 'capacityQty', 'uomId']
+      : ['capacityQty', 'uomId'];
+
+  for (const field of required) {
+    if (body?.[field] === undefined || body[field] === null) {
+      errors.push(putawayFieldError(field, '필수 값입니다.'));
+    }
+  }
+
+  for (const field of ['itemId', 'warehouseId', 'uomId']) {
+    if (!Number.isInteger(candidate[field]) || candidate[field] <= 0) {
+      errors.push(putawayFieldError(field, '1 이상의 정수여야 합니다.'));
+    }
+  }
+  if (
+    candidate.locationId !== null &&
+    (!Number.isInteger(candidate.locationId) || candidate.locationId <= 0)
+  ) {
+    errors.push(putawayFieldError('locationId', '1 이상의 정수이거나 비어 있어야 합니다.'));
+  }
+  if (!Number.isFinite(candidate.capacityQty) || candidate.capacityQty <= 0) {
+    errors.push(putawayFieldError('capacityQty', '0보다 커야 합니다.'));
+  }
+  if (!Number.isInteger(candidate.priorityNo)) {
+    errors.push(putawayFieldError('priorityNo', '정수여야 합니다.'));
+  }
+
+  const item = state.items.find((row) => row.itemId === candidate.itemId);
+  const warehouse = state.warehouses.find((row) => row.warehouseId === candidate.warehouseId);
+  const uom = state.uoms.find((row) => row.uomId === candidate.uomId);
+  const location =
+    candidate.locationId === null
+      ? null
+      : state.locations.find((row) => row.locationId === candidate.locationId);
+
+  const itemChanged = existing === null || candidate.itemId !== existing.itemId;
+  const warehouseChanged = existing === null || candidate.warehouseId !== existing.warehouseId;
+  const uomChanged = existing === null || candidate.uomId !== existing.uomId;
+  const locationChanged = existing === null || candidate.locationId !== existing.locationId;
+
+  if (item === undefined || (itemChanged && !item.isActive)) {
+    errors.push(putawayFieldError('itemId', '사용 가능한 품목이 아닙니다.'));
+  }
+  if (warehouse === undefined || (warehouseChanged && !warehouse.isActive)) {
+    errors.push(putawayFieldError('warehouseId', '사용 가능한 창고가 아닙니다.'));
+  }
+  if (uom === undefined || (uomChanged && !uom.isActive)) {
+    errors.push(putawayFieldError('uomId', '사용 가능한 단위가 아닙니다.'));
+  }
+  if (candidate.locationId !== null) {
+    if (location === undefined || (locationChanged && !location.isActive)) {
+      errors.push(putawayFieldError('locationId', '사용 가능한 위치가 아닙니다.'));
+    } else if (location.warehouseId !== candidate.warehouseId) {
+      errors.push(putawayFieldError('locationId', '선택한 창고의 위치가 아닙니다.'));
+    }
+    if (warehouse?.managementLevelCode === 'WAREHOUSE' && locationChanged) {
+      errors.push(
+        putawayFieldError('locationId', '위치 미관리 창고에는 위치를 지정할 수 없습니다.'),
+      );
+    }
+  }
+
+  return errors;
+};
+
+const putawayValidationError = (errors) => ({
+  status: 400,
+  created: {
+    code: 'VALIDATION_ERROR',
+    message: '적치 규칙 입력값을 확인하세요.',
+    errors,
+  },
+});
+
+on('GET', '/logistics/putaway-rules', (_params, query) =>
+  page(
+    keep(state.putawayRules, [
+      byNum(query, 'warehouseId', 'warehouseId'),
+      byNum(query, 'itemId', 'itemId'),
+      byNum(query, 'locationId', 'locationId'),
+      (row) => bool(query, 'includeInactive') === true || row.isActive,
+    ]).sort((left, right) => left.priorityNo - right.priorityNo),
+    query,
+  ),
+);
+
+on('GET', '/logistics/putaway-rules/uncovered-items', (_params, query) => {
+  const warehouseId = num(query, 'warehouseId');
+  const candidates = state.putawayCandidates.flatMap((candidate) => {
+    if (candidate.warehouseId !== warehouseId) return [];
+    if (
+      state.putawayRules.some(
+        (rule) =>
+          rule.warehouseId === candidate.warehouseId &&
+          rule.itemId === candidate.itemId &&
+          rule.isActive,
+      )
+    ) {
+      return [];
+    }
+
+    const item = state.items.find((row) => row.itemId === candidate.itemId);
+    return item === undefined
+      ? []
+      : [
+          {
+            itemId: item.itemId,
+            itemCode: item.itemCode,
+            itemName: item.itemName,
+            lastReceivedAt: candidate.lastReceivedAt,
+          },
+        ];
+  });
+
+  return page(candidates, query);
+});
+
+on('GET', '/logistics/putaway-rules/{putawayRuleId}', (params) => {
+  const rule = state.putawayRules.find((row) => row.putawayRuleId === Number(params.putawayRuleId));
+  if (rule === undefined) return null;
+
+  return {
+    status: 200,
+    created: editableResponse(rule, 'putawayRule'),
+    headers: { ETag: resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions) },
+  };
+});
+
+on('POST', '/logistics/putaway-rules', (_params, _query, body, headers) =>
+  idempotent('logistics.putaway-rules:create', headers, () => {
+    const candidate = {
+      ...body,
+      locationId: body?.locationId ?? null,
+      priorityNo: body?.priorityNo ?? 100,
+    };
+    const errors = validatePutawayRule(candidate, body, 'create');
+    if (errors.length > 0) return putawayValidationError(errors);
+    if (duplicatePutawayRule(candidate) !== undefined) return putawayDuplicateError();
+
+    const rule = { ...candidate, putawayRuleId: newId(), isActive: true };
+    state.putawayRules.push(rule);
+    putawayRuleVersions.set(rule.putawayRuleId, 1);
+    return {
+      status: 201,
+      created: rule,
+      headers: { ETag: resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions) },
+    };
+  }),
+);
+
+on('PUT', '/logistics/putaway-rules/{putawayRuleId}', (params, _query, body, headers) =>
+  idempotent(`logistics.putaway-rules:${params.putawayRuleId}:update`, headers, () => {
+    const rule = state.putawayRules.find(
+      (row) => row.putawayRuleId === Number(params.putawayRuleId),
+    );
+    if (rule === undefined) return null;
+    if (
+      !matchesEtag(headers, resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions))
+    ) {
+      return conflict();
+    }
+
+    const candidate = {
+      ...rule,
+      ...body,
+      locationId: body?.locationId ?? null,
+      priorityNo: body?.priorityNo ?? 100,
+    };
+    const errors = validatePutawayRule(candidate, body, 'update', rule);
+    if (errors.length > 0) return putawayValidationError(errors);
+    if (duplicatePutawayRule(candidate, rule.putawayRuleId) !== undefined) {
+      return putawayDuplicateError();
+    }
+
+    Object.assign(rule, candidate);
+    bumpVersion(putawayRuleVersions, rule.putawayRuleId);
+    return {
+      status: 200,
+      created: rule,
+      headers: { ETag: resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions) },
+    };
+  }),
+);
+
+const setPutawayRuleActive = (params, headers, isActive) => {
+  const rule = state.putawayRules.find((row) => row.putawayRuleId === Number(params.putawayRuleId));
+  if (rule === undefined) return null;
+  if (
+    !matchesEtag(headers, resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions))
+  ) {
+    return conflict();
+  }
+  if (isActive && duplicatePutawayRule(rule, rule.putawayRuleId) !== undefined) {
+    return putawayDuplicateError();
+  }
+
+  rule.isActive = isActive;
+  bumpVersion(putawayRuleVersions, rule.putawayRuleId);
+  return {
+    status: 200,
+    created: rule,
+    headers: { ETag: resourceEtag('putaway-rule', rule.putawayRuleId, putawayRuleVersions) },
+  };
+};
+
+on('POST', '/logistics/putaway-rules/{putawayRuleId}:activate', (params, _query, _body, headers) =>
+  idempotent(`logistics.putaway-rules:${params.putawayRuleId}:activate`, headers, () =>
+    setPutawayRuleActive(params, headers, true),
+  ),
+);
+on(
+  'POST',
+  '/logistics/putaway-rules/{putawayRuleId}:deactivate',
+  (params, _query, _body, headers) =>
+    idempotent(`logistics.putaway-rules:${params.putawayRuleId}:deactivate`, headers, () =>
+      setPutawayRuleActive(params, headers, false),
+    ),
 );
 
 on('GET', '/mdm/partners', (_p, query) =>

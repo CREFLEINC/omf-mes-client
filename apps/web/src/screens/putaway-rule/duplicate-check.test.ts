@@ -102,6 +102,7 @@ describe('judgeDuplicate — 네 축을 함께 본다', () => {
     expect(judgeDuplicate(probe([EXISTING]), target())).toEqual({
       kind: 'blocked',
       existingCount: 1,
+      existingRuleIds: [9001],
     });
   });
 
@@ -164,6 +165,7 @@ describe('judgeDuplicate — 막을 때 무엇을 함께 내는가', () => {
     expect(judgeDuplicate(probe([EXISTING, second]), target())).toEqual({
       kind: 'blocked',
       existingCount: 2,
+      existingRuleIds: [9001, 9006],
     });
   });
 });

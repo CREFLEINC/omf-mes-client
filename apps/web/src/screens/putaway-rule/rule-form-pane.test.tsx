@@ -44,6 +44,8 @@ const renderPane = (overrides: Partial<RuleFormPaneProps> = {}) => {
       capacityNote={{ kind: 'none' }}
       uomLabel={() => 'SYN-UOM-01 · 합성단위 가'}
       duplicateUnknownNote={null}
+      duplicateTargetId={null}
+      onOpenDuplicate={vi.fn()}
       saveDisabledReason={null}
       isDirty={false}
       isLocked={false}
@@ -60,6 +62,23 @@ const renderPane = (overrides: Partial<RuleFormPaneProps> = {}) => {
 const editValues = ruleToFormValues(RULE_WITH_LOCATION);
 
 describe('RuleFormPane — 등록과 수정이 갈리는 자리', () => {
+  it('중복 상대 규칙을 여는 액션을 돌려준다', async () => {
+    const onOpenDuplicate = vi.fn();
+    const { user } = renderPane({ duplicateTargetId: 9001, onOpenDuplicate });
+
+    await user.click(screen.getByRole('button', { name: t.actions.openExistingRule }));
+
+    expect(onOpenDuplicate).toHaveBeenCalledWith(9001);
+  });
+
+  it('다른 쓰기로 잠긴 동안에는 중복 상대 이동 액션을 감춘다', () => {
+    renderPane({ duplicateTargetId: 9001, isLocked: true });
+
+    expect(
+      screen.queryByRole('button', { name: t.actions.openExistingRule }),
+    ).not.toBeInTheDocument();
+  });
+
   it('등록에서는 창고를 고를 수 있고 품목 찾기 버튼이 선다', () => {
     renderPane();
 
@@ -141,32 +160,13 @@ describe('RuleFormPane — 필수 표시와 위치의 뜻', () => {
     expect(screen.getByText(t.notes.priorityDirection)).toBeInTheDocument();
   });
 
-  /** C3-4 — 자리표시가 비어 있는 동안 위치 입력이 열리고 그 사정을 안내가 밝힌다. */
-  it('관리수준이 정해지지 않았다는 안내가 서면서도 위치 칸은 열려 있다', () => {
-    renderPane({ locationPendingNote: t.notes.managementLevelPending });
-
-    expect(screen.getByText(t.notes.managementLevelPending)).toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: t.fields.location })).toBeEnabled();
-  });
-
-  /**
-   * 값이 채워진 뒤에는 잠기되 **사유가 함께** 선다.
-   *
-   * ⛔ 그 사유는 「아직 정해지지 않아 **모든 창고에서 고를 수 있습니다**」일 수 없다 —
-   * 잠긴 칸에 그 문장을 세우면 화면이 자기모순을 말한다. 두 문장이 **다르다는 사실**을
-   * 여기서 고정한다(자리표시가 채워지는 날 이 감지기가 짝을 지켜 준다).
-   */
-  it('위치 입력이 잠기면 잠긴 사유가 서고 「아직 정해지지 않았다」는 서지 않는다', () => {
+  /** C3-4 — `WAREHOUSE` 수준에서 잠기면 사유와 해제 위치가 함께 선다. */
+  it('위치 입력이 잠기면 잠긴 사유가 선다', () => {
     renderPane({ locationDisabledReason: t.notes.locationNotManaged });
 
     expect(screen.getByRole('combobox', { name: t.fields.location })).toBeDisabled();
     expect(screen.getByText(t.notes.locationNotManaged)).toBeInTheDocument();
-    expect(screen.queryByText(t.notes.managementLevelPending)).not.toBeInTheDocument();
-  });
-
-  /** 두 문장이 같아지면 위 감지기가 뜻을 잃는다 — 문면 자체를 갈라 둔다. */
-  it('잠긴 사유와 「아직 정해지지 않았다」가 다른 문장이다', () => {
-    expect(t.notes.locationNotManaged).not.toBe(t.notes.managementLevelPending);
+    expect(screen.getByText(/창고·Location 화면/)).toBeInTheDocument();
   });
 });
 

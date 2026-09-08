@@ -12,6 +12,8 @@ const renderPane = (overrides: Partial<ActivationPaneProps> = {}) => {
     action: { kind: 'open', intent: 'deactivate' },
     banner: null,
     duplicateUnknownNote: null,
+    duplicateTargetId: null,
+    onOpenDuplicate: vi.fn(),
     isLocked: false,
     isSaving: false,
     onStart: vi.fn(),
@@ -22,6 +24,24 @@ const renderPane = (overrides: Partial<ActivationPaneProps> = {}) => {
 };
 
 describe('ActivationPane — 상세가 오기 전', () => {
+  it('재사용 중복 상대 규칙을 여는 액션을 돌려준다', async () => {
+    const user = userEvent.setup();
+    const onOpenDuplicate = vi.fn();
+    renderPane({ duplicateTargetId: 9001, onOpenDuplicate });
+
+    await user.click(screen.getByRole('button', { name: t.actions.openExistingRule }));
+
+    expect(onOpenDuplicate).toHaveBeenCalledWith(9001);
+  });
+
+  it('다른 쓰기로 잠긴 동안에는 중복 상대 이동 액션을 감춘다', () => {
+    renderPane({ duplicateTargetId: 9001, isLocked: true });
+
+    expect(
+      screen.queryByRole('button', { name: t.actions.openExistingRule }),
+    ).not.toBeInTheDocument();
+  });
+
   /**
    * ⭐ **C4-1.** 목록 응답에는 잠금 토큰이 없어 행에서 곧바로 끄거나 켤 수 없다(위험 R2) —
    * `:activate`에도 `If-Match`가 필수다. 상세 200이 오기 전에는 어느 전환도 낼 수 없다.
