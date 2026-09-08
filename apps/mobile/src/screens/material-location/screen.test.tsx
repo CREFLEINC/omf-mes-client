@@ -225,7 +225,7 @@ describe('자재 위치 확인 화면', () => {
     });
     await scan();
 
-    expect(await screen.findByText('(LOT 무관)')).toBeInTheDocument();
+    expect(await screen.findByText('(LOT 관계없음)')).toBeInTheDocument();
   });
 
   it('보류가 걸려 있으면 경고로 알린다', async () => {

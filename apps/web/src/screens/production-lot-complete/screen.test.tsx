@@ -373,7 +373,7 @@ describe('ProductionLotCompleteScreen — 완료 쓰기', () => {
     expect(body.occurredAt).toMatch(/[+-]\d{2}:\d{2}$/);
   });
 
-  it('미달 마감은 고른 사유를 싣는다', async () => {
+  it('미달 마감은 요청하지 않고 W/O 마감으로 안내한다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
     renderScreen({ progress: makeProgress(480, 'UNDER'), writes });
@@ -385,17 +385,8 @@ describe('ProductionLotCompleteScreen — 완료 쓰기', () => {
     });
     await user.click(closeUnderButton());
 
-    await waitFor(() => {
-      expect(writes).toHaveLength(1);
-    });
-
-    const request = writes[0];
-
-    if (request === undefined) throw new Error('미달 마감 요청이 없습니다.');
-
-    const body = (await request.json()) as Record<string, unknown>;
-
-    expect(body.completionVarianceReasonCode).toBe(REASON_CODE);
+    expect(writes).toHaveLength(0);
+    expect(screen.getByText(t.action.closeUnderMoved)).toBeInTheDocument();
   });
 
   /**

@@ -346,20 +346,20 @@ describe('재고 이동 화면', () => {
     mount({ unfinished: true });
 
     expect(await screen.findByText('ST-2026-000001 · 1라인')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '이어하기' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '이어서 하기' })).toBeTruthy();
   });
 
-  it('이어할 이동이 없으면 없다고 말한다', async () => {
+  it('도착이 남은 이동이 없으면 없다고 말한다', async () => {
     mount();
 
-    expect(await screen.findByText('이어할 이동이 없습니다')).toBeTruthy();
+    expect(await screen.findByText('도착이 남은 이동이 없습니다')).toBeTruthy();
   });
 
   /*
    * 축을 빼면 이미 끝난 이동까지 이어할 것으로 보인다. 작업자가 그것을 또 도착시키면
    * 서버가 되돌리는데, 그 사이 화면은 할 일이 있는 것처럼 말한다.
    */
-  it('이어할 이동은 아직 도착하지 않은 것만 묻는다', async () => {
+  it('도착이 남은 이동은 아직 도착하지 않은 것만 묻는다', async () => {
     const asked: string[] = [];
     mount({ asked, unfinished: true });
 
@@ -372,7 +372,7 @@ describe('재고 이동 화면', () => {
     const user = userEvent.setup();
     mount({ unfinished: true });
 
-    await user.click(await screen.findByRole('button', { name: '이어하기' }));
+    await user.click(await screen.findByRole('button', { name: '이어서 하기' }));
 
     expect(await screen.findByRole('button', { name: '이동 완료' })).toBeTruthy();
     expect(screen.queryByLabelText('반출 LOT 스캔')).toBeNull();
@@ -446,6 +446,6 @@ describe('재고 이동 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '반출 기록' }));
 
-    expect(await screen.findByText('이동을 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('이동을 저장하지 못했습니다')).toBeTruthy();
   });
 });

@@ -6,17 +6,17 @@
  */
 export const outboxRejections = {
   title: '전송 실패한 기록',
-  lead: '서버가 받지 않은 기록입니다. 다시 보내지 않습니다.',
+  lead: '보냈지만 등록되지 않은 기록입니다. 다시 보내지 않습니다.',
   empty: '전송 실패한 기록이 없습니다.',
   /** 무엇이 언제 있었던 일인지. 기록을 다시 적으려면 그때를 알아야 한다. */
   occurredAt: (at: string) => `${at}에 적음`,
   cascaded: '앞 기록이 실패해 이 기록도 보내지 못했습니다',
   dismiss: '목록에서 내리기',
   reason: {
-    invalid: '적은 내용을 서버가 받지 않았습니다.',
+    invalid: '적은 내용에 문제가 있습니다.',
     conflict: '다른 곳에서 먼저 바뀌었습니다.',
     stateLocked: '지금 상태에서는 할 수 없는 일입니다.',
     noLeader: '앞 기록이 가지 못해 붙을 곳이 없습니다.',
-    unknown: '서버가 받지 않았습니다.',
+    unknown: '보냈지만 등록되지 않았습니다.',
   },
 } as const;

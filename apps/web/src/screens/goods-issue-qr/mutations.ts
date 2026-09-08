@@ -2,7 +2,7 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import { labelRenditionFormat, toContractFormat } from '../../patterns/pop-label-rendition';
+import { labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
 import { hasPrintBridge, sendToPrinter, type PrintAttempt } from './pop-print';
 import { goodsIssueQrKeys } from './queries';
@@ -142,7 +142,7 @@ const printOne = async (client: Client, record: DocumentIssue): Promise<PrintAtt
       client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
         params: {
           path: { documentIssueLogId: record.documentIssueLogId },
-          query: { format: toContractFormat(format) },
+          query: { format },
         },
         parseAs: 'arrayBuffer',
       }),

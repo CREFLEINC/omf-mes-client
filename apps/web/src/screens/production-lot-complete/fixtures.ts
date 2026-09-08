@@ -25,6 +25,8 @@ export const makeLot = (overrides: Partial<Lot> = {}): Lot => ({
   sourceTypeCode: 'WORK_ORDER',
   sourceId: WORK_ORDER_ID,
   statusCode: 'NORMAL',
+  workOrderSequenceNo: 1,
+  workOrderLotCount: 1,
   ...overrides,
 });
 

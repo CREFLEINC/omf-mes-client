@@ -39,6 +39,8 @@ export const makeLot = (lotId: number, lotNo: string, overrides: Partial<Lot> = 
   sourceTypeCode: 'WORK_ORDER',
   sourceId: WORK_ORDER_ID,
   statusCode: 'NORMAL',
+  workOrderSequenceNo: null,
+  workOrderLotCount: null,
   completedAt: '2026-09-02T09:12:00+09:00',
   ...overrides,
 });

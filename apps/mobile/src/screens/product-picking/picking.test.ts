@@ -31,6 +31,8 @@ const lot = (overrides: Partial<Lot> = {}): Lot => ({
   sourceTypeCode: 'PRODUCTION',
   sourceId: 1,
   statusCode: 'NORMAL',
+  workOrderSequenceNo: null,
+  workOrderLotCount: null,
   expiryDate: '2027-03-03',
   manufacturedAt: '2026-03-03T00:00:00+09:00',
   ...overrides,

@@ -12,7 +12,7 @@ export const temporaryPutaway = {
   /** 지시는 앞 화면이 들고 온다. 이 화면이 따로 찾지 않는다. */
   noTask: {
     title: '적치 지시를 가지고 오세요',
-    description: '이 화면은 적치·입고 완료에서 넘어옵니다. 거기서 지시를 고른 뒤에 오세요.',
+    description: '적치·입고 완료 화면에서 지시를 고른 뒤에 오세요.',
     action: '적치·입고 완료로 가기',
   },
   task: {
@@ -24,7 +24,7 @@ export const temporaryPutaway = {
     already: '이미 임시 적치되었습니다',
     alreadyAt: (code: string) => `현재 위치 ${code}`,
     /** 담아 둔 채 아직 못 간 등록. 서버는 모르지만 이 단말은 안다. */
-    queued: '이 지시의 임시 적치를 이미 담아 두었습니다',
+    queued: '이 지시의 임시 적치가 이미 전송 대기 중입니다',
     queuedWhy: '연결되면 보냅니다. 한 번 더 적으면 두 건이 됩니다.',
   },
   location: {
@@ -39,7 +39,7 @@ export const temporaryPutaway = {
     notFound: (code: string) => `${code} 위치를 이 창고에서 찾지 못했습니다`,
     chosen: (code: string, name: string) => `${code} ${name}`,
     /** 임시 위치의 유형 값이 아직 없어 걸러 내지 않는다. */
-    unfiltered: '임시 위치를 가려낼 값이 아직 없어 전체 위치를 보입니다',
+    unfiltered: '임시 위치만 골라 보이지 못해 전체 위치를 보입니다',
     capacity: (qty: string) => `수용량 ${qty} — 임시 위치라 막지 않습니다`,
   },
   reason: {
@@ -58,11 +58,11 @@ export const temporaryPutaway = {
   sent: {
     title: '임시 적치를 기록했습니다',
     /** 이 화면은 닫히지 않는다. 정위치로 옮기는 것은 다른 화면이 한다. */
-    description: '정위치 이동은 재고 이동 화면에서 합니다. 그 화면은 아직 이 앱에 없습니다.',
+    description: '정위치로 옮기는 것은 이 화면에서 하지 않습니다.',
   },
   queued: {
-    title: '임시 적치를 담아 두었습니다',
-    description: '연결되면 보냅니다. 아직 서버에 없습니다.',
+    title: '임시 적치를 전송 대기에 넣었습니다',
+    description: '연결되면 보냅니다. 아직 보내지 않았습니다.',
   },
   rejected: {
     title: '임시 적치를 전송하지 못했습니다',
@@ -71,9 +71,9 @@ export const temporaryPutaway = {
   },
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
-    title: '임시 적치를 담아 두지 못했습니다',
+    title: '임시 적치를 저장하지 못했습니다',
     description: '기록되지 않았습니다. 다시 시도하세요.',
   },
-  noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
+  noWorker: '사번을 먼저 확인하세요',
   done: '적치 화면으로',
 } as const;

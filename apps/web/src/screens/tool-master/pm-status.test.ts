@@ -5,7 +5,6 @@ import { judgePm, type PmTarget } from './pm-status';
 const make = (overrides: Partial<PmTarget> = {}): PmTarget => ({
   pmTriggerTypeCode: 'BOTH',
   pmDue: false,
-  pmDueAxisCode: null,
   ...overrides,
 });
 
@@ -51,8 +50,8 @@ describe('judgePm', () => {
   });
 
   /* ⛔ 축을 지어내지 않는다 — 「왜 도래했는가」를 모르면 모르는 채로 말한다. */
-  it.each([null, undefined])('축이 %s 면 축 없이 도래만 말한다', (axis) => {
-    expect(judgePm(make({ pmDue: true, pmDueAxisCode: axis }))).toEqual({
+  it('축이 생략되면 축 없이 도래만 말한다', () => {
+    expect(judgePm(make({ pmDue: true, pmDueAxisCode: undefined }))).toEqual({
       status: 'due',
       axis: null,
     });

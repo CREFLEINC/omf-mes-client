@@ -87,6 +87,6 @@ export const productPicking = {
   },
   failed: '피킹을 기록하지 못했습니다. 다시 시도하세요.',
   conflict: '집을 수 없는 상태로 바뀌었습니다. 목록을 다시 확인하세요.',
-  noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
+  noWorker: '사번을 먼저 확인하세요',
   another: '다음 피킹',
 } as const;

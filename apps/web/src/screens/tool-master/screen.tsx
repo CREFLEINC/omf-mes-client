@@ -54,12 +54,18 @@ type DialogState = { mode: 'create' } | { mode: 'edit'; moldId: number };
  * `FormData` 를 그대로 넘기면 계약 클라이언트가 직렬화하지 않고 `Content-Type` 도 붙이지
  * 않는다 — 경계 문자열은 브라우저가 정해야 한다.
  */
-const toImportBody = (file: File): { file: string } => {
+interface ToolImportInput {
+  file: File;
+  plantId: number;
+}
+
+const toImportBody = ({ file, plantId }: ToolImportInput): { file: string; plantId: number } => {
   const form = new FormData();
 
   form.append('file', file);
+  form.append('plantId', String(plantId));
 
-  return form as unknown as { file: string };
+  return form as unknown as { file: string; plantId: number };
 };
 
 /**
@@ -76,11 +82,11 @@ const toImportBody = (file: File): { file: string } => {
 const useToolImport = (onDone: (result: BatchResult) => void) => {
   const { client } = useApiClient();
 
-  return useMasterWrite<File, BatchResult>({
-    request: (file, headers) =>
+  return useMasterWrite<ToolImportInput, BatchResult>({
+    request: (input, headers) =>
       client.POST('/mdm/molds:import', {
         params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body: toImportBody(file),
+        body: toImportBody(input),
       }),
     /* 올리기에는 낙관적 잠금이 없다 — 계약이 If-Match 를 요구하지 않는다. */
     etagPath: null,
@@ -150,6 +156,7 @@ export const ToolMasterScreen = () => {
   /** 엑셀 올리기 창이 떠 있는가 */
   const [importing, setImporting] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPlantId, setImportPlantId] = useState('');
   /** 서버가 돌려준 올리기 결과. 아직 안 올렸으면 `null` */
   const [importResult, setImportResult] = useState<BatchResult | null>(null);
 
@@ -350,6 +357,7 @@ export const ToolMasterScreen = () => {
         onImport={() => {
           resetIfIdle(importWrite);
           setImportFile(null);
+          setImportPlantId('');
           setImportResult(null);
           setImporting(true);
         }}
@@ -429,6 +437,9 @@ export const ToolMasterScreen = () => {
       )}
       {importing && (
         <ToolImportDialog
+          plantId={importPlantId}
+          plantOptions={selectableOptions(plantSource, importPlantId)}
+          onSelectPlant={setImportPlantId}
           file={importFile}
           onSelectFile={(file) => {
             setImportFile(file);
@@ -448,14 +459,14 @@ export const ToolMasterScreen = () => {
             setImporting(false);
           }}
           onSubmit={() => {
-            if (importFile === null) return;
+            if (importFile === null || importPlantId === '') return;
 
             /*
              * ⭐ **앞 결과를 먼저 거둔다.** 나가는 중에 옛 결과가 남아 있으면 사용자가 그것을
              * 방금 올린 결과로 읽는다 — 같은 파일을 다시 올릴 때 특히 그렇다.
              */
             setImportResult(null);
-            importWrite.write(importFile);
+            importWrite.write({ file: importFile, plantId: Number(importPlantId) });
           }}
         />
       )}

@@ -77,6 +77,7 @@ export const pqcInspection = {
   pad: {
     title: '숫자 키패드',
     keypadLabel: '수량 키패드',
+    decimal: '소수점',
     backspace: '한 자 지움',
     clear: '지움',
     /** 아직 칸을 고르지 않았다. ⛔ 「없음」이라 적지 않는다 — 없는 것이 아니라 «고르면 된다». */

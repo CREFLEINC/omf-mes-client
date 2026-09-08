@@ -89,6 +89,8 @@ const BASE_LOT: LotResponse = {
   sourceTypeCode: 'SAMPLE_SOURCE',
   sourceId: 7801,
   statusCode: 'NORMAL',
+  workOrderSequenceNo: null,
+  workOrderLotCount: null,
   held: false,
 };
 

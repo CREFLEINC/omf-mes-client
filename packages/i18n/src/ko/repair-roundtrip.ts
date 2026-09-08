@@ -15,7 +15,7 @@ export const repairRoundtrip = {
   },
   /** 연결이 끊긴 채로 열면 앞쪽 기록을 만들 수 없다. */
   offline: {
-    title: '연결이 있어야 쓸 수 있는 화면입니다',
+    title: '연결이 있어야 할 수 있습니다',
     description: '수리 투입과 반출은 연결이 있는 동안에만 기록됩니다. 연결을 확인하세요.',
   },
   scan: {
@@ -63,7 +63,7 @@ export const repairRoundtrip = {
     needScan: '불량 LOT 을 먼저 스캔하세요',
     done: '수리 반출을 기록했습니다',
     /** 반출까지가 이 화면의 몫이다. 재투입은 다른 화면이 한다. */
-    afterNote: '수리분의 재투입은 이 화면에서 하지 않습니다',
+    afterNote: '수리한 물건을 다시 투입하는 것은 이 화면에서 하지 않습니다',
     error: '수리 반출을 기록하지 못했습니다. 다시 시도하세요.',
   },
   open: {

@@ -1421,10 +1421,18 @@ const excelFile = (name = 'tools.xlsx'): File =>
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
 
-const openImport = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+const openImport = async (
+  user: ReturnType<typeof userEvent.setup>,
+  selectPlant = true,
+): Promise<void> => {
   await screen.findByRole('cell', { name: 'TL-01' });
   await user.click(within(listPane()).getByRole('button', { name: t.actions.importTools }));
   await screen.findByRole('dialog', { name: t.import.title });
+
+  if (selectPlant) {
+    await user.click(screen.getByRole('combobox', { name: t.import.plantLabel }));
+    await user.click(await screen.findByRole('option', { name: '제1공장' }));
+  }
 };
 
 describe('W-05-13 툴 마스터 — 엑셀 올리기', () => {
@@ -1461,6 +1469,16 @@ describe('W-05-13 툴 마스터 — 엑셀 올리기', () => {
     expect(screen.getByText(t.import.fileNone)).toBeInTheDocument();
   });
 
+  it('대상 공장을 명시적으로 고르기 전에는 올리기를 잠근다', async () => {
+    const { user } = renderScreen();
+
+    await openImport(user, false);
+    await user.upload(screen.getByLabelText(t.import.fileLabel), excelFile());
+
+    expect(screen.getByRole('button', { name: t.import.submit })).toBeDisabled();
+    expect(screen.getByText(t.import.plantRequired)).toBeInTheDocument();
+  });
+
   /* 이름이 없으면 무엇을 올리는지 모른 채 되돌릴 수 없는 쓰기를 누르게 된다. */
   it('고른 파일의 이름을 보인다', async () => {
     const { user } = renderScreen();
@@ -1494,10 +1512,12 @@ describe('W-05-13 툴 마스터 — 엑셀 올리기', () => {
      * ⚠ **본문은 형태만 본다.** jsdom 의 `File` 이 undici 의 `Request` 를 만나면 파일 이름과
      * 바이트가 실리지 않는다(두 구현이 서로의 `File` 을 알아보지 못한다) — 실제 파일이 실려
      * 나가는 것은 **브라우저 확인**에서 본다. 여기서 지키는 것은 계약이 정한 두 가지다:
-     * 본문을 JSON 으로 직렬화하지 않았고, 부분의 이름이 `file` 이다.
+     * 본문을 JSON 으로 직렬화하지 않았고, 부분 이름이 `file`·`plantId` 이다.
      */
     expect(request.headers.get('Content-Type')).toMatch(/^multipart\/form-data;/);
-    expect(await request.text()).toContain('name="file"');
+    const multipartBody = await request.text();
+    expect(multipartBody).toContain('name="file"');
+    expect(multipartBody).toContain('name="plantId"');
   });
 
   /*

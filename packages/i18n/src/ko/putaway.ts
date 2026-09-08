@@ -53,15 +53,15 @@ export const putaway = {
     noRuleConfirm: '여기 적치합니다',
   },
   /** 지금 무엇이 들어 있는지는 이 화면이 알지 못한다. 위반이라고 말하지 않는다. */
-  singleItemOnly: '이 위치는 단일 품목만 보관합니다. 다른 품목이 있으면 서버가 막습니다.',
+  singleItemOnly: '이 위치는 한 품목만 보관합니다. 다른 품목이 있으면 적치할 수 없습니다.',
   capacity: (qty: string) => `수용량 ${qty}`,
   submit: '적치 완료',
   sent: {
     title: '적치를 기록했습니다',
   },
   queued: {
-    title: '적치를 담아 두었습니다',
-    description: '연결되면 보냅니다. 아직 서버에 없습니다.',
+    title: '적치를 전송 대기에 넣었습니다',
+    description: '연결되면 보냅니다. 아직 보내지 않았습니다.',
   },
   rejected: {
     title: '적치를 전송하지 못했습니다',
@@ -70,9 +70,9 @@ export const putaway = {
   },
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
-    title: '적치를 담아 두지 못했습니다',
+    title: '적치를 저장하지 못했습니다',
     description: '기록되지 않았습니다. 다시 시도하세요.',
   },
-  noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
+  noWorker: '사번을 먼저 확인하세요',
   another: '다음 적치',
 } as const;

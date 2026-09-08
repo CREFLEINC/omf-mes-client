@@ -41,6 +41,8 @@ export const KeypadPanel = ({ label, value, onChange }: KeypadPanelProps) => (
       onChange={onChange}
       disabled={label === null}
       keySize={POP_TOUCH_SIZE}
+      allowDecimal
+      decimalLabel={t.decimal}
       label={t.keypadLabel}
       backspaceLabel={t.backspace}
       clearLabel={t.clear}
