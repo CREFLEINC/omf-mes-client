@@ -1358,10 +1358,7 @@ on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
   const q = query.get('q');
   const lotQ = query.get('lotQ');
   const rows = allocationRows();
-  const hit = (value, needle) =>
-    String(value ?? '')
-      .toUpperCase()
-      .includes(needle);
+  const hit = (value, needle) => String(value ?? '').toUpperCase().includes(needle);
 
   /* ① 납품라벨 스캔 — 출하번호·LOT 번호로 찾는다. 못 찾으면 «없는 라벨»이라 빈 목록이다. */
   if (q !== null) {
@@ -1370,7 +1367,9 @@ on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
     return page(
       needle === ''
         ? []
-        : rows.filter((row) => hit(shipmentNoOf(row.shipmentId), needle) || hit(row.lotNo, needle)),
+        : rows.filter(
+            (row) => hit(shipmentNoOf(row.shipmentId), needle) || hit(row.lotNo, needle),
+          ),
       query,
     );
   }
@@ -1472,6 +1471,29 @@ on('POST', '/production/work-sessions/{workSessionId}/events', (params, _q, body
   }
 
   const type = body?.eventTypeCode;
+
+  /* ⛔ 구간의 경계(START·END)는 세션을 열고 닫는 오퍼레이션이 만든다 — 단말이 보내지 않는다. */
+  if (type !== 'STOP' && type !== 'RESUME') {
+    return {
+      status: 400,
+      created: { code: 'EVENT_TYPE_NOT_ALLOWED', message: '단말이 적재할 수 없는 유형입니다.' },
+    };
+  }
+
+  /*
+   * ⭐ **멱등 키로 먼저 거른다.** 큐는 재전송에 같은 키를 다시 쓴다 — 목이 이걸 무시하면
+   * 재전송 갈래를 밟을 때마다 사건이 늘어, 「닿았는데 실패로 읽히는가」를 목에서 볼 수 없다.
+   */
+  const idempotencyKey = headers['idempotency-key'];
+  const seen =
+    idempotencyKey === undefined
+      ? undefined
+      : state.workSessionEvents.find((row) => row.idempotencyKey === idempotencyKey);
+
+  if (seen !== undefined) {
+    return { created: seen, status: 200 };
+  }
+
   const running = session.statusCode === 'RUNNING';
 
   if ((type === 'STOP' && !running) || (type === 'RESUME' && running)) {
@@ -1484,6 +1506,7 @@ on('POST', '/production/work-sessions/{workSessionId}/events', (params, _q, body
   const created = {
     workSessionEventId: newId(),
     workSessionId: session.workSessionId,
+    idempotencyKey,
     eventTypeCode: type,
     occurredAt: body?.occurredAt ?? new Date().toISOString(),
     recordedAt: new Date().toISOString(),
