@@ -76,6 +76,28 @@ export const isSameRuleValues = (a: RuleFormValues, b: RuleFormValues): boolean 
   a.remarks === b.remarks;
 
 /**
+ * 최신 서버 값 위에 사용자가 실제로 고친 필드만 다시 얹는다.
+ *
+ * 전체 값을 보존하면 사용자가 손대지 않은 필드의 동시 변경까지 예전 값으로 되돌리고, 최신
+ * ETag로 저장해 낙관적 잠금을 우회한다. 각 필드를 이전 기준값과 견줘 사용자가 바꾼 값만 남긴다.
+ */
+export const rebaseRuleFormValues = (
+  values: RuleFormValues,
+  baseline: RuleFormValues,
+  latest: RuleFormValues,
+): RuleFormValues => ({
+  itemId: values.itemId === baseline.itemId ? latest.itemId : values.itemId,
+  warehouseId:
+    values.warehouseId === baseline.warehouseId ? latest.warehouseId : values.warehouseId,
+  locationId: values.locationId === baseline.locationId ? latest.locationId : values.locationId,
+  capacityQty:
+    values.capacityQty === baseline.capacityQty ? latest.capacityQty : values.capacityQty,
+  uomId: values.uomId === baseline.uomId ? latest.uomId : values.uomId,
+  priorityNo: values.priorityNo === baseline.priorityNo ? latest.priorityNo : values.priorityNo,
+  remarks: values.remarks === baseline.remarks ? latest.remarks : values.remarks,
+});
+
+/**
  * 창고를 바꾸면 **위치를 함께 비운다.**
  *
  * 위치는 창고에 속한다 — 계약이 위치 조회에 창고를 필수로 요구하고, 다른 창고의 위치를 실은

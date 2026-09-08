@@ -42,6 +42,12 @@ describe('toRuleCreate', () => {
     expect(body?.locationId).toBeNull();
   });
 
+  it('위치를 관리하지 않는 창고에는 남아 있던 위치 값을 보내지 않는다', () => {
+    expect(
+      toRuleCreate(validCreate({ locationId: '9301' }), { locationAllowed: false })?.locationId,
+    ).toBeNull();
+  });
+
   it('비고를 비우면 null을 싣는다', () => {
     expect(toRuleCreate(validCreate({ remarks: '   ' }))?.remarks).toBeNull();
   });
@@ -97,6 +103,10 @@ describe('toRuleUpdate', () => {
   /** 부분 수정이 아니다 — 비운 칸은 「그대로 둔다」가 아니라 「비운다」로 나간다. */
   it('위치를 비우면 null이 실린다', () => {
     expect(toRuleUpdate({ ...edit, locationId: '' })?.locationId).toBeNull();
+  });
+
+  it('위치를 관리하지 않는 창고의 과거 위치를 다른 필드 저장으로 지우지 않는다', () => {
+    expect(toRuleUpdate(edit)?.locationId).toBe(9301);
   });
 
   it('비고를 비우면 null이 실린다', () => {

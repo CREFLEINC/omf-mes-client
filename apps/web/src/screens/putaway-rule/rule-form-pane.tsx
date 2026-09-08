@@ -33,8 +33,6 @@ export interface RuleFormPaneProps {
   locationNote?: string;
   /** 창고 관리수준이 위치 입력을 잠근 사유. `null`이면 열려 있다(`management-level.ts`). */
   locationDisabledReason: string | null;
-  /** 관리수준 값 목록이 아직 정해지지 않았다는 안내. 정해지면 사라진다. */
-  locationPendingNote?: string;
   uomOptions: SelectOption[];
   uomNote?: string;
   uomPlaceholder?: string;
@@ -44,6 +42,9 @@ export interface RuleFormPaneProps {
   uomLabel: (uomId: number) => string;
   /** 활성 중복을 판정하지 못했다는 안내. **막지 않는다** — 계약이 다시 검사한다. */
   duplicateUnknownNote: string | null;
+  /** 중복으로 막힌 경우 열어 볼 기존 규칙. */
+  duplicateTargetId: number | null;
+  onOpenDuplicate: (putawayRuleId: number) => void;
   /** `null`이면 저장할 수 있다. 값이 있으면 그것이 비활성 사유다(배치 규범 4). */
   saveDisabledReason: string | null;
   isDirty: boolean;
@@ -121,13 +122,14 @@ export const RuleFormPane = ({
   locationChoices,
   locationNote,
   locationDisabledReason,
-  locationPendingNote,
   uomOptions,
   uomNote,
   uomPlaceholder,
   capacityNote,
   uomLabel,
   duplicateUnknownNote,
+  duplicateTargetId,
+  onOpenDuplicate,
   saveDisabledReason,
   isDirty,
   isLocked,
@@ -297,7 +299,6 @@ export const RuleFormPane = ({
 
       {/* 비운 위치는 **확정된 뜻**이다 — 말하지 않으면 「고르다 만 것」으로 읽힌다. */}
       <p className="field-note">{t.notes.locationEmptyMeansWarehouseWide}</p>
-      {locationPendingNote !== undefined && <p className="field-note">{locationPendingNote}</p>}
 
       {/*
        * 위치 자체 용량 — **실값을 나란히 보인다.** 견줄 값이 없으면 아무 말도 하지 않는다
@@ -319,6 +320,17 @@ export const RuleFormPane = ({
       <p className="field-note">{t.notes.priorityDirection}</p>
 
       {duplicateUnknownNote !== null && <p className="field-note">{duplicateUnknownNote}</p>}
+
+      {duplicateTargetId !== null && !isLocked && (
+        <Button
+          variant="outlined"
+          onClick={() => {
+            onOpenDuplicate(duplicateTargetId);
+          }}
+        >
+          {t.actions.openExistingRule}
+        </Button>
+      )}
 
       {/*
        * ⛔ **잠긴 이유(`notes.savingLock`)는 여기 서지 않는다** — 화면 수준이 그 자리다.

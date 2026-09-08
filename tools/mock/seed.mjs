@@ -72,6 +72,7 @@ export const createSeed = (now = new Date()) => {
   const uoms = [
     { uomId: 1001, uomCode: 'EA', uomName: '개', isActive: true },
     { uomId: 1002, uomCode: 'KG', uomName: '킬로그램', isActive: true },
+    { uomId: 1003, uomCode: 'BOX', uomName: '박스', isActive: false },
   ];
 
   /*
@@ -149,6 +150,13 @@ export const createSeed = (now = new Date()) => {
       managementLevelCode: 'RACK',
       isDefect: true,
     },
+    {
+      warehouseId: 1004,
+      warehouseCode: 'WH-04',
+      warehouseName: '위치 미관리 창고',
+      warehouseTypeCode: 'GENERAL',
+      managementLevelCode: 'WAREHOUSE',
+    },
   ].map((warehouse) => ({
     isDefect: false,
     ...warehouse,
@@ -183,6 +191,19 @@ export const createSeed = (now = new Date()) => {
       locationCode: 'FG-A-02-01',
       locationName: '완제품 A구역 02열 01단',
     },
+    {
+      locationId: 3007,
+      warehouseId: 1004,
+      locationCode: 'LEGACY-01',
+      locationName: '과거 위치 관리 자리',
+    },
+    {
+      locationId: 3008,
+      warehouseId: 1001,
+      locationCode: 'INACTIVE-01',
+      locationName: '미사용 위치',
+      isActive: false,
+    },
     /* W-04-06 — 반품은 불량창고 위치로 들어간다. 상위 위치가 있어 선택칸이 1단 그룹으로 접힌다. */
     { locationId: 3005, warehouseId: 1003, locationCode: 'R-01', locationName: '반품 구역' },
     {
@@ -202,8 +223,64 @@ export const createSeed = (now = new Date()) => {
     allowMixedLot: true,
     capacityQty: 1000,
     capacityUomId: 1001,
-    isActive: true,
+    isActive: location.isActive ?? true,
   }));
+
+  /** W-06-14 — 활성·미사용·창고 전체 갈래를 한 화면에서 확인하는 적치 규칙. */
+  const putawayRules = [
+    {
+      putawayRuleId: 5101,
+      itemId: 2001,
+      warehouseId: 1001,
+      locationId: 3001,
+      capacityQty: 500,
+      uomId: 1001,
+      priorityNo: 10,
+      remarks: '합성 적치 규칙',
+      isActive: true,
+    },
+    {
+      putawayRuleId: 5102,
+      itemId: 2002,
+      warehouseId: 1001,
+      locationId: null,
+      capacityQty: 1000,
+      uomId: 1001,
+      priorityNo: 100,
+      remarks: null,
+      isActive: true,
+    },
+    {
+      putawayRuleId: 5103,
+      itemId: 2004,
+      warehouseId: 1001,
+      locationId: 3002,
+      capacityQty: 300,
+      uomId: 1001,
+      priorityNo: 200,
+      remarks: null,
+      isActive: false,
+    },
+    /* 과거 미정 기간에 생긴 WAREHOUSE+Location 참조 — 수정 때 조용히 지우지 않는다. */
+    {
+      putawayRuleId: 5104,
+      itemId: 2001,
+      warehouseId: 1004,
+      locationId: 3007,
+      capacityQty: 100,
+      uomId: 1001,
+      priorityNo: 100,
+      remarks: '과거 위치 참조',
+      isActive: false,
+    },
+  ];
+
+  /** 입고 이력이 있는 품목 후보. 활성 규칙이 생기면 uncovered 응답에서 빠진다. */
+  const putawayCandidates = [
+    { warehouseId: 1001, itemId: 2001, lastReceivedAt: iso(-3, 9) },
+    { warehouseId: 1001, itemId: 2002, lastReceivedAt: iso(-2, 9) },
+    { warehouseId: 1001, itemId: 2004, lastReceivedAt: iso(-1, 9) },
+  ];
 
   const partners = [
     {
@@ -2088,6 +2165,8 @@ export const createSeed = (now = new Date()) => {
     items,
     warehouses,
     locations,
+    putawayRules,
+    putawayCandidates,
     partners,
     equipments,
     inspectionItems,

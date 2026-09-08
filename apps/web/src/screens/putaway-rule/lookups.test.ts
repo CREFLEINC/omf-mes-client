@@ -22,6 +22,7 @@ import {
   toLocation,
   toReference,
   toSelectOptions,
+  toWritableSelectOptions,
   useItemLookup,
   useItemSearch,
   useLocationLookup,
@@ -154,6 +155,19 @@ describe('toSelectOptions', () => {
 
     expect(options).toHaveLength(2);
     expect(options[1]?.label).toBe(`SYN-ITEM-02 · 합성품목 나${t.values.inactiveSuffix}`);
+  });
+});
+
+describe('toWritableSelectOptions', () => {
+  it('신규 선택지에서는 미사용 값을 뺀다', () => {
+    expect(toWritableSelectOptions(sourceOf()).map((option) => option.value)).toEqual(['9101']);
+  });
+
+  it('수정 중 현재 참조한 미사용 값만 보존한다', () => {
+    expect(toWritableSelectOptions(sourceOf(), '9102').map((option) => option.value)).toEqual([
+      '9101',
+      '9102',
+    ]);
   });
 });
 
@@ -463,7 +477,7 @@ describe('useWarehouseLookup — 관리수준', () => {
 
     expect(result.current.levels[0]).toEqual({
       warehouseId: 9201,
-      managementLevelCode: 'SYN-LEVEL',
+      managementLevelCode: 'ZONE',
     });
   });
 });

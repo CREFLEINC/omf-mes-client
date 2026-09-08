@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { fetchAllPages } from './fetch-all-pages';
 import type { LookupEntry, PageMeta, SelectOption } from './types';
 
 /**
@@ -179,6 +180,21 @@ export const toSelectOptions = (source: ReferenceSource): SelectOption[] =>
   }));
 
 /**
+ * 등록·수정 입력에서 새로 고를 수 있는 값. 조회·이름 풀이는 미사용 값까지 보되, 쓰기 선택지는
+ * 사용 중인 값과 현재 상세가 이미 참조한 값만 남긴다.
+ */
+export const toWritableSelectOptions = (
+  source: ReferenceSource,
+  currentValue: string | null = null,
+): SelectOption[] =>
+  toSelectOptions({
+    ...source,
+    entries: source.entries.filter(
+      (entry) => entry.isActive || (currentValue !== null && entry.value === currentValue),
+    ),
+  });
+
+/**
  * 선택칸 아래에 붙일 안내. 밝히지 않으면 사용자가 **불완전한 목록을 완전한 것으로 읽고**
  * 찾는 값이 없으면 「그런 창고가 없다」로 결론짓는다.
  *
@@ -274,8 +290,8 @@ const isTruncated = (page: PageMeta, shown: number): boolean => page.total > sho
 /**
  * 위치 조회의 쪽 크기.
  *
- * **넷 중 여기에만 쪽 크기를 싣는다.** 창고·품목·단위는 전사 기준정보라 서버 기본값으로
- * 충분하지만, **Location은 한 창고 안에서 가장 커지기 쉬운 축**이다(선반·구역이 쌓인다).
+ * **Location은 한 창고 안에서 가장 커지기 쉬운 축**이다(선반·구역이 쌓인다). 참조 넷 모두
+ * 끝 쪽까지 받되 Location은 이 명시 크기를 공유한다.
  *
  * **이 값에는 계약 근거가 없다** — `size`에 `maximum`이 적혀 있지 않아 화면이 정한 완화값이며
  * 보장이 아니다. 그래서 완화만으로 끝내지 않는다: 그래도 잘리면 `truncated`가 그 사실을
@@ -285,6 +301,9 @@ const isTruncated = (page: PageMeta, shown: number): boolean => page.total > sho
  * 그 문구는 *값이 잘못됐다*는 뜻이라 사용자가 반대로 읽는다.**
  */
 export const LOCATION_PAGE_SIZE = 200;
+
+/** 전사 참조도 서버 기본 첫 쪽에 기대지 않는다. */
+export const LOOKUP_PAGE_SIZE = 200;
 
 /**
  * 품목 찾기의 쪽 크기.
@@ -322,7 +341,7 @@ export const lookupKeys = {
 /**
  * 창고 — 조건 줄의 선택칸과 조건 칩이 같은 목록을 쓴다.
  *
- * **`includeInactive=true`로 한 번 받아 둔다.** 기본 조회는 사용 중인 것만 내려주므로,
+ * **`includeInactive=true`로 끝 쪽까지 받아 둔다.** 기본 조회는 사용 중인 것만 내려주므로,
  * 지금은 쓰지 않는 창고에 남은 규칙을 찾을 길이 사라진다.
  *
  * **관리수준 코드를 함께 낸다**(`levels`). 그 값이 위치 입력의 개폐를 가르는데
@@ -334,8 +353,12 @@ export const useWarehouseLookup = (): WarehouseLookupResult => {
   const query = useQuery({
     queryKey: lookupKeys.warehouses,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/warehouses', { params: { query: { includeInactive: true } } }),
+      fetchAllPages((page) =>
+        runRequest(() =>
+          client.GET('/mdm/warehouses', {
+            params: { query: { includeInactive: true, page, size: LOOKUP_PAGE_SIZE } },
+          }),
+        ),
       ),
   });
 
@@ -390,10 +413,14 @@ export const useLocationLookup = (warehouseId: number | null): LocationLookupRes
         throw new Error('창고를 고르기 전에는 위치를 조회하지 않습니다.');
       }
 
-      return runRequest(() =>
-        client.GET('/mdm/locations', {
-          params: { query: { warehouseId, includeInactive: true, size: LOCATION_PAGE_SIZE } },
-        }),
+      return fetchAllPages((page) =>
+        runRequest(() =>
+          client.GET('/mdm/locations', {
+            params: {
+              query: { warehouseId, includeInactive: true, page, size: LOCATION_PAGE_SIZE },
+            },
+          }),
+        ),
       );
     },
   });
@@ -448,7 +475,13 @@ export const useItemLookup = (enabled: boolean): LookupResult => {
     queryKey: lookupKeys.items,
     enabled,
     queryFn: () =>
-      runRequest(() => client.GET('/mdm/items', { params: { query: { includeInactive: true } } })),
+      fetchAllPages((page) =>
+        runRequest(() =>
+          client.GET('/mdm/items', {
+            params: { query: { includeInactive: true, page, size: LOOKUP_PAGE_SIZE } },
+          }),
+        ),
+      ),
   });
 
   const data = query.data;
@@ -522,7 +555,13 @@ export const useUomLookup = (enabled: boolean): LookupResult => {
     queryKey: lookupKeys.uoms,
     enabled,
     queryFn: () =>
-      runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
+      fetchAllPages((page) =>
+        runRequest(() =>
+          client.GET('/mdm/uoms', {
+            params: { query: { includeInactive: true, page, size: LOOKUP_PAGE_SIZE } },
+          }),
+        ),
+      ),
   });
 
   const data = query.data;

@@ -90,6 +90,8 @@ const ENTRIES = [
   ['W-06-07 Location 유형', '/mdm/code-values?codeGroupCode=LOCATION_TYPE', 3],
   ['W-06-07 보관 조건', '/mdm/code-values?codeGroupCode=STORAGE_CONDITION', 3],
   ['W-06-07 재발행 사유', '/mdm/code-values?codeGroupCode=REISSUE_REASON', 5],
+  ['W-06-14 적치 규칙', '/logistics/putaway-rules?warehouseId=1001&includeInactive=true', 3],
+  ['W-06-14 규칙 없는 품목', '/logistics/putaway-rules/uncovered-items?warehouseId=1001', 1],
 ];
 
 /** 목록이 아닌 상세는 형태로 본다. */
@@ -248,6 +250,14 @@ const DETAILS = [
       typeof body.location.locationTypeCode === 'string' &&
       typeof body.location.allowMixedItem === 'boolean' &&
       typeof body.location.allowMixedLot === 'boolean',
+  ],
+  [
+    'W-06-14 적치 규칙 상세·ETag 원천',
+    '/logistics/putaway-rules/5101',
+    (body) =>
+      body.putawayRule.putawayRuleId === 5101 &&
+      typeof body.putawayRule.capacityQty === 'number' &&
+      typeof body.editability === 'object',
   ],
 ];
 
@@ -505,6 +515,184 @@ for (const [name, path, check] of DETAILS) {
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} W-06-07 상태·검색·ETag·라벨 흐름`);
+}
+
+{
+  const jsonHeaders = {
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'seed-smoke-w-06-14-create',
+  };
+  const createBody = {
+    itemId: 2004,
+    warehouseId: 1001,
+    locationId: 3003,
+    capacityQty: 250,
+    uomId: 1001,
+    priorityNo: 30,
+    remarks: '목업 상태 검증',
+  };
+  const invalidMissing = await fetch(`${BASE}/logistics/putaway-rules`, {
+    method: 'POST',
+    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-invalid-missing' },
+    body: JSON.stringify({}),
+  });
+  const invalidNegative = await fetch(`${BASE}/logistics/putaway-rules`, {
+    method: 'POST',
+    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-invalid-negative' },
+    body: JSON.stringify({ ...createBody, capacityQty: -1 }),
+  });
+  const invalidForeignLocation = await fetch(`${BASE}/logistics/putaway-rules`, {
+    method: 'POST',
+    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-invalid-location' },
+    body: JSON.stringify({ ...createBody, locationId: 3004 }),
+  });
+  const invalidWarehouseLevel = await fetch(`${BASE}/logistics/putaway-rules`, {
+    method: 'POST',
+    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-invalid-level' },
+    body: JSON.stringify({ ...createBody, warehouseId: 1004, locationId: 3001 }),
+  });
+  const invalidInactiveLocation = await fetch(`${BASE}/logistics/putaway-rules`, {
+    method: 'POST',
+    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-inactive-location' },
+    body: JSON.stringify({ ...createBody, locationId: 3008 }),
+  });
+  const invalidInactiveUom = await fetch(`${BASE}/logistics/putaway-rules`, {
+    method: 'POST',
+    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-inactive-uom' },
+    body: JSON.stringify({ ...createBody, uomId: 1003 }),
+  });
+  const create = await fetch(`${BASE}/logistics/putaway-rules`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify(createBody),
+  });
+  const created = await create.json();
+  const retry = await fetch(`${BASE}/logistics/putaway-rules`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify(createBody),
+  });
+  const retried = await retry.json();
+  const detail = await fetch(`${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`);
+  const etag = detail.headers.get('etag');
+  const invalidUpdate = await fetch(
+    `${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`,
+    {
+      method: 'PUT',
+      headers: {
+        ...jsonHeaders,
+        'Idempotency-Key': 'seed-smoke-w-06-14-invalid-update',
+        'If-Match': etag ?? '',
+      },
+      body: JSON.stringify({}),
+    },
+  );
+  const invalidUpdateLocation = await fetch(
+    `${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`,
+    {
+      method: 'PUT',
+      headers: {
+        ...jsonHeaders,
+        'Idempotency-Key': 'seed-smoke-w-06-14-update-inactive-location',
+        'If-Match': etag ?? '',
+      },
+      body: JSON.stringify({
+        locationId: 3008,
+        capacityQty: 250,
+        uomId: 1001,
+        priorityNo: 30,
+      }),
+    },
+  );
+  const invalidUpdateUom = await fetch(
+    `${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`,
+    {
+      method: 'PUT',
+      headers: {
+        ...jsonHeaders,
+        'Idempotency-Key': 'seed-smoke-w-06-14-update-inactive-uom',
+        'If-Match': etag ?? '',
+      },
+      body: JSON.stringify({
+        locationId: 3003,
+        capacityQty: 250,
+        uomId: 1003,
+        priorityNo: 30,
+      }),
+    },
+  );
+  const legacyDetail = await fetch(`${BASE}/logistics/putaway-rules/5104`);
+  const legacyUpdate = await fetch(`${BASE}/logistics/putaway-rules/5104`, {
+    method: 'PUT',
+    headers: {
+      ...jsonHeaders,
+      'Idempotency-Key': 'seed-smoke-w-06-14-legacy-update',
+      'If-Match': legacyDetail.headers.get('etag') ?? '',
+    },
+    body: JSON.stringify({
+      locationId: 3007,
+      capacityQty: 125,
+      uomId: 1001,
+      priorityNo: 100,
+      remarks: '과거 참조 보존 수정',
+    }),
+  });
+  const updateHeaders = {
+    ...jsonHeaders,
+    'Idempotency-Key': 'seed-smoke-w-06-14-update',
+    'If-Match': etag ?? '',
+  };
+  const updateBody = {
+    locationId: 3003,
+    capacityQty: 275,
+    uomId: 1001,
+    priorityNo: 30,
+    remarks: '수정된 목업 상태',
+  };
+  const update = await fetch(`${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`, {
+    method: 'PUT',
+    headers: updateHeaders,
+    body: JSON.stringify(updateBody),
+  });
+  const stale = await fetch(`${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}`, {
+    method: 'PUT',
+    headers: { ...updateHeaders, 'Idempotency-Key': 'seed-smoke-w-06-14-stale' },
+    body: JSON.stringify(updateBody),
+  });
+  const deactivate = await fetch(
+    `${BASE}/logistics/putaway-rules/${String(created.putawayRuleId)}:deactivate`,
+    {
+      method: 'POST',
+      headers: {
+        'Idempotency-Key': 'seed-smoke-w-06-14-deactivate',
+        'If-Match': update.headers.get('etag') ?? '',
+      },
+    },
+  );
+  const uncovered = await fetch(`${BASE}/logistics/putaway-rules/uncovered-items?warehouseId=1001`);
+  const uncoveredBody = await uncovered.json();
+  const ok =
+    invalidMissing.status === 400 &&
+    invalidNegative.status === 400 &&
+    invalidForeignLocation.status === 400 &&
+    invalidWarehouseLevel.status === 400 &&
+    invalidInactiveLocation.status === 400 &&
+    invalidInactiveUom.status === 400 &&
+    create.status === 201 &&
+    retry.status === 201 &&
+    retried.putawayRuleId === created.putawayRuleId &&
+    etag !== null &&
+    invalidUpdate.status === 400 &&
+    invalidUpdateLocation.status === 400 &&
+    invalidUpdateUom.status === 400 &&
+    legacyUpdate.ok &&
+    update.ok &&
+    stale.status === 409 &&
+    deactivate.ok &&
+    uncoveredBody.items.some((row) => row.itemId === 2004);
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} W-06-14 상태·멱등·ETag·미설정 흐름`);
 }
 
 {

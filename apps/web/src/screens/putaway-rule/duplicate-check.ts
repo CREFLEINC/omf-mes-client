@@ -72,13 +72,7 @@ export interface DuplicateTarget {
  */
 export type DuplicateCheck =
   | { kind: 'clear' }
-  /**
-   * **건수만 낸다.** 겹친 상대의 번호는 두지 않는다 — 전례는 그 번호로 「기존 결재선 열기」
-   * 손잡이를 냈지만 이 화면은 그 길을 만들지 않았고(단위 ③ 판정), 쓰지 않는 값을 타입에
-   * 남기면 「이 화면에 그 기능이 없다」가 타입 수준의 사실이 되지 못한다
-   * (사본 체크리스트 7번). 그 길이 필요해지는 회차가 그때 번호를 함께 가져온다.
-   */
-  | { kind: 'blocked'; existingCount: number }
+  | { kind: 'blocked'; existingCount: number; existingRuleIds: readonly number[] }
   | { kind: 'unknown'; reason: 'loading' | 'failed' | 'truncated' | 'incomplete' };
 
 /** 판정 축 넷을 한 열쇠로 접는다(Q2 기본값 — 위 주석). */
@@ -131,5 +125,9 @@ export const judgeDuplicate = (probe: DuplicateProbe, target: DuplicateTarget): 
 
   return clashes.length === 0
     ? { kind: 'clear' }
-    : { kind: 'blocked', existingCount: clashes.length };
+    : {
+        kind: 'blocked',
+        existingCount: clashes.length,
+        existingRuleIds: clashes.map((item) => item.putawayRuleId),
+      };
 };

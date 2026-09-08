@@ -199,7 +199,11 @@ describe('saveBlockedReason', () => {
   });
 
   it('활성 중복이면 막는다', () => {
-    const duplicate: DuplicateCheck = { kind: 'blocked', existingCount: 1 };
+    const duplicate: DuplicateCheck = {
+      kind: 'blocked',
+      existingCount: 1,
+      existingRuleIds: [9001],
+    };
 
     expect(saveBlockedReason({ mode: 'create', isDirty: true, duplicate })).toBe(
       t.actionReasons.duplicateActive(1),
@@ -211,7 +215,11 @@ describe('saveBlockedReason', () => {
    * 쪽에 없을 수 있다 — 건수를 흘리면 사용자가 화면에서 찾을 수 없는 규칙 때문에 막힌 채로 남는다.
    */
   it('겹친 건수가 사유 문장에 실린다', () => {
-    const duplicate: DuplicateCheck = { kind: 'blocked', existingCount: 3 };
+    const duplicate: DuplicateCheck = {
+      kind: 'blocked',
+      existingCount: 3,
+      existingRuleIds: [9001, 9002, 9003],
+    };
 
     expect(saveBlockedReason({ mode: 'create', isDirty: true, duplicate })).toContain('3건');
   });

@@ -1,6 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
-import { toSelectOptions, type ReferenceSource } from './lookups';
+import { toWritableSelectOptions, type ReferenceSource } from './lookups';
 import type { SelectOption } from './types';
 
 /**
@@ -29,7 +29,10 @@ import type { SelectOption } from './types';
 
 const t = messages.putawayRule;
 
-export const toLocationChoices = (source: ReferenceSource): SelectOption[] => [
+export const toLocationChoices = (
+  source: ReferenceSource,
+  currentValue: string | null = null,
+): SelectOption[] => [
   { value: '', label: t.values.warehouseWide },
-  ...toSelectOptions(source),
+  ...toWritableSelectOptions(source, currentValue),
 ];

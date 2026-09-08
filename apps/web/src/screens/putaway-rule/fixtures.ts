@@ -28,7 +28,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'SYN-WH-01',
     warehouseName: '합성창고 가',
     warehouseTypeCode: 'SYN-WH-TYPE',
-    managementLevelCode: 'SYN-LEVEL',
+    managementLevelCode: 'ZONE',
     isExternal: false,
     isDefect: false,
     isActive: true,
@@ -40,7 +40,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'SYN-WH-02',
     warehouseName: '합성창고 나',
     warehouseTypeCode: 'SYN-WH-TYPE',
-    managementLevelCode: 'SYN-LEVEL',
+    managementLevelCode: 'ZONE',
     isExternal: false,
     isDefect: false,
     /** 미사용 창고 — 선택지에 표식이 붙되 빠지지 않는다. */

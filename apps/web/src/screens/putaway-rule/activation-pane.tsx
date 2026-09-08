@@ -26,6 +26,8 @@ export interface ActivationPaneProps {
   banner: ReactNode;
   /** 활성 중복을 판정하지 못했다는 안내(켜기 갈래). **막지 않는다** — 계약이 다시 검사한다. */
   duplicateUnknownNote: string | null;
+  duplicateTargetId: number | null;
+  onOpenDuplicate: (putawayRuleId: number) => void;
   /**
    * **막을 것 — 전역이다**(공유계약 G-30). 어느 요청이든 나가는 중이면 새 전환을 시작할 수 없다.
    */
@@ -73,6 +75,8 @@ export const ActivationPane = ({
   action,
   banner,
   duplicateUnknownNote,
+  duplicateTargetId,
+  onOpenDuplicate,
   isLocked,
   isSaving,
   onStart,
@@ -120,6 +124,16 @@ export const ActivationPane = ({
       {banner}
       <div className="form-actions">{actionSlot()}</div>
       {duplicateUnknownNote !== null && <p className="field-note">{duplicateUnknownNote}</p>}
+      {duplicateTargetId !== null && !isLocked && (
+        <Button
+          variant="outlined"
+          onClick={() => {
+            onOpenDuplicate(duplicateTargetId);
+          }}
+        >
+          {t.actions.openExistingRule}
+        </Button>
+      )}
     </section>
   );
 };

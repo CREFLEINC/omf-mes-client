@@ -4,6 +4,7 @@ import {
   DEFAULT_PRIORITY_NO,
   emptyRuleFormValues,
   isSameRuleValues,
+  rebaseRuleFormValues,
   ruleToFormValues,
   withWarehouse,
 } from './rule-draft';
@@ -85,6 +86,19 @@ describe('isSameRuleValues', () => {
     ['remarks', { remarks: '다른 비고' }],
   ])('%s를 고치면 거짓이다', (_field, patch) => {
     expect(isSameRuleValues(base, { ...base, ...patch })).toBe(false);
+  });
+});
+
+describe('rebaseRuleFormValues', () => {
+  it('사용자가 고친 필드만 보존하고 나머지는 최신 서버 값을 받는다', () => {
+    const baseline = ruleToFormValues(RULE_WITH_LOCATION);
+    const values = { ...baseline, capacityQty: '600' };
+    const latest = { ...baseline, capacityQty: '550', remarks: '다른 사용자의 메모' };
+
+    expect(rebaseRuleFormValues(values, baseline, latest)).toEqual({
+      ...latest,
+      capacityQty: '600',
+    });
   });
 });
 
