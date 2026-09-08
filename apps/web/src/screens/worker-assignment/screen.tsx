@@ -1,6 +1,7 @@
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { useIsOnline } from './connection';
 import { KeypadPanel } from './keypad-panel';
@@ -63,6 +64,7 @@ const formatAssignedAt = (now: Date): string =>
   });
 
 export const WorkerAssignmentScreen = () => {
+  const navigate = useNavigate();
   /** 키패드가 채우는 값. 확인을 누르기 전에는 조회하지 않는다. */
   const [workerNo, setWorkerNo] = useState('');
   /** 확인을 누른 사번. 이 값이 있어야 조회가 돈다 */
@@ -276,15 +278,16 @@ export const WorkerAssignmentScreen = () => {
             setWorkerNo('');
           }}
           /*
-           * ⚠ **아직 아무 데도 가지 않는다.** 작업 시작 화면(P-02-01 · `/pop/work-start`)은
-           * 이제 서 있으나 이 버튼이 그 주소로 이어지는 것은 설계가 정할 자리다 — ⛔ 임의의
-           * 화면으로 보내지 않는다. 대상이 정해지면 이 한 자리를 채운다.
+           * 제품 동작은 작업 시작 화면(P-02-01)으로 이어진다(§5-8). 현재 작업자 귀속은
+           * 화면 밖 `worker-session`에 있으므로 이동 뒤에도 그대로 유지된다.
            */
-          onGoToWork={() => undefined}
+          onGoToWork={() => {
+            void navigate('/pop/work-start');
+          }}
           /*
            * ⚠ **개발 서버에서만** 그 자리에 화면 이동 셀렉터를 세운다 — 버튼이 아직
-           * 아무 데도 가지 않고, POP 화면을 손으로 확인할 경로가 단말 셸에 없기 때문이다
-           * (주소창이 없다).
+           * 가리키는 제품 경로 외의 POP 화면도 손으로 확인할 경로가 단말 셸에 없기 때문이다
+           * (주소창이 없다). 제품 모드에서는 위 이동 버튼이 그대로 선다.
            *
            * ⛔ **`DEV`가 아니라 `MODE`로 가른다.** `DEV`는 시험 실행에서도 참이라, 개발용
            * 대체물이 이 화면의 제품 시험 안으로 들어와 「이동 버튼이 있다」는 §5-8 단언을

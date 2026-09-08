@@ -1,6 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { useLocation } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
@@ -29,6 +30,13 @@ const workerOf = (over: Partial<WorkerResponse> = {}): WorkerResponse => ({
   ...over,
 });
 
+/** 제품 버튼의 실제 이동 결과를 라우터 위치로 확인한다. */
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return <output aria-label="현재 경로">{location.pathname}</output>;
+};
+
 const renderScreen = (items: WorkerResponse[] = [workerOf()]) => {
   const queries: URL[] = [];
 
@@ -42,7 +50,13 @@ const renderScreen = (items: WorkerResponse[] = [workerOf()]) => {
     },
   ]);
 
-  renderWithProviders(<WorkerAssignmentScreen />, { fetch });
+  renderWithProviders(
+    <>
+      <WorkerAssignmentScreen />
+      <LocationProbe />
+    </>,
+    { fetch, route: '/pop/worker-assignment' },
+  );
 
   return { queries };
 };
@@ -145,6 +159,18 @@ describe('WorkerAssignmentScreen — 현재 작업자', () => {
 
     expect(screen.getByRole('button', { name: t.current.shift })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.current.toWork })).toBeDisabled();
+  });
+
+  it('제품 모드에서 현재 작업자가 있으면 작업 시작 화면으로 이동한다', async () => {
+    renderScreen();
+
+    await typeWorkerNo('900028');
+    await userEvent.click(screen.getByRole('button', { name: t.input.submit }));
+    await screen.findByText('김작업 · 900028');
+
+    await userEvent.click(screen.getByRole('button', { name: t.current.toWork }));
+
+    expect(screen.getByRole('status', { name: '현재 경로' })).toHaveTextContent('/pop/work-start');
   });
 
   it('교대하면 현재 작업자가 비워진다', async () => {
