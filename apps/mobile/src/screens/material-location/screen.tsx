@@ -7,6 +7,7 @@ import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
 import { toApiError } from '../../patterns/request';
 import { useScreenTitle } from '../../patterns/screen-title';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useReferenceNames, type ReferenceNames, type ReferenceState } from './lookups';
 import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from '../../patterns/material-lot-no';
@@ -188,29 +189,17 @@ export const MaterialLocationScreen = () => {
               : t.invalidLength(rejectedLength, MATERIAL_LOT_NO_LENGTH)
           }
         />
-        {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="material-location__manual">
-          <TextField
-            label={t.scan.manualEntry}
-            size="xl"
-            fullWidth
-            value={manual}
-            onChange={(event) => {
-              setManual(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              accept(manual.trim());
-              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-              setManual('');
-            }}
-          >
-            {t.scan.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.scan.manualEntry}
+          submitLabel={t.scan.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            accept(manual.trim());
+            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+            setManual('');
+          }}
+        />
 
         {unreachable ? (
           <EmptyState

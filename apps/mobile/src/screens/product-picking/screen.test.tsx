@@ -782,6 +782,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await chooseTarget(user);
     await screen.findByText('FG-0311');
 
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(screen.getByLabelText('직접 입력'), 'FG-0311');
     await user.click(screen.getByRole('button', { name: '찾기' }));
 
@@ -795,6 +796,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await chooseTarget(user);
     await screen.findByText('FG-0298');
 
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(screen.getByLabelText('직접 입력'), 'FG-9999');
     await user.click(screen.getByRole('button', { name: '찾기' }));
 

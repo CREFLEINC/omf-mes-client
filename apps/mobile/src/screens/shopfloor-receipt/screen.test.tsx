@@ -473,6 +473,6 @@ describe('생산창고 입고 화면', () => {
     await user.type(await receivedField(), '500');
     await user.click(screen.getByRole('button', { name: '입고 확정' }));
 
-    expect(await screen.findByText('입고가 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('입고를 전송하지 못했습니다')).toBeTruthy();
   });
 });

@@ -79,7 +79,20 @@ export const createSeed = (now = new Date()) => {
       labelName: 'CHARGER ASSY',
       fifoPolicyCode: 'FEFO',
     },
+    /*
+     * 같은 품목코드로 신재 행과 재생재 행이 함께 온다. 재생재 등록은 그 둘 중 재생재 행을
+     * 골라 재고를 세우므로, 재생재 행이 없으면 그 화면은 늘 등록되지 않은 품목이라고만 말한다.
+     */
+    {
+      itemId: 2004,
+      itemCode: 'RM-1001',
+      itemName: '수지A',
+      labelName: 'PC RESIN BLK',
+      fifoPolicyCode: 'FEFO',
+      mesCategoryCode: 'RECYCLED',
+    },
   ].map((item) => ({
+    mesCategoryCode: 'NEW',
     ...item,
     plantId: PLANT_ID,
     baseUomId: 1001,
@@ -348,6 +361,19 @@ export const createSeed = (now = new Date()) => {
       ['DAMAGED', '파손'],
       ['WRONG_ITEM', '품목 상이'],
     ],
+    /* 적는 것은 선택이지만, 비어 있으면 고르는 칸이 빈 채로 열려 시험할 것이 없다. */
+    INBOUND_VARIANCE_REASON: [
+      ['TRANSPORT_DAMAGE', '운송 중 파손'],
+      ['SUPPLIER_SHORTAGE', '공급사 결품'],
+      ['PACKING_ERROR', '포장 오류'],
+      ['ETC', '기타'],
+    ],
+    VARIANCE_REASON: [
+      ['MISCOUNT', '계수 착오'],
+      ['SPILLAGE', '운반 중 손실'],
+      ['LEFT_BEHIND', '잔량 미인계'],
+      ['ETC', '기타'],
+    ],
     PUTAWAY_TASK_TEMPORARY_REASON: [
       ['FULL', '정위치 포화'],
       ['INSPECTION', '검사 대기'],
@@ -548,20 +574,37 @@ export const createSeed = (now = new Date()) => {
     { lotId: 8003, itemId: 2002, warehouseId: 1001, locationId: 3003, onHandQty: 120 },
     { lotId: 8201, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 500 },
     { lotId: 8202, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 300 },
-  ].map((balance, index) => ({
-    inventoryBalanceId: 8600 + index,
-    ...balance,
-    uomId: 1001,
-    reservedQty: 0,
-    pickedQty: 0,
-    blockedQty: balance.lotId === 8003 ? balance.onHandQty : 0,
-    availableQty: balance.lotId === 8003 ? 0 : balance.onHandQty,
-    qualityStatusCode: balance.lotId === 8003 ? 'INSPECTION_PENDING' : 'NORMAL',
-    inventoryStatusCode: 'AVAILABLE',
-    ownershipTypeCode: 'OWNED',
-    ownerPartnerId: null,
-    lastTransactionAt: iso(-1, 14),
-  }));
+  ].map((balance, index) => {
+    /*
+     * 사람이 읽는 값을 잔액 줄에 함께 싣는다. 계약이 「이 값이 있으므로 마스터를 다시 부르지
+     * 않는다」로 못 박은 자리라, 여기가 비면 화면은 부를 곳도 없이 「알 수 없음」만 보인다.
+     */
+    const item = items.find((each) => each.itemId === balance.itemId);
+    const warehouse = warehouses.find((each) => each.warehouseId === balance.warehouseId);
+    const location = locations.find((each) => each.locationId === balance.locationId);
+    const lot = lots.find((each) => each.lotId === balance.lotId);
+
+    return {
+      inventoryBalanceId: 8600 + index,
+      ...balance,
+      uomId: 1001,
+      reservedQty: 0,
+      pickedQty: 0,
+      blockedQty: balance.lotId === 8003 ? balance.onHandQty : 0,
+      availableQty: balance.lotId === 8003 ? 0 : balance.onHandQty,
+      qualityStatusCode: balance.lotId === 8003 ? 'INSPECTION_PENDING' : 'NORMAL',
+      inventoryStatusCode: 'AVAILABLE',
+      ownershipTypeCode: 'OWNED',
+      ownerPartnerId: null,
+      lastTransactionAt: iso(-1, 14),
+      itemCode: item?.itemCode,
+      itemName: item?.itemName,
+      lotNo: lot?.lotNo ?? null,
+      warehouseName: warehouse?.warehouseName ?? null,
+      locationCode: location?.locationCode ?? null,
+      locationName: location?.locationName ?? null,
+    };
+  });
 
   const purchaseOrders = [
     {
@@ -689,6 +732,9 @@ export const createSeed = (now = new Date()) => {
      *
      * 부착인데 LOT 이 비어 있는 라인이 하나도 없으면 그 화면이 대상을 하나도 못 받아,
      * 대상을 고르는 자리부터 재 볼 수 없다.
+     *
+     * 두 입하 건에 나눠 여럿을 둔다. 하나만 두면 한 번 등록한 뒤 그 화면이 닫히고, 대상을
+     * 고르는 칸에서 다른 입하 건을 골라 본 사람은 처음부터 빈 목록을 만난다.
      */
     {
       inboundReceiptLineId: 9303,
@@ -697,6 +743,51 @@ export const createSeed = (now = new Date()) => {
       purchaseOrderLineId: null,
       itemId: 2001,
       receivedQty: 60,
+      uomId: 1001,
+      packageCount: 1,
+      supplierLotNo: null,
+      supplierLotMissing: false,
+      substituteLotReasonCode: null,
+      lotId: null,
+      labelIssued: false,
+    },
+    {
+      inboundReceiptLineId: 9304,
+      inboundReceiptId: 9002,
+      lineNo: 3,
+      purchaseOrderLineId: null,
+      itemId: 2002,
+      receivedQty: 100,
+      uomId: 1001,
+      packageCount: 2,
+      supplierLotNo: null,
+      supplierLotMissing: false,
+      substituteLotReasonCode: null,
+      lotId: null,
+      labelIssued: false,
+    },
+    {
+      inboundReceiptLineId: 9305,
+      inboundReceiptId: 9001,
+      lineNo: 2,
+      purchaseOrderLineId: null,
+      itemId: 2001,
+      receivedQty: 80,
+      uomId: 1001,
+      packageCount: 2,
+      supplierLotNo: null,
+      supplierLotMissing: false,
+      substituteLotReasonCode: null,
+      lotId: null,
+      labelIssued: false,
+    },
+    {
+      inboundReceiptLineId: 9306,
+      inboundReceiptId: 9001,
+      lineNo: 3,
+      purchaseOrderLineId: null,
+      itemId: 2002,
+      receivedQty: 40,
       uomId: 1001,
       packageCount: 1,
       supplierLotNo: null,
@@ -748,6 +839,48 @@ export const createSeed = (now = new Date()) => {
       assignedWorkerId: 1001,
       completedAt: null,
     },
+    /*
+     * 여벌 지시. 위 둘을 끝내면 목록이 비어 그 화면을 다시 열 수 없다 - 적치는 되돌릴 수
+     * 없는 쓰기라 시험을 되풀이하려면 남은 지시가 있어야 한다.
+     */
+    {
+      putawayTaskId: 9403,
+      putawayTaskNo: 'PT-2026-000514',
+      goodsReceiptLineId: 9301,
+      itemId: 2001,
+      lotId: 8002,
+      taskQty: 300,
+      uomId: 1001,
+      fromLocationId: 3003,
+      recommendedLocationId: 3002,
+      appliedPutawayRuleId: 9501,
+      actualLocationId: null,
+      warehouseId: 1001,
+      warehouseManagementLevelCode: 'ZONE',
+      priorityNo: 3,
+      statusCode: 'ASSIGNED',
+      assignedWorkerId: 1001,
+      completedAt: null,
+    },
+    {
+      putawayTaskId: 9404,
+      putawayTaskNo: 'PT-2026-000515',
+      goodsReceiptLineId: 9302,
+      itemId: 2002,
+      lotId: 8001,
+      taskQty: 120,
+      uomId: 1001,
+      fromLocationId: 3003,
+      recommendedLocationId: 3001,
+      appliedPutawayRuleId: 9501,
+      actualLocationId: null,
+      warehouseId: 1001,
+      warehouseManagementLevelCode: 'ZONE',
+      priorityNo: 4,
+      statusCode: 'ASSIGNED',
+      assignedWorkerId: 1001,
+      completedAt: null,
+    },
   ];
 
   /*
@@ -762,7 +895,19 @@ export const createSeed = (now = new Date()) => {
       sourceDocumentTypeCode: 'MATERIAL_ISSUE_REQUEST',
       sourceDocumentId: 16101,
       warehouseId: 1001,
-      statusCode: 'ASSIGNED',
+      /* 화면은 아직 출고할 수 있는 지시만 담는다 - 그 판정에 쓰는 값이 이것이다. */
+      statusCode: 'REGISTERED',
+      assignedWorkerId: 1001,
+    },
+    /* 여벌 지시. 앞 지시를 다 집고 출고까지 확정하면 목록이 비어 다시 열 수 없다. */
+    {
+      pickingOrderId: 16002,
+      pickingOrderNo: 'PK-2026-000078',
+      pickingTypeCode: 'PRODUCTION',
+      sourceDocumentTypeCode: 'MATERIAL_ISSUE_REQUEST',
+      sourceDocumentId: 16102,
+      warehouseId: 1001,
+      statusCode: 'REGISTERED',
       assignedWorkerId: 1001,
     },
   ];
@@ -785,6 +930,24 @@ export const createSeed = (now = new Date()) => {
       destinationTypeCode: 'LOCATION',
       destinationId: 3001,
       issuedAt: iso(-2),
+      statusCode: 'POSTED',
+      reasonCode: null,
+      replacementExpected: false,
+      approvalRequestId: null,
+      erpMessageQueued: false,
+      remarks: null,
+    },
+    /* 여벌 전표. 앞 전표를 받고 나면 스캔할 것이 없어 그 화면을 다시 열 수 없다. */
+    {
+      goodsIssueId: 16402,
+      goodsIssueNo: 'GI-2026-000402',
+      issueTypeCode: 'PRODUCTION',
+      sourceDocumentTypeCode: 'PICKING_ORDER',
+      sourceDocumentId: 16002,
+      sourceWarehouseId: 1001,
+      destinationTypeCode: 'LOCATION',
+      destinationId: 3001,
+      issuedAt: iso(-1),
       statusCode: 'POSTED',
       reasonCode: null,
       replacementExpected: false,
@@ -820,6 +983,30 @@ export const createSeed = (now = new Date()) => {
       sourceLocationId: 3001,
       inventoryTransactionLineId: null,
     },
+    {
+      goodsIssueLineId: 16503,
+      goodsIssueId: 16402,
+      lineNo: 1,
+      pickingLineId: 16204,
+      itemId: 2001,
+      lotId: 8002,
+      issueQty: 50,
+      uomId: 1001,
+      sourceLocationId: 3001,
+      inventoryTransactionLineId: null,
+    },
+    {
+      goodsIssueLineId: 16504,
+      goodsIssueId: 16402,
+      lineNo: 2,
+      pickingLineId: 16205,
+      itemId: 2002,
+      lotId: 8001,
+      issueQty: 60,
+      uomId: 1001,
+      sourceLocationId: 3002,
+      inventoryTransactionLineId: null,
+    },
   ];
 
   /*
@@ -832,6 +1019,16 @@ export const createSeed = (now = new Date()) => {
     {
       inventoryCountId: 5001,
       inventoryCountNo: 'IC-2026-000031',
+      countTypeCode: 'PERIODIC',
+      warehouseId: 1001,
+      plannedDate: today,
+      blindCount: false,
+      statusCode: 'IN_PROGRESS',
+    },
+    /* 여벌 실사. 앞 실사의 위치를 끝내면 셀 것이 없어 그 화면을 다시 열 수 없다. */
+    {
+      inventoryCountId: 5002,
+      inventoryCountNo: 'IC-2026-000032',
       countTypeCode: 'PERIODIC',
       warehouseId: 1001,
       plannedDate: today,
@@ -877,6 +1074,38 @@ export const createSeed = (now = new Date()) => {
       countedAt: iso(0),
       counted: false,
     },
+    {
+      inventoryCountLineId: 5103,
+      inventoryCountId: 5002,
+      lineNo: 1,
+      locationId: 3002,
+      itemId: 2002,
+      lotId: 8001,
+      systemQty: 120,
+      countedQty: 0,
+      varianceQty: 0,
+      uomId: 1001,
+      varianceReasonCode: null,
+      countedBy: null,
+      countedAt: iso(0),
+      counted: false,
+    },
+    {
+      inventoryCountLineId: 5104,
+      inventoryCountId: 5002,
+      lineNo: 2,
+      locationId: 3002,
+      itemId: 2001,
+      lotId: 8002,
+      systemQty: 60,
+      countedQty: 0,
+      varianceQty: 0,
+      uomId: 1001,
+      varianceReasonCode: null,
+      countedBy: null,
+      countedAt: iso(0),
+      counted: false,
+    },
   ];
 
   const pickingLines = [
@@ -901,6 +1130,50 @@ export const createSeed = (now = new Date()) => {
       expiryDate: dayOf(shift(now, 340)),
       manufacturedAt: iso(-20),
       /* 선출 순위는 서버가 매긴다. 이 품목에 두 LOT 이 있어 순서가 갈린다. */
+      pickSequenceRank: 2,
+    },
+    {
+      pickingLineId: 16204,
+      pickingOrderId: 16002,
+      lineNo: 1,
+      itemId: 2001,
+      lotId: 8002,
+      locationId: 3001,
+      plannedQty: 50,
+      pickedQty: 0,
+      uomId: 1001,
+      inventoryReservationId: null,
+      statusCode: 'ASSIGNED',
+      held: false,
+      holdReasonCode: null,
+      itemCode: 'RM-1001',
+      itemName: '수지A',
+      lotNo: MATERIAL_LOT_B,
+      locationCode: 'A-01-03',
+      expiryDate: dayOf(shift(now, 200)),
+      manufacturedAt: iso(-30),
+      pickSequenceRank: 1,
+    },
+    {
+      pickingLineId: 16205,
+      pickingOrderId: 16002,
+      lineNo: 2,
+      itemId: 2002,
+      lotId: 8001,
+      locationId: 3002,
+      plannedQty: 60,
+      pickedQty: 0,
+      uomId: 1001,
+      inventoryReservationId: null,
+      statusCode: 'ASSIGNED',
+      held: false,
+      holdReasonCode: null,
+      itemCode: 'ABC-123',
+      itemName: '하우징 커버 A',
+      lotNo: MATERIAL_LOT_A,
+      locationCode: 'A-01-04',
+      expiryDate: dayOf(shift(now, 340)),
+      manufacturedAt: iso(-20),
       pickSequenceRank: 2,
     },
     {
@@ -1012,6 +1285,20 @@ export const createSeed = (now = new Date()) => {
       lineNo: 1,
       itemId: 2003,
       allocatedQty: 300,
+      pickedQty: 0,
+      uomId: 1001,
+      fifoPolicyCode: 'FEFO',
+    },
+    /*
+     * 여벌 줄. 한 줄만 두면 배정만큼 집은 순간 오늘 출하분에 할 일이 없어져, 그 화면을 다시
+     * 열어도 볼 것이 없다.
+     */
+    {
+      shipmentRequestLineId: 9802,
+      shipmentRequestId: 9601,
+      lineNo: 2,
+      itemId: 2003,
+      allocatedQty: 200,
       pickedQty: 0,
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
@@ -1302,16 +1589,31 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /*
+   * 계약이 필수로 둔 칸을 빠짐없이 싣는다. 화면은 필수 칸을 그대로 읽으므로 target 이 비면
+   * 렌더가 죽어 요청 목록 자리가 통째로 열리지 않는다.
+   */
   const approvalRequests = [
     {
       approvalRequestId: 15001,
+      approvalRequestNo: 'AP-2026-000031',
       approvalTypeCode: 'IQC_SKIP',
       targetTypeCode: 'INBOUND_LOT',
       targetId: 8003,
+      target: {
+        targetTypeCode: 'INBOUND_LOT',
+        targetId: 8003,
+        displayName: '0001234500000012002607310001230009',
+        openable: false,
+      },
+      requestedBy: 1001,
+      requestedByName: '홍길동',
       requestedByWorkerNo: '100027',
       requestedAt: iso(-1, 13),
       reason: '긴급 생산 투입 — 수입검사 대기 중',
       statusCode: 'PENDING',
+      currentStepNo: 1,
+      totalStepNo: 2,
       isMyTurn: false,
     },
   ];

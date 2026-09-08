@@ -17,7 +17,7 @@ export const wipHandover = {
   lot: {
     legend: '생산LOT 스캔',
     scanLabel: 'LOT 스캔',
-    scanPlaceholder: 'LOT QR을 비추세요',
+    scanPlaceholder: 'LOT QR을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     loading: 'LOT을 불러오는 중입니다',

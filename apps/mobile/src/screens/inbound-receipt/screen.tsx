@@ -7,6 +7,7 @@ import { isMaterialLotNo } from '../../patterns/material-lot-no';
 import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -245,29 +246,17 @@ export const InboundReceiptScreen = () => {
           fullWidth
           error={malformed === null ? undefined : t.scan.malformed(malformed.length)}
         />
-        {/* 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="receipt__row">
-          <TextField
-            label={t.scan.manualLabel}
-            size="xl"
-            fullWidth
-            value={manual}
-            onChange={(event) => {
-              setManual(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              take(manual);
-              /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-              setManual('');
-            }}
-          >
-            {t.scan.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.scan.manualLabel}
+          submitLabel={t.scan.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            take(manual);
+            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+            setManual('');
+          }}
+        />
 
         {draft.supplierLotMissing ? (
           <>
@@ -565,9 +554,24 @@ export const InboundReceiptScreen = () => {
                       : `${item.data.itemCode} ${item.data.itemName}`}
                   </strong>
                   {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
-                  {/* 발주가 없으면 예정 수량이 없다. 없는 것을 0 으로 보이지 않는다. */}
+                  {/*
+                   * 발주가 없으면 견줄 수량이 없다. 없는 것을 0 으로 보이지 않는다.
+                   *
+                   * 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다. 총량만 칸 옆에 두면
+                   * 적는 사람이 그 수에 맞추려 하고, 판정은 다른 수로 나온다.
+                   */}
                   {draft.purchaseOrderLine === null ? null : (
-                    <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
+                    <>
+                      <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
+                      <p>
+                        <strong>
+                          {t.qty.remaining(
+                            String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
+                            uom,
+                          )}
+                        </strong>
+                      </p>
+                    </>
                   )}
                 </Card.Body>
               </Card>
@@ -605,7 +609,7 @@ export const InboundReceiptScreen = () => {
                 }
               />
 
-              <div className="receipt__row">
+              <div className="receipt__row receipt__row--split">
                 <TextField
                   type="date"
                   label={t.qty.manufactured}

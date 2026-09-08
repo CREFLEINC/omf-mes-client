@@ -11,17 +11,6 @@
   gap: var(--space-3, 12px);
 }
 
-/* 스캔이 실패했을 때 손으로 넣는 자리. 칸과 단추가 밑선을 맞춘다. */
-.stock-transfer__row {
-  display: flex;
-  gap: var(--space-2, 8px);
-  align-items: flex-end;
-}
-
-.stock-transfer__row > *:first-child {
-  flex: 1;
-}
-
 .stock-transfer__line {
   display: flex;
   flex-direction: column;

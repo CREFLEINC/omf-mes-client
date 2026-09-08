@@ -11,15 +11,18 @@
   gap: var(--space-3, 12px);
 }
 
-/* 스캔이 실패했을 때 손으로 넣는 자리. 칸과 단추가 밑선을 맞춘다. */
-.picking-out__row {
-  display: flex;
-  gap: var(--space-2, 8px);
-  align-items: flex-end;
+/*
+ * 라인 목록. 줄마다 고르는 표시를 왼쪽에 두고 내용은 그 오른쪽에 쌓는다. 내용이 여러 줄이라
+ * 가운데 정렬로 두면 표시가 글 덩이 한가운데로 내려가 어느 줄의 것인지 흐려진다.
+ */
+.picking-out__lines > label {
+  align-items: flex-start;
+  gap: var(--space-3, 12px);
+  padding-block: var(--space-2, 8px);
 }
 
-.picking-out__row > *:first-child {
-  flex: 1;
+.picking-out__lines > label + label {
+  border-top: 1px solid var(--outline-variant);
 }
 
 /* 한 라인에 다섯 줄이 들어간다. 폭이 모자라 줄바꿈을 허용하고 왼쪽으로 붙인다. */
@@ -28,7 +31,43 @@
   flex-direction: column;
   gap: var(--space-1, 4px);
   align-items: flex-start;
+  min-width: 0;
   text-align: start;
+}
+
+/* 품목과 선출 순위는 한 줄에 마주 세운다. 순위는 어느 것을 먼저 집을지 가르는 값이다. */
+.picking-out__line-head {
+  display: flex;
+  gap: var(--space-2, 8px);
+  align-items: baseline;
+  align-self: stretch;
+  justify-content: space-between;
+}
+
+.picking-out__line-rank {
+  flex: none;
+  color: var(--on-surface-muted);
+}
+
+.picking-out__line-qty {
+  font-variant-numeric: tabular-nums;
+}
+
+/* 34자리 LOT 은 한 줄에 안 들어간다. 마디가 없는 값이라 어디서든 접히게 둔다. */
+.picking-out__line-lot {
+  align-self: stretch;
+  font-family: var(--font-mono, monospace);
+  overflow-wrap: anywhere;
+  color: var(--on-surface-muted);
+}
+
+.picking-out__line-note {
+  color: var(--on-surface-muted);
+}
+
+/* 집을 수 없는 줄인 이유. 흐린 글씨에 묻히면 왜 못 고르는지 알 수 없다. */
+.picking-out__line-state {
+  color: var(--semantic-error-text);
 }
 
 .picking-out__note {

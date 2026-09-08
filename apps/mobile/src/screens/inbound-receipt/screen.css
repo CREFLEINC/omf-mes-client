@@ -15,7 +15,6 @@
   gap: var(--space-3, 12px);
 }
 
-
 .receipt p {
   margin: 0;
 }
@@ -68,6 +67,15 @@
 
 .receipt__row > *:first-child {
   flex: 1;
+}
+
+/*
+ * 칸 둘을 나란히 두는 줄. 위 규칙만으로는 둘째 칸이 fullWidth 라 제 폭을 다 가져가고 첫 칸은
+ * 남는 자리만 받아 36px 로 눌린다 - 제조일에 값이 있어도 보이지 않는다. 반씩 나눈다.
+ */
+.receipt__row--split > * {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 /* 발주·누적·이번 도착·남은 예정 네 수. 이름과 값이 짝으로 붙어야 어느 수인지 읽힌다. */

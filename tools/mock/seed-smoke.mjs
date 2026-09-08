@@ -30,11 +30,18 @@ const ENTRIES = [
   ['M-01-05 내 적치 지시', '/logistics/putaway-tasks?assignedWorkerId=1001', 1],
   ['M-01-05 창고 위치', '/mdm/locations?warehouseId=1001', 2],
   ['M-01-06 입하 목록', '/logistics/inbound-receipts', 1],
-  ['M-01-08 내 피킹 지시', '/logistics/picking-orders?assignedWorkerId=1001', 1],
+  /* 화면은 아직 출고할 수 있는 지시만 담는다. 상태가 어긋나면 목록이 늘 빈다. */
+  [
+    'M-01-08 내 피킹 지시',
+    '/logistics/picking-orders?assignedWorkerId=1001&statusCode=REGISTERED',
+    1,
+  ],
   ['M-01-08 출고 유형', '/mdm/code-values?codeGroupCode=ISSUE_TYPE', 1],
   ['M-01-06 입하 라인', '/logistics/inbound-receipts/9001/lines', 1],
   ['M-01-06 오류 유형', '/mdm/code-values?codeGroupCode=INBOUND_VARIANCE_TYPE', 1],
+  ['M-01-06 오류 사유', '/mdm/code-values?codeGroupCode=INBOUND_VARIANCE_REASON', 1],
   ['M-01-07 임시 사유', '/mdm/code-values?codeGroupCode=PUTAWAY_TASK_TEMPORARY_REASON', 1],
+  ['M-01-09 차이 사유', '/mdm/code-values?codeGroupCode=VARIANCE_REASON', 1],
   ['M-01-13 대기 요청', '/app/approval-requests?targetTypeCode=INBOUND_LOT&targetId=8003', 1],
   ['M-02-01 생산LOT', '/trace/lots?lotNo=PLOT-2026-0031', 1],
   [
@@ -81,6 +88,83 @@ const DETAILS = [
       typeof body.item.serialControlTypeCode === 'string' &&
       typeof body.item.inspectionRequired === 'boolean' &&
       typeof body.item.negativeStockAllowed === 'boolean',
+  ],
+  /*
+   * 계약이 필수로 둔 칸이 비면 화면이 그 자리에서 죽는다. 목록 건수만 보면 그 사실이 지나간다.
+   */
+  [
+    'M-01-13 요청 필수 칸',
+    '/app/approval-requests?targetTypeCode=INBOUND_LOT&targetId=8003',
+    (body) =>
+      body.items.every(
+        (row) =>
+          typeof row.target?.displayName === 'string' &&
+          typeof row.approvalRequestNo === 'string' &&
+          typeof row.requestedByName === 'string',
+      ),
+  ],
+  /*
+   * 되돌릴 수 없는 쓰기를 하는 화면은 한 번 하고 나면 그 대상이 목록에서 빠진다. 하나만 두면
+   * 첫 시험에서 소진돼 두 번째 사람이 빈 화면을 만난다. 건수까지 본다.
+   */
+  [
+    'M-01-02 사전부착 빈 LOT 라인',
+    '/logistics/inbound-receipts/9002/lines?supplierLotMissing=false',
+    (body) => body.items.filter((row) => row.lotId === null).length >= 2,
+  ],
+  [
+    'M-01-02 다른 입하 건에도',
+    '/logistics/inbound-receipts/9001/lines?supplierLotMissing=false',
+    (body) => body.items.filter((row) => row.lotId === null).length >= 2,
+  ],
+  [
+    'M-01-05 남는 적치 지시',
+    '/logistics/putaway-tasks?assignedWorkerId=1001',
+    (body) => body.items.length >= 3,
+  ],
+  [
+    'M-01-08 남는 피킹 지시',
+    '/logistics/picking-orders?assignedWorkerId=1001&statusCode=REGISTERED',
+    (body) => body.items.length >= 2,
+  ],
+  [
+    'M-01-09 남는 출고 전표',
+    '/logistics/goods-issues?statusCode=POSTED',
+    (body) => body.items.length >= 2,
+  ],
+  [
+    'M-01-11 남는 실사',
+    '/inventory/counts?statusCode=IN_PROGRESS',
+    (body) => body.items.length >= 2,
+  ],
+  /* 출하 줄은 요청 응답에 실려 온다. 따로 부르는 경로가 없다. */
+  [
+    'M-04-01 남는 출하 줄',
+    `/logistics/shipment-requests?shipDateFrom=${today()}&shipDateTo=${today()}`,
+    (body) => body.items.some((row) => (row.lines ?? []).length >= 2),
+  ],
+  /* 재생재 행이 없으면 재생재 등록은 늘 등록되지 않은 품목이라고만 말한다. */
+  [
+    'M-01-12 재생재 품목',
+    '/mdm/items?q=RM-1001&size=50',
+    (body) => body.items.some((row) => row.mesCategoryCode === 'RECYCLED'),
+  ],
+  [
+    /*
+     * 계약이 「이 값이 있으므로 마스터를 다시 부르지 않는다」로 못 박은 자리다. 여기가 비면
+     * 화면은 부를 곳도 없이 「알 수 없음」만 보이고, 그 사이 아무 시험도 깨지지 않는다.
+     */
+    'M-01-04 잔액 표시값',
+    '/inventory/balances?groupBy=LOCATION&lotId=8001',
+    (body) =>
+      body.items.length >= 2 &&
+      body.items.every(
+        (row) =>
+          typeof row.warehouseName === 'string' &&
+          typeof row.locationCode === 'string' &&
+          typeof row.locationName === 'string' &&
+          typeof row.itemCode === 'string',
+      ),
   ],
   [
     'M-01-08 라인 표시값',

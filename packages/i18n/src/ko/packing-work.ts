@@ -40,13 +40,6 @@ export const packingWork = {
     quantityRequired: '수량을 넣으십시오.',
     quantityPositive: '수량은 0보다 커야 합니다.',
     quantityNumber: '수량은 숫자로 넣으십시오.',
-    creating: '포장 단위를 만드는 중입니다.',
-    /*
-     * ⛔ **오프라인에서 새 포장을 시작할 수 없다.** 포장 번호는 서버가 매겨 돌려주는 값이라
-     * (스펙 §4-A 「자동」) 끊긴 채로는 얻을 길이 없고, 계약도 등록을 오프라인 대상으로 두지
-     * 않았다. 담긴 뒤의 확정만 큐에 들어간다 — 그 차이를 작업자가 알아야 헛손질을 안 한다.
-     */
-    blockedOfflineNoUnit: '담기 — 연결이 끊겨 새 포장을 시작할 수 없습니다.',
   },
 
   unit: {
@@ -59,8 +52,13 @@ export const packingWork = {
     parentLabel: '상위 포장',
     parentNone: '(없음)',
     parentLoadFailed: '상위 포장 후보를 불러오지 못했습니다.',
-    createFailed: '포장 단위를 만들지 못했습니다.',
     lockedNotice: '내용물을 담기 시작하면 유형과 상위 포장은 바꿀 수 없습니다.',
+    /*
+     * ⚠ **번호 자리를 비워 두지 않는다.** 스펙 §3 은 담는 동안 포장 번호를 보이라 했는데,
+     * 등록을 확정 시점으로 옮기면서 번호가 확정 뒤에야 생긴다 — 빈자리는 「번호가 사라졌다」로
+     * 읽히므로 언제 생기는지 말한다.
+     */
+    numberPending: '확정하면 번호가 매겨집니다',
   },
 
   contents: {
@@ -100,7 +98,6 @@ export const packingWork = {
   error: {
     confirmTitle: '포장을 확정하지 못했습니다.',
     emptyContents: '담은 것이 없어 서버가 되돌렸습니다. 내용물을 담은 뒤 다시 확정하십시오.',
-    alreadyPacked: '이미 확정된 포장입니다. 다음 포장을 새로 시작하십시오.',
     forbidden: '이 단말에는 포장 권한이 없습니다. 담당자에게 문의하십시오.',
   },
 } as const;

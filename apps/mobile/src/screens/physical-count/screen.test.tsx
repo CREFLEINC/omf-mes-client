@@ -316,6 +316,37 @@ describe('실물 카운트 화면', () => {
     expect(await screen.findAllByText('아직 세지 않음')).toHaveLength(2);
   });
 
+  /*
+   * 적은 값 옆에 그대로 두면 적은 것이 안 먹은 것으로 읽힌다. 서버 상태가 안 센 것인
+   * 사실은 그대로라, 화면은 칸이 빈 동안에만 그 말을 한다.
+   */
+  it('값을 적은 줄에는 아직 세지 않았다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+
+    await waitFor(() => {
+      expect(screen.getAllByText('아직 세지 않음')).toHaveLength(1);
+    });
+  });
+
+  /* 지우면 다시 안 센 줄이다. 한 번 적었다고 그 사실이 사라지지 않는다. */
+  it('적은 값을 지우면 아직 세지 않았다고 다시 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+
+    const field = await screen.findByLabelText(/ABC-123 · 8001 실물 수량/);
+    await user.type(field, '118');
+    await user.clear(field);
+
+    await waitFor(() => {
+      expect(screen.getAllByText('아직 세지 않음')).toHaveLength(2);
+    });
+  });
+
   it('이미 센 줄은 이전 값을 보인다', async () => {
     const user = userEvent.setup();
     mount({ firstCounted: true });

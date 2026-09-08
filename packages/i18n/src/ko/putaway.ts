@@ -8,7 +8,7 @@
  */
 export const putaway = {
   title: '적치·입고 완료',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: '적치 완료',
   worker: {
     loading: '사번을 확인하는 중입니다',
@@ -35,7 +35,7 @@ export const putaway = {
   location: {
     legend: '적치 위치',
     scanLabel: '위치 코드 스캔',
-    scanPlaceholder: '위치 라벨을 비추세요',
+    scanPlaceholder: '위치 라벨을 스캔하세요',
     pickLabel: '목록에서 고르기',
     pickPlaceholder: '위치를 고르세요',
     loading: '위치를 불러오는 중입니다',
@@ -64,9 +64,9 @@ export const putaway = {
     description: '연결되면 보냅니다. 아직 서버에 없습니다.',
   },
   rejected: {
-    title: '적치가 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '적치를 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {

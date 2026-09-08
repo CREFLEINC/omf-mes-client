@@ -16,9 +16,9 @@ export const common = {
     online: '온라인',
     offline: '오프라인',
     /** 담긴 순간 성공으로 보이므로, 아직 닿지 않은 건수를 보이지 않으면 알 방법이 없다. */
-    unsent: (count: number) => `미동기 ${String(count)}`,
-    /** 되돌아온 것은 기다려도 가지 않는다. 미동기와 같은 셈에 넣으면 갈 것으로 읽힌다. */
-    returned: (count: number) => `되돌아옴 ${String(count)}`,
+    unsent: (count: number) => `전송 대기 ${String(count)}`,
+    /** 실패한 것은 기다려도 가지 않는다. 대기와 같은 셈에 넣으면 갈 것으로 읽힌다. */
+    returned: (count: number) => `전송 실패 ${String(count)}`,
     /*
      * 자동 재전송을 멈춘 상태. ⛔ **「사라졌다」로 읽히면 안 된다** — 담긴 것은 그대로 있고
      * 보내기만 멈춘 것이라, 본문이 그 사실을 먼저 말한다.

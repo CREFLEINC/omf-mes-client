@@ -8,6 +8,7 @@ import { useScannedLot } from '../../patterns/lots';
 import { useItemLabels } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -385,10 +386,10 @@ export const StockTransferScreen = () => {
 
       <section className="stock-transfer__section">
         <h2>{t.to.legend}</h2>
-        <label htmlFor="transfer-to-warehouse">{t.to.legend}</label>
+        <label htmlFor="transfer-to-warehouse">{t.to.warehouseLabel}</label>
         <Select
           id="transfer-to-warehouse"
-          placeholder={t.to.scanPlaceholder}
+          placeholder={t.to.warehousePlaceholder}
           size="xl"
           value={toWarehouseId === null ? null : String(toWarehouseId)}
           onChange={(value) => {
@@ -407,28 +408,16 @@ export const StockTransferScreen = () => {
           size="xl"
           fullWidth
         />
-        {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-        <div className="stock-transfer__row">
-          <TextField
-            label={t.to.manualLabel}
-            size="xl"
-            fullWidth
-            value={manualLocation}
-            onChange={(event) => {
-              setManualLocation(event.target.value);
-            }}
-          />
-          <Button
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              setScannedLocation(manualLocation.trim());
-              setManualLocation('');
-            }}
-          >
-            {t.to.manualSubmit}
-          </Button>
-        </div>
+        <ManualEntry
+          label={t.to.manualLabel}
+          submitLabel={t.to.manualSubmit}
+          value={manualLocation}
+          onChange={setManualLocation}
+          onSubmit={() => {
+            setScannedLocation(manualLocation.trim());
+            setManualLocation('');
+          }}
+        />
         {scannedLocation !== null && destination.isPending ? (
           <p role="status">{t.to.loading}</p>
         ) : null}
@@ -467,29 +456,18 @@ export const StockTransferScreen = () => {
               size="xl"
               fullWidth
             />
-            <div className="stock-transfer__row">
-              <TextField
-                label={t.from.manualLabel}
-                size="xl"
-                fullWidth
-                value={manualLot}
-                onChange={(event) => {
-                  setManualLot(event.target.value);
-                }}
-              />
-              <Button
-                variant="outlined"
-                size="xl"
-                onClick={() => {
-                  setDuplicate(false);
-                  setNoStock(false);
-                  setScannedLot(manualLot.trim());
-                  setManualLot('');
-                }}
-              >
-                {t.from.manualSubmit}
-              </Button>
-            </div>
+            <ManualEntry
+              label={t.from.manualLabel}
+              submitLabel={t.from.manualSubmit}
+              value={manualLot}
+              onChange={setManualLot}
+              onSubmit={() => {
+                setDuplicate(false);
+                setNoStock(false);
+                setScannedLot(manualLot.trim());
+                setManualLot('');
+              }}
+            />
 
             {scannedLot !== null && foundLot.isPending ? (
               <p role="status">{t.from.loading}</p>

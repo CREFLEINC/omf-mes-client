@@ -40,9 +40,10 @@
   width: 100%;
 }
 
+/* 마디 안에서 줄이 갈리면 라벨과 대조할 때 자릿수를 잘못 센다. 마디 사이에서 끊는다. */
 .material-location__lot-no {
   font-family: var(--font-mono, monospace);
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .material-location__quantities {
@@ -64,15 +65,4 @@
 /* 마이너스 재고는 정상일 수 있어 오류색을 쓰지 않는다. 확인이 필요하다는 뜻만 준다. */
 .material-location__negative {
   color: var(--semantic-warning);
-}
-
-/* 스캔이 실패했을 때 손으로 넣는 자리. 입력이 넓고 버튼이 붙는다. */
-.material-location__manual {
-  display: flex;
-  gap: var(--space-2, 8px);
-  align-items: flex-end;
-}
-
-.material-location__manual > *:first-child {
-  flex: 1;
 }

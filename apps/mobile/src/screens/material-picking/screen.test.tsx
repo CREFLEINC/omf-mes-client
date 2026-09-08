@@ -306,12 +306,20 @@ const mount = (options: Options = {}): Mounted => {
 
 const chooseOrder = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('button', { name: /PK-2026-000077/ }));
-  await screen.findByRole('button', { name: /ABC-123/ });
+  await screen.findByRole('radio', { name: /ABC-123/ });
 };
 
 /** 스캔이 실패했을 때의 길이 손 입력이다. 시험은 그 길로 같은 값을 넣는다. */
 const pickLine = async (user: ReturnType<typeof userEvent.setup>, qty: string) => {
-  await user.click(screen.getByRole('button', { name: /ABC-123/ }));
+  await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+
+  /* 한 번 연 뒤에는 여는 단추가 없다. 이 도우미는 같은 시험에서 두 번 불린다. */
+  const open = screen.queryByRole('button', { name: '직접 입력' });
+
+  if (open !== null) {
+    await user.click(open);
+  }
+
   await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
   await user.click(screen.getByRole('button', { name: '넣기' }));
   await screen.findByText('라인의 LOT 과 같습니다');
@@ -369,7 +377,7 @@ describe('자재 출고·피킹 화면', () => {
     await pickLine(user, '200');
 
     expect(await screen.findByText('다 집었습니다')).toBeTruthy();
-    expect(screen.getByRole('button', { name: /ABC-123/ }).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByRole('radio', { name: /ABC-123/ }).hasAttribute('disabled')).toBe(true);
   });
 
   /* 서버가 아는 것만 세면 오프라인에서 확정이 영영 열리지 않는다. */
@@ -416,15 +424,15 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /* 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없고, 작업자는 집힌 줄 안다. */
-  it('피킹이 거부되면 사유를 말하고 되돌아온 기록으로 가는 길을 낸다', async () => {
+  it('피킹이 거부되면 사유를 말하고 전송 실패한 기록으로 가는 길을 낸다', async () => {
     const user = userEvent.setup();
     mount({ pick: 'rejected' });
     await chooseOrder(user);
     await pickLine(user, '50');
 
-    expect(await screen.findByText('피킹이 되돌아왔습니다')).toBeTruthy();
-    expect(await screen.findByText('이 지시에서 되돌아온 건 1')).toBeTruthy();
-    expect(screen.getByRole('link', { name: '되돌아온 건 보기' })).toBeTruthy();
+    expect(await screen.findByText('피킹을 전송하지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('이 지시에서 전송 실패한 건 1')).toBeTruthy();
+    expect(screen.getByRole('link', { name: '전송 실패한 기록 보기' })).toBeTruthy();
     expect(screen.queryByText('집었습니다')).toBeNull();
   });
 
@@ -443,8 +451,34 @@ describe('자재 출고·피킹 화면', () => {
     await chooseIssueType(user);
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
 
-    expect(await screen.findByText('출고가 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('출고를 전송하지 못했습니다')).toBeTruthy();
     expect(sent.issues).toHaveLength(0);
+  });
+
+  /*
+   * 보류 라인은 집을 수 없어 분자가 될 수 없는데 분모에는 든다. 몇이 잠겼는지 말하지 않으면
+   * 집을 수 있는 것을 다 집고도 아직 할 일이 남은 것으로 읽힌다.
+   */
+  it('보류 라인이 있으면 몇이 잠겼는지 머리에 함께 말한다', async () => {
+    const user = userEvent.setup();
+    mount({
+      lines: [
+        line(),
+        secondLine(),
+        line({ pickingLineId: 43, lineNo: 3, itemCode: 'ABC-125', held: true }),
+      ],
+    });
+    await chooseOrder(user);
+
+    expect(await screen.findByText(/피킹 라인 0 \/ 3 · 보류 1/)).toBeTruthy();
+  });
+
+  it('보류 라인이 없으면 보류를 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ lines: [line(), secondLine()] });
+    await chooseOrder(user);
+
+    expect(await screen.findByText(/피킹 라인 0 \/ 2$/)).toBeTruthy();
   });
 
   /* 목록의 첫 값을 조용히 쓰면 틀린 값을 소리 없이 보내는 것과 같다. */
@@ -550,7 +584,8 @@ describe('자재 출고·피킹 화면', () => {
     sent.holdNextPick();
     window.dispatchEvent(new Event('online'));
 
-    await user.click(screen.getByRole('button', { name: /ABC-124/ }));
+    await user.click(screen.getByRole('radio', { name: /ABC-124/ }));
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
     await user.click(screen.getByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
@@ -603,7 +638,8 @@ describe('자재 출고·피킹 화면', () => {
     mount();
     await chooseOrder(user);
 
-    await user.click(screen.getByRole('button', { name: /ABC-123/ }));
+    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
     await user.click(screen.getByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
@@ -631,7 +667,8 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount();
     await chooseOrder(user);
 
-    await user.click(screen.getByRole('button', { name: /ABC-123/ }));
+    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
     await user.click(screen.getByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
@@ -675,7 +712,7 @@ describe('자재 출고·피킹 화면', () => {
 
     sent.releasePick();
 
-    expect(await screen.findByText('출고가 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('출고를 전송하지 못했습니다')).toBeTruthy();
     expect(sent.issues).toHaveLength(0);
   });
 
@@ -688,7 +725,7 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'rejected' });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('피킹이 되돌아왔습니다');
+    await screen.findByText('피킹을 전송하지 못했습니다');
 
     sent.set({ pick: 'ok' });
     await pickLine(user, '50');
@@ -890,7 +927,8 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount();
     await chooseOrder(user);
 
-    await user.click(screen.getByRole('button', { name: /ABC-123/ }));
+    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
     await user.click(screen.getByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
@@ -928,7 +966,8 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount();
     await chooseOrder(user);
 
-    await user.click(screen.getByRole('button', { name: /ABC-123/ }));
+    await user.click(screen.getByRole('radio', { name: /ABC-123/ }));
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
     await user.type(await screen.findByLabelText('직접 입력'), LOT_NO);
     await user.click(screen.getByRole('button', { name: '넣기' }));
     await screen.findByText('라인의 LOT 과 같습니다');
