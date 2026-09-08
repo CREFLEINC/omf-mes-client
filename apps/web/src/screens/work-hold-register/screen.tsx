@@ -59,6 +59,9 @@ export const WorkHoldRegisterScreen = () => {
   const outbox = useWorkHoldOutbox();
   const queryClient = useQueryClient();
 
+  /** 서버가 받은 전송의 다시 읽기가 아직 새 값을 물어 오지 못했는가. */
+  const [sendAwaitingRefresh, setSendAwaitingRefresh] = useState(false);
+
   /**
    * ⛔ **서버가 받았으면 세션을 다시 읽는다.** 중단이 닿으면 세션 상태가 서버에서 「중단」으로
    * 옮겨 가는데, 화면이 옛 상태를 들고 있으면 「중단 등록」이 열린 채 남아 **같은 중단이 한 번
@@ -67,8 +70,21 @@ export const WorkHoldRegisterScreen = () => {
   useEffect(() => {
     if (outbox.sentCount === 0) return;
 
+    setSendAwaitingRefresh(true);
     void queryClient.invalidateQueries({ queryKey: workHoldKeys.all });
   }, [outbox.sentCount, queryClient]);
+
+  /*
+   * ⛔ **보낸 유형은 «그 전송의» 다시 읽기까지만 쓴다.** 새 세션 값이 오면 판정 근거는 서버가
+   * 말하는 상태로 넘어가야 한다 — 옛 유형이 그대로 남으면 뒤에 다른 이유로 세션을 다시 읽는
+   * 동안 반대 방향 버튼이 열린다(돌고 있는 설비에 「재개」가 열리는 식이다).
+   *
+   * 값이 새로 왔는지는 **받은 시각**으로만 가른다. 「다시 읽는 중인가」는 어느 읽기인지를
+   * 말해 주지 못한다.
+   */
+  useEffect(() => {
+    setSendAwaitingRefresh(false);
+  }, [session.dataUpdatedAt]);
 
   /** 세션이 없으면 사유를 고를 수 없다 — 고른 값을 실을 곳이 없기 때문이다. */
   const inputDisabled = session.session === null;
@@ -81,7 +97,7 @@ export const WorkHoldRegisterScreen = () => {
     running,
     stopped,
     lastQueuedType: outbox.lastQueuedType,
-    lastSentType: outbox.lastSentType,
+    lastSentType: sendAwaitingRefresh ? outbox.lastSentType : null,
     isRefetching: session.isFetching,
   });
 
