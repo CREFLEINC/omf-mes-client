@@ -20,7 +20,7 @@ import { runRequest } from '../../patterns/request';
  * 준다(G-3).
  *
  * ⚠ **`P-02-09` 의 같은 파일을 사본으로 가져왔다 — 저장소에서 여섯 번째 사본이다**
- * (`downtime-register`·`identification-tag-issue`·`material-input-scan`·`packing-label-reprint`·
+ * (`downtime-register`·`material-input-scan`·`packing-label-reprint`·`packing-result`·
  * `production-result`). 사본이 이만큼 늘었으므로 **`patterns/` 로 올릴 때가 됐다** — 다만 그것은
  * 이 이슈의 일이 아니라 별도 정리 대상이고, 여기서 앞질러 옮기면 다섯 화면의 검증을 함께
  * 흔든다. 옮길 때 여섯을 한 번에 본다.
