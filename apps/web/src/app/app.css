@@ -4889,6 +4889,49 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-2);
 }
 
+.warehouse-location-label-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+}
+
+.warehouse-location-label-preview {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-lg);
+}
+
+.warehouse-location-label-preview img,
+.warehouse-location-label-failed {
+  width: 100%;
+  min-height: 12rem;
+  object-fit: contain;
+  background: var(--surface-container-low);
+}
+
+.form-grid.warehouse-location-label-reissue-form {
+  grid-template-columns: 1fr;
+  margin-top: var(--space-5);
+}
+
+.warehouse-location-label-preview figcaption {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.warehouse-location-label-failed {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--space-3);
+}
+
 /*
  * 비밀번호 변경 폼 — **폭 상한은 폼 전체가 갖는다.**
  *

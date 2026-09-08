@@ -16,6 +16,7 @@ export const WAREHOUSE_FORM_FIELDS: readonly string[] = [
   'warehouseTypeCode',
   'managementLevelCode',
   'isExternal',
+  'isDefect',
   'partnerId',
 ];
 
@@ -43,6 +44,10 @@ export const validateWarehouse = (
 
   if (values.warehouseTypeCode === '') {
     errors.warehouseTypeCode = t.required;
+  }
+
+  if (values.managementLevelCode === '') {
+    errors.managementLevelCode = t.required;
   }
 
   // 공장은 등록 후 바꿀 수 없어 수정 요청에 실리지 않는다. 사업부는 두 요청 모두에 실린다.

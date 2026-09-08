@@ -3,7 +3,6 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useId } from 'react';
 
-import { MANAGEMENT_LEVEL_OPTIONS, WAREHOUSE_TYPE_OPTIONS } from './code-options';
 import type { LookupOptions, WarehouseFormValues } from './types';
 
 export interface WarehouseFormPaneProps {
@@ -23,6 +22,7 @@ export interface WarehouseFormPaneProps {
   onSave: () => void;
   onCancel: () => void;
   onDeactivate: () => void;
+  onActivate: () => void;
 }
 
 const t = messages.warehouseLocation;
@@ -108,6 +108,7 @@ export const WarehouseFormPane = ({
   onSave,
   onCancel,
   onDeactivate,
+  onActivate,
 }: WarehouseFormPaneProps) => {
   const activeLabelId = useId();
   const historyNoteId = useId();
@@ -151,7 +152,7 @@ export const WarehouseFormPane = ({
 
         <SelectField
           label={t.fields.warehouseType}
-          options={WAREHOUSE_TYPE_OPTIONS}
+          options={lookups.warehouseTypes}
           value={values.warehouseTypeCode}
           onChange={(value) => onChange({ warehouseTypeCode: value })}
           error={fieldErrors.warehouseTypeCode}
@@ -159,10 +160,10 @@ export const WarehouseFormPane = ({
 
         <SelectField
           label={t.fields.managementLevel}
-          options={MANAGEMENT_LEVEL_OPTIONS}
+          options={lookups.managementLevels}
           value={values.managementLevelCode}
           onChange={(value) => onChange({ managementLevelCode: value })}
-          note={messages.pendingCode.note}
+          error={fieldErrors.managementLevelCode}
         />
 
         <Switch
@@ -171,11 +172,12 @@ export const WarehouseFormPane = ({
           onChange={(event) => onChange({ isExternal: event.target.checked })}
         />
 
-        {/*
-         * ⛔ **수정에서는 비어 있는 것이 「없음」이 아니라 「모름」이다.** 조회 응답이 거래처를
-         * 주지 않아 지금 값을 채울 수 없다 — 사유를 적지 않으면 사람이 빈 칸을 보고 거래처가
-         * 지워진 줄 안다. 등록에서는 원래 비어 있는 것이 맞으므로 적지 않는다.
-         */}
+        <Switch
+          label={t.fields.isDefect}
+          checked={values.isDefect}
+          onChange={(event) => onChange({ isDefect: event.target.checked })}
+        />
+
         <SelectField
           label={t.fields.partner}
           required={values.isExternal}
@@ -183,7 +185,6 @@ export const WarehouseFormPane = ({
           value={values.partnerId}
           onChange={(value) => onChange({ partnerId: value })}
           error={fieldErrors.partnerId}
-          note={mode === 'edit' ? t.fields.partnerNotReturned : undefined}
         />
 
         {/* 값을 보여 주기만 하면 되는 자리는 폼 컨트롤을 잠그지 말고 값 표기로 낸다. */}
@@ -193,9 +194,9 @@ export const WarehouseFormPane = ({
           </span>
           <p aria-labelledby={activeLabelId}>{isActive ? t.values.active : t.values.inactive}</p>
           {/* 아직 등록되지 않은 창고에는 사용 중지할 대상이 없다. */}
-          {mode === 'edit' && isActive && (
-            <Button variant="outlined" onClick={onDeactivate}>
-              {messages.common.deactivate}
+          {mode === 'edit' && (
+            <Button variant="outlined" onClick={isActive ? onDeactivate : onActivate}>
+              {isActive ? messages.common.deactivate : t.actions.activate}
             </Button>
           )}
         </div>

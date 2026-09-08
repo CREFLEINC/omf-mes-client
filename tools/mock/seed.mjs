@@ -48,6 +48,27 @@ export const createSeed = (now = new Date()) => {
     isActive: true,
   }));
 
+  const plants = [
+    {
+      plantId: PLANT_ID,
+      legalEntityId: 1001,
+      businessUnitId: BUSINESS_UNIT_ID,
+      plantCode: 'PLT-01',
+      plantName: '1공장',
+      timezoneCode: 'Asia/Seoul',
+      isActive: true,
+    },
+  ];
+  const businessUnits = [
+    {
+      businessUnitId: BUSINESS_UNIT_ID,
+      legalEntityId: 1001,
+      businessUnitCode: 'BU-01',
+      businessUnitName: '제조사업부',
+      isActive: true,
+    },
+  ];
+
   const uoms = [
     { uomId: 1001, uomCode: 'EA', uomName: '개', isActive: true },
     { uomId: 1002, uomCode: 'KG', uomName: '킬로그램', isActive: true },
@@ -105,16 +126,35 @@ export const createSeed = (now = new Date()) => {
   }));
 
   const warehouses = [
-    { warehouseId: 1001, warehouseCode: 'WH-01', warehouseName: '1공장 자재창고' },
-    { warehouseId: 1002, warehouseCode: 'WH-02', warehouseName: '1공장 완제품창고' },
+    {
+      warehouseId: 1001,
+      warehouseCode: 'WH-01',
+      warehouseName: '1공장 자재창고',
+      warehouseTypeCode: 'MATERIAL',
+      managementLevelCode: 'ZONE',
+    },
+    {
+      warehouseId: 1002,
+      warehouseCode: 'WH-02',
+      warehouseName: '1공장 완제품창고',
+      warehouseTypeCode: 'PRODUCT',
+      managementLevelCode: 'ZONE',
+    },
     /* 불량창고 — W-04-07 판정 대기 대상이 들어오는 자리. `GET /mdm/warehouses?isDefect=true` 가 준다. */
-    { warehouseId: 1003, warehouseCode: 'WH-03', warehouseName: '1공장 불량창고', isDefect: true },
+    {
+      warehouseId: 1003,
+      warehouseCode: 'WH-03',
+      warehouseName: '1공장 불량창고',
+      warehouseTypeCode: 'GENERAL',
+      managementLevelCode: 'RACK',
+      isDefect: true,
+    },
   ].map((warehouse) => ({
     isDefect: false,
     ...warehouse,
     plantId: PLANT_ID,
-    /* 구역 수준이면 위치를 관리한다. 창고 수준이면 위치 스캔을 건너뛴다. */
-    managementLevelCode: 'ZONE',
+    businessUnitId: BUSINESS_UNIT_ID,
+    isExternal: false,
     isActive: true,
   }));
 
@@ -153,11 +193,15 @@ export const createSeed = (now = new Date()) => {
       locationName: '반품 구역 02',
     },
   ].map((location) => ({
+    parentLocationId: null,
     ...location,
-    locationTypeCode: location.locationCode.startsWith('TMP') ? 'TEMPORARY' : 'RACK',
+    locationTypeCode: location.locationCode.startsWith('TMP') ? 'TEMP' : 'RACK',
+    qualityZoneCode: null,
+    storageConditionCode: 'ROOM_TEMPERATURE',
     allowMixedItem: !location.locationCode.endsWith('04'),
     allowMixedLot: true,
     capacityQty: 1000,
+    capacityUomId: 1001,
     isActive: true,
   }));
 
@@ -299,6 +343,33 @@ export const createSeed = (now = new Date()) => {
    * 실서버에서는 빈 목록을 받는다 - 그 차이를 시험 자리에서 감추지 않는다.
    */
   const codeValues = {
+    WAREHOUSE_TYPE: [
+      ['MATERIAL', '자재'],
+      ['PRODUCT', '제품'],
+      ['SPARE_PART', '예비품'],
+      ['GENERAL', '일반'],
+    ],
+    MANAGEMENT_LEVEL: [
+      ['WAREHOUSE', '창고'],
+      ['ZONE', '구역'],
+      ['RACK', '랙'],
+      ['CELL', '셀'],
+    ],
+    LOCATION_TYPE: [
+      ['RACK', '랙'],
+      ['FLOOR', '바닥'],
+      ['TEMP', '임시'],
+      ['HOPPER', '호퍼'],
+      ['DEFAULT', '대표'],
+    ],
+    QUALITY_ZONE: [],
+    STORAGE_CONDITION: [
+      ['REFRIGERATED', '냉장'],
+      ['FROZEN', '냉동'],
+      ['ROOM_TEMPERATURE', '상온'],
+      ['MOISTURE_CONTROLLED', '방습'],
+      ['HAZARDOUS', '위험물'],
+    ],
     /* W-CO-02 — 사용자 인사 상태. 고객이 추가할 수 있는 초기 시드이며 계정 사용 여부와 별개다. */
     APP_USER_STATUS: [
       ['EMPLOYED', '재직'],
@@ -448,8 +519,10 @@ export const createSeed = (now = new Date()) => {
     ],
     REISSUE_REASON: [
       ['DAMAGED', '라벨 훼손'],
-      ['UNREADABLE', '라벨 판독 불가'],
       ['LOST', '라벨 분실'],
+      ['PRINT_FAILURE', '인쇄 실패'],
+      ['PACKAGING', '포장 변경'],
+      ['QUANTITY_CHANGE', '수량 변경'],
     ],
   };
 
@@ -2008,6 +2081,8 @@ export const createSeed = (now = new Date()) => {
   return {
     plantId: PLANT_ID,
     today,
+    plants,
+    businessUnits,
     workers,
     uoms,
     items,

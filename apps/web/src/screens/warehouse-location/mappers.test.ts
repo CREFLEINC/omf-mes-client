@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { PENDING_CODE_VALUE } from './code-options';
 import { locationFixtures, warehouseFixtures } from './fixtures';
 import {
   emptyLocationFormValues,
@@ -22,7 +21,7 @@ const base: Warehouse = {
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
   warehouseTypeCode: 'MATERIAL',
-  managementLevelCode: PENDING_CODE_VALUE,
+  managementLevelCode: 'CELL',
   isExternal: false,
   isDefect: false,
   isActive: true,
@@ -36,16 +35,10 @@ describe('warehouseToFormValues', () => {
     expect(values.businessUnitId).toBe('21');
   });
 
-  /*
-   * ⛔ **거래처는 채울 수 없다 — 조회 응답에 그 칸이 없다.** 외부창고여도 마찬가지다.
-   * 여기서 무언가를 채우면 그것은 화면이 지어낸 값이다.
-   */
-  it('⛔ 거래처는 비운 채로 온다 — 서버가 조회 응답에 주지 않는다', () => {
-    expect(warehouseToFormValues(base).partnerId).toBe('');
-  });
-
-  it('⛔ 외부창고여도 거래처를 지어내지 않는다', () => {
-    expect(warehouseToFormValues({ ...base, isExternal: true }).partnerId).toBe('');
+  it('조회 응답의 거래처 id를 폼 문자열로 옮긴다', () => {
+    expect(warehouseToFormValues({ ...base, isExternal: true, partnerId: 31 }).partnerId).toBe(
+      '31',
+    );
   });
 
   /*
@@ -182,39 +175,36 @@ describe('toLocationCreate · toLocationUpdate', () => {
   const values = locationToFormValues(locationFixtures[2]!);
 
   it('등록 본문에는 창고와 상위 위치가 함께 실린다', () => {
-    const body = toLocationCreate(values, 1001, 2002);
+    const body = toLocationCreate({ ...values, parentLocationId: '2002' }, 1001);
 
     expect(body.warehouseId).toBe(1001);
     expect(body.parentLocationId).toBe(2002);
   });
 
   it('최상위 등록이면 상위 위치가 널이다', () => {
-    expect(toLocationCreate(values, 1001, null).parentLocationId).toBeNull();
+    expect(toLocationCreate({ ...values, parentLocationId: '' }, 1001).parentLocationId).toBeNull();
   });
 
   it('수정 본문에는 창고가 실리지 않는다 — 등록 후 바꿀 수 없다', () => {
-    expect(toLocationUpdate(values, null)).not.toHaveProperty('warehouseId');
+    expect(toLocationUpdate(values)).not.toHaveProperty('warehouseId');
   });
 
   it('수용량을 숫자로 되돌리고 단위를 숫자 id로 보낸다', () => {
-    const body = toLocationUpdate(values, null);
+    const body = toLocationUpdate(values);
 
     expect(body.capacityQty).toBe(500);
     expect(body.capacityUomId).toBe(41);
   });
 
   it('수용량과 단위를 비우면 둘 다 널로 보낸다 — 짝 제약을 지킨다', () => {
-    const body = toLocationUpdate({ ...values, capacityQty: '', capacityUomId: '' }, null);
+    const body = toLocationUpdate({ ...values, capacityQty: '', capacityUomId: '' });
 
     expect(body.capacityQty).toBeNull();
     expect(body.capacityUomId).toBeNull();
   });
 
   it('고르지 않은 품질구역·보관조건은 널로 보낸다', () => {
-    const body = toLocationUpdate(
-      { ...values, qualityZoneCode: '', storageConditionCode: '' },
-      null,
-    );
+    const body = toLocationUpdate({ ...values, qualityZoneCode: '', storageConditionCode: '' });
 
     expect(body.qualityZoneCode).toBeNull();
     expect(body.storageConditionCode).toBeNull();

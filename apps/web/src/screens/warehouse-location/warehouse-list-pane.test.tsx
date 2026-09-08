@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { defaultWarehouseFilters } from './code-options';
-import { warehouseFixtures } from './fixtures';
+import { lookupFixtures, warehouseFixtures } from './fixtures';
 import type { WarehouseFilters } from './types';
 import { WarehouseListPane } from './warehouse-list-pane';
 
@@ -23,6 +23,7 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseListPane>[0]> 
       onSelect={onSelect}
       onAddWarehouse={onAddWarehouse}
       loadError={null}
+      warehouseTypeOptions={lookupFixtures.warehouseTypes}
       {...overrides}
     />,
   );
@@ -94,7 +95,11 @@ describe('WarehouseListPane', () => {
 
   it('조건 칩을 지우면 그 조건만 되돌려 즉시 적용한다', async () => {
     const user = userEvent.setup();
-    const applied: WarehouseFilters = { q: 'WH', warehouseTypeCode: 'MATERIAL', includeInactive: false };
+    const applied: WarehouseFilters = {
+      q: 'WH',
+      warehouseTypeCode: 'MATERIAL',
+      includeInactive: false,
+    };
     const { onApplyFilters } = renderPane({ appliedFilters: applied });
 
     await user.click(screen.getByRole('button', { name: '창고유형 조건 제거' }));
@@ -113,7 +118,11 @@ describe('WarehouseListPane', () => {
 
   it('초기화를 누르면 기본 조건으로 즉시 되돌린다', async () => {
     const user = userEvent.setup();
-    const applied: WarehouseFilters = { q: 'WH', warehouseTypeCode: 'MATERIAL', includeInactive: true };
+    const applied: WarehouseFilters = {
+      q: 'WH',
+      warehouseTypeCode: 'MATERIAL',
+      includeInactive: true,
+    };
     const { onApplyFilters } = renderPane({ appliedFilters: applied });
 
     await user.click(screen.getByRole('button', { name: '초기화' }));
@@ -127,7 +136,10 @@ describe('WarehouseListPane', () => {
 
     await user.click(screen.getByRole('checkbox', { name: '미사용 포함' }));
 
-    expect(onApplyFilters).toHaveBeenCalledWith({ ...defaultWarehouseFilters, includeInactive: true });
+    expect(onApplyFilters).toHaveBeenCalledWith({
+      ...defaultWarehouseFilters,
+      includeInactive: true,
+    });
   });
 
   it('등록된 것이 없을 때의 빈 상태에서 창고 추가를 눌러 onAddWarehouse를 부른다', async () => {

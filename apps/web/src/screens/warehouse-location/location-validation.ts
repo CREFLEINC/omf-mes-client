@@ -6,6 +6,7 @@ const t = messages.warehouseLocation.validation;
 
 /** Location 다이얼로그가 소유한 입력칸 이름. 서버 오류를 인라인으로 낼지 가르는 기준이다. */
 export const LOCATION_FORM_FIELDS: readonly string[] = [
+  'parentLocationId',
   'locationCode',
   'locationName',
   'locationTypeCode',
@@ -32,6 +33,10 @@ export const validateLocation = (values: LocationFormValues): Record<string, str
 
   if (values.locationName.trim() === '') {
     errors.locationName = t.required;
+  }
+
+  if (values.locationTypeCode === '') {
+    errors.locationTypeCode = t.required;
   }
 
   const capacityQty = values.capacityQty.trim();

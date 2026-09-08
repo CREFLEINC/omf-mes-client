@@ -221,3 +221,38 @@ export function renderLotLabel(values) {
 
   return canvas;
 }
+
+/** Location 고정 표지용 80×30mm 라벨. LOT·수량 문구를 섞지 않는다. */
+export function renderLocationLabel(values) {
+  const width = mm(80);
+  const height = mm(30);
+  const canvas = createCanvas(width, height);
+  const pad = mm(2);
+  const left = pad + mm(1.5);
+  const matrixSize = mm(14);
+  const matrixX = width - pad - matrixSize;
+  const textWidthAvailable = matrixX - left - mm(2);
+
+  strokeRect(canvas, 0, 0, width, height, 2);
+  drawMatrixPlaceholder(canvas, matrixX, pad + mm(1), matrixSize, values.seed ?? 1);
+
+  drawText(canvas, 'LOCATION', left, 16, fitScale('LOCATION', PT.normal, textWidthAvailable));
+  drawText(canvas, values.code, left, 55, fitScale(values.code, 18, textWidthAvailable));
+  drawText(canvas, values.name, left, 108, fitScale(values.name, PT.normal, textWidthAvailable));
+  drawText(
+    canvas,
+    `WAREHOUSE: ${values.warehouse}`,
+    left,
+    153,
+    fitScale(`WAREHOUSE: ${values.warehouse}`, PT.small, width - left - pad),
+  );
+  drawText(
+    canvas,
+    `ISSUED: ${values.issuedAt}`,
+    left,
+    194,
+    fitScale(`ISSUED: ${values.issuedAt}`, PT.caption, width - left - pad),
+  );
+
+  return canvas;
+}

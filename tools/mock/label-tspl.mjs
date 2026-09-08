@@ -136,6 +136,33 @@ export function renderLotTspl(values) {
   ]);
 }
 
+/** Location 고정 표지용 명령형 라벨. */
+export function renderLocationTspl(values) {
+  const pad = dots(2);
+  const left = pad + dots(1.5);
+  const width = dots(80);
+  const height = dots(30);
+  const matrix = dots(14);
+  const matrixX = width - pad - matrix;
+  const available = matrixX - left - dots(2);
+
+  const codePoint = fit(values.code, 18, available);
+  const namePoint = fit(values.name, 10, available);
+  const warehouseText = `WAREHOUSE: ${values.warehouse}`;
+  const issuedText = `ISSUED: ${values.issuedAt}`;
+
+  return finish([
+    ...head(MEDIA_WIDTH_MM, MEDIA_HEIGHT_MM),
+    `BOX 0,0,${width - 1},${height - 1},2`,
+    text(left, 14, 10, 'LOCATION'),
+    text(left, 52, codePoint, clip(values.code, codePoint, available)),
+    text(left, 105, namePoint, clip(values.name, namePoint, available)),
+    text(left, 150, 9, clip(warehouseText, 9, width - left - pad)),
+    text(left, 192, 8, clip(issuedText, 8, width - left - pad)),
+    dataMatrix(matrixX, pad + dots(1), matrix, join(['LC1', values.code])),
+  ]);
+}
+
 /** 출하용 라벨 100 × 60 mm. 고객 품번과 수량이 가장 크다(사양서 §7). */
 export function renderShippingTspl(values) {
   const matrix = dots(18);

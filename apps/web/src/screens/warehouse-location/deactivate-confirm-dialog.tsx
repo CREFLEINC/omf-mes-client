@@ -11,6 +11,7 @@ export interface DeactivateConfirmDialogProps {
   isSaving: boolean;
   /** 저장 실패 배너 슬롯. 다이얼로그를 닫지 않고 이유를 보여야 다시 시도할 수 있다. */
   banner: ReactNode;
+  mode?: 'deactivate' | 'activate';
 }
 
 /**
@@ -26,12 +27,13 @@ export const DeactivateConfirmDialog = ({
   onConfirm,
   isSaving,
   banner,
+  mode = 'deactivate',
 }: DeactivateConfirmDialogProps) => (
   <Dialog
     open={open}
     onClose={onClose}
     size="sm"
-    title={t.title}
+    title={mode === 'deactivate' ? t.title : messages.warehouseLocation.activate.title}
     closeOnBackdropClick={false}
     footer={
       <>
@@ -39,12 +41,12 @@ export const DeactivateConfirmDialog = ({
           {messages.common.cancel}
         </Button>
         <Button loading={isSaving} disabled={isSaving} onClick={onConfirm}>
-          {t.confirm}
+          {mode === 'deactivate' ? t.confirm : messages.warehouseLocation.activate.confirm}
         </Button>
       </>
     }
   >
     {banner}
-    <p>{t.description}</p>
+    <p>{mode === 'deactivate' ? t.description : messages.warehouseLocation.activate.description}</p>
   </Dialog>
 );
