@@ -11,12 +11,6 @@
   gap: var(--space-3, 12px);
 }
 
-.recycle__section h2 {
-  margin: 0;
-  font: inherit;
-  font-weight: 600;
-}
-
 .recycle__field {
   display: flex;
   flex-direction: column;
