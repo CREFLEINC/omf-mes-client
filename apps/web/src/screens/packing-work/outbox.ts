@@ -135,8 +135,16 @@ export interface Outbox {
   sentCount: number;
   /** 지금 연결돼 있는가. 건수와 함께 낸다 — 끊긴 것과 밀리는 것은 다르다. */
   isOnline: boolean;
-  /** 큐에 담는다. **이것이 곧 확정이다** — 통신을 기다리지 않는다(C-1 #2). */
-  enqueue: (entry: Omit<OutboxEntry, 'idempotencyKey'>) => void;
+  /**
+   * 큐에 담는다. **이것이 곧 확정이다** — 통신을 기다리지 않는다(C-1 #2).
+   *
+   * `idempotencyKey` 를 주면 그 키로 담는다 — **온라인으로 이미 던졌으나 적용 여부를 모르는
+   * 확정을 큐가 이어받는 자리다.** 그때는 «그 시도의 본문»을 함께 넘겨야 한다. 주지 않으면
+   * 새로 만든다.
+   */
+  enqueue: (
+    entry: Omit<OutboxEntry, 'idempotencyKey'> & { idempotencyKey?: string | null },
+  ) => void;
   /** 서버가 거부한 것. 없으면 `null`. */
   rejection: ApiError | null;
   clearRejection: () => void;
@@ -297,17 +305,23 @@ export const usePackingWorkOutbox = (): Outbox => {
    * StrictMode 는 그것을 두 번 부른다 — 안에서 키를 만들면 두 키가 생기고 저장도 두 번 돈다.
    * 키는 밖에서 한 번 만들고, 저장은 갱신이 끝난 뒤 효과가 한다.
    */
-  const enqueue = useCallback((entry: Omit<OutboxEntry, 'idempotencyKey'>): void => {
-    const queued: OutboxEntry = { idempotencyKey: crypto.randomUUID(), ...entry };
+  const enqueue = useCallback(
+    (entry: Omit<OutboxEntry, 'idempotencyKey'> & { idempotencyKey?: string | null }): void => {
+      const queued: OutboxEntry = {
+        ...entry,
+        idempotencyKey: entry.idempotencyKey ?? crypto.randomUUID(),
+      };
 
-    setRejection(null);
-    setEntries((prev) => {
-      const next = [...prev, queued];
-      pendingWrite.current = next;
+      setRejection(null);
+      setEntries((prev) => {
+        const next = [...prev, queued];
+        pendingWrite.current = next;
 
-      return next;
-    });
-  }, []);
+        return next;
+      });
+    },
+    [],
+  );
 
   const clearRejection = useCallback((): void => {
     setRejection(null);

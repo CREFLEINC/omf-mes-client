@@ -44,3 +44,15 @@ export const toPackBody = (lines: readonly PackingLine[], now: Date): HandlingUn
   businessDate: toBusinessDate(now),
   occurredAt: toOccurredAt(now),
 });
+
+/**
+ * 두 확정이 **같은 것을 담고 있는가.**
+ *
+ * ⭐ 적용 여부를 모르는 온라인 시도를 큐가 이어받아도 되는지 가르는 자리다. 담은 것이
+ * 달라졌으면 그 키는 **다른 쓰기의 키**이므로 이어받으면 안 된다 — 서버가 앞 쓰기의 중복으로
+ * 보고 흡수해, 나중에 담은 줄이 조용히 사라진다(공유계약 C-1 #6).
+ *
+ * ⚠ 시각 두 칸은 보지 않는다 — 담은 것이 같아도 누를 때마다 달라지는 값이다.
+ */
+export const sameContents = (left: HandlingUnitPack, right: HandlingUnitPack): boolean =>
+  JSON.stringify(left.contents) === JSON.stringify(right.contents);

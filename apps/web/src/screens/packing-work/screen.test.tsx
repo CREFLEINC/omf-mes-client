@@ -32,6 +32,7 @@ import {
   targetLots,
   unitTypes,
 } from './fixtures';
+import { STORAGE_KEY as OUTBOX_STORAGE_KEY } from './outbox';
 import { PackingWorkScreen } from './screen';
 
 const t = messages.packingWork;
@@ -744,6 +745,169 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     /* ⭐ 시각은 «담을 때»의 것이다 — 서버가 받은 때가 아니다(C-1 #3 · C-8). */
     expect(typeof body.occurredAt).toBe('string');
     expect(typeof body.businessDate).toBe('string');
+  });
+
+  /*
+   * ⭐ **온라인 확정이 적용 여부를 모른 채 끝나면 큐가 «그 시도»를 그대로 이어받는다.** 새 키로
+   * 보내면 서버가 두 요청을 묶어 주지 못한다 — 첫 요청이 닿아 있었다면 확정이 두 번 서고,
+   * 포장을 해체할 화면은 없다(스펙 §8-4 · C-1 #5).
+   */
+  it('온라인 확정이 실패한 뒤 큐로 넘어가도 멱등 키와 본문이 함께 이어진다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+
+    /* 5xx — 서버가 받았는지 알 수 없는 실패다. */
+    renderScreen({ writes, packStatus: 503 });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(2);
+    });
+
+    const attempt = writeAt(writes, 1);
+    const attemptBody = await bodyOf(attempt);
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    setOnline(true);
+    act(() => {
+      globalThis.dispatchEvent(new Event('online'));
+    });
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(3);
+    });
+
+    const queued = writeAt(writes, 2);
+
+    expect(queued.headers.get('Idempotency-Key')).toBe(attempt.headers.get('Idempotency-Key'));
+    /*
+     * ⛔ **본문도 그때 것이어야 한다.** 키만 같고 값이 다르면 서버가 앞 쓰기의 중복으로 보고
+     * 흡수한다 — 영업일이 갈리면 반대로 두 건으로 적재된다(C-8).
+     */
+    expect(await bodyOf(queued)).toEqual(attemptBody);
+  });
+
+  /*
+   * ⛔ **담은 것이 달라졌으면 그 키를 이어받지 않는다.** 그 키는 이미 다른 쓰기의 키라, 그대로
+   * 보내면 나중에 담은 줄이 서버에서 흡수돼 사라진다.
+   */
+  it('실패한 뒤 LOT 을 더 담으면 앞 시도의 키를 쓰지 않는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+
+    renderScreen({ writes, packStatus: 503 });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(2);
+    });
+
+    const attempt = writeAt(writes, 1);
+
+    /* 확정이 실패한 뒤 작업자가 한 줄 더 담는다 — 뜻이 달라졌다. */
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }),
+    );
+    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    setOnline(true);
+    act(() => {
+      globalThis.dispatchEvent(new Event('online'));
+    });
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(3);
+    });
+
+    const queued = writeAt(writes, 2);
+
+    expect(queued.headers.get('Idempotency-Key')).not.toBe(attempt.headers.get('Idempotency-Key'));
+    /* 나중에 담은 줄이 살아 있어야 한다. */
+    expect((await bodyOf(queued)).contents).toHaveLength(2);
+  });
+
+  /*
+   * ⛔ **앞 포장의 키가 다음 포장으로 새면 큐 항목 둘이 같은 키를 갖는다.** 큐는 키로 항목을
+   * 지우므로 앞 건이 성공하는 순간 뒤엣것까지 함께 내려간다 — 서버에 닿은 적 없는 확정이
+   * 사라지는 자리다.
+   */
+  it('다음 포장의 오프라인 확정이 앞 포장의 키를 쓰지 않는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+
+    renderScreen({ writes, packStatus: 503 });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(2);
+    });
+
+    const firstAttempt = writeAt(writes, 1);
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    /* 앞 포장을 두고 다음 포장을 시작한다. */
+    setOnline(true);
+    act(() => {
+      globalThis.dispatchEvent(new Event('online'));
+    });
+    await user.click(screen.getByRole('button', { name: t.confirm.startNext }));
+
+    await packOneLine(user, LOT_B_NO, '30');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    const queued: { idempotencyKey: string }[] = JSON.parse(
+      globalThis.localStorage.getItem(OUTBOX_STORAGE_KEY) ?? '[]',
+    ) as { idempotencyKey: string }[];
+    const keys = queued.map((one) => one.idempotencyKey);
+
+    /* 두 건이 같은 키를 가지면 앞 건이 성공하는 순간 뒤엣것까지 큐에서 내려간다. */
+    expect(new Set(keys).size).toBe(keys.length);
+    /* 앞 포장은 자기 시도를 이어받는 것이 맞다 — 다음 포장이 그것을 물려받으면 안 된다. */
+    expect(keys[0]).toBe(firstAttempt.headers.get('Idempotency-Key'));
+    expect(keys[1]).not.toBe(firstAttempt.headers.get('Idempotency-Key'));
   });
 
   /*

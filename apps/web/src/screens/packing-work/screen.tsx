@@ -10,7 +10,7 @@ import { PackErrorBanner } from './error-banner';
 import { LotListPane } from './lot-list-pane';
 import { useHandlingUnitCreate, useHandlingUnitPack } from './mutations';
 import { usePackingWorkOutbox } from './outbox';
-import { toPackBody } from './pack-request';
+import { sameContents, toPackBody } from './pack-request';
 import { PackingPane } from './packing-pane';
 import {
   packingWorkKeys,
@@ -20,7 +20,7 @@ import {
   useTargetLots,
 } from './queries';
 import { ScanPane } from './scan-pane';
-import { emptyPackingDraft, type Lot, type PackingLine } from './types';
+import { emptyPackingDraft, type HandlingUnitPack, type Lot, type PackingLine } from './types';
 
 const t = messages.packingWork;
 
@@ -69,6 +69,14 @@ export const PackingWorkScreen = () => {
    * 줄만 조용히 사라진다(실측). 참조는 그 자리에서 갱신되므로 콜백이 최신 값을 본다.
    */
   const pendingLine = useRef<PackingLine | null>(null);
+  /*
+   * 온라인으로 던진 확정의 «본문». 큐가 그 확정을 이어받을 때 **키와 한 벌로** 필요하다 —
+   * 키만 물려주고 다른 본문을 보내면 서버가 앞 쓰기의 중복으로 보고 흡수한다(C-1 #6).
+   *
+   * ⛔ **상태로 두지 않는다.** 확정을 누른 «그때» 값을 다음 조작에서 그대로 읽어야 하고,
+   * 이 값이 바뀐다고 화면이 다시 그려질 이유도 없다.
+   */
+  const attemptedBody = useRef<HandlingUnitPack | null>(null);
   const [packed, setPacked] = useState(false);
   /* 담은 횟수 — 스캔 칸이 이 값으로 포커스를 되돌린다(`scan-pane.tsx`). */
   const [addedCount, setAddedCount] = useState(0);
@@ -287,12 +295,35 @@ export const PackingWorkScreen = () => {
       const handlingUnitId = draft.handlingUnit?.handlingUnitId;
       if (handlingUnitId === undefined) return;
 
-      outbox.enqueue({ handlingUnitId, workerNo: workerNo ?? '', body });
+      /*
+       * ⭐ **온라인으로 이미 던졌으나 적용 여부를 모르는 확정이 있으면 그것을 그대로 이어받는다.**
+       * 통신이 끊기며 끝난 확정은 서버가 받았는지 알 수 없다 — 큐가 새 키로 보내면 서버가 둘을
+       * 묶어 주지 못해 되돌릴 수 없는 확정이 두 번 설 수 있다(C-1 #5 · 스펙 §8-4).
+       *
+       * ⛔ **키만 이어받지 않는다.** 「같은 키 = 같은 값」이 성립해야 서버가 흡수해도 잃는 것이
+       * 없다. 그래서 그 시도의 «본문»을 함께 보낸다 — 시각 두 칸도 그때 것이 나가야 한다
+       * (같은 키에 영업일이 갈리면 서버가 두 건으로 적재한다 · C-8).
+       *
+       * ⚠ **담은 것이 달라졌으면 이어받지 않는다.** 그 키는 이미 다른 쓰기의 키이고, 그대로
+       * 보내면 나중에 담은 줄이 서버에서 흡수돼 사라진다. 그때는 새 확정으로 간다.
+       */
+      const attemptedKey = pack.peekIdempotencyKey();
+      const attempted = attemptedBody.current;
+      const resumable =
+        attemptedKey !== null && attempted !== null && sameContents(attempted, body);
+
+      outbox.enqueue({
+        handlingUnitId,
+        workerNo: workerNo ?? '',
+        body: resumable ? attempted : body,
+        idempotencyKey: resumable ? attemptedKey : null,
+      });
       setPacked(true);
 
       return;
     }
 
+    attemptedBody.current = body;
     pack.write(body);
   };
 
@@ -308,6 +339,14 @@ export const PackingWorkScreen = () => {
     setAddedCount(0);
     pack.reset();
     create.reset();
+    /*
+     * ⛔ **앞 포장의 멱등 키를 다음 포장으로 들고 가지 않는다.** `reset` 은 「적용됐는지 모르는
+     * 쓰기가 있다」는 사실까지 지우지는 않으므로, 여기서 버리지 않으면 다음 포장의 오프라인
+     * 확정이 «앞 포장의 키»로 큐에 담긴다 — 큐는 키로 항목을 지우기 때문에 앞 건이 성공하는
+     * 순간 뒤엣것까지 함께 내려간다(실측).
+     */
+    pack.discardIdempotencyKey();
+    attemptedBody.current = null;
     /*
      * ⛔ **앞 포장의 거부를 새 포장 화면에 들고 가지 않는다.** 큐가 거부한 사실은 그 포장의
      * 것이라, 여기 남으면 아직 아무것도 담지 않은 화면이 「받지 않았습니다」를 띄운다.
