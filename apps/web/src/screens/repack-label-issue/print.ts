@@ -1,3 +1,5 @@
+import type { LabelRenditionFormat } from '../../patterns/pop-label-rendition';
+
 /**
  * 인쇄 — **발행과 갈라진 세 걸음**(스펙 §6 · K-4).
  *
@@ -25,7 +27,7 @@
  * 수 없다」는 사실이라, 화면은 그 사유를 말하고 발행·미리보기까지만 진행한다.
  */
 export interface RenditionShell {
-  save: (bytes: Uint8Array, label: string, now: string, format: 'png' | 'pdf') => Promise<string>;
+  save: (bytes: Uint8Array, label: string, now: string, format: LabelRenditionFormat | 'pdf') => Promise<string>;
 }
 
 interface ShellCarrier {

@@ -2,6 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import { REISSUE_REASON_CODE_GROUP, targetTypeCodeOf, type LabelKind } from './codes';
 import {
@@ -231,6 +232,16 @@ export const usePrinters = (kind: LabelKind | null): UseQueryResult<PrinterView[
     enabled: kind !== null,
     queryFn: async () => {
       if (kind === null) throw new Error('라벨 종류 없이 프린터를 조회하지 않습니다.');
+
+      /*
+       * ⭐ **셸이 답할 수 있으면 단말에 실제로 붙은 프린터를 먼저 쓴다**(사용자 지시
+       *    2026-09-08 · `patterns/pop-terminal-printers`). 브라우저에서는 통로가 없어
+       *    `null` 이 오고, 그때는 아래 서버 목록을 그대로 쓴다.
+       */
+      const local = await terminalPrinters();
+
+      if (local !== null) return local.map(toPrinterView);
+
 
       const data = await runRequest(() =>
         client.GET('/app/printers', { params: { query: { documentTypeCode: kind } } }),

@@ -247,13 +247,19 @@ describe('P-02-01 작업 시작 — 사번을 바꿀 수 있는 자리인가', (
     expect(screen.queryByRole('button', { name: t.worker.change })).not.toBeInTheDocument();
   });
 
-  /** 화면에서 넣은 사번은 화면에서 바꿀 수 있다 — 교대할 때 필요하다. */
-  it('여기서 확인한 사번에는 「다시 입력」을 준다', async () => {
+  /*
+   * ⛔ **사번을 알고 나면 구획을 통째로 걷는다**(사용자 지시 2026-09-08). 진입 화면
+   *    (`P-CO-01`)이 사번을 정해 오므로 여기서 다시 묻는 것은 같은 것을 두 번 묻는 것이다.
+   *    작업자를 바꾸는 길은 머리줄의 **로그아웃**이다.
+   */
+  it('사번이 확인되면 사번 구획을 세우지 않는다', async () => {
     const { user } = renderScreen();
 
     await enterWorkerNo(user, WORKER.workerNo);
+    await screen.findAllByText(t.header.workerLabel(WORKER.workerNo));
 
-    expect(await screen.findByRole('button', { name: t.worker.change })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.worker.change })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.worker.confirm })).not.toBeInTheDocument();
   });
 });
 
@@ -294,13 +300,13 @@ describe('P-02-01 작업 시작 — 사번은 단말이 들고 있는 자리를 
     expect(await screen.findAllByText(t.header.workerLabel(WORKER.workerNo))).not.toHaveLength(0);
   });
 
-  it('「다시 입력」은 단말이 들고 있던 사번을 비운다', async () => {
-    const { user } = renderScreen();
+  /*
+   * ⚠ **사번을 못 받았을 때만 키패드가 선다.** 자리까지 없애면 되돌아갈 길이 없다 —
+   *   그 예외를 여기서 지킨다.
+   */
+  it('사번이 없으면 키패드를 세운다', () => {
+    renderScreen();
 
-    await enterWorkerNo(user, WORKER.workerNo);
-    await user.click(await screen.findByRole('button', { name: t.worker.change }));
-
-    expect(screen.getByText(t.header.workerUnset)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.worker.confirm })).toBeInTheDocument();
   });
 });

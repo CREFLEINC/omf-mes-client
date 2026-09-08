@@ -76,11 +76,18 @@ const ENTRIES = [
   ['W-04-07 심각도', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY', 1],
   ['W-03-10 상태', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS', 3],
   ['M-05-01 설비', '/mdm/equipments', 2],
-  ['M-05-01 점검 항목', '/mdm/equipments/5001/inspection-items', 3],
 ];
 
 /** 목록이 아닌 상세는 형태로 본다. */
 const DETAILS = [
+  [
+    'M-05-01 점검 항목',
+    '/mdm/equipments/5001/inspection-items',
+    (body) =>
+      body.resolvedFromLevelCode === 'EQUIPMENT' &&
+      body.assigned.length >= 3 &&
+      body.effective.length >= 3,
+  ],
   ['M-04-03 포장 내용물', '/inventory/handling-units/13001', (body) => body.contents.length >= 2],
   [
     'P-02-04 현재 생산LOT 형태',

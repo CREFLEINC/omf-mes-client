@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import {
   DOCUMENT_TYPE_CODE,
@@ -126,6 +127,16 @@ export const usePrinters = (): UseQueryResult<Printer[]> => {
   return useQuery({
     queryKey: goodsIssueQrKeys.printers,
     queryFn: async () => {
+      /*
+       * ⭐ **셸이 답할 수 있으면 단말에 실제로 붙은 프린터를 먼저 쓴다**(사용자 지시
+       *    2026-09-08 · `patterns/pop-terminal-printers`). 서버 경로가 아직 구현되지 않아
+       *    계약 예시 이름이 화면에 뜨고, 프린터가 없는 단말이 「대기 중」이라 말했다.
+       *    브라우저에서는 통로가 없어 `null` 이 오고, 그때는 아래 서버 목록을 그대로 쓴다.
+       */
+      const local = await terminalPrinters();
+
+      if (local !== null) return local;
+
       const data = await runRequest(() =>
         client.GET('/app/printers', {
           params: { query: { documentTypeCode: DOCUMENT_TYPE_CODE } },

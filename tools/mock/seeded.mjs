@@ -15,6 +15,7 @@ import { createServer } from 'node:http';
 
 import { toPng } from './label-canvas.mjs';
 import { renderLotLabel, renderShippingLabel } from './label-layout.mjs';
+import { renderLotTspl, renderShippingTspl } from './label-tspl.mjs';
 import { networkInterfaces } from 'node:os';
 
 import { writeMergedSpec } from '../merge-spec.mjs';
@@ -172,15 +173,42 @@ on('GET', '/mdm/partners', (_p, query) =>
 on('GET', '/mdm/equipments', (_p, query) =>
   page(keep(state.equipments, [contains(query, 'q', 'equipmentCode')]), query),
 );
-on('GET', '/mdm/equipments/{equipmentId}/inspection-items', (params, query) =>
+/*
+ * 설비 하나의 점검 항목 부여.
+ *
+ * ⛔ **쪽 목록 모양으로 답하지 않는다.** 계약은 `{assigned, effective, resolvedFromLevelCode}`
+ *    이고, 작업 전 점검 관문은 그 모양이 아니면 **「부여 없음」으로 읽지 않고 조회 실패로**
+ *    막는다(`work-precheck-gate/queries.ts` — 「모양이 다르면 부여 없음으로 읽지 않는다」).
+ *    쪽 목록으로 답하던 탓에 작업 시작이 「점검 이력을 확인하지 못해 시작할 수 없습니다」로
+ *    멈췄다(실측 2026-09-08 · 실기).
+ *
+ * ⚠ 부여가 없으면 `NONE` 이다 — 그것이 「점검 대상이 아니다」라는 **판정**이고, 관문은 그때
+ *   통과시킨다. 「모른다」와 다르다.
+ */
+/*
+ * 금형 조회. ⛔ **씨앗이 답하지 않으면 계약 예시가 «무엇을 물어도» 금형을 돌려준다** —
+ * 자재 투입은 칸이 하나라(자재LOT·금형 같은 자리) 그 답 때문에 자재 스캔이 전부 금형으로
+ * 잡혔다(실측 2026-09-08). 모르는 코드에는 **빈 목록**으로 답해야 화면이 「찾을 수 없다」를
+ * 말할 수 있다.
+ */
+on('GET', '/mdm/molds', (_p, query) =>
   page(
-    keep(state.inspectionItems, [
-      (row) => row.equipmentId === Number(params.equipmentId),
-      byText(query, 'inspectionTypeCode', 'inspectionTypeCode'),
-    ]),
+    keep(state.molds, [contains(query, 'q', 'moldCode'), byText(query, 'moldCode', 'moldCode')]),
     query,
   ),
 );
+
+on('GET', '/mdm/equipments/{equipmentId}/inspection-items', (params) => {
+  const assigned = state.inspectionItems.filter(
+    (row) => row.equipmentId === Number(params.equipmentId),
+  );
+
+  return {
+    assigned,
+    effective: assigned,
+    resolvedFromLevelCode: assigned.length === 0 ? 'NONE' : 'EQUIPMENT',
+  };
+});
 
 on('GET', '/mdm/code-values', (_p, query) => {
   const group = query.get('codeGroupCode') ?? '';
@@ -458,6 +486,19 @@ const shippingValues = (issue) => {
   };
 };
 
+/**
+ * 그 발행이 가리키는 «라인»의 수량. 없으면 `null` — 부르는 쪽이 LOT 수량으로 물러선다.
+ *
+ * 지금은 출고 라인 하나뿐이다. 다른 유형이 라인 축을 갖게 되면 여기에 함께 적는다.
+ */
+const issueQtyOf = (issue) => {
+  if (issue?.targetTypeCode !== 'GOODS_ISSUE_LINE') return null;
+
+  const line = state.goodsIssueLines.find((row) => row.goodsIssueLineId === Number(issue.targetId));
+
+  return line?.issueQty ?? null;
+};
+
 /** 표준 80×30mm LOT 라벨에 실을 값. */
 const lotValues = (issue) => {
   const lot =
@@ -471,36 +512,111 @@ const lotValues = (issue) => {
     partNo: ascii(item?.itemCode, 'SAMPLE-INJ-0001'),
     partName: ascii(item?.labelName, ascii(item?.itemCode, 'SAMPLE PART')),
     lotNo: ascii(lot?.lotNo, 'SAMPLE-LOT-0002'),
-    qty: `${Number(lot?.initialQty ?? 1000).toLocaleString('en-US')} ${ascii(uomOf(lot?.uomId)?.uomCode, 'EA')}`,
+    /*
+     * ⚠ **수량은 「그 라벨의 수량」이다**(사양서 §5.2) — LOT 이 처음 받은 수량이 아니다.
+     *   출고 QR 은 출고 «라인»에 붙으므로 그 라인의 출고 수량을 싣는다. LOT 수량을 그대로
+     *   실었더니 200 을 출고한 라인에 500 이 찍혔다(실측 2026-09-08).
+     */
+    qty: `${Number(issueQtyOf(issue) ?? lot?.initialQty ?? 1000).toLocaleString('en-US')} ${ascii(uomOf(lot?.uomId)?.uomCode, 'EA')}`,
     mfgDt: labelDateTime(lot?.manufacturedAt ?? issue.issuedAt),
     seed: issue.documentIssueLogId,
   };
 };
 
-/** 출하 계열은 100×60, 나머지는 80×30(사양 §2 「라벨 구성안」). */
-const SHIPPING_TYPES = ['PACKING_LABEL', 'DELIVERY_LABEL'];
+/**
+ * **100×60 은 출하용 라벨 하나뿐이다.** 나머지는 전부 표준 80×30 이다(사용자 확인 2026-09-08).
+ *
+ * ⛔ **포장 라벨을 여기 넣지 않는다.** 이름이 「출하 계열」처럼 보인다는 이유로 함께 두었더니
+ *    포장 라벨·인식표 재출력이 100×60 으로 나왔다 — 화면에서 실측으로 잡힌 결함이다.
+ */
+const SHIPPING_TYPES = ['DELIVERY_LABEL'];
+
+/**
+ * 이 단말이 쓸 수 있는 프린터.
+ *
+ * ⚠ **계약상 이 목록은 «서버»가 가진다**(`/app/printers` — 「이 단말이 쓸 수 있는 프린터」).
+ *   화면은 서버가 준 이름을 그대로 보인다. 그래서 씨앗이 답하지 않으면 계약 예시의
+ *   「샘플 라벨 프린터 A」가 화면에 뜨고, 실제로 인쇄가 나가는 Windows 프린터와 이름이 다르다.
+ *
+ * ⚠ **실기 확인에서는 이름이 맞아야 한다** — 어느 프린터로 나가는지 화면과 실물이 어긋나면
+ *   「눌렀는데 딴 데서 나온다」를 가릴 수 없다. 그래서 이름을 환경 변수로 받는다.
+ *
+ *   POP_MOCK_PRINTER="ZDesigner TTP-247" pnpm mock
+ *
+ * ⛔ 이것은 시험용 대역이다. 서버가 이 경로를 구현하면(지금은 `x-implemented: false`) 그쪽이
+ *    정본이 되고 이 핸들러는 걷힌다.
+ */
+on('GET', '/app/printers', () => {
+  const name = process.env.POP_MOCK_PRINTER ?? '샘플 라벨 프린터 A';
+
+  return {
+    items: [
+      {
+        printerName: name,
+        displayName: name,
+        status: 'READY',
+        statusMessage: '대기 중',
+        isDefault: true,
+        supportedDocumentTypeCodes: [
+          'MATERIAL_LOT_LABEL',
+          'GOODS_ISSUE_QR',
+          'PRODUCTION_LOT_LABEL',
+          'IDENTIFICATION_TAG',
+          'PACKING_LABEL',
+          'DELIVERY_LABEL',
+        ],
+      },
+    ],
+  };
+});
 
 on('GET', '/app/document-issues/{documentIssueLogId}/rendition', (params, query) => {
   const format = query.get('format') ?? 'png';
 
-  if (format !== 'png') {
+  /*
+   * `tspl`은 고정 계약의 명령형 라벨 형식이다. 그림으로 내려주면 단말이 그것을 드라이버에
+   * 넘겨 그리므로 프린터 글꼴이 아니라 픽셀이 찍힌다 — 실기 인쇄에는 명령형을 그대로 내린다.
+   */
+  if (format !== 'png' && format !== 'tspl') {
     return {
       status: 415,
-      created: { code: 'UNSUPPORTED_FORMAT', message: '씨앗은 png 만 그립니다.' },
+      created: { code: 'UNSUPPORTED_FORMAT', message: '씨앗은 png · tspl 만 냅니다.' },
     };
   }
 
   const issue = state.documentIssues.find(
     (row) => row.documentIssueLogId === Number(params.documentIssueLogId),
   );
-  /* 발행 기록이 없어도 그린다 — 인쇄 경로 확인이 기록 유무에 막히지 않게 한다. */
+  /*
+   * 발행 기록이 없어도 그린다 — 인쇄 경로 확인이 기록 유무에 막히지 않게 한다.
+   *
+   * ⛔ **모르는 유형을 출하 계열로 «추측하지» 않는다.** 기본값을 `PACKING_LABEL` 로 두었더니
+   *    씨앗에 없는 발행 기록이 전부 100×60 출하 라벨로 나왔다 — 재출력 목록은 씨앗이 아니라
+   *    계약 예시 서버가 답하므로 그 화면 전부가 여기로 떨어진다(실측 2026-09-08: 인식표
+   *    재출력이 출하 라벨로 떴다). 모르면 **표준 80×30** 을 그린다.
+   */
   const target = issue ?? {
     documentIssueLogId: Number(params.documentIssueLogId) || 1,
-    documentTypeCode: 'PACKING_LABEL',
+    documentTypeCode: null,
     issuedAt: new Date().toISOString(),
   };
 
-  const canvas = SHIPPING_TYPES.includes(target.documentTypeCode)
+  const isShipping = SHIPPING_TYPES.includes(target.documentTypeCode);
+
+  if (format === 'tspl') {
+    const commands = isShipping
+      ? renderShippingTspl(shippingValues(target))
+      : renderLotTspl(lotValues(target));
+
+    return {
+      binary: {
+        contentType: 'application/octet-stream',
+        bytes: Buffer.from(commands, 'ascii'),
+      },
+    };
+  }
+
+  const canvas = isShipping
     ? renderShippingLabel(shippingValues(target))
     : renderLotLabel(lotValues(target));
 
@@ -778,7 +894,13 @@ on('GET', '/logistics/inbound-receipts/{inboundReceiptId}/lines', (params, query
  * 다시 불러도 풀리지 않고 사람이 다른 라벨을 스캔해야 한다.
  */
 on('POST', '/trace/lots', (_p, _q, body) => {
-  const lotNo = body?.lotNo;
+  /*
+   * ⛔ **MES 발번은 서버가 번호를 «만든다».** 계약이 「`MES` 인데 `lotNo` 를 보내면 400」이라
+   *    적었으니, 보내지 않은 번호를 여기서 만들지 않으면 **번호 없는 LOT** 이 선다 —
+   *    라벨의 `LOT NO.` 가 빈 채로 찍힌다(실측 2026-09-08 · 자재LOT 등록 화면).
+   */
+  const lotNo =
+    body?.numberSourceCode === 'MES' ? `ML-${String(Date.now()).slice(-9)}` : body?.lotNo;
 
   if (
     body?.numberSourceCode === 'SUPPLIER' &&
@@ -826,7 +948,12 @@ on('POST', '/trace/lots', (_p, _q, body) => {
     line.supplierLotNo = lotNo;
   }
 
-  return { status: 201, created };
+  /*
+   * ⛔ **계약 모양(`LotDetailResponse`)으로 돌려준다.** LOT 을 낱개로 돌려주던 탓에 화면이
+   *    `data.lot.lotId` 에서 없는 것을 읽어 **발행이 그 자리에서 멈췄다**(실측 2026-09-08).
+   *    같은 경로의 조회는 이미 이 모양이었다 — 쓰기만 갈라져 있었다.
+   */
+  return { status: 201, created: { lot: created, externalIdentifiers: [], holds: [] } };
 });
 
 on('POST', '/logistics/inbound-receipts', (_p, _q, body) => {
@@ -1054,6 +1181,24 @@ on('GET', '/logistics/goods-issues', (_p, query) =>
     query,
   ),
 );
+
+/*
+ * 출고 전표 하나. **씨앗이 답하지 않으면 계약 예시가 답한다** — 그러면 머리에는 예시 전표
+ * 번호가, 아래 줄에는 씨앗 라인이 서서 한 화면이 두 전표를 말한다(실측 2026-09-08 ·
+ * 출고 QR 발행 화면).
+ */
+on('GET', '/logistics/goods-issues/{goodsIssueId}', (params) => {
+  const goodsIssue = state.goodsIssues.find(
+    (row) => row.goodsIssueId === Number(params.goodsIssueId),
+  );
+
+  if (goodsIssue === undefined) return null;
+
+  return {
+    goodsIssue,
+    lines: state.goodsIssueLines.filter((line) => line.goodsIssueId === goodsIssue.goodsIssueId),
+  };
+});
 
 on('GET', '/logistics/goods-issues/{goodsIssueId}/lines', (params, query) =>
   page(
@@ -1547,12 +1692,20 @@ on('GET', '/logistics/shipments/{shipmentId}', (params) => {
 
 on('GET', '/production/work-orders', (_p, query) => {
   const successorOf = num(query, 'successorOfWorkOrderId');
+  const open = bool(query, 'open');
 
   return page(
     keep(state.workOrders, [
       (row) => successorOf === null || row.predecessorOfWorkOrderId === successorOf,
       byNum(query, 'productionPlanId', 'productionPlanId'),
       byText(query, 'statusCode', 'statusCode'),
+      /*
+       * ⛔ **유형을 거르지 않으면 재작업 화면이 일반 지시를 받는다** — 그 지시에는 근거
+       *    부적합이 없어 「원 LOT · 근거 · 처분」이 통째로 빈다(실측 2026-09-08).
+       */
+      byText(query, 'workOrderTypeCode', 'workOrderTypeCode'),
+      /* 「열린 것만」 — 마감·완료된 지시는 실적을 더 받지 않는다. */
+      (row) => open !== true || row.completedAt === null,
       contains(query, 'q', 'workOrderNo'),
     ]),
     query,

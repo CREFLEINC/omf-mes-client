@@ -17,9 +17,8 @@
  *   프린터와 무관하다). 직렬로 보내려면 단말마다 가상 COM 드라이버를 깔아야 하는데, 스풀러
  *   경로는 지금 연결 그대로 통한다. 설계 §3.4 가 열어 둔 두 갈래 중 앞쪽이다.
  *
- * ⚠ **명령형 출력물은 아직 서버에서 오지 않는다.** 계약 `rendition` 의 `format` 축이
- *   `png|pdf` 뿐이라(#831 완료 조건 ① · 서버 소관) 지금 이 길로 가는 것은 라벨 명령
- *   (`label-command`)뿐이다. 계약이 열리면 `silent-print.ts` 의 명령형 분기가 같은 길을 쓴다.
+ * ⭐ 고정 계약의 `rendition?format=tspl` 응답과 단말 진단용 라벨 명령이 이 경로를 함께 쓴다.
+ *    어느 쪽이든 받은 바이트를 해석하거나 다시 그리지 않고 그대로 전달한다.
  *
  * ⚠ **Windows 전용이다.** 현장 단말이 Windows 이고 스풀러의 RAW 자리는 Windows 것이다.
  */
@@ -102,7 +101,12 @@ const PRINT_SERVER_HEAD = [
 ];
 
 export interface RawPrinter {
-  print(job: { dataPath: string; jobName: string }): Promise<void>;
+  /**
+   * ⚠ **보낼 프린터를 «작업마다» 받는다.** 예전에는 앱이 켜질 때의 `POP_PRINTER_NAME` 하나만
+   *   들고 있었다 — 그 값이 없으면 스크립트가 스스로 기본 프린터를 물었고, 앱이 이미 고른
+   *   프린터와 갈릴 수 있었다. 고른 곳과 보내는 곳은 한 값이어야 한다(실측 2026-09-08).
+   */
+  print(job: { dataPath: string; jobName: string; deviceName?: string }): Promise<void>;
 }
 
 /**

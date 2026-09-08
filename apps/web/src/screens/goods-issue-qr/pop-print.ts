@@ -1,3 +1,5 @@
+import type { LabelRenditionFormat } from '../../patterns/pop-label-rendition';
+
 /**
  * 셸(Electron)로 출력물을 넘기는 자리.
  *
@@ -12,7 +14,12 @@
 
 /** 셸이 여는 통로. `apps/pop/src/preload/index.ts` 가 `window.pop` 으로 노출한다. */
 interface PopRenditionBridge {
-  save: (bytes: Uint8Array, label: string, now: string, format: 'png' | 'pdf') => Promise<string>;
+  save: (
+    bytes: Uint8Array,
+    label: string,
+    now: string,
+    format: LabelRenditionFormat,
+  ) => Promise<string>;
 }
 
 interface PopBridge {
@@ -50,7 +57,7 @@ const reasonOf = (cause: unknown): string => {
 export const sendToPrinter = async (
   bytes: Uint8Array,
   label: string,
-  format: 'png' | 'pdf',
+  format: LabelRenditionFormat,
 ): Promise<PrintAttempt> => {
   const bridge = popBridge();
 

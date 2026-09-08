@@ -312,8 +312,9 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
   });
 
   it('사번이 없으면 발행이 막힌다', async () => {
+    /* ⚠ 사번은 주소보다 셸·세션이 먼저다 — 셋 다 없을 때를 잰다(2026-09-08). */
     renderWithProviders(
-      <PopIdentityProvider value={IDENTIFIED}>
+      <PopIdentityProvider value={{ ...IDENTIFIED, workerNo: null }}>
         <RepackLabelIssueScreen />
       </PopIdentityProvider>,
       {
@@ -502,8 +503,9 @@ describe('RepackLabelIssueScreen — 막힌 사유를 말한다', () => {
   });
 
   it('사번이 없으면 그 문구가 화면에 보인다', async () => {
+    /* ⚠ 사번은 주소보다 셸·세션이 먼저다 — 셋 다 없을 때를 잰다(2026-09-08). */
     renderWithProviders(
-      <PopIdentityProvider value={IDENTIFIED}>
+      <PopIdentityProvider value={{ ...IDENTIFIED, workerNo: null }}>
         <RepackLabelIssueScreen />
       </PopIdentityProvider>,
       {

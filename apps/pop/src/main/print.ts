@@ -4,7 +4,7 @@
  * ⛔ 프린터 제어 언어(TSPL 등)를 앱에서 만들지 않는다. 렌더링은 서버 소관이고
  *    다국어 폰트도 서버에 있다.
  *
- * ⛔ **형식을 셸이 정하지 않는다.** 서버가 `rendition?format=png|pdf`로 형식을 정하고
+ * ⛔ **형식을 셸이 정하지 않는다.** 서버가 `rendition?format=png|pdf|tspl`로 형식을 정하고
  *    (라벨은 이미지, 성적서·보고서는 문서), 회차도 서버가 인쇄면에 넣어 그린다.
  *    셸이 형식을 단정하면 이름과 내용이 어긋난다 — 이전 판이 받은 PNG를 무조건 `.pdf`로
  *    저장해 PDF 리더가 열지 못하는 파일을 만들었다(실측).
@@ -14,8 +14,13 @@
  * 지금도 `rendition.save(bytes, label, now, format)` 하나만 부른다.
  */
 
-/** 서버가 돌려주는 출력물 형식. 계약의 `format` 파라미터와 같은 값이다. */
-export type RenditionFormat = 'png' | 'pdf';
+/**
+ * 서버가 돌려주는 출력물 형식. 계약의 `format` 파라미터와 같은 값이다.
+ *
+ * `tspl`은 고정 계약이 정의한 명령형 라벨 형식이다. 셸은 요청한 형식과 실제 바이트의
+ * 시그니처가 일치하는지만 확인하고, 명령의 내용은 해석하지 않는다.
+ */
+export type RenditionFormat = 'png' | 'pdf' | 'tspl';
 
 export type PrintTarget =
   | { kind: 'file'; filePath: string }
@@ -86,6 +91,11 @@ export class FormatMismatchError extends Error {
 const SIGNATURES: Record<RenditionFormat, number[]> = {
   png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
   pdf: [0x25, 0x50, 0x44, 0x46, 0x2d], // %PDF-
+  /*
+   * TSPL 은 대지 크기를 먼저 선언한다 — `SIZE ` 로 시작하지 않는 것은 이 형식이 아니다.
+   * ⛔ 검사를 건너뛰지 않는다. 그림을 RAW 자리로 밀어 넣으면 프린터가 라벨을 수백 장 토해낸다.
+   */
+  tspl: [0x53, 0x49, 0x5a, 0x45, 0x20], // "SIZE "
 };
 
 /**
@@ -106,7 +116,7 @@ export function matchesFormat(bytes: Uint8Array, format: RenditionFormat): boole
  * 막히지만 그것은 가드가 아니라 우연이다 — 조회에 기본값을 넣는 「수선」 하나면 열린다.
  */
 export function isRenditionFormat(value: unknown): value is RenditionFormat {
-  return value === 'png' || value === 'pdf';
+  return value === 'png' || value === 'pdf' || value === 'tspl';
 }
 
 export class RenditionPrinter {

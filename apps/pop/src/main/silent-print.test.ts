@@ -230,16 +230,16 @@ describe('대기열 RAW 로 보내는 것', () => {
   it.each([
     ['그림(png)', label],
     ['문서(pdf)', report],
-  ])('%s 는 RAW 로 보내지 않는다 — 계약이 명령형을 내려 주기 전까지 보낼 것이 없다', async (
-    _name,
-    rendition,
-  ) => {
-    const { deps } = fakeDeps();
-    const printRaw = { print: vi.fn(async () => undefined) };
-    const printFile = { print: vi.fn(async () => undefined) };
+  ])(
+    '%s 는 RAW 로 보내지 않는다 — 명령형 출력물만 RAW 경로를 사용한다',
+    async (_name, rendition) => {
+      const { deps } = fakeDeps();
+      const printRaw = { print: vi.fn(async () => undefined) };
+      const printFile = { print: vi.fn(async () => undefined) };
 
-    await createSilentPrinter({ ...deps, printFile, printRaw }).print('ZD421', rendition);
+      await createSilentPrinter({ ...deps, printFile, printRaw }).print('ZD421', rendition);
 
-    expect(printRaw.print).not.toHaveBeenCalled();
-  });
+      expect(printRaw.print).not.toHaveBeenCalled();
+    },
+  );
 });

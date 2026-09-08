@@ -6,7 +6,6 @@ import { useId, useState, type ReactElement, type ReactNode } from 'react';
 import { isKnownCode, type CodeOption } from './code-options';
 import { isCoverageOutOfOrder, type CoverageDraft } from './coverage';
 import { canChooseDisposition, type DispositionState } from './disposition';
-import { QuantityPad } from './quantity-pad';
 import {
   formatMicro,
   toMicro,
@@ -83,6 +82,13 @@ export interface ResultPanelProps {
 
   disposition: DispositionState;
   onDispositionChange: (choice: DispositionState) => void;
+
+  /**
+   * 지금 어느 칸을 치는가를 **화면에 알린다** — 숫자 키패드는 이 구획 밖(셋째 칸)에 서고
+   * (설계 2차 공지 `a6a87e1` · `omf-mes#286` §3-1), 좌단 측정값과 **패드 하나를 나눠 쓴다.**
+   */
+  padField: PadTarget | null;
+  onPadFieldChange: (target: PadTarget | null) => void;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -119,6 +125,8 @@ export const ResultPanel = ({
   judgmentOptions,
   judgment,
   onJudgmentChange,
+  padField,
+  onPadFieldChange,
   disposition,
   onDispositionChange,
 }: ResultPanelProps) => {
@@ -146,13 +154,12 @@ export const ResultPanel = ({
    * 것이고, 그때 「일치합니다」든 「모자랍니다」든 내면 **거짓을 말하는 것**이다.
    */
   /*
-   * 어느 칸을 키패드로 고치는 중인가. **`null` 이면 팝업이 닫혀 있다.**
+   * ⭐ **키패드는 이 구획 밖에 상시로 선다**(설계 2차 공지 `a6a87e1` · `omf-mes#286` §3-1).
    *
-   * ⭐ 설계가 이 화면의 입력 수단을 키패드로 지정했다(§7 · G-6 · 공유계약 D-4). 단말에는
-   *    자판이 없어 칸만 두면 넣을 방법이 없다. 상시로 세울 자리가 없어(세로 예산 슬랙 0)
-   *    **누른 그때만** 뜬다.
+   * 전에는 세울 자리가 없어(세로 예산 슬랙 0) 팝업으로 두었는데, 그 판이 **셋째 칸(216)** 을
+   * 내면서 자리가 생겼다 — 여기서는 「어느 칸을 고르는가」만 화면에 알린다.
    */
-  const [padField, setPadField] = useState<PadTarget | null>(null);
+  const setPadField = onPadFieldChange;
 
   /*
    * 수량에는 **늘 단위를 붙인다** — 칸 안이든 문장 안이든 같다(§8 미결 5 · 공유계약 A-8).
@@ -193,7 +200,12 @@ export const ResultPanel = ({
       disabled={false}
       /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
       error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
-      onFocus={() => setPadField({ key, label })}
+      /*
+       * ⛔ **포커스로 열지 않는다.** 팝업이 닫히면 포커스가 이 칸으로 «돌아오고», 그 순간
+       *    다시 열렸다 — [ 확인 ]을 눌러도 아무 일이 없는 것처럼 보였다(실측 2026-09-08).
+       *    누른 그때만 연다.
+       */
+      onClick={() => setPadField({ key, label })}
       onChange={(event) => onChange({ ...draft, [key]: event.target.value })}
     />
   );
@@ -220,7 +232,7 @@ export const ResultPanel = ({
         value={inspectedDraft}
         disabled={false}
         error={showErrors && inspectedInvalid ? t.quantityInvalid : undefined}
-        onFocus={() => setPadField({ key: 'inspected', label: t.fields.inspectedQty })}
+        onClick={() => setPadField({ key: 'inspected', label: t.fields.inspectedQty })}
         onChange={(event) => onInspectedChange(event.target.value)}
       />
 
@@ -265,21 +277,36 @@ export const ResultPanel = ({
             {t.judgment}
           </label>
           {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
+          {/*
+           * ⭐ **못 고르는 사유를 칸 «안»에서 말한다**(사용자 지시 2026-09-08). 아래에 안내를
+           *    한 줄씩 붙였더니 판정 밑이 문장으로 채워져, 정작 골라야 할 칸이 늦게 읽혔다.
+           *    비어 있는 셀렉터가 스스로 「준비되지 않았다」고 말하면 그 한 줄이 필요 없다.
+           */}
           <Select
             id={judgmentId}
             size="xl"
             options={judgmentOptions}
-            value={judgment}
-            placeholder={t.judgmentPlaceholder}
+            /*
+             * ⛔ **목록이 없으면 값도 보이지 않는다.** 자동 판정이 채운 코드가 남아 있으면
+             *    트리거가 그 코드를 그대로 보이고, 정작 「왜 못 고르는가」는 어디에도 없다 —
+             *    사용자가 그 자리에서 알아야 하는 것은 코드가 아니라 «준비되지 않았다»다
+             *    (사용자 지시 2026-09-08).
+             */
+            value={judgmentOptions.length === 0 ? null : judgment}
+            placeholder={
+              judgmentOptions.length === 0 ? t.judgmentUnavailable : t.judgmentPlaceholder
+            }
             disabled={judgmentOptions.length === 0}
             onChange={onJudgmentChange}
           />
-          {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
           {/*
-           * ⚠ 저장된 판정이 목록에서 사라졌다(사용 중지된 코드일 수 있다). 조용히 비우면
-           * 사용자가 고르지 않았는데 고른 것이 지워진다 — 그 사실을 밝힌다.
+           * ⚠ **목록은 왔는데 그 안에 저장된 판정이 없다**(사용 중지된 코드일 수 있다).
+           *   조용히 비우면 «사용자가 지우지 않았는데 고른 것이 사라진다» — 그 사실을 밝힌다.
+           *
+           * ⛔ 목록 자체가 없을 때는 말하지 않는다 — 그때는 셀렉터가 이미 「준비되지
+           *    않았다」로 서 있고, 여기서 한 줄을 더 붙이면 두 사유가 겹쳐 읽힌다.
            */}
-          {!isKnownCode(judgmentOptions, judgment) && (
+          {judgmentOptions.length > 0 && !isKnownCode(judgmentOptions, judgment) && (
             <p className="field-note">{t.judgmentUnknown(judgment)}</p>
           )}
         </div>
@@ -339,22 +366,6 @@ export const ResultPanel = ({
         />
       </div>
       <p className="field-note">{tCoverage.note}</p>
-      <QuantityPad
-        label={padField?.label ?? null}
-        value={padField === null ? '' : padField.key === 'inspected' ? inspectedDraft : draft[padField.key]}
-        uomCode={uomCode}
-        onCommit={(next) => {
-          if (padField === null) return;
-
-          if (padField.key === 'inspected') onInspectedChange(next);
-          else onChange({ ...draft, [padField.key]: next });
-
-          setPadField(null);
-        }}
-        onClose={() => {
-          setPadField(null);
-        }}
-      />
     </section>
   );
 };

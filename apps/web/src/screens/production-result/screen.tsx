@@ -536,6 +536,12 @@ export const ProductionResultScreen = () => {
         title={t.overrun.title}
         size="sm"
         closeOnBackdropClick={false}
+        /*
+         * ⛔ **X 로 닫는 길을 두지 않는다**(사용자 지시 2026-09-08). 이 물음은 「초과로
+         *    저장할까」이고 답은 아래 두 버튼이다 — X 는 「취소」와 같은 자리를 두 번 만들면서
+         *    무엇을 고른 것인지 흐린다.
+         */
+        showCloseButton={false}
         footer={
           <>
             <Button

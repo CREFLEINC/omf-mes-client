@@ -219,7 +219,15 @@ describe('ProductionResultScreen 단말 게이팅', () => {
 describe('ProductionResultScreen 진입값', () => {
   it('사번이 없으면 저장을 시도조차 하지 않는다', async () => {
     const writes: Request[] = [];
-    renderScreen({ writes }, `/pop/production-result?workOrderId=${String(WORK_ORDER_ID)}`);
+    /*
+     * ⚠ **셸·세션까지 비워야 「사번 없음」이 된다**(2026-09-08). 사번은 이제 주소보다 셸·세션이
+     *   먼저이고, 그 둘이 값을 들고 있으면 주소에 없어도 막히지 않는다 — 그것이 이 회차의
+     *   수정이다. 이 시험이 재는 것은 «셋 다 없을 때» 저장을 시도조차 하지 않는가다.
+     */
+    renderScreen({ writes }, `/pop/production-result?workOrderId=${String(WORK_ORDER_ID)}`, {
+      ...IDENTIFIED,
+      workerNo: null,
+    });
 
     expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
     expect(saveButton()).toBeDisabled();

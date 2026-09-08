@@ -179,6 +179,53 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /*
+   * 금형 둘. **씨앗이 답하지 않으면 계약 예시가 답하고, 예시는 «무엇을 물어도» 금형을
+   * 하나 돌려준다** — 자재 투입 화면은 칸이 하나라 자재LOT 을 스캔해도 금형으로 잡혀
+   * 담은 자재가 계속 비었다(실측 2026-09-08 · 실기).
+   */
+  const molds = [
+    {
+      moldId: 6001,
+      plantId: PLANT_ID,
+      moldCode: 'MLD-0207',
+      moldName: '하우징 프레스 금형',
+      toolTypeCode: 'MOLD',
+      cavityCount: 1,
+      guaranteedShotCount: 500000,
+      currentShotCount: 128400,
+      availableShotCount: 371600,
+      statusCode: 'IN_SERVICE',
+      isActive: true,
+      pmTriggerTypeCode: 'NONE',
+      pmCycleInterval: 6,
+      pmCycleUnitCode: 'MONTH',
+      lastPmDate: dayOf(shift(now, -120)),
+      nextPmDate: dayOf(shift(now, 60)),
+      pmDue: false,
+    },
+    /* 적정 타수가 없는 금형 — 「남은 타수 산출 불가」를 재 볼 자리다. */
+    {
+      moldId: 6002,
+      plantId: PLANT_ID,
+      moldCode: 'MLD-0311',
+      moldName: '커버 사출 금형',
+      toolTypeCode: 'MOLD',
+      cavityCount: 2,
+      guaranteedShotCount: null,
+      currentShotCount: 4200,
+      availableShotCount: null,
+      statusCode: 'IN_SERVICE',
+      isActive: true,
+      pmTriggerTypeCode: 'NONE',
+      pmCycleInterval: null,
+      pmCycleUnitCode: null,
+      lastPmDate: null,
+      nextPmDate: null,
+      pmDue: false,
+    },
+  ];
+
   const equipments = [
     { equipmentId: 5001, equipmentCode: 'PRS-01', equipmentName: '프레스 1호기' },
     { equipmentId: 5002, equipmentCode: 'EQ-03', equipmentName: '사출기 3호' },
@@ -762,6 +809,7 @@ export const createSeed = (now = new Date()) => {
       lotId: null,
       labelIssued: false,
     },
+    /* main 이 더한 여벌 라인 셋 — 되돌릴 수 없는 화면을 다시 짚어 보게 한다(#906). */
     {
       inboundReceiptLineId: 9304,
       inboundReceiptId: 9002,
@@ -806,6 +854,45 @@ export const createSeed = (now = new Date()) => {
       substituteLotReasonCode: null,
       lotId: null,
       labelIssued: false,
+    },
+    /*
+     * 미부착 라인 — 공급사가 라벨을 붙이지 않고 보낸 것. 자재LOT 등록·라벨 발행(P-01-01)이
+     * 이것을 받아 LOT 을 발번하고 라벨을 찍는다.
+     *
+     * ⚠ **이 줄이 없으면 그 화면이 목록부터 비어 뜬다**(실측 2026-09-08). 그 화면은
+     * 「미부착이면서 아직 라벨을 찍지 않은」 라인만 서버에서 걸러 받는데, 씨앗의 라인은
+     * 나머지가 전부 부착이거나 이미 발행된 것이라 조건에 걸리는 줄이 하나도 없었다.
+     */
+    {
+      inboundReceiptLineId: 9307,
+      inboundReceiptId: 9001,
+      lineNo: 4,
+      purchaseOrderLineId: null,
+      itemId: 2001,
+      receivedQty: 150,
+      uomId: 1001,
+      packageCount: 3,
+      supplierLotNo: null,
+      supplierLotMissing: true,
+      substituteLotReasonCode: null,
+      lotId: null,
+      labelIssued: false,
+    },
+  ];
+
+  /*
+   * 오늘 친 일상 점검 한 건. **작업 전 점검 관문이 이걸 찾는다** — 주기 창(일상=오늘) 안에
+   * 합격 기록이 있어야 작업 시작이 열린다. 없으면 「점검을 하고 시작하세요」로 막힌다.
+   */
+  const inspections = [
+    {
+      inspectionId: 7101,
+      equipmentId: 5001,
+      inspectionTypeCode: 'DAILY',
+      overallResultCode: 'PASS',
+      inspectedAt: iso(0, 7),
+      inspectedBy: 1001,
+      remarks: null,
     },
   ];
 
@@ -948,13 +1035,35 @@ export const createSeed = (now = new Date()) => {
       erpMessageQueued: false,
       remarks: null,
     },
-    /* 여벌 전표. 앞 전표를 받고 나면 스캔할 것이 없어 그 화면을 다시 열 수 없다. */
+    /* 여벌 전표. 앞 전표를 받고 나면 스캔할 것이 없어 그 화면을 다시 열 수 없다(#906). */
     {
       goodsIssueId: 16402,
       goodsIssueNo: 'GI-2026-000402',
       issueTypeCode: 'PRODUCTION',
       sourceDocumentTypeCode: 'PICKING_ORDER',
       sourceDocumentId: 16002,
+      sourceWarehouseId: 1001,
+      destinationTypeCode: 'LOCATION',
+      destinationId: 3001,
+      issuedAt: iso(-1),
+      statusCode: 'POSTED',
+      reasonCode: null,
+      replacementExpected: false,
+      approvalRequestId: null,
+      erpMessageQueued: false,
+      remarks: null,
+    },
+    /*
+     * 세 번째 출고 전표. **번호가 15001 인 것에 뜻이 있다** — 화면 이동 메뉴가 한동안 이
+     * 번호를 가리켰고, 그 설치본이 아직 현장에 남아 있다(실측 2026-09-08). 번호가 없으면
+     * 그 화면이 통째로 비어 「데이터가 없다」로 보인다.
+     */
+    {
+      goodsIssueId: 15001,
+      goodsIssueNo: 'GI-2026-000403',
+      issueTypeCode: 'PRODUCTION',
+      sourceDocumentTypeCode: 'PICKING_ORDER',
+      sourceDocumentId: 16001,
       sourceWarehouseId: 1001,
       destinationTypeCode: 'LOCATION',
       destinationId: 3001,
@@ -1016,6 +1125,31 @@ export const createSeed = (now = new Date()) => {
       issueQty: 60,
       uomId: 1001,
       sourceLocationId: 3002,
+      inventoryTransactionLineId: null,
+    },
+    /* 15001 전표의 라인. 수량을 다른 전표와 다르게 두어 라벨의 수량을 눈으로 가른다. */
+    {
+      goodsIssueLineId: 15101,
+      goodsIssueId: 15001,
+      lineNo: 1,
+      pickingLineId: 16201,
+      itemId: 2002,
+      lotId: 8001,
+      issueQty: 120,
+      uomId: 1001,
+      sourceLocationId: 3001,
+      inventoryTransactionLineId: null,
+    },
+    {
+      goodsIssueLineId: 15102,
+      goodsIssueId: 15001,
+      lineNo: 2,
+      pickingLineId: 16203,
+      itemId: 2001,
+      lotId: 8002,
+      issueQty: 45,
+      uomId: 1001,
+      sourceLocationId: 3001,
       inventoryTransactionLineId: null,
     },
   ];
@@ -1332,6 +1466,50 @@ export const createSeed = (now = new Date()) => {
     packedQty: allocation.packedQty ?? 0,
   });
   const shipments = [
+    /*
+     * ⚠ **번호가 14001 인 것에 뜻이 있다** — 화면 이동 메뉴가 한동안 이 번호를 가리켰고,
+     *   그 설치본이 현장에 남아 있다(실측 2026-09-08 · 출고 QR 과 같은 사정). 번호가 없으면
+     *   납품·포장 라벨 화면이 「없는 자원」으로 비어 뜬다.
+     */
+    {
+      shipmentId: 14001,
+      shipmentNo: 'SH-2026-0461B',
+      shipmentRequestId: 9602,
+      warehouseId: 1002,
+      statusCode: 'CONFIRMED',
+      shippedAt: iso(-1, 15),
+      expedited: false,
+      lines: [
+        {
+          shipmentLineId: 14011,
+          lineNo: 1,
+          shipmentRequestLineId: 9801,
+          itemId: 2003,
+          shippedQty: 200,
+          uomId: 1001,
+          allocations: [
+            shipmentAllocation({
+              shipmentLotAllocationId: 14021,
+              shipmentId: 14001,
+              shipmentLineId: 14011,
+              lotId: 8201,
+              lotNo: 'FLOT-2026-0311',
+              allocatedQty: 120,
+            }),
+            shipmentAllocation({
+              shipmentLotAllocationId: 14022,
+              shipmentId: 14001,
+              shipmentLineId: 14011,
+              lotId: 8202,
+              lotNo: 'FLOT-2026-0305',
+              allocatedQty: 80,
+              packedQty: 30,
+            }),
+          ],
+        },
+      ],
+      versionNo: 1,
+    },
     {
       shipmentId: 9901,
       shipmentNo: 'SH-2026-0455',
@@ -1356,6 +1534,13 @@ export const createSeed = (now = new Date()) => {
               lotId: 8201,
               lotNo: 'FLOT-2026-0311',
               allocatedQty: 180,
+              /*
+               * ⭐ **포장 라벨의 대상은 이 값으로 정해진다** — 납품·포장 라벨 출력(P-04-02)이
+               *    배분의 `handlingUnitId` 를 모아 그 수만큼 취급 단위를 부른다. 비어 있으면
+               *    화면은 「이 출하에는 포장이 없습니다」로 서고 라벨을 한 장도 뽑을 수
+               *    없다(실측 2026-09-08 · 실기).
+               */
+              handlingUnitId: 13001,
             }),
             shipmentAllocation({
               shipmentLotAllocationId: 9922,
@@ -1366,6 +1551,13 @@ export const createSeed = (now = new Date()) => {
               allocatedQty: 120,
               /* 일부만 담긴 배분 — 잔여 계산이 도는지 손으로 볼 수 있게 한 자리다. */
               packedQty: 60,
+              handlingUnitId: 13002,
+              /*
+               * ⚠ **출하검사 미합격 한 건** — 납품 라벨은 합격한 배분만 뽑을 수 있어서,
+               *    이 줄이 있어야 「⛔ 발행 불가」 갈래를 손으로 볼 수 있다. 전부 합격으로
+               *    두면 화면의 잠금이 한 번도 서지 않는다.
+               */
+              oqcPassed: false,
             }),
           ],
         },
@@ -1469,6 +1661,64 @@ export const createSeed = (now = new Date()) => {
       predecessorOfWorkOrderId: 11001,
       releasedAt: null,
       completedAt: null,
+    },
+    /*
+     * 재작업 작업지시. **재작업 실적 등록(P-04-03)이 이 한 건으로 선다** — 원 LOT·근거
+     * 부적합·처분을 그 화면이 이 지시에서 따라간다. 없으면 목록은 뜨는데 상세가 통째로
+     * 비었다(실측 2026-09-08 · 실기).
+     */
+    {
+      workOrderId: 11004,
+      workOrderNo: 'WO-2026-000231',
+      routingOperationId: 12104,
+      routingOperationName: '재작업',
+      itemId: 2003,
+      orderQty: 160,
+      predecessorOfWorkOrderId: null,
+      releasedAt: iso(-1),
+      completedAt: null,
+      /* 재작업임을 가르는 값 — 화면이 이 유형으로 목록을 좁힌다. */
+      workOrderTypeCode: 'REWORK',
+      /* 근거 부적합과 원 LOT. 둘이 있어야 「원 LOT · 근거 · 처분」이 선다. */
+      reworkSourceNonconformanceId: 7001,
+      reworkSourceLotId: 8202,
+    },
+    /*
+     * 긴급 작업지시 둘. **현장 긴급 W/O(P-02-12)가 이 둘로 선다** — 화면이
+     * `workOrderTypeCode=EMERGENCY · open=true` 로 좁혀 묻기 때문에, 유형이 붙은 열린
+     * 지시가 없으면 목록이 통째로 빈다(실측 2026-09-08 · 실기).
+     *
+     * ⭐ **배정 유무로 둘을 갈랐다** — 상세의 통제 우회 머리말이 4M 배정이 «전부» 비었을
+     *    때와 하나라도 붙었을 때 다르게 서므로, 두 갈래를 손으로 보려면 둘이 필요하다.
+     */
+    {
+      workOrderId: 11005,
+      workOrderNo: 'WO-2026-000232E',
+      routingOperationId: 12102,
+      routingOperationName: '조립 2호',
+      itemId: 2003,
+      orderQty: 40,
+      predecessorOfWorkOrderId: null,
+      releasedAt: iso(0, 8),
+      completedAt: null,
+      workOrderTypeCode: 'EMERGENCY',
+      priorityNo: 0,
+    },
+    {
+      workOrderId: 11006,
+      workOrderNo: 'WO-2026-000233E',
+      routingOperationId: 12101,
+      routingOperationName: '사출',
+      itemId: 2003,
+      orderQty: 120,
+      predecessorOfWorkOrderId: null,
+      releasedAt: iso(0, 10),
+      completedAt: null,
+      workOrderTypeCode: 'EMERGENCY',
+      priorityNo: 0,
+      /* 배정이 붙은 쪽 — 머리말이 「배정 없음」이 아닌 갈래로 선다. */
+      plannedEquipmentId: 5002,
+      plannedMoldId: 6002,
     },
   ].map((workOrder) => ({
     productionPlanId: 12001,
@@ -1752,6 +2002,8 @@ export const createSeed = (now = new Date()) => {
     partners,
     equipments,
     inspectionItems,
+    inspections,
+    molds,
     codeValues,
     lots,
     holds,
@@ -1781,7 +2033,6 @@ export const createSeed = (now = new Date()) => {
     defectRecords,
     repairExecutions: [],
     inspectionRequests,
-    inspections: [],
     breakdowns: [],
     operationHandovers: [],
     /**

@@ -113,8 +113,7 @@ const renderScreen = (
         }),
     },
     {
-      match: (request) =>
-        /^\/quality\/inspection-plans\/\d+$/.test(new URL(request.url).pathname),
+      match: (request) => /^\/quality\/inspection-plans\/\d+$/.test(new URL(request.url).pathname),
       respond: () => jsonResponse({ inspectionPlan: { inspectionPlanCode: 'IP-ABC-123' } }),
     },
     {
@@ -422,6 +421,27 @@ describe('PqcInspectionScreen — 검사 항목 구획', () => {
     await waitFor(() => expect(requested.length).toBeGreaterThanOrEqual(2));
     expect(requested).toContain('INSPECTION_RESULT_OVERALL_JUDGMENT');
     expect(requested).toContain('INSPECTION_MEASUREMENT_JUDGMENT');
+  });
+});
+
+describe('PqcInspectionScreen — 숫자 키패드', () => {
+  it('직접 입력과 화면 키패드가 같은 소수 수량 초안을 고친다', async () => {
+    renderScreen();
+
+    const rejected = await screen.findByLabelText(t.result.fields.rejected);
+    await userEvent.clear(rejected);
+    await userEvent.type(rejected, '0.5');
+    expect(rejected).toHaveValue('0.5');
+
+    await userEvent.clear(rejected);
+    await userEvent.click(rejected);
+
+    const keypad = screen.getByRole('group', { name: t.pad.keypadLabel });
+    await userEvent.click(within(keypad).getByRole('button', { name: '0' }));
+    await userEvent.click(within(keypad).getByRole('button', { name: t.pad.decimal }));
+    await userEvent.click(within(keypad).getByRole('button', { name: '5' }));
+
+    expect(rejected).toHaveValue('0.5');
   });
 });
 
@@ -770,5 +790,4 @@ describe('PqcInspectionScreen — 액션바', () => {
     expect(await screen.findByText(t.result.confirmBlockedByTotals)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
   });
-
 });

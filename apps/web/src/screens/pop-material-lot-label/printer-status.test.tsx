@@ -26,7 +26,6 @@ type IndicatorProps = Parameters<typeof PrinterStatusIndicator>[0];
 const renderIndicator = (props: Partial<IndicatorProps> = {}) => {
   const resolved: IndicatorProps = {
     printer: printer('READY'),
-    hasChoice: false,
     isLoading: false,
     isError: false,
     onRetry: vi.fn(),
@@ -78,26 +77,16 @@ describe('PrinterStatusIndicator', () => {
 });
 
 describe('프린터 선택 자리', () => {
-  /**
-   * 스펙 §5-1 은 「프린터 선택 | 프린터 2대 이상」을, §8-4 는 「선택 UI 는 자리만」을 정했다.
-   * 설치 구성이 고객 정리 대기라 **고르는 동작을 만들지 않는다** — 감추지도 않는다(F-1).
+  /*
+   * ⛔ **고르는 자리를 두지 않는다.** 인쇄는 기본 프린터로 나간다(사용자 지시 2026-09-08).
+   *    누를 수 없는 버튼이 자리만 차지해 「왜 못 고르나」를 되묻게 했다.
    */
-  it('프린터가 한 대뿐이면 선택 자리를 두지 않는다', () => {
-    renderIndicator({ hasChoice: false });
+  it('프린터가 있어도 선택 버튼을 두지 않는다', () => {
+    renderIndicator();
 
     expect(screen.queryByRole('button', { name: '프린터 선택' })).not.toBeInTheDocument();
   });
-
-  it('둘 이상이면 자리를 두되 고르지 못하게 하고 사유를 붙인다', () => {
-    renderIndicator({ hasChoice: true });
-
-    const select = screen.getByRole('button', { name: '프린터 선택' });
-
-    expect(select).toBeDisabled();
-    expect(select).toHaveAttribute('title', expect.stringContaining('프린터 배정이 정해지면'));
-  });
 });
-
 describe('toHeadPrinter', () => {
   it('기본 프린터가 있으면 그것을 고른다', () => {
     const chosen = toHeadPrinter([printer('READY', '대기 중', false), printer('BUSY', '인쇄 중')]);

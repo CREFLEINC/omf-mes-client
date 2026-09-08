@@ -14,9 +14,18 @@
  * ⛔ **셸이 출력물을 다시 그리지 않는다.** 서버가 그린 바이트를 그대로 넘긴다 — 단말마다
  * 출력물이 달라지지 않게 하기 위함이다(POP 셸 설계 결정 18).
  */
+import {
+  labelRenditionFormat,
+  type LabelRenditionFormat,
+} from '../../patterns/pop-label-rendition';
 
 /** 라벨·인식표 모두 이미지다. 성적서·보고서(`pdf`)는 이 화면의 출력물이 아니다. */
-export const LABEL_RENDITION_FORMAT = 'png';
+/**
+ * 라벨 형식. **셸이 있으면 명령형(`tspl`)** 으로 받아 프린터가 자기 글꼴로 찍게 한다 —
+ * 그림으로 받으면 드라이버가 픽셀로 그려, 명령으로 뽑은 라벨과 다른 물건으로 보인다
+ * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
+ */
+export const LABEL_RENDITION_FORMAT: LabelRenditionFormat = labelRenditionFormat();
 
 /**
  * POP 셸이 렌더러에 여는 통로 중 이 화면이 쓰는 부분.
@@ -25,7 +34,7 @@ export const LABEL_RENDITION_FORMAT = 'png';
  * 수 없다」는 사실이라, 화면은 그 사유를 말하고 발행까지만 진행한다.
  */
 export interface RenditionShell {
-  save: (bytes: Uint8Array, label: string, now: string, format: 'png' | 'pdf') => Promise<string>;
+  save: (bytes: Uint8Array, label: string, now: string, format: LabelRenditionFormat | 'pdf') => Promise<string>;
 }
 
 interface ShellCarrier {

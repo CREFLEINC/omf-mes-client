@@ -46,11 +46,21 @@ export const ReissueDialog = ({
       onClose={onCancel}
       size="md"
       closeOnBackdropClick={false}
+      /*
+       * ⛔ **X 를 두지 않는다**(사용자 결정 2026-09-08). 나가는 길이 바닥의 「취소」와
+       *    우상단 X 로 둘이면, 장갑 낀 손이 어느 쪽을 눌러야 하는지 매번 고른다 —
+       *    같은 일을 하는 단추가 둘이면 단말에서는 그냥 오조작 자리다.
+       */
+      showCloseButton={false}
       title={t.title}
       footer={
         <>
+          {/*
+            * ⭐ **둘의 크기를 맞춘다**(사용자 결정 2026-09-08) — 글자 수가 달라 폭이 갈리면
+            *    「큰 쪽이 옳은 쪽」으로 읽힌다. 여기서 고르는 것은 옳고 그름이 아니다.
+            */}
           <Button
-            className={popTouchClass('normal')}
+            className={`${popTouchClass('normal')} pop-reissue-action`}
             variant="outlined"
             size="xl"
             onClick={onCancel}
@@ -58,7 +68,7 @@ export const ReissueDialog = ({
             {t.cancel}
           </Button>
           <Button
-            className={popTouchClass('critical')}
+            className={`${popTouchClass('critical')} pop-reissue-action`}
             size="xl"
             disabled={!isReady}
             onClick={() => {
@@ -70,25 +80,25 @@ export const ReissueDialog = ({
         </>
       }
     >
-      <p className="field-note pop-wide-note">{t.description}</p>
-
       {isError ? <AlertBanner variant="error">{t.loadFailed}</AlertBanner> : null}
       {!isError && !isLoading && reasons.length === 0 ? (
         <AlertBanner variant="warning">{t.empty}</AlertBanner>
       ) : null}
 
       {isChoosable ? (
-        <>
-          <span className="field-label">{t.label}</span>
-          <Select
-            aria-label={t.label}
-            size="xl"
-            placeholder={t.placeholder}
-            value={selected}
-            options={reasons.map((reason) => ({ value: reason.code, label: reason.name }))}
-            onChange={setSelected}
-          />
-        </>
+        /*
+         * ⛔ **이름표를 붙이지 않는다**(사용자 결정 2026-09-08). 창 제목이 「재인쇄 사유」고
+         *    고를 것이 이 하나뿐이라, 「사유」를 한 번 더 적어도 알려 주는 것이 없다.
+         *    ⚠ 화면 낭독용 이름은 `aria-label` 로 남긴다 — 보이지 않을 뿐 사라지면 안 된다.
+         */
+        <Select
+          aria-label={t.label}
+          size="xl"
+          placeholder={t.placeholder}
+          value={selected}
+          options={reasons.map((reason) => ({ value: reason.code, label: reason.name }))}
+          onChange={setSelected}
+        />
       ) : null}
     </Dialog>
   );

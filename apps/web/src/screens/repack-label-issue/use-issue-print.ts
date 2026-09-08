@@ -155,9 +155,33 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
         const received = new Uint8Array(data);
         bytes.current = received;
 
-        const url = URL.createObjectURL(
-          new Blob([received], { type: `image/${LABEL_RENDITION_FORMAT}` }),
-        );
+        /*
+         * ⛔ **미리보기는 «그림»으로 따로 받는다.** 인쇄로 나가는 것은 명령형(`tspl`)인데,
+         *    그 바이트를 `<img>` 에 넣으면 언제나 「그릴 수 없습니다」가 뜬다 — 그리고
+         *    명령형을 쓰는 자리는 실기 단말뿐이라, **확인해야 할 그 단말에서만** 미리보기가
+         *    통째로 죽는다(리뷰 지적 2026-09-08).
+         *
+         * ⚠ 그림을 못 받아도 인쇄는 막지 않는다 — 종이로 나갈 바이트는 이미 손에 있다.
+         */
+        const previewBytes =
+          LABEL_RENDITION_FORMAT === 'png'
+            ? received
+            : await runRequest<ArrayBuffer>(() =>
+                client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
+                  params: {
+                    path: { documentIssueLogId: target.documentIssueLogId },
+                    query: { format: 'png' },
+                  },
+                  parseAs: 'arrayBuffer',
+                }),
+              )
+                .then((drawn) => new Uint8Array(drawn))
+                .catch(() => null);
+
+        const url =
+          previewBytes === null
+            ? null
+            : URL.createObjectURL(new Blob([previewBytes], { type: 'image/png' }));
         objectUrl.current = url;
 
         setState({ phase: 'preview', imageUrl: url, reason: null, target });

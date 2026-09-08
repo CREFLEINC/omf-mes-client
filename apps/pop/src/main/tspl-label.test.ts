@@ -29,11 +29,16 @@ const eachLabel: [string, string][] = [
 ];
 
 describe('사양서 공통 인쇄 사양', () => {
+  /*
+   * ⭐ **대지는 «걸린 용지»다**(사용자 확인 2026-09-08). 사양서의 서식 크기(80×30)를 `SIZE`
+   *    에 적으면 100×60 라벨지를 건 프린터가 어긋난 대지를 잡아 오류를 낸다 — 서식은 그
+   *    대지 «안»에 그린다.
+   */
   it.each([
-    ['표준 LOT 라벨', lot, 'SIZE 80 mm,30 mm'],
-    ['출하용 라벨', shipping, 'SIZE 100 mm,60 mm'],
-  ])('%s 는 그 규격의 대지를 잡는다', (_name, label, expected) => {
-    expect(label).toContain(expected);
+    ['표준 LOT 라벨', lot],
+    ['출하용 라벨', shipping],
+  ])('%s 는 걸린 라벨지 크기로 대지를 잡는다', (_name, label) => {
+    expect(label).toContain('SIZE 100 mm,60 mm');
   });
 
   /*
@@ -80,16 +85,123 @@ describe('사양서 공통 인쇄 사양', () => {
 
 describe('표준 LOT 라벨 항목', () => {
   it.each([
-    ['라벨 유형', 'WIP'],
-    ['품질 상태', 'OK'],
+    ['유형과 상태 한 줄', 'WIP  OK'],
     ['품번', 'PART NO.: PRT-000001'],
     ['품명', 'SAMPLE PART BLK'],
     ['LOT 번호', 'LOT NO.: 000000-A01'],
     ['수량과 단위', 'QTY: 1000 EA'],
     ['기준 일시', 'MFG DT: 26-08-05 14:25'],
+  ])('%s 가 실린다', (_name, expected) => {
+    expect(lot).toContain(`"${expected}"`);
+  });
+
+  /*
+   * ⭐ 화면이 내보내는 LOT 라벨과 «같은 배치»여야 한다(사용자 지시). 두 서식이 갈리지
+   *    않게 대지·테두리·2D 바코드 크기와 자리를 여기에 못 박는다 —
+   *    짝은 `tools/mock/label-layout.mjs` 의 `renderLotLabel` 이다.
+   */
+  it.each([
+    ['대지', 'SIZE 100 mm,60 mm'],
+    ['테두리', 'BOX 0,0,638,239,2'],
+    ['2D 바코드 12mm 각', 'DMATRIX 527,24,96,96,'],
+  ])('화면 쪽 서식과 같은 %s 를 쓴다', (_name, expected) => {
+    expect(lot).toContain(expected);
+  });
+
+  /*
+   * ⭐ 사양서 §5.4 예시가 다섯째 줄에 유형별 추가 항목(§5.3)을 둔다 — 사출 공정품이면
+   *    `WO NO.` 다. **주면 찍고, 없으면 그 줄을 비운다.**
+   */
+  it.each([
     ['유형별 추가 항목', 'WO NO.: WO000000001'],
   ])('%s 가 실린다', (_name, expected) => {
     expect(lot).toContain(`"${expected}"`);
+  });
+
+  it('추가 항목이 없으면 그 줄을 비운다', () => {
+    const { extra: _drop, ...without } = SAMPLE_LOT;
+
+    expect(buildLotLabel(without)).not.toContain('WO NO.');
+  });
+
+  /*
+   * ⭐ **줄마다 하나씩 내려 쓴다 — 좌·우로 나누지 않는다.**
+   *
+   * 사양서 §5.4 예시는 유형·상태와 품번을 한 줄에 두지만, 그러면 왼쪽 칸이 19mm 로 묶여
+   * 상태가 `INSPECTION_PENDING` 처럼 길게 올 때 **품번 위로 겹쳐 찍힌다**(실측 2026-09-08 ·
+   * 실기). TSPL 은 넘쳐도 잘라 주지 않는다 — 칸을 나누지 않는 쪽을 택했다.
+   */
+  it('겹칠 수 있는 줄을 같은 높이에 두지 않는다', () => {
+    const rowOf = (needle: string): string => {
+      const found = [...lot.matchAll(/^TEXT [^,]+,([^,]+),"0",0,\d+,\d+,"([^"]*)"/gm)].find(
+        ([, , content]) => content?.includes(needle) === true,
+      );
+
+      if (found === undefined) throw new Error(`라벨에 없다: ${needle}`);
+
+      return found[1] ?? '';
+    };
+
+    expect(rowOf('WIP')).not.toBe(rowOf('PART NO.'));
+    expect(rowOf('PART NO.')).not.toBe(rowOf('QTY:'));
+    expect(rowOf('LOT NO.')).not.toBe(rowOf('QTY:'));
+  });
+
+  /*
+   * ⛔ **긴 상태 코드가 옆 칸을 덮지 않는다.** 계약이 상태 값 목록을 확정하지 않아
+   *    `INSPECTION_PENDING` 같은 값이 그대로 온다 — 실기에서 이것이 품번 위로 찍혔다.
+   */
+  it('긴 상태가 와도 품번 줄을 침범하지 않는다', () => {
+    const built = buildLotLabel({ ...SAMPLE_LOT, type: 'RAW', status: 'INSPECTION_PENDING' });
+
+    const rows = [...built.matchAll(/^TEXT (\d+),(\d+),"0",0,(\d+),\d+,"([^"]*)"/gm)];
+    const head = rows.find(([, , , , content]) => content?.startsWith('RAW') === true);
+    const partNo = rows.find(([, , , , content]) => content?.startsWith('PART NO.') === true);
+
+    expect(head).toBeDefined();
+    expect(partNo).toBeDefined();
+
+    /* 서로 다른 줄에 있고, 머리줄이 라벨 폭(80mm · 639dot) 안에서 끝난다. */
+    expect(head?.[2]).not.toBe(partNo?.[2]);
+
+    const point = Number(head?.[3] ?? 0);
+    const width = (head?.[4]?.length ?? 0) * point * 0.5 * (203 / 72);
+
+    expect(Number(head?.[1] ?? 0) + width).toBeLessThan(639);
+  });
+
+  /*
+   * ⛔ 사양서 §5.1 의 권장 «상한»을 넘지 않는다.
+   *
+   * ⚠ **하한은 재지 않는다.** 80×30 에 2D 바코드를 두고 34자리 자재LOT 번호까지 실으면
+   *   권장 크기로는 칸에 들어가지 않는다 — TSPL 은 넘쳐도 잘라 주지 않아 옆 칸과 바코드
+   *   위로 찍히므로(실측 2026-09-08), **넘치게 두기보다 줄이는 쪽**을 택했다. 대신 7pt
+   *   아래로는 내리지 않는다(§4.2) — 그 검사는 위 「7pt 아래로 줄이지 않는다」가 한다.
+   */
+  it.each([
+    ['PART NO.', 'PART NO.', 12],
+    ['수량', 'QTY:', 12],
+    ['LOT 번호', 'LOT NO.', 10],
+    ['품명', 'SAMPLE PART BLK', 9],
+    ['기준 일시', 'MFG DT', 8],
+    ['추가 항목', 'WO NO.', 8],
+  ])('%s 는 권장 상한을 넘지 않는다', (_name, needle, max) => {
+    expect(pointOf(lot, needle)).toBeLessThanOrEqual(max);
+  });
+
+  /*
+   * ⭐ 길어서 줄어들더라도 **순서는 지킨다**(§5.4) — 품번이 가장 크고, 일시가 품명보다 크지
+   *    않다. 각 줄을 따로 줄이면 짧은 품명이 가장 커진다(실측).
+   */
+  it('긴 LOT 번호가 와도 크기 순서가 뒤집히지 않는다', () => {
+    const long = buildLotLabel({
+      ...SAMPLE_LOT,
+      lotNo: '0001234500000012002607310001230007',
+    });
+
+    expect(pointOf(long, 'PART NO.')).toBeGreaterThanOrEqual(pointOf(long, 'LOT NO.'));
+    expect(pointOf(long, 'LOT NO.')).toBeGreaterThanOrEqual(pointOf(long, 'SAMPLE PART BLK'));
+    expect(pointOf(long, 'SAMPLE PART BLK')).toBeGreaterThanOrEqual(pointOf(long, 'MFG DT'));
   });
 
   /*

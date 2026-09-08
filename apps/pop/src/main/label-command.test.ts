@@ -131,11 +131,12 @@ describe('값 파일에서 라벨 만들기', () => {
 });
 
 describe('견본', () => {
-  it.each([
-    ['lot', 'SIZE 80 mm,30 mm'],
-    ['shipping', 'SIZE 100 mm,60 mm'],
-  ] as const)('%s 견본은 사양서 규격이다', (kind, expected) => {
-    expect(sampleLabel(kind)).toContain(expected);
+  /*
+   * ⭐ **대지는 «걸린 라벨지»다**(사용자 확인 2026-09-08) — 서식 크기가 아니다. 어긋나게
+   *    적으면 프린터가 오류를 내고 한 장도 안 나온다.
+   */
+  it.each(['lot', 'shipping'] as const)('%s 견본은 걸린 라벨지 대지를 잡는다', (kind) => {
+    expect(sampleLabel(kind)).toContain('SIZE 100 mm,60 mm');
   });
 });
 

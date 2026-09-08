@@ -2,7 +2,6 @@ import {
   AlertBanner,
   Button,
   Card,
-  Dialog,
   Progress,
   Select,
   Table,
@@ -45,15 +44,15 @@ export const ReworkResultRegisterScreen = () => {
   const workOrders = useReworkWorkOrders();
   const defectCodeId = useId();
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  /** 지금 치고 있는 칸. **`null` 이면 키패드가 닫혀 있다.** */
-  const [activeKey, setActiveKey] = useState<QuantityKey | null>(null);
   /**
-   * 창을 열 때의 값 — **「취소」가 되돌릴 자리**다.
+   * 지금 치고 있는 칸. **`null` 이면 아직 고르지 않은 것**이다 — 키패드는 늘 서 있다.
    *
-   * 창이 뜬 동안의 입력은 그 칸에 바로 반영된다(뒤의 합계·결과 LOT 이 즉시 따라 움직여야
-   * 하기 때문이다). 그래서 되돌리려면 **연 시점의 값을 따로 들고 있어야** 한다.
+   * ⭐ **키패드는 팝업이 아니라 구획 안에 선다**(설계 2차 공지 `a6a87e1` · `omf-mes#286`).
+   *    전에는 도면에 키패드 블록이 없어 팝업으로 세웠는데, 그 판이 자리를 지정했다 —
+   *    ② 실적 입력 구획 «안», 수량 칸 오른쪽이다. D-4 골격이 「포커스된 필드에 연동되는
+   *    입력 버퍼」라 네 칸이 패드 하나를 나눠 쓴다.
    */
-  const [keypadOpenedWith, setKeypadOpenedWith] = useState('');
+  const [activeKey, setActiveKey] = useState<QuantityKey | null>(null);
   const [drafts, setDrafts] = useState<QuantityDrafts>(EMPTY_QUANTITIES);
   const [queued, setQueued] = useState(false);
   const [queueError, setQueueError] = useState(false);
@@ -153,21 +152,14 @@ export const ReworkResultRegisterScreen = () => {
   const hasSomethingToReset =
     selected !== null &&
     (quantityKeys.some((key) => drafts[key] !== '') || queued || queueError || rejected);
+  /**
+   * 칸 하나를 키패드의 대상으로 삼는다.
+   *
+   * ⛔ **되돌릴 값을 들고 있지 않는다.** 팝업이던 때는 「취소」가 연 시점으로 돌려놓아야 했지만,
+   *    상시 키패드에는 열고 닫는 일이 없다 — 틀리게 쳤으면 그 자리에서 지우고 다시 친다.
+   */
   const openKeypad = (key: QuantityKey) => {
-    setKeypadOpenedWith(drafts[key]);
     setActiveKey(key);
-  };
-
-  /** 친 값을 그대로 두고 닫는다. */
-  const closeKeypad = () => setActiveKey(null);
-
-  /** 연 시점으로 되돌리고 닫는다 — 「취소」가 하는 일이다. */
-  const cancelKeypad = () => {
-    if (activeKey !== null) {
-      const key = activeKey;
-      setDrafts((current) => ({ ...current, [key]: keypadOpenedWith }));
-    }
-    setActiveKey(null);
   };
 
   const reset = () => {
@@ -460,6 +452,35 @@ export const ReworkResultRegisterScreen = () => {
 
                 </div>
 
+                    {/*
+                     * ⭐ **키패드는 ② 구획 «안», 수량 칸 오른쪽에 상시로 선다**
+                     *    (설계 2차 공지 `a6a87e1` · `omf-mes#286` — §3-2 지정).
+                     *
+                     * 도면이 이 자리를 비워 두었던 동안 우리는 팝업으로 세웠는데, 그 판이
+                     * 자리를 못 박았다 — ② 는 가로 전폭인데 입력 칸을 2×2 로만 써서 오른쪽이
+                     * 비어 있고, 그래서 **세로 예산(② 280)이 그대로다.**
+                     *
+                     * ⛔ **칸을 직접 치게 두지 않는다**(칸은 읽기 전용이다) — 단말의 운영체제
+                     *    키보드가 화면을 덮는다(결정 16).
+                     */}
+                    <NumericKeypad
+                      className="rework-result-pad"
+                      label={t.quantities.keypadLabel}
+                      value={activeKey === null ? '' : drafts[activeKey]}
+                      /* 고른 칸이 없으면 누를 것이 없다 — 어느 칸에 들어갈지 모르기 때문이다. */
+                      disabled={activeKey === null}
+                      allowDecimal={uom.decimalScaleOf(selected.uomId) > 0}
+                      decimalLabel={t.quantities.decimalKey}
+                      keySize="2xl"
+                      backspaceLabel={t.quantities.backspace}
+                      backspaceGlyph="⌫"
+                      clearLabel={t.quantities.clearGlyph}
+                      onChange={(value) => {
+                        if (activeKey === null) return;
+
+                        setDrafts((current) => ({ ...current, [activeKey]: value }));
+                      }}
+                    />
                   </div>
 
                   {/*
@@ -559,58 +580,6 @@ export const ReworkResultRegisterScreen = () => {
         </div>
       )}
 
-      {/*
-       * ⭐ **키패드는 칸을 누를 때만 뜬다**(사용자 결정 2026-09-07).
-       *
-       * 스펙 §3 ②는 구획 전체 폭을 입력 칸이 쓰고 **280px 로 검산**돼 있다 — 키패드를 옆에
-       * 상시로 붙이면 그 예산이 성립하지 않는다(넷의 합이 본문 616 을 넘어 스크롤이 생겼다).
-       * §5-6·§7 은 키패드를 «요구»하지만 **자리는 정하지 않는다** — 도면이 비운 자리다.
-       *
-       * ⛔ 칸을 직접 치게 두지 않는다 — 단말의 운영체제 키보드가 화면을 덮고 닫기 어렵다
-       *    (결정 16 · 전례 `P-02-04` §3-4).
-       */}
-      <Dialog
-        open={activeKey !== null}
-        /* 스크림·Escape·X 가 모두 이리로 온다 — 셋 다 「버리고 닫기」다. */
-        onClose={cancelKeypad}
-        title={activeKey === null ? '' : t.quantities.keypadTitle(t.quantities[activeKey])}
-        size="sm"
-        /* ⛔ X 를 쓰지 않는다 — 장갑 낀 손에 기호 하나는 작고 뜻도 흐리다(사용자 결정). */
-        showCloseButton={false}
-        footer={
-          <>
-            <Button size="2xl" variant="outlined" onClick={cancelKeypad}>
-              {t.quantities.keypadCancel}
-            </Button>
-            <Button size="2xl" onClick={closeKeypad}>
-              {t.quantities.keypadDone}
-            </Button>
-          </>
-        }
-      >
-        {activeKey !== null && (
-          <div className="rework-keypad-dialog">
-            <p className="rework-keypad-value">
-              {drafts[activeKey] === '' ? '0' : drafts[activeKey]}{' '}
-              <span>{uom.labelOf(selected?.uomId) ?? ''}</span>
-            </p>
-            <NumericKeypad
-              className="rework-result-pad"
-              label={t.quantities.keypadLabel}
-              value={drafts[activeKey]}
-              allowDecimal={uom.decimalScaleOf(selected?.uomId) > 0}
-              decimalLabel={t.quantities.decimalKey}
-              keySize="2xl"
-              backspaceLabel={t.quantities.backspace}
-              backspaceGlyph="⌫"
-              clearLabel={t.quantities.clearGlyph}
-              onChange={(value) =>
-                setDrafts((current) => ({ ...current, [activeKey]: value }))
-              }
-            />
-          </div>
-        )}
-      </Dialog>
 
       {/*
        * ⭐ **액션바는 화면 바닥에 붙는 띠다**(스펙 §3 — 헤더 64 + 본문 616 + 액션바 88 = 768).

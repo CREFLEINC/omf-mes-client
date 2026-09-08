@@ -191,6 +191,7 @@ const renderWithoutDisposition = () => {
  * ⭐ 키패드는 상시가 아니다 — 스펙 §3 ②가 구획 전체 폭을 입력 칸에 주고 280px 로 검산했기
  * 때문이다(사용자 결정 2026-09-07). 칸을 누르면 뜬다.
  */
+/** 칸 하나를 키패드의 대상으로 고른다 — 키패드는 늘 서 있다(설계 2차 공지 §3-2). */
 const openKeypad = async (
   user: ReturnType<typeof userEvent.setup>,
   field: string = t.quantities.goodQty,
@@ -389,7 +390,6 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
 
     await openKeypad(user);
     await user.click(screen.getByRole('button', { name: '7' }));
-    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
 
     await waitFor(() => {
       expect(resetButton()).toBeEnabled();
@@ -439,118 +439,68 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
   });
 
   /*
-   * ⭐ **키패드는 칸을 누를 때만 뜬다**(사용자 결정 2026-09-07).
+   * ⭐ **키패드는 ② 구획 안에 «상시로» 선다**(설계 2차 공지 `a6a87e1` · `omf-mes#286` §3-2).
    *
-   * 스펙 §3 ②는 구획 전체 폭을 입력 칸이 쓰고 **280px 로 검산**돼 있다 — 키패드를 옆에
-   * 상시로 붙이면 넷의 합이 본문 616 을 넘어 스크롤이 생긴다. §5-6·§7 은 키패드를 «요구»하되
-   * **자리는 정하지 않는다.**
+   * 앞선 판은 팝업이었다 — 도면이 키패드 자리를 비워 두었기 때문이다. 그 판이 자리를 못
+   * 박으면서(② 안, 수량 칸 오른쪽) 팝업일 이유가 사라졌고, **열고 닫는 일 자체가 없어졌다.**
+   * 확인·취소·X 를 두고 씨름하던 문제들도 여기서 원인째 사라진다.
    */
-  it('키패드는 상시가 아니라 칸을 눌러야 뜬다', async () => {
+  it('키패드가 구획 안에 늘 서 있다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
 
     await screen.findByRole('heading', { name: t.quantities.title });
 
-    /* 고른 직후에는 키가 없다 — ②는 입력 칸이 폭을 다 쓴다. */
-    expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
-
-    await openKeypad(user);
-
+    /* 칸을 고르기 «전»에도 키가 보인다 — 팝업이 아니다. */
     expect(screen.getByRole('button', { name: '7' })).toBeInTheDocument();
-    /* 어느 칸을 치는지 창이 말한다 — 칸이 창에 가려지기 때문이다. */
+
+    /* ⛔ 열고 닫는 조작이 없다. */
     expect(
-      screen.getByRole('heading', { name: t.quantities.keypadTitle(t.quantities.goodQty) }),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
-    });
+      screen.queryByRole('button', { name: t.quantities.keypadDone }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: t.quantities.keypadCancel }),
+    ).not.toBeInTheDocument();
   });
 
-  /*
-   * ⛔ **창이 닫혀야 한다.** 앞선 판은 칸의 `onFocus` 로도 창을 열었는데, 닫으면 포커스가
-   *    그 칸으로 돌아오면서 **다시 열렸다** — 확인·취소 어느 쪽을 눌러도 창이 그대로였다
-   *    (사용자 지적). 감지기 24개가 이것을 통과했다 — 닫는 것을 «확인»하지 않았기 때문이다.
-   */
-  it('확인을 누르면 창이 닫히고 친 값이 남는다', async () => {
+  /* ⭐ D-4 골격 — **포커스된 칸에 연동되는 입력 버퍼**다. 네 칸이 패드 하나를 나눠 쓴다. */
+  it('고른 칸에 숫자가 들어간다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
-    await openKeypad(user);
 
+    await user.click(await screen.findByLabelText(t.quantities.goodQty));
     await user.click(screen.getByRole('button', { name: '7' }));
-    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
 
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
-    });
     expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
 
-    /*
-     * ⛔ **포커스만으로는 열리지 않는다.** 실기에서는 창을 닫으면 포커스가 그 칸으로
-     *    돌아오는데, 칸이 `onFocus` 로도 열게 되어 있으면 **닫자마자 다시 열린다.**
-     *    시험 환경은 그 포커스 복귀를 흉내내지 않으므로 여기서 직접 준다.
-     */
-    fireEvent.focus(screen.getByLabelText(t.quantities.goodQty));
+    /* 다른 칸을 고르면 그 칸으로 간다 — 앞 칸의 값은 그대로 남는다. */
+    await user.click(screen.getByLabelText(t.quantities.defectQty));
+    await user.click(screen.getByRole('button', { name: '3' }));
 
-    expect(screen.queryByRole('button', { name: '7' })).not.toBeInTheDocument();
-  });
-
-  /*
-   * ⭐ **「취소」는 «연 시점»으로 되돌린다.** 창이 뜬 동안의 입력은 칸에 바로 반영되므로
-   *    (합계·결과 LOT 이 즉시 따라 움직여야 한다) 되돌릴 값을 따로 들고 있어야 한다.
-   *
-   * ⛔ X 기호를 쓰지 않는다 — 장갑 낀 손에 작고, 「닫기」와 「버리기」가 같은 뜻인지 기호로는
-   *    알 수 없다(사용자 결정).
-   */
-  it('취소를 누르면 연 시점으로 되돌리고 닫는다', async () => {
-    const { user } = renderScreen();
-    await pickWorkOrder(user);
-
-    await openKeypad(user);
-    await user.click(screen.getByRole('button', { name: '7' }));
-    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
-
-    /* 다시 열어 고친 뒤 취소하면 7 로 돌아온다. */
-    await openKeypad(user);
-    await user.click(screen.getByRole('button', { name: '9' }));
-    await user.click(screen.getByRole('button', { name: t.quantities.keypadCancel }));
-
-    await waitFor(() => {
-      expect(screen.queryByRole('button', { name: '9' })).not.toBeInTheDocument();
-    });
+    expect(screen.getByLabelText(t.quantities.defectQty)).toHaveValue('3');
     expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
   });
 
   /*
-   * ⛔ **키가 조용히 죽으면 안 된다.** 공용 키패드에 상한을 넘기면 그 부품은 넘치는 입력을
-   *    «없던 일»로 되돌리는데, 처분을 못 받았거나 이미 다 처리된 W/O 는 남은 수량이 0 이라
-   *    **모든 키가 먹통이 된다**(실측 — 아무 키도 들어가지 않았다. 사용자 지적).
-   *
-   *    넘치는 것은 막지 않고 «말한다» — 스펙 §6 이 그 자리에 배너를 세우라고 적었고 저장도
-   *    그때 잠긴다. 키를 죽이는 것은 그 조항이 아니다.
+   * ⛔ **어느 칸에 넣을지 모르면 누를 것이 없다.** 고르지 않았는데 키가 살아 있으면 그 숫자가
+   *    어디로 갔는지 알 수 없다.
    */
+  it('칸을 고르기 전에는 키가 눌리지 않는다', async () => {
+    const { user } = renderScreen();
+    await pickWorkOrder(user);
+
+    expect(await screen.findByRole('button', { name: '7' })).toBeDisabled();
+  });
+
   it('처분이 없어도 키가 살아 있다 — 넘침은 배너가 말한다', async () => {
-    const { user } = renderWithoutDisposition();
+    const { user } = renderScreen();
     await pickWorkOrder(user);
 
-    await screen.findByRole('heading', { name: t.quantities.title });
+    await user.click(await screen.findByLabelText(t.quantities.goodQty));
 
-    await openKeypad(user);
-    await user.click(screen.getByRole('button', { name: '7' }));
-    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
-
-    expect(screen.getByLabelText(t.quantities.goodQty)).toHaveValue('7');
-    /* 저장은 잠긴 채다 — 키가 사는 것과 저장이 열리는 것은 다른 축이다. */
-    expect(screen.getByRole('button', { name: t.save })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '7' })).toBeEnabled();
   });
 
-  /*
-   * ⛔ **소수점 키는 «단위»가 정한다.** 수량 컬럼이 `numeric(20,6)` 이라 소수를 담을 수는
-   *    있지만, 담을 수 있다는 것과 그 단위에 소수가 뜻이 있다는 것은 다르다 — `EA`(개)는
-   *    `decimalScale` 이 0 이라 1.5개가 없다(사용자 지적). 계약이 단위마다 그 값을 갖는다.
-   */
   it('개 단위에는 소수점 키를 세우지 않는다', async () => {
     const { user } = renderScreen();
     await pickWorkOrder(user);
@@ -634,7 +584,6 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
 
     await openKeypad(user);
     await user.click(await screen.findByRole('button', { name: '5' }));
-    await user.click(screen.getByRole('button', { name: t.quantities.keypadDone }));
 
     expect(section).toHaveTextContent(t.resultLot.good('5'));
   });

@@ -18,6 +18,10 @@ import type { components } from '@omf-mes/api-client';
  * ⛔ **그 두 구획을 임시 구현으로 메우지 않는다.** 어떻게 조립해도 목록이 지워지지 않아
  * 같은 재구성을 반복 처리하게 된다.
  */
+import {
+  labelRenditionFormat,
+  type LabelRenditionFormat,
+} from '../../patterns/pop-label-rendition';
 export type HandlingUnit = components['schemas']['HandlingUnit'];
 export type HandlingUnitContent = components['schemas']['HandlingUnitContent'];
 export type DocumentIssue = components['schemas']['DocumentIssue'];
@@ -50,7 +54,12 @@ export const TARGET_TYPE_CODE = 'HANDLING_UNIT';
 export const REISSUE_REASON_GROUP_CODE = 'REISSUE_REASON';
 
 /** 라벨은 이미지다. 성적서(`pdf`)는 이 화면의 출력물이 아니다. */
-export const LABEL_RENDITION_FORMAT = 'png';
+/**
+ * 라벨 형식. **셸이 있으면 명령형(`tspl`)** 으로 받아 프린터가 자기 글꼴로 찍게 한다 —
+ * 그림으로 받으면 드라이버가 픽셀로 그려, 명령으로 뽑은 라벨과 다른 물건으로 보인다
+ * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
+ */
+export const LABEL_RENDITION_FORMAT: LabelRenditionFormat = labelRenditionFormat();
 
 /**
  * 대상 포장의 내용물 한 줄.

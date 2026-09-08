@@ -1,6 +1,7 @@
 import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { PrecheckGate } from '../work-precheck-gate/gate';
@@ -168,12 +169,38 @@ export const WorkStartScreen = () => {
    */
   const [gateAt, setGateAt] = useState<string | null>(null);
 
+  const navigate = useNavigate();
+
+  /**
+   * 시작·재개가 끝나면 **자재 투입 화면으로 보낸다**(사용자 지시 2026-09-08).
+   *
+   * ⚠ **스펙이 이 이동을 적어 두지는 않았다.** 프로세스는 `S3`(작업 전 점검) → `S6`(작업
+   *   시작·4M 투입)로 이어지므로 «다음이 무엇인가»는 분명하지만, 「자동으로 넘어가라」는
+   *   문장은 세 화면 스펙 어디에도 없다. 스펙이 화면 전환을 지시하는 자리는 「진행 중인
+   *   세션이 있으면 그 세션으로 이동」 한 줄뿐이다.
+   *
+   * ⛔ **작업지시를 주소로 넘긴다.** 자재 투입 화면은 작업지시를 «주소가 소유한다»고 못 박았다
+   *    (`material-input-scan/screen-params.ts`) — 화면이 기억해 두면 단말을 넘겨받은 다음
+   *    작업자가 남의 작업지시에 자재를 투입한다.
+   */
+  const goToMaterialInput = (workOrderId: number): void => {
+    void navigate(`/pop/material-input?workOrderId=${String(workOrderId)}`);
+  };
+
   const startWork = useStartWork({
     workerNo: confirmedNo ?? '',
     onSuccess: () => {
       submitAtRef.current = null;
       setOutcome(t.result.started(selected?.workOrderNo ?? ''));
       setSelectedId(null);
+
+      /*
+       * ⚠ **문구가 화면에 남는 시간은 이동 전까지다.** 시작이 되면 자재 투입으로 넘어가므로
+       *   (사용자 지시 2026-09-08) 이 문구를 실제로 읽는 것은 이동이 막혔을 때뿐이다.
+       *   ⛔ 그렇다고 걷지 않는다 — 「시작하면 그 사실을 작업지시 번호와 함께 알린다」가
+       *      스펙으로 못박혀 있고, 이동 없이 서는 갈래에서 유일한 확인 수단이다.
+       */
+      if (selected !== null) goToMaterialInput(selected.workOrderId);
     },
   });
 
@@ -184,6 +211,14 @@ export const WorkStartScreen = () => {
       submitAtRef.current = null;
       setOutcome(t.result.resumed(selected?.workOrderNo ?? ''));
       setSelectedId(null);
+
+      /*
+       * ⚠ **문구가 화면에 남는 시간은 이동 전까지다.** 시작이 되면 자재 투입으로 넘어가므로
+       *   (사용자 지시 2026-09-08) 이 문구를 실제로 읽는 것은 이동이 막혔을 때뿐이다.
+       *   ⛔ 그렇다고 걷지 않는다 — 「시작하면 그 사실을 작업지시 번호와 함께 알린다」가
+       *      스펙으로 못박혀 있고, 이동 없이 서는 갈래에서 유일한 확인 수단이다.
+       */
+      if (selected !== null) goToMaterialInput(selected.workOrderId);
     },
   });
 
@@ -191,25 +226,32 @@ export const WorkStartScreen = () => {
    * 시작·재개를 막는 사유. **순서가 뜻이다** — 단말이 못 하는 일이면 사번을 아무리 잘 넣어도
    * 열리지 않으므로 그 사실을 먼저 말한다.
    */
-  const blockReason = ((): string | null => {
-    if (gate.verdict === 'unidentified') return t.blocked.unidentified;
-    if (gate.verdict === 'checking') return t.blocked.checking;
-    if (gate.verdict === 'unavailable') return t.blocked.unavailable;
-    if (gate.verdict === 'denied') return t.blocked.denied;
-    /* ⛔ 오프라인은 큐가 아니라 거부다 — 사유와 다음 행동을 함께 보인다. */
-    if (!isOnline) return t.blocked.offline;
-    if (confirmedNo === null) return t.blocked.workerMissing;
-    if (selected === null) return t.blocked.notSelected;
+  const block = ((): { code: 'notSelected' | 'other'; text: string } | null => {
+    /*
+     * ⚠ **사유를 «코드»와 함께 낸다.** 배너를 세울지는 「아무것도 안 골랐다」인지로 갈리는데,
+     *   그것을 번역 문구가 같은지로 판정하면 다른 사유가 같은 문장을 쓰게 되는 날 그 배너까지
+     *   함께 사라진다 — 화면이 조용히 말을 잃는다(리뷰 지적 2026-09-08).
+     */
+    const other = (text: string) => ({ code: 'other' as const, text });
 
-    if (openSession.isError) return t.resume.sessionLookupFailed;
-    if (openSession.isPending) return t.resume.checking;
+    if (gate.verdict === 'unidentified') return other(t.blocked.unidentified);
+    if (gate.verdict === 'checking') return other(t.blocked.checking);
+    if (gate.verdict === 'unavailable') return other(t.blocked.unavailable);
+    if (gate.verdict === 'denied') return other(t.blocked.denied);
+    /* ⛔ 오프라인은 큐가 아니라 거부다 — 사유와 다음 행동을 함께 보인다. */
+    if (!isOnline) return other(t.blocked.offline);
+    if (confirmedNo === null) return other(t.blocked.workerMissing);
+    if (selected === null) return { code: 'notSelected', text: t.blocked.notSelected };
+
+    if (openSession.isError) return other(t.resume.sessionLookupFailed);
+    if (openSession.isPending) return other(t.resume.checking);
 
     if (isResume) {
       /* ⛔ 열린 세션이 없으면 재개하지 않는다 — 새로 열면 중단 구간이 사라진다. */
-      if (openSession.data === null) return t.resume.sessionNotFound;
+      if (openSession.data === null) return other(t.resume.sessionNotFound);
     } else if (openSession.data !== null) {
       /* ⛔ 세션이 이미 열려 있으면 새로 열지 않는다(§6). */
-      return t.blocked.alreadyOpen;
+      return other(t.blocked.alreadyOpen);
     }
 
     return null;
@@ -321,15 +363,20 @@ export const WorkStartScreen = () => {
        * ⭐ 「왜 못 하는지 + 무엇을 하면 되는지」를 함께 낸다(G-3 · §5-1 · §9-2). ⛔ 회색 버튼만
        *    두지 않는다 — 작업자는 단말이 고장 난 줄 안다.
        *
+       * ⛔ **「아직 안 골랐다」는 여기 내지 않는다**(사용자 지시 2026-09-08). 화면에 들어오면
+       *    아무것도 안 고른 것이 «정상 시작 상태»인데, 그것을 경고 배너로 내면 열자마자
+       *    무언가 잘못된 것처럼 보인다. 그 안내는 선택 카드가 이미 제자리에서 하고 있고
+       *    (`selection-card.tsx`), 시작 버튼도 그 사유로 잠긴 채 선다.
+       *
        * ⚠ **자리는 설계가 정해 두지 않았다.** §6 은 사번 오류만 「인라인」으로 못박았고 시작
        *    불가 사유의 자리는 비어 있으며, §4 도면에도 이 배너가 없다. 한때 액션바 안에 두었는데
        *    ② 목록이 긴 화면에서 사유가 화면 맨 아래에 있어, 「왜 안 눌리지」 하고 버튼을 먼저
        *    보게 된다. 머리줄 아래는 이 셸이 「지금 이 화면에 걸린 것」을 말해 온 자리다.
        */}
-      {blockReason !== null && (
+      {block !== null && block.code !== 'notSelected' && (
         <div className="banner-slot">
           <AlertBanner variant="warning">
-            {blockReason}
+            {block.text}
             {retryLabel !== null && (
               <>
                 {' '}
@@ -342,28 +389,43 @@ export const WorkStartScreen = () => {
         </div>
       )}
 
-      <WorkerPanel
-        draft={draft}
-        confirmed={confirmedNo}
-        onChange={setDraft}
-        onSubmit={() => {
-          setSubmittedNo(draft.trim());
-        }}
-        onReset={() => {
-          /* 작업자를 바꾼다 — 단말이 들고 있던 사번을 비운다. */
-          setWorkerSession(null);
-          setAppliedNo(null);
-          setSubmittedNo(null);
-          setDraft('');
-          setSelectedId(null);
-        }}
-        canChange={identity.workerNo === null}
-        onRetry={() => {
-          void lookup.refetch();
-        }}
-        isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
-        error={workerError}
-      />
+      {/*
+       * ⛔ **사번을 이미 아는 자리에서는 이 구획을 세우지 않는다**(사용자 지시 2026-09-08).
+       *
+       * 스펙 §4 ① 은 사번 구획을 96px 로 그려 두었지만, 그것은 **진입 화면이 없던 때**의
+       * 그림이다. 지금은 `P-CO-01`(사번 경량 인증)이 사번을 정해 `worker-session` 에 두고
+       * 오므로, 여기서 다시 묻는 것은 같은 것을 두 번 묻는 것이다 — 작업자가 사번을 두 번
+       * 친다.
+       *
+       * ⚠ **못 받았을 때는 남긴다.** 셸도 세션도 사번을 못 준 상태에서 자리까지 없애면
+       *   작업자가 되돌아갈 길이 없다. 그때만 키패드를 세운다.
+       *
+       * 작업자를 바꾸는 길은 머리줄의 **로그아웃**이다 — 사번을 놓고 진입 화면으로 돌아간다.
+       */}
+      {confirmedNo === null && (
+        <WorkerPanel
+          draft={draft}
+          confirmed={confirmedNo}
+          onChange={setDraft}
+          onSubmit={() => {
+            setSubmittedNo(draft.trim());
+          }}
+          onReset={() => {
+            /* 작업자를 바꾼다 — 단말이 들고 있던 사번을 비운다. */
+            setWorkerSession(null);
+            setAppliedNo(null);
+            setSubmittedNo(null);
+            setDraft('');
+            setSelectedId(null);
+          }}
+          canChange={identity.workerNo === null}
+          onRetry={() => {
+            void lookup.refetch();
+          }}
+          isChecking={submittedNo !== null && confirmedNo === null && lookup.isFetching}
+          error={workerError}
+        />
+      )}
 
       <WorkOrderList
         workOrders={rows}
@@ -409,7 +471,7 @@ export const WorkStartScreen = () => {
 
       <ActionBar
         mode={isResume ? 'resume' : 'start'}
-        isBlocked={blockReason !== null}
+        isBlocked={block !== null}
         isSaving={isResume ? resumeWork.isSaving : startWork.isSaving}
         onSubmit={submit}
       />

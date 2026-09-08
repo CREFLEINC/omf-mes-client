@@ -426,6 +426,7 @@ export const MaterialInputScanScreen = () => {
             statusLabels={statusLabels}
             describeItem={labels.describeItem}
             describeUom={labels.describeUom}
+            decimalScaleOf={labels.decimalScaleOf}
             qtyDrafts={qtyDrafts}
             notes={notes}
             recordedLotIds={recordedLotIdsSeen}
