@@ -18,10 +18,26 @@ import {
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { BrowserWindow, app, dialog, globalShortcut, ipcMain, net, protocol, safeStorage } from 'electron';
+import {
+  BrowserWindow,
+  Menu,
+  app,
+  dialog,
+  globalShortcut,
+  ipcMain,
+  net,
+  protocol,
+  safeStorage,
+} from 'electron';
 import initSqlJs from 'sql.js';
 
 import { createFileBlobStore } from './file-blob-store';
+import {
+  isAllowedNavigation,
+  isBlockedKey,
+  isMaintenanceExit,
+  shouldLockKiosk,
+} from './kiosk-lock';
 import { LocalDb, type SqlDatabase } from './local-db';
 import {
   type FileWriter,
@@ -525,13 +541,91 @@ async function main(): Promise<void> {
   // 뜬다. 작업자가 셸 밖으로 빠져나갈 통로라 아예 막는다.
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => {
-    const allowed = DEV_SERVER_URL ?? RENDERER_ORIGIN;
-    if (!url.startsWith(allowed)) event.preventDefault();
+    if (!isAllowedNavigation(url, DEV_SERVER_URL ?? RENDERER_ORIGIN)) event.preventDefault();
   });
+
+  lockKiosk(window);
 
   await window.loadURL(DEV_SERVER_URL ?? RENDERER_ORIGIN);
 
   registerPrinterDiagnostic(rawPrinter, stagingDir);
+}
+
+/**
+ * 정비 목적으로 스스로 나가는 중인가. 이때만 창이 닫히는 것을 허용한다.
+ *
+ * ⚠ 창 안에서 판정하지 않고 모듈에 둔다 — `close` 는 `app.quit()` 이 부른 것과 작업자가
+ *   `Alt+F4` 로 부른 것을 구분해 주지 않는다. 구분은 이 깃발이 한다.
+ */
+let leavingOnPurpose = false;
+
+/**
+ * 화면을 가리는 대화상자가 떠 있는 깊이.
+ *
+ * ⚠ **0이 아니면 초점을 되찾지 않는다.** 대화상자가 뜨면 키오스크 창은 초점을 잃는데, 그때
+ *   되찾아 버리면 대화상자가 뒤로 밀려 **누를 수 없는 채로 화면 밖에 남는다**(라벨 진단이
+ *   그렇다). 초점 회복과 대화상자는 서로 싸우므로 한쪽을 재워 둔다.
+ */
+let modalDepth = 0;
+
+async function whileModalIsUp<T>(run: () => Promise<T>): Promise<T> {
+  modalDepth += 1;
+
+  try {
+    return await run();
+  } finally {
+    modalDepth -= 1;
+  }
+}
+
+/**
+ * 키오스크 잠금 배선 — 창 옵션이 못 막는 **입력과 창 수명**을 여기서 막는다(#901).
+ *
+ * ⭐ **왜 창 옵션만으로 부족한가.** `kiosk` · `frame:false` 는 창의 모양을 정할 뿐이라
+ *   `Alt+F4` 로 닫히고 `F11` 로 전체 화면이 풀렸다. 실기에서 실제로 그랬다.
+ *
+ * ⛔ **개발본에서는 기본으로 걸지 않는다.** 개발 PC에서 창을 닫을 수 없게 되면 화면 작업이 막힌다.
+ *    확인이 필요하면 `POP_KIOSK_LOCK=1` 로 켠다(`shouldLockKiosk` 머리말).
+ *
+ * ⚠ **Alt+Tab 은 완전히 막히지 않는다.** Windows 가 예약한 조합이라 앱까지 오지 않는다.
+ *   여기서 하는 것은 최선 노력 둘 — 항상 맨 앞에 두는 것과, 초점을 잃으면 되찾는 것이다.
+ *   완전 차단은 OS 정책(셸 대체 등) 몫이다.
+ */
+function lockKiosk(window: BrowserWindow): void {
+  if (!shouldLockKiosk({ isDev: IS_DEV, override: process.env.POP_KIOSK_LOCK })) return;
+
+  window.webContents.on('before-input-event', (event, input) => {
+    if (isMaintenanceExit(input)) {
+      leavingOnPurpose = true;
+      app.quit();
+
+      return;
+    }
+
+    if (isBlockedKey(input)) event.preventDefault();
+  });
+
+  /* 기본 메뉴가 F11·Ctrl+W 같은 가속기를 들고 있다. 메뉴를 없애 그 출처를 끊는다. */
+  Menu.setApplicationMenu(null);
+
+  /* 정비용 탈출구로 나가는 중이 아니면 창은 닫히지 않는다. */
+  window.on('close', (event) => {
+    if (!leavingOnPurpose) event.preventDefault();
+  });
+
+  /* 어떤 경로로든 전체 화면이 풀리면 되돌린다 — 키 말고 다른 길로 풀릴 수도 있다. */
+  window.on('leave-full-screen', () => {
+    window.setFullScreen(true);
+    window.setKiosk(true);
+  });
+
+  window.setAlwaysOnTop(true, 'screen-saver');
+  window.on('blur', () => {
+    if (modalDepth > 0) return;
+    if (window.isDestroyed()) return;
+
+    window.focus();
+  });
 }
 
 /**
@@ -550,7 +644,8 @@ async function main(): Promise<void> {
  */
 function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDir: string): void {
   globalShortcut.register('CommandOrControl+Alt+P', () => {
-    void (async () => {
+    /* 대화상자가 떠 있는 동안은 초점 회복을 재운다 — 아니면 이 상자가 창 뒤로 밀린다. */
+    void whileModalIsUp(async () => {
       if (rawPrinter === undefined) {
         await dialog.showMessageBox({
           type: 'warning',
@@ -596,7 +691,7 @@ function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDi
       } finally {
         rmSync(jobDir, { force: true, recursive: true });
       }
-    })();
+    });
   });
 }
 
