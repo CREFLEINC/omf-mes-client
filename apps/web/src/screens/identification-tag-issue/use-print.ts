@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import { toContractFormat } from '../../patterns/pop-label-rendition';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -85,7 +86,7 @@ export const usePrintRunner = (workerNo: string | null): PrintRunner => {
             client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
               params: {
                 path: { documentIssueLogId },
-                query: { format: TAG_RENDITION_FORMAT },
+                query: { format: toContractFormat(TAG_RENDITION_FORMAT) },
               },
               parseAs: 'arrayBuffer',
             }),

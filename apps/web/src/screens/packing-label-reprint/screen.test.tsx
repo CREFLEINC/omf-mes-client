@@ -264,7 +264,11 @@ describe('P-02-09 포장 라벨·인식표 재출력', () => {
   });
 
   it('사번이 없으면 재출력할 수 없다고 말한다', async () => {
-    renderScreen({}, `/pop/packing-label-reprint?handlingUnitId=${String(HANDLING_UNIT_ID)}`);
+    /* ⚠ 사번은 주소보다 셸·세션이 먼저다 — 셋 다 없을 때를 잰다(2026-09-08). */
+    renderScreen({}, `/pop/packing-label-reprint?handlingUnitId=${String(HANDLING_UNIT_ID)}`, {
+      ...IDENTIFIED,
+      workerNo: null,
+    });
 
     expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
   });
@@ -442,7 +446,11 @@ describe('P-02-09 재출력 대상·실행', () => {
 
   it('사번이 없으면 대상을 골라도 재출력이 잠긴다', async () => {
     const user = userEvent.setup();
-    renderScreen({}, `/pop/packing-label-reprint?handlingUnitId=${String(HANDLING_UNIT_ID)}`);
+    /* ⚠ 사번은 주소보다 셸·세션이 먼저다 — 셋 다 없을 때를 잰다(2026-09-08). */
+    renderScreen({}, `/pop/packing-label-reprint?handlingUnitId=${String(HANDLING_UNIT_ID)}`, {
+      ...IDENTIFIED,
+      workerNo: null,
+    });
 
     await user.click(await reprintPane().findByRole('checkbox', { name: selectLabel(LOT_A_NO) }));
 

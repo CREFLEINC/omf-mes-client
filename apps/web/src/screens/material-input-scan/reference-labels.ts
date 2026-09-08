@@ -42,13 +42,25 @@ const fetchItemCode = async (client: Client, itemId: number): Promise<string> =>
   return data.item.itemCode;
 };
 
+/** 단위 하나에서 화면이 쓰는 것 — 코드와 **소수 자릿수**. */
+interface UomFacts {
+  code: string;
+  /** 이 단위가 허용하는 소수 자릿수. 계약이 단위마다 갖고 있다. 없으면 0(정수). */
+  decimalScale: number;
+}
+
 /** 단위는 마스터가 작고 잘 바뀌지 않아 **한 번에 받아 둔다.** */
-const fetchUomCodes = async (client: Client): Promise<Map<number, string>> => {
+const fetchUoms = async (client: Client): Promise<Map<number, UomFacts>> => {
   const data = await runRequest(() =>
     client.GET('/mdm/uoms', { params: { query: { size: 200 } } }),
   );
 
-  return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));
+  return new Map(
+    data.items.map((uom) => [
+      uom.uomId,
+      { code: uom.uomCode, decimalScale: uom.decimalScale ?? 0 },
+    ]),
+  );
 };
 
 export interface ReferenceLabels {
@@ -56,6 +68,13 @@ export interface ReferenceLabels {
   describeItem: (itemId: number) => string;
   /** 단위 번호를 코드로 옮긴다. **모르면 빈 문자열** — 수량 뒤에 번호가 붙으면 값처럼 읽힌다. */
   describeUom: (uomId: number) => string;
+  /**
+   * 이 단위가 허용하는 소수 자릿수. **모르면 0** — 소수점 키를 세울지 정하는 값이다.
+   *
+   * ⛔ **모르는 단위에 소수점을 열지 않는다.** 「개」에 소수점을 주면 넣을 수 없는 값을 넣게
+   *    되고, 투입은 되돌릴 수 없다(정정 경로가 계약에 없다).
+   */
+  decimalScaleOf: (uomId: number) => number;
 }
 
 /**
@@ -78,7 +97,7 @@ export const useReferenceLabels = (itemIds: readonly number[]): ReferenceLabels 
 
   const uoms = useQuery({
     queryKey: referenceLabelKeys.uoms,
-    queryFn: () => fetchUomCodes(client),
+    queryFn: () => fetchUoms(client),
   });
 
   const itemCodes = new Map(
@@ -91,6 +110,7 @@ export const useReferenceLabels = (itemIds: readonly number[]): ReferenceLabels 
 
   return {
     describeItem: (itemId) => itemCodes.get(itemId) ?? String(itemId),
-    describeUom: (uomId) => uoms.data?.get(uomId) ?? '',
+    describeUom: (uomId) => uoms.data?.get(uomId)?.code ?? '',
+    decimalScaleOf: (uomId) => uoms.data?.get(uomId)?.decimalScale ?? 0,
   };
 };

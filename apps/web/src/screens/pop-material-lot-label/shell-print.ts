@@ -1,3 +1,5 @@
+import type { LabelRenditionFormat } from '../../patterns/pop-label-rendition';
+
 /**
  * 그린 라벨을 **셸에게 넘기는 자리.**
  *
@@ -19,7 +21,12 @@
 export interface PopShellApi {
   rendition: {
     /** 서버가 그려 준 출력물을 셸이 저장·인쇄하고 만들어진 경로를 돌려준다. */
-    save: (bytes: Uint8Array, label: string, now: string, format: 'png') => Promise<string>;
+    save: (
+      bytes: Uint8Array,
+      label: string,
+      now: string,
+      format: LabelRenditionFormat,
+    ) => Promise<string>;
   };
 }
 

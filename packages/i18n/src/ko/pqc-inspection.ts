@@ -69,12 +69,18 @@ export const pqcInspection = {
   },
 
   /** 수량·측정값 키패드 팝업 — 설계 §7 이 이 화면의 입력 수단으로 지정한 것이다(G-6 · D-4). */
+  /*
+   * 숫자 키패드 구획 — **설계 2차 공지(`a6a87e1` · `omf-mes#286`)가 자리를 정하면서 팝업이
+   * 아니게 됐다.** 열고 닫는 조작(확인·취소)이 사라지고, 대신 「지금 어느 칸을 치는가」를
+   * 늘 보여야 한다 — 패드가 칸에서 떨어져 서기 때문이다.
+   */
   pad: {
+    title: '숫자 키패드',
     keypadLabel: '수량 키패드',
     backspace: '한 자 지움',
     clear: '지움',
-    confirm: '확인',
-    cancel: '취소',
+    /** 아직 칸을 고르지 않았다. ⛔ 「없음」이라 적지 않는다 — 없는 것이 아니라 «고르면 된다». */
+    noTarget: '칸을 누르면 여기에 들어갑니다',
     /** 아직 아무것도 안 눌렀다 — 빈 칸을 말없이 두면 「0 이 들어갔나」로 읽힌다. */
     empty: '—',
   },
@@ -111,7 +117,7 @@ export const pqcInspection = {
 
     judgment: '종합 판정',
     judgmentPlaceholder: '판정을 고르세요',
-    judgmentUnavailable: '판정 값 목록이 아직 준비되지 않았습니다. 담당자에게 문의하세요.',
+    judgmentUnavailable: '판정 값 목록 준비 중',
     judgmentUnknown: (code: string): string => `저장된 판정(${code})이 목록에 없습니다.`,
 
     confirm: '검사 확정',
@@ -162,7 +168,7 @@ export const pqcInspection = {
     progress: (judged: number, total: number): string => `진행 ${judged} / ${total}`,
     /** 판정을 아직 안 골랐다. ⛔ 화면이 대신 고르지 않는다 — 사람이 판정한다. */
     judgmentPlaceholder: '판정',
-    judgmentUnavailable: '판정 값 목록이 아직 준비되지 않았습니다. 담당자에게 문의하세요.',
+    judgmentUnavailable: '판정 값 목록 준비 중',
     /**
      * 화면이 들고 있는 판정이 지금 목록에 없다. ⛔ **조용히 비워 두지 않는다** — 선택칸은
      * 비어 보이는데 화면은 값을 들고 있어, 아무도 판정하지 않은 줄로 읽힌다.

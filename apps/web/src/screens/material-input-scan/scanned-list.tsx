@@ -26,6 +26,11 @@ export interface ScannedListProps {
   /** 품목·단위 번호를 코드로 옮긴다. 못 옮기면 번호가, 단위는 빈 자리가 선다. */
   describeItem: (itemId: number) => string;
   describeUom: (uomId: number) => string;
+  /**
+   * 이 단위가 허용하는 소수 자릿수. **정수 단위(0)에는 소수점 키를 세우지 않는다** —
+   * 「개」에 소수점을 주면 넣을 수 없는 값을 넣게 되고, 투입은 되돌릴 수 없다.
+   */
+  decimalScaleOf: (uomId: number) => number;
   qtyDrafts: QtyDrafts;
   /** 서버가 통과시키되 기록만 한 것(§5-3). 기록된 줄에만 붙는다. */
   notes: readonly RecordedNote[];
@@ -62,6 +67,7 @@ export const ScannedList = ({
   statusLabels,
   describeItem,
   describeUom,
+  decimalScaleOf,
   qtyDrafts,
   notes,
   recordedLotIds,
@@ -194,6 +200,13 @@ export const ScannedList = ({
                 <>
                   <p className="field-note">{t.scanned.saveHint}</p>
                   <NumericKeypad
+                    /*
+                     * ⛔ **정수 단위에는 소수점 키를 세우지 않는다**(사용자 지시 2026-09-08).
+                     *    「개(EA)」에 소수점을 주면 넣을 수 없는 값을 넣게 되고, 투입은
+                     *    되돌릴 수 없다 — 정정 경로가 계약에 없다(스펙 §8 미결 9).
+                     *    무게 단위(KG 등)에는 그대로 연다 — 계약이 단위마다 자릿수를 갖는다.
+                     */
+                    allowDecimal={decimalScaleOf(material.uomId) > 0}
                     value={readQty(qtyDrafts, material.lotId)}
                     label={t.scanned.keypadLabel(material.lotNo)}
                     submitLabel={t.scanned.keypadSubmit}

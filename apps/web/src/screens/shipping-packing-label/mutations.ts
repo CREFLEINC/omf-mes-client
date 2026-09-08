@@ -1,4 +1,5 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
+import { toContractFormat } from '../../patterns/pop-label-rendition';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -126,7 +127,7 @@ const createIssues = async (
 const fetchRendition = async (client: Client, documentIssueLogId: number): Promise<Uint8Array> => {
   const data = await runRequest(() =>
     client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
-      params: { path: { documentIssueLogId }, query: { format: RENDITION_FORMAT } },
+      params: { path: { documentIssueLogId }, query: { format: toContractFormat(RENDITION_FORMAT) } },
       parseAs: 'arrayBuffer',
     }),
   );

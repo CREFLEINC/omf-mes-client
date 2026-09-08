@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toContractFormat } from '../../patterns/pop-label-rendition';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -146,7 +147,7 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
           client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
             params: {
               path: { documentIssueLogId: target.documentIssueLogId },
-              query: { format: LABEL_RENDITION_FORMAT },
+              query: { format: toContractFormat(LABEL_RENDITION_FORMAT) },
             },
             parseAs: 'arrayBuffer',
           }),
@@ -156,7 +157,13 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
         bytes.current = received;
 
         const url = URL.createObjectURL(
-          new Blob([received], { type: `image/${LABEL_RENDITION_FORMAT}` }),
+          new Blob([received], {
+            /* 명령형은 그림이 아니다 — 미리보기로 띄우지 않고 바이트 그대로 둔다. */
+            type:
+              LABEL_RENDITION_FORMAT === 'tspl'
+                ? 'application/octet-stream'
+                : `image/${LABEL_RENDITION_FORMAT}`,
+          }),
         );
         objectUrl.current = url;
 

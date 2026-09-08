@@ -224,7 +224,11 @@ describe('P-02-08 포장 작업', () => {
   });
 
   it('사번이 없으면 포장을 시작할 수 없다고 말한다', async () => {
-    renderScreen({}, `/pop/packing-work?workOrderId=${String(WORK_ORDER_ID)}`);
+    /* ⚠ 사번은 주소보다 셸·세션이 먼저다 — 셋 다 없을 때를 잰다(2026-09-08). */
+    renderScreen({}, `/pop/packing-work?workOrderId=${String(WORK_ORDER_ID)}`, {
+      ...IDENTIFIED,
+      workerNo: null,
+    });
 
     expect((await screen.findAllByText(t.entry.missingWorker)).length).toBeGreaterThan(0);
   });

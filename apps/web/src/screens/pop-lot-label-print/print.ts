@@ -18,9 +18,18 @@
  * ⚠ **이 화면은 LOT 당 한 장이다**(스펙 §8-3 — 1장으로 시작). 그래도 절차를 목록으로 두는 것은
  * 재출력이 같은 걸음을 그대로 쓰고, 매수 규칙이 바뀌어도 이 파일이 바뀌지 않게 하기 위함이다.
  */
+import {
+  labelRenditionFormat,
+  type LabelRenditionFormat,
+} from '../../patterns/pop-label-rendition';
 
 /** 라벨은 이미지다. 성적서·보고서(`pdf`)는 이 화면의 출력물이 아니다. */
-export const LOT_LABEL_RENDITION_FORMAT = 'png';
+/**
+ * 라벨 형식. **셸이 있으면 명령형(`tspl`)** 으로 받아 프린터가 자기 글꼴로 찍게 한다 —
+ * 그림으로 받으면 드라이버가 픽셀로 그려, 명령으로 뽑은 라벨과 다른 물건으로 보인다
+ * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
+ */
+export const LOT_LABEL_RENDITION_FORMAT: LabelRenditionFormat = labelRenditionFormat();
 
 /**
  * POP 셸이 렌더러에 여는 통로 중 이 화면이 쓰는 부분.
@@ -30,7 +39,7 @@ export const LOT_LABEL_RENDITION_FORMAT = 'png';
  * ⛔ 통로가 없는 것을 인쇄 성공으로 처리하지 않는다(공유계약 F-6).
  */
 export interface RenditionShell {
-  save: (bytes: Uint8Array, label: string, now: string, format: 'png' | 'pdf') => Promise<string>;
+  save: (bytes: Uint8Array, label: string, now: string, format: LabelRenditionFormat | 'pdf') => Promise<string>;
 }
 
 interface ShellCarrier {

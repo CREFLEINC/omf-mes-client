@@ -2,6 +2,7 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { labelRenditionFormat, toContractFormat } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
 import { hasPrintBridge, sendToPrinter, type PrintAttempt } from './pop-print';
 import { goodsIssueQrKeys } from './queries';
@@ -125,6 +126,15 @@ const printOne = async (client: Client, record: DocumentIssue): Promise<PrintAtt
    */
   if (!hasPrintBridge()) return { kind: 'noBridge' };
 
+  /*
+   * ⭐ **셸이 있으면 명령형(TSPL)으로 받는다**(`patterns/pop-label-rendition`).
+   *
+   * 그림으로 받아 드라이버에 넘기면 글자가 픽셀로 찍혀 **프린터 글꼴로 찍은 다른 라벨과
+   * 다른 물건으로 보이고**(굵기가 죽는다), 라벨지 크기와 그림 크기가 어긋나면 그대로
+   * 잘린다 — 이 화면만 그림 경로에 남아 있어 실기에서 그렇게 나왔다(실측 2026-09-08).
+   */
+  const format = labelRenditionFormat();
+
   let bytes: Uint8Array;
 
   try {
@@ -132,7 +142,7 @@ const printOne = async (client: Client, record: DocumentIssue): Promise<PrintAtt
       client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
         params: {
           path: { documentIssueLogId: record.documentIssueLogId },
-          query: { format: 'png' },
+          query: { format: toContractFormat(format) },
         },
         parseAs: 'arrayBuffer',
       }),
@@ -144,7 +154,7 @@ const printOne = async (client: Client, record: DocumentIssue): Promise<PrintAtt
     return { kind: 'failed', reason: cause instanceof Error ? cause.message : String(cause) };
   }
 
-  return sendToPrinter(bytes, printLabel(record), 'png');
+  return sendToPrinter(bytes, printLabel(record), format);
 };
 
 /**

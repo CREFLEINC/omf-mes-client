@@ -1,4 +1,5 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
+import { labelRenditionFormat, toContractFormat } from '../../patterns/pop-label-rendition';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
@@ -8,6 +9,13 @@ import { toDocumentIssueBody, toLotCreateBody, toPrintReportBody } from './issue
 import { receiptKeys } from './queries';
 import { popShell } from './shell-print';
 import { toIssueView, type IssueView, type TargetRow } from './types';
+
+/**
+ * 라벨 형식. **셸이 있으면 명령형(`tspl`)** 으로 받아 프린터가 자기 글꼴로 찍게 한다 —
+ * 그림으로 받으면 드라이버가 픽셀로 그려, 명령으로 뽑은 라벨과 다른 물건으로 보인다
+ * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
+ */
+const LABEL_FORMAT = labelRenditionFormat();
 
 type Client = ApiClient['client'];
 
@@ -134,7 +142,7 @@ const createIssue = async (
 const fetchRendition = async (client: Client, documentIssueLogId: number): Promise<Uint8Array> => {
   const data = await runRequest(() =>
     client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
-      params: { path: { documentIssueLogId }, query: { format: 'png' } },
+      params: { path: { documentIssueLogId }, query: { format: toContractFormat(LABEL_FORMAT) } },
       parseAs: 'arrayBuffer',
     }),
   );
@@ -316,7 +324,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
                     bytes,
                     `lot-${String(issue.documentIssueLogId)}`,
                     new Date().toISOString(),
-                    'png',
+                    LABEL_FORMAT,
                   )
                   .then(() => null)
                   .catch((cause: unknown) =>

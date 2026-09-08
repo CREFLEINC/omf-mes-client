@@ -20,6 +20,7 @@ import {
 import { settleDisposition, type DispositionState } from './disposition';
 import { FreeInputPanel } from './free-input-panel';
 import { ItemPanel } from './item-panel';
+import { KeypadPanel } from './keypad-panel';
 import { QueueLoadErrorBanner } from './load-error-banner';
 import {
   hasValueError,
@@ -112,6 +113,18 @@ export const PqcInspectionScreen = () => {
   const [disposition, setDisposition] = useState<DispositionState>(null);
   const [judgment, setJudgment] = useState('');
   /** 자유 입력 — **기준 없는 갈래가 쓰는 자리**다(§5-2). */
+  /*
+   * ⭐ **숫자 키패드는 화면의 셋째 칸에 상시로 선다**(설계 2차 공지 `a6a87e1` ·
+   *    `omf-mes#286` §3-1 — 검사 항목 464 · 결과 입력 312 · 키패드 216).
+   *
+   * 「지금 어느 칸을 치는가」를 **화면이 들고 있어야** 좌단 측정값과 우단 수량이 패드 하나를
+   * 나눠 쓸 수 있다(D-4 「포커스된 필드에 연동되는 입력 버퍼」). 구획이 각자 들면 패드가 둘이 된다.
+   */
+  const [padField, setPadField] = useState<{
+    key: keyof QuantityDraft | 'inspected';
+    label: string;
+  } | null>(null);
+
   const [remarks, setRemarks] = useState('');
   const [showErrors, setShowErrors] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -435,6 +448,29 @@ export const PqcInspectionScreen = () => {
           onJudgmentChange={setJudgment}
           disposition={disposition}
           onDispositionChange={setDisposition}
+          padField={padField}
+          onPadFieldChange={setPadField}
+        />
+
+        {/*
+         * ⭐ **셋째 칸 — 숫자 키패드**(설계 2차 공지 §3-1). 좌단 측정값과 우단 수량이
+         *    이 패드 하나를 나눠 쓴다.
+         */}
+        <KeypadPanel
+          label={padField?.label ?? null}
+          value={
+            padField === null
+              ? ''
+              : padField.key === 'inspected'
+                ? inspectedDraft
+                : draft[padField.key]
+          }
+          onChange={(next) => {
+            if (padField === null) return;
+
+            if (padField.key === 'inspected') changeInspected(next);
+            else changeDraft({ ...draft, [padField.key]: next });
+          }}
         />
       </div>
 

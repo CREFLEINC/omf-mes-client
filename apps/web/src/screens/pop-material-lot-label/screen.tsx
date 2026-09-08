@@ -128,7 +128,6 @@ export const PopMaterialLotLabelScreen = () => {
         <div className="pop-context-right">
           <PrinterStatusIndicator
             printer={headPrinter}
-            hasChoice={(printers.data ?? []).length > 1}
             isLoading={printers.isPending}
             isError={printers.isError}
             onRetry={() => {

@@ -210,7 +210,11 @@ describe('IdentificationTagIssueScreen — 단말 게이팅', () => {
 
   it('사번이 없으면 발행하지 않는다 — 서버가 거부할 쓰기를 만들지 않는다', async () => {
     const user = userEvent.setup();
-    renderScreen({}, `/pop/tag-issue?workOrderId=${String(WORK_ORDER_ID)}`);
+    /* ⚠ 사번은 주소보다 셸·세션이 먼저다 — 셋 다 없을 때를 잰다(2026-09-08). */
+    renderScreen({}, `/pop/tag-issue?workOrderId=${String(WORK_ORDER_ID)}`, {
+      ...IDENTIFIED,
+      workerNo: null,
+    });
 
     await selectLot(user);
 

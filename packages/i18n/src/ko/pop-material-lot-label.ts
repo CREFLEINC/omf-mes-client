@@ -134,7 +134,7 @@ export const popMaterialLotLabel = {
     /** 재인쇄 사유 — **회차가 2 이상이면 서버가 필수로 요구한다.** */
     reissueDialog: {
       title: '재인쇄 사유',
-      description: '왜 다시 인쇄하는지 남겨야 이력이 맞습니다.',
+      /** 창 안에는 보이지 않는다 — 고를 것이 하나뿐이라 화면 낭독용 이름으로만 남는다. */
       label: '사유',
       placeholder: '사유를 고르세요',
       confirm: '재인쇄',
