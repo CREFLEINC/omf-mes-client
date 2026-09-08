@@ -183,6 +183,11 @@ export interface TodayResult {
    */
   totalMinutes: number | null;
   isPending: boolean;
+  /**
+   * 조회를 걸었는가. 설비가 없거나 끊겼으면 걸지 않는다 — 그때의 빈 목록은 「없다」가 아니라
+   * 「모른다」다. `isPending` 은 «꺼 둔» 조회에 대해 거짓이라 이 사실을 대신 말하지 못한다.
+   */
+  isAsked: boolean;
   isError: boolean;
   error: unknown;
   refetch: () => void;
@@ -232,6 +237,12 @@ export const useTodayDowntimes = (
     downtimes: list.data ?? [],
     totalMinutes: summary.data ?? null,
     isPending: enabled && (list.isPending || summary.isPending),
+    /*
+     * **조회를 걸었는가.** 설비가 없거나 끊겼으면 걸지 않는다 — 그때 빈 목록은 「없다」가
+     * 아니라 「모른다」다. 화면이 그 둘을 다르게 그리려면 이 사실을 알아야 하고,
+     * `isPending` 은 «꺼 둔» 조회에 대해 거짓이라 대신 쓸 수 없다.
+     */
+    isAsked: enabled,
     /*
      * 목록이 실패하면 실패다. **집계만 실패한 것은 실패로 내지 않는다** — 줄은 보이는데
      * 합계 한 자리를 못 채운 것이라, 목록까지 감추면 있는 기록이 없는 것으로 보인다.

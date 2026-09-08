@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import { DetailPane } from './detail-pane';
 import { PopHeader } from './pop-header';
 import { useEmergencyWorkOrders } from './queries';
+import { reachedServer } from './reached-server';
 import type { WorkOrder } from './types';
 import { useUomLookup } from './uom-lookup';
 import { WorkOrderList } from './work-order-list';
@@ -65,8 +66,12 @@ export const EmergencyWorkOrderFieldScreen = ({
          * ⭐ 연결 여부는 «마지막 조회가 서버에 닿았는가»로 말한다 — 브라우저의 온라인
          *    표시는 산업용 패널 PC 에서 사실과 다르다(같은 기기의 서버에는 랜선 없이도 닿는다).
          *    아직 답을 못 받았으면 `undefined` 로 두어 «모른다»를 말하지 않는다.
+         *
+         * ⛔ **실패했다는 사실만으로 「오프라인」이라 말하지 않는다**(#883) — 판정은
+         *    `reached-server.ts` 가 갖는다. 서버가 401 로 답한 것을 여기서 「오프라인」으로
+         *    부르면 작업자가 네트워크를 확인하러 간다.
          */
-        isConnected={list.isError ? false : list.isSuccess ? true : undefined}
+        isConnected={reachedServer(list)}
       />
 
       {/*

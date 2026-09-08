@@ -37,8 +37,13 @@ const lotRow = {
 const balanceRow = (overrides: Record<string, unknown> = {}) => ({
   groupBy: 'LOCATION',
   warehouseId: 11,
+  /* 이름은 잔액 응답이 싣고 온다. 화면이 되짚어 부르지 않는다. */
+  warehouseName: '1공장 자재창고',
   locationId: 21,
+  locationCode: 'A-01-03',
+  locationName: '3단 선반',
   itemId: 31,
+  itemCode: 'ABC-123',
   lotId: 4,
   ownershipTypeCode: 'OWNED',
   onHandQty: 120,
@@ -197,7 +202,12 @@ describe('자재 위치 확인 화면', () => {
     renderWithProviders(<MaterialLocationScreen />, {
       fetch: stub({
         balances: [
-          balanceRow({ locationId: 22, onHandQty: 30 }),
+          balanceRow({
+            locationId: 22,
+            locationCode: 'B-02-01',
+            locationName: '평치장',
+            onHandQty: 30,
+          }),
           balanceRow({ locationId: 21, onHandQty: 90 }),
         ],
       }),

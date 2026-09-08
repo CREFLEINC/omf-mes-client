@@ -39,6 +39,11 @@ export interface StubOptions {
   uomsStatus?: number;
   /** 목록 응답을 붙들어 둔다 — 「받는 중」을 「없다」로 말하는지 잰다. */
   holdList?: boolean;
+  /**
+   * 목록 요청이 **서버에 닿지 못한다**. 상태 코드가 있는 실패(`listStatus`)와 갈라야
+   * 머리띠가 「오프라인」을 어느 쪽에 붙이는지 잴 수 있다(#883).
+   */
+  listUnreachable?: boolean;
 }
 
 const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } => {
@@ -50,6 +55,9 @@ const stub = (options: StubOptions = {}): { urls: string[]; fetch: StubFetch } =
     if (url.pathname === '/production/work-orders') {
       /* 영영 답하지 않는다 — 첫 렌더 상태를 그대로 붙들어 둔다. */
       if (options.holdList === true) return new Promise<Response>(() => {});
+
+      /* 응답이 아예 없는 실패다 — 브라우저의 fetch 가 이렇게 던진다. */
+      if (options.listUnreachable === true) throw new TypeError('Failed to fetch');
 
       if (options.listStatus !== undefined) {
         return jsonResponse({ message: '실패' }, { status: options.listStatus });
