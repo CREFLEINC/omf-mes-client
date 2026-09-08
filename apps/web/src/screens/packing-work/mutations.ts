@@ -5,7 +5,6 @@ import type {
   HandlingUnit,
   HandlingUnitCreate,
   HandlingUnitDetailResponse,
-  HandlingUnitPack,
 } from './types';
 
 /**

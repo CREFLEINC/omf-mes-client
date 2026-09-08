@@ -915,6 +915,65 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
   });
 
   /*
+   * ⛔ **연결된 채로 확정해도 앞 포장의 키가 따라오면 안 된다.** 앞 포장이 큐를 거쳐 이미
+   * 나갔는데 다음 포장이 «같은 것»을 담으면 본문 지문이 같아, 키를 버리지 않는 한 쓰기가 앞
+   * 포장의 키로 나간다 — 서버는 실행 없이 앞 응답을 되돌려 주고 **다음 포장이 조용히 사라진다.**
+   * 앞선 두 시험은 둘 다 오프라인 확정으로 끝나 이 온라인 경로를 지나지 않는다.
+   */
+  it('앞 포장이 나간 뒤 같은 것을 담아도 온라인 확정은 새 키로 나간다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    /* 응답을 도중에 바꾼다 — 앞 포장은 적용 여부를 모른 채 끝나고, 뒤엣것은 그대로 선다. */
+    const options = { writes, packStatus: 503 };
+
+    renderScreen(options);
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(t.unit.numberPending);
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const firstKey = writeAt(writes, 0).headers.get('Idempotency-Key');
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    options.packStatus = 201;
+    setOnline(true);
+    act(() => {
+      globalThis.dispatchEvent(new Event('online'));
+    });
+
+    /* 앞 포장이 큐에서 빠져나갈 때까지 기다린다 — 뒤엣것의 쓰기와 섞이지 않게 한다. */
+    await waitFor(() => {
+      expect(globalThis.localStorage.getItem(OUTBOX_STORAGE_KEY) ?? '[]').toBe('[]');
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.startNext }));
+
+    /* 다음 포장에 «같은 LOT 을 같은 수량으로» 담고, 이번에는 연결된 채로 확정한다. */
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(t.unit.numberPending);
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(3);
+    });
+
+    expect(writeAt(writes, 2).headers.get('Idempotency-Key')).not.toBe(firstKey);
+  });
+
+  /*
    * ⛔ **앞 포장의 거부를 새 포장이 물려받지 않는다.** 큐가 거부한 사실은 그 포장의 것이라,
    * 남겨 두면 아직 아무것도 담지 않은 화면이 「받지 않았습니다」를 띄운다.
    */
