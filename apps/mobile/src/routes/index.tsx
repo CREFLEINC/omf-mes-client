@@ -10,12 +10,15 @@ import { IqcSkipRequestScreen } from '../screens/iqc-skip-request/screen';
 import { InboundReceiptScreen } from '../screens/inbound-receipt/screen';
 import { InboundVarianceScreen } from '../screens/inbound-variance/screen';
 import { MaterialLocationScreen } from '../screens/material-location/screen';
+import { MaterialLotScanScreen } from '../screens/material-lot-scan/screen';
 import { MaterialPickingScreen } from '../screens/material-picking/screen';
 import { OutboxRejectionsScreen } from '../screens/outbox-rejections/screen';
 import { PackingRepackScreen } from '../screens/packing-repack/screen';
+import { PhysicalCountScreen } from '../screens/physical-count/screen';
 import { ShopfloorReceiptScreen } from '../screens/shopfloor-receipt/screen';
 import { StockTransferScreen } from '../screens/stock-transfer/screen';
 import { ProductPickingScreen } from '../screens/product-picking/screen';
+import { ProductReceiptScreen } from '../screens/product-receipt/screen';
 import { PutawayScreen } from '../screens/putaway/screen';
 import { RecycleEntryScreen } from '../screens/recycle-entry/screen';
 import { TemporaryPutawayScreen } from '../screens/temporary-putaway/screen';
@@ -41,15 +44,18 @@ export const appRoutes: RouteObject[] = [
       { path: 'temporary-putaway', element: <TemporaryPutawayScreen /> },
       { path: 'recycle-entry', element: <RecycleEntryScreen /> },
       { path: 'material-location', element: <MaterialLocationScreen /> },
+      { path: 'material-lot-scan', element: <MaterialLotScanScreen /> },
       { path: 'material-picking', element: <MaterialPickingScreen /> },
       { path: 'shopfloor-receipt', element: <ShopfloorReceiptScreen /> },
       { path: 'stock-transfer', element: <StockTransferScreen /> },
+      { path: 'physical-count', element: <PhysicalCountScreen /> },
       { path: 'equipment-failure', element: <EquipmentFailureScreen /> },
       { path: 'equipment-inspection', element: <EquipmentInspectionScreen /> },
       { path: 'iqc-skip-request', element: <IqcSkipRequestScreen /> },
       { path: 'wip-handover', element: <WipHandoverScreen /> },
       { path: 'repair-roundtrip', element: <RepairRoundtripScreen /> },
       { path: 'product-picking', element: <ProductPickingScreen /> },
+      { path: 'product-receipt', element: <ProductReceiptScreen /> },
       { path: 'packing-repack', element: <PackingRepackScreen /> },
       { path: 'rejections', element: <OutboxRejectionsScreen /> },
     ],

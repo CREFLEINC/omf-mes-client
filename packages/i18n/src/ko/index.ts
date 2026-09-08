@@ -78,6 +78,7 @@ import { workStart } from './work-start';
 import { workPrecheckGate } from './work-precheck-gate';
 import { workOrderProgress } from './work-order-progress';
 import { materialLocation } from './material-location';
+import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
 import { toolUsage } from './tool-usage';
 import { productStockStatus } from './product-stock-status';
@@ -108,6 +109,7 @@ import { poChangeReview } from './po-change-review';
 import { packingResult } from './packing-result';
 import { repairRoundtrip } from './repair-roundtrip';
 import { productPicking } from './product-picking';
+import { productReceipt } from './product-receipt';
 import { inboundReceipt } from './inbound-receipt';
 import { packingRepack } from './packing-repack';
 import { packingWork } from './packing-work';
@@ -130,6 +132,7 @@ import { runningChange } from './running-change';
 import { workHoldRegister } from './work-hold-register';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stockTransfer } from './stock-transfer';
+import { physicalCount } from './physical-count';
 
 export const ko = {
   common,
@@ -194,6 +197,7 @@ export const ko = {
   emergencyWorkOrderField,
   workOrderProgress,
   materialLocation,
+  materialLotScan,
   materialPicking,
   productStockStatus,
   shipmentRequestCreate,
@@ -222,6 +226,7 @@ export const ko = {
   toolUsage,
   repairRoundtrip,
   productPicking,
+  productReceipt,
   inboundReceipt,
   packingRepack,
   packingWork,
@@ -248,6 +253,7 @@ export const ko = {
   packingResult,
   shopfloorReceipt,
   stockTransfer,
+  physicalCount,
 } as const;
 
 export type Messages = typeof ko;

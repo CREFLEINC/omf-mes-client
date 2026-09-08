@@ -46,8 +46,17 @@ export const wipHandover = {
     none: '다음 공정이 없습니다. 최종 공정이면 출하로 갑니다.',
     /** 배포됐으나 진행 전인 공정이 이 경고가 겨냥한 가장 흔한 상태다. */
     notStarted: '아직 시작되지 않은 공정입니다. 미리 보낼 수 있습니다.',
-    option: (workOrderNo: string, operation: string) =>
-      operation === '' ? workOrderNo : `${operation} (${workOrderNo})`,
+    /*
+     * 상태를 함께 보인다. 고른 뒤가 아니라 고르기 전에 알아야 취소된 공정을 안 고른다.
+     *
+     * 어떤 상태를 보일지 화면이 가르지 않는다 - 일부만 보이면 그것이 판정이 되고, 이 화면의
+     * 취소·중단 처리는 아직 정해지지 않았다.
+     */
+    option: (workOrderNo: string, operation: string, status: string) => {
+      const head = operation === '' ? workOrderNo : `${operation} (${workOrderNo})`;
+
+      return status === '' ? head : `${head} · ${status}`;
+    },
   },
   qty: {
     label: '인계 수량',

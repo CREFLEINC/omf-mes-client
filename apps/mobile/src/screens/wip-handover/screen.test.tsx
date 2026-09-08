@@ -140,6 +140,36 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
   },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/code-values',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            code: 'RELEASED',
+            codeName: 'RELEASED',
+            nameKo: '배포',
+            displayOrder: 3,
+            isActive: true,
+          },
+          {
+            code: 'IN_PROGRESS',
+            codeName: 'IN_PROGRESS',
+            nameKo: '진행',
+            displayOrder: 4,
+            isActive: true,
+          },
+          {
+            code: 'CANCELLED',
+            codeName: 'CANCELLED',
+            nameKo: '취소',
+            displayOrder: 8,
+            isActive: true,
+          },
+        ],
+        page,
+      }),
+  },
 ];
 
 const SignedIn = ({ children }: { children: ReactNode }) => {
@@ -280,13 +310,50 @@ describe('WIP 공정 이동 화면', () => {
     await screen.findByText(LOT_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
-    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
     await user.type(screen.getByLabelText('인계 수량'), '100');
 
     expect(
       await screen.findByText('아직 시작되지 않은 공정입니다. 미리 보낼 수 있습니다.'),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: '인계 확정' })).not.toBeDisabled();
+  });
+
+  /*
+   * 취소된 공정으로 넘기면 받을 사람이 없는 곳에 물건이 간다. 인계는 되돌릴 수 없고 수령
+   * 화면이 없어, 그 LOT 은 아무도 집지 않는 상태로 남는다.
+   *
+   * 차단인지 경고인지는 아직 정해지지 않았다. 정해지기 전에도 사람이 알아볼 수는 있어야 한다.
+   */
+  it('취소된 후속 공정임을 선택지에서 알아볼 수 있다', async () => {
+    const user = userEvent.setup();
+    mount({ successors: [workOrder({ statusCode: 'CANCELLED' })] });
+    await screen.findByLabelText('LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
+
+    expect(
+      await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 취소' }),
+    ).toBeTruthy();
+  });
+
+  /* 표시명을 못 받아도 상태를 숨기지 않는다. 숨기면 「아무 말도 하지 않는」 자리로 돌아간다. */
+  it('상태 표시명을 못 받으면 코드를 그대로 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ successors: [workOrder({ statusCode: 'SUSPENDED' })] });
+    await screen.findByLabelText('LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
+
+    expect(
+      await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · SUSPENDED' }),
+    ).toBeTruthy();
   });
 
   it('이미 진행 중인 공정에는 경고하지 않는다', async () => {
@@ -298,7 +365,7 @@ describe('WIP 공정 이동 화면', () => {
     await screen.findByText(LOT_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
-    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 진행' }));
 
     expect(screen.queryByText('아직 시작되지 않은 공정입니다. 미리 보낼 수 있습니다.')).toBeNull();
   });
@@ -312,7 +379,7 @@ describe('WIP 공정 이동 화면', () => {
     await screen.findByText(LOT_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
-    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
     await user.type(screen.getByLabelText('인계 수량'), '501');
 
     expect(
@@ -335,7 +402,7 @@ describe('WIP 공정 이동 화면', () => {
     expect(await screen.findByText('완료 수량 430 EA')).toBeTruthy();
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
-    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
     await user.type(screen.getByLabelText('인계 수량'), '440');
 
     expect(await screen.findByText('완료 수량 430 EA 을(를) 넘을 수 없습니다')).toBeTruthy();
@@ -365,7 +432,7 @@ describe('WIP 공정 이동 화면', () => {
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
-    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
 
     const qty = screen.getByLabelText('인계 수량');
     await user.type(qty, '100');
@@ -393,7 +460,7 @@ describe('WIP 공정 이동 화면', () => {
     await screen.findByText(LOT_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
-    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
     await user.type(screen.getByLabelText('인계 수량'), '100');
     await user.click(screen.getByRole('button', { name: '인계 확정' }));
 
@@ -423,7 +490,7 @@ describe('WIP 공정 이동 화면', () => {
     await screen.findByText(LOT_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
-    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027)' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
     await user.type(screen.getByLabelText('인계 수량'), '100');
     await user.click(screen.getByRole('button', { name: '인계 확정' }));
 

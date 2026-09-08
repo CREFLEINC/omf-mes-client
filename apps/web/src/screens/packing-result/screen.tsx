@@ -466,12 +466,7 @@ export const PackingResultScreen = () => {
 
             if (openUnit === null) return;
 
-            confirm.mutate({
-              handlingUnit: openUnit,
-              lines,
-              workerNo: identity.workerNo,
-              now: new Date(),
-            });
+            confirm.mutate({ handlingUnit: openUnit, lines, workerNo: identity.workerNo });
           }}
         >
           {confirm.isPending ? t.actions.confirming : t.actions.confirm}
