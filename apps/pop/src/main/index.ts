@@ -18,10 +18,26 @@ import {
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-import { BrowserWindow, app, dialog, globalShortcut, ipcMain, net, protocol, safeStorage } from 'electron';
+import {
+  BrowserWindow,
+  Menu,
+  app,
+  dialog,
+  globalShortcut,
+  ipcMain,
+  net,
+  protocol,
+  safeStorage,
+} from 'electron';
 import initSqlJs from 'sql.js';
 
 import { createFileBlobStore } from './file-blob-store';
+import {
+  isAllowedNavigation,
+  isBlockedKey,
+  isMaintenanceExit,
+  shouldLockKiosk,
+} from './kiosk-lock';
 import { LocalDb, type SqlDatabase } from './local-db';
 import {
   type FileWriter,
@@ -525,13 +541,126 @@ async function main(): Promise<void> {
   // 뜬다. 작업자가 셸 밖으로 빠져나갈 통로라 아예 막는다.
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   window.webContents.on('will-navigate', (event, url) => {
-    const allowed = DEV_SERVER_URL ?? RENDERER_ORIGIN;
-    if (!url.startsWith(allowed)) event.preventDefault();
+    if (!isAllowedNavigation(url, DEV_SERVER_URL ?? RENDERER_ORIGIN)) event.preventDefault();
   });
 
   await window.loadURL(DEV_SERVER_URL ?? RENDERER_ORIGIN);
 
-  registerPrinterDiagnostic(rawPrinter, stagingDir);
+  /*
+   * ⛔ **화면이 뜬 뒤에 잠근다.** 앞에서 잠그면 로드가 실패했을 때 빠져나올 수 없다 — 창은
+   *    맨 앞에 못 박힌 채 닫히지 않고, 기동 실패를 알리는 상자는 그 뒤에 깔려 누를 수 없으며,
+   *    그 상자가 응답을 기다리느라 종료 호출에도 닿지 못한다. 남는 수단이 전원 차단뿐인데
+   *    그것이 이 잠금이 피하려던 상태다(`docs/decisions.md` 15).
+   */
+  lockKiosk(window);
+
+  registerPrinterDiagnostic(rawPrinter, stagingDir, window);
+}
+
+/**
+ * 앱이 정말로 끝나는 중인가. 이때만 창이 닫히는 것을 허용한다.
+ *
+ * ⚠ 창 안에서 판정하지 않고 모듈에 둔다 — `close` 는 종료 절차가 부른 것과 작업자가 `Alt+F4`
+ *   로 부른 것을 구분해 주지 않는다. 구분은 이 깃발이 한다.
+ *
+ * ⛔ **직접 세우지 않는다.** 세우는 것은 아래 `before-quit` · `session-end` 둘뿐이다. 손으로
+ *    세우면 「세워 놓고 종료가 안 끝난」 상태가 남고, 그때부터 Alt+F4 가 그냥 통한다 —
+ *    실패했을 때 열리는 쪽으로 넘어가는 것은 키오스크가 원하는 방향과 반대다.
+ */
+let leavingOnPurpose = false;
+
+/* 종료 절차가 실제로 시작될 때만 빗장을 푼다. */
+app.on('before-quit', () => {
+  leavingOnPurpose = true;
+});
+
+/**
+ * 화면을 가리는 대화상자가 떠 있는 깊이.
+ *
+ * ⚠ **0이 아니면 초점을 되찾지 않는다.** 대화상자가 뜨면 키오스크 창은 초점을 잃는데, 그때
+ *   되찾아 버리면 대화상자가 뒤로 밀려 **누를 수 없는 채로 화면 밖에 남는다**(라벨 진단이
+ *   그렇다). 초점 회복과 대화상자는 서로 싸우므로 한쪽을 재워 둔다.
+ */
+let modalDepth = 0;
+
+async function whileModalIsUp<T>(run: () => Promise<T>): Promise<T> {
+  modalDepth += 1;
+
+  try {
+    return await run();
+  } finally {
+    modalDepth -= 1;
+  }
+}
+
+/**
+ * 키오스크 잠금 배선 — 창 옵션이 못 막는 **입력과 창 수명**을 여기서 막는다(#901).
+ *
+ * ⭐ **왜 창 옵션만으로 부족한가.** `kiosk` · `frame:false` 는 창의 모양을 정할 뿐이라
+ *   `Alt+F4` 로 닫히고 `F11` 로 전체 화면이 풀렸다. 실기에서 실제로 그랬다.
+ *
+ * ⛔ **개발본에서는 기본으로 걸지 않는다.** 개발 PC에서 창을 닫을 수 없게 되면 화면 작업이 막힌다.
+ *    확인이 필요하면 `POP_KIOSK_LOCK=1` 로 켠다(`shouldLockKiosk` 머리말).
+ *
+ * ⚠ **Alt+Tab 은 완전히 막히지 않는다.** Windows 가 예약한 조합이라 앱까지 오지 않는다.
+ *   여기서 하는 것은 최선 노력 둘 — 항상 맨 앞에 두는 것과, 초점을 잃으면 되찾는 것이다.
+ *   완전 차단은 OS 정책(셸 대체 등) 몫이다.
+ */
+function lockKiosk(window: BrowserWindow): void {
+  if (!shouldLockKiosk({ isDev: IS_DEV, override: process.env.POP_KIOSK_LOCK })) return;
+
+  window.webContents.on('before-input-event', (event, input) => {
+    if (isMaintenanceExit(input)) {
+      app.quit();
+
+      return;
+    }
+
+    if (isBlockedKey(input)) event.preventDefault();
+  });
+
+  /* 기본 메뉴가 F11·Ctrl+W 같은 가속기를 들고 있다. 메뉴를 없애 그 출처를 끊는다. */
+  Menu.setApplicationMenu(null);
+
+  /* 종료 절차가 시작된 것이 아니면 창은 닫히지 않는다. */
+  window.on('close', (event) => {
+    if (!leavingOnPurpose) event.preventDefault();
+  });
+
+  /*
+   * ⭐ **Windows 종료·로그오프도 통과시킨다.** 안 그러면 현장에서 단말을 정상 종료할 수 없고,
+   *   OS 가 강제로 끊는 시점까지 `before-quit` 의 저장이 끝난다는 보장이 없다 — 대기열에 남은
+   *   실적이 걸린 자리다. 이 이벤트는 되돌릴 수 없으므로 막으려 해도 소용이 없다.
+   */
+  window.on('session-end', () => {
+    leavingOnPurpose = true;
+  });
+
+  /*
+   * ⭐ **거는 순간 상태를 한 번 확정한다.** 아래 핸들러는 **앞으로의 전환**에만 반응한다 —
+   *   창이 뜨고 잠기기 전 짧은 구간에 이미 풀려 버렸다면 되돌릴 사람이 없어, 프레임 없는
+   *   축소 창이 맨 앞에 못 박힌 채 남는다.
+   */
+  window.setFullScreen(true);
+  window.setKiosk(true);
+
+  /* 어떤 경로로든 전체 화면이 풀리면 되돌린다 — 키 말고 다른 길로 풀릴 수도 있다. */
+  window.on('leave-full-screen', () => {
+    if (window.isDestroyed()) return;
+    if (leavingOnPurpose) return;
+
+    window.setFullScreen(true);
+    window.setKiosk(true);
+  });
+
+  window.setAlwaysOnTop(true, 'screen-saver');
+  window.on('blur', () => {
+    if (modalDepth > 0) return;
+    if (leavingOnPurpose) return;
+    if (window.isDestroyed()) return;
+
+    window.focus();
+  });
 }
 
 /**
@@ -548,11 +677,23 @@ async function main(): Promise<void> {
  * ⚠ **결과를 반드시 말한다.** 사유를 삼키면 「눌렀는데 아무 일도 안 난다」가 되고, 그때
  *   포트가 틀린 것인지 프린터가 죽은 것인지 가릴 방법이 단말에 남지 않는다.
  */
-function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDir: string): void {
+function registerPrinterDiagnostic(
+  rawPrinter: RawPrinter | undefined,
+  stagingDir: string,
+  /**
+   * 상자를 띄울 부모 창.
+   *
+   * ⚠ **부모를 주지 않으면 상자가 키오스크 창 뒤로 깔린다.** 잠금이 창을 항상 맨 앞에 두는데
+   *   (`lockKiosk`) 소유자 없는 상자는 그 위로 못 올라온다 — 눌러도 아무 일이 없고 앱은 응답을
+   *   기다린 채 멈춘다. 부모가 있는 상자는 부모 위에 뜬다.
+   */
+  parent: BrowserWindow,
+): void {
   globalShortcut.register('CommandOrControl+Alt+P', () => {
-    void (async () => {
+    /* 대화상자가 떠 있는 동안은 초점 회복을 재운다 — 아니면 이 상자가 창 뒤로 밀린다. */
+    void whileModalIsUp(async () => {
       if (rawPrinter === undefined) {
-        await dialog.showMessageBox({
+        await dialog.showMessageBox(parent, {
           type: 'warning',
           title: '라벨 프린터 진단',
           message: '보낼 프린터를 찾을 수 없습니다',
@@ -563,7 +704,7 @@ function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDi
       }
 
       const kinds: LabelKind[] = ['lot', 'shipping'];
-      const { response } = await dialog.showMessageBox({
+      const { response } = await dialog.showMessageBox(parent, {
         type: 'question',
         title: '라벨 프린터 진단',
         message: '견본 라벨을 찍습니다',
@@ -584,7 +725,7 @@ function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDi
 
       try {
         await rawPrinter.print({ dataPath, jobName: `POP 진단 ${kind}` });
-        await dialog.showMessageBox({
+        await dialog.showMessageBox(parent, {
           type: 'info',
           title: '라벨 프린터 진단',
           message: '프린터로 보냈습니다',
@@ -592,11 +733,18 @@ function registerPrinterDiagnostic(rawPrinter: RawPrinter | undefined, stagingDi
             '견본이 규격대로 나왔는지, DataMatrix 가 스캐너에 읽히는지 확인해 주세요.\n종이가 나오지 않았다면 통신 설정이 프린터 쪽과 다를 수 있습니다.',
         });
       } catch (cause) {
-        dialog.showErrorBox('라벨 프린터 진단 — 보내지 못했습니다', reasonOf(cause));
+        /* `showErrorBox` 는 부모를 받지 못해 맨 앞 창 뒤로 깔린다 — 같은 내용을 부모 있는
+           상자로 낸다. 사유를 삼키면 포트가 틀린 것인지 프린터가 죽은 것인지 가릴 수 없다. */
+        await dialog.showMessageBox(parent, {
+          type: 'error',
+          title: '라벨 프린터 진단',
+          message: '보내지 못했습니다',
+          detail: reasonOf(cause),
+        });
       } finally {
         rmSync(jobDir, { force: true, recursive: true });
       }
-    })();
+    });
   });
 }
 
