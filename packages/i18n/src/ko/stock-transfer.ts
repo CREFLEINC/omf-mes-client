@@ -9,7 +9,7 @@
  */
 export const stockTransfer = {
   title: '재고 이동',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     shipped: '재고 이동 반출',
     arrived: '재고 이동 도착',
@@ -100,9 +100,9 @@ export const stockTransfer = {
     description: '연결되면 보냅니다. 반출과 도착은 순서대로 나갑니다.',
   },
   rejected: {
-    title: '이동이 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '이동을 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   another: '다음 이동',
 } as const;

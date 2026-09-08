@@ -424,15 +424,15 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /* 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없고, 작업자는 집힌 줄 안다. */
-  it('피킹이 거부되면 사유를 말하고 되돌아온 기록으로 가는 길을 낸다', async () => {
+  it('피킹이 거부되면 사유를 말하고 전송 실패한 기록으로 가는 길을 낸다', async () => {
     const user = userEvent.setup();
     mount({ pick: 'rejected' });
     await chooseOrder(user);
     await pickLine(user, '50');
 
-    expect(await screen.findByText('피킹이 되돌아왔습니다')).toBeTruthy();
-    expect(await screen.findByText('이 지시에서 되돌아온 건 1')).toBeTruthy();
-    expect(screen.getByRole('link', { name: '되돌아온 건 보기' })).toBeTruthy();
+    expect(await screen.findByText('피킹을 전송하지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('이 지시에서 전송 실패한 건 1')).toBeTruthy();
+    expect(screen.getByRole('link', { name: '전송 실패한 기록 보기' })).toBeTruthy();
     expect(screen.queryByText('집었습니다')).toBeNull();
   });
 
@@ -451,7 +451,7 @@ describe('자재 출고·피킹 화면', () => {
     await chooseIssueType(user);
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
 
-    expect(await screen.findByText('출고가 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('출고를 전송하지 못했습니다')).toBeTruthy();
     expect(sent.issues).toHaveLength(0);
   });
 
@@ -686,7 +686,7 @@ describe('자재 출고·피킹 화면', () => {
 
     sent.releasePick();
 
-    expect(await screen.findByText('출고가 되돌아왔습니다')).toBeTruthy();
+    expect(await screen.findByText('출고를 전송하지 못했습니다')).toBeTruthy();
     expect(sent.issues).toHaveLength(0);
   });
 
@@ -699,7 +699,7 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'rejected' });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('피킹이 되돌아왔습니다');
+    await screen.findByText('피킹을 전송하지 못했습니다');
 
     sent.set({ pick: 'ok' });
     await pickLine(user, '50');

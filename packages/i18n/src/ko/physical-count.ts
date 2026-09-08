@@ -8,7 +8,7 @@
  */
 export const physicalCount = {
   title: '실물 카운트',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     counted: '실물 카운트',
   },
@@ -69,9 +69,9 @@ export const physicalCount = {
     description: '연결되면 보냅니다.',
   },
   rejected: {
-    title: '센 것이 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '센 것을 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   another: '다음 위치',
 } as const;

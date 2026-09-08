@@ -288,7 +288,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
     await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
     await user.click(screen.getByRole('button', { name: '요청' }));
 
-    expect(await screen.findByText('요청이 되돌아왔습니다')).toBeInTheDocument();
+    expect(await screen.findByText('요청을 전송하지 못했습니다')).toBeInTheDocument();
     expect(
       screen.getByText('결재선이 없어 요청할 수 없습니다. 전산담당에게 문의하세요.'),
     ).toBeInTheDocument();

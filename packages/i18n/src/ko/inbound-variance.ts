@@ -7,7 +7,7 @@
  */
 export const inboundVariance = {
   title: '입하 오류 등록',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: '입하 오류',
   receipt: {
     legend: '대상 입하',
@@ -71,9 +71,9 @@ export const inboundVariance = {
     description: '연결되면 보냅니다. 아직 서버에 없습니다.',
   },
   rejected: {
-    title: '입하 오류가 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '입하 오류를 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 등록되지 않았다고 말한다. */
   saveFailed: {

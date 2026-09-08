@@ -20,6 +20,6 @@ export const shellHome = {
     shipment: '출하 스캔',
     equipment: '설비',
   },
-  /** 타일이 아니다 - 작업이 아니라 셸이 이고 다니는 것이라 IA 에 자리가 없다. */
-  shell: '셸',
+  /* 타일이 아니다 - 작업이 아니라 앱이 이고 다니는 것이라 설계 IA 에 자리가 없다. */
+  shell: '전송 상태',
 } as const;

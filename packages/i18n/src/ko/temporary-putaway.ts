@@ -7,7 +7,7 @@
  */
 export const temporaryPutaway = {
   title: '임시 위치 적재',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: '임시 적치',
   /** 지시는 앞 화면이 들고 온다. 이 화면이 따로 찾지 않는다. */
   noTask: {
@@ -65,9 +65,9 @@ export const temporaryPutaway = {
     description: '연결되면 보냅니다. 아직 서버에 없습니다.',
   },
   rejected: {
-    title: '임시 적치가 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '임시 적치를 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {

@@ -53,7 +53,7 @@ export const equipmentFailureReport = {
     /** 끊겼다고 끄지 않는다. 아직 못 갔다는 것을 보이는 것이 맞다. */
     offline: '연결되면 알립니다. 급하면 직접 연락하세요.',
   },
-  /** 되돌아온 건 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     report: '설비 고장 보고',
     photo: '고장 사진',
@@ -75,9 +75,9 @@ export const equipmentFailureReport = {
   },
   /** 담긴 것과 다른 말을 쓴다. 기다려도 가지 않으므로 지금 무엇을 할지 정해야 한다. */
   rejected: {
-    title: '보고가 되돌아왔습니다',
+    title: '보고를 전송하지 못했습니다',
     description: '서버가 받지 않았습니다. 아직 설비담당에게 가지 않았습니다.',
-    action: '되돌아온 기록 보기',
+    action: '전송 실패한 기록 보기',
   },
   another: '다른 고장 보고',
 } as const;

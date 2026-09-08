@@ -6,7 +6,7 @@
  */
 export const materialLotScan = {
   title: '자재LOT 스캔·등록',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     registered: '자재LOT 등록',
   },
@@ -72,9 +72,9 @@ export const materialLotScan = {
   },
   /* 같은 공장에 같은 번호가 있으면 400 이다. 다시 보내도 풀리지 않는다. */
   rejected: {
-    title: '등록이 되돌아왔습니다',
+    title: '등록을 전송하지 못했습니다',
     description: '같은 번호가 이미 있으면 다시 보내도 풀리지 않습니다. 다른 라벨을 스캔하세요. ',
-    action: '되돌아온 건 보기',
+    action: '전송 실패한 기록 보기',
   },
   another: '다음 입하 건',
 } as const;

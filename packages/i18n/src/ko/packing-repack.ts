@@ -8,7 +8,7 @@
  */
 export const packingRepack = {
   title: '포장 재구성',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     created: '새 포장',
     replaced: '원 포장 구성',
@@ -37,7 +37,7 @@ export const packingRepack = {
   /** 안 밝히면 확인된 줄 알고 배분된 포장을 재구성한다. 되돌아와도 이미 늦다. */
   unverified: {
     title: (numbers: string) => `${numbers} 의 출하 배분 여부를 확인하지 못했습니다`,
-    description: '연결된 뒤에 다시 확인하세요. 이미 배분된 포장이면 재구성이 되돌아옵니다.',
+    description: '연결된 뒤에 다시 확인하세요. 이미 배분된 포장이면 재구성 전송이 실패합니다.',
   },
   type: {
     legend: '재구성 유형',
@@ -86,9 +86,9 @@ export const packingRepack = {
     description: '연결되면 보냅니다. 동기화 후에 POP 대기 목록에 올라갑니다.',
   },
   rejected: {
-    title: '재구성이 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '재구성을 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   another: '다음 재구성',
 } as const;

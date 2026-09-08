@@ -8,7 +8,7 @@
  */
 export const shopfloorReceipt = {
   title: '생산창고 입고',
-  /** 되돌아온 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
+  /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     received: '생산창고 입고',
   },
@@ -33,7 +33,7 @@ export const shopfloorReceipt = {
   /** 안 밝히면 확인된 줄 알고 이미 받은 전표를 또 받는다. 되돌아와도 이미 늦다. */
   unverified: {
     title: '이미 받은 전표인지 확인하지 못했습니다',
-    description: '연결된 뒤에 다시 확인하세요. 이미 받은 전표면 입고가 되돌아옵니다.',
+    description: '연결된 뒤에 다시 확인하세요. 이미 받은 전표면 입고 전송이 실패합니다.',
   },
   /** 큐에 담긴 것은 서버 응답에 없다. 세지 않으면 오프라인에서 두 번 받는다. */
   queued: {
@@ -75,9 +75,9 @@ export const shopfloorReceipt = {
     description: '연결되면 보냅니다.',
   },
   rejected: {
-    title: '입고가 되돌아왔습니다',
-    description: '되돌아온 건에서 사유를 확인하세요. ',
-    action: '되돌아온 건 보기',
+    title: '입고를 전송하지 못했습니다',
+    description: '전송 실패한 기록에서 사유를 확인하세요. ',
+    action: '전송 실패한 기록 보기',
   },
   another: '다음 입고',
 } as const;
