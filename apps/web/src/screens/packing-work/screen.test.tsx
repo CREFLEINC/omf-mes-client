@@ -745,4 +745,36 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     expect(typeof body.occurredAt).toBe('string');
     expect(typeof body.businessDate).toBe('string');
   });
+
+  /*
+   * ⛔ **앞 포장의 거부를 새 포장이 물려받지 않는다.** 큐가 거부한 사실은 그 포장의 것이라,
+   * 남겨 두면 아직 아무것도 담지 않은 화면이 「받지 않았습니다」를 띄운다.
+   */
+  it('다음 포장을 시작하면 앞 포장의 거부가 화면에서 사라진다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({ packStatus: 400 });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    setOnline(true);
+    act(() => {
+      globalThis.dispatchEvent(new Event('online'));
+    });
+
+    expect(await screen.findByText(t.outbox.rejected)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.confirm.startNext }));
+
+    expect(screen.queryByText(t.outbox.rejected)).not.toBeInTheDocument();
+  });
 });

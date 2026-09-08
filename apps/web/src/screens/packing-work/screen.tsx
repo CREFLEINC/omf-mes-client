@@ -308,6 +308,11 @@ export const PackingWorkScreen = () => {
     setAddedCount(0);
     pack.reset();
     create.reset();
+    /*
+     * ⛔ **앞 포장의 거부를 새 포장 화면에 들고 가지 않는다.** 큐가 거부한 사실은 그 포장의
+     * 것이라, 여기 남으면 아직 아무것도 담지 않은 화면이 「받지 않았습니다」를 띄운다.
+     */
+    outbox.clearRejection();
   };
 
   const locked = draft.handlingUnit !== null;
