@@ -196,6 +196,8 @@ export const heldLotDetailResponse: components['schemas']['LotDetailResponse'] =
     manufacturedAt: '2026-08-01T09:00:00+09:00',
     expiryDate: null,
     remarks: null,
+    workOrderSequenceNo: null,
+    workOrderLotCount: null,
   },
   externalIdentifiers: [],
   holds: [
@@ -233,6 +235,8 @@ export const plainLotDetailResponse: components['schemas']['LotDetailResponse'] 
     manufacturedAt: '2026-08-01T09:00:00+09:00',
     expiryDate: null,
     remarks: null,
+    workOrderSequenceNo: null,
+    workOrderLotCount: null,
   },
   externalIdentifiers: [],
   holds: [],

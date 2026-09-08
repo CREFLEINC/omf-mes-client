@@ -44,6 +44,7 @@ const ENTRIES = [
   ['M-01-09 차이 사유', '/mdm/code-values?codeGroupCode=VARIANCE_REASON', 1],
   ['M-01-13 대기 요청', '/app/approval-requests?targetTypeCode=INBOUND_LOT&targetId=8003', 1],
   ['M-02-01 생산LOT', '/trace/lots?lotNo=PLOT-2026-0031', 1],
+  ['P-02-04 현재 생산LOT', '/trace/lots?workOrderId=11002&currentOnly=true&withProgress=true', 1],
   [
     'P-02-07 완료 생산LOT',
     '/trace/lots?workOrderId=11001&lotTypeCode=PRODUCTION&completed=true',
@@ -63,9 +64,11 @@ const ENTRIES = [
   ],
   ['M-04-01 제품 재고', '/inventory/balances?itemId=2003&includeZero=true', 2],
   ['M-04-03 포장 검색', '/inventory/handling-units?q=HU-2026-000058', 1],
+  ['M-04-03 라벨 미발행 포장', '/inventory/handling-units?labelIssued=false', 2],
   ['W-02-05 마감 상태', '/mdm/code-values?codeGroupCode=WORK_ORDER_STATUS', 4],
   ['W-03-02 해제 사유', '/mdm/code-values?codeGroupCode=LOT_HOLD_RELEASE_REASON', 4],
   ['W-04-06 원 출하', '/logistics/shipments?customerId=4002', 2],
+  ['P-04-01 출하번호 정확 일치', '/logistics/shipments?shipmentNo=SH-2026-0455', 1],
   ['W-04-06 불량창고 위치', '/mdm/locations?warehouseId=1003', 2],
   ['W-04-06 반품 사유', '/mdm/code-values?codeGroupCode=GOODS_RECEIPT_REASON', 1],
   ['W-04-07 판정 대기 대상', '/quality/disposition-candidates?warehouseId=1003', 2],
@@ -79,6 +82,23 @@ const ENTRIES = [
 /** 목록이 아닌 상세는 형태로 본다. */
 const DETAILS = [
   ['M-04-03 포장 내용물', '/inventory/handling-units/13001', (body) => body.contents.length >= 2],
+  [
+    'P-02-04 현재 생산LOT 형태',
+    '/trace/lots?workOrderId=11002&currentOnly=true&withProgress=true',
+    (body) =>
+      body.items.length === 1 &&
+      body.items[0].workOrderSequenceNo === 1 &&
+      body.items[0].workOrderLotCount === 1 &&
+      typeof body.items[0].progress === 'object',
+  ],
+  [
+    'P-04-01 출하 배분 상세',
+    '/logistics/shipment-lot-allocations/9921',
+    (body) =>
+      body.shipmentRequestNo === 'SR-2026-0820-0112' &&
+      typeof body.customerName === 'string' &&
+      body.shippingInspectionStatusCode === 'PASSED',
+  ],
   [
     'M-01-04 품목 계약 필드',
     '/mdm/items/2002',
@@ -237,6 +257,45 @@ for (const [name, path, check] of DETAILS) {
   }
 
   console.log(`${ok ? '✔' : '✘'} ${name}`);
+}
+
+{
+  const response = await fetch(`${BASE}/trace/lots?currentOnly=true`);
+  const body = await response.json();
+  const ok = response.status === 400 && body.code === 'WORK_ORDER_REQUIRED';
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} P-02-04 현재 LOT 작업지시 필수`);
+}
+
+{
+  const createResponse = await fetch(`${BASE}/inventory/handling-units`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ handlingUnitTypeCode: 'CARTON' }),
+  });
+  const created = await createResponse.json();
+  const handlingUnitId = created.handlingUnit?.handlingUnitId;
+  const deleteResponse = await fetch(`${BASE}/inventory/handling-units/${String(handlingUnitId)}`, {
+    method: 'DELETE',
+  });
+  const ok = createResponse.status === 201 && deleteResponse.status === 204;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} P-02-08 빈 포장 단위 취소`);
+}
+
+{
+  const response = await fetch(`${BASE}/logistics/shipment-lot-allocations/9921`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ handlingUnitId: 13001 }),
+  });
+  const body = await response.json();
+  const ok = response.ok && body.handlingUnitId === 13001;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} P-04-01 출하 배분 포장 연결`);
 }
 
 console.log(

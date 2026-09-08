@@ -186,13 +186,24 @@ export const includesExcess = (mode: SplitMode): boolean => mode !== 'NORMAL_ONL
  */
 export const toSplitRequest = (mode: SplitMode, input: SplitInput): SplitRequest => {
   const parts = toSplitParts(input.rows);
-
-  return {
-    mode,
-    ...(mode === 'EXCESS_ONLY' ? {} : { normal: toSharedPart(input, parts.normal) }),
-    ...(includesExcess(mode) ? { excess: toExcessPart(input, parts.excess) } : {}),
+  const shared = {
     /* 계약이 「영업일과 발생 시각은 바깥에서 한 번만 받는다」고 적었다 — part에 넣지 않는다. */
     businessDate: toBusinessDate(input.header.receiptDatetime),
     occurredAt: toOccurredAt(input.now),
   };
+
+  if (mode === 'BOTH') {
+    return {
+      ...shared,
+      mode,
+      normal: toSharedPart(input, parts.normal),
+      excess: toExcessPart(input, parts.excess),
+    };
+  }
+
+  if (mode === 'NORMAL_ONLY') {
+    return { ...shared, mode, normal: toSharedPart(input, parts.normal) };
+  }
+
+  return { ...shared, mode, excess: toExcessPart(input, parts.excess) };
 };

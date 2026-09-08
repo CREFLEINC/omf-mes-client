@@ -103,6 +103,7 @@ export const productionLotComplete = {
   action: {
     complete: '완료 처리',
     closeUnder: '미달 마감',
+    closeUnderMoved: '미달 사유와 잔량 처리는 관리웹의 W/O 마감에서 진행하세요.',
     submitting: '처리하는 중입니다',
   },
 

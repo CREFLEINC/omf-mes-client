@@ -80,12 +80,12 @@ export const validateDraft = (draft: NoticeDraft): DraftErrors => {
     errors.startDate = t.form.invalidDate;
   }
 
-  if (draft.endDate !== '') {
-    if (!isCalendarDate(draft.endDate)) {
-      errors.endDate = t.form.invalidDate;
-    } else if (draft.startDate !== '' && draft.endDate < draft.startDate) {
-      errors.endDate = t.form.invalidEndDate;
-    }
+  if (draft.endDate === '') {
+    errors.endDate = t.form.requiredEndDate;
+  } else if (!isCalendarDate(draft.endDate)) {
+    errors.endDate = t.form.invalidDate;
+  } else if (draft.startDate !== '' && draft.endDate < draft.startDate) {
+    errors.endDate = t.form.invalidEndDate;
   }
 
   if (draft.scopeCode === '') {
@@ -111,7 +111,7 @@ export const hasErrors = (errors: DraftErrors): boolean => Object.keys(errors).l
  *
  * ⛔ **상태를 싣지 않는다** — 서버가 게시 여부와 오늘 날짜로 파생한다.
  * ⛔ **범위가 작업지시가 아니면 작업지시를 싣지 않는다** — 짝이 어긋나면 거부된다.
- * ⛔ **종료일이 비면 싣지 않는다** — 「종료일 없이 계속」과 「빈 날짜」는 다른 뜻이다.
+ * ⭐ **종료일은 항상 싣는다** — 상태 파생이 이 날짜에 걸리므로 저장 전에 필수 검증한다.
  */
 export const toCreateBody = (draft: NoticeDraft): NoticeCreate => ({
   title: draft.title.trim(),
@@ -123,6 +123,6 @@ export const toCreateBody = (draft: NoticeDraft): NoticeCreate => ({
    * 「1차에 쓸 수 있는 둘」로 걸러 낸 것이라 안전하다.
    */
   scopeCode: draft.scopeCode as NoticeCreate['scopeCode'],
-  ...(draft.endDate === '' ? {} : { endDate: draft.endDate }),
+  endDate: draft.endDate,
   ...(needsWorkOrder(draft.scopeCode) ? { targetWorkOrderId: Number(draft.workOrder) } : {}),
 });

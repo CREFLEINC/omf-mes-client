@@ -14,6 +14,8 @@ const lot = (statusCode: string): Lot => ({
   sourceTypeCode: 'INBOUND_RECEIPT_LINE',
   sourceId: 11,
   statusCode,
+  workOrderSequenceNo: null,
+  workOrderLotCount: null,
   held: false,
 });
 

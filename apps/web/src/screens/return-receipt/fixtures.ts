@@ -65,6 +65,7 @@ export const shipmentFixture = (overrides: Partial<Shipment> = {}): Shipment => 
           warehouseId: 1002,
           allocatedQty: 180,
           uomId: 7001,
+          shippingInspectionStatusCode: 'PASSED',
           oqcPassed: true,
           packedQty: 180,
         },
@@ -79,6 +80,7 @@ export const shipmentFixture = (overrides: Partial<Shipment> = {}): Shipment => 
           warehouseId: 1002,
           allocatedQty: 120,
           uomId: 7001,
+          shippingInspectionStatusCode: 'PASSED',
           oqcPassed: true,
           packedQty: 120,
         },
@@ -114,6 +116,7 @@ export const secondShipmentFixture = (): Shipment =>
             warehouseId: 1002,
             allocatedQty: 200,
             uomId: 7001,
+            shippingInspectionStatusCode: 'PASSED',
             oqcPassed: true,
             packedQty: 200,
           },
@@ -133,6 +136,8 @@ export const lotFixture = (overrides: Partial<Lot> = {}): Lot => ({
   sourceTypeCode: 'PRODUCTION_RESULT',
   sourceId: 1,
   statusCode: 'NORMAL',
+  workOrderSequenceNo: null,
+  workOrderLotCount: null,
   ...overrides,
 });
 

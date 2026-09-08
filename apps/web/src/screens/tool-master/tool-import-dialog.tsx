@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, type ReactNode } from 'react';
 
 import { FileField } from './file-field';
+import type { CodeOption } from './code-options';
 import {
   dataRowNumber,
   failureKey,
@@ -11,6 +12,7 @@ import {
   type BatchFailure,
   type BatchResult,
 } from './import-result';
+import { SelectField } from './select-field';
 
 const t = messages.toolMaster.import;
 
@@ -18,6 +20,9 @@ const t = messages.toolMaster.import;
 const ACCEPT = '.xlsx,.xls';
 
 export interface ToolImportDialogProps {
+  plantId: string;
+  plantOptions: CodeOption[];
+  onSelectPlant: (plantId: string) => void;
   /** 고른 파일. 아직 안 골랐으면 `null` */
   file: File | null;
   onSelectFile: (file: File | null) => void;
@@ -43,6 +48,9 @@ export interface ToolImportDialogProps {
  */
 export const ToolImportDialog = ({
   file,
+  plantId,
+  plantOptions,
+  onSelectPlant,
   onSelectFile,
   result,
   banner,
@@ -75,7 +83,7 @@ export const ToolImportDialog = ({
           </Button>
           <Button
             loading={isSaving}
-            disabled={isSaving || file === null}
+            disabled={isSaving || file === null || plantId === ''}
             /* 잠긴 버튼은 포커스를 못 받아 툴팁이 닿지 않는다 — 사유를 보이는 글자로 잇는다. */
             aria-describedby={file === null ? fileRequiredId : undefined}
             onClick={onSubmit}
@@ -101,6 +109,17 @@ export const ToolImportDialog = ({
         <div className="form-grid-full">
           <AlertBanner variant="info">{t.noLabelNote}</AlertBanner>
         </div>
+
+        <SelectField
+          label={t.plantLabel}
+          options={plantOptions}
+          value={plantId}
+          required
+          disabled={isSaving}
+          error={plantId === '' ? t.plantRequired : undefined}
+          placeholder={t.plantPlaceholder}
+          onChange={onSelectPlant}
+        />
 
         <FileField
           label={t.fileLabel}

@@ -4,7 +4,8 @@ import { lotCompleteKeys, lotDetailPath } from './queries';
 import type { Lot, LotComplete } from './types';
 
 /**
- * 생산LOT 완료·미달 마감. **한 오퍼레이션이다** — 사유를 싣느냐로만 갈린다(계약 · 스펙 §5-5).
+ * 생산LOT 완료. 구 화면의 완료 분기는 통합 전까지 같은 오퍼레이션을 부르지만, 최신 계약
+ * 본문에는 미달 사유가 없다.
  *
  * ⭐ **멱등 키의 수명은 `until-applied`** — 되돌릴 수 없는 쓰기다(스펙 §8-5 · 되돌리는 화면이
  * 인벤토리에 없다). 통신이 끊긴 뒤 다시 누르면 서버가 다른 쓰기로 보고 **완료를 두 번 실행**할
@@ -19,9 +20,9 @@ import type { Lot, LotComplete } from './types';
  *
  * ⛔ **화면이 갖지 않은 입력칸을 여기 적지 않는다.** `knownFields` 는 「이 화면에 그 오류를 놓을
  * 칸이 있다」는 선언이라, 없는 칸을 적으면 서버가 준 사유가 배너에서도 빠져 **어디에도
- * 표시되지 않는다.** 이 화면의 입력칸은 미달 사유 하나다.
+ * 표시되지 않는다.** 최신 완료 계약에는 화면에 대응하는 입력 필드가 없다.
  */
-const COMPLETE_FIELDS = ['completionVarianceReasonCode'] as const;
+const COMPLETE_FIELDS = [] as const;
 
 export interface LotCompleteOptions {
   lotId: number | null;

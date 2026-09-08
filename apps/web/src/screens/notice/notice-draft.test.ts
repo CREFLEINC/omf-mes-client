@@ -16,6 +16,7 @@ const draftOf = (patch: Partial<NoticeDraft> = {}): NoticeDraft => ({
   title: '8월 정기 보전 안내',
   body: '보전 일정 안내입니다.',
   startDate: '2026-08-20',
+  endDate: '2026-08-31',
   scopeCode: 'COMPANY',
   ...patch,
 });
@@ -67,6 +68,10 @@ describe('validateDraft — 기간과 필수 칸', () => {
     expect(validateDraft(draftOf({ startDate: '2026-02-30' })).startDate).toBeDefined();
   });
 
+  it('상태 파생에 필요한 종료일을 비우면 막는다', () => {
+    expect(validateDraft(draftOf({ endDate: '' })).endDate).toBeDefined();
+  });
+
   it('제목과 본문이 공백뿐이면 비운 것으로 본다', () => {
     const errors = validateDraft(draftOf({ title: '  ', body: '\n ' }));
 
@@ -92,8 +97,8 @@ describe('toCreateBody', () => {
     ).toBe(9);
   });
 
-  it('⛔ 종료일이 비면 싣지 않는다 — 「종료일 없이 계속」과 빈 날짜는 다른 뜻이다', () => {
-    expect('endDate' in toCreateBody(draftOf({ endDate: '' }))).toBe(false);
+  it('종료일을 항상 싣는다', () => {
+    expect(toCreateBody(draftOf({ endDate: '2026-08-31' })).endDate).toBe('2026-08-31');
   });
 
   it('앞뒤 공백을 다듬어 보낸다', () => {
