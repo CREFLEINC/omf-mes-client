@@ -69,6 +69,29 @@ export interface MasterWriteResult<TVariables> {
   error: ApiError | null;
   reset: () => void;
   clearFieldError: (field: string) => void;
+  /**
+   * **적용됐는지 모르는 채 남아 있는 쓰기의 멱등 키.** 없으면 `null`.
+   *
+   * ⭐ **오프라인 큐로 넘길 때 쓴다.** 온라인 쓰기가 통신 실패·5xx 로 끝나면 서버가 받았는지
+   * 알 수 없는데, 그 뒤 큐가 **새 키로** 보내면 서버가 두 요청을 묶어 주지 못한다 — 되돌릴 수
+   * 없는 쓰기에서는 그것이 곧 이중 실행이다(C-1 #5).
+   *
+   * ⛔ **키만 물려주면 안 된다.** 멱등 키의 뜻은 「이 값을 이 대상에 한 번만 적용한다」이므로
+   * (C-1 #6), 다른 값과 함께 보내면 서버가 앞 쓰기의 중복으로 보고 **흡수한다** — 나중에 담은
+   * 것이 조용히 사라진다. **부르는 쪽이 그 시도의 값을 함께 들고 있어야 한다.**
+   *
+   * ⚠ **부를 때의 값을 읽는다** — 키는 참조에 살아 있어 렌더를 일으키지 않으므로, 값으로
+   * 내면 한 박자 늦은 것이 나간다.
+   */
+  peekIdempotencyKey: () => string | null;
+  /**
+   * **남아 있는 키를 버린다.**
+   *
+   * ⛔ `reset` 과 다르다 — `reset` 은 화면의 오류 표시를 지울 뿐 「적용됐는지 모르는 쓰기가
+   * 있다」는 사실은 남긴다. 이것은 그 사실 자체를 버린다. **대상이 바뀌어 그 키를 다시 쓸 일이
+   * 없을 때만** 부른다(예: 다음 건을 새로 시작한다). 잘못 부르면 재시도가 새 쓰기가 된다.
+   */
+  discardIdempotencyKey: () => void;
 }
 
 interface WritePayload<TVariables, TData> {
@@ -233,6 +256,12 @@ export const useMasterWrite = <TVariables, TData>(
     });
   }, []);
 
+  const peekIdempotencyKey = useCallback((): string | null => idempotency.current?.key ?? null, []);
+
+  const discardIdempotencyKey = useCallback((): void => {
+    idempotency.current = null;
+  }, []);
+
   const reset = useCallback(() => {
     clearErrors();
     mutation.reset();
@@ -311,5 +340,7 @@ export const useMasterWrite = <TVariables, TData>(
     error,
     reset,
     clearFieldError,
+    peekIdempotencyKey,
+    discardIdempotencyKey,
   };
 };
