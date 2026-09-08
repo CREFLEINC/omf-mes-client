@@ -23,7 +23,7 @@ export const productReceipt = {
   unit: {
     legend: '인식표 스캔',
     scanLabel: '인식표 스캔',
-    scanPlaceholder: 'QR 을 비추세요',
+    scanPlaceholder: '인식표 QR을 스캔하세요',
     manualLabel: '인식표 직접 입력',
     manualSubmit: '인식표 넣기',
     loading: '인식표를 찾는 중입니다',
@@ -56,7 +56,7 @@ export const productReceipt = {
   location: {
     legend: '적치 위치',
     scanLabel: '위치 스캔',
-    scanPlaceholder: '위치 QR 을 비추세요',
+    scanPlaceholder: '위치 QR을 스캔하세요',
     manualLabel: '위치 직접 입력',
     manualSubmit: '위치 넣기',
     loading: '위치를 찾는 중입니다',

@@ -14,7 +14,7 @@ export const iqcSkipRequest = {
     /* 스캔 칸은 스캐너 전용이라 손 입력을 여기서 받는다. */
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
-    scanPlaceholder: 'LOT 라벨을 비추세요',
+    scanPlaceholder: 'LOT 라벨을 스캔하세요',
     loading: 'LOT을 찾는 중입니다',
     loadFailed: 'LOT을 확인할 수 없습니다',
     notFound: (code: string) => `${code} LOT을 찾지 못했습니다`,

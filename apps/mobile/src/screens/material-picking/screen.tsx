@@ -1,4 +1,13 @@
-import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  Chip,
+  Radio,
+  RadioGroup,
+  Select,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -6,6 +15,7 @@ import { Link } from 'react-router';
 
 import { useCodeValues } from '../../patterns/code-values';
 import { useOutbox } from '../../patterns/outbox';
+import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
@@ -399,57 +409,87 @@ export const MaterialPickingScreen = () => {
           <AlertBanner variant="warning" title={t.lines.none} />
         ) : null}
 
-        {lines.map((each) => {
-          const trouble = lineProblemOf(each, queued);
+        {/*
+         * 셋 중 하나를 고르는 일이다. 줄마다 단추를 세우면 무엇이 고르는 자리이고 무엇이
+         * 골라진 것인지 생김새로 갈리지 않는다.
+         */}
+        <RadioGroup
+          className="picking-out__lines"
+          name="picking-line"
+          aria-label={t.lines.legend}
+          value={lineId === null ? undefined : String(lineId)}
+          onChange={(value) => {
+            const picked = lines.find((each) => String(each.pickingLineId) === value);
 
-          return (
-            <Button
-              key={each.pickingLineId}
-              variant={each.pickingLineId === lineId ? 'filled' : 'outlined'}
-              size="xl"
-              className="picking-out__wide"
-              /* 보류 라인은 비활성으로 두고 사유를 함께 보인다. 서버가 표시해 내려준 값이다. */
-              disabled={trouble !== null}
-              onClick={() => {
-                chooseLine(each);
-              }}
-            >
-              <span className="picking-out__line">
-                <span>{`${each.itemCode ?? ''} ${each.itemName ?? ''}`}</span>
-                <span>
-                  {t.lines.planned(String(each.plannedQty), String(pickedQtyOf(each, queued)))}
-                </span>
-                {queuedQtyOf(each, queued) === 0 ? null : (
-                  <span>{t.lines.queued(String(queuedQtyOf(each, queued)))}</span>
-                )}
-                <span>
-                  {[
-                    each.lotNo ?? '',
-                    each.locationCode === undefined ? '' : t.lines.at(each.locationCode),
-                    each.pickSequenceRank === null || each.pickSequenceRank === undefined
-                      ? ''
-                      : t.lines.rank(each.pickSequenceRank),
-                  ]
-                    .filter((part) => part !== '')
-                    .join(' · ')}
-                </span>
-                {each.expiryDate === null || each.expiryDate === undefined ? null : (
-                  <span>{t.lines.expiry(each.expiryDate)}</span>
-                )}
-                {trouble === 'held' ? (
-                  <span>
-                    {`${t.lines.held}${
-                      each.holdReasonCode === null || each.holdReasonCode === undefined
-                        ? ''
-                        : ` · ${t.lines.heldReason(each.holdReasonCode)}`
-                    }`}
+            if (picked !== undefined) {
+              chooseLine(picked);
+            }
+          }}
+        >
+          {lines.map((each) => {
+            const trouble = lineProblemOf(each, queued);
+            const place = [
+              each.locationCode === undefined ? '' : t.lines.at(each.locationCode),
+              each.expiryDate === null || each.expiryDate === undefined
+                ? ''
+                : t.lines.expiry(each.expiryDate),
+            ].filter((part) => part !== '');
+
+            return (
+              <Radio
+                key={each.pickingLineId}
+                value={String(each.pickingLineId)}
+                /* 보류 라인은 비활성으로 두고 사유를 함께 보인다. 서버가 표시해 내려준 값이다. */
+                disabled={trouble !== null}
+                /*
+                 * 이미 고른 줄을 다시 누르면 고른 값이 바뀌지 않아 change 가 나지 않는다.
+                 * 되돌아온 뒤 같은 줄을 다시 집는 길이 그 누름이라 눌림으로도 잇는다.
+                 */
+                onClick={() => {
+                  chooseLine(each);
+                }}
+              >
+                <span className="picking-out__line">
+                  <span className="picking-out__line-head">
+                    <strong>{`${each.itemCode ?? ''} ${each.itemName ?? ''}`}</strong>
+                    {each.pickSequenceRank === null ||
+                    each.pickSequenceRank === undefined ? null : (
+                      <span className="picking-out__line-rank">
+                        {t.lines.rank(each.pickSequenceRank)}
+                      </span>
+                    )}
                   </span>
-                ) : null}
-                {trouble === 'done' ? <span>{t.lines.done}</span> : null}
-              </span>
-            </Button>
-          );
-        })}
+                  <span className="picking-out__line-qty">
+                    {t.lines.planned(String(each.plannedQty), String(pickedQtyOf(each, queued)))}
+                  </span>
+                  {queuedQtyOf(each, queued) === 0 ? null : (
+                    <span className="picking-out__line-note">
+                      {t.lines.queued(String(queuedQtyOf(each, queued)))}
+                    </span>
+                  )}
+                  {each.lotNo === null || each.lotNo === undefined ? null : (
+                    <span className="picking-out__line-lot">{each.lotNo}</span>
+                  )}
+                  {place.length === 0 ? null : (
+                    <span className="picking-out__line-note">{place.join(' · ')}</span>
+                  )}
+                  {trouble === 'held' ? (
+                    <span className="picking-out__line-state">
+                      {`${t.lines.held}${
+                        each.holdReasonCode === null || each.holdReasonCode === undefined
+                          ? ''
+                          : ` · ${t.lines.heldReason(each.holdReasonCode)}`
+                      }`}
+                    </span>
+                  ) : null}
+                  {trouble === 'done' ? (
+                    <span className="picking-out__line-state">{t.lines.done}</span>
+                  ) : null}
+                </span>
+              </Radio>
+            );
+          })}
+        </RadioGroup>
       </section>
 
       {line === null || problem !== null ? null : (
@@ -463,28 +503,16 @@ export const MaterialPickingScreen = () => {
               size="xl"
               fullWidth
             />
-            {/* 스캔 칸은 스캐너 전용이다. 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
-            <div className="picking-out__row">
-              <TextField
-                label={t.scan.manualLabel}
-                size="xl"
-                fullWidth
-                value={manual}
-                onChange={(event) => {
-                  setManual(event.target.value);
-                }}
-              />
-              <Button
-                variant="outlined"
-                size="xl"
-                onClick={() => {
-                  setScanned(manual.trim());
-                  setManual('');
-                }}
-              >
-                {t.scan.manualSubmit}
-              </Button>
-            </div>
+            <ManualEntry
+              label={t.scan.manualLabel}
+              submitLabel={t.scan.manualSubmit}
+              value={manual}
+              onChange={setManual}
+              onSubmit={() => {
+                setScanned(manual.trim());
+                setManual('');
+              }}
+            />
 
             {scanned === null ? null : matched ? (
               <Chip status="success">{t.scan.matched}</Chip>

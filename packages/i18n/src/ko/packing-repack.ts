@@ -16,7 +16,7 @@ export const packingRepack = {
   source: {
     legend: '원 포장 스캔',
     scanLabel: '포장 스캔',
-    scanPlaceholder: '포장 QR을 비추세요',
+    scanPlaceholder: '포장 QR을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     loading: '포장을 불러오는 중입니다',

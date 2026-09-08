@@ -31,9 +31,13 @@ export const stockTransfer = {
     defect: '불량 반출',
   },
   from: {
-    legend: '① 반출 스캔',
+    /*
+     * 번호를 붙이지 않는다. 화면은 도착을 먼저 세우고 그 아래에서 LOT 을 여러 번 스캔하는데,
+     * 반출을 ①로 매기면 화면에 보이는 차례와 어긋나 어느 쪽을 먼저 하라는 말인지 갈린다.
+     */
+    legend: '반출 스캔',
     scanLabel: '반출 LOT 스캔',
-    scanPlaceholder: 'LOT QR을 비추세요',
+    scanPlaceholder: 'LOT QR을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     loading: 'LOT을 불러오는 중입니다',
@@ -61,9 +65,11 @@ export const stockTransfer = {
     description: '옮길 수는 있습니다. 보류 사유는 품질에서 풉니다.',
   },
   to: {
-    legend: '② 도착 스캔',
+    legend: '도착 스캔',
+    warehouseLabel: '도착 창고',
+    warehousePlaceholder: '창고를 고르세요',
     scanLabel: '도착 위치 스캔',
-    scanPlaceholder: '위치 QR을 비추세요',
+    scanPlaceholder: '위치 QR을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     loading: '위치를 불러오는 중입니다',

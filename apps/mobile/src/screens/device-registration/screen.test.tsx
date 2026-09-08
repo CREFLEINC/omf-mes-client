@@ -95,12 +95,12 @@ describe('기기 등록 화면', () => {
     expect(screen.getByText(/관리웹/)).toBeInTheDocument();
   });
 
-  it('카메라가 열리면 어디를 비추라고 안내한다', async () => {
+  it('카메라가 열리면 무엇을 스캔하라고 안내한다', async () => {
     renderWithProviders(<DeviceRegistrationScreen camera={stubCamera()} />, {
       fetch: createStubFetch([]),
     });
 
-    expect(await screen.findByText('관리자 화면의 등록 QR을 비추세요.')).toBeInTheDocument();
+    expect(await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.')).toBeInTheDocument();
   });
 
   it('읽은 QR이 가리키는 단말을 보인다', async () => {
@@ -183,10 +183,10 @@ describe('기기 등록 화면', () => {
       fetch: createStubFetch([]),
     });
 
-    await screen.findByText('관리자 화면의 등록 QR을 비추세요.');
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
     camera.read('https://example.test/not-a-token');
 
-    expect(screen.getByText('관리자 화면의 등록 QR을 비추세요.')).toBeInTheDocument();
+    expect(screen.getByText('관리자 화면의 등록 QR을 스캔하세요.')).toBeInTheDocument();
     expect(camera.closed()).toBe(0);
   });
 
@@ -196,7 +196,7 @@ describe('기기 등록 화면', () => {
       fetch: createStubFetch([workersRoute([worker])]),
     });
 
-    await screen.findByText('관리자 화면의 등록 QR을 비추세요.');
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
     camera.read(REGISTRATION_TOKEN);
 
     expect(await screen.findByText('기준정보를 받는 중입니다')).toBeInTheDocument();
@@ -209,7 +209,7 @@ describe('기기 등록 화면', () => {
       fetch: createStubFetch([workersRoute([worker])]),
     });
 
-    await screen.findByText('관리자 화면의 등록 QR을 비추세요.');
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
     camera.read(REGISTRATION_TOKEN);
 
     await screen.findByText('기준정보를 받는 중입니다');
@@ -224,7 +224,7 @@ describe('기기 등록 화면', () => {
       fetch: createStubFetch([workersRoute([worker])]),
     });
 
-    await screen.findByText('관리자 화면의 등록 QR을 비추세요.');
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
     camera.read(REGISTRATION_TOKEN);
 
     await waitFor(() => {
@@ -239,7 +239,7 @@ describe('기기 등록 화면', () => {
       fetch: createStubFetch([workersRoute([worker], seen)]),
     });
 
-    await screen.findByText('관리자 화면의 등록 QR을 비추세요.');
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
     camera.read(REGISTRATION_TOKEN);
 
     await waitFor(() => {
@@ -260,7 +260,7 @@ describe('기기 등록 화면', () => {
       ]),
     });
 
-    await screen.findByText('관리자 화면의 등록 QR을 비추세요.');
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
     camera.read(REGISTRATION_TOKEN);
 
     expect(await screen.findByText('등록 정보가 만료됐습니다')).toBeInTheDocument();
@@ -281,7 +281,7 @@ describe('기기 등록 화면', () => {
       ]),
     });
 
-    await screen.findByText('관리자 화면의 등록 QR을 비추세요.');
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
     camera.read(REGISTRATION_TOKEN);
 
     expect(await screen.findByText('연결된 상태에서 등록해야 합니다')).toBeInTheDocument();
@@ -298,7 +298,7 @@ describe('기기 등록 화면', () => {
     });
 
     expect(await screen.findByText('연결된 상태에서 등록해야 합니다')).toBeInTheDocument();
-    expect(screen.queryByText('관리자 화면의 등록 QR을 비추세요.')).not.toBeInTheDocument();
+    expect(screen.queryByText('관리자 화면의 등록 QR을 스캔하세요.')).not.toBeInTheDocument();
   });
 
   it('권한이 없으면 무엇을 해야 하는지 말한다', async () => {

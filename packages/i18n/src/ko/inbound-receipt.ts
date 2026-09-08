@@ -14,7 +14,7 @@ export const inboundReceipt = {
     legend: '자재 LOT 스캔',
     /* 구획 제목과 같은 말을 쓰지 않는다. 좁은 화면에 같은 줄이 둘로 붙는다. */
     label: 'LOT 번호',
-    placeholder: '자재 LOT 라벨을 비추세요',
+    placeholder: '자재 LOT 라벨을 스캔하세요',
     manualLabel: '직접 입력',
     manualSubmit: '넣기',
     /** 자릿수와 숫자 전용은 저장소가 막지 않는다. 화면이 지킨다. */

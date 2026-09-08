@@ -248,7 +248,7 @@ const scanInto = (label: string, code: string) => {
 
 /** 창고만 고른다. 같은 창고인지 가르는 데는 위치까지 필요하지 않다. */
 const pickWarehouse = async (user: ReturnType<typeof userEvent.setup>, name = '불량창고') => {
-  await user.click(await screen.findByRole('combobox', { name: /도착 스캔/ }));
+  await user.click(await screen.findByRole('combobox', { name: /도착 창고/ }));
   await user.click(await screen.findByRole('option', { name }));
 };
 

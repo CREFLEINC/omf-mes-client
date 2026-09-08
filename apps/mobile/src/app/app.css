@@ -1,7 +1,13 @@
+/*
+ * 문서는 스크롤하지 않는다. WebView 의 배치 뷰포트는 상태바까지 세어 100dvh 보다 35px 길고,
+ * 그만큼 문서가 밀 수 있다. 스캔 화면은 입력칸을 자동으로 잡아 IME 가 늘 뜨는데, 그때 밀린
+ * 자리가 되돌아오지 않아 앱바가 상태바 밑으로 잘려 들어간다. 넘치는 것은 셸 안 main 이 흘린다.
+ */
 html,
 body {
   margin: 0;
   height: 100%;
+  overflow: hidden;
 }
 
 /*
@@ -29,11 +35,47 @@ body {
   overflow-y: auto;
 }
 
+/*
+ * 앱바에는 제목과 상태 칩이 함께 선다. 360dp 에서는 사번 칩 하나만 붙어도 오른쪽 끝이 넘쳐
+ * 온라인 칩이 잘리고, 칩이 넷이면 되돌아온 건수 칩이 통째로 화면 밖에 선다 - 그 칩이
+ * 되돌아온 목록으로 가는 유일한 길이라 누를 수조차 없게 된다.
+ *
+ * DS Topbar 는 높이가 64px 로 못박혀 있어, 줄을 접기만 하면 접힌 줄이 본문 위로 넘친다.
+ * 그래서 셸의 행 높이와 앱바 높이를 함께 풀어 준다.
+ */
+.mobile-shell {
+  grid-template-rows: auto 1fr;
+}
+
+.mobile-shell header {
+  height: auto;
+  min-height: 64px;
+  flex-wrap: wrap;
+  row-gap: var(--space-1, 4px);
+  padding-block: var(--space-1, 4px);
+}
+
+.mobile-shell header > *:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.mobile-shell header > *:last-child {
+  flex: 0 1 auto;
+  min-width: 0;
+  flex-wrap: wrap;
+  row-gap: var(--space-1, 4px);
+  justify-content: flex-end;
+}
+
 /* 앱바 한 줄에 들어가야 해서 본문 제목 크기를 그대로 쓰지 않는다. */
 .mobile-shell__title {
   margin: 0;
   font: inherit;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /*
@@ -43,6 +85,41 @@ body {
  */
 .card-body {
   padding-top: var(--space-5);
+}
+
+/*
+ * 단추 글자는 접지 않는다. 칸 옆에 선 단추는 폭이 모자라면 글자가 한 자씩 세로로 서는데,
+ * 그 줄에서 줄어들 몫은 단추가 아니라 칸이다.
+ */
+.mobile-shell button {
+  white-space: nowrap;
+}
+
+/*
+ * 화면의 유일한 행동이 링크인 자리가 있다. 그대로 두면 글자 한 줄 높이(24px)라 장갑 낀 손으로
+ * 짚기 어렵다. 이 앱의 핵심 액션 규격과 같은 높이를 링크에도 준다.
+ */
+.action-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  padding: 0 var(--space-4, 16px);
+  border: 1px solid var(--outline);
+  border-radius: 999px;
+  color: var(--primary-text);
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+/*
+ * 고르는 줄은 글자 높이(24px)뿐이라 장갑 낀 손으로 짚기 어렵다. DS 부품의 생김새는 그대로
+ * 두고 누를 수 있는 높이만 넓힌다.
+ */
+.mobile-shell label:has(> input[type='radio']),
+.mobile-shell label:has(> input[type='checkbox']) {
+  min-height: 44px;
 }
 
 /*

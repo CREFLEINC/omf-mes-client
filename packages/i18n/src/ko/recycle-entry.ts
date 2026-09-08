@@ -11,7 +11,8 @@ export const recycleEntry = {
   item: {
     legend: '품목',
     label: '품목코드',
-    placeholder: '품목코드를 비추거나 적으세요',
+    placeholder: '품목코드를 스캔하세요',
+    manualLabel: '직접 입력',
     manualSubmit: '찾기',
     searching: '품목을 찾는 중입니다',
     loadFailed: '품목을 확인할 수 없습니다',
