@@ -1289,6 +1289,20 @@ export const createSeed = (now = new Date()) => {
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
     },
+    /*
+     * 여벌 줄. 한 줄만 두면 배정만큼 집은 순간 오늘 출하분에 할 일이 없어져, 그 화면을 다시
+     * 열어도 볼 것이 없다.
+     */
+    {
+      shipmentRequestLineId: 9802,
+      shipmentRequestId: 9601,
+      lineNo: 2,
+      itemId: 2003,
+      allocatedQty: 200,
+      pickedQty: 0,
+      uomId: 1001,
+      fifoPolicyCode: 'FEFO',
+    },
   ];
 
   /*

@@ -137,6 +137,12 @@ const DETAILS = [
     '/inventory/counts?statusCode=IN_PROGRESS',
     (body) => body.items.length >= 2,
   ],
+  /* 출하 줄은 요청 응답에 실려 온다. 따로 부르는 경로가 없다. */
+  [
+    'M-04-01 남는 출하 줄',
+    `/logistics/shipment-requests?shipDateFrom=${today()}&shipDateTo=${today()}`,
+    (body) => body.items.some((row) => (row.lines ?? []).length >= 2),
+  ],
   /* 재생재 행이 없으면 재생재 등록은 늘 등록되지 않은 품목이라고만 말한다. */
   [
     'M-01-12 재생재 품목',
