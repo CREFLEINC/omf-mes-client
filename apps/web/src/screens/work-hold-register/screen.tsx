@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 
@@ -59,8 +59,21 @@ export const WorkHoldRegisterScreen = () => {
   const outbox = useWorkHoldOutbox();
   const queryClient = useQueryClient();
 
-  /** 서버가 받은 전송의 다시 읽기가 아직 새 값을 물어 오지 못했는가. */
-  const [sendAwaitingRefresh, setSendAwaitingRefresh] = useState(false);
+  /**
+   * 세션 값을 마지막으로 받은 시각.
+   *
+   * ⭐ **전송 효과보다 «먼저» 세운다.** 전송이 닿은 것과 무관한 다시 읽기가 같은 순간에
+   * 끝나면 둘이 한 커밋에 실리는데, 순서가 반대면 전송이 옛 시각을 집어 「이미 새 값을 받았다」로
+   * 읽힌다 — 그 자리에서 같은 방향이 두 번 열린다. 겹치면 **전송이 이겨야 한다.**
+   */
+  const latestSessionStamp = useRef(session.dataUpdatedAt);
+
+  useEffect(() => {
+    latestSessionStamp.current = session.dataUpdatedAt;
+  }, [session.dataUpdatedAt]);
+
+  /** 전송이 닿은 순간의 세션 값 시각. 아직 그대로면 새 값을 받지 못한 것이다. */
+  const [stampAtSend, setStampAtSend] = useState<number | null>(null);
 
   /**
    * ⛔ **서버가 받았으면 세션을 다시 읽는다.** 중단이 닿으면 세션 상태가 서버에서 「중단」으로
@@ -70,21 +83,19 @@ export const WorkHoldRegisterScreen = () => {
   useEffect(() => {
     if (outbox.sentCount === 0) return;
 
-    setSendAwaitingRefresh(true);
+    setStampAtSend(latestSessionStamp.current);
     void queryClient.invalidateQueries({ queryKey: workHoldKeys.all });
   }, [outbox.sentCount, queryClient]);
 
-  /*
+  /**
    * ⛔ **보낸 유형은 «그 전송의» 다시 읽기까지만 쓴다.** 새 세션 값이 오면 판정 근거는 서버가
    * 말하는 상태로 넘어가야 한다 — 옛 유형이 그대로 남으면 뒤에 다른 이유로 세션을 다시 읽는
    * 동안 반대 방향 버튼이 열린다(돌고 있는 설비에 「재개」가 열리는 식이다).
    *
-   * 값이 새로 왔는지는 **받은 시각**으로만 가른다. 「다시 읽는 중인가」는 어느 읽기인지를
+   * 값이 새로 왔는지는 **받은 시각**으로만 가른다 — 「다시 읽는 중인가」는 어느 읽기인지를
    * 말해 주지 못한다.
    */
-  useEffect(() => {
-    setSendAwaitingRefresh(false);
-  }, [session.dataUpdatedAt]);
+  const sendAwaitingRefresh = stampAtSend !== null && session.dataUpdatedAt === stampAtSend;
 
   /** 세션이 없으면 사유를 고를 수 없다 — 고른 값을 실을 곳이 없기 때문이다. */
   const inputDisabled = session.session === null;
