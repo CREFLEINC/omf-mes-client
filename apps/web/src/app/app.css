@@ -146,6 +146,18 @@
   padding-inline-start: var(--space-5);
 }
 
+.production-flow-completed-pages {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.production-flow-completed-pages .field-note {
+  margin: 0;
+}
+
 @media (max-width: 900px) {
   .production-flow-grid {
     grid-template-columns: 1fr;

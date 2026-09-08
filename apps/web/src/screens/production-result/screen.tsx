@@ -1,6 +1,7 @@
 import { AlertBanner, Button, Card, Checkbox, Chip, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
@@ -27,10 +28,15 @@ import {
   buildLotComplete,
   buildLotIssue,
   buildTagIssue,
+  appliedGoodQty,
   canMatchIdentificationCount,
+  chunkTargets,
+  completedLotPageBoundary,
+  hasSucceededIdentificationPrint,
   judgeLotScan,
   missingIdentificationCount,
   requiresIdentificationTag,
+  nextBatchCount,
   type DocumentIssueCreate,
 } from './flow-state';
 import { useOutbox, type OutboxEntry } from './outbox';
@@ -75,12 +81,14 @@ export const ProductionFlowScreen = () => {
   const scanId = useId();
 
   const entry = useResultEntry();
+  const queryClient = useQueryClient();
   const identity = usePopIdentity();
   const workOrder = useWorkOrder(entry.workOrderId);
   const currentLot = useCurrentLot(entry.workOrderId);
   const pendingPqc = usePendingPqc(entry.workOrderId);
   const item = useItem(currentLot.data?.itemId ?? workOrder.data?.itemId ?? null);
-  const printers = usePrinters();
+  const lotPrinters = usePrinters('PRODUCTION_LOT_LABEL');
+  const tagPrinters = usePrinters('IDENTIFICATION_TAG');
   const gates = useFlowGates(identity.terminalId, identity.processId);
   const uom = useUomLookup();
 
@@ -89,6 +97,7 @@ export const ProductionFlowScreen = () => {
   const [scanValue, setScanValue] = useState('');
   const [scanMismatch, setScanMismatch] = useState(false);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
+  const [completedPage, setCompletedPage] = useState(1);
   const [appliedLotId, setAppliedLotId] = useState<number | null>(null);
   const [lotPrintTargets, setLotPrintTargets] = useState<PrintTarget[]>([]);
   const [tagPrintTargets, setTagPrintTargets] = useState<PrintTarget[]>([]);
@@ -96,16 +105,19 @@ export const ProductionFlowScreen = () => {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [isTagReissueOpen, setIsTagReissueOpen] = useState(false);
   const [tagReissueReason, setTagReissueReason] = useState<string | null>(null);
+  const [pendingSerialQuantity, setPendingSerialQuantity] = useState(0);
+  const [pendingTagDocuments, setPendingTagDocuments] = useState<DocumentIssueCreate[]>([]);
   const currentLotIdRef = useRef<number | null>(null);
 
-  const completedLots = useCompletedLots(entry.workOrderId, isCompletedOpen);
+  const completedLots = useCompletedLots(entry.workOrderId, isCompletedOpen, completedPage);
   const isTagTarget = item.data === undefined ? null : requiresIdentificationTag(item.data);
   const serials = useSerials(currentLot.data?.lotId ?? null, isTagTarget === true);
   const tagIssueSummary = useTagIssueSummary(serials.data?.items ?? [], isTagTarget === true);
   const reissueReasons = useReissueReasons(isTagReissueOpen);
   const lotIssues = useLotIssues(currentLot.data?.lotId ?? null);
   const currentIssue = latestIssue(lotIssues.data);
-  const printer = defaultPrinter(printers.data);
+  const lotPrinter = defaultPrinter(lotPrinters.data);
+  const tagPrinter = defaultPrinter(tagPrinters.data);
   const serialCount = serials.data?.page.total ?? null;
   const parsedQty = parseGoodQty(actualQty);
   const tagMissing =
@@ -142,9 +154,14 @@ export const ProductionFlowScreen = () => {
   const serialIssue = useSerialIssue({
     workerNo: entry.workerNo ?? '',
     onSuccess: (result) => {
-      const body = buildTagIssue(result.items);
-      setPendingTagIssue(body);
-      tagDocumentIssue.write(body);
+      const [first, ...rest] = chunkTargets(result.items).map((serialBatch) =>
+        buildTagIssue(serialBatch, { printerName: tagPrinter?.printerName ?? null }),
+      );
+      if (first === undefined) return;
+
+      setPendingTagDocuments(rest);
+      setPendingTagIssue(first);
+      tagDocumentIssue.write(first);
     },
   });
 
@@ -174,10 +191,10 @@ export const ProductionFlowScreen = () => {
     if (lot === null || lot === undefined || appliedLotId !== lot.lotId) return;
 
     setAppliedLotId(null);
-    lotIssue.write(buildLotIssue(lot.lotId, printer?.printerName ?? null));
+    lotIssue.write(buildLotIssue(lot.lotId, lotPrinter?.printerName ?? null));
     // `write`는 렌더마다 달라지는 이벤트 함수다. 적용 LOT 변화만 한 번 처리한다.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedLotId, currentLot.data?.lotId, printer?.printerName]);
+  }, [appliedLotId, currentLot.data?.lotId, lotPrinter?.printerName]);
 
   useEffect(() => {
     if (lotPrint.state.phase === 'succeeded') setOutputPhase('scanReady');
@@ -191,7 +208,10 @@ export const ProductionFlowScreen = () => {
   }, [lotIssue.error, outputPhase]);
 
   useEffect(() => {
-    if (complete.error !== null && outputPhase === 'completing') setOutputPhase('scanReady');
+    if (complete.error !== null && outputPhase === 'completing') {
+      setScanValue('');
+      setOutputPhase('scanReady');
+    }
   }, [complete.error, outputPhase]);
 
   useEffect(() => {
@@ -210,8 +230,10 @@ export const ProductionFlowScreen = () => {
     if (currentLotIdRef.current === nextLotId) return;
 
     currentLotIdRef.current = nextLotId;
-    setActualQty(lot === null || lot === undefined ? '' : String(lot.initialQty));
-    setOutputPhase(currentIssue?.printOutcome === 'SUCCEEDED' ? 'scanReady' : 'idle');
+    setActualQty(
+      lot === null || lot === undefined ? '' : String(appliedGoodQty(lot) ?? lot.initialQty),
+    );
+    setOutputPhase('idle');
     setScanValue('');
     setScanMismatch(false);
     setLotPrintTargets([]);
@@ -220,9 +242,55 @@ export const ProductionFlowScreen = () => {
     setSelectedTagIds([]);
     setIsTagReissueOpen(false);
     setTagReissueReason(null);
-  }, [currentIssue?.printOutcome, currentLot.data]);
+    setPendingSerialQuantity(0);
+    setPendingTagDocuments([]);
+  }, [currentLot.data]);
 
   const lot = currentLot.data ?? null;
+  const serverAppliedQty = appliedGoodQty(lot);
+
+  useEffect(() => {
+    if (lot === null || serverAppliedQty === null || lotIssues.data === undefined) return;
+    if (!['idle', 'issueFailed', 'printFailed'].includes(outputPhase)) return;
+
+    setActualQty(String(serverAppliedQty));
+    if (currentIssue?.printOutcome === 'SUCCEEDED') {
+      setOutputPhase('scanReady');
+    } else if (currentIssue === null) {
+      setOutputPhase('issueFailed');
+    } else {
+      setOutputPhase('printFailed');
+    }
+  }, [currentIssue, lot, lotIssues.data, outputPhase, serverAppliedQty]);
+
+  useEffect(() => {
+    if (tagPrint.state.phase !== 'succeeded' && tagPrint.state.phase !== 'failed') return;
+
+    void queryClient.invalidateQueries({
+      queryKey: ['production-flow', 'tag-issue-summary'],
+    });
+
+    if (tagPrint.state.phase !== 'succeeded') return;
+
+    const [nextDocument, ...remainingDocuments] = pendingTagDocuments;
+    if (nextDocument !== undefined) {
+      setPendingTagDocuments(remainingDocuments);
+      setPendingTagIssue(nextDocument);
+      tagPrint.reset();
+      tagDocumentIssue.write(nextDocument);
+      return;
+    }
+
+    const nextSerialBatch = nextBatchCount(pendingSerialQuantity);
+    if (nextSerialBatch !== null && lot !== null) {
+      setPendingSerialQuantity(nextSerialBatch.remaining);
+      tagPrint.reset();
+      serialIssue.write({ lotId: lot.lotId, quantity: nextSerialBatch.quantity });
+    }
+    // 쓰기 함수는 렌더마다 달라진다. 인쇄 상태와 대기열 변화만 이어서 처리한다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tagPrint.state.phase, pendingTagDocuments, pendingSerialQuantity, lot?.lotId]);
+
   const hasPendingPqc =
     pendingPqc.isPending || pendingPqc.isError || (pendingPqc.data?.length ?? 0) > 0;
   const hasTagCountMatch =
@@ -237,14 +305,26 @@ export const ProductionFlowScreen = () => {
   const issuedSerials = serialItems.filter(
     (serial) => (summaryBySerialId.get(serial.serialNumberId)?.issueCount ?? 0) > 0,
   );
+  const printedSerials = serialItems.filter((serial) =>
+    hasSucceededIdentificationPrint(summaryBySerialId.get(serial.serialNumberId)),
+  );
   const unissuedSerials = serialItems.filter(
     (serial) => summaryBySerialId.get(serial.serialNumberId)?.issueCount === 0,
   );
+  const retryableSerials = issuedSerials.filter(
+    (serial) => !hasSucceededIdentificationPrint(summaryBySerialId.get(serial.serialNumberId)),
+  );
   const hasCompleteTagSummary =
     isTagTarget !== true ||
-    (tagIssueSummary.data !== undefined && tagIssueSummary.data.length === serialItems.length);
+    (tagIssueSummary.data !== undefined &&
+      serialCount === serialItems.length &&
+      serialItems.every((serial) => summaryBySerialId.has(serial.serialNumberId)));
   const hasTagDocuments =
-    isTagTarget !== true || (hasCompleteTagSummary && unissuedSerials.length === 0);
+    isTagTarget !== true || (hasCompleteTagSummary && printedSerials.length === serialItems.length);
+  const isQuantityLocked =
+    outputPhase !== 'idle' ||
+    serverAppliedQty !== null ||
+    (lot !== null && outbox.isPendingForLot(lot.lotId));
   const canOutput =
     lot !== null &&
     parsedQty !== null &&
@@ -256,11 +336,12 @@ export const ProductionFlowScreen = () => {
     isTagTarget !== null &&
     hasTagCountMatch &&
     hasTagDocuments &&
-    printer !== null &&
+    lotPrinter !== null &&
     lotPrint.isShellAvailable &&
     outputPhase === 'idle' &&
     !outbox.isPendingForLot(lot.lotId) &&
-    currentIssue === null;
+    currentIssue === null &&
+    serverAppliedQty === null;
 
   const queueOutput = (): void => {
     if (!canOutput || lot === null || parsedQty === null || entry.workOrderId === null) return;
@@ -287,20 +368,26 @@ export const ProductionFlowScreen = () => {
       tagMissing === null ||
       !Number.isInteger(tagMissing) ||
       tagMissing <= 0 ||
-      gates.print !== 'allowed'
+      gates.print !== 'allowed' ||
+      tagPrinter === null
     ) {
       return;
     }
 
+    const first = nextBatchCount(tagMissing);
+    if (first === null) return;
+
+    setPendingSerialQuantity(first.remaining);
+    setPendingTagDocuments([]);
     tagPrint.reset();
     tagDocumentIssue.reset();
-    serialIssue.write({ lotId: lot.lotId, quantity: tagMissing });
+    serialIssue.write({ lotId: lot.lotId, quantity: first.quantity });
   };
 
   const retryLotIssue = (): void => {
     if (lot === null || entry.workerNo === null) return;
 
-    lotIssue.write(buildLotIssue(lot.lotId, printer?.printerName ?? null));
+    lotIssue.write(buildLotIssue(lot.lotId, lotPrinter?.printerName ?? null));
     setOutputPhase('issuing');
   };
 
@@ -311,11 +398,16 @@ export const ProductionFlowScreen = () => {
   };
 
   const restoreTagDocuments = (): void => {
-    if (unissuedSerials.length === 0 || entry.workerNo === null) return;
+    if (unissuedSerials.length === 0 || entry.workerNo === null || tagPrinter === null) return;
 
-    const body = buildTagIssue(unissuedSerials);
-    setPendingTagIssue(body);
-    tagDocumentIssue.write(body);
+    const [first, ...rest] = chunkTargets(unissuedSerials).map((serialBatch) =>
+      buildTagIssue(serialBatch, { printerName: tagPrinter.printerName }),
+    );
+    if (first === undefined) return;
+
+    setPendingTagDocuments(rest);
+    setPendingTagIssue(first);
+    tagDocumentIssue.write(first);
   };
 
   const reissueTags = (): void => {
@@ -326,12 +418,19 @@ export const ProductionFlowScreen = () => {
     );
     if (selected.length === 0) return;
 
-    const body = buildTagIssue(selected, {
-      reissueReasonCode: tagReissueReason,
-      printerName: printer?.printerName ?? null,
-    });
-    setPendingTagIssue(body);
-    tagDocumentIssue.write(body);
+    if (tagPrinter === null) return;
+
+    const [first, ...rest] = chunkTargets(selected).map((serialBatch) =>
+      buildTagIssue(serialBatch, {
+        reissueReasonCode: tagReissueReason,
+        printerName: tagPrinter.printerName,
+      }),
+    );
+    if (first === undefined) return;
+
+    setPendingTagDocuments(rest);
+    setPendingTagIssue(first);
+    tagDocumentIssue.write(first);
   };
 
   const retryLotPrint = (): void => {
@@ -394,6 +493,7 @@ export const ProductionFlowScreen = () => {
   })();
 
   const uomLabel = uom.labelOf(lot?.uomId ?? workOrder.data?.uomId) ?? '';
+  const completedBoundary = completedLotPageBoundary(completedLots.data?.page);
 
   return (
     <main className="pop-shell pop-ui production-flow" aria-labelledby={titleId}>
@@ -473,7 +573,13 @@ export const ProductionFlowScreen = () => {
           <Card.Body>
             <div className="production-flow-section-head">
               <h2 className="pane-title">{t.flow.currentLot.title}</h2>
-              <Button variant="outlined" onClick={() => setIsCompletedOpen(true)}>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setCompletedPage(1);
+                  setIsCompletedOpen(true);
+                }}
+              >
                 {t.flow.currentLot.completed}
               </Button>
             </div>
@@ -508,6 +614,7 @@ export const ProductionFlowScreen = () => {
               id={actualQtyId}
               label={t.flow.quantity.actual}
               value={actualQty}
+              disabled={isQuantityLocked}
               inputMode="decimal"
               trailingIcon={uomLabel}
               error={parsedQty === null || parsedQty <= 0 ? t.flow.quantity.invalid : undefined}
@@ -515,6 +622,7 @@ export const ProductionFlowScreen = () => {
             />
             <NumericKeypad
               value={actualQty}
+              disabled={isQuantityLocked}
               label={t.quantity.keypadLabel}
               backspaceLabel={t.quantity.backspace}
               backspaceGlyph="⌫"
@@ -539,21 +647,26 @@ export const ProductionFlowScreen = () => {
                     {t.flow.tag.issued}: {t.flow.tag.count(serialCount ?? 0)}
                   </p>
                   <div className="production-flow-serials" aria-label={t.flow.tag.issued}>
-                    {issuedSerials.map((serial) => (
-                      <Checkbox
-                        key={serial.serialNumberId}
-                        checked={selectedTagIds.includes(serial.serialNumberId)}
-                        onChange={(event) =>
-                          setSelectedTagIds((current) =>
-                            event.target.checked
-                              ? [...new Set([...current, serial.serialNumberId])]
-                              : current.filter((id) => id !== serial.serialNumberId),
-                          )
-                        }
-                      >
-                        {serial.serialNo}
-                      </Checkbox>
-                    ))}
+                    {issuedSerials.map((serial) => {
+                      const summary = summaryBySerialId.get(serial.serialNumberId);
+                      const outcome = summary?.lastPrintOutcome ?? 'PENDING';
+
+                      return (
+                        <Checkbox
+                          key={serial.serialNumberId}
+                          checked={selectedTagIds.includes(serial.serialNumberId)}
+                          onChange={(event) =>
+                            setSelectedTagIds((current) =>
+                              event.target.checked
+                                ? [...new Set([...current, serial.serialNumberId])]
+                                : current.filter((id) => id !== serial.serialNumberId),
+                            )
+                          }
+                        >
+                          {`${serial.serialNo} · ${t.flow.tag.printOutcome[outcome]}`}
+                        </Checkbox>
+                      );
+                    })}
                   </div>
                   {tagIssueSummary.isError && (
                     <p className="field-error">{t.flow.tag.summaryFailed}</p>
@@ -561,7 +674,7 @@ export const ProductionFlowScreen = () => {
                   {unissuedSerials.length > 0 && (
                     <Button
                       variant="outlined"
-                      disabled={tagDocumentIssue.isSaving}
+                      disabled={tagDocumentIssue.isSaving || tagPrinter === null}
                       onClick={restoreTagDocuments}
                     >
                       {t.flow.tag.restoreDocuments(unissuedSerials.length)}
@@ -571,6 +684,11 @@ export const ProductionFlowScreen = () => {
                     <p className="field-error">{t.flow.tag.tooMany}</p>
                   )}
                   {tagMissing === 0 && <p className="field-note">{t.flow.tag.matched}</p>}
+                  {retryableSerials.length > 0 && (
+                    <p className="field-error">
+                      {t.flow.tag.printIncomplete(retryableSerials.length)}
+                    </p>
+                  )}
                   <Button
                     disabled={
                       tagMissing === null ||
@@ -580,7 +698,8 @@ export const ProductionFlowScreen = () => {
                       entry.workerNo === null ||
                       serialIssue.isSaving ||
                       tagDocumentIssue.isSaving ||
-                      tagPrint.state.phase === 'sending'
+                      tagPrint.state.phase === 'sending' ||
+                      tagPrinter === null
                     }
                     onClick={issueTags}
                   >
@@ -594,11 +713,14 @@ export const ProductionFlowScreen = () => {
                   {issuedSerials.length > 0 && (
                     <Button
                       variant="outlined"
-                      disabled={selectedTagIds.length === 0}
+                      disabled={selectedTagIds.length === 0 || tagPrinter === null}
                       onClick={() => setIsTagReissueOpen(true)}
                     >
                       {t.flow.tag.reissue}
                     </Button>
+                  )}
+                  {tagPrinter === null && !tagPrinters.isPending && (
+                    <p className="field-error">{t.flow.tag.printerUnavailable}</p>
                   )}
                   {tagDocumentIssue.error !== null && pendingTagIssue !== null && (
                     <Button variant="outlined" onClick={retryTagDocumentIssue}>
@@ -629,7 +751,7 @@ export const ProductionFlowScreen = () => {
               </div>
               <div>
                 <dt>{t.flow.output.printer}</dt>
-                <dd>{printer?.displayName ?? t.flow.output.printerUnknown}</dd>
+                <dd>{lotPrinter?.displayName ?? t.flow.output.printerUnknown}</dd>
               </div>
             </dl>
 
@@ -644,7 +766,7 @@ export const ProductionFlowScreen = () => {
               </Button>
             )}
 
-            {printer === null && !printers.isPending && (
+            {lotPrinter === null && !lotPrinters.isPending && (
               <p className="field-error">{t.flow.output.printerUnavailable}</p>
             )}
             {!lotPrint.isShellAvailable && (
@@ -682,14 +804,38 @@ export const ProductionFlowScreen = () => {
           </Button>
         }
       >
-        {completedLots.data === undefined || completedLots.data.length === 0 ? (
+        {completedLots.data === undefined || completedLots.data.items.length === 0 ? (
           <p>{t.flow.currentLot.completedEmpty}</p>
         ) : (
-          <ol className="production-flow-completed-lots">
-            {completedLots.data.map((completedLot) => (
-              <li key={completedLot.lotId}>{completedLot.lotNo}</li>
-            ))}
-          </ol>
+          <>
+            <ol className="production-flow-completed-lots">
+              {completedLots.data.items.map((completedLot) => (
+                <li key={completedLot.lotId}>{completedLot.lotNo}</li>
+              ))}
+            </ol>
+            <nav className="production-flow-completed-pages" aria-label={t.flow.currentLot.pageNav}>
+              <Button
+                variant="outlined"
+                disabled={!completedBoundary.canPageUp}
+                onClick={() => setCompletedPage(Math.max(1, completedBoundary.page - 1))}
+              >
+                {t.flow.currentLot.pageUp}
+              </Button>
+              <p className="field-note">
+                {t.flow.currentLot.pagePosition(
+                  completedBoundary.page,
+                  completedBoundary.totalPages,
+                )}
+              </p>
+              <Button
+                variant="outlined"
+                disabled={!completedBoundary.canPageDown}
+                onClick={() => setCompletedPage(completedBoundary.page + 1)}
+              >
+                {t.flow.currentLot.pageDown}
+              </Button>
+            </nav>
+          </>
         )}
       </Dialog>
 

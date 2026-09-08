@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 
 import { itemFixtures } from '../item-extended-attrs/fixtures';
 import {
+  appliedGoodQty,
   buildLotIssue,
   buildTagIssue,
   canMatchIdentificationCount,
+  chunkTargets,
+  completedLotPageBoundary,
+  hasSucceededIdentificationPrint,
   judgeLotScan,
   missingIdentificationCount,
   requiresIdentificationTag,
+  nextBatchCount,
 } from './flow-state';
 
 describe('P-02-04 통합 흐름 판정', () => {
@@ -77,5 +82,62 @@ describe('P-02-04 통합 흐름 판정', () => {
     expect(judgeLotScan('', 'LOT-1')).toBe('empty');
     expect(judgeLotScan('LOT-2', 'LOT-1')).toBe('mismatch');
     expect(judgeLotScan(' LOT-1 ', 'LOT-1')).toBe('match');
+  });
+
+  it('서버 적용 실적은 LOT 진행 누계로만 복구한다', () => {
+    expect(appliedGoodQty(undefined)).toBeNull();
+    expect(appliedGoodQty({ progress: { goodQty: 0 } })).toBeNull();
+    expect(appliedGoodQty({ progress: { goodQty: 12.5 } })).toBe(12.5);
+  });
+
+  it('발번과 대상 요청을 계약 상한 1000에서 정확히 나눈다', () => {
+    expect(nextBatchCount(1000)).toEqual({ quantity: 1000, remaining: 0 });
+    expect(nextBatchCount(1001)).toEqual({ quantity: 1000, remaining: 1 });
+    expect(nextBatchCount(1)).toEqual({ quantity: 1, remaining: 0 });
+    expect(chunkTargets(Array.from({ length: 1001 }, (_, index) => index))).toHaveLength(2);
+    expect(chunkTargets(Array.from({ length: 1001 }, (_, index) => index))[0]).toHaveLength(1000);
+    expect(chunkTargets(Array.from({ length: 1001 }, (_, index) => index))[1]).toHaveLength(1);
+  });
+
+  it('발행 횟수만으로는 인쇄 성공으로 판정하지 않는다', () => {
+    expect(
+      hasSucceededIdentificationPrint({
+        targetTypeCode: 'SERIAL_NUMBER',
+        targetId: 1,
+        issueCount: 1,
+        lastPrintOutcome: 'PENDING',
+      }),
+    ).toBe(false);
+    expect(
+      hasSucceededIdentificationPrint({
+        targetTypeCode: 'SERIAL_NUMBER',
+        targetId: 1,
+        issueCount: 1,
+        lastPrintOutcome: 'FAILED',
+      }),
+    ).toBe(false);
+    expect(
+      hasSucceededIdentificationPrint({
+        targetTypeCode: 'SERIAL_NUMBER',
+        targetId: 1,
+        issueCount: 1,
+        lastPrintOutcome: 'SUCCEEDED',
+      }),
+    ).toBe(true);
+  });
+
+  it('마감 LOT 페이지의 위·아래 경계를 서버 메타로 판정한다', () => {
+    expect(completedLotPageBoundary({ page: 1, size: 20, total: 21 })).toEqual({
+      page: 1,
+      totalPages: 2,
+      canPageUp: false,
+      canPageDown: true,
+    });
+    expect(completedLotPageBoundary({ page: 2, size: 20, total: 21 })).toEqual({
+      page: 2,
+      totalPages: 2,
+      canPageUp: true,
+      canPageDown: false,
+    });
   });
 });

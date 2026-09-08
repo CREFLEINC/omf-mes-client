@@ -4,6 +4,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
+import { CONTRACT_BATCH_SIZE, chunkTargets } from './flow-state';
 
 export type Lot = components['schemas']['Lot'];
 export type Item = components['schemas']['Item'];
@@ -12,15 +13,23 @@ export type Printer = components['schemas']['Printer'];
 export type DocumentIssue = components['schemas']['DocumentIssue'];
 export type DocumentIssueSummary = components['schemas']['DocumentIssueSummary'];
 export type CodeValue = components['schemas']['CodeValue'];
+export type PageMeta = components['schemas']['PageMeta'];
+export type DocumentTypeCode = DocumentIssue['documentTypeCode'];
+
+export interface CompletedLotPage {
+  items: Lot[];
+  page: PageMeta;
+}
 
 export const productionFlowKeys = {
   all: ['production-flow'] as const,
   currentLot: (workOrderId: number) => ['production-flow', 'current-lot', workOrderId] as const,
-  completedLots: (workOrderId: number) =>
-    ['production-flow', 'completed-lots', workOrderId] as const,
+  completedLots: (workOrderId: number, page: number) =>
+    ['production-flow', 'completed-lots', workOrderId, page] as const,
   item: (itemId: number) => ['production-flow', 'item', itemId] as const,
   serials: (lotId: number) => ['production-flow', 'serials', lotId] as const,
-  printers: ['production-flow', 'printers'] as const,
+  printers: (documentTypeCode: DocumentTypeCode) =>
+    ['production-flow', 'printers', documentTypeCode] as const,
   lotIssues: (lotId: number) => ['production-flow', 'lot-issues', lotId] as const,
   tagIssueSummary: (serialIds: readonly number[]) =>
     ['production-flow', 'tag-issue-summary', ...serialIds] as const,
@@ -52,22 +61,23 @@ export const useCurrentLot = (workOrderId: number | null): UseQueryResult<Lot | 
 export const useCompletedLots = (
   workOrderId: number | null,
   enabled: boolean,
-): UseQueryResult<Lot[]> => {
+  page: number,
+): UseQueryResult<CompletedLotPage> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: productionFlowKeys.completedLots(workOrderId ?? 0),
+    queryKey: productionFlowKeys.completedLots(workOrderId ?? 0, page),
     enabled: enabled && workOrderId !== null,
-    queryFn: async (): Promise<Lot[]> => {
+    queryFn: async (): Promise<CompletedLotPage> => {
       if (workOrderId === null) throw new Error('작업지시가 없으면 마감 LOT을 조회하지 않습니다.');
 
       const data = await runRequest(() =>
         client.GET('/trace/lots', {
-          params: { query: { workOrderId, completed: true, page: 1, size: 100 } },
+          params: { query: { workOrderId, completed: true, page, size: 20 } },
         }),
       );
 
-      return data.items;
+      return data;
     },
   });
 };
@@ -91,7 +101,7 @@ export const useItem = (itemId: number | null): UseQueryResult<Item> => {
   });
 };
 
-/** 출력한 인식표 목록과 전체 개체 수를 한 응답에서 얻는다. */
+/** 출력한 인식표 목록을 끝 쪽까지 읽는다. 첫 쪽의 total만 전체 목록으로 오해하지 않는다. */
 export const useSerials = (lotId: number | null, enabled: boolean) => {
   const { client } = useApiClient();
 
@@ -101,9 +111,27 @@ export const useSerials = (lotId: number | null, enabled: boolean) => {
     queryFn: async () => {
       if (lotId === null) throw new Error('LOT이 없으면 인식표 개체를 조회하지 않습니다.');
 
-      return runRequest(() =>
-        client.GET('/trace/serial-numbers', { params: { query: { lotId, page: 1, size: 1000 } } }),
+      const first = await runRequest(() =>
+        client.GET('/trace/serial-numbers', {
+          params: { query: { lotId, page: 1, size: CONTRACT_BATCH_SIZE } },
+        }),
       );
+      const totalPages = Math.ceil(first.page.total / Math.max(1, first.page.size));
+      const rest = await Promise.all(
+        Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2).map(
+          async (page) =>
+            runRequest(() =>
+              client.GET('/trace/serial-numbers', {
+                params: { query: { lotId, page, size: CONTRACT_BATCH_SIZE } },
+              }),
+            ),
+        ),
+      );
+
+      return {
+        items: [first, ...rest].flatMap((response) => response.items),
+        page: first.page,
+      };
     },
   });
 };
@@ -122,19 +150,24 @@ export const useTagIssueSummary = (
     queryKey: productionFlowKeys.tagIssueSummary(serialIds),
     enabled: enabled && serialIds.length > 0,
     queryFn: async () => {
-      const data = await runRequest(() =>
-        client.GET('/app/document-issues/summary', {
-          params: {
-            query: {
-              targetTypeCode: 'SERIAL_NUMBER',
-              targetIds: serialIds,
-              documentTypeCode: 'IDENTIFICATION_TAG',
-            },
-          },
-        }),
+      const chunks = chunkTargets(serialIds);
+      const responses = await Promise.all(
+        chunks.map(async (targetIds) =>
+          runRequest(() =>
+            client.GET('/app/document-issues/summary', {
+              params: {
+                query: {
+                  targetTypeCode: 'SERIAL_NUMBER',
+                  targetIds,
+                  documentTypeCode: 'IDENTIFICATION_TAG',
+                },
+              },
+            }),
+          ),
+        ),
       );
 
-      return data.items;
+      return responses.flatMap((response) => response.items);
     },
   });
 };
@@ -187,19 +220,29 @@ export const useLotIssues = (lotId: number | null): UseQueryResult<DocumentIssue
   });
 };
 
-/** 생산 LOT 라벨을 지원하는 현재 단말 프린터. Electron 셸 값이 있으면 그것이 우선한다. */
-export const usePrinters = (): UseQueryResult<Printer[]> => {
+/** 문서 유형을 지원하는 현재 단말 프린터. 검증할 수 없는 셸 목록은 LOT 라벨에만 유지한다. */
+export const usePrinters = (documentTypeCode: DocumentTypeCode): UseQueryResult<Printer[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: productionFlowKeys.printers,
+    queryKey: productionFlowKeys.printers(documentTypeCode),
     queryFn: async (): Promise<Printer[]> => {
       const local = await terminalPrinters();
-      if (local !== null) return local;
+      if (local !== null) {
+        const verified = local.filter((printer) =>
+          printer.supportedDocumentTypeCodes?.includes(documentTypeCode),
+        );
+        const hasCapabilityData = local.some(
+          (printer) => printer.supportedDocumentTypeCodes !== undefined,
+        );
+
+        if (hasCapabilityData) return verified;
+        if (documentTypeCode === 'PRODUCTION_LOT_LABEL') return local;
+      }
 
       const data = await runRequest(() =>
         client.GET('/app/printers', {
-          params: { query: { documentTypeCode: 'PRODUCTION_LOT_LABEL' } },
+          params: { query: { documentTypeCode } },
         }),
       );
 

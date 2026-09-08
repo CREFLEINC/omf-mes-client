@@ -20,6 +20,11 @@ export const productionResult = {
       completed: '마감된 LOT 목록 보기',
       completedTitle: '마감된 LOT',
       completedEmpty: '마감된 LOT이 없습니다.',
+      pageNav: '마감된 LOT 페이지 이동',
+      pageUp: '페이지 위',
+      pageDown: '페이지 아래',
+      pagePosition: (page: number, totalPages: number) =>
+        `${String(totalPages)}쪽 중 ${String(page)}쪽`,
       none: '생산할 LOT이 없습니다. 관리웹에서 W/O 마감을 진행하세요.',
       loadFailed: '현재 LOT을 불러오지 못했습니다.',
     },
@@ -38,6 +43,13 @@ export const productionResult = {
       tooMany: '이미 만든 인식표 개체 수보다 실제 생산수량을 작게 낮출 수 없습니다.',
       summaryFailed: '인식표 발행 이력을 확인할 수 없어 생산 LOT 출력을 열지 않습니다.',
       restoreDocuments: (count: number) => `발행 기록이 없는 인식표 ${String(count)}장 복구`,
+      printIncomplete: (count: number) =>
+        `인쇄 대기 또는 실패 인식표 ${String(count)}장을 확인해 재출력하세요.`,
+      printOutcome: {
+        PENDING: '인쇄 대기',
+        SUCCEEDED: '인쇄 성공',
+        FAILED: '인쇄 실패',
+      },
       reissue: '선택한 인식표 재출력',
       reissueReason: '인식표 재출력 사유',
       reissueReasonPlaceholder: '사유를 고르세요',
@@ -47,6 +59,7 @@ export const productionResult = {
       printFailed: '인식표 발행 기록은 남았지만 물리 인쇄에 실패했습니다.',
       loadFailed: '인식표 개체를 확인할 수 없어 생산 LOT 출력을 열지 않습니다.',
       targetUnknown: '인식표 대상 여부를 확인할 수 없어 출력을 열지 않습니다.',
+      printerUnavailable: '인식표를 지원하는 프린터가 없습니다.',
     },
     output: {
       title: 'LOT 라벨',

@@ -1,9 +1,68 @@
 import type { components } from '@omf-mes/api-client';
 
-import type { Item, SerialNumber } from './flow-queries';
-
 export type DocumentIssueCreate = components['schemas']['DocumentIssueCreate'];
 export type LotComplete = components['schemas']['LotComplete'];
+type DocumentIssueSummary = components['schemas']['DocumentIssueSummary'];
+type Item = components['schemas']['Item'];
+type PageMeta = components['schemas']['PageMeta'];
+type SerialNumber = components['schemas']['SerialNumber'];
+
+export const CONTRACT_BATCH_SIZE = 1000;
+
+export interface BatchCount {
+  quantity: number;
+  remaining: number;
+}
+
+export const nextBatchCount = (total: number): BatchCount | null => {
+  if (!Number.isSafeInteger(total) || total <= 0) return null;
+
+  const quantity = Math.min(total, CONTRACT_BATCH_SIZE);
+
+  return { quantity, remaining: total - quantity };
+};
+
+export const chunkTargets = <T>(items: readonly T[]): T[][] =>
+  Array.from({ length: Math.ceil(items.length / CONTRACT_BATCH_SIZE) }, (_, index) =>
+    items.slice(index * CONTRACT_BATCH_SIZE, (index + 1) * CONTRACT_BATCH_SIZE),
+  );
+
+/** 서버가 계산한 LOT 양품 누계가 있으면 생산 실적은 이미 적용된 상태다. */
+export const appliedGoodQty = (
+  lot: { progress?: { goodQty: number } | null } | null | undefined,
+): number | null => {
+  const goodQty = lot?.progress?.goodQty;
+
+  return goodQty !== undefined && goodQty > 0 ? goodQty : null;
+};
+
+export const hasSucceededIdentificationPrint = (
+  summary: DocumentIssueSummary | undefined,
+): boolean =>
+  summary !== undefined && summary.issueCount > 0 && summary.lastPrintOutcome === 'SUCCEEDED';
+
+export interface PageBoundary {
+  page: number;
+  totalPages: number;
+  canPageUp: boolean;
+  canPageDown: boolean;
+}
+
+export const completedLotPageBoundary = (meta: PageMeta | undefined): PageBoundary => {
+  if (meta === undefined) {
+    return { page: 1, totalPages: 0, canPageUp: false, canPageDown: false };
+  }
+
+  const page = Math.max(1, meta.page);
+  const totalPages = Math.ceil(meta.total / Math.max(1, meta.size));
+
+  return {
+    page,
+    totalPages,
+    canPageUp: page > 1,
+    canPageDown: page < totalPages,
+  };
+};
 
 /** 품목 마스터가 명시한 시리얼 미관리 값만 비대상이다. 품목 유형 등으로 추정하지 않는다. */
 export const requiresIdentificationTag = (item: Item): boolean =>
