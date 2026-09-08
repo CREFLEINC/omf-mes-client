@@ -2,7 +2,6 @@ import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useId } from 'react';
 
-import { pendingCodeOptions } from './code-options';
 import { DisabledAction } from './disabled-action';
 import { FieldLabel } from './field-label';
 import { SelectField } from './select-field';
@@ -22,6 +21,9 @@ export interface UserFormPaneProps {
   /** 저장 실패 배너 슬롯 */
   banner: ReactNode;
   departmentOptions: SelectOption[];
+  statusOptions: SelectOption[];
+  /** null이면 상태를 고를 수 있다. 값이 있으면 조회 상태에 따른 비활성 사유다. */
+  statusDisabledReason: string | null;
   /** null이면 사용 중지를 누를 수 있다. 값이 있으면 그것이 비활성 사유다. */
   deactivateDisabledReason: string | null;
   isDirty: boolean;
@@ -58,8 +60,8 @@ const ValueField = ({ label, value, note }: { label: string; value: string; note
  * 보낼 자리가 없다 — 잠긴 입력칸으로 두면 「언젠가 열린다」는 뜻이 되므로 값 표기로 둔다
  * (배치 규범 3이 정한 처리 · 계획 결정 10).
  *
- * **상태는 두 모드 모두 비활성 + 사유다.** 값 목록이 확정되지 않아 고를 값이 없다.
- * 수정에서는 서버가 준 값이 그대로 보이고 그대로 되돌아 나가며, 등록에서는 서버가 채운다.
+ * 상태는 `APP_USER_STATUS` 조회값에서 고른다. 조회 실패·로딩·빈 목록일 때만 그 칸을 잠그고,
+ * 사용자 정보의 다른 필드는 그대로 편집할 수 있게 둔다.
  *
  * **사용 여부를 입력칸으로 두지 않는다.** 전용 액션(`:deactivate`)으로만 바뀌므로
  * 입력칸을 두면 저장 본문에 실릴 여지가 생긴다.
@@ -71,6 +73,8 @@ export const UserFormPane = ({
   fieldErrors,
   banner,
   departmentOptions,
+  statusOptions,
+  statusDisabledReason,
   deactivateDisabledReason,
   isDirty,
   isSaving,
@@ -146,22 +150,15 @@ export const UserFormPane = ({
           />
         </div>
 
-        {/*
-         * 상태는 **비활성 + 사유**다(배치 규범 4). 등록과 수정의 사유가 다르다 —
-         * 등록에서는 서버가 기본값으로 채우고, 수정에서는 받은 값이 그대로 유지된다.
-         * 문구가 짧아 `.wide-select`를 붙이지 않는다.
-         */}
         <SelectField
           label={t.user.fields.status}
-          options={pendingCodeOptions(values.statusCode)}
+          options={statusOptions}
           value={values.statusCode}
-          onChange={() => undefined}
-          disabled
-          disabledReason={
-            mode === 'create'
-              ? t.actionReasons.statusFieldOnCreate
-              : t.actionReasons.statusFieldPending
-          }
+          placeholder={mode === 'create' ? t.user.statusDefault : undefined}
+          onChange={(value) => onChange({ statusCode: value })}
+          disabled={statusDisabledReason !== null}
+          disabledReason={statusDisabledReason ?? undefined}
+          error={fieldErrors.statusCode}
         />
       </div>
 

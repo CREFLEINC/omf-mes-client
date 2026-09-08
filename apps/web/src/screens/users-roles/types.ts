@@ -34,9 +34,8 @@ export interface SelectOption {
 /**
  * 좌 페인의 조회 조건. **주소가 소유하며 화면 상태로 복제하지 않는다.**
  *
- * **상태 코드가 여기 없다.** 계약에 `statusCode` 쿼리가 있으나 값 목록이 확정되지 않아
- * 고를 수 있는 값이 하나도 없다 — 자리표시 값을 쿼리로 보내면 언제나 0건이 온다.
- * 조건 타입에 자리를 두지 않는 것이 「실리지 않는다」의 가장 단단한 보장이다(계획 결정 16).
+ * 상태는 공통코드 `APP_USER_STATUS`에서 받은 값을 그대로 쓴다. 고객이 값을 늘릴 수 있으므로
+ * 초기 시드 세 값을 화면 상수로 고정하지 않는다.
  *
  * `departmentId`가 문자열인 이유는 디자인 시스템 선택칸이 문자열을 다루기 때문이다.
  * 계약 표현(숫자)으로의 변환은 `filters.ts`가 맡는다.
@@ -48,6 +47,8 @@ export interface UserFilters {
   q: string;
   /** 비면 「전체 부서」다 */
   departmentId: string;
+  /** 비면 「전체 상태」다 */
+  statusCode: string;
   includeInactive: boolean;
 }
 
@@ -73,8 +74,8 @@ export interface RoleFilters {
  * **`loginId`는 등록에서만 쓰인다.** 계약의 수정 요청 본문에 그 키가 아예 없다 —
  * 수정 화면에서는 값 표기로만 보이고 요청 본문에도 실리지 않는다(계획 결정 10).
  *
- * **`statusCode`는 화면이 고르는 값이 아니다.** 값 목록이 미정이라 서버가 준 값을
- * 그대로 들고 있다가 수정 저장 때 되돌려 싣는다 — 계약이 수정 본문에서 이 키를 필수로 두었다.
+ * `statusCode`는 공통코드 선택값이다. 등록에서 비우면 계약 기본값 `EMPLOYED`를 쓰고,
+ * 수정에서 비우면 기존 상태를 보존한다.
  */
 export interface UserFormValues {
   loginId: string;

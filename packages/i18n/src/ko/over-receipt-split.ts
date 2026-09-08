@@ -50,7 +50,7 @@ export const overReceiptSplit = {
     registerBoth: '분리 등록',
     registerNormalOnly: '정량분만 저장',
     registerExcessOnly: '초과분만 저장',
-    createPurchaseOrder: '신규 P/O 등록',
+    createPurchaseOrder: '신규 ERP W/O 등록',
     /** 초안 파기 확인 창의 확인 버튼. 「확인」으로 두면 무엇이 확인되는지 창을 다시 읽어야 한다. */
     discardDraft: '입력을 버린다',
     keepEditing: '계속 입력',
@@ -99,7 +99,7 @@ export const overReceiptSplit = {
      * 아니라 「초과분 입하를 먼저 등록하면」이고, 그 뒤에 이어지는 자리는 등록 결과 구획이다.
      */
     createPurchaseOrderUnavailable:
-      '신규 P/O 등록은 여기서 시작하지 않습니다. 초과분 입하를 먼저 등록하면 등록 결과에서 이어집니다.',
+      '신규 ERP W/O 등록은 여기서 시작하지 않습니다. 초과분 입하를 먼저 등록하면 등록 결과에서 이어집니다.',
   },
   loading: {
     purchaseOrders: '대상 발주 목록을 불러오는 중',
@@ -276,7 +276,7 @@ export const overReceiptSplit = {
      * 못한다 — 보이는 글자와 접근 이름을 같게 두는 편이 둘 다 만족한다.
      * **내부 번호를 쓰지 않는다** — 그것이 번호가 화면 밖으로 새는 또 하나의 경로다.
      */
-    registerPo: (inboundReceiptNo: string): string => `${inboundReceiptNo} 입하로 P/O 등록`,
+    registerPo: (inboundReceiptNo: string): string => `${inboundReceiptNo} 입하로 ERP W/O 등록`,
   },
   dialog: {
     /* 초안 파기 확인. 본문은 공통 문구(`common.discardChangesConfirm`)를 쓴다. */

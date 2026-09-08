@@ -22,7 +22,7 @@ import type { RoleFilters, UserFilters } from './types';
 
 const params = (search: string): URLSearchParams => new URLSearchParams(search);
 
-const EMPTY: UserFilters = { q: '', departmentId: '', includeInactive: false };
+const EMPTY: UserFilters = { q: '', departmentId: '', statusCode: '', includeInactive: false };
 
 const EMPTY_ROLE: RoleFilters = { q: '', includeInactive: false };
 
@@ -31,10 +31,11 @@ describe('readUserFilters', () => {
     expect(readUserFilters(params(''))).toEqual(EMPTY);
   });
 
-  it('검색어·부서·미사용 포함을 읽는다', () => {
-    expect(readUserFilters(params('q=SYN-LOGIN&dept=3001&inactive=1'))).toEqual({
+  it('검색어·부서·상태·미사용 포함을 읽는다', () => {
+    expect(readUserFilters(params('q=SYN-LOGIN&dept=3001&status=EMPLOYED&inactive=1'))).toEqual({
       q: 'SYN-LOGIN',
       departmentId: '3001',
+      statusCode: 'EMPLOYED',
       includeInactive: true,
     });
   });
@@ -110,13 +111,14 @@ describe('toUserSearchParams', () => {
   it('걸린 조건과 둘째 쪽부터는 주소에 남는다', () => {
     const next = toUserSearchParams(
       'users',
-      { q: 'SYN-LOGIN', departmentId: '3001', includeInactive: true },
+      { q: 'SYN-LOGIN', departmentId: '3001', statusCode: 'EMPLOYED', includeInactive: true },
       2,
     );
 
     expect(next.get('tab')).toBe('users');
     expect(next.get('q')).toBe('SYN-LOGIN');
     expect(next.get('dept')).toBe('3001');
+    expect(next.get('status')).toBe('EMPLOYED');
     expect(next.get('inactive')).toBe('1');
     expect(next.get('page')).toBe('2');
   });
@@ -133,7 +135,12 @@ describe('toUserSearchParams', () => {
   });
 
   it('읽기와 쓰기가 서로의 역이다 — 주소를 왕복해도 조건이 달라지지 않는다', () => {
-    const filters: UserFilters = { q: 'SYN-LOGIN', departmentId: '3001', includeInactive: true };
+    const filters: UserFilters = {
+      q: 'SYN-LOGIN',
+      departmentId: '3001',
+      statusCode: 'EMPLOYED',
+      includeInactive: true,
+    };
 
     expect(readUserFilters(toUserSearchParams('users', filters, 2))).toEqual(filters);
     expect(readPage(toUserSearchParams('users', filters, 2))).toBe(2);
@@ -146,9 +153,15 @@ describe('toUserListQuery', () => {
   });
 
   it('걸린 조건만 싣는다', () => {
-    expect(toUserListQuery({ q: 'SYN-LOGIN', departmentId: '3001', includeInactive: true }, 2)).toEqual({
+    expect(
+      toUserListQuery(
+        { q: 'SYN-LOGIN', departmentId: '3001', statusCode: 'EMPLOYED', includeInactive: true },
+        2,
+      ),
+    ).toEqual({
       q: 'SYN-LOGIN',
       departmentId: 3001,
+      statusCode: 'EMPLOYED',
       includeInactive: true,
       page: 2,
     });
@@ -158,34 +171,49 @@ describe('toUserListQuery', () => {
     expect(toUserListQuery({ ...EMPTY, departmentId: '3001' }, 1).departmentId).toBe(3001);
   });
 
-  /**
-   * 값 목록이 확정되지 않아 고를 수 있는 값이 하나도 없다.
-   * 자리표시 값을 쿼리로 보내면 언제나 0건이 온다(계획 결정 16).
-   */
-  it('상태 코드를 어떤 경우에도 싣지 않는다', () => {
-    const query = toUserListQuery({ q: 'SYN-LOGIN', departmentId: '3001', includeInactive: true }, 2);
+  it('고른 상태 코드만 쿼리에 싣는다', () => {
+    const query = toUserListQuery(
+      { q: 'SYN-LOGIN', departmentId: '3001', statusCode: 'EMPLOYED', includeInactive: true },
+      2,
+    );
 
-    expect(Object.keys(query)).not.toContain('statusCode');
+    expect(query.statusCode).toBe('EMPLOYED');
     expect(Object.keys(toUserListQuery(EMPTY, 1))).not.toContain('statusCode');
   });
 });
 
 describe('toUserFilterChips', () => {
   it('조건이 없으면 칩도 없다', () => {
-    expect(toUserFilterChips(EMPTY, () => '합성 부서 A')).toEqual([]);
+    expect(
+      toUserFilterChips(
+        EMPTY,
+        () => '합성 부서 A',
+        () => '재직',
+      ),
+    ).toEqual([]);
   });
 
   it('조건마다 칩 하나이고 순서는 조건 줄의 컨트롤 순서와 같다', () => {
     const chips = toUserFilterChips(
-      { q: 'SYN-LOGIN', departmentId: '3001', includeInactive: true },
+      { q: 'SYN-LOGIN', departmentId: '3001', statusCode: 'EMPLOYED', includeInactive: true },
       () => '합성 부서 A',
+      () => '재직',
     );
 
-    expect(chips.map((chip) => chip.key)).toEqual(['q', 'departmentId', 'includeInactive']);
+    expect(chips.map((chip) => chip.key)).toEqual([
+      'q',
+      'departmentId',
+      'statusCode',
+      'includeInactive',
+    ]);
   });
 
   it('부서 칩은 번호가 아니라 이름을 낸다 — 번호를 보이면 무엇을 걸었는지 모른다', () => {
-    const chips = toUserFilterChips({ ...EMPTY, departmentId: '3001' }, () => '합성 부서 A');
+    const chips = toUserFilterChips(
+      { ...EMPTY, departmentId: '3001' },
+      () => '합성 부서 A',
+      () => '재직',
+    );
 
     expect(chips[0]?.label).toContain('합성 부서 A');
     expect(chips[0]?.label).not.toContain('3001');
@@ -193,8 +221,9 @@ describe('toUserFilterChips', () => {
 
   it('칩마다 제거 버튼의 접근 이름이 서로 다르다', () => {
     const chips = toUserFilterChips(
-      { q: 'SYN-LOGIN', departmentId: '3001', includeInactive: true },
+      { q: 'SYN-LOGIN', departmentId: '3001', statusCode: 'EMPLOYED', includeInactive: true },
       () => '합성 부서 A',
+      () => '재직',
     );
     const labels = chips.map((chip) => chip.removeLabel);
 
@@ -207,16 +236,23 @@ describe('hasAnyUserFilter', () => {
     expect(hasAnyUserFilter(EMPTY)).toBe(false);
     expect(hasAnyUserFilter({ ...EMPTY, q: 'SYN-LOGIN' })).toBe(true);
     expect(hasAnyUserFilter({ ...EMPTY, departmentId: '3001' })).toBe(true);
+    expect(hasAnyUserFilter({ ...EMPTY, statusCode: 'EMPLOYED' })).toBe(true);
     expect(hasAnyUserFilter({ ...EMPTY, includeInactive: true })).toBe(true);
   });
 });
 
 describe('clearUserFilter', () => {
-  const all: UserFilters = { q: 'SYN-LOGIN', departmentId: '3001', includeInactive: true };
+  const all: UserFilters = {
+    q: 'SYN-LOGIN',
+    departmentId: '3001',
+    statusCode: 'EMPLOYED',
+    includeInactive: true,
+  };
 
   it('고른 조건 하나만 푼다', () => {
     expect(clearUserFilter(all, 'q')).toEqual({ ...all, q: '' });
     expect(clearUserFilter(all, 'departmentId')).toEqual({ ...all, departmentId: '' });
+    expect(clearUserFilter(all, 'statusCode')).toEqual({ ...all, statusCode: '' });
     expect(clearUserFilter(all, 'includeInactive')).toEqual({ ...all, includeInactive: false });
   });
 
@@ -272,9 +308,9 @@ describe('toRoleSearchParams', () => {
 
   /** 이 탭에 없는 조건을 주소에 적으면 무엇으로 조회했는지 읽을 수 없다. */
   it('부서 키를 만들지 않는다', () => {
-    expect(toRoleSearchParams('roles', { q: 'SYN-ROLE', includeInactive: true }, 2).has('dept')).toBe(
-      false,
-    );
+    expect(
+      toRoleSearchParams('roles', { q: 'SYN-ROLE', includeInactive: true }, 2).has('dept'),
+    ).toBe(false);
   });
 
   it('선택(rol·new)을 담지 않는다', () => {
@@ -326,9 +362,9 @@ describe('toRoleFilterChips', () => {
   });
 
   it('조건마다 칩 하나이고 순서는 조건 줄의 컨트롤 순서와 같다', () => {
-    expect(toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true }).map((chip) => chip.key)).toEqual(
-      ['q', 'includeInactive'],
-    );
+    expect(
+      toRoleFilterChips({ q: 'SYN-ROLE', includeInactive: true }).map((chip) => chip.key),
+    ).toEqual(['q', 'includeInactive']);
   });
 
   it('칩마다 제거 버튼의 접근 이름이 서로 다르다', () => {
@@ -361,7 +397,10 @@ describe('hasAnyRoleFilter · clearRoleFilter', () => {
  * 규칙을 한 곳에 두지 않으면 자리마다 「무엇을 비우는가」가 갈린다.
  */
 describe('applySelection', () => {
-  const applied = (search: string, selection: Parameters<typeof applySelection>[1]): URLSearchParams => {
+  const applied = (
+    search: string,
+    selection: Parameters<typeof applySelection>[1],
+  ): URLSearchParams => {
     const next = params(search);
     applySelection(next, selection);
     return next;

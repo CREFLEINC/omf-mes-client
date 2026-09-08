@@ -20,6 +20,8 @@ export interface QualificationFormDialogProps {
   /** 중복 판정에 쓰는 나머지 줄. 자기 자신은 초안 키로 걸러진다 */
   otherDrafts: readonly QualificationDraft[];
   processOptions: SelectOption[];
+  certifierOptions: SelectOption[];
+  certifierDisabledReason?: string;
   onClose: () => void;
   /** 표에만 반영한다 — **서버 요청이 나가지 않는다** */
   onConfirm: (draft: QualificationDraft) => void;
@@ -39,6 +41,8 @@ export const QualificationFormDialog = ({
   isNew,
   otherDrafts,
   processOptions,
+  certifierOptions,
+  certifierDisabledReason,
   onClose,
   onConfirm,
 }: QualificationFormDialogProps) => {
@@ -147,6 +151,15 @@ export const QualificationFormDialog = ({
           value={values.validTo}
           onChange={(validTo) => change({ validTo })}
           error={errors.validTo}
+        />
+
+        <SelectField
+          label={t.fields.certifiedBy}
+          options={[{ value: '', label: t.values.certifierNone }, ...certifierOptions]}
+          value={values.certifiedBy === null ? '' : String(values.certifiedBy)}
+          onChange={(value) => change({ certifiedBy: value === '' ? null : Number(value) })}
+          disabled={certifierDisabledReason !== undefined}
+          disabledReason={certifierDisabledReason}
         />
       </div>
     </Dialog>

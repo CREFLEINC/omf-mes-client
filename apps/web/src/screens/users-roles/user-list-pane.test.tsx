@@ -8,41 +8,48 @@ import { EMPTY_USER_FILTERS, UserListPane, type UserListPaneProps } from './user
 import type { UserFilters } from './types';
 
 const departmentOptions = [{ value: '3001', label: 'SYN-DEPT-01 · 합성 부서 A' }];
+const statusOptions = [
+  { value: 'SYN-STATUS-A', label: '재직' },
+  { value: 'SYN-STATUS-B', label: '휴직' },
+];
 
 const renderPane = (overrides: Partial<UserListPaneProps> = {}) => {
   const onApplyFilters = vi.fn<(next: UserFilters) => void>();
   const onChangePage = vi.fn<(page: number) => void>();
   const onSelect = vi.fn<(appUserId: number) => void>();
   const onAddUser = vi.fn<() => void>();
+  const props: UserListPaneProps = {
+    users: appUserFixtures,
+    isLoading: false,
+    appliedFilters: EMPTY_USER_FILTERS,
+    onApplyFilters,
+    departmentOptions,
+    statusOptions,
+    statusDisabledReason: null,
+    departmentLabel: (id) => (id === '3001' ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음'),
+    departmentNameOf: (id) => {
+      if (id === null || id === undefined) return '—';
+      return id === 3001 ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음';
+    },
+    statusNameOf: (code) => {
+      if (code === '') return '—';
+      return code === 'SYN-STATUS-A' ? '재직' : '알 수 없음';
+    },
+    optionsNotice: null,
+    pageView: toPageView(
+      { page: 1, size: 50, total: appUserFixtures.length },
+      appUserFixtures.length,
+    ),
+    onChangePage,
+    selectedAppUserId: null,
+    onSelect,
+    isCreating: false,
+    onAddUser,
+    loadError: null,
+    ...overrides,
+  };
 
-  render(
-    <UserListPane
-      users={appUserFixtures}
-      isLoading={false}
-      appliedFilters={EMPTY_USER_FILTERS}
-      onApplyFilters={onApplyFilters}
-      departmentOptions={departmentOptions}
-      departmentLabel={(id) => (id === '3001' ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음')}
-      /*
-       * 실제 화면의 `lookupLabel`과 같은 세 갈래를 그대로 흉내 낸다 —
-       * 값 없음은 「—」, 목록에 없는 번호는 「알 수 없음」, 나머지는 이름.
-       * 여기서 셋을 뭉개면 「상태 칸이 대시인가」를 부서 칸의 대시가 대신 통과시킨다.
-       */
-      departmentNameOf={(id) => {
-        if (id === null || id === undefined) return '—';
-        return id === 3001 ? 'SYN-DEPT-01 · 합성 부서 A' : '알 수 없음';
-      }}
-      optionsNotice={null}
-      pageView={toPageView({ page: 1, size: 50, total: appUserFixtures.length }, appUserFixtures.length)}
-      onChangePage={onChangePage}
-      selectedAppUserId={null}
-      onSelect={onSelect}
-      isCreating={false}
-      onAddUser={onAddUser}
-      loadError={null}
-      {...overrides}
-    />,
-  );
+  render(<UserListPane {...props} />);
 
   return { onApplyFilters, onChangePage, onSelect, onAddUser, user: userEvent.setup() };
 };
@@ -53,12 +60,11 @@ describe('UserListPane 표', () => {
   it('열이 넷이다 — 로그인 ID · 이름 · 부서 · 상태', () => {
     renderPane();
 
-    expect(within(table()).getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
-      '로그인 ID',
-      '이름',
-      '부서',
-      '상태',
-    ]);
+    expect(
+      within(table())
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['로그인 ID', '이름', '부서', '상태']);
   });
 
   it('응답 건수만큼 행을 그린다', () => {
@@ -116,11 +122,11 @@ describe('UserListPane 표', () => {
     expect(cellsOf('SYN-LOGIN-03')[3]).toBe('—');
   });
 
-  /** 상태 코드는 값 목록이 미정이라 **원본 문자열을 그대로** 낸다 — 이름을 지어내지 않는다. */
-  it('상태 코드를 서버가 준 문자열 그대로 낸다', () => {
+  it('상태 코드를 공통코드 표시명으로 낸다', () => {
     renderPane();
 
-    expect(screen.getByText('SYN-STATUS-A')).toBeInTheDocument();
+    expect(screen.getByText('재직')).toBeInTheDocument();
+    expect(screen.queryByText('SYN-STATUS-A')).not.toBeInTheDocument();
   });
 
   it('미사용 행에 「미사용」 표식이 붙는다', () => {
@@ -132,26 +138,19 @@ describe('UserListPane 표', () => {
 });
 
 describe('UserListPane 조건 줄', () => {
-  /**
-   * 값 목록이 확정되지 않아 고를 수 있는 값이 하나도 없다 —
-   * 자리표시 값을 쿼리로 보내면 언제나 0건이 온다(계획 결정 16).
-   */
-  it('상태 조건이 비활성이고 사유가 보인다', () => {
-    renderPane();
+  it('상태를 선택하고 조회하면 상태 조건을 적용한다', async () => {
+    const { onApplyFilters, user } = renderPane();
 
-    const status = screen.getByLabelText('상태');
+    await user.click(screen.getByLabelText('상태'));
+    await user.click(screen.getByRole('option', { name: '휴직' }));
+    await user.click(screen.getByRole('button', { name: '조회' }));
 
-    expect(status).toBeDisabled();
-    expect(screen.getByText(/상태 조건은 상태 코드 목록이 확정되지 않아/)).toBeInTheDocument();
-  });
-
-  it('상태 조건의 사유가 컨트롤과 이어져 있다 — 비활성 컨트롤은 포커스를 받지 못한다', () => {
-    renderPane();
-
-    const describedBy = screen.getByLabelText('상태').getAttribute('aria-describedby');
-
-    expect(describedBy).not.toBeNull();
-    expect(document.getElementById(describedBy as string)?.textContent).toMatch(/상태 조건은/);
+    expect(onApplyFilters).toHaveBeenCalledWith({
+      q: '',
+      departmentId: '',
+      statusCode: 'SYN-STATUS-B',
+      includeInactive: false,
+    });
   });
 
   it('조회를 누르면 편집 중인 조건이 적용된다', async () => {
@@ -163,13 +162,14 @@ describe('UserListPane 조건 줄', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({
       q: 'syn',
       departmentId: '',
+      statusCode: '',
       includeInactive: false,
     });
   });
 
   it('초기화를 누르면 조건이 전부 풀린다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'syn', departmentId: '3001', includeInactive: true },
+      appliedFilters: { q: 'syn', departmentId: '3001', statusCode: '', includeInactive: true },
     });
 
     await user.click(screen.getByRole('button', { name: '초기화' }));
@@ -187,10 +187,18 @@ describe('UserListPane 조건 줄', () => {
   });
 
   it('적용된 조건마다 칩이 하나씩 보인다', () => {
-    renderPane({ appliedFilters: { q: 'syn', departmentId: '3001', includeInactive: true } });
+    renderPane({
+      appliedFilters: {
+        q: 'syn',
+        departmentId: '3001',
+        statusCode: 'SYN-STATUS-A',
+        includeInactive: true,
+      },
+    });
 
     expect(screen.getByText('검색어: syn')).toBeInTheDocument();
     expect(screen.getByText('부서: SYN-DEPT-01 · 합성 부서 A')).toBeInTheDocument();
+    expect(screen.getByText('상태: 재직')).toBeInTheDocument();
     /*
      * 「미사용 포함」은 확인칸 라벨과 칩 문구 둘 다에 쓰인다 —
      * 칩이 실제로 섰는지는 칩마다 다른 제거 버튼 이름으로 가린다.
@@ -200,7 +208,7 @@ describe('UserListPane 조건 줄', () => {
 
   it('칩을 제거하면 그 조건만 풀린다', async () => {
     const { onApplyFilters, user } = renderPane({
-      appliedFilters: { q: 'syn', departmentId: '3001', includeInactive: true },
+      appliedFilters: { q: 'syn', departmentId: '3001', statusCode: '', includeInactive: true },
     });
 
     await user.click(screen.getByRole('button', { name: '검색어 조건 제거' }));
@@ -208,6 +216,7 @@ describe('UserListPane 조건 줄', () => {
     expect(onApplyFilters).toHaveBeenCalledWith({
       q: '',
       departmentId: '3001',
+      statusCode: '',
       includeInactive: true,
     });
   });
@@ -244,7 +253,7 @@ describe('UserListPane 상태별 표시', () => {
   it('조건이 걸린 0건에는 초기화 길이 함께 나온다', async () => {
     const { onApplyFilters, user } = renderPane({
       users: [],
-      appliedFilters: { q: 'syn', departmentId: '', includeInactive: false },
+      appliedFilters: { q: 'syn', departmentId: '', statusCode: '', includeInactive: false },
       pageView: toPageView({ page: 1, size: 50, total: 0 }, 0),
     });
 

@@ -33,6 +33,7 @@ const lookupKeys = {
   businessUnits: ['common-code-lookups', 'business-units'] as const,
   plants: ['common-code-lookups', 'plants'] as const,
   processes: ['common-code-lookups', 'processes'] as const,
+  activeUsers: ['common-code-lookups', 'active-users'] as const,
 };
 
 /** 사업부 — 부서 필터·부서 폼·작업자 상세의 사업부 이름. */
@@ -143,6 +144,40 @@ export const useProcessOptions = (enabled: boolean): LookupResult => {
       data?.items.map((item) => ({
         value: String(item.processId),
         label: item.processName,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: query.isPending,
+  };
+};
+
+/**
+ * 자격 인증자 — 사용자 관리 권한을 넓히지 않고 기존 사용자 조회를 그대로 쓴다.
+ * 조회 실패는 자격 화면 전체가 아니라 새 인증자 선택만 막는다.
+ */
+export const useActiveUserOptions = (enabled: boolean): LookupResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: lookupKeys.activeUsers,
+    enabled,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/users', {
+          params: { query: { includeInactive: false, size: 200 } },
+        }),
+      ),
+  });
+
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((item) => ({
+        value: String(item.appUserId),
+        label: `${item.loginId} · ${item.userName}`,
+        // 인사 상태가 아니라 계정 사용 여부가 선택 가능성의 정본이다.
         isActive: item.isActive,
       })) ?? EMPTY_ENTRIES,
     truncated: data !== undefined && isTruncated(data.page, data.items.length),

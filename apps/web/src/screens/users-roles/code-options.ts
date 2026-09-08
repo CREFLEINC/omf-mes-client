@@ -44,7 +44,7 @@ export const selectableOptions = (
  */
 export const lookupLabel = (
   source: LookupSource<LookupEntry>,
-  id: number | null | undefined,
+  id: string | number | null | undefined,
 ): string => lookupDisplayLabel(source, id);
 
 /**

@@ -14,12 +14,13 @@ const valid: UserFormValues = {
 describe('USER_FORM_FIELDS', () => {
   /** 목록에 없는 필드명의 서버 오류는 삼키지 않고 배너로 간다. */
   it('폼이 소유한 입력칸 이름을 계약이 쓰는 이름 그대로 둔다', () => {
-    expect([...USER_FORM_FIELDS]).toEqual(['loginId', 'userName', 'departmentId', 'email']);
-  });
-
-  /** 화면에 입력칸이 없는 값이라 인라인으로 낼 자리가 없다 — 오면 배너로 올라가야 한다. */
-  it('상태 코드를 소유하지 않는다', () => {
-    expect([...USER_FORM_FIELDS]).not.toContain('statusCode');
+    expect([...USER_FORM_FIELDS]).toEqual([
+      'loginId',
+      'userName',
+      'departmentId',
+      'email',
+      'statusCode',
+    ]);
   });
 });
 
@@ -62,7 +63,9 @@ describe('validateUserForm — 등록', () => {
   });
 
   it('전자우편의 앞뒤 공백은 형식 판정에서 털어 낸다 — 저장되는 값이 그 값이다', () => {
-    expect(validateUserForm({ ...valid, email: '  a@b.invalid  ' }, 'create').email).toBeUndefined();
+    expect(
+      validateUserForm({ ...valid, email: '  a@b.invalid  ' }, 'create').email,
+    ).toBeUndefined();
   });
 
   /** 상한 자체는 허용값이다 — 상한에서 막으면 쓸 수 있는 값을 하나 잃는다. */
@@ -81,7 +84,9 @@ describe('validateUserForm — 등록', () => {
   });
 
   it('상한을 한 자라도 넘으면 막는다', () => {
-    expect(validateUserForm({ ...valid, loginId: 'A'.repeat(101) }, 'create').loginId).toBeDefined();
+    expect(
+      validateUserForm({ ...valid, loginId: 'A'.repeat(101) }, 'create').loginId,
+    ).toBeDefined();
     expect(
       validateUserForm({ ...valid, userName: '가'.repeat(201) }, 'create').userName,
     ).toBeDefined();
@@ -135,7 +140,9 @@ describe('validateUserForm — 수정', () => {
 
   /** 보낼 수 없는 값이라 길이도 볼 이유가 없다. */
   it('로그인 ID가 아무리 길어도 수정에서는 오류로 잡지 않는다', () => {
-    expect(validateUserForm({ ...valid, loginId: 'A'.repeat(5000) }, 'edit').loginId).toBeUndefined();
+    expect(
+      validateUserForm({ ...valid, loginId: 'A'.repeat(5000) }, 'edit').loginId,
+    ).toBeUndefined();
   });
 
   it('이름·전자우편의 상한은 수정에서도 같다', () => {
