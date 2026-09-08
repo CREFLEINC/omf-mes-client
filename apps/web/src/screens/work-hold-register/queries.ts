@@ -80,6 +80,13 @@ export interface OpenSessionResult {
   isPending: boolean;
   /** 다시 읽는 중인가. 그 구간에는 **옛 값이 그대로 나온다.** */
   isFetching: boolean;
+  /**
+   * 지금 들고 있는 값을 언제 받았는가.
+   *
+   * ⭐ **「값이 새로 왔는가」를 가르는 유일한 표식이다.** 다시 읽기가 시작됐는지(`isFetching`)만
+   * 보면 «어느» 읽기인지 알 수 없어, 전송과 무관한 뒷날의 읽기까지 옛 판정에 걸린다.
+   */
+  dataUpdatedAt: number;
   isError: boolean;
   error: unknown;
   refetch: () => void;
@@ -113,6 +120,7 @@ export const useOpenSession = (workOrderId: number | null): OpenSessionResult =>
     isPending: workOrderId !== null && query.isPending,
     /** 다시 읽는 중인가. **옛 값을 그대로 내주는 구간**이라 화면이 알아야 한다. */
     isFetching: query.isFetching,
+    dataUpdatedAt: query.dataUpdatedAt,
     isError: query.isError,
     error: query.error,
     refetch: () => {
