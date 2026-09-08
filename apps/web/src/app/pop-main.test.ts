@@ -35,6 +35,11 @@ describe('POP 진입점 배선', () => {
     expect(source).toMatch(/path: '\*'[\s\S]{0,80}POP_ENTRY_PATH/);
   });
 
+  it('접근 가능 후보 정본이 없는 동안 배포 셸에 화면 이동을 싣지 않는다', () => {
+    expect(source).not.toContain('PopScreenNav');
+    expect(source).not.toContain('popScreenNav');
+  });
+
   it('진입 문서가 이 파일을 가리킨다', () => {
     expect(html).toMatch(/src="\/src\/app\/pop-main\.tsx"/);
   });

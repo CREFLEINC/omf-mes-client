@@ -3,7 +3,6 @@ import { dirname, join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { POP_SCREEN_ROUTES } from '../patterns/pop-screen-nav';
 import { popRoutes } from './pop';
 
 const SOURCE_ROOT = resolve(process.cwd(), 'src');
@@ -25,14 +24,8 @@ const sourceFiles = (directory: string): string[] =>
   });
 
 describe('POP 공개 라우트 공통 규칙', () => {
-  it('진입 화면을 제외한 활성 라우트가 화면 이동 후보에 모두 있다', () => {
-    const routed = popRoutes
-      .map(({ path }) => path)
-      .filter((path) => path !== '/pop/worker-assignment')
-      .sort();
-    const navigable = POP_SCREEN_ROUTES.map(({ path }) => path).sort();
-
-    expect(navigable).toEqual(routed);
+  it('고정 설계 범위의 공개 화면 21개를 모두 점검한다', () => {
+    expect(popRoutes).toHaveLength(21);
   });
 
   it('모든 공개 화면의 루트가 관리웹 기본 밀도 겹을 쓴다', () => {

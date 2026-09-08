@@ -3310,47 +3310,6 @@
   background: #8f1d17;
 }
 
-/* G-34 화면 이동 — 모든 공개 POP 화면의 같은 머리줄 자리를 쓴다. */
-[data-pop-screen-nav='on'] .pop-ui > .pop-header,
-[data-pop-screen-nav='on'] .pop-ui > .pop-terminal-header {
-  padding-right: 332px;
-}
-
-[data-pop-screen-nav='on'][data-pop-logout='on'] .pop-ui > .pop-header,
-[data-pop-screen-nav='on'][data-pop-logout='on'] .pop-ui > .pop-terminal-header {
-  padding-right: 452px;
-}
-
-.pop-screen-navigation {
-  position: fixed;
-  top: 0;
-  right: 12px;
-  z-index: 21;
-  display: flex;
-  align-items: center;
-  width: 308px;
-  height: var(--pop-header-h, 56px);
-}
-
-[data-pop-logout='on'] .pop-screen-navigation {
-  right: 124px;
-}
-
-.pop-screen-navigation .pop-select {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--space-2);
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-}
-
-.pop-screen-navigation .pop-select__value {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 /* G-34 선택 필드 — 현재 값과 조작 버튼을 서로 다른 정보로 보인다. */
 .pop-ui .pop-select {
   display: grid;

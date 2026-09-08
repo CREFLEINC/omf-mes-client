@@ -42,7 +42,6 @@ import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
 import { PopLogoutButton } from '../patterns/pop-logout';
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../patterns/pop-identity';
-import { PopScreenNav } from '../patterns/pop-screen-nav';
 import { AppProviders } from './providers';
 
 /**
@@ -90,7 +89,6 @@ const POP_ENTRY_PATH = '/pop/worker-assignment';
 const PopChrome = () => (
   <>
     <Outlet />
-    <PopScreenNav />
     <PopLogoutButton />
   </>
 );
