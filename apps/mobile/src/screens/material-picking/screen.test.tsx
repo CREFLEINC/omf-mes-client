@@ -455,6 +455,32 @@ describe('자재 출고·피킹 화면', () => {
     expect(sent.issues).toHaveLength(0);
   });
 
+  /*
+   * 보류 라인은 집을 수 없어 분자가 될 수 없는데 분모에는 든다. 몇이 잠겼는지 말하지 않으면
+   * 집을 수 있는 것을 다 집고도 아직 할 일이 남은 것으로 읽힌다.
+   */
+  it('보류 라인이 있으면 몇이 잠겼는지 머리에 함께 말한다', async () => {
+    const user = userEvent.setup();
+    mount({
+      lines: [
+        line(),
+        secondLine(),
+        line({ pickingLineId: 43, lineNo: 3, itemCode: 'ABC-125', held: true }),
+      ],
+    });
+    await chooseOrder(user);
+
+    expect(await screen.findByText(/피킹 라인 0 \/ 3 · 보류 1/)).toBeTruthy();
+  });
+
+  it('보류 라인이 없으면 보류를 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ lines: [line(), secondLine()] });
+    await chooseOrder(user);
+
+    expect(await screen.findByText(/피킹 라인 0 \/ 2$/)).toBeTruthy();
+  });
+
   /* 목록의 첫 값을 조용히 쓰면 틀린 값을 소리 없이 보내는 것과 같다. */
   it('출고 유형을 고르기 전에는 확정을 막는다', async () => {
     const user = userEvent.setup();

@@ -79,7 +79,12 @@ export const inboundReceipt = {
   qty: {
     legend: '품목·수량 확인',
     itemLoadFailed: '품목을 확인할 수 없습니다',
-    ordered: (qty: string, uom: string) => `예정 ${qty} ${uom}`,
+    /*
+     * 발주 총량과 남은 예정을 같은 말로 부르지 않는다. 판정이 견주는 것은 남은 예정인데
+     * 총량까지 예정이라 부르면 칸 옆의 수와 판정에 나오는 수가 다른 뜻의 같은 이름이 된다.
+     */
+    ordered: (qty: string, uom: string) => `발주 ${qty} ${uom}`,
+    remaining: (qty: string, uom: string) => `남은 예정 ${qty} ${uom}`,
     received: '실입하 수량',
     packageCount: '포장 수',
     manufactured: '제조일',

@@ -554,9 +554,24 @@ export const InboundReceiptScreen = () => {
                       : `${item.data.itemCode} ${item.data.itemName}`}
                   </strong>
                   {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
-                  {/* 발주가 없으면 예정 수량이 없다. 없는 것을 0 으로 보이지 않는다. */}
+                  {/*
+                   * 발주가 없으면 견줄 수량이 없다. 없는 것을 0 으로 보이지 않는다.
+                   *
+                   * 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다. 총량만 칸 옆에 두면
+                   * 적는 사람이 그 수에 맞추려 하고, 판정은 다른 수로 나온다.
+                   */}
                   {draft.purchaseOrderLine === null ? null : (
-                    <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
+                    <>
+                      <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
+                      <p>
+                        <strong>
+                          {t.qty.remaining(
+                            String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
+                            uom,
+                          )}
+                        </strong>
+                      </p>
+                    </>
                   )}
                 </Card.Body>
               </Card>
