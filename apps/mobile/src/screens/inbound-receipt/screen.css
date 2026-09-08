@@ -97,3 +97,17 @@
   align-items: center;
   flex-wrap: wrap;
 }
+
+.receipt__split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+  padding: var(--space-4, 16px);
+  border: 1px solid var(--outline-variant, currentColor);
+  border-radius: var(--radius-lg, 12px);
+}
+
+.receipt__split-actions {
+  display: grid;
+  gap: var(--space-2, 8px);
+}

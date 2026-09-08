@@ -22,8 +22,8 @@ const today = () => {
 const ENTRIES = [
   ['M-CO-01 사번 확인', '/mdm/workers?q=100027', 1],
   ['M-01-01 발주 목록', '/logistics/purchase-orders?statusCode=OPEN', 1],
-  ['M-01-01 발주 라인', '/logistics/purchase-orders/9101/lines', 1],
   ['M-01-01 대체 LOT 사유', '/mdm/code-values?codeGroupCode=SUBSTITUTE_LOT_REASON', 1],
+  ['M-01-01 예외입하 유형', '/mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE', 1],
   ['M-01-04 LOT 정확 일치', '/trace/lots?lotNo=0001234500000012002607310001230007', 1],
   ['M-01-04 잔액', '/inventory/balances?lotId=8001', 1],
   ['M-01-04 보류', '/trace/lots/8003/holds', 1],
@@ -80,6 +80,20 @@ const ENTRIES = [
 
 /** 목록이 아닌 상세는 형태로 본다. */
 const DETAILS = [
+  [
+    'M-01-01 발주 상세 라인',
+    '/logistics/purchase-orders/9101',
+    (body) =>
+      body.purchaseOrder.purchaseOrderId === 9101 &&
+      body.lines.length >= 1 &&
+      body.lines.every(
+        (line) =>
+          typeof line.orderedQty === 'number' &&
+          typeof line.receivedQty === 'number' &&
+          typeof line.toleranceOverQty === 'number' &&
+          typeof line.toleranceUnderQty === 'number',
+      ),
+  ],
   [
     'M-05-01 점검 항목',
     '/mdm/equipments/5001/inspection-items',
@@ -303,6 +317,80 @@ for (const [name, path, check] of DETAILS) {
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} P-04-01 출하 배분 포장 연결`);
+}
+
+{
+  const occurredAt = new Date().toISOString();
+  const line = (receivedQty, purchaseOrderLineId) => ({
+    purchaseOrderLineId,
+    itemId: 2001,
+    receivedQty,
+    uomId: 1001,
+    supplierLotMissing: false,
+  });
+  const part = (lines) => ({
+    supplierId: 4001,
+    plantId: 101,
+    receiptDatetime: occurredAt,
+    lines,
+  });
+  const response = await fetch(`${BASE}/logistics/inbound-receipts:split`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'seed-smoke-m-01-01-split',
+      'X-Worker-No': '100027',
+    },
+    body: JSON.stringify({
+      mode: 'BOTH',
+      normal: part([line(1, 9203)]),
+      excess: {
+        ...part([line(1, null)]),
+        exceptionTypeCode: 'OVER_DELIVERY',
+        exceptionReason: '목 서버 분리 등록 검증',
+      },
+      businessDate: today(),
+      occurredAt,
+    }),
+  });
+  const body = await response.json();
+  const ok = response.status === 201 && body.created.length === 2;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-01-01 초과 입하 단일 분리 등록`);
+}
+
+{
+  const beforeResponse = await fetch(`${BASE}/logistics/inbound-receipts`);
+  const before = await beforeResponse.json();
+  const occurredAt = new Date().toISOString();
+  const response = await fetch(`${BASE}/logistics/inbound-receipts:split`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mode: 'BOTH',
+      normal: {
+        supplierId: 4001,
+        plantId: 101,
+        receiptDatetime: occurredAt,
+        lines: [{ itemId: 2001, receivedQty: 1, uomId: 1001, supplierLotMissing: false }],
+      },
+      excess: {
+        supplierId: 4001,
+        plantId: 101,
+        receiptDatetime: occurredAt,
+        lines: [{ itemId: 2001, receivedQty: 1, uomId: 1001, supplierLotMissing: false }],
+      },
+      businessDate: today(),
+      occurredAt,
+    }),
+  });
+  const afterResponse = await fetch(`${BASE}/logistics/inbound-receipts`);
+  const after = await afterResponse.json();
+  const ok = response.status === 400 && before.page.totalElements === after.page.totalElements;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-01-01 분리 실패 전건 롤백`);
 }
 
 console.log(

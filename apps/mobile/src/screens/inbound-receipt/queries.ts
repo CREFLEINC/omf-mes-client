@@ -13,7 +13,7 @@ export const SUBSTITUTE_LOT_REASON = 'SUBSTITUTE_LOT_REASON';
 
 export const receiptKeys = {
   orders: () => ['inbound-purchase-orders'] as const,
-  lines: (purchaseOrderId: number | null) => ['inbound-po-lines', purchaseOrderId] as const,
+  detail: (purchaseOrderId: number | null) => ['inbound-po-detail', purchaseOrderId] as const,
 };
 
 /**
@@ -39,14 +39,19 @@ export const useOpenPurchaseOrders = (): UseQueryResult<PurchaseOrder[]> => {
   });
 };
 
-/** 고른 발주의 라인. 예정 수량과 허용치가 여기 있고, 그것으로 화면이 세 갈래를 판정한다. */
+/**
+ * 고른 발주의 상세 라인.
+ *
+ * 예정·누적·허용치 넷은 목록 응답에 없고 이 상세 응답의 `lines`에만 함께 있다. 화면이
+ * 일부 값을 다른 경로에서 조립하면 서로 다른 시점의 값으로 판정할 수 있다.
+ */
 export const usePurchaseOrderLines = (
   purchaseOrderId: number | null,
 ): UseQueryResult<PurchaseOrderLine[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: receiptKeys.lines(purchaseOrderId),
+    queryKey: receiptKeys.detail(purchaseOrderId),
     enabled: purchaseOrderId !== null,
     queryFn: async () => {
       if (purchaseOrderId === null) {
@@ -54,12 +59,12 @@ export const usePurchaseOrderLines = (
       }
 
       const data = await runRequest(() =>
-        client.GET('/logistics/purchase-orders/{purchaseOrderId}/lines', {
+        client.GET('/logistics/purchase-orders/{purchaseOrderId}', {
           params: { path: { purchaseOrderId } },
         }),
       );
 
-      return data.items;
+      return data.lines;
     },
   });
 };

@@ -83,25 +83,32 @@ const routes = (options: Options = {}): StubRoute[] => [
         : jsonResponse({ message: '실패' }, { status: options.ordersStatus }),
   },
   {
-    match: (req) => new URL(req.url).pathname === '/logistics/purchase-orders/7/lines',
-    respond: () => jsonResponse({ items: options.lines ?? [poLine()] }),
+    match: (req) => new URL(req.url).pathname === '/logistics/purchase-orders/7',
+    respond: () => jsonResponse({ purchaseOrder: order, lines: options.lines ?? [poLine()] }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () =>
-      jsonResponse({
-        items: [
-          {
-            codeValueId: 1,
-            codeGroupId: 5,
-            code: 'NO_LABEL',
-            codeName: '라벨 없음',
-            displayOrder: 1,
-            isActive: true,
-          },
-        ],
+    respond: (req) => {
+      const group = new URL(req.url).searchParams.get('codeGroupCode');
+      const options =
+        group === 'INBOUND_RECEIPT_EXCEPTION_TYPE'
+          ? [
+              { code: 'URGENT_RECEIPT', codeName: '긴급 입하' },
+              { code: 'OVER_DELIVERY', codeName: '초과 납품' },
+            ]
+          : [{ code: 'NO_LABEL', codeName: '라벨 없음' }];
+
+      return jsonResponse({
+        items: options.map((option, index) => ({
+          codeValueId: 1,
+          codeGroupId: 5,
+          ...option,
+          displayOrder: index + 1,
+          isActive: true,
+        })),
         page,
-      }),
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/items',
@@ -223,9 +230,7 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    expect(
-      await screen.findByText('발주를 확인할 수 없습니다. 연결을 확인하세요.'),
-    ).toBeTruthy();
+    expect(await screen.findByText('발주를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
     expect(screen.queryByText('미마감 발주가 없습니다')).toBeNull();
   });
 
@@ -309,7 +314,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
   });
 
   /* 판정 결과를 먼저 보인 뒤에 넘긴다. 조용히 넘기면 왜 왔는지 알 수 없다. */
-  it('초과면 초과라 말하고 넘어갈 화면이 없다는 것도 말한다', async () => {
+  it('초과면 판정값을 말하고 같은 화면에 분리 단계를 연다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
@@ -318,7 +323,13 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await user.type(await screen.findByLabelText('실입하 수량'), '511');
 
     expect(await screen.findByText('수량 초과 — 남은 예정 500, 이번 도착 511')).toBeTruthy();
-    expect(screen.getByText('초과분은 담당자가 따로 처리합니다.')).toBeTruthy();
+    expect(screen.getByText('초과 입하 분리')).toBeTruthy();
+    expect(screen.getByText('510 EA')).toBeTruthy();
+    expect(screen.getByText('1 EA')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '정량+초과 분리 등록' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '정량분만 등록' })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: '초과분만 등록' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: '입하 등록' })).toBeNull();
   });
 
   it('부족이면 부족이라 말한다', async () => {
@@ -442,12 +453,114 @@ describe('입하 등록 화면 — 발주 경로', () => {
     });
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
-    
+
     const body = (await seen[0]!.json()) as { businessDate: string; lines: unknown[] };
 
     expect(body.lines).toHaveLength(1);
     expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
+  });
+});
+
+describe('입하 등록 화면 — 초과 입하 분리', () => {
+  const prepareSplit = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.type(await screen.findByLabelText('실입하 수량'), '511');
+    await user.click(await screen.findByRole('combobox', { name: '초과 예외 유형' }));
+    await user.click(await screen.findByRole('option', { name: '초과 납품' }));
+    await user.type(screen.getByLabelText('초과 사유'), '발주 허용치를 넘겨 도착');
+  };
+
+  it('정량분과 초과분을 한 요청에 담고 초과분을 ERP W/O에 귀속하지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/inbound-receipts:split' &&
+          req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse(
+            { created: [{ inboundReceiptId: 1 }, { inboundReceiptId: 2 }] },
+            { status: 201 },
+          );
+        },
+      },
+    ]);
+
+    await prepareSplit(user);
+    await user.click(screen.getByRole('button', { name: '정량+초과 분리 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const request = seen[0]!;
+    const body = (await request.json()) as {
+      mode: string;
+      normal: { lines: { purchaseOrderLineId: number; receivedQty: number }[] };
+      excess: {
+        exceptionTypeCode: string;
+        exceptionReason: string;
+        lines: { purchaseOrderLineId: number | null; receivedQty: number }[];
+      };
+    };
+
+    expect(request.headers.get('X-Worker-No')).toBe('900028');
+    expect(request.headers.get('Idempotency-Key')).toBeTruthy();
+    expect(body.mode).toBe('BOTH');
+    expect(body.normal.lines[0]).toMatchObject({ purchaseOrderLineId: 41, receivedQty: 510 });
+    expect(body.excess.lines[0]).toMatchObject({ purchaseOrderLineId: null, receivedQty: 1 });
+    expect(body.excess.exceptionTypeCode).toBe('OVER_DELIVERY');
+    expect(body.excess.exceptionReason).toBe('발주 허용치를 넘겨 도착');
+    expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
+  });
+
+  /* 같은 틱의 연타가 서로 다른 멱등키 두 건을 만들면 서버도 중복인지 알 수 없다. */
+  it('분리 등록을 연달아 눌러도 단일 멱등 요청만 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/inbound-receipts:split',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse({ created: [] }, { status: 201 });
+        },
+      },
+    ]);
+
+    await prepareSplit(user);
+    const button = screen.getByRole('button', { name: '정량+초과 분리 등록' });
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('입하를 등록했습니다');
+    expect(seen).toHaveLength(1);
+  });
+
+  /* 한 호출이 거부되면 정량분만 성공했다고 말하지 않는다. 둘은 한 트랜잭션이다. */
+  it('분리 요청이 실패하면 부분 성공으로 표시하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/inbound-receipts:split',
+        respond: () =>
+          jsonResponse(
+            { code: 'SPLIT_REJECTED', message: '분리 등록 실패', errors: [] },
+            { status: 400 },
+          ),
+      },
+    ]);
+
+    await prepareSplit(user);
+    await user.click(screen.getByRole('button', { name: '정량+초과 분리 등록' }));
+
+    expect(await screen.findByText('입하를 전송하지 못했습니다')).toBeTruthy();
+    expect(screen.queryByText('입하를 등록했습니다')).toBeNull();
   });
 });
 
@@ -559,6 +672,25 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     expect(partnerQueries.every((role) => role === 'SUPPLIER')).toBe(true);
   });
 
+  it('무발주 사유를 받기 전에는 등록을 열지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await openUnordered(user);
+    await choose(user, '공급사', /합성공급사/);
+    await choose(user, '품목', /ABC-123/);
+    await choose(user, '단위', /EA/);
+    await user.type(await screen.findByLabelText('실입하 수량'), '40');
+
+    expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
+
+    await choose(user, '예외입하 유형', /긴급 입하/);
+    await user.type(screen.getByLabelText('예외 사유'), '발주서 도착 전 긴급 입하');
+
+    expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
+  });
+
   /* 발주가 없으면 승계할 곳이 없다. 고른 값과 단말의 공장이 그대로 실려야 한다. */
   it('고른 공급사와 품목과 단위를 단말 공장과 함께 싣는다', async () => {
     const user = userEvent.setup();
@@ -581,6 +713,8 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await choose(user, '공급사', /합성공급사/);
     await choose(user, '품목', /ABC-123/);
     await choose(user, '단위', /EA/);
+    await choose(user, '예외입하 유형', /긴급 입하/);
+    await user.type(screen.getByLabelText('예외 사유'), '발주서 도착 전 긴급 입하');
     await user.type(await screen.findByLabelText('실입하 수량'), '40');
     await user.click(screen.getByRole('button', { name: '입하 등록' }));
 
@@ -591,11 +725,15 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     const body = (await seen[0]!.json()) as {
       supplierId: number;
       plantId: number;
+      exceptionTypeCode: string;
+      exceptionReason: string;
       lines: { purchaseOrderLineId: number | null; itemId: number; uomId: number }[];
     };
 
     expect(body.supplierId).toBe(2);
     expect(body.plantId).toBe(7);
+    expect(body.exceptionTypeCode).toBe('URGENT_RECEIPT');
+    expect(body.exceptionReason).toBe('발주서 도착 전 긴급 입하');
     expect(body.lines[0]?.purchaseOrderLineId).toBeNull();
     expect(body.lines[0]?.itemId).toBe(31);
     expect(body.lines[0]?.uomId).toBe(9);

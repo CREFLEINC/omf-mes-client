@@ -38,10 +38,10 @@ describe('미마감 발주 조회', () => {
 });
 
 describe('발주 라인 조회', () => {
-  it('고른 발주의 라인만 묻는다', async () => {
+  it('고른 발주의 상세에서 판정 입력이 있는 라인을 읽는다', async () => {
     const seen: URL[] = [];
     const fetch = createStubFetch([
-      capturing('/logistics/purchase-orders/7/lines', { items: [] }, seen),
+      capturing('/logistics/purchase-orders/7', { purchaseOrder: {}, lines: [] }, seen),
     ]);
 
     const { result } = renderHookWithProviders(() => usePurchaseOrderLines(7), { fetch });
@@ -49,7 +49,7 @@ describe('발주 라인 조회', () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(seen[0]?.pathname).toBe('/logistics/purchase-orders/7/lines');
+    expect(seen[0]?.pathname).toBe('/logistics/purchase-orders/7');
   });
 
   it('발주를 고르기 전에는 묻지 않는다', () => {
