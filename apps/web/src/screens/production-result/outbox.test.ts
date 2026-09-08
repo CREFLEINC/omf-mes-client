@@ -95,6 +95,38 @@ describe('useOutbox — 끝나지 않는 장애에서 멈추되 실적은 남긴
     }
   };
 
+  it('서버 적용 후에만 후속 흐름을 깨우고 LOT 대기 표시를 내린다', async () => {
+    const onApplied = vi.fn();
+    const withLot = {
+      ...body,
+      lotAllocations: [{ lotId: 90101, allocatedQty: 120 }],
+    } satisfies OutboxEntry['body'];
+    const { result } = renderHookWithProviders(() => useOutbox({ onApplied }), {
+      fetch: createStubFetch([
+        {
+          match: (request: Request) =>
+            new URL(request.url).pathname === '/production/production-results',
+          respond: () => jsonResponse({ productionResultId: 501 }, { status: 201 }),
+        },
+      ]),
+    });
+
+    act(() => {
+      result.current.enqueue('900123', withLot);
+    });
+
+    expect(result.current.isPendingForLot(90101)).toBe(true);
+    expect(onApplied).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(onApplied).toHaveBeenCalledTimes(1);
+    expect(onApplied.mock.calls[0]?.[0].body).toEqual(withLot);
+    expect(result.current.isPendingForLot(90101)).toBe(false);
+  });
+
   /*
    * ⛔ **멈출 때도 큐에서 내리지 않는다.** 내리면 작업자가 친 실적이 사라지고, 그것이 이 큐가
    * 막으려는 바로 그 일이다.

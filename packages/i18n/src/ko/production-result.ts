@@ -4,7 +4,87 @@
  * 이 화면의 말은 「실적」이고 받는 수량은 **양품 하나**다 — 불량·손실은 이 화면에 오지 않는다.
  */
 export const productionResult = {
-  title: '작업실적 등록',
+  title: '생산 실적 등록',
+
+  flow: {
+    header: {
+      erpWorkOrder: 'ERP W/O',
+      workOrder: 'W/O',
+      item: '품목',
+    },
+    currentLot: {
+      title: 'LOT 진행',
+      current: '현재 LOT',
+      sequence: (current: number | null, total: number | null) =>
+        `${current === null ? '—' : String(current)} / ${total === null ? '—' : String(total)}`,
+      completed: '마감된 LOT 목록 보기',
+      completedTitle: '마감된 LOT',
+      completedEmpty: '마감된 LOT이 없습니다.',
+      none: '생산할 LOT이 없습니다. 관리웹에서 W/O 마감을 진행하세요.',
+      loadFailed: '현재 LOT을 불러오지 못했습니다.',
+    },
+    quantity: {
+      title: '생산 수량',
+      target: '생산 목표수량',
+      actual: '실제 생산수량',
+      invalid: '0보다 큰 수량을 입력하세요.',
+    },
+    tag: {
+      title: '인식표',
+      issued: '출력한 인식표',
+      count: (count: number) => `${String(count)}개`,
+      issueMissing: (count: number) => `부족한 인식표 ${String(count)}장 출력`,
+      matched: '실제 생산수량과 인식표 개체 수가 일치합니다.',
+      tooMany: '이미 만든 인식표 개체 수보다 실제 생산수량을 작게 낮출 수 없습니다.',
+      summaryFailed: '인식표 발행 이력을 확인할 수 없어 생산 LOT 출력을 열지 않습니다.',
+      restoreDocuments: (count: number) => `발행 기록이 없는 인식표 ${String(count)}장 복구`,
+      reissue: '선택한 인식표 재출력',
+      reissueReason: '인식표 재출력 사유',
+      reissueReasonPlaceholder: '사유를 고르세요',
+      reasonLoadFailed: '재출력 사유를 불러오지 못했습니다.',
+      reasonEmpty: '고를 수 있는 재출력 사유가 없어 재출력할 수 없습니다.',
+      issuing: '인식표를 발행하고 있습니다.',
+      printFailed: '인식표 발행 기록은 남았지만 물리 인쇄에 실패했습니다.',
+      loadFailed: '인식표 개체를 확인할 수 없어 생산 LOT 출력을 열지 않습니다.',
+      targetUnknown: '인식표 대상 여부를 확인할 수 없어 출력을 열지 않습니다.',
+    },
+    output: {
+      title: 'LOT 라벨',
+      template: '생산 LOT 라벨',
+      printer: '프린터',
+      printerUnknown: '확인할 수 없음',
+      issue: '생산 LOT 출력',
+      retryIssue: '라벨 발행 다시 시도',
+      retryPrint: '기존 발행분 인쇄 다시 시도',
+      queued: '생산 실적을 미전송 큐에 저장했습니다. 서버 적용 뒤 라벨 발행을 이어갑니다.',
+      saving: '생산 실적을 서버에 적용하는 중입니다.',
+      issuing: '생산 실적 저장 완료 · 라벨 발행 중',
+      printing: '생산 실적 저장 완료 · 라벨 인쇄 중',
+      printed: '생산 LOT 라벨 인쇄 완료 · 부착한 라벨을 스캔하세요.',
+      issueFailed: '생산 실적은 저장됐지만 라벨 발행에 실패했습니다.',
+      printFailed: '라벨 발행은 완료됐지만 물리 인쇄에 실패했습니다.',
+      shellUnavailable: 'Electron POP 셸의 인쇄 통로를 확인할 수 없습니다.',
+      printerUnavailable: '사용 가능한 라벨 프린터가 없습니다.',
+    },
+    scan: {
+      title: '스캔 대기',
+      label: '부착한 LOT 번호 스캔',
+      waiting: '생산 LOT 라벨 인쇄가 끝나면 스캔 입력이 열립니다.',
+      mismatch: (lotNo: string) => `현재 LOT ${lotNo}과 일치하는 라벨을 스캔하세요.`,
+      completing: 'LOT 생산 등록을 마감하고 있습니다.',
+      completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',
+      failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔하세요.',
+      alreadyCompleted: '이미 마감된 LOT입니다. 현재 LOT 상태를 다시 불러옵니다.',
+    },
+    gate: {
+      input: '이 단말은 생산 실적 입력을 사용할 수 없습니다.',
+      print: '이 단말은 라벨 출력을 사용할 수 없습니다.',
+      complete: '이 단말은 LOT 마감을 사용할 수 없습니다.',
+      unknown: '단말 기능 구성을 확인할 수 없습니다.',
+    },
+    retry: '다시 시도',
+    close: '닫기',
+  },
 
   entry: {
     workOrderLabel: '작업지시',
@@ -52,7 +132,7 @@ export const productionResult = {
     goodQtyLabel: '양품수량',
     remarksLabel: '비고',
     keypadLabel: '수량 키패드',
-    /* 읽는 기계에는 이름이 가고 눈에는 기호가 보인다 — 전례 `P-02-05`. */
+    /* 읽는 기계에는 이름이 가고 눈에는 기호가 보인다 — 인식표 키패드도 같은 규칙이다. */
     backspace: '한 자 지움',
     clearGlyph: 'C',
     quickAdd: (step: number) => `＋${String(step)}`,

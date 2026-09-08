@@ -141,6 +141,13 @@ export interface Outbox {
   isStalled: boolean;
   /** 멈춘 큐를 사람이 깨운다. */
   retryNow: () => void;
+  /** 이 LOT의 실적이 아직 서버 적용을 기다리는가. 통합 출력 흐름의 중복 적재 방지용이다. */
+  isPendingForLot: (lotId: number) => boolean;
+}
+
+export interface OutboxOptions {
+  /** 서버가 같은 멱등 키의 실적을 수락한 뒤 호출한다. 큐 적재만으로 호출하지 않는다. */
+  onApplied?: (entry: OutboxEntry) => void;
 }
 
 /**
@@ -149,12 +156,14 @@ export interface Outbox {
  * ⚠ **한 번에 한 건씩 순서대로 보낸다.** 병렬로 보내면 하나가 실패했을 때 어디까지 갔는지
  * 알 수 없다.
  */
-export const useOutbox = (): Outbox => {
+export const useOutbox = (options: OutboxOptions = {}): Outbox => {
   const { client } = useApiClient();
 
   const [entries, setEntries] = useState<OutboxEntry[]>(readStored);
   const [rejection, setRejection] = useState<SplitError | null>(null);
   const [isOnline, setIsOnline] = useState(() => globalThis.navigator.onLine);
+  const onAppliedRef = useRef(options.onApplied);
+  onAppliedRef.current = options.onApplied;
 
   /* 비우는 작업이 겹쳐 돌면 같은 항목이 두 번 나간다 — 키가 같아 서버가 흡수하지만, 굳이. */
   const draining = useRef(false);
@@ -216,8 +225,11 @@ export const useOutbox = (): Outbox => {
         const entry = entries[0];
         if (entry === undefined) return;
 
+        let isApplied = false;
+
         try {
           await postEntry(client, entry);
+          isApplied = true;
         } catch (error) {
           /*
            * 통신이 끊긴 것이면 큐에 그대로 둔다 — 기다리면 풀린다. 다만 **가만히 두지는
@@ -263,6 +275,9 @@ export const useOutbox = (): Outbox => {
 
           return next;
         });
+
+        /* 출력·마감 같은 후속 단계는 서버 적용 뒤에만 이어진다. 큐 적재 성공과 섞지 않는다. */
+        if (isApplied) onAppliedRef.current?.(entry);
       } finally {
         draining.current = false;
       }
@@ -289,6 +304,14 @@ export const useOutbox = (): Outbox => {
     setRetryTick((tick) => tick + 1);
   }, []);
 
+  const isPendingForLot = useCallback(
+    (lotId: number): boolean =>
+      entries.some((entry) =>
+        entry.body.lotAllocations?.some((allocation) => allocation.lotId === lotId),
+      ),
+    [entries],
+  );
+
   return {
     pendingCount: entries.length,
     isOnline,
@@ -297,5 +320,6 @@ export const useOutbox = (): Outbox => {
     clearRejection,
     isStalled,
     retryNow,
+    isPendingForLot,
   };
 };

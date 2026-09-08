@@ -3,16 +3,13 @@ import type { RouteObject } from 'react-router';
 import { DowntimeRegisterScreen } from '../screens/downtime-register/screen';
 import { EmergencyWorkOrderFieldScreen } from '../screens/emergency-work-order-field/screen';
 import { GoodsIssueQrScreen } from '../screens/goods-issue-qr/screen';
-import { IdentificationTagIssueScreen } from '../screens/identification-tag-issue/screen';
 import { MaterialInputScanScreen } from '../screens/material-input-scan/screen';
 import { PackingLabelReprintScreen } from '../screens/packing-label-reprint/screen';
 import { PackingWorkScreen } from '../screens/packing-work/screen';
-import { PopLotLabelPrintScreen } from '../screens/pop-lot-label-print/screen';
 import { PopMaterialLotLabelScreen } from '../screens/pop-material-lot-label/screen';
-import { ProductionLotCompleteScreen } from '../screens/production-lot-complete/screen';
 import { PqcInspectionScreen } from '../screens/pqc-inspection/screen';
 import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
-import { ProductionResultScreen } from '../screens/production-result/screen';
+import { ProductionFlowScreen } from '../screens/production-result/production-flow-screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { RunningChangeScreen } from '../screens/running-change/screen';
 import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';
@@ -130,23 +127,11 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/pqc-inspection', element: <PqcInspectionScreen /> },
   /*
-   * P-02-05 — 인식표 발행·부착. 셸 밖에 서는 POP 태스크 화면이다.
-   *
-   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시
-   * 선택(`P-02-01`)이 아직 이 저장소에 없다. 사번은 `P-CO-01` 이 `patterns/worker-session` 에
-   * 두지만, **그 자리를 읽는 화면은 아직 없다** — 그 파일이 「이 자리로 모으는 일은 셸이
-   * `pop-identity` 를 채울 때」라고 못박았다. 그때 `entry-context.ts` 하나가 바뀐다.
-   *
-   * ⚠ **단말·공정은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 비어 있는 동안 이 화면은
-   * 「단말이 확인되지 않았습니다」로 발행이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
-   */
-  { path: '/pop/tag-issue', element: <IdentificationTagIssueScreen /> },
-  /*
    * P-01-02 — 창고 스테이션 모드의 화면이라 작업지시가 아니라 **출고 전표**에 매인다.
    *
    * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?goodsIssueId=`·`?workerNo=`) — 전표를 고르는
    * 자리가 아직 없고, 사번은 `P-CO-01` 이 `patterns/worker-session` 에 두지만 **그 자리를 읽는
-   * 화면은 아직 없다**(`P-02-05` 가 같은 사정을 적어 두었다). 그때 `entry-context.ts` 하나가
+   * 화면은 아직 없다**(통합 `P-02-04`가 같은 사정을 적어 두었다). 그때 `entry-context.ts` 하나가
    * 바뀐다.
    *
    * ⚠ **단말 권한으로 이 주소를 막지 않는다**(통지 #535). 창고 POP 은 단말 기능 구성의 적용
@@ -174,11 +159,11 @@ export const popRoutes: RouteObject[] = [
    *
    * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?handlingUnitId=&workerNo=`) — 포장을 만드는
    * 포장 작업(`P-02-08`)이 섰지만 그 화면은 여기로 넘기지 않는다(스펙이 분기를 두지 않았다).
-   * 넘기는 자리가 정해지면 `entry-context.ts` 하나가 바뀐다(전례 `P-02-05`).
+   * 넘기는 자리가 정해지면 `entry-context.ts` 하나가 바뀐다(전례 `P-02-04`).
    */
   { path: '/pop/packing-label-reprint', element: <PackingLabelReprintScreen /> },
   /*
-   * P-02-04 — 작업실적 등록. 셸 밖에 서는 POP 태스크 화면이다.
+   * P-02-04 — 생산 실적·인식표·생산 LOT 출력·스캔 마감을 한 흐름으로 처리한다.
    *
    * ⭐ **이 화면의 세로 예산에는 슬랙이 0 이다**(헤더 64 + 본문 616 + 액션바 88 = 768 — 스펙
    * §3-1). 관리웹 셸의 상단 바가 위에 얹히면 1024×768 단말에서 본문 아래가 그대로 잘린다.
@@ -189,13 +174,13 @@ export const popRoutes: RouteObject[] = [
    * ⚠ **단말·공정은 셸이 채운다**(`patterns/pop-identity`). 그 자리가 비어 있는 동안 이 화면은
    * 「단말이 확인되지 않았습니다」로 저장이 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다.
    */
-  { path: '/pop/production-result', element: <ProductionResultScreen /> },
+  { path: '/pop/production-result', element: <ProductionFlowScreen /> },
   /*
    * P-02-08 — 포장 작업(LOT 스캔·제품 포장). 셸 밖에 서는 POP 태스크 화면이다.
    *
    * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시
    * 선택(`P-02-01`)이 아직 이 저장소에 없다. 그것이 서면 `entry-context.ts` 하나가
-   * 바뀐다(전례 `P-02-05`).
+   * 바뀐다(전례 `P-02-04`).
    *
    * ⚠ **재출력 화면(`P-02-09`)으로 넘기지 않는다.** 스펙이 이 화면에 분기를 두지 않았다 —
    * 확정한 포장의 라벨을 다시 뽑는 것은 그 화면의 소관이고, 넘기는 자리는 설계가 정한다.
@@ -216,18 +201,6 @@ export const popRoutes: RouteObject[] = [
    * ⚠ **단말 게이팅 선차단을 두지 않는다.** 출력 권한 집행은 서버의 403 이다(스펙 §6).
    */
   { path: '/pop/shipping-label', element: <ShippingPackingLabelScreen /> },
-  /*
-   * P-02-07 — LOT 라벨 출력·부착. 2단 출력의 나머지 한 단이며 `P-02-05`(인식표)와 **발행
-   * 시점이 다르다**(스펙 §5-3) — 인식표는 생산 «중», LOT 라벨은 LOT 이 완료된 «뒤»다. 두
-   * 화면은 서로를 안내만 하고 합치지 않는다.
-   *
-   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?workOrderId=&workerNo=`) — 작업지시 선택
-   * (`P-02-01`)이 아직 이 저장소에 없다. 그것이 서면 `entry-context.ts` 하나가 바뀐다.
-   *
-   * ⚠ **단말 게이팅(`can_print_label`)은 출력 액션과 함께 붙는다.** 목록만 서 있는 동안
-   * 먼저 막으면 「완료 LOT 이 없다」와 구분되지 않는다 — 집행은 서버의 403 이다(F-1).
-   */
-  { path: '/pop/lot-label', element: <PopLotLabelPrintScreen /> },
   /*
    * P-04-04 — 재구성 신규 라벨 발행.
    *
@@ -273,16 +246,4 @@ export const popRoutes: RouteObject[] = [
    * 앞 화면이 무엇을 실어 주지 않아도 서고, 그래서 독립 진입이다(스펙 §1 「범위」).
    */
   { path: '/pop/packing', element: <PackingResultScreen /> },
-  /*
-   * P-02-06 — 생산LOT 완료 처리. 셸 밖에 서는 POP 태스크 화면이다.
-   *
-   * ⚠ **진입 작업지시를 질의 문자열로 받는다**(`?workOrderId=`) — 작업지시 선택(`P-02-01`)이
-   * 넘겨주는 형태가 아직 서지 않았다. 사번은 새로 받지 않고 셸(`pop-identity`) → 작업자
-   * 지정(`patterns/worker-session`) 순으로 읽는다.
-   *
-   * ⛔ **이 화면은 되돌릴 수 없는 쓰기를 한다** — 완료를 되돌리는 화면이 인벤토리에 없다
-   * (`omf-mes#87`). 단말 게이팅(`canCompleteWork`)이 닫혀 있거나 판정할 수 없으면 두 버튼이
-   * 모두 막힌 채 뜬다.
-   */
-  { path: '/pop/lot-complete', element: <ProductionLotCompleteScreen /> },
 ];
