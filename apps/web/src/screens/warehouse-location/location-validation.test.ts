@@ -8,6 +8,7 @@ const filled: LocationFormValues = {
   ...emptyLocationFormValues(),
   locationCode: 'A-01',
   locationName: 'A구역',
+  locationTypeCode: 'RACK',
 };
 
 describe('validateLocation', () => {

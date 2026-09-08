@@ -11,11 +11,14 @@ export const warehouseLocation = {
     addChildLocation: '하위 추가',
     generateLabel: '라벨 이미지 생성',
     changeHistory: '변경 이력',
+    activate: '다시 사용',
   },
   actionReasons: {
     addChildNeedsSingleSelection: '하위 추가는 Location을 하나만 선택했을 때 쓸 수 있습니다.',
-    generateLabelUnavailable:
-      '라벨 이미지는 아직 만들 수 없습니다. 생성 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
+    locationsDisabledByManagementLevel: '관리수준이 창고이면 Location을 등록하지 않습니다.',
+    locationDepthLimitReached: '현재 관리수준에서 더 하위 Location을 추가할 수 없습니다.',
+    locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 추가할 수 있습니다.',
+    generateLabelNeedsSelection: '라벨 이미지를 만들 Location을 하나 이상 선택하세요.',
     changeHistoryUnavailable:
       '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.',
     plantFixedAfterCreate:
@@ -26,6 +29,7 @@ export const warehouseLocation = {
     warehouses: '창고 목록을 불러오는 중',
     warehouseDetail: '창고 정보를 불러오는 중',
     locations: 'Location을 불러오는 중',
+    locationDetail: '최신 Location 정보를 불러오는 중입니다.',
   },
   /** 서버가 목록을 잘라 내려보냈을 때. 잘림을 감추지 않고 조건을 좁힐 방법을 함께 알린다. */
   listTruncated: (shown: number, total: number): string =>
@@ -64,16 +68,7 @@ export const warehouseLocation = {
     managementLevel: '관리수준',
     isExternal: '외부창고',
     partner: '거래처',
-
-    /**
-     * ⛔ **비어 있는 것이 「거래처가 없다」가 아니라 「모른다」임을 밝힌다.**
-     *
-     * 조회 응답에 거래처가 없어 수정 화면이 지금 값을 채울 수 없다. 말하지 않으면 사람은
-     * 빈 칸을 보고 **거래처가 지워진 줄 알거나, 원래 없는 줄 안다.** 외부창고는 저장하려면
-     * 어차피 다시 골라야 하므로, 왜 다시 고르는지를 함께 적는다(G-3).
-     */
-    partnerNotReturned:
-      '지금 지정된 거래처를 조회로 확인할 수 없어 비워 두었습니다. 저장하려면 다시 고르세요.',
+    isDefect: '불량창고',
 
     isActive: '사용',
     warehouse: '창고',
@@ -94,6 +89,7 @@ export const warehouseLocation = {
     active: '사용 중',
     inactive: '미사용',
     noParent: '없음 (최상위)',
+    currentParentOutsideList: '현재 상위 위치 (조회 목록 밖)',
     /** 미사용 항목을 선택지에 남길 때 라벨 뒤에 붙인다. */
     inactiveSuffix: ' (미사용)',
   },
@@ -104,6 +100,11 @@ export const warehouseLocation = {
     partnerRequiredForExternal: '외부창고이면 거래처를 지정해야 합니다.',
     capacityNeedsUom: '수용량과 단위는 함께 입력하거나 함께 비워야 합니다.',
     capacityInvalid: '수용량은 0 이상의 숫자로 입력하세요.',
+    locationsDisabledByManagementLevel: '현재 창고 관리수준에서는 Location을 저장할 수 없습니다.',
+    parentLocationUnavailable: '상위 위치를 전체 Location 목록에서 확인할 수 없습니다.',
+    locationDepthExceeded: '현재 창고 관리수준에서 허용하는 계층 깊이를 넘었습니다.',
+    locationHierarchyUnavailable: 'Location 계층을 불러온 뒤 관리수준을 변경할 수 있습니다.',
+    managementLevelTooShallow: '기존 Location 계층보다 낮은 관리수준으로 변경할 수 없습니다.',
   },
   locationTable: {
     expand: '하위 펼치기',
@@ -114,10 +115,34 @@ export const warehouseLocation = {
     createTitle: 'Location 추가',
     editTitle: 'Location 수정',
   },
+  labelPreview: {
+    title: 'Location 라벨 미리보기',
+    notice: (count: number): string =>
+      `${String(count)}건의 발행 기록을 만들었습니다. 서버가 생성한 이미지를 확인해 내려받으세요. 물리 인쇄는 이 화면에서 하지 않습니다.`,
+    alt: (locationCode: string, issueSeq: number): string =>
+      `${locationCode} Location 라벨 ${String(issueSeq)}회차`,
+    download: '이미지 내려받기',
+    loadFailed: '라벨 이미지를 불러오지 못했습니다.',
+    loadSummary: (success: number, failed: number, pending: number): string =>
+      `이미지 성공 ${String(success)}건 · 실패 ${String(failed)}건 · 불러오는 중 ${String(pending)}건`,
+    created: (count: number): string => `${String(count)}건의 Location 라벨을 생성했습니다.`,
+  },
+  labelIssue: {
+    title: 'Location 라벨 재생성',
+    notice: (count: number): string =>
+      `선택한 Location 중 ${String(count)}건은 발행 이력이 있습니다. 새 회차를 만들 사유를 선택하세요.`,
+    reason: '재발행 사유',
+    confirm: '새 회차 생성',
+  },
   /** 되돌리기 어려운 액션이라 확인을 한 단계 둔다. 무엇이 일어나는지 먼저 밝힌다. */
   deactivate: {
     title: '사용 중지할까요?',
     description: '삭제하지 않습니다. 사용 중지하면 새 작업에서 고를 수 없게 됩니다.',
     confirm: '사용 중지',
+  },
+  activate: {
+    title: '다시 사용할까요?',
+    description: '다시 사용하면 새 작업에서 이 항목을 선택할 수 있습니다.',
+    confirm: '다시 사용',
   },
 } as const;

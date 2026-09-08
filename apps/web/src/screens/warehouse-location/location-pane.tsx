@@ -21,13 +21,19 @@ export interface LocationPaneProps {
   onToggleExpand: (locationId: number) => void;
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
-  /** 이미 받아 둔 목록을 클라이언트에서 거른다 */
+  /** 서버 조회에 전달할 검색어 */
   filterText: string;
   onFilterTextChange: (value: string) => void;
+  canAddRoot: boolean;
+  addRootDisabledReason: string;
   onAddRoot: () => void;
-  /** 선택이 정확히 1건일 때만 활성 */
+  canAddChild: boolean;
+  addChildDisabledReason: string;
   onAddChild: () => void;
   onEdit: (location: Location) => void;
+  onGenerateLabels: () => void;
+  isGeneratingLabels: boolean;
+  actionBanner: ReactNode;
   /**
    * 조회 실패 표시. null이 아니면 표·빈 상태 대신 이것을 낸다 —
    * 실패를 「등록된 Location이 없습니다」로 보이면 사실과 다른 안내가 된다.
@@ -40,15 +46,6 @@ const t = messages.warehouseLocation;
 /** 들여쓰기 한 단계의 픽셀 폭. depth에 곱해 쓴다. */
 const INDENT_PX = 20;
 
-const matchesFilter = (row: LocationTreeRow, filterText: string): boolean => {
-  if (filterText === '') return true;
-  const needle = filterText.toLowerCase();
-  return (
-    row.location.locationCode.toLowerCase().includes(needle) ||
-    row.location.locationName.toLowerCase().includes(needle)
-  );
-};
-
 export const LocationPane = ({
   rows,
   isLoading,
@@ -58,16 +55,21 @@ export const LocationPane = ({
   onSelectionChange,
   filterText,
   onFilterTextChange,
+  canAddRoot,
+  addRootDisabledReason,
   onAddRoot,
+  canAddChild,
+  addChildDisabledReason,
   onAddChild,
   onEdit,
+  onGenerateLabels,
+  isGeneratingLabels,
+  actionBanner,
   loadError,
 }: LocationPaneProps) => {
+  const addRootNoteId = useId();
   const addChildNoteId = useId();
   const labelNoteId = useId();
-
-  const canAddChild = selectedIds.length === 1;
-  const visibleRows = rows.filter((row) => matchesFilter(row, filterText));
 
   /**
    * DS에 Tree 컴포넌트가 없어 Table + 들여쓰기 + 접기 버튼의 조합으로 계층을 만든다.
@@ -104,7 +106,11 @@ export const LocationPane = ({
         );
       },
     },
-    { key: 'locationName', header: t.fields.locationName, render: (row) => row.location.locationName },
+    {
+      key: 'locationName',
+      header: t.fields.locationName,
+      render: (row) => row.location.locationName,
+    },
     {
       key: 'isActive',
       header: t.fields.isActive,
@@ -145,7 +151,7 @@ export const LocationPane = ({
       <Table
         density="compact"
         columns={columns}
-        rows={visibleRows}
+        rows={rows}
         getRowId={(row) => String(row.location.locationId)}
         selectable
         selectedIds={selectedIds}
@@ -157,6 +163,7 @@ export const LocationPane = ({
 
   return (
     <section aria-label={t.tabs.location}>
+      {actionBanner}
       <div className="filter-bar">
         <SearchInput
           label={t.filters.locationSearchLabel}
@@ -165,9 +172,21 @@ export const LocationPane = ({
           onChange={(event) => onFilterTextChange(event.target.value)}
           onClear={() => onFilterTextChange('')}
         />
-        <Button className="field-cell-unlabeled" variant="outlined" onClick={onAddRoot}>
-          {t.actions.addRootLocation}
-        </Button>
+        <div className="field-cell field-cell-unlabeled">
+          <Button
+            variant="outlined"
+            disabled={!canAddRoot}
+            aria-describedby={canAddRoot ? undefined : addRootNoteId}
+            onClick={onAddRoot}
+          >
+            {t.actions.addRootLocation}
+          </Button>
+          {!canAddRoot && (
+            <span id={addRootNoteId} className="field-note">
+              {addRootDisabledReason}
+            </span>
+          )}
+        </div>
         <div className="field-cell field-cell-unlabeled">
           <Button
             variant="outlined"
@@ -179,19 +198,25 @@ export const LocationPane = ({
           </Button>
           {!canAddChild && (
             <span id={addChildNoteId} className="field-note">
-              {t.actionReasons.addChildNeedsSingleSelection}
+              {addChildDisabledReason}
             </span>
           )}
         </div>
-        {/* 생성 기능이 없다 — 기능을 지어내지 않고 사유를 보이는 텍스트로 낸다. */}
-        <div className="field-cell field-cell-unlabeled">
-          <Button variant="outlined" disabled aria-describedby={labelNoteId}>
-            {t.actions.generateLabel}
-          </Button>
-          <span id={labelNoteId} className="field-note">
-            {t.actionReasons.generateLabelUnavailable}
+        <Button
+          className="field-cell-unlabeled"
+          variant="outlined"
+          disabled={selectedIds.length === 0 || isGeneratingLabels}
+          loading={isGeneratingLabels}
+          aria-describedby={selectedIds.length === 0 ? labelNoteId : undefined}
+          onClick={onGenerateLabels}
+        >
+          {t.actions.generateLabel}
+        </Button>
+        {selectedIds.length === 0 && (
+          <span id={labelNoteId} className="field-note field-cell-unlabeled">
+            {t.actionReasons.generateLabelNeedsSelection}
           </span>
-        </div>
+        )}
       </div>
 
       {listSlot()}

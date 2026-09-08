@@ -135,6 +135,8 @@ on('GET', '/mdm/items/{itemId}', (params) => {
 });
 
 on('GET', '/mdm/uoms', (_p, query) => page(state.uoms, query));
+on('GET', '/mdm/plants', (_p, query) => page(state.plants, query));
+on('GET', '/mdm/business-units', (_p, query) => page(state.businessUnits, query));
 
 on('GET', '/mdm/warehouses', (_p, query) =>
   page(

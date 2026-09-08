@@ -82,6 +82,14 @@ const ENTRIES = [
   ['W-04-07 심각도', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY', 1],
   ['W-03-10 상태', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS', 3],
   ['M-05-01 설비', '/mdm/equipments', 2],
+  ['W-06-07 창고', '/mdm/warehouses?includeInactive=true', 3],
+  ['W-06-07 공장', '/mdm/plants?includeInactive=true', 1],
+  ['W-06-07 사업부', '/mdm/business-units?includeInactive=true', 1],
+  ['W-06-07 창고 유형', '/mdm/code-values?codeGroupCode=WAREHOUSE_TYPE', 3],
+  ['W-06-07 관리 수준', '/mdm/code-values?codeGroupCode=MANAGEMENT_LEVEL', 4],
+  ['W-06-07 Location 유형', '/mdm/code-values?codeGroupCode=LOCATION_TYPE', 3],
+  ['W-06-07 보관 조건', '/mdm/code-values?codeGroupCode=STORAGE_CONDITION', 3],
+  ['W-06-07 재발행 사유', '/mdm/code-values?codeGroupCode=REISSUE_REASON', 5],
 ];
 
 /** 목록이 아닌 상세는 형태로 본다. */
@@ -222,6 +230,24 @@ const DETAILS = [
         (line) => typeof line.itemCode === 'string' && typeof line.lotNo === 'string',
       ) &&
       body.lines.some((line) => line.held === true),
+  ],
+  [
+    'W-06-07 창고 상세 필수 칸',
+    '/mdm/warehouses/1001',
+    (body) =>
+      typeof body.warehouse.businessUnitId === 'number' &&
+      typeof body.warehouse.warehouseTypeCode === 'string' &&
+      typeof body.warehouse.managementLevelCode === 'string' &&
+      typeof body.warehouse.isExternal === 'boolean' &&
+      typeof body.warehouse.isDefect === 'boolean',
+  ],
+  [
+    'W-06-07 Location 상세 필수 칸',
+    '/mdm/locations/3001',
+    (body) =>
+      typeof body.location.locationTypeCode === 'string' &&
+      typeof body.location.allowMixedItem === 'boolean' &&
+      typeof body.location.allowMixedLot === 'boolean',
   ],
 ];
 

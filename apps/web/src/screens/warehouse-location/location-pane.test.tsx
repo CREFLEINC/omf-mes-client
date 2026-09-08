@@ -17,6 +17,7 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
   const onAddRoot = vi.fn();
   const onAddChild = vi.fn();
   const onEdit = vi.fn();
+  const onGenerateLabels = vi.fn();
 
   render(
     <LocationPane
@@ -28,15 +29,30 @@ const renderPane = (overrides: Partial<Parameters<typeof LocationPane>[0]> = {})
       onSelectionChange={onSelectionChange}
       filterText=""
       onFilterTextChange={onFilterTextChange}
+      canAddRoot
+      addRootDisabledReason="Location을 추가할 수 없습니다."
       onAddRoot={onAddRoot}
+      canAddChild={false}
+      addChildDisabledReason="하위 추가는 Location을 하나만 선택했을 때 쓸 수 있습니다."
       onAddChild={onAddChild}
       onEdit={onEdit}
+      onGenerateLabels={onGenerateLabels}
+      isGeneratingLabels={false}
+      actionBanner={null}
       loadError={null}
       {...overrides}
     />,
   );
 
-  return { onToggleExpand, onSelectionChange, onFilterTextChange, onAddRoot, onAddChild, onEdit };
+  return {
+    onToggleExpand,
+    onSelectionChange,
+    onFilterTextChange,
+    onAddRoot,
+    onAddChild,
+    onEdit,
+    onGenerateLabels,
+  };
 };
 
 describe('LocationPane', () => {
@@ -115,7 +131,7 @@ describe('LocationPane', () => {
 
   it('선택이 정확히 1건이면 하위 추가를 눌러 onAddChild를 부른다', async () => {
     const user = userEvent.setup();
-    const { onAddChild } = renderPane({ selectedIds: ['2001'] });
+    const { onAddChild } = renderPane({ selectedIds: ['2001'], canAddChild: true });
 
     const addChild = screen.getByRole('button', { name: '하위 추가' });
     expect(addChild).not.toBeDisabled();
@@ -124,16 +140,25 @@ describe('LocationPane', () => {
     expect(onAddChild).toHaveBeenCalledTimes(1);
   });
 
-  it('라벨 이미지 생성은 항상 비활성이고 사유가 화면 텍스트로 보인다', () => {
+  it('선택이 없으면 라벨 이미지 생성이 비활성이고 사유가 보인다', () => {
     renderPane();
 
-    const reason = '라벨 이미지는 아직 만들 수 없습니다. 생성 기능이 준비되면 이 버튼을 쓸 수 있습니다.';
+    const reason = '라벨 이미지를 만들 Location을 하나 이상 선택하세요.';
     const button = screen.getByRole('button', { name: '라벨 이미지 생성' });
 
     expect(button).toBeDisabled();
     expect(screen.getByText(reason)).toBeInTheDocument();
     // 화면에 보이는 것과 그 버튼의 설명인 것은 별개 조건이다. 배치를 바꿔도 연결이 끊기면 안 된다.
     expect(button).toHaveAccessibleDescription(reason);
+  });
+
+  it('선택이 있으면 라벨 이미지 생성을 요청한다', async () => {
+    const user = userEvent.setup();
+    const { onGenerateLabels } = renderPane({ selectedIds: ['2001'] });
+
+    await user.click(screen.getByRole('button', { name: '라벨 이미지 생성' }));
+
+    expect(onGenerateLabels).toHaveBeenCalledTimes(1);
   });
 
   it('최상위 추가를 누르면 onAddRoot를 부른다', async () => {
@@ -145,11 +170,13 @@ describe('LocationPane', () => {
     expect(onAddRoot).toHaveBeenCalledTimes(1);
   });
 
-  it('검색어로 이미 받아 둔 목록을 클라이언트에서 거른다', () => {
-    renderPane({ filterText: 'B-01' });
+  it('검색 입력은 서버 조회를 갱신하도록 상위에 전달한다', async () => {
+    const user = userEvent.setup();
+    const { onFilterTextChange } = renderPane();
 
-    expect(screen.getByRole('button', { name: 'B-01' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'A-01' })).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText('Location 검색'), 'B-01');
+
+    expect(onFilterTextChange).toHaveBeenCalled();
   });
 
   it('로딩 중에는 표 대신 스켈레톤을 낸다', () => {
@@ -163,7 +190,7 @@ describe('LocationPane', () => {
     renderPane({ rows: [] });
     expect(screen.getByText('등록된 Location이 없습니다')).toBeInTheDocument();
 
-    renderPane({ rows, filterText: '없는코드' });
+    renderPane({ rows: [], filterText: '없는코드' });
     expect(screen.getByText('조건에 맞는 Location이 없습니다')).toBeInTheDocument();
   });
 

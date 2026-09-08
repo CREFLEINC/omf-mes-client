@@ -25,18 +25,12 @@ export interface WarehouseFormValues {
   warehouseTypeCode: string;
   managementLevelCode: string;
   isExternal: boolean;
-  /**
-   * ⚠ **컨트롤이 없는 값이다 — 받은 것을 그대로 되돌려 보내려고 들고 있다.**
-   *
-   * 계약이 저장 본문에 이 칸을 필수로 요구하는데 이 화면에는 그것을 고칠 자리가 없다. 폼에
-   * 들고 있지 않으면 저장할 때마다 값을 **지어내야 하고**, 그러면 서버가 갖고 있던 값이
-   * 조용히 덮인다. 화면에 칸을 둘지는 설계에 물어 두었다.
-   */
   isDefect: boolean;
   partnerId: string;
 }
 
 export interface LocationFormValues {
+  parentLocationId: string;
   locationCode: string;
   locationName: string;
   locationTypeCode: string;
@@ -53,6 +47,12 @@ export interface LookupOptions {
   businessUnits: { value: string; label: string }[];
   partners: { value: string; label: string }[];
   uoms: { value: string; label: string }[];
+  warehouseTypes: { value: string; label: string }[];
+  managementLevels: { value: string; label: string }[];
+  locationTypes: { value: string; label: string }[];
+  qualityZones: { value: string; label: string }[];
+  storageConditions: { value: string; label: string }[];
+  reissueReasons: { value: string; label: string }[];
 }
 
 /**
@@ -70,4 +70,10 @@ export interface LookupSources {
   businessUnits: LookupSource<LookupEntry>;
   partners: LookupSource<LookupEntry>;
   uoms: LookupSource<LookupEntry>;
+  warehouseTypes: LookupSource<LookupEntry>;
+  managementLevels: LookupSource<LookupEntry>;
+  locationTypes: LookupSource<LookupEntry>;
+  qualityZones: LookupSource<LookupEntry>;
+  storageConditions: LookupSource<LookupEntry>;
+  reissueReasons: LookupSource<LookupEntry>;
 }

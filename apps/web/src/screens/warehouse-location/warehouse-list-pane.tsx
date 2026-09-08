@@ -12,11 +12,7 @@ import {
 import { messages } from '@omf-mes/i18n';
 import { type ReactNode, useEffect, useId, useState } from 'react';
 
-import {
-  WAREHOUSE_TYPE_OPTIONS,
-  defaultWarehouseFilters,
-  warehouseTypeLabel,
-} from './code-options';
+import { codeLabel, defaultWarehouseFilters } from './code-options';
 import type { Warehouse, WarehouseFilters } from './types';
 
 export interface WarehouseListPaneProps {
@@ -35,6 +31,7 @@ export interface WarehouseListPaneProps {
    * 실패를 「등록된 창고가 없습니다」로 보이면 사실과 다른 안내가 된다.
    */
   loadError: ReactNode;
+  warehouseTypeOptions: { value: string; label: string }[];
 }
 
 const t = messages.warehouseLocation;
@@ -51,6 +48,7 @@ export const WarehouseListPane = ({
   onSelect,
   onAddWarehouse,
   loadError,
+  warehouseTypeOptions,
 }: WarehouseListPaneProps) => {
   const typeSelectId = useId();
 
@@ -92,7 +90,7 @@ export const WarehouseListPane = ({
     {
       key: 'warehouseTypeCode',
       header: t.fields.warehouseType,
-      render: (row) => warehouseTypeLabel(row.warehouseTypeCode),
+      render: (row) => codeLabel(row.warehouseTypeCode, warehouseTypeOptions),
     },
     {
       key: 'isActive',
@@ -163,7 +161,7 @@ export const WarehouseListPane = ({
           </label>
           <Select
             id={typeSelectId}
-            options={[{ value: '', label: t.filters.typeAll }, ...WAREHOUSE_TYPE_OPTIONS]}
+            options={[{ value: '', label: t.filters.typeAll }, ...warehouseTypeOptions]}
             value={draft.warehouseTypeCode}
             onChange={(value) => setDraft((prev) => ({ ...prev, warehouseTypeCode: value }))}
           />
@@ -207,7 +205,7 @@ export const WarehouseListPane = ({
             removeLabel={t.filters.chipRemoveType}
             onRemove={() => onApplyFilters({ ...appliedFilters, warehouseTypeCode: '' })}
           >
-            {t.filters.chipType(warehouseTypeLabel(appliedFilters.warehouseTypeCode))}
+            {t.filters.chipType(codeLabel(appliedFilters.warehouseTypeCode, warehouseTypeOptions))}
           </Chip>
         )}
         {appliedFilters.includeInactive && (

@@ -14,6 +14,7 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseFormPane>[0]> 
   const onSave = vi.fn();
   const onCancel = vi.fn();
   const onDeactivate = vi.fn();
+  const onActivate = vi.fn();
 
   render(
     <WarehouseFormPane
@@ -30,11 +31,12 @@ const renderPane = (overrides: Partial<Parameters<typeof WarehouseFormPane>[0]> 
       onSave={onSave}
       onCancel={onCancel}
       onDeactivate={onDeactivate}
+      onActivate={onActivate}
       {...overrides}
     />,
   );
 
-  return { onChange, onSave, onCancel, onDeactivate };
+  return { onChange, onSave, onCancel, onDeactivate, onActivate };
 };
 
 const FIELD_LABELS = [
@@ -45,12 +47,13 @@ const FIELD_LABELS = [
   '창고유형',
   '관리수준',
   '외부창고',
+  '불량창고',
   '거래처',
   '사용',
 ];
 
 describe('WarehouseFormPane', () => {
-  it('9개 필드를 각각 접근성 라벨로 조회할 수 있다', () => {
+  it('10개 필드를 각각 접근성 라벨로 조회할 수 있다', () => {
     renderPane();
 
     for (const label of FIELD_LABELS) {
@@ -69,7 +72,9 @@ describe('WarehouseFormPane', () => {
   it('fieldErrors를 주입하면 창고코드와 거래처의 인라인 오류가 화면에 보인다', () => {
     renderPane({ fieldErrors: warehouseFieldErrorFixtures });
 
-    expect(screen.getByText('이미 사용 중인 코드입니다. 다른 코드를 입력하세요.')).toBeInTheDocument();
+    expect(
+      screen.getByText('이미 사용 중인 코드입니다. 다른 코드를 입력하세요.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('외부창고이면 거래처를 지정해야 합니다.')).toBeInTheDocument();
   });
 
@@ -86,7 +91,9 @@ describe('WarehouseFormPane', () => {
 
     expect(screen.getByLabelText('공장')).toBeDisabled();
     expect(
-      screen.getByText('등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.'),
+      screen.getByText(
+        '등록 후에는 공장을 바꿀 수 없습니다. 다른 공장이면 창고를 새로 등록하세요.',
+      ),
     ).toBeInTheDocument();
   });
 
@@ -94,14 +101,6 @@ describe('WarehouseFormPane', () => {
     renderPane({ mode: 'create' });
 
     expect(screen.getByLabelText('공장')).not.toBeDisabled();
-  });
-
-  it('관리수준에는 선택지 준비 중 안내가 함께 보인다', () => {
-    renderPane();
-
-    expect(
-      screen.getByText('선택지 준비 중입니다. 코드 목록이 확정되면 이 항목에서 고를 수 있습니다.'),
-    ).toBeInTheDocument();
   });
 
   it('배너 슬롯에 넘긴 노드를 상단에 렌더한다', () => {
@@ -135,7 +134,8 @@ describe('WarehouseFormPane', () => {
   it('변경 이력은 비활성이고 그 사유가 화면 텍스트로 보인다', () => {
     renderPane();
 
-    const reason = '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.';
+    const reason =
+      '변경 이력은 아직 볼 수 없습니다. 조회 기능이 준비되면 이 버튼을 쓸 수 있습니다.';
     const button = screen.getByRole('button', { name: '변경 이력' });
 
     expect(button).toBeDisabled();

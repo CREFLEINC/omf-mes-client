@@ -3,6 +3,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import { CODE_GROUPS } from './code-options';
 import type { LookupEntry, LookupSources, WarehouseFilters } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
@@ -89,7 +90,7 @@ export const useWarehouseDetail = (
 
 export const locationKeys = {
   all: ['locations'] as const,
-  list: (warehouseId: number) => ['locations', 'list', warehouseId] as const,
+  list: (warehouseId: number, q: string) => ['locations', 'list', warehouseId, q] as const,
   detail: (locationId: number) => ['locations', 'detail', locationId] as const,
 };
 
@@ -100,18 +101,54 @@ export const locationDetailPath = (locationId: number): string =>
 /** Location 목록. 계약이 warehouseId를 필수로 두므로 창고를 고르기 전에는 조회하지 않는다. */
 export const useLocationList = (
   warehouseId: number | null,
+  q: string,
 ): UseQueryResult<LocationListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: locationKeys.list(warehouseId ?? 0),
+    queryKey: locationKeys.list(warehouseId ?? 0, q),
     enabled: warehouseId !== null,
-    queryFn: () => {
+    queryFn: async () => {
       if (warehouseId === null) {
         throw new Error('창고를 고르기 전에는 Location을 조회하지 않습니다.');
       }
 
-      return runRequest(() => client.GET('/mdm/locations', { params: { query: { warehouseId } } }));
+      const pageSize = 200;
+      const items: Location[] = [];
+      let pageNumber = 1;
+      let total = 0;
+      let totalPages = 1;
+
+      /*
+       * 계층 편집은 부모와 자식이 모두 있어야 정확하다. 첫 페이지만 그린 뒤 경고하는 방식은
+       * 201번째 노드를 영원히 관리할 수 없게 하므로, 검색 결과의 모든 페이지를 모은다.
+       */
+      do {
+        const page = await runRequest(() =>
+          client.GET('/mdm/locations', {
+            params: {
+              query: {
+                warehouseId,
+                ...(q === '' ? {} : { q }),
+                includeInactive: true,
+                page: pageNumber,
+                size: pageSize,
+              },
+            },
+          }),
+        );
+        items.push(...page.items);
+        total = page.page.total;
+        totalPages = Math.max(1, Math.ceil(total / Math.max(1, page.page.size)));
+
+        if (page.items.length === 0) break;
+        pageNumber += 1;
+      } while (pageNumber <= totalPages);
+
+      return {
+        items,
+        page: { page: 1, size: items.length, total },
+      };
     },
   });
 };
@@ -128,6 +165,9 @@ export const useLocationDetail = (
   return useQuery({
     queryKey: locationKeys.detail(locationId ?? 0),
     enabled: locationId !== null,
+    /* 편집 중 백그라운드 갱신으로 폼과 ETag 기준시점이 갈리지 않게 한다. 충돌 때 명시적으로 갱신한다. */
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: () => {
       if (locationId === null) {
         throw new Error('편집할 Location을 고르기 전에는 상세를 조회하지 않습니다.');
@@ -197,6 +237,35 @@ export const useLookupOptions = (): LookupResult => {
       runRequest(() => client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } })),
   });
 
+  const useCodeGroup = (codeGroupCode: string) =>
+    useQuery({
+      queryKey: lookupKeys.list(`code-values:${codeGroupCode}`),
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: { query: { codeGroupCode, includeInactive: true, page: 1, size: 200 } },
+          }),
+        ),
+    });
+
+  const warehouseTypes = useCodeGroup(CODE_GROUPS.warehouseType);
+  const managementLevels = useCodeGroup(CODE_GROUPS.managementLevel);
+  const locationTypes = useCodeGroup(CODE_GROUPS.locationType);
+  const qualityZones = useCodeGroup(CODE_GROUPS.qualityZone);
+  const storageConditions = useCodeGroup(CODE_GROUPS.storageCondition);
+  const reissueReasons = useCodeGroup(CODE_GROUPS.reissueReason);
+
+  const codeSource = (query: typeof warehouseTypes) => ({
+    entries:
+      query.data?.items.map((item) => ({
+        value: item.code,
+        label: item.codeName.trim() === '' ? item.code : item.codeName,
+        isActive: item.isActive,
+      })) ?? EMPTY_ENTRIES,
+    isError: query.isError,
+    isLoading: query.isPending,
+  });
+
   return {
     sources: {
       plants: {
@@ -239,13 +308,45 @@ export const useLookupOptions = (): LookupResult => {
         isError: uoms.isError,
         isLoading: uoms.isPending,
       },
+      warehouseTypes: codeSource(warehouseTypes),
+      managementLevels: codeSource(managementLevels),
+      locationTypes: codeSource(locationTypes),
+      qualityZones: codeSource(qualityZones),
+      storageConditions: codeSource(storageConditions),
+      reissueReasons: codeSource(reissueReasons),
     },
     truncated:
       isListTruncated(plants.data) ||
       isListTruncated(businessUnits.data) ||
       isListTruncated(partners.data) ||
-      isListTruncated(uoms.data),
-    isError: plants.isError || businessUnits.isError || partners.isError || uoms.isError,
-    isLoading: plants.isPending || businessUnits.isPending || partners.isPending || uoms.isPending,
+      isListTruncated(uoms.data) ||
+      isListTruncated(warehouseTypes.data) ||
+      isListTruncated(managementLevels.data) ||
+      isListTruncated(locationTypes.data) ||
+      isListTruncated(qualityZones.data) ||
+      isListTruncated(storageConditions.data) ||
+      isListTruncated(reissueReasons.data),
+    isError:
+      plants.isError ||
+      businessUnits.isError ||
+      partners.isError ||
+      uoms.isError ||
+      warehouseTypes.isError ||
+      managementLevels.isError ||
+      locationTypes.isError ||
+      qualityZones.isError ||
+      storageConditions.isError ||
+      reissueReasons.isError,
+    isLoading:
+      plants.isPending ||
+      businessUnits.isPending ||
+      partners.isPending ||
+      uoms.isPending ||
+      warehouseTypes.isPending ||
+      managementLevels.isPending ||
+      locationTypes.isPending ||
+      qualityZones.isPending ||
+      storageConditions.isPending ||
+      reissueReasons.isPending,
   };
 };

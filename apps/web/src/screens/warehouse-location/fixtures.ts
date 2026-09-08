@@ -1,7 +1,6 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import { PENDING_CODE_VALUE } from './code-options';
 import type {
   Location,
   LocationFormValues,
@@ -26,7 +25,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'WH-01',
     warehouseName: '1공장 자재창고',
     warehouseTypeCode: 'MATERIAL',
-    managementLevelCode: PENDING_CODE_VALUE,
+    managementLevelCode: 'CELL',
     isExternal: false,
     isDefect: false,
     isActive: true,
@@ -38,7 +37,7 @@ export const warehouseFixtures: Warehouse[] = [
     warehouseCode: 'WH-02',
     warehouseName: '1공장 제품창고',
     warehouseTypeCode: 'PRODUCT',
-    managementLevelCode: PENDING_CODE_VALUE,
+    managementLevelCode: 'WAREHOUSE',
     isExternal: false,
     isDefect: false,
     isActive: true,
@@ -49,8 +48,8 @@ export const warehouseFixtures: Warehouse[] = [
     businessUnitId: 22,
     warehouseCode: 'WH-03',
     warehouseName: '외부 보관창고',
-    warehouseTypeCode: 'MERCHANDISE',
-    managementLevelCode: PENDING_CODE_VALUE,
+    warehouseTypeCode: 'GENERAL',
+    managementLevelCode: 'RACK',
     isExternal: true,
     isDefect: false,
     isActive: false,
@@ -65,7 +64,7 @@ export const locationFixtures: Location[] = [
     parentLocationId: null,
     locationCode: 'A-01',
     locationName: 'A구역',
-    locationTypeCode: PENDING_CODE_VALUE,
+    locationTypeCode: 'RACK',
     qualityZoneCode: null,
     storageConditionCode: null,
     allowMixedItem: true,
@@ -80,7 +79,7 @@ export const locationFixtures: Location[] = [
     parentLocationId: 2001,
     locationCode: 'A-01-01',
     locationName: 'A구역 01열',
-    locationTypeCode: PENDING_CODE_VALUE,
+    locationTypeCode: 'RACK',
     qualityZoneCode: null,
     storageConditionCode: null,
     allowMixedItem: true,
@@ -95,7 +94,7 @@ export const locationFixtures: Location[] = [
     parentLocationId: 2002,
     locationCode: 'A-01-01-01',
     locationName: 'A구역 01열 01단',
-    locationTypeCode: PENDING_CODE_VALUE,
+    locationTypeCode: 'RACK',
     qualityZoneCode: null,
     storageConditionCode: null,
     allowMixedItem: false,
@@ -110,7 +109,7 @@ export const locationFixtures: Location[] = [
     parentLocationId: null,
     locationCode: 'B-01',
     locationName: 'B구역',
-    locationTypeCode: PENDING_CODE_VALUE,
+    locationTypeCode: 'FLOOR',
     qualityZoneCode: null,
     storageConditionCode: null,
     allowMixedItem: true,
@@ -187,6 +186,24 @@ export const lookupFixtures: LookupOptions = {
     { value: '42', label: 'BOX' },
     { value: '43', label: 'PLT' },
   ],
+  warehouseTypes: [
+    { value: 'MATERIAL', label: '자재' },
+    { value: 'PRODUCT', label: '제품' },
+    { value: 'GENERAL', label: '일반' },
+  ],
+  managementLevels: [
+    { value: 'WAREHOUSE', label: '창고' },
+    { value: 'ZONE', label: '구역' },
+    { value: 'RACK', label: '랙' },
+    { value: 'CELL', label: '셀' },
+  ],
+  locationTypes: [
+    { value: 'RACK', label: '랙' },
+    { value: 'FLOOR', label: '바닥' },
+  ],
+  qualityZones: [{ value: 'NORMAL', label: '일반구역' }],
+  storageConditions: [{ value: 'AMBIENT', label: '상온' }],
+  reissueReasons: [{ value: 'DAMAGED', label: '라벨 훼손' }],
 };
 
 export const warehouseFormInitialValues: WarehouseFormValues = {
@@ -195,18 +212,19 @@ export const warehouseFormInitialValues: WarehouseFormValues = {
   warehouseCode: 'WH-01',
   warehouseName: '1공장 자재창고',
   warehouseTypeCode: 'MATERIAL',
-  managementLevelCode: PENDING_CODE_VALUE,
+  managementLevelCode: 'CELL',
   isExternal: false,
   isDefect: false,
   partnerId: '',
 };
 
 export const locationFormInitialValues: LocationFormValues = {
+  parentLocationId: '',
   locationCode: '',
   locationName: '',
-  locationTypeCode: PENDING_CODE_VALUE,
-  qualityZoneCode: PENDING_CODE_VALUE,
-  storageConditionCode: PENDING_CODE_VALUE,
+  locationTypeCode: 'RACK',
+  qualityZoneCode: '',
+  storageConditionCode: '',
   allowMixedItem: true,
   allowMixedLot: true,
   capacityQty: '',
