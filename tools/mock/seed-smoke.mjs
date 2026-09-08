@@ -83,6 +83,23 @@ const DETAILS = [
       typeof body.item.negativeStockAllowed === 'boolean',
   ],
   [
+    /*
+     * 계약이 「이 값이 있으므로 마스터를 다시 부르지 않는다」로 못 박은 자리다. 여기가 비면
+     * 화면은 부를 곳도 없이 「알 수 없음」만 보이고, 그 사이 아무 시험도 깨지지 않는다.
+     */
+    'M-01-04 잔액 표시값',
+    '/inventory/balances?groupBy=LOCATION&lotId=8001',
+    (body) =>
+      body.items.length >= 2 &&
+      body.items.every(
+        (row) =>
+          typeof row.warehouseName === 'string' &&
+          typeof row.locationCode === 'string' &&
+          typeof row.locationName === 'string' &&
+          typeof row.itemCode === 'string',
+      ),
+  ],
+  [
     'M-01-08 라인 표시값',
     '/logistics/picking-orders/16001',
     (body) =>

@@ -548,20 +548,37 @@ export const createSeed = (now = new Date()) => {
     { lotId: 8003, itemId: 2002, warehouseId: 1001, locationId: 3003, onHandQty: 120 },
     { lotId: 8201, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 500 },
     { lotId: 8202, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 300 },
-  ].map((balance, index) => ({
-    inventoryBalanceId: 8600 + index,
-    ...balance,
-    uomId: 1001,
-    reservedQty: 0,
-    pickedQty: 0,
-    blockedQty: balance.lotId === 8003 ? balance.onHandQty : 0,
-    availableQty: balance.lotId === 8003 ? 0 : balance.onHandQty,
-    qualityStatusCode: balance.lotId === 8003 ? 'INSPECTION_PENDING' : 'NORMAL',
-    inventoryStatusCode: 'AVAILABLE',
-    ownershipTypeCode: 'OWNED',
-    ownerPartnerId: null,
-    lastTransactionAt: iso(-1, 14),
-  }));
+  ].map((balance, index) => {
+    /*
+     * 사람이 읽는 값을 잔액 줄에 함께 싣는다. 계약이 「이 값이 있으므로 마스터를 다시 부르지
+     * 않는다」로 못 박은 자리라, 여기가 비면 화면은 부를 곳도 없이 「알 수 없음」만 보인다.
+     */
+    const item = items.find((each) => each.itemId === balance.itemId);
+    const warehouse = warehouses.find((each) => each.warehouseId === balance.warehouseId);
+    const location = locations.find((each) => each.locationId === balance.locationId);
+    const lot = lots.find((each) => each.lotId === balance.lotId);
+
+    return {
+      inventoryBalanceId: 8600 + index,
+      ...balance,
+      uomId: 1001,
+      reservedQty: 0,
+      pickedQty: 0,
+      blockedQty: balance.lotId === 8003 ? balance.onHandQty : 0,
+      availableQty: balance.lotId === 8003 ? 0 : balance.onHandQty,
+      qualityStatusCode: balance.lotId === 8003 ? 'INSPECTION_PENDING' : 'NORMAL',
+      inventoryStatusCode: 'AVAILABLE',
+      ownershipTypeCode: 'OWNED',
+      ownerPartnerId: null,
+      lastTransactionAt: iso(-1, 14),
+      itemCode: item?.itemCode,
+      itemName: item?.itemName,
+      lotNo: lot?.lotNo ?? null,
+      warehouseName: warehouse?.warehouseName ?? null,
+      locationCode: location?.locationCode ?? null,
+      locationName: location?.locationName ?? null,
+    };
+  });
 
   const purchaseOrders = [
     {
