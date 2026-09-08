@@ -239,6 +239,63 @@ describe('ProductionFlowScreen', () => {
     );
   });
 
+  it('물리 인쇄 뒤 보고만 실패하면 종이를 다시 뽑지 않고 같은 결과 보고만 재시도한다', async () => {
+    const writes: Request[] = [];
+    const save = vi.fn().mockResolvedValue('/tmp/lot.prn');
+    let renditionCalls = 0;
+    let reportAttempts = 0;
+    const reportOnlyFailureRoutes: StubRoute[] = [
+      {
+        match: (request) => pathOf(request) === '/app/document-issues/44001/rendition',
+        respond: () => {
+          renditionCalls += 1;
+          return new Response(new Uint8Array([1, 2, 3]));
+        },
+      },
+      {
+        match: (request) => pathOf(request) === '/app/document-issues/44001:report-print',
+        respond: (request) => {
+          writes.push(request.clone());
+          reportAttempts += 1;
+
+          return reportAttempts === 1
+            ? jsonResponse({ errors: [{ message: '보고 실패' }] }, { status: 500 })
+            : new Response(null, { status: 204 });
+        },
+      },
+    ];
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save } },
+    });
+    const user = userEvent.setup();
+    renderScreen(writes, reportOnlyFailureRoutes);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    const retryReport = await screen.findByRole('button', { name: t.flow.output.retryReport });
+    expect(screen.getByText(t.flow.output.reportFailed)).toBeVisible();
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(renditionCalls).toBe(1);
+
+    await user.click(retryReport);
+
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+    expect(save).toHaveBeenCalledTimes(1);
+    expect(renditionCalls).toBe(1);
+
+    const reports = writes.filter(
+      (request) => pathOf(request) === '/app/document-issues/44001:report-print',
+    );
+    expect(reports).toHaveLength(2);
+    expect(reports[0]?.headers.get('Idempotency-Key')).toBe(
+      reports[1]?.headers.get('Idempotency-Key'),
+    );
+  });
+
   it('서버 적용 실적으로 재진입하면 수량을 잠그고 생산 실적 없이 라벨 단계만 재개한다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();

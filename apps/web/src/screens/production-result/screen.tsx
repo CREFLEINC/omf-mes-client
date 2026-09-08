@@ -54,7 +54,9 @@ type OutputPhase =
   | 'printing'
   | 'scanReady'
   | 'issueFailed'
+  | 'renditionFailed'
   | 'printFailed'
+  | 'reportFailed'
   | 'legacyMismatch'
   | 'completing'
   | 'completed';
@@ -228,8 +230,14 @@ export const ProductionFlowScreen = () => {
     if (lotPrint.state.phase === 'succeeded') {
       setOutputPhase(hasAppliedResult ? 'scanReady' : 'legacyMismatch');
     }
-    if (lotPrint.state.phase === 'failed' || lotPrint.state.phase === 'shellUnavailable') {
+    if (lotPrint.state.phase === 'renditionFailed') {
+      setOutputPhase('renditionFailed');
+    }
+    if (lotPrint.state.phase === 'printFailed' || lotPrint.state.phase === 'shellUnavailable') {
       setOutputPhase('printFailed');
+    }
+    if (lotPrint.state.phase === 'reportFailed') {
+      setOutputPhase('reportFailed');
     }
   }, [hasAppliedResult, lotPrint.state.phase]);
 
@@ -292,7 +300,14 @@ export const ProductionFlowScreen = () => {
   }, [currentIssue, lot, lotIssues.data, outputPhase, serverAppliedQty]);
 
   useEffect(() => {
-    if (tagPrint.state.phase !== 'succeeded' && tagPrint.state.phase !== 'failed') return;
+    if (
+      tagPrint.state.phase !== 'succeeded' &&
+      tagPrint.state.phase !== 'renditionFailed' &&
+      tagPrint.state.phase !== 'printFailed' &&
+      tagPrint.state.phase !== 'reportFailed'
+    ) {
+      return;
+    }
 
     void queryClient.invalidateQueries({
       queryKey: ['production-flow', 'tag-issue-summary'],
@@ -507,10 +522,14 @@ export const ProductionFlowScreen = () => {
         return t.flow.output.printed;
       case 'issueFailed':
         return t.flow.output.issueFailed;
+      case 'renditionFailed':
+        return t.flow.output.renditionFailed;
       case 'printFailed':
         return lotPrint.state.phase === 'shellUnavailable'
           ? t.flow.output.shellUnavailable
           : t.flow.output.printFailed;
+      case 'reportFailed':
+        return t.flow.output.reportFailed;
       case 'legacyMismatch':
         return t.flow.output.legacyMismatch;
       case 'completing':
@@ -588,7 +607,9 @@ export const ProductionFlowScreen = () => {
           <AlertBanner
             variant={
               outputPhase === 'issueFailed' ||
+              outputPhase === 'renditionFailed' ||
               outputPhase === 'printFailed' ||
+              outputPhase === 'reportFailed' ||
               outputPhase === 'legacyMismatch'
                 ? 'error'
                 : 'info'
@@ -739,10 +760,20 @@ export const ProductionFlowScreen = () => {
                   >
                     {tagMissing === null ? t.flow.tag.title : t.flow.tag.issueMissing(tagMissing)}
                   </Button>
-                  {tagPrint.state.phase === 'failed' && tagPrintTargets.length > 0 && (
-                    <Button variant="outlined" onClick={() => void tagPrint.run(tagPrintTargets)}>
-                      {t.flow.output.retryPrint}
-                    </Button>
+                  {(tagPrint.state.phase === 'renditionFailed' ||
+                    tagPrint.state.phase === 'printFailed') &&
+                    tagPrintTargets.length > 0 && (
+                      <Button variant="outlined" onClick={() => void tagPrint.run(tagPrintTargets)}>
+                        {t.flow.output.retryPrint}
+                      </Button>
+                    )}
+                  {tagPrint.state.phase === 'reportFailed' && (
+                    <>
+                      <p className="field-error">{t.flow.tag.reportFailed}</p>
+                      <Button variant="outlined" onClick={() => void tagPrint.retryReport()}>
+                        {t.flow.output.retryReport}
+                      </Button>
+                    </>
                   )}
                   {issuedSerials.length > 0 && (
                     <Button
@@ -793,7 +824,12 @@ export const ProductionFlowScreen = () => {
               <Button disabled>{t.flow.output.mismatchBlocked}</Button>
             ) : outputPhase === 'issueFailed' ? (
               <Button onClick={retryLotIssue}>{t.flow.output.retryIssue}</Button>
-            ) : outputPhase === 'printFailed' ||
+            ) : outputPhase === 'reportFailed' ? (
+              <Button onClick={() => void lotPrint.retryReport()}>
+                {t.flow.output.retryReport}
+              </Button>
+            ) : outputPhase === 'renditionFailed' ||
+              outputPhase === 'printFailed' ||
               (outputPhase === 'idle' && currentIssue !== null) ? (
               <Button onClick={retryLotPrint}>{t.flow.output.retryPrint}</Button>
             ) : (
