@@ -405,14 +405,16 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(screen.getByRole('button', { name: '입하 등록' }).hasAttribute('disabled')).toBe(true);
   });
 
-  /* 검사 대상 여부는 서버가 라인마다 정한다. 화면이 정하지 않는 것을 말한다. */
-  it('검사 대상 여부를 서버가 정한다고 말한다', async () => {
+  /* 검사 대상 여부는 등록 뒤에 라인마다 정해진다. 화면이 정하지 않는 것을 말한다. */
+  it('검사 대상 여부를 화면이 정하지 않는다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
-    expect(await screen.findByText('검사 대상 여부는 등록한 뒤에 줄마다 정해집니다')).toBeTruthy();
+    expect(
+      await screen.findByText('검사 대상 여부는 등록한 뒤에 라인마다 정해집니다'),
+    ).toBeTruthy();
   });
 
   /* 사번은 인증이 아니라 귀속이다. 없으면 서버가 요청 자체를 받지 않는다. */

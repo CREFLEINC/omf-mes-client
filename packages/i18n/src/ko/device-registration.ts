@@ -22,7 +22,7 @@ export const deviceRegistration = {
   },
   offline: {
     title: '연결된 상태에서 등록해야 합니다',
-    description: '등록은 서버가 받아 주는지 확인해야 끝납니다. 연결을 확인하고 다시 시도하세요.',
+    description: '등록은 보내서 확인을 받아야 끝납니다. 연결을 확인하고 다시 시도하세요.',
   },
   receiving: {
     title: '작업자 정보를 받는 중입니다',
@@ -46,6 +46,7 @@ export const deviceRegistration = {
    */
   registered: {
     title: '등록되었습니다',
+    /* 관리웹이 이 값을 단말 코드로 보인다. 여기서만 기기 코드로 부르면 안내와 어긋난다. */
     confirm: '관리자가 안내한 단말 코드와 같은지 확인하세요',
   },
   signIn: {

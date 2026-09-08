@@ -139,7 +139,7 @@ describe('AppLayout', () => {
       </Shell>,
     );
 
-    expect(screen.getByRole('banner')).not.toHaveTextContent('미동기');
+    expect(screen.getByRole('banner')).not.toHaveTextContent('전송 대기');
 
     await user.click(screen.getByRole('button', { name: '담기' }));
 
@@ -188,7 +188,7 @@ describe('AppLayout', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('banner')).not.toHaveTextContent('되돌아옴');
+    expect(screen.getByRole('banner')).not.toHaveTextContent('전송 실패');
 
     await user.click(screen.getByRole('button', { name: '담기' }));
     window.dispatchEvent(new Event('online'));

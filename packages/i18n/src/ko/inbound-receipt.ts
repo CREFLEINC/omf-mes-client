@@ -121,11 +121,11 @@ export const inboundReceipt = {
     underVarianceNote: '이번이 마지막인데 모자라면 입하 오류로 넘어갑니다.',
   },
   /** 검사 대상 여부는 서버가 라인마다 정한다. 화면이 보내지 않는다. */
-  inspectionNote: '검사 대상 여부는 등록한 뒤에 줄마다 정해집니다',
+  inspectionNote: '검사 대상 여부는 등록한 뒤에 라인마다 정해집니다',
   submit: '입하 등록',
   sent: {
     title: '입하를 등록했습니다',
-    description: '라벨이 붙어 온 줄의 자재 LOT도 함께 만들어졌습니다. 모두 보류 상태입니다.',
+    description: '사전부착 라인의 자재 LOT도 함께 만들어졌습니다. 모두 보류 상태입니다.',
   },
   queued: {
     title: '입하를 전송 대기에 넣었습니다',

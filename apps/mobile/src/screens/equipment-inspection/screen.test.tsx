@@ -281,7 +281,9 @@ describe('설비 점검 입력 화면', () => {
     await user.click(screen.getByRole('button', { name: '점검 완료' }));
 
     expect(await screen.findByText('점검을 전송 대기에 넣었습니다')).toBeInTheDocument();
-    expect(screen.getByText('연결되면 보냅니다. 아직 반영되지 않았습니다.')).toBeInTheDocument();
+    expect(
+      screen.getByText('연결되면 보냅니다. 아직 작업 통제에 반영되지 않았습니다.'),
+    ).toBeInTheDocument();
     expect(screen.queryByText('점검을 기록했습니다')).not.toBeInTheDocument();
   });
 
@@ -300,7 +302,7 @@ describe('설비 점검 입력 화면', () => {
     await user.click(screen.getByRole('button', { name: '다른 설비 점검' }));
 
     expect(
-      await screen.findByText('전송 대기 중인 점검 1건 — 아직 반영되지 않습니다'),
+      await screen.findByText('전송 대기 중인 점검 1건 — 아직 작업 통제에 반영되지 않습니다'),
     ).toBeInTheDocument();
   });
 

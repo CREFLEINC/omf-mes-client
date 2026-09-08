@@ -61,17 +61,18 @@ export const equipmentInspection = {
   },
   noWorker: '사번을 먼저 확인하세요',
   /** 못 보낸 점검은 서버에 없어 작업 통제가 점검을 안 한 것으로 읽는다. */
-  unsent: (count: number) => `전송 대기 중인 점검 ${String(count)}건 — 아직 반영되지 않습니다`,
+  unsent: (count: number) =>
+    `전송 대기 중인 점검 ${String(count)}건 — 아직 작업 통제에 반영되지 않습니다`,
   sent: {
     title: '점검을 기록했습니다',
   },
   queued: {
     title: '점검을 전송 대기에 넣었습니다',
-    description: '연결되면 보냅니다. 아직 반영되지 않았습니다.',
+    description: '연결되면 보냅니다. 아직 작업 통제에 반영되지 않았습니다.',
   },
   rejected: {
     title: '점검을 전송하지 못했습니다',
-    description: '보냈지만 등록되지 않았습니다. 아직 반영되지 않았습니다.',
+    description: '보냈지만 등록되지 않았습니다. 작업 통제에 반영되지 않았습니다.',
     action: '전송 실패한 기록 보기',
   },
   another: '다른 설비 점검',

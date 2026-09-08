@@ -57,11 +57,11 @@ export const shopfloorReceipt = {
     reasonLabel: (item: string) => `${item} 차이 사유`,
     reasonPlaceholder: '사유를 고르세요',
     /** 왜 모자란지를 아는 사람은 물건을 받은 그 자리에 있다. */
-    reasonRequired: '모자란 줄은 사유를 고르세요',
+    reasonRequired: '모자란 품목은 사유를 고르세요',
   },
   submit: '입고 확정',
   noWorker: '사번을 먼저 확인하세요',
-  noLine: '받은 수량을 한 줄 이상 적으세요',
+  noLine: '받은 품목의 수량을 적으세요',
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
     title: '입고를 저장하지 못했습니다',
