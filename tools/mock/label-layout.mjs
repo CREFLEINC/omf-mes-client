@@ -27,6 +27,8 @@ const PT = {
   strongValue: 13,
   normal: 10,
   small: 9,
+  /* 덧말·일시·추가 항목 — 사양서 §5.1 의 「중」 등급(7~8pt). */
+  caption: 8,
 };
 
 /**
@@ -164,9 +166,8 @@ export function renderShippingLabel(values) {
 }
 
 /**
- * 표준 LOT 라벨 80×30mm(사양 §3-2).
- *
- * ⚠ 좁아서 이름표를 짧게 쓴다. 우선순위는 PART NO. → QTY → STATUS → LOT NO. 순이다.
+ * 표준 LOT 라벨 80×30mm — 사양서 §5.4 예시를 **실제 값에 맞게 조정한 배치.**
+ * 짝은 `label-tspl.mjs` 와 `apps/pop/src/main/tspl-label.ts` 다. 셋을 함께 고친다.
  */
 export function renderLotLabel(values) {
   const width = mm(80);
@@ -176,37 +177,47 @@ export function renderLotLabel(values) {
 
   strokeRect(canvas, 0, 0, width, height, 2);
 
-  const matrixSize = mm(19);
+  const matrixSize = mm(12);
   const matrixX = width - pad - matrixSize;
   drawMatrixPlaceholder(canvas, matrixX, pad + mm(1), matrixSize, values.seed ?? 1);
 
   const left = pad + mm(1.5);
-  let y = pad + mm(0.5);
-  const gap = mm(1);
 
-  const headScale = scaleFor(PT.normal);
-  drawText(canvas, `${values.type}  ${values.status}`, left, y, headScale);
-  y += textHeight(headScale) + gap;
+  /*
+   * ⭐ **한 칸으로 내려 쓴다 — 좌·우로 나누지 않는다.**
+   *
+   * 전에는 왼쪽 19mm 에 유형·상태를 세웠는데, 상태가 `INSPECTION_PENDING` 처럼 길게 오면
+   * 그 칸에 들어가지 않아 품번 위로 겹쳤다(실측 2026-09-08 · 실기). 칸을 나누지 않으면
+   * 줄마다 폭을 다 써서 겹칠 자리 자체가 없다. 짝 둘도 같은 배치다.
+   */
+  const wTop = matrixX - left - mm(2);
+  const wBelow = width - left - pad;
 
-  const columnWidth = matrixX - left - mm(2);
-  const fullWidth = width - left - pad - mm(1);
+  const rows = { head: 14, partNo: 48, partName: 90, qty: 122, lot: 164, date: 200 };
 
-  y +=
-    labelledLine(
-      canvas,
-      left,
-      y,
-      'PART NO.:',
-      values.partNo,
-      PT.small,
-      PT.strongValue,
-      columnWidth,
-    ) + gap;
-  y += labelledLine(canvas, left, y, '', values.partName, PT.small, PT.small, columnWidth) + gap;
-  y +=
-    labelledLine(canvas, left, y, 'LOT NO.:', values.lotNo, PT.small, PT.normal, columnWidth) + gap;
-  y += labelledLine(canvas, left, y, 'QTY:', values.qty, PT.small, PT.normal, columnWidth) + gap;
-  labelledLine(canvas, left, y, 'MFG DT:', values.mfgDt, PT.small, PT.small, fullWidth);
+  const headText = `${values.type}  ${values.status}`;
+  const partNoText = `PART NO.: ${values.partNo}`;
+  const lotText = `LOT NO.: ${values.lotNo}`;
+  const qtyText = `QTY: ${values.qty}`;
+  const dateText = `MFG DT: ${values.mfgDt}`;
+
+  const headScale = fitScale(headText, PT.normal, wTop);
+  const partNoScale = fitScale(partNoText, PT.strongValue, wTop);
+  const nameScale = fitScale(values.partName, PT.small, wTop);
+  const qtyScale = fitScale(qtyText, PT.strongValue, wBelow);
+  const lotScale = fitScale(lotText, PT.normal, wBelow);
+  const capScale = fitScale(dateText, PT.caption, Math.round(wBelow / 2));
+
+  drawText(canvas, headText, left, rows.head, headScale);
+  drawText(canvas, partNoText, left, rows.partNo, partNoScale);
+  drawText(canvas, values.partName, left, rows.partName, nameScale);
+  drawText(canvas, qtyText, left, rows.qty, qtyScale);
+  drawText(canvas, lotText, left, rows.lot, lotScale);
+  drawText(canvas, dateText, left, rows.date, capScale);
+
+  if (values.extra !== undefined) {
+    drawText(canvas, values.extra, left + Math.round(wBelow / 2), rows.date, capScale);
+  }
 
   return canvas;
 }
