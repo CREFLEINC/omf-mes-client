@@ -146,10 +146,6 @@ describe('POP 배치 클래스', () => {
  * flex 로 «자기» 배치를 갖는 액션 줄에도 그대로 닿는다 — 그러면 그 줄의 **둘째 버튼부터**
  * 12 씩 내려앉아 나란히 선 버튼들의 윗변이 어긋난다.
  *
- * 실측으로 두 번 나왔다. 재포장 라벨(`pop-repack-actions`)에서 한 번, 생산LOT 완료
- * (`pop-lotdone-actions`)에서 또 한 번이다. 뒤엣것은 되돌릴 수 없는 두 갈래를 **대등하게**
- * 보여야 하는 자리라(스펙 §3 · R71) 한쪽이 내려앉으면 그 뜻까지 깨진다.
- *
  * ⚠ **렌더 테스트로는 잡히지 않는다** — `vitest.config.ts` 가 `css: false` 라 스타일이
  * 테스트에 닿지 않는다. 화면은 어긋난 채로도 멀쩡히 뜬다.
  *
@@ -157,7 +153,7 @@ describe('POP 배치 클래스', () => {
  * 줄이나 `align-items` 로 세로를 잡는 줄은 대상이 아니다.
  */
 describe('POP 액션 줄', () => {
-  const SIDE_BY_SIDE_ACTION_ROWS = ['pop-repack-actions', 'pop-lotdone-actions'] as const;
+  const SIDE_BY_SIDE_ACTION_ROWS = ['pop-repack-actions'] as const;
 
   it.each(SIDE_BY_SIDE_ACTION_ROWS)('`.%s`가 구획 형제 간격을 턴다', (name) => {
     /* ⚠ 값 끝을 함께 문다 — `0` 만 보면 `0.5rem` 같은 «다른» 값도 통과한다. */

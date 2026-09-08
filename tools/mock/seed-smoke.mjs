@@ -46,12 +46,12 @@ const ENTRIES = [
   ['M-02-01 생산LOT', '/trace/lots?lotNo=PLOT-2026-0031', 1],
   ['P-02-04 현재 생산LOT', '/trace/lots?workOrderId=11002&currentOnly=true&withProgress=true', 1],
   [
-    'P-02-07 완료 생산LOT',
+    'P-02-04 마감 생산LOT',
     '/trace/lots?workOrderId=11001&lotTypeCode=PRODUCTION&completed=true',
     2,
   ],
   [
-    'P-02-07 발행 현황',
+    'P-02-04 생산 LOT 라벨 발행 현황',
     '/app/document-issues/summary?targetTypeCode=LOT&targetIds=8101,8102&documentTypeCode=PRODUCTION_LOT_LABEL',
     2,
   ],

@@ -69,6 +69,15 @@ describe('POP 라우트 분리', () => {
     expect(popRoutes.map(({ path }) => path)).toContain('/pop/packing-work');
   });
 
+  it('P-02-04 통합 주소만 남고 폐지된 P-02-05·06·07 독립 주소는 없다', () => {
+    const paths = popRoutes.map(({ path }) => path);
+
+    expect(paths).toContain('/pop/production-result');
+    expect(paths).not.toContain('/pop/tag-issue');
+    expect(paths).not.toContain('/pop/lot-complete');
+    expect(paths).not.toContain('/pop/lot-label');
+  });
+
   it('POP 경로는 `/pop`으로 시작한다 — 관리웹 셸 주소와 섞이지 않는다', () => {
     for (const { path } of popRoutes) {
       expect(path).toMatch(/^\/pop\//);

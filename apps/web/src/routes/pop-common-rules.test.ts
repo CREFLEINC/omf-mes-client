@@ -24,8 +24,8 @@ const sourceFiles = (directory: string): string[] =>
   });
 
 describe('POP 공개 라우트 공통 규칙', () => {
-  it('고정 설계 범위의 공개 화면 21개를 모두 점검한다', () => {
-    expect(popRoutes).toHaveLength(21);
+  it('통합 뒤 고정 설계 범위의 공개 화면 18개를 모두 점검한다', () => {
+    expect(popRoutes).toHaveLength(18);
   });
 
   it('모든 공개 화면의 루트가 관리웹 기본 밀도 겹을 쓴다', () => {

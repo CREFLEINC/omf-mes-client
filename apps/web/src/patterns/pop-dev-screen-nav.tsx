@@ -61,26 +61,15 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/work-start', label: 'P-02-01 작업 시작' },
   { path: '/pop/material-input', label: 'P-02-03 자재 투입 스캔', query: '?workOrderId=11002' },
   {
-    path: '/pop/tag-issue',
-    label: 'P-02-05 인식표 발행',
-    /* 씨앗의 생산LOT 은 전부 이 작업지시에 달려 있다 — 11002 로 열면 대상 LOT 이 비어 뜬다. */
-    query: '?workOrderId=11001&workerNo=100029',
-  },
-  {
     path: '/pop/production-result',
-    label: 'P-02-04 작업실적 등록',
+    label: 'P-02-04 생산 실적·라벨·LOT 마감',
+    /* 현재 생산 LOT이 있는 씨앗 작업지시다. */
     query: '?workOrderId=11002&workerNo=100029',
   },
   {
     path: '/pop/packing-label-reprint',
     label: 'P-02-09 포장 라벨·인식표 재출력',
     query: '?handlingUnitId=13001&workerNo=100029',
-  },
-  {
-    path: '/pop/lot-label',
-    label: 'P-02-07 LOT 라벨 출력·부착',
-    /* 완료 LOT 이 달린 작업지시다(P-02-08 과 같다). 11002 에는 LOT 이 하나도 없다. */
-    query: '?workOrderId=11001&workerNo=100029',
   },
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
@@ -146,12 +135,6 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
    * 셸이 채우고, 비어 있을 때만 주소를 본다(`entry-context.ts`).
    */
   { path: '/pop/packing', label: 'P-04-01 Packing 실적 등록' },
-  {
-    path: '/pop/lot-complete',
-    label: 'P-02-06 생산LOT 완료 처리',
-    /* 씨앗에서 미완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 대상 목록이 비어 뜬다. */
-    query: '?workOrderId=11002',
-  },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */

@@ -207,8 +207,8 @@
 /*
  * ⭐ **남는 높이를 가져갈 블록도 «자리»로 겨냥한다.**
  *
- * 본문을 담는 블록의 이름이 화면마다 다르다(`.pop-panes`·`.pop-assign`·`.pop-result-panes`
- * ·구획 직접 나열…). 이름을 하나씩 적어 두면 화면이 늘 때마다 빠뜨리고, 빠뜨린 화면은
+ * 본문을 담는 블록의 이름이 화면마다 다르다(`.pop-panes`·`.pop-assign`·구획 직접 나열…).
+ * 이름을 하나씩 적어 두면 화면이 늘 때마다 빠뜨리고, 빠뜨린 화면은
  * **본문이 줄지 못해 화면 밖으로 넘친다**(실측 — 작업실적 등록 140px). 그래서 「무엇이
  * 늘어나는가」가 아니라 「무엇이 늘어나지 «않는가»」를 적는다 — 머리줄·배너·액션 줄·창은
  * 제 높이를 지키고, **나머지가 남는 높이를 나눠 갖는다.**
@@ -252,7 +252,7 @@
 /*
  * ⭐ **2단 구획은 «행 높이만큼» 선다 — 내용 높이만큼이 아니다.**
  *
- * 작업실적 등록의 좌우 2단(`.pop-result-panes`)이 `align-items: start` 로 서 있었다. 격자
+ * 과거 작업실적 등록의 좌우 2단이 `align-items: start` 로 서 있었다. 격자
  * 칸이 내용 높이를 그대로 가져가므로 **구획이 그릇보다 커지고**, 위쪽 「본문」 절이 그릇에
  * 건 `overflow: hidden` 이 넘친 부분을 잘라 낸다. 구획 자신은 이미 `overflow-y: auto` 를
  * 받고 있는데도 «줄어들 일이 없어» 스크롤이 서지 않는다 — 잘린 자리에 스크롤바도 없어
@@ -265,52 +265,6 @@
  * ⚠ 이름을 하나 더 적는 자리다. 2단을 쓰는 화면이 늘면 여기 같이 적는다 — 위 두 줄과 같은
  *    이유로 묶어 두었다.
  */
-.pop-ui > .pop-result-panes {
-  align-items: stretch;
-}
-
-/*
- * 키패드 칸은 **키 블록 위 · 빠른 입력 아래**로 쌓는다.
- *
- * `app.css` 는 이 칸을 「가운데 정렬하는 가로 flex」로 두었다 — 자식이 키패드 하나뿐이던
- * 때의 규칙이다. 빠른 입력(`＋10`·`＋100`)이 설계대로 이 편에 서면서 자식이 둘이 됐고,
- * 가로 flex 그대로면 키패드 «옆»에 나란히 붙는다.
- *
- * ⛔ `app.css` 를 고치지 않는다 — 관리웹과 함께 쓰는 파일이다. 방향만 여기서 세운다.
- */
-.pop-ui .pop-result-keypad > * {
-  /*
-   * ⭐ **칸이 «자기» 여백으로 카드 가운데에 선다.**
-   *
-   * 앞선 두 번은 칸을 늘려(`flex: 1 1 auto`) 칸 «안»에서 가운데를 잡으려 했는데 화면에서
-   * 두 번 다 헛돌았다. 늘어나는지 여부에 기대지 않는 길로 바꾼다 — DS `Card` 는 세로 flex
-   * 이고 이 칸이 그 유일한 자식이므로, 칸의 위아래 `auto` 여백이 카드의 남는 높이를 반씩
-   * 나눠 갖는다. 늘릴 필요가 없다.
-   *
-   * ⭐ 넘칠 때는 `auto` 가 0 이 되어 물러난다 — 음수가 되지 않으므로 잘리는 쪽은 늘 아래고,
-   *    카드가 스크롤해 닿는다(「위쪽 키에 닿을 수 없다」를 되살리지 않는다).
-   */
-  margin-block: auto;
-
-  /*
-   * `app.css` 는 이 칸을 「가운데 정렬하는 가로 flex」로 두었다 — 자식이 키패드 하나뿐이던
-   * 때의 규칙이다. 빠른 입력(`＋10`·`＋100`)이 설계대로 이 편에 서면서 자식이 둘이 됐고,
-   * 가로 flex 그대로면 키패드 «옆»에 나란히 붙는다. 방향만 세운다.
-   *
-   * ⛔ 공용 파일의 `justify-content: center` 는 «끄는 선언»을 남겨 둬야 한다. 지우면 없어지는
-   *    것이 아니라 공용값으로 돌아가고, 넘칠 때 그 값이 위쪽 키를 닿을 수 없게 만든다.
-   */
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-4);
-}
-
-/* 키 블록 폭(3열)에 맞춰 선다. 위 `gap` 이 이음매를 주므로 자기 여백은 갖지 않는다. */
-.pop-ui .pop-result-keypad .pop-result-quick {
-  margin: 0;
-}
-
 /*
  * 가운데 정렬 칸에 두 줄을 쌓을 때 — `.stacked-cell` 의 기본값이 왼쪽에 붙으므로 칸 정렬을
  * 거스른다. 칸이 가운데면 쌓는 줄도 가운데에 맞춘다.
@@ -589,62 +543,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-/*
- * 잔여수량 줄을 **위의 「대상 LOT」·「제품」과 같은 격자**에 세운다.
- *
- * `app.css` 는 이 줄을 `space-between` 으로 두어 라벨과 값이 화면 양 끝으로 갈라졌다.
- * 설계 검증본은 좌단 네 줄을 전부 같은 「라벨 | 값」 행으로 그린다 — 라벨 열이 어긋나면
- * 마지막 한 줄만 다른 이야기로 읽힌다(위 `.pop-result-target > div` 와 같은 104px 다).
- */
-.pop-ui .pop-result-remaining {
-  display: grid;
-  grid-template-columns: 104px 1fr;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-/*
- * ⭐ **두 숫자를 낱말이 아니라 «무게»로 가른다.** 설계 검증본이 그렇게 그린다 —
- *
- * | 자리 | 검증본 | 값 |
- * | --- | --- | --- |
- * | 잔여 | `.val` | `--type-body-lg` (400 16px) · `--on-surface` |
- * | 지시·단위 | `.unit` | `--type-body-sm` (400 14px) · `--on-surface-muted` |
- *
- * ⛔ **굵게 하지 않는다.** 검증본의 두 자리 모두 굵기 400 이고, 굵힌 것은 이 줄이 아니라
- *    양품수량(`.val.num` — `title-lg`)이다. 잔여수량까지 굵히면 이 화면에서 «치는 값»과
- *    «참고 값»이 같은 무게로 서서 강조가 뜻을 잃는다(사용자 지적).
- *
- * ⚠ 작은 쪽 14px 은 POP 글자 바닥과 «같다» — 그 아래로는 내리지 않는다.
- */
-/*
- * 값을 **오른쪽 끝에 맞춘다**(사용자 결정). 위 양품수량·비고 칸의 «테두리 오른쪽»과 같은
- * 선에 선다(실측 593) — 좌단에서 가장 굵은 세로선이라, 거기에 맞으면 「친 수량」과 「남은
- * 수량」이 한 줄기로 읽힌다.
- *
- * ⚠ 칸 «안»의 단위 글자(`EA`)와는 20px 어긋난다 — DS 입력 부품의 안쪽 여백이다. 그 20 을
- *   여기서 빼서 맞추지 않는다. 부품이 여백을 바꾸면 조용히 틀어지는 값이다.
- */
-.pop-ui .pop-result-remaining-value {
-  display: flex;
-  align-items: baseline;
-  justify-content: flex-end;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.pop-ui .pop-result-remaining-current {
-  font: var(--type-body-lg);
-  font-variant-numeric: tabular-nums;
-  color: var(--on-surface);
-}
-
-.pop-ui .pop-result-remaining-ordered {
-  font: var(--type-body-sm);
-  font-variant-numeric: tabular-nums;
-  color: var(--on-surface-muted);
 }
 
 /*
@@ -1523,47 +1421,6 @@
 .pop-ui .pop-reprint-target-head label,
 .pop-ui .pop-reprint-target-head > * {
   min-block-size: 56px;
-}
-
-/*
- * 발행 수량 키패드 — **이 화면이 쓰던 자리 그대로** 마지막 줄이 [ C ] · [ 0 ] · [ ⌫ ] 다.
- *
- * 공유 부품은 [ ← ] · [ 0 ] · [ 지움 ] 순으로 그린다(사번 화면이 그 모양이다). 부품을 바꾼
- * 것은 «동작» 때문이라, 보이는 것까지 따라 바뀌지 않게 자리만 되돌린다.
- *
- * ⛔ **한 키에만 `order` 를 주지 않는다.** `order` 는 격자 «전체»의 차례를 다시 매기므로,
- *    음수 하나를 주면 그 키가 맨 앞(1 의 자리)으로 가고 숫자가 통째로 한 칸씩 밀린다
- *    (실측 — `C 1 2 / 3 4 5 / …` 로 어긋났다). 마지막 줄 셋을 «함께» 지정한다.
- */
-.pop-ui .pop-issue-keypad > .omf-numeric-keypad__clear {
-  order: 1;
-}
-
-.pop-ui .pop-issue-keypad > .omf-numeric-keypad__zero {
-  order: 2;
-}
-
-.pop-ui .pop-issue-keypad > .omf-numeric-keypad__backspace {
-  order: 3;
-}
-
-/*
- * 인식표 발행 《발행》 구획 — **위는 「무엇을 얼마나」, 아래는 「그 결과와 실행」.**
- *
- * 위 줄은 수치·입력칸(왼쪽)과 키패드(오른쪽) 둘로 갈리고, 아래 줄은 번호 미리보기와 조작이
- * **가로를 통째로** 쓴다. 미리보기를 왼쪽 좁은 칸에 두면 일련번호 범위가 접혀 한눈에 읽히지
- * 않는다.
- */
-.pop-ui .pop-issue-foot {
-  grid-column: 1 / -1;
-  border-block-start: 1px solid var(--outline-variant);
-  padding-block-start: var(--space-4);
-  margin-block-start: var(--space-2);
-}
-
-/* 미리보기가 아래 줄의 첫 블록이 되었으므로 위 여백은 줄이 갖는다. */
-.pop-ui .pop-issue-foot > .pop-preview {
-  margin-block-start: 0;
 }
 
 /*
@@ -2460,16 +2317,6 @@
 }
 
 /*
- * 빠른 입력 보조(`+10`·`+100`)는 **채우지 않는다.** 브랜드 강조색으로 채워 두면 화면에서
- * 가장 눈에 띄는 것이 「수량을 조금 더하는 일」이 된다 — 이 화면의 주 조작은 저장이다.
- */
-.pop-ui .pop-result-quick button {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--outline-variant);
-  color: var(--on-surface-variant);
-}
-
-/*
  * 자재LOT 의 「인쇄만」과 「재인쇄」는 **둘 다 열려 있는 것이 정상이다**(다른 동작이다).
  * 그래서 무게로 가른다 — 채운 쪽이 이번 회차의 인쇄이고, 재인쇄는 사유를 실어 보내는
  * 되짚는 조작이라 조용히 둔다. 같은 붉은색으로 나란히 서면 어느 쪽이 지금 할 일인지 흐려진다.
@@ -2478,60 +2325,6 @@
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--outline-variant);
   color: var(--on-surface-variant);
-}
-
-/* ── 화면 내장 키패드(세 번째 구현) ───────────────────────────────────── */
-
-/*
- * ⚠ **키패드가 이제 세 벌이다** — `.omf-numeric-keypad`(작업자 지정·인식표 발행·작업실적
- * 등록) · `.numeric-keypad`(자재 투입) · 그리고 자리를 잡아 주는 껍데기(`.pop-result-keypad`).
- *
- * ⛔ **행 높이를 키가 정하게 한다.** 키를 72px 로 올려 놓고 격자의 행을 그대로 두면 키가
- * 다음 줄로 파고든다(실측 4px — 사용자 지적). 간격은 설계 값 12 다(검증본 `.pad`).
- *
- * ⛔ DS 내부 클래스를 이름으로 겨냥하지 않는다 — 칸의 «자리»로 잡는다. 칸의 자식은 둘뿐이고
- * (키 격자 · 빠른 입력) 빠른 입력은 자기 이름을 갖는다.
- */
-.pop-ui .pop-result-keypad > * > :not(.pop-result-quick) {
-  grid-template-rows: none;
-  grid-auto-rows: 72px;
-  gap: var(--space-3);
-}
-
-/*
- * ⛔ **`:not(:disabled)` 가 있어야 한다.** 이 겨냥이 위 `.pop-ui button:disabled` 와 굵기가
- *    같고 파일에서 «뒤»에 있어, 색까지 함께 주면 **잠긴 키의 잠금색을 되돌린다** — 수량이
- *    비어 [ C ]·[ ⌫ ] 가 실제로 잠겼는데도 숫자 키와 똑같이 떠서 잠긴 줄 모른다.
- *    같은 함정을 공용 키패드 절에서 이미 한 번 겪었다(위 「화면 내장 키패드」).
- */
-.pop-ui .pop-result-keypad button:not(:disabled) {
-  color: var(--on-surface);
-}
-
-.pop-ui .pop-result-keypad button {
-  min-height: 72px;
-  border-radius: var(--radius-md);
-  box-shadow: inset 0 0 0 1px var(--outline-variant);
-  font-size: 28px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-/*
- * ⭐ **마지막 줄은 [ C ] · [ 0 ] · [ ⌫ ] 다** — 스펙 §3-2 가 그린 순서이고 이 화면이 지금까지
- * 보여 온 자리다. 공용 부품은 «지움»을 끝에 그리므로 자리만 되돌린다. ⛔ 부품의 마크업을
- * 바꾸지 않는다 — 인식표 발행도 같은 방식으로 자리만 잡는다(`.pop-issue-keypad`).
- */
-.pop-ui .pop-result-pad > .omf-numeric-keypad__clear {
-  order: 1;
-}
-
-.pop-ui .pop-result-pad > .omf-numeric-keypad__zero {
-  order: 2;
-}
-
-.pop-ui .pop-result-pad > .omf-numeric-keypad__backspace {
-  order: 3;
 }
 
 /* ── PQC 수량 판정 ────────────────────────────────────────────────────── */
@@ -2766,35 +2559,6 @@
 .pop-ui .pop-row-select {
   align-items: center;
   text-align: center;
-}
-
-/*
- * ⭐ **생산LOT 완료의 목록만 왼쪽에서 시작한다**(사용자 결정 2026-09-07).
- *
- * 열 정렬(`align`)은 칸의 `text-align` 만 정하는데, 이 표의 값은 **줄 전체를 누르는 버튼**
- * 안에 있고 그 버튼이 위 `.pop-row-select` 에서 `text-align: center` 를 받는다 — 그래서
- * 머리만 왼쪽으로 가고 **값은 가운데에 남았다**(사용자 지적).
- *
- * ⚠ 공용 `.pop-row-select` 를 고치지 않는다 — 다른 화면 넷이 함께 쓰고 그쪽은 가운데가 맞다
- *   (열이 셋이라 각 열이 좁다). **이 표에서만** 되돌린다.
- */
-.pop-ui .pop-lotdone-table .pop-row-select {
-  text-align: start;
-}
-
-/*
- * ⭐ **값이 칸 머리글과 같은 자리에서 시작한다**(사용자 지적 2026-09-07 — 「정렬이 안 맞는 듯」).
- *
- * 머리글은 칸(`th`)의 좌우 여백(DS `comfortable` = `--space-4`)에서 시작하는데, 값은 그 칸 안의
- * **버튼**에 있고 버튼이 `app.css` 에서 `--space-3` 을 한 겹 더 받는다 — 값만 한 칸 더 밀려
- * 머리글과 어긋났다(실측 약 12px).
- *
- * ⚠ **좌우만 지운다.** 위아래 여백은 줄 높이를 만들어, 지우면 줄이 터치 하한 아래로 내려앉는다
- *   (`app.css` 의 `.pop-row-select` 주석 · 실기에서 드러난 것).
- * ⚠ 버튼은 `width: 100%` 라 좌우 여백을 지워도 **누르는 자리는 줄 전체 그대로**다.
- */
-.pop-ui .pop-lotdone-table .pop-row-select {
-  padding-inline: 0;
 }
 
 /*
