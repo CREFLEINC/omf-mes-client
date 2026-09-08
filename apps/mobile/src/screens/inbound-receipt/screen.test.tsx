@@ -282,6 +282,20 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(screen.getByText(/허용 \+10 \/ -5/)).toBeTruthy();
   });
 
+  /*
+   * 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다. 총량만 칸 옆에 두면 적는 사람이
+   * 그 수에 맞추려 하고, 판정은 다른 수로 나온다.
+   */
+  it('칸 옆에 발주 총량과 남은 예정을 함께 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+
+    expect(await screen.findByText('발주 500 EA')).toBeTruthy();
+    expect(screen.getByText('남은 예정 500 EA')).toBeTruthy();
+  });
+
   /* 허용치는 발주 라인이 갖고 있고 서버가 다시 판정하지 않는다. */
   it('허용치 안이면 예정과 맞다고 말한다', async () => {
     const user = userEvent.setup();
