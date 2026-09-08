@@ -103,6 +103,46 @@ const DETAILS = [
           typeof row.requestedByName === 'string',
       ),
   ],
+  /*
+   * 되돌릴 수 없는 쓰기를 하는 화면은 한 번 하고 나면 그 대상이 목록에서 빠진다. 하나만 두면
+   * 첫 시험에서 소진돼 두 번째 사람이 빈 화면을 만난다. 건수까지 본다.
+   */
+  [
+    'M-01-02 사전부착 빈 LOT 라인',
+    '/logistics/inbound-receipts/9002/lines?supplierLotMissing=false',
+    (body) => body.items.filter((row) => row.lotId === null).length >= 2,
+  ],
+  [
+    'M-01-02 다른 입하 건에도',
+    '/logistics/inbound-receipts/9001/lines?supplierLotMissing=false',
+    (body) => body.items.filter((row) => row.lotId === null).length >= 2,
+  ],
+  [
+    'M-01-05 남는 적치 지시',
+    '/logistics/putaway-tasks?assignedWorkerId=1001',
+    (body) => body.items.length >= 3,
+  ],
+  [
+    'M-01-08 남는 피킹 지시',
+    '/logistics/picking-orders?assignedWorkerId=1001&statusCode=REGISTERED',
+    (body) => body.items.length >= 2,
+  ],
+  [
+    'M-01-09 남는 출고 전표',
+    '/logistics/goods-issues?statusCode=POSTED',
+    (body) => body.items.length >= 2,
+  ],
+  [
+    'M-01-11 남는 실사',
+    '/inventory/counts?statusCode=IN_PROGRESS',
+    (body) => body.items.length >= 2,
+  ],
+  /* 출하 줄은 요청 응답에 실려 온다. 따로 부르는 경로가 없다. */
+  [
+    'M-04-01 남는 출하 줄',
+    `/logistics/shipment-requests?shipDateFrom=${today()}&shipDateTo=${today()}`,
+    (body) => body.items.some((row) => (row.lines ?? []).length >= 2),
+  ],
   /* 재생재 행이 없으면 재생재 등록은 늘 등록되지 않은 품목이라고만 말한다. */
   [
     'M-01-12 재생재 품목',
