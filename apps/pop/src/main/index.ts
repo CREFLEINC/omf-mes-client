@@ -574,7 +574,6 @@ app.on('before-quit', () => {
   leavingOnPurpose = true;
 });
 
-
 /**
  * 화면을 가리는 대화상자가 떠 있는 깊이.
  *
