@@ -241,8 +241,11 @@ export const PackingWorkScreen = () => {
     if (body === null) return;
 
     /*
-     * ⭐ **끊겨 있으면 큐에 담고 그 자리에서 확정으로 본다**(C-1 #2 · 스펙 §6). 시각 두 칸은
-     * 담는 «지금»을 박는다 — 서버가 받은 때가 아니라 작업자가 확정한 때다(C-1 #3 · C-8).
+     * ⭐ **끊겨 있으면 큐에 담고 그 자리에서 확정으로 본다**(C-1 #2 · 스펙 §6).
+     *
+     * ⛔ **확정한 때를 실을 자리가 없다** — 계약의 `HandlingUnitCreate` 에 시각 칸이 없고
+     * 헤더에도 없어, 큐에 밀린 확정은 서버가 받은 때로 기록된다(C-1 #3 · C-8 을 이 화면에서는
+     * 지킬 수 없다).
      *
      * ⛔ **연결돼 있을 때까지 큐로 보내지 않는다.** 서버가 그 자리에서 되돌리는 것 둘(내용물
      * 없음 400 · 이미 확정 409)은 사용자가 할 일이 갈리는 오류라, 큐에 넣으면 그 말이 한 박자
@@ -265,6 +268,13 @@ export const PackingWorkScreen = () => {
       const attempted = attemptedBody.current;
       const resumable =
         attemptedKey !== null && attempted !== null && sameCreateBody(attempted, body);
+
+      /*
+       * ⚠ **지금은 `attempted` 와 `body` 가 같은 값이다** — `resumable` 이 본문 전문 비교로
+       * 성립하기 때문이다. 그래도 «그때 보낸 것»을 그대로 넘기는 모양을 지킨다: 본문에 시각
+       * 칸이 생기거나(C-8) 화면이 값을 하나라도 더 실으면, 같은 키에 다른 본문이 나가는
+       * 자리가 여기다.
+       */
 
       outbox.enqueue({
         workerNo: workerNo ?? '',

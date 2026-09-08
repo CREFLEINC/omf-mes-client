@@ -584,16 +584,6 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
   });
 
   /*
-   * 시각만 가짜로 돌린다 — 타이머는 진짜로 둔다(`userEvent` 가 실제 타이머 위에서 돈다).
-   * 확정 본문의 `occurredAt` 은 «누른 순간»이라, 시각을 움직여야 「본문을 새로 지었는가」가
-   * 드러난다.
-   */
-  const freezeClockAt = (iso: string): void => {
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date(iso));
-  };
-
-  /*
    * ⭐ **끊긴 채로도 포장을 새로 시작해 확정까지 마친다.** 등록을 확정 시점으로 옮기면서
    * 열린 자리다 — 앞선 판은 여기서 「연결이 끊겨 새 포장을 시작할 수 없습니다」로 막았다.
    */
@@ -699,7 +689,6 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     const user = userEvent.setup();
 
     /* 5xx — 서버가 받았는지 알 수 없는 실패다. */
-    freezeClockAt('2026-09-08T23:59:50+09:00');
     renderScreen({ writes, packStatus: 503 });
 
     await packOneLine(user, LOT_A_NO, '100');
@@ -713,12 +702,6 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
 
     const attempt = writeAt(writes, 0);
     const attemptBody = await bodyOf(attempt);
-
-    /*
-     * ⭐ **날짜를 넘긴다.** 큐가 본문을 새로 지으면 같은 키에 영업일이 갈리고, 서버의
-     * `UNIQUE(idempotency_key, business_date)` 를 둘 다 통과해 **두 건으로 적재된다**(C-8).
-     */
-    vi.setSystemTime(new Date('2026-09-09T00:00:10+09:00'));
 
     setOnline(false);
     act(() => {
@@ -742,7 +725,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     expect(queued.headers.get('Idempotency-Key')).toBe(attempt.headers.get('Idempotency-Key'));
     /*
      * ⛔ **본문도 그때 것이어야 한다.** 키만 같고 값이 다르면 서버가 앞 쓰기의 중복으로 보고
-     * 흡수한다 — 영업일이 갈리면 반대로 두 건으로 적재된다(C-8).
+     * 흡수해, 나중에 담은 줄이 사라진다.
      */
     expect(await bodyOf(queued)).toEqual(attemptBody);
   });

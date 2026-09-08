@@ -44,15 +44,15 @@ const toContent = (error: ApiError): BannerContent => {
     /*
      * ⚠ **계약에 없는 갈래다** — 확정(`POST /inventory/handling-units`)의 응답은 201·400·403
      * 뿐이다. 그래도 갈래를 비워 두지 않는다: 서버 구성이 달라 오면 화면이 아무 말도 못 한다.
-     * 무엇이 잘못됐는지 우리가 모르므로 서버가 준 말을 그대로 내고 다시 시도를 연다.
+     *
+     * ⛔ **서버가 준 말을 그대로 내지 않는다.** 계약에 없는 응답이라 그 문장이 무엇일지 우리가
+     * 통제하지 못한다 — 작업자에게는 원문이 아니라 다음에 할 일만 말한다.
+     *
+     * ⛔ **다시 시도를 열지 않는다.** 충돌로 되돌아온 것은 같은 요청을 다시 보내도 결과가
+     * 같다 — 열어 두면 작업자가 같은 버튼을 되풀이한다.
      */
-    case 'conflict': {
-      const lines = usableMessages([{ message: error.message }]);
-
-      return lines.length === 0
-        ? { lines: [messages.httpError.description], canRetry: true }
-        : { lines, canRetry: true };
-    }
+    case 'conflict':
+      return { lines: [messages.httpError.description], canRetry: false };
     case 'http': {
       if (error.status === FORBIDDEN) return { lines: [t.error.forbidden], canRetry: false };
       if (error.status === BAD_REQUEST) {

@@ -51,6 +51,18 @@ export const STORAGE_KEY = 'omf-mes.packing-work.outbox';
  * ⛔ **믿고 넘기지 않는다.** 지난 판의 화면이 썼거나 손으로 고쳐졌을 수 있고, 그 끝에 있는
  * 것은 해체 경로가 없는 확정이다(스펙 §8-4). 계약이 필수로 둔 것과 헤더가 요구하는 것만
  * 확인한다.
+ *
+ * ⛔ **지난 판(`:pack` 을 부르던 판)이 남긴 항목은 여기서 떨어져 버려진다 — 알고 그렇게
+ * 둔다.** 그 항목은 `handlingUnitId` 와 시각 두 칸을 들고 있고 본문에 `handlingUnitTypeCode`
+ * 가 없어 이 검사를 통과하지 못한다. 저장 키(`STORAGE_KEY`)는 그대로라 갱신해도 값이 남는다.
+ *
+ * 마저 보내려면 이미 만들어진 포장 단위에 `:pack` 을 부르는 경로를 한 판 더 들고 있어야 한다.
+ * 서버가 `/inventory/handling-units` 계열을 아직 구현하지 않았고(#885) POP 이 현장에 나가
+ * 있지도 않아 **그 값이 존재할 수 있는 단말이 없다** — 되살리는 코드가 지킬 것보다 무겁다고
+ * 보고 버리기로 했다(사용자 결정 2026-09-08 · PR 리뷰).
+ *
+ * ⚠ **현장 배포 뒤에는 이 판단이 성립하지 않는다.** 그때는 저장 형식을 다시 바꾸기 전에
+ * 지난 모양을 함께 받는 경로부터 세운다.
  */
 export const isSendableEntry = (value: unknown): value is OutboxEntry => {
   if (typeof value !== 'object' || value === null) return false;
