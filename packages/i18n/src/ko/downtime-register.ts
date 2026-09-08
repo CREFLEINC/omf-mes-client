@@ -86,6 +86,14 @@ export const downtimeRegister = {
       `비가동 ${String(count)}건 · 합계 ${totalLabel}`,
     basis: (timeLabel: string): string => `${timeLabel} 기준`,
     empty: '오늘 기록된 비가동이 없습니다',
+    /**
+     * ⛔ **묻지 않은 것을 「없다」로 말하지 않는다.** 설비가 정해지기 전에는 조회 자체를
+     * 걸지 않으므로(`queries.ts` 의 `enabled`) 건수도 목록도 «모르는» 상태다. 그때
+     * 「비가동 0건」·「기록된 비가동이 없습니다」로 그리면 오늘 비가동이 없었다는 «사실»로
+     * 읽힌다 — 합계 자리에서 이미 지키고 있는 구분(모르는 값 ≠ 없는 값)을 건수·목록에도
+     * 똑같이 적용한다. 공유계약 G-9.
+     */
+    notAsked: '설비를 고르면 오늘 기록이 나옵니다',
     /* ④ 목록의 열 이름 — 스펙 §7 이 이 자리를 `Table` 로 지정했다. */
     columns: {
       interval: '구간',

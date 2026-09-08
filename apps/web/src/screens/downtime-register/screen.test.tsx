@@ -145,13 +145,17 @@ const IDENTIFIED: PopIdentity = {
  * 시험은 「고를 것이 없다」로 막혀 정작 보려던 것을 못 본다. 다른 응답을 보려는 시험은
  * `reasonsRoute(...)` 를 «먼저» 넘겨 덮는다(앞선 라우트가 이긴다).
  */
-const renderScreen = (routes: StubRoute[], identity: PopIdentity = IDENTIFIED) => {
+const renderScreen = (
+  routes: StubRoute[],
+  identity: PopIdentity = IDENTIFIED,
+  route: string = ROUTE,
+) => {
   const { fetch, requests } = createRecordingFetch([...routes, reasonsRoute()]);
   const result = renderWithProviders(
     <PopIdentityProvider value={identity}>
       <DowntimeRegisterScreen />
     </PopIdentityProvider>,
-    { fetch, route: ROUTE },
+    { fetch, route },
   );
 
   return { ...result, requests };
@@ -903,5 +907,36 @@ describe('DowntimeRegisterScreen — 터치 타겟', () => {
     expect(isExtraLarge(screen.getByRole('button', { name: t.ongoing.close }))).toBe(true);
     expect(isExtraLarge(screen.getByRole('button', { name: t.actions.save }))).toBe(true);
     expect(isExtraLarge(screen.getByRole('button', { name: t.actions.reset }))).toBe(true);
+  });
+});
+
+describe('DowntimeRegisterScreen — 설비를 아직 고르지 않았을 때', () => {
+  /*
+   * ⛔ **묻지 않은 것을 「없다」로 말하지 않는다.** 설비가 정해지기 전에는 오늘 조회를 걸지
+   *    않으므로 건수도 목록도 «모르는» 상태다. 그때 「비가동 0건」·「기록된 비가동이
+   *    없습니다」로 그리면 오늘 비가동이 없었다는 «사실»로 읽힌다 — 실서버에 붙여 실제로
+   *    그렇게 떴다. 합계 자리가 이미 지키던 구분(모르는 값 ≠ 없는 값)을 건수·목록에도 준다.
+   */
+  it('건수를 0으로 말하지 않고 무엇을 해야 나오는지 알린다', async () => {
+    renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()], IDENTIFIED, '/pop/downtime');
+
+    await flush();
+
+    expect(screen.getAllByText(t.today.notAsked).length).toBeGreaterThan(0);
+    expect(screen.queryByText(new RegExp(t.today.summary(0, '')))).toBeNull();
+    expect(screen.queryByText(t.today.empty)).toBeNull();
+  });
+
+  it('설비가 정해지면 건수를 말한다', async () => {
+    renderScreen([
+      downtimeListRoute({ today: [downtime()] }),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+    ]);
+
+    await flush();
+
+    expect(screen.queryByText(t.today.notAsked)).toBeNull();
   });
 });

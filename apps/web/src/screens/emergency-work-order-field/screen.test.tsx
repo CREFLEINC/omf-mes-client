@@ -197,8 +197,20 @@ describe('연결 표시', () => {
     expect(await screen.findByText(t.header.connected)).toBeInTheDocument();
   });
 
-  it('조회가 실패하면 연결 끊김을 보인다', async () => {
-    renderScreen({ listStatus: 500 });
+  /*
+   * ⛔ **실패했다는 사실만으로 「오프라인」이라 말하지 않는다**(#883). 상태 코드가 있다는 것은
+   *    서버가 «답했다»는 뜻이다 — 그것을 연결 끊김으로 부르면 권한·서버 오류를 만난 작업자가
+   *    네트워크를 확인하러 간다. 실서버에서 401 로 실제로 그렇게 떴다.
+   */
+  it.each([401, 500])('서버가 %d 로 답하면 연결됨을 유지한다', async (status) => {
+    renderScreen({ listStatus: status });
+
+    expect(await screen.findByText(t.header.connected)).toBeInTheDocument();
+    expect(screen.queryByText(t.header.disconnected)).not.toBeInTheDocument();
+  });
+
+  it('서버에 닿지 못하면 연결 끊김을 보인다', async () => {
+    renderScreen({ listUnreachable: true });
 
     expect(await screen.findByText(t.header.disconnected)).toBeInTheDocument();
   });

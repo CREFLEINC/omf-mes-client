@@ -376,6 +376,7 @@ export const DowntimeRegisterScreen = () => {
           rows={rows}
           totalMinutes={today.totalMinutes}
           isPending={today.isPending}
+          isAsked={today.isAsked}
           isLocalOnly={isLocalOnly}
           now={now}
         />
