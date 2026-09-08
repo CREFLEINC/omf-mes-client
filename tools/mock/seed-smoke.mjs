@@ -313,6 +313,147 @@ for (const [name, path, check] of DETAILS) {
 }
 
 {
+  const jsonHeaders = {
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'seed-smoke-w-06-07-create',
+  };
+  const warehouseCreate = await fetch(`${BASE}/mdm/warehouses`, {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({
+      plantId: 101,
+      businessUnitId: 201,
+      warehouseCode: 'SMOKE-WH',
+      warehouseName: '목업 검증 창고',
+      warehouseTypeCode: 'GENERAL',
+      managementLevelCode: 'RACK',
+      isExternal: false,
+      isDefect: false,
+    }),
+  });
+  const warehouse = await warehouseCreate.json();
+  const warehouseDetail = await fetch(`${BASE}/mdm/warehouses/${String(warehouse.warehouseId)}`);
+  const warehouseEtag = warehouseDetail.headers.get('etag');
+  const warehouseUpdate = await fetch(`${BASE}/mdm/warehouses/${String(warehouse.warehouseId)}`, {
+    method: 'PUT',
+    headers: { ...jsonHeaders, 'If-Match': warehouseEtag ?? '' },
+    body: JSON.stringify({
+      businessUnitId: 201,
+      warehouseCode: 'SMOKE-WH',
+      warehouseName: '검색 가능한 목업 창고',
+      warehouseTypeCode: 'GENERAL',
+      managementLevelCode: 'RACK',
+      isExternal: false,
+      isDefect: false,
+    }),
+  });
+  const warehouseSearch = await fetch(
+    `${BASE}/mdm/warehouses?q=${encodeURIComponent('검색 가능한')}&warehouseTypeCode=GENERAL`,
+  );
+  const warehouseSearchBody = await warehouseSearch.json();
+
+  const locationCreate = await fetch(`${BASE}/mdm/locations`, {
+    method: 'POST',
+    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-07-location-create' },
+    body: JSON.stringify({
+      warehouseId: warehouse.warehouseId,
+      parentLocationId: null,
+      locationCode: 'SMOKE-LOC-01',
+      locationName: '목업 검증 위치',
+      locationTypeCode: 'RACK',
+      allowMixedItem: false,
+      allowMixedLot: false,
+    }),
+  });
+  const location = await locationCreate.json();
+  const locationDetail = await fetch(`${BASE}/mdm/locations/${String(location.locationId)}`);
+  const locationEtag = locationDetail.headers.get('etag');
+  const locationUpdate = await fetch(`${BASE}/mdm/locations/${String(location.locationId)}`, {
+    method: 'PUT',
+    headers: {
+      ...jsonHeaders,
+      'Idempotency-Key': 'seed-smoke-w-06-07-location-update',
+      'If-Match': locationEtag ?? '',
+    },
+    body: JSON.stringify({
+      parentLocationId: null,
+      locationCode: 'SMOKE-LOC-01',
+      locationName: '명칭 검색 목업 위치',
+      locationTypeCode: 'RACK',
+      qualityZoneCode: null,
+      storageConditionCode: 'ROOM_TEMPERATURE',
+      allowMixedItem: false,
+      allowMixedLot: false,
+      capacityQty: null,
+      capacityUomId: null,
+    }),
+  });
+  const locationSearch = await fetch(
+    `${BASE}/mdm/locations?warehouseId=${String(warehouse.warehouseId)}&q=${encodeURIComponent('명칭 검색')}`,
+  );
+  const locationSearchBody = await locationSearch.json();
+
+  const issueResponse = await fetch(`${BASE}/app/document-issues`, {
+    method: 'POST',
+    headers: { ...jsonHeaders, 'Idempotency-Key': 'seed-smoke-w-06-07-label' },
+    body: JSON.stringify({
+      documentTypeCode: 'LOCATION_LABEL',
+      targets: [{ targetTypeCode: 'LOCATION', targetId: location.locationId }],
+    }),
+  });
+  const issueBody = await issueResponse.json();
+  const issue = issueBody.items?.[0];
+  const rendition = await fetch(
+    `${BASE}/app/document-issues/${String(issue?.documentIssueLogId)}/rendition?format=tspl`,
+  );
+  const renditionText = await rendition.text();
+
+  const locationDeactivate = await fetch(
+    `${BASE}/mdm/locations/${String(location.locationId)}:deactivate`,
+    {
+      method: 'POST',
+      headers: {
+        'Idempotency-Key': 'seed-smoke-w-06-07-location-deactivate',
+        'If-Match': locationUpdate.headers.get('etag') ?? '',
+      },
+    },
+  );
+  const activeLocations = await fetch(
+    `${BASE}/mdm/locations?warehouseId=${String(warehouse.warehouseId)}`,
+  );
+  const allLocations = await fetch(
+    `${BASE}/mdm/locations?warehouseId=${String(warehouse.warehouseId)}&includeInactive=true`,
+  );
+  const activeLocationBody = await activeLocations.json();
+  const allLocationBody = await allLocations.json();
+
+  const ok =
+    warehouseCreate.status === 201 &&
+    warehouseEtag !== null &&
+    warehouseUpdate.ok &&
+    warehouseSearchBody.items.some((row) => row.warehouseId === warehouse.warehouseId) &&
+    locationCreate.status === 201 &&
+    locationEtag !== null &&
+    locationUpdate.ok &&
+    locationSearchBody.items.some((row) => row.locationId === location.locationId) &&
+    issue?.target?.targetTypeCode === 'LOCATION' &&
+    issue?.target?.targetId === location.locationId &&
+    typeof issue?.issuedBy === 'number' &&
+    typeof issue?.issuedByName === 'string' &&
+    rendition.ok &&
+    renditionText.includes('SMOKE-LOC-01') &&
+    !renditionText.includes('LOT NO.') &&
+    locationDeactivate.ok &&
+    !activeLocationBody.items.some((row) => row.locationId === location.locationId) &&
+    allLocationBody.items.some(
+      (row) => row.locationId === location.locationId && row.isActive === false,
+    );
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} W-06-07 상태·검색·ETag·라벨 흐름`);
+}
+
+{
   const response = await fetch(`${BASE}/trace/lots?currentOnly=true`);
   const body = await response.json();
   const ok = response.status === 400 && body.code === 'WORK_ORDER_REQUIRED';

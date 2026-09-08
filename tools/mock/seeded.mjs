@@ -14,8 +14,8 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 
 import { toPng } from './label-canvas.mjs';
-import { renderLotLabel, renderShippingLabel } from './label-layout.mjs';
-import { renderLotTspl, renderShippingTspl } from './label-tspl.mjs';
+import { renderLocationLabel, renderLotLabel, renderShippingLabel } from './label-layout.mjs';
+import { renderLocationTspl, renderLotTspl, renderShippingTspl } from './label-tspl.mjs';
 import { networkInterfaces } from 'node:os';
 
 import { writeMergedSpec } from '../merge-spec.mjs';
@@ -42,6 +42,32 @@ const lanAddresses = () =>
 const state = createSeed();
 let nextId = 900001;
 const newId = () => (nextId += 1);
+
+const warehouseVersions = new Map(state.warehouses.map((row) => [row.warehouseId, 1]));
+const locationVersions = new Map(state.locations.map((row) => [row.locationId, 1]));
+
+const resourceEtag = (kind, id, versions) =>
+  `\"${kind}-${String(id)}-v${String(versions.get(id) ?? 1)}\"`;
+
+const conflict = () => ({
+  status: 409,
+  created: {
+    conflictCause: 'user',
+    message: '다른 변경이 먼저 반영되었습니다. 최신 정보를 다시 불러오세요.',
+  },
+});
+
+const matchesEtag = (headers, expected) => headers['if-match'] === expected;
+const bumpVersion = (versions, id) => versions.set(id, (versions.get(id) ?? 1) + 1);
+
+const editableResponse = (resource, field) => ({
+  [field]: resource,
+  editability: {
+    codeEditable: false,
+    reason: 'REFERENCED',
+    referenceCount: 1,
+  },
+});
 
 /**
  * 쪽 나누기. **계약은 1쪽부터 센다** — 목이 0부터 세면 화면이 규약대로 `page=1` 을 보냈을 때
@@ -138,35 +164,172 @@ on('GET', '/mdm/uoms', (_p, query) => page(state.uoms, query));
 on('GET', '/mdm/plants', (_p, query) => page(state.plants, query));
 on('GET', '/mdm/business-units', (_p, query) => page(state.businessUnits, query));
 
-on('GET', '/mdm/warehouses', (_p, query) =>
-  page(
+on('GET', '/mdm/warehouses', (_p, query) => {
+  const q = query.get('q');
+  const needle = q?.trim().toUpperCase();
+
+  return page(
     keep(state.warehouses, [
+      (row) =>
+        needle === undefined ||
+        needle === '' ||
+        row.warehouseCode.toUpperCase().includes(needle) ||
+        row.warehouseName.toUpperCase().includes(needle),
+      byText(query, 'warehouseTypeCode', 'warehouseTypeCode'),
       (row) => bool(query, 'isDefect') === null || row.isDefect === bool(query, 'isDefect'),
+      (row) => bool(query, 'includeInactive') === true || row.isActive,
+      (row) =>
+        bool(query, 'dividedOnly') !== true ||
+        state.locations.filter(
+          (location) => location.warehouseId === row.warehouseId && location.isActive,
+        ).length >= 2,
     ]),
     query,
-  ),
-);
+  );
+});
 on('GET', '/mdm/warehouses/{warehouseId}', (params) => {
   const warehouse = state.warehouses.find(
     (each) => each.warehouseId === Number(params.warehouseId),
   );
-  return warehouse === undefined ? null : { warehouse, editability: { editable: true } };
+  if (warehouse === undefined) return null;
+
+  return {
+    status: 200,
+    created: editableResponse(warehouse, 'warehouse'),
+    headers: { ETag: resourceEtag('warehouse', warehouse.warehouseId, warehouseVersions) },
+  };
 });
 
-on('GET', '/mdm/locations', (_p, query) =>
-  page(
+on('POST', '/mdm/warehouses', (_params, _query, body) => {
+  const warehouse = {
+    ...body,
+    warehouseId: newId(),
+    isExternal: body?.isExternal ?? false,
+    isDefect: body?.isDefect ?? false,
+    partnerId: body?.partnerId ?? null,
+    isActive: true,
+  };
+  state.warehouses.push(warehouse);
+  warehouseVersions.set(warehouse.warehouseId, 1);
+  return { status: 201, created: warehouse };
+});
+
+on('PUT', '/mdm/warehouses/{warehouseId}', (params, _query, body, headers) => {
+  const warehouse = state.warehouses.find((row) => row.warehouseId === Number(params.warehouseId));
+  if (warehouse === undefined) return null;
+
+  const currentEtag = resourceEtag('warehouse', warehouse.warehouseId, warehouseVersions);
+  if (!matchesEtag(headers, currentEtag)) return conflict();
+
+  Object.assign(warehouse, body);
+  bumpVersion(warehouseVersions, warehouse.warehouseId);
+  return {
+    status: 200,
+    created: warehouse,
+    headers: { ETag: resourceEtag('warehouse', warehouse.warehouseId, warehouseVersions) },
+  };
+});
+
+const setWarehouseActive = (params, headers, isActive) => {
+  const warehouse = state.warehouses.find((row) => row.warehouseId === Number(params.warehouseId));
+  if (warehouse === undefined) return null;
+  if (!matchesEtag(headers, resourceEtag('warehouse', warehouse.warehouseId, warehouseVersions))) {
+    return conflict();
+  }
+
+  warehouse.isActive = isActive;
+  bumpVersion(warehouseVersions, warehouse.warehouseId);
+  return warehouse;
+};
+
+on('POST', '/mdm/warehouses/{warehouseId}:activate', (params, _query, _body, headers) =>
+  setWarehouseActive(params, headers, true),
+);
+on('POST', '/mdm/warehouses/{warehouseId}:deactivate', (params, _query, _body, headers) =>
+  setWarehouseActive(params, headers, false),
+);
+
+on('GET', '/mdm/locations', (_p, query) => {
+  const q = query.get('q');
+  const needle = q?.trim().toUpperCase();
+
+  return page(
     keep(state.locations, [
       byNum(query, 'warehouseId', 'warehouseId'),
       byText(query, 'locationCode', 'locationCode'),
-      contains(query, 'q', 'locationCode'),
+      (row) =>
+        needle === undefined ||
+        needle === '' ||
+        row.locationCode.toUpperCase().includes(needle) ||
+        row.locationName.toUpperCase().includes(needle),
+      (row) => bool(query, 'includeInactive') === true || row.isActive,
     ]),
     query,
-  ),
-);
+  );
+});
 on('GET', '/mdm/locations/{locationId}', (params) => {
   const location = state.locations.find((each) => each.locationId === Number(params.locationId));
-  return location === undefined ? null : { location, editability: { editable: true } };
+  if (location === undefined) return null;
+
+  return {
+    status: 200,
+    created: editableResponse(location, 'location'),
+    headers: { ETag: resourceEtag('location', location.locationId, locationVersions) },
+  };
 });
+
+on('POST', '/mdm/locations', (_params, _query, body) => {
+  const location = {
+    ...body,
+    locationId: newId(),
+    parentLocationId: body?.parentLocationId ?? null,
+    qualityZoneCode: body?.qualityZoneCode ?? null,
+    storageConditionCode: body?.storageConditionCode ?? null,
+    allowMixedItem: body?.allowMixedItem ?? true,
+    allowMixedLot: body?.allowMixedLot ?? true,
+    capacityQty: body?.capacityQty ?? null,
+    capacityUomId: body?.capacityUomId ?? null,
+    isActive: true,
+  };
+  state.locations.push(location);
+  locationVersions.set(location.locationId, 1);
+  return { status: 201, created: location };
+});
+
+on('PUT', '/mdm/locations/{locationId}', (params, _query, body, headers) => {
+  const location = state.locations.find((row) => row.locationId === Number(params.locationId));
+  if (location === undefined) return null;
+
+  const currentEtag = resourceEtag('location', location.locationId, locationVersions);
+  if (!matchesEtag(headers, currentEtag)) return conflict();
+
+  Object.assign(location, body);
+  bumpVersion(locationVersions, location.locationId);
+  return {
+    status: 200,
+    created: location,
+    headers: { ETag: resourceEtag('location', location.locationId, locationVersions) },
+  };
+});
+
+const setLocationActive = (params, headers, isActive) => {
+  const location = state.locations.find((row) => row.locationId === Number(params.locationId));
+  if (location === undefined) return null;
+  if (!matchesEtag(headers, resourceEtag('location', location.locationId, locationVersions))) {
+    return conflict();
+  }
+
+  location.isActive = isActive;
+  bumpVersion(locationVersions, location.locationId);
+  return location;
+};
+
+on('POST', '/mdm/locations/{locationId}:activate', (params, _query, _body, headers) =>
+  setLocationActive(params, headers, true),
+);
+on('POST', '/mdm/locations/{locationId}:deactivate', (params, _query, _body, headers) =>
+  setLocationActive(params, headers, false),
+);
 
 on('GET', '/mdm/partners', (_p, query) =>
   page(keep(state.partners, [byText(query, 'roleTypeCode', 'roleTypeCode')]), query),
@@ -396,7 +559,8 @@ on('GET', '/app/document-issues/summary', (_params, query) => {
 
 on('POST', '/app/document-issues', (_params, _query, body) => {
   const items = (body?.targets ?? []).map((target) => {
-    const lot = state.lots.find((row) => row.lotId === target.lotId);
+    const lot = state.lots.find((row) => row.lotId === (target.lotId ?? target.targetId));
+    const location = state.locations.find((row) => row.locationId === target.targetId);
     const issueSeq =
       state.documentIssues.filter(
         (issue) =>
@@ -411,6 +575,9 @@ on('POST', '/app/document-issues', (_params, _query, body) => {
       targetId: target.targetId,
       lotId: target.lotId,
       issueSeq,
+      reissueReasonCode: issueSeq > 1 ? body.reissueReasonCode : null,
+      issuedBy: 1001,
+      issuedByName: '샘플 작업자',
       issuedAt: new Date().toISOString(),
       printOutcome: 'PENDING',
     };
@@ -418,7 +585,11 @@ on('POST', '/app/document-issues', (_params, _query, body) => {
 
     return {
       ...issue,
-      target: { displayName: lot?.lotNo ?? String(target.targetId) },
+      target: {
+        targetTypeCode: target.targetTypeCode,
+        targetId: target.targetId,
+        displayName: location?.locationCode ?? lot?.lotNo ?? String(target.targetId),
+      },
     };
   });
 
@@ -525,6 +696,20 @@ const lotValues = (issue) => {
   };
 };
 
+/** Location 라벨은 대상 위치의 코드가 가장 크게 보여야 한다. */
+const locationValues = (issue) => {
+  const location = state.locations.find((row) => row.locationId === issue.targetId);
+  const warehouse = state.warehouses.find((row) => row.warehouseId === location?.warehouseId);
+
+  return {
+    code: ascii(location?.locationCode, 'SAMPLE-LOCATION'),
+    name: ascii(location?.locationName, ascii(location?.locationCode, 'LOCATION')),
+    warehouse: ascii(warehouse?.warehouseCode, 'SAMPLE-WAREHOUSE'),
+    issuedAt: labelDateTime(issue.issuedAt),
+    seed: issue.documentIssueLogId,
+  };
+};
+
 /**
  * **100×60 은 출하용 라벨 하나뿐이다.** 나머지는 전부 표준 80×30 이다(사용자 확인 2026-09-08).
  *
@@ -604,11 +789,14 @@ on('GET', '/app/document-issues/{documentIssueLogId}/rendition', (params, query)
   };
 
   const isShipping = SHIPPING_TYPES.includes(target.documentTypeCode);
+  const isLocation = target.documentTypeCode === 'LOCATION_LABEL';
 
   if (format === 'tspl') {
-    const commands = isShipping
-      ? renderShippingTspl(shippingValues(target))
-      : renderLotTspl(lotValues(target));
+    const commands = isLocation
+      ? renderLocationTspl(locationValues(target))
+      : isShipping
+        ? renderShippingTspl(shippingValues(target))
+        : renderLotTspl(lotValues(target));
 
     return {
       binary: {
@@ -618,9 +806,11 @@ on('GET', '/app/document-issues/{documentIssueLogId}/rendition', (params, query)
     };
   }
 
-  const canvas = isShipping
-    ? renderShippingLabel(shippingValues(target))
-    : renderLotLabel(lotValues(target));
+  const canvas = isLocation
+    ? renderLocationLabel(locationValues(target))
+    : isShipping
+      ? renderShippingLabel(shippingValues(target))
+      : renderLotLabel(lotValues(target));
 
   return { binary: { contentType: 'image/png', bytes: toPng(canvas) } };
 });
