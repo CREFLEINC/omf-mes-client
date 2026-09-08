@@ -34,13 +34,15 @@ import {
 } from './fixtures';
 import type { RenditionShell } from './print';
 import { RepackLabelIssueScreen } from './screen';
-import type { HandlingUnit } from './types';
+import type { CodeValue, HandlingUnit } from './types';
 
 const t = messages.repackLabelIssue;
 
 const ENTRY_ROUTE = '/pop/repack-label-issue';
 const REMAINDER_ID = 6603;
 const REMAINDER_NO = 'HU-SAMPLE-0019';
+const OTHER_NEW_ID = 6604;
+const OTHER_NEW_NO = 'HU-SAMPLE-0020';
 
 /** 단말·공정을 아는 상태. 셸이 채우는 값이라 시험에서는 직접 넣는다. */
 const IDENTIFIED: PopIdentity = {
@@ -92,6 +94,8 @@ interface Options {
   renditionCalls?: number[];
   /** 발행 현황 조회가 실패한다 */
   standingFails?: boolean;
+  /** 발행 현황 응답에서 요청한 행이 빠진다 */
+  standingMissing?: boolean;
   /** 발행 대기 목록 조회가 실패한다 */
   pendingFails?: boolean;
   /** 발행 대기 요청을 검사한다 */
@@ -100,6 +104,14 @@ interface Options {
   pendingPages?: HandlingUnit[][];
   /** 선택 포장과 같은 SPLIT 사건에 기존 번호 잔량이 있다 */
   hasRemainder?: boolean;
+  /** 같은 SPLIT 사건에 신규 RESULT가 둘 이상 있다 */
+  hasMultipleNewResults?: boolean;
+  /** 재발행 사유 서버 쪽별 응답 */
+  reasonPages?: CodeValue[][];
+  reasonRequests?: Request[];
+  /** 발행 이력 서버 쪽별 응답 */
+  historyPages?: ReturnType<typeof makeIssue>[][];
+  historyRequests?: Request[];
 }
 
 const defaultReasons = [
@@ -109,6 +121,7 @@ const defaultReasons = [
     code: REASON_CODE,
     codeName: REASON_NAME,
     displayOrder: 1,
+    isActive: true,
   },
 ];
 
@@ -165,6 +178,18 @@ const routes = (options: Options): StubRoute[] => [
                       qtyBefore: 180,
                       qtyAfter: 100,
                     },
+                    ...(options.hasMultipleNewResults === true
+                      ? [
+                          {
+                            handlingUnitId: OTHER_NEW_ID,
+                            roleCode: 'RESULT',
+                            itemId: ITEM_ID,
+                            lotId: LOT_A_ID,
+                            qtyBefore: 0,
+                            qtyAfter: 40,
+                          },
+                        ]
+                      : []),
                   ],
                 },
               ]
@@ -179,6 +204,19 @@ const routes = (options: Options): StubRoute[] => [
           ...handlingUnit,
           handlingUnitId: REMAINDER_ID,
           handlingUnitNo: REMAINDER_NO,
+          labelIssued: true,
+        },
+        contents: [],
+      }),
+  },
+  {
+    match: (request) => pathOf(request) === `/inventory/handling-units/${String(OTHER_NEW_ID)}`,
+    respond: () =>
+      jsonResponse({
+        handlingUnit: {
+          ...handlingUnit,
+          handlingUnitId: OTHER_NEW_ID,
+          handlingUnitNo: OTHER_NEW_NO,
           labelIssued: true,
         },
         contents: [],
@@ -238,20 +276,46 @@ const routes = (options: Options): StubRoute[] => [
                     issueCount: 1,
                     lastIssuedAt: '2026-09-02T01:00:00Z',
                   },
+                  ...(options.hasMultipleNewResults === true &&
+                  new URL(request.url).search.includes(String(OTHER_NEW_ID))
+                    ? [
+                        {
+                          targetTypeCode: 'HANDLING_UNIT',
+                          targetId: OTHER_NEW_ID,
+                          issueCount: 1,
+                          lastIssuedAt: '2026-09-02T01:30:00Z',
+                        },
+                      ]
+                    : []),
                 ]
-              : [
-                  {
-                    targetTypeCode: 'HANDLING_UNIT',
-                    targetId: HANDLING_UNIT_ID,
-                    issueCount: options.issueCount ?? 0,
-                    lastIssuedAt: null,
-                  },
-                ],
+              : options.standingMissing === true
+                ? []
+                : [
+                    {
+                      targetTypeCode: 'HANDLING_UNIT',
+                      targetId: HANDLING_UNIT_ID,
+                      issueCount: options.issueCount ?? 0,
+                      lastIssuedAt: null,
+                    },
+                  ],
           }),
   },
   {
     match: (request) => pathOf(request) === '/mdm/code-values',
-    respond: () => jsonResponse({ items: defaultReasons, page: { page: 1, size: 100, total: 1 } }),
+    respond: (request) => {
+      options.reasonRequests?.push(request.clone());
+      const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+      const pages = options.reasonPages ?? [defaultReasons];
+
+      return jsonResponse({
+        items: pages[page - 1] ?? [],
+        page: {
+          page,
+          size: 100,
+          total: pages.reduce((count, rows) => count + rows.length, 0),
+        },
+      });
+    },
   },
   {
     match: (request) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
@@ -289,13 +353,22 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request) === '/app/document-issues',
-    respond: () =>
-      options.historyFails === true
+    respond: (request) => {
+      options.historyRequests?.push(request.clone());
+      const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
+      const pages = options.historyPages ?? [options.history ?? []];
+
+      return options.historyFails === true
         ? jsonResponse({ message: '조회 실패' }, { status: 500 })
         : jsonResponse({
-            items: options.history ?? [],
-            page: { page: 1, size: 50, total: options.history?.length ?? 0 },
-          }),
+            items: pages[page - 1] ?? [],
+            page: {
+              page,
+              size: 50,
+              total: pages.reduce((count, rows) => count + rows.length, 0),
+            },
+          });
+    },
   },
   {
     match: (request) => pathOf(request).endsWith('/rendition'),
@@ -445,6 +518,17 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
     expect(body.reissueReasonCode).toBe(REASON_CODE);
   });
 
+  it('같은 분할의 다른 신규 RESULT는 이미 발행됐어도 잔량으로 보지 않는다', async () => {
+    await renderSelectedScreen({ hasRemainder: true, hasMultipleNewResults: true });
+
+    expect(
+      await screen.findByRole('checkbox', { name: t.issue.remainderLabel(REMAINDER_NO, 1) }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('checkbox', { name: t.issue.remainderLabel(OTHER_NEW_NO, 1) }),
+    ).not.toBeInTheDocument();
+  });
+
   it('최초 발행이면 사유 없이 발행할 수 있다', async () => {
     const issueWrites: Request[] = [];
     await renderSelectedScreen({ issueCount: 0, issueWrites });
@@ -458,6 +542,16 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
 
     const body = (await issueWrites[0]?.json()) as Record<string, unknown>;
     expect(body).not.toHaveProperty('reissueReasonCode');
+  });
+
+  it('발행 요약에서 요청 대상이 빠지면 최초 발행으로 단정하지 않고 막는다', async () => {
+    const issueWrites: Request[] = [];
+    await renderSelectedScreen({ standingMissing: true, issueWrites });
+
+    expect(await screen.findAllByText(t.issue.summaryFailed)).toHaveLength(2);
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeEnabled();
+    expect(submitButton()).toBeDisabled();
+    expect(issueWrites).toHaveLength(0);
   });
 
   /* ⛔ 사유가 필요한데 비었으면 보내지 않는다 — 서버도 422 로 막지만 먼저 막는 자리가 화면이다. */
@@ -489,6 +583,30 @@ describe('RepackLabelIssueScreen — 발행 조건', () => {
 
     const body = (await issueWrites[0]?.json()) as Record<string, unknown>;
     expect(body.reissueReasonCode).toBe(REASON_CODE);
+  });
+
+  it('재발행 사유는 계약의 전체 건수까지 다음 쪽을 이어 받는다', async () => {
+    const reasonRequests: Request[] = [];
+    const nextReason: CodeValue = {
+      codeValueId: 9102,
+      codeGroupId: 910,
+      code: 'DAMAGE',
+      codeName: '라벨 훼손',
+      displayOrder: 2,
+      isActive: true,
+    };
+    await renderSelectedScreen({
+      issueCount: 1,
+      reasonRequests,
+      reasonPages: [defaultReasons, [nextReason]],
+    });
+
+    await userEvent.click(reasonSelect());
+    expect(await screen.findByRole('option', { name: nextReason.codeName })).toBeInTheDocument();
+    expect(reasonRequests).toHaveLength(2);
+    expect(new URL(reasonRequests[1]?.url ?? 'http://localhost').searchParams.get('page')).toBe(
+      '2',
+    );
   });
 
   /* 화면 선차단은 단말 기능 구성으로 한다(스펙 §6). 집행은 서버의 403 이다. */
@@ -653,6 +771,24 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
     expect(screen.getByText(t.history.seq(1))).toBeInTheDocument();
   });
 
+  it('발행 이력은 계약의 전체 건수까지 다음 쪽을 이어 받는다', async () => {
+    const historyRequests: Request[] = [];
+    await renderSelectedScreen({
+      historyRequests,
+      historyPages: [
+        [makeIssue({ issueSeq: 1, documentIssueLogId: 44001 })],
+        [makeIssue({ issueSeq: 2, documentIssueLogId: 44002 })],
+      ],
+    });
+
+    expect(await screen.findByText(t.history.seq(2))).toBeInTheDocument();
+    expect(screen.getByText(t.history.seq(1))).toBeInTheDocument();
+    expect(historyRequests).toHaveLength(2);
+    expect(new URL(historyRequests[1]?.url ?? 'http://localhost').searchParams.get('page')).toBe(
+      '2',
+    );
+  });
+
   /*
    * ⛔ **목록의 첫 줄이 최신이라고 가정하지 않는다** — 계약이 정렬을 보장하지 않아 오름차순으로
    * 오면 첫 줄이 1회차다(독립 검증 실측).
@@ -797,47 +933,15 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
     expect(await screen.findByText('재발행 사유가 필요합니다.')).toBeInTheDocument();
   });
 
-  /*
-   * ⛔ **막다른 자리를 두지 않는다.** 발행 현황을 못 받으면 화면은 「재발행인지」를 모르고,
-   * 서버는 422 로 사유를 요구한다. 그때 사유 칸이 잠겨 있으면 **사용자가 고칠 방법이 없다.**
-   */
-  it('현황을 못 받아 422 가 와도 사유를 고를 수 있다', async () => {
+  /* 요약을 모르면 최초·재발행을 가를 수 없다 — 쓰지 않고 같은 조회를 다시 할 길을 둔다. */
+  it('현황 조회 실패는 발행을 막고 다시 조회할 수 있다', async () => {
     const issueWrites: Request[] = [];
-    await renderSelectedScreen({
-      standingFails: true,
-      issueStatus: 422,
-      issueWrites,
-      issueErrorBody: {
-        errors: [
-          {
-            scope: 'field',
-            field: 'reissueReasonCode',
-            code: 'REQUIRED',
-            message: '재발행 사유가 필요합니다.',
-          },
-        ],
-      },
-    });
+    await renderSelectedScreen({ standingFails: true, issueWrites });
 
-    await screen.findByText(HANDLING_UNIT_NO);
-    await clickWhenEnabled(submitButton);
-
-    expect(await screen.findByText('재발행 사유가 필요합니다.')).toBeInTheDocument();
-
-    /* 서버가 사유를 요구했으니 이제 고를 수 있어야 한다 */
-    await waitFor(() => {
-      expect(reasonSelect()).toBeEnabled();
-    });
-    await userEvent.click(reasonSelect());
-    await userEvent.click(await screen.findByRole('option', { name: REASON_NAME }));
-    await clickWhenEnabled(submitButton);
-
-    await waitFor(() => {
-      expect(issueWrites).toHaveLength(2);
-    });
-
-    const body = (await issueWrites[1]?.json()) as Record<string, unknown>;
-    expect(body.reissueReasonCode).toBe(REASON_CODE);
+    expect(await screen.findAllByText(t.issue.summaryFailed)).toHaveLength(2);
+    expect(screen.getByRole('button', { name: messages.common.retry })).toBeEnabled();
+    expect(submitButton()).toBeDisabled();
+    expect(issueWrites).toHaveLength(0);
   });
 
   /* 403 은 단말 출력 권한이다 — 사용자가 할 일이 「담당자 문의」다. */

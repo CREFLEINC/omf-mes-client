@@ -1,4 +1,4 @@
-import { AlertBanner, Checkbox } from '@crefle/web-ui';
+import { AlertBanner, Button, Checkbox } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId } from 'react';
 
@@ -18,6 +18,7 @@ export interface IssuePaneProps {
 
   standing: IssueStanding;
   standingFailed: boolean;
+  onStandingRetry: () => void;
 
   reasons: readonly CodeValue[];
   reasonsFailed: boolean;
@@ -54,6 +55,7 @@ export const IssuePane = ({
   remainderFailed,
   standing,
   standingFailed,
+  onStandingRetry,
   reasons,
   reasonsFailed,
   reasonCode,
@@ -117,7 +119,15 @@ export const IssuePane = ({
       */}
       {standingFailed && (
         <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.summaryFailed} />
+          <AlertBanner
+            variant="warning"
+            title={t.summaryFailed}
+            action={
+              <Button variant="outlined" size="sm" onClick={onStandingRetry}>
+                {messages.common.retry}
+              </Button>
+            }
+          />
         </div>
       )}
 

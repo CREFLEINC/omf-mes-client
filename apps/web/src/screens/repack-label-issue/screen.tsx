@@ -126,6 +126,8 @@ export const RepackLabelIssueScreen = () => {
 
   const blockedReason = ((): string | null => {
     if (selectedHandlingUnitId === null) return t.entry.missingHandlingUnit;
+    if (standingQuery.isPending) return t.issue.summaryLoading;
+    if (standingQuery.isError) return t.issue.summaryFailed;
     if (selectedIds.length === 0) return t.issue.targetRequired;
     if (entry.workerNo === null) return t.entry.missingWorker;
     if (gate.verdict !== 'allowed') return t.gate[gate.verdict];
@@ -349,7 +351,7 @@ export const RepackLabelIssueScreen = () => {
         <Card bordered className="pop-section pop-repack-issue" aria-label={t.issue.sectionLabel}>
           <div className="pane-title pop-repack-head">
             <h2 className="pop-repack-head-name">{t.issue.sectionLabel}</h2>
-            {selectedHandlingUnitId !== null && !standingQuery.isError && (
+            {standingQuery.data !== undefined && (
               <span className="pop-repack-standing">
                 {standing.issueCount === null || standing.issueCount === 0
                   ? t.issue.firstIssue
@@ -367,6 +369,9 @@ export const RepackLabelIssueScreen = () => {
             remainderFailed={remainder.isError}
             standing={standing}
             standingFailed={standingQuery.isError}
+            onStandingRetry={() => {
+              void standingQuery.refetch();
+            }}
             reasons={reasons.data ?? []}
             reasonsFailed={reasons.isError}
             reasonCode={reasonCode}

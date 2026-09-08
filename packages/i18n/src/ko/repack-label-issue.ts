@@ -90,7 +90,8 @@ export const repackLabelIssue = {
     firstIssue: '이 포장의 라벨을 처음 발행합니다.',
     reissue: (issueCount: number): string =>
       `이미 ${String(issueCount)}번 발행했습니다. 다시 발행하면 재발행으로 기록되고 사유가 필요합니다.`,
-    summaryFailed: '발행 이력을 불러오지 못했습니다. 사유 입력이 필요한지 알 수 없습니다.',
+    summaryLoading: '발행 현황을 확인하는 중입니다.',
+    summaryFailed: '발행 현황을 불러오지 못했습니다. 사유 입력이 필요한지 알 수 없습니다.',
     lastIssuedAt: '마지막 발행',
     /** 앞선 인쇄가 실패로 남아 있으면 다시 뽑아야 한다는 사실을 먼저 말한다. */
     lastPrintFailed:

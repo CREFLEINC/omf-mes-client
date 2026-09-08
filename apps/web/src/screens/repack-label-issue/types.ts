@@ -88,9 +88,8 @@ export interface RemainderCandidate {
 /**
  * 재발행 사유가 필요한가.
  *
- * ⛔ **모를 때는 요구하지 않는다.** 요약을 못 받은 채 사유를 강제하면 최초 발행조차 막히고,
- * 최초 기록에 사유가 붙으면 이력이 거짓이 된다(계약). 서버가 422 로 되돌리는 것이 정확한
- * 집행이고, 화면은 그 말을 사유 칸 아래에 놓는다.
+ * ⛔ **모를 때는 이 함수가 추측하지 않는다.** 요약을 못 받은 채 사유를 강제하면 최초 기록에
+ * 사유가 붙어 이력이 거짓이 된다. 호출 화면이 발행 자체를 막고 요약 재시도를 제공한다.
  */
 export const needsReason = (standing: IssueStanding): boolean =>
   standing.issueCount !== null && standing.issueCount > 0;

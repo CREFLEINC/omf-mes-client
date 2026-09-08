@@ -18,14 +18,36 @@ import {
   type RemainderCandidate,
 } from './types';
 
-/** 사유 선택지는 한 화면에 다 보여야 한다 — 쪽을 넘기게 두지 않는다. */
+/** 목록을 한 번에 너무 크게 받지 않으면서 전체 계약 건수를 이어 받는 서버 페이지 크기. */
 const REASON_PAGE_SIZE = 100;
-
-/** 발행 이력은 회차가 쌓인 그대로 받는다. 한 포장의 회차가 이 수를 넘는 일은 없다. */
 const HISTORY_PAGE_SIZE = 50;
-
-/** POP 1024×768 한 패널에서 스크롤할 발행 대기 후보를 나눠 받는 서버 페이지 크기. */
 const PENDING_PAGE_SIZE = 50;
+
+interface PageResult<T> {
+  items: T[];
+  page: { total: number };
+}
+
+/** 페이지 UI가 없는 내부 스크롤 목록은 계약의 total까지 빠짐없이 이어 받는다. */
+const readAllPages = async <T>(
+  pageSize: number,
+  read: (page: number, size: number) => Promise<PageResult<T>>,
+): Promise<T[]> => {
+  const rows: T[] = [];
+  let page = 1;
+
+  while (true) {
+    const data = await read(page, pageSize);
+
+    rows.push(...data.items);
+    if (rows.length >= data.page.total) return rows;
+    if (data.items.length === 0) {
+      throw new Error('목록 전체 건수를 받기 전에 빈 페이지가 반환됐습니다.');
+    }
+
+    page += 1;
+  }
+};
 
 /**
  * 이 화면이 쓰는 조회와 캐시 키. 이 화면이 소유한다 — 다른 화면 슬라이스의 키 모듈을
@@ -64,24 +86,14 @@ export const usePendingHandlingUnits = (): UseQueryResult<HandlingUnit[]> => {
 
   return useQuery({
     queryKey: repackLabelKeys.pending,
-    queryFn: async (): Promise<HandlingUnit[]> => {
-      const rows: HandlingUnit[] = [];
-      let page = 1;
-
-      /* 화면에 페이지 조작을 두지 않는 대기 선택 목록이라 계약의 전체 건수까지 이어 받는다. */
-      while (true) {
-        const data = await runRequest(() =>
+    queryFn: (): Promise<HandlingUnit[]> =>
+      readAllPages(PENDING_PAGE_SIZE, (page, size) =>
+        runRequest(() =>
           client.GET('/inventory/handling-units', {
-            params: { query: { labelIssued: false, page, size: PENDING_PAGE_SIZE } },
+            params: { query: { labelIssued: false, page, size } },
           }),
-        );
-
-        rows.push(...data.items);
-        if (rows.length >= data.page.total || data.items.length === 0) return rows;
-
-        page += 1;
-      }
-    },
+        ),
+      ),
   });
 };
 
@@ -230,15 +242,15 @@ export const useIssueStanding = (handlingUnitId: number | null): UseQueryResult<
 
       const row = data.items.find((item) => item.targetId === handlingUnitId);
 
-      /*
-       * ⭐ **행이 없으면 「발행한 적 없음」이다.** 계약이 「발행한 적 없는 대상도 issueCount: 0
-       * 으로 함께 돌려준다」고 적었으므로 빠진 행은 0 으로 읽는다 — 「모른다」로 두면 조회가
-       * 성공했는데도 사유 판정을 못 한다.
-       */
+      /* 계약은 미발행 대상도 0으로 돌려준다. 행 누락은 최초 발행이 아니라 불완전 응답이다. */
+      if (row === undefined) {
+        throw new Error('발행 요약에 요청한 포장이 없습니다.');
+      }
+
       return {
-        issueCount: row?.issueCount ?? 0,
-        lastIssuedAt: row?.lastIssuedAt ?? null,
-        lastPrintOutcome: row?.lastPrintOutcome ?? null,
+        issueCount: row.issueCount,
+        lastIssuedAt: row.lastIssuedAt ?? null,
+        lastPrintOutcome: row.lastPrintOutcome ?? null,
       };
     },
   });
@@ -256,7 +268,7 @@ const standingOf = (
   const row = summaries.find((summary) => summary.targetId === handlingUnitId);
 
   return {
-    issueCount: row?.issueCount ?? 0,
+    issueCount: row?.issueCount ?? null,
     lastIssuedAt: row?.lastIssuedAt ?? null,
     lastPrintOutcome: row?.lastPrintOutcome ?? null,
   };
@@ -290,7 +302,11 @@ export const useRemainderCandidates = (
           (event) =>
             event.repackTypeCode === 'SPLIT' &&
             event.lines.some(
-              (line) => line.handlingUnitId === handlingUnitId && line.roleCode === 'RESULT',
+              (line) =>
+                line.handlingUnitId === handlingUnitId &&
+                line.roleCode === 'RESULT' &&
+                line.qtyBefore === 0 &&
+                line.qtyAfter > 0,
             ),
         )
         .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0];
@@ -299,7 +315,13 @@ export const useRemainderCandidates = (
 
       const remainderIds = distinct(
         split.lines
-          .filter((line) => line.roleCode === 'RESULT' && line.handlingUnitId !== handlingUnitId)
+          .filter(
+            (line) =>
+              line.roleCode === 'RESULT' &&
+              line.handlingUnitId !== handlingUnitId &&
+              line.qtyBefore > 0 &&
+              line.qtyAfter > 0,
+          )
           .map((line) => line.handlingUnitId),
       );
 
@@ -316,6 +338,13 @@ export const useRemainderCandidates = (
           },
         }),
       );
+      if (
+        remainderIds.some(
+          (candidateId) => !summary.items.some((item) => item.targetId === candidateId),
+        )
+      ) {
+        throw new Error('잔량 포장의 발행 요약이 완전하지 않습니다.');
+      }
       const issuedIds = remainderIds.filter(
         (candidateId) => (standingOf(candidateId, summary.items).issueCount ?? 0) > 0,
       );
@@ -356,21 +385,21 @@ export const useIssueHistory = (handlingUnitId: number | null): UseQueryResult<D
         throw new Error('대상 포장을 모르면 발행 이력을 조회하지 않습니다.');
       }
 
-      const data = await runRequest(() =>
-        client.GET('/app/document-issues', {
-          params: {
-            query: {
-              targetTypeCode: TARGET_TYPE_CODE,
-              targetId: handlingUnitId,
-              documentTypeCode: DOCUMENT_TYPE_CODE,
-              page: 1,
-              size: HISTORY_PAGE_SIZE,
+      return readAllPages(HISTORY_PAGE_SIZE, (page, size) =>
+        runRequest(() =>
+          client.GET('/app/document-issues', {
+            params: {
+              query: {
+                targetTypeCode: TARGET_TYPE_CODE,
+                targetId: handlingUnitId,
+                documentTypeCode: DOCUMENT_TYPE_CODE,
+                page,
+                size,
+              },
             },
-          },
-        }),
+          }),
+        ),
       );
-
-      return data.items;
     },
   });
 };
@@ -423,19 +452,19 @@ export const useReissueReasons = (): UseQueryResult<CodeValue[]> => {
   return useQuery({
     queryKey: repackLabelKeys.reissueReasons,
     queryFn: async (): Promise<CodeValue[]> => {
-      const data = await runRequest(() =>
-        client.GET('/mdm/code-values', {
-          params: {
-            query: {
-              codeGroupCode: REISSUE_REASON_GROUP_CODE,
-              page: 1,
-              size: REASON_PAGE_SIZE,
+      return readAllPages(REASON_PAGE_SIZE, (page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: {
+              query: {
+                codeGroupCode: REISSUE_REASON_GROUP_CODE,
+                page,
+                size,
+              },
             },
-          },
-        }),
+          }),
+        ),
       );
-
-      return data.items;
     },
   });
 };
