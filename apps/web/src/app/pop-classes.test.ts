@@ -160,7 +160,11 @@ describe('POP 액션 줄', () => {
   const SIDE_BY_SIDE_ACTION_ROWS = ['pop-repack-actions', 'pop-lotdone-actions'] as const;
 
   it.each(SIDE_BY_SIDE_ACTION_ROWS)('`.%s`가 구획 형제 간격을 턴다', (name) => {
-    const reset = new RegExp(`\\.${name}\\s*>\\s*\\*\\s*\\+\\s*\\*\\s*\\{[^}]*margin-top:\\s*0`, 'u');
+    /* ⚠ 값 끝을 함께 문다 — `0` 만 보면 `0.5rem` 같은 «다른» 값도 통과한다. */
+    const reset = new RegExp(
+      `\\.${name}\\s*>\\s*\\*\\s*\\+\\s*\\*\\s*\\{[^}]*margin-top:\\s*0\\s*[;}]`,
+      'u',
+    );
 
     expect(CSS_RULES).toMatch(reset);
   });
