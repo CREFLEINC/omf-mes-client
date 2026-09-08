@@ -385,10 +385,10 @@ export const StockTransferScreen = () => {
 
       <section className="stock-transfer__section">
         <h2>{t.to.legend}</h2>
-        <label htmlFor="transfer-to-warehouse">{t.to.legend}</label>
+        <label htmlFor="transfer-to-warehouse">{t.to.warehouseLabel}</label>
         <Select
           id="transfer-to-warehouse"
-          placeholder={t.to.scanPlaceholder}
+          placeholder={t.to.warehousePlaceholder}
           size="xl"
           value={toWarehouseId === null ? null : String(toWarehouseId)}
           onChange={(value) => {

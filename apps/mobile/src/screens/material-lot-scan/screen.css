@@ -28,10 +28,15 @@
 }
 
 /* 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다. */
+/*
+ * 마디로 끊어 보인 번호는 마디 안에서 줄이 갈리면 안 된다 - 라벨과 눈으로 대조하는 값이라
+ * 갈린 자리가 자릿수를 잘못 세게 만든다. anywhere 는 끊을 자리가 있으면 마디 사이에서 끊고,
+ * 한 마디가 한 줄보다 길 때만 안에서 끊는다.
+ */
 .material-lot-scan__scanned {
   margin: 0;
   font-variant-numeric: tabular-nums;
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .material-lot-scan__note {

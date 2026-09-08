@@ -40,9 +40,10 @@
   width: 100%;
 }
 
+/* 마디 안에서 줄이 갈리면 라벨과 대조할 때 자릿수를 잘못 센다. 마디 사이에서 끊는다. */
 .material-location__lot-no {
   font-family: var(--font-mono, monospace);
-  word-break: break-all;
+  overflow-wrap: anywhere;
 }
 
 .material-location__quantities {

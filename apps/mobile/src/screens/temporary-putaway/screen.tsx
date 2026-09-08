@@ -164,7 +164,9 @@ export const TemporaryPutawayScreen = () => {
         <AlertBanner variant="warning" title={t.noTask.title}>
           {t.noTask.description}
         </AlertBanner>
-        <Link to="/putaway">{t.noTask.action}</Link>
+        <Link className="action-link" to="/putaway">
+          {t.noTask.action}
+        </Link>
       </div>
     );
   }
@@ -188,7 +190,9 @@ export const TemporaryPutawayScreen = () => {
             <Link to="/rejections">{t.rejected.action}</Link>
           </AlertBanner>
         ) : null}
-        <Link to="/putaway">{t.done}</Link>
+        <Link className="action-link" to="/putaway">
+          {t.done}
+        </Link>
       </div>
     );
   }

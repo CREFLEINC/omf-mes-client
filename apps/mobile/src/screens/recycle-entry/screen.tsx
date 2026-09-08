@@ -202,7 +202,7 @@ export const RecycleEntryScreen = () => {
         {/* 스캔이 실패했을 때 손으로 넣을 길을 함께 둔다. */}
         <div className="recycle__row">
           <TextField
-            label={t.item.manualSubmit}
+            label={t.item.manualLabel}
             size="xl"
             fullWidth
             value={manual}

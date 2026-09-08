@@ -605,7 +605,7 @@ export const InboundReceiptScreen = () => {
                 }
               />
 
-              <div className="receipt__row">
+              <div className="receipt__row receipt__row--split">
                 <TextField
                   type="date"
                   label={t.qty.manufactured}

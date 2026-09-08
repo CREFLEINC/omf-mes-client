@@ -125,7 +125,7 @@ const entryRoute = (seen: Request[], lotNo = '0001234500000012002607310001230007
 });
 
 const findItem = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.type(await screen.findByLabelText('찾기'), CODE);
+  await user.type(await screen.findByLabelText('직접 입력'), CODE);
   await user.click(screen.getByRole('button', { name: '찾기' }));
 };
 

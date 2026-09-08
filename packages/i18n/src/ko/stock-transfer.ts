@@ -62,6 +62,8 @@ export const stockTransfer = {
   },
   to: {
     legend: '② 도착 스캔',
+    warehouseLabel: '도착 창고',
+    warehousePlaceholder: '창고를 고르세요',
     scanLabel: '도착 위치 스캔',
     scanPlaceholder: '위치 QR을 비추세요',
     manualLabel: '직접 입력',
