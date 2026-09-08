@@ -174,7 +174,7 @@ describe('임시 위치 적재 화면', () => {
     mount({ task: task() });
 
     expect(
-      await screen.findByText('임시 위치를 가려낼 값이 아직 없어 전체 위치를 보입니다'),
+      await screen.findByText('임시 위치만 골라 보이지 못해 전체 위치를 보입니다'),
     ).toBeTruthy();
   });
 
@@ -431,11 +431,7 @@ describe('임시 위치 적재 화면', () => {
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
     await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
 
-    expect(
-      await screen.findByText(
-        '정위치 이동은 재고 이동 화면에서 합니다. 그 화면은 아직 이 앱에 없습니다.',
-      ),
-    ).toBeTruthy();
+    expect(await screen.findByText('정위치로 옮기는 것은 이 화면에서 하지 않습니다.')).toBeTruthy();
   });
   const tempRoute = (seen: Request[]): StubRoute => ({
     match: (req) =>
@@ -481,7 +477,7 @@ describe('임시 위치 적재 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
 
-    expect(await screen.findByText('임시 적치를 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('임시 적치를 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('임시 적치를 기록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
   });
@@ -601,14 +597,14 @@ describe('임시 위치 적재 화면 — 같은 지시를 두 번 적지 않는
     await user.type(screen.getByLabelText('비고'), '통로에 둠');
     await user.click(screen.getByRole('button', { name: '임시 적치 등록' }));
 
-    await screen.findByText('임시 적치를 담아 두었습니다');
+    await screen.findByText('임시 적치를 전송 대기에 넣었습니다');
     expect(seen).toHaveLength(1);
 
     first.unmount();
 
     mount({ task: task(), location: TEMP }, [temporaryRoute(seen, true)]);
 
-    expect(await screen.findByText('이 지시의 임시 적치를 이미 담아 두었습니다')).toBeTruthy();
+    expect(await screen.findByText('이 지시의 임시 적치가 이미 전송 대기 중입니다')).toBeTruthy();
 
     /*
      * 비고를 다시 적어 다른 이유로 잠기지 않게 한 뒤에 잰다. 비워 두면 「사유·비고가 둘 다

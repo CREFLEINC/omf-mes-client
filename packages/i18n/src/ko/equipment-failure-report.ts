@@ -21,7 +21,7 @@ export const equipmentFailureReport = {
     openBreakdowns: (count: number) => `이 설비에 처리 중인 고장 ${String(count)}건`,
   },
   symptom: {
-    legend: '현상',
+    legend: '증상',
     label: '증상',
     placeholder: '유압 누유 · 실린더 하부',
     hint: '무엇이 어떻게 되었는지 한 줄로 적어 주세요.',
@@ -35,10 +35,10 @@ export const equipmentFailureReport = {
     /** 사진 한 장이 수백 KB 라 쌓이면 단말 보관소가 감당하지 못한다. */
     tooHeavy: '보내지 못한 사진이 많아 지금은 더 찍을 수 없습니다.',
     failed: '사진을 가져오지 못했습니다',
-    waiting: (count: number) => `사진 ${String(count)}장도 함께 기다립니다.`,
+    waiting: (count: number) => `사진 ${String(count)}장도 함께 보냅니다.`,
   },
   state: {
-    legend: '지금 상태',
+    legend: '발생 상태',
     label: '발생 상태',
     stopped: '설비가 멈췄다',
     abnormal: '돌지만 이상하다',
@@ -62,12 +62,12 @@ export const equipmentFailureReport = {
   /** 누가 한 일인지 없이 기록을 남길 수 없다. 서버가 사번 없는 쓰기를 받지 않는다. */
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
-    title: '보고를 담아 두지 못했습니다',
+    title: '보고를 저장하지 못했습니다',
     description: '보고되지 않았습니다. 다시 시도하세요.',
   },
-  noWorker: '사번을 확인해야 보고할 수 있습니다',
+  noWorker: '사번을 먼저 확인하세요',
   queued: {
-    title: '보고를 담아 두었습니다',
+    title: '보고를 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다. 아직 설비담당에게 가지 않았습니다.',
   },
   sent: {
@@ -76,7 +76,7 @@ export const equipmentFailureReport = {
   /** 담긴 것과 다른 말을 쓴다. 기다려도 가지 않으므로 지금 무엇을 할지 정해야 한다. */
   rejected: {
     title: '보고를 전송하지 못했습니다',
-    description: '서버가 받지 않았습니다. 아직 설비담당에게 가지 않았습니다.',
+    description: '보냈지만 등록되지 않았습니다. 아직 설비담당에게 가지 않았습니다.',
     action: '전송 실패한 기록 보기',
   },
   another: '다른 고장 보고',

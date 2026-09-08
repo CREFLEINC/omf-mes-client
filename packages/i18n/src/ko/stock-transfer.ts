@@ -16,14 +16,14 @@ export const stockTransfer = {
   },
   /** 반출과 도착 사이에 남은 것. 진입에서 먼저 보이지 않으면 같은 물건을 또 반출한다. */
   unfinished: {
-    legend: '이어할 이동',
-    loading: '이어할 이동을 찾는 중입니다',
-    loadFailed: '이어할 이동을 확인하지 못했습니다. 연결을 확인하세요.',
-    none: '이어할 이동이 없습니다',
+    legend: '도착이 남은 이동',
+    loading: '도착이 남은 이동을 찾는 중입니다',
+    loadFailed: '도착이 남은 이동을 확인하지 못했습니다. 연결을 확인하세요.',
+    none: '도착이 남은 이동이 없습니다',
     item: (no: string, count: number) => `${no} · ${String(count)}라인`,
-    resume: '이어하기',
+    resume: '이어서 하기',
     /** 다른 단말이 반출한 것은 오프라인에서 오지 않는다. 없다고 단정하면 안 된다. */
-    offline: '연결이 없어 다른 단말이 반출한 이동은 보이지 않습니다.',
+    offline: '연결이 없어 다른 기기에서 반출한 이동은 보이지 않습니다.',
   },
   type: {
     legend: '이동 유형',
@@ -43,7 +43,7 @@ export const stockTransfer = {
     loading: 'LOT을 불러오는 중입니다',
     notFound: (code: string) => `${code} LOT을 찾지 못했습니다`,
     loadFailed: 'LOT을 확인할 수 없습니다. 연결을 확인하세요.',
-    already: '이미 담은 LOT입니다',
+    already: '이미 추가한 LOT입니다',
     /** 재고가 없는 LOT을 옮기면 반출 수량이 재고를 넘어 서버가 되돌린다. */
     noStock: '이 LOT은 옮길 재고가 없습니다',
     /** 이동 헤더는 출발 창고를 하나만 받는다. 섞으면 없는 자리에서 빼는 것이 된다. */
@@ -80,12 +80,12 @@ export const stockTransfer = {
   },
   submitShip: '반출 기록',
   submitArrive: '이동 완료',
-  noWorker: '사번을 확인한 뒤에 이동할 수 있습니다',
-  noLine: '한 LOT 이상 반출 수량을 적으세요',
+  noWorker: '사번을 먼저 확인하세요',
+  noLine: '반출할 LOT을 스캔하고 수량을 적으세요',
   noDestination: '도착 위치를 스캔하세요',
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
-    title: '이동을 담아 두지 못했습니다',
+    title: '이동을 저장하지 못했습니다',
     description: '기록되지 않았습니다. 다시 시도하세요.',
   },
   shipped: {
@@ -96,7 +96,7 @@ export const stockTransfer = {
     title: '이동을 마쳤습니다',
   },
   held: {
-    title: '이동을 담아 두었습니다',
+    title: '이동을 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다. 반출과 도착은 순서대로 나갑니다.',
   },
   rejected: {

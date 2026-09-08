@@ -43,7 +43,7 @@ export const materialLotScan = {
         `자재 LOT 번호는 ${total}자리입니다 (현재 ${length}자리)`,
       notDigits: '숫자만 입력할 수 있습니다',
       badDate: '라벨의 날짜 자리가 날짜가 아닙니다',
-      duplicate: '이미 담아 둔 LOT 번호입니다',
+      duplicate: '이미 입력한 LOT 번호입니다',
     },
   },
   /* 라벨의 수량은 최초 납품 스냅샷이라 라인 수량과 다를 수 있다. 막지 않는다. */
@@ -54,12 +54,12 @@ export const materialLotScan = {
     legend: (count: string) => `등록됨 (${count}건)`,
     item: (lotNo: string, qty: string) => `${lotNo} · ${qty}`,
   },
-  noWorker: '사번을 확인한 뒤에 등록할 수 있습니다',
+  noWorker: '사번을 먼저 확인하세요',
   /** 단말 토큰이 싣고 온 값이다. 없으면 어느 공장의 LOT 인지 정할 수 없다. */
-  noPlant: '단말 공장을 읽지 못했습니다. 단말을 다시 등록하세요.',
+  noPlant: '이 기기의 공장을 읽지 못했습니다. 기기를 다시 등록하세요.',
   /** 단말 보관소가 거절한 경우. 담긴 것이 없으므로 등록되지 않았다고 말한다. */
   saveFailed: {
-    title: '등록을 담아 두지 못했습니다',
+    title: '등록을 저장하지 못했습니다',
     description: '등록되지 않았습니다. 다시 시도하세요.',
   },
   done: '등록 완료',
@@ -67,7 +67,7 @@ export const materialLotScan = {
     title: '등록했습니다',
   },
   held: {
-    title: '등록을 담아 두었습니다',
+    title: '등록을 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다.',
   },
   /* 같은 공장에 같은 번호가 있으면 400 이다. 다시 보내도 풀리지 않는다. */

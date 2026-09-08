@@ -22,10 +22,10 @@ export const deviceRegistration = {
   },
   offline: {
     title: '연결된 상태에서 등록해야 합니다',
-    description: '등록은 서버가 받아 주는지 확인해야 끝납니다. 연결을 확인하고 다시 시도하세요.',
+    description: '등록은 보내서 확인을 받아야 끝납니다. 연결을 확인하고 다시 시도하세요.',
   },
   receiving: {
-    title: '기준정보를 받는 중입니다',
+    title: '작업자 정보를 받는 중입니다',
     /** 받기 전에 현장으로 들어가면 오프라인에서 사번을 확인할 수 없다. */
     description: '작업자 목록을 받고 있습니다. 끝날 때까지 기다려 주세요.',
   },
@@ -35,7 +35,7 @@ export const deviceRegistration = {
   },
   retry: '다시 시도',
   terminal: {
-    label: '단말',
+    label: '기기',
   },
   /*
    * 무엇으로 등록됐는지 보인다.
@@ -46,6 +46,7 @@ export const deviceRegistration = {
    */
   registered: {
     title: '등록되었습니다',
+    /* 관리웹이 이 값을 단말 코드로 보인다. 여기서만 기기 코드로 부르면 안내와 어긋난다. */
     confirm: '관리자가 안내한 단말 코드와 같은지 확인하세요',
   },
   signIn: {
@@ -56,11 +57,11 @@ export const deviceRegistration = {
     toWork: '작업 목록으로',
     /** 없는 사번과 목록 미수신은 작업자가 할 수 있는 일이 달라 문구를 가른다. */
     unknown: '등록되지 않았거나 재직 중이 아닌 사번입니다',
-    noDirectory: '기준정보를 아직 받지 못했습니다',
+    noDirectory: '작업자 정보를 아직 받지 못했습니다',
     keypad: {
       label: '사번 입력',
-      backspace: '한 자 지움',
-      clear: '전체 지움',
+      backspace: '한 자 지우기',
+      clear: '모두 지우기',
     },
     current: {
       label: '현재 작업자',

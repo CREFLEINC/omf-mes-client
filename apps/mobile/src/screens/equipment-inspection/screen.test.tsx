@@ -160,7 +160,7 @@ describe('설비 점검 입력 화면', () => {
 
     await selectEquipment();
 
-    expect(screen.getByText(/항목 기준: .* 수신/)).toBeInTheDocument();
+    expect(screen.getByText(/받은 점검 항목/)).toBeInTheDocument();
   });
 
   /* 통제 근거 마스터가 비어 있으면 입력을 열지 않는다. */
@@ -223,7 +223,7 @@ describe('설비 점검 입력 화면', () => {
     mount();
     await selectEquipment();
 
-    expect(screen.getByText('필수 항목 유압 압력이(가) 남았습니다')).toBeInTheDocument();
+    expect(screen.getByText('필수 항목 유압 압력을(를) 점검하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeDisabled();
   });
 
@@ -234,7 +234,7 @@ describe('설비 점검 입력 화면', () => {
 
     await user.type(screen.getByLabelText('측정값'), '20');
 
-    expect(await screen.findByText('NG가 있어 비고를 적어야 합니다')).toBeInTheDocument();
+    expect(await screen.findByText('NG가 있으면 비고를 적으세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeDisabled();
 
     await user.type(screen.getByLabelText('비고'), '누유 확인');
@@ -280,9 +280,9 @@ describe('설비 점검 입력 화면', () => {
     await user.type(screen.getByLabelText('측정값'), '13.4');
     await user.click(screen.getByRole('button', { name: '점검 완료' }));
 
-    expect(await screen.findByText('점검을 담아 두었습니다')).toBeInTheDocument();
+    expect(await screen.findByText('점검을 전송 대기에 넣었습니다')).toBeInTheDocument();
     expect(
-      screen.getByText('연결되면 보냅니다. 아직 작업 통제에 반영되지 않습니다.'),
+      screen.getByText('연결되면 보냅니다. 아직 작업 통제에 반영되지 않았습니다.'),
     ).toBeInTheDocument();
     expect(screen.queryByText('점검을 기록했습니다')).not.toBeInTheDocument();
   });
@@ -298,11 +298,11 @@ describe('설비 점검 입력 화면', () => {
 
     await user.type(screen.getByLabelText('측정값'), '13.4');
     await user.click(screen.getByRole('button', { name: '점검 완료' }));
-    await screen.findByText('점검을 담아 두었습니다');
+    await screen.findByText('점검을 전송 대기에 넣었습니다');
     await user.click(screen.getByRole('button', { name: '다른 설비 점검' }));
 
     expect(
-      await screen.findByText('미전송 점검 1건 — 작업 통제에 반영되지 않습니다'),
+      await screen.findByText('전송 대기 중인 점검 1건 — 아직 작업 통제에 반영되지 않습니다'),
     ).toBeInTheDocument();
   });
 
@@ -318,7 +318,7 @@ describe('설비 점검 입력 화면', () => {
 
     await user.type(screen.getByLabelText('측정값'), '13.4');
 
-    expect(screen.getByText('사번을 확인해야 점검할 수 있습니다')).toBeInTheDocument();
+    expect(screen.getByText('사번을 먼저 확인하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeDisabled();
   });
   /*
@@ -365,7 +365,7 @@ describe('설비 점검 입력 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '점검 완료' }));
 
-    expect(await screen.findByText('점검을 담아 두지 못했습니다')).toBeInTheDocument();
+    expect(await screen.findByText('점검을 저장하지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('점검을 기록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
   });

@@ -179,7 +179,7 @@ describe('입하 등록 화면', () => {
     scan('123');
 
     expect(await screen.findByText('자재 LOT 번호는 34자리 숫자입니다 (현재 3자)')).toBeTruthy();
-    expect(screen.queryByText('P/O 선택')).toBeNull();
+    expect(screen.queryByText('발주 선택')).toBeNull();
   });
 
   it('스캔하면 공급사 LOT으로 들고 발주 선택을 연다', async () => {
@@ -189,7 +189,7 @@ describe('입하 등록 화면', () => {
     scan(SCANNED);
 
     expect(await screen.findByText(`공급사 LOT ${SCANNED}`)).toBeTruthy();
-    expect(screen.getByText('P/O 선택')).toBeTruthy();
+    expect(screen.getByText('발주 선택')).toBeTruthy();
   });
 
   /* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */
@@ -261,7 +261,7 @@ const choosePoLine = async (
   lineName: RegExp = /ABC-123|31/,
 ) => {
   scan(SCANNED);
-  await screen.findByText('P/O 선택');
+  await screen.findByText('발주 선택');
   await user.click(screen.getByRole('combobox', { name: '발주 번호' }));
   await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
   await user.click(await screen.findByRole('button', { name: lineName }));
@@ -273,7 +273,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     mount();
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
-    await screen.findByText('P/O 선택');
+    await screen.findByText('발주 선택');
 
     await user.click(screen.getByRole('combobox', { name: '발주 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
@@ -318,9 +318,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await user.type(await screen.findByLabelText('실입하 수량'), '511');
 
     expect(await screen.findByText('수량 초과 — 남은 예정 500, 이번 도착 511')).toBeTruthy();
-    expect(
-      screen.getByText('초과분은 초과 입하 분리에서 나눕니다. 그 화면은 아직 이 앱에 없습니다.'),
-    ).toBeTruthy();
+    expect(screen.getByText('초과분은 담당자가 따로 처리합니다.')).toBeTruthy();
   });
 
   it('부족이면 부족이라 말한다', async () => {
@@ -346,7 +344,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
 
     await user.type(await screen.findByLabelText('실입하 수량'), '400');
 
-    await screen.findByText('더 올 것이 남았습니까?');
+    await screen.findByText('더 들어올 물량이 있습니까?');
     expect(screen.getByText('발주')).toBeTruthy();
     expect(screen.getByText('누적')).toBeTruthy();
     expect(screen.getByText('이번 도착')).toBeTruthy();
@@ -364,7 +362,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await user.type(await screen.findByLabelText('실입하 수량'), '400');
     await user.type(screen.getByLabelText('포장 수'), '10');
 
-    await screen.findByText('더 올 것이 남았습니까?');
+    await screen.findByText('더 들어올 물량이 있습니까?');
     expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: '계속 등록' }));
@@ -382,7 +380,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     const qty = await screen.findByLabelText('실입하 수량');
     await user.type(qty, '400');
     await user.type(screen.getByLabelText('포장 수'), '10');
-    await screen.findByText('더 올 것이 남았습니까?');
+    await screen.findByText('더 들어올 물량이 있습니까?');
     await user.click(screen.getByRole('button', { name: '계속 등록' }));
     expect(screen.getByRole('button', { name: '입하 등록' })).not.toBeDisabled();
 
@@ -407,15 +405,15 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(screen.getByRole('button', { name: '입하 등록' }).hasAttribute('disabled')).toBe(true);
   });
 
-  /* 검사 대상 여부는 서버가 라인마다 정한다. 화면이 정하지 않는 것을 말한다. */
-  it('검사 대상 여부를 서버가 정한다고 말한다', async () => {
+  /* 검사 대상 여부는 등록 뒤에 라인마다 정해진다. 화면이 정하지 않는 것을 말한다. */
+  it('검사 대상 여부를 화면이 정하지 않는다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
     await choosePoLine(user);
 
     expect(
-      await screen.findByText('검사 대상 여부는 등록 뒤 서버가 라인마다 정합니다'),
+      await screen.findByText('검사 대상 여부는 등록한 뒤에 라인마다 정해집니다'),
     ).toBeTruthy();
   });
 
@@ -497,9 +495,9 @@ describe('입하 등록 화면 — 되돌릴 수 없는 쓰기', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '입하 등록' }));
 
-    expect(await screen.findByText('입하를 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('입하를 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('입하를 등록했습니다')).toBeNull();
-    expect(screen.queryByText('입하를 담아 두었습니다')).toBeNull();
+    expect(screen.queryByText('입하를 전송 대기에 넣었습니다')).toBeNull();
     expect(seen).toHaveLength(0);
   });
 
@@ -523,7 +521,7 @@ describe('입하 등록 화면 — 되돌릴 수 없는 쓰기', () => {
     await user.type(await screen.findByLabelText('실입하 수량'), '500');
     await user.click(screen.getByRole('button', { name: '입하 등록' }));
 
-    await screen.findByText('입하를 담아 두었습니다');
+    await screen.findByText('입하를 전송 대기에 넣었습니다');
     await user.click(screen.getByRole('button', { name: '다음 입하' }));
 
     await screen.findByLabelText('LOT 번호');
@@ -617,7 +615,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await choose(user, '단위', /EA/);
     await user.type(await screen.findByLabelText('실입하 수량'), '40');
 
-    expect(screen.getByText('이 단말의 공장을 확인할 수 없어 등록할 수 없습니다')).toBeTruthy();
+    expect(screen.getByText('이 기기의 공장을 확인할 수 없어 등록할 수 없습니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '입하 등록' })).toBeDisabled();
   });
 
@@ -630,7 +628,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await openUnordered(user);
 
     expect(await screen.findByText('목록에 없는 품목은 여기서 만들 수 없습니다')).toBeTruthy();
-    expect(screen.getByText('ERP 에 품목이 선 뒤에 등록할 수 있습니다.')).toBeTruthy();
+    expect(screen.getByText('ERP에 품목이 만들어진 뒤에 고를 수 있습니다.')).toBeTruthy();
   });
 
   /*
@@ -665,6 +663,6 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await screen.findByLabelText('LOT 번호');
     await openUnordered(user);
 
-    expect(await screen.findByText('발주가 없어 예정과 견주지 않습니다')).toBeTruthy();
+    expect(await screen.findByText('발주가 없어 예정 수량과 비교하지 않습니다')).toBeTruthy();
   });
 });

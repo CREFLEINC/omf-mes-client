@@ -409,7 +409,7 @@ describe('자재LOT 스캔·등록 화면', () => {
     await user.click(await screen.findByRole('option', { name: '#3 · RM-1001 · 60' }));
     scan(LOT_NO);
 
-    expect(await screen.findByText('이미 담아 둔 LOT 번호입니다')).toBeTruthy();
+    expect(await screen.findByText('이미 입력한 LOT 번호입니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 라인 등록' })).toBeDisabled();
   });
 
@@ -422,7 +422,7 @@ describe('자재LOT 스캔·등록 화면', () => {
 
     scan(LOT_NO);
 
-    expect(await screen.findByText(/단말 공장을 읽지 못했습니다/)).toBeTruthy();
+    expect(await screen.findByText(/기기의 공장을 읽지 못했습니다/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 라인 등록' })).toBeDisabled();
   });
 
@@ -461,6 +461,6 @@ describe('자재LOT 스캔·등록 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '이 라인 등록' }));
 
-    expect(await screen.findByText('등록을 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('등록을 저장하지 못했습니다')).toBeTruthy();
   });
 });

@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-const LABELS = { label: '숫자 키패드', backspaceLabel: '한 자 지움', clearLabel: '지움' };
+const LABELS = { label: '숫자 키패드', backspaceLabel: '한 자 지우기', clearLabel: '지움' };
 
 const Probe = ({ maxLength }: { maxLength?: number }) => {
   const [value, setValue] = useState('');
@@ -33,13 +33,13 @@ describe('숫자 키패드', () => {
     expect(screen.getByRole('status')).toHaveTextContent('907');
   });
 
-  it('한 자 지움은 마지막 한 자만 뗀다', async () => {
+  it('한 자 지우기은 마지막 한 자만 뗀다', async () => {
     const user = userEvent.setup();
     render(<Probe />);
 
     await press(user, '1');
     await press(user, '2');
-    await press(user, '한 자 지움');
+    await press(user, '한 자 지우기');
 
     expect(screen.getByRole('status')).toHaveTextContent('1');
   });
@@ -58,7 +58,7 @@ describe('숫자 키패드', () => {
   it('비어 있으면 지우는 키를 누를 수 없다', () => {
     render(<Probe />);
 
-    expect(screen.getByRole('button', { name: '한 자 지움' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '한 자 지우기' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '지움' })).toBeDisabled();
   });
 
@@ -78,7 +78,7 @@ describe('숫자 키패드', () => {
     render(<Probe maxLength={1} />);
 
     await press(user, '5');
-    await press(user, '한 자 지움');
+    await press(user, '한 자 지우기');
 
     expect(screen.getByRole('status')).toHaveTextContent('');
   });

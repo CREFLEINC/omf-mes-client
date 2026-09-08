@@ -37,7 +37,7 @@ export const shopfloorReceipt = {
   },
   /** 큐에 담긴 것은 서버 응답에 없다. 세지 않으면 오프라인에서 두 번 받는다. */
   queued: {
-    title: '이 출고 전표의 입고가 아직 보내지지 않았습니다',
+    title: '이 출고 전표의 입고가 전송 대기 중입니다',
     description: '연결되면 보냅니다. 그때까지 다시 받지 않습니다.',
   },
   lines: {
@@ -57,21 +57,21 @@ export const shopfloorReceipt = {
     reasonLabel: (item: string) => `${item} 차이 사유`,
     reasonPlaceholder: '사유를 고르세요',
     /** 왜 모자란지를 아는 사람은 물건을 받은 그 자리에 있다. */
-    reasonRequired: '모자란 라인은 사유를 골라야 합니다',
+    reasonRequired: '모자란 품목은 사유를 고르세요',
   },
   submit: '입고 확정',
-  noWorker: '사번을 확인한 뒤에 입고할 수 있습니다',
-  noLine: '한 라인 이상 수령 수량을 적으세요',
+  noWorker: '사번을 먼저 확인하세요',
+  noLine: '받은 품목의 수량을 적으세요',
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
-    title: '입고를 담아 두지 못했습니다',
+    title: '입고를 저장하지 못했습니다',
     description: '기록되지 않았습니다. 다시 시도하세요.',
   },
   sent: {
     title: '입고를 기록했습니다',
   },
   held: {
-    title: '입고를 담아 두었습니다',
+    title: '입고를 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다.',
   },
   rejected: {

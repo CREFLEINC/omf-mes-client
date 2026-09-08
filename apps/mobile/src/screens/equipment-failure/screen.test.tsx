@@ -130,7 +130,7 @@ describe('설비 고장 보고 화면', () => {
     await user.type(screen.getByLabelText('증상'), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
 
-    expect(screen.getByText('사번을 확인해야 보고할 수 있습니다')).toBeInTheDocument();
+    expect(screen.getByText('사번을 먼저 확인하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '고장 보고' })).toBeDisabled();
   });
 
@@ -527,7 +527,7 @@ describe('설비 고장 보고 화면', () => {
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
-    expect(await screen.findByText('보고를 담아 두었습니다')).toBeInTheDocument();
+    expect(await screen.findByText('보고를 전송 대기에 넣었습니다')).toBeInTheDocument();
     expect(
       screen.getByText('연결되면 보냅니다. 아직 설비담당에게 가지 않았습니다.'),
     ).toBeInTheDocument();
@@ -567,7 +567,7 @@ describe('설비 고장 보고 화면', () => {
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
     expect(await screen.findByText('보고를 전송하지 못했습니다')).toBeInTheDocument();
-    expect(screen.queryByText('보고를 담아 두었습니다')).not.toBeInTheDocument();
+    expect(screen.queryByText('보고를 전송 대기에 넣었습니다')).not.toBeInTheDocument();
     expect(screen.queryByText('고장을 보고했습니다')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: '전송 실패한 기록 보기' })).toBeInTheDocument();
   });
@@ -614,7 +614,7 @@ describe('설비 고장 보고 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
-    expect(await screen.findByText('보고를 담아 두지 못했습니다')).toBeInTheDocument();
+    expect(await screen.findByText('보고를 저장하지 못했습니다')).toBeInTheDocument();
     expect(store.get('outbox')).toBeUndefined();
   });
 });

@@ -175,7 +175,7 @@ describe('재생재 등록 화면', () => {
     await findItem(user);
 
     expect(await screen.findByText('등록되지 않은 재생재 품목입니다')).toBeTruthy();
-    expect(screen.getByText('재생재 품목 행을 관리웹에서 먼저 등록해야 합니다.')).toBeTruthy();
+    expect(screen.getByText('관리웹에서 재생재 품목을 먼저 등록해야 합니다.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '재생재 등록' })).toBeNull();
   });
 
@@ -186,7 +186,7 @@ describe('재생재 등록 화면', () => {
     await findItem(user);
     await screen.findByText('ABC-123 원자재');
 
-    expect(screen.getByText('자재 묶음 번호는 저장 후 정해집니다')).toBeTruthy();
+    expect(screen.getByText('자재 LOT 번호는 등록한 뒤에 정해집니다')).toBeTruthy();
   });
 
   /* 단위는 품목의 기본 단위를 서버가 쓴다. 화면은 읽기만 하고 보내지 않는다. */
@@ -218,7 +218,7 @@ describe('재생재 등록 화면', () => {
     await user.click(screen.getByRole('button', { name: '재생재 등록' }));
 
     expect(await screen.findByText('재생재를 등록했습니다')).toBeTruthy();
-    expect(screen.getByText('자재 묶음 SYN-LOT-0001')).toBeTruthy();
+    expect(screen.getByText('자재 LOT SYN-LOT-0001')).toBeTruthy();
   });
 
   /* 버려지는 것이 아니라 미뤄지는 것임이 드러나야 한다. */
@@ -239,8 +239,8 @@ describe('재생재 등록 화면', () => {
 
     await user.click(screen.getByRole('button', { name: '재생재 등록' }));
 
-    expect(await screen.findByText('재생재 등록을 담아 두었습니다')).toBeTruthy();
-    expect(screen.getByText('연결되면 전송됩니다. 번호는 전송 후 정해집니다.')).toBeTruthy();
+    expect(await screen.findByText('재생재 등록을 전송 대기에 넣었습니다')).toBeTruthy();
+    expect(screen.getByText('연결되면 보냅니다. 번호는 보낸 뒤에 정해집니다.')).toBeTruthy();
     expect(screen.getByText('라벨은 번호가 정해진 뒤에 인쇄할 수 있습니다')).toBeTruthy();
   });
 
@@ -303,7 +303,7 @@ describe('재생재 등록 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '재생재 등록' }));
 
-    expect(await screen.findByText('재생재 등록을 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('재생재 등록을 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('재생재를 등록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
   });

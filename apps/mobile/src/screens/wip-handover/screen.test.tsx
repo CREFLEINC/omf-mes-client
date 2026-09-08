@@ -223,7 +223,7 @@ describe('WIP 공정 이동 화면', () => {
     goOffline();
     mount();
 
-    expect(await screen.findByText('연결이 필요한 작업입니다')).toBeTruthy();
+    expect(await screen.findByText('연결이 있어야 할 수 있습니다')).toBeTruthy();
     expect(screen.queryByLabelText('LOT 스캔')).toBeNull();
   });
 
@@ -271,9 +271,9 @@ describe('WIP 공정 이동 화면', () => {
 
     scan(LOT_NO);
 
-    expect(await screen.findByText('홀드 중인 LOT 입니다')).toBeTruthy();
+    expect(await screen.findByText('보류 중인 LOT입니다')).toBeTruthy();
     expect(
-      screen.getByText('다음 공정이 홀드품을 투입하면 불량이 퍼집니다. 보류를 먼저 푸세요.'),
+      screen.getByText('보류 중인 물건을 다음 공정에 넣으면 불량이 퍼집니다. 보류를 먼저 푸세요.'),
     ).toBeTruthy();
   });
 

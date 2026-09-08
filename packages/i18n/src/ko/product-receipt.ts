@@ -30,12 +30,12 @@ export const productReceipt = {
     loadFailed: '인식표를 불러오지 못했습니다. 연결을 확인하세요.',
     notFound: (no: string) => `${no} 인식표를 찾지 못했습니다`,
     picked: (no: string) => `인식표 ${no}`,
-    empty: '이 인식표에는 담긴 것이 없습니다',
+    empty: '이 인식표에는 담긴 물건이 없습니다',
   },
   contents: {
     legend: '인수 대상',
-    loading: '담긴 것을 불러오는 중입니다',
-    loadFailed: '담긴 것을 불러오지 못했습니다. 연결을 확인하세요.',
+    loading: '담긴 물건을 불러오는 중입니다',
+    loadFailed: '담긴 물건을 불러오지 못했습니다. 연결을 확인하세요.',
     name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
     qtyLabel: (name: string) => `${name} 실물 수량`,
     expected: (qty: string) => `인식표 수량 ${qty}`,
@@ -65,15 +65,15 @@ export const productReceipt = {
     /** 창고가 위치를 관리하지 않으면 흡수용 위치 하나로 들어간다. */
     unmanaged: '이 창고는 위치를 관리하지 않습니다. 대표 위치로 들어갑니다.',
     /** 대표 위치가 없으면 목적지를 지어낼 수 없다. */
-    noDefault: '이 창고에 대표 위치가 없습니다. 기준정보를 확인하세요.',
+    noDefault: '이 창고에 대표 위치가 없습니다. 관리자에게 문의하세요.',
   },
   submit: '입고·적치 완료',
-  noWorker: '사번을 확인한 뒤에 입고할 수 있습니다',
+  noWorker: '사번을 먼저 확인하세요',
   /** 단말 토큰이 싣고 온 값이다. 없으면 어느 공장의 입고인지 정할 수 없다. */
-  noPlant: '단말 공장을 읽지 못했습니다. 단말을 다시 등록하세요.',
+  noPlant: '이 기기의 공장을 읽지 못했습니다. 기기를 다시 등록하세요.',
   /** 단말 보관소가 거절한 경우. 담긴 것이 없으므로 기록되지 않았다고 말한다. */
   saveFailed: {
-    title: '입고를 담아 두지 못했습니다',
+    title: '입고를 저장하지 못했습니다',
     description: '기록되지 않았습니다. 다시 시도하세요.',
   },
   sent: {
@@ -92,7 +92,7 @@ export const productReceipt = {
     action: '전송 실패한 기록 보기',
   },
   held: {
-    title: '입고를 담아 두었습니다',
+    title: '입고를 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다. 적치 완료는 그 뒤 적치 화면에서 잇습니다.',
   },
   rejected: {

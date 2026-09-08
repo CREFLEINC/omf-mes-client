@@ -18,7 +18,7 @@ export const materialLocation = {
   },
   lot: {
     /** 잔액이 LOT 단위로 나뉘지 않는다는 뜻이다. 없다는 뜻이 아니다. */
-    noLot: '(LOT 무관)',
+    noLot: '(LOT 관계없음)',
   },
   location: {
     title: '위치',
@@ -59,7 +59,7 @@ export const materialLocation = {
     `자재 LOT은 ${String(required)}자리입니다. ${String(read)}자리를 읽었습니다.`,
   offline: {
     title: '오프라인이라 조회할 수 없습니다',
-    description: '저장해 둔 자료를 두지 않습니다. 연결되면 다시 시도해 주세요.',
+    description: '저장해 둔 자료가 없습니다. 연결되면 다시 시도해 주세요.',
     retry: '다시 시도',
   },
 } as const;

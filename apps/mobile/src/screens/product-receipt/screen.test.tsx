@@ -443,7 +443,7 @@ describe('제품 입고·적치 화면', () => {
     await openUnit(user);
     await pickLocation(user);
 
-    expect(await screen.findByText(/단말 공장을 읽지 못했습니다/)).toBeTruthy();
+    expect(await screen.findByText(/기기의 공장을 읽지 못했습니다/)).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
   });
 
@@ -487,7 +487,7 @@ describe('제품 입고·적치 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '입고·적치 완료' }));
 
-    expect(await screen.findByText('입고를 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('입고를 저장하지 못했습니다')).toBeTruthy();
   });
 
   it('담긴 것이 없는 인식표는 그 사실을 말한다', async () => {
@@ -495,6 +495,6 @@ describe('제품 입고·적치 화면', () => {
     mount({ emptyUnit: true });
     await openUnit(user);
 
-    expect(await screen.findByText(/담긴 것이 없습니다/)).toBeTruthy();
+    expect(await screen.findByText(/담긴 물건이 없습니다/)).toBeTruthy();
   });
 });

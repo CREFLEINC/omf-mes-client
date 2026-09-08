@@ -581,7 +581,7 @@ describe('포장 재구성 화면', () => {
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '재구성 확정' }));
 
-    expect(await screen.findByText('재구성을 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('재구성을 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('재구성을 기록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
   });

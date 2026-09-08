@@ -156,7 +156,7 @@ describe('수리 왕복 스캔 화면', () => {
     setOnline(false);
     mount();
 
-    expect(await screen.findByText('연결이 있어야 쓸 수 있는 화면입니다')).toBeTruthy();
+    expect(await screen.findByText('연결이 있어야 할 수 있습니다')).toBeTruthy();
     expect(screen.queryByLabelText('불량 LOT 스캔')).toBeNull();
   });
 
@@ -873,7 +873,9 @@ describe('수리 왕복 스캔 화면', () => {
     scan(SCANNED);
     await user.click(screen.getByRole('tab', { name: '수리 반출' }));
 
-    expect(await screen.findByText('수리분의 재투입은 이 화면에서 하지 않습니다')).toBeTruthy();
+    expect(
+      await screen.findByText('수리한 물건을 다시 투입하는 것은 이 화면에서 하지 않습니다'),
+    ).toBeTruthy();
   });
 
   it('수리 중인 건을 표로 보인다', async () => {

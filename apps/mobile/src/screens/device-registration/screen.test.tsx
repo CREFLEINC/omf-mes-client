@@ -152,7 +152,7 @@ describe('기기 등록 화면', () => {
     camera.read(REGISTRATION_TOKEN);
 
     const registered = await screen.findByText('등록되었습니다');
-    const receiving = screen.getByText('기준정보를 받는 중입니다');
+    const receiving = screen.getByText('작업자 정보를 받는 중입니다');
 
     expect(registered.compareDocumentPosition(receiving)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
@@ -199,7 +199,7 @@ describe('기기 등록 화면', () => {
     await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
     camera.read(REGISTRATION_TOKEN);
 
-    expect(await screen.findByText('기준정보를 받는 중입니다')).toBeInTheDocument();
+    expect(await screen.findByText('작업자 정보를 받는 중입니다')).toBeInTheDocument();
   });
 
   /* 받는 중에 미등록이라고 말하면 방금 읽은 것이 헛일이 된 줄로 읽힌다. */
@@ -212,7 +212,7 @@ describe('기기 등록 화면', () => {
     await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
     camera.read(REGISTRATION_TOKEN);
 
-    await screen.findByText('기준정보를 받는 중입니다');
+    await screen.findByText('작업자 정보를 받는 중입니다');
     expect(
       screen.queryByRole('heading', { name: '이 기기는 아직 등록되지 않았습니다' }),
     ).not.toBeInTheDocument();

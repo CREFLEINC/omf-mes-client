@@ -202,9 +202,7 @@ describe('입하 오류 등록 화면', () => {
     mount();
     await chooseLine(user);
 
-    expect(
-      screen.getByText('예정 수량이 이 화면에 오지 않아 차이와 견주지 못합니다'),
-    ).toBeTruthy();
+    expect(screen.getByText('예정 수량이 없어 차이를 비교하지 못합니다')).toBeTruthy();
   });
 
   it('대상 수량이 0 이하면 등록을 막는다', async () => {
@@ -381,7 +379,7 @@ describe('입하 오류 등록 화면', () => {
     held.failWrite = 'outbox';
     await user.click(await screen.findByRole('button', { name: '등록합니다' }));
 
-    expect(await screen.findByText('오류를 담아 두지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText('오류를 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('입하 오류를 등록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
   });

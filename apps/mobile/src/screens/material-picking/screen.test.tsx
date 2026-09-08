@@ -365,8 +365,8 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
     await pickLine(user, '50');
 
-    expect(await screen.findByText('피킹을 담아 두었습니다')).toBeTruthy();
-    expect(await screen.findByText('50 미확정 — 아직 서버에 없습니다')).toBeTruthy();
+    expect(await screen.findByText('피킹을 전송 대기에 넣었습니다')).toBeTruthy();
+    expect(await screen.findByText('50 전송 대기 — 아직 반영되지 않았습니다')).toBeTruthy();
     expect(screen.getByText('요청 200 / 피킹 50')).toBeTruthy();
   });
 
@@ -390,7 +390,7 @@ describe('자재 출고·피킹 화면', () => {
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
 
     await pickLine(user, '50');
-    await screen.findByText('피킹을 담아 두었습니다');
+    await screen.findByText('피킹을 전송 대기에 넣었습니다');
 
     const submit = screen.getByRole('button', { name: '출고 확정' });
 
@@ -398,7 +398,7 @@ describe('자재 출고·피킹 화면', () => {
 
     await user.click(submit);
 
-    expect(await screen.findByText('출고를 담아 두었습니다')).toBeTruthy();
+    expect(await screen.findByText('출고를 전송 대기에 넣었습니다')).toBeTruthy();
     expect(sent.issues).toHaveLength(0);
   });
 
@@ -408,7 +408,7 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'offline' });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('피킹을 담아 두었습니다');
+    await screen.findByText('피킹을 전송 대기에 넣었습니다');
 
     sent.set({ pick: 'ok' });
     await chooseIssueType(user);
@@ -445,7 +445,7 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'offline' });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('피킹을 담아 두었습니다');
+    await screen.findByText('피킹을 전송 대기에 넣었습니다');
 
     sent.set({ pick: 'rejected' });
     await chooseIssueType(user);
@@ -503,17 +503,17 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'offline', issue: 'offline' });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('피킹을 담아 두었습니다');
+    await screen.findByText('피킹을 전송 대기에 넣었습니다');
     await chooseIssueType(user);
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
-    await screen.findByText('출고를 담아 두었습니다');
+    await screen.findByText('출고를 전송 대기에 넣었습니다');
 
     await user.click(screen.getByRole('button', { name: '다음 지시' }));
     await chooseOrder(user);
     await chooseIssueType(user);
 
     expect(
-      await screen.findByText('이 지시의 출고가 이미 담겨 있습니다. 연결되면 나갑니다.'),
+      await screen.findByText('이 지시의 출고가 이미 전송 대기 중입니다. 연결되면 보냅니다.'),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
     expect(sent.issues).toHaveLength(0);
@@ -528,7 +528,7 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'offline' });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('50 미확정 — 아직 서버에 없습니다');
+    await screen.findByText('50 전송 대기 — 아직 반영되지 않았습니다');
 
     sent.set({ pick: 'ok' });
     window.dispatchEvent(new Event('online'));
@@ -536,7 +536,7 @@ describe('자재 출고·피킹 화면', () => {
     /* 담긴 것이 빠진 자리에 서버 값이 들어와야 한다. 안 그러면 피킹 0 으로 되돌아간다. */
     await waitFor(() => {
       expect(screen.getByText('요청 200 / 피킹 50')).toBeTruthy();
-      expect(screen.queryByText('50 미확정 — 아직 서버에 없습니다')).toBeNull();
+      expect(screen.queryByText('50 전송 대기 — 아직 반영되지 않았습니다')).toBeNull();
     });
   });
 
@@ -549,7 +549,7 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'offline' });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('50 미확정 — 아직 서버에 없습니다');
+    await screen.findByText('50 전송 대기 — 아직 반영되지 않았습니다');
 
     await user.click(screen.getByRole('button', { name: '다른 지시 고르기' }));
     await screen.findByRole('button', { name: /PK-2026-000077/ });
@@ -566,7 +566,7 @@ describe('자재 출고·피킹 화면', () => {
     await waitFor(() => {
       expect(screen.getByText('요청 200 / 피킹 50')).toBeTruthy();
     });
-    expect(screen.queryByText('50 미확정 — 아직 서버에 없습니다')).toBeNull();
+    expect(screen.queryByText('50 전송 대기 — 아직 반영되지 않았습니다')).toBeNull();
   });
 
   /*
@@ -578,7 +578,7 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'offline', lines: [line(), secondLine()] });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('피킹을 담아 두었습니다');
+    await screen.findByText('피킹을 전송 대기에 넣었습니다');
 
     sent.set({ pick: 'ok' });
     sent.holdNextPick();
@@ -608,13 +608,13 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'offline', issue: 'offline' });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('피킹을 담아 두었습니다');
+    await screen.findByText('피킹을 전송 대기에 넣었습니다');
 
     await user.click(screen.getByRole('button', { name: '다른 지시 고르기' }));
     await chooseOrder(user);
     await chooseIssueType(user);
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
-    await screen.findByText('출고를 담아 두었습니다');
+    await screen.findByText('출고를 전송 대기에 넣었습니다');
 
     sent.set({ pick: 'rejected', issue: 'ok' });
     window.dispatchEvent(new Event('online'));
@@ -697,7 +697,7 @@ describe('자재 출고·피킹 화면', () => {
     const sent = mount({ pick: 'offline', issue: 'ok' });
     await chooseOrder(user);
     await pickLine(user, '50');
-    await screen.findByText('피킹을 담아 두었습니다');
+    await screen.findByText('피킹을 전송 대기에 넣었습니다');
 
     /*
      * 셸이 스스로 보내는 회차가 도는 중에 확정한다. 그 회차의 목록에는 출고가 없어 딸림
@@ -799,7 +799,7 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
     await chooseIssueType(user);
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
-    await screen.findByText('출고를 담아 두었습니다');
+    await screen.findByText('출고를 전송 대기에 넣었습니다');
 
     sent.set({ issue: 'ok' });
     window.dispatchEvent(new Event('online'));
@@ -823,7 +823,7 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
     await chooseIssueType(user);
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
-    await screen.findByText('출고를 담아 두었습니다');
+    await screen.findByText('출고를 전송 대기에 넣었습니다');
 
     sent.set({ issue: 'rejected' });
     window.dispatchEvent(new Event('online'));
@@ -911,7 +911,9 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(screen.getByRole('button', { name: '출고 확정' }));
 
     expect(
-      await screen.findByText('단말에 담지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.'),
+      await screen.findByText(
+        '이 기기에 저장하지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.',
+      ),
     ).toBeTruthy();
     expect(screen.queryByText('이 지시에서 내보낼 것이 남아 있지 않습니다.')).toBeNull();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(false);
@@ -977,7 +979,9 @@ describe('자재 출고·피킹 화면', () => {
     await user.click(screen.getByRole('button', { name: '이 라인 피킹' }));
 
     expect(
-      await screen.findByText('단말에 담지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.'),
+      await screen.findByText(
+        '이 기기에 저장하지 못했습니다. 저장 공간을 확인하고 다시 시도하세요.',
+      ),
     ).toBeTruthy();
     expect(screen.queryByText('집었습니다')).toBeNull();
     expect(sent.picks).toHaveLength(0);
@@ -989,7 +993,7 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     expect(
-      await screen.findByText('보낼 출고 유형이 없습니다. 공통코드를 확인하세요.'),
+      await screen.findByText('고를 수 있는 출고 유형이 없습니다. 관리자에게 문의하세요.'),
     ).toBeTruthy();
     expect(screen.getByRole('button', { name: '출고 확정' }).hasAttribute('disabled')).toBe(true);
   });
