@@ -40,12 +40,15 @@ interface Options {
   match?: { matched: boolean; reasonCode?: string };
   /** 첫 스캔이 아무것도 못 찾은 상태 */
   labelNotFound?: boolean;
+  /** 출하번호 정확 일치 조회가 아무것도 못 찾은 상태 */
+  shipmentNotFound?: boolean;
   /** 단말 게이팅 플래그 */
   canInputResult?: boolean;
   /** 이 단말에 «그 공정 행이 아예 없는» 상태 — 구성되지 않은 공정은 열려 있지 않다 */
   missingProcessRow?: boolean;
   /** 쓰기 요청을 담아 둔다 — 확정이 세 단계를 도는지 본다 */
   writes?: Request[];
+  reads?: Request[];
 }
 
 const handlingUnitBody = {
@@ -60,6 +63,29 @@ const handlingUnitBody = {
 
 const renderScreen = (options: Options = {}) => {
   const routes: StubRoute[] = [
+    {
+      match: (request) => pathOf(request) === '/logistics/shipments',
+      respond: (request) => {
+        options.reads?.push(request.clone());
+
+        return jsonResponse({
+          items:
+            options.shipmentNotFound === true && queryOf(request).has('shipmentNo')
+              ? []
+              : [
+                  {
+                    shipmentId: 501,
+                    shipmentNo: 'SYN-SH-0501',
+                    shipmentRequestId: 1,
+                    warehouseId: 1001,
+                    statusCode: 'CONFIRMED',
+                    expedited: false,
+                  },
+                ],
+          page: { page: 1, size: 50, total: 1 },
+        });
+      },
+    },
     {
       match: (request) => pathOf(request).endsWith('/processes'),
       respond: () =>
@@ -114,6 +140,7 @@ const renderScreen = (options: Options = {}) => {
       match: (request) =>
         request.method === 'GET' && pathOf(request) === '/logistics/shipment-lot-allocations',
       respond: (request) => {
+        options.reads?.push(request.clone());
         const query = queryOf(request);
         const page = { page: 1, size: 50, total: 1 };
 
@@ -151,12 +178,45 @@ const scan = async (
 ): Promise<void> => {
   await user.type(screen.getByLabelText(label), code);
   const buttons = screen.getAllByRole('button', { name: t.scan.submit });
-  const index = label === t.scan.label.deliveryLabel ? 0 : 1;
+  const index = label === t.scan.label.shipment ? 0 : label === t.scan.label.deliveryLabel ? 1 : 2;
 
   await user.click(buttons[index] as HTMLElement);
 };
 
 describe('PackingResultScreen', () => {
+  it('출하번호 스캔은 정확 일치로 찾고 선택한 출하의 미포장 배분을 이어서 읽는다', async () => {
+    const user = userEvent.setup();
+    const reads: Request[] = [];
+    renderScreen({ reads });
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0501');
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
+    });
+    const shipmentRequest = reads.find(
+      (request) => pathOf(request) === '/logistics/shipments' && queryOf(request).has('shipmentNo'),
+    );
+    const allocationRequest = reads.find(
+      (request) =>
+        pathOf(request) === '/logistics/shipment-lot-allocations' &&
+        queryOf(request).get('unpackedOnly') === 'true',
+    );
+
+    expect(queryOf(shipmentRequest as Request).get('shipmentNo')).toBe('SYN-SH-0501');
+    expect(queryOf(shipmentRequest as Request).get('pickedOnly')).toBe('true');
+    expect(queryOf(allocationRequest as Request).get('shipmentId')).toBe('501');
+  });
+
+  it('피킹 완료된 출하번호를 찾지 못하면 출하 조회 사유로 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ shipmentNotFound: true });
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-없음');
+
+    expect(await screen.findByText(t.match.shipmentNotFound)).toBeTruthy();
+  });
+
   it('들어오면 두 스캔 칸이 서고 생산LOT 칸은 «잠긴 채» 사유를 말한다', () => {
     renderScreen();
 
@@ -282,7 +342,6 @@ describe('PackingResultScreen — 담기와 확정', () => {
 
     expect(screen.getByText('12')).toBeTruthy();
   });
-
 
   it('같은 LOT 을 다시 담으면 «합쳤다고 말한다» — 조용히 합치면 중복 스캔을 못 알아챈다', async () => {
     const user = userEvent.setup();

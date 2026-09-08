@@ -69,6 +69,12 @@ const ENTRIES = [
   ['W-03-02 해제 사유', '/mdm/code-values?codeGroupCode=LOT_HOLD_RELEASE_REASON', 4],
   ['W-04-06 원 출하', '/logistics/shipments?customerId=4002', 2],
   ['P-04-01 출하번호 정확 일치', '/logistics/shipments?shipmentNo=SH-2026-0455', 1],
+  [
+    'P-04-01 당일 피킹 완료 출하',
+    `/logistics/shipments?pickedOnly=true&shipDateFrom=${today()}&shipDateTo=${today()}`,
+    1,
+  ],
+  ['P-04-01 납품 라벨 재진입', '/logistics/shipment-lot-allocations?q=DL-SH-2026-0455-9921', 1],
   ['W-04-06 불량창고 위치', '/mdm/locations?warehouseId=1003', 2],
   ['W-04-06 반품 사유', '/mdm/code-values?codeGroupCode=GOODS_RECEIPT_REASON', 1],
   ['W-04-07 판정 대기 대상', '/quality/disposition-candidates?warehouseId=1003', 2],

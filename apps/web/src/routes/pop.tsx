@@ -12,7 +12,6 @@ import { RepackLabelIssueScreen } from '../screens/repack-label-issue/screen';
 import { ProductionFlowScreen } from '../screens/production-result/screen';
 import { ReworkResultRegisterScreen } from '../screens/rework-result-register/screen';
 import { RunningChangeScreen } from '../screens/running-change/screen';
-import { ShippingPackingLabelScreen } from '../screens/shipping-packing-label/screen';
 import { PackingResultScreen } from '../screens/packing-result/screen';
 import { ToolUsageScreen } from '../screens/tool-usage/screen';
 import { WorkHoldRegisterScreen } from '../screens/work-hold-register/screen';
@@ -187,21 +186,6 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/packing-work', element: <PackingWorkScreen /> },
   /*
-   * P-04-02 — 납품·포장 라벨 출력. 셸 밖에 서는 POP 태스크 화면이다.
-   *
-   * ⚠ **진입 컨텍스트를 질의 문자열로 받는다**(`?shipmentId=&workerNo=`) — 스펙 §3 의 세로 예산이
-   * 슬랙 0 이라 **출하를 고르는 구획이 화면 안에 없다.** `P-04-01`(포장 실적 등록)이
-   * 「라벨 출력」으로 넘기는 것이 적혀 있는 유일한 경로이고, POP 모드 메뉴에서 직접 들어올
-   * 때 출하를 무엇으로 정하는지는 아직 설계에 없다. 정해지면 `entry-context.ts` 하나가 바뀐다.
-   *
-   * ⚠ **사번도 같은 주소에서 받는다.** 셸이 채우는 자리(`patterns/pop-identity`)는 저장소에
-   * 공급자가 아직 없어 항상 비어 있고, 그것을 읽으면 발행이 영구히 막힌다(실측). 없으면
-   * 발행이 사유와 함께 막힌 채 뜬다 — 모르는 것을 통과로 처리하지 않는다(공유계약 F-6).
-   *
-   * ⚠ **단말 게이팅 선차단을 두지 않는다.** 출력 권한 집행은 서버의 403 이다(스펙 §6).
-   */
-  { path: '/pop/shipping-label', element: <ShippingPackingLabelScreen /> },
-  /*
    * P-04-04 — 재구성 신규 라벨 발행.
    *
    * ⛔ **스펙의 네 구획 중 둘만 서 있다.** ① 발행 대기 목록과 ② 신규 발번은 계약이 「무엇을 몇
@@ -239,10 +223,10 @@ export const popRoutes: RouteObject[] = [
    */
   { path: '/pop/work-hold', element: <WorkHoldRegisterScreen /> },
   /*
-   * P-04-01 — **매칭 스캔 화면**이라 스캐너를 든 손이 화면 앞에 선다. 관리웹 사이드바에
+   * P-04-01 — 출하 선택·매칭·포장·라벨 발행을 한 흐름에서 처리한다. 관리웹 사이드바에
    * 올리지 않는 이유는 앞의 둘과 같다.
    *
-   * ⚠ **진입에 질의 문자열이 없다** — 이 화면은 납품라벨 스캔으로 스스로 출하를 정한다.
+   * ⚠ **진입에 질의 문자열이 없다** — 이 화면은 출하번호 스캔·당일 목록으로 출하를 정한다.
    * 앞 화면이 무엇을 실어 주지 않아도 서고, 그래서 독립 진입이다(스펙 §1 「범위」).
    */
   { path: '/pop/packing', element: <PackingResultScreen /> },

@@ -8,7 +8,7 @@
  *   중복 스캔을 알아채지 못한다.
  */
 export const packingResult = {
-  title: 'Packing 실적 등록',
+  title: '출하 실적 등록',
   panes: {
     scan: '스캔',
     packing: '포장 구성',
@@ -16,6 +16,8 @@ export const packingResult = {
   },
   header: {
     shipment: (shipmentId: number): string => `출하 #${String(shipmentId)}`,
+    shipmentContext: (shipmentRequestNo: string, customerName: string): string =>
+      `${shipmentRequestNo} · ${customerName}`,
     worker: (workerNo: string): string => `사번 ${workerNo}`,
     /** 사번을 아직 못 받았다 — 「없다」가 아니라 「모른다」다. */
     workerUnknown: '사번 미확인',
@@ -26,22 +28,28 @@ export const packingResult = {
   },
   scan: {
     label: {
+      shipment: '출하번호',
       deliveryLabel: '납품라벨',
       productionLot: '생산LOT',
     },
     submit: '읽기',
     scanning: '조회 중…',
     manualEntry: '직접 입력',
+    shipmentSelection: '출하 대상',
+    shipmentListLoading: '목록 조회 중…',
+    todayPickedShipments: '당일 피킹 완료 출하',
+    deliveryLabelReentry: '기존 납품 라벨 재진입',
     /** 둘째 스캔은 첫째가 끝나야 열린다 — 왜 잠겼는지 적는다. */
-    lotLocked: '납품라벨을 먼저 읽으세요',
+    lotLocked: '출하 대상을 먼저 선택하세요',
   },
   match: {
-    ok: '매칭 — 이 납품라벨의 LOT 이 맞습니다',
-    itemMismatch: (itemCode: string): string => `이 납품라벨은 ${itemCode} 용입니다`,
+    ok: '매칭 — 이 출하에 배분된 LOT 입니다',
+    itemMismatch: (itemCode: string): string => `선택한 출하의 대상 품목은 ${itemCode} 입니다`,
     notAllocated: '이 출하에 배분되지 않은 LOT 입니다',
     /** 서버가 사유를 주지 않았을 때. 판정 자체는 「다르다」이므로 막는 것은 같다. */
     unknownReason: '이 납품라벨과 맞지 않는 LOT 입니다',
     labelNotFound: '등록되지 않은 납품라벨입니다',
+    shipmentNotFound: '피킹 완료된 출하번호를 찾지 못했습니다',
     lookupFailed: '조회하지 못했습니다. 다시 읽어 주세요',
   },
   contents: {
@@ -91,12 +99,48 @@ export const packingResult = {
     packed: (count: number): string => `이 출하 포장 ${String(count)} 개`,
     unpacked: (qty: number): string => `미포장 ${String(qty)}`,
   },
+  oqc: {
+    label: 'OQC 상태',
+    status: {
+      NOT_REQUIRED: '비대상',
+      PENDING: '대기',
+      PASSED: '합격',
+      REJECTED: '불합격',
+      HELD: '보류',
+    },
+  },
   actions: {
     /** 읽은 것을 무르고 다시 읽는다 — 이 화면의 입력은 «읽기»다(사용자 지시 2026-09-07). */
     rescan: '다시 읽기',
     confirm: '포장 확정',
     confirming: '확정 중…',
     retry: '다시 시도',
+    labels: '라벨 상태·재출력',
+    packing: '포장 등록으로 돌아가기',
+    cancelUnit: '포장 취소',
+  },
+  automaticLabels: {
+    region: '라벨 자동 출력 상태',
+    packingConfirmed: '포장 확정',
+    oqcPassed: '합격/비대상',
+    oqcWaiting: '검사 대기',
+    lotUnavailable: 'LOT 미표시',
+    failures: {
+      issue: '발행 기록을 만들지 못했습니다.',
+      render: '발행은 완료됐지만 라벨 이미지를 받지 못했습니다.',
+      print: '발행은 완료됐지만 프린터로 출력하지 못했습니다.',
+      report: '인쇄 결과를 서버에 보고하지 못했습니다.',
+    },
+    packingFailure: (reason: string): string => `포장 라벨: ${reason}`,
+    deliveryFailure: (reason: string): string => `납품 라벨: ${reason}`,
+    complete: '포장 라벨과 발행 가능한 납품 라벨의 자동 출력을 마쳤습니다.',
+    waiting: (count: number): string =>
+      `납품 라벨 ${String(count)}건은 OQC 합격 또는 검사 비대상으로 바뀐 뒤 출력할 수 있습니다.`,
+    retryPackingIssue: '포장 라벨 발행 다시 시도',
+    retryPackingRendition: '포장 라벨 이미지 다시 받기',
+    retryDeliveryIssue: '납품 라벨 발행 다시 시도',
+    retryDeliveryRendition: '납품 라벨 이미지 다시 받기',
+    openReissue: '라벨 재출력 열기',
   },
   /**
    * 확정이 막힌 사유 — 「어떻게 풀 것인가」를 담는다(공유계약 G-3).

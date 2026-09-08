@@ -33,8 +33,14 @@ import {
 
 const t = messages.shippingPackingLabel;
 
+export interface ShipmentLabelPanelProps {
+  shipmentId?: number | null;
+  workerNo?: string | null;
+  embedded?: boolean;
+}
+
 /**
- * `P-04-02` 납품·포장 라벨 출력 (POP).
+ * `P-04-01` 안의 납품·포장 라벨 상태·재출력 구획.
  *
  * 스펙 §3 배치를 따른다 — **세로 네 구획**: ① 라벨 종류 · ② 대상 · ③ 재출력 · ④ 프린터.
  * 좌우로 펴지 않는다. 1024×768 에서 세로 예산의 슬랙이 0 이라 ③은 **재발행일 때만 펼친다**
@@ -46,7 +52,11 @@ const t = messages.shippingPackingLabel;
  * ⭐ **화면 순서가 「발행 → 미리보기 → 인쇄」다.** 그리기 경로가 발행 기록 번호를 받으므로
  * 발행 전 미리보기는 이번 계약에 없다(착수 이슈 §6).
  */
-export const ShippingPackingLabelScreen = () => {
+export const ShippingPackingLabelScreen = ({
+  shipmentId: shipmentIdOverride,
+  workerNo: workerNoOverride,
+  embedded = false,
+}: ShipmentLabelPanelProps = {}) => {
   /*
    * 귀속 사번은 **셸이 아는 값**이다(진입점 화면 소관). 쓰기가 헤더로 요구하므로 없으면
    * 부를 수 없고, 그 사실을 감추지 않고 사유로 보인다(공유계약 F-1 · F-6).
@@ -54,7 +64,9 @@ export const ShippingPackingLabelScreen = () => {
    * ⚠ 셸이 채우는 자리(`pop-identity`)는 저장소에 공급자가 아직 없어 **항상 비어 있다** —
    * 진입 주소에서 받는다(전례 `P-02-05`). 셸이 서면 `entry-context` 하나가 바뀐다.
    */
-  const { shipmentId, workerNo } = useShippingLabelEntry();
+  const entry = useShippingLabelEntry();
+  const shipmentId = shipmentIdOverride === undefined ? entry.shipmentId : shipmentIdOverride;
+  const workerNo = workerNoOverride === undefined ? entry.workerNo : workerNoOverride;
   const shipment = useShipment(shipmentId);
 
   /*
@@ -172,26 +184,31 @@ export const ShippingPackingLabelScreen = () => {
      * ⚠ **이 화면이 최상위 랜드마크다.** POP 라우트는 관리웹 셸을 지나지 않으므로(`routes/pop`)
      * `main` 을 세워 주는 바깥이 없다 — 먼저 선 POP 화면들과 같은 형태다.
      */
-    <main className="pop-slabel-screen pop-ui" aria-label={t.title}>
+    <section
+      className={`pop-slabel-screen pop-ui${embedded ? ' pop-slabel-screen--embedded' : ''}`}
+      aria-label={t.title}
+    >
       {/*
        * 머리줄은 **다른 POP 화면과 같은 어휘로 쓴다**(`pop-header` · `pop-title` ·
        * `pop-context-right`). 이 화면만 자기 이름(`pop-slabel-head`)과 DS `PageHeader` 로
        * 세웠더니 규격(`app/pop.css` 「머리줄」)이 이 화면에만 걸리지 않아, 머리줄이 358px 로
        * 늘고 배경도 구분선도 없이 떴다(실측 — 다른 화면은 72px).
        */}
-      <header className="pop-header">
-        <h1 className="pop-title">{t.title}</h1>
-        {shipmentId === null ? null : (
-          /* 맥락은 화면명 옆이다 — 오른쪽 끝은 상태 자리다(스펙 §3 머리줄). */
-          <p className="pop-context">
-            {shipment.isPending
-              ? t.shipment.loading
-              : shipment.isError || shipment.data === undefined
-                ? t.shipment.loadFailed
-                : t.shipment.context(shipment.data.shipmentNo)}
-          </p>
-        )}
-      </header>
+      {!embedded ? (
+        <header className="pop-header">
+          <h1 className="pop-title">{t.title}</h1>
+          {shipmentId === null ? null : (
+            /* 맥락은 화면명 옆이다 — 오른쪽 끝은 상태 자리다(스펙 §3 머리줄). */
+            <p className="pop-context">
+              {shipment.isPending
+                ? t.shipment.loading
+                : shipment.isError || shipment.data === undefined
+                  ? t.shipment.loadFailed
+                  : t.shipment.context(shipment.data.shipmentNo)}
+            </p>
+          )}
+        </header>
+      ) : null}
 
       {shipmentId === null ? (
         // ⛔ 출하가 없으면 아무 목록도 그리지 않는다 — 남의 출하 라벨을 뽑게 된다.
@@ -241,12 +258,6 @@ export const ShippingPackingLabelScreen = () => {
               />
             ) : (
               <>
-                {/*
-                 * ⚠ **회차 열의 한계를 밝힌다.** 발행 현황 조회가 대상 유형 코드를 조건으로
-                 * 받는데 그 값이 아직 확정되지 않았다 — 서버가 가진 문자열과 다르면 이미
-                 * 뽑은 것도 「없음」으로 보인다. 감추면 사용자가 그 값을 믿고 재발행을 놓친다.
-                 */}
-                <AlertBanner variant="info">{t.targets.seqNotice}</AlertBanner>
                 {/* 표만 스크롤한다 — 구획째 스크롤하면 바닥의 프린터 줄이 같이 밀려 사라진다. */}
                 <div className="pop-slabel-table">
                   <TargetTable
@@ -375,6 +386,6 @@ export const ShippingPackingLabelScreen = () => {
           }}
         />
       )}
-    </main>
+    </section>
   );
 };

@@ -5,11 +5,18 @@ import { useId, useState } from 'react';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { toApiError } from '../../patterns/request';
+import { ShippingPackingLabelScreen } from '../shipping-packing-label/screen';
 
+import { AutomaticLabels, type AutomaticLabelRun } from './automatic-labels';
 import { confirmLockReason } from './confirm-lock';
 import { ContentsTable, segmentLotNo } from './contents-table';
 import { usePackingIdentity } from './entry-context';
-import { useHandlingUnitCreate, usePackingConfirm, type OpenHandlingUnit } from './mutations';
+import {
+  useHandlingUnitCancel,
+  useHandlingUnitCreate,
+  usePackingConfirm,
+  type OpenHandlingUnit,
+} from './mutations';
 import { addLine, lineOf, qtyError, remainingOf, removeLine, toProgress } from './packing-draft';
 import {
   useHandlingUnitTypeOptions,
@@ -18,10 +25,13 @@ import {
   useLotScan,
   useParentCandidates,
   useShipmentAllocations,
+  useShipmentScan,
+  useShipmentSelection,
+  useTodayShipments,
 } from './queries';
 import { ScanField } from './scan-field';
 import { useTerminalGate } from './terminal-gating';
-import type { MatchedLot, PackedLine, ShipmentLotAllocation } from './types';
+import type { MatchedLot, PackedLine, ShipmentEntry, ShipmentLotAllocation } from './types';
 import { useOnline } from './use-online';
 
 const t = messages.packingResult;
@@ -46,12 +56,14 @@ export const PackingResultScreen = () => {
   const titleId = useId();
   const typeLabelId = useId();
   const parentLabelId = useId();
+  const shipmentLabelId = useId();
   const identity = usePackingIdentity();
   const isOnline = useOnline();
   const gate = useTerminalGate(identity.terminalId, identity.processId);
 
   /** ① 이 라벨이 정한 출하. 둘째 스캔의 질의 축이며 **첫 스캔 응답에서 그대로 온다**. */
   const [label, setLabel] = useState<ShipmentLotAllocation | null>(null);
+  const [entry, setEntry] = useState<ShipmentEntry | null>(null);
   /**
    * 읽은 납품라벨 «코드» 그대로. 설계 §3 도면이 ① 상자 오른쪽에 `DL-2026-0455-001` 을 세워
    * 두었다 — 칸은 읽고 나면 스스로 비우므로, 남겨 두지 않으면 **무엇을 읽었는지 확인할 길이
@@ -59,7 +71,7 @@ export const PackingResultScreen = () => {
    * 대조할 수 없다.
    */
   const [labelCode, setLabelCode] = useState<string | null>(null);
-  const [labelMissing, setLabelMissing] = useState(false);
+  const [entryError, setEntryError] = useState<'shipment' | 'label' | null>(null);
   /** ② 마지막 판정. 담은 뒤에도 남겨 둔다 — 방금 읽은 것이 무엇이었는지가 사라지면 안 된다. */
   const [matched, setMatched] = useState<MatchedLot | null>(null);
   const [lines, setLines] = useState<PackedLine[]>([]);
@@ -73,23 +85,41 @@ export const PackingResultScreen = () => {
   const [openUnit, setOpenUnit] = useState<OpenHandlingUnit | null>(null);
   const [parentId, setParentId] = useState<string>(NO_PARENT);
   const [confirmedNo, setConfirmedNo] = useState<string | null>(null);
+  const [automaticLabelRun, setAutomaticLabelRun] = useState<AutomaticLabelRun | null>(null);
+  const [isLabelMode, setLabelMode] = useState(false);
 
   const labelScan = useLabelScan();
+  const shipmentScan = useShipmentScan();
+  const shipmentSelection = useShipmentSelection();
+  const todayShipments = useTodayShipments();
   const lotScan = useLotScan();
   const typeOptions = useHandlingUnitTypeOptions();
   /* 소수점 키는 **담을 LOT 의 단위**가 정한다 — 개수로 세는 자재에는 그리지 않는다. */
   const allowsDecimal = useUomDecimals();
-  const shipmentId = label?.shipmentId ?? null;
+  const shipmentId = entry?.shipmentId ?? label?.shipmentId ?? null;
   const warehouseId = label?.warehouseId ?? null;
   const parents = useParentCandidates(warehouseId);
   const shipmentAllocations = useShipmentAllocations(shipmentId);
   const progress = toProgress(shipmentAllocations.allocations);
+  const headerAllocation = entry?.allocations[0] ?? label;
+  const oqcStatuses = [
+    ...new Set(
+      shipmentAllocations.allocations.map(
+        (allocation) => t.oqc.status[allocation.shippingInspectionStatusCode],
+      ),
+    ),
+  ];
 
   const createUnit = useHandlingUnitCreate();
+  const cancelUnit = useHandlingUnitCancel();
 
   const confirm = usePackingConfirm({
     shipmentId,
     onSuccess: (handlingUnit) => {
+      const packedAllocations = shipmentAllocations.allocations.filter((allocation) =>
+        lines.some((line) => line.shipmentLotAllocationId === allocation.shipmentLotAllocationId),
+      );
+      setAutomaticLabelRun({ handlingUnit, allocations: packedAllocations });
       /* 확정하면 이 포장은 끝났다 — 다음 포장을 위해 담긴 것을 비우되 라벨은 남긴다(같은 출하를 계속 싼다). */
       setLines([]);
       setMatched(null);
@@ -102,6 +132,31 @@ export const PackingResultScreen = () => {
     },
   });
 
+  const applyEntry = (next: ShipmentEntry): void => {
+    setEntry(next);
+    setLabel(next.allocations[0] ?? null);
+    setLabelCode(next.shipmentNo);
+    setEntryError(null);
+    setMatched(null);
+    setLines([]);
+    setAutomaticLabelRun(null);
+  };
+
+  const scanShipment = (shipmentNo: string): void => {
+    setMergeNote(null);
+    setConfirmedNo(null);
+    shipmentScan.mutate(shipmentNo, {
+      onSuccess: (outcome) => {
+        if (outcome === null) {
+          setEntryError('shipment');
+          return;
+        }
+
+        applyEntry(outcome);
+      },
+    });
+  };
+
   const scanLabel = (code: string): void => {
     setMergeNote(null);
     setConfirmedNo(null);
@@ -109,14 +164,22 @@ export const PackingResultScreen = () => {
     labelScan.mutate(code, {
       onSuccess: (outcome) => {
         if (outcome.kind === 'not-found') {
-          setLabelMissing(true);
+          setEntryError('label');
           setLabel(null);
 
           return;
         }
 
-        setLabelMissing(false);
+        setEntryError(null);
         setLabel(outcome.allocations[0] ?? null);
+        const first = outcome.allocations[0];
+        if (first !== undefined) {
+          setEntry({
+            shipmentId: first.shipmentId,
+            shipmentNo: first.shipmentRequestNo ?? `#${String(first.shipmentId)}`,
+            allocations: outcome.allocations,
+          });
+        }
         setMatched(null);
       },
     });
@@ -194,7 +257,8 @@ export const PackingResultScreen = () => {
   });
 
   const matchMessage = ((): { tone: 'success' | 'error'; text: string } | null => {
-    if (labelMissing) return { tone: 'error', text: t.match.labelNotFound };
+    if (entryError === 'shipment') return { tone: 'error', text: t.match.shipmentNotFound };
+    if (entryError === 'label') return { tone: 'error', text: t.match.labelNotFound };
     if (labelScan.isError || lotScan.isError) return { tone: 'error', text: t.match.lookupFailed };
     if (matched === null) return null;
     if (matched.verdict.matched) return { tone: 'success', text: t.match.ok };
@@ -214,7 +278,10 @@ export const PackingResultScreen = () => {
   })();
 
   return (
-    <main className="packing-shell pop-ui" aria-labelledby={titleId}>
+    <main
+      className={`packing-shell pop-ui${isLabelMode ? ' packing-shell--labels' : ''}`}
+      aria-labelledby={titleId}
+    >
       {/* 헤더 64 — 「무엇을」이 왼쪽, 「어디서·누가」가 오른쪽이다(스펙 §3). */}
       <header className="pop-header">
         <h1 className="pop-title" id={titleId}>
@@ -225,7 +292,17 @@ export const PackingResultScreen = () => {
          *    어느 출하인지 표시됩니다」로 채우고 있었는데 설계에 없는 문장이고, 바로 아래
          *    ① 상자가 「납품라벨」 칸으로 같은 말을 이미 하고 있다.
          */}
-        {shipmentId !== null && <p className="pop-context">{t.header.shipment(shipmentId)}</p>}
+        {shipmentId !== null && (
+          <p className="pop-context">
+            {headerAllocation?.shipmentRequestNo !== undefined &&
+            headerAllocation.customerName !== undefined
+              ? t.header.shipmentContext(
+                  headerAllocation.shipmentRequestNo,
+                  headerAllocation.customerName,
+                )
+              : t.header.shipment(shipmentId)}
+          </p>
+        )}
         {/*
          * ⛔ **사번과 연결을 한 표식에 묶지 않는다.** 사번을 담은 칩의 «색»으로 온·오프를
          *    말하고 있었다 — 연결이 끊기면 사번 칩이 붉어져 «사번이 잘못된 것»처럼 보이고,
@@ -233,6 +310,17 @@ export const PackingResultScreen = () => {
          *    갈라 세운다(설계 §3 머리줄도 「박출하  ●온」 둘이다).
          */}
         <div className="pop-context-right">
+          <Button
+            type="button"
+            variant="outlined"
+            size="md"
+            disabled={shipmentId === null}
+            onClick={() => {
+              setLabelMode((current) => !current);
+            }}
+          >
+            {isLabelMode ? t.actions.packing : t.actions.labels}
+          </Button>
           <PopWorkerTag workerNo={identity.workerNo} />
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
             {isOnline ? t.header.online : t.header.offline}
@@ -240,12 +328,25 @@ export const PackingResultScreen = () => {
         </div>
       </header>
 
+      {isLabelMode ? (
+        <ShippingPackingLabelScreen embedded shipmentId={shipmentId} workerNo={identity.workerNo} />
+      ) : null}
+
       {/*
        * 본문 616 — ① 88 + ② 88 + ③ 320 + ④ 88 (스펙 §3-1 세로 예산 · 슬랙 0).
        * ⛔ 구획을 좌우로 펴지 않는다 — 스캔이 «순서»이기 때문이다. 위에서 아래로 읽는 차례가
        * 곧 작업 순서이고, 좌우로 나누면 ①과 ②의 선후가 사라진다.
        */}
       <div className="packing-body">
+        {automaticLabelRun !== null && identity.workerNo !== null ? (
+          <AutomaticLabels
+            run={automaticLabelRun}
+            workerNo={identity.workerNo}
+            onOpenManagement={() => {
+              setLabelMode(true);
+            }}
+          />
+        ) : null}
         {(confirmedNo !== null || confirm.isError) && (
           <div className="banner-slot">
             {confirmedNo !== null ? (
@@ -256,13 +357,35 @@ export const PackingResultScreen = () => {
           </div>
         )}
 
-        {/* ① 납품라벨 스캔 */}
+        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. 납품라벨은 재진입 보조 경로다. */}
         {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
         <section className="packing-scan">
           <ScanField
-            label={t.scan.label.deliveryLabel}
-            isScanning={labelScan.isPending}
-            onScan={scanLabel}
+            label={t.scan.label.shipment}
+            isScanning={shipmentScan.isPending}
+            onScan={scanShipment}
+          />
+          <span className="field-label" id={shipmentLabelId}>
+            {t.scan.shipmentSelection}
+          </span>
+          <Select
+            aria-labelledby={shipmentLabelId}
+            placeholder={
+              todayShipments.isPending ? t.scan.shipmentListLoading : t.scan.todayPickedShipments
+            }
+            disabled={todayShipments.isError || shipmentSelection.isPending}
+            value={entry === null ? null : String(entry.shipmentId)}
+            onChange={(value) => {
+              const selected = todayShipments.shipments.find(
+                (shipment) => String(shipment.shipmentId) === value,
+              );
+              if (selected === undefined) return;
+              shipmentSelection.mutate(selected, { onSuccess: applyEntry });
+            }}
+            options={todayShipments.shipments.map((shipment) => ({
+              value: String(shipment.shipmentId),
+              label: shipment.shipmentNo,
+            }))}
           />
           {/*
            * 읽은 라벨은 칸 옆에 남는다(설계 §3 도면).
@@ -272,6 +395,14 @@ export const PackingResultScreen = () => {
            *    좁아지면 다음 스캔을 받을 자리가 흔들린다.
            */}
           <p className="packing-scanned-code">{labelCode}</p>
+        </section>
+
+        <section className="packing-reentry" aria-label={t.scan.deliveryLabelReentry}>
+          <ScanField
+            label={t.scan.label.deliveryLabel}
+            isScanning={labelScan.isPending}
+            onScan={scanLabel}
+          />
         </section>
 
         {/* ② 생산LOT 스캔 — 판정 문구가 칸 바로 아래 붙는다. 떨어뜨리면 어느 스캔의 답인지 흐려진다. */}
@@ -413,6 +544,11 @@ export const PackingResultScreen = () => {
         <section className="packing-progress" aria-label={t.panes.progress}>
           <span>{t.progress.packed(progress.packedCount)}</span>
           <span>{t.progress.unpacked(progress.unpackedQty)}</span>
+          {oqcStatuses.length > 0 ? (
+            <span>
+              {t.oqc.label}: {oqcStatuses.join(' · ')}
+            </span>
+          ) : null}
         </section>
       </div>
 
@@ -432,6 +568,31 @@ export const PackingResultScreen = () => {
             {t.actions.retry}
           </Button>
         )}
+
+        {openUnit !== null ? (
+          <Button
+            type="button"
+            variant="outlined"
+            size="md"
+            disabled={cancelUnit.isPending}
+            onClick={() => {
+              if (identity.workerNo === null) return;
+              cancelUnit.mutate(
+                { handlingUnitId: openUnit.handlingUnitId, workerNo: identity.workerNo },
+                {
+                  onSuccess: () => {
+                    setOpenUnit(null);
+                    setLines([]);
+                    setMatched(null);
+                    setQty('');
+                  },
+                },
+              );
+            }}
+          >
+            {t.actions.cancelUnit}
+          </Button>
+        ) : null}
 
         {/*
          * ⛔ **읽은 것이 없으면 무를 것도 없다.** 아무것도 읽지 않은 채로 열려 있어, 눌러도

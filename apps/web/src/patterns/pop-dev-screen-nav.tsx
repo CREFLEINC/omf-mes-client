@@ -74,15 +74,6 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
   { path: '/pop/material-lot-label', label: 'P-01-01 자재LOT 등록·라벨' },
-  /*
-   * 씨앗의 확정 출하(`SH-2026-0455`)다. ⚠ **번호를 바꾸면 화면이 「없는 자원」으로 비어 뜬다**
-   * — 씨앗에 없는 번호는 서버가 404 로 답한다(실측 2026-09-08).
-   */
-  {
-    path: '/pop/shipping-label',
-    label: 'P-04-02 납품·포장 라벨 출력',
-    query: '?shipmentId=9901&workerNo=100029',
-  },
   { path: '/pop/rework-results', label: 'P-04-03 재작업 실적 등록' },
   {
     path: '/pop/tool-usage',
@@ -134,7 +125,7 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
    * ⚠ 진입값이 없다 — 이 화면은 납품라벨 스캔으로 스스로 출하를 정한다. 단말·공정·사번은
    * 셸이 채우고, 비어 있을 때만 주소를 본다(`entry-context.ts`).
    */
-  { path: '/pop/packing', label: 'P-04-01 Packing 실적 등록' },
+  { path: '/pop/packing', label: 'P-04-01 출하 실적 등록' },
 ];
 
 /** 진입 화면 — 이 셀렉터가 서 있는 자리라 목록에서 뺀다. 감지기가 이 예외를 안다. */

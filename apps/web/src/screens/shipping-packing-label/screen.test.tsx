@@ -248,8 +248,7 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
 describe('ShippingPackingLabelScreen — 재발행', () => {
   it('이미 발행된 대상을 고르면 사유 없이 발행하지 못한다', async () => {
     const user = userEvent.setup();
-    // 회차는 «LOT» 단위로 온다 — 줄 식별자(배분 9401)가 아니라 LOT 식별자다.
-    renderScreen({ summaries: [summary(9501, 2, '2026-09-02T04:20:00Z')] });
+    renderScreen({ summaries: [summary(9401, 2, '2026-09-02T04:20:00Z')] });
 
     await chooseKind(user, '납품라벨');
     await user.click(await rowCheckbox(0));
@@ -261,7 +260,7 @@ describe('ShippingPackingLabelScreen — 재발행', () => {
 
   it('고를 수 있는 사유가 없으면 왜 재발행할 수 없는지 말한다', async () => {
     const user = userEvent.setup();
-    renderScreen({ summaries: [summary(9501, 1)], reasons: [] });
+    renderScreen({ summaries: [summary(9401, 1)], reasons: [] });
 
     await chooseKind(user, '납품라벨');
     await user.click(await rowCheckbox(0));
@@ -299,8 +298,7 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
 
     expect(body).toMatchObject({
       documentTypeCode: 'DELIVERY_LABEL',
-      // 대상 유형이 LOT 이라 대상 식별자도 LOT 이다(줄은 배분 9401).
-      targets: [{ targetTypeCode: 'LOT', targetId: 9501, lotId: 9501 }],
+      targets: [{ targetTypeCode: 'SHIPMENT_LOT_ALLOCATION', targetId: 9401, lotId: 9501 }],
       printerName: 'SYN-PRN-01',
     });
     expect(body).not.toHaveProperty('issueSeq');

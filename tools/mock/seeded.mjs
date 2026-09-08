@@ -1669,24 +1669,27 @@ const allocationRows = () =>
 const shipmentNoOf = (shipmentId) =>
   state.shipments.find((row) => row.shipmentId === shipmentId)?.shipmentNo ?? '';
 
+const deliveryLabelNoOf = (row) =>
+  `DL-${shipmentNoOf(row.shipmentId)}-${String(row.shipmentLotAllocationId)}`;
+
 on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
   const shipmentId = num(query, 'shipmentId');
   const q = query.get('q');
   const lotQ = query.get('lotQ');
+  const unpackedOnly = bool(query, 'unpackedOnly');
+  const oqcPassed = bool(query, 'oqcPassed');
   const rows = allocationRows();
   const hit = (value, needle) =>
     String(value ?? '')
       .toUpperCase()
       .includes(needle);
 
-  /* ① 납품라벨 스캔 — 출하번호·LOT 번호로 찾는다. 못 찾으면 «없는 라벨»이라 빈 목록이다. */
+  /* 기존 납품라벨 재진입 — q의 검색 축은 납품라벨 번호 하나다. */
   if (q !== null) {
     const needle = q.trim().toUpperCase();
 
     return page(
-      needle === ''
-        ? []
-        : rows.filter((row) => hit(shipmentNoOf(row.shipmentId), needle) || hit(row.lotNo, needle)),
+      needle === '' ? [] : rows.filter((row) => hit(deliveryLabelNoOf(row), needle)),
       query,
     );
   }
@@ -1708,7 +1711,12 @@ on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
 
   /* ③ 진행 표시 — 이 출하의 배분 전부. */
   return page(
-    shipmentId === null ? rows : rows.filter((row) => row.shipmentId === shipmentId),
+    rows.filter(
+      (row) =>
+        (shipmentId === null || row.shipmentId === shipmentId) &&
+        (unpackedOnly !== true || row.allocatedQty - row.packedQty > 0) &&
+        (oqcPassed === null || row.oqcPassed === oqcPassed),
+    ),
     query,
   );
 });

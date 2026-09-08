@@ -276,6 +276,43 @@ export const useHandlingUnitCreate = (): UseMutationResult<
   });
 };
 
+export interface CancelHandlingUnitInput {
+  handlingUnitId: number;
+  workerNo: string;
+}
+
+/** 확정 전 빈 포장 취소. 확정된 포장은 서버가 409로 거부하며 이 화면은 해체하지 않는다. */
+export const useHandlingUnitCancel = (): UseMutationResult<
+  void,
+  Error,
+  CancelHandlingUnitInput
+> => {
+  const { client } = useApiClient();
+  const kept = useRef<{ handlingUnitId: number; key: string } | null>(null);
+
+  return useMutation({
+    mutationFn: async ({ handlingUnitId, workerNo }: CancelHandlingUnitInput) => {
+      if (kept.current?.handlingUnitId !== handlingUnitId) {
+        kept.current = { handlingUnitId, key: crypto.randomUUID() };
+      }
+      await runRequest(() =>
+        client.DELETE('/inventory/handling-units/{handlingUnitId}', {
+          params: {
+            path: { handlingUnitId },
+            header: {
+              'Idempotency-Key': kept.current?.key ?? crypto.randomUUID(),
+              'X-Worker-No': workerNo,
+            },
+          },
+        }),
+      );
+    },
+    onSuccess: () => {
+      kept.current = null;
+    },
+  });
+};
+
 export interface PackingWriteOptions {
   shipmentId: number | null;
   onSuccess: (handlingUnit: OpenHandlingUnit) => void;

@@ -6,8 +6,8 @@ import type { TargetRow } from './types';
 
 const deliveryRow: TargetRow = {
   targetId: 9401,
-  /** 납품 라벨은 서버에 LOT 으로 묻는다 — 줄은 배분이지만 대상은 LOT 이다. */
-  issueTargetId: 9501,
+  /** 납품 라벨은 출하 LOT 배분을 대상으로 발행한다. */
+  issueTargetId: 9401,
   displayName: 'SYN-LOT-0001',
   lotId: 9501,
   isIssuable: true,
@@ -33,7 +33,9 @@ describe('toDocumentIssueBody', () => {
     });
 
     expect(body.documentTypeCode).toBe(DELIVERY_LABEL);
-    expect(body.targets).toEqual([{ targetTypeCode: 'LOT', targetId: 9501, lotId: 9501 }]);
+    expect(body.targets).toEqual([
+      { targetTypeCode: 'SHIPMENT_LOT_ALLOCATION', targetId: 9401, lotId: 9501 },
+    ]);
   });
 
   it('포장 라벨은 LOT 을 싣지 않는다 — 한 포장에 여러 LOT 이 섞여 하나로 정할 수 없다', () => {
@@ -82,17 +84,19 @@ describe('toDocumentIssueBody', () => {
     expect(filled.printerName).toBe('SYN-PRN-01');
   });
 
-  it('같은 LOT 의 배분 두 줄을 골라도 대상은 한 건이다 — 회차가 두 번 오르지 않는다', () => {
+  it('같은 LOT 이라도 배분이 다르면 납품 라벨 대상도 둘이다', () => {
     const body = toDocumentIssueBody({
       kind: DELIVERY_LABEL,
-      // 줄은 둘(배분 9401·9402)이지만 서버가 아는 대상은 같은 LOT 하나다.
-      rows: [deliveryRow, { ...deliveryRow, targetId: 9402 }],
+      rows: [deliveryRow, { ...deliveryRow, targetId: 9402, issueTargetId: 9402 }],
       printerName: null,
       reissueReasonCode: null,
     });
 
-    expect(body.targets).toHaveLength(1);
-    expect(body.targets[0]).toMatchObject({ targetTypeCode: 'LOT', targetId: 9501 });
+    expect(body.targets).toHaveLength(2);
+    expect(body.targets[0]).toMatchObject({
+      targetTypeCode: 'SHIPMENT_LOT_ALLOCATION',
+      targetId: 9401,
+    });
   });
 
   it('고른 대상 전부가 한 본문에 실린다 — 한 트랜잭션이다', () => {

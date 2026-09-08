@@ -1491,7 +1491,7 @@ export const createSeed = (now = new Date()) => {
       shipmentRequestId: 9602,
       warehouseId: 1002,
       statusCode: 'CONFIRMED',
-      shippedAt: iso(-1, 15),
+      shippedAt: iso(0, 15),
       expedited: false,
       lines: [
         {

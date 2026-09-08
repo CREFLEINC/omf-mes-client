@@ -7341,6 +7341,20 @@ dl.filter-bar.approval-inbox-detail-facts {
   padding: var(--space-4);
 }
 
+.packing-shell--labels {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.packing-shell--labels > .packing-body,
+.packing-shell--labels > .packing-actions {
+  display: none;
+}
+
+.packing-shell--labels > .pop-slabel-screen--embedded {
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .packing-body {
   display: flex;
   flex-direction: column;

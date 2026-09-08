@@ -4,7 +4,13 @@ import { useMutation, useQuery, type UseMutationResult } from '@tanstack/react-q
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 
-import type { HandlingUnit, MatchedLot, ShipmentLotAllocation } from './types';
+import type {
+  HandlingUnit,
+  MatchedLot,
+  Shipment,
+  ShipmentEntry,
+  ShipmentLotAllocation,
+} from './types';
 
 /**
  * 이 화면의 읽기 — **스캔 둘 · 상위 포장 후보 · 포장 유형 · 진행**.
@@ -35,6 +41,91 @@ export const packingResultKeys = {
   parents: (warehouseId: number) => ['packing-result', 'parents', warehouseId] as const,
   progress: (shipmentId: number) => ['packing-result', 'progress', shipmentId] as const,
   uoms: ['packing-result', 'uoms'] as const,
+  todayShipments: (businessDate: string) =>
+    ['packing-result', 'today-shipments', businessDate] as const,
+};
+
+const localDate = (now: Date): string => {
+  const year = String(now.getFullYear());
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const unpackedAllocations = async (
+  client: Client,
+  shipmentId: number,
+): Promise<ShipmentLotAllocation[]> => {
+  const data = await runRequest(() =>
+    client.GET('/logistics/shipment-lot-allocations', {
+      params: { query: { shipmentId, unpackedOnly: true, size: OPTION_SIZE } },
+    }),
+  );
+
+  return data.items ?? [];
+};
+
+const entryOfShipment = async (client: Client, shipment: Shipment): Promise<ShipmentEntry> => ({
+  shipmentId: shipment.shipmentId,
+  shipmentNo: shipment.shipmentNo,
+  allocations: await unpackedAllocations(client, shipment.shipmentId),
+});
+
+/** 출하번호 정확 일치 스캔. 부분 검색이나 납품 라벨 q와 의미를 섞지 않는다. */
+export const useShipmentScan = (): UseMutationResult<ShipmentEntry | null, Error, string> => {
+  const { client } = useApiClient();
+
+  return useMutation({
+    mutationFn: async (shipmentNo: string) => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/shipments', {
+          params: { query: { pickedOnly: true, shipmentNo, page: 1, size: 1 } },
+        }),
+      );
+      const shipment = data.items[0];
+
+      return shipment === undefined ? null : entryOfShipment(client, shipment);
+    },
+  });
+};
+
+/** 현재 영업일 피킹 완료 출하. 선택 팝업의 검색은 PopSelect가 로컬에서만 수행한다. */
+export const useTodayShipments = (): {
+  shipments: Shipment[];
+  isPending: boolean;
+  isError: boolean;
+} => {
+  const { client } = useApiClient();
+  const businessDate = localDate(new Date());
+  const query = useQuery({
+    queryKey: packingResultKeys.todayShipments(businessDate),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/shipments', {
+          params: {
+            query: {
+              pickedOnly: true,
+              shipDateFrom: businessDate,
+              shipDateTo: businessDate,
+              page: 1,
+              size: OPTION_SIZE,
+            },
+          },
+        }),
+      );
+
+      return data.items;
+    },
+  });
+
+  return { shipments: query.data ?? [], isPending: query.isPending, isError: query.isError };
+};
+
+export const useShipmentSelection = (): UseMutationResult<ShipmentEntry, Error, Shipment> => {
+  const { client } = useApiClient();
+
+  return useMutation({ mutationFn: (shipment: Shipment) => entryOfShipment(client, shipment) });
 };
 
 /** 첫 스캔의 결과. **빈 목록이 「없는 납품라벨」이다** — 계약이 404 를 내지 않는다. */

@@ -6,8 +6,8 @@ import type { components } from '@omf-mes/api-client';
  * | 값 | 상태 | 근거 |
  * | --- | :-: | --- |
  * | `DELIVERY_LABEL` · `PACKING_LABEL` | ✅ 확정 | 계약 `DocumentIssueCreate.documentTypeCode` enum 9종 · 변경 통지 #700 |
- * | `DELIVERY_TARGET_TYPE_CODE` | ⚠ **자리표시** | 계약 `DocumentTarget.targetTypeCode` 가 `x-no-example` |
- * | `PACKING_TARGET_TYPE_CODE` | ⚠ **자리표시** | 동상 |
+ * | `DELIVERY_TARGET_TYPE_CODE` | ✅ 확정 | P-04-01 §4·공통 출력물 계약 |
+ * | `PACKING_TARGET_TYPE_CODE` | ✅ 확정 | P-04-01 §4·공통 출력물 계약 |
  * | `REISSUE_REASON_CODE_GROUP` | ✅ 확정 | 계약이 코드 그룹 코드로 명시 |
  */
 import {
@@ -32,42 +32,10 @@ export const LABEL_KINDS = [PACKING_LABEL, DELIVERY_LABEL] as const;
 
 export type LabelKind = (typeof LABEL_KINDS)[number];
 
-/**
- * ⚠ **자리표시다 — 그리고 이 화면에서는 «쓰기 전용» 자리표시가 아니다.**
- *
- * 앞선 두 화면(`P-01-01`·`P-02-05`)은 이 값을 `POST /app/document-issues` 에 **싣기만** 했다.
- * 쓰기는 서버가 보낸 값을 그대로 저장하므로 문자열이 무엇이든 기록끼리는 앞뒤가 맞는다.
- *
- * ⛔ **이 화면은 같은 값으로 «조회»도 한다.** `GET /app/document-issues/summary` 가 이 값을
- * **필수 질의**로 받고, 목록의 「최근 발행 · 회차」 열과 재발행 사유 활성 조건이 거기 달렸다.
- * 조회는 서버가 이미 가진 값과 대조하므로, 문자열이 다르면 **「발행한 적 없다」가 조용히
- * 돌아온다.** 그러면 화면은 재발행을 신규로 처리하고 `uq_document_issue_log`
- * (문서유형·대상유형·대상·회차)에 부딪히거나 회차가 어긋난 채 쌓인다.
- *
- * ⭐ **그래서 화면이 그 사실을 감추지 않는다** — 회차 열에 「확인 중」을 그리지 않고,
- * 조회가 0 을 돌려준 것과 값이 확정되지 않은 것을 안내로 함께 밝힌다(공유계약 G-2 · F-6).
- *
- * 값이 확정되면 **이 파일의 두 줄만** 바뀐다.
- */
-/*
- * ⚠ **가정한 값이다 — 확정이 아니다**(사용자 결정 2026-09-03 · 설계팀 질문 대기).
- *
- * ⛔ 종전의 `'SHIPMENT_LOT_ALLOCATION'` 은 **계약이 거부한다.** 회차 조회
- * `GET /app/document-issues/summary` 의 `targetTypeCode` 가 7값 enum 으로 닫혀 있고
- * (`LOT`·`SERIAL_NUMBER`·`HANDLING_UNIT`·`GOODS_ISSUE_LINE`·`MOLD`·`LOCATION`·
- * `INSPECTION_RESULT`) 「출하 배분」이 그 안에 없다 — 실측 2026-09-03, 목 서버가 400 을
- * 냈고 화면은 회차를 몰라 발행을 막았다.
- *
- * enum 안에서 **우리가 실제로 가진 식별자로 부를 수 있는 값은 `LOT` 하나다**
- * (`GOODS_ISSUE_LINE` 은 출고 라인 식별자를 요구하는데 이 화면에 그 값이 없다).
- * 앞선 라벨 화면(`P-01-01`)도 같은 값을 쓴다.
- *
- * ⛔ **그래서 납품 라벨의 조회·발행 대상 식별자는 배분이 아니라 LOT 이다**
- * (`TargetRow.issueTargetId`). 목록의 줄은 여전히 배분 단위다.
- */
-export const DELIVERY_TARGET_TYPE_CODE = 'LOT';
+/** 납품 라벨은 출하 LOT 배분 한 건을 대상으로 발행·조회한다. */
+export const DELIVERY_TARGET_TYPE_CODE = 'SHIPMENT_LOT_ALLOCATION';
 
-/** ⚠ 위와 같은 자리표시다. 포장 라벨의 대상은 취급 단위(`inventory.handling_unit`)다. */
+/** 포장 라벨의 대상은 취급 단위(`inventory.handling_unit`)다. */
 export const PACKING_TARGET_TYPE_CODE = 'HANDLING_UNIT';
 
 /** 계약이 대상 유형을 닫았다(코드 사전 2026-09-03) — 발행 본문과 회차 조회가 같은 형을 쓴다. */
