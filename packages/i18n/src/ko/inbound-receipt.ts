@@ -35,13 +35,16 @@ export const inboundReceipt = {
     none: '미마감 ERP W/O가 없습니다',
     /** 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */
     pickNote: '스캔한 번호만으로는 ERP W/O가 정해지지 않습니다. 담당자가 고릅니다.',
+    /** 번호에서 품목을 찾아 좁혔다. 좁힌 것이 틀릴 수 있어 넓힐 길을 함께 둔다. */
+    narrowedNote: '스캔한 자재의 품목이 있는 ERP W/O만 보입니다.',
+    showAll: '전체 ERP W/O 보기',
     linesLoading: 'ERP W/O 라인을 불러오는 중입니다',
     linesLoadFailed: 'ERP W/O 라인을 확인할 수 없습니다',
     linesNone: '이 ERP W/O에 라인이 없습니다',
     lineLabel: (item: string, ordered: string, uom: string) => `${item} · 발주 ${ordered} ${uom}`,
     received: (qty: string) => `누적 입하 ${qty}`,
     tolerance: (over: string, under: string) => `허용 +${over} / -${under}`,
-    linePicked: '고른 라인',
+    linePicked: '선택됨',
     clear: 'ERP W/O 선택 지우기',
   },
   exception: {
@@ -93,8 +96,6 @@ export const inboundReceipt = {
     remaining: (qty: string, uom: string) => `남은 예정 ${qty} ${uom}`,
     received: '실입하 수량',
     packageCount: '포장 수',
-    /* 키패드가 어느 칸에 들어가는지 적는다. 칸이 둘인데 키패드는 하나다. */
-    keypadFor: (label: string) => `숫자판은 ${label}에 들어갑니다`,
     manufactured: '제조일',
     expiry: '유효기한',
     empty: '실입하 수량을 적으세요',

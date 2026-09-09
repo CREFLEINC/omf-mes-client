@@ -13,7 +13,12 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { playErrorTone } from '../../patterns/error-tone';
-import { SUBSTITUTE_LOT_REASON, useOpenPurchaseOrders, usePurchaseOrderLines } from './queries';
+import {
+  SUBSTITUTE_LOT_REASON,
+  useOpenPurchaseOrders,
+  usePurchaseOrderLines,
+  useScannedItem,
+} from './queries';
 import {
   NORMAL,
   OVER,
@@ -76,6 +81,8 @@ export const InboundReceiptScreen = () => {
   const [splitExceptionReason, setSplitExceptionReason] = useState('');
   const [saveFailed, setSaveFailed] = useState(false);
   const [keypadFor, setKeypadFor] = useState<'received' | 'package' | null>(null);
+  /* 담당자가 후보 밖에서 고르겠다고 한 상태. 한 번 넓히면 되돌리지 않는다. */
+  const [showAllOrders, setShowAllOrders] = useState(false);
   const poSection = useRef<HTMLElement | null>(null);
   const qtySection = useRef<HTMLElement | null>(null);
   /*
@@ -118,7 +125,15 @@ export const InboundReceiptScreen = () => {
   useAdvanceTo(draft.supplierLotNo !== '' || draft.supplierLotMissing, poSection);
   useAdvanceTo(draft.purchaseOrderLine !== null || draft.unordered, qtySection);
 
-  const orders = useOpenPurchaseOrders();
+  /*
+   * 스캔한 번호가 품목을 가리키면 그 품목이 있는 미마감 ERP W/O 만 후보로 낸다. 못 찾거나
+   * 후보가 비면 좁히지 않는다 - 양식이 다른 번호도 들어오고, 그때 0건으로 만들면 담당자가
+   * 고를 것이 사라진다(화면 스펙 §5-1 · §6).
+   */
+  const scannedItem = useScannedItem(draft.supplierLotNo);
+  const narrowTo = showAllOrders ? null : (scannedItem.data ?? null);
+  const orders = useOpenPurchaseOrders(narrowTo);
+  const narrowed = narrowTo !== null && (orders.data?.length ?? 0) > 0;
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
   const exceptionTypes = useCodeValues(INBOUND_RECEIPT_EXCEPTION_TYPE);
@@ -183,6 +198,7 @@ export const InboundReceiptScreen = () => {
     setSplitExceptionType('');
     setSplitExceptionReason('');
     setSaveFailed(false);
+    setShowAllOrders(false);
     scanField.focus();
   };
 
@@ -362,7 +378,7 @@ export const InboundReceiptScreen = () => {
           <section className="receipt__section" ref={poSection}>
             <h2>{t.po.legend}</h2>
             {/* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */}
-            <p className="receipt__note">{t.po.pickNote}</p>
+            <p className="receipt__note">{narrowed ? t.po.narrowedNote : t.po.pickNote}</p>
             {orders.isPending ? <p role="status">{t.po.loading}</p> : null}
             {orders.isError ? <AlertBanner variant="error" title={t.po.loadFailed} /> : null}
             {orders.data !== undefined && orders.data.length === 0 ? (
@@ -407,6 +423,24 @@ export const InboundReceiptScreen = () => {
                 />
               </div>
             )}
+
+            {/*
+             * 좁힌 것이 틀릴 수 있다. 번호 양식이 다르거나 다른 품목으로 들어온 물건이면
+             * 후보에 없다 - 막지 않고 전체로 넓힐 길을 둔다(화면 스펙 §3 · §6).
+             */}
+            {narrowed ? (
+              <Button
+                className="receipt__wide"
+                variant="text"
+                size="xl"
+                onClick={() => {
+                  setShowAllOrders(true);
+                  patch({ purchaseOrder: null, purchaseOrderLine: null });
+                }}
+              >
+                {t.po.showAll}
+              </Button>
+            ) : null}
 
             {draft.purchaseOrder === null ? null : (
               <>
@@ -678,9 +712,9 @@ export const InboundReceiptScreen = () => {
               </Card>
 
               {/*
-               * 숫자판은 고른 칸에 붙는다 - 부품의 골격이 포커스 연동 버퍼다(공유계약 D-4).
-               * 고른 칸이 없을 때까지 띄워 두면 어느 칸에 들어가는지가 흐려지고, 칸마다 하나씩
-               * 두면 장갑 낀 손이 쓰는 큰 판이 둘이 되어 아래 칸을 화면 밖으로 민다.
+               * 숫자판은 고른 칸 바로 아래에 붙는다 - 부품의 골격이 포커스 연동 버퍼다
+               * (공유계약 D-4). 어느 칸에 들어가는지는 자리로 보인다. 늘 띄워 두면 그것이
+               * 흐려지고, 칸마다 하나씩 두면 큰 판이 둘이 되어 아래 칸을 화면 밖으로 민다.
                */}
               <div
                 className="receipt__keypad-group"
@@ -705,6 +739,16 @@ export const InboundReceiptScreen = () => {
                   error={qtyMessage()}
                 />
 
+                {keypadFor !== 'received' ? null : (
+                  <NumberPad
+                    value={draft.receivedQty}
+                    onChange={(value) => {
+                      patch({ receivedQty: value });
+                    }}
+                    allowDecimal
+                  />
+                )}
+
                 <TextField
                   label={t.qty.packageCount}
                   inputMode="none"
@@ -724,25 +768,13 @@ export const InboundReceiptScreen = () => {
                   }
                 />
 
-                {keypadFor === null ? null : (
-                  <>
-                    <p className="receipt__note">
-                      {t.qty.keypadFor(
-                        keypadFor === 'received' ? t.qty.received : t.qty.packageCount,
-                      )}
-                    </p>
-                    <NumberPad
-                      value={keypadFor === 'received' ? draft.receivedQty : draft.packageCount}
-                      onChange={(value) => {
-                        patch(
-                          keypadFor === 'received'
-                            ? { receivedQty: value }
-                            : { packageCount: value },
-                        );
-                      }}
-                      allowDecimal={keypadFor === 'received'}
-                    />
-                  </>
+                {keypadFor !== 'package' ? null : (
+                  <NumberPad
+                    value={draft.packageCount}
+                    onChange={(value) => {
+                      patch({ packageCount: value });
+                    }}
+                  />
                 )}
               </div>
 

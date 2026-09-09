@@ -187,6 +187,44 @@ beforeEach(() => {
 
 describe('입하 등록 화면', () => {
   /*
+   * 번호 앞 아홉 자리가 제품코드다(MLOT #16). 그것으로 품목을 찾으면 후보를 좁힐 수 있고,
+   * 좁히지 않으면 담당자가 미마감 전건을 훑는다 - 잘못 고르면 그 입하가 다른 발주에 붙는다.
+   */
+  it('스캔한 번호의 품목이 있는 ERP W/O 만 후보로 낸다', async () => {
+    const asked: (string | null)[] = [];
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: () =>
+          jsonResponse({
+            items: [{ itemId: 77, itemCode: SCANNED.slice(0, 9), itemName: '스캔한 자재' }],
+            page,
+          }),
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/purchase-orders',
+        respond: (req) => {
+          asked.push(new URL(req.url).searchParams.get('itemId'));
+          return jsonResponse({ items: [order], page });
+        },
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+
+    expect(await screen.findByText('스캔한 자재의 품목이 있는 ERP W/O만 보입니다.')).toBeTruthy();
+    expect(asked).toContain('77');
+
+    await user.click(screen.getByRole('button', { name: '전체 ERP W/O 보기' }));
+
+    await waitFor(() => {
+      expect(asked).toContain(null);
+    });
+    expect(screen.getByText(/담당자가 고릅니다/)).toBeTruthy();
+  });
+
+  /*
    * 부품의 골격이 포커스 연동 버퍼다(공유계약 D-4). 고르지도 않은 칸에 숫자판이 붙어 있으면
    * 어느 칸에 들어가는지 알 수 없다. 이 화면은 숫자 칸이 둘이다.
    */
@@ -201,11 +239,6 @@ describe('입하 등록 화면', () => {
     await user.click(screen.getByLabelText('실입하 수량'));
 
     expect(screen.getByRole('button', { name: '7' })).toBeTruthy();
-    expect(screen.getByText('숫자판은 실입하 수량에 들어갑니다')).toBeTruthy();
-
-    await user.click(screen.getByLabelText('포장 수'));
-
-    expect(screen.getByText('숫자판은 포장 수에 들어갑니다')).toBeTruthy();
   });
 
   /*
