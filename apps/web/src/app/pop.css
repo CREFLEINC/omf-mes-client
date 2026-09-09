@@ -3231,7 +3231,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-2);
-  align-items: start;
+  /* 검색칸에 도움말·오류 줄이 붙어 높이가 갈려도 두 컨트롤이 같은 선에 선다. */
+  align-items: center;
 }
 
 /*
@@ -3246,12 +3247,50 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  margin-block-start: var(--space-3);
+
+  /*
+   * 한 쪽이 차지하는 높이 — 줄 높이와 줄 사이 간격으로 «계산»한다. 숫자를 박아 두면
+   * 밀도가 바뀔 때 조용히 어긋난다.
+   */
+  --pop-select-rows: calc(var(--control-height-md) * 5 + var(--space-1) * 4);
+
+  /*
+   * ⭐ **마지막 그물**(§화면 크기 대응). 평소에는 다섯 줄이 그대로 다 서므로 굴러갈 것이
+   * 없다 — 위 계산값이 내용 높이와 같기 때문이다. 화면이 유난히 낮아 다섯 줄이 못 설 때만
+   * 이 자리가 굴러간다. **팝업 패널이 `overflow: hidden` 이라, 이 그물이 없으면 그때
+   * 마지막 줄과 쪽 이동 버튼이 잘려 손이 닿지 않는다**(실측 — 패널 max-height 는 화면
+   * 높이를 따른다).
+   *
+   * ⚠ 쪽 나눔을 대신하는 것이 아니다. 넘치는 «건수»는 여전히 [페이지 아래]가 넘긴다.
+   */
+  max-height: min(var(--pop-select-rows), calc(100dvh - 14rem));
+  overflow-y: auto;
 }
 
 .pop-select-dialog__option {
   flex: 0 0 auto;
   justify-content: flex-start;
   width: 100%;
+  min-height: var(--control-height-md);
+}
+
+/*
+ * 고르지 «않은» 줄은 보통 글자색으로 세운다.
+ *
+ * ⛔ **붉은색을 목록 전체에 쓰지 않는다.** 디자인 시스템의 `text` 버튼이 포인트색을 쓰는
+ * 바람에 다섯 줄이 모두 붉었고, 정작 «고른 줄»도 붉은 계열이라 무엇을 골랐는지가 묻혔다
+ * (실측 2026-09-09). 붉은색을 고른 줄 하나에만 남겨 위계를 세운다.
+ *
+ * ⚠ 부품을 고치는 것이 아니라 이 팝업 안에서만 색을 정한다 — 두 클래스로 좁혀 잡는다.
+ */
+.pop-select-dialog .pop-select-dialog__option[aria-selected='false'] {
+  color: var(--on-surface);
+}
+
+/* 누를 수 있는 줄임을 손이 닿기 전에 알린다 — 새 색을 만들지 않고 표면 단계만 올린다. */
+.pop-select-dialog .pop-select-dialog__option[aria-selected='false']:hover:not(:disabled) {
+  background: var(--surface-container);
 }
 
 .pop-select-dialog__empty {
