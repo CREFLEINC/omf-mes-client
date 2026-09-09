@@ -1,3 +1,4 @@
+import type { UseQueryResult } from '@tanstack/react-query';
 import { AlertBanner, Button, Card, Chip, NumberPad, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
@@ -7,8 +8,6 @@ import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
 import { ManualEntry } from '../../patterns/manual-entry';
-import type { UseQueryResult } from '@tanstack/react-query';
-
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';

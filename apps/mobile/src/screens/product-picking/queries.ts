@@ -12,14 +12,14 @@ import type { components } from '@omf-mes/api-client';
 import { useApiClient } from '../../patterns/api-context';
 import type { Lot } from '../../patterns/lots';
 import { runRequest } from '../../patterns/request';
-
-export type LotHold = components['schemas']['LotHold'];
 import {
   toPickBody,
   type Candidate,
   type ShipmentRequest,
   type ShipmentRequestLine,
 } from './picking';
+
+export type LotHold = components['schemas']['LotHold'];
 
 export const pickingKeys = {
   requests: (day: string) => ['picking-requests', day] as const,

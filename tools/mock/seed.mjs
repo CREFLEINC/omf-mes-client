@@ -747,7 +747,8 @@ export const createSeed = (now = new Date()) => {
       initialQty: 200,
       uomId: 1001,
       manufacturedAt: iso(-8),
-      expiryDate: dayOf(shift(now, 90)),
+      /* 유효기간을 가장 늦게 둔다. 이르게 두면 집을 수 없는 LOT 이 권장 1순위로 선다. */
+      expiryDate: dayOf(shift(now, 400)),
       sourceTypeCode: 'PRODUCTION_RESULT',
       sourceId: 12003,
       statusCode: 'NORMAL',
