@@ -12,11 +12,13 @@ import { EventHistoryPanel } from './event-history-panel';
 import { EMPTY_HOLD_DRAFT, validateHoldDraft, type HoldDraft } from './hold-draft';
 import { HoldForm } from './hold-form';
 import { LoadErrorBanner } from './load-error-banner';
-import { toResumeRequest, toStopRequest } from './event-request';
-import { useWorkHoldOutbox } from './outbox';
+import { EndConfirmDialog } from './end-confirm-dialog';
+import { toEndGroup, toResumeGroup, toStopGroup, type HoldTarget } from './event-request';
+import { useWorkHoldOutbox, type OutboxDraft } from './outbox';
 import { useOpenSession, useSessionEvents, workHoldKeys } from './queries';
+import { useHoldReasons } from './reason-options';
 import { SessionPanel } from './session-panel';
-import { isRunningSession, isStoppedSession, type WorkSessionEventCreate } from './types';
+import { isRunningSession, isStoppedSession } from './types';
 
 const t = messages.workHoldRegister;
 
@@ -37,14 +39,15 @@ const t = messages.workHoldRegister;
  * 이슈 §4 가 「만들지 않는다 — 임의 매핑을 만들지 않고 게이팅 없이 시작한다」로 정했다.
  * 집행은 어차피 서버의 403 이다(공유계약 F-1·F-5).
  *
- * ⭐ **중단·재개는 세션 사건 적재 한 경로로 나간다** — 계약이 「단말이 적재하는 것은 구간
- * 안의 사건인 `STOP`·`RESUME` 뿐」이라고 못박았다. 구간의 경계(`START`·`END`)는 세션을 열고
- * 닫는 오퍼레이션이 같은 트랜잭션으로 만들며 이 화면이 보내지 않는다.
+ * ⭐ **중단·재개는 호출 둘로 나간다**(2026-09-06 게이트 승인) — W/O 층의 상태 전환(`:hold`·
+ * `:resume`)과 세션 구간 안의 사건(`events`)이다. 둘은 한 트랜잭션이 아니라서 큐가 순서와
+ * 묶음을 진다(`outbox.ts`).
  *
- * ⚠ **세션 종료 버튼은 아직 없다.** 스펙 §5-4(「이 화면은 중단·재개만」)와 §8 미결 5(「이
- * 화면이 받는다」)가 갈려 있어 설계 회신을 기다린다 — 한쪽을 골라 넣으면 통째로 걷어내야 한다.
+ * ⭐ **세션 종료도 이 화면이 낸다** — 《현재 세션》 구획의 [세션 종료]가 확인 창을 거쳐
+ * `:end` 를 부른다. `END` 사건을 따로 보내지는 않는다 — 그 오퍼레이션이 같은 트랜잭션으로
+ * 만든다.
  *
- * ⚠ **비고는 보내지 않는다.** 세션 «사건» 에 담을 칸이 계약에 없다(`event-request.ts`).
+ * ⭐ **비고는 W/O 중단 본문이 받는다** — 세션 «사건» 에는 담을 칸이 없다(스펙 §4-A).
  */
 export const WorkHoldRegisterScreen = () => {
   const { workOrderId, workerNo } = useWorkHoldEntry();
@@ -54,8 +57,11 @@ export const WorkHoldRegisterScreen = () => {
   const [draft, setDraft] = useState<HoldDraft>(EMPTY_HOLD_DRAFT);
   const [draftError, setDraftError] = useState<string | null>(null);
 
+  const [isEndConfirmOpen, setEndConfirmOpen] = useState(false);
+
   const session = useOpenSession(workOrderId);
   const events = useSessionEvents(session.session?.workSessionId ?? null);
+  const reasons = useHoldReasons();
   const outbox = useWorkHoldOutbox();
   const queryClient = useQueryClient();
 
@@ -104,7 +110,7 @@ export const WorkHoldRegisterScreen = () => {
   /* ⛔ 「중단이 아니면 진행 중」이 아니다 — 종료된 세션·모르는 상태에 중단을 걸지 않는다. */
   const running = session.session !== null && isRunningSession(session.session);
 
-  const { canStop, canResume } = resolveActions({
+  const { canStop, canResume, canEnd } = resolveActions({
     running,
     stopped,
     lastQueuedType: outbox.lastQueuedType,
@@ -113,21 +119,36 @@ export const WorkHoldRegisterScreen = () => {
   });
 
   /**
-   * 큐에 담고 화면을 비운다 — **담은 것이 곧 성공이다**(C-1 #2). 통신을 기다리지 않는다.
+   * 한 조작을 큐에 담고 화면을 비운다 — **담은 것이 곧 성공이다**(C-1 #2).
    *
    * ⛔ **사번이 없으면 담지 않는다.** 헤더가 비면 서버가 거부하는데(D-5), 큐에 담긴 뒤의
    * 거부는 작업자가 화면을 떠난 뒤에 온다 — 그때는 무엇이 실패했는지 말할 자리가 없다.
+   *
+   * ⛔ **두 호출을 «따로» 담지 않는다** — 그 사이에 다른 조작이 끼어들면 순서가 뜻을 잃는다.
    */
-  const submit = (body: WorkSessionEventCreate): void => {
+  const submit = (toGroup: (target: HoldTarget) => OutboxDraft[] | null): void => {
     if (session.session === null || workerNo === null) return;
 
-    outbox.enqueue({ workSessionId: session.session.workSessionId, workerNo, body });
+    const group = toGroup({
+      workOrderId: session.session.workOrderId,
+      workSessionId: session.session.workSessionId,
+      workerNo,
+    });
+
+    /* ⛔ 만들지 못한 묶음을 담지 않는다 — 계약 필수 칸이 빈 요청이 큐에 들어가면 거부가 큐를 멈춘다. */
+    if (group === null) {
+      setDraftError(t.form.reasonRequired);
+
+      return;
+    }
+
+    outbox.enqueueGroup(group);
     setDraft(EMPTY_HOLD_DRAFT);
     setDraftError(null);
   };
 
   const handleStop = (): void => {
-    const invalid = validateHoldDraft(draft);
+    const invalid = validateHoldDraft(draft, reasons.reasons);
 
     if (invalid !== null) {
       /* 「고르지 않았다」와 「모르는 값이다」는 작업자가 할 일이 다르다 — 같은 말로 덮지 않는다. */
@@ -136,12 +157,24 @@ export const WorkHoldRegisterScreen = () => {
       return;
     }
 
-    submit(toStopRequest(draft, new Date().toISOString()));
+    const occurredAt = new Date().toISOString();
+
+    submit((target) => toStopGroup(draft, occurredAt, target));
   };
 
   /* ⛔ 재개는 사유를 비운다(§5-4) — 초안에 남은 사유를 실어 보내지 않는다. */
   const handleResume = (): void => {
-    submit(toResumeRequest(new Date().toISOString()));
+    const occurredAt = new Date().toISOString();
+
+    submit((target) => toResumeGroup(occurredAt, target));
+  };
+
+  /* ⭐ 확인 창을 거친 뒤에만 닫는다 — 되돌릴 수 없다(§5-4). */
+  const handleEnd = (): void => {
+    const endedAt = new Date().toISOString();
+
+    setEndConfirmOpen(false);
+    submit((target) => toEndGroup(endedAt, target));
   };
 
   return (
@@ -231,7 +264,16 @@ export const WorkHoldRegisterScreen = () => {
            * 서로 다른 두 사실을 동시에 말하고, 작업자는 이미 연 세션을 한 번 더 연다.
            */}
           {!session.isError && (
-            <SessionPanel session={session.session} isPending={session.isPending} now={now} />
+            <SessionPanel
+              session={session.session}
+              isPending={session.isPending}
+              now={now}
+              canEnd={canEnd && workerNo !== null}
+              isStopped={stopped}
+              onEnd={() => {
+                setEndConfirmOpen(true);
+              }}
+            />
           )}
 
           {/*
@@ -247,17 +289,25 @@ export const WorkHoldRegisterScreen = () => {
                 onRetry={events.refetch}
               />
             ) : (
-              <EventHistoryPanel events={events.events} isPending={events.isPending} />
+              <EventHistoryPanel
+                events={events.events}
+                reasons={reasons.reasons}
+                isPending={events.isPending}
+              />
             ))}
         </div>
 
         <HoldForm
           draft={draft}
           disabled={inputDisabled}
+          reasons={reasons}
           error={draftError}
           onReasonChange={(code) => {
             setDraft((prev) => ({ ...prev, reasonCode: code }));
             setDraftError(null);
+          }}
+          onRemarksChange={(remarks) => {
+            setDraft((prev) => ({ ...prev, remarks }));
           }}
         />
       </div>
@@ -288,6 +338,16 @@ export const WorkHoldRegisterScreen = () => {
           {t.form.stopAction}
         </Button>
       </div>
+
+      {isEndConfirmOpen && session.session !== null && (
+        <EndConfirmDialog
+          sessionNo={session.session.sessionNo}
+          onConfirm={handleEnd}
+          onClose={() => {
+            setEndConfirmOpen(false);
+          }}
+        />
+      )}
     </main>
   );
 };

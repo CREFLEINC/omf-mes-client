@@ -1,19 +1,15 @@
 import { messages } from '@omf-mes/i18n';
 
 /**
- * 중단 사유와 세션 사건 유형의 **자리표시 상수** — 착수 이슈 §4 가 정한 처리다.
+ * 화면이 코드를 **사람 말로 옮기는 자리** — 시스템이 소유한 값만 남는다.
  *
- * ⚠ **목록을 화면이 들고 있는 것이 임시다.** 값 자체는 코드 사전이 확정했고, 받아 오는 자리가
- * 아직 없어 여기 적어 둔다. 값 목록의 정본은 공통코드
- * (`GET /mdm/code-values?codeGroupCode=WORK_SESSION_EVENT_REASON`)이고 그 마스터를 채우는
- * 화면은 이 저장소 밖이다(`W-06-06`). 마스터가 서면 **이 파일 하나가** 조회로 바뀐다 —
- * 화면 본문은 아래 목록만 부른다.
+ * ⛔ **중단 사유 목록은 여기 없다.** 그 그룹은 `registry`(고객이 늘린다)라 서버가 갖는다 —
+ * `reason-options.ts` 가 받아 온다. 앞선 판이 7값을 상수로 들고 있었던 것은 스펙 §3 목업을
+ * 확정 목록으로 읽었기 때문인데, 2026-09-06 개정이 그것을 **초기 시드**로 정정했다.
  *
- * ⛔ **값을 화면 곳곳에 흩어 적지 않는다.** 착수 이슈가 「프론트 상수 한 곳에 모으고 임시
- * 목록임을 표시」로 처리 방법을 정했다 — 흩어 두면 마스터가 섰을 때 무엇을 지울지 셀 수 없다.
- *
- * ⛔ **여기 없는 값을 화면이 지어내지 않는다.** 사유 7값·사건 유형 5값은 스펙과 공유계약
- * `A-25` 가 열거한 «전부»이고 예시가 아니다.
+ * ⭐ **아래 둘은 남는다** — 사건 유형 5값과 세션 상태 3값은 **시스템 소유**라(계약이 「고객이
+ * 값을 늘리지 않는다」로 못박았다) 화면이 표시명을 갖는 것이 맞다. 목록을 고르는 자리가
+ * 아니라 받은 값을 읽는 자리다.
  */
 
 const t = messages.workHoldRegister;
@@ -39,32 +35,6 @@ const EVENT_TYPE_NAMES: Record<WorkSessionEventTypeCode, string> = t.eventTypes;
  */
 export const eventTypeName = (code: string): string =>
   code in EVENT_TYPE_NAMES ? EVENT_TYPE_NAMES[code as WorkSessionEventTypeCode] : code;
-
-export interface HoldReason {
-  code: string;
-  name: string;
-}
-
-/**
- * 중단 사유 7값 — 스펙 §3 목업의 표시 순서를 그대로 따른다.
- *
- * ⛔ **코드 문자열은 고정한 설계 기준의 코드 사전이 정본이다**(`CD-WORK-SESSION-EVENT-REASON`).
- * 화면이 「뜻이 통하는」 이름을 지어내면 정정 경로가 없는 기록에 서버가 모르는 값이 남는다 —
- * 실제로 첫 값을 그렇게 잘못 적고 있었다(2026-09-03 정정).
- */
-export const HOLD_REASONS: readonly HoldReason[] = [
-  { code: 'URGENT_ORDER_INTERRUPT', name: t.reasons.URGENT_ORDER_INTERRUPT },
-  { code: 'EQUIPMENT_FAILURE', name: t.reasons.EQUIPMENT_FAILURE },
-  { code: 'TOOL_FAILURE', name: t.reasons.TOOL_FAILURE },
-  { code: 'MATERIAL_SHORTAGE', name: t.reasons.MATERIAL_SHORTAGE },
-  { code: 'MOLD_CHANGE', name: t.reasons.MOLD_CHANGE },
-  { code: 'QUALITY_ISSUE', name: t.reasons.QUALITY_ISSUE },
-  { code: 'OTHER', name: t.reasons.OTHER },
-];
-
-/** 사유 코드의 표시명. 목록에 없으면 코드를 그대로 보인다. */
-export const holdReasonName = (code: string): string =>
-  HOLD_REASONS.find((reason) => reason.code === code)?.name ?? code;
 
 /** 세션 상태 표시명. **모르는 값이면 코드를 그대로 보인다** — 임의로 접지 않는다. */
 export const sessionStatusName = (code: string): string =>

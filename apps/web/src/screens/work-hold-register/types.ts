@@ -19,6 +19,23 @@ type WorkSessionEventResponse = components['schemas']['WorkSessionEvent'];
 export type WorkSessionEventCreate = components['schemas']['WorkSessionEventCreate'];
 
 /**
+ * W/O 층의 중단·재개 본문.
+ *
+ * ⭐ **§3 도면의 「비고」가 여기로 간다**(스펙 §4-A · 2026-09-06 게이트 승인). 세션 «사건» 에는
+ * 비고 칸이 없다 — 사건이 아니라 **W/O 중단·재개 오퍼레이션의 본문**이 받는다.
+ */
+export type WorkOrderHoldCreate = components['schemas']['WorkOrderHold'];
+export type WorkOrderResumeCreate = components['schemas']['WorkOrderResume'];
+
+/**
+ * 세션을 닫는 본문.
+ *
+ * ⛔ **`stopReasonCode` 를 싣지 않는다.** 계약이 「쓰지 않는다 — 비운다. 값 목록을 못 정한 것이
+ * 아니라 «비우기로 정했다»」로 못박았다(공유계약 A-21·A-25). 자리가 있다고 채우지 않는다.
+ */
+export type WorkSessionEndCreate = components['schemas']['WorkSessionEnd'];
+
+/**
  * 세션이 **중단 상태**인가 — 「재개」만 활성이 되는 자리다(스펙 §6).
  *
  * ⭐ 여기서는 상태 코드를 쓴다. 열림/닫힘과 달리 **중단은 끝 시각으로 알 수 없고**, 고정한
