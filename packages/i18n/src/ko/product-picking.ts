@@ -54,6 +54,14 @@ export const productPicking = {
   },
   lot: {
     held: '보류 — 집을 수 없습니다',
+    /*
+     * 막는 것만으로는 무엇을 하면 풀리는지 알 수 없다. 형제 화면은 사유를 보이는데 이 화면만
+     * 안 보여, 같은 사람이 두 화면에서 다른 것을 받는다.
+     */
+    heldReason: (reason: string) => `보류 사유 ${reason}`,
+    heldRelease: (condition: string) => `해제 조건 ${condition}`,
+    heldReasonLoading: '보류 사유를 확인하는 중입니다',
+    heldReasonFailed: '보류 사유를 확인하지 못했습니다',
     noAvailable: '다른 출하에 배정됐습니다',
     otherItem: '이 라인의 품목이 아닙니다',
     shelfLifeShort: (required: number, actual: number) =>

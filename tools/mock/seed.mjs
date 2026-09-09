@@ -736,6 +736,26 @@ export const createSeed = (now = new Date()) => {
       held: false,
     },
     /*
+     * 보류된 제품 LOT. 제품 피킹이 막고 사유를 보이는 자리를 손으로 시험하려면 하나는 있어야
+     * 한다. 다른 제품 LOT 이 모두 풀려 있어 그 경로를 재 볼 대상이 없었다.
+     */
+    {
+      lotId: 8203,
+      lotNo: 'FLOT-2026-0299',
+      itemId: 2003,
+      lotTypeCode: 'PRODUCT',
+      initialQty: 200,
+      uomId: 1001,
+      manufacturedAt: iso(-8),
+      /* 유효기간을 가장 늦게 둔다. 이르게 두면 집을 수 없는 LOT 이 권장 1순위로 선다. */
+      expiryDate: dayOf(shift(now, 400)),
+      sourceTypeCode: 'PRODUCTION_RESULT',
+      sourceId: 12003,
+      statusCode: 'NORMAL',
+      completedAt: iso(-8, 17),
+      held: true,
+    },
+    /*
      * 아직 끝나지 않은 생산 LOT — **진행 중인 W/O(11002)의 실적 입력 대상이다.**
      * 다른 생산 LOT 은 모두 완료된 W/O(11001)에 매여 있어, 실적을 「넣어 볼」 대상이 없었다.
      */
@@ -787,6 +807,18 @@ export const createSeed = (now = new Date()) => {
       heldAt: iso(-3, 10),
       releasedAt: null,
     },
+    /* 제품 피킹이 보이는 사유. 해제 조건까지 있어야 무엇을 하면 풀리는지 시험할 수 있다. */
+    {
+      lotHoldId: 8502,
+      lotId: 8203,
+      reasonCode: 'OQC_PENDING',
+      holdQty: null,
+      uomId: 1001,
+      releaseCondition: '출하검사 합격',
+      statusCode: 'OPEN',
+      heldAt: iso(-2, 9),
+      releasedAt: null,
+    },
   ];
 
   const balances = [
@@ -796,6 +828,7 @@ export const createSeed = (now = new Date()) => {
     { lotId: 8003, itemId: 2002, warehouseId: 1001, locationId: 3003, onHandQty: 120 },
     { lotId: 8201, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 500 },
     { lotId: 8202, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 300 },
+    { lotId: 8203, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 200 },
   ].map((balance, index) => {
     /*
      * 사람이 읽는 값을 잔액 줄에 함께 싣는다. 계약이 「이 값이 있으므로 마스터를 다시 부르지
