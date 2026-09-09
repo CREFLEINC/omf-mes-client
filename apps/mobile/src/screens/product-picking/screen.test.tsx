@@ -209,9 +209,9 @@ const setOnline = (value: boolean) => {
   Object.defineProperty(navigator, 'onLine', { value, configurable: true });
 };
 
-/* 접힌 목록을 펼친다. 첫 화면에는 권장 앞 세 건만 선다. */
-const expandCandidates = async (user: ReturnType<typeof userEvent.setup>) => {
-  await user.click(await screen.findByRole('button', { name: /더보기\(\d+\)/ }));
+/* 피킹 화면에는 권장 앞 세 건만 선다. 전부 보려면 목록 화면으로 넘어간다. */
+const openList = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: /목록보기\(\d+\)/ }));
 };
 
 /* 설계는 스캔으로만 고르게 한다. 목록에서 바로 고르는 길은 없다. */
@@ -344,7 +344,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     mount([], { lots: [EARLY, LATE, UNDATED] });
     await chooseTarget(user);
 
-    await expandCandidates(user);
+    await openList(user);
 
     expect(await screen.findByText('순서를 정할 수 없습니다')).toBeTruthy();
     expect(screen.getByText('FG-0305')).toBeTruthy();
@@ -369,9 +369,9 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await screen.findByText('권장 1순위');
 
     expect(screen.getAllByText(/^FG-0/)).toHaveLength(3);
-    expect(screen.getByRole('button', { name: '더보기(2)' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '목록보기(5)' })).toBeTruthy();
 
-    await expandCandidates(user);
+    await openList(user);
 
     expect(screen.getAllByText(/^FG-0/)).toHaveLength(5);
   });
@@ -527,10 +527,11 @@ describe('제품LOT 피킹 스캔 화면', () => {
     });
     await chooseTarget(user);
 
-    await expandCandidates(user);
+    await openList(user);
 
     expect(await screen.findByText('유효기간이 없어 잔여 일수를 판정할 수 없습니다')).toBeTruthy();
 
+    await user.click(screen.getByRole('button', { name: '돌아가기' }));
     await pickLot(user, UNDATED.lotNo);
 
     expect(await screen.findByRole('button', { name: '피킹 확정' })).toBeTruthy();

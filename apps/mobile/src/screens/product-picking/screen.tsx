@@ -171,7 +171,7 @@ export const ProductPickingScreen = () => {
   const [manual, setManual] = useState('');
   const [missed, setMissed] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [listView, setListView] = useState(false);
   /*
    * 보내는 동안 잠근다. 상태로 두면 React 가 두 이벤트 사이에 커밋하지 못한 경우를 막지 못한다 -
    * 셋이 잇달아 들어오면 셋 다 갱신 전의 값을 보고 통과한다. 즉시 바뀌는 자리에 둔다. 단추를
@@ -405,13 +405,64 @@ export const ProductPickingScreen = () => {
   }
 
   /*
-   * 접었을 때는 권장 순서 앞엣것만 세운다. 순서를 정할 수 없는 묶음은 펼쳤을 때만 나오고,
-   * 접힌 동안에는 건수에 들어간다 - 빼 두면 재고가 사라진 것처럼 보인다.
+   * 피킹 화면에는 권장 순서 앞엣것만 세운다. 후보 카드가 130~210px 이라 그 위는 첫 화면에
+   * 들어오지 않는다. 전부 보려면 목록 화면으로 넘어간다.
    */
-  const shownCandidates = expanded ? ranked.ordered : ranked.ordered.slice(0, CANDIDATE_PREVIEW);
-  const hiddenCandidates = expanded
-    ? 0
-    : ranked.ordered.length - shownCandidates.length + ranked.unordered.length;
+  const shownCandidates = ranked.ordered.slice(0, CANDIDATE_PREVIEW);
+  const allCandidates = ranked.ordered.length + ranked.unordered.length;
+
+  const candidateItem = (candidate: Candidate, recommended: boolean) => (
+    <li key={candidate.lot.lotId}>
+      <CandidateCard
+        candidate={candidate}
+        line={target.line}
+        today={today}
+        uoms={uoms.data}
+        recommended={recommended}
+        holds={candidate.lot.lotId === lotId ? holdReason : null}
+        reasonNames={holdReasonNames}
+      />
+    </li>
+  );
+
+  if (listView) {
+    return (
+      <div className="picking">
+        <section className="picking__section">
+          <h2>{t.candidates.listLegend}</h2>
+          <p className="picking__note">
+            {t.candidates.legend(policyLabel(item.data?.fifoPolicyCode ?? ''))}
+          </p>
+
+          <ul className="picking__candidates">
+            {ranked.ordered.map((candidate) =>
+              candidateItem(candidate, isRecommended(ranked, candidate.lot.lotId)),
+            )}
+          </ul>
+
+          {ranked.unordered.length === 0 ? null : (
+            <>
+              <h3 className="picking__subhead">{t.candidates.unorderedLegend}</h3>
+              <ul className="picking__candidates">
+                {ranked.unordered.map((candidate) => candidateItem(candidate, false))}
+              </ul>
+            </>
+          )}
+
+          <Button
+            className="picking__pick"
+            variant="filled"
+            size="xl"
+            onClick={() => {
+              setListView(false);
+            }}
+          >
+            {t.candidates.back}
+          </Button>
+        </section>
+      </div>
+    );
+  }
 
   const scanMessage = (): string | undefined => {
     if (missed === null) {
@@ -500,54 +551,23 @@ export const ProductPickingScreen = () => {
         ) : null}
 
         <ul className="picking__candidates">
-          {shownCandidates.map((candidate) => (
-            <li key={candidate.lot.lotId}>
-              <CandidateCard
-                candidate={candidate}
-                line={target.line}
-                today={today}
-                uoms={uoms.data}
-                recommended={isRecommended(ranked, candidate.lot.lotId)}
-                holds={candidate.lot.lotId === lotId ? holdReason : null}
-                reasonNames={holdReasonNames}
-              />
-            </li>
-          ))}
+          {shownCandidates.map((candidate) =>
+            candidateItem(candidate, isRecommended(ranked, candidate.lot.lotId)),
+          )}
         </ul>
 
-        {!expanded || ranked.unordered.length === 0 ? null : (
-          <>
-            <h3 className="picking__subhead">{t.candidates.unorderedLegend}</h3>
-            <ul className="picking__candidates">
-              {ranked.unordered.map((candidate) => (
-                <li key={candidate.lot.lotId}>
-                  <CandidateCard
-                    candidate={candidate}
-                    line={target.line}
-                    today={today}
-                    uoms={uoms.data}
-                    recommended={false}
-                    holds={candidate.lot.lotId === lotId ? holdReason : null}
-                    reasonNames={holdReasonNames}
-                  />
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-
-        {hiddenCandidates > 0 || expanded ? (
+        {allCandidates <= shownCandidates.length ? null : (
           <Button
             className="picking__pick"
             variant="outlined"
             size="lg"
             onClick={() => {
-              setExpanded(!expanded);
+              setListView(true);
             }}
           >
-            {expanded ? t.candidates.less : t.candidates.more(hiddenCandidates)}
+            {t.candidates.list(allCandidates)}
           </Button>
-        ) : null}
+        )}
       </section>
 
       <section className="picking__section">
