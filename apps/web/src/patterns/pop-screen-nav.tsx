@@ -13,10 +13,16 @@ import { PopSelect } from './pop-select';
  */
 const HEADER_FLAG = 'popScreenNav';
 
-/** 판정하지 못했을 때 보일 사유. 원인을 가르지 않고 뭉치면 관리자를 잘못 부른다. */
+/**
+ * 판정하지 못했을 때 보일 사유. 원인을 가르지 않고 뭉치면 관리자를 잘못 부른다.
+ *
+ * ⚠ **머리줄에 서는 문구라 짧아야 한다.** 이 자리는 화면 오른쪽 구석에 «떠서» 서고, 그 아래에
+ *   설비·사번·연결 상태(`\.pop-context-right`)가 있다. 문장으로 적었더니 예약해 둔 폭을 넘어
+ *   그것을 덮었다 — 그래서 머리줄에는 짧은 이름만 두고, 온전한 문장은 `title` 로 붙인다.
+ */
 const REASONS = {
-  unknown: '이동할 수 있는 화면을 확인하지 못했습니다',
-  empty: '이동할 수 있는 화면이 없습니다',
+  unknown: { short: '이동 가능 화면 미확인', full: '이동할 수 있는 화면을 확인하지 못했습니다' },
+  empty: { short: '이동 가능 화면 없음', full: '이동할 수 있는 화면이 없습니다' },
 } as const;
 
 /**
@@ -42,18 +48,6 @@ export const PopScreenNavButton = () => {
   const access = useAccessiblePopScreens();
   const visible = pathname !== POP_ENTRY_SCREEN_PATH;
 
-  useEffect(() => {
-    if (!visible) return;
-
-    document.documentElement.dataset[HEADER_FLAG] = 'on';
-
-    return () => {
-      delete document.documentElement.dataset[HEADER_FLAG];
-    };
-  }, [visible]);
-
-  if (!visible) return null;
-
   /* 지금 서 있는 화면은 뺀다 — 골라도 아무 일이 일어나지 않아 「눌리지 않는 항목」이 된다. */
   const candidates = access.screens.filter((candidate) => candidate.path !== pathname);
   const reason =
@@ -63,13 +57,32 @@ export const PopScreenNavButton = () => {
         ? REASONS.empty
         : null;
 
+  /*
+   * ⚠ **사유가 설 때는 머리줄이 더 비워야 한다.** 표식에 값을 실어 그 사실을 알린다 — 늘
+   *   넓게 비우면 사유가 없는 평시에 머리줄이 그만큼 좁아진다.
+   */
+  useEffect(() => {
+    if (!visible) return;
+
+    document.documentElement.dataset[HEADER_FLAG] = reason === null ? 'on' : 'reason';
+
+    return () => {
+      delete document.documentElement.dataset[HEADER_FLAG];
+    };
+  }, [visible, reason]);
+
+  if (!visible) return null;
+
   return (
     <div className="pop-screen-nav">
-      {reason === null ? null : <span className="pop-screen-nav__reason">{reason}</span>}
+      {reason === null ? null : (
+        <span className="pop-screen-nav__reason" title={reason.full}>
+          {reason.short}
+        </span>
+      )}
       <PopSelect
         aria-label="화면 이동"
         actionLabel="화면 이동"
-        className="pop-screen-nav__trigger"
         disabled={reason !== null || access.state === 'loading'}
         value={null}
         options={candidates.map((candidate) => ({

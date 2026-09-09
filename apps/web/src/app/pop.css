@@ -3298,13 +3298,29 @@
 /*
  * 화면 이동 자리 — **머리줄 오른쪽, 사용자 전환 «왼쪽»에 앉힌다**(`patterns/pop-screen-nav`).
  *
- * ⚠ **자리를 사용자 전환과 함께 비운다.** 두 버튼이 같은 구석에 서므로 머리줄이 비워야 할
- *   폭도 둘의 합이다 — 아래 규칙이 `pop-logout` 의 것보다 뒤에 있어 두 표식이 함께 켜질 때
- *   이 값이 이긴다. 두 버튼은 같은 화면(진입 화면이 아닌 곳)에서 함께 서므로 어긋나지 않는다.
+ * ⛔ **비운 폭 안에 들어가야 한다.** 이 자리는 «떠서» 서고 그 아래에는 설비·사번·연결 상태
+ *    (`.pop-context-right`)가 머리줄 오른쪽 끝에 붙어 있다. 폭을 재지 않고 문장을 넣었더니
+ *    비운 폭을 넘어 그것을 덮었다(독립 검증 2026-09-09). **자리 폭을 변수로 «선언»하고**
+ *    내용은 그 안에서 잘리게 한다 — 되돌림 값만 두면 실제 폭과 어긋나도 아무도 모른다.
+ *
+ * ⚠ **사유가 설 때만 더 비운다.** 늘 넓게 비우면 사유가 없는 평시에 머리줄이 그만큼 좁아진다.
+ *   표식 값(`on`/`reason`)이 그 둘을 가른다.
  */
-[data-pop-screen-nav='on'] .pop-ui > .pop-header,
-[data-pop-screen-nav='on'] .pop-ui > .pop-terminal-header {
-  padding-right: calc(var(--pop-logout-w, 108px) + var(--pop-screen-nav-w, 148px));
+:root {
+  --pop-screen-nav-w: 132px;
+  --pop-screen-nav-reason-w: 156px;
+}
+
+[data-pop-screen-nav] .pop-ui > .pop-header,
+[data-pop-screen-nav] .pop-ui > .pop-terminal-header {
+  padding-right: calc(var(--pop-logout-w, 108px) + var(--pop-screen-nav-w));
+}
+
+[data-pop-screen-nav='reason'] .pop-ui > .pop-header,
+[data-pop-screen-nav='reason'] .pop-ui > .pop-terminal-header {
+  padding-right: calc(
+    var(--pop-logout-w, 108px) + var(--pop-screen-nav-w) + var(--pop-screen-nav-reason-w)
+  );
 }
 
 .pop-screen-nav {
@@ -3314,6 +3330,7 @@
   z-index: 20;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-2);
   /* 되돌림 값을 둔다 — 이 버튼은 `.pop-ui` 밖에 서서 변수가 닿지 않는다(`pop-logout` 과 같다). */
   height: var(--pop-header-h, 64px);
@@ -3333,8 +3350,15 @@
   display: none;
 }
 
+/*
+ * ⚠ **넘치면 자른다.** 문구가 길어져도 자리 폭이 그대로여야 아래 표시를 덮지 않는다. 온전한
+ *   문장은 `title` 로 붙어 있다.
+ */
 .pop-screen-nav__reason {
+  max-width: calc(var(--pop-screen-nav-reason-w) - var(--space-2));
+  overflow: hidden;
   color: var(--on-surface-variant);
-  font-size: 13px;
+  font-size: 12px;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }

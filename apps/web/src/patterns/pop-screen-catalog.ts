@@ -23,7 +23,7 @@ export interface PopScreen {
   path: string;
   /** 설계가 부르는 화면 코드. 세션 권한 코드와 대조하는 열쇠다. */
   code: string;
-  /** 목록에 보일 이름. 설계 화면명을 그대로 쓴다. */
+  /** 목록에 보일 이름. 설계 화면명을 쓴다 — 작업자가 화면명으로도 찾기 때문이다(G-34). */
   name: string;
 }
 
@@ -46,7 +46,7 @@ export const POP_SCREENS: readonly PopScreen[] = [
   { path: '/pop/packing-label-reprint', code: 'P-02-09', name: '포장 라벨·인식표 재출력' },
   { path: '/pop/work-hold', code: 'P-02-10', name: '작업 중단(홀드) 등록' },
   { path: '/pop/running-change', code: 'P-02-11', name: '러닝체인지 부품 교체' },
-  { path: '/pop/emergency-work-orders', code: 'P-02-12', name: '긴급 작업지시' },
+  { path: '/pop/emergency-work-orders', code: 'P-02-12', name: '긴급 W/O 현장 투입·실적' },
   { path: '/pop/pqc-inspection', code: 'P-02-13', name: 'PQC 제품 검사' },
   { path: '/pop/packing', code: 'P-04-01', name: '출하 실적 등록' },
   { path: '/pop/rework-results', code: 'P-04-03', name: '재작업 실적 등록' },

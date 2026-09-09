@@ -51,6 +51,8 @@ describe('PopScreenNavButton — G-34 화면 이동', () => {
     await user.click(screen.getByRole('option', { name: 'P-05-02 비가동 실적 입력' }));
 
     expect(screen.getByText('지금: /pop/downtime')).toBeInTheDocument();
+    /* 사유가 없으면 평시 폭만 비운다. */
+    expect(document.documentElement.dataset.popScreenNav).toBe('on');
   });
 
   /* 지금 서 있는 화면으로 가는 항목은 아무 일도 하지 않는다 — 후보에서 뺀다. */
@@ -71,16 +73,20 @@ describe('PopScreenNavButton — G-34 화면 이동', () => {
   it('권한 목록을 못 받으면 비활성으로 두고 사유를 보인다', async () => {
     renderNav(SESSION);
 
-    expect(
-      await screen.findByText('이동할 수 있는 화면을 확인하지 못했습니다'),
-    ).toBeInTheDocument();
+    expect(await screen.findByTitle('이동할 수 있는 화면을 확인하지 못했습니다')).toHaveTextContent(
+      '이동 가능 화면 미확인',
+    );
     expect(screen.getByRole('combobox', { name: '화면 이동' })).toBeDisabled();
+    /* 사유가 설 때는 머리줄이 더 비워야 한다 — 안 그러면 설비·사번 표시를 덮는다. */
+    expect(document.documentElement.dataset.popScreenNav).toBe('reason');
   });
 
   it('갈 수 있는 화면이 없으면 사유를 갈라 보인다', async () => {
     renderNav({ ...SESSION, permissions: [] });
 
-    expect(await screen.findByText('이동할 수 있는 화면이 없습니다')).toBeInTheDocument();
+    expect(await screen.findByTitle('이동할 수 있는 화면이 없습니다')).toHaveTextContent(
+      '이동 가능 화면 없음',
+    );
     expect(screen.getByRole('combobox', { name: '화면 이동' })).toBeDisabled();
   });
 
