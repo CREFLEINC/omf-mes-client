@@ -11,6 +11,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm run workflow:repo-check && pnpm run test:workflow && pnpm -r test",
     "test:workflow": "node --test tools/workflow-state.test.mjs tools/workflow/bootstrap.test.mjs",
+    "test:deploy": "node --test tools/deploy/*.test.mjs",
     "workflow": "node tools/workflow-state.mjs",
     "workflow:bootstrap": "node tools/workflow/bootstrap.mjs",
     "workflow:check": "node tools/workflow-state.mjs check",
