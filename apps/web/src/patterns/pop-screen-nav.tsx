@@ -14,15 +14,16 @@ import { PopSelect } from './pop-select';
 const HEADER_FLAG = 'popScreenNav';
 
 /**
- * 판정하지 못했을 때 보일 사유. 원인을 가르지 않고 뭉치면 관리자를 잘못 부른다.
+ * 판정하지 못했을 때의 사유. 원인을 가르지 않고 뭉치면 관리자를 잘못 부른다.
  *
- * ⚠ **머리줄에 서는 문구라 짧아야 한다.** 이 자리는 화면 오른쪽 구석에 «떠서» 서고, 그 아래에
- *   설비·사번·연결 상태(`\.pop-context-right`)가 있다. 문장으로 적었더니 예약해 둔 폭을 넘어
- *   그것을 덮었다 — 그래서 머리줄에는 짧은 이름만 두고, 온전한 문장은 `title` 로 붙인다.
+ * ⛔ **머리줄에 문장으로 적지 않는다**(사용자 지시 2026-09-09). 처음에는 버튼 옆에 문구를
+ *    두었는데, 머리줄은 화면 이름과 설비·사번·연결 상태가 서는 자리라 사유가 그 줄에서
+ *    가장 긴 글이 됐다. **비활성 버튼 자체가 「지금은 못 간다」를 말하고**, 왜인지는 버튼에
+ *    손을 얹으면 나온다(공유계약 G-2 의 「사유 표시」는 이 형태로 지킨다).
  */
 const REASONS = {
-  unknown: { short: '이동 가능 화면 미확인', full: '이동할 수 있는 화면을 확인하지 못했습니다' },
-  empty: { short: '이동 가능 화면 없음', full: '이동할 수 있는 화면이 없습니다' },
+  unknown: '이동할 수 있는 화면을 확인하지 못했습니다',
+  empty: '이동할 수 있는 화면이 없습니다',
 } as const;
 
 /**
@@ -57,32 +58,24 @@ export const PopScreenNavButton = () => {
         ? REASONS.empty
         : null;
 
-  /*
-   * ⚠ **사유가 설 때는 머리줄이 더 비워야 한다.** 표식에 값을 실어 그 사실을 알린다 — 늘
-   *   넓게 비우면 사유가 없는 평시에 머리줄이 그만큼 좁아진다.
-   */
   useEffect(() => {
     if (!visible) return;
 
-    document.documentElement.dataset[HEADER_FLAG] = reason === null ? 'on' : 'reason';
+    document.documentElement.dataset[HEADER_FLAG] = 'on';
 
     return () => {
       delete document.documentElement.dataset[HEADER_FLAG];
     };
-  }, [visible, reason]);
+  }, [visible]);
 
   if (!visible) return null;
 
   return (
     <div className="pop-screen-nav">
-      {reason === null ? null : (
-        <span className="pop-screen-nav__reason" title={reason.full}>
-          {reason.short}
-        </span>
-      )}
       <PopSelect
         aria-label="화면 이동"
         actionLabel="화면 이동"
+        title={reason ?? undefined}
         disabled={reason !== null || access.state === 'loading'}
         value={null}
         options={candidates.map((candidate) => ({

@@ -3301,26 +3301,18 @@
  * ⛔ **비운 폭 안에 들어가야 한다.** 이 자리는 «떠서» 서고 그 아래에는 설비·사번·연결 상태
  *    (`.pop-context-right`)가 머리줄 오른쪽 끝에 붙어 있다. 폭을 재지 않고 문장을 넣었더니
  *    비운 폭을 넘어 그것을 덮었다(독립 검증 2026-09-09). **자리 폭을 변수로 «선언»하고**
- *    내용은 그 안에서 잘리게 한다 — 되돌림 값만 두면 실제 폭과 어긋나도 아무도 모른다.
+ *    내용은 그 안에서만 산다 — 되돌림 값만 두면 실제 폭과 어긋나도 아무도 모른다.
  *
- * ⚠ **사유가 설 때만 더 비운다.** 늘 넓게 비우면 사유가 없는 평시에 머리줄이 그만큼 좁아진다.
- *   표식 값(`on`/`reason`)이 그 둘을 가른다.
+ * ⛔ **사유를 문구로 늘어놓지 않는다**(사용자 지시 2026-09-09). 버튼 하나만 서므로 비우는
+ *    폭도 늘 같다.
  */
 :root {
   --pop-screen-nav-w: 132px;
-  --pop-screen-nav-reason-w: 156px;
 }
 
 [data-pop-screen-nav] .pop-ui > .pop-header,
 [data-pop-screen-nav] .pop-ui > .pop-terminal-header {
   padding-right: calc(var(--pop-logout-w, 108px) + var(--pop-screen-nav-w));
-}
-
-[data-pop-screen-nav='reason'] .pop-ui > .pop-header,
-[data-pop-screen-nav='reason'] .pop-ui > .pop-terminal-header {
-  padding-right: calc(
-    var(--pop-logout-w, 108px) + var(--pop-screen-nav-w) + var(--pop-screen-nav-reason-w)
-  );
 }
 
 .pop-screen-nav {
@@ -3331,7 +3323,6 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: var(--space-2);
   /* 되돌림 값을 둔다 — 이 버튼은 `.pop-ui` 밖에 서서 변수가 닿지 않는다(`pop-logout` 과 같다). */
   height: var(--pop-header-h, 64px);
   padding-right: 12px;
@@ -3351,14 +3342,62 @@
 }
 
 /*
- * ⚠ **넘치면 자른다.** 문구가 길어져도 자리 폭이 그대로여야 아래 표시를 덮지 않는다. 온전한
- *   문장은 `title` 로 붙어 있다.
+ * 머리줄은 **표제만 왼쪽, 나머지는 전부 오른쪽**이다(사용자 지시 2026-09-09).
+ *
+ * ⚠ 표제에 `margin-inline-end: auto` 를 주어 남는 자리를 표제가 밀어낸다. 그러면 뒤에 오는
+ *   것이 무엇이든 오른쪽 끝으로 몰린다 — 화면마다 머리줄에 두는 것이 달라서, 자리마다
+ *   규칙을 두지 않고 한 곳에서 민다. `.pop-context-right` 의 자기 `auto` 여백은 이때 남는
+ *   자리를 한 번 더 나눠 가져 가운데에 뜨므로 거둔다.
  */
-.pop-screen-nav__reason {
-  max-width: calc(var(--pop-screen-nav-reason-w) - var(--space-2));
-  overflow: hidden;
-  color: var(--on-surface-variant);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.pop-ui > .pop-overlay > .pop-header > :first-child,
+.pop-ui > .pop-terminal-header > :first-child {
+  margin-inline-end: auto;
+}
+
+.pop-ui > .pop-overlay > .pop-header > .pop-context-right,
+.pop-ui > .pop-terminal-header > .pop-context-right {
+  margin-inline-start: 0;
+}
+
+/*
+ * 선택 팝업의 목록 — **한 페이지가 통째로 보이고 페이지 이동이 목록에 걸치지 않는다.**
+ *
+ * ⚠ 목록 높이를 5행으로 잡아 두어 한 페이지(6행)의 마지막 줄이 페이지 이동 줄 밑으로
+ *   말려 들어갔다(실측 2026-09-09 · 사용자가 짚었다). **높이를 재지 않는다** — 한 페이지가
+ *   6행으로 정해져 있어(`patterns/pop-select` `PAGE_SIZE`) 목록이 스스로 자라도 끝이 있다.
+ *   행 높이를 숫자로 잡으면 글꼴·배율이 바뀔 때마다 다시 어긋난다.
+ */
+.pop-ui .pop-select-dialog__list {
+  gap: 0;
+  max-height: none;
+}
+
+.pop-ui .pop-select-dialog__option {
+  min-height: var(--pop-select-row-h, 52px);
+  border-radius: 0;
+  /*
+   * 목록의 «값»이라 강조색을 입히지 않는다 — 디자인 시스템의 `text` 버튼이 주조색을 쓰는데,
+   * 항목이 전부 그 색이면 「고른 것」과 「고를 수 있는 것」이 같아 보인다.
+   */
+  color: var(--on-surface);
+}
+
+.pop-ui .pop-select-dialog__option + .pop-select-dialog__option {
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 고른 항목만 강조색을 갖는다. */
+.pop-ui .pop-select-dialog__option[aria-selected='true'] {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* 페이지 이동 줄은 목록과 선으로 갈라 둔다 — 붙어 있으면 마지막 항목처럼 읽힌다. */
+.pop-ui .pop-select-dialog__paging {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--outline-variant);
+}
+
+.pop-ui .pop-select-dialog__search {
+  align-items: center;
 }
