@@ -188,6 +188,35 @@ describe('P-02-10 작업 중단 등록', () => {
     expect(screen.getByRole('radio', { name: MOLD_CHANGE_NAME })).toBeInTheDocument();
   });
 
+  /*
+   * ⚠ **다 받지 못한 것을 「없다」로 읽히게 두지 않는다.** 고객이 늘리는 목록이라 쪽을 넘길 수
+   * 있는데, 찾는 사유가 안 보이면 현장은 「기타」로 몰아 적는다 — 정정 경로가 없는 기록이다.
+   */
+  it('사유가 잘려 왔으면 그 사실을 말한다', async () => {
+    renderScreen([
+      {
+        match: (request) => isGet(request, CODE_VALUES_PATH),
+        respond: () =>
+          jsonResponse({
+            items: REASON_ITEMS,
+            /* 서버가 센 전체가 받은 것보다 많다. */
+            page: { page: 1, size: REASON_ITEMS.length, total: REASON_ITEMS.length + 5 },
+          }),
+      },
+      sessionsRoute([workSession()]),
+      eventsRoute([]),
+    ]);
+
+    expect(await screen.findByText(t.form.reasonTruncated)).toBeInTheDocument();
+  });
+
+  it('다 받았으면 잘렸다고 말하지 않는다', async () => {
+    renderScreen([sessionsRoute([workSession()]), eventsRoute([])]);
+
+    await screen.findByRole('radio', { name: MOLD_CHANGE_NAME });
+    expect(screen.queryByText(t.form.reasonTruncated)).not.toBeInTheDocument();
+  });
+
   /** 「못 받았다」와 「없다」는 작업자가 할 일이 다르다 — 같은 말로 덮지 않는다. */
   it('사유를 못 받으면 실패로 말하고 빈 목록으로 그리지 않는다', async () => {
     renderScreen([

@@ -34,8 +34,22 @@ export const holdReasonKeys = {
 
 const EMPTY_REASONS: HoldReason[] = [];
 
+/**
+ * 한 번에 받을 쪽 크기.
+ *
+ * ⛔ **서버 기본값에 맡기지 않는다.** 이 그룹은 `registry`(고객이 늘린다)이고 목록 조회는 쪽을
+ * 나눠 내려 준다 — 기본 크기를 넘긴 사유는 응답에 실리지 않고, 화면에는 **「없는 사유」와
+ * 똑같이 보인다.** 고를 수 없는 것과 존재하지 않는 것이 같은 모양이 되면 현장이 「기타」로
+ * 몰아 적고 그 기록은 정정 경로가 없다.
+ *
+ * ⚠ 그래도 넘칠 수 있으므로 넘친 사실을 화면이 말한다(`truncated`).
+ */
+const PAGE_SIZE = 200;
+
 export interface HoldReasonsResult {
   reasons: HoldReason[];
+  /** 받은 것이 전부가 아니다 — 화면이 그 사실을 말한다. */
+  truncated: boolean;
   isLoading: boolean;
   isError: boolean;
   refetch: () => void;
@@ -56,14 +70,17 @@ export const useHoldReasons = (): HoldReasonsResult => {
     queryFn: () =>
       runRequest(() =>
         client.GET('/mdm/code-values', {
-          params: { query: { codeGroupCode: HOLD_REASON_GROUP_CODE } },
+          params: { query: { codeGroupCode: HOLD_REASON_GROUP_CODE, size: PAGE_SIZE } },
         }),
       ),
   });
 
+  const data = query.data;
+
   return {
-    reasons:
-      query.data?.items.map((item) => ({ code: item.code, name: item.codeName })) ?? EMPTY_REASONS,
+    reasons: data?.items.map((item) => ({ code: item.code, name: item.codeName })) ?? EMPTY_REASONS,
+    /* 서버가 센 전체가 받은 것보다 많으면 잘린 것이다. */
+    truncated: data !== undefined && data.page.total > data.items.length,
     isLoading: query.isPending,
     isError: query.isError,
     refetch: () => {

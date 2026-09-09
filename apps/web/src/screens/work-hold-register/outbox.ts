@@ -89,6 +89,16 @@ export const STORAGE_KEY = 'omf-mes.work-hold-register.outbox';
 const isSessionEventBody = (body: Record<string, unknown>): boolean =>
   typeof body.eventTypeCode === 'string' && typeof body.occurredAt === 'string';
 
+/**
+ * 지난 판이 «실제로» 담던 유형인가.
+ *
+ * ⛔ **모르는 유형을 중단으로 접지 않는다.** 앞선 판이 담는 것은 `STOP`·`RESUME` 둘뿐이었으므로
+ * 그 밖의 값은 저장값이 손상된 것이다 — 방향을 임의로 정해 내보내면 **돌고 있는 세션에 중단이**
+ * **기록되고** 그 기록에는 정정 경로가 없다.
+ */
+const isLegacyEventType = (value: unknown): value is 'STOP' | 'RESUME' =>
+  value === 'STOP' || value === 'RESUME';
+
 const KINDS: readonly OutboxKind[] = [
   'work-order-hold',
   'work-order-resume',
@@ -123,15 +133,14 @@ export const normalizeEntry = (value: unknown): OutboxEntry | null => {
   /* `kind` 가 없는 것은 지난 판이다 — 그 판이 담던 것은 세션 사건 하나뿐이었다. */
   if (kind === undefined) {
     if (!isSessionEventBody(fields)) return null;
-
-    const eventTypeCode = fields.eventTypeCode as string;
+    if (!isLegacyEventType(fields.eventTypeCode)) return null;
 
     return {
       idempotencyKey,
       kind: 'session-event',
       /* 혼자 선 건이므로 자기 자신이 묶음이다 — 함께 내릴 짝이 없다. */
       groupId: idempotencyKey,
-      direction: eventTypeCode === 'RESUME' ? 'RESUME' : 'STOP',
+      direction: fields.eventTypeCode,
       workSessionId,
       workOrderId: 0,
       workerNo,

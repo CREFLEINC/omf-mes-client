@@ -128,6 +128,31 @@ describe('normalizeEntry — 저장소에서 읽은 값을 믿지 않는다', ()
       });
     });
 
+    /*
+     * ⛔ **지난 판이라는 이유로 검사를 건너뛰지 않는다.** 이 갈래에는 `kind` 가 없어 위쪽
+     * 검사가 걸리지 않는다 — 여기서 막지 못하면 깨진 값이 `/events` 로 나가 400 을 받고,
+     * 그 거부가 큐를 멈춰 **뒤에 쌓인 정상 건까지 함께 막는다.**
+     */
+    it('계약이 필수로 둔 칸이 빠진 지난 판 항목은 보내지 않는다', () => {
+      expect(normalizeEntry({ ...legacy, body: {} })).toBeNull();
+      expect(
+        normalizeEntry({ ...legacy, body: { eventTypeCode: 'STOP' } }),
+      ).toBeNull();
+      expect(normalizeEntry({ ...legacy, body: { occurredAt: OCCURRED_AT } })).toBeNull();
+    });
+
+    /*
+     * ⛔ **모르는 유형을 중단으로 접지 않는다.** 지난 판이 담던 것은 둘뿐이라 그 밖의 값은
+     * 손상된 저장값이다 — 방향을 지어내면 돌고 있는 세션에 중단이 기록된다.
+     */
+    it('지난 판이 담은 적 없는 유형은 보내지 않는다', () => {
+      for (const eventTypeCode of ['END', 'START', 'CONTROL_OVERRIDE', 'stop']) {
+        expect(
+          normalizeEntry({ ...legacy, body: { eventTypeCode, occurredAt: OCCURRED_AT } }),
+        ).toBeNull();
+      }
+    });
+
     it('재개였던 항목은 재개 방향으로 읽는다', () => {
       expect(
         normalizeEntry({
