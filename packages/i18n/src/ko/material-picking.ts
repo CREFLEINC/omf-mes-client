@@ -26,6 +26,10 @@ export const materialPicking = {
     change: '다른 지시 고르기',
     /** 값 목록이 확정되기 전이라 코드를 그대로 보인다. */
     type: (code: string) => `유형 ${code}`,
+    /** 집은 것을 어디로 가져가는가. 말하지 않으면 그 자리가 사람의 기억에만 남는다. */
+    destination: (code: string) => `도착 ${code}`,
+    destinationLoading: '도착 위치를 불러오는 중입니다',
+    destinationUnknown: '도착 위치를 확인할 수 없습니다. 연결을 확인하세요.',
   },
   lines: {
     legend: '피킹 라인',
@@ -80,7 +84,8 @@ export const materialPicking = {
    */
   issueTypeLabel: '출고 유형',
   issueTypePlaceholder: '출고 유형을 고르세요',
-  issueTypeNote: '출고 유형은 담당자가 고릅니다.',
+  /* 생산에 넣을 자재를 내보내는 자리다. 고객이 그 값을 지웠을 때만 고르게 한다. */
+  issueTypeNote: '고를 출고 유형이 없어 담당자가 고릅니다.',
   issueTypeLoadFailed: '출고 유형을 불러오지 못했습니다',
   noIssueType: '고를 수 있는 출고 유형이 없습니다. 관리자에게 문의하세요.',
   /* 담긴 것을 끝난 것으로 말하지 않는다. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
