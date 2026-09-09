@@ -35,9 +35,14 @@ describe('POP 진입점 배선', () => {
     expect(source).toMatch(/path: '\*'[\s\S]{0,80}POP_ENTRY_PATH/);
   });
 
-  it('접근 가능 후보 정본이 없는 동안 배포 셸에 화면 이동을 싣지 않는다', () => {
-    expect(source).not.toContain('PopScreenNav');
-    expect(source).not.toContain('popScreenNav');
+  /*
+   * ⭐ **이 자리는 한 번 뒤집혔다.** 후보를 공급할 근거가 없다고 보아 배포 셸에서 화면 이동을
+   * «빼는» 것을 지키던 시험이었다(PR #926). 근거는 계약에 있었다 — 세션 권한 배열이 화면
+   * 코드와 1:1 이고, 계약이 「403 을 받아 보고 아는 것이 아니라 «누르기 전에» 판정한다」고
+   * 못박았다. 그래서 지금은 **실려 있는 것**을 지킨다(#949 · 공유계약 G-34).
+   */
+  it('배포 셸에 업무용 화면 이동을 싣는다', () => {
+    expect(source).toContain('PopScreenNavButton');
   });
 
   it('진입 문서가 이 파일을 가리킨다', () => {
