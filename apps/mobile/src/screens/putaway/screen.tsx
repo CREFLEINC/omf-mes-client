@@ -1,22 +1,37 @@
 import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
-import { useUomCodes } from '../../patterns/masters';
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
+import { playErrorTone } from '../../patterns/error-tone';
+import { useItemLabels, useUomCodes } from '../../patterns/masters';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useWorkerId } from '../../patterns/workers';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
-import { usePutawayTasks } from './queries';
+import {
+  putawayKeys,
+  useLocationContents,
+  usePutawayRule,
+  usePutawayTasks,
+  useTaskLotNo,
+} from './queries';
 import {
   MATCHED,
+  MIXED_ITEM,
   NOT_RECOMMENDED,
   NO_RULE,
   canComplete,
-  isSingleItemOnly,
+  lotMatches,
+  mixProblemOf,
+  overCapacityOf,
+  scansLocation,
   toOutboxDraft,
   verdictOf,
   type PutawayTask,
@@ -24,40 +39,52 @@ import {
 import './screen.css';
 
 const t = messages.putaway;
+/* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
+const required = messages.common.required;
+
+const WORK_LIST_PATH = '/screens';
 
 type Outcome = 'queued' | 'sent' | 'rejected';
+
+interface Registered {
+  key: string;
+  lotNo: string;
+  locationCode: string;
+  qty: string;
+  outcome: Outcome;
+}
 
 export const PutawayScreen = () => {
   useScreenTitle(t.title);
 
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { enqueue, flush, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
 
   const [task, setTask] = useState<PutawayTask | null>(null);
   const [pickedId, setPickedId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
+  const [scannedLot, setScannedLot] = useState<string | null>(null);
   const [confirmedNoRule, setConfirmedNoRule] = useState(false);
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [registered, setRegistered] = useState<Registered[]>([]);
   const [saveFailed, setSaveFailed] = useState(false);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
    * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 두 건이 기록된다.
    */
   const inFlight = useRef(false);
-
-  const scanField = useScanField({
-    onScan: (value) => {
-      setScanned(value.trim());
-      setPickedId(null);
-      setConfirmedNoRule(false);
-    },
-  });
+  const locationSection = useRef<HTMLElement | null>(null);
+  const lotSection = useRef<HTMLElement | null>(null);
 
   const workerId = useWorkerId(worker?.workerNo ?? null);
   const tasks = usePutawayTasks(workerId.data ?? null);
   const locations = useLocations(task?.warehouseId ?? null);
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const uoms = useUomCodes(true);
+  const itemLabels = useItemLabels(true);
+  const lotNo = useTaskLotNo(task?.lotId ?? null);
+  const rule = usePutawayRule(task?.appliedPutawayRuleId ?? null);
 
   const codeOf = (locationId: number | null | undefined): string =>
     locations.data?.find((each) => each.locationId === locationId)?.locationCode ?? '';
@@ -67,18 +94,75 @@ export const PutawayScreen = () => {
       ? (byCode.data ?? null)
       : (locations.data?.find((each) => each.locationId === pickedId) ?? null);
 
-  const verdict = task === null || location === null ? null : verdictOf(task, location);
-  const ready = canComplete(task, location, confirmedNoRule, worker !== null);
+  const contents = useLocationContents(task?.warehouseId ?? null, location?.locationId ?? null);
+  const held = contents.data ?? [];
 
-  const restart = () => {
-    setTask(null);
+  const verdict = task === null || location === null ? null : verdictOf(task, location);
+  const mixProblem = task === null || location === null ? null : mixProblemOf(task, location, held);
+  const overCapacity =
+    task === null || location === null ? null : overCapacityOf(task, location, held);
+
+  /* 위치가 통과해야 LOT 을 묻는다 - 순서를 바꾸면 오적치를 막을 자리가 사라진다. */
+  const locationSettled =
+    location !== null &&
+    mixProblem === null &&
+    (verdict === MATCHED || (verdict === NO_RULE && confirmedNoRule));
+
+  const ready = canComplete({
+    task,
+    location,
+    lotNo: lotNo.data ?? null,
+    scannedLot,
+    contents: held,
+    confirmedNoRule,
+    hasWorker: worker !== null,
+  });
+
+  const clearScans = () => {
+    setPickedId(null);
+    setScanned(null);
+    setScannedLot(null);
+    setConfirmedNoRule(false);
+  };
+
+  const locationField = useScanField({
+    onScan: (value) => {
+      setScanned(value.trim());
+      setPickedId(null);
+      setConfirmedNoRule(false);
+    },
+  });
+
+  const lotField = useScanField({
+    onScan: (value) => {
+      const taken = value.trim();
+      setScannedLot(taken);
+
+      /* 화면을 보고 있지 않을 수 있다. 소리로도 알린다(공유계약 D-2). */
+      if (!lotMatches(lotNo.data ?? null, taken)) {
+        playErrorTone();
+      }
+    },
+  });
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(task !== null, locationSection);
+  useAdvanceTo(locationSettled, lotSection);
+
+  /*
+   * 뒤로가기는 화면 안 단계를 먼저 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지 않으면
+   * 지시를 고르고 스캔하던 사람이 한 번에 작업 목록까지 나간다.
+   */
+  useBackStep(task !== null && locationSettled, () => {
+    setScannedLot(null);
     setPickedId(null);
     setScanned(null);
     setConfirmedNoRule(false);
-    setOutcome(null);
-    setSaveFailed(false);
-    scanField.focus();
-  };
+  });
+  useBackStep(task !== null && !locationSettled, () => {
+    setTask(null);
+    clearScans();
+  });
 
   const complete = async () => {
     if (task === null || location === null || worker === null || inFlight.current) {
@@ -89,6 +173,12 @@ export const PutawayScreen = () => {
     setSaveFailed(false);
 
     const entry = toOutboxDraft(task, location, confirmedNoRule, new Date(), worker.workerNo);
+    const row = {
+      key: entry.idempotencyKey,
+      lotNo: lotNo.data ?? '',
+      locationCode: location.locationCode,
+      qty: `${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`,
+    };
 
     try {
       /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 기록된 줄 안다. */
@@ -107,45 +197,38 @@ export const PutawayScreen = () => {
        * 자기가 부른 보내기의 결과만 보면 딸려 되돌아간 건을 놓친다 - 그 판정은 셸이 도는 다른
        * 회차에서 내려질 수 있고, 화면은 빈 결과를 받아 담아 두었다고 잘못 말한다.
        */
-      if (
+      const outcome: Outcome =
         (result !== null && result.rejected.some((each) => mine(each.entry))) ||
         isRejected(entry.idempotencyKey)
-      ) {
-        setOutcome('rejected');
-        return;
-      }
+          ? 'rejected'
+          : result === null || result.remaining.some(mine)
+            ? 'queued'
+            : 'sent';
 
-      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+      setRegistered((prev) => [...prev, { ...row, outcome }]);
+
+      /*
+       * 목록을 다시 읽는다 - 그러지 않으면 방금 끝낸 지시가 그대로 서 있어 같은 자리를 두 번
+       * 적치할 수 있다.
+       */
+      await queryClient.invalidateQueries({ queryKey: putawayKeys.tasks(workerId.data ?? null) });
+      setTask(null);
+      clearScans();
     } finally {
       inFlight.current = false;
     }
   };
 
-  if (outcome !== null) {
-    return (
-      <div className="putaway">
-        {outcome === 'sent' ? <AlertBanner variant="success" title={t.sent.title} /> : null}
-        {outcome === 'queued' ? (
-          <AlertBanner variant="warning" title={t.queued.title}>
-            {t.queued.description}
-          </AlertBanner>
-        ) : null}
-        {outcome === 'rejected' ? (
-          <AlertBanner variant="error" title={t.rejected.title}>
-            {t.rejected.description}
-            <Link to="/rejections">{t.rejected.action}</Link>
-          </AlertBanner>
-        ) : null}
-        <Button className="putaway__wide" variant="filled" size="2xl" onClick={restart}>
-          {t.another}
-        </Button>
-      </div>
+  const taskLabel = (each: PutawayTask) =>
+    t.tasks.item(
+      itemLabels.data?.get(each.itemId)?.itemCode ?? '',
+      each.putawayTaskNo,
+      `${String(each.taskQty)} ${uoms.data?.get(each.uomId) ?? ''}`,
     );
-  }
 
-  if (task === null) {
-    return (
-      <div className="putaway">
+  return (
+    <div className="putaway">
+      {task === null ? (
         <section className="putaway__section">
           <h2>{t.tasks.legend}</h2>
           {worker === null ? <p className="putaway__note">{t.noWorker}</p> : null}
@@ -153,10 +236,7 @@ export const PutawayScreen = () => {
           {workerId.isError ? <AlertBanner variant="error" title={t.worker.loadFailed} /> : null}
           {/* 비우고 물으면 남의 지시까지 온다. 찾지 못하면 목록을 열지 않는다. */}
           {workerId.isSuccess && workerId.data === null ? (
-            <AlertBanner
-              variant="warning"
-              title={t.worker.notFound(worker?.workerNo ?? '')}
-            />
+            <AlertBanner variant="warning" title={t.worker.notFound(worker?.workerNo ?? '')} />
           ) : null}
 
           {tasks.isPending && workerId.data !== null ? (
@@ -165,6 +245,9 @@ export const PutawayScreen = () => {
           {tasks.isError ? <AlertBanner variant="error" title={t.tasks.loadFailed} /> : null}
           {tasks.data !== undefined && tasks.data.length === 0 ? (
             <p className="putaway__note">{t.tasks.none}</p>
+          ) : null}
+          {tasks.data !== undefined && tasks.data.length > 0 ? (
+            <p className="putaway__note">{t.tasks.count(String(tasks.data.length))}</p>
           ) : null}
 
           <ul className="putaway__tasks">
@@ -176,16 +259,11 @@ export const PutawayScreen = () => {
                   size="xl"
                   onClick={() => {
                     setTask(each);
-                    setPickedId(null);
-                    setScanned(null);
-                    setConfirmedNoRule(false);
+                    clearScans();
                   }}
                 >
                   <span className="putaway__task">
-                    <strong>{each.putawayTaskNo}</strong>
-                    <span>
-                      {t.tasks.qty(`${String(each.taskQty)} ${uoms.data?.get(each.uomId) ?? ''}`)}
-                    </span>
+                    <strong>{taskLabel(each)}</strong>
                     {/*
                      * 목록에서는 위치 코드를 아직 받지 못했다. 식별자를 그대로 보이면 사람이
                      * 읽을 수 없는 번호가 권장 위치인 척한다 - 있고 없고만 말한다.
@@ -202,153 +280,262 @@ export const PutawayScreen = () => {
             ))}
           </ul>
         </section>
-      </div>
-    );
-  }
-
-  return (
-    <div className="putaway">
-      <section className="putaway__section">
-        <h2>{t.tasks.legend}</h2>
-        <Card bordered>
-          <Card.Body className="card-body putaway__card">
-            <strong>{task.putawayTaskNo}</strong>
-            <p>{t.tasks.qty(`${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`)}</p>
-            <p className="putaway__note">{t.tasks.from(codeOf(task.fromLocationId))}</p>
-            {task.recommendedLocationId === null || task.recommendedLocationId === undefined ? (
-              <Chip status="warning">{t.tasks.noRule}</Chip>
-            ) : (
-              <Chip>{t.tasks.recommended(codeOf(task.recommendedLocationId))}</Chip>
-            )}
-            {/* 값 목록이 확정되기 전이라 코드를 그대로 보인다. */}
-            {task.warehouseManagementLevelCode === undefined ? null : (
-              <p className="putaway__note">{t.tasks.level(task.warehouseManagementLevelCode)}</p>
-            )}
-          </Card.Body>
-        </Card>
-        <Button
-          variant="text"
-          size="lg"
-          onClick={() => {
-            setTask(null);
-            setPickedId(null);
-            setScanned(null);
-            setConfirmedNoRule(false);
-          }}
-        >
-          {t.tasks.change}
-        </Button>
-      </section>
-
-      <section className="putaway__section">
-        <h2>{t.location.legend}</h2>
-        <TextField
-          ref={scanField.ref}
-          label={t.location.scanLabel}
-          placeholder={t.location.scanPlaceholder}
-          size="xl"
-          fullWidth
-          error={
-            scanned !== null && byCode.isSuccess && byCode.data === null
-              ? t.location.notFound(scanned)
-              : undefined
-          }
-        />
-        {byCode.isError ? <AlertBanner variant="error" title={t.location.loadFailed} /> : null}
-
-        {locations.isPending ? <p role="status">{t.location.loading}</p> : null}
-        {locations.isError ? <AlertBanner variant="error" title={t.location.loadFailed} /> : null}
-        {locations.data !== undefined && locations.data.length === 0 ? (
-          <AlertBanner variant="warning" title={t.location.none} />
-        ) : null}
-        {locations.data === undefined ? null : (
-          <div className="putaway__field">
-            <label htmlFor="putaway-location">{t.location.pickLabel}</label>
-            <Select
-              id="putaway-location"
-              placeholder={t.location.pickPlaceholder}
-              size="xl"
-              value={pickedId === null ? null : String(pickedId)}
-              onChange={(value) => {
-                setScanned(null);
-                setPickedId(Number(value));
-                setConfirmedNoRule(false);
+      ) : (
+        <>
+          <section className="putaway__section">
+            <h2>{t.tasks.legend}</h2>
+            <Card bordered>
+              <Card.Body className="card-body putaway__card">
+                <strong>{taskLabel(task)}</strong>
+                {lotNo.data === undefined ? null : (
+                  /* 34자리를 붙여 쓰면 실물 라벨과 눈으로 대조할 수 없다(공유계약 E-2). */
+                  <p className="putaway__scanned">
+                    {t.lot.expected(formatMaterialLotNo(lotNo.data))}
+                  </p>
+                )}
+                <p className="putaway__note">{t.tasks.from(codeOf(task.fromLocationId))}</p>
+                {task.recommendedLocationId === null || task.recommendedLocationId === undefined ? (
+                  <Chip status="warning">{t.tasks.noRule}</Chip>
+                ) : (
+                  <Chip>{t.tasks.recommended(codeOf(task.recommendedLocationId))}</Chip>
+                )}
+                {/* 왜 이 자리인지를 함께 보이면 사람에게 판단할 근거가 생긴다. */}
+                {rule.data === undefined ? null : (
+                  <p className="putaway__note">{t.tasks.rule(String(rule.data.priorityNo))}</p>
+                )}
+              </Card.Body>
+            </Card>
+            <Button
+              variant="text"
+              size="lg"
+              onClick={() => {
+                setTask(null);
+                clearScans();
               }}
-              options={locations.data.map((each) => ({
-                value: String(each.locationId),
-                label: `${each.locationCode} ${each.locationName}`,
-              }))}
-            />
-          </div>
-        )}
+            >
+              {t.tasks.change}
+            </Button>
+          </section>
 
-        {location === null ? null : (
-          <>
-            <p>{t.location.chosen(location.locationCode, location.locationName)}</p>
-
-            {verdict === MATCHED ? (
-              <AlertBanner variant="success" title={t.verdict.matched} />
+          <section className="putaway__section" ref={locationSection}>
+            <h2>{t.location.legend}</h2>
+            {locations.isPending ? <p role="status">{t.location.loading}</p> : null}
+            {locations.isError ? (
+              <AlertBanner variant="error" title={t.location.loadFailed} />
+            ) : null}
+            {locations.data !== undefined && locations.data.length === 0 ? (
+              <AlertBanner variant="warning" title={t.location.none} />
             ) : null}
 
-            {/* 다른 곳에 두면 다음 사람이 찾지 못한다. 임시로 두는 길은 다른 화면이 받는다. */}
-            {verdict === NOT_RECOMMENDED ? (
-              <AlertBanner
-                variant="error"
-                title={t.verdict.notRecommended(codeOf(task.recommendedLocationId))}
-              >
-                {/* 임시로 두어야 하는 경우가 있다. 그 길을 지시와 함께 넘긴다. */}
-                <Link to="/temporary-putaway" state={{ task, location }}>
-                  {t.verdict.temporary}
-                </Link>
-              </AlertBanner>
-            ) : null}
-
-            {/* 규칙이 없다고 막으면 미등록 품목이 적치 자체를 못 한다. 확인을 받고 통과시킨다. */}
-            {verdict === NO_RULE ? (
+            {/*
+             * 위치를 관리하는 창고는 라벨을 읽어야 오적치를 막는다. 목록 선택을 함께 열어 두면
+             * 라벨을 읽지 않고 화면만 보고 적치가 끝난다.
+             */}
+            {scansLocation(task) ? (
               <>
-                <AlertBanner variant="warning" title={t.verdict.noRule} />
+                <TextField
+                  ref={locationField.ref}
+                  label={required(t.location.scanLabel)}
+                  placeholder={t.location.scanPlaceholder}
+                  size="xl"
+                  fullWidth
+                  error={
+                    scanned !== null && byCode.isSuccess && byCode.data === null
+                      ? t.location.notFound(scanned)
+                      : undefined
+                  }
+                />
+                {byCode.isError ? (
+                  <AlertBanner variant="error" title={t.location.loadFailed} />
+                ) : null}
+                {/* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */}
                 <Button
                   className="putaway__wide"
-                  variant={confirmedNoRule ? 'filled' : 'outlined'}
+                  variant={locationField.manual ? 'outlined' : 'text'}
                   size="xl"
-                  onClick={() => {
-                    setConfirmedNoRule(true);
-                  }}
+                  onClick={
+                    locationField.manual ? locationField.submitManual : locationField.openManual
+                  }
                 >
-                  {t.verdict.noRuleConfirm}
+                  {locationField.manual ? t.location.manualSubmit : t.location.manual}
                 </Button>
               </>
-            ) : null}
-
-            {/* 지금 무엇이 들어 있는지는 이 화면이 알지 못한다. 위반이라고 말하지 않는다. */}
-            {isSingleItemOnly(location) ? (
-              <AlertBanner variant="warning" title={t.singleItemOnly} />
-            ) : null}
-
-            {location.capacityQty === null || location.capacityQty === undefined ? null : (
-              <p className="putaway__note">{t.capacity(String(location.capacityQty))}</p>
+            ) : locations.data === undefined ? null : (
+              <div className="putaway__field">
+                <label htmlFor="putaway-location">{required(t.location.pickLabel)}</label>
+                <Select
+                  id="putaway-location"
+                  placeholder={t.location.pickPlaceholder}
+                  size="xl"
+                  value={pickedId === null ? null : String(pickedId)}
+                  onChange={(value) => {
+                    setScanned(null);
+                    setPickedId(Number(value));
+                    setConfirmedNoRule(false);
+                  }}
+                  options={locations.data.map((each) => ({
+                    value: String(each.locationId),
+                    label: `${each.locationCode} ${each.locationName}`,
+                  }))}
+                />
+              </div>
             )}
-          </>
-        )}
-      </section>
 
-      <section className="putaway__section">
-        {saveFailed ? (
-          <AlertBanner variant="error" title={t.saveFailed.title}>
-            {t.saveFailed.description}
-          </AlertBanner>
-        ) : null}
-        {worker === null ? <p className="putaway__note">{t.noWorker}</p> : null}
+            {location === null ? null : (
+              <>
+                <p>{t.location.chosen(location.locationCode, location.locationName)}</p>
+
+                {verdict === MATCHED && mixProblem === null ? (
+                  <AlertBanner variant="success" title={t.verdict.matched} />
+                ) : null}
+
+                {/* 다른 곳에 두면 다음 사람이 찾지 못한다. 임시로 두는 길은 다른 화면이 받는다. */}
+                {verdict === NOT_RECOMMENDED ? (
+                  <AlertBanner
+                    variant="error"
+                    title={t.verdict.notRecommended(codeOf(task.recommendedLocationId))}
+                  >
+                    <Link to="/temporary-putaway" state={{ task, location }}>
+                      {t.verdict.temporary}
+                    </Link>
+                  </AlertBanner>
+                ) : null}
+
+                {/* 지금 그 자리에 있는 것과 부딪친다. 얹으면 다음 사람이 찾지 못한다. */}
+                {mixProblem === null ? null : (
+                  <AlertBanner
+                    variant="error"
+                    title={mixProblem === MIXED_ITEM ? t.mix.item : t.mix.lot}
+                  >
+                    <Link to="/temporary-putaway" state={{ task, location }}>
+                      {t.mix.temporary}
+                    </Link>
+                  </AlertBanner>
+                )}
+
+                {/* 규칙이 없다고 막으면 미등록 품목이 적치 자체를 못 한다. 확인을 받고 통과시킨다. */}
+                {verdict === NO_RULE && mixProblem === null ? (
+                  <>
+                    <AlertBanner variant="warning" title={t.verdict.noRule} />
+                    <Button
+                      className="putaway__wide"
+                      variant={confirmedNoRule ? 'filled' : 'outlined'}
+                      size="xl"
+                      onClick={() => {
+                        setConfirmedNoRule(true);
+                      }}
+                    >
+                      {t.verdict.noRuleConfirm}
+                    </Button>
+                  </>
+                ) : null}
+
+                {/* 막지 않는다. 넘겨서 두는 판단은 자리를 보는 사람이 한다. */}
+                {overCapacity === null ? null : (
+                  <AlertBanner
+                    variant="warning"
+                    title={t.overCapacity(
+                      String(overCapacity.capacity),
+                      String(overCapacity.held),
+                      String(task.taskQty),
+                    )}
+                  />
+                )}
+              </>
+            )}
+          </section>
+
+          {!locationSettled ? null : (
+            <section className="putaway__section" ref={lotSection}>
+              <h2>{t.lot.legend}</h2>
+              {lotNo.isPending ? <p role="status">{t.lot.loading}</p> : null}
+              {lotNo.isError ? <AlertBanner variant="error" title={t.lot.loadFailed} /> : null}
+              <TextField
+                ref={lotField.ref}
+                label={required(t.lot.scanLabel)}
+                placeholder={t.lot.scanPlaceholder}
+                size="xl"
+                fullWidth
+              />
+              <Button
+                className="putaway__wide"
+                variant={lotField.manual ? 'outlined' : 'text'}
+                size="xl"
+                onClick={lotField.manual ? lotField.submitManual : lotField.openManual}
+              >
+                {lotField.manual ? t.lot.manualSubmit : t.lot.manual}
+              </Button>
+
+              {scannedLot === null ? null : lotMatches(lotNo.data ?? null, scannedLot) ? (
+                <p className="putaway__scanned">{t.lot.matched(formatMaterialLotNo(scannedLot))}</p>
+              ) : (
+                <AlertBanner variant="error" title={t.lot.mismatch} />
+              )}
+            </section>
+          )}
+
+          <section className="putaway__section">
+            {saveFailed ? (
+              <AlertBanner variant="error" title={t.saveFailed.title}>
+                {t.saveFailed.description}
+              </AlertBanner>
+            ) : null}
+            {worker === null ? <p className="putaway__note">{t.noWorker}</p> : null}
+            <Button
+              className="putaway__wide"
+              variant="filled"
+              size="2xl"
+              disabled={!ready}
+              onClick={() => void complete()}
+            >
+              {t.record1}
+            </Button>
+          </section>
+        </>
+      )}
+
+      {registered.length === 0 ? null : (
+        <section className="putaway__section">
+          <h2>{t.done.count(String(registered.length))}</h2>
+          <ul className="putaway__done">
+            {registered.map((each) => (
+              <li key={each.key}>
+                <span className="putaway__scanned">
+                  {t.done.row(formatMaterialLotNo(each.lotNo), each.locationCode, each.qty)}
+                </span>
+                {each.outcome === 'rejected' ? (
+                  <Chip status="error">{t.rejected.title}</Chip>
+                ) : each.outcome === 'queued' ? (
+                  <Chip status="warning">{t.queued.title}</Chip>
+                ) : (
+                  <Chip status="success">{t.sent.title}</Chip>
+                )}
+              </li>
+            ))}
+          </ul>
+          {registered.some((each) => each.outcome === 'rejected') ? (
+            <AlertBanner variant="error" title={t.rejected.title}>
+              {t.rejected.description}
+              <Link to="/rejections">{t.rejected.action}</Link>
+            </AlertBanner>
+          ) : null}
+        </section>
+      )}
+
+      {/* 건별로 이미 저장됐다. 마치는 것은 이 화면을 닫는 일이라 서버를 부르지 않는다. */}
+      <div className="action-bar">
         <Button
           className="putaway__wide"
-          variant="filled"
+          variant="outlined"
           size="2xl"
-          disabled={!ready}
-          onClick={() => void complete()}
+          disabled={registered.length === 0}
+          onClick={() => {
+            void navigate(WORK_LIST_PATH);
+          }}
         >
-          {t.submit}
+          {t.done.submit}
         </Button>
-      </section>
+      </div>
     </div>
   );
 };
