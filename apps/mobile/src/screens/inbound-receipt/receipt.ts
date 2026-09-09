@@ -138,6 +138,7 @@ export interface ReceiptDraft {
   exceptionTypeCode: string;
   exceptionReason: string;
   deliveryNoteNo: string;
+  vehicleNo: string;
   receivedQty: string;
   packageCount: string;
   manufacturedDate: string;
@@ -236,6 +237,7 @@ export const toOutboxDraft = (
     plantId,
     receiptDatetime: occurredAt,
     deliveryNoteNo: optional(draft.deliveryNoteNo),
+    vehicleNo: optional(draft.vehicleNo),
     ...(draft.unordered
       ? {
           exceptionTypeCode: draft.exceptionTypeCode.trim(),
@@ -300,6 +302,7 @@ const splitPart = (
   plantId,
   receiptDatetime,
   deliveryNoteNo: optional(draft.deliveryNoteNo),
+  vehicleNo: optional(draft.vehicleNo),
   lines: [toLine(draft, itemId, uomId, receivedQty, purchaseOrderLineId)],
 });
 

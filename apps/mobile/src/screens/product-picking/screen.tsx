@@ -634,7 +634,7 @@ export const ProductPickingScreen = () => {
           )}
           <TextField
             label={t.qty.label}
-            inputMode="decimal"
+            inputMode="none"
             size="xl"
             fullWidth
             value={qty}

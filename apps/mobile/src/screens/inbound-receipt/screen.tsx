@@ -54,6 +54,7 @@ const emptyDraft: ReceiptDraft = {
   purchaseOrder: null,
   purchaseOrderLine: null,
   deliveryNoteNo: '',
+  vehicleNo: '',
   receivedQty: '',
   packageCount: '',
   manufacturedDate: '',
@@ -74,7 +75,7 @@ export const InboundReceiptScreen = () => {
   const [splitExceptionType, setSplitExceptionType] = useState('');
   const [splitExceptionReason, setSplitExceptionReason] = useState('');
   const [saveFailed, setSaveFailed] = useState(false);
-  const [keypadFor, setKeypadFor] = useState<'received' | 'package'>('received');
+  const [keypadFor, setKeypadFor] = useState<'received' | 'package' | null>(null);
   const poSection = useRef<HTMLElement | null>(null);
   const qtySection = useRef<HTMLElement | null>(null);
   /*
@@ -112,9 +113,6 @@ export const InboundReceiptScreen = () => {
   };
 
   const scanField = useScanField({ onScan: take });
-
-  /* 숫자판은 품목·수량 확인 구획과 함께 뜬다. */
-  const keypadShown = draft.purchaseOrderLine !== null || draft.unordered;
 
   /* 세로 화면이라 채운 구획이 화면을 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
   useAdvanceTo(draft.supplierLotNo !== '' || draft.supplierLotMissing, poSection);
@@ -630,6 +628,16 @@ export const InboundReceiptScreen = () => {
                 patch({ deliveryNoteNo: event.target.value });
               }}
             />
+
+            <TextField
+              label={t.note.vehicle}
+              size="xl"
+              fullWidth
+              value={draft.vehicleNo}
+              onChange={(event) => {
+                patch({ vehicleNo: event.target.value });
+              }}
+            />
             {draft.deliveryNoteNo.trim() === '' ? (
               <AlertBanner variant="warning" title={t.note.absent} />
             ) : null}
@@ -669,54 +677,74 @@ export const InboundReceiptScreen = () => {
                 </Card.Body>
               </Card>
 
-              <TextField
-                label={t.qty.received}
-                inputMode="decimal"
-                size="xl"
-                fullWidth
-                value={draft.receivedQty}
-                onChange={(event) => {
-                  patch({ receivedQty: event.target.value });
-                }}
-                onFocus={() => {
-                  setKeypadFor('received');
-                }}
-                error={qtyMessage()}
-              />
-
-              <TextField
-                label={t.qty.packageCount}
-                inputMode="numeric"
-                size="xl"
-                fullWidth
-                value={draft.packageCount}
-                onChange={(event) => {
-                  patch({ packageCount: event.target.value });
-                }}
-                onFocus={() => {
-                  setKeypadFor('package');
-                }}
-                error={
-                  packageProblem(draft.packageCount) === null ? undefined : t.qty.packageNotPositive
-                }
-              />
-
               {/*
-               * 키패드는 고른 칸을 따라간다. 칸마다 하나씩 두면 장갑 낀 손이 쓰는 큰 키패드가
-               * 둘이 되어 세로 예산을 먹고, 아래 칸이 화면 밖으로 밀린다.
+               * 숫자판은 고른 칸에 붙는다 - 부품의 골격이 포커스 연동 버퍼다(공유계약 D-4).
+               * 고른 칸이 없을 때까지 띄워 두면 어느 칸에 들어가는지가 흐려지고, 칸마다 하나씩
+               * 두면 장갑 낀 손이 쓰는 큰 판이 둘이 되어 아래 칸을 화면 밖으로 민다.
                */}
-              <p className="receipt__note">
-                {t.qty.keypadFor(keypadFor === 'received' ? t.qty.received : t.qty.packageCount)}
-              </p>
-              <NumberPad
-                value={keypadFor === 'received' ? draft.receivedQty : draft.packageCount}
-                onChange={(value) => {
-                  patch(
-                    keypadFor === 'received' ? { receivedQty: value } : { packageCount: value },
-                  );
+              <div
+                className="receipt__keypad-group"
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) {
+                    setKeypadFor(null);
+                  }
                 }}
-                allowDecimal={keypadFor === 'received'}
-              />
+              >
+                <TextField
+                  label={t.qty.received}
+                  inputMode="none"
+                  size="xl"
+                  fullWidth
+                  value={draft.receivedQty}
+                  onChange={(event) => {
+                    patch({ receivedQty: event.target.value });
+                  }}
+                  onFocus={() => {
+                    setKeypadFor('received');
+                  }}
+                  error={qtyMessage()}
+                />
+
+                <TextField
+                  label={t.qty.packageCount}
+                  inputMode="none"
+                  size="xl"
+                  fullWidth
+                  value={draft.packageCount}
+                  onChange={(event) => {
+                    patch({ packageCount: event.target.value });
+                  }}
+                  onFocus={() => {
+                    setKeypadFor('package');
+                  }}
+                  error={
+                    packageProblem(draft.packageCount) === null
+                      ? undefined
+                      : t.qty.packageNotPositive
+                  }
+                />
+
+                {keypadFor === null ? null : (
+                  <>
+                    <p className="receipt__note">
+                      {t.qty.keypadFor(
+                        keypadFor === 'received' ? t.qty.received : t.qty.packageCount,
+                      )}
+                    </p>
+                    <NumberPad
+                      value={keypadFor === 'received' ? draft.receivedQty : draft.packageCount}
+                      onChange={(value) => {
+                        patch(
+                          keypadFor === 'received'
+                            ? { receivedQty: value }
+                            : { packageCount: value },
+                        );
+                      }}
+                      allowDecimal={keypadFor === 'received'}
+                    />
+                  </>
+                )}
+              </div>
 
               <div className="receipt__row receipt__row--split">
                 <TextField
@@ -896,24 +924,20 @@ export const InboundReceiptScreen = () => {
           </section>
 
           {/*
-           * 고정 자리는 화면 뿌리에 둔다. 짧은 구획 안에 두면 그 구획 안에서만 붙어 있어
-           * 실제로는 본문과 함께 흐른다.
-           *
-           * 숫자판이 떠 있는 동안에는 고정을 푼다. 바닥에 붙은 단추가 숫자판 아랫줄을 덮어
-           * 누를 수 없게 된다.
+           * 이 단추는 바닥에 붙이지 않는다. 붙이면 숫자판 아랫줄을 덮어 누를 수 없고, 덮이는
+           * 동안만 풀면 같은 단추가 상태에 따라 붙었다 흘렀다 한다. 등록은 다 채운 뒤에
+           * 하는 마지막 일이라 흐름 끝에 두어도 찾는 데 문제가 없다.
            */}
           {verdict === OVER ? null : (
-            <div className={keypadShown ? undefined : 'action-bar'}>
-              <Button
-                className="receipt__wide"
-                variant="filled"
-                size="2xl"
-                disabled={!ready}
-                onClick={() => void submit()}
-              >
-                {t.submit}
-              </Button>
-            </div>
+            <Button
+              className="receipt__wide"
+              variant="filled"
+              size="2xl"
+              disabled={!ready}
+              onClick={() => void submit()}
+            >
+              {t.submit}
+            </Button>
           )}
         </>
       )}

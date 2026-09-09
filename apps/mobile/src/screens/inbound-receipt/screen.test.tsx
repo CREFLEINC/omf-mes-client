@@ -187,6 +187,28 @@ beforeEach(() => {
 
 describe('입하 등록 화면', () => {
   /*
+   * 부품의 골격이 포커스 연동 버퍼다(공유계약 D-4). 고르지도 않은 칸에 숫자판이 붙어 있으면
+   * 어느 칸에 들어가는지 알 수 없다. 이 화면은 숫자 칸이 둘이다.
+   */
+  it('숫자판은 고른 칸에만 붙는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+
+    expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+
+    await user.click(screen.getByLabelText('실입하 수량'));
+
+    expect(screen.getByRole('button', { name: '7' })).toBeTruthy();
+    expect(screen.getByText('숫자판은 실입하 수량에 들어갑니다')).toBeTruthy();
+
+    await user.click(screen.getByLabelText('포장 수'));
+
+    expect(screen.getByText('숫자판은 포장 수에 들어갑니다')).toBeTruthy();
+  });
+
+  /*
    * 세로 화면이라 채운 구획이 화면을 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다.
    * 한 손은 스캐너를 들고 있어 스크롤로 찾게 두면 안 된다.
    */
