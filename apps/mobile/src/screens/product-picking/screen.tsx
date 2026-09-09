@@ -3,6 +3,7 @@ import { AlertBanner, Button, Card, Chip, NumberPad, TextField } from '@crefle/w
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 
+import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
@@ -230,6 +231,20 @@ export const ProductPickingScreen = () => {
   const retry = () => {
     void queries.refetchQueries({ predicate: (query) => query.state.status === 'error' });
   };
+
+  /*
+   * 뒤로가기는 화면 안 단계를 먼저 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지
+   * 않으면 대상을 고르고 스캔하던 사람이 한 번에 작업 목록까지 나간다.
+   */
+  useBackStep(listView, () => {
+    setListView(false);
+  });
+  useBackStep(!listView && chosen !== null, () => {
+    setChosen(null);
+    setLotId(null);
+    setQty('');
+    setMissed(null);
+  });
 
   const scanField = useScanField({ onScan: takeScan });
   /*

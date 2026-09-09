@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { ProductPickingScreen } from './screen';
 
@@ -355,6 +356,33 @@ describe('제품LOT 피킹 스캔 화면', () => {
 
     expect(await screen.findByText('순서를 정할 수 없습니다')).toBeTruthy();
     expect(screen.getByText('FG-0305')).toBeTruthy();
+  });
+
+  /*
+   * 라우터 이력에는 이 화면 하나뿐이다. 단계를 되돌리지 않으면 대상을 고르고 스캔하던
+   * 사람이 뒤로가기 한 번에 작업 목록까지 나가 처음부터 다시 들어와야 한다.
+   */
+  it('뒤로가기는 고른 대상을 먼저 놓는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseTarget(user);
+
+    expect(runBackStep()).toBe(true);
+
+    expect(await screen.findByRole('button', { name: /SR-2026-0456/ })).toBeTruthy();
+  });
+
+  it('목록 화면에서 뒤로가기는 피킹 화면으로 돌아간다', async () => {
+    const user = userEvent.setup();
+    mount([], { lots: [EARLY, LATE, UNDATED] });
+    await chooseTarget(user);
+    await openList(user);
+    await screen.findByText('전체 LOT');
+
+    expect(runBackStep()).toBe(true);
+
+    expect(await screen.findByLabelText('제품 LOT 스캔')).toBeTruthy();
+    expect(screen.queryByText('전체 LOT')).toBeNull();
   });
 
   /*

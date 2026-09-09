@@ -1,8 +1,9 @@
 import { AppShell, Chip, Topbar } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Link } from 'react-router';
 
+import { listenBackButton } from '../patterns/back-step';
 import { useOnlineStatus } from '../patterns/online-status';
 import { ScreenTitleProvider, useCurrentScreenTitle } from '../patterns/screen-title';
 import { useOutbox } from '../patterns/outbox';
@@ -54,10 +55,15 @@ const ShellTopbar = () => {
   );
 };
 
-export const AppLayout = ({ children }: AppLayoutProps) => (
-  <ScreenTitleProvider>
-    <AppShell className="mobile-shell" mainLabel="본문" topbar={<ShellTopbar />}>
-      {children}
-    </AppShell>
-  </ScreenTitleProvider>
-);
+export const AppLayout = ({ children }: AppLayoutProps) => {
+  /* 단말의 뒤로가기를 화면 안 단계가 먼저 받는다. 없으면 이력으로 넘어간다. */
+  useEffect(() => listenBackButton(), []);
+
+  return (
+    <ScreenTitleProvider>
+      <AppShell className="mobile-shell" mainLabel="본문" topbar={<ShellTopbar />}>
+        {children}
+      </AppShell>
+    </ScreenTitleProvider>
+  );
+};
