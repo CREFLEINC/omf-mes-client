@@ -290,6 +290,17 @@ export const createSeed = (now = new Date()) => {
       roleTypeCode: 'SUPPLIER',
       isActive: true,
     },
+    /*
+     * 출하 요청 9601 의 고객. 그 자리가 공급사를 가리키고 있어 M-04-01 이 고객 이름을
+     * 풀지 못했다 - 고객 축으로 거르면 걸리지 않는 거래처다.
+     */
+    {
+      partnerId: 4003,
+      partnerCode: 'CUS-002',
+      partnerName: '합성 고객사 A',
+      roleTypeCode: 'CUSTOMER',
+      isActive: true,
+    },
     /* W-04-06 — 원 출하 검색의 고객 축. 반품은 고객사에서 돌아온다. */
     {
       partnerId: 4002,
@@ -572,6 +583,8 @@ export const createSeed = (now = new Date()) => {
     LOT_HOLD_REASON: [
       ['INSPECTION_PENDING', '수입검사 대기'],
       ['SUSPECT', '의심 자재'],
+      /* 제품 LOT 의 보류 사유. 자재 쪽 값만 두면 제품 피킹이 쓸 값이 없다. */
+      ['SHIPPING_INSPECTION_PENDING', '출하검사 대기'],
     ],
     /* W-03-02 — 해제 사유는 등록 사유와 대칭인 필수 축(고객 시드 4값). */
     LOT_HOLD_RELEASE_REASON: [
@@ -799,6 +812,25 @@ export const createSeed = (now = new Date()) => {
       held: true,
     },
     /*
+     * 유효기간이 없는 제품 LOT. FEFO 인 품목이라 순서를 정할 수 없어 목록 맨 뒤 별도 묶음에
+     * 선다. 다른 제품 LOT 은 모두 날짜가 있어 그 묶음을 손으로 재 볼 대상이 없었다.
+     */
+    {
+      lotId: 8204,
+      lotNo: 'FLOT-2026-0288',
+      itemId: 2003,
+      lotTypeCode: 'PRODUCT',
+      initialQty: 150,
+      uomId: 1001,
+      manufacturedAt: iso(-11),
+      expiryDate: null,
+      sourceTypeCode: 'PRODUCTION_RESULT',
+      sourceId: 12004,
+      statusCode: 'NORMAL',
+      completedAt: iso(-11, 17),
+      held: false,
+    },
+    /*
      * 아직 끝나지 않은 생산 LOT — **진행 중인 W/O(11002)의 실적 입력 대상이다.**
      * 다른 생산 LOT 은 모두 완료된 W/O(11001)에 매여 있어, 실적을 「넣어 볼」 대상이 없었다.
      */
@@ -854,7 +886,7 @@ export const createSeed = (now = new Date()) => {
     {
       lotHoldId: 8502,
       lotId: 8203,
-      reasonCode: 'OQC_PENDING',
+      reasonCode: 'SHIPPING_INSPECTION_PENDING',
       holdQty: null,
       uomId: 1001,
       releaseCondition: '출하검사 합격',
@@ -872,6 +904,7 @@ export const createSeed = (now = new Date()) => {
     { lotId: 8201, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 500 },
     { lotId: 8202, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 300 },
     { lotId: 8203, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 200 },
+    { lotId: 8204, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 150 },
   ].map((balance, index) => {
     /*
      * 사람이 읽는 값을 잔액 줄에 함께 싣는다. 계약이 「이 값이 있으므로 마스터를 다시 부르지
@@ -1639,7 +1672,7 @@ export const createSeed = (now = new Date()) => {
       shipmentRequestId: 9601,
       shipmentRequestNo: 'SR-2026-0813-0108',
       salesOrderId: 9701,
-      customerId: 4001,
+      customerId: 4003,
       plantId: PLANT_ID,
       shipDate: today,
       requestedShipDate: today,
@@ -1673,6 +1706,13 @@ export const createSeed = (now = new Date()) => {
       pickedQty: 0,
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
+      /*
+       * 고객이 LOT 에 건 조건. 어느 줄에도 없어 화면이 그리는 자리를 손으로 시험할 대상이
+       * 없었다. 90일은 권장 1순위(FLOT-2026-0305 · 잔여 120일)를 통과시키는 값이다 - 넘기면
+       * 집을 수 있는 LOT 이 사라져 다른 경로를 재지 못한다. 2번 줄은 비워 둔 채로 남긴다.
+       */
+      customerLotRequirement: '제조 90일 이내 · 동일 LOT 단일',
+      minimumRemainingShelfLifeDays: 90,
     },
     /*
      * 여벌 줄. 한 줄만 두면 배정만큼 집은 순간 오늘 출하분에 할 일이 없어져, 그 화면을 다시
