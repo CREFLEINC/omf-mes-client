@@ -28,8 +28,8 @@ import { putawayKeys, usePutawayTask } from '../putaway/queries';
 import {
   PUTAWAY_TASK_TEMPORARY_REASON,
   canSubmit,
-  hasTemporaryLocations,
   isAlreadyPutAway,
+  isTemporaryLocation,
   queuedCountOf,
   temporaryLocationsOf,
   toOutboxDraft,
@@ -63,8 +63,13 @@ export const TemporaryPutawayScreen = () => {
   const handoff = isHandoff(routed.state) ? routed.state : null;
   const task = handoff?.task ?? null;
 
+  /*
+   * 넘겨받은 자리가 임시 유형일 때만 고른 것으로 둔다. 앞 화면은 그 자리에 둘 수 없어서 여기로
+   * 보내므로, 그대로 받으면 막혔던 자리에 임시 적치가 기록된다.
+   */
   const [draft, setDraft] = useState<TemporaryDraft>({
-    location: handoff?.location ?? null,
+    location:
+      handoff?.location != null && isTemporaryLocation(handoff.location) ? handoff.location : null,
     reasonCode: '',
     remarks: '',
   });
@@ -110,13 +115,11 @@ export const TemporaryPutawayScreen = () => {
   const uoms = useUomCodes(true);
   const itemLabels = useItemLabels(true);
 
-  const allLocations = locations.data ?? [];
   /*
    * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있어, 다음 사람이
    * 무엇을 옮겨야 하는지 알 수 없다.
    */
-  const temporaryOnly = temporaryLocationsOf(allLocations);
-  const filtered = hasTemporaryLocations(allLocations);
+  const { pickable: temporaryOnly, filtered } = temporaryLocationsOf(locations.data ?? []);
 
   const scannedLocation = scanned === null ? null : (byCode.data ?? null);
   /*

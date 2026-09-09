@@ -18,21 +18,26 @@ export const PUTAWAY_TASK_TEMPORARY_REASON = 'PUTAWAY_TASK_TEMPORARY_REASON';
  */
 export const TEMPORARY_LOCATION_TYPE = 'TEMP';
 
+export const isTemporaryLocation = (location: Location): boolean =>
+  location.locationTypeCode === TEMPORARY_LOCATION_TYPE;
+
 /**
- * 고를 수 있는 임시 위치.
+ * 고를 수 있는 임시 위치와, 가려내는 데 성공했는지.
  *
  * 고객이 이 유형을 지우면 한 자리도 남지 않는다. 그때 목록을 비우면 임시 적치 자체를 못 해
  * 포화된 현장이 선다 - 가려내지 못한 것을 알리고 전체를 보인다.
+ *
+ * 둘을 따로 세면 한쪽만 고쳤을 때 화면이 「가려냈다」고 말하면서 전체를 보인다.
  */
-export const temporaryLocationsOf = (locations: Location[]): Location[] => {
-  const temporary = locations.filter((each) => each.locationTypeCode === TEMPORARY_LOCATION_TYPE);
+export const temporaryLocationsOf = (
+  locations: Location[],
+): { pickable: Location[]; filtered: boolean } => {
+  const temporary = locations.filter(isTemporaryLocation);
 
-  return temporary.length === 0 ? locations : temporary;
+  return temporary.length === 0
+    ? { pickable: locations, filtered: false }
+    : { pickable: temporary, filtered: true };
 };
-
-/** 임시 유형으로 가려낸 자리가 하나라도 있는가. 없으면 화면이 그 사실을 말한다. */
-export const hasTemporaryLocations = (locations: Location[]): boolean =>
-  locations.some((each) => each.locationTypeCode === TEMPORARY_LOCATION_TYPE);
 
 /**
  * 이 지시가 이미 어딘가에 적치돼 있는가.

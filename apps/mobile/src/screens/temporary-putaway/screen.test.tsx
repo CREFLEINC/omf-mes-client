@@ -221,6 +221,19 @@ describe('임시 위치 적재 화면', () => {
     expect(await screen.findByRole('option', { name: /A-01-03/ })).toBeTruthy();
   });
 
+  /*
+   * 앞 화면은 그 자리에 둘 수 없어서 여기로 보낸다. 넘겨받은 자리를 그대로 고른 것으로 두면
+   * 막혔던 그 자리에 임시 적치가 기록된다.
+   */
+  it('임시 유형이 아닌 자리를 넘겨받으면 고른 것으로 두지 않는다', async () => {
+    mount({ task: task(), location: location() });
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+
+    expect(screen.queryByText('A-01-03 자재 A열')).toBeNull();
+    expect(screen.getByRole('button', { name: '임시 적치 등록' })).toBeDisabled();
+  });
+
   /* 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */
   it('이미 적치된 지시는 막고 현재 위치를 보인다', async () => {
     mount({ task: task({ actualLocationId: 5 }) });

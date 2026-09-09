@@ -808,6 +808,48 @@ for (const [name, path, check] of DETAILS) {
   console.log(`${ok ? '✔' : '✘'} M-01-01 분리 실패 전건 롤백`);
 }
 
+/*
+ * 임시 적치가 만든 상태를 정위치 이동 쪽이 되찾을 수 있는가. 상태값이 계약과 다르거나 끝난
+ * 건을 목록이 무조건 빼면 임시로 둔 물건을 아무도 찾지 못한다.
+ */
+{
+  const occurredAt = new Date().toISOString();
+  const response = await fetch(`${BASE}/logistics/putaway-tasks/9405:complete-temporary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      actualLocationId: 3003,
+      reasonCode: 'NO_SPACE',
+      businessDate: today(),
+      occurredAt,
+    }),
+  });
+  const saved = await response.json();
+  const listed = await fetch(`${BASE}/logistics/putaway-tasks?temporaryOnly=true`);
+  const body = await listed.json();
+  const found = body.items.find((row) => row.putawayTaskId === 9405);
+  const ok =
+    saved.statusCode === 'COMPLETED_TEMPORARY' &&
+    saved.reasonCode === 'NO_SPACE' &&
+    found !== undefined;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-01-07 임시 적치를 정위치 이동 쪽이 되찾는다`);
+}
+
+/*
+ * 지시 상세가 시드를 내리는가. 잇지 않으면 계약 예시값이 내려가 모든 지시가 이미 적치된
+ * 것으로 보이고, 임시 위치 적재 화면이 통째로 막힌다.
+ */
+{
+  const response = await fetch(`${BASE}/logistics/putaway-tasks/9401`);
+  const task = await response.json();
+  const ok = task.putawayTaskId === 9401 && task.actualLocationId === null;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-01-07 지시 상세가 시드를 내린다`);
+}
+
 console.log(
   failed === 0
     ? `\n화면 ${String(ENTRIES.length + DETAILS.length)}자리 전부 열립니다.`
