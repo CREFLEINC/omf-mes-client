@@ -79,6 +79,8 @@ export const RequestPane = ({
   const partnerId = useId();
   const partnerNoteId = `${partnerId}-note`;
   const reasonId = useId();
+  const reasonSelectId = `${reasonId}-select`;
+  const reasonCodeErrorId = `${reasonId}-error`;
 
   const partnerNote = isPartnersError
     ? t.issue.partnerFailed
@@ -127,21 +129,36 @@ export const RequestPane = ({
           <dd>{lookupDisplayLabel(issueTypes, ISSUE_TYPE_OTHER)}</dd>
         </dl>
         <div className="field-cell wide-select">
-          <label className="field-label" htmlFor={reasonId}>
+          <label className="field-label" id={reasonId} htmlFor={reasonSelectId}>
             {t.issue.reasonLabel}
           </label>
           <Select
-            id={reasonId}
+            id={reasonSelectId}
             options={issueReasons.entries.map((entry) => ({
               value: entry.value,
               label: entry.label,
             }))}
             value={draft.issueReasonCode === '' ? null : draft.issueReasonCode}
             placeholder={t.issue.reasonLabel}
+            /*
+             * ⛔ **오류를 칸에 «잇는다».** 잇지 않으면 화면에는 보이는데 소리로 읽는 사람은
+             * 그 칸에 무엇이 잘못됐는지 듣지 못한다 — 이번에 고친 「어디에도 안 보인다」가
+             * 그 사람에게는 그대로 남는다.
+             *
+             * ⚠ **DS `Select` 는 `aria-describedby` 를 받지 않는다**(받는 것은 `invalid` 와
+             * `aria-labelledby` 뿐이다 · 실측). 그래서 오류 상태는 `invalid` 로 알리고, 글은
+             * **라벨에 이어** 이름으로 함께 읽히게 한다 — 그 자리가 DS 가 내주는 유일한 길이다.
+             */
+            invalid={fieldErrors.reasonCode !== undefined}
+            aria-labelledby={
+              fieldErrors.reasonCode === undefined ? reasonId : `${reasonId} ${reasonCodeErrorId}`
+            }
             onChange={(value) => onChange({ issueReasonCode: value })}
           />
           {fieldErrors.reasonCode !== undefined && (
-            <span className="field-error">{fieldErrors.reasonCode}</span>
+            <span id={reasonCodeErrorId} className="field-error">
+              {fieldErrors.reasonCode}
+            </span>
           )}
         </div>
       </div>

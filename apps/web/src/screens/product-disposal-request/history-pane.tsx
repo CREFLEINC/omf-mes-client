@@ -125,6 +125,18 @@ export const HistoryPane = ({
       render: (row) => formatDateTime(row.issuedAt),
     },
     {
+      /*
+       * ⭐ **싣기만 하던 값을 열로 낸다** — 전기된 전표인지 사람이 볼 수 있어야 한다.
+       *
+       * ⛔ **잠금 축으로 쓰지 않는다.** `statusCode` 가 계약에서 열린 문자열이라 「이미
+       * 전기됐다」를 값으로 판정할 수 없다 — 앞질러 막으면 다른 상태까지 함께 막힌다.
+       * 두 번째 전기는 서버가 막고, 화면은 그 400 을 그대로 낸다(J-8 과 같은 규율).
+       */
+      key: 'status',
+      header: t.history.fields.status,
+      render: (row) => row.statusCode,
+    },
+    {
       key: 'reason',
       header: t.history.fields.reason,
       render: (row) =>

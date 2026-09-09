@@ -31,7 +31,6 @@ const TARGET: DisposalTarget = {
   decisionQty: 40,
   uomId: 3,
   reason: '재작업 불가 — 변형 손상',
-  decidedBy: 12,
   decidedByName: '김품질',
   decidedAt: '2026-09-07T10:00:00+09:00',
   lotId: 9001,

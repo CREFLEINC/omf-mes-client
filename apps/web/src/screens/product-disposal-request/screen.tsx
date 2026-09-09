@@ -263,6 +263,15 @@ export const ProductDisposalRequestScreen = () => {
         onChange={(patch) => {
           if (patch.reason !== undefined) setIsReasonTouched(true);
           setDraft((current) => ({ ...current, ...patch }));
+
+          /*
+           * ⛔ **고친 칸의 서버 오류를 함께 지운다.** 화면이 잡은 사정은 입력에서 파생되지만
+           * **서버가 준 오류는 다음 저장까지 남는다** — 지우지 않으면 400 을 받은 칸을 고치는
+           * 순간에도 붉은 글씨가 그 자리에 남아, 사용자는 무엇을 더 고쳐야 하는지 모른다.
+           */
+          for (const field of Object.keys(patch)) write.clearFieldError(field);
+          /* 폐기 사유는 초안의 이름과 계약의 필드 이름이 다르다 — 그 짝을 여기서 잇는다. */
+          if (patch.issueReasonCode !== undefined) write.clearFieldError('reasonCode');
         }}
       />
 

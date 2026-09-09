@@ -353,7 +353,51 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
     await pickReason(user);
     await submitRequest(user);
 
-    expect(await screen.findByText('쓸 수 없는 사유입니다')).toBeInTheDocument();
+    /*
+     * ⛔ **「보인다」로 끝내지 않는다.** 배너로 떨어져도 화면 어딘가에는 보이므로 그 단언은
+     * 인라인 연결을 통째로 걷어도 통과한다(실측). **칸에 매였는지**를 잡는다.
+     */
+    const message = await screen.findByText('쓸 수 없는 사유입니다');
+
+    /*
+     * ⭐ **오류 글이 칸의 «이름»에 들어간다** — DS `Select` 가 `aria-describedby` 를 받지
+     * 않아 그것이 유일한 길이다. 이름으로 집히면 소리로 읽는 사람에게도 닿는다.
+     */
+    const field = screen.getByRole('combobox', {
+      name: `${t.issue.reasonLabel} 쓸 수 없는 사유입니다`,
+    });
+
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    expect(message.id).not.toBe('');
+  });
+
+  /**
+   * ⛔ **고친 칸의 서버 오류가 남으면 안 된다.**
+   *
+   * 지우지 않으면 400 을 받은 칸을 고치는 순간에도 붉은 글씨가 그 자리에 남아, 사용자는
+   * 무엇을 더 고쳐야 하는지 모른다.
+   */
+  it('오류가 난 칸을 고치면 그 오류가 사라진다', async () => {
+    const user = userEvent.setup();
+    openScreen({
+      createStatus: 400,
+      createError: {
+        errors: [
+          { scope: 'field', field: 'reason', code: 'INVALID', message: '사유가 너무 짧습니다' },
+        ],
+      },
+    });
+
+    await user.click(await screen.findByRole('checkbox', { name: 'FG-0288 선택' }));
+    await user.click(await screen.findByRole('checkbox', { name: t.issue.selfDisposal }));
+    await pickReason(user);
+    await submitRequest(user);
+
+    expect(await screen.findByText('사유가 너무 짧습니다')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText(t.request.reasonLabel), '더 적는다');
+
+    await waitFor(() => expect(screen.queryByText('사유가 너무 짧습니다')).not.toBeInTheDocument());
   });
 
   /** ⛔ 칸이 없는 자리의 오류는 «배너»로 올라와야 한다 — 인라인 몫으로 빼면 사라진다. */

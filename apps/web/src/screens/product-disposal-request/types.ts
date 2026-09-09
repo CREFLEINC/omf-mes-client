@@ -32,11 +32,13 @@ export interface DisposalTarget {
   uomId: number;
   /** ⭐ 폐기 요청 사유의 기본값이 된다(§5-5) — 승인자가 판정 근거를 바로 본다. */
   reason: string;
-  /**
-   * ⚠ **식별자다** — 계약이 `number` 로 닫았다. 사람 이름은 `decidedByName` 이 따로 낸다.
-   * 한때 이 자리를 `string` 으로 두어 화면에 식별자가 이름처럼 찍힐 뻔했다.
+  /*
+   * ⛔ **판정자 «식별자»를 두지 않는다.** 화면이 보이는 것은 이름뿐이고, 식별자로 무엇을
+   * 하지도 않는다 — 싣기만 하고 안 쓰는 값은 「검사하는 것처럼 보이는데 검사하지 않는」
+   * 자리가 된다(같은 형태를 `onHandQty`·`statusCode` 에서 두 번 겪었다).
+   *
+   * ⚠ 이름은 «못 받을 수» 있다 — 그때는 그 사실을 적는다(`null`).
    */
-  decidedBy: number;
   decidedByName: string | null;
   decidedAt: string;
   lotId: number | null;
@@ -51,7 +53,6 @@ export const toDisposalTarget = (data: DispositionDecisionResponse): DisposalTar
   decisionQty: data.decisionQty,
   uomId: data.uomId,
   reason: data.reason,
-  decidedBy: data.decidedBy,
   decidedByName: data.decidedByName ?? null,
   decidedAt: data.decidedAt,
   lotId: data.lotId ?? null,
