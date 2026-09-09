@@ -298,6 +298,17 @@ export const createSeed = (now = new Date()) => {
       roleTypeCode: 'CUSTOMER',
       isActive: true,
     },
+    /*
+     * W-01-06 · W-04-10 — 폐기 거래처. 이 역할이 하나도 없어 두 화면의 「누가 가져갔나」
+     * 경로를 실기로 열 수 없었다(DR-013 · 통지 client#675 §1).
+     */
+    {
+      partnerId: 4003,
+      partnerCode: 'DSP-001',
+      partnerName: '한빛폐기물처리',
+      roleTypeCode: 'DISPOSAL',
+      isActive: true,
+    },
   ];
 
   /*

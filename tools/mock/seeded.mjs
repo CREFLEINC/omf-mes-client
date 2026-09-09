@@ -2051,6 +2051,69 @@ on(
   },
 );
 
+/**
+ * 출고 전기 — **재고가 움직이는 순간이다.**
+ *
+ * 핸들러가 없어 계약 예시가 답하고 있었다. 그래서 목에서는 폐기 요청을 올려도 **재고가
+ * 영영 움직이지 않았고**, 승인 뒤의 끝단을 실기로 확인할 수 없었다.
+ *
+ * ⛔ **승인을 타는 전표는 승인 전이면 400 이다**(계약 명시 · 공유계약 B-8). 여기서 그 잠금을
+ * 세워야 화면의 J-8 처리(버튼을 열고 400 을 안내로 바꾼다)가 실기로 확인된다.
+ */
+on('POST', '/logistics/goods-issues/{goodsIssueId}:post', (params, _q, body, headers) => {
+  const goodsIssueId = Number(params.goodsIssueId);
+  const goodsIssue = state.goodsIssues.find((row) => row.goodsIssueId === goodsIssueId);
+
+  if (goodsIssue === undefined) return null;
+
+  return idempotent(`logistics.goods-issues:${String(goodsIssueId)}:post`, headers, () => {
+    /* 잠금 검사가 멱등 재생보다 «뒤»에 온다 — 재전송은 재생이지 충돌이 아니다. */
+    const expected = resourceEtag('goods-issue', goodsIssueId, goodsIssueVersions);
+
+    if (!matchesEtag(headers, expected)) return conflict();
+
+    /*
+     * ⛔ **승인이 끝나기 전에는 전기하지 않는다.** 목에 결재 «판정» 상태가 없으므로 여기서는
+     * 「상신된 요청이 아직 진행 중이면 막는다」로 세운다 — 승인 완료를 흉내 내지 않는다.
+     */
+    const request = state.approvalRequests.find(
+      (row) => row.approvalRequestId === goodsIssue.approvalRequestId,
+    );
+
+    if (request !== undefined && request.statusCode === 'PENDING') {
+      return {
+        status: 400,
+        created: {
+          errors: [
+            {
+              scope: 'screen',
+              code: 'NOT_APPROVED',
+              message: '승인이 끝나야 출고할 수 있습니다. 결재함에서 진행을 확인하세요.',
+            },
+          ],
+        },
+      };
+    }
+
+    goodsIssue.statusCode = 'POSTED';
+    goodsIssue.businessDate = body?.businessDate ?? goodsIssue.businessDate;
+    goodsIssue.occurredAt = body?.occurredAt ?? goodsIssue.occurredAt;
+    bumpVersion(goodsIssueVersions, goodsIssueId);
+
+    /* 전기했으므로 재고가 실제로 빠진다 — 위치 확인 화면이 그 결과를 보인다. */
+    for (const line of state.goodsIssueLines.filter((row) => row.goodsIssueId === goodsIssueId)) {
+      const balance = state.balances.find((each) => each.lotId === line.lotId);
+
+      if (balance !== undefined) {
+        balance.onHandQty -= line.issueQty;
+        balance.availableQty = balance.onHandQty - balance.pickedQty - balance.blockedQty;
+      }
+    }
+
+    return { created: goodsIssue, status: 200 };
+  });
+});
+
 on('GET', '/logistics/shipment-requests', (_p, query) => {
   const from = query.get('shipDateFrom');
   const to = query.get('shipDateTo');
