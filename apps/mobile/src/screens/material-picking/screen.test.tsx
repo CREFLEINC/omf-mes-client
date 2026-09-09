@@ -78,7 +78,7 @@ const line = (overrides: Record<string, unknown> = {}) => ({
 const order = (overrides: Record<string, unknown> = {}) => ({
   pickingOrderId: 7,
   pickingOrderNo: 'PK-2026-000077',
-  pickingTypeCode: 'PRODUCTION',
+  pickingTypeCode: 'MATERIAL',
   sourceDocumentTypeCode: 'MATERIAL_ISSUE_REQUEST',
   sourceDocumentId: 3,
   warehouseId: 11,
@@ -174,12 +174,15 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () =>
+    respond: (req) =>
       jsonResponse({
-        items: options.issueTypes ?? [
-          codeValue('SCRAP', '폐기 출고', 1),
-          codeValue('PRODUCTION', '생산 투입', 2),
-        ],
+        items:
+          new URL(req.url).searchParams.get('codeGroupCode') === 'PICKING_TYPE'
+            ? [codeValue('MATERIAL', '자재 피킹', 1)]
+            : (options.issueTypes ?? [
+                codeValue('SCRAP', '폐기 출고', 1),
+                codeValue('PRODUCTION', '생산 투입', 2),
+              ]),
         page,
       }),
   },
@@ -503,6 +506,15 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     expect(await screen.findByText(/피킹 라인 0 \/ 2$/)).toBeTruthy();
+  });
+
+  /* 계약은 코드만 내린다. 코드를 그대로 보이면 작업자가 읽을 수 없는 말이 화면에 선다. */
+  it('지시 유형을 표시명으로 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseOrder(user);
+
+    expect(await screen.findByText('유형 자재 피킹')).toBeTruthy();
   });
 
   /*

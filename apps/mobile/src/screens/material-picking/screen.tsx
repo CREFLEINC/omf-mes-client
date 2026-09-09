@@ -27,9 +27,11 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { PickingOrderList } from './order-list';
 import {
   ISSUE_TYPE,
+  PICKING_TYPE,
   canConfirmIssue,
   canPick,
   defaultIssueTypeOf,
+  displayNameOf,
   isOpenOrder,
   isOutOfSequence,
   isOfOrder,
@@ -124,6 +126,7 @@ export const MaterialPickingScreen = () => {
   const orders = useAssignedPickingOrders(workerId.data ?? null);
   const detail = usePickingOrder(orderId);
   const issueTypes = useCodeValues(ISSUE_TYPE);
+  const pickingTypes = useCodeValues(PICKING_TYPE);
 
   const order = detail.data?.order ?? null;
   const lines = detail.data?.lines ?? [];
@@ -434,7 +437,11 @@ export const MaterialPickingScreen = () => {
         <Card bordered>
           <Card.Header>{detail.data?.order.pickingOrderNo ?? ''}</Card.Header>
           <Card.Body className="card-body">
-            <p>{t.orders.type(detail.data?.order.pickingTypeCode ?? '')}</p>
+            <p>
+              {t.orders.type(
+                displayNameOf(pickingTypes.data ?? [], detail.data?.order.pickingTypeCode ?? ''),
+              )}
+            </p>
             {/* 집은 것을 어디로 가져가는가. 말하지 않으면 그 자리가 사람의 기억에만 남는다. */}
             {destination.isPending && request.data !== undefined ? (
               <p role="status">{t.orders.destinationLoading}</p>

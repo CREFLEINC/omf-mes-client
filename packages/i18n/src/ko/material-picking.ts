@@ -24,8 +24,8 @@ export const materialPicking = {
     /** 라인의 집은 양이 출고 뒤에도 그대로라, 막지 않으면 같은 수량이 한 번 더 나간다. */
     closed: '이미 출고가 끝난 지시입니다. 다시 내보낼 수 없습니다.',
     change: '다른 지시 고르기',
-    /** 값 목록이 확정되기 전이라 코드를 그대로 보인다. */
-    type: (code: string) => `유형 ${code}`,
+    /** 계약은 코드만 내린다. 표시명은 공통코드가 내리고, 못 받으면 코드를 그대로 보인다. */
+    type: (name: string) => `유형 ${name}`,
     /** 집은 것을 어디로 가져가는가. 말하지 않으면 그 자리가 사람의 기억에만 남는다. */
     destination: (code: string) => `도착 ${code}`,
     destinationLoading: '도착 위치를 불러오는 중입니다',
@@ -85,7 +85,7 @@ export const materialPicking = {
   issueTypeLabel: '출고 유형',
   issueTypePlaceholder: '출고 유형을 고르세요',
   /* 생산에 넣을 자재를 내보내는 자리다. 고객이 그 값을 지웠을 때만 고르게 한다. */
-  issueTypeNote: '고를 출고 유형이 없어 담당자가 고릅니다.',
+  issueTypeNote: '생산 투입 유형이 없어 담당자가 고릅니다.',
   issueTypeLoadFailed: '출고 유형을 불러오지 못했습니다',
   noIssueType: '고를 수 있는 출고 유형이 없습니다. 관리자에게 문의하세요.',
   /* 담긴 것을 끝난 것으로 말하지 않는다. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
