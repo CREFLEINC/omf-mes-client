@@ -5,7 +5,12 @@ import { useApiClient } from '../../patterns/api-context';
 import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { ApiRequestError } from '../../patterns/request';
 import { disposalRequestKeys, issueDetailPath } from './queries';
-import { withOccurrence, type ApprovalRequestCreate, type GoodsIssueDraft } from './request-draft';
+import {
+  toBusinessDate,
+  withOccurrence,
+  type ApprovalRequestCreate,
+  type GoodsIssueDraft,
+} from './request-draft';
 
 type GoodsIssue = components['schemas']['GoodsIssue'];
 type PostRequest = components['schemas']['PostRequest'];
@@ -169,10 +174,10 @@ export const useDisposalRequestMutation = (
  */
 export const useDisposalPostMutation = (
   options: DisposalPostOptions,
-): MasterWriteResult<PostRequest> => {
+): MasterWriteResult<DisposalPostPayload> => {
   const { client } = useApiClient();
 
-  return useMasterWrite<PostRequest, GoodsIssue>({
+  return useMasterWrite<DisposalPostPayload, GoodsIssue>({
     request: (body, headers) => {
       /*
        * ⛔ **없는 값을 0 으로 메우지 않는다.** `etagPath` 가 `null` 이 되면 공통 훅은 그것을
@@ -191,7 +196,8 @@ export const useDisposalPostMutation = (
             'If-Match': requireIfMatch(headers),
           },
         },
-        body,
+        /* ⭐ 시각을 «보내는 순간» 얹는다 — 지문에 들어가지 않게(위 주석). */
+        body: withPostOccurrence(new Date()),
       });
     },
     etagPath: options.goodsIssueId === null ? null : issueDetailPath(options.goodsIssueId),
@@ -205,6 +211,32 @@ export const useDisposalPostMutation = (
     onSuccess: () => options.onSuccess(),
   });
 };
+
+/**
+ * 전기가 넘기는 것 — **전표 식별자 하나뿐이다.**
+ *
+ * ⛔ **시각을 여기 두지 않는다.** 두면 밀리초까지 멱등 지문에 실려 누를 때마다 지문이
+ * 달라지고, 재시도가 «두 번째 전기»가 된다 — 상신 쪽에서 겪은 것과 **같은 형태**다.
+ *
+ * ⛔ **그렇다고 비워 두지도 않는다.** 지문이 비면 훅이 키를 붙드는데(`until-applied`), 고른
+ * 전표를 바꿔도 **같은 키가 그대로 물려간다** — 다른 전표의 전기가 앞 전표의 키로 나가고
+ * 서버가 그것을 재생으로 접으면 **두 번째 전표는 전기되지 않은 채 됐다고 보인다.**
+ * 식별자를 지문에 두는 것이 그 둘을 함께 막는 유일한 자리다.
+ */
+export interface DisposalPostPayload {
+  goodsIssueId: number;
+}
+
+/**
+ * 전기 본문 — 계약의 `PostRequest` 는 **두 값뿐**이다.
+ *
+ * 보내는 순간에 만든다. 재시도마다 값이 달라지는 것은 괜찮다 — 같은 키로 다시 가면 서버가
+ * 최초 응답을 재생하고 본문은 보지 않는다.
+ */
+const withPostOccurrence = (now: Date): PostRequest => ({
+  businessDate: toBusinessDate(now),
+  occurredAt: now.toISOString(),
+});
 
 export interface DisposalPostOptions {
   /** 전기할 전표. 「처리 이력」에서 고른 것이다 — 이 조작에 다른 출처가 없다. */

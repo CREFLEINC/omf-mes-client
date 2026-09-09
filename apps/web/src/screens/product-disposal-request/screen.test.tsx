@@ -456,6 +456,104 @@ describe('W-04-10 — 「기타출고 처리」', () => {
   });
 
   /**
+   * ⛔ **전기 재시도가 «두 번째 전기»가 되면 안 된다.**
+   *
+   * 상신 쪽에서 겪은 것과 **같은 형태**다 — 누를 때마다 찍는 시각이 지문에 실리면 키가
+   * 매번 새로 난다. 화면을 «눌러» 재현하고 키를 이름으로 잡아 견준다.
+   */
+  it('전기가 실패한 뒤 다시 눌러도 같은 멱등 키로 나간다', async () => {
+    const user = userEvent.setup();
+    const posts: Request[] = [];
+    openHistory({ onPost: (r) => posts.push(r), postStatus: 504 });
+
+    await user.click(await screen.findByRole('checkbox', { name: '행 선택' }));
+
+    const button = screen.getByRole('button', { name: t.issue.submit });
+
+    await waitFor(() => expect(button).toBeEnabled());
+
+    await user.click(button);
+    await waitFor(() => expect(posts).toHaveLength(1));
+
+    await user.click(button);
+    await waitFor(() => expect(posts).toHaveLength(2));
+
+    const first = posts[0]?.headers.get('Idempotency-Key');
+
+    expect(first).toBeTruthy();
+    expect(posts[1]?.headers.get('Idempotency-Key')).toBe(first);
+  });
+
+  /**
+   * ⛔ **다른 전표의 전기가 앞 전표의 키를 물려받으면 안 된다.**
+   *
+   * 시각만 빼고 지문을 비우면 훅이 키를 그대로 붙든다 — 서버가 재생으로 접으면 **두 번째
+   * 전표는 전기되지 않은 채 됐다고 보인다.** 식별자가 지문에 있어야 갈린다.
+   */
+  it('고른 전표를 바꾸면 멱등 키가 새로 난다', async () => {
+    const user = userEvent.setup();
+    const posts: Request[] = [];
+    const other = { ...DETAIL.goodsIssue, goodsIssueId: 4002, goodsIssueNo: 'GI-2026-000402' };
+    openHistory({
+      onPost: (r) => posts.push(r),
+      postStatus: 504,
+      historyRows: [DETAIL.goodsIssue, other],
+    });
+
+    const rows = await screen.findAllByRole('checkbox', { name: '행 선택' });
+    const button = screen.getByRole('button', { name: t.issue.submit });
+
+    await user.click(rows[0]!);
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    await waitFor(() => expect(posts).toHaveLength(1));
+
+    await user.click(rows[1]!);
+    await waitFor(() => expect(posts).toHaveLength(1));
+    await user.click(button);
+    await waitFor(() => expect(posts).toHaveLength(2));
+
+    expect(posts[1]?.headers.get('Idempotency-Key')).not.toBe(
+      posts[0]?.headers.get('Idempotency-Key'),
+    );
+  });
+
+  /**
+   * ⛔ **상신하지 않은 전표를 전기할 수 없다.**
+   *
+   * 도달 경로가 실제로 있다 — 이 화면 자신의 「전표는 만들어졌는데 상신 실패」 갈래가 상신
+   * 없는 초안을 이력에 남긴다. 막지 않으면 화면이 「상신하지 않은 전표입니다」를 띄운 바로
+   * 그 자리에서 전기가 나간다.
+   */
+  it('상신하지 않은 전표는 사유를 말하고 잠근다', async () => {
+    const user = userEvent.setup();
+    const posts: Request[] = [];
+    openHistory({
+      onPost: (r) => posts.push(r),
+      historyRows: [{ ...DETAIL.goodsIssue, approvalRequestId: null }],
+    });
+
+    await user.click(await screen.findByRole('checkbox', { name: '행 선택' }));
+
+    expect(await screen.findByText(t.issue.notSubmitted)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.issue.submit })).toBeDisabled();
+    expect(posts).toHaveLength(0);
+  });
+
+  /** ⚠ 목록에 자재 폐기 전표가 섞여 온다 — 남의 화면 업무를 여기서 끝내지 않는다. */
+  it('자재 폐기 전표는 사유를 말하고 잠근다', async () => {
+    const user = userEvent.setup();
+    openHistory({
+      historyRows: [{ ...DETAIL.goodsIssue, sourceDocumentTypeCode: 'GOODS_RECEIPT' }],
+    });
+
+    await user.click(await screen.findByRole('checkbox', { name: '행 선택' }));
+
+    expect(await screen.findByText(t.issue.notOurs)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.issue.submit })).toBeDisabled();
+  });
+
+  /**
    * ⛔ **승인 전이라는 판정을 화면이 흉내 내지 않는다**(J-8 · 통지 #674).
    *
    * 버튼은 열려 있고, 막는 것은 서버다. 그 문구를 배너로 낸다.

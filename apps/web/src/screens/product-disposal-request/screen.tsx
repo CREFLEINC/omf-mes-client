@@ -31,7 +31,6 @@ import {
   requestLockReason,
   confirmSummary,
   toApprovalRequestCreate,
-  toBusinessDate,
   toGoodsIssueCreate,
   type DisposalDraft,
 } from './request-draft';
@@ -40,7 +39,7 @@ import { RequestPane } from './request-pane';
 import { SubmitConfirmDialog } from './submit-confirm-dialog';
 import { TargetList } from './target-list';
 import { DISPOSAL_REQUEST_TABS, readTab, tabLabel, TAB_KEY, toTabParam } from './tabs';
-import { quotedReason } from './types';
+import { isProductDisposal, quotedReason } from './types';
 
 const t = messages.productDisposalRequest;
 
@@ -352,23 +351,40 @@ export const ProductDisposalRequestScreen = () => {
         isSaving: post.isSaving,
         /*
          * ⛔ **승인 «상태»로 잠그지 않는다**(통지 #674 · §8-6) — 앞질러 막으면 승인이
-         * 끝났는데도 열리지 않는다. 고르지 않았거나 토큰을 못 받았을 때만 막고, 승인 전
-         * 여부는 서버의 400 이 말한다(J-8).
+         * 끝났는데도 열리지 않는다. 승인 전 여부는 서버의 400 이 말한다(J-8).
+         *
+         * ⭐ **다만 「상신했는가」는 «판정»이 아니라 사실이다.** `approvalRequestId` 가 있는가로
+         * 보는 것은 이 화면이 이미 정본으로 쓰는 축이고(결재 진행 구획이 같은 값을 읽는다),
+         * 상태 코드 파생이 아니다. 막지 않으면 **화면이 「상신하지 않은 전표입니다」를 띄운
+         * 바로 그 자리에서 전기가 나간다** — 이 화면 자신의 「전표는 만들어졌는데 상신 실패」
+         * 갈래가 그런 초안을 이력에 남기므로 도달 경로가 실제로 있다.
+         *
+         * ⚠ **원천이 제품 폐기가 아닌 전표도 막는다.** 목록에 자재 폐기(`W-01-06`)가 섞여
+         * 오는데(질의에 원천 축이 없다) 그 전표를 이 화면에서 전기하면 **남의 화면 업무를
+         * 여기서 끝내는** 것이 된다.
          */
         lock:
           selectedIssue === null
             ? t.issue.pickRow
-            : issueDetail.isPending
-              ? t.issue.tokenLoading
-              : issueDetail.isError
-                ? t.issue.tokenFailed
-                : post.isSaving
-                  ? messages.productDisposalRequest.lock.saving
-                  : undefined,
+            : !isProductDisposal(selectedIssue)
+              ? t.issue.notOurs
+              : selectedIssue.approvalRequestId === null
+                ? t.issue.notSubmitted
+                : issueDetail.isPending
+                  ? t.issue.tokenLoading
+                  : issueDetail.isError
+                    ? t.issue.tokenFailed
+                    : post.isSaving
+                      ? messages.productDisposalRequest.lock.saving
+                      : undefined,
         onPost: () => {
-          /* ⭐ 시각을 «누르는 순간» 찍는다 — 전기 본문은 두 칸뿐이다. */
-          const now = new Date();
-          post.write({ businessDate: toBusinessDate(now), occurredAt: now.toISOString() });
+          if (selectedIssue === null) return;
+
+          /*
+           * ⛔ **여기서 시각을 찍지 않는다.** 찍어 넘기면 멱등 지문에 실려 재시도가 «두 번째
+           * 전기»가 된다 — 상신 쪽에서 겪은 것과 같은 형태다. 넘기는 것은 «어느 전표인가»뿐이다.
+           */
+          post.write({ goodsIssueId: selectedIssue.goodsIssueId });
         },
       }}
     />
@@ -383,13 +399,13 @@ export const ProductDisposalRequestScreen = () => {
        * ⛔ **보내는 중에는 다른 탭으로 건너가지 못한다** — 탭이 바뀌면 보내는 자리가 화면에서
        * 사라져 도착한 되먹임이 설 곳을 잃는다. 보고 있는 탭은 잠그지 않는다.
        */
-      disabled: write.isSaving && tab !== 'request',
+      disabled: (write.isSaving || post.isSaving) && tab !== 'request',
     },
     {
       value: 'history',
       label: tabLabel('history'),
       content: tab === 'history' ? historyTab : null,
-      disabled: write.isSaving && tab !== 'history',
+      disabled: (write.isSaving || post.isSaving) && tab !== 'history',
     },
   ];
 
