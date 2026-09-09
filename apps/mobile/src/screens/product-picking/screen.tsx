@@ -449,16 +449,18 @@ export const ProductPickingScreen = () => {
             </>
           )}
 
-          <Button
-            className="picking__pick"
-            variant="filled"
-            size="xl"
-            onClick={() => {
-              setListView(false);
-            }}
-          >
-            {t.candidates.back}
-          </Button>
+          <div className="picking__action-bar">
+            <Button
+              className="picking__pick"
+              variant="filled"
+              size="xl"
+              onClick={() => {
+                setListView(false);
+              }}
+            >
+              {t.candidates.back}
+            </Button>
+          </div>
         </section>
       </div>
     );
