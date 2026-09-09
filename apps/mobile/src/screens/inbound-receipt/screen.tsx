@@ -1,6 +1,6 @@
 import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
@@ -138,6 +138,18 @@ export const InboundReceiptScreen = () => {
   const narrowTo = showAllOrders ? null : (scannedItem.data ?? null);
   const orders = useOpenPurchaseOrders(narrowTo);
   const narrowed = narrowTo !== null && (orders.data?.length ?? 0) > 0;
+  /*
+   * 좁혔는데 한 건도 없으면 스스로 전체로 넘어간다. 그대로 두면 고를 것이 하나도 없는 채로
+   * 멈추고, 넓힐 단추는 좁혀진 동안에만 서 있어 빠져나갈 길도 없다.
+   */
+  const narrowedEmpty = narrowTo !== null && orders.isSuccess && orders.data.length === 0;
+
+  useEffect(() => {
+    if (narrowedEmpty) {
+      setShowAllOrders(true);
+    }
+  }, [narrowedEmpty]);
+
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
   const exceptionTypes = useCodeValues(INBOUND_RECEIPT_EXCEPTION_TYPE);

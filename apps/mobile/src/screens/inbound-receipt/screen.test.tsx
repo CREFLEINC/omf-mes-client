@@ -225,6 +225,45 @@ describe('입하 등록 화면', () => {
   });
 
   /*
+   * 좁혔는데 한 건도 없으면 고를 것이 사라진다. 넓힐 단추는 좁혀진 동안에만 서 있어 그대로
+   * 두면 빠져나갈 길도 없다. 설계는 이 자리를 자동 전환으로 정했다.
+   */
+  it('좁힌 후보가 비면 스스로 전체를 낸다', async () => {
+    const asked: (string | null)[] = [];
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: () =>
+          jsonResponse({
+            items: [{ itemId: 77, itemCode: SCANNED.slice(0, 9), itemName: '스캔한 자재' }],
+            page,
+          }),
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/logistics/purchase-orders',
+        respond: (req) => {
+          const itemId = new URL(req.url).searchParams.get('itemId');
+          asked.push(itemId);
+
+          return jsonResponse({ items: itemId === null ? [order] : [], page });
+        },
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+
+    await waitFor(() => {
+      expect(asked).toContain('77');
+    });
+
+    /* 좁힌 결과가 비었어도 고를 것이 남아 있어야 한다. */
+    await user.click(await screen.findByRole('combobox', { name: 'ERP W/O 번호' }));
+
+    expect(await screen.findByRole('option', { name: 'PO-2026-0003' })).toBeTruthy();
+  });
+
+  /*
    * 부품의 골격이 포커스 연동 버퍼다(공유계약 D-4). 고르지도 않은 칸에 숫자판이 붙어 있으면
    * 어느 칸에 들어가는지 알 수 없다. 이 화면은 숫자 칸이 둘이다.
    */

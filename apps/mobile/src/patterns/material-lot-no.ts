@@ -96,8 +96,8 @@ export const isYymmdd = (value: string): boolean => {
 /**
  * 자재 LOT 번호 앞의 제품코드 아홉 자리.
  *
- * 번호가 고정 양식이라 자리로 떼어낼 수 있다 - 제품코드9 · 수량9 · 날짜6 · 공급사6 · 번호4
- * (MLOT #16). 이 값으로 품목을 찾아 ERP W/O 후보를 좁힌다.
+ * 번호가 고정 양식이라 자리로 떼어낼 수 있다 - 제품코드9 · 수량9 · 날짜6 · 공급사6 · 번호4.
+ * 이 값으로 품목을 찾아 ERP W/O 후보를 좁힌다.
  */
 export const itemCodeOf = (lotNo: string): string | null =>
   isMaterialLotNo(lotNo) ? lotNo.slice(0, 9) : null;
