@@ -50,6 +50,15 @@
  * 컨트롤 높이는 관리웹 기본 `md` 토큰으로 수렴시킨다. 기존 화면이 넘긴 `xl`·`2xl`은
  * 업무 중요도 표식으로만 남고 렌더 높이를 키우지 않는다.
  */
+/*
+ * ⭐ **머리줄 높이는 `:root` 에도 둔다.** 머리줄 오른쪽에 앉는 [사용자 전환](`.pop-logout`)은
+ * `fixed` 라 `.pop-ui` «밖»에 서고, 거기 선언된 변수가 닿지 않는다. 같은 식을 여기에 두어
+ * 두 자리가 늘 같은 높이를 읽게 한다 — 값을 두 번 «적는» 것이 아니라 같은 토큰으로 계산한다.
+ */
+:root {
+  --pop-header-h: calc(var(--control-height-md) + var(--space-4));
+}
+
 .pop-ui {
   --control-height-lg: var(--control-height-md);
   --control-height-xl: var(--control-height-md);
@@ -3139,11 +3148,15 @@
   display: flex;
   align-items: center;
   /*
-   * ⚠ **되돌림 값을 반드시 둔다.** `--pop-header-h` 는 `.pop-ui` 에 선언돼 있는데 이 버튼은
-   *   그 «밖»에 서므로 변수가 닿지 않는다 — 없으면 높이가 `auto` 로 접혀 버튼이 머리줄
-   *   가운데보다 위로 올라앉았다(실측 2026-09-08).
+   * ⛔ **되돌림 값에 기대지 않는다.** `--pop-header-h` 는 `.pop-ui` 에 선언돼 있고 이 버튼은
+   *   그 «밖»에 서므로 변수가 닿지 않는다. 되돌림 값 64 로 버티고 있었는데 머리줄의 실제
+   *   높이는 56 이라(`control-height-md` + `space-4`) **버튼이 4픽셀 아래로 내려앉아 있었다**
+   *   (실측 2026-09-09 — 머리줄 가운데 28 · 버튼 가운데 32).
+   *
+   * ⭐ 그래서 같은 식을 `:root` 에도 선언해 이 버튼이 «같은 값»을 읽게 했다(위 §머리줄).
+   *   되돌림 값은 그 선언이 사라졌을 때를 위한 그물로만 남긴다.
    */
-  height: var(--pop-header-h, 64px);
+  height: var(--pop-header-h, 56px);
   padding-right: 12px;
 }
 
