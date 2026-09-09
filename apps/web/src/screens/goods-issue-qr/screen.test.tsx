@@ -277,12 +277,21 @@ describe('GoodsIssueQrScreen', () => {
     expect(screen.getByText(t.action.disabledNoSelection)).toBeInTheDocument();
   });
 
-  it('파렛트 단위는 사유와 함께 비활성이다', async () => {
+  /**
+   * ⭐ **파렛트 단위가 열렸다**(설계 회신 2026-09-06 · 공지 `CREFLEINC/omf-mes#507`).
+   * 대상 목록은 라인이 하나로 정해져야 서므로, 그 전에는 고를 수 없는 «사유»를 적는다 —
+   * 「없는 기능」과 「아직 못 고르는 상태」는 다른 말이다.
+   */
+  it('파렛트 단위는 고를 수 있고, 라인이 하나로 정해지기 전에는 사유를 적는다', async () => {
+    const user = userEvent.setup();
     renderScreen({ issueCounts: { 1001: 0 } });
 
     await screen.findByText('LOT-SAMPLE-20');
-    expect(screen.getByRole('radio', { name: t.target.unitPallet })).toBeDisabled();
-    expect(screen.getByText(t.target.unitPalletPending)).toBeInTheDocument();
+    const pallet = screen.getByRole('radio', { name: t.target.unitPallet });
+    expect(pallet).toBeEnabled();
+
+    await user.click(pallet);
+    expect(screen.getByText(t.target.palletNeedsOneLine)).toBeInTheDocument();
   });
 
   it('프린터가 0건이면 빈 상태를 머리에 보인다', async () => {

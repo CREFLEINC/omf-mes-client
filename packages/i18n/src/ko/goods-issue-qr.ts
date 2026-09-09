@@ -54,11 +54,20 @@ export const goodsIssueQr = {
     unitLine: '라인 단위',
     unitPallet: '파렛트 단위',
     /**
-     * 파렛트 단위는 고를 대상을 찾을 길이 없어 아직 못 연다. 감추지 않고 사유를 적는다.
+     * 파렛트 대상 — 고른 라인의 LOT 이 실린 취급 단위만 목록에 선다(스펙 §5-2).
      *
      * ⛔ 조작 이름(「유형:」)을 앞에 붙이지 않는다 — 바로 위가 그 칸이라 자리가 이미 말한다.
      */
-    unitPalletPending: '파렛트 단위는 아직 고를 수 없습니다. 지금은 라인 단위로 발행합니다.',
+    palletLabel: '대상',
+    palletPlaceholder: '파렛트를 고르세요',
+    palletNeedsOneLine: '파렛트는 라인을 하나만 고른 뒤에 고를 수 있습니다.',
+    palletLoading: '파렛트를 불러오는 중입니다.',
+    palletFailed: '파렛트를 불러오지 못했습니다. 잠시 뒤 다시 시도하세요.',
+    /** 이 라인의 LOT 이 실린 파렛트가 없다 — 파렛트를 만드는 것은 창고 화면이다. */
+    palletEmpty: '이 라인의 LOT 이 실린 파렛트가 없습니다. 라인 단위로 발행하세요.',
+    palletContents: (lineCount: number, totalQty: number) =>
+      `${String(lineCount)}라인 · ${String(totalQty)}`,
+    palletContentsUnknown: '담긴 내용을 확인하는 중입니다.',
     selectedCount: (count: number) => `${String(count)}개 라인`,
     /**
      * 아직 고르지 않았다. ⛔ **「고르세요」로 쓰지 않는다** — 같은 말이 액션바의 막힌 사유로
@@ -103,6 +112,10 @@ export const goodsIssueQr = {
      * 대한 말인지는 «자리»가 말한다. 다른 POP 화면도 앞머리 없이 쓴다(사용자 지시 2026-09-07).
      */
     disabledNoSelection: '발행할 라인을 먼저 고르세요.',
+    disabledPalletNeedsOneLine: '파렛트로 발행하려면 라인을 하나만 고르세요.',
+    disabledNoPallet: '발행할 파렛트를 고르세요.',
+    /** 빈 파렛트에는 찍을 것이 없다(스펙 §6). */
+    disabledEmptyPallet: '고른 파렛트에 담긴 것이 없습니다. 다른 파렛트를 고르세요.',
     disabledNoReason: '재발행 사유를 고르세요.',
     disabledNoWorker: '사번이 확인되지 않았습니다.',
   },

@@ -7,20 +7,30 @@ import { useApiClient } from '../../patterns/api-context';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { usePopIdentity } from '../../patterns/pop-identity';
 import { SaveErrorBanner } from '../../patterns/master';
-import { canIssue, issueGuard } from './issue-target';
+import { canIssue, issueGuard, type IssueGuard } from './issue-target';
 import { hasIssuedTarget, hasUnknownTarget, rowId, toLineRows } from './line-rows';
 import { LineListPane } from './line-list-pane';
 import { useItemNames, useLotNames, useReissueReasonOptions, useUomNames } from './lookups';
 import { useDocumentIssueWrite, usePrintFlow } from './mutations';
 import { hasPrintBridge } from './pop-print';
 import { printResult, type PrintResult } from './print-result';
-import { useDocumentIssueSummary, useGoodsIssue, useGoodsIssueLines, usePrinters } from './queries';
+import {
+  useDocumentIssueSummary,
+  useGoodsIssue,
+  useGoodsIssueLines,
+  useHandlingUnitContents,
+  useLineHandlingUnits,
+  usePrinters,
+} from './queries';
 import { TargetPane } from './target-pane';
 import { useGoodsIssueQrEntry } from './entry-context';
 import {
   DOCUMENT_TYPE_CODE,
+  ISSUE_UNIT,
   LINE_TARGET_TYPE_CODE,
+  PALLET_TARGET_TYPE_CODE,
   type DocumentIssue,
+  type IssueUnit,
   type Printer,
 } from './types';
 
@@ -52,6 +62,12 @@ export const GoodsIssueQrScreen = () => {
   const identity = usePopIdentity();
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  /**
+   * 라인 단위인가 파렛트 단위인가(스펙 §5-2). **화면 안에서만 쓰는 구분이다** — 서버로 나가는
+   * 것은 이 값이 아니라 대상 유형 코드다.
+   */
+  const [unit, setUnit] = useState<IssueUnit>(ISSUE_UNIT.line);
+  const [palletId, setPalletId] = useState<number | null>(null);
   const [reasonCode, setReasonCode] = useState('');
   const [issued, setIssued] = useState<DocumentIssue[] | null>(null);
   /**
@@ -67,8 +83,30 @@ export const GoodsIssueQrScreen = () => {
   const lines = useGoodsIssueLines(entry.goodsIssueId);
   const lineItems = lines.data ?? [];
 
-  const summary = useDocumentIssueSummary(lineItems.map((line) => line.goodsIssueLineId));
+  const summary = useDocumentIssueSummary(
+    LINE_TARGET_TYPE_CODE,
+    lineItems.map((line) => line.goodsIssueLineId),
+  );
   const rows = toLineRows(lineItems, summary.data ?? []);
+
+  /*
+   * 파렛트 대상은 **고른 라인의 LOT** 으로 좁힌다(스펙 §5-2). 라인이 하나로 정해지지 않으면
+   * 어느 LOT 으로 좁힐지 화면이 대신 정하게 되므로 조회 자체를 내보내지 않는다.
+   */
+  const palletSelectable = unit === ISSUE_UNIT.pallet && selectedIds.length === 1;
+  const selectedLine = rows.find((row) => rowId(row.line) === selectedIds[0])?.line ?? null;
+  const pallets = useLineHandlingUnits(palletSelectable ? (selectedLine?.lotId ?? null) : null);
+  const palletItems = pallets.data ?? [];
+  const palletContents = useHandlingUnitContents(unit === ISSUE_UNIT.pallet ? palletId : null);
+
+  /*
+   * 파렛트도 회차가 오른다 — 같은 취급 단위를 두 번 찍으면 재발행이고 사유가 필요하다.
+   * **대상 유형이 달라 라인 요약으로는 알 수 없다**(같은 표를 유형으로 가른다 · 스펙 §5-1).
+   */
+  const palletSummary = useDocumentIssueSummary(
+    PALLET_TARGET_TYPE_CODE,
+    palletId === null ? [] : [palletId],
+  );
 
   const itemNames = useItemNames();
   const uomNames = useUomNames();
@@ -78,7 +116,11 @@ export const GoodsIssueQrScreen = () => {
   const printers = usePrinters();
   const printFlow = usePrintFlow(entry.workerNo);
 
-  const needsReason = hasIssuedTarget(rows, selectedIds);
+  const palletIssueCount = palletSummary.data?.[0]?.issueCount ?? null;
+  const needsReason =
+    unit === ISSUE_UNIT.pallet
+      ? palletIssueCount !== null && palletIssueCount > 0
+      : hasIssuedTarget(rows, selectedIds);
 
   const write = useDocumentIssueWrite({
     workerNo: entry.workerNo ?? '',
@@ -97,7 +139,10 @@ export const GoodsIssueQrScreen = () => {
    * 같은 거부만 반복해서 본다 — 발행은 되돌릴 수 없는 쓰기이고 정정 경로가 없다.
    */
   const reasonServerError = write.fieldErrors.reissueReasonCode ?? null;
-  const hasUnknownStatus = hasUnknownTarget(rows, selectedIds);
+  const hasUnknownStatus =
+    unit === ISSUE_UNIT.pallet
+      ? palletId !== null && palletIssueCount === null
+      : hasUnknownTarget(rows, selectedIds);
   const showReason = needsReason || hasUnknownStatus || reasonAsked;
 
   useEffect(() => {
@@ -106,7 +151,10 @@ export const GoodsIssueQrScreen = () => {
 
   const guard = issueGuard({
     workerNo: entry.workerNo,
+    unit,
     selectedIds,
+    palletId,
+    palletContentCount: palletContents.data?.length ?? null,
     needsReason,
     reasonCode,
   });
@@ -119,13 +167,20 @@ export const GoodsIssueQrScreen = () => {
 
     write.write({
       documentTypeCode: DOCUMENT_TYPE_CODE,
-      targets: rows
-        .filter((row) => selectedIds.includes(rowId(row.line)))
-        .map((row) => ({
-          targetTypeCode: LINE_TARGET_TYPE_CODE,
-          targetId: row.line.goodsIssueLineId,
-          lotId: row.line.lotId,
-        })),
+      /*
+       * ⛔ **파렛트 발행은 `lotId` 를 싣지 않는다**(스펙 §5-2). 취급 단위 하나가 여러 LOT 을
+       * 담아 한 칸에 못 담는다 — 아무 LOT 이나 골라 채우면 이력이 그 LOT 의 것으로 굳는다.
+       */
+      targets:
+        unit === ISSUE_UNIT.pallet
+          ? [{ targetTypeCode: PALLET_TARGET_TYPE_CODE, targetId: palletId as number }]
+          : rows
+              .filter((row) => selectedIds.includes(rowId(row.line)))
+              .map((row) => ({
+                targetTypeCode: LINE_TARGET_TYPE_CODE,
+                targetId: row.line.goodsIssueLineId,
+                lotId: row.line.lotId,
+              })),
       /*
        * 재발행이 아닐 때는 보내지 않는다 — 신규 기록에 사유가 붙으면 이력이 거짓이 된다.
        * ⚠ 현황을 모르는 라인이 섞였을 때는 **고른 경우에만** 싣는다: 사용자가 고르지 않았으면
@@ -225,6 +280,8 @@ export const GoodsIssueQrScreen = () => {
           selectedIds={selectedIds}
           onSelectionChange={(ids) => {
             setSelectedIds(ids);
+            /* 좁히는 LOT 이 바뀌면 앞서 고른 파렛트는 이 라인의 것이 아니다. */
+            setPalletId(null);
             /* 대상이 바뀌면 앞 거부는 이 발행의 것이 아니다 — 물음도 함께 내린다. */
             setReasonAsked(false);
             write.clearFieldError('reissueReasonCode');
@@ -237,6 +294,32 @@ export const GoodsIssueQrScreen = () => {
         />
         <TargetPane
           selectedCount={selectedIds.length}
+          unit={unit}
+          onUnitChange={(next) => {
+            setUnit(next);
+            /* 유형이 바뀌면 앞 유형의 대상은 이 발행의 것이 아니다. */
+            setPalletId(null);
+            setReasonAsked(false);
+            write.clearFieldError('reissueReasonCode');
+          }}
+          pallets={palletItems}
+          palletsPending={pallets.isPending && palletSelectable}
+          palletsFailed={pallets.isError}
+          palletSelectable={palletSelectable}
+          palletId={palletId}
+          onPalletChange={(handlingUnitId) => {
+            setPalletId(handlingUnitId);
+            setReasonAsked(false);
+            write.clearFieldError('reissueReasonCode');
+          }}
+          palletContents={
+            palletContents.data === undefined
+              ? null
+              : {
+                  lineCount: palletContents.data.length,
+                  totalQty: palletContents.data.reduce((sum, content) => sum + content.qty, 0),
+                }
+          }
           issuedSeq={firstIssued?.issueSeq ?? null}
           showReason={showReason}
           needsReason={needsReason}
@@ -271,7 +354,6 @@ export const GoodsIssueQrScreen = () => {
           {t.action.issue}
         </Button>
       </div>
-
     </main>
   );
 };
@@ -290,12 +372,18 @@ const defaultPrinter = (printers: Printer[] | undefined): Printer | null => {
 const isForbidden = (error: ApiError | null): boolean =>
   error !== null && error.kind === 'http' && error.status === 403;
 
-const guardNote = (kind: 'noWorker' | 'noSelection' | 'reasonRequired'): string => {
+const guardNote = (kind: Exclude<IssueGuard['kind'], 'ready'>): string => {
   switch (kind) {
     case 'noWorker':
       return t.action.disabledNoWorker;
     case 'noSelection':
       return t.action.disabledNoSelection;
+    case 'palletNeedsOneLine':
+      return t.action.disabledPalletNeedsOneLine;
+    case 'noPallet':
+      return t.action.disabledNoPallet;
+    case 'emptyPallet':
+      return t.action.disabledEmptyPallet;
     case 'reasonRequired':
       return t.action.disabledNoReason;
   }
