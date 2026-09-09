@@ -298,6 +298,17 @@ export const createSeed = (now = new Date()) => {
       roleTypeCode: 'CUSTOMER',
       isActive: true,
     },
+    /*
+     * W-01-06 · W-04-10 — 폐기 거래처. 이 역할이 하나도 없어 두 화면의 「누가 가져갔나」
+     * 경로를 실기로 열 수 없었다(DR-013 · 통지 client#675 §1).
+     */
+    {
+      partnerId: 4003,
+      partnerCode: 'DSP-001',
+      partnerName: '한빛폐기물처리',
+      roleTypeCode: 'DISPOSAL',
+      isActive: true,
+    },
   ];
 
   /*
@@ -520,11 +531,29 @@ export const createSeed = (now = new Date()) => {
       ['INSPECTION_PENDING', '검사 대기'],
       ['SCRAPPED', '폐기'],
     ],
+    /*
+     * 출고 유형 — ✅ **값 목록 확정 2026-08-31(사용자)** · 넷이다.
+     *
+     * ⛔ **`DISPOSAL` 을 뺐다** — 폐기는 출고 «유형»이 아니라 기타출고의 «사유»다(같은 확정).
+     * 유형으로 두면 화면이 폐기를 유형으로 보내고 서버가 모르는 코드가 전표에 실린다.
+     * `RETURN`·`TRANSFER` 도 계약이 쓰는 이름이 아니었다(`SUPPLIER_RETURN`·`SHIPMENT`).
+     */
     ISSUE_TYPE: [
       ['PRODUCTION', '생산 투입'],
-      ['RETURN', '공급사 반품'],
-      ['DISPOSAL', '폐기'],
-      ['TRANSFER', '이고 출고'],
+      ['SUPPLIER_RETURN', '공급사 반품'],
+      ['OTHER', '기타출고'],
+      ['SHIPMENT', '출하'],
+    ],
+    /*
+     * 기타출고의 «사유» — 폐기를 가르는 축이다(공유계약 G-31 · G-32). 비어 있어서 폐기 요청
+     * 화면(W-01-06 · W-04-10)이 사유를 고를 수 없었다. 계약 주석이 적은 초기 시드 다섯이다.
+     */
+    GOODS_ISSUE_REASON: [
+      ['IQC_FAIL', '수입검사 불합격'],
+      ['OVER_RECEIPT', '초과 입하'],
+      ['DEFECT_AFTER_RECEIPT', '입고 후 불량'],
+      ['WRONG_SHIPMENT', '오출하'],
+      ['OTHER', '기타'],
     ],
     LOT_HOLD_REASON: [
       ['INSPECTION_PENDING', '수입검사 대기'],

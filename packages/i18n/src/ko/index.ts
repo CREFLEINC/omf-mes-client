@@ -130,6 +130,7 @@ import { workHoldRegister } from './work-hold-register';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stockTransfer } from './stock-transfer';
 import { physicalCount } from './physical-count';
+import { productDisposalRequest } from './product-disposal-request';
 
 export const ko = {
   common,
@@ -248,6 +249,7 @@ export const ko = {
   shopfloorReceipt,
   stockTransfer,
   physicalCount,
+  productDisposalRequest,
 } as const;
 
 export type Messages = typeof ko;
