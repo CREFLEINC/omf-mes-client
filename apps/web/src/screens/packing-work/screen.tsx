@@ -307,48 +307,39 @@ export const PackingWorkScreen = () => {
      * ⭐ **시각 두 칸을 «여기서» 박는다**(C-8). 보내는 시점의 값을 쓰면 자정을 넘긴 큐 항목의
      * 영업일이 바뀌어 원장이 두 건으로 적재된다.
      */
-    const body = toPackBody(draft.lines, new Date());
-    if (body === null || draft.handlingUnit === null) return;
+    const fresh = toPackBody(draft.lines, new Date());
+    if (fresh === null || draft.handlingUnit === null) return;
+
+    /*
+     * ⭐ **적용 여부를 모르는 시도가 남아 있으면 «그때 본문»을 그대로 다시 쓴다.**
+     *
+     * ⛔ **온라인 재시도에도 걸리는 규칙이다.** 확정 본문에 시각이 생기면서 다시 지을 때마다
+     * 값이 달라지는데, 공용 쓰기 부품은 **본문의 지문으로 멱등 키 유지를 판정한다** — 새로
+     * 지은 본문을 그대로 넘기면 지문이 달라 **재시도가 매번 새 키로 나간다.** 그러면 서버가
+     * 두 요청을 묶어 주지 못해, 앞 시도가 사실은 닿았을 때 같은 포장을 두 번 닫으려 한다
+     * (`until-applied` 가 무력화된다 · C-1 #5 · 독립 검증 F1).
+     *
+     * ⚠ **담은 것이 달라졌으면 이어받지 않는다.** 그 키는 이미 다른 쓰기의 키이고, 그대로
+     * 보내면 나중에 담은 줄이 서버에서 흡수돼 사라진다(C-1 #6). 그때는 새 확정으로 간다.
+     */
+    const attemptedKey = pack.peekIdempotencyKey();
+    const attempted = attemptedBody.current;
+    const resumable = attemptedKey !== null && attempted !== null && samePackBody(attempted, fresh);
+    const body = resumable ? attempted : fresh;
 
     /*
      * ⭐ **끊겨 있으면 큐에 담고 그 자리에서 확정으로 본다**(C-1 #2 · 스펙 §6).
-     *
-     * ⛔ **확정한 때를 실을 자리가 없다** — 계약의 `HandlingUnitCreate` 에 시각 칸이 없고
-     * 헤더에도 없어, 큐에 밀린 확정은 서버가 받은 때로 기록된다(C-1 #3 · C-8 을 이 화면에서는
-     * 지킬 수 없다).
      *
      * ⛔ **연결돼 있을 때까지 큐로 보내지 않는다.** 서버가 그 자리에서 되돌리는 것 둘(내용물
      * 없음 400 · 이미 확정 409)은 사용자가 할 일이 갈리는 오류라, 큐에 넣으면 그 말이 한 박자
      * 늦게 배너로만 온다.
      */
     if (!outbox.isOnline) {
-      /*
-       * ⭐ **온라인으로 이미 던졌으나 적용 여부를 모르는 확정이 있으면 그것을 그대로 이어받는다.**
-       * 통신이 끊기며 끝난 확정은 서버가 받았는지 알 수 없다 — 큐가 새 키로 보내면 서버가 둘을
-       * 묶어 주지 못해 되돌릴 수 없는 확정이 두 번 설 수 있다(C-1 #5 · 스펙 §8-4).
-       *
-       * ⛔ **키만 이어받지 않는다.** 「같은 키 = 같은 값」이 성립해야 서버가 흡수해도 잃는 것이
-       * 없다. 그래서 그 시도의 «본문»을 함께 보낸다 — 시각 두 칸도 그때 것이 나가야 한다
-       * (같은 키에 영업일이 갈리면 서버가 두 건으로 적재한다 · C-8).
-       *
-       * ⚠ **담은 것이 달라졌으면 이어받지 않는다.** 그 키는 이미 다른 쓰기의 키이고, 그대로
-       * 보내면 나중에 담은 줄이 서버에서 흡수돼 사라진다. 그때는 새 확정으로 간다.
-       */
-      const attemptedKey = pack.peekIdempotencyKey();
-      const attempted = attemptedBody.current;
-      const resumable =
-        attemptedKey !== null && attempted !== null && samePackBody(attempted, body);
-
-      /*
-       * ⭐ **이제 「그때 보낸 것」이 실제로 다르다.** 본문에 시각 두 칸이 생겨(C-8) 다시 지으면
-       * 값이 달라진다 — 같은 키에 다른 영업일이 나가면 서버가 두 건으로 적재하므로, 이어받을
-       * 때는 반드시 그때의 본문을 그대로 보낸다.
-       */
       outbox.enqueue({
         kind: 'pack',
         handlingUnitId: draft.handlingUnit.handlingUnitId,
         workerNo: workerNo ?? '',
-        body: resumable ? attempted : body,
+        body,
         idempotencyKey: resumable ? attemptedKey : null,
       });
       setPacked(true);
@@ -410,8 +401,13 @@ export const PackingWorkScreen = () => {
    *
    * ⭐ **포장 단위가 생긴 순간부터 잠근다** — 그 값은 생성 본문에 이미 실려 서버에 있다. 화면에서
    * 바꿔도 서버의 포장은 그대로라, 바꿀 수 있게 두면 화면과 기록이 갈린다.
+   *
+   * ⛔ **생성이 날아가 있는 동안에도 잠근다.** 그 구간에는 포장 단위도 담은 줄도 아직 없어
+   * 잠금이 열려 있었는데, 유형은 **이미 옛 값으로 요청에 실려 나갔다** — 그때 바꾸면 응답이
+   * 온 순간 화면과 서버가 갈린 채 잠기고, 확정 본문에 유형이 없어 영영 바로잡히지 않는다
+   * (독립 검증 F2).
    */
-  const locked = draft.handlingUnit !== null || draft.lines.length > 0;
+  const locked = create.isSaving || draft.handlingUnit !== null || draft.lines.length > 0;
 
   /*
    * 쓰기 셋의 오류를 한 자리에서 낸다 — 사용자에게는 「방금 누른 것이 안 됐다」 하나다.
@@ -557,9 +553,9 @@ export const PackingWorkScreen = () => {
           <h2 className="pane-title pack-work-unit-heading">
             {t.unit.sectionLabel}
             {/*
-              ⚠ **번호는 확정 뒤에야 생긴다.** 스펙 §3 은 담는 동안 보이라 했지만 등록을 확정
-              시점으로 옮기면서 그 자리가 비었다 — 비워 두면 「번호가 사라졌다」로 읽히므로
-              언제 생기는지 말한다.
+              ⭐ **번호는 첫 줄을 담을 때 생긴다**(스펙 §3 · §5-6) — 담기 시작이 포장 단위를
+              만들기 때문이다. 그전까지는 비워 두면 「번호가 사라졌다」로 읽히므로 언제
+              생기는지 말한다.
             */}
             <span className="pack-work-unit-no">
               {draft.handlingUnit?.handlingUnitNo ?? t.unit.numberPending}

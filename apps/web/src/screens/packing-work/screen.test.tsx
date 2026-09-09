@@ -66,6 +66,8 @@ interface Options {
   packErrorBody?: unknown;
   /** 담기 시작 응답 상태. 기본 201 */
   createStatus?: number;
+  /** 담기 시작 응답을 붙잡아 둔다 — 「요청이 날아가 있는」 구간을 만든다. */
+  holdCreate?: Promise<void>;
   /** 취소(`DELETE`) 요청을 담아 둔다. */
   discards?: Request[];
 }
@@ -125,6 +127,25 @@ const routes = (options: Options): StubRoute[] => [
 
       if (options.createStatus !== undefined && options.createStatus >= 400) {
         return jsonResponse({ message: '거부' }, { status: options.createStatus });
+      }
+
+      if (options.holdCreate !== undefined) {
+        /* 붙잡힌 응답 — 풀릴 때까지 「날아가 있는」 상태가 유지된다. */
+        return new Response(
+          new ReadableStream({
+            start: (controller) => {
+              void options.holdCreate?.then(() => {
+                controller.enqueue(
+                  new TextEncoder().encode(
+                    JSON.stringify({ handlingUnit: createdUnit, contents: [] }),
+                  ),
+                );
+                controller.close();
+              });
+            },
+          }),
+          { status: 201, headers: { 'Content-Type': 'application/json' } },
+        );
       }
 
       return jsonResponse({ handlingUnit: createdUnit, contents: [] }, { status: 201 });
@@ -336,7 +357,7 @@ describe('P-02-08 포장 작업', () => {
     expect(typeSelect).toHaveAttribute('aria-invalid', 'true');
   });
 
-  it('담기는 서버를 부르지 않고 번호 자리는 언제 생기는지 말한다', async () => {
+  it('첫 줄을 담으면 포장 단위가 서고 번호가 그 자리에서 생긴다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
     const creates: Request[] = [];
@@ -426,6 +447,31 @@ describe('P-02-08 포장 작업', () => {
 
       expect(screen.getByRole('button', { name: t.unit.discardAction })).toBeDisabled();
     });
+  });
+
+  /*
+   * ⛔ **생성이 날아가 있는 동안에도 유형·상위가 잠긴다.** 그 구간에는 포장 단위도 담은 줄도
+   * 아직 없어 잠금이 열려 있었는데, 유형은 이미 옛 값으로 요청에 실려 나갔다 — 그때 바꾸면
+   * 응답이 온 순간 화면과 서버가 갈린 채 잠긴다(독립 검증 F2).
+   */
+  it('생성 응답을 기다리는 동안 유형과 상위 포장이 잠긴다', async () => {
+    const user = userEvent.setup();
+    let release = (): void => undefined;
+
+    renderScreen({
+      /* 응답을 붙잡아 「날아가 있는」 구간을 만든다. */
+      holdCreate: new Promise<void>((resolve) => {
+        release = resolve;
+      }),
+    });
+
+    await packOneLine(user, LOT_A_NO, '100');
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: t.unit.typeLabel })).toBeDisabled();
+    });
+
+    release();
   });
 
   /* ⭐ 둘째 줄부터는 화면 안에서만 일어난다 — 포장 단위는 이미 있다. */
@@ -704,8 +750,8 @@ describe('P-02-08 포장 작업', () => {
 /**
  * 오프라인 — 스펙 §6 「오프라인 → 큐잉」 · 공유계약 C-1.
  *
- * ⭐ **쓰기가 확정 한 건이라 오프라인이 온전히 선다.** 앞뒤가 매인 호출이 없어 끊긴 채로도
- * 포장을 시작해 확정까지 마칠 수 있다 — 앞선 판이 막던 자리다.
+ * ⚠ **오프라인은 반쪽이다 — 그것이 설계다.** 포장번호를 서버가 매기고 확정이 그 번호를 경로
+ * 인자로 받으므로 **새 포장 시작은 끊긴 채로 성립하지 않는다.** 담던 포장의 확정만 큐가 받는다.
  */
 describe('P-02-08 포장 작업 — 오프라인', () => {
   const setOnline = (value: boolean): void => {
