@@ -156,8 +156,54 @@ describe('P-02-10 작업 중단 등록', () => {
     expect(within(rows[1]!).getByText('금형 교체')).toBeInTheDocument();
     /* 재개는 사유가 없다 — 「없음」이라 적지 않는다. */
     expect(within(rows[2]!).getByText(t.eventTypes.RESUME)).toBeInTheDocument();
+    /* ⛔ 코드를 그대로 내밀지 않는다 — 이력은 「왜 멈췄나」를 읽는 자리다. */
+    expect(within(history).queryByText('MOLD_CHANGE')).not.toBeInTheDocument();
     /* ⛔ 「정정할 수 없습니다」를 상시 세우지 않는다 — 데이터 규칙이지 화면 문구가 아니다. */
     expect(within(history).queryByText(/정정할 수 없습니다/u)).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **서버가 이름을 빼고 보내도 코드를 그대로 내밀지 않는다.** 지금 받아 온 사유 목록으로
+   * 푼다 — 「MOLD_CHANGE」는 현장이 읽는 말이 아니다.
+   */
+  it('사유 이름이 안 와도 목록으로 풀어 보인다', async () => {
+    renderScreen([
+      sessionsRoute([workSession()]),
+      eventsRoute([
+        sessionEvent({
+          workSessionEventId: 2,
+          eventTypeCode: 'STOP',
+          occurredAt: '2026-09-02T10:30:00+09:00',
+          reasonCode: 'MOLD_CHANGE',
+          /* `reasonName` 이 없다 */
+        }),
+      ]),
+    ]);
+
+    const history = await screen.findByLabelText(t.history.sectionLabel);
+
+    await waitFor(() => {
+      expect(within(history).getByText(MOLD_CHANGE_NAME)).toBeInTheDocument();
+    });
+    expect(within(history).queryByText('MOLD_CHANGE')).not.toBeInTheDocument();
+  });
+
+  /* ⚠ 목록에 없는 사유(다른 유형이 쓰는 그룹)는 코드를 그대로 보인다 — 임의로 접지 않는다. */
+  it('목록에 없는 사유는 코드를 그대로 보인다', async () => {
+    renderScreen([
+      sessionsRoute([workSession()]),
+      eventsRoute([
+        sessionEvent({
+          workSessionEventId: 3,
+          eventTypeCode: 'CONTROL_OVERRIDE',
+          reasonCode: 'SOME_OTHER_GROUP_VALUE',
+        }),
+      ]),
+    ]);
+
+    const history = await screen.findByLabelText(t.history.sectionLabel);
+
+    expect(await within(history).findByText('SOME_OTHER_GROUP_VALUE')).toBeInTheDocument();
   });
 
   /* ⛔ 스펙 §5-4 가 7값을 확정했다(2026-08-23) — 확정된 것을 「임시」라 말하지 않는다. */
@@ -311,6 +357,31 @@ describe('P-02-10 작업 중단 등록', () => {
       expect(eventBody).toMatchObject({ eventTypeCode: 'STOP', reasonCode: 'MOLD_CHANGE' });
       /* 발생 시각은 단말이 보낸다(계약) — 서버 수신 시각과 다른 값이다. */
       expect(eventBody).toHaveProperty('occurredAt', expect.any(String));
+    });
+
+    /*
+     * ⛔ **등록한 뒤에는 고른 표시가 남지 않는다.** 안쪽 초안은 비워지는데 화면만 골라진 채로
+     * 남으면, 골랐다고 믿고 누른 사람에게 「사유를 고르세요」가 뜬다(실측 2026-09-09).
+     */
+    it('등록하면 고른 사유 표시가 함께 지워진다', async () => {
+      const user = userEvent.setup();
+      const sent: Request[] = [];
+
+      renderScreen([sessionsRoute([workSession()]), eventsRoute([]), writePost(sent)]);
+
+      const chosen = await screen.findByRole('radio', { name: MOLD_CHANGE_NAME });
+
+      await user.click(chosen);
+      expect(chosen).toBeChecked();
+
+      await user.click(screen.getByRole('button', { name: t.form.stopAction }));
+
+      await waitFor(() => {
+        expect(sent).toHaveLength(2);
+      });
+      await waitFor(() => {
+        expect(screen.getByRole('radio', { name: MOLD_CHANGE_NAME })).not.toBeChecked();
+      });
     });
 
     /*

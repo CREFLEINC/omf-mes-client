@@ -281,7 +281,11 @@ export const WorkHoldRegisterScreen = () => {
                 onRetry={events.refetch}
               />
             ) : (
-              <EventHistoryPanel events={events.events} isPending={events.isPending} />
+              <EventHistoryPanel
+                events={events.events}
+                reasons={reasons.reasons}
+                isPending={events.isPending}
+              />
             ))}
         </div>
 

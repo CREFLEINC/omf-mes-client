@@ -2564,6 +2564,14 @@ on('POST', '/production/work-sessions/{workSessionId}/events', (params, _q, body
     occurredAt: body?.occurredAt ?? new Date().toISOString(),
     recordedAt: new Date().toISOString(),
     reasonCode: body?.reasonCode,
+    /*
+     * ⭐ **표시명을 함께 낸다**(계약 `WorkSessionEvent.reasonName`). 유형마다 사유의 코드
+     * 그룹이 달라(공유계약 A-25) 화면이 자기 목록으로는 남의 유형을 못 푼다 — 목이 이름을
+     * 빼면 화면이 코드를 그대로 그리는 갈래만 시험하게 된다.
+     */
+    reasonName: (state.codeValues.WORK_SESSION_EVENT_REASON ?? []).find(
+      ([code]) => code === body?.reasonCode,
+    )?.[1],
     performedBy: state.workers.find((row) => row.workerNo === workerNo)?.workerId,
     terminalId: session.terminalId,
   };

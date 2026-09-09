@@ -81,12 +81,17 @@ export const HoldForm = ({
        * 753 을 요구해 **[ 중단 등록 ]이 화면 밖(761~833)으로 밀렸다**(실측) — 중단을 등록할
        * 수 없는 화면이었다. 두 열로 접어 담는다.
        */}
+      {/*
+       * ⛔ **고른 값에 `undefined` 를 주지 않는다.** 그 값은 부품을 «비제어»로 돌려, 등록 뒤
+       * 초안을 비워도 **화면에는 고른 표시가 남는다** — 골랐다고 믿고 누른 사람에게 「사유를
+       * 고르세요」가 뜬다(실측 2026-09-09). 빈 문자열이라야 「고른 것이 없다」로 제어된다.
+       */}
       {!reasons.isLoading && reasons.reasons.length > 0 && (
         <RadioGroup
           className="pop-hold-reasons"
           name="work-hold-reason"
           aria-labelledby={legendId}
-          value={draft.reasonCode ?? undefined}
+          value={draft.reasonCode ?? ''}
           disabled={disabled}
           onChange={onReasonChange}
         >
