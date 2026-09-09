@@ -1,9 +1,11 @@
-import type { UseQueryResult } from '@tanstack/react-query';
+import { useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { AlertBanner, Button, Card, Chip, NumberPad, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 
 import { useCodeValues } from '../../patterns/code-values';
+import { playErrorTone } from '../../patterns/error-tone';
+import { useScannedLot } from '../../patterns/lots';
 import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useCustomerNames, useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -94,20 +96,16 @@ const CandidateCard = ({
   today,
   uoms,
   recommended,
-  selected,
   holds,
   reasonNames,
-  onSelect,
 }: {
   candidate: Candidate;
   line: ShipmentRequestLine;
   today: Date;
   uoms: Map<number, string> | undefined;
   recommended: boolean;
-  selected: boolean;
   holds: UseQueryResult<LotHold[]> | null;
   reasonNames: Map<string, string>;
-  onSelect: () => void;
 }) => {
   const problem = lotProblem(candidate, line, today);
   const remaining = remainingDays(candidate.lot, today);
@@ -150,16 +148,6 @@ const CandidateCard = ({
         {problem === null && isShelfLifeUnknown(candidate, line, today) ? (
           <AlertBanner variant="warning" title={t.lot.shelfLifeUnknown} />
         ) : null}
-
-        <Button
-          className="picking__pick"
-          variant={selected ? 'filled' : 'outlined'}
-          size="xl"
-          disabled={problem !== null}
-          onClick={onSelect}
-        >
-          {t.candidates.choose}
-        </Button>
       </Card.Body>
     </Card>
   );
@@ -226,6 +214,8 @@ export const ProductPickingScreen = () => {
     const found = candidates.find((each) => each.lot.lotNo === code);
 
     if (found === undefined) {
+      /* 화면을 보고 있지 않을 수 있다. 소리로도 알린다(공유계약 D-2). */
+      playErrorTone();
       setMissed(code);
       return;
     }
@@ -235,7 +225,18 @@ export const ProductPickingScreen = () => {
     setQty('');
   };
 
+  const queries = useQueryClient();
+
+  const retry = () => {
+    void queries.refetchQueries({ predicate: (query) => query.state.status === 'error' });
+  };
+
   const scanField = useScanField({ onScan: takeScan });
+  /*
+   * 빗나간 값이 없는 번호인지 다른 품목의 LOT 인지 가른다. 후보는 이 품목으로 걸러 와,
+   * 목록에 없다는 것만으로는 둘을 구별할 수 없다.
+   */
+  const missedLot = useScannedLot(missed);
   /*
    * 보류 사유는 고른 것 하나만 묻는다. 목록 전체에 물으면 후보 수만큼 호출이 나가고,
    * 스펙이 요구한 자리도 스캔한 한 건이다.
@@ -271,6 +272,10 @@ export const ProductPickingScreen = () => {
         <AlertBanner variant="warning" title={t.offline.title}>
           {t.offline.description}
         </AlertBanner>
+        {/* 연결이 돌아온 것을 단말이 놓칠 수 있다. 사람이 다시 물을 길을 둔다. */}
+        <Button className="picking__pick" variant="outlined" size="xl" onClick={retry}>
+          {t.offline.retry}
+        </Button>
       </div>
     );
   }
@@ -334,9 +339,7 @@ export const ProductPickingScreen = () => {
   if (done) {
     return (
       <div className="picking">
-        <AlertBanner variant="success" title={t.done.title}>
-          {t.done.description}
-        </AlertBanner>
+        <AlertBanner variant="success" title={t.done} />
         <Button className="picking__pick" variant="filled" size="2xl" onClick={restart}>
           {t.another}
         </Button>
@@ -365,10 +368,9 @@ export const ProductPickingScreen = () => {
                   <li
                     key={`${String(request.shipmentRequestId)}-${String(line.shipmentRequestLineId)}`}
                   >
-                    <Button
-                      className="picking__pick"
-                      variant="outlined"
-                      size="xl"
+                    <Card
+                      bordered
+                      interactive
                       onClick={() => {
                         setChosen({
                           requestId: request.shipmentRequestId,
@@ -379,17 +381,17 @@ export const ProductPickingScreen = () => {
                         setMissed(null);
                       }}
                     >
-                      <span className="picking__target-line">
+                      <Card.Body className="card-body picking__target">
                         <strong>{request.shipmentRequestNo}</strong>
-                        <span>{t.targets.line(line.lineNo)}</span>
-                        <span>
+                        <p>{t.targets.line(line.lineNo)}</p>
+                        <p>
                           {t.targets.progress(String(line.allocatedQty), String(line.pickedQty))}
-                        </span>
-                        <span>
+                        </p>
+                        <p>
                           {left <= 0 ? t.targets.complete : t.targets.remaining(String(left), '')}
-                        </span>
-                      </span>
-                    </Button>
+                        </p>
+                      </Card.Body>
+                    </Card>
                   </li>
                 );
               }),
@@ -399,6 +401,18 @@ export const ProductPickingScreen = () => {
       </div>
     );
   }
+
+  const scanMessage = (): string | undefined => {
+    if (missed === null) {
+      return undefined;
+    }
+
+    const other = missedLot.data ?? null;
+
+    return other !== null && other.itemId !== target.line.itemId
+      ? t.scan.otherItem(missed)
+      : t.scan.notFound(missed);
+  };
 
   const lineUom = uoms.data?.get(target.line.uomId) ?? '';
   /* 이름을 못 받았으면 식별자를 대신 보이지 않는다. 작업자가 대조할 수 없는 값이다. */
@@ -483,13 +497,8 @@ export const ProductPickingScreen = () => {
                 today={today}
                 uoms={uoms.data}
                 recommended={isRecommended(ranked, candidate.lot.lotId)}
-                selected={candidate.lot.lotId === lotId}
                 holds={candidate.lot.lotId === lotId ? holdReason : null}
                 reasonNames={holdReasonNames}
-                onSelect={() => {
-                  setLotId(candidate.lot.lotId);
-                  setQty('');
-                }}
               />
             </li>
           ))}
@@ -507,13 +516,8 @@ export const ProductPickingScreen = () => {
                     today={today}
                     uoms={uoms.data}
                     recommended={false}
-                    selected={candidate.lot.lotId === lotId}
                     holds={candidate.lot.lotId === lotId ? holdReason : null}
                     reasonNames={holdReasonNames}
-                    onSelect={() => {
-                      setLotId(candidate.lot.lotId);
-                      setQty('');
-                    }}
                   />
                 </li>
               ))}
@@ -530,7 +534,7 @@ export const ProductPickingScreen = () => {
           placeholder={t.scan.placeholder}
           size="xl"
           fullWidth
-          error={missed === null ? undefined : t.scan.notFound(missed)}
+          error={scanMessage()}
         />
         <ManualEntry
           label={t.scan.manualLabel}
@@ -543,9 +547,14 @@ export const ProductPickingScreen = () => {
             setManual('');
           }}
         />
+        {selected === null ? null : <p>{t.scan.picked(selected.lot.lotNo)}</p>}
       </section>
 
-      {selected === null ? null : (
+      {/*
+       * 집을 수 없는 LOT 에는 수량칸을 열지 않는다. 열어 두면 「집을 수 없습니다」 옆에
+       * 「집을 수 있습니다」가 나란히 서고, 확정 단추만 잠긴 채 이유가 어긋난다.
+       */}
+      {selected === null || lotProblem(selected, target.line, today) !== null ? null : (
         <section className="picking__section">
           <h2>{t.qty.label}</h2>
           {/* 권장은 순서 제안이지 위치가 아니다. 경고하되 막지 않고 사유도 묻지 않는다. */}

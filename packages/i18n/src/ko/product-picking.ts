@@ -10,8 +10,9 @@ export const productPicking = {
   title: '제품 피킹',
   /** 보류 판정을 캐시할 수 없어 연결 없이는 집을 수 없다. */
   offline: {
-    title: '연결이 없어 피킹할 수 없습니다',
-    description: '보류 상태를 확인할 수 없습니다. 연결을 확인하세요.',
+    title: '오프라인이라 피킹할 수 없습니다',
+    description: '보류 상태를 확인할 수 없습니다',
+    retry: '다시 시도',
   },
   targets: {
     legend: '오늘 출하분',
@@ -48,7 +49,6 @@ export const productPicking = {
     /** 축의 값이 없는 줄은 섞지 않고 뒤에 따로 둔다. 선택 자체는 막지 않는다. */
     unorderedLegend: '순서를 정할 수 없습니다',
     recommended: '권장 1순위',
-    choose: '이 LOT 고르기',
     available: (qty: string, uom: string) => `가용 ${qty} ${uom}`,
     expiry: (date: string) => `유효 ${date}`,
     remainingDays: (days: number) => `잔여 ${String(days)}일`,
@@ -82,6 +82,10 @@ export const productPicking = {
     manualLabel: '직접 입력',
     manualSubmit: '찾기',
     notFound: (code: string) => `${code} LOT을 이 품목에서 찾지 못했습니다`,
+    /* 있는 LOT 인데 다른 품목이면 없는 번호와 다른 상황이다. 작업자가 할 일도 다르다. */
+    otherItem: (code: string) => `${code} 은(는) 이 라인의 품목이 아닙니다`,
+    /* 스캔이 빗나가도 앞서 고른 것이 남는다. 무엇을 집는 중인지 글자로 없으면 모른다. */
+    picked: (lotNo: string) => `스캔됨 ${lotNo}`,
   },
   qty: {
     label: '피킹 수량',
@@ -92,11 +96,8 @@ export const productPicking = {
     overAllocated: (limit: string) => `피킹 수량은 남은 배정 ${limit}을(를) 넘을 수 없습니다`,
   },
   submit: '피킹 확정',
-  done: {
-    title: '피킹을 기록했습니다',
-    /** 확정 후 되돌리기를 두지 않는다. 예약이 소진된다. */
-    description: '되돌리기는 이 화면에서 하지 않습니다',
-  },
+  /* 확정 후 되돌리기를 두지 않는다. 예약이 소진된다. */
+  done: '피킹을 기록했습니다',
   failed: '피킹을 기록하지 못했습니다. 다시 시도하세요.',
   conflict: '집을 수 없는 상태로 바뀌었습니다. 목록을 다시 확인하세요.',
   noWorker: '사번을 먼저 확인하세요',
