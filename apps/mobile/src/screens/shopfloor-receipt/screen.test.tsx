@@ -34,7 +34,11 @@ vi.mock('../../patterns/local-store', () => ({
   },
 }));
 
-const page = { page: 0, size: 200, totalElements: 0, totalPages: 1 };
+/*
+ * 계약의 쪽 정보는 total 이다. 다른 이름으로 두면 쪽을 끝까지 도는 조회가 종료 조건을 만나지
+ * 못해 같은 쪽을 끝없이 다시 부른다.
+ */
+const page = { page: 0, size: 200, total: 0 };
 
 const ISSUE_NO = 'GI-2026-000402';
 
@@ -53,6 +57,8 @@ interface Options {
   noReasonOptions?: boolean;
   /** 차이 사유 값 목록이 늦게 답한다 - 아직 모르는 것과 없는 것이 갈리는 자리다. */
   reasonsPending?: boolean;
+  /** 이 시험에서만 필요한 길. 기본 길보다 먼저 본다. */
+  extra?: StubRoute[];
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -107,6 +113,64 @@ const routes = (options: Options = {}): StubRoute[] => [
           statusCode: 'REGISTERED',
         },
         lines: [],
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/equipments',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            equipmentId: 7,
+            plantId: 1,
+            equipmentCode: 'EQ-01',
+            equipmentName: '사출 1호',
+            equipmentTypeCode: 'INJECTION',
+            locationId: 55,
+            statusCode: 'IN_SERVICE',
+            calibrationRequired: false,
+            isActive: true,
+          },
+        ],
+        page: { ...page, total: 1 },
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/locations/55',
+    respond: () =>
+      jsonResponse({
+        location: {
+          locationId: 55,
+          warehouseId: 12,
+          locationCode: 'HOP-01',
+          locationName: '사출 1호 호퍼',
+          locationTypeCode: 'HOPPER',
+          allowMixedItem: true,
+          allowMixedLot: true,
+          isActive: true,
+        },
+        editability: {},
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/inventory/balances',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            groupBy: 'LOT',
+            itemId: 100,
+            lotId: 4,
+            onHandQty: 120,
+            reservedQty: 0,
+            pickedQty: 0,
+            blockedQty: 0,
+            availableQty: 120,
+            uomId: 9,
+            ownershipTypeCode: 'OWN',
+          },
+        ],
+        page,
       }),
   },
   {
@@ -193,7 +257,23 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () => {
+    respond: (req) => {
+      /* 그룹을 가리지 않으면 차이 사유 목록이 조정 사유 자리에도 답해 판정이 어긋난다. */
+      if (new URL(req.url).searchParams.get('codeGroupCode') === 'INVENTORY_ADJUSTMENT_REASON') {
+        return jsonResponse({
+          items: [
+            {
+              code: 'HOPPER_MEASUREMENT',
+              codeName: 'Hopper measurement',
+              nameKo: '호퍼 실측',
+              isActive: true,
+              displayOrder: 1,
+            },
+          ],
+          page,
+        });
+      }
+
       if (options.reasonsPending === true) {
         return new Promise<Response>(() => {
           /* 답하지 않는다. 목록을 기다리는 동안 화면이 무엇을 허락하는지 재는 자리다. */
@@ -238,7 +318,7 @@ const mount = (options: Options = {}) =>
         <ShopfloorReceiptScreen />
       </SignedIn>
     </MemoryRouter>,
-    { fetch: createStubFetch(routes(options)) },
+    { fetch: createStubFetch([...(options.extra ?? []), ...routes(options)]) },
   );
 
 const scan = (code: string) => {
@@ -290,6 +370,69 @@ describe('생산창고 입고 화면', () => {
     await receivedField();
 
     expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+  });
+
+  /*
+   * 자재가 라인에 들어오는 이 시점에 사람이 눈으로 잰다. 여기서 적지 않으면 호퍼에 무엇이
+   * 얼마나 남았는지가 어디에도 남지 않는다.
+   */
+  it('설비를 고르면 그 호퍼의 장부 잔량을 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+
+    expect(await screen.findByText(/HOP-01/)).toBeTruthy();
+    expect(await screen.findByText('장부 120')).toBeTruthy();
+  });
+
+  /*
+   * 사람이 넣는 것은 잰 값이고 뺀 값이 아니다. 차이를 사람에게 계산시키면 부호를 뒤집어 적는
+   * 순간 재고가 반대로 움직인다.
+   */
+  it('잰 값에서 장부를 빼 증감량으로 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({
+      extra: [
+        {
+          match: (req) =>
+            new URL(req.url).pathname === '/inventory/adjustments' && req.method === 'POST',
+          respond: (req) => {
+            seen.push(req.clone());
+            return jsonResponse({ inventoryAdjustmentId: 1 }, { status: 201 });
+          },
+        },
+      ],
+    });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+    await user.type(await screen.findByLabelText(/RM-1001 실측 잔량/), '100');
+
+    expect(await screen.findByText('차이 -20')).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: '호퍼 잔량 기록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]!.json()) as {
+      reasonCode: string;
+      lines: { locationId: number; itemId: number; adjustmentQty: number }[];
+    };
+
+    expect(body.reasonCode).toBe('HOPPER_MEASUREMENT');
+    expect(body.lines).toHaveLength(1);
+    expect(body.lines[0]).toMatchObject({ locationId: 55, itemId: 100, adjustmentQty: -20 });
   });
 
   /* 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */

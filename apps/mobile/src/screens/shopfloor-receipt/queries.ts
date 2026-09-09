@@ -2,6 +2,7 @@ import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
+import type { HopperStock } from './hopper';
 import type { GoodsIssue, GoodsIssueLine } from './receipt';
 
 type Client = ReturnType<typeof useApiClient>['client'];
@@ -155,4 +156,37 @@ export const useAlreadyReceived = (goodsIssueId: number | null): ReceivedCheck =
   }
 
   return query.data === undefined ? 'unknown' : query.data ? 'received' : 'clear';
+};
+
+/**
+ * 이 호퍼에 장부가 말하는 잔량.
+ *
+ * 조정은 증감량을 받으므로 잰 값에서 이것을 빼야 한다. 장부를 모른 채 잰 값만 보내면 화면이
+ * 무엇을 빼야 할지 알 수 없다.
+ */
+export const useHopperStock = (locationId: number | null): UseQueryResult<HopperStock[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['shopfloor-hopper-stock', locationId] as const,
+    enabled: locationId !== null,
+    queryFn: async () => {
+      if (locationId === null) {
+        throw new Error('호퍼를 고르기 전에는 잔량을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/inventory/balances', {
+          params: { query: { locationId, groupBy: 'LOT' } },
+        }),
+      );
+
+      return data.items.map((each) => ({
+        itemId: each.itemId,
+        lotId: each.lotId,
+        onHandQty: each.onHandQty,
+        uomId: each.uomId,
+      }));
+    },
+  });
 };
