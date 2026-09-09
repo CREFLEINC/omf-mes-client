@@ -812,6 +812,25 @@ export const createSeed = (now = new Date()) => {
       held: true,
     },
     /*
+     * 유효기간이 없는 제품 LOT. FEFO 인 품목이라 순서를 정할 수 없어 목록 맨 뒤 별도 묶음에
+     * 선다. 다른 제품 LOT 은 모두 날짜가 있어 그 묶음을 손으로 재 볼 대상이 없었다.
+     */
+    {
+      lotId: 8204,
+      lotNo: 'FLOT-2026-0288',
+      itemId: 2003,
+      lotTypeCode: 'PRODUCT',
+      initialQty: 150,
+      uomId: 1001,
+      manufacturedAt: iso(-11),
+      expiryDate: null,
+      sourceTypeCode: 'PRODUCTION_RESULT',
+      sourceId: 12004,
+      statusCode: 'NORMAL',
+      completedAt: iso(-11, 17),
+      held: false,
+    },
+    /*
      * 아직 끝나지 않은 생산 LOT — **진행 중인 W/O(11002)의 실적 입력 대상이다.**
      * 다른 생산 LOT 은 모두 완료된 W/O(11001)에 매여 있어, 실적을 「넣어 볼」 대상이 없었다.
      */
@@ -885,6 +904,7 @@ export const createSeed = (now = new Date()) => {
     { lotId: 8201, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 500 },
     { lotId: 8202, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 300 },
     { lotId: 8203, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 200 },
+    { lotId: 8204, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 150 },
   ].map((balance, index) => {
     /*
      * 사람이 읽는 값을 잔액 줄에 함께 싣는다. 계약이 「이 값이 있으므로 마스터를 다시 부르지
