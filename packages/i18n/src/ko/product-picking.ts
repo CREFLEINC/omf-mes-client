@@ -61,6 +61,8 @@ export const productPicking = {
      * 안 보여, 같은 사람이 두 화면에서 다른 것을 받는다.
      */
     heldReason: (reason: string) => `보류 사유 ${reason}`,
+    /* 표시명을 못 받았을 때만 코드를 보인다. 코드만 보이면 무엇이 걸렸는지 모른다. */
+    heldReasonUnknown: (code: string) => `보류 사유 ${code} (표시명 없음)`,
     heldRelease: (condition: string) => `해제 조건 ${condition}`,
     heldReasonLoading: '보류 사유를 확인하는 중입니다',
     heldReasonFailed: '보류 사유를 확인하지 못했습니다',

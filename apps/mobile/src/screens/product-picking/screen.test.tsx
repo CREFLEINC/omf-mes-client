@@ -114,6 +114,22 @@ const routes = (options: Options = {}): StubRoute[] => [
       }),
   },
   {
+    match: (req) => new URL(req.url).pathname === '/mdm/code-values',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            code: 'INSPECTION_PENDING',
+            codeName: 'Inspection pending',
+            nameKo: '수입검사 대기',
+            displayOrder: 1,
+            isActive: true,
+          },
+        ],
+        page,
+      }),
+  },
+  {
     match: (req) => new URL(req.url).pathname === '/mdm/partners',
     respond: () => jsonResponse({ items: [{ partnerId: 1, partnerName: '가나상사' }], page }),
   },
@@ -229,6 +245,30 @@ describe('제품LOT 피킹 스캔 화면', () => {
 
   /* 자유 텍스트라 해석하지 않는다. 사람이 읽고 고르도록 그대로 크게 보인다. */
   /*
+   * 유형을 안 거르면 같은 품목의 생산 LOT 이 후보로 온다. 유효기간이 없어 순서를 정할 수
+   * 없는 묶음에 서고, 작업자는 집을 수 없는 줄을 셋 넘게 본다.
+   */
+  it('후보를 제품 LOT으로만 묻는다', async () => {
+    const asked: string[] = [];
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/trace/lots',
+        respond: (req) => {
+          asked.push(new URL(req.url).searchParams.get('lotTypeCode') ?? '');
+          return jsonResponse({ items: [EARLY, LATE], page });
+        },
+      },
+    ]);
+    await chooseTarget(user);
+
+    await waitFor(() => {
+      expect(asked.length).toBeGreaterThan(0);
+    });
+    expect(asked.every((each) => each === 'PRODUCT')).toBe(true);
+  });
+
+  /*
    * 설계 레이아웃이 대상 - 권장 LOT - 스캔 순이다. 스캔이 먼저 서면 무엇을 집어야 하는지
    * 보기 전에 집으라고 시키는 것이 된다.
    */
@@ -323,7 +363,8 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await user.type(screen.getByLabelText('직접 입력'), EARLY.lotNo);
     await user.click(screen.getByRole('button', { name: '찾기' }));
 
-    expect(await screen.findByText(/보류 사유 INSPECTION_PENDING/)).toBeTruthy();
+    /* 코드를 그대로 보이면 무엇이 걸렸는지 모른다. 표시명은 마스터가 갖는다. */
+    expect(await screen.findByText(/보류 사유 수입검사 대기/)).toBeTruthy();
     expect(screen.getByText(/해제 조건 수입검사 합격/)).toBeTruthy();
   });
 

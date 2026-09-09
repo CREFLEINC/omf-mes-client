@@ -290,6 +290,17 @@ export const createSeed = (now = new Date()) => {
       roleTypeCode: 'SUPPLIER',
       isActive: true,
     },
+    /*
+     * 출하 요청 9601 의 고객. 그 자리가 공급사를 가리키고 있어 M-04-01 이 고객 이름을
+     * 풀지 못했다 - 고객 축으로 거르면 걸리지 않는 거래처다.
+     */
+    {
+      partnerId: 4003,
+      partnerCode: 'CUS-002',
+      partnerName: '합성 고객사 A',
+      roleTypeCode: 'CUSTOMER',
+      isActive: true,
+    },
     /* W-04-06 — 원 출하 검색의 고객 축. 반품은 고객사에서 돌아온다. */
     {
       partnerId: 4002,
@@ -572,6 +583,8 @@ export const createSeed = (now = new Date()) => {
     LOT_HOLD_REASON: [
       ['INSPECTION_PENDING', '수입검사 대기'],
       ['SUSPECT', '의심 자재'],
+      /* 제품 LOT 의 보류 사유. 자재 쪽 값만 두면 제품 피킹이 쓸 값이 없다. */
+      ['SHIPPING_INSPECTION_PENDING', '출하검사 대기'],
     ],
     /* W-03-02 — 해제 사유는 등록 사유와 대칭인 필수 축(고객 시드 4값). */
     LOT_HOLD_RELEASE_REASON: [
@@ -854,7 +867,7 @@ export const createSeed = (now = new Date()) => {
     {
       lotHoldId: 8502,
       lotId: 8203,
-      reasonCode: 'OQC_PENDING',
+      reasonCode: 'SHIPPING_INSPECTION_PENDING',
       holdQty: null,
       uomId: 1001,
       releaseCondition: '출하검사 합격',
@@ -1639,7 +1652,7 @@ export const createSeed = (now = new Date()) => {
       shipmentRequestId: 9601,
       shipmentRequestNo: 'SR-2026-0813-0108',
       salesOrderId: 9701,
-      customerId: 4001,
+      customerId: 4003,
       plantId: PLANT_ID,
       shipDate: today,
       requestedShipDate: today,

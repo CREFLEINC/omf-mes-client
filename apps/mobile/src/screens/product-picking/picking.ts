@@ -12,6 +12,9 @@ export type ShipmentLinePick = components['schemas']['ShipmentLinePick'];
  * 값으로 분기하는 것은 정렬 축 하나뿐이고, 모르는 값이 오면 정렬을 세우지 않고 그 사실을
  * 말한다. 값 목록이 아직 확정 전이라 아는 둘만 다루고 나머지를 통과로 두지 않는다.
  */
+/* 보류 사유의 표시명이 오는 공통코드 그룹. 계약은 코드만 내린다. */
+export const LOT_HOLD_REASON = 'LOT_HOLD_REASON';
+
 export const FEFO = 'FEFO';
 export const FIFO = 'FIFO';
 

@@ -3,6 +3,7 @@ import { AlertBanner, Button, Card, Chip, NumberPad, TextField } from '@crefle/w
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 
+import { useCodeValues } from '../../patterns/code-values';
 import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useCustomerNames, useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -23,6 +24,7 @@ import {
 import {
   FEFO,
   FIFO,
+  LOT_HOLD_REASON,
   canPick,
   isRecommended,
   isConflict,
@@ -55,7 +57,13 @@ const policyLabel = (policy: string): string => {
 };
 
 /** 보류 사유와 해제 조건. 서버가 여러 건을 낼 수 있어 그대로 늘어놓는다. */
-const HoldReason = ({ holds }: { holds: UseQueryResult<LotHold[]> }) => {
+const HoldReason = ({
+  holds,
+  reasonNames,
+}: {
+  holds: UseQueryResult<LotHold[]>;
+  reasonNames: Map<string, string>;
+}) => {
   if (holds.isPending) {
     return <p className="picking__note">{t.lot.heldReasonLoading}</p>;
   }
@@ -68,7 +76,9 @@ const HoldReason = ({ holds }: { holds: UseQueryResult<LotHold[]> }) => {
     <>
       {(holds.data ?? []).map((hold) => (
         <p key={hold.lotHoldId}>
-          {t.lot.heldReason(hold.reasonCode)}
+          {reasonNames.has(hold.reasonCode)
+            ? t.lot.heldReason(reasonNames.get(hold.reasonCode) ?? '')
+            : t.lot.heldReasonUnknown(hold.reasonCode)}
           {hold.releaseCondition === null || hold.releaseCondition === undefined
             ? ''
             : ` · ${t.lot.heldRelease(hold.releaseCondition)}`}
@@ -86,6 +96,7 @@ const CandidateCard = ({
   recommended,
   selected,
   holds,
+  reasonNames,
   onSelect,
 }: {
   candidate: Candidate;
@@ -95,6 +106,7 @@ const CandidateCard = ({
   recommended: boolean;
   selected: boolean;
   holds: UseQueryResult<LotHold[]> | null;
+  reasonNames: Map<string, string>;
   onSelect: () => void;
 }) => {
   const problem = lotProblem(candidate, line, today);
@@ -128,7 +140,9 @@ const CandidateCard = ({
              * 막는 것만으로는 무엇을 하면 풀리는지 알 수 없다. 사유는 고른 것 하나만 따로
              * 물어 오므로 그 답이 있을 때만 적는다.
              */}
-            {problem === 'held' && holds !== null ? <HoldReason holds={holds} /> : null}
+            {problem === 'held' && holds !== null ? (
+              <HoldReason holds={holds} reasonNames={reasonNames} />
+            ) : null}
           </AlertBanner>
         )}
 
@@ -228,6 +242,11 @@ export const ProductPickingScreen = () => {
    */
   const heldPick = candidates.find((each) => each.lot.lotId === lotId)?.held === true;
   const holdReason = useHoldReason(heldPick ? lotId : null);
+  /* 사유 코드를 그대로 보이면 무엇이 걸렸는지 알 수 없다. 표시명은 마스터가 갖는다. */
+  const holdReasonCodes = useCodeValues(LOT_HOLD_REASON);
+  const holdReasonNames = new Map(
+    (holdReasonCodes.data ?? []).map((value) => [value.code, value.name]),
+  );
 
   /*
    * 한 번의 확정에 키 하나. 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 스스로 비워지게 한다.
@@ -466,6 +485,7 @@ export const ProductPickingScreen = () => {
                 recommended={isRecommended(ranked, candidate.lot.lotId)}
                 selected={candidate.lot.lotId === lotId}
                 holds={candidate.lot.lotId === lotId ? holdReason : null}
+                reasonNames={holdReasonNames}
                 onSelect={() => {
                   setLotId(candidate.lot.lotId);
                   setQty('');
@@ -489,6 +509,7 @@ export const ProductPickingScreen = () => {
                     recommended={false}
                     selected={candidate.lot.lotId === lotId}
                     holds={candidate.lot.lotId === lotId ? holdReason : null}
+                    reasonNames={holdReasonNames}
                     onSelect={() => {
                       setLotId(candidate.lot.lotId);
                       setQty('');
