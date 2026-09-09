@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { ShopfloorReceiptScreen } from './screen';
 
@@ -106,6 +107,23 @@ const routes = (options: Options = {}): StubRoute[] => [
           statusCode: 'REGISTERED',
         },
         lines: [],
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/locations/42',
+    respond: () =>
+      jsonResponse({
+        location: {
+          locationId: 42,
+          warehouseId: 12,
+          locationCode: 'L1-STG',
+          locationName: '사출 1호 라인사이드',
+          locationTypeCode: 'FLOOR',
+          allowMixedItem: true,
+          allowMixedLot: true,
+          isActive: true,
+        },
+        editability: {},
       }),
   },
   {
@@ -224,7 +242,7 @@ const mount = (options: Options = {}) =>
   );
 
 const scan = (code: string) => {
-  const field = screen.getByLabelText('출고 QR 스캔') as HTMLInputElement;
+  const field = screen.getByLabelText(/출고 QR 스캔/) as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -236,12 +254,14 @@ beforeEach(() => {
   held.failWrite = null;
   store.clear();
   localStorage.clear();
+  /* 연결 상태를 흉내 낸 것이 다음 시험으로 새면 엉뚱한 자리에서 오프라인이 된다. */
+  vi.restoreAllMocks();
 });
 
 describe('생산창고 입고 화면', () => {
   it('스캔한 출고 전표의 라인을 보인다', async () => {
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
 
@@ -249,11 +269,82 @@ describe('생산창고 입고 화면', () => {
     expect(await receivedField()).toBeTruthy();
   });
 
+  /*
+   * 숫자판이 붙는 자리를 라인 번호로 기억한다. 전표를 되돌릴 때 두고 가면 다른 전표의 같은
+   * 번호 줄에 붙은 채로 열려, 어느 칸에 들어가는지가 어긋난다.
+   */
+  it('전표를 되돌리면 숫자판도 함께 접는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+    await user.click(await receivedField());
+    expect(screen.getByRole('button', { name: '7' })).toBeTruthy();
+
+    act(() => {
+      runBackStep();
+    });
+
+    scan(ISSUE_NO);
+    await receivedField();
+
+    expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+  });
+
+  /* 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */
+  it('어디로 들어온 것인지 보인다', async () => {
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(await screen.findByText(/L1-STG/)).toBeTruthy();
+  });
+
+  /*
+   * 통신이 끊기면 출고와 입고가 한 기기로 합쳐진다(결정 17 시나리오 2). 말하지 않으면
+   * 작업자는 평소처럼 다른 기기를 기다린다.
+   */
+  it('오프라인이면 출고분도 이 기기에서 한다고 알린다', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    mount();
+
+    expect(await screen.findByText('오프라인입니다')).toBeTruthy();
+  });
+
+  it('연결돼 있으면 그 말을 하지 않는다', async () => {
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    expect(screen.queryByText('오프라인입니다')).toBeNull();
+  });
+
+  /*
+   * 장갑을 끼고 한 손으로 조작한다. 단말 키보드는 키가 촘촘하고, 올라오면 라인 목록과 확정
+   * 단추를 덮는다(설계 §7 · 공유계약 G-6).
+   */
+  it('수령 수량을 숫자판으로 넣는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+
+    await user.click(await receivedField());
+    await user.click(await screen.findByRole('button', { name: '5' }));
+    await user.click(screen.getByRole('button', { name: '0' }));
+
+    expect(((await receivedField()) as HTMLInputElement).value).toBe('50');
+  });
+
   /* 초과는 데이터베이스가 막는다. 화면이 통과시키면 확정이 서버에서 되돌아온다. */
   it('출고한 것보다 많이 받지 못한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
@@ -266,7 +357,7 @@ describe('생산창고 입고 화면', () => {
   it('모자라면 사유를 고르기 전에는 확정할 수 없다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
@@ -289,7 +380,7 @@ describe('생산창고 입고 화면', () => {
   it('고를 사유가 없으면 모자라도 확정할 수 있다', async () => {
     const user = userEvent.setup();
     mount({ noReasonOptions: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
@@ -310,7 +401,7 @@ describe('생산창고 입고 화면', () => {
   it('사유 목록을 기다리는 동안에는 모자란 수령을 확정하지 않는다', async () => {
     const user = userEvent.setup();
     mount({ reasonsPending: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
@@ -323,7 +414,7 @@ describe('생산창고 입고 화면', () => {
   it('출고보다 많이 받으면 모자라다고 말하지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
@@ -336,7 +427,7 @@ describe('생산창고 입고 화면', () => {
   it('전량 받으면 사유 없이 확정한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -353,7 +444,7 @@ describe('생산창고 입고 화면', () => {
    */
   it('이미 받은 출고 전표로 들어오면 그 사실을 말하고 막는다', async () => {
     mount({ alreadyReceived: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
 
@@ -368,7 +459,7 @@ describe('생산창고 입고 화면', () => {
   it('이미 받았는지 확인하지 못하면 그 사실을 밝히되 막지는 않는다', async () => {
     const user = userEvent.setup();
     mount({ receivedCheckUnreachable: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
 
@@ -384,7 +475,7 @@ describe('생산창고 입고 화면', () => {
   it('확인이 끝나면 확인하지 못했다고 말하지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -399,7 +490,7 @@ describe('생산창고 입고 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -432,7 +523,7 @@ describe('생산창고 입고 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -453,7 +544,7 @@ describe('생산창고 입고 화면', () => {
   it('단말 보관소가 거절하면 기록되지 않았다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -467,7 +558,7 @@ describe('생산창고 입고 화면', () => {
   it('서버가 되돌리면 되돌아왔다고 말한다', async () => {
     const user = userEvent.setup();
     mount({ rejectReceipt: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');

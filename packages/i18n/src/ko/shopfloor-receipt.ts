@@ -8,6 +8,14 @@
  */
 export const shopfloorReceipt = {
   title: '생산창고 입고',
+  /*
+   * 통신이 끊기면 출고와 입고가 한 단말로 합쳐진다(결정 17 시나리오 2). 말하지 않으면
+   * 작업자는 평소처럼 다른 단말을 기다린다.
+   */
+  degraded: {
+    title: '오프라인입니다',
+    description: '출고분도 이 기기에서 처리합니다. 연결되면 한꺼번에 보냅니다.',
+  },
   /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     received: '생산창고 입고',
@@ -23,6 +31,9 @@ export const shopfloorReceipt = {
     /** 세 번을 물어 도착 위치와 작업지시를 얻는다. 하나라도 끊기면 전표를 열 수 없다. */
     loadFailed: '출고 전표를 열지 못했습니다. 연결을 확인하세요.',
     summary: (no: string, count: number) => `${no} · ${String(count)}라인`,
+    /** 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */
+    destination: (code: string) => `도착 ${code}`,
+    destinationUnknown: '도착 위치를 확인할 수 없습니다. 연결을 확인하세요.',
     empty: '이 출고 전표에는 라인이 없습니다',
   },
   /** 수령 전표는 출고 전표와 1:1 이다. 막지 않으면 같은 물건을 두 번 받은 것이 된다. */
