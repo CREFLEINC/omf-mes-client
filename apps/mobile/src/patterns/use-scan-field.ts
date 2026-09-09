@@ -56,6 +56,13 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
 
     if (fieldRef.current !== null) {
       fieldRef.current.value = '';
+      /*
+       * 비웠다는 것을 어댑터에도 알린다. 모르면 다음 스캔의 첫 글자를 지우기로 읽어 세지
+       * 않고, 종료 문자가 없는 단말에서 짧은 스캔이 판정 기준에 못 미친다.
+       */
+      fieldRef.current.dispatchEvent(
+        new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }),
+      );
     }
 
     setManual(false);

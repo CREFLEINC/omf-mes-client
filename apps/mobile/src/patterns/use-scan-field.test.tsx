@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -52,6 +52,27 @@ describe('스캔 필드 결선', () => {
 
     expect(onScan).toHaveBeenCalledWith('SYN-LOT-0010');
     expect(screen.getByText('스캔 대기')).toBeTruthy();
+  });
+
+  /*
+   * 손으로 넘기면 칸을 비우는데, 그것을 어댑터가 모르면 다음 스캔의 첫 글자를 지우기로
+   * 읽어 세지 않는다. 종료 문자를 붙이지 않는 단말에서 짧은 스캔이 그대로 사라진다.
+   */
+  it('손으로 넘긴 뒤에도 다음 스캔을 온전히 받는다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} />);
+
+    await user.click(screen.getByRole('button', { name: '직접 입력' }));
+    await user.type(screen.getByLabelText('스캔'), 'ABC');
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+    onScan.mockClear();
+
+    await user.type(screen.getByLabelText('스캔'), 'XYZ');
+
+    await waitFor(() => {
+      expect(onScan).toHaveBeenCalledWith('XYZ');
+    });
   });
 
   /* 실물을 읽은 값이 이긴다. 손으로 치던 것이 남으면 두 값이 한 칸에서 섞인다. */

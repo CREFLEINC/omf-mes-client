@@ -171,6 +171,7 @@ export const ProductPickingScreen = () => {
   const [missed, setMissed] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [listView, setListView] = useState(false);
+  const [, setRetried] = useState(0);
   /*
    * 보내는 동안 잠근다. 상태로 두면 React 가 두 이벤트 사이에 커밋하지 못한 경우를 막지 못한다 -
    * 셋이 잇달아 들어오면 셋 다 갱신 전의 값을 보고 통과한다. 즉시 바뀌는 자리에 둔다. 단추를
@@ -229,6 +230,11 @@ export const ProductPickingScreen = () => {
   const queries = useQueryClient();
 
   const retry = () => {
+    /*
+     * 다시 그려야 온라인 여부를 다시 읽는다. 단말이 연결이 돌아온 것을 놓쳤을 때 사람이
+     * 여는 유일한 길이라, 다시 그릴 일이 없으면 이 단추는 아무것도 하지 않는다.
+     */
+    setRetried((count) => count + 1);
     void queries.refetchQueries({ predicate: (query) => query.state.status === 'error' });
   };
 
