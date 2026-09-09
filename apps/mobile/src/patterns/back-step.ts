@@ -54,23 +54,27 @@ export const useBackStep = (active: boolean, onBack: () => void): void => {
   }, [active]);
 };
 
+const HOME_PATH = '/';
+
 /**
  * 단말의 뒤로가기를 화면 단계에 먼저 준다.
  *
- * 되돌릴 단계가 없을 때만 이력으로 넘긴다. 이력도 없으면 앱을 닫는 것이 안드로이드 관례다.
+ * 되돌릴 단계가 없으면 이력으로 넘기고, 첫 화면에서는 앱을 닫는다 - 안드로이드 관례다.
+ * 단말이 주는 canGoBack 은 쓰지 않는다. 화면 전환이 pushState 라 그 값이 거짓으로 와,
+ * 작업 목록으로 돌아갈 자리에서 앱이 통째로 닫혔다.
  */
 export const listenBackButton = (): (() => void) => {
-  const handle = App.addListener('backButton', ({ canGoBack }) => {
+  const handle = App.addListener('backButton', () => {
     if (runBackStep()) {
       return;
     }
 
-    if (canGoBack) {
-      window.history.back();
+    if (window.location.pathname === HOME_PATH) {
+      void App.exitApp();
       return;
     }
 
-    void App.exitApp();
+    window.history.back();
   });
 
   return () => {
