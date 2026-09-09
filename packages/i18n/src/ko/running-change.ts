@@ -24,6 +24,7 @@ export const runningChange = {
 
   panes: {
     current: '현재 투입',
+    currentLot: '현재 생산LOT',
     replace: '부품 교체',
   },
 
@@ -42,6 +43,21 @@ export const runningChange = {
     moldShotRemainingUnknown: '잔여 산출 불가',
     /** 적정 타수를 넘었어도 등록을 막지 않는다 — 경고만 낸다(스펙 §6). */
     moldShotExceeded: '적정 타수를 넘었습니다. 담당자에게 확인하세요.',
+  },
+
+  /**
+   * 《현재 생산LOT》 — 지금 돌고 있는 생산LOT 과 그 진척.
+   *
+   * ⛔ 「LOT 없음」과 「불러오지 못함」을 같은 말로 적지 않는다. 앞은 앞 화면을 거쳐 다시
+   * 들어와야 풀리고, 뒤는 다시 읽으면 풀린다.
+   */
+  currentLot: {
+    loading: '현재 생산LOT 을 불러오는 중입니다.',
+    missing: '현재 생산LOT 을 받지 못했습니다. 작업 화면에서 다시 들어오세요.',
+    failed: '현재 생산LOT 을 불러오지 못했습니다. 교체 등록은 그대로 할 수 있습니다.',
+    progress: (goodQty: number, targetQty: number) => `진행 ${goodQty}/${targetQty}`,
+    /** 진척은 선택 필드다 — 못 받았으면 0 으로 적지 않고 모른다고 적는다. */
+    progressUnknown: (targetQty: number) => `목표 ${targetQty} · 진행 확인 불가`,
   },
 
   /**

@@ -1,11 +1,7 @@
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { packingWorkKeys } from './queries';
-import type {
-  HandlingUnit,
-  HandlingUnitCreate,
-  HandlingUnitDetailResponse,
-} from './types';
+import type { HandlingUnit, HandlingUnitCreate, HandlingUnitDetailResponse } from './types';
 
 /**
  * 사람이 누르는 쓰기 **하나**.
@@ -42,6 +38,16 @@ export interface CreateOptions {
  *
  * ⭐ **중단해도 빈 포장이 남지 않는다** — 확정을 누르기 전에는 서버에 아무것도 만들지 않는다.
  * 포장 해체 경로가 없는 계약에서(스펙 §8-4) 이것이 이 시점의 값이다.
+ *
+ * ⛔ **그래서 「확정 전 포장 취소」(스펙 §5-7 · 공지 `CREFLEINC/omf-mes#507`)를 이 화면에
+ * 두지 않는다.** 그 절은 앞 절의 «두 번 호출»(담기 시작에 만들고 확정이 닫는다)을 전제하며,
+ * 담다 그만두어 남은 빈 포장을 거두는 것이 목적이다. 한 번 호출인 이 화면에는 **지울 대상이
+ * 생기지 않아** `DELETE /inventory/handling-units/{id}` 를 붙여도 아무 일도 하지 않는다.
+ * 어느 쪽이 정본인지는 설계팀이 정한다 — 요청서를 전달했고(2026-09-09) 회신을 기다리며
+ * 멈추지는 않는다. ⚠ 두 번 호출로 되돌리라는 회신이 오면 **오프라인 포장 시작이 함께
+ * 무너진다**(확정 호출의 경로 인자를 단말이 만들 수 없다) — 그 답도 함께 받아야 한다.
+ *
+ * ⭐ 같은 취소가 `P-04-01`(출하 실적 등록)에는 이미 있다. 그 화면은 두 번 호출이라 성립한다.
  *
  * ⭐ **멱등 키의 수명은 `until-applied`** — 되돌릴 수 없는 쓰기다. 통신이 끊긴 뒤 다시 누르면
  * 서버가 다른 쓰기로 보고 **포장을 두 번 만든다.**

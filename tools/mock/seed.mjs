@@ -1994,6 +1994,20 @@ export const createSeed = (now = new Date()) => {
       locationId: 3004,
       statusCode: 'ACTIVE',
     },
+    /*
+     * 출고 라인의 LOT 을 실은 파렛트. **이것이 없으면 `P-01-02` 의 파렛트 발행을 손으로
+     * 확인할 수 없다** — 대상 목록이 `?lotId=` 로 좁혀지는데 위 둘은 출고와 무관한 LOT
+     * (8201·8202)만 담고 있어 언제나 빈 목록이 된다.
+     */
+    {
+      handlingUnitId: 13003,
+      handlingUnitNo: 'HU-2026-000060',
+      handlingUnitTypeCode: 'PALLET',
+      parentHandlingUnitId: null,
+      warehouseId: 1002,
+      locationId: 3004,
+      statusCode: 'ACTIVE',
+    },
   ];
 
   /* 두 포장에 같은 LOT 이 들어 있다 — 합병에서 합쳐지는 갈래를 이것으로 시험한다. */
@@ -2012,6 +2026,15 @@ export const createSeed = (now = new Date()) => {
       itemId: 2003,
       lotId: 8202,
       qty: 60,
+      uomId: 1001,
+    },
+    /* 출고 전표 16401 라인 1 의 LOT(8001) — 파렛트 단위 발행의 대상이 된다. */
+    {
+      handlingUnitContentId: 13104,
+      handlingUnitId: 13003,
+      itemId: 2002,
+      lotId: 8001,
+      qty: 200,
       uomId: 1001,
     },
     {

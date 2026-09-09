@@ -5,10 +5,12 @@ import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import {
   DOCUMENT_TYPE_CODE,
-  LINE_TARGET_TYPE_CODE,
   type DocumentIssueSummary,
   type GoodsIssue,
   type GoodsIssueLine,
+  type HandlingUnit,
+  type HandlingUnitContent,
+  type IssueTargetTypeCode,
   type Printer,
 } from './types';
 
@@ -22,8 +24,11 @@ export const goodsIssueQrKeys = {
   lines: (goodsIssueId: number) => ['goods-issue-qr', 'lines', goodsIssueId] as const,
   /** 발행 요약 전체 — 발행 뒤 이 앞자리로 한 번에 무효화한다. */
   summaries: ['goods-issue-qr', 'summary'] as const,
-  summary: (targetIds: readonly number[]) =>
-    ['goods-issue-qr', 'summary', targetIds.join(',')] as const,
+  summary: (targetTypeCode: IssueTargetTypeCode, targetIds: readonly number[]) =>
+    ['goods-issue-qr', 'summary', targetTypeCode, targetIds.join(',')] as const,
+  handlingUnits: (lotId: number) => ['goods-issue-qr', 'handling-units', lotId] as const,
+  handlingUnitContents: (handlingUnitId: number) =>
+    ['goods-issue-qr', 'handling-unit-contents', handlingUnitId] as const,
   printers: ['goods-issue-qr', 'printers'] as const,
 };
 
@@ -88,20 +93,21 @@ export const useGoodsIssueLines = (
  * 「발행 안 함」이 아니라 **「모른다」**이고, 화면은 둘을 다르게 말한다.
  */
 export const useDocumentIssueSummary = (
+  targetTypeCode: IssueTargetTypeCode,
   targetIds: readonly number[],
 ): UseQueryResult<DocumentIssueSummary[]> => {
   const { client } = useApiClient();
   const sorted = [...targetIds].sort((left, right) => left - right);
 
   return useQuery({
-    queryKey: goodsIssueQrKeys.summary(sorted),
+    queryKey: goodsIssueQrKeys.summary(targetTypeCode, sorted),
     enabled: sorted.length > 0,
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/app/document-issues/summary', {
           params: {
             query: {
-              targetTypeCode: LINE_TARGET_TYPE_CODE,
+              targetTypeCode,
               targetIds: sorted,
               documentTypeCode: DOCUMENT_TYPE_CODE,
             },
@@ -140,6 +146,64 @@ export const usePrinters = (): UseQueryResult<Printer[]> => {
       const data = await runRequest(() =>
         client.GET('/app/printers', {
           params: { query: { documentTypeCode: DOCUMENT_TYPE_CODE } },
+        }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+/** 파렛트 대상 목록의 한 쪽. 한 라인의 LOT 이 실린 취급 단위가 이 수를 넘는 일은 없다. */
+const HANDLING_UNIT_PAGE_SIZE = 100;
+
+/**
+ * 파렛트 단위의 대상 목록 — **이 출고 라인의 LOT 이 실린 취급 단위만**(스펙 §5-2 · 2026-09-06).
+ *
+ * ⛔ **창고 전체를 부르지 않는다.** 축 없이 부르면 이 출고와 상관없는 파렛트가 목록에 서고,
+ * 발행은 되돌릴 수 없는 쓰기라 잘못 고른 것이 그대로 이력에 남는다.
+ *
+ * ⛔ **취급 단위를 이 화면이 만들지 않는다** — 만드는 것은 `M-01-08` 이고 여기는 조회만 한다.
+ */
+export const useLineHandlingUnits = (lotId: number | null): UseQueryResult<HandlingUnit[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: goodsIssueQrKeys.handlingUnits(lotId ?? 0),
+    enabled: lotId !== null,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/inventory/handling-units', {
+          params: { query: { lotId: lotId as number, size: HANDLING_UNIT_PAGE_SIZE } },
+        }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+/**
+ * 고른 파렛트에 실제로 무엇이 담겼는가.
+ *
+ * ⭐ **고른 한 건만 묻는다.** 목록 줄마다 물으면 파렛트 수만큼 요청이 나가고, 화면이 보여야
+ * 하는 것은 「지금 찍을 이 파렛트에 무엇이 들었나」 하나다(스펙 §3 — 「3라인 · 820 EA」).
+ *
+ * ⚠ **0건이면 찍을 것이 없다**(스펙 §6). 목록이 LOT 축으로 좁혀져 오므로 보통은 생기지 않지만,
+ * 고른 뒤에 내용물이 빠질 수 있어 발행 직전에 다시 본다.
+ */
+export const useHandlingUnitContents = (
+  handlingUnitId: number | null,
+): UseQueryResult<HandlingUnitContent[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: goodsIssueQrKeys.handlingUnitContents(handlingUnitId ?? 0),
+    enabled: handlingUnitId !== null,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/inventory/handling-units/{handlingUnitId}/contents', {
+          params: { path: { handlingUnitId: handlingUnitId as number } },
         }),
       );
 

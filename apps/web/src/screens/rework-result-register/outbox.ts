@@ -33,7 +33,6 @@ const isEntry = (value: unknown): value is ReworkResultOutboxEntry => {
     entry.workerNo !== '' &&
     typeof fields.workOrderId === 'number' &&
     typeof fields.uomId === 'number' &&
-    typeof fields.resultSourceCode === 'string' &&
     typeof fields.occurredAt === 'string'
   );
 };

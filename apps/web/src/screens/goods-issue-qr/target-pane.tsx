@@ -4,7 +4,7 @@ import { useEffect, useId, useState } from 'react';
 
 import type { LookupSource } from '../../patterns/lookup-display';
 import { PopSelect as Select } from '../../patterns/pop-select';
-import { ISSUE_UNIT } from './types';
+import { ISSUE_UNIT, type HandlingUnit, type IssueUnit } from './types';
 
 const t = messages.goodsIssueQr;
 
@@ -18,12 +18,24 @@ const t = messages.goodsIssueQr;
  * ⚠ **재발행 사유는 세 경우에 선다** — 고른 라인 중 이미 발행된 것이 있을 때(필수), 발행
  * 현황을 확인하지 못한 라인이 섞였을 때(선택), 서버가 이 칸을 짚어 거부했을 때(선택).
  *
- * ⚠ **파렛트 단위는 비활성이되 감추지 않는다.** 대상 유형 값은 계약이 닫았으나 **이 전표에
- * 실린 파렛트를 찾는 조회가 없어** 고를 대상을 세울 수 없다 — 그 사실과 사유를 함께 보인다.
- * 감추면 「없는 기능」으로 읽힌다.
+ * ⚠ **파렛트 단위의 대상 목록은 고른 라인의 LOT 으로 좁혀진다**(스펙 §5-2 · 2026-09-06 회신).
+ * 창고 전체를 세우지 않는다 — 이 출고와 상관없는 파렛트가 목록에 서면 잘못 고른 것이 그대로
+ * 이력에 남는다. 라인이 하나로 정해지기 전에는 목록 자리에 그 사유를 적는다.
  */
 export interface TargetPaneProps {
   selectedCount: number;
+  unit: IssueUnit;
+  onUnitChange: (unit: IssueUnit) => void;
+  /** 파렛트 대상 후보. 고른 라인이 하나로 정해졌을 때만 채워진다. */
+  pallets: readonly HandlingUnit[];
+  palletsPending: boolean;
+  palletsFailed: boolean;
+  /** 파렛트를 고를 수 있는 상태인가 — 라인이 정확히 하나 골라졌는가다. */
+  palletSelectable: boolean;
+  palletId: number | null;
+  onPalletChange: (handlingUnitId: number) => void;
+  /** 고른 파렛트에 담긴 줄 수·수량 요약. 아직 모르면 `null`. */
+  palletContents: { lineCount: number; totalQty: number } | null;
   /** 발행 뒤 서버가 매긴 회차. 아직 발행 전이면 `null`. */
   issuedSeq: number | null;
   /** 사유 칸을 세우는가 — 재발행이거나, 현황을 모르거나, 서버가 사유를 물은 경우다. */
@@ -43,6 +55,15 @@ export interface TargetPaneProps {
 
 export const TargetPane = ({
   selectedCount,
+  unit,
+  onUnitChange,
+  pallets,
+  palletsPending,
+  palletsFailed,
+  palletSelectable,
+  palletId,
+  onPalletChange,
+  palletContents,
   issuedSeq,
   showReason,
   needsReason,
@@ -54,6 +75,7 @@ export const TargetPane = ({
   previewSrc,
 }: TargetPaneProps) => {
   const unitLabelId = useId();
+  const palletLabelId = useId();
   const reasonLabelId = useId();
 
   /*
@@ -86,23 +108,64 @@ export const TargetPane = ({
         {/* 유형과 그 사유는 **한 줄**이다(사용자 지시 2026-09-07) — 사유가 아래로 내려가면 값과 멀어진다. */}
         <div className="pop-giqr-unit">
           <span id={unitLabelId}>{t.target.unitLabel}</span>
+          {/*
+           * ⭐ **항상 활성이다**(스펙 §5-6). 두 값 다 계약 `enum` 에 있고 대상 축도 섰다 —
+           * 비활성 + 사유(G-2)를 적용할 자리가 아니다.
+           */}
           <RadioGroup
             name="goods-issue-qr-unit"
             aria-labelledby={unitLabelId}
-            value={ISSUE_UNIT.line}
-            onChange={() => {
-              /* 라인 단위 하나뿐이라 바뀔 값이 없다 — 파렛트가 열릴 때 상태가 함께 선다. */
+            value={unit}
+            onChange={(value) => {
+              onUnitChange(value as IssueUnit);
             }}
           >
             <Radio value={ISSUE_UNIT.line}>{t.target.unitLine}</Radio>
-            <Radio value={ISSUE_UNIT.pallet} disabled>
-              {t.target.unitPallet}
-            </Radio>
+            <Radio value={ISSUE_UNIT.pallet}>{t.target.unitPallet}</Radio>
           </RadioGroup>
-          <p className="field-note">{t.target.unitPalletPending}</p>
         </div>
 
         <p>{selectedCount === 0 ? t.target.none : t.target.selectedCount(selectedCount)}</p>
+
+        {/*
+         * 파렛트 대상 — **라인이 하나로 정해져야 목록이 선다**(스펙 §5-2). 여러 줄을 고른
+         * 상태에서 목록을 세우면 어느 LOT 으로 좁힌 것인지 화면이 말할 수 없다.
+         */}
+        {unit === ISSUE_UNIT.pallet && (
+          <div>
+            <span id={palletLabelId}>{t.target.palletLabel}</span>
+            <Select
+              aria-labelledby={palletLabelId}
+              size="xl"
+              placeholder={t.target.palletPlaceholder}
+              value={palletId === null ? null : String(palletId)}
+              onChange={(value) => {
+                onPalletChange(Number(value));
+              }}
+              disabled={!palletSelectable || pallets.length === 0}
+              options={pallets.map((pallet) => ({
+                value: String(pallet.handlingUnitId),
+                label: pallet.handlingUnitNo,
+              }))}
+            />
+            <p className="field-note">
+              {!palletSelectable
+                ? t.target.palletNeedsOneLine
+                : palletsFailed
+                  ? t.target.palletFailed
+                  : palletsPending
+                    ? t.target.palletLoading
+                    : pallets.length === 0
+                      ? t.target.palletEmpty
+                      : palletContents === null
+                        ? t.target.palletContentsUnknown
+                        : t.target.palletContents(
+                            palletContents.lineCount,
+                            palletContents.totalQty,
+                          )}
+            </p>
+          </div>
+        )}
 
         <p>{`${t.target.seqLabel} ${issuedSeq === null ? t.target.seqUnknown : String(issuedSeq)}`}</p>
 
