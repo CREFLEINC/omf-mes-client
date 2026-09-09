@@ -11,6 +11,14 @@ import type { components } from '@omf-mes/api-client';
 export type Lot = components['schemas']['Lot'];
 export type HandlingUnit = components['schemas']['HandlingUnit'];
 export type HandlingUnitCreate = components['schemas']['HandlingUnitCreate'];
+/**
+ * 확정 본문.
+ *
+ * ⭐ **영업일과 발생 시각을 단말이 싣는다**(공유계약 C-8). 원장의 유일 제약이
+ * `(idempotency_key, business_date)` 라, 서버가 «받은 때»로 날짜를 다시 잡으면 자정을 넘겨
+ * 전송된 큐 항목이 **두 건으로 적재된다.**
+ */
+export type HandlingUnitPack = components['schemas']['HandlingUnitPack'];
 export type HandlingUnitContentUpsert = components['schemas']['HandlingUnitContentUpsert'];
 export type HandlingUnitDetailResponse = components['schemas']['HandlingUnitDetailResponse'];
 export type CodeValue = components['schemas']['CodeValue'];
@@ -48,6 +56,9 @@ export interface PackingLine {
  * ⚠ **`handlingUnit` 이 `null` 인 동안에도 유형·상위는 고를 수 있다.** 포장 단위는 첫 내용물을
  * 담을 때 만들어지므로(스펙 §3 이 담는 동안 번호를 보이라 한다), 그전까지는 고른 값만 있고
  * 서버 자원이 없다.
+ *
+ * ⭐ **호출은 둘이다**(스펙 §5-6 · 요구서 §3-17) — 담기 시작이 포장 단위를 만들고(`POST`),
+ * 확정이 내용물과 함께 닫는다(`:pack`). 둘은 한 트랜잭션이 아니다.
  */
 export interface PackingDraft {
   handlingUnitTypeCode: string | null;
