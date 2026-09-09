@@ -17,7 +17,6 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
     workOrderId: 1001,
     goodQty: 120,
     uomId: 10,
-    resultSourceCode: 'MANUAL',
     occurredAt: '2026-09-02T09:12:00+09:00',
   };
 
@@ -41,7 +40,7 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
   });
 
   it('계약이 필수로 둔 칸이 빠지면 보내지 않는다', () => {
-    const required = ['workOrderId', 'goodQty', 'uomId', 'resultSourceCode', 'occurredAt'];
+    const required = ['workOrderId', 'goodQty', 'uomId', 'occurredAt'];
 
     for (const field of required) {
       const broken: Record<string, unknown> = { ...body };
@@ -63,7 +62,6 @@ describe('useOutbox — 끝나지 않는 장애에서 멈추되 실적은 남긴
     workOrderId: 1001,
     goodQty: 120,
     uomId: 1001,
-    resultSourceCode: 'MANUAL',
     occurredAt: '2026-09-02T09:12:00+09:00',
   } satisfies OutboxEntry['body'];
 

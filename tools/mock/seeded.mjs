@@ -1623,17 +1623,40 @@ on(
   },
 );
 
-on('GET', '/logistics/putaway-tasks', (_p, query) =>
-  page(
+/* 임시 적치의 상태값. 정상 적치와 갈려야 정위치 이동 대상을 찾을 수 있다. */
+const PUTAWAY_TEMPORARY = 'COMPLETED_TEMPORARY';
+
+/*
+ * 끝난 지시를 무조건 빼면 임시 적치를 찾을 길이 없다 - 정위치 이동 대상은 완료된 임시 건이라,
+ * 그 축으로 물을 때는 끝난 것을 함께 내린다.
+ */
+on('GET', '/logistics/putaway-tasks', (_p, query) => {
+  const temporaryOnly = bool(query, 'temporaryOnly') === true;
+  const asked = query.has('statusCode') || temporaryOnly;
+
+  return page(
     keep(state.putawayTasks, [
       byNum(query, 'assignedWorkerId', 'assignedWorkerId'),
       byNum(query, 'warehouseId', 'warehouseId'),
       byText(query, 'statusCode', 'statusCode'),
-      (row) => row.completedAt === null,
+      (row) => !temporaryOnly || row.statusCode === PUTAWAY_TEMPORARY,
+      (row) => asked || row.completedAt === null,
     ]),
     query,
-  ),
-);
+  );
+});
+
+/*
+ * 지시 상세. 잇지 않으면 계약 예시값이 내려가 모든 지시가 이미 적치된 것으로 보이고, 임시
+ * 위치 적재 화면이 통째로 막힌다.
+ */
+on('GET', '/logistics/putaway-tasks/{putawayTaskId}', (params) => {
+  const task = state.putawayTasks.find(
+    (each) => each.putawayTaskId === Number(params.putawayTaskId),
+  );
+
+  return task === undefined ? null : { ...task };
+});
 
 const completePutaway = (params, _q, body, temporary) => {
   const task = state.putawayTasks.find(
@@ -1646,7 +1669,13 @@ const completePutaway = (params, _q, body, temporary) => {
 
   task.actualLocationId = body?.actualLocationId ?? null;
   task.completedAt = new Date().toISOString();
-  task.statusCode = temporary ? 'TEMPORARY' : 'COMPLETED';
+  task.statusCode = temporary ? PUTAWAY_TEMPORARY : 'COMPLETED';
+
+  /* 사유는 임시 적치의 기록 항목이다. 담지 않으면 왜 임시로 두었는지가 남지 않는다. */
+  if (temporary) {
+    task.reasonCode = body?.reasonCode ?? null;
+    task.remarks = body?.remarks ?? null;
+  }
 
   /* 적치가 끝나면 재고가 그 위치로 간다 - 위치 확인 화면이 그 결과를 보인다. */
   const balance = state.balances.find((each) => each.lotId === task.lotId);

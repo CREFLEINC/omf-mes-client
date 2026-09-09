@@ -71,6 +71,11 @@ export const createKeyboardWedgeScanner = (timing: ScannerTiming = {}): ScannerA
       let heldKey = false;
       let previousLength = field.value.length;
       let quietTimer: ReturnType<typeof setTimeout> | undefined;
+      /*
+       * 이번 세션이 시작될 때 칸에 있던 것. 손으로 치던 중에 스캔이 들어오면 두 값이 한
+       * 칸에서 이어 붙는데, 그렇게 만든 값은 어느 LOT 도 가리키지 않는다.
+       */
+      let sessionPrefix = '';
 
       const startSession = () => {
         firstInputAt = 0;
@@ -85,10 +90,17 @@ export const createKeyboardWedgeScanner = (timing: ScannerTiming = {}): ScannerA
         lastInputAt = 0;
         startSession();
         previousLength = field.value.length;
+        sessionPrefix = '';
       };
 
       const submit = () => {
-        const value = field.value.trim();
+        const raw = field.value;
+        /* 스캔으로 판정된 건만 앞엣것을 떼어 낸다. 손으로 친 것은 적은 그대로가 값이다. */
+        const scanned =
+          looksLikeScan() && sessionPrefix !== '' && raw.startsWith(sessionPrefix)
+            ? raw.slice(sessionPrefix.length)
+            : raw;
+        const value = scanned.trim();
         field.value = '';
         forget();
 
@@ -143,6 +155,7 @@ export const createKeyboardWedgeScanner = (timing: ScannerTiming = {}): ScannerA
 
         if (now - lastInputAt > sessionBreakMs) {
           startSession();
+          sessionPrefix = field.value.slice(0, field.value.length - added);
         }
 
         if (firstInputAt === 0) {

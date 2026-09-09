@@ -7,18 +7,37 @@ export type PickingOrder = components['schemas']['PickingOrder'];
 export type PickingLine = components['schemas']['PickingLine'];
 export type PickingLinePick = components['schemas']['PickingLinePick'];
 export type GoodsIssueCreate = components['schemas']['GoodsIssueCreate'];
+export type MaterialIssueRequest = components['schemas']['MaterialIssueRequest'];
 export type GoodsIssueLineUpsert = components['schemas']['GoodsIssueLineUpsert'];
 
 /**
  * 출고 원천 문서의 유형.
  *
- * 이 화면의 출고는 피킹 지시에서 나온다. 값 목록이 아직 확정되지 않아 자리표시로 두고, 화면이
- * 그 사실을 적는다 - 지어낸 값을 소리 없이 실으면 값이 정해지는 날 전부 거부된다.
+ * 이 화면의 출고는 피킹 지시에서 나온다. 계약이 값을 리소스 이름으로 정해 두어 고객이 늘리는
+ * 값이 아니다 - 공통코드로 받지 않는다.
  */
 export const SOURCE_DOCUMENT_TYPE = 'PICKING_ORDER';
 
 /** 출고 유형 값 목록을 받는 그룹. */
 export const ISSUE_TYPE = 'ISSUE_TYPE';
+
+/** 피킹 지시 유형 값 목록을 받는 그룹. 계약은 코드만 내리고 표시명은 여기서 온다. */
+export const PICKING_TYPE = 'PICKING_TYPE';
+
+/** 코드의 표시명. 못 받았으면 코드를 그대로 보인다 - 빈칸보다 낫다. */
+export const displayNameOf = (codes: { code: string; name: string }[], code: string): string =>
+  codes.find((each) => each.code === code)?.name ?? code;
+
+/**
+ * 이 화면이 내는 출고의 유형.
+ *
+ * 생산에 넣을 자재를 내보내는 자리다. 매번 고르게 하면 손이 한 번 더 들고 엉뚱한 유형이
+ * 섞인다. 고객이 이 값을 지웠으면 고를 수 있게 열어 둔다 - 목록은 서버가 갖는다.
+ */
+export const PRODUCTION_ISSUE_TYPE = 'PRODUCTION';
+
+export const defaultIssueTypeOf = (codes: { code: string }[]): string | null =>
+  codes.some((each) => each.code === PRODUCTION_ISSUE_TYPE) ? PRODUCTION_ISSUE_TYPE : null;
 
 /**
  * 아직 출고할 수 있는 지시의 상태. 값 목록이 확정돼 있고 시스템이 소유한다.

@@ -172,6 +172,8 @@ export const createSeed = (now = new Date()) => {
       warehouseId: 1001,
       locationCode: 'A-01-03',
       locationName: 'A구역 01열 03단',
+      /* 이미 800 이 있는 자리다. 적치 지시가 이 한도를 넘겨야 초과 경고를 밟아 볼 수 있다. */
+      capacityQty: 900,
     },
     {
       locationId: 3002,
@@ -221,7 +223,7 @@ export const createSeed = (now = new Date()) => {
     storageConditionCode: 'ROOM_TEMPERATURE',
     allowMixedItem: !location.locationCode.endsWith('04'),
     allowMixedLot: true,
-    capacityQty: 1000,
+    capacityQty: location.capacityQty ?? 1000,
     capacityUomId: 1001,
     isActive: location.isActive ?? true,
   }));
@@ -288,6 +290,17 @@ export const createSeed = (now = new Date()) => {
       partnerCode: 'SUP-001',
       partnerName: '(주)대한부품',
       roleTypeCode: 'SUPPLIER',
+      isActive: true,
+    },
+    /*
+     * 출하 요청 9601 의 고객. 그 자리가 공급사를 가리키고 있어 M-04-01 이 고객 이름을
+     * 풀지 못했다 - 고객 축으로 거르면 걸리지 않는 거래처다.
+     */
+    {
+      partnerId: 4003,
+      partnerCode: 'CUS-002',
+      partnerName: '합성 고객사 A',
+      roleTypeCode: 'CUSTOMER',
       isActive: true,
     },
     /* W-04-06 — 원 출하 검색의 고객 축. 반품은 고객사에서 돌아온다. */
@@ -572,6 +585,8 @@ export const createSeed = (now = new Date()) => {
     LOT_HOLD_REASON: [
       ['INSPECTION_PENDING', '수입검사 대기'],
       ['SUSPECT', '의심 자재'],
+      /* 제품 LOT 의 보류 사유. 자재 쪽 값만 두면 제품 피킹이 쓸 값이 없다. */
+      ['SHIPPING_INSPECTION_PENDING', '출하검사 대기'],
     ],
     /* W-03-02 — 해제 사유는 등록 사유와 대칭인 필수 축(고객 시드 4값). */
     LOT_HOLD_RELEASE_REASON: [
@@ -799,6 +814,25 @@ export const createSeed = (now = new Date()) => {
       held: true,
     },
     /*
+     * 유효기간이 없는 제품 LOT. FEFO 인 품목이라 순서를 정할 수 없어 목록 맨 뒤 별도 묶음에
+     * 선다. 다른 제품 LOT 은 모두 날짜가 있어 그 묶음을 손으로 재 볼 대상이 없었다.
+     */
+    {
+      lotId: 8204,
+      lotNo: 'FLOT-2026-0288',
+      itemId: 2003,
+      lotTypeCode: 'PRODUCT',
+      initialQty: 150,
+      uomId: 1001,
+      manufacturedAt: iso(-11),
+      expiryDate: null,
+      sourceTypeCode: 'PRODUCTION_RESULT',
+      sourceId: 12004,
+      statusCode: 'NORMAL',
+      completedAt: iso(-11, 17),
+      held: false,
+    },
+    /*
      * 아직 끝나지 않은 생산 LOT — **진행 중인 W/O(11002)의 실적 입력 대상이다.**
      * 다른 생산 LOT 은 모두 완료된 W/O(11001)에 매여 있어, 실적을 「넣어 볼」 대상이 없었다.
      */
@@ -854,7 +888,7 @@ export const createSeed = (now = new Date()) => {
     {
       lotHoldId: 8502,
       lotId: 8203,
-      reasonCode: 'OQC_PENDING',
+      reasonCode: 'SHIPPING_INSPECTION_PENDING',
       holdQty: null,
       uomId: 1001,
       releaseCondition: '출하검사 합격',
@@ -872,6 +906,7 @@ export const createSeed = (now = new Date()) => {
     { lotId: 8201, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 500 },
     { lotId: 8202, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 300 },
     { lotId: 8203, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 200 },
+    { lotId: 8204, itemId: 2003, warehouseId: 1002, locationId: 3004, onHandQty: 150 },
   ].map((balance, index) => {
     /*
      * 사람이 읽는 값을 잔액 줄에 함께 싣는다. 계약이 「이 값이 있으므로 마스터를 다시 부르지
@@ -1148,12 +1183,12 @@ export const createSeed = (now = new Date()) => {
       uomId: 1001,
       fromLocationId: 3003,
       recommendedLocationId: 3001,
-      appliedPutawayRuleId: 9501,
+      appliedPutawayRuleId: 5102,
       actualLocationId: null,
       warehouseId: 1001,
       warehouseManagementLevelCode: 'ZONE',
       priorityNo: 1,
-      statusCode: 'ASSIGNED',
+      statusCode: 'PENDING',
       assignedWorkerId: 1001,
       completedAt: null,
     },
@@ -1173,7 +1208,7 @@ export const createSeed = (now = new Date()) => {
       warehouseId: 1001,
       warehouseManagementLevelCode: 'ZONE',
       priorityNo: 2,
-      statusCode: 'ASSIGNED',
+      statusCode: 'PENDING',
       assignedWorkerId: 1001,
       completedAt: null,
     },
@@ -1191,12 +1226,12 @@ export const createSeed = (now = new Date()) => {
       uomId: 1001,
       fromLocationId: 3003,
       recommendedLocationId: 3002,
-      appliedPutawayRuleId: 9501,
+      appliedPutawayRuleId: 5101,
       actualLocationId: null,
       warehouseId: 1001,
       warehouseManagementLevelCode: 'ZONE',
       priorityNo: 3,
-      statusCode: 'ASSIGNED',
+      statusCode: 'PENDING',
       assignedWorkerId: 1001,
       completedAt: null,
     },
@@ -1210,12 +1245,35 @@ export const createSeed = (now = new Date()) => {
       uomId: 1001,
       fromLocationId: 3003,
       recommendedLocationId: 3001,
-      appliedPutawayRuleId: 9501,
+      appliedPutawayRuleId: 5102,
       actualLocationId: null,
       warehouseId: 1001,
       warehouseManagementLevelCode: 'ZONE',
       priorityNo: 4,
-      statusCode: 'ASSIGNED',
+      statusCode: 'PENDING',
+      assignedWorkerId: 1001,
+      completedAt: null,
+    },
+    /*
+     * 위치를 관리하지 않는 창고의 지시. 이 갈래는 위치를 스캔하지 않고 고르므로, 관리 창고
+     * 지시만 있으면 화면의 절반을 밟아 볼 수 없다.
+     */
+    {
+      putawayTaskId: 9405,
+      putawayTaskNo: 'PT-2026-000516',
+      goodsReceiptLineId: 9302,
+      itemId: 2002,
+      lotId: 8003,
+      taskQty: 60,
+      uomId: 1001,
+      fromLocationId: 3003,
+      recommendedLocationId: null,
+      appliedPutawayRuleId: null,
+      actualLocationId: null,
+      warehouseId: 1004,
+      warehouseManagementLevelCode: 'WAREHOUSE',
+      priorityNo: 5,
+      statusCode: 'PENDING',
       assignedWorkerId: 1001,
       completedAt: null,
     },
@@ -1639,7 +1697,7 @@ export const createSeed = (now = new Date()) => {
       shipmentRequestId: 9601,
       shipmentRequestNo: 'SR-2026-0813-0108',
       salesOrderId: 9701,
-      customerId: 4001,
+      customerId: 4003,
       plantId: PLANT_ID,
       shipDate: today,
       requestedShipDate: today,
@@ -1673,6 +1731,13 @@ export const createSeed = (now = new Date()) => {
       pickedQty: 0,
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
+      /*
+       * 고객이 LOT 에 건 조건. 어느 줄에도 없어 화면이 그리는 자리를 손으로 시험할 대상이
+       * 없었다. 90일은 권장 1순위(FLOT-2026-0305 · 잔여 120일)를 통과시키는 값이다 - 넘기면
+       * 집을 수 있는 LOT 이 사라져 다른 경로를 재지 못한다. 2번 줄은 비워 둔 채로 남긴다.
+       */
+      customerLotRequirement: '제조 90일 이내 · 동일 LOT 단일',
+      minimumRemainingShelfLifeDays: 90,
     },
     /*
      * 여벌 줄. 한 줄만 두면 배정만큼 집은 순간 오늘 출하분에 할 일이 없어져, 그 화면을 다시
@@ -1994,6 +2059,20 @@ export const createSeed = (now = new Date()) => {
       locationId: 3004,
       statusCode: 'ACTIVE',
     },
+    /*
+     * 출고 라인의 LOT 을 실은 파렛트. **이것이 없으면 `P-01-02` 의 파렛트 발행을 손으로
+     * 확인할 수 없다** — 대상 목록이 `?lotId=` 로 좁혀지는데 위 둘은 출고와 무관한 LOT
+     * (8201·8202)만 담고 있어 언제나 빈 목록이 된다.
+     */
+    {
+      handlingUnitId: 13003,
+      handlingUnitNo: 'HU-2026-000060',
+      handlingUnitTypeCode: 'PALLET',
+      parentHandlingUnitId: null,
+      warehouseId: 1002,
+      locationId: 3004,
+      statusCode: 'ACTIVE',
+    },
   ];
 
   /* 두 포장에 같은 LOT 이 들어 있다 — 합병에서 합쳐지는 갈래를 이것으로 시험한다. */
@@ -2012,6 +2091,15 @@ export const createSeed = (now = new Date()) => {
       itemId: 2003,
       lotId: 8202,
       qty: 60,
+      uomId: 1001,
+    },
+    /* 출고 전표 16401 라인 1 의 LOT(8001) — 파렛트 단위 발행의 대상이 된다. */
+    {
+      handlingUnitContentId: 13104,
+      handlingUnitId: 13003,
+      itemId: 2002,
+      lotId: 8001,
+      qty: 200,
       uomId: 1001,
     },
     {

@@ -20,8 +20,11 @@ const capturing = (pathname: string, body: unknown, seen: URL[]): StubRoute => (
 });
 
 describe('적치 지시 조회', () => {
-  /* 비우면 본인이 되는 것이 아니다. 비우면 남의 지시까지 함께 온다. */
-  it('담당자로 좁혀 묻고 상태 코드로 거르지 않는다', async () => {
+  /*
+   * 비우면 본인이 되는 것이 아니다. 비우면 남의 지시까지 함께 온다. 끝낸 지시도 함께 오면
+   * 같은 자리를 두 번 다녀온다.
+   */
+  it('담당자와 적치 대기 상태로 좁혀 묻는다', async () => {
     const seen: URL[] = [];
     const fetch = createStubFetch([
       capturing('/logistics/putaway-tasks', { items: [], page }, seen),
@@ -33,7 +36,7 @@ describe('적치 지시 조회', () => {
       expect(result.current.isSuccess).toBe(true);
     });
     expect(seen[0]?.searchParams.get('assignedWorkerId')).toBe('77');
-    expect(seen[0]?.searchParams.get('statusCode')).toBeNull();
+    expect(seen[0]?.searchParams.get('statusCode')).toBe('PENDING');
   });
 
   it('작업자를 확인하기 전에는 묻지 않는다', () => {

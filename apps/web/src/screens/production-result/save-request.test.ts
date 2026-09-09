@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { RESULT_SOURCE_CODE } from './codes';
 import { buildSaveBody, type SaveInput } from './save-request';
 import { emptyResultDraft } from './types';
 
@@ -24,8 +23,8 @@ describe('buildSaveBody — 보내는 것', () => {
     expect(body.occurredAt).toBe('2026-09-02T09:12:00+09:00');
   });
 
-  it('실적 원천은 자리표시 상수 한 곳에서만 온다', () => {
-    expect(buildSaveBody(input()).resultSourceCode).toBe(RESULT_SOURCE_CODE);
+  it('실적 출처는 보내지 않는다 — 서버가 채운다', () => {
+    expect(buildSaveBody(input())).not.toHaveProperty('resultSourceCode');
   });
 
   it('LOT 배분을 본문에 싣는다 — 배분 수량은 이번 양품수량이다', () => {

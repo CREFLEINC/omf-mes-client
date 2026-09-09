@@ -27,7 +27,7 @@ describe('미마감 발주 조회', () => {
       capturing('/logistics/purchase-orders', { items: [], page }, seen),
     ]);
 
-    const { result } = renderHookWithProviders(() => useOpenPurchaseOrders(), { fetch });
+    const { result } = renderHookWithProviders(() => useOpenPurchaseOrders(null), { fetch });
 
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);

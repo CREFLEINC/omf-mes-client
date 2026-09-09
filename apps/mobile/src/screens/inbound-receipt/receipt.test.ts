@@ -60,6 +60,7 @@ const draft = (overrides: Partial<ReceiptDraft> = {}): ReceiptDraft => ({
   purchaseOrder: po(),
   purchaseOrderLine: poLine(),
   deliveryNoteNo: 'DN-2026-000045',
+  vehicleNo: '',
   receivedQty: '500',
   packageCount: '10',
   manufacturedDate: '2026-07-20',

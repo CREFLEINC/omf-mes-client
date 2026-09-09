@@ -397,7 +397,6 @@ describe('ProductionFlowScreen', () => {
             workOrderId: WORK_ORDER_ID,
             goodQty: 12,
             uomId: 1,
-            resultSourceCode: 'MANUAL',
             occurredAt: '2026-09-08T09:00:00+09:00',
             lotAllocations: [{ lotId: LOT_ID, allocatedQty: 12 }],
           },

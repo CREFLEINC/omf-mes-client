@@ -8,6 +8,8 @@ export type DocumentIssueCreate = components['schemas']['DocumentIssueCreate'];
 export type DocumentIssueSummary = components['schemas']['DocumentIssueSummary'];
 export type PrintOutcomeReport = components['schemas']['PrintOutcomeReport'];
 export type Printer = components['schemas']['Printer'];
+export type HandlingUnit = components['schemas']['HandlingUnit'];
+export type HandlingUnitContent = components['schemas']['HandlingUnitContent'];
 
 /**
  * 출력물 종류 — **`GOODS_ISSUE_QR` 로 확정됐다**(스펙 §4-A · §5-1).
@@ -28,18 +30,35 @@ export const DOCUMENT_TYPE_CODE = 'GOODS_ISSUE_QR';
  * `HANDLING_UNIT` 이다. 생성 타입이 그 `enum` 을 들고 있어 **틀린 값은 타입 검사가 잡는다**
  * (설계 변동 공지 `CREFLEINC/omf-mes#425` 로 편입).
  *
- * ⚠ **파렛트 단위는 값이 아니라 대상을 고를 조회 축이 없어 서지 못한다** —
- * 전표에 딸린 취급 단위를 좁혀 주는 질의가 계약에 없다(`GET /inventory/handling-units` 는
- * 창고·로케이션·유형·상태로만 거른다).
+ * ⭐ **파렛트 단위의 대상 축이 섰다**(설계 회신 2026-09-06 · 공지 `CREFLEINC/omf-mes#507`) —
+ * `GET /inventory/handling-units?lotId=` 가 **이 출고 라인의 LOT 이 실린 취급 단위만** 낸다.
+ * 취급 단위를 만드는 것은 `M-01-08` 이고 이 화면은 조회만 한다.
  */
 export const LINE_TARGET_TYPE_CODE = 'GOODS_ISSUE_LINE';
+
+/**
+ * 파렛트 단위의 대상 유형(스펙 §5-2).
+ *
+ * ⛔ **파렛트 발행은 `lotId` 를 싣지 않는다.** 취급 단위 하나가 여러 LOT 을 담아 한 칸에 담을
+ * 수 없다 — 계약이 `lot_id` 를 nullable 로 둔 이유가 그것이고, 아무 LOT 이나 골라 채우면
+ * 발행 이력이 그 LOT 하나의 것으로 굳는다.
+ */
+export const PALLET_TARGET_TYPE_CODE = 'HANDLING_UNIT';
+
+/**
+ * 이 화면이 발행 이력을 물을 때 쓰는 대상 유형 — 둘뿐이다.
+ *
+ * ⛔ **`string` 으로 넓히지 않는다.** 계약이 `enum` 으로 닫은 축이라, 넓히면 틀린 값이
+ * 타입 검사를 그대로 지나가고 서버가 400 을 낼 때에야 드러난다.
+ */
+export type IssueTargetTypeCode = typeof LINE_TARGET_TYPE_CODE | typeof PALLET_TARGET_TYPE_CODE;
 
 /**
  * 발행 단위. **화면 안에서만 쓰는 구분이다** — 이 값 자체는 서버로 나가지 않고,
  * 나가는 것은 위 대상 유형 코드다.
  *
- * ⚠ 파렛트는 **고를 대상을 찾을 길이 없어** 아직 고를 수 없다. 선택지를 감추지 않고 사유와
- * 함께 비활성으로 둔다 — 없는 기능인지 아직 못 여는 기능인지 사용자가 구분할 수 있어야 한다.
+ * ⚠ 파렛트 단위는 **라인을 하나만 고른 상태에서** 선다 — 대상 목록이 그 라인의 LOT 으로
+ * 좁혀지기 때문이다(스펙 §5-2). 여러 라인을 고르면 어느 LOT 으로 좁힐지 화면이 정하게 된다.
  */
 export const ISSUE_UNIT = {
   line: 'LINE',

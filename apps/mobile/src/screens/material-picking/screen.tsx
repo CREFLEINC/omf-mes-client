@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Chip,
+  NumberPad,
   Radio,
   RadioGroup,
   Select,
@@ -13,9 +14,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
+import { playErrorTone } from '../../patterns/error-tone';
+import { useLocation } from '../../patterns/locations';
 import { useOutbox } from '../../patterns/outbox';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
@@ -23,8 +27,11 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { PickingOrderList } from './order-list';
 import {
   ISSUE_TYPE,
+  PICKING_TYPE,
   canConfirmIssue,
   canPick,
+  defaultIssueTypeOf,
+  displayNameOf,
   isOpenOrder,
   isOutOfSequence,
   isOfOrder,
@@ -43,10 +50,18 @@ import {
   type GoodsIssueLineUpsert,
   type PickingLine,
 } from './picking';
-import { pickingKeys, useAssignedPickingOrders, usePickingOrder } from './queries';
+import {
+  MATERIAL_ISSUE_REQUEST,
+  pickingKeys,
+  useAssignedPickingOrders,
+  useIssueRequest,
+  usePickingOrder,
+} from './queries';
 import './screen.css';
 
 const t = messages.materialPicking;
+/* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
+const required = messages.common.required;
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
@@ -77,7 +92,6 @@ export const MaterialPickingScreen = () => {
   const [lineId, setLineId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
   const [qty, setQty] = useState('');
-  const [manual, setManual] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   /* 피킹 한 건의 결과. 거부를 조용히 넘기면 왜 안 집혔는지 알 수 없다. */
   const [pickOutcome, setPickOutcome] = useState<Outcome | null>(null);
@@ -105,13 +119,27 @@ export const MaterialPickingScreen = () => {
    */
   const issuedHere = useRef<{ idempotencyKey: string; lines: GoodsIssueLineUpsert[] }[]>([]);
 
+  const scanSection = useRef<HTMLElement | null>(null);
+  const qtySection = useRef<HTMLElement | null>(null);
+
   const workerId = useWorkerId(worker?.workerNo ?? null);
   const orders = useAssignedPickingOrders(workerId.data ?? null);
   const detail = usePickingOrder(orderId);
   const issueTypes = useCodeValues(ISSUE_TYPE);
+  const pickingTypes = useCodeValues(PICKING_TYPE);
 
   const order = detail.data?.order ?? null;
   const lines = detail.data?.lines ?? [];
+  /*
+   * 집은 것을 어디로 가져가는지는 원천 요청에만 있다. 출하 요청에서 나온 지시는 이 화면 몫이
+   * 아니라 묻지 않는다.
+   */
+  const request = useIssueRequest(
+    order !== null && order.sourceDocumentTypeCode === MATERIAL_ISSUE_REQUEST
+      ? order.sourceDocumentId
+      : null,
+  );
+  const destination = useLocation(request.data?.destinationLocationId ?? null);
   const line = lines.find((each) => each.pickingLineId === lineId) ?? null;
   /*
    * 담긴 피킹을 셈에 넣는다. 서버가 아는 것만 세면 오프라인에서 집은 흔적이 화면에 남지 않아
@@ -149,6 +177,18 @@ export const MaterialPickingScreen = () => {
   const queuedCount = queued.length + queuedIssues;
   const lastQueued = useRef({ orderId, count: queuedCount });
 
+  /*
+   * 생산에 넣을 자재를 내보내는 자리다. 매번 고르게 하면 손이 한 번 더 들고 엉뚱한 유형이
+   * 섞인다. 고객이 그 값을 지웠으면 사람이 고른다.
+   */
+  const defaultIssueType = defaultIssueTypeOf(issueTypes.data ?? []);
+
+  useEffect(() => {
+    if (issueTypeCode === null && defaultIssueType !== null) {
+      setIssueTypeCode(defaultIssueType);
+    }
+  }, [defaultIssueType, issueTypeCode]);
+
   useEffect(() => {
     const previous = lastQueued.current;
 
@@ -160,10 +200,43 @@ export const MaterialPickingScreen = () => {
     }
   }, [orderId, queryClient, queuedCount]);
 
+  const [scanSeq, setScanSeq] = useState(0);
+
   const scanField = useScanField({
     onScan: (value) => {
       setScanned(value.trim());
+      /* 같은 라벨을 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
+      setScanSeq((seq) => seq + 1);
     },
+  });
+
+  /*
+   * 스캔한 것이 이 라인의 LOT 이 아니라는 것을 소리로도 알린다(공유계약 D-2). 단말을 허리에
+   * 매단 채 읽으므로 화면에만 적으면 사람은 통과한 줄 알고 다음 동작으로 넘어간다.
+   */
+  const scanMissed = scanned !== null && line !== null && !isScannedLotOf(line, scanned);
+
+  useEffect(() => {
+    if (scanMissed) {
+      playErrorTone();
+    }
+  }, [scanMissed, scanSeq]);
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(lineId !== null, scanSection);
+  useAdvanceTo(scanned !== null, qtySection);
+
+  /*
+   * 뒤로가기는 화면 안 단계를 먼저 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지 않으면
+   * 지시와 라인을 고르고 집던 사람이 한 번에 작업 목록까지 나간다.
+   */
+  useBackStep(orderId !== null && lineId !== null, () => {
+    setLineId(null);
+    setScanned(null);
+    setQty('');
+  });
+  useBackStep(orderId !== null && lineId === null, () => {
+    setOrderId(null);
   });
 
   const chooseLine = (next: PickingLine) => {
@@ -171,7 +244,6 @@ export const MaterialPickingScreen = () => {
     setLineId(next.pickingLineId);
     setScanned(null);
     setQty('');
-    setManual('');
   };
 
   const restart = () => {
@@ -179,7 +251,6 @@ export const MaterialPickingScreen = () => {
     setLineId(null);
     setScanned(null);
     setQty('');
-    setManual('');
     setOutcome(null);
     setPickOutcome(null);
     setIssueTypeCode(null);
@@ -366,7 +437,25 @@ export const MaterialPickingScreen = () => {
         <Card bordered>
           <Card.Header>{detail.data?.order.pickingOrderNo ?? ''}</Card.Header>
           <Card.Body className="card-body">
-            <p>{t.orders.type(detail.data?.order.pickingTypeCode ?? '')}</p>
+            <p>
+              {t.orders.type(
+                displayNameOf(pickingTypes.data ?? [], detail.data?.order.pickingTypeCode ?? ''),
+              )}
+            </p>
+            {/* 집은 것을 어디로 가져가는가. 말하지 않으면 그 자리가 사람의 기억에만 남는다. */}
+            {destination.isPending && request.data !== undefined ? (
+              <p role="status">{t.orders.destinationLoading}</p>
+            ) : null}
+            {request.isError || destination.isError ? (
+              <p className="picking-out__note">{t.orders.destinationUnknown}</p>
+            ) : null}
+            {destination.data === undefined ? null : (
+              <p>
+                {t.orders.destination(
+                  `${destination.data.locationCode} ${destination.data.locationName}`,
+                )}
+              </p>
+            )}
           </Card.Body>
         </Card>
         {/* 진입 자리에서 말한다. 아래에서만 말하면 다 집어 놓고 마지막에 막힌 것을 안다. */}
@@ -439,9 +528,12 @@ export const MaterialPickingScreen = () => {
             const trouble = lineProblemOf(each, queued);
             const place = [
               each.locationCode === undefined ? '' : t.lines.at(each.locationCode),
-              each.expiryDate === null || each.expiryDate === undefined
-                ? ''
-                : t.lines.expiry(each.expiryDate),
+              /* 유효기한이 없는 품목의 선출 근거는 제조일이다. 비워 두면 왜 이 줄이 먼저인지 알 수 없다. */
+              each.expiryDate !== null && each.expiryDate !== undefined
+                ? t.lines.expiry(each.expiryDate)
+                : each.manufacturedAt === null || each.manufacturedAt === undefined
+                  ? ''
+                  : t.lines.manufactured(each.manufacturedAt.slice(0, 10)),
             ].filter((part) => part !== '');
 
             return (
@@ -503,25 +595,24 @@ export const MaterialPickingScreen = () => {
 
       {line === null || problem !== null ? null : (
         <>
-          <section className="picking-out__section">
+          <section className="picking-out__section" ref={scanSection}>
             <h2>{t.scan.legend}</h2>
             <TextField
               ref={scanField.ref}
-              label={t.scan.label}
+              label={required(t.scan.label)}
               placeholder={t.scan.placeholder}
               size="xl"
               fullWidth
             />
-            <ManualEntry
-              label={t.scan.manualLabel}
-              submitLabel={t.scan.manualSubmit}
-              value={manual}
-              onChange={setManual}
-              onSubmit={() => {
-                setScanned(manual.trim());
-                setManual('');
-              }}
-            />
+            {/* 스캐너가 못 읽는 라벨이 있다. 스캔 칸 자체를 열어 손으로 넣는다(공유계약 D-3). */}
+            <Button
+              className="picking-out__wide"
+              variant={scanField.manual ? 'outlined' : 'text'}
+              size="xl"
+              onClick={scanField.manual ? scanField.submitManual : scanField.openManual}
+            >
+              {scanField.manual ? t.scan.manualSubmit : t.scan.manualLabel}
+            </Button>
 
             {scanned === null ? null : matched ? (
               <Chip status="success">{t.scan.matched}</Chip>
@@ -534,17 +625,27 @@ export const MaterialPickingScreen = () => {
             ) : null}
           </section>
 
-          <section className="picking-out__section">
+          <section className="picking-out__section" ref={qtySection}>
+            {/*
+             * 장갑을 끼고 한 손으로 조작한다. 운영체제 키보드는 작은 키가 촘촘하고, 올라오면
+             * 라인 목록과 확정 단추를 덮는다(설계 §7-1 · 공유계약 G-6).
+             */}
             <TextField
-              label={t.qty.label}
+              label={required(t.qty.label)}
               size="xl"
               fullWidth
-              inputMode="numeric"
+              inputMode="none"
               value={qty}
               onChange={(event) => {
                 setQty(event.target.value);
               }}
               error={qtyMessage()}
+            />
+            <NumberPad
+              value={qty}
+              onChange={setQty}
+              max={remainingQtyOf(line, queued)}
+              allowDecimal
             />
             {pickSaveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
             <Button
@@ -566,7 +667,10 @@ export const MaterialPickingScreen = () => {
         {issueTypes.data !== undefined && issueTypes.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.noIssueType} />
         ) : null}
-        {issueTypes.data === undefined || issueTypes.data.length === 0 ? null : (
+        {/* 기본값이 잡히면 고를 일이 없다. 고객이 그 값을 지웠을 때만 고르게 연다. */}
+        {issueTypes.data === undefined ||
+        issueTypes.data.length === 0 ||
+        defaultIssueType !== null ? null : (
           <div className="picking-out__field">
             <label htmlFor="picking-issue-type">{t.issueTypeLabel}</label>
             <Select
@@ -581,8 +685,7 @@ export const MaterialPickingScreen = () => {
             />
           </div>
         )}
-        {/* 어느 값이 이 화면의 출고인지 계약이 아직 말하지 않아 사람이 고른다. */}
-        <p className="picking-out__note">{t.issueTypeNote}</p>
+        {defaultIssueType !== null ? null : <p className="picking-out__note">{t.issueTypeNote}</p>}
         {worker === null ? <p className="picking-out__note">{t.noWorker}</p> : null}
         {saveFailed ? <AlertBanner variant="error" title={t.saveFailed} /> : null}
         {queuedIssues === 0 ? null : <AlertBanner variant="warning" title={t.issueQueued} />}
@@ -590,6 +693,10 @@ export const MaterialPickingScreen = () => {
         !lines.some((each) => issuableQtyOf(each, queued, alreadyIssued) > 0) ? (
           <AlertBanner variant="info" title={t.allIssued} />
         ) : null}
+      </section>
+
+      {/* 라인이 쌓이면 확정 단추가 접힌 자리로 밀린다(설계 §3 액션 72). */}
+      <div className="action-bar">
         <Button
           variant="filled"
           size="2xl"
@@ -604,7 +711,7 @@ export const MaterialPickingScreen = () => {
         >
           {t.submit}
         </Button>
-      </section>
+      </div>
     </div>
   );
 };

@@ -16,6 +16,17 @@
 export const WORK_ORDER_PARAM = 'workOrderId';
 
 /**
+ * 주소가 《현재 생산LOT》을 담는 키.
+ *
+ * ⭐ **서버가 「지금 어느 슬롯인가」를 판정하지 못한다** — 세션에 LOT 이 없다. 그래서 넘겨 주는
+ * 화면(`P-02-03`)이 작업지시와 함께 이 값을 싣는다(스펙 §3 · 2026-09-06 게이트 승인).
+ *
+ * ⛔ **목록 첫 줄을 현재 LOT 으로 추측하지 않는다.** 선발행 슬롯이 여럿이라 첫 줄이 지금
+ * 돌고 있는 것이라는 근거가 없고, 틀리면 다른 LOT 의 진척을 이 LOT 의 것으로 읽는다.
+ */
+export const LOT_PARAM = 'lotId';
+
+/**
  * 주소에서 작업지시 번호를 읽는다. 읽을 수 없으면 `null`이다.
  *
  * **양의 정수만 받는다.** 계약이 `int64`를 요구하므로 소수·음수·0은 있을 수 없는 값이고,
@@ -33,3 +44,12 @@ const readPositiveId = (params: URLSearchParams, key: string): number | null => 
 
 export const readWorkOrderId = (params: URLSearchParams): number | null =>
   readPositiveId(params, WORK_ORDER_PARAM);
+
+/**
+ * 주소에서 현재 생산LOT 번호를 읽는다. 읽을 수 없으면 `null`이다.
+ *
+ * 없는 것은 오류가 아니다 — 앞 화면을 거치지 않고 들어온 상태이고, 그때 구획은 사유와 함께
+ * 접힌다(스펙 §3).
+ */
+export const readLotId = (params: URLSearchParams): number | null =>
+  readPositiveId(params, LOT_PARAM);

@@ -76,7 +76,6 @@ describe('재작업 실적 수량', () => {
       scrapQty: 0,
       reworkQty: 0,
       uomId: 401,
-      resultSourceCode: 'MANUAL',
     });
     expect(result.occurredAt).toMatch(/[+-]\d{2}:\d{2}$/);
   });

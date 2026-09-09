@@ -35,12 +35,16 @@ export const inboundReceipt = {
     none: '미마감 ERP W/O가 없습니다',
     /** 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */
     pickNote: '스캔한 번호만으로는 ERP W/O가 정해지지 않습니다. 담당자가 고릅니다.',
+    /** 번호에서 품목을 찾아 좁혔다. 좁힌 것이 틀릴 수 있어 넓힐 길을 함께 둔다. */
+    narrowedNote: '스캔한 자재의 품목이 있는 ERP W/O만 보입니다.',
+    showAll: '전체 ERP W/O 보기',
     linesLoading: 'ERP W/O 라인을 불러오는 중입니다',
     linesLoadFailed: 'ERP W/O 라인을 확인할 수 없습니다',
     linesNone: '이 ERP W/O에 라인이 없습니다',
     lineLabel: (item: string, ordered: string, uom: string) => `${item} · 발주 ${ordered} ${uom}`,
     received: (qty: string) => `누적 입하 ${qty}`,
     tolerance: (over: string, under: string) => `허용 +${over} / -${under}`,
+    linePicked: '선택됨',
     clear: 'ERP W/O 선택 지우기',
   },
   exception: {
@@ -75,6 +79,7 @@ export const inboundReceipt = {
   note: {
     legend: '거래명세서',
     label: '명세서 번호',
+    vehicle: '차량번호',
     /** 촬영과 문자 인식은 이번 범위 밖이다. 없는 것을 있는 것처럼 두지 않는다. */
     photoAbsent: '명세서 촬영은 아직 없습니다. 번호만 적습니다.',
     /** 없어도 등록을 막지 않는다. 명세서는 별도 경로로 붙는다. */
@@ -117,6 +122,8 @@ export const inboundReceipt = {
       both: '정량+초과 분리 등록',
       normalOnly: '정량분만 등록',
       excessOnly: '초과분만 등록',
+      /* 초과분을 보내는 두 모드는 예외 유형과 사유를 함께 싣는다. 없으면 서버가 받지 않는다. */
+      excessLocked: '초과분을 등록하려면 예외 유형과 사유를 먼저 채우세요.',
       atomic: '정량분과 초과분은 한 번에 저장되며 일부만 성공하지 않습니다.',
     },
     under: (remaining: string, arrived: string) =>
@@ -129,7 +136,8 @@ export const inboundReceipt = {
       ordered: '발주',
       received: '누적',
       arrived: '이번 도착',
-      remaining: '남은 예정',
+      /* 판정이 견주는 남은 예정이 아니라 이번 것까지 받고도 남는 몫이다. */
+      remaining: '남은',
     },
     underAsk: '더 들어올 물량이 있습니까?',
     /** 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. */

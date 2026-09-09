@@ -8,6 +8,7 @@ export const masterKeys = {
   items: () => ['master-items'] as const,
   uoms: () => ['master-uoms'] as const,
   suppliers: () => ['master-suppliers'] as const,
+  customers: () => ['master-customers'] as const,
 };
 
 export interface ItemSummary {
@@ -119,6 +120,29 @@ export const useSuppliers = (enabled: boolean): UseQueryResult<SupplierSummary[]
         partnerId: partner.partnerId,
         partnerName: partner.partnerName,
       }));
+    },
+  });
+};
+
+/**
+ * 고객 식별자를 이름으로 바꾼다.
+ *
+ * 출하 요청은 고객 식별자만 준다. 번호를 그대로 보이면 어느 고객 몫을 집는지 알 수 없다.
+ */
+export const useCustomerNames = (enabled: boolean): UseQueryResult<Map<number, string>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: masterKeys.customers(),
+    enabled,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/partners', {
+          params: { query: { roleTypeCode: 'CUSTOMER', size: 200 } },
+        }),
+      );
+
+      return new Map(data.items.map((partner) => [partner.partnerId, partner.partnerName]));
     },
   });
 };

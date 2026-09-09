@@ -32,7 +32,7 @@ export const INBOUND_RECEIPT_LINE = 'INBOUND_RECEIPT_LINE';
 
 export const LOT_NO_LENGTH = MATERIAL_LOT_NO_LENGTH;
 
-export type ScanProblem = 'length' | 'notDigits' | 'badDate' | 'duplicate';
+export type ScanProblem = 'length' | 'notDigits' | 'badDate' | 'duplicate' | 'otherItem';
 
 /**
  * 이 라인에 LOT 을 채울 수 있는가.
@@ -50,7 +50,11 @@ export const isFillable = (line: InboundReceiptLine): boolean =>
  *
  * 큐 안의 중복만 여기서 본다 - 같은 공장에 이미 있는지는 서버만 안다.
  */
-export const scanProblemOf = (value: string, queuedLotNos: string[]): ScanProblem | null => {
+export const scanProblemOf = (
+  value: string,
+  queuedLotNos: string[],
+  lineItemCode?: string,
+): ScanProblem | null => {
   const trimmed = value.trim();
 
   if (!/^\d*$/.test(trimmed)) {
@@ -67,7 +71,22 @@ export const scanProblemOf = (value: string, queuedLotNos: string[]): ScanProble
     return 'badDate';
   }
 
-  return queuedLotNos.includes(trimmed) ? 'duplicate' : null;
+  if (queuedLotNos.includes(trimmed)) {
+    return 'duplicate';
+  }
+
+  /*
+   * 라벨의 제품코드가 고른 라인의 품목과 다르면 다른 자재의 라벨이다. 그대로 등록하면 그
+   * 라인에 남의 LOT 이 붙는다.
+   *
+   * 품목코드가 아홉 자리 숫자일 때만 견준다 - 그 형식이 아닌 코드 체계에서는 라벨의 어느
+   * 자리와 견줄지가 정해져 있지 않고, 억지로 견주면 옳은 라벨을 전부 막는다.
+   */
+  return lineItemCode !== undefined &&
+    /^\d{9}$/.test(lineItemCode) &&
+    segments.itemCode !== lineItemCode
+    ? 'otherItem'
+    : null;
 };
 
 /**
@@ -89,12 +108,13 @@ export const canRegister = (
   plantId: number | null,
   queuedLotNos: string[],
   queuedLineIds: number[],
+  lineItemCode?: string,
 ): boolean =>
   line !== null &&
   hasWorker &&
   plantId !== null &&
   !queuedLineIds.includes(line.inboundReceiptLineId) &&
-  scanProblemOf(value, queuedLotNos) === null &&
+  scanProblemOf(value, queuedLotNos, lineItemCode) === null &&
   (labelQtyOf(value) ?? 0) > 0;
 
 /**

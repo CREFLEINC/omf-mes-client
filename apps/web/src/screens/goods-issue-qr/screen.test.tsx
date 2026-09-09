@@ -72,6 +72,14 @@ interface Options {
   noLines?: boolean;
   /** 라인 조회가 실패하는 경우 */
   linesFail?: boolean;
+  /** 파렛트 후보. `lotIds` 는 목록을 좁히는 축이지 응답 필드가 아니다. */
+  pallets?: { handlingUnitId: number; handlingUnitNo: string; lotIds: number[] }[];
+  /** 파렛트별 담긴 줄 수. 없으면 1줄로 본다. */
+  palletContentCounts?: Record<number, number>;
+  /** 파렛트별 발행 횟수. 라인 쪽 `issueCounts` 와 **다른 표**다 — 캐시가 섞이면 여기서 드러난다. */
+  palletIssueCounts?: Record<number, number>;
+  /** 파렛트 목록 조회 요청을 담아 둔다 — LOT 축으로 좁히는지 검사한다. */
+  palletRequests?: Request[];
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -108,11 +116,19 @@ const routes = (options: Options): StubRoute[] => [
         return jsonResponse({ message: '조회 실패' }, { status: 500 });
       }
 
-      const counts = options.issueCounts ?? {};
+      /*
+       * ⚠ **대상 유형으로 가른다.** 라인과 파렛트는 같은 표를 유형으로 나눠 쓰므로, 여기서
+       * 뭉뚱그리면 캐시 키가 유형을 잃어도 시험이 통과한다.
+       */
+      const targetTypeCode = new URL(request.url).searchParams.get('targetTypeCode');
+      const counts =
+        targetTypeCode === 'HANDLING_UNIT'
+          ? (options.palletIssueCounts ?? {})
+          : (options.issueCounts ?? {});
 
       return jsonResponse({
         items: Object.entries(counts).map(([targetId, issueCount]) => ({
-          targetTypeCode: 'GOODS_ISSUE_LINE',
+          targetTypeCode: targetTypeCode ?? 'GOODS_ISSUE_LINE',
           targetId: Number(targetId),
           issueCount,
         })),
@@ -193,6 +209,42 @@ const routes = (options: Options): StubRoute[] => [
       return options.reportFails === true
         ? jsonResponse({ message: '보고 거부' }, { status: 500 })
         : jsonResponse(issuedRecord(44001, 1001, 1));
+    },
+  },
+  {
+    match: (request) => request.method === 'GET' && pathOf(request) === '/inventory/handling-units',
+    respond: (request) => {
+      options.palletRequests?.push(request.clone());
+
+      const lotId = Number(new URL(request.url).searchParams.get('lotId'));
+      const items = (options.pallets ?? [])
+        .filter((pallet) => pallet.lotIds.includes(lotId))
+        .map(({ lotIds: _lotIds, ...pallet }) => ({
+          ...pallet,
+          handlingUnitTypeCode: 'PALLET',
+          parentHandlingUnitId: null,
+          statusCode: 'ACTIVE',
+        }));
+
+      return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+    },
+  },
+  {
+    match: (request) => /^\/inventory\/handling-units\/\d+\/contents$/u.test(pathOf(request)),
+    respond: (request) => {
+      const handlingUnitId = Number(pathOf(request).split('/')[3]);
+      const count = options.palletContentCounts?.[handlingUnitId] ?? 1;
+
+      return jsonResponse({
+        items: Array.from({ length: count }, (_unused, index) => ({
+          handlingUnitContentId: 70000 + index,
+          handlingUnitId,
+          itemId: 10,
+          lotId: 20,
+          qty: 100,
+          uomId: 30,
+        })),
+      });
     },
   },
   {
@@ -277,12 +329,99 @@ describe('GoodsIssueQrScreen', () => {
     expect(screen.getByText(t.action.disabledNoSelection)).toBeInTheDocument();
   });
 
-  it('파렛트 단위는 사유와 함께 비활성이다', async () => {
+  /**
+   * ⭐ **파렛트 단위가 열렸다**(설계 회신 2026-09-06 · 공지 `CREFLEINC/omf-mes#507`).
+   * 대상 목록은 라인이 하나로 정해져야 서므로, 그 전에는 고를 수 없는 «사유»를 적는다 —
+   * 「없는 기능」과 「아직 못 고르는 상태」는 다른 말이다.
+   */
+  it('파렛트 단위는 고를 수 있고, 라인이 하나로 정해지기 전에는 사유를 적는다', async () => {
+    const user = userEvent.setup();
     renderScreen({ issueCounts: { 1001: 0 } });
 
     await screen.findByText('LOT-SAMPLE-20');
-    expect(screen.getByRole('radio', { name: t.target.unitPallet })).toBeDisabled();
-    expect(screen.getByText(t.target.unitPalletPending)).toBeInTheDocument();
+    const pallet = screen.getByRole('radio', { name: t.target.unitPallet });
+    expect(pallet).toBeEnabled();
+
+    await user.click(pallet);
+    expect(screen.getByText(t.target.palletNeedsOneLine)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **파렛트 발행 본문을 지키는 자리다.** 스펙 §5-2 가 「파렛트는 `lotId` 를 싣지 않는다」로
+   * 못박은 규칙은 계약이 그 칸을 «선택»으로 두어 **타입 검사가 잡지 못한다** — 어기면 발행
+   * 이력이 아무 LOT 하나의 것으로 굳고, 발행은 되돌릴 수 없다.
+   */
+  it('파렛트로 발행하면 취급 단위 대상 하나만 싣고 LOT 은 싣지 않는다', async () => {
+    const user = userEvent.setup();
+    const writes: Request[] = [];
+    const palletRequests: Request[] = [];
+    renderScreen({
+      issueCounts: { 1001: 0, 1002: 0 },
+      palletIssueCounts: { 5001: 0 },
+      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
+      writes,
+      palletRequests,
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+
+    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
+    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.action.issue })).toBeEnabled();
+    });
+    await user.click(screen.getByRole('button', { name: t.action.issue }));
+
+    await waitFor(() => {
+      expect(writes).toHaveLength(1);
+    });
+
+    const body = (await writes[0]!.json()) as {
+      targets: { targetTypeCode: string; targetId: number; lotId?: number }[];
+    };
+
+    expect(body.targets).toEqual([{ targetTypeCode: 'HANDLING_UNIT', targetId: 5001 }]);
+    expect(body.targets[0]).not.toHaveProperty('lotId');
+
+    /* 목록은 고른 라인의 LOT 으로 좁혀 묻는다 — 창고 전체를 세우지 않는다. */
+    const asked = palletRequests.map((request) => new URL(request.url).searchParams.get('lotId'));
+    expect(asked).toContain('20');
+    expect(asked).not.toContain('21');
+  });
+
+  /**
+   * ⭐ **파렛트 회차는 라인 회차와 다른 표에서 온다**(같은 표를 대상 유형으로 가른다).
+   * 요약을 담아 두는 칸이 유형을 잃으면 파렛트가 라인의 발행 횟수를 자기 것으로 읽어
+   * **재발행인데 최초 발행으로 열린다.**
+   */
+  it('이미 발행된 파렛트는 사유 없이 발행되지 않는다 — 라인 회차를 가져다 쓰지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      /* 라인은 최초 발행(0), 파렛트는 재발행(2) — 섞이면 여기서 드러난다. */
+      issueCounts: { 1001: 0, 1002: 0 },
+      palletIssueCounts: { 5001: 2 },
+      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+
+    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
+    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
+
+    expect(await screen.findByText(t.action.disabledNoReason)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
+
+    await user.click(screen.getByRole('combobox', { name: t.reissue.label }));
+    await user.click(await screen.findByRole('option', { name: '인쇄 실패' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.action.issue })).toBeEnabled();
+    });
   });
 
   it('프린터가 0건이면 빈 상태를 머리에 보인다', async () => {
@@ -508,7 +647,8 @@ describe('GoodsIssueQrScreen', () => {
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
-    expect(await screen.findByText(t.result.printed)).toBeInTheDocument();
+    /* ⛔ 인쇄 성공은 띠로 말하지 않는다 — 발행 띠 하나면 된다(2026-09-09). */
+    expect(await screen.findByText(t.result.issued(1))).toBeInTheDocument();
     expect(saved).toHaveLength(1);
     expect(reports).toHaveLength(1);
 
@@ -574,7 +714,6 @@ describe('GoodsIssueQrScreen', () => {
       expect(screen.queryByText(t.result.printing)).not.toBeInTheDocument();
     });
     expect(reports).toHaveLength(0);
-    expect(screen.queryByText(t.result.printed)).not.toBeInTheDocument();
   });
 
   it('인쇄는 됐는데 보고를 못 하면 그것을 성공으로 접지 않는다', async () => {
@@ -587,7 +726,6 @@ describe('GoodsIssueQrScreen', () => {
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     expect(await screen.findByText(t.result.printedUnreported)).toBeInTheDocument();
-    expect(screen.queryByText(t.result.printed)).not.toBeInTheDocument();
   });
 
   it('인쇄 결과 보고에도 멱등 키를 싣는다', async () => {

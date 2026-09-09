@@ -1,18 +1,24 @@
-import { AlertBanner, Button, Card, NumberPad, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
 import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
-import { SUBSTITUTE_LOT_REASON, useOpenPurchaseOrders, usePurchaseOrderLines } from './queries';
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { playErrorTone } from '../../patterns/error-tone';
+import {
+  SUBSTITUTE_LOT_REASON,
+  useOpenPurchaseOrders,
+  usePurchaseOrderLines,
+  useScannedItem,
+} from './queries';
 import {
   NORMAL,
   OVER,
@@ -22,6 +28,7 @@ import {
   packageProblem,
   qtyProblem,
   queuedQtyOf,
+  remainingAfterOf,
   remainingQtyOf,
   sourceOf,
   splitQuantitiesOf,
@@ -36,6 +43,8 @@ import {
 import './screen.css';
 
 const t = messages.inboundReceipt;
+/* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
+const required = messages.common.required;
 const INBOUND_RECEIPT_EXCEPTION_TYPE = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
 
 type Outcome = 'queued' | 'sent' | 'rejected';
@@ -53,6 +62,7 @@ const emptyDraft: ReceiptDraft = {
   purchaseOrder: null,
   purchaseOrderLine: null,
   deliveryNoteNo: '',
+  vehicleNo: '',
   receivedQty: '',
   packageCount: '',
   manufacturedDate: '',
@@ -62,18 +72,23 @@ const emptyDraft: ReceiptDraft = {
 export const InboundReceiptScreen = () => {
   useScreenTitle(t.title);
 
+  const navigate = useNavigate();
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
 
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
   const [malformed, setMalformed] = useState<string | null>(null);
-  const [manual, setManual] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   /* 부족한데도 그대로 등록하겠다는 사람의 답. 화면은 더 올 것인지 알지 못한다. */
   const [continueUnder, setContinueUnder] = useState(false);
   const [splitExceptionType, setSplitExceptionType] = useState('');
   const [splitExceptionReason, setSplitExceptionReason] = useState('');
   const [saveFailed, setSaveFailed] = useState(false);
+  const [keypadFor, setKeypadFor] = useState<'received' | 'package' | null>(null);
+  /* 담당자가 후보 밖에서 고르겠다고 한 상태. 한 번 넓히면 되돌리지 않는다. */
+  const [showAllOrders, setShowAllOrders] = useState(false);
+  const poSection = useRef<HTMLElement | null>(null);
+  const qtySection = useRef<HTMLElement | null>(null);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
    * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 재고가 두 번 는다.
@@ -98,6 +113,8 @@ export const InboundReceiptScreen = () => {
     const code = value.trim();
 
     if (!isMaterialLotNo(code)) {
+      /* 화면을 보고 있지 않을 수 있다. 소리로도 알린다(공유계약 D-2). */
+      playErrorTone();
       setMalformed(code);
       return;
     }
@@ -108,7 +125,31 @@ export const InboundReceiptScreen = () => {
 
   const scanField = useScanField({ onScan: take });
 
-  const orders = useOpenPurchaseOrders();
+  /* 세로 화면이라 채운 구획이 화면을 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(draft.supplierLotNo !== '' || draft.supplierLotMissing, poSection);
+  useAdvanceTo(draft.purchaseOrderLine !== null || draft.unordered, qtySection);
+
+  /*
+   * 스캔한 번호가 품목을 가리키면 그 품목이 있는 미마감 ERP W/O 만 후보로 낸다. 못 찾거나
+   * 후보가 비면 좁히지 않는다 - 양식이 다른 번호도 들어오고, 그때 0건으로 만들면 담당자가
+   * 고를 것이 사라진다(화면 스펙 §5-1 · §6).
+   */
+  const scannedItem = useScannedItem(draft.supplierLotNo);
+  const narrowTo = showAllOrders ? null : (scannedItem.data ?? null);
+  const orders = useOpenPurchaseOrders(narrowTo);
+  const narrowed = narrowTo !== null && (orders.data?.length ?? 0) > 0;
+  /*
+   * 좁혔는데 한 건도 없으면 스스로 전체로 넘어간다. 그대로 두면 고를 것이 하나도 없는 채로
+   * 멈추고, 넓힐 단추는 좁혀진 동안에만 서 있어 빠져나갈 길도 없다.
+   */
+  const narrowedEmpty = narrowTo !== null && orders.isSuccess && orders.data.length === 0;
+
+  useEffect(() => {
+    if (narrowedEmpty) {
+      setShowAllOrders(true);
+    }
+  }, [narrowedEmpty]);
+
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
   const exceptionTypes = useCodeValues(INBOUND_RECEIPT_EXCEPTION_TYPE);
@@ -168,12 +209,12 @@ export const InboundReceiptScreen = () => {
   const restart = () => {
     setDraft(emptyDraft);
     setMalformed(null);
-    setManual('');
     setOutcome(null);
     setContinueUnder(false);
     setSplitExceptionType('');
     setSplitExceptionReason('');
     setSaveFailed(false);
+    setShowAllOrders(false);
     scanField.focus();
   };
 
@@ -282,23 +323,30 @@ export const InboundReceiptScreen = () => {
           fullWidth
           error={malformed === null ? undefined : t.scan.malformed(malformed.length)}
         />
-        <ManualEntry
-          label={t.scan.manualLabel}
-          submitLabel={t.scan.manualSubmit}
-          value={manual}
-          onChange={setManual}
-          onSubmit={() => {
-            take(manual);
-            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-            setManual('');
-          }}
-        />
+        {/*
+         * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+         * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+         */}
+        {scanField.manual ? (
+          <Button
+            className="receipt__wide"
+            variant="outlined"
+            size="xl"
+            onClick={scanField.submitManual}
+          >
+            {t.scan.manualSubmit}
+          </Button>
+        ) : (
+          <Button className="receipt__wide" variant="text" size="xl" onClick={scanField.openManual}>
+            {t.scan.manualLabel}
+          </Button>
+        )}
 
         {draft.supplierLotMissing ? (
           <>
             <AlertBanner variant="info" title={t.scan.missingChosen} />
             <div className="receipt__field">
-              <label htmlFor="receipt-reason">{t.scan.reasonLabel}</label>
+              <label htmlFor="receipt-reason">{required(t.scan.reasonLabel)}</label>
               <Select
                 id="receipt-reason"
                 placeholder={t.scan.reasonPlaceholder}
@@ -343,10 +391,10 @@ export const InboundReceiptScreen = () => {
 
       {!started ? null : (
         <>
-          <section className="receipt__section">
+          <section className="receipt__section" ref={poSection}>
             <h2>{t.po.legend}</h2>
             {/* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */}
-            <p className="receipt__note">{t.po.pickNote}</p>
+            <p className="receipt__note">{narrowed ? t.po.narrowedNote : t.po.pickNote}</p>
             {orders.isPending ? <p role="status">{t.po.loading}</p> : null}
             {orders.isError ? <AlertBanner variant="error" title={t.po.loadFailed} /> : null}
             {orders.data !== undefined && orders.data.length === 0 ? (
@@ -392,6 +440,24 @@ export const InboundReceiptScreen = () => {
               </div>
             )}
 
+            {/*
+             * 좁힌 것이 틀릴 수 있다. 번호 양식이 다르거나 다른 품목으로 들어온 물건이면
+             * 후보에 없다 - 막지 않고 전체로 넓힐 길을 둔다(화면 스펙 §3 · §6).
+             */}
+            {narrowed ? (
+              <Button
+                className="receipt__wide"
+                variant="text"
+                size="xl"
+                onClick={() => {
+                  setShowAllOrders(true);
+                  patch({ purchaseOrder: null, purchaseOrderLine: null });
+                }}
+              >
+                {t.po.showAll}
+              </Button>
+            ) : null}
+
             {draft.purchaseOrder === null ? null : (
               <>
                 {lines.isPending ? <p role="status">{t.po.linesLoading}</p> : null}
@@ -404,35 +470,34 @@ export const InboundReceiptScreen = () => {
                 <ul className="receipt__lines">
                   {(lines.data ?? []).map((line: PurchaseOrderLine) => (
                     <li key={line.purchaseOrderLineId}>
-                      <Button
-                        className="receipt__wide"
-                        variant={
-                          draft.purchaseOrderLine?.purchaseOrderLineId === line.purchaseOrderLineId
-                            ? 'filled'
-                            : 'outlined'
-                        }
-                        size="xl"
+                      <Card
+                        bordered
+                        interactive
                         onClick={() => {
                           patch({ purchaseOrderLine: line });
                         }}
                       >
-                        <span className="receipt__line">
-                          <span>
+                        <Card.Body className="card-body receipt__line">
+                          <strong>
                             {t.po.lineLabel(
                               itemLabelOf(line.itemId),
                               String(line.orderedQty),
                               uoms.data?.get(line.uomId) ?? '',
                             )}
-                          </span>
-                          <span>{t.po.received(String(line.receivedQty))}</span>
-                          <span>
+                          </strong>
+                          <p>{t.po.received(String(line.receivedQty))}</p>
+                          <p>
                             {t.po.tolerance(
                               String(line.toleranceOverQty),
                               String(line.toleranceUnderQty),
                             )}
-                          </span>
-                        </span>
-                      </Button>
+                          </p>
+                          {draft.purchaseOrderLine?.purchaseOrderLineId ===
+                          line.purchaseOrderLineId ? (
+                            <Chip status="success">{t.po.linePicked}</Chip>
+                          ) : null}
+                        </Card.Body>
+                      </Card>
                     </li>
                   ))}
                 </ul>
@@ -485,7 +550,7 @@ export const InboundReceiptScreen = () => {
               ) : null}
               {suppliers.data === undefined || suppliers.data.length === 0 ? null : (
                 <div className="receipt__field">
-                  <label htmlFor="receipt-supplier">{t.exception.supplierLabel}</label>
+                  <label htmlFor="receipt-supplier">{required(t.exception.supplierLabel)}</label>
                   <Select
                     id="receipt-supplier"
                     placeholder={t.exception.supplierPlaceholder}
@@ -507,7 +572,7 @@ export const InboundReceiptScreen = () => {
               ) : null}
               {itemLabels.data === undefined ? null : (
                 <div className="receipt__field">
-                  <label htmlFor="receipt-item">{t.exception.itemLabel}</label>
+                  <label htmlFor="receipt-item">{required(t.exception.itemLabel)}</label>
                   <Select
                     id="receipt-item"
                     placeholder={t.exception.itemPlaceholder}
@@ -533,7 +598,7 @@ export const InboundReceiptScreen = () => {
               ) : null}
               {uoms.data === undefined ? null : (
                 <div className="receipt__field">
-                  <label htmlFor="receipt-uom">{t.exception.uomLabel}</label>
+                  <label htmlFor="receipt-uom">{required(t.exception.uomLabel)}</label>
                   <Select
                     id="receipt-uom"
                     placeholder={t.exception.uomPlaceholder}
@@ -551,7 +616,9 @@ export const InboundReceiptScreen = () => {
               )}
 
               <div className="receipt__field">
-                <label htmlFor="receipt-unordered-exception-type">{t.exception.typeLabel}</label>
+                <label htmlFor="receipt-unordered-exception-type">
+                  {required(t.exception.typeLabel)}
+                </label>
                 <Select
                   id="receipt-unordered-exception-type"
                   placeholder={t.exception.typePlaceholder}
@@ -570,7 +637,7 @@ export const InboundReceiptScreen = () => {
                 ) : null}
               </div>
               <TextField
-                label={t.exception.reasonLabel}
+                label={required(t.exception.reasonLabel)}
                 size="xl"
                 fullWidth
                 value={draft.exceptionReason}
@@ -613,6 +680,16 @@ export const InboundReceiptScreen = () => {
                 patch({ deliveryNoteNo: event.target.value });
               }}
             />
+
+            <TextField
+              label={t.note.vehicle}
+              size="xl"
+              fullWidth
+              value={draft.vehicleNo}
+              onChange={(event) => {
+                patch({ vehicleNo: event.target.value });
+              }}
+            />
             {draft.deliveryNoteNo.trim() === '' ? (
               <AlertBanner variant="warning" title={t.note.absent} />
             ) : null}
@@ -620,7 +697,7 @@ export const InboundReceiptScreen = () => {
 
           {draft.purchaseOrderLine === null &&
           !(draft.unordered && draft.itemId !== null) ? null : (
-            <section className="receipt__section">
+            <section className="receipt__section" ref={qtySection}>
               <h2>{t.qty.legend}</h2>
               <Card bordered>
                 <Card.Body className="card-body receipt__card">
@@ -652,38 +729,76 @@ export const InboundReceiptScreen = () => {
                 </Card.Body>
               </Card>
 
-              <TextField
-                label={t.qty.received}
-                inputMode="decimal"
-                size="xl"
-                fullWidth
-                value={draft.receivedQty}
-                onChange={(event) => {
-                  patch({ receivedQty: event.target.value });
+              {/*
+               * 숫자판은 고른 칸 바로 아래에 붙는다 - 부품의 골격이 포커스 연동 버퍼다
+               * (공유계약 D-4). 어느 칸에 들어가는지는 자리로 보인다. 늘 띄워 두면 그것이
+               * 흐려지고, 칸마다 하나씩 두면 큰 판이 둘이 되어 아래 칸을 화면 밖으로 민다.
+               */}
+              <div
+                className="receipt__keypad-group"
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) {
+                    setKeypadFor(null);
+                  }
                 }}
-                error={qtyMessage()}
-              />
-              <NumberPad
-                value={draft.receivedQty}
-                onChange={(value) => {
-                  patch({ receivedQty: value });
-                }}
-                allowDecimal
-              />
+              >
+                <div className="receipt__qty-field">
+                  <TextField
+                    label={required(t.qty.received)}
+                    inputMode="none"
+                    size="xl"
+                    fullWidth
+                    value={draft.receivedQty}
+                    onChange={(event) => {
+                      patch({ receivedQty: event.target.value });
+                    }}
+                    onFocus={() => {
+                      setKeypadFor('received');
+                    }}
+                    error={qtyMessage()}
+                  />
 
-              <TextField
-                label={t.qty.packageCount}
-                inputMode="numeric"
-                size="xl"
-                fullWidth
-                value={draft.packageCount}
-                onChange={(event) => {
-                  patch({ packageCount: event.target.value });
-                }}
-                error={
-                  packageProblem(draft.packageCount) === null ? undefined : t.qty.packageNotPositive
-                }
-              />
+                  {keypadFor !== 'received' ? null : (
+                    <NumberPad
+                      value={draft.receivedQty}
+                      onChange={(value) => {
+                        patch({ receivedQty: value });
+                      }}
+                      allowDecimal
+                    />
+                  )}
+                </div>
+
+                <div className="receipt__qty-field">
+                  <TextField
+                    label={t.qty.packageCount}
+                    inputMode="none"
+                    size="xl"
+                    fullWidth
+                    value={draft.packageCount}
+                    onChange={(event) => {
+                      patch({ packageCount: event.target.value });
+                    }}
+                    onFocus={() => {
+                      setKeypadFor('package');
+                    }}
+                    error={
+                      packageProblem(draft.packageCount) === null
+                        ? undefined
+                        : t.qty.packageNotPositive
+                    }
+                  />
+
+                  {keypadFor !== 'package' ? null : (
+                    <NumberPad
+                      value={draft.packageCount}
+                      onChange={(value) => {
+                        patch({ packageCount: value });
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
 
               <div className="receipt__row receipt__row--split">
                 <TextField
@@ -741,7 +856,7 @@ export const InboundReceiptScreen = () => {
 
                       <div className="receipt__field">
                         <label htmlFor="receipt-split-exception-type">
-                          {t.verdict.split.exceptionType}
+                          {required(t.verdict.split.exceptionType)}
                         </label>
                         <Select
                           id="receipt-split-exception-type"
@@ -762,7 +877,7 @@ export const InboundReceiptScreen = () => {
                       </div>
 
                       <TextField
-                        label={t.verdict.split.exceptionReason}
+                        label={required(t.verdict.split.exceptionReason)}
                         size="xl"
                         fullWidth
                         value={splitExceptionReason}
@@ -808,6 +923,10 @@ export const InboundReceiptScreen = () => {
                           {t.verdict.split.excessOnly}
                         </Button>
                       </div>
+                      {/* 비활성은 사유를 함께 보인다(공유계약 G-1). 왜 못 누르는지 알아야 한다. */}
+                      {splitExceptionType === '' || splitExceptionReason.trim() === '' ? (
+                        <p className="receipt__note">{t.verdict.split.excessLocked}</p>
+                      ) : null}
                       <p className="receipt__note">{t.verdict.split.atomic}</p>
                     </section>
                   )}
@@ -828,24 +947,49 @@ export const InboundReceiptScreen = () => {
                     <dt>{t.verdict.counts.arrived}</dt>
                     <dd>{`${String(received)} ${uom}`}</dd>
                     <dt>{t.verdict.counts.remaining}</dt>
-                    <dd>{`${String(remainingQtyOf(draft.purchaseOrderLine, queuedQty))} ${uom}`}</dd>
+                    <dd>
+                      {`${String(
+                        remainingAfterOf(draft.purchaseOrderLine, received, queuedQty),
+                      )} ${uom}`}
+                    </dd>
                   </dl>
                   <p>{t.verdict.underAsk}</p>
+                  {/*
+                   * 두 길을 세로로 세우고 각 길에 자기 설명을 붙인다. 나란히 두면 어느
+                   * 설명이 어느 길의 것인지 흐려지고, 설명을 하나만 두면 고르기 전에는
+                   * 다른 길이 무엇인지 알 수 없다.
+                   *
+                   * 둘 다 같은 부품·같은 크기다. 하나가 링크면 규격이 달라져 한쪽이 더
+                   * 무겁게 보이는데, 이 자리의 두 길은 대등하다.
+                   */}
                   <div className="receipt__under-choice">
-                    <Button
-                      variant={continueUnder ? 'filled' : 'outlined'}
-                      size="xl"
-                      onClick={() => {
-                        setContinueUnder(true);
-                      }}
-                    >
-                      {t.verdict.underContinue}
-                    </Button>
-                    <Link to="/inbound-variance" className="receipt__under-link">
-                      {t.verdict.underVariance}
-                    </Link>
+                    <div className="receipt__under-path">
+                      <Button
+                        className="receipt__wide"
+                        variant={continueUnder ? 'filled' : 'outlined'}
+                        size="xl"
+                        onClick={() => {
+                          setContinueUnder(true);
+                        }}
+                      >
+                        {t.verdict.underContinue}
+                      </Button>
+                      <p className="receipt__note">{t.verdict.underContinueNote}</p>
+                    </div>
+                    <div className="receipt__under-path">
+                      <Button
+                        className="receipt__wide"
+                        variant="outlined"
+                        size="xl"
+                        onClick={() => {
+                          void navigate('/inbound-variance');
+                        }}
+                      >
+                        {t.verdict.underVariance}
+                      </Button>
+                      <p className="receipt__note">{t.verdict.underVarianceNote}</p>
+                    </div>
                   </div>
-                  <p>{continueUnder ? t.verdict.underContinueNote : t.verdict.underVarianceNote}</p>
                 </AlertBanner>
               )}
 
@@ -860,18 +1004,24 @@ export const InboundReceiptScreen = () => {
               </AlertBanner>
             ) : null}
             {worker === null ? <p className="receipt__note">{t.noWorker}</p> : null}
-            {verdict === OVER ? null : (
-              <Button
-                className="receipt__wide"
-                variant="filled"
-                size="2xl"
-                disabled={!ready}
-                onClick={() => void submit()}
-              >
-                {t.submit}
-              </Button>
-            )}
           </section>
+
+          {/*
+           * 이 단추는 바닥에 붙이지 않는다. 붙이면 숫자판 아랫줄을 덮어 누를 수 없고, 덮이는
+           * 동안만 풀면 같은 단추가 상태에 따라 붙었다 흘렀다 한다. 등록은 다 채운 뒤에
+           * 하는 마지막 일이라 흐름 끝에 두어도 찾는 데 문제가 없다.
+           */}
+          {verdict === OVER ? null : (
+            <Button
+              className="receipt__wide"
+              variant="filled"
+              size="2xl"
+              disabled={!ready}
+              onClick={() => void submit()}
+            >
+              {t.submit}
+            </Button>
+          )}
         </>
       )}
     </div>
