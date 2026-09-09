@@ -91,6 +91,25 @@ export const toIssueRow = (data: GoodsIssueResponse): IssueRow => ({
 export const isProductDisposal = (row: IssueRow): boolean =>
   row.sourceDocumentTypeCode === 'DISPOSITION_DECISION';
 
+/** 계약의 date-time 문자열에서 표기용 조각을 뽑는다. */
+const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
+
+/**
+ * 표로 낼 시각.
+ *
+ * ⚠ **모르는 모양이면 원문을 그대로 낸다** — 지어내면 사용자가 그 값을 믿는다. ISO 원문이
+ * 보기 나쁜 것과 «틀린 시각을 보이는 것»은 무게가 다르다.
+ *
+ * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 함수를 참조하지 않는다.
+ */
+export const formatDateTime = (value: string): string => {
+  const matched = RFC3339_PATTERN.exec(value);
+
+  if (matched === null) return value;
+
+  return `${matched[1] ?? ''} ${matched[2] ?? ''}`;
+};
+
 export interface DisposalPartner {
   partnerId: number;
   label: string;

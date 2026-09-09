@@ -207,6 +207,20 @@ const pickReason = async (user: ReturnType<typeof userEvent.setup>): Promise<voi
   await user.click(await screen.findByRole('option', { name: '입고 후 불량' }));
 };
 
+/**
+ * 「승인 요청」을 눌러 **확인 창까지 통과한다.**
+ *
+ * ⭐ 되돌릴 수 없는 쓰기라 창이 한 겹 서 있다 — 시험도 사용자가 지나는 길을 그대로 지난다.
+ */
+const submitRequest = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
+  await user.click(screen.getByRole('button', { name: t.request.submit }));
+
+  /* ⚠ 창의 확인 버튼과 화면 버튼이 같은 문구다 — 창 «안»에서 집는다. */
+  const dialog = await screen.findByRole('dialog');
+
+  await user.click(within(dialog).getByRole('button', { name: t.confirm.submit }));
+};
+
 describe('W-04-10 제품 폐기 요청 — 화면', () => {
   /** ⭐ 처분 사유를 요청 사유의 기본값으로 인용한다(§5-5) — 승인자가 판정 근거를 바로 본다. */
   it('대상을 고르면 처분 사유가 요청 사유에 채워진다', async () => {
@@ -236,7 +250,7 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
     await user.click(await screen.findByRole('checkbox', { name: 'FG-0288 선택' }));
     await user.click(await screen.findByRole('checkbox', { name: t.issue.selfDisposal }));
     await pickReason(user);
-    await user.click(screen.getByRole('button', { name: t.request.submit }));
+    await submitRequest(user);
 
     await waitFor(() => expect(submits).toHaveLength(1));
 
@@ -271,12 +285,10 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
     await user.click(await screen.findByRole('checkbox', { name: t.issue.selfDisposal }));
     await pickReason(user);
 
-    const submit = screen.getByRole('button', { name: t.request.submit });
-
-    await user.click(submit);
+    await submitRequest(user);
     await waitFor(() => expect(creates).toHaveLength(1));
 
-    await user.click(submit);
+    await submitRequest(user);
     await waitFor(() => expect(creates).toHaveLength(2));
 
     const first = creates[0]?.headers.get('Idempotency-Key');

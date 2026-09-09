@@ -223,6 +223,11 @@ export const useIssueDetail = (
   });
 };
 
+export interface IssueHistoryResult {
+  items: IssueRow[];
+  page: PageMeta;
+}
+
 /**
  * 「처리 이력」 탭 — **이 화면이 올린 폐기 출고들.**
  *
@@ -250,11 +255,6 @@ export const useIssueHistory = (page: number): UseQueryResult<IssueHistoryResult
     },
   });
 };
-
-export interface IssueHistoryResult {
-  items: IssueRow[];
-  page: PageMeta;
-}
 
 /**
  * 고른 전표의 **결재 진행.**

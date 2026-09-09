@@ -1932,56 +1932,63 @@ on('PUT', '/inventory/counts/{inventoryCountId}/lines', (params, query, body) =>
   );
 });
 
-on('POST', '/logistics/goods-issues', (_p, _q, body) => {
-  const goodsIssueId = newId();
-  const isPosted = body?.postImmediately === true;
-  const { lines: bodyLines, ...header } = body ?? {};
-  const goodsIssue = {
-    goodsIssueId,
-    goodsIssueNo: `GI-2026-${String(goodsIssueId).slice(-6)}`,
-    ...header,
-    statusCode: isPosted ? 'POSTED' : 'DRAFT',
-  };
+/*
+ * ⛔ **멱등 재생을 붙인다.** 없으면 같은 키로 재전송한 것이 목에서 **전표를 한 벌 더** 만든다 —
+ * 되돌릴 수 없는 폐기 전표가 둘이 되고, 브라우저 확인으로는 재시도 안전성이 드러나지 않는다.
+ * 상신(`:request-approval`)에는 붙였는데 이 자리에 없어 짝이 맞지 않았다.
+ */
+on('POST', '/logistics/goods-issues', (_p, _q, body, headers) =>
+  idempotent('logistics.goods-issues:create', headers, () => {
+    const goodsIssueId = newId();
+    const isPosted = body?.postImmediately === true;
+    const { lines: bodyLines, ...header } = body ?? {};
+    const goodsIssue = {
+      goodsIssueId,
+      goodsIssueNo: `GI-2026-${String(goodsIssueId).slice(-6)}`,
+      ...header,
+      statusCode: isPosted ? 'POSTED' : 'DRAFT',
+    };
 
-  state.goodsIssues.push(goodsIssue);
-  goodsIssueVersions.set(goodsIssueId, 1);
+    state.goodsIssues.push(goodsIssue);
+    goodsIssueVersions.set(goodsIssueId, 1);
 
-  /*
-   * 줄을 상태에 남긴다 — 남기지 않으면 상세 조회가 줄 0개를 내려, 방금 만든 전표가 «빈» 것으로
-   * 보인다. 화면은 그것을 「줄이 없다」로 읽는다.
-   */
-  const lines = (bodyLines ?? []).map((line, index) => ({
-    goodsIssueLineId: goodsIssueId * 100 + index + 1,
-    goodsIssueId,
-    ...line,
-  }));
+    /*
+     * 줄을 상태에 남긴다 — 남기지 않으면 상세 조회가 줄 0개를 내려, 방금 만든 전표가 «빈» 것으로
+     * 보인다. 화면은 그것을 「줄이 없다」로 읽는다.
+     */
+    const lines = (bodyLines ?? []).map((line, index) => ({
+      goodsIssueLineId: goodsIssueId * 100 + index + 1,
+      goodsIssueId,
+      ...line,
+    }));
 
-  state.goodsIssueLines.push(...lines);
+    state.goodsIssueLines.push(...lines);
 
-  /*
-   * ⛔ **전기했을 때만 재고가 빠진다.** 전에는 조건 없이 뺐다 — 승인을 기다리는 «초안»을 만든
-   * 것만으로 재고가 줄어, 폐기 요청 화면이 아직 빠지지 않은 물건을 없는 것으로 보였다.
-   * 계약이 「승인 ≠ 전기」를 못박은 자리(공유계약 J-8)와 정면으로 어긋났다.
-   */
-  if (isPosted) {
-    for (const line of lines) {
-      const balance = state.balances.find((each) => each.lotId === line.lotId);
+    /*
+     * ⛔ **전기했을 때만 재고가 빠진다.** 전에는 조건 없이 뺐다 — 승인을 기다리는 «초안»을 만든
+     * 것만으로 재고가 줄어, 폐기 요청 화면이 아직 빠지지 않은 물건을 없는 것으로 보였다.
+     * 계약이 「승인 ≠ 전기」를 못박은 자리(공유계약 J-8)와 정면으로 어긋났다.
+     */
+    if (isPosted) {
+      for (const line of lines) {
+        const balance = state.balances.find((each) => each.lotId === line.lotId);
 
-      if (balance !== undefined) {
-        balance.onHandQty -= line.issueQty;
-        balance.pickedQty = Math.max(0, balance.pickedQty - line.issueQty);
-        balance.availableQty = balance.onHandQty - balance.pickedQty - balance.blockedQty;
+        if (balance !== undefined) {
+          balance.onHandQty -= line.issueQty;
+          balance.pickedQty = Math.max(0, balance.pickedQty - line.issueQty);
+          balance.availableQty = balance.onHandQty - balance.pickedQty - balance.blockedQty;
+        }
       }
     }
-  }
 
-  /* 계약의 201 은 `GoodsIssueDetailResponse` 다 — 전표 하나가 아니라 «전표와 줄»이다. */
-  return {
-    created: { goodsIssue, lines },
-    status: 201,
-    headers: { ETag: resourceEtag('goods-issue', goodsIssueId, goodsIssueVersions) },
-  };
-});
+    /* 계약의 201 은 `GoodsIssueDetailResponse` 다 — 전표 하나가 아니라 «전표와 줄»이다. */
+    return {
+      created: { goodsIssue, lines },
+      status: 201,
+      headers: { ETag: resourceEtag('goods-issue', goodsIssueId, goodsIssueVersions) },
+    };
+  }),
+);
 
 /**
  * 기타 출고 품의 상신.

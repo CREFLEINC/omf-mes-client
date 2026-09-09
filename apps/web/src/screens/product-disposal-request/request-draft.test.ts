@@ -41,7 +41,7 @@ const TARGET: DisposalTarget = {
 
 const PLACEMENT: ResolvedPlacement = {
   warehouseId: 11,
-  placements: [{ lotId: 9001, warehouseId: 11, locationId: 77 }],
+  placements: [{ lotId: 9001, warehouseId: 11, locationId: 77, onHandQty: 100 }],
 };
 
 const DRAFT: DisposalDraft = {

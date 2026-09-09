@@ -28,11 +28,43 @@ export interface PlacementEntry {
   onHandQty: number;
 }
 
+/**
+ * 같은 위치의 줄들을 **자리 하나로 접는다** — 보유량은 더한다.
+ *
+ * 소유 구분이 갈려도 «있는 자리»는 하나다. 접지 않으면 옮길 수 없는 재고를 옮기라고 한다.
+ */
+const groupByLocation = (
+  rows: readonly (PlacementEntry & { warehouseId: number; locationId: number })[],
+): Placement[] => {
+  const byLocation = new Map<string, Placement>();
+
+  for (const row of rows) {
+    const key = `${String(row.warehouseId)}:${String(row.locationId)}`;
+    const seen = byLocation.get(key);
+
+    if (seen === undefined) {
+      byLocation.set(key, {
+        lotId: row.lotId ?? 0,
+        warehouseId: row.warehouseId,
+        locationId: row.locationId,
+        onHandQty: row.onHandQty,
+      });
+      continue;
+    }
+
+    seen.onHandQty += row.onHandQty;
+  }
+
+  return [...byLocation.values()];
+};
+
 /** LOT 하나가 놓인 자리. */
 export interface Placement {
   lotId: number;
   warehouseId: number;
   locationId: number;
+  /** 그 자리의 **보유량**. 판정 수량의 상한이다 — 가용량이 아니다(아래 주석). */
+  onHandQty: number;
 }
 
 export type PlacementResult =
@@ -51,6 +83,7 @@ export type PlacementResult =
  * | LOT 을 못 받은 대상이 있다 | 판정은 됐는데 LOT 이 안 실린 건이다. 무엇을 뺄지 정할 수 없다 |
  * | 자리를 못 찾은 LOT 이 있다 | 재고에 없다. 「0 이라 없다」와 「못 물었다」를 갈라 적는다 |
  * | 조회가 실패했다 | 못 물은 것이다. **다시 부를 수 있다**고 말한다 |
+ * | 판정 수량이 보유량을 넘는다 | 서버가 400 을 내지만, 그 전에 말해야 승인까지 올리지 않는다 |
  * | 한 LOT 이 여러 자리에 있다 | 어느 선반에서 뺄지는 **사람이 정할 일**이다. 화면이 첫 줄을 고르면 조용히 틀린다 |
  * | 창고가 섞였다 | 전표 하나에 `sourceWarehouseId` 는 하나다. 나눠 올릴 일을 한 벌로 접으면 안 된다 |
  *
@@ -85,22 +118,31 @@ export const resolvePlacements = (
      * 자리로 세면 `null` 이 식별자 자리에 실린다. 세지 않으면 「자리를 못 찾았다」로 떨어져
      * 아래에서 막힌다 — 조용히 지나가지 않는다.
      */
-    const seats = entries.filter(
+    const rows = entries.filter(
       (entry): entry is PlacementEntry & { warehouseId: number; locationId: number } =>
         entry.warehouseId !== null && entry.locationId !== null,
     );
 
-    if (seats.length === 0) return { kind: 'blocked', reason: t.notFound };
+    /*
+     * ⛔ **줄이 아니라 «자리»를 센다.** 잔액은 소유 구분 축을 함께 내리므로(공유계약 L-7)
+     * **같은 위치**의 한 LOT 이 소유 구분만 갈려 두 줄로 올 수 있다. 줄로 세면 「여러 위치에
+     * 나뉘어 있습니다. 재고를 한 위치로 모으세요」가 뜨는데 — **옮길 재고가 없다.**
+     */
+    const seats = groupByLocation(rows);
+    const [seat] = seats;
+
+    if (seat === undefined) return { kind: 'blocked', reason: t.notFound };
     if (seats.length > 1) return { kind: 'blocked', reason: t.split };
 
-    const [seat] = seats;
-    if (seat === undefined) return { kind: 'blocked', reason: t.notFound };
+    /*
+     * ⛔ **판정 수량이 그 자리의 보유량을 넘으면 막는다.** 넘긴 채 보내면 서버가 400 을
+     * 되돌리는데, 사용자는 **승인까지 올린 뒤에야** 그 사실을 안다.
+     */
+    if (target.decisionQty > seat.onHandQty) {
+      return { kind: 'blocked', reason: t.overOnHand(target.lotNo ?? String(target.lotId)) };
+    }
 
-    placements.push({
-      lotId: target.lotId,
-      warehouseId: seat.warehouseId,
-      locationId: seat.locationId,
-    });
+    placements.push({ ...seat, lotId: target.lotId });
   }
 
   const [first] = placements;

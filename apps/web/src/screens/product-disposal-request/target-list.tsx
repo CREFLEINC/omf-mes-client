@@ -10,7 +10,7 @@ import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
-import type { DisposalTarget } from './types';
+import { formatDateTime, type DisposalTarget } from './types';
 
 const t = messages.productDisposalRequest;
 
@@ -106,7 +106,11 @@ export const TargetList = ({
       header: t.targets.fields.disposition,
       render: (row) => dispositionLabel(row.dispositionTypeCode),
     },
-    { key: 'decidedAt', header: t.targets.fields.decidedAt, render: (row) => row.decidedAt },
+    {
+      key: 'decidedAt',
+      header: t.targets.fields.decidedAt,
+      render: (row) => formatDateTime(row.decidedAt),
+    },
     {
       key: 'decidedBy',
       header: t.targets.fields.decidedBy,

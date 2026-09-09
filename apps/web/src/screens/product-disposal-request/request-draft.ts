@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { ISSUE_TYPE_OTHER, SOURCE_DOCUMENT_TYPE_CODE } from './codes';
+import type { Placement } from './placement';
 import type { RouteState } from './queries';
 import { totalQtyOf, type DisposalTarget } from './types';
 
@@ -132,7 +133,7 @@ export interface IssuePayloadInput extends RequestGateInput {
 /** `placement.ts` 의 성공 갈래만 받는다 — 막힌 갈래를 여기까지 들이지 않는다. */
 export interface ResolvedPlacement {
   warehouseId: number;
-  placements: readonly { lotId: number; warehouseId: number; locationId: number }[];
+  placements: readonly Placement[];
 }
 
 /**
@@ -149,6 +150,45 @@ export const toBusinessDate = (now: Date): string => {
   const pad = (value: number): string => String(value).padStart(2, '0');
 
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
+
+/**
+ * **전기하지 않고 만들기만 한다.**
+ *
+ * 상수다 — 초안의 어떤 값으로도 갈리지 않는다. 조건부로 만들면 「승인 전에 전기되는」 길이
+ * 열리는데, 참이면 사용자가 「승인 요청」을 눌렀는데 **재고가 그 자리에서 빠진다.**
+ */
+const POST_IMMEDIATELY = false;
+
+/**
+ * 출고 줄 — **고른 대상 하나가 줄 하나다.**
+ *
+ * ⛔ **자리를 못 찾은 대상이 하나라도 있으면 통째로 만들지 않는다.** 찾은 것만 실어 보내면
+ * 사용자가 고른 것 중 일부만 폐기되고, **빠진 것은 아무 말도 없이 남는다.**
+ */
+const toLines = (
+  targets: readonly DisposalTarget[],
+  placement: ResolvedPlacement,
+): GoodsIssueLineUpsert[] | null => {
+  const seatOf = new Map(placement.placements.map((seat) => [seat.lotId, seat]));
+  const lines: GoodsIssueLineUpsert[] = [];
+
+  for (const target of targets) {
+    if (target.lotId === null || target.itemId === null) return null;
+
+    const seat = seatOf.get(target.lotId);
+    if (seat === undefined) return null;
+
+    lines.push({
+      itemId: target.itemId,
+      lotId: target.lotId,
+      issueQty: target.decisionQty,
+      uomId: target.uomId,
+      sourceLocationId: seat.locationId,
+    });
+  }
+
+  return lines.length === 0 ? null : lines;
 };
 
 /**
@@ -214,45 +254,6 @@ export const withOccurrence = (draft: GoodsIssueDraft, now: Date): GoodsIssueCre
 });
 
 /**
- * **전기하지 않고 만들기만 한다.**
- *
- * 상수다 — 초안의 어떤 값으로도 갈리지 않는다. 조건부로 만들면 「승인 전에 전기되는」 길이
- * 열리는데, 참이면 사용자가 「승인 요청」을 눌렀는데 **재고가 그 자리에서 빠진다.**
- */
-const POST_IMMEDIATELY = false;
-
-/**
- * 출고 줄 — **고른 대상 하나가 줄 하나다.**
- *
- * ⛔ **자리를 못 찾은 대상이 하나라도 있으면 통째로 만들지 않는다.** 찾은 것만 실어 보내면
- * 사용자가 고른 것 중 일부만 폐기되고, **빠진 것은 아무 말도 없이 남는다.**
- */
-const toLines = (
-  targets: readonly DisposalTarget[],
-  placement: ResolvedPlacement,
-): GoodsIssueLineUpsert[] | null => {
-  const seatOf = new Map(placement.placements.map((seat) => [seat.lotId, seat]));
-  const lines: GoodsIssueLineUpsert[] = [];
-
-  for (const target of targets) {
-    if (target.lotId === null || target.itemId === null) return null;
-
-    const seat = seatOf.get(target.lotId);
-    if (seat === undefined) return null;
-
-    lines.push({
-      itemId: target.itemId,
-      lotId: target.lotId,
-      issueQty: target.decisionQty,
-      uomId: target.uomId,
-      sourceLocationId: seat.locationId,
-    });
-  }
-
-  return lines.length === 0 ? null : lines;
-};
-
-/**
  * 상신 본문 — **둘째 호출**(`:request-approval`)이 받는 것.
  *
  * ⭐ **사유가 전부다.** 계약의 `ApprovalRequestCreate` 는 `reason` 한 칸이고 **필수·`minLength 1`**
@@ -266,7 +267,13 @@ export const toApprovalRequestCreate = (draft: DisposalDraft): ApprovalRequestCr
   return reasonError(reason) === undefined ? { reason } : null;
 };
 
-/** 확인 창에 보일 합계. 단위가 섞이면 셀 수 없다. */
+/**
+ * 화면과 확인 창이 함께 쓰는 **합계 표기**.
+ *
+ * ⚠ **단위가 섞이면 수를 적지 않는다**(`—`). 「40 EA + 120 KG = 160」은 아무 뜻도 없는 수인데,
+ * 되돌릴 수 없는 폐기 앞에서 사용자가 그 수를 보고 판단한다. 규칙이 두 벌이면 목록과 창이
+ * 다른 수를 보인다.
+ */
 export const confirmSummary = (targets: readonly DisposalTarget[]): string => {
   const total = totalQtyOf(targets);
   return total === null ? '—' : String(total);

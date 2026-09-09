@@ -15,7 +15,7 @@ import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { SaveErrorBanner } from '../../patterns/master';
-import { isProductDisposal, type IssueRow } from './types';
+import { formatDateTime, isProductDisposal, type IssueRow } from './types';
 
 const t = messages.productDisposalRequest;
 
@@ -119,7 +119,11 @@ export const HistoryPane = ({
         </Chip>
       ),
     },
-    { key: 'issuedAt', header: t.history.fields.issuedAt, render: (row) => row.issuedAt },
+    {
+      key: 'issuedAt',
+      header: t.history.fields.issuedAt,
+      render: (row) => formatDateTime(row.issuedAt),
+    },
     {
       key: 'reason',
       header: t.history.fields.reason,
@@ -137,25 +141,19 @@ export const HistoryPane = ({
     },
   ];
 
-  if (error !== null && error !== undefined) return error;
-
-  if (isLoading) {
-    return (
+  /*
+   * ⛔ **오류·로딩에서도 랜드마크와 표제를 남긴다.** 조기 반환을 감싸개 «밖»에 두면 그 두
+   * 상태에서 구획 이름과 제목이 접근성 트리에서 통째로 빠진다 — 화면을 소리로 읽는 사람은
+   * 여기가 어디인지 알 수 없다.
+   */
+  const body =
+    error !== null && error !== undefined ? (
+      error
+    ) : isLoading ? (
       <div role="status" aria-label={t.history.loading}>
         <SkeletonText lines={4} />
       </div>
-    );
-  }
-
-  return (
-    <section className="pane" aria-label={t.panes.history}>
-      <h2>{t.panes.history}</h2>
-
-      {/* A-11 — 못 좁힌다는 사실을 «목록 위에» 적는다. 밑에 적으면 다 읽고 나서 안다. */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.history.mixedNotice}</AlertBanner>
-      </div>
-
+    ) : (
       <Table
         density="compact"
         columns={columns}
@@ -173,6 +171,18 @@ export const HistoryPane = ({
         }}
         empty={<EmptyState size="sm" live title={t.history.emptyTitle} />}
       />
+    );
+
+  return (
+    <section className="pane" aria-label={t.panes.history}>
+      <h2>{t.panes.history}</h2>
+
+      {/* A-11 — 못 좁힌다는 사실을 «목록 위에» 적는다. 밑에 적으면 다 읽고 나서 안다. */}
+      <div className="banner-slot">
+        <AlertBanner variant="info">{t.history.mixedNotice}</AlertBanner>
+      </div>
+
+      {body}
 
       <div className="pane-block">
         <h3>{t.approval.title}</h3>

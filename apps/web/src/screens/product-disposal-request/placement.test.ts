@@ -48,7 +48,7 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
     expect(result).toEqual({
       kind: 'resolved',
       warehouseId: 11,
-      placements: [{ lotId: 9001, warehouseId: 11, locationId: 77 }],
+      placements: [{ lotId: 9001, warehouseId: 11, locationId: 77, onHandQty: 40 }],
     });
   });
 
@@ -109,6 +109,38 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
   });
 
   /**
+   * ⛔ **같은 위치인데 「여러 위치」라고 말하지 않는다.**
+   *
+   * 잔액은 소유 구분 축을 함께 내리므로 같은 자리의 한 LOT 이 두 줄로 올 수 있다. 줄로 세면
+   * 「재고를 한 위치로 모으세요」가 뜨는데 **옮길 재고가 없다.**
+   */
+  it('같은 위치가 소유 구분만 갈려 두 줄로 와도 한 자리로 본다', () => {
+    const result = resolvePlacements([target()], () =>
+      loaded(seat({ onHandQty: 25 }), seat({ onHandQty: 15 })),
+    );
+
+    expect(result).toEqual({
+      kind: 'resolved',
+      warehouseId: 11,
+      /* 보유량은 «더한다» — 두 줄이 같은 자리의 재고다. */
+      placements: [{ lotId: 9001, warehouseId: 11, locationId: 77, onHandQty: 40 }],
+    });
+  });
+
+  /**
+   * ⛔ **판정 수량이 그 자리의 보유량을 넘으면 막는다.**
+   *
+   * 넘긴 채 보내면 서버가 400 을 내지만 사용자는 **승인까지 올린 뒤에야** 안다.
+   */
+  it('판정 수량이 보유량을 넘으면 그 LOT 을 이름으로 지목해 막는다', () => {
+    const result = resolvePlacements([target({ decisionQty: 100 })], () =>
+      loaded(seat({ onHandQty: 40 })),
+    );
+
+    expect(result).toEqual({ kind: 'blocked', reason: t.overOnHand('FG-0288') });
+  });
+
+  /**
    * ⛔ **한 LOT 이 여러 자리에 있으면 화면이 고르지 않는다.**
    *
    * 첫 줄을 집으면 **조용히 틀린 선반에서 빠진다.** 어느 선반에서 뺄지는 사람이 정할 일이다.
@@ -149,8 +181,8 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
       kind: 'resolved',
       warehouseId: 11,
       placements: [
-        { lotId: 9001, warehouseId: 11, locationId: 77 },
-        { lotId: 9002, warehouseId: 11, locationId: 78 },
+        { lotId: 9001, warehouseId: 11, locationId: 77, onHandQty: 40 },
+        { lotId: 9002, warehouseId: 11, locationId: 78, onHandQty: 40 },
       ],
     });
   });

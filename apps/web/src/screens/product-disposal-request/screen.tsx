@@ -29,15 +29,18 @@ import {
 import {
   EMPTY_DRAFT,
   requestLockReason,
+  confirmSummary,
   toApprovalRequestCreate,
   toBusinessDate,
   toGoodsIssueCreate,
   type DisposalDraft,
 } from './request-draft';
-import { IssuePane, RequestPane } from './request-pane';
+import { IssuePane } from './issue-pane';
+import { RequestPane } from './request-pane';
+import { SubmitConfirmDialog } from './submit-confirm-dialog';
 import { TargetList } from './target-list';
 import { DISPOSAL_REQUEST_TABS, readTab, tabLabel, TAB_KEY, toTabParam } from './tabs';
-import { quotedReason, totalQtyOf } from './types';
+import { quotedReason } from './types';
 
 const t = messages.productDisposalRequest;
 
@@ -59,6 +62,7 @@ export const ProductDisposalRequestScreen = () => {
   const [selected, setSelected] = useState<number[]>([]);
   const [draft, setDraft] = useState<DisposalDraft>(EMPTY_DRAFT);
   const [showError, setShowError] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [isReasonTouched, setIsReasonTouched] = useState(false);
 
   const [params, setParams] = useSearchParams();
@@ -184,7 +188,24 @@ export const ProductDisposalRequestScreen = () => {
   const submitLock =
     requestLockReason(gate) ?? (placement.kind === 'blocked' ? placement.reason : undefined);
 
-  const qtyText = totalQtyOf(targets) === null ? '—' : String(totalQtyOf(targets));
+  /* ⭐ 「셀 수 없으면 수를 적지 않는다」 규칙이 한 곳에 있다 — 두 벌이면 화면과 창이 갈린다. */
+  const qtyText = confirmSummary(targets);
+
+  const submitRequest = (): void => {
+    if (placement.kind !== 'resolved') return;
+
+    /*
+     * ⛔ **여기서 시각을 찍지 않는다.** 찍어 넘기면 그 값이 멱등 지문에 실려 누를 때마다
+     * 지문이 달라지고, 재시도가 «새 폐기 전표»가 된다. 시각은 보내는 자리가 얹는다.
+     */
+    const issue = toGoodsIssueCreate({ ...gate, placement });
+    const approval = toApprovalRequestCreate(draft);
+
+    /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 전표를 만들지 않는다. */
+    if (issue === null || approval === null) return;
+
+    write.write({ issue, approval });
+  };
 
   /*
    * ⭐ **활성 탭의 내용만 담는다.** DS `Tabs` 는 패널을 전부 렌더하고 비활성만 감춘다 —
@@ -271,26 +292,26 @@ export const ProductDisposalRequestScreen = () => {
         <div className="form-actions">
           <Button
             disabled={submitLock !== undefined}
+            /* ⭐ 되돌릴 수 없는 쓰기라 «누르기 전»에 한 겹을 둔다 — 창이 무엇이 나가는지 보인다. */
             onClick={() => {
               setShowError(true);
-              if (placement.kind !== 'resolved') return;
-
-              /*
-               * ⛔ **여기서 시각을 찍지 않는다.** 찍어 넘기면 그 값이 멱등 지문에 실려
-               * 누를 때마다 지문이 달라지고, 재시도가 «새 폐기 전표»가 된다. 시각은
-               * 보내는 자리(`withOccurrence`)가 얹는다.
-               */
-              const issue = toGoodsIssueCreate({ ...gate, placement });
-              const approval = toApprovalRequestCreate(draft);
-
-              /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 전표를 만들지 않는다. */
-              if (issue === null || approval === null) return;
-              write.write({ issue, approval });
+              setIsConfirming(true);
             }}
           >
             {t.request.submit}
           </Button>
         </div>
+        {isConfirming && (
+          <SubmitConfirmDialog
+            count={targets.length}
+            qtyText={qtyText}
+            onClose={() => setIsConfirming(false)}
+            onConfirm={() => {
+              setIsConfirming(false);
+              submitRequest();
+            }}
+          />
+        )}
       </section>
 
       {/*
