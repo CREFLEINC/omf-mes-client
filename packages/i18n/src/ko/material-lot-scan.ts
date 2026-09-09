@@ -28,7 +28,9 @@ export const materialLotScan = {
     pick: '입하 라인',
     pickPlaceholder: '라인을 고르세요',
     item: (lineNo: string, itemCode: string, qty: string) => `#${lineNo} · ${itemCode} · ${qty}`,
-    picked: (lineNo: string) => `라인 #${lineNo}`,
+    /* 라벨과 눈으로 대조할 값이다. 번호만으로는 무엇을 집는지 알 수 없다. */
+    pickedLine: (lineNo: string, itemCode: string, qty: string) =>
+      `라인 #${lineNo} · ${itemCode} · ${qty}`,
   },
   scan: {
     legend: '스캔',
@@ -43,7 +45,9 @@ export const materialLotScan = {
         `자재 LOT 번호는 ${total}자리입니다 (현재 ${length}자리)`,
       notDigits: '숫자만 입력할 수 있습니다',
       badDate: '라벨의 날짜 자리가 날짜가 아닙니다',
-      duplicate: '이미 입력한 LOT 번호입니다',
+      duplicate: '이미 등록된 LOT 번호입니다',
+      /* 라벨의 제품코드가 고른 라인의 품목과 다르다. 그대로 두면 남의 LOT 이 붙는다. */
+      otherItem: '이 입하 라인의 품목과 다른 LOT입니다',
     },
   },
   /* 라벨의 수량은 최초 납품 스냅샷이라 라인 수량과 다를 수 있다. 막지 않는다. */
