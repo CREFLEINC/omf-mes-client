@@ -161,6 +161,11 @@ export const PopDevScreenNav = ({ disabled }: PopDevScreenNavProps) => {
       <Select
         aria-labelledby={labelId}
         /*
+         * 옆의 [교대]와 같은 모양으로 선다(사용자 지시 2026-09-10) — 버튼 하나가 자리를
+         * 채우고, 이름은 그 버튼이 말한다. 이름표와 「현재 값」 칸은 `pop.css` 가 감춘다.
+         */
+        actionLabel={POP_DEV_SCREEN_NAV_LABEL}
+        /*
          * ⚠ **옆 버튼들의 `POP_TOUCH_SIZE`(2xl)를 쓸 수 없다.** `SelectSize` 는 `xl` 까지고
          * 그 상수는 `ButtonSize` 다 — 타입이 다르다. 디자인 시스템이 `Select` 에 72px 변형을
          * 내려 주면 그때 한 자리로 모은다.

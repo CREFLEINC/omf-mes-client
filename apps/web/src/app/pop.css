@@ -1880,30 +1880,27 @@
  * 잘린다(실측 —「개발…」).
  */
 .pop-dev-screen-nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  display: block;
   min-width: 0;
 }
 
-.pop-dev-screen-nav > .field-label {
-  white-space: nowrap;
-}
-
 /*
- * ⭐ **개발용 칸이 낀 액션 줄은 위아래로 쌓는다.** 배포본에서 이 자리의 짝은 버튼 둘이라
- * 나란히 서는 것이 맞지만, 개발 서버에서는 [ 교대 ] 버튼과 고르는 칸이라 성격이 다르다 —
- * 나란히 두면 좁은 폭을 반씩 나눠 버튼 글자가 두 줄로 접힌다(실측).
- *
- * ⛔ 배포본의 배치를 바꾸지 않는다 — 이 줄은 개발용 칸이 있을 때만 걸린다.
+ * 옆의 [교대]와 같은 모양으로 세운다(사용자 지시 2026-09-10) — 버튼 하나가 자리를 채운다.
+ * 이름은 버튼이 말하므로 이름표와 「현재 값」 칸은 자리를 비운다. 이름표는 `display: none`
+ * 이어도 `aria-labelledby` 가 가리키는 이름으로 남아 창 제목이 그대로 선다.
  */
-.pop-ui-actions:has(> .pop-dev-screen-nav) {
-  flex-direction: column;
-  align-items: stretch;
+/* ⚠ `.pop-ui` 를 앞에 둔다 — 파일 뒤쪽의 `.pop-ui .pop-select*` 규칙과 무게를 맞춰야 이긴다. */
+.pop-ui .pop-dev-screen-nav > .field-label,
+.pop-ui .pop-dev-screen-nav .pop-select__value {
+  display: none;
 }
 
-.pop-ui-actions:has(> .pop-dev-screen-nav) > * {
-  flex: 0 0 auto;
+.pop-ui .pop-dev-screen-nav .pop-select {
+  display: block;
+}
+
+.pop-ui .pop-dev-screen-nav .pop-select__trigger {
+  width: 100%;
 }
 
 /* `<Link>` 로 감싼 버튼은 링크가 폭을 갖지 않으면 늘어나지 않는다. */
@@ -3459,4 +3456,25 @@
 .pop-ui > .pop-overlay > .pop-header > .pop-context-right,
 .pop-ui > .pop-terminal-header > .pop-context-right {
   margin-inline-start: 0;
+}
+
+/*
+ * 창 안의 버튼은 **액션 줄의 규격을 물려받지 않는다.**
+ *
+ * ⚠ 선택 팝업은 부르는 칸 «옆»에 그대로 그려져, 그 칸이 액션 줄 안에 있으면 창 안의 버튼까지
+ *   `[class*='action'] button`(최소 8rem · 72px)에 걸린다. 그래서 사번 입력 화면에서만 닫기
+ *   [×]가 334×72 로 서고 목록 줄도 함께 부풀었다(실측 2026-09-10 · 사용자가 짚었다). 창은
+ *   화면 바닥의 띠가 아니므로 그 규격의 대상이 아니다.
+ */
+.pop-ui [class*='action'] dialog button {
+  min-width: 0;
+  min-height: 0;
+}
+
+/* 닫기 [×]는 글자 없는 아이콘이라 정사각으로 둔다 — 폭을 글자로 얻지 못한다. */
+.pop-ui dialog [class*='close'] {
+  flex: 0 0 auto;
+  width: var(--control-height-md);
+  min-width: 0;
+  padding: 0;
 }
