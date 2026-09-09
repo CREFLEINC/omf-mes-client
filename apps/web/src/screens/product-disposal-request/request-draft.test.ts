@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 import type { RouteState } from './queries';
 import {
   EMPTY_DRAFT,
-  issueLockReason,
   requestLockReason,
   toApprovalRequestCreate,
   toGoodsIssueCreate,
+  withOccurrence,
   type DisposalDraft,
   type ResolvedPlacement,
 } from './request-draft';
@@ -65,9 +65,7 @@ const gate = (over: Partial<Parameters<typeof requestLockReason>[0]> = {}) => ({
 const payload = (over: Partial<DisposalDraft> = {}) =>
   toGoodsIssueCreate({
     ...gate({ draft: { ...DRAFT, ...over } }),
-    approval: 'unknown' as const,
     placement: PLACEMENT,
-    now: NOW,
   });
 
 describe('requestLockReason — 「승인 요청」을 막는 사유', () => {
@@ -88,6 +86,32 @@ describe('requestLockReason — 「승인 요청」을 막는 사유', () => {
   });
 
   /**
+   * ⛔ **전표 본문이 요구하는 것을 «전부» 본다**(통지 #675 §2 로 두 칸이 이 구획에 왔다).
+   *
+   * 하나라도 빠지면 본문 조립이 조용히 `null` 을 내고 **버튼은 열린 채 눌러도 아무 일이 없다.**
+   */
+  it('폐기 사유가 비면 그것을 사유로 낸다', () => {
+    const draft = { ...DRAFT, issueReasonCode: '  ' };
+
+    expect(requestLockReason(gate({ draft }))).toBe(lock.issueReason);
+  });
+
+  /** ⛔ 서버가 안 막는 자리라 화면이 막는다 — 안 정하고 나가면 「자체 폐기」로 저장된다. */
+  it('자체 폐기도 거래처도 정하지 않았으면 도착지를 사유로 낸다', () => {
+    const draft = { ...DRAFT, isSelfDisposal: false, partnerId: '' };
+
+    expect(requestLockReason(gate({ draft }))).toBe(lock.destination);
+  });
+
+  /** ⭐ 게이트와 본문 조립이 «같은» 판정을 지난다 — 갈리면 한쪽이 조용히 틀린다. */
+  it('막는 사유가 있으면 본문도 만들어지지 않는다', () => {
+    const draft = { ...DRAFT, issueReasonCode: '' };
+
+    expect(requestLockReason(gate({ draft }))).toBeDefined();
+    expect(payload({ issueReasonCode: '' })).toBeNull();
+  });
+
+  /**
    * ⛔ **사라진 「기준값 대기」로 막지 않는다.**
    *
    * 잠금 근거였던 두 값은 통지 #674 로 결말이 났다 — 원천 문서 유형은 값이 왔고, 승인 유형은
@@ -96,25 +120,6 @@ describe('requestLockReason — 「승인 요청」을 막는 사유', () => {
   it('기준값을 기다리며 잠기지 않는다', () => {
     expect(requestLockReason(gate())).not.toBe(lock.selectNone);
     expect(requestLockReason(gate())).toBeUndefined();
-  });
-});
-
-describe('issueLockReason — 「기타출고 처리」를 막는 사유', () => {
-  /**
-   * ⛔ **승인 «상태»로 잠그지 않는다**(통지 #674 · 설계서 §8-6).
-   *
-   * 상태 값을 판정할 수 없는 동안 앞질러 잠그면 **승인이 끝났는데도 열리지 않는다.**
-   * 버튼을 열고 서버의 400 이 말한다(J-8).
-   */
-  it('승인 상태를 모르더라도 버튼을 잠그지 않는다', () => {
-    expect(issueLockReason({ ...gate(), approval: 'unknown' })).toBeUndefined();
-  });
-
-  /** ⛔ 서버가 안 막는 자리라 화면이 막는다 — 안 정하고 나가면 「자체 폐기」로 저장된다. */
-  it('자체 폐기도 거래처도 정하지 않았으면 도착지를 사유로 낸다', () => {
-    const draft = { ...DRAFT, isSelfDisposal: false, partnerId: '' };
-
-    expect(issueLockReason({ ...gate({ draft }), approval: 'unknown' })).toBe(lock.destination);
   });
 });
 
@@ -129,9 +134,18 @@ describe('toGoodsIssueCreate — 전표 본문', () => {
     expect(payload()?.postImmediately).toBe(false);
   });
 
-  /** ⚠ `toISOString()` 은 UTC 라 자정 근처에서 하루가 밀린다 — 로컬 날짜를 쓴다. */
-  it('영업일이 누른 순간의 로컬 날짜다', () => {
-    expect(payload()?.businessDate).toBe('2026-09-09');
+  /**
+   * ⛔ **시각 세 칸을 본문 조립이 싣지 않는다.**
+   *
+   * 실으면 밀리초까지 멱등 지문에 들어가 **누를 때마다 지문이 달라지고**, 키를 붙드는 장치가
+   * 무력해져 재시도가 «새 폐기 전표»가 된다. 「없다」를 이름으로 지목한다.
+   */
+  it('시각 세 칸을 본문 조립이 싣지 않는다', () => {
+    const body = payload();
+
+    expect(body).not.toHaveProperty('issuedAt');
+    expect(body).not.toHaveProperty('businessDate');
+    expect(body).not.toHaveProperty('occurredAt');
   });
 
   it('출고 줄이 고른 대상의 품목·LOT·수량·단위와 푼 위치를 싣는다', () => {
@@ -174,9 +188,7 @@ describe('toGoodsIssueCreate — 전표 본문', () => {
 
     const body = toGoodsIssueCreate({
       ...gate({ targets: [TARGET, other] }),
-      approval: 'unknown',
       placement: PLACEMENT,
-      now: NOW,
     });
 
     expect(body).toBeNull();
@@ -185,12 +197,34 @@ describe('toGoodsIssueCreate — 전표 본문', () => {
   it('막을 사유가 있으면 본문을 만들지 않는다', () => {
     const body = toGoodsIssueCreate({
       ...gate({ targets: [] }),
-      approval: 'unknown',
       placement: PLACEMENT,
-      now: NOW,
     });
 
     expect(body).toBeNull();
+  });
+});
+
+describe('withOccurrence — 보내는 순간의 시각', () => {
+  const draft = payload();
+
+  /** ⚠ `toISOString()` 은 UTC 라 자정 근처에서 하루가 밀린다 — 로컬 날짜를 쓴다. */
+  it('영업일이 누른 순간의 로컬 날짜다', () => {
+    expect(draft).not.toBeNull();
+    expect(withOccurrence(draft!, NOW).businessDate).toBe('2026-09-09');
+  });
+
+  it('발생 시각이 제출 순간이다', () => {
+    expect(withOccurrence(draft!, NOW).occurredAt).toBe(NOW.toISOString());
+  });
+
+  /** ⭐ 같은 초안이면 «얹기 전»이 같다 — 지문이 같아야 키가 붙들린다. */
+  it('같은 초안은 시각이 달라도 얹기 전 본문이 같다', () => {
+    const later = new Date(NOW.getTime() + 5_000);
+
+    expect(JSON.stringify(draft)).toBe(JSON.stringify(payload()));
+    expect(withOccurrence(draft!, NOW).occurredAt).not.toBe(
+      withOccurrence(draft!, later).occurredAt,
+    );
   });
 });
 

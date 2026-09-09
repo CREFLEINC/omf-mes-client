@@ -1,5 +1,6 @@
 import {
   AlertBanner,
+  Button,
   Chip,
   type Column,
   EmptyState,
@@ -8,10 +9,12 @@ import {
   Stepper,
   Table,
 } from '@crefle/web-ui';
+import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { SaveErrorBanner } from '../../patterns/master';
 import { isProductDisposal, type IssueRow } from './types';
 
 const t = messages.productDisposalRequest;
@@ -60,6 +63,20 @@ const ApprovalBlock = ({ approval }: { approval: ApprovalView }) => {
   }
 };
 
+/**
+ * 「기타출고 처리」 — **승인이 끝난 전표를 실제 출고로 만든다.**
+ *
+ * ⭐ **승인은 자물쇠를 풀 뿐이다**(J-8) — 승인이 끝나도 여기서 다시 눌러야 한다.
+ * ⛔ 승인 «상태»로 잠그지 않는다 — 서버의 400 이 말한다(통지 `#674` · §8-6).
+ */
+export interface PostAction {
+  /** 막는 사유. 없으면 열려 있다. **승인 여부는 여기 들지 않는다.** */
+  lock: string | undefined;
+  isSaving: boolean;
+  error: ApiError | null;
+  onPost: () => void;
+}
+
 export interface HistoryPaneProps {
   rows: readonly IssueRow[];
   selectedId: number | null;
@@ -68,6 +85,7 @@ export interface HistoryPaneProps {
   reasons: LookupSource;
   onSelect: (goodsIssueId: number | null) => void;
   approval: ApprovalView;
+  post: PostAction;
 }
 
 /**
@@ -87,6 +105,7 @@ export const HistoryPane = ({
   reasons,
   onSelect,
   approval,
+  post,
 }: HistoryPaneProps) => {
   const columns: Column<IssueRow>[] = [
     { key: 'no', header: t.history.fields.no, render: (row) => row.goodsIssueNo },
@@ -158,6 +177,25 @@ export const HistoryPane = ({
       <div className="pane-block">
         <h3>{t.approval.title}</h3>
         <ApprovalBlock approval={approval} />
+      </div>
+
+      <div className="pane-block">
+        <h3>{t.issue.submit}</h3>
+        {/* §5-4 · J-8 — 승인이 끝나도 출고는 «여기서 다시» 누른다는 사실을 적는다. */}
+        <div className="banner-slot">
+          <AlertBanner variant="info">{t.issue.unlockNote}</AlertBanner>
+        </div>
+        <SaveErrorBanner error={post.error} />
+        {post.lock !== undefined && (
+          <div className="banner-slot">
+            <AlertBanner variant="info">{post.lock}</AlertBanner>
+          </div>
+        )}
+        <div className="form-actions">
+          <Button disabled={post.lock !== undefined} onClick={post.onPost}>
+            {t.issue.submit}
+          </Button>
+        </div>
       </div>
     </section>
   );

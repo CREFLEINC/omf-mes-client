@@ -48,10 +48,31 @@ const codeValues = (values: { code: string; codeName: string }[]) => ({
   page,
 });
 
+const DETAIL = {
+  goodsIssue: {
+    goodsIssueId: 4001,
+    goodsIssueNo: 'GI-2026-000401',
+    issueTypeCode: 'OTHER',
+    sourceDocumentTypeCode: 'DISPOSITION_DECISION',
+    sourceDocumentId: 7001,
+    sourceWarehouseId: 11,
+    issuedAt: '2026-09-09T10:00:00+09:00',
+    statusCode: 'DRAFT',
+    approvalRequestId: 5001,
+  },
+  lines: [],
+};
+
 interface StubOptions {
   onCreate?: (request: Request) => void;
   onSubmit?: (request: Request) => void;
   balances?: unknown[];
+  /** 상신 응답 상태. 실패 뒤 재시도를 재현할 때 쓴다. */
+  submitStatus?: number;
+  /** 이력 목록에 실을 전표. 전기 경로를 재현할 때 쓴다. */
+  historyRows?: unknown[];
+  onPost?: (request: Request) => void;
+  postStatus?: number;
 }
 
 const buildFetch = (options: StubOptions = {}) =>
@@ -146,12 +167,29 @@ const buildFetch = (options: StubOptions = {}) =>
       match: (r) => r.url.includes(':request-approval'),
       respond: (request) => {
         options.onSubmit?.(request.clone());
-        return jsonResponse({}, { status: 202 });
+        return jsonResponse({}, { status: options.submitStatus ?? 202 });
       },
     },
     {
+      match: (r) => r.method === 'POST' && r.url.includes(':post'),
+      respond: (request) => {
+        options.onPost?.(request.clone());
+        return options.postStatus === undefined || options.postStatus === 200
+          ? jsonResponse(DETAIL.goodsIssue)
+          : jsonResponse(
+              { errors: [{ scope: 'screen', code: 'NOT_APPROVED', message: '승인 전입니다' }] },
+              { status: options.postStatus },
+            );
+      },
+    },
+    {
+      /* 상세 — **잠금 토큰이 여기 앉는다.** ETag 가 없으면 전기가 서지 않는다. */
+      match: (r) => /\/logistics\/goods-issues\/\d+$/.test(new URL(r.url).pathname),
+      respond: () => jsonResponse(DETAIL, { headers: { ETag: 'W/"9"' } }),
+    },
+    {
       match: (r) => r.url.includes('/logistics/goods-issues'),
-      respond: () => jsonResponse({ items: [], page }),
+      respond: () => jsonResponse({ items: options.historyRows ?? [], page }),
     },
   ]);
 
@@ -214,6 +252,40 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
   });
 
   /**
+   * ⛔ **재시도가 폐기 전표를 «두 벌» 만들면 안 된다.**
+   *
+   * ⚠ **이 시험이 화면을 «눌러» 재현해야 한다.** 훅 시험은 얼린 본문 상수를 두 번 넘겨서
+   * 화면이 매번 새로 만드는 경로를 지나지 않는다 — 실제로 그 틈에 결함이 있었다(시각이
+   * 본문에 실려 멱등 지문이 매 클릭 달라졌다). 「키가 같다」가 아니라 **키를 이름으로 잡아
+   * 견준다.**
+   */
+  it('상신이 실패한 뒤 다시 눌러도 전표를 두 벌 만들지 않는다', async () => {
+    const user = userEvent.setup();
+    const creates: Request[] = [];
+    openScreen({
+      onCreate: (r) => creates.push(r),
+      submitStatus: 504,
+    });
+
+    await user.click(await screen.findByRole('checkbox', { name: 'FG-0288 선택' }));
+    await user.click(await screen.findByRole('checkbox', { name: t.issue.selfDisposal }));
+    await pickReason(user);
+
+    const submit = screen.getByRole('button', { name: t.request.submit });
+
+    await user.click(submit);
+    await waitFor(() => expect(creates).toHaveLength(1));
+
+    await user.click(submit);
+    await waitFor(() => expect(creates).toHaveLength(2));
+
+    const first = creates[0]?.headers.get('Idempotency-Key');
+
+    expect(first).toBeTruthy();
+    expect(creates[1]?.headers.get('Idempotency-Key')).toBe(first);
+  });
+
+  /**
    * ⛔ **한 LOT 이 여러 자리에 있으면 막고 사유를 말한다.**
    *
    * 첫 줄을 집으면 조용히 틀린 선반에서 빠진다. **막힌다**가 아니라 **왜 막혔는가**를 잡는다.
@@ -253,7 +325,13 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
       ],
     });
 
+    /*
+     * ⭐ **채울 것을 먼저 채운다.** 게이트가 「먼저 채울 것을 먼저 말한다」라서, 사유를
+     * 비워 두면 자리 사유가 아니라 사유 입력이 뜬다 — 그러면 이 시험이 엉뚱한 것을 잡는다.
+     */
     await user.click(await screen.findByRole('checkbox', { name: 'FG-0288 선택' }));
+    await user.click(await screen.findByRole('checkbox', { name: t.issue.selfDisposal }));
+    await pickReason(user);
 
     expect(await screen.findByText(t.placement.split)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.request.submit })).toBeDisabled();
@@ -279,19 +357,17 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
   });
 
   /**
-   * ⛔ **승인 상태를 모르더라도 「기타출고 처리」를 잠그지 않는다**(통지 #674 · §8-6).
+   * ⛔ **요청 탭에 전기 버튼을 두지 않는다.**
    *
-   * 앞질러 잠그면 승인이 끝났는데도 열리지 않는다. 버튼을 열고 서버의 400 이 말한다(J-8).
+   * 전기는 «고른 전표»에 거는 조작인데, 요청을 올리면 초안이 비어 걸 대상이 남지 않는다.
+   * 사용자는 승인 뒤 다시 와서 「처리 이력」에서 고른다(§5-4).
    */
-  it('승인 상태를 몰라도 기타출고 처리 버튼이 열려 있다', async () => {
-    const user = userEvent.setup();
+  it('요청 탭에는 기타출고 처리 버튼을 두지 않는다', async () => {
     openScreen();
 
-    await user.click(await screen.findByRole('checkbox', { name: 'FG-0288 선택' }));
-    await user.click(await screen.findByRole('checkbox', { name: t.issue.selfDisposal }));
-    await pickReason(user);
+    await screen.findByRole('heading', { name: t.panes.targets });
 
-    await waitFor(() => expect(screen.getByRole('button', { name: t.issue.submit })).toBeEnabled());
+    expect(screen.queryByRole('button', { name: t.issue.submit })).not.toBeInTheDocument();
   });
 
   /** ⛔ 승인·반려는 이 화면에 없다(J-10) — 어디서 하는지를 머리에 적는다. */
@@ -324,5 +400,65 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
     const pane = screen.getByRole('region', { name: t.panes.targets });
 
     expect(within(pane).getByText(t.targets.judgmentRequired)).toBeInTheDocument();
+  });
+});
+
+describe('W-04-10 — 「기타출고 처리」', () => {
+  const openHistory = (over: StubOptions = {}) =>
+    openScreen({ historyRows: [DETAIL.goodsIssue], ...over }, '/?tab=history');
+
+  /** ⛔ 고르지 않았으면 걸 대상이 없다 — 무엇을 골라야 하는지 말한다. */
+  it('전표를 고르기 전에는 사유를 말하고 잠근다', async () => {
+    openHistory();
+
+    expect(await screen.findByText(t.issue.pickRow)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.issue.submit })).toBeDisabled();
+  });
+
+  /**
+   * ⛔ **버튼이 실제로 요청을 보내야 한다.**
+   *
+   * ⚠ 한때 이 버튼에 `onClick` 이 없어 **눌러도 아무 일이 없었다.** 「열려 있다」만 단언하면
+   * 그 공백을 덮는다 — **나가는 요청을 이름으로 잡는다.**
+   */
+  it('전표를 고르고 누르면 전기 요청이 나간다', async () => {
+    const user = userEvent.setup();
+    const posts: Request[] = [];
+    openHistory({ onPost: (r) => posts.push(r) });
+
+    await user.click(await screen.findByRole('checkbox', { name: '행 선택' }));
+
+    const button = screen.getByRole('button', { name: t.issue.submit });
+
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+
+    await waitFor(() => expect(posts).toHaveLength(1));
+
+    const body = (await posts[0]?.json()) as Record<string, unknown>;
+
+    /* 계약의 `PostRequest` 는 **두 값뿐**이다 — 더 실으면 서버가 모르는 필드가 나간다. */
+    expect(Object.keys(body).sort()).toEqual(['businessDate', 'occurredAt']);
+    /* ⛔ 잠금 토큰은 «상세»에서 온다 — 없으면 요청이 나가면 안 된다. */
+    expect(posts[0]?.headers.get('If-Match')).toBe('W/"9"');
+  });
+
+  /**
+   * ⛔ **승인 전이라는 판정을 화면이 흉내 내지 않는다**(J-8 · 통지 #674).
+   *
+   * 버튼은 열려 있고, 막는 것은 서버다. 그 문구를 배너로 낸다.
+   */
+  it('승인 전이면 서버의 400 을 배너로 낸다', async () => {
+    const user = userEvent.setup();
+    openHistory({ postStatus: 400 });
+
+    await user.click(await screen.findByRole('checkbox', { name: '행 선택' }));
+
+    const button = screen.getByRole('button', { name: t.issue.submit });
+
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+
+    expect(await screen.findByText('승인 전입니다')).toBeInTheDocument();
   });
 });

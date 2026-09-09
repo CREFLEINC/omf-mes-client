@@ -15,11 +15,12 @@ import { SaveErrorBanner } from '../../patterns/master';
 import { progressSummary, toProgressSteps } from './approval-progress';
 import { HistoryPane, type ApprovalView } from './history-pane';
 import { useIssueReasonCodes, useIssueTypeCodes, useItemLookup, useUomLookup } from './lookups';
-import { useDisposalRequestMutation } from './mutations';
+import { useDisposalPostMutation, useDisposalRequestMutation } from './mutations';
 import { resolvePlacements } from './placement';
 import {
   useApprovalDetail,
   useApprovalRoute,
+  useIssueDetail,
   useDisposalPartners,
   useDisposalTargets,
   useIssueHistory,
@@ -27,9 +28,9 @@ import {
 } from './queries';
 import {
   EMPTY_DRAFT,
-  issueLockReason,
   requestLockReason,
   toApprovalRequestCreate,
+  toBusinessDate,
   toGoodsIssueCreate,
   type DisposalDraft,
 } from './request-draft';
@@ -101,13 +102,23 @@ export const ProductDisposalRequestScreen = () => {
     () => targets.map((target) => target.lotId).filter((id): id is number => id !== null),
     [targets],
   );
-  const placementsByLot = useLotPlacements(lotIds);
-  const placement = resolvePlacements(targets, (lotId) => placementsByLot[lotId]);
+  const placements = useLotPlacements(lotIds);
+  const placement = resolvePlacements(targets, placements.entriesOf);
 
   const history = useIssueHistory(1);
   const historyRows = useMemo(() => history.data?.items ?? [], [history.data]);
   const selectedIssue = historyRows.find((row) => row.goodsIssueId === selectedIssueId) ?? null;
   const approvalDetail = useApprovalDetail(selectedIssue?.approvalRequestId ?? null);
+  /* 잠금 토큰을 전표 상세 경로에 앉히는 자리다 — 전기가 그 토큰을 쓴다. */
+  const issueDetail = useIssueDetail(selectedIssue?.goodsIssueId ?? null);
+
+  const post = useDisposalPostMutation({
+    goodsIssueId: selectedIssue?.goodsIssueId ?? null,
+    onSuccess: () => {
+      toast.show({ variant: 'success', description: t.issue.posted });
+      void history.refetch();
+    },
+  });
 
   /* 이력을 다시 읽으면 고른 전표가 사라질 수 있다 — 남아 있지 않으면 고름을 푼다. */
   useEffect(() => {
@@ -163,15 +174,15 @@ export const ProductDisposalRequestScreen = () => {
   });
 
   const gate = { targets, draft, route, isSaving: write.isSaving };
-  const requestLock = requestLockReason(gate);
   /*
-   * ⛔ **승인 상태를 «물어볼 수가» 없다** — `ApprovalRequest.statusCode` 가 계약에서 아직 열린
-   * 문자열이다. 「승인 안 됨」이 아니라 **모르는 것**이라 그대로 적고, 그 모름으로 버튼을 잠그지
-   * 않는다(통지 `#674`).
+   * ⛔ **본문이 못 만들어지는 사유를 «전부» 여기서 낸다.** 하나라도 빠지면 버튼이 열린 채
+   * 눌러도 아무 일이 없다 — 사용자는 화면이 고장 났다고 읽는다.
+   *
+   * 자리 판정을 뒤에 두는 이유는 «먼저 채울 것»을 먼저 말하기 위해서다. 대상을 고르기 전에
+   * 「재고 위치를 확인하는 중」이라고 하면 무엇을 해야 할지 알 수 없다.
    */
-  const issueLock = issueLockReason({ ...gate, approval: 'unknown' });
-  /* 자리를 못 풀었으면 그 사유가 요청을 막는다 — 게이트보다 뒤에 두어 먼저 채울 것을 먼저 말한다. */
-  const submitLock = requestLock ?? (placement.kind === 'blocked' ? placement.reason : undefined);
+  const submitLock =
+    requestLockReason(gate) ?? (placement.kind === 'blocked' ? placement.reason : undefined);
 
   const qtyText = totalQtyOf(targets) === null ? '—' : String(totalQtyOf(targets));
 
@@ -238,7 +249,21 @@ export const ProductDisposalRequestScreen = () => {
         <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
         {submitLock !== undefined && (
           <div className="banner-slot">
-            <AlertBanner variant="info">{submitLock}</AlertBanner>
+            {/* ⭐ 다시 부를 수 있는 막힘이면 «그 길»을 낸다 — 없으면 영원히 막힌다. */}
+            <AlertBanner
+              variant={
+                placement.kind === 'blocked' && placement.isRetryable === true ? 'error' : 'info'
+              }
+              action={
+                placement.kind === 'blocked' && placement.isRetryable === true ? (
+                  <Button variant="outlined" size="sm" onClick={placements.refetch}>
+                    {messages.common.retry}
+                  </Button>
+                ) : undefined
+              }
+            >
+              {submitLock}
+            </AlertBanner>
           </div>
         )}
         {/* A-11 — 올린 뒤 화면에서 철회할 길이 없다는 사실을 «올리기 전»에 적는다. */}
@@ -250,14 +275,12 @@ export const ProductDisposalRequestScreen = () => {
               setShowError(true);
               if (placement.kind !== 'resolved') return;
 
-              /* ⭐ 시각을 «누르는 순간» 한 번 찍는다 — 본문 조립 자리에서 찍으면 렌더마다 달라진다. */
-              const now = new Date();
-              const issue = toGoodsIssueCreate({
-                ...gate,
-                approval: 'unknown',
-                placement,
-                now,
-              });
+              /*
+               * ⛔ **여기서 시각을 찍지 않는다.** 찍어 넘기면 그 값이 멱등 지문에 실려
+               * 누를 때마다 지문이 달라지고, 재시도가 «새 폐기 전표»가 된다. 시각은
+               * 보내는 자리(`withOccurrence`)가 얹는다.
+               */
+              const issue = toGoodsIssueCreate({ ...gate, placement });
               const approval = toApprovalRequestCreate(draft);
 
               /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 전표를 만들지 않는다. */
@@ -270,20 +293,14 @@ export const ProductDisposalRequestScreen = () => {
         </div>
       </section>
 
+      {/*
+       * ③ — **읽기 전용 표시만 둔다.** 「기타출고 처리」 버튼은 여기 없다.
+       *
+       * ⛔ **전기는 «고른 전표»에 거는 조작이다.** 요청을 올리면 초안이 비므로 이 탭에는
+       * 걸 대상이 남지 않는다. 사용자는 승인이 끝난 뒤 «다시 와서»(§5-4) 「처리 이력」에서
+       * 그 전표를 골라 전기한다 — 버튼을 그쪽에 둔다.
+       */}
       <IssuePane draft={draft} partners={partners.data ?? []} />
-
-      <section className="pane" aria-label={t.issue.submit}>
-        {issueLock !== undefined && (
-          <div className="banner-slot">
-            <AlertBanner variant="info">{issueLock}</AlertBanner>
-          </div>
-        )}
-        {/* A-11 — 출고 전표에 요청 번호를 담을 자리가 없어 비고로 잇는다. */}
-        <p className="field-note">{t.withdrawn.requestRef}</p>
-        <div className="form-actions">
-          <Button disabled={issueLock !== undefined}>{t.issue.submit}</Button>
-        </div>
-      </section>
     </>
   );
 
@@ -309,6 +326,30 @@ export const ProductDisposalRequestScreen = () => {
       reasons={issueReasons}
       onSelect={setSelectedIssueId}
       approval={approvalView}
+      post={{
+        error: post.error,
+        isSaving: post.isSaving,
+        /*
+         * ⛔ **승인 «상태»로 잠그지 않는다**(통지 #674 · §8-6) — 앞질러 막으면 승인이
+         * 끝났는데도 열리지 않는다. 고르지 않았거나 토큰을 못 받았을 때만 막고, 승인 전
+         * 여부는 서버의 400 이 말한다(J-8).
+         */
+        lock:
+          selectedIssue === null
+            ? t.issue.pickRow
+            : issueDetail.isPending
+              ? t.issue.tokenLoading
+              : issueDetail.isError
+                ? t.issue.tokenFailed
+                : post.isSaving
+                  ? messages.productDisposalRequest.lock.saving
+                  : undefined,
+        onPost: () => {
+          /* ⭐ 시각을 «누르는 순간» 찍는다 — 전기 본문은 두 칸뿐이다. */
+          const now = new Date();
+          post.write({ businessDate: toBusinessDate(now), occurredAt: now.toISOString() });
+        },
+      }}
     />
   );
 

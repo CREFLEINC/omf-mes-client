@@ -14,6 +14,14 @@ import { totalQtyOf, type DisposalTarget } from './types';
  */
 
 export type GoodsIssueCreate = components['schemas']['GoodsIssueCreate'];
+
+/**
+ * 시각 세 칸을 뺀 본문 — 화면이 사용자의 입력만으로 만들 수 있는 부분이다.
+ *
+ * ⭐ **이 타입이 멱등 지문에 들어간다.** 시각이 여기 없어야 같은 입력의 재시도가 같은 지문을
+ * 낸다(`withOccurrence` 주석 참조).
+ */
+export type GoodsIssueDraft = Omit<GoodsIssueCreate, 'issuedAt' | 'businessDate' | 'occurredAt'>;
 type GoodsIssueLineUpsert = components['schemas']['GoodsIssueLineUpsert'];
 export type ApprovalRequestCreate = components['schemas']['ApprovalRequestCreate'];
 
@@ -77,54 +85,27 @@ export const requestLockReason = (input: RequestGateInput): string | undefined =
   if (input.isSaving) return t.saving;
   if (input.targets.length === 0) return t.selectNone;
   if (reasonError(input.draft.reason) !== undefined) return t.reason;
+  /*
+   * ⛔ **전표 본문이 요구하는 것을 여기서 «전부» 본다.** 통지 #675 §2 로 도착지·사유가 요청
+   * 작성 구획으로 옮겨 오면서, 이 둘이 비면 본문 조립이 조용히 `null` 을 내고 **버튼은 열린
+   * 채 눌러도 아무 일이 없는** 상태가 됐다. 막는 사유는 «버튼 옆»에서 말해야 한다.
+   */
+  if (input.draft.issueReasonCode.trim() === '') return t.issueReason;
+  if (!input.draft.isSelfDisposal && input.draft.partnerId.trim() === '') return t.destination;
   /* 결재선이 없으면 상신할 곳이 없다 — 서버도 400(ROUTE_NOT_FOUND)으로 막는다. */
   if (input.route.kind !== 'found') return t.route;
 
   return undefined;
 };
 
-/**
- * 이 요청의 승인 상태.
+/*
+ * ⛔ **전기 게이트를 여기 두지 않는다.**
  *
- * ⛔ **`unknown` 이 여전히 지금의 사실이다.** `ApprovalRequest.statusCode` 가 생성 타입에서
- * 아직 열린 문자열이라(`5b3d773` 실측) 화면이 「승인이 끝났는가」를 **값으로 판정할 수 없다.**
- * `false` 라는 이름을 쓰지 않는 이유가 이것이다 — 「승인 안 됨」과 「모른다」는 다르고, 앞의
- * 것으로 적으면 승인이 끝난 뒤에도 화면이 안 끝났다고 «단정»하게 된다.
- *
- * ⛔ **「모든 단계가 결재됨」으로 파생하지 않는다**(통지 `#674`) — 1단계 결재선에서 «반려»되면
- * 승인 완료와 같은 모양이 된다.
+ * 「기타출고 처리」는 «고른 전표»에 거는 조작이라 초안(`DisposalDraft`)을 하나도 쓰지 않는다.
+ * 한때 이 파일에 `issueLockReason` 을 두고 초안을 봤는데, 그 판정이 요청 게이트와 갈려
+ * **버튼은 열린 채 눌러도 아무 일이 없는** 상태를 만들었다. 지금은 그 조작이 「처리 이력」
+ * 탭에 있고 막는 사유(고르지 않음 · 토큰 못 받음)를 그 자리가 직접 만든다.
  */
-export type ApprovalState = 'unknown' | 'pending' | 'approved';
-
-export interface IssueGateInput extends RequestGateInput {
-  approval: ApprovalState;
-}
-
-/**
- * 「기타출고 처리」를 막는 사유.
- *
- * ⭐ **승인은 자물쇠를 풀 뿐이다**(J-8) — 승인이 끝나도 출고는 여기서 다시 눌러야 한다.
- *
- * ⛔ **승인 «상태»로 버튼을 잠그지 않는다**(통지 `#674` · 설계서 §8-6). 상태 값을 판정할 수
- * 없는 동안 잠가 두면 **승인이 끝났는데도 열리지 않는다** — 사용자는 결재함에서 승인된 것을
- * 보고 와서 눌리지 않는 버튼을 만난다. 대신 **버튼을 열고 서버의 400 을 안내로 바꾼다.**
- * 승인 전이면 계약이 막는다(§5-4) — 화면이 앞질러 막을 필요가 없다.
- *
- * ⛔ **도착지를 정하지 않았으면 막는다**(§6) — 계약이 두 필드를 선택으로 두어 서버가 막지
- * 않으므로, 정하지 않은 채 나가면 **「자체 폐기」로 저장된다.** 사용자가 확인한 사실이 아닌
- * 것이 되돌릴 수 없는 전표에 남는다. 이것은 서버가 안 막으므로 **화면이 막아야 한다.**
- */
-export const issueLockReason = (input: IssueGateInput): string | undefined => {
-  const t = messages.productDisposalRequest.lock;
-
-  if (input.isSaving) return t.saving;
-  if (input.targets.length === 0) return t.selectNone;
-  /* ⛔ 조용히 본문을 못 만드는 대신 **왜 못 만드는지** 말한다 — 안 그러면 버튼이 이유 없이 죽는다. */
-  if (input.draft.issueReasonCode.trim() === '') return t.issueReason;
-  if (!input.draft.isSelfDisposal && input.draft.partnerId.trim() === '') return t.destination;
-
-  return undefined;
-};
 
 /**
  * 도착지 짝.
@@ -143,15 +124,9 @@ const destinationOf = (
   return { destinationTypeCode: 'DISPOSAL_SITE', destinationId: parsed };
 };
 
-export interface IssuePayloadInput extends IssueGateInput {
+export interface IssuePayloadInput extends RequestGateInput {
   /** `placement.ts` 가 푼 출발 자리. 못 풀었으면 이 자리에 오지 않는다. */
   placement: ResolvedPlacement;
-  /**
-   * 제출 순간. **인자로 받는다** — 함수 안에서 `new Date()` 를 부르면 순수하지 않아 영업일과
-   * 발생 시각을 고정 시각으로 검사할 수 없다. 본문은 렌더마다 다시 만들어지므로 그 자리에서
-   * 찍으면 값이 매 렌더 달라지기도 한다.
-   */
-  now: Date;
 }
 
 /** `placement.ts` 의 성공 갈래만 받는다 — 막힌 갈래를 여기까지 들이지 않는다. */
@@ -170,7 +145,7 @@ export interface ResolvedPlacement {
  * 만들어지므로 **누른 순간의 로컬 날짜**를 쓴다 — 지난 전표를 나중에 처리하는 화면과 달리
  * 「전표의 날짜」라는 다른 후보가 없다.
  */
-const toBusinessDate = (now: Date): string => {
+export const toBusinessDate = (now: Date): string => {
   const pad = (value: number): string => String(value).padStart(2, '0');
 
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
@@ -189,8 +164,9 @@ const toBusinessDate = (now: Date): string => {
  * 201 이라(`W-01-06` 실측) 기대지 않는다 — 참으로 새면 **승인 없이 재고가 빠진다.** 이 화면의
  * 업무는 승인을 먼저 받는 것이고(§5-4) 그 순서가 무너지면 되돌릴 길이 다른 화면에 있다.
  */
-export const toGoodsIssueCreate = (input: IssuePayloadInput): GoodsIssueCreate | null => {
-  if (issueLockReason(input) !== undefined) return null;
+export const toGoodsIssueCreate = (input: IssuePayloadInput): GoodsIssueDraft | null => {
+  /* ⭐ 게이트와 «같은» 판정을 지난다 — 갈리면 「버튼은 열렸는데 본문이 없다」가 생긴다. */
+  if (requestLockReason(input) !== undefined) return null;
 
   const [first] = input.targets;
   const destination = destinationOf(input.draft);
@@ -211,16 +187,31 @@ export const toGoodsIssueCreate = (input: IssuePayloadInput): GoodsIssueCreate |
     sourceDocumentTypeCode: SOURCE_DOCUMENT_TYPE_CODE,
     sourceDocumentId: first.dispositionDecisionId,
     sourceWarehouseId: input.placement.warehouseId,
-    issuedAt: input.now.toISOString(),
     ...destination,
     reasonCode: input.draft.issueReasonCode.trim(),
     postImmediately: POST_IMMEDIATELY,
-    businessDate: toBusinessDate(input.now),
-    /** 발생 시각 — **제출 순간**이다(공유계약 C-1). 영업일과 갈라 싣는다. */
-    occurredAt: input.now.toISOString(),
     lines,
   };
 };
+
+/**
+ * 본문에 **시각 세 칸을 얹는다** — 보내는 순간에 한 번.
+ *
+ * ⛔ **이 셋은 «본문 조립»이 아니라 «보내기»에 속한다.** 조립 자리에서 찍으면 그 값이
+ * 멱등 지문(`useMasterWrite` 의 `until-applied`)에 들어가는데, 밀리초까지 실려 **누를 때마다
+ * 지문이 달라진다.** 그러면 키를 붙드는 장치가 통째로 무력해지고, 통신이 끊긴 뒤 다시 누른
+ * 것이 **새 폐기 전표**가 된다 — 되돌릴 길이 없는 쓰기다.
+ *
+ * ⚠ **재시도마다 값이 달라지는 것은 괜찮다.** 같은 키로 다시 가면 서버가 최초 응답을 재생하고
+ * 본문은 보지 않는다. 지문에서 빼는 것이 요점이지 값을 고정하는 것이 요점이 아니다.
+ */
+export const withOccurrence = (draft: GoodsIssueDraft, now: Date): GoodsIssueCreate => ({
+  ...draft,
+  issuedAt: now.toISOString(),
+  businessDate: toBusinessDate(now),
+  /** 발생 시각 — **제출 순간**이다(공유계약 C-1). 영업일과 갈라 싣는다. */
+  occurredAt: now.toISOString(),
+});
 
 /**
  * **전기하지 않고 만들기만 한다.**

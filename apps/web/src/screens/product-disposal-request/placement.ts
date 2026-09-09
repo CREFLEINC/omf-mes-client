@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
+import type { PlacementQuery } from './queries';
 import type { DisposalTarget } from './types';
 
 /**
@@ -36,7 +37,8 @@ export interface Placement {
 
 export type PlacementResult =
   | { kind: 'resolved'; warehouseId: number; placements: readonly Placement[] }
-  | { kind: 'blocked'; reason: string };
+  /** `isRetryable` 이면 다시 부를 수 있는 막힘이다 — 화면이 그 길을 낸다. */
+  | { kind: 'blocked'; reason: string; isRetryable?: boolean };
 
 /**
  * 고른 대상들의 출발 자리를 푼다.
@@ -47,7 +49,8 @@ export type PlacementResult =
  * | 갈래 | 왜 막나 |
  * | --- | --- |
  * | LOT 을 못 받은 대상이 있다 | 판정은 됐는데 LOT 이 안 실린 건이다. 무엇을 뺄지 정할 수 없다 |
- * | 자리를 못 찾은 LOT 이 있다 | 재고에 없거나 조회가 못 닿았다. 「0 이라 없다」와 「못 물었다」를 화면이 가르지 못한다 |
+ * | 자리를 못 찾은 LOT 이 있다 | 재고에 없다. 「0 이라 없다」와 「못 물었다」를 갈라 적는다 |
+ * | 조회가 실패했다 | 못 물은 것이다. **다시 부를 수 있다**고 말한다 |
  * | 한 LOT 이 여러 자리에 있다 | 어느 선반에서 뺄지는 **사람이 정할 일**이다. 화면이 첫 줄을 고르면 조용히 틀린다 |
  * | 창고가 섞였다 | 전표 하나에 `sourceWarehouseId` 는 하나다. 나눠 올릴 일을 한 벌로 접으면 안 된다 |
  *
@@ -57,7 +60,7 @@ export type PlacementResult =
  */
 export const resolvePlacements = (
   targets: readonly DisposalTarget[],
-  entriesOf: (lotId: number) => readonly PlacementEntry[] | undefined,
+  entriesOf: (lotId: number) => PlacementQuery,
 ): PlacementResult => {
   if (targets.length === 0) return { kind: 'blocked', reason: t.noTarget };
 
@@ -66,8 +69,16 @@ export const resolvePlacements = (
   for (const target of targets) {
     if (target.lotId === null) return { kind: 'blocked', reason: t.lotMissing };
 
-    const entries = entriesOf(target.lotId);
-    if (entries === undefined) return { kind: 'blocked', reason: t.pending };
+    const query = entriesOf(target.lotId);
+
+    if (query.kind === 'pending') return { kind: 'blocked', reason: t.pending };
+    /*
+     * ⛔ **「못 물었다」를 「아직이다」로 적지 않는다.** 접으면 조회가 실패해도 「확인하는 중」이
+     * 영원히 뜨고 사용자는 기다리기만 한다 — 다시 부를 수 있다는 것도 알 수 없다.
+     */
+    if (query.kind === 'failed') return { kind: 'blocked', reason: t.failed, isRetryable: true };
+
+    const entries = query.entries;
 
     /*
      * ⭐ **자리가 «있는» 것만 센다.** 잔액이 창고·위치를 못 채워 내려주는 줄이 있는데, 그것을

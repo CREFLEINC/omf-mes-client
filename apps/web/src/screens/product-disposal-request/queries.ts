@@ -21,6 +21,7 @@ import {
 
 type PageMeta = components['schemas']['PageMeta'];
 type ApprovalRequestDetail = components['schemas']['ApprovalRequestDetail'];
+type GoodsIssueDetailResponse = components['schemas']['GoodsIssueDetailResponse'];
 
 /**
  * 이 화면의 읽기. 쓰기는 `mutations.ts`가 갖는다.
@@ -38,6 +39,7 @@ export const disposalRequestKeys = {
   placement: (lotId: number) => ['product-disposal-request', 'placement', lotId] as const,
   history: (page: number) => ['product-disposal-request', 'history', page] as const,
   approval: (id: number) => ['product-disposal-request', 'approval', id] as const,
+  detail: (id: number) => ['product-disposal-request', 'detail', id] as const,
 };
 
 export interface TargetListResult {
@@ -123,9 +125,7 @@ export const useDisposalPartners = (): UseQueryResult<DisposalPartner[]> => {
  * ⚠ **재고 상태로 좁히지 않는다.** 폐기 대상은 보류·차단된 재고일 가능성이 크다 — 좁히면
  * 폐기해야 할 것이 「자리를 못 찾았다」로 막힌다(`placement.ts` 가 같은 판단을 적어 두었다).
  */
-export const useLotPlacements = (
-  lotIds: readonly number[],
-): Record<number, readonly PlacementEntry[] | undefined> => {
+export const useLotPlacements = (lotIds: readonly number[]): PlacementLookup => {
   const { client } = useApiClient();
 
   const results = useQueries({
@@ -149,17 +149,78 @@ export const useLotPlacements = (
   });
 
   /*
-   * ⭐ **아직 못 받은 것을 `undefined` 로 둔다** — 빈 배열로 두면 「자리가 없다」가 되어
-   * 조회 중인 것이 «없는 것»으로 읽힌다. 그 둘은 사용자에게 다른 말이어야 한다.
+   * ⭐ **세 갈래를 «갈라» 낸다** — 받았다 · 아직이다 · 못 물었다.
+   *
+   * ⛔ 한때 뒤의 둘을 `undefined` 하나로 접었다. 그러면 **조회가 실패해도 「확인하는 중」이
+   * 영원히 뜨고** 사용자는 기다리기만 한다 — 다시 부를 길도 없다. 「아직」과 「못 물었다」는
+   * 사용자가 할 일이 다르다.
    */
-  const byLot: Record<number, readonly PlacementEntry[] | undefined> = {};
+  const byLot: PlacementLookup = {
+    entriesOf: () => ({ kind: 'pending' }),
+    refetch: () => undefined,
+  };
+  const state = new Map<number, PlacementQuery>();
 
   lotIds.forEach((lotId, index) => {
     const result = results[index];
-    byLot[lotId] = result?.isSuccess === true ? result.data : undefined;
+
+    state.set(
+      lotId,
+      result === undefined || result.isPending
+        ? { kind: 'pending' }
+        : result.isError
+          ? { kind: 'failed' }
+          : { kind: 'loaded', entries: result.data ?? [] },
+    );
   });
 
+  byLot.entriesOf = (lotId) => state.get(lotId) ?? { kind: 'pending' };
+  byLot.refetch = () => {
+    for (const result of results) void result.refetch();
+  };
+
   return byLot;
+};
+
+/** LOT 하나의 자리 조회 상태. **「아직」과 「못 물었다」를 갈라 둔다.** */
+export type PlacementQuery =
+  { kind: 'pending' } | { kind: 'failed' } | { kind: 'loaded'; entries: readonly PlacementEntry[] };
+
+export interface PlacementLookup {
+  entriesOf: (lotId: number) => PlacementQuery;
+  /** 못 물은 것을 다시 부른다 — 다시 부를 길이 없으면 영원히 막힌다. */
+  refetch: () => void;
+}
+
+/**
+ * 잠금 토큰이 앉는 **전표 상세 경로**.
+ *
+ * ⭐ **액션 경로가 아니라 상세 경로다.** 토큰은 그 리소스의 상세 조회가 내려 주고(공유계약
+ * B-1), 액션 경로를 주면 토큰이 비어 훅이 요청을 만들지 않는다.
+ */
+export const issueDetailPath = (goodsIssueId: number): string =>
+  `/logistics/goods-issues/${String(goodsIssueId)}`;
+
+/**
+ * 고른 전표의 **상세** — 전기에 쓸 잠금 토큰을 그 경로에 앉히는 자리다.
+ *
+ * ⛔ **고르지 않았으면 부르지 않는다** — 없는 전표의 상세를 물으면 404 가 배너로 선다.
+ */
+export const useIssueDetail = (
+  goodsIssueId: number | null,
+): UseQueryResult<GoodsIssueDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: disposalRequestKeys.detail(goodsIssueId ?? 0),
+    enabled: goodsIssueId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/logistics/goods-issues/{goodsIssueId}', {
+          params: { path: { goodsIssueId: goodsIssueId ?? 0 } },
+        }),
+      ),
+  });
 };
 
 /**

@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { resolvePlacements, type PlacementEntry } from './placement';
+import type { PlacementQuery } from './queries';
 import type { DisposalTarget } from './types';
 
 /**
@@ -29,6 +30,9 @@ const target = (over: Partial<DisposalTarget> = {}): DisposalTarget => ({
   ...over,
 });
 
+/** 받은 자리들. 시험이 「받았다」를 짧게 적게 한다. */
+const loaded = (...entries: PlacementEntry[]): PlacementQuery => ({ kind: 'loaded', entries });
+
 const seat = (over: Partial<PlacementEntry> = {}): PlacementEntry => ({
   lotId: 9001,
   warehouseId: 11,
@@ -39,7 +43,7 @@ const seat = (over: Partial<PlacementEntry> = {}): PlacementEntry => ({
 
 describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
   it('LOT 하나가 한 자리에 있으면 그 창고와 위치를 낸다', () => {
-    const result = resolvePlacements([target()], () => [seat()]);
+    const result = resolvePlacements([target()], () => loaded(seat()));
 
     expect(result).toEqual({
       kind: 'resolved',
@@ -49,7 +53,7 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
   });
 
   it('고른 것이 없으면 대상 선택을 사유로 막는다', () => {
-    expect(resolvePlacements([], () => [seat()])).toEqual({
+    expect(resolvePlacements([], () => loaded(seat()))).toEqual({
       kind: 'blocked',
       reason: t.noTarget,
     });
@@ -57,7 +61,7 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
 
   /** ⛔ 판정은 됐는데 LOT 이 안 실린 건이다 — 무엇을 뺄지 정할 수 없다. */
   it('LOT 을 못 받은 대상이 있으면 그것을 사유로 막는다', () => {
-    expect(resolvePlacements([target({ lotId: null })], () => [seat()])).toEqual({
+    expect(resolvePlacements([target({ lotId: null })], () => loaded(seat()))).toEqual({
       kind: 'blocked',
       reason: t.lotMissing,
     });
@@ -65,14 +69,28 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
 
   /** ⛔ 「아직 못 받았다」와 「자리가 없다」는 사용자에게 다른 말이어야 한다. */
   it('자리를 아직 못 받았으면 조회 중을 사유로 막는다', () => {
-    expect(resolvePlacements([target()], () => undefined)).toEqual({
+    expect(resolvePlacements([target()], () => ({ kind: 'pending' }))).toEqual({
       kind: 'blocked',
       reason: t.pending,
     });
   });
 
+  /**
+   * ⛔ **조회 «실패»를 「확인하는 중」으로 적지 않는다.**
+   *
+   * 접으면 실패해도 「확인하는 중」이 영원히 뜨고 사용자는 기다리기만 한다 — 다시 부를 수
+   * 있다는 것도 알 수 없다. 다시 부를 수 있는 막힘이라는 표식까지 함께 잡는다.
+   */
+  it('조회가 실패하면 그것을 사유로 막고 다시 부를 수 있다고 표시한다', () => {
+    expect(resolvePlacements([target()], () => ({ kind: 'failed' }))).toEqual({
+      kind: 'blocked',
+      reason: t.failed,
+      isRetryable: true,
+    });
+  });
+
   it('자리가 비어 오면 못 찾음을 사유로 막는다', () => {
-    expect(resolvePlacements([target()], () => [])).toEqual({
+    expect(resolvePlacements([target()], () => loaded())).toEqual({
       kind: 'blocked',
       reason: t.notFound,
     });
@@ -83,10 +101,9 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
    * 실린다. 세지 않으면 「못 찾았다」로 떨어져 막힌다 — 조용히 지나가지 않는다.
    */
   it('창고나 위치가 빈 줄만 오면 못 찾음으로 막는다', () => {
-    const result = resolvePlacements([target()], () => [
-      seat({ warehouseId: null }),
-      seat({ locationId: null }),
-    ]);
+    const result = resolvePlacements([target()], () =>
+      loaded(seat({ warehouseId: null }), seat({ locationId: null })),
+    );
 
     expect(result).toEqual({ kind: 'blocked', reason: t.notFound });
   });
@@ -97,10 +114,9 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
    * 첫 줄을 집으면 **조용히 틀린 선반에서 빠진다.** 어느 선반에서 뺄지는 사람이 정할 일이다.
    */
   it('한 LOT 이 여러 자리에 있으면 나뉨을 사유로 막는다', () => {
-    const result = resolvePlacements([target()], () => [
-      seat({ locationId: 77 }),
-      seat({ locationId: 78 }),
-    ]);
+    const result = resolvePlacements([target()], () =>
+      loaded(seat({ locationId: 77 }), seat({ locationId: 78 })),
+    );
 
     expect(result).toEqual({ kind: 'blocked', reason: t.split });
   });
@@ -112,8 +128,8 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
 
     const result = resolvePlacements([first, second], (lotId) =>
       lotId === 9001
-        ? [seat({ lotId: 9001, warehouseId: 11 })]
-        : [seat({ lotId: 9002, warehouseId: 12 })],
+        ? loaded(seat({ lotId: 9001, warehouseId: 11 }))
+        : loaded(seat({ lotId: 9002, warehouseId: 12 })),
     );
 
     expect(result).toEqual({ kind: 'blocked', reason: t.mixedWarehouse });
@@ -125,8 +141,8 @@ describe('resolvePlacements — 폐기할 LOT 이 어디 있는가', () => {
 
     const result = resolvePlacements([first, second], (lotId) =>
       lotId === 9001
-        ? [seat({ lotId: 9001, locationId: 77 })]
-        : [seat({ lotId: 9002, locationId: 78 })],
+        ? loaded(seat({ lotId: 9001, locationId: 77 }))
+        : loaded(seat({ lotId: 9002, locationId: 78 })),
     );
 
     expect(result).toEqual({

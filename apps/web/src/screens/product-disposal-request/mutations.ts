@@ -2,12 +2,13 @@ import type { ApiError, components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 import { useApiClient } from '../../patterns/api-context';
-import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { requireIfMatch, useMasterWrite, type MasterWriteResult } from '../../patterns/master';
 import { ApiRequestError } from '../../patterns/request';
-import { disposalRequestKeys } from './queries';
-import type { ApprovalRequestCreate, GoodsIssueCreate } from './request-draft';
+import { disposalRequestKeys, issueDetailPath } from './queries';
+import { withOccurrence, type ApprovalRequestCreate, type GoodsIssueDraft } from './request-draft';
 
 type GoodsIssue = components['schemas']['GoodsIssue'];
+type PostRequest = components['schemas']['PostRequest'];
 
 /**
  * 전표는 만들어졌는데 **상신에 쓸 잠금 토큰이 응답에 없었다.**
@@ -46,7 +47,13 @@ const missingSubmitTokenError = (): ApiError => ({
  * 접히지 않는다 — 전표 본문만 담으면 사유만 바뀐 재시도가 첫 요청의 응답으로 덮인다.
  */
 export interface DisposalRequestPayload {
-  issue: GoodsIssueCreate;
+  /**
+   * ⛔ **시각 세 칸이 빠져 있다** — `withOccurrence` 가 보내는 순간에 얹는다.
+   *
+   * 여기 두면 밀리초까지 지문에 실려 **누를 때마다 지문이 달라지고**, 키를 붙드는 장치가
+   * 통째로 무력해진다. 그러면 재시도가 새 폐기 전표가 된다.
+   */
+  issue: GoodsIssueDraft;
   approval: ApprovalRequestCreate;
 }
 
@@ -84,7 +91,8 @@ export const useDisposalRequestMutation = (
     request: async (body, headers) => {
       const created = await client.POST('/logistics/goods-issues', {
         params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
-        body: body.issue,
+        /* ⭐ 시각을 «보내는 순간» 얹는다 — 지문에 들어가지 않게(위 주석). */
+        body: withOccurrence(body.issue, new Date()),
       });
 
       /*
@@ -145,3 +153,61 @@ export const useDisposalRequestMutation = (
     onSuccess: (data) => options.onSuccess(data.goodsIssueId),
   });
 };
+
+/**
+ * 승인이 끝난 폐기 요청을 **실제 출고로 처리한다** — 계약이 「재고가 움직이는 순간」이라 적은 자리다.
+ *
+ * ⭐ **승인은 자물쇠를 풀 뿐이다**(J-8) — 승인이 끝나도 출고는 여기서 «다시» 눌러야 한다.
+ *
+ * ⛔ **승인 전이라는 판정을 화면이 흉내 내지 않는다.** 승인 상태 값이 계약에서 아직 열린
+ * 문자열이라(`5b3d773` 실측) 앞질러 막으면 **승인이 끝났는데도 열리지 않는다**(통지 `#674` ·
+ * 설계서 §8-6). 버튼을 열고 **서버의 400 을 그대로 배너에 낸다** — 코드로 분기해 원인을
+ * 지어내면 다른 이유로 온 400 에도 같은 안내가 붙는다.
+ *
+ * ⛔ **`If-Match` 는 훅이 붙인다**(`etagPath`) — 토큰은 그 전표의 «상세 경로»에 앉는다.
+ * 액션 경로를 주면 토큰이 비어 훅이 요청을 만들지 않는다.
+ */
+export const useDisposalPostMutation = (
+  options: DisposalPostOptions,
+): MasterWriteResult<PostRequest> => {
+  const { client } = useApiClient();
+
+  return useMasterWrite<PostRequest, GoodsIssue>({
+    request: (body, headers) => {
+      /*
+       * ⛔ **없는 값을 0 으로 메우지 않는다.** `etagPath` 가 `null` 이 되면 공통 훅은 그것을
+       * 「잠금이 필요 없다」로 읽어 요청을 그대로 내보낸다 — `…/0:post` 가 실제로 나갈 수 있는
+       * 모양이 된다. 부르는 자리가 그렇게 부르지 않는다는 사실에 기대지 않고 여기서 멈춘다.
+       */
+      if (options.goodsIssueId === null) {
+        throw new Error('전기할 전표를 고르기 전에는 전기하지 않습니다.');
+      }
+
+      return client.POST('/logistics/goods-issues/{goodsIssueId}:post', {
+        params: {
+          path: { goodsIssueId: options.goodsIssueId },
+          header: {
+            'Idempotency-Key': headers['Idempotency-Key'],
+            'If-Match': requireIfMatch(headers),
+          },
+        },
+        body,
+      });
+    },
+    etagPath: options.goodsIssueId === null ? null : issueDetailPath(options.goodsIssueId),
+    /*
+     * ⭐ **잔액도 함께 무효화한다** — 전기는 재고를 «움직이는» 쓰기다. 무효화하지 않으면
+     * 다음 폐기 요청의 위치 조회가 이미 빠진 재고를 남아 있는 것으로 읽는다.
+     */
+    invalidateKeys: [disposalRequestKeys.all],
+    knownFields: ['businessDate', 'occurredAt'],
+    keyLifetime: 'until-applied',
+    onSuccess: () => options.onSuccess(),
+  });
+};
+
+export interface DisposalPostOptions {
+  /** 전기할 전표. 「처리 이력」에서 고른 것이다 — 이 조작에 다른 출처가 없다. */
+  goodsIssueId: number | null;
+  onSuccess: () => void;
+}

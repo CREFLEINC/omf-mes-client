@@ -37,9 +37,6 @@ const PAYLOAD: DisposalRequestPayload = {
     sourceDocumentTypeCode: 'DISPOSITION_DECISION',
     sourceDocumentId: 7001,
     sourceWarehouseId: 11,
-    issuedAt: '2026-09-09T10:00:00+09:00',
-    businessDate: '2026-09-09',
-    occurredAt: '2026-09-09T10:00:00+09:00',
     reasonCode: 'DEFECT_AFTER_RECEIPT',
     destinationTypeCode: null,
     destinationId: null,
@@ -84,6 +81,28 @@ describe('useDisposalRequestMutation — 승인 요청의 두 호출', () => {
    * `approval_request` 에 업무 값이 `reason` 하나뿐이라, 그 문장이 승인자가 보는 전부다.
    * 「본문을 보낸다」로만 단언하면 빈 객체를 보내도 통과하므로 **사유 문자열을 이름으로 지목한다.**
    */
+  /**
+   * ⭐ **시각은 «보내는 자리»가 얹는다** — 본문에 실려 나가되 멱등 지문에는 들지 않는다.
+   * 둘 다 확인하지 않으면 「지문에서 뺐더니 서버로도 안 갔다」를 놓친다.
+   */
+  it('시각 세 칸을 보내는 자리가 얹어 내보낸다', async () => {
+    const creates: Request[] = [];
+    const { result } = renderMutation([
+      createRoute(creates),
+      submitRoute([], () => jsonResponse({}, { status: 202 })),
+    ]);
+
+    act(() => result.current.write(PAYLOAD));
+
+    await waitFor(() => expect(creates).toHaveLength(1));
+
+    const body = (await creates[0]?.json()) as Record<string, unknown>;
+
+    expect(body.issuedAt).toEqual(expect.any(String));
+    expect(body.occurredAt).toEqual(expect.any(String));
+    expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
   it('상신 본문에 사유를 싣는다', async () => {
     const creates: Request[] = [];
     const submits: Request[] = [];
