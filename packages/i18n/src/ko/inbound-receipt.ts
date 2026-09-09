@@ -134,7 +134,8 @@ export const inboundReceipt = {
       ordered: '발주',
       received: '누적',
       arrived: '이번 도착',
-      remaining: '남은 예정',
+      /* 판정이 견주는 남은 예정이 아니라 이번 것까지 받고도 남는 몫이다. */
+      remaining: '남은',
     },
     underAsk: '더 들어올 물량이 있습니까?',
     /** 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. */

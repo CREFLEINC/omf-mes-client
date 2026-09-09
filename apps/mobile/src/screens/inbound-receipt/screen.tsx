@@ -28,6 +28,7 @@ import {
   packageProblem,
   qtyProblem,
   queuedQtyOf,
+  remainingAfterOf,
   remainingQtyOf,
   sourceOf,
   splitQuantitiesOf,
@@ -921,9 +922,14 @@ export const InboundReceiptScreen = () => {
                     <dt>{t.verdict.counts.arrived}</dt>
                     <dd>{`${String(received)} ${uom}`}</dd>
                     <dt>{t.verdict.counts.remaining}</dt>
-                    <dd>{`${String(remainingQtyOf(draft.purchaseOrderLine, queuedQty))} ${uom}`}</dd>
+                    <dd>
+                      {`${String(
+                        remainingAfterOf(draft.purchaseOrderLine, received, queuedQty),
+                      )} ${uom}`}
+                    </dd>
                   </dl>
                   <p>{t.verdict.underAsk}</p>
+                  {/* 두 길은 같은 무게다. 하나만 단추로 세우면 다른 하나가 안내로 읽힌다. */}
                   <div className="receipt__under-choice">
                     <Button
                       variant={continueUnder ? 'filled' : 'outlined'}
@@ -934,7 +940,7 @@ export const InboundReceiptScreen = () => {
                     >
                       {t.verdict.underContinue}
                     </Button>
-                    <Link to="/inbound-variance" className="receipt__under-link">
+                    <Link to="/inbound-variance" className="action-link">
                       {t.verdict.underVariance}
                     </Link>
                   </div>

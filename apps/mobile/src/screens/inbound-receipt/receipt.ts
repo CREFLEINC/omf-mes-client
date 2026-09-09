@@ -30,6 +30,19 @@ export type Verdict = typeof NORMAL | typeof OVER | typeof UNDER;
 export const remainingQtyOf = (line: PurchaseOrderLine, queuedQty = 0): number =>
   line.orderedQty - line.receivedQty - queuedQty;
 
+/**
+ * 이번 도착까지 받고도 남는 몫.
+ *
+ * 판정이 견주는 남은 예정은 이번 도착을 빼기 전이다. 부족을 알릴 때 보이는 네 수의
+ * 마지막은 이번 것까지 받고도 얼마가 남는지라, 둘을 같은 수로 보이면 사람이 무엇을 고르는지
+ * 모른 채 고른다.
+ */
+export const remainingAfterOf = (
+  line: PurchaseOrderLine,
+  arrivedQty: number,
+  queuedQty = 0,
+): number => remainingQtyOf(line, queuedQty) - arrivedQty;
+
 export const verdictOf = (line: PurchaseOrderLine, arrivedQty: number, queuedQty = 0): Verdict => {
   const remaining = remainingQtyOf(line, queuedQty);
 

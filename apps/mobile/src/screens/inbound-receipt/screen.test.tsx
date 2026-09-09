@@ -187,7 +187,7 @@ beforeEach(() => {
 
 describe('입하 등록 화면', () => {
   /*
-   * 번호 앞 아홉 자리가 제품코드다(MLOT #16). 그것으로 품목을 찾으면 후보를 좁힐 수 있고,
+   * 번호 앞 아홉 자리가 제품코드다. 그것으로 품목을 찾으면 후보를 좁힐 수 있고,
    * 좁히지 않으면 담당자가 미마감 전건을 훑는다 - 잘못 고르면 그 입하가 다른 발주에 붙는다.
    */
   it('스캔한 번호의 품목이 있는 ERP W/O 만 후보로 낸다', async () => {
@@ -478,7 +478,14 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(screen.getByText('발주')).toBeTruthy();
     expect(screen.getByText('누적')).toBeTruthy();
     expect(screen.getByText('이번 도착')).toBeTruthy();
-    expect(screen.getByText('남은 예정')).toBeTruthy();
+    /*
+     * 판정이 견주는 남은 예정이 아니라 이번 것까지 받고도 남는 몫이다. 둘을 같은 수로 보이면
+     * 사람이 무엇을 고르는지 모른 채 고른다. 발주 500 · 누적 0 · 이번 400 이라 100 이다.
+     */
+    const terms = screen.getAllByRole('term').map((node) => node.textContent);
+    const values = screen.getAllByRole('definition').map((node) => node.textContent);
+
+    expect(values[terms.indexOf('남은')]).toBe('100 EA');
     expect(screen.getByRole('button', { name: '계속 등록' })).toBeTruthy();
     expect(screen.getByRole('link', { name: '입하 오류 등록' })).toBeTruthy();
   });
