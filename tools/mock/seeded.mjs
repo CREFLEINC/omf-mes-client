@@ -2080,6 +2080,20 @@ on('POST', '/logistics/goods-issues/{goodsIssueId}:post', (params, _q, body, hea
     if (!matchesEtag(headers, expected)) return conflict();
 
     /*
+     * ⛔ **이미 전기된 전표를 다시 전기하지 않는다.** 막지 않으면 누를 때마다 재고가 또 빠진다
+     * (실측 500→490→480). 서버 쪽 판정이라 상태 값을 봐도 된다 — 화면이 그것을 파생하는 것과
+     * 다른 자리다.
+     */
+    if (goodsIssue.statusCode === 'POSTED') {
+      return {
+        status: 400,
+        created: {
+          errors: [{ scope: 'screen', code: 'ALREADY_POSTED', message: '이미 전기된 전표입니다.' }],
+        },
+      };
+    }
+
+    /*
      * ⛔ **승인이 끝나기 전에는 전기하지 않는다.** 목에 결재 «판정» 상태가 없으므로 여기서는
      * 「상신된 요청이 아직 진행 중이면 막는다」로 세운다 — 승인 완료를 흉내 내지 않는다.
      */

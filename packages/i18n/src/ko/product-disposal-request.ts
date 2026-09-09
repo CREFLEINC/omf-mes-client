@@ -187,6 +187,7 @@ export const productDisposalRequest = {
       no: '출고번호',
       source: '원천',
       issuedAt: '출고일시',
+      status: '상태',
       reason: '사유',
       approval: '결재',
     },

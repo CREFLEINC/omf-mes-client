@@ -3,7 +3,12 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
-import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import {
+  createStubFetch,
+  jsonResponse,
+  renderWithProviders,
+  type StubFetch,
+} from '../../test/api-harness';
 import { ProductDisposalRequestScreen } from './screen';
 
 /**
@@ -73,10 +78,18 @@ interface StubOptions {
   historyRows?: unknown[];
   onPost?: (request: Request) => void;
   postStatus?: number;
+  /** 전표 생성 응답을 400 으로 떨어뜨릴 때 쓴다 — 오류가 어디에 서는지 본다. */
+  createStatus?: number;
+  createError?: unknown;
+  /** 전기 응답을 붙들어 「보내는 중」을 유지한다. */
+  holdPost?: boolean;
 }
 
-const buildFetch = (options: StubOptions = {}) =>
-  createStubFetch([
+/** 전기 응답을 «끝나지 않게» 붙든다 — 「보내는 중」 상태를 재려면 응답이 오면 안 된다. */
+const never = (): Promise<Response> => new Promise<Response>(() => undefined);
+
+const buildFetch = (options: StubOptions = {}): StubFetch => {
+  const routes = createStubFetch([
     {
       match: (r) => r.url.includes('/quality/disposition-decisions'),
       respond: () => jsonResponse({ items: [DECISION], page }),
@@ -145,6 +158,11 @@ const buildFetch = (options: StubOptions = {}) =>
       match: (r) => r.method === 'POST' && r.url.endsWith('/logistics/goods-issues'),
       respond: (request) => {
         options.onCreate?.(request.clone());
+
+        if (options.createStatus !== undefined) {
+          return jsonResponse(options.createError, { status: options.createStatus });
+        }
+
         return jsonResponse(
           {
             goodsIssue: {
@@ -174,6 +192,7 @@ const buildFetch = (options: StubOptions = {}) =>
       match: (r) => r.method === 'POST' && r.url.includes(':post'),
       respond: (request) => {
         options.onPost?.(request.clone());
+
         return options.postStatus === undefined || options.postStatus === 200
           ? jsonResponse(DETAIL.goodsIssue)
           : jsonResponse(
@@ -192,6 +211,16 @@ const buildFetch = (options: StubOptions = {}) =>
       respond: () => jsonResponse({ items: options.historyRows ?? [], page }),
     },
   ]);
+
+  return async (request) => {
+    if (options.holdPost === true && request.url.includes(':post')) {
+      options.onPost?.(request.clone());
+      return never();
+    }
+
+    return routes(request);
+  };
+};
 
 const openScreen = (options: StubOptions = {}, route = '/') =>
   renderWithProviders(<ProductDisposalRequestScreen />, { fetch: buildFetch(options), route });
@@ -295,6 +324,61 @@ describe('W-04-10 제품 폐기 요청 — 화면', () => {
 
     expect(first).toBeTruthy();
     expect(creates[1]?.headers.get('Idempotency-Key')).toBe(first);
+  });
+
+  /**
+   * ⛔ **서버가 칸 옆에 놓으라고 준 오류가 «어디에도» 안 보이면 안 된다.**
+   *
+   * `knownFields` 에 이름을 적으면 공통 훅이 그 오류를 인라인 몫으로 빼는데, 화면이 안 내면
+   * **배너에서도 빠진다.** 저장소가 같은 함정을 문장으로 못박아 둔 자리다.
+   */
+  it('필드 범위 오류를 칸 옆에 낸다', async () => {
+    const user = userEvent.setup();
+    openScreen({
+      createStatus: 400,
+      createError: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'reasonCode',
+            code: 'INVALID',
+            message: '쓸 수 없는 사유입니다',
+          },
+        ],
+      },
+    });
+
+    await user.click(await screen.findByRole('checkbox', { name: 'FG-0288 선택' }));
+    await user.click(await screen.findByRole('checkbox', { name: t.issue.selfDisposal }));
+    await pickReason(user);
+    await submitRequest(user);
+
+    expect(await screen.findByText('쓸 수 없는 사유입니다')).toBeInTheDocument();
+  });
+
+  /** ⛔ 칸이 없는 자리의 오류는 «배너»로 올라와야 한다 — 인라인 몫으로 빼면 사라진다. */
+  it('칸이 없는 자리의 오류는 배너로 낸다', async () => {
+    const user = userEvent.setup();
+    openScreen({
+      createStatus: 400,
+      createError: {
+        errors: [
+          {
+            scope: 'field',
+            field: 'sourceDocumentTypeCode',
+            code: 'INVALID',
+            message: '원천 문서 유형이 올바르지 않습니다',
+          },
+        ],
+      },
+    });
+
+    await user.click(await screen.findByRole('checkbox', { name: 'FG-0288 선택' }));
+    await user.click(await screen.findByRole('checkbox', { name: t.issue.selfDisposal }));
+    await pickReason(user);
+    await submitRequest(user);
+
+    expect(await screen.findByText('원천 문서 유형이 올바르지 않습니다')).toBeInTheDocument();
   });
 
   /**
@@ -538,6 +622,36 @@ describe('W-04-10 — 「기타출고 처리」', () => {
     expect(await screen.findByText(t.issue.notSubmitted)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.issue.submit })).toBeDisabled();
     expect(posts).toHaveLength(0);
+  });
+
+  /**
+   * ⛔ **전기 중에는 다른 탭으로 건너가지 못한다.**
+   *
+   * 탭이 바뀌면 보내는 자리가 화면에서 사라져 **도착한 되먹임이 설 곳을 잃는다.**
+   * 보고 있는 탭은 잠그지 않는다 — 자기 자신을 누르는 것은 아무 일도 하지 않는다.
+   */
+  it('전기 중에는 요청 탭으로 건너가지 못한다', async () => {
+    const user = userEvent.setup();
+    const posts: Request[] = [];
+    /* 응답을 붙들어 「보내는 중」을 유지한다. */
+    openHistory({ onPost: (r) => posts.push(r), holdPost: true });
+
+    await user.click(await screen.findByRole('checkbox', { name: '행 선택' }));
+
+    const button = screen.getByRole('button', { name: t.issue.submit });
+
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+
+    /*
+     * ⭐ **속성이 아니라 «동작»을 단언한다.** DS 가 잠긴 탭을 어떤 속성으로 내는지는 그쪽
+     * 사정이고, 화면이 지켜야 하는 것은 「눌러도 안 넘어간다」다.
+     */
+    await waitFor(() => expect(posts).toHaveLength(1));
+    await user.click(screen.getByRole('tab', { name: t.tabs.request }));
+
+    expect(screen.getByRole('heading', { name: t.panes.history })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: t.panes.targets })).not.toBeInTheDocument();
   });
 
   /** ⚠ 목록에 자재 폐기 전표가 섞여 온다 — 남의 화면 업무를 여기서 끝내지 않는다. */

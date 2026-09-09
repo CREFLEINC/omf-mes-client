@@ -259,6 +259,7 @@ export const ProductDisposalRequestScreen = () => {
         isPartnersError={partners.isError}
         issueTypes={issueTypes}
         issueReasons={issueReasons}
+        fieldErrors={write.fieldErrors}
         onChange={(patch) => {
           if (patch.reason !== undefined) setIsReasonTouched(true);
           setDraft((current) => ({ ...current, ...patch }));
@@ -375,7 +376,7 @@ export const ProductDisposalRequestScreen = () => {
                   : issueDetail.isError
                     ? t.issue.tokenFailed
                     : post.isSaving
-                      ? messages.productDisposalRequest.lock.saving
+                      ? t.lock.saving
                       : undefined,
         onPost: () => {
           if (selectedIssue === null) return;

@@ -87,7 +87,13 @@ export const toIssueRow = (data: GoodsIssueResponse): IssueRow => ({
   approvalRequestId: data.approvalRequestId ?? null,
 });
 
-/** ⭐ 이 화면이 만든 전표인가. **거르는 데 쓰지 않는다** — 열의 표시를 가르는 데만 쓴다. */
+/**
+ * ⭐ 이 화면이 만든 전표인가.
+ *
+ * ⛔ **목록을 «거르는» 데 쓰지 않는다**(L-11 — 쪽 단위 목록을 화면에서 거르면 총 건수와
+ * 어긋난다). 쓰는 자리는 둘이다 — 원천 열의 표시를 가르는 것과, **전기를 막는 것**.
+ * 남의 화면(`W-01-06`)이 만든 전표를 여기서 전기하면 그 화면의 업무를 여기서 끝내게 된다.
+ */
 export const isProductDisposal = (row: IssueRow): boolean =>
   row.sourceDocumentTypeCode === 'DISPOSITION_DECISION';
 

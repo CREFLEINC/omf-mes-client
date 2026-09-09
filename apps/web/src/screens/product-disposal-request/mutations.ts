@@ -62,6 +62,16 @@ export interface DisposalRequestPayload {
   approval: ApprovalRequestCreate;
 }
 
+/**
+ * 서버 오류를 **칸 옆에** 놓을 수 있는 자리.
+ *
+ * 이 둘만 사용자가 고칠 칸을 갖는다. 나머지는 배너 몫이다 — 위 주석 참조.
+ */
+const INLINE_FIELDS: readonly string[] = ['reasonCode', 'reason'];
+
+/** 인라인으로 낼 자리가 없는 쓰기. 전부 배너로 올린다. */
+const NO_INLINE_FIELDS: readonly string[] = [];
+
 export interface DisposalRequestOptions {
   onSuccess: (goodsIssueId: number) => void;
 }
@@ -153,7 +163,16 @@ export const useDisposalRequestMutation = (
      */
     etagPath: null,
     invalidateKeys: [disposalRequestKeys.all],
-    knownFields: ['reasonCode', 'issueTypeCode', 'sourceDocumentTypeCode', 'reason'],
+    /*
+     * ⛔ **`knownFields` 는 「이 화면에 그 오류를 놓을 칸이 있다」는 선언이다.** 없는 칸을
+     * 적으면 서버가 준 사유가 인라인 몫으로 빠지면서 **배너에서도 빠져 어디에도 표시되지
+     * 않는다**(저장소가 `packing-work/mutations.ts` 에 같은 함정을 문장으로 못박아 두었다).
+     *
+     * ⭐ 이 화면에서 칸으로 돌아갈 것은 **둘뿐**이다 — 폐기 사유 선택칸과 요청 사유 입력칸.
+     * `issueTypeCode`·`sourceDocumentTypeCode` 는 화면이 정하는 «구조 값»이라 사용자가 고칠
+     * 칸이 없다 — 그 자리 오류는 배너로 올려야 사람이 볼 수 있다.
+     */
+    knownFields: INLINE_FIELDS,
     keyLifetime: 'until-applied',
     onSuccess: (data) => options.onSuccess(data.goodsIssueId),
   });
@@ -188,9 +207,13 @@ export const useDisposalPostMutation = (
         throw new Error('전기할 전표를 고르기 전에는 전기하지 않습니다.');
       }
 
+      /*
+       * ⚠ **경로와 지문이 «같은» 출처를 본다.** 경로를 `options` 에서, 지문을 `body` 에서
+       * 가져오면 고른 전표가 바뀌는 찰나에 **앞 전표의 키로 뒤 전표를 전기**할 수 있다.
+       */
       return client.POST('/logistics/goods-issues/{goodsIssueId}:post', {
         params: {
-          path: { goodsIssueId: options.goodsIssueId },
+          path: { goodsIssueId: body.goodsIssueId },
           header: {
             'Idempotency-Key': headers['Idempotency-Key'],
             'If-Match': requireIfMatch(headers),
@@ -206,7 +229,11 @@ export const useDisposalPostMutation = (
      * 다음 폐기 요청의 위치 조회가 이미 빠진 재고를 남아 있는 것으로 읽는다.
      */
     invalidateKeys: [disposalRequestKeys.all],
-    knownFields: ['businessDate', 'occurredAt'],
+    /*
+     * ⛔ **인라인으로 낼 자리가 없다.** 전기 본문의 두 값은 화면이 보내는 순간 만들고 사용자가
+     * 고칠 칸이 없다 — 적으면 그 오류가 배너에서도 빠진다.
+     */
+    knownFields: NO_INLINE_FIELDS,
     keyLifetime: 'until-applied',
     onSuccess: () => options.onSuccess(),
   });

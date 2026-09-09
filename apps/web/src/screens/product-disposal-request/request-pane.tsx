@@ -36,6 +36,13 @@ export interface RequestPaneProps {
   isPartnersError: boolean;
   issueTypes: LookupSource;
   issueReasons: LookupSource;
+  /**
+   * 서버가 칸 옆에 놓으라고 준 오류.
+   *
+   * ⛔ **받아서 «내야» 한다.** `knownFields` 에 이름을 적어 두면 공통 훅이 그 오류를 인라인
+   * 몫으로 빼는데, 화면이 안 내면 **배너에서도 빠져 어디에도 표시되지 않는다.**
+   */
+  fieldErrors: Record<string, string>;
   onChange: (patch: Partial<DisposalDraft>) => void;
 }
 
@@ -66,6 +73,7 @@ export const RequestPane = ({
   isPartnersError,
   issueTypes,
   issueReasons,
+  fieldErrors,
   onChange,
 }: RequestPaneProps) => {
   const partnerId = useId();
@@ -89,7 +97,8 @@ export const RequestPane = ({
         fullWidth
         rows={3}
         maxLength={REASON_MAX}
-        error={showError ? reasonError(draft.reason) : undefined}
+        /* ⭐ 화면의 판정과 서버가 준 사유를 «함께» 본다 — 서버 것이 뒤에 와도 사라지지 않는다. */
+        error={(showError ? reasonError(draft.reason) : undefined) ?? fieldErrors.reason}
         helperText={t.request.reasonHelp}
         onChange={(event) => onChange({ reason: event.target.value })}
       />
@@ -131,6 +140,9 @@ export const RequestPane = ({
             placeholder={t.issue.reasonLabel}
             onChange={(value) => onChange({ issueReasonCode: value })}
           />
+          {fieldErrors.reasonCode !== undefined && (
+            <span className="field-error">{fieldErrors.reasonCode}</span>
+          )}
         </div>
       </div>
 
