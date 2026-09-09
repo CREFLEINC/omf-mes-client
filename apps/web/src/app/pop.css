@@ -3119,7 +3119,16 @@
  */
 [data-pop-logout='on'] .pop-ui > .pop-header,
 [data-pop-logout='on'] .pop-ui > .pop-terminal-header {
-  padding-right: var(--pop-logout-w, 84px);
+  /*
+   * ⛔ **이 값은 버튼이 차지하는 폭보다 «커야» 한다.** `.pop-logout` 은 `fixed` 라 자리를
+   *   만들지 않는다 — 머리줄이 비워 준 만큼만 안전지대다. 버튼을 줄이면서 이 값을 84 로
+   *   함께 줄였더니 머리줄 오른쪽 끝(연결 상태 배지)과 버튼이 붙었다(실측 2026-09-09 —
+   *   버튼 자리 95 · 비운 자리 84).
+   *
+   * ⚠ 현재 버튼 자리는 95(버튼 83 + 오른쪽 여백 12)이고, 여기에 배지와의 사이 간격을 더해
+   *   108 을 둔다. **버튼 글자·여백·글꼴을 바꾸면 이 값도 함께 재어 고친다.**
+   */
+  padding-right: var(--pop-logout-w, 108px);
 }
 
 .pop-logout {
