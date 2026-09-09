@@ -20,6 +20,14 @@ const plant = vi.hoisted(() => ({ id: null as number | null }));
 vi.mock('../../patterns/plant', () => ({
   currentPlantId: () => plant.id,
 }));
+/** 장갑 낀 손은 화면을 안 보고 있을 수 있다. 소리로도 알리는지 본다(공유계약 D-2). */
+const tone = vi.hoisted(() => ({ played: 0 }));
+
+vi.mock('../../patterns/error-tone', () => ({
+  playErrorTone: () => {
+    tone.played += 1;
+  },
+}));
 /** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
 const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
@@ -178,6 +186,58 @@ beforeEach(() => {
 });
 
 describe('입하 등록 화면', () => {
+  /*
+   * 세로 화면이라 채운 구획이 화면을 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다.
+   * 한 손은 스캐너를 들고 있어 스크롤로 찾게 두면 안 된다.
+   */
+  it('LOT 을 받으면 다음 구획을 화면 안으로 들인다', async () => {
+    const pulled: string[] = [];
+
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value(this: Element) {
+        pulled.push(this.textContent?.slice(0, 12) ?? '');
+      },
+    });
+
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+
+    await screen.findByText('ERP W/O 선택');
+    expect(pulled.some((text) => text.startsWith('ERP W/O 선택'))).toBe(true);
+  });
+
+  /* 스캔 오류는 소리로도 알린다. 장갑 낀 손은 단말을 허리에 매달고 화면을 안 본다. */
+  it('양식이 아닌 값을 받으면 소리로도 알린다', async () => {
+    tone.played = 0;
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    scan('123');
+
+    await screen.findByText('자재 LOT 번호는 34자리 숫자입니다 (현재 3자)');
+    expect(tone.played).toBe(1);
+  });
+
+  /*
+   * 스캔 칸은 소프트 키보드를 꺼 둔 자리라 손으로 칠 수 없다. 직접 입력이 그 칸을 연다 -
+   * 칸을 따로 두면 어느 쪽이 기본인지 흐려진다(공유계약 D-3).
+   */
+  it('직접 입력을 누르면 스캔 칸이 열린다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    const field = await screen.findByLabelText('LOT 번호');
+
+    expect(field).toHaveAttribute('inputmode', 'none');
+
+    await user.click(screen.getByRole('button', { name: '직접 입력' }));
+
+    expect(field).toHaveAttribute('inputmode', 'text');
+    expect(screen.getByRole('button', { name: '넣기' })).toBeTruthy();
+  });
+
   /* 자릿수와 숫자 전용은 저장소가 막지 않는다. 화면이 지키지 않으면 어긋난 채로 저장된다. */
   it('34자리 숫자가 아니면 받지 않고 몇 자인지 말한다', async () => {
     mount();

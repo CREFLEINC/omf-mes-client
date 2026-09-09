@@ -41,6 +41,7 @@ export const inboundReceipt = {
     lineLabel: (item: string, ordered: string, uom: string) => `${item} · 발주 ${ordered} ${uom}`,
     received: (qty: string) => `누적 입하 ${qty}`,
     tolerance: (over: string, under: string) => `허용 +${over} / -${under}`,
+    linePicked: '고른 라인',
     clear: 'ERP W/O 선택 지우기',
   },
   exception: {
@@ -91,6 +92,8 @@ export const inboundReceipt = {
     remaining: (qty: string, uom: string) => `남은 예정 ${qty} ${uom}`,
     received: '실입하 수량',
     packageCount: '포장 수',
+    /* 키패드가 어느 칸에 들어가는지 적는다. 칸이 둘인데 키패드는 하나다. */
+    keypadFor: (label: string) => `숫자판은 ${label}에 들어갑니다`,
     manufactured: '제조일',
     expiry: '유효기한',
     empty: '실입하 수량을 적으세요',

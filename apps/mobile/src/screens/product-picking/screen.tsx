@@ -467,7 +467,7 @@ export const ProductPickingScreen = () => {
             </>
           )}
 
-          <div className="picking__action-bar">
+          <div className="action-bar">
             <Button
               className="picking__pick"
               variant="filled"

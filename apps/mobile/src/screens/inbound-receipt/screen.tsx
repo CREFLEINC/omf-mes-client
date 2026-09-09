@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Card, NumberPad, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
@@ -7,11 +7,12 @@ import { isMaterialLotNo } from '../../patterns/material-lot-no';
 import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { playErrorTone } from '../../patterns/error-tone';
 import { SUBSTITUTE_LOT_REASON, useOpenPurchaseOrders, usePurchaseOrderLines } from './queries';
 import {
   NORMAL,
@@ -67,13 +68,15 @@ export const InboundReceiptScreen = () => {
 
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
   const [malformed, setMalformed] = useState<string | null>(null);
-  const [manual, setManual] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   /* 부족한데도 그대로 등록하겠다는 사람의 답. 화면은 더 올 것인지 알지 못한다. */
   const [continueUnder, setContinueUnder] = useState(false);
   const [splitExceptionType, setSplitExceptionType] = useState('');
   const [splitExceptionReason, setSplitExceptionReason] = useState('');
   const [saveFailed, setSaveFailed] = useState(false);
+  const [keypadFor, setKeypadFor] = useState<'received' | 'package'>('received');
+  const poSection = useRef<HTMLElement | null>(null);
+  const qtySection = useRef<HTMLElement | null>(null);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
    * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 재고가 두 번 는다.
@@ -98,6 +101,8 @@ export const InboundReceiptScreen = () => {
     const code = value.trim();
 
     if (!isMaterialLotNo(code)) {
+      /* 화면을 보고 있지 않을 수 있다. 소리로도 알린다(공유계약 D-2). */
+      playErrorTone();
       setMalformed(code);
       return;
     }
@@ -107,6 +112,10 @@ export const InboundReceiptScreen = () => {
   };
 
   const scanField = useScanField({ onScan: take });
+
+  /* 세로 화면이라 채운 구획이 화면을 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(draft.supplierLotNo !== '' || draft.supplierLotMissing, poSection);
+  useAdvanceTo(draft.purchaseOrderLine !== null || draft.unordered, qtySection);
 
   const orders = useOpenPurchaseOrders();
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
@@ -168,7 +177,6 @@ export const InboundReceiptScreen = () => {
   const restart = () => {
     setDraft(emptyDraft);
     setMalformed(null);
-    setManual('');
     setOutcome(null);
     setContinueUnder(false);
     setSplitExceptionType('');
@@ -282,17 +290,24 @@ export const InboundReceiptScreen = () => {
           fullWidth
           error={malformed === null ? undefined : t.scan.malformed(malformed.length)}
         />
-        <ManualEntry
-          label={t.scan.manualLabel}
-          submitLabel={t.scan.manualSubmit}
-          value={manual}
-          onChange={setManual}
-          onSubmit={() => {
-            take(manual);
-            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-            setManual('');
-          }}
-        />
+        {/*
+         * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+         * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+         */}
+        {scanField.manual ? (
+          <Button
+            className="receipt__wide"
+            variant="outlined"
+            size="xl"
+            onClick={scanField.submitManual}
+          >
+            {t.scan.manualSubmit}
+          </Button>
+        ) : (
+          <Button className="receipt__wide" variant="text" size="xl" onClick={scanField.openManual}>
+            {t.scan.manualLabel}
+          </Button>
+        )}
 
         {draft.supplierLotMissing ? (
           <>
@@ -343,7 +358,7 @@ export const InboundReceiptScreen = () => {
 
       {!started ? null : (
         <>
-          <section className="receipt__section">
+          <section className="receipt__section" ref={poSection}>
             <h2>{t.po.legend}</h2>
             {/* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */}
             <p className="receipt__note">{t.po.pickNote}</p>
@@ -404,35 +419,34 @@ export const InboundReceiptScreen = () => {
                 <ul className="receipt__lines">
                   {(lines.data ?? []).map((line: PurchaseOrderLine) => (
                     <li key={line.purchaseOrderLineId}>
-                      <Button
-                        className="receipt__wide"
-                        variant={
-                          draft.purchaseOrderLine?.purchaseOrderLineId === line.purchaseOrderLineId
-                            ? 'filled'
-                            : 'outlined'
-                        }
-                        size="xl"
+                      <Card
+                        bordered
+                        interactive
                         onClick={() => {
                           patch({ purchaseOrderLine: line });
                         }}
                       >
-                        <span className="receipt__line">
-                          <span>
+                        <Card.Body className="card-body receipt__line">
+                          <strong>
                             {t.po.lineLabel(
                               itemLabelOf(line.itemId),
                               String(line.orderedQty),
                               uoms.data?.get(line.uomId) ?? '',
                             )}
-                          </span>
-                          <span>{t.po.received(String(line.receivedQty))}</span>
-                          <span>
+                          </strong>
+                          <p>{t.po.received(String(line.receivedQty))}</p>
+                          <p>
                             {t.po.tolerance(
                               String(line.toleranceOverQty),
                               String(line.toleranceUnderQty),
                             )}
-                          </span>
-                        </span>
-                      </Button>
+                          </p>
+                          {draft.purchaseOrderLine?.purchaseOrderLineId ===
+                          line.purchaseOrderLineId ? (
+                            <Chip status="success">{t.po.linePicked}</Chip>
+                          ) : null}
+                        </Card.Body>
+                      </Card>
                     </li>
                   ))}
                 </ul>
@@ -620,7 +634,7 @@ export const InboundReceiptScreen = () => {
 
           {draft.purchaseOrderLine === null &&
           !(draft.unordered && draft.itemId !== null) ? null : (
-            <section className="receipt__section">
+            <section className="receipt__section" ref={qtySection}>
               <h2>{t.qty.legend}</h2>
               <Card bordered>
                 <Card.Body className="card-body receipt__card">
@@ -661,14 +675,10 @@ export const InboundReceiptScreen = () => {
                 onChange={(event) => {
                   patch({ receivedQty: event.target.value });
                 }}
-                error={qtyMessage()}
-              />
-              <NumberPad
-                value={draft.receivedQty}
-                onChange={(value) => {
-                  patch({ receivedQty: value });
+                onFocus={() => {
+                  setKeypadFor('received');
                 }}
-                allowDecimal
+                error={qtyMessage()}
               />
 
               <TextField
@@ -680,9 +690,29 @@ export const InboundReceiptScreen = () => {
                 onChange={(event) => {
                   patch({ packageCount: event.target.value });
                 }}
+                onFocus={() => {
+                  setKeypadFor('package');
+                }}
                 error={
                   packageProblem(draft.packageCount) === null ? undefined : t.qty.packageNotPositive
                 }
+              />
+
+              {/*
+               * 키패드는 고른 칸을 따라간다. 칸마다 하나씩 두면 장갑 낀 손이 쓰는 큰 키패드가
+               * 둘이 되어 세로 예산을 먹고, 아래 칸이 화면 밖으로 밀린다.
+               */}
+              <p className="receipt__note">
+                {t.qty.keypadFor(keypadFor === 'received' ? t.qty.received : t.qty.packageCount)}
+              </p>
+              <NumberPad
+                value={keypadFor === 'received' ? draft.receivedQty : draft.packageCount}
+                onChange={(value) => {
+                  patch(
+                    keypadFor === 'received' ? { receivedQty: value } : { packageCount: value },
+                  );
+                }}
+                allowDecimal={keypadFor === 'received'}
               />
 
               <div className="receipt__row receipt__row--split">
@@ -861,15 +891,17 @@ export const InboundReceiptScreen = () => {
             ) : null}
             {worker === null ? <p className="receipt__note">{t.noWorker}</p> : null}
             {verdict === OVER ? null : (
-              <Button
-                className="receipt__wide"
-                variant="filled"
-                size="2xl"
-                disabled={!ready}
-                onClick={() => void submit()}
-              >
-                {t.submit}
-              </Button>
+              <div className="action-bar">
+                <Button
+                  className="receipt__wide"
+                  variant="filled"
+                  size="2xl"
+                  disabled={!ready}
+                  onClick={() => void submit()}
+                >
+                  {t.submit}
+                </Button>
+              </div>
             )}
           </section>
         </>

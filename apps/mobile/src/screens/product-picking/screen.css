@@ -69,14 +69,3 @@
 .picking__target > p {
   margin: 0;
 }
-
-/*
- * 목록이 길어도 돌아갈 길은 늘 화면에 있어야 한다. 바닥까지 내려야 누를 수 있으면 목록을
- * 보러 들어간 사람이 그 안에 갇힌다.
- */
-.picking__action-bar {
-  position: sticky;
-  bottom: 0;
-  padding-block: var(--space-2, 8px);
-  background: var(--surface, #fff);
-}
