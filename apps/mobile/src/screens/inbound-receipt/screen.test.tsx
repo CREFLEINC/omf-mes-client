@@ -179,7 +179,7 @@ describe('입하 등록 화면', () => {
     scan('123');
 
     expect(await screen.findByText('자재 LOT 번호는 34자리 숫자입니다 (현재 3자)')).toBeTruthy();
-    expect(screen.queryByText('발주 선택')).toBeNull();
+    expect(screen.queryByText('ERP W/O 선택')).toBeNull();
   });
 
   it('스캔하면 공급사 LOT으로 들고 발주 선택을 연다', async () => {
@@ -189,7 +189,7 @@ describe('입하 등록 화면', () => {
     scan(SCANNED);
 
     expect(await screen.findByText(`공급사 LOT ${SCANNED}`)).toBeTruthy();
-    expect(screen.getByText('발주 선택')).toBeTruthy();
+    expect(screen.getByText('ERP W/O 선택')).toBeTruthy();
   });
 
   /* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */
@@ -200,7 +200,9 @@ describe('입하 등록 화면', () => {
     scan(SCANNED);
 
     expect(
-      await screen.findByText('스캔한 번호만으로는 발주가 정해지지 않습니다. 담당자가 고릅니다.'),
+      await screen.findByText(
+        '스캔한 번호만으로는 ERP W/O가 정해지지 않습니다. 담당자가 고릅니다.',
+      ),
     ).toBeTruthy();
   });
 
@@ -224,9 +226,9 @@ describe('입하 등록 화면', () => {
     scan(SCANNED);
 
     expect(
-      await screen.findByText('발주를 확인할 수 없습니다. 연결을 확인하세요.'),
+      await screen.findByText('ERP W/O를 확인할 수 없습니다. 연결을 확인하세요.'),
     ).toBeTruthy();
-    expect(screen.queryByText('미마감 발주가 없습니다')).toBeNull();
+    expect(screen.queryByText('미마감 ERP W/O가 없습니다')).toBeNull();
   });
 
   /* 발주 없이 도착한 건은 공급사의 출처가 이 화면에 없다. 있는 것처럼 두지 않는다. */
@@ -237,9 +239,9 @@ describe('입하 등록 화면', () => {
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
 
-    await user.click(await screen.findByRole('button', { name: '발주 없이 등록' }));
+    await user.click(await screen.findByRole('button', { name: 'ERP W/O 없이 등록' }));
 
-    expect(await screen.findByText('발주 없이 도착')).toBeTruthy();
+    expect(await screen.findByText('ERP W/O 없이 도착')).toBeTruthy();
     expect(await screen.findByRole('combobox', { name: '공급사' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: '품목' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: '단위' })).toBeTruthy();
@@ -261,8 +263,8 @@ const choosePoLine = async (
   lineName: RegExp = /ABC-123|31/,
 ) => {
   scan(SCANNED);
-  await screen.findByText('발주 선택');
-  await user.click(screen.getByRole('combobox', { name: '발주 번호' }));
+  await screen.findByText('ERP W/O 선택');
+  await user.click(screen.getByRole('combobox', { name: 'ERP W/O 번호' }));
   await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
   await user.click(await screen.findByRole('button', { name: lineName }));
 };
@@ -273,9 +275,9 @@ describe('입하 등록 화면 — 발주 경로', () => {
     mount();
     await screen.findByLabelText('LOT 번호');
     scan(SCANNED);
-    await screen.findByText('발주 선택');
+    await screen.findByText('ERP W/O 선택');
 
-    await user.click(screen.getByRole('combobox', { name: '발주 번호' }));
+    await user.click(screen.getByRole('combobox', { name: 'ERP W/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
 
     expect(await screen.findByText(/누적 입하 0/)).toBeTruthy();
@@ -535,7 +537,7 @@ describe('입하 등록 화면 — 되돌릴 수 없는 쓰기', () => {
 describe('입하 등록 화면 — 발주 없이 도착', () => {
   const openUnordered = async (user: ReturnType<typeof userEvent.setup>) => {
     scan(SCANNED);
-    await user.click(await screen.findByRole('button', { name: '발주 없이 등록' }));
+    await user.click(await screen.findByRole('button', { name: 'ERP W/O 없이 등록' }));
   };
 
   const choose = async (user: ReturnType<typeof userEvent.setup>, name: string, option: RegExp) => {
@@ -645,14 +647,14 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
 
     await screen.findByRole('combobox', { name: '공급사' });
 
-    await user.click(screen.getByRole('combobox', { name: '발주 번호' }));
+    await user.click(screen.getByRole('combobox', { name: 'ERP W/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
 
     await waitFor(() => {
       expect(screen.queryByRole('combobox', { name: '공급사' })).toBeNull();
     });
-    expect(screen.queryByText('발주 없이 도착')).toBeNull();
-    expect(screen.getByRole('button', { name: '발주 없이 등록' })).toBeTruthy();
+    expect(screen.queryByText('ERP W/O 없이 도착')).toBeNull();
+    expect(screen.getByRole('button', { name: 'ERP W/O 없이 등록' })).toBeTruthy();
   });
 
   /* 발주가 없으면 예정 수량이 없어 초과도 부족도 판정할 것이 없다. */
@@ -663,6 +665,6 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await screen.findByLabelText('LOT 번호');
     await openUnordered(user);
 
-    expect(await screen.findByText('발주가 없어 예정 수량과 비교하지 않습니다')).toBeTruthy();
+    expect(await screen.findByText('ERP W/O가 없어 예정 수량과 비교하지 않습니다')).toBeTruthy();
   });
 });
