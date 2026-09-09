@@ -1,9 +1,14 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { DISPOSAL_APPROVAL_TYPE_CODE, DISPOSAL_PARTNER_ROLE } from './codes';
+import {
+  DISPOSAL_DISPOSITION_TYPE,
+  DISPOSAL_PARTNER_ROLE,
+  ROUTE_LOOKUP_APPROVAL_TYPE,
+} from './codes';
+import type { PlacementEntry } from './placement';
 import {
   toDisposalPartner,
   toDisposalTarget,
@@ -26,6 +31,7 @@ export const disposalRequestKeys = {
   targets: (page: number) => ['product-disposal-request', 'targets', page] as const,
   partners: () => ['product-disposal-request', 'partners'] as const,
   route: () => ['product-disposal-request', 'route'] as const,
+  placement: (lotId: number) => ['product-disposal-request', 'placement', lotId] as const,
 };
 
 export interface TargetListResult {
@@ -40,9 +46,16 @@ export interface TargetListResult {
  * W-04-10(폐기 요청)·W-04-11의 진입 목록이 이 오퍼레이션이다 — **처리한 건이 계속 남으면 같은
  * 건을 두 번 처리한다**」.
  *
- * ⚠ **「폐기만」으로 좁히지 못한다.** 처분 유형의 코드 값이 아직 확정되지 않아(G-2) 그 축을
- * 실을 수 없다. ⛔ **응답을 화면이 거르지도 않는다** — 목록이 쪽 단위라 「이 쪽에서 걸러낸 것」이
- * 되고 총 건수와 어긋난다(L-11). 대신 **처분을 열로 보여 사람이 가리게 하고** 그 사실을 적는다.
+ * ⭐ **「폐기만」으로 좁힌다** — `dispositionTypeCode=SCRAP`(통지 `#674` §3). 한때 이 축의 값이
+ * 확정되지 않아 처분을 열로 보여 사람이 가리게 했는데, 계약이 `REWORK`·`SCRAP`·`NORMAL` 셋으로
+ * 닫으면서 **서버 축으로 좁혀졌다.**
+ *
+ * ⛔ **응답을 화면이 거르지 않는다** — 목록이 쪽 단위라 「이 쪽에서 걸러낸 것」이 되고 총 건수와
+ * 어긋난다(L-11). 좁히는 일은 **질의가** 한다.
+ *
+ * ⚠ **두 축을 함께 건다** — `followUpPending` 은 「아직 처리가 남았는가」이고 `dispositionTypeCode`
+ * 는 「무엇으로 판정됐는가」다. 앞의 것만 걸면 재작업·정상 판정까지 폐기 목록에 오고, 뒤의 것만
+ * 걸면 **이미 폐기한 건이 계속 남아 같은 건을 두 번 처리한다**(계약 주석이 지목한 사고다).
  */
 export const useDisposalTargets = (page: number): UseQueryResult<TargetListResult> => {
   const { client } = useApiClient();
@@ -52,7 +65,14 @@ export const useDisposalTargets = (page: number): UseQueryResult<TargetListResul
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/quality/disposition-decisions', {
-          params: { query: { followUpPending: true, page, size: PAGE_SIZE } },
+          params: {
+            query: {
+              dispositionTypeCode: DISPOSAL_DISPOSITION_TYPE,
+              followUpPending: true,
+              page,
+              size: PAGE_SIZE,
+            },
+          },
         }),
       );
 
@@ -85,9 +105,64 @@ export const useDisposalPartners = (): UseQueryResult<DisposalPartner[]> => {
   });
 };
 
+/**
+ * 고른 LOT 들이 **어디에 있는가** — 출고 줄의 `sourceLocationId` 를 푸는 조회.
+ *
+ * ⭐ **LOT 마다 한 번씩 부른다.** 잔액 조회는 `groupBy` 축 하나만 채워 내리므로, 위치를 받으려면
+ * `LOCATION` 으로 묶어야 하고 그러면 LOT 축이 접힌다. 한 번에 여러 LOT 을 물을 수 없다.
+ *
+ * ⛔ **`enabled` 로 고른 것만 부른다** — 목록 전체를 미리 부르면 고르지도 않은 LOT 의 재고를
+ * 쪽마다 훑게 된다. 판정 목록은 쪽 단위라 그 비용이 쪽 수만큼 는다.
+ *
+ * ⚠ **재고 상태로 좁히지 않는다.** 폐기 대상은 보류·차단된 재고일 가능성이 크다 — 좁히면
+ * 폐기해야 할 것이 「자리를 못 찾았다」로 막힌다(`placement.ts` 가 같은 판단을 적어 두었다).
+ */
+export const useLotPlacements = (
+  lotIds: readonly number[],
+): Record<number, readonly PlacementEntry[] | undefined> => {
+  const { client } = useApiClient();
+
+  const results = useQueries({
+    queries: lotIds.map((lotId) => ({
+      queryKey: disposalRequestKeys.placement(lotId),
+      queryFn: async (): Promise<readonly PlacementEntry[]> => {
+        const data = await runRequest(() =>
+          client.GET('/inventory/balances', {
+            params: { query: { lotId, groupBy: 'LOCATION' as const, page: 1, size: PAGE_SIZE } },
+          }),
+        );
+
+        return data.items.map((item) => ({
+          lotId: item.lotId ?? null,
+          warehouseId: item.warehouseId ?? null,
+          locationId: item.locationId ?? null,
+          onHandQty: item.onHandQty,
+        }));
+      },
+    })),
+  });
+
+  /*
+   * ⭐ **아직 못 받은 것을 `undefined` 로 둔다** — 빈 배열로 두면 「자리가 없다」가 되어
+   * 조회 중인 것이 «없는 것»으로 읽힌다. 그 둘은 사용자에게 다른 말이어야 한다.
+   */
+  const byLot: Record<number, readonly PlacementEntry[] | undefined> = {};
+
+  lotIds.forEach((lotId, index) => {
+    const result = results[index];
+    byLot[lotId] = result?.isSuccess === true ? result.data : undefined;
+  });
+
+  return byLot;
+};
+
+/*
+ * ⚠ **`unavailable`(물어보지 못했다) 상태를 두지 않는다.** 승인 유형 값이 없어 조회 자체를
+ * 막던 시절의 상태였는데, 통지 `#674` 로 축이 닫히며 사라졌다. 도달하지 못하는 갈래를 남겨
+ * 두면 **시험이 덮지 못하는 화면 상태**가 생긴다.
+ */
 export type RouteState =
   | { kind: 'pending' }
-  | { kind: 'unavailable' }
   | { kind: 'missing' }
   | { kind: 'failed' }
   | { kind: 'found' };
@@ -95,26 +170,27 @@ export type RouteState =
 /**
  * 결재선 확인 — **상신할 곳이 있는가.**
  *
- * ⛔ 승인 유형 코드가 아직 없어(G-2) **조회 자체를 열지 않는다.** 빈 값으로 부르면 서버가
- * 400을 돌려주고 화면은 「결재선이 없다」와 「물어보지 못했다」를 구분하지 못하게 된다 —
- * 사용자가 결재선 관리에 가서 없는 문제를 찾는다.
+ * ⭐ **조회가 열렸다**(통지 `#674`) — 승인 유형이 `enum` 으로 닫히면서 축이 생겼다. 한때 값이
+ * 없어 조회 자체를 막아 두었는데, 그 갈래는 이제 없다.
+ *
+ * ⚠ **이 조회는 「폐기 결재선이 하나라도 있는가」까지만 답한다.** 서버가 실제로 고를 결재선은
+ * 전표의 `reasonCode` 와 사업부 축으로 파생하므로(공유계약 G-31), 여기서 「있다」가 나와도
+ * 상신이 400(`ROUTE_NOT_FOUND`)일 수 있다. 그 자리는 §6 의 400 처리가 받는다 — **여기서
+ * 「승인 요청」 버튼을 여는 근거**로만 쓰고 「상신이 성공한다」로 읽지 않는다.
  */
 export const useApprovalRoute = (): RouteState => {
   const { client } = useApiClient();
-  const isAskable = DISPOSAL_APPROVAL_TYPE_CODE !== '';
 
   const query = useQuery({
     queryKey: disposalRequestKeys.route(),
-    enabled: isAskable,
     queryFn: () =>
       runRequest(() =>
         client.GET('/app/approval-routes', {
-          params: { query: { approvalTypeCode: DISPOSAL_APPROVAL_TYPE_CODE } },
+          params: { query: { approvalTypeCode: ROUTE_LOOKUP_APPROVAL_TYPE } },
         }),
       ),
   });
 
-  if (!isAskable) return { kind: 'unavailable' };
   if (query.isPending) return { kind: 'pending' };
   if (query.isError) return { kind: 'failed' };
 

@@ -16,9 +16,9 @@ type PartnerResponse = components['schemas']['Partner'];
 /**
  * ① 폐기 대상 — **처분 결정** 한 건.
  *
- * ⚠ **처분 유형을 날코드로 들고 있다.** 값 목록이 아직 확정되지 않아(G-2) 화면이 「이것이
- * 폐기인가」를 물을 수 없다 — 그래서 **거르지 않고 열로 보여 사람이 가리게 한다.** 접어서
- * 감추면 재작업 판정 건을 폐기로 올리게 된다.
+ * ⭐ **처분 유형은 «폐기»만 온다** — 질의가 `dispositionTypeCode=SCRAP` 으로 좁힌다(`queries.ts`).
+ * 한때 값 목록이 없어 거르지 못하고 열로 보여 사람이 가리게 했는데, 통지 `#674` 로 축이 닫혔다.
+ * 열은 그대로 둔다 — 좁혀진 목록이라도 **무엇으로 판정된 것인지**는 보여야 한다.
  *
  * ⚠ `lotNo`·`itemId` 가 선택 필드다. 없으면 「없는 것」이 아니라 **못 받은 것**이라 표시 지점에서
  * 사실을 적는다.
@@ -31,7 +31,12 @@ export interface DisposalTarget {
   uomId: number;
   /** ⭐ 폐기 요청 사유의 기본값이 된다(§5-5) — 승인자가 판정 근거를 바로 본다. */
   reason: string;
-  decidedBy: string;
+  /**
+   * ⚠ **식별자다** — 계약이 `number` 로 닫았다. 사람 이름은 `decidedByName` 이 따로 낸다.
+   * 한때 이 자리를 `string` 으로 두어 화면에 식별자가 이름처럼 찍힐 뻔했다.
+   */
+  decidedBy: number;
+  decidedByName: string | null;
   decidedAt: string;
   lotId: number | null;
   lotNo: string | null;
@@ -46,6 +51,7 @@ export const toDisposalTarget = (data: DispositionDecisionResponse): DisposalTar
   uomId: data.uomId,
   reason: data.reason,
   decidedBy: data.decidedBy,
+  decidedByName: data.decidedByName ?? null,
   decidedAt: data.decidedAt,
   lotId: data.lotId ?? null,
   lotNo: data.lotNo ?? null,

@@ -5,11 +5,18 @@ import { useEffect, useMemo, useState } from 'react';
 import { SaveErrorBanner } from '../../patterns/master';
 import { useIssueReasonCodes, useIssueTypeCodes, useItemLookup, useUomLookup } from './lookups';
 import { useDisposalRequestMutation } from './mutations';
-import { useApprovalRoute, useDisposalPartners, useDisposalTargets } from './queries';
+import { resolvePlacements } from './placement';
+import {
+  useApprovalRoute,
+  useDisposalPartners,
+  useDisposalTargets,
+  useLotPlacements,
+} from './queries';
 import {
   EMPTY_DRAFT,
   issueLockReason,
   requestLockReason,
+  toApprovalRequestCreate,
   toGoodsIssueCreate,
   type DisposalDraft,
 } from './request-draft';
@@ -25,9 +32,12 @@ const t = messages.productDisposalRequest;
  * ⭐ **`W-01-06`(자재 폐기 요청)의 대칭이고 골격을 그대로 쓴다** — 요청 → 승인 → 기타출고 3단과
  * 「승인 완료 후에만 출고」 잠금이 같다.
  *
- * ⛔ **지금은 쓰기가 잠겨 있다.** 전표를 만들 때 필수인 원천 문서 유형과 승인 유형의 코드 값이
- * 아직 확정되지 않았다(G-2 · `codes.ts`). **자리표시 값을 지어 넣지 않는다** — 넣으면 서버가
- * 모르는 코드가 되돌릴 수 없는 전표에 실린다. 값이 오면 `codes.ts` 의 상수만 채우면 열린다.
+ * ⭐ **「승인 요청」한 번이 호출 둘이다**(§5-7) — 전표를 만들고 그 위에 상신한다. 도착지 짝이
+ * 앞 호출의 본문에 실리므로 자체 폐기·폐기 거래처가 «요청 작성» 구획에 선다(통지 `#675` §2).
+ *
+ * ⛔ **「기타출고 처리」를 승인 «상태»로 잠그지 않는다**(통지 `#674` · 설계서 §8-6) — 상태 값을
+ * 판정할 수 없는 동안 앞질러 잠그면 승인이 끝났는데도 열리지 않는다. 버튼을 열고 서버의 400 을
+ * 안내로 바꾼다(J-8).
  */
 export const ProductDisposalRequestScreen = () => {
   const toast = useToast();
@@ -65,6 +75,17 @@ export const ProductDisposalRequestScreen = () => {
     setSelected((current) => current.filter((id) => present.has(id)));
   }, [rows]);
 
+  /*
+   * ⭐ **고른 것의 자리만 묻는다** — 목록 전체를 미리 부르면 고르지도 않은 LOT 의 재고를 쪽마다
+   * 훑는다. 대상이 바뀌면 그때 묻는다.
+   */
+  const lotIds = useMemo(
+    () => targets.map((target) => target.lotId).filter((id): id is number => id !== null),
+    [targets],
+  );
+  const placementsByLot = useLotPlacements(lotIds);
+  const placement = resolvePlacements(targets, (lotId) => placementsByLot[lotId]);
+
   const write = useDisposalRequestMutation({
     onSuccess: () => {
       setSelected([]);
@@ -79,10 +100,13 @@ export const ProductDisposalRequestScreen = () => {
   const gate = { targets, draft, route, isSaving: write.isSaving };
   const requestLock = requestLockReason(gate);
   /*
-   * ⛔ **승인 상태를 «물어볼 수가» 없다** — 승인 요청을 이 전표에 잇는 축의 코드 값이 아직
-   * 확정되지 않았다(G-2). 「승인 안 됨」이 아니라 **모르는 것**이라 그대로 적는다.
+   * ⛔ **승인 상태를 «물어볼 수가» 없다** — `ApprovalRequest.statusCode` 가 계약에서 아직 열린
+   * 문자열이다. 「승인 안 됨」이 아니라 **모르는 것**이라 그대로 적고, 그 모름으로 버튼을 잠그지
+   * 않는다(통지 `#674`).
    */
   const issueLock = issueLockReason({ ...gate, approval: 'unknown' });
+  /* 자리를 못 풀었으면 그 사유가 요청을 막는다 — 게이트보다 뒤에 두어 먼저 채울 것을 먼저 말한다. */
+  const submitLock = requestLock ?? (placement.kind === 'blocked' ? placement.reason : undefined);
 
   const qtyText = totalQtyOf(targets) === null ? '—' : String(totalQtyOf(targets));
 
@@ -146,27 +170,33 @@ export const ProductDisposalRequestScreen = () => {
 
       <section className="pane" aria-label={t.request.submit}>
         <SaveErrorBanner error={write.error} onReload={() => void list.refetch()} />
-        {requestLock !== undefined && (
+        {submitLock !== undefined && (
           <div className="banner-slot">
-            <AlertBanner variant="info">{requestLock}</AlertBanner>
+            <AlertBanner variant="info">{submitLock}</AlertBanner>
           </div>
         )}
         {/* A-11 — 올린 뒤 화면에서 철회할 길이 없다는 사실을 «올리기 전»에 적는다. */}
         <p className="field-note">{t.withdrawn.noWithdraw}</p>
         <div className="form-actions">
           <Button
-            disabled={requestLock !== undefined}
+            disabled={submitLock !== undefined}
             onClick={() => {
               setShowError(true);
-              const body = toGoodsIssueCreate({
+              if (placement.kind !== 'resolved') return;
+
+              /* ⭐ 시각을 «누르는 순간» 한 번 찍는다 — 본문 조립 자리에서 찍으면 렌더마다 달라진다. */
+              const now = new Date();
+              const issue = toGoodsIssueCreate({
                 ...gate,
                 approval: 'unknown',
-                sourceWarehouseId: null,
-                issuedAt: new Date().toISOString(),
+                placement,
+                now,
               });
+              const approval = toApprovalRequestCreate(draft);
+
               /* 게이트가 열려 있어도 본문이 없으면 멈춘다 — 반쪽짜리 전표를 만들지 않는다. */
-              if (body === null) return;
-              write.write(body);
+              if (issue === null || approval === null) return;
+              write.write({ issue, approval });
             }}
           >
             {t.request.submit}

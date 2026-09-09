@@ -19,11 +19,9 @@ const RouteLine = ({ route }: { route: RouteState }) => {
       return <span className="field-note">{r.routeFound}</span>;
     case 'missing':
       return <AlertBanner variant="error">{r.routeMissing}</AlertBanner>;
+    /* ⛔ 「없다」와 「물어보지 못했다」를 갈라 적는다 — 같은 말로 적으면 없는 문제를 찾으러 간다. */
     case 'failed':
       return <AlertBanner variant="error">{r.routeFailed}</AlertBanner>;
-    default:
-      /* ⛔ 「없다」가 아니라 「물어보지 못했다」다 — 둘을 같은 말로 적으면 없는 문제를 찾으러 간다. */
-      return <AlertBanner variant="info">{r.routeUnavailable}</AlertBanner>;
   }
 };
 
@@ -159,11 +157,12 @@ export const IssuePane = ({
 
       <div className="check-group">
         <Checkbox
-          label={t.issue.selfDisposal}
           checked={draft.isSelfDisposal}
           /* ⭐ 체크하면 거래처 값을 «함께» 비운다 — 남겨 두면 도착지 짝이 어긋난다. */
           onChange={(event) => onChange({ isSelfDisposal: event.target.checked, partnerId: '' })}
-        />
+        >
+          {t.issue.selfDisposal}
+        </Checkbox>
       </div>
       <p className="field-note">{t.issue.selfDisposalHelp}</p>
 
