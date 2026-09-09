@@ -7,6 +7,8 @@ import {
   type UseQueryResult,
 } from '@tanstack/react-query';
 
+import type { components } from '@omf-mes/api-client';
+
 import { useApiClient } from '../../patterns/api-context';
 import type { Lot } from '../../patterns/lots';
 import { runRequest } from '../../patterns/request';
@@ -17,10 +19,13 @@ import {
   type ShipmentRequestLine,
 } from './picking';
 
+export type LotHold = components['schemas']['LotHold'];
+
 export const pickingKeys = {
   requests: (day: string) => ['picking-requests', day] as const,
   lots: (itemId: number | null) => ['picking-lots', itemId] as const,
   held: (itemId: number | null) => ['picking-held', itemId] as const,
+  holdReason: (lotId: number | null) => ['picking-hold-reason', lotId] as const,
   balances: (itemId: number | null) => ['picking-balances', itemId] as const,
 };
 
@@ -224,6 +229,38 @@ export const usePickLine = (): UseMutationResult<ShipmentRequestLine, Error, Pic
 
       void queries.invalidateQueries({ queryKey: ['picking-requests'] });
       void queries.invalidateQueries({ queryKey: ['picking-balances'] });
+    },
+  });
+};
+
+/**
+ * 고른 LOT 의 보류 사유.
+ *
+ * 화면이 집을 수 없다고만 말하고 왜인지 말하지 않아 스펙(M-04-01 §6)을 못 지키고 있었다.
+ * 후보 목록에는 보류 여부만 오고 사유는 오지 않아 고른 것 하나만 따로 묻는다.
+ *
+ * 이 호출은 여기 한 자리에만 둔다 - 목록이 사유를 함께 내리는 쪽으로 계약이 정해지면
+ * 통째로 걷어낸다.
+ */
+export const useHoldReason = (lotId: number | null): UseQueryResult<LotHold[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: pickingKeys.holdReason(lotId),
+    enabled: lotId !== null,
+    queryFn: async () => {
+      if (lotId === null) {
+        throw new Error('LOT 을 고르기 전에는 보류 사유를 묻지 않습니다.');
+      }
+
+      /* 해제된 보류까지 오면 이미 풀린 사유를 지금 것으로 보인다. */
+      const data = await runRequest(() =>
+        client.GET('/trace/lots/{lotId}/holds', {
+          params: { path: { lotId }, query: { activeOnly: true } },
+        }),
+      );
+
+      return data.items;
     },
   });
 };
