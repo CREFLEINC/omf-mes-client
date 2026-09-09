@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -166,11 +166,22 @@ const SignedIn = ({ children }: { children: ReactNode }) => {
   return worker === null ? null : children;
 };
 
+/** 임시 적치 화면이 무엇을 받는지만 비춘다. 인계 내용은 DOM 에 남지 않는다. */
+const HandoffProbe = () => {
+  const routed = useLocation();
+  const state = routed.state as { location?: unknown } | null;
+
+  return <p>{state !== null && 'location' in state ? '위치 넘김' : '위치 안 넘김'}</p>;
+};
+
 const mount = (extra: StubRoute[] = [], options: Options = {}) =>
   renderWithProviders(
     <MemoryRouter>
       <SignedIn>
-        <PutawayScreen />
+        <Routes>
+          <Route path="/" element={<PutawayScreen />} />
+          <Route path="/temporary-putaway" element={<HandoffProbe />} />
+        </Routes>
       </SignedIn>
     </MemoryRouter>,
     { fetch: createStubFetch([...extra, ...routes(options)]) },
@@ -318,6 +329,25 @@ describe('적치·입고 완료 화면', () => {
 
     expect(await screen.findByText('권장 위치 A-01-03 가 아닙니다')).toBeTruthy();
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
+  });
+
+  /*
+   * 임시 적치로 넘어가는 이유는 이 자리에 둘 수 없어서다. 그 자리를 함께 넘기면 다음 화면이
+   * 임시 목적지로 고른 채 열려, 막혔던 그 자리에 임시 적치가 기록된다.
+   */
+  it('임시 적치로 넘길 때 막힌 위치는 넘기지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseTask(user);
+
+    scan('B-02-01');
+    await screen.findByText('권장 위치 A-01-03 가 아닙니다');
+
+    await user.click(
+      screen.getByRole('link', { name: '임시로 두어야 하면 임시 위치 적재로 갑니다' }),
+    );
+
+    expect(await screen.findByText('위치 안 넘김')).toBeTruthy();
   });
 
   /*

@@ -1,12 +1,24 @@
-import { AlertBanner, Button, Card, Chip, Select, TextArea, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  Chip,
+  Radio,
+  RadioGroup,
+  Select,
+  TextArea,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router';
 
+import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
+import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
-import { useUomCodes } from '../../patterns/masters';
+import { useItemLabels, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -16,8 +28,10 @@ import { putawayKeys, usePutawayTask } from '../putaway/queries';
 import {
   PUTAWAY_TASK_TEMPORARY_REASON,
   canSubmit,
+  hasTemporaryLocations,
   isAlreadyPutAway,
   queuedCountOf,
+  temporaryLocationsOf,
   toOutboxDraft,
   type TemporaryDraft,
 } from './temporary';
@@ -67,9 +81,14 @@ export const TemporaryPutawayScreen = () => {
     setDraft((current) => ({ ...current, ...next }));
   };
 
+  const [scanSeq, setScanSeq] = useState(0);
+  const [listOpen, setListOpen] = useState(false);
+
   const scanField = useScanField({
     onScan: (value) => {
       setScanned(value.trim());
+      /* 같은 코드를 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
+      setScanSeq((seq) => seq + 1);
     },
   });
 
@@ -89,6 +108,15 @@ export const TemporaryPutawayScreen = () => {
   const byCode = useLocationByCode(task?.warehouseId ?? null, scanned);
   const reasons = useCodeValues(PUTAWAY_TASK_TEMPORARY_REASON);
   const uoms = useUomCodes(true);
+  const itemLabels = useItemLabels(true);
+
+  const allLocations = locations.data ?? [];
+  /*
+   * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있어, 다음 사람이
+   * 무엇을 옮겨야 하는지 알 수 없다.
+   */
+  const temporaryOnly = temporaryLocationsOf(allLocations);
+  const filtered = hasTemporaryLocations(allLocations);
 
   const scannedLocation = scanned === null ? null : (byCode.data ?? null);
   /*
@@ -97,6 +125,14 @@ export const TemporaryPutawayScreen = () => {
    */
   const location = scanned === null ? draft.location : scannedLocation;
   /*
+   * 스캔은 정본이라 임시 유형이 아닌 자리도 받는다. 그 자리를 선택칸이 못 담으면 확인 줄과
+   * 선택칸이 갈려 화면이 두 자리를 동시에 말한다.
+   */
+  const pickable =
+    location !== null && !temporaryOnly.some((each) => each.locationId === location.locationId)
+      ? [...temporaryOnly, location]
+      : temporaryOnly;
+  /*
    * 큐를 읽기 전에는 막아 둔다 - 담긴 것이 없는 것과 구별되지 않아, 앞서 담은 등록이 셈에서
    * 빠진 채로 같은 지시에 한 건이 더 나간다. 서버 상세를 확인하는 동안에도 같다.
    */
@@ -104,6 +140,26 @@ export const TemporaryPutawayScreen = () => {
     loaded &&
     !fresh.isPending &&
     canSubmit(known, { ...draft, location }, worker !== null, queuedCount);
+
+  /*
+   * 스캔한 코드를 찾지 못했다는 것을 소리로도 알린다(공유계약 D-2). 단말을 허리에 매단 채
+   * 읽으므로 화면에만 적으면 사람은 통과한 줄 알고 다음 동작으로 넘어간다.
+   */
+  const scanMissed = scanned !== null && byCode.isSuccess && byCode.data === null;
+
+  useEffect(() => {
+    if (scanMissed) {
+      playErrorTone();
+    }
+  }, [scanMissed, scanSeq]);
+
+  /*
+   * 뒤로가기는 목록을 먼저 접는다. 두지 않으면 목록을 연 사람이 한 번에 화면 밖으로 나가
+   * 고르던 지시를 다시 들고 와야 한다.
+   */
+  useBackStep(listOpen, () => {
+    setListOpen(false);
+  });
 
   const codeOf = (locationId: number | null | undefined): string =>
     locations.data?.find((each) => each.locationId === locationId)?.locationCode ?? '';
@@ -199,12 +255,24 @@ export const TemporaryPutawayScreen = () => {
 
   return (
     <div className="temporary">
+      {/* 이 화면은 닫히지 않는다. 정위치로 옮기는 일이 남는다는 것을 먼저 말한다. */}
+      <AlertBanner variant="warning" title={t.banner.title}>
+        {t.banner.description}
+      </AlertBanner>
+
       <section className="temporary__section">
         <h2>{t.task.legend}</h2>
         <Card bordered>
           <Card.Body className="card-body temporary__card">
-            <strong>{task.putawayTaskNo}</strong>
-            <p>{t.task.qty(`${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`)}</p>
+            <strong>
+              {t.task.item(
+                itemLabels.data?.get(task.itemId)?.itemCode ?? '',
+                task.putawayTaskNo,
+                `${String(task.taskQty)} ${uoms.data?.get(task.uomId) ?? ''}`,
+              )}
+            </strong>
+            {/* 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */}
+            <p className="temporary__note">{t.task.origin(codeOf(task.fromLocationId))}</p>
             {task.recommendedLocationId === null || task.recommendedLocationId === undefined ? (
               <Chip status="warning">{t.task.noRule}</Chip>
             ) : (
@@ -216,7 +284,10 @@ export const TemporaryPutawayScreen = () => {
         {/* 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */}
         {known !== null && isAlreadyPutAway(known) ? (
           <AlertBanner variant="error" title={t.task.already}>
-            {t.task.alreadyAt(codeOf(known.actualLocationId))}
+            {/* 코드를 못 풀면 말끝이 잘린다. 어디인지 모르면 그 줄을 두지 않는다. */}
+            {codeOf(known.actualLocationId) === ''
+              ? null
+              : t.task.alreadyAt(codeOf(known.actualLocationId))}
           </AlertBanner>
         ) : null}
         {/* 서버는 아직 모르는 등록이다. 말하지 않으면 안 한 줄 알고 한 번 더 적는다. */}
@@ -229,8 +300,10 @@ export const TemporaryPutawayScreen = () => {
 
       <section className="temporary__section">
         <h2>{t.location.legend}</h2>
-        {/* 임시 위치를 가려낼 값이 아직 없다. 걸러 내지 않고 그 사실을 적는다. */}
-        <p className="temporary__note">{t.location.unfiltered}</p>
+        {/* 고객이 임시 유형을 지우면 한 자리도 남지 않는다. 그때는 전체를 보이고 그 사실을 적는다. */}
+        {locations.data !== undefined && !filtered ? (
+          <p className="temporary__note">{t.location.unfiltered}</p>
+        ) : null}
         <TextField
           ref={scanField.ref}
           label={t.location.scanLabel}
@@ -252,7 +325,20 @@ export const TemporaryPutawayScreen = () => {
         {locations.data !== undefined && locations.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.location.none} />
         ) : null}
-        {locations.data === undefined ? null : (
+        {/* 스캔이 정본이고 목록은 대체 경로다(공유계약 D-3). 접어 두어 스캔 칸을 앞에 세운다. */}
+        {locations.data === undefined || listOpen ? null : (
+          <Button
+            className="temporary__wide"
+            variant="text"
+            size="xl"
+            onClick={() => {
+              setListOpen(true);
+            }}
+          >
+            {t.location.pickAction}
+          </Button>
+        )}
+        {locations.data === undefined || !listOpen ? null : (
           <div className="temporary__field">
             <label htmlFor="temporary-location">{t.location.pickLabel}</label>
             <Select
@@ -268,11 +354,10 @@ export const TemporaryPutawayScreen = () => {
               onChange={(value) => {
                 setScanned(null);
                 patch({
-                  location:
-                    locations.data.find((each) => each.locationId === Number(value)) ?? null,
+                  location: pickable.find((each) => each.locationId === Number(value)) ?? null,
                 });
               }}
-              options={locations.data.map((each) => ({
+              options={pickable.map((each) => ({
                 value: String(each.locationId),
                 label: `${each.locationCode} ${each.locationName}`,
               }))}
@@ -302,23 +387,29 @@ export const TemporaryPutawayScreen = () => {
         {reasons.data !== undefined && reasons.data.length === 0 ? (
           <AlertBanner variant="warning" title={t.reason.empty} />
         ) : null}
-        <div className="temporary__field">
-          <label htmlFor="temporary-reason">{t.reason.label}</label>
-          <Select
-            id="temporary-reason"
-            placeholder={t.reason.placeholder}
-            size="xl"
-            disabled={reasons.data === undefined || reasons.data.length === 0}
-            value={draft.reasonCode === '' ? null : draft.reasonCode}
-            onChange={(value) => {
-              patch({ reasonCode: String(value) });
-            }}
-            options={(reasons.data ?? []).map((each) => ({
-              value: each.code,
-              label: each.name,
-            }))}
-          />
-        </div>
+        {/*
+         * 네 값 안팎을 고르는 자리라 목록을 여닫으면 탭이 한 번 더 든다. 장갑 낀 손이 쓴다.
+         * 비활성은 목록이 비어서 왔을 때만이다 - 불러오는 동안 잠그면 값이 있는데도 못 고른다.
+         */}
+        {reasons.data === undefined || reasons.data.length === 0 ? null : (
+          <div className="temporary__field">
+            <span id="temporary-reason-label">{t.reason.label}</span>
+            <RadioGroup
+              name="temporary-reason"
+              aria-labelledby="temporary-reason-label"
+              value={draft.reasonCode}
+              onChange={(value) => {
+                patch({ reasonCode: value });
+              }}
+            >
+              {reasons.data.map((each) => (
+                <Radio key={each.code} value={each.code}>
+                  {each.name}
+                </Radio>
+              ))}
+            </RadioGroup>
+          </div>
+        )}
 
         <TextArea
           label={t.reason.remarksLabel}
@@ -344,6 +435,10 @@ export const TemporaryPutawayScreen = () => {
           </AlertBanner>
         ) : null}
         {worker === null ? <p className="temporary__note">{t.noWorker}</p> : null}
+      </section>
+
+      {/* 사유 목록이 길어지면 등록 단추가 접힌 자리로 밀린다(설계 §3 액션 72). */}
+      <div className="action-bar">
         <Button
           className="temporary__wide"
           variant="filled"
@@ -353,7 +448,7 @@ export const TemporaryPutawayScreen = () => {
         >
           {t.submit}
         </Button>
-      </section>
+      </div>
     </div>
   );
 };

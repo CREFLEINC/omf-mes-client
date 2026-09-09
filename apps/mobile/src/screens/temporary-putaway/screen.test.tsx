@@ -48,7 +48,7 @@ const task = (overrides: Record<string, unknown> = {}) => ({
   recommendedLocationId: 5,
   warehouseId: 2,
   priorityNo: 1,
-  statusCode: 'ASSIGNED',
+  statusCode: 'PENDING',
   ...overrides,
 });
 
@@ -64,7 +64,18 @@ const location = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
-const TEMP = location({ locationId: 9, locationCode: 'TMP-01', locationName: '임시 자리' });
+/** 임시 유형이어야 이 화면이 고를 수 있는 자리로 가려낸다. */
+const TEMP = location({
+  locationId: 9,
+  locationCode: 'TMP-01',
+  locationName: '임시 자리',
+  locationTypeCode: 'TEMP',
+});
+
+/** 목록은 대체 경로라 접혀 있다. 고르려면 먼저 편다. */
+const openList = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: '목록에서 선택' }));
+};
 
 const codeValue = (code: string, name: string) => ({
   codeValueId: 1,
@@ -165,17 +176,49 @@ describe('임시 위치 적재 화면', () => {
   it('넘어온 지시를 보인다', async () => {
     mount({ task: task() });
 
-    expect(await screen.findByText('PT-2026-0007')).toBeTruthy();
+    expect(await screen.findByText(/PT-2026-0007/)).toBeTruthy();
     expect(screen.getByLabelText('임시 위치 코드 스캔')).toBeTruthy();
   });
 
-  /* 임시 위치를 가려낼 값이 아직 없다. 걸러 낸 척하지 않는다. */
-  it('위치를 걸러 내지 않는다는 것을 말한다', async () => {
+  /*
+   * 이 화면은 닫히지 않는다 - 임시 상태를 만들고 끝나며 정위치로 옮기는 일이 남는다. 말하지
+   * 않으면 작업자는 적치를 끝낸 것으로 안다.
+   */
+  it('정위치 이동이 남는다는 것을 먼저 말한다', async () => {
     mount({ task: task() });
 
+    expect(await screen.findByText('임시 적치입니다')).toBeTruthy();
+  });
+
+  /*
+   * 정위치에 임시 적치를 적으면 옮길 대상 목록에 오르는데 이미 제자리에 있다. 다음 사람이
+   * 무엇을 옮겨야 하는지 알 수 없다.
+   */
+  it('목록에 임시 위치만 보인다', async () => {
+    const user = userEvent.setup();
+    mount({ task: task() });
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+    await openList(user);
+    await user.click(await screen.findByRole('combobox', { name: '목록에서 고르기' }));
+
+    expect(await screen.findByRole('option', { name: /TMP-01/ })).toBeTruthy();
+    expect(screen.queryByRole('option', { name: /A-01-03/ })).toBeNull();
+  });
+
+  /* 고객이 임시 유형을 지우면 한 자리도 남지 않는다. 목록을 비우면 포화된 현장이 선다. */
+  it('임시 유형으로 등록된 자리가 없으면 전체를 보이고 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ task: task() }, [], { locations: [location()] });
+
     expect(
-      await screen.findByText('임시 위치만 골라 보이지 못해 전체 위치를 보입니다'),
+      await screen.findByText('임시 위치로 등록된 자리가 없어 전체 위치를 보입니다'),
     ).toBeTruthy();
+
+    await openList(user);
+    await user.click(await screen.findByRole('combobox', { name: '목록에서 고르기' }));
+
+    expect(await screen.findByRole('option', { name: /A-01-03/ })).toBeTruthy();
   });
 
   /* 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */
@@ -211,17 +254,37 @@ describe('임시 위치 적재 화면', () => {
   });
 
   /* 값이 없으면 고를 것이 없다. 비고로 적게 두고 그 사실을 말한다. */
-  it('고를 사유가 없으면 그 사실을 말하고 선택을 잠근다', async () => {
+  it('고를 사유가 없으면 그 사실을 말하고 고를 자리를 두지 않는다', async () => {
     mount({ task: task() }, [], { reasons: [] });
 
     expect(await screen.findByText('고를 사유가 아직 없습니다. 비고에 적으세요.')).toBeTruthy();
-    expect(screen.getByRole('combobox', { name: '사유' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByRole('radio')).toBeNull();
+  });
+
+  /*
+   * 값이 있는데 불러오는 동안 잠그면 못 고른다. 설계는 목록이 비어서 왔을 때만 비활성으로
+   * 두라고 못 박았다.
+   */
+  it('사유는 한 번 눌러 고른다', async () => {
+    const user = userEvent.setup();
+    mount({ task: task(), location: TEMP });
+
+    const chosen = await screen.findByRole('radio', { name: '정위치 포화' });
+    expect(chosen).not.toBeDisabled();
+
+    await user.click(chosen);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '임시 적치 등록' })).not.toBeDisabled();
+    });
   });
 
   it('스캔한 위치를 임시 위치로 잡는다', async () => {
+    const user = userEvent.setup();
     mount({ task: task() });
 
     await screen.findByLabelText('임시 위치 코드 스캔');
+    await openList(user);
     scan('TMP-01');
 
     /* 확인 줄과 선택칸이 같은 자리를 가리킨다 - 둘이 갈리면 어느 쪽을 믿을지 알 수 없다. */
@@ -233,9 +296,11 @@ describe('임시 위치 적재 화면', () => {
    * 되돌릴 수 없는 재고 위치 기록이라 작업자가 어느 쪽을 믿을지 정할 근거가 있어야 한다.
    */
   it('앞 화면의 위치가 있어도 스캔하면 선택칸이 스캔한 자리를 가리킨다', async () => {
+    const user = userEvent.setup();
     mount({ task: task(), location: TEMP });
 
     await screen.findByLabelText('임시 위치 코드 스캔');
+    await openList(user);
     expect(await screen.findAllByText('TMP-01 임시 자리')).toHaveLength(2);
 
     scan('A-01-03');
@@ -324,6 +389,7 @@ describe('임시 위치 적재 화면', () => {
     scan('Z-99');
     await screen.findByText('Z-99 위치를 이 창고에서 찾지 못했습니다');
 
+    await openList(user);
     await user.click(await screen.findByRole('combobox', { name: '목록에서 고르기' }));
     await user.click(await screen.findByRole('option', { name: /TMP-01/ }));
 
