@@ -209,6 +209,11 @@ const setOnline = (value: boolean) => {
   Object.defineProperty(navigator, 'onLine', { value, configurable: true });
 };
 
+/* 접힌 목록을 펼친다. 첫 화면에는 권장 앞 세 건만 선다. */
+const expandCandidates = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('button', { name: /더보기\(\d+\)/ }));
+};
+
 /* 설계는 스캔으로만 고르게 한다. 목록에서 바로 고르는 길은 없다. */
 const pickLot = async (user: ReturnType<typeof userEvent.setup>, lotNo: string) => {
   if (screen.queryByLabelText('직접 입력') === null) {
@@ -339,8 +344,36 @@ describe('제품LOT 피킹 스캔 화면', () => {
     mount([], { lots: [EARLY, LATE, UNDATED] });
     await chooseTarget(user);
 
+    await expandCandidates(user);
+
     expect(await screen.findByText('순서를 정할 수 없습니다')).toBeTruthy();
     expect(screen.getByText('FG-0305')).toBeTruthy();
+  });
+
+  /*
+   * 후보 카드가 130~210px 이고 본문이 632px 이다. 상한이 없으면 한 품목의 LOT 이 쌓인 날
+   * 목록이 화면 수십 장이 되어 스캐너를 든 한 손으로는 지날 수 없다.
+   */
+  it('권장 LOT 을 세 건까지만 세우고 나머지는 건수로 말한다', async () => {
+    const user = userEvent.setup();
+    const extra = [1, 2, 3].map((n) =>
+      lotRow(20 + n, `FG-04${String(n)}`, `2099-03-0${String(n)}`),
+    );
+    mount([], {
+      lots: [EARLY, LATE, ...extra],
+      balances: extra
+        .map((lot) => balance(lot.lotId, 500))
+        .concat([balance(1, 500), balance(2, 500)]),
+    });
+    await chooseTarget(user);
+    await screen.findByText('권장 1순위');
+
+    expect(screen.getAllByText(/^FG-0/)).toHaveLength(3);
+    expect(screen.getByRole('button', { name: '더보기(2)' })).toBeTruthy();
+
+    await expandCandidates(user);
+
+    expect(screen.getAllByText(/^FG-0/)).toHaveLength(5);
   });
 
   it('모르는 선출 정책이면 순서를 세우지 않고 그 사실을 말한다', async () => {
@@ -493,6 +526,8 @@ describe('제품LOT 피킹 스캔 화면', () => {
       requests: [request({ lines: [line({ minimumRemainingShelfLifeDays: 180 })] })],
     });
     await chooseTarget(user);
+
+    await expandCandidates(user);
 
     expect(await screen.findByText('유효기간이 없어 잔여 일수를 판정할 수 없습니다')).toBeTruthy();
 

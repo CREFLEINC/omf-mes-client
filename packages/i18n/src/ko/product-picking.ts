@@ -49,6 +49,8 @@ export const productPicking = {
     /** 축의 값이 없는 줄은 섞지 않고 뒤에 따로 둔다. 선택 자체는 막지 않는다. */
     unorderedLegend: '순서를 정할 수 없습니다',
     recommended: '권장 1순위',
+    more: (count: number) => `더보기(${String(count)})`,
+    less: '접기',
     available: (qty: string, uom: string) => `가용 ${qty} ${uom}`,
     expiry: (date: string) => `유효 ${date}`,
     remainingDays: (days: number) => `잔여 ${String(days)}일`,

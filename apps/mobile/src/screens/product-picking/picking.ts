@@ -12,6 +12,12 @@ export type ShipmentLinePick = components['schemas']['ShipmentLinePick'];
  * 값으로 분기하는 것은 정렬 축 하나뿐이고, 모르는 값이 오면 정렬을 세우지 않고 그 사실을
  * 말한다. 값 목록이 아직 확정 전이라 아는 둘만 다루고 나머지를 통과로 두지 않는다.
  */
+/*
+ * 첫 화면에 세우는 권장 LOT 수. 후보 카드가 130~210px 이고 본문이 632px 이라 그 위는
+ * 첫 화면에 들어오지 않는다. 나머지는 건수로 말하고 펼쳐서 본다.
+ */
+export const CANDIDATE_PREVIEW = 3;
+
 /* 보류 사유의 표시명이 오는 공통코드 그룹. 계약은 코드만 내린다. */
 export const LOT_HOLD_REASON = 'LOT_HOLD_REASON';
 

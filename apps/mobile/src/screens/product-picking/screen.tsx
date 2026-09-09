@@ -24,6 +24,7 @@ import {
   type LotHold,
 } from './queries';
 import {
+  CANDIDATE_PREVIEW,
   FEFO,
   FIFO,
   LOT_HOLD_REASON,
@@ -170,6 +171,7 @@ export const ProductPickingScreen = () => {
   const [manual, setManual] = useState('');
   const [missed, setMissed] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   /*
    * 보내는 동안 잠근다. 상태로 두면 React 가 두 이벤트 사이에 커밋하지 못한 경우를 막지 못한다 -
    * 셋이 잇달아 들어오면 셋 다 갱신 전의 값을 보고 통과한다. 즉시 바뀌는 자리에 둔다. 단추를
@@ -402,6 +404,15 @@ export const ProductPickingScreen = () => {
     );
   }
 
+  /*
+   * 접었을 때는 권장 순서 앞엣것만 세운다. 순서를 정할 수 없는 묶음은 펼쳤을 때만 나오고,
+   * 접힌 동안에는 건수에 들어간다 - 빼 두면 재고가 사라진 것처럼 보인다.
+   */
+  const shownCandidates = expanded ? ranked.ordered : ranked.ordered.slice(0, CANDIDATE_PREVIEW);
+  const hiddenCandidates = expanded
+    ? 0
+    : ranked.ordered.length - shownCandidates.length + ranked.unordered.length;
+
   const scanMessage = (): string | undefined => {
     if (missed === null) {
       return undefined;
@@ -489,7 +500,7 @@ export const ProductPickingScreen = () => {
         ) : null}
 
         <ul className="picking__candidates">
-          {ranked.ordered.map((candidate) => (
+          {shownCandidates.map((candidate) => (
             <li key={candidate.lot.lotId}>
               <CandidateCard
                 candidate={candidate}
@@ -504,7 +515,20 @@ export const ProductPickingScreen = () => {
           ))}
         </ul>
 
-        {ranked.unordered.length === 0 ? null : (
+        {hiddenCandidates > 0 || expanded ? (
+          <Button
+            className="picking__pick"
+            variant="outlined"
+            size="lg"
+            onClick={() => {
+              setExpanded(!expanded);
+            }}
+          >
+            {expanded ? t.candidates.less : t.candidates.more(hiddenCandidates)}
+          </Button>
+        ) : null}
+
+        {!expanded || ranked.unordered.length === 0 ? null : (
           <>
             <h3 className="picking__subhead">{t.candidates.unorderedLegend}</h3>
             <ul className="picking__candidates">
