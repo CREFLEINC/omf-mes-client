@@ -3119,7 +3119,7 @@
  */
 [data-pop-logout='on'] .pop-ui > .pop-header,
 [data-pop-logout='on'] .pop-ui > .pop-terminal-header {
-  padding-right: var(--pop-logout-w, 108px);
+  padding-right: var(--pop-logout-w, 84px);
 }
 
 .pop-logout {
@@ -3142,9 +3142,15 @@
  * ⚠ **빨간색은 여기서만 준다**(사용자 지시 2026-09-08). 디자인 시스템 버튼에 위험색 변형이
  *   없어 색을 겉에서 입힌다 — 부품을 고치는 것이 아니라 이 한 자리의 표현이다.
  */
+/*
+ * ⚠ **작게 유지한다**(사용자 지시 2026-09-08 · 2026-09-09 재지시 「너무 크다」). 머리줄에
+ *   상시 서 있는 보조 조작이라 화면의 주 조작보다 눈에 먼저 들면 안 된다 — 되돌리기도
+ *   쉬운 행동이다(사번을 다시 넣으면 된다). 관리웹 기본 밀도(E-3)의 컨트롤 높이보다도 낮게
+ *   둔다.
+ */
 .pop-logout button {
-  min-height: 40px;
-  padding-inline: 14px;
+  min-height: 30px;
+  padding-inline: 10px;
   /*
    * 바탕이 이미 빨강이라 테두리는 겹친 선일 뿐이다 — 지운다(사용자 지시 2026-09-08).
    *
@@ -3155,7 +3161,7 @@
   box-shadow: none;
   background: #b3261e;
   color: #fff;
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .pop-logout button:hover {
