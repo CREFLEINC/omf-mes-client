@@ -246,6 +246,27 @@ describe('자재LOT 스캔·등록 화면', () => {
   });
 
   /*
+   * 견주는 자리가 늘 막는 쪽으로 기울면 옳은 라벨까지 전부 막혀 현장이 선다. 막는 시험만으로는
+   * 그 기울기가 드러나지 않는다.
+   */
+  it('라인의 품목과 같은 라벨은 등록할 수 있다', async () => {
+    const user = userEvent.setup();
+    mount({ itemCode: LOT_NO.slice(0, 9) });
+    await user.click(await screen.findByRole('combobox', { name: '입하 건' }));
+    await user.click(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` }));
+    await user.click(await screen.findByRole('combobox', { name: '입하 라인' }));
+    await user.click(await screen.findByRole('option', { name: new RegExp(LOT_NO.slice(0, 9)) }));
+    await screen.findByText(/라인 #2/);
+
+    scan(LOT_NO);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '이 라인 등록' })).not.toBeDisabled();
+    });
+    expect(screen.queryByText('이 입하 라인의 품목과 다른 LOT입니다')).toBeNull();
+  });
+
+  /*
    * 라우터 이력에는 이 화면 하나뿐이다. 단계를 되돌리지 않으면 입하 건을 고르고 스캔하던
    * 사람이 뒤로가기 한 번에 작업 목록까지 나가 처음부터 다시 들어와야 한다.
    */

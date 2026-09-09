@@ -290,11 +290,7 @@ export const MaterialLotScanScreen = () => {
             <h2>{t.scan.legend}</h2>
             {/* 라벨과 눈으로 대조할 값이다. 라인 번호만으로는 무엇을 집는지 알 수 없다. */}
             <p>
-              {t.line.pickedLine(
-                String(line.lineNo),
-                itemLabels.data?.get(line.itemId)?.itemCode ?? '',
-                String(line.receivedQty),
-              )}
+              {t.line.pickedLine(String(line.lineNo), lineItemCode ?? '', String(line.receivedQty))}
             </p>
             <TextField
               ref={scanField.ref}

@@ -28,7 +28,6 @@ export const materialLotScan = {
     pick: '입하 라인',
     pickPlaceholder: '라인을 고르세요',
     item: (lineNo: string, itemCode: string, qty: string) => `#${lineNo} · ${itemCode} · ${qty}`,
-    picked: (lineNo: string) => `라인 #${lineNo}`,
     /* 라벨과 눈으로 대조할 값이다. 번호만으로는 무엇을 집는지 알 수 없다. */
     pickedLine: (lineNo: string, itemCode: string, qty: string) =>
       `라인 #${lineNo} · ${itemCode} · ${qty}`,
