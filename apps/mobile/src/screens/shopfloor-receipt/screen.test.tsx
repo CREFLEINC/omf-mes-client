@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { ShopfloorReceiptScreen } from './screen';
 
@@ -266,6 +267,29 @@ describe('생산창고 입고 화면', () => {
 
     expect(await screen.findByText(`${ISSUE_NO} · 1라인`)).toBeTruthy();
     expect(await receivedField()).toBeTruthy();
+  });
+
+  /*
+   * 숫자판이 붙는 자리를 라인 번호로 기억한다. 전표를 되돌릴 때 두고 가면 다른 전표의 같은
+   * 번호 줄에 붙은 채로 열려, 어느 칸에 들어가는지가 어긋난다.
+   */
+  it('전표를 되돌리면 숫자판도 함께 접는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+    await user.click(await receivedField());
+    expect(screen.getByRole('button', { name: '7' })).toBeTruthy();
+
+    act(() => {
+      runBackStep();
+    });
+
+    scan(ISSUE_NO);
+    await receivedField();
+
+    expect(screen.queryByRole('button', { name: '7' })).toBeNull();
   });
 
   /* 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */

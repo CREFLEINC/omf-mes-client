@@ -124,7 +124,7 @@ export const ShopfloorReceiptScreen = () => {
   });
 
   /*
-   * 스캔한 전표를 찾지 못했다는 것을 소리로도 알린다(공유계약 D-2). 단말을 허리에 매단 채
+   * 스캔한 전표를 찾지 못했다는 것을 소리로도 알린다(공유계약 D-2). 기기를 허리에 매단 채
    * 읽으므로 화면에만 적으면 사람은 통과한 줄 알고 다음 동작으로 넘어간다.
    */
   const scanMissed = scanned !== null && found.isSuccess && found.data === null;
@@ -142,6 +142,7 @@ export const ShopfloorReceiptScreen = () => {
   useBackStep(issue !== null, () => {
     setScanned(null);
     setLines([]);
+    setKeypadFor(null);
   });
 
   const nameOf = (line: DraftLine): string => {
@@ -154,6 +155,8 @@ export const ShopfloorReceiptScreen = () => {
   const restart = () => {
     setScanned(null);
     setLines([]);
+    /* 라인 번호로 기억하므로, 두고 가면 다른 전표의 같은 번호 줄에 붙은 채로 열린다. */
+    setKeypadFor(null);
     setOutcome(null);
     setSaveFailed(false);
     scanField.focus();
@@ -232,7 +235,7 @@ export const ShopfloorReceiptScreen = () => {
 
   return (
     <div className="shopfloor-receipt">
-      {/* 통신이 끊기면 출고분도 이 단말에서 처리한다. 말하지 않으면 다른 단말을 기다린다. */}
+      {/* 통신이 끊기면 출고분도 이 기기에서 처리한다. 말하지 않으면 다른 기기를 기다린다. */}
       {online ? null : (
         <AlertBanner variant="warning" title={t.degraded.title}>
           {t.degraded.description}
