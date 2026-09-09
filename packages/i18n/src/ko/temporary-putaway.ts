@@ -7,6 +7,14 @@
  */
 export const temporaryPutaway = {
   title: '임시 위치 적재',
+  /*
+   * 이 화면은 닫히지 않는다 - 임시 상태를 만들고 끝나며 정위치로 옮기는 일이 남는다. 말하지
+   * 않으면 작업자는 적치를 끝낸 것으로 안다.
+   */
+  banner: {
+    title: '임시 적치입니다',
+    description: '정위치로 옮기는 일이 남습니다. 이 화면에서는 하지 않습니다.',
+  },
   /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: '임시 적치',
   /** 지시는 앞 화면이 들고 온다. 이 화면이 따로 찾지 않는다. */
@@ -18,6 +26,10 @@ export const temporaryPutaway = {
   task: {
     legend: '대상 지시',
     qty: (qty: string) => `수량 ${qty}`,
+    /** 라벨과 눈으로 대조할 값이다. 지시 번호만으로는 무엇을 집는지 알 수 없다. */
+    item: (itemCode: string, taskNo: string, qty: string) => `${itemCode} · ${taskNo} · ${qty}`,
+    /** 어디가 막혀서 여기 왔는지가 대상 정보의 일부다. */
+    origin: (code: string) => `원 지시 ${code}`,
     recommended: (code: string) => `권장 위치 ${code}`,
     noRule: '권장 위치 없음',
     /** 실제 적치 위치는 완료된 건에만 채워진다. 또 적으면 두 기록이 남는다. */
@@ -38,14 +50,14 @@ export const temporaryPutaway = {
     none: '이 창고에 등록된 위치가 없습니다',
     notFound: (code: string) => `${code} 위치를 이 창고에서 찾지 못했습니다`,
     chosen: (code: string, name: string) => `${code} ${name}`,
-    /** 임시 위치의 유형 값이 아직 없어 걸러 내지 않는다. */
-    unfiltered: '임시 위치만 골라 보이지 못해 전체 위치를 보입니다',
+    /** 임시 유형으로 가려낸 자리가 하나도 없을 때만 전체를 보인다. */
+    unfiltered: '임시 위치로 등록된 자리가 없어 전체 위치를 보입니다',
+    pickAction: '목록에서 선택',
     capacity: (qty: string) => `수용량 ${qty} — 임시 위치라 막지 않습니다`,
   },
   reason: {
     legend: '적치 사유',
     label: '사유',
-    placeholder: '사유를 고르세요',
     loading: '사유를 불러오는 중입니다',
     loadFailed: '사유를 불러오지 못했습니다',
     /** 값이 없으면 고를 것이 없다. 비고로 적게 두고 그 사실을 말한다. */

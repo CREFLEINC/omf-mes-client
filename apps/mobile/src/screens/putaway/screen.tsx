@@ -422,7 +422,7 @@ export const PutawayScreen = () => {
                     variant="error"
                     title={t.verdict.notRecommended(codeOf(task.recommendedLocationId))}
                   >
-                    <Link to="/temporary-putaway" state={{ task, location }}>
+                    <Link to="/temporary-putaway" state={{ task }}>
                       {t.verdict.temporary}
                     </Link>
                   </AlertBanner>
@@ -434,7 +434,7 @@ export const PutawayScreen = () => {
                     variant="error"
                     title={mixProblem === MIXED_ITEM ? t.mix.item : t.mix.lot}
                   >
-                    <Link to="/temporary-putaway" state={{ task, location }}>
+                    <Link to="/temporary-putaway" state={{ task }}>
                       {t.mix.temporary}
                     </Link>
                   </AlertBanner>
