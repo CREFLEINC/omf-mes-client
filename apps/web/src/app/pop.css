@@ -3294,3 +3294,47 @@
   align-self: stretch;
   block-size: auto;
 }
+
+/*
+ * 화면 이동 자리 — **머리줄 오른쪽, 사용자 전환 «왼쪽»에 앉힌다**(`patterns/pop-screen-nav`).
+ *
+ * ⚠ **자리를 사용자 전환과 함께 비운다.** 두 버튼이 같은 구석에 서므로 머리줄이 비워야 할
+ *   폭도 둘의 합이다 — 아래 규칙이 `pop-logout` 의 것보다 뒤에 있어 두 표식이 함께 켜질 때
+ *   이 값이 이긴다. 두 버튼은 같은 화면(진입 화면이 아닌 곳)에서 함께 서므로 어긋나지 않는다.
+ */
+[data-pop-screen-nav='on'] .pop-ui > .pop-header,
+[data-pop-screen-nav='on'] .pop-ui > .pop-terminal-header {
+  padding-right: calc(var(--pop-logout-w, 108px) + var(--pop-screen-nav-w, 148px));
+}
+
+.pop-screen-nav {
+  position: fixed;
+  top: 0;
+  right: var(--pop-logout-w, 108px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* 되돌림 값을 둔다 — 이 버튼은 `.pop-ui` 밖에 서서 변수가 닿지 않는다(`pop-logout` 과 같다). */
+  height: var(--pop-header-h, 64px);
+  padding-right: 12px;
+}
+
+/*
+ * ⛔ **닫힌 상태의 「현재 값」 칸을 그리지 않는다.** 선택 목록은 고른 값이 남는 입력이지만
+ *    이 자리는 «가는» 조작이라 남을 값이 없다 — 칸을 두면 늘 빈 상자가 머리줄에 붙는다.
+ *    팝업 규격(내부 스크롤·페이지 위·아래·건수·검색어 지우기)은 그대로 쓴다.
+ */
+.pop-screen-nav .pop-select {
+  display: block;
+}
+
+.pop-screen-nav .pop-select__value {
+  display: none;
+}
+
+.pop-screen-nav__reason {
+  color: var(--on-surface-variant);
+  font-size: 13px;
+  white-space: nowrap;
+}
