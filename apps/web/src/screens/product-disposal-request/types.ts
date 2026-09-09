@@ -12,6 +12,7 @@ import type { components } from '@omf-mes/api-client';
 
 type DispositionDecisionResponse = components['schemas']['DispositionDecision'];
 type PartnerResponse = components['schemas']['Partner'];
+type GoodsIssueResponse = components['schemas']['GoodsIssue'];
 
 /**
  * ① 폐기 대상 — **처분 결정** 한 건.
@@ -57,6 +58,38 @@ export const toDisposalTarget = (data: DispositionDecisionResponse): DisposalTar
   lotNo: data.lotNo ?? null,
   itemId: data.itemId ?? null,
 });
+
+/**
+ * 「처리 이력」 탭의 한 줄 — 기타출고 전표.
+ *
+ * ⚠ **원천 문서 유형을 들고 있다.** 목록 질의가 그 축을 받지 않아 자재 폐기(`W-01-06`)가
+ * 만든 전표도 섞여 온다 — **열로 보여 사람이 가리게 한다.** 감추면 남의 화면 전표를 제 것으로
+ * 읽는다.
+ */
+export interface IssueRow {
+  goodsIssueId: number;
+  goodsIssueNo: string;
+  sourceDocumentTypeCode: GoodsIssueResponse['sourceDocumentTypeCode'];
+  issuedAt: string;
+  statusCode: string;
+  reasonCode: string | null;
+  /** ⭐ 있으면 상신된 전표다 — 결재 진행을 이 번호로 부른다(통지 #674). */
+  approvalRequestId: number | null;
+}
+
+export const toIssueRow = (data: GoodsIssueResponse): IssueRow => ({
+  goodsIssueId: data.goodsIssueId,
+  goodsIssueNo: data.goodsIssueNo,
+  sourceDocumentTypeCode: data.sourceDocumentTypeCode,
+  issuedAt: data.issuedAt,
+  statusCode: data.statusCode,
+  reasonCode: data.reasonCode ?? null,
+  approvalRequestId: data.approvalRequestId ?? null,
+});
+
+/** ⭐ 이 화면이 만든 전표인가. **거르는 데 쓰지 않는다** — 열의 표시를 가르는 데만 쓴다. */
+export const isProductDisposal = (row: IssueRow): boolean =>
+  row.sourceDocumentTypeCode === 'DISPOSITION_DECISION';
 
 export interface DisposalPartner {
   partnerId: number;

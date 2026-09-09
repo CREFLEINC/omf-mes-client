@@ -1,15 +1,28 @@
-import { AlertBanner, Breadcrumb, Button, PageHeader, useToast } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Breadcrumb,
+  Button,
+  PageHeader,
+  type TabItem,
+  Tabs,
+  useToast,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
+import { progressSummary, toProgressSteps } from './approval-progress';
+import { HistoryPane, type ApprovalView } from './history-pane';
 import { useIssueReasonCodes, useIssueTypeCodes, useItemLookup, useUomLookup } from './lookups';
 import { useDisposalRequestMutation } from './mutations';
 import { resolvePlacements } from './placement';
 import {
+  useApprovalDetail,
   useApprovalRoute,
   useDisposalPartners,
   useDisposalTargets,
+  useIssueHistory,
   useLotPlacements,
 } from './queries';
 import {
@@ -22,6 +35,7 @@ import {
 } from './request-draft';
 import { IssuePane, RequestPane } from './request-pane';
 import { TargetList } from './target-list';
+import { DISPOSAL_REQUEST_TABS, readTab, tabLabel, TAB_KEY, toTabParam } from './tabs';
 import { quotedReason, totalQtyOf } from './types';
 
 const t = messages.productDisposalRequest;
@@ -45,6 +59,10 @@ export const ProductDisposalRequestScreen = () => {
   const [draft, setDraft] = useState<DisposalDraft>(EMPTY_DRAFT);
   const [showError, setShowError] = useState(false);
   const [isReasonTouched, setIsReasonTouched] = useState(false);
+
+  const [params, setParams] = useSearchParams();
+  const tab = readTab(params);
+  const [selectedIssueId, setSelectedIssueId] = useState<number | null>(null);
 
   const list = useDisposalTargets(1);
   const rows = useMemo(() => list.data?.items ?? [], [list.data]);
@@ -86,6 +104,53 @@ export const ProductDisposalRequestScreen = () => {
   const placementsByLot = useLotPlacements(lotIds);
   const placement = resolvePlacements(targets, (lotId) => placementsByLot[lotId]);
 
+  const history = useIssueHistory(1);
+  const historyRows = useMemo(() => history.data?.items ?? [], [history.data]);
+  const selectedIssue = historyRows.find((row) => row.goodsIssueId === selectedIssueId) ?? null;
+  const approvalDetail = useApprovalDetail(selectedIssue?.approvalRequestId ?? null);
+
+  /* 이력을 다시 읽으면 고른 전표가 사라질 수 있다 — 남아 있지 않으면 고름을 푼다. */
+  useEffect(() => {
+    const present = new Set(historyRows.map((row) => row.goodsIssueId));
+    setSelectedIssueId((current) => (current !== null && present.has(current) ? current : null));
+  }, [historyRows]);
+
+  /**
+   * 결재 진행의 네 갈래.
+   *
+   * ⛔ **「고르지 않았다」·「상신 안 했다」·「못 물었다」를 각각 다르게 말한다** — 뭉치면
+   * 사용자가 결재함에 가서 없는 요청을 찾는다.
+   */
+  const approvalView: ApprovalView =
+    selectedIssue === null
+      ? { kind: 'idle' }
+      : selectedIssue.approvalRequestId === null
+        ? { kind: 'none' }
+        : approvalDetail.isPending
+          ? { kind: 'pending' }
+          : approvalDetail.isError || approvalDetail.data === undefined
+            ? { kind: 'failed' }
+            : {
+                kind: 'loaded',
+                summary: progressSummary(approvalDetail.data.request),
+                steps: toProgressSteps(approvalDetail.data),
+              };
+
+  const changeTab = (next: string): void => {
+    /*
+     * ⛔ **탭 목록을 손으로 한 번 더 적지 않는다** — 정본은 `DISPOSAL_REQUEST_TABS` 하나다.
+     * 여기 목록을 따로 두면 셋째 탭이 생길 때 그 버튼이 말없이 아무 일도 하지 않는다.
+     */
+    const target = DISPOSAL_REQUEST_TABS.find((value) => value === next);
+    if (target === undefined || target === tab) return;
+
+    const param = toTabParam(target);
+    const nextParams = new URLSearchParams(params);
+    if (param === null) nextParams.delete(TAB_KEY);
+    else nextParams.set(TAB_KEY, param);
+    setParams(nextParams);
+  };
+
   const write = useDisposalRequestMutation({
     onSuccess: () => {
       setSelected([]);
@@ -110,17 +175,13 @@ export const ProductDisposalRequestScreen = () => {
 
   const qtyText = totalQtyOf(targets) === null ? '—' : String(totalQtyOf(targets));
 
-  return (
+  /*
+   * ⭐ **활성 탭의 내용만 담는다.** DS `Tabs` 는 패널을 전부 렌더하고 비활성만 감춘다 —
+   * 두 패널에 내용을 두면 숨은 탭의 표가 접근성 트리에 남고, 이름으로 집는 조작과 시험이
+   * 숨은 글자를 잡는다.
+   */
+  const requestTab = (
     <>
-      <PageHeader
-        title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
-      />
-      {/* ⛔ 승인·반려는 여기 없다 — 어디서 하는지를 머리에 적는다(J-10). */}
-      <div className="banner-slot">
-        <AlertBanner variant="info">{t.headerNotice}</AlertBanner>
-      </div>
-
       <section className="pane" aria-label={t.panes.targets}>
         <h2>{t.panes.targets}</h2>
         <TargetList
@@ -226,6 +287,65 @@ export const ProductDisposalRequestScreen = () => {
           <Button disabled={issueLock !== undefined}>{t.issue.submit}</Button>
         </div>
       </section>
+    </>
+  );
+
+  const historyTab = (
+    <HistoryPane
+      rows={historyRows}
+      selectedId={selectedIssueId}
+      isLoading={history.isPending}
+      error={
+        history.isError ? (
+          <AlertBanner
+            variant="error"
+            action={
+              <Button variant="outlined" size="sm" onClick={() => void history.refetch()}>
+                {messages.common.retry}
+              </Button>
+            }
+          >
+            {t.history.loadFailed}
+          </AlertBanner>
+        ) : null
+      }
+      reasons={issueReasons}
+      onSelect={setSelectedIssueId}
+      approval={approvalView}
+    />
+  );
+
+  const tabItems: TabItem[] = [
+    {
+      value: 'request',
+      label: tabLabel('request'),
+      content: tab === 'request' ? requestTab : null,
+      /*
+       * ⛔ **보내는 중에는 다른 탭으로 건너가지 못한다** — 탭이 바뀌면 보내는 자리가 화면에서
+       * 사라져 도착한 되먹임이 설 곳을 잃는다. 보고 있는 탭은 잠그지 않는다.
+       */
+      disabled: write.isSaving && tab !== 'request',
+    },
+    {
+      value: 'history',
+      label: tabLabel('history'),
+      content: tab === 'history' ? historyTab : null,
+      disabled: write.isSaving && tab !== 'history',
+    },
+  ];
+
+  return (
+    <>
+      <PageHeader
+        title={t.title}
+        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+      />
+      {/* ⛔ 승인·반려는 여기 없다 — 어디서 하는지를 머리에 적는다(J-10). */}
+      <div className="banner-slot">
+        <AlertBanner variant="info">{t.headerNotice}</AlertBanner>
+      </div>
+
+      <Tabs aria-label={t.title} items={tabItems} value={tab} onChange={changeTab} />
     </>
   );
 };

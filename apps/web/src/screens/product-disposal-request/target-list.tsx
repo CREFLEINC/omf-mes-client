@@ -14,6 +14,17 @@ import type { DisposalTarget } from './types';
 
 const t = messages.productDisposalRequest;
 
+/**
+ * 처분 유형의 표시명.
+ *
+ * ⚠ **모르는 값이 오면 그 값을 그대로 보인다** — 지어낸 이름을 붙이면 사용자가 그것을 믿는다.
+ * 계약이 셋으로 닫았지만 값이 «늘어나는» 것은 파괴 변경이 아니라서(등급 ⚠) 올 수 있다.
+ */
+const dispositionLabel = (code: string): string =>
+  code in t.targets.disposition
+    ? t.targets.disposition[code as keyof typeof t.targets.disposition]
+    : code;
+
 export interface TargetListProps {
   rows: DisposalTarget[];
   selected: readonly number[];
@@ -28,11 +39,11 @@ export interface TargetListProps {
 /**
  * ① 폐기 대상 — **후속 처리가 남은 처분 결정.**
  *
- * ⚠ **「폐기만」으로 좁히지 못한다**(G-2). 그래서 **처분을 열로 보여 사람이 가리게 하고** 그
- * 사실을 목록 머리에 적는다 — 감추면 재작업 판정 건을 폐기로 올린다.
+ * ⭐ **질의가 「폐기」로 좁힌다**(통지 `#674`) — 한때 못 좁혀 사람이 열을 보고 가리게 했다.
  *
- * ⛔ 처분 유형은 **날코드 그대로** 보인다. 값 목록이 없어 이름을 붙일 수 없고, 지어내면 사용자가
- * 그 이름을 믿는다.
+ * ⭐ **그래도 처분 열은 남긴다.** 좁혀진 목록이라도 **무엇으로 판정된 것인지**는 보여야
+ * 사용자가 「이게 왜 여기 있나」를 스스로 확인한다. 값이 `enum` 으로 닫혔으므로 표시명을
+ * 붙인다 — 날코드를 그대로 내보이던 자리다.
  */
 export const TargetList = ({
   rows,
@@ -90,13 +101,18 @@ export const TargetList = ({
       render: (row) => row.nonconformanceNo ?? messages.common.reference.unknown,
     },
     {
-      /* ⭐ 이 열이 「폐기인가」를 사람이 가리는 자리다 — 화면이 못 거르므로 반드시 보인다. */
+      /* ⭐ 질의가 좁혀 주지만 «무엇으로 판정된 것인지»는 보인다 — 값이 닫혔으니 표시명을 붙인다. */
       key: 'disposition',
       header: t.targets.fields.disposition,
-      render: (row) => row.dispositionTypeCode,
+      render: (row) => dispositionLabel(row.dispositionTypeCode),
     },
     { key: 'decidedAt', header: t.targets.fields.decidedAt, render: (row) => row.decidedAt },
-    { key: 'decidedBy', header: t.targets.fields.decidedBy, render: (row) => row.decidedBy },
+    {
+      key: 'decidedBy',
+      header: t.targets.fields.decidedBy,
+      /* ⚠ `decidedBy` 는 식별자다 — 사람 이름은 계약이 따로 준다. 못 받았으면 그 사실을 적는다. */
+      render: (row) => row.decidedByName ?? messages.common.reference.unknown,
+    },
   ];
 
   if (error !== null && error !== undefined) return error;
@@ -115,9 +131,7 @@ export const TargetList = ({
        * A-11 — 좁히지 못한다는 사실과 판정이 선행이라는 사실을 «둘 다» 적는다. 앞은 지금 보이는
        * 것에 대한 말이고, 뒤는 안 보이는 것에 대한 말이다.
        */}
-      <div className="banner-slot">
-        <AlertBanner variant="warning">{t.targets.cannotNarrow}</AlertBanner>
-      </div>
+      {/* §5-2 — 판정이 선행이라는 사실을 적는다. 목록에 없는 것에 대한 말이라 목록 위에 선다. */}
       <div className="banner-slot">
         <AlertBanner variant="info">{t.targets.judgmentRequired}</AlertBanner>
       </div>

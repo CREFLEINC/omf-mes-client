@@ -6,17 +6,21 @@ import { runRequest } from '../../patterns/request';
 import {
   DISPOSAL_DISPOSITION_TYPE,
   DISPOSAL_PARTNER_ROLE,
+  ISSUE_TYPE_OTHER,
   ROUTE_LOOKUP_APPROVAL_TYPE,
 } from './codes';
 import type { PlacementEntry } from './placement';
 import {
   toDisposalPartner,
   toDisposalTarget,
+  toIssueRow,
   type DisposalPartner,
   type DisposalTarget,
+  type IssueRow,
 } from './types';
 
 type PageMeta = components['schemas']['PageMeta'];
+type ApprovalRequestDetail = components['schemas']['ApprovalRequestDetail'];
 
 /**
  * 이 화면의 읽기. 쓰기는 `mutations.ts`가 갖는다.
@@ -32,6 +36,8 @@ export const disposalRequestKeys = {
   partners: () => ['product-disposal-request', 'partners'] as const,
   route: () => ['product-disposal-request', 'route'] as const,
   placement: (lotId: number) => ['product-disposal-request', 'placement', lotId] as const,
+  history: (page: number) => ['product-disposal-request', 'history', page] as const,
+  approval: (id: number) => ['product-disposal-request', 'approval', id] as const,
 };
 
 export interface TargetListResult {
@@ -154,6 +160,65 @@ export const useLotPlacements = (
   });
 
   return byLot;
+};
+
+/**
+ * 「처리 이력」 탭 — **이 화면이 올린 폐기 출고들.**
+ *
+ * ⛔ **원천 문서 유형으로 좁히지 못한다.** 목록 질의에 그 축이 없다(`5b3d773` 실측 — 상세와
+ * 생성 본문에는 있는데 조회 조건에는 없다). 그래서 **기타출고 전체**가 온다: 자재 폐기
+ * (`W-01-06`)가 만든 전표도 같은 유형이라 함께 섞인다.
+ *
+ * ⚠ **화면이 응답을 거르지 않는다**(L-11) — 쪽 단위 목록을 화면에서 거르면 「이 쪽에서 걸러낸
+ * 것」이 되고 총 건수와 어긋난다. 대신 **원천을 열로 보이고 섞인다는 사실을 적는다**(A-11).
+ * 좁히는 축이 계약에 생기면 그때 질의로 옮긴다.
+ */
+export const useIssueHistory = (page: number): UseQueryResult<IssueHistoryResult> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: disposalRequestKeys.history(page),
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/logistics/goods-issues', {
+          params: { query: { issueTypeCode: ISSUE_TYPE_OTHER, page, size: PAGE_SIZE } },
+        }),
+      );
+
+      return { items: data.items.map(toIssueRow), page: data.page };
+    },
+  });
+};
+
+export interface IssueHistoryResult {
+  items: IssueRow[];
+  page: PageMeta;
+}
+
+/**
+ * 고른 전표의 **결재 진행.**
+ *
+ * ⭐ **전표가 요청 번호를 싣는다**(통지 `#674`) — `approvalRequestId` 로 바로 상세를 부른다.
+ * 역조회(`?targetTypeCode=&targetId=`)를 쓰지 않는 이유가 이것이다: 한 번에 닿는 길이 있다.
+ *
+ * ⛔ **번호가 없으면 부르지 않는다** — 상신하지 않은 전표다. 「결재가 없다」와 「못 물었다」를
+ * 가르려면 조회를 아예 열지 않아야 한다.
+ */
+export const useApprovalDetail = (
+  approvalRequestId: number | null,
+): UseQueryResult<ApprovalRequestDetail> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: disposalRequestKeys.approval(approvalRequestId ?? 0),
+    enabled: approvalRequestId !== null,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/app/approval-requests/{approvalRequestId}', {
+          params: { path: { approvalRequestId: approvalRequestId ?? 0 } },
+        }),
+      ),
+  });
 };
 
 /*

@@ -1,0 +1,164 @@
+import {
+  AlertBanner,
+  Chip,
+  type Column,
+  EmptyState,
+  SkeletonText,
+  type StepperItem,
+  Stepper,
+  Table,
+} from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
+import type { ReactNode } from 'react';
+
+import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
+import { isProductDisposal, type IssueRow } from './types';
+
+const t = messages.productDisposalRequest;
+
+/**
+ * 고른 전표의 결재 상태.
+ *
+ * ⛔ **「상신하지 않았다」와 「못 물었다」를 가른다.** 둘을 같은 말로 적으면 사용자가 결재함에
+ * 가서 없는 요청을 찾는다.
+ */
+export type ApprovalView =
+  | { kind: 'idle' }
+  | { kind: 'none' }
+  | { kind: 'pending' }
+  | { kind: 'failed' }
+  | { kind: 'loaded'; summary: string; steps: readonly StepperItem[] };
+
+const ApprovalBlock = ({ approval }: { approval: ApprovalView }) => {
+  switch (approval.kind) {
+    case 'idle':
+      return <p className="field-note">{t.approval.pickRow}</p>;
+    case 'none':
+      return <p className="field-note">{t.approval.notSubmitted}</p>;
+    case 'pending':
+      return (
+        <div role="status" aria-label={t.approval.loading}>
+          <SkeletonText lines={3} />
+        </div>
+      );
+    case 'failed':
+      return <AlertBanner variant="error">{t.approval.loadFailed}</AlertBanner>;
+    case 'loaded':
+      return (
+        <>
+          <p className="field-note">{approval.summary}</p>
+          {/*
+           * §7 — 결재선 진행은 «세로» `Stepper` 다. 칸의 글이 사람 이름과 판정 두 줄이라
+           * 가로로 두면 이름이 잘린다.
+           *
+           * **이름을 붙이지 않는다** — 감싼 구획이 이미 「결재 진행」으로 불리고 있어, 목록에도
+           * 같은 이름을 주면 스크린리더가 두 번 읽는다.
+           */}
+          <Stepper orientation="vertical" size="sm" steps={[...approval.steps]} />
+        </>
+      );
+  }
+};
+
+export interface HistoryPaneProps {
+  rows: readonly IssueRow[];
+  selectedId: number | null;
+  isLoading: boolean;
+  error: ReactNode;
+  reasons: LookupSource;
+  onSelect: (goodsIssueId: number | null) => void;
+  approval: ApprovalView;
+}
+
+/**
+ * 「처리 이력」 탭.
+ *
+ * ⛔ **여기서 승인·반려하지 않는다**(J-10) — 결재함(`W-CO-09`) 몫이다. 이 자리는 **어디까지
+ * 왔는가**를 읽기만 한다.
+ *
+ * ⚠ **자재 폐기 전표가 섞여 온다** — 목록 질의에 원천 문서 유형 축이 없다. 거르지 않고
+ * **열로 보이고 그 사실을 적는다**(A-11 · L-11).
+ */
+export const HistoryPane = ({
+  rows,
+  selectedId,
+  isLoading,
+  error,
+  reasons,
+  onSelect,
+  approval,
+}: HistoryPaneProps) => {
+  const columns: Column<IssueRow>[] = [
+    { key: 'no', header: t.history.fields.no, render: (row) => row.goodsIssueNo },
+    {
+      /* ⭐ 이 화면이 만든 것과 자재 폐기 것을 «보이게» 가른다 — 감추지 않고 표시한다. */
+      key: 'source',
+      header: t.history.fields.source,
+      render: (row) => (
+        <Chip status={isProductDisposal(row) ? 'info' : 'idle'}>
+          {isProductDisposal(row) ? t.history.sourceProduct : t.history.sourceOther}
+        </Chip>
+      ),
+    },
+    { key: 'issuedAt', header: t.history.fields.issuedAt, render: (row) => row.issuedAt },
+    {
+      key: 'reason',
+      header: t.history.fields.reason,
+      render: (row) =>
+        row.reasonCode === null
+          ? messages.common.reference.unknown
+          : lookupDisplayLabel(reasons, row.reasonCode),
+    },
+    {
+      /* ⭐ 「상신됐는가」는 요청 번호가 «있는가»로 본다 — 상태 코드 문자열을 비교하지 않는다. */
+      key: 'approval',
+      header: t.history.fields.approval,
+      render: (row) =>
+        row.approvalRequestId === null ? t.approval.notSubmitted : t.approval.submitted,
+    },
+  ];
+
+  if (error !== null && error !== undefined) return error;
+
+  if (isLoading) {
+    return (
+      <div role="status" aria-label={t.history.loading}>
+        <SkeletonText lines={4} />
+      </div>
+    );
+  }
+
+  return (
+    <section className="pane" aria-label={t.panes.history}>
+      <h2>{t.panes.history}</h2>
+
+      {/* A-11 — 못 좁힌다는 사실을 «목록 위에» 적는다. 밑에 적으면 다 읽고 나서 안다. */}
+      <div className="banner-slot">
+        <AlertBanner variant="info">{t.history.mixedNotice}</AlertBanner>
+      </div>
+
+      <Table
+        density="compact"
+        columns={columns}
+        rows={[...rows]}
+        getRowId={(row) => String(row.goodsIssueId)}
+        /*
+         * ⭐ **DS 의 선택 축을 그대로 쓴다** — 한 줄만 고르므로 배열의 마지막 것을 취한다.
+         * 같은 줄을 다시 누르면 빈 배열이 와서 고름이 풀린다.
+         */
+        selectable
+        selectedIds={selectedId === null ? [] : [String(selectedId)]}
+        onSelectionChange={(ids) => {
+          const last = ids.at(-1);
+          onSelect(last === undefined ? null : Number(last));
+        }}
+        empty={<EmptyState size="sm" live title={t.history.emptyTitle} />}
+      />
+
+      <div className="pane-block">
+        <h3>{t.approval.title}</h3>
+        <ApprovalBlock approval={approval} />
+      </div>
+    </section>
+  );
+};
