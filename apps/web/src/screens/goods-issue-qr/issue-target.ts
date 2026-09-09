@@ -17,6 +17,7 @@ export type IssueGuard =
   | { kind: 'noSelection' }
   | { kind: 'palletNeedsOneLine' }
   | { kind: 'noPallet' }
+  | { kind: 'palletContentsPending' }
   | { kind: 'emptyPallet' }
   | { kind: 'reasonRequired' };
 
@@ -33,6 +34,14 @@ export interface IssueGuardInput {
    * ⛔ 모르는 것을 0 으로 접지 않는다 — 조회가 늦은 것뿐인데 「빈 파렛트」라며 막게 된다.
    */
   palletContentCount: number | null;
+  /**
+   * 담긴 내용을 아직 묻는 중인가.
+   *
+   * ⛔ **모르는 동안 버튼을 열지 않는다.** 빈 파렛트 차단은 `palletContentCount` 로 서는데 그
+   * 값이 조회 전에는 `null` 이라, 잠깐 열린 그 틈에 누르면 찍을 것이 없는 파렛트로 발행 기록이
+   * 남는다 — 되돌릴 수 없는 쓰기다.
+   */
+  palletContentsPending: boolean;
   /** 고른 대상 중 이미 발행된 것이 있는가 — 있으면 재발행이라 사유가 필요하다. */
   needsReason: boolean;
   /** 고른 재발행 사유. 안 골랐으면 빈 문자열. */
@@ -45,6 +54,7 @@ export const issueGuard = ({
   selectedIds,
   palletId,
   palletContentCount,
+  palletContentsPending,
   needsReason,
   reasonCode,
 }: IssueGuardInput): IssueGuard => {
@@ -54,7 +64,8 @@ export const issueGuard = ({
   if (unit === ISSUE_UNIT.pallet) {
     if (selectedIds.length > 1) return { kind: 'palletNeedsOneLine' };
     if (palletId === null) return { kind: 'noPallet' };
-    /* 빈 파렛트에는 찍을 것이 없다(스펙 §6). 모르는 동안은 막지 않는다. */
+    /* 빈 파렛트에는 찍을 것이 없다(스펙 §6). 그 판정이 서기 전에는 열지 않는다. */
+    if (palletContentsPending) return { kind: 'palletContentsPending' };
     if (palletContentCount === 0) return { kind: 'emptyPallet' };
   }
 

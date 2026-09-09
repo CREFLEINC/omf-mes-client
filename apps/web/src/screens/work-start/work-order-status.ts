@@ -25,9 +25,6 @@ import type { WorkOrder } from './types';
  */
 export const HELD_STATUS_CODES: readonly string[] = ['SUSPENDED'];
 
-/** 상태 코드 문자열을 하나라도 아는가. 화면이 「모른다」를 말할 근거다. */
-export const isStatusVocabularyKnown = (): boolean => HELD_STATUS_CODES.length > 0;
-
 /**
  * 이 작업지시가 지금 중단 중인가.
  *

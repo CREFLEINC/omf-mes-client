@@ -22,7 +22,7 @@ import {
   useLineHandlingUnits,
   usePrinters,
 } from './queries';
-import { TargetPane } from './target-pane';
+import { TargetPane, type PalletQuantity } from './target-pane';
 import { useGoodsIssueQrEntry } from './entry-context';
 import {
   DOCUMENT_TYPE_CODE,
@@ -30,6 +30,7 @@ import {
   LINE_TARGET_TYPE_CODE,
   PALLET_TARGET_TYPE_CODE,
   type DocumentIssue,
+  type HandlingUnitContent,
   type IssueUnit,
   type Printer,
 } from './types';
@@ -96,7 +97,12 @@ export const GoodsIssueQrScreen = () => {
   const palletSelectable = unit === ISSUE_UNIT.pallet && selectedIds.length === 1;
   const selectedLine = rows.find((row) => rowId(row.line) === selectedIds[0])?.line ?? null;
   const pallets = useLineHandlingUnits(palletSelectable ? (selectedLine?.lotId ?? null) : null);
-  const palletItems = pallets.data ?? [];
+  const palletItems = pallets.data?.items ?? [];
+  /*
+   * 서버가 말한 총계가 받은 수보다 크면 **목록이 한 쪽에서 잘렸다.** 고르려던 파렛트가
+   * 목록에 없는데 화면이 아무 말도 하지 않으면 사용자는 남은 것 중에서 잘못 고른다.
+   */
+  const palletsTruncated = pallets.data !== undefined && pallets.data.total > palletItems.length;
   const palletContents = useHandlingUnitContents(unit === ISSUE_UNIT.pallet ? palletId : null);
 
   /*
@@ -116,7 +122,13 @@ export const GoodsIssueQrScreen = () => {
   const printers = usePrinters();
   const printFlow = usePrintFlow(entry.workerNo);
 
-  const palletIssueCount = palletSummary.data?.[0]?.issueCount ?? null;
+  /*
+   * ⛔ **자리로 읽지 않는다.** 대상을 `targetId` 로 짝지어 찾는다 — 라인 쪽(`toLineRows`)과
+   * 같은 축이다. 자리로 읽으면 응답이 여러 건이 되거나 차례가 바뀌는 순간 다른 대상의 회차를
+   * 이 파렛트의 것으로 말하게 되고, 재발행 사유를 물을지가 그 값에 걸려 있다.
+   */
+  const palletIssueCount =
+    palletSummary.data?.find((entry) => entry.targetId === palletId)?.issueCount ?? null;
   const needsReason =
     unit === ISSUE_UNIT.pallet
       ? palletIssueCount !== null && palletIssueCount > 0
@@ -155,12 +167,27 @@ export const GoodsIssueQrScreen = () => {
     selectedIds,
     palletId,
     palletContentCount: palletContents.data?.length ?? null,
+    /*
+     * 내용물을 아직 모르는 동안은 열지 않는다 — 빈 파렛트 차단(스펙 §6)이 조회가 닿기 전
+     * 잠깐 비어 있어, 그 틈에 누르면 찍을 것이 없는 파렛트로 발행 기록이 남는다.
+     *
+     * ⛔ **끊긴 동안은 세지 않는다.** 연결이 없으면 조회가 «멈춘» 채 대기 상태로 머물러
+     * (`fetchStatus === 'paused'`), 그것까지 「묻는 중」으로 세면 단말이 온라인으로 돌아올
+     * 때까지 발행이 영영 잠기고 화면은 「잠시 뒤 발행할 수 있습니다」라고 거짓을 말한다.
+     */
+    palletContentsPending: palletContents.isPending && palletContents.fetchStatus !== 'paused',
     needsReason,
     reasonCode,
   });
 
   const issue = (): void => {
     if (!canIssue(guard)) return;
+    /*
+     * ⛔ **파렛트 단위인데 대상이 비었으면 라인 대상으로 흘려보내지 않는다.** 가드가 이미
+     * 막는 자리지만, 여기서 조용히 다른 대상을 싣는 길이 남아 있으면 되돌릴 수 없는 쓰기가
+     * 사용자가 고르지 않은 것으로 나간다.
+     */
+    if (unit === ISSUE_UNIT.pallet && palletId === null) return;
 
     setIssued(null);
     printFlow.reset();
@@ -172,8 +199,8 @@ export const GoodsIssueQrScreen = () => {
        * 담아 한 칸에 못 담는다 — 아무 LOT 이나 골라 채우면 이력이 그 LOT 의 것으로 굳는다.
        */
       targets:
-        unit === ISSUE_UNIT.pallet
-          ? [{ targetTypeCode: PALLET_TARGET_TYPE_CODE, targetId: palletId as number }]
+        unit === ISSUE_UNIT.pallet && palletId !== null
+          ? [{ targetTypeCode: PALLET_TARGET_TYPE_CODE, targetId: palletId }]
           : rows
               .filter((row) => selectedIds.includes(rowId(row.line)))
               .map((row) => ({
@@ -305,6 +332,8 @@ export const GoodsIssueQrScreen = () => {
           pallets={palletItems}
           palletsPending={pallets.isPending && palletSelectable}
           palletsFailed={pallets.isError}
+          palletsTruncated={palletsTruncated}
+          palletTotal={pallets.data?.total ?? 0}
           palletSelectable={palletSelectable}
           palletId={palletId}
           onPalletChange={(handlingUnitId) => {
@@ -317,9 +346,10 @@ export const GoodsIssueQrScreen = () => {
               ? null
               : {
                   lineCount: palletContents.data.length,
-                  totalQty: palletContents.data.reduce((sum, content) => sum + content.qty, 0),
+                  quantities: toPalletQuantities(palletContents.data),
                 }
           }
+          uomNames={uomNames}
           issuedSeq={firstIssued?.issueSeq ?? null}
           showReason={showReason}
           needsReason={needsReason}
@@ -368,6 +398,24 @@ const defaultPrinter = (printers: Printer[] | undefined): Printer | null => {
   return printers.find((printer) => printer.isDefault) ?? printers[0] ?? null;
 };
 
+/**
+ * 담긴 내용을 **단위별로 합친다.**
+ *
+ * ⛔ **단위를 무시하고 하나로 더하지 않는다.** 한 취급 단위가 서로 다른 단위의 LOT 을 담을 수
+ * 있어(계약 `HandlingUnitContent.uomId`), 더해 버리면 화면이 실재하지 않는 수를 말한다.
+ *
+ * 차례는 **처음 나온 단위 순**이다 — 응답 차례를 그대로 따라 화면이 다시 줄 세우지 않는다.
+ */
+const toPalletQuantities = (contents: readonly HandlingUnitContent[]): PalletQuantity[] => {
+  const byUom = new Map<number, number>();
+
+  for (const content of contents) {
+    byUom.set(content.uomId, (byUom.get(content.uomId) ?? 0) + content.qty);
+  }
+
+  return [...byUom].map(([uomId, qty]) => ({ uomId, qty }));
+};
+
 /** 서버가 이 단말의 발행을 막았는가. 게이트는 서버가 갖는다(통지 #535). */
 const isForbidden = (error: ApiError | null): boolean =>
   error !== null && error.kind === 'http' && error.status === 403;
@@ -382,6 +430,8 @@ const guardNote = (kind: Exclude<IssueGuard['kind'], 'ready'>): string => {
       return t.action.disabledPalletNeedsOneLine;
     case 'noPallet':
       return t.action.disabledNoPallet;
+    case 'palletContentsPending':
+      return t.action.disabledPalletContentsPending;
     case 'emptyPallet':
       return t.action.disabledEmptyPallet;
     case 'reasonRequired':

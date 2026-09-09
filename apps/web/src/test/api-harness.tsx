@@ -19,7 +19,13 @@ export type StubFetch = (request: Request) => Promise<Response>;
 
 export interface StubRoute {
   match: (request: Request) => boolean;
-  respond: (request: Request) => Response;
+  /**
+   * 응답을 만든다.
+   *
+   * ⭐ **약속을 돌려줄 수 있다** — 응답이 «아직 오지 않은» 동안의 화면(로딩 중 버튼 잠금 등)을
+   * 시험이 붙들려면 응답 시점을 시험이 쥐고 있어야 한다.
+   */
+  respond: (request: Request) => Response | Promise<Response>;
 }
 
 /** 본문이 있는 응답을 만든다. 계약 응답은 전부 JSON이다. */

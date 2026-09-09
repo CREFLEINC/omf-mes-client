@@ -158,6 +158,19 @@ export const usePrinters = (): UseQueryResult<Printer[]> => {
 const HANDLING_UNIT_PAGE_SIZE = 100;
 
 /**
+ * 파렛트 목록 한 쪽과 **서버가 말한 총 건수.**
+ *
+ * ⛔ **총계를 버리지 않는다.** 한 쪽에 담기지 않으면 고르려던 파렛트가 목록에 없는데, 총계가
+ * 없으면 화면은 그 사실조차 말할 수 없다 — 사용자는 「이 라인에는 파렛트가 이것뿐」이라고
+ * 읽고 잘못 고른다. 발행은 되돌릴 수 없는 쓰기다.
+ */
+export interface HandlingUnitPage {
+  items: HandlingUnit[];
+  /** 서버가 말한 전체 건수. `items.length` 보다 크면 목록이 잘렸다. */
+  total: number;
+}
+
+/**
  * 파렛트 단위의 대상 목록 — **이 출고 라인의 LOT 이 실린 취급 단위만**(스펙 §5-2 · 2026-09-06).
  *
  * ⛔ **창고 전체를 부르지 않는다.** 축 없이 부르면 이 출고와 상관없는 파렛트가 목록에 서고,
@@ -165,7 +178,7 @@ const HANDLING_UNIT_PAGE_SIZE = 100;
  *
  * ⛔ **취급 단위를 이 화면이 만들지 않는다** — 만드는 것은 `M-01-08` 이고 여기는 조회만 한다.
  */
-export const useLineHandlingUnits = (lotId: number | null): UseQueryResult<HandlingUnit[]> => {
+export const useLineHandlingUnits = (lotId: number | null): UseQueryResult<HandlingUnitPage> => {
   const { client } = useApiClient();
 
   return useQuery({
@@ -178,7 +191,7 @@ export const useLineHandlingUnits = (lotId: number | null): UseQueryResult<Handl
         }),
       );
 
-      return data.items;
+      return { items: data.items, total: data.page.total };
     },
   });
 };

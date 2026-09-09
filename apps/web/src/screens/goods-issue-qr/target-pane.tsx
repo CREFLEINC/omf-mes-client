@@ -2,7 +2,7 @@ import { Card, Radio, RadioGroup } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
-import type { LookupSource } from '../../patterns/lookup-display';
+import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { ISSUE_UNIT, type HandlingUnit, type IssueUnit } from './types';
 
@@ -22,6 +22,12 @@ const t = messages.goodsIssueQr;
  * 창고 전체를 세우지 않는다 — 이 출고와 상관없는 파렛트가 목록에 서면 잘못 고른 것이 그대로
  * 이력에 남는다. 라인이 하나로 정해지기 전에는 목록 자리에 그 사유를 적는다.
  */
+/** 한 파렛트 안에서 같은 단위끼리 합친 수량. */
+export interface PalletQuantity {
+  uomId: number;
+  qty: number;
+}
+
 export interface TargetPaneProps {
   selectedCount: number;
   unit: IssueUnit;
@@ -30,12 +36,23 @@ export interface TargetPaneProps {
   pallets: readonly HandlingUnit[];
   palletsPending: boolean;
   palletsFailed: boolean;
+  /** 서버가 말한 총 건수가 받은 수보다 커서 목록이 잘렸는가. */
+  palletsTruncated: boolean;
+  /** 서버가 말한 총 건수. 잘렸을 때 「N건 중 M건」으로 말한다. */
+  palletTotal: number;
   /** 파렛트를 고를 수 있는 상태인가 — 라인이 정확히 하나 골라졌는가다. */
   palletSelectable: boolean;
   palletId: number | null;
   onPalletChange: (handlingUnitId: number) => void;
-  /** 고른 파렛트에 담긴 줄 수·수량 요약. 아직 모르면 `null`. */
-  palletContents: { lineCount: number; totalQty: number } | null;
+  /**
+   * 고른 파렛트에 담긴 줄 수와 **단위별** 수량. 아직 모르면 `null`.
+   *
+   * ⚠ **단위를 섞어 하나로 더하지 않는다** — 한 취급 단위가 서로 다른 단위의 LOT 을 담을 수
+   * 있고(계약 `HandlingUnitContent.uomId`), 더해 버리면 화면이 없는 수를 말하게 된다.
+   */
+  palletContents: { lineCount: number; quantities: readonly PalletQuantity[] } | null;
+  /** 단위 이름 — 수량 옆에 붙는다(설계 §3 도면 「3라인 · 820 EA」). */
+  uomNames: LookupSource;
   /** 발행 뒤 서버가 매긴 회차. 아직 발행 전이면 `null`. */
   issuedSeq: number | null;
   /** 사유 칸을 세우는가 — 재발행이거나, 현황을 모르거나, 서버가 사유를 물은 경우다. */
@@ -60,10 +77,13 @@ export const TargetPane = ({
   pallets,
   palletsPending,
   palletsFailed,
+  palletsTruncated,
+  palletTotal,
   palletSelectable,
   palletId,
   onPalletChange,
   palletContents,
+  uomNames,
   issuedSeq,
   showReason,
   needsReason,
@@ -87,6 +107,17 @@ export const TargetPane = ({
   useEffect(() => {
     setPreviewFailed(false);
   }, [previewSrc]);
+
+  /*
+   * 「820 EA」의 단위까지가 한 벌이다(설계 §3 도면). 단위가 섞이면 갈라 적는다 —
+   * 서로 다른 단위를 하나로 더하면 화면이 없는 수를 말한다.
+   */
+  const quantityText =
+    palletContents === null || palletContents.quantities.length === 0
+      ? '0'
+      : palletContents.quantities
+          .map((entry) => `${String(entry.qty)} ${lookupDisplayLabel(uomNames, entry.uomId)}`)
+          .join(' · ');
 
   const reasonNote = reasonOptions.isError
     ? t.reissue.failed
@@ -159,11 +190,15 @@ export const TargetPane = ({
                       ? t.target.palletEmpty
                       : palletContents === null
                         ? t.target.palletContentsUnknown
-                        : t.target.palletContents(
-                            palletContents.lineCount,
-                            palletContents.totalQty,
-                          )}
+                        : t.target.palletContents(palletContents.lineCount, quantityText)}
             </p>
+            {/*
+             * 목록이 한 쪽에서 잘렸다는 사실은 **고르기 전에** 말한다 — 고른 뒤에 알려 봐야
+             * 이미 잘못 고른 것이 발행돼 있다.
+             */}
+            {palletsTruncated && (
+              <p className="field-note">{t.target.palletTruncated(pallets.length, palletTotal)}</p>
+            )}
           </div>
         )}
 

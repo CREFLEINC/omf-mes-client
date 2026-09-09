@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { WorkOrder } from './types';
-import { HELD_STATUS_CODES, isHeld, isStatusVocabularyKnown } from './work-order-status';
+import { HELD_STATUS_CODES, isHeld } from './work-order-status';
 
 const workOrderWith = (statusCode: string): WorkOrder =>
   ({
@@ -25,7 +25,6 @@ describe('작업지시 상태 코드', () => {
    */
   it('중단을 뜻하는 상태 문자열은 SUSPENDED 하나다', () => {
     expect(HELD_STATUS_CODES).toEqual(['SUSPENDED']);
-    expect(isStatusVocabularyKnown()).toBe(true);
   });
 
   /** ⛔ 모르는 것을 「중단」으로 다루면 시작해야 할 지시에 [재개] 가 뜬다. */
