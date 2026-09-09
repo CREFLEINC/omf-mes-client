@@ -1,3 +1,4 @@
+import type { UseQueryResult } from '@tanstack/react-query';
 import { AlertBanner, Button, Card, Chip, NumberPad, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
@@ -13,9 +14,11 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import {
   toCandidates,
   useAvailableByLot,
+  useHoldReason,
   useLotPool,
   usePickLine,
   useTodayRequests,
+  type LotHold,
 } from './queries';
 import {
   FEFO,
@@ -51,6 +54,30 @@ const policyLabel = (policy: string): string => {
   return policy === FIFO ? t.candidates.fifo : policy;
 };
 
+/** 보류 사유와 해제 조건. 서버가 여러 건을 낼 수 있어 그대로 늘어놓는다. */
+const HoldReason = ({ holds }: { holds: UseQueryResult<LotHold[]> }) => {
+  if (holds.isPending) {
+    return <p className="picking__note">{t.lot.heldReasonLoading}</p>;
+  }
+
+  if (holds.isError) {
+    return <p className="picking__note">{t.lot.heldReasonFailed}</p>;
+  }
+
+  return (
+    <>
+      {(holds.data ?? []).map((hold) => (
+        <p key={hold.lotHoldId}>
+          {t.lot.heldReason(hold.reasonCode)}
+          {hold.releaseCondition === null || hold.releaseCondition === undefined
+            ? ''
+            : ` · ${t.lot.heldRelease(hold.releaseCondition)}`}
+        </p>
+      ))}
+    </>
+  );
+};
+
 const CandidateCard = ({
   candidate,
   line,
@@ -58,6 +85,7 @@ const CandidateCard = ({
   uoms,
   recommended,
   selected,
+  holds,
   onSelect,
 }: {
   candidate: Candidate;
@@ -66,6 +94,7 @@ const CandidateCard = ({
   uoms: Map<number, string> | undefined;
   recommended: boolean;
   selected: boolean;
+  holds: UseQueryResult<LotHold[]> | null;
   onSelect: () => void;
 }) => {
   const problem = lotProblem(candidate, line, today);
@@ -94,7 +123,13 @@ const CandidateCard = ({
             title={t.lot.shelfLifeShort(line.minimumRemainingShelfLifeDays ?? 0, remaining ?? 0)}
           />
         ) : problem === null ? null : (
-          <AlertBanner variant="error" title={t.lot[problem]} />
+          <AlertBanner variant="error" title={t.lot[problem]}>
+            {/*
+             * 막는 것만으로는 무엇을 하면 풀리는지 알 수 없다. 사유는 고른 것 하나만 따로
+             * 물어 오므로 그 답이 있을 때만 적는다.
+             */}
+            {problem === 'held' && holds !== null ? <HoldReason holds={holds} /> : null}
+          </AlertBanner>
         )}
 
         {/* 셀 수 없는 것을 넉넉한 것으로 두지 않는다. 막지도 않는다 — 정본은 서버다. */}
@@ -186,6 +221,12 @@ export const ProductPickingScreen = () => {
   };
 
   const scanField = useScanField({ onScan: takeScan });
+  /*
+   * 보류 사유는 고른 것 하나만 묻는다. 목록 전체에 물으면 후보 수만큼 호출이 나가고,
+   * 스펙이 요구한 자리도 스캔한 한 건이다.
+   */
+  const heldPick = candidates.find((each) => each.lot.lotId === lotId)?.held === true;
+  const holdReason = useHoldReason(heldPick ? lotId : null);
 
   /*
    * 한 번의 확정에 키 하나. 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 스스로 비워지게 한다.
@@ -442,6 +483,7 @@ export const ProductPickingScreen = () => {
                 uoms={uoms.data}
                 recommended={isRecommended(ranked, candidate.lot.lotId)}
                 selected={candidate.lot.lotId === lotId}
+                holds={candidate.lot.lotId === lotId ? holdReason : null}
                 onSelect={() => {
                   setLotId(candidate.lot.lotId);
                   setQty('');
@@ -464,6 +506,7 @@ export const ProductPickingScreen = () => {
                     uoms={uoms.data}
                     recommended={false}
                     selected={candidate.lot.lotId === lotId}
+                    holds={candidate.lot.lotId === lotId ? holdReason : null}
                     onSelect={() => {
                       setLotId(candidate.lot.lotId);
                       setQty('');

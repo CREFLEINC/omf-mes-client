@@ -91,6 +91,7 @@ interface Options {
   requests?: unknown[];
   lots?: unknown[];
   held?: unknown[];
+  holds?: unknown[];
   balances?: unknown[];
   policy?: string;
   lotsStatus?: number;
@@ -115,6 +116,27 @@ const routes = (options: Options = {}): StubRoute[] => [
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
+  },
+  {
+    /* 고른 LOT 이 보류면 화면이 사유를 따로 묻는다. */
+    match: (req) => /\/trace\/lots\/\d+\/holds$/.test(new URL(req.url).pathname),
+    respond: () =>
+      jsonResponse({
+        items: options.holds ?? [
+          {
+            lotHoldId: 8501,
+            lotId: 1,
+            reasonCode: 'INSPECTION_PENDING',
+            holdQty: null,
+            uomId: 9,
+            releaseCondition: '수입검사 합격',
+            statusCode: 'OPEN',
+            heldAt: '2026-09-06T01:12:00.000Z',
+            releasedAt: null,
+          },
+        ],
+        page,
+      }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/trace/lots',
@@ -254,6 +276,46 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await chooseTarget(user);
 
     expect(await screen.findByText('보류 — 집을 수 없습니다')).toBeTruthy();
+  });
+
+  /*
+   * 막는 것만으로는 무엇을 하면 풀리는지 알 수 없다. 스펙이 사유까지 요구하고, 형제 화면은
+   * 이미 보이고 있어 같은 사람이 두 화면에서 다른 것을 받는다.
+   */
+  it('보류된 LOT 을 스캔하면 사유와 해제 조건을 함께 말한다', async () => {
+    const user = userEvent.setup();
+    mount([], { held: [EARLY] });
+    await chooseTarget(user);
+    await screen.findByText('보류 — 집을 수 없습니다');
+
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await user.type(screen.getByLabelText('직접 입력'), EARLY.lotNo);
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+
+    expect(await screen.findByText(/보류 사유 INSPECTION_PENDING/)).toBeTruthy();
+    expect(screen.getByText(/해제 조건 수입검사 합격/)).toBeTruthy();
+  });
+
+  /* 고르지도 않은 LOT 마다 사유를 물으면 후보 수만큼 호출이 나간다. */
+  it('고르기 전에는 보류 사유를 묻지 않는다', async () => {
+    const user = userEvent.setup();
+    const asked: string[] = [];
+    mount(
+      [
+        {
+          match: (req) => /\/trace\/lots\/\d+\/holds$/.test(new URL(req.url).pathname),
+          respond: (req) => {
+            asked.push(new URL(req.url).pathname);
+            return jsonResponse({ items: [], page });
+          },
+        },
+      ],
+      { held: [EARLY] },
+    );
+    await chooseTarget(user);
+    await screen.findByText('보류 — 집을 수 없습니다');
+
+    expect(asked).toHaveLength(0);
   });
 
   it('가용이 없는 LOT은 다른 출하에 배정됐다고 말한다', async () => {
