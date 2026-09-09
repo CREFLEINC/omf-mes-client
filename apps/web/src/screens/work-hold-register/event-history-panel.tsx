@@ -2,13 +2,16 @@ import { Card, EmptyState, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { toClockLabel } from './formatting';
-import { eventTypeName, holdReasonName } from './hold-reasons';
+import { eventTypeName } from './hold-reasons';
+import type { HoldReason } from './reason-options';
 import type { WorkSessionEventView } from './types';
 
 const t = messages.workHoldRegister;
 
 export interface EventHistoryPanelProps {
   events: readonly WorkSessionEventView[];
+  /** 지금 받아 온 사유 목록 — 서버가 이름을 빼고 보낼 때 이것으로 푼다. */
+  reasons: readonly HoldReason[];
   isPending: boolean;
 }
 
@@ -22,7 +25,25 @@ export interface EventHistoryPanelProps {
  * ⭐ **다른 POP 화면과 같은 상자로 선다** — `Card bordered` + `pop-section`, 표제는 카드의
  * «직계 자식»이다. 맨 `Card` 에 `<section>` 을 덧대면 테두리가 없고 표제 여백이 어긋난다.
  */
-export const EventHistoryPanel = ({ events, isPending }: EventHistoryPanelProps) => (
+export const EventHistoryPanel = ({ events, reasons, isPending }: EventHistoryPanelProps) => {
+  /**
+   * 사유 한 칸을 사람 말로.
+   *
+   * ⛔ **코드를 그대로 내밀지 않는다.** 「`MOLD_CHANGE`」는 현장이 읽는 말이 아니다 —
+   * 이력은 「왜 멈췄나」를 읽는 자리라 코드가 보이면 그 자리가 제 일을 못 한다.
+   *
+   * ⚠ **그래도 못 풀면 코드를 보인다** — 임의로 「기타」로 접으면 이력에서 그 사건이 다른
+   * 것으로 읽힌다. 이 화면 목록은 중단 사유 그룹이라, 다른 유형이 쓰는 사유(통제 우회 등)는
+   * 여기서 안 풀리는 것이 정상이다(공유계약 `A-25`).
+   */
+  const reasonLabel = (event: WorkSessionEventView): string => {
+    if (event.reasonName !== null) return event.reasonName;
+    if (event.reasonCode === null) return '';
+
+    return reasons.find((reason) => reason.code === event.reasonCode)?.name ?? event.reasonCode;
+  };
+
+  return (
   <Card bordered className="pop-section pop-hold-history-card" aria-label={t.history.sectionLabel}>
     <h2 className="pane-title">{t.history.sectionLabel}</h2>
 
@@ -52,10 +73,7 @@ export const EventHistoryPanel = ({ events, isPending }: EventHistoryPanelProps)
               <td>{toClockLabel(event.occurredAt) ?? event.occurredAt}</td>
               <td>{eventTypeName(event.eventTypeCode)}</td>
               {/* 사유가 없는 사건(재개·종료)은 빈 칸이다 — 「없음」이라 적지 않는다. */}
-              <td>
-                {event.reasonName ??
-                  (event.reasonCode === null ? '' : holdReasonName(event.reasonCode))}
-              </td>
+              <td>{reasonLabel(event)}</td>
             </tr>
           ))}
         </tbody>
@@ -67,4 +85,5 @@ export const EventHistoryPanel = ({ events, isPending }: EventHistoryPanelProps)
      * 말이 목록 아래에 상주하고 있었다.
      */}
   </Card>
-);
+  );
+};
