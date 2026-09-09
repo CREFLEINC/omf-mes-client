@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -112,8 +112,7 @@ const routes = (options: Options = {}): StubRoute[] => [
     },
   },
   {
-    match: (req) =>
-      new URL(req.url).pathname === '/production/work-orders' && req.method === 'GET',
+    match: (req) => new URL(req.url).pathname === '/production/work-orders' && req.method === 'GET',
     respond: (req) => {
       options.seen?.push(req.clone());
       return jsonResponse({ items: options.successors ?? [workOrder()], page });
@@ -195,7 +194,7 @@ const mount = (options: Options = {}) =>
   );
 
 const scan = (code: string) => {
-  const field = screen.getByLabelText('LOT 스캔') as HTMLInputElement;
+  const field = screen.getByLabelText(/LOT 스캔/) as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -224,12 +223,55 @@ describe('WIP 공정 이동 화면', () => {
     mount();
 
     expect(await screen.findByText('연결이 있어야 할 수 있습니다')).toBeTruthy();
-    expect(screen.queryByLabelText('LOT 스캔')).toBeNull();
+    expect(screen.queryByLabelText(/LOT 스캔/)).toBeNull();
+  });
+
+  /*
+   * 들어올 때 끊긴 것과 하다가 끊긴 것은 다르다. 적은 것을 치우면 작업자는 사라진 줄 알고
+   * 스캔을 처음부터 다시 한다.
+   */
+  it('하다가 끊기면 적은 것을 그대로 두고 저장만 막는다', async () => {
+    mount();
+    await screen.findByLabelText(/LOT 스캔/);
+
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+
+    act(() => {
+      vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+      window.dispatchEvent(new Event('offline'));
+    });
+
+    expect(await screen.findByText(/연결이 끊겼습니다/)).toBeTruthy();
+    /* 스캔한 것이 화면에 남아 있어야 이어서 할 수 있다. */
+    expect(screen.getByText(LOT_NO)).toBeTruthy();
+    expect(screen.getByRole('button', { name: '인계 확정' })).toBeDisabled();
+  });
+
+  /*
+   * 장갑을 끼고 한 손으로 조작한다. 단말 키보드는 키가 촘촘하고, 올라오면 다음 공정 선택과
+   * 확정 단추를 덮는다(설계 §7 · 공유계약 G-6).
+   */
+  it('인계 수량을 숫자판으로 넣는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/LOT 스캔/);
+
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
+
+    await user.click(await screen.findByRole('button', { name: '5' }));
+    await user.click(screen.getByRole('button', { name: '0' }));
+
+    expect((screen.getByLabelText(/인계 수량/) as HTMLInputElement).value).toBe('50');
   });
 
   it('스캔한 LOT 과 다음 공정 후보를 보인다', async () => {
     mount();
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
 
@@ -241,7 +283,7 @@ describe('WIP 공정 이동 화면', () => {
   it('출발 W/O 의 후속만 묻는다', async () => {
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
@@ -256,7 +298,7 @@ describe('WIP 공정 이동 화면', () => {
   it('완료되지 않은 LOT 은 막고 다음 공정을 묻지 않는다', async () => {
     const seen: Request[] = [];
     mount({ lots: [lot({ completedAt: null })], seen });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
 
@@ -267,7 +309,7 @@ describe('WIP 공정 이동 화면', () => {
   /* 다음 공정이 홀드품을 투입하면 불량이 퍼진다. 막는 근거를 함께 적는다. */
   it('홀드 중인 LOT 은 막고 근거를 적는다', async () => {
     mount({ lots: [lot({ held: true })] });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
 
@@ -279,7 +321,7 @@ describe('WIP 공정 이동 화면', () => {
 
   it('생산LOT 이 아니면 막는다', async () => {
     mount({ lots: [lot({ lotTypeCode: 'MATERIAL' })] });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
 
@@ -291,7 +333,7 @@ describe('WIP 공정 이동 화면', () => {
   /* 최종 공정이면 다음이 없다. 오류가 아니라 여기서 끝났다는 뜻이다. */
   it('후속이 없으면 없다고 말한다', async () => {
     mount({ successors: [] });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
 
@@ -304,14 +346,14 @@ describe('WIP 공정 이동 화면', () => {
   it('배포만 되고 시작 전인 공정을 고르면 경고하되 막지 않는다', async () => {
     const user = userEvent.setup();
     mount({ successors: [workOrder({ statusCode: 'RELEASED' })] });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
-    await user.type(screen.getByLabelText('인계 수량'), '100');
+    await user.type(screen.getByLabelText(/인계 수량/), '100');
 
     expect(
       await screen.findByText('아직 시작되지 않은 공정입니다. 미리 보낼 수 있습니다.'),
@@ -328,7 +370,7 @@ describe('WIP 공정 이동 화면', () => {
   it('취소된 후속 공정임을 선택지에서 알아볼 수 있다', async () => {
     const user = userEvent.setup();
     mount({ successors: [workOrder({ statusCode: 'CANCELLED' })] });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
@@ -344,7 +386,7 @@ describe('WIP 공정 이동 화면', () => {
   it('상태 표시명을 못 받으면 코드를 그대로 보인다', async () => {
     const user = userEvent.setup();
     mount({ successors: [workOrder({ statusCode: 'SUSPENDED' })] });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
@@ -359,7 +401,7 @@ describe('WIP 공정 이동 화면', () => {
   it('이미 진행 중인 공정에는 경고하지 않는다', async () => {
     const user = userEvent.setup();
     mount({ successors: [workOrder({ statusCode: 'IN_PROGRESS' })] });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
@@ -373,18 +415,16 @@ describe('WIP 공정 이동 화면', () => {
   it('완료 수량을 넘으면 막는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
-    await user.type(screen.getByLabelText('인계 수량'), '501');
+    await user.type(screen.getByLabelText(/인계 수량/), '501');
 
-    expect(
-      await screen.findByText('완료 수량 500 EA 을(를) 넘을 수 없습니다'),
-    ).toBeTruthy();
+    expect(await screen.findByText('완료 수량 500 EA 을(를) 넘을 수 없습니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '인계 확정' })).toBeDisabled();
   });
 
@@ -394,7 +434,7 @@ describe('WIP 공정 이동 화면', () => {
   it('상한을 계획이 아니라 실제로 만든 양으로 잡는다', async () => {
     const user = userEvent.setup();
     mount({ goodQty: 430 });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
@@ -403,7 +443,7 @@ describe('WIP 공정 이동 화면', () => {
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
-    await user.type(screen.getByLabelText('인계 수량'), '440');
+    await user.type(screen.getByLabelText(/인계 수량/), '440');
 
     expect(await screen.findByText('완료 수량 430 EA 을(를) 넘을 수 없습니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '인계 확정' })).toBeDisabled();
@@ -412,7 +452,7 @@ describe('WIP 공정 이동 화면', () => {
   /* 넉넉한 쪽으로 물러서지 않는다 - 되돌릴 수 없는 쓰기다. */
   it('완료 수량을 못 받으면 인계할 수 없다고 말한다', async () => {
     mount({ goodQty: null });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
 
@@ -427,14 +467,14 @@ describe('WIP 공정 이동 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen, goodQty: 430, failConfirm: true });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
 
-    const qty = screen.getByLabelText('인계 수량');
+    const qty = screen.getByLabelText(/인계 수량/);
     await user.type(qty, '100');
     await user.click(screen.getByRole('button', { name: '인계 확정' }));
     await screen.findByText('인계하지 못했습니다');
@@ -454,14 +494,14 @@ describe('WIP 공정 이동 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
-    await user.type(screen.getByLabelText('인계 수량'), '100');
+    await user.type(screen.getByLabelText(/인계 수량/), '100');
     await user.click(screen.getByRole('button', { name: '인계 확정' }));
 
     expect(await screen.findByText('인계했습니다')).toBeTruthy();
@@ -481,21 +521,24 @@ describe('WIP 공정 이동 화면', () => {
   });
 
   /* 받는 쪽 화면이 없다. 기다릴 것이 없다는 것을 말한다. */
-  it('수령도 함께 기록됐다고 말한다', async () => {
+  it('넘긴 것을 목록에 쌓고 수령도 함께 기록됐다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('LOT 스캔');
+    await screen.findByLabelText(/LOT 스캔/);
 
     scan(LOT_NO);
     await screen.findByText(LOT_NO);
 
     await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
     await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
-    await user.type(screen.getByLabelText('인계 수량'), '100');
+    await user.type(screen.getByLabelText(/인계 수량/), '100');
     await user.click(screen.getByRole('button', { name: '인계 확정' }));
 
+    expect(await screen.findByText('인계됨 1건')).toBeTruthy();
     expect(
-      await screen.findByText('수령도 함께 기록됐습니다. 받는 쪽에서 따로 확인할 것이 없습니다.'),
+      screen.getByText('수령도 함께 기록됐습니다. 받는 쪽에서 따로 확인할 것이 없습니다.'),
     ).toBeTruthy();
+    /* 연속 작업이다. 한 건 넘기면 다음 LOT 을 바로 스캔할 수 있어야 한다. */
+    expect(screen.getByLabelText(/LOT 스캔/)).toBeTruthy();
   });
 });
