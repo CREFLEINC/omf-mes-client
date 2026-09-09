@@ -2,7 +2,7 @@ import { Card, EmptyState, Skeleton } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { toClockLabel } from './formatting';
-import { eventTypeName, holdReasonName } from './hold-reasons';
+import { eventTypeName } from './hold-reasons';
 import type { WorkSessionEventView } from './types';
 
 const t = messages.workHoldRegister;
@@ -54,7 +54,7 @@ export const EventHistoryPanel = ({ events, isPending }: EventHistoryPanelProps)
               {/* 사유가 없는 사건(재개·종료)은 빈 칸이다 — 「없음」이라 적지 않는다. */}
               <td>
                 {event.reasonName ??
-                  (event.reasonCode === null ? '' : holdReasonName(event.reasonCode))}
+                  (event.reasonCode ?? '')}
               </td>
             </tr>
           ))}

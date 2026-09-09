@@ -6,10 +6,16 @@ import { MAX_AUTO_ATTEMPTS, isRejected, retryDelayOf } from '../../patterns/outb
 import type { ApiError } from '@omf-mes/api-client';
 
 import { runRequest, toApiError } from '../../patterns/request';
-import type { WorkSessionEventCreate } from './types';
+import type { HoldDirection } from './codes';
+import type {
+  WorkOrderHoldCreate,
+  WorkOrderResumeCreate,
+  WorkSessionEndCreate,
+  WorkSessionEventCreate,
+} from './types';
 
 /**
- * 세션 사건 outbox — **공유계약 C-1** · 스펙 §5-4.
+ * 중단·재개·종료 outbox — **공유계약 C-1** · 스펙 §5-4.
  *
  * 중단·재개는 **설비가 멈춘 순간에 눌린다.** 그 순간 망이 끊겨 있다고 기록이 사라지면, 다시
  * 돌기 시작한 뒤에는 무엇 때문에 멈췄는지 아무도 말할 수 없다 — 사건은 정정 경로가 없다.
@@ -27,9 +33,14 @@ import type { WorkSessionEventCreate } from './types';
  * ⛔ **`If-Match` 를 싣지 않는다**(C-9). 큐에 쌓인 요청은 잠글 판본을 들고 있을 수 없다 —
  * 담긴 뒤 서버의 세션이 앞서 나가면 토큰이 낡아 **기다렸다는 이유로 거부된다.**
  *
- * ⚠ **세션 번호를 항목에 함께 담는다.** 재전송은 화면이 다시 그려진 뒤에 일어날 수 있고, 그때
- * 열린 세션이 다른 것으로 바뀌어 있으면 **중단이 엉뚱한 세션에 기록된다.** 사건이 매인 곳은
- * 담을 때의 세션이다.
+ * ⭐ **한 조작이 항목 «둘»을 담는다**(2026-09-06 게이트 승인) — W/O 층 전환과 세션 사건이다.
+ * 둘은 한 트랜잭션이 아니므로 **순서와 묶음을 큐가 진다**: 같은 `groupId` 안에서 앞 건이
+ * 거부되면 뒤 건은 **보내지 않고 함께 내린다.** 앞이 거부됐는데 뒤가 나가면 중단된 적 없는
+ * W/O 에 중단 사건만 남아, 정정 경로가 없는 기록이 서로 어긋난 채 굳는다.
+ *
+ * ⚠ **세션 번호·작업지시 번호를 항목에 함께 담는다.** 재전송은 화면이 다시 그려진 뒤에
+ * 일어날 수 있고, 그때 열린 세션이 다른 것으로 바뀌어 있으면 **중단이 엉뚱한 세션에
+ * 기록된다.** 사건이 매인 곳은 담을 때의 세션이다.
  *
  * ⚠ **사번도 함께 담는다** — 헤더를 채우지 못하면 서버가 거부하고, 나중 값으로 대신할 수도
  * 없다. 그 사건을 「누가 한 일」로 만드는 값이기 때문이다(귀속 조항 D-5).
@@ -40,38 +51,114 @@ import type { WorkSessionEventCreate } from './types';
 
 type Client = ApiClient['client'];
 
+/** 큐에 담긴 한 건이 **어느 경로로 나가는가.** */
+export type OutboxKind =
+  | 'work-order-hold'
+  | 'work-order-resume'
+  | 'session-event'
+  | 'session-end';
+
 /** 큐에 담긴 한 건. */
 export interface OutboxEntry {
   idempotencyKey: string;
+  kind: OutboxKind;
+  /**
+   * 같은 조작에서 나온 건들을 묶는 표식.
+   *
+   * ⭐ **한 쌍의 뒷건이 앞건 없이 나가지 않게 하는 유일한 근거다.** 큐는 담긴 차례대로 보내지만
+   * 거부는 아무 자리에서나 날 수 있다 — 그때 무엇을 함께 내려야 하는지를 이 값이 말한다.
+   */
+  groupId: string;
+  /** 이 조작이 세션을 미는 방향. 버튼 활성 판정이 읽는다. */
+  direction: HoldDirection;
   /** 이 사건이 매인 세션. **담을 때의 세션이다** — 재전송 시점에 다시 고르지 않는다. */
   workSessionId: number;
+  /** W/O 층 호출의 대상. 세션 사건·종료에는 쓰이지 않는다. */
+  workOrderId: number;
   /** 이 쓰기의 귀속 사번. 헤더로만 나가고 본문에는 실리지 않는다. */
   workerNo: string;
-  body: WorkSessionEventCreate;
+  body: WorkOrderHoldCreate | WorkOrderResumeCreate | WorkSessionEventCreate | WorkSessionEndCreate;
 }
+
+/** 화면이 담는 한 건 — 키는 큐가 만들고, 묶음은 `enqueueGroup` 이 붙인다. */
+export type OutboxDraft = Omit<OutboxEntry, 'idempotencyKey' | 'groupId'>;
 
 export const STORAGE_KEY = 'omf-mes.work-hold-register.outbox';
 
+/** 지난 판(단건 세션 사건)의 항목을 지금 모양으로 읽는다. */
+const isSessionEventBody = (body: Record<string, unknown>): boolean =>
+  typeof body.eventTypeCode === 'string' && typeof body.occurredAt === 'string';
+
+const KINDS: readonly OutboxKind[] = [
+  'work-order-hold',
+  'work-order-resume',
+  'session-event',
+  'session-end',
+];
+
 /**
- * 저장소에서 읽은 값이 **보낼 수 있는 모양인가.**
+ * 저장소에서 읽은 값을 **보낼 수 있는 모양으로 맞춘다.** 못 맞추면 `null` 이다.
  *
  * ⛔ **믿고 넘기지 않는다.** 지난 판의 화면이 썼거나 손으로 고쳐졌을 수 있고, 그 끝에 있는
  * 것은 정정할 수 없는 사건 기록이다. 계약이 필수로 둔 것과 헤더가 요구하는 것만 확인한다.
+ *
+ * ⭐ **지난 판 항목을 버리지 않는다.** 호출이 하나였던 판이 남긴 항목에는 `kind`·`groupId`·
+ * `direction`·`workOrderId` 가 없다 — 그 모양은 **세션 사건 단건**이었으므로 그대로 읽어
+ * 보낸다. 버리면 작업자가 남긴 중단 기록이 조용히 사라지고, 그것이 이 큐가 막으려는 일이다.
  */
-export const isSendableEntry = (value: unknown): value is OutboxEntry => {
-  if (typeof value !== 'object' || value === null) return false;
+export const normalizeEntry = (value: unknown): OutboxEntry | null => {
+  if (typeof value !== 'object' || value === null) return null;
 
   const entry = value as Record<string, unknown>;
-  if (typeof entry.idempotencyKey !== 'string' || entry.idempotencyKey === '') return false;
-  if (typeof entry.workSessionId !== 'number') return false;
-  if (typeof entry.workerNo !== 'string' || entry.workerNo === '') return false;
+  const { idempotencyKey, workSessionId, workerNo, body } = entry;
 
-  const body = entry.body;
-  if (typeof body !== 'object' || body === null) return false;
+  if (typeof idempotencyKey !== 'string' || idempotencyKey === '') return null;
+  if (typeof workSessionId !== 'number') return null;
+  if (typeof workerNo !== 'string' || workerNo === '') return null;
+  if (typeof body !== 'object' || body === null) return null;
 
   const fields = body as Record<string, unknown>;
+  const kind = KINDS.find((candidate) => candidate === entry.kind);
 
-  return typeof fields.eventTypeCode === 'string' && typeof fields.occurredAt === 'string';
+  /* `kind` 가 없는 것은 지난 판이다 — 그 판이 담던 것은 세션 사건 하나뿐이었다. */
+  if (kind === undefined) {
+    if (!isSessionEventBody(fields)) return null;
+
+    const eventTypeCode = fields.eventTypeCode as string;
+
+    return {
+      idempotencyKey,
+      kind: 'session-event',
+      /* 혼자 선 건이므로 자기 자신이 묶음이다 — 함께 내릴 짝이 없다. */
+      groupId: idempotencyKey,
+      direction: eventTypeCode === 'RESUME' ? 'RESUME' : 'STOP',
+      workSessionId,
+      workOrderId: 0,
+      workerNo,
+      body: fields as unknown as WorkSessionEventCreate,
+    };
+  }
+
+  const isWorkOrderCall = kind === 'work-order-hold' || kind === 'work-order-resume';
+
+  if (isWorkOrderCall && typeof entry.workOrderId !== 'number') return null;
+  if (kind === 'session-event' && !isSessionEventBody(fields)) return null;
+  if (kind === 'session-end' && typeof fields.endedAt !== 'string') return null;
+  if (isWorkOrderCall && typeof fields.occurredAt !== 'string') return null;
+
+  const direction = entry.direction;
+  if (direction !== 'STOP' && direction !== 'RESUME' && direction !== 'END') return null;
+
+  return {
+    idempotencyKey,
+    kind,
+    groupId: typeof entry.groupId === 'string' ? entry.groupId : idempotencyKey,
+    direction,
+    workSessionId,
+    workOrderId: typeof entry.workOrderId === 'number' ? entry.workOrderId : 0,
+    workerNo,
+    body: fields as OutboxEntry['body'],
+  };
 };
 
 /**
@@ -89,8 +176,13 @@ const readStored = (): OutboxEntry[] => {
     if (raw === null) return [];
 
     const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
 
-    return Array.isArray(parsed) ? parsed.filter(isSendableEntry) : [];
+    return parsed.flatMap((one) => {
+      const entry = normalizeEntry(one);
+
+      return entry === null ? [] : [entry];
+    });
   } catch {
     return [];
   }
@@ -105,19 +197,57 @@ const writeStored = (entries: readonly OutboxEntry[]): void => {
   }
 };
 
+/**
+ * 한 건을 그 종류의 경로로 보낸다.
+ *
+ * ⛔ **경로 리터럴을 변수로 넘기지 않는다** — `openapi-fetch` 가 경로를 리터럴 타입으로 요구해
+ * 문자열로 접으면 본문 타입 검사가 통째로 풀린다. 그래서 갈래마다 호출을 따로 적는다.
+ */
 const postEntry = async (client: Client, entry: OutboxEntry): Promise<void> => {
+  /* ⛔ 시도마다 새로 만들지 않는다 — 재전송이 새 기록이 된다(C-1 #5).
+   * ⛔ 사번이 없으면 서버가 거부한다. 인증이 아니라 귀속이다(D-5). */
+  const header = {
+    'Idempotency-Key': entry.idempotencyKey,
+    'X-Worker-No': entry.workerNo,
+  } as const;
+
+  if (entry.kind === 'work-order-hold') {
+    await runRequest(() =>
+      client.POST('/production/work-orders/{workOrderId}:hold', {
+        params: { path: { workOrderId: entry.workOrderId }, header },
+        body: entry.body as WorkOrderHoldCreate,
+      }),
+    );
+
+    return;
+  }
+
+  if (entry.kind === 'work-order-resume') {
+    await runRequest(() =>
+      client.POST('/production/work-orders/{workOrderId}:resume', {
+        params: { path: { workOrderId: entry.workOrderId }, header },
+        body: entry.body as WorkOrderResumeCreate,
+      }),
+    );
+
+    return;
+  }
+
+  if (entry.kind === 'session-end') {
+    await runRequest(() =>
+      client.POST('/production/work-sessions/{workSessionId}:end', {
+        params: { path: { workSessionId: entry.workSessionId }, header },
+        body: entry.body as WorkSessionEndCreate,
+      }),
+    );
+
+    return;
+  }
+
   await runRequest(() =>
     client.POST('/production/work-sessions/{workSessionId}/events', {
-      params: {
-        path: { workSessionId: entry.workSessionId },
-        header: {
-          /* ⛔ 시도마다 새로 만들지 않는다 — 재전송이 새 사건이 된다(C-1 #5). */
-          'Idempotency-Key': entry.idempotencyKey,
-          /* ⛔ 없으면 서버가 거부한다. 인증이 아니라 귀속이다(D-5). */
-          'X-Worker-No': entry.workerNo,
-        },
-      },
-      body: entry.body,
+      params: { path: { workSessionId: entry.workSessionId }, header },
+      body: entry.body as WorkSessionEventCreate,
     }),
   );
 };
@@ -128,24 +258,29 @@ export interface Outbox {
   /** 서버가 받은 횟수. 늘어나면 화면이 조회를 다시 한다. */
   sentCount: number;
   /**
-   * 큐에 마지막으로 담긴 사건 유형. 없으면 `null`.
+   * 큐에 마지막으로 담긴 조작의 방향. 없으면 `null`.
    *
    * ⭐ **오프라인에서 「지금 상태」를 말하는 것은 이 값이다.** 서버가 아직 받지 못했으면 세션
    * 상태는 옛것 그대로라, 이 값이 없으면 중단을 담은 뒤 재개를 누를 방법이 사라진다.
    */
-  lastQueuedType: string | null;
+  lastQueuedType: HoldDirection | null;
   /**
-   * 마지막으로 **서버가 받은** 사건 유형. 없으면 `null`.
+   * 마지막으로 **서버가 받은** 조작의 방향. 없으면 `null`.
    *
    * ⭐ **큐가 빈 직후의 짧은 구간을 메운다.** 보낸 것이 닿으면 큐는 즉시 비지만 세션 조회는
    * 아직 돌아오지 않았다 — 그 사이 옛 상태(「진행」)를 그대로 믿으면 방금 건 중단이 한 번 더
    * 눌린다.
    */
-  lastSentType: string | null;
+  lastSentType: HoldDirection | null;
   /** 지금 연결돼 있는가. 건수와 함께 낸다 — 끊긴 것과 밀리는 것은 다르다. */
   isOnline: boolean;
-  /** 큐에 담는다. **이것이 곧 성공이다** — 통신을 기다리지 않는다(C-1 #2). */
-  enqueue: (entry: Omit<OutboxEntry, 'idempotencyKey'>) => void;
+  /**
+   * 한 조작을 큐에 담는다. **이것이 곧 성공이다** — 통신을 기다리지 않는다(C-1 #2).
+   *
+   * ⭐ **여러 건을 한 번에 받는다** — 두 층 호출이 «따로» 담기면 그 사이에 다른 조작이 끼어들
+   * 수 있고, 그러면 순서가 뜻을 잃는다.
+   */
+  enqueueGroup: (drafts: readonly OutboxDraft[]) => void;
   /** 서버가 거부한 것. 없으면 `null`. */
   rejection: ApiError | null;
   clearRejection: () => void;
@@ -161,7 +296,7 @@ export interface Outbox {
  * outbox 훅.
  *
  * ⚠ **한 번에 한 건씩 순서대로 보낸다.** 중단과 재개는 **순서가 곧 뜻이다** — 뒤엣것이 먼저
- * 닿으면 서버가 보는 세션 상태가 뒤집힌다.
+ * 닿으면 서버가 보는 세션 상태가 뒤집힌다. 한 쌍의 앞뒤도 같은 이유로 갈라 보내지 않는다.
  */
 export const useWorkHoldOutbox = (): Outbox => {
   const { client } = useApiClient();
@@ -195,7 +330,7 @@ export const useWorkHoldOutbox = (): Outbox => {
    * 한 번 더 등록한다(사건은 정정 경로가 없다).
    */
   const [sentTick, setSentTick] = useState(0);
-  const [lastSentType, setLastSentType] = useState<string | null>(null);
+  const [lastSentType, setLastSentType] = useState<HoldDirection | null>(null);
 
   /** 갱신 «뒤에» 저장할 값. 갱신 함수를 순수하게 두기 위한 자리다. */
   const pendingWrite = useRef<OutboxEntry[] | null>(null);
@@ -245,6 +380,7 @@ export const useWorkHoldOutbox = (): Outbox => {
         if (entry === undefined) return;
 
         let sent = false;
+        let dropGroup = false;
 
         try {
           await postEntry(client, entry);
@@ -282,20 +418,26 @@ export const useWorkHoldOutbox = (): Outbox => {
           /*
            * ⛔ **거부가 나면 큐 전체를 멈춘다.** 이 큐에서는 **순서가 곧 뜻이다** — 중단이
            * 거부됐는데 뒤따르던 재개가 그대로 나가면, 멈춘 적 없는 세션에 재개가 기록된다.
-           * 거부된 건만 내리고 나머지는 사람이 보고 다시 보내게 남긴다.
+           *
+           * ⛔ **같은 조작의 남은 짝은 내린다.** 앞건이 거부된 뒤 사람이 [다시 보내기]를
+           * 누르면 뒷건만 홀로 나가는데, 그러면 W/O 는 그대로인 채 세션 사건만 남아 두 층이
+           * 어긋난다 — 정정 경로가 없는 기록이다. 사람이 다시 누르는 쪽이 옳다.
            */
           setRejection(toApiError(error));
           setIsStalled(true);
+          dropGroup = true;
         }
 
         /* 받아졌든 거부됐든 «그 건»은 큐에서 내린다. 뒤엣것은 위에서 멈춰 세웠다. */
         attempts.current.delete(entry.idempotencyKey);
         if (sent) {
           setSentTick((tick) => tick + 1);
-          setLastSentType(entry.body.eventTypeCode);
+          setLastSentType(entry.direction);
         }
         setEntries((prev) => {
-          const next = prev.filter((one) => one.idempotencyKey !== entry.idempotencyKey);
+          const next = prev.filter((one) =>
+            dropGroup ? one.groupId !== entry.groupId : one.idempotencyKey !== entry.idempotencyKey,
+          );
           pendingWrite.current = next;
 
           return next;
@@ -311,12 +453,19 @@ export const useWorkHoldOutbox = (): Outbox => {
    * StrictMode 는 그것을 두 번 부른다 — 안에서 키를 만들면 두 키가 생기고 저장도 두 번 돈다.
    * 키는 밖에서 한 번 만들고, 저장은 갱신이 끝난 뒤 효과가 한다.
    */
-  const enqueue = useCallback((entry: Omit<OutboxEntry, 'idempotencyKey'>): void => {
-    const queued: OutboxEntry = { idempotencyKey: crypto.randomUUID(), ...entry };
+  const enqueueGroup = useCallback((drafts: readonly OutboxDraft[]): void => {
+    if (drafts.length === 0) return;
+
+    const groupId = crypto.randomUUID();
+    const queued = drafts.map((draft) => ({
+      idempotencyKey: crypto.randomUUID(),
+      groupId,
+      ...draft,
+    }));
 
     setRejection(null);
     setEntries((prev) => {
-      const next = [...prev, queued];
+      const next = [...prev, ...queued];
       pendingWrite.current = next;
 
       return next;
@@ -336,10 +485,10 @@ export const useWorkHoldOutbox = (): Outbox => {
   return {
     pendingCount: entries.length,
     sentCount: sentTick,
-    lastQueuedType: entries.at(-1)?.body.eventTypeCode ?? null,
+    lastQueuedType: entries.at(-1)?.direction ?? null,
     lastSentType,
     isOnline,
-    enqueue,
+    enqueueGroup,
     rejection,
     clearRejection,
     isStalled,

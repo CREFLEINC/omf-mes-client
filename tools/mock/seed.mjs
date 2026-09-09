@@ -465,6 +465,20 @@ export const createSeed = (now = new Date()) => {
       ['PREVENTIVE_MAINTENANCE', '예방 보전'],
       ['OTHER', '기타'],
     ],
+    /*
+     * P-02-10 — 작업 중단 사유. 아래 일곱은 계약이 적어 둔 **초기 시드**이고 고객이 늘린다
+     * (`registry` · 공유계약 G-32·G-31). ⛔ 작업지시 보류 사유도 같은 그룹을 쓴다 —
+     * 전용 그룹(`WORK_ORDER_HOLD_REASON`)은 2026-09-06 게이트 승인으로 접혔다.
+     */
+    WORK_SESSION_EVENT_REASON: [
+      ['URGENT_ORDER_INTERRUPT', '긴급 오더 끼어들기'],
+      ['EQUIPMENT_FAILURE', '설비 고장'],
+      ['TOOL_FAILURE', '도구 고장'],
+      ['MATERIAL_SHORTAGE', '자재 결품'],
+      ['MOLD_CHANGE', '금형 교체'],
+      ['QUALITY_ISSUE', '품질 이슈'],
+      ['OTHER', '기타'],
+    ],
     /* W-04-07 — 심각도는 고객이 늘리는 값(시드 셋), 상태는 시스템 값(고객 편집 불가). */
     NONCONFORMANCE_SEVERITY: [
       ['CRITICAL', '중대'],

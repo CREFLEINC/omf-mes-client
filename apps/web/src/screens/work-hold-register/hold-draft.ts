@@ -1,4 +1,4 @@
-import { HOLD_REASONS } from './hold-reasons';
+import type { HoldReason } from './reason-options';
 
 /**
  * 중단 등록 입력의 상태와 **검증 한 자리**.
@@ -22,16 +22,22 @@ export const EMPTY_HOLD_DRAFT: HoldDraft = { reasonCode: null, remarks: '' };
 export type HoldDraftError = 'reasonRequired' | 'reasonUnknown';
 
 /**
- * 입력이 등록할 수 있는 모양인가.
+ * 입력이 등록할 수 있는 모양인가. **지금 받아 온 목록과 견준다.**
  *
- * ⛔ **목록에 없는 사유를 통과시키지 않는다.** 자리표시 상수를 쓰는 동안 화면 밖에서 들어온
- * 값(주소·저장된 초안)이 목록과 어긋날 수 있는데, 그대로 보내면 서버가 모르는 코드가 기록에
- * 남는다 — 사건은 정정 경로가 없다(스펙 §6).
+ * ⛔ **목록에 없는 사유를 통과시키지 않는다.** 고른 뒤에 목록이 다시 받아져 값이 사라질 수
+ * 있고(고객이 마스터에서 끄면 그렇다), 그대로 보내면 서버가 모르는 코드가 기록에 남는다 —
+ * 사건은 정정 경로가 없다(스펙 §6).
+ *
+ * ⚠ **목록이 비어 있으면 「모르는 값」으로 떨어진다** — 그것이 맞다. 고를 것이 없는데 값이
+ * 실려 있다는 뜻이고, 화면은 목록을 받지 못한 사실을 따로 말한다.
  */
-export const validateHoldDraft = (draft: HoldDraft): HoldDraftError | null => {
+export const validateHoldDraft = (
+  draft: HoldDraft,
+  reasons: readonly HoldReason[],
+): HoldDraftError | null => {
   if (draft.reasonCode === null || draft.reasonCode === '') return 'reasonRequired';
 
-  const known = HOLD_REASONS.some((reason) => reason.code === draft.reasonCode);
+  const known = reasons.some((reason) => reason.code === draft.reasonCode);
 
   return known ? null : 'reasonUnknown';
 };

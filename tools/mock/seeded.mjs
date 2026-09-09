@@ -2390,6 +2390,118 @@ on('POST', '/production/work-sessions/{workSessionId}/events', (params, _q, body
   return { created, status: 201 };
 });
 
+/**
+ * W/O 층의 중단·재개 — **세션 사건과 다른 층이다**(2026-09-06 게이트 승인).
+ *
+ * ⭐ **세션을 닫지 않는다.** 중단해도 세션은 열려 있고(`endedAt` 이 빈 채), 세션의 상태를
+ * 옮기는 것은 사건 적재(`events` 의 `STOP`)다. 목이 두 층을 한 번에 옮겨 버리면 **화면이
+ * 호출을 하나만 보내도 통과해**, 이번 개정이 요구한 「둘 다 부른다」를 목에서 볼 수 없다.
+ */
+const holdWorkOrder = (params, body, headers, next) => {
+  const workOrder = state.workOrders.find((row) => row.workOrderId === Number(params.workOrderId));
+
+  if (workOrder === undefined) {
+    return null;
+  }
+
+  /* ⚠ 노드가 준 헤더 객체다 — 키는 소문자이고 `Headers` 가 아니다. */
+  if (headers['x-worker-no'] === undefined) {
+    return {
+      status: 400,
+      created: { code: 'WORKER_NO_REQUIRED', message: '사번이 없으면 상태를 옮기지 않습니다.' },
+    };
+  }
+
+  if (body?.occurredAt === undefined) {
+    return {
+      status: 400,
+      created: { code: 'OCCURRED_AT_REQUIRED', message: '발생 시각이 없습니다.' },
+    };
+  }
+
+  workOrder.statusCode = next;
+  workOrder.versionNo = (workOrder.versionNo ?? 1) + 1;
+
+  return { created: workOrder, status: 200 };
+};
+
+on('POST', '/production/work-orders/{workOrderId}:hold', (params, _q, body, headers) => {
+  /* 보류 사유는 세션 사건과 «같은» 그룹을 쓴다 — 전용 그룹은 접혔다. */
+  if (body?.reasonCode === undefined || body.reasonCode === '') {
+    return {
+      status: 400,
+      created: { code: 'REASON_REQUIRED', message: '중단 사유가 없습니다.' },
+    };
+  }
+
+  return holdWorkOrder(params, body, headers, 'SUSPENDED');
+});
+
+on('POST', '/production/work-orders/{workOrderId}:resume', (params, _q, body, headers) =>
+  holdWorkOrder(params, body, headers, 'IN_PROGRESS'),
+);
+
+/**
+ * 세션 닫기 — **구간의 경계는 이 오퍼레이션이 만든다.**
+ *
+ * ⭐ 끝 시각을 찍으면서 상태도 「종료」로 옮기고 `END` 사건을 **같은 트랜잭션으로** 남긴다.
+ * 단말은 그 사건을 따로 보내지 않는다 — 목이 남기지 않으면 화면이 이력에서 종료를 못 본다.
+ *
+ * ⛔ **이미 닫힌 세션은 409 다.** 큐가 늦게 도착하는 갈래가 있어 서버도 막아야 한다.
+ */
+on('POST', '/production/work-sessions/{workSessionId}:end', (params, _q, body, headers) => {
+  const session = state.workSessions.find(
+    (row) => row.workSessionId === Number(params.workSessionId),
+  );
+
+  if (session === undefined) {
+    return null;
+  }
+
+  const workerNo = headers['x-worker-no'];
+
+  if (workerNo === undefined) {
+    return {
+      status: 400,
+      created: { code: 'WORKER_NO_REQUIRED', message: '사번이 없으면 세션을 닫지 않습니다.' },
+    };
+  }
+
+  if (session.endedAt !== null) {
+    return {
+      status: 409,
+      created: { code: 'SESSION_ALREADY_ENDED', message: '이미 종료된 세션입니다.' },
+    };
+  }
+
+  const endedAt = body?.endedAt ?? new Date().toISOString();
+
+  /* 단말 시계가 시작보다 앞서면 400 이다(계약). */
+  if (Date.parse(endedAt) < Date.parse(session.startedAt)) {
+    return {
+      status: 400,
+      created: { code: 'ENDED_AT_BEFORE_START', message: '끝 시각이 시작보다 앞섭니다.' },
+    };
+  }
+
+  session.endedAt = endedAt;
+  session.statusCode = 'ENDED';
+  session.versionNo = (session.versionNo ?? 1) + 1;
+
+  state.workSessionEvents.push({
+    workSessionEventId: newId(),
+    workSessionId: session.workSessionId,
+    idempotencyKey: headers['idempotency-key'],
+    eventTypeCode: 'END',
+    occurredAt: endedAt,
+    recordedAt: new Date().toISOString(),
+    performedBy: state.workers.find((row) => row.workerNo === workerNo)?.workerId,
+    terminalId: session.terminalId,
+  });
+
+  return { created: session, status: 200 };
+});
+
 on('POST', '/production/operation-handovers', (_p, _q, body) => {
   const created = {
     operationHandoverId: newId(),
