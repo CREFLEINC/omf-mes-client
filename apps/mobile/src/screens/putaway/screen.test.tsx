@@ -14,6 +14,15 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { PutawayScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+/** 소리는 화면에 남지 않는다. 울렸는지를 재려면 세는 수밖에 없다. */
+const tone = vi.hoisted(() => ({ played: 0 }));
+
+vi.mock('../../patterns/error-tone', () => ({
+  playErrorTone: () => {
+    tone.played += 1;
+  },
+}));
+
 /** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
 const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
@@ -200,6 +209,7 @@ const readyToRecord = async (user: ReturnType<typeof userEvent.setup>) => {
 
 beforeEach(() => {
   held.failWrite = null;
+  tone.played = 0;
   store.clear();
   localStorage.clear();
 });
@@ -310,6 +320,32 @@ describe('적치·입고 완료 화면', () => {
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
   });
 
+  /*
+   * 장갑 낀 손은 단말을 허리에 매달고 읽는다. 화면에만 적으면 사람은 통과한 줄 알고 다음
+   * 동작으로 넘어간다(공유계약 D-2 · §6).
+   */
+  it('막힌 위치를 스캔하면 소리로도 알린다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseTask(user);
+
+    scan('B-02-01');
+    await screen.findByText('권장 위치 A-01-03 가 아닙니다');
+
+    expect(tone.played).toBeGreaterThan(0);
+  });
+
+  it('권장 위치를 스캔하면 소리를 내지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseTask(user);
+
+    scan('A-01-03');
+    await screen.findByText('권장 위치와 같습니다');
+
+    expect(tone.played).toBe(0);
+  });
+
   it('이 창고에 없는 코드를 스캔하면 찾지 못했다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
@@ -351,6 +387,26 @@ describe('적치·입고 완료 화면', () => {
     scan('A-01-03');
 
     expect(await screen.findByText('이 위치는 단일 품목만 보관합니다')).toBeTruthy();
+    expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
+  });
+
+  /*
+   * 잔액을 받지 못한 것은 부딪치는 것이 없다는 뜻이 아니다. 빈 목록으로 판정하면 혼적이 막힌
+   * 자리가 조회 실패 한 번에 열린다.
+   */
+  it('위치에 무엇이 있는지 확인하지 못하면 다음으로 넘기지 않는다', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/inventory/balances',
+        respond: () => jsonResponse({ message: '실패' }, { status: 500 }),
+      },
+    ]);
+    await chooseTask(user);
+
+    scan('A-01-03');
+    await screen.findByText('A-01-03 자재 A열');
+
     expect(screen.queryByLabelText(/LOT 라벨 스캔/)).toBeNull();
   });
 

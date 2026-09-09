@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Card, Chip, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
@@ -66,6 +66,8 @@ export const PutawayScreen = () => {
   const [pickedId, setPickedId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
   const [scannedLot, setScannedLot] = useState<string | null>(null);
+  /* 같은 코드를 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
+  const [scanSeq, setScanSeq] = useState(0);
   const [confirmedNoRule, setConfirmedNoRule] = useState(false);
   const [registered, setRegistered] = useState<Registered[]>([]);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -96,27 +98,56 @@ export const PutawayScreen = () => {
 
   const contents = useLocationContents(task?.warehouseId ?? null, location?.locationId ?? null);
   const held = contents.data ?? [];
+  /*
+   * 잔액을 받기 전과 받지 못한 것은 부딪치는 것이 없다는 뜻이 아니다 - 빈 목록으로 판정하면
+   * 혼적이 막힌 자리가 조회 실패 한 번에 열린다.
+   */
+  const contentsKnown = contents.isSuccess;
 
   const verdict = task === null || location === null ? null : verdictOf(task, location);
-  const mixProblem = task === null || location === null ? null : mixProblemOf(task, location, held);
+  const mixProblem =
+    task === null || location === null || !contentsKnown
+      ? null
+      : mixProblemOf(task, location, held);
   const overCapacity =
-    task === null || location === null ? null : overCapacityOf(task, location, held);
+    task === null || location === null || !contentsKnown
+      ? null
+      : overCapacityOf(task, location, held);
 
   /* 위치가 통과해야 LOT 을 묻는다 - 순서를 바꾸면 오적치를 막을 자리가 사라진다. */
   const locationSettled =
     location !== null &&
+    contentsKnown &&
     mixProblem === null &&
     (verdict === MATCHED || (verdict === NO_RULE && confirmedNoRule));
 
-  const ready = canComplete({
-    task,
-    location,
-    lotNo: lotNo.data ?? null,
-    scannedLot,
-    contents: held,
-    confirmedNoRule,
-    hasWorker: worker !== null,
-  });
+  const ready =
+    contentsKnown &&
+    canComplete({
+      task,
+      location,
+      lotNo: lotNo.data ?? null,
+      scannedLot,
+      contents: held,
+      confirmedNoRule,
+      hasWorker: worker !== null,
+    });
+
+  /*
+   * 위치가 막혔다는 것을 소리로도 알린다(공유계약 D-2 · §6). 스캔은 단말을 허리에 매단 채
+   * 하므로 화면에만 적으면 사람은 통과한 줄 알고 다음 동작으로 넘어간다.
+   */
+  const locationBlocked =
+    scanned !== null &&
+    ((byCode.isSuccess && byCode.data === null) ||
+      verdict === NOT_RECOMMENDED ||
+      mixProblem !== null);
+
+  useEffect(() => {
+    if (locationBlocked) {
+      playErrorTone();
+    }
+  }, [locationBlocked, scanSeq]);
 
   const clearScans = () => {
     setPickedId(null);
@@ -128,6 +159,7 @@ export const PutawayScreen = () => {
   const locationField = useScanField({
     onScan: (value) => {
       setScanned(value.trim());
+      setScanSeq((seq) => seq + 1);
       setPickedId(null);
       setConfirmedNoRule(false);
     },
@@ -153,12 +185,7 @@ export const PutawayScreen = () => {
    * 뒤로가기는 화면 안 단계를 먼저 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지 않으면
    * 지시를 고르고 스캔하던 사람이 한 번에 작업 목록까지 나간다.
    */
-  useBackStep(task !== null && locationSettled, () => {
-    setScannedLot(null);
-    setPickedId(null);
-    setScanned(null);
-    setConfirmedNoRule(false);
-  });
+  useBackStep(task !== null && locationSettled, clearScans);
   useBackStep(task !== null && !locationSettled, () => {
     setTask(null);
     clearScans();
