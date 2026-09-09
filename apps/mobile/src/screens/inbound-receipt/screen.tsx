@@ -890,20 +890,25 @@ export const InboundReceiptScreen = () => {
               </AlertBanner>
             ) : null}
             {worker === null ? <p className="receipt__note">{t.noWorker}</p> : null}
-            {verdict === OVER ? null : (
-              <div className="action-bar">
-                <Button
-                  className="receipt__wide"
-                  variant="filled"
-                  size="2xl"
-                  disabled={!ready}
-                  onClick={() => void submit()}
-                >
-                  {t.submit}
-                </Button>
-              </div>
-            )}
           </section>
+
+          {/*
+           * 고정 자리는 화면 뿌리에 둔다. 짧은 구획 안에 두면 그 구획 안에서만 붙어 있어
+           * 실제로는 본문과 함께 흐른다.
+           */}
+          {verdict === OVER ? null : (
+            <div className="action-bar">
+              <Button
+                className="receipt__wide"
+                variant="filled"
+                size="2xl"
+                disabled={!ready}
+                onClick={() => void submit()}
+              >
+                {t.submit}
+              </Button>
+            </div>
+          )}
         </>
       )}
     </div>
