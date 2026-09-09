@@ -486,8 +486,11 @@ describe('입하 등록 화면 — 발주 경로', () => {
     const values = screen.getAllByRole('definition').map((node) => node.textContent);
 
     expect(values[terms.indexOf('남은')]).toBe('100 EA');
+    /* 두 길은 대등하다. 하나가 링크면 규격이 달라져 한쪽이 더 무겁게 보인다. */
     expect(screen.getByRole('button', { name: '계속 등록' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: '입하 오류 등록' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입하 오류 등록' })).toBeTruthy();
+    expect(screen.getByText(/분할 납품이면 그대로 등록합니다/)).toBeTruthy();
+    expect(screen.getByText(/이번이 마지막인데 모자라면/)).toBeTruthy();
   });
 
   it('부족인데 고르지 않으면 등록할 수 없다', async () => {

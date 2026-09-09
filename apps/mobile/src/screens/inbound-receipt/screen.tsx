@@ -1,7 +1,7 @@
 import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
 import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
@@ -70,6 +70,7 @@ const emptyDraft: ReceiptDraft = {
 export const InboundReceiptScreen = () => {
   useScreenTitle(t.title);
 
+  const navigate = useNavigate();
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
 
@@ -937,22 +938,42 @@ export const InboundReceiptScreen = () => {
                     </dd>
                   </dl>
                   <p>{t.verdict.underAsk}</p>
-                  {/* 두 길은 같은 무게다. 하나만 단추로 세우면 다른 하나가 안내로 읽힌다. */}
+                  {/*
+                   * 두 길을 세로로 세우고 각 길에 자기 설명을 붙인다. 나란히 두면 어느
+                   * 설명이 어느 길의 것인지 흐려지고, 설명을 하나만 두면 고르기 전에는
+                   * 다른 길이 무엇인지 알 수 없다.
+                   *
+                   * 둘 다 같은 부품·같은 크기다. 하나가 링크면 규격이 달라져 한쪽이 더
+                   * 무겁게 보이는데, 이 자리의 두 길은 대등하다.
+                   */}
                   <div className="receipt__under-choice">
-                    <Button
-                      variant={continueUnder ? 'filled' : 'outlined'}
-                      size="xl"
-                      onClick={() => {
-                        setContinueUnder(true);
-                      }}
-                    >
-                      {t.verdict.underContinue}
-                    </Button>
-                    <Link to="/inbound-variance" className="action-link">
-                      {t.verdict.underVariance}
-                    </Link>
+                    <div className="receipt__under-path">
+                      <Button
+                        className="receipt__wide"
+                        variant={continueUnder ? 'filled' : 'outlined'}
+                        size="xl"
+                        onClick={() => {
+                          setContinueUnder(true);
+                        }}
+                      >
+                        {t.verdict.underContinue}
+                      </Button>
+                      <p className="receipt__note">{t.verdict.underContinueNote}</p>
+                    </div>
+                    <div className="receipt__under-path">
+                      <Button
+                        className="receipt__wide"
+                        variant="outlined"
+                        size="xl"
+                        onClick={() => {
+                          void navigate('/inbound-variance');
+                        }}
+                      >
+                        {t.verdict.underVariance}
+                      </Button>
+                      <p className="receipt__note">{t.verdict.underVarianceNote}</p>
+                    </div>
                   </div>
-                  <p>{continueUnder ? t.verdict.underContinueNote : t.verdict.underVarianceNote}</p>
                 </AlertBanner>
               )}
 
