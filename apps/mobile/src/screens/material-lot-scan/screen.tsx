@@ -7,7 +7,9 @@ import { useItemLabels } from '../../patterns/masters';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
-import { ManualEntry } from '../../patterns/manual-entry';
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
+import { playErrorTone } from '../../patterns/error-tone';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -25,6 +27,8 @@ import {
 import './screen.css';
 
 const t = messages.materialLotScan;
+/* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
+const required = messages.common.required;
 
 type Outcome = 'held' | 'sent' | 'rejected';
 
@@ -49,7 +53,6 @@ export const MaterialLotScanScreen = () => {
   const [receiptId, setReceiptId] = useState<number | null>(null);
   const [lineId, setLineId] = useState<number | null>(null);
   const [scanned, setScanned] = useState('');
-  const [manual, setManual] = useState('');
   const [registered, setRegistered] = useState<Registered[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -58,6 +61,8 @@ export const MaterialLotScanScreen = () => {
    * 두 번째가 들어와 같은 라인에 LOT 이 둘 생긴다.
    */
   const inFlight = useRef(false);
+  const lineSection = useRef<HTMLElement | null>(null);
+  const scanSection = useRef<HTMLElement | null>(null);
 
   const receipts = useSupplierLotReceipts();
   const lines = useFillableLines(receiptId);
@@ -87,21 +92,45 @@ export const MaterialLotScanScreen = () => {
 
   /* 이 회차에 보낸 번호는 큐에 없다. 다시 스캔하면 서버가 400 으로 되돌린다. */
   const usedLotNos = [...queuedLotNos, ...registered.map((each) => each.lotNo)];
-  const problem = scanned.trim() === '' ? null : scanProblemOf(scanned, usedLotNos);
+  const lineItemCode = line === null ? undefined : itemLabels.data?.get(line.itemId)?.itemCode;
+  const problem = scanned.trim() === '' ? null : scanProblemOf(scanned, usedLotNos, lineItemCode);
   const labelQty = labelQtyOf(scanned);
-  const ready = loaded && canRegister(line, scanned, worker !== null, plantId, usedLotNos, filled);
+  const ready =
+    loaded &&
+    canRegister(line, scanned, worker !== null, plantId, usedLotNos, filled, lineItemCode);
 
   const scanField = useScanField({
     onScan: (value) => {
-      setScanned(value.trim());
+      const taken = value.trim();
+      setScanned(taken);
+
+      /* 화면을 보고 있지 않을 수 있다. 소리로도 알린다(공유계약 D-2). */
+      if (scanProblemOf(taken, usedLotNos, lineItemCode) !== null) {
+        playErrorTone();
+      }
     },
+  });
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(receiptId !== null, lineSection);
+  useAdvanceTo(lineId !== null, scanSection);
+
+  /*
+   * 뒤로가기는 화면 안 단계를 먼저 되돌린다. 라우터 이력에는 이 화면 하나뿐이라, 두지 않으면
+   * 입하 건을 고르고 스캔하던 사람이 한 번에 작업 목록까지 나간다.
+   */
+  useBackStep(lineId !== null, () => {
+    setLineId(null);
+    setScanned('');
+  });
+  useBackStep(lineId === null && receiptId !== null, () => {
+    setReceiptId(null);
   });
 
   const restart = () => {
     setReceiptId(null);
     setLineId(null);
     setScanned('');
-    setManual('');
     setRegistered([]);
     setOutcome(null);
     setSaveFailed(false);
@@ -226,7 +255,7 @@ export const MaterialLotScanScreen = () => {
       </section>
 
       {receiptId === null ? null : (
-        <section className="material-lot-scan__section">
+        <section className="material-lot-scan__section" ref={lineSection}>
           <h2>{t.line.legend}</h2>
           {lines.isPending ? <p role="status">{t.line.loading}</p> : null}
           {lines.isError ? <AlertBanner variant="error" title={t.line.loadFailed} /> : null}
@@ -257,27 +286,46 @@ export const MaterialLotScanScreen = () => {
 
       {line === null ? null : (
         <>
-          <section className="material-lot-scan__section">
+          <section className="material-lot-scan__section" ref={scanSection}>
             <h2>{t.scan.legend}</h2>
-            <p>{t.line.picked(String(line.lineNo))}</p>
+            {/* 라벨과 눈으로 대조할 값이다. 라인 번호만으로는 무엇을 집는지 알 수 없다. */}
+            <p>
+              {t.line.pickedLine(
+                String(line.lineNo),
+                itemLabels.data?.get(line.itemId)?.itemCode ?? '',
+                String(line.receivedQty),
+              )}
+            </p>
             <TextField
               ref={scanField.ref}
-              label={t.scan.scanLabel}
+              label={required(t.scan.scanLabel)}
               placeholder={t.scan.scanPlaceholder}
               size="xl"
               fullWidth
             />
-            <ManualEntry
-              label={t.scan.manualLabel}
-              submitLabel={t.scan.manualSubmit}
-              inputMode="numeric"
-              value={manual}
-              onChange={setManual}
-              onSubmit={() => {
-                setScanned(manual.trim());
-                setManual('');
-              }}
-            />
+            {/*
+             * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+             * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+             */}
+            {scanField.manual ? (
+              <Button
+                className="material-lot-scan__wide"
+                variant="outlined"
+                size="xl"
+                onClick={scanField.submitManual}
+              >
+                {t.scan.manualSubmit}
+              </Button>
+            ) : (
+              <Button
+                className="material-lot-scan__wide"
+                variant="text"
+                size="xl"
+                onClick={scanField.openManual}
+              >
+                {t.scan.manualLabel}
+              </Button>
+            )}
 
             {scanned.trim() === '' ? null : (
               <p className="material-lot-scan__counter">
@@ -337,14 +385,17 @@ export const MaterialLotScanScreen = () => {
               </li>
             ))}
           </ul>
-          <Button
-            className="material-lot-scan__wide"
-            variant="outlined"
-            size="2xl"
-            onClick={finish}
-          >
-            {t.done}
-          </Button>
+          {/* 연속 작업이라 마침 단추가 목록 아래로 밀린다. 설계가 이 자리를 하단으로 잡았다. */}
+          <div className="action-bar">
+            <Button
+              className="material-lot-scan__wide"
+              variant="outlined"
+              size="2xl"
+              onClick={finish}
+            >
+              {t.done}
+            </Button>
+          </div>
         </section>
       )}
     </div>

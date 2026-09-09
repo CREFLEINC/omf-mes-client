@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { MaterialLotScanScreen } from './screen';
 
@@ -45,6 +46,8 @@ const RECEIPT_NO = 'IR-2026-000041';
 const LOT_NO = '123456789' + '000000500' + '260731' + '778899' + '0007';
 
 interface Options {
+  /** 라인 품목의 코드를 바꿔 답한다 - 라벨의 제품코드와 견주는 자리를 재려면 아홉 자리여야 한다. */
+  itemCode?: string;
   /** 라인 전부가 이미 LOT 을 가진 것으로 답한다. */
   allFilled?: boolean;
   /** 보낸 요청을 모은다. */
@@ -150,7 +153,12 @@ const routes = (options: Options = {}): StubRoute[] => [
     respond: () =>
       jsonResponse({
         items: [
-          { itemId: 2002, itemCode: 'ABC-123', itemName: '하우징', fifoPolicyCode: 'FIFO' },
+          {
+            itemId: 2002,
+            itemCode: options.itemCode ?? 'ABC-123',
+            itemName: '하우징',
+            fifoPolicyCode: 'FIFO',
+          },
           { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
         ],
         page,
@@ -181,7 +189,7 @@ const mount = (options: Options = {}) =>
   );
 
 const scan = (value: string) => {
-  const field = screen.getByLabelText('자재LOT 스캔') as HTMLInputElement;
+  const field = screen.getByLabelText(/자재LOT 스캔/) as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, value);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -206,7 +214,7 @@ const pickLine = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` }));
   await user.click(await screen.findByRole('combobox', { name: '입하 라인' }));
   await user.click(await screen.findByRole('option', { name: '#2 · ABC-123 · 480' }));
-  await screen.findByText('라인 #2');
+  await screen.findByText(/라인 #2/);
 };
 
 beforeEach(() => {
@@ -217,13 +225,48 @@ beforeEach(() => {
 });
 
 describe('자재LOT 스캔·등록 화면', () => {
+  /*
+   * 라벨의 제품코드가 고른 라인의 품목과 다르면 다른 자재의 라벨이다. 그대로 등록하면 그
+   * 라인에 남의 LOT 이 붙고, 그 뒤로는 무엇이 어디 있는지 아무도 모른다.
+   */
+  it('라인의 품목과 다른 라벨은 등록할 수 없다', async () => {
+    const user = userEvent.setup();
+    mount({ itemCode: '000123450' });
+    await user.click(await screen.findByRole('combobox', { name: '입하 건' }));
+    await user.click(await screen.findByRole('option', { name: `${RECEIPT_NO} · 2026-09-05` }));
+    await user.click(await screen.findByRole('combobox', { name: '입하 라인' }));
+    await user.click(await screen.findByRole('option', { name: /000123450/ }));
+    await screen.findByText(/라인 #2/);
+
+    /* 제품코드9 · 수량9 · 날짜6 · 공급사6 · 번호4. 앞 아홉 자리만 라인 품목과 다르다. */
+    scan('999999999' + '000000480' + '260905' + '000123' + '0007');
+
+    expect(await screen.findByText('이 입하 라인의 품목과 다른 LOT입니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '이 라인 등록' })).toBeDisabled();
+  });
+
+  /*
+   * 라우터 이력에는 이 화면 하나뿐이다. 단계를 되돌리지 않으면 입하 건을 고르고 스캔하던
+   * 사람이 뒤로가기 한 번에 작업 목록까지 나가 처음부터 다시 들어와야 한다.
+   */
+  it('뒤로가기는 고른 라인을 먼저 놓는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    expect(runBackStep()).toBe(true);
+
+    expect(await screen.findByRole('combobox', { name: '입하 라인' })).toBeTruthy();
+    expect(screen.queryByText(/라인 #2/)).toBeNull();
+  });
+
   /* P/O 를 고르는 화면이 아니다. 입하 라인이 이미 있고 원천이 그 라인을 가리킨다. */
   it('입하 건과 라인을 골라야 스캔할 수 있다', async () => {
     const user = userEvent.setup();
     mount();
     await pickLine(user);
 
-    expect(screen.getByLabelText('자재LOT 스캔')).toBeTruthy();
+    expect(screen.getByLabelText(/자재LOT 스캔/)).toBeTruthy();
   });
 
   /* 사전부착 라인만 이 화면 몫이다. 미부착은 서버 채번이라 다른 화면이 한다. */
@@ -409,7 +452,7 @@ describe('자재LOT 스캔·등록 화면', () => {
     await user.click(await screen.findByRole('option', { name: '#3 · RM-1001 · 60' }));
     scan(LOT_NO);
 
-    expect(await screen.findByText('이미 입력한 LOT 번호입니다')).toBeTruthy();
+    expect(await screen.findByText('이미 등록된 LOT 번호입니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 라인 등록' })).toBeDisabled();
   });
 
