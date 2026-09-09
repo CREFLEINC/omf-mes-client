@@ -106,6 +106,10 @@ export const productDisposalRequest = {
     partnerFailed: '폐기 거래처를 불러오지 못했습니다',
     reasonLabel: '출고 사유',
     submit: '기타출고 처리',
+    destinationLabel: '도착지',
+    /** ⭐ 요청 작성 때 정해진 것을 «읽기 전용»으로 되비춘다 — 여기서 다시 묻지 않는다. */
+    destinationSelf: '자체 폐기 (외부 업체 없음)',
+    destinationUnset: '아직 정하지 않았습니다',
     /**
      * §5-4 · J-8 — ⭐ **승인은 자물쇠를 풀 뿐이다.** 승인이 끝나도 출고는 «여기서 다시»
      * 눌러야 한다. 안 적으면 승인 났으니 끝난 줄 안다.
@@ -116,12 +120,14 @@ export const productDisposalRequest = {
      * ⛔ **버튼을 잠그는 문구가 아니라 «눌러 본 결과»의 문구다**(통지 #674 · 설계서 §8-6).
      * 승인 상태 값을 판정할 수 없는 동안 앞질러 잠그면 승인이 끝났는데도 열리지 않는다.
      */
-    rejectedBeforeApproval: '아직 승인 전이라 서버가 출고를 막았습니다. 결재함에서 진행을 확인하세요.',
+    rejectedBeforeApproval:
+      '아직 승인 전이라 서버가 출고를 막았습니다. 결재함에서 진행을 확인하세요.',
   },
   lock: {
     selectNone: '폐기할 대상을 선택하세요',
     reason: '사유를 입력하세요',
     route: '결재선이 있어야 요청할 수 있습니다',
+    issueReason: '폐기 사유를 고르세요',
     destination: '폐기 거래처를 고르거나 자체 폐기를 체크하세요',
     saving: '처리하는 중입니다',
   },

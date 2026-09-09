@@ -227,10 +227,7 @@ export const useApprovalDetail = (
  * 두면 **시험이 덮지 못하는 화면 상태**가 생긴다.
  */
 export type RouteState =
-  | { kind: 'pending' }
-  | { kind: 'missing' }
-  | { kind: 'failed' }
-  | { kind: 'found' };
+  { kind: 'pending' } | { kind: 'missing' } | { kind: 'failed' } | { kind: 'found' };
 
 /**
  * 결재선 확인 — **상신할 곳이 있는가.**

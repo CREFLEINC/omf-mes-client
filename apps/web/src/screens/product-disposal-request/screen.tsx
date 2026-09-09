@@ -223,6 +223,11 @@ export const ProductDisposalRequestScreen = () => {
         showError={showError}
         route={route}
         qtyText={qtyText}
+        partners={partners.data ?? []}
+        isPartnersPending={partners.isPending}
+        isPartnersError={partners.isError}
+        issueTypes={issueTypes}
+        issueReasons={issueReasons}
         onChange={(patch) => {
           if (patch.reason !== undefined) setIsReasonTouched(true);
           setDraft((current) => ({ ...current, ...patch }));
@@ -265,15 +270,7 @@ export const ProductDisposalRequestScreen = () => {
         </div>
       </section>
 
-      <IssuePane
-        draft={draft}
-        partners={partners.data ?? []}
-        isPartnersPending={partners.isPending}
-        isPartnersError={partners.isError}
-        issueTypes={issueTypes}
-        issueReasons={issueReasons}
-        onChange={(patch) => setDraft((current) => ({ ...current, ...patch }))}
-      />
+      <IssuePane draft={draft} partners={partners.data ?? []} />
 
       <section className="pane" aria-label={t.issue.submit}>
         {issueLock !== undefined && (

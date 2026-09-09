@@ -79,7 +79,5 @@ export const DISPOSAL_PARTNER_ROLE: PartnerRoleCode = 'DISPOSAL';
  * 서버 몫이었다. 되살리며 잠금 판정을 걷고 이 상수를 조회 축으로만 남겼다.
  */
 export const ROUTE_LOOKUP_APPROVAL_TYPE: NonNullable<
-  NonNullable<
-    paths['/app/approval-routes']['get']['parameters']['query']
-  >['approvalTypeCode']
+  NonNullable<paths['/app/approval-routes']['get']['parameters']['query']>['approvalTypeCode']
 > = 'GOODS_ISSUE_DISPOSAL';

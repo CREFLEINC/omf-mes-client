@@ -1,7 +1,7 @@
 import type { components } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import { SOURCE_DOCUMENT_TYPE_CODE } from './codes';
+import { ISSUE_TYPE_OTHER, SOURCE_DOCUMENT_TYPE_CODE } from './codes';
 import type { RouteState } from './queries';
 import { totalQtyOf, type DisposalTarget } from './types';
 
@@ -28,7 +28,12 @@ export interface DisposalDraft {
   partnerId: string;
   /** 출고 사유 코드. 조회로 받은 선택지에서 고른다. */
   issueReasonCode: string;
-  /** 출고 유형 코드. 조회로 받은 선택지에서 고른다 — 계약이 기타출고 고정이라 적었으나 값은 미정. */
+  /**
+   * 출고 유형 코드 — **고르는 값이 아니다.** 기타출고 고정이다(§4-B).
+   *
+   * ⛔ 초안에 두는 이유는 본문 조립이 이 한 곳에서만 값을 읽게 하기 위해서다. 화면에는
+   * 선택칸을 두지 않는다 — 두면 사용자가 «출하»를 고를 수 있고 폐기가 출하로 나간다.
+   */
   issueTypeCode: string;
 }
 
@@ -37,7 +42,7 @@ export const EMPTY_DRAFT: DisposalDraft = {
   isSelfDisposal: false,
   partnerId: '',
   issueReasonCode: '',
-  issueTypeCode: '',
+  issueTypeCode: ISSUE_TYPE_OTHER,
 };
 
 export const reasonError = (raw: string): string | undefined => {
@@ -114,6 +119,8 @@ export const issueLockReason = (input: IssueGateInput): string | undefined => {
 
   if (input.isSaving) return t.saving;
   if (input.targets.length === 0) return t.selectNone;
+  /* ⛔ 조용히 본문을 못 만드는 대신 **왜 못 만드는지** 말한다 — 안 그러면 버튼이 이유 없이 죽는다. */
+  if (input.draft.issueReasonCode.trim() === '') return t.issueReason;
   if (!input.draft.isSelfDisposal && input.draft.partnerId.trim() === '') return t.destination;
 
   return undefined;
