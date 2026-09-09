@@ -114,3 +114,19 @@
   display: grid;
   gap: var(--space-2, 8px);
 }
+
+/*
+ * 칸과 그 숫자판은 한 벌이라 가깝게, 칸과 칸 사이는 더 벌린다. 같은 간격으로 두면 넷이
+ * 한 덩어리로 보여 어느 판이 어느 칸의 것인지 흐려진다.
+ */
+.receipt__keypad-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 24px);
+}
+
+.receipt__qty-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}

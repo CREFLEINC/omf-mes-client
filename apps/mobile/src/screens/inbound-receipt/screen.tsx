@@ -725,58 +725,62 @@ export const InboundReceiptScreen = () => {
                   }
                 }}
               >
-                <TextField
-                  label={t.qty.received}
-                  inputMode="none"
-                  size="xl"
-                  fullWidth
-                  value={draft.receivedQty}
-                  onChange={(event) => {
-                    patch({ receivedQty: event.target.value });
-                  }}
-                  onFocus={() => {
-                    setKeypadFor('received');
-                  }}
-                  error={qtyMessage()}
-                />
-
-                {keypadFor !== 'received' ? null : (
-                  <NumberPad
+                <div className="receipt__qty-field">
+                  <TextField
+                    label={t.qty.received}
+                    inputMode="none"
+                    size="xl"
+                    fullWidth
                     value={draft.receivedQty}
-                    onChange={(value) => {
-                      patch({ receivedQty: value });
+                    onChange={(event) => {
+                      patch({ receivedQty: event.target.value });
                     }}
-                    allowDecimal
+                    onFocus={() => {
+                      setKeypadFor('received');
+                    }}
+                    error={qtyMessage()}
                   />
-                )}
 
-                <TextField
-                  label={t.qty.packageCount}
-                  inputMode="none"
-                  size="xl"
-                  fullWidth
-                  value={draft.packageCount}
-                  onChange={(event) => {
-                    patch({ packageCount: event.target.value });
-                  }}
-                  onFocus={() => {
-                    setKeypadFor('package');
-                  }}
-                  error={
-                    packageProblem(draft.packageCount) === null
-                      ? undefined
-                      : t.qty.packageNotPositive
-                  }
-                />
+                  {keypadFor !== 'received' ? null : (
+                    <NumberPad
+                      value={draft.receivedQty}
+                      onChange={(value) => {
+                        patch({ receivedQty: value });
+                      }}
+                      allowDecimal
+                    />
+                  )}
+                </div>
 
-                {keypadFor !== 'package' ? null : (
-                  <NumberPad
+                <div className="receipt__qty-field">
+                  <TextField
+                    label={t.qty.packageCount}
+                    inputMode="none"
+                    size="xl"
+                    fullWidth
                     value={draft.packageCount}
-                    onChange={(value) => {
-                      patch({ packageCount: value });
+                    onChange={(event) => {
+                      patch({ packageCount: event.target.value });
                     }}
+                    onFocus={() => {
+                      setKeypadFor('package');
+                    }}
+                    error={
+                      packageProblem(draft.packageCount) === null
+                        ? undefined
+                        : t.qty.packageNotPositive
+                    }
                   />
-                )}
+
+                  {keypadFor !== 'package' ? null : (
+                    <NumberPad
+                      value={draft.packageCount}
+                      onChange={(value) => {
+                        patch({ packageCount: value });
+                      }}
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="receipt__row receipt__row--split">
@@ -902,6 +906,10 @@ export const InboundReceiptScreen = () => {
                           {t.verdict.split.excessOnly}
                         </Button>
                       </div>
+                      {/* 비활성은 사유를 함께 보인다(공유계약 G-1). 왜 못 누르는지 알아야 한다. */}
+                      {splitExceptionType === '' || splitExceptionReason.trim() === '' ? (
+                        <p className="receipt__note">{t.verdict.split.excessLocked}</p>
+                      ) : null}
                       <p className="receipt__note">{t.verdict.split.atomic}</p>
                     </section>
                   )}

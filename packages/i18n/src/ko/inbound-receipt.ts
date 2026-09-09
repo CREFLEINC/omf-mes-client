@@ -122,6 +122,8 @@ export const inboundReceipt = {
       both: '정량+초과 분리 등록',
       normalOnly: '정량분만 등록',
       excessOnly: '초과분만 등록',
+      /* 초과분을 보내는 두 모드는 예외 유형과 사유를 함께 싣는다. 없으면 서버가 받지 않는다. */
+      excessLocked: '초과분을 등록하려면 예외 유형과 사유를 먼저 채우세요.',
       atomic: '정량분과 초과분은 한 번에 저장되며 일부만 성공하지 않습니다.',
     },
     under: (remaining: string, arrived: string) =>
