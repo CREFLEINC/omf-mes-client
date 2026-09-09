@@ -3234,12 +3234,18 @@
   align-items: start;
 }
 
+/*
+ * ⛔ **스크롤하지 않는다**(사용자 지시 2026-09-09). 앞서는 다섯 줄 높이로 잘라 두고 여섯을
+ * 넣어, 마지막 줄이 잘린 채 목록이 굴러갔다. 넘치는 것은 [페이지 위]·[페이지 아래]가
+ * 넘긴다 — 그 버튼들이 하는 일이 곧 쪽 나눔이다.
+ *
+ * ⚠ 한 쪽에 놓는 줄 수는 `patterns/pop-select` 의 `PAGE_SIZE` 다. 여기 높이를 바꾸면
+ *   그 수도 함께 재어 고친다.
+ */
 .pop-select-dialog__list {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  max-height: calc(var(--control-height-md) * 5);
-  overflow-y: auto;
 }
 
 .pop-select-dialog__option {
@@ -3255,7 +3261,9 @@
   color: var(--on-surface-muted);
 }
 
+/* ⚠ 마지막 줄과 쪽 이동 버튼이 붙어 보여 사이를 벌린다(실측 2026-09-09). */
 .pop-select-dialog__paging {
+  margin-block-start: var(--space-3);
   display: grid;
   grid-template-columns: auto minmax(8rem, 1fr) auto;
   gap: var(--space-3);

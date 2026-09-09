@@ -54,6 +54,23 @@ describe('PopSelect — G-34 선택 팝업', () => {
     expect(screen.getByRole('button', { name: '페이지 위' })).toBeEnabled();
   });
 
+  /**
+   * ⛔ **한 쪽에 다섯을 넘겨 담지 않는다**(사용자 지시 2026-09-09). 목록이 스크롤하지 않으므로
+   * 한 쪽이 팝업보다 길어지면 **마지막 줄이 잘린 채 고를 수 없게 된다** — 앞서 여섯을 담아
+   * 실제로 그랬다. 잘림은 화면에서만 보이고 시험에서는 안 보이므로, 여기서는 «수»를 못박는다.
+   */
+  it('한 쪽에 다섯 줄까지만 놓는다', async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<PopSelect aria-label="사유" options={OPTIONS} />);
+    await user.click(screen.getByRole('combobox', { name: '사유' }));
+
+    expect(screen.getAllByRole('option')).toHaveLength(5);
+
+    await user.click(screen.getByRole('button', { name: '페이지 아래' }));
+    expect(screen.getAllByRole('option')).toHaveLength(2);
+  });
+
   it('검색어를 한 번에 지운다', async () => {
     const user = userEvent.setup();
 
