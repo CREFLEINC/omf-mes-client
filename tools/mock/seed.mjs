@@ -1673,6 +1673,13 @@ export const createSeed = (now = new Date()) => {
       pickedQty: 0,
       uomId: 1001,
       fifoPolicyCode: 'FEFO',
+      /*
+       * 고객이 LOT 에 건 조건. 어느 줄에도 없어 화면이 그리는 자리를 손으로 시험할 대상이
+       * 없었다. 90일은 권장 1순위(FLOT-2026-0305 · 잔여 120일)를 통과시키는 값이다 - 넘기면
+       * 집을 수 있는 LOT 이 사라져 다른 경로를 재지 못한다. 2번 줄은 비워 둔 채로 남긴다.
+       */
+      customerLotRequirement: '제조 90일 이내 · 동일 LOT 단일',
+      minimumRemainingShelfLifeDays: 90,
     },
     /*
      * 여벌 줄. 한 줄만 두면 배정만큼 집은 순간 오늘 출하분에 할 일이 없어져, 그 화면을 다시

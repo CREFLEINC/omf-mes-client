@@ -28,6 +28,8 @@ export const productPicking = {
   },
   target: {
     legend: '피킹 대상',
+    customer: (name: string) => `고객 ${name}`,
+    shipDate: (date: string) => `출하 예정 ${date}`,
     /** 자유 텍스트라 해석하지 않는다. 사람이 읽고 고른다. */
     customerRequirement: '고객 LOT 요구',
     minimumShelfLife: (days: number) => `잔여 유효기간 요구 ${String(days)}일 이상`,

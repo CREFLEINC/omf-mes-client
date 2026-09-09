@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 
 import { useIdempotencyKey } from '../../patterns/idempotency';
-import { useItem, useUomCodes } from '../../patterns/masters';
+import { useCustomerNames, useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
 import { ManualEntry } from '../../patterns/manual-entry';
@@ -190,6 +190,7 @@ export const ProductPickingScreen = () => {
   const itemId = target?.line.itemId ?? null;
   const item = useItem(itemId);
   const uoms = useUomCodes(true);
+  const customers = useCustomerNames(target !== null);
   const pool = useLotPool(itemId);
   const available = useAvailableByLot(itemId);
   const pick = usePickLine();
@@ -381,6 +382,8 @@ export const ProductPickingScreen = () => {
   }
 
   const lineUom = uoms.data?.get(target.line.uomId) ?? '';
+  /* 이름을 못 받았으면 식별자를 대신 보이지 않는다. 작업자가 대조할 수 없는 값이다. */
+  const customerName = customers.data?.get(target.request.customerId) ?? null;
 
   return (
     <div className="picking">
@@ -389,6 +392,8 @@ export const ProductPickingScreen = () => {
         <Card bordered>
           <Card.Body className="card-body picking__card">
             <strong>{target.request.shipmentRequestNo}</strong>
+            {customerName === null ? null : <p>{t.target.customer(customerName)}</p>}
+            <p>{t.target.shipDate(target.request.requestedShipDate)}</p>
             <p>{item.data === undefined ? '' : `${item.data.itemCode} ${item.data.itemName}`}</p>
             {item.isError ? <p className="picking__note">{t.target.itemFailed}</p> : null}
             <p>
@@ -433,29 +438,6 @@ export const ProductPickingScreen = () => {
           값이 그대로 남아 배정을 다 채우고도 한 번 더 집게 된다 - 조용히 두지 않는다.
         */}
         {requests.isError ? <AlertBanner variant="error" title={t.targets.loadFailed} /> : null}
-      </section>
-
-      <section className="picking__section">
-        <h2>{t.scan.legend}</h2>
-        <TextField
-          ref={scanField.ref}
-          label={t.scan.label}
-          placeholder={t.scan.placeholder}
-          size="xl"
-          fullWidth
-          error={missed === null ? undefined : t.scan.notFound(missed)}
-        />
-        <ManualEntry
-          label={t.scan.manualLabel}
-          submitLabel={t.scan.manualSubmit}
-          value={manual}
-          onChange={setManual}
-          onSubmit={() => {
-            takeScan(manual.trim());
-            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-            setManual('');
-          }}
-        />
       </section>
 
       <section className="picking__section">
@@ -517,6 +499,29 @@ export const ProductPickingScreen = () => {
             </ul>
           </>
         )}
+      </section>
+
+      <section className="picking__section">
+        <h2>{t.scan.legend}</h2>
+        <TextField
+          ref={scanField.ref}
+          label={t.scan.label}
+          placeholder={t.scan.placeholder}
+          size="xl"
+          fullWidth
+          error={missed === null ? undefined : t.scan.notFound(missed)}
+        />
+        <ManualEntry
+          label={t.scan.manualLabel}
+          submitLabel={t.scan.manualSubmit}
+          value={manual}
+          onChange={setManual}
+          onSubmit={() => {
+            takeScan(manual.trim());
+            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
+            setManual('');
+          }}
+        />
       </section>
 
       {selected === null ? null : (

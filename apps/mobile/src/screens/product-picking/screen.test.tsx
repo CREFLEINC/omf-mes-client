@@ -114,6 +114,10 @@ const routes = (options: Options = {}): StubRoute[] => [
       }),
   },
   {
+    match: (req) => new URL(req.url).pathname === '/mdm/partners',
+    respond: () => jsonResponse({ items: [{ partnerId: 1, partnerName: '가나상사' }], page }),
+  },
+  {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
   },
@@ -224,6 +228,33 @@ describe('제품LOT 피킹 스캔 화면', () => {
   });
 
   /* 자유 텍스트라 해석하지 않는다. 사람이 읽고 고르도록 그대로 크게 보인다. */
+  /*
+   * 설계 레이아웃이 대상 - 권장 LOT - 스캔 순이다. 스캔이 먼저 서면 무엇을 집어야 하는지
+   * 보기 전에 집으라고 시키는 것이 된다.
+   */
+  it('권장 LOT을 LOT 스캔보다 위에 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseTarget(user);
+
+    const headings = screen.getAllByRole('heading').map((each) => each.textContent ?? '');
+    const candidates = headings.findIndex((each) => each.startsWith('권장 LOT'));
+    const scan = headings.indexOf('LOT 스캔');
+
+    expect(candidates).toBeGreaterThanOrEqual(0);
+    expect(scan).toBeGreaterThan(candidates);
+  });
+
+  /* 식별자만 오는 값이라 이름을 따로 풀지 않으면 작업자가 대조할 수 없다. */
+  it('대상 카드에 고객과 출하 예정일을 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseTarget(user);
+
+    expect(await screen.findByText('고객 가나상사')).toBeTruthy();
+    expect(screen.getByText('출하 예정 2026-09-01')).toBeTruthy();
+  });
+
   it('고객 LOT 요구 문장을 그대로 보이고 그것으로 LOT을 걸러내지 않는다', async () => {
     const user = userEvent.setup();
     mount([], {
