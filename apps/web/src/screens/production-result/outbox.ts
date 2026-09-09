@@ -72,7 +72,6 @@ export const isSendableEntry = (value: unknown): value is OutboxEntry => {
     typeof fields.workOrderId === 'number' &&
     typeof fields.goodQty === 'number' &&
     typeof fields.uomId === 'number' &&
-    typeof fields.resultSourceCode === 'string' &&
     typeof fields.occurredAt === 'string'
   );
 };
