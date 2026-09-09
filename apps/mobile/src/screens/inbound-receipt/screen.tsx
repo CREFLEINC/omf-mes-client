@@ -113,6 +113,9 @@ export const InboundReceiptScreen = () => {
 
   const scanField = useScanField({ onScan: take });
 
+  /* 숫자판은 품목·수량 확인 구획과 함께 뜬다. */
+  const keypadShown = draft.purchaseOrderLine !== null || draft.unordered;
+
   /* 세로 화면이라 채운 구획이 화면을 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
   useAdvanceTo(draft.supplierLotNo !== '' || draft.supplierLotMissing, poSection);
   useAdvanceTo(draft.purchaseOrderLine !== null || draft.unordered, qtySection);
@@ -895,9 +898,12 @@ export const InboundReceiptScreen = () => {
           {/*
            * 고정 자리는 화면 뿌리에 둔다. 짧은 구획 안에 두면 그 구획 안에서만 붙어 있어
            * 실제로는 본문과 함께 흐른다.
+           *
+           * 숫자판이 떠 있는 동안에는 고정을 푼다. 바닥에 붙은 단추가 숫자판 아랫줄을 덮어
+           * 누를 수 없게 된다.
            */}
           {verdict === OVER ? null : (
-            <div className="action-bar">
+            <div className={keypadShown ? undefined : 'action-bar'}>
               <Button
                 className="receipt__wide"
                 variant="filled"
