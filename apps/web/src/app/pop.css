@@ -3369,3 +3369,30 @@
   align-self: stretch;
   block-size: auto;
 }
+
+/*
+ * 《현재 생산LOT》 한 줄(`P-02-11`) — LOT 번호와 진척이 나란히 선다. 번호가 길어도 진척이
+ * 밀려나지 않게 진척을 오른쪽 끝에 붙인다(위 투입 줄의 수량과 같은 열에 서게 된다).
+ *
+ * ⛔ **`app.css` 에 두지 않는다**(리뷰 지적 2026-09-09). 그쪽은 관리웹 진입점도 읽어 단말
+ * 전용 규칙이 관리웹 번들에 실리고, 여러 화면이 꼬리에 붙는 자리라 병합이 규칙 끝을 삼킨
+ * 실측이 있다 — 이 파일 머리말이 가른 근거 그대로다.
+ */
+.pop-rc-lot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin: var(--space-2) 0 0;
+  font: var(--type-body-lg);
+  letter-spacing: var(--type-body-lg-tracking);
+}
+
+.pop-rc-lot-no {
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.pop-rc-lot-progress {
+  margin-inline-start: auto;
+}

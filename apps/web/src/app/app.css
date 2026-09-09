@@ -6965,29 +6965,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-inline-start: auto;
 }
 
-/*
- * 《현재 생산LOT》 한 줄 — LOT 번호와 진척이 나란히 선다. 번호가 길어도 진척이 밀려나지
- * 않게 진척을 오른쪽 끝에 붙인다(위 투입 줄의 수량과 같은 열에 서게 된다).
- */
-.pop-rc-lot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-3);
-  margin: var(--space-2) 0 0;
-  font: var(--type-body-lg);
-  letter-spacing: var(--type-body-lg-tracking);
-}
-
-.pop-rc-lot-no {
-  font-weight: 600;
-  word-break: break-all;
-}
-
-.pop-rc-lot-progress {
-  margin-inline-start: auto;
-}
-
 /* 지금 물린 금형. 목록과 붙되 한 덩이로 읽히게 사이를 둔다. */
 .pop-rc-mold,
 .pop-rc-part {
