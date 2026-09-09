@@ -13,6 +13,17 @@ export const wipHandover = {
     /** 왜 다른 스캔은 되는데 이건 안 되나가 작업자에게는 이상하게 보인다. */
     description:
       '공정 인계는 전송 대기에 넣을 수 없습니다. 다음 공정이 무엇인지 확인해야 하기 때문입니다.',
+    /*
+     * 들어올 때 끊긴 것과 하다가 끊긴 것은 다르다. 하던 것을 치우면 작업자는 사라진 줄 알고
+     * 스캔을 처음부터 다시 한다.
+     */
+    duringWork: '연결이 끊겼습니다. 적은 것은 그대로 두었으니 연결되면 이어서 하세요.',
+  },
+  /* 이 화면은 연속 작업이다. 건별로 넘기고 마지막에 한 번 마친다. */
+  done: {
+    count: (count: string) => `인계됨 ${count}건`,
+    row: (lotNo: string, workOrderNo: string, qty: string) => `${lotNo} → ${workOrderNo} ${qty}`,
+    submit: '인계 마치기',
   },
   lot: {
     legend: '생산LOT 스캔',
