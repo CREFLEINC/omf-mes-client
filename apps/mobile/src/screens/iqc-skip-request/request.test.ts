@@ -15,6 +15,8 @@ const lot = (statusCode: string): Lot => ({
   sourceId: 11,
   statusCode,
   held: false,
+  workOrderSequenceNo: null,
+  workOrderLotCount: null,
 });
 
 describe('사유', () => {

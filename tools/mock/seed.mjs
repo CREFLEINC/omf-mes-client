@@ -355,6 +355,13 @@ export const createSeed = (now = new Date()) => {
       ['LABEL_DAMAGED', '라벨 훼손'],
       ['UNREADABLE', '판독 불가'],
     ],
+    /* 초과 입하 분리의 예외 유형. 코드 사전 CD-INBOUND-RECEIPT-EXCEPTION-TYPE 의 시드 넷. */
+    INBOUND_RECEIPT_EXCEPTION_TYPE: [
+      ['CUSTOMER_SUPPLY', '사급'],
+      ['FREE_SAMPLE', '무상 샘플'],
+      ['URGENT_RECEIPT', '긴급 입하'],
+      ['OVER_DELIVERY', '초과 납품'],
+    ],
     INBOUND_VARIANCE_TYPE: [
       ['SHORTAGE', '수량 부족'],
       ['OVERAGE', '수량 초과'],

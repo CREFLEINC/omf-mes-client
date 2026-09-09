@@ -30,6 +30,8 @@ const lotRow = (lotId: number, lotNo: string) => ({
   sourceTypeCode: 'PRODUCTION',
   sourceId: 1,
   statusCode: 'NORMAL',
+  workOrderSequenceNo: null,
+  workOrderLotCount: null,
 });
 
 describe('오늘 출하분', () => {

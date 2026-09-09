@@ -88,20 +88,27 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () =>
-      jsonResponse({
+    respond: (req) => {
+      /* 한 벌로 답하면 어느 칸이 어느 그룹을 부르는지 시험이 가리지 못한다. */
+      const group = new URL(req.url).searchParams.get('codeGroupCode');
+      const value =
+        group === 'INBOUND_RECEIPT_EXCEPTION_TYPE'
+          ? { code: 'OVER_DELIVERY', codeName: '초과 납품' }
+          : { code: 'NO_LABEL', codeName: '라벨 없음' };
+
+      return jsonResponse({
         items: [
           {
             codeValueId: 1,
             codeGroupId: 5,
-            code: 'NO_LABEL',
-            codeName: '라벨 없음',
+            ...value,
             displayOrder: 1,
             isActive: true,
           },
         ],
         page,
-      }),
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/items',
@@ -310,8 +317,11 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(await screen.findByText('남은 예정과 맞습니다')).toBeTruthy();
   });
 
-  /* 판정 결과를 먼저 보인 뒤에 넘긴다. 조용히 넘기면 왜 왔는지 알 수 없다. */
-  it('초과면 초과라 말하고 넘어갈 화면이 없다는 것도 말한다', async () => {
+  /*
+   * 판정 결과를 먼저 보인 뒤에 넘긴다. 초과는 관리웹으로 보내지 않고 이 화면에서 끝낸다 -
+   * 정량분과 초과분이 각각 얼마인지 보이지 않으면 무엇을 등록하는지 모른 채 누른다.
+   */
+  it('초과면 정량분과 초과분을 나눠 보인다', async () => {
     const user = userEvent.setup();
     mount();
     await screen.findByLabelText('LOT 번호');
@@ -320,7 +330,24 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await user.type(await screen.findByLabelText('실입하 수량'), '511');
 
     expect(await screen.findByText('수량 초과 — 남은 예정 500, 이번 도착 511')).toBeTruthy();
-    expect(screen.getByText('초과분은 담당자가 따로 처리합니다.')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: '초과 입하 분리' })).toBeTruthy();
+    expect(screen.getByText('정량분')).toBeTruthy();
+    expect(screen.getByText('510 EA')).toBeTruthy();
+    expect(screen.getByText('초과분')).toBeTruthy();
+    expect(screen.getByText('1 EA')).toBeTruthy();
+  });
+
+  /* 초과분은 발주에 얹히지 않는다. 보통 등록으로 나가면 서버가 거부할 수량이 누적에 얹힌다. */
+  it('초과면 보통 입하 등록으로 내보내지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+
+    await user.type(await screen.findByLabelText('실입하 수량'), '511');
+
+    await screen.findByRole('heading', { name: '초과 입하 분리' });
+    expect(screen.getByRole('button', { name: '입하 등록' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('부족이면 부족이라 말한다', async () => {
@@ -666,5 +693,121 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await openUnordered(user);
 
     expect(await screen.findByText('ERP W/O가 없어 예정 수량과 비교하지 않습니다')).toBeTruthy();
+  });
+});
+
+describe('입하 등록 화면 — 초과 입하 분리', () => {
+  const splitRoute = (seen: Request[]): StubRoute => ({
+    match: (req) =>
+      new URL(req.url).pathname === '/logistics/inbound-receipts:split' && req.method === 'POST',
+    respond: (req) => {
+      seen.push(req.clone());
+      return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
+    },
+  });
+
+  const overArrival = async (user: ReturnType<typeof userEvent.setup>) => {
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.type(await screen.findByLabelText('실입하 수량'), '511');
+    await screen.findByRole('heading', { name: '초과 입하 분리' });
+  };
+
+  /* 계약이 유형이 있으면 사유를 필수로 둔다. 막지 않으면 담아 둔 뒤에야 거부가 온다. */
+  it('예외 유형과 사유가 없으면 초과분을 싣는 등록을 막는다', async () => {
+    const user = userEvent.setup();
+    mount([splitRoute([])]);
+    await overArrival(user);
+
+    expect(
+      screen.getByRole('button', { name: '정량분과 초과분 등록' }).hasAttribute('disabled'),
+    ).toBe(true);
+    expect(screen.getByRole('button', { name: '초과분만 등록' }).hasAttribute('disabled')).toBe(
+      true,
+    );
+    expect(screen.getByText('초과분을 등록하려면 예외 유형을 고르고 사유를 적으세요')).toBeTruthy();
+  });
+
+  /* 정량분만 등록하는 길은 초과분을 싣지 않으므로 예외 유형이 필요 없다. */
+  it('정량분만 등록은 유형과 사유 없이도 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([splitRoute(seen)]);
+    await overArrival(user);
+
+    await user.click(screen.getByRole('button', { name: '정량분만 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]?.json()) as {
+      mode: string;
+      normal?: { lines: { receivedQty: number; purchaseOrderLineId: number | null }[] };
+      excess?: unknown;
+    };
+
+    expect(body.mode).toBe('NORMAL_ONLY');
+    expect(body.excess).toBeUndefined();
+    expect(body.normal?.lines[0]?.receivedQty).toBe(510);
+    expect(body.normal?.lines[0]?.purchaseOrderLineId).toBe(41);
+  });
+
+  /*
+   * 초과분은 ERP W/O 에 귀속하지 않는다. 라인을 달아 보내면 서버가 누적에 얹어, 다음 도착이
+   * 부족으로 뒤집힌다.
+   */
+  it('초과분은 ERP W/O 라인을 달지 않고 유형과 사유를 함께 싣는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([splitRoute(seen)]);
+    await overArrival(user);
+
+    await user.click(screen.getByRole('combobox', { name: '초과 예외 유형' }));
+    await user.click(await screen.findByRole('option', { name: '초과 납품' }));
+    await user.type(screen.getByLabelText('초과 사유'), '공급사가 더 실어 보냄');
+
+    await user.click(screen.getByRole('button', { name: '정량분과 초과분 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]?.json()) as {
+      mode: string;
+      normal?: { lines: { receivedQty: number; purchaseOrderLineId: number | null }[] };
+      excess?: {
+        exceptionTypeCode: string | null;
+        exceptionReason: string | null;
+        lines: { receivedQty: number; purchaseOrderLineId: number | null }[];
+      };
+    };
+
+    expect(body.mode).toBe('BOTH');
+    expect(body.normal?.lines[0]?.receivedQty).toBe(510);
+    expect(body.excess?.lines[0]?.receivedQty).toBe(1);
+    expect(body.excess?.lines[0]?.purchaseOrderLineId).toBeNull();
+    expect(body.excess?.exceptionTypeCode).toBe('OVER_DELIVERY');
+    expect(body.excess?.exceptionReason).toBe('공급사가 더 실어 보냄');
+  });
+
+  /*
+   * 장갑 낀 손은 한 번 더 누른다. 등록마다 멱등키를 새로 뽑으므로 두 건이 담기면 서버가
+   * 흡수하지 못하고 재고가 두 번 는다.
+   */
+  it('분리 등록을 같은 틱에 두 번 눌러도 한 건만 나간다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([splitRoute(seen)]);
+    await overArrival(user);
+
+    const button = screen.getByRole('button', { name: '정량분만 등록' });
+
+    button.click();
+    button.click();
+    button.click();
+
+    await screen.findByText('입하를 등록했습니다');
+    expect(seen).toHaveLength(1);
   });
 });

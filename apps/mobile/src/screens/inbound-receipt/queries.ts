@@ -10,6 +10,7 @@ import type { PurchaseOrder, PurchaseOrderLine } from './receipt';
  * 값 목록은 서버가 내려준다. 채번 식별자를 하드코딩하지 않는다 - 환경마다 다르다.
  */
 export const SUBSTITUTE_LOT_REASON = 'SUBSTITUTE_LOT_REASON';
+export const INBOUND_RECEIPT_EXCEPTION_TYPE = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
 
 export const receiptKeys = {
   orders: () => ['inbound-purchase-orders'] as const,

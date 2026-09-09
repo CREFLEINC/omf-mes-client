@@ -100,7 +100,7 @@ export const inboundReceipt = {
     /** 판정 결과를 먼저 보인 뒤에 넘긴다. 넘어갈 화면은 아직 이 앱에 없다. */
     over: (remaining: string, arrived: string) =>
       `수량 초과 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
-    overNext: '초과분은 담당자가 따로 처리합니다.',
+    overNext: '아래에서 정량분과 초과분을 나눠 등록합니다.',
     under: (remaining: string, arrived: string) =>
       `수량 부족 — 남은 예정 ${remaining}, 이번 도착 ${arrived}`,
     /*
@@ -119,6 +119,30 @@ export const inboundReceipt = {
     underContinueNote: '분할 납품이면 그대로 등록합니다. ERP W/O는 열린 채 남습니다.',
     underVariance: '입하 오류 등록',
     underVarianceNote: '이번이 마지막인데 모자라면 입하 오류로 넘어갑니다.',
+  },
+  /*
+   * 초과가 판정되면 관리웹으로 넘기지 않고 이 화면에서 끝낸다. 정량분은 ERP W/O 에 귀속하고
+   * 초과분은 귀속하지 않는다.
+   */
+  split: {
+    legend: '초과 입하 분리',
+    record: '초과 입하 분리',
+    normalLabel: '정량분',
+    excessLabel: '초과분',
+    /** 초과분이 발주에 얹히지 않는다는 사실을 먼저 말한다. */
+    excessNote: '초과분은 ERP W/O에 얹히지 않습니다.',
+    typeLabel: '초과 예외 유형',
+    typePlaceholder: '유형을 고르세요',
+    typeLoadFailed: '초과 예외 유형을 불러오지 못했습니다',
+    typeNone: '고를 수 있는 초과 예외 유형이 없습니다. 관리자에게 문의하세요.',
+    reasonLabel: '초과 사유',
+    reasonPlaceholder: '왜 초과로 왔는지 적으세요',
+    /** 초과분을 싣는 모드는 계약이 유형과 사유를 함께 요구한다. */
+    need: '초과분을 등록하려면 예외 유형을 고르고 사유를 적으세요',
+    both: '정량분과 초과분 등록',
+    normalOnly: '정량분만 등록',
+    excessOnly: '초과분만 등록',
+    atomicNote: '정량분과 초과분은 함께 등록되거나 함께 실패합니다.',
   },
   /** 검사 대상 여부는 서버가 라인마다 정한다. 화면이 보내지 않는다. */
   inspectionNote: '검사 대상 여부는 등록한 뒤에 라인마다 정해집니다',

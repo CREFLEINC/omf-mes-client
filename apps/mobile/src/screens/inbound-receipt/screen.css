@@ -97,3 +97,17 @@
   align-items: center;
   flex-wrap: wrap;
 }
+
+/* 초과 입하 분리 단계. 판정 배너 아래에서 이어지는 자리라 구획으로 세운다. */
+.receipt__split {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 12px);
+}
+
+/* 되돌릴 수 없는 쓰기가 셋이라 세로로 세워 잘못 짚지 않게 한다. */
+.receipt__split-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+}

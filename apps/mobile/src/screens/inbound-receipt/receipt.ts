@@ -6,6 +6,7 @@ import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 export type PurchaseOrder = components['schemas']['PurchaseOrder'];
 export type PurchaseOrderLine = components['schemas']['PurchaseOrderLine'];
 export type InboundReceiptCreate = components['schemas']['InboundReceiptCreate'];
+export type InboundReceiptSplitRequest = components['schemas']['InboundReceiptSplitRequest'];
 
 /**
  * 입하 검증 세 갈래.
@@ -227,6 +228,112 @@ export const toOutboxDraft = (
     idempotencyKey: createIdempotencyKey(),
     method: 'POST',
     path: RECEIPT_PATH,
+    body,
+    occurredAt,
+    confirmation: 'pending',
+  };
+};
+
+/**
+ * 초과 입하 분리.
+ *
+ * 초과가 판정되면 관리웹으로 넘기지 않고 이 화면에서 끝낸다. 정량분은 ERP W/O 에 귀속하고
+ * 초과분은 귀속하지 않는다 - 한 트랜잭션으로 보내며 한쪽만 성공하는 결말은 없다.
+ */
+export const SPLIT_PATH = '/logistics/inbound-receipts:split';
+
+export const BOTH = 'BOTH';
+export const NORMAL_ONLY = 'NORMAL_ONLY';
+export const EXCESS_ONLY = 'EXCESS_ONLY';
+
+export type SplitMode = typeof BOTH | typeof NORMAL_ONLY | typeof EXCESS_ONLY;
+
+/**
+ * ERP W/O 에 귀속할 수 있는 최대. 남은 예정에 허용 초과까지가 그 범위다.
+ *
+ * 누적이 이미 총량을 넘긴 라인은 남은 예정이 음수가 되는데, 그대로 쓰면 정량분이 음수로
+ * 나와 화면이 있을 수 없는 수를 보인다. 귀속할 수 있는 것이 없다는 뜻이라 0 으로 둔다.
+ */
+export const normalQtyOf = (line: PurchaseOrderLine, queuedQty = 0): number =>
+  Math.max(0, remainingQtyOf(line, queuedQty) + line.toleranceOverQty);
+
+/** ERP W/O 에 귀속하지 않는 몫. */
+export const excessQtyOf = (line: PurchaseOrderLine, arrivedQty: number, queuedQty = 0): number =>
+  Math.max(0, arrivedQty - normalQtyOf(line, queuedQty));
+
+export interface SplitDraft {
+  exceptionTypeCode: string;
+  exceptionReason: string;
+}
+
+/**
+ * 초과분을 싣는 모드는 예외 유형과 사유가 함께 있어야 한다.
+ *
+ * 계약이 유형이 있으면 사유를 필수로 두므로, 유형만 고르고 보내면 담아 둔 뒤에야 거부가 온다.
+ */
+export const canSubmitSplit = (mode: SplitMode, split: SplitDraft): boolean =>
+  mode === NORMAL_ONLY || (split.exceptionTypeCode !== '' && split.exceptionReason.trim() !== '');
+
+export const toSplitOutboxDraft = (
+  draft: ReceiptDraft,
+  split: SplitDraft,
+  mode: SplitMode,
+  itemId: number,
+  uomId: number,
+  plantId: number,
+  supplierId: number,
+  now: Date,
+  workerNo: string,
+): OutboxDraft => {
+  const occurredAt = now.toISOString();
+  const line = draft.purchaseOrderLine;
+  const arrived = Number(draft.receivedQty.trim());
+  const normalQty = line === null ? 0 : normalQtyOf(line);
+  const excessQty = line === null ? 0 : excessQtyOf(line, arrived);
+
+  const lineOf = (receivedQty: number, attributed: boolean) => ({
+    /* 초과분은 ERP W/O 에 귀속하지 않는다. 라인을 달면 서버가 누적에 얹는다. */
+    purchaseOrderLineId: attributed ? (line?.purchaseOrderLineId ?? null) : null,
+    itemId,
+    receivedQty,
+    uomId,
+    packageCount: draft.packageCount.trim() === '' ? null : Number(draft.packageCount.trim()),
+    supplierLotNo: draft.supplierLotMissing ? null : optional(draft.supplierLotNo),
+    supplierLotMissing: draft.supplierLotMissing,
+    substituteLotReasonCode: draft.supplierLotMissing ? draft.substituteLotReasonCode : null,
+    manufacturedDate: optional(draft.manufacturedDate),
+    expiryDate: optional(draft.expiryDate),
+  });
+
+  const part = (receivedQty: number, attributed: boolean) => ({
+    supplierId,
+    plantId,
+    receiptDatetime: occurredAt,
+    deliveryNoteNo: optional(draft.deliveryNoteNo),
+    exceptionTypeCode: attributed ? null : split.exceptionTypeCode,
+    exceptionReason: attributed ? null : optional(split.exceptionReason),
+    lines: [lineOf(receivedQty, attributed)],
+  });
+
+  const when = { businessDate: businessDateOf(now), occurredAt };
+  const body: InboundReceiptSplitRequest =
+    mode === NORMAL_ONLY
+      ? { mode: NORMAL_ONLY, normal: part(normalQty, true), ...when }
+      : mode === EXCESS_ONLY
+        ? { mode: EXCESS_ONLY, excess: part(excessQty, false), ...when }
+        : {
+            mode: BOTH,
+            normal: part(normalQty, true),
+            excess: part(excessQty, false),
+            ...when,
+          };
+
+  return {
+    label: messages.inboundReceipt.split.record,
+    workerNo,
+    idempotencyKey: createIdempotencyKey(),
+    method: 'POST',
+    path: SPLIT_PATH,
     body,
     occurredAt,
     confirmation: 'pending',

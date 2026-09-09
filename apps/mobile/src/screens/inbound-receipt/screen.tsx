@@ -5,19 +5,30 @@ import { Link } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
 import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
-import { useOutbox } from '../../patterns/outbox';
+import { useOutbox, type OutboxDraft } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
 import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
-import { SUBSTITUTE_LOT_REASON, useOpenPurchaseOrders, usePurchaseOrderLines } from './queries';
 import {
+  INBOUND_RECEIPT_EXCEPTION_TYPE,
+  SUBSTITUTE_LOT_REASON,
+  useOpenPurchaseOrders,
+  usePurchaseOrderLines,
+} from './queries';
+import {
+  BOTH,
+  EXCESS_ONLY,
   NORMAL,
+  NORMAL_ONLY,
   OVER,
   UNDER,
   canSubmit,
+  canSubmitSplit,
+  excessQtyOf,
+  normalQtyOf,
   isExpiryBeforeManufactured,
   packageProblem,
   qtyProblem,
@@ -25,10 +36,14 @@ import {
   remainingQtyOf,
   sourceOf,
   toOutboxDraft,
+  toSplitOutboxDraft,
   verdictOf,
   type PurchaseOrder,
   type PurchaseOrderLine,
   type ReceiptDraft,
+  type ReceiptSource,
+  type SplitDraft,
+  type SplitMode,
 } from './receipt';
 import './screen.css';
 
@@ -71,6 +86,10 @@ export const InboundReceiptScreen = () => {
    * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 재고가 두 번 는다.
    */
   const inFlight = useRef(false);
+  const [split, setSplit] = useState<SplitDraft>({
+    exceptionTypeCode: '',
+    exceptionReason: '',
+  });
 
   const patch = (next: Partial<ReceiptDraft>) => {
     /*
@@ -101,6 +120,8 @@ export const InboundReceiptScreen = () => {
   const orders = useOpenPurchaseOrders();
   const lines = usePurchaseOrderLines(draft.purchaseOrder?.purchaseOrderId ?? null);
   const reasons = useCodeValues(SUBSTITUTE_LOT_REASON);
+  /* 초과분에 붙는 예외 유형. 초과가 판정될 때만 부른다. */
+  const exceptionTypes = useCodeValues(INBOUND_RECEIPT_EXCEPTION_TYPE);
   const item = useItem((draft.unordered ? draft.itemId : draft.purchaseOrderLine?.itemId) ?? null);
   const uoms = useUomCodes(true);
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
@@ -130,7 +151,13 @@ export const InboundReceiptScreen = () => {
     loaded &&
     plantId !== null &&
     canSubmit(draft, worker !== null) &&
+    verdict !== OVER &&
     (verdict !== UNDER || continueUnder);
+  /*
+   * 분리도 되돌릴 수 없는 쓰기다. 큐를 읽기 전에는 막아 둔다 - 담긴 것이 없는 것과 구별되지
+   * 않아 같은 초과가 두 번 나간다.
+   */
+  const splitReady = loaded && plantId !== null && canSubmit(draft, worker !== null);
   const uom =
     uoms.data?.get((draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId) ?? -1) ?? '';
 
@@ -157,7 +184,8 @@ export const InboundReceiptScreen = () => {
     scanField.focus();
   };
 
-  const submit = async () => {
+  /* 담기·보내기·판정은 입하 등록과 분리 등록이 같다. 두 벌로 두면 한쪽만 고쳐져 갈라진다. */
+  const send = async (build: (source: ReceiptSource, plantId: number) => OutboxDraft) => {
     const source = sourceOf(draft);
 
     if (worker === null || source === null || plantId === null || inFlight.current) {
@@ -168,15 +196,7 @@ export const InboundReceiptScreen = () => {
     setSaveFailed(false);
 
     try {
-      const entry = toOutboxDraft(
-        draft,
-        source.itemId,
-        source.uomId,
-        plantId,
-        source.supplierId,
-        new Date(),
-        worker.workerNo,
-      );
+      const entry = build(source, plantId);
 
       /* 담기지 못하면 적은 것이 어디에도 없다. 말하지 않으면 사람은 등록된 줄 안다. */
       try {
@@ -206,6 +226,37 @@ export const InboundReceiptScreen = () => {
     } finally {
       inFlight.current = false;
     }
+  };
+
+  const submit = async () => {
+    await send((source, plant) =>
+      toOutboxDraft(
+        draft,
+        source.itemId,
+        source.uomId,
+        plant,
+        source.supplierId,
+        new Date(),
+        worker?.workerNo ?? '',
+      ),
+    );
+  };
+
+  /* 초과는 이 화면에서 끝낸다. 정량분과 초과분은 한 요청으로 나가고 한쪽만 성공하지 않는다. */
+  const submitSplit = async (mode: SplitMode) => {
+    await send((source, plant) =>
+      toSplitOutboxDraft(
+        draft,
+        split,
+        mode,
+        source.itemId,
+        source.uomId,
+        plant,
+        source.supplierId,
+        new Date(),
+        worker?.workerNo ?? '',
+      ),
+    );
   };
 
   if (outcome !== null) {
@@ -650,7 +701,7 @@ export const InboundReceiptScreen = () => {
                 >
                   {t.verdict.overNext}
                 </AlertBanner>
-              ) : (
+              ) : verdict === UNDER ? (
                 <AlertBanner
                   variant="warning"
                   title={t.verdict.under(
@@ -685,6 +736,107 @@ export const InboundReceiptScreen = () => {
                   </div>
                   <p>{continueUnder ? t.verdict.underContinueNote : t.verdict.underVarianceNote}</p>
                 </AlertBanner>
+              ) : null}
+
+              {/*
+               * 초과는 관리웹으로 넘기지 않고 여기서 끝낸다. 정량분은 ERP W/O 에 귀속하고
+               * 초과분은 귀속하지 않는다 - 어느 쪽을 보낼지는 사람이 고른다.
+               */}
+              {verdict !== OVER || draft.purchaseOrderLine === null ? null : (
+                <section className="receipt__split">
+                  <h2>{t.split.legend}</h2>
+                  <dl className="receipt__counts">
+                    <dt>{t.verdict.counts.remaining}</dt>
+                    <dd>{`${String(remainingQtyOf(draft.purchaseOrderLine, queuedQty))} ${uom}`}</dd>
+                    <dt>{t.split.normalLabel}</dt>
+                    <dd>{`${String(normalQtyOf(draft.purchaseOrderLine, queuedQty))} ${uom}`}</dd>
+                    <dt>{t.split.excessLabel}</dt>
+                    <dd>
+                      <strong>
+                        {`${String(excessQtyOf(draft.purchaseOrderLine, received, queuedQty))} ${uom}`}
+                      </strong>
+                    </dd>
+                  </dl>
+                  <p className="receipt__note">{t.split.excessNote}</p>
+
+                  <div className="receipt__field">
+                    <label htmlFor="split-type">{t.split.typeLabel}</label>
+                    <Select
+                      id="split-type"
+                      size="xl"
+                      placeholder={t.split.typePlaceholder}
+                      value={split.exceptionTypeCode === '' ? null : split.exceptionTypeCode}
+                      onChange={(value) => {
+                        setSplit((current) => ({
+                          ...current,
+                          exceptionTypeCode: String(value),
+                        }));
+                      }}
+                      options={(exceptionTypes.data ?? []).map((each) => ({
+                        value: each.code,
+                        label: each.name,
+                      }))}
+                    />
+                  </div>
+                  {exceptionTypes.isError ? (
+                    <AlertBanner variant="error" title={t.split.typeLoadFailed} />
+                  ) : null}
+                  {exceptionTypes.data?.length === 0 ? (
+                    <AlertBanner variant="warning" title={t.split.typeNone} />
+                  ) : null}
+
+                  <TextField
+                    label={t.split.reasonLabel}
+                    placeholder={t.split.reasonPlaceholder}
+                    size="xl"
+                    fullWidth
+                    value={split.exceptionReason}
+                    onChange={(event) => {
+                      setSplit((current) => ({
+                        ...current,
+                        exceptionReason: event.target.value,
+                      }));
+                    }}
+                  />
+
+                  {canSubmitSplit(BOTH, split) ? null : (
+                    <p className="receipt__note">{t.split.need}</p>
+                  )}
+                  <p className="receipt__note">{t.split.atomicNote}</p>
+
+                  <div className="receipt__split-actions">
+                    <Button
+                      variant="filled"
+                      size="2xl"
+                      disabled={!splitReady || !canSubmitSplit(BOTH, split)}
+                      onClick={() => {
+                        void submitSplit(BOTH);
+                      }}
+                    >
+                      {t.split.both}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="xl"
+                      disabled={!splitReady}
+                      onClick={() => {
+                        void submitSplit(NORMAL_ONLY);
+                      }}
+                    >
+                      {t.split.normalOnly}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="xl"
+                      disabled={!splitReady || !canSubmitSplit(EXCESS_ONLY, split)}
+                      onClick={() => {
+                        void submitSplit(EXCESS_ONLY);
+                      }}
+                    >
+                      {t.split.excessOnly}
+                    </Button>
+                  </div>
+                </section>
               )}
 
               <p className="receipt__note">{t.inspectionNote}</p>
