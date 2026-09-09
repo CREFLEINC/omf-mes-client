@@ -515,19 +515,6 @@ export const ProductPickingScreen = () => {
           ))}
         </ul>
 
-        {hiddenCandidates > 0 || expanded ? (
-          <Button
-            className="picking__pick"
-            variant="outlined"
-            size="lg"
-            onClick={() => {
-              setExpanded(!expanded);
-            }}
-          >
-            {expanded ? t.candidates.less : t.candidates.more(hiddenCandidates)}
-          </Button>
-        ) : null}
-
         {!expanded || ranked.unordered.length === 0 ? null : (
           <>
             <h3 className="picking__subhead">{t.candidates.unorderedLegend}</h3>
@@ -548,6 +535,19 @@ export const ProductPickingScreen = () => {
             </ul>
           </>
         )}
+
+        {hiddenCandidates > 0 || expanded ? (
+          <Button
+            className="picking__pick"
+            variant="outlined"
+            size="lg"
+            onClick={() => {
+              setExpanded(!expanded);
+            }}
+          >
+            {expanded ? t.candidates.less : t.candidates.more(hiddenCandidates)}
+          </Button>
+        ) : null}
       </section>
 
       <section className="picking__section">
