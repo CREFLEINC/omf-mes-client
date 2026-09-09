@@ -124,7 +124,6 @@ export const goodsIssueQr = {
     /** 발행과 인쇄는 다른 걸음이다 — 한 문장으로 뭉치지 않는다. */
     issued: (count: number) => `${String(count)}건을 발행했습니다.`,
     printing: '프린터로 보내는 중입니다.',
-    printed: '인쇄를 마쳤습니다.',
     printFailed: '인쇄에 실패했습니다. 발행 기록은 남아 있으니 재발행으로 다시 찍으세요.',
     reportFailed:
       '인쇄에 실패했고 그 결과를 서버에 남기지도 못했습니다. 발행 기록은 남아 있습니다.',

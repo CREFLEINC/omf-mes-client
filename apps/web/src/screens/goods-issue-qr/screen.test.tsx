@@ -647,7 +647,8 @@ describe('GoodsIssueQrScreen', () => {
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
-    expect(await screen.findByText(t.result.printed)).toBeInTheDocument();
+    /* ⛔ 인쇄 성공은 띠로 말하지 않는다 — 발행 띠 하나면 된다(2026-09-09). */
+    expect(await screen.findByText(t.result.issued(1))).toBeInTheDocument();
     expect(saved).toHaveLength(1);
     expect(reports).toHaveLength(1);
 
@@ -713,7 +714,6 @@ describe('GoodsIssueQrScreen', () => {
       expect(screen.queryByText(t.result.printing)).not.toBeInTheDocument();
     });
     expect(reports).toHaveLength(0);
-    expect(screen.queryByText(t.result.printed)).not.toBeInTheDocument();
   });
 
   it('인쇄는 됐는데 보고를 못 하면 그것을 성공으로 접지 않는다', async () => {
@@ -726,7 +726,6 @@ describe('GoodsIssueQrScreen', () => {
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
     expect(await screen.findByText(t.result.printedUnreported)).toBeInTheDocument();
-    expect(screen.queryByText(t.result.printed)).not.toBeInTheDocument();
   });
 
   it('인쇄 결과 보고에도 멱등 키를 싣는다', async () => {

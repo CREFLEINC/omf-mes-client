@@ -432,12 +432,13 @@ const PrintResultBanner = ({ isPending, result }: PrintResultBannerProps) => {
   switch (result.kind) {
     case 'none':
       return null;
+    /*
+     * ⛔ **인쇄 성공은 따로 말하지 않는다**(사용자 지시 2026-09-09). 바로 위에 「N건을
+     *    발행했습니다」가 이미 서 있어 초록 띠가 둘로 겹쳤다 — 잘된 것을 두 번 말하면
+     *    정작 봐야 할 «실패» 띠가 묻힌다. 아래 실패·미보고 갈래는 그대로 남긴다.
+     */
     case 'printed':
-      return (
-        <div className="banner-slot">
-          <AlertBanner variant="success">{t.result.printed}</AlertBanner>
-        </div>
-      );
+      return null;
     case 'printedUnreported':
       return (
         <div className="banner-slot">
