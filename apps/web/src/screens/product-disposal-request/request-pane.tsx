@@ -136,6 +136,12 @@ export const RequestPane = ({
 
       <div className="check-group">
         <Checkbox
+          /*
+           * ⛔ **이름을 `aria-label` 로 «못박는다».** 자식 글만 두면 실기 브라우저에서 접근성
+           * 이름이 「on」으로 잡힌다(실측 — 표의 체크박스는 `aria-label` 이 있어 멀쩡했다).
+           * jsdom 의 이름 계산은 자식 글을 집어 시험은 통과하므로, 시험만 믿으면 못 잡는다.
+           */
+          aria-label={t.issue.selfDisposal}
           checked={draft.isSelfDisposal}
           /* ⭐ 체크하면 거래처 값을 «함께» 비운다 — 남겨 두면 도착지 짝이 어긋난다. */
           onChange={(event) => onChange({ isSelfDisposal: event.target.checked, partnerId: '' })}

@@ -543,9 +543,14 @@ describe('AppLayout', () => {
     expect(links.indexOf('/shipment/shipment-confirm')).toBe(
       links.indexOf('/shipment/expedited-shipment') + 1,
     );
-    /* 버리는 일은 만드는·확정하는 일 뒤다(W-04-10). */
+    /*
+     * 버리는 일은 만드는·확정하는 일 «그리고 반품·재고 갈래» 뒤다(W-04-10).
+     *
+     * ⚠ 이 단언이 한때 확정 바로 뒤를 가리켰다 — 그 사이에 W-04-06·W-04-07·W-04-11 이 들어오며
+     * 자리가 밀렸다. 앞 화면을 이름으로 잡아 두어야 다음에 또 끼어들 때 여기가 울린다.
+     */
     expect(links.indexOf('/shipment/product-disposal-request')).toBe(
-      links.indexOf('/shipment/shipment-confirm') + 1,
+      links.indexOf('/shipment/stock-reinstatements') + 1,
     );
     expect(links.indexOf('/shipment/shipment-processing')).toBeLessThan(
       links.indexOf('/production/work-order-close'),
