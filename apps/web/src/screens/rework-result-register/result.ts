@@ -1,8 +1,6 @@
 import type { DispositionList, ProductionResultCreate, WorkOrder } from './types';
 
 export const REWORK_WORK_ORDER_TYPE_CODE = 'REWORK';
-// Temporary pending the design decision tracked by omf-mes#393.
-export const RESULT_SOURCE_CODE = 'MANUAL';
 
 export type QuantityKey = 'goodQty' | 'defectQty' | 'holdQty' | 'scrapQty';
 export type QuantityDrafts = Record<QuantityKey, string>;
@@ -76,6 +74,5 @@ export const toProductionResult = (
   scrapQty: readQuantity(drafts.scrapQty),
   reworkQty: 0,
   uomId: workOrder.uomId,
-  resultSourceCode: RESULT_SOURCE_CODE,
   occurredAt: toOffsetDateTime(occurredAt),
 });

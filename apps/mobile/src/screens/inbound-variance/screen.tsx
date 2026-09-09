@@ -308,7 +308,7 @@ export const InboundVarianceScreen = () => {
 
             <TextField
               label={t.form.qtyLabel}
-              inputMode="decimal"
+              inputMode="none"
               size="xl"
               fullWidth
               value={draft.varianceQty}

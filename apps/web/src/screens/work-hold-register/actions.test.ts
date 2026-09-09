@@ -13,10 +13,12 @@ const inputs = (over: Partial<ActionInputs> = {}): ActionInputs => ({
 
 describe('resolveActions — 같은 방향을 두 번 열지 않는다', () => {
   it('큐가 비어 있으면 서버가 말하는 상태를 따른다', () => {
-    expect(resolveActions(inputs())).toEqual({ canStop: true, canResume: false });
+    expect(resolveActions(inputs())).toEqual({ canStop: true, canResume: false, canEnd: true });
     expect(resolveActions(inputs({ running: false, stopped: true }))).toEqual({
       canStop: false,
       canResume: true,
+      /* ⛔ 중단 중에는 닫지 않는다 — 먼저 재개한다(스펙 §5-4). */
+      canEnd: false,
     });
   });
 
@@ -24,6 +26,7 @@ describe('resolveActions — 같은 방향을 두 번 열지 않는다', () => {
     expect(resolveActions(inputs({ running: false, stopped: false }))).toEqual({
       canStop: false,
       canResume: false,
+      canEnd: false,
     });
   });
 
@@ -35,6 +38,7 @@ describe('resolveActions — 같은 방향을 두 번 열지 않는다', () => {
     expect(resolveActions(inputs({ lastQueuedType: 'STOP' }))).toEqual({
       canStop: false,
       canResume: true,
+      canEnd: false,
     });
   });
 
@@ -42,6 +46,7 @@ describe('resolveActions — 같은 방향을 두 번 열지 않는다', () => {
     expect(resolveActions(inputs({ running: false, lastQueuedType: 'RESUME' }))).toEqual({
       canStop: true,
       canResume: false,
+      canEnd: true,
     });
   });
 
@@ -53,12 +58,33 @@ describe('resolveActions — 같은 방향을 두 번 열지 않는다', () => {
   it('보낸 직후 다시 읽는 중이면 방금 보낸 방향을 잠근 채 둔다', () => {
     expect(
       resolveActions(inputs({ running: true, lastSentType: 'STOP', isRefetching: true })),
-    ).toEqual({ canStop: false, canResume: true });
+    ).toEqual({ canStop: false, canResume: true, canEnd: false });
   });
 
   it('다시 읽기가 끝나면 서버가 말하는 상태로 돌아간다', () => {
     expect(resolveActions(inputs({ running: false, stopped: true, lastSentType: 'STOP' }))).toEqual(
-      { canStop: false, canResume: true },
+      { canStop: false, canResume: true, canEnd: false },
     );
+  });
+
+  /*
+   * ⛔ **닫는 중이면 셋 다 잠근다.** 종료는 되돌릴 수 없고, 닫힌 세션에는 사건을 남길 수 없다
+   * (§4-A `work_session_id` NOT NULL 은 «열린» 세션을 전제한다). 서버가 받기 전에 중단이 한 건
+   * 더 나가면 그 거부는 작업자가 화면을 떠난 뒤에 온다.
+   */
+  it('담긴 종료가 아직 안 나갔으면 셋 다 잠근다', () => {
+    expect(resolveActions(inputs({ lastQueuedType: 'END' }))).toEqual({
+      canStop: false,
+      canResume: false,
+      canEnd: false,
+    });
+  });
+
+  it('보낸 종료의 다시 읽기 구간에도 셋 다 잠긴 채 둔다', () => {
+    expect(resolveActions(inputs({ lastSentType: 'END', isRefetching: true }))).toEqual({
+      canStop: false,
+      canResume: false,
+      canEnd: false,
+    });
   });
 });

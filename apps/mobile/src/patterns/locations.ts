@@ -8,6 +8,7 @@ export type Location = components['schemas']['Location'];
 
 export const locationKeys = {
   inWarehouse: (warehouseId: number | null) => ['locations', warehouseId] as const,
+  byId: (locationId: number | null) => ['location', locationId] as const,
   byCode: (warehouseId: number | null, code: string | null) =>
     ['location-by-code', warehouseId, code] as const,
 };
@@ -60,6 +61,31 @@ export const useLocationByCode = (
       );
 
       return data.items.find((location) => location.locationCode === code) ?? null;
+    },
+  });
+};
+
+/**
+ * 위치 한 건.
+ *
+ * 창고를 모르는 자리를 가리킬 때 쓴다 - 출발 창고 목록으로는 다른 창고의 자리를 찾을 수 없다.
+ */
+export const useLocation = (locationId: number | null): UseQueryResult<Location> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: locationKeys.byId(locationId),
+    enabled: locationId !== null,
+    queryFn: async () => {
+      if (locationId === null) {
+        throw new Error('위치를 가리키기 전에는 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/mdm/locations/{locationId}', { params: { path: { locationId } } }),
+      );
+
+      return data.location;
     },
   });
 };

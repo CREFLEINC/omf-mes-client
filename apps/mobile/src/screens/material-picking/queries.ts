@@ -2,12 +2,22 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import { OPEN_ORDER_STATUS, type PickingLine, type PickingOrder } from './picking';
+import {
+  OPEN_ORDER_STATUS,
+  type MaterialIssueRequest,
+  type PickingLine,
+  type PickingOrder,
+} from './picking';
 
 export const pickingKeys = {
   orders: (workerId: number | null) => ['picking-orders', workerId] as const,
   order: (pickingOrderId: number | null) => ['picking-order', pickingOrderId] as const,
+  request: (materialIssueRequestId: number | null) =>
+    ['picking-issue-request', materialIssueRequestId] as const,
 };
+
+/** 피킹 지시의 원천이 자재 출고 요청일 때만 도착 위치가 있다. 출하 요청은 다른 화면 몫이다. */
+export const MATERIAL_ISSUE_REQUEST = 'MATERIAL_ISSUE_REQUEST';
 
 /**
  * 내게 배정된 피킹 지시.
@@ -83,6 +93,36 @@ export const usePickingOrder = (
       );
 
       return { order: data.pickingOrder, lines: data.lines };
+    },
+  });
+};
+
+/**
+ * 이 피킹이 나온 자재 출고 요청.
+ *
+ * 집은 것을 어디로 가져가는지가 여기에만 있다 - 피킹 지시에는 도착 위치가 없다. 화면이
+ * 말하지 않으면 어디에 두는지가 사람의 기억에만 남는다.
+ */
+export const useIssueRequest = (
+  materialIssueRequestId: number | null,
+): UseQueryResult<MaterialIssueRequest> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: pickingKeys.request(materialIssueRequestId),
+    enabled: materialIssueRequestId !== null,
+    queryFn: async () => {
+      if (materialIssueRequestId === null) {
+        throw new Error('지시를 고르기 전에는 출고 요청을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/logistics/material-issue-requests/{materialIssueRequestId}', {
+          params: { path: { materialIssueRequestId } },
+        }),
+      );
+
+      return data.materialIssueRequest;
     },
   });
 };

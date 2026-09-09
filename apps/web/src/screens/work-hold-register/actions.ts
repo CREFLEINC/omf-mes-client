@@ -1,4 +1,5 @@
-import { EVENT_TYPE_RESUME, EVENT_TYPE_STOP } from './codes';
+import { DIRECTION_END, EVENT_TYPE_RESUME, EVENT_TYPE_STOP } from './codes';
+import type { HoldDirection } from './codes';
 
 /**
  * 지금 어느 버튼이 열리는가 — **서버 상태와 큐를 함께 읽는다.**
@@ -20,6 +21,14 @@ import { EVENT_TYPE_RESUME, EVENT_TYPE_STOP } from './codes';
 export interface ActionAvailability {
   canStop: boolean;
   canResume: boolean;
+  /**
+   * 세션을 닫을 수 있는가.
+   *
+   * ⛔ **중단 중에는 열지 않는다**(스펙 §5-4 — 「세션이 열려 있고 **지금 중단 상태가 아니다**」).
+   * 중단 상태에서도 종료를 허용할지는 **게이트가 정하지 않았다** — 이번 회차는 진행 중인
+   * 세션만 종료 대상으로 좁힌다. 정해지지 않은 것을 화면이 열어 두면 그 판단이 굳는다.
+   */
+  canEnd: boolean;
 }
 
 export interface ActionInputs {
@@ -27,10 +36,10 @@ export interface ActionInputs {
   running: boolean;
   /** 서버가 말하는 세션이 중단 상태인가. */
   stopped: boolean;
-  /** 큐에 마지막으로 담긴 사건 유형. */
-  lastQueuedType: string | null;
-  /** 마지막으로 서버가 받은 사건 유형. */
-  lastSentType: string | null;
+  /** 큐에 마지막으로 담긴 조작의 방향. */
+  lastQueuedType: HoldDirection | null;
+  /** 마지막으로 서버가 받은 조작의 방향. */
+  lastSentType: HoldDirection | null;
   /** 세션을 다시 읽는 중인가. */
   isRefetching: boolean;
 }
@@ -44,10 +53,19 @@ export const resolveActions = ({
 }: ActionInputs): ActionAvailability => {
   const inFlight = lastQueuedType ?? (isRefetching ? lastSentType : null);
 
-  if (inFlight === null) return { canStop: running, canResume: stopped };
+  if (inFlight === null) return { canStop: running, canResume: stopped, canEnd: running };
+
+  /*
+   * ⛔ **닫는 중이면 셋 다 잠근다.** 종료는 되돌릴 수 없고, 닫힌 세션에는 사건을 남길 수
+   * 없다(§4-A `work_session_id` NOT NULL 은 «열린» 세션을 전제한다). 서버가 받기 전에 중단이
+   * 한 건 더 나가면 그 요청은 거부되는데, 그 거부는 작업자가 화면을 떠난 뒤에 온다.
+   */
+  if (inFlight === DIRECTION_END) return { canStop: false, canResume: false, canEnd: false };
 
   return {
     canStop: inFlight === EVENT_TYPE_RESUME,
     canResume: inFlight === EVENT_TYPE_STOP,
+    /* 재개가 가는 중이면 곧 진행이 된다 — 그때는 닫을 수 있다. 중단 중이면 닫지 않는다. */
+    canEnd: inFlight === EVENT_TYPE_RESUME,
   };
 };

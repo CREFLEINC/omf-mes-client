@@ -8,7 +8,17 @@ import {
 } from '@crefle/web-ui';
 import { forwardRef, useMemo, useState } from 'react';
 
-const PAGE_SIZE = 6;
+/**
+ * 한 쪽에 놓는 항목 수.
+ *
+ * ⛔ **목록은 스크롤하지 않는다**(사용자 지시 2026-09-09). 넘치는 것은 [페이지 위]·
+ * [페이지 아래]가 넘긴다 — 장갑 낀 손으로 좁은 목록을 굴리는 것보다 큰 버튼 둘이 낫다.
+ * 그래서 이 수는 **팝업이 한 번에 다 보일 수 있는 줄 수**여야 한다. 여섯으로 두었더니
+ * 다섯 줄 자리에 여섯을 넣어 마지막 줄이 잘리고 스크롤이 생겼다(실측 2026-09-09).
+ *
+ * ⚠ 줄 높이나 팝업 높이를 바꾸면 이 수도 함께 재어 고친다(`pop.css` 의 `__list`).
+ */
+const PAGE_SIZE = 5;
 
 const flattenOptions = (items: SelectItems): SelectOption[] =>
   items.flatMap((item) => ('options' in item ? item.options : [item]));

@@ -91,9 +91,14 @@ export const useLotPool = (itemId: number | null): LotPoolResult => {
       throw new Error('대상을 고르기 전에는 LOT을 조회하지 않습니다.');
     }
 
+    /*
+     * 제품 LOT 만 후보다. 유형을 안 거르면 같은 품목의 생산 LOT 이 함께 와, 집을 수 없는
+     * 줄이 목록에 선다. 유효기간이 없어 순서를 정할 수 없는 묶음으로 몰린다.
+     */
+    const query = { itemId, lotTypeCode: 'PRODUCT', size: 200 };
     const data = await runRequest(() =>
       client.GET('/trace/lots', {
-        params: { query: heldOnly ? { itemId, heldOnly: true, size: 200 } : { itemId, size: 200 } },
+        params: { query: heldOnly ? { ...query, heldOnly: true } : query },
       }),
     );
 

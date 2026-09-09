@@ -26,6 +26,7 @@ export const runningChangeKeys = {
   all: ['running-change'] as const,
   currentInputs: (workOrderId: number) =>
     ['running-change', 'current-inputs', workOrderId] as const,
+  currentLot: (lotId: number) => ['running-change', 'current-lot', lotId] as const,
   changeReasons: ['running-change', 'change-reasons'] as const,
 };
 
@@ -157,5 +158,67 @@ export const useChangeReasons = (): ChangeReasonsResult => {
     reasons: query.data ?? [],
     isPending: query.isPending,
     isError: query.isError,
+  };
+};
+
+export interface CurrentLotView {
+  lotNo: string;
+  /** 이 LOT 에 배분된 양품 합계. 진척을 못 받았으면 `null`이다. */
+  goodQty: number | null;
+  /** 이 LOT 의 목표 수량(`initialQty`). */
+  targetQty: number;
+}
+
+export interface CurrentLotResult {
+  lot: CurrentLotView | null;
+  isPending: boolean;
+  isError: boolean;
+  refetch: () => void;
+}
+
+/**
+ * 《현재 생산LOT》 — 스펙 §3 좌단 아래 구획. **읽기 전용이다.**
+ *
+ * ⭐ **진척을 함께 받는다**(`withProgress=true`). 진척은 상세에만 붙는 축이고, 목록에서 세면
+ * LOT 마다 한 번씩 세게 되므로 계약이 기본을 꺼 두었다 — 한 건을 보는 이 자리가 켤 자리다.
+ *
+ * ⚠ **진척이 비어 올 수 있다.** `progress` 는 선택 필드라 서버가 안 채우면 없다. 그때 양품을
+ * 0 으로 적으면 「하나도 못 만들었다」로 읽힌다 — 모르는 것은 모른다고 말한다.
+ */
+export const useCurrentLot = (lotId: number | null): CurrentLotResult => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: runningChangeKeys.currentLot(lotId ?? 0),
+    enabled: lotId !== null,
+    queryFn: async (): Promise<CurrentLotView> => {
+      if (lotId === null) {
+        throw new Error('생산LOT 없이는 진척을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/trace/lots/{lotId}', {
+          params: { path: { lotId }, query: { withProgress: true } },
+        }),
+      );
+
+      return {
+        lotNo: data.lot.lotNo,
+        goodQty: data.lot.progress?.goodQty ?? null,
+        targetQty: data.lot.initialQty,
+      };
+    },
+  });
+
+  const { refetch } = query;
+  const refetchLot = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  return {
+    lot: query.data ?? null,
+    isPending: lotId !== null && query.isPending,
+    isError: query.isError,
+    refetch: refetchLot,
   };
 };

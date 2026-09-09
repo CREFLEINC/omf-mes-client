@@ -300,7 +300,7 @@ export const RecycleEntryScreen = () => {
             <h2>{t.qty.legend}</h2>
             <TextField
               label={t.qty.label}
-              inputMode="decimal"
+              inputMode="none"
               size="xl"
               fullWidth
               value={draft.quantity}

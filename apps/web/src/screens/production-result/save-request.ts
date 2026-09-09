@@ -1,4 +1,3 @@
-import { RESULT_SOURCE_CODE } from './codes';
 import type { ProductionResultCreate, ResultDraft } from './types';
 
 /**
@@ -30,9 +29,7 @@ export interface SaveInput {
  * | 불량·보류·스크랩·재작업 수량 | 정본이 「양품만 입력」(R50)이다. 서버가 기본 0 으로 둔다 |
  * | 사후입력 사유(`lateEntryReasonCode`) | 임계값을 읽을 경로가 계약에 없다 — 만들지 않는다(스펙 §8 #4) |
  * | 실적 순번(`result_sequence`) | 서버가 채번한다. 클라이언트 임의 채번 금지(스펙 §6) |
- *
- * ⚠ `resultSourceCode` 는 계약 필수라 뺄 수 없다 — 값이 미확정이어서 `codes.ts` 의 자리표시를
- * 쓴다(검토 요청 `omf-mes#393`).
+ * | 실적 출처(`resultSourceCode`) | ⭐ **서버가 채운다**(수기 입력이면 `MANUAL`). 계약이 `required` 에서 빼고 「화면이 보내지 않는다」를 설명에 적었다 — 자리표시 상수를 두던 자리다(설계 변동 공지 `CREFLEINC/omf-mes#507`) |
  */
 export const buildSaveBody = (input: SaveInput): ProductionResultCreate => {
   const remarks = input.draft.remarks.trim();
@@ -41,7 +38,6 @@ export const buildSaveBody = (input: SaveInput): ProductionResultCreate => {
     workOrderId: input.workOrderId,
     goodQty: input.goodQty,
     uomId: input.uomId,
-    resultSourceCode: RESULT_SOURCE_CODE,
     occurredAt: input.occurredAt,
     /* 실적↔LOT 배분은 본문에 싣는다 — 독립 경로를 두지 않는다(계약 명시). */
     lotAllocations: [{ lotId: input.lotId, allocatedQty: input.goodQty }],

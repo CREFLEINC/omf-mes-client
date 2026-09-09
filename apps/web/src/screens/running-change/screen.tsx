@@ -7,16 +7,17 @@ import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
 
 import { CurrentInputs } from './current-inputs';
+import { CurrentLot } from './current-lot';
 import { LoadErrorBanner, describeLoadError } from './load-error-banner';
 import { useCurrentMold } from './mold';
 import { toReplacementConsumption } from './post-request';
 import { useOutbox } from './outbox';
-import { useChangeReasons, useCurrentInputs } from './queries';
+import { useChangeReasons, useCurrentInputs, useCurrentLot } from './queries';
 import { ReplacePanel } from './replace-panel';
 import { type ScanOutcome, type ScannedPart } from './scan';
 import { ScanField, type ScanOutcomeView } from './scan-field';
 import { useScanLookup } from './scan-queries';
-import { readWorkOrderId } from './screen-params';
+import { readLotId, readWorkOrderId } from './screen-params';
 import { useOpenWorkSession } from './session';
 import { useTerminalGate } from './terminal-gating';
 import { useReferenceLabels } from './reference-labels';
@@ -57,12 +58,13 @@ const describeOutcome = (outcome: ScanOutcome): string => {
  * ⛔ **설비를 멈추지 않는다.** 화면이 세션을 닫거나 열지 않는다 — 같은 세션 안에서 일어나는
  * 일이다(§5-4).
  *
- * ⚠ **《현재 생산LOT》 구획이 아직 없다.** 「지금 이 생산LOT」을 고를 축이 계약에 없어 설계팀에
- * 물었다(omf-mes#397 ①). 모르는 것을 지어내 채우지 않는다.
+ * ⭐ **《현재 생산LOT》은 주소가 정한다.** 세션에 LOT 이 없어 서버가 「지금 어느 슬롯인가」를
+ * 판정하지 못한다 — 넘겨 주는 화면(`P-02-03`)이 작업지시와 함께 실어 준다(스펙 §3).
  */
 export const RunningChangeScreen = () => {
   const [searchParams] = useSearchParams();
   const workOrderId = readWorkOrderId(searchParams);
+  const lotId = readLotId(searchParams);
   /*
    * 단말·공정·사번은 **셸이 아는 것**이라 주소가 아니라 컨텍스트로 온다(`patterns/pop-identity`).
    * 개발 셸이 합성값으로 채우고(`app/pop-main.tsx`) 설치본에는 아직 채우는 자리가 없다 —
@@ -75,6 +77,7 @@ export const RunningChangeScreen = () => {
 
   const current = useCurrentInputs(workOrderId);
   const reasons = useChangeReasons();
+  const currentLot = useCurrentLot(lotId);
   const session = useOpenWorkSession(workOrderId);
   const mold = useCurrentMold(session.moldId);
   /* 교체도 자재 투입이므로 `P-02-03`과 같은 플래그를 쓴다(§5-1). */
@@ -291,6 +294,23 @@ export const RunningChangeScreen = () => {
               labels={labels}
             />
           )}
+
+          {/*
+           * 《현재 생산LOT》 — 원천이 달라 위 구획과 조회가 갈린다(스펙 §3). 위가 실패해도
+           * 이 구획은 선다 — 둘은 서로의 전제가 아니다.
+           */}
+          <section aria-label={t.panes.currentLot}>
+            <h3 className="pane-title">{t.panes.currentLot}</h3>
+            <CurrentLot
+              lot={currentLot.lot}
+              isPending={currentLot.isPending}
+              isError={currentLot.isError}
+              hasLot={lotId !== null}
+            />
+          </section>
+
+          {/* 스펙 §3 이 좌단에 상시 세워 둔 안내. 교체가 무엇을 «하지 않는지»를 말한다. */}
+          <p className="field-note">{t.notices.equipmentKeepsRunning}</p>
         </section>
 
         <section className="pane scan-pane" aria-label={t.panes.replace}>
