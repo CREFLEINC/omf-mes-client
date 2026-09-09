@@ -46,6 +46,8 @@ const newId = () => (nextId += 1);
 const warehouseVersions = new Map(state.warehouses.map((row) => [row.warehouseId, 1]));
 const locationVersions = new Map(state.locations.map((row) => [row.locationId, 1]));
 const putawayRuleVersions = new Map(state.putawayRules.map((row) => [row.putawayRuleId, 1]));
+/* 출고 전표의 판 번호 — 상신·전기가 If-Match 를 «필수»로 받는데 토큰을 낼 곳이 없었다. */
+const goodsIssueVersions = new Map(state.goodsIssues.map((row) => [row.goodsIssueId, 1]));
 const idempotentResults = new Map();
 
 const resourceEtag = (kind, id, versions) =>
@@ -1763,8 +1765,12 @@ on('GET', '/logistics/goods-issues/{goodsIssueId}', (params) => {
   if (goodsIssue === undefined) return null;
 
   return {
-    goodsIssue,
-    lines: state.goodsIssueLines.filter((line) => line.goodsIssueId === goodsIssue.goodsIssueId),
+    status: 200,
+    created: {
+      goodsIssue,
+      lines: state.goodsIssueLines.filter((line) => line.goodsIssueId === goodsIssue.goodsIssueId),
+    },
+    headers: { ETag: resourceEtag('goods-issue', goodsIssue.goodsIssueId, goodsIssueVersions) },
   };
 });
 
@@ -1926,29 +1932,207 @@ on('PUT', '/inventory/counts/{inventoryCountId}/lines', (params, query, body) =>
   );
 });
 
-on('POST', '/logistics/goods-issues', (_p, _q, body) => {
-  const goodsIssueId = newId();
-  const created = {
-    goodsIssueId,
-    goodsIssueNo: `GI-2026-${String(goodsIssueId).slice(-6)}`,
-    ...body,
-    statusCode: body?.postImmediately === true ? 'POSTED' : 'DRAFT',
-  };
+/*
+ * ⛔ **멱등 재생을 붙인다.** 없으면 같은 키로 재전송한 것이 목에서 **전표를 한 벌 더** 만든다 —
+ * 되돌릴 수 없는 폐기 전표가 둘이 되고, 브라우저 확인으로는 재시도 안전성이 드러나지 않는다.
+ * 상신(`:request-approval`)에는 붙였는데 이 자리에 없어 짝이 맞지 않았다.
+ */
+on('POST', '/logistics/goods-issues', (_p, _q, body, headers) =>
+  idempotent('logistics.goods-issues:create', headers, () => {
+    const goodsIssueId = newId();
+    const isPosted = body?.postImmediately === true;
+    const { lines: bodyLines, ...header } = body ?? {};
+    const goodsIssue = {
+      goodsIssueId,
+      goodsIssueNo: `GI-2026-${String(goodsIssueId).slice(-6)}`,
+      ...header,
+      statusCode: isPosted ? 'POSTED' : 'DRAFT',
+    };
 
-  state.goodsIssues.push(created);
+    state.goodsIssues.push(goodsIssue);
+    goodsIssueVersions.set(goodsIssueId, 1);
 
-  /* 전기하면 재고가 실제로 빠진다. 위치 확인 화면이 그 결과를 보인다. */
-  for (const line of body?.lines ?? []) {
-    const balance = state.balances.find((each) => each.lotId === line.lotId);
+    /*
+     * 줄을 상태에 남긴다 — 남기지 않으면 상세 조회가 줄 0개를 내려, 방금 만든 전표가 «빈» 것으로
+     * 보인다. 화면은 그것을 「줄이 없다」로 읽는다.
+     */
+    const lines = (bodyLines ?? []).map((line, index) => ({
+      goodsIssueLineId: goodsIssueId * 100 + index + 1,
+      goodsIssueId,
+      ...line,
+    }));
 
-    if (balance !== undefined) {
-      balance.onHandQty -= line.issueQty;
-      balance.pickedQty = Math.max(0, balance.pickedQty - line.issueQty);
-      balance.availableQty = balance.onHandQty - balance.pickedQty - balance.blockedQty;
+    state.goodsIssueLines.push(...lines);
+
+    /*
+     * ⛔ **전기했을 때만 재고가 빠진다.** 전에는 조건 없이 뺐다 — 승인을 기다리는 «초안»을 만든
+     * 것만으로 재고가 줄어, 폐기 요청 화면이 아직 빠지지 않은 물건을 없는 것으로 보였다.
+     * 계약이 「승인 ≠ 전기」를 못박은 자리(공유계약 J-8)와 정면으로 어긋났다.
+     */
+    if (isPosted) {
+      for (const line of lines) {
+        const balance = state.balances.find((each) => each.lotId === line.lotId);
+
+        if (balance !== undefined) {
+          balance.onHandQty -= line.issueQty;
+          balance.pickedQty = Math.max(0, balance.pickedQty - line.issueQty);
+          balance.availableQty = balance.onHandQty - balance.pickedQty - balance.blockedQty;
+        }
+      }
     }
-  }
 
-  return { created, status: 201 };
+    /* 계약의 201 은 `GoodsIssueDetailResponse` 다 — 전표 하나가 아니라 «전표와 줄»이다. */
+    return {
+      created: { goodsIssue, lines },
+      status: 201,
+      headers: { ETag: resourceEtag('goods-issue', goodsIssueId, goodsIssueVersions) },
+    };
+  }),
+);
+
+/**
+ * 기타 출고 품의 상신.
+ *
+ * 핸들러가 없어 계약 예시의 400 이 그대로 나가고 있었다 — 화면은 그것을 「상태가 잠겼다」로
+ * 읽는데, 실제로는 **목이 이 오퍼레이션을 모르는 것**이었다.
+ */
+on(
+  'POST',
+  '/logistics/goods-issues/{goodsIssueId}:request-approval',
+  (params, _q, body, headers) => {
+    const goodsIssueId = Number(params.goodsIssueId);
+    const goodsIssue = state.goodsIssues.find((row) => row.goodsIssueId === goodsIssueId);
+
+    if (goodsIssue === undefined) return null;
+
+    /*
+     * ⚠ **결재선 없음(400 ROUTE_NOT_FOUND)을 여기서 흉내 내지 않는다.** 이 목에는 결재선 상태가
+     * 없고 `/app/approval-routes` 는 계약 예시로 응답한다 — 없는 상태를 보고 막으면 **늘** 막힌다.
+     * 그 갈래는 화면 시험이 덮는다(`mutations.test.tsx`).
+     */
+    return idempotent(
+      `logistics.goods-issues:${String(goodsIssueId)}:request-approval`,
+      headers,
+      () => {
+        /*
+         * ⛔ **잠금 검사가 멱등 재생보다 «뒤»에 온다.** 앞에 두면 재전송이 409 가 된다 — 첫 상신이
+         * 판 번호를 올려 두 번째 시도의 토큰이 낡기 때문이다. 그러면 사용자는 «자기 요청이
+         * 성공했는데» 「다른 변경이 먼저 반영되었습니다」를 본다. 같은 키의 재전송은 재생이지
+         * 충돌이 아니다.
+         */
+        const expected = resourceEtag('goods-issue', goodsIssueId, goodsIssueVersions);
+
+        if (!matchesEtag(headers, expected)) return conflict();
+
+        const approvalRequestId = newId();
+
+        state.approvalRequests.push({
+          approvalRequestId,
+          approvalRequestNo: `AP-2026-${String(approvalRequestId).slice(-6)}`,
+          /* ⭐ 승인 유형은 «서버가» 채운다 — 본문이 받지 않는다(omf-mes#336). */
+          approvalTypeCode: 'GOODS_ISSUE_DISPOSAL',
+          targetTypeCode: 'GOODS_ISSUE',
+          targetId: goodsIssueId,
+          target: {
+            targetTypeCode: 'GOODS_ISSUE',
+            targetId: goodsIssueId,
+            displayName: goodsIssue.goodsIssueNo,
+            openable: true,
+          },
+          requestedBy: 1001,
+          requestedByName: '홍길동',
+          requestedAt: new Date().toISOString(),
+          statusCode: 'PENDING',
+          reason: body?.reason ?? '',
+          currentStepNo: 1,
+          totalStepNo: 2,
+          isMyTurn: false,
+        });
+
+        goodsIssue.approvalRequestId = approvalRequestId;
+        bumpVersion(goodsIssueVersions, goodsIssueId);
+
+        return { created: { approvalRequestId }, status: 202 };
+      },
+    );
+  },
+);
+
+/**
+ * 출고 전기 — **재고가 움직이는 순간이다.**
+ *
+ * 핸들러가 없어 계약 예시가 답하고 있었다. 그래서 목에서는 폐기 요청을 올려도 **재고가
+ * 영영 움직이지 않았고**, 승인 뒤의 끝단을 실기로 확인할 수 없었다.
+ *
+ * ⛔ **승인을 타는 전표는 승인 전이면 400 이다**(계약 명시 · 공유계약 B-8). 여기서 그 잠금을
+ * 세워야 화면의 J-8 처리(버튼을 열고 400 을 안내로 바꾼다)가 실기로 확인된다.
+ */
+on('POST', '/logistics/goods-issues/{goodsIssueId}:post', (params, _q, body, headers) => {
+  const goodsIssueId = Number(params.goodsIssueId);
+  const goodsIssue = state.goodsIssues.find((row) => row.goodsIssueId === goodsIssueId);
+
+  if (goodsIssue === undefined) return null;
+
+  return idempotent(`logistics.goods-issues:${String(goodsIssueId)}:post`, headers, () => {
+    /* 잠금 검사가 멱등 재생보다 «뒤»에 온다 — 재전송은 재생이지 충돌이 아니다. */
+    const expected = resourceEtag('goods-issue', goodsIssueId, goodsIssueVersions);
+
+    if (!matchesEtag(headers, expected)) return conflict();
+
+    /*
+     * ⛔ **이미 전기된 전표를 다시 전기하지 않는다.** 막지 않으면 누를 때마다 재고가 또 빠진다
+     * (실측 500→490→480). 서버 쪽 판정이라 상태 값을 봐도 된다 — 화면이 그것을 파생하는 것과
+     * 다른 자리다.
+     */
+    if (goodsIssue.statusCode === 'POSTED') {
+      return {
+        status: 400,
+        created: {
+          errors: [{ scope: 'screen', code: 'ALREADY_POSTED', message: '이미 전기된 전표입니다.' }],
+        },
+      };
+    }
+
+    /*
+     * ⛔ **승인이 끝나기 전에는 전기하지 않는다.** 목에 결재 «판정» 상태가 없으므로 여기서는
+     * 「상신된 요청이 아직 진행 중이면 막는다」로 세운다 — 승인 완료를 흉내 내지 않는다.
+     */
+    const request = state.approvalRequests.find(
+      (row) => row.approvalRequestId === goodsIssue.approvalRequestId,
+    );
+
+    if (request !== undefined && request.statusCode === 'PENDING') {
+      return {
+        status: 400,
+        created: {
+          errors: [
+            {
+              scope: 'screen',
+              code: 'NOT_APPROVED',
+              message: '승인이 끝나야 출고할 수 있습니다. 결재함에서 진행을 확인하세요.',
+            },
+          ],
+        },
+      };
+    }
+
+    goodsIssue.statusCode = 'POSTED';
+    goodsIssue.businessDate = body?.businessDate ?? goodsIssue.businessDate;
+    goodsIssue.occurredAt = body?.occurredAt ?? goodsIssue.occurredAt;
+    bumpVersion(goodsIssueVersions, goodsIssueId);
+
+    /* 전기했으므로 재고가 실제로 빠진다 — 위치 확인 화면이 그 결과를 보인다. */
+    for (const line of state.goodsIssueLines.filter((row) => row.goodsIssueId === goodsIssueId)) {
+      const balance = state.balances.find((each) => each.lotId === line.lotId);
+
+      if (balance !== undefined) {
+        balance.onHandQty -= line.issueQty;
+        balance.availableQty = balance.onHandQty - balance.pickedQty - balance.blockedQty;
+      }
+    }
+
+    return { created: goodsIssue, status: 200 };
+  });
 });
 
 on('GET', '/logistics/shipment-requests', (_p, query) => {
