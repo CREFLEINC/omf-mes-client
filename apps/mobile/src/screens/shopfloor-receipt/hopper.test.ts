@@ -8,6 +8,7 @@ import {
   hasHopper,
   hopperLocationOf,
   isMeasured,
+  isReasonMissing,
   measureProblemOf,
   toHopperDraft,
   type HopperStock,
@@ -98,6 +99,36 @@ describe('기록 조건', () => {
   /* 누가 잰 것인지 없이 기록을 남길 수 없다. */
   it('사번이 없으면 기록할 수 없다', () => {
     expect(canRecordHopper(55, [stock()], { 31: '100' }, false)).toBe(false);
+  });
+
+  /*
+   * 잘못 적은 줄은 본문에서 빠지는데 적은 사람은 적었다고 믿는다. 한 줄만 옳으면 통과시키면
+   * 나머지가 조용히 사라진다.
+   */
+  it('잘못 적은 줄이 하나라도 있으면 막는다', () => {
+    const two = [stock(), stock({ itemId: 32, onHandQty: 50 })];
+
+    expect(canRecordHopper(55, two, { 31: '100', 32: '열둘' }, true)).toBe(false);
+  });
+
+  /* 지어낸 값을 실으면 누른 뒤에야 실패를 안다. */
+  it('서버가 사유를 모른다고 답하면 막는다', () => {
+    expect(canRecordHopper(55, [stock()], { 31: '100' }, true, true)).toBe(false);
+  });
+});
+
+describe('조정 사유', () => {
+  it('서버 목록에 있으면 없다고 하지 않는다', () => {
+    expect(isReasonMissing(true, [{ code: 'HOPPER_MEASUREMENT' }])).toBe(false);
+  });
+
+  it('서버 목록에 없으면 없다고 한다', () => {
+    expect(isReasonMissing(true, [{ code: 'COUNT_VARIANCE' }])).toBe(true);
+  });
+
+  /* 못 물어본 것은 모르는 것이지 없는 것이 아니다. 물건은 이미 라인에 있다. */
+  it('아직 못 물어봤으면 없다고 하지 않는다', () => {
+    expect(isReasonMissing(false, [])).toBe(false);
   });
 });
 

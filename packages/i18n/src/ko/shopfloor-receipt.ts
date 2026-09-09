@@ -96,6 +96,8 @@ export const shopfloorReceipt = {
       notNumber: '숫자만 입력할 수 있습니다',
       negative: '0보다 작을 수 없습니다',
     },
+    /** 지어낸 값을 실으면 누른 뒤에야 실패를 안다. */
+    noReason: '호퍼 실측 사유가 등록돼 있지 않아 기록할 수 없습니다. 관리자에게 문의하세요.',
     submit: '호퍼 잔량 기록',
     sent: '호퍼 잔량을 기록했습니다',
     queued: '호퍼 잔량을 전송 대기에 넣었습니다',

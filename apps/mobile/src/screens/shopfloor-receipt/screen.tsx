@@ -21,8 +21,10 @@ import {
   useScannedGoodsIssue,
 } from './queries';
 import {
+  INVENTORY_ADJUSTMENT_REASON,
   canRecordHopper,
   hasHopper,
+  isReasonMissing,
   hopperLocationOf,
   adjustmentQtyOf,
   isMeasured,
@@ -139,6 +141,12 @@ export const ShopfloorReceiptScreen = () => {
   const hopper = useLocation(hopperLocationId);
   const hopperStock = useHopperStock(hopperLocationId);
   const stocks = hopperStock.data ?? [];
+  /*
+   * 사유는 고객이 늘리는 값이라 화면이 박지 않는다. 서버가 모른다고 답하면 막는다 - 지어낸
+   * 값을 실으면 누른 뒤에야 실패를 안다.
+   */
+  const adjustmentReasons = useCodeValues(INVENTORY_ADJUSTMENT_REASON);
+  const reasonMissing = isReasonMissing(adjustmentReasons.isSuccess, adjustmentReasons.data ?? []);
 
   const recordHopper = async () => {
     if (hopperLocationId === null || worker === null || hopperInFlight.current) {
@@ -595,7 +603,8 @@ export const ShopfloorReceiptScreen = () => {
               variant="outlined"
               size="xl"
               disabled={
-                !loaded || !canRecordHopper(hopperLocationId, stocks, measured, worker !== null)
+                !loaded ||
+                !canRecordHopper(hopperLocationId, stocks, measured, worker !== null, reasonMissing)
               }
               onClick={() => void recordHopper()}
             >

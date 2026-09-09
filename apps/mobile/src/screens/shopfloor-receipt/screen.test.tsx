@@ -257,7 +257,23 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () => {
+    respond: (req) => {
+      /* 그룹을 가리지 않으면 차이 사유 목록이 조정 사유 자리에도 답해 판정이 어긋난다. */
+      if (new URL(req.url).searchParams.get('codeGroupCode') === 'INVENTORY_ADJUSTMENT_REASON') {
+        return jsonResponse({
+          items: [
+            {
+              code: 'HOPPER_MEASUREMENT',
+              codeName: 'Hopper measurement',
+              nameKo: '호퍼 실측',
+              isActive: true,
+              displayOrder: 1,
+            },
+          ],
+          page,
+        });
+      }
+
       if (options.reasonsPending === true) {
         return new Promise<Response>(() => {
           /* 답하지 않는다. 목록을 기다리는 동안 화면이 무엇을 허락하는지 재는 자리다. */

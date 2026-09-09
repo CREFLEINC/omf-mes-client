@@ -10,6 +10,9 @@ export type InventoryAdjustmentLineUpsert = components['schemas']['InventoryAdju
 /** 담는 경로의 이름. 담는 쪽과 세는 쪽이 이 상수를 함께 쓴다. */
 export const HOPPER_LABEL = messages.shopfloorReceipt.record.hopper;
 
+/** 조정 사유 값 목록이 오는 공통코드 그룹. */
+export const INVENTORY_ADJUSTMENT_REASON = 'INVENTORY_ADJUSTMENT_REASON';
+
 /**
  * 호퍼 실측의 조정 사유.
  *
@@ -71,15 +74,38 @@ export const isMeasured = (stock: HopperStock, measured: string): boolean =>
   measureProblemOf(measured) === null &&
   adjustmentQtyOf(stock, measured) !== 0;
 
+/**
+ * 기록할 수 있는가.
+ *
+ * 잘못 적은 줄이 하나라도 있으면 막는다 - 그 줄은 본문에서 빠지는데, 적은 사람은 적었다고
+ * 믿는다. 한 줄만 옳으면 통과시키면 나머지가 조용히 사라진다.
+ *
+ * 사유를 서버가 모른다고 답하면 막는다. 지어낸 값을 실으면 누른 뒤에야 실패를 안다. 다만
+ * 아직 못 물어본 것과 없는 것은 가른다 - 오프라인에서도 재야 하고, 물건은 이미 라인에 있다.
+ */
 export const canRecordHopper = (
   locationId: number | null,
   stocks: HopperStock[],
   measured: Record<number, string>,
   hasWorker: boolean,
-): boolean =>
-  locationId !== null &&
-  hasWorker &&
-  stocks.some((stock) => isMeasured(stock, measured[stock.itemId] ?? ''));
+  reasonKnownMissing = false,
+): boolean => {
+  if (locationId === null || !hasWorker || reasonKnownMissing) {
+    return false;
+  }
+
+  const written = stocks.filter((stock) => (measured[stock.itemId] ?? '').trim() !== '');
+
+  return (
+    written.length > 0 &&
+    written.every((stock) => measureProblemOf(measured[stock.itemId] ?? '') === null) &&
+    written.some((stock) => isMeasured(stock, measured[stock.itemId] ?? ''))
+  );
+};
+
+/** 서버가 이 사유를 모른다고 답했는가. 못 물어본 것은 모르는 것이지 없는 것이 아니다. */
+export const isReasonMissing = (loaded: boolean, codes: { code: string }[]): boolean =>
+  loaded && !codes.some((each) => each.code === HOPPER_MEASUREMENT);
 
 export const toHopperDraft = (
   locationId: number,
