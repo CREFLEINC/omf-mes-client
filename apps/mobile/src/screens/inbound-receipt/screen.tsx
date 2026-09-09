@@ -43,6 +43,8 @@ import {
 import './screen.css';
 
 const t = messages.inboundReceipt;
+/* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
+const required = messages.common.required;
 const INBOUND_RECEIPT_EXCEPTION_TYPE = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
 
 type Outcome = 'queued' | 'sent' | 'rejected';
@@ -332,7 +334,7 @@ export const InboundReceiptScreen = () => {
           <>
             <AlertBanner variant="info" title={t.scan.missingChosen} />
             <div className="receipt__field">
-              <label htmlFor="receipt-reason">{t.scan.reasonLabel}</label>
+              <label htmlFor="receipt-reason">{required(t.scan.reasonLabel)}</label>
               <Select
                 id="receipt-reason"
                 placeholder={t.scan.reasonPlaceholder}
@@ -536,7 +538,7 @@ export const InboundReceiptScreen = () => {
               ) : null}
               {suppliers.data === undefined || suppliers.data.length === 0 ? null : (
                 <div className="receipt__field">
-                  <label htmlFor="receipt-supplier">{t.exception.supplierLabel}</label>
+                  <label htmlFor="receipt-supplier">{required(t.exception.supplierLabel)}</label>
                   <Select
                     id="receipt-supplier"
                     placeholder={t.exception.supplierPlaceholder}
@@ -558,7 +560,7 @@ export const InboundReceiptScreen = () => {
               ) : null}
               {itemLabels.data === undefined ? null : (
                 <div className="receipt__field">
-                  <label htmlFor="receipt-item">{t.exception.itemLabel}</label>
+                  <label htmlFor="receipt-item">{required(t.exception.itemLabel)}</label>
                   <Select
                     id="receipt-item"
                     placeholder={t.exception.itemPlaceholder}
@@ -584,7 +586,7 @@ export const InboundReceiptScreen = () => {
               ) : null}
               {uoms.data === undefined ? null : (
                 <div className="receipt__field">
-                  <label htmlFor="receipt-uom">{t.exception.uomLabel}</label>
+                  <label htmlFor="receipt-uom">{required(t.exception.uomLabel)}</label>
                   <Select
                     id="receipt-uom"
                     placeholder={t.exception.uomPlaceholder}
@@ -602,7 +604,9 @@ export const InboundReceiptScreen = () => {
               )}
 
               <div className="receipt__field">
-                <label htmlFor="receipt-unordered-exception-type">{t.exception.typeLabel}</label>
+                <label htmlFor="receipt-unordered-exception-type">
+                  {required(t.exception.typeLabel)}
+                </label>
                 <Select
                   id="receipt-unordered-exception-type"
                   placeholder={t.exception.typePlaceholder}
@@ -621,7 +625,7 @@ export const InboundReceiptScreen = () => {
                 ) : null}
               </div>
               <TextField
-                label={t.exception.reasonLabel}
+                label={required(t.exception.reasonLabel)}
                 size="xl"
                 fullWidth
                 value={draft.exceptionReason}
@@ -728,7 +732,7 @@ export const InboundReceiptScreen = () => {
               >
                 <div className="receipt__qty-field">
                   <TextField
-                    label={t.qty.received}
+                    label={required(t.qty.received)}
                     inputMode="none"
                     size="xl"
                     fullWidth
@@ -840,7 +844,7 @@ export const InboundReceiptScreen = () => {
 
                       <div className="receipt__field">
                         <label htmlFor="receipt-split-exception-type">
-                          {t.verdict.split.exceptionType}
+                          {required(t.verdict.split.exceptionType)}
                         </label>
                         <Select
                           id="receipt-split-exception-type"
@@ -861,7 +865,7 @@ export const InboundReceiptScreen = () => {
                       </div>
 
                       <TextField
-                        label={t.verdict.split.exceptionReason}
+                        label={required(t.verdict.split.exceptionReason)}
                         size="xl"
                         fullWidth
                         value={splitExceptionReason}
