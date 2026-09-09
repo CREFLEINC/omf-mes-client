@@ -126,16 +126,23 @@ export const WorkHoldRegisterScreen = () => {
    *
    * ⛔ **두 호출을 «따로» 담지 않는다** — 그 사이에 다른 조작이 끼어들면 순서가 뜻을 잃는다.
    */
-  const submit = (toGroup: (target: HoldTarget) => OutboxDraft[]): void => {
+  const submit = (toGroup: (target: HoldTarget) => OutboxDraft[] | null): void => {
     if (session.session === null || workerNo === null) return;
 
-    outbox.enqueueGroup(
-      toGroup({
-        workOrderId: session.session.workOrderId,
-        workSessionId: session.session.workSessionId,
-        workerNo,
-      }),
-    );
+    const group = toGroup({
+      workOrderId: session.session.workOrderId,
+      workSessionId: session.session.workSessionId,
+      workerNo,
+    });
+
+    /* ⛔ 만들지 못한 묶음을 담지 않는다 — 계약 필수 칸이 빈 요청이 큐에 들어가면 거부가 큐를 멈춘다. */
+    if (group === null) {
+      setDraftError(t.form.reasonRequired);
+
+      return;
+    }
+
+    outbox.enqueueGroup(group);
     setDraft(EMPTY_HOLD_DRAFT);
     setDraftError(null);
   };
@@ -262,6 +269,7 @@ export const WorkHoldRegisterScreen = () => {
               isPending={session.isPending}
               now={now}
               canEnd={canEnd && workerNo !== null}
+              isStopped={stopped}
               onEnd={() => {
                 setEndConfirmOpen(true);
               }}

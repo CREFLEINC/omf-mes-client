@@ -13,6 +13,14 @@ export interface SessionPanelProps {
   now: Date;
   /** 세션을 닫을 수 있는가 — 진행 중일 때만 열린다(스펙 §5-4). */
   canEnd: boolean;
+  /**
+   * 지금 중단 상태인가.
+   *
+   * ⛔ **잠긴 이유를 하나로 뭉뚱그리지 않는다.** 종료는 「중단 중」·「사번 없음」·「보내는 중」
+   * 셋 다에서 잠기는데, 언제나 「중단 중이면 먼저 재개하세요」로 말하면 **사번이 없어 잠긴
+   * 사람에게 틀린 안내를 한다**(그 사유는 액션바가 따로 말한다).
+   */
+  isStopped: boolean;
   onEnd: () => void;
 }
 
@@ -29,7 +37,14 @@ export interface SessionPanelProps {
  * 달리 **세션 자체를 닫는 일**이라 《중단 등록》 구획이나 액션바에 섞지 않는다 — 섞으면 멈추려던
  * 손이 닫는 버튼을 누른다.
  */
-export const SessionPanel = ({ session, isPending, now, canEnd, onEnd }: SessionPanelProps) => {
+export const SessionPanel = ({
+  session,
+  isPending,
+  now,
+  canEnd,
+  isStopped,
+  onEnd,
+}: SessionPanelProps) => {
   if (isPending) {
     return (
       /*
@@ -94,7 +109,7 @@ export const SessionPanel = ({ session, isPending, now, canEnd, onEnd }: Session
       >
         {t.end.action}
       </Button>
-      {!canEnd && <p className="field-note">{t.end.blocked}</p>}
+      {!canEnd && isStopped && <p className="field-note">{t.end.blocked}</p>}
     </Card>
   );
 };

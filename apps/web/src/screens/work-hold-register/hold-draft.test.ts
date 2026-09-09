@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { toStopGroup } from './event-request';
 import { EMPTY_HOLD_DRAFT, validateHoldDraft } from './hold-draft';
 import type { HoldReason } from './reason-options';
 
@@ -42,5 +43,25 @@ describe('중단 등록 입력 검증', () => {
 
   it('「기타」가 목록에 있어 차단해도 고를 것이 남는다', () => {
     expect(validateHoldDraft({ reasonCode: 'OTHER', remarks: '' }, REASONS)).toBeNull();
+  });
+});
+
+/**
+ * ⛔ **묶음을 만드는 자리도 사유를 강제한다.** 화면이 앞에서 막지만 그 한 겹이 뚫리면 빈 사유가
+ * 서버로 나가 400 을 받고, 그 거부가 큐 전체를 멈춰 뒤에 쌓인 정상 건까지 막는다.
+ */
+describe('toStopGroup — 사유 없이 묶음을 만들지 않는다', () => {
+  const target = { workOrderId: 4013, workSessionId: 9102, workerNo: '20260901' };
+  const occurredAt = '2026-09-03T10:30:00+09:00';
+
+  it('사유가 없으면 만들지 않는다', () => {
+    expect(toStopGroup(EMPTY_HOLD_DRAFT, occurredAt, target)).toBeNull();
+    expect(toStopGroup({ reasonCode: '', remarks: '' }, occurredAt, target)).toBeNull();
+  });
+
+  it('사유가 있으면 두 층을 W/O 먼저 낸다', () => {
+    const group = toStopGroup({ reasonCode: 'MOLD_CHANGE', remarks: '' }, occurredAt, target);
+
+    expect(group?.map((one) => one.kind)).toEqual(['work-order-hold', 'session-event']);
   });
 });

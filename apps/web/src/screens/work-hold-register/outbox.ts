@@ -155,8 +155,28 @@ export const normalizeEntry = (value: unknown): OutboxEntry | null => {
   if (kind === 'session-end' && typeof fields.endedAt !== 'string') return null;
   if (isWorkOrderCall && typeof fields.occurredAt !== 'string') return null;
 
+  /*
+   * ⛔ **중단 사유는 계약 필수다**(`WorkOrderHold.reasonCode`). 빠진 채로 나가면 400 을 받고,
+   * 이 큐는 거부에서 전체를 멈추므로 **뒤에 쌓인 정상 건까지 함께 막힌다.**
+   */
+  if (
+    kind === 'work-order-hold' &&
+    (typeof fields.reasonCode !== 'string' || fields.reasonCode === '')
+  ) {
+    return null;
+  }
+
   const direction = entry.direction;
   if (direction !== 'STOP' && direction !== 'RESUME' && direction !== 'END') return null;
+
+  /*
+   * ⛔ **방향과 본문이 어긋나면 보내지 않는다.** 방향은 버튼 활성 판정이 읽는 값이라, 손상된
+   * 값이 통과하면 **중단 중인데 [중단]이 열리는** 식으로 반대 방향이 한 번 더 나간다.
+   */
+  if (kind === 'session-event' && fields.eventTypeCode !== direction) return null;
+  if (kind === 'work-order-hold' && direction !== 'STOP') return null;
+  if (kind === 'work-order-resume' && direction !== 'RESUME') return null;
+  if (kind === 'session-end' && direction !== 'END') return null;
 
   return {
     idempotencyKey,

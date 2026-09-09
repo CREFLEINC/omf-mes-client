@@ -101,6 +101,48 @@ describe('normalizeEntry — 저장소에서 읽은 값을 믿지 않는다', ()
     expect(normalizeEntry({ ...entry, kind: 'session-end', body: {} })).toBeNull();
   });
 
+  /*
+   * ⛔ **중단 사유는 계약 필수다.** 빠진 채로 나가면 400 을 받고, 이 큐는 거부에서 전체를
+   * 멈추므로 뒤에 쌓인 정상 건까지 함께 막힌다.
+   */
+  it('W/O 중단인데 사유가 없으면 보내지 않는다', () => {
+    const hold = {
+      ...entry,
+      kind: 'work-order-hold',
+      body: { occurredAt: OCCURRED_AT },
+    };
+
+    expect(normalizeEntry(hold)).toBeNull();
+    expect(normalizeEntry({ ...hold, body: { occurredAt: OCCURRED_AT, reasonCode: '' } })).toBeNull();
+    expect(
+      normalizeEntry({ ...hold, body: { occurredAt: OCCURRED_AT, reasonCode: 'MOLD_CHANGE' } }),
+    ).not.toBeNull();
+  });
+
+  /*
+   * ⛔ **방향과 본문이 어긋나면 보내지 않는다.** 방향은 버튼 활성 판정이 읽는 값이라, 손상된
+   * 값이 통과하면 중단 중인데 [중단]이 열리는 식으로 반대 방향이 한 번 더 나간다.
+   */
+  it('방향과 본문 유형이 어긋나면 보내지 않는다', () => {
+    expect(normalizeEntry({ ...entry, direction: 'RESUME' })).toBeNull();
+    expect(
+      normalizeEntry({
+        ...entry,
+        kind: 'session-end',
+        direction: 'STOP',
+        body: { endedAt: OCCURRED_AT },
+      }),
+    ).toBeNull();
+    expect(
+      normalizeEntry({
+        ...entry,
+        kind: 'work-order-resume',
+        direction: 'STOP',
+        body: { occurredAt: OCCURRED_AT },
+      }),
+    ).toBeNull();
+  });
+
   it('객체가 아닌 값은 보내지 않는다', () => {
     expect(normalizeEntry(null)).toBeNull();
     expect(normalizeEntry('key-1')).toBeNull();

@@ -38,13 +38,21 @@ const toNote = (remarks: string): string | undefined => {
   return trimmed === '' ? undefined : trimmed;
 };
 
+/**
+ * 중단 한 묶음. **사유가 없으면 만들지 않는다** — `null` 을 낸다.
+ *
+ * ⛔ **호출자 규율에 기대지 않는다.** 사유는 계약 필수이고(`WorkOrderHold.reasonCode`) 화면이
+ * 앞에서 막지만(§6 ⓐ 차단), 그 한 겹이 뚫리면 **빈 사유가 서버로 나가 400 을 받고 그 거부가
+ * 큐 전체를 멈춰** 뒤에 쌓인 정상 건까지 막는다 — 이 큐가 지키려는 것과 정반대다.
+ */
 export const toStopGroup = (
   draft: HoldDraft,
   occurredAt: string,
   target: HoldTarget,
-): OutboxDraft[] => {
-  /* 사유는 중단에서 필수다(§6 ⓐ 차단) — 여기 닿기 전에 `hold-draft.ts` 가 막는다. */
-  const reasonCode = draft.reasonCode ?? '';
+): OutboxDraft[] | null => {
+  const reasonCode = draft.reasonCode;
+
+  if (reasonCode === null || reasonCode === '') return null;
 
   return [
     {
