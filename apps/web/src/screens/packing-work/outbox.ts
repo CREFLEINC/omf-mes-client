@@ -4,27 +4,29 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import { MAX_AUTO_ATTEMPTS, isRejected, retryDelayOf } from '../../patterns/outbox-policy';
 import { runRequest, toApiError } from '../../patterns/request';
-import type { HandlingUnitCreate } from './types';
+import type { HandlingUnitCreate, HandlingUnitPack } from './types';
 
 /**
  * 포장 확정 outbox — **공유계약 C-1** · 스펙 §6 「오프라인 → 큐잉」.
  *
- * ⭐ **큐에 담는 것은 확정 한 건이다.** 확정은 `POST /inventory/handling-units` 한 번으로
- * 끝나므로(등록 시점을 확정 시점으로 옮겼다 · 사용자 결정 2026-09-08) 앞뒤가 매인 호출이
- * 없고, **끊긴 채로도 포장을 시작해 확정까지 마칠 수 있다.**
+ * ⭐ **큐에 담는 것은 «확정»뿐이다**(스펙 §6 · 2026-09-06 게이트 승인). 담기 시작(포장 단위
+ * 생성)은 오프라인에서 성립하지 않는다 — 포장번호를 서버가 매기고 확정이 그 번호를 **경로
+ * 인자**로 받으므로 단말이 만들 수 없는 값이다. 그래서 연결이 없는 동안에는 새 포장 시작을
+ * 막고 사유를 보이며, **담던 포장의 확정만** 큐가 받는다.
  *
- * 조항이 정한 다섯 중 넷을 여기서 지킨다.
+ * 조항이 정한 다섯을 여기서 지킨다.
  *
  * | # | 규칙 | 여기서 |
  * | :-: | --- | --- |
  * | 1 | `idempotency_key` 는 **클라이언트가 생성**해 outbox 에 담는다 | 담을 때 한 번 만든다 |
  * | 2 | **로컬 저장 후 즉시 성공 피드백** | `enqueue` 가 곧 확정이다 |
+ * | 3 | 발생 시각과 서버 수신 시각을 분리 | `businessDate`·`occurredAt` 을 담을 때 박는다 |
  * | 4 | **연결 상태와 미동기 건수를 상시 표시** | `pendingCount`·`isOnline` 을 화면이 낸다 |
  * | 5 | 재전송은 **같은 키로** | 키가 항목에 붙어 시도마다 바뀌지 않는다 |
  *
- * ⛔ **#3(발생 시각과 서버 수신 시각을 분리)은 지킬 수 없다.** 계약의 `HandlingUnitCreate` 에
- * 시각 칸이 없고 헤더에도 없다 — 큐에 밀린 확정은 **서버가 받은 때**로 기록된다. 계약이 그
- * 자리를 열어 주어야 풀린다(공유계약 C-8).
+ * ⭐ **#3 이 이번에 닫혔다.** 앞선 판(한 건 쓰기)은 본문에 시각 칸이 없어 큐에 밀린 확정이
+ * 서버가 받은 때로 기록됐고, 자정을 넘기면 원장의 `(멱등키, 영업일)` 제약을 둘 다 통과해
+ * **두 건으로 적재될 수 있었다.** `:pack` 이 두 칸을 받아 그 구멍이 닫혔다(C-8).
  *
  * ⚠ **사번을 항목에 함께 담는다** — 헤더를 채우지 못하면 서버가 거부하고, 나중 값으로 대신할
  * 수도 없다. 그 포장을 「누가 한 일」로 만드는 값이다(귀속 조항 D-5).
@@ -35,12 +37,29 @@ import type { HandlingUnitCreate } from './types';
 
 type Client = ApiClient['client'];
 
+/**
+ * 큐에 담긴 한 건이 **어느 경로로 나가는가.**
+ *
+ * ⭐ **`create` 는 지난 판이 남긴 것뿐이다** — 지금 화면은 담기 시작을 큐에 담지 않는다.
+ * 그 항목은 계약상 여전히 유효한 요청이라(`HandlingUnitCreate.contents` 가 살아 있다) 그대로
+ * 보낸다 — 버리면 작업자가 확정한 포장이 조용히 사라진다.
+ */
+export type OutboxKind = 'pack' | 'create';
+
 /** 큐에 담긴 확정 한 건. */
 export interface OutboxEntry {
   idempotencyKey: string;
+  kind: OutboxKind;
+  /**
+   * 확정할 포장 단위. `kind === 'pack'` 일 때만 있다.
+   *
+   * ⚠ **담을 때의 값이다** — 재전송은 화면이 다시 그려진 뒤에 일어날 수 있고, 그때 담던
+   * 포장이 다른 것으로 바뀌어 있으면 **엉뚱한 포장이 닫힌다.**
+   */
+  handlingUnitId: number | null;
   /** 이 쓰기의 귀속 사번. 헤더로만 나가고 본문에는 실리지 않는다. */
   workerNo: string;
-  body: HandlingUnitCreate;
+  body: HandlingUnitPack | HandlingUnitCreate;
 }
 
 export const STORAGE_KEY = 'omf-mes.packing-work.outbox';
@@ -52,36 +71,55 @@ export const STORAGE_KEY = 'omf-mes.packing-work.outbox';
  * 것은 해체 경로가 없는 확정이다(스펙 §8-4). 계약이 필수로 둔 것과 헤더가 요구하는 것만
  * 확인한다.
  *
- * ⛔ **지난 판(`:pack` 을 부르던 판)이 남긴 항목은 여기서 떨어져 버려진다 — 알고 그렇게
- * 둔다.** 그 항목은 `handlingUnitId` 와 시각 두 칸을 들고 있고 본문에 `handlingUnitTypeCode`
- * 가 없어 이 검사를 통과하지 못한다. 저장 키(`STORAGE_KEY`)는 그대로라 갱신해도 값이 남는다.
- *
- * 마저 보내려면 이미 만들어진 포장 단위에 `:pack` 을 부르는 경로를 한 판 더 들고 있어야 한다.
- * 서버가 `/inventory/handling-units` 계열을 아직 구현하지 않았고(#885) POP 이 현장에 나가
- * 있지도 않아 **그 값이 존재할 수 있는 단말이 없다** — 되살리는 코드가 지킬 것보다 무겁다고
- * 보고 버리기로 했다(사용자 결정 2026-09-08 · PR 리뷰).
- *
- * ⚠ **현장 배포 뒤에는 이 판단이 성립하지 않는다.** 그때는 저장 형식을 다시 바꾸기 전에
- * 지난 모양을 함께 받는 경로부터 세운다.
+ * ⭐ **지난 판(한 건 쓰기)이 남긴 항목을 버리지 않는다.** 그 판은 `kind` 없이
+ * `HandlingUnitCreate`(유형 + 내용물)를 담았고, 그 요청은 계약상 **여전히 유효하다** —
+ * `kind` 가 없으면 그 판으로 읽어 생성 경로로 보낸다. 버리면 작업자가 이미 확정을 본 포장이
+ * 조용히 사라진다(저장 키는 그대로라 값이 남아 있다).
  */
-export const isSendableEntry = (value: unknown): value is OutboxEntry => {
-  if (typeof value !== 'object' || value === null) return false;
+export const normalizeEntry = (value: unknown): OutboxEntry | null => {
+  if (typeof value !== 'object' || value === null) return null;
 
   const entry = value as Record<string, unknown>;
-  if (typeof entry.idempotencyKey !== 'string' || entry.idempotencyKey === '') return false;
-  if (typeof entry.workerNo !== 'string' || entry.workerNo === '') return false;
+  const { idempotencyKey, workerNo, body } = entry;
 
-  const body = entry.body;
-  if (typeof body !== 'object' || body === null) return false;
+  if (typeof idempotencyKey !== 'string' || idempotencyKey === '') return null;
+  if (typeof workerNo !== 'string' || workerNo === '') return null;
+  if (typeof body !== 'object' || body === null) return null;
 
   const fields = body as Record<string, unknown>;
+  /* 내용물이 비면 확정이 아니다 — 빈 포장을 큐에 남겨 두면 뜻 없는 포장이 선다. */
+  const hasContents = Array.isArray(fields.contents) && fields.contents.length > 0;
 
-  if (typeof fields.handlingUnitTypeCode !== 'string' || fields.handlingUnitTypeCode === '') {
-    return false;
+  if (!hasContents) return null;
+
+  if (entry.kind === 'pack') {
+    if (typeof entry.handlingUnitId !== 'number') return null;
+    /* ⛔ 시각 두 칸이 없으면 보내지 않는다 — 서버가 받은 때로 잡히면 원장이 두 건이 된다(C-8). */
+    if (typeof fields.businessDate !== 'string' || fields.businessDate === '') return null;
+    if (typeof fields.occurredAt !== 'string' || fields.occurredAt === '') return null;
+
+    return {
+      idempotencyKey,
+      kind: 'pack',
+      handlingUnitId: entry.handlingUnitId,
+      workerNo,
+      body: fields as unknown as HandlingUnitPack,
+    };
   }
 
-  /* 내용물이 비면 확정이 아니다 — 빈 포장을 큐에 남겨 두면 뜻 없는 포장이 선다. */
-  return Array.isArray(fields.contents) && fields.contents.length > 0;
+  /* `kind` 가 없거나 `create` 면 지난 판이다 — 그 판이 담던 것은 유형 + 내용물이었다. */
+  if (entry.kind !== undefined && entry.kind !== 'create') return null;
+  if (typeof fields.handlingUnitTypeCode !== 'string' || fields.handlingUnitTypeCode === '') {
+    return null;
+  }
+
+  return {
+    idempotencyKey,
+    kind: 'create',
+    handlingUnitId: null,
+    workerNo,
+    body: fields as unknown as HandlingUnitCreate,
+  };
 };
 
 /**
@@ -100,7 +138,13 @@ const readStored = (): OutboxEntry[] => {
 
     const parsed: unknown = JSON.parse(raw);
 
-    return Array.isArray(parsed) ? parsed.filter(isSendableEntry) : [];
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.flatMap((one) => {
+      const entry = normalizeEntry(one);
+
+      return entry === null ? [] : [entry];
+    });
   } catch {
     return [];
   }
@@ -115,18 +159,37 @@ const writeStored = (entries: readonly OutboxEntry[]): void => {
   }
 };
 
+/**
+ * 한 건을 그 종류의 경로로 보낸다.
+ *
+ * ⛔ **경로 리터럴을 변수로 넘기지 않는다** — `openapi-fetch` 가 경로를 리터럴 타입으로 요구해
+ * 문자열로 접으면 본문 타입 검사가 통째로 풀린다.
+ *
+ * ⛔ **`If-Match` 를 싣지 않는다**(C-9). 큐에 쌓인 요청은 잠글 판본을 들고 있을 수 없다.
+ */
 const postEntry = async (client: Client, entry: OutboxEntry): Promise<void> => {
+  const header = {
+    /* ⛔ 시도마다 새로 만들지 않는다 — 재전송이 새 확정이 된다(C-1 #5). */
+    'Idempotency-Key': entry.idempotencyKey,
+    /* ⛔ 없으면 서버가 거부한다. 인증이 아니라 귀속이다(D-5). */
+    'X-Worker-No': entry.workerNo,
+  } as const;
+
+  if (entry.kind === 'pack') {
+    await runRequest(() =>
+      client.POST('/inventory/handling-units/{handlingUnitId}:pack', {
+        params: { path: { handlingUnitId: entry.handlingUnitId ?? 0 }, header },
+        body: entry.body as HandlingUnitPack,
+      }),
+    );
+
+    return;
+  }
+
   await runRequest(() =>
     client.POST('/inventory/handling-units', {
-      params: {
-        header: {
-          /* ⛔ 시도마다 새로 만들지 않는다 — 재전송이 새 확정이 된다(C-1 #5). */
-          'Idempotency-Key': entry.idempotencyKey,
-          /* ⛔ 없으면 서버가 거부한다. 인증이 아니라 귀속이다(D-5). */
-          'X-Worker-No': entry.workerNo,
-        },
-      },
-      body: entry.body,
+      params: { header },
+      body: entry.body as HandlingUnitCreate,
     }),
   );
 };

@@ -3,8 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MAX_AUTO_ATTEMPTS, retryDelayOf } from '../../patterns/outbox-policy';
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { BOX_CODE, ITEM_ID, LOT_A_ID, UOM_ID, WORKER_NO } from './fixtures';
-import { STORAGE_KEY, isSendableEntry, usePackingWorkOutbox, type OutboxEntry } from './outbox';
+import { BOX_CODE, HANDLING_UNIT_ID, ITEM_ID, LOT_A_ID, UOM_ID, WORKER_NO } from './fixtures';
+import { STORAGE_KEY, normalizeEntry, usePackingWorkOutbox, type OutboxEntry } from './outbox';
 
 /**
  * 이 큐가 지키는 것은 **되돌릴 수 없는 확정**이다(스펙 §8-4 — 포장 해체 화면이 없다).
@@ -14,47 +14,97 @@ import { STORAGE_KEY, isSendableEntry, usePackingWorkOutbox, type OutboxEntry } 
  * **이 화면의 큐**만 겨눈다.
  */
 
-const PACK_PATH = '/inventory/handling-units';
+const CREATE_PATH = '/inventory/handling-units';
+const PACK_PATH = `/inventory/handling-units/${String(HANDLING_UNIT_ID)}:pack`;
 
-const body = {
-  handlingUnitTypeCode: BOX_CODE,
-  parentHandlingUnitId: null,
-  contents: [{ lotId: LOT_A_ID, itemId: ITEM_ID, uomId: UOM_ID, qty: 100 }],
+const CONTENTS = [{ lotId: LOT_A_ID, itemId: ITEM_ID, uomId: UOM_ID, qty: 100 }];
+const BUSINESS_DATE = '2026-09-09';
+const OCCURRED_AT = '2026-09-09T23:50:00+09:00';
+
+/** 지금 판이 담는 것 — 확정(`:pack`). */
+const packBody = {
+  contents: CONTENTS,
+  businessDate: BUSINESS_DATE,
+  occurredAt: OCCURRED_AT,
 } satisfies OutboxEntry['body'];
 
-describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', () => {
+/** 지난 판(한 건 쓰기)이 담던 것 — 유형 + 내용물. */
+const legacyBody = {
+  handlingUnitTypeCode: BOX_CODE,
+  parentHandlingUnitId: null,
+  contents: CONTENTS,
+} satisfies OutboxEntry['body'];
+
+describe('normalizeEntry — 저장소에서 읽은 값을 믿지 않는다', () => {
   const entry = {
     idempotencyKey: 'key-1',
+    kind: 'pack',
+    handlingUnitId: HANDLING_UNIT_ID,
     workerNo: WORKER_NO,
-    body,
+    body: packBody,
   };
 
   it('갖출 것을 갖춘 항목은 보낼 수 있다', () => {
-    expect(isSendableEntry(entry)).toBe(true);
+    expect(normalizeEntry(entry)).not.toBeNull();
   });
 
   it('멱등 키가 비면 보내지 않는다 — 재전송이 새 확정이 된다', () => {
-    expect(isSendableEntry({ ...entry, idempotencyKey: '' })).toBe(false);
+    expect(normalizeEntry({ ...entry, idempotencyKey: '' })).toBeNull();
   });
 
-  /* ⛔ 유형 없이는 서버가 받지 않는다 — 계약이 필수로 둔 유일한 칸이다. */
-  it('포장 유형이 없으면 보내지 않는다', () => {
-    expect(isSendableEntry({ ...entry, body: { ...body, handlingUnitTypeCode: '' } })).toBe(false);
+  /* ⭐ 확정이 부를 경로가 포장 번호다 — 없으면 보낼 주소가 없다. */
+  it('포장 단위를 모르면 보내지 않는다', () => {
+    const { handlingUnitId: _omitted, ...rest } = entry;
+
+    expect(normalizeEntry(rest)).toBeNull();
+  });
+
+  /*
+   * ⛔ **시각 두 칸이 없으면 보내지 않는다.** 서버가 받은 때로 영업일이 잡히면 자정을 넘긴
+   * 항목이 원장의 `(멱등키, 영업일)` 제약을 둘 다 통과해 **두 건으로 적재된다**(C-8).
+   */
+  it('영업일·발생 시각이 없으면 보내지 않는다', () => {
+    for (const field of ['businessDate', 'occurredAt']) {
+      const broken: Record<string, unknown> = { ...packBody };
+      delete broken[field];
+
+      expect(normalizeEntry({ ...entry, body: broken })).toBeNull();
+    }
   });
 
   it('사번이 없으면 보내지 않는다 — 없으면 서버가 거부한다', () => {
-    expect(isSendableEntry({ ...entry, workerNo: '' })).toBe(false);
+    expect(normalizeEntry({ ...entry, workerNo: '' })).toBeNull();
   });
 
   /* ⛔ 내용물이 비면 서버가 400 이다(계약) — 큐 맨 앞에서 매번 거부돼 뒤엣것까지 막는다. */
   it('내용물이 빈 확정은 보내지 않는다', () => {
-    expect(isSendableEntry({ ...entry, body: { ...body, contents: [] } })).toBe(false);
+    expect(normalizeEntry({ ...entry, body: { ...packBody, contents: [] } })).toBeNull();
   });
 
   it('객체가 아닌 값은 보내지 않는다', () => {
-    expect(isSendableEntry(null)).toBe(false);
-    expect(isSendableEntry('key-1')).toBe(false);
-    expect(isSendableEntry({ ...entry, body: null })).toBe(false);
+    expect(normalizeEntry(null)).toBeNull();
+    expect(normalizeEntry('key-1')).toBeNull();
+    expect(normalizeEntry({ ...entry, body: null })).toBeNull();
+  });
+
+  /*
+   * ⭐ **지난 판(한 건 쓰기)이 남긴 항목을 버리지 않는다.** 그 요청은 계약상 여전히 유효하고
+   * (`HandlingUnitCreate.contents` 가 살아 있다), 버리면 작업자가 이미 확정을 본 포장이
+   * 조용히 사라진다.
+   */
+  describe('지난 판(한 건 쓰기) 항목', () => {
+    const legacy = { idempotencyKey: 'legacy-1', workerNo: WORKER_NO, body: legacyBody };
+
+    it('생성 한 건으로 읽어 그대로 보낸다', () => {
+      expect(normalizeEntry(legacy)).toMatchObject({ kind: 'create', handlingUnitId: null });
+    });
+
+    /* ⛔ 유형 없이는 서버가 받지 않는다 — 그 판이 필수로 두던 칸이다. */
+    it('포장 유형이 없으면 보내지 않는다', () => {
+      expect(
+        normalizeEntry({ ...legacy, body: { ...legacyBody, handlingUnitTypeCode: '' } }),
+      ).toBeNull();
+    });
   });
 });
 
@@ -87,7 +137,12 @@ describe('usePackingWorkOutbox', () => {
 
   const enqueueOne = (result: { current: ReturnType<typeof usePackingWorkOutbox> }): void => {
     act(() => {
-      result.current.enqueue({ workerNo: WORKER_NO, body });
+      result.current.enqueue({
+        kind: 'pack',
+        handlingUnitId: HANDLING_UNIT_ID,
+        workerNo: WORKER_NO,
+        body: packBody,
+      });
     });
   };
 
@@ -173,7 +228,7 @@ describe('usePackingWorkOutbox', () => {
     });
 
     expect(result.current.pendingCount).toBe(1);
-    expect(globalThis.localStorage.getItem(STORAGE_KEY)).toContain(BOX_CODE);
+    expect(globalThis.localStorage.getItem(STORAGE_KEY)).toContain(BUSINESS_DATE);
   });
 
   it('사람이 다시 보내라고 하면 멈춤이 풀린다', async () => {
@@ -216,5 +271,37 @@ describe('usePackingWorkOutbox', () => {
     expect(result.current.pendingCount).toBe(0);
     expect(result.current.rejection).not.toBeNull();
     expect(result.current.sentCount).toBe(0);
+  });
+  /*
+   * ⭐ **지난 판 항목은 생성 경로로 나간다.** 저장 키가 같아 갱신해도 값이 남아 있고, 그
+   * 요청은 계약상 여전히 유효하다 — 버리면 작업자가 확정한 포장이 조용히 사라진다.
+   */
+  it('지난 판이 남긴 항목은 생성 경로로 나간다', async () => {
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([{ idempotencyKey: 'legacy-1', workerNo: WORKER_NO, body: legacyBody }]),
+    );
+
+    const sent: Request[] = [];
+    const { result } = renderHookWithProviders(() => usePackingWorkOutbox(), {
+      fetch: createStubFetch([
+        {
+          match: () => true,
+          respond: (request: Request) => {
+            sent.push(request);
+
+            return jsonResponse({}, { status: 201 });
+          },
+        },
+      ]),
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(sent.map((request) => new URL(request.url).pathname)).toEqual([CREATE_PATH]);
+    expect(sent[0]!.headers.get('Idempotency-Key')).toBe('legacy-1');
+    expect(result.current.pendingCount).toBe(0);
   });
 });

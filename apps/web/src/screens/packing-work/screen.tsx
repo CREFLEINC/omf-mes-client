@@ -8,9 +8,9 @@ import { addLine, findScannedLot, judgeQuantity, toPackingLine } from './content
 import { usePackingEntry } from './entry-context';
 import { PackErrorBanner } from './error-banner';
 import { LotListPane } from './lot-list-pane';
-import { useHandlingUnitCreate } from './mutations';
+import { useHandlingUnitCreate, useHandlingUnitDiscard, useHandlingUnitPack } from './mutations';
 import { usePackingWorkOutbox } from './outbox';
-import { sameCreateBody, toCreateBody } from './pack-request';
+import { samePackBody, toCreateBody, toPackBody } from './pack-request';
 import { PackingPane } from './packing-pane';
 import {
   packingWorkKeys,
@@ -20,21 +20,19 @@ import {
   useTargetLots,
 } from './queries';
 import { ScanPane } from './scan-pane';
-import { emptyPackingDraft, type HandlingUnitCreate, type Lot, type PackingLine } from './types';
+import { emptyPackingDraft, type HandlingUnitPack, type Lot, type PackingLine } from './types';
 
 const t = messages.packingWork;
 
 /**
  * P-02-08 포장 작업(LOT 스캔·제품 포장).
  *
- * ⭐ **서버 호출은 확정 한 번뿐이다**(사용자 결정 2026-09-08). 담는 동안에는 서버를 부르지
- * 않고, 확정에서 `POST /inventory/handling-units` 에 담은 것을 통째로 실어 보낸다.
+ * ⭐ **호출은 둘이다**(스펙 §5-6 · 요구서 §3-17). 첫 줄을 담을 때 포장 단위를 만들고
+ * (`POST /inventory/handling-units`), 확정이 내용물과 함께 닫는다(`:pack`). 그래서 §3 도면대로
+ * **담는 동안 포장 번호가 보인다.**
  *
- * ⭐ **중단해도 빈 포장이 남지 않는다** — 포장 해체 경로가 인벤토리에 없어(스펙 §8-4) 앞선
- * 판에서는 담다 그만둔 포장을 지울 방법이 없었다.
- *
- * ⚠ **스펙 §3 과 어긋난다** — 담는 동안 포장 번호를 보이라 했는데 번호가 확정 뒤에야 생긴다.
- * 그 자리는 「확정하면 매겨집니다」로 채운다. 설계팀 판정이 아니라 사용자 지시다.
+ * ⭐ **담다가 그만두면 취소가 거둔다**(스펙 §5-7) — `DELETE …/{handlingUnitId}`. 호출이 갈리며
+ * 「번호는 있고 내용물은 없는」 상태가 생겼고, 그대로 두면 빈 포장이 쌓인다.
  *
  * ⛔ **「잔여」와 초과 스캔 방어를 만들지 않았다** — 이미 포장된 수량을 뺀 잔여를 계약이 내려
  * 주지 않는다. 없는 값을 화면이 계산하면 실물과 갈린다.
@@ -42,11 +40,13 @@ const t = messages.packingWork;
  * ⛔ **단말 게이팅을 걸지 않는다** — 8플래그에 포장이 없다(스펙 §5-1). 가까운 것을 임의로
  * 매핑하면 엉뚱한 권한이 걸린다. 집행은 서버의 403 이다.
  *
- * ⭐ **오프라인이 온전히 선다**(스펙 §6 · 공유계약 C-1). 쓰기가 한 건이라 앞뒤가 매인 호출이
- * 없고, **끊긴 채로도 포장을 시작해 확정까지 마칠 수 있다.**
+ * ⚠ **오프라인은 반쪽이다 — 그것이 설계다**(스펙 §6). 포장번호를 서버가 매기고 확정이 그
+ * 번호를 경로 인자로 받으므로 **새 포장 시작은 끊긴 채로 성립하지 않는다.** 연결이 없으면
+ * 담기 시작을 막고 사유를 보이며(C-5 온라인 전용 표준형 4항 준용), **담던 포장의 확정은**
+ * **큐가 받는다.** ⛔ 화면 전체가 온라인 전용이 되는 것은 아니다.
  *
- * ⛔ **발생 시각을 실을 자리가 없다** — 계약의 `HandlingUnitCreate` 에 시각 칸이 없어 큐에
- * 밀린 확정은 서버가 받은 때로 기록된다(공유계약 C-8 을 지킬 수 없다).
+ * ⭐ **확정이 「언제 일어난 일인가」를 싣는다**(C-8) — `businessDate`·`occurredAt`. 큐에 밀린
+ * 확정이 자정을 넘겨 전송돼도 원장이 두 건으로 적재되지 않는다.
  */
 export const PackingWorkScreen = () => {
   const titleId = useId();
@@ -72,7 +72,7 @@ export const PackingWorkScreen = () => {
    * ⛔ **상태로 두지 않는다.** 확정을 누른 «그때» 값을 다음 조작에서 그대로 읽어야 하고,
    * 이 값이 바뀐다고 화면이 다시 그려질 이유도 없다.
    */
-  const attemptedBody = useRef<HandlingUnitCreate | null>(null);
+  const attemptedBody = useRef<HandlingUnitPack | null>(null);
   const [packed, setPacked] = useState(false);
   /* 담은 횟수 — 스캔 칸이 이 값으로 포커스를 되돌린다(`scan-pane.tsx`). */
   const [addedCount, setAddedCount] = useState(0);
@@ -98,12 +98,46 @@ export const PackingWorkScreen = () => {
 
   const workerNo = entry.workerNo;
 
+  /**
+   * 담기 시작이 만든 포장 단위를 기다리는 줄.
+   *
+   * ⭐ **담기 한 번이 두 가지 일을 한다** — 포장 단위가 없으면 먼저 만들고, 응답이 오면 그때
+   * 줄을 담는다. 서버를 기다리는 동안 사용자가 다시 누르지 못하도록 담기 버튼을 잠근다.
+   */
+  const pendingLine = useRef<PackingLine | null>(null);
+
   const create = useHandlingUnitCreate({
     workerNo: workerNo ?? '',
     onSuccess: (unit) => {
-      /* 확정이 닿았다 — 이제야 번호가 생긴다(스펙 §3 의 번호 자리가 여기서 채워진다). */
-      setDraft((current) => ({ ...current, handlingUnit: unit }));
+      /* 번호가 생겼다 — 스펙 §3 의 번호 자리가 여기서 채워진다. */
+      const line = pendingLine.current;
+      pendingLine.current = null;
+
+      setDraft((current) => ({
+        ...current,
+        handlingUnit: unit,
+        lines: line === null ? current.lines : addLine(current.lines, line),
+      }));
+      if (line !== null) {
+        setQuantity('');
+        setAddedCount((count) => count + 1);
+      }
+    },
+  });
+
+  const pack = useHandlingUnitPack({
+    workerNo: workerNo ?? '',
+    handlingUnitId: draft.handlingUnit?.handlingUnitId ?? null,
+    onSuccess: () => {
       setPacked(true);
+    },
+  });
+
+  const discard = useHandlingUnitDiscard({
+    workerNo: workerNo ?? '',
+    handlingUnitId: draft.handlingUnit?.handlingUnitId ?? null,
+    onSuccess: () => {
+      startNext();
     },
   });
 
@@ -155,14 +189,26 @@ export const PackingWorkScreen = () => {
    */
   const addNeedsType = draft.handlingUnitTypeCode === null;
 
-  /*
-   * ⭐ **끊겼다고 담기를 막지 않는다.** 담기는 화면 안에서만 일어나고 확정 한 번이 전량을
-   * 싣는다 — 그 확정은 큐가 받는다. 앞선 판이 여기서 「새 포장을 시작할 수 없습니다」로 막던
-   * 자리이고, 등록을 확정 시점으로 옮기면서 막을 이유가 사라졌다.
+  /**
+   * 담기를 막는 사유.
+   *
+   * ⛔ **끊긴 동안에는 «새» 포장을 시작할 수 없다**(스펙 §6). 포장번호를 서버가 매기고 확정이
+   * 그 번호를 경로 인자로 받으므로, 단말이 만들 수 없는 값을 기다리는 요청은 큐에 담을 수조차
+   * 없다. C-5 온라인 전용 표준형 4항 준용 — **저장만 막고 화면 상태는 유지**한다.
+   *
+   * ⭐ **이미 시작한 포장에는 계속 담을 수 있다.** 담기는 화면 안에서만 일어나고, 그 확정은
+   * 큐가 받는다 — 화면 «전체»가 온라인 전용이 되는 것은 아니다.
    */
-  const addBlockedReason = entryBlockedReason;
+  const addBlockedReason = ((): string | null => {
+    if (entryBlockedReason !== null) return entryBlockedReason;
+    if (draft.handlingUnit === null && !outbox.isOnline) return t.unit.offlineStartBlocked;
+
+    return null;
+  })();
 
   const add = (): void => {
+    /* ⛔ 포장 단위를 만드는 동안 다시 누르지 않는다 — 빈 포장이 두 개 생긴다. */
+    if (create.isSaving) return;
     if (addBlockedReason !== null || selectedLot === null || workerNo === null) return;
 
     /*
@@ -201,7 +247,25 @@ export const PackingWorkScreen = () => {
 
     const line = toPackingLine(selectedLot, verdict.qty);
 
-    /* ⭐ **담기는 화면 안에서만 일어난다** — 서버는 확정 한 번으로 전량을 받는다. */
+    /*
+     * ⭐ **첫 줄이 포장 단위를 만든다**(스펙 §5-6 「담기 시작에 포장 단위를 만들고」).
+     *
+     * ⛔ **스캔하자마자 만들지 않는다** — 스캔이 헛돌거나 수량을 잘못 쳐서 되돌아가면 번호만
+     * 있고 아무것도 담기지 않은 포장이 남는다. 유형은 생성 본문의 필수 칸이라 그 전에는 만들
+     * 수도 없다.
+     */
+    if (draft.handlingUnit === null) {
+      const createBody = toCreateBody(draft);
+      if (createBody === null) return;
+
+      /* 응답이 와야 줄을 담는다 — 그 사이 다시 누르지 못하도록 버튼이 잠긴다. */
+      pendingLine.current = line;
+      create.write(createBody);
+
+      return;
+    }
+
+    /* ⭐ **둘째 줄부터는 화면 안에서만 일어난다** — 확정이 전량을 통째로 싣는다. */
     setDraft((current) => ({ ...current, lines: addLine(current.lines, line) }));
     setQuantity('');
     setAddedCount((count) => count + 1);
@@ -212,6 +276,8 @@ export const PackingWorkScreen = () => {
     !packed &&
     entryBlockedReason === null &&
     draft.handlingUnitTypeCode !== null &&
+    /* 포장 단위가 있어야 확정할 경로가 있다 — 첫 줄을 담을 때 만들어진다(스펙 §5-6). */
+    draft.handlingUnit !== null &&
     draft.lines.length > 0;
 
   const confirmBlockedReason = ((): string | null => {
@@ -237,48 +303,43 @@ export const PackingWorkScreen = () => {
   const confirm = (): void => {
     if (confirmBlockedReason !== null || !canConfirm) return;
 
-    const body = toCreateBody(draft, draft.lines);
-    if (body === null) return;
+    /*
+     * ⭐ **시각 두 칸을 «여기서» 박는다**(C-8). 보내는 시점의 값을 쓰면 자정을 넘긴 큐 항목의
+     * 영업일이 바뀌어 원장이 두 건으로 적재된다.
+     */
+    const fresh = toPackBody(draft.lines, new Date());
+    if (fresh === null || draft.handlingUnit === null) return;
+
+    /*
+     * ⭐ **적용 여부를 모르는 시도가 남아 있으면 «그때 본문»을 그대로 다시 쓴다.**
+     *
+     * ⛔ **온라인 재시도에도 걸리는 규칙이다.** 확정 본문에 시각이 생기면서 다시 지을 때마다
+     * 값이 달라지는데, 공용 쓰기 부품은 **본문의 지문으로 멱등 키 유지를 판정한다** — 새로
+     * 지은 본문을 그대로 넘기면 지문이 달라 **재시도가 매번 새 키로 나간다.** 그러면 서버가
+     * 두 요청을 묶어 주지 못해, 앞 시도가 사실은 닿았을 때 같은 포장을 두 번 닫으려 한다
+     * (`until-applied` 가 무력화된다 · C-1 #5 · 독립 검증 F1).
+     *
+     * ⚠ **담은 것이 달라졌으면 이어받지 않는다.** 그 키는 이미 다른 쓰기의 키이고, 그대로
+     * 보내면 나중에 담은 줄이 서버에서 흡수돼 사라진다(C-1 #6). 그때는 새 확정으로 간다.
+     */
+    const attemptedKey = pack.peekIdempotencyKey();
+    const attempted = attemptedBody.current;
+    const resumable = attemptedKey !== null && attempted !== null && samePackBody(attempted, fresh);
+    const body = resumable ? attempted : fresh;
 
     /*
      * ⭐ **끊겨 있으면 큐에 담고 그 자리에서 확정으로 본다**(C-1 #2 · 스펙 §6).
-     *
-     * ⛔ **확정한 때를 실을 자리가 없다** — 계약의 `HandlingUnitCreate` 에 시각 칸이 없고
-     * 헤더에도 없어, 큐에 밀린 확정은 서버가 받은 때로 기록된다(C-1 #3 · C-8 을 이 화면에서는
-     * 지킬 수 없다).
      *
      * ⛔ **연결돼 있을 때까지 큐로 보내지 않는다.** 서버가 그 자리에서 되돌리는 것 둘(내용물
      * 없음 400 · 이미 확정 409)은 사용자가 할 일이 갈리는 오류라, 큐에 넣으면 그 말이 한 박자
      * 늦게 배너로만 온다.
      */
     if (!outbox.isOnline) {
-      /*
-       * ⭐ **온라인으로 이미 던졌으나 적용 여부를 모르는 확정이 있으면 그것을 그대로 이어받는다.**
-       * 통신이 끊기며 끝난 확정은 서버가 받았는지 알 수 없다 — 큐가 새 키로 보내면 서버가 둘을
-       * 묶어 주지 못해 되돌릴 수 없는 확정이 두 번 설 수 있다(C-1 #5 · 스펙 §8-4).
-       *
-       * ⛔ **키만 이어받지 않는다.** 「같은 키 = 같은 값」이 성립해야 서버가 흡수해도 잃는 것이
-       * 없다. 그래서 그 시도의 «본문»을 함께 보낸다 — 시각 두 칸도 그때 것이 나가야 한다
-       * (같은 키에 영업일이 갈리면 서버가 두 건으로 적재한다 · C-8).
-       *
-       * ⚠ **담은 것이 달라졌으면 이어받지 않는다.** 그 키는 이미 다른 쓰기의 키이고, 그대로
-       * 보내면 나중에 담은 줄이 서버에서 흡수돼 사라진다. 그때는 새 확정으로 간다.
-       */
-      const attemptedKey = create.peekIdempotencyKey();
-      const attempted = attemptedBody.current;
-      const resumable =
-        attemptedKey !== null && attempted !== null && sameCreateBody(attempted, body);
-
-      /*
-       * ⚠ **지금은 `attempted` 와 `body` 가 같은 값이다** — `resumable` 이 본문 전문 비교로
-       * 성립하기 때문이다. 그래도 «그때 보낸 것»을 그대로 넘기는 모양을 지킨다: 본문에 시각
-       * 칸이 생기거나(C-8) 화면이 값을 하나라도 더 실으면, 같은 키에 다른 본문이 나가는
-       * 자리가 여기다.
-       */
-
       outbox.enqueue({
+        kind: 'pack',
+        handlingUnitId: draft.handlingUnit.handlingUnitId,
         workerNo: workerNo ?? '',
-        body: resumable ? attempted : body,
+        body,
         idempotencyKey: resumable ? attemptedKey : null,
       });
       setPacked(true);
@@ -287,7 +348,22 @@ export const PackingWorkScreen = () => {
     }
 
     attemptedBody.current = body;
-    create.write(body);
+    pack.write(body);
+  };
+
+  /**
+   * 확정 전 취소 — **담다가 그만둔 빈 포장을 거둔다**(스펙 §5-7).
+   *
+   * ⛔ **확정한 뒤에는 열지 않는다** — 서버가 409 로 막고, 확정 후 해체는 화면이 없다(§8-4).
+   * ⛔ **끊긴 동안에는 열지 않는다** — 이 호출은 큐 대상이 아니다.
+   */
+  const canDiscard =
+    !packed && draft.handlingUnit !== null && outbox.isOnline && entryBlockedReason === null;
+
+  const discardUnit = (): void => {
+    if (!canDiscard) return;
+
+    discard.write({});
   };
 
   /** 확정이 끝나면 다음 포장을 새로 시작한다 — 같은 포장 단위를 다시 쓰지 않는다. */
@@ -299,7 +375,10 @@ export const PackingWorkScreen = () => {
     setQuantityError(null);
     setPacked(false);
     setAddedCount(0);
+    pendingLine.current = null;
     create.reset();
+    pack.reset();
+    discard.reset();
     /*
      * ⛔ **앞 포장의 멱등 키를 다음 포장으로 들고 가지 않는다.** `reset` 은 「적용됐는지 모르는
      * 쓰기가 있다」는 사실까지 지우지는 않으므로, 여기서 버리지 않으면 다음 포장의 오프라인
@@ -307,6 +386,8 @@ export const PackingWorkScreen = () => {
      * 순간 뒤엣것까지 함께 내려간다(실측).
      */
     create.discardIdempotencyKey();
+    pack.discardIdempotencyKey();
+    discard.discardIdempotencyKey();
     attemptedBody.current = null;
     /*
      * ⛔ **앞 포장의 거부를 새 포장 화면에 들고 가지 않는다.** 큐가 거부한 사실은 그 포장의
@@ -315,9 +396,24 @@ export const PackingWorkScreen = () => {
     outbox.clearRejection();
   };
 
-  /* 담기 시작하면 유형·상위를 바꿀 수 없다 — 확정 본문에 실리는 값이라 도중에 갈리면 안 된다. */
-  const locked = draft.lines.length > 0;
-  const writeError = create.error;
+  /*
+   * 담기 시작하면 유형·상위를 바꿀 수 없다.
+   *
+   * ⭐ **포장 단위가 생긴 순간부터 잠근다** — 그 값은 생성 본문에 이미 실려 서버에 있다. 화면에서
+   * 바꿔도 서버의 포장은 그대로라, 바꿀 수 있게 두면 화면과 기록이 갈린다.
+   *
+   * ⛔ **생성이 날아가 있는 동안에도 잠근다.** 그 구간에는 포장 단위도 담은 줄도 아직 없어
+   * 잠금이 열려 있었는데, 유형은 **이미 옛 값으로 요청에 실려 나갔다** — 그때 바꾸면 응답이
+   * 온 순간 화면과 서버가 갈린 채 잠기고, 확정 본문에 유형이 없어 영영 바로잡히지 않는다
+   * (독립 검증 F2).
+   */
+  const locked = create.isSaving || draft.handlingUnit !== null || draft.lines.length > 0;
+
+  /*
+   * 쓰기 셋의 오류를 한 자리에서 낸다 — 사용자에게는 「방금 누른 것이 안 됐다」 하나다.
+   * ⚠ 먼저 난 것부터 본다: 담기 시작이 실패했으면 확정·취소는 아예 시도되지 않았다.
+   */
+  const writeError = create.error ?? pack.error ?? discard.error;
 
   return (
     <main className="pop-shell pop-ui" aria-labelledby={titleId}>
@@ -359,7 +455,11 @@ export const PackingWorkScreen = () => {
       )}
 
       {writeError !== null && !packed && (
-        <PackErrorBanner error={writeError} title={t.error.confirmTitle} onRetry={confirm} />
+        <PackErrorBanner
+          error={writeError}
+          title={create.error !== null ? t.error.startTitle : t.error.confirmTitle}
+          onRetry={create.error !== null ? add : confirm}
+        />
       )}
 
       {(outbox.pendingCount > 0 || !outbox.isOnline) && (
@@ -453,9 +553,9 @@ export const PackingWorkScreen = () => {
           <h2 className="pane-title pack-work-unit-heading">
             {t.unit.sectionLabel}
             {/*
-              ⚠ **번호는 확정 뒤에야 생긴다.** 스펙 §3 은 담는 동안 보이라 했지만 등록을 확정
-              시점으로 옮기면서 그 자리가 비었다 — 비워 두면 「번호가 사라졌다」로 읽히므로
-              언제 생기는지 말한다.
+              ⭐ **번호는 첫 줄을 담을 때 생긴다**(스펙 §3 · §5-6) — 담기 시작이 포장 단위를
+              만들기 때문이다. 그전까지는 비워 두면 「번호가 사라졌다」로 읽히므로 언제
+              생기는지 말한다.
             */}
             <span className="pack-work-unit-no">
               {draft.handlingUnit?.handlingUnitNo ?? t.unit.numberPending}
@@ -478,10 +578,13 @@ export const PackingWorkScreen = () => {
               setDraft((current) => ({ ...current, parentHandlingUnitId: parentId }));
             }}
             onConfirm={confirm}
+            canDiscard={canDiscard}
+            isDiscarding={discard.isSaving}
+            onDiscard={discardUnit}
             labels={labels}
             blockedReason={confirmBlockedReason}
             canConfirm={canConfirm}
-            isConfirming={create.isSaving}
+            isConfirming={pack.isSaving}
           />
         </Card>
       </div>

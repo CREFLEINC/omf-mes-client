@@ -35,6 +35,15 @@ export interface PackingPaneProps {
   /** 확정이 막혀 있으면서 «화면 어디에도 없는» 사유. 없으면 `null` */
   blockedReason: string | null;
   isConfirming: boolean;
+  /**
+   * 담다가 그만둘 수 있는가 — **확정 전에만 열린다**(스펙 §5-7).
+   *
+   * ⭐ 호출이 둘로 갈리며 「번호는 있고 내용물은 없는」 상태가 생겼다. 그대로 두면 빈 포장이
+   * 쌓이므로 거두는 자리가 필요하다.
+   */
+  canDiscard: boolean;
+  isDiscarding: boolean;
+  onDiscard: () => void;
 }
 
 /**
@@ -62,6 +71,9 @@ export const PackingPane = ({
   labels,
   blockedReason,
   isConfirming,
+  canDiscard,
+  isDiscarding,
+  onDiscard,
 }: PackingPaneProps) => {
   /*
    * ⭐ **수량에는 단위를 붙인다**(스펙 §3 — `100 EA`). 「100」과 「100 EA」는 다른 값이라,
@@ -204,6 +216,19 @@ export const PackingPane = ({
       )}
 
       <div className="pack-work-actions">
+        {/*
+         * ⭐ **취소는 확정 옆에 선다** — 담던 것을 거두는 조작이라 담는 자리에 있어야 한다.
+         * ⛔ **확정과 같은 무게로 그리지 않는다** — 되돌리는 쪽이 눈에 먼저 들어오면 안 된다.
+         */}
+        <Button
+          type="button"
+          variant="outlined"
+          size="xl"
+          disabled={!canDiscard || isDiscarding}
+          onClick={onDiscard}
+        >
+          {t.unit.discardAction}
+        </Button>
         <Button
           type="button"
           variant="filled"
