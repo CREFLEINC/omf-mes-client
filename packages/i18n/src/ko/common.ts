@@ -1,4 +1,9 @@
 export const common = {
+  /*
+   * 반드시 채워야 하는 칸의 라벨에 붙인다. 화면마다 다르게 적으면 같은 뜻이 두세 모양으로
+   * 갈리고, 번역할 때도 자리마다 따로 옮기게 된다.
+   */
+  required: (label: string) => `${label} (필수)`,
   save: '저장',
   cancel: '취소',
   add: '추가',

@@ -45,6 +45,8 @@ import {
 import './screen.css';
 
 const t = messages.productPicking;
+/* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
+const required = messages.common.required;
 
 interface Target {
   request: ShipmentRequest;
@@ -467,7 +469,7 @@ export const ProductPickingScreen = () => {
             </>
           )}
 
-          <div className="picking__action-bar">
+          <div className="action-bar">
             <Button
               className="picking__pick"
               variant="filled"
@@ -633,8 +635,8 @@ export const ProductPickingScreen = () => {
             <AlertBanner variant="warning" title={t.lot.notRecommended} />
           )}
           <TextField
-            label={t.qty.label}
-            inputMode="decimal"
+            label={required(t.qty.label)}
+            inputMode="none"
             size="xl"
             fullWidth
             value={qty}
