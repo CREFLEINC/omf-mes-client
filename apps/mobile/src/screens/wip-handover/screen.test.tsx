@@ -249,6 +249,36 @@ describe('WIP 공정 이동 화면', () => {
   });
 
   /*
+   * 확정 단추만 막으면 다시 보내기 길로 저장이 새어 나간다. 설계가 정한 것은 저장 차단이지
+   * 단추 하나를 흐리게 두는 것이 아니다.
+   */
+  it('하다가 끊기면 다시 보내기로도 저장하지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ seen, failConfirm: true });
+    await screen.findByLabelText(/LOT 스캔/);
+
+    scan(LOT_NO);
+    await screen.findByText(LOT_NO);
+    await user.click(await screen.findByRole('combobox', { name: '인계할 공정' }));
+    await user.click(await screen.findByRole('option', { name: '조립 2호 (WO-2026-0027) · 배포' }));
+    await user.type(screen.getByLabelText(/인계 수량/), '100');
+    await user.click(screen.getByRole('button', { name: '인계 확정' }));
+
+    await screen.findByRole('button', { name: '다시 보내기' });
+    const before = seen.length;
+
+    act(() => {
+      vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+      window.dispatchEvent(new Event('offline'));
+    });
+
+    await user.click(screen.getByRole('button', { name: '다시 보내기' }));
+
+    expect(seen).toHaveLength(before);
+  });
+
+  /*
    * 장갑을 끼고 한 손으로 조작한다. 단말 키보드는 키가 촘촘하고, 올라오면 다음 공정 선택과
    * 확정 단추를 덮는다(설계 §7 · 공유계약 G-6).
    */

@@ -128,6 +128,7 @@ export const WipHandoverScreen = () => {
      */
     if (
       !ready ||
+      !online ||
       found === null ||
       chosen === null ||
       fromWorkOrderId === null ||
