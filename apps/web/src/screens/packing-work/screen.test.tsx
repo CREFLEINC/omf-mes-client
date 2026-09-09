@@ -14,6 +14,7 @@ import {
 import {
   BOX_CODE,
   BOX_NAME,
+  HANDLING_UNIT_ID,
   HANDLING_UNIT_NO,
   ITEM_CODE,
   ITEM_ID,
@@ -55,12 +56,18 @@ interface Options {
   unitTypesFail?: boolean;
   /** 품목 조회가 실패한다 */
   itemFails?: boolean;
-  /** 확정 요청을 담아 둔다. **확정은 한 건이다** — 담기는 서버를 부르지 않는다 */
+  /** **확정**(`:pack`) 요청을 담아 둔다. */
   writes?: Request[];
-  /** 확정 응답 상태. 기본 201 */
+  /** **담기 시작**(포장 단위 생성) 요청을 담아 둔다. */
+  creates?: Request[];
+  /** 확정 응답 상태. 기본 200 */
   packStatus?: number;
   /** 확정 실패 응답 본문 */
   packErrorBody?: unknown;
+  /** 담기 시작 응답 상태. 기본 201 */
+  createStatus?: number;
+  /** 취소(`DELETE`) 요청을 담아 둔다. */
+  discards?: Request[];
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -110,8 +117,22 @@ const routes = (options: Options): StubRoute[] => [
     respond: () => jsonResponse({ items: [parentUnit], page: { page: 1, size: 100, total: 1 } }),
   },
   {
+    /* 담기 시작 — 포장 단위를 만든다(스펙 §5-6). */
     match: (request) =>
       request.method === 'POST' && pathOf(request) === '/inventory/handling-units',
+    respond: (request) => {
+      options.creates?.push(request.clone());
+
+      if (options.createStatus !== undefined && options.createStatus >= 400) {
+        return jsonResponse({ message: '거부' }, { status: options.createStatus });
+      }
+
+      return jsonResponse({ handlingUnit: createdUnit, contents: [] }, { status: 201 });
+    },
+  },
+  {
+    /* 확정 — 내용물과 함께 닫는다. */
+    match: (request) => request.method === 'POST' && pathOf(request).endsWith(':pack'),
     respond: (request) => {
       options.writes?.push(request.clone());
 
@@ -121,7 +142,17 @@ const routes = (options: Options): StubRoute[] => [
         });
       }
 
-      return jsonResponse({ handlingUnit: createdUnit, contents: [] }, { status: 201 });
+      return jsonResponse({ handlingUnit: createdUnit, contents: [] }, { status: 200 });
+    },
+  },
+  {
+    /* 확정 전 취소 — 빈 포장을 거둔다(스펙 §5-7). */
+    match: (request) =>
+      request.method === 'DELETE' && pathOf(request).startsWith('/inventory/handling-units/'),
+    respond: (request) => {
+      options.discards?.push(request.clone());
+
+      return new Response(null, { status: 204 });
     },
   },
 ];
@@ -308,18 +339,111 @@ describe('P-02-08 포장 작업', () => {
   it('담기는 서버를 부르지 않고 번호 자리는 언제 생기는지 말한다', async () => {
     const user = userEvent.setup();
     const writes: Request[] = [];
+    const creates: Request[] = [];
 
-    renderScreen({ writes });
+    renderScreen({ writes, creates });
 
-    await packOneLine(user, LOT_A_NO, '100');
+    /* 유형만 고른 상태 — 아직 포장 단위가 없으므로 번호 자리는 언제 생기는지 말한다. */
+    await chooseUnitType(user);
+    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+
+    await user.click(await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }));
+    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     /*
-     * ⭐ **담기는 서버를 부르지 않는다.** 등록을 확정 시점으로 옮겼기 때문이다 — 그래서 담는
-     * 동안에는 번호가 없고, 그 자리는 언제 생기는지 말한다(스펙 §3 과 어긋나는 지점이다).
+     * ⭐ **첫 줄이 포장 단위를 만든다**(스펙 §5-6 「담기 시작에 포장 단위를 만들고」) — 그래야
+     * §3 도면대로 담는 동안 번호가 보이고, 확정이 부를 경로가 생긴다.
      */
+    await waitFor(() => {
+      expect(creates).toHaveLength(1);
+    });
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
+    /* ⛔ 확정은 아직 나가지 않았다 — 담기와 확정은 다른 호출이다. */
     expect(writes).toHaveLength(0);
-    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
-    expect(unitPane().queryByText(HANDLING_UNIT_NO)).not.toBeInTheDocument();
+
+    /* ⛔ 생성 본문에 내용물을 싣지 않는다 — 실으면 두 층이 다시 한 층이 된다. */
+    const created = await bodyOf(writeAt(creates, 0));
+
+    expect(created.handlingUnitTypeCode).toBe(BOX_CODE);
+    expect(created.contents).toBeUndefined();
+  });
+
+  /*
+   * ⭐ **확정 전 취소**(스펙 §5-7 · 공유계약 B-8-1③). 호출이 둘로 갈리며 「번호는 있고 내용물은
+   * 없는」 상태가 생겼고, 그대로 두면 빈 포장이 쌓인다.
+   */
+  describe('확정 전 취소', () => {
+    it('담기 전에는 취소할 것이 없다', async () => {
+      const user = userEvent.setup();
+
+      renderScreen();
+
+      await chooseUnitType(user);
+
+      expect(screen.getByRole('button', { name: t.unit.discardAction })).toBeDisabled();
+    });
+
+    it('담기 시작한 뒤에는 포장 단위를 거둘 수 있다', async () => {
+      const user = userEvent.setup();
+      const discards: Request[] = [];
+
+      renderScreen({ discards });
+
+      await packOneLine(user, LOT_A_NO, '100');
+      await unitPane().findByText(HANDLING_UNIT_NO);
+
+      await user.click(screen.getByRole('button', { name: t.unit.discardAction }));
+
+      await waitFor(() => {
+        expect(discards).toHaveLength(1);
+      });
+
+      const request = writeAt(discards, 0);
+
+      expect(request.method).toBe('DELETE');
+      expect(new URL(request.url).pathname).toBe(
+        `/inventory/handling-units/${String(HANDLING_UNIT_ID)}`,
+      );
+      expect(request.headers.get('X-Worker-No')).toBe(WORKER_NO);
+
+      /* 거둔 뒤에는 새 포장을 처음부터 시작한다 — 번호도 담은 것도 남지 않는다. */
+      expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+      expect(unitPane().getByText(t.contents.empty)).toBeInTheDocument();
+    });
+
+    /* ⛔ 확정한 뒤에는 이 경로로 지우지 않는다 — 서버가 409 로 막고, 해체 화면은 없다(§8-4). */
+    it('확정한 뒤에는 취소가 잠긴다', async () => {
+      const user = userEvent.setup();
+
+      renderScreen();
+
+      await packOneLine(user, LOT_A_NO, '100');
+      await unitPane().findByText(HANDLING_UNIT_NO);
+
+      await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+      await screen.findByText(t.confirm.done);
+
+      expect(screen.getByRole('button', { name: t.unit.discardAction })).toBeDisabled();
+    });
+  });
+
+  /* ⭐ 둘째 줄부터는 화면 안에서만 일어난다 — 포장 단위는 이미 있다. */
+  it('둘째 줄을 담을 때는 포장 단위를 다시 만들지 않는다', async () => {
+    const user = userEvent.setup();
+    const creates: Request[] = [];
+
+    renderScreen({ creates });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
+    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+
+    expect(await unitPane().findByText(LOT_B_NO)).toBeInTheDocument();
+    expect(creates).toHaveLength(1);
   });
 
   it('같은 LOT 을 다시 담으면 행이 늘지 않고 수량이 합산된다', async () => {
@@ -328,7 +452,7 @@ describe('P-02-08 포장 작업', () => {
     renderScreen();
 
     await packOneLine(user, LOT_A_NO, '100');
-    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(t.scan.quantityLabel), '50');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
@@ -379,7 +503,7 @@ describe('P-02-08 포장 작업', () => {
     renderScreen();
 
     await packOneLine(user, LOT_A_NO, '100');
-    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
     expect(screen.getByLabelText(t.scan.label)).toHaveFocus();
 
     await user.type(screen.getByLabelText(t.scan.quantityLabel), '50');
@@ -438,7 +562,7 @@ describe('P-02-08 포장 작업', () => {
     renderScreen();
 
     await packOneLine(user, LOT_A_NO, '100');
-    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
     await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
     await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
@@ -471,7 +595,7 @@ describe('P-02-08 포장 작업', () => {
     renderScreen({ writes });
 
     await packOneLine(user, LOT_A_NO, '100');
-    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
     await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
     await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
@@ -485,14 +609,21 @@ describe('P-02-08 포장 작업', () => {
 
     const pack = writeAt(writes, 0);
 
-    expect(new URL(pack.url).pathname).toBe('/inventory/handling-units');
+    expect(new URL(pack.url).pathname).toBe(`/inventory/handling-units/${String(HANDLING_UNIT_ID)}:pack`);
     /* ⛔ 「있다」로 보지 않는다 — 빈 키도 헤더로는 실린다. 서버는 그것을 키로 세지 않는다 */
     expect(pack.headers.get('Idempotency-Key') ?? '').not.toBe('');
     expect(pack.headers.get('X-Worker-No')).toBe(WORKER_NO);
 
     const body = await bodyOf(pack);
 
-    expect(body.handlingUnitTypeCode).toBe(BOX_CODE);
+    /*
+     * ⭐ **영업일과 발생 시각을 단말이 싣는다**(C-8). 서버가 받은 때로 날짜를 다시 잡으면
+     * 자정을 넘겨 전송된 큐 항목이 원장에 두 건으로 적재된다.
+     */
+    expect(body.businessDate).toEqual(expect.any(String));
+    expect(body.occurredAt).toEqual(expect.any(String));
+    /* ⛔ 유형은 «생성» 본문의 것이다 — 확정이 다시 싣지 않는다. */
+    expect(body.handlingUnitTypeCode).toBeUndefined();
     /* ⚠ 집합을 통째로 치환한다 — 담은 것 «전부»를 싣지 않으면 앞 행이 서버에서 지워진다 */
     expect(body.contents).toEqual([
       { itemId: ITEM_ID, lotId: LOT_A_ID, qty: 100, uomId: UOM_ID },
@@ -506,7 +637,7 @@ describe('P-02-08 포장 작업', () => {
     renderScreen();
 
     await packOneLine(user, LOT_A_NO, '100');
-    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
@@ -528,7 +659,7 @@ describe('P-02-08 포장 작업', () => {
     renderScreen({ packStatus: 400, packErrorBody: {} });
 
     await packOneLine(user, LOT_A_NO, '100');
-    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
@@ -563,7 +694,7 @@ describe('P-02-08 포장 작업', () => {
 
     await packOneLine(user, LOT_A_NO, '100');
 
-    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.unit.typeLabel })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.unit.parentLabel })).toBeDisabled();
     expect(screen.getByText(t.unit.lockedNotice)).toBeInTheDocument();
@@ -591,21 +722,76 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
    * ⭐ **끊긴 채로도 포장을 새로 시작해 확정까지 마친다.** 등록을 확정 시점으로 옮기면서
    * 열린 자리다 — 앞선 판은 여기서 「연결이 끊겨 새 포장을 시작할 수 없습니다」로 막았다.
    */
-  it('끊겨 있어도 새 포장을 시작해 확정까지 마친다', async () => {
+  /*
+   * ⛔ **끊긴 동안에는 «새» 포장을 시작할 수 없다**(스펙 §6). 포장번호를 서버가 매기고 확정이
+   * 그 번호를 경로 인자로 받으므로, 단말이 만들 수 없는 값을 기다리는 요청은 큐에 담을 수조차
+   * 없다. C-5 온라인 전용 표준형 4항 준용 — **저장만 막고 화면 상태는 유지**한다.
+   */
+  it('끊겨 있으면 새 포장을 시작하지 못하고 사유를 말한다', async () => {
     setOnline(false);
 
+    const creates: Request[] = [];
+    const user = userEvent.setup();
+
+    renderScreen({ creates });
+
+    await chooseUnitType(user);
+    await user.click(await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }));
+    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+
+    expect(await screen.findByText(t.unit.offlineStartBlocked)).toBeInTheDocument();
+    /* 요청이 나가지도, 큐에 담기지도 않는다 — 담을 수 있는 모양이 아니다. */
+    expect(creates).toHaveLength(0);
+    expect(screen.queryByText(t.outbox.pending(1))).not.toBeInTheDocument();
+    /* ⭐ 고른 유형과 수량은 화면에 그대로 남는다 — 저장만 막는다(C-5 4항). */
+    expect(screen.getByLabelText(t.scan.quantityLabel)).toHaveValue('100');
+  });
+
+  /* ⛔ 취소는 큐 대상이 아니다 — 끊긴 동안에는 열지 않는다. */
+  it('끊겨 있으면 포장 취소가 잠긴다', async () => {
+    const user = userEvent.setup();
+    const discards: Request[] = [];
+
+    renderScreen({ discards });
+
+    await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.unit.discardAction })).toBeDisabled();
+    });
+    expect(discards).toHaveLength(0);
+  });
+
+  /*
+   * ⭐ **이미 시작한 포장에는 계속 담고, 그 확정은 큐가 받는다**(스펙 §6). 화면 «전체»가
+   * 온라인 전용이 되는 것은 아니다.
+   */
+  it('담기 시작한 뒤 끊기면 확정이 큐로 간다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
 
     renderScreen({ writes });
 
     await packOneLine(user, LOT_A_NO, '100');
+    await unitPane().findByText(HANDLING_UNIT_NO);
+
+    setOnline(false);
+    act(() => {
+      globalThis.dispatchEvent(new Event('offline'));
+    });
 
     /*
      * ⛔ **보낼 것이 없는데 건수를 제목으로 내지 않는다.** 「미전송 0건」은 무엇이 0건이라는
      * 것인지 읽을 수 없는 말이다 — 끊겼을 뿐이면 끊겼다고 말한다(실측).
      */
-    expect(screen.getByText(messages.common.connection.offline)).toBeInTheDocument();
+    expect(await screen.findByText(messages.common.connection.offline)).toBeInTheDocument();
     expect(screen.queryByText(t.outbox.pending(0))).not.toBeInTheDocument();
 
     await user.click(await screen.findByRole('button', { name: t.confirm.submit }));
@@ -613,7 +799,6 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     expect(await screen.findByText(t.confirm.done)).toBeInTheDocument();
     /* 담긴 순간이 곧 확정이다 — 다만 아직 닿지 않았다는 사실을 함께 말한다(C-1 #2 · #4). */
     expect(screen.getByText(t.outbox.pending(1))).toBeInTheDocument();
-    /* 담기에서도 확정에서도 서버로 나간 것이 없다 — 전부 큐에 있다. */
     expect(writes).toHaveLength(0);
   });
 
@@ -627,7 +812,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     renderScreen({ writes });
 
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     /* 여기서 망이 끊긴다. */
     setOnline(false);
@@ -651,7 +836,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     renderScreen({ writes });
 
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     setOnline(false);
     act(() => {
@@ -672,7 +857,9 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
 
     const packRequest = writeAt(writes, 0);
 
-    expect(new URL(packRequest.url).pathname).toBe('/inventory/handling-units');
+    expect(new URL(packRequest.url).pathname).toBe(
+      `/inventory/handling-units/${String(HANDLING_UNIT_ID)}:pack`,
+    );
     expect(packRequest.headers.get('X-Worker-No')).toBe(WORKER_NO);
     /* ⛔ 큐에 쌓인 요청은 잠금 토큰을 싣지 않는다(C-9). */
     expect(packRequest.headers.get('If-Match')).toBeNull();
@@ -680,7 +867,9 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     const body = await bodyOf(packRequest);
 
     expect(body.contents).toHaveLength(1);
-    expect(body.handlingUnitTypeCode).toBe(BOX_CODE);
+    /* ⭐ 큐에 밀려도 「언제 일어난 일인가」가 보존된다(C-8). */
+    expect(body.businessDate).toEqual(expect.any(String));
+    expect(body.occurredAt).toEqual(expect.any(String));
   });
 
   /*
@@ -696,7 +885,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     renderScreen({ writes, packStatus: 503 });
 
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
@@ -745,7 +934,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     renderScreen({ writes, packStatus: 503 });
 
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
@@ -798,7 +987,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     renderScreen({ writes, packStatus: 503 });
 
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
@@ -824,7 +1013,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     await user.click(screen.getByRole('button', { name: t.confirm.startNext }));
 
     await packOneLine(user, LOT_B_NO, '30');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     setOnline(false);
     act(() => {
@@ -857,7 +1046,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     renderScreen({ writes, packStatus: 503 });
 
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
@@ -881,7 +1070,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
 
     /* 다음 포장에 «같은 LOT 을 같은 수량으로» 담는다. */
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     setOnline(false);
     act(() => {
@@ -916,7 +1105,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     renderScreen(options);
 
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
@@ -949,7 +1138,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
 
     /* 다음 포장에 «같은 LOT 을 같은 수량으로» 담고, 이번에는 연결된 채로 확정한다. */
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
@@ -970,7 +1159,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     renderScreen({ packStatus: 400 });
 
     await packOneLine(user, LOT_A_NO, '100');
-    await unitPane().findByText(t.unit.numberPending);
+    await unitPane().findByText(HANDLING_UNIT_NO);
 
     setOnline(false);
     act(() => {
