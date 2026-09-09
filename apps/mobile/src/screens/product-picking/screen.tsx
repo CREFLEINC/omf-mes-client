@@ -10,7 +10,6 @@ import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useCustomerNames, useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -168,7 +167,6 @@ export const ProductPickingScreen = () => {
   const [chosen, setChosen] = useState<{ requestId: number; lineId: number } | null>(null);
   const [lotId, setLotId] = useState<number | null>(null);
   const [qty, setQty] = useState('');
-  const [manual, setManual] = useState('');
   const [missed, setMissed] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [listView, setListView] = useState(false);
@@ -305,7 +303,6 @@ export const ProductPickingScreen = () => {
   const restart = () => {
     setLotId(null);
     setQty('');
-    setManual('');
     setMissed(null);
     setDone(false);
     scanField.focus();
@@ -582,17 +579,24 @@ export const ProductPickingScreen = () => {
           fullWidth
           error={scanMessage()}
         />
-        <ManualEntry
-          label={t.scan.manualLabel}
-          submitLabel={t.scan.manualSubmit}
-          value={manual}
-          onChange={setManual}
-          onSubmit={() => {
-            takeScan(manual.trim());
-            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-            setManual('');
-          }}
-        />
+        {/*
+         * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+         * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+         */}
+        {scanField.manual ? (
+          <Button
+            className="picking__pick"
+            variant="outlined"
+            size="xl"
+            onClick={scanField.submitManual}
+          >
+            {t.scan.manualSubmit}
+          </Button>
+        ) : (
+          <Button className="picking__pick" variant="text" size="xl" onClick={scanField.openManual}>
+            {t.scan.manualLabel}
+          </Button>
+        )}
         {selected === null ? null : <p>{t.scan.picked(selected.lot.lotNo)}</p>}
       </section>
 

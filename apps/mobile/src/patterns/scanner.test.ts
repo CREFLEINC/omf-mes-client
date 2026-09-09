@@ -480,7 +480,22 @@ describe('세션 경계', () => {
     typeInto(field, 'SYN-LOT-0300', 10);
     vi.advanceTimersByTime(120);
 
-    expect(onScan).toHaveBeenCalledWith('ASYN-LOT-0300');
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0300');
+  });
+
+  /* 손으로 치던 중에 스캔이 들어오면 두 값이 한 칸에서 이어 붙어 어느 LOT 도 안 가리킨다. */
+  it('손으로 치던 중에 스캔이 오면 친 것을 대체한다', () => {
+    const scanner = createKeyboardWedgeScanner();
+    const field = mountField();
+    const onScan = vi.fn();
+    scanner.attach(field, onScan);
+
+    typeInto(field, 'FLOT-2026', 200);
+    vi.advanceTimersByTime(1500);
+    typeInto(field, 'SYN-LOT-0400', 10);
+    vi.advanceTimersByTime(120);
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0400');
   });
 
   it('키를 눌렀던 흔적이 다음 스캔을 막지 않는다', () => {
@@ -494,7 +509,7 @@ describe('세션 경계', () => {
     typeInto(field, 'SYN-LOT-0301', 10);
     vi.advanceTimersByTime(120);
 
-    expect(onScan).toHaveBeenCalledWith('AASYN-LOT-0301');
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0301');
   });
 
   it('키에서 손을 떼면 곧바로 다음 스캔을 받는다', () => {
@@ -537,7 +552,7 @@ describe('세션 경계', () => {
     typeInto(field, 'BCD', 10);
     vi.advanceTimersByTime(120);
 
-    expect(onScan).toHaveBeenCalledWith('ABCD');
+    expect(onScan).toHaveBeenCalledWith('BCD');
   });
 
   it('키를 누르고 있어도 통째로 들어온 스캔은 받는다', () => {
@@ -581,7 +596,7 @@ describe('세션 경계', () => {
     expect(onScan).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(80);
-    expect(onScan).toHaveBeenCalledWith('ABC1234');
+    expect(onScan).toHaveBeenCalledWith('1234');
   });
 
   it('34자리에서 앞 두 글자가 늦어도 스캔으로 본다', () => {

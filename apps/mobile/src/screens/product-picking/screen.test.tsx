@@ -216,13 +216,20 @@ const openList = async (user: ReturnType<typeof userEvent.setup>) => {
 
 /* 설계는 스캔으로만 고르게 한다. 목록에서 바로 고르는 길은 없다. */
 const pickLot = async (user: ReturnType<typeof userEvent.setup>, lotNo: string) => {
-  if (screen.queryByLabelText('직접 입력') === null) {
+  if (screen.queryByRole('button', { name: '찾기' }) === null) {
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
   }
 
-  await user.clear(screen.getByLabelText('직접 입력'));
-  await user.type(screen.getByLabelText('직접 입력'), lotNo);
-  await user.click(screen.getByRole('button', { name: '찾기' }));
+  const field = screen.getByLabelText('제품 LOT 스캔');
+
+  await user.clear(field);
+  await user.type(field, lotNo);
+
+  const submit = screen.queryByRole('button', { name: '찾기' });
+
+  if (submit !== null) {
+    await user.click(submit);
+  }
 };
 
 const chooseTarget = async (user: ReturnType<typeof userEvent.setup>) => {
@@ -404,7 +411,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await screen.findByText('보류 — 집을 수 없습니다');
 
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('직접 입력'), EARLY.lotNo);
+    await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
     await user.click(screen.getByRole('button', { name: '찾기' }));
 
     /* 코드를 그대로 보이면 무엇이 걸렸는지 모른다. 표시명은 마스터가 갖는다. */
@@ -441,13 +448,10 @@ describe('제품LOT 피킹 스캔 화면', () => {
     mount();
     await chooseTarget(user);
 
-    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('직접 입력'), EARLY.lotNo);
-    await user.click(screen.getByRole('button', { name: '찾기' }));
+    await pickLot(user, EARLY.lotNo);
     expect(await screen.findByText(`스캔됨 ${EARLY.lotNo}`)).toBeTruthy();
 
-    await user.type(screen.getByLabelText('직접 입력'), '없는LOT');
-    await user.click(screen.getByRole('button', { name: '찾기' }));
+    await pickLot(user, '없는LOT');
 
     expect(await screen.findByText(/없는LOT LOT을 이 품목에서 찾지 못했습니다/)).toBeTruthy();
     expect(screen.getByText(`스캔됨 ${EARLY.lotNo}`)).toBeTruthy();
@@ -464,7 +468,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await screen.findByText('보류 — 집을 수 없습니다');
 
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('직접 입력'), EARLY.lotNo);
+    await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
     await user.click(screen.getByRole('button', { name: '찾기' }));
     await screen.findByText(/보류 사유 수입검사 대기/);
 
@@ -1026,7 +1030,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await screen.findByText('FG-0311');
 
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('직접 입력'), 'FG-0311');
+    await user.type(screen.getByLabelText('제품 LOT 스캔'), 'FG-0311');
     await user.click(screen.getByRole('button', { name: '찾기' }));
 
     expect(await screen.findByLabelText('피킹 수량')).toBeTruthy();
@@ -1040,7 +1044,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await screen.findByText('FG-0298');
 
     await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-    await user.type(screen.getByLabelText('직접 입력'), 'FG-9999');
+    await user.type(screen.getByLabelText('제품 LOT 스캔'), 'FG-9999');
     await user.click(screen.getByRole('button', { name: '찾기' }));
 
     expect(await screen.findByText('FG-9999 LOT을 이 품목에서 찾지 못했습니다')).toBeTruthy();

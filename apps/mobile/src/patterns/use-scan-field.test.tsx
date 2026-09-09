@@ -11,6 +11,13 @@ const Probe = ({ onScan, scanner }: { onScan: (v: string) => void; scanner?: Sca
     <>
       <input aria-label="스캔" ref={field.ref} />
       <button type="button">다른 곳</button>
+      <button type="button" onClick={field.openManual}>
+        직접 입력
+      </button>
+      <button type="button" onClick={field.submitManual}>
+        찾기
+      </button>
+      <p>{field.manual ? '손 입력 중' : '스캔 대기'}</p>
     </>
   );
 };
@@ -20,6 +27,47 @@ describe('스캔 필드 결선', () => {
     render(<Probe onScan={vi.fn()} />);
 
     expect(screen.getByLabelText('스캔')).toHaveFocus();
+  });
+
+  it('직접 입력을 열면 소프트 키보드를 받는다', async () => {
+    const user = userEvent.setup();
+    render(<Probe onScan={vi.fn()} />);
+
+    expect(screen.getByLabelText('스캔')).toHaveAttribute('inputmode', 'none');
+
+    await user.click(screen.getByRole('button', { name: '직접 입력' }));
+
+    expect(screen.getByLabelText('스캔')).toHaveAttribute('inputmode', 'text');
+    expect(screen.getByText('손 입력 중')).toBeTruthy();
+  });
+
+  it('손으로 적은 것을 스캔값과 같은 길로 넘긴다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} />);
+
+    await user.click(screen.getByRole('button', { name: '직접 입력' }));
+    await user.type(screen.getByLabelText('스캔'), 'SYN-LOT-0010');
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0010');
+    expect(screen.getByText('스캔 대기')).toBeTruthy();
+  });
+
+  /* 실물을 읽은 값이 이긴다. 손으로 치던 것이 남으면 두 값이 한 칸에서 섞인다. */
+  it('직접 입력 중에 스캔이 오면 손 입력을 접는다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} />);
+
+    await user.click(screen.getByRole('button', { name: '직접 입력' }));
+    expect(screen.getByText('손 입력 중')).toBeTruthy();
+
+    await user.type(screen.getByLabelText('스캔'), 'SYN-LOT-0011{Enter}');
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0011');
+    expect(screen.getByText('스캔 대기')).toBeTruthy();
+    expect(screen.getByLabelText('스캔')).toHaveAttribute('inputmode', 'none');
   });
 
   it('스캔값을 그대로 넘긴다', async () => {
