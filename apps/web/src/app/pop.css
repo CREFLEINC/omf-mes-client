@@ -1595,19 +1595,9 @@
   overflow-wrap: anywhere;
 }
 
-/* 포장 번호 옆의 유형 — 같은 줄에 서되 번호보다 약하다(설계 §3 「HU-…0007  박스」). */
-.pop-ui .pop-reprint-hu-type {
-  display: inline-flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  font-size: var(--pop-label);
-  font-weight: 400;
-  color: var(--on-surface-variant);
-}
-
-/* 이름표는 값보다 한 겹 더 옅다 — 읽는 순서가 「유형 → 박스」로 서게 한다. */
-.pop-ui .pop-reprint-hu-type-label {
-  color: var(--on-surface-muted);
+/* 유형 칩은 번호 옆에 붙는다 — 글자와 알약이라 모양으로 갈린다(설계 §3 「HU-…0007  박스」). */
+.pop-ui .pop-reprint-hu-no > [class*='chip'] {
+  align-self: center;
 }
 
 /* 대상 목록과 재출력 사유를 가르는 선(설계 §3). 위는 「무엇을」, 아래는 「왜」다. */

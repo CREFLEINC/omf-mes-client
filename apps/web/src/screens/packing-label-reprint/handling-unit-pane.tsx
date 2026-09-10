@@ -1,4 +1,4 @@
-import { AlertBanner, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { isMixedLot, type HandlingUnit, type PackingContentRow } from './types';
@@ -65,13 +65,14 @@ export const HandlingUnitPane = ({
       <p className="pop-reprint-hu-no">
         <span className="pop-reprint-hu-value">{handlingUnit.handlingUnitNo}</span>
         {/*
-         * ⭐ **유형에 이름을 붙인다**(사용자 지시 2026-09-10). 「박스」만 홀로 서 있으면 그것이
-         * 유형인지 다른 무엇인지 눈이 한 번 더 묻는다 — 이름표 두 글자가 그 물음을 없앤다.
+         * ⭐ **유형은 칩으로 세운다**(사용자 지시 2026-09-10). 번호는 글자, 유형은 알약 —
+         * 모양이 다르면 「번호와 그 성격」이 한눈에 갈린다.
+         *
+         * ⛔ 색을 쓰지 않는다(`idle`) — 상태가 아니라 분류라, 초록·노랑은 없는 뜻을 만든다.
          */}
-        <span className="pop-reprint-hu-type">
-          <span className="pop-reprint-hu-type-label">{t.typeLabel}</span>
+        <Chip size="sm" status="idle">
           {typeName ?? handlingUnit.handlingUnitTypeCode}
-        </span>
+        </Chip>
       </p>
 
       <h3 className="pane-title">{t.contentsLabel}</h3>
