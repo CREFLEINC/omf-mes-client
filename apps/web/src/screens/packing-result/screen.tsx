@@ -545,11 +545,14 @@ export const PackingResultScreen = () => {
                   label: candidate.handlingUnitNo,
                 }))}
               />
-              <p className="field-note">
-                {warehouseId !== null && !parents.isPending && parents.candidates.length === 0
-                  ? t.notes.parentEmpty
-                  : t.notes.parentHint}
-              </p>
+              {/*
+               * ⛔ **「팔레트에 담으면 지정합니다」를 상시로 두지 않는다**(사용자 지적
+               *   2026-09-10) — 스펙에 없는 문장이고, 고를 것이 있으면 목록이 이미 그 말을
+               *   한다. 후보가 «없을» 때만 왜 못 고르는지 적는다.
+               */}
+              {warehouseId !== null && !parents.isPending && parents.candidates.length === 0 && (
+                <p className="field-note">{t.notes.parentEmpty}</p>
+              )}
             </div>
 
             <ContentsTable

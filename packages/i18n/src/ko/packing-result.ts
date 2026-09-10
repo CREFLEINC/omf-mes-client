@@ -52,11 +52,6 @@ export const packingResult = {
     lookupFailed: '조회하지 못했습니다. 다시 읽어 주세요',
   },
   contents: {
-    columns: {
-      itemCode: '품목',
-      lotNo: 'LOT',
-      qty: '수량',
-    },
     total: (packed: number, allocated: number): string =>
       `합계 ${String(packed)} / ${String(allocated)}`,
     empty: '담긴 것이 없습니다',
@@ -88,7 +83,6 @@ export const packingResult = {
     parentNone: '(없음)',
   },
   notes: {
-    parentHint: '팔레트에 담으면 지정합니다',
     /** 후보가 없는 것은 고장이 아니다(스펙 §5-2-1). */
     parentEmpty: '이 창고에 담을 상위 포장이 없습니다. 없이 확정할 수 있습니다',
     qtyWaiting: '생산LOT 을 읽으면 수량을 칠 수 있습니다',

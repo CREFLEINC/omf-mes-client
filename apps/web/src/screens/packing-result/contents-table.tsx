@@ -1,6 +1,5 @@
-import { Button, type Column, EmptyState, Table } from '@crefle/web-ui';
+import { Button, EmptyState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
 
 import { packedTotal, remainingTotal } from './packing-draft';
 import type { PackedLine } from './types';
@@ -52,67 +51,47 @@ export interface ContentsTableProps {
   onRemove: (shipmentLotAllocationId: number) => void;
 }
 
-const renderQty = (value: number): ReactNode => String(value);
+export const ContentsTable = ({ lines, onRemove }: ContentsTableProps) => (
+  <div className="packing-contents">
+    {/*
+     * ⛔ **열 머리글 줄을 두지 않는다**(사용자 지적 2026-09-10). 스펙은 이 자리를 「내용물/수량
+     *   목록」이라고만 적고 열 구성을 정하지 않으며, 같은 성격의 `P-02-08` 도면은
+     *   `✅ LOT-…0031  ABC-123  100 EA` 형태의 머리글 없는 목록이다. 세로 예산이 슬랙 0 인
+     *   화면이라(§3-1) 머리줄 한 줄이 담은 줄 하나를 통째로 가져간다.
+     */}
+    {lines.length === 0 ? (
+      <EmptyState size="sm" title={t.contents.empty} />
+    ) : (
+      <ul className="packing-contents-list" aria-label={t.panes.packing}>
+        {lines.map((row) => (
+          <li className="packing-contents-line" key={String(row.shipmentLotAllocationId)}>
+            {/* 담긴 줄임을 나타내는 표식 — 값이 아니라 상태다. */}
+            <span className="packing-contents-mark" aria-hidden="true">
+              ✓
+            </span>
+            <span className="packing-contents-item">{row.itemCode}</span>
+            {/* LOT 은 분절해 보인다(공유계약 E-2) — 붙여 쓰면 실물 라벨과 대조할 수 없다. */}
+            <span className="packing-contents-lot">{segmentLotNo(row.lotNo)}</span>
+            <span className="packing-contents-qty">{String(row.qty)}</span>
+            {/*
+             * ⛔ **되돌릴 수 있는 조작이라 72px 을 걸지 않는다.** 모든 버튼을 키우면 정작 큰 것
+             * (확정)이 눈에 띄지 않아 크기가 뜻을 잃는다.
+             */}
+            <Button
+              type="button"
+              variant="text"
+              size="sm"
+              onClick={() => {
+                onRemove(row.shipmentLotAllocationId);
+              }}
+            >
+              {t.contents.remove}
+            </Button>
+          </li>
+        ))}
+      </ul>
+    )}
 
-export const ContentsTable = ({ lines, onRemove }: ContentsTableProps) => {
-  /* 값은 열 가운데에 선다 — 다른 POP 목록과 같다(사용자 지시 2026-09-07 · 전례 `P-04-02`). */
-  const columns: Column<PackedLine>[] = [
-    {
-      key: 'itemCode',
-      header: t.contents.columns.itemCode,
-      align: 'center',
-      render: (row) => row.itemCode,
-    },
-    {
-      key: 'lotNo',
-      header: t.contents.columns.lotNo,
-      align: 'center',
-      render: (row) => segmentLotNo(row.lotNo),
-    },
-    {
-      key: 'qty',
-      header: t.contents.columns.qty,
-      align: 'center',
-      render: (row) => renderQty(row.qty),
-    },
-    {
-      key: 'remove',
-      header: '',
-      align: 'end',
-      render: (row) => (
-        /*
-         * ⛔ **되돌릴 수 있는 조작이라 72px 을 걸지 않는다.** 모든 버튼을 키우면 정작 큰 것
-         * (확정)이 눈에 띄지 않아 크기가 뜻을 잃는다.
-         */
-        <Button
-          type="button"
-          variant="text"
-          size="sm"
-          onClick={() => {
-            onRemove(row.shipmentLotAllocationId);
-          }}
-        >
-          {t.contents.remove}
-        </Button>
-      ),
-    },
-  ];
-
-  return (
-    <div className="packing-contents">
-      <Table
-        density="comfortable"
-        columns={columns}
-        rows={lines}
-        /*
-         * 지정하지 않으면 인덱스가 React key 가 되어, 앞 줄을 빼는 순간 그 자리의 DOM 노드가
-         * 대신 지워진다 — 수량이 남의 줄로 옮겨 붙어 보인다.
-         */
-        getRowId={(row) => String(row.shipmentLotAllocationId)}
-        empty={<EmptyState size="sm" title={t.contents.empty} />}
-      />
-
-      <p className="packing-total">{t.contents.total(packedTotal(lines), remainingTotal(lines))}</p>
-    </div>
-  );
-};
+    <p className="packing-total">{t.contents.total(packedTotal(lines), remainingTotal(lines))}</p>
+  </div>
+);
