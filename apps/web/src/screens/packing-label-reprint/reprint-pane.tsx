@@ -85,7 +85,12 @@ export const ReprintPane = ({
                 : t.targets.identificationTag;
 
             return (
-              <li key={target.rowId} className="pop-reprint-target">
+              <li
+                key={target.rowId}
+                className={`pop-reprint-target${
+                  target.disabledReason === null ? '' : ' pop-reprint-target--locked'
+                }`}
+              >
                 {/*
                  * ⭐ **줄 전체가 누르는 자리다.** 설계 §7 이 이 선택을 `Checkbox`(다중) 로
                  * 지정했는데, 상자 자체는 손가락보다 작다. `<label>` 로 줄을 감싸면 종류·번호
@@ -106,29 +111,35 @@ export const ReprintPane = ({
                     <span className="pop-reprint-kind">{kind}</span>{' '}
                     <span className="pop-reprint-name">{target.displayName}</span>
                   </Checkbox>
-                </div>
-                <div className="pop-reprint-target-meta">
                   {/*
-                   * ⭐ **최초 발행을 재출력과 다른 색으로 가른다**(스펙 §6 예외표 · 사용자 지적
-                   * 2026-09-10). 이력이 0 이면 이 줄은 재출력이 아니라 처음 뽑는 것이고,
-                   * 사유를 받지 않는다 — 같은 모양으로 서면 그 갈림이 눈에 보이지 않는다.
+                   * ⭐ **한 줄에서 다 읽힌다**(사용자 지시 2026-09-10) — 「종류·번호」가 왼쪽,
+                   * 「발행 상태·수량」이 오른쪽 끝이다. 셋을 세로로 쌓아 두었더니 줄 하나가
+                   * 화면의 다섯 줄을 먹어, 대상 넷이면 사유·[재출력]이 접힘선 아래로 갔다.
+                   *
+                   * ⭐ 이력이 0 이면 재출력이 아니라 처음 뽑는 것이라 색을 가른다(스펙 §6).
+                   *
+                   * ⛔ **고를 수 없는 줄에는 이력 칩을 세우지 않는다.** 그 줄의 이력은 애초에
+                   *    조회하지 않아(`useIssueSummary` 는 LOT 라벨만 묻는다) 「모른다」가 뜬 것인데,
+                   *    못 뽑는 까닭은 이력이 아니라 개체를 알 수 없다는 것이다 — 아래 한 줄이
+                   *    그것을 말한다.
                    */}
-                  <Chip
-                    status={
-                      target.issueCount === null
-                        ? 'warning'
-                        : target.issueCount === 0
-                          ? 'success'
-                          : 'info'
-                    }
-                  >
-                    {issueCountText(target)}
-                  </Chip>
-                  <span className="field-note">{t.targets.range(target.qty)}</span>
+                  <span className="pop-reprint-target-meta">
+                    {target.disabledReason === null && (
+                      <Chip
+                        status={
+                          target.issueCount === null
+                            ? 'warning'
+                            : target.issueCount === 0
+                              ? 'success'
+                              : 'info'
+                        }
+                      >
+                        {issueCountText(target)}
+                      </Chip>
+                    )}
+                    <span className="pop-reprint-qty">{t.targets.range(target.qty)}</span>
+                  </span>
                 </div>
-                {target.issueCount === 0 && target.disabledReason === null && (
-                  <p className="field-note">{t.targets.firstIssueNote}</p>
-                )}
                 {/* ⛔ 고를 수 없는 줄은 사유를 함께 낸다 — 비활성만 두면 왜 안 되는지 알 수 없다 */}
                 {target.disabledReason !== null && (
                   <p className="field-note">{target.disabledReason}</p>

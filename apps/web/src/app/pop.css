@@ -1632,6 +1632,60 @@
 }
 
 /*
+ * 대상 한 줄 — **한 줄에서 다 읽힌다**(사용자 지시 2026-09-10). 왼쪽에 「종류·번호」,
+ * 오른쪽 끝에 「발행 상태·수량」이다. 셋을 세로로 쌓아 두었더니 대상 하나가 화면의 다섯 줄을
+ * 먹어, 넷이면 사유와 [재출력]이 접힘선 아래로 갔다.
+ *
+ * ⚠ 좁아지면 오른쪽 묶음이 아랫줄로 내려간다 — 잘리지 않는다.
+ */
+.pop-ui .pop-reprint-target-head {
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.pop-ui .pop-reprint-target-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-inline-start: auto;
+}
+
+/* 수량 — 눈이 오른쪽 끝에서 찾는 값이라 본문색으로 두고 자릿수를 고정폭으로 그린다. */
+.pop-ui .pop-reprint-qty {
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface-variant);
+}
+
+/* 줄 사이는 선 하나로 가른다 — 굴려도 어디서 한 줄이 끝나는지 보인다. */
+.pop-ui .pop-reprint-targets {
+  gap: 0;
+}
+
+.pop-ui .pop-reprint-target {
+  gap: 0;
+  padding-block: var(--space-2);
+  /*
+   * ⚠ 관리웹 값(`rgb(0 0 0 / 8%)`)은 어두운 바탕에서 보이지 않는다 — 줄이 붙어 한 덩어리로
+   *   읽혔다. 이 화면의 다른 선(`.pop-reprint-rule`)과 같은 값을 쓴다.
+   */
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+/* 마지막 줄 아래는 긋지 않는다 — 사유 앞의 선과 겹쳐 두 줄로 보인다. */
+.pop-ui .pop-reprint-target:last-child {
+  border-block-end: 0;
+}
+
+/*
+ * ⛔ **못 고르는 줄이라고 글까지 흐리지 않는다**(사용자 지시 2026-09-10). 상자와 이름만 한 겹
+ *    눌러 「누를 수 없다」를 말하고, 왜 못 쓰는지 적은 줄은 본문색으로 읽히게 둔다 — 읽으라고
+ *    적어 둔 문장이 가장 안 읽히는 상태였다.
+ */
+.pop-ui .pop-reprint-target--locked > .field-note {
+  color: var(--on-surface-variant);
+}
+
+/*
  * 이름–값 목록 — **이름도 값도 필요한 만큼만 쓰고, 줄끼리 세로줄을 맞춘다.**
  *
  * 관리웹 기준의 `8rem` 고정은 POP 의 좁은 구획에서 값 칸을 반 넘게 먹는다 — 인식표 발행에서
