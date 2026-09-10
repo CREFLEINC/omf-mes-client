@@ -108,11 +108,20 @@ export const WorkOrderList = ({
 
       {isError ? (
         <div className="banner-slot">
-          <AlertBanner variant="error">
-            {t.loadError}{' '}
-            <Button type="button" variant="text" size="lg" onClick={onRetry}>
-              {t.retry}
-            </Button>
+          {/*
+           * ⭐ **[ 다시 시도 ]는 띠의 조작 칸에 선다**(사용자 지시 2026-09-11 · POP 공통).
+           *    글 사이에 끼워 두면 화면마다 자리와 크기가 갈린다 — 다른 POP 화면의 조회 실패
+           *    띠가 모두 `action` 으로 오른쪽 끝에 세우고 `sm` 으로 서 있다.
+           */}
+          <AlertBanner
+            variant="error"
+            action={
+              <Button type="button" variant="outlined" size="sm" onClick={onRetry}>
+                {t.retry}
+              </Button>
+            }
+          >
+            {t.loadError}
           </AlertBanner>
         </div>
       ) : (

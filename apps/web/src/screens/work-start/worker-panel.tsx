@@ -91,17 +91,23 @@ export const WorkerPanel = ({
 
         {error !== null && (
           <div className="banner-slot">
-            <AlertBanner variant="error">
-              {error}{' '}
-              {/*
-               * ⛔ **조회가 실패한 자리에만 준다.** 미등록·퇴사는 다시 물어도 답이 같다 —
-               *    거기 「다시 시도」를 붙이면 없는 사람을 계속 찾게 한다.
-               */}
-              {error === t.lookupFailed && (
-                <Button type="button" variant="text" size="lg" onClick={onRetry}>
-                  {t.retry}
-                </Button>
-              )}
+            {/*
+             * ⛔ **조회가 실패한 자리에만 준다.** 미등록·퇴사는 다시 물어도 답이 같다 —
+             *    거기 「다시 시도」를 붙이면 없는 사람을 계속 찾게 한다.
+             *
+             * ⭐ 자리와 크기는 다른 POP 화면의 조회 실패 띠와 같다 — 띠의 조작 칸에 `sm`.
+             */}
+            <AlertBanner
+              variant="error"
+              action={
+                error === t.lookupFailed ? (
+                  <Button type="button" variant="outlined" size="sm" onClick={onRetry}>
+                    {t.retry}
+                  </Button>
+                ) : undefined
+              }
+            >
+              {error}
             </AlertBanner>
           </div>
         )}

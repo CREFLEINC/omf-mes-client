@@ -4025,3 +4025,13 @@
   margin-block-start: 0;
   align-items: center;
 }
+
+/*
+ * 러닝체인지 [ 교체 등록 ] 아래의 [ 다시 시도 ] — **글자만큼만 선다**.
+ *
+ * ⚠ 이 묶음은 주 버튼이 구획 폭을 쓰도록 늘려 세우는데, 그 늘림이 옆의 작은 조작에도 걸려
+ *   [ 다시 시도 ]가 473px 로 섰다(실측 2026-09-11). 다른 POP 화면의 같은 이름 단추는 83px 다.
+ */
+.pop-ui .pop-rc-submit > button:not(.pop-rc-submit-button) {
+  align-self: start;
+}

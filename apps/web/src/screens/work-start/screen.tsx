@@ -388,16 +388,22 @@ export const WorkStartScreen = () => {
        */}
       {block !== null && block.code !== 'notSelected' && (
         <div className="banner-slot">
-          <AlertBanner variant="warning">
-            {block.text}
-            {retryLabel !== null && (
-              <>
-                {' '}
-                <Button type="button" variant="text" size="lg" onClick={gate.retry}>
+          {/*
+           * ⭐ **[ 다시 확인 ]은 띠의 조작 칸에 선다**(사용자 지시 2026-09-11 · POP 공통).
+           *    글 사이에 끼워 두면 화면마다 자리와 크기가 갈린다 — 다른 POP 화면의 실패 띠가
+           *    모두 `action` 으로 오른쪽 끝에 세우고 `sm` 으로 서 있다.
+           */}
+          <AlertBanner
+            variant="warning"
+            action={
+              retryLabel === null ? undefined : (
+                <Button type="button" variant="outlined" size="sm" onClick={gate.retry}>
                   {retryLabel}
                 </Button>
-              </>
-            )}
+              )
+            }
+          >
+            {block.text}
           </AlertBanner>
         </div>
       )}
