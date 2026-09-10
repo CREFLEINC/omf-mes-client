@@ -38,3 +38,12 @@ export const useCodeValues = (group: string): UseQueryResult<CodeValue[]> => {
     },
   });
 };
+
+/**
+ * 코드에 붙은 표시명.
+ *
+ * 못 찾으면 코드를 그대로 낸다 - 아직 못 받은 것을 빈칸으로 두면 무엇을 가리키는지조차
+ * 사라지고, 이름을 지어내면 서버가 바꾼 날 두 자리가 어긋난다.
+ */
+export const displayNameOf = (codes: { code: string; name: string }[], code: string): string =>
+  codes.find((each) => each.code === code)?.name ?? code;

@@ -43,6 +43,7 @@ const ENTRIES = [
   ['M-01-07 임시 사유', '/mdm/code-values?codeGroupCode=PUTAWAY_TASK_TEMPORARY_REASON', 1],
   ['M-01-09 차이 사유', '/mdm/code-values?codeGroupCode=VARIANCE_REASON', 1],
   ['M-01-13 대기 요청', '/app/approval-requests?targetTypeCode=INBOUND_LOT&targetId=8003', 1],
+  ['M-01-13 요청 상태', '/mdm/code-values?codeGroupCode=APPROVAL_REQUEST_STATUS', 3],
   ['M-02-01 생산LOT', '/trace/lots?lotNo=PLOT-2026-0031', 1],
   ['P-02-04 현재 생산LOT', '/trace/lots?workOrderId=11002&currentOnly=true&withProgress=true', 1],
   [

@@ -55,3 +55,7 @@
 .iqc-skip__request-when {
   color: var(--on-surface-muted, inherit);
 }
+
+.iqc-skip__wide {
+  width: 100%;
+}
