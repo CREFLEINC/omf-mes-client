@@ -351,11 +351,14 @@ export const RepackLabelIssueScreen = () => {
         <Card bordered className="pop-section pop-repack-issue" aria-label={t.issue.sectionLabel}>
           <div className="pane-title pop-repack-head">
             <h2 className="pop-repack-head-name">{t.issue.sectionLabel}</h2>
-            {standingQuery.data !== undefined && (
+            {/*
+             * ⛔ **처음 발행이라는 말을 적지 않는다**(사용자 지시 2026-09-11). 라벨이 없는
+             *    포장을 골라 들어온 자리라 「처음」이 기본값이고, 기본값을 적어 두면 정작
+             *    달라진 것(재발행 n회)이 그 자리에 묻힌다.
+             */}
+            {standingQuery.data !== undefined && (standing.issueCount ?? 0) > 0 && (
               <span className="pop-repack-standing">
-                {standing.issueCount === null || standing.issueCount === 0
-                  ? t.issue.firstIssue
-                  : t.issue.reissue(standing.issueCount)}
+                {t.issue.reissue(standing.issueCount ?? 0)}
               </span>
             )}
           </div>

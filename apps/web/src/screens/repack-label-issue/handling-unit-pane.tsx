@@ -18,18 +18,25 @@ const columns: Column<PackingContentRow>[] = [
     key: 'lotNo',
     header: t.lotColumn,
     align: 'center',
+    /*
+     * ⚠ **폭을 비율로 나눈다**(사용자 지시 2026-09-11). 폭을 글자에 맡기면 첫 열이 남는
+     *   자리를 통째로 먹어 품목과 수량이 오른쪽 끝에 몰려 붙는다.
+     */
+    width: '34%',
     render: (row) => row.lotNo ?? t.unknownValue,
   },
   {
     key: 'itemCode',
     header: t.itemColumn,
     align: 'center',
+    width: '33%',
     render: (row) => row.itemCode ?? t.unknownValue,
   },
   {
     key: 'qty',
     header: t.qtyColumn,
     align: 'center',
+    width: '33%',
     render: (row) => `${String(row.qty)} ${row.uomCode ?? t.unknownValue}`,
   },
 ];

@@ -113,7 +113,6 @@ export const repackLabelIssue = {
     remainderFailed: '잔량 라벨 재출력 대상을 확인하지 못했습니다.',
     targetRequired: '인쇄할 라벨을 하나 이상 선택하세요.',
     /** 회차는 서버가 매긴다. 화면은 「이번이 몇 번째가 될 것인가」를 세지 않는다. */
-    firstIssue: '이 포장의 라벨을 처음 발행합니다.',
     reissue: (issueCount: number): string =>
       `이미 ${String(issueCount)}번 발행했습니다. 다시 발행하면 재발행으로 기록되고 사유가 필요합니다.`,
     summaryLoading: '발행 현황을 확인하는 중입니다.',
