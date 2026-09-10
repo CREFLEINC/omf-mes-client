@@ -864,6 +864,40 @@ on('GET', '/app/document-issues/summary', (_params, query) => {
   };
 });
 
+/*
+ * 발행 이력 목록. **씨앗 상태로 답한다** — 이 경로를 두지 않았더니 계약 예시 서버로 넘어가,
+ * 어떤 LOT 을 물어도 「이미 한 건 발행됐고 인쇄는 대기」인 예시가 돌아왔다. 생산 실적 등록
+ * 화면이 그것을 「발행된 라벨이 있다」로 읽어, 씨앗을 새로 띄워도 늘 재인쇄 상태로 섰다(실측).
+ */
+on('GET', '/app/document-issues', (_params, query) => {
+  const documentTypeCode = query.get('documentTypeCode');
+  const targetTypeCode = query.get('targetTypeCode');
+  const targetId = num(query, 'targetId');
+
+  const items = state.documentIssues
+    .filter(
+      (issue) =>
+        (documentTypeCode === null || issue.documentTypeCode === documentTypeCode) &&
+        (targetTypeCode === null || issue.targetTypeCode === targetTypeCode) &&
+        (targetId === null || issue.targetId === targetId),
+    )
+    .map((issue) => {
+      const lot = state.lots.find((row) => row.lotId === (issue.lotId ?? issue.targetId));
+
+      return {
+        ...issue,
+        lotNo: lot?.lotNo ?? null,
+        target: {
+          targetTypeCode: issue.targetTypeCode,
+          targetId: issue.targetId,
+          displayName: lot?.lotNo ?? String(issue.targetId),
+        },
+      };
+    });
+
+  return page(items, query);
+});
+
 on('POST', '/app/document-issues', (_params, _query, body, headers) =>
   idempotent('app.document-issues:create', headers, () => {
     const items = (body?.targets ?? []).map((target) => {

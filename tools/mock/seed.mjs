@@ -885,10 +885,15 @@ export const createSeed = (now = new Date()) => {
       statusCode: 'NORMAL',
       completedAt: null,
       held: false,
+      /*
+       * ⚠ **아직 실적이 없다.** 한때 120 을 넣어 두었는데, 그러면 생산 실적 등록 화면이 이미
+       * 실적이 있는 상태로 열려 「수량 입력 → 발행 → 인쇄 → 스캔 → 마감」 첫 단계를 확인할
+       * 대상이 없었다(사용자 확인 2026-09-10). 진행 중인 LOT 은 여기 하나뿐이다.
+       */
       progress: {
-        goodQty: 120,
+        goodQty: 0,
         defectQty: 0,
-        achievementRate: 0.24,
+        achievementRate: 0,
         completionJudgmentCode: null,
       },
     },
