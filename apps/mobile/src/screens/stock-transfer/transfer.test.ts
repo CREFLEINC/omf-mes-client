@@ -9,6 +9,7 @@ import {
   isSameWarehouse,
   mixedSourceWarehouses,
   sourceEndOf,
+  sourcePickOf,
   qtyProblemOf,
   queuedShipsFor,
   toArriveDraft,
@@ -181,6 +182,52 @@ describe('서로 다른 창고의 LOT 을 섞으면', () => {
 
     expect(mixedSourceWarehouses(idle)).toBe(false);
     expect(canShip(idle, true, 0)).toBe(true);
+  });
+});
+
+describe('반출에 쓸 잔고 줄', () => {
+  const wh = [
+    { warehouseId: 1001, businessUnitId: 1001 },
+    { warehouseId: 1002, businessUnitId: 2002 },
+  ];
+
+  it('줄에 사업장이 실려 오면 그것을 쓴다', () => {
+    const pick = sourcePickOf(
+      [{ onHandQty: 300, locationId: 3001, warehouseId: 1001, businessUnitId: 9009 }],
+      wh,
+    );
+
+    expect(pick).toMatchObject({ kind: 'row', businessUnitId: 9009 });
+  });
+
+  /* 계약이 사업장을 선택 항목으로 둔다. 없다고 재고 없음으로 읽으면 반출이 통째로 막힌다. */
+  it('줄에 사업장이 없으면 출발 창고에서 가져온다', () => {
+    const pick = sourcePickOf([{ onHandQty: 300, locationId: 3001, warehouseId: 1002 }], wh);
+
+    expect(pick).toMatchObject({ kind: 'row', businessUnitId: 2002 });
+  });
+
+  it('사업장이 없어도 재고 없음으로 읽지 않는다', () => {
+    const pick = sourcePickOf([{ onHandQty: 300, locationId: 3001, warehouseId: 1002 }], wh);
+
+    expect(pick.kind).not.toBe('noStock');
+  });
+
+  it('재고가 없으면 재고 없음이다', () => {
+    expect(sourcePickOf([{ onHandQty: 0, locationId: 3001, warehouseId: 1001 }], wh).kind).toBe(
+      'noStock',
+    );
+  });
+
+  it('위치가 없는 줄은 받지 않는다', () => {
+    expect(sourcePickOf([{ onHandQty: 300, warehouseId: 1001 }], wh).kind).toBe('noStock');
+  });
+
+  /* 재고는 있는데 사업장만 못 정한 자리다. 사람이 할 일이 달라 문구를 가른다. */
+  it('출발 창고를 모르면 재고 없음과 다르게 말한다', () => {
+    const pick = sourcePickOf([{ onHandQty: 300, locationId: 3001, warehouseId: 7777 }], wh);
+
+    expect(pick.kind).toBe('unknownBusinessUnit');
   });
 });
 

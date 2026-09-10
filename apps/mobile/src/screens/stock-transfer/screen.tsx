@@ -25,6 +25,7 @@ import {
   qtyProblemOf,
   queuedShipsFor,
   sourceEndOf,
+  sourcePickOf,
   toArriveDraft,
   toShipDraft,
   type DraftLine,
@@ -59,6 +60,7 @@ export const StockTransferScreen = () => {
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [duplicate, setDuplicate] = useState(false);
   const [noStock, setNoStock] = useState(false);
+  const [unknownBusinessUnit, setUnknownBusinessUnit] = useState(false);
   /** 반출이 선 뒤의 이동. 이것이 있으면 화면은 도착만 남았다. */
   const [shipped, setShipped] = useState<{
     transfer: StockTransfer;
@@ -122,39 +124,19 @@ export const StockTransferScreen = () => {
 
     setScannedLot(null);
 
-    /*
-     * 위치와 창고가 다 있는 줄만 받는다. 창고 수준으로만 관리하는 자리는 위치가 비는데,
-     * 그 줄로 반출 라인을 만들면 어디서 뺀 것인지가 남지 않는다.
-     */
-    const at = rows.find(
-      (row) =>
-        row.onHandQty > 0 &&
-        row.locationId !== undefined &&
-        row.locationId !== null &&
-        row.warehouseId !== undefined &&
-        row.warehouseId !== null &&
-        row.businessUnitId !== undefined &&
-        row.businessUnitId !== null,
-    );
+    const pick = sourcePickOf(rows, warehouses.data ?? []);
 
-    if (
-      at?.locationId === undefined ||
-      at.locationId === null ||
-      at.warehouseId === undefined ||
-      at.warehouseId === null ||
-      at.businessUnitId === undefined ||
-      at.businessUnitId === null
-    ) {
-      setNoStock(true);
+    if (pick.kind !== 'row') {
+      setNoStock(pick.kind === 'noStock');
+      setUnknownBusinessUnit(pick.kind === 'unknownBusinessUnit');
       return;
     }
 
-    const fromLocationId = at.locationId;
-    const warehouseId = at.warehouseId;
-    /* 사업장은 도착 쪽에서 빌리지 않는다. 두 창고가 다른 사업장이면 출발이 틀리게 적힌다. */
-    const businessUnitId = at.businessUnitId;
+    const at = pick.row;
+    const { locationId: fromLocationId, warehouseId, businessUnitId } = pick;
 
     setNoStock(false);
+    setUnknownBusinessUnit(false);
     setLines((current) => {
       if (current.some((each) => each.lotId === lot.lotId)) {
         setDuplicate(true);
@@ -179,12 +161,13 @@ export const StockTransferScreen = () => {
         },
       ];
     });
-  }, [foundLot.data, balances.data]);
+  }, [foundLot.data, balances.data, warehouses.data]);
 
   const lotField = useScanField({
     onScan: (value) => {
       setDuplicate(false);
       setNoStock(false);
+      setUnknownBusinessUnit(false);
       setScannedLot(value.trim());
     },
   });
@@ -209,6 +192,7 @@ export const StockTransferScreen = () => {
     setSaveFailed(false);
     setDuplicate(false);
     setNoStock(false);
+    setUnknownBusinessUnit(false);
     void unfinished.refetch();
   };
 
@@ -464,6 +448,7 @@ export const StockTransferScreen = () => {
               onSubmit={() => {
                 setDuplicate(false);
                 setNoStock(false);
+                setUnknownBusinessUnit(false);
                 setScannedLot(manualLot.trim());
                 setManualLot('');
               }}
@@ -478,6 +463,11 @@ export const StockTransferScreen = () => {
             ) : null}
             {duplicate ? <AlertBanner variant="warning" title={t.from.already} /> : null}
             {noStock ? <AlertBanner variant="error" title={t.from.noStock} /> : null}
+            {unknownBusinessUnit ? (
+              <AlertBanner variant="error" title={t.from.unknownBusinessUnit}>
+                {t.from.unknownBusinessUnitWhy}
+              </AlertBanner>
+            ) : null}
 
             {/* 결정 14 — 보류는 막지 않고 알린다. 막으면 현장이 물건을 못 옮긴다. */}
             {held.length > 0 ? (
