@@ -2596,9 +2596,7 @@ on('GET', '/production/work-orders', (_p, query) => {
  * (실측 2026-09-10 · 사용자 지적).
  */
 on('GET', '/production/work-orders/{workOrderId}', (params) => {
-  const workOrder = state.workOrders.find(
-    (row) => row.workOrderId === Number(params.workOrderId),
-  );
+  const workOrder = state.workOrders.find((row) => row.workOrderId === Number(params.workOrderId));
 
   return workOrder === undefined ? null : { ...workOrder };
 });
