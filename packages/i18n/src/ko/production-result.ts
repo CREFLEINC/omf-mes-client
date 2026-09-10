@@ -90,7 +90,6 @@ export const productionResult = {
     scan: {
       title: '스캔 대기',
       label: '부착한 LOT 번호 스캔',
-      waiting: '생산 LOT 라벨 인쇄가 끝나면 스캔 입력이 열립니다.',
       mismatch: (lotNo: string) => `현재 LOT ${lotNo}과 일치하는 라벨을 스캔하세요.`,
       completing: 'LOT 생산 등록을 마감하고 있습니다.',
       completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',

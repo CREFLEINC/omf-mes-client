@@ -871,9 +871,6 @@ export const ProductionFlowScreen = () => {
               error={scanMismatch && lot !== null ? t.flow.scan.mismatch(lot.lotNo) : undefined}
               onChange={(event) => changeScan(event.target.value)}
             />
-            {outputPhase !== 'scanReady' && outputPhase !== 'completing' && (
-              <p className="field-note">{t.flow.scan.waiting}</p>
-            )}
             {complete.error !== null && <p className="field-error">{t.flow.scan.failed}</p>}
           </Card.Body>
         </Card>
