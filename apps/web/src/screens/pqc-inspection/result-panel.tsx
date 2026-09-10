@@ -243,6 +243,7 @@ export const ResultPanel = ({
           <TextField
             type="date"
             size="xl"
+            fullWidth
             aria-label={`${label} ${tCoverage.date}`}
             value={parts.date}
             error={error === undefined ? undefined : ' '}
@@ -251,6 +252,7 @@ export const ResultPanel = ({
           <TextField
             type="time"
             size="xl"
+            fullWidth
             aria-label={`${label} ${tCoverage.time}`}
             value={parts.time}
             error={error === undefined ? undefined : ' '}
@@ -393,7 +395,13 @@ export const ResultPanel = ({
           <p className="field-label" id={dispositionLabelId}>
             {tDisposition.heading}
           </p>
+          {/*
+           * ⭐ **두 처분을 한 줄에 나란히 둔다**(사용자 지시 2026-09-10). 「재작업 가능」과
+           *    「폐기」는 둘 중 하나를 고르는 짝이라, 위아래로 쌓으면 눈이 두 번 내려가며
+           *    견준다. 좁아지면 격자가 알아서 한 줄씩으로 접힌다.
+           */}
           <RadioGroup
+            className="pqc-disposition"
             name={dispositionName}
             value={disposition ?? ''}
             disabled={!canChoose}

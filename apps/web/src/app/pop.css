@@ -3889,16 +3889,22 @@
   color: var(--semantic-warning);
 }
 
-/* 적용 생산구간의 날짜·시각 두 칸 — 좁은 구획이라 칸이 줄을 나눠 갖는다. */
+/*
+ * 적용 생산구간의 날짜·시각 두 칸 — **자리가 나면 나란히, 좁으면 위아래로**(사용자 지시
+ * 2026-09-10). 브라우저의 날짜 칸은 「2026. 09. 10.」에 달력 아이콘까지 얹혀 9rem 아래로
+ * 내려가면 잘리므로, 그 폭을 못 주는 화면에서는 격자가 스스로 한 줄씩으로 접는다.
+ */
 .pop-ui .pqc-coverage-parts {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  /* 감싼 칸이 flex 라 안의 격자는 스스로 늘지 않는다 — 폭을 받아야 자리를 나눌 수 있다. */
+  inline-size: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
   gap: var(--space-2);
 }
 
 .pop-ui .pqc-coverage {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
   gap: var(--space-3);
 }
 
@@ -3907,4 +3913,28 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
+}
+
+/*
+ * 불합격 처분 — **두 버튼이 한 줄에 선다**(사용자 지시 2026-09-10).
+ *
+ * ⛔ DS `RadioGroup` 이 두 번째 항목부터 주는 «형제 간격»을 지운다 — 격자에서는 사이를
+ *    `gap` 이 주므로 두 벌이 겹치면 한쪽만 처져 보인다(`pop-hold-reasons` 와 같은 자리).
+ */
+.pop-ui .pqc-disposition {
+  display: grid;
+  inline-size: 100%;
+  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.pop-ui .pqc-disposition > * {
+  margin: 0;
+  block-size: 100%;
+}
+
+/* 판정 칸도 구획 폭을 다 쓴다 — 감싼 칸이 flex 라 스스로 늘지 않는다. */
+.pop-ui .pqc-verdict .pop-select {
+  inline-size: 100%;
 }
