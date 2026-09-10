@@ -65,7 +65,13 @@ type OutputPhase =
 const quantityInput = (value: string): string => {
   const cleaned = value.replace(/[^\d.]/gu, '');
   const [whole = '', ...fractions] = cleaned.split('.');
-  const normalized = fractions.length === 0 ? whole : `${whole}.${fractions.join('')}`;
+  /*
+   * ⛔ **앞자리 0 을 쌓지 않는다**(사용자 지시 2026-09-10 · 키패드도 같은 규칙이다). `011` 은
+   *    `11` 과 같은 수인데 글자가 달라, 되돌릴 수 없는 기록에 실리면 나중에 같은 값인지 눈으로
+   *    판단해야 한다. ⚠ `0.5` 의 앞자리 0 은 남긴다 — 그것은 뜻을 갖는 자리다.
+   */
+  const trimmed = whole.replace(/^0+(?=\d)/u, '');
+  const normalized = fractions.length === 0 ? trimmed : `${trimmed}.${fractions.join('')}`;
 
   return normalized.slice(0, GOOD_QTY_MAX_LENGTH);
 };
