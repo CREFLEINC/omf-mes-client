@@ -77,6 +77,20 @@ const usedClassNames = (): Set<string> => {
         if (!name.endsWith('-')) used.add(name);
       }
     }
+
+    /*
+     * ⭐ **배열로 조립하는 `className` 도 센다**(실측 2026-09-11). `className={['pop-a',
+     *    cond ? 'pop-b' : ''].join(' ')}` 형태는 위 정규식에 걸리지 않아, 멀쩡히 쓰이는
+     *    클래스 여덟이 「소비자 없는 CSS」로 잡혔다 — 감지기가 거꾸로 틀린 자리다.
+     *
+     * ⚠ **`className={[` 안만** 본다. 파일 전체에서 홑따옴표 문자열을 훑으면 질의 키
+     *   (`['pop-material-lot-label', 'receipts']`)와 모듈 경로가 클래스로 잡힌다.
+     */
+    for (const [, block] of source.matchAll(/className=\{\[([\s\S]*?)\]/gu)) {
+      for (const [name] of (block ?? '').matchAll(/(?:pop|pack-work)-[a-z][a-z-]*/gu)) {
+        if (!name.endsWith('-')) used.add(name);
+      }
+    }
   }
 
   return used;
