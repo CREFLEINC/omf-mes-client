@@ -38,8 +38,13 @@ export const physicalCount = {
   },
   lines: {
     legend: '실물 수량',
-    /* 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다. */
-    name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
+    /*
+     * 대리키를 보이면 실물 라벨과 대조할 수 없다. 라벨에는 품목 코드와 LOT 번호가 찍혀 있다.
+     *
+     * 둘 중 하나를 아직 못 받았으면 구분점만 남겨 두지 않는다 - 뒤가 빈 채로 서면 값이
+     * 잘린 것처럼 읽힌다.
+     */
+    name: (item: string, lotNo: string) => [item, lotNo].filter((part) => part !== '').join(' · '),
     qtyLabel: (name: string) => `${name} 실물 수량`,
     /** 장부는 블라인드가 아닐 때만 온다. */
     systemQty: (qty: string) => `장부 ${qty}`,
