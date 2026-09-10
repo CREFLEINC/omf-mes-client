@@ -95,6 +95,7 @@ export const QuantityPad = ({ open, value, allowDecimal, onCommit, onClose }: Qu
 
       <NumericKeypad
         value={draft}
+        dropLeadingZero
         onChange={(next) => {
           setDraft(stripLeadingZeros(next));
         }}

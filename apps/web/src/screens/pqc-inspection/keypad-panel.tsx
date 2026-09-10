@@ -43,6 +43,7 @@ export const KeypadPanel = ({ label, value, onChange }: KeypadPanelProps) => (
 
     <NumericKeypad
       value={value}
+      dropLeadingZero
       onChange={onChange}
       disabled={label === null}
       keySize={POP_TOUCH_SIZE}

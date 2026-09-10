@@ -475,6 +475,7 @@ export const ReworkResultRegisterScreen = () => {
                   className="rework-result-pad"
                   label={t.quantities.keypadLabel}
                   value={activeKey === null ? '' : drafts[activeKey]}
+                  dropLeadingZero
                   /* 고른 칸이 없으면 누를 것이 없다 — 어느 칸에 들어갈지 모르기 때문이다. */
                   disabled={activeKey === null}
                   allowDecimal={uom.decimalScaleOf(selected.uomId) > 0}

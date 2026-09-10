@@ -402,9 +402,7 @@ const renderScreen = (options: Options = {}, identity: PopIdentity = IDENTIFIED)
   );
 
 const selectPending = async (): Promise<void> => {
-  await userEvent.click(
-    await screen.findByRole('button', { name: t.pending.select(HANDLING_UNIT_NO) }),
-  );
+  await userEvent.click(await screen.findByRole('button', { name: new RegExp(HANDLING_UNIT_NO) }));
 };
 
 const renderSelectedScreen = async (
@@ -430,9 +428,7 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
     const pendingRequests: Request[] = [];
     renderScreen({ pendingRequests });
 
-    expect(
-      await screen.findByRole('button', { name: t.pending.select(HANDLING_UNIT_NO) }),
-    ).toBeEnabled();
+    expect(await screen.findByRole('button', { name: new RegExp(HANDLING_UNIT_NO) })).toBeEnabled();
     expect(screen.getAllByText(t.entry.missingHandlingUnit)).toHaveLength(2);
     expect(pendingRequests).toHaveLength(1);
 
@@ -465,7 +461,7 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
     /* 둘째 쪽까지 이어 받았는지는 그 줄을 고르는 단추가 섰는지로 잰다 — 번호는 ② 구획이 낸다. */
     expect(
       await screen.findByRole('button', {
-        name: t.pending.select(nextHandlingUnit.handlingUnitNo),
+        name: new RegExp(nextHandlingUnit.handlingUnitNo),
       }),
     ).toBeVisible();
     expect(pendingRequests).toHaveLength(2);

@@ -61,8 +61,8 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
     event.preventDefault();
 
     /*
-     * **버튼 잠금과 별개의 겹이다.** Enter 의 암묵 제출은 제출 버튼이 잠기면 일어나지 않으므로
-     * 평소에는 이 줄이 걸릴 일이 없다 — 걸리는 것은 버튼을 지나지 않는 제출뿐이다.
+     * ⚠ **제출 단추가 없어진 지금 이 줄이 유일한 방어다**(설계 §3 도면). 앞 판은 잠긴
+     * 단추가 Enter 의 암묵 제출까지 막아 주어 「평소에는 걸릴 일이 없다」고 적어 두었다.
      */
     if (isScanning) return;
 

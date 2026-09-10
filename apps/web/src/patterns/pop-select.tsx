@@ -104,7 +104,12 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
    * 목록에 검색창과 쪽 단추가 서면, 고르는 데 필요한 것보다 조작이 더 많다 — POP 은 큰 단추로
    * 한 번에 고르는 화면이다(설계 §7 DS 매핑에 이 판이 없다).
    */
-  const isShortList = options.length <= PAGE_SIZE;
+  /*
+   * ⚠ **묶음이 아니라 «항목»을 센다**(리뷰 지적 2026-09-11). `options` 는 묶음을 담을 수 있어
+   *   (`flattenOptions`), 묶음 셋에 항목 예순이 든 목록도 `length` 가 3 이다. 그것을 짧다고
+   *   보면 검색도 쪽 이동도 없이 «첫 다섯만» 보이고 나머지는 고를 길이 사라진다.
+   */
+  const isShortList = flatOptions.length <= PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
   const visibleOptions = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);

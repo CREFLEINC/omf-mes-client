@@ -42,7 +42,7 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
     /* ⛔ 기본 제출을 막는다 — `<form>`의 기본 GET 제출은 읽은 코드를 주소로 올리고 화면을 새로 띄운다. */
     event.preventDefault();
 
-    /* 버튼 잠금과 별개의 겹이다 — 버튼을 지나지 않는 제출로 겹친 조회가 나가는 것을 막는다. */
+    /* ⚠ 제출 단추가 없어진 지금 이 줄이 유일한 방어다 — 겹친 조회가 나가는 것을 막는다. */
     if (isScanning || locked) return;
 
     const code = normalizeScanCode(value);

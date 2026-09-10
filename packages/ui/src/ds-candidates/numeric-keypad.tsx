@@ -9,14 +9,19 @@ const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
 /**
  * 누른 숫자를 값에 붙인다.
  *
- * ⛔ **앞자리 0 을 쌓지 않는다**(사용자 지시 2026-09-10). `011` 은 `11` 과 같은 수인데 글자가
- * 달라, 되돌릴 수 없는 기록에 실리면 나중에 같은 값인지 눈으로 판단해야 한다. 실제로 현장
- * 화면에서 `011` 이 그대로 섰다.
+ * ⛔ **수를 받는 칸에서는 앞자리 0 을 쌓지 않는다**(사용자 지시 2026-09-10). `011` 은 `11` 과
+ * 같은 수인데 글자가 달라, 되돌릴 수 없는 기록에 실리면 나중에 같은 값인지 눈으로 판단해야
+ * 한다. 실제로 현장 화면에서 `011` 이 그대로 섰다.
  *
- * ⚠ 소수는 그대로 둔다 — `0.` 은 `0` 이 아니라 「0점 무엇」의 시작이다.
+ * ⛔ **식별자를 받는 칸에서는 그대로 쌓는다**(리뷰 지적 2026-09-11). 사번·번호는 «수»가
+ * 아니라 «글자»다 — `01234` 로 시작하는 사번이 있으면 0 을 누른 다음 1 을 누르는 순간 앞의
+ * 0 이 사라져 **그 사번은 아예 칠 수 없다.** 그래서 이 정리는 부르는 쪽이 켜는 것이고,
+ * 기본은 「그대로 쌓는다」다.
+ *
+ * ⚠ 소수는 어느 쪽이든 그대로 둔다 — `0.` 은 `0` 이 아니라 「0점 무엇」의 시작이다.
  */
-export const appendDigit = (value: string, digit: string): string =>
-  value === '0' ? digit : `${value}${digit}`;
+export const appendDigit = (value: string, digit: string, dropLeadingZero = false): string =>
+  dropLeadingZero && value === '0' ? digit : `${value}${digit}`;
 
 export interface NumericKeypadProps {
   value: string;
@@ -37,6 +42,13 @@ export interface NumericKeypadProps {
    * 손이 두 번 간다(자릿수 상한과 같은 처리).
    */
   allowDecimal?: boolean;
+  /**
+   * 앞자리 0 을 정리하는가. **수를 받는 칸에서만 켠다**(수량·타발수).
+   *
+   * ⛔ 사번·번호처럼 «글자»를 받는 칸에서는 켜지 않는다 — `0` 으로 시작하는 값을 칠 수 없게
+   *    된다. 그래서 기본은 꺼져 있다.
+   */
+  dropLeadingZero?: boolean;
   /** 소수점 키의 접근 이름. `allowDecimal` 일 때만 쓴다. */
   decimalLabel?: string;
   /** 한 자 지움 키의 접근 이름. 화면 문구는 소비처가 갖는다. */
@@ -69,6 +81,7 @@ export const NumericKeypad = ({
   max,
   disabled = false,
   allowDecimal = false,
+  dropLeadingZero = false,
   decimalLabel,
   backspaceLabel,
   backspaceGlyph = '←',
@@ -80,7 +93,7 @@ export const NumericKeypad = ({
   const full = maxLength !== undefined && value.length >= maxLength;
 
   const append = (digit: string) => {
-    const next = appendDigit(value, digit);
+    const next = appendDigit(value, digit, dropLeadingZero);
 
     /* 상한을 넘기는 입력은 «없던 일»로 둔다 — 넣었다가 지우게 하면 손이 두 번 간다. */
     if (max !== undefined && Number(next) > max) return;

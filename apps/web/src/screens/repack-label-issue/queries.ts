@@ -107,8 +107,11 @@ export interface PendingRepackRow {
 /**
  * 재구성 사건에서 이 포장이 「새로 생긴 쪽」인 줄을 찾는다.
  *
- * **새로 생긴 것은 `qtyBefore === 0` 인 결과 줄이다** — 재구성 전에 아무것도 담고 있지
- * 않았다는 뜻이고, 그래서 라벨이 없다.
+ * **새로 생긴 것은 `qtyBefore === 0` 인 줄이다** — 재구성 전에 아무것도 담고 있지 않았다는
+ * 뜻이고, 그래서 라벨이 없다.
+ *
+ * ⚠ 여기서도 역할 코드를 보지 않는다(같은 파일의 잔량 판정과 같은 근거) — 한 파일 안에 같은
+ *   물음을 두 규칙으로 답하면 다음에 읽는 사람이 어느 쪽이 참인지 고르게 된다.
  */
 const newestEventFor = (
   events: readonly HandlingUnitRepackEvent[],
@@ -116,12 +119,7 @@ const newestEventFor = (
 ): HandlingUnitRepackEvent | undefined =>
   [...events]
     .filter((event) =>
-      event.lines.some(
-        (line) =>
-          line.handlingUnitId === handlingUnitId &&
-          line.roleCode === 'RESULT' &&
-          line.qtyBefore === 0,
-      ),
+      event.lines.some((line) => line.handlingUnitId === handlingUnitId && line.qtyBefore === 0),
     )
     .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0];
 
@@ -420,11 +418,16 @@ const standingOf = (
 };
 
 /**
- * 선택한 신규 포장과 같은 SPLIT 사건의 다른 RESULT 포장 중 이미 라벨이 있는 포장.
+ * 선택한 신규 포장과 같은 SPLIT 사건에서 **쓰고도 남은** 포장 중 이미 라벨이 있는 것.
  *
  * 그 포장이 바로 원 번호를 유지한 잔량이다. 합병·재구성 사건에는 잔량 선택을 만들지 않고,
- * 발행 이력이 없는 결과는 재출력 대상이 아니므로 제외한다. 이 판정은 계약의 사건 역할과
- * DocumentIssue 요약만 사용하며 포장 번호 형태나 상태값을 추측하지 않는다.
+ * 발행 이력이 없는 결과는 재출력 대상이 아니므로 제외한다.
+ *
+ * ⚠ **역할 코드로 가르지 않는다**(2026-09-11). 서버가 분할의 남는 쪽을 `SOURCE` 로도
+ *   `RESULT` 로도 싣는다 — 수량이 뜻을 그대로 말한다(앞에 있었고 뒤에도 남았다). 목록 쪽
+ *   (`usePendingRepackRows`)과 같은 규칙이다.
+ *
+ * ⛔ 포장 번호 형태나 상태값을 추측하지 않는다 — 판정에 쓰는 것은 수량과 발행 요약뿐이다.
  */
 export const useRemainderCandidates = (
   handlingUnitId: number | null,

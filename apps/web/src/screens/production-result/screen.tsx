@@ -682,6 +682,8 @@ export const ProductionFlowScreen = () => {
             />
             <NumericKeypad
               value={actualQty}
+              /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
+              dropLeadingZero
               disabled={isQuantityLocked}
               label={t.quantity.keypadLabel}
               backspaceLabel={t.quantity.backspace}

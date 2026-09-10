@@ -478,6 +478,7 @@ export const ToolUsageScreen = () => {
                   className="tool-usage-pad"
                   label={t.shot.keypadLabel}
                   value={isConverted ? draft.baseQty : draft.shotCount}
+                  dropLeadingZero
                   maxLength={SHOT_MAX_LENGTH}
                   /* 스펙 §3-1 — 키는 64px 요구이고 64와 72 사이에 단이 없어 `2xl` 로 올린다. */
                   keySize="2xl"
