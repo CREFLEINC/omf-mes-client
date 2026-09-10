@@ -168,9 +168,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, 'SAMPLE-LOT-0001');
 
-    expect(
-      await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001')),
-    ).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
 
     const lotRequest = requests.find((request) => request.url.pathname === LOTS_PATH);
     expect(lotRequest?.url.searchParams.get('lotNo')).toBe('SAMPLE-LOT-0001');
@@ -202,9 +200,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, 'SAMPLE-EXT-0001');
 
-    expect(
-      await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001')),
-    ).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
 
     const lotRequests = requests.filter((request) => request.url.pathname === LOTS_PATH);
     expect(lotRequests.map((request) => request.url.searchParams.has('lotNo'))).toEqual([
@@ -238,9 +234,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, 'SAMPLE-MLD-01');
 
-    expect(
-      await screen.findByText(t.scan.outcomes.mold('SAMPLE-MLD-01')),
-    ).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.mold('SAMPLE-MLD-01'))).toBeTruthy();
     expect(requests.some((request) => request.url.pathname === MOLDS_PATH)).toBe(true);
   });
 
@@ -288,9 +282,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     await scanCode(user, 'SAMPLE-LOT-0001');
 
-    expect(
-      await screen.findByText(t.scan.outcomes.duplicate('SAMPLE-LOT-0001')),
-    ).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.duplicate('SAMPLE-LOT-0001'))).toBeTruthy();
     expect(screen.getAllByText('SAMPLE-LOT-0001')).toHaveLength(1);
   });
 
@@ -403,9 +395,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     expect(document.activeElement).toBe(screen.getByLabelText(t.scan.label));
 
     releaseLots();
-    expect(
-      await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001')),
-    ).toBeTruthy();
+    expect(await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'))).toBeTruthy();
   });
 
   /*
@@ -586,8 +576,12 @@ describe('MaterialInputScanScreen — 금형 타발수', () => {
     await scanCode(user, 'SAMPLE-MLD-01');
 
     expect(await screen.findByText(t.scanned.shotCountExceeded)).toBeTruthy();
-    /* 경고는 떴는데 「투입 확정」이 그 때문에 잠기지는 않는다 — 잠긴 사유가 다른 것이어야 한다. */
-    expect(await screen.findByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
+    /*
+     * 경고는 떴는데 「투입 확정」이 그 때문에 잠기지는 않는다 — 잠긴 사유 문구가 하나도
+     * 뜨지 않은 채, 아직 기록된 것이 없어서 잠겨 있어야 한다.
+     */
+    expect(screen.queryByText(t.confirm.reasons.denied)).toBeNull();
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
   });
 
   /* 적정 타수가 없으면 남은 타수를 낼 수 없다. 0으로 채우면 한도를 넘은 금형으로 보인다. */
@@ -736,7 +730,11 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
 
     releaseGate();
-    expect(await screen.findByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
+    /* 확인이 끝나면 「확인 중」은 사라진다 — 그 뒤로는 담긴 것이 없어 말없이 잠겨 있다. */
+    await waitFor(() => {
+      expect(screen.queryByText(t.confirm.reasons.checking)).toBeNull();
+    });
+    expect(screen.getByRole('button', { name: t.confirm.action })).toHaveProperty('disabled', true);
   });
 
   /*
@@ -751,7 +749,10 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()]), gateRoute(true)], GATED);
 
-    expect(await screen.findByText(t.confirm.reasons.nothingScanned)).toBeTruthy();
+    expect(await screen.findByRole('button', { name: t.confirm.action })).toHaveProperty(
+      'disabled',
+      true,
+    );
 
     await scanCode(user, 'SAMPLE-LOT-0001');
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
@@ -933,7 +934,7 @@ describe('MaterialInputScanScreen — 게이팅 캐시', () => {
     const stub = createStubFetch([...receiptRoutes(), lotsRoute([lot()]), twoProcesses]);
     renderWithProviders(<SwitchableProcess />, { fetch: stub, route: ROUTE });
 
-    await screen.findByText(t.confirm.reasons.nothingScanned);
+    await screen.findByRole('button', { name: t.confirm.action });
     await user.click(screen.getByRole('button', { name: '공정 바꾸기' }));
 
     expect(await screen.findByText(t.confirm.reasons.denied)).toBeTruthy();
