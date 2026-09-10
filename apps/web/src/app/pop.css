@@ -911,6 +911,11 @@
   > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-target,
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
   > .packing-reentry,
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
@@ -4285,4 +4290,74 @@
 
 .pop-ui .pack-work-unit-fields .pop-select__value {
   min-height: 72px;
+}
+
+/*
+ * 출하 실적 등록 ① — **읽는 칸이 줄을 독차지하지 않는다**(사용자 지시 2026-09-10).
+ *
+ * 도면의 그 줄은 「출하 대상 [현재 선택값] [선택]」이 주인공인데, 읽는 칸이 `1 1 20rem` 으로
+ * 남는 폭을 전부 가져가 출하 대상이 225px 로 눌렸다(실측 · 줄 폭 1460 중 읽는 칸 1090).
+ * 둘 다 늘되 읽는 칸에는 상한을 둔다 — 34자리 코드가 들어와도 그 폭이면 남는다.
+ */
+.pop-ui .packing-scan > :first-child {
+  flex: 1 1 24rem;
+  max-width: 34rem;
+}
+
+.pop-ui .packing-scan > .pop-select {
+  flex: 1 1 18rem;
+  max-width: 30rem;
+  min-width: 0;
+}
+
+/*
+ * POP 보조 조작의 «글씨 색» — 빨강을 쓰지 않는다(사용자 지시 2026-09-10).
+ *
+ * ⚠ DS 의 `outlined` 는 글씨를 `--primary-text` 로 내는데 이 테마의 primary 가 붉다(#C9252C).
+ *   공유계약 G-1 은 붉은 계열을 «오류»에 남겨 두고, E-3 개정은 위험한 조작을 크기가 아니라
+ *   색·문구·배치로 가른다 — [직접 입력]·[선택] 같은 보조 조작이 같은 붉은색으로 서면 그
+ *   구분이 무너진다.
+ *
+ * ⛔ **오류 표시는 건드리지 않는다** — `aria-invalid` 가 붙은 자리는 그대로 붉다.
+ * ⛔ **주 조작(채운 버튼)도 건드리지 않는다** — 「포장 확정」처럼 흐름을 진행시키는 자리다.
+ */
+.pop-ui .scan-row > button:not([aria-invalid='true']),
+.pop-ui .pack-work-add-row > button:not([aria-invalid='true']),
+.pop-ui .pop-select__trigger:not([aria-invalid='true']) {
+  color: var(--on-surface);
+}
+
+/*
+ * 출하 실적 등록 — 출하 대상은 머리줄 바로 아래 «제 줄»이다(새 도면 · 사용자 지시 2026-09-10).
+ */
+.pop-ui .packing-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.pop-ui .packing-target > .pop-select {
+  flex: 1 1 20rem;
+  max-width: 34rem;
+  min-width: 0;
+}
+
+/*
+ * 기존 납품 라벨 재진입 — **되돌아오는 길이지 평상시 입력이 아니다**(스펙 §3-1).
+ * 이름을 보이게 달고 칸을 줄여, 처음 포장하는 사람이 채워야 할 칸으로 읽지 않게 한다.
+ */
+.pop-ui .packing-reentry > summary {
+  padding: var(--space-2) 0;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+.pop-ui .packing-reentry > form {
+  max-width: 30rem;
+  margin-block-start: var(--space-2);
 }

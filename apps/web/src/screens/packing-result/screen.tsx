@@ -344,18 +344,12 @@ export const PackingResultScreen = () => {
          *    정작 연결 상태는 색 말고 아무 데도 적히지 않는다. 다른 POP 화면과 같이 둘로
          *    갈라 세운다(설계 §3 머리줄도 「박출하  ●온」 둘이다).
          */}
+        {/*
+         * ⛔ **라벨은 머리줄의 일이 아니다**(사용자 지적 2026-09-10 · 새 도면). 도면의 머리줄은
+         *   「작업자 · 연결상태 · 화면 이동 · 사용자 전환」이고, 라벨 상태·재출력은 «액션 줄»의
+         *   일이다. 머리줄에 두면 화면을 바꾸는 조작이 상태 표시들 사이에 섞인다.
+         */}
         <div className="pop-context-right">
-          <Button
-            type="button"
-            variant="outlined"
-            size="md"
-            disabled={shipmentId === null}
-            onClick={() => {
-              setLabelMode((current) => !current);
-            }}
-          >
-            {isLabelMode ? t.actions.packing : t.actions.labels}
-          </Button>
           <PopWorkerTag workerNo={identity.workerNo} />
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
             {isOnline ? t.header.online : t.header.offline}
@@ -392,14 +386,12 @@ export const PackingResultScreen = () => {
           </div>
         )}
 
-        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. 납품라벨은 재진입 보조 경로다. */}
-        {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
-        <section className="packing-scan">
-          <ScanField
-            label={t.scan.label.shipment}
-            isScanning={shipmentScan.isPending}
-            onScan={scanShipment}
-          />
+        {/*
+         * ⭐ **출하 대상은 머리줄 바로 아래 «제 줄»에 선다**(사용자 지시 2026-09-10 · 새 도면
+         *   「출하 대상 [현재 선택값] [선택]」). 스캔 칸 오른쪽에 붙여 두면 스캔의 곁가지로
+         *   읽히는데, 이 화면에서 «무엇을 포장하는가»를 정하는 것이 이 줄이다.
+         */}
+        <section className="packing-target" aria-label={t.scan.shipmentSelection}>
           <span className="field-label" id={shipmentLabelId}>
             {t.scan.shipmentSelection}
           </span>
@@ -423,6 +415,16 @@ export const PackingResultScreen = () => {
               label: shipment.shipmentNo,
             }))}
           />
+        </section>
+
+        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. 납품라벨은 재진입 보조 경로다. */}
+        {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
+        <section className="packing-scan">
+          <ScanField
+            label={t.scan.label.shipment}
+            isScanning={shipmentScan.isPending}
+            onScan={scanShipment}
+          />
           {/*
            * 읽은 라벨은 칸 옆에 남는다(설계 §3 도면).
            *
@@ -433,13 +435,24 @@ export const PackingResultScreen = () => {
           <p className="packing-scanned-code">{labelCode}</p>
         </section>
 
-        <section className="packing-reentry" aria-label={t.scan.deliveryLabelReentry}>
+        {/*
+         * ⛔ **평상시 채우는 칸이 아니다**(스펙 §3-1 — 「납품 라벨은 포장 확정 «뒤» 발행되므로
+         *   최초 포장의 선행 입력으로 요구하지 않는다」). 앞선 판은 출하번호 칸과 같은 크기로
+         *   같은 자리에 세워, 처음 포장할 때도 채워야 하는 칸으로 읽혔다(사용자 지적
+         *   2026-09-10). 이름을 «보이게» 달고 폭을 줄여 **되돌아오는 길**임을 드러낸다.
+         */}
+        <details className="packing-reentry">
+          {/*
+           * 평상시에는 접어 둔다 — 열면 그 자리에 칸이 선다. 세로 예산이 768 로 못박힌 화면이라
+           * (스펙 §3-1) 되돌아오는 길이 늘 한 구획을 차지하면 ③ 포장 구성이 그만큼 줄어든다.
+           */}
+          <summary>{t.scan.deliveryLabelReentry}</summary>
           <ScanField
             label={t.scan.label.deliveryLabel}
             isScanning={labelScan.isPending}
             onScan={scanLabel}
           />
-        </section>
+        </details>
 
         {/* ② 생산LOT 스캔 — 판정 문구가 칸 바로 아래 붙는다. 떨어뜨리면 어느 스캔의 답인지 흐려진다. */}
         <section className="packing-scan">
@@ -505,14 +518,12 @@ export const PackingResultScreen = () => {
               {typeOptions.isUnavailable && <p className="field-note">{t.notes.typeUnavailable}</p>}
             </div>
 
-            <ContentsTable
-              lines={lines}
-              onRemove={(allocationId) => {
-                setLines(removeLine(lines, allocationId));
-                setMergeNote(null);
-              }}
-            />
-
+            {/*
+             * ⭐ **상위 포장은 내용물 «앞»에 선다**(사용자 지시 2026-09-10 · 새 도면
+             *   「유형 [값] [선택] · 상위 포장 [값] [선택] · 내용물/수량 목록」). 고르는 칸 둘이
+             *   붙어 있어야 한 덩어리로 읽힌다 — 사이에 목록이 끼면 상위 포장이 목록의 일부처럼
+             *   보이고, 담은 뒤에야 눈에 띈다.
+             */}
             <div className="packing-parent">
               <span className="field-label" id={parentLabelId}>
                 {t.fields.parentHandlingUnit}
@@ -540,6 +551,15 @@ export const PackingResultScreen = () => {
                   : t.notes.parentHint}
               </p>
             </div>
+
+            <ContentsTable
+              lines={lines}
+              onRemove={(allocationId) => {
+                setLines(removeLine(lines, allocationId));
+                setMergeNote(null);
+              }}
+            />
+
           </div>
 
           {/*
@@ -604,6 +624,18 @@ export const PackingResultScreen = () => {
             {t.actions.retry}
           </Button>
         )}
+
+        <Button
+          type="button"
+          variant="outlined"
+          size="md"
+          disabled={shipmentId === null}
+          onClick={() => {
+            setLabelMode((current) => !current);
+          }}
+        >
+          {isLabelMode ? t.actions.packing : t.actions.labels}
+        </Button>
 
         {openUnit !== null ? (
           <Button
