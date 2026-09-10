@@ -168,14 +168,14 @@ export const GoodsIssueQrScreen = () => {
     palletId,
     palletContentCount: palletContents.data?.length ?? null,
     /*
-     * 내용물을 아직 모르는 동안은 열지 않는다 — 빈 파렛트 차단(스펙 §6)이 조회가 닿기 전
+     * 내용물을 아직 «묻는 중»이면 열지 않는다 — 빈 파렛트 차단(스펙 §6)이 조회가 닿기 전
      * 잠깐 비어 있어, 그 틈에 누르면 찍을 것이 없는 파렛트로 발행 기록이 남는다.
      *
-     * ⛔ **끊긴 동안은 세지 않는다.** 연결이 없으면 조회가 «멈춘» 채 대기 상태로 머물러
-     * (`fetchStatus === 'paused'`), 그것까지 「묻는 중」으로 세면 단말이 온라인으로 돌아올
-     * 때까지 발행이 영영 잠기고 화면은 「잠시 뒤 발행할 수 있습니다」라고 거짓을 말한다.
+     * ⭐ **끊겨도 잠기지 않는다.** 이 앱은 `networkMode: 'always'` 라(`app/providers`) 조회가
+     * 「멈춘 상태」로 머물지 않는다 — 연결이 없으면 요청이 나갔다가 실패하고, 그때
+     * `isPending` 이 내려가 버튼이 다시 열린다. 잠기는 것은 «답을 기다리는 동안»뿐이다.
      */
-    palletContentsPending: palletContents.isPending && palletContents.fetchStatus !== 'paused',
+    palletContentsPending: palletContents.isPending,
     needsReason,
     reasonCode,
   });

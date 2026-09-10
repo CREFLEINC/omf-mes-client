@@ -3427,6 +3427,11 @@
  */
 :root {
   --pop-logout-box-w: 95px;
+  /*
+   * ⚠ **여기서 «파생»시킨다.** 되돌림 값으로만 쓰면 누가 이 변수를 따로 정의했을 때 머리줄이
+   *   비우는 폭만 바뀌고 [화면 이동]이 앉는 자리는 따라오지 않아 둘이 어긋난다.
+   */
+  --pop-logout-w: calc(var(--pop-logout-box-w) + var(--space-3));
   --pop-screen-nav-w: 111px;
 }
 
