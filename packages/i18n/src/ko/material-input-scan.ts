@@ -81,8 +81,7 @@ export const materialInputScan = {
     receipt: '라인 수령 내역을 불러오는 중',
   },
   empty: {
-    receiptTitle: '수령 내역이 없습니다',
-    receiptDescription: '이 작업지시로 라인에 내려온 자재가 아직 없습니다.',
+    receiptTitle: '수령 내역이 없습니다.',
     /* 조회 자체가 나가지 않은 상태 — 「받은 자재가 없다」와 다른 말을 한다. */
     notQueriedTitle: '아직 조회하지 않았습니다',
   },
