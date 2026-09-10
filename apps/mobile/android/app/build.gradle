@@ -4,9 +4,16 @@ apply plugin: 'com.android.application'
 // apps/mobile/scripts/release-build.sh 가 Keychain 에서 꺼내 준다.
 def releaseKeystore = System.getenv("OMF_RELEASE_KEYSTORE")
 
-// 서명 없이 나온 APK 는 단말에 설치되지 않는데, 빌드는 그대로 성공한다. 릴리스를 부를 때만 짚는다.
-if (!releaseKeystore && gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }) {
-    logger.warn("OMF_RELEASE_KEYSTORE 가 없다 - 서명 없는 APK 가 나오고 단말에 설치되지 않는다. apps/mobile/scripts/release-build.sh 를 쓴다.")
+// 서명 없이 나온 APK 는 단말에 설치되지 않는데, 빌드는 그대로 성공한다. 릴리스를 만들 때만 짚는다.
+//
+// 태스크 이름이 아니라 태스크 그래프를 본다. `gradlew build` 는 이름에 release 가 없지만
+// 릴리스 변형까지 만들어, 이름으로만 판정하면 그 경로에서 경고가 빠진다.
+if (!releaseKeystore) {
+    gradle.taskGraph.whenReady { graph ->
+        if (graph.allTasks.any { it.name.toLowerCase().contains("release") }) {
+            logger.warn("OMF_RELEASE_KEYSTORE 가 없다 - 서명 없는 APK 가 나오고 단말에 설치되지 않는다. apps/mobile/scripts/release-build.sh 를 쓴다.")
+        }
+    }
 }
 
 android {
