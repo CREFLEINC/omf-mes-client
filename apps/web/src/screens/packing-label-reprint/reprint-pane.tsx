@@ -108,11 +108,27 @@ export const ReprintPane = ({
                   </Checkbox>
                 </div>
                 <div className="pop-reprint-target-meta">
-                  <Chip status={target.issueCount === null ? 'warning' : 'info'}>
+                  {/*
+                   * ⭐ **최초 발행을 재출력과 다른 색으로 가른다**(스펙 §6 예외표 · 사용자 지적
+                   * 2026-09-10). 이력이 0 이면 이 줄은 재출력이 아니라 처음 뽑는 것이고,
+                   * 사유를 받지 않는다 — 같은 모양으로 서면 그 갈림이 눈에 보이지 않는다.
+                   */}
+                  <Chip
+                    status={
+                      target.issueCount === null
+                        ? 'warning'
+                        : target.issueCount === 0
+                          ? 'success'
+                          : 'info'
+                    }
+                  >
                     {issueCountText(target)}
                   </Chip>
                   <span className="field-note">{t.targets.range(target.qty)}</span>
                 </div>
+                {target.issueCount === 0 && target.disabledReason === null && (
+                  <p className="field-note">{t.targets.firstIssueNote}</p>
+                )}
                 {/* ⛔ 고를 수 없는 줄은 사유를 함께 낸다 — 비활성만 두면 왜 안 되는지 알 수 없다 */}
                 {target.disabledReason !== null && (
                   <p className="field-note">{target.disabledReason}</p>

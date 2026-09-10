@@ -65,7 +65,13 @@ export const packingLabelReprint = {
     /** 범위 표기 — 개체 줄은 LOT + 수량으로만 말할 수 있다 */
     range: (qty: number): string => `수량 ${String(qty)}`,
     issueCount: (count: number): string => `발행 이력 ${String(count)}회`,
-    neverIssued: '발행 이력 없음',
+    /*
+     * ⚠ **발행 이력이 없으면 재출력이 아니라 «최초 발행»이다**(스펙 §6 예외표 · 사용자 지적
+     *    2026-09-10). 회차 1 로 나가고 사유를 받지 않는다 — 같은 목록에 같은 모양으로 두면
+     *    사유를 받을지 말지가 눈으로 갈리지 않는다.
+     */
+    neverIssued: '최초 발행',
+    firstIssueNote: '재출력이 아니라 최초 발행입니다. 사유 없이 발행합니다.',
     issueCountUnknown: '발행 이력 확인 불가',
     summaryFailed: '발행 이력을 불러오지 못해 회차를 표시할 수 없습니다.',
     select: '선택',
