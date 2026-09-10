@@ -187,7 +187,7 @@ export const ReprintPane = ({
         )}
       </div>
 
-      <Button size="2xl" disabled={!canSubmit} onClick={onSubmit}>
+      <Button size="2xl" className="pop-reprint-submit" disabled={!canSubmit} onClick={onSubmit}>
         {isSubmitting ? t.action.submitting : t.action.submit}
       </Button>
 

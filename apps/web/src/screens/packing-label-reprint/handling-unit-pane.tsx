@@ -80,7 +80,11 @@ export const HandlingUnitPane = ({
         columns={columns}
         rows={[...rows]}
         getRowId={(row) => String(row.handlingUnitContentId)}
-        density="compact"
+        /*
+         * ⚠ **다른 POP 표와 같은 밀도다**(사용자 지적 2026-09-10). `compact` 는 관리웹 밀도라
+         *   줄 높이가 36 으로 앉아, 장갑 낀 손이 읽기에도 누르기에도 좁았다.
+         */
+        density="comfortable"
         empty={t.empty}
       />
 

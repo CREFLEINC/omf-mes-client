@@ -1581,7 +1581,11 @@
   display: flex;
   /* 좁은 화면에서는 유형이 아랫줄로 내려간다 — 잘리거나 겹치지 않는다. */
   flex-wrap: wrap;
-  align-items: baseline;
+  /*
+   * ⚠ **글자줄이 아니라 «가운데»로 맞춘다.** 밑줄(baseline)로 맞추면 알약 안쪽 여백만큼 칩이
+   *   아래로 내려앉아 번호와 어긋난다(실측 · 사용자 지적).
+   */
+  align-items: center;
   gap: var(--space-2) var(--space-4);
   margin-block-end: var(--space-4);
 }
@@ -1595,9 +1599,20 @@
   overflow-wrap: anywhere;
 }
 
-/* 유형 칩은 번호 옆에 붙는다 — 글자와 알약이라 모양으로 갈린다(설계 §3 「HU-…0007  박스」). */
-.pop-ui .pop-reprint-hu-no > [class*='chip'] {
-  align-self: center;
+/*
+ * 번호 줄의 자식은 여백을 갖지 않는다 — 블록 이음매(`* + *`)가 칩에 위 여백 12 를 얹어
+ * **칩만 아래로 내려앉았다**(실측 · 사용자 지적 2026-09-10).
+ */
+.pop-ui .pop-reprint-hu-no > * {
+  margin: 0;
+}
+
+/*
+ * [재출력]은 **기록을 남기는 조작이라 72 다**(E-3). 이 화면만 40 으로 앉아 다른 POP 화면의
+ * 확정 단추보다 낮았다(실측 · 사용자 지적 2026-09-10).
+ */
+.pop-ui .pop-reprint-submit {
+  min-block-size: 72px;
 }
 
 /* 대상 목록과 재출력 사유를 가르는 선(설계 §3). 위는 「무엇을」, 아래는 「왜」다. */
