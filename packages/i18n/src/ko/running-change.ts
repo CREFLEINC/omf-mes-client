@@ -87,7 +87,7 @@ export const runningChange = {
     partNone: '신규 부품 LOT 을 먼저 읽어 주세요.',
     clearPart: '지우기',
     targetLabel: '교체 대상',
-    targetPlaceholder: '교체할 투입을 고르세요',
+    targetPlaceholder: '교체 대상을 고르세요',
     targetOption: (itemCode: string, lotNo: string) => `${itemCode} (${lotNo})`,
     qtyLabel: '투입 수량',
     qtyProblems: {
@@ -104,7 +104,13 @@ export const runningChange = {
      * (스펙 §8 미결 1 · 2026-09-03 판정), 비어 있는 것은 «아직 안 채운» 상태다. 못 받은
      * 것과도 갈라 말한다 — 앞은 기다릴 일이고 뒤는 다시 읽으면 풀린다.
      */
-    reasonEmpty: '고를 수 있는 교체 사유가 아직 없습니다. 사유 없이 등록됩니다.',
+    /**
+     * 고를 사유가 없을 때 **칸 «안»에서 말한다**(사용자 지시 2026-09-11).
+     *
+     * ⚠ 「사유를 고르세요」를 그대로 두고 아래에 따로 안내를 붙였더니, 잠긴 칸이 고르라고
+     *   말하고 그 밑에서 못 고른다고 말하는 두 문장이 겹쳤다.
+     */
+    reasonEmpty: '선택 가능한 교체 사유가 없어 사유 없이 등록됩니다.',
     reasonFailed: '교체 사유를 불러오지 못했습니다. 사유 없이 등록됩니다.',
     reasonLoading: '교체 사유를 불러오는 중입니다.',
     submit: '교체 등록',
