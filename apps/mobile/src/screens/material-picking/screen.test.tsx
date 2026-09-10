@@ -119,6 +119,8 @@ interface Options {
   destination?: 'ok' | 'missing' | 'offline';
   /** 보류 사유의 표시명. 비워 두면 표시명을 못 받은 상황이 된다. */
   holdReasons?: unknown[];
+  /** 표시명 조회가 실패한다. 없는 것과 못 받은 것을 가르는 자리다. */
+  holdReasonsFail?: boolean;
 }
 
 const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] => [
@@ -193,10 +195,17 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
       const group = new URL(req.url).searchParams.get('codeGroupCode');
 
       if (group === 'PICKING_TYPE') {
-        return jsonResponse({ items: options.pickingTypes ?? [codeValue('MATERIAL', '자재 피킹', 1)], page });
+        return jsonResponse({
+          items: options.pickingTypes ?? [codeValue('MATERIAL', '자재 피킹', 1)],
+          page,
+        });
       }
 
       if (group === 'LOT_HOLD_REASON') {
+        if (options.holdReasonsFail === true) {
+          return jsonResponse({ message: '실패' }, { status: 500 });
+        }
+
         return jsonResponse({
           items: options.holdReasons ?? [codeValue('INSPECTION_PENDING', '수입검사 대기', 1)],
           page,
@@ -406,7 +415,9 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     expect(
-      await screen.findByText('도착 위치를 확인하지 못했습니다. 연결 문제가 아니니 담당자에게 알리세요.'),
+      await screen.findByText(
+        '도착 위치를 확인하지 못했습니다. 연결 문제가 아니니 담당자에게 알리세요.',
+      ),
     ).toBeTruthy();
     expect(screen.queryByText(/연결을 확인하세요/)).toBeNull();
   });
@@ -564,6 +575,22 @@ describe('자재 출고·피킹 화면', () => {
 
     expect(await screen.findByText(/보류 사유 수입검사 대기/)).toBeTruthy();
     expect(screen.queryByText(/INSPECTION_PENDING/)).toBeNull();
+  });
+
+  /*
+   * 아직 안 온 것을 없는 것으로 말하면, 조회가 도는 동안 표시명이 없다고 해 두었다가
+   * 이름으로 바뀐다. 도착 위치 안내를 갈라 놓은 것과 같은 이유다.
+   */
+  it('표시명 조회가 실패하면 표시명이 없다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({
+      lines: [line({ held: true, holdReasonCode: 'INSPECTION_PENDING' })],
+      holdReasonsFail: true,
+    });
+    await chooseOrder(user);
+
+    expect(await screen.findByText(/보류 사유를 확인하지 못했습니다/)).toBeTruthy();
+    expect(screen.queryByText(/표시명 없음/)).toBeNull();
   });
 
   /* 표시명을 못 받았을 때만 코드를 보인다. 그때도 표시명이 없다는 사실을 함께 적는다. */

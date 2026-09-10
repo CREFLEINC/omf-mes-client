@@ -56,7 +56,8 @@ describe('수동 입력 칸', () => {
   it('스캔 칸을 쓰는 화면은 그 칸을 손 입력으로 여는 길을 갖는다', () => {
     const offenders = screenSources()
       .filter(({ source }) => source.includes('useScanField'))
-      .filter(({ path }) => !EXEMPT.some((name) => path.includes(name)))
+      /* 폴더 이름을 통째로 맞춘다. 부분 문자열로 재면 이름이 겹치는 새 화면이 조용히 빠진다. */
+      .filter(({ path }) => !EXEMPT.some((name) => path.split(/[\\/]/).includes(name)))
       .filter(({ source }) => !source.includes('openManual'))
       .map(({ path }) => path);
 

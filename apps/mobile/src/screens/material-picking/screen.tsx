@@ -134,6 +134,15 @@ export const MaterialPickingScreen = () => {
    * 풀리는지도 알 수 없다. 형제 화면(M-04-02)과 같은 그룹에서 표시명을 받는다.
    */
   const heldReasonTextOf = (code: string): string => {
+    /* 아직 안 온 것을 없는 것으로 말하지 않는다. 셋을 뭉치면 도는 동안 없다고 해 둔다. */
+    if (holdReasons.isPending) {
+      return t.lines.heldReasonLoading;
+    }
+
+    if (holdReasons.isError) {
+      return t.lines.heldReasonFailed;
+    }
+
     /* 되돌아온 이름이 코드와 같은지로 가르지 않는다. 표시명이 코드와 같은 값도 있다. */
     const found = (holdReasons.data ?? []).find((each) => each.code === code);
 

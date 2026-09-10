@@ -912,6 +912,19 @@ describe('수리 왕복 스캔 화면', () => {
   });
 
   /*
+   * 계약에 수리 건의 업무 번호가 없다. 대리키를 번호인 척 세우면 현장이 그것을 업무 번호로
+   * 읽는데, 실물에도 다른 화면에도 없는 값이라 대조할 데가 없다.
+   */
+  it('표에 대리키를 번호로 세우지 않는다', async () => {
+    mount([], { open: [execution] });
+
+    await screen.findByText('수리 중 1건');
+
+    expect(screen.queryByRole('columnheader', { name: '수리 번호' })).toBeNull();
+    expect(screen.queryByText(String(execution.repairExecutionId))).toBeNull();
+  });
+
+  /*
    * 설계는 들어올 때 끊긴 것과 하다가 끊긴 것을 가른다. 하다가 끊겼는데 화면을 갈아치우면
    * 값이 남아 있어도 작업자에게는 사라진 것으로 보여 스캔을 처음부터 다시 한다.
    */

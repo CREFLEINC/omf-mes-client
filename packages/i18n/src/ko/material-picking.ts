@@ -53,11 +53,17 @@ export const materialPicking = {
     manufactured: (date: string) => `제조 ${date}`,
     /** 서버가 매긴 순위다. 화면이 다시 계산하지 않는다. */
     rank: (rank: number) => `선출 ${String(rank)}순위`,
-    /** 보류는 서버가 표시해 내려준다. 사유 코드는 값 목록이 확정되기 전이라 그대로 보인다. */
+    /** 보류는 서버가 표시해 내려준다. 사유는 코드로 와서 공통코드로 표시명을 푼다. */
     held: '보류 중',
     heldReason: (reason: string) => `보류 사유 ${reason}`,
     /* 표시명을 못 받았을 때만 코드를 보인다. 코드만 보이면 무엇이 걸렸는지 모른다. */
     heldReasonUnknown: (code: string) => `보류 사유 ${code} (표시명 없음)`,
+    /*
+     * 아직 안 온 것을 없는 것으로 말하지 않는다. 뭉치면 조회가 도는 동안 표시명이 없다고
+     * 해 두었다가 이름으로 바뀐다.
+     */
+    heldReasonLoading: '보류 사유를 확인하는 중입니다',
+    heldReasonFailed: '보류 사유를 확인하지 못했습니다',
     done: '다 집었습니다',
   },
   scan: {
