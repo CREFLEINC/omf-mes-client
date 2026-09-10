@@ -58,6 +58,7 @@ const ENTRIES = [
   ['M-02-01 다음 공정', '/production/work-orders?successorOfWorkOrderId=11001', 2],
   ['M-02-02 불량 기록', '/quality/defect-records?lotId=8102', 2],
   ['M-02-02 불량 코드', '/quality/defect-codes', 2],
+  ['M-04-03 재구성 이력', '/inventory/handling-units/13001/repack-events', 1],
   [
     'M-04-01 오늘 출하',
     `/logistics/shipment-requests?shipDateFrom=${today()}&shipDateTo=${today()}`,
@@ -913,6 +914,30 @@ for (const [name, path, check] of DETAILS) {
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} M-02-02 불량 기록이 코드와 검출 시각을 들고 온다`);
+}
+
+/*
+ * 구성을 치환하면 이력이 남는가. 계약이 그것을 이 치환에 묶어 두었다 - 남지 않으면 되돌리기가
+ * 없는 화면에서 수량이 왜 달라졌는지를 되짚을 자리가 없다.
+ */
+{
+  const before = await (await fetch(`${BASE}/inventory/handling-units/13002/repack-events`)).json();
+  await fetch(`${BASE}/inventory/handling-units/13002/contents`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'seed-smoke-repack',
+      'X-Worker-No': '100027',
+    },
+    body: JSON.stringify({ items: [{ itemId: 2003, lotId: 8201, qty: 100, uomId: 1001 }] }),
+  });
+  const after = await (await fetch(`${BASE}/inventory/handling-units/13002/repack-events`)).json();
+  const added = after.items.length - before.items.length;
+  const line = after.items.at(-1)?.lines.find((row) => row.lotId === 8201);
+  const ok = added === 1 && line?.qtyBefore === 120 && line.qtyAfter === 100;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-04-03 구성을 치환하면 재구성 이력이 남는다`);
 }
 
 console.log(

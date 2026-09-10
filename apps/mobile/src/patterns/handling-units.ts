@@ -80,11 +80,9 @@ export const useScannedHandlingUnit = (
  * 구성 응답은 LOT 식별자만 준다. 그 번호를 그대로 보이면 작업자가 실물 라벨과 대조할 수
  * 없다 - 라벨에는 LOT 번호가 찍혀 있지 대리키가 찍혀 있지 않다.
  */
-export const useLotLabels = (sources: ScannedHandlingUnit[]): Map<number, string> => {
+export const useLotLabels = (lots: number[]): Map<number, string> => {
   const { client } = useApiClient();
-  const lotIds = [
-    ...new Set(sources.flatMap((source) => source.contents.map((content) => content.lotId))),
-  ];
+  const lotIds = [...new Set(lots)];
 
   return useQueries({
     queries: lotIds.map((lotId) => ({

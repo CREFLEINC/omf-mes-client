@@ -1,4 +1,5 @@
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
+import type { components } from '@omf-mes/api-client';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { ScannedHandlingUnit } from '../../patterns/handling-units';
@@ -53,5 +54,40 @@ export const useShipmentAllocations = (
           (handlingUnitId, index) => [handlingUnitId, verdictOf(results[index])] as const,
         ),
       ),
+  });
+};
+
+export type RepackEvent = components['schemas']['HandlingUnitRepackEvent'];
+
+/**
+ * 이 포장을 무엇이 언제 어떻게 바꿨는가.
+ *
+ * 되돌리기가 없는 화면이라 지난 재구성을 되짚을 길이 화면 안에 있어야 한다 - 없으면 수량이
+ * 왜 다른지를 물건을 세어 맞춰야 한다.
+ *
+ * 사람이 열었을 때만 묻는다. 스캔마다 부르면 쓰지 않는 조회가 스캔 응답 뒤에 붙는다.
+ */
+export const useRepackEvents = (
+  handlingUnitId: number | null,
+  enabled: boolean,
+): UseQueryResult<RepackEvent[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['repack-events', handlingUnitId] as const,
+    enabled: enabled && handlingUnitId !== null,
+    queryFn: async () => {
+      if (handlingUnitId === null) {
+        throw new Error('포장을 스캔하기 전에는 이력을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/inventory/handling-units/{handlingUnitId}/repack-events', {
+          params: { path: { handlingUnitId } },
+        }),
+      );
+
+      return data.items;
+    },
   });
 };

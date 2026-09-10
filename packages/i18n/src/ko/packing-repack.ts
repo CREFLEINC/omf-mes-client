@@ -91,4 +91,19 @@ export const packingRepack = {
     action: '전송 실패한 기록 보기',
   },
   another: '다음 재구성',
+  /** 되돌리기가 없는 화면이라 지난 재구성을 되짚을 길이 화면 안에 있어야 한다. */
+  history: {
+    open: '이력 보기',
+    close: '이력 접기',
+    legend: '재구성 이력',
+    loading: '이력을 불러오는 중입니다',
+    loadFailed: '이력을 확인할 수 없습니다',
+    none: '이 포장을 재구성한 적이 없습니다',
+    type: { MERGE: '합병', SPLIT: '분할', RECONFIGURE: '재구성' },
+    /** 무엇이 얼마에서 얼마로 갔는가. 역할을 함께 적어야 어디서 왔는지가 보인다. */
+    line: (role: string, name: string, before: string, after: string) =>
+      `${role} ${name} ${before} → ${after}`,
+    role: { SOURCE: '원본', RESULT: '결과' },
+    at: (at: string) => `${at}`,
+  },
 } as const;
