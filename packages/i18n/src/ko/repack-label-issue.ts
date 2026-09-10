@@ -162,7 +162,7 @@ export const repackLabelIssue = {
   /** 발행 이력 — 회차별로 쌓인다(K-1). */
   history: {
     sectionLabel: '발행 이력',
-    empty: '아직 발행한 적이 없습니다.',
+    empty: '발행 이력이 없습니다.',
     failed: '발행 이력을 불러오지 못했습니다.',
     seq: (issueSeq: number): string => `회차 ${String(issueSeq)}`,
     outcome: {
