@@ -808,28 +808,6 @@ export const ProductionFlowScreen = () => {
               </div>
             </dl>
 
-            {/*
-             * 발행·인쇄가 어떻게 됐는지는 **이 구획 안에서 말한다**(사용자 지시 2026-09-10).
-             * 화면 맨 위 띠에 두었더니 프린터·[다시 시도]와 멀어져, 무엇에 대한 실패인지와
-             * 다음에 누를 것이 서로 다른 자리에 섰다. 스펙에 없는 자리라 우리가 정한다.
-             */}
-            {outputStatus !== null && (
-              <div className="banner-slot">
-                <AlertBanner
-                  variant={
-                    outputPhase === 'issueFailed' ||
-                    outputPhase === 'renditionFailed' ||
-                    outputPhase === 'printFailed' ||
-                    outputPhase === 'reportFailed' ||
-                    outputPhase === 'legacyMismatch'
-                      ? 'error'
-                      : 'info'
-                  }
-                  title={outputStatus}
-                />
-              </div>
-            )}
-
             {outputPhase === 'legacyMismatch' ? (
               <Button disabled>{t.flow.output.mismatchBlocked}</Button>
             ) : outputPhase === 'issueFailed' ? (
@@ -846,6 +824,31 @@ export const ProductionFlowScreen = () => {
               <Button disabled={!canOutput} onClick={queueOutput}>
                 {t.flow.output.issue}
               </Button>
+            )}
+
+            {/*
+             * 발행·인쇄가 어떻게 됐는지는 **이 구획 안에서 말한다**(사용자 지시 2026-09-10).
+             * 화면 맨 위 띠에 두었더니 프린터·[다시 시도]와 멀어져, 무엇에 대한 실패인지와
+             * 다음에 누를 것이 서로 다른 자리에 섰다. 스펙에 없는 자리라 우리가 정한다.
+             *
+             * ⭐ **버튼 «아래»다**(사용자 지시 2026-09-10). 위에 두면 값 목록과 버튼 사이를
+             * 갈라 놓아, 눈이 값에서 버튼으로 가는 길에 매번 문장을 지난다.
+             */}
+            {outputStatus !== null && (
+              <div className="banner-slot">
+                <AlertBanner
+                  variant={
+                    outputPhase === 'issueFailed' ||
+                    outputPhase === 'renditionFailed' ||
+                    outputPhase === 'printFailed' ||
+                    outputPhase === 'reportFailed' ||
+                    outputPhase === 'legacyMismatch'
+                      ? 'error'
+                      : 'info'
+                  }
+                  title={outputStatus}
+                />
+              </div>
             )}
 
             {lotPrinter === null && !lotPrinters.isPending && (
