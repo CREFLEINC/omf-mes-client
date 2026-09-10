@@ -11,6 +11,8 @@ export interface SelectionCardProps {
   /** 이 단말이 붙어 있는 설비. 계획 설비와 견주는 기준이다. */
   equipmentId: number | null;
   equipmentCode: string | null;
+  /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null` — 수량만 낸다. */
+  uomCodeOf: (uomId: number | undefined) => string | null;
 }
 
 /**
@@ -26,7 +28,12 @@ export interface SelectionCardProps {
  * ⚠ **계획 설비가 다른 지시는 막지 않는다**(§6 · §8 미결 5) — 현장이 설비를 바꿔 돌릴 수
  * 있고, 실제 설비는 세션에 기록돼 사후 추적된다. 경고만 한다.
  */
-export const SelectionCard = ({ workOrder, equipmentId, equipmentCode }: SelectionCardProps) => (
+export const SelectionCard = ({
+  workOrder,
+  equipmentId,
+  equipmentCode,
+  uomCodeOf,
+}: SelectionCardProps) => (
   /*
    * ⭐ **제 내용만큼 선다**(`pop-fixed`) — 남는 높이는 위 목록이 가져간다. 몫을 나눠 받으면
    * 내용이 두 줄뿐일 때도 자리를 차지하고, 내용이 늘면 «받은 몫 안에서» 잘려 스크롤이 생겼다
@@ -41,7 +48,8 @@ export const SelectionCard = ({ workOrder, equipmentId, equipmentCode }: Selecti
       <Card bordered surface="low">
         <Card.Body>
           <p>
-            {workOrder.workOrderNo} · {itemText(workOrder)} · {qtyText(workOrder.orderQty)}
+            {workOrder.workOrderNo} · {itemText(workOrder)} ·{' '}
+            {qtyText(workOrder.orderQty, uomCodeOf(workOrder.uomId))}
           </p>
           <p className="field-note">
             {`${t.equipment} ${equipmentCode ?? t.unknown} · ${t.mold} ${idText(

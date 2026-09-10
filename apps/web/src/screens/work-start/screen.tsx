@@ -12,7 +12,13 @@ import { useStartGate } from './gating';
 import { useResumeWork, useStartWork, toResumeBody } from './mutations';
 import { PopHeader } from './pop-header';
 import { SelectionCard } from './selection-card';
-import { useOpenSession, useTerminal, useWorkOrders, useWorkerLookup } from './queries';
+import {
+  useOpenSession,
+  useTerminal,
+  useUomCodes,
+  useWorkOrders,
+  useWorkerLookup,
+} from './queries';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder } from './types';
@@ -48,6 +54,11 @@ export const WorkStartScreen = () => {
   /* ⛔ 단말·공정·사번은 셸이 채운다 — 화면이 토큰을 열어 읽지 않는다(F-2). */
   const identity = usePopIdentity();
   const isOnline = useIsOnline();
+
+  /* 단위 이름 — 수량 뒤에 붙인다. 못 받으면 붙이지 않는다(지어내지 않는다). */
+  const uoms = useUomCodes();
+  const uomCodeOf = (uomId: number | undefined): string | null =>
+    uomId === undefined ? null : (uoms.data?.get(uomId) ?? null);
 
   const gate = useStartGate(identity.terminalId, identity.processId);
   const terminal = useTerminal(identity.terminalId);
@@ -430,6 +441,7 @@ export const WorkStartScreen = () => {
       )}
 
       <WorkOrderList
+        uomCodeOf={uomCodeOf}
         workOrders={rows}
         isAsked={isListAsked}
         isLoading={isListAsked && list.isPending}
@@ -459,7 +471,12 @@ export const WorkStartScreen = () => {
         }}
       />
 
-      <SelectionCard workOrder={selected} equipmentId={equipmentId} equipmentCode={equipmentCode} />
+      <SelectionCard
+        workOrder={selected}
+        equipmentId={equipmentId}
+        equipmentCode={equipmentCode}
+        uomCodeOf={uomCodeOf}
+      />
 
       {outcome !== null && (
         <div className="banner-slot">

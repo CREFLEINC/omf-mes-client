@@ -155,7 +155,9 @@ export const ReprintPane = ({
                      *   것이 있는 것처럼 보인다(사용자 지시 2026-09-10).
                      */}
                     {target.disabledReason === null && (
-                      <span className="pop-reprint-qty">{t.targets.range(target.qty)}</span>
+                      <span className="pop-reprint-qty">
+                        {t.targets.range(target.qty, target.uomCode)}
+                      </span>
                     )}
                   </span>
                 </div>

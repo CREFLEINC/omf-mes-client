@@ -63,7 +63,12 @@ export const packingLabelReprint = {
     /** 개체를 데이터로 좁힐 수 없다. 감추지 않고 사유를 보인다 */
     serialUnavailable: '이 포장은 개체 정보가 없어 라벨을 발행할 수 없습니다.',
     /** 범위 표기 — 개체 줄은 LOT + 수량으로만 말할 수 있다 */
-    range: (qty: number): string => `수량 ${String(qty)}`,
+    /*
+     * ⚠ **단위를 함께 낸다**(사용자 지시 2026-09-10). 단위 없는 수량은 「180」이 개인지 킬로인지
+     *    말하지 않는다. ⛔ 못 받았을 때 지어내지 않는다 — 그때만 수량만 낸다.
+     */
+    range: (qty: number, uomCode: string | null): string =>
+      uomCode === null ? `수량 ${String(qty)}` : `수량 ${String(qty)} ${uomCode}`,
     issueCount: (count: number): string => `발행 이력 ${String(count)}회`,
     /*
      * ⚠ **발행 이력이 없으면 재출력이 아니라 «최초 발행»이다**(스펙 §6 예외표 · 사용자 지적

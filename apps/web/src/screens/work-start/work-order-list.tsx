@@ -32,6 +32,8 @@ export interface WorkOrderListProps {
   onSelect: (workOrder: WorkOrder) => void;
   onToggleScope: () => void;
   onRetry: () => void;
+  /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null` — 수량만 낸다. */
+  uomCodeOf: (uomId: number | undefined) => string | null;
 }
 
 /**
@@ -61,6 +63,7 @@ export const WorkOrderList = ({
   onSelect,
   onToggleScope,
   onRetry,
+  uomCodeOf,
 }: WorkOrderListProps) => {
   const rows = workOrders ?? [];
   const isTruncated = total !== undefined && total > rows.length;
@@ -180,7 +183,7 @@ export const WorkOrderList = ({
                           {row.workOrderNo} · {itemText(row)}
                         </p>
                         <p className="field-note">
-                          {`${qtyText(row.orderQty)} · ${t.columns.plannedStart} ${dateTimeText(
+                          {`${qtyText(row.orderQty, uomCodeOf(row.uomId))} · ${t.columns.plannedStart} ${dateTimeText(
                             row.plannedStartAt,
                           )} · ${t.columns.priority} ${String(row.priorityNo)}`}
                         </p>

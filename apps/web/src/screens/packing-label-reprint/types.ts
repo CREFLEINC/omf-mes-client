@@ -84,6 +84,8 @@ export interface ReprintTarget {
   displayName: string;
   /** 포장에 든 수량. 개체 대상의 「범위」를 말할 때 쓴다 */
   qty: number;
+  /** 수량의 단위. 못 받았으면 `null` — 지어내지 않는다(수량만 낸다). */
+  uomCode: string | null;
   /** 지금까지 발행된 횟수. 요약을 아직 못 받았으면 `null` — 「모른다」와 「0」은 다르다 */
   issueCount: number | null;
   /** 마지막 발행 시각. 없으면 `null` */
