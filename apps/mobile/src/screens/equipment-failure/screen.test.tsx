@@ -9,6 +9,13 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { EquipmentFailureScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+const tone = vi.hoisted(() => ({ played: 0 }));
+
+vi.mock('../../patterns/error-tone', () => ({
+  playErrorTone: () => {
+    tone.played += 1;
+  },
+}));
 /** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
 const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
@@ -47,6 +54,7 @@ const equipment = (id: number, code: string, name: string) => ({
   equipmentCode: code,
   equipmentName: name,
   equipmentTypeCode: 'PRESS',
+  locationId: 3001,
   statusCode: 'IN_SERVICE',
   calibrationRequired: false,
   isActive: true,
@@ -54,7 +62,22 @@ const equipment = (id: number, code: string, name: string) => ({
 
 const EQUIPMENTS = [equipment(7, 'PRS-01', '프레스 1호기'), equipment(8, 'PRS-02', '프레스 2호기')];
 
-const routes = (options: { openBreakdowns?: number; seen?: URL[] } = {}) => [
+const routes = (options: { openBreakdowns?: number; seen?: URL[]; recent?: string[] } = {}) => [
+  {
+    match: (request: Request) => /^\/mdm\/locations\/\d+$/.test(new URL(request.url).pathname),
+    respond: () =>
+      jsonResponse({
+        location: {
+          locationId: 3001,
+          warehouseId: 1,
+          locationCode: 'A-01',
+          locationName: '프레스라인A 1구역',
+          locationTypeCode: 'CELL',
+          isActive: true,
+        },
+        editability: {},
+      }),
+  },
   {
     match: (request: Request) => new URL(request.url).pathname === '/mdm/equipments',
     respond: (request: Request) => {
@@ -70,9 +93,22 @@ const routes = (options: { openBreakdowns?: number; seen?: URL[] } = {}) => [
     match: (request: Request) =>
       new URL(request.url).pathname === '/maintenance/breakdowns' && request.method === 'GET',
     respond: (request: Request) => {
-      options.seen?.push(new URL(request.url));
+      const url = new URL(request.url);
+      options.seen?.push(url);
+
+      /* 지난 증상을 묻는 회차는 열린 것만 묻지 않는다. 둘을 한 응답으로 뭉치지 않는다. */
+      const past = url.searchParams.get('openOnly') === 'true' ? [] : (options.recent ?? []);
+
       return jsonResponse({
-        items: [],
+        items: past.map((symptom, index) => ({
+          breakdownId: 900 + index,
+          equipmentId: 7,
+          symptom,
+          occurrenceStateCode: 'STOPPED',
+          reportedAt: '2026-08-11T09:12:00+09:00',
+          reporterWorkerNo: '900028',
+          statusCode: 'DONE',
+        })),
         page: { page: 0, size: 1, total: options.openBreakdowns ?? 0 },
       });
     },
@@ -92,16 +128,16 @@ const SignedIn = ({ children }: { children: React.ReactNode }) => {
   return worker === null ? null : children;
 };
 
-const mount = (extra: ReturnType<typeof routes> = []) =>
+const mount = (extra: ReturnType<typeof routes> = [], options: Parameters<typeof routes>[0] = {}) =>
   renderWithProviders(
     <SignedIn>
       <EquipmentFailureScreen />
     </SignedIn>,
-    { fetch: createStubFetch([...routes(), ...extra]) },
+    { fetch: createStubFetch([...routes(options), ...extra]) },
   );
 
 const scan = (code: string) => {
-  const field = screen.getByLabelText('설비 스캔') as HTMLInputElement;
+  const field = screen.getByLabelText(/설비 스캔/) as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -124,10 +160,10 @@ describe('설비 고장 보고 화면', () => {
       fetch: createStubFetch(routes()),
     });
 
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
 
     expect(screen.getByText('사번을 먼저 확인하세요')).toBeInTheDocument();
@@ -137,14 +173,14 @@ describe('설비 고장 보고 화면', () => {
   it('설비를 고르기 전에는 보고할 수 없다', async () => {
     mount();
 
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     expect(screen.getByRole('button', { name: '고장 보고' })).toBeDisabled();
   });
 
   it('스캔한 코드로 설비를 고른다', async () => {
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
 
@@ -166,7 +202,7 @@ describe('설비 고장 보고 화면', () => {
   /* 스캔이 실패해도 고를 수 있어야 한다 — 직접 입력 대체 경로. */
   it('없는 코드를 스캔하면 그렇게 말하고 목록은 그대로 둔다', async () => {
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('SYN-NONE');
 
@@ -204,13 +240,13 @@ describe('설비 고장 보고 화면', () => {
         fetch: createStubFetch(routes({ openBreakdowns: 1 })),
       },
     );
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
 
     expect(await screen.findByText('이 설비에 처리 중인 고장 1건')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
 
     expect(screen.getByRole('button', { name: '고장 보고' })).toBeEnabled();
@@ -219,7 +255,7 @@ describe('설비 고장 보고 화면', () => {
   it('증상을 적지 않으면 보고할 수 없다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await user.click(await screen.findByRole('radio', { name: '설비가 멈췄다' }));
@@ -246,7 +282,7 @@ describe('설비 고장 보고 화면', () => {
   it('멈췄다를 고르면 정지 시각과 비가동 안내를 보인다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await user.click(await screen.findByRole('radio', { name: '설비가 멈췄다' }));
@@ -258,7 +294,7 @@ describe('설비 고장 보고 화면', () => {
   it('돌지만 이상하다를 고르면 정지 시각을 묻지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await user.click(await screen.findByRole('radio', { name: '돌지만 이상하다' }));
@@ -295,11 +331,11 @@ describe('설비 고장 보고 화면', () => {
         ]),
       },
     );
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
     await user.type(screen.getByLabelText('정지 시각'), '14:20');
     await user.click(screen.getByRole('radio', { name: '돌지만 이상하다' }));
@@ -334,11 +370,11 @@ describe('설비 고장 보고 화면', () => {
         ]),
       },
     );
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
@@ -384,11 +420,11 @@ describe('설비 고장 보고 화면', () => {
         ]),
       },
     );
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
@@ -399,14 +435,14 @@ describe('설비 고장 보고 화면', () => {
   it('사진보다 본문을 먼저 담는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
     await user.click(screen.getByRole('button', { name: /촬영/ }));
     await screen.findByAltText('찍은 사진');
 
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
@@ -424,7 +460,7 @@ describe('설비 고장 보고 화면', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
@@ -461,7 +497,7 @@ describe('설비 고장 보고 화면', () => {
     );
 
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
@@ -485,11 +521,11 @@ describe('설비 고장 보고 화면', () => {
   it('담긴 건이 그때의 사번을 들고 있다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
@@ -521,11 +557,11 @@ describe('설비 고장 보고 화면', () => {
         ]),
       },
     );
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
@@ -560,11 +596,11 @@ describe('설비 고장 보고 화면', () => {
         ]),
       },
     );
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
     await user.click(screen.getByRole('button', { name: '고장 보고' }));
 
@@ -580,11 +616,11 @@ describe('설비 고장 보고 화면', () => {
   it('같은 틱에 고장 보고를 세 번 눌러도 한 건만 담긴다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
 
     const button = screen.getByRole('button', { name: '고장 보고' });
@@ -606,11 +642,11 @@ describe('설비 고장 보고 화면', () => {
   it('담아 두지 못하면 보고되지 않았다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('설비 스캔');
+    await screen.findByLabelText(/설비 스캔/);
 
     scan('PRS-01');
     await screen.findByText('PRS-01 프레스 1호기');
-    await user.type(screen.getByLabelText('증상'), '유압 누유');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
     await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
 
     held.failWrite = 'outbox';
@@ -618,5 +654,66 @@ describe('설비 고장 보고 화면', () => {
 
     expect(await screen.findByText('보고를 저장하지 못했습니다')).toBeInTheDocument();
     expect(store.get('outbox')).toBeUndefined();
+  });
+
+  /* 알림을 받은 설비담당이 어디로 가야 하는지 알아야 한다. */
+  it('고른 설비의 위치를 보인다', async () => {
+    mount();
+    await screen.findByLabelText(/설비 스캔/);
+
+    scan('PRS-01');
+
+    expect(await screen.findByText('위치 A-01 프레스라인A 1구역')).toBeInTheDocument();
+  });
+
+  /* 코드로 강제하지 않는 대신 지난 것을 눌러 넣는다. 서서 자유 텍스트를 치는 자리다. */
+  it('같은 설비의 지난 증상을 눌러 넣을 수 있다', async () => {
+    const user = userEvent.setup();
+    mount([], { recent: ['유압 누유 · 실린더 하부'] });
+    await screen.findByLabelText(/설비 스캔/);
+
+    scan('PRS-01');
+
+    await user.click(await screen.findByRole('button', { name: '유압 누유 · 실린더 하부' }));
+
+    expect(await screen.findByDisplayValue('유압 누유 · 실린더 하부')).toBeInTheDocument();
+  });
+
+  /* 기기를 들고 설비 앞에 선 채다. 화면에만 적으면 통과한 줄 알고 다음으로 넘어간다. */
+  it('이 공장의 설비가 아닌 코드를 소리로도 알린다', async () => {
+    mount();
+    await screen.findByLabelText(/설비 스캔/);
+
+    scan('NOPE-99');
+
+    await screen.findByText('NOPE-99 설비를 찾지 못했습니다');
+    expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /* 못 가면 설비담당이 오지 않는데 보고자는 온다고 믿는다. 상시 보이고 대안을 적는다. */
+  it('보내지 못한 고장 보고가 남아 있으면 결과 화면을 닫아도 상시 알린다', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (request: Request) =>
+          new URL(request.url).pathname === '/maintenance/breakdowns' && request.method === 'POST',
+        respond: () => {
+          throw new TypeError('Failed to fetch');
+        },
+      },
+    ]);
+    await screen.findByLabelText(/설비 스캔/);
+
+    scan('PRS-01');
+    await screen.findByText('PRS-01 프레스 1호기');
+    await user.type(screen.getByLabelText(/증상/), '유압 누유');
+    await user.click(screen.getByRole('radio', { name: '설비가 멈췄다' }));
+    await user.click(screen.getByRole('button', { name: '고장 보고' }));
+
+    await screen.findByText(/전송 대기/);
+    await user.click(screen.getByRole('button', { name: '다른 고장 보고' }));
+
+    expect(await screen.findByText(/호출이 가지 않았습니다/)).toBeInTheDocument();
+    expect(screen.getByText('급하면 직접 연락하세요.')).toBeInTheDocument();
   });
 });

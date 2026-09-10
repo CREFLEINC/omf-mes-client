@@ -642,8 +642,15 @@ on('GET', '/mdm/partners', (_p, query) =>
   page(keep(state.partners, [byText(query, 'roleTypeCode', 'roleTypeCode')]), query),
 );
 
+/* 상태 축을 실제로 건다. 무시하면 폐기한 설비가 고장 보고·점검 목록에 그대로 선다. */
 on('GET', '/mdm/equipments', (_p, query) =>
-  page(keep(state.equipments, [contains(query, 'q', 'equipmentCode')]), query),
+  page(
+    keep(state.equipments, [
+      contains(query, 'q', 'equipmentCode'),
+      byText(query, 'statusCode', 'statusCode'),
+    ]),
+    query,
+  ),
 );
 /*
  * 설비 하나의 점검 항목 부여.
@@ -3093,8 +3100,16 @@ on('GET', '/maintenance/inspections', (_p, query) =>
   page(keep(state.inspections, [byNum(query, 'equipmentId', 'equipmentId')]), query),
 );
 
+/* 열린 것만 묻는 축을 실제로 건다. 무시하면 끝난 고장이 처리 중 건수에 섞인다. */
 on('GET', '/maintenance/breakdowns', (_p, query) =>
-  page(keep(state.breakdowns, [byNum(query, 'equipmentId', 'equipmentId')]), query),
+  page(
+    keep(state.breakdowns, [
+      byNum(query, 'equipmentId', 'equipmentId'),
+      byText(query, 'statusCode', 'statusCode'),
+      (row) => bool(query, 'openOnly') !== true || row.statusCode !== 'DONE',
+    ]),
+    query,
+  ),
 );
 
 on('POST', '/maintenance/breakdowns', (_p, _q, body) => {

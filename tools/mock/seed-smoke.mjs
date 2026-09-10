@@ -85,7 +85,7 @@ const ENTRIES = [
   ['W-04-07 불량창고', '/mdm/warehouses?isDefect=true', 1],
   ['W-04-07 심각도', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY', 1],
   ['W-03-10 상태', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS', 3],
-  ['M-05-01 설비', '/mdm/equipments', 2],
+  ['M-05-01 설비', '/mdm/equipments?statusCode=IN_SERVICE', 2],
   ['W-06-07 창고', '/mdm/warehouses?includeInactive=true', 3],
   ['W-06-07 공장', '/mdm/plants?includeInactive=true', 1],
   ['W-06-07 사업부', '/mdm/business-units?includeInactive=true', 1],

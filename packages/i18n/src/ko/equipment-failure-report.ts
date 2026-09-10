@@ -19,6 +19,9 @@ export const equipmentFailureReport = {
     notFound: (code: string) => `${code} 설비를 찾지 못했습니다`,
     /** 막지 않는다. 다른 증상일 수 있어 사람이 보고 정한다. */
     openBreakdowns: (count: number) => `이 설비에 처리 중인 고장 ${String(count)}건`,
+    /** 알림을 받은 설비담당이 어디로 가야 하는지 알아야 한다. */
+    location: (name: string) => `위치 ${name}`,
+    locationUnknown: '위치를 확인할 수 없습니다',
   },
   symptom: {
     legend: '증상',
@@ -26,6 +29,8 @@ export const equipmentFailureReport = {
     placeholder: '유압 누유 · 실린더 하부',
     hint: '무엇이 어떻게 되었는지 한 줄로 적어 주세요.',
     required: '증상을 적어 주세요',
+    /** 코드로 강제하지 않는 대신 지난 것을 눌러 넣을 수 있게 한다(공유계약 A-12). */
+    recentLegend: '이 설비에 지난번 적힌 증상',
   },
   photo: {
     legend: '사진',
@@ -53,6 +58,12 @@ export const equipmentFailureReport = {
     /** 끊겼다고 끄지 않는다. 아직 못 갔다는 것을 보이는 것이 맞다. */
     offline: '연결되면 알립니다. 급하면 직접 연락하세요.',
   },
+  /**
+   * 못 보낸 고장 보고. 점검과 달리 사람이 기다린다 - 안 가면 설비담당이 오지 않는다.
+   */
+  unsent: (count: number) =>
+    `보내지 못한 고장 보고 ${String(count)}건 — 설비담당에게 호출이 가지 않았습니다`,
+  unsentHint: '급하면 직접 연락하세요.',
   /** 전송 실패한 기록 목록에서 이 기록이 무엇인지 알리는 이름. */
   record: {
     report: '설비 고장 보고',

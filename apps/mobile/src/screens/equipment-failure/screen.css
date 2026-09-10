@@ -15,7 +15,6 @@
   gap: var(--space-3, 12px);
 }
 
-
 .equipment-failure p {
   margin: 0;
 }
@@ -43,4 +42,17 @@
   height: 96px;
   object-fit: cover;
   border-radius: var(--radius-sm, 4px);
+}
+
+.equipment-failure__wide {
+  width: 100%;
+}
+
+.equipment-failure__recent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
