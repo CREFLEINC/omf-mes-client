@@ -45,6 +45,7 @@ import { approvalInbox } from './approval-inbox';
 import { iqcSkipApproval } from './iqc-skip-approval';
 import { poRegister } from './po-register';
 import { login } from './login';
+import { session } from './session';
 import { stockAdjust } from './stock-adjust';
 import { passwordChange } from './password-change';
 import { putawayRule } from './putaway-rule';
@@ -165,6 +166,7 @@ export const ko = {
   iqcSkipApproval,
   poRegister,
   login,
+  session,
   stockAdjust,
   passwordChange,
   putawayRule,

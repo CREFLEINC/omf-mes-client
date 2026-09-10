@@ -161,6 +161,77 @@ const on = (method, pattern, handle) => {
   routes.push({ method, matcher: new RegExp(`^${source}$`), keys, handle });
 };
 
+/* ── 세션 ─────────────────────────────────────────────────── */
+
+/*
+ * 로그인 상태를 목에서도 실제로 가른다(#1019).
+ *
+ * ⚠ **종전에는 이 경로가 없어 Prism 이 계약 예시를 돌려주었다.** 예시에는 `permissions` 가
+ * 없어서 POP 의 화면 후보 판정이 늘 「모른다」로 떨어졌고(`patterns/pop-access.ts`), 관리웹에
+ * 가드가 서면 그 화면은 부팅부터 막힌다.
+ *
+ * ⭐ **처음에는 로그인된 채로 시작한다.** 목은 화면을 만드는 동안 쓰는 도구라, 켤 때마다
+ * 자격을 치게 하면 없던 관문이 생긴다. 로그아웃을 누르면 실제로 끊기고, 그 뒤 로그인 화면이
+ * 제 노릇을 하는지도 목만으로 볼 수 있다.
+ *
+ * ⛔ **자격을 검사하지 않는다.** 여기서 아이디·비밀번호를 판정하기 시작하면 씨앗에 계정 표를
+ * 두어야 하고, 그것은 목이 흉내 낼 값이 아니다 — 잠금·남은 시도 횟수는 서버의 상태다.
+ */
+const MOCK_SESSION = {
+  userId: 1001,
+  loginId: 'hong.gd',
+  userName: '홍길동',
+  departmentId: 1001,
+  scopes: [{ businessUnitId: 1001, plantId: 1001 }],
+  roles: ['창고관리자'],
+  /*
+   * ⚠ **POP 화면 코드는 `apps/web/src/patterns/pop-screen-catalog.ts` 와 같은 값이어야 한다.**
+   * 목이 계약 서버가 아니라 여기 한 벌을 더 적는다 — 어긋나면 POP 후보 목록이 조용히 줄어드니
+   * 화면을 붙일 때 두 곳을 함께 고친다.
+   */
+  permissions: [
+    'P-01-01',
+    'P-01-02',
+    'P-02-01',
+    'P-02-03',
+    'P-02-04',
+    'P-02-08',
+    'P-02-09',
+    'P-02-10',
+    'P-02-11',
+    'P-02-12',
+    'P-02-13',
+    'P-04-01',
+    'P-04-03',
+    'P-04-04',
+    'P-05-01',
+    'P-05-02',
+  ],
+};
+
+let signedIn = true;
+
+const unauthenticated = () => ({
+  status: 401,
+  created: { code: 'UNAUTHENTICATED', message: '로그인이 필요합니다.' },
+});
+
+on('GET', '/app/sessions/current', () => (signedIn ? MOCK_SESSION : unauthenticated()));
+
+on('POST', '/app/sessions', (_params, _query, _body, headers) =>
+  idempotent('login', headers, () => {
+    signedIn = true;
+    return MOCK_SESSION;
+  }),
+);
+
+on('DELETE', '/app/sessions/current', (_params, _query, _body, headers) =>
+  idempotent('logout', headers, () => {
+    signedIn = false;
+    return { status: 204, created: undefined };
+  }),
+);
+
 /* ── 기준정보 ─────────────────────────────────────────────── */
 
 /*

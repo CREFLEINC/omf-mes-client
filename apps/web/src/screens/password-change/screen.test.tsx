@@ -198,7 +198,8 @@ const renderScreen = (options: RenderOptions = {}) => {
       <LocationProbe />
       {options.session === true && <SessionProbe />}
     </SessionProvider>,
-    { route: PASSWORD_CHANGE_ROUTE, fetch: options.fetch },
+    /* 로그인 상태는 심어 둔다 — 이 화면이 재는 것은 비밀번호 변경이다(#1019). */
+    { route: PASSWORD_CHANGE_ROUTE, fetch: options.fetch, session: null },
   );
 
   return { user, ...result };

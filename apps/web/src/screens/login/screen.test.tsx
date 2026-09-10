@@ -144,7 +144,12 @@ const renderScreen = (options: RenderOptions = {}) => {
       )}
       <SessionProbe />
     </SessionProvider>,
-    { fetch: options.fetch, route: LOGIN_ROUTE },
+    /*
+     * ⭐ **로그인하지 않은 상태를 심는다.** 세션은 이제 서버에 물어봐야 아는 값이지만(#1019),
+     * 이 화면이 재는 것은 로그인 «시도»다 — 판정을 조회로 받으면 회차마다 그 스텁이 필요하고
+     * 첫 렌더도 한 틱 늦어진다.
+     */
+    { fetch: options.fetch, route: LOGIN_ROUTE, session: null },
   );
 
   return { user, ...result };

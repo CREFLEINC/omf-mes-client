@@ -1,9 +1,9 @@
 import { Button, Card, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 
-import { useSession } from '../../patterns/session';
+import { resolveReturnPath, useSession } from '../../patterns/session';
 
 import {
   canSubmit,
@@ -16,15 +16,6 @@ import { LoginErrorBanner } from './login-error-banner';
 import { useLogin } from './queries';
 
 const t = messages.login;
-
-/**
- * 성공 뒤 갈 곳.
- *
- * ⚠ **스펙은 「대시보드로」인데 통합 대시보드 화면이 아직 없다.** 지금 이 주소는 관리웹의
- * 첫 화면으로 넘겨 준다. **그 화면이 서면 이 한 줄을 바꾼다** — 그때까지 「대시보드」라는 이름을
- * 코드에 지어 두지 않는다. 없는 화면을 가리키는 상수는 있는 것처럼 읽힌다.
- */
-const AFTER_LOGIN_ROUTE = '/';
 
 /**
  * W-CO-01 — **관리웹에서 셸(`AppShell`)을 쓰지 않는 유일한 화면**이다(스펙 근거: omf-mes#155).
@@ -45,9 +36,9 @@ const AFTER_LOGIN_ROUTE = '/';
  * **성공하면 세션을 담고 셸 안으로 넘긴다.** 담는 자리는 `patterns/session`이고 이 화면은
  * 그것을 채우기만 한다 — 셸이 같은 값을 읽어 상단 바에 이름을 세운다.
  *
- * ⛔ **이 화면은 접근을 제한하지 않는다.** 미인증 상태로 다른 주소에 들어가는 길은 그대로
- * 열려 있다(라우트 가드는 이 작업의 범위 밖). 로그인 화면이 생겼다는 것이 보호가 생겼다는
- * 뜻이 아니다.
+ * ⭐ **막는 일은 이 화면이 하지 않는다.** 다른 주소를 막는 것은 라우트 표에 선 가드
+ * (`patterns/session`)이고, 이 화면은 그 가드가 보낸 사람을 받아 **원래 가려던 자리로**
+ * 돌려보낸다(#1019).
  */
 export const LoginScreen = () => {
   const [draft, setDraft] = useState<LoginDraft>(emptyLoginDraft);
@@ -56,8 +47,18 @@ export const LoginScreen = () => {
   const reasonId = useId();
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { signIn } = useSession();
+
+  /**
+   * 성공 뒤 갈 곳. **가드가 막은 주소가 있으면 그리로 돌아간다**(#1019).
+   *
+   * ⭐ **판정을 렌더 시점에 해 둔다.** 성공 되먹임 안에서 읽으면 그 사이에 이동 상태가 바뀐
+   * 경우 엉뚱한 곳으로 간다 — 이 값은 「이 화면에 «어떻게» 들어왔는가」이지 「지금 어디인가」가
+   * 아니다.
+   */
+  const returnPath = resolveReturnPath(location.state);
 
   const login = useLogin({
     onSuccess: (session) => {
@@ -76,7 +77,7 @@ export const LoginScreen = () => {
        * 이미 로그인한 사람이 로그인 화면으로 되돌아간다 — 그 화면은 자기가 로그인된 줄
        * 모르므로 사용자는 자격을 한 번 더 친다.
        */
-      void navigate(AFTER_LOGIN_ROUTE, { replace: true });
+      void navigate(returnPath, { replace: true });
     },
   });
 

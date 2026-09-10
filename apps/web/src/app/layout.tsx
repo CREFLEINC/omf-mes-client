@@ -1,8 +1,9 @@
-import { AppShell, Sidebar, SidebarItem, SidebarSection, Topbar } from '@crefle/web-ui';
+import { AppShell, Button, Sidebar, SidebarItem, SidebarSection, Topbar } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
 import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 
-import { useSession } from '../patterns/session';
+import { useSession, useSignOut } from '../patterns/session';
 
 interface NavItemProps {
   to: string;
@@ -32,11 +33,37 @@ interface AppLayoutProps {
 }
 
 /**
+ * 상단 바 오른쪽 — **누구로 있는가와 나가는 길**.
+ *
+ * ⭐ **이름 없이 로그아웃만 두지 않는다.** 사무실에서 여럿이 번갈아 쓰는 화면이라, 나가기 전에
+ * **지금 누구로 있는지**를 같은 자리에서 확인할 수 있어야 한다.
+ *
+ * ⚠ **나가는 중에는 잠근다.** 연타가 그대로 요청 두 벌이 되고, 계약이 쓰기마다 새 멱등 키를
+ * 요구하므로 서버에는 서로 다른 요청으로 보인다.
+ */
+const SessionActions = ({ userName }: { userName: string }) => {
+  const { signOut, isSigningOut } = useSignOut();
+
+  return (
+    <div className="topbar-session">
+      <span>{userName}</span>
+      <Button variant="text" size="sm" onClick={signOut} disabled={isSigningOut}>
+        {messages.session.actions.signOut}
+      </Button>
+    </div>
+  );
+};
+
+/**
  * 관리웹 셸.
  *
- * **상단 바 오른쪽에 로그인 사용자의 이름을 보인다.** 세션이 없으면 그 자리를 **비운다** —
- * 「알 수 없음」류의 글자를 두지 않는다(공유계약 G-9: 모르는 값과 없는 값을 같은 모양으로
- * 그리지 않는다). 지금은 미인증 접근을 막는 장치가 없어 **비어 있는 것이 정상 상태**다.
+ * **상단 바 오른쪽에 로그인 사용자의 이름과 로그아웃을 보인다.** 세션이 없으면 그 자리를
+ * **비운다** — 「알 수 없음」류의 글자를 두지 않는다(공유계약 G-9: 모르는 값과 없는 값을 같은
+ * 모양으로 그리지 않는다).
+ *
+ * ⚠ **이 셸은 `RequireSession` 안에서만 선다**(`routes/index.tsx`). 그래도 세션 없는 갈래를
+ * 지우지 않는 것은, 이 파일이 그 사실을 강제할 수 없어서다 — 가드 밖에서 쓰이는 날
+ * 「알 수 없음」이 그려지는 것보다 **비는 편**이 낫다.
  *
  * ⛔ 귀속(사업부·공장)은 그리지 않는다 — 계약이 정수 ID만 주고 이름을 주지 않아, 사람이 읽을
  * 값을 만들려면 셸이 기준정보 조회를 지게 된다. 값 자체는 세션에 그대로 실려 있다.
@@ -50,7 +77,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       topbar={
         <Topbar
           brand={<strong>OMF-MES 관리웹</strong>}
-          actions={session === null ? undefined : <span>{session.userName}</span>}
+          actions={session === null ? undefined : <SessionActions userName={session.userName} />}
         />
       }
       sidebar={
