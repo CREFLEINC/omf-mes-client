@@ -942,6 +942,27 @@ for (const [name, path, check] of DETAILS) {
   console.log(`${ok ? '✔' : '✘'} M-04-03 구성을 치환하면 재구성 이력이 남는다`);
 }
 
+/*
+ * 점검 항목이 계약 모양인가. 이름과 순번이 다른 이름으로 실려 있으면 화면이 항목 자리에
+ * 빈 값을 적고, 점검자가 무엇을 재는지 알 수 없다.
+ */
+{
+  const response = await fetch(`${BASE}/mdm/equipments/5001/inspection-items`);
+  const body = await response.json();
+  const measured = body.effective.find((row) => row.judgmentMethodCode === 'MEASUREMENT');
+  const uoms = await (await fetch(`${BASE}/mdm/uoms?includeInactive=true`)).json();
+  const named = uoms.items.some((row) => row.uomId === measured?.uomId);
+  const ok =
+    body.effective.length > 0 &&
+    body.effective.every(
+      (row) => typeof row.itemName === 'string' && typeof row.sequenceNo === 'number',
+    ) &&
+    named;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-05-01 점검 항목이 이름과 순번과 단위를 들고 온다`);
+}
+
 console.log(
   failed === 0
     ? `\n화면 ${String(ENTRIES.length + DETAILS.length)}자리 전부 열립니다.`

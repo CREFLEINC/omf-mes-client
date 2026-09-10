@@ -15,7 +15,6 @@
   gap: var(--space-3, 12px);
 }
 
-
 .inspection p {
   margin: 0;
 }
@@ -64,4 +63,8 @@
 
 .inspection__judge > * {
   flex: 1;
+}
+
+.inspection__wide {
+  width: 100%;
 }
