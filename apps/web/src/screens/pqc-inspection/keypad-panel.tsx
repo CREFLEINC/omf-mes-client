@@ -34,7 +34,12 @@ export const KeypadPanel = ({ label, value, onChange }: KeypadPanelProps) => (
 
     {/* 어느 칸을 치고 있는지 늘 보인다 — 패드가 칸에서 떨어져 있어 눈이 되짚을 자리가 필요하다. */}
     <p className="pqc-pad-target">{label ?? t.noTarget}</p>
-    <p className="pqc-pad-value">{value === '' ? t.empty : value}</p>
+    {/*
+     * ⛔ **빈 값에 줄표를 세우지 않는다**(사용자 지시 2026-09-10). 칸을 고르기만 하고 아직
+     *    아무것도 안 눌렀을 때 「—」가 서면 그것이 값처럼 읽힌다 — 빈 자리 그대로 둔다.
+     *    줄 높이는 CSS 가 잡고 있어(`min-block-size`) 첫 숫자에 화면이 튀지 않는다.
+     */}
+    <p className="pqc-pad-value">{value}</p>
 
     <NumericKeypad
       value={value}
