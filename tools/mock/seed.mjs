@@ -88,6 +88,8 @@ export const createSeed = (now = new Date()) => {
       itemName: '수지A',
       labelName: 'PC RESIN BLK',
       fifoPolicyCode: 'FEFO',
+      /* 자리의 같은 값과 어긋나야 적치의 보관조건 경고를 실기에서 볼 수 있다. */
+      storageConditionCode: 'REFRIGERATED',
     },
     {
       itemId: 2002,
@@ -182,6 +184,14 @@ export const createSeed = (now = new Date()) => {
       warehouseId: 1001,
       locationCode: 'A-01-04',
       locationName: 'A구역 01열 04단',
+    },
+    /* 상온 자리. 냉장 품목을 여기로 스캔하면 경고가 선다. */
+    {
+      locationId: 3010,
+      warehouseId: 1001,
+      locationCode: 'A-01-05',
+      locationName: 'A구역 01열 05단',
+      storageConditionCode: 'ROOM_TEMPERATURE',
     },
     {
       locationId: 3003,

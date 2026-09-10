@@ -17,6 +17,8 @@ export interface ItemSummary {
   itemName: string;
   /** 선출 정책. 품목마다 다르고 전사 고정이 아니다. */
   fifoPolicyCode: string;
+  /** 보관조건. 위치의 같은 이름 값과 같은 코드계라 그대로 견준다. 비어 있을 수 있다. */
+  storageConditionCode?: string | null;
 }
 
 /** 계약의 LOT 응답에 품목 이름이 없어 되짚어 부른다. 스캔한 것이 맞는지 사람이 볼 값이다. */
@@ -39,6 +41,7 @@ export const useItem = (itemId: number | null): UseQueryResult<ItemSummary> => {
         itemCode: data.item.itemCode,
         itemName: data.item.itemName,
         fifoPolicyCode: data.item.fifoPolicyCode,
+        storageConditionCode: data.item.storageConditionCode,
       };
     },
   });
@@ -85,6 +88,7 @@ export const useItemLabels = (enabled: boolean): UseQueryResult<Map<number, Item
             itemCode: item.itemCode,
             itemName: item.itemName,
             fifoPolicyCode: item.fifoPolicyCode,
+            storageConditionCode: item.storageConditionCode,
           },
         ]),
       );

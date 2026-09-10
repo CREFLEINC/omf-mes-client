@@ -980,6 +980,24 @@ for (const [name, path, check] of DETAILS) {
   console.log(`${ok ? '✔' : '✘'} M-05-01 점검 이력이 유형 축을 거른다`);
 }
 
+/*
+ * 품목과 자리가 보관조건을 들고 오는가. 둘 중 하나라도 비면 적치의 보관조건 경고가 실기에서
+ * 한 번도 서지 않는다 - 화면은 모르면 말하지 않기 때문이다.
+ */
+{
+  const items = await (await fetch(`${BASE}/mdm/items?size=200`)).json();
+  const locations = await (await fetch(`${BASE}/mdm/locations?warehouseId=1001`)).json();
+  const item = items.items.find((row) => row.itemId === 2001);
+  const at = locations.items.find((row) => row.storageConditionCode !== undefined);
+  const ok =
+    typeof item?.storageConditionCode === 'string' &&
+    at !== undefined &&
+    item.storageConditionCode !== at.storageConditionCode;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-01-05 품목과 자리가 어긋나는 보관조건을 들고 온다`);
+}
+
 console.log(
   failed === 0
     ? `\n화면 ${String(ENTRIES.length + DETAILS.length)}자리 전부 열립니다.`
