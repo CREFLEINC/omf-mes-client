@@ -3504,3 +3504,146 @@
   min-width: 0;
   padding: 0;
 }
+
+/*
+ * 자재LOT 등록·라벨 발행 — 입하 라인 «카드형» 목록(스펙 §3 도면).
+ *
+ * 한 줄이 두 행이다. 첫 행에 입하번호·품목·수량, 둘째 행에 공급사·입하일이 서고, 둘째 행의
+ * 날짜가 첫 행의 품목 자리에 맞춰 선다. 그래서 두 행이 «같은 세 칸»을 쓰는 격자다.
+ *
+ * ⛔ 열 머리글 줄을 두지 않는다 — 스펙 도면에 없다. 그 한 줄이 세로 예산(119px · §3)을 먹는다.
+ */
+/*
+ * ⚠ **목록이 한 덩어리의 상자다** — 스펙 §3 도면이 목록을 `┌─┐ … ├─┤ … └─┘` 로 그린다.
+ *   테두리와 구분선이 없으면 **어디를 눌러야 하는지, 어디까지가 한 건인지** 알 수 없다
+ *   (사용자 지적 2026-09-10 D-1). 행이 곧 터치 대상이라 경계가 곧 조작의 크기다.
+ */
+.pop-material-lot-lines {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md, 8px);
+  list-style: none;
+  overflow: hidden;
+}
+
+/* 줄과 줄은 구분선으로 가른다. 마지막 줄 밑에는 긋지 않는다 — 바깥 테두리와 겹친다. */
+.pop-material-lot-lines > li + li {
+  border-top: 1px solid var(--outline-variant);
+}
+
+/*
+ * ⛔ **가운데로 두지 않는다**(사용자 지시 2026-09-10 D-2 — 2026-09-07 의 가운데 정렬 결정을
+ *   무른다). 스펙 §3 도면이 좌측 정렬이고, 여러 건이 쌓이면 가운데 정렬은 글자 길이마다 열이
+ *   어긋나 훑어볼 수 없다.
+ *
+ * 밀도는 DS `Table` 의 `comfortable`(칸 여백 `--space-3 --space-4`)에 맞춘다 — 장갑 낀 손으로
+ * 1024×768 화면에서 누르는 전제다(D-4).
+ */
+.pop-material-lot-line {
+  display: grid;
+  width: 100%;
+  /*
+   * ⚠ 첫 칸은 «내용»에 맞춘다. 1fr 로 반씩 가르면 둘째 줄의 공급사(가장 긴 값)가 접혀
+   *   줄 높이가 건마다 달라진다(실측 2026-09-10).
+   * ⚠ 행을 «명시»해 둔다 — 암시 행만 있으면 수량의 `1 / -1` 이 첫 행에서 끝난다.
+   */
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: var(--space-1) var(--space-4);
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  border: 0;
+  border-inline-start: 4px solid transparent;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.pop-material-lot-line:disabled {
+  cursor: default;
+}
+
+/*
+ * 고른 줄 — 색만으로 말하지 않도록 왼쪽에 표식을 함께 세운다.
+ *
+ * ⚠ 표식 자리는 고르지 않은 줄도 «투명하게» 잡아 둔다(위). 고를 때 자리가 생기면 글자가
+ *   4px 씩 밀려 줄이 흔들린다.
+ */
+.pop-material-lot-line-on {
+  border-inline-start-color: var(--color-danger, rgb(220 80 70));
+  background: rgb(220 80 70 / 18%);
+}
+
+.pop-material-lot-line-receipt,
+.pop-material-lot-line-supplier {
+  font-weight: 700;
+}
+
+/* 첫 줄의 세 자리 — 입하번호 · 품목 · 수량. 둘째 줄이 같은 칸을 물려받는다. */
+.pop-material-lot-line-receipt {
+  grid-column: 1;
+}
+
+.pop-material-lot-line-item {
+  grid-column: 2;
+}
+
+/*
+ * 수량은 **두 줄 가운데**에 선다(사용자 지시 2026-09-10). 값이 하나뿐인 칸이라 첫 줄에 붙여
+ * 두면 둘째 줄이 빈 채로 남아 줄이 한쪽으로 쏠려 보인다.
+ *
+ * ⚠ 접히지 않는다 — 「150」과 「EA」가 갈리면 두 값처럼 읽힌다.
+ */
+.pop-material-lot-line-qty {
+  grid-column: 3;
+  grid-row: 1 / -1;
+  align-self: center;
+  white-space: nowrap;
+}
+
+.pop-material-lot-line-supplier {
+  grid-column: 1;
+}
+
+.pop-material-lot-line-date {
+  grid-column: 2;
+}
+
+/*
+ * 자재LOT 등록·라벨 발행 — 화면이 «부모 높이»를 그대로 쓴다.
+ *
+ * ⛔ `100vh` 를 쓰지 않는다. POP 셸은 1024×768 예산을 창에 맞춰 `zoom` 으로 줄이는데
+ *   (`patterns/pop-fit.ts`), 그 상태에서 `vh` 는 배율이 걸리기 «전» 창 높이를 가리킨다 —
+ *   문서(`html`·`body`·`#root`)는 768 로 서 있는데 화면만 그보다 짧게 서서 **바닥이 남는다**
+ *   (실측 2026-09-10 · 창 1024×663 에서 화면 572 · 91px 빔. 사용자가 짚었다).
+ *
+ * ⚠ 두 클래스를 겹쳐 적는다 — 공용 `.pop-ui` 의 `height: 100vh` 와 같은 무게로는 파일 순서에
+ *   따라 지는 자리다.
+ * ⚠ 같은 구멍이 POP 화면 전체에 있다. 공용 규칙을 고치는 것은 다른 화면의 세로 예산을 함께
+ *   건드리므로 여기서는 이 화면만 세운다.
+ */
+.pop-ui.pop-lot-screen {
+  height: 100%;
+}
+
+/*
+ * 자재LOT 등록·라벨 발행 — 결과 띠의 표식과 글줄을 같은 높이에 세운다.
+ *
+ * ⚠ 두 이름을 겹쳐 적는다 — DS 의 띠 규칙과 같은 무게로는 파일 순서에 따라 지는 자리다.
+ */
+.pop-ui .pop-material-lot-outcome {
+  align-items: center;
+}
+
+/*
+ * DS 는 표식을 «제목 줄»에 맞추려고 위 여백 4px 을 준다. 제목 없이 한 줄만 내는 이 자리에서는
+ * 그 여백이 그대로 어긋남이 된다 — 가운데로 세운 뒤에도 2px 이 남았다(실측).
+ */
+.pop-ui .pop-material-lot-outcome > [class*='icon'] {
+  margin-block-start: 0;
+}
