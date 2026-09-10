@@ -85,7 +85,7 @@ const ENTRIES = [
   ['W-04-07 불량창고', '/mdm/warehouses?isDefect=true', 1],
   ['W-04-07 심각도', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY', 1],
   ['W-03-10 상태', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS', 3],
-  ['M-05-01 설비', '/mdm/equipments', 2],
+  ['M-05-01 설비', '/mdm/equipments?statusCode=IN_SERVICE', 2],
   ['W-06-07 창고', '/mdm/warehouses?includeInactive=true', 3],
   ['W-06-07 공장', '/mdm/plants?includeInactive=true', 1],
   ['W-06-07 사업부', '/mdm/business-units?includeInactive=true', 1],
@@ -961,6 +961,23 @@ for (const [name, path, check] of DETAILS) {
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} M-05-01 점검 항목이 이름과 순번과 단위를 들고 온다`);
+}
+
+/*
+ * 점검 이력이 유형과 기간 축을 거르는가. 무시하면 일상 점검 기록이 정기를 고른 화면에도 떠,
+ * 중복을 막으라고 세운 안내가 엉뚱한 것을 가리킨다.
+ */
+{
+  const daily = await (
+    await fetch(`${BASE}/maintenance/inspections?equipmentId=5001&inspectionTypeCode=DAILY`)
+  ).json();
+  const monthly = await (
+    await fetch(`${BASE}/maintenance/inspections?equipmentId=5001&inspectionTypeCode=MONTHLY`)
+  ).json();
+  const ok = daily.items.length > 0 && monthly.items.length === 0;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-05-01 점검 이력이 유형 축을 거른다`);
 }
 
 console.log(
