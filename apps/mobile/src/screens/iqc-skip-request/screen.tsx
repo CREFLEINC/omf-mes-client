@@ -3,6 +3,9 @@ import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
+import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
@@ -10,11 +13,18 @@ import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { useMyRequests, usePendingRequest, type ApprovalRequest } from './queries';
+import {
+  APPROVAL_REQUEST_STATUS,
+  useMyRequests,
+  usePendingRequest,
+  type ApprovalRequest,
+} from './queries';
 import { hasReason, isInspectionPending, isRouteMissing, toOutboxDraft } from './request';
 import './screen.css';
 
 const t = messages.iqcSkipRequest;
+const required = messages.common.required;
+const RECORD_LABEL = t.record;
 
 /**
  * 요청이 어디까지 갔는가.
@@ -36,14 +46,23 @@ const when = (iso: string): string => {
   return `${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
 };
 
-const MyRequests = ({ requests }: { requests: ApprovalRequest[] }) => (
+const MyRequests = ({
+  requests,
+  statuses,
+}: {
+  requests: ApprovalRequest[];
+  statuses: { code: string; name: string }[];
+}) => (
   <ul className="iqc-skip__requests">
     {requests.map((request) => (
       <li key={request.approvalRequestId}>
         <Card bordered>
           <Card.Body className="card-body iqc-skip__request">
-            {/* 상태 문자열은 공통코드 소관이라 화면이 값을 지어내지 않고 받은 것을 그대로 보인다. */}
-            <Chip>{request.statusCode}</Chip>
+            {/*
+             * 표시명은 서버가 갖는다. 코드 문자열을 그대로 보이면 현장이 영문을 읽는다 -
+             * 아직 못 받았으면 코드로 물러나되 지어내지는 않는다.
+             */}
+            <Chip>{displayNameOf(statuses, request.statusCode)}</Chip>
             <span className="iqc-skip__request-name">{request.target.displayName}</span>
             <span className="iqc-skip__request-when">
               {t.mine.requestedAt(when(request.requestedAt))}
@@ -58,7 +77,7 @@ const MyRequests = ({ requests }: { requests: ApprovalRequest[] }) => (
 export const IqcSkipRequestScreen = () => {
   useScreenTitle(t.title);
 
-  const { enqueue, flush, isRejected } = useOutbox();
+  const { countPending, enqueue, flush, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
 
   const [scanned, setScanned] = useState<string | null>(null);
@@ -72,6 +91,7 @@ export const IqcSkipRequestScreen = () => {
    */
   const inFlight = useRef(false);
   const [noRoute, setNoRoute] = useState(false);
+  const reasonSection = useRef<HTMLDivElement | null>(null);
 
   const scanField = useScanField({ onScan: setScanned });
 
@@ -81,9 +101,26 @@ export const IqcSkipRequestScreen = () => {
   const uoms = useUomCodes(found !== null);
   const pending = usePendingRequest(found?.lotId ?? null);
   const mine = useMyRequests(worker?.workerNo ?? null);
+  const statuses = useCodeValues(APPROVAL_REQUEST_STATUS);
 
   const inspectionPending = isInspectionPending(found);
   const canSubmit = found !== null && inspectionPending && hasReason(reason) && worker !== null;
+
+  /*
+   * 아직 나가지 않은 요청. 이 화면은 이름에 긴급이 붙어 있어, 담긴 것을 요청된 것으로 읽으면
+   * 기다리면 되는 줄 알고 아무에게도 안 간다(공유계약 C-7).
+   */
+  const queuedCount = countPending(RECORD_LABEL);
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(found !== null, reasonSection);
+
+  /* 뒤로가기는 스캔한 LOT 을 먼저 놓는다. 두지 않으면 한 번에 작업 목록까지 나간다. */
+  useBackStep(found !== null, () => {
+    /* 적어 둔 사유는 남긴다 - 손으로 친 것을 뒤로가기 한 번에 버리면 다시 쳐야 한다. */
+    setScanned(null);
+    scanField.focus();
+  });
 
   const request = async () => {
     if (found === null || worker === null || inFlight.current) {
@@ -174,6 +211,16 @@ export const IqcSkipRequestScreen = () => {
 
   return (
     <div className="iqc-skip">
+      {/*
+       * 담긴 것을 요청된 것으로 읽으면 기다리면 되는 줄 알고 아무에게도 안 간다. 결과 화면을
+       * 닫아도 남아 있으므로 화면이 계속 말한다(공유계약 C-7).
+       */}
+      {queuedCount === 0 ? null : (
+        <AlertBanner variant="warning" title={t.queued.waiting(queuedCount)}>
+          {t.queued.urgent}
+        </AlertBanner>
+      )}
+
       <section className="iqc-skip__section">
         <h2>{t.lot.legend}</h2>
         <TextField
@@ -227,10 +274,10 @@ export const IqcSkipRequestScreen = () => {
         )}
       </section>
 
-      <section className="iqc-skip__section">
+      <section className="iqc-skip__section" ref={reasonSection}>
         <h2>{t.reason.legend}</h2>
         <TextArea
-          label={t.reason.label}
+          label={required(t.reason.label)}
           placeholder={t.reason.placeholder}
           helperText={t.reason.hint}
           size="lg"
@@ -252,9 +299,17 @@ export const IqcSkipRequestScreen = () => {
       ) : null}
       {worker === null ? <p className="iqc-skip__note">{t.noWorker}</p> : null}
 
-      <Button variant="filled" size="2xl" disabled={!canSubmit} onClick={() => void request()}>
-        {t.submit}
-      </Button>
+      <div className="action-bar">
+        <Button
+          className="iqc-skip__wide"
+          variant="filled"
+          size="2xl"
+          disabled={!canSubmit}
+          onClick={() => void request()}
+        >
+          {t.submit}
+        </Button>
+      </div>
 
       <section className="iqc-skip__section">
         <h2>{t.mine.legend}</h2>
@@ -262,7 +317,9 @@ export const IqcSkipRequestScreen = () => {
         {worker !== null && mine.isPending ? <p role="status">{t.mine.loading}</p> : null}
         {mine.isError ? <AlertBanner variant="warning" title={t.mine.loadFailed} /> : null}
         {mine.data === undefined || mine.data.length > 0 ? null : <p>{t.mine.empty}</p>}
-        {mine.data === undefined ? null : <MyRequests requests={mine.data} />}
+        {mine.data === undefined ? null : (
+          <MyRequests requests={mine.data} statuses={statuses.data ?? []} />
+        )}
       </section>
     </div>
   );

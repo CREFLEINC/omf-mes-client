@@ -16,7 +16,7 @@ import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
-import { useCodeValues } from '../../patterns/code-values';
+import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocation } from '../../patterns/locations';
 import { useOutbox } from '../../patterns/outbox';
@@ -31,7 +31,6 @@ import {
   canConfirmIssue,
   canPick,
   defaultIssueTypeOf,
-  displayNameOf,
   isOpenOrder,
   isOutOfSequence,
   isOfOrder,

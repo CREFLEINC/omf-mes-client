@@ -95,6 +95,18 @@ const routes = (options: RouteOptions = {}) => [
       }),
   },
   {
+    match: (request: Request) => new URL(request.url).pathname === '/mdm/code-values',
+    respond: () =>
+      jsonResponse({
+        items: [
+          { codeValueId: 1, code: 'PENDING', codeName: '대기', isActive: true, displayOrder: 1 },
+          { codeValueId: 2, code: 'APPROVED', codeName: '승인', isActive: true, displayOrder: 2 },
+          { codeValueId: 3, code: 'REJECTED', codeName: '반려', isActive: true, displayOrder: 3 },
+        ],
+        page: { page: 0, size: 200, total: 3 },
+      }),
+  },
+  {
     match: (request: Request) =>
       new URL(request.url).pathname === '/app/approval-requests' && request.method === 'GET',
     respond: (request: Request) => {
@@ -191,7 +203,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
     scan(LOT_NO);
     expect(await screen.findByText('이미 검사가 끝난 자재입니다')).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
 
     expect(screen.getByRole('button', { name: '요청' })).toBeDisabled();
   });
@@ -213,7 +225,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
-    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
 
     expect(await screen.findByText(/이미 요청이 올라가 있습니다/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '요청' })).toBeEnabled();
@@ -237,7 +249,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
-    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
     await user.click(screen.getByRole('button', { name: '요청' }));
 
     expect(await screen.findByText('요청했습니다')).toBeInTheDocument();
@@ -260,7 +272,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
-    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
     await user.click(screen.getByRole('button', { name: '요청' }));
 
     expect(await screen.findByText('요청을 전송 대기에 넣었습니다')).toBeInTheDocument();
@@ -285,7 +297,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
-    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
     await user.click(screen.getByRole('button', { name: '요청' }));
 
     expect(await screen.findByText('요청을 전송하지 못했습니다')).toBeInTheDocument();
@@ -308,7 +320,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
-    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
 
     expect(screen.getByText('사번을 먼저 확인하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '요청' })).toBeDisabled();
@@ -359,7 +371,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
     mount([], { mine: [approval()] });
 
     expect(await screen.findByText(`LOT ${LOT_NO}`)).toBeInTheDocument();
-    expect(screen.getByText('PENDING')).toBeInTheDocument();
+    expect(await screen.findByText('대기')).toBeInTheDocument();
   });
 
   it('올린 요청이 없으면 없다고 말한다', async () => {
@@ -384,7 +396,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
-    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
 
     const button = screen.getByRole('button', { name: '요청' });
 
@@ -410,7 +422,7 @@ describe('긴급 IQC 생략 요청 화면', () => {
 
     scan(LOT_NO);
     await screen.findByText('수입검사 대기 중');
-    await user.type(screen.getByLabelText('사유'), '라인 정지 임박');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
 
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '요청' }));
@@ -418,5 +430,34 @@ describe('긴급 IQC 생략 요청 화면', () => {
     expect(await screen.findByText('요청을 저장하지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('요청했습니다')).toBeNull();
     expect(sent).toHaveLength(0);
+  });
+
+  /* 코드 문자열을 그대로 보이면 현장이 영문을 읽는다. 표시명은 서버가 갖는다. */
+  it('내가 올린 요청의 상태를 표시명으로 보인다', async () => {
+    mount([], { mine: [approval()] });
+
+    expect(await screen.findByText('대기')).toBeInTheDocument();
+    expect(screen.queryByText('PENDING')).not.toBeInTheDocument();
+  });
+
+  /* 담긴 것을 요청된 것으로 읽으면 기다리면 되는 줄 알고 아무에게도 안 간다. */
+  it('담아 둔 요청이 남아 있으면 결과 화면을 닫아도 대기 건수를 말한다', async () => {
+    const user = userEvent.setup();
+    mount([
+      createRoute(() => {
+        throw new TypeError('Failed to fetch');
+      }),
+    ]);
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText('수입검사 대기 중');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
+    await user.click(screen.getByRole('button', { name: '요청' }));
+    await screen.findByText('요청을 전송 대기에 넣었습니다');
+
+    await user.click(screen.getByRole('button', { name: '다른 자재 요청' }));
+
+    expect(await screen.findByText(/요청 대기 1건/)).toBeInTheDocument();
   });
 });

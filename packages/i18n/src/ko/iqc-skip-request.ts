@@ -50,6 +50,8 @@ export const iqcSkipRequest = {
     title: '요청을 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다. 아직 아무에게도 가지 않았습니다.',
     urgent: '급하면 유선으로 함께 알리세요.',
+    /** 결과 화면을 닫아도 담긴 것은 남는다. 화면이 그 사실을 계속 말한다. */
+    waiting: (count: number) => `요청 대기 ${String(count)}건 — 연결되면 전송됩니다`,
   },
   rejected: {
     title: '요청을 전송하지 못했습니다',

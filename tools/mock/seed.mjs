@@ -648,6 +648,12 @@ export const createSeed = (now = new Date()) => {
      * 세 값뿐이다. 수량 초과는 이 축을 쓰지 않고 입하 헤더의 예외 유형으로 갈린다 - 여기에
      * 두면 두 경로가 같은 테이블에 쓰게 된다.
      */
+    /* 승인 요청 상태. 화면이 코드 문자열을 그대로 보이지 않으려면 표시명이 있어야 한다. */
+    APPROVAL_REQUEST_STATUS: [
+      ['PENDING', '대기'],
+      ['APPROVED', '승인'],
+      ['REJECTED', '반려'],
+    ],
     INBOUND_VARIANCE_TYPE: [
       ['SHORTAGE', '수량 부족'],
       ['ITEM_MISMATCH', '품목 상이'],

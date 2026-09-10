@@ -24,6 +24,9 @@ export const INSPECTION_PENDING = 'INSPECTION_PENDING';
  */
 export const INBOUND_LOT = 'INBOUND_LOT';
 
+/** 상태 표시명은 서버가 갖는다. 화면이 코드 문자열을 그대로 보이지 않는다. */
+export const APPROVAL_REQUEST_STATUS = 'APPROVAL_REQUEST_STATUS';
+
 export const iqcSkipKeys = {
   pending: (lotId: number | null) => ['iqc-skip-pending', lotId] as const,
   mine: (workerNo: string | null) => ['iqc-skip-mine', workerNo] as const,

@@ -24,10 +24,6 @@ export const ISSUE_TYPE = 'ISSUE_TYPE';
 /** 피킹 지시 유형 값 목록을 받는 그룹. 계약은 코드만 내리고 표시명은 여기서 온다. */
 export const PICKING_TYPE = 'PICKING_TYPE';
 
-/** 코드의 표시명. 못 받았으면 코드를 그대로 보인다 - 빈칸보다 낫다. */
-export const displayNameOf = (codes: { code: string; name: string }[], code: string): string =>
-  codes.find((each) => each.code === code)?.name ?? code;
-
 /**
  * 이 화면이 내는 출고의 유형.
  *
