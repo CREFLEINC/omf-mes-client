@@ -3864,3 +3864,38 @@
 .pop-ui .pqc-result-panel .pop-select {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/*
+ * P-02-13 수량 합계 줄 — 「합계 28 / 30 · ⚠ 2 남았습니다」 한 줄이다.
+ *
+ * ⭐ 값이 굵게 서고 판정이 그 오른쪽에 색으로 붙는다 — 먼저 읽히는 것이 숫자이고, 그다음이
+ *    「맞았는가」다. 칸이 좁으면 판정만 아랫줄로 접힌다.
+ */
+.pop-ui .pqc-totals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-container-high);
+}
+
+.pop-ui .pqc-totals__value {
+  font-size: var(--pop-value);
+  font-weight: 700;
+}
+
+.pop-ui .pqc-totals__note {
+  margin-inline-start: auto;
+  font-size: var(--pop-label);
+}
+
+.pop-ui .pqc-totals__note--ok {
+  color: var(--semantic-success-text);
+}
+
+.pop-ui .pqc-totals__note--warn {
+  color: var(--semantic-warning);
+}

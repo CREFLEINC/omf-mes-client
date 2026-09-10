@@ -108,10 +108,16 @@ export const pqcInspection = {
       held: '보류',
     },
     sum: '합계',
-    remaining: '잔여',
-    matched: '검사 수량과 일치합니다.',
-    short: (remaining: string): string => `검사 수량보다 ${remaining} 모자랍니다.`,
-    over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
+    /**
+     * 합계와 검사 수량을 **한 값으로 잇는다**(사용자 지시 2026-09-10) — 「28 / 30」은
+     * 「28 을 담았고 30 이 목표」로 한눈에 읽힌다. 「합계 28 · 잔여 2」로 나눠 적으면 둘을
+     * 눈으로 다시 빼야 한다.
+     */
+    of: (sum: string, inspected: string): string => `${sum} / ${inspected}`,
+    matched: '검사 수량과 일치합니다',
+    /** ⛔ 「검사 수량보다」를 되풀이하지 않는다 — 바로 왼쪽 「/ 30」이 그 말을 이미 했다. */
+    short: (remaining: string): string => `${remaining} 남았습니다`,
+    over: (over: string): string => `${over} 많습니다`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
     save: '임시 저장',
     saved: '저장했습니다.',

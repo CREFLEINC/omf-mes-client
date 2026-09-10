@@ -245,21 +245,36 @@ export const ResultPanel = ({
       {/* 구분선 — 위는 「넣는 값」이고 아래는 「그 값을 되짚은 결과」다(도면의 `─────`). */}
       <div className="pqc-rule" />
 
-      <dl className="filter-bar">
-        {/* 셀 수 없을 때 0으로 읽은 합을 보이면 그 숫자 자체가 거짓이다. 없음 표시를 낸다. */}
-        <div className="field-cell">
-          <dt className="field-label">{t.sum}</dt>
-          <dd>{totals.kind === 'counted' ? withUnit(formatMicro(totals.sum)) : unknownValue}</dd>
-        </div>
-        <div className="field-cell">
-          <dt className="field-label">{t.remaining}</dt>
-          <dd>
-            {totals.kind === 'counted' ? withUnit(formatMicro(totals.remaining)) : unknownValue}
-          </dd>
-        </div>
-      </dl>
-
-      {totalsNote !== null && <p className="field-note">{totalsNote}</p>}
+      {/*
+       * ⭐ **한 줄이 「얼마를 담았고 얼마가 남았는가」를 다 말한다**(사용자 지시 2026-09-10).
+       *    전에는 「합계 0 · 잔여 120」 두 칸을 늘어놓고 그 아래에 문장을 한 줄 더 붙였는데,
+       *    같은 사실을 세 번 적는 동안 정작 「맞았는가 아닌가」는 어디에도 굵게 서지 않았다.
+       *
+       * ⛔ 셀 수 없을 때 0 으로 읽은 합을 보이지 않는다 — 그 숫자 자체가 거짓이다.
+       */}
+      <p className="pqc-totals">
+        <span className="field-label">{t.sum}</span>
+        <span className="pqc-totals__value">
+          {totals.kind === 'counted'
+            ? t.of(formatMicro(totals.sum), withUnit(formatMicro(totals.inspected)))
+            : unknownValue}
+        </span>
+        {totalsNote !== null && (
+          <span
+            className={
+              totals.kind === 'counted' && totals.matches
+                ? 'pqc-totals__note pqc-totals__note--ok'
+                : 'pqc-totals__note pqc-totals__note--warn'
+            }
+          >
+            {/* 기호는 색이 못 가는 곳까지 간다 — 흑백 단말·색각 이상에서도 갈래가 보인다. */}
+            <span aria-hidden="true">
+              {totals.kind === 'counted' && totals.matches ? '✓' : '⚠'}
+            </span>{' '}
+            {totalsNote}
+          </span>
+        )}
+      </p>
 
       {/*
        * 종합 판정 — ⛔ **값 목록을 화면에 고정하지 않는다.** 공통코드 조회로 채우고, 목록이
