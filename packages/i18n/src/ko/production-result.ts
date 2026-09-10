@@ -9,7 +9,8 @@ export const productionResult = {
   flow: {
     header: {
       erpWorkOrder: 'ERP W/O',
-      workOrder: 'W/O',
+      /* ⚠ ERP 쪽 번호와 나란히 서는 자리라 어느 쪽 번호인지 밝힌다(사용자 지시 2026-09-10). */
+      workOrder: 'MES W/O',
       item: '품목',
     },
     currentLot: {

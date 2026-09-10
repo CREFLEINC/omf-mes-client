@@ -2590,6 +2590,19 @@ on('GET', '/production/work-orders', (_p, query) => {
   );
 });
 
+/*
+ * 작업지시 한 건. **이 경로가 없어 계약 예시 서버가 답하고 있었다** — 어떤 번호를 물어도
+ * `workOrderNo: '값'` 인 예시가 돌아와, 생산 실적 등록 머리줄이 「MES W/O 값」으로 섰다
+ * (실측 2026-09-10 · 사용자 지적).
+ */
+on('GET', '/production/work-orders/{workOrderId}', (params) => {
+  const workOrder = state.workOrders.find(
+    (row) => row.workOrderId === Number(params.workOrderId),
+  );
+
+  return workOrder === undefined ? null : { ...workOrder };
+});
+
 /**
  * 작업 세션 — P-02-10 이 중단·재개를 거는 자리다.
  *
