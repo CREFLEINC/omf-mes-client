@@ -1568,12 +1568,46 @@
   min-height: 0;
 }
 
+/*
+ * 《포장 단위》 머리 — **번호가 주인공이고 유형이 그 뒤를 받친다**(사용자 지시 2026-09-10).
+ *
+ * 둘이 같은 크기로 나란히 서 있어 「무엇이 이 포장을 가리키는 값인가」가 한눈에 들어오지
+ * 않았다. 크기·굵기로 층을 만들고, 아래 《내용물》과의 사이를 벌려 「포장 → 유형 → 담긴 것」이
+ * 순서대로 읽히게 한다.
+ *
+ * ⛔ 아이콘·바탕색·상자를 더하지 않는다 — 현장 화면은 빨리 읽히는 것이 먼저다.
+ */
+.pop-ui .pop-reprint-hu-no {
+  display: flex;
+  /* 좁은 화면에서는 유형이 아랫줄로 내려간다 — 잘리거나 겹치지 않는다. */
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  margin-block-end: var(--space-4);
+}
+
+/* 번호 — 이 구획에서 가장 큰 값. 자릿수가 흔들리지 않게 고정폭으로 그린다. */
+.pop-ui .pop-reprint-hu-value {
+  font-size: var(--pop-value-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  /* 번호가 길어도 상자를 넘지 않는다 — 해상도가 바뀌어도 잘리지 않는다. */
+  overflow-wrap: anywhere;
+}
+
 /* 포장 번호 옆의 유형 — 같은 줄에 서되 번호보다 약하다(설계 §3 「HU-…0007  박스」). */
 .pop-ui .pop-reprint-hu-type {
-  margin-inline-start: var(--space-4);
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
   font-size: var(--pop-label);
   font-weight: 400;
   color: var(--on-surface-variant);
+}
+
+/* 이름표는 값보다 한 겹 더 옅다 — 읽는 순서가 「유형 → 박스」로 서게 한다. */
+.pop-ui .pop-reprint-hu-type-label {
+  color: var(--on-surface-muted);
 }
 
 /* 대상 목록과 재출력 사유를 가르는 선(설계 §3). 위는 「무엇을」, 아래는 「왜」다. */

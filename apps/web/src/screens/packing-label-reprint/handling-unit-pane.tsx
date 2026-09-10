@@ -63,8 +63,13 @@ export const HandlingUnitPane = ({
        *    읽는 말이 아니다. 이름을 못 받았을 때만 코드로 물러선다(지어내지 않는다).
        */}
       <p className="pop-reprint-hu-no">
-        {handlingUnit.handlingUnitNo}
+        <span className="pop-reprint-hu-value">{handlingUnit.handlingUnitNo}</span>
+        {/*
+         * ⭐ **유형에 이름을 붙인다**(사용자 지시 2026-09-10). 「박스」만 홀로 서 있으면 그것이
+         * 유형인지 다른 무엇인지 눈이 한 번 더 묻는다 — 이름표 두 글자가 그 물음을 없앤다.
+         */}
         <span className="pop-reprint-hu-type">
+          <span className="pop-reprint-hu-type-label">{t.typeLabel}</span>
           {typeName ?? handlingUnit.handlingUnitTypeCode}
         </span>
       </p>
