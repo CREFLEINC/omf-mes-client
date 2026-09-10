@@ -193,6 +193,13 @@ export const createSeed = (now = new Date()) => {
       locationCode: 'FG-A-02-01',
       locationName: '완제품 A구역 02열 01단',
     },
+    /* 완제품 창고의 둘째 자리. 하나뿐이면 권장이 아닌 곳을 스캔하는 갈래를 만들 수 없다. */
+    {
+      locationId: 3009,
+      warehouseId: 1002,
+      locationCode: 'FG-A-02-02',
+      locationName: '완제품 A구역 02열 02단',
+    },
     {
       locationId: 3007,
       warehouseId: 1004,
@@ -236,6 +243,21 @@ export const createSeed = (now = new Date()) => {
       warehouseId: 1001,
       locationId: 3001,
       capacityQty: 500,
+      uomId: 1001,
+      priorityNo: 10,
+      remarks: '합성 적치 규칙',
+      isActive: true,
+    },
+    /*
+     * 완제품 창고의 규칙. 없으면 제품 입고가 늘 정해진 자리가 없는 쪽으로 떨어져 권장 일치와
+     * 권장 불일치 갈래를 실기에서 한 번도 볼 수 없다.
+     */
+    {
+      putawayRuleId: 5103,
+      itemId: 2003,
+      warehouseId: 1002,
+      locationId: 3004,
+      capacityQty: 2000,
       uomId: 1001,
       priorityNo: 10,
       remarks: '합성 적치 규칙',

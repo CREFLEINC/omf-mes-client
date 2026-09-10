@@ -12,6 +12,7 @@ export type Lot = components['schemas']['Lot'];
 export type GoodsReceiptCreate = components['schemas']['GoodsReceiptCreate'];
 export type GoodsReceiptLineCreate = components['schemas']['GoodsReceiptLineCreate'];
 export type PutawayTaskComplete = components['schemas']['PutawayTaskComplete'];
+export type PutawayRule = components['schemas']['PutawayRule'];
 
 /**
  * 담는 경로의 이름.
@@ -116,14 +117,93 @@ export const destinationOf = (
   return locations.find((each) => each.locationTypeCode === DEFAULT_LOCATION) ?? null;
 };
 
-export const canSubmit = (
-  warehouse: Warehouse | null,
-  destination: Location | null,
+/**
+ * 이 품목이 이 창고에서 가야 할 자리.
+ *
+ * 적치 규칙이 여럿이면 우선순위가 앞선 것을 쓴다. 자리를 비운 규칙은 권장이 아니다 - 창고만
+ * 정하고 칸을 정하지 않은 규칙이라 대조할 대상이 없다.
+ */
+export const recommendedOf = (rules: PutawayRule[]): number | null => {
+  const withLocation = rules
+    .filter((rule) => rule.locationId !== null && rule.locationId !== undefined)
+    .sort((left, right) => left.priorityNo - right.priorityNo);
+
+  return withLocation[0]?.locationId ?? null;
+};
+
+/**
+ * 스캔한 위치가 규칙과 맞는가.
+ *
+ * 권장이 있으면 그 자리만 받는다 - 다른 칸에 두면 다음 피킹이 물건을 찾지 못한다. 권장이 없는
+ * 품목까지 막으면 규칙이 등록되지 않은 품목이 적치 자체를 못 해 현장이 선다. 그때는 확인을
+ * 받고 통과시키되 그 사실을 화면이 말한다.
+ */
+export const MATCHED = 'matched';
+export const NOT_RECOMMENDED = 'notRecommended';
+export const NO_RULE = 'noRule';
+
+export type LocationVerdict = typeof MATCHED | typeof NOT_RECOMMENDED | typeof NO_RULE;
+
+export const verdictOf = (
+  recommended: number | null,
+  scanned: Location | null,
+): LocationVerdict => {
+  if (recommended === null) {
+    return NO_RULE;
+  }
+
+  return scanned !== null && scanned.locationId === recommended ? MATCHED : NOT_RECOMMENDED;
+};
+
+/**
+ * 이 LOT 이 이미 재고로 서 있는가.
+ *
+ * 넷이다. 확인하지 못한 것은 서 있지 않은 것과 다르고, 아직 묻는 중인 것은 확인하지 못한
+ * 것과 다르다 - 셋을 뭉치면 스캔할 때마다 확인하지 못했다는 경고가 깜빡여 진짜 경고가 묻힌다.
+ */
+export type StockedCheck = 'stocked' | 'clear' | 'unknown' | 'checking';
+
+/**
+ * 이미 입고돼 다시 세울 수 없는 LOT.
+ *
+ * 이 화면이 재고를 세우는 지점이라 두 번 서면 같은 제품이 두 벌이 된다. 다른 단말이 먼저
+ * 입고한 것은 큐로는 알 수 없다.
+ */
+export const stockedLines = (
   lines: DraftLine[],
-  hasWorker: boolean,
-  plantId: number | null,
-  queuedForLots: number,
-): boolean => {
+  checks: ReadonlyMap<number, StockedCheck>,
+): DraftLine[] => lines.filter((line) => checks.get(line.lotId) === 'stocked');
+
+/** 재고 여부를 확인하지 못한 줄. 오프라인에서는 이 판정을 할 수 없다. */
+export const unverifiedLines = (
+  lines: DraftLine[],
+  checks: ReadonlyMap<number, StockedCheck>,
+): DraftLine[] => lines.filter((line) => (checks.get(line.lotId) ?? 'unknown') === 'unknown');
+
+export interface SubmitInput {
+  warehouse: Warehouse | null;
+  destination: Location | null;
+  lines: DraftLine[];
+  hasWorker: boolean;
+  plantId: number | null;
+  /** 이 단말이 같은 LOT 을 이미 담아 둔 건수. */
+  queuedForLots: number;
+  verdict: LocationVerdict;
+  confirmedNoRule: boolean;
+  stocked: ReadonlyMap<number, StockedCheck>;
+}
+
+export const canSubmit = ({
+  warehouse,
+  destination,
+  lines,
+  hasWorker,
+  plantId,
+  queuedForLots,
+  verdict,
+  confirmedNoRule,
+  stocked,
+}: SubmitInput): boolean => {
   if (
     warehouse === null ||
     destination === null ||
@@ -131,6 +211,27 @@ export const canSubmit = (
     plantId === null ||
     queuedForLots > 0 ||
     lines.length === 0
+  ) {
+    return false;
+  }
+
+  /* 묻는 중에는 아직 모른다. 짧게 막히고 답이 오면 풀린다. */
+  if (lines.some((line) => stocked.get(line.lotId) === 'checking')) {
+    return false;
+  }
+
+  if (stockedLines(lines, stocked).length > 0) {
+    return false;
+  }
+
+  /*
+   * 위치를 관리하는 창고에서만 규칙을 따진다. 관리하지 않으면 스캔할 라벨 자체가 없어 대조할
+   * 대상이 없다.
+   */
+  if (
+    managesLocations(warehouse) &&
+    verdict !== MATCHED &&
+    !(verdict === NO_RULE && confirmedNoRule)
   ) {
     return false;
   }

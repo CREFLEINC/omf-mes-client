@@ -59,6 +59,7 @@ const ENTRIES = [
   ['M-02-02 불량 기록', '/quality/defect-records?lotId=8102', 2],
   ['M-02-02 불량 코드', '/quality/defect-codes', 2],
   ['M-04-03 재구성 이력', '/inventory/handling-units/13001/repack-events', 1],
+  ['M-04-04 완제품 적치 규칙', '/logistics/putaway-rules?warehouseId=1002&itemId=2003', 1],
   [
     'M-04-01 오늘 출하',
     `/logistics/shipment-requests?shipDateFrom=${today()}&shipDateTo=${today()}`,
