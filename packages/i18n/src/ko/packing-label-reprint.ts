@@ -61,7 +61,7 @@ export const packingLabelReprint = {
     identificationTag: '인식표',
     unknownLot: 'LOT 확인 불가',
     /** 개체를 데이터로 좁힐 수 없다. 감추지 않고 사유를 보인다 */
-    serialUnavailable: '개체 정보가 없어 인식표를 발행할 수 없습니다.',
+    serialUnavailable: '이 포장은 개체 정보가 없어 라벨을 발행할 수 없습니다.',
     /** 범위 표기 — 개체 줄은 LOT + 수량으로만 말할 수 있다 */
     range: (qty: number): string => `수량 ${String(qty)}`,
     issueCount: (count: number): string => `발행 이력 ${String(count)}회`,

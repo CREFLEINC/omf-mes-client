@@ -176,7 +176,7 @@ export const ReprintPane = ({
        */}
       <div className="pop-reprint-rule" />
 
-      <div className="field-cell">
+      <div className="field-cell pop-reprint-reason">
         <label className="field-label" htmlFor={reasonId}>
           {t.reason.label}
         </label>

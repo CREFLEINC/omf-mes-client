@@ -2566,7 +2566,28 @@ export const createSeed = (now = new Date()) => {
     dispositionCandidates,
     nonconformances,
     dispositionDecisions,
-    documentIssues: [],
+    /*
+     * ⚠ **재출력 화면은 「이미 뽑은 것」이 있어야 볼 것이 있다**(사용자 지적 2026-09-10).
+     *    비워 두었더니 P-02-09 의 모든 대상이 「최초 발행」으로 서서, 회차와 사유를 받는
+     *    재발행 갈래를 화면에서 볼 수 없었다.
+     *
+     * ⭐ 한쪽(8201)만 이력을 준다 — 「재발행」과 「최초 발행」 두 갈래가 한 화면에 함께 선다.
+     */
+    documentIssues: [
+      {
+        documentIssueLogId: 44101,
+        documentTypeCode: 'PACKING_LABEL',
+        targetTypeCode: 'LOT',
+        targetId: 8201,
+        lotId: 8201,
+        issueSeq: 1,
+        reissueReasonCode: null,
+        issuedBy: 1001,
+        issuedByName: '이수진',
+        issuedAt: iso(-1, 14),
+        printOutcome: 'SUCCEEDED',
+      },
+    ],
     /** 개체(일련번호) — P-02-04 인식표 영역이 발번해 채운다. 기본은 발번 전 상태다. */
     serialNumbers: [],
     /** 스캔해 볼 값 — 시험 키트가 이 목록을 그대로 인쇄한다. */

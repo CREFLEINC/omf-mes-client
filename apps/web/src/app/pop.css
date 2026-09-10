@@ -1636,11 +1636,18 @@
  *
  * ⛔ 그림을 넣지 않는다 — 들여쓰기와 짧은 잇는 선 하나로 관계를 말한다.
  */
+/*
+ * ⚠ **묶음 안에는 선을 긋지 않는다**(사용자 지적 2026-09-10). LOT 줄 아래와 인식표 줄 위에
+ *   선이 각각 그어져 한 묶음 가운데를 두 줄이 갈랐다. 묶음의 경계는 인식표 줄 «아래» 하나다.
+ */
+.pop-ui .pop-reprint-target:has(+ .pop-reprint-target--child) {
+  border-block-end: 0;
+}
+
 .pop-ui .pop-reprint-target--child {
   position: relative;
   margin-inline-start: var(--space-6);
   padding-inline-start: var(--space-5);
-  border-block-end: 0;
 }
 
 .pop-ui .pop-reprint-target--child::before {
@@ -1654,9 +1661,12 @@
   border-block-end: 1px solid var(--outline-variant);
 }
 
-/* 자식 줄이 끝난 자리에서 한 묶음이 끝난다 — 선은 그 아래에 한 번만 긋는다. */
-.pop-ui .pop-reprint-target--child + .pop-reprint-target {
-  border-block-start: 1px solid var(--outline-variant);
+/*
+ * 재출력 사유 칸도 **아래 [재출력]과 같은 급으로 선다**(사용자 지시 2026-09-10). 56 으로
+ * 앉아 있어 바로 아래 72 짜리 단추와 층이 어긋났다.
+ */
+.pop-ui .pop-reprint-reason .pop-select__trigger {
+  min-block-size: 72px;
 }
 
 /*
