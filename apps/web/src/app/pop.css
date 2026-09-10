@@ -1662,11 +1662,16 @@
 .pop-ui .pop-reprint-target--child::before {
   content: '';
   position: absolute;
-  inset-block-start: calc(-1 * var(--space-2));
-  inset-inline-start: var(--space-4);
-  /* 상자의 세로 가운데에서 멈춘다 — 더 내려가면 선이 상자 아래로 지나간다. */
-  block-size: calc(50% + var(--space-2));
-  inline-size: var(--space-5);
+  /*
+   * 위 줄 체크 상자의 «바닥»에서 시작한다 — 36 은 그 상자 아래끝에서 이 줄의 머리까지 잰
+   * 거리다(실측). 상자끼리 이어져야 딸린 줄로 읽힌다.
+   */
+  inset-block-start: -36px;
+  inset-inline-start: var(--space-3);
+  /* 아래 줄 체크 상자의 세로 가운데(줄 머리에서 36)까지 내려온다. */
+  block-size: 72px;
+  /* 아래 줄 체크 상자의 왼쪽 끝까지 간다. */
+  inline-size: calc(var(--space-8) - var(--space-3));
   border-inline-start: 1px solid var(--outline-variant);
   border-block-end: 1px solid var(--outline-variant);
   border-end-start-radius: var(--radius-sm, 4px);

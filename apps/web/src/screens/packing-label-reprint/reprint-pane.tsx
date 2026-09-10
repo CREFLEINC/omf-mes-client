@@ -150,12 +150,13 @@ export const ReprintPane = ({
                       </Chip>
                     )}
                     {/*
-                     * ⚠ 고를 수 없는 줄에는 수량을 되풀이하지 않는다 — 바로 위 LOT 줄과 같은
-                     *   값이라, 같은 숫자가 두 번 서면 다른 값인지 눈이 한 번 더 확인한다.
+                     * ⚠ 고를 수 없는 줄에는 수량을 내지 않는다 — 바로 위 LOT 줄과 같은 값이라
+                     *   두 번 쓰면 다른 값인지 눈이 한 번 더 확인하고, 자리표시(—)조차 읽을
+                     *   것이 있는 것처럼 보인다(사용자 지시 2026-09-10).
                      */}
-                    <span className="pop-reprint-qty">
-                      {target.disabledReason === null ? t.targets.range(target.qty) : '—'}
-                    </span>
+                    {target.disabledReason === null && (
+                      <span className="pop-reprint-qty">{t.targets.range(target.qty)}</span>
+                    )}
                   </span>
                 </div>
                 {/* ⛔ 고를 수 없는 줄은 사유를 함께 낸다 — 비활성만 두면 왜 안 되는지 알 수 없다 */}
