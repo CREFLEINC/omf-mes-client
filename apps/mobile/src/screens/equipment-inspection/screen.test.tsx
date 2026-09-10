@@ -86,6 +86,8 @@ interface Options {
   itemsStatus?: number;
   /** 오늘 이 설비를 이 유형으로 점검한 기록. 막지 않고 알리는 자리다. */
   todaysInspection?: unknown;
+  /** 보낸 점검을 모은다. 담기면 그 뒤의 오늘 기록 조회가 그것을 낸다. */
+  recorded?: Request[];
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -103,11 +105,30 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (request: Request) => new URL(request.url).pathname === '/maintenance/inspections',
-    respond: () =>
-      jsonResponse({
-        items: options.todaysInspection === undefined ? [] : [options.todaysInspection],
-        page: { page: 0, size: 1, total: options.todaysInspection === undefined ? 0 : 1 },
-      }),
+    respond: (request: Request) => {
+      if (request.method === 'POST') {
+        options.recorded?.push(request.clone());
+        return jsonResponse({ inspectionId: 1 }, { status: 201 });
+      }
+
+      const today =
+        options.todaysInspection ??
+        (options.recorded !== undefined && options.recorded.length > 0
+          ? {
+              inspectionId: 1,
+              equipmentId: 7,
+              inspectionTypeCode: 'DAILY',
+              overallResultCode: 'PASS',
+              inspectedAt: '2026-08-11T09:12:00+09:00',
+              inspectorWorkerNo: '900028',
+            }
+          : undefined);
+
+      return jsonResponse({
+        items: today === undefined ? [] : [today],
+        page: { page: 0, size: 1, total: today === undefined ? 0 : 1 },
+      });
+    },
   },
   {
     match: (request: Request) =>
@@ -435,5 +456,26 @@ describe('설비 점검 입력 화면', () => {
 
     await screen.findByText('NOPE-99 설비를 찾지 못했습니다');
     expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /* 중복을 막으라고 세운 안내가 낡은 캐시로 정반대로 작동하면 안 된다. */
+  it('점검을 마치고 같은 설비를 다시 고르면 오늘 기록이 보인다', async () => {
+    const user = userEvent.setup();
+    const recorded: Request[] = [];
+    mount([], { recorded });
+    await selectEquipment();
+
+    await user.click(await screen.findByLabelText(/측정값/));
+    await user.click(await screen.findByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '3' }));
+    await user.click(screen.getAllByRole('button', { name: '합격' })[0] as HTMLElement);
+    await user.click(screen.getAllByRole('button', { name: '합격' })[1] as HTMLElement);
+    await user.click(screen.getByRole('button', { name: '점검 완료' }));
+
+    await screen.findByText('점검을 기록했습니다');
+    await user.click(screen.getByRole('button', { name: '다른 설비 점검' }));
+    await selectEquipment();
+
+    expect(await screen.findByText(/오늘 점검 기록 있음/)).toBeInTheDocument();
   });
 });

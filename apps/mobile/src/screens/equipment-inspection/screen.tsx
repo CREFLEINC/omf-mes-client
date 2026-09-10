@@ -12,6 +12,7 @@ import {
   TextField,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
@@ -156,6 +157,7 @@ export const EquipmentInspectionScreen = () => {
   useScreenTitle(t.title);
 
   const { enqueue, flush, countPending, isRejected } = useOutbox();
+  const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
   const equipments = useEquipments();
 
@@ -280,6 +282,12 @@ export const EquipmentInspectionScreen = () => {
         setOutcome('rejected');
         return;
       }
+
+      /*
+       * 방금 남긴 것이 오늘 기록에 들어간다. 캐시를 두면 같은 설비를 다시 골랐을 때 오늘
+       * 기록이 없다고 말하고, 중복을 막으라고 세운 안내가 정반대로 작동한다.
+       */
+      void queryClient.invalidateQueries({ queryKey: ['equipment-inspection-today'] });
 
       setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
     } finally {
