@@ -4,7 +4,6 @@ import { messages } from '@omf-mes/i18n';
 import type { PlanVersionView } from './queries';
 import { useId } from 'react';
 
-import { PopSelect as Select } from '../../patterns/pop-select';
 import { lacksLimits } from './auto-judgment';
 import { isKnownCode, type CodeOption } from './code-options';
 import {
@@ -144,20 +143,12 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowPr
 
       <div className="form-grid">
         {/*
-         * ⛔ **값 칸은 그 항목의 유형이 정한다.** 육안 항목에는 값 칸이 아예 없고 판정만으로
-         * 성립한다 — 없는 칸을 그리면 검사자가 무엇을 채워야 하는지 헷갈린다.
+         * ⛔ **값 칸은 그 항목의 유형이 정한다.** 육안 항목에는 값 칸이 «아예 없고» 판정만으로
+         * 성립한다(설계 §4-C · 도면 「기준 스크래치 없음 → [합격][불합격]」 · 사용자 지적
+         * 2026-09-10). 한때 「양호 / 불량」을 고르는 칸을 세웠는데, 그 두 낱말은 스펙에 없는
+         * 이름이고 판정과 같은 것을 두 번 묻는 자리였다.
          */}
-        {row.dataTypeCode === DATA_TYPES.boolean ? (
-          <Select
-            size="xl"
-            aria-label={`${row.itemName} ${t.columns.value}`}
-            options={BOOLEAN_OPTIONS}
-            value={draft.value}
-            placeholder={t.notMeasured}
-
-            onChange={(value) => onChange(row.key, { ...draft, value })}
-          />
-        ) : (
+        {row.dataTypeCode === DATA_TYPES.boolean ? null : (
           <TextField
             size="xl"
             label={t.columns.value}
@@ -230,12 +221,6 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowPr
     </li>
   );
 };
-
-/** 불리언 항목의 값 선택지. **판정과 다른 축이다** — 이 칸은 「측정 결과」다. */
-const BOOLEAN_OPTIONS: CodeOption[] = [
-  { value: 'true', label: t.booleanTrue },
-  { value: 'false', label: t.booleanFalse },
-];
 
 /**
  * 규격을 한 줄로. **한쪽만 있는 것도 규격이다** — 「9.9 이상」 같은 공차가 실제 검사기준에
