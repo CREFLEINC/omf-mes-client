@@ -111,6 +111,8 @@ interface Options {
   pick?: Behaviour;
   issue?: Behaviour;
   issueTypes?: unknown[];
+  /** 표시명을 아직 못 받은 상황을 만든다. */
+  pickingTypes?: unknown[];
   /** 전표 상태를 바꿔 이미 전기된 지시를 만든다. */
   order?: ReturnType<typeof order>;
 }
@@ -178,7 +180,7 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
       jsonResponse({
         items:
           new URL(req.url).searchParams.get('codeGroupCode') === 'PICKING_TYPE'
-            ? [codeValue('MATERIAL', '자재 피킹', 1)]
+            ? (options.pickingTypes ?? [codeValue('MATERIAL', '자재 피킹', 1)])
             : (options.issueTypes ?? [
                 codeValue('SCRAP', '폐기 출고', 1),
                 codeValue('PRODUCTION', '생산 투입', 2),
@@ -515,6 +517,22 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     expect(await screen.findByText('유형 자재 피킹')).toBeTruthy();
+  });
+
+  /*
+   * 목록은 고르기 전에 보는 자리다. 상세만 표시명으로 바꾸면 현장은 코드를 보고 고른 뒤
+   * 한글을 보게 되어, 같은 값이 두 이름으로 보인다.
+   */
+  it('고르기 전 목록에서도 지시 유형을 표시명으로 보인다', async () => {
+    mount();
+
+    expect(await screen.findByRole('button', { name: /유형 자재 피킹/ })).toBeTruthy();
+  });
+
+  it('표시명을 아직 못 받았으면 목록이 코드를 그대로 보인다', async () => {
+    mount({ pickingTypes: [] });
+
+    expect(await screen.findByRole('button', { name: /유형 MATERIAL/ })).toBeTruthy();
   });
 
   /*

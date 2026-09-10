@@ -64,6 +64,12 @@ interface Options {
   asked?: string[];
 }
 
+/** 라벨에 찍힌 자재 LOT 번호. 화면이 대리키가 아니라 이 값을 보여야 대조할 수 있다. */
+const LOT_NO = '0001234500000012002607310001230007';
+
+/** 수량 칸을 찾는 이름. 품목 코드와 LOT 번호가 함께 선다. */
+const QTY_LABEL = new RegExp(`ABC-123 · ${LOT_NO} 실물 수량`);
+
 const line = (overrides: Record<string, unknown> = {}) => ({
   inventoryCountLineId: 5101,
   inventoryCountId: 5001,
@@ -155,6 +161,15 @@ const routes = (options: Options = {}): StubRoute[] => [
         ],
         page,
       });
+    },
+  },
+  {
+    /* 실사 응답은 LOT 식별자만 준다. 번호는 이 조회에서 온다. */
+    match: (req) => /\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
+    respond: (req) => {
+      const lotId = Number(new URL(req.url).pathname.split('/').pop());
+
+      return jsonResponse({ lot: { lotId, lotNo: LOT_NO } });
     },
   },
   {
@@ -253,8 +268,21 @@ describe('실물 카운트 화면', () => {
     mount();
     await openLocation(user);
 
-    expect(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/)).toBeTruthy();
+    expect(await screen.findByLabelText(QTY_LABEL)).toBeTruthy();
     expect(screen.getByText('장부 120')).toBeTruthy();
+  });
+
+  /*
+   * 라벨에는 LOT 번호가 찍혀 있고 대리키는 찍혀 있지 않다. 대리키를 보이면 세는 사람이
+   * 지금 어느 LOT 을 세는지 실물과 맞춰볼 수 없다.
+   */
+  it('LOT 자리에 대리키를 보이지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openLocation(user);
+    await screen.findByLabelText(QTY_LABEL);
+
+    expect(screen.queryByLabelText(/ABC-123 · 8001 실물 수량/)).toBeNull();
   });
 
   /*
@@ -266,7 +294,7 @@ describe('실물 카운트 화면', () => {
     mount({ seen });
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
     await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
 
     await waitFor(() => {
@@ -290,7 +318,7 @@ describe('실물 카운트 화면', () => {
     mount({ seen });
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '0');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '0');
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '이 위치 완료' })).not.toBeDisabled();
@@ -325,7 +353,7 @@ describe('실물 카운트 화면', () => {
     mount();
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
 
     await waitFor(() => {
       expect(screen.getAllByText('아직 세지 않음')).toHaveLength(1);
@@ -338,7 +366,7 @@ describe('실물 카운트 화면', () => {
     mount();
     await openLocation(user);
 
-    const field = await screen.findByLabelText(/ABC-123 · 8001 실물 수량/);
+    const field = await screen.findByLabelText(QTY_LABEL);
     await user.type(field, '118');
     await user.clear(field);
 
@@ -370,7 +398,7 @@ describe('실물 카운트 화면', () => {
     mount();
     await openLocation(user);
 
-    await screen.findByLabelText(/ABC-123 · 8001 실물 수량/);
+    await screen.findByLabelText(QTY_LABEL);
 
     expect(screen.getByRole('button', { name: '이 위치 완료' })).toBeDisabled();
   });
@@ -386,16 +414,14 @@ describe('실물 카운트 화면', () => {
     mount({ otherDevice }, queryClient);
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
 
     /* 다른 단말이 둘째 줄을 센다. 그 사실은 받아 오되 내가 적은 것은 그대로여야 한다. */
     otherDevice.counted = true;
     await queryClient.invalidateQueries({ queryKey: ['physical-count-lines'] });
 
     expect(await screen.findByText('이전 값 37')).toBeTruthy();
-    expect((screen.getByLabelText(/ABC-123 · 8001 실물 수량/) as HTMLInputElement).value).toBe(
-      '118',
-    );
+    expect((screen.getByLabelText(QTY_LABEL) as HTMLInputElement).value).toBe('118');
   });
 
   it('라인이 없는 위치는 그 사실을 말한다', async () => {
@@ -416,7 +442,7 @@ describe('실물 카운트 화면', () => {
     mount({ seen });
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
 
     const button = screen.getByRole('button', { name: '이 위치 완료' });
     button.click();
@@ -438,7 +464,7 @@ describe('실물 카운트 화면', () => {
     mount();
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(/ABC-123 · 8001 실물 수량/), '118');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
 
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '이 위치 완료' }));

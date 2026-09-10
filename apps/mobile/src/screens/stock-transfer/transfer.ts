@@ -51,6 +51,72 @@ export interface TransferEnd {
   businessUnitId: number;
 }
 
+/** 잔고 줄에서 반출에 필요한 것만 본다. 계약이 사업장과 위치를 선택 항목으로 둔다. */
+export interface BalanceRow {
+  onHandQty: number;
+  locationId?: number | null;
+  warehouseId?: number | null;
+  businessUnitId?: number | null;
+}
+
+/**
+ * 반출에 쓸 잔고 줄을 고른 결과. 재고가 없는 것과 사업장을 모르는 것은 다른 일이다.
+ *
+ * 정해진 값을 함께 낸다 - 부르는 쪽이 다시 꺼내면 선택 항목이라 형 단언을 쓰게 되고,
+ * 그러면 여기서 거른 뜻이 사라진다.
+ */
+export type SourcePick<T extends BalanceRow> =
+  | { kind: 'row'; row: T; locationId: number; warehouseId: number; businessUnitId: number }
+  | { kind: 'noStock' }
+  | { kind: 'unknownBusinessUnit' };
+
+/**
+ * 반출 라인을 세울 잔고 줄과 그 사업장.
+ *
+ * 사업장은 계약에서 선택 항목이라 잔고 줄에 없이 올 수 있다. 없다고 재고가 없는 것이
+ * 아닌데 그렇게 읽으면 재고가 멀쩡한 자리에서 반출이 통째로 막힌다.
+ *
+ * 없으면 출발 창고에서 가져온다. 도착 쪽에서 빌리지 않는다 - 두 창고가 다른 사업장이면
+ * 출발이 틀리게 적힌다. 출발 창고는 물건이 실제로 있는 자리라 그 사업장이 맞다.
+ *
+ * 위치와 창고는 그대로 요구한다. 창고 수준으로만 관리하는 자리는 위치가 비는데, 그 줄로
+ * 반출 라인을 만들면 어디서 뺀 것인지가 남지 않는다.
+ */
+export const sourcePickOf = <T extends BalanceRow>(
+  rows: T[],
+  warehouses: TransferEnd[],
+): SourcePick<T> => {
+  /* 한 LOT 이 여러 자리에 있다. 한 자리에서 사업장을 못 정해도 다른 자리는 정해진다. */
+  let stocked = false;
+
+  for (const row of rows) {
+    const { onHandQty, locationId, warehouseId } = row;
+
+    if (
+      onHandQty <= 0 ||
+      locationId === undefined ||
+      locationId === null ||
+      warehouseId === undefined ||
+      warehouseId === null
+    ) {
+      continue;
+    }
+
+    stocked = true;
+
+    const businessUnitId =
+      row.businessUnitId ??
+      warehouses.find((each) => each.warehouseId === warehouseId)?.businessUnitId ??
+      null;
+
+    if (businessUnitId !== null) {
+      return { kind: 'row', row, locationId, warehouseId, businessUnitId };
+    }
+  }
+
+  return { kind: stocked ? 'unknownBusinessUnit' : 'noStock' };
+};
+
 export type QtyProblem = 'notNumber' | 'notPositive' | 'overStock';
 
 /**

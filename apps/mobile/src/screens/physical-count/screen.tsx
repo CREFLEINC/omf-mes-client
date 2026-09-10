@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { useLotLabels } from '../../patterns/handling-units';
 import { useLocationByCode } from '../../patterns/locations';
 import { useItemLabels } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
@@ -103,11 +104,18 @@ export const PhysicalCountScreen = () => {
     },
   });
 
+  /*
+   * 실사 응답은 LOT 식별자만 준다. 대리키를 보이면 라벨과 대조할 수 없다 - 라벨에는
+   * LOT 번호가 찍혀 있다. 번호를 아직 못 받았으면 지어내지 않고 품목만 말한다.
+   */
+  const lotLabels = useLotLabels(
+    lines.map((line) => line.lotId).filter((lotId): lotId is number => lotId !== null),
+  );
+
   const nameOf = (line: DraftLine): string =>
     t.lines.name(
       itemLabels.data?.get(line.itemId)?.itemCode ?? '',
-      /* LOT 번호표는 이 슬라이스에 없다. 대리키라도 없는 것보다 낫다. */
-      line.lotId === null ? '' : String(line.lotId),
+      line.lotId === null ? '' : (lotLabels.get(line.lotId) ?? ''),
     );
 
   const restart = () => {
