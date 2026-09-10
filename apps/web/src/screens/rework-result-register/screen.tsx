@@ -8,6 +8,7 @@ import { PopSelect as Select } from '../../patterns/pop-select';
 
 import { useApiClient } from '../../patterns/api-context';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } from './outbox';
 import {
@@ -35,7 +36,8 @@ export const ReworkResultRegisterScreen = () => {
   const t = messages.reworkResultRegister;
   const { client } = useApiClient();
   const identity = usePopIdentity();
-  const workOrders = useReworkWorkOrders();
+  const [listPage, setListPage] = useState(1);
+  const workOrders = useReworkWorkOrders(listPage);
   const defectCodeId = useId();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   /**
@@ -255,6 +257,20 @@ export const ReworkResultRegisterScreen = () => {
                     render: (row) => row.orderQty,
                   },
                 ]}
+              />
+
+              {/*
+               * ⛔ **첫 20건에 갇히지 않는다**(#1005 · G-34). 전에는 쪽을 넘길 조작이 없어
+               * 21번째 재작업 지시부터 고를 수 없었다.
+               */}
+              <PopPageNav
+                boundary={pageBoundaryOf(workOrders.data?.page)}
+                label={t.pageNav}
+                onChange={(page) => {
+                  /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시가 상세에 남지 않게 한다. */
+                  setSelectedId(null);
+                  setListPage(page);
+                }}
               />
             </div>
           )}

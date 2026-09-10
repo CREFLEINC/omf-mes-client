@@ -536,7 +536,7 @@ describe('PqcInspectionScreen — 저장이 실어 가는 것', () => {
     const body = await bodyOf(writes[0] as Request);
     expect(body).not.toHaveProperty('inspectorId');
     expect(body).not.toHaveProperty('terminalId');
-    expect(body.statusCode).toBe('작성중');
+    expect(body.statusCode).toBe('DRAFT');
   });
 
   /*

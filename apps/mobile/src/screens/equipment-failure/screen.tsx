@@ -13,13 +13,17 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useOnlineStatus } from '../../patterns/online-status';
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
+import { playErrorTone } from '../../patterns/error-tone';
+import { useLocation } from '../../patterns/locations';
 import { capturePhoto, readCapturedPhoto, type CapturedPhoto } from '../../patterns/photo-capture';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useEquipments, type Equipment } from '../../patterns/equipments';
-import { useOpenBreakdownCount } from './queries';
+import { useOpenBreakdownCount, useRecentSymptoms } from './queries';
 import {
   MAX_PHOTOS,
   PHOTO_QUEUE_LIMIT_BYTES,
@@ -32,6 +36,7 @@ import {
 import './screen.css';
 
 const t = messages.equipmentFailureReport;
+const required = messages.common.required;
 
 type PendingPhoto = CapturedPhoto & { listKey: string };
 
@@ -78,7 +83,7 @@ const EquipmentPicker = ({
 export const EquipmentFailureScreen = () => {
   useScreenTitle(t.title);
   const online = useOnlineStatus();
-  const { enqueue, flush, pendingBytes, isRejected } = useOutbox();
+  const { countPending, enqueue, flush, pendingBytes, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
   const equipments = useEquipments();
 
@@ -98,10 +103,21 @@ export const EquipmentFailureScreen = () => {
    * 두 번째가 들어와 같은 고장이 두 건으로 서고 설비담당이 두 번 불려 간다.
    */
   const inFlight = useRef(false);
+  /* 같은 라벨을 다시 읽으면 상태는 그대로라 소리가 다시 나지 않는다. 회차를 함께 센다. */
+  const [scanSeq, setScanSeq] = useState(0);
+  const symptomSection = useRef<HTMLDivElement | null>(null);
 
   const openBreakdowns = useOpenBreakdownCount(selected?.equipmentId ?? null);
+  const recent = useRecentSymptoms(selected?.equipmentId ?? null);
+  /* 알림을 받은 설비담당이 어디로 가야 하는지 알아야 한다(REQ-PR-0036). */
+  const location = useLocation(selected?.locationId ?? null);
 
-  const scanField = useScanField({ onScan: setScanned });
+  const scanField = useScanField({
+    onScan: (value) => {
+      setScanned(value);
+      setScanSeq((seq) => seq + 1);
+    },
+  });
 
   /*
    * 목록이 도착한 뒤에 맞춘다. 도착 전에 없다고 말하면 있는 설비를 없다고 하는 것이 되고,
@@ -132,6 +148,31 @@ export const EquipmentFailureScreen = () => {
   const queuedBytes = pendingBytes + photos.reduce((total, photo) => total + photo.data.length, 0);
   const photoFull = photos.length >= MAX_PHOTOS;
   const photoTooHeavy = queuedBytes >= PHOTO_QUEUE_LIMIT_BYTES;
+
+  /*
+   * 아직 나가지 않은 고장 보고. 점검과 달리 사람이 기다린다 - 안 가면 설비담당이 오지 않고,
+   * 보고자는 온다고 믿는다(설계 §6-2).
+   */
+  const unsent = countPending(t.record.report);
+
+  /*
+   * 스캔한 코드가 이 공장의 설비가 아니라는 것을 소리로도 알린다(공유계약 D-2). 기기를 들고
+   * 설비 앞에 선 채라 화면에만 적으면 통과한 줄 알고 다음으로 넘어간다.
+   */
+  useEffect(() => {
+    if (scanMiss !== null) {
+      playErrorTone();
+    }
+  }, [scanMiss, scanSeq]);
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(selected !== null, symptomSection);
+
+  /* 뒤로가기는 고른 설비를 먼저 놓는다. 두지 않으면 한 번에 작업 목록까지 나간다. */
+  useBackStep(selected !== null, () => {
+    setSelected(null);
+    scanField.focus();
+  });
 
   const takePhoto = async () => {
     try {
@@ -253,11 +294,21 @@ export const EquipmentFailureScreen = () => {
 
   return (
     <div className="equipment-failure">
+      {/*
+       * 못 보낸 고장은 서버에 없어 설비담당이 오지 않는다. 보고자는 온다고 믿는다 - 상시
+       * 보이고 대안 경로까지 적는다(설계 §6-2).
+       */}
+      {unsent === 0 ? null : (
+        <AlertBanner variant="warning" title={t.unsent(unsent)}>
+          {t.unsentHint}
+        </AlertBanner>
+      )}
+
       <section className="equipment-failure__section">
         <h2>{t.equipment.legend}</h2>
         <TextField
           ref={scanField.ref}
-          label={t.equipment.scanLabel}
+          label={required(t.equipment.scanLabel)}
           placeholder={t.equipment.scanPlaceholder}
           size="lg"
           fullWidth
@@ -274,15 +325,24 @@ export const EquipmentFailureScreen = () => {
           />
         )}
 
+        {/* 알림을 받은 설비담당이 어디로 가야 하는지 알아야 한다(REQ-PR-0036). */}
+        {selected === null ? null : location.isError ? (
+          <p className="equipment-failure__note">{t.equipment.locationUnknown}</p>
+        ) : location.data === undefined ? null : (
+          <p className="equipment-failure__note">
+            {t.equipment.location(`${location.data.locationCode} ${location.data.locationName}`)}
+          </p>
+        )}
+
         {openBreakdowns.data !== undefined && openBreakdowns.data > 0 ? (
           <AlertBanner variant="warning" title={t.equipment.openBreakdowns(openBreakdowns.data)} />
         ) : null}
       </section>
 
-      <section className="equipment-failure__section">
+      <section className="equipment-failure__section" ref={symptomSection}>
         <h2>{t.symptom.legend}</h2>
         <TextArea
-          label={t.symptom.label}
+          label={required(t.symptom.label)}
           placeholder={t.symptom.placeholder}
           helperText={t.symptom.hint}
           size="lg"
@@ -294,6 +354,28 @@ export const EquipmentFailureScreen = () => {
             setSymptom(event.target.value);
           }}
         />
+        {/* 코드로 강제하지 않는 대신 지난 것을 눌러 넣는다(공유계약 A-12). */}
+        {recent.data === undefined || recent.data.length === 0 ? null : (
+          <>
+            <p className="equipment-failure__note">{t.symptom.recentLegend}</p>
+            <ul className="equipment-failure__recent">
+              {recent.data.map((past) => (
+                <li key={past}>
+                  <Button
+                    className="equipment-failure__wide"
+                    variant="outlined"
+                    size="lg"
+                    onClick={() => {
+                      setSymptom(past);
+                    }}
+                  >
+                    {past}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
       </section>
 
       <section className="equipment-failure__section">
@@ -379,16 +461,19 @@ export const EquipmentFailureScreen = () => {
       ) : null}
       {worker === null ? <AlertBanner variant="warning" title={t.noWorker} /> : null}
 
-      <Button
-        variant="filled"
-        size="xl"
-        disabled={!validity.canSubmit || worker === null}
-        onClick={() => {
-          void report();
-        }}
-      >
-        {t.submit}
-      </Button>
+      <div className="action-bar">
+        <Button
+          className="equipment-failure__wide"
+          variant="filled"
+          size="xl"
+          disabled={!validity.canSubmit || worker === null}
+          onClick={() => {
+            void report();
+          }}
+        >
+          {t.submit}
+        </Button>
+      </div>
     </div>
   );
 };

@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
+import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { useItemLabels, useUomCodes } from '../../patterns/masters';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
@@ -29,8 +30,10 @@ import {
   NO_RULE,
   canComplete,
   lotMatches,
+  STORAGE_CONDITION,
   mixProblemOf,
   overCapacityOf,
+  storageMismatch,
   scansLocation,
   toOutboxDraft,
   verdictOf,
@@ -113,6 +116,16 @@ export const PutawayScreen = () => {
     task === null || location === null || !contentsKnown
       ? null
       : overCapacityOf(task, location, held);
+  /*
+   * 품목과 자리의 보관조건은 같은 코드계다. 어긋나도 막지 않는다 - 설계가 경고로 정했고,
+   * 냉장 자리가 없어 상온에 두어야 하는 날이 있다.
+   */
+  const itemCondition =
+    task === null ? null : (itemLabels.data?.get(task.itemId)?.storageConditionCode ?? null);
+  const storageOff =
+    location === null ? false : storageMismatch(itemCondition, location.storageConditionCode);
+  /* 표시명은 서버가 갖는다. 코드 문자열을 그대로 보이면 현장이 영문을 읽는다. */
+  const storageNames = useCodeValues(STORAGE_CONDITION);
 
   /* 위치가 통과해야 LOT 을 묻는다 - 순서를 바꾸면 오적치를 막을 자리가 사라진다. */
   const locationSettled =
@@ -456,6 +469,17 @@ export const PutawayScreen = () => {
                     </Button>
                   </>
                 ) : null}
+
+                {/* 막지 않는다. 모르면 말하지 않는다 - 둘 중 하나가 비면 어긋났다 할 근거가 없다. */}
+                {!storageOff || location === null ? null : (
+                  <AlertBanner
+                    variant="warning"
+                    title={t.storageMismatch(
+                      displayNameOf(storageNames.data ?? [], itemCondition ?? ''),
+                      displayNameOf(storageNames.data ?? [], location.storageConditionCode ?? ''),
+                    )}
+                  />
+                )}
 
                 {/* 막지 않는다. 넘겨서 두는 판단은 자리를 보는 사람이 한다. */}
                 {overCapacity === null ? null : (

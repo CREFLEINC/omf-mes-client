@@ -14,6 +14,13 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { EquipmentInspectionScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+const tone = vi.hoisted(() => ({ played: 0 }));
+
+vi.mock('../../patterns/error-tone', () => ({
+  playErrorTone: () => {
+    tone.played += 1;
+  },
+}));
 /** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
 const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
@@ -77,12 +84,51 @@ interface Options {
   items?: unknown[];
   level?: string;
   itemsStatus?: number;
+  /** 오늘 이 설비를 이 유형으로 점검한 기록. 막지 않고 알리는 자리다. */
+  todaysInspection?: unknown;
+  /** 보낸 점검을 모은다. 담기면 그 뒤의 오늘 기록 조회가 그것을 낸다. */
+  recorded?: Request[];
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
   {
     match: (request: Request) => new URL(request.url).pathname === '/mdm/equipments',
     respond: () => jsonResponse({ items: [equipment], page: { page: 0, size: 200, total: 1 } }),
+  },
+  {
+    match: (request: Request) => new URL(request.url).pathname === '/mdm/uoms',
+    respond: () =>
+      jsonResponse({
+        items: [{ uomId: 9, uomCode: 'MPa', uomName: '메가파스칼', isActive: true }],
+        page: { page: 0, size: 200, total: 1 },
+      }),
+  },
+  {
+    match: (request: Request) => new URL(request.url).pathname === '/maintenance/inspections',
+    respond: (request: Request) => {
+      if (request.method === 'POST') {
+        options.recorded?.push(request.clone());
+        return jsonResponse({ inspectionId: 1 }, { status: 201 });
+      }
+
+      const today =
+        options.todaysInspection ??
+        (options.recorded !== undefined && options.recorded.length > 0
+          ? {
+              inspectionId: 1,
+              equipmentId: 7,
+              inspectionTypeCode: 'DAILY',
+              overallResultCode: 'PASS',
+              inspectedAt: '2026-08-11T09:12:00+09:00',
+              inspectorWorkerNo: '900028',
+            }
+          : undefined);
+
+      return jsonResponse({
+        items: today === undefined ? [] : [today],
+        page: { page: 0, size: 1, total: today === undefined ? 0 : 1 },
+      });
+    },
   },
   {
     match: (request: Request) =>
@@ -151,7 +197,7 @@ describe('설비 점검 입력 화면', () => {
     await selectEquipment();
 
     expect(screen.getByText('2. 벨트 장력')).toBeInTheDocument();
-    expect(screen.getByText('기준 12 ~ 15 9')).toBeInTheDocument();
+    expect(screen.getByText('기준 12 ~ 15 MPa')).toBeInTheDocument();
   });
 
   /* 부여가 바뀌어도 다시 받기 전까지는 받아 둔 것으로 점검한다. */
@@ -194,7 +240,7 @@ describe('설비 점검 입력 화면', () => {
     mount();
     await selectEquipment();
 
-    await user.type(screen.getByLabelText('측정값'), '13.4');
+    await user.type(screen.getByLabelText(/측정값/), '13.4');
 
     expect(await screen.findByText('합격 1 · NG 0')).toBeInTheDocument();
   });
@@ -205,7 +251,7 @@ describe('설비 점검 입력 화면', () => {
 
     await selectEquipment();
 
-    expect(screen.getByLabelText('측정값')).toBeInTheDocument();
+    expect(screen.getByLabelText(/측정값/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'NG' })).not.toBeInTheDocument();
   });
 
@@ -214,7 +260,7 @@ describe('설비 점검 입력 화면', () => {
     mount();
     await selectEquipment();
 
-    await user.type(screen.getByLabelText('측정값'), '20');
+    await user.type(screen.getByLabelText(/측정값/), '20');
 
     expect(await screen.findByText('NG가 있어 보전이 요청됩니다.')).toBeInTheDocument();
   });
@@ -232,12 +278,12 @@ describe('설비 점검 입력 화면', () => {
     mount();
     await selectEquipment();
 
-    await user.type(screen.getByLabelText('측정값'), '20');
+    await user.type(screen.getByLabelText(/측정값/), '20');
 
     expect(await screen.findByText('NG가 있으면 비고를 적으세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeDisabled();
 
-    await user.type(screen.getByLabelText('비고'), '누유 확인');
+    await user.type(screen.getByLabelText(/비고/), '누유 확인');
 
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeEnabled();
   });
@@ -253,7 +299,7 @@ describe('설비 점검 입력 화면', () => {
     ]);
     await selectEquipment();
 
-    await user.type(screen.getByLabelText('측정값'), '13.4');
+    await user.type(screen.getByLabelText(/측정값/), '13.4');
     await user.click(screen.getByRole('button', { name: '점검 완료' }));
 
     expect(await screen.findByText('점검을 기록했습니다')).toBeInTheDocument();
@@ -277,7 +323,7 @@ describe('설비 점검 입력 화면', () => {
     ]);
     await selectEquipment();
 
-    await user.type(screen.getByLabelText('측정값'), '13.4');
+    await user.type(screen.getByLabelText(/측정값/), '13.4');
     await user.click(screen.getByRole('button', { name: '점검 완료' }));
 
     expect(await screen.findByText('점검을 전송 대기에 넣었습니다')).toBeInTheDocument();
@@ -296,7 +342,7 @@ describe('설비 점검 입력 화면', () => {
     ]);
     await selectEquipment();
 
-    await user.type(screen.getByLabelText('측정값'), '13.4');
+    await user.type(screen.getByLabelText(/측정값/), '13.4');
     await user.click(screen.getByRole('button', { name: '점검 완료' }));
     await screen.findByText('점검을 전송 대기에 넣었습니다');
     await user.click(screen.getByRole('button', { name: '다른 설비 점검' }));
@@ -316,7 +362,7 @@ describe('설비 점검 입력 화면', () => {
     );
     await selectEquipment();
 
-    await user.type(screen.getByLabelText('측정값'), '13.4');
+    await user.type(screen.getByLabelText(/측정값/), '13.4');
 
     expect(screen.getByText('사번을 먼저 확인하세요')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeDisabled();
@@ -336,7 +382,7 @@ describe('설비 점검 입력 화면', () => {
     ]);
     await selectEquipment();
 
-    await user.type(screen.getByLabelText('측정값'), '13.4');
+    await user.type(screen.getByLabelText(/측정값/), '13.4');
 
     const button = screen.getByRole('button', { name: '점검 완료' });
 
@@ -360,7 +406,7 @@ describe('설비 점검 입력 화면', () => {
     ]);
     await selectEquipment();
 
-    await user.type(screen.getByLabelText('측정값'), '13.4');
+    await user.type(screen.getByLabelText(/측정값/), '13.4');
 
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '점검 완료' }));
@@ -368,5 +414,68 @@ describe('설비 점검 입력 화면', () => {
     expect(await screen.findByText('점검을 저장하지 못했습니다')).toBeInTheDocument();
     expect(screen.queryByText('점검을 기록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
+  });
+
+  /* 장갑을 끼고 한 손으로 조작한다. 기기 키보드는 항목 목록과 완료 단추를 덮는다. */
+  it('측정값을 숫자판으로 넣는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await selectEquipment();
+
+    await user.click(await screen.findByLabelText(/측정값/));
+    await user.click(await screen.findByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '3' }));
+
+    expect(await screen.findByDisplayValue('13')).toBeInTheDocument();
+  });
+
+  /* 막지 않는다. 이미 했다는 것만 알려 사람이 정하게 한다. */
+  it('오늘 같은 유형으로 점검한 기록이 있으면 알리되 막지 않는다', async () => {
+    mount([], {
+      todaysInspection: {
+        inspectionId: 1,
+        equipmentId: 7,
+        inspectionTypeCode: 'DAILY',
+        overallResultCode: 'PASS',
+        inspectedAt: '2026-08-11T09:12:00+09:00',
+        inspectorWorkerNo: '3391',
+      },
+    });
+    await selectEquipment();
+
+    expect(await screen.findByText(/오늘 점검 기록 있음/)).toBeInTheDocument();
+    expect(screen.getByText(/사번 3391/)).toBeInTheDocument();
+  });
+
+  /* 기기를 들고 설비 사이를 돈다. 화면에만 적으면 통과한 줄 알고 다음 설비로 간다. */
+  it('이 공장의 설비가 아닌 코드를 소리로도 알린다', async () => {
+    mount();
+    await screen.findByLabelText('설비 스캔');
+
+    scan('NOPE-99');
+
+    await screen.findByText('NOPE-99 설비를 찾지 못했습니다');
+    expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /* 중복을 막으라고 세운 안내가 낡은 캐시로 정반대로 작동하면 안 된다. */
+  it('점검을 마치고 같은 설비를 다시 고르면 오늘 기록이 보인다', async () => {
+    const user = userEvent.setup();
+    const recorded: Request[] = [];
+    mount([], { recorded });
+    await selectEquipment();
+
+    await user.click(await screen.findByLabelText(/측정값/));
+    await user.click(await screen.findByRole('button', { name: '1' }));
+    await user.click(screen.getByRole('button', { name: '3' }));
+    await user.click(screen.getAllByRole('button', { name: '합격' })[0] as HTMLElement);
+    await user.click(screen.getAllByRole('button', { name: '합격' })[1] as HTMLElement);
+    await user.click(screen.getByRole('button', { name: '점검 완료' }));
+
+    await screen.findByText('점검을 기록했습니다');
+    await user.click(screen.getByRole('button', { name: '다른 설비 점검' }));
+    await selectEquipment();
+
+    expect(await screen.findByText(/오늘 점검 기록 있음/)).toBeInTheDocument();
   });
 });

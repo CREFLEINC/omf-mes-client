@@ -131,7 +131,9 @@ export const WorkStartScreen = () => {
    *    그린 화면에 다른 설비의 지시가 실린다. 그 상태는 목록 구획이 사유와 함께 말한다.
    */
   const isListAsked = isShowingAll || equipmentId !== null;
-  const list = useWorkOrders(listEquipmentId, isListAsked);
+  /* 쪽 번호. 축(설비·전체 보기)이 바뀌면 첫 쪽으로 되돌린다 — 아래 전환 자리에서 함께 맞춘다. */
+  const [listPage, setListPage] = useState(1);
+  const list = useWorkOrders(listEquipmentId, isListAsked, listPage);
 
   const rows = list.data?.items;
   /*
@@ -433,6 +435,13 @@ export const WorkStartScreen = () => {
         isLoading={isListAsked && list.isPending}
         isError={list.isError}
         total={list.data?.page.total}
+        pageMeta={list.data?.page}
+        onPageChange={(page) => {
+          /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시를 고른 채로 두면 화면과 어긋난다. */
+          setSelectedId(null);
+          submitAtRef.current = null;
+          setListPage(page);
+        }}
         isShowingAll={isShowingAll}
         isEquipmentUnknown={equipmentId === null}
         canSelect={confirmedNo !== null}
@@ -441,6 +450,8 @@ export const WorkStartScreen = () => {
         onToggleScope={() => {
           submitAtRef.current = null;
           setSelectedId(null);
+          /* ⛔ 축이 바뀌면 첫 쪽으로 — 3쪽을 보던 중 전체 보기로 옮기면 빈 쪽이 뜬다. */
+          setListPage(1);
           setShowingAll((previous) => !previous);
         }}
         onRetry={() => {

@@ -85,7 +85,7 @@ const ENTRIES = [
   ['W-04-07 불량창고', '/mdm/warehouses?isDefect=true', 1],
   ['W-04-07 심각도', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY', 1],
   ['W-03-10 상태', '/mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS', 3],
-  ['M-05-01 설비', '/mdm/equipments', 2],
+  ['M-05-01 설비', '/mdm/equipments?statusCode=IN_SERVICE', 2],
   ['W-06-07 창고', '/mdm/warehouses?includeInactive=true', 3],
   ['W-06-07 공장', '/mdm/plants?includeInactive=true', 1],
   ['W-06-07 사업부', '/mdm/business-units?includeInactive=true', 1],
@@ -940,6 +940,62 @@ for (const [name, path, check] of DETAILS) {
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} M-04-03 구성을 치환하면 재구성 이력이 남는다`);
+}
+
+/*
+ * 점검 항목이 계약 모양인가. 이름과 순번이 다른 이름으로 실려 있으면 화면이 항목 자리에
+ * 빈 값을 적고, 점검자가 무엇을 재는지 알 수 없다.
+ */
+{
+  const response = await fetch(`${BASE}/mdm/equipments/5001/inspection-items`);
+  const body = await response.json();
+  const measured = body.effective.find((row) => row.judgmentMethodCode === 'MEASUREMENT');
+  const uoms = await (await fetch(`${BASE}/mdm/uoms?includeInactive=true`)).json();
+  const named = uoms.items.some((row) => row.uomId === measured?.uomId);
+  const ok =
+    body.effective.length > 0 &&
+    body.effective.every(
+      (row) => typeof row.itemName === 'string' && typeof row.sequenceNo === 'number',
+    ) &&
+    named;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-05-01 점검 항목이 이름과 순번과 단위를 들고 온다`);
+}
+
+/*
+ * 점검 이력이 유형과 기간 축을 거르는가. 무시하면 일상 점검 기록이 정기를 고른 화면에도 떠,
+ * 중복을 막으라고 세운 안내가 엉뚱한 것을 가리킨다.
+ */
+{
+  const daily = await (
+    await fetch(`${BASE}/maintenance/inspections?equipmentId=5001&inspectionTypeCode=DAILY`)
+  ).json();
+  const monthly = await (
+    await fetch(`${BASE}/maintenance/inspections?equipmentId=5001&inspectionTypeCode=MONTHLY`)
+  ).json();
+  const ok = daily.items.length > 0 && monthly.items.length === 0;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-05-01 점검 이력이 유형 축을 거른다`);
+}
+
+/*
+ * 품목과 자리가 보관조건을 들고 오는가. 둘 중 하나라도 비면 적치의 보관조건 경고가 실기에서
+ * 한 번도 서지 않는다 - 화면은 모르면 말하지 않기 때문이다.
+ */
+{
+  const items = await (await fetch(`${BASE}/mdm/items?size=200`)).json();
+  const locations = await (await fetch(`${BASE}/mdm/locations?warehouseId=1001`)).json();
+  const item = items.items.find((row) => row.itemId === 2001);
+  const at = locations.items.find((row) => row.storageConditionCode !== undefined);
+  const ok =
+    typeof item?.storageConditionCode === 'string' &&
+    at !== undefined &&
+    item.storageConditionCode !== at.storageConditionCode;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-01-05 품목과 자리가 어긋나는 보관조건을 들고 온다`);
 }
 
 console.log(

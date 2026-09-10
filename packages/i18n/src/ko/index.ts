@@ -15,6 +15,7 @@
  */
 
 import { common } from './common';
+import { popPageNav } from './pop-page-nav';
 import { conflict } from './conflict';
 import { stateLocked } from './state-locked';
 import { httpError } from './http-error';
@@ -133,6 +134,7 @@ import { physicalCount } from './physical-count';
 import { productDisposalRequest } from './product-disposal-request';
 
 export const ko = {
+  popPageNav,
   common,
   conflict,
   stateLocked,

@@ -46,7 +46,8 @@ export const EmergencyWorkOrderFieldScreen = ({
    *    대해 거짓이라 그것만으로는 두 상태가 구별되지 않는다.
    */
   const isAsked = isEmergencyTypeCodeKnown(typeCode);
-  const list = useEmergencyWorkOrders(typeCode);
+  const [listPage, setListPage] = useState(1);
+  const list = useEmergencyWorkOrders(typeCode, listPage);
   const uoms = useUomLookup(t.detail.unknown);
 
   const workOrders = list.data?.items;
@@ -87,6 +88,12 @@ export const EmergencyWorkOrderFieldScreen = ({
           isAsked={isAsked}
           isLoading={isAsked && list.isPending}
           total={list.data?.page.total}
+          pageMeta={list.data?.page}
+          onPageChange={(page) => {
+            /* 쪽을 넘기면 고른 것을 놓는다 — 다른 쪽의 지시가 상세에 남으면 화면이 어긋난다. */
+            setSelectedId(null);
+            setListPage(page);
+          }}
           isError={list.isError}
           selectedId={selected?.workOrderId ?? null}
           uomLabel={(uomId) => uoms.labelOf(uomId)}

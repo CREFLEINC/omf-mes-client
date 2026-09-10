@@ -73,6 +73,8 @@ export const createSeed = (now = new Date()) => {
     { uomId: 1001, uomCode: 'EA', uomName: '개', isActive: true },
     { uomId: 1002, uomCode: 'KG', uomName: '킬로그램', isActive: true },
     { uomId: 1003, uomCode: 'BOX', uomName: '박스', isActive: false },
+    /* 점검 기준의 단위. 압력 항목에 개수 단위를 붙이면 실물 계기와 맞춰 볼 수 없다. */
+    { uomId: 1004, uomCode: 'MPa', uomName: '메가파스칼', isActive: true },
   ];
 
   /*
@@ -86,6 +88,8 @@ export const createSeed = (now = new Date()) => {
       itemName: '수지A',
       labelName: 'PC RESIN BLK',
       fifoPolicyCode: 'FEFO',
+      /* 자리의 같은 값과 어긋나야 적치의 보관조건 경고를 실기에서 볼 수 있다. */
+      storageConditionCode: 'REFRIGERATED',
     },
     {
       itemId: 2002,
@@ -180,6 +184,14 @@ export const createSeed = (now = new Date()) => {
       warehouseId: 1001,
       locationCode: 'A-01-04',
       locationName: 'A구역 01열 04단',
+    },
+    /* 상온 자리. 냉장 품목을 여기로 스캔하면 경고가 선다. */
+    {
+      locationId: 3010,
+      warehouseId: 1001,
+      locationCode: 'A-01-05',
+      locationName: 'A구역 01열 05단',
+      storageConditionCode: 'ROOM_TEMPERATURE',
     },
     {
       locationId: 3003,
@@ -393,15 +405,21 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /*
+   * 설비가 선 자리를 함께 둔다. 고장 보고를 받은 설비담당이 어디로 가야 하는지 알아야 한다.
+   *
+   * 상태값은 자산 수명주기 축이라 운용·폐기 두 값뿐이다 - 가동 여부는 다른 축이고, 화면이
+   * 운용 중인 것만 물으므로 다른 낱말을 두면 목록이 통째로 빈다.
+   */
   const equipments = [
-    { equipmentId: 5001, equipmentCode: 'PRS-01', equipmentName: '프레스 1호기' },
-    { equipmentId: 5002, equipmentCode: 'EQ-03', equipmentName: '사출기 3호' },
+    { equipmentId: 5001, equipmentCode: 'PRS-01', equipmentName: '프레스 1호기', locationId: 3001 },
+    { equipmentId: 5002, equipmentCode: 'EQ-03', equipmentName: '사출기 3호', locationId: 3002 },
   ].map((equipment) => ({
     ...equipment,
     plantId: PLANT_ID,
     equipmentTypeCode: 'MACHINE',
     productionLineId: 6001,
-    statusCode: 'RUNNING',
+    statusCode: 'IN_SERVICE',
     isActive: true,
   }));
 
@@ -410,54 +428,62 @@ export const createSeed = (now = new Date()) => {
     {
       equipmentInspectionItemId: 7001,
       inspectionItemId: 7001,
+      itemCode: 'INS-HYD-PRESS',
       equipmentId: 5001,
-      inspectionItemName: '유압 압력',
+      itemName: '유압 압력',
       judgmentMethodCode: 'MEASUREMENT',
       inspectionTypeCode: 'DAILY',
       lowerLimit: 12,
       upperLimit: 15,
-      uomId: 1001,
-      isRequired: false,
-      displayOrder: 1,
+      uomId: 1004,
+      requiredFlag: false,
+      sequenceNo: 1,
+      isActive: true,
     },
     {
       equipmentInspectionItemId: 7002,
       inspectionItemId: 7002,
+      itemCode: 'INS-BELT-TENSION',
       equipmentId: 5001,
-      inspectionItemName: '벨트 장력',
+      itemName: '벨트 장력',
       judgmentMethodCode: 'VISUAL',
       inspectionTypeCode: 'DAILY',
       lowerLimit: null,
       upperLimit: null,
       uomId: null,
-      isRequired: false,
-      displayOrder: 2,
+      requiredFlag: false,
+      sequenceNo: 2,
+      isActive: true,
     },
     {
       equipmentInspectionItemId: 7003,
       inspectionItemId: 7003,
+      itemCode: 'INS-SAFETY-COVER',
       equipmentId: 5001,
-      inspectionItemName: '안전커버 파손 여부',
+      itemName: '안전커버 파손 여부',
       judgmentMethodCode: 'VISUAL',
       inspectionTypeCode: 'DAILY',
       lowerLimit: null,
       upperLimit: null,
       uomId: null,
-      isRequired: true,
-      displayOrder: 3,
+      requiredFlag: true,
+      sequenceNo: 3,
+      isActive: true,
     },
     {
       equipmentInspectionItemId: 7004,
       inspectionItemId: 7004,
+      itemCode: 'INS-HYD-LEAK',
       equipmentId: 5002,
-      inspectionItemName: '유압 누유 확인',
+      itemName: '유압 누유 확인',
       judgmentMethodCode: 'VISUAL',
       inspectionTypeCode: 'DAILY',
       lowerLimit: null,
       upperLimit: null,
       uomId: null,
-      isRequired: true,
-      displayOrder: 1,
+      requiredFlag: true,
+      sequenceNo: 1,
+      isActive: true,
     },
   ];
 
@@ -1203,7 +1229,8 @@ export const createSeed = (now = new Date()) => {
       inspectionTypeCode: 'DAILY',
       overallResultCode: 'PASS',
       inspectedAt: iso(0, 7),
-      inspectedBy: 1001,
+      /* 계약은 사번을 싣는다. 대리키만 두면 화면이 누가 했는지 말하지 못한다. */
+      inspectorWorkerNo: '100027',
       remarks: null,
     },
   ];
@@ -2478,7 +2505,23 @@ export const createSeed = (now = new Date()) => {
     defectRecords,
     repairExecutions: [],
     inspectionRequests,
-    breakdowns: [],
+    /*
+     * 지난 고장 하나. 없으면 지난 증상 재사용 제안이 실기에서 한 번도 서지 않는다 - 끝난
+     * 건이라 열린 고장 셈에는 들어가지 않는다.
+     */
+    breakdowns: [
+      {
+        breakdownId: 8801,
+        breakdownNo: 'BD-2026-000012',
+        equipmentId: 5001,
+        symptom: '유압 누유 · 실린더 하부',
+        occurrenceStateCode: 'STOPPED',
+        stoppedAt: null,
+        reportedAt: iso(-3, 14),
+        reporterWorkerNo: '100028',
+        statusCode: 'DONE',
+      },
+    ],
     operationHandovers: [],
     /**
      * 작업 세션 — P-02-10 이 중단·재개를 거는 자리다.

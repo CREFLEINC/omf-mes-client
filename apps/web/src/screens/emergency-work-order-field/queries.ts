@@ -8,7 +8,8 @@ import { isEmergencyTypeCodeKnown } from './work-order-type';
 /** 이 화면이 소유하는 캐시 키. 다른 화면 슬라이스의 키 모듈을 참조하지 않는다. */
 export const emergencyWorkOrderFieldKeys = {
   all: ['emergency-work-order-field'] as const,
-  list: (typeCode: string) => ['emergency-work-order-field', 'list', typeCode] as const,
+  list: (typeCode: string, page: number) =>
+    ['emergency-work-order-field', 'list', typeCode, page] as const,
 };
 
 /** 한 번에 되찾아 볼 최대 건수. 현장에서 한 화면에 담기는 만큼만 본다. */
@@ -26,7 +27,10 @@ export const LIST_SIZE = 20;
  *
  * ⛔ **자동 갱신을 두지 않는다**(L-6). 갱신은 사람이 새로고침할 때만 일어난다.
  */
-export const useEmergencyWorkOrders = (typeCode: string): UseQueryResult<WorkOrderListResponse> => {
+export const useEmergencyWorkOrders = (
+  typeCode: string,
+  page = 1,
+): UseQueryResult<WorkOrderListResponse> => {
   const { client } = useApiClient();
   /*
    * ⛔ **유형 값을 모르면 아예 묻지 않는다.** 빈 값으로 물으면 조건이 사라져 양산·재작업
@@ -35,14 +39,14 @@ export const useEmergencyWorkOrders = (typeCode: string): UseQueryResult<WorkOrd
   const isKnown = isEmergencyTypeCodeKnown(typeCode);
 
   return useQuery({
-    queryKey: emergencyWorkOrderFieldKeys.list(typeCode),
+    queryKey: emergencyWorkOrderFieldKeys.list(typeCode, page),
     enabled: isKnown,
     queryFn: () => {
       if (!isKnown) throw new Error('긴급 유형 값을 모르는 채로는 조회하지 않습니다.');
 
       return runRequest(() =>
         client.GET('/production/work-orders', {
-          params: { query: { workOrderTypeCode: typeCode, open: true, size: LIST_SIZE } },
+          params: { query: { workOrderTypeCode: typeCode, open: true, page, size: LIST_SIZE } },
         }),
       );
     },

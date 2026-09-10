@@ -28,6 +28,8 @@ export const reworkResultRegister = {
   changeWorkOrder: '변경',
   /** 표의 접근 이름. 화면에는 구획 제목이 이미 같은 이름으로 서 있다. */
   workOrderCaption: '진행할 수 있는 재작업 작업지시',
+  /* 쪽 넘김 랜드마크 이름(#1005). */
+  pageNav: '재작업 작업지시 목록 페이지 이동',
   columns: {
     workOrder: '작업지시',
     item: '품목',

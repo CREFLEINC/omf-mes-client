@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
 import { HOLD_REASON_GROUP_CODE } from './codes';
+import { readHoldReasons, writeHoldReasons, type HoldReason as CachedReason } from './reason-cache';
 
 /**
  * 중단 사유 목록 — **서버가 갖는다**(스펙 §5-4 · 2026-09-06 게이트 승인 · 공유계약 G-32).
@@ -50,9 +51,21 @@ export interface HoldReasonsResult {
   reasons: HoldReason[];
   /** 받은 것이 전부가 아니다 — 화면이 그 사실을 말한다. */
   truncated: boolean;
+  /**
+   * 서버가 아니라 **받아 둔 것**으로 그렸는가(#1005).
+   *
+   * ⚠ 화면이 이 사실을 말해야 한다 — 마스터에서 사유가 늘거나 꺼졌어도 여기엔 안 비친다.
+   */
+  fromCache: boolean;
   isLoading: boolean;
   isError: boolean;
   refetch: () => void;
+}
+
+interface ReasonPage {
+  reasons: HoldReason[];
+  truncated: boolean;
+  fromCache: boolean;
 }
 
 /**
@@ -65,22 +78,49 @@ export interface HoldReasonsResult {
 export const useHoldReasons = (): HoldReasonsResult => {
   const { client } = useApiClient();
 
-  const query = useQuery({
+  const query = useQuery<ReasonPage>({
     queryKey: holdReasonKeys.values,
-    queryFn: () =>
-      runRequest(() =>
-        client.GET('/mdm/code-values', {
-          params: { query: { codeGroupCode: HOLD_REASON_GROUP_CODE, size: PAGE_SIZE } },
-        }),
-      ),
+    queryFn: async (): Promise<ReasonPage> => {
+      try {
+        const data = await runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: { query: { codeGroupCode: HOLD_REASON_GROUP_CODE, size: PAGE_SIZE } },
+          }),
+        );
+
+        const reasons = data.items.map((item) => ({ code: item.code, name: item.codeName }));
+
+        /*
+         * ⭐ **닿은 김에 받아 둔다**(#1005). 끊긴 뒤에 사유를 고를 근거는 이것뿐이다.
+         *    받아 두기가 실패해도 지금 조회는 성공이다 — 순서를 뒤집지 않는다.
+         */
+        await writeHoldReasons(reasons, new Date().toISOString());
+
+        /* 서버가 센 전체가 받은 것보다 많으면 잘린 것이다. */
+        return { reasons, truncated: data.page.total > data.items.length, fromCache: false };
+      } catch (error) {
+        /*
+         * ⛔ **끊겼다고 사유가 없는 것이 아니다**(#1005). 전에는 여기서 그대로 실패해
+         *    라디오가 한 줄도 그려지지 않았고, **설비가 멈춘 순간에 중단을 기록할 수 없었다** —
+         *    기록 자체는 outbox 에 담기게 돼 있는데 고를 것이 없어 담을 수조차 없었다.
+         *
+         * ⚠ 받아 둔 것이 없으면 그대로 실패한다. 「받지 못했다」를 「사유가 없다」로 바꾸지 않는다.
+         */
+        const cached: CachedReason[] | null = await readHoldReasons();
+
+        if (cached === null) throw error;
+
+        return { reasons: cached, truncated: false, fromCache: true };
+      }
+    },
   });
 
   const data = query.data;
 
   return {
-    reasons: data?.items.map((item) => ({ code: item.code, name: item.codeName })) ?? EMPTY_REASONS,
-    /* 서버가 센 전체가 받은 것보다 많으면 잘린 것이다. */
-    truncated: data !== undefined && data.page.total > data.items.length,
+    reasons: data?.reasons ?? EMPTY_REASONS,
+    truncated: data?.truncated ?? false,
+    fromCache: data?.fromCache ?? false,
     isLoading: query.isPending,
     isError: query.isError,
     refetch: () => {

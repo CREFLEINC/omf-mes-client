@@ -112,6 +112,9 @@ export const workStart = {
     truncated: (shown: number, total: number): string =>
       `${String(total)}건 중 ${String(shown)}건을 보이고 있습니다.`,
 
+    /* 쪽 넘김 랜드마크 이름. 무엇의 쪽인지는 화면이 정한다(#1005). */
+    pageNav: '작업지시 목록 페이지 이동',
+
     /** 설비를 몰라 기본 목록을 세우지 못한 상태. 빈 목록과 다른 사실이다. */
     equipmentUnknown:
       '이 단말이 어느 설비에 붙어 있는지 확인하지 못했습니다. 「전체 보기」로 진행할 수 있습니다.',

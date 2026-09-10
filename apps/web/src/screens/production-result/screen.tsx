@@ -17,6 +17,7 @@ import {
   latestIssue,
   useCompletedLots,
   useCurrentLot,
+  useLotDetail,
   useItem,
   useLotIssues,
   usePrinters,
@@ -119,6 +120,12 @@ export const ProductionFlowScreen = () => {
   const tagIssueSummary = useTagIssueSummary(serials.data?.items ?? [], isTagTarget === true);
   const reissueReasons = useReissueReasons(isTagReissueOpen);
   const lotIssues = useLotIssues(currentLot.data?.lotId ?? null);
+  /*
+   * ⭐ **마감이 실을 낙관적 잠금 값을 받아 두는 조회다**(#1005 · 공유계약 B-1). 응답 «내용»은
+   *    쓰지 않는다 — 목록이 이미 준다. 여기서 얻는 것은 `ETag` 헤더뿐이고, 그것이 보관소의
+   *    `/trace/lots/{lotId}` 자리에 앉아야 `useLotComplete` 가 꺼내 쓸 수 있다.
+   */
+  const lotDetail = useLotDetail(currentLot.data?.lotId ?? null);
   const currentIssue = latestIssue(lotIssues.data);
   const lotPrinter = defaultPrinter(lotPrinters.data);
   const tagPrinter = defaultPrinter(tagPrinters.data);
@@ -882,6 +889,12 @@ export const ProductionFlowScreen = () => {
         title={t.flow.currentLot.completedTitle}
         /* ⛔ 바닥의 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
         showCloseButton={false}
+        /*
+         * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
+         *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
+         *    「누른 적 없는데 닫힌다」가 된다. 닫는 길은 아래 [닫기] 단추다.
+         */
+        closeOnBackdropClick={false}
         footer={
           <Button variant="outlined" onClick={() => setIsCompletedOpen(false)}>
             {t.flow.close}
@@ -929,6 +942,12 @@ export const ProductionFlowScreen = () => {
         title={t.flow.tag.reissueReason}
         /* ⛔ 바닥의 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
         showCloseButton={false}
+        /*
+         * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
+         *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
+         *    「누른 적 없는데 닫힌다」가 된다. 닫는 길은 아래 [닫기] 단추다.
+         */
+        closeOnBackdropClick={false}
         footer={
           <>
             <Button variant="outlined" onClick={() => setIsTagReissueOpen(false)}>

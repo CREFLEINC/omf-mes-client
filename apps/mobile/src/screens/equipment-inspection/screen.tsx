@@ -3,6 +3,7 @@ import {
   Button,
   Card,
   Chip,
+  NumberPad,
   Progress,
   RadioGroup,
   Radio,
@@ -11,10 +12,15 @@ import {
   TextField,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
 import { useEquipments, type Equipment } from '../../patterns/equipments';
+import { playErrorTone } from '../../patterns/error-tone';
+import { useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -36,10 +42,11 @@ import {
   type Entry,
   type InspectionType,
 } from './inspection';
-import { NONE, useInspectionItems, type InspectionItem } from './queries';
+import { NONE, useInspectionItems, useTodaysInspection, type InspectionItem } from './queries';
 import './screen.css';
 
 const t = messages.equipmentInspection;
+const required = messages.common.required;
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
@@ -53,10 +60,16 @@ const receivedLabel = (iso: string): string => {
 const ItemCard = ({
   item,
   entry,
+  uom,
+  keypadOpen,
+  onFocus,
   onChange,
 }: {
   item: InspectionItem;
   entry: Entry | undefined;
+  uom: string;
+  keypadOpen: boolean;
+  onFocus: () => void;
   onChange: (next: Entry) => void;
 }) => {
   const result = resultOf(item, entry);
@@ -77,23 +90,35 @@ const ItemCard = ({
 
         {measurable ? (
           <>
+            {/* 실물 계기에는 단위 이름이 찍혀 있지 대리키가 찍혀 있지 않다. */}
             <p className="inspection__item-note">
-              {t.items.range(
-                String(item.lowerLimit),
-                String(item.upperLimit),
-                item.uomId === null || item.uomId === undefined ? '' : String(item.uomId),
-              )}
+              {t.items.range(String(item.lowerLimit), String(item.upperLimit), uom)}
             </p>
             <TextField
-              label={t.items.measured}
-              inputMode="decimal"
+              label={required(t.items.measured)}
+              /*
+               * 장갑을 끼고 한 손으로 조작한다. 기기 키보드는 키가 촘촘하고, 올라오면 항목
+               * 목록과 완료 단추를 덮는다(설계 §7 · 공유계약 G-6).
+               */
+              inputMode="none"
               size="lg"
               fullWidth
               value={entry?.measured ?? ''}
+              onFocus={onFocus}
               onChange={(event) => {
                 onChange({ ...entry, measured: event.target.value });
               }}
             />
+            {/* 키패드는 지금 적는 줄 아래에만 선다(공유계약 D-4). */}
+            {keypadOpen ? (
+              <NumberPad
+                value={entry?.measured ?? ''}
+                onChange={(next) => {
+                  onChange({ ...entry, measured: next });
+                }}
+                allowDecimal
+              />
+            ) : null}
           </>
         ) : (
           <>
@@ -132,6 +157,7 @@ export const EquipmentInspectionScreen = () => {
   useScreenTitle(t.title);
 
   const { enqueue, flush, countPending, isRejected } = useOutbox();
+  const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
   const equipments = useEquipments();
 
@@ -147,9 +173,22 @@ export const EquipmentInspectionScreen = () => {
    * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 두 건이 기록된다.
    */
   const inFlight = useRef(false);
+  /* 키패드는 지금 적는 줄 아래에만 선다. 줄마다 두면 화면이 키패드로 찬다(공유계약 D-4). */
+  const [keypadFor, setKeypadFor] = useState<number | null>(null);
+  /* 같은 라벨을 다시 읽으면 상태는 그대로라 소리가 다시 나지 않는다. 회차를 함께 센다. */
+  const [scanSeq, setScanSeq] = useState(0);
+  const typeSection = useRef<HTMLDivElement | null>(null);
+  const itemsSection = useRef<HTMLDivElement | null>(null);
 
-  const scanField = useScanField({ onScan: setScanned });
+  const scanField = useScanField({
+    onScan: (value) => {
+      setScanned(value);
+      setScanSeq((seq) => seq + 1);
+    },
+  });
   const items = useInspectionItems(selected?.equipmentId ?? null);
+  const uoms = useUomCodes(selected !== null);
+  const today = useTodaysInspection(selected?.equipmentId ?? null, type);
 
   /*
    * 목록이 도착한 뒤에 맞춘다. 도착 전에 없다고 말하면 있는 설비를 없다고 하는 것이 되고,
@@ -187,6 +226,28 @@ export const EquipmentInspectionScreen = () => {
   const ready = selected !== null && canSubmit(submission, worker !== null);
   const unsent = countPending(t.record);
 
+  /*
+   * 스캔한 코드가 이 공장의 설비가 아니라는 것을 소리로도 알린다(공유계약 D-2). 기기를 들고
+   * 설비 사이를 도는 중이라 화면에만 적으면 통과한 줄 알고 다음 설비로 간다.
+   */
+  useEffect(() => {
+    if (scanMiss !== null) {
+      playErrorTone();
+    }
+  }, [scanMiss, scanSeq]);
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(selected !== null, typeSection);
+  useAdvanceTo(ofType.length > 0, itemsSection);
+
+  /* 뒤로가기는 고른 설비를 먼저 놓는다. 두지 않으면 한 번에 작업 목록까지 나간다. */
+  useBackStep(selected !== null, () => {
+    setSelected(null);
+    setEntries({});
+    setKeypadFor(null);
+    scanField.focus();
+  });
+
   const complete = async () => {
     if (selected === null || worker === null || inFlight.current) {
       return;
@@ -221,6 +282,12 @@ export const EquipmentInspectionScreen = () => {
         setOutcome('rejected');
         return;
       }
+
+      /*
+       * 방금 남긴 것이 오늘 기록에 들어간다. 캐시를 두면 같은 설비를 다시 골랐을 때 오늘
+       * 기록이 없다고 말하고, 중복을 막으라고 세운 안내가 정반대로 작동한다.
+       */
+      void queryClient.invalidateQueries({ queryKey: ['equipment-inspection-today'] });
 
       setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
     } finally {
@@ -298,7 +365,7 @@ export const EquipmentInspectionScreen = () => {
         )}
       </section>
 
-      <section className="inspection__section">
+      <section className="inspection__section" ref={typeSection}>
         <h2>{t.type.legend}</h2>
         <RadioGroup
           name="inspection-type"
@@ -311,10 +378,29 @@ export const EquipmentInspectionScreen = () => {
           <Radio value={DAILY}>{t.type.daily}</Radio>
           <Radio value={MONTHLY}>{t.type.monthly}</Radio>
         </RadioGroup>
+        {/*
+         * 막지 않는다. 재점검은 정상 행위이고, 이미 했다는 것만 알려 사람이 정하게 한다.
+         * 확인하지 못한 것을 없는 것으로 말하지 않는다.
+         */}
+        {selected === null ? null : today.isError ? (
+          <p className="inspection__note">{t.type.todayUnknown}</p>
+        ) : today.data == null ? (
+          today.isSuccess ? (
+            <p className="inspection__note">{t.type.todayNone}</p>
+          ) : null
+        ) : (
+          <AlertBanner
+            variant="info"
+            title={t.type.todayDone(
+              receivedLabel(today.data.inspectedAt),
+              today.data.inspectorWorkerNo,
+            )}
+          />
+        )}
       </section>
 
       {selected === null ? null : (
-        <section className="inspection__section">
+        <section className="inspection__section" ref={itemsSection}>
           <h2>{t.items.legend}</h2>
           {items.isPending ? <p role="status">{t.items.loading}</p> : null}
           {/* 확인하지 못한 것을 등록되지 않은 것으로 말하지 않는다. */}
@@ -340,6 +426,15 @@ export const EquipmentInspectionScreen = () => {
                         <ItemCard
                           item={item}
                           entry={entries[item.equipmentInspectionItemId]}
+                          uom={
+                            item.uomId === null || item.uomId === undefined
+                              ? ''
+                              : (uoms.data?.get(item.uomId) ?? '')
+                          }
+                          keypadOpen={keypadFor === item.equipmentInspectionItemId}
+                          onFocus={() => {
+                            setKeypadFor(item.equipmentInspectionItemId);
+                          }}
                           onChange={(next) => {
                             setEntries((current) => ({
                               ...current,
@@ -364,7 +459,7 @@ export const EquipmentInspectionScreen = () => {
           {/* 점검은 진단이다. 보전 지시는 설비담당이 따로 발행한다. */}
           {counts.ng === 0 ? null : <AlertBanner variant="warning" title={t.summary.ngNotice} />}
           <TextArea
-            label={t.summary.remarks}
+            label={needsRemarks(counts) ? required(t.summary.remarks) : t.summary.remarks}
             size="lg"
             fullWidth
             rows={2}
@@ -385,9 +480,18 @@ export const EquipmentInspectionScreen = () => {
             </AlertBanner>
           ) : null}
           {worker === null ? <p className="inspection__note">{t.noWorker}</p> : null}
-          <Button variant="filled" size="2xl" disabled={!ready} onClick={() => void complete()}>
-            {t.submit}
-          </Button>
+          {/* 항목 수가 설비마다 다르다. 완료 단추는 언제나 보여야 한다(설계 §3). */}
+          <div className="action-bar">
+            <Button
+              className="inspection__wide"
+              variant="filled"
+              size="2xl"
+              disabled={!ready}
+              onClick={() => void complete()}
+            >
+              {t.submit}
+            </Button>
+          </div>
         </section>
       )}
     </div>
