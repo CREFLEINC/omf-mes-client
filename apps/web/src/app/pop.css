@@ -3455,9 +3455,14 @@
   gap: var(--space-3);
 }
 
-/* 오류 문구처럼 셋째 자식이 붙으면 줄을 통째로 쓴다 — 이름 옆에 끼어들지 않는다. */
+/*
+ * 오류 문구는 **같은 줄 오른쪽 끝에 선다**(사용자 지시 2026-09-10). 아래로 내리면 줄이 하나
+ * 늘었다 줄었다 하면서 키패드가 위아래로 움직이고, 다음 숫자를 누르려던 손이 옆 키를 누른다.
+ */
 .pop-ui .production-flow-quantity > * > .pop-figures + div > :nth-child(n + 3) {
-  grid-column: 1 / -1;
+  grid-column: 3;
+  justify-self: end;
+  margin: 0;
 }
 
 /*
