@@ -4474,3 +4474,8 @@
   /* ③ 은 남는 높이를 갖고 넘치면 자기 안에서 스크롤한다 — 구획이 다섯이라 하한을 낮게 둔다. */
   min-height: 8rem;
 }
+
+/* 키패드가 서지 않는 동안 ③ 은 가로를 통째로 쓴다 — 빈 기둥으로 목록을 좁히지 않는다. */
+.pop-ui .packing-compose:not(:has(> .packing-keypad)) {
+  grid-template-columns: minmax(0, 1fr);
+}

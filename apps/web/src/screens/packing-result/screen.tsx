@@ -516,8 +516,6 @@ export const PackingResultScreen = () => {
                 options={typeOptions.options}
               />
               {typeOptions.isUnavailable && <p className="field-note">{t.notes.typeUnavailable}</p>}
-            </div>
-
             {/*
              * ⭐ **상위 포장은 내용물 «앞»에 선다**(사용자 지시 2026-09-10 · 새 도면
              *   「유형 [값] [선택] · 상위 포장 [값] [선택] · 내용물/수량 목록」). 고르는 칸 둘이
@@ -554,6 +552,8 @@ export const PackingResultScreen = () => {
                 <p className="field-note">{t.notes.parentEmpty}</p>
               )}
             </div>
+            </div>
+
 
             <ContentsTable
               lines={lines}
@@ -568,38 +568,35 @@ export const PackingResultScreen = () => {
           {/*
            * 수량 키패드는 ③ 안에서 «옆»에 선다. 스펙 그림에 키패드 자리가 따로 없는데 D-4 는
            * 화면 내장 키패드를 요구한다 — 세로 예산이 슬랙 0 이라 새 구획을 아래에 붙일 수 없어
-           * 이 구획의 남는 «가로»를 쓴다. 담을 LOT 이 정해졌을 때만 선다.
+           * 이 구획의 남는 «가로»를 쓴다.
+           *
+           * ⛔ **읽기 전에는 이 칸을 세우지 않는다**(사용자 지적 2026-09-10). 앞선 판은 빈 칸을
+           *   두고 「생산LOT 을 읽으면 수량을 칠 수 있습니다」로 채웠는데, 스펙에 없는 문장인
+           *   데다 그 자리가 늘 ③ 의 가로 절반을 차지해 담긴 줄이 그만큼 좁아졌다.
            */}
-          <div className="packing-keypad">
-            {/*
-             * ⛔ **읽기 전에 안내 문장을 세우지 않는다**(사용자 지적 2026-09-10). 「생산LOT 을
-             *   읽으면 수량을 칠 수 있습니다」는 스펙에 없는 문장이고, 스캔이 곧 다음 걸음이라
-             *   그 사실은 잠긴 생산LOT 칸이 이미 말한다.
-             */}
-            {packable === undefined ? null : (
-              <>
-                {/*
-                 * ⭐ **친 값을 여기서 보인다.** DS 키패드는 키만 그리고 버퍼를 보이지 않는다 —
-                 * 누른 숫자가 어디로 갔는지 보이지 않으면 작업자가 오입력을 눈치채지 못한다.
-                 * 남은 수량을 옆에 붙여 「얼마까지 칠 수 있는가」를 같은 눈길에 둔다.
-                 */}
-                <p className="packing-qty-readout">
-                  <span className="packing-qty-caption">{t.qty.entryLabel}</span>
-                  <span className="packing-qty-value">{qty === '' ? t.qty.entryEmpty : qty}</span>
-                  <span className="packing-qty-room">{t.qty.room(qtyRoom)}</span>
-                </p>
-                <NumberPad
-                  aria-label={t.qty.label}
-                  value={qty}
-                  allowDecimal={allowsDecimal(packable.uomId)}
-                  onChange={setQty}
-                  onConfirm={addToPacking}
-                />
-                {qty !== '' && qtyIssue !== undefined && <p className="field-note">{qtyIssue}</p>}
-                {mergeNote !== null && <p className="field-note">{mergeNote}</p>}
-              </>
-            )}
-          </div>
+          {packable === undefined ? null : (
+            <div className="packing-keypad">
+              {/*
+               * ⭐ **친 값을 여기서 보인다.** DS 키패드는 키만 그리고 버퍼를 보이지 않는다 —
+               * 누른 숫자가 어디로 갔는지 보이지 않으면 작업자가 오입력을 눈치채지 못한다.
+               * 남은 수량을 옆에 붙여 「얼마까지 칠 수 있는가」를 같은 눈길에 둔다.
+               */}
+              <p className="packing-qty-readout">
+                <span className="packing-qty-caption">{t.qty.entryLabel}</span>
+                <span className="packing-qty-value">{qty === '' ? t.qty.entryEmpty : qty}</span>
+                <span className="packing-qty-room">{t.qty.room(qtyRoom)}</span>
+              </p>
+              <NumberPad
+                aria-label={t.qty.label}
+                value={qty}
+                allowDecimal={allowsDecimal(packable.uomId)}
+                onChange={setQty}
+                onConfirm={addToPacking}
+              />
+              {qty !== '' && qtyIssue !== undefined && <p className="field-note">{qtyIssue}</p>}
+              {mergeNote !== null && <p className="field-note">{mergeNote}</p>}
+            </div>
+          )}
         </section>
 
         {/*
