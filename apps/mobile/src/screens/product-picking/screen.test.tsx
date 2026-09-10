@@ -96,6 +96,8 @@ interface Options {
   balances?: unknown[];
   policy?: string;
   lotsStatus?: number;
+  /** 보류 사유의 표시명 조회가 실패한다. 없는 것과 못 받은 것을 가르는 자리다. */
+  reasonsStatus?: number;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -117,18 +119,20 @@ const routes = (options: Options = {}): StubRoute[] => [
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
     respond: () =>
-      jsonResponse({
-        items: [
-          {
-            code: 'INSPECTION_PENDING',
-            codeName: 'Inspection pending',
-            nameKo: '수입검사 대기',
-            displayOrder: 1,
-            isActive: true,
-          },
-        ],
-        page,
-      }),
+      options.reasonsStatus === undefined
+        ? jsonResponse({
+            items: [
+              {
+                code: 'INSPECTION_PENDING',
+                codeName: 'Inspection pending',
+                nameKo: '수입검사 대기',
+                displayOrder: 1,
+                isActive: true,
+              },
+            ],
+            page,
+          })
+        : jsonResponse({ message: '실패' }, { status: options.reasonsStatus }),
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/partners',
@@ -445,6 +449,24 @@ describe('제품LOT 피킹 스캔 화면', () => {
     /* 코드를 그대로 보이면 무엇이 걸렸는지 모른다. 표시명은 마스터가 갖는다. */
     expect(await screen.findByText(/보류 사유 수입검사 대기/)).toBeTruthy();
     expect(screen.getByText(/해제 조건 수입검사 합격/)).toBeTruthy();
+  });
+
+  /*
+   * 표시명 조회와 보류 조회는 서로 다른 물음이다. 뭉치면 표시명이 안 온 동안 표시명이 없다고
+   * 해 두었다가 이름으로 바뀌고, 조회가 실패해도 없는 것처럼 말한다.
+   */
+  it('표시명 조회가 실패하면 표시명이 없다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount([], { held: [EARLY], reasonsStatus: 500 });
+    await chooseTarget(user);
+    await screen.findByText('보류 — 집을 수 없습니다');
+
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+
+    expect(await screen.findByText('보류 사유를 확인하지 못했습니다')).toBeTruthy();
+    expect(screen.queryByText(/표시명 없음/)).toBeNull();
   });
 
   /*
@@ -969,7 +991,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     expect(screen.getByText('오늘 출하분을 확인할 수 없습니다')).toBeTruthy();
   });
 
-  /* 말없이 나가면 무슨 일이 있었는지 알 수 없고, 남겨 두면 나중에 예고 없이 되돌아간다. */
+  /* 말없이 빠지면 무슨 일이 있었는지 알 수 없다. 남겨 두면 없는 줄을 집게 된다. */
   it('고르던 라인이 목록에서 빠지면 그 사실을 말한다', async () => {
     const user = userEvent.setup();
     let dropped = false;
