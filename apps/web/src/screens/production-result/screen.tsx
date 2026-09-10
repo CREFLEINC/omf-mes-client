@@ -569,6 +569,19 @@ export const ProductionFlowScreen = () => {
           </p>
         )}
         <div className="pop-context-right">
+          {/*
+           * 프린터 — **머리에 상시 보인다**(사용자 지시 2026-09-10). 라벨이 나오지 않을 때
+           * 작업자가 가장 먼저 보는 곳이고, 없으면 「등록이 안 됐다」로 오해한다. 자매 화면
+           * (`P-01-01`)이 같은 자리에 같은 모양으로 세운다.
+           *
+           * ⛔ **조회 중에는 아무것도 단정하지 않는다** — 「없음」이 잠깐 스치면 그 사이에
+           *    오해가 생긴다. 없는 것과 못 받은 것을 같은 모양으로 그리지 않는다(G-9).
+           */}
+          {lotPrinters.isPending ? null : (
+            <Chip status={lotPrinter === null ? 'warning' : 'success'}>
+              {`${t.flow.output.printer} ${lotPrinter?.displayName ?? t.flow.output.printerUnknown}`}
+            </Chip>
+          )}
           <PopWorkerTag workerNo={entry.workerNo} />
           <Chip status={outbox.isOnline ? 'success' : 'warning'}>
             {outbox.isOnline
