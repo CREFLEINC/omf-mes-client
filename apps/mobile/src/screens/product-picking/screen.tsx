@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 
 import { useBackStep } from '../../patterns/back-step';
-import { useCodeValues } from '../../patterns/code-values';
+import { LOT_HOLD_REASON, useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
 import { useIdempotencyKey } from '../../patterns/idempotency';
@@ -27,7 +27,6 @@ import {
   CANDIDATE_PREVIEW,
   FEFO,
   FIFO,
-  LOT_HOLD_REASON,
   canPick,
   isRecommended,
   isConflict,

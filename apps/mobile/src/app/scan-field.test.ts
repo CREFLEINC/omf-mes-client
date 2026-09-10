@@ -28,6 +28,14 @@ const screenSources = (): { path: string; source: string }[] => {
 };
 
 /**
+ * 손 입력이 더할 것이 없는 화면.
+ *
+ * 이 둘은 스캔한 코드를 서버에 묻지 않고 미리 받아 둔 설비 목록에서 맞춘다. 목록이 오면
+ * 선택칸으로 고를 수 있고, 목록이 안 오면 손으로 쳐도 맞출 데가 없다.
+ */
+const EXEMPT = ['equipment-failure', 'equipment-inspection'];
+
+/**
  * 손으로 넣는 길은 스캔 칸 그 자리에서 연다.
  *
  * 스캐너 어댑터는 스캔 칸 요소에만 붙는다. 칸을 따로 세우면 열었을 때 포커스가 그리로
@@ -48,8 +56,8 @@ describe('수동 입력 칸', () => {
   it('스캔 칸을 쓰는 화면은 그 칸을 손 입력으로 여는 길을 갖는다', () => {
     const offenders = screenSources()
       .filter(({ source }) => source.includes('useScanField'))
-      /* 목록에서 고르는 길만 두는 화면이 있다. 그 화면은 손으로 치는 자리가 아예 없다. */
-      .filter(({ source }) => /manualLabel|manualEntry|manualSubmit/.test(source))
+      /* 폴더 이름을 통째로 맞춘다. 부분 문자열로 재면 이름이 겹치는 새 화면이 조용히 빠진다. */
+      .filter(({ path }) => !EXEMPT.some((name) => path.split(/[\\/]/).includes(name)))
       .filter(({ source }) => !source.includes('openManual'))
       .map(({ path }) => path);
 

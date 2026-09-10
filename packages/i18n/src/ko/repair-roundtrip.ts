@@ -83,8 +83,8 @@ export const repairRoundtrip = {
     loadFailed: '수리 중인 건을 확인할 수 없습니다',
     /* 카드로 세우면 고른 것을 색으로 말할 수 없다. 표를 달아 무엇을 골랐는지 남긴다. */
     picked: '선택됨',
+    /* 계약에 수리 건의 업무 번호가 없다. 대리키를 번호인 척 세우지 않는다. */
     columns: {
-      no: '수리 번호',
       qty: '수량',
       startedAt: '투입',
     },

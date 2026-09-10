@@ -339,6 +339,49 @@ beforeEach(() => {
 });
 
 describe('생산창고 입고 화면', () => {
+  /*
+   * 서버가 없다고 답한 것을 연결 탓으로 말하면, 붙어 있는 사람이 신호를 찾아 자리를 옮긴다.
+   * 옮겨도 그대로라 시간만 버리고 정작 누구에게 알려야 하는지는 끝내 모른다.
+   */
+  it('도착 위치가 404 면 연결을 확인하라고 말하지 않는다', async () => {
+    mount({
+      extra: [
+        {
+          match: (req) => new URL(req.url).pathname === '/mdm/locations/42',
+          respond: () => jsonResponse({ message: 'not found' }, { status: 404 }),
+        },
+      ],
+    });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    expect(
+      await screen.findByText(
+        '도착 위치를 확인하지 못했습니다. 연결 문제가 아니니 담당자에게 알리세요.',
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText('도착 위치를 확인할 수 없습니다. 연결을 확인하세요.')).toBeNull();
+  });
+
+  it('도착 위치 조회가 끊기면 연결을 확인하라고 말한다', async () => {
+    mount({
+      extra: [
+        {
+          match: (req) => new URL(req.url).pathname === '/mdm/locations/42',
+          respond: () => {
+            throw new TypeError('Failed to fetch');
+          },
+        },
+      ],
+    });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+
+    expect(
+      await screen.findByText('도착 위치를 확인할 수 없습니다. 연결을 확인하세요.'),
+    ).toBeTruthy();
+  });
+
   it('스캔한 출고 전표의 라인을 보인다', async () => {
     mount();
     await screen.findByLabelText(/출고 QR 스캔/);

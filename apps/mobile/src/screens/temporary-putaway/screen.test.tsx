@@ -292,6 +292,27 @@ describe('임시 위치 적재 화면', () => {
     });
   });
 
+  /*
+   * 선택칸은 임시 유형만 담고 스캔은 창고 전체를 코드로 조회한다. 손으로 넣는 길이 없으면
+   * 라벨이 상한 자리가 임시 유형이 아닐 때 그 자리를 정할 방법이 사라진다 - 정위치가 막혀
+   * 여기까지 온 뒤라 물러설 데도 없다.
+   */
+  it('목록에 없는 자리도 손으로 쳐서 잡는다', async () => {
+    const user = userEvent.setup();
+    mount({ task: task() });
+
+    await screen.findByLabelText('임시 위치 코드 스캔');
+    await openList(user);
+    /* A-01-03 은 임시 유형이 아니라 선택칸이 담지 않는다. */
+    expect(screen.queryByText('A-01-03 자재 A열')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '직접 입력' }));
+    await user.type(screen.getByLabelText('임시 위치 코드 스캔'), 'A-01-03');
+    await user.click(screen.getByRole('button', { name: '입력한 위치로' }));
+
+    expect((await screen.findAllByText('A-01-03 자재 A열')).length).toBeGreaterThan(0);
+  });
+
   it('스캔한 위치를 임시 위치로 잡는다', async () => {
     const user = userEvent.setup();
     mount({ task: task() });

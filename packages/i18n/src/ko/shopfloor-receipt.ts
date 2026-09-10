@@ -34,7 +34,12 @@ export const shopfloorReceipt = {
     summary: (no: string, count: number) => `${no} · ${String(count)}라인`,
     /** 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */
     destination: (code: string) => `도착 ${code}`,
-    destinationUnknown: '도착 위치를 확인할 수 없습니다. 연결을 확인하세요.',
+    /*
+     * 끊긴 것과 서버가 없다고 답한 것을 가른다. 앞은 자리를 옮기면 풀리고 뒤는 옮겨도
+     * 그대로다 - 뭉뚱그리면 될 일 없는 이동을 시킨다.
+     */
+    destinationOffline: '도착 위치를 확인할 수 없습니다. 연결을 확인하세요.',
+    destinationUnknown: '도착 위치를 확인하지 못했습니다. 연결 문제가 아니니 담당자에게 알리세요.',
     empty: '이 출고 전표에는 라인이 없습니다',
   },
   /** 수령 전표는 출고 전표와 1:1 이다. 막지 않으면 같은 물건을 두 번 받은 것이 된다. */

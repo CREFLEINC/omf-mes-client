@@ -319,6 +319,15 @@ export const TemporaryPutawayScreen = () => {
               : undefined
           }
         />
+        {/* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */}
+        <Button
+          className="temporary__wide"
+          variant={scanField.manual ? 'outlined' : 'text'}
+          size="xl"
+          onClick={scanField.manual ? scanField.submitManual : scanField.openManual}
+        >
+          {scanField.manual ? t.location.manualSubmit : t.location.manual}
+        </Button>
         {/* 스캔한 코드를 확인하는 동안 등록이 잠긴다. 왜 잠겼는지 말하지 않으면 멈춘 것처럼 보인다. */}
         {scanned !== null && byCode.isPending ? <p role="status">{t.location.loading}</p> : null}
         {byCode.isError ? <AlertBanner variant="error" title={t.location.loadFailed} /> : null}

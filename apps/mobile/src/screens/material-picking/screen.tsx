@@ -16,10 +16,11 @@ import { Link } from 'react-router';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
-import { displayNameOf, useCodeValues } from '../../patterns/code-values';
+import { LOT_HOLD_REASON, displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocation } from '../../patterns/locations';
 import { useOutbox } from '../../patterns/outbox';
+import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerId } from '../../patterns/workers';
@@ -126,6 +127,27 @@ export const MaterialPickingScreen = () => {
   const detail = usePickingOrder(orderId);
   const issueTypes = useCodeValues(ISSUE_TYPE);
   const pickingTypes = useCodeValues(PICKING_TYPE);
+  const holdReasons = useCodeValues(LOT_HOLD_REASON);
+
+  /*
+   * 계약은 보류 사유를 코드로만 내린다. 코드를 그대로 보이면 무엇이 걸렸는지도, 무엇을 하면
+   * 풀리는지도 알 수 없다. 형제 화면(M-04-02)과 같은 그룹에서 표시명을 받는다.
+   */
+  const heldReasonTextOf = (code: string): string => {
+    /* 아직 안 온 것을 없는 것으로 말하지 않는다. 셋을 뭉치면 도는 동안 없다고 해 둔다. */
+    if (holdReasons.isPending) {
+      return t.lines.heldReasonLoading;
+    }
+
+    if (holdReasons.isError) {
+      return t.lines.heldReasonFailed;
+    }
+
+    /* 되돌아온 이름이 코드와 같은지로 가르지 않는다. 표시명이 코드와 같은 값도 있다. */
+    const found = (holdReasons.data ?? []).find((each) => each.code === code);
+
+    return found === undefined ? t.lines.heldReasonUnknown(code) : t.lines.heldReason(found.name);
+  };
 
   const order = detail.data?.order ?? null;
   const lines = detail.data?.lines ?? [];
@@ -447,7 +469,13 @@ export const MaterialPickingScreen = () => {
               <p role="status">{t.orders.destinationLoading}</p>
             ) : null}
             {request.isError || destination.isError ? (
-              <p className="picking-out__note">{t.orders.destinationUnknown}</p>
+              <p className="picking-out__note">
+                {[request.error, destination.error].some(
+                  (error) => error !== null && toApiError(error).kind === 'network',
+                )
+                  ? t.orders.destinationOffline
+                  : t.orders.destinationUnknown}
+              </p>
             ) : null}
             {destination.data === undefined ? null : (
               <p>
@@ -579,7 +607,7 @@ export const MaterialPickingScreen = () => {
                       {`${t.lines.held}${
                         each.holdReasonCode === null || each.holdReasonCode === undefined
                           ? ''
-                          : ` · ${t.lines.heldReason(each.holdReasonCode)}`
+                          : ` · ${heldReasonTextOf(each.holdReasonCode)}`
                       }`}
                     </span>
                   ) : null}
