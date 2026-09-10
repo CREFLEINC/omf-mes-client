@@ -2169,6 +2169,39 @@ export const createSeed = (now = new Date()) => {
   ];
 
   /**
+   * 포장 재구성 이력 하나. 이력 보기가 빈 목록만 보이면 그 길이 서는지 알 수 없다.
+   *
+   * 결과 쪽 줄을 함께 둔다 - 원본만 있으면 어디로 갔는지가 빠져 이력이 반쪽이 된다.
+   */
+  const repackEvents = [
+    {
+      repackEventId: 13501,
+      handlingUnitId: 13001,
+      repackTypeCode: 'SPLIT',
+      performedBy: 1001,
+      occurredAt: iso(-2, 11),
+      lines: [
+        {
+          handlingUnitId: 13001,
+          roleCode: 'SOURCE',
+          itemId: 2003,
+          lotId: 8201,
+          qtyBefore: 240,
+          qtyAfter: 180,
+        },
+        {
+          handlingUnitId: 13002,
+          roleCode: 'RESULT',
+          itemId: 2003,
+          lotId: 8201,
+          qtyBefore: 0,
+          qtyAfter: 60,
+        },
+      ],
+    },
+  ];
+
+  /**
    * 검사 의뢰. **실적 입력의 선행 판정이 이 목록으로 갈린다** — 아직 끝나지 않은 PQC 가 있으면
    * 작업실적 등록(P-02-04)이 막히고 검사 화면으로 보낸다.
    *
@@ -2403,6 +2436,7 @@ export const createSeed = (now = new Date()) => {
     workOrders,
     handlingUnits,
     handlingUnitContents,
+    repackEvents,
     defectCodes,
     defectRecords,
     repairExecutions: [],

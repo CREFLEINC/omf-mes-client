@@ -1319,8 +1319,14 @@ on('POST', '/inventory/handling-units/{handlingUnitId}:pack', (params, _q, body)
 });
 
 /* 치환이라 요청에서 빠진 줄은 지워진다. 실서버와 같은 성격이어야 화면이 그것을 시험할 수 있다. */
+/*
+ * 구성 치환. 계약이 이 치환에 재구성 이력을 함께 남기게 했다 - 남기지 않으면 되돌리기가
+ * 없는 화면에서 수량이 왜 달라졌는지를 되짚을 자리가 없다.
+ */
 on('PUT', '/inventory/handling-units/{handlingUnitId}/contents', (params, _q, body) => {
   const id = Number(params.handlingUnitId);
+  const before = state.handlingUnitContents.filter((each) => each.handlingUnitId === id);
+
   state.handlingUnitContents = state.handlingUnitContents.filter(
     (each) => each.handlingUnitId !== id,
   );
@@ -1332,8 +1338,40 @@ on('PUT', '/inventory/handling-units/{handlingUnitId}/contents', (params, _q, bo
   }));
 
   state.handlingUnitContents.push(...items);
+
+  const keyOf = (row) => `${String(row.itemId)}/${String(row.lotId)}`;
+  const after = new Map(items.map((row) => [keyOf(row), row.qty]));
+  const seen = new Map(before.map((row) => [keyOf(row), row]));
+
+  for (const row of items) {
+    if (!seen.has(keyOf(row))) {
+      seen.set(keyOf(row), { ...row, qty: 0 });
+    }
+  }
+
+  state.repackEvents.push({
+    repackEventId: newId(),
+    handlingUnitId: id,
+    /* 유형을 실을 칸이 치환 본문에 없다. 서버가 정하는 자리라 재구성으로 둔다. */
+    repackTypeCode: 'RECONFIGURE',
+    performedBy: 1001,
+    occurredAt: new Date().toISOString(),
+    lines: [...seen.values()].map((row) => ({
+      handlingUnitId: id,
+      roleCode: 'SOURCE',
+      itemId: row.itemId,
+      lotId: row.lotId,
+      qtyBefore: row.qty,
+      qtyAfter: after.get(keyOf(row)) ?? 0,
+    })),
+  });
+
   return { items };
 });
+
+on('GET', '/inventory/handling-units/{handlingUnitId}/repack-events', (params) => ({
+  items: state.repackEvents.filter((each) => each.handlingUnitId === Number(params.handlingUnitId)),
+}));
 
 /* ── 물류 ─────────────────────────────────────────────────── */
 
@@ -2421,11 +2459,21 @@ on('GET', '/logistics/shipment-lot-allocations', (_p, query) => {
         };
   }
 
-  /* ③ 진행 표시 — 이 출하의 배분 전부. */
+  /*
+   * ③ 진행 표시 — 이 출하의 배분 전부.
+   *
+   * 포장·LOT 축을 실제로 건다. 무시하면 무엇을 물어도 배분이 있는 것으로 답해, 포장 재구성이
+   * 어떤 포장을 스캔하든 「출하에 배분됐다」로 막힌다.
+   */
+  const handlingUnitId = num(query, 'handlingUnitId');
+  const lotId = num(query, 'lotId');
+
   return page(
     rows.filter(
       (row) =>
         (shipmentId === null || row.shipmentId === shipmentId) &&
+        (handlingUnitId === null || row.handlingUnitId === handlingUnitId) &&
+        (lotId === null || row.lotId === lotId) &&
         (unpackedOnly !== true || row.allocatedQty - row.packedQty > 0) &&
         (oqcPassed === null || row.oqcPassed === oqcPassed),
     ),

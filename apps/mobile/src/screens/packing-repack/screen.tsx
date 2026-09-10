@@ -1,9 +1,12 @@
-import { AlertBanner, Button, Card, Radio, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, NumberPad, Radio, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
+import { playErrorTone } from '../../patterns/error-tone';
 import {
   handlingUnitKeys,
   useLotLabels,
@@ -16,13 +19,14 @@ import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { useShipmentAllocations } from './queries';
+import { useRepackEvents, useShipmentAllocations } from './queries';
 import {
   MERGE,
   RECONFIGURE,
   SPLIT,
   allocatedSources,
   canConfirm,
+  contentKey,
   mergedPairs,
   pooledContents,
   qtyProblemOf,
@@ -39,6 +43,14 @@ const numbersOf = (units: ScannedHandlingUnit[]): string =>
   units.map((unit) => unit.handlingUnit.handlingUnitNo).join(' · ');
 
 const t = messages.packingRepack;
+const required = messages.common.required;
+
+const stamp = (iso: string): string => {
+  const at = new Date(iso);
+  const pad = (value: number) => String(value).padStart(2, '0');
+
+  return `${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+};
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
@@ -63,6 +75,13 @@ export const PackingRepackScreen = () => {
   const [manual, setManual] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
+  /* 키패드는 지금 적는 줄 아래에만 선다(공유계약 D-4). 줄마다 두면 화면이 키패드로 찬다. */
+  const [keypadFor, setKeypadFor] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  /* 같은 라벨을 다시 읽으면 상태는 그대로라 소리가 다시 나지 않는다. 회차를 함께 센다. */
+  const [scanSeq, setScanSeq] = useState(0);
+  const typeSection = useRef<HTMLDivElement | null>(null);
+  const contentsSection = useRef<HTMLDivElement | null>(null);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
    * 두 번째가 들어와 멱등키가 다른 묶음이 하나 더 담기고, 같은 물건이 두 번 재구성된다.
@@ -83,6 +102,34 @@ export const PackingRepackScreen = () => {
   const blocked = allocatedSources(sources, allocations);
   const unverified = unverifiedSources(sources, allocations);
   const ready = canConfirm(sources, lines, worker !== null, allocations) && type !== null;
+
+  /* 이력은 원 포장에 달린다. 합병이면 첫 포장이 잔량을 갖는 쪽이라 그 포장의 이력을 본다. */
+  const historyOf = sources[0]?.handlingUnit.handlingUnitId ?? null;
+  const history = useRepackEvents(historyOf, historyOpen);
+
+  /*
+   * 스캔한 것을 찾지 못했다는 것을 소리로도 알린다(공유계약 D-2). 기기를 허리에 매단 채
+   * 읽으므로 화면에만 적으면 사람은 통과한 줄 알고 다음 포장을 집는다.
+   */
+  const scanMissed = scanned !== null && found.isSuccess && found.data === null;
+
+  useEffect(() => {
+    if (scanMissed) {
+      playErrorTone();
+    }
+  }, [scanMissed, scanSeq]);
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(sources.length > 0, typeSection);
+  useAdvanceTo(type !== null, contentsSection);
+
+  /*
+   * 뒤로가기는 스캔한 포장을 먼저 놓는다. 두지 않으면 수량을 적던 사람이 한 번에 작업
+   * 목록까지 나가 포장을 다시 스캔해야 한다.
+   */
+  useBackStep(sources.length > 0, () => {
+    restart();
+  });
 
   const uomOf = (uomId: number): string => uoms.data?.get(uomId) ?? '';
 
@@ -124,7 +171,7 @@ export const PackingRepackScreen = () => {
       setLines((drafted) => [
         ...drafted,
         ...unit.contents
-          .filter((content) => !drafted.some((line) => line.lotId === content.lotId))
+          .filter((content) => !drafted.some((line) => contentKey(line) === contentKey(content)))
           .map((content) => ({
             itemId: content.itemId,
             lotId: content.lotId,
@@ -141,6 +188,7 @@ export const PackingRepackScreen = () => {
     onScan: (value) => {
       setDuplicate(false);
       setScanned(value.trim());
+      setScanSeq((seq) => seq + 1);
     },
   });
 
@@ -156,7 +204,9 @@ export const PackingRepackScreen = () => {
       current.filter((line) =>
         sources
           .filter((each) => each.handlingUnit.handlingUnitId !== handlingUnitId)
-          .some((each) => each.contents.some((content) => content.lotId === line.lotId)),
+          .some((each) =>
+            each.contents.some((content) => contentKey(content) === contentKey(line)),
+          ),
       ),
     );
 
@@ -173,6 +223,8 @@ export const PackingRepackScreen = () => {
     setManual('');
     setDuplicate(false);
     setOutcome(null);
+    setKeypadFor(null);
+    setHistoryOpen(false);
     scanField.focus();
   };
 
@@ -272,7 +324,7 @@ export const PackingRepackScreen = () => {
         <h2>{t.source.legend}</h2>
         <TextField
           ref={scanField.ref}
-          label={sources.length === 0 ? t.source.scanLabel : t.source.add}
+          label={sources.length === 0 ? required(t.source.scanLabel) : t.source.add}
           placeholder={t.source.scanPlaceholder}
           size="xl"
           fullWidth
@@ -348,7 +400,7 @@ export const PackingRepackScreen = () => {
             </AlertBanner>
           )}
 
-          <section className="repack__section">
+          <section className="repack__section" ref={typeSection}>
             <h2>{t.type.legend}</h2>
             {TYPES.map((each) => (
               <Radio
@@ -365,26 +417,33 @@ export const PackingRepackScreen = () => {
             ))}
           </section>
 
-          <section className="repack__section">
+          <section className="repack__section" ref={contentsSection}>
             <h2>{t.contents.legend}</h2>
             {lines.map((line, index) => {
-              const pool = pooled.find((content) => content.lotId === line.lotId);
+              const pool = pooled.find((content) => contentKey(content) === contentKey(line));
               const problem = pool === undefined ? null : qtyProblemOf(line, pool.qty);
               const limit = `${String(pool?.qty ?? 0)} ${uomOf(line.uomId)}`;
 
               return (
-                <div key={line.lotId} className="repack__line">
+                <div key={contentKey(line)} className="repack__line">
                   <TextField
-                    label={t.contents.qtyLabel(nameOf(line))}
+                    label={required(t.contents.qtyLabel(nameOf(line)))}
                     size="xl"
                     fullWidth
-                    inputMode="numeric"
+                    /*
+                     * 장갑을 끼고 한 손으로 조작한다. 기기 키보드는 키가 촘촘하고, 올라오면
+                     * 구성 표와 확정 단추를 덮는다(설계 §7 · 공유계약 G-6).
+                     */
+                    inputMode="none"
                     value={line.qty}
                     onChange={(event) => {
                       const next = event.target.value;
                       setLines((current) =>
                         current.map((each, at) => (at === index ? { ...each, qty: next } : each)),
                       );
+                    }}
+                    onFocus={() => {
+                      setKeypadFor(contentKey(line));
                     }}
                     error={
                       problem === null || line.qty.trim() === ''
@@ -394,6 +453,18 @@ export const PackingRepackScreen = () => {
                           : t.contents.problem[problem]
                     }
                   />
+                  {keypadFor !== contentKey(line) ? null : (
+                    <NumberPad
+                      value={line.qty}
+                      onChange={(next) => {
+                        setLines((current) =>
+                          current.map((each, at) => (at === index ? { ...each, qty: next } : each)),
+                        );
+                      }}
+                      max={pool?.qty}
+                      allowDecimal
+                    />
+                  )}
                   <p className="repack__pooled">{t.contents.pooled(limit)}</p>
                 </div>
               );
@@ -422,6 +493,55 @@ export const PackingRepackScreen = () => {
 
           <p className="repack__note">{t.labelNotice}</p>
 
+          {/* 되돌리기가 없는 화면이라 지난 재구성을 되짚을 길이 화면 안에 있어야 한다. */}
+          <section className="repack__section">
+            <Button
+              className="repack__wide"
+              variant="text"
+              size="xl"
+              onClick={() => {
+                setHistoryOpen((open) => !open);
+              }}
+            >
+              {historyOpen ? t.history.close : t.history.open}
+            </Button>
+
+            {!historyOpen ? null : (
+              <>
+                <h2>{t.history.legend}</h2>
+                {history.isPending ? <p role="status">{t.history.loading}</p> : null}
+                {/* 확인하지 못한 것을 이력이 없는 것으로 말하지 않는다. */}
+                {history.isError ? (
+                  <AlertBanner variant="warning" title={t.history.loadFailed} />
+                ) : null}
+                {history.isSuccess && history.data.length === 0 ? <p>{t.history.none}</p> : null}
+                {(history.data ?? []).map((event) => (
+                  <Card bordered key={event.repackEventId}>
+                    <Card.Header>
+                      {`${t.history.type[event.repackTypeCode]} · ${stamp(event.occurredAt)}`}
+                    </Card.Header>
+                    <Card.Body className="card-body">
+                      <ul className="repack__contents">
+                        {event.lines.map((line) => (
+                          <li
+                            key={`${String(line.handlingUnitId)}/${contentKey(line)}/${line.roleCode}`}
+                          >
+                            {t.history.line(
+                              t.history.role[line.roleCode],
+                              nameOf(line),
+                              String(line.qtyBefore),
+                              String(line.qtyAfter),
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </Card.Body>
+                  </Card>
+                ))}
+              </>
+            )}
+          </section>
+
           <section className="repack__section">
             {saveFailed ? (
               <AlertBanner variant="error" title={t.saveFailed.title}>
@@ -430,15 +550,17 @@ export const PackingRepackScreen = () => {
             ) : null}
             {worker === null ? <p className="repack__note">{t.noWorker}</p> : null}
             {type === null ? <p className="repack__note">{t.noType}</p> : null}
-            <Button
-              className="repack__wide"
-              variant="filled"
-              size="2xl"
-              disabled={!ready}
-              onClick={() => void submit()}
-            >
-              {t.submit}
-            </Button>
+            <div className="action-bar">
+              <Button
+                className="repack__wide"
+                variant="filled"
+                size="2xl"
+                disabled={!ready}
+                onClick={() => void submit()}
+              >
+                {t.submit}
+              </Button>
+            </div>
           </section>
         </>
       )}

@@ -28,8 +28,16 @@ export interface DraftLine {
   qty: string;
 }
 
-const keyOf = (line: { itemId: number; lotId: number }): string =>
+/**
+ * 구성 한 줄의 이름.
+ *
+ * 포장은 품목과 LOT 의 짝으로 줄을 갖는다. LOT 만으로 세면 짝이 다른 줄이 하나로 보여
+ * 상한과 잔량이 엉뚱한 줄에서 온다.
+ */
+export const contentKey = (line: { itemId: number; lotId: number }): string =>
   `${String(line.itemId)}/${String(line.lotId)}`;
+
+const keyOf = contentKey;
 
 /**
  * 원 포장들의 내용을 한 벌로 모은다.

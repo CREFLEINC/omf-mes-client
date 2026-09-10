@@ -14,6 +14,13 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { PackingRepackScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+const tone = vi.hoisted(() => ({ played: 0 }));
+
+vi.mock('../../patterns/error-tone', () => ({
+  playErrorTone: () => {
+    tone.played += 1;
+  },
+}));
 /** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
 const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 
@@ -71,6 +78,8 @@ interface Options {
   allocationUnreachable?: boolean;
   /** 배분 조회가 늦게 답하는 상황 - 묻는 중과 확인 못 함이 갈리는 자리다. */
   allocationPending?: boolean;
+  /** 이 포장을 무엇이 언제 바꿨는가. 이력 보기가 여는 목록이다. */
+  repackEvents?: unknown[];
 }
 
 const routes = (options: Options = {}): StubRoute[] => {
@@ -127,6 +136,11 @@ const routes = (options: Options = {}): StubRoute[] => {
       },
     },
     {
+      match: (req) =>
+        /\/inventory\/handling-units\/\d+\/repack-events$/.test(new URL(req.url).pathname),
+      respond: () => jsonResponse({ items: options.repackEvents ?? [] }),
+    },
+    {
       match: (req) => /^\/trace\/lots\/\d+$/.test(new URL(req.url).pathname),
       respond: (req) => {
         const id = Number(new URL(req.url).pathname.split('/').pop());
@@ -141,7 +155,10 @@ const routes = (options: Options = {}): StubRoute[] => {
       match: (req) => new URL(req.url).pathname === '/mdm/items',
       respond: () =>
         jsonResponse({
-          items: [{ itemId: 100, itemCode: 'FG-1001', itemName: '외장 커버', fifoPolicyCode: 'FEFO' }],
+          items: [
+            { itemId: 100, itemCode: 'FG-1001', itemName: '외장 커버', fifoPolicyCode: 'FEFO' },
+            { itemId: 101, itemCode: 'FG-2002', itemName: '내장 커버', fifoPolicyCode: 'FEFO' },
+          ],
           page,
         }),
     },
@@ -211,12 +228,13 @@ beforeEach(() => {
   held.failWrite = null;
   store.clear();
   localStorage.clear();
+  tone.played = 0;
 });
 
 describe('포장 재구성 화면', () => {
   it('스캔한 포장의 내용물을 보인다', async () => {
     mount();
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
 
@@ -234,7 +252,7 @@ describe('포장 재구성 화면', () => {
   /* 부분 검색으로 물으므로 돌아온 줄을 다시 확인하지 않으면 비슷한 번호를 이 포장으로 읽는다. */
   it('번호가 정확히 같은 포장만 고른다', async () => {
     mount({ units: [unit(11, OTHER)] });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan('CTN-2026-009');
 
@@ -244,7 +262,7 @@ describe('포장 재구성 화면', () => {
   /* 같은 포장을 두 번 세면 물건이 두 배로 있는 것처럼 보인다. */
   it('같은 포장을 두 번 얹지 않는다', async () => {
     mount();
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -261,14 +279,12 @@ describe('포장 재구성 화면', () => {
   it('이미 출하에 배분된 포장이면 그 사실을 말하고 확정을 막는다', async () => {
     const user = userEvent.setup();
     mount({ allocated: [10] });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
 
-    expect(
-      await screen.findByText(`${CARTON} 은(는) 이미 출하에 배분된 포장입니다`),
-    ).toBeTruthy();
+    expect(await screen.findByText(`${CARTON} 은(는) 이미 출하에 배분된 포장입니다`)).toBeTruthy();
 
     await user.click(screen.getByLabelText('분할 — 하나를 여러 개로'));
     await user.type(await screen.findByLabelText(/FLOT-2026-01000 수량/), '80');
@@ -287,7 +303,7 @@ describe('포장 재구성 화면', () => {
       },
       allocated: [11],
     });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -305,7 +321,7 @@ describe('포장 재구성 화면', () => {
   it('배분되지 않은 포장은 그대로 확정할 수 있다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -326,7 +342,7 @@ describe('포장 재구성 화면', () => {
   it('배분을 확인하지 못하면 그 사실을 밝히되 막지는 않는다', async () => {
     const user = userEvent.setup();
     mount({ allocationUnreachable: true });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -348,7 +364,7 @@ describe('포장 재구성 화면', () => {
   it('배분을 묻는 중에는 확인하지 못했다고 말하지 않는다', async () => {
     const user = userEvent.setup();
     mount({ allocationPending: true });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -364,7 +380,7 @@ describe('포장 재구성 화면', () => {
   it('유형을 고르기 전에는 확정할 수 없다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -380,7 +396,7 @@ describe('포장 재구성 화면', () => {
   it('원 포장에 있는 것보다 많이 담지 못한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -395,7 +411,7 @@ describe('포장 재구성 화면', () => {
   it('분할 잔량이 원 포장 번호를 그대로 쓴다고 적는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -410,7 +426,7 @@ describe('포장 재구성 화면', () => {
   it('전량을 옮기면 원 포장이 비워진다고 적는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -428,7 +444,7 @@ describe('포장 재구성 화면', () => {
         11: [content({ handlingUnitContentId: 2, handlingUnitId: 11, qty: 60 })],
       },
     });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -441,7 +457,7 @@ describe('포장 재구성 화면', () => {
   /* 발번과 인쇄는 POP 이 한다. 여기서 기다리게 두면 오지 않는 것을 기다린다. */
   it('라벨은 POP 에서 뽑는다고 적는다', async () => {
     mount();
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
 
@@ -454,7 +470,7 @@ describe('포장 재구성 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -484,7 +500,7 @@ describe('포장 재구성 화면', () => {
   it('원 포장 치환이 거부되면 성공으로 보이지 않는다', async () => {
     const user = userEvent.setup();
     mount({ rejectReplace: true });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -506,7 +522,7 @@ describe('포장 재구성 화면', () => {
       contents: { 10: [content({ qty: 180 })] },
       contentsAfter: { 10: [content({ qty: 100 })] },
     });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -516,7 +532,7 @@ describe('포장 재구성 화면', () => {
     await screen.findByText('재구성을 기록했습니다');
 
     await user.click(screen.getByRole('button', { name: '다음 재구성' }));
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
     scan(CARTON);
 
     expect(await screen.findByText(/원 포장 합 100 EA/)).toBeTruthy();
@@ -526,7 +542,7 @@ describe('포장 재구성 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -549,7 +565,7 @@ describe('포장 재구성 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -571,7 +587,7 @@ describe('포장 재구성 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('포장 스캔');
+    await screen.findByLabelText(/포장 스캔/);
 
     scan(CARTON);
     await screen.findByText(CARTON);
@@ -584,5 +600,85 @@ describe('포장 재구성 화면', () => {
     expect(await screen.findByText('재구성을 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('재구성을 기록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
+  });
+
+  /* 장갑을 끼고 한 손으로 조작한다. 기기 키보드는 구성 표와 확정 단추를 덮는다. */
+  it('구성 수량을 숫자판으로 넣는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/포장 스캔/);
+
+    scan(CARTON);
+    await user.click(await screen.findByLabelText(/FG-1001 · FLOT-2026-01000 수량/));
+
+    await user.click(await screen.findByRole('button', { name: '8' }));
+    await user.click(screen.getByRole('button', { name: '0' }));
+
+    expect(await screen.findByDisplayValue('80')).toBeTruthy();
+  });
+
+  /* 되돌리기가 없는 화면이라 지난 재구성을 되짚을 길이 화면 안에 있어야 한다. */
+  it('재구성 이력을 화면에서 본다', async () => {
+    const user = userEvent.setup();
+    mount({
+      repackEvents: [
+        {
+          repackEventId: 5001,
+          repackTypeCode: 'SPLIT',
+          performedBy: 1,
+          occurredAt: '2026-09-08T09:12:00+09:00',
+          lines: [
+            {
+              handlingUnitId: 10,
+              roleCode: 'SOURCE',
+              itemId: 100,
+              lotId: 1000,
+              qtyBefore: 240,
+              qtyAfter: 180,
+            },
+          ],
+        },
+      ],
+    });
+    await screen.findByLabelText(/포장 스캔/);
+
+    scan(CARTON);
+    await user.click(await screen.findByRole('button', { name: '이력 보기' }));
+
+    expect(await screen.findByText(/원본 FG-1001 · FLOT-2026-01000 240 → 180/)).toBeTruthy();
+  });
+
+  /* 기기를 허리에 매단 채 읽는다. 화면에만 적으면 통과한 줄 알고 다음 포장을 집는다. */
+  it('포장을 찾지 못한 것을 소리로도 알린다', async () => {
+    mount({ units: [] });
+    await screen.findByLabelText(/포장 스캔/);
+
+    scan(CARTON);
+
+    await screen.findByText(`${CARTON} 포장을 찾지 못했습니다`);
+    expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /*
+   * 포장은 품목과 LOT 의 짝으로 줄을 갖는다. LOT 만으로 세면 짝이 다른 줄이 하나로 보여
+   * 상한이 엉뚱한 줄에서 온다.
+   */
+  it('같은 LOT 이라도 품목이 다르면 각자의 상한을 갖는다', async () => {
+    mount({
+      contents: {
+        10: [
+          content({ handlingUnitContentId: 1, itemId: 100, lotId: 1000, qty: 180 }),
+          content({ handlingUnitContentId: 2, itemId: 101, lotId: 1000, qty: 40 }),
+        ],
+      },
+    });
+    await screen.findByLabelText(/포장 스캔/);
+
+    scan(CARTON);
+
+    expect(await screen.findByLabelText(/FG-1001 · FLOT-2026-01000 수량/)).toBeTruthy();
+    expect(screen.getByLabelText(/FG-2002 · FLOT-2026-01000 수량/)).toBeTruthy();
+    expect(screen.getByText('원 포장 합 180 EA')).toBeTruthy();
+    expect(screen.getByText('원 포장 합 40 EA')).toBeTruthy();
   });
 });
