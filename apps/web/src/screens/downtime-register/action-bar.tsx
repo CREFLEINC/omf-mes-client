@@ -15,6 +15,7 @@ export type SaveBlock =
   | 'worker-missing'
   | 'equipment-missing'
   | 'gate-denied'
+  | 'gate-unidentified'
   | 'gate-unavailable'
   | 'gate-checking'
   | 'ongoing-exists'
@@ -42,7 +43,14 @@ export const resolveSaveBlock = ({
 }: SaveBlockInput): SaveBlock => {
   if (workerNo === null) return 'worker-missing';
   if (equipmentId === null) return 'equipment-missing';
-  if (gate === 'denied' || gate === 'unidentified') return 'gate-denied';
+  /*
+   * ⛔ **「단말을 모른다」를 「권한이 없다」로 말하지 않는다.** 같은 슬라이스의
+   *    `terminal-gating` 이 두 판정을 갈라 두었는데 여기서 다시 합쳐 놓았고, 그 결과 단말
+   *    신원이 서지 않는 배포 셸에서 이 화면이 **상시 「이 단말에서는 입력할 수 없습니다」** 로
+   *    잠겼다 — 현장은 그것을 권한 회수로 읽고 관리자를 부른다. 두 문장은 할 일이 다르다.
+   */
+  if (gate === 'denied') return 'gate-denied';
+  if (gate === 'unidentified') return 'gate-unidentified';
   if (gate === 'unavailable') return 'gate-unavailable';
   if (gate === 'checking') return 'gate-checking';
   /*
@@ -62,6 +70,8 @@ export const describeSaveBlock = (block: SaveBlock): string | null => {
       return t.errors.equipmentMissing;
     case 'gate-denied':
       return t.errors.gateDenied;
+    case 'gate-unidentified':
+      return t.errors.gateUnidentified;
     case 'gate-unavailable':
       return t.errors.gateUnavailable;
     case 'gate-checking':

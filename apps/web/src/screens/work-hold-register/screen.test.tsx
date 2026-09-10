@@ -265,11 +265,7 @@ describe('P-02-10 작업 중단 등록', () => {
 
   /** 「못 받았다」와 「없다」는 작업자가 할 일이 다르다 — 같은 말로 덮지 않는다. */
   it('사유를 못 받으면 실패로 말하고 빈 목록으로 그리지 않는다', async () => {
-    renderScreen([
-      failingRoute(CODE_VALUES_PATH),
-      sessionsRoute([workSession()]),
-      eventsRoute([]),
-    ]);
+    renderScreen([failingRoute(CODE_VALUES_PATH), sessionsRoute([workSession()]), eventsRoute([])]);
 
     expect(await screen.findByText(t.form.reasonLoadFailed)).toBeInTheDocument();
     expect(screen.queryByText(t.form.reasonEmpty)).not.toBeInTheDocument();
@@ -725,5 +721,56 @@ describe('P-02-10 작업 중단 등록', () => {
         expect(screen.getByRole('button', { name: t.end.action })).toBeDisabled();
       });
     });
+  });
+});
+
+/**
+ * 끊긴 뒤에도 중단을 등록할 수 있어야 한다 — **사유 목록을 받아 두었을 때**(#1005).
+ *
+ * ⛔ **여기가 비면 outbox 가 무의미하다.** 중단·재개·종료 기록은 큐에 담기게 돼 있는데,
+ *    사유 목록만 서버 전용이라 라디오가 한 줄도 그려지지 않았고 **설비가 멈춘 바로 그
+ *    순간에 기록을 남길 수 없었다.** 담을 것이 없어 담지 못한 것이다.
+ */
+describe('P-02-10 사유 목록을 받아 두면 끊겨도 고를 수 있다 (#1005)', () => {
+  const putCachedReasons = (reasons: { code: string; name: string }[] | null): void => {
+    (globalThis as { pop?: unknown }).pop = {
+      cache: {
+        get: async () => (reasons === null ? undefined : JSON.stringify(reasons)),
+        put: async () => undefined,
+      },
+    };
+  };
+
+  afterEach(() => {
+    delete (globalThis as { pop?: unknown }).pop;
+  });
+
+  it('사유 조회가 실패해도 받아 둔 목록으로 고를 수 있다', async () => {
+    putCachedReasons([{ code: 'MOLD_CHANGE', name: MOLD_CHANGE_NAME }]);
+
+    renderScreen([failingRoute(CODE_VALUES_PATH), sessionsRoute([workSession()]), eventsRoute([])]);
+
+    expect(await screen.findByRole('radio', { name: MOLD_CHANGE_NAME })).toBeTruthy();
+  });
+
+  /* ⚠ 최신이 아닐 수 있다는 사실을 숨기지 않는다 — 마스터의 증감이 여기 비치지 않는다. */
+  it('받아 둔 목록으로 그렸다는 사실을 말한다', async () => {
+    putCachedReasons([{ code: 'MOLD_CHANGE', name: MOLD_CHANGE_NAME }]);
+
+    renderScreen([failingRoute(CODE_VALUES_PATH), sessionsRoute([workSession()]), eventsRoute([])]);
+
+    expect(await screen.findByText(t.form.reasonFromCache)).toBeTruthy();
+  });
+
+  /*
+   * ⛔ 「받지 못했다」를 「사유가 없다」로 바꾸지 않는다. 받아 둔 것이 없으면 종전대로
+   *    실패를 말하고 다시 받아 볼 경로를 준다.
+   */
+  it('받아 둔 것이 없으면 종전대로 조회 실패를 말한다', async () => {
+    putCachedReasons(null);
+
+    renderScreen([failingRoute(CODE_VALUES_PATH), sessionsRoute([workSession()]), eventsRoute([])]);
+
+    expect(await screen.findByText(t.form.reasonLoadFailed)).toBeTruthy();
   });
 });

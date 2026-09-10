@@ -37,7 +37,8 @@ export const workStartKeys = {
    * 목록. **설비 축까지 키에 넣는다** — 「이 설비」와 「전체」는 다른 목록이고, 한 키로 묶으면
    * 「전체 보기」를 껐을 때 다른 설비의 지시가 그대로 남는다.
    */
-  workOrders: (equipmentId: number | null) => [...ALL_KEY, 'work-orders', equipmentId] as const,
+  workOrders: (equipmentId: number | null, page: number) =>
+    [...ALL_KEY, 'work-orders', equipmentId, page] as const,
   openSession: (workOrderId: number) => [...ALL_KEY, 'open-session', workOrderId] as const,
   worker: (workerNo: string) => [...ALL_KEY, 'worker', workerNo] as const,
 };
@@ -71,6 +72,7 @@ export const useTerminal = (terminalId: number | null): UseQueryResult<Terminal>
 const fetchWorkOrders = (
   client: Client,
   equipmentId: number | null,
+  page: number,
 ): Promise<WorkOrderListResponse> =>
   runRequest(() =>
     client.GET('/production/work-orders', {
@@ -87,7 +89,7 @@ const fetchWorkOrders = (
           open: true,
           /* 「전체 보기」는 이 축만 뺀다 — 다른 조건은 그대로다(§5-5). */
           ...(equipmentId === null ? {} : { plannedEquipmentId: equipmentId }),
-          page: 1,
+          page,
           size: LIST_SIZE,
         },
       },
@@ -104,13 +106,14 @@ const fetchWorkOrders = (
 export const useWorkOrders = (
   equipmentId: number | null,
   enabled: boolean,
+  page = 1,
 ): UseQueryResult<WorkOrderListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: workStartKeys.workOrders(equipmentId),
+    queryKey: workStartKeys.workOrders(equipmentId, page),
     enabled,
-    queryFn: () => fetchWorkOrders(client, equipmentId),
+    queryFn: () => fetchWorkOrders(client, equipmentId, page),
   });
 };
 

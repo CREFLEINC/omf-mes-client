@@ -84,3 +84,43 @@ describe('PopSelect — G-34 선택 팝업', () => {
     expect(screen.getByText('1 / 2 · 전체 7건')).toBeInTheDocument();
   });
 });
+
+/**
+ * 팝업이 닫히는 길 — **[✕] 하나다**(사용자 지시 2026-09-10).
+ *
+ * ⛔ 전에는 팝업 «바깥»을 눌러도 닫혔다. 터치 단말에서 목록 팝업은 화면 대부분을 덮어
+ *    손이 스치기 쉽고, 그때 고르려던 항목과 검색어·쪽 위치가 함께 사라졌다.
+ *
+ * ⚠ 설계(G-34)는 팝업의 «내용»만 정하고 닫는 방법을 적지 않았다. 회신이 오면 맞춘다.
+ */
+describe('PopSelect — 팝업을 닫는 길 (#1005)', () => {
+  const openPopup = async (): Promise<ReturnType<typeof userEvent.setup>> => {
+    const user = userEvent.setup();
+
+    renderWithProviders(
+      <PopSelect aria-label="사유" options={OPTIONS} value={null} onChange={vi.fn()} />,
+    );
+    await user.click(screen.getByRole('combobox', { name: '사유' }));
+
+    expect(screen.getByRole('searchbox', { name: '목록 검색' })).toBeInTheDocument();
+
+    return user;
+  };
+
+  it('바깥을 눌러도 닫히지 않는다', async () => {
+    const user = await openPopup();
+
+    /* 스크림은 `dialog` 요소 자신이다 — 그 바깥 여백을 누르는 것이 「바깥 누르기」다. */
+    await user.click(screen.getByRole('dialog'));
+
+    expect(screen.getByRole('searchbox', { name: '목록 검색' })).toBeInTheDocument();
+  });
+
+  it('닫기 단추를 누르면 닫힌다', async () => {
+    const user = await openPopup();
+
+    await user.click(screen.getByRole('button', { name: /닫기|close/iu }));
+
+    expect(screen.queryByRole('searchbox', { name: '목록 검색' })).not.toBeInTheDocument();
+  });
+});

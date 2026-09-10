@@ -160,17 +160,28 @@ export interface SaveResultVariables {
   remarks: string;
   /** 항목별 측정치. ⛔ 자체 쓰기 경로가 없다 — 결과 저장에 함께 실린다(§4-C) */
   measurements: InspectionMeasurementInput[];
-  /** `작성중`(임시 저장) 또는 `확정`(검사 확정) */
+  /** `DRAFT`(임시 저장) 또는 `CONFIRMED`(검사 확정) */
   statusCode: InspectionResultCreate['statusCode'];
 }
 
-/** 계약이 못박은 두 값. 임시 저장과 검사 확정이 **같은 경로**를 쓰고 이 값으로 갈린다. */
+/**
+ * 계약이 정한 두 값. 임시 저장과 검사 확정이 **같은 경로**를 쓰고 이 값으로 갈린다.
+ *
+ * ⛔ **한국어로 보내지 않는다.** 2026-09-02 이전 계약에는 이 자리에 `작성중`·`확정` 한국어
+ *    enum 이 박혀 있었고 그때의 값이 그대로 남아 있었다. 계약이 영문 대문자로 바뀐 뒤
+ *    **실서버가 임시 저장과 확정을 전부 거절했는데**, 이 화면은 오프라인 대비로 큐에 담고
+ *    담기는 순간 성공을 말하므로 검사자는 저장된 줄 알고 다음 LOT 으로 넘어갔다.
+ *
+ * ⚠ **타입이 지켜 주지 않는다.** 계약이 이 칸을 `string` 으로 열어 두었기 때문이다
+ *    (표시명이 2개국어라 enum 으로 못박으면 화면이 표시명을 갖게 된다 — K-5). 그래서 값이
+ *    틀려도 컴파일이 통과한다. 아래 감지기가 그 자리를 대신 지킨다.
+ */
 export const RESULT_STATUS: {
   draft: InspectionResultCreate['statusCode'];
   confirmed: InspectionResultCreate['statusCode'];
 } = {
-  draft: '작성중',
-  confirmed: '확정',
+  draft: 'DRAFT',
+  confirmed: 'CONFIRMED',
 };
 
 /**

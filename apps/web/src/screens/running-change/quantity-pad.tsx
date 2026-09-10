@@ -59,6 +59,12 @@ export const QuantityPad = ({ open, value, allowDecimal, onCommit, onClose }: Qu
       title={t.title}
       size="sm"
       /*
+       * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
+       *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
+       *    「누른 적 없는데 닫힌다」가 된다. 닫는 길은 아래 단추다.
+       */
+      closeOnBackdropClick={false}
+      /*
        * ⛔ **X 를 두지 않는다**(사용자 지시 2026-09-07). 바닥에 [ 취소 ]가 이미 있어 닫는
        *    길이 둘이 되는데, 장갑 낀 손에는 작은 X 가 «잘못 눌리는» 자리다.
        */

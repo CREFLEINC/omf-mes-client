@@ -111,14 +111,14 @@ export const draftRound: InspectionResultResponse = {
   overallJudgmentCode: 'ACCEPTED',
   inspectorId: 4001,
   inspectedAt: '2026-08-18T10:00:00+09:00',
-  statusCode: '작성중',
+  statusCode: 'DRAFT',
   versionNo: 1,
 };
 
 /** 확정된 1회차 — 이 의뢰는 판정이 끝났고 고치려면 새 회차를 쌓아야 한다. */
 export const confirmedRound: InspectionResultResponse = {
   ...draftRound,
-  statusCode: '확정',
+  statusCode: 'CONFIRMED',
   confirmedAt: '2026-08-18T10:30:00+09:00',
 };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { resolveSaveBlock } from './action-bar';
+import { describeSaveBlock, resolveSaveBlock } from './action-bar';
 import { breakdown, downtime, ongoingDowntime } from './fixtures';
 import { byStartedAtDesc, fromPending, startedOn } from './today-rows';
 import { isOngoing, toBreakdownView, toDowntimeView } from './types';
@@ -53,7 +53,12 @@ describe('resolveSaveBlock', () => {
     expect(resolveSaveBlock({ ...base, gate: 'unavailable' })).toBe('gate-unavailable');
     expect(resolveSaveBlock({ ...base, gate: 'denied' })).toBe('gate-denied');
     /* 단말을 모르는 것도 「통과」가 아니다. */
-    expect(resolveSaveBlock({ ...base, gate: 'unidentified' })).toBe('gate-denied');
+    /*
+     * ⛔ **「단말을 모른다」는 「권한이 없다」와 다른 사유다**(#1004). 합쳐 두었더니 단말
+     *    신원이 서지 않는 배포 셸에서 이 화면이 상시 「이 단말에서는 입력할 수 없습니다」로
+     *    잠겼고, 현장은 그것을 권한 회수로 읽었다.
+     */
+    expect(resolveSaveBlock({ ...base, gate: 'unidentified' })).toBe('gate-unidentified');
     expect(resolveSaveBlock({ ...base, gate: 'checking' })).toBe('gate-checking');
   });
 
@@ -136,5 +141,39 @@ describe('today-rows', () => {
     const today = rows.filter((row) => startedOn(row, '2026-08-11')).sort(byStartedAtDesc);
 
     expect(today.map((row) => row.key)).toEqual(['b', 'a']);
+  });
+});
+
+/**
+ * 사유가 **실제 문장에 닿는지** 잰다.
+ *
+ * ⛔ **판정만 재면 배선이 끊겨도 조용하다**(독립 검증 F-3). `resolveSaveBlock` 이 새 사유를
+ *    내놓아도 `describeSaveBlock` 이 그것을 문장으로 옮기지 못하면 화면은 아무 말도 하지
+ *    않는다 — 잠긴 이유가 사라지는 것이라 합쳐 두었을 때보다 나쁘다.
+ */
+describe('막힌 사유가 문장으로 이어진다 (#1004)', () => {
+  it('단말 미등록과 권한 없음이 서로 다른 문장이다', () => {
+    const unidentified = describeSaveBlock('gate-unidentified');
+    const denied = describeSaveBlock('gate-denied');
+
+    expect(unidentified).toBeTruthy();
+    expect(denied).toBeTruthy();
+    expect(unidentified).not.toBe(denied);
+  });
+
+  it('사유마다 문장이 있다 — 빈 자리를 남기지 않는다', () => {
+    const blocks = [
+      'worker-missing',
+      'equipment-missing',
+      'gate-denied',
+      'gate-unidentified',
+      'gate-unavailable',
+      'gate-checking',
+      'ongoing-exists',
+    ] as const;
+
+    for (const block of blocks) {
+      expect(describeSaveBlock(block)).toBeTruthy();
+    }
   });
 });

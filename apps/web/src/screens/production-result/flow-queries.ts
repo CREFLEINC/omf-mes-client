@@ -7,6 +7,7 @@ import { runRequest } from '../../patterns/request';
 import { CONTRACT_BATCH_SIZE, chunkTargets } from './flow-state';
 
 export type Lot = components['schemas']['Lot'];
+export type LotDetailResponse = components['schemas']['LotDetailResponse'];
 export type Item = components['schemas']['Item'];
 export type SerialNumber = components['schemas']['SerialNumber'];
 export type Printer = components['schemas']['Printer'];
@@ -24,6 +25,7 @@ export interface CompletedLotPage {
 export const productionFlowKeys = {
   all: ['production-flow'] as const,
   currentLot: (workOrderId: number) => ['production-flow', 'current-lot', workOrderId] as const,
+  lotDetail: (lotId: number) => ['production-flow', 'lot-detail', lotId] as const,
   completedLots: (workOrderId: number, page: number) =>
     ['production-flow', 'completed-lots', workOrderId, page] as const,
   item: (itemId: number) => ['production-flow', 'item', itemId] as const,
@@ -53,6 +55,34 @@ export const useCurrentLot = (workOrderId: number | null): UseQueryResult<Lot | 
       );
 
       return data.items[0] ?? null;
+    },
+  });
+};
+
+/**
+ * 현재 LOT 의 **상세** 한 건. 마감이 실을 낙관적 잠금 값을 여기서 받는다(#1005).
+ *
+ * ⭐ **목록으로는 잠글 수 없다.** 판 번호(`version_no`)는 본문에 실리지 않고 **조회 응답의
+ *    `ETag` 헤더**로만 온다(공유계약 B-1). 그 보관소는 «요청 경로별»로 담기므로
+ *    `GET /trace/lots`(목록)로 받은 값은 `/trace/lots/{lotId}` 자리에 들어가지 않는다.
+ *
+ * ⛔ **이 조회가 빠지면 잠금이 조용히 사라진다.** 마감 요청이 `If-Match` 를 «있으면» 싣도록
+ *    돼 있고 계약도 Optional 이라, 값이 없으면 헤더만 빠진 채 요청이 그대로 나가 성공한다 —
+ *    코드는 잠그는 «모양»이고 실제로는 두 단말이 같은 LOT 을 함께 마감한다. 육안 리뷰로는
+ *    잡히지 않아 감지기가 이 자리를 지킨다.
+ *
+ * ⚠ 화면이 이 응답의 «내용»을 쓰지 않는다 — 목록이 이미 준다. 여기서 얻는 것은 헤더뿐이다.
+ */
+export const useLotDetail = (lotId: number | null): UseQueryResult<LotDetailResponse> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: productionFlowKeys.lotDetail(lotId ?? 0),
+    enabled: lotId !== null,
+    queryFn: () => {
+      if (lotId === null) throw new Error('LOT이 없으면 상세를 조회하지 않습니다.');
+
+      return runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }));
     },
   });
 };

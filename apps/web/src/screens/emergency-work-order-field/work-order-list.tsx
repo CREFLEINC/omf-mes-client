@@ -1,6 +1,7 @@
 import { AlertBanner, Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { PopPageNav, pageBoundaryOf, type PageMetaLike } from '../../patterns/pop-page-nav';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { dateTimeText, itemText, qtyText } from './row-view';
 import type { WorkOrder } from './types';
@@ -14,6 +15,9 @@ export interface WorkOrderListProps {
   isLoading: boolean;
   /** 필터 전체 건수. 목록이 잘렸는지는 이 값으로만 알 수 있다. */
   total: number | undefined;
+  /** 받은 쪽 정보. 쪽 넘김이 이 값으로 선다(#1005). */
+  pageMeta: PageMetaLike | undefined;
+  onPageChange: (page: number) => void;
   isError: boolean;
   selectedId: number | null;
   uomLabel: (uomId: number | undefined) => string;
@@ -44,6 +48,8 @@ export const WorkOrderList = ({
   isAsked,
   isLoading,
   total,
+  pageMeta,
+  onPageChange,
   isError,
   selectedId,
   uomLabel,
@@ -160,6 +166,16 @@ export const WorkOrderList = ({
           )}
 
           {isTruncated && <p>{t.truncated(rows.length, total)}</p>}
+
+          {/*
+           * ⛔ **잘렸다고 «말하기만» 하지 않는다**(#1005 · G-34). 긴급 W/O 는 몰려서
+           * 발행되므로 20건을 넘기 쉽고, 넘길 조작이 없으면 21번째부터 손이 닿지 않는다.
+           */}
+          <PopPageNav
+            boundary={pageBoundaryOf(pageMeta)}
+            label={t.pageNav}
+            onChange={onPageChange}
+          />
 
           {/*
            * 발행 자리를 여기서 찾지 않게 한다 — 이 화면에는 만드는 액션이 없다.

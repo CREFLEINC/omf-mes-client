@@ -158,3 +158,33 @@ describe('fromServerQty', () => {
     expect(fromServerQty(-5)).toBe(0n);
   });
 });
+
+/**
+ * 검사 수량(합계 판정의 «오른쪽 변»)이 비었거나 0 일 때.
+ *
+ * ⛔ **아무것도 입력하지 않은 화면에서 확정이 열렸다**(#1004). 세 칸이 비어 합이 `0` 이고
+ *    검사 수량도 비어 `0` 으로 읽히면 `0 === 0` 이라 「일치합니다」가 되고, `matches` 가
+ *    확정 가능 여부의 «유일한» 근거이므로 되돌릴 수 없는 판정 기록이 수량 0 으로 만들어졌다.
+ *    「셀 수 없으면 세지 않는다」 규율이 왼쪽 변에만 걸려 있었다.
+ */
+describe('toTotals — 검사 수량이 없으면 셀 수 없다 (#1004)', () => {
+  it('검사 수량이 0 이면 확정이 열리지 않는다', () => {
+    const totals = toTotals(EMPTY_QUANTITY_DRAFT, 0);
+
+    expect(totals.kind).toBe('uncountable');
+    expect(canConfirm(totals)).toBe(false);
+  });
+
+  it('세 칸을 채웠어도 검사 수량이 0 이면 셀 수 없다', () => {
+    expect(canConfirm(toTotals({ accepted: '10', rejected: '0', held: '0' }, 0))).toBe(false);
+  });
+
+  /* 음수는 계약 CHECK(`inspected_qty > 0`) 밖이다 — 0 과 같이 「셀 수 없음」으로 둔다. */
+  it('검사 수량이 음수여도 셀 수 없다', () => {
+    expect(toTotals(EMPTY_QUANTITY_DRAFT, -1).kind).toBe('uncountable');
+  });
+
+  it('검사 수량이 있으면 종전대로 센다 — 이 빗장이 정상 경로를 막지 않는다', () => {
+    expect(canConfirm(toTotals({ accepted: '500', rejected: '0', held: '0' }, 500))).toBe(true);
+  });
+});
