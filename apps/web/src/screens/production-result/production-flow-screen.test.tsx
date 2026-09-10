@@ -16,6 +16,8 @@ import { STORAGE_KEY } from './outbox';
 const t = messages.productionResult;
 const LOT_ID = 90101;
 const LOT_NO = 'LOT-SYN-0001';
+/** 상세 조회가 내려주는 판 번호. 마감이 `If-Match` 로 되돌려 보내야 하는 값이다(#1005). */
+const LOT_ETAG = '"7"';
 const WORK_ORDER_ID = 701;
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
@@ -168,6 +170,18 @@ const routes = (writes: Request[]): StubRoute[] => [
       return new Response(null, { status: 204 });
     },
   },
+  /*
+   * ⭐ **마감이 실을 낙관적 잠금 값의 출처다**(#1005). 이 줄이 없으면 `If-Match` 가 비고
+   *    마감이 아예 나가지 않는다 — 전에는 헤더만 빠진 채 «성공»했다.
+   */
+  {
+    match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}`,
+    respond: () =>
+      jsonResponse(
+        { lot: { lotId: LOT_ID, lotNo: LOT_NO }, externalReferences: [] },
+        { headers: { ETag: LOT_ETAG } },
+      ),
+  },
   {
     match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
     respond: (request) => {
@@ -237,6 +251,18 @@ describe('ProductionFlowScreen', () => {
         writes.filter((request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`),
       ).toHaveLength(1),
     );
+
+    /*
+     * ⛔ **마감은 낙관적 잠금을 싣는다**(#1005 · 공유계약 B-1). 전에는 값을 목록 경로에서
+     *    꺼내려 해 «언제나» 비어 있었고, 계약이 `If-Match` 를 Optional 로 두어 헤더만 빠진
+     *    채 요청이 나가 성공했다 — 두 단말이 같은 LOT 을 함께 마감해도 걸러지지 않았다.
+     *    코드가 잠그는 «모양»이라 육안 리뷰로는 잡히지 않는다.
+     */
+    const complete = writes.find(
+      (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}:complete`,
+    );
+
+    expect(complete?.headers.get('If-Match')).toBe(LOT_ETAG);
   });
 
   it('물리 인쇄 뒤 보고만 실패하면 종이를 다시 뽑지 않고 같은 결과 보고만 재시도한다', async () => {

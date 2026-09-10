@@ -17,6 +17,7 @@ import {
   latestIssue,
   useCompletedLots,
   useCurrentLot,
+  useLotDetail,
   useItem,
   useLotIssues,
   usePrinters,
@@ -119,6 +120,12 @@ export const ProductionFlowScreen = () => {
   const tagIssueSummary = useTagIssueSummary(serials.data?.items ?? [], isTagTarget === true);
   const reissueReasons = useReissueReasons(isTagReissueOpen);
   const lotIssues = useLotIssues(currentLot.data?.lotId ?? null);
+  /*
+   * ⭐ **마감이 실을 낙관적 잠금 값을 받아 두는 조회다**(#1005 · 공유계약 B-1). 응답 «내용»은
+   *    쓰지 않는다 — 목록이 이미 준다. 여기서 얻는 것은 `ETag` 헤더뿐이고, 그것이 보관소의
+   *    `/trace/lots/{lotId}` 자리에 앉아야 `useLotComplete` 가 꺼내 쓸 수 있다.
+   */
+  const lotDetail = useLotDetail(currentLot.data?.lotId ?? null);
   const currentIssue = latestIssue(lotIssues.data);
   const lotPrinter = defaultPrinter(lotPrinters.data);
   const tagPrinter = defaultPrinter(tagPrinters.data);
