@@ -873,6 +873,11 @@ export const ProductionFlowScreen = () => {
             <TextField
               id={scanId}
               label={t.flow.scan.label}
+              /*
+               * ⭐ **칸이 구획 폭을 다 쓴다**(사용자 지시 2026-09-10). LOT 번호는 서른 자리를
+               * 넘길 수 있어, 기본 폭에서는 읽은 값이 칸 밖으로 밀려 눈으로 대조할 수 없다.
+               */
+              fullWidth
               value={scanValue}
               disabled={outputPhase !== 'scanReady' || gates.complete !== 'allowed'}
               error={scanMismatch && lot !== null ? t.flow.scan.mismatch(lot.lotNo) : undefined}
