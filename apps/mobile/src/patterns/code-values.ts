@@ -12,6 +12,12 @@ export const codeValueKeys = {
   group: (group: string) => ['code-values', group] as const,
 };
 
+/*
+ * 보류 사유의 표시명이 오는 공통코드 그룹. 계약은 코드만 내린다. 보류를 보이는 화면이
+ * 여럿이라 여기 둔다 - 화면마다 적으면 한쪽만 고쳐져 같은 사람이 두 화면에서 다른 것을 본다.
+ */
+export const LOT_HOLD_REASON = 'LOT_HOLD_REASON';
+
 /**
  * 이 그룹의 값 목록.
  *

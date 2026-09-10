@@ -53,6 +53,12 @@ export const temporaryPutaway = {
     /** 임시 유형으로 가려낸 자리가 하나도 없을 때만 전체를 보인다. */
     unfiltered: '임시 위치로 등록된 자리가 없어 전체 위치를 보입니다',
     pickAction: '목록에서 선택',
+    /*
+     * 선택칸은 임시 유형만 담고 스캔은 창고 전체를 받는다. 손 입력이 없으면 라벨이 상한
+     * 자리가 임시 유형이 아닐 때 정할 방법이 사라진다.
+     */
+    manual: '직접 입력',
+    manualSubmit: '입력한 위치로',
     capacity: (qty: string) => `수용량 ${qty} — 임시 위치라 막지 않습니다`,
   },
   reason: {

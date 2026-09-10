@@ -115,6 +115,10 @@ interface Options {
   pickingTypes?: unknown[];
   /** 전표 상태를 바꿔 이미 전기된 지시를 만든다. */
   order?: ReturnType<typeof order>;
+  /** 도착 위치 조회가 어떻게 끝나는지. 없는 것과 끊긴 것을 갈라 잰다. */
+  destination?: 'ok' | 'missing' | 'offline';
+  /** 보류 사유의 표시명. 비워 두면 표시명을 못 받은 상황이 된다. */
+  holdReasons?: unknown[];
 }
 
 const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] => [
@@ -145,8 +149,16 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
   {
     /* 집은 것을 어디로 가져가는지는 이 요청에만 있다. */
     match: (req) => new URL(req.url).pathname === '/logistics/material-issue-requests/3',
-    respond: () =>
-      jsonResponse({
+    respond: () => {
+      if (options.destination === 'offline') {
+        throw new TypeError('Failed to fetch');
+      }
+
+      if (options.destination === 'missing') {
+        return jsonResponse({ message: 'not found' }, { status: 404 });
+      }
+
+      return jsonResponse({
         materialIssueRequest: {
           materialIssueRequestId: 3,
           issueRequestNo: 'MIR-2026-000088',
@@ -155,7 +167,8 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
           statusCode: 'REGISTERED',
         },
         lines: [],
-      }),
+      });
+    },
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/locations/55',
@@ -176,17 +189,28 @@ const rest = (options: Options, serverPicked: Map<number, number>): StubRoute[] 
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: (req) =>
-      jsonResponse({
-        items:
-          new URL(req.url).searchParams.get('codeGroupCode') === 'PICKING_TYPE'
-            ? (options.pickingTypes ?? [codeValue('MATERIAL', '자재 피킹', 1)])
-            : (options.issueTypes ?? [
-                codeValue('SCRAP', '폐기 출고', 1),
-                codeValue('PRODUCTION', '생산 투입', 2),
-              ]),
+    respond: (req) => {
+      const group = new URL(req.url).searchParams.get('codeGroupCode');
+
+      if (group === 'PICKING_TYPE') {
+        return jsonResponse({ items: options.pickingTypes ?? [codeValue('MATERIAL', '자재 피킹', 1)], page });
+      }
+
+      if (group === 'LOT_HOLD_REASON') {
+        return jsonResponse({
+          items: options.holdReasons ?? [codeValue('INSPECTION_PENDING', '수입검사 대기', 1)],
+          page,
+        });
+      }
+
+      return jsonResponse({
+        items: options.issueTypes ?? [
+          codeValue('SCRAP', '폐기 출고', 1),
+          codeValue('PRODUCTION', '생산 투입', 2),
+        ],
         page,
-      }),
+      });
+    },
   },
 ];
 
@@ -372,6 +396,31 @@ beforeEach(() => {
 });
 
 describe('자재 출고·피킹 화면', () => {
+  /*
+   * 서버가 없다고 답한 것을 연결 탓으로 말하면, 붙어 있는 사람이 신호를 찾아 자리를 옮긴다.
+   * 옮겨도 그대로라 시간만 버리고 정작 누구에게 알려야 하는지는 끝내 모른다.
+   */
+  it('도착 위치가 404 면 연결을 확인하라고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ destination: 'missing' });
+    await chooseOrder(user);
+
+    expect(
+      await screen.findByText('도착 위치를 확인하지 못했습니다. 연결 문제가 아니니 담당자에게 알리세요.'),
+    ).toBeTruthy();
+    expect(screen.queryByText(/연결을 확인하세요/)).toBeNull();
+  });
+
+  it('도착 위치 조회가 끊기면 연결을 확인하라고 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ destination: 'offline' });
+    await chooseOrder(user);
+
+    expect(
+      await screen.findByText('도착 위치를 확인할 수 없습니다. 연결을 확인하세요.'),
+    ).toBeTruthy();
+  });
+
   it('집으면 라인 경로로 사번과 멱등키를 실어 보낸다', async () => {
     const user = userEvent.setup();
     const sent = mount();
@@ -500,6 +549,33 @@ describe('자재 출고·피킹 화면', () => {
     await chooseOrder(user);
 
     expect(await screen.findByText(/피킹 라인 0 \/ 3 · 보류 1/)).toBeTruthy();
+  });
+
+  /*
+   * 코드를 그대로 보이면 무엇이 걸렸는지도, 무엇을 하면 풀리는지도 알 수 없다. 표시명은
+   * 마스터가 갖고 있고 형제 화면(M-04-02)은 이미 그것을 풀어 보인다.
+   */
+  it('보류 사유를 표시명으로 보인다', async () => {
+    const user = userEvent.setup();
+    mount({
+      lines: [line({ held: true, holdReasonCode: 'INSPECTION_PENDING' })],
+    });
+    await chooseOrder(user);
+
+    expect(await screen.findByText(/보류 사유 수입검사 대기/)).toBeTruthy();
+    expect(screen.queryByText(/INSPECTION_PENDING/)).toBeNull();
+  });
+
+  /* 표시명을 못 받았을 때만 코드를 보인다. 그때도 표시명이 없다는 사실을 함께 적는다. */
+  it('표시명을 못 받으면 코드를 보이되 그 사실을 함께 말한다', async () => {
+    const user = userEvent.setup();
+    mount({
+      lines: [line({ held: true, holdReasonCode: 'INSPECTION_PENDING' })],
+      holdReasons: [],
+    });
+    await chooseOrder(user);
+
+    expect(await screen.findByText(/보류 사유 INSPECTION_PENDING \(표시명 없음\)/)).toBeTruthy();
   });
 
   it('보류 라인이 없으면 보류를 말하지 않는다', async () => {

@@ -269,7 +269,9 @@ describe('설비 점검 입력 화면', () => {
     mount();
     await selectEquipment();
 
-    expect(screen.getByText('필수 항목 유압 압력을(를) 점검하세요')).toBeInTheDocument();
+    expect(
+      screen.getByText('점검하지 않은 필수 항목이 있습니다 — 유압 압력'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '점검 완료' })).toBeDisabled();
   });
 

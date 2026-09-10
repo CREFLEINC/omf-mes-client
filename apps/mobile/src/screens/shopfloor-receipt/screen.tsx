@@ -11,6 +11,7 @@ import { useLocation } from '../../patterns/locations';
 import { useItemLabels } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
+import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -361,7 +362,11 @@ export const ShopfloorReceiptScreen = () => {
                 <p>{t.issue.destination(destination.data.locationCode)}</p>
               )}
               {destination.isError ? (
-                <p className="shopfloor-receipt__note">{t.issue.destinationUnknown}</p>
+                <p className="shopfloor-receipt__note">
+                  {toApiError(destination.error).kind === 'network'
+                    ? t.issue.destinationOffline
+                    : t.issue.destinationUnknown}
+                </p>
               ) : null}
               {issue.lines.length === 0 ? <p>{t.issue.empty}</p> : null}
             </Card.Body>

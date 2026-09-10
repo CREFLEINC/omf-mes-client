@@ -29,7 +29,12 @@ export const materialPicking = {
     /** 집은 것을 어디로 가져가는가. 말하지 않으면 그 자리가 사람의 기억에만 남는다. */
     destination: (code: string) => `도착 ${code}`,
     destinationLoading: '도착 위치를 불러오는 중입니다',
-    destinationUnknown: '도착 위치를 확인할 수 없습니다. 연결을 확인하세요.',
+    /*
+     * 끊긴 것과 서버가 없다고 답한 것을 가른다. 앞은 자리를 옮기면 풀리고 뒤는 옮겨도
+     * 그대로다 - 뭉뚱그리면 될 일 없는 이동을 시킨다.
+     */
+    destinationOffline: '도착 위치를 확인할 수 없습니다. 연결을 확인하세요.',
+    destinationUnknown: '도착 위치를 확인하지 못했습니다. 연결 문제가 아니니 담당자에게 알리세요.',
   },
   lines: {
     legend: '피킹 라인',
@@ -50,7 +55,9 @@ export const materialPicking = {
     rank: (rank: number) => `선출 ${String(rank)}순위`,
     /** 보류는 서버가 표시해 내려준다. 사유 코드는 값 목록이 확정되기 전이라 그대로 보인다. */
     held: '보류 중',
-    heldReason: (code: string) => `보류 사유 ${code}`,
+    heldReason: (reason: string) => `보류 사유 ${reason}`,
+    /* 표시명을 못 받았을 때만 코드를 보인다. 코드만 보이면 무엇이 걸렸는지 모른다. */
+    heldReasonUnknown: (code: string) => `보류 사유 ${code} (표시명 없음)`,
     done: '다 집었습니다',
   },
   scan: {

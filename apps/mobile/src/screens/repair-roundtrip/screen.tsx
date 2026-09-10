@@ -64,7 +64,7 @@ const uomLabel = (uoms: Map<number, string> | undefined, uomId: number): string 
 
 /*
  * 이름표를 아직 못 받은 것을 확인 실패로 말하지 않는다. 둘을 뭉치면 조회가 도는 동안
- * 「확인할 수 없습니다」가 떠 있다가 이름으로 바뀐다.
+ * 확인할 수 없다는 말이 떠 있다가 이름으로 바뀐다.
  */
 const codeLabel = (
   codes: UseQueryResult<Map<number, DefectCodeLabel>>,
@@ -480,8 +480,11 @@ export const RepairRoundtripScreen = () => {
     </div>
   );
 
+  /*
+   * 계약에 수리 건의 업무 번호가 없다. 대리키를 수리 번호로 세우면 현장이 그것을 업무 번호로
+   * 읽는데, 실물에도 다른 화면에도 없는 값이라 대조할 데가 없다.
+   */
   const columns: Column<RepairExecution>[] = [
-    { key: 'no', header: t.open.columns.no, render: (row) => String(row.repairExecutionId) },
     {
       key: 'qty',
       header: t.open.columns.qty,

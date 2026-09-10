@@ -55,7 +55,8 @@ export const equipmentInspection = {
     ngNotice: 'NG가 있어 보전이 요청됩니다.',
     remarks: '비고',
     remarksRequired: 'NG가 있으면 비고를 적으세요',
-    remainingRequired: (name: string) => `필수 항목 ${name}을(를) 점검하세요`,
+    /* 항목 이름은 사람이 읽는 말이라 조사 자리 표기가 어색하게 읽힌다. 이름을 뒤에 둔다. */
+    remainingRequired: (name: string) => `점검하지 않은 필수 항목이 있습니다 — ${name}`,
   },
   submit: '점검 완료',
   /** 단말 보관소가 거절한 경우. 적은 것이 어디에도 없으므로 기록되지 않았다고 말한다. */

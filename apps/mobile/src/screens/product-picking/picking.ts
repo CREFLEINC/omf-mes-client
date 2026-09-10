@@ -18,9 +18,6 @@ export type ShipmentLinePick = components['schemas']['ShipmentLinePick'];
  */
 export const CANDIDATE_PREVIEW = 3;
 
-/* 보류 사유의 표시명이 오는 공통코드 그룹. 계약은 코드만 내린다. */
-export const LOT_HOLD_REASON = 'LOT_HOLD_REASON';
-
 export const FEFO = 'FEFO';
 export const FIFO = 'FIFO';
 
