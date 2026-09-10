@@ -33,7 +33,17 @@ export const runningChange = {
     loading: '현재 투입을 불러오는 중입니다.',
     empty: '이 작업지시에 등록된 투입이 없습니다. 교체할 대상이 없습니다.',
     noWorkOrder: '작업지시가 정해지면 현재 투입이 표시됩니다.',
-    moldLabel: '금형',
+    /*
+     * ⭐ **칸마다 이름을 붙인다**(사용자 제안 시안 2026-09-11). 값만 늘어놓으면 「ABC-123」이
+     *    품목인지 LOT 인지, 「100 EA」가 계획인지 투입인지 화면만 보고는 알 수 없다.
+     */
+    itemCodeLabel: '제품 코드',
+    inputQtyLabel: '투입 수량',
+    moldSectionLabel: '금형 정보',
+    moldNoLabel: '금형 번호',
+    moldNameLabel: '금형명',
+    shotCountLabel: '타발수',
+    shotRemainingLabel: '잔여 타발수',
     moldUnknown: '금형을 확인할 수 없습니다',
     moldNone: '이 세션에 물린 금형이 없습니다',
     /** 세션이 없으면 금형을 «알 수 없다» — 「없다」와 다르다. 비워 두면 둘이 한 모양이 된다. */
@@ -42,8 +52,8 @@ export const runningChange = {
      * ⭐ 자릿수를 끊어 적는다(`128,400`) — 여섯 자리를 한 덩이로 두면 눈이 자릿수를 세야 한다.
      *   자매 화면 `P-05-01` 이 같은 값을 같은 방법으로 적는다. ⛔ 값 자체는 그대로다.
      */
-    moldShotCount: (current: number) => `타발수 ${current.toLocaleString('ko-KR')}`,
-    moldShotRemaining: (remaining: number) => `잔여 ${remaining.toLocaleString('ko-KR')}`,
+    moldShotCount: (current: number) => current.toLocaleString('ko-KR'),
+    moldShotRemaining: (remaining: number) => remaining.toLocaleString('ko-KR'),
     moldShotRemainingUnknown: '잔여 산출 불가',
     /** 적정 타수를 넘었어도 등록을 막지 않는다 — 경고만 낸다(스펙 §6). */
     moldShotExceeded: '적정 타수를 넘었습니다. 담당자에게 확인하세요.',

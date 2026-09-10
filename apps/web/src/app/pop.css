@@ -4312,46 +4312,6 @@
   align-items: baseline;
 }
 
-.pop-ui .pop-rc-input-item {
-  grid-column: 1;
-  grid-row: 1;
-}
-
-/* 수량은 품목과 «같은 줄»에 선다 — 번호 옆이 아니라. */
-.pop-ui .pop-rc-input-qty {
-  grid-column: 2;
-  grid-row: 1;
-  margin-inline-start: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-/* 번호는 한 단계 낮다 — 색은 그대로 두고 글자만 보조 크기로 내린다. */
-.pop-ui .pop-rc-input-lot {
-  grid-column: 1;
-  grid-row: 2;
-  font-size: var(--pop-label);
-}
-
-/*
- * 금형 한 줄 — 번호 · 이름 · 타발수 · 잔여 넷이 한 덩이로 보이던 것을 갈라 놓는다.
- *
- * ⭐ 번호만 굵게 두고 나머지는 보조색으로 내린다. 사이는 넓혀 낱말 묶음이 서로 붙지 않게 한다.
- */
-.pop-ui .pop-rc-mold {
-  column-gap: var(--space-4);
-  row-gap: 2px;
-  margin-block-start: var(--space-5);
-}
-
-.pop-ui .pop-rc-mold > span:nth-child(2) {
-  font-weight: 600;
-}
-
-.pop-ui .pop-rc-mold > span:nth-child(n + 3) {
-  color: var(--on-surface-muted);
-  font-variant-numeric: tabular-nums;
-}
-
 /* 금형 줄 다음에 오는 표제 — 붙어 있으면 금형이 그 표제에 딸린 것처럼 읽힌다. */
 .pop-ui .pop-rc-mold + section > .pane-title,
 .pop-ui .pop-rc-mold ~ section > .pane-title {
@@ -4377,4 +4337,70 @@
 .pop-ui .pop-rc-inputs ~ section + .banner-slot,
 .pop-ui .pane > section + .banner-slot {
   margin-block-start: var(--space-4);
+}
+
+/*
+ * 이름과 값 한 쌍 — **이름은 값 «위»에, 좁은 사이로 붙는다**(사용자 제안 시안 2026-09-11).
+ * 쌍 안의 사이는 0 에 가깝게 두고 쌍과 쌍 사이만 벌려야 한 쌍이 한 덩이로 읽힌다.
+ *
+ * ⛔ 상자가 아니다 — 테두리도 바탕도 없다. 자리를 묶는 것이 전부다.
+ */
+.pop-ui .pop-rc-pair {
+  display: grid;
+  row-gap: 0;
+}
+
+/* 투입 한 줄 — 왼쪽은 품목(과 그 아래 번호), 오른쪽은 수량이다. */
+.pop-ui .pop-rc-input-main {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.pop-ui .pop-rc-input-side {
+  grid-column: 2;
+  grid-row: 1;
+  justify-items: end;
+}
+
+.pop-ui .pop-rc-input-lot {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: var(--pop-label);
+}
+
+.pop-ui .pop-rc-input-qty {
+  margin-inline-start: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 금형 표제 — 아래 《현재 생산LOT》 표제와 같은 층으로 선다. */
+.pop-ui .pop-rc-mold-title {
+  margin-block-start: var(--space-5);
+}
+
+/*
+ * 금형 한 줄 — 이름·값 네 쌍이 가로로 흐르고, 좁아지면 접힌다.
+ *
+ * ⛔ 새 상자를 만들지 않는다 — 쌍의 자리만으로 가른다.
+ */
+.pop-ui .pop-rc-mold {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  column-gap: var(--space-5);
+  row-gap: var(--space-3);
+  margin-block-start: var(--space-2);
+}
+
+.pop-ui .pop-rc-mold-no {
+  font-weight: 600;
+}
+
+/* 금형명은 값이되 식별자가 아니다 — 굵기를 주지 않는다. */
+.pop-ui .pop-rc-mold-name {
+  font-weight: 400;
+}
+
+.pop-ui .pop-rc-mold-shot {
+  font-variant-numeric: tabular-nums;
 }

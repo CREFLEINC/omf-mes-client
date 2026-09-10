@@ -46,11 +46,22 @@ export const CurrentInputs = ({
         <ul className="pop-rc-inputs">
           {rows.map((row) => (
             <li key={row.materialConsumptionId} className="pop-rc-input">
-              <span className="pop-rc-input-item">{labels.describeItem(row.itemId)}</span>
-              <span className="pop-rc-input-lot">{labels.describeLot(row.lotId)}</span>
-              <span className="pop-rc-input-qty">
-                {`${row.inputQty} ${labels.describeUom(row.uomId)}`.trim()}
+              {/*
+               * ⭐ **값 위에 이름을 둔다**(사용자 제안 시안 2026-09-11). 코드와 수량이 무엇의
+               *    코드이고 무엇의 수량인지 화면이 스스로 말한다 — 값만 늘어놓으면 옆 화면을
+               *    아는 사람만 읽을 수 있다.
+               */}
+              <span className="pop-rc-pair pop-rc-input-main">
+                <span className="field-label">{t.current.itemCodeLabel}</span>
+                <span className="pop-rc-input-item">{labels.describeItem(row.itemId)}</span>
               </span>
+              <span className="pop-rc-pair pop-rc-input-side">
+                <span className="field-label">{t.current.inputQtyLabel}</span>
+                <span className="pop-rc-input-qty">
+                  {`${row.inputQty} ${labels.describeUom(row.uomId)}`.trim()}
+                </span>
+              </span>
+              <span className="pop-rc-input-lot">{labels.describeLot(row.lotId)}</span>
             </li>
           ))}
         </ul>
@@ -61,8 +72,13 @@ export const CurrentInputs = ({
        *
        * ⚠ 세션에 금형이 없는 것과 못 읽은 것을 다르게 말한다. 앞은 정상이고 뒤는 조치가 있다.
        */}
+      {/*
+       * ⭐ **금형은 자기 표제를 갖는다**(사용자 제안 시안 2026-09-11). 투입 목록 끝에 한 줄로
+       *    붙여 두었더니 마지막 자재의 딸린 정보처럼 읽혔다. 아래 《현재 생산LOT》과 같은
+       *    층으로 세운다 — 새 상자를 만드는 것이 아니라 이미 있는 표제 형태를 쓴다.
+       */}
+      <h3 className="pane-title pop-rc-mold-title">{t.current.moldSectionLabel}</h3>
       <p className="pop-rc-mold">
-        <span className="pop-rc-mold-label">{t.current.moldLabel}</span>
         {moldFailed && <span>{t.current.moldUnknown}</span>}
         {/* 「없다」와 「알 수 없다」를 가른다 — 세션이 없으면 물린 금형을 물어볼 자리가 없다. */}
         {!moldFailed && mold === null && (
@@ -71,17 +87,30 @@ export const CurrentInputs = ({
         {!moldFailed && mold !== null && (
           <>
             {/*
-             * 번호와 이름을 «두 칸»으로 가른다(사용자 지시 2026-09-11) — 한 글자열로 두면
-             * 번호와 이름이 한 덩이로 읽혀 무엇이 식별자인지 눈이 다시 찾는다. 굵기와 색은
-             * 스타일이 가른다.
+             * 번호·이름·타발수를 «각자 이름을 단 칸»으로 가른다(사용자 제안 시안 2026-09-11).
+             * 한 줄에 값만 늘어놓으면 어느 숫자가 타발수이고 어느 것이 잔여인지 매번 읽어야 한다.
              */}
-            <span>{mold.moldCode}</span>
-            <span>{mold.moldName}</span>
-            <span>{t.current.moldShotCount(mold.currentShotCount)}</span>
-            <span>
-              {mold.availableShotCount === null
-                ? t.current.moldShotRemainingUnknown
-                : t.current.moldShotRemaining(mold.availableShotCount)}
+            <span className="pop-rc-pair">
+              <span className="field-label">{t.current.moldNoLabel}</span>
+              <span className="pop-rc-mold-no">{mold.moldCode}</span>
+            </span>
+            <span className="pop-rc-pair">
+              <span className="field-label">{t.current.moldNameLabel}</span>
+              <span className="pop-rc-mold-name">{mold.moldName}</span>
+            </span>
+            <span className="pop-rc-pair">
+              <span className="field-label">{t.current.shotCountLabel}</span>
+              <span className="pop-rc-mold-shot">
+                {t.current.moldShotCount(mold.currentShotCount)}
+              </span>
+            </span>
+            <span className="pop-rc-pair">
+              <span className="field-label">{t.current.shotRemainingLabel}</span>
+              <span className="pop-rc-mold-shot">
+                {mold.availableShotCount === null
+                  ? t.current.moldShotRemainingUnknown
+                  : t.current.moldShotRemaining(mold.availableShotCount)}
+              </span>
             </span>
             {/*
              * ⚠ **넘어도 막지 않는다**(스펙 §6 — 경고). 차단을 만들면 설계가 정한 적 없는

@@ -6982,7 +6982,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-inline-start: auto;
 }
 
-/* 지금 물린 금형. 목록과 붙되 한 덩이로 읽히게 사이를 둔다. */
+/* 지금 물린 금형·신규 부품. 목록과 붙되 한 덩이로 읽히게 사이를 둔다. */
 .pop-rc-mold,
 .pop-rc-part {
   display: flex;
@@ -6994,7 +6994,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   letter-spacing: var(--type-body-lg-tracking);
 }
 
-.pop-rc-mold-label,
+/* ⚠ 금형 줄은 이름표를 칸마다 갖게 되어(`pop.css`) 줄 앞 이름표를 쓰지 않는다. */
 .pop-rc-part-label {
   font-weight: 600;
   color: var(--on-surface-muted);
