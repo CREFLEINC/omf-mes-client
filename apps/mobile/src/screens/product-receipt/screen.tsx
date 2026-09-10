@@ -1,8 +1,11 @@
-import { AlertBanner, Button, Select, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
+import { playErrorTone } from '../../patterns/error-tone';
 import { useLocationByCode, useLocations } from '../../patterns/locations';
 import { useItemLabels } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
@@ -12,9 +15,19 @@ import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
-import { useHandlingUnitByNo, useLots, useUnitContents, useWarehouses } from './queries';
+import {
+  useHandlingUnitByNo,
+  useLots,
+  usePutawayRules,
+  useStockedLots,
+  useUnitContents,
+  useWarehouses,
+} from './queries';
 import {
   INSPECTION_PENDING,
+  MATCHED,
+  NOT_RECOMMENDED,
+  NO_RULE,
   RECEIPT_LABEL,
   canSubmit,
   destinationOf,
@@ -23,13 +36,18 @@ import {
   putawayTaskIdsOf,
   qtyProblemOf,
   queuedForLotsOf,
+  recommendedOf,
+  stockedLines,
   toPutawayDraft,
   toReceiptDraft,
+  unverifiedLines,
+  verdictOf,
   type DraftLine,
 } from './receipt';
 import './screen.css';
 
 const t = messages.productReceipt;
+const required = messages.common.required;
 
 type Outcome = 'held' | 'sent' | 'receivedOnly' | 'putawayRejected' | 'rejected';
 
@@ -48,6 +66,13 @@ export const ProductReceiptScreen = () => {
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
+  const [confirmedNoRule, setConfirmedNoRule] = useState(false);
+  /* 키패드는 지금 적는 줄 아래에만 선다(공유계약 D-4). 줄마다 두면 화면이 키패드로 찬다. */
+  const [keypadFor, setKeypadFor] = useState<number | null>(null);
+  /* 같은 라벨을 다시 읽으면 상태는 그대로라 소리가 다시 나지 않는다. 회차를 함께 센다. */
+  const [scanSeq, setScanSeq] = useState(0);
+  const contentsSection = useRef<HTMLDivElement | null>(null);
+  const locationSection = useRef<HTMLDivElement | null>(null);
   /*
    * 보내는 중인가. 상태로 두면 같은 틱에 두 번 누른 것을 막지 못한다 - 다시 그리기 전에
    * 두 번째가 들어와 같은 LOT 이 두 번 재고로 선다.
@@ -71,6 +96,19 @@ export const ProductReceiptScreen = () => {
   const plantId = currentPlantId();
 
   /*
+   * 적치 지시는 입고 응답에서야 생긴다. 스캔한 위치가 맞는지는 그 전에 알아야 하므로 규칙을
+   * 직접 묻는다. 한 인식표의 품목은 하나라고 보고 첫 줄로 묻는다.
+   */
+  const rules = usePutawayRules(warehouseId, lines[0]?.itemId ?? null);
+  const recommended = recommendedOf(rules.data ?? []);
+  const verdict = verdictOf(recommended, atLocation.data ?? null);
+  const stocked = useStockedLots(lines.map((line) => line.lotId));
+  const alreadyStocked = stockedLines(lines, stocked);
+  const unverified = unverifiedLines(lines, stocked);
+  const recommendedCode =
+    (locations.data ?? []).find((each) => each.locationId === recommended)?.locationCode ?? '';
+
+  /*
    * 큐에 담긴 것은 서버 응답에 없다. 읽기 전에는 담긴 것이 없는 것과 구별되지 않아 같은
    * 인식표를 두 번 입고하게 되므로, 읽기 전에는 담긴 것으로 세어 막아 둔다.
    */
@@ -81,7 +119,36 @@ export const ProductReceiptScreen = () => {
       )
     : 1;
 
-  const ready = canSubmit(warehouse, destination, lines, worker !== null, plantId, queuedForLots);
+  const ready = canSubmit({
+    warehouse,
+    destination,
+    lines,
+    hasWorker: worker !== null,
+    plantId,
+    queuedForLots,
+    verdict,
+    confirmedNoRule,
+    stocked,
+  });
+
+  /*
+   * 스캔한 것이 이 화면의 대상이 아니라는 것을 소리로도 알린다(공유계약 D-2). 기기를 허리에
+   * 매단 채 읽으므로 화면에만 적으면 사람은 통과한 줄 알고 다음 동작으로 넘어간다.
+   */
+  const scanMissed =
+    (scannedUnit !== null && unit.isSuccess && unit.data === null) ||
+    (scannedLocation !== null && atLocation.isSuccess && atLocation.data === null) ||
+    (scannedLocation !== null && verdict === NOT_RECOMMENDED);
+
+  useEffect(() => {
+    if (scanMissed) {
+      playErrorTone();
+    }
+  }, [scanMissed, scanSeq]);
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(lines.length > 0, contentsSection);
+  useAdvanceTo(lines.length > 0 && managesLocations(warehouse), locationSection);
 
   /* 담긴 것을 화면이 적을 자리로 옮긴다. 수량은 인식표가 말한 것으로 채우고 고칠 수 있게 둔다. */
   useEffect(() => {
@@ -108,13 +175,29 @@ export const ProductReceiptScreen = () => {
   const unitScan = useScanField({
     onScan: (value) => {
       setScannedUnit(value.trim());
+      setScanSeq((seq) => seq + 1);
     },
   });
 
   const locationScan = useScanField({
     onScan: (value) => {
       setScannedLocation(value.trim());
+      setConfirmedNoRule(false);
+      setScanSeq((seq) => seq + 1);
     },
+  });
+
+  /*
+   * 뒤로가기는 스캔한 인식표를 먼저 놓는다. 두지 않으면 수량을 적던 사람이 한 번에 작업
+   * 목록까지 나가 인식표를 다시 스캔해야 한다.
+   */
+  useBackStep(lines.length > 0, () => {
+    setScannedUnit(null);
+    setScannedLocation(null);
+    setLines([]);
+    setConfirmedNoRule(false);
+    setKeypadFor(null);
+    unitScan.focus();
   });
 
   const nameOf = (line: DraftLine): string =>
@@ -131,6 +214,8 @@ export const ProductReceiptScreen = () => {
     setLines([]);
     setOutcome(null);
     setSaveFailed(false);
+    setConfirmedNoRule(false);
+    setKeypadFor(null);
     unitScan.focus();
   };
 
@@ -285,7 +370,7 @@ export const ProductReceiptScreen = () => {
           <h2>{t.unit.legend}</h2>
           <TextField
             ref={unitScan.ref}
-            label={t.unit.scanLabel}
+            label={required(t.unit.scanLabel)}
             placeholder={t.unit.scanPlaceholder}
             size="xl"
             fullWidth
@@ -314,8 +399,19 @@ export const ProductReceiptScreen = () => {
 
       {lines.length === 0 ? null : (
         <>
-          <section className="product-receipt__section">
+          <section className="product-receipt__section" ref={contentsSection}>
             <h2>{t.contents.legend}</h2>
+            {/* 다른 기기가 먼저 입고한 것은 큐로는 알 수 없다. 두 번 서면 제품이 두 벌이 된다. */}
+            {alreadyStocked.length > 0 ? (
+              <AlertBanner variant="error" title={t.stocked.title}>
+                {t.stocked.description}
+              </AlertBanner>
+            ) : null}
+            {alreadyStocked.length === 0 && unverified.length > 0 ? (
+              <AlertBanner variant="warning" title={t.unverified.title}>
+                {t.unverified.description}
+              </AlertBanner>
+            ) : null}
             {lines.map((line, index) => {
               const problem = qtyProblemOf(line);
               const lot = lots.data?.get(line.lotId);
@@ -323,10 +419,14 @@ export const ProductReceiptScreen = () => {
               return (
                 <div key={line.handlingUnitContentId} className="product-receipt__line">
                   <TextField
-                    label={t.contents.qtyLabel(nameOf(line))}
+                    label={required(t.contents.qtyLabel(nameOf(line)))}
                     size="xl"
                     fullWidth
-                    inputMode="numeric"
+                    /*
+                     * 장갑을 끼고 한 손으로 조작한다. 기기 키보드는 키가 촘촘하고, 올라오면
+                     * 위치 스캔 칸과 완료 단추를 덮는다(설계 §7 · 공유계약 G-6).
+                     */
+                    inputMode="none"
                     value={line.qty}
                     onChange={(event) => {
                       const next = event.target.value;
@@ -334,8 +434,22 @@ export const ProductReceiptScreen = () => {
                         current.map((each, at) => (at === index ? { ...each, qty: next } : each)),
                       );
                     }}
+                    onFocus={() => {
+                      setKeypadFor(line.handlingUnitContentId);
+                    }}
                     error={problem === null ? undefined : t.contents.problem[problem]}
                   />
+                  {keypadFor !== line.handlingUnitContentId ? null : (
+                    <NumberPad
+                      value={line.qty}
+                      onChange={(next) => {
+                        setLines((current) =>
+                          current.map((each, at) => (at === index ? { ...each, qty: next } : each)),
+                        );
+                      }}
+                      allowDecimal
+                    />
+                  )}
                   <p className="product-receipt__expected">
                     {t.contents.expected(String(line.expectedQty))}
                   </p>
@@ -362,13 +476,20 @@ export const ProductReceiptScreen = () => {
             {online ? null : <AlertBanner variant="info" title={t.releaseUnknown} />}
           </section>
 
-          <section className="product-receipt__section">
+          <section className="product-receipt__section" ref={locationSection}>
             <h2>{t.location.legend}</h2>
             {managesLocations(warehouse) ? (
               <>
+                {/* 권장 자리를 먼저 보인다. 다 스캔한 뒤에 막히면 물건을 들고 되돌아온다. */}
+                {rules.isError ? (
+                  <AlertBanner variant="warning" title={t.location.rulesLoadFailed} />
+                ) : null}
+                {recommended === null ? null : (
+                  <Chip>{t.location.recommended(recommendedCode)}</Chip>
+                )}
                 <TextField
                   ref={locationScan.ref}
-                  label={t.location.scanLabel}
+                  label={required(t.location.scanLabel)}
                   placeholder={t.location.scanPlaceholder}
                   size="xl"
                   fullWidth
@@ -389,6 +510,26 @@ export const ProductReceiptScreen = () => {
                 {scannedLocation !== null && atLocation.data === null ? (
                   <AlertBanner variant="error" title={t.location.notFound(scannedLocation)} />
                 ) : null}
+
+                {atLocation.data == null ? null : verdict === MATCHED ? (
+                  <AlertBanner variant="success" title={t.location.matched} />
+                ) : verdict === NOT_RECOMMENDED ? (
+                  <AlertBanner variant="error" title={t.location.notRecommended(recommendedCode)} />
+                ) : (
+                  <>
+                    <AlertBanner variant="warning" title={t.location.noRule} />
+                    <Button
+                      className="product-receipt__wide"
+                      variant={confirmedNoRule ? 'filled' : 'outlined'}
+                      size="xl"
+                      onClick={() => {
+                        setConfirmedNoRule(true);
+                      }}
+                    >
+                      {t.location.noRuleConfirm}
+                    </Button>
+                  </>
+                )}
               </>
             ) : (
               <>
@@ -409,15 +550,17 @@ export const ProductReceiptScreen = () => {
             ) : null}
             {worker === null ? <p className="product-receipt__note">{t.noWorker}</p> : null}
             {plantId === null ? <p className="product-receipt__note">{t.noPlant}</p> : null}
-            <Button
-              className="product-receipt__wide"
-              variant="filled"
-              size="2xl"
-              disabled={!ready}
-              onClick={() => void submit()}
-            >
-              {t.submit}
-            </Button>
+            <div className="action-bar">
+              <Button
+                className="product-receipt__wide"
+                variant="filled"
+                size="2xl"
+                disabled={!ready}
+                onClick={() => void submit()}
+              >
+                {t.submit}
+              </Button>
+            </div>
           </section>
         </>
       )}
