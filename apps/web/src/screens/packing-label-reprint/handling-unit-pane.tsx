@@ -33,24 +33,29 @@ export const HandlingUnitPane = ({
      * ⭐ **칸을 가운데로 맞춘다**(사용자 지시 2026-09-10 · 자재LOT 등록 화면의 표와 같은 규칙).
      * 줄이 짧은 표라 왼쪽 정렬이면 열 사이가 벌어져 눈이 가로로 오간다.
      */
+    /*
+     * ⚠ **열 폭을 비율로 나눈다**(사용자 지시 2026-09-10). LOT 이 남는 폭을 다 먹고 품목·수량이
+     *   96 에 묶여, 값은 짧은데 열 이름과 값이 서로 멀었다.
+     */
     {
       key: 'lotNo',
       header: t.lotColumn,
       align: 'center',
+      width: '44%',
       render: (row) => row.lotNo ?? t.unknownValue,
     },
     {
       key: 'itemCode',
       header: t.itemColumn,
       align: 'center',
-      width: '96px',
+      width: '28%',
       render: (row) => row.itemCode ?? t.unknownValue,
     },
     {
       key: 'qty',
       header: t.qtyColumn,
       align: 'center',
-      width: '96px',
+      width: '28%',
       /* 단위를 못 받았으면 수량만 낸다 — 단위 없는 수량은 참이고, 지어낸 단위는 거짓이다. */
       render: (row) =>
         row.uomCode === null ? String(row.qty) : `${String(row.qty)} ${row.uomCode}`,
