@@ -3,7 +3,7 @@ name: Front image
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - 'web-v*.*.*'
 
 permissions:
   contents: read

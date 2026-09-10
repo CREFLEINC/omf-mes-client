@@ -55,7 +55,7 @@ function runDeploy(environment, overrides = []) {
     [
       '--non-interactive',
       '--version',
-      'v1.2.3',
+      'web-v1.2.3',
       '--bind-ip',
       '10.0.0.20',
       '--port',
@@ -89,7 +89,7 @@ test('a single script configures, starts, and health-checks the selected release
       'FRONT_PORT=8080',
       'API_UPSTREAM=http://10.0.0.30:3100',
       'IMAGE_REPOSITORY=registry.example.com/group/front',
-      'IMAGE_TAG=v1.2.3',
+      'IMAGE_TAG=web-v1.2.3',
       '',
     ].join('\n'),
   );
@@ -110,7 +110,7 @@ test('interactive deployment accepts version and environment values in prompt or
     encoding: 'utf8',
     env: environment.env,
     input: [
-      'v2.0.1',
+      'web-v2.0.1',
       '10.0.0.20',
       '8080',
       'http://10.0.0.30:3100',
@@ -122,16 +122,18 @@ test('interactive deployment accepts version and environment values in prompt or
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     readFileSync(path.join(environment.installDirectory, '.env'), 'utf8'),
-    /IMAGE_TAG=v2\.0\.1/,
+    /IMAGE_TAG=web-v2\.0\.1/,
   );
 });
 
-test('non-release image versions are rejected', () => {
-  const environment = testEnvironment();
-  const { result } = runDeploy(environment, ['--version', 'stable']);
+test('non-web release image versions are rejected', () => {
+  for (const version of ['stable', 'v1.2.3', 'mobile-v1.2.3', 'desktop-v1.2.3']) {
+    const environment = testEnvironment();
+    const { result } = runDeploy(environment, ['--version', version]);
 
-  assert.equal(result.status, 1);
-  assert.match(result.stderr, /vMAJOR\.MINOR\.PATCH/);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /web-vMAJOR\.MINOR\.PATCH/);
+  }
 });
 
 test('invalid ports fail before deployment files are installed', () => {
@@ -154,12 +156,12 @@ test('failed image pulls preserve the previously installed configuration', () =>
   const environment = testEnvironment({ pullFails: true });
   mkdirSync(environment.installDirectory);
   const existingEnv = path.join(environment.installDirectory, '.env');
-  writeFileSync(existingEnv, 'IMAGE_TAG=v1.0.0\n');
+  writeFileSync(existingEnv, 'IMAGE_TAG=web-v1.0.0\n');
 
   const { result } = runDeploy(environment);
 
   assert.equal(result.status, 1);
-  assert.equal(readFileSync(existingEnv, 'utf8'), 'IMAGE_TAG=v1.0.0\n');
+  assert.equal(readFileSync(existingEnv, 'utf8'), 'IMAGE_TAG=web-v1.0.0\n');
 });
 
 test('an unhealthy service fails deployment and prints diagnostic commands', () => {

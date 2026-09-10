@@ -6,8 +6,18 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 const script = path.resolve(import.meta.dirname, 'resolve-image-tags.sh');
+const workflow = readFileSync(
+  path.resolve(import.meta.dirname, '../../.github/workflows/front-image.yml'),
+  'utf8',
+);
 const repository = 'registry.example.com/group/front';
 const revision = 'd41f261abc1234567890';
+
+test('front image workflow subscribes only to web release tags', () => {
+  const tagPatterns = workflow.match(/tags:\n((?:\s+- .+\n)+)/)?.[1]?.trim();
+
+  assert.equal(tagPatterns, "- 'web-v*.*.*'");
+});
 
 function resolveTags({ eventName, ref, refName, registryHost = 'registry.example.com' }) {
   const outputDirectory = mkdtempSync(path.join(tmpdir(), 'omf-front-tags-'));
@@ -39,19 +49,19 @@ test('main pushes cannot publish images', () => {
   });
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Only release tag pushes/);
+  assert.match(result.stderr, /Only web release tag pushes/);
 });
 
-test('release tag pushes publish version, stable and immutable SHA tags', () => {
+test('web release tag pushes publish version, stable and immutable SHA tags', () => {
   const { result, output } = resolveTags({
     eventName: 'push',
-    ref: 'refs/tags/v1.2.3',
-    refName: 'v1.2.3',
+    ref: 'refs/tags/web-v1.2.3',
+    refName: 'web-v1.2.3',
   });
 
   assert.equal(result.status, 0, result.stderr);
   assert.match(output, /front:sha-d41f261/);
-  assert.match(output, /front:v1\.2\.3/);
+  assert.match(output, /front:web-v1\.2\.3/);
   assert.match(output, /front:stable/);
 });
 
@@ -63,36 +73,49 @@ test('manual runs cannot publish images', () => {
   });
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /Only release tag pushes/);
+  assert.match(result.stderr, /Only web release tag pushes/);
 });
 
 test('non-SemVer release tags are rejected', () => {
   const { result } = resolveTags({
     eventName: 'push',
-    ref: 'refs/tags/v1.2',
-    refName: 'v1.2',
+    ref: 'refs/tags/web-v1.2',
+    refName: 'web-v1.2',
   });
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /vMAJOR\.MINOR\.PATCH/);
+  assert.match(result.stderr, /web-vMAJOR\.MINOR\.PATCH/);
 });
 
 test('prerelease tags are rejected', () => {
   const { result } = resolveTags({
     eventName: 'push',
-    ref: 'refs/tags/v1.2.3-rc.1',
-    refName: 'v1.2.3-rc.1',
+    ref: 'refs/tags/web-v1.2.3-rc.1',
+    refName: 'web-v1.2.3-rc.1',
   });
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /vMAJOR\.MINOR\.PATCH/);
+  assert.match(result.stderr, /web-vMAJOR\.MINOR\.PATCH/);
+});
+
+test('other platform and legacy unprefixed release tags are rejected', () => {
+  for (const refName of ['mobile-v1.2.3', 'desktop-v1.2.3', 'v1.2.3']) {
+    const { result } = resolveTags({
+      eventName: 'push',
+      ref: `refs/tags/${refName}`,
+      refName,
+    });
+
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /web-vMAJOR\.MINOR\.PATCH/);
+  }
 });
 
 test('image repositories outside the configured registry are rejected', () => {
   const { result } = resolveTags({
     eventName: 'push',
-    ref: 'refs/tags/v1.2.3',
-    refName: 'v1.2.3',
+    ref: 'refs/tags/web-v1.2.3',
+    refName: 'web-v1.2.3',
     registryHost: 'other.example.com',
   });
 
