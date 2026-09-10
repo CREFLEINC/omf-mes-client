@@ -43,6 +43,7 @@ import { applyPopFit } from '../patterns/pop-fit';
 import { PopLogoutButton } from '../patterns/pop-logout';
 import { PopScreenNavButton } from '../patterns/pop-screen-nav';
 import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../patterns/pop-identity';
+import { readTerminalToken } from '../patterns/pop-terminal-token';
 import { AppProviders } from './providers';
 
 /**
@@ -155,13 +156,29 @@ if (!container) {
   throw new Error('root 요소가 pop.html에 없습니다');
 }
 
-createRoot(container).render(
-  <StrictMode>
-    <AppProviders>
-      <PopShellIdentity>
-        <RouterProvider router={popRouter} />
-        {import.meta.env.MODE === 'development' ? <PopDevHomeShortcut /> : null}
-      </PopShellIdentity>
-    </AppProviders>
-  </StrictMode>,
-);
+const mount = () => {
+  createRoot(container).render(
+    <StrictMode>
+      <AppProviders>
+        <PopShellIdentity>
+          <RouterProvider router={popRouter} />
+          {import.meta.env.MODE === 'development' ? <PopDevHomeShortcut /> : null}
+        </PopShellIdentity>
+      </AppProviders>
+    </StrictMode>,
+  );
+};
+
+/*
+ * ⭐ **단말 토큰을 먼저 읽고 화면을 세운다**(#999). 설계가 POP 요청을 단말 토큰으로
+ *    인증하도록 정했는데(`Authorization: Bearer <단말 토큰>`), 셸에서 읽어 오는 것은
+ *    프로세스를 건너가므로 «비동기» 이고 요청에 헤더를 붙이는 자리는 «동기» 다.
+ *
+ * ⛔ **순서를 뒤집지 않는다.** 먼저 세우면 첫 조회들이 토큰 없이 나가 거절되고, 화면은
+ *    잠깐 「단말이 확인되지 않았습니다」를 보였다가 스스로 낫는 것처럼 움직인다 — 진짜
+ *    미등록 단말과 구분되지 않는다.
+ *
+ * ⚠ 읽기는 실패해도 던지지 않는다(`patterns/pop-terminal-token`). 셸 밖(브라우저로 여는
+ *   개발 확인)에서도 통로가 없을 뿐이므로 그대로 화면을 세운다.
+ */
+void readTerminalToken().then(mount);
