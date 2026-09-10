@@ -4404,3 +4404,49 @@
 .pop-ui .pop-rc-mold-shot {
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * 좌단 구획을 **가는 선으로 가른다**(사용자 제안 시안 2026-09-11). 표제만으로는 세 덩이가
+ * 한 흐름으로 이어져, 어디까지가 투입이고 어디부터가 금형인지 눈이 표제를 다시 찾는다.
+ *
+ * ⛔ 상자를 만들지 않는다 — 선 하나이고 색은 이미 쓰는 테두리색이다.
+ */
+.pop-ui .pop-rc-mold-title,
+.pop-ui .pop-rc-inputs ~ section > .pane-title {
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+/*
+ * 수량 쪽 — **선으로 갈라 세우고 수를 크게 둔다**(같은 시안). 품목과 수량이 같은 줄에 있어도
+ * 사이가 비어 있기만 하면 어느 수가 어느 자재의 것인지 눈이 가로로 훑어야 한다.
+ */
+.pop-ui .pop-rc-input-side {
+  padding-inline-start: var(--space-4);
+  border-inline-start: 1px solid var(--outline-variant);
+}
+
+.pop-ui .pop-rc-input-qty {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.pop-ui .pop-rc-input-qty-value {
+  font: 700 24px/32px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-ui .pop-rc-input-qty-uom {
+  color: var(--on-surface-muted);
+  font-size: var(--pop-label);
+}
+
+/*
+ * ⛔ **금형 칸 사이에는 선을 넣지 않는다.** 넷이 좁은 구획에서 접히는데, 접힌 줄의 첫 칸에
+ *    선이 남아 아무것도 가르지 않는 세로 막대가 떠 있었다(실측 2026-09-11 · 「잔여 타발수」
+ *    앞). 접힘을 아는 방법이 CSS 에 없으므로 사이는 여백이 준다.
+ */
+.pop-ui .pop-rc-mold {
+  column-gap: var(--space-6);
+}

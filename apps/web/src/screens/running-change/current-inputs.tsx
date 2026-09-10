@@ -57,8 +57,14 @@ export const CurrentInputs = ({
               </span>
               <span className="pop-rc-pair pop-rc-input-side">
                 <span className="field-label">{t.current.inputQtyLabel}</span>
+                {/*
+                 * ⭐ 수와 단위를 «두 칸»으로 가른다(사용자 제안 시안 2026-09-11) — 눈이 먼저
+                 *    잡아야 하는 것은 수이고, 단위는 그 수가 무엇인지 밝히는 꼬리다. 크기로
+                 *    가른다. ⛔ 값은 그대로다.
+                 */}
                 <span className="pop-rc-input-qty">
-                  {`${row.inputQty} ${labels.describeUom(row.uomId)}`.trim()}
+                  <span className="pop-rc-input-qty-value">{row.inputQty}</span>
+                  <span className="pop-rc-input-qty-uom">{labels.describeUom(row.uomId)}</span>
                 </span>
               </span>
               <span className="pop-rc-input-lot">{labels.describeLot(row.lotId)}</span>
