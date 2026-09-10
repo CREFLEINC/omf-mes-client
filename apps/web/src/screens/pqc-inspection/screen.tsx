@@ -77,8 +77,8 @@ import {
 
 const t = messages.pqcInspection;
 
-/** 계약이 못박은 두 값 중 확정 쪽. 이 값이면 회차를 더 고치지 않는다. */
-const CONFIRMED_STATUS = '확정';
+/** 계약이 정한 두 값 중 확정 쪽. 이 값이면 회차를 더 고치지 않는다. */
+const CONFIRMED_STATUS = 'CONFIRMED';
 
 export const PqcInspectionScreen = () => {
   const [searchParams] = useSearchParams();
@@ -433,9 +433,7 @@ export const PqcInspectionScreen = () => {
           inspectedDraft={inspectedDraft}
           onInspectedChange={changeInspected}
           inspectedQty={inspectedQty}
-          uomCode={
-            uoms.data?.find((uom) => uom.uomId === detail.data.uomId)?.uomCode ?? null
-          }
+          uomCode={uoms.data?.find((uom) => uom.uomId === detail.data.uomId)?.uomCode ?? null}
           draft={draft}
           onChange={changeDraft}
           fieldErrors={outbox.rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}

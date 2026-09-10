@@ -53,7 +53,12 @@ describe('resolveSaveBlock', () => {
     expect(resolveSaveBlock({ ...base, gate: 'unavailable' })).toBe('gate-unavailable');
     expect(resolveSaveBlock({ ...base, gate: 'denied' })).toBe('gate-denied');
     /* 단말을 모르는 것도 「통과」가 아니다. */
-    expect(resolveSaveBlock({ ...base, gate: 'unidentified' })).toBe('gate-denied');
+    /*
+     * ⛔ **「단말을 모른다」는 「권한이 없다」와 다른 사유다**(#1004). 합쳐 두었더니 단말
+     *    신원이 서지 않는 배포 셸에서 이 화면이 상시 「이 단말에서는 입력할 수 없습니다」로
+     *    잠겼고, 현장은 그것을 권한 회수로 읽었다.
+     */
+    expect(resolveSaveBlock({ ...base, gate: 'unidentified' })).toBe('gate-unidentified');
     expect(resolveSaveBlock({ ...base, gate: 'checking' })).toBe('gate-checking');
   });
 

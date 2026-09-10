@@ -130,6 +130,18 @@ export type QuantityTotals =
 export const toTotals = (draft: QuantityDraft, inspectedQty: number): QuantityTotals => {
   if (hasQuantityError(validateQuantities(draft))) return { kind: 'uncountable' };
 
+  /*
+   * ⛔ **검사 수량이 없거나 0 이면 셀 수 없다**(스펙 §4-B `inspected_qty > 0` CHECK).
+   *
+   *    위 머리말의 규율이 세 칸(왼쪽 변)에만 걸려 있었고 **검사 수량(오른쪽 변)에는 빠져
+   *    있었다.** 빈 칸이 0 으로 읽히고 세 칸도 비어 합이 0 이면 `0 === 0` 이 되어 화면이
+   *    「일치합니다」라고 말한다 — **아무것도 입력하지 않은 화면에서 확정이 열리고**,
+   *    되돌릴 수 없는 판정 기록이 수량 0 으로 만들어진다.
+   *
+   *    「0 건을 검사했다」는 뜻이 있는 값이 아니다. 그래서 0 을 「셀 수 없음」으로 둔다.
+   */
+  if (inspectedQty <= 0) return { kind: 'uncountable' };
+
   const sum = readMicro(draft.accepted) + readMicro(draft.rejected) + readMicro(draft.held);
   const inspected = fromServerQty(inspectedQty);
 
