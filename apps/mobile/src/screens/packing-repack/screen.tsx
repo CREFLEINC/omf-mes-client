@@ -15,7 +15,6 @@ import {
 } from '../../patterns/handling-units';
 import { useItemLabels, useUomCodes } from '../../patterns/masters';
 import { createIdempotencyKey, useOutbox } from '../../patterns/outbox';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -72,7 +71,6 @@ export const PackingRepackScreen = () => {
   const [duplicate, setDuplicate] = useState(false);
   const [type, setType] = useState<RepackType | null>(null);
   const [lines, setLines] = useState<DraftLine[]>([]);
-  const [manual, setManual] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
   /* 키패드는 지금 적는 줄 아래에만 선다(공유계약 D-4). 줄마다 두면 화면이 키패드로 찬다. */
@@ -231,7 +229,6 @@ export const PackingRepackScreen = () => {
     setLines([]);
     setType(null);
     setScanned(null);
-    setManual('');
     setDuplicate(false);
     setOutcome(null);
     setKeypadFor(null);
@@ -340,17 +337,19 @@ export const PackingRepackScreen = () => {
           size="xl"
           fullWidth
         />
-        <ManualEntry
-          label={t.source.manualLabel}
-          submitLabel={t.source.manualSubmit}
-          value={manual}
-          onChange={setManual}
-          onSubmit={() => {
-            setDuplicate(false);
-            setScanned(manual.trim());
-            setManual('');
-          }}
-        />
+        {/*
+         * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+         * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+         */}
+        {scanField.manual ? (
+          <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
+            {t.source.manualSubmit}
+          </Button>
+        ) : (
+          <Button variant="text" size="xl" onClick={scanField.openManual}>
+            {t.source.manualLabel}
+          </Button>
+        )}
 
         {scanned !== null && found.isPending ? <p role="status">{t.source.loading}</p> : null}
         {found.isError ? <AlertBanner variant="warning" title={t.source.loadFailed} /> : null}

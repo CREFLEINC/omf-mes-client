@@ -125,8 +125,9 @@ const entryRoute = (seen: Request[], lotNo = '0001234500000012002607310001230007
 });
 
 const findItem = async (user: ReturnType<typeof userEvent.setup>) => {
+  /* 칸은 하나다. 직접 입력을 누르면 그 스캔 칸이 손 입력으로 열린다. */
   await user.click(await screen.findByRole('button', { name: '직접 입력' }));
-  await user.type(await screen.findByLabelText('직접 입력'), CODE);
+  await user.type(await screen.findByLabelText('품목코드'), CODE);
   await user.click(screen.getByRole('button', { name: '찾기' }));
 };
 

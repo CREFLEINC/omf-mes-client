@@ -8,7 +8,6 @@ import { useScannedLot } from '../../patterns/lots';
 import { useItemLabels } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -54,9 +53,7 @@ export const StockTransferScreen = () => {
   const [type, setType] = useState<TransferType>(NORMAL);
   const [toWarehouseId, setToWarehouseId] = useState<number | null>(null);
   const [scannedLocation, setScannedLocation] = useState<string | null>(null);
-  const [manualLocation, setManualLocation] = useState('');
   const [scannedLot, setScannedLot] = useState<string | null>(null);
-  const [manualLot, setManualLot] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [duplicate, setDuplicate] = useState(false);
   const [noStock, setNoStock] = useState(false);
@@ -185,8 +182,6 @@ export const StockTransferScreen = () => {
     setLines([]);
     setScannedLot(null);
     setScannedLocation(null);
-    setManualLot('');
-    setManualLocation('');
     setShipped(null);
     setOutcome(null);
     setSaveFailed(false);
@@ -392,16 +387,19 @@ export const StockTransferScreen = () => {
           size="xl"
           fullWidth
         />
-        <ManualEntry
-          label={t.to.manualLabel}
-          submitLabel={t.to.manualSubmit}
-          value={manualLocation}
-          onChange={setManualLocation}
-          onSubmit={() => {
-            setScannedLocation(manualLocation.trim());
-            setManualLocation('');
-          }}
-        />
+        {/*
+         * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+         * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+         */}
+        {locationField.manual ? (
+          <Button variant="outlined" size="xl" onClick={locationField.submitManual}>
+            {t.to.manualSubmit}
+          </Button>
+        ) : (
+          <Button variant="text" size="xl" onClick={locationField.openManual}>
+            {t.to.manualLabel}
+          </Button>
+        )}
         {scannedLocation !== null && destination.isPending ? (
           <p role="status">{t.to.loading}</p>
         ) : null}
@@ -440,19 +438,19 @@ export const StockTransferScreen = () => {
               size="xl"
               fullWidth
             />
-            <ManualEntry
-              label={t.from.manualLabel}
-              submitLabel={t.from.manualSubmit}
-              value={manualLot}
-              onChange={setManualLot}
-              onSubmit={() => {
-                setDuplicate(false);
-                setNoStock(false);
-                setUnknownBusinessUnit(false);
-                setScannedLot(manualLot.trim());
-                setManualLot('');
-              }}
-            />
+            {/*
+             * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+             * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+             */}
+            {lotField.manual ? (
+              <Button variant="outlined" size="xl" onClick={lotField.submitManual}>
+                {t.from.manualSubmit}
+              </Button>
+            ) : (
+              <Button variant="text" size="xl" onClick={lotField.openManual}>
+                {t.from.manualLabel}
+              </Button>
+            )}
 
             {scannedLot !== null && foundLot.isPending ? (
               <p role="status">{t.from.loading}</p>

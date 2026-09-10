@@ -7,7 +7,6 @@ import { useLotLabels } from '../../patterns/handling-units';
 import { useLocationByCode } from '../../patterns/locations';
 import { useItemLabels } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -34,7 +33,6 @@ export const PhysicalCountScreen = () => {
 
   const [countId, setCountId] = useState<number | null>(null);
   const [scanned, setScanned] = useState<string | null>(null);
-  const [manual, setManual] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -120,7 +118,6 @@ export const PhysicalCountScreen = () => {
 
   const restart = () => {
     setScanned(null);
-    setManual('');
     setLines([]);
     setOutcome(null);
     setSaveFailed(false);
@@ -227,16 +224,19 @@ export const PhysicalCountScreen = () => {
             size="xl"
             fullWidth
           />
-          <ManualEntry
-            label={t.location.manualLabel}
-            submitLabel={t.location.manualSubmit}
-            value={manual}
-            onChange={setManual}
-            onSubmit={() => {
-              setScanned(manual.trim());
-              setManual('');
-            }}
-          />
+          {/*
+           * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+           * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+           */}
+          {scanField.manual ? (
+            <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
+              {t.location.manualSubmit}
+            </Button>
+          ) : (
+            <Button variant="text" size="xl" onClick={scanField.openManual}>
+              {t.location.manualLabel}
+            </Button>
+          )}
 
           {scanned !== null && location.isPending ? (
             <p role="status">{t.location.loading}</p>

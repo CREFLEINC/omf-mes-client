@@ -6,7 +6,6 @@ import { Link } from 'react-router';
 import { useLocations } from '../../patterns/locations';
 import { useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -41,7 +40,6 @@ export const RecycleEntryScreen = () => {
 
   const [draft, setDraft] = useState<RecycleDraft>(emptyDraft);
   const [searching, setSearching] = useState<string | null>(null);
-  const [manual, setManual] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [lotNo, setLotNo] = useState<string | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -92,7 +90,6 @@ export const RecycleEntryScreen = () => {
   const restart = () => {
     setDraft(emptyDraft);
     setSearching(null);
-    setManual('');
     setOutcome(null);
     setLotNo(null);
     setSaveFailed(false);
@@ -200,16 +197,19 @@ export const RecycleEntryScreen = () => {
           size="xl"
           fullWidth
         />
-        <ManualEntry
-          label={t.item.manualLabel}
-          submitLabel={t.item.manualSubmit}
-          value={manual}
-          onChange={setManual}
-          onSubmit={() => {
-            take(manual);
-            setManual('');
-          }}
-        />
+        {/*
+         * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+         * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+         */}
+        {scanField.manual ? (
+          <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
+            {t.item.manualSubmit}
+          </Button>
+        ) : (
+          <Button variant="text" size="xl" onClick={scanField.openManual}>
+            {t.item.manualLabel}
+          </Button>
+        )}
 
         {rows.isPending && searching !== null ? <p role="status">{t.item.searching}</p> : null}
         {rows.isError ? <AlertBanner variant="error" title={t.item.loadFailed} /> : null}

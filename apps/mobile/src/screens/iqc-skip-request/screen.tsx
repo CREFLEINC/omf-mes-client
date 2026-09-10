@@ -9,7 +9,6 @@ import { displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -81,7 +80,6 @@ export const IqcSkipRequestScreen = () => {
   const { worker } = useWorkerSession();
 
   const [scanned, setScanned] = useState<string | null>(null);
-  const [manual, setManual] = useState('');
   const [reason, setReason] = useState('');
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -230,17 +228,19 @@ export const IqcSkipRequestScreen = () => {
           size="xl"
           fullWidth
         />
-        <ManualEntry
-          label={t.lot.manualLabel}
-          submitLabel={t.lot.manualSubmit}
-          value={manual}
-          onChange={setManual}
-          onSubmit={() => {
-            setScanned(manual.trim() === '' ? null : manual.trim());
-            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-            setManual('');
-          }}
-        />
+        {/*
+         * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+         * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+         */}
+        {scanField.manual ? (
+          <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
+            {t.lot.manualSubmit}
+          </Button>
+        ) : (
+          <Button variant="text" size="xl" onClick={scanField.openManual}>
+            {t.lot.manualLabel}
+          </Button>
+        )}
         {lot.isPending && scanned !== null ? <p role="status">{t.lot.loading}</p> : null}
         {lot.isError ? <AlertBanner variant="error" title={t.lot.loadFailed} /> : null}
         {scanned !== null && !lot.isPending && found === null && !lot.isError ? (
