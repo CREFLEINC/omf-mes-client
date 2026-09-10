@@ -1932,6 +1932,18 @@
 }
 
 /*
+ * ⛔ **채운 버튼([ 기록 ])은 위 규칙에서 뺀다.**
+ *
+ * 위 규칙이 키패드의 «모든» 키를 본문색(`--on-surface`)으로 칠하는데, 그 색은 라이트/다크에
+ * 따라 뒤집힌다 — 밝은 화면에서 붉은 면 위에 검은 글자가 얹혀 읽히지 않았다(사용자 지적).
+ * 채운 면 위의 글자는 면의 짝색(`--on-primary`)이어야 하고, 그 값은 두 모드에서 같다.
+ */
+.pop-ui .omf-numeric-keypad > .numeric-keypad-submit:not(:disabled),
+.pop-ui .numeric-keypad > .numeric-keypad-submit:not(:disabled) {
+  color: var(--on-primary);
+}
+
+/*
  * 구획 «전체»가 지는 조작은 구획 폭을 그대로 쓴다. 폭이 글자 길이로 정해지면, 같은 무게의
  * 조작 둘이 서로 다른 크기로 서서 어느 쪽이 주된 것인지 흐려진다.
  */
