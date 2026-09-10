@@ -110,6 +110,12 @@ export const PackingPane = ({
             placeholder={t.unit.typePlaceholder}
             size="xl"
             aria-label={t.unit.typeLabel}
+            /*
+             * ⚠ **잠긴 이유를 칸에 붙인다.** 화면에 줄로 세우지 않기로 했으므로(사용자 지시
+             * 2026-09-10) 잠긴 칸 자신이 사유를 들고 있어야 한다 — 아무 설명 없이 못 누르는
+             * 칸이 남으면 고장으로 읽힌다(리뷰 지적).
+             */
+            title={locked ? t.unit.lockedReason : undefined}
             disabled={locked || unitTypesFailed}
             onChange={onTypeChange}
           />
@@ -134,6 +140,7 @@ export const PackingPane = ({
             placeholder=""
             size="xl"
             aria-label={t.unit.parentLabel}
+            title={locked ? t.unit.lockedReason : undefined}
             disabled={locked || parentsFailed}
             onChange={(value) => {
               onParentChange(value === NO_PARENT ? null : Number(value));
@@ -158,7 +165,19 @@ export const PackingPane = ({
         <>
           <ul className="pack-work-contents" aria-label={t.contents.sectionLabel}>
             {draft.lines.map((line) => (
-              <li className="pack-work-content-line" key={`${String(line.lotId)}-${String(line.itemId)}`}>
+              <li
+                className="pack-work-content-line"
+                key={`${String(line.lotId)}-${String(line.itemId)}`}
+                /*
+                 * ⚠ **값에 이름을 단다.** 목록 이름만 두면 읽어 주는 도구에는 「LOT · 품목 ·
+                 * 수량」이 이름 없는 값 나열로 간다(리뷰 지적).
+                 */
+                aria-label={t.contents.lineLabel(
+                  line.lotNo,
+                  labels.itemCodeOf(line.itemId) ?? t.contents.unknownCode,
+                  withUom(line.qty, line.uomId),
+                )}
+              >
                 {/* 담긴 줄임을 나타내는 표식 — 스펙 도면의 ✅. 읽어 주는 도구에는 값이 아니다. */}
                 <span className="pack-work-content-mark" aria-hidden="true">
                   ✓
