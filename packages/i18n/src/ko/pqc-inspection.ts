@@ -85,7 +85,7 @@ export const pqcInspection = {
     backspace: '한 자 지움',
     clear: '지움',
     /** 아직 칸을 고르지 않았다. ⛔ 「없음」이라 적지 않는다 — 없는 것이 아니라 «고르면 된다». */
-    noTarget: '칸을 누르면 여기에 들어갑니다',
+    noTarget: '입력할 칸을 선택한 후 숫자를 입력하세요.',
   },
 
   result: {
