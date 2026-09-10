@@ -19,7 +19,7 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
     heldQty: 0,
     uomId: 10,
     inspectedAt: '2026-09-02T10:00:00+09:00',
-    statusCode: '작성중',
+    statusCode: 'DRAFT',
   };
 
   it('계약이 필수로 둔 것이 갖춰지면 보낼 수 있다', () => {
@@ -108,7 +108,7 @@ describe('useOutbox — 끝나지 않는 장애에서 멈추되 담긴 것은 �
         heldQty: 0,
         uomId: 10,
         inspectedAt: '2026-09-02T10:00:00+09:00',
-        statusCode: '작성중',
+        statusCode: 'DRAFT',
       });
     });
 
@@ -135,7 +135,7 @@ describe('useOutbox — 끝나지 않는 장애에서 멈추되 담긴 것은 �
         heldQty: 0,
         uomId: 10,
         inspectedAt: '2026-09-02T10:00:00+09:00',
-        statusCode: '작성중',
+        statusCode: 'DRAFT',
       });
     });
 
