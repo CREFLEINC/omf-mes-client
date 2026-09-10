@@ -3419,19 +3419,26 @@
  *   132 로 두었을 때는 이 자리만 33 이라 상태 칩이 오른쪽 끝에서 혼자 떨어져 보였다
  *   (사용자 지적 2026-09-10). **버튼 글자·여백·글꼴을 바꾸면 이 값도 함께 재어 고친다.**
  */
+/*
+ * ⭐ **[사용자 전환] 상자의 «맨» 폭이다 — 간격을 넣지 않는다.** [화면 이동]은 이 값만큼만
+ *   왼쪽으로 물러나 앉고, 둘 사이의 12 는 [화면 이동] 자신의 오른쪽 여백이 만든다.
+ *   `--pop-logout-w`(= 이 값 + 간격 12)를 자리로 쓰면 여백이 두 번 더해져 두 버튼 사이만
+ *   24 가 됐다(사용자 지적 2026-09-10).
+ */
 :root {
+  --pop-logout-box-w: 95px;
   --pop-screen-nav-w: 111px;
 }
 
 [data-pop-screen-nav] .pop-ui > .pop-header,
 [data-pop-screen-nav] .pop-ui > .pop-terminal-header {
-  padding-right: calc(var(--pop-logout-w, 107px) + var(--pop-screen-nav-w));
+  padding-right: calc(var(--pop-logout-box-w, 95px) + var(--pop-screen-nav-w));
 }
 
 .pop-screen-nav {
   position: fixed;
   top: 0;
-  right: var(--pop-logout-w, 107px);
+  right: var(--pop-logout-box-w, 95px);
   z-index: 20;
   display: flex;
   align-items: center;
