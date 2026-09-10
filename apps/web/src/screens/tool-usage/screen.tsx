@@ -321,7 +321,7 @@ export const ToolUsageScreen = () => {
         {/* ① 툴 스캔 — QR 이 실패해도 코드를 손으로 칠 수 있어야 한다(스펙 §6-1 · D-3). */}
         <Card bordered className="pop-section pop-fixed" aria-label={t.scan.sectionLabel}>
           <Card.Body>
-            <form className="scan-row" onSubmit={submitCode}>
+            <form className="scan-row tool-usage-scan" onSubmit={submitCode}>
               <TextField
                 ref={scanRef}
                 label={t.scan.inputLabel}

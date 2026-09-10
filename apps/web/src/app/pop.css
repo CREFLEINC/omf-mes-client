@@ -3949,3 +3949,20 @@
 .pop-ui .pop-emergency-list td:last-child {
   white-space: nowrap;
 }
+
+/*
+ * P-05-01 금형 QR 줄 — **칸을 줄이고 [코드 직접 입력]을 넓힌다**(사용자 지시 2026-09-11).
+ *
+ * ⚠ 칸이 구획 폭을 거의 다 먹어(실측 878 / 978) 옆의 단추가 94 로 밀리며 글자가 두 줄로
+ *   접혔다. QR 코드는 길어야 스무 자 남짓이라 그만한 폭이 필요 없고, 스캐너를 못 쓸 때
+ *   손으로 여는 단추가 오히려 눌리기 어려웠다.
+ */
+.pop-ui .tool-usage-scan > :first-child {
+  max-inline-size: 32rem;
+}
+
+.pop-ui .tool-usage-scan > button {
+  flex: 0 0 auto;
+  min-inline-size: 16rem;
+  white-space: nowrap;
+}
