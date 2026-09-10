@@ -344,18 +344,12 @@ export const PackingResultScreen = () => {
          *    정작 연결 상태는 색 말고 아무 데도 적히지 않는다. 다른 POP 화면과 같이 둘로
          *    갈라 세운다(설계 §3 머리줄도 「박출하  ●온」 둘이다).
          */}
+        {/*
+         * ⛔ **라벨은 머리줄의 일이 아니다**(사용자 지적 2026-09-10 · 새 도면). 도면의 머리줄은
+         *   「작업자 · 연결상태 · 화면 이동 · 사용자 전환」이고, 라벨 상태·재출력은 «액션 줄»의
+         *   일이다. 머리줄에 두면 화면을 바꾸는 조작이 상태 표시들 사이에 섞인다.
+         */}
         <div className="pop-context-right">
-          <Button
-            type="button"
-            variant="outlined"
-            size="md"
-            disabled={shipmentId === null}
-            onClick={() => {
-              setLabelMode((current) => !current);
-            }}
-          >
-            {isLabelMode ? t.actions.packing : t.actions.labels}
-          </Button>
           <PopWorkerTag workerNo={identity.workerNo} />
           <Chip variant="status" size="md" status={isOnline ? 'success' : 'error'}>
             {isOnline ? t.header.online : t.header.offline}
@@ -392,14 +386,12 @@ export const PackingResultScreen = () => {
           </div>
         )}
 
-        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. 납품라벨은 재진입 보조 경로다. */}
-        {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
-        <section className="packing-scan">
-          <ScanField
-            label={t.scan.label.shipment}
-            isScanning={shipmentScan.isPending}
-            onScan={scanShipment}
-          />
+        {/*
+         * ⭐ **출하 대상은 머리줄 바로 아래 «제 줄»에 선다**(사용자 지시 2026-09-10 · 새 도면
+         *   「출하 대상 [현재 선택값] [선택]」). 스캔 칸 오른쪽에 붙여 두면 스캔의 곁가지로
+         *   읽히는데, 이 화면에서 «무엇을 포장하는가»를 정하는 것이 이 줄이다.
+         */}
+        <section className="packing-target" aria-label={t.scan.shipmentSelection}>
           <span className="field-label" id={shipmentLabelId}>
             {t.scan.shipmentSelection}
           </span>
@@ -423,6 +415,16 @@ export const PackingResultScreen = () => {
               label: shipment.shipmentNo,
             }))}
           />
+        </section>
+
+        {/* ① 출하 선택 — 정확 일치 스캔 또는 현재 영업일 목록. 납품라벨은 재진입 보조 경로다. */}
+        {/* ⛔ 구획에 칸과 «같은 이름»을 달지 않는다 — 이름이 겹치면 무엇을 가리키는지 흐려진다. */}
+        <section className="packing-scan">
+          <ScanField
+            label={t.scan.label.shipment}
+            isScanning={shipmentScan.isPending}
+            onScan={scanShipment}
+          />
           {/*
            * 읽은 라벨은 칸 옆에 남는다(설계 §3 도면).
            *
@@ -433,13 +435,24 @@ export const PackingResultScreen = () => {
           <p className="packing-scanned-code">{labelCode}</p>
         </section>
 
-        <section className="packing-reentry" aria-label={t.scan.deliveryLabelReentry}>
+        {/*
+         * ⛔ **평상시 채우는 칸이 아니다**(스펙 §3-1 — 「납품 라벨은 포장 확정 «뒤» 발행되므로
+         *   최초 포장의 선행 입력으로 요구하지 않는다」). 앞선 판은 출하번호 칸과 같은 크기로
+         *   같은 자리에 세워, 처음 포장할 때도 채워야 하는 칸으로 읽혔다(사용자 지적
+         *   2026-09-10). 이름을 «보이게» 달고 폭을 줄여 **되돌아오는 길**임을 드러낸다.
+         */}
+        <details className="packing-reentry">
+          {/*
+           * 평상시에는 접어 둔다 — 열면 그 자리에 칸이 선다. 세로 예산이 768 로 못박힌 화면이라
+           * (스펙 §3-1) 되돌아오는 길이 늘 한 구획을 차지하면 ③ 포장 구성이 그만큼 줄어든다.
+           */}
+          <summary>{t.scan.deliveryLabelReentry}</summary>
           <ScanField
             label={t.scan.label.deliveryLabel}
             isScanning={labelScan.isPending}
             onScan={scanLabel}
           />
-        </section>
+        </details>
 
         {/* ② 생산LOT 스캔 — 판정 문구가 칸 바로 아래 붙는다. 떨어뜨리면 어느 스캔의 답인지 흐려진다. */}
         <section className="packing-scan">
@@ -505,14 +518,12 @@ export const PackingResultScreen = () => {
               {typeOptions.isUnavailable && <p className="field-note">{t.notes.typeUnavailable}</p>}
             </div>
 
-            <ContentsTable
-              lines={lines}
-              onRemove={(allocationId) => {
-                setLines(removeLine(lines, allocationId));
-                setMergeNote(null);
-              }}
-            />
-
+            {/*
+             * ⭐ **상위 포장은 내용물 «앞»에 선다**(사용자 지시 2026-09-10 · 새 도면
+             *   「유형 [값] [선택] · 상위 포장 [값] [선택] · 내용물/수량 목록」). 고르는 칸 둘이
+             *   붙어 있어야 한 덩어리로 읽힌다 — 사이에 목록이 끼면 상위 포장이 목록의 일부처럼
+             *   보이고, 담은 뒤에야 눈에 띈다.
+             */}
             <div className="packing-parent">
               <span className="field-label" id={parentLabelId}>
                 {t.fields.parentHandlingUnit}
@@ -534,58 +545,78 @@ export const PackingResultScreen = () => {
                   label: candidate.handlingUnitNo,
                 }))}
               />
-              <p className="field-note">
-                {warehouseId !== null && !parents.isPending && parents.candidates.length === 0
-                  ? t.notes.parentEmpty
-                  : t.notes.parentHint}
-              </p>
+              {/*
+               * ⛔ **「팔레트에 담으면 지정합니다」를 상시로 두지 않는다**(사용자 지적
+               *   2026-09-10) — 스펙에 없는 문장이고, 고를 것이 있으면 목록이 이미 그 말을
+               *   한다. 후보가 «없을» 때만 왜 못 고르는지 적는다.
+               */}
+              {warehouseId !== null && !parents.isPending && parents.candidates.length === 0 && (
+                <p className="field-note">{t.notes.parentEmpty}</p>
+              )}
             </div>
+
+            <ContentsTable
+              lines={lines}
+              onRemove={(allocationId) => {
+                setLines(removeLine(lines, allocationId));
+                setMergeNote(null);
+              }}
+            />
+
           </div>
 
           {/*
            * 수량 키패드는 ③ 안에서 «옆»에 선다. 스펙 그림에 키패드 자리가 따로 없는데 D-4 는
            * 화면 내장 키패드를 요구한다 — 세로 예산이 슬랙 0 이라 새 구획을 아래에 붙일 수 없어
-           * 이 구획의 남는 «가로»를 쓴다. 담을 LOT 이 정해졌을 때만 선다.
+           * 이 구획의 남는 «가로»를 쓴다.
+           *
+           * ⛔ **읽기 전에는 이 칸을 세우지 않는다**(사용자 지적 2026-09-10). 앞선 판은 빈 칸을
+           *   두고 「생산LOT 을 읽으면 수량을 칠 수 있습니다」로 채웠는데, 스펙에 없는 문장인
+           *   데다 그 자리가 늘 ③ 의 가로 절반을 차지해 담긴 줄이 그만큼 좁아졌다.
            */}
-          <div className="packing-keypad">
-            {packable === undefined ? (
-              <p className="field-note">{t.notes.qtyWaiting}</p>
-            ) : (
-              <>
-                {/*
-                 * ⭐ **친 값을 여기서 보인다.** DS 키패드는 키만 그리고 버퍼를 보이지 않는다 —
-                 * 누른 숫자가 어디로 갔는지 보이지 않으면 작업자가 오입력을 눈치채지 못한다.
-                 * 남은 수량을 옆에 붙여 「얼마까지 칠 수 있는가」를 같은 눈길에 둔다.
-                 */}
-                <p className="packing-qty-readout">
-                  <span className="packing-qty-caption">{t.qty.entryLabel}</span>
-                  <span className="packing-qty-value">{qty === '' ? t.qty.entryEmpty : qty}</span>
-                  <span className="packing-qty-room">{t.qty.room(qtyRoom)}</span>
-                </p>
-                <NumberPad
-                  aria-label={t.qty.label}
-                  value={qty}
-                  allowDecimal={allowsDecimal(packable.uomId)}
-                  onChange={setQty}
-                  onConfirm={addToPacking}
-                />
-                {qty !== '' && qtyIssue !== undefined && <p className="field-note">{qtyIssue}</p>}
-                {mergeNote !== null && <p className="field-note">{mergeNote}</p>}
-              </>
-            )}
-          </div>
+          {packable === undefined ? null : (
+            <div className="packing-keypad">
+              {/*
+               * ⭐ **친 값을 여기서 보인다.** DS 키패드는 키만 그리고 버퍼를 보이지 않는다 —
+               * 누른 숫자가 어디로 갔는지 보이지 않으면 작업자가 오입력을 눈치채지 못한다.
+               * 남은 수량을 옆에 붙여 「얼마까지 칠 수 있는가」를 같은 눈길에 둔다.
+               */}
+              <p className="packing-qty-readout">
+                <span className="packing-qty-caption">{t.qty.entryLabel}</span>
+                <span className="packing-qty-value">{qty === '' ? t.qty.entryEmpty : qty}</span>
+                <span className="packing-qty-room">{t.qty.room(qtyRoom)}</span>
+              </p>
+              <NumberPad
+                aria-label={t.qty.label}
+                value={qty}
+                allowDecimal={allowsDecimal(packable.uomId)}
+                onChange={setQty}
+                onConfirm={addToPacking}
+              />
+              {qty !== '' && qtyIssue !== undefined && <p className="field-note">{qtyIssue}</p>}
+              {mergeNote !== null && <p className="field-note">{mergeNote}</p>}
+            </div>
+          )}
+        </section>
+
+        {/*
+         * ⭐ **OQC 상태는 제 줄이고 늘 선다**(스펙 §3 도면 · 사용자 지적 2026-09-10). ④ 진행
+         *   줄에 끼워 두었더니 「포장 N 개 · 미포장 N」과 한 덩어리로 읽혔는데, 이 값은 진행
+         *   수치가 아니라 **납품 라벨을 낼 수 있는가를 가르는 게이트**다(§7). 값이 있을 때만 세우면
+         *   출하를 고르기 전에는 줄 자체가 없어, 납품 라벨이 무엇에 걸려 있는지 볼 자리가
+         *   사라진다. ⛔ 값이 없을 때 문장으로 채우지 않는다 — 자리만 지킨다.
+         */}
+        <section className="packing-oqc" aria-label={t.oqc.label}>
+          <span className="field-label">{t.oqc.label}</span>
+          <span>{oqcStatuses.join(' · ')}</span>
         </section>
 
         {/* ④ 진행 — ⛔ 「예상 N」이 없어 분모가 없다. 진행 막대를 그리지 않는다(§3-3). */}
         <section className="packing-progress" aria-label={t.panes.progress}>
           <span>{t.progress.packed(progress.packedCount)}</span>
           <span>{t.progress.unpacked(progress.unpackedQty)}</span>
-          {oqcStatuses.length > 0 ? (
-            <span>
-              {t.oqc.label}: {oqcStatuses.join(' · ')}
-            </span>
-          ) : null}
         </section>
+
       </div>
 
       {/* 액션바 88 — 화면 바닥에 고정한다. 본문이 밀어내면 확정이 화면 밖으로 나간다. */}
@@ -604,6 +635,18 @@ export const PackingResultScreen = () => {
             {t.actions.retry}
           </Button>
         )}
+
+        <Button
+          type="button"
+          variant="outlined"
+          size="md"
+          disabled={shipmentId === null}
+          onClick={() => {
+            setLabelMode((current) => !current);
+          }}
+        >
+          {isLabelMode ? t.actions.packing : t.actions.labels}
+        </Button>
 
         {openUnit !== null ? (
           <Button

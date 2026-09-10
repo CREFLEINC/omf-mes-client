@@ -150,7 +150,7 @@ const renderScreen = (options: StubOptions = {}) => {
 
 const selectFirst = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(
-    await screen.findByRole('button', { name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택' }),
+    await screen.findByRole('button', { name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택' }),
   );
 };
 
@@ -265,7 +265,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     await selectFirst(user);
 
     const selected = await screen.findByRole('button', {
-      name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택 해제',
+      name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택 해제',
     });
 
     expect(selected).toHaveClass('pop-material-lot-line-on');
@@ -285,7 +285,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
 
     expect(
       await screen.findByRole('button', {
-        name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택 해제',
+        name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택 해제',
       }),
     ).toHaveAttribute('aria-pressed', 'true');
   });
@@ -299,7 +299,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
 
     expect(
       await screen.findByRole('button', {
-        name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택',
+        name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택',
       }),
     ).toHaveAttribute('aria-pressed', 'false');
   });
@@ -495,7 +495,7 @@ describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
 describe('PopMaterialLotLabelScreen — 등록이 어디까지 갔는가', () => {
   const selectRow = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(
-      await screen.findByRole('button', { name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택' }),
+      await screen.findByRole('button', { name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택' }),
     );
   };
 

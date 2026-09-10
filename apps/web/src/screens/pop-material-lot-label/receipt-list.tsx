@@ -62,6 +62,7 @@ export const ReceiptList = ({
       {rows.map((row) => {
         const isSelected = row.inboundReceiptLineId === selectedId;
         const itemName = lookupDisplayLabel(itemLookup, row.itemId);
+        const qtyText = `${String(row.receivedQty)} ${lookupDisplayLabel(uomLookup, row.uomId)}`;
 
         return (
           <li key={row.inboundReceiptLineId}>
@@ -74,8 +75,8 @@ export const ReceiptList = ({
               disabled={isLocked}
               aria-label={
                 isSelected
-                  ? t.deselectRow(row.inboundReceiptNo, itemName)
-                  : t.selectRow(row.inboundReceiptNo, itemName)
+                  ? t.deselectRow(row.inboundReceiptNo, itemName, qtyText)
+                  : t.selectRow(row.inboundReceiptNo, itemName, qtyText)
               }
               onClick={() => {
                 onToggleSelect(row.inboundReceiptLineId);
@@ -87,9 +88,7 @@ export const ReceiptList = ({
                * ⚠ **수량은 첫 줄에서 접히지 않는다.** 「150」과 「EA」가 갈리면 두 값처럼 읽힌다
                * — 좁은 창에서 실제로 그렇게 나왔다(사용자 지적 2026-09-10).
                */}
-              <span className="pop-material-lot-line-qty">
-                {row.receivedQty} {lookupDisplayLabel(uomLookup, row.uomId)}
-              </span>
+              <span className="pop-material-lot-line-qty">{qtyText}</span>
               <span className="pop-material-lot-line-supplier">
                 {lookupDisplayLabelWithInactive(supplierLookup, row.supplierId)}
               </span>

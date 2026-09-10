@@ -12,9 +12,16 @@ export const popMaterialLotLabel = {
     title: '입하 라인 (미부착)',
     /** 목록의 접근 이름. ⛔ 화면에는 구획 제목이 이미 서 있으므로 «보이게» 두지 않는다. */
     caption: '입하 라인',
-    /** 행마다 「선택」이 되풀이되면 어느 건인지 알 수 없다 — 접근 이름에 입하번호를 넣는다. */
-    selectRow: (receiptNo: string, itemName: string) => `${receiptNo} ${itemName} 선택`,
-    deselectRow: (receiptNo: string, itemName: string) => `${receiptNo} ${itemName} 선택 해제`,
+    /**
+     * 행마다 「선택」이 되풀이되면 어느 건인지 알 수 없다 — 접근 이름에 입하번호를 넣는다.
+     *
+     * ⚠ **값에 이름을 단다.** 줄이 버튼이라 그 이름이 곧 읽어 주는 내용인데, 번호와 품목만
+     * 넣으면 «수량»은 읽히지 않는다(리뷰 지적 2026-09-11).
+     */
+    selectRow: (receiptNo: string, itemName: string, qty: string) =>
+      `입하 ${receiptNo} · 품목 ${itemName} · 수량 ${qty} 선택`,
+    deselectRow: (receiptNo: string, itemName: string, qty: string) =>
+      `입하 ${receiptNo} · 품목 ${itemName} · 수량 ${qty} 선택 해제`,
     empty: '발행할 자재가 없습니다.',
     /**
      * 쪽 나눔은 **입하 건** 단위인데 줄은 **자재**다. 사전부착을 걸러 내면 이 쪽의 입하 건에

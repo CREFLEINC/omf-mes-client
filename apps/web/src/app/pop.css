@@ -911,6 +911,16 @@
   > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-target,
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-oqc,
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
   > .packing-reentry,
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
@@ -4511,4 +4521,213 @@
 .pop-ui .pop-hold-history th:nth-child(2),
 .pop-ui .pop-hold-history td:nth-child(2) {
   inline-size: 7rem;
+}
+
+/*
+ * 출하 실적 등록 ① — **읽는 칸이 줄을 독차지하지 않는다**(사용자 지시 2026-09-10).
+ *
+ * 도면의 그 줄은 「출하 대상 [현재 선택값] [선택]」이 주인공인데, 읽는 칸이 `1 1 20rem` 으로
+ * 남는 폭을 전부 가져가 출하 대상이 225px 로 눌렸다(실측 · 줄 폭 1460 중 읽는 칸 1090).
+ * 둘 다 늘되 읽는 칸에는 상한을 둔다 — 34자리 코드가 들어와도 그 폭이면 남는다.
+ */
+.pop-ui .packing-scan > :first-child {
+  flex: 1 1 24rem;
+  max-width: 34rem;
+}
+
+.pop-ui .packing-scan > .pop-select {
+  flex: 1 1 18rem;
+  max-width: 30rem;
+  min-width: 0;
+}
+
+/*
+ * POP 보조 조작의 «글씨 색» — 빨강을 쓰지 않는다(사용자 지시 2026-09-10).
+ *
+ * ⚠ DS 의 `outlined` 는 글씨를 `--primary-text` 로 내는데 이 테마의 primary 가 붉다(#C9252C).
+ *   공유계약 G-1 은 붉은 계열을 «오류»에 남겨 두고, E-3 개정은 위험한 조작을 크기가 아니라
+ *   색·문구·배치로 가른다 — [직접 입력]·[선택] 같은 보조 조작이 같은 붉은색으로 서면 그
+ *   구분이 무너진다.
+ *
+ * ⛔ **오류 표시는 건드리지 않는다** — `aria-invalid` 가 붙은 자리는 그대로 붉다.
+ * ⛔ **주 조작(채운 버튼)도 건드리지 않는다** — 「포장 확정」처럼 흐름을 진행시키는 자리다.
+ */
+.pop-ui .scan-row > button:not([aria-invalid='true']),
+.pop-ui .pack-work-add-row > button:not([aria-invalid='true']),
+.pop-ui .pop-select__trigger:not([aria-invalid='true']) {
+  color: var(--on-surface);
+}
+
+/*
+ * 출하 실적 등록 — 출하 대상은 머리줄 바로 아래 «제 줄»이다(새 도면 · 사용자 지시 2026-09-10).
+ */
+.pop-ui .packing-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+/*
+ * ⭐ **출하 대상 칸이 이 줄의 주인공이다**(사용자 지시 2026-09-10) — 무엇을 포장하는가를
+ *   정하는 값이라 줄의 남는 폭을 이 칸이 갖는다. 상한을 두지 않는다.
+ */
+.pop-ui .packing-target > .pop-select {
+  flex: 1 1 24rem;
+  min-width: 0;
+}
+
+/*
+ * 기존 납품 라벨 재진입 — **되돌아오는 길이지 평상시 입력이 아니다**(스펙 §3-1).
+ * 이름을 보이게 달고 칸을 줄여, 처음 포장하는 사람이 채워야 할 칸으로 읽지 않게 한다.
+ */
+.pop-ui .packing-reentry > summary {
+  padding: var(--space-2) 0;
+  color: var(--on-surface-muted);
+  cursor: pointer;
+}
+
+.pop-ui .packing-reentry > form {
+  max-width: 30rem;
+  margin-block-start: var(--space-2);
+}
+
+/*
+ * 출하 실적 등록 ③ — 《내용물》은 «머리글 없는 목록»이다(사용자 지적 2026-09-10 ·
+ * 같은 성격의 `P-02-08` 도면 `✅ LOT-…0031  ABC-123  100 EA`).
+ */
+.pop-ui .packing-contents-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pop-ui .packing-contents-line {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+}
+
+.pop-ui .packing-contents-line + .packing-contents-line {
+  border-top: 1px solid var(--outline-variant);
+}
+
+.pop-ui .packing-contents-mark {
+  width: 1.25rem;
+  color: var(--color-success, rgb(120 200 140));
+  text-align: center;
+}
+
+.pop-ui .packing-contents-item {
+  white-space: nowrap;
+}
+
+/* LOT 은 분절 표시라 자릿수가 길다 — 남는 폭을 이 칸이 갖는다. */
+.pop-ui .packing-contents-lot {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.pop-ui .packing-contents-qty {
+  min-width: 4rem;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+
+/*
+ * 출하 실적 등록 — **한 화면에 다 들어간다**(사용자 지적 2026-09-10).
+ *
+ * 도면은 출하 대상 → 스캔 → 포장 구성 → 진행 → 액션 줄을 한 화면에 그린다. 새 도면이 「출하
+ * 대상」 줄을 더하면서 구획이 넷에서 다섯이 됐는데 각 구획의 높이는 그대로여서, 본문이
+ * 214px 넘쳐 전체가 스크롤했다(실측 · 본문 592 에 내용 806). 넘치면 ③ 포장 구성 «안에서만»
+ * 스크롤해야 한다 — 화면이 통째로 밀리면 바닥의 [포장 확정]이 사라진다.
+ *
+ * ⚠ 줄인 것은 «여백과 칸 높이»다. 값이나 구획을 걷어내지 않았다.
+ * ⚠ 스캔 칸 56px 은 이 화면 한정이다 — 다른 POP 화면의 72px 규격은 그대로 둔다.
+ */
+.pop-ui.packing-shell > .packing-body {
+  gap: var(--space-2);
+}
+
+.pop-ui.packing-shell .packing-scan {
+  padding-block: var(--space-2);
+}
+
+/* 값 한 줄짜리 구획은 더 얕게 — 상자가 값보다 커 보이지 않게 한다. */
+.pop-ui .packing-target,
+.pop-ui.packing-shell .packing-oqc,
+.pop-ui.packing-shell .packing-progress {
+  padding-block: var(--space-1);
+}
+
+/*
+ * OQC 상태 — **표시가 아니라 게이트다**(스펙 §7). 진행 수치와 같은 줄에 두면 「포장 N 개」와
+ * 한 덩어리로 읽혀, 납품 라벨이 왜 안 나오는지를 여기서 찾지 못한다.
+ */
+.pop-ui .packing-oqc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding-inline: var(--space-5);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
+}
+
+.pop-ui.packing-shell .scan-row > :first-child > div,
+.pop-ui.packing-shell .scan-row > button {
+  min-block-size: 56px;
+}
+
+/*
+ * ③ 은 남는 높이를 갖고, 줄이 넘치면 자기 안에서 스크롤한다. 최소 높이를 낮춰 두어야
+ * 위 구획들이 제 높이를 지킨 채로 본문이 한 화면에 담긴다.
+ */
+.pop-ui.packing-shell
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-compose {
+  /* ③ 은 남는 높이를 갖고 넘치면 자기 안에서 스크롤한다 — 구획이 다섯이라 하한을 낮게 둔다. */
+  min-height: 7rem;
+}
+
+/* 키패드가 서지 않는 동안 ③ 은 가로를 통째로 쓴다 — 빈 기둥으로 목록을 좁히지 않는다. */
+.pop-ui .packing-compose:not(:has(> .packing-keypad)) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * 출하 실적 등록 — **고르는 칸도 읽는 칸과 같은 높이로 선다**(사용자 지시 2026-09-10).
+ *
+ * ⚠ 두 칸이 서로 다른 부품이라 높이가 갈렸다. 읽는 칸(DS `TextField`)은 이 화면에서 56 인데,
+ *   고르는 칸의 «값 상자»는 `--control-height-md`(40)를 써서 한 줄 안에서 눈에 띄게 낮았다
+ *   (실측 — 출하번호 56 · 출하 대상 40). 트리거 버튼은 이미 56 이다.
+ */
+.pop-ui.packing-shell .pop-select__value {
+  min-height: 56px;
+}
+
+/*
+ * ③ 이 일하는 자리다 — 위 구획들의 여백을 한 단 더 줄여 그만큼을 ③ 에 넘긴다.
+ * 상위 포장이 제 줄로 돌아오면서(사용자 지시 2026-09-10) ③ 의 머리가 두 줄이 됐다.
+ */
+.pop-ui.packing-shell .packing-reentry {
+  padding-block: var(--space-1);
+}
+
+.pop-ui.packing-shell .packing-scan {
+  padding-block: var(--space-1);
 }

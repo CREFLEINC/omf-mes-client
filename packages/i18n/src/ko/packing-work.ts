@@ -47,12 +47,18 @@ export const packingWork = {
     sectionLabel: '포장 단위',
     typeLabel: '유형',
     /** 「담기」를 눌렀는데 유형이 비어 있을 때 이 칸에 붙는다 — 고칠 곳에서 말한다. */
-    typeRequired: '포장 유형을 고르십시오.',
-    typePlaceholder: '고르십시오',
+    typeRequired: '포장 유형을 고르세요.',
+    typePlaceholder: '고르세요',
     typeLoadFailed: '포장 유형 목록을 불러오지 못했습니다.',
     parentLabel: '상위 포장',
     parentNone: '(없음)',
     parentLoadFailed: '상위 포장 후보를 불러오지 못했습니다.',
+    /*
+     * ⚠ **화면에 «줄»로 세우지 않는다**(사용자 지시 2026-09-10 — 그 문장을 걷었다). 다만 칸이
+     * 잠기는 이유가 어디에도 없으면 왜 못 바꾸는지 알 길이 없다(리뷰 지적) — 잠긴 칸에만
+     * 붙여 설명으로 읽히게 한다.
+     */
+    lockedReason: '내용물을 담기 시작하면 바꿀 수 없습니다.',
     /*
      * ⛔ **끊긴 동안에는 새 포장을 시작할 수 없다**(스펙 §6). 번호를 서버가 매기고 확정이 그
      * 번호로 나가므로 단말이 만들 수 없는 값이다 — 왜 다른 것은 되는데 이것만 안 되는지를 말한다.
@@ -71,6 +77,9 @@ export const packingWork = {
   contents: {
     sectionLabel: '내용물',
     unknownCode: '—',
+    /** 담긴 줄 하나를 읽어 주는 이름 — 값마다 무엇인지 붙인다. */
+    lineLabel: (lotNo: string, itemCode: string, qty: string) =>
+      `LOT ${lotNo} · 품목 ${itemCode} · 수량 ${qty}`,
     empty: '내용물이 비어 있습니다.',
     totalLabel: '합계',
     mixedTitle: '한 포장에 여러 LOT 이 섞였습니다',
