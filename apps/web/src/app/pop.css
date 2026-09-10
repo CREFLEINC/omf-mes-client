@@ -3504,3 +3504,127 @@
   min-width: 0;
   padding: 0;
 }
+
+/*
+ * 포장 작업 — 《내용물》은 «목록»이다(스펙 §3 도면 `✅ LOT-…0031  ABC-123  100 EA`).
+ *
+ * ⛔ 열 머리글 줄을 두지 않는다. 이 화면도 1024×768 예산이라 머리줄 한 줄이 담은 줄 하나를
+ *   먹는다. 값은 표식·LOT·품목·수량 네 자리로 이미 갈린다.
+ */
+.pack-work-contents {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pack-work-content-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) 0;
+}
+
+.pack-work-content-line + .pack-work-content-line {
+  border-top: 1px solid var(--outline-variant);
+}
+
+/* 담긴 줄임을 나타내는 표식 — 값이 아니라 상태다. 글자 자리를 고정해 열이 흔들리지 않게 둔다. */
+.pack-work-content-mark {
+  width: 1.25rem;
+  color: var(--color-success, rgb(120 200 140));
+  text-align: center;
+}
+
+.pack-work-content-item {
+  white-space: nowrap;
+}
+
+/* 수량은 자릿수를 세로로 맞춘다 — 담은 줄끼리 눈으로 더해 보는 자리다. */
+.pack-work-content-qty {
+  min-width: 6rem;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+/*
+ * 합계 — **구분선 아래 한 줄**(스펙 §3). 내용물과 같은 굵기로 두면 어디까지가 담은 것인지
+ * 갈리지 않는다.
+ */
+.pack-work-content-total {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: var(--space-3);
+  align-items: center;
+  margin: 0;
+  padding: var(--space-3) 0 0;
+  border-top: 2px solid var(--outline);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * ⚠ **합계도 담은 줄과 같은 열에 선다**(사용자 지시 2026-09-10). 줄 왼쪽 끝에서 시작하면
+ *   표식 열만큼 어긋나 「합계」가 LOT 번호와 다른 자리에 서고, 값도 수량 열을 벗어난다.
+ */
+.pack-work-content-total > :first-child {
+  /* 값 바로 왼쪽 — 품목 열 자리에 선다(사용자 지시 2026-09-10). */
+  grid-column: 3;
+}
+
+.pack-work-content-total > :last-child {
+  grid-column: 4;
+  min-width: 6rem;
+  text-align: end;
+}
+
+.pack-work-content-empty {
+  padding: var(--space-4) 0;
+  text-align: center;
+}
+
+/*
+ * 포장 작업 — 유형·상위 포장 칸을 «수량 칸과 같은 높이»로 세운다(사용자 지시 2026-09-10).
+ *
+ * ⚠ 두 칸이 서로 다른 부품이라 높이가 갈렸다. 스캔 쪽 입력칸(DS `TextField` xl)은 72px 로
+ *   서는데, 고르는 칸(DS `Select` 트리거)은 버튼이라 `--control-height-*` 를 따르고 POP 이
+ *   그 값을 md 로 모아 두어(이 파일 머리) 56px 로 섰다. 같은 줄에서 쓰는 칸이므로 눈에 띈다.
+ */
+.pop-ui .pack-work-unit-fields [role='combobox'] {
+  min-block-size: 72px;
+}
+
+/*
+ * 포장 작업 — 화면이 «부모 높이»를 그대로 쓴다.
+ *
+ * ⛔ `100vh` 를 쓰지 않는다. POP 셸은 1024×768 예산을 창에 맞춰 `zoom` 으로 줄이는데
+ *   (`patterns/pop-fit.ts`), 그 상태에서 `vh` 는 배율이 걸리기 «전» 창 높이를 가리킨다 —
+ *   문서는 768 로 서는데 화면만 짧게 서서 바닥이 남고, 그만큼 우단 구획이 먼저 스크롤한다
+ *   (실측 2026-09-10 · 창 1024×663 에서 ~110px 빔).
+ *
+ * ⚠ 공용 `.pop-ui` 를 고치는 것이 옳은 자리지만 POP 화면 전체의 세로 예산을 함께 건드린다 —
+ *   그 수정이 들어오면 이 규칙은 걷는다.
+ */
+.pop-ui.pack-work-screen {
+  height: 100%;
+}
+
+/*
+ * 포장 작업 — 유형·상위 포장의 «값 칸은 좁히고 [선택]은 넓힌다»(사용자 지시 2026-09-10).
+ *
+ * 값 칸은 코드 이름 하나가 서는 자리라 남는 폭을 다 가질 이유가 없고, [선택]은 장갑 낀 손이
+ * 누르는 자리라 글자만큼만 서면 좁다.
+ *
+ * ⚠ 값 칸 높이도 함께 맞춘다 — 그 상자는 `--control-height-md`(56px)를 쓰고 있어, 옆의
+ *   트리거만 72 로 올리면 한 줄 안에서 두 상자의 높이가 갈린다.
+ */
+.pop-ui .pack-work-unit-fields .pop-select {
+  grid-template-columns: minmax(0, 1fr) 9rem;
+}
+
+.pop-ui .pack-work-unit-fields .pop-select__value {
+  min-height: 72px;
+}

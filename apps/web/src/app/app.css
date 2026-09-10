@@ -6773,8 +6773,7 @@ dl.filter-bar.approval-inbox-detail-facts {
  * ⛔ **번호가 남은 폭을 다 가져가게 두지 않는다.** LOT 번호가 길면 행이 옆으로 늘어나
  * 오른쪽 끝의 선택 버튼이 표 밖으로 밀려난다(전례 `P-02-05` 실측).
  */
-.pack-work-lot-table,
-.pack-work-content-table {
+.pack-work-lot-table {
   table-layout: fixed;
   width: 100%;
 }

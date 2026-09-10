@@ -52,12 +52,6 @@ export const packingWork = {
     parentLabel: '상위 포장',
     parentNone: '(없음)',
     parentLoadFailed: '상위 포장 후보를 불러오지 못했습니다.',
-    lockedNotice: '내용물을 담기 시작하면 유형과 상위 포장은 바꿀 수 없습니다.',
-    /*
-     * ⚠ **번호 자리를 비워 두지 않는다.** 번호는 첫 줄을 담을 때 서버가 매기므로, 그전까지는
-     * 빈자리가 「번호가 사라졌다」로 읽힌다 — 언제 생기는지 말한다.
-     */
-    numberPending: '담기 시작하면 번호가 매겨집니다',
     /*
      * ⛔ **끊긴 동안에는 새 포장을 시작할 수 없다**(스펙 §6). 번호를 서버가 매기고 확정이 그
      * 번호로 나가므로 단말이 만들 수 없는 값이다 — 왜 다른 것은 되는데 이것만 안 되는지를 말한다.
@@ -75,9 +69,6 @@ export const packingWork = {
 
   contents: {
     sectionLabel: '내용물',
-    lotColumn: 'LOT',
-    itemColumn: '품목',
-    qtyColumn: '수량',
     unknownCode: '—',
     empty: '내용물이 비어 있습니다.',
     totalLabel: '합계',
