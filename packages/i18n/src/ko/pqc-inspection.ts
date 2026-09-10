@@ -125,7 +125,7 @@ export const pqcInspection = {
     saveBlockedByInvalid: '수량 칸을 고친 뒤 저장할 수 있습니다.',
 
     judgment: '종합 판정',
-    judgmentPlaceholder: '고르세요',
+    judgmentPlaceholder: '판정을 고르세요',
     judgmentUnavailable: '판정 값 목록 준비 중',
     judgmentUnknown: (code: string): string => `저장된 판정(${code})이 목록에 없습니다.`,
 
