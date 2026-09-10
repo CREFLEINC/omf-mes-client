@@ -33,7 +33,8 @@ export const pqcInspection = {
       inspectionPlanVersionId: '검사기준 버전',
       lotId: '대상 LOT',
       itemId: '품목',
-      workOrderId: '작업지시',
+      /* ⚠ 머리줄 표기는 「W/O」로 통일한다(사용자 지시 2026-09-10). */
+      workOrderId: 'W/O',
     },
 
     /**

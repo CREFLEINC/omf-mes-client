@@ -8,7 +8,8 @@ export const toolUsage = {
 
   entry: {
     /** 헤더에 작업지시·사번을 세운다. 없으면 그 자리를 비운다 — 「알 수 없음」을 쓰지 않는다. */
-    workOrderLabel: '작업지시',
+    /* ⚠ 머리줄 표기는 「W/O」로 통일한다(사용자 지시 2026-09-10). */
+    workOrderLabel: 'W/O',
     workerLabel: '사번',
   },
 
