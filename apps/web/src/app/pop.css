@@ -4346,9 +4346,12 @@
   background: var(--surface-container-low);
 }
 
+/*
+ * ⭐ **출하 대상 칸이 이 줄의 주인공이다**(사용자 지시 2026-09-10) — 무엇을 포장하는가를
+ *   정하는 값이라 줄의 남는 폭을 이 칸이 갖는다. 상한을 두지 않는다.
+ */
 .pop-ui .packing-target > .pop-select {
-  flex: 1 1 20rem;
-  max-width: 34rem;
+  flex: 1 1 24rem;
   min-width: 0;
 }
 
@@ -4489,4 +4492,16 @@
  */
 .pop-ui.packing-shell .pop-select__value {
   min-height: 56px;
+}
+
+/*
+ * ③ 이 일하는 자리다 — 위 구획들의 여백을 한 단 더 줄여 그만큼을 ③ 에 넘긴다.
+ * 상위 포장이 제 줄로 돌아오면서(사용자 지시 2026-09-10) ③ 의 머리가 두 줄이 됐다.
+ */
+.pop-ui.packing-shell .packing-reentry {
+  padding-block: var(--space-1);
+}
+
+.pop-ui.packing-shell .packing-scan {
+  padding-block: var(--space-1);
 }

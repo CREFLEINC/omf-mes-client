@@ -516,6 +516,8 @@ export const PackingResultScreen = () => {
                 options={typeOptions.options}
               />
               {typeOptions.isUnavailable && <p className="field-note">{t.notes.typeUnavailable}</p>}
+            </div>
+
             {/*
              * ⭐ **상위 포장은 내용물 «앞»에 선다**(사용자 지시 2026-09-10 · 새 도면
              *   「유형 [값] [선택] · 상위 포장 [값] [선택] · 내용물/수량 목록」). 고르는 칸 둘이
@@ -552,8 +554,6 @@ export const PackingResultScreen = () => {
                 <p className="field-note">{t.notes.parentEmpty}</p>
               )}
             </div>
-            </div>
-
 
             <ContentsTable
               lines={lines}
