@@ -61,12 +61,17 @@ export const packingLabelReprint = {
     identificationTag: '인식표',
     unknownLot: 'LOT 확인 불가',
     /** 개체를 데이터로 좁힐 수 없다. 감추지 않고 사유를 보인다 */
-    serialUnavailable: '이 포장에 든 개체를 특정할 수 없어 인식표는 재출력할 수 없습니다.',
+    serialUnavailable: '이 포장은 개체 정보가 없어 라벨을 발행할 수 없습니다.',
     /** 범위 표기 — 개체 줄은 LOT + 수량으로만 말할 수 있다 */
-    range: (qty: number): string => `수량 ${String(qty)}`,
     issueCount: (count: number): string => `발행 이력 ${String(count)}회`,
-    neverIssued: '발행 이력 없음',
-    issueCountUnknown: '발행 이력 확인 불가',
+    /*
+     * ⚠ **발행 이력이 없으면 재출력이 아니라 «최초 발행»이다**(스펙 §6 예외표 · 사용자 지적
+     *    2026-09-10). 회차 1 로 나가고 사유를 받지 않는다 — 같은 목록에 같은 모양으로 두면
+     *    사유를 받을지 말지가 눈으로 갈리지 않는다.
+     */
+    neverIssued: '최초 발행',
+    /* 요약 조회가 실패했거나 아직 오지 않은 상태 — 「없다」가 아니라 「모른다」다. */
+    issueCountUnknown: '발행 이력 미확인',
     summaryFailed: '발행 이력을 불러오지 못해 회차를 표시할 수 없습니다.',
     select: '선택',
     selected: '선택됨',

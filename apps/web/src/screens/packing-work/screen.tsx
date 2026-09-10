@@ -48,6 +48,12 @@ const t = messages.packingWork;
  * ⭐ **확정이 「언제 일어난 일인가」를 싣는다**(C-8) — `businessDate`·`occurredAt`. 큐에 밀린
  * 확정이 자정을 넘겨 전송돼도 원장이 두 건으로 적재되지 않는다.
  */
+/**
+ * 스펙 §3 도면이 유형 자리에 채워 둔 값(「▾ 박스」). 코드 사전 `CD-HANDLING-UNIT-TYPE` 의
+ * `BOX` 다 — 서버 목록에 없으면 채우지 않는다.
+ */
+const DEFAULT_UNIT_TYPE_CODE = 'BOX';
+
 export const PackingWorkScreen = () => {
   const titleId = useId();
   const entry = usePackingEntry();
@@ -95,6 +101,29 @@ export const PackingWorkScreen = () => {
      */
     [...draft.lines.map((line) => line.uomId), ...(lots.data ?? []).map((lot) => lot.uomId)],
   );
+
+  /*
+   * ⭐ **유형은 「박스」로 채워 둔다**(스펙 §3 도면 「유형 [ ▾ 박스 ]」 · 사용자 지시
+   *   2026-09-10). 이 화면의 주 흐름이 박스 만들기이고(§8-3), 매번 같은 값을 손으로 고르게
+   *   하면 담기 직전에 「유형을 고르십시오」로 되돌아온다.
+   *
+   * ⛔ **값을 지어내지 않는다.** 목록은 고객이 늘리는 공통코드라(`registry` · G-31) 서버가
+   *   준 목록에 `BOX` 가 있을 때만 채운다. 없으면 비워 두고 사용자가 고른다.
+   * ⛔ **고른 뒤에는 덮지 않는다** — 비어 있을 때만 채운다.
+   */
+  useEffect(() => {
+    if (draft.handlingUnitTypeCode !== null) return;
+
+    const box = (unitTypes.data ?? []).find((value) => value.code === DEFAULT_UNIT_TYPE_CODE);
+
+    if (box === undefined) return;
+
+    setDraft((current) =>
+      current.handlingUnitTypeCode === null
+        ? { ...current, handlingUnitTypeCode: box.code }
+        : current,
+    );
+  }, [unitTypes.data, draft.handlingUnitTypeCode]);
 
   const workerNo = entry.workerNo;
 
@@ -553,13 +582,15 @@ export const PackingWorkScreen = () => {
           <h2 className="pane-title pack-work-unit-heading">
             {t.unit.sectionLabel}
             {/*
-              ⭐ **번호는 첫 줄을 담을 때 생긴다**(스펙 §3 · §5-6) — 담기 시작이 포장 단위를
-              만들기 때문이다. 그전까지는 비워 두면 「번호가 사라졌다」로 읽히므로 언제
-              생기는지 말한다.
+              ⛔ **번호 자리에 안내 문구를 넣지 않는다.** 스펙 §3 도면은 이 자리에 번호 자체를
+              둔다(「《포장 단위》 HU-2026-0804-0007」). 앞선 판은 「담기 시작하면 번호가
+              매겨집니다」를 넣었는데, 그 문장은 «호출 둘» 구조를 전제한 표현이라 더는 사실이
+              아니다(#510 정정 · 사용자 지적 2026-09-10) — 확정 전에는 서버에 아무것도 만들지
+              않는다. 번호가 없으면 그 자리는 비워 둔다.
             */}
-            <span className="pack-work-unit-no">
-              {draft.handlingUnit?.handlingUnitNo ?? t.unit.numberPending}
-            </span>
+            {draft.handlingUnit !== null && (
+              <span className="pack-work-unit-no">{draft.handlingUnit.handlingUnitNo}</span>
+            )}
           </h2>
           <PackingPane
             draft={draft}

@@ -20,7 +20,7 @@ const rowOf = (over: Partial<MeasurementRow> = {}): MeasurementRow => ({
   sampleNo: 1,
   sampleCount: 1,
   required: true,
-  spec: { target: null, lower: 9.9, upper: 10.1 },
+  spec: { target: null, lower: 9.9, upper: 10.1, uomId: null },
   measured: null,
   ...over,
 });
@@ -51,25 +51,27 @@ describe('standsAutomatically — 셋이 모두 참일 때만 선다', () => {
   });
 
   it('상하한이 둘 다 비면 서지 않는다', () => {
-    expect(standsAutomatically(rowOf({ spec: { target: 10, lower: null, upper: null } }))).toBe(
-      false,
-    );
+    expect(
+      standsAutomatically(rowOf({ spec: { target: 10, lower: null, upper: null, uomId: null } })),
+    ).toBe(false);
   });
 
   /* 「9.9 이상」 같은 한쪽 공차가 흔하다 — 둘 다 있을 때만 세면 그런 항목이 빠진다. */
   it('한쪽만 있어도 선다', () => {
-    expect(standsAutomatically(rowOf({ spec: { target: null, lower: 9.9, upper: null } }))).toBe(
-      true,
-    );
-    expect(standsAutomatically(rowOf({ spec: { target: null, lower: null, upper: 10.1 } }))).toBe(
-      true,
-    );
+    expect(
+      standsAutomatically(rowOf({ spec: { target: null, lower: 9.9, upper: null, uomId: null } })),
+    ).toBe(true);
+    expect(
+      standsAutomatically(rowOf({ spec: { target: null, lower: null, upper: 10.1, uomId: null } })),
+    ).toBe(true);
   });
 });
 
 describe('lacksLimits — 플래그는 켜졌는데 기준이 없다', () => {
   it('상하한이 둘 다 비면 참이다', () => {
-    expect(lacksLimits(rowOf({ spec: { target: 10, lower: null, upper: null } }))).toBe(true);
+    expect(
+      lacksLimits(rowOf({ spec: { target: 10, lower: null, upper: null, uomId: null } })),
+    ).toBe(true);
   });
 
   it('기준이 있으면 거짓이다', () => {
@@ -80,7 +82,10 @@ describe('lacksLimits — 플래그는 켜졌는데 기준이 없다', () => {
   it('플래그가 꺼져 있으면 거짓이다', () => {
     expect(
       lacksLimits(
-        rowOf({ automaticJudgment: false, spec: { target: null, lower: null, upper: null } }),
+        rowOf({
+          automaticJudgment: false,
+          spec: { target: null, lower: null, upper: null, uomId: null },
+        }),
       ),
     ).toBe(false);
   });
@@ -88,7 +93,10 @@ describe('lacksLimits — 플래그는 켜졌는데 기준이 없다', () => {
   it('수치형이 아니면 거짓이다', () => {
     expect(
       lacksLimits(
-        rowOf({ dataTypeCode: DATA_TYPES.text, spec: { target: null, lower: null, upper: null } }),
+        rowOf({
+          dataTypeCode: DATA_TYPES.text,
+          spec: { target: null, lower: null, upper: null, uomId: null },
+        }),
       ),
     ).toBe(false);
   });

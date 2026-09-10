@@ -32,8 +32,6 @@ export const packingResult = {
       deliveryLabel: '납품라벨',
       productionLot: '생산LOT',
     },
-    submit: '읽기',
-    scanning: '조회 중…',
     manualEntry: '직접 입력',
     shipmentSelection: '출하 대상',
     shipmentListLoading: '목록 조회 중…',
@@ -54,11 +52,6 @@ export const packingResult = {
     lookupFailed: '조회하지 못했습니다. 다시 읽어 주세요',
   },
   contents: {
-    columns: {
-      itemCode: '품목',
-      lotNo: 'LOT',
-      qty: '수량',
-    },
     total: (packed: number, allocated: number): string =>
       `합계 ${String(packed)} / ${String(allocated)}`,
     empty: '담긴 것이 없습니다',
@@ -90,10 +83,8 @@ export const packingResult = {
     parentNone: '(없음)',
   },
   notes: {
-    parentHint: '팔레트에 담으면 지정합니다',
     /** 후보가 없는 것은 고장이 아니다(스펙 §5-2-1). */
     parentEmpty: '이 창고에 담을 상위 포장이 없습니다. 없이 확정할 수 있습니다',
-    qtyWaiting: '생산LOT 을 읽으면 수량을 칠 수 있습니다',
     typeUnavailable: '포장 유형을 받지 못했습니다. 다시 시도해 주세요',
   },
   progress: {
@@ -111,8 +102,11 @@ export const packingResult = {
     },
   },
   actions: {
-    /** 읽은 것을 무르고 다시 읽는다 — 이 화면의 입력은 «읽기»다(사용자 지시 2026-09-07). */
-    rescan: '다시 읽기',
+    /**
+     * 마지막 스캔 입력을 무른다. **스펙 §6 액션표의 이름 그대로다**(「다시 스캔」) —
+     * 2026-09-07 에 「다시 읽기」로 바꿨던 것을 되돌린다(사용자 지적 2026-09-10).
+     */
+    rescan: '다시 스캔',
     confirm: '포장 확정',
     confirming: '확정 중…',
     retry: '다시 시도',

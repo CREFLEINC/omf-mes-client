@@ -10,17 +10,18 @@ export const popMaterialLotLabel = {
      * 뿐이라고 스펙이 못박은 화면이다(§3).
      */
     title: '입하 라인 (미부착)',
-    /** 표의 접근 이름. ⛔ 화면에는 구획 제목이 이미 서 있으므로 «보이게» 두지 않는다. */
+    /** 목록의 접근 이름. ⛔ 화면에는 구획 제목이 이미 서 있으므로 «보이게» 두지 않는다. */
     caption: '입하 라인',
-    /** 스펙 §3 의 목록은 세 칸이다 — 선택 칸을 따로 두지 않고 줄을 눌러 고른다. */
-    columns: {
-      receipt: '입하',
-      item: '품목',
-      quantity: '수량',
-    },
-    /** 행마다 「선택」이 되풀이되면 어느 건인지 알 수 없다 — 접근 이름에 입하번호를 넣는다. */
-    selectRow: (receiptNo: string, itemName: string) => `${receiptNo} ${itemName} 선택`,
-    deselectRow: (receiptNo: string, itemName: string) => `${receiptNo} ${itemName} 선택 해제`,
+    /**
+     * 행마다 「선택」이 되풀이되면 어느 건인지 알 수 없다 — 접근 이름에 입하번호를 넣는다.
+     *
+     * ⚠ **값에 이름을 단다.** 줄이 버튼이라 그 이름이 곧 읽어 주는 내용인데, 번호와 품목만
+     * 넣으면 «수량»은 읽히지 않는다(리뷰 지적 2026-09-11).
+     */
+    selectRow: (receiptNo: string, itemName: string, qty: string) =>
+      `입하 ${receiptNo} · 품목 ${itemName} · 수량 ${qty} 선택`,
+    deselectRow: (receiptNo: string, itemName: string, qty: string) =>
+      `입하 ${receiptNo} · 품목 ${itemName} · 수량 ${qty} 선택 해제`,
     empty: '발행할 자재가 없습니다.',
     /**
      * 쪽 나눔은 **입하 건** 단위인데 줄은 **자재**다. 사전부착을 걸러 내면 이 쪽의 입하 건에
@@ -97,7 +98,14 @@ export const popMaterialLotLabel = {
     },
     /** 한 번의 등록·인쇄가 남긴 것 — **성공만 결과가 아니다.** */
     outcome: {
-      printed: (lotNo: string, seq: number) => `인쇄했습니다. LOT ${lotNo} · ${seq}회차`,
+      /**
+       * ⚠ 「LOT」만 쓰면 뒤에 붙는 값이 무엇인지 읽히지 않는다 — 채번 대상 칸과 같은 말로 쓴다.
+       * 번호를 받지 못했으면 그 자리를 비우고 회차만 말한다(빈 이름표를 세우지 않는다).
+       */
+      printed: (lotNo: string, seq: number) =>
+        lotNo === ''
+          ? `인쇄했습니다. ${seq}회차`
+          : `인쇄했습니다. LOT 번호 ${lotNo} · ${seq}회차`,
       /**
        * 등록과 발행 기록은 한 트랜잭션이 아니다(변경 통지 #534 §3). 앞이 되고 뒤가 안 된
        * 상태를 **오류가 아니라 다음에 할 일**로 말한다 — 다시 등록하면 LOT 이 둘 생긴다.
@@ -129,7 +137,6 @@ export const popMaterialLotLabel = {
       reportFailedAfterPrint:
         '라벨은 나왔습니다. 인쇄 결과만 서버에 남기지 못했습니다 — 다시 찍지 마세요.',
       failed: '등록·인쇄를 끝내지 못했습니다.',
-      close: '닫기',
     },
     /** 재인쇄 사유 — **회차가 2 이상이면 서버가 필수로 요구한다.** */
     reissueDialog: {

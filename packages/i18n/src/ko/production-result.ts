@@ -9,7 +9,8 @@ export const productionResult = {
   flow: {
     header: {
       erpWorkOrder: 'ERP W/O',
-      workOrder: 'W/O',
+      /* ⚠ ERP 쪽 번호와 나란히 서는 자리라 어느 쪽 번호인지 밝힌다(사용자 지시 2026-09-10). */
+      workOrder: 'MES W/O',
       item: '품목',
     },
     currentLot: {
@@ -41,7 +42,7 @@ export const productionResult = {
       issueMissing: (count: number) => `부족한 인식표 ${String(count)}장 출력`,
       matched: '실제 생산수량과 인식표 개체 수가 일치합니다.',
       tooMany: '이미 만든 인식표 개체 수보다 실제 생산수량을 작게 낮출 수 없습니다.',
-      summaryFailed: '인식표 발행 이력을 확인할 수 없어 생산 LOT 출력을 열지 않습니다.',
+      summaryFailed: '인식표 발행 이력을 확인할 수 없어 생산 라벨 출력을 열지 않습니다.',
       restoreDocuments: (count: number) => `발행 기록이 없는 인식표 ${String(count)}장 복구`,
       printIncomplete: (count: number) =>
         `인쇄 대기 또는 실패 인식표 ${String(count)}장을 확인해 재출력하세요.`,
@@ -59,7 +60,7 @@ export const productionResult = {
       printFailed: '인식표 발행 기록은 남았지만 물리 인쇄에 실패했습니다.',
       reportFailed:
         '인식표는 인쇄됐지만 결과를 보고하지 못했습니다. 다시 인쇄하지 말고 보고만 다시 보내세요.',
-      loadFailed: '인식표 개체를 확인할 수 없어 생산 LOT 출력을 열지 않습니다.',
+      loadFailed: '인식표 개체를 확인할 수 없어 생산 라벨 출력을 열지 않습니다.',
       targetUnknown: '인식표 대상 여부를 확인할 수 없어 출력을 열지 않습니다.',
       printerUnavailable: '인식표를 지원하는 프린터가 없습니다.',
     },
@@ -68,10 +69,10 @@ export const productionResult = {
       template: '생산 LOT 라벨',
       printer: '프린터',
       printerUnknown: '확인할 수 없음',
-      issue: '생산 LOT 출력',
+      issue: '생산 라벨 출력',
       retryIssue: '라벨 발행 다시 시도',
-      retryPrint: '기존 발행분 인쇄 다시 시도',
-      retryReport: '인쇄 결과 보고 다시 시도',
+      retryPrint: '발행된 라벨 다시 인쇄',
+      retryReport: '결과 다시 전송',
       queued: '생산 실적을 미전송 큐에 저장했습니다. 서버 적용 뒤 라벨 발행을 이어갑니다.',
       saving: '생산 실적을 서버에 적용하는 중입니다.',
       issuing: '생산 실적 저장 완료 · 라벨 발행 중',
@@ -79,9 +80,8 @@ export const productionResult = {
       printed: '생산 LOT 라벨 인쇄 완료 · 부착한 라벨을 스캔하세요.',
       issueFailed: '생산 실적은 저장됐지만 라벨 발행에 실패했습니다.',
       renditionFailed: '라벨 발행은 완료됐지만 인쇄 데이터를 받지 못했습니다.',
-      printFailed: '라벨 발행은 완료됐지만 물리 인쇄에 실패했습니다.',
-      reportFailed:
-        '라벨은 인쇄됐지만 결과를 보고하지 못했습니다. 다시 인쇄하지 말고 보고만 다시 보내세요.',
+      printFailed: '라벨 발행은 완료되었지만, 인쇄되지 않았습니다.',
+      reportFailed: '라벨 인쇄는 완료되었습니다. 결과를 다시 전송해 주세요.',
       legacyMismatch: '생산 실적 없이 생성된 이전 라벨 이력이 있습니다. LOT 마감을 열지 않습니다.',
       mismatchBlocked: '실적·라벨 상태 확인 필요',
       shellUnavailable: 'Electron POP 셸의 인쇄 통로를 확인할 수 없습니다.',
@@ -90,8 +90,12 @@ export const productionResult = {
     scan: {
       title: '스캔 대기',
       label: '부착한 LOT 번호 스캔',
-      waiting: '생산 LOT 라벨 인쇄가 끝나면 스캔 입력이 열립니다.',
-      mismatch: (lotNo: string) => `현재 LOT ${lotNo}과 일치하는 라벨을 스캔하세요.`,
+      /*
+       * ⚠ **한 줄로 합친 문구다**(사용자 지시 2026-09-10). 스캔이 어긋났을 때 「지금 무엇이
+       * 잘못됐나」와 「그래서 무엇을 하나」가 두 줄로 갈려 있었다.
+       */
+      mismatch:
+        '입력한 LOT과 일치하는 라벨을 찾을 수 없습니다. LOT을 다시 확인한 후, 동일한 라벨을 다시 스캔해주세요.',
       completing: 'LOT 생산 등록을 마감하고 있습니다.',
       completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',
       failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔하세요.',
@@ -155,7 +159,7 @@ export const productionResult = {
     keypadLabel: '수량 키패드',
     /* 읽는 기계에는 이름이 가고 눈에는 기호가 보인다 — 인식표 키패드도 같은 규칙이다. */
     backspace: '한 자 지움',
-    clearGlyph: 'C',
+    clearGlyph: '지움',
     quickAdd: (step: number) => `＋${String(step)}`,
     /**
      * 잔여수량 — 스펙 §3-2 의 「잔여수량 380 / 500」.

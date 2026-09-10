@@ -54,6 +54,11 @@ interface Options {
   lotsFail?: boolean;
   /** 포장 유형 조회가 실패한다 */
   unitTypesFail?: boolean;
+  /**
+   * 목록에 기본값(`BOX`)이 없다 — 고객이 코드를 갈아 두면 생기는 상태다. 그때는 화면이
+   * 유형을 채우지 못하므로 「고르지 않은 채 담기」 갈래가 그대로 남는다.
+   */
+  unitTypesWithoutBox?: boolean;
   /** 품목 조회가 실패한다 */
   itemFails?: boolean;
   /** **확정**(`:pack`) 요청을 담아 둔다. */
@@ -90,7 +95,9 @@ const routes = (options: Options): StubRoute[] => [
         return jsonResponse({ message: '조회 실패' }, { status: 500 });
       }
 
-      return jsonResponse({ items: unitTypes, page: { page: 1, size: 200, total: 1 } });
+      const items = options.unitTypesWithoutBox === true ? [] : unitTypes;
+
+      return jsonResponse({ items, page: { page: 1, size: 200, total: items.length } });
     },
   },
   {
@@ -334,10 +341,15 @@ describe('P-02-08 포장 작업', () => {
     expect(screen.queryByText(t.unit.typeRequired)).not.toBeInTheDocument();
   });
 
+  /**
+   * ⚠ **기본값이 없을 때의 갈래다.** 화면은 목록에 `BOX` 가 있으면 유형을 채워 두므로(스펙 §3
+   * 도면), 고르지 않은 채로 담기를 누르는 상태는 **목록에 그 값이 없을 때** 생긴다 — 코드는
+   * 고객이 늘리고 갈 수 있다(G-31).
+   */
   it('유형을 고르기 전에 담기를 누르면 유형 칸이 사유를 말한다', async () => {
     const user = userEvent.setup();
 
-    renderScreen();
+    renderScreen({ unitTypesWithoutBox: true });
 
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
@@ -364,9 +376,9 @@ describe('P-02-08 포장 작업', () => {
 
     renderScreen({ writes, creates });
 
-    /* 유형만 고른 상태 — 아직 포장 단위가 없으므로 번호 자리는 언제 생기는지 말한다. */
+    /* 유형만 고른 상태 — 아직 포장 단위가 없으므로 번호 자리는 비어 있다(스펙 §3). */
     await chooseUnitType(user);
-    expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(unitPane().queryByText(HANDLING_UNIT_NO)).not.toBeInTheDocument();
 
     await user.click(await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }));
     await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
@@ -429,7 +441,9 @@ describe('P-02-08 포장 작업', () => {
       expect(request.headers.get('X-Worker-No')).toBe(WORKER_NO);
 
       /* 거둔 뒤에는 새 포장을 처음부터 시작한다 — 번호도 담은 것도 남지 않는다. */
-      expect(await unitPane().findByText(t.unit.numberPending)).toBeInTheDocument();
+      await waitFor(() => {
+        expect(unitPane().queryByText(HANDLING_UNIT_NO)).not.toBeInTheDocument();
+      });
       expect(unitPane().getByText(t.contents.empty)).toBeInTheDocument();
     });
 
@@ -599,7 +613,7 @@ describe('P-02-08 포장 작업', () => {
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(screen.getByText(t.scan.quantityPositive)).toBeInTheDocument();
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(unitPane().queryByText(HANDLING_UNIT_NO)).not.toBeInTheDocument();
   });
 
   it('LOT 이 둘 이상 담기면 혼적을 경고하되 확정을 막지 않는다', async () => {
@@ -691,7 +705,7 @@ describe('P-02-08 포장 작업', () => {
 
     await user.click(screen.getByRole('button', { name: t.confirm.startNext }));
 
-    expect(unitPane().getByText(t.unit.numberPending)).toBeInTheDocument();
+    expect(unitPane().queryByText(HANDLING_UNIT_NO)).not.toBeInTheDocument();
     expect(unitPane().getByText(t.contents.empty)).toBeInTheDocument();
   });
 
@@ -743,7 +757,6 @@ describe('P-02-08 포장 작업', () => {
     expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.unit.typeLabel })).toBeDisabled();
     expect(screen.getByRole('combobox', { name: t.unit.parentLabel })).toBeDisabled();
-    expect(screen.getByText(t.unit.lockedNotice)).toBeInTheDocument();
   });
 });
 

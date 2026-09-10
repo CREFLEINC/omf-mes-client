@@ -17,6 +17,13 @@ import { runRequest } from '../../patterns/request';
 export interface UomLookup {
   /** 이름을 모르면 `null`. 붙일 것이 없다는 뜻이다. */
   labelOf: (uomId: number | undefined) => string | null;
+  /**
+   * 이 단위가 허용하는 소수 자릿수. **모르면 0** — 소수점 키를 세우지 않는다.
+   *
+   * ⛔ 모르는 동안 열어 두지 않는다. 「개(EA)」에 소수를 넣으면 되돌릴 수 없는 실적에 넣을 수
+   * 없는 값이 실린다(자매 화면 `P-04-03` 이 같은 근거로 같은 규칙을 쓴다).
+   */
+  decimalScaleOf: (uomId: number | undefined) => number;
 }
 
 export const useUomLookup = (): UomLookup => {
@@ -29,11 +36,15 @@ export const useUomLookup = (): UomLookup => {
         client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),
       );
 
-      return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));
+      return new Map(
+        data.items.map((uom) => [uom.uomId, { code: uom.uomCode, decimalScale: uom.decimalScale }]),
+      );
     },
   });
 
   return {
-    labelOf: (uomId) => (uomId === undefined ? null : (query.data?.get(uomId) ?? null)),
+    labelOf: (uomId) => (uomId === undefined ? null : (query.data?.get(uomId)?.code ?? null)),
+    decimalScaleOf: (uomId) =>
+      uomId === undefined ? 0 : (query.data?.get(uomId)?.decimalScale ?? 0),
   };
 };

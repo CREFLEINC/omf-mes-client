@@ -334,7 +334,7 @@ afterEach(() => {
 
 const chooseLine = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   const row = await screen.findByRole('button', {
-    name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택',
+    name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택',
   });
   await user.click(row);
 };
@@ -432,7 +432,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     expect(await screen.findByText(/라벨이 나오지 않았습니다|인쇄했습니다/u)).toBeInTheDocument();
 
     await user.click(
-      await screen.findByRole('button', { name: 'SYN-IB-0002 SYN-ITEM-01 · 합성 품목 가 선택' }),
+      await screen.findByRole('button', { name: '입하 SYN-IB-0002 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택' }),
     );
 
     expect(screen.queryByText(/라벨이 나오지 않았습니다|인쇄했습니다/u)).not.toBeInTheDocument();
@@ -549,7 +549,6 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     await user.click(screen.getByRole('button', { name: '인쇄' }));
     expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '닫기' }));
     await user.click(screen.getByRole('button', { name: '인쇄' }));
 
     await waitFor(() => {
@@ -574,7 +573,6 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
 
     await user.click(screen.getByRole('button', { name: '인쇄' }));
     expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '닫기' }));
 
     await user.click(screen.getByRole('button', { name: '재인쇄' }));
     const dialog = within(await screen.findByRole('dialog'));
@@ -616,7 +614,7 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole('button', { name: 'SYN-IB-0002 SYN-ITEM-01 · 합성 품목 가 선택' }),
+        screen.getByRole('button', { name: '입하 SYN-IB-0002 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택' }),
       ).toBeDisabled();
     });
   });

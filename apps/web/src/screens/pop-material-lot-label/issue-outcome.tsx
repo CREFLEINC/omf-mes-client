@@ -1,7 +1,6 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { AlertBanner } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
-import { popTouchClass } from '../../patterns/pop-touch';
 import { toIssueFailure, type IssueFailure } from './failure';
 import type { IssueRunResult } from './mutations';
 import { formatLotNo } from './types';
@@ -21,7 +20,6 @@ const FAILURE_MESSAGE: Record<IssueFailure, string> = {
 
 export interface IssueOutcomeProps {
   result: IssueRunResult;
-  onClose: () => void;
 }
 
 /**
@@ -41,7 +39,7 @@ export interface IssueOutcomeProps {
  *
  * ⛔ 「실패」로 뭉뚱그리면 사용자가 처음부터 다시 눌러 같은 자재에 LOT 이 둘 생긴다.
  */
-export const IssueOutcome = ({ result, onClose }: IssueOutcomeProps) => {
+export const IssueOutcome = ({ result }: IssueOutcomeProps) => {
   const { isPrinted, failedAt, hasCreatedLot, issue, error } = result;
 
   // 아직 아무것도 하지 않았다 — 자리를 미리 차지하지 않는다.
@@ -54,28 +52,19 @@ export const IssueOutcome = ({ result, onClose }: IssueOutcomeProps) => {
   const isPaperOut = failure === 'printFailed' || failure === 'reportFailedAfterPrint';
   const variant = isPrinted ? 'success' : isPaperOut ? 'warning' : 'error';
   /*
-   * ⛔ **출력 권한이 없는 단말에서는 닫지 못하게 둔다.** 닫으면 결과가 지워져 단추가 다시
-   * 열리는데(`screen` 의 차단이 이 결과를 본다) 서버의 답은 그대로다 — 닫기가 「재시도 단추를
-   * 주지 않는다」(스펙 §5-2)를 무르는 우회로가 된다. 다른 자재를 고르면 자연히 사라진다.
+   * ⛔ **닫기를 주지 않는다.** 스펙 §3·§5 에 이 띠를 닫는 조작이 없다. 닫히면 결과가 지워져
+   * 화면의 차단(`screen` 이 이 결과를 본다)도 함께 풀리는데 서버의 답은 그대로다 — 닫기가
+   * 「재시도 수단을 주지 않는다」(§5-2)를 무르는 우회로가 된다. 다른 자재를 고르거나 같은
+   * 자재를 다시 누르면 자연히 사라진다.
    */
-  const isDismissable = failure !== 'issueForbidden';
 
   return (
-    <AlertBanner
-      variant={variant}
-      action={
-        isDismissable ? (
-          <Button
-            className={popTouchClass('normal')}
-            variant="outlined"
-            size="xl"
-            onClick={onClose}
-          >
-            {t.close}
-          </Button>
-        ) : undefined
-      }
-    >
+    /*
+     * ⚠ **표식과 글줄의 높이를 맞춘다.** DS 는 앞머리 표식을 위에 붙이는데(`align-items:
+     * flex-start` + 표식 쪽 여백), 제목 없이 한 줄만 내는 이 자리에서는 표식이 글줄보다 4px
+     * 내려앉아 «높낮이가 어긋나 보인다»(실측 2026-09-10 · 사용자가 짚었다).
+     */
+    <AlertBanner className="pop-material-lot-outcome" variant={variant}>
       {isPrinted && issue !== null
         ? t.printed(issue.lotNo === null ? '' : formatLotNo(issue.lotNo), issue.issueSeq)
         : failure === null

@@ -1,4 +1,4 @@
-import { Button, Card } from '@crefle/web-ui';
+import { AlertBanner, Button, Card } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabel, type LookupSource } from '../../patterns/lookup-display';
@@ -140,10 +140,14 @@ export const TargetCard = ({
        *    감추지 않는다는 규약(F-1)이 문장을 요구한다.
        */}
       {!hasWorkerNo ? <p className="field-note pop-wide-note">{t.actions.workerRequired}</p> : null}
+      {/*
+       * 진행 상태도 결과와 같은 띠로 낸다(`AlertBanner` · 사용자 지시 2026-09-10) — 발행·인쇄가
+       * 어디까지 갔는지는 다른 POP 화면이 모두 띠로 말한다.
+       */}
       {runningStep === null ? null : (
-        <p className="field-note pop-wide-note" role="status">
-          {t.actions.running[runningStep]}
-        </p>
+        <div className="banner-slot pop-wide-note">
+          <AlertBanner variant="info" title={t.actions.running[runningStep]} />
+        </div>
       )}
     </>
   );

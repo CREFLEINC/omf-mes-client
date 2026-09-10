@@ -90,9 +90,16 @@
   --field-label-layer: calc(16px + var(--space-1));
 }
 
-/* P-02-04 통합 흐름. 공통 POP 밀도는 건드리지 않고 이 화면의 구획 배치만 소유한다. */
+/*
+ * P-02-04 통합 흐름. 공통 POP 밀도는 건드리지 않고 이 화면의 구획 배치만 소유한다.
+ *
+ * ⛔ **화면째 스크롤하지 않는다**(E-4 「스크롤 구획을 하나 지정한다」). 한때 여기에
+ *    `overflow-y: auto` 를 두어 화면 전체가 굴렀는데, 그러면 **머리줄이 위로 밀려 사라진다** —
+ *    W/O·품목·사번이 그 줄에만 있어 「지금 무엇을 등록하고 있는가」가 화면에서 없어진다
+ *    (실측 · 스크롤 224px). 스크롤은 아래 본문 격자가 맡는다.
+ */
 .pop-ui.production-flow {
-  overflow-y: auto;
+  overflow-y: hidden;
 }
 
 .production-flow-grid {
@@ -6180,9 +6187,14 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /*
  * 사번 표시 — **글자를 크게 한다.** 「큰 글자」는 글자 크기 요구이지 높이 요구가 아니라
- * (§7) 칸 높이는 `xl`(60px) 그대로 두고 글자만 키운다.
+ * (§7) 칸 높이는 그대로 두고 글자만 키운다.
+ *
+ * ⚠ **이름표는 입력칸 «자신»에 붙는다.** 디자인 시스템의 `TextField` 는 `className` 을
+ *   바깥 상자가 아니라 `<input>` 에 그대로 넘긴다 — 한때 `.worker-no-field input` 으로
+ *   안쪽을 찾았는데 그런 자식이 없어 **규칙이 통째로 죽어 있었다**(실측 — 사번이 본문과
+ *   같은 16px 로 떴고 가운데 정렬도 서지 않았다).
  */
-.worker-no-field input {
+.worker-no-field {
   font-size: var(--font-size-2xl, 2rem);
   letter-spacing: 0.15em;
   text-align: center;
@@ -6514,11 +6526,17 @@ dl.filter-bar.approval-inbox-detail-facts {
 }
 
 /*
- * ② 목록만 스크롤한다. 높이를 고정하지 않고 상한만 두어, 지시가 적을 때 빈 상자가 남지
- * 않게 한다 — 남으면 ③이 그만큼 아래로 밀려 액션바와 겹친다.
+ * ② 목록만 스크롤한다 — **구획이 준 높이를 그대로 쓴다.**
+ *
+ * ⛔ **픽셀 상한을 두지 않는다.** 한때 `max-height: 328px` 였는데 그 값은 도면(§4)이 위에
+ *    ① 사번 구획 96 을 두던 때의 몫이다. 사번 입력이 진입 화면·머리줄로 옮겨져 ① 이
+ *    사라지자 구획은 447 로 자랐는데 목록만 328 에서 멈춰, **아래 53px 이 빈 채로 남고 네
+ *    번째 줄이 잘린 채 걸렸다**(실측 · 사용자 지적). 구획 높이는 이미 화면 예산이 정하므로
+ *    상한을 한 번 더 걸면 늘 둘 중 작은 쪽에 끌려간다.
  */
 .work-start-list .pop-card-list {
-  max-height: 328px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
 }
 
@@ -6773,8 +6791,7 @@ dl.filter-bar.approval-inbox-detail-facts {
  * ⛔ **번호가 남은 폭을 다 가져가게 두지 않는다.** LOT 번호가 길면 행이 옆으로 늘어나
  * 오른쪽 끝의 선택 버튼이 표 밖으로 밀려난다(전례 `P-02-05` 실측).
  */
-.pack-work-lot-table,
-.pack-work-content-table {
+.pack-work-lot-table {
   table-layout: fixed;
   width: 100%;
 }
@@ -6965,7 +6982,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   margin-inline-start: auto;
 }
 
-/* 지금 물린 금형. 목록과 붙되 한 덩이로 읽히게 사이를 둔다. */
+/* 지금 물린 금형·신규 부품. 목록과 붙되 한 덩이로 읽히게 사이를 둔다. */
 .pop-rc-mold,
 .pop-rc-part {
   display: flex;
@@ -6977,7 +6994,7 @@ dl.filter-bar.approval-inbox-detail-facts {
   letter-spacing: var(--type-body-lg-tracking);
 }
 
-.pop-rc-mold-label,
+/* ⚠ 금형 줄은 이름표를 칸마다 갖게 되어(`pop.css`) 줄 앞 이름표를 쓰지 않는다. */
 .pop-rc-part-label {
   font-weight: 600;
   color: var(--on-surface-muted);
@@ -7046,15 +7063,6 @@ dl.filter-bar.approval-inbox-detail-facts {
 .pop-hold-facts > dd {
   margin: 0;
   font: var(--type-body-lg);
-}
-
-/*
- * 이름이 없는 값(세션 번호)의 라벨 자리. 화면이 빈 `dt` 로 두 칸 격자의 첫 칸을 채우는데,
- * 규칙이 없으면 그 칸이 `dt` 기본 여백을 그대로 갖는다 — 보일 것이 없으므로 폭을 지운다.
- */
-.pop-hold-facts-lead {
-  inline-size: 0;
-  margin: 0;
 }
 
 /* 이력은 줄 수가 적고 열이 셋뿐이라 표를 그대로 쓴다. */
@@ -7390,8 +7398,12 @@ dl.filter-bar.approval-inbox-detail-facts {
    * ⛔ **`min-height` 가 아니라 `height` 다.** 최소 높이로 두면 안이 커질 때 셸이 함께 늘어
    * 액션바가 화면 «밖»으로 나간다 — 담을 것을 다 담고도 [포장 확정]이 보이지 않는다.
    * 실측으로 그렇게 밀렸다(판정 배너가 떴을 때).
+   *
+   * ⛔ **`vh` 가 아니라 `%` 다.** POP 화면은 `pop-fit` 이 배율(`zoom`)로 줄이는데 `vh` 는 그
+   * 배율을 되돌려 주지 않아, 예산이 배율만큼 짧게 잡히고 바닥이 잘린다(`pop.css` 의 `.pop-ui`
+   * 가 같은 이유로 `%` 다). `html`·`body`·`#root` 가 이미 `height: 100%` 사슬이다.
    */
-  height: 100vh;
+  height: 100%;
   padding: var(--space-4);
 }
 

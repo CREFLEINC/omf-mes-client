@@ -105,11 +105,18 @@ export const KeypadPanel = ({
       keySize={POP_TOUCH_SIZE}
     />
 
-    {/* 터치 규격 — 핵심 조작이라 72px(`2xl`)이다(E-3). */}
+    {/*
+     * 터치 규격 — 핵심 조작이라 72px(`2xl`)이다(E-3).
+     *
+     * ⭐ **구획 폭 전체를 쓰고 오른쪽 구획의 [교대]·[이동]과 같은 크기로 선다**(설계 §3
+     * 도면). 두 구획의 폭이 같으므로, 저쪽 둘이 한 줄에 하나씩 서면 셋이 같은 크기가 된다.
+     * 높이 맞춤은 `pop.css` 가 이 이름으로 한다.
+     */}
     <Button
       type="button"
       variant="filled"
       size={POP_TOUCH_SIZE}
+      className="worker-no-submit"
       disabled={!canSubmit(workerNo) || isChecking}
       onClick={onSubmit}
     >

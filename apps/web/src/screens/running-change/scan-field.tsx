@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
@@ -61,8 +61,8 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
     event.preventDefault();
 
     /*
-     * **버튼 잠금과 별개의 겹이다.** Enter 의 암묵 제출은 제출 버튼이 잠기면 일어나지 않으므로
-     * 평소에는 이 줄이 걸릴 일이 없다 — 걸리는 것은 버튼을 지나지 않는 제출뿐이다.
+     * ⚠ **제출 단추가 없어진 지금 이 줄이 유일한 방어다**(설계 §3 도면). 앞 판은 잠긴
+     * 단추가 Enter 의 암묵 제출까지 막아 주어 「평소에는 걸릴 일이 없다」고 적어 두었다.
      */
     if (isScanning) return;
 
@@ -99,40 +99,26 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
           }}
         />
         {/*
-         * ⭐ **채움(`filled`)을 쓰지 않는다**(자매 화면 `P-02-03` 과 같은 이유). 스캐너는 코드를
-         * 치고 Enter 까지 보내고, 이 칸은 들어오자마자·읽을 때마다 스스로 포커스를 되찾는다 —
-         * **정상 흐름에서 이 버튼은 눌리지 않는다.** 채움으로 두면 화면에서 가장 강한 것이
-         * 「안 눌러도 되는 것」이 되고, 이 화면이 향하는 [ 교체 등록 ]이 그 뒤로 밀린다.
+         * 스캔 실패의 대체 경로. **칸으로 포커스를 옮기는 것이 전부다** — 코드는 이미 손으로
+         * 칠 수 있고, 없던 것은 「어디를 눌러야 하는가」였다.
          *
-         * ⛔ 크기는 낮추지 않는다 — 대체 경로라도 장갑 낀 손이 누르는 자리다.
-         */}
-        <Button
-          type="submit"
-          variant="outlined"
-          size="xl"
-          className="pop-touch-target"
-          disabled={isScanning}
-        >
-          {isScanning ? t.scan.scanning : t.scan.submit}
-        </Button>
-      </div>
-
-      {/*
-       * 스캔 실패의 대체 경로. **칸으로 포커스를 옮기는 것이 전부다** — 코드는 이미 손으로
-       * 칠 수 있고, 없던 것은 「어디를 눌러야 하는가」였다.
-       *
-       * ⛔ 별도 입력창을 열지 않는다. 스캐너가 살아 있을 때 그 창이 스캔값을 가로챈다.
-       */}
-      <div className="scan-manual">
-        {/*
-         * ⭐ **세 단계로 내려온다** — [ 교체 등록 ] 채움 · [ 읽기 ] 테두리 큰 것 · 이것은 작은
-         *    테두리. 하는 일이 칸으로 포커스를 옮기는 것 하나라 셋 중 가장 약하게 세운다.
-         *    설계가 「큰 타겟」으로 지목한 것은 [ 교체 등록 ] 하나뿐이다(§7).
+         * ⭐ **칸 오른쪽에 선다**(사용자 지시 2026-09-11 · 자매 화면 P-02-03 · P-02-08 과 같은
+         *    자리). 아랫줄로 내리면 눈이 칸을 지나쳐 내려갔다가 다시 올라온다 — 이 단추가
+         *    하는 일은 바로 그 칸으로 돌아가는 것이다.
+         *
+         * ⭐ **두 단계로 내려온다** — [ 교체 등록 ] 채움 · 이것은 테두리. 설계가 「큰 타겟」으로
+         *    지목한 것은 [ 교체 등록 ] 하나뿐이다(§7).
+         *
+         * ⛔ 별도 입력창을 열지 않는다. 스캐너가 살아 있을 때 그 창이 스캔값을 가로챈다.
+         *
+         * ⛔ **[ 읽기 ] 단추를 두지 않는다**(설계 §3 도면 · 사용자 지시 2026-09-11). 스캐너는
+         *    코드 끝에 Enter 를 붙여 보내므로 제출은 폼이 알아서 하고(칸이 하나뿐인 폼은
+         *    Enter 로 제출된다), 손으로 칠 때도 Enter 가 같은 길이다.
          */}
         <Button
           type="button"
           variant="outlined"
-          size="lg"
+          size="xl"
           className={popTouchClass('normal')}
           onClick={() => {
             inputRef.current?.focus();
@@ -149,16 +135,15 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
        * ⛔ **없을 때도 자리를 지운다.** 뜨고 지면 아래가 위아래로 움직여, 다음 코드를 읽으려던
        *    손이 옆 것을 누른다. 그래서 «내용»만 바뀌고 상자는 늘 서 있다.
        *
-       * `role="status"` 라 화면을 보지 않는 작업자도 읽힌 결과를 듣는다 — 이 화면의 사용자는
-       * 손과 눈이 설비에 가 있다.
+       * ⭐ **다른 POP 알림과 같은 띠로 낸다**(`AlertBanner` · 사용자 지시 2026-09-10) — 자매
+       * 화면(`P-02-03`)이 같은 자리에서 같은 모양을 쓴다.
+       *
+       * 부품이 무게에 따라 `role="status"`·`alert` 를 붙여 준다 — 화면을 보지 않는 작업자도
+       * 읽힌 결과를 듣는다. 이 화면의 사용자는 손과 눈이 설비에 가 있다.
        */}
-      <p
-        className="scan-outcome"
-        role="status"
-        data-tone={outcome === null ? undefined : outcome.tone}
-      >
-        {outcome !== null && <span className="scan-outcome-text">{outcome.text}</span>}
-      </p>
+      <div className="scan-outcome">
+        {outcome !== null && <AlertBanner variant={outcome.tone} title={outcome.text} />}
+      </div>
     </form>
   );
 };

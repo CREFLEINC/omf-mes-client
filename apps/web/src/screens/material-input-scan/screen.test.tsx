@@ -122,20 +122,15 @@ describe('MaterialInputScanScreen — 계획 대비 수령', () => {
   });
 
   /*
-   * 부족·미수령이 투입을 막지 않는다는 사실을 화면이 «말할 수 있어야» 한다. 상시 문구에서
-   * 도움말로 옮겼으므로, 보는 것은 「문구가 떠 있는가」가 아니라 **「물어볼 자리가 있는가」**다.
+   * 부족·미수령이 투입을 막지 않는다는 사실을 화면이 «말해야» 한다.
    *
-   * ⛔ 뜬 문구를 단언하지 않는다 — DS `Tooltip` 이 hover·focus 로 띄우는데, 단언이 그 경로를
-   *    타면 이 시험이 DS 의 «표시 방식»에 묶인다. 여기서 지킬 것은 그 말에 닿는 길이 있고
-   *    그 길에 이름이 붙어 있는지다.
+   * ⚠ 한때 [?]를 눌러야 잠깐 뜨는 도움말이었고 시험도 「물어볼 자리가 있는가」를 봤다. 지금은
+   *   구획 이름 아래 상시 한 줄이라(사용자 지시 2026-09-10) **문구 자체**를 본다.
    */
-  it('부족·미수령이 있어도 투입할 수 있다는 안내에 닿는 길을 둔다', async () => {
+  it('부족·미수령이 있어도 투입할 수 있다고 화면이 말한다', async () => {
     renderScreen([listRoute(), detailRoute(7001, receiptLineFixtures)]);
 
-    const help = await screen.findByRole('button', { name: t.notes.shortAllowedLabel });
-
-    expect(help).toBeTruthy();
-    expect(help.textContent).toBe('?');
+    expect(await screen.findByText(t.notes.shortAllowed)).toBeTruthy();
   });
 
   it('전표가 여럿이면 상세를 각각 불러 줄을 모은다', async () => {

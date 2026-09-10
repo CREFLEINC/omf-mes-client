@@ -1,4 +1,4 @@
-import { AlertBanner, Button, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { RefObject } from 'react';
 
@@ -6,7 +6,7 @@ import { PopSelect as Select } from '../../patterns/pop-select';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { isMixedLot, totalQty } from './contents';
 import type { CodeLabels } from './queries';
-import type { CodeValue, HandlingUnit, PackingDraft, PackingLine } from './types';
+import type { CodeValue, HandlingUnit, PackingDraft } from './types';
 
 const t = messages.packingWork;
 
@@ -94,31 +94,6 @@ export const PackingPane = ({
     return ids.size === 1 ? ([...ids][0] ?? null) : null;
   })();
 
-  const columns: Column<PackingLine>[] = [
-    {
-      key: 'lotNo',
-      header: t.contents.lotColumn,
-      render: (line) => (
-        <span className="pack-work-lot-no" title={line.lotNo}>
-          {line.lotNo}
-        </span>
-      ),
-    },
-    {
-      key: 'itemCode',
-      header: t.contents.itemColumn,
-      width: '132px',
-      render: (line) => labels.itemCodeOf(line.itemId) ?? t.contents.unknownCode,
-    },
-    {
-      key: 'qty',
-      header: t.contents.qtyColumn,
-      align: 'end',
-      width: '120px',
-      render: (line) => withUom(line.qty, line.uomId),
-    },
-  ];
-
   return (
     <>
       <div className="pack-work-unit-fields">
@@ -135,6 +110,12 @@ export const PackingPane = ({
             placeholder={t.unit.typePlaceholder}
             size="xl"
             aria-label={t.unit.typeLabel}
+            /*
+             * ⚠ **잠긴 이유를 칸에 붙인다.** 화면에 줄로 세우지 않기로 했으므로(사용자 지시
+             * 2026-09-10) 잠긴 칸 자신이 사유를 들고 있어야 한다 — 아무 설명 없이 못 누르는
+             * 칸이 남으면 고장으로 읽힌다(리뷰 지적).
+             */
+            title={locked ? t.unit.lockedReason : undefined}
             disabled={locked || unitTypesFailed}
             onChange={onTypeChange}
           />
@@ -159,6 +140,7 @@ export const PackingPane = ({
             placeholder=""
             size="xl"
             aria-label={t.unit.parentLabel}
+            title={locked ? t.unit.lockedReason : undefined}
             disabled={locked || parentsFailed}
             onChange={(value) => {
               onParentChange(value === NO_PARENT ? null : Number(value));
@@ -170,36 +152,60 @@ export const PackingPane = ({
       {typeError !== null && <p className="field-error">{typeError}</p>}
       {unitTypesFailed && <p className="field-error">{t.unit.typeLoadFailed}</p>}
       {parentsFailed && <p className="field-error">{t.unit.parentLoadFailed}</p>}
-      {locked && <p className="field-note">{t.unit.lockedNotice}</p>}
 
       <h3 className="pane-title">{t.contents.sectionLabel}</h3>
-      <Table
-        className="pack-work-content-table"
-        columns={columns}
-        rows={[...draft.lines]}
-        getRowId={(line) => `${String(line.lotId)}-${String(line.itemId)}`}
-        density="comfortable"
-        empty={t.contents.empty}
-        summaryRows={
-          draft.lines.length === 0
-            ? undefined
-            : [
-                [
-                  /* LOT·품목 두 열을 묶어 합계 라벨을 놓는다 — 열 수가 어긋나면 값이 밀린다. */
-                  { key: 'label', content: t.contents.totalLabel, colSpan: 2, emphasis: true },
-                  {
-                    key: 'total',
-                    content:
-                      totalUomId === null
-                        ? String(totalQty(draft.lines))
-                        : withUom(totalQty(draft.lines), totalUomId),
-                    align: 'end',
-                    emphasis: true,
-                  },
-                ],
-              ]
-        }
-      />
+      {/*
+       * ⛔ **열 머리글을 두지 않는다.** 스펙 §3 도면의 내용물은 `✅ LOT-…0031  ABC-123  100 EA`
+       *   형태의 목록이고 「LOT·품목·수량」 머리줄이 없다(사용자 지적 2026-09-10). 세로 예산이
+       *   빠듯한 화면이라 그 한 줄이 담은 줄 하나만큼을 가져간다.
+       */}
+      {draft.lines.length === 0 ? (
+        <p className="field-note pack-work-content-empty">{t.contents.empty}</p>
+      ) : (
+        <>
+          <ul className="pack-work-contents" aria-label={t.contents.sectionLabel}>
+            {draft.lines.map((line) => (
+              <li
+                className="pack-work-content-line"
+                key={`${String(line.lotId)}-${String(line.itemId)}`}
+                /*
+                 * ⚠ **값에 이름을 단다.** 목록 이름만 두면 읽어 주는 도구에는 「LOT · 품목 ·
+                 * 수량」이 이름 없는 값 나열로 간다(리뷰 지적).
+                 */
+                aria-label={t.contents.lineLabel(
+                  line.lotNo,
+                  labels.itemCodeOf(line.itemId) ?? t.contents.unknownCode,
+                  withUom(line.qty, line.uomId),
+                )}
+              >
+                {/* 담긴 줄임을 나타내는 표식 — 스펙 도면의 ✅. 읽어 주는 도구에는 값이 아니다. */}
+                <span className="pack-work-content-mark" aria-hidden="true">
+                  ✓
+                </span>
+                <span className="pack-work-lot-no" title={line.lotNo}>
+                  {line.lotNo}
+                </span>
+                <span className="pack-work-content-item">
+                  {labels.itemCodeOf(line.itemId) ?? t.contents.unknownCode}
+                </span>
+                <span className="pack-work-content-qty">{withUom(line.qty, line.uomId)}</span>
+              </li>
+            ))}
+          </ul>
+          {/*
+           * ⭐ **합계는 구분선 아래 한 줄이다**(스펙 §3). 담은 것이 여러 단위로 섞이면 더한 값의
+           *   단위가 없으므로 숫자만 낸다 — 지어낸 단위를 붙이지 않는다.
+           */}
+          <p className="pack-work-content-total">
+            <span>{t.contents.totalLabel}</span>
+            <span>
+              {totalUomId === null
+                ? String(totalQty(draft.lines))
+                : withUom(totalQty(draft.lines), totalUomId)}
+            </span>
+          </p>
+        </>
+      )}
 
       {/*
         혼적 — **막지 않는다**(스펙 §5-5). 추적은 내용물 행으로 남는다. 여기서 막으면 실물로는

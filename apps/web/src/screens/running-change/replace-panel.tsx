@@ -243,7 +243,11 @@ export const ReplacePanel = ({
           id={reasonId}
           className="pop-rc-select"
           size="xl"
-          placeholder={t.replace.reasonPlaceholder}
+          placeholder={
+            reasons.length === 0 && !reasonsPending && !reasonsFailed
+              ? t.replace.reasonEmpty
+              : t.replace.reasonPlaceholder
+          }
           value={reasonCode}
           options={reasons.map((reason) => ({ value: reason.code, label: reason.codeName }))}
           disabled={reasons.length === 0}
@@ -252,9 +256,6 @@ export const ReplacePanel = ({
         {/* 셋을 갈라 말한다 — 받는 중 · 못 받음 · 아직 안 채움. 셋의 다음 행동이 다르다. */}
         {reasonsPending && <p className="field-note">{t.replace.reasonLoading}</p>}
         {!reasonsPending && reasonsFailed && <p className="field-note">{t.replace.reasonFailed}</p>}
-        {!reasonsPending && !reasonsFailed && reasons.length === 0 && (
-          <p className="field-note">{t.replace.reasonEmpty}</p>
-        )}
       </div>
 
       {/* W/O 가 나뉘지 않는다는 안내 — 스펙 §3 이 등록 버튼 위에 세워 둔 자리다. */}

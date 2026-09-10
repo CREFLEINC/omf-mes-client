@@ -1,4 +1,4 @@
-import { AlertBanner, Table, type Column } from '@crefle/web-ui';
+import { AlertBanner, Chip, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { isMixedLot, type HandlingUnit, type PackingContentRow } from './types';
@@ -29,22 +29,33 @@ export const HandlingUnitPane = ({
   namesFailed,
 }: HandlingUnitPaneProps) => {
   const columns: Column<PackingContentRow>[] = [
+    /*
+     * ⭐ **칸을 가운데로 맞춘다**(사용자 지시 2026-09-10 · 자재LOT 등록 화면의 표와 같은 규칙).
+     * 줄이 짧은 표라 왼쪽 정렬이면 열 사이가 벌어져 눈이 가로로 오간다.
+     */
+    /*
+     * ⚠ **열 폭을 비율로 나눈다**(사용자 지시 2026-09-10). LOT 이 남는 폭을 다 먹고 품목·수량이
+     *   96 에 묶여, 값은 짧은데 열 이름과 값이 서로 멀었다.
+     */
     {
       key: 'lotNo',
       header: t.lotColumn,
+      align: 'center',
+      width: '44%',
       render: (row) => row.lotNo ?? t.unknownValue,
     },
     {
       key: 'itemCode',
       header: t.itemColumn,
-      width: '96px',
+      align: 'center',
+      width: '28%',
       render: (row) => row.itemCode ?? t.unknownValue,
     },
     {
       key: 'qty',
       header: t.qtyColumn,
-      align: 'end',
-      width: '96px',
+      align: 'center',
+      width: '28%',
       /* 단위를 못 받았으면 수량만 낸다 — 단위 없는 수량은 참이고, 지어낸 단위는 거짓이다. */
       render: (row) =>
         row.uomCode === null ? String(row.qty) : `${String(row.qty)} ${row.uomCode}`,
@@ -63,10 +74,16 @@ export const HandlingUnitPane = ({
        *    읽는 말이 아니다. 이름을 못 받았을 때만 코드로 물러선다(지어내지 않는다).
        */}
       <p className="pop-reprint-hu-no">
-        {handlingUnit.handlingUnitNo}
-        <span className="pop-reprint-hu-type">
+        <span className="pop-reprint-hu-value">{handlingUnit.handlingUnitNo}</span>
+        {/*
+         * ⭐ **유형은 칩으로 세운다**(사용자 지시 2026-09-10). 번호는 글자, 유형은 알약 —
+         * 모양이 다르면 「번호와 그 성격」이 한눈에 갈린다.
+         *
+         * ⛔ 색을 쓰지 않는다(`idle`) — 상태가 아니라 분류라, 초록·노랑은 없는 뜻을 만든다.
+         */}
+        <Chip size="sm" status="idle">
           {typeName ?? handlingUnit.handlingUnitTypeCode}
-        </span>
+        </Chip>
       </p>
 
       <h3 className="pane-title">{t.contentsLabel}</h3>
@@ -74,7 +91,11 @@ export const HandlingUnitPane = ({
         columns={columns}
         rows={[...rows]}
         getRowId={(row) => String(row.handlingUnitContentId)}
-        density="compact"
+        /*
+         * ⚠ **다른 POP 표와 같은 밀도다**(사용자 지적 2026-09-10). `compact` 는 관리웹 밀도라
+         *   줄 높이가 36 으로 앉아, 장갑 낀 손이 읽기에도 누르기에도 좁았다.
+         */
+        density="comfortable"
         empty={t.empty}
       />
 

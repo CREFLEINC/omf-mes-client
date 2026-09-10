@@ -18,12 +18,43 @@ export const repackLabelIssue = {
   pending: {
     sectionLabel: '발행 대기',
     caption: '라벨을 아직 발행하지 않은 신규 포장',
-    numberColumn: '신규 포장 번호',
-    newNumber: (handlingUnitNo: string): string => `${handlingUnitNo} · 신규 발번`,
+    /*
+     * ⭐ **열은 설계 §3 ① 도면 그대로다** — 원 포장 · 유형 · 새 포장 · 잔량 · 확정 시각.
+     *
+     * ⛔ 신규 포장 «번호»를 이 표에 두지 않는다. 번호는 아래 ② 발번 구획이 보인다.
+     */
+    sourceColumn: '원 포장',
     typeColumn: '유형',
-    actionColumn: '선택',
-    select: (handlingUnitNo: string): string => `${handlingUnitNo} 선택`,
-    selectAction: '선택',
+    newColumn: '새 포장',
+    remainderColumn: '잔량',
+    occurredColumn: '확정 시각',
+    /** 합병은 원 포장이 여럿이다 — 도면이 `CTN-…-0088+89` 로 잇는다. */
+    sourceJoin: '+',
+    newCount: (count: number): string => `${count}건`,
+    /**
+     * 재구성 유형의 표시명. ⚠ 계약이 세 값을 열거해 두었다(`SPLIT`·`MERGE`·`RECONFIGURE`) —
+     * 공통코드가 아니라 스키마가 못박은 값이라 화면이 이름을 갖는다.
+     *
+     * ⛔ 모르는 값을 지어내지 않는다 — 받은 코드를 그대로 보인다.
+     */
+    repackType: (code: string): string =>
+      code === 'SPLIT'
+        ? '분할'
+        : code === 'MERGE'
+          ? '합병'
+          : code === 'RECONFIGURE'
+            ? '재구성'
+            : code,
+    /** 잔량이 남지 않았다(합병). */
+    noRemainder: '—',
+    /** 재구성 사건을 찾지 못한 칸. 값이 없는 것과 모르는 것을 같은 표시로 둔다. */
+    unknown: '—',
+    /**
+     * 줄을 고르는 단추의 읽어 주는 이름 — **보이는 글자가 앞에 온다**(WCAG 2.5.3).
+     * 화면에는 원 포장이 서 있고 고르는 대상은 그 줄이 만든 새 포장이라, 둘을 함께 읽는다.
+     */
+    selectRow: (sourceText: string, handlingUnitNo: string): string =>
+      `${sourceText} · 새 포장 ${handlingUnitNo} 선택`,
     selected: '선택됨',
     loading: '발행 대기 포장을 불러오는 중입니다.',
     empty: '현재 발행을 기다리는 포장이 없습니다.',
@@ -82,12 +113,14 @@ export const repackLabelIssue = {
     newLabel: (handlingUnitNo: string): string => `새 포장 라벨 · ${handlingUnitNo}`,
     remainderLabel: (handlingUnitNo: string, issueCount: number): string =>
       `잔량 라벨 재출력 · ${handlingUnitNo} (기존 ${String(issueCount)}회)`,
-    remainderNumberNote: '원 번호를 그대로 씁니다 — 새 번호를 발번하지 않습니다.',
-    remainderWarning: '수량이 바뀌었으면 다시 뽑아야 합니다.',
+    /**
+     * 잔량 줄의 안내 — **한 줄이 둘을 다 말한다**(사용자 지시 2026-09-11). 번호를 새로
+     * 매기지 않는다는 것과, 다시 뽑을 까닭이 수량 변경뿐이라는 것이다.
+     */
+    remainderNumberNote: '기존 번호를 그대로 사용하며, 수량이 변경된 경우에만 다시 출력합니다.',
     remainderFailed: '잔량 라벨 재출력 대상을 확인하지 못했습니다.',
     targetRequired: '인쇄할 라벨을 하나 이상 선택하세요.',
     /** 회차는 서버가 매긴다. 화면은 「이번이 몇 번째가 될 것인가」를 세지 않는다. */
-    firstIssue: '이 포장의 라벨을 처음 발행합니다.',
     reissue: (issueCount: number): string =>
       `이미 ${String(issueCount)}번 발행했습니다. 다시 발행하면 재발행으로 기록되고 사유가 필요합니다.`,
     summaryLoading: '발행 현황을 확인하는 중입니다.',
@@ -109,7 +142,8 @@ export const repackLabelIssue = {
     /** 프린터 축이 단말 마스터에 아직 없어 비어 올 수 있다(착수 이슈 §6). */
     printersEmpty: '이 단말에 등록된 프린터가 없습니다. 담당자에게 문의하세요.',
 
-    submit: '라벨 발행·인쇄',
+    /* 설계 §3 액션바가 「발번·인쇄」다 — 이 화면이 하는 일은 번호를 매기고 뽑는 것이다. */
+    submit: '발번·인쇄',
     preview: '미리보기',
     /** 렌디션 경로가 발행 기록 번호를 받는다 — 발행 전에는 볼 것이 없다(착수 이슈 §6). */
     previewBeforeIssue: '발행한 뒤에 볼 수 있습니다.',
@@ -134,7 +168,7 @@ export const repackLabelIssue = {
   /** 발행 이력 — 회차별로 쌓인다(K-1). */
   history: {
     sectionLabel: '발행 이력',
-    empty: '아직 발행한 적이 없습니다.',
+    empty: '발행 이력이 없습니다.',
     failed: '발행 이력을 불러오지 못했습니다.',
     seq: (issueSeq: number): string => `회차 ${String(issueSeq)}`,
     outcome: {

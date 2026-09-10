@@ -402,9 +402,7 @@ const renderScreen = (options: Options = {}, identity: PopIdentity = IDENTIFIED)
   );
 
 const selectPending = async (): Promise<void> => {
-  await userEvent.click(
-    await screen.findByRole('button', { name: t.pending.select(HANDLING_UNIT_NO) }),
-  );
+  await userEvent.click(await screen.findByRole('button', { name: new RegExp(HANDLING_UNIT_NO) }));
 };
 
 const renderSelectedScreen = async (
@@ -430,9 +428,7 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
     const pendingRequests: Request[] = [];
     renderScreen({ pendingRequests });
 
-    expect(
-      await screen.findByRole('button', { name: t.pending.select(HANDLING_UNIT_NO) }),
-    ).toBeEnabled();
+    expect(await screen.findByRole('button', { name: new RegExp(HANDLING_UNIT_NO) })).toBeEnabled();
     expect(screen.getAllByText(t.entry.missingHandlingUnit)).toHaveLength(2);
     expect(pendingRequests).toHaveLength(1);
 
@@ -462,13 +458,31 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
       pendingPages: [[{ ...handlingUnit, labelIssued: false }], [nextHandlingUnit]],
     });
 
+    /* 둘째 쪽까지 이어 받았는지는 그 줄을 고르는 단추가 섰는지로 잰다 — 번호는 ② 구획이 낸다. */
     expect(
-      await screen.findByText(t.pending.newNumber(nextHandlingUnit.handlingUnitNo)),
+      await screen.findByRole('button', {
+        name: new RegExp(nextHandlingUnit.handlingUnitNo),
+      }),
     ).toBeVisible();
     expect(pendingRequests).toHaveLength(2);
     expect(new URL(pendingRequests[1]?.url ?? 'http://localhost').searchParams.get('page')).toBe(
       '2',
     );
+  });
+
+  /*
+   * ⭐ **재출력을 고르지 않으면 사유 칸도 없다**(설계 §3-1 「③은 재출력 체크가 없으면 한 줄로
+   *    접는다」 · 사용자 지적 2026-09-11). 이 화면의 세로 예산은 슬랙 0 이라 쓰지 않는 칸
+   *    하나가 아래 구획을 밀어낸다.
+   */
+  it('최초 발행이면 재발행 사유 칸을 세우지 않는다', async () => {
+    await renderSelectedScreen();
+
+    await screen.findByText(t.issue.targetsLabel);
+
+    expect(
+      screen.queryByRole('combobox', { name: new RegExp(t.issue.reasonLabel) }),
+    ).not.toBeInTheDocument();
   });
 
   it('포장 번호와 내용물이 선다', async () => {

@@ -185,7 +185,6 @@ export interface IssueRunResultHandle {
   /** 지금 어느 걸음인가. 쉬는 중이면 `null`. */
   step: IssueStep | null;
   result: IssueRunResult;
-  reset: () => void;
 }
 
 /**
@@ -229,11 +228,6 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
    * **본문이 같을 때만** 키를 물려준다. 성공하면 지운다.
    */
   const issueKeysRef = useRef(new Map<number, { key: string; signature: string }>());
-
-  const reset = useCallback(() => {
-    setStep(null);
-    setResult(IDLE);
-  }, []);
 
   const run = useCallback(
     (command: IssueCommand) => {
@@ -368,5 +362,5 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
     [client, queryClient, workerNo],
   );
 
-  return { run, isRunning: step !== null, step, result, reset };
+  return { run, isRunning: step !== null, step, result };
 };

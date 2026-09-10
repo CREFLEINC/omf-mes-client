@@ -1,11 +1,4 @@
-import {
-  AlertBanner,
-  Button,
-  Card,
-  Progress,
-  Table,
-  TextField,
-} from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Progress, Table, TextField } from '@crefle/web-ui';
 import { Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
@@ -297,108 +290,107 @@ export const ReworkResultRegisterScreen = () => {
          *    실제 높이는 바로 아래 `pop.css` 규칙이 정한다.
          */
         <div className="pop-fixed rework-result-body">
-              {/*
-               * ⭐ **`pop-section` 을 함께 붙인다.** DS `Card` 는 여백을 «본문 상자»에만 주고
-               *    그 위쪽이 0 이라, 카드에 직접 놓인 제목이 모서리에 붙어 선다(사용자 지적).
-               *    POP 규격이 그 자리를 고치는 규칙을 이미 갖고 있다 — 여백을 카드가 갖게 하고
-               *    본문 상자의 것은 턴다.
-               */}
-              <Card bordered className="pop-section rework-target-card">
-                <Card.Body>
-                  <h2 className="pane-title">{t.target}</h2>
-                  {(source.isError || dispositions.isError) && (
-                    <AlertBanner variant="error">{t.loadError}</AlertBanner>
-                  )}
-                  <dl className="pop-figures">
-                    {/*
-                      * ⭐ **번호를 보인다 — 식별자 숫자가 아니라.** 스펙 §3 ①이 이 줄을
-                      *    「원 LOT  FG-…-0288  160 EA」로 그렸다. 작업지시가 주는 것은
-                      *    `reworkSourceLotId`(숫자)뿐이라 LOT 을 따로 받아 번호를 쓴다 —
-                      *    작업자가 실물 라벨과 대조하는 자리다.
-                      *
-                      * ⛔ **「원 W/O」 행을 두지 않는다** — 스펙 ①은 원 LOT · 근거 · 처분 세
-                      *    줄이고 원본 작업지시는 그리지 않는다. 이 화면이 다루는 것은 반품
-                      *    재작업이라 원본 W/O 가 아예 없는 경우가 정상이다(§5-1).
-                      */}
-                    <div>
-                      <dt>{t.sourceLot}</dt>
-                      <dd>
-                        {/* ⚠ 계약이 LOT 을 `lot` 아래에 감싸 준다 — 겉 응답이 곧 LOT 이 아니다. */}
-                        {sourceLot.data === undefined
-                          ? t.unknown
-                          : t.sourceLotValue(
-                              sourceLot.data.lot.lotNo,
-                              String(sourceLot.data.lot.initialQty),
-                              uom.labelOf(sourceLot.data.lot.uomId) ?? '',
-                            )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>{t.nonconformance}</dt>
-                      <dd>
-                        {source.data === undefined
-                          ? t.unknown
-                          : t.nonconformanceValue(
-                              source.data.nonconformanceNo,
-                              source.data.description,
-                            )}
-                      </dd>
-                    </div>
-                    {/*
-                      * 「처분  재작업 160 EA  (08-07)」 — 판정을 그대로 옮긴다.
-                      * ⛔ 판정한 사람은 적지 않는다 — 계약이 주는 것은 식별자 숫자뿐이다.
-                      */}
-                    <div>
-                      <dt>{t.disposition}</dt>
-                      <dd>
-                        {reworkDecision === null
-                          ? t.unknown
-                          : t.dispositionValue(
-                              String(reworkDecision.decisionQty),
-                              uom.labelOf(reworkDecision.uomId) ?? '',
-                              decidedOnText(reworkDecision.decidedAt),
-                            )}
-                      </dd>
-                    </div>
-                  </dl>
-
-                  {/*
-                   * ⚠ **스펙에 없는 조작이다.** §3 의 ① 은 읽기 전용 세 줄이고 §5-6 액션표에도
-                   *    「변경」이 없다 — 스펙은 W/O 고르기가 「진입 시」 한 번으로 끝난다고 본다.
-                   *    목록을 고른 뒤 접게 되면서 잘못 고른 것을 되돌릴 길이 없어져 우리가
-                   *    더했다.
-                   *
-                   * ⭐ **자리는 구획의 오른쪽 «아래»다**(사용자 결정). 오른쪽 위에 두면 세 줄이
-                   *    왼쪽으로 몰리고 그 옆이 통째로 비어 보인다 — 120px 짜리 구획에서 72px
-                   *    버튼이 머리줄과 같은 높이를 차지하기 때문이다.
-                   */}
-                  <div className="rework-target-foot">
-                    <Button variant="outlined" size="2xl" onClick={() => setSelectedId(null)}>
-                      {t.changeWorkOrder}
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
+          {/*
+           * ⭐ **`pop-section` 을 함께 붙인다.** DS `Card` 는 여백을 «본문 상자»에만 주고
+           *    그 위쪽이 0 이라, 카드에 직접 놓인 제목이 모서리에 붙어 선다(사용자 지적).
+           *    POP 규격이 그 자리를 고치는 규칙을 이미 갖고 있다 — 여백을 카드가 갖게 하고
+           *    본문 상자의 것은 턴다.
+           */}
+          <Card bordered className="pop-section rework-target-card">
+            <Card.Body>
+              <h2 className="pane-title">{t.target}</h2>
+              {(source.isError || dispositions.isError) && (
+                <AlertBanner variant="error">{t.loadError}</AlertBanner>
+              )}
+              <dl className="pop-figures">
+                {/*
+                 * ⭐ **번호를 보인다 — 식별자 숫자가 아니라.** 스펙 §3 ①이 이 줄을
+                 *    「원 LOT  FG-…-0288  160 EA」로 그렸다. 작업지시가 주는 것은
+                 *    `reworkSourceLotId`(숫자)뿐이라 LOT 을 따로 받아 번호를 쓴다 —
+                 *    작업자가 실물 라벨과 대조하는 자리다.
+                 *
+                 * ⛔ **「원 W/O」 행을 두지 않는다** — 스펙 ①은 원 LOT · 근거 · 처분 세
+                 *    줄이고 원본 작업지시는 그리지 않는다. 이 화면이 다루는 것은 반품
+                 *    재작업이라 원본 W/O 가 아예 없는 경우가 정상이다(§5-1).
+                 */}
+                <div>
+                  <dt>{t.sourceLot}</dt>
+                  <dd>
+                    {/* ⚠ 계약이 LOT 을 `lot` 아래에 감싸 준다 — 겉 응답이 곧 LOT 이 아니다. */}
+                    {sourceLot.data === undefined
+                      ? t.unknown
+                      : t.sourceLotValue(
+                          sourceLot.data.lot.lotNo,
+                          String(sourceLot.data.lot.initialQty),
+                          uom.labelOf(sourceLot.data.lot.uomId) ?? '',
+                        )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{t.nonconformance}</dt>
+                  <dd>
+                    {source.data === undefined
+                      ? t.unknown
+                      : t.nonconformanceValue(
+                          source.data.nonconformanceNo,
+                          source.data.description,
+                        )}
+                  </dd>
+                </div>
+                {/*
+                 * 「처분  재작업 160 EA  (08-07)」 — 판정을 그대로 옮긴다.
+                 * ⛔ 판정한 사람은 적지 않는다 — 계약이 주는 것은 식별자 숫자뿐이다.
+                 */}
+                <div>
+                  <dt>{t.disposition}</dt>
+                  <dd>
+                    {reworkDecision === null
+                      ? t.unknown
+                      : t.dispositionValue(
+                          String(reworkDecision.decisionQty),
+                          uom.labelOf(reworkDecision.uomId) ?? '',
+                          decidedOnText(reworkDecision.decidedAt),
+                        )}
+                  </dd>
+                </div>
+              </dl>
 
               {/*
-               * ⭐ **네 구획이 모두 상자다** — 스펙 §3 이 ①②③④를 전부 `┌ … ┐` 로 그렸다.
-               *    §7 이 `Card` 를 ① 에만 적은 것은 «어떤 DS 부품을 쓰는가»의 표이기 때문이고,
-               *    구획 상자는 화면 골격이라 그 표에 나오지 않는다 — 자매 화면(`P-02-01`)도
-               *    같은 도면을 세 구획의 실제 테두리로 구현했다.
+               * ⚠ **스펙에 없는 조작이다.** §3 의 ① 은 읽기 전용 세 줄이고 §5-6 액션표에도
+               *    「변경」이 없다 — 스펙은 W/O 고르기가 「진입 시」 한 번으로 끝난다고 본다.
+               *    목록을 고른 뒤 접게 되면서 잘못 고른 것을 되돌릴 길이 없어져 우리가
+               *    더했다.
+               *
+               * ⭐ **자리는 구획의 오른쪽 «아래»다**(사용자 결정). 오른쪽 위에 두면 세 줄이
+               *    왼쪽으로 몰리고 그 옆이 통째로 비어 보인다 — 120px 짜리 구획에서 72px
+               *    버튼이 머리줄과 같은 높이를 차지하기 때문이다.
                */}
-              <Card bordered className="pop-section rework-input-card">
-                <Card.Body>
-                  {/*
-                   * ⭐ **제목은 카드 본문 바로 아래다** — ①③④와 같은 자리다. 앞선 판은 이
-                   *    제목만 «입력 칸 묶음 안»에 있어, 좌우 2단(칸 · 키패드)의 왼쪽 칸 폭에
-                   *    갇히고 칸들과 같은 줄에서 시작했다 — 네 구획 중 이것만 제목이 안쪽으로
-                   *    들어가 보였다(사용자 지적).
-                   */}
-                  <h2 className="pane-title">{t.quantities.title}</h2>
+              <div className="rework-target-foot">
+                <Button variant="outlined" size="2xl" onClick={() => setSelectedId(null)}>
+                  {t.changeWorkOrder}
+                </Button>
+              </div>
+            </Card.Body>
+          </Card>
 
-                  <div className="rework-result-input">
-                    <div className="rework-result-fields">
+          {/*
+           * ⭐ **네 구획이 모두 상자다** — 스펙 §3 이 ①②③④를 전부 `┌ … ┐` 로 그렸다.
+           *    §7 이 `Card` 를 ① 에만 적은 것은 «어떤 DS 부품을 쓰는가»의 표이기 때문이고,
+           *    구획 상자는 화면 골격이라 그 표에 나오지 않는다 — 자매 화면(`P-02-01`)도
+           *    같은 도면을 세 구획의 실제 테두리로 구현했다.
+           */}
+          <Card bordered className="pop-section rework-input-card">
+            <Card.Body>
+              {/*
+               * ⭐ **제목은 카드 본문 바로 아래다** — ①③④와 같은 자리다. 앞선 판은 이
+               *    제목만 «입력 칸 묶음 안»에 있어, 좌우 2단(칸 · 키패드)의 왼쪽 칸 폭에
+               *    갇히고 칸들과 같은 줄에서 시작했다 — 네 구획 중 이것만 제목이 안쪽으로
+               *    들어가 보였다(사용자 지적).
+               */}
+              <h2 className="pane-title">{t.quantities.title}</h2>
 
+              <div className="rework-result-input">
+                <div className="rework-result-fields">
                   {/*
                    * ⭐ **네 칸을 2×2 로 세운다** — 스펙 §3 ②의 「양품 [ ] 불량 [ ] / 보류 [ ]
                    *    폐기 [ ]」 배치다. 세로로 넷을 쌓으면 ② 구획이 280px 예산을 넘어 아래의
@@ -466,83 +458,82 @@ export const ReworkResultRegisterScreen = () => {
                       {`${t.total} ${String(total)} / ${String(progress.remaining)}`}
                     </Chip>
                   </p>
-
                 </div>
 
-                    {/*
-                     * ⭐ **키패드는 ② 구획 «안», 수량 칸 오른쪽에 상시로 선다**
-                     *    (설계 2차 공지 `a6a87e1` · `omf-mes#286` — §3-2 지정).
-                     *
-                     * 도면이 이 자리를 비워 두었던 동안 우리는 팝업으로 세웠는데, 그 판이
-                     * 자리를 못 박았다 — ② 는 가로 전폭인데 입력 칸을 2×2 로만 써서 오른쪽이
-                     * 비어 있고, 그래서 **세로 예산(② 280)이 그대로다.**
-                     *
-                     * ⛔ **칸을 직접 치게 두지 않는다**(칸은 읽기 전용이다) — 단말의 운영체제
-                     *    키보드가 화면을 덮는다(결정 16).
-                     */}
-                    <NumericKeypad
-                      className="rework-result-pad"
-                      label={t.quantities.keypadLabel}
-                      value={activeKey === null ? '' : drafts[activeKey]}
-                      /* 고른 칸이 없으면 누를 것이 없다 — 어느 칸에 들어갈지 모르기 때문이다. */
-                      disabled={activeKey === null}
-                      allowDecimal={uom.decimalScaleOf(selected.uomId) > 0}
-                      decimalLabel={t.quantities.decimalKey}
-                      keySize="2xl"
-                      backspaceLabel={t.quantities.backspace}
-                      backspaceGlyph="⌫"
-                      clearLabel={t.quantities.clearGlyph}
-                      onChange={(value) => {
-                        if (activeKey === null) return;
+                {/*
+                 * ⭐ **키패드는 ② 구획 «안», 수량 칸 오른쪽에 상시로 선다**
+                 *    (설계 2차 공지 `a6a87e1` · `omf-mes#286` — §3-2 지정).
+                 *
+                 * 도면이 이 자리를 비워 두었던 동안 우리는 팝업으로 세웠는데, 그 판이
+                 * 자리를 못 박았다 — ② 는 가로 전폭인데 입력 칸을 2×2 로만 써서 오른쪽이
+                 * 비어 있고, 그래서 **세로 예산(② 280)이 그대로다.**
+                 *
+                 * ⛔ **칸을 직접 치게 두지 않는다**(칸은 읽기 전용이다) — 단말의 운영체제
+                 *    키보드가 화면을 덮는다(결정 16).
+                 */}
+                <NumericKeypad
+                  className="rework-result-pad"
+                  label={t.quantities.keypadLabel}
+                  value={activeKey === null ? '' : drafts[activeKey]}
+                  dropLeadingZero
+                  /* 고른 칸이 없으면 누를 것이 없다 — 어느 칸에 들어갈지 모르기 때문이다. */
+                  disabled={activeKey === null}
+                  allowDecimal={uom.decimalScaleOf(selected.uomId) > 0}
+                  decimalLabel={t.quantities.decimalKey}
+                  keySize="2xl"
+                  backspaceLabel={t.quantities.backspace}
+                  clearLabel={t.quantities.clearGlyph}
+                  onChange={(value) => {
+                    if (activeKey === null) return;
 
-                        setDrafts((current) => ({ ...current, [activeKey]: value }));
-                      }}
-                    />
-                  </div>
-
-                  {/*
-                   * ⭐ **스펙 §3 ②가 이 안내를 구획 «안»에 둔다** — 「재작업 후 다시 불량이면
-                   *    「불량」입니다」. §7 이 안내를 `AlertBanner`(info)로 지정하므로 보조
-                   *    문구(`field-note`)가 아니라 배너로 세운다. ⛔ 결과 LOT 이야기는 여기서
-                   *    빼고 ③ 구획이 맡는다 — 스펙이 그 둘을 다른 구획으로 갈랐다.
-                   */}
-                  <AlertBanner variant="info">{t.reworkHint}</AlertBanner>
-
-                  {/*
-                   * ⛔ **라벨을 칸에 «이어» 둔다.** 앞선 판은 맨 `<label>` 이라 칸과 연결이
-                   *    없었다 — 눌러도 칸으로 가지 않고, 위의 수량 칸들이 DS 가 그리는 라벨을
-                   *    쓰는 것과 줄 간격·글자가 어긋났다(사용자 지적).
-                   */}
-                  {/*
-                   * ⭐ **잠긴 사유를 라벨 옆에 둔다**(사용자 결정 2026-09-07). 칸 아래에 두면
-                   *    「고르고 나서 읽는 말」이 되는데, 이 문장은 «고를 수 없다»는 사실이라
-                   *    칸에 손을 대기 «전»에 읽혀야 한다.
-                   */}
-                  <div className="rework-defect-head">
-                    <label className="field-label" htmlFor={defectCodeId}>
-                      {t.defectCode}
-                    </label>
-                    <p className="field-note">{t.defectCodeReason}</p>
-                  </div>
-                  {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
-                  <Select
-                    id={defectCodeId}
-                    size="xl"
-                    options={[]}
-                    placeholder={t.defectCodePlaceholder}
-                    disabled
-                  />
-                </Card.Body>
-              </Card>
+                    setDrafts((current) => ({ ...current, [activeKey]: value }));
+                  }}
+                />
+              </div>
 
               {/*
-               * ③ 결과 LOT — **스펙 §3 이 독립 구획으로 둔 자리다.** 재작업은 같은 물건을
-               * 고치는 것이라 LOT 이 갈리지 않는데(§5-4), 그 사실을 넣은 수량으로 즉시 보인다.
-               * ⛔ 접지 않는다 — 수량을 넣으면 바로 바뀌어야 한다(§3 ⚠ E-4).
+               * ⭐ **스펙 §3 ②가 이 안내를 구획 «안»에 둔다** — 「재작업 후 다시 불량이면
+               *    「불량」입니다」. §7 이 안내를 `AlertBanner`(info)로 지정하므로 보조
+               *    문구(`field-note`)가 아니라 배너로 세운다. ⛔ 결과 LOT 이야기는 여기서
+               *    빼고 ③ 구획이 맡는다 — 스펙이 그 둘을 다른 구획으로 갈랐다.
                */}
-              <Card bordered className="pop-section rework-lot-card">
-                <Card.Body>
-                  <section className="rework-result-lot" aria-label={t.resultLot.title}>
+              <AlertBanner variant="info">{t.reworkHint}</AlertBanner>
+
+              {/*
+               * ⛔ **라벨을 칸에 «이어» 둔다.** 앞선 판은 맨 `<label>` 이라 칸과 연결이
+               *    없었다 — 눌러도 칸으로 가지 않고, 위의 수량 칸들이 DS 가 그리는 라벨을
+               *    쓰는 것과 줄 간격·글자가 어긋났다(사용자 지적).
+               */}
+              {/*
+               * ⭐ **잠긴 사유를 라벨 옆에 둔다**(사용자 결정 2026-09-07). 칸 아래에 두면
+               *    「고르고 나서 읽는 말」이 되는데, 이 문장은 «고를 수 없다»는 사실이라
+               *    칸에 손을 대기 «전»에 읽혀야 한다.
+               */}
+              <div className="rework-defect-head">
+                <label className="field-label" htmlFor={defectCodeId}>
+                  {t.defectCode}
+                </label>
+                <p className="field-note">{t.defectCodeReason}</p>
+              </div>
+              {/* ⚠ 크기를 넘긴다 — 안 넘기면 DS 기본(40)에 POP 규칙이 트리거만 늘려 칸이 넘친다. */}
+              <Select
+                id={defectCodeId}
+                size="xl"
+                options={[]}
+                placeholder={t.defectCodePlaceholder}
+                disabled
+              />
+            </Card.Body>
+          </Card>
+
+          {/*
+           * ③ 결과 LOT — **스펙 §3 이 독립 구획으로 둔 자리다.** 재작업은 같은 물건을
+           * 고치는 것이라 LOT 이 갈리지 않는데(§5-4), 그 사실을 넣은 수량으로 즉시 보인다.
+           * ⛔ 접지 않는다 — 수량을 넣으면 바로 바뀌어야 한다(§3 ⚠ E-4).
+           */}
+          <Card bordered className="pop-section rework-lot-card">
+            <Card.Body>
+              <section className="rework-result-lot" aria-label={t.resultLot.title}>
                 <h2 className="pane-title">{t.resultLot.title}</h2>
                 <p>
                   {t.resultLot.good(drafts.goodQty === '' ? '0' : drafts.goodQty)} ·{' '}
@@ -554,14 +545,14 @@ export const ReworkResultRegisterScreen = () => {
                     drafts.holdQty === '' ? '0' : drafts.holdQty,
                   )}
                 </p>
-                  </section>
-                </Card.Body>
-              </Card>
+              </section>
+            </Card.Body>
+          </Card>
 
-              {/* ④ 진행 — 이 W/O 의 누계다. ②의 합계가 이번 입력이라면 이쪽은 지금까지의 몫이다. */}
-              <Card bordered className="pop-section rework-progress-card">
-                <Card.Body>
-                  <section className="rework-result-summary" aria-label={t.progress.title}>
+          {/* ④ 진행 — 이 W/O 의 누계다. ②의 합계가 이번 입력이라면 이쪽은 지금까지의 몫이다. */}
+          <Card bordered className="pop-section rework-progress-card">
+            <Card.Body>
+              <section className="rework-result-summary" aria-label={t.progress.title}>
                 <h2 className="pane-title">{t.progress.title}</h2>
                 <Progress
                   max={Math.max(progress.target, 1)}
@@ -591,12 +582,11 @@ export const ReworkResultRegisterScreen = () => {
                 {queued && <AlertBanner variant="success">{t.queued}</AlertBanner>}
                 {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
                 {rejected && <AlertBanner variant="error">{t.rejected}</AlertBanner>}
-                  </section>
-                </Card.Body>
-              </Card>
+              </section>
+            </Card.Body>
+          </Card>
         </div>
       )}
-
 
       {/*
        * ⭐ **액션바는 화면 바닥에 붙는 띠다**(스펙 §3 — 헤더 64 + 본문 616 + 액션바 88 = 768).

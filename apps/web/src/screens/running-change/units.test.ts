@@ -6,7 +6,7 @@ import { makeConsumption, makeCurrentMold, makePart, OLD_CONSUMPTION_ID } from '
 import { toBlockReason, toQtyProblem } from './replace-panel';
 import { normalizeScanCode } from './scan';
 import { readWorkOrderId, WORK_ORDER_PARAM } from './screen-params';
-import { replacedIds, toCurrentInputView } from './types';
+import { toCurrentInputView } from './types';
 
 describe('주소에서 읽는 작업지시', () => {
   const read = (raw: string): number | null =>
@@ -73,20 +73,6 @@ describe('현재 투입 한 줄', () => {
 
   it('교체 축이 비어 있으면 null 로 옮긴다', () => {
     expect(toCurrentInputView(makeConsumption()).replacedConsumptionId).toBeNull();
-  });
-
-  it('이미 이어진 투입의 번호를 모은다', () => {
-    const rows = [
-      toCurrentInputView(makeConsumption()),
-      toCurrentInputView(
-        makeConsumption({
-          materialConsumptionId: 55002,
-          replacedConsumptionId: OLD_CONSUMPTION_ID,
-        }),
-      ),
-    ];
-
-    expect(replacedIds(rows)).toEqual([OLD_CONSUMPTION_ID]);
   });
 });
 

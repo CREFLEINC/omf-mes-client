@@ -1,10 +1,9 @@
-import { Chip, TextField } from '@crefle/web-ui';
+import { Button, Chip, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import type { PlanVersionView } from './queries';
 import { useId } from 'react';
 
-import { PopSelect as Select } from '../../patterns/pop-select';
 import { lacksLimits } from './auto-judgment';
 import { isKnownCode, type CodeOption } from './code-options';
 import {
@@ -45,6 +44,8 @@ export interface ItemPanelProps {
   onChange: (key: string, draft: MeasurementDraft) => void;
   /** 항목 판정 선택지 — **두 값이다**(합격·불합격). 종합 판정과 그룹이 다르다 */
   judgmentOptions: CodeOption[];
+  /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null` — 아무것도 붙이지 않는다. */
+  uomCodeOf: (uomId: number | null) => string | null;
   isLoading: boolean;
 }
 
@@ -55,9 +56,10 @@ export const ItemPanel = ({
   drafts,
   onChange,
   judgmentOptions,
+  uomCodeOf,
   isLoading,
 }: ItemPanelProps) => (
-  <section className="pane" aria-label={t.heading}>
+  <section className="pane pqc-item-panel" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
 
     {/*
@@ -98,6 +100,7 @@ export const ItemPanel = ({
               draft={drafts[row.key] ?? EMPTY_MEASUREMENT_DRAFT}
               onChange={onChange}
               judgmentOptions={judgmentOptions}
+              uomCodeOf={uomCodeOf}
             />
           ))}
         </ol>
@@ -111,11 +114,13 @@ interface ItemRowProps {
   draft: MeasurementDraft;
   onChange: (key: string, draft: MeasurementDraft) => void;
   judgmentOptions: CodeOption[];
+  uomCodeOf: (uomId: number | null) => string | null;
 }
 
-const ItemRow = ({ row, draft, onChange, judgmentOptions }: ItemRowProps) => {
+const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowProps) => {
   const judgmentId = useId();
   const outOfSpec = isOutOfSpec(row);
+  const specText = describeSpec(row.spec, uomCodeOf(row.spec.uomId));
 
   return (
     <li className="pop-item">
@@ -130,28 +135,38 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions }: ItemRowProps) => {
        * ⚠ 규격과 샘플을 **한 줄에 잇지 않는다.** 이으면 「목표 1 · 1 ~ 1 · 1 중 1」처럼 숫자만
        * 늘어서 무엇이 공차이고 무엇이 샘플 번호인지 읽히지 않는다.
        */}
-      <p className="field-note">
-        {t.columns.spec} {describeSpec(row.spec)}
-      </p>
+      {/*
+       * ⛔ **없는 규격을 「—」로 적지 않는다**(사용자 지적 2026-09-10). 육안·글자 항목에는
+       *    상하한이 없고, 그 자리에 줄표를 세우면 「규격이 비었다」로 읽힌다 — 사실은 그
+       *    항목이 애초에 숫자로 재는 항목이 아니다.
+       *
+       * ⚠ 도면의 「기준 스크래치 없음」 같은 **기준 문구를 실을 자리가 계약에 없다**
+       *   (`InspectionItemSpec` 에 문구 항목이 없다 — 설계 회신 대기). 자리가 생기면 이
+       *   줄에 그 문구를 낸다.
+       */}
+      {specText !== null && (
+        <p className="field-note">
+          {t.columns.spec} {specText}
+        </p>
+      )}
       <p className="field-note">
         {t.columns.sample} {t.sampleOf(row.sampleNo, row.sampleCount)}
       </p>
 
       <div className="form-grid">
         {/*
-         * ⛔ **값 칸은 그 항목의 유형이 정한다.** 육안 항목에는 값 칸이 아예 없고 판정만으로
-         * 성립한다 — 없는 칸을 그리면 검사자가 무엇을 채워야 하는지 헷갈린다.
+         * ⛔ **값 칸은 그 항목의 유형이 정한다.** 육안 항목에는 값 칸이 «아예 없고» 판정만으로
+         * 성립한다(설계 §4-C · 도면 「기준 스크래치 없음 → [합격][불합격]」 · 사용자 지적
+         * 2026-09-10). 한때 「양호 / 불량」을 고르는 칸을 세웠는데, 그 두 낱말은 스펙에 없는
+         * 이름이고 판정과 같은 것을 두 번 묻는 자리였다.
          */}
         {row.dataTypeCode === DATA_TYPES.boolean ? (
-          <Select
-            size="xl"
-            aria-label={`${row.itemName} ${t.columns.value}`}
-            options={BOOLEAN_OPTIONS}
-            value={draft.value}
-            placeholder={t.notMeasured}
-
-            onChange={(value) => onChange(row.key, { ...draft, value })}
-          />
+          /*
+           * ⭐ **빈 칸을 남겨 자리를 맞춘다**(사용자 지시 2026-09-10). 값 칸을 통째로 빼면
+           *    판정이 왼쪽 끝으로 당겨져, 측정치가 있는 항목과 판정 버튼의 자리가 어긋난다 —
+           *    줄마다 버튼 위치가 달라지면 손이 매번 다시 찾는다.
+           */
+          <div className="field-cell" aria-hidden="true" />
         ) : (
           <TextField
             size="xl"
@@ -165,18 +180,38 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions }: ItemRowProps) => {
         )}
 
         <div className="field-cell">
-          <label className="field-label" htmlFor={judgmentId}>
+          <span className="field-label" id={judgmentId}>
             {t.columns.judgment}
-          </label>
-          <Select
-            size="xl"
-            id={judgmentId}
-            options={judgmentOptions}
-            value={draft.judgment}
-            placeholder={t.judgmentPlaceholder}
-            disabled={judgmentOptions.length === 0}
-            onChange={(judgment) => onChange(row.key, { ...draft, judgment })}
-          />
+          </span>
+          {/*
+           * ⭐ **판정은 버튼 둘이다**(설계 §3 도면 · §7 「항목 판정 버튼 = Button(큰 타겟)」 ·
+           * 사용자 지적 2026-09-10). 장갑 낀 손이 누르는 화면이라 목록에서 고르게 하면 두 번
+           * 눌러야 하고, 그 사이에 뜬 판이 항목을 덮는다.
+           *
+           * ⭐ **누른 것을 다시 누르면 지워진다** — 잘못 누른 판정을 되돌릴 길이 필요하다.
+           *
+           * ⛔ 값은 여전히 목록이 준다(`INSPECTION_MEASUREMENT_JUDGMENT` · 합격·불합격 2값) —
+           *    화면이 코드를 지어내지 않는다.
+           */}
+          <div className="pqc-judgment-buttons" role="group" aria-labelledby={judgmentId}>
+            {judgmentOptions.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                size="xl"
+                variant={draft.judgment === option.value ? 'filled' : 'outlined'}
+                aria-pressed={draft.judgment === option.value}
+                onClick={() =>
+                  onChange(row.key, {
+                    ...draft,
+                    judgment: draft.judgment === option.value ? '' : option.value,
+                  })
+                }
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
           {judgmentOptions.length === 0 && <p className="field-note">{t.judgmentUnavailable}</p>}
           {/*
            * ⚠ 저장된 판정이 목록에서 사라졌다. 조용히 비우면 **선택칸은 비어 보이는데 화면은
@@ -206,17 +241,11 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions }: ItemRowProps) => {
   );
 };
 
-/** 불리언 항목의 값 선택지. **판정과 다른 축이다** — 이 칸은 「측정 결과」다. */
-const BOOLEAN_OPTIONS: CodeOption[] = [
-  { value: 'true', label: t.booleanTrue },
-  { value: 'false', label: t.booleanFalse },
-];
-
 /**
  * 규격을 한 줄로. **한쪽만 있는 것도 규격이다** — 「9.9 이상」 같은 공차가 실제 검사기준에
  * 흔하다. ⛔ 둘 다 있을 때만 내면 화면이 「규격 없음」이라고 말해 검사자가 공차를 모르고 잰다.
  */
-const describeSpec = (spec: SpecRange): string => {
+const describeSpec = (spec: SpecRange, uomCode: string | null): string | null => {
   const parts: string[] = [];
 
   if (spec.target !== null) parts.push(t.target(spec.target));
@@ -225,5 +254,8 @@ const describeSpec = (spec: SpecRange): string => {
   else if (spec.lower !== null) parts.push(t.atLeast(spec.lower));
   else if (spec.upper !== null) parts.push(t.atMost(spec.upper));
 
-  return parts.length === 0 ? t.notMeasured : parts.join(' · ');
+  if (parts.length === 0) return null;
+
+  /* ⭐ 단위는 규격 줄 끝에 한 번만 붙는다 — 값마다 붙이면 「12 mm · 11.95 mm ~ 12.05 mm」가 된다. */
+  return uomCode === null ? parts.join(' · ') : `${parts.join(' · ')} ${uomCode}`;
 };

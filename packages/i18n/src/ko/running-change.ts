@@ -11,7 +11,8 @@ export const runningChange = {
   title: '러닝체인지 부품 교체',
 
   header: {
-    workOrder: (workOrderId: number) => `작업지시 ${workOrderId}`,
+    /* ⚠ 머리줄의 작업지시 표기는 화면마다 「W/O」로 통일한다(사용자 지시 2026-09-10). */
+    workOrder: (workOrderId: number) => `W/O ${workOrderId}`,
     workOrderMissing: '작업지시를 받지 못해 현재 투입을 불러올 수 없습니다.',
     session: (workSessionId: number) => `세션 ${workSessionId}`,
     sessionNone: '세션 없음',
@@ -32,14 +33,27 @@ export const runningChange = {
     loading: '현재 투입을 불러오는 중입니다.',
     empty: '이 작업지시에 등록된 투입이 없습니다. 교체할 대상이 없습니다.',
     noWorkOrder: '작업지시가 정해지면 현재 투입이 표시됩니다.',
-    replacedBadge: '교체됨',
-    moldLabel: '금형',
+    /*
+     * ⭐ **칸마다 이름을 붙인다**(사용자 제안 시안 2026-09-11). 값만 늘어놓으면 「ABC-123」이
+     *    품목인지 LOT 인지, 「100 EA」가 계획인지 투입인지 화면만 보고는 알 수 없다.
+     */
+    itemCodeLabel: '제품 코드',
+    inputQtyLabel: '투입 수량',
+    moldSectionLabel: '금형 정보',
+    moldNoLabel: '금형 번호',
+    moldNameLabel: '금형명',
+    shotCountLabel: '타발수',
+    shotRemainingLabel: '잔여 타발수',
     moldUnknown: '금형을 확인할 수 없습니다',
     moldNone: '이 세션에 물린 금형이 없습니다',
     /** 세션이 없으면 금형을 «알 수 없다» — 「없다」와 다르다. 비워 두면 둘이 한 모양이 된다. */
     moldNoSession: '세션이 없어 물린 금형을 알 수 없습니다',
-    moldShotCount: (current: number) => `타발수 ${current}`,
-    moldShotRemaining: (remaining: number) => `잔여 ${remaining}`,
+    /*
+     * ⭐ 자릿수를 끊어 적는다(`128,400`) — 여섯 자리를 한 덩이로 두면 눈이 자릿수를 세야 한다.
+     *   자매 화면 `P-05-01` 이 같은 값을 같은 방법으로 적는다. ⛔ 값 자체는 그대로다.
+     */
+    moldShotCount: (current: number) => current.toLocaleString('ko-KR'),
+    moldShotRemaining: (remaining: number) => remaining.toLocaleString('ko-KR'),
     moldShotRemainingUnknown: '잔여 산출 불가',
     /** 적정 타수를 넘었어도 등록을 막지 않는다 — 경고만 낸다(스펙 §6). */
     moldShotExceeded: '적정 타수를 넘었습니다. 담당자에게 확인하세요.',
@@ -71,8 +85,6 @@ export const runningChange = {
 
   scan: {
     label: '신규 부품 LOT 스캔',
-    submit: '읽기',
-    scanning: '조회 중',
     manualEntry: '직접 입력',
     outcomes: {
       part: (code: string, lotNo: string) => `${code} → ${lotNo} 을(를) 담았습니다.`,
@@ -86,10 +98,10 @@ export const runningChange = {
 
   replace: {
     partLabel: '신규 부품',
-    partNone: '신규 부품 LOT 을 먼저 읽어 주세요.',
+    partNone: '신규 부품 LOT 을 먼저 스캔 해주세요.',
     clearPart: '지우기',
     targetLabel: '교체 대상',
-    targetPlaceholder: '교체할 투입을 고르세요',
+    targetPlaceholder: '교체 대상을 고르세요',
     targetOption: (itemCode: string, lotNo: string) => `${itemCode} (${lotNo})`,
     qtyLabel: '투입 수량',
     qtyProblems: {
@@ -106,7 +118,14 @@ export const runningChange = {
      * (스펙 §8 미결 1 · 2026-09-03 판정), 비어 있는 것은 «아직 안 채운» 상태다. 못 받은
      * 것과도 갈라 말한다 — 앞은 기다릴 일이고 뒤는 다시 읽으면 풀린다.
      */
-    reasonEmpty: '고를 수 있는 교체 사유가 아직 없습니다. 사유 없이 등록됩니다.',
+    /**
+     * 고를 사유가 없을 때 **칸 «안»에서 말한다**(사용자 지시 2026-09-11).
+     *
+     * ⚠ 「사유를 고르세요」를 그대로 두고 아래에 따로 안내를 붙였더니, 잠긴 칸이 고르라고
+     *   말하고 그 밑에서 못 고른다고 말하는 두 문장이 겹쳤다.
+     */
+    /* ⚠ 마침표를 찍지 않는다 — 칸 «안»의 자리 표시 글이지 문장이 아니다(사용자 지시). */
+    reasonEmpty: '선택 가능한 교체 사유가 없어 사유 없이 등록됩니다',
     reasonFailed: '교체 사유를 불러오지 못했습니다. 사유 없이 등록됩니다.',
     reasonLoading: '교체 사유를 불러오는 중입니다.',
     submit: '교체 등록',

@@ -30,7 +30,7 @@ const rowOf = (
   sampleNo: Number(key.split('-')[1]),
   sampleCount: 1,
   required: true,
-  spec: { target: null, lower: 9.9, upper: 10.1 },
+  spec: { target: null, lower: 9.9, upper: 10.1, uomId: null },
   measured,
 });
 
@@ -87,7 +87,7 @@ describe('자동 판정과 저장된 판정', () => {
       calibrationExpired: false,
     }),
     automaticJudgment: true,
-    spec: { target: null, lower: 9.9, upper: 10.1 },
+    spec: { target: null, lower: 9.9, upper: 10.1, uomId: null },
   });
 
   /*

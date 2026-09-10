@@ -107,7 +107,6 @@ export const IssuePane = ({
               {t.remainderLabel(handlingUnit.handlingUnitNo, remainderStanding.issueCount ?? 0)}
             </Checkbox>
             <p className="pop-repack-note">{t.remainderNumberNote}</p>
-            <p className="pop-repack-note">{t.remainderWarning}</p>
           </div>
         ))}
         {remainderFailed && <p className="pop-repack-note">{t.remainderFailed}</p>}
@@ -139,37 +138,47 @@ export const IssuePane = ({
       )}
 
       {/*
-        ⛔ **사유 칸을 감추지 않는다**(G-2). 최초 발행이면 비활성으로 두되 자리는 남긴다 —
-        감추면 재발행일 때 갑자기 나타나 사용자가 무엇이 바뀐 줄 모른다.
+        ⭐ **사유가 필요 없으면 칸도 없다**(설계 §3-1 「③은 재출력 체크가 없으면 한 줄로
+        접는다」 · 사용자 지적 2026-09-11).
+        
+        ⚠ 앞 판은 「감추면 갑자기 나타나 무엇이 바뀐 줄 모른다」는 이유로 비활성 칸을 남겨
+        두었고 근거를 G-2 로 적었는데, **G-2 는 그런 규칙이 아니다**(미확정 코드에 enum 을
+        두지 않는다는 계약 규율이다). 이 화면의 세로 예산은 슬랙 0 이라(§3-1) 쓰지 않는 칸
+        하나가 아래 구획을 밀어낸다 — 최초 발행에서는 접는다.
+        
+        ⛔ 갑자기 나타나는 것 자체는 문제가 아니다. 사유 칸은 **잔량 재출력을 체크한 그
+        순간** 서고, 그 체크가 곧 「왜 필요해졌는가」를 말한다.
       */}
-      <div className="pop-repack-field">
-        <label htmlFor={reasonId}>
-          {t.reasonLabel}
-          {reasonRequired && <span aria-hidden="true"> *</span>}
-        </label>
-        <Select
-          id={reasonId}
-          options={reasonOptions}
-          value={reasonCode === '' ? null : reasonCode}
-          onChange={onReasonChange}
-          placeholder={t.reasonPlaceholder}
-          className="pop-repack-select"
-          disabled={!reasonRequired || reasons.length === 0}
-          invalid={reasonMissing || reasonServerError !== null}
-          aria-describedby={reasonServerError === null ? undefined : reasonErrorId}
-        />
-        {reasonsFailed && <p className="pop-repack-note">{t.reasonsFailed}</p>}
-        {!reasonsFailed && reasons.length === 0 && (
-          <p className="pop-repack-note">{t.reasonsEmpty}</p>
-        )}
-        {/* ⚠ 오류는 도움말과 **다른 색**이어야 한다 — 같으면 사용자가 안내로 읽고 지나친다. */}
-        {reasonMissing && <p className="pop-repack-error">{t.reasonRequired}</p>}
-        {reasonServerError !== null && (
-          <p className="pop-repack-error" id={reasonErrorId} role="alert">
-            {reasonServerError}
-          </p>
-        )}
-      </div>
+      {reasonRequired && (
+        <div className="pop-repack-field">
+          <label htmlFor={reasonId}>
+            {t.reasonLabel}
+            {reasonRequired && <span aria-hidden="true"> *</span>}
+          </label>
+          <Select
+            id={reasonId}
+            options={reasonOptions}
+            value={reasonCode === '' ? null : reasonCode}
+            onChange={onReasonChange}
+            placeholder={t.reasonPlaceholder}
+            className="pop-repack-select"
+            disabled={!reasonRequired || reasons.length === 0}
+            invalid={reasonMissing || reasonServerError !== null}
+            aria-describedby={reasonServerError === null ? undefined : reasonErrorId}
+          />
+          {reasonsFailed && <p className="pop-repack-note">{t.reasonsFailed}</p>}
+          {!reasonsFailed && reasons.length === 0 && (
+            <p className="pop-repack-note">{t.reasonsEmpty}</p>
+          )}
+          {/* ⚠ 오류는 도움말과 **다른 색**이어야 한다 — 같으면 사용자가 안내로 읽고 지나친다. */}
+          {reasonMissing && <p className="pop-repack-error">{t.reasonRequired}</p>}
+          {reasonServerError !== null && (
+            <p className="pop-repack-error" id={reasonErrorId} role="alert">
+              {reasonServerError}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="pop-repack-field">
         <label htmlFor={printerId}>{t.printerLabel}</label>

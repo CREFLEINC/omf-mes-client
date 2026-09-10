@@ -30,6 +30,11 @@ export const EndConfirmDialog = ({ sessionNo, onConfirm, onClose }: EndConfirmDi
     onClose={onClose}
     size="sm"
     closeOnBackdropClick={false}
+    /*
+     * ⛔ **X 를 두지 않는다.** 바닥의 [계속 작업]이 이미 「그만두고 나간다」를 맡고 있어 같은
+     *    일이 두 자리에 서고, 스크림 클릭은 막아 두고 X 만 열어 두면 규율도 어긋난다.
+     */
+    showCloseButton={false}
     title={t.end.confirmTitle}
     footer={
       <>

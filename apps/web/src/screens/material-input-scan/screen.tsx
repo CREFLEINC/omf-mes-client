@@ -89,25 +89,6 @@ export const MaterialInputScanScreen = () => {
 
   const titleId = useId();
 
-  /**
-   * 「계획 대비 수령」 도움말이 열려 있는가. **잠깐 보였다 사라진다** — 상시 문구에서 옮겨 온
-   * 말이라 자리를 계속 차지하면 옮긴 뜻이 없다. 다시 누르면 바로 닫힌다.
-   */
-  const [isReceiptHelpOpen, setReceiptHelpOpen] = useState(false);
-
-  useEffect(() => {
-    if (!isReceiptHelpOpen) return undefined;
-
-    /* 읽고 손을 떼는 데 걸리는 시간. 더 짧으면 다 읽기 전에 사라진다. */
-    const timer = setTimeout(() => {
-      setReceiptHelpOpen(false);
-    }, 6000);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [isReceiptHelpOpen]);
-
   const receipt = useReceiptLines(workOrderId);
 
   const [draft, setDraft] = useState<ScanDraft>(EMPTY_SCAN_DRAFT);
@@ -347,53 +328,20 @@ export const MaterialInputScanScreen = () => {
       <div className="pop-panes">
         <section className="pane" aria-label={t.panes.receipt}>
           {/*
-           * 구획 이름 + 도움말. **「부족·미수령이어도 투입할 수 있다」는 상시 문구였다.**
+           * 구획 이름 + 안내 한 줄. **「부족·미수령이어도 투입할 수 있다」는 이름 아래에 둔다**
+           * (사용자 지시 2026-09-10).
            *
            * ⚠ 그 말은 스펙에 없다 — §3 도면이 표 아래에 그린 것은 「⚠ MAT-B 20 부족」처럼
            *   «어느 품목이 얼마나» 모자라는지뿐이고, 「막지 않는다」(§5)는 규칙이지 화면 문구가
            *   아니다. 그래서 자리는 우리가 정한다.
            *
-           * ⭐ **필요할 때만 보이게 한다.** ⚠·⛔ 가 붙은 줄을 보고 「그럼 못 하는 건가」를
-           *   의심한 사람만 눌러 확인하면 되는 말인데, 상시로 두면 매번 읽히면서 정작 급한
-           *   「무엇이 모자라나」와 자리를 다툰다.
+           * ⛔ **누르는 표식을 두지 않는다.** 한때 이름 옆의 [?]를 눌러야 잠깐 뜨는 말풍선이었는데,
+           *    ⚠·⛔ 가 붙은 줄을 보고 「그럼 못 하는 건가」를 의심한 사람이 그 표식을 누를 것이라는
+           *    전제가 있어야 성립한다. 한 줄이면 자리를 크게 먹지 않으므로 그냥 보인다.
            */}
-          <div className="receipt-pane-head">
-            <h2 className="pane-title">{t.panes.receipt}</h2>
+          <h2 className="pane-title">{t.panes.receipt}</h2>
+          <p className="field-note receipt-pane-note">{t.notes.shortAllowed}</p>
 
-            {/*
-             * ⛔ **DS `Tooltip` 을 쓰지 않는다.** 그쪽은 hover·focus 로 «떠 있는 판»을 띄우는데,
-             *   단말에는 hover 가 없고 실측에서 그 판이 구획 위를 덮은 채 문구가 보이지 않았다.
-             *   여기서 필요한 것은 떠 있는 판이 아니라 **잠깐 보였다 사라지는 한 줄**이다.
-             *
-             * ⚠ **누르는 자리는 56 을 지키고 «보이는» 표식만 줄인다** — 장갑 낀 손이 누르는
-             *   자리라 크기를 줄이면 못 누른다. 표식이 커 보이는 문제는 그림으로 푼다.
-             */}
-            {/*
-             * 말풍선은 **누른 자리에 매달린다** — 그래서 버튼과 한 상자 안에 둔다. 구획 밖에
-             * 띄우면 무엇에 대한 설명인지가 자리로 드러나지 않는다.
-             */}
-            <span className="receipt-pane-help-anchor">
-              <button
-                type="button"
-                className="receipt-pane-help"
-                aria-expanded={isReceiptHelpOpen}
-                aria-label={t.notes.shortAllowedLabel}
-                onClick={() => {
-                  setReceiptHelpOpen((open) => !open);
-                }}
-              >
-                <span aria-hidden="true" className="receipt-pane-help__mark">
-                  ?
-                </span>
-              </button>
-
-              {isReceiptHelpOpen && (
-                <span className="receipt-pane-help-bubble" role="status">
-                  {t.notes.shortAllowed}
-                </span>
-              )}
-            </span>
-          </div>
           {!receipt.isError && (
             <>
               <ReceiptTable

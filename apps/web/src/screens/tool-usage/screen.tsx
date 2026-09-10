@@ -321,7 +321,7 @@ export const ToolUsageScreen = () => {
         {/* ① 툴 스캔 — QR 이 실패해도 코드를 손으로 칠 수 있어야 한다(스펙 §6-1 · D-3). */}
         <Card bordered className="pop-section pop-fixed" aria-label={t.scan.sectionLabel}>
           <Card.Body>
-            <form className="scan-row" onSubmit={submitCode}>
+            <form className="scan-row tool-usage-scan" onSubmit={submitCode}>
               <TextField
                 ref={scanRef}
                 label={t.scan.inputLabel}
@@ -478,6 +478,7 @@ export const ToolUsageScreen = () => {
                   className="tool-usage-pad"
                   label={t.shot.keypadLabel}
                   value={isConverted ? draft.baseQty : draft.shotCount}
+                  dropLeadingZero
                   maxLength={SHOT_MAX_LENGTH}
                   /* 스펙 §3-1 — 키는 64px 요구이고 64와 72 사이에 단이 없어 `2xl` 로 올린다. */
                   keySize="2xl"
@@ -485,7 +486,6 @@ export const ToolUsageScreen = () => {
                   allowDecimal={isConverted}
                   decimalLabel={t.shot.decimalKey}
                   backspaceLabel={t.shot.backspace}
-                  backspaceGlyph="⌫"
                   clearLabel={t.shot.clearGlyph}
                   onChange={(value) => {
                     changeDraft(isConverted ? { baseQty: value } : { shotCount: value });

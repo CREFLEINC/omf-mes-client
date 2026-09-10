@@ -78,8 +78,20 @@ export const ConfirmPanel = ({
      */
     if (hasPending) return t.confirm.reasons.qtyMissing;
 
-    return hasRecorded ? undefined : t.confirm.reasons.nothingScanned;
+    /*
+     * ⛔ **아무것도 담지 않은 상태는 말로 설명하지 않는다**(사용자 지시 2026-09-10). 화면을
+     *    열자마자 뜨던 「자재를 하나 이상 기록해야…」는 «아직 아무 일도 하지 않았다」는 사실을
+     *    되풀이할 뿐이고, 그 자리는 스캔을 마친 뒤 정말로 막혔을 때 쓸 자리다. 잠긴 버튼이
+     *    이미 「지금은 아니다」를 말한다.
+     */
+    return undefined;
   })();
+
+  /*
+   * 잠금은 사유 «문구»가 아니라 상태가 정한다 — 담긴 것이 없을 때는 말없이 잠긴 채로 둔다.
+   * ⛔ 둘을 한 값으로 묶지 않는다. 묶으면 문구를 지우는 순간 잠금까지 풀린다.
+   */
+  const isBlocked = blockReason !== undefined || !hasRecorded;
 
   return (
     <div className="confirm-row">
@@ -91,7 +103,7 @@ export const ConfirmPanel = ({
         variant="filled"
         size="xl"
         className="pop-touch-target"
-        disabled={blockReason !== undefined}
+        disabled={isBlocked}
         aria-describedby={blockReason === undefined ? undefined : reasonId}
         onClick={onConfirm}
       >
@@ -111,11 +123,17 @@ export const ConfirmPanel = ({
         </Button>
       )}
 
-      {/* 몇 건으로 닫았는지 그 자리에서 말한다. 기록 자체는 이미 건별로 끝나 있다. */}
+      {/*
+       * 몇 건으로 닫았는지 그 자리에서 말한다. 기록 자체는 이미 건별로 끝나 있다.
+       *
+       * ⭐ **스캔이 성공했을 때와 같은 모양으로 낸다**(`AlertBanner` · 사용자 지시
+       * 2026-09-10) — 자재를 담을 때 초록 띠로 답하던 화면이 마지막 「마쳤습니다」만 회색
+       * 잔글씨로 내면, 정작 확인해야 할 결말이 가장 약하게 읽힌다.
+       */}
       {closedCount !== null && (
-        <p className="field-note" role="status">
-          {t.confirm.closed(closedCount)}
-        </p>
+        <div className="banner-slot">
+          <AlertBanner variant="success" title={t.confirm.closed(closedCount)} />
+        </div>
       )}
 
       {/*

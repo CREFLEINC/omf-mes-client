@@ -419,6 +419,11 @@ export const PqcInspectionScreen = () => {
           <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} />
         ) : (
           <ItemPanel
+            uomCodeOf={(uomId) =>
+              uomId === null
+                ? null
+                : (uoms.data?.find((uom) => uom.uomId === uomId)?.uomCode ?? null)
+            }
             inspectionPlanVersionId={planVersionId}
             planVersion={planVersion.data ?? null}
             rows={rows}
@@ -433,9 +438,7 @@ export const PqcInspectionScreen = () => {
           inspectedDraft={inspectedDraft}
           onInspectedChange={changeInspected}
           inspectedQty={inspectedQty}
-          uomCode={
-            uoms.data?.find((uom) => uom.uomId === detail.data.uomId)?.uomCode ?? null
-          }
+          uomCode={uoms.data?.find((uom) => uom.uomId === detail.data.uomId)?.uomCode ?? null}
           draft={draft}
           onChange={changeDraft}
           fieldErrors={outbox.rejection?.fieldErrors ?? EMPTY_FIELD_ERRORS}

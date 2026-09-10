@@ -33,7 +33,8 @@ export const pqcInspection = {
       inspectionPlanVersionId: '검사기준 버전',
       lotId: '대상 LOT',
       itemId: '품목',
-      workOrderId: '작업지시',
+      /* ⚠ 머리줄 표기는 「W/O」로 통일한다(사용자 지시 2026-09-10). */
+      workOrderId: 'W/O',
     },
 
     /**
@@ -62,8 +63,11 @@ export const pqcInspection = {
     heading: '적용 생산구간',
     from: '시작',
     to: '종료',
+    /** 읽어 주는 이름에만 쓴다 — 눈에 보이는 「시작」 하나로는 두 칸이 같은 이름이 된다. */
+    date: '날짜',
+    time: '시각',
     /** 자동으로 채우되 사람이 고칠 수 있다는 사실을 밝힌다 — 고칠 수 있는 줄 모르면 안 고친다. */
-    note: '검사 시작·종료 시각으로 채워집니다. 필요하면 고칠 수 있습니다.',
+    note: '검사 시작·종료 시각이 자동으로 입력되며, 필요하면 수정할 수 있습니다.',
     /** 끝이 시작보다 앞설 수 없다. 조용히 뒤집지 않는다 — 사용자가 뭘 넣었는지 알아야 한다. */
     invalidOrder: '종료가 시작보다 앞설 수 없습니다.',
   },
@@ -81,9 +85,7 @@ export const pqcInspection = {
     backspace: '한 자 지움',
     clear: '지움',
     /** 아직 칸을 고르지 않았다. ⛔ 「없음」이라 적지 않는다 — 없는 것이 아니라 «고르면 된다». */
-    noTarget: '칸을 누르면 여기에 들어갑니다',
-    /** 아직 아무것도 안 눌렀다 — 빈 칸을 말없이 두면 「0 이 들어갔나」로 읽힌다. */
-    empty: '—',
+    noTarget: '입력할 칸을 선택한 후 숫자를 입력하세요.',
   },
 
   result: {
@@ -107,10 +109,16 @@ export const pqcInspection = {
       held: '보류',
     },
     sum: '합계',
-    remaining: '잔여',
-    matched: '검사 수량과 일치합니다.',
-    short: (remaining: string): string => `검사 수량보다 ${remaining} 모자랍니다.`,
-    over: (over: string): string => `검사 수량보다 ${over} 많습니다.`,
+    /**
+     * 합계와 검사 수량을 **한 값으로 잇는다**(사용자 지시 2026-09-10) — 「28 / 30」은
+     * 「28 을 담았고 30 이 목표」로 한눈에 읽힌다. 「합계 28 · 잔여 2」로 나눠 적으면 둘을
+     * 눈으로 다시 빼야 한다.
+     */
+    of: (sum: string, inspected: string): string => `${sum} / ${inspected}`,
+    matched: '검사 수량과 일치합니다',
+    /** ⛔ 「검사 수량보다」를 되풀이하지 않는다 — 바로 왼쪽 「/ 30」이 그 말을 이미 했다. */
+    short: (remaining: string): string => `${remaining} 남았습니다`,
+    over: (over: string): string => `${over} 많습니다`,
     quantityInvalid: '수량은 0 이상, 소수점 여섯 자리까지 넣을 수 있습니다.',
     save: '임시 저장',
     saved: '저장했습니다.',
@@ -143,10 +151,14 @@ export const pqcInspection = {
     heading: '불합격 처분',
     rework: '재작업 가능',
     scrap: '폐기',
-    /** 순서가 뒤집힌다는 사실을 화면이 먼저 말한다 — 안 말하면 고른 값이 확정인 줄 안다. */
-    note: '처분은 불량창고 입고 후 확정됩니다. 여기서 고른 값은 저장되지 않습니다.',
-    /** 불합격이 0이면 고를 것이 없다. 감추지 않고 왜 비활성인지 밝힌다. */
-    disabledNote: '불합격 수량이 있어야 고를 수 있습니다.',
+    /**
+     * **한 줄이 둘을 다 말한다**(사용자 지시 2026-09-10) — 언제 고를 수 있는지와, 여기서
+     * 고른 것이 끝이 아니라는 사실이다.
+     *
+     * ⚠ 순서가 뒤집힌다는 것을 화면이 먼저 말해야 한다. 안 말하면 고른 값이 확정인 줄 안다.
+     * ⛔ 불합격이 0일 때 따로 붙이던 줄을 되살리지 않는다 — 같은 말이 두 줄로 겹친다.
+     */
+    note: '불합격 수량이 있는 경우 처분을 선택할 수 있으며, 불량창고 입고 후 확정됩니다.',
   },
 
   /**
@@ -203,7 +215,6 @@ export const pqcInspection = {
     atLeast: (lower: number): string => `${lower} 이상`,
     atMost: (upper: number): string => `${upper} 이하`,
     target: (value: number): string => `목표 ${value}`,
-    notMeasured: '—',
     /**
      * ⚠ 규격을 벗어난 값이다. ⛔ **자동으로 불합격을 매기지 않는다**(스펙 §6) — 표시하고
      * 사람이 판정한다. 문구도 「불합격」이라고 말하지 않는다.
