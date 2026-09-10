@@ -13,6 +13,7 @@ coverage/
 .claude/
 .client-dev/
 release/
+/deploy/.env
 
 # 브라우저 육안 확인 산출물 — 세션마다 새로 생기며 제품 파일이 아니다.
 .playwright-mcp/
