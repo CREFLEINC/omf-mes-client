@@ -229,6 +229,19 @@ describe('반출에 쓸 잔고 줄', () => {
 
     expect(pick.kind).toBe('unknownBusinessUnit');
   });
+
+  /* 한 LOT 이 여러 자리에 있다. 앞 자리에서 못 정했다고 뒤 자리를 안 보면 반출이 막힌다. */
+  it('앞 자리에서 사업장을 못 정하면 다음 자리를 본다', () => {
+    const pick = sourcePickOf(
+      [
+        { onHandQty: 120, locationId: 3009, warehouseId: 7777 },
+        { onHandQty: 300, locationId: 3001, warehouseId: 1002 },
+      ],
+      wh,
+    );
+
+    expect(pick).toMatchObject({ kind: 'row', locationId: 3001, businessUnitId: 2002 });
+  });
 });
 
 /*

@@ -86,6 +86,9 @@ export const sourcePickOf = <T extends BalanceRow>(
   rows: T[],
   warehouses: TransferEnd[],
 ): SourcePick<T> => {
+  /* 한 LOT 이 여러 자리에 있다. 한 자리에서 사업장을 못 정해도 다른 자리는 정해진다. */
+  let stocked = false;
+
   for (const row of rows) {
     const { onHandQty, locationId, warehouseId } = row;
 
@@ -99,19 +102,19 @@ export const sourcePickOf = <T extends BalanceRow>(
       continue;
     }
 
+    stocked = true;
+
     const businessUnitId =
       row.businessUnitId ??
       warehouses.find((each) => each.warehouseId === warehouseId)?.businessUnitId ??
       null;
 
-    if (businessUnitId === null) {
-      return { kind: 'unknownBusinessUnit' };
+    if (businessUnitId !== null) {
+      return { kind: 'row', row, locationId, warehouseId, businessUnitId };
     }
-
-    return { kind: 'row', row, locationId, warehouseId, businessUnitId };
   }
 
-  return { kind: 'noStock' };
+  return { kind: stocked ? 'unknownBusinessUnit' : 'noStock' };
 };
 
 export type QtyProblem = 'notNumber' | 'notPositive' | 'overStock';
