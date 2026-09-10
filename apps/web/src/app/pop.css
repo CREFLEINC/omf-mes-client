@@ -1644,17 +1644,20 @@
   border-block-end: 0;
 }
 
+/*
+ * ⚠ **들여쓰기는 «안쪽 여백»으로 준다**(사용자 지적 2026-09-10). 바깥 여백으로 밀면 줄 아래
+ *   선까지 함께 밀려, 묶음 경계선만 짧아져 아래 사유 앞 선과 길이가 갈렸다.
+ */
 .pop-ui .pop-reprint-target--child {
   position: relative;
-  margin-inline-start: var(--space-6);
-  padding-inline-start: var(--space-5);
+  padding-inline-start: var(--space-8);
 }
 
 .pop-ui .pop-reprint-target--child::before {
   content: '';
   position: absolute;
   inset-block-start: 0;
-  inset-inline-start: 0;
+  inset-inline-start: var(--space-4);
   block-size: 50%;
   inline-size: var(--space-4);
   border-inline-start: 1px solid var(--outline-variant);
@@ -1723,9 +1726,15 @@
   color: var(--on-surface-variant);
 }
 
-/* 줄 사이는 선 하나로 가른다 — 굴려도 어디서 한 줄이 끝나는지 보인다. */
+/*
+ * 줄 사이는 선 하나로 가른다 — 굴려도 어디서 한 줄이 끝나는지 보인다.
+ *
+ * ⚠ 표제·아래 선과의 사이는 한 단만 띄운다(사용자 지적 2026-09-10) — 블록 이음매(16)가
+ *   목록의 위아래 여백에 더해져 32 로 벌어져 있었다.
+ */
 .pop-ui .pop-reprint-targets {
   gap: 0;
+  margin-block: 0;
 }
 
 .pop-ui .pop-reprint-target {
