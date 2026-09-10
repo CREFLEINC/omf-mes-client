@@ -644,18 +644,22 @@ export const createSeed = (now = new Date()) => {
       ['URGENT_RECEIPT', '긴급 입하'],
       ['OVER_DELIVERY', '초과 납품'],
     ],
+    /*
+     * 세 값뿐이다. 수량 초과는 이 축을 쓰지 않고 입하 헤더의 예외 유형으로 갈린다 - 여기에
+     * 두면 두 경로가 같은 테이블에 쓰게 된다.
+     */
     INBOUND_VARIANCE_TYPE: [
       ['SHORTAGE', '수량 부족'],
-      ['OVERAGE', '수량 초과'],
-      ['DAMAGED', '파손'],
-      ['WRONG_ITEM', '품목 상이'],
+      ['ITEM_MISMATCH', '품목 상이'],
+      ['UNREGISTERED_ITEM', '미등록 품목'],
     ],
     /* 적는 것은 선택이지만, 비어 있으면 고르는 칸이 빈 채로 열려 시험할 것이 없다. */
     INBOUND_VARIANCE_REASON: [
-      ['TRANSPORT_DAMAGE', '운송 중 파손'],
-      ['SUPPLIER_SHORTAGE', '공급사 결품'],
-      ['PACKING_ERROR', '포장 오류'],
-      ['ETC', '기타'],
+      ['DAMAGED', '파손'],
+      ['MISLABELED', '라벨 오류'],
+      ['SUPPLIER_MISSHIP', '공급사 오출하'],
+      ['PACKAGING_DEFECT', '포장 불량'],
+      ['OTHER', '기타'],
     ],
     VARIANCE_REASON: [
       ['MISCOUNT', '계수 착오'],

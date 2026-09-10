@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { InboundVarianceScreen } from './screen';
 
@@ -100,7 +101,11 @@ const routes = (options: Options = {}): StubRoute[] => [
       return jsonResponse({
         items:
           group === 'INBOUND_VARIANCE_TYPE'
-            ? [codeValue('SHORT', '수량 부족', 1), codeValue('OVER', '수량 초과', 2)]
+            ? [
+                codeValue('SHORTAGE', '수량 부족', 1),
+                codeValue('ITEM_MISMATCH', '품목 상이', 2),
+                codeValue('UNREGISTERED_ITEM', '미등록 품목', 3),
+              ]
             : [codeValue('DAMAGED', '파손', 1)],
         page,
       });
@@ -147,9 +152,8 @@ const chooseLine = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 const fill = async (user: ReturnType<typeof userEvent.setup>, qty: string) => {
-  await user.click(screen.getByRole('combobox', { name: '오류 유형' }));
-  await user.click(await screen.findByRole('option', { name: '수량 부족' }));
-  await user.type(screen.getByLabelText('대상 수량'), qty);
+  await user.click(screen.getByRole('radio', { name: '수량 부족' }));
+  await user.type(screen.getByLabelText(/대상 수량/), qty);
 };
 
 beforeEach(() => {
@@ -163,9 +167,7 @@ describe('입하 오류 등록 화면', () => {
   it('입하 조회 실패를 입하 없음으로 말하지 않는다', async () => {
     mount([], { receiptsStatus: 500 });
 
-    expect(
-      await screen.findByText('입하를 확인할 수 없습니다. 연결을 확인하세요.'),
-    ).toBeTruthy();
+    expect(await screen.findByText('입하를 확인할 수 없습니다. 연결을 확인하세요.')).toBeTruthy();
     expect(screen.queryByText('입하를 찾지 못했습니다')).toBeNull();
   });
 
@@ -185,7 +187,7 @@ describe('입하 오류 등록 화면', () => {
         {
           inboundVarianceId: 3,
           inboundReceiptLineId: 55,
-          varianceTypeCode: 'SHORT',
+          varianceTypeCode: 'SHORTAGE',
           varianceQty: 20,
           uomId: 9,
         },
@@ -300,10 +302,13 @@ describe('입하 오류 등록 화면', () => {
     expect(seen[0]?.headers.get('X-Worker-No')).toBe('900028');
     expect(seen[0]?.headers.get('Idempotency-Key')).toBeTruthy();
 
-    
-    const body = (await seen[0]!.json()) as { varianceTypeCode: string; varianceQty: number; reasonCode: unknown };
+    const body = (await seen[0]!.json()) as {
+      varianceTypeCode: string;
+      varianceQty: number;
+      reasonCode: unknown;
+    };
 
-    expect(body.varianceTypeCode).toBe('SHORT');
+    expect(body.varianceTypeCode).toBe('SHORTAGE');
     expect(body.varianceQty).toBe(20);
     expect(body.reasonCode).toBeNull();
     expect(await screen.findByText('입하 오류를 등록했습니다')).toBeTruthy();
@@ -382,5 +387,29 @@ describe('입하 오류 등록 화면', () => {
     expect(await screen.findByText('오류를 저장하지 못했습니다')).toBeTruthy();
     expect(screen.queryByText('입하 오류를 등록했습니다')).toBeNull();
     expect(seen).toHaveLength(0);
+  });
+
+  /* 세 값 고정 그룹이다. 펼침 목록은 열고 고르고 닫는 세 동작이라 장갑 낀 손에 불리하다. */
+  it('오류 유형을 한 번에 고르는 라디오로 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseLine(user);
+
+    expect(await screen.findByRole('radio', { name: '수량 부족' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: '품목 상이' })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: '미등록 품목' })).toBeTruthy();
+  });
+
+  /* 뒤로가기는 고른 라인을 먼저 놓는다. 두지 않으면 한 번에 작업 목록까지 나간다. */
+  it('뒤로가기가 고른 라인을 먼저 놓는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await chooseLine(user);
+
+    expect(runBackStep()).toBe(true);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('radio', { name: '수량 부족' })).toBeNull();
+    });
   });
 });

@@ -1,8 +1,20 @@
-import { AlertBanner, Button, Card, Dialog, NumberPad, Select, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  Dialog,
+  NumberPad,
+  Radio,
+  RadioGroup,
+  Select,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
 import { useCodeValues } from '../../patterns/code-values';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
@@ -26,6 +38,7 @@ import {
 import './screen.css';
 
 const t = messages.inboundVariance;
+const required = messages.common.required;
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
@@ -53,10 +66,22 @@ export const InboundVarianceScreen = () => {
    * 두 번째가 들어와 멱등키가 다른 두 건이 담기고, 서버가 흡수하지 못해 두 건이 기록된다.
    */
   const inFlight = useRef(false);
+  const formSection = useRef<HTMLDivElement | null>(null);
 
   const patch = (next: Partial<VarianceDraft>) => {
     setDraft((current) => ({ ...current, ...next }));
   };
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(draft.line !== null, formSection);
+
+  /*
+   * 뒤로가기는 고른 라인을 먼저 놓는다. 두지 않으면 수량을 적던 사람이 한 번에 작업 목록까지
+   * 나가 입하를 다시 찾아야 한다.
+   */
+  useBackStep(draft.line !== null, () => {
+    setDraft(emptyDraft);
+  });
 
   const receipts = useInboundReceipts(search);
   const lines = useReceiptLines(receipt?.inboundReceiptId ?? null);
@@ -245,10 +270,10 @@ export const InboundVarianceScreen = () => {
                     ? String(draft.line.itemId)
                     : `${item.data.itemCode} ${item.data.itemName}`}
                 </strong>
-                {item.isError ? (
-                  <p className="variance__note">{t.receipt.itemLoadFailed}</p>
-                ) : null}
-                <p>{t.receipt.chosen(draft.line.lineNo, `${String(draft.line.receivedQty)} ${uom}`)}</p>
+                {item.isError ? <p className="variance__note">{t.receipt.itemLoadFailed}</p> : null}
+                <p>
+                  {t.receipt.chosen(draft.line.lineNo, `${String(draft.line.receivedQty)} ${uom}`)}
+                </p>
               </Card.Body>
             </Card>
             <Button
@@ -286,28 +311,28 @@ export const InboundVarianceScreen = () => {
             )}
           </section>
 
-          <section className="variance__section">
+          <section className="variance__section" ref={formSection}>
             <h2>{t.form.legend}</h2>
-            <div className="variance__field">
-              <label htmlFor="variance-type">{t.form.typeLabel}</label>
-              <Select
-                id="variance-type"
-                placeholder={t.form.typePlaceholder}
-                size="xl"
-                value={draft.varianceTypeCode === '' ? null : draft.varianceTypeCode}
-                onChange={(value) => {
-                  patch({ varianceTypeCode: String(value) });
-                }}
-                options={(types.data ?? []).map((each) => ({
-                  value: each.code,
-                  label: each.name,
-                }))}
-              />
-              {types.isError ? <p className="variance__note">{t.form.typeLoadFailed}</p> : null}
-            </div>
+            {/* 세 값 고정 그룹이다. 펼침 목록은 열고 고르고 닫는 세 동작이라 장갑에 불리하다. */}
+            <p id="variance-type-label">{required(t.form.typeLabel)}</p>
+            <RadioGroup
+              name="variance-type"
+              aria-labelledby="variance-type-label"
+              value={draft.varianceTypeCode === '' ? undefined : draft.varianceTypeCode}
+              onChange={(value) => {
+                patch({ varianceTypeCode: value });
+              }}
+            >
+              {(types.data ?? []).map((each) => (
+                <Radio key={each.code} value={each.code}>
+                  {each.name}
+                </Radio>
+              ))}
+            </RadioGroup>
+            {types.isError ? <p className="variance__note">{t.form.typeLoadFailed}</p> : null}
 
             <TextField
-              label={t.form.qtyLabel}
+              label={required(t.form.qtyLabel)}
               inputMode="none"
               size="xl"
               fullWidth
@@ -346,9 +371,7 @@ export const InboundVarianceScreen = () => {
               />
               {/* 사유를 모를 때 기록 자체가 막히면 안 된다. */}
               <p className="variance__note">{t.form.reasonOptional}</p>
-              {reasons.isError ? (
-                <p className="variance__note">{t.form.reasonLoadFailed}</p>
-              ) : null}
+              {reasons.isError ? <p className="variance__note">{t.form.reasonLoadFailed}</p> : null}
             </div>
 
             {saveFailed ? (
@@ -357,17 +380,19 @@ export const InboundVarianceScreen = () => {
               </AlertBanner>
             ) : null}
             {worker === null ? <p className="variance__note">{t.noWorker}</p> : null}
-            <Button
-              className="variance__wide"
-              variant="filled"
-              size="2xl"
-              disabled={!ready}
-              onClick={() => {
-                setAsking(true);
-              }}
-            >
-              {t.submit}
-            </Button>
+            <div className="action-bar">
+              <Button
+                className="variance__wide"
+                variant="filled"
+                size="2xl"
+                disabled={!ready}
+                onClick={() => {
+                  setAsking(true);
+                }}
+              >
+                {t.submit}
+              </Button>
+            </div>
           </section>
         </>
       )}

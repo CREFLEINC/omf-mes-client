@@ -143,8 +143,9 @@ export const inboundReceipt = {
     /** 임시 입고가 아니다. 평범한 입하 등록이고 발주는 열린 채 남는다. */
     underContinue: '계속 등록',
     underContinueNote: '분할 납품이면 그대로 등록합니다. ERP W/O는 열린 채 남습니다.',
-    underVariance: '입하 오류 등록',
-    underVarianceNote: '이번이 마지막인데 모자라면 입하 오류로 넘어갑니다.',
+    underVariance: '보류로 받고 오류 등록',
+    /** 받아 두는 것이 먼저다. 등록하지 않고 떠나면 오류를 붙일 입하 라인이 없다. */
+    underVarianceNote: '먼저 보류로 받아 둔 뒤에 오류 내용을 적습니다.',
   },
   /** 검사 대상 여부는 서버가 라인마다 정한다. 화면이 보내지 않는다. */
   inspectionNote: '검사 대상 여부는 등록한 뒤에 라인마다 정해집니다',
@@ -152,10 +153,14 @@ export const inboundReceipt = {
   sent: {
     title: '입하를 등록했습니다',
     description: '사전부착 라인의 자재 LOT도 함께 만들어졌습니다. 모두 보류 상태입니다.',
+    /** 오류는 입하 라인에 달린다. 받아 둔 뒤에야 붙일 자리가 생긴다. */
+    toVariance: '입하 오류 등록으로',
   },
   queued: {
     title: '입하를 전송 대기에 넣었습니다',
     description: '연결되면 보냅니다. 아직 보내지 않았습니다.',
+    /** 보내기 전에는 입하 라인이 서버에 없어 오류를 붙일 자리가 없다. */
+    varianceLater: '오류 등록은 이 입하가 전송된 뒤에 할 수 있습니다.',
   },
   rejected: {
     title: '입하를 전송하지 못했습니다',
