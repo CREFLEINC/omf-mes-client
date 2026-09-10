@@ -249,6 +249,103 @@ curl -s http://127.0.0.1:5173/api/health
 
 배선은 서 있고 상태 확인 경로로 검증된다. 진행은 착수 이슈에 적는다.
 
+## 릴리스 APK 만들기
+
+디버그 APK 는 개발 기기에만 선다. 배포하는 것은 우리 키로 서명한 릴리스 APK 다.
+
+⛔ **서명 키와 비밀번호를 이 저장소에 두지 않는다.** 공개 저장소다. 키가 새면 남이 우리
+이름으로 앱을 만들 수 있고, 한 번 push 되면 회수되지 않는다. `build.gradle` 은 값을
+환경변수로만 받고, 그 값을 넣는 것은 아래 스크립트다.
+
+### 한 번만 준비하는 것
+
+키스토어를 만들고 비밀번호를 Keychain 에 넣는다. **비밀번호를 명령 인자로 주지 않는다** —
+`ps` 목록과 셸 히스토리에 남는다.
+
+```bash
+PASS="$(openssl rand -base64 32)"
+security add-generic-password -a "$USER" -s "omf-mes-client-android-release-storepass" -w "$PASS" -U
+mkdir -p ~/.secrets && chmod 700 ~/.secrets
+printf '%s\n%s\n\n' "$PASS" "$PASS" | keytool -genkeypair \
+  -keystore ~/.secrets/omf-mes-client-android-release.jks -storetype PKCS12 \
+  -alias omf-mes-mobile -keyalg RSA -keysize 4096 -validity 10950 \
+  -dname "CN=OMF-MES Mobile, OU=Client, O=CREFLE, C=KR"
+chmod 600 ~/.secrets/omf-mes-client-android-release.jks
+unset PASS
+```
+
+⚠ **키를 잃으면 같은 앱으로 갱신할 수 없다.** 사용자가 지우고 다시 깔아야 하고 그때 기기
+등록이 풀린다. 설계 결정 20 ③ 이 **키스토어 사본과 비밀번호를 조직이 접근 가능한 곳에 이중
+보관**하라고 정한다 — Keychain 은 담당자 개인 계정에 묶여 있어 그 자리가 아니다. **조직
+보관처는 아직 정해지지 않았다.**
+
+### 주소와 포트를 어디서 바꾸나
+
+**고치는 곳은 `apps/mobile/.env.local` 한 줄이다.** IP 와 포트가 모두 그 값 안에 들어간다.
+이 파일은 `.gitignore` 의 `*.local` 에 걸려 커밋되지 않는다 — 사내 주소를 저장소에 적지 않는다.
+
+```bash
+# apps/mobile/.env.local
+VITE_API_BASE_URL=http://<IP>:<PORT>/api
+```
+
+| 무엇 | 어디 | 비고 |
+| --- | --- | --- |
+| **IP · PORT** | `apps/mobile/.env.local` 의 `VITE_API_BASE_URL` | 본보기는 `apps/mobile/.env.example` |
+| 경로 접두 | 같은 값의 뒤쪽(`/api`) | 서버가 접두를 두지 않으면 뺀다 |
+| 버전 | `apps/mobile/android/app/build.gradle` 의 `versionCode` · `versionName` | 갱신할 때마다 `versionCode` 를 올린다 |
+| 서명 키 위치 | 환경변수 `OMF_RELEASE_KEYSTORE` (기본 `~/.secrets/omf-mes-client-android-release.jks`) | 저장소에 두지 않는다 |
+
+⚠ **이 값은 빌드 시점에 APK 안으로 굳는다.** 설치한 뒤에 바꿀 수 없다 — 주소가 바뀌면 다시
+굽는다. 값을 주지 않으면 스크립트가 멈춘다.
+
+⛔ **지금은 `http://` 주소로 구우면 앱이 서버에 닿지 못한다.** 릴리스 빌드가 평문 HTTP 를
+막기 때문이고, 아래 「아직 하지 않은 것」의 첫 항이 그것이다. `https://` 면 지금 그대로 된다.
+
+붙는지는 앱을 깔기 전에 먼저 확인한다.
+
+```bash
+curl -s http://<IP>:<PORT>/api/health
+# {"status":"ok","db":"up","uptime":...}
+```
+
+### 만들기
+
+```bash
+VITE_API_BASE_URL=http://<사내-주소>/api apps/mobile/scripts/release-build.sh
+```
+
+주소를 주지 않으면 스크립트가 멈춘다. 그냥 두면 기본값인 단말 자신(`127.0.0.1`)으로 굳어
+**빌드도 설치도 성공한 채 조회만 전부 조용히 실패한다.** `.env.local` 에 적어 두어도 된다.
+
+산출물은 `apps/mobile/android/app/build/outputs/apk/release/app-release.apk` 다. 스크립트가
+`apksigner verify` 로 서명을 확인하고 인증서를 찍는다. 이름이 `app-release-unsigned.apk` 면
+서명이 붙지 않은 것이다.
+
+### 단말에 넣기
+
+설계 결정 20 이 정한 것을 따른다.
+
+| | 무엇 | 정해진 것 |
+| :-: | --- | --- |
+| ② | 배포 경로 | 사내 반입 설치 — USB 로 옮겨 수동으로 깐다. 단말에 「알 수 없는 출처 설치」를 켜야 한다 |
+| ④ | 갱신 | 덮어쓰기 보존형. **갱신 전 미전송 0건을 확인**한다 |
+
+덮어쓰기 갱신은 **같은 키로 서명하고 `versionCode` 를 올려야** 성립한다. 지금은 `1` 이고,
+배포할 때마다 `apps/mobile/android/app/build.gradle` 에서 올린다. 키가 다르면 안드로이드가
+설치를 거부하고, `versionCode` 가 같으면 갱신이 아니라 재설치가 된다 — 재설치는 앱 저장소를
+지우고, 미전송이 남아 있으면 그것도 함께 사라진다.
+
+### 아직 하지 않은 것
+
+- **운영 서버 평문 HTTP 허용** — 결정 20 ① 이 사내망 전용 평문으로 정했는데, 릴리스 빌드는
+  기본이 평문을 막는다. 지금 열려 있는 자리는 `android/app/src/debug/` 뿐이고 그것은 개발
+  기기의 세 주소만 연다. 실제 배포 주소로 구울 때 릴리스에도 같은 것을 얹어야 한다.
+  ⚠ 위 「에뮬레이터에서 실기기처럼 보기」의 «운영 서버의 HTTPS 여부는 아직 정해지지
+  않았고(#580)» 는 결정 20 이전 서술이다 — 그 물음은 ① 로 닫혔다
+- **난독화** — `minifyEnabled` 는 꺼져 있다. 설계에 결정이 없다. 켜면 Capacitor 플러그인
+  리플렉션이 깨질 수 있어 유지 규칙을 함께 확인해야 한다
+
 ## 버전 조합
 
 바꾸기 전에 `docs/decisions.md` 14 번을 읽는다. 조합이 어긋나면 원인을 알기 어려운 빌드 오류가 난다.

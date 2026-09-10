@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+// 서명 키와 비밀번호는 이 저장소에 두지 않는다 - 공개 저장소다. 값은 환경변수로만 들어오고
+// apps/mobile/scripts/release-build.sh 가 Keychain 에서 꺼내 준다.
+def releaseKeystore = System.getenv("OMF_RELEASE_KEYSTORE")
+
+// 서명 없이 나온 APK 는 단말에 설치되지 않는데, 빌드는 그대로 성공한다. 릴리스를 부를 때만 짚는다.
+if (!releaseKeystore && gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }) {
+    logger.warn("OMF_RELEASE_KEYSTORE 가 없다 - 서명 없는 APK 가 나오고 단말에 설치되지 않는다. apps/mobile/scripts/release-build.sh 를 쓴다.")
+}
+
 android {
     namespace = "com.crefle.omfmes.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +25,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (releaseKeystore) {
+                storeFile file(releaseKeystore)
+                storePassword System.getenv("OMF_RELEASE_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("OMF_RELEASE_KEY_ALIAS")
+                // PKCS12 는 키 비밀번호가 저장소 비밀번호와 같아야 한다. 지킬 비밀이 하나로 준다.
+                keyPassword System.getenv("OMF_RELEASE_KEYSTORE_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseKeystore) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
