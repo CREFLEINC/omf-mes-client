@@ -623,33 +623,7 @@ export const ProductionFlowScreen = () => {
           <AlertBanner variant="error" title={t.flow.tag.targetUnknown} />
         </div>
       )}
-      {outbox.rejection !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="error" title={t.save.failTitle} />
-        </div>
-      )}
 
-      {/*
-       * 발행·인쇄가 어떻게 됐는지는 **화면 맨 위 띠에서 말한다**(사용자 지시 2026-09-10).
-       * 「실적을 저장하지 못했습니다」와 같은 자리·같은 모양이다 — 한 화면에서 결말을 알리는
-       * 자리가 둘이면 작업자가 매번 어디를 볼지 고른다.
-       */}
-      {outputStatus !== null && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant={
-              outputPhase === 'issueFailed' ||
-              outputPhase === 'renditionFailed' ||
-              outputPhase === 'printFailed' ||
-              outputPhase === 'reportFailed' ||
-              outputPhase === 'legacyMismatch'
-                ? 'error'
-                : 'info'
-            }
-            title={outputStatus}
-          />
-        </div>
-      )}
       <div
         className={`production-flow-grid pop-fixed${
           isTagTarget === false ? ' production-flow-grid-no-tags' : ''
@@ -872,6 +846,36 @@ export const ProductionFlowScreen = () => {
               <Button disabled={!canOutput} onClick={queueOutput}>
                 {t.flow.output.issue}
               </Button>
+            )}
+
+            {/*
+             * 저장·발행·인쇄가 어떻게 됐는지는 **[생산 라벨 출력] 바로 아래에서 말한다**
+             * (사용자 지시 2026-09-10). 누른 자리와 그 답이 한 자리에 모인다 — 화면 맨 위
+             * 띠에 두었더니 눌러 놓고 눈이 위로 올라갔다.
+             *
+             * 두 소식이 같은 자리에 선다: 실적 저장이 먼저이고 발행·인쇄가 그다음이다.
+             */}
+            {outbox.rejection !== null && (
+              <div className="banner-slot">
+                <AlertBanner variant="error" title={t.save.failTitle} />
+              </div>
+            )}
+
+            {outputStatus !== null && (
+              <div className="banner-slot">
+                <AlertBanner
+                  variant={
+                    outputPhase === 'issueFailed' ||
+                    outputPhase === 'renditionFailed' ||
+                    outputPhase === 'printFailed' ||
+                    outputPhase === 'reportFailed' ||
+                    outputPhase === 'legacyMismatch'
+                      ? 'error'
+                      : 'info'
+                  }
+                  title={outputStatus}
+                />
+              </div>
             )}
 
             {lotPrinter === null && !lotPrinters.isPending && (
