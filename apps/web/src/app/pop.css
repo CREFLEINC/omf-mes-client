@@ -3633,6 +3633,50 @@
   margin-block: 0;
 }
 
+/*
+ * P-02-13 세 구획의 세로 리듬 — **붙여 읽는다**(사용자 지시 2026-09-10). 줄마다 14~16 이
+ * 붙어 있어 한 항목이 화면의 여섯 줄을 먹고, 항목 셋이면 아래가 접힘선을 넘었다.
+ *
+ * ⛔ 글자 크기는 건드리지 않는다 — 좁히는 것은 «사이»뿐이다.
+ */
+.pop-ui .pqc-item-panel .pop-item > .field-note,
+.pop-ui .pqc-item-panel .pop-item > .field-label {
+  margin-block: 0;
+}
+
+.pop-ui .pqc-item-panel .pop-item > * + * {
+  margin-block-start: var(--space-1);
+}
+
+.pop-ui .pqc-item-panel .pop-item {
+  padding-block: var(--space-2);
+}
+
+.pop-ui .pqc-item-panel .pop-item-list {
+  gap: 0;
+}
+
+/* 결과 입력·키패드 구획도 같은 리듬으로 줄인다 — 셋이 나란히 서는 화면이다. */
+.pop-ui .pqc-result-panel > * + *,
+.pop-ui .pqc-keypad > * + * {
+  margin-block-start: var(--space-2);
+}
+
+/*
+ * 항목 판정 — **버튼 둘이 한 줄을 반씩 쓴다**(설계 §7 「큰 타겟」). 글자 길이로 폭이 정해지면
+ * 「합격」과 「불합격」이 서로 다른 크기로 서서 어느 쪽이 무거운 선택인지 흐려진다.
+ */
+.pop-ui .pqc-judgment-buttons {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--space-2);
+}
+
+.pop-ui .pqc-judgment-buttons > button {
+  width: 100%;
+}
+
 .pop-ui .pqc-item-panel > .field-note + .field-note {
   margin-block-start: var(--space-1);
 }

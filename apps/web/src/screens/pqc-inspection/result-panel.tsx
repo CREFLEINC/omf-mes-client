@@ -212,7 +212,7 @@ export const ResultPanel = ({
   );
 
   return (
-    <section className="pane" aria-label={t.heading}>
+    <section className="pane pqc-result-panel" aria-label={t.heading}>
       <h2 className="field-label">{t.heading}</h2>
 
       {errorBanner}

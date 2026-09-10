@@ -75,6 +75,8 @@ export const createSeed = (now = new Date()) => {
     { uomId: 1003, uomCode: 'BOX', uomName: '박스', isActive: false },
     /* 점검 기준의 단위. 압력 항목에 개수 단위를 붙이면 실물 계기와 맞춰 볼 수 없다. */
     { uomId: 1004, uomCode: 'MPa', uomName: '메가파스칼', isActive: true },
+    /* 검사 규격이 쓰는 길이 단위 — 치수 항목이 이 단위로 잰다(P-02-13 §3 도면). */
+    { uomId: 1005, uomCode: 'mm', uomName: '밀리미터', isActive: true },
   ];
 
   /*
@@ -642,6 +644,19 @@ export const createSeed = (now = new Date()) => {
       ['RETEST_FAIL', '재검사 불합격'],
       ['INVESTIGATION_CLEARED', '조사 종결'],
       ['MANAGER_OVERRIDE', '관리자 판단'],
+    ],
+    /*
+     * ⚠ **항목 판정과 종합 판정은 «다른 그룹»이다**(P-02-13 §5 · 2026-09-03 등재). 항목에는
+     *    「보류」가 없다 — 그룹을 하나로 합치면 항목 판정에 없는 값이 뜬다.
+     */
+    INSPECTION_MEASUREMENT_JUDGMENT: [
+      ['ACCEPTED', '합격'],
+      ['REJECTED', '불합격'],
+    ],
+    INSPECTION_RESULT_OVERALL_JUDGMENT: [
+      ['ACCEPTED', '합격'],
+      ['REJECTED', '불합격'],
+      ['HOLD', '보류'],
     ],
     PICKING_TYPE: [
       ['PRODUCTION', '생산 투입'],
@@ -2279,6 +2294,77 @@ export const createSeed = (now = new Date()) => {
    *
    * ⛔ **의뢰를 만드는 경로는 계약에 없다**(서버가 만든다). 여기서도 씨앗으로만 둔다.
    */
+  /*
+   * 검사기준 — **PQC 화면(P-02-13)이 항목을 그릴 근거다.**
+   *
+   * ⚠ 이 경로들이 비어 있어 계약 예시 서버가 답했고, 화면이 「표시명 · 규격 목표 1 · 1 ~ 1」
+   *   같은 견본을 그대로 그렸다(사용자 지적 2026-09-10). 설계 §3 도면이 든 예(외관 · 치수 A ·
+   *   치수 B)를 그대로 씨앗으로 둔다.
+   */
+  const inspectionPlan = {
+    inspectionPlanId: 1001,
+    inspectionPlanCode: 'IP-FG-1001',
+    inspectionPlanName: 'FG-1001 제품 검사 기준',
+    inspectionTypeCode: 'PQC',
+    itemId: 2003,
+    isActive: true,
+  };
+
+  const inspectionPlanVersion = {
+    inspectionPlanVersionId: 1001,
+    inspectionPlanId: 1001,
+    planVersion: 2,
+    samplingRatio: 30,
+    effectiveFrom: iso(-30),
+    effectiveTo: null,
+    isActive: true,
+  };
+
+  const inspectionItemSpecs = [
+    {
+      inspectionItemSpecId: 7101,
+      inspectionPlanVersionId: 1001,
+      sequenceNo: 10,
+      inspectionItemCode: 'APPEAR',
+      inspectionItemName: '외관',
+      dataTypeCode: 'BOOLEAN',
+      measurementCount: 1,
+      requiredFlag: true,
+      /* 눈으로 보는 항목이라 상·하한이 없다 — 사람이 판정한다. */
+      automaticJudgment: false,
+    },
+    {
+      inspectionItemSpecId: 7102,
+      inspectionPlanVersionId: 1001,
+      sequenceNo: 20,
+      inspectionItemCode: 'DIM-A',
+      inspectionItemName: '치수 A',
+      dataTypeCode: 'NUMERIC',
+      uomId: 1005,
+      targetValue: 12,
+      lowerLimit: 11.95,
+      upperLimit: 12.05,
+      measurementCount: 1,
+      requiredFlag: true,
+      automaticJudgment: true,
+    },
+    {
+      inspectionItemSpecId: 7103,
+      inspectionPlanVersionId: 1001,
+      sequenceNo: 30,
+      inspectionItemCode: 'DIM-B',
+      inspectionItemName: '치수 B',
+      dataTypeCode: 'NUMERIC',
+      uomId: 1005,
+      targetValue: 8,
+      lowerLimit: 7.97,
+      upperLimit: 8.03,
+      measurementCount: 1,
+      requiredFlag: true,
+      automaticJudgment: true,
+    },
+  ];
+
   const inspectionRequests = [
     {
       inspectionRequestId: 16001,
@@ -2510,6 +2596,10 @@ export const createSeed = (now = new Date()) => {
     defectRecords,
     repairExecutions: [],
     inspectionRequests,
+    inspectionPlans: [inspectionPlan],
+    inspectionPlanVersions: [inspectionPlanVersion],
+    inspectionItemSpecs,
+    inspectionMeasurements: [],
     /*
      * 지난 고장 하나. 없으면 지난 증상 재사용 제안이 실기에서 한 번도 서지 않는다 - 끝난
      * 건이라 열린 고장 셈에는 들어가지 않는다.

@@ -2962,6 +2962,46 @@ on('POST', '/production/production-results', (_p, _q, body) => {
  */
 const PENDING_INSPECTION_STATUSES = ['REQUESTED', 'IN_PROGRESS'];
 
+/*
+ * 검사 의뢰 한 건과 그 검사기준 — **PQC 화면(P-02-13)이 항목을 그릴 근거다.**
+ *
+ * ⚠ 이 넷이 비어 있어 계약 예시 서버가 답했고, 화면이 「표시명 · 규격 목표 1 · 1 ~ 1」 같은
+ *   견본을 그렸다(사용자 지적 2026-09-10).
+ */
+on('GET', '/quality/inspection-requests/{inspectionRequestId}', (params) => {
+  const request = state.inspectionRequests.find(
+    (row) => row.inspectionRequestId === Number(params.inspectionRequestId),
+  );
+
+  return request === undefined ? null : { ...request };
+});
+
+on('GET', '/quality/inspection-plans/{inspectionPlanId}', (params) => {
+  const plan = state.inspectionPlans.find(
+    (row) => row.inspectionPlanId === Number(params.inspectionPlanId),
+  );
+
+  /* 계약이 단건을 봉투에 담는다 — 화면이 `inspectionPlan` 을 읽는다. */
+  return plan === undefined ? null : { inspectionPlan: { ...plan } };
+});
+
+on('GET', '/quality/inspection-plan-versions/{inspectionPlanVersionId}', (params) => {
+  const version = state.inspectionPlanVersions.find(
+    (row) => row.inspectionPlanVersionId === Number(params.inspectionPlanVersionId),
+  );
+
+  return version === undefined ? null : { inspectionPlanVersion: { ...version } };
+});
+
+on('GET', '/quality/inspection-plan-versions/{inspectionPlanVersionId}/items', (params, query) =>
+  page(
+    state.inspectionItemSpecs.filter(
+      (row) => row.inspectionPlanVersionId === Number(params.inspectionPlanVersionId),
+    ),
+    query,
+  ),
+);
+
 on('GET', '/quality/inspection-requests', (_p, query) => {
   const pendingOnly = bool(query, 'pendingOnly');
 

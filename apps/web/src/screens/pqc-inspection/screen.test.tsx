@@ -569,10 +569,9 @@ describe('PqcInspectionScreen — 저장이 실어 가는 것', () => {
 
     await screen.findByText(t.measurements.heading);
 
-    /* DS 선택칸은 네이티브 select 가 아니라 조합 상자다 — 열고 고른다. */
-    const judgments = screen.getAllByRole('combobox', { name: t.measurements.columns.judgment });
-    await userEvent.click(judgments[0] as HTMLElement);
-    await userEvent.click(screen.getByRole('option', { name: '합격' }));
+    /* 항목 판정은 버튼 둘이다(설계 §7) — 첫 항목의 [합격]을 누른다. */
+    const groups = screen.getAllByRole('group', { name: t.measurements.columns.judgment });
+    await userEvent.click(within(groups[0] as HTMLElement).getByRole('button', { name: '합격' }));
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
