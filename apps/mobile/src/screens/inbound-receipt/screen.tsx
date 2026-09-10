@@ -196,6 +196,12 @@ export const InboundReceiptScreen = () => {
     (verdict !== UNDER || continueUnder);
   const splitReady =
     loaded && plantId !== null && canSubmit(draft, worker !== null) && splitQuantities !== null;
+  /*
+   * 오류로 적는 길도 같은 조건을 지난다. 부족 물음에 답한 것이 continueUnder 를 대신할 뿐,
+   * 큐를 읽었는지와 필수 입력이 찼는지는 그대로 본다 - 이 길만 열어 두면 확정 단추가 막힌
+   * 상태에서 저장이 여기로 새어 나간다.
+   */
+  const varianceReady = loaded && plantId !== null && canSubmit(draft, worker !== null);
   const uom =
     uoms.data?.get((draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId) ?? -1) ?? '';
 
@@ -1000,7 +1006,12 @@ export const InboundReceiptScreen = () => {
                         className="receipt__wide"
                         variant="outlined"
                         size="xl"
+                        disabled={!varianceReady}
                         onClick={() => {
+                          if (!varianceReady) {
+                            return;
+                          }
+
                           setVarianceNext(true);
                           void submit();
                         }}
