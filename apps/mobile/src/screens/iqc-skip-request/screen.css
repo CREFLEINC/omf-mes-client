@@ -1,8 +1,13 @@
+/*
+ * 하단 고정 액션 아래에 목록이 더 있다. 그만큼 바닥을 비우지 않으면 마지막 줄이 바에 덮여
+ * 읽히지도 눌리지도 않는다.
+ */
 .iqc-skip {
   display: flex;
   flex-direction: column;
   gap: var(--space-4, 16px);
   padding: var(--space-4, 16px);
+  padding-bottom: 72px;
 }
 
 .iqc-skip > * {

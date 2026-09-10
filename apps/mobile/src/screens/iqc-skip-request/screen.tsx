@@ -117,8 +117,8 @@ export const IqcSkipRequestScreen = () => {
 
   /* 뒤로가기는 스캔한 LOT 을 먼저 놓는다. 두지 않으면 한 번에 작업 목록까지 나간다. */
   useBackStep(found !== null, () => {
+    /* 적어 둔 사유는 남긴다 - 손으로 친 것을 뒤로가기 한 번에 버리면 다시 쳐야 한다. */
     setScanned(null);
-    setReason('');
     scanField.focus();
   });
 
