@@ -27,7 +27,12 @@ export interface SelectionCardProps {
  * 있고, 실제 설비는 세션에 기록돼 사후 추적된다. 경고만 한다.
  */
 export const SelectionCard = ({ workOrder, equipmentId, equipmentCode }: SelectionCardProps) => (
-  <section className="pane work-start-selection" aria-label={t.title}>
+  /*
+   * ⭐ **제 내용만큼 선다**(`pop-fixed`) — 남는 높이는 위 목록이 가져간다. 몫을 나눠 받으면
+   * 내용이 두 줄뿐일 때도 자리를 차지하고, 내용이 늘면 «받은 몫 안에서» 잘려 스크롤이 생겼다
+   * (실측 19px). 접지 않는다는 규칙(E-4)은 「잘리지 않는다」는 뜻이다.
+   */
+  <section className="pane work-start-selection pop-fixed" aria-label={t.title}>
     <h2 className="pane-title">{t.title}</h2>
 
     {workOrder === null ? (
