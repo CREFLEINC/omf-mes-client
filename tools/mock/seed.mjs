@@ -31,6 +31,9 @@ export const createSeed = (now = new Date()) => {
     return at.toISOString();
   };
 
+  /** 열려 있는 작업 세션이 시작된 순간 — 지금으로부터 6시간 12분 전(설계 도면의 예시 크기). */
+  const SESSION_STARTED_AT = new Date(now.getTime() - (6 * 60 + 12) * 60 * 1000).toISOString();
+
   const workers = [
     { workerId: 1001, workerNo: '100027', workerName: '홍길동' },
     { workerId: 1002, workerNo: '100028', workerName: '김영수' },
@@ -2669,7 +2672,13 @@ export const createSeed = (now = new Date()) => {
         shiftId: 1001,
         equipmentId: 5001,
         terminalId: 7001,
-        startedAt: '2026-09-08T08:00:00+09:00',
+        /*
+         * ⚠ **지금으로부터 되짚어 잡는다.** 날짜를 글자로 못박아 두었더니 날이 갈수록 경과가
+         *   늘어 「66시간 46분」처럼 사흘에 가까운 값이 화면에 섰다(사용자 지적 2026-09-11).
+         *   도면의 예시는 「6시간 12분」이다 — 한 교대 안의 값이라야 이 화면이 재는 것을
+         *   실제로 볼 수 있다.
+         */
+        startedAt: SESSION_STARTED_AT,
         endedAt: null,
         statusCode: 'RUNNING',
         /*
@@ -2727,8 +2736,9 @@ export const createSeed = (now = new Date()) => {
         workSessionEventId: 9101,
         workSessionId: 9001,
         eventTypeCode: 'START',
-        occurredAt: '2026-09-08T08:00:00+09:00',
-        recordedAt: '2026-09-08T08:00:00+09:00',
+        /* 세션이 열린 그 순간이다 — 두 값이 갈리면 이력이 세션과 다른 시각을 말한다. */
+        occurredAt: SESSION_STARTED_AT,
+        recordedAt: SESSION_STARTED_AT,
         performedBy: 1001,
         terminalId: 7001,
       },

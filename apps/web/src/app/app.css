@@ -7065,15 +7065,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   font: var(--type-body-lg);
 }
 
-/*
- * 이름이 없는 값(세션 번호)의 라벨 자리. 화면이 빈 `dt` 로 두 칸 격자의 첫 칸을 채우는데,
- * 규칙이 없으면 그 칸이 `dt` 기본 여백을 그대로 갖는다 — 보일 것이 없으므로 폭을 지운다.
- */
-.pop-hold-facts-lead {
-  inline-size: 0;
-  margin: 0;
-}
-
 /* 이력은 줄 수가 적고 열이 셋뿐이라 표를 그대로 쓴다. */
 .pop-hold-history {
   width: 100%;

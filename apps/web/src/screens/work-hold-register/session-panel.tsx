@@ -75,13 +75,17 @@ export const SessionPanel = ({
 
   return (
     <Card bordered className="pop-section" aria-label={t.session.sectionLabel}>
-      <h2 className="pane-title">{t.session.sectionLabel}</h2>
+      {/*
+       * ⭐ **세션 번호는 표제 옆에 선다**(사용자 지시 2026-09-11). 이름 없는 값이라 아래
+       *    이름-값 목록에 끼우면 첫 줄만 이름 칸이 비어, 그 줄이 무엇인지 화면이 말하지
+       *    못한 채 자리만 차지했다. 「어느 세션을 보고 있는가」는 구획의 이름에 붙는 말이다.
+       */}
+      <div className="pane-title pop-hold-head">
+        <h2 className="pop-hold-head-name">{t.session.sectionLabel}</h2>
+        <span className="pop-hold-head-session">{t.session.sessionNo(session.sessionNo)}</span>
+      </div>
 
       <dl className="pop-hold-facts">
-        {/* 세션 번호는 이름 없는 값이라 한 칸으로 둔다 — 빈 `dd` 를 읽히지 않는다. */}
-        <dt className="pop-hold-facts-lead" />
-        <dd>{t.session.sessionNo(session.sessionNo)}</dd>
-
         <dt>{t.session.startedLabel}</dt>
         <dd>{startedLabel}</dd>
 
@@ -101,12 +105,7 @@ export const SessionPanel = ({
        * ⭐ **숨기지 않고 잠근다**: 숨기면 「이 화면에서 못 닫는다」로 읽혀 작업자가 닫을 자리를
        * 찾아 헤맨다. 잠긴 이유는 아래 문장이 말한다.
        */}
-      <Button
-        className="pop-session-end"
-        variant="outlined"
-        disabled={!canEnd}
-        onClick={onEnd}
-      >
+      <Button className="pop-session-end" variant="outlined" disabled={!canEnd} onClick={onEnd}>
         {t.end.action}
       </Button>
       {!canEnd && isStopped && <p className="field-note">{t.end.blocked}</p>}

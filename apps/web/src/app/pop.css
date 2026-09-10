@@ -4476,3 +4476,39 @@
 .pop-ui .pop-hold-history td:last-child {
   text-align: start;
 }
+
+/*
+ * 《현재 세션》 표제 줄 — 표제와 세션 번호가 양 끝에 선다(사용자 지시 2026-09-11).
+ * 포장 라벨 재출력의 머리줄(`pop-reprint-target-head`)과 같은 형태다.
+ */
+.pop-ui .pop-hold-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-hold-head-name {
+  margin: 0;
+  font: inherit;
+}
+
+.pop-ui .pop-hold-head-session {
+  color: var(--on-surface-muted);
+  font-size: var(--pop-label);
+}
+
+/*
+ * 이력 표의 열 폭 — **시각은 좁고 사유는 넓다**(사용자 지시 2026-09-11). 시각은 `06:00`
+ * 다섯 자로 자릿수가 고정인데 남는 폭을 먹고 있었고, 정작 길이가 제각각인 사유가 좁았다.
+ */
+.pop-ui .pop-hold-history th:first-child,
+.pop-ui .pop-hold-history td:first-child {
+  inline-size: 5rem;
+}
+
+.pop-ui .pop-hold-history th:nth-child(2),
+.pop-ui .pop-hold-history td:nth-child(2) {
+  inline-size: 7rem;
+}
