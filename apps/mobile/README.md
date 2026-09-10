@@ -106,9 +106,8 @@ apps/mobile/scripts/emulator-run.sh    # 창 2 — 부팅 → 빌드 → 동기�
 `emulator-run.sh` 는 웹을 빌드할 때 `VITE_API_BASE_URL=http://10.0.2.2:4010` 을 준다.
 단말 안의 `127.0.0.1` 은 **단말 자신**이라 목 서버에 닿지 않는다 — `10.0.2.2` 가 호스트다.
 
-평문 HTTP 는 디버그 빌드에서만, 그 세 주소로만 열려 있다
-(`android/app/src/debug/`). 운영 서버의 HTTPS 여부는 아직 정해지지 않았고(#580) 릴리스
-빌드는 이 설정을 받지 않는다.
+디버그 빌드의 평문 HTTP 는 그 세 주소로만 열려 있다(`android/app/src/debug/`). 릴리스는
+이 설정을 받지 않는다 — 릴리스의 평문은 빌드 때 따로 만들며 「릴리스 APK 만들기」에 있다.
 
 | 스크립트 | 무엇을 하나 |
 | --- | --- |
@@ -206,8 +205,8 @@ MOBILE_API_PROXY_TARGET=http://<사내-주소> pnpm --filter @omf-mes/mobile dev
 # .env.local
 VITE_API_BASE_URL=http://<사내-주소>/api
 
-CAP_NATIVE_HTTP=1 CAP_ALLOW_LOCAL_HTTP=1 pnpm --filter @omf-mes/mobile build
-CAP_NATIVE_HTTP=1 CAP_ALLOW_LOCAL_HTTP=1 npx cap sync android
+CAP_NATIVE_HTTP=1 CAP_ALLOW_CLEARTEXT_HTTP=1 pnpm --filter @omf-mes/mobile build
+CAP_NATIVE_HTTP=1 CAP_ALLOW_CLEARTEXT_HTTP=1 npx cap sync android
 ```
 
 `CAP_NATIVE_HTTP` 는 기본이 꺼짐이다. 켜면 목 서버로 도는 경로까지 함께 바뀐다.
@@ -299,8 +298,8 @@ VITE_API_BASE_URL=http://<IP>:<PORT>/api
 ⚠ **이 값은 빌드 시점에 APK 안으로 굳는다.** 설치한 뒤에 바꿀 수 없다 — 주소가 바뀌면 다시
 굽는다. 값을 주지 않으면 스크립트가 멈춘다.
 
-⛔ **지금은 `http://` 주소로 구우면 앱이 서버에 닿지 못한다.** 릴리스 빌드가 평문 HTTP 를
-막기 때문이고, 아래 「아직 하지 않은 것」의 첫 항이 그것이다. `https://` 면 지금 그대로 된다.
+`http://` 주소를 주면 **그 호스트 하나에만** 평문이 열린다. 아래 「평문 HTTP 는 어떻게
+열리나」를 읽는다.
 
 붙는지는 앱을 깔기 전에 먼저 확인한다.
 
@@ -322,6 +321,49 @@ VITE_API_BASE_URL=http://<사내-주소>/api apps/mobile/scripts/release-build.s
 `apksigner verify` 로 서명을 확인하고 인증서를 찍는다. 이름이 `app-release-unsigned.apk` 면
 서명이 붙지 않은 것이다.
 
+### 평문 HTTP 는 어떻게 열리나
+
+설계 결정 20 ① 이 운영 통신을 **사내망 전용 평문 HTTP** 로 정했다. 릴리스 빌드는 기본이
+평문을 막으므로 열어 주어야 하는데, **주소 전체가 아니라 그 서버 하나만 연다.**
+
+`release-build.sh` 가 `VITE_API_BASE_URL` 의 방식을 보고 `http` 일 때만 아래를 만든다.
+
+```
+android/app/src/release/AndroidManifest.xml
+android/app/src/release/res/xml/network_security_config.xml   ← 호스트 하나만
+```
+
+⛔ **이 파일들을 손으로 만들어 커밋하지 않는다.** 안에 사내 호스트가 들어가고 이 저장소는
+공개다. `android/.gitignore` 의 `app/src/release/` 가 막고 있으며, 스크립트가 빌드마다 지우고
+다시 쓴다. `https` 주소로 구우면 아예 만들어지지 않아 평문이 그대로 막힌다.
+
+열리는 자리는 둘이고 좁히는 자리는 하나다.
+
+| 층 | 무엇 | 좁혀지나 |
+| --- | --- | --- |
+| 시스템 정책 | `network_security_config` | **호스트 하나로 좁힌다.** 나머지는 그대로 막힌다 |
+| WebView 정책 | `allowMixedContent` (`CAP_ALLOW_CLEARTEXT_HTTP`) | 좁힐 수 없다 — WebView 전체에 걸린다 |
+
+앱이 `https://localhost` 위에서 돌기 때문에 둘 다 열어야 닿는다. 시스템 정책만 열면 혼합
+콘텐츠로 막히고, WebView 만 열면 시스템 정책에서 막힌다.
+
+빌드가 끝나면 APK 안에 실제로 무엇이 적혔는지 볼 수 있다.
+
+```bash
+AAPT2=$ANDROID_HOME/build-tools/37.0.0/aapt2
+APK=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
+
+$AAPT2 dump xmltree --file AndroidManifest.xml $APK | grep -i cleartext
+# 아무것도 나오지 않아야 한다 - 전면 허용 플래그는 지운다
+```
+
+Capacitor 는 `usesCleartextTraffic="true"` 를 넣는데 이것은 주소를 가리지 않는 전면 허용이다.
+`networkSecurityConfig` 가 있으면 무시되지만 매니페스트에 서로 다른 두 정책이 남으므로,
+생성된 릴리스 매니페스트가 `tools:remove` 로 지운다.
+
+⚠ 그 서버가 **CORS 응답 헤더를 주지 않으면** 평문을 열어도 WebView 의 `fetch` 로는 닿지
+않는다. `CAP_NATIVE_HTTP=1` 을 함께 주어 요청을 네이티브로 보낸다.
+
 ### 단말에 넣기
 
 설계 결정 20 이 정한 것을 따른다.
@@ -338,11 +380,6 @@ VITE_API_BASE_URL=http://<사내-주소>/api apps/mobile/scripts/release-build.s
 
 ### 아직 하지 않은 것
 
-- **운영 서버 평문 HTTP 허용** — 결정 20 ① 이 사내망 전용 평문으로 정했는데, 릴리스 빌드는
-  기본이 평문을 막는다. 지금 열려 있는 자리는 `android/app/src/debug/` 뿐이고 그것은 개발
-  기기의 세 주소만 연다. 실제 배포 주소로 구울 때 릴리스에도 같은 것을 얹어야 한다.
-  ⚠ 위 「에뮬레이터에서 실기기처럼 보기」의 «운영 서버의 HTTPS 여부는 아직 정해지지
-  않았고(#580)» 는 결정 20 이전 서술이다 — 그 물음은 ① 로 닫혔다
 - **난독화** — `minifyEnabled` 는 꺼져 있다. 설계에 결정이 없다. 켜면 Capacitor 플러그인
   리플렉션이 깨질 수 있어 유지 규칙을 함께 확인해야 한다
 
