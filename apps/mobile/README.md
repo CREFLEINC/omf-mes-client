@@ -364,6 +364,31 @@ Capacitor 는 `usesCleartextTraffic="true"` 를 넣는데 이것은 주소를 �
 ⚠ 그 서버가 **CORS 응답 헤더를 주지 않으면** 평문을 열어도 WebView 의 `fetch` 로는 닿지
 않는다. `CAP_NATIVE_HTTP=1` 을 함께 주어 요청을 네이티브로 보낸다.
 
+### 서명 방식
+
+키는 하나다. `v1`~`v4` 는 **같은 키를 APK 에 어떤 형식으로 찍느냐**이고, 안드로이드 버전마다
+읽을 줄 아는 형식이 다르다. 넷을 `build.gradle` 에 모두 적어 둔다.
+
+| | 켬 | 왜 |
+| --- | :-: | --- |
+| v1 (JAR) | ✗ | `minSdk 33` 아래를 위한 하위 호환이라 대상이 없다 |
+| v2 | ✓ | APK 전체를 통째로 서명한다 |
+| v3 | ✓ | **키 교체 계보**를 담는 자리. 없으면 이 키에 영구히 묶인다 |
+| v4 | ✗ | `adb --incremental` 전용. 사내 반입 설치와 무관하다 |
+
+⚠ **넷을 다 적어야 한다.** AGP 는 아무것도 지정하지 않으면 `minSdk` 를 보고 스스로 정하는데,
+하나라도 명시하면 그 계산을 그만두고 나머지를 꺼 버린다 — `enableV3Signing` 만 켜면 v2 블록이
+조용히 빠진다.
+
+⚠ **`apksigner verify -v` 는 「무엇이 들어 있나」가 아니라 「그 `minSdk` 에서 무엇이 쓰이나」를
+찍는다.** Android 9 위에서는 v3 이 v2 를 대신하므로 `--min-sdk-version 33` 으로 물으면 v2 가
+`false` 로 나온다. 블록이 들어 있는지 보려면 낮게 묻는다.
+
+```bash
+apksigner verify -v --min-sdk-version 24 <APK>   # 들어 있는 블록
+apksigner verify -v --min-sdk-version 33 <APK>   # 실기가 실제로 쓰는 것
+```
+
 ### 단말에 넣기
 
 설계 결정 20 이 정한 것을 따른다.

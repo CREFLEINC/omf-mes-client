@@ -33,6 +33,18 @@ android {
                 keyAlias System.getenv("OMF_RELEASE_KEY_ALIAS")
                 // PKCS12 는 키 비밀번호가 저장소 비밀번호와 같아야 한다. 지킬 비밀이 하나로 준다.
                 keyPassword System.getenv("OMF_RELEASE_KEYSTORE_PASSWORD")
+
+                // 넷을 다 적는다. AGP 는 아무것도 지정하지 않으면 minSdk 를 보고 v1·v2 를 스스로
+                // 정하는데, 하나라도 명시하면 그 계산을 그만두고 나머지를 꺼 버린다 - v3 만 켜면
+                // v2 가 조용히 사라진다(실측).
+                //
+                // v1 은 minSdk 33 아래를 위한 하위 호환이라 대상이 없다.
+                // v3 은 키 교체 계보를 담는 자리다. 이것이 없으면 이 키에 영구히 묶인다.
+                // v4 는 adb --incremental 전용이고 사내 반입 설치와 무관하다.
+                enableV1Signing false
+                enableV2Signing true
+                enableV3Signing true
+                enableV4Signing false
             }
         }
     }
