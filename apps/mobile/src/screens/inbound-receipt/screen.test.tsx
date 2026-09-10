@@ -527,9 +527,9 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(values[terms.indexOf('남은')]).toBe('100 EA');
     /* 두 길은 대등하다. 하나가 링크면 규격이 달라져 한쪽이 더 무겁게 보인다. */
     expect(screen.getByRole('button', { name: '계속 등록' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '입하 오류 등록' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '보류로 받고 오류 등록' })).toBeTruthy();
     expect(screen.getByText(/분할 납품이면 그대로 등록합니다/)).toBeTruthy();
-    expect(screen.getByText(/이번이 마지막인데 모자라면/)).toBeTruthy();
+    expect(screen.getByText(/먼저 보류로 받아 둔 뒤에/)).toBeTruthy();
   });
 
   it('부족인데 고르지 않으면 등록할 수 없다', async () => {
@@ -971,5 +971,64 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await openUnordered(user);
 
     expect(await screen.findByText('ERP W/O가 없어 예정 수량과 비교하지 않습니다')).toBeTruthy();
+  });
+
+  /*
+   * 등록하지 않고 떠나면 스캔한 것이 사라지고 오류를 붙일 입하 라인도 생기지 않는다.
+   * 설계가 정한 것은 받아는 두되 쓰지는 못한다이고 받아 두는 것이 먼저다.
+   */
+  it('오류 등록을 고르면 먼저 보류로 받아 두고 그 뒤에 오류 화면으로 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
+        },
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.type(await screen.findByLabelText(/실입하 수량/), '400');
+    await screen.findByText('수량 부족 — 남은 예정 500, 이번 도착 400');
+
+    await user.click(screen.getByRole('button', { name: '보류로 받고 오류 등록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+    expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입하 오류 등록으로' })).toBeTruthy();
+  });
+
+  /* 확정 단추가 막힌 상태에서 저장이 이 길로 새어 나가면, 막으려던 것이 그대로 나간다. */
+  it('필수가 비면 오류 등록 길로도 등록하지 않는다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+        respond: (req) => {
+          seen.push(req.clone());
+          return jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 });
+        },
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await user.type(await screen.findByLabelText(/실입하 수량/), '400');
+    await user.type(screen.getByLabelText('제조일'), '2026-07-20');
+    await user.type(screen.getByLabelText('유효기한'), '2026-07-19');
+    await screen.findByText('수량 부족 — 남은 예정 500, 이번 도착 400');
+
+    expect(screen.getByRole('button', { name: '보류로 받고 오류 등록' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '보류로 받고 오류 등록' }));
+
+    expect(seen).toHaveLength(0);
   });
 });

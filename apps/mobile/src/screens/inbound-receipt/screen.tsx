@@ -81,6 +81,12 @@ export const InboundReceiptScreen = () => {
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   /* 부족한데도 그대로 등록하겠다는 사람의 답. 화면은 더 올 것인지 알지 못한다. */
   const [continueUnder, setContinueUnder] = useState(false);
+  /*
+   * 부족을 오류로 적기로 했는가. 등록하지 않고 떠나면 스캔한 것이 사라지고, 오류를 붙일
+   * 입하 라인도 생기지 않는다 - 설계가 정한 것은 받아는 두되 쓰지는 못한다이고 받아 두는
+   * 것이 먼저다.
+   */
+  const [varianceNext, setVarianceNext] = useState(false);
   const [splitExceptionType, setSplitExceptionType] = useState('');
   const [splitExceptionReason, setSplitExceptionReason] = useState('');
   const [saveFailed, setSaveFailed] = useState(false);
@@ -190,6 +196,12 @@ export const InboundReceiptScreen = () => {
     (verdict !== UNDER || continueUnder);
   const splitReady =
     loaded && plantId !== null && canSubmit(draft, worker !== null) && splitQuantities !== null;
+  /*
+   * 오류로 적는 길도 같은 조건을 지난다. 부족 물음에 답한 것이 continueUnder 를 대신할 뿐,
+   * 큐를 읽었는지와 필수 입력이 찼는지는 그대로 본다 - 이 길만 열어 두면 확정 단추가 막힌
+   * 상태에서 저장이 여기로 새어 나간다.
+   */
+  const varianceReady = loaded && plantId !== null && canSubmit(draft, worker !== null);
   const uom =
     uoms.data?.get((draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId) ?? -1) ?? '';
 
@@ -211,6 +223,7 @@ export const InboundReceiptScreen = () => {
     setMalformed(null);
     setOutcome(null);
     setContinueUnder(false);
+    setVarianceNext(false);
     setSplitExceptionType('');
     setSplitExceptionReason('');
     setSaveFailed(false);
@@ -296,7 +309,19 @@ export const InboundReceiptScreen = () => {
         {outcome === 'queued' ? (
           <AlertBanner variant="warning" title={t.queued.title}>
             {t.queued.description}
+            {varianceNext ? ` ${t.queued.varianceLater}` : ''}
           </AlertBanner>
+        ) : null}
+        {/* 오류는 입하 라인에 달린다. 받아 둔 뒤에야 붙일 자리가 생긴다. */}
+        {varianceNext && outcome === 'sent' ? (
+          <Button
+            className="receipt__wide"
+            variant="filled"
+            size="2xl"
+            onClick={() => void navigate('/inbound-variance')}
+          >
+            {t.sent.toVariance}
+          </Button>
         ) : null}
         {outcome === 'rejected' ? (
           <AlertBanner variant="error" title={t.rejected.title}>
@@ -981,8 +1006,14 @@ export const InboundReceiptScreen = () => {
                         className="receipt__wide"
                         variant="outlined"
                         size="xl"
+                        disabled={!varianceReady}
                         onClick={() => {
-                          void navigate('/inbound-variance');
+                          if (!varianceReady) {
+                            return;
+                          }
+
+                          setVarianceNext(true);
+                          void submit();
                         }}
                       >
                         {t.verdict.underVariance}
