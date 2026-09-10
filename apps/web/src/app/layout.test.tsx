@@ -1,9 +1,10 @@
-import { render, screen, within } from '@testing-library/react';
+import { messages } from '@omf-mes/i18n';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { RouterProvider, createMemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { SessionProvider, useSession, type Session } from '../patterns/session';
+import { renderWithProviders } from '../test/api-harness';
 import { AppLayout } from './layout';
 
 /** 합성값이다 — 계약의 예시값(`1001`·`hong.gd`·`홍길동`)을 쓰지 않는다(공개 저장소 경계). */
@@ -38,25 +39,21 @@ const SignInProbe = () => {
 /**
  * 셸은 이제 세션을 읽으므로 **프로바이더 없이는 서지 않는다**(`useSession`이 던진다).
  * 앱에서도 `app/providers.tsx`가 같은 자리에 이 프로바이더를 둔다.
+ *
+ * ⭐ **로그인하지 않은 상태로 시작한다.** 세션은 이제 서버에 물어봐야 아는 값이라(#1019)
+ * 그 답을 시험이 쥔다 — 「없을 때」에서 시작해 [세션 담기]로 「있을 때」로 넘어가야
+ * 상단 바의 두 모양을 한 회차에서 앞뒤로 잴 수 있다.
  */
 const renderLayout = (children: string) => {
   const user = userEvent.setup();
-  const router = createMemoryRouter(
-    [
-      {
-        path: '/',
-        element: (
-          <SessionProvider>
-            <SignInProbe />
-            <AppLayout>{children}</AppLayout>
-          </SessionProvider>
-        ),
-      },
-    ],
-    { initialEntries: ['/'] },
-  );
 
-  render(<RouterProvider router={router} />);
+  renderWithProviders(
+    <SessionProvider>
+      <SignInProbe />
+      <AppLayout>{children}</AppLayout>
+    </SessionProvider>,
+    { session: null },
+  );
 
   return { user };
 };
@@ -915,8 +912,8 @@ describe('AppLayout', () => {
 describe('AppLayout — 로그인 사용자 표시', () => {
   /**
    * ⛔ **모르는 값과 없는 값을 같은 모양으로 그리지 않는다**(공유계약 G-9). 세션이 없을 때
-   * 「알 수 없음」·「게스트」류의 글자를 두면 **로그인한 것처럼** 읽힌다 — 지금은 미인증 접근을
-   * 막는 장치가 없어 **비어 있는 것이 정상 상태**다.
+   * 「알 수 없음」·「게스트」류의 글자를 두면 **로그인한 것처럼** 읽힌다. 앱에서는 가드가
+   * 앞에 서므로(#1019) 이 갈래로 서는 일이 없지만, 셸이 그것을 강제할 수는 없다.
    *
    * 음성 단언이라 **상단 바를 잡은 뒤**에 잰다.
    */
@@ -976,5 +973,47 @@ describe('AppLayout — 로그인 사용자 표시', () => {
     for (const internalId of ['8101', '8201', '8301', '8401']) {
       expect(topbar().textContent).not.toContain(internalId);
     }
+  });
+});
+
+/**
+ * **나가는 길**(#1019).
+ *
+ * ⭐ **가드가 서면 로그아웃 없이는 세션을 끊을 수 없다.** 그전에는 브라우저를 껐다 켜는 것이
+ * 사실상의 로그아웃이었지만, 이제 그렇게 해도 세션 쿠키가 살아 있어 그대로 다시 들어온다.
+ */
+describe('AppLayout — 로그아웃', () => {
+  it('세션이 있으면 상단 바에 로그아웃이 선다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    expect(
+      within(topbar()).getByRole('button', { name: messages.session.actions.signOut }),
+    ).toBeEnabled();
+  });
+
+  /** 로그인하지 않은 사람에게 나가는 길을 보이면 누를 수 없는 항목이 하나 는다. */
+  it('세션이 없으면 로그아웃이 없다', () => {
+    renderLayout('본문 내용');
+
+    expect(
+      within(topbar()).queryByRole('button', { name: messages.session.actions.signOut }),
+    ).toBeNull();
+  });
+
+  /** ⭐ **이름 없이 로그아웃만 두지 않는다** — 나가기 전에 지금 누구로 있는지 확인해야 한다. */
+  it('이름과 로그아웃이 같은 자리에 함께 선다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    const actions = within(topbar()).getByText(SYNTHETIC_USER_NAME).parentElement;
+
+    if (actions === null) throw new Error('이름을 담은 자리를 찾지 못했습니다');
+
+    expect(
+      within(actions).getByRole('button', { name: messages.session.actions.signOut }),
+    ).toBeInTheDocument();
   });
 });

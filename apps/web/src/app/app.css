@@ -32,6 +32,8 @@
  * .banner-slot  페인·다이얼로그 안의 배너와 아래 블록 사이 이음매(규범 6)
  *               + DS 배너의 box-sizing 정규화(임시 우회 — design-system-v2-webui#60)
  * .login-shell   셸 밖에 서는 화면의 본문 — 내용을 뷰포트 한가운데 세운다(규범 8)
+ * .session-gate  로그인 판정 중·판정 실패 때 서는 본문 — 같은 배치를 쓴다(규범 8)
+ * .topbar-session 상단 바 오른쪽의 이름과 로그아웃
  * .login-card    그 화면이 세우는 카드의 폭 상한(규범 8)
  * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
  * .login-fields  카드 안 입력 칸 사이 간격(규범 8)
@@ -7690,4 +7692,26 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-4);
   min-height: 88px;
   align-items: center;
+}
+
+/*
+ * 세션 판정이 끝나기 전·판정을 못 했을 때 서는 자리(#1019).
+ *
+ * 셸 밖에 서는 화면이라 로그인 화면과 같은 배치를 쓴다(규범 8) — 내용을 뷰포트 한가운데
+ * 세우는 것 하나가 전부다.
+ */
+.session-gate {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: var(--space-5);
+}
+
+/* 상단 바 오른쪽 — 이름과 로그아웃을 한 줄에 붙인다. */
+.topbar-session {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }

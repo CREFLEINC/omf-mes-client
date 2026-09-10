@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from 'react-router';
 
 import { AppLayout } from '../app/layout';
+import { GuestOnly, RequireSession } from '../patterns/session';
 import { ApprovalInboxScreen } from '../screens/approval-inbox/screen';
 import { ApprovalRouteScreen } from '../screens/approval-route/screen';
 import { AlarmRecipientSettingsScreen } from '../screens/alarm-recipient-settings/screen';
@@ -78,10 +79,17 @@ import { WarehouseLocationScreen } from '../screens/warehouse-location/screen';
 export const appRouter = createBrowserRouter([
   {
     path: '/',
+    /*
+     * ⭐ **가드는 셸 «바깥»이다.** 안에 두면 사이드바와 상단 바가 먼저 그려진 뒤 판정이 끝나,
+     * 막으려던 사람에게 메뉴 구조가 그대로 보인다. 업무 자료는 서버가 401로 막지만 화면
+     * 구성은 서버가 막아 주지 않는다.
+     */
     element: (
-      <AppLayout>
-        <Outlet />
-      </AppLayout>
+      <RequireSession>
+        <AppLayout>
+          <Outlet />
+        </AppLayout>
+      </RequireSession>
     ),
     children: [
       /*
@@ -594,11 +602,17 @@ export const appRouter = createBrowserRouter([
    * W-01-11이 세운 규율(라우트만 열고 메뉴에 두지 않는다)과 같은 형태이며, 근거는 다르다 —
    * 그쪽은 맥락 없는 진입을 막는 것이고 이쪽은 **메뉴가 성립하지 않는 것**이다.
    *
-   * ⚠ **이 라우트는 접근을 제한하지 않는다.** 미인증 상태로 다른 주소에 들어가는 길은 그대로
-   * 열려 있다(라우트 가드는 이 작업의 범위 밖 — 후속 작업). 로그인 화면이 생겼다는 것이
-   * 보호가 생겼다는 뜻이 아니다.
+   * ⭐ **역방향으로 막는다**(#1019). 이미 로그인한 사람이 주소창으로 여기를 열면 로그인 화면을
+   * 보이지 않고 앱 안으로 돌려보낸다 — 보이면 자기가 로그인된 줄 모르고 자격을 한 번 더 친다.
    */
-  { path: '/login', element: <LoginScreen /> },
+  {
+    path: '/login',
+    element: (
+      <GuestOnly>
+        <LoginScreen />
+      </GuestOnly>
+    ),
+  },
   /*
    * ⛔ **POP(현장 단말) 화면은 이 표에 없다.** POP은 관리웹의 한 구역이 아니라 다른
    * 프로그램이고, 라우트 표(`routes/pop.tsx`)도 진입점(`app/pop-main.tsx`)도 번들도

@@ -1,13 +1,7 @@
 import { messages } from '@omf-mes/i18n';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {
-  RouterProvider,
-  createMemoryRouter,
-  useLocation,
-  useNavigate,
-  useRoutes,
-} from 'react-router';
+import { useLocation, useNavigate, useRoutes } from 'react-router';
 import { describe, expect, it } from 'vitest';
 
 import { AppLayout } from '../app/layout';
@@ -17,6 +11,7 @@ import {
 } from '../screens/disposition-decision/filters';
 import { WORK_ORDER_PROGRESS_PATH } from '../screens/work-order-progress/filters';
 import { SessionProvider } from '../patterns/session';
+import { SYNTHETIC_SESSION, signedOutRoute, withSessionStub } from '../test/session-harness';
 import {
   groupsResponse as equipmentGroupsResponse,
   plantsResponse as equipmentPlantsResponse,
@@ -108,21 +103,12 @@ const topLevelPaths = (): string[] =>
   appRouter.routes.map((route) => route.path).filter((path): path is string => path !== undefined);
 
 const sidebarHrefs = (): string[] => {
-  const router = createMemoryRouter(
-    [
-      {
-        path: '/',
-        element: (
-          <SessionProvider>
-            <AppLayout>본문</AppLayout>
-          </SessionProvider>
-        ),
-      },
-    ],
-    { initialEntries: ['/'] },
+  renderWithProviders(
+    <SessionProvider>
+      <AppLayout>본문</AppLayout>
+    </SessionProvider>,
+    { session: SYNTHETIC_SESSION },
   );
-
-  render(<RouterProvider router={router} />);
 
   return within(screen.getByRole('navigation', { name: '주 메뉴' }))
     .getAllByRole('link')
@@ -188,7 +174,15 @@ const renderRoutedApp = (route: string, routes: StubRoute[]): void => {
       <LocationProbe />
       <BackProbe />
     </>,
-    { fetch: createStubFetch(routes), route },
+    /*
+     * ⭐ **로그인된 채로 태운다.** 라우트 표 전체가 이제 가드 아래에 서므로(#1019), 세션을
+     * 주지 않으면 이 파일의 시험이 전부 로그인 화면을 재게 된다 — 재려던 것은 이동이다.
+     * 가드 자체는 `patterns/session/session-guards.test.tsx`가 잰다.
+     *
+     * **조회로 받지 않고 심는다.** 조회로 받으면 판정이 끝날 때까지 한 틱을 「확인하는 중」에
+     * 머물러, 이 파일의 시험 전부가 첫 렌더를 기다리는 모양으로 바뀐다.
+     */
+    { fetch: createStubFetch(routes), route, session: SYNTHETIC_SESSION },
   );
 };
 
@@ -921,6 +915,7 @@ describe('appRouter — 재고조정의 진입 경로', () => {
    */
   it('그 주소로 들어가면 대상 실사가 실린 화면이 선다', async () => {
     renderWithProviders(<RoutedApp />, {
+      session: SYNTHETIC_SESSION,
       fetch: createStubFetch(stockAdjustRoutes()),
       route: stockAdjustEntryPath(9101),
     });
@@ -943,6 +938,7 @@ describe('appRouter — 재고조정의 진입 경로', () => {
    */
   it('맥락 없이 그 주소로 들어가면 직접 등록 갈래로 선다', async () => {
     renderWithProviders(<RoutedApp />, {
+      session: SYNTHETIC_SESSION,
       fetch: createStubFetch(stockAdjustRoutes()),
       route: '/logistics/stock-adjust',
     });
@@ -1002,6 +998,7 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
    */
   it('그 주소로 들어가면 대상 초과분이 실린 화면이 선다', async () => {
     renderWithProviders(<RoutedApp />, {
+      session: SYNTHETIC_SESSION,
       fetch: createStubFetch(poRegisterRoutes()),
       route: poRegisterEntryPath(9101),
     });
@@ -1019,6 +1016,7 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
     const [pathname] = poRegisterEntryPath(9101).split('?');
 
     renderWithProviders(<RoutedApp />, {
+      session: SYNTHETIC_SESSION,
       fetch: createStubFetch(poRegisterRoutes()),
       route: pathname ?? '',
     });
@@ -1035,6 +1033,9 @@ describe('appRouter — 신규 P/O 등록의 진입 경로', () => {
  * 이 describe가 그 사실을 **세 자리에서** 잰다 — 라우트 표의 어느 층에 있는가, 메뉴에 없는가,
  * 그리고 로그인하면 셸 안으로 실제로 들어가는가.
  */
+/** 가드가 지키는 자리를 대표하는 업무 주소 하나. 사이드바 첫 항목이라 늘 표에 있다. */
+const PROTECTED_ENTRY = '/master-data/warehouse-location';
+
 describe('appRouter — 계정 로그인의 자리', () => {
   /**
    * ⭐ **셸 자식이 아니라 형제다.** `routedPaths()`(셸 자식)와 `topLevelPaths()`(최상위)를
@@ -1074,7 +1075,7 @@ describe('appRouter — 계정 로그인의 자리', () => {
    * ⭐ **셸이 없다.** 라우트 표를 그대로 태워 재므로, 이 화면을 셸 자식으로 옮기면 여기서 운다.
    */
   it('그 주소로 들어가면 사이드바 없이 로그인 화면이 선다', () => {
-    renderWithProviders(<RoutedApp />, { route: '/login' });
+    renderWithProviders(<RoutedApp />, { route: '/login', session: null });
 
     expect(screen.getByRole('heading', { level: 1, name: messages.login.title })).toBeVisible();
     expect(screen.getByLabelText(messages.login.fields.loginId)).toBeInTheDocument();
@@ -1093,6 +1094,7 @@ describe('appRouter — 계정 로그인의 자리', () => {
     const session = sessionBody();
 
     renderWithProviders(<RoutedApp />, {
+      session: null,
       route: '/login',
       /*
        * 로그인 응답만 정하고 **나머지는 빈 목록으로 받아 준다.** 넘어간 뒤 서는 화면이 무엇을
@@ -1132,6 +1134,62 @@ describe('appRouter — 계정 로그인의 자리', () => {
 
     /* 로그인 화면은 사라졌다 — 셸 안에 그 폼이 남아 있으면 전환이 아니라 겹침이다. */
     expect(screen.queryByLabelText(messages.login.fields.password)).toBeNull();
+  });
+
+  /**
+   * ⭐ **라우트 표 전체가 가드 아래에 선다**(#1019). 손으로 만든 두 줄짜리 표로 재면 앱의 표에
+   * 가드를 씌우는 것을 잊어도 통과한다 — 그래서 **실제 표를 그대로 태워서** 잰다.
+   */
+  it('로그인하지 않고 업무 주소로 들어가면 로그인 화면이 선다', async () => {
+    renderWithProviders(
+      <>
+        <RoutedApp />
+        <LocationProbe />
+      </>,
+      { session: null, route: PROTECTED_ENTRY },
+    );
+
+    expect(await screen.findByRole('heading', { level: 1, name: messages.login.title })).toBeVisible();
+    expect(currentLocation()).toBe('/login');
+
+    /* 셸이 서지 않았다 — 막으려던 것은 자료가 아니라 화면 구성이다. */
+    expect(screen.queryByRole('navigation', { name: '주 메뉴' })).toBeNull();
+  });
+
+  /**
+   * ⭐ **막힌 주소로 돌아간다.** 즐겨찾기로 깊은 화면을 열었다가 첫 화면에 떨어지면, 자기가
+   * 어디로 가려 했는지 기억해 다시 찾아 들어가야 한다.
+   */
+  it('막혀서 로그인한 사람은 원래 가려던 주소로 돌아간다', async () => {
+    const user = userEvent.setup();
+    const session = sessionBody();
+
+    renderWithProviders(
+      <>
+        <RoutedApp />
+        <LocationProbe />
+      </>,
+      {
+        session: null,
+        route: PROTECTED_ENTRY,
+        fetch: (request) =>
+          Promise.resolve(
+            request.method === 'POST' && new URL(request.url).pathname === '/app/sessions'
+              ? jsonResponse(session)
+              : jsonResponse(listBody([])),
+          ),
+      },
+    );
+
+    await screen.findByRole('heading', { level: 1, name: messages.login.title });
+
+    await user.type(screen.getByLabelText(messages.login.fields.loginId), 'SYN-LOGIN-01');
+    await user.type(screen.getByLabelText(messages.login.fields.password), 'SYN-PW-VALUE-01');
+    await user.click(screen.getByRole('button', { name: messages.login.actions.submit }));
+
+    await waitFor(() => {
+      expect(currentLocation()).toBe(PROTECTED_ENTRY);
+    });
   });
 });
 
@@ -1488,6 +1546,7 @@ describe('appRouter — W/O 확정·배포·생산LOT 선발행의 진입 경로
       </>,
       {
         route: '/production/work-order-release',
+        session: SYNTHETIC_SESSION,
         fetch: (request) => {
           requests.push(request);
 
@@ -1645,6 +1704,7 @@ describe('appRouter — 물류 문서 진행현황·취소의 진입 경로', ()
     const requests: Request[] = [];
 
     renderWithProviders(<RoutedApp />, {
+      session: SYNTHETIC_SESSION,
       route: '/logistics/document-progress',
       fetch: (request) => {
         requests.push(request);

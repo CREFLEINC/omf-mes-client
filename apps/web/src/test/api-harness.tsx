@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
 
 import { ApiClientProvider } from '../patterns/api-context';
+import { sessionKeys, type Session } from '../patterns/session';
 
 /** 테스트 전용 기준 URL. 실제로 접속하지 않으며 스텁 fetch가 모든 요청을 받는다. */
 const TEST_BASE_URL = 'http://api.test';
@@ -61,6 +62,17 @@ export interface ProviderOptions {
   fetch?: StubFetch;
   /** 초기 URL. 조회 조건을 URL로 두는 화면의 시작 상태를 정한다. */
   route?: string;
+  /**
+   * 로그인 상태를 **이미 아는 채로** 시작한다. `null`이면 로그인하지 않은 상태다.
+   *
+   * ⭐ **주지 않으면 세션 조회가 실제로 나간다**(#1019). 그 회차는 판정이 끝날 때까지 한 틱을
+   * 「확인하는 중」에 머물고, 스텁을 주지 않았다면 하네스가 던진다 — 세션 자체를 재는 시험만
+   * 그 길을 쓴다.
+   *
+   * ⛔ **편의로 기본값을 두지 않는다.** 늘 로그인된 채로 시작하면 「로그인하지 않았을 때」를
+   * 재는 시험이 조용히 사라진다.
+   */
+  session?: Session | null;
 }
 
 interface TestEnvironment {
@@ -85,6 +97,14 @@ const createEnvironment = (options: ProviderOptions): TestEnvironment => {
     baseUrl: TEST_BASE_URL,
     fetch: options.fetch ?? unstubbedFetch,
   });
+
+  /*
+   * 렌더 «전에» 심는다. 뒤에 심으면 프로바이더가 이미 조회를 띄운 뒤라 요청이 한 번 나가고,
+   * 「요청이 하나도 나가지 않는다」를 재는 시험이 그 한 번에 걸린다.
+   */
+  if (options.session !== undefined) {
+    queryClient.setQueryData(sessionKeys.current, options.session);
+  }
   const route = options.route ?? '/';
 
   const Providers = ({ children }: { children: ReactNode }): ReactNode => (
