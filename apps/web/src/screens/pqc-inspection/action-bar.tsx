@@ -63,8 +63,16 @@ export const ActionBar = ({
       {isJustConfirmed && <AlertBanner variant="success" title={t.confirmSucceeded} />}
 
       {saveBlockedReason !== null && <p className="field-note">{saveBlockedReason}</p>}
-      {/* 막혔으면 «무엇이» 막혔는지 밝힌다 — 잠긴 버튼만 두지 않는다. */}
-      {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
+      {/*
+       * 막혔으면 «무엇이» 막혔는지 밝힌다 — 잠긴 버튼만 두지 않는다.
+       *
+       * ⛔ **합계가 안 맞는 것은 여기서 말하지 않는다**(사용자 지시 2026-09-10). 그 사실은
+       *    《결과 입력》이 「검사 수량보다 n 모자랍니다」로 이미 말하고 있어, 같은 말이 화면
+       *    두 곳에 선다. 버튼 잠금은 그대로다 — 잠그는 조건과 문구는 다른 축이다.
+       */}
+      {blockedReason !== null && blockedReason !== t.confirmBlockedByTotals && (
+        <p className="field-note">{blockedReason}</p>
+      )}
     </div>
 
     {/*
