@@ -1693,6 +1693,15 @@
 }
 
 /*
+ * 값 칸과 [선택]의 폭 — **누르는 쪽을 넓힌다**(사용자 지시 2026-09-10). 값 칸이 752 를 먹고
+ * 단추가 63 이라, 장갑 낀 손이 겨냥할 자리가 화면에서 가장 좁았다. 사유 이름은 길어야 열 자
+ * 남짓이라 값 칸을 줄여도 잘리지 않는다.
+ */
+.pop-ui .pop-reprint-reason .pop-select {
+  grid-template-columns: minmax(0, 1fr) 12rem;
+}
+
+/*
  * [재출력]은 **기록을 남기는 조작이라 72 다**(E-3). 이 화면만 40 으로 앉아 다른 POP 화면의
  * 확정 단추보다 낮았다(실측 · 사용자 지적 2026-09-10).
  */
@@ -1707,7 +1716,7 @@
  *   선에서 멀어져, 같은 뜻의 선인데 사이가 달라 보인다(사용자 지적 2026-09-10).
  */
 .pop-ui .pop-reprint-rule {
-  margin-block-start: var(--space-2);
+  margin-block-start: var(--space-1);
   block-size: 1px;
   background: var(--outline-variant);
 }
