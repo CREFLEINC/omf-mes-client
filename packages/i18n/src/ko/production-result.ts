@@ -41,7 +41,7 @@ export const productionResult = {
       issueMissing: (count: number) => `부족한 인식표 ${String(count)}장 출력`,
       matched: '실제 생산수량과 인식표 개체 수가 일치합니다.',
       tooMany: '이미 만든 인식표 개체 수보다 실제 생산수량을 작게 낮출 수 없습니다.',
-      summaryFailed: '인식표 발행 이력을 확인할 수 없어 생산 LOT 출력을 열지 않습니다.',
+      summaryFailed: '인식표 발행 이력을 확인할 수 없어 생산 라벨 출력을 열지 않습니다.',
       restoreDocuments: (count: number) => `발행 기록이 없는 인식표 ${String(count)}장 복구`,
       printIncomplete: (count: number) =>
         `인쇄 대기 또는 실패 인식표 ${String(count)}장을 확인해 재출력하세요.`,
@@ -59,7 +59,7 @@ export const productionResult = {
       printFailed: '인식표 발행 기록은 남았지만 물리 인쇄에 실패했습니다.',
       reportFailed:
         '인식표는 인쇄됐지만 결과를 보고하지 못했습니다. 다시 인쇄하지 말고 보고만 다시 보내세요.',
-      loadFailed: '인식표 개체를 확인할 수 없어 생산 LOT 출력을 열지 않습니다.',
+      loadFailed: '인식표 개체를 확인할 수 없어 생산 라벨 출력을 열지 않습니다.',
       targetUnknown: '인식표 대상 여부를 확인할 수 없어 출력을 열지 않습니다.',
       printerUnavailable: '인식표를 지원하는 프린터가 없습니다.',
     },
@@ -68,7 +68,7 @@ export const productionResult = {
       template: '생산 LOT 라벨',
       printer: '프린터',
       printerUnknown: '확인할 수 없음',
-      issue: '생산 LOT 출력',
+      issue: '생산 라벨 출력',
       retryIssue: '라벨 발행 다시 시도',
       retryPrint: '발행된 라벨 다시 인쇄',
       retryReport: '인쇄 결과 보고 다시 시도',
