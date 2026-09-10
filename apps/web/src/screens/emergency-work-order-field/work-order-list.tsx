@@ -145,7 +145,7 @@ export const WorkOrderList = ({
              */
             <div
               role="presentation"
-              className="pop-row-target"
+              className="pop-row-target pop-emergency-list"
               onClick={(event) => {
                 const from = event.target as HTMLElement;
 
