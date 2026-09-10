@@ -2112,18 +2112,59 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /**
+   * 불량 코드. 수리 왕복(M-02-02)이 어느 불량을 넣는지를 이 이름으로 말한다.
+   *
+   * 한 LOT 에 수량이 같은 불량 둘을 둔다 — 수량만 보이면 고를 수 없는 자리를 실기에서
+   * 그대로 만난다.
+   */
+  const defectCodes = [
+    {
+      defectCodeId: 15001,
+      defectCode: 'EXT-002',
+      defectName: '외관 스크래치',
+      nameKo: '외관 스크래치',
+      parentDefectCodeId: null,
+      dispositionTypeCode: 'REWORK',
+      isActive: true,
+    },
+    {
+      defectCodeId: 15002,
+      defectCode: 'DIM-004',
+      defectName: '치수 초과',
+      nameKo: '치수 초과',
+      parentDefectCodeId: null,
+      dispositionTypeCode: 'REWORK',
+      isActive: true,
+    },
+  ];
+
   const defectRecords = [
     {
       defectRecordId: 14001,
       lotId: 8102,
-      itemId: 2003,
       workOrderId: 11001,
+      defectCodeId: 15001,
       defectQty: 20,
       uomId: 1001,
-      defectTypeCode: 'SCRATCH',
-      dispositionCode: 'REPAIR',
+      occurrenceProcessId: 3001,
+      detectionProcessId: 3002,
+      sourceCode: 'PQC',
       occurredAt: iso(-1, 15),
-      statusCode: 'OPEN',
+      detectedAt: iso(-1, 15),
+    },
+    {
+      defectRecordId: 14002,
+      lotId: 8102,
+      workOrderId: 11001,
+      defectCodeId: 15002,
+      defectQty: 20,
+      uomId: 1001,
+      occurrenceProcessId: 3001,
+      detectionProcessId: 3002,
+      sourceCode: 'PQC',
+      occurredAt: iso(-1, 16),
+      detectedAt: iso(-1, 16),
     },
   ];
 
@@ -2362,6 +2403,7 @@ export const createSeed = (now = new Date()) => {
     workOrders,
     handlingUnits,
     handlingUnitContents,
+    defectCodes,
     defectRecords,
     repairExecutions: [],
     inspectionRequests,

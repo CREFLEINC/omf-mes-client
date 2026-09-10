@@ -9,11 +9,14 @@ import {
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { useAdvanceTo } from '../../patterns/advance-to';
+import { useBackStep } from '../../patterns/back-step';
+import { playErrorTone } from '../../patterns/error-tone';
 import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
-import { useItem, useUomCodes } from '../../patterns/masters';
+import { useDefectCodes, useItem, useUomCodes, type DefectCodeLabel } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -42,6 +45,7 @@ import {
 import './screen.css';
 
 const t = messages.repairRoundtrip;
+const required = messages.common.required;
 
 const DISPATCH = 'dispatch';
 const RETURN = 'return';
@@ -55,6 +59,17 @@ const stamp = (iso: string): string => {
 
 const uomLabel = (uoms: Map<number, string> | undefined, uomId: number): string =>
   uoms?.get(uomId) ?? '';
+
+const codeLabel = (
+  codes: Map<number, DefectCodeLabel> | undefined,
+  record: DefectRecord,
+): string => {
+  const found = codes?.get(record.defectCodeId);
+
+  return found === undefined
+    ? t.defect.unknownCode
+    : t.defect.code(found.defectCode, found.defectName);
+};
 
 export const RepairRoundtripScreen = () => {
   useScreenTitle(t.title);
@@ -70,6 +85,10 @@ export const RepairRoundtripScreen = () => {
   const [typing, setTyping] = useState(false);
   const [result, setResult] = useState<RepairResult | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  /* 같은 라벨을 다시 읽으면 상태는 그대로라 소리가 다시 나지 않는다. 회차를 함께 센다. */
+  const [scanSeq, setScanSeq] = useState(0);
+  const qtySection = useRef<HTMLDivElement | null>(null);
+  const resultSection = useRef<HTMLDivElement | null>(null);
   /*
    * 쓰기마다 키를 따로 둔다. 하나를 나눠 쓰면 실패한 투입의 키가 살아 있는 채로 반출에 실려,
    * 서버가 투입의 응답을 되돌려 주고 화면은 반출을 기록했다고 말한다 - 왕복은 열린 채다.
@@ -86,6 +105,7 @@ export const RepairRoundtripScreen = () => {
   const scanField = useScanField({
     onScan: (value) => {
       setScanned(value);
+      setScanSeq((seq) => seq + 1);
       setDefectId(null);
       setExecutionId(null);
       setQty('');
@@ -98,6 +118,7 @@ export const RepairRoundtripScreen = () => {
   const lotId = lot.data?.lotId ?? null;
   const item = useItem(lot.data?.itemId ?? null);
   const uoms = useUomCodes(true);
+  const defectCodes = useDefectCodes(true);
   const defects = useDefectRecords(lotId);
   const scopedOpen = useOpenRepairsForLot(lotId);
   const allOpen = useOpenRepairs();
@@ -117,7 +138,52 @@ export const RepairRoundtripScreen = () => {
     }
   }, [scopedOpen.data]);
 
-  if (!online) {
+  const defect = defects.data?.find((each) => each.defectRecordId === defectId) ?? null;
+  const execution = scopedOpen.data?.find((each) => each.repairExecutionId === executionId) ?? null;
+  const alreadyOpen =
+    defect === null ? null : openFor(scopedOpen.data ?? [], defect.defectRecordId);
+  const problem = defect === null ? null : qtyProblem(defect, qty);
+
+  const clearScan = () => {
+    setScanned(null);
+    setDefectId(null);
+    setExecutionId(null);
+    setQty('');
+    setResult(null);
+    scanField.focus();
+  };
+
+  /*
+   * 스캔한 것이 이 화면의 대상이 아니라는 것을 소리로도 알린다(공유계약 D-2). 기기를 허리에
+   * 매단 채 읽으므로 화면에만 적으면 사람은 통과한 줄 알고 다음 동작으로 넘어간다.
+   */
+  const scanMissed =
+    scanned !== null &&
+    ((lot.isSuccess && lot.data === null) || (defects.isSuccess && defects.data.length === 0));
+
+  useEffect(() => {
+    if (scanMissed) {
+      playErrorTone();
+    }
+  }, [scanMissed, scanSeq]);
+
+  /* 세로 화면이라 채운 구획이 자리를 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
+  useAdvanceTo(defect !== null && alreadyOpen === null, qtySection);
+  useAdvanceTo(execution !== null, resultSection);
+
+  /*
+   * 뒤로가기는 스캔한 LOT 을 먼저 놓는다. 두지 않으면 수량을 적던 사람이 한 번에 작업 목록까지
+   * 나가 라벨을 다시 스캔해야 한다.
+   */
+  useBackStep(scanned !== null, clearScan);
+
+  /*
+   * 들어올 때 끊긴 것과 하다가 끊긴 것은 다르다. 하다가 끊겼는데 화면을 갈아치우면 값이
+   * 남아 있어도 작업자에게는 사라진 것으로 보여 스캔을 처음부터 다시 한다.
+   */
+  const startedWork = scanned !== null;
+
+  if (!online && !startedWork) {
     return (
       <div className="repair">
         <AlertBanner variant="warning" title={t.offline.title}>
@@ -126,12 +192,6 @@ export const RepairRoundtripScreen = () => {
       </div>
     );
   }
-
-  const defect = defects.data?.find((each) => each.defectRecordId === defectId) ?? null;
-  const execution = scopedOpen.data?.find((each) => each.repairExecutionId === executionId) ?? null;
-  const alreadyOpen =
-    defect === null ? null : openFor(scopedOpen.data ?? [], defect.defectRecordId);
-  const problem = defect === null ? null : qtyProblem(defect, qty);
 
   const qtyMessage = (): string | undefined => {
     if (defect === null || problem === null || (qty.trim() === '' && !typing)) {
@@ -145,18 +205,12 @@ export const RepairRoundtripScreen = () => {
     return t.qty[problem];
   };
 
-  const restart = () => {
-    setScanned(null);
-    setDefectId(null);
-    setExecutionId(null);
-    setQty('');
-    setResult(null);
-    setDone(null);
-    scanField.focus();
-  };
-
   const submitDispatch = async () => {
-    if (defect === null || worker === null) {
+    /*
+     * 다시 보내기도 이 길로 온다. 연결을 여기서 보지 않으면 확정 단추만 막고 저장이 그리로
+     * 새어 나간다 - 설계가 정한 것은 저장 차단이지 단추 하나를 흐리게 두는 것이 아니다.
+     */
+    if (!online || defect === null || worker === null || alreadyOpen !== null) {
       return;
     }
 
@@ -170,12 +224,13 @@ export const RepairRoundtripScreen = () => {
       .then(() => {
         dispatchKey.reset();
         setDone(t.dispatch.done);
+        clearScan();
       })
       .catch(() => null);
   };
 
   const submitReturn = async () => {
-    if (execution === null || result === null || worker === null || lotId === null) {
+    if (!online || execution === null || result === null || worker === null || lotId === null) {
       return;
     }
 
@@ -189,6 +244,7 @@ export const RepairRoundtripScreen = () => {
       .then(() => {
         returnKey.reset();
         setDone(t.return.done);
+        clearScan();
       })
       .catch(() => null);
   };
@@ -209,6 +265,8 @@ export const RepairRoundtripScreen = () => {
         <strong>{lot.data?.lotNo}</strong>
         <p className="repair__note">{item.data?.itemCode ?? ''}</p>
         <p>{t.defect.qty(String(record.defectQty), uomLabel(uoms.data, record.uomId))}</p>
+        {/* 무엇이 잘못됐는지가 수리 대상을 가르는 기준이다. 수량만으로는 고를 수 없다. */}
+        <p>{codeLabel(defectCodes.data, record)}</p>
         <p className="repair__note">{t.defect.detectedAt(stamp(record.detectedAt))}</p>
       </Card.Body>
     </Card>
@@ -241,7 +299,7 @@ export const RepairRoundtripScreen = () => {
                     setQty('');
                   }}
                 >
-                  {t.defect.qty(String(each.defectQty), uomLabel(uoms.data, each.uomId))}
+                  {`${codeLabel(defectCodes.data, each)} · ${t.defect.qty(String(each.defectQty), uomLabel(uoms.data, each.uomId))}`}
                 </Button>
               </li>
             ))}
@@ -254,10 +312,10 @@ export const RepairRoundtripScreen = () => {
           {defectCard(defect)}
 
           {alreadyOpen === null ? (
-            <section className="repair__section">
+            <section className="repair__section" ref={qtySection}>
               <h2>{t.qty.label}</h2>
               <TextField
-                label={t.qty.label}
+                label={required(t.qty.label)}
                 inputMode="none"
                 size="xl"
                 fullWidth
@@ -292,18 +350,24 @@ export const RepairRoundtripScreen = () => {
           ) : (
             <AlertBanner variant="error" title={t.dispatch.failed} />
           )}
-          <Button
-            className="repair__submit"
-            variant="filled"
-            size="2xl"
-            loading={dispatch.isPending}
-            disabled={
-              !canDispatch({ defect, qty, openExecutions: scopedOpen.data ?? [] }, worker !== null)
-            }
-            onClick={() => void submitDispatch()}
-          >
-            {t.dispatch.submit}
-          </Button>
+          <div className="action-bar">
+            <Button
+              className="repair__submit"
+              variant="filled"
+              size="2xl"
+              loading={dispatch.isPending}
+              disabled={
+                !online ||
+                !canDispatch(
+                  { defect, qty, openExecutions: scopedOpen.data ?? [] },
+                  worker !== null,
+                )
+              }
+              onClick={() => void submitDispatch()}
+            >
+              {t.dispatch.submit}
+            </Button>
+          </div>
         </>
       )}
     </div>
@@ -347,7 +411,7 @@ export const RepairRoundtripScreen = () => {
             </Card.Body>
           </Card>
 
-          <section className="repair__section">
+          <section className="repair__section" ref={resultSection}>
             <h2>{t.return.legend}</h2>
             <div className="repair__results">
               <Button
@@ -375,16 +439,18 @@ export const RepairRoundtripScreen = () => {
           <p className="repair__note">{t.return.afterNote}</p>
           {worker === null ? <p className="repair__note">{t.noWorker}</p> : null}
           {returning.isError ? <AlertBanner variant="error" title={t.return.error} /> : null}
-          <Button
-            className="repair__submit"
-            variant="filled"
-            size="2xl"
-            loading={returning.isPending}
-            disabled={!canReturn(execution, result, worker !== null, lotId !== null)}
-            onClick={() => void submitReturn()}
-          >
-            {t.return.submit}
-          </Button>
+          <div className="action-bar">
+            <Button
+              className="repair__submit"
+              variant="filled"
+              size="2xl"
+              loading={returning.isPending}
+              disabled={!online || !canReturn(execution, result, worker !== null, lotId !== null)}
+              onClick={() => void submitReturn()}
+            >
+              {t.return.submit}
+            </Button>
+          </div>
         </>
       )}
     </div>
@@ -405,26 +471,32 @@ export const RepairRoundtripScreen = () => {
     },
   ];
 
-  if (done !== null) {
-    return (
-      <div className="repair">
-        <AlertBanner variant="success" title={done} />
-        <Button className="repair__submit" variant="filled" size="2xl" onClick={restart}>
-          {t.another}
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="repair">
+      {/* 하다가 끊긴 것은 다르다. 스캔한 것을 그대로 두고 저장만 막는다. */}
+      {online ? null : <AlertBanner variant="warning" title={t.offline.duringWork} />}
+      {/*
+       * 기록했다는 것을 화면 안에서 말한다. 결과 화면으로 갈아치우면 방금 늘어난 목록이
+       * 사라져, 등록이 실제로 섰는지를 다음 화면에서 다시 확인해야 한다.
+       */}
+      {done === null ? null : <AlertBanner variant="success" title={done} />}
+
       <TextField
         ref={scanField.ref}
-        label={t.scan.label}
+        label={required(t.scan.label)}
         placeholder={t.scan.placeholder}
         size="xl"
         fullWidth
       />
+      {/* 스캐너가 못 읽는 라벨이 있다. 스캔 칸 자체를 열어 손으로 넣는다(공유계약 D-3). */}
+      <Button
+        className="repair__submit"
+        variant={scanField.manual ? 'outlined' : 'text'}
+        size="xl"
+        onClick={scanField.manual ? scanField.submitManual : scanField.openManual}
+      >
+        {scanField.manual ? t.scan.manualSubmit : t.scan.manualLabel}
+      </Button>
 
       <Tabs
         aria-label={t.title}

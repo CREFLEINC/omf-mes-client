@@ -56,7 +56,8 @@ const ENTRIES = [
     2,
   ],
   ['M-02-01 다음 공정', '/production/work-orders?successorOfWorkOrderId=11001', 2],
-  ['M-02-02 불량 기록', '/quality/defect-records?lotId=8102', 1],
+  ['M-02-02 불량 기록', '/quality/defect-records?lotId=8102', 2],
+  ['M-02-02 불량 코드', '/quality/defect-codes', 2],
   [
     'M-04-01 오늘 출하',
     `/logistics/shipment-requests?shipDateFrom=${today()}&shipDateTo=${today()}`,
@@ -848,6 +849,70 @@ for (const [name, path, check] of DETAILS) {
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} M-01-07 지시 상세가 시드를 내린다`);
+}
+
+/*
+ * 투입한 건을 그 LOT 으로 되찾을 수 있는가. LOT 축은 실행 기록에 없고 원 불량을 거쳐 풀어야
+ * 한다 - 곧장 찾으면 방금 투입한 건이 반출 탭에서 사라져 왕복이 닫히지 않는다.
+ */
+{
+  const startedAt = new Date().toISOString();
+  const response = await fetch(`${BASE}/production/repair-executions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'seed-smoke-repair',
+      'X-Worker-No': '100027',
+    },
+    body: JSON.stringify({ defectRecordId: 14001, startedAt, repairQty: 5, uomId: 1001 }),
+  });
+  const created = await response.json();
+  const listed = await fetch(`${BASE}/production/repair-executions?open=true&lotId=8102`);
+  const body = await listed.json();
+  const found = body.items.find((row) => row.repairExecutionId === created.repairExecutionId);
+
+  const closing = await fetch(
+    `${BASE}/production/repair-executions/${String(created.repairExecutionId)}:return`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': 'seed-smoke-repair-return',
+        'X-Worker-No': '100027',
+      },
+      body: JSON.stringify({ returnedAt: startedAt, repairResultCode: 'SUCCEEDED' }),
+    },
+  );
+  const closed = await closing.json();
+  const reListed = await fetch(`${BASE}/production/repair-executions?open=true&lotId=8102`);
+  const remaining = await reListed.json();
+  const ok =
+    found !== undefined &&
+    closed.returnedAt === startedAt &&
+    !remaining.items.some((row) => row.repairExecutionId === created.repairExecutionId);
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-02-02 투입한 건을 LOT 으로 되찾고 반출이 닫는다`);
+}
+
+/*
+ * 불량 기록이 계약 모양인가. 불량 코드와 검출 시각이 없으면 화면이 무엇을 고르는지 말하지
+ * 못하고 날짜 자리에 못 쓸 값을 적는다.
+ */
+{
+  const response = await fetch(`${BASE}/quality/defect-records?lotId=8102`);
+  const body = await response.json();
+  const codes = await (await fetch(`${BASE}/quality/defect-codes`)).json();
+  const named = body.items.every((row) =>
+    codes.items.some((code) => code.defectCodeId === row.defectCodeId),
+  );
+  const ok =
+    body.items.length > 0 &&
+    body.items.every((row) => !Number.isNaN(Date.parse(String(row.detectedAt)))) &&
+    named;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-02-02 불량 기록이 코드와 검출 시각을 들고 온다`);
 }
 
 console.log(
