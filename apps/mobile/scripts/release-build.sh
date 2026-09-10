@@ -6,7 +6,7 @@
 # 서명 키는 담당자 로컬에 있고 비밀번호는 Keychain 에만 있다. 이 스크립트가 꺼내 gradle 로
 # 넘긴다 - 값이 저장소에도 셸 히스토리에도 argv 에도 남지 않는다.
 #
-# 준비와 배포 절차는 apps/mobile/README.md 「릴리스 APK 만들기」에 있다.
+# 준비와 배포 절차는 apps/mobile/RELEASE-BUILD.md 에 있다.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,7 +20,7 @@ KEY_ALIAS="${OMF_RELEASE_KEY_ALIAS:-omf-mes-mobile}"
 PASS_LABEL="omf-mes-client-android-release-storepass"
 
 if [ ! -f "$KEYSTORE" ]; then
-  echo "키스토어 없음: $KEYSTORE — README 「릴리스 APK 만들기」의 keytool 명령을 먼저 실행하세요." >&2
+  echo "키스토어 없음: $KEYSTORE — RELEASE-BUILD.md 「별도 준비물 놓기」를 먼저 보세요." >&2
   exit 1
 fi
 

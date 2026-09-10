@@ -25,6 +25,54 @@
 우리 이름으로 앱을 만들 수 있고, 한 번 push 되면 회수되지 않는다. `build.gradle` 은 값을
 환경변수로만 받는다.
 
+### 별도 준비물 놓기
+
+받은 파일과 값을 아래 경로에 놓는다. 세 가지 모두 저장소 밖이거나 커밋되지 않는 자리다.
+
+**① 키스토어 파일**
+
+```bash
+mkdir -p ~/.secrets && chmod 700 ~/.secrets
+cp <받은-경로>/omf-mes-client-android-release.jks ~/.secrets/
+chmod 600 ~/.secrets/omf-mes-client-android-release.jks
+```
+
+다른 경로에 두려면 빌드할 때 `OMF_RELEASE_KEYSTORE` 로 지정한다.
+
+**② 키스토어 비밀번호 → macOS Keychain**
+
+```bash
+security add-generic-password -a "$USER" \
+  -s "omf-mes-client-android-release-storepass" -w
+```
+
+`-w` 뒤에 값을 적지 않으면 입력·재입력 프롬프트가 뜬다. 이렇게 해야 값이 셸 히스토리와 `ps`
+목록에 남지 않는다.
+
+macOS 가 아니면 Keychain 이 없다. 빌드할 때 `OMF_RELEASE_KEYSTORE_PASSWORD` 로 직접 준다.
+
+**③ API 주소**
+
+```bash
+cat > apps/mobile/.env.local <<'EOF'
+VITE_API_BASE_URL=http://<IP>:<PORT>/api
+EOF
+```
+
+값의 형태는 아래 「API 주소 설정」을 참고한다. 이 파일은 `.gitignore` 의 `*.local` 에 걸려
+커밋되지 않는다.
+
+**놓은 뒤 확인**
+
+```bash
+ls -l ~/.secrets/omf-mes-client-android-release.jks
+security find-generic-password -s "omf-mes-client-android-release-storepass" >/dev/null \
+  && echo "비밀번호 등록됨"
+cat apps/mobile/.env.local
+```
+
+셋이 다 있으면 빌드할 수 있다. 하나라도 없으면 스크립트가 어느 것이 없는지 알려 주고 중단한다.
+
 ## 키스토어 만들기
 
 최초 1회만 한다. 이미 키스토어가 있으면 이 절을 건너뛴다.
