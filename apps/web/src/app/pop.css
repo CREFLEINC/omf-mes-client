@@ -1668,8 +1668,15 @@
  * 재출력 사유 칸도 **아래 [재출력]과 같은 급으로 선다**(사용자 지시 2026-09-10). 56 으로
  * 앉아 있어 바로 아래 72 짜리 단추와 층이 어긋났다.
  */
-.pop-ui .pop-reprint-reason .pop-select__trigger {
+.pop-ui .pop-reprint-reason .pop-select__trigger,
+.pop-ui .pop-reprint-reason .pop-select__value {
   min-block-size: 72px;
+}
+
+/* 값 칸도 같은 높이라 글이 가운데에 선다 — 위로 붙으면 두 칸이 어긋나 보인다. */
+.pop-ui .pop-reprint-reason .pop-select__value {
+  display: flex;
+  align-items: center;
 }
 
 /*
