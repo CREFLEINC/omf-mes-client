@@ -963,6 +963,23 @@ for (const [name, path, check] of DETAILS) {
   console.log(`${ok ? '✔' : '✘'} M-05-01 점검 항목이 이름과 순번과 단위를 들고 온다`);
 }
 
+/*
+ * 점검 이력이 유형과 기간 축을 거르는가. 무시하면 일상 점검 기록이 정기를 고른 화면에도 떠,
+ * 중복을 막으라고 세운 안내가 엉뚱한 것을 가리킨다.
+ */
+{
+  const daily = await (
+    await fetch(`${BASE}/maintenance/inspections?equipmentId=5001&inspectionTypeCode=DAILY`)
+  ).json();
+  const monthly = await (
+    await fetch(`${BASE}/maintenance/inspections?equipmentId=5001&inspectionTypeCode=MONTHLY`)
+  ).json();
+  const ok = daily.items.length > 0 && monthly.items.length === 0;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} M-05-01 점검 이력이 유형 축을 거른다`);
+}
+
 console.log(
   failed === 0
     ? `\n화면 ${String(ENTRIES.length + DETAILS.length)}자리 전부 열립니다.`

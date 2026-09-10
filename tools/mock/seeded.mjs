@@ -3096,9 +3096,25 @@ on('POST', '/maintenance/inspections', (_p, _q, body) => {
   return { created, status: 201 };
 });
 
-on('GET', '/maintenance/inspections', (_p, query) =>
-  page(keep(state.inspections, [byNum(query, 'equipmentId', 'equipmentId')]), query),
-);
+/*
+ * 점검 이력. 유형과 기간 축을 실제로 건다 - 무시하면 일상 점검 기록이 정기를 고른 화면에도
+ * 뜨고, 어제 것이 오늘 한 것으로 보인다.
+ */
+on('GET', '/maintenance/inspections', (_p, query) => {
+  const from = query.get('inspectedFrom');
+  const to = query.get('inspectedTo');
+
+  return page(
+    keep(state.inspections, [
+      byNum(query, 'equipmentId', 'equipmentId'),
+      byText(query, 'inspectionTypeCode', 'inspectionTypeCode'),
+      byText(query, 'overallResultCode', 'overallResultCode'),
+      (row) => from === null || row.inspectedAt >= from,
+      (row) => to === null || row.inspectedAt <= to,
+    ]),
+    query,
+  );
+});
 
 /* 열린 것만 묻는 축을 실제로 건다. 무시하면 끝난 고장이 처리 중 건수에 섞인다. */
 on('GET', '/maintenance/breakdowns', (_p, query) =>
