@@ -4,7 +4,7 @@ import { messages } from '@omf-mes/i18n';
 import { useMemo, useRef, useState } from 'react';
 
 import { useBackStep } from '../../patterns/back-step';
-import { LOT_HOLD_REASON, useCodeValues } from '../../patterns/code-values';
+import { LOT_HOLD_REASON, useCodeValues, type CodeValue } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
 import { useIdempotencyKey } from '../../patterns/idempotency';
@@ -60,13 +60,18 @@ const policyLabel = (policy: string): string => {
   return policy === FIFO ? t.candidates.fifo : policy;
 };
 
-/** 보류 사유와 해제 조건. 서버가 여러 건을 낼 수 있어 그대로 늘어놓는다. */
+/**
+ * 보류 사유와 해제 조건. 서버가 여러 건을 낼 수 있어 그대로 늘어놓는다.
+ *
+ * 보류 조회와 표시명 조회는 서로 다른 물음이라 따로 받는다. 표시명을 이미 풀어 넘기면 아직
+ * 안 온 것과 없는 것이 구별되지 않아, 도는 동안 표시명이 없다고 해 두었다가 이름으로 바뀐다.
+ */
 const HoldReason = ({
   holds,
-  reasonNames,
+  reasons,
 }: {
   holds: UseQueryResult<LotHold[]>;
-  reasonNames: Map<string, string>;
+  reasons: UseQueryResult<CodeValue[]>;
 }) => {
   if (holds.isPending) {
     return <p className="picking__note">{t.lot.heldReasonLoading}</p>;
@@ -76,13 +81,29 @@ const HoldReason = ({
     return <p className="picking__note">{t.lot.heldReasonFailed}</p>;
   }
 
+  /*
+   * 사유 자리에서만 갈린다. 해제 조건은 보류 조회가 들고 온 값이라, 표시명을 못 받았다고
+   * 함께 지우면 현장이 실제로 쓰는 것을 다른 물음의 실패로 버리는 것이 된다.
+   */
+  const reasonTextOf = (code: string): string => {
+    if (reasons.isPending) {
+      return t.lot.heldReasonLoading;
+    }
+
+    if (reasons.isError) {
+      return t.lot.heldReasonFailed;
+    }
+
+    const found = (reasons.data ?? []).find((each) => each.code === code);
+
+    return found === undefined ? t.lot.heldReasonUnknown(code) : t.lot.heldReason(found.name);
+  };
+
   return (
     <>
       {(holds.data ?? []).map((hold) => (
         <p key={hold.lotHoldId}>
-          {reasonNames.has(hold.reasonCode)
-            ? t.lot.heldReason(reasonNames.get(hold.reasonCode) ?? '')
-            : t.lot.heldReasonUnknown(hold.reasonCode)}
+          {reasonTextOf(hold.reasonCode)}
           {hold.releaseCondition === null || hold.releaseCondition === undefined
             ? ''
             : ` · ${t.lot.heldRelease(hold.releaseCondition)}`}
@@ -99,7 +120,7 @@ const CandidateCard = ({
   uoms,
   recommended,
   holds,
-  reasonNames,
+  reasons,
 }: {
   candidate: Candidate;
   line: ShipmentRequestLine;
@@ -107,7 +128,7 @@ const CandidateCard = ({
   uoms: Map<number, string> | undefined;
   recommended: boolean;
   holds: UseQueryResult<LotHold[]> | null;
-  reasonNames: Map<string, string>;
+  reasons: UseQueryResult<CodeValue[]>;
 }) => {
   const problem = lotProblem(candidate, line, today);
   const remaining = remainingDays(candidate.lot, today);
@@ -141,7 +162,7 @@ const CandidateCard = ({
              * 물어 오므로 그 답이 있을 때만 적는다.
              */}
             {problem === 'held' && holds !== null ? (
-              <HoldReason holds={holds} reasonNames={reasonNames} />
+              <HoldReason holds={holds} reasons={reasons} />
             ) : null}
           </AlertBanner>
         )}
@@ -267,9 +288,6 @@ export const ProductPickingScreen = () => {
   const holdReason = useHoldReason(heldPick ? lotId : null);
   /* 사유 코드를 그대로 보이면 무엇이 걸렸는지 알 수 없다. 표시명은 마스터가 갖는다. */
   const holdReasonCodes = useCodeValues(LOT_HOLD_REASON);
-  const holdReasonNames = new Map(
-    (holdReasonCodes.data ?? []).map((value) => [value.code, value.name]),
-  );
 
   /*
    * 한 번의 확정에 키 하나. 무엇을 적는 중인지를 함께 넘겨 대상이 바뀌면 스스로 비워지게 한다.
@@ -439,7 +457,7 @@ export const ProductPickingScreen = () => {
         uoms={uoms.data}
         recommended={recommended}
         holds={candidate.lot.lotId === lotId ? holdReason : null}
-        reasonNames={holdReasonNames}
+        reasons={holdReasonCodes}
       />
     </li>
   );
