@@ -19,7 +19,6 @@ import {
 } from './fixtures';
 import { SessionProvider, useSession, type Session } from '../../patterns/session';
 import { LOGIN_ID_MAX_LENGTH } from './login-draft';
-import { LOCK_THRESHOLD_ATTEMPTS } from './login-error-banner';
 import { LoginScreen } from './screen';
 
 const t = messages.login;
@@ -460,7 +459,7 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
    * ⛔ **어느 칸이 틀렸는지 말하지 않는다**(공유계약 F-7). 「없는 아이디입니다」류의 문구는
    * 계정이 있는지를 흘려, 아이디 목록을 만드는 사람에게 그대로 답이 된다.
    */
-  it('401이면 뭉뚱그린 문구가 화면 수준 배너로 뜬다', async () => {
+  it('401이면 로그인 정보 오류가 화면 수준 배너로 뜬다', async () => {
     const { user } = renderScreen({ fetch: failing(401, loginFailureBody()) });
 
     await fillCredentials(user);
@@ -469,8 +468,8 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
     const banner = await screen.findByRole('alert');
 
     /* 제목과 본문이 **둘 다** 화면의 문구다 — 어느 한쪽이 빠져도 여기서 걸린다. */
-    expect(banner).toHaveTextContent(t.banner.failureTitle);
-    expect(banner).toHaveTextContent(t.banner.mismatch);
+    expect(banner).toHaveTextContent(t.banner.credentialsTitle);
+    expect(banner).toHaveTextContent(t.banner.credentials);
   });
 
   /**
@@ -487,7 +486,7 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
 
     const banner = await screen.findByRole('alert');
 
-    expect(banner).toHaveTextContent(t.banner.mismatch);
+    expect(banner).toHaveTextContent(t.banner.credentials);
     expect(screen.queryByText(body.message)).toBeNull();
   });
 
@@ -507,8 +506,8 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
 
     expect(loginIdBox()).not.toHaveAttribute('aria-invalid');
     expect(passwordBox()).not.toHaveAttribute('aria-invalid');
-    expect(loginIdBox()).not.toHaveAccessibleDescription(t.banner.mismatch);
-    expect(passwordBox()).not.toHaveAccessibleDescription(t.banner.mismatch);
+    expect(loginIdBox()).not.toHaveAccessibleDescription(t.banner.credentials);
+    expect(passwordBox()).not.toHaveAccessibleDescription(t.banner.credentials);
   });
 
   /**
@@ -516,7 +515,7 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
    * 「응답이 실패면 무조건 그 문구」인데, 잠긴 계정에 그 말을 하면 사용자는 맞는 자격을
    * 의심하며 되풀이 시도한다 — 이미 잠긴 계정에 대고.
    *
-   * 이 회차는 잠긴 계정 전용 안내를 아직 두지 않는다. **말하지 않는 것**까지가 이 회차의 몫이다.
+   * 실패가 둘로 줄어든 뒤에도(#1034) 이 규율은 그대로다 — 줄인 것은 갈래 수이지 이 판단이 아니다.
    */
   it('423에는 아이디·비밀번호 문구를 내지 않는다', async () => {
     const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
@@ -529,7 +528,7 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
       expect(submitButton()).toBeEnabled();
     });
 
-    expect(screen.queryByText(t.banner.mismatch)).toBeNull();
+    expect(screen.queryByText(t.banner.credentials)).toBeNull();
   });
 
   /**
@@ -550,7 +549,7 @@ describe('LoginScreen — 실패를 어떻게 알리는가', () => {
 
     await user.type(box(), 'X');
 
-    expect(screen.queryByText(t.banner.mismatch)).toBeNull();
+    expect(screen.queryByText(t.banner.credentials)).toBeNull();
   });
 });
 
@@ -591,7 +590,7 @@ describe('LoginScreen — 보내는 동안과 그 뒤', () => {
     });
 
     expect(calls).toBe(2);
-    expect(screen.queryByText(t.banner.mismatch)).toBeNull();
+    expect(screen.queryByText(t.banner.credentials)).toBeNull();
   });
 
   /**
@@ -721,11 +720,92 @@ describe('LoginScreen — 보내는 동안과 그 뒤', () => {
 
     const banner = await screen.findByRole('alert');
 
-    expect(banner).toHaveTextContent(t.banner.mismatch);
+    expect(banner).toHaveTextContent(t.banner.credentials);
   });
 });
 
-describe('LoginScreen — 실패의 갈래를 나눠 알린다', () => {
+/**
+ * 평문 HTTP 배포본에서 **로그인이 아예 나가지 못했던** 자리의 감지기(#1034).
+ *
+ * `crypto.randomUUID()` 는 보안 컨텍스트(HTTPS · localhost)에만 있다. 이 제품의 현장 서버는
+ * LAN IP 와 평문 HTTP 포트로 서비스되므로 브라우저에서 그 자리가 비어 있고, 없는 함수를
+ * 부르면 **요청 인자를 만드는 자리에서 동기적으로 던진다.** 그러면 `mutate` 에 닿지 못해
+ * 되먹임도 돌지 않는다 — 눌렀는데 요청도 배너도 없는 화면이 된다.
+ *
+ * 실측(배포본 `web-v0.1.2` · `http://192.168.1.72:3180/login`):
+ * `Uncaught TypeError: crypto.randomUUID is not a function` · `[role=alert]` 없음 · 요청 0건.
+ */
+describe('LoginScreen — 보안 컨텍스트가 아니어도 로그인이 나간다', () => {
+  /**
+   * ⭐ **`getRandomValues` 는 남긴다.** 브라우저가 실제로 그렇다 — 평문 HTTP 에서 없어지는
+   * 것은 `randomUUID` 와 `subtle` 뿐이다. 둘 다 지우면 시험이 재는 것이 현실과 달라진다.
+   */
+  const withoutRandomUuid = (): void => {
+    vi.spyOn(crypto, 'randomUUID').mockReturnValue(
+      undefined as unknown as ReturnType<Crypto['randomUUID']>,
+    );
+    Reflect.set(crypto, 'randomUUID', undefined);
+  };
+
+  /**
+   * ⚠ **되돌리지 않으면 이 파일의 뒤 시험들이 함께 평문 컨텍스트가 된다.** 이 설정에는
+   * `restoreMocks` 가 없어(`apps/web/vitest.config.ts`) 되돌리는 일이 자동으로 일어나지 않는다.
+   */
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('crypto.randomUUID가 없어도 요청이 나가고 성공하면 넘어간다', async () => {
+    withoutRandomUuid();
+
+    const sent: string[] = [];
+    const stub = createStubFetch([
+      {
+        match: (request) => new URL(request.url).pathname === SESSIONS_PATH,
+        respond: (request) => {
+          sent.push(request.headers.get('Idempotency-Key') ?? '');
+
+          return jsonResponse(sessionBody());
+        },
+      },
+    ]);
+    const { user } = renderScreen({ fetch: stub, probes: true });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await waitFor(() => {
+      expect(currentPath()).toBe(HOME_ROUTE);
+    });
+
+    /* 키가 **비어 있지 않다** — 헤더 자리만 채우고 값이 빈 것도 이 결함의 한 모양이다. */
+    expect(sent).toHaveLength(1);
+    expect(sent[0]).not.toBe('');
+  });
+
+  /**
+   * **실패 쪽도 함께 잰다.** 사용자가 실제로 부딪힌 것은 이쪽이다 — 자격이 틀렸는데 아무 말도
+   * 없는 화면. 성공 경로만 재면 이 결함의 절반만 고정된다.
+   */
+  it('crypto.randomUUID가 없어도 401이면 로그인 정보 오류가 뜬다', async () => {
+    withoutRandomUuid();
+
+    const { user } = renderScreen({
+      fetch: createStubFetch([
+        sessionsRoute(() => jsonResponse(loginFailureBody(), { status: 401 })),
+      ]),
+    });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    const banner = await screen.findByRole('alert');
+
+    expect(banner).toHaveTextContent(t.banner.credentials);
+  });
+});
+
+describe('LoginScreen — 실패를 두 갈래로만 말한다', () => {
   const failing = (status: number, body: unknown): StubFetch =>
     createStubFetch([sessionsRoute(() => jsonResponse(body, { status }))]);
 
@@ -737,115 +817,54 @@ describe('LoginScreen — 실패의 갈래를 나눠 알린다', () => {
   };
 
   /**
-   * ⭐ **남은 횟수는 있는 계정에만 온다**(완료 조건 T3-1). 뭉뚱그린 문구와 **함께** 서야
-   * 사용자가 「무엇이 틀렸는지는 모르지만 몇 번 남았는지는 안다」는 상태에 놓인다.
-   */
-  it('401에 남은 횟수가 실려 오면 누적 안내가 함께 뜬다', async () => {
-    const { user } = renderScreen({
-      fetch: failing(401, loginFailureBody({ remainingAttempts: 3 })),
-    });
-
-    await fillCredentials(user);
-    await user.click(submitButton());
-
-    const banner = await screen.findByRole('alert');
-
-    expect(banner).toHaveTextContent(t.banner.mismatch);
-    expect(banner).toHaveTextContent(t.banner.lockWarning(2, LOCK_THRESHOLD_ATTEMPTS));
-  });
-
-  /**
-   * ⭐ **없으면 지어내지 않는다**(완료 조건 T3-2). 없는 계정에는 이 값이 오지 않으므로,
-   * 화면이 기본값을 메우면 **없는 계정과 있는 계정이 같아 보이던 설계**가 무너진다.
+   * ⭐ **401 말고는 어느 것도 「로그인 정보 오류」가 되지 않는다**(#1034).
    *
-   * 음성 단언이라 **뭉뚱그린 문구를 잡은 뒤**에 잰다.
-   */
-  it('401에 남은 횟수가 없으면 누적 안내가 보이지 않는다', async () => {
-    const { user } = renderScreen({ fetch: failing(401, loginFailureBody()) });
-
-    await fillCredentials(user);
-    await user.click(submitButton());
-
-    const banner = await screen.findByRole('alert');
-
-    expect(banner).toHaveTextContent(t.banner.mismatch);
-
-    expect(banner.textContent).not.toMatch(/\d/);
-  });
-
-  /**
-   * ⭐ **자리표시 임계값이 서버와 어긋나도 이상한 표시가 나가지 않는다**(완료 조건 T3-3).
-   * 이 되물림이 상수 `LOCK_THRESHOLD_ATTEMPTS`가 만드는 위험의 실감지기다.
-   */
-  it('401에 남은 횟수가 임계값보다 크면 누적 대신 남은 횟수만 말한다', async () => {
-    const { user } = renderScreen({
-      fetch: failing(401, loginFailureBody({ remainingAttempts: 9 })),
-    });
-
-    await fillCredentials(user);
-    await user.click(submitButton());
-
-    const banner = await screen.findByRole('alert');
-
-    expect(banner).toHaveTextContent(t.banner.lockWarningWithoutThreshold(9));
-
-    expect(banner.textContent).not.toContain(`9/${String(LOCK_THRESHOLD_ATTEMPTS)}`);
-    expect(banner.textContent).not.toContain('-');
-  });
-
-  /**
-   * 잠긴 계정은 **스스로 풀 수 없다.** 그래서 「다시 시도」를 두지 않는다 —
-   * 같은 자격으로 다시 불러도 같은 답이 오고, 정작 해야 할 일(관리자 요청)을 가린다.
-   */
-  it('423이면 관리자 요청 안내가 뜨고 「다시 시도」가 없다', async () => {
-    const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
-
-    await fillCredentials(user);
-    await user.click(submitButton());
-
-    const banner = await screen.findByRole('alert');
-
-    expect(banner).toHaveTextContent(t.banner.locked);
-
-    expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
-  });
-
-  /** 잠긴 화면에 수치를 남기면 잠금 정책을 밖에서 셀 수 있게 된다(완료 조건 T3-5). */
-  it('423 화면에 실패 횟수나 임계값이 보이지 않는다', async () => {
-    const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
-
-    await fillCredentials(user);
-    await user.click(submitButton());
-
-    const banner = await screen.findByRole('alert');
-
-    expect(banner).toHaveTextContent(t.banner.locked);
-
-    expect(banner.textContent).not.toMatch(/\d/);
-  });
-
-  /**
-   * 400은 서버가 준 문구를 그대로 낸다. ⛔ **인라인으로 내리지 않는다**(완료 조건 T3-7) —
-   * 칸이 둘뿐이라 어느 칸을 지목해도 계정 열거의 단서가 된다.
-   *
-   * ⭐ **칸을 지목하는 본문으로도 잰다.** 목·실서버가 실제로 주는 모양이 그것이고,
-   * 「서버가 준 `field` 키를 보고 그 칸에 붙인다」가 이 자리에서 가장 그럴듯한 실수다.
+   * 실패를 뭉뚱그리는 화면이 저지르기 쉬운 실수가 「응답이 실패면 무조건 자격 문구」인데,
+   * 잠긴 계정이나 서버 장애에 그 말을 하면 사용자는 맞는 자격을 의심하며 되풀이 시도한다.
+   * 갈래가 둘로 줄어도 **이 판단은 줄지 않는다** — 목록이 그것을 갈래마다 건다.
    */
   it.each([
-    ['화면 수준 본문', errorResponseBody()],
-    ['칸을 지목하는 본문', fieldErrorResponseBody()],
-  ])('400 — %s의 문구가 배너로 뜬다', async (_label, body) => {
-    const { user } = renderScreen({ fetch: failing(400, body) });
+    ['잠긴 계정', 423, errorResponseBody()],
+    ['검증 실패', 400, fieldErrorResponseBody()],
+    ['서버 장애', 500, null],
+  ])('%s는 서버 오류로 말한다', async (_label, status, body) => {
+    const { user } = renderScreen({ fetch: failing(status, body) });
 
     await fillCredentials(user);
     await user.click(submitButton());
 
     const banner = await screen.findByRole('alert');
 
-    expect(banner).toHaveTextContent(body.errors[0]?.message ?? '');
+    expect(banner).toHaveTextContent(t.banner.serverTitle);
+    expect(banner).toHaveTextContent(t.banner.server);
+
+    expect(screen.queryByText(t.banner.credentials)).toBeNull();
   });
 
-  it('400이 칸을 지목해도 그 칸에 인라인 오류가 붙지 않는다', async () => {
+  /**
+   * ⛔ **상태 코드를 그리지 않는다.** 사용자가 쓰지 않는 말이고, 서버 내부 사정을 화면에
+   * 옮기는 첫 걸음이다.
+   */
+  it('서버 오류 배너에 상태 코드가 새지 않는다', async () => {
+    const { user } = renderScreen({ fetch: failing(500, null) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    const banner = await screen.findByRole('alert');
+
+    expect(banner).toHaveTextContent(t.banner.server);
+    expect(banner.textContent).not.toContain('500');
+  });
+
+  /**
+   * ⛔ **서버가 준 문구를 그대로 내지 않는다**(#1034에서 바뀐 자리).
+   *
+   * 앞 회차는 400 본문의 오류 목록을 배너에 그대로 옮겼다. 실패가 둘로 줄며 그 통로가
+   * 없어졌고, **없어진 채로 두는 것**이 규율이다 — 서버 문구가 흘러나오면 ⓐ 서버가 문구만
+   * 바꿔도 화면의 규율(어느 칸도 지목하지 않는다)이 깨지고 ⓑ 한국어가 아닌 문구가 그대로 뜬다.
+   */
+  it('400 본문의 서버 문구가 화면에 흘러나오지 않는다', async () => {
     const body = fieldErrorResponseBody('password');
     const { user } = renderScreen({ fetch: failing(400, body) });
 
@@ -854,21 +873,47 @@ describe('LoginScreen — 실패의 갈래를 나눠 알린다', () => {
 
     const banner = await screen.findByRole('alert');
 
-    expect(banner).toHaveTextContent(body.errors[0]?.message ?? '');
+    expect(banner).toHaveTextContent(t.banner.server);
+    expect(screen.queryByText(body.errors[0]?.message ?? '')).toBeNull();
+  });
+
+  /** 400이 칸을 지목해도 그 칸에 인라인 오류가 붙지 않는다(공유계약 G-1 · F-7). */
+  it('400이 칸을 지목해도 그 칸에 인라인 오류가 붙지 않는다', async () => {
+    const { user } = renderScreen({ fetch: failing(400, fieldErrorResponseBody('password')) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await screen.findByRole('alert');
 
     expect(passwordBox()).not.toHaveAttribute('aria-invalid');
     expect(loginIdBox()).not.toHaveAttribute('aria-invalid');
-    expect(passwordBox()).not.toHaveAccessibleDescription(body.errors[0]?.message ?? '');
-    expect(loginIdBox()).not.toHaveAccessibleDescription(body.errors[0]?.message ?? '');
   });
 
   /**
-   * ⭐ **통신 실패는 「다시 시도」와 함께 온다**(완료 조건 T3-6 · 공유계약 G-23).
+   * ⭐ **「다시 시도」는 서버 오류에만 선다**(공유계약 G-23). 로그인 정보 오류는 **값을 고쳐야**
+   * 풀리므로 그 자리에 버튼을 두면 사용자를 헛돌게 한다.
+   *
+   * 음성 단언이라 배너를 잡은 뒤에 잰다.
+   */
+  it('로그인 정보 오류에는 「다시 시도」가 서지 않는다', async () => {
+    const { user } = renderScreen({ fetch: failing(401, loginFailureBody()) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    await screen.findByRole('alert');
+
+    expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
+  });
+
+  /**
+   * ⭐ **응답이 없어도 서버 오류로 말하고, 「다시 시도」가 실제로 다시 보낸다.**
    *
    * **두 스텁 형태** — 1회차는 던지고 2회차는 200을 준다. 같은 응답을 되돌리는 스텁으로는
    * 「다시 시도가 실제로 나갔다」를 잴 수 없다.
    */
-  it('응답이 없으면 배너와 「다시 시도」가 뜨고, 누르면 요청이 다시 나간다', async () => {
+  it('응답이 없으면 서버 오류 배너가 뜨고, 「다시 시도」를 누르면 요청이 다시 나간다', async () => {
     let calls = 0;
     const stub = createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]);
     const { user } = renderScreen({
@@ -885,7 +930,7 @@ describe('LoginScreen — 실패의 갈래를 나눠 알린다', () => {
 
     const banner = await screen.findByRole('alert');
 
-    expect(banner).toHaveTextContent(messages.httpError.offline);
+    expect(banner).toHaveTextContent(t.banner.server);
 
     await user.click(screen.getByRole('button', { name: messages.common.retry }));
 
@@ -897,31 +942,11 @@ describe('LoginScreen — 실패의 갈래를 나눠 알린다', () => {
   });
 
   /**
-   * ⛔ 가를 근거가 없는 응답에 **자격 문구를 붙이지 않는다.** 그렇다고 침묵하지도 않는다 —
-   * 눌렀는데 아무 말도 없는 화면은 사용자가 무엇을 해야 할지 알 수 없게 만든다.
-   */
-  it('가를 근거가 없는 응답에는 공용 안내만 뜬다', async () => {
-    const { user } = renderScreen({ fetch: failing(500, null) });
-
-    await fillCredentials(user);
-    await user.click(submitButton());
-
-    const banner = await screen.findByRole('alert');
-
-    expect(banner).toHaveTextContent(messages.httpError.description);
-
-    expect(screen.queryByText(t.banner.mismatch)).toBeNull();
-    expect(banner.textContent).not.toContain('500');
-  });
-
-  /**
-   * **T2가 선이행한 자리의 회귀 확인**(완료 조건 T3-8). 값을 고치면 앞 시도의 실패가 걷힌다는
-   * 규율은 이미 서 있고, 이 회차가 배너 갈래를 넷으로 넓혀도 **갈래마다 그대로**여야 한다.
+   * **값을 고치면 앞 시도의 실패가 걷힌다** — 갈래가 둘로 줄어도 **갈래마다 그대로**여야 한다.
    */
   it.each([
-    ['잠긴 계정', 423, errorResponseBody()],
-    ['검증 실패', 400, fieldErrorResponseBody()],
-    ['가를 근거 없음', 500, null],
+    ['로그인 정보 오류', 401, loginFailureBody()],
+    ['서버 오류', 500, null],
   ])('%s 배너도 값을 고치면 걷힌다', async (_label, status, body) => {
     const { user } = renderScreen({ fetch: failing(status, body) });
 
@@ -934,11 +959,9 @@ describe('LoginScreen — 실패의 갈래를 나눠 알린다', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  /** 실패 갈래가 넷이어도 배너는 **한 자리에만** 선다 — 두 자리에 두면 사용자가 둘을 견준다. */
+  /** 배너는 **한 자리에만** 선다 — 두 자리에 두면 사용자가 둘을 견준다. */
   it('배너가 한 자리에만 선다', async () => {
-    const { user } = renderScreen({
-      fetch: failing(401, loginFailureBody({ remainingAttempts: 3 })),
-    });
+    const { user } = renderScreen({ fetch: failing(401, loginFailureBody()) });
 
     await fillCredentials(user);
     await user.click(submitButton());
@@ -947,7 +970,7 @@ describe('LoginScreen — 실패의 갈래를 나눠 알린다', () => {
     expect(screen.getAllByRole('alert')).toHaveLength(1);
   });
 
-  /** 실패한 뒤에도 다시 보낼 수 있어야 한다 — 잠긴 계정이든 아니든 화면이 폼을 막지 않는다. */
+  /** 실패한 뒤에도 다시 보낼 수 있어야 한다 — 화면이 폼을 막지 않는다. */
   it('실패한 뒤 버튼이 다시 열린다', async () => {
     const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
 
