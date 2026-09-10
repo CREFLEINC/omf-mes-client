@@ -6,9 +6,12 @@
  */
 import { messages } from '@omf-mes/i18n';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
 
 import { WorkOrderList } from './work-order-list';
+
+const nav = messages.popPageNav;
 
 const t = messages.workStart.list;
 
@@ -18,6 +21,8 @@ const base = {
   isLoading: false,
   isError: false,
   total: undefined,
+  pageMeta: undefined,
+  onPageChange: () => undefined,
   isShowingAll: false,
   isEquipmentUnknown: false,
   canSelect: true,
@@ -56,5 +61,50 @@ describe('P-02-01 작업지시 목록 — 「없다」와 「모른다」를 가
 
     expect(screen.getByText(t.loadError)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.retry })).toBeInTheDocument();
+  });
+});
+
+/**
+ * 쪽 넘김 — **잘렸다고 말하기만 하던 자리**(#1005 · G-34).
+ *
+ * ⛔ 전에는 「N건 중 20건을 보이고 있습니다」로 끝나 **21번째 지시를 고를 방법이 없었다.**
+ *    키오스크에는 주소창도 뒤로가기도 없어 화면이 주지 않으면 길이 아예 없다.
+ */
+describe('P-02-01 작업지시 목록 쪽 넘김 (#1005)', () => {
+  const paged = { page: 1, size: 20, total: 45 };
+
+  it('쪽이 여럿이면 넘길 단추를 세운다', () => {
+    render(<WorkOrderList {...base} pageMeta={paged} total={45} />);
+
+    expect(screen.getByRole('button', { name: nav.pageDown })).toBeEnabled();
+  });
+
+  it('첫 쪽에서는 위로 갈 수 없다', () => {
+    render(<WorkOrderList {...base} pageMeta={paged} total={45} />);
+
+    expect(screen.getByRole('button', { name: nav.pageUp })).toBeDisabled();
+  });
+
+  it('마지막 쪽에서는 아래로 갈 수 없다', () => {
+    render(<WorkOrderList {...base} pageMeta={{ page: 3, size: 20, total: 45 }} total={45} />);
+
+    expect(screen.getByRole('button', { name: nav.pageDown })).toBeDisabled();
+    expect(screen.getByRole('button', { name: nav.pageUp })).toBeEnabled();
+  });
+
+  it('누르면 다음 쪽을 청한다', async () => {
+    const onPageChange = vi.fn();
+
+    render(<WorkOrderList {...base} pageMeta={paged} total={45} onPageChange={onPageChange} />);
+    await userEvent.click(screen.getByRole('button', { name: nav.pageDown }));
+
+    expect(onPageChange).toHaveBeenCalledWith(2);
+  });
+
+  /* ⛔ 누를 수 없는 단추 둘이 늘 서 있으면 좁은 화면만 잡아먹는다. */
+  it('쪽이 하나뿐이면 세우지 않는다', () => {
+    render(<WorkOrderList {...base} pageMeta={{ page: 1, size: 20, total: 7 }} total={7} />);
+
+    expect(screen.queryByRole('button', { name: nav.pageDown })).not.toBeInTheDocument();
   });
 });

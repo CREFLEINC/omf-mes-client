@@ -6,6 +6,8 @@ import type { WorkOrder } from './types';
 import { isHeld } from './work-order-status';
 import { isEmergency } from './work-order-type';
 
+import { PopPageNav, pageBoundaryOf, type PageMetaLike } from '../../patterns/pop-page-nav';
+
 const t = messages.workStart.list;
 
 export interface WorkOrderListProps {
@@ -17,6 +19,9 @@ export interface WorkOrderListProps {
   isError: boolean;
   /** 필터 전체 건수. 목록이 잘렸는지는 이 값으로만 알 수 있다. */
   total: number | undefined;
+  /** 받은 쪽 정보. 쪽 넘김이 이 값으로 선다(#1005). */
+  pageMeta: PageMetaLike | undefined;
+  onPageChange: (page: number) => void;
   /** 전체 보기인가 — 빈 상태 문구가 갈린다. */
   isShowingAll: boolean;
   /** 설비를 몰라 기본 목록을 세우지 못했는가. */
@@ -47,6 +52,8 @@ export const WorkOrderList = ({
   isLoading,
   isError,
   total,
+  pageMeta,
+  onPageChange,
   isShowingAll,
   isEquipmentUnknown,
   canSelect,
@@ -186,6 +193,17 @@ export const WorkOrderList = ({
           )}
 
           {isTruncated && <p className="field-note">{t.truncated(rows.length, total)}</p>}
+
+          {/*
+           * ⛔ **잘렸다고 «말하기만» 하지 않는다**(#1005 · G-34). 전에는 「N건 중 20건을 보이고
+           * 있습니다」로 끝나 **21번째 지시를 고를 방법이 없었다** — 키오스크라 주소창도
+           * 뒤로가기도 없다.
+           */}
+          <PopPageNav
+            boundary={pageBoundaryOf(pageMeta)}
+            label={t.pageNav}
+            onChange={onPageChange}
+          />
         </>
       )}
     </section>

@@ -13,15 +13,15 @@ export const reworkResultKeys = {
     ['rework-result-register', 'gate', terminalId, processId] as const,
 };
 
-export const useReworkWorkOrders = () => {
+export const useReworkWorkOrders = (page = 1) => {
   const { client } = useApiClient();
   return useQuery({
-    queryKey: reworkResultKeys.list,
+    queryKey: [...reworkResultKeys.list, page],
     queryFn: () =>
       runRequest(() =>
         client.GET('/production/work-orders', {
           params: {
-            query: { workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE, open: true, size: 20 },
+            query: { workOrderTypeCode: REWORK_WORK_ORDER_TYPE_CODE, open: true, page, size: 20 },
           },
         }),
       ),

@@ -15,8 +15,7 @@ export const reworkResultRegister = {
    * ⭐ **품목을 함께 둔다** — 스펙이 W/O 번호와 품목을 가운뎃점으로 이었다. 재작업은 같은
    * 번호가 여러 품목으로 갈리지 않지만, 손에 든 지시서와 맞추는 값이 둘이다.
    */
-  headerContext: (workOrderNo: string, itemCode: string): string =>
-    `${workOrderNo} · ${itemCode}`,
+  headerContext: (workOrderNo: string, itemCode: string): string => `${workOrderNo} · ${itemCode}`,
   workOrderUnknown: 'W/O —',
 
   /**
@@ -29,6 +28,8 @@ export const reworkResultRegister = {
   changeWorkOrder: '변경',
   /** 표의 접근 이름. 화면에는 구획 제목이 이미 같은 이름으로 서 있다. */
   workOrderCaption: '진행할 수 있는 재작업 작업지시',
+  /* 쪽 넘김 랜드마크 이름(#1005). */
+  pageNav: '재작업 작업지시 목록 페이지 이동',
   columns: {
     workOrder: '작업지시',
     item: '품목',
@@ -49,8 +50,7 @@ export const reworkResultRegister = {
   sourceLotValue: (lotNo: string, qty: string, uom: string): string =>
     uom === '' ? `${lotNo} ${qty}` : `${lotNo} ${qty} ${uom}`,
   /** 「근거  부적합 NC-2026-0071 · 외관 스크래치」 */
-  nonconformanceValue: (no: string, description: string): string =>
-    `부적합 ${no} · ${description}`,
+  nonconformanceValue: (no: string, description: string): string => `부적합 ${no} · ${description}`,
   /**
    * 「처분  재작업 160 EA  (08-07)」
    *

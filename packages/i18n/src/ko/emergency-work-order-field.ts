@@ -80,6 +80,8 @@ export const emergencyWorkOrderField = {
       `${String(total)}건 중 ${String(shown)}건을 보이고 있습니다.`,
 
     /** 발행 자리를 여기서 찾지 않게 한다. 어느 화면인지까지 적어야 찾아갈 수 있다. */
+    /* 쪽 넘김 랜드마크 이름(#1005). */
+    pageNav: '긴급 W/O 목록 페이지 이동',
     issuedElsewhere: '긴급 W/O 는 관리웹 「긴급 W/O 발행」에서 발행합니다.',
   },
 
@@ -121,6 +123,5 @@ export const emergencyWorkOrderField = {
   handoff: {
     materialInput: '자재 투입',
     productionResult: '실적 입력',
-
   },
 } as const;
