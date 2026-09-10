@@ -1653,15 +1653,23 @@
   padding-inline-start: var(--space-8);
 }
 
+/*
+ * 잇는 선 — **위 줄에서 내려와 체크 상자 앞에서 멈춘다**(사용자 지적 2026-09-10).
+ *
+ * 줄 «안»에서만 그렸더니 위 줄과의 사이(8)가 비어 선이 공중에 떠 보였다. 위로 그만큼 끌어
+ * 올리고, 가로 토막을 상자 바로 앞까지 늘려 「이 줄은 위 줄에 딸린 것」이 한눈에 보이게 한다.
+ */
 .pop-ui .pop-reprint-target--child::before {
   content: '';
   position: absolute;
-  inset-block-start: 0;
+  inset-block-start: calc(-1 * var(--space-2));
   inset-inline-start: var(--space-4);
-  block-size: 50%;
-  inline-size: var(--space-4);
+  /* 상자의 세로 가운데에서 멈춘다 — 더 내려가면 선이 상자 아래로 지나간다. */
+  block-size: calc(50% + var(--space-2));
+  inline-size: var(--space-5);
   border-inline-start: 1px solid var(--outline-variant);
   border-block-end: 1px solid var(--outline-variant);
+  border-end-start-radius: var(--radius-sm, 4px);
 }
 
 /*
@@ -1687,8 +1695,14 @@
   min-block-size: 72px;
 }
 
-/* 대상 목록과 재출력 사유를 가르는 선(설계 §3). 위는 「무엇을」, 아래는 「왜」다. */
+/*
+ * 대상 목록과 재출력 사유를 가르는 선(설계 §3). 위는 「무엇을」, 아래는 「왜」다.
+ *
+ * ⚠ 위 여백을 줄 사이 여백(8)과 같게 둔다 — 블록 이음매(16)를 그대로 받으면 마지막 줄만
+ *   선에서 멀어져, 같은 뜻의 선인데 사이가 달라 보인다(사용자 지적 2026-09-10).
+ */
 .pop-ui .pop-reprint-rule {
+  margin-block-start: var(--space-2);
   block-size: 1px;
   background: var(--outline-variant);
 }
