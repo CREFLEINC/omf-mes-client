@@ -32,8 +32,6 @@ export const packingResult = {
       deliveryLabel: '납품라벨',
       productionLot: '생산LOT',
     },
-    submit: '읽기',
-    scanning: '조회 중…',
     manualEntry: '직접 입력',
     shipmentSelection: '출하 대상',
     shipmentListLoading: '목록 조회 중…',

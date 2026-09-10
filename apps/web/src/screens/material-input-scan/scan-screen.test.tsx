@@ -338,14 +338,13 @@ describe('MaterialInputScanScreen — 스캔', () => {
     renderScreen([lotsRoute([lot()])]);
 
     const field = screen.getByLabelText(t.scan.label);
-    await user.type(field, 'SAMPLE-LOT-0001');
 
     /*
-     * **버튼으로 보낸다.** Enter로 보내면 포커스가 칸에 남아 있어, 되돌리는 장치를 떼어내도
-     * 이 감지기가 통과한다 — 실제로 뮤테이션이 살아남는 것을 확인하고 고친 자리다.
-     * 손가락으로 버튼을 누르는 것은 터치 단말의 정상 사용법이기도 하다.
+     * ⚠ **Enter 로 보낸다** — 화면에 [읽기] 단추가 없어졌다(설계 §3 도면). 그래서 포커스가
+     *   칸에 남은 채로 보내지고, 「되돌린다」는 장치를 떼어내도 이 줄만으로는 걸리지 않는다.
+     *   포커스를 «옮겨 오는» 것은 아래 「직접 입력」 감지기가 따로 잰다.
      */
-    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+    await user.type(field, 'SAMPLE-LOT-0001{Enter}');
 
     await screen.findByText(t.scan.outcomes.material('SAMPLE-LOT-0001'));
 
@@ -374,9 +373,14 @@ describe('MaterialInputScanScreen — 스캔', () => {
       releaseLots = resolve;
     });
 
+    /* 조회가 «떠난» 것을 여기서 잰다 — 진행 중을 말해 주던 [읽기] 단추가 없다. */
+    let lotsReached = false;
     const stub = createStubFetch([...receiptRoutes(), lotsRoute([lot()])]);
     const fetch: StubFetch = async (request) => {
-      if (isGet(request, LOTS_PATH)) await lotsHeld;
+      if (isGet(request, LOTS_PATH)) {
+        lotsReached = true;
+        await lotsHeld;
+      }
 
       return stub(request);
     };
@@ -386,10 +390,7 @@ describe('MaterialInputScanScreen — 스캔', () => {
     await user.type(screen.getByLabelText(t.scan.label), 'SAMPLE-LOT-0001{Enter}');
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.scan.scanning })).toHaveProperty(
-        'disabled',
-        true,
-      );
+      expect(lotsReached).toBe(true);
     });
     expect(screen.getByLabelText(t.scan.label)).toHaveProperty('disabled', false);
     expect(document.activeElement).toBe(screen.getByLabelText(t.scan.label));
@@ -429,8 +430,9 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     const field = screen.getByLabelText(t.scan.label);
     await user.type(field, 'SAMPLE-LOT-0001{Enter}');
+    /* 첫 조회가 떠난 것을 확인하고서야 둘째를 보낸다 — 진행 중을 말해 주던 단추가 없다. */
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.scan.scanning })).toBeTruthy();
+      expect(requests.filter((request) => request.url.pathname === LOTS_PATH)).toHaveLength(1);
     });
 
     await user.type(field, 'SAMPLE-LOT-0002{Enter}');
@@ -484,8 +486,9 @@ describe('MaterialInputScanScreen — 스캔', () => {
 
     // 둘째 조회를 붙잡아 둔 채로 첫 자재를 뺀다.
     await user.type(field, 'SAMPLE-LOT-0002{Enter}');
+    /* 둘째 조회가 떠난 것을 호출 수로 잰다 — 진행 중을 말해 주던 단추가 없다. */
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: t.scan.scanning })).toBeTruthy();
+      expect(lotCalls).toBe(2);
     });
 
     await user.click(
@@ -536,9 +539,6 @@ describe('MaterialInputScanScreen — 터치 타겟', () => {
   it('스캔 보내기와 투입 확정에 현장 단말 치수를 건다', () => {
     renderScreen([lotsRoute([lot()])]);
 
-    expect(screen.getByRole('button', { name: t.scan.submit }).className).toContain(
-      'pop-touch-target',
-    );
     expect(screen.getByRole('button', { name: t.confirm.action }).className).toContain(
       'pop-touch-target',
     );
@@ -803,10 +803,14 @@ describe('MaterialInputScanScreen — 스캔 실패의 대체 경로', () => {
     const user = userEvent.setup();
     renderScreen([lotsRoute([lot()])]);
 
-    /* 다른 곳으로 포커스를 옮겨 둔다 — 옮겨 오는 것을 재려면 출발점이 달라야 한다. */
-    const away = screen.getByRole('button', { name: t.scan.submit });
-    away.focus();
-    expect(document.activeElement).toBe(away);
+    /*
+     * 포커스를 칸에서 걷어 둔다 — 옮겨 오는 것을 재려면 출발점이 달라야 한다.
+     *
+     * ⚠ 다른 단추로 옮기지 않는다. [읽기]가 없어졌고 남은 [투입 확정]은 처음에 잠겨 있어
+     *   포커스를 받지 못한다.
+     */
+    screen.getByLabelText(t.scan.label).blur();
+    expect(document.activeElement).not.toBe(screen.getByLabelText(t.scan.label));
 
     await user.click(screen.getByRole('button', { name: t.scan.manualEntry }));
 

@@ -72,8 +72,6 @@ export const runningChange = {
 
   scan: {
     label: '신규 부품 LOT 스캔',
-    submit: '읽기',
-    scanning: '조회 중',
     manualEntry: '직접 입력',
     outcomes: {
       part: (code: string, lotNo: string) => `${code} → ${lotNo} 을(를) 담았습니다.`,

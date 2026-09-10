@@ -98,23 +98,6 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
             setValue(event.target.value);
           }}
         />
-        {/*
-         * ⭐ **채움(`filled`)을 쓰지 않는다**(자매 화면 `P-02-03` 과 같은 이유). 스캐너는 코드를
-         * 치고 Enter 까지 보내고, 이 칸은 들어오자마자·읽을 때마다 스스로 포커스를 되찾는다 —
-         * **정상 흐름에서 이 버튼은 눌리지 않는다.** 채움으로 두면 화면에서 가장 강한 것이
-         * 「안 눌러도 되는 것」이 되고, 이 화면이 향하는 [ 교체 등록 ]이 그 뒤로 밀린다.
-         *
-         * ⛔ 크기는 낮추지 않는다 — 대체 경로라도 장갑 낀 손이 누르는 자리다.
-         */}
-        <Button
-          type="submit"
-          variant="outlined"
-          size="xl"
-          className="pop-touch-target"
-          disabled={isScanning}
-        >
-          {isScanning ? t.scan.scanning : t.scan.submit}
-        </Button>
       </div>
 
       {/*
@@ -125,14 +108,20 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
        */}
       <div className="scan-manual">
         {/*
-         * ⭐ **세 단계로 내려온다** — [ 교체 등록 ] 채움 · [ 읽기 ] 테두리 큰 것 · 이것은 작은
-         *    테두리. 하는 일이 칸으로 포커스를 옮기는 것 하나라 셋 중 가장 약하게 세운다.
-         *    설계가 「큰 타겟」으로 지목한 것은 [ 교체 등록 ] 하나뿐이다(§7).
+         * ⭐ **두 단계로 내려온다** — [ 교체 등록 ] 채움 · 이것은 테두리. 하는 일이 칸으로
+         *    포커스를 옮기는 것 하나라 약하게 세운다. 설계가 「큰 타겟」으로 지목한 것은
+         *    [ 교체 등록 ] 하나뿐이다(§7).
+         *
+         * ⛔ **[ 읽기 ] 단추를 두지 않는다**(설계 §3 도면 · 사용자 지시 2026-09-11). 스캐너는
+         *    코드 끝에 Enter 를 붙여 보내므로 제출은 폼이 알아서 하고(칸이 하나뿐인 폼은
+         *    Enter 로 제출된다), 손으로 칠 때도 Enter 가 같은 길이다.
+         *
+         * ⚠ 크기는 `xl` 이다 — 이제 이 줄에서 손이 누를 수 있는 유일한 단추다.
          */}
         <Button
           type="button"
           variant="outlined"
-          size="lg"
+          size="xl"
           className={popTouchClass('normal')}
           onClick={() => {
             inputRef.current?.focus();

@@ -58,9 +58,14 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
   return (
     <form onSubmit={submit}>
       {/*
-       * ⭐ **한 줄에 셋을 놓는다** — 칸 · [읽기] · [직접 입력]. 스펙 §3 이 이 구획에 88px 만
-       * 준다. 대체 경로(D-3)를 아래 줄로 내리면 구획이 두 배가 되고, 그만큼 ③ 포장 구성이
-       * 줄어 표가 한 줄도 못 보이는 화면이 된다.
+       * ⭐ **한 줄에 둘을 놓는다** — 칸 · [직접 입력]. 스펙 §3 이 이 구획에 88px 만 준다.
+       * 대체 경로(D-3)를 아래 줄로 내리면 구획이 두 배가 되고, 그만큼 ③ 포장 구성이 줄어
+       * 표가 한 줄도 못 보이는 화면이 된다.
+       *
+       * ⛔ **[읽기] 단추를 두지 않는다**(설계 §3 도면 · 사용자 지시 2026-09-11). 도면의 스캔
+       *    상자에는 대체 경로 하나뿐이다 — 스캐너가 코드 끝에 Enter 를 붙여 보내므로 제출은
+       *    폼이 알아서 하고(칸이 하나뿐인 폼은 Enter 로 제출된다), 손으로 칠 때도 Enter 가
+       *    같은 길이다. 같은 일을 하는 단추가 둘이면 어느 것이 정상 경로인지 흐려진다.
        */}
       <div className="scan-row">
         <TextField
@@ -85,16 +90,6 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
             setValue(event.target.value);
           }}
         />
-        {/* 장갑 낀 손으로 누른다 — 스펙 §3 액션바 예산이 전제하는 72px 하한을 건다. */}
-        <Button
-          type="submit"
-          variant="filled"
-          size="xl"
-          className="pop-touch-target"
-          disabled={isScanning || locked}
-        >
-          {isScanning ? t.scan.scanning : t.scan.submit}
-        </Button>
         {/*
          * 스캔 실패의 대체 경로(공유계약 D-3). **칸으로 포커스를 옮기는 것이 전부다** — 코드는
          * 이미 손으로 칠 수 있고, 없던 것은 「어디를 눌러야 하는가」였다. 터치 단말에서는 이
@@ -113,7 +108,6 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
           {t.scan.manualEntry}
         </Button>
       </div>
-
     </form>
   );
 };

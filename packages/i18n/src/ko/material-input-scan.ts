@@ -115,8 +115,6 @@ export const materialInputScan = {
   /** 스캔 구획 — 자재LOT과 금형을 **같은 칸**에서 받는다(스펙 §3). */
   scan: {
     label: '자재LOT / 금형 코드',
-    submit: '읽기',
-    scanning: '조회 중',
     /**
      * 스캔이 안 될 때의 대체 경로를 **눈에 보이는 조작으로** 세운다(스펙 §3 · 공유계약 D-3).
      *
