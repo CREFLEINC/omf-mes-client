@@ -616,7 +616,8 @@ describe('수리 왕복 스캔 화면', () => {
     scan(SCANNED);
     await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
 
-    const picks = await screen.findAllByRole('button', { name: /EA ·/ });
+    /* 카드로 세운 뒤로는 수량과 시각이 줄로 갈려 이름이 이어 붙지 않는다. */
+    const picks = await screen.findAllByRole('button', { name: /EA/ });
 
     await user.click(picks[0] as HTMLElement);
     await user.click(await screen.findByRole('button', { name: '수리 성공' }));
@@ -626,7 +627,7 @@ describe('수리 왕복 스캔 화면', () => {
       expect(seen).toHaveLength(1);
     });
 
-    await user.click(screen.getAllByRole('button', { name: /EA ·/ })[1] as HTMLElement);
+    await user.click(screen.getAllByRole('button', { name: /EA/ })[1] as HTMLElement);
     await user.click(screen.getByRole('button', { name: '반출 등록' }));
 
     await waitFor(() => {
@@ -936,6 +937,23 @@ describe('수리 왕복 스캔 화면', () => {
   });
 
   /* 한 LOT 에 불량이 여럿이면 수량만으로는 고를 수 없다. 무엇이 잘못됐는지가 기준이다. */
+  /*
+   * 단추 안에 값을 넣으면 단추 글자 규격을 따라가 불량 코드와 수량이 같은 무게로 보인다.
+   * 카드로 세워 제목과 부가를 갈라 둔다.
+   */
+  it('고르는 불량을 카드로 세워 코드와 수량을 가른다', async () => {
+    const other = { ...defect, defectRecordId: 502, defectCodeId: 13, defectQty: 40 };
+    mount([], { defects: [defect, other] });
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+
+    const pick = await screen.findByRole('button', { name: /EXT-002 외관 스크래치/ });
+
+    expect(pick.querySelector('strong')?.textContent).toBe('EXT-002 외관 스크래치');
+    expect(pick.querySelector('p')?.textContent).toContain('불량');
+  });
+
   it('불량 코드와 이름을 확인 카드와 고르는 자리에 함께 보인다', async () => {
     const other = { ...defect, defectRecordId: 502, defectCodeId: 13, defectQty: 40 };
     mount([], { defects: [defect, other] });

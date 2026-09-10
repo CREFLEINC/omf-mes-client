@@ -22,6 +22,10 @@ export const inboundVariance = {
     linesLoadFailed: '입하 라인을 확인할 수 없습니다',
     linesNone: '이 입하에 라인이 없습니다',
     lineLabel: (no: number, qty: string) => `${String(no)}번 줄 · 실입하 ${qty}`,
+    /* 카드로 세우면 제목과 수치의 무게가 갈린다. 단추 안에 넣으면 둘이 같은 크기로 선다. */
+    lineNo: (no: number) => `${String(no)}번 줄`,
+    lineQty: (qty: string) => `실입하 ${qty}`,
+    linePicked: '선택됨',
     chosen: (no: number, qty: string) => `고른 줄 ${String(no)}번 · 실입하 ${qty}`,
     change: '다른 대상 고르기',
     itemLoadFailed: '품목을 확인할 수 없습니다',

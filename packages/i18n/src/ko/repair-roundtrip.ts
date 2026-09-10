@@ -40,6 +40,8 @@ export const repairRoundtrip = {
     window: (days: number) => `최근 ${String(days)}일 안에서 찾았습니다`,
     pick: '수리할 불량을 고르세요',
     qty: (qty: string, uom: string) => `불량 ${qty} ${uom}`,
+    /* 카드로 세우면 고른 것을 색으로 말할 수 없다. 표를 달아 무엇을 골랐는지 남긴다. */
+    picked: '선택됨',
     /** 수량만으로는 고를 수 없다. 무엇이 잘못됐는지가 고르는 기준이다. */
     code: (code: string, name: string) => `${code} ${name}`,
     unknownCode: '불량 코드를 확인할 수 없습니다',
@@ -79,6 +81,8 @@ export const repairRoundtrip = {
     caption: '아직 반출되지 않은 수리 건',
     none: '수리 중인 건이 없습니다',
     loadFailed: '수리 중인 건을 확인할 수 없습니다',
+    /* 카드로 세우면 고른 것을 색으로 말할 수 없다. 표를 달아 무엇을 골랐는지 남긴다. */
+    picked: '선택됨',
     columns: {
       no: '수리 번호',
       qty: '수량',

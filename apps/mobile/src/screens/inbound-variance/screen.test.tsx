@@ -151,6 +151,11 @@ const chooseLine = async (user: ReturnType<typeof userEvent.setup>) => {
   await screen.findByText('ABC-123 원자재');
 };
 
+const openReceipt = async (user: ReturnType<typeof userEvent.setup>) => {
+  await user.click(await screen.findByRole('combobox', { name: '입하 고르기' }));
+  await user.click(await screen.findByRole('option', { name: 'IB-2026-0002' }));
+};
+
 const fill = async (user: ReturnType<typeof userEvent.setup>, qty: string) => {
   await user.click(screen.getByRole('radio', { name: '수량 부족' }));
   await user.type(screen.getByLabelText(/대상 수량/), qty);
@@ -163,6 +168,21 @@ beforeEach(() => {
 });
 
 describe('입하 오류 등록 화면', () => {
+  /*
+   * 단추 안에 값을 넣으면 단추 글자 규격을 따라가 줄 번호와 수치가 같은 무게로 보인다.
+   * 카드로 세워 제목과 부가를 갈라 둔다.
+   */
+  it('입하 라인을 카드로 세워 제목과 수치를 가른다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openReceipt(user);
+
+    const pick = await screen.findByRole('button', { name: /1번 줄/ });
+
+    expect(pick.querySelector('strong')?.textContent).toBe('1번 줄');
+    expect(pick.querySelector('p')?.textContent).toContain('실입하');
+  });
+
   /* 확인하지 못한 것을 입하가 없는 것으로 말하지 않는다. */
   it('입하 조회 실패를 입하 없음으로 말하지 않는다', async () => {
     mount([], { receiptsStatus: 500 });

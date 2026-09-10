@@ -520,6 +520,19 @@ describe('자재 출고·피킹 화면', () => {
   });
 
   /*
+   * 단추 안에 값을 넣으면 단추 글자 규격을 따라가 지시 번호와 유형이 같은 무게로 보인다.
+   * 카드로 세워 제목과 부가를 갈라 둔다.
+   */
+  it('지시 목록을 카드로 세워 번호와 유형을 가른다', async () => {
+    mount();
+
+    const pick = await screen.findByRole('button', { name: /PK-2026-000077/ });
+
+    expect(pick.querySelector('strong')?.textContent).toBe('PK-2026-000077');
+    expect(pick.querySelector('p')?.textContent).toBe('유형 자재 피킹');
+  });
+
+  /*
    * 목록은 고르기 전에 보는 자리다. 상세만 표시명으로 바꾸면 현장은 코드를 보고 고른 뒤
    * 한글을 보게 되어, 같은 값이 두 이름으로 보인다.
    */

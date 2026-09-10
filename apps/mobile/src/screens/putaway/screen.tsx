@@ -293,29 +293,28 @@ export const PutawayScreen = () => {
           <ul className="putaway__tasks">
             {(tasks.data ?? []).map((each) => (
               <li key={each.putawayTaskId}>
-                <Button
-                  className="putaway__wide"
-                  variant="outlined"
-                  size="xl"
+                <Card
+                  bordered
+                  interactive
                   onClick={() => {
                     setTask(each);
                     clearScans();
                   }}
                 >
-                  <span className="putaway__task">
+                  <Card.Body className="card-body putaway__task">
                     <strong>{taskLabel(each)}</strong>
                     {/*
                      * 목록에서는 위치 코드를 아직 받지 못했다. 식별자를 그대로 보이면 사람이
                      * 읽을 수 없는 번호가 권장 위치인 척한다 - 있고 없고만 말한다.
                      */}
-                    <span>
+                    <p>
                       {each.recommendedLocationId === null ||
                       each.recommendedLocationId === undefined
                         ? t.tasks.noRule
                         : t.tasks.hasRule}
-                    </span>
-                  </span>
-                </Button>
+                    </p>
+                  </Card.Body>
+                </Card>
               </li>
             ))}
           </ul>
