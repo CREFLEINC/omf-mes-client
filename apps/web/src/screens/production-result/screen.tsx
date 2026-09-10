@@ -602,23 +602,6 @@ export const ProductionFlowScreen = () => {
           <AlertBanner variant="error" title={t.save.failTitle} />
         </div>
       )}
-      {outputStatus !== null && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant={
-              outputPhase === 'issueFailed' ||
-              outputPhase === 'renditionFailed' ||
-              outputPhase === 'printFailed' ||
-              outputPhase === 'reportFailed' ||
-              outputPhase === 'legacyMismatch'
-                ? 'error'
-                : 'info'
-            }
-            title={outputStatus}
-          />
-        </div>
-      )}
-
       <div
         className={`production-flow-grid pop-fixed${
           isTagTarget === false ? ' production-flow-grid-no-tags' : ''
@@ -819,6 +802,28 @@ export const ProductionFlowScreen = () => {
                 <dd>{lotPrinter?.displayName ?? t.flow.output.printerUnknown}</dd>
               </div>
             </dl>
+
+            {/*
+             * 발행·인쇄가 어떻게 됐는지는 **이 구획 안에서 말한다**(사용자 지시 2026-09-10).
+             * 화면 맨 위 띠에 두었더니 프린터·[다시 시도]와 멀어져, 무엇에 대한 실패인지와
+             * 다음에 누를 것이 서로 다른 자리에 섰다. 스펙에 없는 자리라 우리가 정한다.
+             */}
+            {outputStatus !== null && (
+              <div className="banner-slot">
+                <AlertBanner
+                  variant={
+                    outputPhase === 'issueFailed' ||
+                    outputPhase === 'renditionFailed' ||
+                    outputPhase === 'printFailed' ||
+                    outputPhase === 'reportFailed' ||
+                    outputPhase === 'legacyMismatch'
+                      ? 'error'
+                      : 'info'
+                  }
+                  title={outputStatus}
+                />
+              </div>
+            )}
 
             {outputPhase === 'legacyMismatch' ? (
               <Button disabled>{t.flow.output.mismatchBlocked}</Button>
