@@ -154,7 +154,30 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
       {name !== undefined ? <input type="hidden" name={name} value={selectedValue ?? ''} /> : null}
 
       {isOpen ? (
-        <Dialog open onClose={close} title={title} size="md" className="pop-select-dialog">
+        <Dialog
+          open
+          onClose={close}
+          title={title}
+          size="md"
+          className="pop-select-dialog"
+          /*
+           * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10). 닫는 길은 우상단
+           *    [✕] 하나다.
+           *
+           * ⭐ **터치 단말이라서다.** 목록 팝업은 화면 대부분을 덮고, 손이 스치거나 장갑 낀
+           *    손가락이 가장자리를 짚는 일이 잦다. 스크림 클릭이 닫기로 이어지면 고르려던
+           *    항목을 놓치고 검색어와 쪽 위치까지 함께 사라진다 — 고르려고 연 팝업이
+           *    「누른 적 없는데 닫힌다」가 된다.
+           *
+           * ⚠ **설계는 이 자리를 정하지 않았다.** G-34 는 팝업의 «내용»(목록 스크롤 ·
+           *   페이지 위/아래 · 현재 쪽 · 검색어 지우기)만 정하고 닫는 방법을 적지 않았다.
+           *   회신이 오면 그때 맞춘다.
+           *
+           * ⚠ Escape 는 그대로 둔다 — 자판이 붙은 단말과 개발 중 확인에서 쓰는 길이고,
+           *   손이 스쳐 눌리는 자리가 아니다.
+           */
+          closeOnBackdropClick={false}
+        >
           <div className="pop-select-dialog__search">
             <TextField
               type="search"
