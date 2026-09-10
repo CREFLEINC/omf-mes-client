@@ -27,11 +27,11 @@ short_sha="${GITHUB_SHA:0:7}"
 tags=("${IMAGE_REPOSITORY}:sha-${short_sha}")
 
 [[ "$GITHUB_EVENT_NAME" == 'push' && "$GITHUB_REF" == refs/tags/* ]] || {
-  printf 'Only release tag pushes can publish the front image.\n' >&2
+  printf 'Only web release tag pushes can publish the front image.\n' >&2
   exit 1
 }
-[[ "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-  printf 'Release tag must follow vMAJOR.MINOR.PATCH: %s\n' "$GITHUB_REF_NAME" >&2
+[[ "$GITHUB_REF_NAME" =~ ^web-v[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+  printf 'Release tag must follow web-vMAJOR.MINOR.PATCH: %s\n' "$GITHUB_REF_NAME" >&2
   exit 1
 }
 tags+=("${IMAGE_REPOSITORY}:${GITHUB_REF_NAME}" "${IMAGE_REPOSITORY}:stable")

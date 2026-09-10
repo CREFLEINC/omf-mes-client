@@ -108,8 +108,12 @@ curl -s http://localhost:5173/api/health       # POP 은 5174
 
 모바일 Android 앱과 Windows POP 설치본은 관리웹 이미지에 포함하지 않고 별도 릴리스로 관리한다.
 
-`main`에 포함된 커밋에 정식 release tag(`v1.2.3` 형식)를 만들면 GitHub Actions가 관리웹을
+클라이언트 릴리스 태그는 `[platform]-vMAJOR.MINOR.PATCH` 형식으로 분류한다. 플랫폼은
+`mobile`, `web`, `desktop`이며 예시는 `mobile-v1.2.0`, `web-v1.2.0`, `desktop-v1.2.0`이다.
+
+`main`에 포함된 커밋에 정식 웹 release tag(`web-v1.2.3` 형식)를 만들면 GitHub Actions가 관리웹을
 검증·빌드하고 `hub.crefle.com/mes/front`에 버전, `stable`, `sha-xxxxxxx` 태그를 게시한다.
+`mobile-v*`와 `desktop-v*` 태그에는 이 Action이 반응하지 않는다.
 이미지 push용 Robot Account는 `REGISTRY_USERNAME`과 `REGISTRY_PASSWORD` Actions secret에만 둔다.
 현장 서버는 공개 이미지를 pull하므로 Registry 로그인이 필요하지 않다.
 
@@ -125,7 +129,7 @@ chmod +x install-deploy.sh
 
 스크립트가 다음 값을 입력받는다.
 
-- 배포할 릴리스 이미지 tag (`v1.2.3` 형식)
+- 배포할 웹 릴리스 이미지 tag (`web-v1.2.3` 형식)
 - 관리웹을 바인딩할 LAN IPv4
 - 외부 관리웹 포트 (기본 8080)
 - 경로를 제외한 백엔드 API 원점 (예: `http://<백엔드 LAN IP>:3100`)
@@ -150,7 +154,7 @@ cd /opt/services/omf-mes-front
 ```bash
 ./install-deploy.sh \
   --non-interactive \
-  --version v1.2.3 \
+  --version web-v1.2.3 \
   --bind-ip <LAN-IP> \
   --port <관리웹-포트> \
   --api-upstream <백엔드-원점> \
@@ -163,13 +167,13 @@ cd /opt/services/omf-mes-front
 
 ### 구성 의도
 
-| 결정                              | 이유                                                                                                     |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **정적 번들·Nginx가 같은 이미지** | 별도 웹 서버 설치 없이 이미지 하나로 SPA, 정적 자산 캐시와 healthcheck를 제공한다                        |
-| **동일 출처 `/api` 프록시**       | 백엔드 주소를 브라우저에 노출하지 않고 세션 쿠키와 CORS 문제를 피한다                                    |
-| **정식 버전 tag만 배포**          | 재현 가능한 설치·롤백을 위해 `vMAJOR.MINOR.PATCH`만 받고, 추적용 불변 `sha-xxxxxxx` 태그도 함께 게시한다 |
-| **고객 서버는 공개 pull**         | 이미지 push 자격증명은 GitHub Actions에만 두고 현장 서버에는 Registry 비밀을 저장하지 않는다             |
-| **Compose 파일을 설치 시 생성**   | 고객사별 LAN IP, 포트와 백엔드 원점을 저장소에 고정하지 않는다                                           |
+| 결정                              | 이유                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **정적 번들·Nginx가 같은 이미지** | 별도 웹 서버 설치 없이 이미지 하나로 SPA, 정적 자산 캐시와 healthcheck를 제공한다                            |
+| **동일 출처 `/api` 프록시**       | 백엔드 주소를 브라우저에 노출하지 않고 세션 쿠키와 CORS 문제를 피한다                                        |
+| **정식 웹 버전 tag만 배포**       | 재현 가능한 설치·롤백을 위해 `web-vMAJOR.MINOR.PATCH`만 받고, 추적용 불변 `sha-xxxxxxx` 태그도 함께 게시한다 |
+| **고객 서버는 공개 pull**         | 이미지 push 자격증명은 GitHub Actions에만 두고 현장 서버에는 Registry 비밀을 저장하지 않는다                 |
+| **Compose 파일을 설치 시 생성**   | 고객사별 LAN IP, 포트와 백엔드 원점을 저장소에 고정하지 않는다                                               |
 
 ### 아직 안 된 것 (인프라 확정 후)
 

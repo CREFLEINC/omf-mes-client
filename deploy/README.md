@@ -4,9 +4,11 @@
 
 ## 이미지 게시
 
-GitHub Actions는 `main`에 포함된 커밋에 정식 버전 태그(`vMAJOR.MINOR.PATCH`)가 생성된 경우에만 동작한다. 타입 검사, 관리웹 테스트와 이미지 빌드를 통과하면 다음 세 태그를 게시한다.
+클라이언트 릴리스 태그는 `[platform]-vMAJOR.MINOR.PATCH` 형식으로 분류한다. 플랫폼은 `mobile`, `web`, `desktop`이며 예시는 `mobile-v1.2.0`, `web-v1.2.0`, `desktop-v1.2.0`이다.
 
-- 입력한 릴리스 태그(예: `v1.2.3`)
+현재 GitHub Actions는 `main`에 포함된 커밋에 정식 웹 버전 태그(`web-vMAJOR.MINOR.PATCH`)가 생성된 경우에만 동작한다. `mobile-v*`와 `desktop-v*` 태그에는 반응하지 않는다. 타입 검사, 관리웹 테스트와 이미지 빌드를 통과하면 다음 세 태그를 게시한다.
+
+- 입력한 웹 릴리스 태그(예: `web-v1.2.3`)
 - 이동 태그 `stable`
 - 불변 커밋 태그 `sha-xxxxxxx`
 
@@ -53,7 +55,7 @@ chmod +x install-deploy.sh
 ```bash
 ./install-deploy.sh \
   --non-interactive \
-  --version v1.2.3 \
+  --version web-v1.2.3 \
   --bind-ip <LAN-IP> \
   --port <공개-포트> \
   --api-upstream <백엔드-원점> \

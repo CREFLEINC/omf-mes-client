@@ -19,7 +19,7 @@ usage() {
 사용법: install-deploy.sh [옵션]
 
 옵션:
-  --version <vMAJOR.MINOR.PATCH> 배포할 정식 릴리스 버전
+  --version <web-vMAJOR.MINOR.PATCH> 배포할 정식 웹 릴리스 버전
   --bind-ip <IPv4>             프런트 서비스를 바인딩할 LAN IPv4 주소
   --port <1-65535>             외부에 공개할 TCP 포트
   --api-upstream <URL>         /api 요청을 전달할 백엔드 원점(경로 제외)
@@ -165,7 +165,8 @@ if ((non_interactive == 0)); then
   prompt_value image_repository "이미지 저장소(예: registry.example.com/group/front)" "$image_repository"
 fi
 
-[[ "$image_tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail "배포 버전은 vMAJOR.MINOR.PATCH 형식이어야 합니다."
+[[ "$image_tag" =~ ^web-v[0-9]+\.[0-9]+\.[0-9]+$ ]] ||
+  fail "배포 버전은 web-vMAJOR.MINOR.PATCH 형식이어야 합니다."
 valid_ipv4 "$front_bind_ip" || fail "LAN 바인딩 주소는 올바른 IPv4여야 합니다."
 [[ "$front_port" =~ ^[0-9]+$ ]] || fail "포트는 숫자여야 합니다."
 ((10#$front_port >= 1 && 10#$front_port <= 65535)) || fail "포트는 1~65535 범위여야 합니다."
