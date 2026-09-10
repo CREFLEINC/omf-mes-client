@@ -4286,3 +4286,95 @@
 .pop-ui .pack-work-unit-fields .pop-select__value {
   min-height: 72px;
 }
+
+/* ── P-02-11 좌단 《현재 투입 / 현재 생산LOT》 정돈 ───────────────────────── */
+
+/*
+ * 한 자재의 셋(품목 · 번호 · 수량)을 **한 묶음으로 읽히게** 세운다(사용자 지시 2026-09-11).
+ *
+ * ⚠ 앞 판은 셋을 한 줄에 늘어놓고 줄바꿈에 맡겼다. LOT 번호가 34자리라 늘 접혔고, 접히는
+ *   자리가 자재마다 달라 「어느 수량이 어느 자재의 것인가」가 눈으로 이어지지 않았다.
+ *
+ * ⭐ 격자로 자리를 못박는다 — 품목과 수량이 «같은 줄»에 서고(수량은 오른쪽 끝), 번호는 그
+ *    품목 «바로 아래»에 붙는다. 줄 안의 사이는 좁게, 자재 사이는 넓게 두어 묶음이 갈린다.
+ *
+ * ⛔ 카드·상자·배지를 만들지 않는다 — 자리와 간격만 고친다.
+ */
+.pop-ui .pop-rc-inputs {
+  gap: var(--space-3);
+}
+
+.pop-ui .pop-rc-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-3);
+  row-gap: 2px;
+  align-items: baseline;
+}
+
+.pop-ui .pop-rc-input-item {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+/* 수량은 품목과 «같은 줄»에 선다 — 번호 옆이 아니라. */
+.pop-ui .pop-rc-input-qty {
+  grid-column: 2;
+  grid-row: 1;
+  margin-inline-start: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 번호는 한 단계 낮다 — 색은 그대로 두고 글자만 보조 크기로 내린다. */
+.pop-ui .pop-rc-input-lot {
+  grid-column: 1;
+  grid-row: 2;
+  font-size: var(--pop-label);
+}
+
+/*
+ * 금형 한 줄 — 번호 · 이름 · 타발수 · 잔여 넷이 한 덩이로 보이던 것을 갈라 놓는다.
+ *
+ * ⭐ 번호만 굵게 두고 나머지는 보조색으로 내린다. 사이는 넓혀 낱말 묶음이 서로 붙지 않게 한다.
+ */
+.pop-ui .pop-rc-mold {
+  column-gap: var(--space-4);
+  row-gap: 2px;
+  margin-block-start: var(--space-5);
+}
+
+.pop-ui .pop-rc-mold > span:nth-child(2) {
+  font-weight: 600;
+}
+
+.pop-ui .pop-rc-mold > span:nth-child(n + 3) {
+  color: var(--on-surface-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 금형 줄 다음에 오는 표제 — 붙어 있으면 금형이 그 표제에 딸린 것처럼 읽힌다. */
+.pop-ui .pop-rc-mold + section > .pane-title,
+.pop-ui .pop-rc-mold ~ section > .pane-title {
+  margin-block-start: var(--space-5);
+}
+
+/* 생산LOT 줄 — 표제와 붙지 않게 사이를 두고, 진척은 위 수량과 같은 열에 세운다. */
+.pop-ui .pop-rc-lot {
+  margin-block-start: var(--space-3);
+}
+
+.pop-ui .pop-rc-lot-progress {
+  color: var(--on-surface-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 경고 띠와 위 구획 사이 — 붙어 있으면 띠가 생산LOT 줄에 딸린 말처럼 읽힌다.
+ *
+ * ⚠ 띠는 생산LOT 줄의 «형제»가 아니다 — 그 줄을 감싼 구획 다음에 선다. 그래서 줄이 아니라
+ *   구획을 짚는다.
+ */
+.pop-ui .pop-rc-inputs ~ section + .banner-slot,
+.pop-ui .pane > section + .banner-slot {
+  margin-block-start: var(--space-4);
+}

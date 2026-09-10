@@ -70,7 +70,13 @@ export const CurrentInputs = ({
         )}
         {!moldFailed && mold !== null && (
           <>
-            <span>{`${mold.moldCode} ${mold.moldName}`}</span>
+            {/*
+             * 번호와 이름을 «두 칸»으로 가른다(사용자 지시 2026-09-11) — 한 글자열로 두면
+             * 번호와 이름이 한 덩이로 읽혀 무엇이 식별자인지 눈이 다시 찾는다. 굵기와 색은
+             * 스타일이 가른다.
+             */}
+            <span>{mold.moldCode}</span>
+            <span>{mold.moldName}</span>
             <span>{t.current.moldShotCount(mold.currentShotCount)}</span>
             <span>
               {mold.availableShotCount === null

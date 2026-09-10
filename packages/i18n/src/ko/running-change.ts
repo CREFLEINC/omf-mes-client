@@ -38,8 +38,12 @@ export const runningChange = {
     moldNone: '이 세션에 물린 금형이 없습니다',
     /** 세션이 없으면 금형을 «알 수 없다» — 「없다」와 다르다. 비워 두면 둘이 한 모양이 된다. */
     moldNoSession: '세션이 없어 물린 금형을 알 수 없습니다',
-    moldShotCount: (current: number) => `타발수 ${current}`,
-    moldShotRemaining: (remaining: number) => `잔여 ${remaining}`,
+    /*
+     * ⭐ 자릿수를 끊어 적는다(`128,400`) — 여섯 자리를 한 덩이로 두면 눈이 자릿수를 세야 한다.
+     *   자매 화면 `P-05-01` 이 같은 값을 같은 방법으로 적는다. ⛔ 값 자체는 그대로다.
+     */
+    moldShotCount: (current: number) => `타발수 ${current.toLocaleString('ko-KR')}`,
+    moldShotRemaining: (remaining: number) => `잔여 ${remaining.toLocaleString('ko-KR')}`,
     moldShotRemainingUnknown: '잔여 산출 불가',
     /** 적정 타수를 넘었어도 등록을 막지 않는다 — 경고만 낸다(스펙 §6). */
     moldShotExceeded: '적정 타수를 넘었습니다. 담당자에게 확인하세요.',
