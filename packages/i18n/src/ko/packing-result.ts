@@ -85,7 +85,6 @@ export const packingResult = {
   notes: {
     /** 후보가 없는 것은 고장이 아니다(스펙 §5-2-1). */
     parentEmpty: '이 창고에 담을 상위 포장이 없습니다. 없이 확정할 수 있습니다',
-    qtyWaiting: '생산LOT 을 읽으면 수량을 칠 수 있습니다',
     typeUnavailable: '포장 유형을 받지 못했습니다. 다시 시도해 주세요',
   },
   progress: {

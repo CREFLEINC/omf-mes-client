@@ -571,9 +571,12 @@ export const PackingResultScreen = () => {
            * 이 구획의 남는 «가로»를 쓴다. 담을 LOT 이 정해졌을 때만 선다.
            */}
           <div className="packing-keypad">
-            {packable === undefined ? (
-              <p className="field-note">{t.notes.qtyWaiting}</p>
-            ) : (
+            {/*
+             * ⛔ **읽기 전에 안내 문장을 세우지 않는다**(사용자 지적 2026-09-10). 「생산LOT 을
+             *   읽으면 수량을 칠 수 있습니다」는 스펙에 없는 문장이고, 스캔이 곧 다음 걸음이라
+             *   그 사실은 잠긴 생산LOT 칸이 이미 말한다.
+             */}
+            {packable === undefined ? null : (
               <>
                 {/*
                  * ⭐ **친 값을 여기서 보인다.** DS 키패드는 키만 그리고 버퍼를 보이지 않는다 —
@@ -599,23 +602,24 @@ export const PackingResultScreen = () => {
           </div>
         </section>
 
+        {/*
+         * ⭐ **OQC 상태는 제 줄이고 늘 선다**(스펙 §3 도면 · 사용자 지적 2026-09-10). ④ 진행
+         *   줄에 끼워 두었더니 「포장 N 개 · 미포장 N」과 한 덩어리로 읽혔는데, 이 값은 진행
+         *   수치가 아니라 **납품 라벨을 낼 수 있는가를 가르는 게이트**다(§7). 값이 있을 때만 세우면
+         *   출하를 고르기 전에는 줄 자체가 없어, 납품 라벨이 무엇에 걸려 있는지 볼 자리가
+         *   사라진다. ⛔ 값이 없을 때 문장으로 채우지 않는다 — 자리만 지킨다.
+         */}
+        <section className="packing-oqc" aria-label={t.oqc.label}>
+          <span className="field-label">{t.oqc.label}</span>
+          <span>{oqcStatuses.join(' · ')}</span>
+        </section>
+
         {/* ④ 진행 — ⛔ 「예상 N」이 없어 분모가 없다. 진행 막대를 그리지 않는다(§3-3). */}
         <section className="packing-progress" aria-label={t.panes.progress}>
           <span>{t.progress.packed(progress.packedCount)}</span>
           <span>{t.progress.unpacked(progress.unpackedQty)}</span>
         </section>
 
-        {/*
-         * ⭐ **OQC 상태는 제 줄이다**(스펙 §3 도면 · 사용자 지적 2026-09-10). ④ 진행 줄에 끼워
-         *   두었더니 「포장 N 개 · 미포장 N」과 한 덩어리로 읽혔는데, 이 값은 진행 수치가 아니라
-         *   **납품 라벨을 낼 수 있는가를 가르는 게이트**다(§7).
-         */}
-        {oqcStatuses.length > 0 && (
-          <section className="packing-oqc" aria-label={t.oqc.label}>
-            <span className="field-label">{t.oqc.label}</span>
-            <span>{oqcStatuses.join(' · ')}</span>
-          </section>
-        )}
       </div>
 
       {/* 액션바 88 — 화면 바닥에 고정한다. 본문이 밀어내면 확정이 화면 밖으로 나간다. */}
