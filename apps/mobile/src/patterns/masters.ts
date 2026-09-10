@@ -9,6 +9,7 @@ export const masterKeys = {
   uoms: () => ['master-uoms'] as const,
   suppliers: () => ['master-suppliers'] as const,
   customers: () => ['master-customers'] as const,
+  defectCodes: () => ['master-defect-codes'] as const,
 };
 
 export interface ItemSummary {
@@ -143,6 +144,42 @@ export const useCustomerNames = (enabled: boolean): UseQueryResult<Map<number, s
       );
 
       return new Map(data.items.map((partner) => [partner.partnerId, partner.partnerName]));
+    },
+  });
+};
+
+export interface DefectCodeLabel {
+  defectCode: string;
+  defectName: string;
+}
+
+/**
+ * 불량 코드 이름표.
+ *
+ * 불량 기록은 코드의 대리키만 준다. 그 번호를 그대로 보이면 한 LOT 에 불량이 여럿일 때
+ * 무엇을 고르는지 알 수 없다 - 수량이 같은 둘이면 고를 수가 없다.
+ *
+ * 쓰지 않게 된 코드로 남은 과거 기록도 이름이 나오게 한다.
+ */
+export const useDefectCodes = (enabled: boolean): UseQueryResult<Map<number, DefectCodeLabel>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: masterKeys.defectCodes(),
+    enabled,
+    queryFn: async () => {
+      const data = await runRequest(() =>
+        client.GET('/quality/defect-codes', {
+          params: { query: { includeInactive: true, size: 200 } },
+        }),
+      );
+
+      return new Map(
+        data.items.map((code) => [
+          code.defectCodeId,
+          { defectCode: code.defectCode, defectName: code.nameKo ?? code.defectName },
+        ]),
+      );
     },
   });
 };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  MATCHED,
   canSubmit,
   destinationOf,
   differsFromExpected,
@@ -90,7 +91,19 @@ describe('인식표 수량과의 차이', () => {
 
   /* 차이가 있어도 막지 않는다. 막으면 물건이 갈 곳이 없다. */
   it('차이가 있어도 완료할 수 있다', () => {
-    expect(canSubmit(warehouse(), location(), [line({ qty: '498' })], true, 1001, 0)).toBe(true);
+    expect(
+      canSubmit({
+        warehouse: warehouse(),
+        destination: location(),
+        lines: [line({ qty: '498' })],
+        hasWorker: true,
+        plantId: 1001,
+        queuedForLots: 0,
+        verdict: MATCHED,
+        confirmedNoRule: false,
+        stocked: new Map(),
+      }),
+    ).toBe(true);
   });
 });
 
@@ -136,36 +149,132 @@ describe('완료 가능 여부', () => {
   const lines = [line()];
 
   it('창고를 안 고르면 완료할 수 없다', () => {
-    expect(canSubmit(null, location(), lines, true, 1001, 0)).toBe(false);
+    expect(
+      canSubmit({
+        warehouse: null,
+        destination: location(),
+        lines: lines,
+        hasWorker: true,
+        plantId: 1001,
+        queuedForLots: 0,
+        verdict: MATCHED,
+        confirmedNoRule: false,
+        stocked: new Map(),
+      }),
+    ).toBe(false);
   });
 
   it('목적지가 없으면 완료할 수 없다', () => {
-    expect(canSubmit(warehouse(), null, lines, true, 1001, 0)).toBe(false);
+    expect(
+      canSubmit({
+        warehouse: warehouse(),
+        destination: null,
+        lines: lines,
+        hasWorker: true,
+        plantId: 1001,
+        queuedForLots: 0,
+        verdict: MATCHED,
+        confirmedNoRule: false,
+        stocked: new Map(),
+      }),
+    ).toBe(false);
   });
 
   it('사번이 없으면 완료할 수 없다', () => {
-    expect(canSubmit(warehouse(), location(), lines, false, 1001, 0)).toBe(false);
+    expect(
+      canSubmit({
+        warehouse: warehouse(),
+        destination: location(),
+        lines: lines,
+        hasWorker: false,
+        plantId: 1001,
+        queuedForLots: 0,
+        verdict: MATCHED,
+        confirmedNoRule: false,
+        stocked: new Map(),
+      }),
+    ).toBe(false);
   });
 
   it('단말 공장을 모르면 완료할 수 없다', () => {
-    expect(canSubmit(warehouse(), location(), lines, true, null, 0)).toBe(false);
+    expect(
+      canSubmit({
+        warehouse: warehouse(),
+        destination: location(),
+        lines: lines,
+        hasWorker: true,
+        plantId: null,
+        queuedForLots: 0,
+        verdict: MATCHED,
+        confirmedNoRule: false,
+        stocked: new Map(),
+      }),
+    ).toBe(false);
   });
 
   it('담긴 것이 없으면 완료할 수 없다', () => {
-    expect(canSubmit(warehouse(), location(), [], true, 1001, 0)).toBe(false);
+    expect(
+      canSubmit({
+        warehouse: warehouse(),
+        destination: location(),
+        lines: [],
+        hasWorker: true,
+        plantId: 1001,
+        queuedForLots: 0,
+        verdict: MATCHED,
+        confirmedNoRule: false,
+        stocked: new Map(),
+      }),
+    ).toBe(false);
   });
 
   it('수량이 잘못된 줄이 있으면 완료할 수 없다', () => {
-    expect(canSubmit(warehouse(), location(), [line({ qty: '0' })], true, 1001, 0)).toBe(false);
+    expect(
+      canSubmit({
+        warehouse: warehouse(),
+        destination: location(),
+        lines: [line({ qty: '0' })],
+        hasWorker: true,
+        plantId: 1001,
+        queuedForLots: 0,
+        verdict: MATCHED,
+        confirmedNoRule: false,
+        stocked: new Map(),
+      }),
+    ).toBe(false);
   });
 
   /* 서버 응답에는 아직 안 간 건이 없다. 큐를 세지 않으면 같은 LOT 이 두 번 재고로 선다. */
   it('큐에 이 LOT 의 입고가 담겨 있으면 완료할 수 없다', () => {
-    expect(canSubmit(warehouse(), location(), lines, true, 1001, 1)).toBe(false);
+    expect(
+      canSubmit({
+        warehouse: warehouse(),
+        destination: location(),
+        lines: lines,
+        hasWorker: true,
+        plantId: 1001,
+        queuedForLots: 1,
+        verdict: MATCHED,
+        confirmedNoRule: false,
+        stocked: new Map(),
+      }),
+    ).toBe(false);
   });
 
   it('다 서면 완료한다', () => {
-    expect(canSubmit(warehouse(), location(), lines, true, 1001, 0)).toBe(true);
+    expect(
+      canSubmit({
+        warehouse: warehouse(),
+        destination: location(),
+        lines: lines,
+        hasWorker: true,
+        plantId: 1001,
+        queuedForLots: 0,
+        verdict: MATCHED,
+        confirmedNoRule: false,
+        stocked: new Map(),
+      }),
+    ).toBe(true);
   });
 });
 

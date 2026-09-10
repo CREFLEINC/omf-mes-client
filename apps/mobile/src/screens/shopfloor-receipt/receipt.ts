@@ -85,8 +85,8 @@ export const isShort = (line: DraftLine): boolean =>
  * 데이터베이스는 사유를 비워 두게 두지만 화면은 요구한다 - 왜 모자란지를 아는 사람은 물건을
  * 받은 그 자리에 있고, 전표만 남으면 수량이 왜 갈렸는지가 사라진다.
  *
- * 다만 고를 것이 없으면 요구하지 않는다. 사유 값 목록은 아직 확정 전이라 실서버에서 빈
- * 목록이 오는데, 그때도 요구하면 부족 수령을 영영 확정하지 못한다 - 물건은 이미 와 있다.
+ * 다만 고를 것이 없으면 요구하지 않는다. 사유는 고객이 늘리는 값이라 현장에서 비어 올 수
+ * 있는데, 그때도 요구하면 부족 수령을 영영 확정하지 못한다 - 물건은 이미 와 있다.
  */
 export const needsReason = (line: DraftLine, hasReasonOptions: boolean): boolean =>
   hasReasonOptions && isShort(line) && line.reasonCode === '';

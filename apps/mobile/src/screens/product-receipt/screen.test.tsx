@@ -14,6 +14,13 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { ProductReceiptScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+const tone = vi.hoisted(() => ({ played: 0 }));
+
+vi.mock('../../patterns/error-tone', () => ({
+  playErrorTone: () => {
+    tone.played += 1;
+  },
+}));
 /** 단말 보관소가 거절하는 상황을 만든다. 담기지 못한 것을 화면이 말하는지 보기 위해서다. */
 const held = vi.hoisted(() => ({ failWrite: null as string | null }));
 const claims = vi.hoisted(() => ({ plantId: 1001 as number | null }));
@@ -61,6 +68,16 @@ interface Options {
   seen?: Request[];
   /** 물어본 주소를 모은다. */
   asked?: string[];
+  /** 이 품목에 정해진 자리가 없다 - 규칙이 비어 있는 갈래다. */
+  noRule?: boolean;
+  /** 규칙이 다른 자리를 가리킨다 - 스캔한 곳이 권장이 아닌 갈래다. */
+  recommendsOther?: boolean;
+  /** 이 LOT 이 이미 재고로 서 있다 - 다른 기기가 먼저 입고한 갈래다. */
+  alreadyStocked?: boolean;
+  /** 재고 조회가 닿지 않는다 - 오프라인에서 이 판정을 할 수 없는 자리다. */
+  stockUnreachable?: boolean;
+  /** 한 인식표에 품목이 둘이다 - 어느 규칙으로 재야 할지 정해진 것이 없는 자리다. */
+  twoItems?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -126,6 +143,18 @@ const routes = (options: Options = {}): StubRoute[] => [
                   qty: 500,
                   uomId: 1001,
                 },
+                ...(options.twoItems === true
+                  ? [
+                      {
+                        handlingUnitContentId: 6102,
+                        handlingUnitId: 6001,
+                        itemId: 2102,
+                        lotId: 8202,
+                        qty: 200,
+                        uomId: 1001,
+                      },
+                    ]
+                  : []),
               ],
       }),
   },
@@ -217,10 +246,54 @@ const routes = (options: Options = {}): StubRoute[] => [
     },
   },
   {
+    match: (req) => new URL(req.url).pathname === '/logistics/putaway-rules',
+    respond: () =>
+      jsonResponse({
+        items:
+          options.noRule === true
+            ? []
+            : [
+                {
+                  putawayRuleId: 4401,
+                  itemId: 2101,
+                  warehouseId: 1002,
+                  locationId: options.recommendsOther === true ? 3199 : 3101,
+                  capacityQty: 1000,
+                  uomId: 1001,
+                  priorityNo: 1,
+                  isActive: true,
+                },
+              ],
+        page,
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/inventory/balances',
+    respond: () => {
+      if (options.stockUnreachable === true) {
+        return jsonResponse(
+          { code: 'SERVICE_UNAVAILABLE', message: '연결할 수 없습니다.', errors: [] },
+          { status: 503 },
+        );
+      }
+
+      return jsonResponse({
+        items:
+          options.alreadyStocked === true
+            ? [{ balanceId: 7001, lotId: 8201, locationId: 3101, onHandQty: 500 }]
+            : [],
+        page,
+      });
+    },
+  },
+  {
     match: (req) => new URL(req.url).pathname === '/mdm/items',
     respond: () =>
       jsonResponse({
-        items: [{ itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' }],
+        items: [
+          { itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' },
+          { itemId: 2102, itemCode: 'FG-1002', itemName: '완제품B', fifoPolicyCode: 'FEFO' },
+        ],
         page,
       }),
   },
@@ -249,7 +322,7 @@ const mount = (options: Options = {}) =>
   );
 
 const scanUnit = (value: string) => {
-  const field = screen.getByLabelText('인식표 스캔') as HTMLInputElement;
+  const field = screen.getByLabelText(/인식표 스캔/) as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, value);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -284,6 +357,7 @@ beforeEach(() => {
   claims.plantId = 1001;
   store.clear();
   localStorage.clear();
+  tone.played = 0;
 });
 
 describe('제품 입고·적치 화면', () => {
@@ -496,5 +570,107 @@ describe('제품 입고·적치 화면', () => {
     await openUnit(user);
 
     expect(await screen.findByText(/담긴 물건이 없습니다/)).toBeTruthy();
+  });
+
+  /* 다른 칸에 두면 다음 피킹이 물건을 찾지 못한다. 서버도 막는다. */
+  it('권장과 다른 위치를 스캔하면 막고 권장 위치를 말한다', async () => {
+    const user = userEvent.setup();
+    mount({ recommendsOther: true });
+    await openUnit(user);
+    await pickLocation(user);
+
+    expect(await screen.findByText('권장 위치 FG-DEFAULT 이(가) 아닙니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
+    expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /* 권장 자리를 먼저 보인다. 다 스캔한 뒤에 막히면 물건을 들고 되돌아온다. */
+  it('권장 위치를 스캔 전에 보이고 맞으면 맞다고 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openUnit(user);
+
+    expect(await screen.findByText(`권장 위치 ${LOC_CODE}`)).toBeTruthy();
+
+    await pickLocation(user);
+
+    expect(await screen.findByText('권장 위치와 같습니다')).toBeTruthy();
+    await readyToSubmit();
+  });
+
+  /* 규칙이 없다고 막으면 미등록 품목이 적치 자체를 못 해 현장이 선다. */
+  it('정해진 자리가 없으면 그 사실을 말하고 확인을 받아 통과시킨다', async () => {
+    const user = userEvent.setup();
+    mount({ noRule: true });
+    await openUnit(user);
+    await pickLocation(user);
+
+    expect(await screen.findByText('이 품목에 정해진 자리가 없습니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));
+
+    await readyToSubmit();
+  });
+
+  /* 이 화면이 재고를 세우는 지점이다. 두 번 서면 같은 제품이 두 벌이 된다. */
+  it('다른 기기가 먼저 입고한 LOT 은 막는다', async () => {
+    const user = userEvent.setup();
+    mount({ alreadyStocked: true });
+    await openUnit(user);
+    await pickLocation(user);
+
+    expect(await screen.findByText('이미 입고 처리된 제품 LOT 입니다')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
+  });
+
+  /* 확인하지 못한 것을 서 있지 않은 것으로 읽지 않는다. 다만 막지도 않는다. */
+  it('이미 입고됐는지 확인하지 못하면 그 사실을 밝히되 막지는 않는다', async () => {
+    const user = userEvent.setup();
+    mount({ stockUnreachable: true });
+    await openUnit(user);
+    await pickLocation(user);
+
+    expect(await screen.findByText('이미 입고됐는지 확인할 수 없습니다')).toBeTruthy();
+    await readyToSubmit();
+  });
+
+  /* 장갑을 끼고 한 손으로 조작한다. 기기 키보드는 위치 스캔 칸과 완료 단추를 덮는다. */
+  it('실물 수량을 숫자판으로 넣는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await openUnit(user);
+
+    await user.click(await screen.findByLabelText(/FG-1001 · FG-2026-000311 실물 수량/));
+    await user.click(await screen.findByRole('button', { name: '8' }));
+
+    expect(await screen.findByDisplayValue('5008')).toBeTruthy();
+  });
+
+  /* 기기를 허리에 매단 채 읽는다. 화면에만 적으면 통과한 줄 알고 다음 동작으로 넘어간다. */
+  it('인식표를 찾지 못한 것을 소리로도 알린다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickWarehouse(user);
+
+    scanUnit('HU-2026-999999');
+
+    await screen.findByText('HU-2026-999999 인식표를 찾지 못했습니다');
+    expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /* 첫 줄의 규칙으로 재면 다른 품목의 옳은 자리를 막아 현장이 선다. */
+  it('한 인식표에 품목이 여럿이면 규칙으로 재지 않고 확인을 받는다', async () => {
+    const user = userEvent.setup();
+    mount({ twoItems: true, recommendsOther: true });
+    await openUnit(user);
+    await pickLocation(user);
+
+    expect(await screen.findByText('이 품목에 정해진 자리가 없습니다')).toBeTruthy();
+    expect(screen.queryByText('권장 위치 FG-DEFAULT 이(가) 아닙니다')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));
+
+    await readyToSubmit();
   });
 });

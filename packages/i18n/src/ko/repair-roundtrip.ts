@@ -17,6 +17,8 @@ export const repairRoundtrip = {
   offline: {
     title: '연결이 있어야 할 수 있습니다',
     description: '수리 투입과 반출은 연결이 있는 동안에만 기록됩니다. 연결을 확인하세요.',
+    /** 하다가 끊긴 것은 다르다. 스캔한 것을 지우지 않고 저장만 미룬다. */
+    duringWork: '연결이 끊겼습니다. 스캔한 것은 그대로 두었으니 연결되면 이어서 하세요.',
   },
   scan: {
     label: '불량 LOT 스캔',
@@ -24,6 +26,9 @@ export const repairRoundtrip = {
     loading: 'LOT을 찾는 중입니다',
     loadFailed: 'LOT을 확인할 수 없습니다. 연결을 확인한 뒤 다시 스캔하세요.',
     notFound: (code: string) => `${code} LOT을 찾지 못했습니다`,
+    /** 스캐너가 못 읽는 라벨이 있다. 스캔 칸 자체를 열어 손으로 넣는다. */
+    manualLabel: '직접 입력',
+    manualSubmit: '입력한 값으로 찾기',
   },
   defect: {
     legend: '불량 정보',
@@ -35,6 +40,9 @@ export const repairRoundtrip = {
     window: (days: number) => `최근 ${String(days)}일 안에서 찾았습니다`,
     pick: '수리할 불량을 고르세요',
     qty: (qty: string, uom: string) => `불량 ${qty} ${uom}`,
+    /** 수량만으로는 고를 수 없다. 무엇이 잘못됐는지가 고르는 기준이다. */
+    code: (code: string, name: string) => `${code} ${name}`,
+    unknownCode: '불량 코드를 확인할 수 없습니다',
     detectedAt: (at: string) => `검출 ${at}`,
   },
   qty: {
@@ -78,5 +86,4 @@ export const repairRoundtrip = {
     },
   },
   noWorker: '사번을 확인한 뒤에 기록할 수 있습니다',
-  another: '다음 LOT 스캔',
 } as const;

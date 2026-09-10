@@ -14,6 +14,13 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { RepairRoundtripScreen } from './screen';
 
 const store = vi.hoisted(() => new Map<string, string>());
+const tone = vi.hoisted(() => ({ played: 0 }));
+
+vi.mock('../../patterns/error-tone', () => ({
+  playErrorTone: () => {
+    tone.played += 1;
+  },
+}));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
@@ -56,6 +63,11 @@ const defect = {
   detectedAt: '2026-08-12T10:22:00+09:00',
 };
 
+const defectCodes = [
+  { defectCodeId: 12, defectCode: 'EXT-002', defectName: '외관 스크래치', isActive: true },
+  { defectCodeId: 13, defectCode: 'DIM-004', defectName: '치수 초과', isActive: true },
+];
+
 const execution = {
   repairExecutionId: 1001,
   defectRecordId: 501,
@@ -66,6 +78,9 @@ const execution = {
 
 interface Options {
   defects?: unknown[];
+  /** 이름표를 늦게 주는 서버. 받기 전과 받은 뒤가 다른 말을 하는지 재는 자리다. */
+  codesGate?: Promise<void>;
+  codesStatus?: number;
   /** 스캔한 LOT 의 열린 건. 서버가 lotId 로 걸러 준 결과다. */
   open?: unknown[];
   /** 전체 열린 건. 거르지 않고 물었을 때 오는 것으로, 아래 목록이 쓴다. */
@@ -85,6 +100,16 @@ const routes = (options: Options = {}): StubRoute[] => [
   {
     match: (request) => new URL(request.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
+  },
+  {
+    match: (request) => new URL(request.url).pathname === '/quality/defect-codes',
+    respond: async () => {
+      await options.codesGate;
+
+      return options.codesStatus === undefined
+        ? jsonResponse({ items: defectCodes, page })
+        : jsonResponse({ message: '실패' }, { status: options.codesStatus });
+    },
   },
   {
     match: (request) => new URL(request.url).pathname === '/quality/defect-records',
@@ -131,7 +156,7 @@ const mount = (extra: StubRoute[] = [], options: Options = {}) =>
   );
 
 const scan = (code: string) => {
-  const field = screen.getByLabelText('불량 LOT 스캔') as HTMLInputElement;
+  const field = screen.getByLabelText(/불량 LOT 스캔/) as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -144,6 +169,7 @@ const setOnline = (value: boolean) => {
 beforeEach(() => {
   store.clear();
   setOnline(true);
+  tone.played = 0;
 });
 
 afterEach(() => {
@@ -157,13 +183,13 @@ describe('수리 왕복 스캔 화면', () => {
     mount();
 
     expect(await screen.findByText('연결이 있어야 할 수 있습니다')).toBeTruthy();
-    expect(screen.queryByLabelText('불량 LOT 스캔')).toBeNull();
+    expect(screen.queryByLabelText(/불량 LOT 스캔/)).toBeNull();
   });
 
   it('불량이 없으면 불량 LOT이 아니라고 말하고 조회한 창의 길이를 함께 말한다', async () => {
     mount([], { defects: [] });
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
     expect(await screen.findByText('불량 판정된 LOT이 아닙니다')).toBeTruthy();
@@ -174,7 +200,7 @@ describe('수리 왕복 스캔 화면', () => {
   it('불량 조회가 실패한 것을 불량 없음으로 말하지 않는다', async () => {
     mount([], { defectsStatus: 500 });
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
     expect(
@@ -186,7 +212,7 @@ describe('수리 왕복 스캔 화면', () => {
   it('불량을 찾으면 LOT과 품목과 불량 수량을 보인다', async () => {
     mount();
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
     expect(await screen.findByText('불량 40 EA')).toBeTruthy();
@@ -197,7 +223,7 @@ describe('수리 왕복 스캔 화면', () => {
   it('이미 열린 수리 건이 있으면 투입을 막고 그 사실을 말한다', async () => {
     mount([], { open: [execution] });
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
     expect(await screen.findByText('이미 수리 투입되었습니다')).toBeTruthy();
@@ -208,11 +234,11 @@ describe('수리 왕복 스캔 화면', () => {
     const user = userEvent.setup();
     mount();
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
 
-    await user.type(screen.getByLabelText('수리 수량'), '41');
+    await user.type(screen.getByLabelText(/수리 수량/), '41');
 
     expect(await screen.findByText('수리 수량은 불량 수량 40을(를) 넘을 수 없습니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '투입 등록' }).hasAttribute('disabled')).toBe(true);
@@ -234,11 +260,11 @@ describe('수리 왕복 스캔 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
 
-    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.type(screen.getByLabelText(/수리 수량/), '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
 
     await waitFor(() => {
@@ -274,11 +300,11 @@ describe('수리 왕복 스캔 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
 
-    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.type(screen.getByLabelText(/수리 수량/), '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
 
     await waitFor(() => {
@@ -311,22 +337,21 @@ describe('수리 왕복 스캔 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
-    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.type(screen.getByLabelText(/수리 수량/), '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
 
     await waitFor(() => {
       expect(seen).toHaveLength(1);
     });
 
-    await user.click(await screen.findByRole('button', { name: '다음 LOT 스캔' }));
-
-    await screen.findByLabelText('불량 LOT 스캔');
+    /* 기록한 뒤 화면이 스스로 스캔 자리를 비운다. 다음 라벨을 바로 읽는다. */
+    await screen.findByText('수리 투입을 기록했습니다');
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
-    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.type(screen.getByLabelText(/수리 수량/), '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
 
     await waitFor(() => {
@@ -360,13 +385,13 @@ describe('수리 왕복 스캔 화면', () => {
       { defects: [defect, other] },
     );
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
     const picks = await screen.findAllByRole('button', { name: /불량 \d+ EA/ });
 
     await user.click(picks[0] as HTMLElement);
-    await user.type(await screen.findByLabelText('수리 수량'), '20');
+    await user.type(await screen.findByLabelText(/수리 수량/), '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
 
     await waitFor(() => {
@@ -374,7 +399,7 @@ describe('수리 왕복 스캔 화면', () => {
     });
 
     await user.click(screen.getAllByRole('button', { name: /불량 \d+ EA/ })[1] as HTMLElement);
-    await user.type(await screen.findByLabelText('수리 수량'), '20');
+    await user.type(await screen.findByLabelText(/수리 수량/), '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
 
     await waitFor(() => {
@@ -410,11 +435,11 @@ describe('수리 왕복 스캔 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
 
-    const field = screen.getByLabelText('수리 수량');
+    const field = screen.getByLabelText(/수리 수량/);
 
     await user.type(field, '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
@@ -458,11 +483,11 @@ describe('수리 왕복 스캔 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
 
-    const field = screen.getByLabelText('수리 수량');
+    const field = screen.getByLabelText(/수리 수량/);
 
     await user.type(field, '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
@@ -499,11 +524,11 @@ describe('수리 왕복 스캔 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
 
-    const field = screen.getByLabelText('수리 수량');
+    const field = screen.getByLabelText(/수리 수량/);
 
     await user.type(field, '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
@@ -542,7 +567,7 @@ describe('수리 왕복 스캔 화면', () => {
       { open: [execution], openAll: [execution] },
     );
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
     await user.click(await screen.findByRole('button', { name: '수리 성공' }));
@@ -587,7 +612,7 @@ describe('수리 왕복 스캔 화면', () => {
       { open: [execution, other], openAll: [execution, other] },
     );
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
 
@@ -631,7 +656,7 @@ describe('수리 왕복 스캔 화면', () => {
       { open: [execution], openAll: [execution] },
     );
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
     await user.click(await screen.findByRole('button', { name: '수리 성공' }));
@@ -675,7 +700,7 @@ describe('수리 왕복 스캔 화면', () => {
       { open: [execution], openAll: [execution] },
     );
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await user.click(await screen.findByRole('tab', { name: '수리 반출' }));
     await user.click(await screen.findByRole('button', { name: '수리 성공' }));
@@ -726,10 +751,10 @@ describe('수리 왕복 스캔 화면', () => {
       { open: [{ ...execution, defectRecordId: 599 }], openAll: [execution] },
     );
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
-    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.type(screen.getByLabelText(/수리 수량/), '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
 
     await waitFor(() => {
@@ -760,11 +785,11 @@ describe('수리 왕복 스캔 화면', () => {
       },
     ]);
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
 
-    await user.type(screen.getByLabelText('수리 수량'), '20');
+    await user.type(screen.getByLabelText(/수리 수량/), '20');
     await user.click(screen.getByRole('button', { name: '투입 등록' }));
 
     expect(await screen.findByText('이미 수리 투입되었습니다')).toBeTruthy();
@@ -775,7 +800,7 @@ describe('수리 왕복 스캔 화면', () => {
     const user = userEvent.setup();
     mount();
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await screen.findByText('불량 40 EA');
 
@@ -801,7 +826,7 @@ describe('수리 왕복 스캔 화면', () => {
       { open: [execution] },
     );
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await user.click(screen.getByRole('tab', { name: '수리 반출' }));
     await screen.findByRole('button', { name: '수리 실패' });
@@ -855,7 +880,7 @@ describe('수리 왕복 스캔 화면', () => {
     const user = userEvent.setup();
     mount([], { open: [execution] });
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await user.click(screen.getByRole('tab', { name: '수리 반출' }));
 
@@ -869,7 +894,7 @@ describe('수리 왕복 스캔 화면', () => {
     const user = userEvent.setup();
     mount([], { open: [execution] });
 
-    await screen.findByLabelText('불량 LOT 스캔');
+    await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
     await user.click(screen.getByRole('tab', { name: '수리 반출' }));
 
@@ -883,5 +908,120 @@ describe('수리 왕복 스캔 화면', () => {
 
     expect(await screen.findByText('수리 중 1건')).toBeTruthy();
     expect(screen.getByRole('table')).toBeTruthy();
+  });
+
+  /*
+   * 설계는 들어올 때 끊긴 것과 하다가 끊긴 것을 가른다. 하다가 끊겼는데 화면을 갈아치우면
+   * 값이 남아 있어도 작업자에게는 사라진 것으로 보여 스캔을 처음부터 다시 한다.
+   */
+  it('하다가 끊기면 스캔한 것을 그대로 두고 저장만 막는다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+    await user.type(screen.getByLabelText(/수리 수량/), '20');
+
+    setOnline(false);
+    window.dispatchEvent(new Event('offline'));
+
+    expect(
+      await screen.findByText(
+        '연결이 끊겼습니다. 스캔한 것은 그대로 두었으니 연결되면 이어서 하세요.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('불량 40 EA')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '투입 등록' })).toBeDisabled();
+  });
+
+  /* 한 LOT 에 불량이 여럿이면 수량만으로는 고를 수 없다. 무엇이 잘못됐는지가 기준이다. */
+  it('불량 코드와 이름을 확인 카드와 고르는 자리에 함께 보인다', async () => {
+    const other = { ...defect, defectRecordId: 502, defectCodeId: 13, defectQty: 40 };
+    mount([], { defects: [defect, other] });
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+
+    expect(await screen.findByRole('button', { name: /EXT-002 외관 스크래치/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /DIM-004 치수 초과/ })).toBeTruthy();
+  });
+
+  /* 스캐너가 못 읽는 라벨이 있다. 스캔 칸은 키보드를 꺼 둔 자리라 길을 따로 열어야 한다. */
+  it('스캔 칸을 손으로 쳐서 넣을 수 있다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await user.type(screen.getByLabelText(/불량 LOT 스캔/), SCANNED);
+    await user.click(screen.getByRole('button', { name: '입력한 값으로 찾기' }));
+
+    expect(await screen.findByText('불량 40 EA')).toBeTruthy();
+  });
+
+  /* 기기를 허리에 매단 채 읽는다. 화면에만 적으면 통과한 줄 알고 다음 동작으로 넘어간다. */
+  it('불량 LOT 이 아닌 것을 소리로도 알린다', async () => {
+    mount([], { defects: [] });
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+
+    await screen.findByText('불량 판정된 LOT이 아닙니다');
+    expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /* 결과 화면으로 갈아치우면 방금 늘어난 목록이 사라져 등록이 섰는지를 확인할 수 없다. */
+  it('기록한 뒤에도 수리 중 목록이 화면에 남는다', async () => {
+    const user = userEvent.setup();
+    mount(
+      [
+        {
+          match: (request) =>
+            new URL(request.url).pathname === '/production/repair-executions' &&
+            request.method === 'POST',
+          respond: () => jsonResponse({ ...execution, repairQty: 20 }, { status: 201 }),
+        },
+      ],
+      { openAll: [execution] },
+    );
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+    await user.type(screen.getByLabelText(/수리 수량/), '20');
+    await user.click(screen.getByRole('button', { name: '투입 등록' }));
+
+    expect(await screen.findByText('수리 투입을 기록했습니다')).toBeTruthy();
+    expect(screen.getByText('수리 중 1건')).toBeTruthy();
+    expect(screen.getByLabelText(/불량 LOT 스캔/)).toBeTruthy();
+  });
+
+  /* 확인하지 못한 것을 확인 실패로 말하면, 조회가 도는 동안 없는 문제가 화면에 뜬다. */
+  it('불량 코드 이름표를 받기 전에는 확인할 수 없다고 말하지 않는다', async () => {
+    let open = () => {};
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    mount([], { codesGate: gate });
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+
+    await screen.findByText('불량 40 EA');
+    expect(screen.queryByText('불량 코드를 확인할 수 없습니다')).toBeNull();
+
+    open();
+
+    expect(await screen.findByText('EXT-002 외관 스크래치')).toBeTruthy();
+  });
+
+  /* 못 받은 것과 받았는데 없는 것은 다르다. 뒤쪽은 사람이 알아야 고를 수 있다. */
+  it('불량 코드를 확인하지 못하면 그 사실을 말한다', async () => {
+    mount([], { codesStatus: 500 });
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+
+    expect(await screen.findByText('불량 코드를 확인할 수 없습니다')).toBeTruthy();
   });
 });

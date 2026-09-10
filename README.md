@@ -100,6 +100,16 @@ curl -s http://localhost:5173/api/health       # POP 은 5174
 브라우저가 그 쿠키를 이후 요청에 자동으로 싣는다. 계정·초기 자료 준비 절차는 서버 저장소의
 `docs/client-local-api.md`에 있다.
 
+## 관리웹 컨테이너 배포
+
+관리웹 이미지는 정적 번들과 동일 출처 `/api` 프록시를 함께 제공한다. 실제 LAN 주소, 포트,
+백엔드 원점과 이미지 저장소는 공개 저장소에 기록하지 않고 고객 서버에서 단일 배포 스크립트로
+입력한다. 스크립트는 Compose 설정 생성, 이미지 pull, 기동과 헬스 체크를 연속 수행한다.
+GitHub Actions 시크릿, 태그 규칙, 업데이트와 롤백 절차는
+[`deploy/README.md`](deploy/README.md)를 따른다.
+
+모바일 Android 앱과 Windows POP 설치본은 관리웹 컨테이너 이미지에 포함하지 않는다.
+
 ## 작업 규칙
 
 `main` 직접 push는 차단돼 있다 — 팀 전용 워크트리와 브랜치에서 작업하고 PR로 병합한다. 업무 규칙과 절차의 정본은 `docs/client-dev-workflow/multi-agent-team-workflow-v3.md`다. 루트의 `AGENTS.md`와 `CLAUDE.md`는 부트스트랩으로 만드는 개인별 로컬 파일이며 커밋하지 않는다.

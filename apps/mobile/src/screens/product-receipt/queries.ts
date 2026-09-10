@@ -1,8 +1,15 @@
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { HandlingUnit, HandlingUnitContent, Lot, Warehouse } from './receipt';
+import type {
+  HandlingUnit,
+  HandlingUnitContent,
+  Lot,
+  PutawayRule,
+  StockedCheck,
+  Warehouse,
+} from './receipt';
 
 const PAGE_SIZE = 200;
 
@@ -109,5 +116,79 @@ export const useLots = (lotIds: number[]): UseQueryResult<Map<number, Lot>> => {
 
       return new Map(details.map((detail) => [detail.lot.lotId, detail.lot]));
     },
+  });
+};
+
+/**
+ * 이 품목이 이 창고에서 가야 할 자리를 정하는 규칙.
+ *
+ * 적치 지시는 입고 응답에서야 생긴다 - 스캔한 위치가 맞는지는 그 전에 알아야 하므로 규칙을
+ * 직접 묻는다.
+ */
+export const usePutawayRules = (
+  warehouseId: number | null,
+  itemId: number | null,
+): UseQueryResult<PutawayRule[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['product-receipt-putaway-rules', warehouseId, itemId] as const,
+    enabled: warehouseId !== null && itemId !== null,
+    queryFn: async () => {
+      if (warehouseId === null || itemId === null) {
+        throw new Error('창고와 품목을 정하기 전에는 적치 규칙을 조회하지 않습니다.');
+      }
+
+      const data = await runRequest(() =>
+        client.GET('/logistics/putaway-rules', {
+          params: { query: { warehouseId, itemId, size: PAGE_SIZE } },
+        }),
+      );
+
+      return data.items;
+    },
+  });
+};
+
+/** 잔액이 하나라도 있으면 이미 선 것이다. 세어 볼 것이 아니라 있는지만 보면 된다. */
+const PROBE_SIZE = 1;
+
+const verdictOf = (result: { isPending: boolean; data?: boolean } | undefined): StockedCheck => {
+  if (result === undefined || result.isPending) {
+    return 'checking';
+  }
+
+  return result.data === undefined ? 'unknown' : result.data ? 'stocked' : 'clear';
+};
+
+/**
+ * 이 LOT 이 이미 재고로 서 있는가.
+ *
+ * 큐만 보면 다른 단말이 먼저 입고한 것을 놓친다 - 이 화면이 재고를 세우는 지점이라 두 번
+ * 서면 같은 제품이 두 벌이 된다.
+ */
+export const useStockedLots = (lotIds: number[]): Map<number, StockedCheck> => {
+  const { client } = useApiClient();
+  const ids = [...new Set(lotIds)];
+
+  return useQueries({
+    queries: ids.map((lotId) => ({
+      queryKey: ['product-receipt-stocked', lotId] as const,
+      /*
+       * 공유계약 C-6 - 판정에 쓰는 값은 캐시하지 않는다. 다른 단말의 입고는 이 화면 밖에서
+       * 일어나므로 조금 전에 없었다는 것이 지금 없다는 뜻이 아니다.
+       */
+      staleTime: 0,
+      gcTime: 0,
+      queryFn: async () => {
+        const data = await runRequest(() =>
+          client.GET('/inventory/balances', { params: { query: { lotId, size: PROBE_SIZE } } }),
+        );
+
+        return data.items.length > 0;
+      },
+    })),
+    combine: (results) =>
+      new Map(ids.map((lotId, index) => [lotId, verdictOf(results[index])] as const)),
   });
 };

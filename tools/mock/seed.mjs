@@ -193,6 +193,13 @@ export const createSeed = (now = new Date()) => {
       locationCode: 'FG-A-02-01',
       locationName: '완제품 A구역 02열 01단',
     },
+    /* 완제품 창고의 둘째 자리. 하나뿐이면 권장이 아닌 곳을 스캔하는 갈래를 만들 수 없다. */
+    {
+      locationId: 3009,
+      warehouseId: 1002,
+      locationCode: 'FG-A-02-02',
+      locationName: '완제품 A구역 02열 02단',
+    },
     {
       locationId: 3007,
       warehouseId: 1004,
@@ -236,6 +243,21 @@ export const createSeed = (now = new Date()) => {
       warehouseId: 1001,
       locationId: 3001,
       capacityQty: 500,
+      uomId: 1001,
+      priorityNo: 10,
+      remarks: '합성 적치 규칙',
+      isActive: true,
+    },
+    /*
+     * 완제품 창고의 규칙. 없으면 제품 입고가 늘 정해진 자리가 없는 쪽으로 떨어져 권장 일치와
+     * 권장 불일치 갈래를 실기에서 한 번도 볼 수 없다.
+     */
+    {
+      putawayRuleId: 5103,
+      itemId: 2003,
+      warehouseId: 1002,
+      locationId: 3004,
+      capacityQty: 2000,
       uomId: 1001,
       priorityNo: 10,
       remarks: '합성 적치 규칙',
@@ -2112,18 +2134,92 @@ export const createSeed = (now = new Date()) => {
     },
   ];
 
+  /**
+   * 불량 코드. 수리 왕복(M-02-02)이 어느 불량을 넣는지를 이 이름으로 말한다.
+   *
+   * 한 LOT 에 수량이 같은 불량 둘을 둔다 — 수량만 보이면 고를 수 없는 자리를 실기에서
+   * 그대로 만난다.
+   */
+  const defectCodes = [
+    {
+      defectCodeId: 15001,
+      defectCode: 'EXT-002',
+      defectName: '외관 스크래치',
+      nameKo: '외관 스크래치',
+      parentDefectCodeId: null,
+      dispositionTypeCode: 'REWORK',
+      isActive: true,
+    },
+    {
+      defectCodeId: 15002,
+      defectCode: 'DIM-004',
+      defectName: '치수 초과',
+      nameKo: '치수 초과',
+      parentDefectCodeId: null,
+      dispositionTypeCode: 'REWORK',
+      isActive: true,
+    },
+  ];
+
   const defectRecords = [
     {
       defectRecordId: 14001,
       lotId: 8102,
-      itemId: 2003,
       workOrderId: 11001,
+      defectCodeId: 15001,
       defectQty: 20,
       uomId: 1001,
-      defectTypeCode: 'SCRATCH',
-      dispositionCode: 'REPAIR',
+      occurrenceProcessId: 3001,
+      detectionProcessId: 3002,
+      sourceCode: 'PQC',
       occurredAt: iso(-1, 15),
-      statusCode: 'OPEN',
+      detectedAt: iso(-1, 15),
+    },
+    {
+      defectRecordId: 14002,
+      lotId: 8102,
+      workOrderId: 11001,
+      defectCodeId: 15002,
+      defectQty: 20,
+      uomId: 1001,
+      occurrenceProcessId: 3001,
+      detectionProcessId: 3002,
+      sourceCode: 'PQC',
+      occurredAt: iso(-1, 16),
+      detectedAt: iso(-1, 16),
+    },
+  ];
+
+  /**
+   * 포장 재구성 이력 하나. 이력 보기가 빈 목록만 보이면 그 길이 서는지 알 수 없다.
+   *
+   * 결과 쪽 줄을 함께 둔다 - 원본만 있으면 어디로 갔는지가 빠져 이력이 반쪽이 된다.
+   */
+  const repackEvents = [
+    {
+      repackEventId: 13501,
+      handlingUnitId: 13001,
+      repackTypeCode: 'SPLIT',
+      performedBy: 1001,
+      occurredAt: iso(-2, 11),
+      lines: [
+        {
+          handlingUnitId: 13001,
+          roleCode: 'SOURCE',
+          itemId: 2003,
+          lotId: 8201,
+          qtyBefore: 240,
+          qtyAfter: 180,
+        },
+        {
+          handlingUnitId: 13002,
+          roleCode: 'RESULT',
+          itemId: 2003,
+          lotId: 8201,
+          qtyBefore: 0,
+          qtyAfter: 60,
+        },
+      ],
     },
   ];
 
@@ -2362,6 +2458,8 @@ export const createSeed = (now = new Date()) => {
     workOrders,
     handlingUnits,
     handlingUnitContents,
+    repackEvents,
+    defectCodes,
     defectRecords,
     repairExecutions: [],
     inspectionRequests,

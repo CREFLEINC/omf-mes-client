@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
 import { MemoryRouter } from 'react-router';
@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { ShopfloorReceiptScreen } from './screen';
 
@@ -33,7 +34,11 @@ vi.mock('../../patterns/local-store', () => ({
   },
 }));
 
-const page = { page: 0, size: 200, totalElements: 0, totalPages: 1 };
+/*
+ * 계약의 쪽 정보는 total 이다. 다른 이름으로 두면 쪽을 끝까지 도는 조회가 종료 조건을 만나지
+ * 못해 같은 쪽을 끝없이 다시 부른다.
+ */
+const page = { page: 0, size: 200, total: 0 };
 
 const ISSUE_NO = 'GI-2026-000402';
 
@@ -52,6 +57,8 @@ interface Options {
   noReasonOptions?: boolean;
   /** 차이 사유 값 목록이 늦게 답한다 - 아직 모르는 것과 없는 것이 갈리는 자리다. */
   reasonsPending?: boolean;
+  /** 이 시험에서만 필요한 길. 기본 길보다 먼저 본다. */
+  extra?: StubRoute[];
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -106,6 +113,81 @@ const routes = (options: Options = {}): StubRoute[] => [
           statusCode: 'REGISTERED',
         },
         lines: [],
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/equipments',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            equipmentId: 7,
+            plantId: 1,
+            equipmentCode: 'EQ-01',
+            equipmentName: '사출 1호',
+            equipmentTypeCode: 'INJECTION',
+            locationId: 55,
+            statusCode: 'IN_SERVICE',
+            calibrationRequired: false,
+            isActive: true,
+          },
+        ],
+        page: { ...page, total: 1 },
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/locations/55',
+    respond: () =>
+      jsonResponse({
+        location: {
+          locationId: 55,
+          warehouseId: 12,
+          locationCode: 'HOP-01',
+          locationName: '사출 1호 호퍼',
+          locationTypeCode: 'HOPPER',
+          allowMixedItem: true,
+          allowMixedLot: true,
+          isActive: true,
+        },
+        editability: {},
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/inventory/balances',
+    respond: () =>
+      jsonResponse({
+        items: [
+          {
+            groupBy: 'LOT',
+            itemId: 100,
+            lotId: 4,
+            onHandQty: 120,
+            reservedQty: 0,
+            pickedQty: 0,
+            blockedQty: 0,
+            availableQty: 120,
+            uomId: 9,
+            ownershipTypeCode: 'OWN',
+          },
+        ],
+        page,
+      }),
+  },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/locations/42',
+    respond: () =>
+      jsonResponse({
+        location: {
+          locationId: 42,
+          warehouseId: 12,
+          locationCode: 'L1-STG',
+          locationName: '사출 1호 라인사이드',
+          locationTypeCode: 'FLOOR',
+          allowMixedItem: true,
+          allowMixedLot: true,
+          isActive: true,
+        },
+        editability: {},
       }),
   },
   {
@@ -175,7 +257,23 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
-    respond: () => {
+    respond: (req) => {
+      /* 그룹을 가리지 않으면 차이 사유 목록이 조정 사유 자리에도 답해 판정이 어긋난다. */
+      if (new URL(req.url).searchParams.get('codeGroupCode') === 'INVENTORY_ADJUSTMENT_REASON') {
+        return jsonResponse({
+          items: [
+            {
+              code: 'HOPPER_MEASUREMENT',
+              codeName: 'Hopper measurement',
+              nameKo: '호퍼 실측',
+              isActive: true,
+              displayOrder: 1,
+            },
+          ],
+          page,
+        });
+      }
+
       if (options.reasonsPending === true) {
         return new Promise<Response>(() => {
           /* 답하지 않는다. 목록을 기다리는 동안 화면이 무엇을 허락하는지 재는 자리다. */
@@ -220,11 +318,11 @@ const mount = (options: Options = {}) =>
         <ShopfloorReceiptScreen />
       </SignedIn>
     </MemoryRouter>,
-    { fetch: createStubFetch(routes(options)) },
+    { fetch: createStubFetch([...(options.extra ?? []), ...routes(options)]) },
   );
 
 const scan = (code: string) => {
-  const field = screen.getByLabelText('출고 QR 스캔') as HTMLInputElement;
+  const field = screen.getByLabelText(/출고 QR 스캔/) as HTMLInputElement;
   field.focus();
   Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, code);
   field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
@@ -236,12 +334,14 @@ beforeEach(() => {
   held.failWrite = null;
   store.clear();
   localStorage.clear();
+  /* 연결 상태를 흉내 낸 것이 다음 시험으로 새면 엉뚱한 자리에서 오프라인이 된다. */
+  vi.restoreAllMocks();
 });
 
 describe('생산창고 입고 화면', () => {
   it('스캔한 출고 전표의 라인을 보인다', async () => {
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
 
@@ -249,11 +349,145 @@ describe('생산창고 입고 화면', () => {
     expect(await receivedField()).toBeTruthy();
   });
 
+  /*
+   * 숫자판이 붙는 자리를 라인 번호로 기억한다. 전표를 되돌릴 때 두고 가면 다른 전표의 같은
+   * 번호 줄에 붙은 채로 열려, 어느 칸에 들어가는지가 어긋난다.
+   */
+  it('전표를 되돌리면 숫자판도 함께 접는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+    await user.click(await receivedField());
+    expect(screen.getByRole('button', { name: '7' })).toBeTruthy();
+
+    act(() => {
+      runBackStep();
+    });
+
+    scan(ISSUE_NO);
+    await receivedField();
+
+    expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+  });
+
+  /*
+   * 자재가 라인에 들어오는 이 시점에 사람이 눈으로 잰다. 여기서 적지 않으면 호퍼에 무엇이
+   * 얼마나 남았는지가 어디에도 남지 않는다.
+   */
+  it('설비를 고르면 그 호퍼의 장부 잔량을 보인다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+
+    expect(await screen.findByText(/HOP-01/)).toBeTruthy();
+    expect(await screen.findByText('장부 120')).toBeTruthy();
+  });
+
+  /*
+   * 사람이 넣는 것은 잰 값이고 뺀 값이 아니다. 차이를 사람에게 계산시키면 부호를 뒤집어 적는
+   * 순간 재고가 반대로 움직인다.
+   */
+  it('잰 값에서 장부를 빼 증감량으로 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({
+      extra: [
+        {
+          match: (req) =>
+            new URL(req.url).pathname === '/inventory/adjustments' && req.method === 'POST',
+          respond: (req) => {
+            seen.push(req.clone());
+            return jsonResponse({ inventoryAdjustmentId: 1 }, { status: 201 });
+          },
+        },
+      ],
+    });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+    await user.type(await screen.findByLabelText(/RM-1001 실측 잔량/), '100');
+
+    expect(await screen.findByText('차이 -20')).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: '호퍼 잔량 기록' }));
+
+    await waitFor(() => {
+      expect(seen).toHaveLength(1);
+    });
+
+    const body = (await seen[0]!.json()) as {
+      reasonCode: string;
+      lines: { locationId: number; itemId: number; adjustmentQty: number }[];
+    };
+
+    expect(body.reasonCode).toBe('HOPPER_MEASUREMENT');
+    expect(body.lines).toHaveLength(1);
+    expect(body.lines[0]).toMatchObject({ locationId: 55, itemId: 100, adjustmentQty: -20 });
+  });
+
+  /* 어디로 들어온 것인가. 없으면 받은 자리가 전표에만 남는다. */
+  it('어디로 들어온 것인지 보인다', async () => {
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(await screen.findByText(/L1-STG/)).toBeTruthy();
+  });
+
+  /*
+   * 통신이 끊기면 출고와 입고가 한 기기로 합쳐진다(결정 17 시나리오 2). 말하지 않으면
+   * 작업자는 평소처럼 다른 기기를 기다린다.
+   */
+  it('오프라인이면 출고분도 이 기기에서 한다고 알린다', async () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    mount();
+
+    expect(await screen.findByText('오프라인입니다')).toBeTruthy();
+  });
+
+  it('연결돼 있으면 그 말을 하지 않는다', async () => {
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    expect(screen.queryByText('오프라인입니다')).toBeNull();
+  });
+
+  /*
+   * 장갑을 끼고 한 손으로 조작한다. 단말 키보드는 키가 촘촘하고, 올라오면 라인 목록과 확정
+   * 단추를 덮는다(설계 §7 · 공유계약 G-6).
+   */
+  it('수령 수량을 숫자판으로 넣는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+
+    scan(ISSUE_NO);
+
+    expect(screen.queryByRole('button', { name: '7' })).toBeNull();
+
+    await user.click(await receivedField());
+    await user.click(await screen.findByRole('button', { name: '5' }));
+    await user.click(screen.getByRole('button', { name: '0' }));
+
+    expect(((await receivedField()) as HTMLInputElement).value).toBe('50');
+  });
+
   /* 초과는 데이터베이스가 막는다. 화면이 통과시키면 확정이 서버에서 되돌아온다. */
   it('출고한 것보다 많이 받지 못한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
@@ -266,7 +500,7 @@ describe('생산창고 입고 화면', () => {
   it('모자라면 사유를 고르기 전에는 확정할 수 없다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
@@ -289,7 +523,7 @@ describe('생산창고 입고 화면', () => {
   it('고를 사유가 없으면 모자라도 확정할 수 있다', async () => {
     const user = userEvent.setup();
     mount({ noReasonOptions: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
@@ -310,7 +544,7 @@ describe('생산창고 입고 화면', () => {
   it('사유 목록을 기다리는 동안에는 모자란 수령을 확정하지 않는다', async () => {
     const user = userEvent.setup();
     mount({ reasonsPending: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '480');
@@ -323,7 +557,7 @@ describe('생산창고 입고 화면', () => {
   it('출고보다 많이 받으면 모자라다고 말하지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '501');
@@ -336,7 +570,7 @@ describe('생산창고 입고 화면', () => {
   it('전량 받으면 사유 없이 확정한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -353,7 +587,7 @@ describe('생산창고 입고 화면', () => {
    */
   it('이미 받은 출고 전표로 들어오면 그 사실을 말하고 막는다', async () => {
     mount({ alreadyReceived: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
 
@@ -368,7 +602,7 @@ describe('생산창고 입고 화면', () => {
   it('이미 받았는지 확인하지 못하면 그 사실을 밝히되 막지는 않는다', async () => {
     const user = userEvent.setup();
     mount({ receivedCheckUnreachable: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
 
@@ -384,7 +618,7 @@ describe('생산창고 입고 화면', () => {
   it('확인이 끝나면 확인하지 못했다고 말하지 않는다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -399,7 +633,7 @@ describe('생산창고 입고 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -432,7 +666,7 @@ describe('생산창고 입고 화면', () => {
     const user = userEvent.setup();
     const seen: Request[] = [];
     mount({ seen });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -453,7 +687,7 @@ describe('생산창고 입고 화면', () => {
   it('단말 보관소가 거절하면 기록되지 않았다고 말한다', async () => {
     const user = userEvent.setup();
     mount();
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
@@ -467,7 +701,7 @@ describe('생산창고 입고 화면', () => {
   it('서버가 되돌리면 되돌아왔다고 말한다', async () => {
     const user = userEvent.setup();
     mount({ rejectReceipt: true });
-    await screen.findByLabelText('출고 QR 스캔');
+    await screen.findByLabelText(/출고 QR 스캔/);
 
     scan(ISSUE_NO);
     await user.type(await receivedField(), '500');
