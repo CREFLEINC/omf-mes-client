@@ -193,7 +193,9 @@ apps/mobile/scripts/release-build.sh
 # ① 웹 빌드 — 이 시점에 API 주소가 APK 에 고정된다
 VITE_API_BASE_URL=http://<IP>:<PORT>/api pnpm --filter @omf-mes/mobile build
 
-# ② 평문 HTTP 설정 작성 — http 주소인 경우에만. 아래 「평문 HTTP」 참고
+# ② 평문 HTTP 설정 — http 주소인 경우에만 생성된다. https 면 기존 설정을 지운다
+node apps/mobile/scripts/release-network-config.mjs \
+  "http://<IP>:<PORT>/api" apps/mobile/android/app/src/release
 
 # ③ 네이티브 동기화 — 웹 자산과 플러그인이 이 단계에서 생성된다
 cd apps/mobile
@@ -222,8 +224,9 @@ OMF_RELEASE_KEYSTORE_PASSWORD='<비밀번호>' \
 릴리스 빌드는 기본적으로 평문 HTTP 를 차단한다. 설계 결정 20 ① 이 운영 통신을 사내망 전용
 평문으로 정했으므로 허용이 필요하다. 다만 **주소 전체가 아니라 해당 호스트 하나만** 허용한다.
 
-`release-build.sh` 는 `VITE_API_BASE_URL` 의 프로토콜을 확인해 `http` 인 경우에만 아래를
-생성한다. `https` 이면 생성하지 않으며 평문은 차단 상태로 유지된다.
+`release-network-config.mjs` 가 `VITE_API_BASE_URL` 의 프로토콜을 확인해 `http` 인 경우에만
+아래를 생성한다. `https` 이면 생성하지 않으며 평문은 차단 상태로 유지된다. 이 판정이 릴리스
+빌드의 보안 경계이므로 `release-network-config.test.mjs` 가 결과를 고정한다.
 
 ```
 android/app/src/release/AndroidManifest.xml
@@ -232,9 +235,18 @@ android/app/src/release/res/xml/network_security_config.xml   ← 호스트 하�
 
 ⛔ **이 파일들을 커밋하지 않는다.** 사내 호스트가 포함되며 저장소는 공개다.
 `android/.gitignore` 의 `app/src/release/` 규칙이 차단하고 있으므로 그 규칙을 삭제하지 않는다.
-스크립트가 빌드마다 삭제하고 다시 작성한다.
+빌드마다 삭제하고 다시 작성하므로 이전 주소가 남지 않는다.
 
-수동 빌드에서는 직접 작성해야 한다. 없으면 빌드는 성공하지만 앱이 서버와 통신하지 못한다.
+수동 빌드에서는 아래 명령으로 생성한다. 직접 작성해도 되지만, 이 명령이 주소 검증까지 함께
+수행한다.
+
+```bash
+node apps/mobile/scripts/release-network-config.mjs \
+  "http://<IP>:<PORT>/api" apps/mobile/android/app/src/release
+```
+
+생성하지 않으면 빌드는 성공하지만 앱이 서버와 통신하지 못한다. 참고용으로 생성 결과는 다음과
+같다.
 
 ```xml
 <!-- res/xml/network_security_config.xml -->
