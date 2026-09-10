@@ -77,3 +77,53 @@ export const toCoverageBody = (
   ...(draft.from === '' ? {} : { coverageFromAt: draft.from }),
   ...(draft.to === '' ? {} : { coverageToAt: draft.to }),
 });
+
+/** 화면이 보여 주는 두 칸 — 날짜와 시각. **둘 다 지역 시각이다.** */
+export interface CoverageParts {
+  date: string;
+  time: string;
+}
+
+export const EMPTY_COVERAGE_PARTS: CoverageParts = { date: '', time: '' };
+
+const pad = (value: number): string => String(value).padStart(2, '0');
+
+/**
+ * 저장 값(RFC3339)을 **날짜 · 시각 두 칸**으로 가른다(사용자 지시 2026-09-10 — 「클릭하면
+ * 달력이 떠야 한다」). `type="date"`·`type="time"` 이 브라우저의 달력·시각 판을 열어 준다.
+ *
+ * ⭐ **지역 시각으로 옮겨 보인다.** 저장 값은 `toISOString()` 이 만든 `Z` 라, 글자를 그대로
+ * 잘라 보이면 한국 단말에 아홉 시간 어긋난 시각이 뜬다.
+ *
+ * ⛔ 이것은 «시각을 읽는 것»이 아니라 «옮기는 것»이다 — 이 파일 머리말의 금지(실행 환경의
+ * 시각을 스스로 읽지 않는다)는 지금이 몇 시인지 묻는 일을 말한다.
+ *
+ * ⚠ 초는 버린다 — 생산구간은 분 단위로 짚는 값이고, 칸이 초를 받지 않는다.
+ */
+export const toCoverageParts = (value: string): CoverageParts => {
+  if (value === '') return EMPTY_COVERAGE_PARTS;
+
+  const at = new Date(value);
+
+  /* 읽을 수 없는 값은 지어내지 않는다 — 빈 칸으로 두면 사용자가 다시 넣는다. */
+  if (Number.isNaN(at.getTime())) return EMPTY_COVERAGE_PARTS;
+
+  return {
+    date: `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`,
+    time: `${pad(at.getHours())}:${pad(at.getMinutes())}`,
+  };
+};
+
+/**
+ * 두 칸을 저장 값으로 되돌린다.
+ *
+ * ⛔ **한쪽만 찬 것은 시각이 아니다** — 빈 문자열로 둔다. 날짜만 있는 것을 자정으로 읽으면
+ * 사용자가 넣지 않은 시각이 기록에 남는다.
+ */
+export const fromCoverageParts = (parts: CoverageParts): string => {
+  if (parts.date === '' || parts.time === '') return '';
+
+  const at = new Date(`${parts.date}T${parts.time}`);
+
+  return Number.isNaN(at.getTime()) ? '' : at.toISOString();
+};

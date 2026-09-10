@@ -3899,3 +3899,16 @@
 .pop-ui .pqc-totals__note--warn {
   color: var(--semantic-warning);
 }
+
+/* 적용 생산구간의 날짜·시각 두 칸 — 좁은 구획이라 칸이 줄을 나눠 갖는다. */
+.pop-ui .pqc-coverage-parts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.pop-ui .pqc-coverage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}

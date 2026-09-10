@@ -553,9 +553,9 @@ describe('PqcInspectionScreen — 저장이 실어 가는 것', () => {
 
     await screen.findByRole('button', { name: t.result.save });
 
-    const from = screen.getByLabelText(t.coverage.from);
-    await userEvent.clear(from);
-    await userEvent.clear(screen.getByLabelText(t.coverage.to));
+    /* 구간은 날짜·시각 두 칸이다 — 날짜를 비우면 그 한쪽이 통째로 빈 값이 된다. */
+    await userEvent.clear(screen.getByLabelText(`${t.coverage.from} ${t.coverage.date}`));
+    await userEvent.clear(screen.getByLabelText(`${t.coverage.to} ${t.coverage.date}`));
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));

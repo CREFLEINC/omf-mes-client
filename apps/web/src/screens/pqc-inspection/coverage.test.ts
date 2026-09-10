@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_COVERAGE_DRAFT,
   fillCoverage,
+  fromCoverageParts,
   isCoverageOutOfOrder,
+  toCoverageParts,
   toCoverageBody,
   toCoverageDraft,
 } from './coverage';
@@ -82,5 +84,28 @@ describe('toCoverageBody — 빈 칸은 키 자체를 싣지 않는다', () => {
   it('빈 칸은 키가 없다 — 빈 문자열을 보내면 서버가 형식 오류로 되돌린다', () => {
     expect(toCoverageBody(EMPTY_COVERAGE_DRAFT)).toEqual({});
     expect(Object.keys(toCoverageBody({ from: NINE, to: '' }))).toEqual(['coverageFromAt']);
+  });
+});
+
+/*
+ * ⚠ **시간대에 기대지 않는다.** 감지기가 도는 단말의 시간대를 알 수 없으므로 「9시가 18시로
+ * 보인다」 같은 것을 재지 않는다 — 갔다가 돌아온 값이 같은가만 본다.
+ */
+describe('toCoverageParts · fromCoverageParts', () => {
+  it('저장 값을 날짜·시각으로 갈랐다가 되돌리면 그 순간 그대로다', () => {
+    const stored = '2026-08-18T01:05:00.000Z';
+
+    expect(fromCoverageParts(toCoverageParts(stored))).toBe(stored);
+  });
+
+  it('빈 값과 읽을 수 없는 값은 두 칸 모두 비운다', () => {
+    expect(toCoverageParts('')).toEqual({ date: '', time: '' });
+    expect(toCoverageParts('어제쯤')).toEqual({ date: '', time: '' });
+  });
+
+  /* 날짜만 있는 것을 자정으로 읽으면 사용자가 넣지 않은 시각이 기록에 남는다. */
+  it('한쪽 칸만 찬 것은 시각으로 치지 않는다', () => {
+    expect(fromCoverageParts({ date: '2026-08-18', time: '' })).toBe('');
+    expect(fromCoverageParts({ date: '', time: '10:05' })).toBe('');
   });
 });

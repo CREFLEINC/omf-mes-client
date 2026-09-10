@@ -5,7 +5,13 @@ import { useId, useState, type ReactElement, type ReactNode } from 'react';
 
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { isKnownCode, type CodeOption } from './code-options';
-import { isCoverageOutOfOrder, type CoverageDraft } from './coverage';
+import {
+  fromCoverageParts,
+  isCoverageOutOfOrder,
+  toCoverageParts,
+  type CoverageDraft,
+  type CoverageParts,
+} from './coverage';
 import { canChooseDisposition, type DispositionState } from './disposition';
 import {
   formatMicro,
@@ -211,6 +217,51 @@ export const ResultPanel = ({
     />
   );
 
+  /*
+   * 적용 생산구간의 한쪽 — **날짜 칸과 시각 칸 둘이다**(사용자 지시 2026-09-10). 날짜 칸을
+   * 누르면 브라우저의 달력이 열려 손으로 짚어 고를 수 있다. 한 칸에 RFC3339 글자를 그대로
+   * 두었을 때는 「2026-09-…」처럼 잘려 보이기만 하고 고칠 길이 없었다.
+   *
+   * ⚠ 오류는 **칸에 테두리로, 문장은 줄 아래에 한 번만** 낸다 — 두 칸에 같은 문장을 붙이면
+   *   같은 말이 두 번 선다(downtime-register 의 짝 제약과 같은 규칙).
+   */
+  const coverageBound = (
+    label: string,
+    value: string,
+    onBoundChange: (next: string) => void,
+    error?: string,
+  ): ReactElement => {
+    const parts = toCoverageParts(value);
+    const setPart = (part: keyof CoverageParts, next: string): void => {
+      onBoundChange(fromCoverageParts({ ...parts, [part]: next }));
+    };
+
+    return (
+      <div className="field-cell">
+        <span className="field-label">{label}</span>
+        <div className="pqc-coverage-parts">
+          <TextField
+            type="date"
+            size="xl"
+            aria-label={`${label} ${tCoverage.date}`}
+            value={parts.date}
+            error={error === undefined ? undefined : ' '}
+            onChange={(event) => setPart('date', event.target.value)}
+          />
+          <TextField
+            type="time"
+            size="xl"
+            aria-label={`${label} ${tCoverage.time}`}
+            value={parts.time}
+            error={error === undefined ? undefined : ' '}
+            onChange={(event) => setPart('time', event.target.value)}
+          />
+        </div>
+        {error !== undefined && <p className="field-note">{error}</p>}
+      </div>
+    );
+  };
+
   return (
     <section className="pane pqc-result-panel" aria-label={t.heading}>
       <h2 className="field-label">{t.heading}</h2>
@@ -365,25 +416,22 @@ export const ResultPanel = ({
        * 적용 생산구간 — 이 검사가 «어느 시간대의 생산분»을 대표하는가(§5-5). 불합격일 때
        * 회수 범위가 이 구간으로 정해지므로, 자동으로 채우되 **사람이 고칠 수 있게** 둔다.
        */}
-      <div className="form-grid">
-        <TextField
-          size="xl"
-          label={tCoverage.from}
-          value={coverage.from}
-          disabled={false}
-
-          onChange={(event) => onCoverageChange({ ...coverage, from: event.target.value })}
-        />
-        <TextField
-          size="xl"
-          label={tCoverage.to}
-          value={coverage.to}
-          disabled={false}
-
-          /* ⛔ 조용히 뒤집어 고치지 않는다 — 무엇을 넣었는지 사용자가 알아야 고칠 수 있다. */
-          error={isCoverageOutOfOrder(coverage) ? tCoverage.invalidOrder : undefined}
-          onChange={(event) => onCoverageChange({ ...coverage, to: event.target.value })}
-        />
+      {/*
+       * ⚠ **두 구간을 옆으로 늘어놓지 않는다.** 이 구획은 전체 폭이 245px 이라 반으로 가르면
+       *   칸이 118px 이 되고, 브라우저의 날짜 칸이 「2026. (」로 잘려 무슨 날인지 읽히지
+       *   않는다(실측 2026-09-10). 세로로 쌓아 한 칸이 폭을 다 쓰게 둔다.
+       */}
+      <div className="pqc-coverage">
+        {coverageBound(tCoverage.from, coverage.from, (value) =>
+          onCoverageChange({ ...coverage, from: value }),
+        )}
+        {/* ⛔ 조용히 뒤집어 고치지 않는다 — 무엇을 넣었는지 사용자가 알아야 고칠 수 있다. */}
+        {coverageBound(
+          tCoverage.to,
+          coverage.to,
+          (value) => onCoverageChange({ ...coverage, to: value }),
+          isCoverageOutOfOrder(coverage) ? tCoverage.invalidOrder : undefined,
+        )}
       </div>
       <p className="field-note">{tCoverage.note}</p>
     </section>
