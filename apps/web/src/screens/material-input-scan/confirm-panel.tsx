@@ -126,14 +126,14 @@ export const ConfirmPanel = ({
       {/*
        * 몇 건으로 닫았는지 그 자리에서 말한다. 기록 자체는 이미 건별로 끝나 있다.
        *
-       * ⭐ **스캔이 성공했을 때와 같은 모양으로 낸다**(`.scan-outcome` · 사용자 지시
-       * 2026-09-10) — 자재를 담을 때 초록 ✓ 로 답하던 화면이 마지막 「마쳤습니다」만 회색
+       * ⭐ **스캔이 성공했을 때와 같은 모양으로 낸다**(`AlertBanner` · 사용자 지시
+       * 2026-09-10) — 자재를 담을 때 초록 띠로 답하던 화면이 마지막 「마쳤습니다」만 회색
        * 잔글씨로 내면, 정작 확인해야 할 결말이 가장 약하게 읽힌다.
        */}
       {closedCount !== null && (
-        <p className="scan-outcome" role="status" data-tone="success">
-          <span className="scan-outcome-text">{t.confirm.closed(closedCount)}</span>
-        </p>
+        <div className="banner-slot">
+          <AlertBanner variant="success" title={t.confirm.closed(closedCount)} />
+        </div>
       )}
 
       {/*

@@ -1696,46 +1696,14 @@
 }
 
 /*
- * 스캔 결과 — **무게를 색으로 가른다.** 다섯 결과가 같은 회색 한 줄이면 「찾을 수 없습니다」가
- * 「담았습니다」와 구분되지 않아, 화면을 보지 않고 연달아 읽는 작업자가 **담긴 줄 알고 넘어간다.**
+ * 스캔 결과 자리 — **없을 때도 자리를 지운다.** 뜨고 지면 아래의 목록·버튼이 위아래로
+ * 움직이고, 다음 코드를 읽으려던 손이 옆 것을 누른다.
  *
- * ⛔ 배너로 만들지 않는다 — 배너는 높이가 결과마다 달라 아래 목록이 위아래로 움직인다.
- *    한 줄의 «색»만 바꾼다.
+ * ⭐ 안은 다른 POP 알림과 같은 띠다(`AlertBanner` · 사용자 지시 2026-09-10). 한때 ✓·!·✕ 를
+ * 붙인 글줄이었는데, 같은 뜻이 화면마다 다른 모양으로 서 있었다.
  */
 .pop-ui .scan-outcome {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-1) var(--space-3);
-}
-
-.pop-ui .scan-outcome[data-tone] .scan-outcome-text::before {
-  margin-inline-end: var(--space-2);
-  font-weight: 700;
-}
-
-.pop-ui .scan-outcome[data-tone='success'] .scan-outcome-text {
-  color: var(--semantic-success-text);
-}
-
-.pop-ui .scan-outcome[data-tone='success'] .scan-outcome-text::before {
-  content: '✓';
-}
-
-.pop-ui .scan-outcome[data-tone='warning'] .scan-outcome-text {
-  color: var(--semantic-warning);
-}
-
-.pop-ui .scan-outcome[data-tone='warning'] .scan-outcome-text::before {
-  content: '!';
-}
-
-.pop-ui .scan-outcome[data-tone='error'] .scan-outcome-text {
-  color: var(--semantic-error-text);
-}
-
-.pop-ui .scan-outcome[data-tone='error'] .scan-outcome-text::before {
-  content: '✕';
+  min-block-size: 56px;
 }
 
 /*

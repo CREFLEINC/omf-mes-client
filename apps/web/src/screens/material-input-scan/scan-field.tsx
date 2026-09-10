@@ -1,4 +1,4 @@
-import { Button, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
@@ -173,18 +173,19 @@ export const ScanField = ({ isScanning, onScan, outcome }: ScanFieldProps) => {
        *
        * ⛔ **없을 때도 자리를 지운다.** 뜨고 지면 아래의 목록·버튼이 위아래로 움직이고, 다음
        * 코드를 읽으려던 손이 옆 것을 누른다(이 슬라이스가 `.worker-no-notice` 에서 같은 문제를
-       * 같은 방법으로 막고 있다). 그래서 «내용»만 바뀌고 상자는 늘 서 있다.
+       * 같은 방법으로 막고 있다). 그래서 «내용»만 바뀌고 상자는 늘 서 있다 — 높이는 `pop.css`
+       * 가 잡는다.
        *
-       * `role="status"` 라 화면을 보지 않는 작업자도 읽힌 결과를 듣는다 — 이 화면의 사용자는
-       * 손과 눈이 자재에 가 있다.
+       * ⭐ **다른 POP 화면의 알림과 같은 모양으로 낸다**(`AlertBanner` · 사용자 지시
+       * 2026-09-10). 한때 ✓ 표식을 붙인 글줄이었는데, 같은 뜻을 화면마다 다른 모양으로 내면
+       * 작업자가 매번 「이건 무슨 표시인가」를 다시 읽는다.
+       *
+       * 부품이 무게에 따라 `role="status"`·`alert` 를 붙여 준다 — 화면을 보지 않는 작업자도
+       * 읽힌 결과를 듣는다. 이 화면의 사용자는 손과 눈이 자재에 가 있다.
        */}
-      <p
-        className="scan-outcome"
-        role="status"
-        data-tone={outcome === null ? undefined : outcome.tone}
-      >
-        {outcome !== null && <span className="scan-outcome-text">{outcome.text}</span>}
-      </p>
+      <div className="scan-outcome">
+        {outcome !== null && <AlertBanner variant={outcome.tone} title={outcome.text} />}
+      </div>
     </form>
   );
 };
