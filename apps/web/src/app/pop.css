@@ -3996,3 +3996,32 @@
 .pop-ui .scan-outcome:empty {
   min-block-size: 0;
 }
+
+/*
+ * 알림 띠 안의 [ 다시 시도 ] — **띠 안의 단추는 액션 줄이 아니다**(사용자 지시 2026-09-11).
+ *
+ * ⚠ 위 `.pop-ui [class*='action'] button` 은 «화면 바닥의 액션 줄»을 겨냥한 규칙인데,
+ *   디자인 시스템 배너가 자기 조작 칸에 `_action_f6a42_43` 이라는 이름을 붙여 그 규칙에
+ *   함께 걸렸다. 그래서 `sm` 로 세운 단추가 128×72 로 부풀어, 14px 글자 하나가 액션 줄
+ *   단추만 한 상자 안에 앉아 있었다(실측 2026-09-11 · 109×61).
+ *
+ * ⛔ 위 규칙의 겨냥을 좁히지 않는다 — `[class*='action']` 은 POP 화면들이 저마다 다른 이름
+ *    (`pop-actions`·`downtime-actions`…)으로 액션 줄을 세워 온 것을 한 줄로 받는 자리다.
+ *    여기서는 **띠 안**이라는 사실로만 되돌린다(공개 속성인 `role` 로 잡는다).
+ */
+.pop-ui [role='alert'] [class*='action'] button,
+.pop-ui [role='status'] [class*='action'] button {
+  min-width: 0;
+  min-height: 0;
+}
+
+/*
+ * ⚠ **띠가 한 줄로 설 때 단추만 내려앉는다.** 부품은 제목·본문을 세로로 쌓는 것을 전제로
+ *   조작 칸에 위 여백 8px 을 주는데, POP 은 그 셋을 한 줄로 눕혀 놓았다 — 그 여백이 그대로
+ *   어긋남이 된다(실측 2026-09-11 · 글줄보다 4px 아래).
+ */
+.pop-ui [role='alert'] [class*='action'],
+.pop-ui [role='status'] [class*='action'] {
+  margin-block-start: 0;
+  align-items: center;
+}
