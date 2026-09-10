@@ -1577,7 +1577,9 @@
  *
  * ⛔ 아이콘·바탕색·상자를 더하지 않는다 — 현장 화면은 빨리 읽히는 것이 먼저다.
  */
+/* ⚠ 제목과 번호 사이는 한 단만 띄운다 — 블록 이음매(16)에 더해지면 둘이 멀어진다. */
 .pop-ui .pop-reprint-hu-no {
+  margin-block-start: calc(-1 * var(--space-2));
   display: flex;
   /* 좁은 화면에서는 유형이 아랫줄로 내려간다 — 잘리거나 겹치지 않는다. */
   flex-wrap: wrap;
@@ -1605,6 +1607,56 @@
  */
 .pop-ui .pop-reprint-hu-no > * {
   margin: 0;
+}
+
+/*
+ * 종류가 위, 번호가 아래다(사용자 지시 2026-09-10). 종류는 굵게, 번호는 한 급 작고 옅게 —
+ * 목록을 훑을 때 「무엇을 뽑는가」가 먼저 읽힌다.
+ */
+.pop-ui .pop-reprint-target-head label {
+  display: flex;
+  align-items: center;
+}
+
+.pop-ui .pop-reprint-kind {
+  display: block;
+  font-weight: 600;
+}
+
+.pop-ui .pop-reprint-name {
+  display: block;
+  font-size: var(--pop-label);
+  font-variant-numeric: tabular-nums;
+  color: var(--on-surface-variant);
+}
+
+/*
+ * 인식표는 **그 LOT 아래로 들여 세운다**(사용자 지시 2026-09-10) — 같은 LOT 을 두고 갈리는
+ * 두 갈래이지, 서로 다른 대상이 넷인 것이 아니다.
+ *
+ * ⛔ 그림을 넣지 않는다 — 들여쓰기와 짧은 잇는 선 하나로 관계를 말한다.
+ */
+.pop-ui .pop-reprint-target--child {
+  position: relative;
+  margin-inline-start: var(--space-6);
+  padding-inline-start: var(--space-5);
+  border-block-end: 0;
+}
+
+.pop-ui .pop-reprint-target--child::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  block-size: 50%;
+  inline-size: var(--space-4);
+  border-inline-start: 1px solid var(--outline-variant);
+  border-block-end: 1px solid var(--outline-variant);
+}
+
+/* 자식 줄이 끝난 자리에서 한 묶음이 끝난다 — 선은 그 아래에 한 번만 긋는다. */
+.pop-ui .pop-reprint-target--child + .pop-reprint-target {
+  border-block-start: 1px solid var(--outline-variant);
 }
 
 /*

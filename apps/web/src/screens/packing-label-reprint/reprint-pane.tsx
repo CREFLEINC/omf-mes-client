@@ -79,17 +79,24 @@ export const ReprintPane = ({
         <ul className="pop-reprint-targets">
           {targets.map((target) => {
             const selected = selectedRowIds.includes(target.rowId);
-            const kind =
-              target.documentTypeCode === DOCUMENT_TYPE_CODES.packingLabel
-                ? t.targets.packingLabel
-                : t.targets.identificationTag;
+            const isTag = target.documentTypeCode !== DOCUMENT_TYPE_CODES.packingLabel;
+            const kind = isTag ? t.targets.identificationTag : t.targets.packingLabel;
 
             return (
               <li
                 key={target.rowId}
-                className={`pop-reprint-target${
-                  target.disabledReason === null ? '' : ' pop-reprint-target--locked'
-                }`}
+                className={[
+                  'pop-reprint-target',
+                  /*
+                   * ⭐ **인식표는 그 LOT 아래로 들여 세운다**(사용자 지시 2026-09-10). 같은
+                   * LOT 을 두고 「라벨과 인식표」라는 두 갈래가 있는 것이지, 서로 다른 대상이
+                   * 넷 있는 것이 아니다.
+                   */
+                  isTag ? 'pop-reprint-target--child' : '',
+                  target.disabledReason === null ? '' : 'pop-reprint-target--locked',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
               >
                 {/*
                  * ⭐ **줄 전체가 누르는 자리다.** 설계 §7 이 이 선택을 `Checkbox`(다중) 로
@@ -108,6 +115,11 @@ export const ReprintPane = ({
                       onToggle(target.rowId);
                     }}
                   >
+                    {/*
+                     * ⭐ **종류가 위, 번호가 아래다**(사용자 지시 2026-09-10). 종류는 무엇을
+                     * 뽑는지이고 번호는 어느 것인지라, 층을 두면 목록을 훑을 때 종류가 먼저
+                     * 읽힌다.
+                     */}
                     <span className="pop-reprint-kind">{kind}</span>{' '}
                     <span className="pop-reprint-name">{target.displayName}</span>
                   </Checkbox>
@@ -137,7 +149,13 @@ export const ReprintPane = ({
                         {issueCountText(target)}
                       </Chip>
                     )}
-                    <span className="pop-reprint-qty">{t.targets.range(target.qty)}</span>
+                    {/*
+                     * ⚠ 고를 수 없는 줄에는 수량을 되풀이하지 않는다 — 바로 위 LOT 줄과 같은
+                     *   값이라, 같은 숫자가 두 번 서면 다른 값인지 눈이 한 번 더 확인한다.
+                     */}
+                    <span className="pop-reprint-qty">
+                      {target.disabledReason === null ? t.targets.range(target.qty) : '—'}
+                    </span>
                   </span>
                 </div>
                 {/* ⛔ 고를 수 없는 줄은 사유를 함께 낸다 — 비활성만 두면 왜 안 되는지 알 수 없다 */}
