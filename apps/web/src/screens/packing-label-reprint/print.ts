@@ -34,7 +34,12 @@ export const LABEL_RENDITION_FORMAT: LabelRenditionFormat = labelRenditionFormat
  * 수 없다」는 사실이라, 화면은 그 사유를 말하고 발행까지만 진행한다.
  */
 export interface RenditionShell {
-  save: (bytes: Uint8Array, label: string, now: string, format: LabelRenditionFormat | 'pdf') => Promise<string>;
+  save: (
+    bytes: Uint8Array,
+    label: string,
+    now: string,
+    format: LabelRenditionFormat | 'pdf',
+  ) => Promise<string>;
 }
 
 interface ShellCarrier {

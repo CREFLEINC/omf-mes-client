@@ -41,6 +41,7 @@ export const workStartKeys = {
     [...ALL_KEY, 'work-orders', equipmentId, page] as const,
   openSession: (workOrderId: number) => [...ALL_KEY, 'open-session', workOrderId] as const,
   worker: (workerNo: string) => [...ALL_KEY, 'worker', workerNo] as const,
+  uoms: () => [...ALL_KEY, 'uoms'] as const,
 };
 
 /** 한 번에 받아 볼 최대 건수. 1024×768 단말의 목록 구획에 담기는 만큼만 본다. */
@@ -177,6 +178,30 @@ export const useWorkerLookup = (workerNo: string | null): UseQueryResult<Worker[
       );
 
       return data.items;
+    },
+  });
+};
+
+/**
+ * 단위 이름 — 수량 뒤에 붙일 한 낱말.
+ *
+ * ⭐ **수량은 단위와 함께 읽는다**(사용자 지시 2026-09-10). 「500」만으로는 개인지 킬로인지
+ * 알 수 없고, 작업지시 목록은 그 수량을 보고 고르는 자리다.
+ *
+ * ⛔ **못 받으면 아무것도 붙이지 않는다.** 잘못된 단위를 보이는 것보다 낫다 — 자매 화면
+ * (`P-02-04`)이 같은 근거로 같은 규칙을 쓴다.
+ */
+export const useUomCodes = (): UseQueryResult<Map<number, string>> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: workStartKeys.uoms(),
+    queryFn: async (): Promise<Map<number, string>> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/uoms', { params: { query: { includeInactive: true } } }),
+      );
+
+      return new Map(data.items.map((uom) => [uom.uomId, uom.uomCode]));
     },
   });
 };

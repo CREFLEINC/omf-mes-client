@@ -9,8 +9,9 @@ export const packingWork = {
   title: '포장 작업',
 
   device: {
-    workOrderLabel: '작업지시',
-    workOrderUnknown: '작업지시 없음',
+    /* ⚠ 머리줄 표기는 「W/O」로 통일한다(사용자 지시 2026-09-10). */
+    workOrderLabel: 'W/O',
+    workOrderUnknown: 'W/O 없음',
     terminalLabel: '단말',
     terminalUnknown: '확인되지 않음',
   },

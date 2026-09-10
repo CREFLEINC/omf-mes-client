@@ -6,6 +6,18 @@ import './numeric-keypad.css';
 
 const DIGITS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const;
 
+/**
+ * 누른 숫자를 값에 붙인다.
+ *
+ * ⛔ **앞자리 0 을 쌓지 않는다**(사용자 지시 2026-09-10). `011` 은 `11` 과 같은 수인데 글자가
+ * 달라, 되돌릴 수 없는 기록에 실리면 나중에 같은 값인지 눈으로 판단해야 한다. 실제로 현장
+ * 화면에서 `011` 이 그대로 섰다.
+ *
+ * ⚠ 소수는 그대로 둔다 — `0.` 은 `0` 이 아니라 「0점 무엇」의 시작이다.
+ */
+export const appendDigit = (value: string, digit: string): string =>
+  value === '0' ? digit : `${value}${digit}`;
+
 export interface NumericKeypadProps {
   value: string;
   onChange: (value: string) => void;
@@ -68,7 +80,7 @@ export const NumericKeypad = ({
   const full = maxLength !== undefined && value.length >= maxLength;
 
   const append = (digit: string) => {
-    const next = value + digit;
+    const next = appendDigit(value, digit);
 
     /* 상한을 넘기는 입력은 «없던 일»로 둔다 — 넣었다가 지우게 하면 손이 두 번 간다. */
     if (max !== undefined && Number(next) > max) return;

@@ -57,7 +57,7 @@ describe('toMeasurementRows', () => {
   it('규격이 없는 항목은 지어내지 않는다', () => {
     const rows = toMeasurementRows([appearanceSpec], []);
 
-    expect(rows[0]?.spec).toEqual({ target: null, lower: null, upper: null });
+    expect(rows[0]?.spec).toEqual({ target: null, lower: null, upper: null, uomId: null });
   });
 
   it('필수 여부를 그대로 나른다', () => {
@@ -95,7 +95,7 @@ describe('isOutOfSpec — 규격 밖 판정', () => {
     sampleNo: 1,
     sampleCount: 1,
     required: true,
-    spec: { target: null, lower: spec.lower, upper: spec.upper },
+    spec: { target: null, lower: spec.lower, upper: spec.upper, uomId: null },
     measured:
       numericValue === null
         ? null

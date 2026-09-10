@@ -425,7 +425,11 @@ describe('PqcInspectionScreen — 검사 항목 구획', () => {
 });
 
 describe('PqcInspectionScreen — 숫자 키패드', () => {
-  it('직접 입력과 화면 키패드가 같은 소수 수량 초안을 고친다', async () => {
+  /*
+   * ⚠ **키패드에 소수점 키가 없다**(설계 §3 도면 · 사용자 지시 2026-09-10) — 패드는 숫자만
+   *   넣는다. 손으로 치는 길은 그대로라 소수는 자판으로 들어온다.
+   */
+  it('직접 입력과 화면 키패드가 같은 수량 초안을 고친다', async () => {
     renderScreen();
 
     const rejected = await screen.findByLabelText(t.result.fields.rejected);
@@ -437,11 +441,12 @@ describe('PqcInspectionScreen — 숫자 키패드', () => {
     await userEvent.click(rejected);
 
     const keypad = screen.getByRole('group', { name: t.pad.keypadLabel });
-    await userEvent.click(within(keypad).getByRole('button', { name: '0' }));
-    await userEvent.click(within(keypad).getByRole('button', { name: t.pad.decimal }));
+    expect(within(keypad).queryByRole('button', { name: t.pad.decimal })).not.toBeInTheDocument();
+
+    await userEvent.click(within(keypad).getByRole('button', { name: '1' }));
     await userEvent.click(within(keypad).getByRole('button', { name: '5' }));
 
-    expect(rejected).toHaveValue('0.5');
+    expect(rejected).toHaveValue('15');
   });
 });
 
@@ -548,9 +553,9 @@ describe('PqcInspectionScreen — 저장이 실어 가는 것', () => {
 
     await screen.findByRole('button', { name: t.result.save });
 
-    const from = screen.getByLabelText(t.coverage.from);
-    await userEvent.clear(from);
-    await userEvent.clear(screen.getByLabelText(t.coverage.to));
+    /* 구간은 날짜·시각 두 칸이다 — 날짜를 비우면 그 한쪽이 통째로 빈 값이 된다. */
+    await userEvent.clear(screen.getByLabelText(`${t.coverage.from} ${t.coverage.date}`));
+    await userEvent.clear(screen.getByLabelText(`${t.coverage.to} ${t.coverage.date}`));
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -569,10 +574,9 @@ describe('PqcInspectionScreen — 저장이 실어 가는 것', () => {
 
     await screen.findByText(t.measurements.heading);
 
-    /* DS 선택칸은 네이티브 select 가 아니라 조합 상자다 — 열고 고른다. */
-    const judgments = screen.getAllByRole('combobox', { name: t.measurements.columns.judgment });
-    await userEvent.click(judgments[0] as HTMLElement);
-    await userEvent.click(screen.getByRole('option', { name: '합격' }));
+    /* 항목 판정은 버튼 둘이다(설계 §7) — 첫 항목의 [합격]을 누른다. */
+    const groups = screen.getAllByRole('group', { name: t.measurements.columns.judgment });
+    await userEvent.click(within(groups[0] as HTMLElement).getByRole('button', { name: '합격' }));
     await userEvent.click(screen.getByRole('button', { name: t.result.save }));
 
     await waitFor(() => expect(writes).toHaveLength(1));
@@ -779,15 +783,14 @@ describe('PqcInspectionScreen — 액션바', () => {
 
   /*
    * ⛔ 잠긴 단추만 두지 않는다(G-3). 막혔으면 «무엇이» 막혔는지 함께 세운다.
+   *
+   * ⚠ **합계만은 예외다**(사용자 지시 2026-09-10) — 그 사실은 《결과 입력》이 이미 말하고
+   *   있어 액션바에서 되풀이하지 않는다. 잠금은 그대로 걸린다.
    */
-  it('확정이 막히면 사유를 함께 세운다', async () => {
+  it('확정이 막히면 잠기고, 합계 사유는 결과 입력이 말한다', async () => {
     renderScreen();
 
-    /*
-     * 수량이 비어 합계가 서지 않는다 — 남은 것을 정확히 가리켜야 한다(뭉치면 무엇을
-     * 고칠지 알 수 없다).
-     */
-    expect(await screen.findByText(t.result.confirmBlockedByTotals)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(screen.queryByText(t.result.confirmBlockedByTotals)).not.toBeInTheDocument();
   });
 });

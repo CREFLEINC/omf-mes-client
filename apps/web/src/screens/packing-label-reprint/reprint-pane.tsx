@@ -79,13 +79,25 @@ export const ReprintPane = ({
         <ul className="pop-reprint-targets">
           {targets.map((target) => {
             const selected = selectedRowIds.includes(target.rowId);
-            const kind =
-              target.documentTypeCode === DOCUMENT_TYPE_CODES.packingLabel
-                ? t.targets.packingLabel
-                : t.targets.identificationTag;
+            const isTag = target.documentTypeCode !== DOCUMENT_TYPE_CODES.packingLabel;
+            const kind = isTag ? t.targets.identificationTag : t.targets.packingLabel;
 
             return (
-              <li key={target.rowId} className="pop-reprint-target">
+              <li
+                key={target.rowId}
+                className={[
+                  'pop-reprint-target',
+                  /*
+                   * ⭐ **인식표는 그 LOT 아래로 들여 세운다**(사용자 지시 2026-09-10). 같은
+                   * LOT 을 두고 「라벨과 인식표」라는 두 갈래가 있는 것이지, 서로 다른 대상이
+                   * 넷 있는 것이 아니다.
+                   */
+                  isTag ? 'pop-reprint-target--child' : '',
+                  target.disabledReason === null ? '' : 'pop-reprint-target--locked',
+                ]
+                  .filter(Boolean)
+                  .join(' ')}
+              >
                 {/*
                  * ⭐ **줄 전체가 누르는 자리다.** 설계 §7 이 이 선택을 `Checkbox`(다중) 로
                  * 지정했는데, 상자 자체는 손가락보다 작다. `<label>` 로 줄을 감싸면 종류·번호
@@ -103,15 +115,44 @@ export const ReprintPane = ({
                       onToggle(target.rowId);
                     }}
                   >
+                    {/*
+                     * ⭐ **종류가 위, 번호가 아래다**(사용자 지시 2026-09-10). 종류는 무엇을
+                     * 뽑는지이고 번호는 어느 것인지라, 층을 두면 목록을 훑을 때 종류가 먼저
+                     * 읽힌다.
+                     */}
                     <span className="pop-reprint-kind">{kind}</span>{' '}
                     <span className="pop-reprint-name">{target.displayName}</span>
                   </Checkbox>
-                </div>
-                <div className="pop-reprint-target-meta">
-                  <Chip status={target.issueCount === null ? 'warning' : 'info'}>
-                    {issueCountText(target)}
-                  </Chip>
-                  <span className="field-note">{t.targets.range(target.qty)}</span>
+                  {/*
+                   * ⭐ **한 줄에서 다 읽힌다**(사용자 지시 2026-09-10) — 「종류·번호」가 왼쪽,
+                   * 「발행 상태」가 오른쪽 끝이다. 세로로 쌓아 두었더니 줄 하나가 화면의 다섯
+                   * 줄을 먹어, 대상 넷이면 사유·[재출력]이 접힘선 아래로 갔다.
+                   *
+                   * ⛔ **수량을 내지 않는다**(사용자 지시 2026-09-10) — 설계 §3 와이어에 없는
+                   *    값이고, 담긴 수량은 왼쪽 《포장 단위》의 내용물 표가 이미 말한다.
+                   *
+                   * ⭐ 이력이 0 이면 재출력이 아니라 처음 뽑는 것이라 색을 가른다(스펙 §6).
+                   *
+                   * ⛔ **고를 수 없는 줄에는 이력 칩을 세우지 않는다.** 그 줄의 이력은 애초에
+                   *    조회하지 않아(`useIssueSummary` 는 LOT 라벨만 묻는다) 「모른다」가 뜬 것인데,
+                   *    못 뽑는 까닭은 이력이 아니라 개체를 알 수 없다는 것이다 — 아래 한 줄이
+                   *    그것을 말한다.
+                   */}
+                  <span className="pop-reprint-target-meta">
+                    {target.disabledReason === null && (
+                      <Chip
+                        status={
+                          target.issueCount === null
+                            ? 'warning'
+                            : target.issueCount === 0
+                              ? 'success'
+                              : 'info'
+                        }
+                      >
+                        {issueCountText(target)}
+                      </Chip>
+                    )}
+                  </span>
                 </div>
                 {/* ⛔ 고를 수 없는 줄은 사유를 함께 낸다 — 비활성만 두면 왜 안 되는지 알 수 없다 */}
                 {target.disabledReason !== null && (
@@ -131,7 +172,7 @@ export const ReprintPane = ({
        */}
       <div className="pop-reprint-rule" />
 
-      <div className="field-cell">
+      <div className="field-cell pop-reprint-reason">
         <label className="field-label" htmlFor={reasonId}>
           {t.reason.label}
         </label>
@@ -160,7 +201,7 @@ export const ReprintPane = ({
         )}
       </div>
 
-      <Button size="2xl" disabled={!canSubmit} onClick={onSubmit}>
+      <Button size="2xl" className="pop-reprint-submit" disabled={!canSubmit} onClick={onSubmit}>
         {isSubmitting ? t.action.submitting : t.action.submit}
       </Button>
 

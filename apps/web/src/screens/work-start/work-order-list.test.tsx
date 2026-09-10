@@ -30,6 +30,8 @@ const base = {
   onSelect: () => undefined,
   onToggleScope: () => undefined,
   onRetry: () => undefined,
+  /* 단위는 이 시험의 관심이 아니다 — 못 받은 상태로 두면 수량만 선다. */
+  uomCodeOf: () => null,
 };
 
 describe('P-02-01 작업지시 목록 — 「없다」와 「모른다」를 가른다', () => {

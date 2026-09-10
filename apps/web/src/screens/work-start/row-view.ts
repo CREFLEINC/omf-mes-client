@@ -22,9 +22,19 @@ export const dateTimeText = (value: string | undefined): string => {
   return match === null ? value : `${match[1]} ${match[2]}`;
 };
 
-/** 수량. 안 온 값을 0으로 떨어뜨리지 않는다. */
-export const qtyText = (value: number | undefined): string =>
-  value === undefined ? t.unknown : QTY_FORMAT.format(value);
+/**
+ * 수량. 안 온 값을 0으로 떨어뜨리지 않는다.
+ *
+ * ⭐ **단위를 함께 낸다**(사용자 지시 2026-09-10) — 「500」만으로는 개인지 킬로인지 모른다.
+ * ⛔ 단위를 못 받았으면 붙이지 않는다. 지어낸 단위는 거짓이다.
+ */
+export const qtyText = (value: number | undefined, uomCode?: string | null): string => {
+  if (value === undefined) return t.unknown;
+
+  const formatted = QTY_FORMAT.format(value);
+
+  return uomCode === undefined || uomCode === null ? formatted : `${formatted} ${uomCode}`;
+};
 
 /** 품목. 계약이 이름을 주지 않는 자리라 코드를 그대로 보인다. */
 export const itemText = (workOrder: WorkOrder): string =>

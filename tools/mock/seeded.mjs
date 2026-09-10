@@ -871,6 +871,40 @@ on('GET', '/app/document-issues/summary', (_params, query) => {
   };
 });
 
+/*
+ * 발행 이력 목록. **씨앗 상태로 답한다** — 이 경로를 두지 않았더니 계약 예시 서버로 넘어가,
+ * 어떤 LOT 을 물어도 「이미 한 건 발행됐고 인쇄는 대기」인 예시가 돌아왔다. 생산 실적 등록
+ * 화면이 그것을 「발행된 라벨이 있다」로 읽어, 씨앗을 새로 띄워도 늘 재인쇄 상태로 섰다(실측).
+ */
+on('GET', '/app/document-issues', (_params, query) => {
+  const documentTypeCode = query.get('documentTypeCode');
+  const targetTypeCode = query.get('targetTypeCode');
+  const targetId = num(query, 'targetId');
+
+  const items = state.documentIssues
+    .filter(
+      (issue) =>
+        (documentTypeCode === null || issue.documentTypeCode === documentTypeCode) &&
+        (targetTypeCode === null || issue.targetTypeCode === targetTypeCode) &&
+        (targetId === null || issue.targetId === targetId),
+    )
+    .map((issue) => {
+      const lot = state.lots.find((row) => row.lotId === (issue.lotId ?? issue.targetId));
+
+      return {
+        ...issue,
+        lotNo: lot?.lotNo ?? null,
+        target: {
+          targetTypeCode: issue.targetTypeCode,
+          targetId: issue.targetId,
+          displayName: lot?.lotNo ?? String(issue.targetId),
+        },
+      };
+    });
+
+  return page(items, query);
+});
+
 on('POST', '/app/document-issues', (_params, _query, body, headers) =>
   idempotent('app.document-issues:create', headers, () => {
     const items = (body?.targets ?? []).map((target) => {
@@ -889,6 +923,8 @@ on('POST', '/app/document-issues', (_params, _query, body, headers) =>
         targetTypeCode: target.targetTypeCode,
         targetId: target.targetId,
         lotId: target.lotId,
+        /* 계약의 DocumentIssue 가 LOT 번호를 함께 낸다 — 화면의 결과 띠가 이 값을 읽는다. */
+        lotNo: lot?.lotNo ?? null,
         issueSeq,
         reissueReasonCode: issueSeq > 1 ? body.reissueReasonCode : null,
         issuedBy: 1001,
@@ -1230,7 +1266,7 @@ on('POST', '/inventory/handling-units', (_p, _q, body) => {
   const created = {
     handlingUnitId,
     handlingUnitNo: `HU-2026-${String(handlingUnitId).slice(-6)}`,
-    handlingUnitTypeCode: body?.handlingUnitTypeCode ?? 'CARTON',
+    handlingUnitTypeCode: body?.handlingUnitTypeCode ?? 'BOX',
     parentHandlingUnitId: body?.parentHandlingUnitId ?? null,
     warehouseId: body?.warehouseId ?? null,
     locationId: body?.locationId ?? null,
@@ -1376,9 +1412,20 @@ on('PUT', '/inventory/handling-units/{handlingUnitId}/contents', (params, _q, bo
   return { items };
 });
 
-on('GET', '/inventory/handling-units/{handlingUnitId}/repack-events', (params) => ({
-  items: state.repackEvents.filter((each) => each.handlingUnitId === Number(params.handlingUnitId)),
-}));
+on('GET', '/inventory/handling-units/{handlingUnitId}/repack-events', (params) => {
+  const id = Number(params.handlingUnitId);
+
+  /*
+   * ⚠ **줄까지 본다.** 사건이 들고 있는 `handlingUnitId` 만 보면 분할로 «새로 생긴» 쪽으로
+   *   물었을 때 아무것도 답하지 않는다 — 그 포장은 사건의 줄에만 나온다. 라벨을 기다리는
+   *   것이 바로 그 새 포장이라, 화면이 자기를 만든 사건을 영영 못 찾는다.
+   */
+  return {
+    items: state.repackEvents.filter(
+      (each) => each.handlingUnitId === id || each.lines.some((line) => line.handlingUnitId === id),
+    ),
+  };
+});
 
 /* ── 물류 ─────────────────────────────────────────────────── */
 
@@ -2556,6 +2603,17 @@ on('GET', '/production/work-orders', (_p, query) => {
   );
 });
 
+/*
+ * 작업지시 한 건. **이 경로가 없어 계약 예시 서버가 답하고 있었다** — 어떤 번호를 물어도
+ * `workOrderNo: '값'` 인 예시가 돌아와, 생산 실적 등록 머리줄이 「MES W/O 값」으로 섰다
+ * (실측 2026-09-10 · 사용자 지적).
+ */
+on('GET', '/production/work-orders/{workOrderId}', (params) => {
+  const workOrder = state.workOrders.find((row) => row.workOrderId === Number(params.workOrderId));
+
+  return workOrder === undefined ? null : { ...workOrder };
+});
+
 /**
  * 작업 세션 — P-02-10 이 중단·재개를 거는 자리다.
  *
@@ -2857,9 +2915,49 @@ on('POST', '/production/repair-executions/{repairExecutionId}:return', (params, 
   return { ...execution };
 });
 
-on('POST', '/production/results', (_p, _q, body) => {
-  const created = { productionResultId: newId(), ...body };
+/*
+ * 생산 실적 등록(P-02-04).
+ *
+ * ⚠ **경로 이름이 틀려 있었다** — 계약은 `/production/production-results` 인데 목이
+ * `/production/results` 로 받고 있어, 화면이 보낸 저장이 계약 예시 서버로 넘어가 400 을
+ * 받았다. 화면에는 「실적을 저장하지 못했습니다」만 떴다(실측 2026-09-10).
+ *
+ * ⭐ **LOT 진척을 함께 올린다.** 저장이 끝나면 화면이 LOT 을 다시 읽어 「실제 생산수량」을
+ * 그린다 — 상태를 올리지 않으면 저장은 됐는데 화면은 0 을 말한다.
+ */
+on('POST', '/production/production-results', (_p, _q, body) => {
+  const sequence =
+    state.productionResults.filter((row) => row.workOrderId === body.workOrderId).length + 1;
+  const created = {
+    productionResultId: newId(),
+    productionResultNo: `PR-2026-${String(900000 + sequence)}`,
+    resultSequence: sequence,
+    defectQty: 0,
+    holdQty: 0,
+    scrapQty: 0,
+    reworkQty: 0,
+    /* 출처는 서버가 채운다 — 화면이 보내지 않는다(설계 변동 공지 #507). */
+    resultSourceCode: 'MANUAL',
+    ...body,
+  };
+
   state.productionResults.push(created);
+
+  for (const allocation of body.lotAllocations ?? []) {
+    const lot = state.lots.find((row) => row.lotId === allocation.lotId);
+    if (lot === undefined) continue;
+
+    lot.progress = {
+      goodQty: (lot.progress?.goodQty ?? 0) + allocation.allocatedQty,
+      defectQty: lot.progress?.defectQty ?? 0,
+      achievementRate:
+        lot.initialQty > 0
+          ? ((lot.progress?.goodQty ?? 0) + allocation.allocatedQty) / lot.initialQty
+          : 0,
+      completionJudgmentCode: lot.progress?.completionJudgmentCode ?? null,
+    };
+  }
+
   return { created, status: 201 };
 });
 
@@ -2876,6 +2974,46 @@ on('POST', '/production/results', (_p, _q, body) => {
  * ⛔ **그 정의를 화면이 아니라 여기서 지킨다**(공유계약 G-6).
  */
 const PENDING_INSPECTION_STATUSES = ['REQUESTED', 'IN_PROGRESS'];
+
+/*
+ * 검사 의뢰 한 건과 그 검사기준 — **PQC 화면(P-02-13)이 항목을 그릴 근거다.**
+ *
+ * ⚠ 이 넷이 비어 있어 계약 예시 서버가 답했고, 화면이 「표시명 · 규격 목표 1 · 1 ~ 1」 같은
+ *   견본을 그렸다(사용자 지적 2026-09-10).
+ */
+on('GET', '/quality/inspection-requests/{inspectionRequestId}', (params) => {
+  const request = state.inspectionRequests.find(
+    (row) => row.inspectionRequestId === Number(params.inspectionRequestId),
+  );
+
+  return request === undefined ? null : { ...request };
+});
+
+on('GET', '/quality/inspection-plans/{inspectionPlanId}', (params) => {
+  const plan = state.inspectionPlans.find(
+    (row) => row.inspectionPlanId === Number(params.inspectionPlanId),
+  );
+
+  /* 계약이 단건을 봉투에 담는다 — 화면이 `inspectionPlan` 을 읽는다. */
+  return plan === undefined ? null : { inspectionPlan: { ...plan } };
+});
+
+on('GET', '/quality/inspection-plan-versions/{inspectionPlanVersionId}', (params) => {
+  const version = state.inspectionPlanVersions.find(
+    (row) => row.inspectionPlanVersionId === Number(params.inspectionPlanVersionId),
+  );
+
+  return version === undefined ? null : { inspectionPlanVersion: { ...version } };
+});
+
+on('GET', '/quality/inspection-plan-versions/{inspectionPlanVersionId}/items', (params, query) =>
+  page(
+    state.inspectionItemSpecs.filter(
+      (row) => row.inspectionPlanVersionId === Number(params.inspectionPlanVersionId),
+    ),
+    query,
+  ),
+);
 
 on('GET', '/quality/inspection-requests', (_p, query) => {
   const pendingOnly = bool(query, 'pendingOnly');

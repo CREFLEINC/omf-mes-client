@@ -12,7 +12,13 @@ import { useStartGate } from './gating';
 import { useResumeWork, useStartWork, toResumeBody } from './mutations';
 import { PopHeader } from './pop-header';
 import { SelectionCard } from './selection-card';
-import { useOpenSession, useTerminal, useWorkOrders, useWorkerLookup } from './queries';
+import {
+  useOpenSession,
+  useTerminal,
+  useUomCodes,
+  useWorkOrders,
+  useWorkerLookup,
+} from './queries';
 import { toSessionRequest } from './session-request';
 import { assignedAtText, terminalNow } from './terminal-clock';
 import type { ControlOverride, WorkOrder } from './types';
@@ -48,6 +54,11 @@ export const WorkStartScreen = () => {
   /* ⛔ 단말·공정·사번은 셸이 채운다 — 화면이 토큰을 열어 읽지 않는다(F-2). */
   const identity = usePopIdentity();
   const isOnline = useIsOnline();
+
+  /* 단위 이름 — 수량 뒤에 붙인다. 못 받으면 붙이지 않는다(지어내지 않는다). */
+  const uoms = useUomCodes();
+  const uomCodeOf = (uomId: number | undefined): string | null =>
+    uomId === undefined ? null : (uoms.data?.get(uomId) ?? null);
 
   const gate = useStartGate(identity.terminalId, identity.processId);
   const terminal = useTerminal(identity.terminalId);
@@ -377,16 +388,22 @@ export const WorkStartScreen = () => {
        */}
       {block !== null && block.code !== 'notSelected' && (
         <div className="banner-slot">
-          <AlertBanner variant="warning">
-            {block.text}
-            {retryLabel !== null && (
-              <>
-                {' '}
-                <Button type="button" variant="text" size="lg" onClick={gate.retry}>
+          {/*
+           * ⭐ **[ 다시 확인 ]은 띠의 조작 칸에 선다**(사용자 지시 2026-09-11 · POP 공통).
+           *    글 사이에 끼워 두면 화면마다 자리와 크기가 갈린다 — 다른 POP 화면의 실패 띠가
+           *    모두 `action` 으로 오른쪽 끝에 세우고 `sm` 으로 서 있다.
+           */}
+          <AlertBanner
+            variant="warning"
+            action={
+              retryLabel === null ? undefined : (
+                <Button type="button" variant="outlined" size="sm" onClick={gate.retry}>
                   {retryLabel}
                 </Button>
-              </>
-            )}
+              )
+            }
+          >
+            {block.text}
           </AlertBanner>
         </div>
       )}
@@ -430,6 +447,7 @@ export const WorkStartScreen = () => {
       )}
 
       <WorkOrderList
+        uomCodeOf={uomCodeOf}
         workOrders={rows}
         isAsked={isListAsked}
         isLoading={isListAsked && list.isPending}
@@ -459,7 +477,12 @@ export const WorkStartScreen = () => {
         }}
       />
 
-      <SelectionCard workOrder={selected} equipmentId={equipmentId} equipmentCode={equipmentCode} />
+      <SelectionCard
+        workOrder={selected}
+        equipmentId={equipmentId}
+        equipmentCode={equipmentCode}
+        uomCodeOf={uomCodeOf}
+      />
 
       {outcome !== null && (
         <div className="banner-slot">

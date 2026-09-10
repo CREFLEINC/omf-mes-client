@@ -8,7 +8,8 @@ export const workHoldRegister = {
   title: '작업 중단',
 
   entry: {
-    workOrderLabel: '작업지시',
+    /* ⚠ 머리줄 표기는 「W/O」로 통일한다(사용자 지시 2026-09-10). */
+    workOrderLabel: 'W/O',
     workerLabel: '사번',
     workerUnknown: '사번 미확인',
     /** 작업지시 없이 들어온 자리. 목록을 스스로 열지 않는 화면이라 되돌아갈 곳을 말한다. */

@@ -210,7 +210,16 @@ export const ScannedList = ({
                     value={readQty(qtyDrafts, material.lotId)}
                     label={t.scanned.keypadLabel(material.lotNo)}
                     submitLabel={t.scanned.keypadSubmit}
-                    submitDisabled={!canRecord}
+                    /*
+                     * ⛔ **수량이 없으면 누르지 못한다**(사용자 지시 2026-09-10). 빈 칸으로
+                     *    눌러도 본문이 만들어지지 않아 «아무 일도 일어나지 않았는데», 화면은
+                     *    눌리는 버튼을 보여 주고 있었다 — 작업자는 기록된 줄 알고 넘어간다.
+                     *
+                     * ⚠ 숫자 키는 그대로 눌린다 — 잠그는 것은 보내는 자리뿐이다.
+                     */
+                    submitDisabled={
+                      !canRecord || validateQty(readQty(qtyDrafts, material.lotId)) !== null
+                    }
                     clearLabel={t.scanned.keypadClear}
                     backspaceLabel={t.scanned.keypadBackspace}
                     onChange={(next) => {

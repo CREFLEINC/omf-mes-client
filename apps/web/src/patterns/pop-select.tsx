@@ -99,6 +99,12 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
           ),
     [flatOptions, normalizedQuery],
   );
+  /*
+   * ⭐ **짧은 목록에는 검색도 쪽 이동도 두지 않는다**(사용자 지적 2026-09-10). 값이 둘·셋인
+   * 목록에 검색창과 쪽 단추가 서면, 고르는 데 필요한 것보다 조작이 더 많다 — POP 은 큰 단추로
+   * 한 번에 고르는 화면이다(설계 §7 DS 매핑에 이 판이 없다).
+   */
+  const isShortList = options.length <= PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages - 1);
   const visibleOptions = filtered.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
@@ -178,32 +184,34 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
            */
           closeOnBackdropClick={false}
         >
-          <div className="pop-select-dialog__search">
-            <TextField
-              type="search"
-              size="md"
-              fullWidth
-              aria-label="목록 검색"
-              placeholder="목록에서 검색"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value);
-                setPage(0);
-              }}
-            />
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              disabled={query === ''}
-              onClick={() => {
-                setQuery('');
-                setPage(0);
-              }}
-            >
-              검색어 지우기
-            </Button>
-          </div>
+          {!isShortList && (
+            <div className="pop-select-dialog__search">
+              <TextField
+                type="search"
+                size="md"
+                fullWidth
+                aria-label="목록 검색"
+                placeholder="목록에서 검색"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value);
+                  setPage(0);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outlined"
+                size="md"
+                disabled={query === ''}
+                onClick={() => {
+                  setQuery('');
+                  setPage(0);
+                }}
+              >
+                검색어 지우기
+              </Button>
+            </div>
+          )}
 
           <div className="pop-select-dialog__list" role="listbox" aria-label={title}>
             {visibleOptions.length === 0 ? (
@@ -231,33 +239,35 @@ export const PopSelect = forwardRef<HTMLButtonElement, PopSelectProps>(function 
             )}
           </div>
 
-          <div className="pop-select-dialog__paging">
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              disabled={currentPage === 0}
-              onClick={() => {
-                setPage((previous) => Math.max(0, previous - 1));
-              }}
-            >
-              페이지 위
-            </Button>
-            <output aria-live="polite">
-              {currentPage + 1} / {totalPages} · 전체 {filtered.length}건
-            </output>
-            <Button
-              type="button"
-              variant="outlined"
-              size="md"
-              disabled={currentPage >= totalPages - 1}
-              onClick={() => {
-                setPage((previous) => Math.min(totalPages - 1, previous + 1));
-              }}
-            >
-              페이지 아래
-            </Button>
-          </div>
+          {!isShortList && (
+            <div className="pop-select-dialog__paging">
+              <Button
+                type="button"
+                variant="outlined"
+                size="md"
+                disabled={currentPage === 0}
+                onClick={() => {
+                  setPage((previous) => Math.max(0, previous - 1));
+                }}
+              >
+                페이지 위
+              </Button>
+              <output aria-live="polite">
+                {currentPage + 1} / {totalPages} · 전체 {filtered.length}건
+              </output>
+              <Button
+                type="button"
+                variant="outlined"
+                size="md"
+                disabled={currentPage >= totalPages - 1}
+                onClick={() => {
+                  setPage((previous) => Math.min(totalPages - 1, previous + 1));
+                }}
+              >
+                페이지 아래
+              </Button>
+            </div>
+          )}
         </Dialog>
       ) : null}
     </div>

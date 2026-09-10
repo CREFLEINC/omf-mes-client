@@ -23,15 +23,18 @@ export type InspectionMeasurementResponse = components['schemas']['InspectionMea
 /**
  * 규격 한 줄이 보이는 값. **없는 것을 지어내지 않는다.**
  *
- * ⛔ **단위(`uomId`)를 싣지 않는다.** 계약이 식별자만 주고 이름을 주지 않아, 그대로 그리면
- * 「목표 10 · 20」 같은 숫자가 붙어 노이즈가 된다. 이름을 채우는 참조 조회를 얹지 않는 것이
- * 이 슬라이스의 규율이다(`queries.ts` 머리). 쓰지 않을 값을 모아 두면 다음 사람이
- * 「왜 안 그리지」를 되짚으므로 **아예 담지 않는다.**
+ * ⭐ **단위 번호를 함께 싣는다**(사용자 지시 2026-09-10). 한때 「이름을 주지 않는다」를 이유로
+ * 빼 두었는데, 이 화면은 검사 수량을 그리느라 이미 단위 이름을 받고 있다(`useUoms`) — 같은
+ * 표를 규격에도 쓰면 「12.00 ~ 12.05」가 무엇의 12 인지 말할 수 있다.
+ *
+ * ⛔ 이름을 못 찾으면 번호를 대신 그리지 않는다 — 그때는 아무것도 붙이지 않는다.
  */
 export interface SpecRange {
   target: number | null;
   lower: number | null;
   upper: number | null;
+  /** 규격·측정값의 단위 번호. 이름은 부르는 쪽이 푼다. 없으면 `null` */
+  uomId: number | null;
 }
 
 export interface MeasurementRow {
@@ -133,6 +136,7 @@ export const toMeasurementRows = (
           target: spec.targetValue ?? null,
           lower: spec.lowerLimit ?? null,
           upper: spec.upperLimit ?? null,
+          uomId: spec.uomId ?? null,
         },
         measured: index.get(`${spec.inspectionItemSpecId}-${sampleNo}`) ?? null,
       };

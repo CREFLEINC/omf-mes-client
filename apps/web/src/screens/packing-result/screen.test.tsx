@@ -191,11 +191,8 @@ const scan = async (
   label: string,
   code: string,
 ): Promise<void> => {
-  await user.type(screen.getByLabelText(label), code);
-  const buttons = screen.getAllByRole('button', { name: t.scan.submit });
-  const index = label === t.scan.label.shipment ? 0 : label === t.scan.label.deliveryLabel ? 1 : 2;
-
-  await user.click(buttons[index] as HTMLElement);
+  /* 스캐너는 코드 끝에 Enter 를 붙여 보낸다 — 화면에 [읽기] 단추가 없으므로 그 길이 전부다. */
+  await user.type(screen.getByLabelText(label), `${code}{Enter}`);
 };
 
 describe('PackingResultScreen', () => {

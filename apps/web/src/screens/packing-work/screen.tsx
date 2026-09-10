@@ -445,7 +445,7 @@ export const PackingWorkScreen = () => {
   const writeError = create.error ?? pack.error ?? discard.error;
 
   return (
-    <main className="pop-shell pop-ui pack-work-screen" aria-labelledby={titleId}>
+    <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <header className="pop-header">
         <h1 id={titleId} className="pop-title">
           {t.title}

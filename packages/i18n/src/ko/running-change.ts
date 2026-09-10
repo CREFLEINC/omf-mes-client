@@ -11,7 +11,8 @@ export const runningChange = {
   title: '러닝체인지 부품 교체',
 
   header: {
-    workOrder: (workOrderId: number) => `작업지시 ${workOrderId}`,
+    /* ⚠ 머리줄의 작업지시 표기는 화면마다 「W/O」로 통일한다(사용자 지시 2026-09-10). */
+    workOrder: (workOrderId: number) => `W/O ${workOrderId}`,
     workOrderMissing: '작업지시를 받지 못해 현재 투입을 불러올 수 없습니다.',
     session: (workSessionId: number) => `세션 ${workSessionId}`,
     sessionNone: '세션 없음',
@@ -71,8 +72,6 @@ export const runningChange = {
 
   scan: {
     label: '신규 부품 LOT 스캔',
-    submit: '읽기',
-    scanning: '조회 중',
     manualEntry: '직접 입력',
     outcomes: {
       part: (code: string, lotNo: string) => `${code} → ${lotNo} 을(를) 담았습니다.`,

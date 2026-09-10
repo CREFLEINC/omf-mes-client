@@ -127,12 +127,7 @@ export const ReceiptTable = ({
         getRowId={(row) => String(row.shopfloorReceiptLineId)}
         empty={
           hasWorkOrder ? (
-            <EmptyState
-              size="sm"
-              live
-              title={t.empty.receiptTitle}
-              description={t.empty.receiptDescription}
-            />
+            <EmptyState size="sm" live title={t.empty.receiptTitle} />
           ) : (
             <EmptyState size="sm" title={t.empty.notQueriedTitle} />
           )

@@ -19,7 +19,7 @@ import {
   useHandlingUnit,
   useIssueHistory,
   useIssueStanding,
-  usePendingHandlingUnits,
+  usePendingRepackRows,
   usePrinters,
   useReissueReasons,
   useRemainderCandidates,
@@ -70,7 +70,7 @@ export const RepackLabelIssueScreen = () => {
   /** 한 배치의 앞 라벨이 실패해 재발행해도 뒤 라벨 순서를 잃지 않는다. */
   const queueAfterRetry = useRef<IssuePrintTarget[]>([]);
 
-  const pending = usePendingHandlingUnits();
+  const pending = usePendingRepackRows();
   const handlingUnit = useHandlingUnit(selectedHandlingUnitId);
   const contents = useContentRows(handlingUnit.data?.contents ?? []);
   const standingQuery = useIssueStanding(selectedHandlingUnitId);

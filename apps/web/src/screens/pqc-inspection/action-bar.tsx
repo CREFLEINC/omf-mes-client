@@ -1,4 +1,4 @@
-import { Button } from '@crefle/web-ui';
+import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { popTouchClass } from '../../patterns/pop-touch';
@@ -53,13 +53,26 @@ export const ActionBar = ({
        *    그것을 누르기 전에 알릴지, 알린다면 어떤 문구로 할지는 요청서로 올렸다.
        */}
 
-      {/* 눌렀는데 아무 일도 없어 보이지 않게 결과를 한 줄로 알린다. */}
-      {isSaved && <p className="field-note">{t.saved}</p>}
-      {isJustConfirmed && <p className="field-note">{t.confirmSucceeded}</p>}
+      {/*
+       * 눌렀는데 아무 일도 없어 보이지 않게 결과를 알린다.
+       *
+       * ⭐ **다른 POP 화면의 결과와 같은 띠로 낸다**(`AlertBanner` · 사용자 지시 2026-09-10) —
+       * 회색 한 줄이면 잠긴 사유 문구와 같은 무게라, 「됐다」와 「안 된다」가 같은 모양으로 선다.
+       */}
+      {isSaved && <AlertBanner variant="success" title={t.saved} />}
+      {isJustConfirmed && <AlertBanner variant="success" title={t.confirmSucceeded} />}
 
       {saveBlockedReason !== null && <p className="field-note">{saveBlockedReason}</p>}
-      {/* 막혔으면 «무엇이» 막혔는지 밝힌다 — 잠긴 버튼만 두지 않는다. */}
-      {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
+      {/*
+       * 막혔으면 «무엇이» 막혔는지 밝힌다 — 잠긴 버튼만 두지 않는다.
+       *
+       * ⛔ **합계가 안 맞는 것은 여기서 말하지 않는다**(사용자 지시 2026-09-10). 그 사실은
+       *    《결과 입력》이 「검사 수량보다 n 모자랍니다」로 이미 말하고 있어, 같은 말이 화면
+       *    두 곳에 선다. 버튼 잠금은 그대로다 — 잠그는 조건과 문구는 다른 축이다.
+       */}
+      {blockedReason !== null && blockedReason !== t.confirmBlockedByTotals && (
+        <p className="field-note">{blockedReason}</p>
+      )}
     </div>
 
     {/*

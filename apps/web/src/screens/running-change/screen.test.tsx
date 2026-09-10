@@ -194,8 +194,8 @@ const submitButton = (): HTMLElement => screen.getByRole('button', { name: t.rep
 
 /** 스캔 → 대상 선택 → 수량까지 밟는다. 등록은 부르는 쪽이 누른다. */
 const fillReplacement = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
-  await user.type(screen.getByLabelText(t.scan.label), NEW_LOT_NO);
-  await user.click(screen.getByRole('button', { name: t.scan.submit }));
+  /* 스캐너는 코드 끝에 Enter 를 붙여 보낸다 — 화면에 [읽기] 단추가 없으므로 그 길이 전부다. */
+  await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
   await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO, NEW_LOT_NO));
 
   await user.click(screen.getByLabelText(t.replace.targetLabel));
@@ -409,8 +409,7 @@ describe('러닝체인지 화면 — 교체 등록', () => {
     renderScreen();
 
     await screen.findByText(OLD_LOT_NO);
-    await user.type(screen.getByLabelText(t.scan.label), NEW_LOT_NO);
-    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+    await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
     await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO, NEW_LOT_NO));
 
     expect(screen.getByText(t.disabled.targetMissing)).toBeInTheDocument();
@@ -488,8 +487,7 @@ describe('러닝체인지 화면 — 교체 등록', () => {
     await user.click(submitButton());
     expect(await screen.findByText(t.replace.rejected)).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(t.scan.label), NEW_LOT_NO);
-    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+    await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
 
     await waitFor(() => {
       expect(screen.queryByText(t.replace.rejected)).not.toBeInTheDocument();
@@ -504,12 +502,10 @@ describe('러닝체인지 화면 — 교체 등록', () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await user.type(screen.getByLabelText(t.scan.label), NEW_LOT_NO);
-    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+    await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
     await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO, NEW_LOT_NO));
 
-    await user.type(screen.getByLabelText(t.scan.label), 'LOT-SAMPLE-NONE');
-    await user.click(screen.getByRole('button', { name: t.scan.submit }));
+    await user.type(screen.getByLabelText(t.scan.label), 'LOT-SAMPLE-NONE{Enter}');
     await screen.findByText(t.scan.outcomes.notFound('LOT-SAMPLE-NONE'));
 
     expect(screen.getByText(t.replace.partNone)).toBeInTheDocument();

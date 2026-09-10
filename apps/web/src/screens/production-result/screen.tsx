@@ -65,7 +65,13 @@ type OutputPhase =
 const quantityInput = (value: string): string => {
   const cleaned = value.replace(/[^\d.]/gu, '');
   const [whole = '', ...fractions] = cleaned.split('.');
-  const normalized = fractions.length === 0 ? whole : `${whole}.${fractions.join('')}`;
+  /*
+   * ⛔ **앞자리 0 을 쌓지 않는다**(사용자 지시 2026-09-10 · 키패드도 같은 규칙이다). `011` 은
+   *    `11` 과 같은 수인데 글자가 달라, 되돌릴 수 없는 기록에 실리면 나중에 같은 값인지 눈으로
+   *    판단해야 한다. ⚠ `0.5` 의 앞자리 0 은 남긴다 — 그것은 뜻을 갖는 자리다.
+   */
+  const trimmed = whole.replace(/^0+(?=\d)/u, '');
+  const normalized = fractions.length === 0 ? trimmed : `${trimmed}.${fractions.join('')}`;
 
   return normalized.slice(0, GOOD_QTY_MAX_LENGTH);
 };
@@ -563,6 +569,19 @@ export const ProductionFlowScreen = () => {
           </p>
         )}
         <div className="pop-context-right">
+          {/*
+           * 프린터 — **머리에 상시 보인다**(사용자 지시 2026-09-10). 라벨이 나오지 않을 때
+           * 작업자가 가장 먼저 보는 곳이고, 없으면 「등록이 안 됐다」로 오해한다. 자매 화면
+           * (`P-01-01`)이 같은 자리에 같은 모양으로 세운다.
+           *
+           * ⛔ **조회 중에는 아무것도 단정하지 않는다** — 「없음」이 잠깐 스치면 그 사이에
+           *    오해가 생긴다. 없는 것과 못 받은 것을 같은 모양으로 그리지 않는다(G-9).
+           */}
+          {lotPrinters.isPending ? null : (
+            <Chip status={lotPrinter === null ? 'warning' : 'success'}>
+              {`${t.flow.output.printer} ${lotPrinter?.displayName ?? t.flow.output.printerUnknown}`}
+            </Chip>
+          )}
           <PopWorkerTag workerNo={entry.workerNo} />
           <Chip status={outbox.isOnline ? 'success' : 'warning'}>
             {outbox.isOnline
@@ -602,27 +621,6 @@ export const ProductionFlowScreen = () => {
       {item.isError && (
         <div className="banner-slot">
           <AlertBanner variant="error" title={t.flow.tag.targetUnknown} />
-        </div>
-      )}
-      {outbox.rejection !== null && (
-        <div className="banner-slot">
-          <AlertBanner variant="error" title={t.save.failTitle} />
-        </div>
-      )}
-      {outputStatus !== null && (
-        <div className="banner-slot">
-          <AlertBanner
-            variant={
-              outputPhase === 'issueFailed' ||
-              outputPhase === 'renditionFailed' ||
-              outputPhase === 'printFailed' ||
-              outputPhase === 'reportFailed' ||
-              outputPhase === 'legacyMismatch'
-                ? 'error'
-                : 'info'
-            }
-            title={outputStatus}
-          />
         </div>
       )}
 
@@ -687,10 +685,15 @@ export const ProductionFlowScreen = () => {
               disabled={isQuantityLocked}
               label={t.quantity.keypadLabel}
               backspaceLabel={t.quantity.backspace}
-              backspaceGlyph="⌫"
               clearLabel={t.quantity.clearGlyph}
               maxLength={GOOD_QTY_MAX_LENGTH}
-              allowDecimal
+              /*
+               * ⛔ **정수 단위에는 소수점 키를 세우지 않는다**(사용자 지시 2026-09-10). 「개(EA)」에
+               *    소수를 주면 넣을 수 없는 값을 넣게 되고, 실적은 되돌릴 수 없다. 무게 단위처럼
+               *    계약이 소수를 허용하는 단위에서는 그대로 연다 — 자매 화면(`P-04-03`)이 같은
+               *    규칙을 쓴다.
+               */
+              allowDecimal={uom.decimalScaleOf(lot?.uomId ?? workOrder.data?.uomId) > 0}
               decimalLabel="소수점"
               onChange={setActualQty}
             />
@@ -845,6 +848,36 @@ export const ProductionFlowScreen = () => {
               </Button>
             )}
 
+            {/*
+             * 저장·발행·인쇄가 어떻게 됐는지는 **[생산 라벨 출력] 바로 아래에서 말한다**
+             * (사용자 지시 2026-09-10). 누른 자리와 그 답이 한 자리에 모인다 — 화면 맨 위
+             * 띠에 두었더니 눌러 놓고 눈이 위로 올라갔다.
+             *
+             * 두 소식이 같은 자리에 선다: 실적 저장이 먼저이고 발행·인쇄가 그다음이다.
+             */}
+            {outbox.rejection !== null && (
+              <div className="banner-slot">
+                <AlertBanner variant="error" title={t.save.failTitle} />
+              </div>
+            )}
+
+            {outputStatus !== null && (
+              <div className="banner-slot">
+                <AlertBanner
+                  variant={
+                    outputPhase === 'issueFailed' ||
+                    outputPhase === 'renditionFailed' ||
+                    outputPhase === 'printFailed' ||
+                    outputPhase === 'reportFailed' ||
+                    outputPhase === 'legacyMismatch'
+                      ? 'error'
+                      : 'info'
+                  }
+                  title={outputStatus}
+                />
+              </div>
+            )}
+
             {lotPrinter === null && !lotPrinters.isPending && (
               <p className="field-error">{t.flow.output.printerUnavailable}</p>
             )}
@@ -860,15 +893,24 @@ export const ProductionFlowScreen = () => {
             <TextField
               id={scanId}
               label={t.flow.scan.label}
+              /*
+               * ⭐ **칸이 구획 폭을 다 쓴다**(사용자 지시 2026-09-10). LOT 번호는 서른 자리를
+               * 넘길 수 있어, 기본 폭에서는 읽은 값이 칸 밖으로 밀려 눈으로 대조할 수 없다.
+               */
+              fullWidth
               value={scanValue}
               disabled={outputPhase !== 'scanReady' || gates.complete !== 'allowed'}
-              error={scanMismatch && lot !== null ? t.flow.scan.mismatch(lot.lotNo) : undefined}
+              error={scanMismatch && lot !== null ? t.flow.scan.mismatch : undefined}
               onChange={(event) => changeScan(event.target.value)}
             />
-            {outputPhase !== 'scanReady' && outputPhase !== 'completing' && (
-              <p className="field-note">{t.flow.scan.waiting}</p>
+            {/*
+             * ⚠ **한 번에 한 줄만 낸다**(사용자 지시 2026-09-10). 스캔이 어긋난 것과 마감이
+             * 실패한 것이 함께 서면, 다음에 무엇을 해야 하는지가 두 문장으로 갈린다. 어긋남은
+             * 칸이 이미 말하고 있으므로 마감 실패는 그때만 선다.
+             */}
+            {complete.error !== null && !scanMismatch && (
+              <p className="field-error">{t.flow.scan.failed}</p>
             )}
-            {complete.error !== null && <p className="field-error">{t.flow.scan.failed}</p>}
           </Card.Body>
         </Card>
       </div>
@@ -877,6 +919,8 @@ export const ProductionFlowScreen = () => {
         open={isCompletedOpen}
         onClose={() => setIsCompletedOpen(false)}
         title={t.flow.currentLot.completedTitle}
+        /* ⛔ 바닥의 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
+        showCloseButton={false}
         /*
          * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
          *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
@@ -928,6 +972,8 @@ export const ProductionFlowScreen = () => {
         open={isTagReissueOpen}
         onClose={() => setIsTagReissueOpen(false)}
         title={t.flow.tag.reissueReason}
+        /* ⛔ 바닥의 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
+        showCloseButton={false}
         /*
          * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
          *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면

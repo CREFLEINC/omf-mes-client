@@ -18,12 +18,38 @@ export const repackLabelIssue = {
   pending: {
     sectionLabel: '발행 대기',
     caption: '라벨을 아직 발행하지 않은 신규 포장',
-    numberColumn: '신규 포장 번호',
-    newNumber: (handlingUnitNo: string): string => `${handlingUnitNo} · 신규 발번`,
+    /*
+     * ⭐ **열은 설계 §3 ① 도면 그대로다** — 원 포장 · 유형 · 새 포장 · 잔량 · 확정 시각.
+     *
+     * ⛔ 신규 포장 «번호»를 이 표에 두지 않는다. 번호는 아래 ② 발번 구획이 보인다.
+     */
+    sourceColumn: '원 포장',
     typeColumn: '유형',
-    actionColumn: '선택',
+    newColumn: '새 포장',
+    remainderColumn: '잔량',
+    occurredColumn: '확정 시각',
+    /** 합병은 원 포장이 여럿이다 — 도면이 `CTN-…-0088+89` 로 잇는다. */
+    sourceJoin: '+',
+    newCount: (count: number): string => `${count}건`,
+    /**
+     * 재구성 유형의 표시명. ⚠ 계약이 세 값을 열거해 두었다(`SPLIT`·`MERGE`·`RECONFIGURE`) —
+     * 공통코드가 아니라 스키마가 못박은 값이라 화면이 이름을 갖는다.
+     *
+     * ⛔ 모르는 값을 지어내지 않는다 — 받은 코드를 그대로 보인다.
+     */
+    repackType: (code: string): string =>
+      code === 'SPLIT'
+        ? '분할'
+        : code === 'MERGE'
+          ? '합병'
+          : code === 'RECONFIGURE'
+            ? '재구성'
+            : code,
+    /** 잔량이 남지 않았다(합병). */
+    noRemainder: '—',
+    /** 재구성 사건을 찾지 못한 칸. 값이 없는 것과 모르는 것을 같은 표시로 둔다. */
+    unknown: '—',
     select: (handlingUnitNo: string): string => `${handlingUnitNo} 선택`,
-    selectAction: '선택',
     selected: '선택됨',
     loading: '발행 대기 포장을 불러오는 중입니다.',
     empty: '현재 발행을 기다리는 포장이 없습니다.',

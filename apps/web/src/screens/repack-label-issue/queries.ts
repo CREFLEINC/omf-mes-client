@@ -55,7 +55,6 @@ const readAllPages = async <T>(
  */
 export const repackLabelKeys = {
   all: ['repack-label-issue'] as const,
-  pending: ['repack-label-issue', 'pending'] as const,
   handlingUnit: (handlingUnitId: number) =>
     ['repack-label-issue', 'handling-unit', handlingUnitId] as const,
   lot: (lotId: number) => ['repack-label-issue', 'lot', lotId] as const,
@@ -69,6 +68,7 @@ export const repackLabelKeys = {
   reissueReasons: ['repack-label-issue', 'reissue-reasons'] as const,
   remainderCandidates: (handlingUnitId: number) =>
     ['repack-label-issue', 'remainder-candidates', handlingUnitId] as const,
+  pendingRows: ['repack-label-issue', 'pending-rows'] as const,
 };
 
 export interface HandlingUnitView {
@@ -76,24 +76,171 @@ export interface HandlingUnitView {
   contents: HandlingUnitContent[];
 }
 
+/** 같은 식별자를 두 번 세지 않는다. */
+const distinct = (values: readonly number[]): number[] => [...new Set(values)];
+
 /**
- * 모바일에서 재구성을 끝냈지만 아직 포장 라벨을 발행하지 않은 신규 포장(§4-A·§5-1).
+ * 발행 대기 한 줄 — **재구성 «사건» 한 건이다**(스펙 §3 ① 도면).
  *
- * ⛔ `statusCode` 를 추측하지 않는다. 고정 설계와 물류 계약이 함께 확정한 boolean 축만 쓴다.
+ * ⭐ 도면의 열은 「원 포장 · 유형 · 새 포장 · 잔량 · 확정 시각」이다. 새 포장의 «번호»는 이
+ * 줄에 없다 — 번호는 아래 ② 발번 구획이 보인다. 이 목록이 답하는 물음은 「무엇을 어떻게
+ * 재구성했고 그중 무엇이 아직 라벨을 못 받았는가」다.
+ *
+ * ⛔ **포장 목록이 아니다.** 한때 `labelIssued=false` 포장을 그대로 줄로 세웠는데, 그러면
+ * 분할과 합병을 가를 수 없고(둘 다 「신규 포장」으로 보인다) 잔량이 어느 번호로 남았는지도
+ * 알 수 없다 — 분할이면 원 번호가 잔량으로 남고 합병이면 남지 않는다.
  */
-export const usePendingHandlingUnits = (): UseQueryResult<HandlingUnit[]> => {
+export interface PendingRepackRow {
+  /** 라벨을 기다리는 신규 포장. 고르는 대상은 이것이다. */
+  handlingUnitId: number;
+  handlingUnitNo: string;
+  /** 재구성 이전의 포장 번호들. 합병이면 여럿이다. `null` 이면 사건을 찾지 못했다. */
+  sourceNos: string[];
+  repackTypeCode: string | null;
+  /** 이 사건이 새로 만든 포장 수. */
+  newCount: number;
+  /** 원 번호를 그대로 쓰는 잔량 포장. 남지 않으면 `null`. */
+  remainderNo: string | null;
+  occurredAt: string | null;
+}
+
+/**
+ * 재구성 사건에서 이 포장이 「새로 생긴 쪽」인 줄을 찾는다.
+ *
+ * **새로 생긴 것은 `qtyBefore === 0` 인 결과 줄이다** — 재구성 전에 아무것도 담고 있지
+ * 않았다는 뜻이고, 그래서 라벨이 없다.
+ */
+const newestEventFor = (
+  events: readonly HandlingUnitRepackEvent[],
+  handlingUnitId: number,
+): HandlingUnitRepackEvent | undefined =>
+  [...events]
+    .filter((event) =>
+      event.lines.some(
+        (line) =>
+          line.handlingUnitId === handlingUnitId &&
+          line.roleCode === 'RESULT' &&
+          line.qtyBefore === 0,
+      ),
+    )
+    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0];
+
+/**
+ * 발행 대기 목록 — 포장마다 그 포장을 만든 재구성 사건을 함께 읽는다.
+ *
+ * ⚠ **호출이 줄 수만큼 는다.** 계약에 「재구성 사건 목록」 경로가 없어 포장별 경로
+ * (`…/repack-events`)로만 물을 수 있다. 발행 대기는 몇 건짜리 목록이라 감당한다 — 목록이
+ * 커지면 설계에 사건 축 조회를 요청할 자리다.
+ *
+ * ⛔ **사건을 못 찾아도 줄을 버리지 않는다.** 라벨을 기다리는 포장이라는 사실은 그대로이고,
+ * 감추면 작업자가 그 포장에 닿을 길이 사라진다 — 모르는 칸만 비운다.
+ */
+export const usePendingRepackRows = (): UseQueryResult<PendingRepackRow[]> => {
   const { client } = useApiClient();
 
   return useQuery({
-    queryKey: repackLabelKeys.pending,
-    queryFn: (): Promise<HandlingUnit[]> =>
-      readAllPages(PENDING_PAGE_SIZE, (page, size) =>
+    queryKey: repackLabelKeys.pendingRows,
+    queryFn: async (): Promise<PendingRepackRow[]> => {
+      const units = await readAllPages<HandlingUnit>(PENDING_PAGE_SIZE, (page, size) =>
         runRequest(() =>
           client.GET('/inventory/handling-units', {
             params: { query: { labelIssued: false, page, size } },
           }),
         ),
-      ),
+      );
+
+      /* 번호를 여러 줄이 함께 쓰므로 한 번 읽어 두고 나눠 쓴다. */
+      const numbers = new Map<number, string>(
+        units.map((unit) => [unit.handlingUnitId, unit.handlingUnitNo]),
+      );
+
+      const numberOf = async (handlingUnitId: number): Promise<string | null> => {
+        const known = numbers.get(handlingUnitId);
+        if (known !== undefined) return known;
+
+        try {
+          const detail = await runRequest(() =>
+            client.GET('/inventory/handling-units/{handlingUnitId}', {
+              params: { path: { handlingUnitId } },
+            }),
+          );
+          const no = detail.handlingUnit.handlingUnitNo;
+          numbers.set(handlingUnitId, no);
+
+          return no;
+        } catch {
+          /* 번호 하나를 못 읽었다고 목록을 통째로 잃지 않는다 — 그 칸만 비운다. */
+          return null;
+        }
+      };
+
+      const rows: PendingRepackRow[] = [];
+
+      for (const unit of units) {
+        const events = await runRequest<{ items: HandlingUnitRepackEvent[] }>(() =>
+          client.GET('/inventory/handling-units/{handlingUnitId}/repack-events', {
+            params: { path: { handlingUnitId: unit.handlingUnitId } },
+          }),
+        );
+        const event = newestEventFor(events.items, unit.handlingUnitId);
+
+        if (event === undefined) {
+          rows.push({
+            handlingUnitId: unit.handlingUnitId,
+            handlingUnitNo: unit.handlingUnitNo,
+            sourceNos: [],
+            repackTypeCode: null,
+            newCount: 1,
+            remainderNo: null,
+            occurredAt: null,
+          });
+          continue;
+        }
+
+        /*
+         * ⭐ **역할 코드가 아니라 «수량»이 셋을 가른다.**
+         *
+         * | 무엇 | 판정 |
+         * | --- | --- |
+         * | 원 포장 | 재구성 «전»에 이미 담고 있었다 → `qtyBefore > 0` |
+         * | 새 포장 | 전에는 비어 있었다 → `qtyBefore === 0` |
+         * | 잔량 | 원 포장 중 «쓰고도 남은» 것 → `qtyBefore > 0 && qtyAfter > 0` |
+         *
+         * ⚠ `roleCode` 로 가르지 않는다 — 서버가 분할의 남는 쪽을 `SOURCE` 로도 `RESULT` 로도
+         *   싣는다(씨앗과 감지기 자료가 서로 다르다). 수량은 어느 쪽이든 같은 뜻이다.
+         *
+         * 분할이면 원 포장에 물건이 남아 그 번호를 잔량으로 그대로 쓰고(도면의 `CTN-…-0091`),
+         * 합병이면 원 포장들이 비어 남는 것이 없다(`—`).
+         */
+        const sourceIds = distinct(
+          event.lines.filter((line) => line.qtyBefore > 0).map((line) => line.handlingUnitId),
+        );
+        const remainderId = event.lines.find(
+          (line) => line.qtyBefore > 0 && line.qtyAfter > 0,
+        )?.handlingUnitId;
+        const newCount = distinct(
+          event.lines.filter((line) => line.qtyBefore === 0).map((line) => line.handlingUnitId),
+        ).length;
+
+        const sourceNos: string[] = [];
+        for (const id of sourceIds) {
+          const no = await numberOf(id);
+          if (no !== null) sourceNos.push(no);
+        }
+
+        rows.push({
+          handlingUnitId: unit.handlingUnitId,
+          handlingUnitNo: unit.handlingUnitNo,
+          sourceNos,
+          repackTypeCode: event.repackTypeCode,
+          newCount: newCount === 0 ? 1 : newCount,
+          remainderNo: remainderId === undefined ? null : await numberOf(remainderId),
+          occurredAt: event.occurredAt,
+        });
+      }
+
+      return rows;
+    },
   });
 };
 
@@ -127,8 +274,6 @@ export const useHandlingUnit = (
     },
   });
 };
-
-const distinct = (values: readonly number[]): number[] => [...new Set(values)];
 
 export interface ContentRowsResult {
   rows: PackingContentRow[];

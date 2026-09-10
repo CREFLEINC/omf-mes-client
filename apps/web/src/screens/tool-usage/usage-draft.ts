@@ -68,11 +68,7 @@ export interface SaveGuard {
  * 버튼이 열렸다.
  */
 export const canSave = (guard: SaveGuard): boolean =>
-  !guard.isSaving &&
-  guard.hasEntry &&
-  guard.isOnline &&
-  guard.hasTool &&
-  guard.increment !== null;
+  !guard.isSaving && guard.hasEntry && guard.isOnline && guard.hasTool && guard.increment !== null;
 
 /**
  * 저장이 막힌 사유 중 **화면이 말해야 하는 것**. 말할 것이 없으면 `undefined`.
@@ -108,7 +104,14 @@ export const hasInput = (draft: UsageDraft): boolean =>
  *
  * ⚠ 빈 문자열은 그대로 둔다 — 지우는 중이 정상 상태다.
  */
-export const digitsOnly = (value: string): string => value.replace(/[^0-9]/g, '');
+export const digitsOnly = (value: string): string =>
+  value
+    .replace(/[^0-9]/g, '')
+    /*
+     * ⛔ **앞자리 0 을 쌓지 않는다**(사용자 지시 2026-09-10 · 키패드도 같은 규칙이다). `011` 은
+     *    `11` 과 같은 수인데 글자가 달라, 기록에 실리면 나중에 같은 값인지 눈으로 판단해야 한다.
+     */
+    .replace(/^0+(?=\d)/u, '');
 
 /**
  * 생산 수량 칸이 받는 글자 — 숫자와 소수점 하나.
@@ -119,6 +122,8 @@ export const digitsOnly = (value: string): string => value.replace(/[^0-9]/g, ''
 export const decimalOnly = (value: string): string => {
   const cleaned = value.replace(/[^0-9.]/g, '');
   const [head, ...rest] = cleaned.split('.');
+  /* ⚠ `0.5` 의 앞자리 0 은 남긴다 — 그 자리는 뜻을 갖는다. 정수부의 군더더기 0 만 턴다. */
+  const whole = (head ?? '').replace(/^0+(?=\d)/u, '');
 
-  return rest.length === 0 ? cleaned : `${head ?? ''}.${rest.join('')}`;
+  return rest.length === 0 ? whole : `${whole}.${rest.join('')}`;
 };

@@ -120,6 +120,8 @@ export type QuantityTotals =
       kind: 'counted';
       /** 세 칸의 합 */
       sum: bigint;
+      /** 맞춰야 할 검사수량. 화면이 「합계 28 / 30」으로 되짚을 때 오른쪽 값이다 */
+      inspected: bigint;
       /** 검사수량 − 합. 음수면 넘겼다 */
       remaining: bigint;
       /** 정확히 일치하는가. **확정 가능 여부의 유일한 근거다** */
@@ -145,7 +147,13 @@ export const toTotals = (draft: QuantityDraft, inspectedQty: number): QuantityTo
   const sum = readMicro(draft.accepted) + readMicro(draft.rejected) + readMicro(draft.held);
   const inspected = fromServerQty(inspectedQty);
 
-  return { kind: 'counted', sum, remaining: inspected - sum, matches: sum === inspected };
+  return {
+    kind: 'counted',
+    sum,
+    inspected,
+    remaining: inspected - sum,
+    matches: sum === inspected,
+  };
 };
 
 /** 확정을 열어도 되는가. **셀 수 없으면 열지 않는다** — 이 함수 하나만 보고 판정한다. */
