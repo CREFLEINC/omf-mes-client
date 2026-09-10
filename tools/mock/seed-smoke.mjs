@@ -712,7 +712,7 @@ for (const [name, path, check] of DETAILS) {
   const createResponse = await fetch(`${BASE}/inventory/handling-units`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ handlingUnitTypeCode: 'CARTON' }),
+    body: JSON.stringify({ handlingUnitTypeCode: 'BOX' }),
   });
   const created = await createResponse.json();
   const handlingUnitId = created.handlingUnit?.handlingUnitId;

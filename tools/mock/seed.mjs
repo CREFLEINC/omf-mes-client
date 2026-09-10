@@ -653,8 +653,13 @@ export const createSeed = (now = new Date()) => {
       ['RETURN', '반품 입고'],
       ['TRANSFER', '이고 입고'],
     ],
+    /*
+     * ⚠ **설계가 값을 확정했다**(P-02-08 §8 미결 1 · 2026-09-03) — `BOX`·`CART`·`PALLET` 셋이다.
+     *    씨앗이 `CARTON`(카톤)을 들고 있어 화면이 목록에 없는 유형을 그렸다(사용자 지적).
+     */
     HANDLING_UNIT_TYPE: [
-      ['CARTON', '카톤'],
+      ['BOX', '박스'],
+      ['CART', '대차'],
       ['PALLET', '팔레트'],
     ],
     SUBSTITUTE_LOT_REASON: [
@@ -2108,7 +2113,7 @@ export const createSeed = (now = new Date()) => {
     {
       handlingUnitId: 13001,
       handlingUnitNo: 'HU-2026-000058',
-      handlingUnitTypeCode: 'CARTON',
+      handlingUnitTypeCode: 'BOX',
       parentHandlingUnitId: null,
       warehouseId: 1002,
       locationId: 3004,
@@ -2117,7 +2122,7 @@ export const createSeed = (now = new Date()) => {
     {
       handlingUnitId: 13002,
       handlingUnitNo: 'HU-2026-000059',
-      handlingUnitTypeCode: 'CARTON',
+      handlingUnitTypeCode: 'BOX',
       parentHandlingUnitId: null,
       warehouseId: 1002,
       locationId: 3004,

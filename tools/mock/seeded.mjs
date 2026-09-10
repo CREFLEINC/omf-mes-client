@@ -1264,7 +1264,7 @@ on('POST', '/inventory/handling-units', (_p, _q, body) => {
   const created = {
     handlingUnitId,
     handlingUnitNo: `HU-2026-${String(handlingUnitId).slice(-6)}`,
-    handlingUnitTypeCode: body?.handlingUnitTypeCode ?? 'CARTON',
+    handlingUnitTypeCode: body?.handlingUnitTypeCode ?? 'BOX',
     parentHandlingUnitId: body?.parentHandlingUnitId ?? null,
     warehouseId: body?.warehouseId ?? null,
     locationId: body?.locationId ?? null,

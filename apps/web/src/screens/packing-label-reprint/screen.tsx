@@ -170,6 +170,21 @@ export const PackingLabelReprintScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
+        {/*
+         * 포장 번호와 유형은 **머리줄에 선다**(설계 §3 도면 · 사용자 지적 2026-09-10). 이 화면이
+         * 무엇을 다루는지를 말하는 값이라, 본문 카드 안에만 두면 스크롤에 따라 사라진다.
+         *
+         * ⛔ 코드를 그대로 내지 않는다 — 이름을 못 받았을 때만 코드로 물러선다(지어내지 않는다).
+         */}
+        {handlingUnit.data === undefined ? null : (
+          <p className="pop-context">
+            {`${handlingUnit.data.handlingUnit.handlingUnitNo} · ${
+              handlingUnitTypes.data?.find(
+                (type) => type.code === handlingUnit.data.handlingUnit.handlingUnitTypeCode,
+              )?.codeName ?? handlingUnit.data.handlingUnit.handlingUnitTypeCode
+            }`}
+          </p>
+        )}
         <div className="pop-context-right">
           <Chip status={printer === null ? 'warning' : printerTone(printer.status)}>
             {printerChipText(printer, printers.isError)}
