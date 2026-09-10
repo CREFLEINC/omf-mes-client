@@ -81,8 +81,7 @@ export const productionResult = {
       issueFailed: '생산 실적은 저장됐지만 라벨 발행에 실패했습니다.',
       renditionFailed: '라벨 발행은 완료됐지만 인쇄 데이터를 받지 못했습니다.',
       printFailed: '라벨 발행은 완료되었지만, 인쇄되지 않았습니다.',
-      reportFailed:
-        '라벨은 인쇄됐지만 결과를 보고하지 못했습니다. 다시 인쇄하지 말고 보고만 다시 보내세요.',
+      reportFailed: '라벨 인쇄는 완료되었습니다. 결과를 다시 전송해 주세요.',
       legacyMismatch: '생산 실적 없이 생성된 이전 라벨 이력이 있습니다. LOT 마감을 열지 않습니다.',
       mismatchBlocked: '실적·라벨 상태 확인 필요',
       shellUnavailable: 'Electron POP 셸의 인쇄 통로를 확인할 수 없습니다.',
