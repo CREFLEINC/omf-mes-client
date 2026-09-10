@@ -663,10 +663,15 @@ export const ProductionFlowScreen = () => {
               disabled={isQuantityLocked}
               label={t.quantity.keypadLabel}
               backspaceLabel={t.quantity.backspace}
-              backspaceGlyph="⌫"
               clearLabel={t.quantity.clearGlyph}
               maxLength={GOOD_QTY_MAX_LENGTH}
-              allowDecimal
+              /*
+               * ⛔ **정수 단위에는 소수점 키를 세우지 않는다**(사용자 지시 2026-09-10). 「개(EA)」에
+               *    소수를 주면 넣을 수 없는 값을 넣게 되고, 실적은 되돌릴 수 없다. 무게 단위처럼
+               *    계약이 소수를 허용하는 단위에서는 그대로 연다 — 자매 화면(`P-04-03`)이 같은
+               *    규칙을 쓴다.
+               */
+              allowDecimal={uom.decimalScaleOf(lot?.uomId ?? workOrder.data?.uomId) > 0}
               decimalLabel="소수점"
               onChange={setActualQty}
             />

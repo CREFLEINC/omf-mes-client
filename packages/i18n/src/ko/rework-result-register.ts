@@ -15,8 +15,7 @@ export const reworkResultRegister = {
    * ⭐ **품목을 함께 둔다** — 스펙이 W/O 번호와 품목을 가운뎃점으로 이었다. 재작업은 같은
    * 번호가 여러 품목으로 갈리지 않지만, 손에 든 지시서와 맞추는 값이 둘이다.
    */
-  headerContext: (workOrderNo: string, itemCode: string): string =>
-    `${workOrderNo} · ${itemCode}`,
+  headerContext: (workOrderNo: string, itemCode: string): string => `${workOrderNo} · ${itemCode}`,
   workOrderUnknown: 'W/O —',
 
   /**
@@ -49,8 +48,7 @@ export const reworkResultRegister = {
   sourceLotValue: (lotNo: string, qty: string, uom: string): string =>
     uom === '' ? `${lotNo} ${qty}` : `${lotNo} ${qty} ${uom}`,
   /** 「근거  부적합 NC-2026-0071 · 외관 스크래치」 */
-  nonconformanceValue: (no: string, description: string): string =>
-    `부적합 ${no} · ${description}`,
+  nonconformanceValue: (no: string, description: string): string => `부적합 ${no} · ${description}`,
   /**
    * 「처분  재작업 160 EA  (08-07)」
    *
@@ -81,7 +79,7 @@ export const reworkResultRegister = {
     keypadCancel: '취소',
     /* 읽는 기계에는 이름이 가고 눈에는 기호가 보인다 — 전례 `P-05-01`·`P-02-04`. */
     backspace: '한 자 지움',
-    clearGlyph: 'C',
+    clearGlyph: '지움',
     decimalKey: '소수점',
     goodQty: '양품',
     defectQty: '불량',

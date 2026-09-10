@@ -37,7 +37,7 @@ export const toolUsage = {
     unit: '회',
     keypadLabel: '타발수 숫자 키패드',
     /** 키패드 키 — 화면에 보이는 기호와 읽어 주는 이름을 가른다. */
-    clearGlyph: 'C',
+    clearGlyph: '지움',
     backspace: '한 자 지움',
     decimalKey: '소수점',
     convertedLabel: '생산 수량으로 환산',

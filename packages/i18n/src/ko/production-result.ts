@@ -155,7 +155,7 @@ export const productionResult = {
     keypadLabel: '수량 키패드',
     /* 읽는 기계에는 이름이 가고 눈에는 기호가 보인다 — 인식표 키패드도 같은 규칙이다. */
     backspace: '한 자 지움',
-    clearGlyph: 'C',
+    clearGlyph: '지움',
     quickAdd: (step: number) => `＋${String(step)}`,
     /**
      * 잔여수량 — 스펙 §3-2 의 「잔여수량 380 / 500」.

@@ -485,7 +485,6 @@ export const ToolUsageScreen = () => {
                   allowDecimal={isConverted}
                   decimalLabel={t.shot.decimalKey}
                   backspaceLabel={t.shot.backspace}
-                  backspaceGlyph="⌫"
                   clearLabel={t.shot.clearGlyph}
                   onChange={(value) => {
                     changeDraft(isConverted ? { baseQty: value } : { shotCount: value });
