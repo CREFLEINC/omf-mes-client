@@ -107,7 +107,7 @@ apps/mobile/scripts/emulator-run.sh    # 창 2 — 부팅 → 빌드 → 동기�
 단말 안의 `127.0.0.1` 은 **단말 자신**이라 목 서버에 닿지 않는다 — `10.0.2.2` 가 호스트다.
 
 디버그 빌드의 평문 HTTP 는 그 세 주소로만 열려 있다(`android/app/src/debug/`). 릴리스는
-이 설정을 받지 않는다 — 릴리스의 평문은 빌드 때 따로 만들며 「릴리스 APK 만들기」에 있다.
+이 설정을 받지 않는다 — 릴리스의 평문은 빌드할 때 따로 만든다([RELEASE-BUILD.md](./RELEASE-BUILD.md)).
 
 | 스크립트 | 무엇을 하나 |
 | --- | --- |
@@ -250,163 +250,15 @@ curl -s http://127.0.0.1:5173/api/health
 
 ## 릴리스 APK 만들기
 
-디버그 APK 는 개발 기기에만 선다. 배포하는 것은 우리 키로 서명한 릴리스 APK 다.
-
-⛔ **서명 키와 비밀번호를 이 저장소에 두지 않는다.** 공개 저장소다. 키가 새면 남이 우리
-이름으로 앱을 만들 수 있고, 한 번 push 되면 회수되지 않는다. `build.gradle` 은 값을
-환경변수로만 받고, 그 값을 넣는 것은 아래 스크립트다.
-
-### 한 번만 준비하는 것
-
-키스토어를 만들고 비밀번호를 Keychain 에 넣는다. **비밀번호를 명령 인자로 주지 않는다** —
-`ps` 목록과 셸 히스토리에 남는다.
+배포용 APK 는 우리 키로 서명한다. 절차·준비물·평문 HTTP 설정·서명 확인은 **[RELEASE-BUILD.md](./RELEASE-BUILD.md)** 에 있다.
 
 ```bash
-PASS="$(openssl rand -base64 32)"
-security add-generic-password -a "$USER" -s "omf-mes-client-android-release-storepass" -w "$PASS" -U
-mkdir -p ~/.secrets && chmod 700 ~/.secrets
-printf '%s\n%s\n\n' "$PASS" "$PASS" | keytool -genkeypair \
-  -keystore ~/.secrets/omf-mes-client-android-release.jks -storetype PKCS12 \
-  -alias omf-mes-mobile -keyalg RSA -keysize 4096 -validity 10950 \
-  -dname "CN=OMF-MES Mobile, OU=Client, O=CREFLE, C=KR"
-chmod 600 ~/.secrets/omf-mes-client-android-release.jks
-unset PASS
+# apps/mobile/.env.local 에 API 주소를 적고
+apps/mobile/scripts/release-build.sh
 ```
 
-⚠ **키를 잃으면 같은 앱으로 갱신할 수 없다.** 사용자가 지우고 다시 깔아야 하고 그때 기기
-등록이 풀린다. 설계 결정 20 ③ 이 **키스토어 사본과 비밀번호를 조직이 접근 가능한 곳에 이중
-보관**하라고 정한다 — Keychain 은 담당자 개인 계정에 묶여 있어 그 자리가 아니다. **조직
-보관처는 아직 정해지지 않았다.**
-
-### 주소와 포트를 어디서 바꾸나
-
-**고치는 곳은 `apps/mobile/.env.local` 한 줄이다.** IP 와 포트가 모두 그 값 안에 들어간다.
-이 파일은 `.gitignore` 의 `*.local` 에 걸려 커밋되지 않는다 — 사내 주소를 저장소에 적지 않는다.
-
-```bash
-# apps/mobile/.env.local
-VITE_API_BASE_URL=http://<IP>:<PORT>/api
-```
-
-| 무엇 | 어디 | 비고 |
-| --- | --- | --- |
-| **IP · PORT** | `apps/mobile/.env.local` 의 `VITE_API_BASE_URL` | 본보기는 `apps/mobile/.env.example` |
-| 경로 접두 | 같은 값의 뒤쪽(`/api`) | 서버가 접두를 두지 않으면 뺀다 |
-| 버전 | `apps/mobile/android/app/build.gradle` 의 `versionCode` · `versionName` | 갱신할 때마다 `versionCode` 를 올린다 |
-| 서명 키 위치 | 환경변수 `OMF_RELEASE_KEYSTORE` (기본 `~/.secrets/omf-mes-client-android-release.jks`) | 저장소에 두지 않는다 |
-
-⚠ **이 값은 빌드 시점에 APK 안으로 굳는다.** 설치한 뒤에 바꿀 수 없다 — 주소가 바뀌면 다시
-굽는다. 값을 주지 않으면 스크립트가 멈춘다.
-
-`http://` 주소를 주면 **그 호스트 하나에만** 평문이 열린다. 아래 「평문 HTTP 는 어떻게
-열리나」를 읽는다.
-
-붙는지는 앱을 깔기 전에 먼저 확인한다.
-
-```bash
-curl -s http://<IP>:<PORT>/api/health
-# {"status":"ok","db":"up","uptime":...}
-```
-
-### 만들기
-
-```bash
-VITE_API_BASE_URL=http://<사내-주소>/api apps/mobile/scripts/release-build.sh
-```
-
-주소를 주지 않으면 스크립트가 멈춘다. 그냥 두면 기본값인 단말 자신(`127.0.0.1`)으로 굳어
-**빌드도 설치도 성공한 채 조회만 전부 조용히 실패한다.** `.env.local` 에 적어 두어도 된다.
-
-산출물은 `apps/mobile/android/app/build/outputs/apk/release/app-release.apk` 다. 스크립트가
-`apksigner verify` 로 서명을 확인하고 인증서를 찍는다. 이름이 `app-release-unsigned.apk` 면
-서명이 붙지 않은 것이다.
-
-### 평문 HTTP 는 어떻게 열리나
-
-설계 결정 20 ① 이 운영 통신을 **사내망 전용 평문 HTTP** 로 정했다. 릴리스 빌드는 기본이
-평문을 막으므로 열어 주어야 하는데, **주소 전체가 아니라 그 서버 하나만 연다.**
-
-`release-build.sh` 가 `VITE_API_BASE_URL` 의 방식을 보고 `http` 일 때만 아래를 만든다.
-
-```
-android/app/src/release/AndroidManifest.xml
-android/app/src/release/res/xml/network_security_config.xml   ← 호스트 하나만
-```
-
-⛔ **이 파일들을 손으로 만들어 커밋하지 않는다.** 안에 사내 호스트가 들어가고 이 저장소는
-공개다. `android/.gitignore` 의 `app/src/release/` 가 막고 있으며, 스크립트가 빌드마다 지우고
-다시 쓴다. `https` 주소로 구우면 아예 만들어지지 않아 평문이 그대로 막힌다.
-
-열리는 자리는 둘이고 좁히는 자리는 하나다.
-
-| 층 | 무엇 | 좁혀지나 |
-| --- | --- | --- |
-| 시스템 정책 | `network_security_config` | **호스트 하나로 좁힌다.** 나머지는 그대로 막힌다 |
-| WebView 정책 | `allowMixedContent` (`CAP_ALLOW_CLEARTEXT_HTTP`) | 좁힐 수 없다 — WebView 전체에 걸린다 |
-
-앱이 `https://localhost` 위에서 돌기 때문에 둘 다 열어야 닿는다. 시스템 정책만 열면 혼합
-콘텐츠로 막히고, WebView 만 열면 시스템 정책에서 막힌다.
-
-빌드가 끝나면 APK 안에 실제로 무엇이 적혔는지 볼 수 있다.
-
-```bash
-AAPT2=$ANDROID_HOME/build-tools/37.0.0/aapt2
-APK=apps/mobile/android/app/build/outputs/apk/release/app-release.apk
-
-$AAPT2 dump xmltree --file AndroidManifest.xml $APK | grep -i cleartext
-# 아무것도 나오지 않아야 한다 - 전면 허용 플래그는 지운다
-```
-
-Capacitor 는 `usesCleartextTraffic="true"` 를 넣는데 이것은 주소를 가리지 않는 전면 허용이다.
-`networkSecurityConfig` 가 있으면 무시되지만 매니페스트에 서로 다른 두 정책이 남으므로,
-생성된 릴리스 매니페스트가 `tools:remove` 로 지운다.
-
-⚠ 그 서버가 **CORS 응답 헤더를 주지 않으면** 평문을 열어도 WebView 의 `fetch` 로는 닿지
-않는다. `CAP_NATIVE_HTTP=1` 을 함께 주어 요청을 네이티브로 보낸다.
-
-### 서명 방식
-
-키는 하나다. `v1`~`v4` 는 **같은 키를 APK 에 어떤 형식으로 찍느냐**이고, 안드로이드 버전마다
-읽을 줄 아는 형식이 다르다. 넷을 `build.gradle` 에 모두 적어 둔다.
-
-| | 켬 | 왜 |
-| --- | :-: | --- |
-| v1 (JAR) | ✗ | `minSdk 33` 아래를 위한 하위 호환이라 대상이 없다 |
-| v2 | ✓ | APK 전체를 통째로 서명한다 |
-| v3 | ✓ | **키 교체 계보**를 담는 자리. 없으면 이 키에 영구히 묶인다 |
-| v4 | ✗ | `adb --incremental` 전용. 사내 반입 설치와 무관하다 |
-
-⚠ **넷을 다 적어야 한다.** AGP 는 아무것도 지정하지 않으면 `minSdk` 를 보고 스스로 정하는데,
-하나라도 명시하면 그 계산을 그만두고 나머지를 꺼 버린다 — `enableV3Signing` 만 켜면 v2 블록이
-조용히 빠진다.
-
-⚠ **`apksigner verify -v` 는 「무엇이 들어 있나」가 아니라 「그 `minSdk` 에서 무엇이 쓰이나」를
-찍는다.** Android 9 위에서는 v3 이 v2 를 대신하므로 `--min-sdk-version 33` 으로 물으면 v2 가
-`false` 로 나온다. 블록이 들어 있는지 보려면 낮게 묻는다.
-
-```bash
-apksigner verify -v --min-sdk-version 24 <APK>   # 들어 있는 블록
-apksigner verify -v --min-sdk-version 33 <APK>   # 실기가 실제로 쓰는 것
-```
-
-### 단말에 넣기
-
-설계 결정 20 이 정한 것을 따른다.
-
-| | 무엇 | 정해진 것 |
-| :-: | --- | --- |
-| ② | 배포 경로 | 사내 반입 설치 — USB 로 옮겨 수동으로 깐다. 단말에 「알 수 없는 출처 설치」를 켜야 한다 |
-| ④ | 갱신 | 덮어쓰기 보존형. **갱신 전 미전송 0건을 확인**한다 |
-
-덮어쓰기 갱신은 **같은 키로 서명하고 `versionCode` 를 올려야** 성립한다. 지금은 `1` 이고,
-배포할 때마다 `apps/mobile/android/app/build.gradle` 에서 올린다. 키가 다르면 안드로이드가
-설치를 거부하고, `versionCode` 가 같으면 갱신이 아니라 재설치가 된다 — 재설치는 앱 저장소를
-지우고, 미전송이 남아 있으면 그것도 함께 사라진다.
-
-### 아직 하지 않은 것
-
-- **난독화** — `minifyEnabled` 는 꺼져 있다. 설계에 결정이 없다. 켜면 Capacitor 플러그인
-  리플렉션이 깨질 수 있어 유지 규칙을 함께 확인해야 한다
+⛔ **서명 키와 비밀번호를 이 저장소에 두지 않는다.** 공개 저장소다. `build.gradle` 은 값을
+환경변수로만 받는다.
 
 ## 버전 조합
 
