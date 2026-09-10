@@ -167,8 +167,8 @@ describe('submitDisabledReason', () => {
  * 「비밀번호 초기화」는 **관리자가 하는 조치의 이름**이지 「비밀번호가 틀렸다」는 진술이 아니다.
  *
  * **② 그 갈래는 상태 코드 자체가 이미 계정 존재를 드러낸다.** 잠김(423)은 **잠긴 계정에만**
- * 오고 없는 계정은 401을 받는다. 그것은 스펙이 감수하기로 한 트레이드오프이며(남은 시도
- * 횟수와 같은 성격), 그 갈래 안에서 문구가 칸을 지목하는지를 따지는 것은 실익이 없다.
+ * 오고 없는 계정은 401을 받는다. 그것은 스펙이 감수하기로 한 트레이드오프이며, 그 갈래 안에서
+ * 문구가 칸을 지목하는지를 따지는 것은 실익이 없다.
  *
  * 문구 자체는 스펙이 확정한 것이라 규칙에 맞추려고 다듬지 않는다.
  *
@@ -176,17 +176,6 @@ describe('submitDisabledReason', () => {
  * 전부에 규칙을 걸고, 다른 하나는 목록 안에 **실제로 해결 경로가 담겼는지**를 잰다.
  */
 const RECOVERY_SENTENCES: readonly string[] = [t.banner.locked];
-
-/**
- * 이 화면이 **빌려 쓰는** 공용 실패 문구. 다섯 갈래 중 둘(통신 실패·모름)이 `login` 블록 밖의
- * 문구를 낸다 — 규칙의 사정거리가 「이 화면이 내는 실패 문구 전부」가 되도록 함께 훑는다.
- *
- * 공용 문구라 다른 화면이 함께 쓰지만, **이 화면이 그것을 낸다는 사실**이 여기서 규칙을 만든다.
- */
-const BORROWED_SENTENCES: readonly string[] = [
-  messages.httpError.offline,
-  messages.httpError.description,
-];
 
 describe('login 블록의 문구 규율', () => {
   /**
@@ -214,20 +203,18 @@ describe('login 블록의 문구 규율', () => {
   it('사유와 실패 문구가 한쪽 칸만 지목하지 않는다', () => {
     const bannerValues: readonly unknown[] = Object.values(t.banner);
     const plain = bannerValues.filter((value): value is string => typeof value === 'string');
+
     /*
-     * 문구 조립기는 표본 인자로 펴서 함께 잰다. **개수를 맞춰 두어** 조립기가 새로 늘면
-     * 아래 단언이 먼저 깨진다 — 새 문구가 이 규칙을 조용히 비켜 가지 못한다.
+     * ⭐ **모든 배너 문구가 평문이어야 한다**(#1034). 앞 회차에는 인자를 받는 문구 조립기가
+     * 둘 있었고 이 시험이 그것을 표본 인자로 펴서 함께 쟀다. 실패가 둘로 줄며 조립기가
+     * 사라졌으니 **개수가 어긋나면 새 조립기가 들어온 것**이고, 그 문구는 이 규칙을 조용히
+     * 비켜 갈 수 있다 — 그때 여기서 먼저 걸린다.
      */
-    const built = [t.banner.lockWarning(2, 5), t.banner.lockWarningWithoutThreshold(3)];
+    expect(plain.length).toBe(bannerValues.length);
 
-    expect(bannerValues.length - plain.length).toBe(built.length);
-
-    const sentences = [
-      ...Object.values(t.actionReasons),
-      ...plain,
-      ...built,
-      ...BORROWED_SENTENCES,
-    ].filter((sentence) => !RECOVERY_SENTENCES.includes(sentence));
+    const sentences = [...Object.values(t.actionReasons), ...plain].filter(
+      (sentence) => !RECOVERY_SENTENCES.includes(sentence),
+    );
 
     expect(sentences.length).toBeGreaterThan(0);
 

@@ -1,5 +1,6 @@
 export { createApiClient, type ApiClient, type ApiClientOptions } from './client';
 export { createEtagStore, type EtagStore } from './etag-store';
+export { createIdempotencyKey } from './idempotency';
 export {
   NETWORK_ERROR,
   isTransientStatus,

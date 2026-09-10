@@ -1,3 +1,4 @@
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 
@@ -6,9 +7,6 @@ import type { ApiCallResult } from '../../patterns/request';
 import type { LoginDraft } from './login-draft';
 import { toLoginOutcome, type LoginOutcome } from './login-outcome';
 import type { Session } from './types';
-
-/** 응답이 없어 상태 코드를 붙일 수 없는 자리. 상태로 분기하는 갈래에 걸리지 않게 한다. */
-const NO_HTTP_STATUS = 0;
 
 /**
  * 넘길 세션이 실제로 왔는가.
@@ -70,13 +68,12 @@ interface LoginAttempt {
 /**
  * 잡은 값에서 갈래를 꺼낸다.
  *
- * **요청 경로 밖에서 생긴 오류(성공 되먹임 중의 예외 등)는 `network`로 다루지 않는다** —
- * 원인을 연결 문제로 오인시키면 사용자가 할 수 없는 조치를 하게 된다(전례 `patterns/request.ts`의
- * `toApiError`와 같은 규율).
+ * **잡은 값이 무엇이든 「로그인 정보 오류」로 말하지 않는다.** 갈래가 둘로 줄어도 이 규율은
+ * 그대로다 — 자격이 틀렸다는 말은 서버가 401로 그렇게 답했을 때만 할 수 있다.
  *
  * ⭐ **잡은 값을 갈래에 실어 보낸다.** 이 자리에 떨어지는 것은 대부분 **이 앱의 코드가 던진
  * 것**이다(세션 적재 등). 버리면 그 결함이 「서버가 이상하다」로 보이고 어디에도 흔적이
- * 남지 않는다 — 같은 파일의 통신 실패 갈래가 `{ cause }`로 원인 사슬을 남기는 것과 같은 규율이다.
+ * 남지 않는다 — 응답 없는 실패가 `{ cause }`로 원인 사슬을 남기는 것과 같은 규율이다.
  *
  * ⛔ **로그로 내보내지 않는다.** 이 저장소에는 `console.*` 사용처가 하나도 없고(실측), 그
  * 관례를 **자격을 다루는 화면에서 처음 깨는 것**은 위험이 이득보다 크다 — 이 경로가 잡는 값에는
@@ -84,20 +81,22 @@ interface LoginAttempt {
  * 결정이 아니다. 그때까지는 **갈래에 매달아** 개발 도구·시험에서 읽을 수 있게 둔다.
  */
 const readOutcome = (cause: unknown): LoginOutcome =>
-  cause instanceof LoginFailedError
-    ? cause.outcome
-    : { kind: 'unknown', status: NO_HTTP_STATUS, cause };
+  cause instanceof LoginFailedError ? cause.outcome : { kind: 'server', cause };
 
 /**
  * 세션을 만든다 — 이 화면의 유일한 요청이다.
  *
- * **공통 쓰기 훅(`useMasterWrite`)을 쓰지 않는다.** 그쪽은 실패를 `ApiError`로 정규화하는데,
- * 그 과정에서 401 본문의 남은 시도 횟수가 버려지고 423이 필드 오류로 분류된다(`login-outcome.ts`).
- * 캐시 무효화도 필요 없다 — 이 요청이 만드는 것은 조회 자원이 아니라 세션이다.
+ * **공통 쓰기 훅(`useMasterWrite`)을 쓰지 않는다.** 그쪽은 캐시 무효화를 함께 하는데 이
+ * 요청이 만드는 것은 조회 자원이 아니라 세션이다. 실패를 가르는 규칙도 이 화면의 것이다
+ * (`login-outcome.ts` — 401 하나만 「로그인 정보 오류」).
  *
  * ⭐ **멱등 키는 시도마다 새로 만든다.** 같은 키로 다시 보내면 서버가 앞선 실패 응답을 그대로
- * 되돌려 줄 수 있고, 그러면 남은 시도 횟수가 갱신되지 않아 **맞는 자격을 넣고도 앞선 실패를
- * 다시 본다.** 계약이 이 헤더를 필수로 두었고 목 서버는 없는 요청을 400으로 되돌린다(실측).
+ * 되돌려 줄 수 있고, 그러면 **맞는 자격을 넣고도 앞선 실패를 다시 본다.** 계약이 이 헤더를
+ * 필수로 두었고 목 서버는 없는 요청을 400으로 되돌린다(실측).
+ *
+ * ⛔ **`crypto.randomUUID()` 를 직접 부르지 않는다**(#1034). 그 함수는 보안 컨텍스트에만 있어
+ * 평문 HTTP 배포본에서는 **인자를 만드는 자리에서 던지고**, 그러면 요청도 되먹임도 없이 화면이
+ * 침묵한다. `createIdempotencyKey()` 가 그 자리를 메운다.
  */
 export const useLogin = (options: LoginOptions): LoginMutation => {
   const { client } = useApiClient();
@@ -123,13 +122,13 @@ export const useLogin = (options: LoginOptions): LoginMutation => {
           body: { loginId: attempt.draft.loginId, password: attempt.draft.password },
         });
       } catch (cause) {
-        /* 응답이 없는 실패다. 상태 코드가 없으므로 http 갈래로 뭉뚱그리지 않는다. */
-        throw new LoginFailedError({ kind: 'network' }, { cause });
+        /* 응답이 없는 실패다. 서버가 자격을 본 적이 없으니 「서버 오류」로 간다. */
+        throw new LoginFailedError({ kind: 'server' }, { cause });
       }
 
       /* 200이어도 넘길 세션이 없으면 성공이 아니다 — 사정은 `hasSession`에 적었다. */
       if (!result.response.ok || !hasSession(result.data)) {
-        throw new LoginFailedError(toLoginOutcome(result.response.status, result.error));
+        throw new LoginFailedError(toLoginOutcome(result.response.status));
       }
 
       return result.data;
@@ -141,7 +140,7 @@ export const useLogin = (options: LoginOptions): LoginMutation => {
     setOutcome(null);
 
     mutation.mutate(
-      { draft, idempotencyKey: crypto.randomUUID() },
+      { draft, idempotencyKey: createIdempotencyKey() },
       {
         onSuccess: (session) => {
           /*
@@ -153,7 +152,7 @@ export const useLogin = (options: LoginOptions): LoginMutation => {
            * 알 수 없고, 다시 눌러도 같은 자리에 머문다.
            *
            * 잡은 값은 이 슬라이스가 만든 실패가 아니므로 **자격이 틀렸다고 말하지 않는다** —
-           * 「가를 근거가 없다」로 떨어져 공용 안내와 「다시 시도」가 선다.
+           * 「서버 오류」로 떨어져 안내와 「다시 시도」가 선다.
            */
           try {
             options.onSuccess(session);

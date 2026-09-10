@@ -207,10 +207,10 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
    * 일어나지 않을 수 있다 — 이동도 안 되고 배너도 없는 상태다. 사용자는 자기가 로그인됐는지
    * 아닌지를 알 수 없고, 다시 눌러도 같은 자리에 머문다.
    *
-   * 잡은 값이 이 슬라이스의 실패가 아니므로 **자격이 틀렸다고 말하지 않고** 「가를 근거가
-   * 없다」로 떨어진다 — 그 갈래에는 공용 안내와 「다시 시도」가 선다.
+   * 잡은 값이 이 슬라이스의 실패가 아니므로 **자격이 틀렸다고 말하지 않고** 「서버 오류」로
+   * 떨어진다 — 그 갈래에는 안내와 「다시 시도」가 선다.
    */
-  it('성공 되먹임이 던지면 침묵하지 않고 모름 갈래가 된다', async () => {
+  it('성공 되먹임이 던지면 침묵하지 않고 서버 갈래가 된다', async () => {
     const stub = createStubFetch([sessionsRoute(() => jsonResponse(sessionBody()))]);
     const onSuccess = vi.fn(() => {
       throw new Error('세션을 담지 못했습니다');
@@ -222,7 +222,7 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.outcome?.kind).toBe('unknown');
+      expect(result.current.outcome?.kind).toBe('server');
     });
 
     expect(onSuccess).toHaveBeenCalledTimes(1);
@@ -252,13 +252,13 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.outcome?.kind).toBe('unknown');
+      expect(result.current.outcome?.kind).toBe('server');
     });
 
-    expect(result.current.outcome).toEqual({ kind: 'unknown', status: 0, cause: failure });
+    expect(result.current.outcome).toEqual({ kind: 'server', cause: failure });
   });
 
-  it('401이면 불일치 갈래를 세우고 성공 되먹임을 부르지 않는다', async () => {
+  it('401이면 로그인 정보 갈래를 세우고 성공 되먹임을 부르지 않는다', async () => {
     const stub = createStubFetch([
       sessionsRoute(() => jsonResponse(loginFailureBody(), { status: 401 })),
     ]);
@@ -269,12 +269,16 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.outcome).toEqual({ kind: 'mismatch' });
+      expect(result.current.outcome).toEqual({ kind: 'credentials' });
     });
 
     expect(onSuccess).not.toHaveBeenCalled();
   });
 
+  /**
+   * ⭐ **423은 제 갈래를 갖는다**(#1034). 서버 갈래로 접으면 「잠시 뒤 다시 시도하세요」가
+   * 서는데, 잠긴 계정에는 다시 보내도 같은 답이 온다.
+   */
   it('423이면 잠긴 갈래가 된다', async () => {
     const stub = createStubFetch([
       sessionsRoute(() => jsonResponse(errorResponseBody(), { status: 423 })),
@@ -312,7 +316,7 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.outcome).toEqual({ kind: 'unknown', status: 200 });
+      expect(result.current.outcome).toEqual({ kind: 'server' });
     });
 
     /* ⭐ 본론은 이쪽이다 — 세션을 보관하는 회차가 이 자리를 밟는다. */
@@ -320,10 +324,10 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
   });
 
   /**
-   * 응답이 아예 없는 실패다. **상태 코드로 뭉뚱그리지 않는다** — 「서버가 거절했다」와
-   * 「닿지 못했다」는 사용자가 할 수 있는 조치가 다르다.
+   * 응답이 아예 없는 실패다. 서버가 자격을 본 적이 없으니 **서버 갈래**로 간다 —
+   * 자격이 틀렸다고 말할 근거가 어디에도 없다.
    */
-  it('응답이 오지 않으면 통신 실패 갈래가 된다', async () => {
+  it('응답이 오지 않으면 서버 갈래가 된다', async () => {
     const failing: StubFetch = () => Promise.reject(new Error('연결할 수 없습니다'));
     const { result, onSuccess } = renderLogin(failing);
 
@@ -332,7 +336,7 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.outcome).toEqual({ kind: 'network' });
+      expect(result.current.outcome).toEqual({ kind: 'server' });
     });
 
     expect(onSuccess).not.toHaveBeenCalled();
@@ -363,7 +367,7 @@ describe('useLogin — 다시 시도', () => {
       result.current.submit(loginDraftFixture());
     });
     await waitFor(() => {
-      expect(result.current.outcome).toEqual({ kind: 'mismatch' });
+      expect(result.current.outcome).toEqual({ kind: 'credentials' });
     });
 
     act(() => {
@@ -411,7 +415,7 @@ describe('useLogin — resetIfIdle', () => {
       result.current.submit(loginDraftFixture());
     });
     await waitFor(() => {
-      expect(result.current.outcome).toEqual({ kind: 'mismatch' });
+      expect(result.current.outcome).toEqual({ kind: 'credentials' });
     });
 
     act(() => {
