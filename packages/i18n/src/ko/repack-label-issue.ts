@@ -21,7 +21,6 @@ export const repackLabelIssue = {
     numberColumn: '신규 포장 번호',
     newNumber: (handlingUnitNo: string): string => `${handlingUnitNo} · 신규 발번`,
     typeColumn: '유형',
-    actionColumn: '선택',
     select: (handlingUnitNo: string): string => `${handlingUnitNo} 선택`,
     selectAction: '선택',
     selected: '선택됨',
