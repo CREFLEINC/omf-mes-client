@@ -870,6 +870,8 @@ export const ProductionFlowScreen = () => {
         open={isCompletedOpen}
         onClose={() => setIsCompletedOpen(false)}
         title={t.flow.currentLot.completedTitle}
+        /* ⛔ 바닥의 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
+        showCloseButton={false}
         footer={
           <Button variant="outlined" onClick={() => setIsCompletedOpen(false)}>
             {t.flow.close}
@@ -915,6 +917,8 @@ export const ProductionFlowScreen = () => {
         open={isTagReissueOpen}
         onClose={() => setIsTagReissueOpen(false)}
         title={t.flow.tag.reissueReason}
+        /* ⛔ 바닥의 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 나가는 길은 하나다. */
+        showCloseButton={false}
         footer={
           <>
             <Button variant="outlined" onClick={() => setIsTagReissueOpen(false)}>
