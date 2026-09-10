@@ -159,6 +159,24 @@ describe('submitDisabledReason', () => {
  * **리터럴을 쓰지 않고 i18n 키로 잰다.** 문구를 다듬을 때 리터럴로 적힌 감지기는 함께 고쳐야
  * 하고, 고치는 김에 규칙까지 느슨해진다. 키로 재면 문구가 바뀌어도 **규칙만 남는다.**
  */
+/**
+ * ⚠ **「한쪽 칸만 지목하지 않는다」 규칙에서 빼는 문구.** 근거가 **두 겹**이다.
+ *
+ * **① 진단이 아니라 해결 경로다.** 그 규칙이 막는 것은 **무엇이 틀렸는지를 진단하는 문장**이
+ * 한 칸을 지목하는 것이다 — 그 지목이 곧 「그 아이디는 있다」를 흘린다. 잠금 안내에 나오는
+ * 「비밀번호 초기화」는 **관리자가 하는 조치의 이름**이지 「비밀번호가 틀렸다」는 진술이 아니다.
+ *
+ * **② 그 갈래는 상태 코드 자체가 이미 계정 존재를 드러낸다.** 잠김(423)은 **잠긴 계정에만**
+ * 오고 없는 계정은 401을 받는다. 그것은 스펙이 감수하기로 한 트레이드오프이며, 그 갈래 안에서
+ * 문구가 칸을 지목하는지를 따지는 것은 실익이 없다.
+ *
+ * 문구 자체는 스펙이 확정한 것이라 규칙에 맞추려고 다듬지 않는다.
+ *
+ * ⛔ **이 목록이 늘면 규칙이 껍데기가 된다.** 아래 두 시험이 함께 지킨다 — 하나는 목록 밖
+ * 전부에 규칙을 걸고, 다른 하나는 목록 안에 **실제로 해결 경로가 담겼는지**를 잰다.
+ */
+const RECOVERY_SENTENCES: readonly string[] = [t.banner.locked];
+
 describe('login 블록의 문구 규율', () => {
   /**
    * **비활성 사유는 그 컨트롤의 이름으로 시작한다**(배치 규범 4-5 · `ko.ts` 작성 규칙).
@@ -194,7 +212,9 @@ describe('login 블록의 문구 규율', () => {
      */
     expect(plain.length).toBe(bannerValues.length);
 
-    const sentences = [...Object.values(t.actionReasons), ...plain];
+    const sentences = [...Object.values(t.actionReasons), ...plain].filter(
+      (sentence) => !RECOVERY_SENTENCES.includes(sentence),
+    );
 
     expect(sentences.length).toBeGreaterThan(0);
 
@@ -203,6 +223,19 @@ describe('login 블록의 문구 규율', () => {
       const namesPassword = sentence.includes(t.fields.password);
 
       expect(namesLoginId).toBe(namesPassword);
+    }
+  });
+
+  /**
+   * 빼 놓은 문구가 **규칙의 취지 밖에 있다**는 것을 여기서 따로 잰다 — 목록이 조용히
+   * 늘어나면 규칙이 껍데기만 남으므로, 뺀 문구에는 **해결 경로가 실제로 담겨 있어야** 한다.
+   */
+  it('규칙에서 뺀 문구는 해결 경로를 담는다', () => {
+    expect(RECOVERY_SENTENCES).toHaveLength(1);
+
+    for (const sentence of RECOVERY_SENTENCES) {
+      expect(sentence).toContain('관리자');
+      expect(sentence).toContain('요청');
     }
   });
 });

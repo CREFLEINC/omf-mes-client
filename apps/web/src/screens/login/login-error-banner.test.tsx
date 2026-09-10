@@ -25,9 +25,9 @@ const queryRetry = (): HTMLElement | null =>
   screen.queryByRole('button', { name: messages.common.retry });
 
 /**
- * 배너가 말하는 것은 **둘뿐이다**(#1034) — 로그인 정보 오류와 서버 오류.
+ * 배너가 말하는 것은 **셋뿐이다**(#1034) — 로그인 정보 오류 · 계정 잠김 · 서버 오류.
  *
- * 이 파일이 지키는 것은 문구가 아니라 **두 갈래가 서로 다른 말을 한다**는 사실과, 「다시 시도」가
+ * 이 파일이 지키는 것은 문구가 아니라 **세 갈래가 서로 다른 말을 한다**는 사실과, 「다시 시도」가
  * **다시 시도해서 달라지는 쪽에만** 선다는 규율이다.
  */
 describe('LoginErrorBanner', () => {
@@ -36,6 +36,25 @@ describe('LoginErrorBanner', () => {
 
     expect(banner()).toHaveTextContent(t.banner.credentialsTitle);
     expect(banner()).toHaveTextContent(t.banner.credentials);
+  });
+
+  /**
+   * 잠긴 계정은 **스스로 풀 수 없다** — 그래서 문구가 해결 경로(관리자 요청)를 가리킨다.
+   * 자격 문구가 섞이면 잠긴 사람이 맞는 자격을 계속 다시 친다.
+   */
+  it('계정 잠김은 관리자 요청을 가리킨다', () => {
+    renderBanner({ outcome: { kind: 'locked' } });
+
+    expect(banner()).toHaveTextContent(t.banner.lockedTitle);
+    expect(banner()).toHaveTextContent(t.banner.locked);
+    expect(banner()).not.toHaveTextContent(t.banner.credentials);
+  });
+
+  /** ⛔ 잠긴 화면에 수치를 남기면 잠금 정책을 밖에서 셀 수 있다. */
+  it('계정 잠김 배너에 실패 횟수나 임계값이 보이지 않는다', () => {
+    renderBanner({ outcome: { kind: 'locked' } });
+
+    expect(banner().textContent).not.toMatch(/\d/);
   });
 
   it('서버 오류는 자격이 틀렸다고 말하지 않는다', () => {
@@ -47,11 +66,24 @@ describe('LoginErrorBanner', () => {
   });
 
   /**
-   * ⛔ **누를 수 있는데 아무 일도 없는 컨트롤을 두지 않는다**(공유계약 G-23).
-   * 로그인 정보 오류는 **값을 고쳐야** 풀린다 — 같은 값으로 다시 보내면 같은 답이 온다.
+   * ⭐ **세 갈래가 서로 다른 제목을 든다.** 제목이 겹치면 갈래를 나눈 뜻이 사라진다 —
+   * 사용자는 제목으로 「내가 무엇을 해야 하는가」를 먼저 가른다.
    */
-  it('로그인 정보 오류에는 「다시 시도」가 서지 않는다', () => {
-    renderBanner({ outcome: { kind: 'credentials' } });
+  it('세 갈래의 제목이 서로 겹치지 않는다', () => {
+    const titles = [t.banner.credentialsTitle, t.banner.lockedTitle, t.banner.serverTitle];
+
+    expect(new Set(titles).size).toBe(titles.length);
+  });
+
+  /**
+   * ⛔ **누를 수 있는데 아무 일도 없는 컨트롤을 두지 않는다**(공유계약 G-23).
+   * 로그인 정보 오류는 **값을 고쳐야** 풀리고, 잠긴 계정은 몇 번을 보내도 같은 답이 온다.
+   */
+  it.each([
+    ['로그인 정보 오류', 'credentials' as const],
+    ['계정 잠김', 'locked' as const],
+  ])('%s에는 「다시 시도」가 서지 않는다', (_label, kind) => {
+    renderBanner({ outcome: { kind } });
 
     expect(queryRetry()).toBeNull();
   });

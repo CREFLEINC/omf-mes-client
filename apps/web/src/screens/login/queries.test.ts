@@ -276,10 +276,10 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
   });
 
   /**
-   * ⭐ **423은 서버 갈래다**(#1034). 사용자가 값을 고쳐 풀 수 없는 일이라 「로그인 정보 오류」로
-   * 말하면 잠긴 사람이 같은 자격을 계속 다시 친다.
+   * ⭐ **423은 제 갈래를 갖는다**(#1034). 서버 갈래로 접으면 「잠시 뒤 다시 시도하세요」가
+   * 서는데, 잠긴 계정에는 다시 보내도 같은 답이 온다.
    */
-  it('423이면 서버 갈래가 된다', async () => {
+  it('423이면 잠긴 갈래가 된다', async () => {
     const stub = createStubFetch([
       sessionsRoute(() => jsonResponse(errorResponseBody(), { status: 423 })),
     ]);
@@ -290,7 +290,7 @@ describe('useLogin — 응답을 어떻게 가르는가', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.outcome).toEqual({ kind: 'server' });
+      expect(result.current.outcome).toEqual({ kind: 'locked' });
     });
   });
 

@@ -805,7 +805,7 @@ describe('LoginScreen — 보안 컨텍스트가 아니어도 로그인이 나�
   });
 });
 
-describe('LoginScreen — 실패를 두 갈래로만 말한다', () => {
+describe('LoginScreen — 실패를 세 갈래로만 말한다', () => {
   const failing = (status: number, body: unknown): StubFetch =>
     createStubFetch([sessionsRoute(() => jsonResponse(body, { status }))]);
 
@@ -824,7 +824,6 @@ describe('LoginScreen — 실패를 두 갈래로만 말한다', () => {
    * 갈래가 둘로 줄어도 **이 판단은 줄지 않는다** — 목록이 그것을 갈래마다 건다.
    */
   it.each([
-    ['잠긴 계정', 423, errorResponseBody()],
     ['검증 실패', 400, fieldErrorResponseBody()],
     ['서버 장애', 500, null],
   ])('%s는 서버 오류로 말한다', async (_label, status, body) => {
@@ -839,6 +838,41 @@ describe('LoginScreen — 실패를 두 갈래로만 말한다', () => {
     expect(banner).toHaveTextContent(t.banner.server);
 
     expect(screen.queryByText(t.banner.credentials)).toBeNull();
+  });
+
+  /**
+   * 잠긴 계정은 **스스로 풀 수 없다.** 그래서 「다시 시도」를 두지 않는다 — 같은 자격으로
+   * 다시 불러도 같은 답이 오고, 정작 해야 할 일(관리자 요청)을 가린다.
+   *
+   * ⛔ **자격 문구를 내지 않는다.** 잠긴 사람에게 「비밀번호를 다시 확인하세요」라고 말하면
+   * 맞는 자격을 의심하며 되풀이 시도한다 — 이미 잠긴 계정에 대고.
+   */
+  it('423이면 관리자 요청 안내가 뜨고 「다시 시도」가 없다', async () => {
+    const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    const banner = await screen.findByRole('alert');
+
+    expect(banner).toHaveTextContent(t.banner.lockedTitle);
+    expect(banner).toHaveTextContent(t.banner.locked);
+
+    expect(screen.queryByText(t.banner.credentials)).toBeNull();
+    expect(screen.queryByText(t.banner.server)).toBeNull();
+    expect(screen.queryByRole('button', { name: messages.common.retry })).toBeNull();
+  });
+
+  /** 잠긴 화면에 수치를 남기면 잠금 정책을 밖에서 셀 수 있게 된다. */
+  it('423 화면에 실패 횟수나 임계값이 보이지 않는다', async () => {
+    const { user } = renderScreen({ fetch: failing(423, errorResponseBody()) });
+
+    await fillCredentials(user);
+    await user.click(submitButton());
+
+    const banner = await screen.findByRole('alert');
+
+    expect(banner.textContent).not.toMatch(/\d/);
   });
 
   /**
@@ -896,7 +930,7 @@ describe('LoginScreen — 실패를 두 갈래로만 말한다', () => {
    *
    * 음성 단언이라 배너를 잡은 뒤에 잰다.
    */
-  it('로그인 정보 오류에는 「다시 시도」가 서지 않는다', async () => {
+  it('401에는 「다시 시도」가 서지 않는다', async () => {
     const { user } = renderScreen({ fetch: failing(401, loginFailureBody()) });
 
     await fillCredentials(user);
@@ -942,10 +976,11 @@ describe('LoginScreen — 실패를 두 갈래로만 말한다', () => {
   });
 
   /**
-   * **값을 고치면 앞 시도의 실패가 걷힌다** — 갈래가 둘로 줄어도 **갈래마다 그대로**여야 한다.
+   * **값을 고치면 앞 시도의 실패가 걷힌다** — **갈래마다 그대로**여야 한다.
    */
   it.each([
     ['로그인 정보 오류', 401, loginFailureBody()],
+    ['계정 잠김', 423, errorResponseBody()],
     ['서버 오류', 500, null],
   ])('%s 배너도 값을 고치면 걷힌다', async (_label, status, body) => {
     const { user } = renderScreen({ fetch: failing(status, body) });
