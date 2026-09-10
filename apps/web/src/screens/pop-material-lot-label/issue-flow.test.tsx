@@ -549,7 +549,6 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
     await user.click(screen.getByRole('button', { name: '인쇄' }));
     expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: '닫기' }));
     await user.click(screen.getByRole('button', { name: '인쇄' }));
 
     await waitFor(() => {
@@ -574,7 +573,6 @@ describe('PopMaterialLotLabelScreen — 등록·인쇄', () => {
 
     await user.click(screen.getByRole('button', { name: '인쇄' }));
     expect(await screen.findByText('등록·인쇄를 끝내지 못했습니다.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: '닫기' }));
 
     await user.click(screen.getByRole('button', { name: '재인쇄' }));
     const dialog = within(await screen.findByRole('dialog'));

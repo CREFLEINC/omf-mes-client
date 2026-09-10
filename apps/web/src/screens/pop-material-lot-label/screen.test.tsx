@@ -182,7 +182,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   it('한 줄에 입하번호·공급사·품목·수량·입하일이 함께 온다', async () => {
     renderScreen();
 
-    const row = await screen.findByRole('row', { name: /SYN-IB-0001/u });
+    const row = await screen.findByRole('button', { name: /SYN-IB-0001/u });
 
     expect(within(row).getByText('SYN-IB-0001')).toBeInTheDocument();
     expect(within(row).getByText('SYN-P-01 · 합성 공급사 가')).toBeInTheDocument();
@@ -192,22 +192,20 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   });
 
   /**
-   * ⭐ **날짜는 품목 아래에 쌓인다** — 스펙 §3 도면의 둘째 줄이 `(주)…    08-04` 이고
+   * ⭐ **날짜는 품목 아래 자리다** — 스펙 §3 도면의 둘째 줄이 `(주)…    08-04` 이고
    * `08-04` 가 첫 줄 품목 자리에 맞춰 선다. 수량 아래에 두면 「그날의 수량」으로 읽힌다.
    *
-   * 칸 정렬(가운데)을 쌓는 줄도 따라야 머리글과 값이 어긋나지 않는다 —
-   * `.stacked-cell` 의 기본값이 칸 정렬을 거스르는 자리다.
+   * ⚠ **수량은 한 덩어리다.** 「150」과 「EA」가 갈려 서면 두 값처럼 읽힌다 — 좁은 창에서
+   * 실제로 그렇게 나왔다(사용자 지적 2026-09-10).
    */
-  it('입하일이 품목 아래에 쌓이고 칸 정렬을 따른다', async () => {
+  it('입하일은 품목 자리 아래에 서고 수량은 한 덩어리로 선다', async () => {
     renderScreen();
 
-    const date = await screen.findByText('08-27');
-    const stacked = date.closest('.stacked-cell');
-
-    expect(stacked).toHaveClass('pop-stacked-center');
-    expect(stacked).toHaveTextContent('SYN-ITEM-01 · 합성 품목 가');
-    /* 수량 칸에는 쌓지 않는다 — 한 줄이다. */
-    expect((await screen.findByText('500 EA')).closest('.stacked-cell')).toBeNull();
+    expect(await screen.findByText('08-27')).toHaveClass('pop-material-lot-line-date');
+    expect(screen.getByText('SYN-ITEM-01 · 합성 품목 가')).toHaveClass(
+      'pop-material-lot-line-item',
+    );
+    expect(await screen.findByText('500 EA')).toHaveClass('pop-material-lot-line-qty');
   });
 
   /**
@@ -270,7 +268,7 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
       name: 'SYN-IB-0001 SYN-ITEM-01 · 합성 품목 가 선택 해제',
     });
 
-    expect(selected).toHaveClass('pop-row-select-on');
+    expect(selected).toHaveClass('pop-material-lot-line-on');
     expect(selected).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -306,13 +304,17 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     ).toHaveAttribute('aria-pressed', 'false');
   });
 
-  /** 스펙 §3 의 목록은 입하·품목·수량 세 칸이다. 선택 칸을 따로 두지 않는다. */
-  it('목록이 스펙의 세 칸으로 선다', async () => {
+  /**
+   * ⛔ **열 머리글 줄을 두지 않는다** — 스펙 §3 도면의 목록은 카드형이고 「입하·품목·수량」
+   * 머리줄이 없다(사용자 지적 2026-09-10). 세로 여유가 119px 뿐인 화면이라(§3) 그 한 줄이
+   * 목록에서 그만큼을 가져간다.
+   */
+  it('열 머리글 줄을 두지 않는다', async () => {
     renderScreen();
 
-    const headers = await screen.findAllByRole('columnheader');
+    await screen.findByText('SYN-IB-0001');
 
-    expect(headers.map((header) => header.textContent)).toEqual(['입하', '품목', '수량']);
+    expect(screen.queryAllByRole('columnheader')).toHaveLength(0);
   });
 
   it('입하 건이 하나도 없으면 빈 상태를 보인다', async () => {

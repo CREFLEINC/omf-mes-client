@@ -12,7 +12,7 @@ import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { PrinterStatusIndicator } from './printer-status';
 import { useLotNo, usePrinters, useReceipts, useReissueReasons, useTargetRows } from './queries';
-import { ReceiptTable } from './receipt-table';
+import { ReceiptList } from './receipt-list';
 import { ReissueDialog } from './reissue-dialog';
 import { TargetCard } from './target-card';
 import { toHeadPrinter } from './types';
@@ -180,7 +180,7 @@ export const PopMaterialLotLabelScreen = () => {
                *    일을 한다(스펙 §3 도면). 세로 여유가 119px 뿐인 화면이라 배너 한 줄이
                *    목록에서 그만큼을 가져간다.
                */}
-              <ReceiptTable
+              <ReceiptList
                 rows={targets.rows}
                 supplierLookup={supplierLookup}
                 itemLookup={itemLookup}
@@ -237,7 +237,7 @@ export const PopMaterialLotLabelScreen = () => {
            * ⛔ **결과는 그 결과를 만든 줄 밑에만 선다.** 끝난 뒤 다른 자재를 고르면 「인쇄
            * 했습니다」가 아직 찍지 않은 자재 밑에 서게 되고, 사람은 그것을 자기 것으로 읽는다.
            */}
-          {isResultOfSelected ? <IssueOutcome result={issue.result} onClose={issue.reset} /> : null}
+          {isResultOfSelected ? <IssueOutcome result={issue.result} /> : null}
         </section>
       </div>
 
