@@ -20,7 +20,7 @@ KEY_ALIAS="${OMF_RELEASE_KEY_ALIAS:-omf-mes-mobile}"
 PASS_LABEL="omf-mes-client-android-release-storepass"
 
 if [ ! -f "$KEYSTORE" ]; then
-  echo "키스토어 없음: $KEYSTORE — RELEASE-BUILD.md 「별도 준비물 놓기」를 먼저 보세요." >&2
+  echo "키스토어 없음: $KEYSTORE — RELEASE-BUILD.md 「별도 준비물 배치」를 먼저 보세요." >&2
   exit 1
 fi
 
