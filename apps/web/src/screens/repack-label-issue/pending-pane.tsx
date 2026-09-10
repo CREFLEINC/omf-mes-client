@@ -55,6 +55,12 @@ export const PendingPane = ({
       /* 값은 열 가운데에 선다 — 다른 POP 목록과 같다(사용자 지시 2026-09-07 · 2026-09-11). */
       align: 'center',
       /*
+       * ⚠ **폭을 비율로 나눈다**(사용자 지시 2026-09-11). 폭을 글자에 맡기면 첫 열이 남는
+       *   자리를 통째로 먹어(실측 751px) 나머지 넷이 오른쪽 끝에 몰려 붙는다. 합병은 번호
+       *   둘이 이어 붙으므로 첫 열이 가장 넓되, 혼자 절반을 넘기지는 않는다.
+       */
+      width: '34%',
+      /*
        * ⭐ **조작은 첫 칸의 단추 하나가 갖는다**(POP 목록 정본 · `P-02-12` 와 같은 형태).
        *    칸마다 단추를 두면 한 줄에 탭 정지가 여럿 생기고 읽어 주는 이름도 여럿이 된다.
        *
@@ -83,6 +89,7 @@ export const PendingPane = ({
       key: 'repackType',
       header: t.typeColumn,
       align: 'center',
+      width: '12%',
       /*
        * ⛔ **포장 유형(박스·팔레트)이 아니다.** 도면의 이 열은 «재구성» 유형(분할·합병)이고,
        *    한때 포장 유형 코드(`BOX`)가 그대로 서 있었다 — 다른 축의 값이었다.
@@ -93,12 +100,15 @@ export const PendingPane = ({
       key: 'newCount',
       header: t.newColumn,
       align: 'center',
+      width: '12%',
       render: (row) => t.newCount(row.newCount),
     },
     {
       key: 'remainder',
       header: t.remainderColumn,
       align: 'center',
+      /* 잔량은 포장 번호 한 개가 통째로 들어간다 — 접히지 않을 만큼 준다. */
+      width: '24%',
       /* 분할은 원 번호가 잔량으로 남고, 합병은 남지 않는다 — 둘을 가르는 칸이다. */
       render: (row) => row.remainderNo ?? t.noRemainder,
     },
@@ -106,6 +116,7 @@ export const PendingPane = ({
       key: 'occurredAt',
       header: t.occurredColumn,
       align: 'center',
+      width: '18%',
       render: (row) => occurredText(row.occurredAt),
     },
   ];
