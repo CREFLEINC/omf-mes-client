@@ -70,7 +70,7 @@ export const productionResult = {
       printerUnknown: '확인할 수 없음',
       issue: '생산 LOT 출력',
       retryIssue: '라벨 발행 다시 시도',
-      retryPrint: '기존 발행분 인쇄 다시 시도',
+      retryPrint: '발행된 라벨 다시 인쇄',
       retryReport: '인쇄 결과 보고 다시 시도',
       queued: '생산 실적을 미전송 큐에 저장했습니다. 서버 적용 뒤 라벨 발행을 이어갑니다.',
       saving: '생산 실적을 서버에 적용하는 중입니다.',
