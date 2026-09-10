@@ -6180,9 +6180,14 @@ dl.filter-bar.approval-inbox-detail-facts {
 
 /*
  * 사번 표시 — **글자를 크게 한다.** 「큰 글자」는 글자 크기 요구이지 높이 요구가 아니라
- * (§7) 칸 높이는 `xl`(60px) 그대로 두고 글자만 키운다.
+ * (§7) 칸 높이는 그대로 두고 글자만 키운다.
+ *
+ * ⚠ **이름표는 입력칸 «자신»에 붙는다.** 디자인 시스템의 `TextField` 는 `className` 을
+ *   바깥 상자가 아니라 `<input>` 에 그대로 넘긴다 — 한때 `.worker-no-field input` 으로
+ *   안쪽을 찾았는데 그런 자식이 없어 **규칙이 통째로 죽어 있었다**(실측 — 사번이 본문과
+ *   같은 16px 로 떴고 가운데 정렬도 서지 않았다).
  */
-.worker-no-field input {
+.worker-no-field {
   font-size: var(--font-size-2xl, 2rem);
   letter-spacing: 0.15em;
   text-align: center;
