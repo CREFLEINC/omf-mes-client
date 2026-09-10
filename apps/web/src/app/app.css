@@ -7395,8 +7395,12 @@ dl.filter-bar.approval-inbox-detail-facts {
    * ⛔ **`min-height` 가 아니라 `height` 다.** 최소 높이로 두면 안이 커질 때 셸이 함께 늘어
    * 액션바가 화면 «밖»으로 나간다 — 담을 것을 다 담고도 [포장 확정]이 보이지 않는다.
    * 실측으로 그렇게 밀렸다(판정 배너가 떴을 때).
+   *
+   * ⛔ **`vh` 가 아니라 `%` 다.** POP 화면은 `pop-fit` 이 배율(`zoom`)로 줄이는데 `vh` 는 그
+   * 배율을 되돌려 주지 않아, 예산이 배율만큼 짧게 잡히고 바닥이 잘린다(`pop.css` 의 `.pop-ui`
+   * 가 같은 이유로 `%` 다). `html`·`body`·`#root` 가 이미 `height: 100%` 사슬이다.
    */
-  height: 100vh;
+  height: 100%;
   padding: var(--space-4);
 }
 

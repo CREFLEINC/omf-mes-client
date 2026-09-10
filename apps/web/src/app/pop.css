@@ -505,10 +505,11 @@
  *    44px minmax(0, 1fr)`)로 두고 오른쪽 구획을 네 줄 격자로 쪼갠 규칙이다. 관리웹과 함께
  *    쓰는 파일이라 고치지 않고 여기서 끈다. 격자 값은 flex 에서 무시되지만 높이는 아니다.
  */
+/* ⛔ 높이는 `%` 다 — `vh` 는 `pop-fit` 의 배율을 되돌려 주지 않는다(위 `.pop-ui` 참조). */
 .pop-ui.rework-result-screen {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
 }
 
 /*
