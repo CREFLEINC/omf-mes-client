@@ -1755,12 +1755,6 @@
   margin-inline-start: auto;
 }
 
-/* 수량 — 눈이 오른쪽 끝에서 찾는 값이라 본문색으로 두고 자릿수를 고정폭으로 그린다. */
-.pop-ui .pop-reprint-qty {
-  font-variant-numeric: tabular-nums;
-  color: var(--on-surface-variant);
-}
-
 /*
  * 줄 사이는 선 하나로 가른다 — 굴려도 어디서 한 줄이 끝나는지 보인다.
  *
