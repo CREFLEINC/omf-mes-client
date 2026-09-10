@@ -3967,3 +3967,21 @@
   min-inline-size: 16rem;
   white-space: nowrap;
 }
+
+/*
+ * **글줄은 눌리지 않는다** — POP 구획은 세로로 쌓는 flex 인데, 자리가 모자라면 flex 는 줄일
+ * 수 있는 상자부터 «내용보다 작게» 눌러 버린다. 그러면 상자만 작아지고 글자는 그대로라
+ * 아랫줄이 표제 위로 겹쳐 그려진다 — 「오늘 이 설비」의 표제가 반쯤 잘려 보이던 것이
+ * 그것이다(실측 2026-09-11 · 표제 26px 상자가 9px 로 눌렸다).
+ *
+ * ⚠ 모자란 세로는 **구획이 스크롤로** 감당한다(위 `.pop-section { overflow-y: auto }`) —
+ *   눌러서 감추는 것이 아니다. 표제는 `sticky` 라 굴려도 제자리에 남는다.
+ */
+.pop-ui .pane-title,
+.pop-ui .pane > h2 {
+  flex: 0 0 auto;
+}
+
+.pop-ui .downtime-section > p {
+  flex: 0 0 auto;
+}
