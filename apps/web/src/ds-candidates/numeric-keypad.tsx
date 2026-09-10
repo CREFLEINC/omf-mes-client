@@ -60,6 +60,24 @@ export const pressKey = (value: string, key: string): string => {
 };
 
 /**
+ * [ 지움 ] — 값을 통째로 비운다. 자리가 두 곳(소수점 유무)이라 부품으로 뽑아 **같은 모양이
+ * 두 번 적히지 않게** 한다.
+ */
+const ClearKey = ({ onChange, label }: { onChange: (next: string) => void; label: string }) => (
+  <Button
+    type="button"
+    variant="text"
+    size="xl"
+    className="pop-touch-target"
+    onClick={() => {
+      onChange('');
+    }}
+  >
+    {label}
+  </Button>
+);
+
+/**
  * 터치 패드. **키 하나가 손가락 하나보다 커야 한다** — 장갑을 낀 채 누르므로 현장 단말의
  * 터치 하한(`pop-touch-target`)을 모든 키에 건다.
  */
@@ -91,8 +109,14 @@ export const NumericKeypad = ({
     ))}
 
     {/*
-     * 소수점 자리는 사용처가 정한다. 끄더라도 **자리를 비워 두어** 아래 줄의 키가 위로 밀려
-     * 올라오지 않게 한다 — 손이 기억한 위치가 화면마다 달라지면 오조작이 는다.
+     * 소수점 자리는 사용처가 정한다. 켜져 있으면 [ 0 ] 왼쪽에 서고, 꺼져 있으면 그 자리를
+     * **[ 지움 ]이 물려받는다**(사용자 지시 2026-09-10).
+     *
+     * ⛔ **자리를 빈 칸으로 두지 않는다.** 한때 보이지 않는 칸을 세워 [ 0 ]의 위치만 지켰는데,
+     *    그러면 [ 지움 ]이 다음 줄로 밀려 **혼자 한 줄을 쓰고 그 줄의 나머지 두 칸이 빈다** —
+     *    키패드가 한 줄 길어져 아래 [ 기록 ]까지 밀린다(실측 · 사용자 지적).
+     *
+     * ⭐ [ 0 ]은 가운데, [ ⌫ ]는 오른쪽으로 두 경우 모두 같다 — 손이 기억하는 자리는 그대로다.
      */}
     {allowDecimal ? (
       <Button
@@ -107,7 +131,7 @@ export const NumericKeypad = ({
         .
       </Button>
     ) : (
-      <span aria-hidden="true" />
+      <ClearKey onChange={onChange} label={clearLabel} />
     )}
 
     <Button
@@ -135,17 +159,7 @@ export const NumericKeypad = ({
       ⌫
     </Button>
 
-    <Button
-      type="button"
-      variant="text"
-      size="xl"
-      className="pop-touch-target"
-      onClick={() => {
-        onChange('');
-      }}
-    >
-      {clearLabel}
-    </Button>
+    {allowDecimal && <ClearKey onChange={onChange} label={clearLabel} />}
 
     {onSubmit !== undefined && (
       <Button
