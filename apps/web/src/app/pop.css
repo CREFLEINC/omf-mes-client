@@ -4410,3 +4410,45 @@
   font-variant-numeric: tabular-nums;
   text-align: end;
 }
+
+/*
+ * 출하 실적 등록 — **한 화면에 다 들어간다**(사용자 지적 2026-09-10).
+ *
+ * 도면은 출하 대상 → 스캔 → 포장 구성 → 진행 → 액션 줄을 한 화면에 그린다. 새 도면이 「출하
+ * 대상」 줄을 더하면서 구획이 넷에서 다섯이 됐는데 각 구획의 높이는 그대로여서, 본문이
+ * 214px 넘쳐 전체가 스크롤했다(실측 · 본문 592 에 내용 806). 넘치면 ③ 포장 구성 «안에서만»
+ * 스크롤해야 한다 — 화면이 통째로 밀리면 바닥의 [포장 확정]이 사라진다.
+ *
+ * ⚠ 줄인 것은 «여백과 칸 높이»다. 값이나 구획을 걷어내지 않았다.
+ * ⚠ 스캔 칸 56px 은 이 화면 한정이다 — 다른 POP 화면의 72px 규격은 그대로 둔다.
+ */
+.pop-ui.packing-shell > .packing-body {
+  gap: var(--space-1);
+}
+
+.pop-ui.packing-shell .packing-scan {
+  padding-block: var(--space-2);
+}
+
+/* 값 한 줄짜리 구획은 더 얕게 — 상자가 값보다 커 보이지 않게 한다. */
+.pop-ui .packing-target,
+.pop-ui.packing-shell .packing-progress {
+  padding-block: var(--space-1);
+}
+
+.pop-ui.packing-shell .scan-row > :first-child > div,
+.pop-ui.packing-shell .scan-row > button {
+  min-block-size: 56px;
+}
+
+/*
+ * ③ 은 남는 높이를 갖고, 줄이 넘치면 자기 안에서 스크롤한다. 최소 높이를 낮춰 두어야
+ * 위 구획들이 제 높이를 지킨 채로 본문이 한 화면에 담긴다.
+ */
+.pop-ui.packing-shell
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-compose {
+  min-height: 10rem;
+}

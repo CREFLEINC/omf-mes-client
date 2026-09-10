@@ -47,8 +47,8 @@ export const packingWork = {
     sectionLabel: '포장 단위',
     typeLabel: '유형',
     /** 「담기」를 눌렀는데 유형이 비어 있을 때 이 칸에 붙는다 — 고칠 곳에서 말한다. */
-    typeRequired: '포장 유형을 고르십시오.',
-    typePlaceholder: '고르십시오',
+    typeRequired: '포장 유형을 고르세요.',
+    typePlaceholder: '고르세요',
     typeLoadFailed: '포장 유형 목록을 불러오지 못했습니다.',
     parentLabel: '상위 포장',
     parentNone: '(없음)',
