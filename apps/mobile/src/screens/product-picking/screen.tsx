@@ -73,31 +73,42 @@ const HoldReason = ({
   holds: UseQueryResult<LotHold[]>;
   reasons: UseQueryResult<CodeValue[]>;
 }) => {
-  if (holds.isPending || reasons.isPending) {
+  if (holds.isPending) {
     return <p className="picking__note">{t.lot.heldReasonLoading}</p>;
   }
 
-  if (holds.isError || reasons.isError) {
+  if (holds.isError) {
     return <p className="picking__note">{t.lot.heldReasonFailed}</p>;
   }
 
-  const nameOf = (code: string): string | undefined =>
-    (reasons.data ?? []).find((each) => each.code === code)?.name;
+  /*
+   * 사유 자리에서만 갈린다. 해제 조건은 보류 조회가 들고 온 값이라, 표시명을 못 받았다고
+   * 함께 지우면 현장이 실제로 쓰는 것을 다른 물음의 실패로 버리는 것이 된다.
+   */
+  const reasonTextOf = (code: string): string => {
+    if (reasons.isPending) {
+      return t.lot.heldReasonLoading;
+    }
+
+    if (reasons.isError) {
+      return t.lot.heldReasonFailed;
+    }
+
+    const found = (reasons.data ?? []).find((each) => each.code === code);
+
+    return found === undefined ? t.lot.heldReasonUnknown(code) : t.lot.heldReason(found.name);
+  };
 
   return (
     <>
-      {(holds.data ?? []).map((hold) => {
-        const name = nameOf(hold.reasonCode);
-
-        return (
-          <p key={hold.lotHoldId}>
-            {name === undefined ? t.lot.heldReasonUnknown(hold.reasonCode) : t.lot.heldReason(name)}
-            {hold.releaseCondition === null || hold.releaseCondition === undefined
-              ? ''
-              : ` · ${t.lot.heldRelease(hold.releaseCondition)}`}
-          </p>
-        );
-      })}
+      {(holds.data ?? []).map((hold) => (
+        <p key={hold.lotHoldId}>
+          {reasonTextOf(hold.reasonCode)}
+          {hold.releaseCondition === null || hold.releaseCondition === undefined
+            ? ''
+            : ` · ${t.lot.heldRelease(hold.releaseCondition)}`}
+        </p>
+      ))}
     </>
   );
 };

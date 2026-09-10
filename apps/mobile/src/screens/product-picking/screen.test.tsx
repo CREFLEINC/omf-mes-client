@@ -465,8 +465,25 @@ describe('제품LOT 피킹 스캔 화면', () => {
     await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
     await user.click(screen.getByRole('button', { name: '찾기' }));
 
-    expect(await screen.findByText('보류 사유를 확인하지 못했습니다')).toBeTruthy();
+    expect(await screen.findByText(/보류 사유를 확인하지 못했습니다/)).toBeTruthy();
     expect(screen.queryByText(/표시명 없음/)).toBeNull();
+  });
+
+  /*
+   * 해제 조건은 보류 조회가 들고 온 값이다. 표시명 조회가 실패했다고 함께 지우면, 손에 쥔
+   * 것을 다른 물음이 실패했다는 이유로 버리는 것이 된다 - 현장이 실제로 쓰는 것은 이쪽이다.
+   */
+  it('표시명을 못 받아도 해제 조건은 그대로 낸다', async () => {
+    const user = userEvent.setup();
+    mount([], { held: [EARLY], reasonsStatus: 500 });
+    await chooseTarget(user);
+    await screen.findByText('보류 — 집을 수 없습니다');
+
+    await user.click(await screen.findByRole('button', { name: '직접 입력' }));
+    await user.type(screen.getByLabelText('제품 LOT 스캔'), EARLY.lotNo);
+    await user.click(screen.getByRole('button', { name: '찾기' }));
+
+    expect(await screen.findByText(/해제 조건 수입검사 합격/)).toBeTruthy();
   });
 
   /*
