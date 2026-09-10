@@ -916,6 +916,11 @@
   > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
     [class*='action']
   ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-oqc,
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
   > .packing-reentry,
 .pop-ui
   > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
@@ -4423,7 +4428,7 @@
  * ⚠ 스캔 칸 56px 은 이 화면 한정이다 — 다른 POP 화면의 72px 규격은 그대로 둔다.
  */
 .pop-ui.packing-shell > .packing-body {
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .pop-ui.packing-shell .packing-scan {
@@ -4432,8 +4437,24 @@
 
 /* 값 한 줄짜리 구획은 더 얕게 — 상자가 값보다 커 보이지 않게 한다. */
 .pop-ui .packing-target,
+.pop-ui.packing-shell .packing-oqc,
 .pop-ui.packing-shell .packing-progress {
   padding-block: var(--space-1);
+}
+
+/*
+ * OQC 상태 — **표시가 아니라 게이트다**(스펙 §7). 진행 수치와 같은 줄에 두면 「포장 N 개」와
+ * 한 덩어리로 읽혀, 납품 라벨이 왜 안 나오는지를 여기서 찾지 못한다.
+ */
+.pop-ui .packing-oqc {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding-inline: var(--space-5);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--radius-md);
+  background: var(--surface-container-low);
 }
 
 .pop-ui.packing-shell .scan-row > :first-child > div,
@@ -4450,5 +4471,6 @@
     [class*='action']
   ):not(.pop-overlay):not(.pop-fixed):not(.pane)
   > .packing-compose {
-  min-height: 10rem;
+  /* ③ 은 남는 높이를 갖고 넘치면 자기 안에서 스크롤한다 — 구획이 다섯이라 하한을 낮게 둔다. */
+  min-height: 8rem;
 }

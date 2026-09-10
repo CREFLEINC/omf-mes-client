@@ -603,12 +603,19 @@ export const PackingResultScreen = () => {
         <section className="packing-progress" aria-label={t.panes.progress}>
           <span>{t.progress.packed(progress.packedCount)}</span>
           <span>{t.progress.unpacked(progress.unpackedQty)}</span>
-          {oqcStatuses.length > 0 ? (
-            <span>
-              {t.oqc.label}: {oqcStatuses.join(' · ')}
-            </span>
-          ) : null}
         </section>
+
+        {/*
+         * ⭐ **OQC 상태는 제 줄이다**(스펙 §3 도면 · 사용자 지적 2026-09-10). ④ 진행 줄에 끼워
+         *   두었더니 「포장 N 개 · 미포장 N」과 한 덩어리로 읽혔는데, 이 값은 진행 수치가 아니라
+         *   **납품 라벨을 낼 수 있는가를 가르는 게이트**다(§7).
+         */}
+        {oqcStatuses.length > 0 && (
+          <section className="packing-oqc" aria-label={t.oqc.label}>
+            <span className="field-label">{t.oqc.label}</span>
+            <span>{oqcStatuses.join(' · ')}</span>
+          </section>
+        )}
       </div>
 
       {/* 액션바 88 — 화면 바닥에 고정한다. 본문이 밀어내면 확정이 화면 밖으로 나간다. */}
