@@ -338,7 +338,6 @@ export const ResultPanel = ({
           </RadioGroup>
           {/* 순서가 뒤집힌다는 사실을 화면이 먼저 말한다 — 안 말하면 고른 값이 확정인 줄 안다. */}
           <p className="field-note">{tDisposition.note}</p>
-          {!canChoose && <p className="field-note">{tDisposition.disabledNote}</p>}
         </div>
       </div>
 
