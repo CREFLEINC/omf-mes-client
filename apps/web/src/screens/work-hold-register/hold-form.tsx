@@ -77,6 +77,13 @@ export const HoldForm = ({
       {reasons.truncated && <p className="field-note">{t.form.reasonTruncated}</p>}
 
       {/*
+       * ⚠ **받아 둔 목록으로 그렸다는 사실을 말한다**(#1005). 끊긴 동안에도 중단을 기록할 수
+       * 있게 된 대신, 마스터에서 사유가 늘거나 꺼진 것은 여기 비치지 않는다. 그 사실을
+       * 숨기면 작업자는 목록이 최신이라고 믿는다.
+       */}
+      {reasons.fromCache && <p className="field-note">{t.form.reasonFromCache}</p>}
+
+      {/*
        * ⚠ **값이 한 줄씩 서면 구획이 화면을 넘긴다.** 큰 타겟×7 + 비고 + 버튼이 668px 칸에
        * 753 을 요구해 **[ 중단 등록 ]이 화면 밖(761~833)으로 밀렸다**(실측) — 중단을 등록할
        * 수 없는 화면이었다. 두 열로 접어 담는다.
