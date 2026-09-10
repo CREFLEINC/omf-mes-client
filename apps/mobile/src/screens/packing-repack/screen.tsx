@@ -92,8 +92,6 @@ export const PackingRepackScreen = () => {
   const uoms = useUomCodes(sources.length > 0);
   /* 내용물은 품목·LOT 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
   const itemLabels = useItemLabels(sources.length > 0);
-  const lotLabels = useLotLabels(sources);
-
   const allocations = useShipmentAllocations(sources);
 
   const pooled = pooledContents(sources);
@@ -106,6 +104,15 @@ export const PackingRepackScreen = () => {
   /* 이력은 원 포장에 달린다. 합병이면 첫 포장이 잔량을 갖는 쪽이라 그 포장의 이력을 본다. */
   const historyOf = sources[0]?.handlingUnit.handlingUnitId ?? null;
   const history = useRepackEvents(historyOf, historyOpen);
+
+  /*
+   * 이력에는 지금 이 포장에 없는 LOT 도 나온다 - 통째로 빠져나간 것이 그렇다. 그 번호표까지
+   * 함께 물어야 이력이 대리키를 그대로 보이지 않는다.
+   */
+  const lotLabels = useLotLabels([
+    ...sources.flatMap((source) => source.contents.map((content) => content.lotId)),
+    ...(history.data ?? []).flatMap((event) => event.lines.map((line) => line.lotId)),
+  ]);
 
   /*
    * 스캔한 것을 찾지 못했다는 것을 소리로도 알린다(공유계약 D-2). 기기를 허리에 매단 채
@@ -128,7 +135,11 @@ export const PackingRepackScreen = () => {
    * 목록까지 나가 포장을 다시 스캔해야 한다.
    */
   useBackStep(sources.length > 0, () => {
-    restart();
+    const last = sources[sources.length - 1];
+
+    if (last !== undefined) {
+      drop(last.handlingUnit.handlingUnitId);
+    }
   });
 
   const uomOf = (uomId: number): string => uoms.data?.get(uomId) ?? '';

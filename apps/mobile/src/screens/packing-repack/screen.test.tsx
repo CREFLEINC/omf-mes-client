@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { PackingRepackScreen } from './screen';
 
@@ -636,6 +637,15 @@ describe('포장 재구성 화면', () => {
               qtyBefore: 240,
               qtyAfter: 180,
             },
+            /* 통째로 빠져나가 지금은 이 포장에 없는 LOT. 번호표를 따로 물어야 이름이 난다. */
+            {
+              handlingUnitId: 10,
+              roleCode: 'SOURCE',
+              itemId: 100,
+              lotId: 2000,
+              qtyBefore: 60,
+              qtyAfter: 0,
+            },
           ],
         },
       ],
@@ -646,6 +656,32 @@ describe('포장 재구성 화면', () => {
     await user.click(await screen.findByRole('button', { name: '이력 보기' }));
 
     expect(await screen.findByText(/원본 FG-1001 · FLOT-2026-01000 240 → 180/)).toBeTruthy();
+    /* 지금 이 포장에 없는 LOT 도 번호로 말한다. 대리키를 그대로 보이면 실물과 대조할 수 없다. */
+    expect(await screen.findByText(/원본 FG-1001 · FLOT-2026-02000 60 → 0/)).toBeTruthy();
+  });
+
+  /* 뒤로가기는 가장 안쪽 것부터 되돌린다 - 마지막으로 얹은 포장 하나를 놓는다. */
+  it('뒤로가기가 마지막으로 얹은 포장을 놓는다', async () => {
+    mount({
+      units: [unit(10, CARTON), unit(11, OTHER)],
+      contents: {
+        10: [content()],
+        11: [content({ handlingUnitContentId: 2, handlingUnitId: 11 })],
+      },
+    });
+    await screen.findByLabelText(/포장 스캔/);
+
+    scan(CARTON);
+    await screen.findByText(CARTON);
+    scan(OTHER);
+    await screen.findByText(OTHER);
+
+    expect(runBackStep()).toBe(true);
+
+    await waitFor(() => {
+      expect(screen.queryByText(OTHER)).toBeNull();
+    });
+    expect(screen.getByText(CARTON)).toBeTruthy();
   });
 
   /* 기기를 허리에 매단 채 읽는다. 화면에만 적으면 통과한 줄 알고 다음 포장을 집는다. */
