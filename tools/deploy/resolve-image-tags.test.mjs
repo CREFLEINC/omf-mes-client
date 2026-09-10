@@ -19,6 +19,10 @@ test('front image workflow subscribes only to web release tags', () => {
   assert.equal(tagPatterns, "- 'web-v*.*.*'");
 });
 
+test('front image workflow treats cache export failures as non-fatal', () => {
+  assert.match(workflow, /cache-to: type=gha,mode=max,ignore-error=true/);
+});
+
 function resolveTags({ eventName, ref, refName, registryHost = 'registry.example.com' }) {
   const outputDirectory = mkdtempSync(path.join(tmpdir(), 'omf-front-tags-'));
   const output = path.join(outputDirectory, 'github-output');
