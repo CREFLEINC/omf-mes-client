@@ -872,6 +872,73 @@
 }
 
 /*
+ * 본문은 **스스로 굴린다** — 이 화면은 위 「블록은 테두리에서 자르고 안쪽 칸이 스크롤한다」의
+ * 예외다.
+ *
+ * 스캔 셋이 제 높이를 지키고 포장 구성이 바닥을 갖는 순간 본문이 예산을 넘는데, 공용 규칙의
+ * `overflow: hidden` 이 그대로면 넘친 만큼이 **소리 없이 잘린다**(실측 151px — 포장 구성
+ * 아랫단과 진행 구획이 통째로 사라졌다). 머리줄과 액션바는 격자가 따로 잡고 있어 굴러도
+ * 밀리지 않는다 — [ 포장 확정 ]은 늘 같은 자리다.
+ */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane).packing-body {
+  overflow-y: auto;
+}
+
+/*
+ * ①②③ 스캔 구획(출하번호 · 납품라벨 · 생산LOT)은 **눌리지 않는다**(사용자 지시 2026-09-10).
+ *
+ * 셋은 본문의 몫을 나눠 받고 있어 자리가 모자라면 «각자» 줄었고, 줄어든 만큼 상자 안에서
+ * 스크롤이 생겨 [ 읽기 ]·[ 직접 입력 ]이 반만 남았다(실측 41~46px). 스캔은 이 화면의 첫
+ * 동작이라 버튼이 반만 보이는 상태로 두면 그 자리에서 막힌다.
+ *
+ * ⭐ 스크롤은 아래 포장 구성이 맡는다 — 담긴 목록은 길어지는 것이 정상이고, 그 구획은 안에
+ * 표를 따로 굴릴 자리를 이미 갖고 있다.
+ *
+ * ⚠ **겨냥이 길다.** 위쪽 「늘어난 블록 안에서 스크롤한다」 규칙이 본문의 «모든» 자식에
+ *   `min-height: 0`·`overflow-y: auto` 를 걸고, 그 규칙의 `:not()` 사슬이 무게를 크게 만든다.
+ *   같은 사슬을 그대로 두고 뒤에 이름만 붙여 이긴다 — `!important` 를 쓰면 다음 사람이 이길
+ *   방법이 없어진다(이 파일의 규약).
+ */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-scan,
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-reentry,
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-progress {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
+}
+
+/*
+ * ④ 포장 구성 — **바닥을 둔다.** 위 셋이 제 높이를 지키면 남는 것을 이 구획이 받는데, 그대로
+ * 두면 0 까지 눌려 표가 통째로 사라졌다(실측 — 「담긴 것이 없습니다」조차 안 보였다). 표 머리와
+ * 수량 키패드가 함께 서는 최소 높이를 잡아 둔다.
+ *
+ * ⚠ 그래도 모자란 만큼은 본문이 스크롤한다(`app.css` 의 「마지막 안전망」) — 머리줄과 액션바는
+ *   자리를 지키므로 [ 포장 확정 ]은 늘 같은 곳에 있다.
+ */
+.pop-ui
+  > :not(.pop-header):not(.pop-terminal-header):not(.banner-slot):not(dialog):not(
+    [class*='action']
+  ):not(.pop-overlay):not(.pop-fixed):not(.pane)
+  > .packing-compose {
+  min-height: 15rem;
+}
+
+/*
  * 액션바도 다른 POP 화면과 같은 띠다 — 폭을 화면 끝까지 쓰고 위쪽 선 하나로 본문과 갈린다.
  * `app.css` 가 이미 높이(88)와 윗선을 주고 있어 여기서는 안쪽 여백만 맞춘다.
  */
