@@ -47,6 +47,12 @@ export const PreviewDialog = ({
       onClose={onClose}
       title={t.title}
       size="lg"
+      /*
+       * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
+       *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
+       *    「누른 적 없는데 닫힌다」가 된다. 닫는 길은 아래 단추다.
+       */
+      closeOnBackdropClick={false}
       /* ⛔ 아래 [닫기]와 같은 일을 하므로 X 를 두지 않는다 — 같은 동작을 두 자리에 두지 않는다. */
       showCloseButton={false}
       footer={

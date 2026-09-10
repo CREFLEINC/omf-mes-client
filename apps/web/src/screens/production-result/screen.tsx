@@ -877,6 +877,12 @@ export const ProductionFlowScreen = () => {
         open={isCompletedOpen}
         onClose={() => setIsCompletedOpen(false)}
         title={t.flow.currentLot.completedTitle}
+        /*
+         * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
+         *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
+         *    「누른 적 없는데 닫힌다」가 된다. 닫는 길은 아래 [닫기] 단추다.
+         */
+        closeOnBackdropClick={false}
         footer={
           <Button variant="outlined" onClick={() => setIsCompletedOpen(false)}>
             {t.flow.close}
@@ -922,6 +928,12 @@ export const ProductionFlowScreen = () => {
         open={isTagReissueOpen}
         onClose={() => setIsTagReissueOpen(false)}
         title={t.flow.tag.reissueReason}
+        /*
+         * ⛔ **팝업 바깥을 눌러 닫히지 않는다**(사용자 지시 2026-09-10 · #1005). 터치 단말에서
+         *    팝업은 화면 대부분을 덮어 손이 스치기 쉽고, 스크림 클릭이 닫기로 이어지면
+         *    「누른 적 없는데 닫힌다」가 된다. 닫는 길은 아래 [닫기] 단추다.
+         */
+        closeOnBackdropClick={false}
         footer={
           <>
             <Button variant="outlined" onClick={() => setIsTagReissueOpen(false)}>
