@@ -108,8 +108,11 @@ export const repackLabelIssue = {
     newLabel: (handlingUnitNo: string): string => `새 포장 라벨 · ${handlingUnitNo}`,
     remainderLabel: (handlingUnitNo: string, issueCount: number): string =>
       `잔량 라벨 재출력 · ${handlingUnitNo} (기존 ${String(issueCount)}회)`,
-    remainderNumberNote: '원 번호를 그대로 씁니다 — 새 번호를 발번하지 않습니다.',
-    remainderWarning: '수량이 바뀌었으면 다시 뽑아야 합니다.',
+    /**
+     * 잔량 줄의 안내 — **한 줄이 둘을 다 말한다**(사용자 지시 2026-09-11). 번호를 새로
+     * 매기지 않는다는 것과, 다시 뽑을 까닭이 수량 변경뿐이라는 것이다.
+     */
+    remainderNumberNote: '기존 번호를 그대로 사용하며, 수량이 변경된 경우에만 다시 출력합니다.',
     remainderFailed: '잔량 라벨 재출력 대상을 확인하지 못했습니다.',
     targetRequired: '인쇄할 라벨을 하나 이상 선택하세요.',
     /** 회차는 서버가 매긴다. 화면은 「이번이 몇 번째가 될 것인가」를 세지 않는다. */

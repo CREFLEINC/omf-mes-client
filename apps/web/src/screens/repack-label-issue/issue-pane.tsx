@@ -107,7 +107,6 @@ export const IssuePane = ({
               {t.remainderLabel(handlingUnit.handlingUnitNo, remainderStanding.issueCount ?? 0)}
             </Checkbox>
             <p className="pop-repack-note">{t.remainderNumberNote}</p>
-            <p className="pop-repack-note">{t.remainderWarning}</p>
           </div>
         ))}
         {remainderFailed && <p className="pop-repack-note">{t.remainderFailed}</p>}
