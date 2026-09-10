@@ -2891,9 +2891,49 @@ on('POST', '/production/repair-executions/{repairExecutionId}:return', (params, 
   return { ...execution };
 });
 
-on('POST', '/production/results', (_p, _q, body) => {
-  const created = { productionResultId: newId(), ...body };
+/*
+ * 생산 실적 등록(P-02-04).
+ *
+ * ⚠ **경로 이름이 틀려 있었다** — 계약은 `/production/production-results` 인데 목이
+ * `/production/results` 로 받고 있어, 화면이 보낸 저장이 계약 예시 서버로 넘어가 400 을
+ * 받았다. 화면에는 「실적을 저장하지 못했습니다」만 떴다(실측 2026-09-10).
+ *
+ * ⭐ **LOT 진척을 함께 올린다.** 저장이 끝나면 화면이 LOT 을 다시 읽어 「실제 생산수량」을
+ * 그린다 — 상태를 올리지 않으면 저장은 됐는데 화면은 0 을 말한다.
+ */
+on('POST', '/production/production-results', (_p, _q, body) => {
+  const sequence =
+    state.productionResults.filter((row) => row.workOrderId === body.workOrderId).length + 1;
+  const created = {
+    productionResultId: newId(),
+    productionResultNo: `PR-2026-${String(900000 + sequence)}`,
+    resultSequence: sequence,
+    defectQty: 0,
+    holdQty: 0,
+    scrapQty: 0,
+    reworkQty: 0,
+    /* 출처는 서버가 채운다 — 화면이 보내지 않는다(설계 변동 공지 #507). */
+    resultSourceCode: 'MANUAL',
+    ...body,
+  };
+
   state.productionResults.push(created);
+
+  for (const allocation of body.lotAllocations ?? []) {
+    const lot = state.lots.find((row) => row.lotId === allocation.lotId);
+    if (lot === undefined) continue;
+
+    lot.progress = {
+      goodQty: (lot.progress?.goodQty ?? 0) + allocation.allocatedQty,
+      defectQty: lot.progress?.defectQty ?? 0,
+      achievementRate:
+        lot.initialQty > 0
+          ? ((lot.progress?.goodQty ?? 0) + allocation.allocatedQty) / lot.initialQty
+          : 0,
+      completionJudgmentCode: lot.progress?.completionJudgmentCode ?? null,
+    };
+  }
+
   return { created, status: 201 };
 });
 
