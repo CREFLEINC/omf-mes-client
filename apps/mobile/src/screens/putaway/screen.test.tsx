@@ -250,6 +250,19 @@ describe('적치·입고 완료 화면', () => {
   /*
    * 비우고 물으면 남의 지시까지 온다. 끝낸 지시까지 함께 오면 같은 자리를 두 번 다녀온다.
    */
+  /*
+   * 단추 안에 값을 넣으면 단추 글자 규격을 따라가 지시 제목과 권장 위치 유무가 같은
+   * 무게로 보인다. 카드로 세워 제목과 부가를 갈라 둔다.
+   */
+  it('적치 지시를 카드로 세워 제목과 부가를 가른다', async () => {
+    mount();
+
+    const pick = await screen.findByRole('button', { name: /PT-2026-0007/ });
+
+    expect(pick.querySelector('strong')?.textContent).toContain('PT-2026-0007');
+    expect(pick.querySelector('p')?.textContent).toContain('권장 위치');
+  });
+
   it('담당자와 적치 대기 상태로 좁혀 묻는다', async () => {
     const seen: URL[] = [];
     mount([

@@ -1,4 +1,4 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { AlertBanner, Card } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { UseQueryResult } from '@tanstack/react-query';
 
@@ -43,17 +43,19 @@ export const PickingOrderList = ({
       <AlertBanner variant="info" title={t.orders.none} />
     ) : null}
     {(orders.data ?? []).map((order) => (
-      <Button
+      <Card
         key={order.pickingOrderId}
-        variant="outlined"
-        size="xl"
-        className="picking-out__wide"
+        bordered
+        interactive
         onClick={() => {
           onChoose(order.pickingOrderId);
         }}
       >
-        {`${order.pickingOrderNo} · ${t.orders.type(displayNameOf(pickingTypes, order.pickingTypeCode))}`}
-      </Button>
+        <Card.Body className="card-body picking-out__order">
+          <strong>{order.pickingOrderNo}</strong>
+          <p>{t.orders.type(displayNameOf(pickingTypes, order.pickingTypeCode))}</p>
+        </Card.Body>
+      </Card>
     ))}
   </section>
 );

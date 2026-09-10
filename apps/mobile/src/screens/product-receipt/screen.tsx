@@ -11,7 +11,6 @@ import { useItemLabels } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -60,9 +59,7 @@ export const ProductReceiptScreen = () => {
 
   const [warehouseId, setWarehouseId] = useState<number | null>(null);
   const [scannedUnit, setScannedUnit] = useState<string | null>(null);
-  const [manualUnit, setManualUnit] = useState('');
   const [scannedLocation, setScannedLocation] = useState<string | null>(null);
-  const [manualLocation, setManualLocation] = useState('');
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const [saveFailed, setSaveFailed] = useState(false);
@@ -213,9 +210,7 @@ export const ProductReceiptScreen = () => {
 
   const restart = () => {
     setScannedUnit(null);
-    setManualUnit('');
     setScannedLocation(null);
-    setManualLocation('');
     setLines([]);
     setOutcome(null);
     setSaveFailed(false);
@@ -380,16 +375,19 @@ export const ProductReceiptScreen = () => {
             size="xl"
             fullWidth
           />
-          <ManualEntry
-            label={t.unit.manualLabel}
-            submitLabel={t.unit.manualSubmit}
-            value={manualUnit}
-            onChange={setManualUnit}
-            onSubmit={() => {
-              setScannedUnit(manualUnit.trim());
-              setManualUnit('');
-            }}
-          />
+          {/*
+           * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+           * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+           */}
+          {unitScan.manual ? (
+            <Button variant="outlined" size="xl" onClick={unitScan.submitManual}>
+              {t.unit.manualSubmit}
+            </Button>
+          ) : (
+            <Button variant="text" size="xl" onClick={unitScan.openManual}>
+              {t.unit.manualLabel}
+            </Button>
+          )}
           {scannedUnit !== null && unit.isPending ? <p role="status">{t.unit.loading}</p> : null}
           {unit.isError ? <AlertBanner variant="error" title={t.unit.loadFailed} /> : null}
           {scannedUnit !== null && unit.data === null ? (
@@ -499,16 +497,19 @@ export const ProductReceiptScreen = () => {
                   size="xl"
                   fullWidth
                 />
-                <ManualEntry
-                  label={t.location.manualLabel}
-                  submitLabel={t.location.manualSubmit}
-                  value={manualLocation}
-                  onChange={setManualLocation}
-                  onSubmit={() => {
-                    setScannedLocation(manualLocation.trim());
-                    setManualLocation('');
-                  }}
-                />
+                {/*
+                 * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+                 * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+                 */}
+                {locationScan.manual ? (
+                  <Button variant="outlined" size="xl" onClick={locationScan.submitManual}>
+                    {t.location.manualSubmit}
+                  </Button>
+                ) : (
+                  <Button variant="text" size="xl" onClick={locationScan.openManual}>
+                    {t.location.manualLabel}
+                  </Button>
+                )}
                 {scannedLocation !== null && atLocation.isPending ? (
                   <p role="status">{t.location.loading}</p>
                 ) : null}

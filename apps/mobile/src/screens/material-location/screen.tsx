@@ -7,16 +7,14 @@ import { playErrorTone } from '../../patterns/error-tone';
 import { useScannedLot } from '../../patterns/lots';
 import { toApiError } from '../../patterns/request';
 import { useScreenTitle } from '../../patterns/screen-title';
-import { ManualEntry } from '../../patterns/manual-entry';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useReferenceNames, type ReferenceNames, type ReferenceState } from './lookups';
-import { MATERIAL_LOT_NO_LENGTH, formatMaterialLotNo, isMaterialLotNo } from '../../patterns/material-lot-no';
 import {
-  useLotBalances,
-  useLotHolds,
-  type InventoryBalance,
-  type LotHold,
-} from './queries';
+  MATERIAL_LOT_NO_LENGTH,
+  formatMaterialLotNo,
+  isMaterialLotNo,
+} from '../../patterns/material-lot-no';
+import { useLotBalances, useLotHolds, type InventoryBalance, type LotHold } from './queries';
 import { byOnHandDesc } from './sort';
 import './screen.css';
 
@@ -125,7 +123,6 @@ const HoldBanner = ({ holds, names }: { holds: LotHold[]; names: ReferenceNames 
 export const MaterialLocationScreen = () => {
   const [code, setCode] = useState<string | null>(null);
   const [rejectedLength, setRejectedLength] = useState<number | null>(null);
-  const [manual, setManual] = useState('');
 
   const accept = (value: string) => {
     if (!isMaterialLotNo(value)) {
@@ -170,7 +167,6 @@ export const MaterialLocationScreen = () => {
   const restart = () => {
     setCode(null);
     setRejectedLength(null);
-    setManual('');
     scanField.focus();
   };
 
@@ -189,17 +185,19 @@ export const MaterialLocationScreen = () => {
               : t.invalidLength(rejectedLength, MATERIAL_LOT_NO_LENGTH)
           }
         />
-        <ManualEntry
-          label={t.scan.manualEntry}
-          submitLabel={t.scan.manualSubmit}
-          value={manual}
-          onChange={setManual}
-          onSubmit={() => {
-            accept(manual.trim());
-            /* 넣은 값을 남기면 다음 것을 적을 때 앞 값에 이어 붙는다. */
-            setManual('');
-          }}
-        />
+        {/*
+         * 스캔 칸 하나로 받는다. 스캐너를 기다리는 동안에는 키보드를 열지 않고, 직접
+         * 입력을 누르면 그 칸이 열린다. 치는 도중 스캔이 오면 스캔값이 이긴다.
+         */}
+        {scanField.manual ? (
+          <Button variant="outlined" size="xl" onClick={scanField.submitManual}>
+            {t.scan.manualSubmit}
+          </Button>
+        ) : (
+          <Button variant="text" size="xl" onClick={scanField.openManual}>
+            {t.scan.manualEntry}
+          </Button>
+        )}
 
         {unreachable ? (
           <EmptyState

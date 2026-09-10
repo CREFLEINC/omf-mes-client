@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   Card,
+  Chip,
   Dialog,
   NumberPad,
   Radio,
@@ -236,23 +237,25 @@ export const InboundVarianceScreen = () => {
             <ul className="variance__lines">
               {(lines.data ?? []).map((line: InboundReceiptLine) => (
                 <li key={line.inboundReceiptLineId}>
-                  <Button
-                    className="variance__wide"
-                    variant={
-                      draft.line?.inboundReceiptLineId === line.inboundReceiptLineId
-                        ? 'filled'
-                        : 'outlined'
-                    }
-                    size="xl"
+                  <Card
+                    bordered
+                    interactive
                     onClick={() => {
                       patch({ line });
                     }}
                   >
-                    {t.receipt.lineLabel(
-                      line.lineNo,
-                      `${String(line.receivedQty)} ${uoms.data?.get(line.uomId) ?? ''}`,
-                    )}
-                  </Button>
+                    <Card.Body className="card-body variance__line">
+                      <strong>{t.receipt.lineNo(line.lineNo)}</strong>
+                      <p>
+                        {t.receipt.lineQty(
+                          `${String(line.receivedQty)} ${uoms.data?.get(line.uomId) ?? ''}`,
+                        )}
+                      </p>
+                      {draft.line?.inboundReceiptLineId === line.inboundReceiptLineId ? (
+                        <Chip status="success">{t.receipt.linePicked}</Chip>
+                      ) : null}
+                    </Card.Body>
+                  </Card>
                 </li>
               ))}
             </ul>

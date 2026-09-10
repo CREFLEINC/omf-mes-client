@@ -2,6 +2,7 @@ import {
   AlertBanner,
   Button,
   Card,
+  Chip,
   NumberPad,
   Table,
   Tabs,
@@ -300,21 +301,24 @@ export const RepairRoundtripScreen = () => {
           <ul className="repair__picks">
             {defects.data.map((each) => (
               <li key={each.defectRecordId}>
-                <Button
-                  variant={each.defectRecordId === defectId ? 'filled' : 'outlined'}
-                  size="lg"
+                <Card
+                  bordered
+                  interactive
                   onClick={() => {
                     setDefectId(each.defectRecordId);
                     setQty('');
                   }}
                 >
-                  {[
-                    codeLabel(defectCodes, each),
-                    t.defect.qty(String(each.defectQty), uomLabel(uoms.data, each.uomId)),
-                  ]
-                    .filter((part) => part !== '')
-                    .join(' · ')}
-                </Button>
+                  <Card.Body className="card-body repair__pick">
+                    {codeLabel(defectCodes, each) === '' ? null : (
+                      <strong>{codeLabel(defectCodes, each)}</strong>
+                    )}
+                    <p>{t.defect.qty(String(each.defectQty), uomLabel(uoms.data, each.uomId))}</p>
+                    {each.defectRecordId === defectId ? (
+                      <Chip status="success">{t.defect.picked}</Chip>
+                    ) : null}
+                  </Card.Body>
+                </Card>
               </li>
             ))}
           </ul>
@@ -401,15 +405,21 @@ export const RepairRoundtripScreen = () => {
         <ul className="repair__picks">
           {scopedOpen.data.map((each) => (
             <li key={each.repairExecutionId}>
-              <Button
-                variant={each.repairExecutionId === executionId ? 'filled' : 'outlined'}
-                size="lg"
+              <Card
+                bordered
+                interactive
                 onClick={() => {
                   setExecutionId(each.repairExecutionId);
                 }}
               >
-                {`${String(each.repairQty)} ${uomLabel(uoms.data, each.uomId)} · ${stamp(each.startedAt)}`}
-              </Button>
+                <Card.Body className="card-body repair__pick">
+                  <strong>{`${String(each.repairQty)} ${uomLabel(uoms.data, each.uomId)}`}</strong>
+                  <p>{stamp(each.startedAt)}</p>
+                  {each.repairExecutionId === executionId ? (
+                    <Chip status="success">{t.open.picked}</Chip>
+                  ) : null}
+                </Card.Body>
+              </Card>
             </li>
           ))}
         </ul>
