@@ -24,6 +24,10 @@ export const equipmentInspection = {
     legend: '점검 유형',
     daily: '일상',
     monthly: '정기',
+    /** 막지 않는다. 재점검은 정상 행위이고, 이미 했다는 것만 알려 사람이 정하게 한다. */
+    todayDone: (at: string, workerNo: string) => `오늘 점검 기록 있음 (${at} 사번 ${workerNo})`,
+    todayNone: '오늘 점검 기록 없음',
+    todayUnknown: '오늘 점검 기록을 확인할 수 없습니다',
   },
   items: {
     legend: '항목별 점검',

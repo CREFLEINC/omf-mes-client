@@ -57,3 +57,48 @@ export const useInspectionItems = (equipmentId: number | null): UseQueryResult<I
     },
   });
 };
+
+export type Inspection = components['schemas']['Inspection'];
+
+const startOfDay = (now: Date): string =>
+  new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+
+/**
+ * 오늘 이 설비를 이 유형으로 점검한 기록.
+ *
+ * 막지 않는다 - 재점검은 정상 행위다(고장 조치 뒤 재확인). 다만 이미 했다는 것을 말하지
+ * 않으면 같은 점검이 모르는 채로 한 번 더 쌓인다.
+ */
+export const useTodaysInspection = (
+  equipmentId: number | null,
+  inspectionTypeCode: string,
+): UseQueryResult<Inspection | null> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: ['equipment-inspection-today', equipmentId, inspectionTypeCode] as const,
+    enabled: equipmentId !== null,
+    queryFn: async () => {
+      if (equipmentId === null) {
+        throw new Error('설비를 고르기 전에는 오늘 기록을 조회하지 않습니다.');
+      }
+
+      const now = new Date();
+      const data = await runRequest(() =>
+        client.GET('/maintenance/inspections', {
+          params: {
+            query: {
+              equipmentId,
+              inspectionTypeCode,
+              inspectedFrom: startOfDay(now),
+              inspectedTo: now.toISOString(),
+              size: 1,
+            },
+          },
+        }),
+      );
+
+      return data.items[0] ?? null;
+    },
+  });
+};
