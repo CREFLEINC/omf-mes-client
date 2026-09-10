@@ -3442,7 +3442,15 @@
  */
 .pop-ui .production-flow-quantity > * > .pop-figures + div {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  /*
+   * ⚠ **칸이 남는 폭을 다 먹지 않는다**(사용자 지시 2026-09-10). 들어갈 것은 수량 몇 자리라
+   *   구획 끝까지 늘리면 빈 칸만 길어지고, 친 숫자가 왼쪽 끝에 외따로 선다.
+   */
+  /*
+   * ⚠ 셋째 칸은 **남는 폭을 받아 두는 빈 자리**다. 두지 않으면 남는 폭이 이름 칸으로 가서
+   *   칸이 구획 오른쪽 끝까지 밀린다 — 이름과 칸이 멀어지면 무엇을 채우는 칸인지 흐려진다.
+   */
+  grid-template-columns: max-content minmax(0, 14rem) 1fr;
   align-items: center;
   gap: var(--space-3);
 }
