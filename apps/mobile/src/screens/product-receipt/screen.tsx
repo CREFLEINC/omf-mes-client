@@ -97,9 +97,14 @@ export const ProductReceiptScreen = () => {
 
   /*
    * 적치 지시는 입고 응답에서야 생긴다. 스캔한 위치가 맞는지는 그 전에 알아야 하므로 규칙을
-   * 직접 묻는다. 한 인식표의 품목은 하나라고 보고 첫 줄로 묻는다.
+   * 직접 묻는다.
+   *
+   * 한 인식표에 품목이 여럿이면 어느 규칙으로 재야 할지 정해진 것이 없다. 첫 줄로 재면 다른
+   * 품목의 옳은 자리를 막아 현장이 선다 - 그때는 규칙 없는 갈래로 물러나 확인을 받는다.
    */
-  const rules = usePutawayRules(warehouseId, lines[0]?.itemId ?? null);
+  const itemIds = [...new Set(lines.map((line) => line.itemId))];
+  const ruledItemId = itemIds.length === 1 ? (itemIds[0] ?? null) : null;
+  const rules = usePutawayRules(warehouseId, ruledItemId);
   const recommended = recommendedOf(rules.data ?? []);
   const verdict = verdictOf(recommended, atLocation.data ?? null);
   const stocked = useStockedLots(lines.map((line) => line.lotId));

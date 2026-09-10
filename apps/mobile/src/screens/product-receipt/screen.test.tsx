@@ -76,6 +76,8 @@ interface Options {
   alreadyStocked?: boolean;
   /** 재고 조회가 닿지 않는다 - 오프라인에서 이 판정을 할 수 없는 자리다. */
   stockUnreachable?: boolean;
+  /** 한 인식표에 품목이 둘이다 - 어느 규칙으로 재야 할지 정해진 것이 없는 자리다. */
+  twoItems?: boolean;
 }
 
 const routes = (options: Options = {}): StubRoute[] => [
@@ -141,6 +143,18 @@ const routes = (options: Options = {}): StubRoute[] => [
                   qty: 500,
                   uomId: 1001,
                 },
+                ...(options.twoItems === true
+                  ? [
+                      {
+                        handlingUnitContentId: 6102,
+                        handlingUnitId: 6001,
+                        itemId: 2102,
+                        lotId: 8202,
+                        qty: 200,
+                        uomId: 1001,
+                      },
+                    ]
+                  : []),
               ],
       }),
   },
@@ -276,7 +290,10 @@ const routes = (options: Options = {}): StubRoute[] => [
     match: (req) => new URL(req.url).pathname === '/mdm/items',
     respond: () =>
       jsonResponse({
-        items: [{ itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' }],
+        items: [
+          { itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' },
+          { itemId: 2102, itemCode: 'FG-1002', itemName: '완제품B', fifoPolicyCode: 'FEFO' },
+        ],
         page,
       }),
   },
@@ -640,5 +657,20 @@ describe('제품 입고·적치 화면', () => {
 
     await screen.findByText('HU-2026-999999 인식표를 찾지 못했습니다');
     expect(tone.played).toBeGreaterThan(0);
+  });
+
+  /* 첫 줄의 규칙으로 재면 다른 품목의 옳은 자리를 막아 현장이 선다. */
+  it('한 인식표에 품목이 여럿이면 규칙으로 재지 않고 확인을 받는다', async () => {
+    const user = userEvent.setup();
+    mount({ twoItems: true, recommendsOther: true });
+    await openUnit(user);
+    await pickLocation(user);
+
+    expect(await screen.findByText('이 품목에 정해진 자리가 없습니다')).toBeTruthy();
+    expect(screen.queryByText('권장 위치 FG-DEFAULT 이(가) 아닙니다')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));
+
+    await readyToSubmit();
   });
 });
