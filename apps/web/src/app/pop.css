@@ -3624,6 +3624,19 @@
   margin-inline-start: 0;
 }
 
+/*
+ * P-02-13 좌단 《검사 항목》의 머리 세 줄(기준 · 샘플 · 진행) — **붙여 읽는다**(사용자 지시
+ * 2026-09-10). 줄마다 아래 여백 14 에 블록 이음매까지 더해져, 한 덩어리로 읽힐 값 셋이
+ * 서로 떨어진 세 문단처럼 섰다.
+ */
+.pop-ui .pqc-item-panel > .field-note {
+  margin-block: 0;
+}
+
+.pop-ui .pqc-item-panel > .field-note + .field-note {
+  margin-block-start: var(--space-1);
+}
+
 /* ── P-02-04 생산 실적 등록 ─────────────────────────────────────────────── */
 
 /*

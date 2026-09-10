@@ -57,7 +57,7 @@ export const ItemPanel = ({
   judgmentOptions,
   isLoading,
 }: ItemPanelProps) => (
-  <section className="pane" aria-label={t.heading}>
+  <section className="pane pqc-item-panel" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
 
     {/*
