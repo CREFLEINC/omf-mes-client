@@ -100,15 +100,82 @@ curl -s http://localhost:5173/api/health       # POP 은 5174
 브라우저가 그 쿠키를 이후 요청에 자동으로 싣는다. 계정·초기 자료 준비 절차는 서버 저장소의
 `docs/client-local-api.md`에 있다.
 
-## 관리웹 컨테이너 배포
+## 배포 — 최소 구성 (관리웹 단일 서버)
 
-관리웹 이미지는 정적 번들과 동일 출처 `/api` 프록시를 함께 제공한다. 실제 LAN 주소, 포트,
-백엔드 원점과 이미지 저장소는 공개 저장소에 기록하지 않고 고객 서버에서 단일 배포 스크립트로
-입력한다. 스크립트는 Compose 설정 생성, 이미지 pull, 기동과 헬스 체크를 연속 수행한다.
-GitHub Actions 시크릿, 태그 규칙, 업데이트와 롤백 절차는
-[`deploy/README.md`](deploy/README.md)를 따른다.
+관리웹 정적 번들과 동일 출처 `/api` 프록시를 Nginx 컨테이너 하나로 띄운다. 파일:
+`Dockerfile` · `.github/workflows/front-image.yml` · `deploy/install-deploy.sh`.
+운영 절차의 정본은 [`deploy/README.md`](deploy/README.md)다.
 
-모바일 Android 앱과 Windows POP 설치본은 관리웹 컨테이너 이미지에 포함하지 않는다.
+모바일 Android 앱과 Windows POP 설치본은 관리웹 이미지에 포함하지 않고 별도 릴리스로 관리한다.
+
+`main`에 포함된 커밋에 정식 release tag(`v1.2.3` 형식)를 만들면 GitHub Actions가 관리웹을
+검증·빌드하고 `hub.crefle.com/mes/front`에 버전, `stable`, `sha-xxxxxxx` 태그를 게시한다.
+이미지 push용 Robot Account는 `REGISTRY_USERNAME`과 `REGISTRY_PASSWORD` Actions secret에만 둔다.
+현장 서버는 공개 이미지를 pull하므로 Registry 로그인이 필요하지 않다.
+
+### 현장 서버 최초 설치
+
+현장 서버에 Docker Engine, Docker Compose v2와 `curl` 또는 `wget`이 설치되어 있어야 한다.
+배포 디렉터리에 `install-deploy.sh` 하나만 복사하고 실행한다.
+
+```bash
+chmod +x install-deploy.sh
+./install-deploy.sh
+```
+
+스크립트가 다음 값을 입력받는다.
+
+- 배포할 릴리스 이미지 tag (`v1.2.3` 형식)
+- 관리웹을 바인딩할 LAN IPv4
+- 외부 관리웹 포트 (기본 8080)
+- 경로를 제외한 백엔드 API 원점 (예: `http://<백엔드 LAN IP>:3100`)
+- 전체 이미지 저장소 (`hub.crefle.com/mes/front`)
+
+입력값과 Compose 구성을 검증한 뒤 이미지를 pull하고 `.env`와 `compose.yaml`을 권한 600으로
+생성해 서비스를 기동한다. 설치 완료 후 `http://<서버 LAN IP>:<관리웹 포트>`로 접속한다.
+브라우저의 `/api` 요청은 컨테이너가 입력한 백엔드 원점으로 전달하므로 별도 CORS 설정이 필요 없다.
+
+### 현장 서버 수동 재배포
+
+새 릴리스는 먼저 release tag로 빌드·push되어 있어야 한다. 이후 배포 디렉터리에서 설치
+스크립트를 다시 실행하고 새 버전을 입력한다. 기존 환경값은 입력 기본값으로 재사용된다.
+
+```bash
+cd /opt/services/omf-mes-front
+./install-deploy.sh
+```
+
+자동화에서 비대화식으로 실행해야 한다면 모든 값을 옵션으로 전달한다.
+
+```bash
+./install-deploy.sh \
+  --non-interactive \
+  --version v1.2.3 \
+  --bind-ip <LAN-IP> \
+  --port <관리웹-포트> \
+  --api-upstream <백엔드-원점> \
+  --image-repository hub.crefle.com/mes/front
+```
+
+롤백도 같은 스크립트를 다시 실행하고 이전 정식 버전을 입력한다. `stable`은 이동하는 태그라
+설치·롤백 버전으로 받지 않는다. 이미지 pull에 실패하면 현재 설정을 바꾸지 않는다. 기동 또는
+헬스 체크 실패 시에는 자동 롤백하지 않으므로 `.previous` 설정을 확인하고 이전 버전으로 다시 실행한다.
+
+### 구성 의도
+
+| 결정                              | 이유                                                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **정적 번들·Nginx가 같은 이미지** | 별도 웹 서버 설치 없이 이미지 하나로 SPA, 정적 자산 캐시와 healthcheck를 제공한다                        |
+| **동일 출처 `/api` 프록시**       | 백엔드 주소를 브라우저에 노출하지 않고 세션 쿠키와 CORS 문제를 피한다                                    |
+| **정식 버전 tag만 배포**          | 재현 가능한 설치·롤백을 위해 `vMAJOR.MINOR.PATCH`만 받고, 추적용 불변 `sha-xxxxxxx` 태그도 함께 게시한다 |
+| **고객 서버는 공개 pull**         | 이미지 push 자격증명은 GitHub Actions에만 두고 현장 서버에는 Registry 비밀을 저장하지 않는다             |
+| **Compose 파일을 설치 시 생성**   | 고객사별 LAN IP, 포트와 백엔드 원점을 저장소에 고정하지 않는다                                           |
+
+### 아직 안 된 것 (인프라 확정 후)
+
+- **오프라인 설치 패키지** — Registry에 접근할 수 없는 현장은 `docker save` 이미지 반입 절차가 필요하다
+- **리버스 프록시·TLS** — 현재는 LAN IP와 HTTP 포트로 직접 접속한다
+- **자동 롤백·이중화** — 헬스 체크 실패 진단과 수동 재실행만 제공하며 고가용성 구성은 포함하지 않는다
 
 ## 작업 규칙
 
