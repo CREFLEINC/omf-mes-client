@@ -923,6 +923,8 @@ on('POST', '/app/document-issues', (_params, _query, body, headers) =>
         targetTypeCode: target.targetTypeCode,
         targetId: target.targetId,
         lotId: target.lotId,
+        /* 계약의 DocumentIssue 가 LOT 번호를 함께 낸다 — 화면의 결과 띠가 이 값을 읽는다. */
+        lotNo: lot?.lotNo ?? null,
         issueSeq,
         reissueReasonCode: issueSeq > 1 ? body.reissueReasonCode : null,
         issuedBy: 1001,
