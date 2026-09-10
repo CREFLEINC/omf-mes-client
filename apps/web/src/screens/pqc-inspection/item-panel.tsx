@@ -160,7 +160,14 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowPr
          * 2026-09-10). 한때 「양호 / 불량」을 고르는 칸을 세웠는데, 그 두 낱말은 스펙에 없는
          * 이름이고 판정과 같은 것을 두 번 묻는 자리였다.
          */}
-        {row.dataTypeCode === DATA_TYPES.boolean ? null : (
+        {row.dataTypeCode === DATA_TYPES.boolean ? (
+          /*
+           * ⭐ **빈 칸을 남겨 자리를 맞춘다**(사용자 지시 2026-09-10). 값 칸을 통째로 빼면
+           *    판정이 왼쪽 끝으로 당겨져, 측정치가 있는 항목과 판정 버튼의 자리가 어긋난다 —
+           *    줄마다 버튼 위치가 달라지면 손이 매번 다시 찾는다.
+           */
+          <div className="field-cell" aria-hidden="true" />
+        ) : (
           <TextField
             size="xl"
             label={t.columns.value}
