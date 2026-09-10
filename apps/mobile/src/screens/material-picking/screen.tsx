@@ -404,6 +404,7 @@ export const MaterialPickingScreen = () => {
           workerNo={worker?.workerNo ?? null}
           workerId={workerId}
           orders={orders}
+          pickingTypes={pickingTypes.data ?? []}
           onChoose={setOrderId}
         />
       </div>

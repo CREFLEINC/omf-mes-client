@@ -2,6 +2,7 @@ import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import type { UseQueryResult } from '@tanstack/react-query';
 
+import { displayNameOf, type CodeValue } from '../../patterns/code-values';
 import type { PickingOrder } from './picking';
 
 const t = messages.materialPicking;
@@ -11,6 +12,8 @@ export interface PickingOrderListProps {
   workerNo: string | null;
   workerId: UseQueryResult<number | null>;
   orders: UseQueryResult<PickingOrder[]>;
+  /* 목록이 현장이 먼저 보고 고르는 자리다. 코드를 그대로 보이면 거기서 영문을 읽는다. */
+  pickingTypes: CodeValue[];
   onChoose: (pickingOrderId: number) => void;
 }
 
@@ -24,6 +27,7 @@ export const PickingOrderList = ({
   workerNo,
   workerId,
   orders,
+  pickingTypes,
   onChoose,
 }: PickingOrderListProps) => (
   <section className="picking-out__section">
@@ -48,7 +52,7 @@ export const PickingOrderList = ({
           onChoose(order.pickingOrderId);
         }}
       >
-        {`${order.pickingOrderNo} · ${t.orders.type(order.pickingTypeCode)}`}
+        {`${order.pickingOrderNo} · ${t.orders.type(displayNameOf(pickingTypes, order.pickingTypeCode))}`}
       </Button>
     ))}
   </section>
