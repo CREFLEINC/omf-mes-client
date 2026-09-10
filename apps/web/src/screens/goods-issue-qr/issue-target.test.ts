@@ -9,6 +9,7 @@ const base = {
   selectedIds: ['1'],
   palletId: null,
   palletContentCount: null,
+  palletContentsPending: false,
   needsReason: false,
   reasonCode: '',
 };
@@ -68,8 +69,16 @@ describe('issueGuard — 파렛트 단위', () => {
     expect(issueGuard({ ...pallet, palletContentCount: 0 })).toEqual({ kind: 'emptyPallet' });
   });
 
-  it('담긴 것을 아직 모르는 동안은 막지 않는다', () => {
-    expect(canIssue(issueGuard({ ...pallet, palletContentCount: null }))).toBe(true);
+  it('담긴 내용을 «묻는 중»에는 열지 않는다 — 빈 파렛트 차단이 아직 서지 않았다', () => {
+    expect(
+      issueGuard({ ...pallet, palletContentCount: null, palletContentsPending: true }),
+    ).toEqual({ kind: 'palletContentsPending' });
+  });
+
+  it('묻기가 끝났는데도 알 수 없으면 막지 않는다 — 조회 실패로 발행을 잠그지 않는다', () => {
+    expect(
+      canIssue(issueGuard({ ...pallet, palletContentCount: null, palletContentsPending: false })),
+    ).toBe(true);
   });
 
   it('갖춰졌으면 연다', () => {
@@ -81,8 +90,15 @@ describe('issueGuard — 파렛트 단위', () => {
   });
 
   it('라인 단위에서는 파렛트 조건을 보지 않는다', () => {
-    expect(canIssue(issueGuard({ ...base, selectedIds: ['1', '2'], palletContentCount: 0 }))).toBe(
-      true,
-    );
+    expect(
+      canIssue(
+        issueGuard({
+          ...base,
+          selectedIds: ['1', '2'],
+          palletContentCount: 0,
+          palletContentsPending: true,
+        }),
+      ),
+    ).toBe(true);
   });
 });

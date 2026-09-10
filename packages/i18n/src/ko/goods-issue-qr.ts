@@ -65,9 +65,23 @@ export const goodsIssueQr = {
     palletFailed: '파렛트를 불러오지 못했습니다. 잠시 뒤 다시 시도하세요.',
     /** 이 라인의 LOT 이 실린 파렛트가 없다 — 파렛트를 만드는 것은 창고 화면이다. */
     palletEmpty: '이 라인의 LOT 이 실린 파렛트가 없습니다. 라인 단위로 발행하세요.',
-    palletContents: (lineCount: number, totalQty: number) =>
-      `${String(lineCount)}라인 · ${String(totalQty)}`,
+    /**
+     * 담긴 내용 — 설계 §3 도면이 「3라인 · 820 EA」로 그렸다. 수량 뒤의 단위까지가 한 벌이다.
+     *
+     * ⚠ **수량 문면은 화면이 만든다** — 한 파렛트에 단위가 섞이면 하나로 더할 수 없어
+     * 단위별로 갈라 적는다(예: `800 EA · 20 KG`).
+     */
+    palletContents: (lineCount: number, quantityText: string) =>
+      `${String(lineCount)}라인 · ${quantityText}`,
     palletContentsUnknown: '담긴 내용을 확인하는 중입니다.',
+    /**
+     * 목록이 한 쪽에서 잘렸다 — 고르려던 파렛트가 목록에 없을 수 있다.
+     *
+     * ⛔ **조용히 자르지 않는다.** 남은 것 중에서 고르게 두면 잘못 고른 것이 그대로 발행
+     * 이력에 남는다(되돌릴 수 없는 쓰기).
+     */
+    palletTruncated: (shown: number, total: number) =>
+      `파렛트 ${String(total)}건 중 ${String(shown)}건만 보입니다. 찾는 파렛트가 없으면 라인 단위로 발행하세요.`,
     selectedCount: (count: number) => `${String(count)}개 라인`,
     /**
      * 아직 고르지 않았다. ⛔ **「고르세요」로 쓰지 않는다** — 같은 말이 액션바의 막힌 사유로
@@ -114,6 +128,8 @@ export const goodsIssueQr = {
     disabledNoSelection: '발행할 라인을 먼저 고르세요.',
     disabledPalletNeedsOneLine: '파렛트로 발행하려면 라인을 하나만 고르세요.',
     disabledNoPallet: '발행할 파렛트를 고르세요.',
+    /** 빈 파렛트 차단(스펙 §6)이 서기 전 — 잠깐 열렸다가 닫히지 않게 그동안 막는다. */
+    disabledPalletContentsPending: '담긴 내용을 확인하는 중입니다. 잠시 뒤 발행할 수 있습니다.',
     /** 빈 파렛트에는 찍을 것이 없다(스펙 §6). */
     disabledEmptyPallet: '고른 파렛트에 담긴 것이 없습니다. 다른 파렛트를 고르세요.',
     disabledNoReason: '재발행 사유를 고르세요.',

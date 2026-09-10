@@ -80,6 +80,12 @@ interface Options {
   palletIssueCounts?: Record<number, number>;
   /** 파렛트 목록 조회 요청을 담아 둔다 — LOT 축으로 좁히는지 검사한다. */
   palletRequests?: Request[];
+  /** 서버가 말하는 총 건수. 받은 수보다 크게 두면 목록이 잘린 상황이다. */
+  palletTotal?: number;
+  /** 담긴 줄마다의 단위 번호. 없으면 전부 같은 단위(30 = EA)다. */
+  palletContentUomIds?: number[];
+  /** 담긴 내용 응답을 붙들어 둔다 — 풀릴 때까지 「묻는 중」이다. */
+  palletContentsGate?: Promise<void>;
 }
 
 const routes = (options: Options): StubRoute[] => [
@@ -155,8 +161,11 @@ const routes = (options: Options): StubRoute[] => [
     match: (request) => pathOf(request) === '/mdm/uoms',
     respond: () =>
       jsonResponse({
-        items: [{ uomId: 30, uomCode: 'EA', uomName: '개', isActive: true }],
-        page: { page: 1, size: 50, total: 1 },
+        items: [
+          { uomId: 30, uomCode: 'EA', uomName: '개', isActive: true },
+          { uomId: 31, uomCode: 'KG', uomName: '킬로그램', isActive: true },
+        ],
+        page: { page: 1, size: 50, total: 2 },
       }),
   },
   {
@@ -226,12 +235,18 @@ const routes = (options: Options): StubRoute[] => [
           statusCode: 'ACTIVE',
         }));
 
-      return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+      return jsonResponse({
+        items,
+        page: { page: 1, size: 100, total: options.palletTotal ?? items.length },
+      });
     },
   },
   {
     match: (request) => /^\/inventory\/handling-units\/\d+\/contents$/u.test(pathOf(request)),
-    respond: (request) => {
+    respond: async (request) => {
+      /* 시험이 응답 시점을 쥔다 — 「아직 안 온 동안」의 화면을 붙들 수 있다. */
+      await options.palletContentsGate;
+
       const handlingUnitId = Number(pathOf(request).split('/')[3]);
       const count = options.palletContentCounts?.[handlingUnitId] ?? 1;
 
@@ -242,7 +257,7 @@ const routes = (options: Options): StubRoute[] => [
           itemId: 10,
           lotId: 20,
           qty: 100,
-          uomId: 30,
+          uomId: options.palletContentUomIds?.[index] ?? 30,
         })),
       });
     },
@@ -422,6 +437,140 @@ describe('GoodsIssueQrScreen', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: t.action.issue })).toBeEnabled();
     });
+  });
+
+  /**
+   * ⛔ **담긴 내용이 오기 전에 [발행] 을 열지 않는다.** 빈 파렛트 차단(스펙 §6)이 그 응답으로
+   * 서는데, 오기 전에는 「담긴 것이 없다」와 「아직 모른다」가 화면에서 같아 보인다 — 그 틈에
+   * 누르면 찍을 것이 없는 파렛트로 발행 기록이 남고, 발행은 되돌릴 수 없다.
+   */
+  it('담긴 내용이 오기 전에는 발행 버튼을 열지 않는다', async () => {
+    const user = userEvent.setup();
+    let release = (): void => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    renderScreen({
+      issueCounts: { 1001: 0, 1002: 0 },
+      palletIssueCounts: { 5001: 0 },
+      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
+      palletContentsGate: gate,
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+
+    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
+    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
+
+    expect(await screen.findByText(t.action.disabledPalletContentsPending)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.action.issue })).toBeDisabled();
+
+    release();
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.action.issue })).toBeEnabled();
+    });
+  });
+
+  /**
+   * ⛔ **회차를 «자리»로 읽지 않는다.** 응답에 다른 대상이 섞이거나 차례가 바뀌면 자리로 읽는
+   * 쪽만 어긋나 **재발행인데 사유를 묻지 않고 열린다.** 짝은 `targetId` 가 짓는다.
+   */
+  it('파렛트 회차를 대상 번호로 짝짓는다 — 응답 첫 줄을 자기 것으로 읽지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      issueCounts: { 1001: 0, 1002: 0 },
+      /* 고를 파렛트(5001)는 «둘째» 줄이다. 자리로 읽으면 4999 의 0 회를 가져다 쓴다. */
+      palletIssueCounts: { 4999: 0, 5001: 2 },
+      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+
+    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
+    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
+
+    expect(await screen.findByText(t.action.disabledNoReason)).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **한 쪽에 담기지 않은 목록을 조용히 자르지 않는다.** 고르려던 파렛트가 목록에 없는데
+   * 화면이 아무 말도 하지 않으면 사용자는 남은 것 중에서 고르고, 그 발행은 되돌릴 수 없다.
+   */
+  it('파렛트 목록이 한 쪽에서 잘리면 몇 건 중 몇 건인지 알린다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      issueCounts: { 1001: 0, 1002: 0 },
+      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
+      palletTotal: 140,
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+
+    expect(await screen.findByText(t.target.palletTruncated(1, 140))).toBeInTheDocument();
+  });
+
+  it('목록이 다 왔으면 잘렸다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      issueCounts: { 1001: 0, 1002: 0 },
+      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+
+    await screen.findByRole('combobox', { name: t.target.palletLabel });
+    expect(screen.queryByText(t.target.palletTruncated(1, 1))).not.toBeInTheDocument();
+  });
+
+  /** 설계 §3 도면이 「3라인 · 820 EA」로 그렸다 — 수량 뒤의 단위까지가 한 벌이다. */
+  it('담긴 내용에 단위를 붙여 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      issueCounts: { 1001: 0, 1002: 0 },
+      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
+      palletContentCounts: { 5001: 3 },
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+
+    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
+    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
+
+    expect(await screen.findByText(t.target.palletContents(3, '300 EA'))).toBeInTheDocument();
+  });
+
+  /** ⛔ 서로 다른 단위를 하나로 더하면 화면이 실재하지 않는 수를 말한다. */
+  it('단위가 섞이면 갈라 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({
+      issueCounts: { 1001: 0, 1002: 0 },
+      pallets: [{ handlingUnitId: 5001, handlingUnitNo: 'HU-SAMPLE-01', lotIds: [20] }],
+      palletContentCounts: { 5001: 3 },
+      palletContentUomIds: [30, 30, 31],
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
+    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+
+    await user.click(await screen.findByRole('combobox', { name: t.target.palletLabel }));
+    await user.click(await screen.findByRole('option', { name: /HU-SAMPLE-01/u }));
+
+    expect(
+      await screen.findByText(t.target.palletContents(3, '200 EA · 100 KG')),
+    ).toBeInTheDocument();
   });
 
   it('프린터가 0건이면 빈 상태를 머리에 보인다', async () => {

@@ -160,12 +160,16 @@
 
 /*
  * 오른쪽 끝의 세션·단말·연결. **줄바꿈시키지 않는다** — 머리줄 높이가 고정이라 접히면
- * 잘린다. 항목 사이는 넉넉히 벌려 눈이 덩어리로 읽게 한다.
+ * 잘린다.
+ *
+ * ⚠ **항목 사이는 12 다**(사용자 지시 2026-09-10). 24 로 벌려 두었더니 세 항목이 머리줄
+ *   가운데까지 퍼져 「오른쪽 상태 덩어리」로 읽히지 않았다 — 좁히면 덩어리가 오른쪽 끝으로
+ *   모인다. [화면 이동] 과의 사이(`--pop-screen-nav-w`)도 같은 값으로 맞춘다.
  */
 .pop-ui .pop-context-right {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-3);
   margin: 0 0 0 auto;
   white-space: nowrap;
 }
@@ -3131,10 +3135,13 @@
    *   함께 줄였더니 머리줄 오른쪽 끝(연결 상태 배지)과 버튼이 붙었다(실측 2026-09-09 —
    *   버튼 자리 95 · 비운 자리 84).
    *
-   * ⚠ 현재 버튼 자리는 95(버튼 83 + 오른쪽 여백 12)이고, 여기에 배지와의 사이 간격을 더해
-   *   108 을 둔다. **버튼 글자·여백·글꼴을 바꾸면 이 값도 함께 재어 고친다.**
+   * ⚠ 현재 버튼 자리는 95(버튼 83 + 오른쪽 여백 12)이고, 여기에 옆 항목과의 사이 간격 12 를
+   *   더해 107 을 둔다 — 머리줄의 간격은 어디서나 12 다(사용자 지시 2026-09-10 ·
+   *   `.pop-context-right` 의 `--space-3`). 이 값은 [화면 이동]이 앉는 자리(`right`)이기도
+   *   하므로 두 버튼 사이 간격도 같은 12 가 된다.
+   *   **버튼 글자·여백·글꼴을 바꾸면 이 값도 함께 재어 고친다.**
    */
-  padding-right: var(--pop-logout-w, 108px);
+  padding-right: var(--pop-logout-w, 107px);
 }
 
 .pop-logout {
@@ -3405,19 +3412,38 @@
  * ⛔ **사유를 문구로 늘어놓지 않는다**(사용자 지시 2026-09-09). 버튼 하나만 서므로 비우는
  *    폭도 늘 같다.
  */
+/*
+ * ⚠ **버튼 자리 99(버튼 87 + 오른쪽 여백 12) + 상태 칩과의 사이 간격 12 = 111.**
+ *   `--pop-logout-w` 와 같은 셈법이다 — 자리 폭에 «간격까지» 넣어 두고, 머리줄은 그만큼만
+ *   비운다. 간격 12 는 `.pop-context-right` 가 칩 사이에 두는 값(`--space-3`)과 같다 —
+ *   132 로 두었을 때는 이 자리만 33 이라 상태 칩이 오른쪽 끝에서 혼자 떨어져 보였다
+ *   (사용자 지적 2026-09-10). **버튼 글자·여백·글꼴을 바꾸면 이 값도 함께 재어 고친다.**
+ */
+/*
+ * ⭐ **[사용자 전환] 상자의 «맨» 폭이다 — 간격을 넣지 않는다.** [화면 이동]은 이 값만큼만
+ *   왼쪽으로 물러나 앉고, 둘 사이의 12 는 [화면 이동] 자신의 오른쪽 여백이 만든다.
+ *   `--pop-logout-w`(= 이 값 + 간격 12)를 자리로 쓰면 여백이 두 번 더해져 두 버튼 사이만
+ *   24 가 됐다(사용자 지적 2026-09-10).
+ */
 :root {
-  --pop-screen-nav-w: 132px;
+  --pop-logout-box-w: 95px;
+  /*
+   * ⚠ **여기서 «파생»시킨다.** 되돌림 값으로만 쓰면 누가 이 변수를 따로 정의했을 때 머리줄이
+   *   비우는 폭만 바뀌고 [화면 이동]이 앉는 자리는 따라오지 않아 둘이 어긋난다.
+   */
+  --pop-logout-w: calc(var(--pop-logout-box-w) + var(--space-3));
+  --pop-screen-nav-w: 111px;
 }
 
 [data-pop-screen-nav] .pop-ui > .pop-header,
 [data-pop-screen-nav] .pop-ui > .pop-terminal-header {
-  padding-right: calc(var(--pop-logout-w, 108px) + var(--pop-screen-nav-w));
+  padding-right: calc(var(--pop-logout-box-w, 95px) + var(--pop-screen-nav-w));
 }
 
 .pop-screen-nav {
   position: fixed;
   top: 0;
-  right: var(--pop-logout-w, 108px);
+  right: var(--pop-logout-box-w, 95px);
   z-index: 20;
   display: flex;
   align-items: center;
