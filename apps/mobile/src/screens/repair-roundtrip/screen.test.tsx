@@ -78,6 +78,9 @@ const execution = {
 
 interface Options {
   defects?: unknown[];
+  /** 이름표를 늦게 주는 서버. 받기 전과 받은 뒤가 다른 말을 하는지 재는 자리다. */
+  codesGate?: Promise<void>;
+  codesStatus?: number;
   /** 스캔한 LOT 의 열린 건. 서버가 lotId 로 걸러 준 결과다. */
   open?: unknown[];
   /** 전체 열린 건. 거르지 않고 물었을 때 오는 것으로, 아래 목록이 쓴다. */
@@ -100,7 +103,13 @@ const routes = (options: Options = {}): StubRoute[] => [
   },
   {
     match: (request) => new URL(request.url).pathname === '/quality/defect-codes',
-    respond: () => jsonResponse({ items: defectCodes, page }),
+    respond: async () => {
+      await options.codesGate;
+
+      return options.codesStatus === undefined
+        ? jsonResponse({ items: defectCodes, page })
+        : jsonResponse({ message: '실패' }, { status: options.codesStatus });
+    },
   },
   {
     match: (request) => new URL(request.url).pathname === '/quality/defect-records',
@@ -985,5 +994,34 @@ describe('수리 왕복 스캔 화면', () => {
     expect(await screen.findByText('수리 투입을 기록했습니다')).toBeTruthy();
     expect(screen.getByText('수리 중 1건')).toBeTruthy();
     expect(screen.getByLabelText(/불량 LOT 스캔/)).toBeTruthy();
+  });
+
+  /* 확인하지 못한 것을 확인 실패로 말하면, 조회가 도는 동안 없는 문제가 화면에 뜬다. */
+  it('불량 코드 이름표를 받기 전에는 확인할 수 없다고 말하지 않는다', async () => {
+    let open = () => {};
+    const gate = new Promise<void>((resolve) => {
+      open = resolve;
+    });
+    mount([], { codesGate: gate });
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+
+    await screen.findByText('불량 40 EA');
+    expect(screen.queryByText('불량 코드를 확인할 수 없습니다')).toBeNull();
+
+    open();
+
+    expect(await screen.findByText('EXT-002 외관 스크래치')).toBeTruthy();
+  });
+
+  /* 못 받은 것과 받았는데 없는 것은 다르다. 뒤쪽은 사람이 알아야 고를 수 있다. */
+  it('불량 코드를 확인하지 못하면 그 사실을 말한다', async () => {
+    mount([], { codesStatus: 500 });
+
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+
+    expect(await screen.findByText('불량 코드를 확인할 수 없습니다')).toBeTruthy();
   });
 });

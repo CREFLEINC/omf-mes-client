@@ -9,6 +9,7 @@ import {
   type Column,
 } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import type { UseQueryResult } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAdvanceTo } from '../../patterns/advance-to';
@@ -60,11 +61,19 @@ const stamp = (iso: string): string => {
 const uomLabel = (uoms: Map<number, string> | undefined, uomId: number): string =>
   uoms?.get(uomId) ?? '';
 
+/*
+ * 이름표를 아직 못 받은 것을 확인 실패로 말하지 않는다. 둘을 뭉치면 조회가 도는 동안
+ * 「확인할 수 없습니다」가 떠 있다가 이름으로 바뀐다.
+ */
 const codeLabel = (
-  codes: Map<number, DefectCodeLabel> | undefined,
+  codes: UseQueryResult<Map<number, DefectCodeLabel>>,
   record: DefectRecord,
 ): string => {
-  const found = codes?.get(record.defectCodeId);
+  if (codes.data === undefined) {
+    return codes.isError ? t.defect.unknownCode : '';
+  }
+
+  const found = codes.data.get(record.defectCodeId);
 
   return found === undefined
     ? t.defect.unknownCode
@@ -266,7 +275,7 @@ export const RepairRoundtripScreen = () => {
         <p className="repair__note">{item.data?.itemCode ?? ''}</p>
         <p>{t.defect.qty(String(record.defectQty), uomLabel(uoms.data, record.uomId))}</p>
         {/* 무엇이 잘못됐는지가 수리 대상을 가르는 기준이다. 수량만으로는 고를 수 없다. */}
-        <p>{codeLabel(defectCodes.data, record)}</p>
+        {codeLabel(defectCodes, record) === '' ? null : <p>{codeLabel(defectCodes, record)}</p>}
         <p className="repair__note">{t.defect.detectedAt(stamp(record.detectedAt))}</p>
       </Card.Body>
     </Card>
@@ -299,7 +308,12 @@ export const RepairRoundtripScreen = () => {
                     setQty('');
                   }}
                 >
-                  {`${codeLabel(defectCodes.data, each)} · ${t.defect.qty(String(each.defectQty), uomLabel(uoms.data, each.uomId))}`}
+                  {[
+                    codeLabel(defectCodes, each),
+                    t.defect.qty(String(each.defectQty), uomLabel(uoms.data, each.uomId)),
+                  ]
+                    .filter((part) => part !== '')
+                    .join(' · ')}
                 </Button>
               </li>
             ))}
