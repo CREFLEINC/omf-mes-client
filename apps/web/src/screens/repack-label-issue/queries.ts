@@ -442,16 +442,21 @@ export const useRemainderCandidates = (
           params: { path: { handlingUnitId } },
         }),
       );
+      /*
+       * ⚠ **역할 코드로 가르지 않는다**(실측 2026-09-11). 서버가 분할의 남는 쪽을 `SOURCE` 로
+       *   싣기도 하고 `RESULT` 로 싣기도 한다 — `RESULT` 만 보던 앞 판은 씨앗 자료에서 잔량을
+       *   하나도 찾지 못해 ③ 구획의 「잔량 라벨 재출력」 줄이 통째로 사라졌다(설계 §3 ③ 도면).
+       *
+       * 수량이 뜻을 그대로 말한다 — 앞에 있었고(`qtyBefore > 0`) 뒤에도 남았으면(`qtyAfter > 0`)
+       * 그것이 잔량이다. 목록 쪽(`usePendingRepackRows`)과 같은 규칙을 쓴다.
+       */
       const split = [...repacks.items]
         .filter(
           (event) =>
             event.repackTypeCode === 'SPLIT' &&
             event.lines.some(
               (line) =>
-                line.handlingUnitId === handlingUnitId &&
-                line.roleCode === 'RESULT' &&
-                line.qtyBefore === 0 &&
-                line.qtyAfter > 0,
+                line.handlingUnitId === handlingUnitId && line.qtyBefore === 0 && line.qtyAfter > 0,
             ),
         )
         .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))[0];
@@ -462,10 +467,7 @@ export const useRemainderCandidates = (
         split.lines
           .filter(
             (line) =>
-              line.roleCode === 'RESULT' &&
-              line.handlingUnitId !== handlingUnitId &&
-              line.qtyBefore > 0 &&
-              line.qtyAfter > 0,
+              line.handlingUnitId !== handlingUnitId && line.qtyBefore > 0 && line.qtyAfter > 0,
           )
           .map((line) => line.handlingUnitId),
       );

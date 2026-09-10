@@ -2714,6 +2714,25 @@ export const createSeed = (now = new Date()) => {
         issuedAt: iso(-1, 14),
         printOutcome: 'SUCCEEDED',
       },
+      /*
+       * ⭐ **잔량 포장(13001)에 라벨 한 장을 이미 뽑아 둔다** — P-04-04 ③ 도면의 둘째 줄
+       *    「[ ] 잔량 라벨 재출력(회차 2 · 사유 필요)」이 서려면 그 포장에 «앞 회차»가 있어야
+       *    한다. 없으면 화면이 재출력할 것이 없다고 보고 그 줄을 세우지 않는다 —
+       *    비워 두었더니 도면의 두 줄 중 하나를 화면에서 볼 수 없었다(사용자 지적 2026-09-11).
+       */
+      {
+        documentIssueLogId: 44102,
+        documentTypeCode: 'PACKING_LABEL',
+        targetTypeCode: 'HANDLING_UNIT',
+        targetId: 13001,
+        lotId: null,
+        issueSeq: 1,
+        reissueReasonCode: null,
+        issuedBy: 1001,
+        issuedByName: '이수진',
+        issuedAt: iso(-2, 12),
+        printOutcome: 'SUCCEEDED',
+      },
     ],
     /** 개체(일련번호) — P-02-04 인식표 영역이 발번해 채운다. 기본은 발번 전 상태다. */
     serialNumbers: [],

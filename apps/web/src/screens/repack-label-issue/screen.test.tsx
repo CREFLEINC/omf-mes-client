@@ -474,6 +474,21 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
     );
   });
 
+  /*
+   * ⭐ **재출력을 고르지 않으면 사유 칸도 없다**(설계 §3-1 「③은 재출력 체크가 없으면 한 줄로
+   *    접는다」 · 사용자 지적 2026-09-11). 이 화면의 세로 예산은 슬랙 0 이라 쓰지 않는 칸
+   *    하나가 아래 구획을 밀어낸다.
+   */
+  it('최초 발행이면 재발행 사유 칸을 세우지 않는다', async () => {
+    await renderSelectedScreen();
+
+    await screen.findByText(t.issue.targetsLabel);
+
+    expect(
+      screen.queryByRole('combobox', { name: new RegExp(t.issue.reasonLabel) }),
+    ).not.toBeInTheDocument();
+  });
+
   it('포장 번호와 내용물이 선다', async () => {
     await renderSelectedScreen({ lotIds: [LOT_A_ID] });
 
