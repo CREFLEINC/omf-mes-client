@@ -2283,6 +2283,43 @@ export const createSeed = (now = new Date()) => {
         },
       ],
     },
+    /*
+     * 합병 한 건 — **분할과 나란히 두어야 목록이 둘을 가르는지 보인다.** 합병은 원 포장이
+     * 여럿이고(둘) 쓰고 남는 것이 없어 잔량 칸이 빈다(설계 P-04-04 §3 ① 도면의 둘째 줄).
+     */
+    {
+      repackEventId: 13502,
+      handlingUnitId: 13003,
+      repackTypeCode: 'MERGE',
+      performedBy: 1001,
+      occurredAt: iso(-2, 13),
+      lines: [
+        {
+          handlingUnitId: 13001,
+          roleCode: 'SOURCE',
+          itemId: 2003,
+          lotId: 8201,
+          qtyBefore: 40,
+          qtyAfter: 0,
+        },
+        {
+          handlingUnitId: 13002,
+          roleCode: 'SOURCE',
+          itemId: 2003,
+          lotId: 8201,
+          qtyBefore: 60,
+          qtyAfter: 0,
+        },
+        {
+          handlingUnitId: 13003,
+          roleCode: 'RESULT',
+          itemId: 2003,
+          lotId: 8201,
+          qtyBefore: 0,
+          qtyAfter: 100,
+        },
+      ],
+    },
   ];
 
   /**

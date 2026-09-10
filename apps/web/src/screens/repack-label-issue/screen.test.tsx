@@ -462,8 +462,11 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
       pendingPages: [[{ ...handlingUnit, labelIssued: false }], [nextHandlingUnit]],
     });
 
+    /* 둘째 쪽까지 이어 받았는지는 그 줄을 고르는 단추가 섰는지로 잰다 — 번호는 ② 구획이 낸다. */
     expect(
-      await screen.findByText(t.pending.newNumber(nextHandlingUnit.handlingUnitNo)),
+      await screen.findByRole('button', {
+        name: t.pending.select(nextHandlingUnit.handlingUnitNo),
+      }),
     ).toBeVisible();
     expect(pendingRequests).toHaveLength(2);
     expect(new URL(pendingRequests[1]?.url ?? 'http://localhost').searchParams.get('page')).toBe(

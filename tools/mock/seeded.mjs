@@ -1412,9 +1412,20 @@ on('PUT', '/inventory/handling-units/{handlingUnitId}/contents', (params, _q, bo
   return { items };
 });
 
-on('GET', '/inventory/handling-units/{handlingUnitId}/repack-events', (params) => ({
-  items: state.repackEvents.filter((each) => each.handlingUnitId === Number(params.handlingUnitId)),
-}));
+on('GET', '/inventory/handling-units/{handlingUnitId}/repack-events', (params) => {
+  const id = Number(params.handlingUnitId);
+
+  /*
+   * ⚠ **줄까지 본다.** 사건이 들고 있는 `handlingUnitId` 만 보면 분할로 «새로 생긴» 쪽으로
+   *   물었을 때 아무것도 답하지 않는다 — 그 포장은 사건의 줄에만 나온다. 라벨을 기다리는
+   *   것이 바로 그 새 포장이라, 화면이 자기를 만든 사건을 영영 못 찾는다.
+   */
+  return {
+    items: state.repackEvents.filter(
+      (each) => each.handlingUnitId === id || each.lines.some((line) => line.handlingUnitId === id),
+    ),
+  };
+});
 
 /* ── 물류 ─────────────────────────────────────────────────── */
 
