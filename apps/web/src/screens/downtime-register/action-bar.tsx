@@ -99,7 +99,13 @@ export interface ActionBarProps {
  * ⛔ **「다시 입력」은 서버를 부르지 않는다.** 저장 전 화면 안의 초기화이고, 계약에 대응하는
  * 오퍼레이션이 없는 것도 그래서다.
  */
-export const ActionBar = ({ block, isEmpty, isIncomplete, onReset, onSave }: ActionBarProps) => {
+export const ActionBar = ({
+  block,
+  isEmpty,
+  isIncomplete,
+  onReset,
+  onSave,
+}: ActionBarProps) => {
   const reason = describeSaveBlock(block);
 
   return (
