@@ -43,13 +43,3 @@ export const toCurrentInputView = (row: MaterialConsumptionResponse): CurrentInp
   uomId: row.uomId,
   replacedConsumptionId: row.replacedConsumptionId ?? null,
 });
-
-/**
- * 이미 다른 투입에 의해 교체된 투입인가.
- *
- * **교체 대상 목록에서 내리기 위한 것이 아니다** — 같은 부품을 두 번 갈 수 있으므로
- * 이미 교체된 줄도 다시 대상이 될 수 있다고 화면이 단정하지 않는다. 여기서 하는 일은
- * **어느 줄이 이미 이어졌는지 보이는 것**뿐이다.
- */
-export const replacedIds = (rows: readonly CurrentInputView[]): readonly number[] =>
-  rows.flatMap((row) => (row.replacedConsumptionId === null ? [] : [row.replacedConsumptionId]));

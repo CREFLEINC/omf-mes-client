@@ -677,6 +677,13 @@ on('GET', '/mdm/molds', (_p, query) =>
   ),
 );
 
+/* 금형 한 벌 — 러닝체인지 좌단의 「🔧 금형」 줄이 이것을 읽는다. */
+on('GET', '/mdm/molds/{moldId}', (params) => {
+  const mold = state.molds.find((row) => row.moldId === Number(params.moldId));
+
+  return mold === undefined ? null : { mold };
+});
+
 on('GET', '/mdm/equipments/{equipmentId}/inspection-items', (params) => {
   const assigned = state.inspectionItems.filter(
     (row) => row.equipmentId === Number(params.equipmentId),
@@ -2620,6 +2627,21 @@ on('GET', '/production/work-orders/{workOrderId}', (params) => {
  * ⚠ **`open=true` 를 실제로 건다.** 화면은 이 축으로 물은 뒤 끝 시각으로 한 번 더 거르므로,
  * 목이 축을 무시하면 「끝난 세션에 중단을 건다」는 갈래가 목에서 아예 서지 않는다.
  */
+/*
+ * 자재 투입 내역 — 러닝체인지(P-02-11)의 《현재 투입》과 교체 대상 목록이 이것을 읽는다.
+ *
+ * ⛔ 이 경로가 비어 있으면 계약 예시 서버가 답한다 — 화면에 식별자 숫자가 그대로 선다.
+ */
+on('GET', '/production/material-consumptions', (_p, query) =>
+  page(
+    keep(state.materialConsumptions, [
+      byNum(query, 'workOrderId', 'workOrderId'),
+      byNum(query, 'workSessionId', 'workSessionId'),
+    ]),
+    query,
+  ),
+);
+
 on('GET', '/production/work-sessions', (_p, query) =>
   page(
     keep(state.workSessions, [

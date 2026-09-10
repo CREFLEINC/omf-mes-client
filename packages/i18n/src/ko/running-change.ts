@@ -33,7 +33,6 @@ export const runningChange = {
     loading: '현재 투입을 불러오는 중입니다.',
     empty: '이 작업지시에 등록된 투입이 없습니다. 교체할 대상이 없습니다.',
     noWorkOrder: '작업지시가 정해지면 현재 투입이 표시됩니다.',
-    replacedBadge: '교체됨',
     moldLabel: '금형',
     moldUnknown: '금형을 확인할 수 없습니다',
     moldNone: '이 세션에 물린 금형이 없습니다',

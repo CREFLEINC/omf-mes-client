@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 
 import { isShotCountExceeded, type CurrentMold } from './mold';
 import type { ReferenceLabels } from './reference-labels';
-import { replacedIds, type CurrentInputView } from './types';
+import type { CurrentInputView } from './types';
 
 const t = messages.runningChange;
 
@@ -34,9 +34,6 @@ export const CurrentInputs = ({
   hasSession,
   labels,
 }: CurrentInputsProps) => {
-  /* 이미 다른 줄이 이어받은 투입. **내리지 않고 표시만 한다** — 같은 부품을 두 번 갈 수 있다. */
-  const alreadyReplaced = replacedIds(rows);
-
   return (
     <>
       {!hasWorkOrder && <p className="pane-lead">{t.current.noWorkOrder}</p>}
@@ -54,11 +51,6 @@ export const CurrentInputs = ({
               <span className="pop-rc-input-qty">
                 {`${row.inputQty} ${labels.describeUom(row.uomId)}`.trim()}
               </span>
-              {alreadyReplaced.includes(row.materialConsumptionId) && (
-                <Chip variant="status" size="md" status="info">
-                  {t.current.replacedBadge}
-                </Chip>
-              )}
             </li>
           ))}
         </ul>

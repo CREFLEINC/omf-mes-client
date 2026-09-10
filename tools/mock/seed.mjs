@@ -2672,7 +2672,53 @@ export const createSeed = (now = new Date()) => {
         startedAt: '2026-09-08T08:00:00+09:00',
         endedAt: null,
         statusCode: 'RUNNING',
+        /*
+         * ⭐ **금형을 물려 둔다** — 러닝체인지(P-02-11) 도면의 좌단이 「🔧 MD-11 금형」을
+         *    투입 목록에 함께 세운다. 금형도 교체 대상이 될 수 있어서다. 비워 두었더니
+         *    화면이 늘 「이 세션에 물린 금형이 없습니다」만 냈다(사용자 지적 2026-09-11).
+         */
+        moldId: 6001,
         versionNo: 1,
+      },
+    ],
+    /*
+     * 자재 투입 내역 — **러닝체인지(P-02-11) 좌단 《현재 투입》의 모집단이다.**
+     *
+     * ⚠ 비워 두었더니 계약 예시 서버가 답해 화면에 「1001 1001 120 EA」처럼 식별자 숫자가
+     *   그대로 섰다(사용자 지적 2026-09-11). 교체 대상을 고르는 근거가 LOT 번호인데 자재코드와
+     *   LOT 이 같은 값으로 보여 서로 구분되지 않았다.
+     *
+     * ⭐ 두 줄을 둔다 — 도면이 「MAT-A · MAT-B」 둘을 세우고, 교체 대상 목록도 둘 이상이라야
+     *    고르는 동작을 볼 수 있다.
+     */
+    materialConsumptions: [
+      {
+        materialConsumptionId: 15001,
+        consumptionNo: 'MC-2026-0908-0001',
+        workOrderId: 11002,
+        workSessionId: 9001,
+        itemId: 2002,
+        lotId: 8001,
+        inputQty: 100,
+        actualConsumedQty: 100,
+        uomId: 1001,
+        replacedConsumptionId: null,
+        changeReasonCode: null,
+        consumedAt: '2026-09-08T08:10:00+09:00',
+      },
+      {
+        materialConsumptionId: 15002,
+        consumptionNo: 'MC-2026-0908-0002',
+        workOrderId: 11002,
+        workSessionId: 9001,
+        itemId: 2001,
+        lotId: 8002,
+        inputQty: 180,
+        actualConsumedQty: 180,
+        uomId: 1001,
+        replacedConsumptionId: null,
+        changeReasonCode: null,
+        consumedAt: '2026-09-08T08:12:00+09:00',
       },
     ],
     /** 세션 사건 — 구간을 연 「시작」 하나로 둔다. 중단·재개는 화면이 쌓는다. */

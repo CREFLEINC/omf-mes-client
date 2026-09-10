@@ -310,7 +310,15 @@ export const RunningChangeScreen = () => {
           </section>
 
           {/* 스펙 §3 이 좌단에 상시 세워 둔 안내. 교체가 무엇을 «하지 않는지»를 말한다. */}
-          <p className="field-note">{t.notices.equipmentKeepsRunning}</p>
+          {/*
+           * ⚠ **경고로 세운다**(설계 §3 도면의 `⚠` · 공유계약 G-1 · 사용자 지적 2026-09-11).
+           *    러닝체인지는 설비를 세우지 «않고» 부품만 바꾸는 작업이다 — 이 사실을 놓치면
+           *    작업자가 설비를 멈춰야 한다고 여기고 라인을 세운다. 회색 잔글씨로는 그 무게가
+           *    전해지지 않는다.
+           */}
+          <div className="banner-slot">
+            <AlertBanner variant="warning" title={t.notices.equipmentKeepsRunning} />
+          </div>
         </section>
 
         <section className="pane scan-pane" aria-label={t.panes.replace}>
