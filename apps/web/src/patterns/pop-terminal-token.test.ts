@@ -86,7 +86,9 @@ describe('읽어 둔 토큰이 실제로 요청에 실린다 — #999', () => {
       },
     });
 
-    await client.client.GET('/health' as never);
+    /* 어느 경로든 상관없다 — 재는 것은 «헤더가 붙는가» 하나다. 계약에 실제로 있는 것을 골라
+       타입 우회(`as never`)를 두지 않는다. */
+    await client.client.GET('/mdm/code-groups');
 
     return seen[0]!.headers;
   };
