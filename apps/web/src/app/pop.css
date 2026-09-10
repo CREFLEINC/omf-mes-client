@@ -4472,10 +4472,21 @@
   ):not(.pop-overlay):not(.pop-fixed):not(.pane)
   > .packing-compose {
   /* ③ 은 남는 높이를 갖고 넘치면 자기 안에서 스크롤한다 — 구획이 다섯이라 하한을 낮게 둔다. */
-  min-height: 8rem;
+  min-height: 7rem;
 }
 
 /* 키패드가 서지 않는 동안 ③ 은 가로를 통째로 쓴다 — 빈 기둥으로 목록을 좁히지 않는다. */
 .pop-ui .packing-compose:not(:has(> .packing-keypad)) {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/*
+ * 출하 실적 등록 — **고르는 칸도 읽는 칸과 같은 높이로 선다**(사용자 지시 2026-09-10).
+ *
+ * ⚠ 두 칸이 서로 다른 부품이라 높이가 갈렸다. 읽는 칸(DS `TextField`)은 이 화면에서 56 인데,
+ *   고르는 칸의 «값 상자»는 `--control-height-md`(40)를 써서 한 줄 안에서 눈에 띄게 낮았다
+ *   (실측 — 출하번호 56 · 출하 대상 40). 트리거 버튼은 이미 56 이다.
+ */
+.pop-ui.packing-shell .pop-select__value {
+  min-height: 56px;
 }
