@@ -90,7 +90,12 @@ export const productionResult = {
     scan: {
       title: '스캔 대기',
       label: '부착한 LOT 번호 스캔',
-      mismatch: (lotNo: string) => `현재 LOT ${lotNo}과 일치하는 라벨을 스캔하세요.`,
+      /*
+       * ⚠ **한 줄로 합친 문구다**(사용자 지시 2026-09-10). 스캔이 어긋났을 때 「지금 무엇이
+       * 잘못됐나」와 「그래서 무엇을 하나」가 두 줄로 갈려 있었다.
+       */
+      mismatch:
+        '입력한 LOT과 일치하는 라벨을 찾을 수 없습니다. LOT을 다시 확인한 후, 동일한 라벨을 다시 스캔해주세요.',
       completing: 'LOT 생산 등록을 마감하고 있습니다.',
       completed: 'LOT 마감 완료 · 다음 LOT으로 전환합니다.',
       failed: 'LOT을 마감하지 못했습니다. 같은 라벨을 다시 스캔하세요.',

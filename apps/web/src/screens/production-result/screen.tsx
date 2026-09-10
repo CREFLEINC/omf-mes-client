@@ -900,10 +900,17 @@ export const ProductionFlowScreen = () => {
               fullWidth
               value={scanValue}
               disabled={outputPhase !== 'scanReady' || gates.complete !== 'allowed'}
-              error={scanMismatch && lot !== null ? t.flow.scan.mismatch(lot.lotNo) : undefined}
+              error={scanMismatch && lot !== null ? t.flow.scan.mismatch : undefined}
               onChange={(event) => changeScan(event.target.value)}
             />
-            {complete.error !== null && <p className="field-error">{t.flow.scan.failed}</p>}
+            {/*
+             * ⚠ **한 번에 한 줄만 낸다**(사용자 지시 2026-09-10). 스캔이 어긋난 것과 마감이
+             * 실패한 것이 함께 서면, 다음에 무엇을 해야 하는지가 두 문장으로 갈린다. 어긋남은
+             * 칸이 이미 말하고 있으므로 마감 실패는 그때만 선다.
+             */}
+            {complete.error !== null && !scanMismatch && (
+              <p className="field-error">{t.flow.scan.failed}</p>
+            )}
           </Card.Body>
         </Card>
       </div>
