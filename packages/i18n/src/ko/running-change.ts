@@ -84,7 +84,7 @@ export const runningChange = {
 
   replace: {
     partLabel: '신규 부품',
-    partNone: '신규 부품 LOT 을 먼저 읽어 주세요.',
+    partNone: '신규 부품 LOT 을 먼저 스캔 해주세요.',
     clearPart: '지우기',
     targetLabel: '교체 대상',
     targetPlaceholder: '교체 대상을 고르세요',
