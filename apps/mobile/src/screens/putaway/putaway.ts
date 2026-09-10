@@ -96,7 +96,9 @@ export const overCapacityOf = (
   return after > capacity ? { held, after, capacity } : null;
 };
 
-/** 스캔한 LOT 이 이 지시의 것인가. 지시만 보고 적치하면 손에 든 것이 무엇인지 아무도 모른다. */
+/** 보관조건 값 목록을 받는 그룹. 품목과 위치가 같은 코드계를 쓴다. */
+export const STORAGE_CONDITION = 'STORAGE_CONDITION';
+
 /**
  * 품목의 보관조건과 자리의 보관조건이 어긋나는가.
  *
@@ -106,9 +108,6 @@ export const overCapacityOf = (
  * 모르면 말하지 않는다. 둘 중 하나라도 비어 있으면 어긋났다고 할 근거가 없고, 그것을 어긋난
  * 것으로 읽으면 보관조건을 안 적은 품목마다 경고가 떠 진짜 경고가 묻힌다.
  */
-/** 보관조건 값 목록을 받는 그룹. 품목과 위치가 같은 코드계를 쓴다. */
-export const STORAGE_CONDITION = 'STORAGE_CONDITION';
-
 export const storageMismatch = (
   itemCondition: string | null | undefined,
   locationCondition: string | null | undefined,
@@ -119,6 +118,7 @@ export const storageMismatch = (
   return item !== '' && at !== '' && item !== at;
 };
 
+/** 스캔한 LOT 이 이 지시의 것인가. 지시만 보고 적치하면 손에 든 것이 무엇인지 아무도 모른다. */
 export const lotMatches = (lotNo: string | null, scanned: string): boolean =>
   lotNo !== null && scanned.trim() === lotNo;
 
