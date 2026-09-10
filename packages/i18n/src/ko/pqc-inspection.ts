@@ -118,7 +118,7 @@ export const pqcInspection = {
     saveBlockedByInvalid: '수량 칸을 고친 뒤 저장할 수 있습니다.',
 
     judgment: '종합 판정',
-    judgmentPlaceholder: '판정을 고르세요',
+    judgmentPlaceholder: '고르세요',
     judgmentUnavailable: '판정 값 목록 준비 중',
     judgmentUnknown: (code: string): string => `저장된 판정(${code})이 목록에 없습니다.`,
 
@@ -204,7 +204,6 @@ export const pqcInspection = {
     atLeast: (lower: number): string => `${lower} 이상`,
     atMost: (upper: number): string => `${upper} 이하`,
     target: (value: number): string => `목표 ${value}`,
-    notMeasured: '—',
     /**
      * ⚠ 규격을 벗어난 값이다. ⛔ **자동으로 불합격을 매기지 않는다**(스펙 §6) — 표시하고
      * 사람이 판정한다. 문구도 「불합격」이라고 말하지 않는다.

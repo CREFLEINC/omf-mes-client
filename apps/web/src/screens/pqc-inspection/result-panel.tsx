@@ -285,6 +285,12 @@ export const ResultPanel = ({
           <Select
             id={judgmentId}
             size="xl"
+            /*
+             * ⭐ 팝업 제목이 여기서 나온다 — 이름을 주지 않으면 자리 표시 글을 제목으로 삼아
+             *    「고르세요 선택」이 된다(실측 2026-09-10). `htmlFor` 로 붙인 이름표는
+             *    이 부품이 읽지 않는다.
+             */
+            aria-label={t.judgment}
             options={judgmentOptions}
             /*
              * ⛔ **목록이 없으면 값도 보이지 않는다.** 자동 판정이 채운 코드가 남아 있으면

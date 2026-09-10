@@ -3478,11 +3478,18 @@
  */
 .pop-ui .pqc-keypad .omf-numeric-keypad {
   max-width: none;
+  inline-size: 100%;
   gap: var(--space-2);
 }
 
+/*
+ * ⭐ **좁힌 것은 가로뿐이다.** 키의 최소 폭을 풀어 셋째 열을 칸 안으로 들이되, 남는 세로
+ *    자리를 키 높이로 돌려준다 — 구획 아래가 통째로 비어 있는데 키만 납작하면, 잘리지는
+ *    않아도 장갑 낀 손에는 여전히 짚기 어려운 판이다(실측 2026-09-10 · 키 50×40).
+ */
 .pop-ui .pqc-keypad .omf-numeric-keypad > button {
   min-inline-size: 0;
+  min-block-size: 4rem;
   padding-inline: 0;
 }
 
@@ -3845,4 +3852,15 @@
 .pop-ui::-webkit-scrollbar-track,
 .pop-ui ::-webkit-scrollbar-track {
   background: transparent;
+}
+
+/*
+ * P-02-13 종합 판정 — **값 칸과 [선택]을 위아래로 쌓는다**.
+ *
+ * ⚠ 판정과 처분을 한 줄로 묶어 세로 예산을 지키느라 이 구획의 칸이 절반 폭인데, 값 칸과
+ *   단추가 그 절반을 또 나눠 가져 값 칸이 50px 밖에 남지 않았다 — 「고르세요」조차 「고·」로
+ *   잘렸다(실측 2026-09-10). 고르기 전에는 이 글이 그 자리의 유일한 안내다.
+ */
+.pop-ui .pqc-result-panel .pop-select {
+  grid-template-columns: minmax(0, 1fr);
 }

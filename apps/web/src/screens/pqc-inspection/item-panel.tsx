@@ -120,6 +120,7 @@ interface ItemRowProps {
 const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowProps) => {
   const judgmentId = useId();
   const outOfSpec = isOutOfSpec(row);
+  const specText = describeSpec(row.spec, uomCodeOf(row.spec.uomId));
 
   return (
     <li className="pop-item">
@@ -134,9 +135,20 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowPr
        * ⚠ 규격과 샘플을 **한 줄에 잇지 않는다.** 이으면 「목표 1 · 1 ~ 1 · 1 중 1」처럼 숫자만
        * 늘어서 무엇이 공차이고 무엇이 샘플 번호인지 읽히지 않는다.
        */}
-      <p className="field-note">
-        {t.columns.spec} {describeSpec(row.spec, uomCodeOf(row.spec.uomId))}
-      </p>
+      {/*
+       * ⛔ **없는 규격을 「—」로 적지 않는다**(사용자 지적 2026-09-10). 육안·글자 항목에는
+       *    상하한이 없고, 그 자리에 줄표를 세우면 「규격이 비었다」로 읽힌다 — 사실은 그
+       *    항목이 애초에 숫자로 재는 항목이 아니다.
+       *
+       * ⚠ 도면의 「기준 스크래치 없음」 같은 **기준 문구를 실을 자리가 계약에 없다**
+       *   (`InspectionItemSpec` 에 문구 항목이 없다 — 설계 회신 대기). 자리가 생기면 이
+       *   줄에 그 문구를 낸다.
+       */}
+      {specText !== null && (
+        <p className="field-note">
+          {t.columns.spec} {specText}
+        </p>
+      )}
       <p className="field-note">
         {t.columns.sample} {t.sampleOf(row.sampleNo, row.sampleCount)}
       </p>
@@ -226,7 +238,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowPr
  * 규격을 한 줄로. **한쪽만 있는 것도 규격이다** — 「9.9 이상」 같은 공차가 실제 검사기준에
  * 흔하다. ⛔ 둘 다 있을 때만 내면 화면이 「규격 없음」이라고 말해 검사자가 공차를 모르고 잰다.
  */
-const describeSpec = (spec: SpecRange, uomCode: string | null): string => {
+const describeSpec = (spec: SpecRange, uomCode: string | null): string | null => {
   const parts: string[] = [];
 
   if (spec.target !== null) parts.push(t.target(spec.target));
@@ -235,7 +247,7 @@ const describeSpec = (spec: SpecRange, uomCode: string | null): string => {
   else if (spec.lower !== null) parts.push(t.atLeast(spec.lower));
   else if (spec.upper !== null) parts.push(t.atMost(spec.upper));
 
-  if (parts.length === 0) return t.notMeasured;
+  if (parts.length === 0) return null;
 
   /* ⭐ 단위는 규격 줄 끝에 한 번만 붙는다 — 값마다 붙이면 「12 mm · 11.95 mm ~ 12.05 mm」가 된다. */
   return uomCode === null ? parts.join(' · ') : `${parts.join(' · ')} ${uomCode}`;
