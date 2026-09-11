@@ -59,12 +59,12 @@ export const repackLabelIssue = {
      * ⛔ **「없다」로 말하지 않는다** — 못 찾은 것과 없는 것은 다르다(전례 `progressUnknown`).
      */
     unknownEvent: (handlingUnitNo: string): string => `${handlingUnitNo} · 재구성 이력 확인 불가`,
-    /** 그 줄을 고르는 단추의 읽어 주는 이름. 보이는 글자가 앞에 온다(WCAG 2.5.3). */
-    selectRowUnknownEvent: (handlingUnitNo: string): string =>
-      `${handlingUnitNo} · 재구성 이력 확인 불가 · 새 포장 ${handlingUnitNo} 선택`,
     /**
      * 줄을 고르는 단추의 읽어 주는 이름 — **보이는 글자가 앞에 온다**(WCAG 2.5.3).
      * 화면에는 원 포장이 서 있고 고르는 대상은 그 줄이 만든 새 포장이라, 둘을 함께 읽는다.
+     *
+     * ⚠ 재구성 사건을 못 찾은 줄도 이것을 탄다 — 그때 `sourceText` 가 `unknownEvent` 다.
+     * 문구를 따로 두지 않는다: 같은 말을 두 자리에 두면 한쪽만 고쳐져 조용히 어긋난다.
      */
     selectRow: (sourceText: string, handlingUnitNo: string): string =>
       `${sourceText} · 새 포장 ${handlingUnitNo} 선택`,
