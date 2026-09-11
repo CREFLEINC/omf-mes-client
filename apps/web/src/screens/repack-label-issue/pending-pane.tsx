@@ -74,11 +74,7 @@ export const PendingPane = ({
              *   2.5.3). 새 포장 번호만 읽어 주면 화면에는 원 포장이 서 있는데 귀에는 다른
              *   번호가 들려, 목소리로 조작하는 사용자가 누를 것을 가리킬 수 없다.
              */
-            aria-label={
-              row.hasRepackEvent
-                ? t.selectRow(sourceText, row.handlingUnitNo)
-                : t.selectRowUnknownEvent(row.handlingUnitNo)
-            }
+            aria-label={t.selectRow(sourceText, row.handlingUnitNo)}
             onClick={() => onSelect(row.handlingUnitId)}
           >
             <span>{sourceText}</span>

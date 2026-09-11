@@ -172,6 +172,34 @@ const routes = (options: Options): StubRoute[] => [
         return jsonResponse({ items: [] });
       }
 
+      /*
+       * ⭐ **기본은 «사건이 있는» 줄이다.** 이 목록이 세우는 것은 재구성으로 생긴 포장이므로
+       *    그쪽이 보통이고, 사건을 못 찾은 줄은 `noRepackEvent` 로만 나온다 — 기본이 0건이면
+       *    두 갈래가 같은 것이 되어 「사건 있는 줄」 대조군이 사라진다.
+       */
+      if (options.hasRemainder !== true) {
+        return jsonResponse({
+          items: [
+            {
+              repackEventId: 880,
+              repackTypeCode: 'MERGE',
+              performedBy: 7001,
+              occurredAt: '2026-09-09T06:12:00.000Z',
+              lines: [
+                {
+                  handlingUnitId: Number(pathOf(request).split('/').at(-2)),
+                  roleCode: 'RESULT',
+                  itemId: ITEM_ID,
+                  lotId: LOT_A_ID,
+                  qtyBefore: 0,
+                  qtyAfter: 80,
+                },
+              ],
+            },
+          ],
+        });
+      }
+
       return jsonResponse({
         items:
           options.hasRemainder === true
@@ -488,7 +516,9 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
 
     expect(await screen.findByText(t.pending.unknownEvent(HANDLING_UNIT_NO))).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: t.pending.selectRowUnknownEvent(HANDLING_UNIT_NO) }),
+      screen.getByRole('button', {
+        name: t.pending.selectRow(t.pending.unknownEvent(HANDLING_UNIT_NO), HANDLING_UNIT_NO),
+      }),
     ).toBeEnabled();
   });
 
