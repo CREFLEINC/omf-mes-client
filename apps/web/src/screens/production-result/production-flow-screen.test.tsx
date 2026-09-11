@@ -770,3 +770,117 @@ describe('ProductionFlowScreen', () => {
     });
   });
 });
+
+/**
+ * 잔여수량 초과 — **막지 않고 한 번 확인한다**(스펙 §6 · ✓확정 QA #27 「초과 달성」 · #1040).
+ *
+ * ⛔ **저장 단추를 끄는 것으로 재지 않는다.** 끄면 현장이 초과분을 등록할 길이 없어져, 설계가
+ * 허용한 동작을 화면이 막는 것이 된다. 재는 것은 「묻는가 · 답한 뒤 그대로 저장되는가」다.
+ */
+describe('ProductionFlowScreen — 잔여수량 초과', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save: vi.fn().mockResolvedValue('/tmp/lot.prn') } },
+    });
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  /** 잔여를 바꿔 끼운다 — 화면의 기본 수량(LOT 초기수량 12)이 잔여를 넘게 만든다. */
+  const workOrderWith = (progress: Record<string, number> | undefined): StubRoute => ({
+    match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'WO-SYN-001',
+        productionOrderId: 1,
+        productionOrderNo: 'ERP-SYN-001',
+        productionPlanId: 1,
+        routingOperationId: 1,
+        itemId: 101,
+        itemCode: 'ITEM-SYN-01',
+        orderQty: 12,
+        uomId: 1,
+        workOrderTypeCode: 'NORMAL',
+        statusCode: 'IN_PROGRESS',
+        priorityNo: 1,
+        ...(progress === undefined ? {} : { progress }),
+      }),
+  });
+
+  const savedCount = (writes: Request[]): number =>
+    writes.filter((request) => pathOf(request) === '/production/production-results').length;
+
+  it('잔여를 넘으면 바로 저장하지 않고 되묻는다 — 답하면 그대로 저장된다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [workOrderWith({ goodQty: 10, varianceQty: 2 })]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    expect(await screen.findByRole('dialog', { name: t.overrun.title })).toBeInTheDocument();
+    expect(savedCount(writes)).toBe(0);
+
+    await user.click(screen.getByRole('button', { name: t.overrun.confirm }));
+
+    await waitFor(() => expect(savedCount(writes)).toBe(1));
+  });
+
+  it('[수량 고치기] 로 물러나면 저장하지 않는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [workOrderWith({ goodQty: 10, varianceQty: 2 })]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+    await user.click(await screen.findByRole('button', { name: t.overrun.cancel }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: t.overrun.title })).not.toBeInTheDocument(),
+    );
+    expect(savedCount(writes)).toBe(0);
+    /* ⛔ 단추는 그대로 살아 있다 — 확인을 거부한 것이지 막힌 것이 아니다. */
+    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeEnabled();
+  });
+
+  /* 경계 — 잔여와 «같은» 수량은 초과가 아니다. 여기서 물으면 정상 작업마다 손이 한 번 더 간다. */
+  it('잔여와 같은 수량은 묻지 않고 저장한다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [workOrderWith({ goodQty: 0, varianceQty: 12 })]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    await user.click(output);
+
+    await waitFor(() => expect(savedCount(writes)).toBe(1));
+    expect(screen.queryByRole('dialog', { name: t.overrun.title })).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⚠ 진척이 없으면 잔여는 **0 이 아니라 «모른다»**다. 모르는 것으로 막지도, 묻지도 않는다 —
+   * 대신 모른다는 사실을 화면이 적는다.
+   */
+  it('잔여를 받지 못하면 묻지 않고, 잔여 자리에 모른다고 적는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [workOrderWith(undefined)]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+    expect(screen.getByText(t.quantity.remainingUnknown)).toBeInTheDocument();
+
+    await user.click(output);
+
+    await waitFor(() => expect(savedCount(writes)).toBe(1));
+    expect(screen.queryByRole('dialog', { name: t.overrun.title })).not.toBeInTheDocument();
+  });
+});
