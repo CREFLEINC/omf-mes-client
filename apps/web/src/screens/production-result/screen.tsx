@@ -41,7 +41,13 @@ import {
   type DocumentIssueCreate,
 } from './flow-state';
 import { useOutbox, type OutboxEntry } from './outbox';
-import { GOOD_QTY_MAX_LENGTH, formatQty, parseGoodQty } from './quantity-draft';
+import {
+  GOOD_QTY_MAX_LENGTH,
+  exceedsRemaining,
+  formatQty,
+  parseGoodQty,
+  remainingQty,
+} from './quantity-draft';
 import { usePendingPqc, useWorkOrder } from './queries';
 import { buildSaveBody } from './save-request';
 import { useUomLookup } from './uom-lookup';
@@ -555,6 +561,19 @@ export const ProductionFlowScreen = () => {
   })();
 
   const uomLabel = uom.labelOf(lot?.uomId ?? workOrder.data?.uomId) ?? '';
+
+  /*
+   * **잔여를 넘었는지 — 막기 위해서가 아니라 말하기 위해서다**(#1040).
+   *
+   * ⭐ 초과 생산은 설계가 허용으로 확정했다(R27 · ✓확정 QA #27 · `P-02-06` §5-4). 그래서 이
+   *    값은 저장 사유(`saveBlockReason`)에 들어가지 않고 **표시 하나만** 연다. 자매 화면
+   *    `P-04-03` 이 같은 상황을 차단하는 것은 그 화면의 별도 규칙이다(§5).
+   *
+   * ⚠ **잔여를 모르면 넘었는지도 모른다** — `withProgress` 응답이 없으면 `remainingQty` 가
+   *    `null` 이고 아무 말도 하지 않는다. 0 으로 접으면 「모른다」가 「다 썼다」로 뒤집힌다.
+   */
+  const remaining = remainingQty(workOrder.data);
+  const isOverrun = exceedsRemaining(actualQty, remaining);
   const completedBoundary = completedLotPageBoundary(completedLots.data?.page);
 
   return (
@@ -680,6 +699,19 @@ export const ProductionFlowScreen = () => {
               error={parsedQty === null || parsedQty <= 0 ? t.flow.quantity.invalid : undefined}
               onChange={(event) => setActualQty(quantityInput(event.target.value))}
             />
+            {isOverrun && parsedQty !== null && remaining !== null && (
+              <AlertBanner
+                variant="warning"
+                title={
+                  remaining > 0
+                    ? t.flow.quantity.overrun(
+                        `${formatQty(parsedQty - remaining)} ${uomLabel}`,
+                        `${formatQty(remaining)} ${uomLabel}`,
+                      )
+                    : t.flow.quantity.overrunNoRemaining
+                }
+              />
+            )}
             <NumericKeypad
               value={actualQty}
               /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
