@@ -48,6 +48,8 @@ const locationVersions = new Map(state.locations.map((row) => [row.locationId, 1
 const putawayRuleVersions = new Map(state.putawayRules.map((row) => [row.putawayRuleId, 1]));
 /* 출고 전표의 판 번호 — 상신·전기가 If-Match 를 «필수»로 받는데 토큰을 낼 곳이 없었다. */
 const goodsIssueVersions = new Map(state.goodsIssues.map((row) => [row.goodsIssueId, 1]));
+/* LOT 의 판 번호 — 마감이 If-Match 를 싣는데 상세가 토큰을 내지 않아 화면이 스스로 멈췄다. */
+const lotVersions = new Map(state.lots.map((row) => [row.lotId, 1]));
 const idempotentResults = new Map();
 
 const resourceEtag = (kind, id, versions) =>
@@ -855,16 +857,86 @@ on('GET', '/trace/lots', (_p, query) => {
   return page(lots.map(includeProgress ? withProgress : withoutProgress), query);
 });
 
+/*
+ * ⭐ **ETag 를 낸다.** 생산 LOT 마감이 이 응답의 토큰을 `If-Match` 로 되돌려 보내는데, 토큰이
+ *    없으면 화면이 **요청을 아예 내지 않는다**(`flow-mutations` — 「LOT 상태를 확인하지 못해
+ *    마감을 보내지 않습니다」). 네트워크에 아무것도 뜨지 않아 서버 오류처럼 보이지 않는다.
+ */
 on('GET', '/trace/lots/{lotId}', (params) => {
   const lot = state.lots.find((each) => each.lotId === Number(params.lotId));
 
   return lot === undefined
     ? null
     : {
-        lot: withProgress(lot),
-        externalIdentifiers: [],
-        holds: state.holds.filter((hold) => hold.lotId === lot.lotId && hold.releasedAt === null),
+        status: 200,
+        created: {
+          lot: withProgress(lot),
+          externalIdentifiers: [],
+          holds: state.holds.filter((hold) => hold.lotId === lot.lotId && hold.releasedAt === null),
+        },
+        headers: { ETag: resourceEtag('lot', lot.lotId, lotVersions) },
       };
+});
+
+/*
+ * 생산 LOT 완료 — **실적 입력 → 마감 → 포장** 체인의 가운데 토막이다(#1031).
+ *
+ * ⚠ 이 경로가 없어 계약 예시 서버가 받아 `400 STATE_LOCKED` 를 돌려주었고, 88단계 시험이
+ *   46번에서 멈춰 뒤따르는 포장·납품 라벨까지 볼 수 없었다.
+ *
+ * ⛔ **완료를 `lifecycleStatusCode` 에 적지 않는다** — 계약이 「완료는 `completedAt`(시각)이,
+ *    폐번은 `lifecycleStatusCode` 가 담는다」로 두 축을 갈랐다(omf-mes#269). 여기서 바꾸는
+ *    것은 시각 하나다.
+ */
+on('POST', '/trace/lots/{lotId}:complete', (params, _q, body, headers) => {
+  const lot = state.lots.find((each) => each.lotId === Number(params.lotId));
+  if (lot === undefined) return null;
+
+  return idempotent(`trace.lots:${params.lotId}:complete`, headers, () => {
+    /* 공유계약 C-8 — 영업일과 단말 시각을 둘 다 받는다. */
+    if (body?.businessDate === undefined || body?.occurredAt === undefined) {
+      return {
+        status: 400,
+        created: {
+          code: 'BUSINESS_DATE_REQUIRED',
+          message: '영업일과 발생 시각이 필요합니다.',
+          errors: [],
+        },
+      };
+    }
+
+    /*
+     * ⚠ `If-Match` 는 **선택**이다(계약 · 공유계약 C-9) — 오프라인 큐에 쌓인 요청은 토큰을
+     *    싣지 않는다. 실어 보냈으면 맞는지 본다.
+     */
+    if (
+      headers['if-match'] !== undefined &&
+      !matchesEtag(headers, resourceEtag('lot', lot.lotId, lotVersions))
+    ) {
+      return conflict();
+    }
+
+    /* 되돌릴 수 없는 전이다 — 두 번째 마감은 «다시 해도 되는 일»이 아니다. */
+    if (lot.completedAt !== null) {
+      return {
+        status: 409,
+        created: {
+          code: 'LOT_ALREADY_COMPLETED',
+          message: '이미 완료된 생산 LOT 입니다.',
+          errors: [],
+        },
+      };
+    }
+
+    lot.completedAt = body.occurredAt;
+    bumpVersion(lotVersions, lot.lotId);
+
+    return {
+      status: 200,
+      created: withProgress(lot),
+      headers: { ETag: resourceEtag('lot', lot.lotId, lotVersions) },
+    };
+  });
 });
 
 on('GET', '/trace/lots/{lotId}/holds', (params, query) =>
