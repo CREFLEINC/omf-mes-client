@@ -52,8 +52,16 @@ export const PendingPane = ({
        */
       render: (row) => {
         const selected = row.handlingUnitId === selectedId;
-        const sourceText =
-          row.sourceNos.length === 0 ? t.unknown : row.sourceNos.join(t.sourceJoin);
+        /*
+         * ⛔ **아무 말도 안 하는 줄을 세우지 않는다**(#1044). 재구성 사건을 못 찾으면 원 포장을
+         *    모르지만 **이 포장의 번호는 안다** — 번호와 「왜 나머지가 비었는지」를 함께 적어,
+         *    눌러 보기 전에 무엇인지 알 수 있게 한다.
+         */
+        const sourceText = !row.hasRepackEvent
+          ? t.unknownEvent(row.handlingUnitNo)
+          : row.sourceNos.length === 0
+            ? t.unknown
+            : row.sourceNos.join(t.sourceJoin);
 
         return (
           <button
@@ -66,7 +74,11 @@ export const PendingPane = ({
              *   2.5.3). 새 포장 번호만 읽어 주면 화면에는 원 포장이 서 있는데 귀에는 다른
              *   번호가 들려, 목소리로 조작하는 사용자가 누를 것을 가리킬 수 없다.
              */
-            aria-label={t.selectRow(sourceText, row.handlingUnitNo)}
+            aria-label={
+              row.hasRepackEvent
+                ? t.selectRow(sourceText, row.handlingUnitNo)
+                : t.selectRowUnknownEvent(row.handlingUnitNo)
+            }
             onClick={() => onSelect(row.handlingUnitId)}
           >
             <span>{sourceText}</span>

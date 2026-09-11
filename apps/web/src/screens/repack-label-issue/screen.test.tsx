@@ -115,6 +115,8 @@ interface Options {
   historyRequests?: Request[];
   /** 포장 유형 공통코드. 기본은 `BOX` 한 값 */
   handlingUnitTypes?: CodeValue[];
+  /** 재구성 사건을 못 찾는다 — 그 줄이 무엇인지 말해야 한다(#1044) */
+  noRepackEvent?: boolean;
 }
 
 /** 대상 포장의 유형 코드에 붙은 표시명. 화면은 코드가 아니라 이것을 보인다(#1045). */
@@ -164,8 +166,13 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request).endsWith('/repack-events'),
-    respond: () =>
-      jsonResponse({
+    respond: (request) => {
+      /* 재구성으로 생기지 않은 포장 — 서버가 0건이라 답한다(#1044). */
+      if (options.noRepackEvent === true) {
+        return jsonResponse({ items: [] });
+      }
+
+      return jsonResponse({
         items:
           options.hasRemainder === true
             ? [
@@ -207,7 +214,8 @@ const routes = (options: Options): StubRoute[] => [
                 },
               ]
             : [],
-      }),
+      });
+    },
   },
   {
     match: (request) => pathOf(request) === `/inventory/handling-units/${String(REMAINDER_ID)}`,
@@ -459,6 +467,21 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
     expect(url.searchParams.get('labelIssued')).toBe('false');
     expect(url.searchParams.get('page')).toBe('1');
     expect(url.searchParams.get('size')).toBe('50');
+  });
+
+  /*
+   * #1044 — 사건을 못 찾은 줄이 포장 번호조차 없이 모든 칸 「—」 로 서면, 작업자는 눌러 보기
+   * 전에 무엇인지 알 수 없고 잘못 골라 엉뚱한 라벨을 뽑을 여지가 생긴다.
+   *
+   * ⛔ 줄을 «빼지» 않는다 — 후보를 좁히는 것은 서버 몫이다(계약 `labelIssued=false`).
+   */
+  it('재구성 이력을 못 찾은 줄도 포장 번호와 사유를 적는다', async () => {
+    renderScreen({ noRepackEvent: true });
+
+    expect(await screen.findByText(t.pending.unknownEvent(HANDLING_UNIT_NO))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: t.pending.selectRowUnknownEvent(HANDLING_UNIT_NO) }),
+    ).toBeEnabled();
   });
 
   it('발행 대기 조회가 실패하면 다시 조회할 수 있다', async () => {
@@ -754,7 +777,9 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
     const issuedAt = '2026-09-03T01:20:00Z';
     await renderSelectedScreen({ history: [makeIssue({ issuedAt })] });
 
-    expect(await screen.findByText(new RegExp(localDateTimeText(issuedAt, '—')))).toBeInTheDocument();
+    expect(
+      await screen.findByText(new RegExp(localDateTimeText(issuedAt, '—'))),
+    ).toBeInTheDocument();
     expect(screen.queryByText(new RegExp(issuedAt))).not.toBeInTheDocument();
   });
 

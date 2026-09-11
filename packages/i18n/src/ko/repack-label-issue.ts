@@ -50,6 +50,19 @@ export const repackLabelIssue = {
     /** 재구성 사건을 찾지 못한 칸. 값이 없는 것과 모르는 것을 같은 표시로 둔다. */
     unknown: '—',
     /**
+     * 재구성 사건을 못 찾은 줄의 첫 칸(#1044).
+     *
+     * ⛔ **아무 말도 하지 않는 줄을 세우지 않는다.** 한때 이 줄은 포장 번호조차 없이 모든 칸이
+     * 「—」 라, 작업자가 눌러 보기 전에는 무엇인지 알 수 없었다. 번호는 늘 오므로 적고, 나머지가
+     * 왜 비었는지도 함께 적는다.
+     *
+     * ⛔ **「없다」로 말하지 않는다** — 못 찾은 것과 없는 것은 다르다(전례 `progressUnknown`).
+     */
+    unknownEvent: (handlingUnitNo: string): string => `${handlingUnitNo} · 재구성 이력 확인 불가`,
+    /** 그 줄을 고르는 단추의 읽어 주는 이름. 보이는 글자가 앞에 온다(WCAG 2.5.3). */
+    selectRowUnknownEvent: (handlingUnitNo: string): string =>
+      `${handlingUnitNo} · 재구성 이력 확인 불가 · 새 포장 ${handlingUnitNo} 선택`,
+    /**
      * 줄을 고르는 단추의 읽어 주는 이름 — **보이는 글자가 앞에 온다**(WCAG 2.5.3).
      * 화면에는 원 포장이 서 있고 고르는 대상은 그 줄이 만든 새 포장이라, 둘을 함께 읽는다.
      */
