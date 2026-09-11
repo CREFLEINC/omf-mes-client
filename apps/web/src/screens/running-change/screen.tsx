@@ -12,7 +12,7 @@ import { LoadErrorBanner, describeLoadError } from './load-error-banner';
 import { useCurrentMold } from './mold';
 import { toReplacementConsumption } from './post-request';
 import { useOutbox } from './outbox';
-import { useChangeReasons, useCurrentInputs, useCurrentLot } from './queries';
+import { useChangeReasons, useCurrentInputs, useCurrentLot, useLotStatusNames } from './queries';
 import { ReplacePanel } from './replace-panel';
 import { type ScanOutcome, type ScannedPart } from './scan';
 import { ScanField, type ScanOutcomeView } from './scan-field';
@@ -29,7 +29,10 @@ const t = messages.runningChange;
 const describeOutcome = (outcome: ScanOutcome): string => {
   switch (outcome.kind) {
     case 'part':
-      return t.scan.outcomes.part(outcome.code, outcome.part.lotNo);
+      /* 읽은 것과 찾은 것이 같으면 한 번만 적는다 — 화살표 양쪽이 같은 문장은 읽히지 않는다. */
+      return outcome.code === outcome.part.lotNo
+        ? t.scan.outcomes.part(outcome.part.lotNo)
+        : t.scan.outcomes.partResolved(outcome.code, outcome.part.lotNo);
     case 'ambiguous':
       return t.scan.outcomes.ambiguous(outcome.count);
     case 'not-found':
@@ -77,6 +80,8 @@ export const RunningChangeScreen = () => {
 
   const current = useCurrentInputs(workOrderId);
   const reasons = useChangeReasons();
+  /* 보류 칩이 코드가 아니라 표시명으로 서게 한다(#1045). */
+  const lotStatuses = useLotStatusNames();
   const currentLot = useCurrentLot(lotId);
   const session = useOpenWorkSession(workOrderId);
   const mold = useCurrentMold(session.moldId);
@@ -335,6 +340,7 @@ export const RunningChangeScreen = () => {
             targets={current.rows}
             selectedTargetId={selectedTargetId}
             qty={qty}
+            lotStatuses={lotStatuses}
             reasons={reasons.reasons}
             reasonsPending={reasons.isPending}
             reasonsFailed={reasons.isError}

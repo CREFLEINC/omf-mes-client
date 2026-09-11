@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
 import { PopSelect as Select } from '../../patterns/pop-select';
+import { toLookupDisplayState, type LookupSource } from '../../patterns/lookup-display';
 import { validateQty, type QtyDraft, type QtyProblem } from './input-qty';
 import type { ReferenceLabels } from './reference-labels';
 import type { ScannedPart } from './scan';
@@ -35,6 +36,8 @@ export interface ReplacePanelProps {
   selectedTargetId: number | null;
   qty: QtyDraft;
   labels: ReferenceLabels;
+  /** LOT 품질 상태의 표시명. 칩에 코드가 그대로 서지 않게 한다(#1045). */
+  lotStatuses: LookupSource;
   /** 등록을 담은 뒤의 안내. 담지 않았으면 `false`. */
   recorded: boolean;
   /** 교체 사유 선택지 — 고객이 마스터에서 채운다. 비어 올 수 있다(스펙 §6). */
@@ -53,6 +56,33 @@ export interface ReplacePanelProps {
   /** 게이팅 조회를 다시 건다. **「확인할 수 없다」에만 길을 준다**(G-3). */
   onRetryGate: () => void;
 }
+
+/**
+ * 보류 칩에 세울 글자 — **코드가 아니라 표시명이다**(#1045).
+ *
+ * ⛔ 이름을 지어내지 않는다. 아직 받는 중인 것과 못 받은 것, 목록에 없는 것을 각각 다르게
+ * 말한다 — 셋을 뭉치면 「이름이 없다」로 해 두었다가 이름으로 바뀌는 칸이 된다.
+ */
+export const statusText = (source: LookupSource, statusCode: string): string => {
+  const state = toLookupDisplayState(source, statusCode);
+
+  switch (state.kind) {
+    case 'named':
+      return state.label;
+    case 'loading':
+      return t.replace.statusLoading;
+    case 'failed':
+      return t.replace.statusFailed;
+    /*
+     * 코드가 비는 일은 계약상 없다(`Lot.statusCode` 필수). 그래도 비면 「코드 (표시명 없음)」이
+     * 아니라 값이 없다고 적는다 — 같은 자리를 P-04-04 도 그렇게 다룬다(`typeText`).
+     */
+    case 'empty':
+      return t.replace.statusEmpty;
+    case 'unknown':
+      return t.replace.statusUnknown(statusCode);
+  }
+};
 
 /** 막는 사유를 하나 고른다. 풀 수 없는 것을 앞에 둔다. */
 export const toBlockReason = (props: {
@@ -146,6 +176,7 @@ export const ReplacePanel = ({
   reasonCode,
   onReasonChange,
   labels,
+  lotStatuses,
   recorded,
   rejection,
   onClearPart,
@@ -178,7 +209,7 @@ export const ReplacePanel = ({
             <span>{`${labels.describeItem(part.itemId)} ${part.lotNo}`}</span>
             {part.isHeld && (
               <Chip variant="status" size="md" status="warning">
-                {part.statusCode}
+                {statusText(lotStatuses, part.statusCode)}
               </Chip>
             )}
             <Button variant="text" size="sm" onClick={onClearPart}>

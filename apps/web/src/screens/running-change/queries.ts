@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
 import { runRequest } from '../../patterns/request';
 import { toCurrentInputView, type CurrentInputView } from './types';
 
@@ -28,6 +29,7 @@ export const runningChangeKeys = {
     ['running-change', 'current-inputs', workOrderId] as const,
   currentLot: (lotId: number) => ['running-change', 'current-lot', lotId] as const,
   changeReasons: ['running-change', 'change-reasons'] as const,
+  lotStatuses: ['running-change', 'lot-statuses'] as const,
 };
 
 /**
@@ -37,6 +39,14 @@ export const runningChangeKeys = {
  * (`G-31` 마스터안전형). 화면이 하는 일은 받아서 보여 주는 것까지다.
  */
 const CHANGE_REASON_GROUP_CODE = 'MATERIAL_CHANGE_REASON';
+
+/**
+ * LOT 품질 상태 값이 사는 공통코드 그룹.
+ *
+ * ⛔ **화면이 이름을 지어내지 않는다** — `INSPECTION_PENDING` 을 그대로 세우면 현장은 그것이
+ * 무엇인지도, 무엇을 하면 풀리는지도 모른다. 같은 값을 다른 화면은 「검사 대기」로 쓴다.
+ */
+const LOT_STATUS_GROUP_CODE = 'LOT_STATUS';
 
 /** 사유는 한 화면에 다 보여야 한다 — 쪽을 넘기게 두지 않는다. */
 const REASON_PAGE_SIZE = 100;
@@ -158,6 +168,52 @@ export const useChangeReasons = (): ChangeReasonsResult => {
     reasons: query.data ?? [],
     isPending: query.isPending,
     isError: query.isError,
+  };
+};
+
+/**
+ * LOT 품질 상태의 표시명.
+ *
+ * ⚠ **판정에 쓰지 않는다.** 교체 가부는 서버가 정하고(`scan.ts`), 이 조회가 하는 일은 칩에
+ * 선 코드를 읽을 수 있게 하는 것뿐이다 — 못 받아도 화면은 그대로 서고 교체도 막지 않는다.
+ */
+export const useLotStatusNames = (): LookupSource => {
+  const { client } = useApiClient();
+
+  const query = useQuery({
+    queryKey: runningChangeKeys.lotStatuses,
+    queryFn: async (): Promise<LookupEntry[]> => {
+      const data = await runRequest(() =>
+        client.GET('/mdm/code-values', {
+          params: {
+            query: {
+              codeGroupCode: LOT_STATUS_GROUP_CODE,
+              includeInactive: true,
+              page: 1,
+              size: REASON_PAGE_SIZE,
+            },
+          },
+        }),
+      );
+
+      /*
+       * ⭐ **미사용 값까지 받는다**(`includeInactive`). 계약의 기본은 «사용 중인 것만»이고
+       *    (공유계약 G-8), 이것은 선택지를 만드는 조회가 아니라 **이름을 푸는 조회**다 —
+       *    좁히면 폐기된 상태가 붙은 옛 LOT 의 칩이 「표시명 없음」으로 떨어진다
+       *    (전례 `material-input-scan/lot-status-labels.ts`).
+       */
+      return data.items.map((item) => ({
+        value: item.code,
+        label: item.codeName,
+        isActive: item.isActive,
+      }));
+    },
+  });
+
+  return {
+    entries: query.data ?? [],
+    isError: query.isError,
+    isLoading: query.isPending,
   };
 };
 

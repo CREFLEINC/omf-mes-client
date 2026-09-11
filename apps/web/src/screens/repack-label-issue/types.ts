@@ -36,6 +36,14 @@ export const TARGET_TYPE_CODE = 'HANDLING_UNIT';
  */
 export const REISSUE_REASON_GROUP_CODE = 'REISSUE_REASON';
 
+/**
+ * 포장 유형 값이 사는 공통코드 그룹.
+ *
+ * ⛔ **코드를 그대로 세우지 않는다**(#1045) — 《대상 포장》의 유형 칸에 `BOX` 가 서 있었다.
+ * 같은 값을 다른 화면은 「박스」로 쓴다.
+ */
+export const HANDLING_UNIT_TYPE_GROUP_CODE = 'HANDLING_UNIT_TYPE';
+
 /** 물리 인쇄 실패 뒤에는 같은 기록을 다시 보내지 않고 새 회차를 발행한다(K-7). */
 export const PRINT_FAILURE_REASON_CODE = 'PRINT_FAILURE';
 
