@@ -83,10 +83,17 @@ const navSidebar = (): HTMLElement => screen.getByRole('navigation', { name: '�
  * 접기 (화면 N개)」로 상태와 개수를 함께 담으므로 완전 일치로는 집을 수 없고, 개수를 시험이
  * 되풀이하면 항목이 하나 늘 때마다 여기도 고쳐야 한다.
  */
+/**
+ * 묶음 손잡이를 **이름 앞머리**로 찾는다.
+ *
+ * ⚠ **개수까지 맞추지 않는다.** 접근명이 「<이름> (화면 N개)」이고 그 N 은 **지금 안에 든 수**라
+ * 검색 중에는 걸린 항목 수로 줄어든다(그게 옳다 — 접힌 묶음을 열지 말지 판단할 값은 지금 든 수다).
+ * 개수를 시험이 되풀어 적으면 검색 감지기가 그 자리에서 깨진다.
+ */
 const groupToggle = (label: string): HTMLElement => {
   const found = within(navSidebar())
     .getAllByRole('button')
-    .find((button) => (button.getAttribute('aria-label') ?? '').startsWith(`${label} `));
+    .find((button) => (button.getAttribute('aria-label') ?? '').startsWith(`${label} (`));
 
   if (found === undefined) throw new Error(`「${label}」 묶음의 손잡이를 찾지 못했습니다`);
 
@@ -1193,7 +1200,7 @@ describe('AppLayout — 묶음 접기', () => {
     renderLayout('본문 내용', { expandGroups: false });
 
     /* 「기준정보」는 화면 11개다 — `nav-tree.ts` 가 정본이고 전수 순서 감지기가 그 수를 못 박는다. */
-    expect(groupToggle('기준정보')).toHaveAccessibleName('기준정보 펼치기 (화면 11개)');
+    expect(groupToggle('기준정보')).toHaveAccessibleName('기준정보 (화면 11개)');
   });
 });
 
@@ -1374,5 +1381,93 @@ describe('AppLayout — 레일', () => {
     await collapseRail(user);
 
     expect(within(navSidebar()).getAllByRole('link')).toHaveLength(69);
+  });
+});
+
+/**
+ * 셸 — **레일에서는 검색어가 없는 것과 같이 그린다**(#1079 검토).
+ *
+ * ⛔ **판정이 갈리는 것을 막는다.** 레일에는 검색창이 없으므로(지울 수단이 없다) 검색어가 남아
+ * 있으면 **절반만 걸린 사이드바**가 된다 — 항목은 전부 서는데 섹션 밖 항목만 사라지고, 맞는 것이
+ * 없으면 72px 레일에 안내 문단이 아이콘들과 나란히 선다.
+ */
+describe('AppLayout — 레일과 검색', () => {
+  const collapseRail = async (user: UserEvent): Promise<void> => {
+    await user.click(screen.getByRole('button', { name: '사이드바 접기' }));
+  };
+
+  const typeQuery = async (user: UserEvent, value: string): Promise<void> => {
+    await user.type(
+      within(navSidebar()).getByRole('searchbox', { name: messages.shellNav.search.label }),
+      value,
+    );
+  };
+
+  it('검색어가 걸린 채 접어도 항목이 전부 선다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await typeQuery(user, '실사');
+    await collapseRail(user);
+
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(69);
+  });
+
+  /** 섹션 밖 항목이 빠지면 레일에서 대시보드로 갈 길이 사라진다. */
+  it('검색어가 걸린 채 접어도 섹션 밖 항목이 남는다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await typeQuery(user, '실사');
+    await collapseRail(user);
+
+    expect(within(navSidebar()).getByRole('link', { name: '통합 대시보드' })).toBeInTheDocument();
+  });
+
+  it('레일에서는 빈 결과 안내가 서지 않는다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await typeQuery(user, '있을 수 없는 화면 이름');
+    await collapseRail(user);
+
+    expect(within(navSidebar()).queryByText(messages.shellNav.search.empty)).toBeNull();
+  });
+});
+
+/**
+ * 셸 — **검색 중 손잡이는 거짓말하지 않는다**(#1079 검토).
+ *
+ * ⛔ 검색 중에는 맞는 묶음을 강제로 펼치므로 손잡이를 눌러도 화면이 바뀌지 않는다. 그런데 누름이
+ * 접힘 상태를 **조용히 뒤집으면** 그 결과가 검색어를 지운 뒤에야 드러난다 — 「접기」를 눌렀는데
+ * 열려 있거나, 열어 둔 것이 닫혀 있다. 상태를 거짓으로 알리는 컨트롤을 두지 않는다.
+ */
+describe('AppLayout — 검색 중 손잡이', () => {
+  const typeQuery = async (user: UserEvent, value: string): Promise<void> => {
+    await user.type(
+      within(navSidebar()).getByRole('searchbox', { name: messages.shellNav.search.label }),
+      value,
+    );
+  };
+
+  it('검색 중에는 손잡이를 누를 수 없다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await typeQuery(user, '실사');
+
+    expect(groupToggle('자재창고')).toBeDisabled();
+  });
+
+  /** 누를 수 없으니 접힘 상태도 뒤집히지 않는다 — 지운 뒤 내가 둔 모양 그대로다. */
+  it('검색 중 손잡이를 눌러도 접힘 상태가 뒤집히지 않는다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.click(groupToggle('기준정보'));
+    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'true');
+
+    await typeQuery(user, '규칙');
+    await user.click(groupToggle('기준정보')).catch(() => undefined);
+    await user.clear(
+      within(navSidebar()).getByRole('searchbox', { name: messages.shellNav.search.label }),
+    );
+
+    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'true');
   });
 });

@@ -1,4 +1,4 @@
-import { NAV_ENTRIES, type NavEntry, type NavGroup } from './nav-tree';
+import type { NavEntry, NavGroup } from './nav-tree';
 
 /**
  * 사이드바 화면 검색 — **이름으로만 찾는다**(#1079).
@@ -32,9 +32,12 @@ export const filterNavGroups = (
 
   if (needle === '') return groups;
 
-  return groups
-    .map((group) => ({ label: group.label, items: group.items.filter((i) => matches(i, needle)) }))
-    .filter((group) => group.items.length > 0);
+  return (
+    groups
+      /* ⛔ 필드를 손으로 다시 적지 않는다 — `NavGroup` 에 무언가 늘면 조용히 떨어진다. */
+      .map((group) => ({ ...group, items: group.items.filter((item) => matches(item, needle)) }))
+      .filter((group) => group.items.length > 0)
+  );
 };
 
 /**
@@ -52,10 +55,14 @@ export const matchesNavEntry = (entry: NavEntry, query: string): boolean => {
 /**
  * 검색어에 걸리는 것이 **하나도 없는가**. 비어 있으면 화면이 그 사실을 한 줄로 알린다.
  *
- * 묶음과 섹션 밖 항목을 **둘 다** 본다 — `NAV_ENTRIES` 로 한 번에 묻는 이유다.
+ * 묶음과 섹션 밖 항목을 **둘 다** 담은 목록을 받는다(`NAV_ENTRIES`) — 묶음만 보면 섹션 밖 항목이
+ * 걸렸는데도 「없다」고 말한다.
+ *
+ * ⭐ **자료를 인자로 받는다.** 위 `filterNavGroups` 와 짝이 맞아야 하고, 모듈 상수를 직접 읽으면
+ * 시험이 다른 트리로 경계를 재 볼 수 없다.
  */
-export const hasNoNavMatch = (query: string): boolean => {
+export const hasNoNavMatch = (entries: readonly NavEntry[], query: string): boolean => {
   const needle = normalize(query);
 
-  return needle !== '' && !NAV_ENTRIES.some((entry) => matches(entry, needle));
+  return needle !== '' && !entries.some((entry) => matches(entry, needle));
 };

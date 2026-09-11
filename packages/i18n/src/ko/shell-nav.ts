@@ -14,8 +14,11 @@ export const shellNav = {
     empty: '일치하는 화면이 없습니다. 이름의 일부만 입력해 보세요.',
   },
   group: {
-    /* 펼치기·접기 버튼의 접근명. 묶음 이름과 항목 수를 함께 읽어 준다. */
-    expand: (label: string, count: number) => `${label} 펼치기 (화면 ${count}개)`,
-    collapse: (label: string, count: number) => `${label} 접기 (화면 ${count}개)`,
+    /*
+     * 묶음 손잡이의 접근명. 펼쳤는지는 aria-expanded 가 말하므로 여기 넣지 않는다 -
+     * 넣으면 같은 말을 두 번 하고 음성 제어에서 이름이 상태에 따라 바뀐다.
+     * 항목 수는 넣는다 - 접힌 묶음은 이름만 남아 누르기 전에는 안을 알 수 없다.
+     */
+    name: (label: string, count: number) => `${label} (화면 ${count}개)`,
   },
 } as const;

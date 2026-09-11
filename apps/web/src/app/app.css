@@ -38,6 +38,7 @@
  *               임시 우회 — design-system-v2-webui#103
  * .nav-group        접을 수 있는 사이드바 묶음 — DS SidebarSection 을 대신한다
  * .nav-group-toggle 그 묶음의 손잡이(펼치기·접기) — 섹션 라벨 자리에 선다
+ * .nav-group-chevron 손잡이의 펼침 화살표 — 자리를 항목 아이콘과 같은 24px 로 잡는다
  * .nav-group-label  손잡이 안의 묶음 이름 — 남는 폭을 쓰고 길면 줄인다
  * .nav-group-count  접혀 있을 때 안에 몇 개가 있는지
  * .nav-group-items  그 묶음의 항목들 — 열렸을 때만 내용이 있다
@@ -7757,20 +7758,27 @@ dl.filter-bar.approval-inbox-detail-facts {
  * 값은 DS 섹션(`_section_`·`_sectionLabel_`)에서 그대로 가져왔다 — 묶음 사이 간격 `--space-2`,
  * 라벨의 글자·색·안쪽 여백. 접히는 것 말고는 **전과 같이 보여야** 하므로 새 값을 만들지 않는다.
  */
+/*
+ * ⛔ **여기에 `gap` 을 주지 않는다.** 닫힌 묶음의 항목 그릇은 높이 0 으로 남는데(`aria-controls` 가
+ * 가리키므로 지울 수 없다), 부모가 `gap` 을 가지면 **빈 그릇 앞의 간격이 그대로 계산돼** 접힌
+ * 묶음마다 8px 죽은 자리가 생긴다. 간격은 사라질 쪽(항목 그릇)이 자기 위에 얹는다.
+ * 묶음 **사이**의 간격은 DS 목록(`_list_` 의 `gap`)이 이미 준다.
+ */
 .nav-group {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
 /*
- * 묶음 손잡이. **DS 메뉴 항목과 같은 격자에 선다** — 아이콘 자리(20px)가 항목의 아이콘(24px)보다
- * 작아 제목이 항목보다 가볍게 읽히고, 그게 의도다(제목이 항목보다 무거워지면 분류가 내용을 가린다).
+ * 묶음 손잡이. **이름의 왼쪽 끝을 항목 이름과 맞춘다** — 아이콘 자리를 항목과 같은 24px 로 잡고
+ * 간격도 항목과 같은 `--space-3` 를 쓴다(12+24+12=48px). 글자는 20px 짜리 화살표라 **제목이 항목
+ * 보다 가볍게 읽히고**, 그게 의도다(제목이 무거워지면 분류가 내용을 가린다). 색·글자·안쪽 여백은
+ * DS 섹션 라벨에서, 모서리·hover·초점 링은 DS 항목에서 가져왔다.
  */
 .nav-group-toggle {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 0;
@@ -7792,6 +7800,14 @@ dl.filter-bar.approval-inbox-detail-facts {
   box-shadow: var(--focus-ring);
 }
 
+/* 화살표 자리를 항목 아이콘과 같은 24px 로 잡는다 — 글자는 20px 이라 가운데 선다. */
+.nav-group-chevron {
+  flex: none;
+  display: inline-flex;
+  justify-content: center;
+  width: 24px;
+}
+
 /* 이름이 남는 폭을 먹고, 좁아지면 숫자를 밀어내지 않고 자기가 줄어든다. */
 .nav-group-label {
   flex: 1;
@@ -7811,11 +7827,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   font-variant-numeric: tabular-nums;
 }
 
-/* 항목 사이 간격은 DS 목록과 같다. 닫혀 있으면 내용이 없어 높이가 0 이 된다. */
+/*
+ * 항목 그릇. **비면 자기 위 간격까지 함께 사라진다** — 부모가 `gap` 을 갖지 않는 이유다.
+ * 항목 사이 간격은 DS 목록과 같은 `--space-2` 다.
+ */
 .nav-group-items:not(:empty) {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
 /*

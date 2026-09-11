@@ -552,7 +552,7 @@ body {
 | `.login-fields` | 카드 안 입력 칸 사이 간격 `--space-4`(`.form-grid`의 `gap`과 같다) | 8 |
 | `.login-actions` | 카드 안 액션 줄. 이음매 `--space-5`이며 하나뿐인 액션이 **줄 전체를 채운다**(폭은 `button` 요소에 준다) | 8 |
 | `.sidebar-lead` | 섹션 밖에 홀로 선 메뉴 항목이 **목록의 넘침에 줄어드는 것**을 막는다(`flex: none`). 사이드바 목록은 세로 flex 라 내용이 상자를 넘기면 스크롤로 넘기기 전에 항목을 줄이고, 섹션 안 항목과 달리 직계 항목만 48px → 24px 로 찌그러진다. **임시 우회**(design-system-v2-webui#103) | 아직 없음(셸 소유) |
-| `.nav-group` · `.nav-group-toggle` · `.nav-group-label` · `.nav-group-count` · `.nav-group-items` | 접을 수 있는 사이드바 묶음과 그 손잡이. **DS `SidebarSection` 을 대신한다** — 그쪽 라벨은 `aria-hidden` 인 `<div>` 라 누를 수 없다. 값(간격 `--space-2` · 라벨의 글자·색·여백)은 DS 섹션에서 그대로 가져와 **접히는 것 말고는 전과 같이 보이게** 했다 | 아직 없음(셸 소유) |
+| `.nav-group` · `.nav-group-toggle` · `.nav-group-chevron` · `.nav-group-label` · `.nav-group-count` · `.nav-group-items` | 접을 수 있는 사이드바 묶음과 그 손잡이. **DS `SidebarSection` 을 대신한다** — 그쪽 라벨은 `aria-hidden` 인 `<div>` 라 누를 수 없다. 글자·색·안쪽 여백은 DS 섹션 라벨에서, 모서리·hover·초점 링은 DS 항목에서 가져왔다. **이름의 왼쪽 끝은 항목 이름과 맞춘다**(아이콘 자리 24px + 간격 `--space-3`)이고 화살표 글자만 20px 로 가볍다. ⚠ `.nav-group` 에 `gap` 을 주지 않는다 — 닫힌 묶음의 빈 항목 그릇 앞 간격이 남아 8px 죽은 자리가 된다 | 아직 없음(셸 소유) |
 | `.nav-search-empty` | 사이드바 화면 검색에 맞는 것이 없다는 안내. 빈 목록을 그대로 두면 화면이 깨진 것으로 읽힌다 | 아직 없음(셸 소유) |
 | `.pop-actions` | POP 화면의 액션 줄. 마지막 블록이라 아래에 서고, 사유는 줄 왼쪽에 남는다 | 아직 없음(아래 참고) |
 | `.pop-section` · `.pop-tool` · `.pop-shot` · `.pop-shot-fields` · `.pop-conversion` | 구획 하나 · 고른 툴 정보 줄 · 입력칸과 키패드 · 환산 입력 묶음 | 아직 없음(아래 참고) |

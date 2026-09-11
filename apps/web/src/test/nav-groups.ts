@@ -20,7 +20,18 @@ export const expandAllNavGroups = (): void => {
   /* 셸 밖 화면(로그인 등)을 태운 시험도 이 함수를 지날 수 있다 — 사이드바가 없으면 할 일이 없다. */
   if (sidebar === null) return;
 
-  for (const toggle of within(sidebar).queryAllByRole('button', { expanded: false })) {
+  const toggles = within(sidebar).queryAllByRole('button', { expanded: false });
+
+  /*
+   * ⛔ **조용히 빈손이 되는 것을 막는다.** 이 함수가 아무것도 누르지 않게 되면(앱이 전부 펼치도록
+   * 바뀌거나 DS 가 `aria-expanded` 를 그리지 않게 되면) 이것을 지나는 시험 56건이 **전부 초록인
+   * 채로 아무 일도 하지 않는다.** 앱은 언제나 최소 8개가 접힌 채 서므로 0 은 사고다.
+   */
+  if (toggles.length === 0) {
+    throw new Error('접힌 묶음이 없습니다 — 사이드바 기본값이 전부 펼침으로 바뀌었습니까?');
+  }
+
+  for (const toggle of toggles) {
     fireEvent.click(toggle);
   }
 };
