@@ -2659,6 +2659,18 @@ on('GET', '/logistics/shipments/{shipmentId}', (params) => {
 
 /* ── 생산 ─────────────────────────────────────────────────── */
 
+/*
+ * 진척은 **물었을 때만 싣는다**(`withProgress=true` · 계약). 늘 실으면 화면이 잔여수량을
+ * «항상 아는» 상태로만 서서, 「받지 못했을 때 묻지 않는다」 갈래가 목에서 서지 않는다.
+ */
+const workOrderProgress = (workOrder, query) => {
+  const { progress, ...rest } = workOrder;
+
+  return bool(query, 'withProgress') === true && progress !== undefined
+    ? { ...rest, progress }
+    : rest;
+};
+
 on('GET', '/production/work-orders', (_p, query) => {
   const successorOf = num(query, 'successorOfWorkOrderId');
   const open = bool(query, 'open');
@@ -2676,7 +2688,7 @@ on('GET', '/production/work-orders', (_p, query) => {
       /* 「열린 것만」 — 마감·완료된 지시는 실적을 더 받지 않는다. */
       (row) => open !== true || row.completedAt === null,
       contains(query, 'q', 'workOrderNo'),
-    ]),
+    ]).map((row) => workOrderProgress(row, query)),
     query,
   );
 });
@@ -2686,10 +2698,10 @@ on('GET', '/production/work-orders', (_p, query) => {
  * `workOrderNo: '값'` 인 예시가 돌아와, 생산 실적 등록 머리줄이 「MES W/O 값」으로 섰다
  * (실측 2026-09-10 · 사용자 지적).
  */
-on('GET', '/production/work-orders/{workOrderId}', (params) => {
+on('GET', '/production/work-orders/{workOrderId}', (params, query) => {
   const workOrder = state.workOrders.find((row) => row.workOrderId === Number(params.workOrderId));
 
-  return workOrder === undefined ? null : { ...workOrder };
+  return workOrder === undefined ? null : workOrderProgress(workOrder, query);
 });
 
 /**

@@ -2041,6 +2041,17 @@ export const createSeed = (now = new Date()) => {
       predecessorOfWorkOrderId: 11001,
       releasedAt: iso(-2),
       completedAt: null,
+      /*
+       * 진척 — **`withProgress=true` 일 때만 실린다**(아래 처리기가 가른다). 이것이 잔여수량의
+       * 출처다: P-02-04 가 초과 입력을 되물을 때 보는 값이고, 없으면 화면은 잔여를 «모른다»로
+       * 두고 묻지 않는다. 값은 스펙 §3-2 의 예시(「잔여수량 380 / 500」)에 맞췄다.
+       */
+      progress: {
+        goodQty: 120,
+        achievementRate: 0.24,
+        varianceQty: 380,
+        completionJudgmentCode: 'UNDER',
+      },
     },
     {
       workOrderId: 11003,
