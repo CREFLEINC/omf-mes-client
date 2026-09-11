@@ -1,6 +1,6 @@
 import { AppShell, Button, Sidebar, SidebarItem, SidebarSection, Topbar } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 
 import { useSession, useSignOut } from '../patterns/session';
@@ -9,20 +9,33 @@ interface NavItemProps {
   to: string;
   icon: string;
   children: ReactNode;
+  /**
+   * DS 항목 요소에 그대로 실리는 앱 소유 클래스. **배치를 바로잡는 자리에만 쓴다**(#1077).
+   *
+   * ⛔ 서식(색·글자)을 여기로 덮지 않는다 — 그것은 DS 가 정하는 것이고, 덮기 시작하면
+   * 메뉴 항목의 모양이 두 곳에서 정해진다.
+   */
+  className?: string;
 }
 
 /**
  * DS `SidebarItem`을 라우터에 잇는 어댑터.
  * `href`는 `useHref`로 만들고, 클릭은 `useLinkClickHandler`로 가로채 전체 새로고침 없이 이동한다.
  */
-const NavItem = ({ to, icon, children }: NavItemProps) => {
+const NavItem = ({ to, icon, children, className }: NavItemProps) => {
   const href = useHref(to);
   const handleClick = useLinkClickHandler(to);
   const location = useLocation();
   const isActive = location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
-    <SidebarItem icon={icon} href={href} active={isActive} onClick={handleClick}>
+    <SidebarItem
+      icon={icon}
+      href={href}
+      active={isActive}
+      onClick={handleClick}
+      className={className}
+    >
       {children}
     </SidebarItem>
   );
@@ -71,9 +84,20 @@ const SessionActions = ({ userName }: { userName: string }) => {
 export const AppLayout = ({ children }: AppLayoutProps) => {
   const { session } = useSession();
 
+  /**
+   * 사이드바 접힘 — **한 곳에서 정해 양쪽에 내린다**(#1078).
+   *
+   * ⛔ **어느 한쪽에만 맡기지 않는다.** 접힌 폭은 두 곳에서 정해진다 — 셸 격자의 사이드바 칸과
+   * 사이드바 자신의 `width`. DS 는 둘이 **각자 비제어 상태**를 들고 있어, 배선하지 않으면
+   * 접기 버튼이 사이드바만 72px 로 줄이고 칸은 256px 로 남아 **184px 죽은 띠**가 생긴다(실측).
+   */
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+
   return (
     <AppShell
       mainLabel="본문"
+      collapsed={isSidebarCollapsed}
+      onCollapsedChange={setSidebarCollapsed}
       topbar={
         <Topbar
           brand={<strong>OMF-MES 관리웹</strong>}
@@ -81,14 +105,23 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         />
       }
       sidebar={
-        <Sidebar aria-label="주 메뉴">
+        <Sidebar
+          aria-label="주 메뉴"
+          collapsed={isSidebarCollapsed}
+          onCollapsedChange={setSidebarCollapsed}
+        >
           {/*
            * W-CO-05 — **맨 위이고 섹션이 없다.** 이 화면은 어느 업무 묶음에도 속하지 않고
            * 모든 묶음의 숫자를 모아 보인다. 「기준정보」 아래에 넣으면 마스터 관리 화면들
            * 사이에 서서 분류가 무너지고, 자기 섹션을 하나 만들면 항목 하나짜리 섹션이 생겨
            * 제목이 항목보다 무거워진다.
            */}
-          <NavItem to="/dashboard" icon="dashboard">
+          {/*
+           * ⚠ **`.sidebar-lead` 는 서식이 아니라 배치를 지키는 자리다.** 섹션 밖 직계 항목은
+           * 목록이 넘칠 때 DS 가 48px → 24px 로 줄여 버리고(design-system-v2-webui#103),
+           * 선택 배경과 표시선이 절반 높이로 그려진다. 상류가 고쳐지면 이 클래스를 지운다.
+           */}
+          <NavItem to="/dashboard" icon="dashboard" className="sidebar-lead">
             통합 대시보드
           </NavItem>
           <SidebarSection label="기준정보">
