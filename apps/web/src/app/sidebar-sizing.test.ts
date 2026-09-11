@@ -24,8 +24,14 @@ const cssSource = readFileSync(resolve(process.cwd(), 'src/app/app.css'), 'utf8'
 const rules = cssSource.replace(/\/\*[\s\S]*?\*\//gu, '');
 
 describe('사이드바 항목 높이', () => {
+  /**
+   * **철자가 아니라 「줄어듦이 막혔는가」를 잰다.** `flex: none`과 `flex-shrink: 0`은 이 자리에서
+   * 동작이 **완전히 같다** — DS 항목에 `flex` 계열 선언이 하나도 없어 `flex: none`이 실제로
+   * 바꾸는 것은 `flex-shrink: 1 → 0` 하나뿐이다(`web-ui.css` 확인). 상류가 어느 쪽 철자로
+   * 고쳐지든 앱 쪽 우회를 그에 맞춰 좁힐 수 있어야 하고, 그때 이 감지기가 회귀를 알리면 안 된다.
+   */
   it('섹션 밖 항목은 목록의 넘침에 줄어들지 않는다 — `.sidebar-lead`가 flex 축소를 막는다', () => {
-    expect(rules).toMatch(/\.sidebar-lead\s*\{[^}]*flex:\s*none/u);
+    expect(rules).toMatch(/\.sidebar-lead\s*\{[^}]*(?:flex:\s*none|flex-shrink:\s*0)/u);
   });
 
   /**
