@@ -883,7 +883,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
       { requests: [request({ lines: [line(), second] })] },
     );
 
-    await user.click(await screen.findByRole('button', { name: /1번 줄/ }));
+    await user.click(await screen.findByRole('button', { name: /1번 라인/ }));
     await screen.findByText('FG-1001 완제품');
     await screen.findByText('FG-0298');
 
@@ -896,7 +896,7 @@ describe('제품LOT 피킹 스캔 화면', () => {
     });
 
     await user.click(screen.getByRole('button', { name: '다른 대상 고르기' }));
-    await user.click(await screen.findByRole('button', { name: /2번 줄/ }));
+    await user.click(await screen.findByRole('button', { name: /2번 라인/ }));
     await screen.findByText('FG-0298');
     await pickLot(user, EARLY.lotNo);
     await user.type(await screen.findByLabelText(/피킹 수량/), '180');
