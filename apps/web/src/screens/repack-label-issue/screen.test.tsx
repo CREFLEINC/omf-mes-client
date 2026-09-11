@@ -328,10 +328,18 @@ const routes = (options: Options): StubRoute[] => [
 
       /* 포장 유형은 재발행 사유와 다른 그룹이다 — 한 갈래로 묶으면 사유 쪽 쪽수까지 흐려진다. */
       if (group === 'HANDLING_UNIT_TYPE') {
-        return jsonResponse({
-          items: options.handlingUnitTypes ?? [HANDLING_UNIT_TYPE_VALUE],
-          page: { page: 1, size: 100, total: options.handlingUnitTypes?.length ?? 1 },
-        });
+        /*
+         * ⭐ **서버처럼 군다** — 계약의 기본은 「사용 중인 것만」이고, 미사용 값은 화면이
+         *    `includeInactive` 를 켜야 온다(공유계약 G-8). 목이 늘 다 내려 주면 화면이 그것을
+         *    안 켜도 시험이 통과해, 폐기된 유형이 붙은 옛 포장이 깨지는 것을 못 잡는다.
+         */
+        const all = options.handlingUnitTypes ?? [HANDLING_UNIT_TYPE_VALUE];
+        const items =
+          new URL(request.url).searchParams.get('includeInactive') === 'true'
+            ? all
+            : all.filter((value) => value.isActive);
+
+        return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
       }
 
       options.reasonRequests?.push(request.clone());
@@ -544,6 +552,16 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
 
     expect(await screen.findByText(HANDLING_UNIT_TYPE_VALUE.codeName)).toBeInTheDocument();
     expect(screen.queryByText(HANDLING_UNIT_TYPE_VALUE.code)).not.toBeInTheDocument();
+  });
+
+  /* 폐기된 유형이 붙은 옛 포장도 이름으로 읽혀야 한다 — 이름을 푸는 조회는 좁히지 않는다. */
+  it('미사용으로 바뀐 유형도 표시명으로 보인다', async () => {
+    await renderSelectedScreen({
+      lotIds: [LOT_A_ID],
+      handlingUnitTypes: [{ ...HANDLING_UNIT_TYPE_VALUE, isActive: false }],
+    });
+
+    expect(await screen.findByText(HANDLING_UNIT_TYPE_VALUE.codeName)).toBeInTheDocument();
   });
 
   /* 표시명을 못 받았을 때만 코드를 보이되, 없다는 사실을 함께 적는다 — 이름을 지어내지 않는다. */

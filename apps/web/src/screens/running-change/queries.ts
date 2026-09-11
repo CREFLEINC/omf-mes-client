@@ -186,14 +186,21 @@ export const useLotStatusNames = (): LookupSource => {
       const data = await runRequest(() =>
         client.GET('/mdm/code-values', {
           params: {
-            query: { codeGroupCode: LOT_STATUS_GROUP_CODE, page: 1, size: REASON_PAGE_SIZE },
+            query: {
+              codeGroupCode: LOT_STATUS_GROUP_CODE,
+              includeInactive: true,
+              page: 1,
+              size: REASON_PAGE_SIZE,
+            },
           },
         }),
       );
 
       /*
-       * ⛔ 쓰지 않는 값을 걸러 내지 않는다 — 읽기 표시라 이미 붙은 상태를 그대로 읽어야 한다.
-       *   거르면 예전 값이 붙은 LOT 의 칩이 「표시명 없음」으로 떨어진다.
+       * ⭐ **미사용 값까지 받는다**(`includeInactive`). 계약의 기본은 «사용 중인 것만»이고
+       *    (공유계약 G-8), 이것은 선택지를 만드는 조회가 아니라 **이름을 푸는 조회**다 —
+       *    좁히면 폐기된 상태가 붙은 옛 LOT 의 칩이 「표시명 없음」으로 떨어진다
+       *    (전례 `material-input-scan/lot-status-labels.ts`).
        */
       return data.items.map((item) => ({
         value: item.code,

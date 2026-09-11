@@ -613,8 +613,10 @@ export const usePrinters = (): UseQueryResult<Printer[]> => {
  * ⚠ **판정에 쓰지 않는다** — 읽을 수 있게 하는 것까지다. 못 받아도 화면은 그대로 서고 발행도
  * 막지 않는다.
  *
- * ⛔ 쓰지 않는 값을 걸러 내지 않는다 — 이미 그 유형이 붙은 포장의 칸이 「표시명 없음」으로
- * 떨어진다.
+ * ⭐ **미사용 값까지 받는다**(`includeInactive`). 계약의 기본은 «사용 중인 것만»이고(공유계약
+ * G-8), 이것은 선택지를 만드는 조회가 아니라 **이름을 푸는 조회**다 — 좁히면 폐기된 유형이
+ * 붙은 옛 포장의 칸이 「표시명 없음」으로 떨어진다
+ * (전례 `material-input-scan/lot-status-labels.ts`).
  */
 export const useHandlingUnitTypes = (): UseQueryResult<CodeValue[]> => {
   const { client } = useApiClient();
@@ -626,7 +628,12 @@ export const useHandlingUnitTypes = (): UseQueryResult<CodeValue[]> => {
         runRequest(() =>
           client.GET('/mdm/code-values', {
             params: {
-              query: { codeGroupCode: HANDLING_UNIT_TYPE_GROUP_CODE, page, size },
+              query: {
+                codeGroupCode: HANDLING_UNIT_TYPE_GROUP_CODE,
+                includeInactive: true,
+                page,
+                size,
+              },
             },
           }),
         ),

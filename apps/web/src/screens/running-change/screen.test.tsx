@@ -68,6 +68,8 @@ interface Options {
   noLotStatuses?: boolean;
   /** 스캔한 LOT 이 보류 중이다 — 그때만 상태 칩이 선다 */
   heldPart?: boolean;
+  /** 그 상태 코드가 미사용으로 바뀌었다 — 옛 LOT 에 붙어 있을 수 있다 */
+  inactiveLotStatus?: boolean;
   /** 교체 등록 요청을 담아 둔다 */
   writes?: Request[];
   /** 교체 등록 응답 상태. 기본 201 */
@@ -155,12 +157,18 @@ const routes = (options: Options): StubRoute[] => [
       const query = new URL(request.url).searchParams;
       /* 1단계 — LOT 번호 정확 일치. 다른 값이면 걸리지 않는다. */
       if (query.get('lotNo') === NEW_LOT_NO) {
-        return jsonResponse({ items: [scannedLot(options)], page: { page: 1, size: 20, total: 1 } });
+        return jsonResponse({
+          items: [scannedLot(options)],
+          page: { page: 1, size: 20, total: 1 },
+        });
       }
 
       /* 2단계 — 외부 식별자·번호 일부로 걸린다. 읽은 코드와 찾은 번호가 다르다. */
       if (options.partialOnly === true && query.get('q') !== null) {
-        return jsonResponse({ items: [scannedLot(options)], page: { page: 1, size: 20, total: 1 } });
+        return jsonResponse({
+          items: [scannedLot(options)],
+          page: { page: 1, size: 20, total: 1 },
+        });
       }
 
       return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
@@ -191,8 +199,25 @@ const routes = (options: Options): StubRoute[] => [
     match: (request) => pathOf(request) === '/mdm/code-values',
     respond: (request) => {
       /* 품질 상태는 교체 사유와 다른 그룹이다 — 한 갈래로 묶으면 사유 목록에 상태가 섞인다. */
-      if (new URL(request.url).searchParams.get('codeGroupCode') === 'LOT_STATUS') {
-        const items = options.noLotStatuses === true ? [] : [LOT_STATUS_VALUE];
+      const query = new URL(request.url).searchParams;
+
+      if (query.get('codeGroupCode') === 'LOT_STATUS') {
+        /*
+         * ⭐ **서버처럼 군다** — 계약의 기본은 「사용 중인 것만」이고 미사용 값은 화면이
+         *    `includeInactive` 를 켜야 온다(공유계약 G-8). 목이 늘 다 내려 주면 화면이 그것을
+         *    안 켜도 시험이 통과해, 폐기된 상태가 붙은 옛 LOT 이 깨지는 것을 못 잡는다.
+         */
+        const all =
+          options.noLotStatuses === true
+            ? []
+            : [
+                {
+                  ...LOT_STATUS_VALUE,
+                  isActive: options.inactiveLotStatus !== true,
+                },
+              ];
+        const items =
+          query.get('includeInactive') === 'true' ? all : all.filter((value) => value.isActive);
 
         return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
       }
@@ -437,6 +462,17 @@ describe('러닝체인지 화면 — 교체 대상 모집단', () => {
 
     expect(await screen.findByText(LOT_STATUS_VALUE.codeName)).toBeInTheDocument();
     expect(screen.queryByText(LOT_STATUS_VALUE.code)).not.toBeInTheDocument();
+  });
+
+  /* 폐기된 상태가 붙은 옛 LOT 도 이름으로 읽혀야 한다 — 이름을 푸는 조회는 좁히지 않는다. */
+  it('미사용으로 바뀐 상태도 표시명으로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ heldPart: true, inactiveLotStatus: true });
+
+    await screen.findByText(OLD_LOT_NO);
+    await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
+
+    expect(await screen.findByText(LOT_STATUS_VALUE.codeName)).toBeInTheDocument();
   });
 
   /* 표시명을 못 받았을 때만 코드를 보이되, 없다는 사실을 함께 적는다 — 이름을 지어내지 않는다. */

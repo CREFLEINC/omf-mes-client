@@ -10,8 +10,14 @@ describe('발행 화면의 시각 표기', () => {
     process.env.TZ = 'Asia/Seoul';
   });
 
+  /*
+   * ⛔ **다시 대입하지 않는다.** `TZ` 가 원래 비어 있으면 대입은 리터럴 `'undefined'` 를 넣고,
+   *    Node 는 그것을 잘못된 시간대로 보아 조용히 UTC 로 떨어뜨린다. 지금은 파일마다 프로세스가
+   *    갈려 새지 않지만, 격리를 끄는 날 뒤에 도는 시각 시험이 UTC 를 보게 된다.
+   */
   afterAll(() => {
-    process.env.TZ = originalTz;
+    if (originalTz === undefined) delete process.env.TZ;
+    else process.env.TZ = originalTz;
   });
 
   /* #1043 — 서버가 내리는 표준시 문자열이 그대로 서면 현지와 아홉 시간 어긋나 보인다. */

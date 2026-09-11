@@ -113,6 +113,8 @@ export const runningChange = {
      * 현장은 `INSPECTION_PENDING` 이 무엇인지도, 무엇을 하면 풀리는지도 모른다.
      */
     statusLoading: '상태를 확인하는 중',
+    /** 상태 코드 자체가 비었다. 계약상 오지 않지만, 오면 「이름이 없다」가 아니라 값이 없다. */
+    statusEmpty: '—',
     statusFailed: '상태를 확인하지 못했습니다',
     /* 표시명을 못 받았을 때만 코드를 보인다. 이름을 지어내지 않는다(전례 #1022). */
     statusUnknown: (code: string) => `${code} (표시명 없음)`,

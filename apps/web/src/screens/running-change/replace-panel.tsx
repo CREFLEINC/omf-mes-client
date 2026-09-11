@@ -73,8 +73,12 @@ export const statusText = (source: LookupSource, statusCode: string): string => 
       return t.replace.statusLoading;
     case 'failed':
       return t.replace.statusFailed;
-    /* 코드가 비는 일은 계약상 없지만, 비면 코드 자리를 빈칸으로 적는 것보다 그대로 말한다. */
+    /*
+     * 코드가 비는 일은 계약상 없다(`Lot.statusCode` 필수). 그래도 비면 「코드 (표시명 없음)」이
+     * 아니라 값이 없다고 적는다 — 같은 자리를 P-04-04 도 그렇게 다룬다(`typeText`).
+     */
     case 'empty':
+      return t.replace.statusEmpty;
     case 'unknown':
       return t.replace.statusUnknown(statusCode);
   }
