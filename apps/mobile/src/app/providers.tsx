@@ -1,4 +1,5 @@
 import { ThemeProvider, ToastProvider } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { QueryClient, QueryClientProvider, type DefaultOptions } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 
@@ -44,7 +45,9 @@ export const AppProviders = ({ children }: AppProvidersProps) => {
           <OutboxProvider send={sendOutboxEntry}>
             <WorkerSessionProvider>
               <ThemeProvider defaultTheme="system">
-                <ToastProvider position="top-center">{children}</ToastProvider>
+                <ToastProvider label={messages.common.shell.notifications} position="top-center">
+                  {children}
+                </ToastProvider>
               </ThemeProvider>
             </WorkerSessionProvider>
           </OutboxProvider>
