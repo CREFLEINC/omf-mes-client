@@ -1017,3 +1017,73 @@ describe('AppLayout — 로그아웃', () => {
     ).toBeInTheDocument();
   });
 });
+
+/**
+ * 셸 치수 — **브라우저에서만 드러나는 두 어긋남**(#1077 · #1078).
+ *
+ * ⚠ **여기서 픽셀을 재지 않는다.** jsdom 은 레이아웃을 계산하지 않아 높이·폭을 물으면 0 을
+ * 주고, `vitest.config.ts`가 `css: false`라 스타일도 도달하지 않는다. 그래서 이 감지기들은
+ * **「배치를 정하는 것이 그 요소에 실렸는지」**만 본다 — 실린 값이 실제로 막는지는
+ * `sidebar-sizing.test.ts`(CSS 원문)와 실측이 맡는다. 둘을 함께 두어야 닿는다.
+ */
+describe('AppLayout — 셸 치수', () => {
+  /**
+   * 섹션 밖 직계 항목은 목록이 넘칠 때 DS 가 절반 높이로 줄인다(design-system-v2-webui#103).
+   *
+   * ⭐ **이름으로 집지 않고 「섹션 밖 전부」를 잰다.** 지금 그 항목은 하나뿐이지만(「사이드바
+   * 섹션이 아홉이고…」 감지기가 보증한다), 이름으로 집으면 **둘째 항목이 생기는 날 빠져나간다** —
+   * 그 감지기는 `UNSECTIONED_LINKS`에 href 한 줄을 더하면 다시 초록이 되고, 새 항목은 표시가
+   * 없어 브라우저에서만 찌그러진다. 규칙은 「섹션 밖 항목은 **전부** 이 표시를 단다」다.
+   *
+   * 섹션은 DS 가 `role="group"`으로 그린다 — 섹션 이름 목록을 여기서 되풀이하지 않는다.
+   */
+  it('섹션 밖 항목은 전부 줄어들지 않게 표시돼 있다', () => {
+    renderLayout('본문 내용');
+
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const ungrouped = within(sidebar)
+      .getAllByRole('link')
+      .filter((link) => link.closest('[role="group"]') === null);
+
+    /* ⛔ 섹션 밖 항목이 0개면 아래 단언은 아무것도 재지 않는다 — 빈 통과를 막는다. */
+    expect(ungrouped.length).toBeGreaterThan(0);
+    expect(ungrouped.filter((link) => !link.classList.contains('sidebar-lead'))).toEqual([]);
+  });
+
+  /**
+   * ⛔ **접힘을 한쪽에만 맡기면 죽은 띠가 남는다.** 접힌 폭은 셸 격자의 사이드바 칸과 사이드바
+   * 자신의 `width` 두 곳에서 정해진다. DS 는 둘이 각자 비제어 상태를 들고 있어, 배선하지 않으면
+   * 사이드바만 72px 로 줄고 칸은 256px 로 남는다(실측 — 184px 빈 띠).
+   *
+   * 두 요소가 **같은 값**이 되는지를 본다. 한쪽만 배선하면 여기서 갈린다.
+   */
+  it('사이드바를 접으면 셸과 사이드바가 함께 접힌다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    /*
+     * ⚠ **둘을 정체로 집는다.** `[data-collapsed]`를 한꺼번에 쓸어 모으면 개수에 묶여,
+     * DS 가 그 표시를 한 군데 더 붙이는 날 동작이 멀쩡한데도 길이가 어긋나 헛경보가 난다.
+     * 셸의 접힘은 접근성 속성으로 드러나지 않아 DS 내부 표시를 읽을 수밖에 없지만,
+     * **어느 요소의 것인지**는 역할로 집을 수 있다.
+     */
+    const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+    const shell = screen.getByRole('main', { name: '본문' }).closest('[data-collapsed]');
+
+    if (shell === null) throw new Error('셸의 접힘 표시를 찾지 못했습니다');
+
+    const flags = (): Record<string, string | null> => ({
+      셸: shell.getAttribute('data-collapsed'),
+      사이드바: sidebar.getAttribute('data-collapsed'),
+    });
+
+    expect(flags()).toEqual({ 셸: 'false', 사이드바: 'false' });
+
+    await user.click(screen.getByRole('button', { name: '사이드바 접기' }));
+
+    expect(flags()).toEqual({ 셸: 'true', 사이드바: 'true' });
+
+    await user.click(screen.getByRole('button', { name: '사이드바 펼치기' }));
+
+    expect(flags()).toEqual({ 셸: 'false', 사이드바: 'false' });
+  });
+});

@@ -1,6 +1,6 @@
 import { AppShell, Button, Sidebar, SidebarItem, SidebarSection, Topbar } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 
 import { useSession, useSignOut } from '../patterns/session';
@@ -9,20 +9,37 @@ interface NavItemProps {
   to: string;
   icon: string;
   children: ReactNode;
+  /**
+   * DS 항목 요소에 그대로 실리는 앱 소유 클래스.
+   *
+   * ⭐ **갈래를 하나로 못 박는다.** 지금 합법인 값이 하나뿐이어서가 아니라, 이 자리가
+   * 서식을 덮는 문으로 자라지 않게 하려는 것이다 — 서식은 DS 가 정하고, 덮기 시작하면
+   * 메뉴 항목의 모양이 두 곳에서 정해진다. 배치를 바로잡는 우회만 여기로 들어온다(#1077).
+   *
+   * ⚠ 상류(design-system-v2-webui#103)가 반영돼 우회를 걷어내는 날, 이 타입이 남은
+   * 사용처를 `typecheck` 에서 짚어 준다. 넓은 `string` 이면 조용히 남는다.
+   */
+  className?: 'sidebar-lead';
 }
 
 /**
  * DS `SidebarItem`을 라우터에 잇는 어댑터.
  * `href`는 `useHref`로 만들고, 클릭은 `useLinkClickHandler`로 가로채 전체 새로고침 없이 이동한다.
  */
-const NavItem = ({ to, icon, children }: NavItemProps) => {
+const NavItem = ({ to, icon, children, className }: NavItemProps) => {
   const href = useHref(to);
   const handleClick = useLinkClickHandler(to);
   const location = useLocation();
   const isActive = location.pathname === to || location.pathname.startsWith(`${to}/`);
 
   return (
-    <SidebarItem icon={icon} href={href} active={isActive} onClick={handleClick}>
+    <SidebarItem
+      icon={icon}
+      href={href}
+      active={isActive}
+      onClick={handleClick}
+      className={className}
+    >
       {children}
     </SidebarItem>
   );
@@ -71,9 +88,26 @@ const SessionActions = ({ userName }: { userName: string }) => {
 export const AppLayout = ({ children }: AppLayoutProps) => {
   const { session } = useSession();
 
+  /**
+   * 사이드바 접힘 — **한 곳에서 정해 양쪽에 내린다**(#1078).
+   *
+   * ⛔ **어느 한쪽에만 맡기지 않는다.** 접힌 폭은 셸 격자의 사이드바 칸과 사이드바 자신의
+   * `width` 두 곳에서 정해진다. DS 는 둘이 **각자 비제어 상태**를 들고 있어, 배선하지 않으면
+   * 접기 버튼이 사이드바만 72px 로 줄이고 칸은 256px 로 남아 **184px 죽은 띠**가 생긴다(실측).
+   *
+   * ⚠ **결정 지점이 하나 더 있고 이 배선 밖이다.** DS 에 `@media (width <= 768px)` 규칙이
+   * 있어 그 폭에서는 칸이 `data-collapsed` 와 **무관하게** 72px 로 고정된다 — 펼친 상태의
+   * 사이드바 256px 가 칸을 184px 넘어 잘린다(768px 실측 · 이 배선과 별개의 결함 #1085).
+   * 여기서 고치지 않은 것은 그 구간의 의도(좁은 화면에서는 레일로 쓴다)가 DS 쪽에 있고,
+   * 제품이 브레이크포인트를 제 손으로 읽기 시작하면 접힘의 주인이 둘로 갈리기 때문이다.
+   */
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   return (
     <AppShell
       mainLabel="본문"
+      collapsed={isSidebarCollapsed}
+      onCollapsedChange={setIsSidebarCollapsed}
       topbar={
         <Topbar
           brand={<strong>OMF-MES 관리웹</strong>}
@@ -81,14 +115,23 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
         />
       }
       sidebar={
-        <Sidebar aria-label="주 메뉴">
+        <Sidebar
+          aria-label="주 메뉴"
+          collapsed={isSidebarCollapsed}
+          onCollapsedChange={setIsSidebarCollapsed}
+        >
           {/*
            * W-CO-05 — **맨 위이고 섹션이 없다.** 이 화면은 어느 업무 묶음에도 속하지 않고
            * 모든 묶음의 숫자를 모아 보인다. 「기준정보」 아래에 넣으면 마스터 관리 화면들
            * 사이에 서서 분류가 무너지고, 자기 섹션을 하나 만들면 항목 하나짜리 섹션이 생겨
            * 제목이 항목보다 무거워진다.
            */}
-          <NavItem to="/dashboard" icon="dashboard">
+          {/*
+           * ⚠ **`.sidebar-lead` 는 서식이 아니라 배치를 지키는 자리다.** 섹션 밖 직계 항목은
+           * 목록이 넘칠 때 DS 가 48px → 24px 로 줄여 버리고(design-system-v2-webui#103),
+           * 선택 배경과 표시선이 절반 높이로 그려진다. 상류가 고쳐지면 이 클래스를 지운다.
+           */}
+          <NavItem to="/dashboard" icon="dashboard" className="sidebar-lead">
             통합 대시보드
           </NavItem>
           <SidebarSection label="기준정보">

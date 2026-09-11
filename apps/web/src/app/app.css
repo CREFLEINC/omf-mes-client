@@ -34,6 +34,8 @@
  * .login-shell   셸 밖에 서는 화면의 본문 — 내용을 뷰포트 한가운데 세운다(규범 8)
  * .session-gate  로그인 판정 중·판정 실패 때 서는 본문 — 같은 배치를 쓴다(규범 8)
  * .topbar-session 상단 바 오른쪽의 이름과 로그아웃
+ * .sidebar-lead  섹션 밖에 홀로 선 메뉴 항목이 목록의 넘침에 줄어드는 것을 막는다
+ *               임시 우회 — design-system-v2-webui#103
  * .login-card    그 화면이 세우는 카드의 폭 상한(규범 8)
  * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
  * .login-fields  카드 안 입력 칸 사이 간격(규범 8)
@@ -7726,4 +7728,19 @@ dl.filter-bar.approval-inbox-detail-facts {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+/*
+ * 섹션 밖에 홀로 선 메뉴 항목 — **목록이 넘쳐도 줄어들지 않는다**(#1077).
+ *
+ * 사이드바 목록은 세로 flex 이고 내용이 상자를 5배 넘는다. 넘치는 만큼을 스크롤로 넘기기
+ * **전에** flex 가 항목을 줄이는데, 섹션 안 항목은 섹션의 자식이라 그 계산에 직접 노출되지
+ * 않고 **섹션 밖 직계 항목만** 48px 에서 24px 로 찌그러진다. 선택 배경과 왼쪽 표시선이
+ * 절반 높이로 그려져 한 줄만 눌린 것처럼 보인다.
+ *
+ * ⚠ **임시 우회다**(design-system-v2-webui#103). 상류가 항목 자체를 줄지 않게 고치면 이
+ * 규칙과 `layout.tsx` 의 클래스를 함께 지운다.
+ */
+.sidebar-lead {
+  flex: none;
 }

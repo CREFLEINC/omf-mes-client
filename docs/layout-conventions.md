@@ -551,6 +551,7 @@ body {
 | `.login-title` | 카드 머리의 표제 — 디자인 시스템의 머리 서식을 물려받고 브라우저 기본 여백만 턴다 | 8 |
 | `.login-fields` | 카드 안 입력 칸 사이 간격 `--space-4`(`.form-grid`의 `gap`과 같다) | 8 |
 | `.login-actions` | 카드 안 액션 줄. 이음매 `--space-5`이며 하나뿐인 액션이 **줄 전체를 채운다**(폭은 `button` 요소에 준다) | 8 |
+| `.sidebar-lead` | 섹션 밖에 홀로 선 메뉴 항목이 **목록의 넘침에 줄어드는 것**을 막는다(`flex: none`). 사이드바 목록은 세로 flex 라 내용이 상자를 넘기면 스크롤로 넘기기 전에 항목을 줄이고, 섹션 안 항목과 달리 직계 항목만 48px → 24px 로 찌그러진다. **임시 우회**(design-system-v2-webui#103) | 아직 없음(셸 소유) |
 | `.pop-actions` | POP 화면의 액션 줄. 마지막 블록이라 아래에 서고, 사유는 줄 왼쪽에 남는다 | 아직 없음(아래 참고) |
 | `.pop-section` · `.pop-tool` · `.pop-shot` · `.pop-shot-fields` · `.pop-conversion` | 구획 하나 · 고른 툴 정보 줄 · 입력칸과 키패드 · 환산 입력 묶음 | 아직 없음(아래 참고) |
 | `.pop-figures` · `.pop-figures-rule` · `.pop-figure-usage` · `.pop-figure-note` · `.pop-usage-label` | 이름·값을 세로로 쌓는 표 · 「지금」과 「저장하면」을 가르는 선 · 값 옆의 진행 막대와 그 이름 | 아직 없음(아래 참고) |
