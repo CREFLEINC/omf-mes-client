@@ -1,0 +1,105 @@
+import type { ko } from '../ko';
+import type { Translated } from './translated';
+
+/** M-04-04 제품 입고·적치. 입고와 적치가 갈려 되돌아올 수 있어 둘을 나눠 말한다. */
+export const productReceipt: Translated<typeof ko.productReceipt> = {
+  title: 'Nhập kho và cất hàng thành phẩm',
+  record: {
+    received: 'Nhập kho thành phẩm',
+    putaway: 'Cất hàng thành phẩm',
+  },
+  warehouse: {
+    legend: 'Chọn kho thành phẩm',
+    loading: 'Đang tìm kho',
+    loadFailed: 'Không tải được kho. Hãy kiểm tra kết nối.',
+    pick: 'Kho nhập vào',
+    pickPlaceholder: 'Hãy chọn kho',
+    hint: 'Đây là kho hàng sẽ vào. Có thể khác với chỗ thẻ nhận diện đang nằm.',
+  },
+  unit: {
+    legend: 'Quét thẻ nhận diện',
+    scanLabel: 'Quét thẻ nhận diện',
+    scanPlaceholder: 'Hãy quét mã QR của thẻ nhận diện',
+    manualLabel: 'Nhập tay thẻ nhận diện',
+    manualSubmit: 'Đưa thẻ nhận diện vào',
+    loading: 'Đang tìm thẻ nhận diện',
+    loadFailed: 'Không tải được thẻ nhận diện. Hãy kiểm tra kết nối.',
+    notFound: (no: string) => `Không tìm thấy thẻ nhận diện ${no}`,
+    picked: (no: string) => `Thẻ nhận diện ${no}`,
+    empty: 'Thẻ nhận diện này không có hàng nào bên trong',
+  },
+  contents: {
+    legend: 'Hàng cần tiếp nhận',
+    loading: 'Đang tải hàng bên trong',
+    loadFailed: 'Không tải được hàng bên trong. Hãy kiểm tra kết nối.',
+    name: (item: string, lotNo: string) => (item === '' ? lotNo : `${item} · ${lotNo}`),
+    qtyLabel: (name: string) => `Số lượng thực tế của ${name}`,
+    expected: (qty: string) => `Số lượng trên thẻ nhận diện ${qty}`,
+    manufactured: (at: string) => `Ngày sản xuất ${at}`,
+    expiry: (date: string) => `Hạn dùng ${date}`,
+    differs: 'Khác với số lượng trên thẻ nhận diện. Nhận theo thực tế.',
+    problem: {
+      notNumber: 'Hãy ghi số lượng bằng chữ số',
+      negative: 'Số lượng không được nhỏ hơn 0',
+      zero: 'Số lượng nhập kho phải lớn hơn 0',
+    },
+  },
+  notReleased: 'LOT này còn chờ kiểm tra. Nhập kho được nhưng lấy hàng và xuất hàng sẽ bị chặn.',
+  releaseUnknown: 'Đang ngoại tuyến. Không xác nhận được trạng thái kiểm tra.',
+  location: {
+    legend: 'Vị trí cất hàng',
+    scanLabel: 'Quét vị trí',
+    scanPlaceholder: 'Hãy quét mã QR của vị trí',
+    manualLabel: 'Nhập tay vị trí',
+    manualSubmit: 'Đưa vị trí vào',
+    loading: 'Đang tìm vị trí',
+    notFound: (code: string) => `Không tìm thấy vị trí ${code}`,
+    picked: (code: string) => `Vị trí ${code}`,
+    unmanaged: 'Kho này không quản lý vị trí. Hàng sẽ vào vị trí đại diện.',
+    noDefault: 'Kho này không có vị trí đại diện. Hãy hỏi quản trị viên.',
+    recommended: (code: string) => `Vị trí gợi ý ${code}`,
+    matched: 'Đúng vị trí gợi ý',
+    notRecommended: (code: string) => `Không phải vị trí gợi ý ${code}`,
+    noRule: 'Mặt hàng này chưa có chỗ nào được định sẵn',
+    noRuleConfirm: 'Cất hàng ở đây',
+    rulesLoadFailed: 'Không xác nhận được vị trí gợi ý',
+  },
+  stocked: {
+    title: 'LOT thành phẩm này đã được nhập kho',
+    description: 'Máy khác đã nhập kho trước. Hãy kiểm tra tồn kho.',
+  },
+  unverified: {
+    title: 'Không xác nhận được đã nhập kho hay chưa',
+    description: 'Không có kết nối nên không hỏi được. Hãy kiểm tra tồn kho rồi mới làm tiếp.',
+  },
+  submit: 'Xong nhập kho và cất hàng',
+  noWorker: 'Hãy xác nhận mã nhân viên trước',
+  noPlant: 'Không đọc được nhà máy của máy này. Hãy đăng ký lại máy.',
+  saveFailed: {
+    title: 'Không lưu được việc nhập kho',
+    description: 'Chưa được ghi nhận. Hãy thử lại.',
+  },
+  sent: {
+    title: 'Đã nhập kho và cất hàng',
+  },
+  receivedOnly: {
+    title: 'Đã nhập kho. Còn lại việc cất hàng',
+    description: 'Hoàn tất cất hàng ở màn hình cất hàng và hoàn tất nhập kho.',
+    action: 'Đến màn hình cất hàng',
+  },
+  putawayRejected: {
+    title: 'Đã nhập kho. Không gửi được việc cất hàng',
+    description: 'Hãy xem lý do trong bản ghi gửi thất bại rồi làm lại ở màn hình cất hàng. ',
+    action: 'Xem bản ghi gửi thất bại',
+  },
+  held: {
+    title: 'Đã đưa việc nhập kho vào hàng chờ gửi',
+    description: 'Sẽ gửi khi có kết nối. Cất hàng làm tiếp ở màn hình cất hàng sau đó.',
+  },
+  rejected: {
+    title: 'Không gửi được việc nhập kho',
+    description: 'Hãy xem lý do trong bản ghi gửi thất bại. ',
+    action: 'Xem bản ghi gửi thất bại',
+  },
+  another: 'Thẻ nhận diện tiếp theo',
+};
