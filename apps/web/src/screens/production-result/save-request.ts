@@ -29,7 +29,14 @@ export interface SaveInput {
  * | 불량·보류·스크랩·재작업 수량 | 정본이 「양품만 입력」(R50)이다. 서버가 기본 0 으로 둔다 |
  * | 사후입력 사유(`lateEntryReasonCode`) | 임계값을 읽을 경로가 계약에 없다 — 만들지 않는다(스펙 §8 #4) |
  * | 실적 순번(`result_sequence`) | 서버가 채번한다. 클라이언트 임의 채번 금지(스펙 §6) |
- * | 실적 출처(`resultSourceCode`) | ⭐ **서버가 채운다**(수기 입력이면 `MANUAL`). 계약이 `required` 에서 빼고 「화면이 보내지 않는다」를 설명에 적었다 — 자리표시 상수를 두던 자리다(설계 변동 공지 `CREFLEINC/omf-mes#507`) |
+ *
+ * ⛔⛔ **`resultSourceCode` 는 다시 필수다**(2026-09-11 전달본). 설계 변동 공지
+ * `CREFLEINC/omf-mes#507` 은 이 칸을 계약 `required` 에서 빼고 「화면이 보내지 않는다」로
+ * 정리했었는데, 지금 생성 타입은 다시 `resultSourceCode: "MANUAL" | "IOT"` 를 필수로 요구한다
+ * — 그런데 계약 설명은 그대로 「⭐ 서버가 안다 — 화면이 고르는 값이 아니다」다. **required 인데
+ * 화면이 고르지 말라는 값**이라는 모순이 새로 생겼다(발견한 차이 — 보고 대상, 임의로 결론
+ * 내리지 않는다). 두 값 중 이 화면은 사람이 입력하는 POP 단말이라 `IOT` 일 수 없어, 남는
+ * `MANUAL` 을 싣는다 — 지어낸 값이 아니라 계약의 두 갈래 중 이 화면에 해당하는 유일한 값이다.
  */
 export const buildSaveBody = (input: SaveInput): ProductionResultCreate => {
   const remarks = input.draft.remarks.trim();
@@ -43,5 +50,6 @@ export const buildSaveBody = (input: SaveInput): ProductionResultCreate => {
     lotAllocations: [{ lotId: input.lotId, allocatedQty: input.goodQty }],
     /* 빈 비고는 «안 적은 것»이다. 빈 문자열을 보내면 「빈 값을 적었다」가 된다. */
     ...(remarks === '' ? {} : { remarks }),
+    resultSourceCode: 'MANUAL',
   };
 };

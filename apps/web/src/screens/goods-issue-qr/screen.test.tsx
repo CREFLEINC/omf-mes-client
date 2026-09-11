@@ -62,6 +62,11 @@ interface Options {
   reports?: Request[];
   /** 서버가 그린 것을 못 주는 경우 */
   renditionFails?: boolean;
+  /**
+   * 렌디션 조회가 실제로 몇 번 나갔는지 담아 둔다. 대응표 P1 「미구현 5건」— 이 경로는 서버에
+   * 없어 제품 코드가 부르면 안 된다. 이 배열이 계속 비어 있어야 그 사실이 지켜진 것이다.
+   */
+  renditionCalls?: string[];
   /** 인쇄 결과 보고가 거부되는 경우 */
   reportFails?: boolean;
   /** 발행 요약 조회 요청을 담아 둔다 — 질의 축을 검사한다 */
@@ -202,13 +207,16 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request) === '/app/document-issues/44001/rendition',
-    respond: () =>
-      options.renditionFails === true
+    respond: (request) => {
+      options.renditionCalls?.push(request.url);
+
+      return options.renditionFails === true
         ? jsonResponse({ message: '없다' }, { status: 404 })
         : new Response(new Uint8Array([1, 2, 3]), {
             status: 200,
             headers: { 'Content-Type': 'image/png' },
-          }),
+          });
+    },
   },
   {
     match: (request) => pathOf(request) === '/app/document-issues/44001:report-print',
@@ -781,16 +789,18 @@ describe('GoodsIssueQrScreen', () => {
     expect(kept).not.toHaveProperty('reissueReasonCode');
   });
 
-  it('발행한 뒤 그린 것을 받아 셸로 보내고 결과를 보고한다', async () => {
+  /*
+   * ⛔⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1 「미구현
+   * 5건」: `GET /app/document-issues/{id}/rendition`). 원래 이 시험은 그림을 실제로 받아 셸에
+   * 넘기고 SUCCEEDED 로 보고하는 정상 경로를 쟀다 — 그 경로는 더는 없다. **발행 자체는 그대로
+   * 된다**는 것과, 그림을 «부르러 가지도 않는다»는 것(완료 조건)을 대신 잰다. 인쇄 실패로
+   * 보고되는 나머지 사실은 바로 아래 「그린 것을 못 받으면…」 시험이 잰다.
+   */
+  it('발행은 되지만 그림을 받으러 네트워크 요청을 보내지 않는다', async () => {
     const user = userEvent.setup();
-    const reports: Request[] = [];
-    const saved: Uint8Array[] = [];
-    installPrintBridge(async (bytes) => {
-      saved.push(bytes);
-
-      return 'C:/labels/sample.png';
-    });
-    renderScreen({ issueCounts: { 1001: 0 }, reports });
+    const renditionCalls: string[] = [];
+    installPrintBridge(async () => 'C:/labels/sample.png');
+    renderScreen({ issueCounts: { 1001: 0 }, renditionCalls });
 
     await screen.findByText('LOT-SAMPLE-20');
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
@@ -798,15 +808,7 @@ describe('GoodsIssueQrScreen', () => {
 
     /* ⛔ 인쇄 성공은 띠로 말하지 않는다 — 발행 띠 하나면 된다(2026-09-09). */
     expect(await screen.findByText(t.result.issued(1))).toBeInTheDocument();
-    expect(saved).toHaveLength(1);
-    expect(reports).toHaveLength(1);
-
-    const report = reports[0];
-
-    if (report === undefined) throw new Error('인쇄 보고가 없습니다');
-
-    expect(report.headers.get('X-Worker-No')).toBe('3391');
-    expect(await report.json()).toEqual({ outcome: 'SUCCEEDED' });
+    expect(renditionCalls).toHaveLength(0);
   });
 
   it('인쇄가 실패해도 발행 기록은 남고, 실패를 사유와 함께 보고한다', async () => {
@@ -865,7 +867,14 @@ describe('GoodsIssueQrScreen', () => {
     expect(reports).toHaveLength(0);
   });
 
-  it('인쇄는 됐는데 보고를 못 하면 그것을 성공으로 접지 않는다', async () => {
+  /*
+   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 «인쇄는 됐는데
+   * 보고만 실패한» 상태(`printedUnreported`)를 쟀다 — 그림을 못 받아 인쇄 자체가 없으니 그
+   * 상태에 이제 이를 수 없다. 인쇄도 안 되고 그 실패 보고까지 실패하면 그것을 성공
+   * 유사(`printedUnreported`)로도, 「아무것도 안 했다」로도 접지 않고 「보고까지 실패했다」로
+   * 말하는 지금의 실제 갈래를 잰다.
+   */
+  it('그림도 못 받고 보고도 실패하면 성공과 헷갈리지 않게 말한다', async () => {
     const user = userEvent.setup();
     installPrintBridge(() => Promise.resolve('C:/labels/sample.png'));
     renderScreen({ issueCounts: { 1001: 0 }, reportFails: true });
@@ -874,7 +883,8 @@ describe('GoodsIssueQrScreen', () => {
     await user.click(within(rowFor('LOT-SAMPLE-20')).getByRole('checkbox'));
     await user.click(screen.getByRole('button', { name: t.action.issue }));
 
-    expect(await screen.findByText(t.result.printedUnreported)).toBeInTheDocument();
+    expect(await screen.findByText(t.result.reportFailed)).toBeInTheDocument();
+    expect(screen.queryByText(t.result.printedUnreported)).not.toBeInTheDocument();
   });
 
   it('인쇄 결과 보고에도 멱등 키를 싣는다', async () => {

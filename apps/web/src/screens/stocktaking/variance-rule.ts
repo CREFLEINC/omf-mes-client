@@ -60,8 +60,15 @@ export const isReasonRequired = ({ isBlind, systemQty, qty }: VarianceRuleInput)
 };
 
 export interface VarianceStaleInput {
-  /** **서버가 준 실물 수량** — 그 값으로 서버가 차이를 계산해 내려보냈다. */
+  /**
+   * **서버가 준 실물 수량** — 그 값으로 서버가 차이를 계산해 내려보냈다.
+   *
+   * ⚠ **`counted`가 거짓이면 이 값은 0으로 마스킹된 것이지 「저장된 실물 수량」이 아니다**
+   * (통보 273). 이 필드만 보고 낡음을 판정하지 않는 이유가 `counted`를 별도로 받는 이유다.
+   */
   savedQty: number;
+  /** 이 줄을 실제로 세었는가. 거짓이면 `savedQty`가 마스킹된 0이라 견줄 저장값이 없다(통보 273). */
+  counted: boolean;
   qty: QtyParse;
 }
 
@@ -75,6 +82,10 @@ export interface VarianceStaleInput {
  *
  * 아직 치지 않은 줄은 낡지 않았다. 빈 칸에도 표식을 붙이면 위치를 여는 순간 전 줄에 표식이
  * 서서 정작 값을 고친 줄이 눈에 띄지 않는다.
+ *
+ * **미실사 줄(`counted`가 거짓)도 낡지 않았다**(통보 273). 그 줄의 `savedQty`는 실제로 저장된
+ * 값이 아니라 0으로 마스킹된 값이다 — `counted`로 가리지 않으면 처음 세는 줄에 숫자를 치는
+ * 순간 「낡았다」는 표식이 서고, 사용자는 저장한 적 없는 값과 견줘졌다는 사실을 알 길이 없다.
  */
-export const isVarianceStale = ({ savedQty, qty }: VarianceStaleInput): boolean =>
-  qty.kind === 'qty' && qty.value !== savedQty;
+export const isVarianceStale = ({ savedQty, counted, qty }: VarianceStaleInput): boolean =>
+  counted && qty.kind === 'qty' && qty.value !== savedQty;

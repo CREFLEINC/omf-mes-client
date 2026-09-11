@@ -10,7 +10,7 @@ import {
   type CountLineColumnsInput,
   type CountLineTableProps,
 } from './count-line-table';
-import { blindCountLineResponse, countLineFixtures } from './fixtures';
+import { blindCountLineResponse, countLineFixtures, uncountedLineResponse } from './fixtures';
 import { EMPTY_LINE_DRAFTS, setDraftQty, setDraftReason, type LineDrafts } from './line-draft';
 import { toLineRows, type LineRowView } from './line-replace-request';
 import type { ReferenceSource } from './lookups';
@@ -385,14 +385,36 @@ describe('CountLineTable — 차이 칸', () => {
 
   /*
    * **계약이 필수라고 말해도 런타임에 없을 수 있다**(계획 결정 4 · 어긋남 1).
-   * 비블라인드인데 수량이 오지 않은 어긋남에서 `undefined`가 수량 자리에 그려지지 않아야 한다.
+   * 비블라인드인데 장부 수량이 오지 않은 어긋남에서 `undefined`가 수량 자리에 그려지지 않아야 한다.
+   *
+   * ⚠ **길이가 1이다**(통보 273으로 정정 — 예전에는 2). `blindCountLineResponse`가 이제
+   * `systemQty`만 뺀다 — `varianceQty`는 결측이 아니라 `counted`로 마스킹되는 값이라 이
+   * fixture(`counted: true`)에서는 서버가 준 실제 차이(-2)가 그대로 실린다(fixtures.ts).
    */
-  it('수량이 오지 않은 줄은 그 사정을 밝힌다', () => {
+  it('장부 수량이 오지 않은 줄은 그 사정을 밝힌다', () => {
     const missing = [toCountLineView(blindCountLineResponse())];
 
-    renderTable({ rows: toLineRows({ lines: missing, drafts: EMPTY_LINE_DRAFTS, isBlind: false }) });
+    renderTable({
+      rows: toLineRows({ lines: missing, drafts: EMPTY_LINE_DRAFTS, isBlind: false }),
+    });
 
-    expect(screen.getAllByText(t.values.qtyNotProvided)).toHaveLength(2);
+    expect(screen.getAllByText(t.values.qtyNotProvided)).toHaveLength(1);
+  });
+
+  /**
+   * **차이는 `counted`로 마스킹된다**(통보 273). 미실사 줄은 서버가 `varianceQty`를 0으로
+   * 마스킹해 보내지만, 화면은 그 0을 「차이 없음」으로 읽지 않고 장부 수량과 같은 「없음」
+   * 문구로 낸다 — 마스킹된 값과 실제 0을 구분하지 못하면 세지 않은 줄이 「차이가 없다」로 보인다.
+   */
+  it('미실사 줄의 차이는 마스킹된 0이 아니라 없음으로 보인다', () => {
+    const uncounted = [toCountLineView(uncountedLineResponse())];
+
+    renderTable({
+      rows: toLineRows({ lines: uncounted, drafts: EMPTY_LINE_DRAFTS, isBlind: false }),
+    });
+
+    expect(screen.getAllByText(t.values.qtyNotProvided)).toHaveLength(1);
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 });
 

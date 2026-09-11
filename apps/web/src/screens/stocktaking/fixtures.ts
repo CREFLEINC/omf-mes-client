@@ -154,19 +154,43 @@ export const countLineResponse = (
 ): InventoryCountLineResponse => ({ ...BASE_LINE, ...overrides });
 
 /**
- * **블라인드 실사의 라인 응답을 모사한다** — 장부 수량과 차이 수량이 **아예 오지 않는다**.
+ * **블라인드 실사의 라인 응답을 모사한다** — 장부 수량이 **아예 오지 않는다.**
  *
- * 계약은 둘 다 `required`로 두지만 `systemQty`의 설명이 「블라인드 실사에서는 내려보내지
- * 않는다」다(계획 결정 4 · 어긋남 1). 타입과 런타임이 어긋나는 자리라 **여기서 한 번만
- * 단언으로 좁힌다** — 이 어긋남을 코드 여기저기서 되풀이해 캐스팅하지 않기 위해서다.
+ * 계약은 `systemQty`를 `required`로 두지만 그 설명은 「블라인드 실사에서는 내려보내지 않는다」다
+ * (계획 결정 4 · 어긋남 1, 이후 통보 273으로 실제 서버 동작이 확정됐다). 타입과 런타임이 어긋나는
+ * 자리라 **여기서 한 번만 단언으로 좁힌다** — 이 어긋남을 코드 여기저기서 되풀이해 캐스팅하지
+ * 않기 위해서다.
+ *
+ * ⚠ **`varianceQty`는 빼지 않는다**(통보 273으로 정정 — 예전에는 이 값도 함께 뺐다). 실려 오지
+ * 않는 것은 `systemQty`뿐이다. `varianceQty`는 미실사 줄에서도 **키 자체는 항상 실려 오고 값만
+ * 0으로 마스킹돼 있다** — 실려 오는지가 아니라 `counted`가 마스킹 여부를 가른다. `BASE_LINE`의
+ * `counted: true`·`varianceQty: -2`가 그대로 남는 것은 **실사한 줄의 블라인드 응답**을 뜻한다.
  */
 export const blindCountLineResponse = (
   overrides: Partial<InventoryCountLineResponse> = {},
 ): InventoryCountLineResponse => {
-  const { systemQty: _systemQty, varianceQty: _varianceQty, ...withoutQty } = BASE_LINE;
+  const { systemQty: _systemQty, ...withoutSystemQty } = BASE_LINE;
 
-  return { ...withoutQty, ...overrides } as InventoryCountLineResponse;
+  return { ...withoutSystemQty, ...overrides } as InventoryCountLineResponse;
 };
+
+/**
+ * **미실사 줄의 응답을 모사한다**(통보 273). `counted`가 거짓이고, 계약대로 `countedQty`·
+ * `varianceQty`가 0으로 마스킹돼 있다 — `systemQty`는 (비블라인드라면) 그대로 실려 온다.
+ *
+ * ⚠ **이 값을 실제 「0개를 세었고 차이가 없다」로 읽지 않는다.** 이 픽스처가 검사하는 것이
+ * 정확히 그 반대다 — `counted: false`인데도 화면이 0을 진짜 값으로 읽으면 실패해야 한다.
+ */
+export const uncountedLineResponse = (
+  overrides: Partial<InventoryCountLineResponse> = {},
+): InventoryCountLineResponse => ({
+  ...BASE_LINE,
+  counted: false,
+  countedQty: 0,
+  varianceQty: 0,
+  varianceReasonCode: null,
+  ...overrides,
+});
 
 /**
  * 창고 목록. **참조 풀이와 조건 줄 선택지가 같은 목록을 쓴다.**

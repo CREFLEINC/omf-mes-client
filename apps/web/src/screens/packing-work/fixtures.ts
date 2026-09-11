@@ -39,8 +39,11 @@ export const makeLot = (lotId: number, lotNo: string, overrides: Partial<Lot> = 
   sourceTypeCode: 'WORK_ORDER',
   sourceId: WORK_ORDER_ID,
   statusCode: 'NORMAL',
-  workOrderSequenceNo: null,
-  workOrderLotCount: null,
+  /*
+   * ⛔ **`workOrderSequenceNo`·`workOrderLotCount` 를 더는 싣지 않는다** — 계약에서 완전히
+   * 빠졌고 대체 필드가 없다(생성 타입 `components['schemas']['Lot']` · 2026-09-11 전달본).
+   * 지어낸 값으로 채우지 않는다(추측 금지).
+   */
   completedAt: '2026-09-02T09:12:00+09:00',
   ...overrides,
 });

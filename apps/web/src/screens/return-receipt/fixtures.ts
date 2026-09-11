@@ -65,7 +65,7 @@ export const shipmentFixture = (overrides: Partial<Shipment> = {}): Shipment => 
           warehouseId: 1002,
           allocatedQty: 180,
           uomId: 7001,
-          shippingInspectionStatusCode: 'PASSED',
+          /* shippingInspectionStatusCode 는 2026-09-11 전달본 계약에서 빠졌다 — 같은 판정을 oqcPassed(boolean)가 대신한다(ShipmentLotAllocation 스키마 주석). 이 화면은 두 값 다 읽지 않는다. */
           oqcPassed: true,
           packedQty: 180,
         },
@@ -80,7 +80,7 @@ export const shipmentFixture = (overrides: Partial<Shipment> = {}): Shipment => 
           warehouseId: 1002,
           allocatedQty: 120,
           uomId: 7001,
-          shippingInspectionStatusCode: 'PASSED',
+          /* shippingInspectionStatusCode 는 2026-09-11 전달본 계약에서 빠졌다 — 같은 판정을 oqcPassed(boolean)가 대신한다(ShipmentLotAllocation 스키마 주석). 이 화면은 두 값 다 읽지 않는다. */
           oqcPassed: true,
           packedQty: 120,
         },
@@ -116,7 +116,7 @@ export const secondShipmentFixture = (): Shipment =>
             warehouseId: 1002,
             allocatedQty: 200,
             uomId: 7001,
-            shippingInspectionStatusCode: 'PASSED',
+            /* shippingInspectionStatusCode 는 2026-09-11 전달본 계약에서 빠졌다 — 같은 판정을 oqcPassed(boolean)가 대신한다(ShipmentLotAllocation 스키마 주석). 이 화면은 두 값 다 읽지 않는다. */
             oqcPassed: true,
             packedQty: 200,
           },
@@ -136,8 +136,7 @@ export const lotFixture = (overrides: Partial<Lot> = {}): Lot => ({
   sourceTypeCode: 'PRODUCTION_RESULT',
   sourceId: 1,
   statusCode: 'NORMAL',
-  workOrderSequenceNo: null,
-  workOrderLotCount: null,
+  /* workOrderSequenceNo·workOrderLotCount 는 2026-09-11 전달본 계약에서 완전히 빠졌다(대체 필드 없음) — 지어내지 않는다. */
   ...overrides,
 });
 

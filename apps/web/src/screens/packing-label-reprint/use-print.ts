@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchLabelRendition } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
 import {
   LABEL_RENDITION_FORMAT,
@@ -88,19 +89,12 @@ export const usePrintRunner = (workerNo: string | null): PrintRunner => {
       setState({ phase: 'sending', printed: 0, reason: null, targets });
 
       const outcome: PrintOutcome = await printAll(targets, {
-        fetchRendition: async (documentIssueLogId) => {
-          const data = await runRequest<ArrayBuffer>(() =>
-            client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
-              params: {
-                path: { documentIssueLogId },
-                query: { format: LABEL_RENDITION_FORMAT },
-              },
-              parseAs: 'arrayBuffer',
-            }),
-          );
-
-          return new Uint8Array(data);
-        },
+        /*
+         * ⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1
+         * 「미구현 5건」). `client.GET` 을 부르지 않고 항상 거부하는 대역을 부른다 — `printAll`
+         * 이 이미 「멈춘 자리를 실패 사유로 보고한다」를 갖고 있어 그대로 태운다.
+         */
+        fetchRendition: async () => new Uint8Array(await fetchLabelRendition()),
         send: async (bytes, label) => {
           await shell.save(bytes, label, new Date().toISOString(), LABEL_RENDITION_FORMAT);
         },

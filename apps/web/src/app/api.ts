@@ -23,8 +23,16 @@ const resolveBaseUrl = (): string => {
  * 관리웹은 브라우저에서 도니 셸 통로가 없어 이 함수가 언제나 `null` 을 낸다 — 헤더가 붙지
  * 않으므로 관리웹 동작은 그대로다. POP 전용 클라이언트를 따로 만들지 않는 이유가 바로 위
  * 줄이다 — 인스턴스가 둘이면 ETag 보관소가 흩어진다.
+ *
+ * ⭐ **관리웹은 쿠키 세션으로 인증한다**(README 인증 공통 규칙 · 대응표 P0 「세션 인증」).
+ * `POST /app/sessions` 가 내리는 `omf_session` 쿠키를 로그인 외 모든 요청이 실어야 하고,
+ * 브라우저 기본값(`same-origin`)으로는 개발 환경의 교차 출처 호출(관리웹·목 서버가 다른
+ * 포트)에서 쿠키가 빠진다. `credentials: 'include'`는 그 쿠키 축이고 `authToken`(POP 단말
+ * 토큰)은 위 줄의 헤더 축이다 — 관리웹에서는 `authToken` 이 항상 `null` 을 내므로 두 축이
+ * 부딪히지 않고 나란히 선다.
  */
 export const apiClient: ApiClient = createApiClient({
   baseUrl: resolveBaseUrl(),
+  credentials: 'include',
   authToken: currentTerminalToken,
 });

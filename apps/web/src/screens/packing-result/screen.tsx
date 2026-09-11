@@ -12,6 +12,7 @@ import { confirmLockReason } from './confirm-lock';
 import { ContentsTable, segmentLotNo } from './contents-table';
 import { usePackingIdentity } from './entry-context';
 import {
+  HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE,
   useHandlingUnitCancel,
   useHandlingUnitCreate,
   usePackingConfirm,
@@ -101,14 +102,21 @@ export const PackingResultScreen = () => {
   const parents = useParentCandidates(warehouseId);
   const shipmentAllocations = useShipmentAllocations(shipmentId);
   const progress = toProgress(shipmentAllocations.allocations);
-  const headerAllocation = entry?.allocations[0] ?? label;
-  const oqcStatuses = [
-    ...new Set(
-      shipmentAllocations.allocations.map(
-        (allocation) => t.oqc.status[allocation.shippingInspectionStatusCode],
-      ),
-    ),
-  ];
+  /*
+   * ⛔⛔ **`ShipmentLotAllocation.shippingInspectionStatusCode` 가 계약에서 빠졌다**(생성 타입
+   * `components['schemas']['ShipmentLotAllocation']` · 2026-09-11 전달본 — 다섯 상태값
+   * (`NOT_REQUIRED`·`PENDING`·`PASSED`·`REJECTED`·`HELD`) 중 어느 것도 더는 내려오지 않는다).
+   * 남은 것은 `oqcPassed`(불리언)뿐인데, 계약이 「검사 대상이 아닌 배분도 true 로 내린다」고
+   * 못박아 **`NOT_REQUIRED` 와 `PASSED` 를 한 값으로 묶는다** — 그 값으로 다섯 상태 중 하나를
+   * 되짚으면 실제로는 「대기·불합격·보류」였던 배분이 「합격」처럼 보일 수 있다(추측 금지).
+   * 그래서 상태 «문구»는 지어내지 않고 이미 있던 「모른다」 표시(`—`)로 떨어진다.
+   *
+   * ⭐ **실제 게이팅은 이 문구가 아니다.** 납품 라벨 자동 발행(`automatic-labels.tsx`)과
+   * 라벨 화면(`shipping-packing-label/types.ts` 의 `isIssuable`)은 이미 `oqcPassed` 를 직접
+   * 쓰고 있고, 그 값은 계약에 그대로 남아 있다 — 이 줄은 «표시»만 잃었다. 서버가 상태값을
+   * 다시 내리면 이 자리만 되돌리면 된다.
+   */
+  const oqcStatuses = shipmentAllocations.allocations.length > 0 ? ['—'] : [];
 
   const createUnit = useHandlingUnitCreate();
   const cancelUnit = useHandlingUnitCancel();
@@ -208,7 +216,12 @@ export const PackingResultScreen = () => {
         if (first !== undefined) {
           setEntry({
             shipmentId: first.shipmentId,
-            shipmentNo: first.shipmentRequestNo ?? `#${String(first.shipmentId)}`,
+            /*
+             * ⛔⛔ **`ShipmentLotAllocation.shipmentRequestNo` 가 계약에서 빠졌다**(생성 타입
+             * · 2026-09-11 전달본). 이 자리는 원래도 «모르면 ID 로 대신한다»는 자리였다 —
+             * 이제는 늘 그 자리로 떨어진다(추측 금지 — 지어낼 값이 없다).
+             */
+            shipmentNo: `#${String(first.shipmentId)}`,
             allocations: outcome.allocations,
           });
         }
@@ -329,13 +342,14 @@ export const PackingResultScreen = () => {
          */}
         {shipmentId !== null && (
           <p className="pop-context">
-            {headerAllocation?.shipmentRequestNo !== undefined &&
-            headerAllocation.customerName !== undefined
-              ? t.header.shipmentContext(
-                  headerAllocation.shipmentRequestNo,
-                  headerAllocation.customerName,
-                )
-              : t.header.shipment(shipmentId)}
+            {/*
+             * ⛔⛔ **`ShipmentLotAllocation.shipmentRequestNo`·`customerName` 이 계약에서
+             * 빠졌다**(생성 타입 · 2026-09-11 전달본 — 둘 다 어느 스키마에도 없다). 「출하요청
+             * 번호 · 고객명」맥락을 화면이 지어낼 수 없다(추측 금지) — 이미 있던 「모른다」
+             * 표시(`t.header.shipment(shipmentId)`)로 늘 떨어진다. 서버가 두 값을 다시
+             * 내리면 이 자리만 되돌리면 된다.
+             */}
+            {t.header.shipment(shipmentId)}
           </p>
         )}
         {/*
@@ -562,7 +576,6 @@ export const PackingResultScreen = () => {
                 setMergeNote(null);
               }}
             />
-
           </div>
 
           {/*
@@ -616,7 +629,6 @@ export const PackingResultScreen = () => {
           <span>{t.progress.packed(progress.packedCount)}</span>
           <span>{t.progress.unpacked(progress.unpackedQty)}</span>
         </section>
-
       </div>
 
       {/* 액션바 88 — 화면 바닥에 고정한다. 본문이 밀어내면 확정이 화면 밖으로 나간다. */}
@@ -672,6 +684,16 @@ export const PackingResultScreen = () => {
             {t.actions.cancelUnit}
           </Button>
         ) : null}
+
+        {/*
+         * ⛔⛔ **취소는 지금 늘 거부된다** — `DELETE /inventory/handling-units/{id}` 가 서버에
+         * 없다(`mutations.ts` 의 `useHandlingUnitCancel` 머리말 참고). 저장 실패·네트워크
+         * 오류로 보이면 사용자가 「다시」를 반복하므로, 사유를 그대로 보여 «아직 지원하지
+         * 않는 기능»임을 드러낸다 — 열린 포장은 그대로 남는다.
+         */}
+        {cancelUnit.isError && (
+          <p className="packing-lock">{HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE}</p>
+        )}
 
         {/*
          * ⛔ **읽은 것이 없으면 무를 것도 없다.** 아무것도 읽지 않은 채로 열려 있어, 눌러도

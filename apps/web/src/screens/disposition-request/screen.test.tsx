@@ -75,8 +75,16 @@ describe('DispositionRequestScreen — 진입 목록', () => {
     });
   });
 
-  /* 부적합 상태 셋은 부적합 목록에서 온다(요구서 §3-7 둘째 행) — 소스가 바뀐다. */
-  it('상태 「판정 대기」를 고르면 부적합 목록으로 소스가 바뀐다', async () => {
+  /*
+   * 부적합 상태 셋은 부적합 목록에서 온다(요구서 §3-7 둘째 행). **그런데 지금은 그 목록을
+   * 부르지 않는다** — 통보 186이 `openedFrom`·`openedTo`를 필수로 올렸고 이 화면에는 기간
+   * 조건이 없다. 값을 지어내 채우면 공유계약 L-3-2 ⑶의 무계 목록이 되므로, 서버팀 확인까지
+   * 요청을 세우지 않는다(`filters.ts`의 `NonconformanceListQuery` 주석에 사유 전문).
+   *
+   * ⭐ **요청이 나가지 «않는 것»을 재는 시험이다.** 조회 실패로 보이면 안 되고, 빈 목록으로
+   * 보여도 안 된다 — 적체 관리 화면에서 그 둘은 「미처리 건이 없다」로 읽힌다.
+   */
+  it('상태 「판정 대기」를 골라도 부적합 목록을 부르지 않고 사유를 말한다', async () => {
     const { user } = renderScreen();
     await screen.findByRole('button', { name: t.actions.selectRow('LOT-TEST-0311') });
 
@@ -84,13 +92,12 @@ describe('DispositionRequestScreen — 진입 목록', () => {
     await user.click(screen.getByRole('option', { name: t.values.stage.PENDING_DECISION }));
     await user.click(screen.getByRole('button', { name: messages.common.search }));
 
-    await waitFor(() => {
-      expect(
-        requestedPaths().some((path) =>
-          path.startsWith('/quality/nonconformances?statusCode=PENDING_DECISION'),
-        ),
-      ).toBe(true);
-    });
+    expect(await screen.findByText(t.periodContractBlocked)).toBeInTheDocument();
+    expect(requestedPaths().some((path) => path.startsWith('/quality/nonconformances?'))).toBe(
+      false,
+    );
+    /* 「다시 시도」가 서면 사용자가 고칠 수 있는 실패로 읽는다 — 고칠 수 있는 것이 없다. */
+    expect(screen.queryByRole('button', { name: messages.common.retry })).not.toBeInTheDocument();
   });
 
   it('목록 조회가 실패하면 다시 시도할 수 있다', async () => {

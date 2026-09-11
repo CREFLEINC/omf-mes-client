@@ -1,3 +1,4 @@
+import type { ConflictCause } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
 /**
@@ -22,6 +23,13 @@ export interface ConfirmOutcome {
   shipmentNo: string;
   /** 성공이면 `null`. */
   failure: ConfirmFailureKind | null;
+  /**
+   * `failure`가 `version-conflict`일 때만 있다 — 통보 221로 이 오퍼레이션의 모든 409가
+   * `conflictCause`를 반드시 싣는다. 다른 사용자·ERP 재동기화·워커 중 무엇이 원인이냐에 따라
+   * 사용자가 할 수 있는 다음 행동이 달라지므로 「다른 처리가 먼저 반영됐습니다」 하나로
+   * 뭉뚱그리지 않는다(`failureReason`이 이어받는다).
+   */
+  conflictCause?: ConflictCause;
 }
 
 export interface ConfirmSummary {
@@ -55,7 +63,11 @@ export const toFailureKind = (status: number, code: string | undefined): Confirm
   return 'unknown';
 };
 
-export const failureReason = (kind: ConfirmFailureKind): string => {
+/**
+ * @param conflictCause `version-conflict`일 때만 뜻이 있다. 없으면(계약 밖 값이거나 아직 안 실은
+ *   구버전 서버) 예전처럼 공용 문구로 남는다 — 통보 221 전에도 이 함수가 성립해야 한다.
+ */
+export const failureReason = (kind: ConfirmFailureKind, conflictCause?: ConflictCause): string => {
   const t = messages.shipmentConfirm.result.reasons;
 
   switch (kind) {
@@ -64,7 +76,12 @@ export const failureReason = (kind: ConfirmFailureKind): string => {
     case 'cancel-in-progress':
       return t.cancelInProgress;
     case 'version-conflict':
-      return t.versionConflict;
+      /*
+       * ⭐ **원인별로 다른 안내다**(통보 221). `save-error-banner.tsx`가 단건 저장 충돌에 쓰는
+       * 것과 같은 공용 문구(`messages.conflict`)를 쓴다 — 다건 확정도 같은 「저장 경합」이라
+       * 문구를 새로 짓지 않는다.
+       */
+      return conflictCause === undefined ? t.versionConflict : messages.conflict[conflictCause];
     case 'lock-unavailable':
       return t.lockUnavailable;
     default:

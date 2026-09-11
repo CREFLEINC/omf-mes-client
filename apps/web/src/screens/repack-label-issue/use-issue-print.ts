@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { fetchLabelRendition } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
 import { printFailureReason, renditionShell } from './print';
 import { LABEL_RENDITION_FORMAT } from './types';
@@ -141,15 +142,12 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
       setState({ phase: 'fetching', imageUrl: null, reason: null, target });
 
       try {
-        const data = await runRequest<ArrayBuffer>(() =>
-          client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
-            params: {
-              path: { documentIssueLogId: target.documentIssueLogId },
-              query: { format: LABEL_RENDITION_FORMAT },
-            },
-            parseAs: 'arrayBuffer',
-          }),
-        );
+        /*
+         * ⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1
+         * 「미구현 5건」). `client.GET` 을 부르지 않고 항상 거부하는 대역을 부른다 — 아래
+         * `catch` 가 «renditionFailed» 로 받아, «발행 실패»와 뒤섞이지 않게 한다.
+         */
+        const data = await fetchLabelRendition();
 
         const received = new Uint8Array(data);
         bytes.current = received;
@@ -165,15 +163,13 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
         const previewBytes =
           LABEL_RENDITION_FORMAT === 'png'
             ? received
-            : await runRequest<ArrayBuffer>(() =>
-                client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
-                  params: {
-                    path: { documentIssueLogId: target.documentIssueLogId },
-                    query: { format: 'png' },
-                  },
-                  parseAs: 'arrayBuffer',
-                }),
-              )
+            : /*
+               * ⛔ 여기도 서버에 없는 경로다 — 위와 같은 대역을 부른다. 실제로는 위 줄에서
+               * 이미 던져 이 자리까지 오지 않지만(첫 호출도 같은 경로다), 서버가 구현해
+               * 첫 호출이 성공하게 되는 날에도 «명령형 인쇄용 프린터 형식은 png 로 다시
+               * 받는다»는 이 갈래의 뜻은 그대로 남아야 한다.
+               */
+              await fetchLabelRendition()
                 .then((drawn) => new Uint8Array(drawn))
                 .catch(() => null);
 

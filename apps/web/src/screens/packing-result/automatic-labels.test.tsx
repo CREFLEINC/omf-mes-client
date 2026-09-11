@@ -10,11 +10,13 @@ import { AutomaticLabels, type AutomaticLabelRun } from './automatic-labels';
 
 const t = messages.packingResult.automaticLabels;
 
+/*
+ * ⛔ `shipmentRequestNo`·`customerName`·`shippingInspectionStatusCode` 를 더는 싣지 않는다 —
+ * 셋 다 계약에서 빠졌다(2026-09-11 전달본). 이 시험은 애초에 그 값을 읽지도 않았다.
+ */
 const allocation = (id: number, oqcPassed: boolean) => ({
   shipmentLotAllocationId: id,
   shipmentId: 501,
-  shipmentRequestNo: 'SYN-SR-0501',
-  customerName: '합성 거래처',
   shipmentLineId: 701,
   itemId: 801,
   itemCode: 'SYN-FG-01',
@@ -23,7 +25,6 @@ const allocation = (id: number, oqcPassed: boolean) => ({
   warehouseId: 1001,
   allocatedQty: 10,
   uomId: 2001,
-  shippingInspectionStatusCode: oqcPassed ? ('PASSED' as const) : ('PENDING' as const),
   oqcPassed,
   packedQty: 10,
 });
@@ -43,9 +44,25 @@ afterEach(() => {
 });
 
 describe('AutomaticLabels', () => {
-  it('포장 라벨 뒤 OQC 통과 납품 라벨만 Electron 인쇄 통로로 보내고 결과를 보고한다', async () => {
+  /*
+   * ⚠ **동작이 바뀌었다.** 이 시험은 원래 「포장 라벨 뒤 OQC 통과 납품 라벨도 함께 낸다」였다.
+   *
+   * ① `shipping-packing-label/codes.ts` 의 `DELIVERY_LABEL_ISSUE_LOCKED` 가 서버 결정
+   *    (대응표 P1 「공용 문서 발행」· I-27 마감 결정 — `DELIVERY_LABEL` 은 항상 422
+   *    `INVALID`)을 반영해 참으로 잠긴 뒤, 자동 출력도 `deliveryRows` 를 비워 납품 라벨
+   *    발행 자체를 시도하지 않는다(`automatic-labels.tsx`). `POST /app/document-issues`
+   *    는 포장 라벨 한 번만 나가는 것이 이제 맞는 동작이다.
+   *
+   * ② **포장 라벨도 인쇄까지 이어지지 않는다** — 이건 ①과 별개로, `GET
+   *    /app/document-issues/{id}/rendition` 경로 자체가 서버에 없다(대응표 P1 「미구현
+   *    5건」· `patterns/pop-label-rendition` 머리말). 그림을 받는 걸음이 셸을 보기도
+   *    전에 막혀 `shipping-packing-label/issue-flow.test.tsx` 의 같은 시험들과 같은
+   *    사유로 멈춘다 — Electron 인쇄 통로(`window.pop.rendition.save`)는 아예 불리지
+   *    않는다. 그래서 이 시험은 «발행 요청이 무엇을 실었는가»와 «셸을 부르지 않았는가»만
+   *    잰다.
+   */
+  it('납품 라벨은 발행 자체를 시도하지 않는다 — 포장 라벨도 그림을 받지 못해 인쇄로 가지 못한다', async () => {
     const issued: string[] = [];
-    const reported: number[] = [];
     const save = vi.fn(async () => 'syn://printed');
     Object.defineProperty(window, 'pop', {
       configurable: true,
@@ -87,12 +104,6 @@ describe('AutomaticLabels', () => {
             match: (request) =>
               request.method === 'POST' && new URL(request.url).pathname === '/app/document-issues',
             respond: (request) => {
-              const id = issued.length + 1;
-              const documentTypeCode = id === 1 ? 'PACKING_LABEL' : 'DELIVERY_LABEL';
-              const target =
-                id === 1
-                  ? { targetId: 4001, targetTypeCode: 'HANDLING_UNIT' }
-                  : { targetId: 9001, targetTypeCode: 'SHIPMENT_LOT_ALLOCATION' };
               void request
                 .clone()
                 .json()
@@ -104,9 +115,13 @@ describe('AutomaticLabels', () => {
                 {
                   items: [
                     {
-                      documentIssueLogId: id,
-                      documentTypeCode,
-                      target: { ...target, displayName: '합성 대상' },
+                      documentIssueLogId: 1,
+                      documentTypeCode: 'PACKING_LABEL',
+                      target: {
+                        targetId: 4001,
+                        targetTypeCode: 'HANDLING_UNIT',
+                        displayName: '합성 대상',
+                      },
                       issueSeq: 1,
                       issuedAt: '2026-09-09T03:00:00+09:00',
                       printOutcome: 'PENDING',
@@ -118,28 +133,33 @@ describe('AutomaticLabels', () => {
             },
           },
           {
+            /*
+             * ⛔ **닿을 일이 없다.** 그림을 받는 걸음이 `client.GET` 을 아예 부르지 않고
+             * `LabelRenditionNotReadyError` 로 곧바로 거부한다(`shipping-packing-label/
+             * mutations.ts` 의 `fetchRendition`). 스텁은 그대로 두어, 서버가 이 경로를
+             * 구현해 되돌릴 때 이 목도 다시 살아나게 한다.
+             */
             match: (request) => new URL(request.url).pathname.endsWith('/rendition'),
             respond: () => new Response(new Uint8Array([1, 2, 3])),
           },
           {
             match: (request) => new URL(request.url).pathname.endsWith(':report-print'),
-            respond: (request) => {
-              reported.push(
-                Number(new URL(request.url).pathname.match(/(\d+):report-print$/u)?.[1]),
-              );
-
-              return jsonResponse({ printOutcome: 'SUCCEEDED' });
-            },
+            respond: () => jsonResponse({ printOutcome: 'SUCCEEDED' }),
           },
         ]),
       },
     );
 
+    /* 발행 기록은 남는다 — 막힌 것은 그 뒤의 그림 취득뿐이다. */
+    expect(await screen.findByText(t.packingFailure(t.failures.render))).toBeInTheDocument();
+
     await waitFor(() => {
-      expect(issued).toEqual(['PACKING_LABEL', 'DELIVERY_LABEL']);
-      expect(save).toHaveBeenCalledTimes(2);
-      expect(reported).toEqual([1, 2]);
+      expect(issued).toEqual(['PACKING_LABEL']);
     });
+    /* ⛔ 납품 라벨은 절대 요청되지 않는다 — 잠긴 문서 유형을 서버에 묻지 않는다. */
+    expect(issued).not.toContain('DELIVERY_LABEL');
+    /* ⛔ 그림을 받지 못했으니 셸까지 넘어가지 않는다. */
+    expect(save).not.toHaveBeenCalled();
   });
 
   it('발행 실패는 포장을 다시 만들지 않고 실패한 라벨 발행만 재시도한다', async () => {

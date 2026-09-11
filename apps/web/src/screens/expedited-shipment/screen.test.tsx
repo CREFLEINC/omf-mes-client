@@ -250,4 +250,22 @@ describe('ExpeditedShipmentScreen', () => {
       expect(screen.getByRole('button', { name: t.submit })).toBeEnabled();
     });
   });
+
+  /*
+   * ⭐ 통보 221 — `expedited=true`는 창고 단위 관리 창고에서 활성 위치가 정확히 하나일 때만
+   * 위치 없이 처리된다. 이 화면은 위치 입력 칸이 없으므로(대응표 「보류」 — 임의로 만들지
+   * 않는다) 구역 단위로 관리되는 창고는 애초에 고를 수 없어야 한다 — 골라 봐야 확정에서 400을
+   * 만난다.
+   */
+  it('⭐ 구역 단위 관리 창고는 활성 창고에 섞여 있어도 후보에서 빠진다', async () => {
+    const { user } = renderScreen({ zoneManagedWarehouse: true });
+    await fillAll(user);
+
+    /* 창고 단위 관리 창고가 하나뿐이라 자동으로 채워지고, 구역 단위 관리 창고는 보이지 않는다. */
+    expect(await screen.findByText(/SYNTH-WH-1/)).toBeInTheDocument();
+    expect(screen.queryByText(/SYNTH-WH-ZONE/)).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.submit })).toBeEnabled();
+    });
+  });
 });

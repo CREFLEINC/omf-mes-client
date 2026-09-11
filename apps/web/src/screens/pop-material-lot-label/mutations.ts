@@ -1,5 +1,5 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
-import { labelRenditionFormat } from '../../patterns/pop-label-rendition';
+import { fetchLabelRendition, labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
@@ -138,17 +138,13 @@ const createIssue = async (
  * 서버가 그린 라벨을 받는다.
  *
  * ⛔ **형식은 서버가 정한 것을 그대로 쓴다** — 라벨은 이미지(`png`)다. 화면이 다시 그리지 않는다.
+ *
+ * ⛔⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1 「미구현
+ * 5건」). `client.GET` 을 부르지 않고 항상 거부하는 대역을 부른다 — LOT 등록·발행 기록은
+ * 이미 남았으므로 `render` 걸음에서 멈춘 것으로만 다루고 등록을 되풀이하지 않는다(위 `IssueStep`
+ * 표 참고).
  */
-const fetchRendition = async (client: Client, documentIssueLogId: number): Promise<Uint8Array> => {
-  const data = await runRequest(() =>
-    client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
-      params: { path: { documentIssueLogId }, query: { format: LABEL_FORMAT } },
-      parseAs: 'arrayBuffer',
-    }),
-  );
-
-  return new Uint8Array(data as unknown as ArrayBuffer);
-};
+const fetchRendition = async (): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition());
 
 const reportPrint = async (
   client: Client,
@@ -301,7 +297,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           issueKeys.delete(row.inboundReceiptLineId);
 
           enter('render');
-          const bytes = await fetchRendition(client, issue.documentIssueLogId);
+          const bytes = await fetchRendition();
 
           enter('print');
           const shell = popShell();

@@ -100,7 +100,16 @@ const entryOfShipment = async (client: Client, shipment: Shipment): Promise<Ship
   allocations: await unpackedAllocations(client, shipment.shipmentId),
 });
 
-/** 출하번호 정확 일치 스캔. 부분 검색이나 납품 라벨 q와 의미를 섞지 않는다. */
+/**
+ * 출하번호 정확 일치 스캔.
+ *
+ * ⚠ **원본 계약과 달라졌다.** 원본은 `shipmentNo` 정확 일치 파라미터를 따로 두고 「그 조회는
+ * 기간을 생략할 수 있다」고 적었지만, 서버 구현 기준(v0.1.2)은 그 파라미터 자체가 없다 — 남은
+ * 것은 검색용 `q`뿐이고 `shipDateFrom`은 이 오퍼레이션의 다른 호출과 똑같이 필수다(통보 219).
+ * 그래서 이 스캔도 「오늘 영업일」로 좁힌다 — `useTodayShipments`가 이미 쓰는 같은 기본 기간을
+ * 그대로 물려받은 것이지 새로 지어낸 값이 아니다. `q`가 부분 일치일 수 있어 응답에서 정확히
+ * 같은 출하번호만 다시 골라낸다 — 그러지 않으면 부분 일치로 엉뚱한 출하를 집을 수 있다.
+ */
 export const useShipmentScan = (): UseMutationResult<ShipmentEntry | null, Error, string> => {
   const { client } = useApiClient();
 
@@ -108,10 +117,18 @@ export const useShipmentScan = (): UseMutationResult<ShipmentEntry | null, Error
     mutationFn: async (shipmentNo: string) => {
       const data = await runRequest(() =>
         client.GET('/logistics/shipments', {
-          params: { query: { pickedOnly: true, shipmentNo, page: 1, size: 1 } },
+          params: {
+            query: {
+              pickedOnly: true,
+              q: shipmentNo,
+              shipDateFrom: localDate(new Date()),
+              page: 1,
+              size: 50,
+            },
+          },
         }),
       );
-      const shipment = data.items[0];
+      const shipment = data.items.find((item) => item.shipmentNo === shipmentNo);
 
       return shipment === undefined ? null : entryOfShipment(client, shipment);
     },

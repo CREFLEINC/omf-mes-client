@@ -123,11 +123,15 @@ describe('ShipmentConfirmScreen', () => {
    * ⭐⭐ **성공분을 유지한다**(§6). 건별 호출이라 함께 되돌리지 않고 확정을 되돌릴 경로도
    * 없다 — 「전부 실패」로 뭉뚱그리면 사용자가 **이미 확정된 건을 다시 확정하러 간다.**
    */
+  /*
+   * ⭐ 통보 221 — 서버 구현 기준 모든 409에 `conflictCause`가 실린다. 실제로 보내는 모양대로
+   * 시험해야 「값을 못 받았을 때만 통과하는」 시험이 되지 않는다.
+   */
   it('⭐⭐ 일부가 실패해도 성공분을 유지해 보이고, 실패한 건에 사유를 붙인다', async () => {
     const { user } = renderScreen({
       confirmResponse: (shipmentId) =>
         shipmentId === 461
-          ? new Response(JSON.stringify({ code: 'VERSION_CONFLICT' }), {
+          ? new Response(JSON.stringify({ code: 'VERSION_CONFLICT', conflictCause: 'user' }), {
               status: 409,
               headers: { 'Content-Type': 'application/json' },
             })
@@ -139,7 +143,27 @@ describe('ShipmentConfirmScreen', () => {
     await confirmInDialog(user);
 
     expect(await screen.findByText(t.result.partial(1, 1))).toBeInTheDocument();
-    expect(await screen.findByText(t.result.reasons.versionConflict)).toBeInTheDocument();
+    expect(await screen.findByText(messages.conflict.user)).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **원인이 다르면 안내도 다르다**(통보 221) — ERP 재동기화가 원인이면 「다른 사용자가」로
+   * 말하지 않는다. 그렇게 말하면 사용자가 헛되이 재시도한다(대응표 「재등록·출하 충돌」).
+   */
+  it('⭐ 낙관적 잠금 경합은 원인(erpSync·workerLease)에 따라 다른 안내를 낸다', async () => {
+    const { user } = renderScreen({
+      confirmResponse: () =>
+        new Response(JSON.stringify({ code: 'VERSION_CONFLICT', conflictCause: 'erpSync' }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    });
+    await user.click(await rowCheckbox('SYNTH-SH-0470'));
+    await openConfirm(user);
+    await confirmInDialog(user);
+
+    expect(await screen.findByText(messages.conflict.erpSync)).toBeInTheDocument();
+    expect(screen.queryByText(t.result.reasons.versionConflict)).not.toBeInTheDocument();
   });
 
   /*

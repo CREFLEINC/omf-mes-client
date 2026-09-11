@@ -8,6 +8,44 @@ const jsonResponse = (body: unknown, headers: Record<string, string> = {}): Resp
     headers: { 'Content-Type': 'application/json', ...headers },
   });
 
+/*
+ * ⭐ 세션 쿠키는 클라이언트가 명시해야 실린다 — README 인증 공통 규칙 · 대응표 P0 「세션 인증」.
+ * 기본값(`same-origin`)은 개발 환경의 교차 출처 호출에서 쿠키를 빼먹으므로, 옵션이 그대로
+ * `fetch`까지 전달되는지 여기서 확인한다.
+ */
+describe('createApiClient — 쿠키 세션 자격 증명', () => {
+  it('지정한 credentials 정책을 요청에 그대로 싣는다', async () => {
+    const requests: Request[] = [];
+    const { client } = createApiClient({
+      baseUrl: 'http://mock.test',
+      credentials: 'include',
+      fetch: async (request) => {
+        requests.push(request);
+        return jsonResponse([]);
+      },
+    });
+
+    await client.GET('/mdm/warehouses');
+
+    expect(requests[0]?.credentials).toBe('include');
+  });
+
+  it('지정하지 않으면 기본값(same-origin)을 그대로 둔다 — POP 단말 등 쿠키가 필요 없는 호출을 바꾸지 않는다', async () => {
+    const requests: Request[] = [];
+    const { client } = createApiClient({
+      baseUrl: 'http://mock.test',
+      fetch: async (request) => {
+        requests.push(request);
+        return jsonResponse([]);
+      },
+    });
+
+    await client.GET('/mdm/warehouses');
+
+    expect(requests[0]?.credentials).toBe('same-origin');
+  });
+});
+
 describe('createApiClient', () => {
   it('응답의 ETag를 경로별로 자동 캡처한다', async () => {
     const { client, etags } = createApiClient({

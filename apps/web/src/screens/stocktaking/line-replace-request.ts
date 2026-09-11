@@ -114,7 +114,8 @@ export const toLineRows = ({ lines, drafts, isBlind }: LineRowsInput): LineRowVi
       reasonCode,
       reason,
       isReasonRequired: reasonRequired,
-      isVarianceStale: isVarianceStale({ savedQty: line.countedQty, qty }),
+      /* `counted`로 가른다 — 미실사 줄의 `countedQty`는 0으로 마스킹된 값이다(통보 273). */
+      isVarianceStale: isVarianceStale({ savedQty: line.countedQty, counted: line.counted, qty }),
       /*
        * **전 줄 필수의 한 줄짜리 정의.** 수량을 읽을 수 있어야 하고, 사유가 잘못되지 않아야
        * 하며, 사유가 필수인 줄에는 사유가 있어야 한다.

@@ -23,8 +23,14 @@ describe('buildSaveBody — 보내는 것', () => {
     expect(body.occurredAt).toBe('2026-09-02T09:12:00+09:00');
   });
 
-  it('실적 출처는 보내지 않는다 — 서버가 채운다', () => {
-    expect(buildSaveBody(input())).not.toHaveProperty('resultSourceCode');
+  /*
+   * ⛔⛔ **`resultSourceCode` 가 다시 필수다**(2026-09-11 전달본 · `save-request.ts` 머리말).
+   * 예전에는 계약이 이 칸을 선택으로 두고 「화면이 보내지 않는다」로 정리했었는데(설계 변동
+   * 공지 #507), 지금 생성 타입은 `"MANUAL" | "IOT"` 를 필수로 요구한다 — 이 화면은 사람이
+   * 입력하는 POP 단말이라 `MANUAL` 을 싣는다.
+   */
+  it('실적 출처는 사람이 입력하는 단말이라 MANUAL 을 싣는다', () => {
+    expect(buildSaveBody(input()).resultSourceCode).toBe('MANUAL');
   });
 
   it('LOT 배분을 본문에 싣는다 — 배분 수량은 이번 양품수량이다', () => {

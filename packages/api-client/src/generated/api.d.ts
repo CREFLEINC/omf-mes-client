@@ -18,7 +18,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     /** @description 값 = `MATERIAL`·`PRODUCT`·`SPARE_PART`·`GENERAL`. 값 목록은 `GET /mdm/code-values?codeGroupCode=WAREHOUSE_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     warehouseTypeCode?: string;
@@ -47,6 +47,15 @@ export interface paths {
                             items: components["schemas"]["Warehouse"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -83,6 +92,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -142,6 +160,15 @@ export interface paths {
                         "application/json": components["schemas"]["WarehouseDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -181,6 +208,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -255,6 +291,15 @@ export interface paths {
                         "application/json": components["schemas"]["Warehouse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
@@ -321,6 +366,15 @@ export interface paths {
                         "application/json": components["schemas"]["Warehouse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
@@ -363,7 +417,7 @@ export interface paths {
                 query: {
                     /** @description 필수. Location 은 창고를 고른 뒤에 본다 — W-06-07 §3 ⚠ 위치 «코드» 스캔은 locationCode 와 함께 보낸다 — 창고는 적치 지시·화면 문맥이 준다. */
                     warehouseId: number;
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     /** @description 위치 코드 정확 일치. 스캔한 코드로 한 건을 집을 때 쓰며 0건 또는 1건이 나온다 — 부분 일치 검색은 q 를 쓴다. ⛔ q 로 받은 페이지를 화면이 걸러 쓰는 것으로는 성립하지 않는다 — 부분 일치가 여러 건을 낸다 */
                     locationCode?: string;
@@ -387,6 +441,15 @@ export interface paths {
                             items: components["schemas"]["Location"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -423,6 +486,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -482,6 +554,15 @@ export interface paths {
                         "application/json": components["schemas"]["LocationDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -521,6 +602,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -595,6 +685,15 @@ export interface paths {
                         "application/json": components["schemas"]["Location"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
@@ -661,6 +760,15 @@ export interface paths {
                         "application/json": components["schemas"]["Location"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-07 §6 */
                 403: {
                     headers: {
@@ -696,12 +804,12 @@ export interface paths {
         };
         /**
          * 사용자 목록
-         * @description 근거: W-CO-02 §3 좌측 목록 · 공유계약 G-8. W-06-06의 인증자 선택에도 기존 조회를 사용한다. 권한 범위를 넓히지 않으며 W-06-06의 인증자 선택에서 조회 403·실패이면 새 인증자 선택만 불가로 안내한다. W-06-06 전체 진입을 차단하지 않고 기존 참조 보존·선택 입력 빈값을 유지한다. 자격 저장 권한은 기존 자격 PUT에서 별도로 검증한다.
+         * @description 근거: W-CO-02 §3 좌측 목록 · 공유계약 G-8
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description 로그인ID·이름 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 로그인ID·이름 검색 */
                     q?: string;
                     /** @description 부서 필터 */
                     departmentId?: number;
@@ -730,7 +838,16 @@ export interface paths {
                         };
                     };
                 };
-                /** @description 권한 없음. W-CO-02 사용자·역할·권한 관리 화면에서는 진입을 막고 배너로 사유를 표시한다(G-1 화면 수준). W-06-06 공통코드·조직·작업자 마스터 화면의 인증자 선택에서는 새 인증자 선택만 불가로 안내하며, 화면 전체 진입을 차단하지 않고 기존 참조 보존·선택 입력 빈값을 유지한다. 사용자 목록 조회 권한을 확대하지 않으며 자격 저장 권한은 기존 자격 PUT에서 별도로 검증한다. 근거: W-CO-02 §6 「권한 없음」 · W-06-06 §4-E. */
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음. 이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다(G-1 화면 수준). 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -773,6 +890,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -832,6 +958,15 @@ export interface paths {
                         "application/json": components["schemas"]["AppUserDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -871,6 +1006,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -954,6 +1098,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -1020,6 +1173,15 @@ export interface paths {
                         "application/json": components["schemas"]["AppUser"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -1084,6 +1246,15 @@ export interface paths {
                         "application/json": components["schemas"]["AppUserPasswordReset"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-CO-02 §6 */
                 403: {
                     headers: {
@@ -1143,6 +1314,15 @@ export interface paths {
                         "application/json": components["schemas"]["UserRoleListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -1180,6 +1360,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. ⛔ **code=LAST_ADMIN** — 이 사용자에게서 관리자 역할을 빼면 「사용자·역할·권한 관리」 권한 보유자가 0명이 된다(사용자 결정 2026-09-01 · W-CO-02 §8-6). */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1238,6 +1427,15 @@ export interface paths {
                         "application/json": components["schemas"]["UserDataScopeListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -1280,6 +1478,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1344,6 +1551,15 @@ export interface paths {
                         "application/json": components["schemas"]["PermissionListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -1368,7 +1584,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 역할코드·역할명 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 역할코드·역할명 검색 */
                     q?: string;
                     /** @description 기본은 사용 중인 것만 */
                     includeInactive?: boolean;
@@ -1391,6 +1607,15 @@ export interface paths {
                             items: components["schemas"]["Role"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한 없음. 이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다(G-1 화면 수준). 근거: W-CO-02 §6 「권한 없음」 */
@@ -1436,6 +1661,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1495,6 +1729,15 @@ export interface paths {
                         "application/json": components["schemas"]["RoleDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -1534,6 +1777,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1619,6 +1871,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -1685,6 +1946,15 @@ export interface paths {
                         "application/json": components["schemas"]["Role"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-CO-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -1744,6 +2014,15 @@ export interface paths {
                         "application/json": components["schemas"]["RolePermissionListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -1781,6 +2060,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. ⛔ **code=LAST_ADMIN** — 이 역할에서 관리 권한을 빼면 「사용자·역할·권한 관리」 권한 보유자가 0명이 된다(사용자 결정 2026-09-01 · W-CO-02 §8-6). */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1840,6 +2128,15 @@ export interface paths {
                         "application/json": components["schemas"]["RoutingListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -1874,6 +2171,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -1933,6 +2239,15 @@ export interface paths {
                         "application/json": components["schemas"]["RoutingDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -1972,6 +2287,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 상태≠작성중일 때의 수정 시도도 여기 포함된다(code=STATE_LOCKED) — §5-4 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2053,6 +2377,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-01 §6 「권한 없음」(회신 E-9 대기) */
                 403: {
                     headers: {
@@ -2110,6 +2443,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 라인 0건인 채 확정 시도(code=LINE_REQUIRED, §6) 또는 상태≠작성중(code=STATE_LOCKED, §5-4) */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2181,6 +2523,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-01 §6 「권한 없음」(회신 E-9 대기) */
                 403: {
                     headers: {
@@ -2236,6 +2587,15 @@ export interface paths {
                         "application/json": components["schemas"]["Routing"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-01 §6 */
                 403: {
                     headers: {
@@ -2286,6 +2646,15 @@ export interface paths {
                         "application/json": components["schemas"]["RoutingOperationListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -2327,6 +2696,15 @@ export interface paths {
                 };
                 /** @description 검증 실패(유일 위반·범위 위반 등) 또는 상태≠작성중(code=STATE_LOCKED, §5-4) */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2385,6 +2763,15 @@ export interface paths {
                         "application/json": components["schemas"]["RoutingOperationDependencyListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -2439,6 +2826,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-01 §6 「권한 없음」(회신 E-9 대기) */
                 403: {
                     headers: {
@@ -2471,7 +2867,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 그룹코드·그룹명 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 그룹코드·그룹명 검색 */
                     q?: string;
                     includeInactive?: boolean;
                     page?: number;
@@ -2493,6 +2889,15 @@ export interface paths {
                             items: components["schemas"]["CodeGroup"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -2529,6 +2934,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2588,6 +3002,15 @@ export interface paths {
                         "application/json": components["schemas"]["CodeGroupDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -2627,6 +3050,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2701,6 +3133,15 @@ export interface paths {
                         "application/json": components["schemas"]["CodeGroup"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
@@ -2767,6 +3208,15 @@ export interface paths {
                         "application/json": components["schemas"]["CodeGroup"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
@@ -2811,7 +3261,7 @@ export interface paths {
                     codeGroupId?: number;
                     /** @description 코드값 그룹을 «이름»으로 가리킨다(mdm.code_group.group_code 와 정확히 일치). ⚠ codeGroupId 와 둘 중 정확히 하나를 준다. 화면이 그룹을 안정적으로 가리킬 수 있는 유일한 수단이다 — 채번 식별자는 환경마다 다르다. 근거: omf-mes#179 */
                     codeGroupCode?: string;
-                    /** @description 코드·코드명 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·코드명 검색 */
                     q?: string;
                     includeInactive?: boolean;
                     page?: number;
@@ -2837,6 +3287,15 @@ export interface paths {
                 };
                 /** @description codeGroupId·codeGroupCode 를 둘 다 주었거나 둘 다 주지 않았다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2878,6 +3337,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -2937,6 +3405,15 @@ export interface paths {
                         "application/json": components["schemas"]["CodeValueDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -2976,6 +3453,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3050,6 +3536,15 @@ export interface paths {
                         "application/json": components["schemas"]["CodeValue"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
@@ -3116,6 +3611,15 @@ export interface paths {
                         "application/json": components["schemas"]["CodeValue"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
@@ -3173,6 +3677,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -3218,6 +3731,15 @@ export interface paths {
                         "application/json": components["schemas"]["JudgmentTypeControl"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -3253,6 +3775,15 @@ export interface paths {
                         "application/json": components["schemas"]["JudgmentTypeControl"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 낙관적 잠금 충돌 */
                 409: {
                     headers: {
@@ -3285,7 +3816,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 부서코드·부서명 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 부서코드·부서명 검색 */
                     q?: string;
                     businessUnitId?: number;
                     includeInactive?: boolean;
@@ -3308,6 +3839,15 @@ export interface paths {
                             items: components["schemas"]["Department"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -3344,6 +3884,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 자기참조 포함(ck_department_parent) */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3403,6 +3952,15 @@ export interface paths {
                         "application/json": components["schemas"]["DepartmentDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -3442,6 +4000,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 자기참조 또는 순환 참조 포함 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3516,6 +4083,15 @@ export interface paths {
                         "application/json": components["schemas"]["Department"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
@@ -3582,6 +4158,15 @@ export interface paths {
                         "application/json": components["schemas"]["Department"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-06 §6 */
                 403: {
                     headers: {
@@ -3622,7 +4207,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 사번·성명 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 사번·성명 검색 */
                     q?: string;
                     /** @description 사번 정확 일치. 사번 경량 인증(P-CO-01·M-CO-01)이 부르는 축이며 0건 또는 1건이 나온다 — 부분 일치 검색은 q 를 쓴다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 페이지 단위다. ⛔ 재직 여부를 판정하려면 includeInactive=true 와 함께 보낸다 — 기본값(false)으로는 퇴사자가 0건으로 떨어져 「등록되지 않은 사번」과 구분되지 않는다. */
                     workerNo?: string;
@@ -3650,6 +4235,15 @@ export interface paths {
                             items: components["schemas"]["Worker"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -3695,6 +4289,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["WorkerDetailResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -3755,6 +4358,15 @@ export interface paths {
                         "application/json": components["schemas"]["Worker"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 낙관적 잠금 충돌 */
                 409: {
                     headers: {
@@ -3808,11 +4420,20 @@ export interface paths {
                         "application/json": components["schemas"]["WorkerQualificationListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
          * 자격·인증 전체 치환
-         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. uq_worker_qualification 이 COALESCE(process_id,0) 으로 접는다 — 빈 축은 (전체 공정)으로 표기(A-7). certifiedBy는 자격을 인정한 사용자 계정의 AppUser.appUserId. 선택 입력이며 null 허용. 실제 입력자 createdBy는 서버 인증 주체의 감사정보로 별개다. 자격 대상 작업자의 계정 연결은 요구하지 않는다. 외부 인증기관 식별자·사원번호를 넣지 않으며 알 수 없으면 비운다. 기존 맨 정수를 다른 식별자로 자동 변환하지 않는다. valid_to 만료는 검사 확정을 막는다(공유계약 B-2). worker_qualification 은 created_at·created_by 만 있고 is_active·updated_at·version_no 가 없다 — 「물리 삭제 금지」(B-4)를 적용하지 않는다. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-06 §4-E·§5-1 「자격 추가/삭제」 · 공유계약 B-6 통째로 교체하는 저장이라 보호가 없으면 남이 방금 넣은 줄이 조용히 사라진다. 토큰은 같은 경로의 조회가 내려주는 ETag 다. 신규 인증자는 GET /app/users?includeInactive=false에서 선택하며 isActive=true인 유효 계정만 지정한다. 전체 치환 시 기존 자격의 비활성 인증자 참조를 그대로 보존할 수 있지만 새로 지정한 잘못된 ID 또는 비활성 계정은 400으로 거부한다. certifiedBy 선택으로 권한을 얻지 않으며 실제 인증 주체의 자격 편집 권한을 검증한다.
+         * @description 개별 부여·회수가 아니라 최종 상태를 통째로 보낸다. uq_worker_qualification 이 COALESCE(process_id,0) 으로 접는다 — 빈 축은 (전체 공정)으로 표기(A-7). certified_by 는 FK 없는 bigint 라 무엇을 가리키는지 하류에 근거가 없다 — #64. valid_to 만료는 검사 확정을 막는다(공유계약 B-2). worker_qualification 은 created_at·created_by 만 있고 is_active·updated_at·version_no 가 없다 — 「물리 삭제 금지」(B-4)를 적용하지 않는다. 서버는 한 트랜잭션으로 반영한다. 근거: W-06-06 §4-E·§5-1 「자격 추가/삭제」 · 공유계약 B-6 통째로 교체하는 저장이라 보호가 없으면 남이 방금 넣은 줄이 조용히 사라진다. 토큰은 같은 경로의 조회가 내려주는 ETag 다.
          */
         put: {
             parameters: {
@@ -3852,7 +4473,7 @@ export interface paths {
                             validTo?: string | null;
                             /**
                              * Format: int64
-                             * @description 자격을 인정한 사용자 계정의 AppUser.appUserId. 선택 입력이며 null 허용. 실제 입력자 createdBy는 서버 인증 주체의 감사정보로 별개다. 자격 대상 작업자의 계정 연결은 요구하지 않는다. 외부 인증기관 식별자·사원번호를 넣지 않으며 알 수 없으면 비운다. 기존 맨 정수를 다른 식별자로 자동 변환하지 않는다. 신규 인증자는 GET /app/users?includeInactive=false에서 선택하며 isActive=true인 유효 계정만 지정한다. 전체 치환 시 기존 자격의 비활성 인증자 참조를 그대로 보존할 수 있지만 새로 지정한 잘못된 ID 또는 비활성 계정은 400으로 거부한다. certifiedBy 선택으로 권한을 얻지 않으며 실제 인증 주체의 자격 편집 권한을 검증한다.
+                             * @description FK 없음 — 무엇을 가리키는지 근거 없음 §8-2
                              */
                             certifiedBy?: number | null;
                         }[];
@@ -3869,8 +4490,17 @@ export interface paths {
                         "application/json": components["schemas"]["WorkerQualificationListResponse"];
                     };
                 };
-                /** @description 검증 실패 — 유일 위반(uq_worker_qualification) 또는 날짜 짝 제약 위반 또는 새로 지정한 인증자 ID에 해당하는 계정이 존재하지 않거나 비활성인 경우(생략·null 허용) */
+                /** @description 검증 실패 — 유일 위반(uq_worker_qualification) 또는 날짜 짝 제약 위반 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -3919,7 +4549,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 품목코드·품목명 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 품목코드·품목명 검색 */
                     q?: string;
                     /** @description 품목 유형 — 원자재(RAW_MATERIAL) · 반제품(SEMI_FINISHED) · 제품(FINISHED) · 상품(MERCHANDISE). ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. ⛔ 예비품을 이 값으로 대신하지 않는다 — QA #7 이 「품목 통합 아님」으로 확정했고, 예비품은 W-06-08 예비품 마스터가 갖는다. 값 목록은 GET /mdm/code-values?codeGroupCode=ITEM_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     itemTypeCode?: string;
@@ -3945,6 +4575,15 @@ export interface paths {
                             items: components["schemas"]["Item"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -3992,6 +4631,15 @@ export interface paths {
                         "application/json": components["schemas"]["ItemDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -4031,6 +4679,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 예: 유효기한 관리 ON인데 shelfLifeDays 미입력(조건부 필수 A-2) */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4100,6 +4757,15 @@ export interface paths {
                         "application/json": components["schemas"]["ItemUomConversionListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -4156,6 +4822,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — ck_item_uom_distinct 또는 ck_item_uom_dates 위반 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4225,6 +4900,15 @@ export interface paths {
                         "application/json": components["schemas"]["ItemExternalCodeListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -4277,6 +4961,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — uq_item_external_code 위반 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4346,6 +5039,15 @@ export interface paths {
                         "application/json": components["schemas"]["ItemBuItemMapListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -4402,6 +5104,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — ck_item_bu_map_distinct 또는 ck_item_bu_map_dates 위반 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4471,6 +5182,15 @@ export interface paths {
                         "application/json": components["schemas"]["BomListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -4512,6 +5232,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["BomDetailResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -4571,6 +5300,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-05 §6 */
                 403: {
                     headers: {
@@ -4621,6 +5359,15 @@ export interface paths {
                         "application/json": components["schemas"]["BomComponentListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -4666,6 +5413,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["BomComponentDetailResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -4715,6 +5471,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-05 §6 */
                 403: {
                     headers: {
@@ -4756,7 +5521,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 기준코드·기준명 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 기준코드·기준명 검색 */
                     q?: string;
                     /** @description 값 = `IQC`·`PQC`·`OQC`. 값 목록은 `GET /mdm/code-values?codeGroupCode=QUALITY_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     inspectionTypeCode?: string;
@@ -4781,6 +5546,15 @@ export interface paths {
                             items: components["schemas"]["InspectionPlan"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -4817,6 +5591,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4876,6 +5659,15 @@ export interface paths {
                         "application/json": components["schemas"]["InspectionPlanDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -4915,6 +5707,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -4989,6 +5790,15 @@ export interface paths {
                         "application/json": components["schemas"]["InspectionPlan"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -5053,6 +5863,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["InspectionPlan"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
@@ -5128,6 +5947,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -5177,6 +6005,15 @@ export interface paths {
                         "application/json": components["schemas"]["InspectionPlanVersionListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -5211,6 +6048,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5270,6 +6116,15 @@ export interface paths {
                         "application/json": components["schemas"]["InspectionPlanVersionDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -5309,6 +6164,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 상태≠작성중일 때의 수정 시도도 여기 포함된다(code=STATE_LOCKED) — §5-4 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5390,6 +6254,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -5447,6 +6320,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 항목 0건인 채 확정 시도(code=LINE_REQUIRED) 또는 상태≠작성중(code=STATE_LOCKED) */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5518,6 +6400,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -5568,6 +6459,15 @@ export interface paths {
                         "application/json": components["schemas"]["InspectionItemSpecListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -5612,6 +6512,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-02 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -5644,7 +6553,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 불량코드·불량명 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 불량코드·불량명 검색 */
                     q?: string;
                     /** @description 지정하면 그 대분류의 상세만 */
                     parentDefectCodeId?: number;
@@ -5668,6 +6577,15 @@ export interface paths {
                             items: components["schemas"]["DefectCode"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -5704,6 +6622,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 3계층 이상 시도 포함(결정 12 위반) */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5763,6 +6690,15 @@ export interface paths {
                         "application/json": components["schemas"]["DefectCodeDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -5802,6 +6738,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 자기 자신을 상위로 지정 또는 3계층 이상 시도 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -5876,6 +6821,15 @@ export interface paths {
                         "application/json": components["schemas"]["DefectCode"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-03 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -5942,6 +6896,15 @@ export interface paths {
                         "application/json": components["schemas"]["DefectCode"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-03 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -6003,6 +6966,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -6041,6 +7013,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DefectCodeProcess"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 이미 매핑돼 있다 */
@@ -6099,6 +7080,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -6129,7 +7119,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 원인코드·원인명 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 원인코드·원인명 검색 */
                     q?: string;
                     parentCauseCodeId?: number;
                     includeInactive?: boolean;
@@ -6152,6 +7142,15 @@ export interface paths {
                             items: components["schemas"]["CauseCode"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -6188,6 +7187,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 3계층 이상 시도 포함 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -6247,6 +7255,15 @@ export interface paths {
                         "application/json": components["schemas"]["CauseCodeDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -6286,6 +7303,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 자기 자신을 상위로 지정 또는 3계층 이상 시도 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -6360,6 +7386,15 @@ export interface paths {
                         "application/json": components["schemas"]["CauseCode"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-03 §6 「권한 없음」 */
                 403: {
                     headers: {
@@ -6424,6 +7459,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["CauseCode"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한 없음. 근거: W-06-03 §6 「권한 없음」 */
@@ -6509,6 +7553,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 — 전산담당 전용. 근거: W-06-10 §6 */
                 403: {
                     headers: {
@@ -6559,6 +7612,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["IntegrationMessageDetail"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description payload 조회 권한 없음 — 상세에서 payload 구획만 비활성 + 사유(§8-4). 화면 진입 자체의 전산담당 전용 차단과는 별개 */
@@ -6620,6 +7682,15 @@ export interface paths {
                 };
                 /** @description statusCode≠실패(code=NOT_RETRYABLE) */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -6691,6 +7762,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["BatchResult"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한 없음 — 전산담당 전용. 근거: W-06-10 §6 */
@@ -6765,6 +7845,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 — 진입 차단 + 배너. 이력 조회 권한은 편집 권한과 별개(감사 목적). 근거: W-06-11 §6 */
                 403: {
                     headers: {
@@ -6798,7 +7887,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     includeInactive?: boolean;
                     page?: number;
@@ -6820,6 +7909,15 @@ export interface paths {
                             items: components["schemas"]["Uom"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -6846,7 +7944,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     /** @description 역할로 거른다. ⭐ 폐기 출고 화면이 폐기처리 거래처만 고를 때 쓴다(W-01-06 · W-04-10 · DR-013). */
                     roleTypeCode?: "CUSTOMER" | "SUPPLIER" | "SUBCONTRACTOR" | "DISPOSAL" | "OTHER";
@@ -6870,6 +7968,15 @@ export interface paths {
                             items: components["schemas"]["Partner"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -6896,7 +8003,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     includeInactive?: boolean;
                     page?: number;
@@ -6918,6 +8025,15 @@ export interface paths {
                             items: components["schemas"]["LegalEntity"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -6944,7 +8060,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     legalEntityId?: number;
                     includeInactive?: boolean;
@@ -6967,6 +8083,15 @@ export interface paths {
                             items: components["schemas"]["BusinessUnit"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -6993,7 +8118,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     legalEntityId?: number;
                     businessUnitId?: number;
@@ -7017,6 +8142,15 @@ export interface paths {
                             items: components["schemas"]["Plant"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -7043,7 +8177,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     plantId?: number;
                     includeInactive?: boolean;
@@ -7066,6 +8200,15 @@ export interface paths {
                             items: components["schemas"]["ProductionLine"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -7092,7 +8235,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     includeInactive?: boolean;
                     page?: number;
@@ -7114,6 +8257,15 @@ export interface paths {
                             items: components["schemas"]["Process"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -7150,6 +8302,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — processCode 중복 포함 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -7209,6 +8370,15 @@ export interface paths {
                         "application/json": components["schemas"]["ProcessDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -7248,6 +8418,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 참조가 있는데 processCode 를 바꾸려 함(B-4) 포함 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -7322,6 +8501,15 @@ export interface paths {
                         "application/json": components["schemas"]["Process"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-01 §6 */
                 403: {
                     headers: {
@@ -7388,6 +8576,15 @@ export interface paths {
                         "application/json": components["schemas"]["Process"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음. 근거: W-06-01 §6 */
                 403: {
                     headers: {
@@ -7428,7 +8625,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     plantId?: number;
                     processId?: number;
@@ -7469,6 +8666,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -7503,6 +8709,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 유일 위반이면 유일 범위를 담아 돌려준다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -7569,6 +8784,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -7605,6 +8829,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -7664,6 +8897,15 @@ export interface paths {
                         "application/json": components["schemas"]["PutawayRuleDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -7712,6 +8954,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -7784,6 +9035,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["PutawayRule"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한 없음 */
@@ -7861,6 +9121,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -7924,6 +9193,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -7967,6 +9245,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["PartnerRole"][];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 없다 */
@@ -8020,6 +9307,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한·단말 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -8070,7 +9366,7 @@ export interface paths {
                     /** @description 단말 유형 — 고정 스테이션(POP · Electron 키오스크 · 산업용 패널 PC)과 손에 드는 기기(MOBILE · Capacitor Android)가 여기서 갈린다. ⭐ 폼팩터는 결정 16 이 확정한 아키텍처 축이라 고객 관행으로 늘지 않는다. ⚠ 관리웹은 단말 마스터에 등록하지 않는다 — 현장 단말만 여기 든다. ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 값 목록은 GET /mdm/code-values?codeGroupCode=TERMINAL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     terminalTypeCode?: string;
                     includeInactive?: boolean;
-                    /** @description 단말 코드 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 단말 코드 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -8091,6 +9387,15 @@ export interface paths {
                             items: components["schemas"]["Terminal"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -8127,6 +9432,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8190,6 +9504,15 @@ export interface paths {
                         "application/json": components["schemas"]["Terminal"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -8236,6 +9559,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8317,6 +9649,15 @@ export interface paths {
                         "application/json": components["schemas"]["Terminal"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한에 막혔다 */
                 403: {
                     headers: {
@@ -8388,6 +9729,15 @@ export interface paths {
                         "application/json": components["schemas"]["TerminalRegistrationToken"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한에 막혔다 */
                 403: {
                     headers: {
@@ -8451,6 +9801,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -8499,6 +9858,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8575,6 +9943,15 @@ export interface paths {
                         "application/json": components["schemas"]["WarehouseLayout"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -8623,6 +10000,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8697,6 +10083,15 @@ export interface paths {
                         "application/json": components["schemas"]["Partner"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -8730,7 +10125,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     plantId?: number;
                     /** @description 하위 그룹만 본다 */
@@ -8755,6 +10150,15 @@ export interface paths {
                             items: components["schemas"]["EquipmentGroup"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -8791,6 +10195,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 유일 위반이면 유일 범위를 담아 돌려준다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8850,6 +10263,15 @@ export interface paths {
                         "application/json": components["schemas"]["EquipmentGroupDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -8889,6 +10311,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -8974,6 +10405,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -9051,6 +10491,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -9112,6 +10561,15 @@ export interface paths {
                         "application/json": components["schemas"]["EquipmentDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -9151,6 +10609,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -9236,6 +10703,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -9306,6 +10782,15 @@ export interface paths {
                 };
                 /** @description 업무 규칙 위반 — 상태 잠김·참조 존재 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -9390,6 +10875,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -9430,7 +10924,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     plantId?: number;
                     /** @description 점검 유형으로 거른다 값 = `DAILY`·`MONTHLY`·`MAINTENANCE`. 값 목록은 `GET /mdm/code-values?codeGroupCode=EQUIPMENT_INSPECTION_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
@@ -9455,6 +10949,15 @@ export interface paths {
                             items: components["schemas"]["EquipmentInspectionItem"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -9491,6 +10994,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 유일 위반이면 유일 범위를 담아 돌려준다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -9550,6 +11062,15 @@ export interface paths {
                         "application/json": components["schemas"]["EquipmentInspectionItemDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -9589,6 +11110,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -9658,6 +11188,15 @@ export interface paths {
                         "application/json": components["schemas"]["InspectionItemAssignmentList"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -9697,6 +11236,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -9766,6 +11314,15 @@ export interface paths {
                         "application/json": components["schemas"]["EquipmentInspectionItemAssignmentsResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -9805,6 +11362,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -9853,7 +11419,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     plantId?: number;
                     /** @description 도구 유형 — 금형(MOLD) · 지그(JIG) · 그 밖의 도구(OTHER). ⭐ W-05-13 §3-3 이 확대된 범위(REQ-PR-0003 「모든 도구」)를 이 축으로 담기로 확정했다 — 테이블 이름(mdm.mold)은 바꾸지 않는다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=TOOL_TYPE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
@@ -9887,7 +11453,7 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["Mold"][];
                             page: components["schemas"]["PageMeta"];
-                            /** @description ⭐ 필터 «전체» 기준 요약이다 — 페이지가 아니다. 툴 보전오더 생성 화면의 요약 구획이 그대로 보인다. ⚠ pmDueOnly 는 이 집계에 적용하지 않는다 — q·plantId·toolTypeCode·includeInactive 만 걸고 센다. 적용하면 「임박」이 항상 0 이 된다 요약 집계에는 q·plantId·toolTypeCode·includeInactive만 적용한다. statusCode·withOpenMaintenanceOrder·guaranteedShotCountMissing·pmDueOnly 및 페이지·정렬은 적용하지 않는다. */
+                            /** @description ⭐ 필터 «전체» 기준 요약이다 — 페이지가 아니다. 툴 보전오더 생성 화면의 요약 구획이 그대로 보인다. ⚠ pmDueOnly 는 이 집계에 적용하지 않는다 — q·plantId·toolTypeCode·includeInactive 만 걸고 센다. 적용하면 「임박」이 항상 0 이 된다 */
                             summary?: {
                                 /**
                                  * @description 예방보전이 도래한 툴 수(초과 포함)
@@ -9895,7 +11461,7 @@ export interface paths {
                                  */
                                 pmDueCount: number;
                                 /**
-                                 * @description 타발수 축을 사용하고 적정타수(guaranteedShotCount)>0으로 비율을 산출할 수 있는 툴 중 사용률이 pmNearThresholdPercent(서버 고정 90) 이상 100 미만이며 실제 PM이 아직 도래하지 않은 툴 수. 날짜 축으로 이미 도래했으면 pmDueCount에만 포함한다. 날짜 전용·NONE 및 적정타수 null/0은 타발수 임박 집계에서 제외한다. 기존 pmDue 안전판정과 criteriaMissingCount 정의는 변경하지 않으며 날짜 임박 백분율은 두지 않는다. 요약 집계에는 q·plantId·toolTypeCode·includeInactive만 적용한다. statusCode·withOpenMaintenanceOrder·guaranteedShotCountMissing·pmDueOnly 및 페이지·정렬은 적용하지 않는다.
+                                 * @description 임박한 툴 수 — 보증 타발수 대비 사용률이 pmNearThresholdPercent 이상인 툴이다
                                  * @example 5
                                  */
                                 pmNearCount: number;
@@ -9905,12 +11471,21 @@ export interface paths {
                                  */
                                 criteriaMissingCount: number;
                                 /**
-                                 * @description 임박 임계는 서버 고정 90이다. 화면은 응답값으로 문구를 만들며 자체 상수를 두지 않는다. 고객 조정 설정·정책 API는 두지 않는다.
+                                 * @description 「임박」의 임계. 화면이 이 값을 그대로 문구에 쓴다 — 화면이 90 을 지어내지 않는다
                                  * @example 90
                                  */
                                 pmNearThresholdPercent: number;
                             };
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -9947,6 +11522,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 유일 위반이면 유일 범위를 담아 돌려준다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -10006,6 +11590,15 @@ export interface paths {
                         "application/json": components["schemas"]["MoldDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -10045,6 +11638,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -10130,6 +11732,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -10200,6 +11811,15 @@ export interface paths {
                 };
                 /** @description 업무 규칙 위반 — 상태 잠김·참조 존재 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -10284,6 +11904,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -10321,7 +11950,7 @@ export interface paths {
         put?: never;
         /**
          * 툴 엑셀 올리기
-         * @description 현행 엑셀 대장을 옮기는 경로다. 통째로 되돌리지 않고 성공·실패 건수와 실패 행 목록을 돌려준다. 올리기가 만드는 것은 마스터 행뿐이며 라벨을 자동으로 발행하지 않는다. 근거: W-05-13 §5-5. plantId 필수·존재(400)와 접근 권한(403)을 파일의 행 처리 전에 검증한다. 한 파일은 선택 공장 하나에만 등록한다. 파일 공장 열이 비어 있으면 선택 공장을 쓰고 값이 있으면 기존 엑셀 서식의 식별 표기로 같은 공장인지 검증하여 불일치 행은 실패로 돌려준다. 공장명 매핑을 새로 추정하지 않는다. 같은 공장 내 툴 코드 중복은 실패 행이며 성공한 다른 행을 되돌리지 않는다. 실패 index는 머리글 제외 원본 데이터 행의 0 기준 순번을 유지한다. 공유계약 C-1에 따라 멱등 키는 대상 공장+이 import 오퍼레이션 범위다. 같은 올리기 재전송만 같은 키를 쓰고 공장 또는 파일이 바뀌는 새 올리기는 새 키를 쓴다. 같은 공장·오퍼레이션 범위에서 같은 키로 다른 파일 내용을 보내면 이 오퍼레이션의 400 일반 검증 실패로 거부한다. 이전 성공 결과를 다른 공장의 성공으로 재사용하지 않는다.
+         * @description 현행 엑셀 대장을 옮기는 경로다. 통째로 되돌리지 않고 성공·실패 건수와 실패 행 목록을 돌려준다. 올리기가 만드는 것은 마스터 행뿐이며 라벨을 자동으로 발행하지 않는다. 근거: W-05-13 §5-5
          */
         post: {
             parameters: {
@@ -10341,11 +11970,6 @@ export interface paths {
                          * @description 툴 엑셀 파일
                          */
                         file: string;
-                        /**
-                         * Format: int64
-                         * @description 업로드 전에 명시적으로 선택한 대상 공장. 한 파일은 이 공장 하나에만 등록한다. 세션 소속·공장 한 개를 근거로 자동 추정하지 않는다.
-                         */
-                        plantId: number;
                     };
                 };
             };
@@ -10359,7 +11983,7 @@ export interface paths {
                         "application/json": components["schemas"]["BatchResult"];
                     };
                 };
-                /** @description 파일을 읽을 수 없음, plantId 누락·존재하지 않는 공장, 또는 같은 공장·import 범위에서 같은 멱등 키의 파일 내용 변경. 파일 행 검증 전 공장 검증을 수행한다. */
+                /** @description 파일을 읽을 수 없다 */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -10368,7 +11992,16 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 선택 공장 접근 또는 툴 등록 권한 없음 — 파일 행 처리 전에 거부한다. */
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 권한 없음 */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -10399,7 +12032,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     plantId?: number;
                     /** @description 이 설비에 매핑된 예비품만 본다 */
@@ -10424,6 +12057,15 @@ export interface paths {
                             items: components["schemas"]["SparePart"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -10460,6 +12102,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 유일 위반이면 유일 범위를 담아 돌려준다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -10519,6 +12170,15 @@ export interface paths {
                         "application/json": components["schemas"]["SparePartDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -10558,6 +12218,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -10643,6 +12312,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -10720,6 +12398,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -10781,6 +12468,15 @@ export interface paths {
                         "application/json": components["schemas"]["SparePartEquipmentMappingList"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -10820,6 +12516,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -10907,6 +12612,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -10938,7 +12652,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     includeInactive?: boolean;
                     page?: number;
@@ -10960,6 +12674,15 @@ export interface paths {
                             items: components["schemas"]["WorkCalendar"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -10996,6 +12719,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 유일 위반이면 유일 범위를 담아 돌려준다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -11055,6 +12787,15 @@ export interface paths {
                         "application/json": components["schemas"]["WorkCalendarDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -11094,6 +12835,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -11179,6 +12929,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -11241,6 +13000,15 @@ export interface paths {
                         "application/json": components["schemas"]["WorkCalendarDayList"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -11276,6 +13044,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 부분 가동인데 시각이 비었거나 종료가 시작보다 빠르다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -11339,6 +13116,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -11379,6 +13165,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -11435,6 +13230,15 @@ export interface paths {
                         "application/json": components["schemas"]["WorkCalendarEffectiveResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -11459,7 +13263,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·명칭 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·명칭 검색 */
                     q?: string;
                     directionCode?: "INBOUND" | "OUTBOUND";
                     /** @description 연계 대상 — 품목(ITEM) · 자재명세(BOM) · 조직(ORGANIZATION) · 작업자(WORKER) · 구매발주(PURCHASE_ORDER). ⭐ 계약이 «일부러 열어 둔» 자리다 — 그 밖의 값도 받고 막지 않으며 확정 목록 안인지는 withinConfirmedScope 가 말한다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=INTERFACE_TARGET 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
@@ -11485,6 +13289,15 @@ export interface paths {
                             items: components["schemas"]["InterfaceDefinition"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -11521,6 +13334,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 유일 위반이거나 트리거 짝이 맞지 않는다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -11580,6 +13402,15 @@ export interface paths {
                         "application/json": components["schemas"]["InterfaceDefinitionDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -11619,6 +13450,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 트리거 짝이 맞지 않는다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -11704,6 +13544,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -11781,6 +13630,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -11845,6 +13703,15 @@ export interface paths {
                         "application/json": components["schemas"]["InterfaceConnectionTestResult"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -11891,6 +13758,15 @@ export interface paths {
                         "application/json": components["schemas"]["OutboundItemSettingList"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -11931,6 +13807,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 — 전산 담당 전용이다 */
                 403: {
                     headers: {
@@ -11963,7 +13848,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 코드·이름 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 코드·이름 검색 */
                     q?: string;
                     /** @description 공장 필터 */
                     plantId?: number;
@@ -11988,6 +13873,15 @@ export interface paths {
                             items: components["schemas"]["Shift"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -12045,6 +13939,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -12081,6 +13984,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -12140,6 +14052,15 @@ export interface paths {
                         "application/json": components["schemas"]["InventoryAdjustmentDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -12192,6 +14113,15 @@ export interface paths {
                         "application/json": components["schemas"]["InventoryAdjustmentLineListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -12233,6 +14163,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -12320,6 +14259,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -12399,6 +14347,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -12448,7 +14405,6 @@ export interface paths {
                     locationId?: number;
                     /** @description 품질 상태로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED · 공유계약 G-32). ⛔ 목록은 서버가 갖는다 — 값을 화면에 박지 않는다(고객이 W-06-06 에서 바꾼다 · 공유계약 G-31 마스터안전형). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     qualityStatusCode?: string;
-                    /** @description 재고 상태로 조회한다 — AVAILABLE(가용), BLOCKED(차단), IN_TRANSIT(이동중), ON_HOLD(보류). */
                     inventoryStatusCode?: "AVAILABLE" | "BLOCKED" | "IN_TRANSIT" | "ON_HOLD";
                     /** @description 소유 구분으로 거른다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=OWNERSHIP_TYPE 로 받는다(공유계약 G-32 · omf-mes#198). ⛔ 목록은 서버가 갖는다 — 값을 화면에 박지 않는다(고객이 W-06-06 에서 바꾼다 · 공유계약 G-31 마스터안전형). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     ownershipTypeCode?: string;
@@ -12493,6 +14449,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -12556,6 +14521,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -12592,6 +14566,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -12649,6 +14632,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["InventoryCountDetailResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상 없음 */
@@ -12713,6 +14705,15 @@ export interface paths {
                         "application/json": components["schemas"]["InventoryCountLineListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -12755,6 +14756,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -12842,6 +14852,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -12886,13 +14905,8 @@ export interface paths {
                     locationId?: number;
                     /** @description 값 = `BOX`·`CART`·`PALLET`. 값 목록은 `GET /mdm/code-values?codeGroupCode=HANDLING_UNIT_TYPE` 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31). */
                     handlingUnitTypeCode?: string;
-                    /** @description 독립 상태 코드를 사용하는 조회 조건이 아니다. 포장 단위의 독립 상태 코드는 사용하지 않는다. 포장 내용과 재구성 이력으로 진행을 확인한다. */
                     statusCode?: string;
-                    /** @description 라벨 발행 여부로 거른다. false = 발행 대기 목록(재구성 신규 라벨 발행 대상). 근거: P-04-04 §5-1(2026-09-06 게이트 승인) */
-                    labelIssued?: boolean;
-                    /** @description 이 LOT 을 담은 취급 단위만(handling_unit_content 경유). 출고 시 파렛트를 좁히는 축 — 창고 전체가 아니라 이 출고 라인의 LOT 이 실제로 실린 파렛트만 낸다. 근거: P-01-02 §5-2(2026-09-06 게이트 승인 · M-01-08 이 만든 취급 단위를 조회만 한다) */
-                    lotId?: number;
-                    /** @description 취급 단위 번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 취급 단위 번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -12913,6 +14927,15 @@ export interface paths {
                             items: components["schemas"]["HandlingUnit"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -12956,6 +14979,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13015,6 +15047,15 @@ export interface paths {
                         "application/json": components["schemas"]["HandlingUnitDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -13028,67 +15069,7 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        /**
-         * 포장 단위 취소
-         * @description 확정 전에만 지운다 — 내용물이 0일 때만 허용한다. 내용물이 있으면 409, 이미 확정된 포장 단위면 409 다. 근거: P-02-08 §5-7 · P-04-01 §5-6
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description 전 쓰기 API 필수. */
-                    "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /** @description 오프라인에서도 쓰는 오퍼레이션에서는 선택이다 — 없으면 낙관적 잠금 검사를 건너뛴다. 큐에 쌓인 요청은 토큰을 싣지 않는다. 근거: 공유계약 C-9 */
-                    "If-Match"?: components["parameters"]["IfMatchVersionOptional"];
-                    /**
-                     * @description 귀속용 사번 — 이 쓰기를 「누가 한 일」로 기록할 것인가. 인증이 아니다. 현장 단말·모바일은 계정 로그인이 없어 서버가 행위자를 풀 근거가 이 헤더뿐이다. 없으면 서버가 거부한다. 값은 작업자 사번(전역 유일). 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
-                     * @example 100027
-                     */
-                    "X-Worker-No": components["parameters"]["WorkerNo"];
-                };
-                path: {
-                    handlingUnitId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 삭제됨 */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description 권한 없음 */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 없다 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-                /** @description 내용물이 있거나 이미 확정됐다. 저장 충돌이면 다시 읽어 오면 풀린다 */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ConflictResponse"];
-                    };
-                };
-            };
-        };
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -13125,6 +15106,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["HandlingUnitContentListResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -13171,6 +15161,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13238,6 +15237,15 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["HandlingUnitRepackEvent"][];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -13308,6 +15316,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -13361,7 +15378,6 @@ export interface paths {
                     lotId?: number;
                     warehouseId?: number;
                     sourceDocumentId?: number;
-                    /** @description 독립 상태 코드를 사용하는 조회 조건이 아니다. 독립 상태 코드를 사용하지 않는다. 예약의 유효·소진은 예약 수량으로 판단한다. */
                     statusCode?: string;
                     /** @description 아직 소진되지 않은 예약만 */
                     openOnly?: boolean;
@@ -13384,6 +15400,15 @@ export interface paths {
                             items: components["schemas"]["InventoryReservation"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -13419,8 +15444,8 @@ export interface paths {
                     warehouseId?: number;
                     locationId?: number;
                     transactionTypeCode?: string;
-                    /** @description 원천 문서 유형으로 거른다. 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 넷이다 — 입고(GOODS_RECEIPT) · 출고(GOODS_ISSUE) · 재고조정(INVENTORY_ADJUSTMENT) · 재고이동(STOCK_TRANSFER). ⭐ 근거 — W-04-05 가 「입고·출고 전기 각 1건」을 명시하고, W-01-12 §5-2 가 「inventory_transaction.source_document_type_code 에 「재고조정」 값이 있으면 source_document_id = inventory_adjustment_id 로 잇는다」로 적었다. ⚠ STOCK_TRANSFER 는 «재고를 움직이므로 원장을 남긴다»는 추론이다 — 다른 셋보다 근거가 얕다. ⭐ 이 축이 원장 한 줄의 «성격»을 말한다 — 방향(입고·출고·이동)은 라인의 from*\/to* 가 이미 말하므로 transactionTypeCode 를 따로 두지 않는다(L-2-1 · 2026-09-02 판정). */
-                    sourceDocumentTypeCode?: "GOODS_RECEIPT" | "GOODS_ISSUE" | "INVENTORY_ADJUSTMENT" | "STOCK_TRANSFER";
+                    /** @description 원천 문서 유형으로 거른다. 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 다섯이다 — 입고(GOODS_RECEIPT) · 출고(GOODS_ISSUE) · 재고조정(INVENTORY_ADJUSTMENT) · 재고이동(STOCK_TRANSFER) · 재생재(RECYCLE_ENTRY). ⭐⭐ RECYCLE_ENTRY 는 2026-09-10 설계팀 합의로 «설계 변동 공지 전에 선반영»한 값이다(질의 213) — 다음 contracts:update 때 공지에 실렸는지 반드시 확인한다. contract-recycle-entry-enum.spec.ts 가 이 값의 부재를 즉시 잡는다. ⭐ 근거 — W-04-05 가 「입고·출고 전기 각 1건」을 명시하고, W-01-12 §5-2 가 「inventory_transaction.source_document_type_code 에 「재고조정」 값이 있으면 source_document_id = inventory_adjustment_id 로 잇는다」로 적었다. ⚠ STOCK_TRANSFER 는 «재고를 움직이므로 원장을 남긴다»는 추론이다 — 다른 셋보다 근거가 얕다. ⭐ 이 축이 원장 한 줄의 «성격»을 말한다 — 방향(입고·출고·이동)은 라인의 from*\/to* 가 이미 말하므로 transactionTypeCode 를 따로 두지 않는다(L-2-1 · 2026-09-02 판정). */
+                    sourceDocumentTypeCode?: "GOODS_RECEIPT" | "GOODS_ISSUE" | "INVENTORY_ADJUSTMENT" | "STOCK_TRANSFER" | "RECYCLE_ENTRY";
                     page?: number;
                     size?: number;
                 };
@@ -13444,6 +15469,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13498,6 +15532,15 @@ export interface paths {
                         "application/json": components["schemas"]["InventoryTransactionDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -13537,11 +15580,10 @@ export interface paths {
                     expectedArrivalDateTo?: string;
                     supplierId?: number;
                     plantId?: number;
-                    /** @description 독립 상태 코드를 사용하는 조회 조건이 아니다. 독립 상태 코드를 사용하지 않는 입하 예정 수신본이다. 예정 대비 실입하 진행은 라인의 expectedQty와 receivedQty로 확인한다. */
                     statusCode?: string;
                     /** @description 이 품목이 라인에 있는 건만 */
                     itemId?: number;
-                    /** @description 입하예정번호·거래명세서번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 입하예정번호·거래명세서번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -13562,6 +15604,15 @@ export interface paths {
                             items: components["schemas"]["Asn"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -13605,6 +15656,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["AsnDetailResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상 없음 */
@@ -13659,6 +15719,15 @@ export interface paths {
                         "application/json": components["schemas"]["AsnLineListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -13702,7 +15771,7 @@ export interface paths {
                     warehouseId?: number;
                     /** @description 참이면 지금 취소할 수 있는 것만 */
                     cancellableOnly?: boolean;
-                    /** @description 문서번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 문서번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -13727,6 +15796,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 덮지 않는 문서 유형이면 여기로 온다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13781,6 +15859,15 @@ export interface paths {
                         "application/json": components["schemas"]["DocumentProgressDetail"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -13829,7 +15916,7 @@ export interface paths {
                     supplierId?: number;
                     /** @description 라인 단위 출고 QR 을 스캔했을 때. 그 라인이 속한 출고 전표를 낸다. 근거: P-01-02 §5-2 · M-01-09 §5-6 */
                     goodsIssueLineId?: number;
-                    /** @description 출고번호 검색. ⛔ 발행된 출고 QR 은 라인을 가리키므로 이 축으로는 풀리지 않는다 — goodsIssueLineId 를 쓴다(P-01-02 §5-2) ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 출고번호 검색. ⛔ 발행된 출고 QR 은 라인을 가리키므로 이 축으로는 풀리지 않는다 — goodsIssueLineId 를 쓴다(P-01-02 §5-2) */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -13850,6 +15937,15 @@ export interface paths {
                             items: components["schemas"]["GoodsIssue"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -13895,6 +15991,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -13963,6 +16068,15 @@ export interface paths {
                         "application/json": components["schemas"]["GoodsIssueDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -14015,6 +16129,15 @@ export interface paths {
                         "application/json": components["schemas"]["GoodsIssueLineListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -14054,6 +16177,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -14134,6 +16266,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -14222,6 +16363,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -14272,7 +16422,7 @@ export interface paths {
                     receiptTypeCode?: string;
                     /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
-                    /** @description 입고번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 입고번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -14293,6 +16443,15 @@ export interface paths {
                             items: components["schemas"]["GoodsReceipt"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -14334,6 +16493,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -14393,6 +16561,15 @@ export interface paths {
                         "application/json": components["schemas"]["GoodsReceiptDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -14445,6 +16622,15 @@ export interface paths {
                         "application/json": components["schemas"]["GoodsReceiptLineListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -14486,6 +16672,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["InboundVarianceListResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -14536,6 +16731,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -14579,7 +16783,7 @@ export interface paths {
                     labelIssued?: boolean;
                     /** @description 라인 중 supplier_lot_missing 이 이 값인 라인을 하나 이상 가진 건만. true = 미부착 건(MES 가 채번한다) · false = 사전부착 건. ⚠ 헤더 목록인데 판정은 라인 단위다 — 건 안에 두 종류가 섞여 있을 수 있으므로 라인을 고를 때 GET .../lines 의 같은 이름 필터를 함께 쓴다. 근거: P-01-01 §6 */
                     supplierLotMissing?: boolean;
-                    /** @description 입하번호·거래명세서번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 입하번호·거래명세서번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -14600,6 +16804,15 @@ export interface paths {
                             items: components["schemas"]["InboundReceipt"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -14645,6 +16858,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -14713,6 +16935,15 @@ export interface paths {
                         "application/json": components["schemas"]["InboundReceiptDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -14761,6 +16992,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -14833,6 +17073,15 @@ export interface paths {
                         "application/json": components["schemas"]["InboundReceiptLineListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -14879,6 +17128,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -14917,7 +17175,7 @@ export interface paths {
         put?: never;
         /**
          * 초과 입하 분리 등록
-         * @description 정량분과 초과분을 한 트랜잭션으로 등록한다. 관리웹 W-01-03과 모바일 M-01-01의 초과 입하 단계가 함께 사용한다. 단말 토큰 요청은 X-Worker-No가 필수다. 근거: W-01-03 §5-1 · §5-4 · M-01-01 §5-2-2
+         * @description 정량분과 초과분을 한 트랜잭션으로 등록한다. 근거: W-01-03 §5-1 · §5-4
          */
         post: {
             parameters: {
@@ -14925,11 +17183,6 @@ export interface paths {
                 header: {
                     /** @description 전 쓰기 API 필수. */
                     "Idempotency-Key": components["parameters"]["IdempotencyKey"];
-                    /**
-                     * @description 관리웹도 같은 오퍼레이션을 부르는 자리에서는 선택이다 — 관리웹은 계정 토큰으로 오므로 서버가 인증 주체에서 행위자를 푼다. 단말 토큰으로 온 요청에 이 헤더가 없으면 서버가 거부한다. 근거: 공유계약 D-5 · F-2 ⭐ 형식 — 실물은 «6자리 숫자»다(✓확정 2026-07-28 「POP 단말인증 설계검토」 §3.3 실측 — 다만 표본이 2건이다). ⛔ 그러나 «강제하지 않는다» — 786건 중 표본 2건만 확인했고, 강제했다가 다른 형식의 사번이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다. 그래서 pattern 을 두지 않는다(A-9 등급 ⓑ — 화면이 «경고»하고 «확인은 눌리게» 한다 · P-CO-01 §5-2). 근거: omf-mes#367
-                     * @example 100027
-                     */
-                    "X-Worker-No"?: components["parameters"]["WorkerNoOptional"];
                 };
                 path?: never;
                 cookie?: never;
@@ -14951,6 +17204,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -14996,7 +17258,7 @@ export interface paths {
                     requiredAtFrom?: string;
                     /** @description 필요 시각 종료 */
                     requiredAtTo?: string;
-                    /** @description 요청번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 요청번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -15019,12 +17281,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
         /**
          * 추가 자재 출고 요청 발행
-         * @description Manually requests additional materials, including items outside the BOM. At least one line is required, and each requested quantity must be greater than zero. A reason code or non-blank remarks must be provided. If neither a reason code nor non-blank remarks is provided, the request cannot be issued. This operation is not available offline. Idempotency-Key is required to prevent duplicate retries, not for offline queuing. If-Match is optional.
+         * @description 현장이 BOM 소요량 밖의 자재를 수동으로 요청한다. 라인 1건 이상이고 각 수량이 0 보다 커야 한다. BOM 밖 품목도 담을 수 있다. ⛔ 오프라인 대상이 아니다 — 이 오퍼레이션을 부르는 추가 자재 출고 요청(W-02-10)은 관리웹이고, 관리웹 셸에는 오프라인이 없다(공유계약 C-5 · W-02-10 §1). Idempotency-Key 는 필수이나 오프라인 큐 때문이 아니라 재시도 중복을 막기 위해서다(C-8) — Idempotency-Key 는 필수이고 If-Match 는 선택이다(공유계약 C-9). 근거: W-02-10 §5-6
          */
         post: {
             parameters: {
@@ -15055,6 +17326,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -15129,6 +17409,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -15170,6 +17459,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["MaterialIssueRequestDetailResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상 없음 */
@@ -15232,6 +17530,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -15273,6 +17580,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["PickingOrderDetailResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상 없음 */
@@ -15354,6 +17670,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -15388,7 +17713,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * ERP W/O 목록
+         * P/O 목록
          * @description 근거: W-01-09 §5-1 · W-01-11
          */
         get: {
@@ -15400,7 +17725,7 @@ export interface paths {
                     plantId?: number;
                     /** @description 물류 전표의 진행 상태로 거른다 — 등록(REGISTERED) · 전기완료(POSTED) · 취소요청(CANCEL_REQUESTED) · 취소완료(CANCELLED). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOGISTICS_DOCUMENT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
-                    /** @description 이 품목이 라인에 있는 ERP W/O 만 */
+                    /** @description 이 품목이 라인에 있는 P/O 만 */
                     itemId?: number;
                     /** @description 발주일 시작 */
                     orderDateFrom?: string;
@@ -15408,7 +17733,7 @@ export interface paths {
                     orderDateTo?: string;
                     /** @description 아직 입하가 끝나지 않은 건만 */
                     openOnly?: boolean;
-                    /** @description 발주번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 발주번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -15431,11 +17756,20 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
         /**
-         * ERP W/O 등록
+         * P/O 등록
          * @description 헤더와 라인을 한 트랜잭션으로 저장한다. 근거: W-01-11 §5-1
          */
         post: {
@@ -15474,6 +17808,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -15501,7 +17844,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * ERP W/O 상세
+         * P/O 상세
          * @description 헤더와 라인을 함께 내린다. 근거: W-01-09 §5-1 · W-01-03
          */
         get: {
@@ -15526,6 +17869,15 @@ export interface paths {
                         "application/json": components["schemas"]["PurchaseOrderDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -15538,7 +17890,7 @@ export interface paths {
             };
         };
         /**
-         * ERP W/O 헤더 수정
+         * P/O 헤더 수정
          * @description 작성중 상태에서만 허용한다. 근거: 공유계약 B-1 · G-1
          */
         put: {
@@ -15574,6 +17926,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -15618,7 +17979,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * ERP W/O 라인 목록
+         * P/O 라인 목록
          * @description 근거: W-01-11 §4-B
          */
         get: {
@@ -15641,10 +18002,19 @@ export interface paths {
                         "application/json": components["schemas"]["PurchaseOrderLineListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
-         * ERP W/O 라인 치환
+         * P/O 라인 치환
          * @description 라인 배열을 통째로 치환한다. 이미 입하가 붙은 라인은 지울 수 없다. 근거: W-01-11 §5-1 · 공유계약 A-5 ⭐ 이 경로의 조회는 ETag 를 내리지 않는다 — If-Match 에 담을 토큰은 부모 자원 GET /logistics/purchase-orders/{purchaseOrderId} 200 의 ETag 다. 잠그는 단위가 부모이기 때문이다. 근거: 공유계약 B-1-1
          */
         put: {
@@ -15682,6 +18052,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -15728,8 +18107,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * ERP W/O 승인 요청
-         * @description 등록이 끝난 ERP W/O 에 승인을 건다. 결재선이 없으면 400(code=ROUTE_NOT_FOUND)이다 — 상신할 곳이 없는 요청을 만들지 않는다. 진행 중인 승인 요청이 이미 있으면 400 이다 — 한 전표에 살아 있는 요청은 하나다. 반려된 요청은 진행 중이 아니므로 다시 상신할 수 있고 그때는 새 요청이 만들어진다(공유계약 J-6). 근거: W-01-11 §5-1 · 공유계약 J-4
+         * P/O 승인 요청
+         * @description 등록이 끝난 P/O 에 승인을 건다. 결재선이 없으면 400(code=ROUTE_NOT_FOUND)이다 — 상신할 곳이 없는 요청을 만들지 않는다. 진행 중인 승인 요청이 이미 있으면 400 이다 — 한 전표에 살아 있는 요청은 하나다. 반려된 요청은 진행 중이 아니므로 다시 상신할 수 있고 그때는 새 요청이 만들어진다(공유계약 J-6). 근거: W-01-11 §5-1 · 공유계약 J-4
          */
         post: {
             parameters: {
@@ -15762,6 +18141,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -15840,6 +18228,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -15883,6 +18280,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["PutawayTask"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상 없음 */
@@ -15955,6 +18361,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -16046,6 +18461,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -16126,6 +18550,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -16191,6 +18624,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -16232,6 +18674,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -16296,6 +18747,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ShopfloorReceiptDetailResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상 없음 */
@@ -16364,6 +18824,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -16407,6 +18876,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -16475,6 +18953,15 @@ export interface paths {
                         "application/json": components["schemas"]["StockTransferDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -16527,6 +19014,15 @@ export interface paths {
                         "application/json": components["schemas"]["StockTransferLineListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -16566,6 +19062,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -16658,6 +19163,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -16712,21 +19226,17 @@ export interface paths {
                     expiryDateTo?: string;
                     /** @description LOT 번호 정확 일치. 스캔 화면이 쓴다 — 스캔값 하나로 한 건을 집어야 하므로 부분 검색(q)으로는 성립하지 않는다(여러 건이 온다). 공장 안에서 유일하다. 근거: P-02-03 §5-1 · P-02-08 §5-2 · 공유계약 D-2 */
                     lotNo?: string;
-                    /** @description 생산 진척을 함께 받는다. 목록에서는 LOT 마다 세게 되므로 기본은 끈다 */
-                    withProgress?: boolean;
-                    /** @description LOT 번호·외부 식별자 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description LOT 번호·외부 식별자 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
-                    /** @description 이 W/O 를 원천으로 발행된 LOT 만. 선발행 슬롯을 빠짐없이 훑는 경로다 — 마감(W-02-05 §3)과 POP 의 실적 대상 LOT 선택(P-02-04 §5)·생산LOT 완료(P-02-04 §3 좌단 LOT 목록)가 같은 축을 쓴다. ⭐ 저장된 형태는 다형 참조 짝(sourceTypeCode + sourceId)이지만 판별자 값 목록이 아직 미확정이라 짝 필터를 열지 않았다 — 값을 모르는 채 열면 눌러도 아무것도 안 걸린다(공유계약 G-23). 서버가 W/O 원천으로 풀어 준다 */
+                    /** @description 이 W/O 를 원천으로 발행된 LOT 만. 선발행 슬롯을 빠짐없이 훑는 경로다 — 마감(W-02-05 §3)과 POP 의 실적 대상 LOT 선택(P-02-04 §5)·생산LOT 완료(P-02-06 §3 좌단 LOT 목록)가 같은 축을 쓴다. ⭐ 저장된 형태는 다형 참조 짝(sourceTypeCode + sourceId)이지만 판별자 값 목록이 아직 미확정이라 짝 필터를 열지 않았다 — 값을 모르는 채 열면 눌러도 아무것도 안 걸린다(공유계약 G-23). 서버가 W/O 원천으로 풀어 준다 */
                     workOrderId?: number;
-                    /** @description 현재 작업 대상 생산 LOT 한 건만. true 이면 workOrderId 가 필수다. 서버는 해당 W/O의 completedAt 이 비어 있고 lifecycleStatusCode 가 WAITING 또는 ACTIVE 인 슬롯 중 workOrderSequenceNo 가 가장 작은 건을 최대 1건 반환한다. VOIDED 는 제외한다. ⛔ 화면이 페이지 첫 행을 현재 LOT으로 추측하지 않는다. 근거: P-02-04 §3·§5 */
-                    currentOnly?: boolean;
                     /** @description 입고 확정 대기 큐의 판정 축 — IQC 합격(IQC_PASSED) · 샘플링 미대상(SAMPLING_NOT_REQUIRED) · 긴급 IQC 생략 한도승인(URGENT_IQC_WAIVED). ⭐ 값 집합은 W-01-10 §3·§5-1·§5-5 가 이미 확정했고 문자열만 없었다 — 2026-09-02 §G 로 도출. ⭐ 서버가 판정한다 — 화면이 검사 결과·승인 요청을 따로 조회해 조합하면 세 갈래가 화면마다 갈린다 */
                     receiptDispositionCode?: "IQC_PASSED" | "SAMPLING_NOT_REQUIRED" | "URGENT_IQC_WAIVED";
                     /** @description 입고 확정이 아직 안 된 것만. 참이면 IQC 미완료 LOT 이 빠진다 — 화면 §6 이 「진입 자체가 막힌다」로 못박은 규칙을 서버가 집행한다. heldOnly 로 갈음할 수 없다 — 의심자재 보류가 섞인다. 근거: W-01-10 §5-1 */
                     awaitingReceiptOnly?: boolean;
-                    /** @description 완료 처리됐는가로 거른다 — false 면 completedAt 이 비어 있는 것만, true 면 값이 있는 것만 낸다. LOT 라벨 출력(P-02-04 §4-B)의 완료 LOT 목록과 긴급 직행 출하(W-04-05 §3)의 생산 완료분 선택이 이 축으로 선다. ⭐ 상태 코드 문자열을 몰라도 판정된다. ⛔ statusCode(품질 판정 축)로는 완료를 고를 수 없다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다(공유계약 L-11). 근거: P-02-04 §4-B·§5-4 · omf-mes#269 */
+                    /** @description 완료 처리됐는가로 거른다 — false 면 completedAt 이 비어 있는 것만, true 면 값이 있는 것만 낸다. LOT 라벨 출력(P-02-07 §4-B)의 완료 LOT 목록과 긴급 직행 출하(W-04-05 §3)의 생산 완료분 선택이 이 축으로 선다. ⭐ 상태 코드 문자열을 몰라도 판정된다. ⛔ statusCode(품질 판정 축)로는 완료를 고를 수 없다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다(공유계약 L-11). 근거: P-02-07 §4-B·§5-4 · omf-mes#269 */
                     completed?: boolean;
                     /** @description 아직 입고 전표에 실리지 않은 LOT 만. ⭐ W-04-05 긴급 직행 출하가 「창고에 아직 안 들어온 생산 완료분」을 고르는 축이다(W-04-05 §5-7). 이미 입고된 LOT 은 정상 출하 흐름으로 가야 한다. ⭐ M-04-04 제품입고·적치가 오프라인 진입 전 「인수 대기 제품 LOT 목록」을 미리 받는 축이기도 하다(공유계약 C-11) */
                     unreceivedOnly?: boolean;
@@ -16749,8 +19259,8 @@ export interface paths {
                         };
                     };
                 };
-                /** @description 질의 조합 오류. currentOnly=true인데 workOrderId가 없으면 400 */
-                400: {
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -16809,6 +19319,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다. numberSourceCode 와 lotNo 의 조합이 어긋난 경우를 포함한다 — SUPPLIER 인데 lotNo 가 없거나, MES 인데 lotNo 를 보냈다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -16880,6 +19399,15 @@ export interface paths {
                         "application/json": components["schemas"]["LotDetailResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -16928,6 +19456,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -16995,6 +19532,15 @@ export interface paths {
                         "application/json": components["schemas"]["LotExternalIdentifierListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -17034,6 +19580,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -17104,6 +19659,15 @@ export interface paths {
                         "application/json": components["schemas"]["LotHoldListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -17122,8 +19686,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * LOT 상태 변경이력 조회 — 전이 9종 전건
-         * @description 결정 10 「현재 1행 + 변경이력 1:N」을 되살린 전용 이력(2026-08-30). 도식스펙03 §1.3 공통 범례가 요구하는 상태 전이 9종(C4·C5·C6·C7·C8·C9·C10·C14·C15) 전건을 사건별 행으로 낸다 — 기존 GET /quality/lot-hold-events(보류 등록·해제 2종만)를 대체하는 상위 자원이다. 저장 테이블은 데이터 모델 담당에게 통지한다 — 기다리지 않는다(data-model-boundary.md). 근거: W-03-01 §5-1·§5-2 · W-01-02 · M-01-08
+         * LOT 상태 변경이력 조회 — 서버 구현 기준 전이 13종 전건
+         * @description 결정 10 「현재 1행 + 변경이력 1:N」을 되살린 전용 이력(2026-08-30). 원본 설계 상태 전이 9종(C4·C5·C6·C7·C8·C9·C10·C14·C15)과 서버 구현 전이 C17·C18·C19·C20을 합친 13종을 사건별 행으로 낸다 — 기존 GET /quality/lot-hold-events(보류 등록·해제 2종만)를 대체하는 상위 자원이다. 저장 테이블은 데이터 모델 담당에게 통지한다 — 기다리지 않는다(data-model-boundary.md). 근거: W-03-01 §5-1·§5-2 · W-01-02 · M-01-08
          */
         get: {
             parameters: {
@@ -17152,6 +19716,24 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["LotStatusHistoryEvent"][];
                         };
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -17202,6 +19784,15 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["LotLifecycleHistoryEvent"][];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -17270,6 +19861,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -17309,7 +19909,7 @@ export interface paths {
         put?: never;
         /**
          * 생산 LOT 완료
-         * @description 생산 LOT 라벨을 부착한 뒤 스캔한 현재 LOT을 완료로 옮긴다. 이 동작은 LOT 생산 등록 확정이며 W/O 마감이 아니다. 계획 수량 미달 사유와 잔량 처리는 받지 않고 관리웹 W-02-05의 W/O 마감에서 처리한다. 라벨 발행은 이 오퍼레이션 밖이며 공통 출력물 계약이 소유한다. 오프라인 대상이다(공유계약 C-9). 근거: P-02-04 §3-3
+         * @description 생산 LOT 을 완료로 옮긴다. 계획 수량에 미달하면 사유 코드가 필수이고, 서버가 LOT 상태와 작업지시 사유를 한 트랜잭션으로 기록한다(공유계약 B-8). ⛔ 라벨 출력은 이 오퍼레이션 밖이다 — 공통 출력물 계약이 소유한다. 오프라인 대상이다(공유계약 C-9). 근거: P-02-06 §5-5
          */
         post: {
             parameters: {
@@ -17347,6 +19947,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -17456,6 +20065,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -17556,6 +20174,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -17610,7 +20237,7 @@ export interface paths {
                     businessUnitId?: number;
                     /** @description 참이면 사용 중만 */
                     activeOnly?: boolean;
-                    /** @description 승인 유형 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 승인 유형 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -17631,6 +20258,15 @@ export interface paths {
                             items: components["schemas"]["ApprovalRoute"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -17669,6 +20305,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -17728,6 +20373,15 @@ export interface paths {
                         "application/json": components["schemas"]["ApprovalRoute"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -17776,6 +20430,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -17859,6 +20522,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApprovalRoute"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한 없음 */
@@ -17947,6 +20619,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -18015,6 +20696,15 @@ export interface paths {
                         "application/json": components["schemas"]["ApprovalRouteStepListResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상 없음 */
                 404: {
                     headers: {
@@ -18067,6 +20757,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -18148,7 +20847,7 @@ export interface paths {
                     requestedAtFrom?: string;
                     /** @description 상신일 종료 */
                     requestedAtTo?: string;
-                    /** @description 요청번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 요청번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -18175,6 +20874,15 @@ export interface paths {
                             items: components["schemas"]["ApprovalRequest"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한 없음 */
@@ -18229,6 +20937,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ApprovalRequestDetail"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한 없음 */
@@ -18311,6 +21028,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 — code=STATE_LOCKED 는 재로드해도 풀리지 않는다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -18410,6 +21136,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -18463,6 +21198,8 @@ export interface paths {
          * @description 대상마다 회차를 매겨 기록을 만든다. 이미 발행된 대상이면 회차가 오르고 재발행 사유가 필수다.
          *
          *     인쇄하지 않는다 — 이 호출은 기록만 만든다. 이미지는 별도로 받아 프린터로 보내고 결과를 따로 보고한다. 프린터가 죽어도 기록은 남는다.
+         *
+         *     서버 구현 기준: IDENTIFICATION_TAG는 항상 422 STATE_LOCKED, DELIVERY_LABEL은 항상 422 INVALID다. 두 문서 유형은 현재 클라이언트에서 발행 요청하지 않는다(I-27 마감 결정).
          */
         post: operations["createDocumentIssues"];
         delete?: never;
@@ -18562,6 +21299,8 @@ export interface paths {
         /**
          * 프린터 목록 · 상태
          * @description 이 단말이 쓸 수 있는 프린터와 그 상태. 화면 머리에 상시 보인다 — 인쇄가 안 될 때 사용자가 가장 먼저 보는 곳이다.
+         *
+         *     서버 구현 기준: 실제 상태 수집 경로가 없어 statusCode를 OFFLINE으로 고정 반환한다. 연결 상태 판정에 사용하지 않는다.
          */
         get: operations["listPrinters"];
         put?: never;
@@ -18628,6 +21367,8 @@ export interface paths {
                 /** @description 로그인됨 */
                 200: {
                     headers: {
+                        /** @description omf_session HttpOnly 세션 쿠키. SameSite=Lax, Path=/이며 Secure는 COOKIE_SECURE 설정을 따른다. */
+                        "Set-Cookie"?: string;
                         [name: string]: unknown;
                     };
                     content: {
@@ -18698,6 +21439,15 @@ export interface paths {
                         "application/json": components["schemas"]["Session"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -18721,6 +21471,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
                 };
             };
         };
@@ -18765,7 +21524,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description 검증 실패. 고쳐야 풀린다. ⛔ 새 비밀번호가 현재 비밀번호와 «같으면» 여기로 온다 — code=SAME_AS_CURRENT. 근거: W-CO-10 §6 */
+                /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
                     headers: {
                         [name: string]: unknown;
@@ -18842,6 +21601,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -18882,6 +21650,15 @@ export interface paths {
                             /** @example 3 */
                             unreadCount: number;
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -18927,6 +21704,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
                 };
                 /** @description 권한·단말 게이팅에 막혔다 */
                 403: {
@@ -18991,6 +21777,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         delete?: never;
@@ -19028,6 +21823,15 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["NotificationEvent"][];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -19074,6 +21878,15 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["NotificationSubscription"][];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한·단말 게이팅에 막혔다 */
@@ -19129,6 +21942,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한·단말 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -19170,13 +21992,12 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 공지 상태로 조회한다 — DRAFT(작성중), SCHEDULED(예약), PUBLISHED(게시), CLOSED(종료). */
                     statusCode?: "DRAFT" | "SCHEDULED" | "PUBLISHED" | "CLOSED";
                     /** @description 공지 범위로 거른다. 1차는 COMPANY·WORK_ORDER 만 유효하다 */
                     scopeCode?: "COMPANY" | "WORK_ORDER" | "BUSINESS_UNIT" | "EQUIPMENT_GROUP" | "WORK_SHIFT";
                     /** @description 참이면 게시 중인 것만 */
                     activeOnly?: boolean;
-                    /** @description 제목 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 제목 검색 */
                     q?: string;
                     /**
                      * @description 이 날 이후와 «겹치는» 공지만. 게시 기간(시작일~종료일)이 조회 구간과 겹치면 걸린다 — 시작일 기준이 아니다. date 라 양끝 포함이다
@@ -19217,6 +22038,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -19249,8 +22079,17 @@ export interface paths {
                         "application/json": components["schemas"]["Notice"];
                     };
                 };
-                /** @description 검증 실패. 고쳐야 풀린다. ⛔ 종료일이 시작일보다 앞이면 여기로 온다 — code=RANGE. 근거: W-CO-04 §6 */
+                /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -19305,6 +22144,15 @@ export interface paths {
                         "application/json": components["schemas"]["Notice"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -19349,8 +22197,17 @@ export interface paths {
                         "application/json": components["schemas"]["Notice"];
                     };
                 };
-                /** @description 검증 실패. 고쳐야 풀린다. ⛔ 종료일이 시작일보다 앞이면 여기로 온다 — code=RANGE. 근거: W-CO-04 §6 */
+                /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -19432,6 +22289,15 @@ export interface paths {
                         "application/json": components["schemas"]["Notice"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한·단말 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -19478,7 +22344,7 @@ export interface paths {
         put?: never;
         /**
          * 공지 종료
-         * @description «지금» 내린다 — 종료일을 오늘로 당기고 내린 시각(closedAt)을 찍는다. ⭐ 그 즉시 statusCode 가 CLOSED 이고 현장 셸의 미확인 질의(unacknowledgedByMe)에서도 빠진다 — 기간 안이라도 즉시 내리고 싶을 때가 있고, 확인 요구가 켜진 공지는 현장에서 닫을 수 없어 하루를 기다리면 그날 내내 남는다. 지우지 않는다 — 확인 이력이 남아야 한다. 근거: W-CO-04 §5-1·§5-3
+         * @description 종료일을 앞으로 당긴다. 지우지 않는다 — 확인 이력이 남아야 한다. 근거: W-CO-04 §5
          */
         post: {
             parameters: {
@@ -19503,6 +22369,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Notice"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한·단말 게이팅에 막혔다 */
@@ -19579,6 +22454,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한·단말 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -19651,6 +22535,15 @@ export interface paths {
                             items: components["schemas"]["NoticeAcknowledgement"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 권한·단말 게이팅에 막혔다 */
@@ -19775,6 +22668,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -19809,6 +22711,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 비율이 0 이하이거나 종료일이 시작일보다 빠르다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -19870,6 +22781,15 @@ export interface paths {
                         "application/json": components["schemas"]["OperationPolicyEffective"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -19915,6 +22835,15 @@ export interface paths {
                         "application/json": components["schemas"]["OperationPolicy"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         /**
@@ -19954,6 +22883,15 @@ export interface paths {
                 };
                 /** @description 검증 실패 — 비율이 0 이하이거나 종료일이 시작일보다 빠르다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -20021,6 +22959,15 @@ export interface paths {
                         "application/json": {
                             items: components["schemas"]["Attachment"][];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -20205,6 +23152,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한·단말 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -20303,6 +23259,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한·단말 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -20328,15 +23293,15 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * ERP W/O 목록
+         * P/O 목록
          * @description 근거: W-02-01 §3
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description ERP W/O 상태로 거른다 — 수신(RECEIVED) · 수정됨(UPDATED) · 취소(CANCELLED). ⭐ ERP 가 발행하고 MES 는 수신본을 갖지만 **코드는 우리 어휘로 저장한다** — ERP 코드를 그대로 담거나 매핑 테이블을 두지 않는다(사용자 결정 2026-09-02). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+                    /** @description P/O 상태로 거른다 — 수신(RECEIVED) · 수정됨(UPDATED) · 취소(CANCELLED). ⭐ ERP 가 발행하고 MES 는 수신본을 갖지만 **코드는 우리 어휘로 저장한다** — ERP 코드를 그대로 담거나 매핑 테이블을 두지 않는다(사용자 결정 2026-09-02). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
-                    /** @description ERP 변경이 도착했는데 관리자가 아직 확인하지 않은 ERP W/O 만 낸다. 참이면 ⓐ acknowledgedAt 이 비었거나 ⓑ lastChange.receivedAt 이 acknowledgedAt 보다 뒤인 것을 낸다 — 둘 중 하나면 미확인이다. ⓑ 가 「확인한 뒤 ERP 가 또 보낸」 경우이고 이 화면이 존재하는 이유다. ⭐ 상태 코드 문자열을 몰라도 판정된다 — 확인 시각의 유무로 갈리기 때문이다(released 파라미터와 같은 형태다). ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 쪽 안에서만 걸러진다. 근거: W-02-06 §3·§4-C·§6 · omf-mes#87 */
+                    /** @description ERP 변경이 도착했는데 관리자가 아직 확인하지 않은 P/O 만 낸다. 참이면 ⓐ acknowledgedAt 이 비었거나 ⓑ lastChange.receivedAt 이 acknowledgedAt 보다 뒤인 것을 낸다 — 둘 중 하나면 미확인이다. ⓑ 가 「확인한 뒤 ERP 가 또 보낸」 경우이고 이 화면이 존재하는 이유다. ⭐ 상태 코드 문자열을 몰라도 판정된다 — 확인 시각의 유무로 갈리기 때문이다(released 파라미터와 같은 형태다). ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 쪽 안에서만 걸러진다. 근거: W-02-06 §3·§4-C·§6 · omf-mes#87 */
                     unacknowledgedOnly?: boolean;
                     /** @description 사업부 필터 — 화면 정본(W-02-01 §3)의 첫 필터. 근거: omf-mes#196 */
                     businessUnitId?: number;
@@ -20346,11 +23311,11 @@ export interface paths {
                     dueDateFrom?: string;
                     /** @description 납기 종료 */
                     dueDateTo?: string;
-                    /** @description ERP W/O 번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description P/O 번호 검색 */
                     q?: string;
-                    /** @description 하위 레벨 함께(계층 펼침용). 참이면 필터·page·size·total 은 «루트 ERP W/O» 기준으로 세고, 각 루트의 하위 전체를 같은 페이지에 함께 내린다 — 부모와 자식이 페이지로 갈리지 않는다. 트리는 parentProductionOrderId·bomLevel 로 만든다(별도 hasChildren 불요 — 하위가 같은 응답에 있다). 기본 표시는 전체 펼침(W-02-01 §3 레이아웃). 근거: omf-mes#196 */
+                    /** @description 하위 레벨 함께(계층 펼침용). 참이면 필터·page·size·total 은 «루트 P/O» 기준으로 세고, 각 루트의 하위 전체를 같은 페이지에 함께 내린다 — 부모와 자식이 페이지로 갈리지 않는다. 트리는 parentProductionOrderId·bomLevel 로 만든다(별도 hasChildren 불요 — 하위가 같은 응답에 있다). 기본 표시는 전체 펼침(W-02-01 §3 레이아웃). 근거: omf-mes#196 */
                     includeChildren?: boolean;
-                    /** @description 마지막으로 수신한 ERP 변경 한 건을 함께 받는다 — 응답의 lastChange 다. ERP W/O 변경 관리자 확인 화면(W-02-06)의 «변경 알림 목록»이 행마다 「무엇이 몇에서 몇으로」를 그리므로 이 축으로 선다. ⛔ 행마다 따로 부르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 호출이 쪽 크기만큼 는다. 켜지 않으면 채우지 않는다 — 같은 경로를 ERP W/O 수신·조회 화면(W-02-01)이 변경 정보 없이 부른다(공유계약 L-1-1 ⑵). 변경을 한 번도 받지 않은 ERP W/O 는 켜도 이 칸이 없다. 근거: W-02-06 §3 */
+                    /** @description 마지막으로 수신한 ERP 변경 한 건을 함께 받는다 — 응답의 lastChange 다. P/O 변경 관리자 확인 화면(W-02-06)의 «변경 알림 목록»이 행마다 「무엇이 몇에서 몇으로」를 그리므로 이 축으로 선다. ⛔ 행마다 따로 부르는 것으로는 성립하지 않는다 — 목록이 쪽 단위라 호출이 쪽 크기만큼 는다. 켜지 않으면 채우지 않는다 — 같은 경로를 P/O 수신·조회 화면(W-02-01)이 변경 정보 없이 부른다(공유계약 L-1-1 ⑵). 변경을 한 번도 받지 않은 P/O 는 켜도 이 칸이 없다. 근거: W-02-06 §3 */
                     withLastChange?: boolean;
                     page?: number;
                     size?: number;
@@ -20373,6 +23338,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -20391,13 +23365,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * ERP W/O 한 건
+         * P/O 한 건
          * @description 근거: W-02-01 §3
          */
         get: {
             parameters: {
                 query?: {
-                    /** @description 마지막으로 수신한 ERP 변경 한 건을 함께 받는다 — 응답의 lastChange 다. 켜지 않으면 채우지 않는다. 변경을 한 번도 받지 않은 ERP W/O 는 켜도 이 칸이 없다. 판정 저장이 409 로 막힌 뒤 다시 불러올 때 «새 변경분»을 함께 받는다(W-02-06 §5-3) */
+                    /** @description 마지막으로 수신한 ERP 변경 한 건을 함께 받는다 — 응답의 lastChange 다. 켜지 않으면 채우지 않는다. 변경을 한 번도 받지 않은 P/O 는 켜도 이 칸이 없다. 판정 저장이 409 로 막힌 뒤 다시 불러올 때 «새 변경분»을 함께 받는다(W-02-06 §5-3) */
                     withLastChange?: boolean;
                 };
                 header?: never;
@@ -20411,12 +23385,21 @@ export interface paths {
                 /** @description 상세 */
                 200: {
                     headers: {
-                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다. ⭐ ERP W/O 는 ERP 배치가 다시 덮어쓸 수 있어 사용자끼리의 충돌이 아니라 «ERP 재변경» 충돌이 난다 */
+                        /** @description 낙관적 잠금 토큰 — 이 행의 version_no. 다음 쓰기의 If-Match 에 그대로 담는다. 본문 필드로는 내리지 않는다 — 표시하지 않되 전달한다. ⭐ P/O 는 ERP 배치가 다시 덮어쓸 수 있어 사용자끼리의 충돌이 아니라 «ERP 재변경» 충돌이 난다 */
                         ETag?: string;
                         [name: string]: unknown;
                     };
                     content: {
                         "application/json": components["schemas"]["ProductionOrder"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 없다 */
@@ -20448,14 +23431,14 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * ERP W/O 변경 확인 처리
+         * P/O 변경 확인 처리
          * @description 관리자가 ERP 변경을 반영할지 강행할지 판정한다. 근거: W-02-06 §5-5 · :동사 규약
          *
          *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /planning/production-orders/{productionOrderId} 의 ETag 를 그대로 싣는다. 409 가 나면 화면 문구는 「남이 고쳤다」가 아니라 「ERP 가 다시 보냈다」다.
          *
-         *     ⭐ 토큰이 둘이다 — ERP W/O 는 If-Match 헤더(원천 = GET /planning/production-orders/{productionOrderId} 의 ETag), 함께 고치는 W/O 는 본문 workOrderAdjustments[].versionNo(원천 = GET /production/work-orders?productionOrderId= 응답의 versionNo)다. 하나라도 어긋나면 전체를 거부한다.
+         *     ⭐ 토큰이 둘이다 — P/O 는 If-Match 헤더(원천 = GET /planning/production-orders/{productionOrderId} 의 ETag), 함께 고치는 W/O 는 본문 workOrderAdjustments[].versionNo(원천 = GET /production/work-orders?productionOrderId= 응답의 versionNo)다. 하나라도 어긋나면 전체를 거부한다.
          *
-         *     ⛔ 400 규칙 — ⓐ decisionCode=PROCEED 인데 workOrderAdjustments 가 비어 있지 않으면 400 ⓑ workOrderAdjustments[].workOrderId 가 이 ERP W/O 의 영향 W/O 가 아니면 400 ⓒ 같은 workOrderId 가 두 번 오면 400 ⓓ orderQty·plannedStartAt·plannedEndAt 을 하나도 안 담은 조정 항목이 있으면 400(아무것도 안 고치는 항목이다).
+         *     ⛔ 400 규칙 — ⓐ decisionCode=PROCEED 인데 workOrderAdjustments 가 비어 있지 않으면 400 ⓑ workOrderAdjustments[].workOrderId 가 이 P/O 의 영향 W/O 가 아니면 400 ⓒ 같은 workOrderId 가 두 번 오면 400 ⓓ orderQty·plannedStartAt·plannedEndAt 을 하나도 안 담은 조정 항목이 있으면 400(아무것도 안 고치는 항목이다).
          *
          *     ⛔ 중단·취소 반영의 W/O 취소는 이 본문에 싣지 않는다 — POST /production/work-orders/{workOrderId}:cancel 을 건별로 부른다. 그쪽은 선발행 생산LOT 슬롯을 «전건 즉시 폐번»하는 되돌릴 수 없는 부수 효과를 갖고(DR-007), 취소 사유(reasonCode)가 W/O 마다 다를 수 있어 건별 확인이 업무 요구다.
          */
@@ -20490,6 +23473,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -20566,6 +23558,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -20632,6 +23633,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -20666,6 +23676,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -20732,6 +23751,15 @@ export interface paths {
                         "application/json": components["schemas"]["ProductionPlan"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -20778,6 +23806,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -20841,6 +23878,15 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content?: never;
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
                 };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
@@ -20925,6 +23971,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -21001,6 +24056,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -21042,6 +24106,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -21106,6 +24179,15 @@ export interface paths {
                         "application/json": components["schemas"]["MaterialConsumption"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -21140,7 +24222,6 @@ export interface paths {
             parameters: {
                 query?: {
                     workOrderId?: number;
-                    /** @description 독립 상태 코드를 사용하는 조회 조건이 아니다. 독립 상태 코드를 사용하지 않는다. 반납 진행은 requestedAt과 receivedAt으로 확인한다. */
                     statusCode?: string;
                     requestedFrom?: string;
                     requestedTo?: string;
@@ -21163,6 +24244,15 @@ export interface paths {
                             items: components["schemas"]["MaterialReturn"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -21206,6 +24296,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -21270,6 +24369,15 @@ export interface paths {
                         "application/json": components["schemas"]["MaterialReturn"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -21305,7 +24413,6 @@ export interface paths {
                 query?: {
                     fromWorkOrderId?: number;
                     toWorkOrderId?: number;
-                    /** @description 독립 상태 코드를 사용하는 조회 조건이 아니다. 독립 상태 코드를 사용하지 않는다. 인계·인수 여부는 handedOverAt과 receivedAt으로 확인한다. */
                     statusCode?: string;
                     handedOverFrom?: string;
                     handedOverTo?: string;
@@ -21328,6 +24435,15 @@ export interface paths {
                             items: components["schemas"]["OperationHandover"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -21371,6 +24487,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -21435,6 +24560,15 @@ export interface paths {
                         "application/json": components["schemas"]["OperationHandover"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -21491,6 +24625,15 @@ export interface paths {
                         "application/json": components["schemas"]["PrecheckDecisionList"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -21530,6 +24673,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -21604,12 +24756,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
         /**
          * 생산 실적 등록
-         * @description 다섯 수량을 그대로 받는다. P-02-04 생산 LOT 출력에서 저장할 때는 goodQty와 함께 현재 LOT 한 건의 lotAllocations를 필수로 보내며 allocatedQty는 goodQty와 같아야 한다 — W/O 합계가 아니라 해당 LOT 최종 실적으로 귀속하기 위해서다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: P-02-04 §5
+         * @description 다섯 수량을 그대로 받는다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항). 근거: P-02-04 §5
          */
         post: {
             parameters: {
@@ -21645,6 +24806,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -21709,6 +24879,15 @@ export interface paths {
                         "application/json": components["schemas"]["ProductionResult"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -21770,6 +24949,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -21861,6 +25049,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -21935,6 +25132,15 @@ export interface paths {
                         "application/json": components["schemas"]["RepairExecutionList"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -21974,6 +25180,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -22061,6 +25276,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 수리 건이 없다 */
                 404: {
                     headers: {
@@ -22101,7 +25325,7 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description ERP W/O 로 거른다(서버가 계획을 경유해 잇는다) — W-02-01 상세 「전개」 구획용. 근거: omf-mes#196 */
+                    /** @description P/O 로 거른다(서버가 계획을 경유해 잇는다) — W-02-01 상세 「전개」 구획용. 근거: omf-mes#196 */
                     productionOrderId?: number;
                     productionPlanId?: number;
                     /** @description 작업지시 상태로 거른다 — 편성(PLANNED) · 확정(CONFIRMED) · 배포(RELEASED) · 진행(IN_PROGRESS) · 완료(COMPLETED) · 마감(CLOSED) · 중단(SUSPENDED) · 취소(CANCELLED) «8종»(결정 14 · 사용자 확정 2026-09-02). ⛔ 「진행불가」는 상태가 «아니다» — 자원 Validation NG 는 확정 버튼을 막는 게이트이고 W/O 는 편성에 머문다(W-02-04 §5 · W-02-03 §5-3 A-9 3등급). 「재시작」을 상태에서 뺀 것과 같은 논리다(중단→진행 전이 이벤트). ⛔ 시스템 소유다 — 고객이 W-06-06 공통코드 마스터에서 이 값을 편집하면 안 된다. 상태 전이와 버튼 활성이 이 값에 걸린다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
@@ -22114,7 +25338,7 @@ export interface paths {
                     open?: boolean;
                     /** @description 확정·배포할 수 있는 상태인가로 거른다 — 참이면 ⓐ 배포 시각이 비어 있고 ⓑ 계획 자원이 배정돼 있으며 ⓒ 4M 배정 유효성 점검에 차단 건이 없는 것만 낸다. 확정·배포 화면의 《확정 대기》 목록이 이 축으로 선다. 거짓이면 그 여집합을 낸다. ⭐ 긴급 W/O 는 이 목록에 넣지 않는다 — 발행·배포를 긴급 발행 화면이 한 화면에서 끝낸다. ⭐ 상태 코드 문자열을 몰라도 판정된다 — released 와 같은 형태다. ⛔ 응답을 화면이 거르는 것으로는 성립하지 않는다 — 목록이 쪽 단위다 */
                     releasable?: boolean;
-                    /** @description ERP W/O 와 어긋난 채 남은 W/O 만 거른다 — 응답의 poMismatch 와 같은 축이다 */
+                    /** @description P/O 와 어긋난 채 남은 W/O 만 거른다 — 응답의 poMismatch 와 같은 축이다 */
                     poMismatch?: boolean;
                     /** @description 이 W/O 의 후속 W/O 만 낸다 — 서버가 공정 의존을 푼다. WIP 공정 이동 스캔의 「다음 공정」 선택지가 이 축으로 선다. ⭐ 후속이 여럿이면 여럿을 낸다 — 외주·재작업 분기가 있어 화면이 고른다. 후속이 없으면 빈 목록이고 화면은 「다음 공정이 없습니다」를 그린다. 후속의 statusCode 를 함께 받아 화면이 「후속 W/O 미시작 → 경고 + 진행 가능」을 추가 호출 없이 판정한다 */
                     successorOfWorkOrderId?: number;
@@ -22129,7 +25353,7 @@ export interface paths {
                     plannedStartFrom?: string;
                     /** @description 기간 필터. ⚠ 진행현황 조회는 이 쌍을 «비울 수 없다» — 무제한 조회를 허용하면 실적이 쌓인 뒤 화면이 멎는다. 기본값은 최근 1개월이고 그 강제는 «화면» 규칙이다 — 다른 화면이 같은 경로를 기간 없이 부르기 때문에 계약에서 필수로 올리지 않았다. 끝 경계는 date-time 이라 반열림이다(From 이상 · To 미만). ⚠ 이 축은 W/O 의 «계획 시작 시각»이다 — 실적의 발생 시각이 아니다. 이 쌍으로 좁힌 요약의 수량 합계는 «이 기간에 시작 계획된 W/O» 의 전 기간 실적 합이며 「그 기간에 생산된 양」이 아니다. 실적 발생 시각으로 세려면 GET /production/production-results 의 occurredFrom·occurredTo 다. */
                     plannedStartTo?: string;
-                    /** @description W/O 번호 검색. ⚠ ERP W/O 번호는 이 축으로 검색되지 않는다 — ERP W/O 는 productionOrderId 로 좁힌다 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description W/O 번호 검색. ⚠ P/O 번호는 이 축으로 검색되지 않는다 — P/O 는 productionOrderId 로 좁힌다 */
                     q?: string;
                     /** @description 정렬 키는 제한한다. 근거: 공유계약 L-4 */
                     sort?: string;
@@ -22163,12 +25387,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
         /**
          * W/O 발행
-         * @description 긴급 W/O(W-02-07)를 직접 만든다 — 전개 생성분은 계획 :confirm 이 서버 트랜잭션으로 만들므로 이 경로를 쓰지 않는다(omf-mes#199). ⭐ productionPlanId 를 비우고 부르면 서버가 내부 ERP W/O 와 계획을 함께 만든다 — ERP W/O·계획·W/O 생성이 한 트랜잭션이고, 중간에 끊기면 전체를 되돌린다(공유계약 B-8). 그 ERP W/O 는 erp_order_no 가 비어 있다 — ERP 가 보내지 않은 ERP W/O 는 반제품 전개에서 이미 쓰는 개념이다. 근거: W-02-07 §5-2
+         * @description 긴급 W/O(W-02-07)를 직접 만든다 — 전개 생성분은 계획 :confirm 이 서버 트랜잭션으로 만들므로 이 경로를 쓰지 않는다(omf-mes#199). ⭐ productionPlanId 를 비우고 부르면 서버가 내부 P/O 와 계획을 함께 만든다 — P/O·계획·W/O 생성이 한 트랜잭션이고, 중간에 끊기면 전체를 되돌린다(공유계약 B-8). 그 P/O 는 erp_order_no 가 비어 있다 — ERP 가 보내지 않은 P/O 는 반제품 전개에서 이미 쓰는 개념이다. 근거: W-02-07 §5-2
          */
         post: {
             parameters: {
@@ -22199,6 +25432,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -22270,6 +25512,15 @@ export interface paths {
                         "application/json": components["schemas"]["WorkOrder"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -22316,6 +25567,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -22394,6 +25654,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -22426,6 +25695,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["WorkOrderResourcePlan"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 이미 같은 자원이 배정돼 있다 */
@@ -22484,6 +25762,15 @@ export interface paths {
                     };
                     content?: never;
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -22531,6 +25818,15 @@ export interface paths {
                         "application/json": components["schemas"]["ValidationReport"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -22574,7 +25870,7 @@ export interface paths {
          *
          *     ⭐ 저장 충돌 보호 — If-Match 는 필수다. 토큰은 GET /production/work-orders/{workOrderId} 의 ETag 를 그대로 싣는다. 취소는 관리웹(W-02-06) 온라인 전제이고 선발행 슬롯 자동 폐번이 붙는 되돌릴 수 없는 전이라 :close·:release 와 같은 정책이다. 근거: 형제 전이 정책 정렬 · omf-mes#205
          *
-         *     ⚠ ERP W/O 변경 관리자 확인(W-02-06)에서 중단·취소를 반영할 때는 영향 W/O 마다 이 오퍼레이션을 «건별로» 부른다 — 부분 성공이 생기고 화면이 성공·실패를 건별로 보인다. 수량·납기 반영이 :acknowledge 한 요청에 실리는 것과 다른데, 이쪽은 선발행 슬롯을 전건 즉시 폐번하는 되돌릴 수 없는 전이라 건별 확인이 업무 요구이기 때문이다(DR-007 · 공유계약 G-19).
+         *     ⚠ P/O 변경 관리자 확인(W-02-06)에서 중단·취소를 반영할 때는 영향 W/O 마다 이 오퍼레이션을 «건별로» 부른다 — 부분 성공이 생기고 화면이 성공·실패를 건별로 보인다. 수량·납기 반영이 :acknowledge 한 요청에 실리는 것과 다른데, 이쪽은 선발행 슬롯을 전건 즉시 폐번하는 되돌릴 수 없는 전이라 건별 확인이 업무 요구이기 때문이다(DR-007 · 공유계약 G-19).
          */
         post: {
             parameters: {
@@ -22607,6 +25903,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -22713,6 +26018,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -22804,6 +26118,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -22887,6 +26210,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -22985,6 +26317,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -23062,6 +26403,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -23103,6 +26453,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -23167,6 +26526,15 @@ export interface paths {
                         "application/json": components["schemas"]["WorkSession"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -23220,6 +26588,15 @@ export interface paths {
                         "application/json": components["schemas"]["WorkSessionEvent"][];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -23263,6 +26640,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -23339,6 +26725,15 @@ export interface paths {
                         "application/json": components["schemas"]["WorkSessionWorker"][];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -23377,6 +26772,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -23462,6 +26866,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -23560,6 +26973,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -23604,18 +27026,17 @@ export interface paths {
         };
         /**
          * 제품 개체 목록
-         * @description LOT 중간 실적으로 이미 등록된 개체를 조회·계수한다. 생산 LOT 출력 전 실제 생산수량과 이 목록의 전체 건수를 대조한다. 아직 production_result가 없는 LOT도 조회할 수 있으며 양품 누계에서 개체 수를 빼지 않는다. 근거: P-02-04 §5-3·§6
+         * @description 이미 발번된 개체를 센다. 화면이 「미발행 양품」을 계산하는 근거다 — 양품 누계에서 이 목록의 건수를 뺀다. 근거: P-02-05 §5-3·§6
          */
         get: {
             parameters: {
                 query?: {
                     lotId?: number;
                     itemId?: number;
-                    /** @description 독립 상태 코드를 사용하는 조회 조건이 아니다. 독립 상태 코드와 전이 동작을 정의하지 않는다. 이 값으로 품질 또는 생애 상태를 판단하지 않는다. */
                     statusCode?: string;
                     producedFrom?: string;
                     producedTo?: string;
-                    /** @description 일련번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 일련번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -23638,12 +27059,21 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
         /**
          * 제품 개체 대량 발번
-         * @description LOT 중간 실적으로 개체 N행을 만든다 — 인식표가 개체별 1:1 이기 때문이다(R69). 번호는 서버가 매긴다. ⛔ 기존 production_result 또는 goodQty는 선행조건이 아니다. 최종 생산 LOT 출력 시 실제 생산수량과 이 LOT의 전체 개체 수가 같은지 검증한다. ⛔ 한 트랜잭션이고 부분 발번이 없다 — 하나라도 실패하면 전량 되돌린다. 부분 발번은 번호에 구멍을 만들고 그것을 메울 화면이 없다. 근거: P-02-04 §5-3·§6 · 공유계약 B-8. ⭐ 발행 기록은 이 경로가 만들지 않는다 — 공통 계약의 POST /app/document-issues 가 이어서 만든다. 개체가 먼저 있어야 그쪽 targets 에 담을 수 있다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
+         * @description 양품 N개에 개체 N행을 만든다 — 인식표가 개체별 1:1 이기 때문이다(R69). 번호는 서버가 매긴다. ⛔ 한 트랜잭션이고 부분 발번이 없다 — 하나라도 실패하면 전량 되돌린다. 부분 발번은 번호에 구멍을 만들고 그것을 메울 화면이 없다. 근거: P-02-05 §5-3·§6 · 공유계약 B-8. ⭐ 발행 기록은 이 경로가 만들지 않는다 — 공통 계약의 POST /app/document-issues 가 이어서 만든다. 개체가 먼저 있어야 그쪽 targets 에 담을 수 있다. 오프라인 대상 오퍼레이션이다 — Idempotency-Key 는 필수이고 If-Match 는 선택이다. 큐는 낙관적 잠금 토큰을 싣지 않는다(공유계약 C-9). ⛔ 오프라인일 때는 이 오퍼레이션이 호출되지 않는다 — 셸의 outbox 가 들고 있다가 연결되면 그때 보낸다. 그래서 서버 응답은 온라인일 때의 것 하나뿐이다. 미확정 표식은 셸이 붙인다(공유계약 C-7 — 화면 조항).
          */
         post: {
             parameters: {
@@ -23679,6 +27109,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -23729,7 +27168,6 @@ export interface paths {
                     approvalRequestId?: number;
                     lotId?: number;
                     nonconformanceId?: number;
-                    /** @description 독립 상태 코드를 사용하는 조회 조건이 아니다. 독립 승인 상태 코드를 사용하지 않는다. 승인 상태는 연결된 결재 요청에서 확인하며, 사용 가능 여부는 usable로 확인한다. */
                     statusCode?: string;
                     /** @description ⭐ 지금 쓸 수 있는 것만 — 상태·유효기간·잔여의 3항 논리곱을 서버가 판정한다 */
                     usableOnly?: boolean;
@@ -23756,6 +27194,24 @@ export interface paths {
                             items: components["schemas"]["Concession"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -23799,6 +27255,15 @@ export interface paths {
                         "application/json": components["schemas"]["Concession"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -23831,7 +27296,7 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: {
+                query: {
                     workOrderId?: number;
                     lotId?: number;
                     defectCodeId?: number;
@@ -23840,8 +27305,8 @@ export interface paths {
                     /** @description 불량 기록의 원천으로 거른다 — 현장(FIELD) · 공정검사(PQC) · 출하검사(OQC) · 수리(REPAIR) · 클레임(CLAIM) 5값(✓설계확정 결정 09). ⭐ **2026-09-02 정정** — 전에는 이 자리가 sourceAxisCode 라는 «다른 이름»이었고 「서버가 유도한 4축(현장/PQC/OQC/원천미상)」을 받았다. W-03-05 §5-2 가 「유도로는 결정 09 의 5축이 서지 않는다」를 확인하고 sourceCode 명시 축을 «신설»했는데 이 필터만 옛 축에 남아 있었다. ⛔ 한 사실에 두 축을 두면 화면마다 다른 수를 본다(L-2-1). ⚠ 「원천 미상」은 값이 아니라 «표시»다 — sourceCode 가 비어 있으면 화면이 「원천 미상」으로 묶어 보인다(W-03-05 §5-2 · L-8). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=DEFECT_RECORD_SOURCE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⚠ 2026-09-03 — enum 을 걷었다. 이 그룹은 registry-system 이라 값 목록이 계약이 아니라 공통코드 마스터에 산다 — 계약에 박으면 두 벌이 된다. */
                     sourceCode?: string;
                     /** @description 기간 필수 — 공유계약 L-3 */
-                    detectedFrom?: string;
-                    detectedTo?: string;
+                    detectedFrom: string;
+                    detectedTo: string;
                     /** @description 1 부터 */
                     page?: number;
                     /** @description 기본 50 */
@@ -23863,6 +27328,24 @@ export interface paths {
                             items: components["schemas"]["DefectRecord"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -23888,15 +27371,15 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: {
+                query: {
                     /** @description 발생 공정으로 묶어야 개선 대상이 나온다 */
                     groupBy?: "defectCode" | "occurrenceProcess" | "detectionProcess";
                     /** @description 불량 기록의 원천으로 거른다 — 현장(FIELD) · 공정검사(PQC) · 출하검사(OQC) · 수리(REPAIR) · 클레임(CLAIM) 5값(✓설계확정 결정 09). ⭐ **2026-09-02 정정** — 전에는 이 자리가 sourceAxisCode 라는 «다른 이름»이었고 「서버가 유도한 4축(현장/PQC/OQC/원천미상)」을 받았다. W-03-05 §5-2 가 「유도로는 결정 09 의 5축이 서지 않는다」를 확인하고 sourceCode 명시 축을 «신설»했는데 이 필터만 옛 축에 남아 있었다. ⛔ 한 사실에 두 축을 두면 화면마다 다른 수를 본다(L-2-1). ⚠ 「원천 미상」은 값이 아니라 «표시»다 — sourceCode 가 비어 있으면 화면이 「원천 미상」으로 묶어 보인다(W-03-05 §5-2 · L-8). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=DEFECT_RECORD_SOURCE 로 받는다. ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. ⚠ 2026-09-03 — enum 을 걷었다. 이 그룹은 registry-system 이라 값 목록이 계약이 아니라 공통코드 마스터에 산다 — 계약에 박으면 두 벌이 된다. */
                     sourceCode?: string;
                     itemId?: number;
                     /** @description 필수 */
-                    detectedFrom?: string;
-                    detectedTo?: string;
+                    detectedFrom: string;
+                    detectedTo: string;
                 };
                 header?: never;
                 path?: never;
@@ -23911,6 +27394,24 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DefectDistribution"];
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -23974,6 +27475,24 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -24015,6 +27534,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["DispositionDecision"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 없다 */
@@ -24061,7 +27589,7 @@ export interface paths {
                     supplierId?: number;
                     lotId?: number;
                     workOrderId?: number;
-                    /** @description 의뢰번호 검색. ⛔ 범위는 inspection_request_no «하나»다 — 공급사·품목은 훑지 않는다(넓히면 인덱스 없는 다형 조인이 검색어마다 돈다). 공급사로 좁히려면 supplierId 를, 품목은 itemId 를 쓴다. 근거: omf-mes#170 질문 2 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 의뢰번호 검색. ⛔ 범위는 inspection_request_no «하나»다 — 공급사·품목은 훑지 않는다(넓히면 인덱스 없는 다형 조인이 검색어마다 돈다). 공급사로 좁히려면 supplierId 를, 품목은 itemId 를 쓴다. 근거: omf-mes#170 질문 2 */
                     q?: string;
                     /** @description 1 부터 */
                     page?: number;
@@ -24084,6 +27612,15 @@ export interface paths {
                             items: components["schemas"]["InspectionRequest"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -24125,6 +27662,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["InspectionRequest"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 없다 */
@@ -24212,6 +27758,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -24253,6 +27808,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -24339,6 +27903,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -24404,6 +27977,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -24445,6 +28027,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["InspectionResult"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 없다 */
@@ -24493,6 +28084,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -24578,6 +28178,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -24599,7 +28208,7 @@ export interface paths {
         put?: never;
         /**
          * 검사 판정 확정
-         * @description 작성중 → 확정. ⭐ 이 순간 Lot Status 가 전이한다 — 합격이면 정상, 불합격이면 불량, 보류면 검사 대기다. 독립된 상태 전이 경로를 두지 않는다(결정 10 「상태 이중 보유 없음」 · 공유계약 B-8). ⛔ accepted + rejected + held = inspected 가 아니면 400 이다(A-3). 근거: W-01-01 §5-2 · P-02-13 §5-3 ⭐ PQC 샘플 검사에서 불합격 수가 공정별 합격판정개수를 넘으면 서버가 «같은 W/O 의 생산LOT 전체»를 INSPECTION_PENDING(검사 대기)으로 일괄 전이하고 관리자 알람을 낸다 — 화면이 부르는 추가 액션은 없다(도식 C14 · 05 §5 S2 태스크 4 ✓확정 2026-07-15). 기준값은 06 계약 GET /quality/inspection-plan-versions/{inspectionPlanVersionId} 가 갖는다. ⭐ 종합 판정이 합격이면 서버가 «등록 시 스스로 건 입하 보류»를 이 확정 한 번에 함께 푼다 — 보류 행의 해제자·해제 시각을 채운다. 화면이 부르는 추가 액션은 없다(공유계약 B-8-1 — 후속을 한 요청에 넣을지를 정하는 조항이다). 이 오퍼레이션의 요청 본문(InspectionResultConfirm)에는 해제 사유 칸이 없다 — 화면은 사유를 보내지 않는다. ⚠ 그러면 해제 «사건»(LotHoldEvent.releaseReasonCode)에 무엇이 실리는지는 **확정되지 않았다** — 값을 지어내지 마라. 사람이 건 보류를 푸는 POST /quality/lot-holds/{lotHoldId}:release 는 releaseReasonCode 를 필수로 받고, 같은 모양의 POST /logistics/stock-reinstatements 도 그렇다 — 이 자리만 사유 없이 푸는 것이 옳은지가 함께 확정되지 않았다. ⛔ 불합격은 보류를 풀지 않는다 — Hold 를 유지하고 반품으로 간다(W-01-01 §2). 보류(HELD) 판정일 때의 처리는 화면 스펙이 아직 말하지 않는다. 근거: W-01-01 §5 · §2 · 요구서 03 §3 · 공유계약 B-8-1
+         * @description 작성중 → 확정. ⭐ 이 순간 Lot Status 가 전이한다 — 합격이면 정상, 불합격이면 불량, 보류면 검사 대기다. 독립된 상태 전이 경로를 두지 않는다(결정 10 「상태 이중 보유 없음」 · 공유계약 B-8). ⛔ accepted + rejected + held = inspected 가 아니면 400 이다(A-3). 근거: W-01-01 §5-2 · P-02-13 §5-3 ⭐ PQC 샘플 검사에서 불합격 수가 공정별 합격판정개수를 넘으면 서버가 «같은 W/O 의 생산LOT 전체»를 INSPECTION_PENDING(검사 대기)으로 일괄 전이하고 관리자 알람을 낸다 — 화면이 부르는 추가 액션은 없다(도식 C14 · 05 §5 S2 태스크 4 ✓확정 2026-07-15). 기준값은 06 계약 GET /quality/inspection-plan-versions/{inspectionPlanVersionId} 가 갖는다.
          */
         post: {
             parameters: {
@@ -24632,6 +28241,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -24736,6 +28354,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -24796,6 +28423,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -24830,6 +28466,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -24905,6 +28550,15 @@ export interface paths {
                         "application/json": components["schemas"]["LotHold"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -24975,6 +28629,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -25036,7 +28699,7 @@ export interface paths {
                     heldOnly?: boolean;
                     /** @description 이미 전량 보류인 것을 뺀다 */
                     excludeFullyHeld?: boolean;
-                    /** @description LOT 번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description LOT 번호 검색 */
                     q?: string;
                     /** @description 기간 시작 — latestTransitionAt 기준. transitionTo 와 한 쌍이다(함께 보내거나 함께 생략한다). 근거: W-03-01 §5-7 · omf-mes#225 */
                     transitionFrom?: string;
@@ -25056,6 +28719,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["LotStatusSummary"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -25097,6 +28769,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["LotStatusTransitionSet"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 없다 */
@@ -25148,7 +28829,7 @@ export interface paths {
                     transitionFrom?: string;
                     /** @description 기간 끝. transitionFrom 과 한 쌍이다. 근거: W-03-02 §3 · omf-mes#225 ⛔ 끝 경계는 «미만»이다(반열림 · 공유계약 L-3-1) — 「그날까지」는 23:59:59 가 아니라 «익일 00:00:00» 을 보낸다. 23:59:59 로 보내면 그 1초 안의 기록이 빠진다 */
                     transitionTo?: string;
-                    /** @description LOT 번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description LOT 번호 검색 */
                     q?: string;
                     /** @description 1 부터 */
                     page?: number;
@@ -25175,6 +28856,15 @@ export interface paths {
                             items: components["schemas"]["LotQualityStatus"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -25224,6 +28914,24 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -25264,6 +28972,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -25344,6 +29061,15 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 결과 없음 */
                 404: {
                     headers: {
@@ -25378,13 +29104,12 @@ export interface paths {
             parameters: {
                 query?: {
                     customerId?: number;
-                    /** @description 독립 상태 코드를 사용하는 조회 조건이 아니다. 독립 상태 코드를 사용하지 않는 수주 수신본이다. 미편성 대상 조회는 unassignedOnly를 사용한다. */
                     statusCode?: string;
                     orderDateFrom?: string;
                     orderDateTo?: string;
                     /** @description 아직 편성되지 않은 것만 — 「편성 여부」 필터 */
                     unassignedOnly?: boolean;
-                    /** @description 지시서 번호 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 지시서 번호 검색 */
                     q?: string;
                     /** @description 1 부터 */
                     page?: number;
@@ -25407,6 +29132,24 @@ export interface paths {
                             items: components["schemas"]["SalesOrder"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -25452,6 +29195,15 @@ export interface paths {
                         "application/json": components["schemas"]["SalesOrder"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -25480,7 +29232,7 @@ export interface paths {
         };
         /**
          * 출하 LOT 배분 목록
-         * @description P-04-01이 선택한 출하의 생산 LOT 배분을 읽고, LOT 스캔 매칭과 납품 라벨 발행 가능 여부를 판정받는다. 최초 진입의 출하 검색은 GET /logistics/shipments 가 맡고 이 목록은 shipmentId 를 받은 뒤 호출한다. ⭐ 매칭·OQC 판정을 화면이 하지 않는다 — 서버가 배분과 검사 결과를 보고 판정한다(P-04-01 §5-1 · 공유계약 C-6). 근거: P-04-01 §5
+         * @description P-04-01 이 납품라벨↔생산LOT 매칭을 판정받고, P-04-02 가 납품라벨 대상을 고른다. ⭐ 매칭 판정을 화면이 하지 않는다 — 서버가 배분을 보고 판정한다(P-04-01 §5-1 · 공유계약 C-6). 근거: P-04-01 · P-04-02 §5
          */
         get: {
             parameters: {
@@ -25491,11 +29243,11 @@ export interface paths {
                     handlingUnitId?: number;
                     /** @description 아직 포장에 담기지 않은 것만 — 배분 잔여가 남은 것 */
                     unpackedOnly?: boolean;
-                    /** @description ⭐ 출하검사 합격분만. 납품라벨 대상 목록이 「합격」만 활성하는 데 쓴다(P-04-01 §5) */
+                    /** @description ⭐ 출하검사 합격분만. 납품라벨 대상 목록이 「합격」만 활성하는 데 쓴다(P-04-02 §5) */
                     oqcPassed?: boolean;
-                    /** @description 기존 납품 라벨 번호로 배분을 찾는다. ⛔ 최초 출하 선택에는 쓰지 않는다 — 그때는 GET /logistics/shipments 의 q 로 출하 번호를 검색한다. 이 질의는 통합 화면 재진입·재출력 때만 쓴다. 범위는 납품 라벨 번호 하나다 — LOT 번호는 lotId 를, 포장은 handlingUnitId 를 쓴다. 일치하는 배분이 없으면 «빈 목록»이다. ⛔ 404 를 내지 않는다. ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 스캔한 납품라벨 값으로 배분을 찾는다. ⛔ 범위는 납품라벨 번호 하나다 — LOT 번호는 lotId 를, 포장은 handlingUnitId 를 쓴다. ⭐ P-04-01 매칭 스캔의 진입이다(P-04-01 §5-1 · 공유계약 D-2). 일치하는 배분이 없으면 «빈 목록»이다 — 화면은 items 가 비었는지로 「없는 납품라벨」을 판정한다. ⛔ 404 를 내지 않는다 — 같은 오퍼레이션의 lotQ 가 이미 200 + match 로 판정을 내리므로, 파라미터에 따라 상태 코드가 갈리면 예외가 는다 */
                     q?: string;
-                    /** @description 스캔한 생산 LOT 값. shipmentId 와 함께 주면 서버가 「이 출하의 배분에 이 LOT 이 있는가」를 판정한다 — 화면이 목록을 받아 비교하지 않는다(P-04-01 §5-1 · 공유계약 C-6). ⭐ shipmentId 는 최초 진입이면 GET /logistics/shipments 의 출하 선택 결과에서, 재진입이면 기존 납품 라벨 q 응답에서 얻는다. */
+                    /** @description 스캔한 생산 LOT 값. shipmentId(납품라벨 스캔으로 정해진 출하)와 함께 주면 서버가 「이 출하의 배분에 이 LOT 이 있는가」를 판정한다 — 화면이 목록을 받아 비교하지 않는다(P-04-01 §5-1 · 공유계약 C-6) ⭐ 이 shipmentId 는 첫 스캔(q) 응답의 ShipmentLotAllocation.shipmentId 에서 그대로 얻는다 — 화면이 출하를 다시 조회하지 않는다(omf-mes#330 A). */
                     lotQ?: string;
                     /** @description 1 부터 */
                     page?: number;
@@ -25531,6 +29283,24 @@ export interface paths {
                         };
                     };
                 };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -25550,41 +29320,7 @@ export interface paths {
             };
             cookie?: never;
         };
-        /**
-         * 출하 LOT 배분 상세
-         * @description 납품 라벨 발행 기록의 SHIPMENT_LOT_ALLOCATION 대상과 P-04-01 재진입 대상 한 건을 식별자로 읽는다. 근거: P-04-01 §4·§5 · 출력물 요구서 §3-7
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    shipmentLotAllocationId: number;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description 상세 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ShipmentLotAllocation"];
-                    };
-                };
-                /** @description 없다 */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ErrorResponse"];
-                    };
-                };
-            };
-        };
+        get?: never;
         /**
          * 배분에 포장 단위 연결
          * @description P-04-01 이 포장을 확정할 때 배분과 취급 단위를 잇는다. 취급 단위 자체는 01 자재창고 계약이 소유한다(POST /inventory/handling-units · :pack). 근거: P-04-01 §4-C
@@ -25623,6 +29359,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -25713,6 +29458,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한 없음 */
                 403: {
                     headers: {
@@ -25752,7 +29506,7 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: {
+                query: {
                     customerId?: number;
                     shipToPartnerId?: number;
                     /** @description 이 품목이 담긴 라인이 있는 작업지시만. ⭐ 긴급 직행 출하(W-04-05)가 고른 제품 LOT 의 품목으로 지시를 좁히는 축이다 — 이 축이 없으면 화면이 이번 쪽 안에서만 거를 수 있어 맞는 지시가 있는데도 안 보인다(공유계약 L-11). 근거: W-04-05 §5-7 */
@@ -25766,14 +29520,18 @@ export interface paths {
                     /** @description 검사 상태 필터 */
                     shippingInspectionRequired?: boolean;
                     /** @description 필수 — 공유계약 L-3 */
-                    shipDateFrom?: string;
+                    shipDateFrom: string;
                     shipDateTo?: string;
                     /** @description 라인 전체가 pickedQty = allocatedQty 인 작업지시만. ⭐ W-04-04 출하 처리의 진입 필터다 — 출하는 이 화면이 만들므로 /logistics/shipments 로는 진입할 수 없다. 근거: W-04-04 §3·§5-4 */
                     pickingCompleteOnly?: boolean;
                     /** @description 출하 잔여가 남은 작업지시만 — 라인 중 shippedQty < allocatedQty 인 것이 하나라도 있는 건. ⭐ 부분 출하 후 잔여도 다시 잡힌다(W-04-04 §5-7·§8-6) */
                     shippableRemainderOnly?: boolean;
-                    /** @description 출하일·고객·작업지시번호 셋만. 근거: 공유계약 L-4 */
-                    sort?: string;
+                    /**
+                     * @description 출하일·고객·작업지시번호 셋만. 근거: 공유계약 L-4
+                     *
+                     *     서버 구현 기준 허용 키는 requestedShipDate·customerId·shipmentRequestNo다(통보 201).
+                     */
+                    sort?: "requestedShipDate" | "customerId" | "shipmentRequestNo";
                     /** @description 1 부터 */
                     page?: number;
                     /** @description 기본 50 */
@@ -25795,6 +29553,24 @@ export interface paths {
                             items: components["schemas"]["ShipmentRequest"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -25831,6 +29607,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -25877,7 +29662,7 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: {
+                query: {
                     customerId?: number;
                     shipToPartnerId?: number;
                     /** @description ⛔ 이 축으로는 거를 수 없다 — 「칸 불필요」로 닫힌 칸이다(A-21 · 사용자 결정 2026-09-02). 진행은 shipmentProgressCode, 검사 대상 여부는 shippingInspectionRequired 가 받는다. 근거: omf-mes#402 */
@@ -25889,7 +29674,7 @@ export interface paths {
                     /** @description 검사 상태 필터 */
                     shippingInspectionRequired?: boolean;
                     /** @description 필수 — 공유계약 L-3. 목록과 같은 기준을 쓴다 */
-                    shipDateFrom?: string;
+                    shipDateFrom: string;
                     shipDateTo?: string;
                     /** @description 라인 전체가 pickedQty = allocatedQty 인 작업지시만. ⭐ W-04-04 출하 처리의 진입 필터다 — 출하는 이 화면이 만들므로 /logistics/shipments 로는 진입할 수 없다. 근거: W-04-04 §3·§5-4 */
                     pickingCompleteOnly?: boolean;
@@ -25911,6 +29696,24 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ShipmentRequestSummary"];
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -25954,6 +29757,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ShipmentRequest"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 없다 */
@@ -26030,6 +29842,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -26074,16 +29895,11 @@ export interface paths {
         };
         /**
          * 출하 목록
-         * @description W-04-02·W-04-04·W-04-12·P-04-01이 함께 쓴다. 목록 조회는 기간 필수(L-3)다. P-04-01의 출하번호 스캔처럼 shipmentNo를 정확 일치로 주는 단건 식별 조회는 기간을 생략할 수 있다.
+         * @description W-04-02·W-04-04·W-04-12 가 함께 쓴다. 기간 필수(L-3)
          */
         get: {
             parameters: {
-                query?: {
-                    /**
-                     * @description 출하 번호 정확 일치. POP 스캔 진입이 사용하며 이 값을 주면 기간을 생략할 수 있다. 일치하지 않으면 200 빈 목록을 반환한다. 부분 검색은 q를 쓴다. 근거: P-04-01 §3-1 · 공유계약 D-2
-                     * @example SH-2026-0813-0031
-                     */
-                    shipmentNo?: string;
+                query: {
                     shipmentRequestId?: number;
                     customerId?: number;
                     /** @description 출하의 진행 상태 — 미확정(UNCONFIRMED) · 확정(CONFIRMED) · 취소(CANCELLED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 확정이 PGI 송신을 부르고 취소가 그것을 되돌린다(W-04-04 §5-1 · W-04-12 §5-2). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=SHIPMENT_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
@@ -26093,16 +29909,24 @@ export interface paths {
                     pickedOnly?: boolean;
                     /** @description 미확정만 — W-04-12 기본 */
                     unconfirmedOnly?: boolean;
-                    /** @description 목록 조회에서는 필수. shipmentNo 정확 일치 조회에서는 생략 가능 */
-                    shipDateFrom?: string;
-                    /** @description 목록 조회에서는 필수. shipmentNo 정확 일치 조회에서는 생략 가능 */
+                    /**
+                     * @description 필수
+                     *
+                     *     서버 구현 기준: shippedAt을 출하 창고가 속한 공장의 로컬 날짜로 비교한다(통보 219).
+                     */
+                    shipDateFrom: string;
+                    /** @description 서버 구현 기준: 끝 날짜를 포함하며 다음 날 공장 자정 미만으로 비교한다(통보 219). */
                     shipDateTo?: string;
-                    /** @description 출하 번호 검색. ⛔ 범위는 shipment_no 하나다 — 고객은 customerId 를, LOT 은 lotId 를 쓴다(omf-mes#170 과 같은 처리). 근거: W-04-06 §3 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description 출하 번호 검색. ⛔ 범위는 shipment_no 하나다 — 고객은 customerId 를, LOT 은 lotId 를 쓴다(omf-mes#170 과 같은 처리). 근거: W-04-06 §3 */
                     q?: string;
                     /** @description 이 제품 LOT 이 배분된 출하만. ⭐ 반품에서 라벨만 남았을 때 원 출하를 찾는 경로다(W-04-06 §5-3) — 조인은 서버 몫이다 */
                     lotId?: number;
-                    /** @description 경과일 긴 순이 기본이다. 근거: W-04-12 §5-7 */
-                    sort?: string;
+                    /**
+                     * @description 경과일 긴 순이 기본이다. 근거: W-04-12 §5-7
+                     *
+                     *     서버 구현 기준 허용 키는 shippedAt·shipmentNo다(통보 219).
+                     */
+                    sort?: "shippedAt" | "shipmentNo";
                     /** @description 1 부터 */
                     page?: number;
                     /** @description 기본 50 */
@@ -26124,6 +29948,24 @@ export interface paths {
                             items: components["schemas"]["Shipment"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -26160,6 +30002,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -26228,6 +30079,15 @@ export interface paths {
                         "application/json": components["schemas"]["Shipment"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -26293,6 +30153,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -26377,6 +30246,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -26472,6 +30350,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 권한·단말 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -26532,7 +30419,7 @@ export interface paths {
                     /** @description 대상이 불량창고에 들어온 날. ⚠ 기간을 «필수»로 두지 않는다 — 이 목록은 「지금 판정을 기다리는 것」이라 재고성이고, 기간을 강제하면 오래된 미처리 건이 화면에서 사라진다. 양끝 포함(공유계약 L-3 — date 축). */
                     receivedFrom?: string;
                     receivedTo?: string;
-                    /** @description LOT 번호·입고번호·품목 검색 ⭐ 부분 일치 · 대소문자를 가리지 않는다(2026-09-06 게이트 승인). */
+                    /** @description LOT 번호·입고번호·품목 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
@@ -26553,6 +30440,24 @@ export interface paths {
                             items: components["schemas"]["DispositionCandidate"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -26578,7 +30483,7 @@ export interface paths {
          */
         get: {
             parameters: {
-                query?: {
+                query: {
                     /** @description 부적합 건의 진행 상태 — 의뢰 전(NOT_REQUESTED) · 판정 대기(PENDING_DECISION) · 판정 완료(DECIDED). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. 이 값이 처분 판정 화면의 진입 목록을 가른다(W-04-07 §3 · W-03-10 §5-5). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     statusCode?: string;
                     /** @description 부적합 원천 — 제품(PRODUCT) · 반품(RETURN). ⭐ 서버가 대상 LOT 의 입고 유형으로 «파생»하는 축이라 화면이 보내지 않는다(2026-09-01). W-03-10 §5-4 원천 필터가 쓴다. ⛔ DefectRecord 의 sourceCode(CD-DEFECT-RECORD-SOURCE)와 이름만 같고 축이 다르다 — 저쪽은 «어디서 발견했나», 여기는 «어디서 들어온 물건인가»다 */
@@ -26589,8 +30494,8 @@ export interface paths {
                     /** @description 부적합 심각도 — 중대(CRITICAL) · 중(MAJOR) · 경(MINOR). ⭐ 화면 목업이 「심각도 중대」(W-03-10 §3)·「심각도 중」(W-04-07 §3)을 그려 3단계 축이 이미 서 있다. ⭐ 고객이 늘릴 수 있다 — 아래는 초기값(기본값)이지 닫힌 목록이 아니다. 값 목록은 GET /mdm/code-values?codeGroupCode=NONCONFORMANCE_SEVERITY 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
                     severityCode?: string;
                     /** @description 기간 필수 — 공유계약 L-3 */
-                    openedFrom?: string;
-                    openedTo?: string;
+                    openedFrom: string;
+                    openedTo: string;
                     /** @description 1 부터 */
                     page?: number;
                     /** @description 기본 50 */
@@ -26612,6 +30517,24 @@ export interface paths {
                             items: components["schemas"]["Nonconformance"][];
                             page: components["schemas"]["PageMeta"];
                         };
+                    };
+                };
+                /** @description 요청 오류 — 필수값 누락·허용되지 않은 값·형식 오류 등 검증 실패 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
             };
@@ -26648,6 +30571,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -26716,6 +30648,15 @@ export interface paths {
                         "application/json": components["schemas"]["Nonconformance"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 없다 */
                 404: {
                     headers: {
@@ -26781,6 +30722,15 @@ export interface paths {
                 };
                 /** @description 검증 실패. 고쳐야 풀린다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -26886,6 +30836,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -26925,6 +30884,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -26987,6 +30955,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Inspection"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상을 찾을 수 없다 */
@@ -27070,12 +31047,21 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
         /**
          * 고장 보고 등록
-         * @description 설비고장 현장보고 화면이 부른다. 사진은 이 요청에 싣지 않는다 — 만들어진 건에 따로 붙인다. 오프라인 큐에서 올라올 수 있어 멱등키가 필수다.
+         * @description 설비고장 현장보고 화면이 부른다. 사진은 이 요청에 싣지 않으며 현재 첨부 API도 미구현이므로 사진 첨부를 제공하지 않는다. 오프라인 큐에서 올라올 수 있어 멱등키가 필수다.
          */
         post: {
             parameters: {
@@ -27109,6 +31095,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -27175,6 +31170,15 @@ export interface paths {
                         "application/json": components["schemas"]["Breakdown"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상을 찾을 수 없다 */
                 404: {
                     headers: {
@@ -27221,6 +31225,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -27406,6 +31419,15 @@ export interface paths {
                         "application/json": components["schemas"]["Breakdown"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -27494,6 +31516,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -27605,12 +31636,21 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
         /**
          * 보전 지시 발행
-         * @description 한 번에 한 건을 만든다. 여러 대상을 고른 화면은 대상 수만큼 부른다 — 일부만 성공하는 경우를 화면이 다룰 수 있어야 하기 때문이다. 보전 유형은 보내지 않는다 — 트리거 조합이 정한다(고장이 하나라도 섞이면 사후다). 대상 유형이 툴(MOLD)이고 트리거가 주기 도래(PM_DUE)인 신규 발행에 한해 서버가 최신 상태로 같은 판정 규칙을 다시 적용한다. 요청에 담긴 축·누계는 발행 근거의 정본이 아니며 서버가 선택 축·누계·기준을 스냅샷으로 보존한다. 조회 후 타발수 증가 또는 보전 실적의 누계 초기화가 있으면 과거 화면 값을 그대로 저장하지 않는다. 더는 도래하지 않거나 동일 툴의 열린 PM오더가 있으면 해당 신규 요청을 422 업무 규칙 실패로 거부한다. 중복 확인과 생성은 하나의 판정 단위로 처리한다. 동일 멱등키·동일 요청의 재전송은 기존 201 발행 결과를 재현하며 열린 오더 때문에 422로 바꾸지 않는다. 다른 대상 호출의 성공은 유지한다. 설비·고장·점검 불합격 트리거에 이 툴 규칙을 확대하지 않는다. 과거 확정 스냅샷은 소급 재계산하지 않는다.
+         * @description 한 번에 한 건을 만든다. 여러 대상을 고른 화면은 대상 수만큼 부른다 — 일부만 성공하는 경우를 화면이 다룰 수 있어야 하기 때문이다. 보전 유형은 보내지 않는다 — 트리거 조합이 정한다(고장이 하나라도 섞이면 사후다).
          */
         post: {
             parameters: {
@@ -27646,6 +31686,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 단말·권한 게이팅에 막혔다 */
                 403: {
                     headers: {
@@ -27655,7 +31704,7 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
-                /** @description 업무 규칙에 걸린다 — 툴(MOLD)의 주기 도래(PM_DUE) 신규 발행 시 최신 상태가 미도래이거나 동일 툴의 열린 PM오더가 있는 경우 포함. 동일 멱등키·동일 요청 재전송은 이전 201 결과를 재현한다. */
+                /** @description 업무 규칙에 걸린다 */
                 422: {
                     headers: {
                         [name: string]: unknown;
@@ -27703,6 +31752,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["MaintenanceOrder"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상을 찾을 수 없다 */
@@ -27760,6 +31818,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["MaintenanceOrder"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 단말·권한 게이팅에 막혔다 */
@@ -27863,12 +31930,21 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
         /**
          * 보전 실적 등록
-         * @description 지시에서 이어받거나 고장에서 바로 등록한다. 지시가 없어도 성립한다 — 현장에서 이미 조치한 건이 있기 때문이다. ⭐ resetCounter=true 이면 If-Match 가 필수다 — 누계 리셋은 증분이 아니라 치환이라 충돌 감지가 필요하고, 값은 대상 툴의 상세 조회 200 이 내려주는 ETag 를 그대로 싣는다(공유계약 B-1). 없으면 422 로 거부한다. ⭐ closed=true 는 lines 가 전부 완료 또는 해당없음일 때만 받는다(W-05-06 §5-6).
+         * @description 지시에서 이어받거나 고장에서 바로 등록한다. 지시가 없어도 성립한다. 서버 v0.1.2는 closed=true·resetCounter=true를 항상 422 INVALID로 거부하므로 마감하지 않고 누계를 초기화하지 않는 실적만 등록한다(통보 113·114).
          */
         post: {
             parameters: {
@@ -27899,6 +31975,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -27974,6 +32059,15 @@ export interface paths {
                         "application/json": components["schemas"]["MaintenanceResult"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상을 찾을 수 없다 */
                 404: {
                     headers: {
@@ -27988,6 +32082,8 @@ export interface paths {
         /**
          * 보전 실적 수정
          * @description 마감 전까지 고칠 수 있다.
+         *
+         *     서버 v0.1.2는 closed=true를 항상 422 INVALID로 거부한다(통보 113).
          */
         put: {
             parameters: {
@@ -28020,6 +32116,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -28133,6 +32238,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -28172,6 +32286,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -28238,6 +32361,15 @@ export interface paths {
                         "application/json": components["schemas"]["Downtime"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상을 찾을 수 없다 */
                 404: {
                     headers: {
@@ -28284,6 +32416,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -28348,6 +32489,8 @@ export interface paths {
         /**
          * 비가동 지금 종료
          * @description 진행 중인 구간을 지금 시각으로 끝낸다. ⚠ 현장 단말(P-05-02)이 오프라인 큐로 보내는 자리라 잠금 토큰은 선택이다 — 큐에 쌓인 요청은 토큰을 싣지 않는다(공유계약 C-9).
+         *
+         *     서버 구현 기준: 종료시각은 이 API에 한해 서버의 최초 처리시각을 사용한다. 오프라인 전송 지연을 허용하며 같은 Idempotency-Key 재전송에는 최초 종료시각과 응답을 재생한다(통보 109).
          */
         post: {
             parameters: {
@@ -28377,6 +32520,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Downtime"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 단말·권한 게이팅에 막혔다 */
@@ -28472,6 +32624,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -28537,6 +32698,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -28576,6 +32746,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -28638,6 +32817,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["ToolUsage"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상을 찾을 수 없다 */
@@ -28712,6 +32900,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -28748,6 +32945,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -28814,6 +33020,15 @@ export interface paths {
                         "application/json": components["schemas"]["CollectionChannel"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
                 /** @description 대상을 찾을 수 없다 */
                 404: {
                     headers: {
@@ -28864,6 +33079,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -28966,6 +33190,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -29035,6 +33268,15 @@ export interface paths {
                         "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
             };
         };
         put?: never;
@@ -29071,6 +33313,15 @@ export interface paths {
                 };
                 /** @description 입력이 규칙에 어긋난다 */
                 400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -29133,6 +33384,15 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["Calibration"];
+                    };
+                };
+                /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ErrorResponse"];
                     };
                 };
                 /** @description 대상을 찾을 수 없다 */
@@ -29426,7 +33686,10 @@ export interface components {
              * @example RACK
              */
             locationTypeCode: string;
-            /** @description 위치의 품질 구역 구분. ⭐ 고객이 늘린다 — 창고 배치·품질관리 절차가 현장마다 달라 값을 계약이 닫지 않는다. ⛔ 이 값과 LOT 보류(Hold/Release) 물류 통제의 «관계»는 아직 정의되지 않았다(W-06-07 §8-2) — 그래서 서버·화면이 이 값으로 «출고 가부를 판정하지 않는다». 판정의 정본은 LOT 보류다. 관계가 서면 그때 판정에 넣는다(A-21). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_ZONE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 위치의 품질 구역 구분. ⭐ 고객이 늘린다 — 창고 배치·품질관리 절차가 현장마다 달라 값을 계약이 닫지 않는다. ⛔ 이 값과 LOT 보류(Hold/Release) 물류 통제의 «관계»는 아직 정의되지 않았다(W-06-07 §8-2) — 그래서 서버·화면이 이 값으로 «출고 가부를 판정하지 않는다». 판정의 정본은 LOT 보류다. 관계가 서면 그때 판정에 넣는다(A-21). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_ZONE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example STANDARD
+             */
             qualityZoneCode?: string | null;
             /**
              * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=STORAGE_CONDITION 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
@@ -29485,7 +33748,10 @@ export interface components {
              * @example RACK
              */
             locationTypeCode: string;
-            /** @description 위치의 품질 구역 구분. ⭐ 고객이 늘린다 — 창고 배치·품질관리 절차가 현장마다 달라 값을 계약이 닫지 않는다. ⛔ 이 값과 LOT 보류(Hold/Release) 물류 통제의 «관계»는 아직 정의되지 않았다(W-06-07 §8-2) — 그래서 서버·화면이 이 값으로 «출고 가부를 판정하지 않는다». 판정의 정본은 LOT 보류다. 관계가 서면 그때 판정에 넣는다(A-21). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_ZONE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 위치의 품질 구역 구분. ⭐ 고객이 늘린다 — 창고 배치·품질관리 절차가 현장마다 달라 값을 계약이 닫지 않는다. ⛔ 이 값과 LOT 보류(Hold/Release) 물류 통제의 «관계»는 아직 정의되지 않았다(W-06-07 §8-2) — 그래서 서버·화면이 이 값으로 «출고 가부를 판정하지 않는다». 판정의 정본은 LOT 보류다. 관계가 서면 그때 판정에 넣는다(A-21). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_ZONE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example STANDARD
+             */
             qualityZoneCode?: string | null;
             /**
              * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=STORAGE_CONDITION 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
@@ -29533,7 +33799,10 @@ export interface components {
              * @example RACK
              */
             locationTypeCode: string;
-            /** @description 위치의 품질 구역 구분. ⭐ 고객이 늘린다 — 창고 배치·품질관리 절차가 현장마다 달라 값을 계약이 닫지 않는다. ⛔ 이 값과 LOT 보류(Hold/Release) 물류 통제의 «관계»는 아직 정의되지 않았다(W-06-07 §8-2) — 그래서 서버·화면이 이 값으로 «출고 가부를 판정하지 않는다». 판정의 정본은 LOT 보류다. 관계가 서면 그때 판정에 넣는다(A-21). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_ZONE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 위치의 품질 구역 구분. ⭐ 고객이 늘린다 — 창고 배치·품질관리 절차가 현장마다 달라 값을 계약이 닫지 않는다. ⛔ 이 값과 LOT 보류(Hold/Release) 물류 통제의 «관계»는 아직 정의되지 않았다(W-06-07 §8-2) — 그래서 서버·화면이 이 값으로 «출고 가부를 판정하지 않는다». 판정의 정본은 LOT 보류다. 관계가 서면 그때 판정에 넣는다(A-21). 값 목록은 GET /mdm/code-values?codeGroupCode=QUALITY_ZONE 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example STANDARD
+             */
             qualityZoneCode?: string | null;
             /**
              * @description ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=STORAGE_CONDITION 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
@@ -29594,7 +33863,7 @@ export interface components {
             email?: string | null;
             /**
              * @description 사용자의 «인사» 상태 — EMPLOYED(재직) · ON_LEAVE(휴직) · RESIGNED(퇴사) 3값(2026-09-01 뜻 확정 · 2026-09-03 문자열 도출 · 공유계약 §G). ⭐ 고객이 늘린다 — 위 셋은 초기 시드다(G-31). 값 목록은 GET /mdm/code-values?codeGroupCode=APP_USER_STATUS 로 받는다(G-32). ⛔ **계정 사용 가부는 이 값이 아니라 isActive 가 정한다** — 로그인 차단의 정본은 isActive 다(W-CO-02 §8-4 · 사용자 결정 2026-09-01). ⛔ ACTIVE 를 쓰지 않는다 — 「사용 여부」와 「수명주기」에 같은 낱말을 쓰면 두 축이 다시 섞인다(G-32 v3.5). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
-             * @default EMPLOYED
+             * @default ACTIVE
              * @example EMPLOYED
              */
             statusCode: string;
@@ -29605,7 +33874,7 @@ export interface components {
              */
             isActive: boolean;
         };
-        /** @description 사용자 등록 요청. isActive 는 받지 않는다(신규는 항상 사용 중). loginId 는 등록 시에만 지정하고 이후 편집은 항상 잠긴다(참조를 셀 수 없어 NOT_COUNTABLE — 공유계약 B-4). 근거: W-CO-02 §4-A · §5-1 「사용자 추가」. statusCode 생략 시 EMPLOYED(재직)로 생성한다. 기존 데이터의 인사 상태를 소급 변환하지 않으며 로그인 차단 정본 isActive는 별개다. */
+        /** @description 사용자 등록 요청. isActive 는 받지 않는다(신규는 항상 사용 중). loginId 는 등록 시에만 지정하고 이후 편집은 항상 잠긴다(참조를 셀 수 없어 NOT_COUNTABLE — 공유계약 B-4). 근거: W-CO-02 §4-A · §5-1 「사용자 추가」 */
         AppUserCreate: {
             /**
              * @description uq — 전역 유일. 공백만 불가
@@ -29629,7 +33898,6 @@ export interface components {
             email?: string | null;
             /**
              * @description 사용자의 «인사» 상태 — EMPLOYED(재직) · ON_LEAVE(휴직) · RESIGNED(퇴사) 3값(2026-09-01 뜻 확정 · 2026-09-03 문자열 도출 · 공유계약 §G). ⭐ 고객이 늘린다 — 위 셋은 초기 시드다(G-31). 값 목록은 GET /mdm/code-values?codeGroupCode=APP_USER_STATUS 로 받는다(G-32). ⛔ **계정 사용 가부는 이 값이 아니라 isActive 가 정한다** — 로그인 차단의 정본은 isActive 다(W-CO-02 §8-4 · 사용자 결정 2026-09-01). ⛔ ACTIVE 를 쓰지 않는다 — 「사용 여부」와 「수명주기」에 같은 낱말을 쓰면 두 축이 다시 섞인다(G-32 v3.5). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
-             * @default EMPLOYED
              * @example EMPLOYED
              */
             statusCode?: string;
@@ -29646,10 +33914,10 @@ export interface components {
             /** @example 문자열 */
             email?: string | null;
             /**
-             * @description 사용자의 «인사» 상태 — EMPLOYED(재직) · ON_LEAVE(휴직) · RESIGNED(퇴사) 3값(2026-09-01 뜻 확정 · 2026-09-03 문자열 도출 · 공유계약 §G). ⭐ 고객이 늘린다 — 위 셋은 초기 시드다(G-31). 값 목록은 GET /mdm/code-values?codeGroupCode=APP_USER_STATUS 로 받는다(G-32). ⛔ **계정 사용 가부는 이 값이 아니라 isActive 가 정한다** — 로그인 차단의 정본은 isActive 다(W-CO-02 §8-4 · 사용자 결정 2026-09-01). ⛔ ACTIVE 를 쓰지 않는다 — 「사용 여부」와 「수명주기」에 같은 낱말을 쓰면 두 축이 다시 섞인다(G-32 v3.5). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. 수정 요청에서 생략하면 기존 인사 상태를 보존하며 생성 기본값을 적용하지 않는다.
+             * @description 사용자의 «인사» 상태 — EMPLOYED(재직) · ON_LEAVE(휴직) · RESIGNED(퇴사) 3값(2026-09-01 뜻 확정 · 2026-09-03 문자열 도출 · 공유계약 §G). ⭐ 고객이 늘린다 — 위 셋은 초기 시드다(G-31). 값 목록은 GET /mdm/code-values?codeGroupCode=APP_USER_STATUS 로 받는다(G-32). ⛔ **계정 사용 가부는 이 값이 아니라 isActive 가 정한다** — 로그인 차단의 정본은 isActive 다(W-CO-02 §8-4 · 사용자 결정 2026-09-01). ⛔ ACTIVE 를 쓰지 않는다 — 「사용 여부」와 「수명주기」에 같은 낱말을 쓰면 두 축이 다시 섞인다(G-32 v3.5). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example EMPLOYED
              */
-            statusCode?: string;
+            statusCode: string;
         };
         AppUserDetailResponse: {
             appUser: components["schemas"]["AppUser"];
@@ -29813,7 +34081,7 @@ export interface components {
             itemId: number;
             /**
              * @description uq_routing(item_id, routing_code, routing_version) 구성 — 결정 07 헤더 키
-             * @example ROUTE-DEMO-001
+             * @example STANDARD
              */
             routingCode: string;
             /**
@@ -29854,7 +34122,7 @@ export interface components {
             itemId: number;
             /**
              * @description uq_routing — itemId 내 유일. 공백만 불가
-             * @example ROUTE-DEMO-001
+             * @example STANDARD
              */
             routingCode: string;
             /**
@@ -29871,7 +34139,7 @@ export interface components {
         };
         /** @description Routing 헤더 수정 요청. 상태=작성중일 때만 허용한다(결정 07). itemId·routingVersion·statusCode 는 이 요청에 포함하지 않는다(각각 신규만 / 시스템 채번 / 전이 전용). routingCode 의 실제 편집 가능 여부는 GET 응답의 editability(B-4)를 따른다. ck_routing_dates — effectiveTo 는 있으면 effectiveFrom 이상. 낙관적 잠금은 공유계약 B-1. 근거: W-06-01 §4-A · §5-4 */
         RoutingUpdate: {
-            /** @example ROUTE-DEMO-001 */
+            /** @example STANDARD */
             routingCode: string;
             /**
              * Format: date
@@ -30108,7 +34376,7 @@ export interface components {
              * @example 1001
              */
             codeGroupId: number;
-            /** @example DEMO_GROUP */
+            /** @example STANDARD */
             groupCode: string;
             /** @example 표시명 */
             groupName: string;
@@ -30124,7 +34392,7 @@ export interface components {
         CodeGroupCreate: {
             /**
              * @description uq — 전역 유일. 공백만 불가
-             * @example DEMO_GROUP
+             * @example STANDARD
              */
             groupCode: string;
             /** @example 표시명 */
@@ -30134,7 +34402,7 @@ export interface components {
         };
         /** @description 코드그룹 수정 요청. isActive 는 별도 사용 중지 액션(:deactivate)으로만 바꾼다. groupCode 는 code_value 가 FK 로 참조하므로 참조 건수를 셀 수 있다 — 실제 편집 가능 여부는 GET 응답의 editability(B-4)를 따른다. 낙관적 잠금은 공유계약 B-1. 근거: W-06-06 §4-A */
         CodeGroupUpdate: {
-            /** @example DEMO_GROUP */
+            /** @example STANDARD */
             groupCode: string;
             /** @example 표시명 */
             groupName: string;
@@ -30489,7 +34757,7 @@ export interface components {
             worker: components["schemas"]["Worker"];
             editability: components["schemas"]["Editability"];
         };
-        /** @description uq_worker_qualification 이 COALESCE(process_id,0) 으로 접는다 — 빈 축은 (전체 공정)으로 표기(A-7). certifiedBy는 자격을 인정한 사용자 계정의 AppUser.appUserId. 선택 입력이며 null 허용. 실제 입력자 createdBy는 서버 인증 주체의 감사정보로 별개다. 자격 대상 작업자의 계정 연결은 요구하지 않는다. 외부 인증기관 식별자·사원번호를 넣지 않으며 알 수 없으면 비운다. 기존 맨 정수를 다른 식별자로 자동 변환하지 않는다. valid_to 만료는 검사 확정을 막는다(공유계약 B-2) */
+        /** @description uq_worker_qualification 이 COALESCE(process_id,0) 으로 접는다 — 빈 축은 (전체 공정)으로 표기(A-7). certified_by 는 FK 없는 bigint 라 무엇을 가리키는지 하류에 근거가 없다 — #64. valid_to 만료는 검사 확정을 막는다(공유계약 B-2) */
         WorkerQualification: {
             /**
              * Format: int64
@@ -30512,7 +34780,7 @@ export interface components {
              * @example 1001
              */
             processId?: number | null;
-            /** @example CERT-DEMO-001 */
+            /** @example 문자열 */
             certificateNo?: string | null;
             /**
              * Format: date
@@ -30527,7 +34795,7 @@ export interface components {
             validTo?: string | null;
             /**
              * Format: int64
-             * @description 자격을 인정한 사용자 계정의 AppUser.appUserId. 선택 입력이며 null 허용. 실제 입력자 createdBy는 서버 인증 주체의 감사정보로 별개다. 자격 대상 작업자의 계정 연결은 요구하지 않는다. 외부 인증기관 식별자·사원번호를 넣지 않으며 알 수 없으면 비운다. 기존 맨 정수를 다른 식별자로 자동 변환하지 않는다.
+             * @description FK 없음 — 무엇을 가리키는지 근거 없음 §8-2
              * @example 1001
              */
             certifiedBy?: number | null;
@@ -30577,6 +34845,7 @@ export interface components {
             /**
              * @description MES 확장 · 공통코드
              * @default NONE
+             * @example NONE
              */
             serialControlTypeCode: string;
             /**
@@ -30645,6 +34914,7 @@ export interface components {
              * @example true
              */
             lotControlled: boolean;
+            /** @example STANDARD */
             serialControlTypeCode: string;
             /**
              * @description 조건부 필수 — 「유효기한 관리」 토글 ON 이면 필수(A-2). OFF 이면 null 로 보낸다
@@ -30768,7 +35038,7 @@ export interface components {
              * @example 1001
              */
             partnerId?: number | null;
-            /** @example EXT-DEMO-001 */
+            /** @example STANDARD */
             externalItemCode: string;
         };
         ItemExternalCodeListResponse: {
@@ -30831,7 +35101,7 @@ export interface components {
             parentItemId: number;
             /**
              * @description uq_bom(parent_item_id, bom_code, bom_version) 구성
-             * @example BOM-DEMO-001
+             * @example STANDARD
              */
             bomCode: string;
             /**
@@ -30983,7 +35253,7 @@ export interface components {
              * @example 1001
              */
             inspectionPlanId: number;
-            /** @example IP-DEMO-001 */
+            /** @example STANDARD */
             inspectionPlanCode: string;
             /**
              * @description ⚠ 한/베 컬럼 없음
@@ -31051,7 +35321,7 @@ export interface components {
         InspectionPlanCreate: {
             /**
              * @description uq — 전역 유일
-             * @example IP-DEMO-001
+             * @example STANDARD
              */
             inspectionPlanCode: string;
             /** @example 하우징 IQC 기준 */
@@ -31094,7 +35364,7 @@ export interface components {
         };
         /** @description 검사기준 헤더 수정 요청. approvedBy·approvedAt 은 :approve 전용, isActive 는 :deactivate 전용. 낙관적 잠금은 공유계약 B-1. 근거: W-06-02 §4-A */
         InspectionPlanUpdate: {
-            /** @example IP-DEMO-001 */
+            /** @example STANDARD */
             inspectionPlanCode: string;
             /** @example 하우징 IQC 기준 */
             inspectionPlanName: string;
@@ -31329,7 +35599,7 @@ export interface components {
             sequenceNo: number;
             /**
              * @description ⚠ 버전 내 유일 제약이 없다 — 같은 코드를 두 줄에 넣을 수 있다 §8-3
-             * @example CHECK-DEMO-001
+             * @example STANDARD
              */
             inspectionItemCode: string;
             /**
@@ -31418,7 +35688,7 @@ export interface components {
             sequenceNo: number;
             /**
              * @description ⚠ 버전 내 유일 제약이 없다 — 같은 코드를 두 줄에 넣을 수 있다 §8-3
-             * @example CHECK-DEMO-001
+             * @example STANDARD
              */
             inspectionItemCode: string;
             /**
@@ -31498,7 +35768,7 @@ export interface components {
              * @example 1001
              */
             defectCodeId: number;
-            /** @example DEFECT-DEMO-001 */
+            /** @example STANDARD */
             defectCode: string;
             /**
              * @description ⚠ 결정 12 가 「다국어 명칭(ko/vi)」으로 컬럼 형태까지 지정했는데 단일 컬럼이다 §8-2
@@ -31543,7 +35813,7 @@ export interface components {
         DefectCodeCreate: {
             /**
              * @description uq — 전역 유일
-             * @example DEFECT-DEMO-001
+             * @example STANDARD
              */
             defectCode: string;
             /** @example 표시명 */
@@ -31578,7 +35848,7 @@ export interface components {
         };
         /** @description 불량코드 수정 요청. isActive 는 별도 :deactivate. 낙관적 잠금은 공유계약 B-1. 근거: W-06-03 §4-A */
         DefectCodeUpdate: {
-            /** @example DEFECT-DEMO-001 */
+            /** @example STANDARD */
             defectCode: string;
             /** @example 표시명 */
             defectName: string;
@@ -31637,7 +35907,7 @@ export interface components {
              * @example 1001
              */
             causeCodeId: number;
-            /** @example CAUSE-DEMO-001 */
+            /** @example STANDARD */
             causeCode: string;
             /**
              * @description 다국어 결함 동일 — W-06-06 §8-1
@@ -31675,7 +35945,7 @@ export interface components {
         CauseCodeCreate: {
             /**
              * @description uq — 전역 유일
-             * @example CAUSE-DEMO-001
+             * @example STANDARD
              */
             causeCode: string;
             /** @example 표시명 */
@@ -31703,7 +35973,7 @@ export interface components {
         };
         /** @description 원인코드 수정 요청. isActive 는 별도 :deactivate. 낙관적 잠금은 공유계약 B-1. 근거: W-06-03 §4-C */
         CauseCodeUpdate: {
-            /** @example CAUSE-DEMO-001 */
+            /** @example STANDARD */
             causeCode: string;
             /** @example 표시명 */
             causeName: string;
@@ -32021,7 +36291,7 @@ export interface components {
             parentLineId?: number | null;
             /**
              * @description uq_production_line(plant_id, line_code)
-             * @example LINE-DEMO-001
+             * @example STANDARD
              */
             lineCode: string;
             /** @example 표시명 */
@@ -33188,11 +37458,11 @@ export interface components {
              */
             pmDue?: boolean;
             /**
-             * @description 예방보전 판정축 — 타발수(SHOT) · 날짜(DATE). 단일 축만 도래하면 해당 축, 양축 도래이고 선후를 확인할 수 있으면 먼저 도달한 축을 선택한다. 동시 도달 또는 이력 부족으로 선후 불명이면 SHOT을 대표축으로 선택한다. SHOT만 보고 타발수가 실제 먼저 도달했다고 단정하지 않는다. pmTriggerTypeCode는 사용 축 설정이고 이 칸은 판정 결과다. 미도래·해당 없음은 필드를 생략하며 null은 보내지 않는다. 근거: W-05-02 §5-2
+             * @description 먼저 도달한 축 — 타발수(SHOT) · 날짜(DATE). 둘 다 쓰는 툴이 있어 「왜 도래했는가」를 화면이 밝힌다. 도래하지 않았으면 null 이다. ⚠ pmTriggerTypeCode 가 «무엇으로 판정할지»라면 이 칸은 «무엇이 먼저 걸렸는지»다. 근거: W-05-02 §5-A
              * @example SHOT
-             * @enum {string}
+             * @enum {string|null}
              */
-            pmDueAxisCode?: "SHOT" | "DATE";
+            pmDueAxisCode?: "SHOT" | "DATE" | null;
             /**
              * Format: double
              * @description 누계 ÷ 적정타수 백분율. 적정타수가 비면 null 이고 화면은 「산출 불가」로 그린다 — 0 으로 채우지 않는다
@@ -33872,7 +38142,7 @@ export interface components {
              * @example DN-2026-000045
              */
             deliveryNoteNo?: string | null;
-            /** @description 독립 상태 코드를 사용하지 않는 입하 예정 수신본이다. 예정 대비 실입하 진행은 라인의 expectedQty와 receivedQty로 확인한다. */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /** @example 비고 문자열 */
             remarks?: string | null;
@@ -33921,12 +38191,12 @@ export interface components {
              */
             supplierLotNo?: string | null;
             /**
-             * @description 이 라인이 가리키는 ERP W/O 라인의 발주 수량. purchaseOrderLineId 가 비면(무발주) 널이다
+             * @description 이 라인이 가리키는 P/O 라인의 발주 수량. purchaseOrderLineId 가 비면(무발주) 널이다
              * @example 500
              */
             readonly orderedQty?: number | null;
             /**
-             * @description 그 ERP W/O 라인의 누적 입하 수량. 화면의 「진행」 열은 receivedQty ÷ orderedQty 다 — 화면이 라인마다 ERP W/O 를 따로 부르지 않는다(공유계약 L-2). 무발주 행은 널이고 화면은 「—」로 그린다(W-01-09 §5-2)
+             * @description 그 P/O 라인의 누적 입하 수량. 화면의 「진행」 열은 receivedQty ÷ orderedQty 다 — 화면이 라인마다 P/O 를 따로 부르지 않는다(공유계약 L-2). 무발주 행은 널이고 화면은 「—」로 그린다(W-01-09 §5-2)
              * @example 0
              */
             readonly receivedQty?: number | null;
@@ -34026,6 +38296,8 @@ export interface components {
             cancellable: boolean;
             /**
              * @description cancellable 이 «거짓인 이유» — 후속 문서가 있다 · 이미 취소됐다 · 취소 진행 중이다 · 상태가 잠겼다 · 이 문서 유형에 취소 경로가 없다(`TYPE_NOT_CANCELABLE` — 취소 실행 경로가 있는 것은 입하·입고·출고 3종뿐이다). ⭐ 화면이 이 값으로 안내 문구와 다음 경로를 가른다(G-3). ⛔ 서버가 판정한다 — 화면이 조건을 따로 조합하면 화면마다 갈린다
+             *
+             *     서버 구현 기준: 출하가 소유한 하위 입고·출고 전표의 개별 취소 차단도 현재 STATE_LOCKED로 반환한다(통보 217).
              * @example SUCCESSOR_EXISTS
              * @enum {string|null}
              */
@@ -34118,10 +38390,12 @@ export interface components {
              */
             issueTypeCode: string;
             /**
-             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 **대상 테이블 이름**이다 — 피킹 지시(`PICKING_ORDER` → `logistics.picking_order`, 생산 투입) · 입고 전표(`GOODS_RECEIPT` → `logistics.goods_receipt`, 공급사 반품·자재 폐기) · 처분 결정(`DISPOSITION_DECISION` → `quality.disposition_decision`, 제품 폐기) 셋이다. `sourceDocumentId` 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 **고객이 늘릴 수 있는 값이 아니다**(공유계약 A-10·A-16, `GoodsIssue.destinationTypeCode` 와 같은 처리). 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다(A-16). ⚠ 같은 이름의 다른 자리(`GoodsReceipt`·`InventoryTransaction` 등)는 값 집합이 다르다 — 자리마다 닫는다.
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 **대상 테이블 이름**이다 — 피킹 지시(`PICKING_ORDER` → `logistics.picking_order`, 생산 투입) · 입고 전표(`GOODS_RECEIPT` → `logistics.goods_receipt`, 공급사 반품·자재 폐기) · 처분 결정(`DISPOSITION_DECISION` → `quality.disposition_decision`, 제품 폐기) · 출하(`SHIPMENT` → `logistics.shipment`, 출하 확정) 넷이다. `sourceDocumentId` 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 값이 우리 계약의 리소스 이름이라 **고객이 늘릴 수 있는 값이 아니다**(공유계약 A-10·A-16, `GoodsIssue.destinationTypeCode` 와 같은 처리). 새 대상이 생기면 화면이 문자열을 정하기 전에 이 목록에 등재한다(A-16). ⚠ 같은 이름의 다른 자리(`GoodsReceipt`·`InventoryTransaction` 등)는 값 집합이 다르다 — 자리마다 닫는다.
+             *
+             *     서버 구현 기준 추가값: SHIPMENT → logistics.shipment. 출하 등록이 내부에서 만든 출고 전표의 원천이다(통보 217).
              * @enum {string}
              */
-            sourceDocumentTypeCode: "PICKING_ORDER" | "GOODS_RECEIPT" | "DISPOSITION_DECISION";
+            sourceDocumentTypeCode: "PICKING_ORDER" | "GOODS_RECEIPT" | "DISPOSITION_DECISION" | "SHIPMENT";
             /**
              * Format: int64
              * @example 1001
@@ -34354,10 +38628,7 @@ export interface components {
              * @example 1001
              */
             goodsReceiptId: number;
-            /**
-             * @description 입고 전표 번호 — 사람이 읽는 번호다. ⛔ 서버가 매긴다. 화면은 이 값을 보내지 않고 응답으로 받는다(W-01-10 §4-A 「MES 채번·자동」 · W-04-06 §4). ⛔ 계약은 「서버가 매긴다」까지만 정하고 채번 패턴(접두·자리수·리셋 주기)은 정하지 않는다 — 설정으로 정하는 값이라 운영이 바꿀 수 있다. ⇒ 화면·서버 소비자가 이 문자열의 형식을 가정하거나 쪼개 읽지 않는다. example 은 자리 모양을 보이는 합성값이지 형식 규칙이 아니다.
-             * @example GR-2026-000310
-             */
+            /** @example GR-2026-000310 */
             goodsReceiptNo: string;
             /**
              * @description 입고 유형. ✅ **값 목록 확정 2026-08-31(사용자)** — 자재입고(MATERIAL) · 제품입고(PRODUCT) · 반품입고(RETURN) · 창고간이동입고(TRANSFER) 넷이다. 값 목록은 GET /mdm/code-values?codeGroupCode=RECEIPT_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
@@ -34495,7 +38766,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 품질 상태 — NORMAL(정상), DEFECTIVE(불량), INSPECTION_PENDING(검사 대기), SCRAPPED(폐기). 값과 표시명은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 조회한다. 시스템 소유 값으로 고객이 값 집합을 추가하지 않는다.
+             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
              * @example NORMAL
              */
             qualityStatusCode: string;
@@ -34555,7 +38826,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 품질 상태 — NORMAL(정상), DEFECTIVE(불량), INSPECTION_PENDING(검사 대기), SCRAPPED(폐기). 값과 표시명은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 조회한다. 시스템 소유 값으로 고객이 값 집합을 추가하지 않는다.
+             * @description 품질 상태. 정상 · 불량 · 검사 대기 · 폐기 네 가지다. ⚠ 값 집합은 확정이나 코드 문자열이 아직 정해지지 않아 enum 을 못 박지 않는다 — 서버가 내려주는 선택지를 그대로 쓴다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32
              * @example NORMAL
              */
             qualityStatusCode: string;
@@ -34610,13 +38881,7 @@ export interface components {
              * @example 1001
              */
             locationId?: number | null;
-            /** @description 포장 단위의 독립 상태 코드는 사용하지 않는다. 포장 내용과 재구성 이력으로 진행을 확인한다. */
             statusCode: string;
-            /**
-             * @description 라벨 발행 여부. ⭐ **저장하는 칸이 아니라 파생값이다** — 이 취급 단위를 대상으로 한 발행 기록(POST /app/document-issues, 대상 유형 = 취급 단위)이 하나라도 있으면 true 다. 그러므로 이 값을 true 로 «옮기는» 요청이 따로 없다 — 발행 기록이 생기면 함께 참이 된다. 입하 계열의 같은 이름 질의(GET /logistics/inbound-receipts/{inboundReceiptId}/lines?labelIssued=)가 「발행 기록이 없는」 상태를 가리키는 것과 같은 형태다. 근거: P-04-04 §5-1(2026-09-06 게이트 승인)
-             * @example false
-             */
-            labelIssued?: boolean;
         };
         /** @description 취급 단위 구성. 같은 취급 단위 안에서 품목·LOT 조합은 한 번만 나온다. */
         HandlingUnitContent: {
@@ -34825,7 +39090,7 @@ export interface components {
              */
             dockLocationId?: number | null;
             /**
-             * @description ERP W/O 없이 도착한 예외 입하의 유형. 값 = CUSTOMER_SUPPLY·FREE_SAMPLE·URGENT_RECEIPT·OVER_DELIVERY (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description P/O 없이 도착한 예외 입하의 유형. 값 = CUSTOMER_SUPPLY·FREE_SAMPLE·URGENT_RECEIPT·OVER_DELIVERY (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example CUSTOMER_SUPPLY
              */
             exceptionTypeCode?: string | null;
@@ -34877,7 +39142,7 @@ export interface components {
              */
             dockLocationId?: number | null;
             /**
-             * @description ERP W/O 를 고르지 않고 진행할 때 필수. 값 = CUSTOMER_SUPPLY·FREE_SAMPLE·URGENT_RECEIPT·OVER_DELIVERY (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description P/O 를 고르지 않고 진행할 때 필수. 값 = CUSTOMER_SUPPLY·FREE_SAMPLE·URGENT_RECEIPT·OVER_DELIVERY (2026-09-03 코드 사전 등재) — ⭐ 고객이 늘린다 — 위 값은 초기 시드다(공유계약 G-31) ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INBOUND_RECEIPT_EXCEPTION_TYPE 로 받는다(공유계약 G-32 · omf-mes#198 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example CUSTOMER_SUPPLY
              */
             exceptionTypeCode?: string | null;
@@ -34930,7 +39195,7 @@ export interface components {
             lineNo: number;
             /**
              * Format: int64
-             * @description ERP W/O 없이 도착한 예외 입하는 비어 있다
+             * @description P/O 없이 도착한 예외 입하는 비어 있다
              * @example 1001
              */
             purchaseOrderLineId?: number | null;
@@ -34986,7 +39251,7 @@ export interface components {
              * @example true
              */
             inspectionRequired: boolean;
-            /** @description 독립 상태 코드를 사용하지 않는다. 라인 진행은 supplierLotMissing, labelIssued, inspectionRequired, lotId로 확인한다. */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: int64
@@ -35092,7 +39357,7 @@ export interface components {
             /** @description 최소 1행 */
             lines: components["schemas"]["InboundReceiptLineUpsert"][];
         };
-        /** @description 초과 입하 분리. 정량분과 초과분을 한 트랜잭션으로 등록한다. mode 로 어느 쪽을 저장할지 고른다 — 세 갈래가 모두 W-01-03과 M-01-01 화면의 버튼이다. 초과분을 포함하면 예외 유형과 사유가 필수다. 근거: W-01-03 §5-1 · §5-4 · M-01-01 §5-2-2 */
+        /** @description 초과 입하 분리. 정량분과 초과분을 한 트랜잭션으로 등록한다. mode 로 어느 쪽을 저장할지 고른다 — 세 갈래가 모두 화면의 버튼이다. 근거: W-01-03 §5-1 · §5-4 */
         InboundReceiptSplitRequest: {
             /**
              * @description BOTH=분리 등록 · NORMAL_ONLY=정량분만 저장 · EXCESS_ONLY=초과분만 저장
@@ -35116,18 +39381,7 @@ export interface components {
              * @example 2026-08-06T09:12:00+09:00
              */
             occurredAt: string;
-        } & ({
-            /** @constant */
-            mode?: "BOTH";
-            excess: unknown;
-        } | {
-            /** @constant */
-            mode?: "NORMAL_ONLY";
-        } | {
-            /** @constant */
-            mode?: "EXCESS_ONLY";
-            excess: unknown;
-        });
+        };
         /** @description 만들어진 입하 건. mode 에 따라 1건 또는 2건이다. */
         InboundReceiptSplitResponse: {
             created: components["schemas"]["InboundReceipt"][];
@@ -35658,9 +39912,11 @@ export interface components {
             lotId?: number | null;
             /**
              * @description 장부 수량. 블라인드 실사에서는 내려보내지 않는다
+             *
+             *     서버 구현 기준: 블라인드 실사이면 counted 값과 관계없이 이 키를 생략한다(통보 273 및 구현 코드 대조).
              * @example 100
              */
-            systemQty: number;
+            systemQty?: number;
             /**
              * @description 실물 수량. counted 가 참일 때만 뜻이 있다
              * @example 98
@@ -35835,7 +40091,7 @@ export interface components {
              */
             reservationTypeCode: string;
             /**
-             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 지금은 하나다 — 생산오더(PRODUCTION_ORDER → production.production_order). ⭐ W-02-01 §5-4 가 「ERP W/O 의 «자재예약정보»가 production_order 에 없고 inventory_reservation 이 ERP W/O 를 가리킨다」로 이 축을 세웠고 2026-09-02 에 「서버가 건다」로 해소됐다. ⚠ 값이 하나라고 축이 없는 것이 아니다 — 판별자는 «무엇을 가리키는지»를 말하고, 가리킬 표가 늘면 계약을 고친다.
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 지금은 하나다 — 생산오더(PRODUCTION_ORDER → production.production_order). ⭐ W-02-01 §5-4 가 「P/O 의 «자재예약정보»가 production_order 에 없고 inventory_reservation 이 P/O 를 가리킨다」로 이 축을 세웠고 2026-09-02 에 「서버가 건다」로 해소됐다. ⚠ 값이 하나라고 축이 없는 것이 아니다 — 판별자는 «무엇을 가리키는지»를 말하고, 가리킬 표가 늘면 계약을 고친다.
              * @example PRODUCTION_ORDER
              * @enum {string}
              */
@@ -35876,7 +40132,7 @@ export interface components {
              * @example 1001
              */
             uomId: number;
-            /** @description 독립 상태 코드를 사용하지 않는다. 예약의 유효·소진은 예약 수량으로 판단한다. */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
         };
         /** @description 수불 원장. 조회만 제공한다 — 전표의 전기가 만들며 화면이 직접 쓰지 않는다. 취소도 행을 지우지 않고 역처리 행을 더한다. 근거: W-01-07 §5-4 */
@@ -35914,17 +40170,17 @@ export interface components {
              */
             recordedAt: string;
             /**
-             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 넷이다 — 입고(GOODS_RECEIPT) · 출고(GOODS_ISSUE) · 재고조정(INVENTORY_ADJUSTMENT) · 재고이동(STOCK_TRANSFER). ⭐ 근거 — W-04-05 가 「입고·출고 전기 각 1건」을 명시하고, W-01-12 §5-2 가 「inventory_transaction.source_document_type_code 에 「재고조정」 값이 있으면 source_document_id = inventory_adjustment_id 로 잇는다」로 적었다. ⚠ STOCK_TRANSFER 는 «재고를 움직이므로 원장을 남긴다»는 추론이다 — 다른 셋보다 근거가 얕다. ⭐ 이 축이 원장 한 줄의 «성격»을 말한다 — 방향(입고·출고·이동)은 라인의 from*\/to* 가 이미 말하므로 transactionTypeCode 를 따로 두지 않는다(L-2-1 · 2026-09-02 판정).
+             * @description 원천 문서 유형. **A-10 다형 참조 판별자**이고 값은 «대상 테이블 이름»이다 — sourceDocumentId 는 그 표의 식별자다. ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 늘릴 수 있는 값이 아니고, 가리킬 표가 늘면 계약을 고친다. 다섯이다 — 입고(GOODS_RECEIPT) · 출고(GOODS_ISSUE) · 재고조정(INVENTORY_ADJUSTMENT) · 재고이동(STOCK_TRANSFER) · 재생재(RECYCLE_ENTRY). ⭐⭐ RECYCLE_ENTRY 는 2026-09-10 설계팀 합의로 «설계 변동 공지 전에 선반영»한 값이다(질의 213) — 다음 contracts:update 때 공지에 실렸는지 반드시 확인한다. contract-recycle-entry-enum.spec.ts 가 이 값의 부재를 즉시 잡는다. ⭐ 근거 — W-04-05 가 「입고·출고 전기 각 1건」을 명시하고, W-01-12 §5-2 가 「inventory_transaction.source_document_type_code 에 「재고조정」 값이 있으면 source_document_id = inventory_adjustment_id 로 잇는다」로 적었다. ⚠ STOCK_TRANSFER 는 «재고를 움직이므로 원장을 남긴다»는 추론이다 — 다른 셋보다 근거가 얕다. ⭐ 이 축이 원장 한 줄의 «성격»을 말한다 — 방향(입고·출고·이동)은 라인의 from*\/to* 가 이미 말하므로 transactionTypeCode 를 따로 두지 않는다(L-2-1 · 2026-09-02 판정).
              * @example GOODS_RECEIPT
              * @enum {string}
              */
-            sourceDocumentTypeCode: "GOODS_RECEIPT" | "GOODS_ISSUE" | "INVENTORY_ADJUSTMENT" | "STOCK_TRANSFER";
+            sourceDocumentTypeCode: "GOODS_RECEIPT" | "GOODS_ISSUE" | "INVENTORY_ADJUSTMENT" | "STOCK_TRANSFER" | "RECYCLE_ENTRY";
             /**
              * Format: int64
              * @example 1001
              */
             sourceDocumentId: number;
-            /** @description 독립 상태 코드를 사용하지 않는다. 미확정 재고 조정은 원장 행이 아니라 재고 조정 라인에서 관리한다. */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * Format: int64
@@ -36116,16 +40372,6 @@ export interface components {
              */
             lifecycleStatusCode?: string | null;
             /**
-             * @description W/O 전개 시 확정된 생산 LOT 순번. W/O 원천 생산 LOT에는 항상 내리고 그 외 LOT은 null이다. 현재 LOT 결정과 ‘현재/전체’ 표시에 쓴다. 화면이 lotNo 또는 생성시각으로 순서를 추측하지 않는다.
-             * @example 2
-             */
-            readonly workOrderSequenceNo: number | null;
-            /**
-             * @description 같은 W/O에서 선발행된 생산 LOT 슬롯 전체 수. W/O 원천 생산 LOT에는 서버가 계산해 항상 내리고 그 외 LOT은 null이다. P-02-04의 ‘현재 LOT 번호(순서대로)’ 표시용이며 폐번 슬롯도 전체 수에는 포함한다.
-             * @example 8
-             */
-            readonly workOrderLotCount: number | null;
-            /**
              * Format: int64
              * @description 분할 조회 편의용 표시 값. 계보의 원천은 아니다
              * @example 1001
@@ -36133,7 +40379,7 @@ export interface components {
             parentLotId?: number | null;
             /**
              * Format: date-time
-             * @description 생산 LOT 완료 처리(P-02-04)가 찍는 시각. 비어 있으면 아직 완료되지 않았다. ⭐ 상태 코드 문자열을 몰라도 완료 여부가 판정된다 — 완료 시각이 있고 없고로 갈리기 때문이다. ⛔ 「완료」·「미달 마감」은 statusCode(품질 판정)에도 lifecycleStatusCode(생명주기)에도 값으로 넣지 않는다. 자재·제품 LOT 은 null. 근거: P-02-04 §5-5 · 공유계약 §I-32·§I-49
+             * @description 생산 LOT 완료 처리(P-02-06)가 찍는 시각. 비어 있으면 아직 완료되지 않았다. ⭐ 상태 코드 문자열을 몰라도 완료 여부가 판정된다 — 완료 시각이 있고 없고로 갈리기 때문이다. ⛔ 「완료」·「미달 마감」은 statusCode(품질 판정)에도 lifecycleStatusCode(생명주기)에도 값으로 넣지 않는다. 자재·제품 LOT 은 null. 근거: P-02-06 §5-5 · 공유계약 §I-32·§I-49
              * @example 2026-08-11T17:40:00+09:00
              */
             completedAt?: string | null;
@@ -36162,14 +40408,19 @@ export interface components {
              */
             held?: boolean;
             /**
-             * @description 입고 확정 대기 큐의 판정 축 — IQC 합격 · 샘플링 미대상 · 긴급 IQC 생략 한도승인. 서버가 판정한다 ⭐ 세 값은 입고 확정 대기 큐로 들어오는 세 진입 경로와 1:1이다 — IQC_PASSED 는 IQC 판정 확정 합격, SAMPLING_NOT_REQUIRED 는 샘플링 미대상 그룹 판정 승계, URGENT_IQC_WAIVED 는 긴급 IQC 생략 한도승인이다. ⭐ 이 축이 ERP 입고 통지 대상을 가른다 — 한도승인 건은 통지에서 빠진다. 근거: W-01-10 §5-1 · §5-5
+             * @description 입고 확정 대기 큐의 판정 축 — IQC 합격 · 샘플링 미대상 · 긴급 IQC 생략 한도승인. 서버가 판정한다
              * @example IQC_PASSED
              * @enum {string|null}
              */
             readonly receiptDispositionCode?: "IQC_PASSED" | "SAMPLING_NOT_REQUIRED" | "URGENT_IQC_WAIVED" | null;
         };
-        /** @description 생산 LOT 완료. 부착 라벨 스캔으로 LOT 생산 등록을 확정한다. 미달 사유·잔량 처리는 W/O 마감 소관이므로 이 본문에서 받지 않는다. 근거: P-02-04 §3-3 */
+        /** @description 생산 LOT 완료. 계획 수량에 미달하면 사유 코드가 필요하고, 서버가 작업지시에 그 사유를 함께 기록한다 — 한 트랜잭션이다(공유계약 B-8). 근거: P-02-06 §5-5 */
         LotComplete: {
+            /**
+             * @description 미달 마감 사유. 계획 수량에 미달하면 필수이고 서버가 400 으로 막는다(P-02-06 §5-5). ⚠ W/O 마감(POST /production/work-orders/{id}:close 의 reasonCode)이 «같은 축»을 쓴다 — 생산LOT 완료는 S10, W/O 마감은 S12 라 마감이 나중이다. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_COMPLETION_VARIANCE_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example MATERIAL_SHORTAGE
+             */
+            completionVarianceReasonCode?: string | null;
             /**
              * @description 비고
              * @example 비고
@@ -36257,13 +40508,13 @@ export interface components {
             externalIdentifiers?: components["schemas"]["LotExternalIdentifierUpsert"][];
             /**
              * Format: date
-             * @description 영업일(발생일). 이 오퍼레이션은 오프라인 대상이라 클라이언트가 정해 보내고 서버는 수신일로 다시 잡지 않는다. ⚠ 계약은 이 값이 착지하는 저장 칸을 지정하지 않는다 — C-8 이 정한 쓰임은 «멱등키의 일부»다. ⚠ 그 밖에 이 값을 «따로 보관하는가»는 계약이 정하지 않았다 — C-5-1 과 C-8-1 이 서로 다른 기준을 두고 있어 재판정 대상이다(omf-mes#451). 근거: 공유계약 C-8 · C-5-1 · M-01-02 §5-3
+             * @description 근거: 공유계약 C-8
              * @example 2026-08-06
              */
             businessDate: string;
             /**
              * Format: date-time
-             * @description 발생 시각 — 서버 수신 시각과 다른 축이다. 이 오퍼레이션은 오프라인 대상이라 큐에 담긴 뒤 늦게 도착할 수 있고, 그 지연이 등록 시각을 왜곡하지 않도록 클라이언트가 «발생한 그때»를 보낸다. 근거: 공유계약 C-1 규칙 3 · M-01-02 §5-3
+             * @description 근거: 공유계약 C-1
              * @example 2026-08-06T09:12:00+09:00
              */
             occurredAt: string;
@@ -36341,7 +40592,7 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo?: string;
             /**
              * Format: int64
@@ -36408,7 +40659,7 @@ export interface components {
         LotHoldListResponse: {
             items: components["schemas"]["LotHold"][];
         };
-        /** @description LOT 상태 전이 사건 1건. 결정 10 「현재 1행 + 변경이력 1:N」을 되살린 전용 이력(2026-08-30) — 도식스펙03 §1.3 전이 9종(C4·C5·C6·C7·C8·C9·C10·C14·C15) 전건을 담는다. 저장 테이블(trace.lot_status_history 성격)은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-03-01 §5-1·§5-2 */
+        /** @description LOT 상태 전이 사건 1건. 결정 10 「현재 1행 + 변경이력 1:N」을 되살린 전용 이력(2026-08-30) — 원본 설계의 전이 9종(C4·C5·C6·C7·C8·C9·C10·C14·C15)에 서버 구현 전이 C17·C18·C19·C20을 더해 13종을 담는다. 저장 테이블(trace.lot_status_history 성격)은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-03-01 §5-1·§5-2 */
         LotStatusHistoryEvent: {
             /**
              * Format: int64
@@ -36420,26 +40671,30 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo?: string;
             /** @description 전이 «전» 상태. 최초 등록 전이(C4·C6·C14)는 null 이다. LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             fromStatusCode?: string | null;
             /** @description 전이 «후» 상태. LOT 상태. 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             toStatusCode: string;
             /**
-             * @description 전이 9종 — 도식스펙03 §1.3 · W-03-01 §5-1 표
+             * @description 원본 설계 전이 9종 — 도식스펙03 §1.3 · W-03-01 §5-1 표. 서버 구현 기준 C17·C18·C19·C20을 더해 응답은 13종이다
+             *
+             *     서버 구현 기준 추가값: C17·C18·C19=처분 전이, C20=재고 재등록 후 정상 전이(통보 089·218).
              * @example C7
              * @enum {string}
              */
-            transitionCode: "C4" | "C5" | "C6" | "C7" | "C8" | "C9" | "C10" | "C14" | "C15";
+            transitionCode: "C4" | "C5" | "C6" | "C7" | "C8" | "C9" | "C10" | "C14" | "C15" | "C17" | "C18" | "C19" | "C20";
             /** @example 값 */
             reason?: string | null;
             /**
-             * @description A-10 다형 참조 판별자 — 값이 «대상 리소스 이름»이고 짝 id 가 그 리소스의 식별자다. ⭐ 대응표는 «설계»가 정한다(A-10 규칙 1 · 2026-09-03 사용자 결정). 이 전이를 일으킨 것 — 검사 결과(INSPECTION_RESULT) · LOT 보류/해제(LOT_HOLD) · 부적합(NONCONFORMANCE). ⭐ 전이 9종에서 도출했다(W-03-01 §5-1 표) — C4「합격」·C6「불합격」·C14「합격판정개수 초과」·C15「전수 재검 양품」은 검사 결과가, C5·C10「의심자재등록」은 보류가, C7·C8「재판정」은 검사 결과가, C9「클레임·리콜」은 부적합이 일으킨다.
+             * @description A-10 다형 참조 판별자 — 값이 «대상 리소스 이름»이고 짝 id 가 그 리소스의 식별자다. ⭐ 대응표는 «설계»가 정한다(A-10 규칙 1 · 2026-09-03 사용자 결정). 이 전이를 일으킨 것 — 검사 결과(INSPECTION_RESULT) · LOT 보류/해제(LOT_HOLD) · 부적합(NONCONFORMANCE). ⭐ 기존 전이 9종에서 도출했다(W-03-01 §5-1 표) — C4「합격」·C6「불합격」·C14「합격판정개수 초과」·C15「전수 재검 양품」은 검사 결과가, C5·C10「의심자재등록」은 보류가, C7·C8「재판정」은 검사 결과가, C9「클레임·리콜」은 부적합이 일으킨다.
+             *
+             *     서버 구현 기준 추가값: DISPOSITION_DECISION=C17~C19의 원천, STOCK_TRANSFER=C20의 원천(통보 089·218 및 구현 코드 대조).
              * @example INSPECTION_RESULT
              * @enum {string|null}
              */
-            sourceDocumentTypeCode?: "INSPECTION_RESULT" | "LOT_HOLD" | "NONCONFORMANCE" | null;
+            sourceDocumentTypeCode?: "INSPECTION_RESULT" | "LOT_HOLD" | "NONCONFORMANCE" | "DISPOSITION_DECISION" | "STOCK_TRANSFER" | null;
             /**
              * Format: int64
              * @example 1001
@@ -36468,7 +40723,7 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo?: string;
             /** @description 전이 «전» 생명주기 상태. 최초 전이(L1)는 null 이다. LOT 선발행 슬롯의 생명주기 상태 — 품질 판정 축과 «다르다». 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_LIFECYCLE_STATUS 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             fromLifecycleStatusCode?: string | null;
@@ -36497,7 +40752,7 @@ export interface components {
              */
             changedAt: string;
         };
-        /** @description 이 LOT 의 생산 진척. 서버가 계산해 내린다 — 화면이 각자 계산하면 완료 화면과 라벨 화면의 값이 갈린다(공유계약 L-2). 근거: P-02-04 §5 · P-02-04 §5-2 */
+        /** @description 이 LOT 의 생산 진척. 서버가 계산해 내린다 — 화면이 각자 계산하면 완료 화면과 라벨 화면의 값이 갈린다(공유계약 L-2). 근거: P-02-04 §5 · P-02-06 §5-2 */
         LotProgress: {
             /**
              * @description 이 LOT 에 배분된 양품 합계
@@ -36577,7 +40832,7 @@ export interface components {
             /** @example 비고 문자열 */
             remarks?: string | null;
         };
-        /** @description Issues an additional material request. At least one line is required, and each requested quantity must be greater than zero. A reason code or non-blank remarks must be provided. If neither a reason code nor non-blank remarks is provided, the request cannot be issued. Empty or whitespace-only remarks do not qualify as a substitute for a reason code. */
+        /** @description 추가 자재 출고 요청 발행. 라인이 1건 이상이고 수량이 0 보다 커야 한다. 근거: W-02-10 §5-6 */
         MaterialIssueRequestCreate: {
             /**
              * Format: int64
@@ -36598,12 +40853,12 @@ export interface components {
              */
             requiredAt?: string | null;
             /**
-             * @description Request reason code. Retrieve available values from GET /mdm/code-values?codeGroupCode=MATERIAL_ISSUE_REQUEST_REASON. May be omitted when non-blank remarks are provided.
+             * @description 요청 사유(코드형) — 확정이 형태까지 지정했다(✓확정 2026-07-14 #4·#5·#7·#8 「사유 필드(코드형 — '긴급 W/O 대응' 포함) 신설」). 2026-08-30 되살림. 값 목록은 GET /mdm/code-values?codeGroupCode=MATERIAL_ISSUE_REQUEST_REASON 로 받는다 — 「긴급 W/O 대응」 포함(공유계약 G-32). 저장 컬럼은 데이터 모델 담당에게 통지 — 기다리지 않는다. 근거: W-02-10 §5-1 · omf-mes#87
              * @example URGENT_WO_RESPONSE
              */
             reasonCode?: string | null;
             /**
-             * @description Remarks that may be provided instead of a reason code. If no reason code is selected, remarks are required and must not be empty or contain only whitespace.
+             * @description 비고. 사유 코드 자리가 생기기 전까지 사유가 여기 담긴다
              * @example 라인 정지로 추가 소요
              */
             remarks?: string | null;
@@ -36776,7 +41031,7 @@ export interface components {
              * @example 1001
              */
             inventoryReservationId?: number | null;
-            /** @description 독립 상태 코드를 사용하지 않는다. 피킹 진행은 plannedQty, pickedQty와 held로 확인한다. */
+            /** @description 전표의 진행 상태. 확정된 값 목록이 아직 없으므로 화면은 서버가 내려주는 값을 그대로 표시하고 값 자체로 분기하지 않는다. 근거: 공유계약 G-2 */
             statusCode: string;
             /**
              * @description 이 라인의 LOT 이 보류 중인지. 참이면 화면이 라인을 비활성으로 두고 사유를 보여준다. 근거: M-01-08 §5-8
@@ -36909,7 +41164,7 @@ export interface components {
              */
             occurredAt: string;
         };
-        /** @description ERP W/O 헤더. 근거: W-01-11 · W-01-09 · W-01-03 */
+        /** @description P/O 헤더. 근거: W-01-11 · W-01-09 · W-01-03 */
         PurchaseOrder: {
             /**
              * Format: int64
@@ -36922,7 +41177,7 @@ export interface components {
              */
             purchaseOrderNo: string;
             /**
-             * @description ERP 발주번호. MES 에서 먼저 만든 ERP W/O 는 비어 있다
+             * @description ERP 발주번호. MES 에서 먼저 만든 P/O 는 비어 있다
              * @example EPO-2026-000123
              */
             erpPurchaseOrderNo?: string | null;
@@ -36961,7 +41216,7 @@ export interface components {
              */
             approvalRequestId?: number | null;
         };
-        /** @description ERP W/O 등록 요청. 헤더와 라인을 한 트랜잭션으로 저장한다 — 헤더만 남고 라인이 없는 ERP W/O 는 만들지 않는다. purchaseOrderNo 와 statusCode 는 서버가 정한다. 근거: W-01-11 §5-1 */
+        /** @description P/O 등록 요청. 헤더와 라인을 한 트랜잭션으로 저장한다 — 헤더만 남고 라인이 없는 P/O 는 만들지 않는다. purchaseOrderNo 와 statusCode 는 서버가 정한다. 근거: W-01-11 §5-1 */
         PurchaseOrderCreate: {
             /**
              * Format: int64
@@ -37001,7 +41256,7 @@ export interface components {
             purchaseOrder: components["schemas"]["PurchaseOrder"];
             lines: components["schemas"]["PurchaseOrderLine"][];
         };
-        /** @description ERP W/O 라인. */
+        /** @description P/O 라인. */
         PurchaseOrderLine: {
             /**
              * Format: int64
@@ -37079,7 +41334,7 @@ export interface components {
             /** @example 5 */
             toleranceUnderQty?: number;
         };
-        /** @description ERP W/O 헤더 수정. 작성중 상태에서만 허용한다 — 확정 후에는 400 STATE_LOCKED. 근거: W-01-11 · 공유계약 G-1 */
+        /** @description P/O 헤더 수정. 작성중 상태에서만 허용한다 — 확정 후에는 400 STATE_LOCKED. 근거: W-01-11 · 공유계약 G-1 */
         PurchaseOrderUpdate: {
             /**
              * Format: int64
@@ -37104,10 +41359,7 @@ export interface components {
              * @example 1001
              */
             putawayTaskId: number;
-            /**
-             * @description 적치 지시 번호 — 사람이 읽는 번호다. ⛔ 서버가 매긴다. 화면은 이 값을 보내지 않고 응답으로 받는다(M-01-05 §4 「UNIQUE · 자동」). ⛔ 계약은 「서버가 매긴다」까지만 정하고 채번 패턴(접두·자리수·리셋 주기)은 정하지 않는다 — 설정으로 정하는 값이라 운영이 바꿀 수 있다. ⇒ 화면·서버 소비자가 이 문자열의 형식을 가정하거나 쪼개 읽지 않는다. example 은 자리 모양을 보이는 합성값이지 형식 규칙이 아니다.
-             * @example PT-2026-000512
-             */
+            /** @example PT-2026-000512 */
             putawayTaskNo: string;
             /**
              * Format: int64
@@ -37751,7 +42003,7 @@ export interface components {
              */
             approvalRouteId: number;
             /**
-             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — **9값이다**(2026-09-04 — 실적 정정 승인이 늘었다). ⭐ 승인유형 값 집합과 생성 경로 대응은 06-API-요구서-app공통승인.md §1-2 표를 참조한다. 승인유형 개수와 생성 경로(method+path) 개수는 다르며 본문 스키마 이름으로 세지 않는다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 ERP W/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · PRODUCTION_RESULT_CORRECT 작업실적 A급 정정(수불·기간업무시스템 영향 — 2026-08-31 사용자 확정 · 등급은 서버가 판정한다) · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). 상신 화면은 승인 유형을 보내지 않고 서버가 상신 오퍼레이션에서 정하며, 결재선 정의 화면(W-06-15)은 이 값 집합에서 유형을 선택한다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
+             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — **9값이다**(2026-09-04 — 실적 정정 승인이 늘었다). ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 9개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · PRODUCTION_RESULT_CORRECT 작업실적 A급 정정(수불·기간업무시스템 영향 — 2026-08-31 사용자 확정 · 등급은 서버가 판정한다) · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
              * @example GOODS_ISSUE_DISPOSAL
              * @enum {string}
              */
@@ -37791,7 +42043,7 @@ export interface components {
         /** @description 결재선 등록. isActive 는 받지 않는다 — 신규는 항상 사용 중이다. 같은 (approvalTypeCode, businessUnitId) 로 활성 결재선이 이미 있으면 400 이다. */
         ApprovalRouteCreate: {
             /**
-             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — **9값이다**(2026-09-04 — 실적 정정 승인이 늘었다). ⭐ 승인유형 값 집합과 생성 경로 대응은 06-API-요구서-app공통승인.md §1-2 표를 참조한다. 승인유형 개수와 생성 경로(method+path) 개수는 다르며 본문 스키마 이름으로 세지 않는다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 ERP W/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · PRODUCTION_RESULT_CORRECT 작업실적 A급 정정(수불·기간업무시스템 영향 — 2026-08-31 사용자 확정 · 등급은 서버가 판정한다) · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). 상신 화면은 승인 유형을 보내지 않고 서버가 상신 오퍼레이션에서 정하며, 결재선 정의 화면(W-06-15)은 이 값 집합에서 유형을 선택한다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
+             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — **9값이다**(2026-09-04 — 실적 정정 승인이 늘었다). ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 9개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · PRODUCTION_RESULT_CORRECT 작업실적 A급 정정(수불·기간업무시스템 영향 — 2026-08-31 사용자 확정 · 등급은 서버가 판정한다) · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
              * @example GOODS_ISSUE_DISPOSAL
              * @enum {string}
              */
@@ -38004,7 +42256,7 @@ export interface components {
              */
             approvalRequestNo: string;
             /**
-             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — **9값이다**(2026-09-04 — 실적 정정 승인이 늘었다). ⭐ 승인유형 값 집합과 생성 경로 대응은 06-API-요구서-app공통승인.md §1-2 표를 참조한다. 승인유형 개수와 생성 경로(method+path) 개수는 다르며 본문 스키마 이름으로 세지 않는다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 ERP W/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · PRODUCTION_RESULT_CORRECT 작업실적 A급 정정(수불·기간업무시스템 영향 — 2026-08-31 사용자 확정 · 등급은 서버가 판정한다) · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). 상신 화면은 승인 유형을 보내지 않고 서버가 상신 오퍼레이션에서 정하며, 결재선 정의 화면(W-06-15)은 이 값 집합에서 유형을 선택한다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
+             * @description 승인 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — **9값이다**(2026-09-04 — 실적 정정 승인이 늘었다). ⭐ 값 집합의 정본은 화면이 아니라 «상신 오퍼레이션»이다 — 승인 요청을 «만드는» 오퍼레이션이 9개이고 그 목록이 06-API-요구서-app공통승인.md §1-2 다. ⚠ 본문 스키마로 세지 않는다 — 7개는 ApprovalRequestCreate 를 쓰지만 출하 취소만 ShipmentCancelRequest 를 쓴다(모양은 같다 · required=[reason]). 스키마 이름으로 세면 7이 나와 SHIPMENT_CANCEL 이 근거 없어 보인다. GOODS_ISSUE_DISPOSAL 기타출고 품의(폐기) · INVENTORY_ADJUSTMENT 재고조정 · PURCHASE_ORDER 신규 P/O · INBOUND_RECEIPT_CANCEL 입하 취소 · GOODS_RECEIPT_CANCEL 입고 취소 · GOODS_ISSUE_CANCEL 출고 취소 · SHIPMENT_CANCEL 출하 취소 · PRODUCTION_RESULT_CORRECT 작업실적 A급 정정(수불·기간업무시스템 영향 — 2026-08-31 사용자 확정 · 등급은 서버가 판정한다) · IQC_SKIP 긴급 IQC 생략(공유계약 A-16 기확정). ⛔ 화면이 고르는 값이 아니다 — 서버가 상신 오퍼레이션에서 채운다. ⭐ 자재 폐기(W-01-06)와 제품 폐기(W-04-10)는 «같은» GOODS_ISSUE_DISPOSAL 이다 — 둘의 결재선을 가르는 것은 유형이 아니라 결재선 정의의 businessUnitId 축이고, 서버가 전표의 reasonCode 로 결재선을 파생한다(✓확정 2026-09-01 사용자 · 공유계약 G-31 이 「승인 게이트가 사유 값을 보고 걸린다」로 이 연결을 2026-08-31 에 이미 세웠다). ⛔ 공통코드 그룹으로 받지 않는다 — 고객이 W-06-06 에서 값을 늘려도 상신할 오퍼레이션이 없어 «쓰이지 않는 결재선»만 생긴다. 근거: W-06-15 §8-2 · 공유계약 A-16
              * @example GOODS_ISSUE_DISPOSAL
              * @enum {string}
              */
@@ -38069,11 +42321,11 @@ export interface components {
         /** @description 무엇을 대상으로 발행했는가. targetType 을 먼저 보고 판정한다 — 개체 단위 출력물은 targetId 와 lotId 가 서로 다른 것을 가리킨다. */
         DocumentTarget: {
             /**
-             * @description 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · SHIPMENT_LOT_ALLOCATION → 출하 LOT 배분 · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 납품 라벨은 출하 LOT 배분을 대상으로 발행한다(P-04-01). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다
+             * @description 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 값 문자열을 확정했다(2026-09-02) — 뜻 일곱은 §3-7 대응표가 이미 못박았고 남은 것은 문자열뿐이었다(공유계약 §G — 확정된 뜻을 영문 SNAKE 로). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다
              * @example LOT
              * @enum {string}
              */
-            targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "SHIPMENT_LOT_ALLOCATION" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
+            targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
             /**
              * Format: int64
              * @example 90101
@@ -38095,7 +42347,7 @@ export interface components {
              */
             documentIssueLogId: number;
             /**
-             * @description 출력물 종류. 라벨 6종·검사성적서·툴 QR·Location 라벨 — 값마다 «찍는 화면»과 «서버가 그리는 렌디션»이 다르다(공유계약 K-5). ⛔ 고객이 늘리는 공통코드 그룹이 아니다 — 값을 늘려도 렌디션이 없어 안 찍힌다(A-16 「가르는 물음 넷」: 가 거짓 + 다 참 ⇒ 설계가 정하는 업무 코드). MATERIAL_LOT_LABEL=자재 LOT 라벨(P-01-01) · GOODS_ISSUE_QR=출고 QR(P-01-02) · PRODUCTION_LOT_LABEL=생산 LOT 라벨(P-02-04) · IDENTIFICATION_TAG=인식표(P-02-04·P-02-09) · PACKING_LABEL=포장 라벨(P-02-09·P-04-01·P-04-04) · DELIVERY_LABEL=납품 라벨(P-04-01) · CERTIFICATE_OF_ANALYSIS=검사성적서(W-04-03) · TOOL_LABEL=툴 QR 라벨(W-05-13) · LOCATION_LABEL=Location 코드 라벨(W-06-07)
+             * @description 출력물 종류. 라벨 6종·검사성적서·툴 QR·Location 라벨 — 값마다 «찍는 화면»과 «서버가 그리는 렌디션»이 다르다(공유계약 K-5). ⛔ 고객이 늘리는 공통코드 그룹이 아니다 — 값을 늘려도 렌디션이 없어 안 찍힌다(A-16 「가르는 물음 넷」: 가 거짓 + 다 참 ⇒ 설계가 정하는 업무 코드). MATERIAL_LOT_LABEL=자재 LOT 라벨(P-01-01) · GOODS_ISSUE_QR=출고 QR(P-01-02) · PRODUCTION_LOT_LABEL=생산 LOT 라벨(P-02-07) · IDENTIFICATION_TAG=인식표(P-02-05·P-02-09) · PACKING_LABEL=포장 라벨(P-02-09·P-04-02·P-04-04) · DELIVERY_LABEL=납품 라벨(P-04-02) · CERTIFICATE_OF_ANALYSIS=검사성적서(W-04-03) · TOOL_LABEL=툴 QR 라벨(W-05-13) · LOCATION_LABEL=Location 코드 라벨(W-06-07)
              * @example PACKING_LABEL
              * @enum {string}
              */
@@ -38159,11 +42411,11 @@ export interface components {
             /** @description 한 트랜잭션으로 처리한다. 하나라도 실패하면 전건 실패다. */
             targets: {
                 /**
-                 * @description 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT · SERIAL_NUMBER · HANDLING_UNIT · SHIPMENT_LOT_ALLOCATION · GOODS_ISSUE_LINE · MOLD · LOCATION · INSPECTION_RESULT. ⭐ 읽는 쪽 DocumentTarget.targetTypeCode 와 같은 값집합이다 — 대응표는 공유계약 A-10 이 갖는다. 납품 라벨은 출하 LOT 배분을 대상으로 발행한다(P-04-01). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다.
+                 * @description 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT · SERIAL_NUMBER · HANDLING_UNIT · GOODS_ISSUE_LINE · MOLD · LOCATION · INSPECTION_RESULT. ⭐ 읽는 쪽 DocumentTarget.targetTypeCode 와 같은 값집합이다 — 대응표는 공유계약 A-10 이 갖는다. ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다.
                  * @example LOT
                  * @enum {string}
                  */
-                targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "SHIPMENT_LOT_ALLOCATION" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
+                targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
                 /**
                  * Format: int64
                  * @example 771205
@@ -38242,11 +42494,11 @@ export interface components {
         /** @description 대상 하나의 발행 현황 요약. 목록 화면이 행마다 「이미 발행됐는가 · 몇 회차인가」를 판정하는 입력이다. */
         DocumentIssueSummary: {
             /**
-             * @description 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · SHIPMENT_LOT_ALLOCATION → 출하 LOT 배분 · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 납품 라벨은 출하 LOT 배분을 대상으로 발행한다(P-04-01). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다
+             * @description 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 값 문자열을 확정했다(2026-09-02) — 뜻 일곱은 §3-7 대응표가 이미 못박았고 남은 것은 문자열뿐이었다(공유계약 §G — 확정된 뜻을 영문 SNAKE 로). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다
              * @example LOT
              * @enum {string}
              */
-            targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "SHIPMENT_LOT_ALLOCATION" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
+            targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
             /**
              * Format: int64
              * @example 55021
@@ -38344,7 +42596,7 @@ export interface components {
             currentPassword: string;
             /**
              * Format: password
-             * @description 최소 길이만 둔다 — 조합 규칙은 두지 않는다. ⛔ 현재 비밀번호와 «같은 값»은 받지 않는다 — 400(code=SAME_AS_CURRENT). 화면이 제출 전에 먼저 막지만(W-CO-10 §6) 계약도 같은 조건을 둔다 — 두 값이 다 이 본문에 오므로 서버가 판정할 수 있고, 선검사만으로 확정하지 않는 것이 공유계약 A-1 이 확정한 방식이다. ⛔ 「직전 N개 재사용 금지」가 아니다 — DR-002 2-B 가 뺀 것은 이력 표가 필요한 쪽이고 이것은 그 자리에서 안다(W-CO-10 §9-2). ⚠ 조건이 없다 — 강제 변경 한정이 아니라 이 경로 전건이다. 우리 설계에 강제 변경 흐름이 없다(W-CO-10 §3).
+             * @description 최소 길이만 둔다 — 조합 규칙은 두지 않는다
              */
             newPassword: string;
         };
@@ -38369,7 +42621,7 @@ export interface components {
             /** @example false */
             read: boolean;
             /**
-             * @description 무엇에 대한 알림인가 — EQUIPMENT → 설비(설비 고장 발생) · MOLD → 툴·금형(적정타수 초과) · INSTRUMENT → 계측기(검교정 만료 임박) · PURCHASE_ORDER → 구매발주(ERP W/O 변경 수신) · INTEGRATION_SYNC → 연계 메시지(연계 실패) · APPROVAL_REQUEST → 승인 요청(승인·결재 도착) · LOT / WORK_ORDER / NONCONFORMANCE. ⚠ 뒤 셋은 대응 이벤트가 알림센터 목록에 아직 없다. ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 공통코드 그룹으로 받지 않는다(A-10 · A-16 · 2026-09-03 정정). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다
+             * @description 무엇에 대한 알림인가 — EQUIPMENT → 설비(설비 고장 발생) · MOLD → 툴·금형(적정타수 초과) · INSTRUMENT → 계측기(검교정 만료 임박) · PURCHASE_ORDER → 구매발주(P/O 변경 수신) · INTEGRATION_SYNC → 연계 메시지(연계 실패) · APPROVAL_REQUEST → 승인 요청(승인·결재 도착) · LOT / WORK_ORDER / NONCONFORMANCE. ⚠ 뒤 셋은 대응 이벤트가 알림센터 목록에 아직 없다. ⛔ 다형 참조 판별자라 값이 «우리 계약의 대상 표 이름»이다 — 공통코드 그룹으로 받지 않는다(A-10 · A-16 · 2026-09-03 정정). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다
              * @example EQUIPMENT
              * @enum {string}
              */
@@ -38451,7 +42703,7 @@ export interface components {
             /** @example 8월 20일 09:00~12:00 사이 2호기 정기 보전이 있습니다. */
             body?: string;
             /**
-             * @description 서버가 «파생»한다. 저장 컬럼이 아니다. ⭐ 판정에 순서가 있다 — ① closedAt 이 있으면 CLOSED 다(내려버린 공지는 종료일이 오늘이어도 그 즉시 CLOSED) ② 없으면 날짜가 가른다: DRAFT = 아직 게시하지 않았다(publishedAt 이 비어 있다) · SCHEDULED = 게시됐고 오늘 < 시작일 · PUBLISHED = 시작일 ≤ 오늘 ≤ 종료일 · CLOSED = 종료일 < 오늘. ⛔ 「내려버리기」는 상태 컬럼을 만드는 것이 아니다 — 종료일을 오늘로 당기고 closedAt 을 찍을 뿐이며, 달력이 만드는 전이는 그대로 날짜가 정한다(공유계약 A-15). 행위 시각으로 파생 상태를 가르는 방식은 DRAFT 판정(publishedAt)과 같은 형태다
+             * @description 서버가 «파생»한다. 저장 컬럼이 아니다. DRAFT = 아직 게시하지 않았다(publishedAt 이 비어 있다) · SCHEDULED = 게시됐고 오늘 < 시작일 · PUBLISHED = 시작일 ≤ 오늘 ≤ 종료일 · CLOSED = 종료일 < 오늘. 「내려버리기」는 상태를 바꾸는 것이 아니라 종료일을 오늘로 당기는 것이다
              * @example PUBLISHED
              * @enum {string}
              */
@@ -38463,10 +42715,9 @@ export interface components {
             startDate: string;
             /**
              * Format: date
-             * @description 게시 종료일. 「내려버리기」를 누르면 오늘로 당겨진다(:close). 상태 파생이 이 값에 걸린다 — 근거: W-CO-04 §5-1
              * @example 2026-08-13
              */
-            endDate: string;
+            endDate?: string;
             /**
              * @description 참이면 읽은 사람이 확인을 눌러야 한다
              * @example true
@@ -38484,12 +42735,6 @@ export interface components {
              * @example 2026-08-13T09:12:00+09:00
              */
             publishedAt?: string;
-            /**
-             * Format: date-time
-             * @description «내려버리기»를 누른 시각. ⭐ 이 값이 있으면 종료일이 오늘이어도 statusCode 는 CLOSED 다 — publishedAt 이 DRAFT 를 가르는 것과 같은 방식이다. 비어 있으면 사람이 내린 적이 없다는 뜻이고 그때는 날짜만으로 상태를 가른다. ⛔ 요청으로 받지 않는다 — :close 가 서버에서 찍는다. 근거: W-CO-04 §5-1
-             * @example 2026-08-13T14:30:00+09:00
-             */
-            closedAt?: string;
             /**
              * Format: int64
              * @example 1001
@@ -38527,10 +42772,9 @@ export interface components {
             startDate: string;
             /**
              * Format: date
-             * @description 게시 종료일. ⛔ 시작일보다 앞일 수 없다 — 어기면 400(code=RANGE). ⚠ 비울 수 없다 — 상태 파생이 이 값에 걸려 있어 비면 PUBLISHED 와 CLOSED 를 가를 수 없다. 화면도 필수로 받는다. 근거: W-CO-04 §5-A·§6
              * @example 2026-08-13
              */
-            endDate: string;
+            endDate?: string;
             /** @example true */
             acknowledgeRequired?: boolean;
             /**
@@ -38854,7 +43098,7 @@ export interface components {
              * @example 1001
              */
             materialConsumptionId: number;
-            /** @example MC-DEMO-001 */
+            /** @example 값 */
             consumptionNo: string;
             /**
              * Format: int64
@@ -38947,7 +43191,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             recordedAt?: string;
-            /** @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             lateEntryReasonCode?: string;
             /**
              * Format: int64
@@ -38959,7 +43206,7 @@ export interface components {
              * @example 1001
              */
             terminalId: number;
-            /** @description 독립 상태 코드를 사용하지 않는 투입 기록이다. 정정 기록은 원본을 가리키는 식별자로 구분한다. */
+            /** @example 값 */
             statusCode: string;
             /** @example 값 */
             remarks?: string;
@@ -38997,7 +43244,10 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @description 투입 유형이며 물리 컬럼은 production.material_consumption.consumption_type_code 다. 보내지 않으면 서버가 기본 투입 유형으로 기록한다 — 화면이 값을 지어내지 않는다. 값 목록은 아직 확정 전이고, 확정 전에는 이 칸을 보내지 않는다. */
+            /**
+             * @description 투입 유형이며 물리 컬럼은 production.material_consumption.consumption_type_code 다. 보내지 않으면 서버가 기본 투입 유형으로 기록한다 — 화면이 값을 지어내지 않는다. 값 목록은 아직 확정 전이고, 확정 전에는 이 칸을 보내지 않는다.
+             * @example 값
+             */
             consumptionTypeCode?: string;
             /**
              * Format: int64
@@ -39005,7 +43255,10 @@ export interface components {
              * @example 1001
              */
             actualUseProcessId?: number;
-            /** @description 러닝체인지 교체 사유 — 왜 자재를 바꿔 넣었는가. 근거: P-02-11 §5-2. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=MATERIAL_CHANGE_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 러닝체인지 교체 사유 — 왜 자재를 바꿔 넣었는가. 근거: P-02-11 §5-2. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=MATERIAL_CHANGE_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             changeReasonCode?: string;
             /**
              * Format: int64
@@ -39038,7 +43291,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             occurredAt: string;
-            /** @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             lateEntryReasonCode?: string;
             /** @example 값 */
             remarks?: string;
@@ -39049,7 +43305,7 @@ export interface components {
              * @example 1001
              */
             materialReturnId: number;
-            /** @example MR-DEMO-001 */
+            /** @example 값 */
             materialReturnNo: string;
             /**
              * Format: int64
@@ -39066,7 +43322,7 @@ export interface components {
              * @example 1001
              */
             destinationWarehouseId: number;
-            /** @description 독립 상태 코드를 사용하지 않는다. 반납 진행은 requestedAt과 receivedAt으로 확인한다. */
+            /** @example 값 */
             statusCode: string;
             /**
              * Format: date-time
@@ -39132,7 +43388,7 @@ export interface components {
              * @example 1001
              */
             operationHandoverId: number;
-            /** @example HO-DEMO-001 */
+            /** @example 값 */
             handoverNo: string;
             /**
              * Format: int64
@@ -39144,7 +43400,7 @@ export interface components {
              * @example 1001
              */
             toWorkOrderId: number;
-            /** @description 독립 상태 코드를 사용하지 않는다. 인계·인수 여부는 handedOverAt과 receivedAt으로 확인한다. */
+            /** @example 값 */
             statusCode: string;
             /**
              * Format: date-time
@@ -39410,7 +43666,7 @@ export interface components {
              * @example 1001
              */
             productionOrderId: number;
-            /** @example PO-DEMO-001 */
+            /** @example 값 */
             productionOrderNo: string;
             /** @description ERP 수신 원번호 */
             erpOrderNo?: string;
@@ -39451,11 +43707,11 @@ export interface components {
              * @example 2026-08-11
              */
             dueDate?: string;
-            /** @description ERP W/O(생산오더)의 상태 — 수신(RECEIVED) · 수정됨(UPDATED) · 취소(CANCELLED). ⭐ ERP 가 발행하고 MES 는 수신본을 갖지만 **코드는 우리 어휘로 저장한다** — ERP 코드를 그대로 담거나 매핑 테이블을 두지 않는다(사용자 결정 2026-09-02). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /** @description P/O(생산오더)의 상태 — 수신(RECEIVED) · 수정됨(UPDATED) · 취소(CANCELLED). ⭐ ERP 가 발행하고 MES 는 수신본을 갖지만 **코드는 우리 어휘로 저장한다** — ERP 코드를 그대로 담거나 매핑 테이블을 두지 않는다(사용자 결정 2026-09-02). ⛔ 시스템 소유다 — 고객이 W-06-06 에서 이 값을 편집하면 안 된다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_ORDER_STATUS 로 받는다(공유계약 G-32 · 2026-09-02 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
             statusCode: string;
             /**
              * Format: date-time
-             * @description 관리자가 이 ERP W/O 변경을 확인한 시각. 비어 있으면 미확인이다 — GET /planning/production-orders 의 unacknowledgedOnly 가 이 값으로 판정한다
+             * @description 관리자가 이 P/O 변경을 확인한 시각. 비어 있으면 미확인이다 — GET /planning/production-orders 의 unacknowledgedOnly 가 이 값으로 판정한다
              * @example 2026-08-11T09:12:00+09:00
              */
             acknowledgedAt?: string;
@@ -39476,7 +43732,7 @@ export interface components {
             /** @example 1 */
             versionNo?: number;
             /**
-             * @description 파생 — 서버가 계산한다(공유계약 L-2). 이 ERP W/O 아래 생성된 W/O 수. 목록 「W/O n/m」 열의 n. 근거: W-02-01 §3 · omf-mes#196
+             * @description 파생 — 서버가 계산한다(공유계약 L-2). 이 P/O 아래 생성된 W/O 수. 목록 「W/O n/m」 열의 n. 근거: W-02-01 §3 · omf-mes#196
              * @example 3
              */
             expandedWorkOrderCount?: number;
@@ -39487,7 +43743,7 @@ export interface components {
             plannedWorkOrderCount?: number;
             lastChange?: components["schemas"]["ProductionOrderChange"];
         };
-        /** @description 관리자의 판정 한 번. ⭐ 반영이면 W/O 조정을 «같은 요청에» 싣는다 — 「확인만 기록하고 W/O 는 나중에」를 만들지 않는다(공유계약 B-8 규칙 1). ⛔ 잠금 토큰이 둘로 갈린다 — ERP W/O 는 헤더 If-Match, 함께 고치는 W/O 는 workOrderAdjustments[].versionNo 다. 잠그는 대상마다 그 대상의 버전 축을 쓴다(공유계약 B-1-1 ① · A-4-1). */
+        /** @description 관리자의 판정 한 번. ⭐ 반영이면 W/O 조정을 «같은 요청에» 싣는다 — 「확인만 기록하고 W/O 는 나중에」를 만들지 않는다(공유계약 B-8 규칙 1). ⛔ 잠금 토큰이 둘로 갈린다 — P/O 는 헤더 If-Match, 함께 고치는 W/O 는 workOrderAdjustments[].versionNo 다. 잠그는 대상마다 그 대상의 버전 축을 쓴다(공유계약 B-1-1 ① · A-4-1). */
         ProductionOrderAcknowledge: {
             /**
              * @description 반영 / 강행. 근거: W-02-06 §5
@@ -39500,7 +43756,7 @@ export interface components {
              * @example 값
              */
             reason?: string;
-            /** @description 이 확인이 함께 고치는 W/O. ⭐ ERP W/O 확인과 W/O 조정이 «한 트랜잭션»이다 — 하나라도 실패하면 전부 되돌린다(공유계약 B-8 규칙 1). ⛔ decisionCode=PROCEED(강행)이면 보내지 않는다 — 보내면 400 이다. 강행은 「기존을 유지한다」라 조정이 성립하지 않는다. ⭐ decisionCode=APPLY 인데 비워 보낼 수 있다 — 중단·취소 반영(후속이 :cancel 이라 조정할 수량이 없다)과 계획 시각이 아직 잡히지 않은 W/O 가 그 경우다. 그때 조정되지 않은 영향 W/O 에는 서버가 poMismatch 를 세운다 — 「반영했다고 적혔는데 실제로는 안 맞춘」 W/O 가 표식 없이 남지 않게 한다 */
+            /** @description 이 확인이 함께 고치는 W/O. ⭐ P/O 확인과 W/O 조정이 «한 트랜잭션»이다 — 하나라도 실패하면 전부 되돌린다(공유계약 B-8 규칙 1). ⛔ decisionCode=PROCEED(강행)이면 보내지 않는다 — 보내면 400 이다. 강행은 「기존을 유지한다」라 조정이 성립하지 않는다. ⭐ decisionCode=APPLY 인데 비워 보낼 수 있다 — 중단·취소 반영(후속이 :cancel 이라 조정할 수량이 없다)과 계획 시각이 아직 잡히지 않은 W/O 가 그 경우다. 그때 조정되지 않은 영향 W/O 에는 서버가 poMismatch 를 세운다 — 「반영했다고 적혔는데 실제로는 안 맞춘」 W/O 가 표식 없이 남지 않게 한다 */
             workOrderAdjustments?: components["schemas"]["WorkOrderAdjustment"][];
         };
         /** @description 마지막으로 수신한 ERP 변경 «한 건». ⛔ 이력을 쌓지 않는다 — 판정 중 ERP 가 다시 보내면 409 로 막고 다시 불러와 «새 변경분»으로 다시 판정하므로(W-02-06 §5-3) 관리자는 언제나 「지금 상태」로 판단한다. 지나간 변경은 판정 대상이 아니다. 저장 자리는 데이터 모델 담당에게 통지한다 — 기다리지 않는다(공유계약 A-11). 근거: W-02-06 §3·§5-1 */
@@ -39517,7 +43773,7 @@ export interface components {
         /** @description ERP 변경 한 항목의 전·후. 화면 2열 비교 표(W-02-06 §3)의 한 행이고 DS 컴포넌트 DiffRow(label·before·after)에 그대로 꽂힌다. */
         ProductionOrderChangedField: {
             /**
-             * @description ERP 가 바꾸는 ERP W/O 항목 — 수량·납기·상태(중단·취소) 셋이다. ⭐ 값은 이 항목이 가리키는 ProductionOrder 필드 이름을 그대로 딴다(orderQty·dueDate·statusCode) — 물리 컬럼 이름 채택이 아니라 «이미 확정된 계약 필드명»을 재사용하는 것이다. 이 enum 은 업무 개념의 값 어휘가 아니라 「어느 계약 필드가 바뀌었나」를 가리키는 포인터이므로, 가리키는 대상의 이름과 같게 두는 것이 가장 명확하다(공유계약 §G 2026-09-01 신판 — 물리 이름 채택은 예외이고 출처 확인이 전제인데, 여기서 따르는 것은 물리 모델이 아니라 이미 확정된 계약 스키마다). ⛔ 공통코드가 아니다 — 설계가 닫은 값 집합이라 코드 그룹을 두지 않는다(같은 파일 ProductionOrderAcknowledge.decisionCode 와 같은 형태). ⛔ 그 밖의 항목이 바뀌어도 이 배열에 담지 않는다 — 없는 업무 개념을 만들지 않는다(공유계약 A-21). 넷째가 필요해지면 값을 «더한다» — 값 삭제만 막힌다(공유계약 L-4-1 ⑶). 근거: 요구 REQ-PR-0024 「① 중단 ② 수량 변경」 · W-02-06 §3·§5-5
+             * @description ERP 가 바꾸는 P/O 항목 — 수량·납기·상태(중단·취소) 셋이다. ⭐ 값은 이 항목이 가리키는 ProductionOrder 필드 이름을 그대로 딴다(orderQty·dueDate·statusCode) — 물리 컬럼 이름 채택이 아니라 «이미 확정된 계약 필드명»을 재사용하는 것이다. 이 enum 은 업무 개념의 값 어휘가 아니라 「어느 계약 필드가 바뀌었나」를 가리키는 포인터이므로, 가리키는 대상의 이름과 같게 두는 것이 가장 명확하다(공유계약 §G 2026-09-01 신판 — 물리 이름 채택은 예외이고 출처 확인이 전제인데, 여기서 따르는 것은 물리 모델이 아니라 이미 확정된 계약 스키마다). ⛔ 공통코드가 아니다 — 설계가 닫은 값 집합이라 코드 그룹을 두지 않는다(같은 파일 ProductionOrderAcknowledge.decisionCode 와 같은 형태). ⛔ 그 밖의 항목이 바뀌어도 이 배열에 담지 않는다 — 없는 업무 개념을 만들지 않는다(공유계약 A-21). 넷째가 필요해지면 값을 «더한다» — 값 삭제만 막힌다(공유계약 L-4-1 ⑶). 근거: 요구 REQ-PR-0024 「① 중단 ② 수량 변경」 · W-02-06 §3·§5-5
              * @example ORDER_QTY
              * @enum {string}
              */
@@ -39533,7 +43789,7 @@ export interface components {
              */
             beforeText: string;
             /**
-             * @description 변경 «후» 값의 표시 문자열 — 2열 표의 「변경(ERP)」 칸이다. ⚠ ERP W/O 행에는 이미 변경 후 값이 반영돼 있어(W-02-06 §5-1) field=ORDER_QTY 면 ProductionOrder.orderQty 와, DUE_DATE 면 dueDate 와 같은 값을 가리킨다. 표시 형식이 한 곳에서 정해지도록 두 칸을 다 내린다
+             * @description 변경 «후» 값의 표시 문자열 — 2열 표의 「변경(ERP)」 칸이다. ⚠ P/O 행에는 이미 변경 후 값이 반영돼 있어(W-02-06 §5-1) field=ORDER_QTY 면 ProductionOrder.orderQty 와, DUE_DATE 면 dueDate 와 같은 값을 가리킨다. 표시 형식이 한 곳에서 정해지도록 두 칸을 다 내린다
              * @example 4000
              */
             afterText: string;
@@ -39556,7 +43812,7 @@ export interface components {
              * @example 1001
              */
             productionOrderId: number;
-            /** @example PLAN-DEMO-001 */
+            /** @example 값 */
             planNo: string;
             /**
              * Format: date
@@ -39698,7 +43954,7 @@ export interface components {
              * @example 1001
              */
             productionResultId: number;
-            /** @example RESULT-DEMO-001 */
+            /** @example 값 */
             productionResultNo: string;
             /**
              * Format: int64
@@ -39764,7 +44020,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             recordedAt?: string;
-            /** @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             lateEntryReasonCode?: string;
             /**
              * Format: int64
@@ -39791,13 +44050,16 @@ export interface components {
              * @example 1001
              */
             terminalId?: number;
-            /** @description 독립 상태 코드를 사용하지 않는 생산 실적 기록이다. 정정 기록은 원본을 가리키는 식별자로 구분한다. */
+            /** @example 값 */
             statusCode: string;
             /** @example 값 */
             remarks?: string;
         };
         ProductionResultCorrect: {
-            /** @description 실적 정정 사유. ⭐ 「정정이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다 — 사유 코드 17자리가 이미 같은 형태다(스키마별 전용 그룹 + 고객이 늘림). 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_RESULT_CORRECT_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 실적 정정 사유. ⭐ 「정정이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다 — 사유 코드 17자리가 이미 같은 형태다(스키마별 전용 그룹 + 고객이 늘림). 값 목록은 GET /mdm/code-values?codeGroupCode=PRODUCTION_RESULT_CORRECT_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             reasonCode: string;
             /** @example 값 */
             note?: string;
@@ -39870,17 +44132,20 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 실적을 «무엇이» 만들었는가 — 수기 입력(MANUAL) · IoT 자동수집(IOT). ⛔ 화면이 보내지 않는다 — 서버가 채운다(수기 입력이면 MANUAL). ⭐ 서버가 안다 — 화면이 고르는 값이 아니다. ⛔ 두 갈래뿐이라 계약이 닫는다
+             * @description 실적을 «무엇이» 만들었는가 — 수기 입력(MANUAL) · IoT 자동수집(IOT). ⭐ 서버가 안다 — 화면이 고르는 값이 아니다. ⛔ 두 갈래뿐이라 계약이 닫는다
              * @example MANUAL
              * @enum {string}
              */
-            resultSourceCode?: "MANUAL" | "IOT";
+            resultSourceCode: "MANUAL" | "IOT";
             /**
              * Format: date-time
              * @example 2026-08-11T09:12:00+09:00
              */
             occurredAt: string;
-            /** @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 지연 입력 사유 — 실적·투입을 «나중에» 적을 때 왜 늦었는지. ⭐ 「지연 입력이 몇 건이고 왜인가」를 세려면 자유 텍스트가 아니라 코드 축이어야 한다. ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=LATE_ENTRY_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             lateEntryReasonCode?: string;
             /**
              * Format: int64
@@ -39892,7 +44157,7 @@ export interface components {
              * @example 1001
              */
             moldId?: number;
-            /** @description 실적↔LOT 배분은 본문에 싣는다 — 독립 경로를 두지 않는다. P-02-04 생산 LOT 출력 저장은 현재 LOT 한 건을 반드시 보내며 allocatedQty는 goodQty와 같아야 한다. */
+            /** @description 실적↔LOT 배분은 본문에 싣는다 — 독립 경로를 두지 않는다 */
             lotAllocations?: components["schemas"]["ResultLotAllocation"][];
             /** @example 값 */
             remarks?: string;
@@ -39915,7 +44180,7 @@ export interface components {
              * @example 1001
              */
             serialNumberId: number;
-            /** @description 전역에서 유일하다 — 공장이 달라도 겹치지 않는다. 근거: P-02-04 §5-2. ⚠ 채번 규칙이 아직 정해지지 않아 예시를 두지 않는다 — 예시를 두면 자릿수·구성이 확정된 것처럼 읽힌다 */
+            /** @description 전역에서 유일하다 — 공장이 달라도 겹치지 않는다. 근거: P-02-05 §5-2. ⚠ 채번 규칙이 아직 정해지지 않아 예시를 두지 않는다 — 예시를 두면 자릿수·구성이 확정된 것처럼 읽힌다 */
             serialNo: string;
             /**
              * Format: int64
@@ -39929,7 +44194,6 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @description 독립 상태 코드와 전이 동작을 정의하지 않는다. 이 값으로 품질 또는 생애 상태를 판단하지 않는다. */
             statusCode: string;
             /**
              * Format: date-time
@@ -39946,7 +44210,7 @@ export interface components {
              */
             lotId: number;
             /**
-             * @description 이번에 등록할 인식표 개체 수(1~1000). 기존 production_result 또는 goodQty를 요구하지 않는다. 최종 생산 LOT 출력 때 화면 입력 수량과 LOT 전체 개체 수를 대조한다. 근거: P-02-04 §5-3·§6
+             * @description 발번할 개체 수. 미발행 양품 수를 넘으면 400 이다. 근거: P-02-05 §6
              * @example 480
              */
             quantity: number;
@@ -40043,11 +44307,11 @@ export interface components {
              * @example 1001
              */
             workOrderId: number;
-            /** @example WO-DEMO-001 */
+            /** @example 값 */
             workOrderNo: string;
             /**
              * Format: int64
-             * @description ⭐ 항상 값이 있다. 긴급 W/O(W-02-07)도 마찬가지다 — 서버가 내부 ERP W/O 와 계획을 함께 만들어 붙이기 때문이다. ⛔ 「계획이 없을 수 있다」를 전제로 분기하지 않는다(W-02-07 §5-2 ①안).
+             * @description ⭐ 항상 값이 있다. 긴급 W/O(W-02-07)도 마찬가지다 — 서버가 내부 P/O 와 계획을 함께 만들어 붙이기 때문이다. ⛔ 「계획이 없을 수 있다」를 전제로 분기하지 않는다(W-02-07 §5-2 ①안).
              * @example 1001
              */
             productionPlanId: number;
@@ -40190,12 +44454,12 @@ export interface components {
             remarks?: string;
             /**
              * Format: int64
-             * @description 이 W/O 가 매인 ERP W/O. 서버가 계획을 경유해 잇는다
+             * @description 이 W/O 가 매인 P/O. 서버가 계획을 경유해 잇는다
              * @example 1001
              */
             productionOrderId?: number;
             /**
-             * @description ERP W/O 번호 — 목록의 「ERP W/O」 열이 쓴다
+             * @description P/O 번호 — 목록의 「P/O」 열이 쓴다
              * @example PO-2026-0812-001
              */
             productionOrderNo?: string;
@@ -40210,7 +44474,7 @@ export interface components {
              */
             itemCode?: string;
             /**
-             * @description ERP W/O 와 어긋난 채 남은 W/O 인가. 서버가 두 자리에서 세운다 — ⓐ 관리자가 「기존 유지(강행)」를 고를 때 ⓑ 「변경 반영」을 골랐는데 그 W/O 를 workOrderAdjustments 로 조정하지 않았을 때. ⓑ 를 더한 것은 「반영했다고 적혔는데 실제로는 안 맞춘」 W/O 가 표식 없이 남지 않게 하기 위해서다 — 강행에는 표식이 서는데 반영의 미조정에는 안 서면 뒤엣것이 더 위험하다. 마감 화면이 이 값으로 경고를 낸다. ⛔ 화면이 스스로 계산하지 않는다. 근거: W-02-06 §5-2·§6
+             * @description P/O 와 어긋난 채 남은 W/O 인가. 서버가 두 자리에서 세운다 — ⓐ 관리자가 「기존 유지(강행)」를 고를 때 ⓑ 「변경 반영」을 골랐는데 그 W/O 를 workOrderAdjustments 로 조정하지 않았을 때. ⓑ 를 더한 것은 「반영했다고 적혔는데 실제로는 안 맞춘」 W/O 가 표식 없이 남지 않게 하기 위해서다 — 강행에는 표식이 서는데 반영의 미조정에는 안 서면 뒤엣것이 더 위험하다. 마감 화면이 이 값으로 경고를 낸다. ⛔ 화면이 스스로 계산하지 않는다. 근거: W-02-06 §5-2·§6
              * @example false
              */
             poMismatch?: boolean;
@@ -40220,7 +44484,7 @@ export interface components {
             preIssuedLots?: components["schemas"]["PreIssuedLotSummary"];
             validation?: components["schemas"]["ValidationSummary"];
         };
-        /** @description 「변경 반영」이 W/O 하나를 어떻게 고치는가. ⭐ 헤더 If-Match 로 표현할 수 없는 잠금이다 — ERP W/O 확인 한 번이 W/O 여럿을 함께 고쳐 토큰이 여럿이고, 하나라도 어긋나면 전체를 거부한다(공유계약 A-4-1). 토큰은 GET /production/work-orders?productionOrderId= 응답의 versionNo 를 그대로 싣는다 — 화면이 「영향 받는 W/O」 목록을 그릴 때 이미 받는 값이다. 근거: W-02-06 §3·§5-5 */
+        /** @description 「변경 반영」이 W/O 하나를 어떻게 고치는가. ⭐ 헤더 If-Match 로 표현할 수 없는 잠금이다 — P/O 확인 한 번이 W/O 여럿을 함께 고쳐 토큰이 여럿이고, 하나라도 어긋나면 전체를 거부한다(공유계약 A-4-1). 토큰은 GET /production/work-orders?productionOrderId= 응답의 versionNo 를 그대로 싣는다 — 화면이 「영향 받는 W/O」 목록을 그릴 때 이미 받는 값이다. 근거: W-02-06 §3·§5-5 */
         WorkOrderAdjustment: {
             /**
              * Format: int64
@@ -40234,7 +44498,7 @@ export interface components {
             versionNo: number;
             /**
              * Format: double
-             * @description 조정할 지시 수량. 보내지 않으면 이 W/O 의 수량은 그대로 둔다. ⚠ 이미 생산된 수량보다 작게 보낼 수 있다 — 계획이 실적보다 작아지는 상태를 업무가 허용하고 화면이 저장 전에 경고한다(W-02-06 §6 · 공유계약 A-9 ⓑ). ⛔ 서버가 스스로 나누지 않는다 — ERP W/O 5,000→4,000 인데 영향 W/O 가 셋이면 「어느 것을 얼마나」는 업무 판단이고, 실적이 이미 붙은 W/O 가 섞인다
+             * @description 조정할 지시 수량. 보내지 않으면 이 W/O 의 수량은 그대로 둔다. ⚠ 이미 생산된 수량보다 작게 보낼 수 있다 — 계획이 실적보다 작아지는 상태를 업무가 허용하고 화면이 저장 전에 경고한다(W-02-06 §6 · 공유계약 A-9 ⓑ). ⛔ 서버가 스스로 나누지 않는다 — P/O 5,000→4,000 인데 영향 W/O 가 셋이면 「어느 것을 얼마나」는 업무 판단이고, 실적이 이미 붙은 W/O 가 섞인다
              * @example 4000
              */
             orderQty?: number;
@@ -40284,7 +44548,7 @@ export interface components {
         WorkOrderCreate: {
             /**
              * Format: int64
-             * @description ⚠ 긴급 W/O(W-02-07)는 비우고 부른다 — 서버가 내부 ERP W/O(erp_order_no 없음)와 생산 계획을 한 트랜잭션으로 만들어 붙인다(공유계약 B-8). 전개 경로에서는 이 경로 자체를 쓰지 않는다.
+             * @description ⚠ 긴급 W/O(W-02-07)는 비우고 부른다 — 서버가 내부 P/O(erp_order_no 없음)와 생산 계획을 한 트랜잭션으로 만들어 붙인다(공유계약 B-8). 전개 경로에서는 이 경로 자체를 쓰지 않는다.
              * @example 1001
              */
             productionPlanId?: number | null;
@@ -40327,7 +44591,7 @@ export interface components {
             plannedEndAt?: string;
             /**
              * Format: date
-             * @description 납기(날짜). 긴급 발행 화면이 받는 값이며, 서버가 함께 만드는 내부 ERP W/O 의 dueDate 에 그대로 실린다. ⚠ plannedEndAt(계획 종료 «시각»)과 다르다 — 납기는 「언제까지 내야 하는가」이고 계획 종료는 「언제 끝날 것으로 잡았는가」다. 긴급 발행은 계획 시각을 잡지 않으므로(무배정 배포) plannedStartAt·plannedEndAt 을 비운 채 이 칸만 보낸다
+             * @description 납기(날짜). 긴급 발행 화면이 받는 값이며, 서버가 함께 만드는 내부 P/O 의 dueDate 에 그대로 실린다. ⚠ plannedEndAt(계획 종료 «시각»)과 다르다 — 납기는 「언제까지 내야 하는가」이고 계획 종료는 「언제 끝날 것으로 잡았는가」다. 긴급 발행은 계획 시각을 잡지 않으므로(무배정 배포) plannedStartAt·plannedEndAt 을 비운 채 이 칸만 보낸다
              * @example 2026-08-06
              */
             dueDate?: string;
@@ -40337,8 +44601,8 @@ export interface components {
         /** @description POP 에서 누른다 — occurredAt 은 단말 시계가 정한다. 근거: 공유계약 C-12 */
         WorkOrderHold: {
             /**
-             * @description 작업지시 보류 사유. ⛔ 2026-09-06 게이트 승인 — 전용 코드 그룹(CD-WORK-ORDER-HOLD-REASON)을 따로 세우지 않는다(값 집합이 비어 있었고 요구 원천도 채울 화면도 없었다 — A-21). 세션 이벤트 중단 사유(WORK_SESSION_EVENT_REASON)와 통일한다 — 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_EVENT_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
-             * @example MATERIAL_SHORTAGE
+             * @description 작업지시 보류 사유. ⭐ 사유 코드의 선례를 따른다 — 스키마별 전용 그룹 + 고객이 늘림. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_ORDER_HOLD_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
              */
             reasonCode: string;
             /**
@@ -40406,7 +44670,7 @@ export interface components {
         };
         WorkOrderRelease: {
             /**
-             * @description LOT 크기 — 슬롯 하나의 계획 수량. 확정 대기 작업지시를 확정하는 화면에서는 품목의 생산LOT 기본크기를 입력값으로 사용하며 사용자가 수정할 수 있다. 품목 기본크기가 없으면 직접 입력한다. 긴급 작업지시 발행 직후 배포하는 경우에는 지시수량 전량을 한 슬롯으로 보낸다. 결정한 값은 요청에 반드시 포함하며 서버가 생략된 값을 자동으로 채우지 않는다. 슬롯 수는 지시수량을 LOT 크기로 나눈 값을 올림해 계산한다. 각 슬롯의 초기 수량은 LOT 크기로 채우고 마지막 슬롯에 나머지 수량을 배정해 슬롯 계획 수량의 합이 지시수량과 같게 한다. LOT 크기가 지시수량 이상이면 지시수량을 초기 수량으로 하는 슬롯 1개를 만든다. 지시수량보다 큰 입력은 경고하되 막지 않는다. 계획 슬롯 수는 생산량의 상한이 아니다. 누적 양품이 기존 슬롯의 계획 수량을 넘어도 막지 않고 초과 달성으로 인정하며, 미달 슬롯은 마감 시 자동 폐번한다.
+             * @description LOT 크기 — 슬롯 하나의 계획 수량. 사용자가 화면에서 입력한다(품목별 기본값이 없어 매번 입력 — W-02-04 §8-2). 슬롯 수는 서버가 파생한다: N = 올림(지시수량 orderQty ÷ lotSize). 각 슬롯의 trace.lot.initial_qty 는 lotSize 로, 마지막 슬롯은 나머지가 있으면 나머지로 채운다 — 슬롯 계획 수량의 합이 지시수량과 같아야 마감 3분류(미달/정상/초과) 판정이 어긋나지 않는다. lotSize ≥ 지시수량이면 슬롯 1개(initial_qty = 지시수량 · 화면은 경고하되 막지 않는다 — W-02-04 §6). N 은 계획값이지 상한이 아니다 — 초과 생산은 추가 발번, 미달 슬롯은 마감 자동 폐번(R27). (⭐ 지금 확정된 처리는 기존 슬롯 초과 배분이다 — 누적 양품이 슬롯 계획 수량을 넘어도 막지 않고 「초과 달성」으로 인정한다(✓확정 QA #27). 별도 슬롯을 더 만드는 동선은 아직 없다.) 근거: W-02-04 §4-B(initial_qty ← LOT 크기)·§5-3 · WF02 S4(N=양품목표÷LOT크기 ✓확정 2026-07-29) · omf-mes#206
              * @example 500
              */
             lotSize: number;
@@ -40552,7 +44816,10 @@ export interface components {
              * @example RUNNING
              */
             statusCode: string;
-            /** @description ⛔ 쓰지 않는다 — 비운다. 값 목록을 못 정한 것이 아니라 «비우기로 정했다». 근거: 공유계약 A-21 · A-25 */
+            /**
+             * @description ⛔ 쓰지 않는다 — 비운다. 값 목록을 못 정한 것이 아니라 «비우기로 정했다». 근거: 공유계약 A-21 · A-25
+             * @example 값
+             */
             stopReasonCode?: string;
             /** @example 값 */
             remarks?: string;
@@ -40598,7 +44865,10 @@ export interface components {
              * @example 2026-08-11T09:12:00+09:00
              */
             endedAt: string;
-            /** @description ⛔ 쓰지 않는다 — 비운다. 값 목록을 못 정한 것이 아니라 «비우기로 정했다». 근거: 공유계약 A-21 · A-25 */
+            /**
+             * @description ⛔ 쓰지 않는다 — 비운다. 값 목록을 못 정한 것이 아니라 «비우기로 정했다». 근거: 공유계약 A-21 · A-25
+             * @example 값
+             */
             stopReasonCode?: string;
         };
         WorkSessionEvent: {
@@ -40672,7 +44942,8 @@ export interface components {
              */
             workerId: number;
             /**
-             * @description 이 세션에서 «맡은 역할» — 주작업자(MAIN) · 부작업자(SUB). ⛔ 사람의 «직위·권한» 축이 아니다 — 관리자/실무자 구분은 역할·권한(app.role · W-CO-02)이 갖고, 자격은 작업자 자격(W-02-03 4M 배정 유효성)이 갖는다. 여기에 「관리자」를 넣으면 권한 축과 두 벌이 된다(L-2-1). ⭐ 같은 사람이 다른 세션에서 다른 값을 가질 수 있다 — joinedAt·leftAt 이 붙은 «참여 구간»의 속성이다. ⚠ POP 은 로그인 없이 사번만 받으므로(REQ-PR-0023) 계정 권한을 알 수 없다 — 그래서 이 값을 따로 받는다. ⭐ 고객이 늘릴 수 있다 — 위 둘은 초기 시드값이지 닫힌 목록이나 역할 생략 시 자동으로 적용할 기본값이 아니다. 2인 1조인지, 반장이 함께 붙는지가 공장마다 다르다. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_WORKER_ROLE 로 받는다(공유계약 G-32 · 2026-09-03 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 이 세션에서 «맡은 역할» — 주작업자(MAIN) · 부작업자(SUB). ⛔ 사람의 «직위·권한» 축이 아니다 — 관리자/실무자 구분은 역할·권한(app.role · W-CO-02)이 갖고, 자격은 작업자 자격(W-02-03 4M 배정 유효성)이 갖는다. 여기에 「관리자」를 넣으면 권한 축과 두 벌이 된다(L-2-1). ⭐ 같은 사람이 다른 세션에서 다른 값을 가질 수 있다 — joinedAt·leftAt 이 붙은 «참여 구간»의 속성이다. ⚠ POP 은 로그인 없이 사번만 받으므로(REQ-PR-0023) 계정 권한을 알 수 없다 — 그래서 이 값을 따로 받는다. ⭐ 고객이 늘릴 수 있다 — 위 둘은 초기값(기본값)이지 닫힌 목록이 아니다. 2인 1조인지, 반장이 함께 붙는지가 공장마다 다르다. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_WORKER_ROLE 로 받는다(공유계약 G-32 · 2026-09-03 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @default OPERATOR
              * @example MAIN
              */
             workerRoleCode: string;
@@ -40695,7 +44966,7 @@ export interface components {
              */
             workerId: number;
             /**
-             * @description 이 세션에서 «맡은 역할» — 주작업자(MAIN) · 부작업자(SUB). ⛔ 사람의 «직위·권한» 축이 아니다 — 관리자/실무자 구분은 역할·권한(app.role · W-CO-02)이 갖고, 자격은 작업자 자격(W-02-03 4M 배정 유효성)이 갖는다. 여기에 「관리자」를 넣으면 권한 축과 두 벌이 된다(L-2-1). ⭐ 같은 사람이 다른 세션에서 다른 값을 가질 수 있다 — joinedAt·leftAt 이 붙은 «참여 구간»의 속성이다. ⚠ POP 은 로그인 없이 사번만 받으므로(REQ-PR-0023) 계정 권한을 알 수 없다 — 그래서 이 값을 따로 받는다. ⭐ 고객이 늘릴 수 있다 — 위 둘은 초기 시드값이지 닫힌 목록이나 역할 생략 시 자동으로 적용할 기본값이 아니다. 2인 1조인지, 반장이 함께 붙는지가 공장마다 다르다. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_WORKER_ROLE 로 받는다(공유계약 G-32 · 2026-09-03 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 이 세션에서 «맡은 역할» — 주작업자(MAIN) · 부작업자(SUB). ⛔ 사람의 «직위·권한» 축이 아니다 — 관리자/실무자 구분은 역할·권한(app.role · W-CO-02)이 갖고, 자격은 작업자 자격(W-02-03 4M 배정 유효성)이 갖는다. 여기에 「관리자」를 넣으면 권한 축과 두 벌이 된다(L-2-1). ⭐ 같은 사람이 다른 세션에서 다른 값을 가질 수 있다 — joinedAt·leftAt 이 붙은 «참여 구간»의 속성이다. ⚠ POP 은 로그인 없이 사번만 받으므로(REQ-PR-0023) 계정 권한을 알 수 없다 — 그래서 이 값을 따로 받는다. ⭐ 고객이 늘릴 수 있다 — 위 둘은 초기값(기본값)이지 닫힌 목록이 아니다. 2인 1조인지, 반장이 함께 붙는지가 공장마다 다르다. 값 목록은 GET /mdm/code-values?codeGroupCode=WORK_SESSION_WORKER_ROLE 로 받는다(공유계약 G-32 · 2026-09-03 등재). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example MAIN
              */
             workerRoleCode?: string;
@@ -40837,7 +45108,7 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo?: string;
             /**
              * Format: double
@@ -40887,7 +45158,7 @@ export interface components {
              * @example 1001
              */
             approvalRequestId: number;
-            /** @description 독립 승인 상태 코드를 사용하지 않는다. 승인 상태는 연결된 결재 요청에서 확인하며, 사용 가능 여부는 usable로 확인한다. */
+            /** @example 값 */
             statusCode: string;
             /**
              * @description ⭐ 서버가 파생한 3항 논리곱 — 상태가 유효하고 valid_to 가 지나지 않았고 approvedQty − consumedQty > 0 인가. 화면이 세 조건을 계산하지 않는다(공유계약 L-2).
@@ -41022,7 +45293,10 @@ export interface components {
              * @example 1001
              */
             confirmedCauseCodeId?: number;
-            /** @description 귀책 구분 — 이 불량의 책임이 어디에 있는가. responsibleDepartmentId 와 짝이다. ⚠ «원천 축이 아니다» — 어디서 «발견»했나(sourceCode)와 다르다(W-03-05 §5-2). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=DEFECT_RESPONSIBILITY_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 귀책 구분 — 이 불량의 책임이 어디에 있는가. responsibleDepartmentId 와 짝이다. ⚠ «원천 축이 아니다» — 어디서 «발견»했나(sourceCode)와 다르다(W-03-05 §5-2). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=DEFECT_RESPONSIBILITY_TYPE 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             responsibilityTypeCode?: string;
             /**
              * Format: int64
@@ -41089,7 +45363,7 @@ export interface components {
              * @example 1001
              */
             nonconformanceId: number;
-            /** @example NC-DEMO-001 */
+            /** @example 값 */
             nonconformanceNo?: string;
             /**
              * @description 처분 유형. ✅ **값 목록 확정 2026-09-01(사용자 · omf-mes#336)** — REWORK 재작업 · SCRAP 폐기 · NORMAL 정상 셋이다. ⛔ 선별은 1차 범위 밖이라 값이 와도 실행 화면이 없다(omf-mes#118 종결). ⚠ mdm 계약의 DefectCode.dispositionTypeCode(['REWORKABLE','SCRAP'])와 «같은 그룹이 아니다» — 그쪽은 불량코드가 가진 처분 «성향»이고 이 칸은 실제 처분 «결정»이다. 한 그룹으로 묶지 않는다(공유계약 G-32). ⚠ SCRAP 은 LOT_STATUS 의 SCRAPPED 와 낱말이 닮았으나 축이 다르다 — LOT 의 «상태» ↔ 처분의 «결정». 스키마가 갈려 있어 값 수준에서 섞이지 않는다(✓확정 2026-09-01 사용자). ⛔ 공통코드 그룹으로 받지 않는다 — 진입 목록이 이 값으로 갈리고(W-04-10·W-04-11) 후속 화면이 값마다 붙는다. 고객이 늘리면 후속 없는 처분이 생긴다(공유계약 G-31)
@@ -41129,7 +45403,7 @@ export interface components {
              * @example 1001
              */
             lotId?: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo?: string;
             /**
              * Format: int64
@@ -41138,7 +45412,7 @@ export interface components {
             itemId?: number;
             /**
              * @description 화면이 보이는 품목 코드. 식별자를 사람이 읽는 값으로 바꾸려 마스터를 다시 부르지 않게 한다
-             * @example ITEM-DEMO-001
+             * @example 값
              */
             readonly itemCode?: string;
             /**
@@ -41382,7 +45656,7 @@ export interface components {
              */
             coverageToAt?: string;
             /**
-             * @description 검사 의뢰의 진행 상태 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⛔ enum 으로 못박지 않는다 — 시스템 소유 값 목록과 표시명을 공통코드에서 조회하며, 고객이 값 집합을 추가하지 않는다. 표시명은 06 계약 GET /mdm/code-values 로 채운다. ⭐ 전이는 전부 «이미 있는 액션의 부수 효과»다 — 새 경로가 없다: 서버가 입하·실적·출하 시점에 REQUESTED 로 만들고 · 첫 임시 저장이 IN_PROGRESS (⛔ 「검사 시작」 액션을 두지 않는다 — 화면에 시작 버튼이 없다) · :confirm 이 COMPLETED · 재검사 회차 추가가 다시 IN_PROGRESS · W-01-02 긴급 IQC 생략 한도승인이 SKIPPED · 입고 취소(FR-IM-076)가 CANCELLED. ⚠ SKIPPED 와 CANCELLED 를 합치지 않는다 — 앞은 검사를 안 하기로 «승인»된 정상 종결이고(LOT 은 Release 로 입고된다) 뒤는 의뢰가 «무효»가 된 것이다. 합치면 「검사를 몇 건 생략했나」를 셀 수 없다. ⚠ LOT 품질 상태(정상·불량·검사 대기·폐기)와 «다른 축»이다 — 같이 움직이지 않는다. 근거: 확정 2026-08-21 · FR-QM-050 · omf-mes#170 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_REQUEST_STATUS 로 받는다(공유계약 G-32 · omf-mes#170 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @description 검사 의뢰의 진행 상태 — 확정 5값: REQUESTED(대기) · IN_PROGRESS(진행) · COMPLETED(완료) · SKIPPED(생략) · CANCELLED(취소). ⛔ enum 으로 못박지 않는다 — 값 목록은 공통코드가 갖고 늘 수 있다(공유계약 G-2·G-6). 표시명은 06 계약 GET /mdm/code-values 로 채운다. ⭐ 전이는 전부 «이미 있는 액션의 부수 효과»다 — 새 경로가 없다: 서버가 입하·실적·출하 시점에 REQUESTED 로 만들고 · 첫 임시 저장이 IN_PROGRESS (⛔ 「검사 시작」 액션을 두지 않는다 — 화면에 시작 버튼이 없다) · :confirm 이 COMPLETED · 재검사 회차 추가가 다시 IN_PROGRESS · W-01-02 긴급 IQC 생략 한도승인이 SKIPPED · 입고 취소(FR-IM-076)가 CANCELLED. ⚠ SKIPPED 와 CANCELLED 를 합치지 않는다 — 앞은 검사를 안 하기로 «승인»된 정상 종결이고(LOT 은 Release 로 입고된다) 뒤는 의뢰가 «무효»가 된 것이다. 합치면 「검사를 몇 건 생략했나」를 셀 수 없다. ⚠ LOT 품질 상태(정상·불량·검사 대기·폐기)와 «다른 축»이다 — 같이 움직이지 않는다. 근거: 확정 2026-08-21 · FR-QM-050 · omf-mes#170 ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=INSPECTION_REQUEST_STATUS 로 받는다(공유계약 G-32 · omf-mes#170 확정). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
              * @example REQUESTED
              */
             statusCode: string;
@@ -41495,7 +45769,10 @@ export interface components {
              * @example 1001
              */
             previousResultId?: number;
-            /** @description 재검사 사유 — 왜 회차를 더 돌리는가. ⭐ 번복은 「수정」이 아니라 «재검사 회차»라 이 사유가 그 회차의 근거다(W-04-03 §5). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=REINSPECTION_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 재검사 사유 — 왜 회차를 더 돌리는가. ⭐ 번복은 「수정」이 아니라 «재검사 회차»라 이 사유가 그 회차의 근거다(W-04-03 §5). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=REINSPECTION_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             reinspectionReasonCode?: string;
             /** @example 값 */
             remarks?: string;
@@ -41580,7 +45857,10 @@ export interface components {
              * @example 1001
              */
             previousResultId?: number;
-            /** @description 재검사 사유 — 왜 회차를 더 돌리는가. ⭐ 번복은 「수정」이 아니라 «재검사 회차»라 이 사유가 그 회차의 근거다(W-04-03 §5). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=REINSPECTION_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다. */
+            /**
+             * @description 재검사 사유 — 왜 회차를 더 돌리는가. ⭐ 번복은 「수정」이 아니라 «재검사 회차»라 이 사유가 그 회차의 근거다(W-04-03 §5). ⭐ 고객이 늘릴 수 있다 — 계약이 값을 닫지 않는다. 값 목록은 GET /mdm/code-values?codeGroupCode=REINSPECTION_REASON 로 받는다(공유계약 G-32). ⚠ 채번 식별자(codeGroupId)를 하드코딩하지 않는다 — 환경마다 다르다.
+             * @example 값
+             */
             reinspectionReasonCode?: string;
             /** @description 항목별 측정치. ⭐ 필수가 아니다 — 검사 기준이 없는 의뢰(inspectionPlanVersionId 가 빈 의뢰)에는 항목 자체가 없으므로 이 배열을 생략하거나 빈 배열로 보낸다. 그때 검사는 수량 세 칸과 종합 판정, 그리고 remarks 의 자유 입력만으로 성립한다(P-02-13 §5-2). 근거: omf-mes#251 */
             measurements?: components["schemas"]["InspectionMeasurementInput"][];
@@ -41698,7 +45978,7 @@ export interface components {
              */
             releaseCondition?: string;
             /**
-             * @description ⭐ 도착 상태. 의심자재 등록(C10)은 INSPECTION_PENDING(검사 대기), 클레임·리콜 재Hold(C9)는 DEFECTIVE(불량)다. 두 화면이 같은 행을 만들고 도착 상태만 다르다. 「보류」는 lot.status_code 축에 없는 값이다 — 보류의 해제 여부는 보류 기록의 해제 시각과 해제자로 확인한다. ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32 · omf-mes#176
+             * @description ⭐ 도착 상태. 의심자재 등록(C10)은 INSPECTION_PENDING(검사 대기), 클레임·리콜 재Hold(C9)는 DEFECTIVE(불량)다. 두 화면이 같은 행을 만들고 도착 상태만 다르다. 「보류」는 lot.status_code 축에 없는 값이다 — Hold(보류 «문서»의 진행 상태)는 lot_hold.status_code 가 별도로 갖고 서버가 자동으로 채운다(공유계약 §I-32 · omf-mes#227). ⭐ 값 목록은 GET /mdm/code-values?codeGroupCode=LOT_STATUS 로 받는다(NORMAL·DEFECTIVE·INSPECTION_PENDING·SCRAPPED). 근거: 공유계약 G-32 · omf-mes#176
              * @example INSPECTION_PENDING
              */
             targetLotStatusCode: string;
@@ -41728,7 +46008,7 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo: string;
             /**
              * Format: int64
@@ -41807,7 +46087,7 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo: string;
             /**
              * Format: int64
@@ -42333,7 +46613,7 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo?: string;
             /**
              * Format: double
@@ -42402,7 +46682,6 @@ export interface components {
              * @example 2026-08-13
              */
             orderDate: string;
-            /** @description 독립 상태 코드를 사용하지 않는 수주 수신본이다. 미편성 대상 조회는 unassignedOnly를 사용한다. */
             statusCode: string;
             lines?: components["schemas"]["SalesOrderLine"][];
             /** @example 1 */
@@ -42462,13 +46741,13 @@ export interface components {
              * @example 1001
              */
             warehouseId: number;
-            /** @example VEHICLE-DEMO-001 */
+            /** @example 값 */
             vehicleNo?: string;
             /** @example 값 */
             driverName?: string;
-            /** @example SEAL-DEMO-001 */
+            /** @example 값 */
             sealNo?: string;
-            /** @example TD-DEMO-001 */
+            /** @example 값 */
             transportDocumentNo?: string;
             /**
              * Format: int64
@@ -42555,13 +46834,13 @@ export interface components {
              * @example 1001
              */
             warehouseId: number;
-            /** @example VEHICLE-DEMO-001 */
+            /** @example 값 */
             vehicleNo?: string;
             /** @example 값 */
             driverName?: string;
-            /** @example SEAL-DEMO-001 */
+            /** @example 값 */
             sealNo?: string;
-            /** @example TD-DEMO-001 */
+            /** @example 값 */
             transportDocumentNo?: string;
             /**
              * Format: int64
@@ -42574,7 +46853,7 @@ export interface components {
              */
             carrierId?: number;
             /**
-             * @description When true, bypasses warehouse routing, picking and packing without bypassing quality checks. Returns HTTP 400 if an allocated lot is not released. The server creates a product goods receipt and posts the receipt in the same transaction; the client does not create a separate goods receipt. The receipt type is PRODUCT, and the server determines the source document type. The receipt warehouse is the client-selected warehouseId in this request.
+             * @description ⭐ 긴급 직행 출하인가(W-04-05) — 창고 경유·피킹·Packing 을 건너뛴다. ⛔ 품질 게이트는 건너뛰지 않는다 — 배분 LOT 이 Release 가 아니면 400 이다(결정 10 · W-04-05 §5-3). ⭐ 참이면 서버가 제품 입고 전표와 입고 전기를 같은 트랜잭션에서 함께 만든다 — 화면이 01 계약을 따로 부르지 않는다. 입고 유형·원천 문서 유형은 서버가 정한다(01 계약 receiptTypeCode·sourceDocumentTypeCode). 입고 유형은 제품입고(PRODUCT)로 확정됐고(2026-08-31 · 공유계약 G-32 등록부 RECEIPT_TYPE), 원천 문서 유형은 SHIPMENT로 구현됐다(통보 221). 장부상 입고 창고는 본문의 warehouseId 다 — 화면이 고른다(W-04-05 §5-1·§5-4)
              * @default false
              * @example true
              */
@@ -42668,16 +46947,6 @@ export interface components {
              */
             shipmentId: number;
             /**
-             * @description 이 출하가 속한 출하작업지시(ShipmentRequest)의 번호 — P-04-01 헤더가 그린다(§3 「SR-2026-0456」). ⭐ 서버가 shipment.shipmentRequestId 를 거슬러 풀어 준다(화면이 따로 조회하지 않는다 · 공유계약 L-2). 근거: P-04-01 §3 · omf-mes#330
-             * @example SR-2026-0813-0108
-             */
-            shipmentRequestNo?: string;
-            /**
-             * @description 이 출하작업지시의 거래처 이름(ShipmentRequest.customerId 를 서버가 풀어 준다) — P-04-01 헤더가 그린다(§3 「B사」). 근거: P-04-01 §3 · omf-mes#330
-             * @example 표시명
-             */
-            customerName?: string;
-            /**
              * Format: int64
              * @example 1001
              */
@@ -42698,7 +46967,7 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo?: string;
             /**
              * Format: int64
@@ -42723,13 +46992,7 @@ export interface components {
              */
             uomId: number;
             /**
-             * @description 이 배분의 출하검사 상태. NOT_REQUIRED=검사 절차 없음 · PENDING=결과 대기 · PASSED=합격 · REJECTED=불합격 · HELD=보류. 03 품질 결과를 서버가 배분 단위로 판정한다. 화면은 이 값을 그대로 표시하고 자체 조합하지 않는다(P-04-01 §5-1).
-             * @example NOT_REQUIRED
-             * @enum {string}
-             */
-            shippingInspectionStatusCode: "NOT_REQUIRED" | "PENDING" | "PASSED" | "REJECTED" | "HELD";
-            /**
-             * @description ⭐ 서버가 판정한 납품 라벨 발행 게이트. shippingInspectionStatusCode 가 PASSED 또는 NOT_REQUIRED 이면 true, 나머지는 false 다. 검사 결과는 03 품질 계약이 소유한다. ⛔ 화면이 상태 문자열로 다시 계산하지 않는다 — 이 값을 활성 조건으로 쓴다(P-04-01 §5-1).
+             * @description ⭐ 서버가 판정한 값 — 이 배분의 LOT 이 출하검사에 합격했는가. 납품라벨 대상 목록이 「합격」만 활성하는 데 쓴다(P-04-02 §5). 검사 결과는 03 품질 계약이 소유한다 ⛔ 없으면 납품라벨 대상을 가릴 수 없다 — 항상 내린다(P-04-02 §5-1). ⛔ 검사 대상이 아닌 배분(해당 라인의 shippingInspectionRequired=false)은 true 로 내린다 — 「검사를 안 거쳤다」가 「발행하면 안 된다」가 아니다.
              * @example true
              */
             oqcPassed: boolean;
@@ -42806,7 +47069,6 @@ export interface components {
              * @example MORNING
              */
             timeSlotCode?: string | null;
-            /** @description 독립 상태 코드를 사용하지 않는다. 출하 진행은 shipmentProgressCode로 확인한다. */
             statusCode: string;
             /**
              * @description ⭐ W-04-02 「검사」 열의 판정 근거 — 라인 전체(shippingInspectionRequired + 03 품질 inspection-results)를 서버가 롤업해 하나로 낸다. NOT_REQUIRED=대상 라인 없음(「—」) · PENDING=대상인데 결과 없음(「● 대기」) · PASSED=전 대상 라인 합격(「✅ 합격」) · REJECTED=불합격 라인 존재(「⛔ 불합격」) · HELD=보류 라인 존재, 불합격 없음(「⚠ 보류」). ⭐ 롤업 우선순위(가장 나쁜 것이 이긴다): REJECTED > HELD > PENDING > PASSED > NOT_REQUIRED. ⛔ 화면이 라인을 순회해 판정하지 않는다(공유계약 G-8과 같은 결 — W-04-02 §5-3) — 03 계약과의 조인은 서버 몫이다. ⚠ 이 필드를 이미 소비 중인 코드는 PASSED 외 값을 몰라도 PENDING과 동일하게(대기 취급) 두면 당장은 안전하다. 근거: W-04-02 §5-3·§5-4 · omf-mes#232 · omf-mes#235
@@ -43010,11 +47272,11 @@ export interface components {
              */
             currentVersion?: string;
             /**
-             * @description 충돌 원인. 근거: 공유계약 B-1 확장 — user=다른 사용자, erpSync=ERP 재동기화 배치, workerLease=워커가 처리 중. 구분 없이 내려주면 화면이 「다른 사용자가 먼저 수정했습니다」라는 사실과 다른 안내를 하게 된다 — code=VERSION_CONFLICT 일 때 함께 내린다
+             * @description 충돌 원인. 근거: 공유계약 B-1 확장 — user=다른 사용자, erpSync=ERP 재동기화 배치, workerLease=워커가 처리 중. 구분 없이 내려주면 화면이 「다른 사용자가 먼저 수정했습니다」라는 사실과 다른 안내를 하게 된다. code와 독립적인 필수 원인 축으로 모든 409 응답에 포함된다
              * @example user
              * @enum {string}
              */
-            conflictCause?: "user" | "erpSync" | "workerLease";
+            conflictCause: "user" | "erpSync" | "workerLease";
         };
         /** @description 피킹 확정 요청. 사번은 본문이 아니라 X-Worker-No 헤더로 보낸다 */
         ShipmentLinePick: {
@@ -43042,7 +47304,7 @@ export interface components {
              * @example 1001
              */
             lotId: number;
-            /** @example LOT-SAMPLE-0001 */
+            /** @example 값 */
             lotNo?: string;
             /**
              * Format: double
@@ -43200,6 +47462,14 @@ export interface components {
              * @example 값
              */
             currentVersion?: string;
+            /**
+             * @description 충돌 원인. 근거: 공유계약 B-1 확장 — user=다른 사용자, erpSync=ERP 재동기화 배치, workerLease=워커가 처리 중. 구분 없이 내려주면 화면이 「다른 사용자가 먼저 수정했습니다」라는 사실과 다른 안내를 하게 된다. code와 독립적인 필수 원인 축으로 모든 409 응답에 포함된다
+             *
+             *     서버는 공용 충돌 봉투를 사용하므로 StockReinstatementConflictResponse에도 이 키를 항상 싣는다(통보 221).
+             * @example user
+             * @enum {string}
+             */
+            conflictCause: "user" | "erpSync" | "workerLease";
         };
         InspectionLine: {
             /**
@@ -43522,16 +47792,16 @@ export interface components {
              */
             sourceId?: number | null;
             /**
-             * @description 발행 시점의 트리거 축과 누계를 그대로 남긴다. 선후 불명으로 대표축을 선택했으면 그 사실을 기록할 수 있으나 존재하지 않는 실제 도달시각을 만들지 않는다.
+             * @description 발행 시점의 트리거 축과 누계를 그대로 남긴다
              * @example 타발수 512,400 / 500,000
              */
             snapshotNote?: string | null;
             /**
-             * @description 예방보전 판정축 — 타발수(SHOT) · 날짜(DATE). 단일 축만 도래하면 해당 축, 양축 도래이고 선후를 확인할 수 있으면 먼저 도달한 축을 선택한다. 동시 도달 또는 이력 부족으로 선후 불명이면 SHOT을 대표축으로 선택한다. SHOT만 보고 타발수가 실제 먼저 도달했다고 단정하지 않는다. pmTriggerTypeCode는 사용 축 설정이고 이 칸은 판정 결과다. 미도래·해당 없음은 필드를 생략하며 null은 보내지 않는다. 근거: W-05-02 §5-2. 비PM 트리거도 이 필드를 생략한다. 대상 유형이 툴(MOLD)이고 트리거가 주기 도래(PM_DUE)인 신규 발행에 한해 서버가 최신 상태로 같은 판정 규칙을 다시 적용한다. 요청에 담긴 축·누계는 발행 근거의 정본이 아니며 서버가 선택 축·누계·기준을 스냅샷으로 보존한다. 조회 후 타발수 증가 또는 보전 실적의 누계 초기화가 있으면 과거 화면 값을 그대로 저장하지 않는다. 더는 도래하지 않거나 동일 툴의 열린 PM오더가 있으면 해당 신규 요청을 422 업무 규칙 실패로 거부한다. 중복 확인과 생성은 하나의 판정 단위로 처리한다. 동일 멱등키·동일 요청의 재전송은 기존 201 발행 결과를 재현하며 열린 오더 때문에 422로 바꾸지 않는다. 다른 대상 호출의 성공은 유지한다. 설비·고장·점검 불합격 트리거에 이 툴 규칙을 확대하지 않는다. 과거 확정 스냅샷은 소급 재계산하지 않는다.
+             * @description 먼저 도달한 축 — 타발수(SHOT) · 날짜(DATE). 둘 다 쓰는 툴이 있어 「왜 도래했는가」를 화면이 밝힌다. 도래하지 않았으면 null 이다. ⚠ pmTriggerTypeCode 가 «무엇으로 판정할지»라면 이 칸은 «무엇이 먼저 걸렸는지»다. 근거: W-05-02 §5-A
              * @example SHOT
-             * @enum {string}
+             * @enum {string|null}
              */
-            pmDueAxisCode?: "SHOT" | "DATE";
+            pmDueAxisCode?: "SHOT" | "DATE" | null;
             /**
              * Format: int64
              * @description 발행 시점의 누계 타발수 스냅샷. 뒤에 리셋되므로 얼려 둔다. 근거: W-05-02 §5-2
@@ -43766,24 +48036,26 @@ export interface components {
              */
             outsourceVendorName?: string | null;
             /**
-             * @description 툴 예방보전에서 누계를 되돌릴지. 참이면 shotCountAfterReset 을 함께 보낸다 — shotCountBeforeReset 은 서버가 채운다
+             * @description 툴 누계 리셋 여부. 서버 v0.1.2의 신규 등록·수정에서는 false로 고정되며, 기존 데이터와 원본 계약 호환을 위해 응답 필드를 유지한다(통보 114).
              * @example false
              */
             resetCounter?: boolean;
             /**
              * Format: int64
-             * @description 리셋 직전 누계 타발수 스냅샷. resetCounter=true 인 실적에 서버가 저장 시점 누계로 채운다 — 누계가 0 이 되면 「이번 예방보전까지 얼마나 썼는지」가 사라지고 그것이 수명 분석의 유일한 재료다. 근거: W-05-03 §3-3
-             * @example 512400
+             * @description 리셋 직전 누계 스냅샷. 서버 v0.1.2의 신규 등록·수정에서는 null로 고정되며 기존 데이터 조회용 필드로 유지한다(통보 114).
+             * @example null
              */
             readonly shotCountBeforeReset?: number | null;
             /**
              * Format: int64
-             * @description 리셋 후 시작값. 보통 0 이고 오버홀이면 다를 수 있다. resetCounter=true 이면 채운다. 근거: W-05-03 §5-A
-             * @example 0
+             * @description 리셋 후 시작값. 서버 v0.1.2의 신규 등록·수정에서는 null로 고정되며 기존 데이터 조회용 필드로 유지한다(통보 114).
+             * @example null
              */
             shotCountAfterReset?: number | null;
             /**
              * @description 지시를 마감했는지
+             *
+             *     서버 v0.1.2의 신규 등록·수정에서는 false로 고정된다(통보 113).
              * @example false
              */
             closed?: boolean;
@@ -43843,17 +48115,20 @@ export interface components {
              */
             outsourceVendorName?: string | null;
             /**
-             * @description 툴 예방보전에서 누계를 되돌릴지. 참이면 shotCountAfterReset 을 함께 보낸다 — shotCountBeforeReset 은 서버가 채운다
+             * @description 서버 v0.1.2 구현 기준: true는 예방보전 시행일 기준이 확정되지 않아 항상 422 INVALID다. false 또는 생략만 사용한다(통보 114).
              * @example false
              */
             resetCounter?: boolean;
             /**
              * Format: int64
-             * @description 리셋 후 시작값. 보통 0 이고 오버홀이면 다를 수 있다. resetCounter=true 이면 채운다. 근거: W-05-03 §5-A
-             * @example 0
+             * @description 서버 v0.1.2 구현 기준: 누계 리셋을 지원하지 않으므로 null 또는 생략만 허용한다(통보 114).
+             * @example null
              */
             shotCountAfterReset?: number | null;
-            /** @example false */
+            /**
+             * @description 서버 v0.1.2 구현 기준: true는 결과코드별 완료 의미가 확정되지 않아 항상 422 INVALID다. false 또는 생략만 사용한다(통보 113).
+             * @example false
+             */
             closed?: boolean;
             /** @description 부위·항목별 결과. 실적 저장과 한 번에 간다 — 별도 경로를 두지 않는다. 근거: W-05-03 §5-B · W-05-06 §5-B */
             lines?: components["schemas"]["MaintenanceResultLine"][];
@@ -43867,7 +48142,10 @@ export interface components {
             finishedAt?: string | null;
             /** @example 씰 교체 후 시운전 정상 */
             resultNote?: string;
-            /** @example true */
+            /**
+             * @description 서버 v0.1.2 구현 기준: true는 항상 422 INVALID다. 마감 전 수정만 지원한다(통보 113).
+             * @example false
+             */
             closed?: boolean;
             /** @description 부위·항목별 결과. 실적 저장과 한 번에 간다 — 별도 경로를 두지 않는다. 근거: W-05-03 §5-B · W-05-06 §5-B */
             lines?: components["schemas"]["MaintenanceResultLine"][];
@@ -44529,8 +48807,8 @@ export interface operations {
             query?: {
                 /** @description 출력물 종류로 거른다. 값은 DocumentIssue.documentTypeCode 와 같은 9종이다. */
                 documentTypeCode?: "MATERIAL_LOT_LABEL" | "GOODS_ISSUE_QR" | "PRODUCTION_LOT_LABEL" | "IDENTIFICATION_TAG" | "PACKING_LABEL" | "DELIVERY_LABEL" | "CERTIFICATE_OF_ANALYSIS" | "TOOL_LABEL" | "LOCATION_LABEL";
-                /** @description targetId 와 함께 준다. 하나만 주면 400 이다. 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · SHIPMENT_LOT_ALLOCATION → 출하 LOT 배분 · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 납품 라벨은 출하 LOT 배분을 대상으로 발행한다(P-04-01). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다 */
-                targetTypeCode?: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "SHIPMENT_LOT_ALLOCATION" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
+                /** @description targetId 와 함께 준다. 하나만 주면 400 이다. 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 값 문자열을 확정했다(2026-09-02) — 뜻 일곱은 §3-7 대응표가 이미 못박았고 남은 것은 문자열뿐이었다(공유계약 §G — 확정된 뜻을 영문 SNAKE 로). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다 */
+                targetTypeCode?: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
                 targetId?: number;
                 /** @description 소속 LOT 로 찾는다. 개체 단위 출력물을 LOT 단위로 모아 볼 때 쓴다. */
                 lotId?: number;
@@ -44557,6 +48835,15 @@ export interface operations {
             };
             /** @description targetTypeCode 와 targetId 중 하나만 주었다. */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -44594,6 +48881,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DocumentIssueBatchResponse"];
+                };
+            };
+            /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description 이 단말에 출력 권한이 없다. */
@@ -44640,6 +48936,15 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentIssue"];
                 };
             };
+            /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 없다. */
             404: {
                 headers: {
@@ -44654,8 +48959,8 @@ export interface operations {
     getDocumentRendition: {
         parameters: {
             query?: {
-                /** @description 라벨은 이미지 또는 명령문이고 성적서·보고서는 문서다. tspl 은 TSPL 명령문(원시 바이트) — 미리보기는 계속 png 다. CERTIFICATE_OF_ANALYSIS(검사성적서)는 tspl 을 지원하지 않는다. 발행 종류가 지원하지 않는 형식이면 422 다. */
-                format?: "png" | "pdf" | "tspl";
+                /** @description 라벨은 이미지이고 성적서·보고서는 문서다. 발행 종류가 지원하지 않는 형식이면 422 다. */
+                format?: "png" | "pdf";
             };
             header?: never;
             path: {
@@ -44677,7 +48982,6 @@ export interface operations {
                 content: {
                     "image/png": string;
                     "application/pdf": string;
-                    "application/octet-stream": string;
                 };
             };
             /** @description 없다. */
@@ -44736,6 +49040,15 @@ export interface operations {
                     "application/json": components["schemas"]["DocumentIssue"];
                 };
             };
+            /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description 없다. */
             404: {
                 headers: {
@@ -44779,16 +49092,25 @@ export interface operations {
                     "application/json": components["schemas"]["PrinterListResponse"];
                 };
             };
+            /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     getDocumentIssueSummary: {
         parameters: {
             query: {
                 /**
-                 * @description 대상 유형. 한 번에 한 유형만 묻는다 — 유형이 섞이면 targetId 의 뜻이 갈린다. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · SHIPMENT_LOT_ALLOCATION → 출하 LOT 배분 · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 납품 라벨은 출하 LOT 배분을 대상으로 발행한다(P-04-01). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다
+                 * @description 대상 유형. 한 번에 한 유형만 묻는다 — 유형이 섞이면 targetId 의 뜻이 갈린다. 대상 유형. 이 값이 targetId 의 해석을 정한다 — LOT → 자재·생산·제품 로트 · SERIAL_NUMBER → 개체 일련번호 · HANDLING_UNIT → 취급 단위(포장) · GOODS_ISSUE_LINE → 출고 전표 라인 · MOLD → 툴·금형 마스터 · LOCATION → 위치 마스터 · INSPECTION_RESULT → 검사 결과. ⭐ 값 문자열을 확정했다(2026-09-02) — 뜻 일곱은 §3-7 대응표가 이미 못박았고 남은 것은 문자열뿐이었다(공유계약 §G — 확정된 뜻을 영문 SNAKE 로). ⚠ 대응표에 없는 유형은 화면이 「대상으로 이동」을 열지 않는다 — 어디로 갈지 모른다
                  * @example HANDLING_UNIT
                  */
-                targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "SHIPMENT_LOT_ALLOCATION" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
+                targetTypeCode: "LOT" | "SERIAL_NUMBER" | "HANDLING_UNIT" | "GOODS_ISSUE_LINE" | "MOLD" | "LOCATION" | "INSPECTION_RESULT";
                 /**
                  * @description 대상 식별자 목록. 발행 상한과 같은 1000 이다.
                  * @example [
@@ -44828,6 +49150,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     clearCalibrationBlock: {
@@ -44859,6 +49190,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description 로그인이 필요하다 — omf_session 쿠키가 없거나 유효하지 않다 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
             /** @description 없는 이력이다 */
             404: {

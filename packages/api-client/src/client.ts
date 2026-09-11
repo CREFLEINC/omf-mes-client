@@ -7,6 +7,17 @@ export interface ApiClientOptions {
   baseUrl: string;
   fetch?: (request: Request) => Promise<Response>;
   /**
+   * 쿠키 세션 자격 증명 정책 — `fetch`의 `credentials`를 그대로 전달한다.
+   *
+   * ⭐ **로그인 외 API 481건은 `omf_session` 쿠키가 없으면 401이다**(README 인증 공통 규칙 ·
+   * 대응표 P0 「세션 인증」). 브라우저가 요청에 쿠키를 실으려면 이 값을 명시해야 한다 —
+   * 기본값(`same-origin`)은 개발 환경의 교차 출처 호출에서 쿠키를 빼먹는다.
+   *
+   * ⛔ **POP 단말 토큰(`authToken`)과는 다른 축이다.** 단말은 `Authorization` 헤더로,
+   * 관리웹은 쿠키로 인증하고 둘은 공존한다 — 어느 한쪽이 있다고 다른 쪽을 생략하지 않는다.
+   */
+  credentials?: RequestCredentials;
+  /**
    * 요청마다 실을 단말 토큰. 현장 단말은 계정 로그인이 없어 이 토큰이 인증의 전부다.
    * 함수로 받는 것은 등록·해제로 값이 바뀌기 때문이다 — 만들 때 고정하면 재등록 뒤에도
    * 옛 토큰을 계속 보낸다.
@@ -66,6 +77,7 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
   const client = createClient<paths>({
     baseUrl: options.baseUrl,
     fetch: options.fetch,
+    credentials: options.credentials,
     querySerializer: serializeQuery,
   });
 

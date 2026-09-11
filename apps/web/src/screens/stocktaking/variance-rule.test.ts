@@ -10,11 +10,8 @@ const SYSTEM_QTY = 100;
 const view = (overrides: Parameters<typeof countLineResponse>[0] = {}) =>
   toCountLineView(countLineResponse({ systemQty: SYSTEM_QTY, ...overrides }));
 
-const required = (
-  raw: string,
-  systemQty: number | null = SYSTEM_QTY,
-  isBlind = false,
-): boolean => isReasonRequired({ isBlind, systemQty, qty: parseCountedQty(raw) });
+const required = (raw: string, systemQty: number | null = SYSTEM_QTY, isBlind = false): boolean =>
+  isReasonRequired({ isBlind, systemQty, qty: parseCountedQty(raw) });
 
 describe('isReasonRequired — 차이 사유의 조건부 필수', () => {
   /*
@@ -86,13 +83,17 @@ describe('isVarianceStale — 차이 칸이 낡았는가', () => {
   it('친 값이 저장된 실물 수량과 다르면 낡았다', () => {
     const line = view({ countedQty: 98 });
 
-    expect(isVarianceStale({ savedQty: line.countedQty, qty: parseCountedQty('50') })).toBe(true);
+    expect(
+      isVarianceStale({ savedQty: line.countedQty, counted: true, qty: parseCountedQty('50') }),
+    ).toBe(true);
   });
 
   it('친 값이 저장된 값과 같으면 낡지 않았다', () => {
     const line = view({ countedQty: 98 });
 
-    expect(isVarianceStale({ savedQty: line.countedQty, qty: parseCountedQty('98') })).toBe(false);
+    expect(
+      isVarianceStale({ savedQty: line.countedQty, counted: true, qty: parseCountedQty('98') }),
+    ).toBe(false);
   });
 
   /*
@@ -100,6 +101,18 @@ describe('isVarianceStale — 차이 칸이 낡았는가', () => {
    * 「저장하면 다시 계산됩니다」가 서서, 정작 값을 고친 줄이 눈에 띄지 않는다.
    */
   it.each(['', 'abc'])('수량이 「%s」면 낡지 않았다', (raw) => {
-    expect(isVarianceStale({ savedQty: 98, qty: parseCountedQty(raw) })).toBe(false);
+    expect(isVarianceStale({ savedQty: 98, counted: true, qty: parseCountedQty(raw) })).toBe(false);
+  });
+
+  /*
+   * ⭐ **미실사 줄(`counted`가 거짓)은 무엇을 쳐도 낡지 않는다**(통보 273). `savedQty`가
+   * 0으로 마스킹된 값이라 「저장된 값과 다르다」는 비교 자체가 뜻이 없다 — 처음 세는 줄에
+   * 숫자를 치자마자 낡음 표식이 서면 사용자는 저장한 적 없는 값과 견줘졌다는 사실을 알 길이 없다.
+   */
+  it('미실사 줄은 저장된 수량이 마스킹된 0이라 무엇을 쳐도 낡지 않는다', () => {
+    expect(isVarianceStale({ savedQty: 0, counted: false, qty: parseCountedQty('0') })).toBe(false);
+    expect(isVarianceStale({ savedQty: 0, counted: false, qty: parseCountedQty('50') })).toBe(
+      false,
+    );
   });
 });

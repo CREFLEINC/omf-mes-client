@@ -3,9 +3,15 @@
  *
  * ⚠ **기본 정렬이 「경과일 긴 순」이다**(§5-7). 목록의 관행은 최신순인데, 적체 관리 화면에서는
  * **오래된 것이 위험하다** — 관행을 따르면 가장 위험한 건이 마지막 쪽에 숨는다.
+ *
+ * ⛔ **정렬 선택지가 `elapsed` 하나다.** 원래 설계는 `shipDate`(출하일순)·`customer`(고객순)도
+ * 두었지만, 서버 구현 기준 `GET /logistics/shipments`가 실제로 받는 `sort`는 `shippedAt`·
+ * `shipmentNo` 둘뿐이다(통보 219) — 그 밖의 값을 보내면 400이다. 두 선택지는 대응할 계약 값이
+ * 없어 없앤다(대응표 「정렬 키 제한」). `shipmentNo`(출하번호순)는 이 화면의 원래 설계에 없던
+ * 값이라 임의로 새 선택지를 만들지 않는다 — 허용 밖 값만 없앤다.
  */
 
-export type SortKey = 'elapsed' | 'shipDate' | 'customer';
+export type SortKey = 'elapsed';
 
 export interface ConfirmFilters {
   from: string;
@@ -17,7 +23,8 @@ export interface ConfirmListQuery {
   shipDateFrom: string;
   shipDateTo: string;
   unconfirmedOnly: true;
-  sort: string;
+  /** 계약이 허용하는 값 그대로 — 방향 접미사를 붙이지 않는다(통보 219, 서버가 방향을 받지 않는다). */
+  sort: 'shippedAt';
   page?: number;
 }
 
@@ -58,15 +65,14 @@ export const isUsable = (filters: ConfirmFilters): boolean =>
 /**
  * 계약이 받는 정렬 값.
  *
- * ⚠ 계약이 `sort` 를 자유 문자열로 두어(값 목록이 없다) 화면이 이름을 정한다 — 서버가 모르는
- * 이름을 보내면 무시될 뿐 조회가 깨지지는 않지만, **정렬이 안 먹는데 화면은 먹은 척한다.**
- * 그래서 기본값을 「경과일 긴 순」의 뜻인 `shippedAt` 오름차순으로 두고, 뜻을 주석에 남긴다.
+ * ⚠ **서버 구현 기준 `sort`는 열거값 `shippedAt`·`shipmentNo`뿐이고 방향을 받지 않는다**(통보
+ * 219). 예전에는 계약이 `sort`를 자유 문자열로 두어 화면이 `,asc`/`,desc` 접미사로 방향까지
+ * 얹었지만, 그 모양을 그대로 보내면 이제 허용 밖 값이라 400이다. 「경과일 긴 순」은 실물 출하
+ * 시각 오름차순이라는 뜻이므로 방향 표기 없이 `shippedAt` 그대로 보낸다 — 실제 정렬 방향은
+ * 서버가 값의 뜻대로 매긴다(W-04-12 §5-7).
  */
-const SORT_VALUES: Record<SortKey, string> = {
-  /* 오래 전에 나간 것이 위에 온다 = 실물 출하 시각 오름차순. */
-  elapsed: 'shippedAt,asc',
-  shipDate: 'shipDate,desc',
-  customer: 'customer,asc',
+const SORT_VALUES: Record<SortKey, 'shippedAt'> = {
+  elapsed: 'shippedAt',
 };
 
 /** 조회 조건. **기간이 못 쓸 값이면 `null`** — 계약이 출하일을 필수로 둔다(L-3). */

@@ -95,12 +95,20 @@ describe('StockReinstatementScreen', () => {
     });
   });
 
+  /*
+   * ⭐ 통보 221 — 이 오퍼레이션의 모든 409가 이제 `conflictCause`를 반드시 싣는다. 이 값을
+   * 뺀 채로만(예전 계약 모양) 시험하면, 실제 서버가 함께 실어 보내는 값을 화면이 못 받았을 때만
+   * 통과하는 시험이 된다 — 그래서 서버가 실제로 보내는 모양대로 `conflictCause`를 채운다.
+   */
   it('업무 충돌 코드를 재등록 사유로 안내하고 최신 목록을 다시 읽는다', async () => {
     const user = userEvent.setup();
     renderWithProviders(<StockReinstatementScreen />, {
       fetch: reinstatementStub({
         postResponse: () =>
-          jsonResponse({ code: 'ALREADY_REINSTATED', message: '합성 서버 문구' }, { status: 409 }),
+          jsonResponse(
+            { code: 'ALREADY_REINSTATED', message: '합성 서버 문구', conflictCause: 'user' },
+            { status: 409 },
+          ),
       }),
       route: '/shipment/stock-reinstatements',
     });
@@ -119,6 +127,35 @@ describe('StockReinstatementScreen', () => {
       );
       expect(candidateReads.length).toBeGreaterThan(1);
     });
+  });
+
+  /*
+   * ⭐ **낙관적 잠금 경합(`VERSION_CONFLICT`)만 원인별로 다르게 말한다**(통보 221) — 다른
+   * 사용자·ERP 재동기화·워커 중 무엇이 원인이냐에 따라 사용자가 할 수 있는 다음 행동이
+   * 달라지므로, 셋을 「다른 처리가 먼저 반영됐습니다」 하나로 뭉뚱그리지 않는다. `ALREADY_
+   * REINSTATED`류와 달리 이 코드는 화면이 되말하지 않고 공용 배너(`SaveErrorBanner`)에 맡긴다.
+   */
+  it('⭐ 낙관적 잠금 경합은 원인(user·erpSync·workerLease)별로 다른 안내를 낸다', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<StockReinstatementScreen />, {
+      fetch: reinstatementStub({
+        postResponse: () =>
+          jsonResponse(
+            { code: 'VERSION_CONFLICT', message: '합성 서버 문구', conflictCause: 'erpSync' },
+            { status: 409 },
+          ),
+      }),
+      route: '/shipment/stock-reinstatements',
+    });
+    await chooseTarget(user);
+    await completeRequiredFields(user);
+    await user.click(screen.getByRole('button', { name: t.actions.confirm }));
+    const dialog = await screen.findByRole('dialog', { name: t.confirm.title });
+    await user.click(within(dialog).getByRole('button', { name: t.actions.submit }));
+
+    expect(await within(dialog).findByText(messages.conflict.erpSync)).toBeInTheDocument();
+    /* ⛔ 「이미 재등록됨」류의 고정 문구로 뭉개지 않는다 — 원인이 다르면 안내도 달라야 한다. */
+    expect(within(dialog).queryByText(t.conflict.already)).not.toBeInTheDocument();
   });
 
   it('보유 수량을 넘으면 확인 창도 요청도 열지 않는다', async () => {

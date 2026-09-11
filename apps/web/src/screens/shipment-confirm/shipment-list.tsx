@@ -117,7 +117,9 @@ export const ShipmentList = ({
       render: (row) => {
         const failure = failureOf(row.shipmentId);
         if (failure?.failure != null) {
-          return <Chip status="error">{failureReason(failure.failure)}</Chip>;
+          return (
+            <Chip status="error">{failureReason(failure.failure, failure.conflictCause)}</Chip>
+          );
         }
         return isBatchExcluded(row, now) ? <span>{t.hold.excludedFromBatch}</span> : null;
       },

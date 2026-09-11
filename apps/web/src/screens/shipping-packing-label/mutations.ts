@@ -3,6 +3,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import {
+  fetchLabelRendition,
+  LabelRenditionNotReadyError,
+} from '../../patterns/pop-label-rendition';
 import { runRequest, toApiError } from '../../patterns/request';
 import { RENDITION_FORMAT, type LabelKind } from './codes';
 import { toDocumentIssueBody, toPrintReportBody } from './issue-request';
@@ -122,17 +126,26 @@ const createIssues = async (
  *
  * ⚠ **발행 기록 «한 건당» 한 번이다.** 발행은 한 트랜잭션이지만 그리기는 그 밖이라 **건별
  * 실패가 정상이다**(요구서 §4-2 B-8) — 여기서 한 장이 실패해도 앞서 나온 장은 유효하다.
+ *
+ * ⛔⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1 「미구현
+ * 5건」). `client.GET` 을 부르지 않고 항상 `LabelRenditionNotReadyError` 로 거부한다 — 아래
+ * `issue`·`retryRendition` 의 catch 가 이 타입을 알아보고 「발행 실패」와 다른, 사람이 읽을
+ * 사유를 `failureReason` 에 싣는다.
  */
-const fetchRendition = async (client: Client, documentIssueLogId: number): Promise<Uint8Array> => {
-  const data = await runRequest(() =>
-    client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
-      params: { path: { documentIssueLogId }, query: { format: RENDITION_FORMAT } },
-      parseAs: 'arrayBuffer',
-    }),
-  );
+const fetchRendition = async (): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition());
 
-  return new Uint8Array(data as unknown as ArrayBuffer);
-};
+/**
+ * `issue`·`render` 걸음이 멈춘 원인을 결과에 담는다.
+ *
+ * ⭐ **막힌 것과 진짜 실패를 갈라 보인다.** `LabelRenditionNotReadyError` 는 서버가 아직 지원하지
+ * 않는다는 사실이라, 이 화면 유일의 동적 표시 자리인 `failureReason` 문단(`issue-outcome.tsx`)에
+ * 그 사유를 실어 사용자가 「발행이 실패했다」로 읽지 않게 한다. 그 밖의 원인(연결·서버 거부)은
+ * 기존대로 `describeError` 가 정규화해 보인다.
+ */
+const stepFailureOf = (cause: unknown): { failureReason: string | null; error: ApiError | null } =>
+  cause instanceof LabelRenditionNotReadyError
+    ? { failureReason: cause.message, error: null }
+    : { failureReason: null, error: toApiError(cause) };
 
 const reportPrint = async (
   client: Client,
@@ -273,7 +286,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
           const rendered: IssuedLabel[] = [];
 
           for (const one of issues) {
-            const bytes = await fetchRendition(client, one.documentIssueLogId);
+            const bytes = await fetchRendition();
             const previewUrl = URL.createObjectURL(
               new Blob([bytes as BlobPart], { type: 'image/png' }),
             );
@@ -294,8 +307,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
           setResult({
             printed: 0,
             failedAt: at,
-            failureReason: null,
-            error: toApiError(cause),
+            ...stepFailureOf(cause),
           });
           setPhase(at === 'issue' ? 'idle' : 'issued');
         } finally {
@@ -330,7 +342,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
         const rendered: IssuedLabel[] = [];
 
         for (const one of issued.current) {
-          const bytes = await fetchRendition(client, one.documentIssueLogId);
+          const bytes = await fetchRendition();
           const previewUrl = URL.createObjectURL(
             new Blob([bytes as BlobPart], { type: 'image/png' }),
           );
@@ -346,8 +358,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
         setResult({
           printed: 0,
           failedAt: 'render',
-          failureReason: null,
-          error: toApiError(cause),
+          ...stepFailureOf(cause),
         });
         setPhase('issued');
       } finally {

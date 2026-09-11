@@ -13,6 +13,11 @@ import { EQUIPMENT_TARGET } from './types';
  * ⛔ **누계 리셋을 다루지 않는다** — 툴 예방보전 실적의 몫이다. 여기서 함께 다루면 낙관적
  * 잠금이 필요한 쓰기와 아닌 쓰기가 한 폼에 섞인다.
  *
+ * ⛔ **마감을 이 폼에 두지 않는다.** 서버 v0.1.2 는 `POST /maintenance/results`의
+ * `closed=true`를 **항상 422 INVALID**로 거부한다(통보 113 · 대응표 「보전 실적 마감·리셋」).
+ * 절대 성공할 수 없는 조작을 보여 주지 않는다 — 목록의 마감 칸(`closed`)은 기존 이력을
+ * 보여주는 읽기 전용으로 남는다.
+ *
  * **순수 함수만 둔다.** 「지금」을 읽지 않는다 — 시작 시각에 미래를 막는 규칙은 계약에도
  * 스펙에도 없고, 화면이 지어내면 늦게 적는 건을 못 적는다.
  *
@@ -45,7 +50,6 @@ export interface ResultDraft {
   performer: string;
   isOutsourced: boolean;
   vendorName: string;
-  closed: boolean;
   parts: PartDraft[];
 }
 
@@ -58,7 +62,6 @@ export const EMPTY_DRAFT: ResultDraft = {
   performer: '',
   isOutsourced: false,
   vendorName: '',
-  closed: false,
   parts: [],
 };
 
@@ -152,6 +155,8 @@ export const toMoment = (date: string, offsetMinutes: number): string => {
  *
  * ⛔ **누계 리셋을 싣지 않는다** — 이 화면의 일이 아니다. 실으면 낙관적 잠금이 필요해지는데
  * 이 폼은 그 토큰을 갖고 있지 않다.
+ * ⛔ **마감을 싣지 않는다** — 서버가 `closed=true`를 항상 422 로 거부한다(통보 113). 계약이
+ * 선택 필드로 두어 생략이 허용된다.
  * ⛔ **항목·부위별 결과(`lines`)를 싣지 않는다** — 결과 값 목록이 아직 없어 채울 수 없다.
  * 지어낸 값을 실으면 서버가 거부하거나 아무도 모르는 결과가 원장에 남는다.
  */
@@ -164,7 +169,6 @@ export const toCreateBody = (
   startedAt: toMoment(draft.startedAt, offsetMinutes),
   resultNote: draft.resultNote.trim(),
   isOutsourced: draft.isOutsourced,
-  closed: draft.closed,
   ...(draft.order === '' ? {} : { maintenanceOrderId: Number(draft.order) }),
   ...(draft.finishedAt === '' ? {} : { finishedAt: toMoment(draft.finishedAt, offsetMinutes) }),
   ...(draft.isOutsourced

@@ -54,6 +54,21 @@ import { useUomLookup } from './uom-lookup';
 
 const t = messages.productionResult;
 
+/**
+ * ⛔ **`IDENTIFICATION_TAG` 발행은 서버가 항상 422 `STATE_LOCKED` 로 거부한다**(대응표 P1
+ * 「공용 문서 발행」· I-27 마감 결정). 눌러도 실패만 반복되므로 이 문서 유형의 발행 동작
+ * 자체를 잠근다 — 아래 네 함수(`issueTags`·`retryTagDocumentIssue`·`restoreTagDocuments`·
+ * `reissueTags`) 모두 이 상수를 먼저 보고, 참이면 `POST /app/document-issues` 를 부르지 않고
+ * 돌아간다. 단추도 함께 비활성화해 «눌러도 반응 없음»이 아니라 지금 쓸 수 없는 동작으로
+ * 보이게 한다. 서버가 지원을 시작하면 이 상수 하나만 되돌리면 된다.
+ *
+ * ⚠ **결과 저장 게이팅(`canOutput`)은 그대로 둔다.** 인식표 대상 품목은 인식표를 낼 수 없어
+ * `hasTagDocuments` 가 참이 될 수 없고, 그래서 결과 저장도 함께 막힌다 — 이것을 완화하는 것은
+ * 업무 규칙을 새로 정하는 일이라 여기서 임의로 정하지 않는다(추측 금지). 설계팀 확정을
+ * 기다린다.
+ */
+const IDENTIFICATION_TAG_ISSUE_LOCKED = true;
+
 type OutputPhase =
   | 'idle'
   | 'queued'
@@ -442,6 +457,8 @@ export const ProductionFlowScreen = () => {
   };
 
   const issueTags = (): void => {
+    // 항상 422 로 거부되는 발행이다(위 IDENTIFICATION_TAG_ISSUE_LOCKED 주석) — 부르지 않는다.
+    if (IDENTIFICATION_TAG_ISSUE_LOCKED) return;
     if (
       lot === null ||
       entry.workerNo === null ||
@@ -472,12 +489,14 @@ export const ProductionFlowScreen = () => {
   };
 
   const retryTagDocumentIssue = (): void => {
+    if (IDENTIFICATION_TAG_ISSUE_LOCKED) return;
     if (pendingTagIssue === null || entry.workerNo === null) return;
 
     tagDocumentIssue.write(pendingTagIssue);
   };
 
   const restoreTagDocuments = (): void => {
+    if (IDENTIFICATION_TAG_ISSUE_LOCKED) return;
     if (unissuedSerials.length === 0 || entry.workerNo === null || tagPrinter === null) return;
 
     const [first, ...rest] = chunkTargets(unissuedSerials).map((serialBatch) =>
@@ -491,6 +510,7 @@ export const ProductionFlowScreen = () => {
   };
 
   const reissueTags = (): void => {
+    if (IDENTIFICATION_TAG_ISSUE_LOCKED) return;
     if (tagReissueReason === null || entry.workerNo === null || selectedTagIds.length === 0) return;
 
     const selected = issuedSerials.filter((serial) =>
@@ -675,10 +695,14 @@ export const ProductionFlowScreen = () => {
               <div>
                 <dt>{t.flow.currentLot.title}</dt>
                 <dd>
-                  {t.flow.currentLot.sequence(
-                    lot?.workOrderSequenceNo ?? null,
-                    lot?.workOrderLotCount ?? null,
-                  )}
+                  {/*
+                   * ⛔⛔ **`Lot.workOrderSequenceNo`·`workOrderLotCount` 가 계약에서 빠졌다**
+                   * (생성 타입 `components['schemas']['Lot']` · 2026-09-11 전달본 — 두 필드
+                   * 모두 어느 스키마에도 없다). 지어낸 값으로 채우지 않는다(추측 금지) —
+                   * `sequence()` 가 이미 갖고 있는 「모른다」 표시(`—`)를 그대로 쓴다. 서버가
+                   * 다시 값을 주면 이 자리만 되돌리면 된다.
+                   */}
+                  {t.flow.currentLot.sequence(null, null)}
                 </dd>
               </div>
             </dl>
@@ -802,7 +826,11 @@ export const ProductionFlowScreen = () => {
                   {unissuedSerials.length > 0 && (
                     <Button
                       variant="outlined"
-                      disabled={tagDocumentIssue.isSaving || tagPrinter === null}
+                      disabled={
+                        IDENTIFICATION_TAG_ISSUE_LOCKED ||
+                        tagDocumentIssue.isSaving ||
+                        tagPrinter === null
+                      }
                       onClick={restoreTagDocuments}
                     >
                       {t.flow.tag.restoreDocuments(unissuedSerials.length)}
@@ -819,6 +847,7 @@ export const ProductionFlowScreen = () => {
                   )}
                   <Button
                     disabled={
+                      IDENTIFICATION_TAG_ISSUE_LOCKED ||
                       tagMissing === null ||
                       tagMissing <= 0 ||
                       !Number.isInteger(tagMissing) ||
@@ -851,7 +880,11 @@ export const ProductionFlowScreen = () => {
                   {issuedSerials.length > 0 && (
                     <Button
                       variant="outlined"
-                      disabled={selectedTagIds.length === 0 || tagPrinter === null}
+                      disabled={
+                        IDENTIFICATION_TAG_ISSUE_LOCKED ||
+                        selectedTagIds.length === 0 ||
+                        tagPrinter === null
+                      }
                       onClick={() => setIsTagReissueOpen(true)}
                     >
                       {t.flow.tag.reissue}
@@ -1058,7 +1091,11 @@ export const ProductionFlowScreen = () => {
               {t.flow.close}
             </Button>
             <Button
-              disabled={tagReissueReason === null || tagDocumentIssue.isSaving}
+              disabled={
+                IDENTIFICATION_TAG_ISSUE_LOCKED ||
+                tagReissueReason === null ||
+                tagDocumentIssue.isSaving
+              }
               onClick={reissueTags}
             >
               {t.flow.tag.reissue}

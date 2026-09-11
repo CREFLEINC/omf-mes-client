@@ -63,6 +63,7 @@ const optional = (value: string | null): string =>
  * | 재고 깎기 | 같은 이유다. 출고가 재고를 움직인다 |
  * | 설비 상태 바꾸기 | 「지금 쓸 수 있는가」는 **열린 보전 건이 없다**로 판정되며 자산 상태와 다른 축이다 |
  * | 누계 리셋 | 툴 예방보전 실적(W-05-03)의 몫이다. 그쪽만 낙관적 잠금이 필요하다 |
+ * | 실적 마감 | 서버 v0.1.2 가 `closed=true`를 항상 422 로 거부한다(통보 113). 목록의 마감 칸은 읽기 전용으로 남는다 |
  *
  * ⭐ **지시 없이도 실적이 성립한다** — 현장에서 이미 조치한 건이 있다.
  *
@@ -328,18 +329,6 @@ export const MaintenanceResultScreen = () => {
                 set({ vendorName: event.target.value });
               }}
             />
-          </div>
-
-          <div className="field-cell field-cell-unlabeled check-group">
-            <Checkbox
-              checked={draft.closed}
-              onChange={(event) => {
-                set({ closed: event.target.checked });
-              }}
-            >
-              {t.form.closed}
-            </Checkbox>
-            <span className="field-note">{t.form.closedNote}</span>
           </div>
         </div>
 

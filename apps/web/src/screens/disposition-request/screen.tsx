@@ -13,6 +13,7 @@ import { FilterBar } from './filter-bar';
 import {
   EMPTY_FILTERS,
   hasSelection,
+  isPeriodContractBlocked,
   readFilters,
   readPage,
   readSelection,
@@ -123,6 +124,7 @@ export const DispositionRequestScreen = () => {
   const listQuery = useMemo(() => toListQuery(filters, page), [filters, page]);
 
   const list = useTargetList(listQuery);
+  const isListBlocked = isPeriodContractBlocked(listQuery);
   const rows = useMemo<TargetRow[]>(() => {
     if (list.data === undefined) return [];
     return list.data.source === 'candidates'
@@ -350,9 +352,19 @@ export const DispositionRequestScreen = () => {
             onApply={(next) => apply(next)}
             onReset={() => apply(EMPTY_FILTERS)}
           />
+          {/*
+            ⛔ **부를 수 없는 조건임을 목록 «위»에 세운다** — 통보 186 · 공유계약 L-3-2 ⑷
+            (`filters.ts`의 `NonconformanceListQuery` 주석에 사유 전문이 있다).
+
+            빈 목록으로 두면 적체 관리 화면에서 「부적합이 없다」로 읽힌다 — 미처리 건이 있는데
+            없는 것으로 보이는 것이 이 화면에서 가장 나쁜 오독이다.
+          */}
+          {isListBlocked ? (
+            <AlertBanner variant="warning">{t.periodContractBlocked}</AlertBanner>
+          ) : null}
           <TargetList
             rows={rows}
-            isLoading={list.isPending}
+            isLoading={list.isPending && !isListBlocked}
             error={
               list.isError ? (
                 <LoadErrorBanner error={list.error} onRetry={() => void list.refetch()} />

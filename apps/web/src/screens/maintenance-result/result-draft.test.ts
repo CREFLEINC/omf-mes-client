@@ -113,6 +113,11 @@ describe('toCreateBody', () => {
     expect(toCreateBody(draft(), 540)).not.toHaveProperty('shotCountAfterReset');
   });
 
+  /** ⛔ 서버 v0.1.2 가 closed=true 를 항상 422 로 거부한다(통보 113) — 이 폼에서 걷어냈다. */
+  it('마감을 싣지 않는다', () => {
+    expect(toCreateBody(draft(), 540)).not.toHaveProperty('closed');
+  });
+
   /** ⛔ 결과 값 목록이 없어 채울 수 없다 — 지어낸 값을 실으면 아무도 모르는 결과가 남는다. */
   it('항목·부위별 결과를 싣지 않는다', () => {
     expect(toCreateBody(draft(), 540)).not.toHaveProperty('lines');

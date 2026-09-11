@@ -104,7 +104,17 @@ const readOptionalQty = (value: number | undefined): number | null =>
  * 값이라, 표에 내면 사용자가 실사 여부로 읽는다. 타입에 자리를 두지 않으면 화면으로 샐 경로도 없다.
  * **요청에는 싣는다** — 계약 필수이며 그 조립은 PR ③에 있다.
  *
- * `systemQty`·`varianceQty`가 `null`이면 **보이지 않는 것**이고, 그것이 곧 블라인드 실사다.
+ * **`systemQty`가 `null`인 것과 `varianceQty`가 `null`인 것은 서로 다른 사실이다**(통보 273 및
+ * 구현 코드 대조 · 대응표 P0 — 착수 이슈 §4 작성 뒤에 계약이 `counted` 플래그를 얻으며 갈렸다).
+ *
+ * | 필드 | `null`의 뜻 | 판정 축 |
+ * | --- | --- | --- |
+ * | `systemQty` | 블라인드 실사라 **응답 자체에 키가 없다** | 실사 헤더의 `blindCount` |
+ * | `varianceQty` | 이 줄을 **아직 세지 않았다** — 응답은 오지만 0으로 마스킹돼 있다 | 이 줄의 `counted` |
+ *
+ * ⚠ **`systemQty`의 부재로 미실사를 가르지 않는다.** 블라인드 실사는 실사한 줄도 `systemQty`가
+ * 없다 — 그 축으로 가르면 **실사한 줄까지 미실사로 떨어진다.** 미실사 여부를 알아야 하는 자리는
+ * `counted`를 직접 읽는다(예: `variance-rule.ts`의 `isVarianceStale`).
  */
 export interface CountLineView {
   inventoryCountLineId: number;
@@ -115,8 +125,21 @@ export interface CountLineView {
   lotId: number | null;
   /** **블라인드에서는 오지 않는다.** `null`이 그 사실이다. */
   systemQty: number | null;
+  /**
+   * 이 줄을 실제로 세었는가(계약 `counted` · 통보 273). **미실사 여부를 가르는 유일한 축이다** —
+   * `systemQty`·`countedQty`·`varianceQty`의 결측·마스킹 여부는 전부 이 값에서 파생하지,
+   * 거꾸로 그 값들의 모양(`null`·`0`)으로 이 필드를 추론하지 않는다.
+   */
+  counted: boolean;
+  /** **거짓이면 마스킹된 0이다**(통보 273) — 실제로 「0개를 셌다」는 뜻이 아니다. `counted`로 가른다. */
   countedQty: number;
-  /** 서버가 계산한다(`readOnly`). 화면은 다시 계산하지 않는다. 블라인드에서는 `null`일 수 있다. */
+  /**
+   * 서버가 계산한다(`readOnly`). 화면은 다시 계산하지 않는다.
+   *
+   * **`counted`가 거짓이면 `null`로 옮긴다**(통보 273). 계약상 이 값은 미실사 줄에서도 항상
+   * 실려 오지만 0으로 마스킹돼 있다 — 응답에 값이 있다고 그대로 옮기면 「아직 안 세었다」가
+   * 「차이가 없다」로 보인다. `systemQty`처럼 응답에 키가 빠지는 것이 아니라는 점이 다르다.
+   */
   varianceQty: number | null;
   uomId: number;
   varianceReasonCode: string | null;
@@ -130,8 +153,14 @@ export const toCountLineView = (data: InventoryCountLineResponse): CountLineView
   itemId: data.itemId,
   lotId: data.lotId ?? null,
   systemQty: readOptionalQty(data.systemQty),
+  counted: data.counted,
   countedQty: data.countedQty,
-  varianceQty: readOptionalQty(data.varianceQty),
+  /*
+   * **마스킹은 `counted`로 가른다 — 응답에 값이 왔는지로 가르지 않는다**(통보 273). `varianceQty`는
+   * `systemQty`와 달리 미실사 줄에서도 키 자체는 실려 오고 값만 0으로 마스킹돼 있어, `readOptionalQty`
+   * 같은 결측 판정으로는 절대 걸러지지 않는다.
+   */
+  varianceQty: data.counted ? readOptionalQty(data.varianceQty) : null,
   uomId: data.uomId,
   // `??`를 쓴다 — 빈 문자열은 서버가 보낸 값이라 `null`로 뭉개면 그 사실이 사라진다.
   varianceReasonCode: data.varianceReasonCode ?? null,

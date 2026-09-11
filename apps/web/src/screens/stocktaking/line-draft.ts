@@ -51,9 +51,7 @@ export const EMPTY_LINE_DRAFTS: LineDrafts = {};
  * 미입력을 오류와 뭉개면 위치를 여는 순간 전 줄이 붉은 글씨가 된다.
  */
 export type QtyParse =
-  | { kind: 'empty' }
-  | { kind: 'invalid'; message: string }
-  | { kind: 'qty'; value: number };
+  { kind: 'empty' } | { kind: 'invalid'; message: string } | { kind: 'qty'; value: number };
 
 /**
  * 친 글자를 실물 수량으로 읽는다.
@@ -85,9 +83,7 @@ export const parseCountedQty = (raw: string): QtyParse => {
  * 「안 골랐다」가 오류가 아니어야 차이 없는 줄이 그대로 저장된다.
  */
 export type ReasonParse =
-  | { kind: 'none' }
-  | { kind: 'invalid'; message: string }
-  | { kind: 'code'; value: string };
+  { kind: 'none' } | { kind: 'invalid'; message: string } | { kind: 'code'; value: string };
 
 /**
  * 고른 차이 사유를 읽는다.
@@ -113,8 +109,10 @@ export const parseVarianceReason = (raw: string): ReasonParse => {
  *
  * **줄을 통째로 받는 이유가 여기 있다**(완료 조건 C35 · 감지기 M32). 서버가 준 `countedQty`로
  * 되돌리려면 이 함수를 고쳐야 하고, 그 한 자리가 「빈 칸으로 시작한다」를 지키는 곳이다 —
- * 미실사 줄도 계약상 `countedQty`가 필수라 **0으로 내려오며**, 채워 두면 사용자가 그대로
- * 저장하는 순간 세지 않은 줄이 「0개를 셌다」로 바뀐다. 화면은 그 둘을 구분할 수 없다.
+ * 미실사 줄(`counted`가 거짓)도 계약상 `countedQty`가 필수라 **0으로 마스킹돼 내려오며**(통보
+ * 273), 채워 두면 사용자가 그대로 저장하는 순간 세지 않은 줄이 「0개를 셌다」로 바뀐다.
+ * 화면은 그 둘을 구분할 수 없다 — 그래서 `counted` 값을 보고 채울지 말지 가르는 대신, 아예
+ * 서버 값을 여기로 들이지 않는다.
  */
 export const readDraftQty = (drafts: LineDrafts, line: CountLineView): string =>
   drafts[line.inventoryCountLineId]?.countedQty ?? '';

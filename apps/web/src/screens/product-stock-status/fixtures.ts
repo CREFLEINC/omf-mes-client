@@ -196,8 +196,7 @@ export const heldLotDetailResponse: components['schemas']['LotDetailResponse'] =
     manufacturedAt: '2026-08-01T09:00:00+09:00',
     expiryDate: null,
     remarks: null,
-    workOrderSequenceNo: null,
-    workOrderLotCount: null,
+    /* workOrderSequenceNo·workOrderLotCount 는 2026-09-11 전달본 계약에서 완전히 빠졌다(대체 필드 없음) — 지어내지 않는다. */
   },
   externalIdentifiers: [],
   holds: [
@@ -235,8 +234,7 @@ export const plainLotDetailResponse: components['schemas']['LotDetailResponse'] 
     manufacturedAt: '2026-08-01T09:00:00+09:00',
     expiryDate: null,
     remarks: null,
-    workOrderSequenceNo: null,
-    workOrderLotCount: null,
+    /* workOrderSequenceNo·workOrderLotCount 는 2026-09-11 전달본 계약에서 완전히 빠졌다(대체 필드 없음) — 지어내지 않는다. */
   },
   externalIdentifiers: [],
   holds: [],

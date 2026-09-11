@@ -1,10 +1,8 @@
-import type { ApiClient } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
-import { useApiClient } from '../../patterns/api-context';
-import { runRequest } from '../../patterns/request';
+import { ApiRequestError } from '../../patterns/request';
 import type { DashboardFilterQuery } from './filters';
-import { toDashboardView, type DashboardView } from './types';
+import type { DashboardView } from './types';
 
 /**
  * 이 화면의 읽기 — **오퍼레이션이 하나뿐이다.**
@@ -23,20 +21,31 @@ import { toDashboardView, type DashboardView } from './types';
  * **쓰기 오퍼레이션이 없다.** 이 화면은 조회 전용이다.
  */
 
-type Client = ApiClient['client'];
-
 export const dashboardKeys = {
   all: ['dashboard'] as const,
   summary: (query: DashboardFilterQuery) => ['dashboard', 'summary', query] as const,
 };
 
-const fetchSummary = async (
-  client: Client,
-  query: DashboardFilterQuery,
-): Promise<DashboardView> => {
-  const data = await runRequest(() => client.GET('/app/dashboard-summary', { params: { query } }));
+/**
+ * ⛔ **서버에 이 경로가 없다**(전달본 `manifest.json` · `notImplementedOperations` · 대응표
+ * P1 「미구현 5건」: `GET /app/dashboard-summary` — 「집계 대상 도메인 완성 뒤로 이번 루틴에서
+ * 제외했다」). **부르지 않는다** — `client.GET` 을 호출하지 않고 곧바로 거부한다.
+ *
+ * `describeLoadError`(`load-error-banner.tsx`)가 `kind: 'http'` 의 `message` 를 그대로 보이므로,
+ * 화면의 실패 배너에는 이 사유가 실린다 — 「불러오지 못했다」는 제목 아래, 실제로는 「아직
+ * 준비되지 않았다」는 사실이 문구로 드러난다.
+ *
+ * 서버가 구현하면 이 함수만 원래 `client.GET` 호출로 되돌리면 화면이 다시 산다.
+ */
+export const DASHBOARD_SUMMARY_NOT_READY_REASON =
+  '대시보드 통합 집계는 서버가 아직 지원하지 않습니다. 카드마다의 화면에서 개별로 확인하세요.';
 
-  return toDashboardView(data);
+const fetchSummary = async (): Promise<DashboardView> => {
+  throw new ApiRequestError({
+    kind: 'http',
+    status: 501,
+    message: DASHBOARD_SUMMARY_NOT_READY_REASON,
+  });
 };
 
 /**
@@ -46,10 +55,8 @@ const fetchSummary = async (
  * 전체다. 필수 조건이 없는 화면이라 「조건이 설 때까지 기다리는」 갈래 자체가 없다.
  */
 export const useDashboardSummary = (query: DashboardFilterQuery): UseQueryResult<DashboardView> => {
-  const { client } = useApiClient();
-
   return useQuery({
     queryKey: dashboardKeys.summary(query),
-    queryFn: () => fetchSummary(client, query),
+    queryFn: fetchSummary,
   });
 };

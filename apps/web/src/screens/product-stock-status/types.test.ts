@@ -126,8 +126,7 @@ describe('toLotDetailView', () => {
         sourceId: 9021,
         initialQty: 10,
         uomId: 9501,
-        workOrderSequenceNo: null,
-        workOrderLotCount: null,
+        /* workOrderSequenceNo·workOrderLotCount 는 2026-09-11 전달본 계약에서 완전히 빠졌다(대체 필드 없음) — 지어내지 않는다. */
       },
       externalIdentifiers: [
         {

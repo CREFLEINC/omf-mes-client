@@ -2739,16 +2739,21 @@ describe('StocktakingScreen — 블라인드 실사', () => {
    *
    * **계약과 런타임이 어긋나는 자리를 그대로 만든다**(결정 4 · 어긋남 1): `systemQty`는
    * `required`인데 설명은 「블라인드 실사에서는 내려보내지 않는다」다. **비블라인드 실사인데
-   * 어떤 줄의 수량이 빠져 오는** 상태가 그 어긋남의 실물이고, 그때 줄마다 판정하면
-   * **장부·차이 열이 통째로 사라진다** — 사용자는 열이 왜 없는지 화면 어디에서도 읽을 수 없다.
+   * 어떤 줄의 장부 수량이 빠져 오는** 상태가 그 어긋남의 실물이고, 그때 줄마다 판정하면
+   * **장부 열이 통째로 사라진다** — 사용자는 열이 왜 없는지 화면 어디에서도 읽을 수 없다.
    *
    * 열은 **실사 헤더가 정하고**, 값이 빠진 줄은 **그 줄이 사정을 밝힌다**. 둘은 다른 층이다.
+   *
+   * ⚠ **통보 273으로 `notProvidedCount`가 줄 수만큼으로 정정됐다.** 예전에는
+   * `blindCountLineResponse`가 `varianceQty`도 함께 빼서 줄마다 두 칸이 「없음」이 됐는데,
+   * 실제 계약은 `varianceQty`를 **결측이 아니라 마스킹**으로 감춘다 — 키는 실려 오고 값만
+   * 0이다. 이 fixture는 이제 `systemQty`만 뺀다(fixtures.ts) — 장부 열 하나만 「없음」이 뜬다.
    */
   it.each<[string, unknown[], number]>([
     [
       '첫 줄만 빠져 와도',
       [blindCountLineResponse(), countLineFixtures[1], countLineFixtures[2]],
-      2,
+      1,
     ],
     /*
      * **전 줄이 빠져 오는 판까지 센다.** 「첫 줄로 판정」·「하나라도 빠지면」은 위 판이 잡지만
@@ -2762,7 +2767,7 @@ describe('StocktakingScreen — 블라인드 실사', () => {
         blindCountLineResponse({ inventoryCountLineId: 9402, lineNo: 2, lotId: null }),
         blindCountLineResponse({ inventoryCountLineId: 9403, lineNo: 3, uomId: 9502 }),
       ],
-      6,
+      3,
     ],
   ])('비블라인드 헤더에서는 %s 두 열이 남는다', async (_label, items, notProvidedCount) => {
     renderScreen(
@@ -2780,8 +2785,9 @@ describe('StocktakingScreen — 블라인드 실사', () => {
     expect(within(lineTable()).getByText(t.lineTable.variance)).toBeInTheDocument();
 
     /*
-     * 짝 방향 — 값이 빠진 줄은 **그 두 칸에서** 사정을 밝힌다(열이 사라져서 통과하는 것이
-     * 아니다). 줄마다 두 칸이므로 건수가 줄 수의 두 배다.
+     * 짝 방향 — 값이 빠진 줄은 **장부 칸에서** 사정을 밝힌다(열이 사라져서 통과하는 것이
+     * 아니다). `varianceQty`는 결측이 아니라 마스킹이라 이 경로로는 「없음」이 뜨지 않으므로
+     * (통보 273) 건수는 줄 수와 같다 — 예전의 「줄 수의 두 배」에서 정정됐다.
      */
     expect(screen.getAllByText(t.values.qtyNotProvided)).toHaveLength(notProvidedCount);
   });

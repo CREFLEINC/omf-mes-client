@@ -57,8 +57,16 @@ const FIELDS_WITH_OWN_RULE = new Set(['paths', 'components', 'tags']);
  * 도메인마다 제목이 다른 것이 당연하므로 여기서 멈추면 병합이 아예 되지 않는다.
  * **이 집합에 키를 더하는 것은 「조용히 잃어도 되는 것」을 늘리는 일이다** — 생성물과
  * 서빙 동작에 영향이 없음을 확인하고 그 근거를 여기 적은 뒤에만 더한다.
+ *
+ * `x-omf-server-baseline` 은 서버 구현 기준선 전달본이 계약마다 붙이는 문서 메타다
+ * (`status`·`serverCommit`·`designContractVersion` 등). 계약 파일마다 «그 계약의» 판번호가
+ * 실려서 `designContractVersion` 하나가 갈리는데, 값이 가리키는 것은 문서 판번호일 뿐
+ * 경로·스키마·서빙 base 가 아니다. `openapi-typescript` 는 최상위 `x-` 확장을 생성물에
+ * 옮기지 않으므로 앞 계약의 값만 남아도 타입이 달라지지 않는다.
+ * 어느 전달본으로 생성했는지의 정본은 병합본이 아니라 `.client-dev/state.json` 의
+ * `serverApiBaseline` 과 전달본의 `manifest.json` 이다(`tools/mock/resolve-spec.mjs`).
  */
-const FIELDS_ALLOWED_TO_DIFFER = new Set(['info']);
+const FIELDS_ALLOWED_TO_DIFFER = new Set(['info', 'x-omf-server-baseline']);
 
 /** 주석성 필드를 걷어낸 사본을 만든다. 원본은 건드리지 않는다. */
 const withoutAnnotations = (node, isNameKeyed = false) => {

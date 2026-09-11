@@ -1,9 +1,9 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import type { ApiClient, ApiError } from '@omf-mes/api-client';
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 import { useRef } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequestWithResponse, runRequest } from '../../patterns/request';
+import { ApiRequestError, runRequestWithResponse, runRequest } from '../../patterns/request';
 
 import { withOccurrence, type HandlingUnitPackDraft } from './occurrence';
 import { packingResultKeys } from './queries';
@@ -281,37 +281,47 @@ export interface CancelHandlingUnitInput {
   workerNo: string;
 }
 
-/** 확정 전 빈 포장 취소. 확정된 포장은 서버가 409로 거부하며 이 화면은 해체하지 않는다. */
-export const useHandlingUnitCancel = (): UseMutationResult<
-  void,
-  Error,
-  CancelHandlingUnitInput
-> => {
-  const { client } = useApiClient();
-  const kept = useRef<{ handlingUnitId: number; key: string } | null>(null);
+/**
+ * ⛔⛔ **`DELETE /inventory/handling-units/{handlingUnitId}` 는 서버에 경로 자체가 없다**
+ * (생성 타입 `paths['/inventory/handling-units/{handlingUnitId}']['delete']` 가 `never` ·
+ * 2026-09-11 전달본 — 이 자리는 `get` 만 있다). 이 경로는 **설계 공지 3(2026-09-08)** 이
+ * 더한 것이라 이번 임시 서버 기준선(설계 공지 2 · `a6a87e14`)에는 없다 — 서버 저장소의
+ * 계약 사본(`contracts/COMMIT.txt`)도 아직 `a6a87e14` 라 서버는 공지 3을 모른다.
+ *
+ * ⭐ **사용자 결정 — 「준비 중」으로 닫고 서버팀에 보고한다.** 코드는 지우지 않는다. 서버가
+ * 공지 3을 구현하면 아래 `useHandlingUnitCancel` 의 `mutationFn` 을 원래의
+ * `client.DELETE(...)` 호출로 되돌리면 된다.
+ *
+ * ⛔ **요청을 만들었다가 거부당한 척하지 않는다.** 실제로 보냈다가 실패한 것처럼 다루면
+ * 사용자가 「다시 시도」를 반복하게 된다 — `ApiRequestError` 를 곧바로 던져
+ * `patterns/request.ts` 가 이미 갖고 있는 「정규화된 실패는 연결 문제로 덮지 않는다」는
+ * 약속(`runRequestWithResponse` 머리말) 위에 얹는다. 이 화면은 이 실패를 저장 실패나
+ * 네트워크 오류가 아니라 **아직 지원하지 않는 기능**으로 보여야 한다.
+ */
+export const HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE =
+  '빈 포장 취소는 서버가 아직 지원하지 않습니다. 포장은 그대로 남아 있고, 서버팀에 보고했습니다.';
 
-  return useMutation({
-    mutationFn: async ({ handlingUnitId, workerNo }: CancelHandlingUnitInput) => {
-      if (kept.current?.handlingUnitId !== handlingUnitId) {
-        kept.current = { handlingUnitId, key: crypto.randomUUID() };
-      }
-      await runRequest(() =>
-        client.DELETE('/inventory/handling-units/{handlingUnitId}', {
-          params: {
-            path: { handlingUnitId },
-            header: {
-              'Idempotency-Key': kept.current?.key ?? crypto.randomUUID(),
-              'X-Worker-No': workerNo,
-            },
-          },
-        }),
-      );
+const handlingUnitCancelNotReadyError = (): ApiError => ({
+  kind: 'validation',
+  errors: [
+    {
+      scope: 'screen',
+      code: 'HANDLING_UNIT_CANCEL_NOT_READY',
+      message: HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE,
     },
-    onSuccess: () => {
-      kept.current = null;
-    },
+  ],
+});
+
+/**
+ * 확정 전 빈 포장 취소.
+ *
+ * ⛔ **지금은 항상 거부된다** — 위 머리말 참고. 네트워크 요청을 만들지 않고 곧바로 거부한다.
+ */
+export const useHandlingUnitCancel = (): UseMutationResult<void, Error, CancelHandlingUnitInput> =>
+  useMutation({
+    mutationFn: (_input: CancelHandlingUnitInput): Promise<void> =>
+      Promise.reject(new ApiRequestError(handlingUnitCancelNotReadyError())),
   });
-};
 
 export interface PackingWriteOptions {
   shipmentId: number | null;

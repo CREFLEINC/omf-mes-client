@@ -91,11 +91,27 @@ export interface WarehouseOption {
   label: string;
 }
 
+/**
+ * 창고 관리 수준 중 「창고」 자체 — 계약 `Warehouse.managementLevelCode`의 값 목록(창고·구역·랙·셀)
+ * 가운데 위치를 받지 않는 수준이다.
+ */
+const WAREHOUSE_LEVEL_MANAGED = 'WAREHOUSE';
+
+/**
+ * ⭐ **창고 단위 관리 창고만 후보로 남긴다.** 이 화면은 입고 위치 칸이 없다 — 대응표 「보류」가
+ * `ShipmentCreate`에 위치 필드를 임의로 만들지 말라고 못박았다. 서버는 `expedited=true`를
+ * 창고 단위 관리 창고에서 활성 위치가 정확히 하나일 때만 위치 없이 받아 준다(통보 221) — 그
+ * 밖(구역·랙·셀 단위로 관리되는 창고)을 고르게 두면 확정을 눌러야 비로소 400을 만난다. 위치
+ * 입력 칸이 생기기 전까지는 고를 수 있는 목록 자체를 창고 단위 관리 창고로 좁힌다(대응표
+ * 「긴급 직행 위치」).
+ */
 export const toWarehouseOptions = (items: readonly Warehouse[]): WarehouseOption[] =>
-  items.map((item) => ({
-    warehouseId: item.warehouseId,
-    label: `${item.warehouseCode} · ${item.warehouseName}`,
-  }));
+  items
+    .filter((item) => item.managementLevelCode === WAREHOUSE_LEVEL_MANAGED)
+    .map((item) => ({
+      warehouseId: item.warehouseId,
+      label: `${item.warehouseCode} · ${item.warehouseName}`,
+    }));
 
 export const useActiveWarehouses = () => {
   const { client } = useApiClient();

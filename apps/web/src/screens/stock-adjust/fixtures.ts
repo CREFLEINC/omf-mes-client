@@ -498,11 +498,16 @@ export const lotFixtures = [{ lotId: 9701, lotNo: 'SAMPLE-LOT-0001', itemId: 950
 export const reasonGroupFixtures = [
   {
     codeGroupId: 9902,
-    groupCode: 'ADJUST_REASON_SYN_OTHER',
+    groupCode: 'INVENTORY_ADJUSTMENT_REASON_SYN_OTHER',
     groupName: '합성 이웃 그룹',
     isActive: true,
   },
-  { codeGroupId: 9901, groupCode: 'ADJUST_REASON', groupName: '합성 조정 사유', isActive: true },
+  {
+    codeGroupId: 9901,
+    groupCode: 'INVENTORY_ADJUSTMENT_REASON',
+    groupName: '합성 조정 사유',
+    isActive: true,
+  },
 ];
 
 /**

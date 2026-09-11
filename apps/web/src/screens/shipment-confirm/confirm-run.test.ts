@@ -114,9 +114,33 @@ describe('failureReason', () => {
         'lock-unavailable',
         'unknown',
       ] as const
-    ).map(failureReason);
+    ).map((kind) => failureReason(kind));
 
     expect(new Set(reasons).size).toBe(reasons.length);
+    /* `conflictCause`를 못 받았을 때만(계약 밖 값) 예전 공용 문구로 남는다. */
     expect(failureReason('version-conflict')).toBe(t.reasons.versionConflict);
+  });
+
+  /*
+   * ⭐ 통보 221 — `version-conflict`는 원인(user·erpSync·workerLease)마다 다음 행동이 달라
+   * 「다른 처리가 먼저 반영됐습니다」 하나로 뭉뚱그리지 않는다. 단건 저장 충돌이 쓰는 것과
+   * 같은 공용 문구(`messages.conflict`)를 그대로 쓴다.
+   */
+  it('⭐ 낙관적 잠금 경합은 원인마다 다른 공용 문구를 낸다', () => {
+    expect(failureReason('version-conflict', 'user')).toBe(messages.conflict.user);
+    expect(failureReason('version-conflict', 'erpSync')).toBe(messages.conflict.erpSync);
+    expect(failureReason('version-conflict', 'workerLease')).toBe(messages.conflict.workerLease);
+    /* 원인 셋이 서로 다른 문구를 내야 「원인별 처리」라고 말할 수 있다. */
+    expect(
+      new Set([
+        failureReason('version-conflict', 'user'),
+        failureReason('version-conflict', 'erpSync'),
+        failureReason('version-conflict', 'workerLease'),
+      ]).size,
+    ).toBe(3);
+  });
+
+  it('⛔ version-conflict가 아니면 conflictCause를 보지 않는다', () => {
+    expect(failureReason('already-confirmed', 'erpSync')).toBe(t.reasons.alreadyConfirmed);
   });
 });

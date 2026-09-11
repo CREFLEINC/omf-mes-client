@@ -12,10 +12,12 @@ export interface FilterBarProps {
   onReset: () => void;
 }
 
+/*
+ * ⛔ **`shipDate`·`customer` 선택지를 없앴다.** 계약이 실제로 받는 `sort`는 `shippedAt`·
+ * `shipmentNo`뿐이라(통보 219) 그 둘에 대응할 값이 없다 — 남겨 두면 골라도 400이 난다.
+ */
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: 'elapsed', label: t.sortOptions.elapsed },
-  { value: 'shipDate', label: t.sortOptions.shipDate },
-  { value: 'customer', label: t.sortOptions.customer },
 ];
 
 /**

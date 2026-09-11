@@ -999,7 +999,8 @@ describe('StockAdjustScreen — 조정 사유 값 목록', () => {
     const groupRequest = requests.find((request) => request.url.pathname === CODE_GROUPS_PATH);
     const valueRequest = requests.find((request) => request.url.pathname === CODE_VALUES_PATH);
 
-    expect(groupRequest?.url.searchParams.get('q')).toBe('ADJUST_REASON');
+    /* 서버 v0.1.2 구현이 실제로 쓰는 코드 그룹이다 — `ADJUST_REASON`이 아니다(대응표 P0). */
+    expect(groupRequest?.url.searchParams.get('q')).toBe('INVENTORY_ADJUSTMENT_REASON');
     expect(valueRequest?.url.searchParams.get('codeGroupId')).toBe('9901');
   });
 

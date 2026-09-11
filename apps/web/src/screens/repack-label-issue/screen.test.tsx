@@ -1,8 +1,9 @@
 import { messages } from '@omf-mes/i18n';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LABEL_RENDITION_NOT_READY_REASON } from '../../patterns/pop-label-rendition';
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import {
   createStubFetch,
@@ -117,6 +118,11 @@ interface Options {
   handlingUnitTypes?: CodeValue[];
   /** 재구성 사건을 못 찾는다 — 그 줄이 무엇인지 말해야 한다(#1044) */
   noRepackEvent?: boolean;
+  /**
+   * 인쇄 결과 보고 요청을 검사한다. 렌디션이 막힌 뒤로는 «부르지 않아야 하는» 자리를
+   * 확인하는 용도로도 쓴다 — 그림을 못 받으면 인쇄도 없고, 인쇄가 없으면 보고도 없다.
+   */
+  reportWrites?: Request[];
 }
 
 /** 대상 포장의 유형 코드에 붙은 표시명. 화면은 코드가 아니라 이것을 보인다(#1045). */
@@ -153,7 +159,7 @@ const routes = (options: Options): StubRoute[] => [
     respond: (request) => {
       options.pendingRequests?.push(request.clone());
       const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
-      const pendingPages = options.pendingPages ?? [[{ ...handlingUnit, labelIssued: false }]];
+      const pendingPages = options.pendingPages ?? [[{ ...handlingUnit }]];
       const total = pendingPages.reduce((count, rows) => count + rows.length, 0);
 
       return options.pendingFails === true
@@ -253,7 +259,6 @@ const routes = (options: Options): StubRoute[] => [
           ...handlingUnit,
           handlingUnitId: REMAINDER_ID,
           handlingUnitNo: REMAINDER_NO,
-          labelIssued: true,
         },
         contents: [],
       }),
@@ -266,7 +271,6 @@ const routes = (options: Options): StubRoute[] => [
           ...handlingUnit,
           handlingUnitId: OTHER_NEW_ID,
           handlingUnitNo: OTHER_NEW_NO,
-          labelIssued: true,
         },
         contents: [],
       }),
@@ -453,10 +457,13 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request).includes(':report-print'),
-    respond: () =>
-      options.reportFails === true
+    respond: (request) => {
+      options.reportWrites?.push(request.clone());
+
+      return options.reportFails === true
         ? jsonResponse({ message: '보고 실패' }, { status: 500 })
-        : jsonResponse({ ok: true }),
+        : jsonResponse({ ok: true });
+    },
   },
 ];
 
@@ -535,11 +542,10 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
       ...handlingUnit,
       handlingUnitId: HANDLING_UNIT_ID + 1,
       handlingUnitNo: 'HU-SAMPLE-0022',
-      labelIssued: false,
     };
     renderScreen({
       pendingRequests,
-      pendingPages: [[{ ...handlingUnit, labelIssued: false }], [nextHandlingUnit]],
+      pendingPages: [[{ ...handlingUnit }], [nextHandlingUnit]],
     });
 
     /* 둘째 쪽까지 이어 받았는지는 그 줄을 고르는 단추가 섰는지로 잰다 — 번호는 ② 구획이 낸다. */
@@ -840,61 +846,69 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
   });
 
   /*
-   * ⛔ **받았다고 그려지는 것은 아니다.** 200 · `image/png` 여도 내용이 이미지가 아니면
-   * 브라우저가 깨진 아이콘을 놓는다(실측 — 목 서버가 본문에 `"string"` 을 준다).
+   * ⛔⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1 「미구현
+   * 5건」). 원래 이 시험은 「200·image/png 여도 내용이 그림이 아니면 깨진 아이콘 대신 사유를
+   * 말한다」를 쟀다 — 그 갈래는 그림을 «받았을 때만» 성립하는데, 이제는 아예 받으러 가지
+   * 않아 항상 `renditionFailed` 로 정착한다. 그림이 오지 않는다는 사실 자체(네트워크 요청도
+   * 나가지 않는다)로 다시 잰다.
    */
-  it('라벨이 그려지지 않으면 깨진 그림 대신 사유를 말한다', async () => {
-    await renderSelectedScreen({ issueCount: 0 });
+  it('그림을 받으러 가지 않고 renditionFailed 로 정착한다 — 네트워크 요청도 나가지 않는다', async () => {
+    const renditionCalls: number[] = [];
+    await renderSelectedScreen({ issueCount: 0, renditionCalls });
 
     await screen.findByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
-    const image = await screen.findByAltText(t.preview.alt);
-    fireEvent.error(image);
-
-    expect(await screen.findByText(t.preview.notDrawable)).toBeInTheDocument();
-    /*
-     * ⛔ **`toBeVisible()` 로 재지 않는다.** jsdom 은 `hidden` 속성을 그대로 존중하지만
-     * 브라우저에서는 이 이미지의 `display: block` 이 그것을 이겨 깨진 아이콘이 남았다(실측).
-     * 「문서에 없다」로 재야 두 곳이 같은 판정을 한다.
-     */
+    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
+    expect(renditionCalls).toHaveLength(0);
     expect(screen.queryByAltText(t.preview.alt)).not.toBeInTheDocument();
   });
 
-  /* 아래 [닫기]와 같은 일을 하는 X 를 두지 않는다 — 같은 동작이 두 자리에 있으면 안 된다. */
-  it('미리보기 창에 닫기가 한 자리만 있다', async () => {
+  /*
+   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 미리보기 창(`PreviewDialog`)은
+   * 그림을 받았을 때만 열린다(`screen.tsx` 의 `open={phase === 'preview' || phase ===
+   * 'printing'}`) — 그림을 아예 받지 않으니 이 창 자체가 더는 뜨지 않는다. 「닫기가 한
+   * 자리만 있다」는 원래 뜻(같은 동작을 두 군데 두지 않는다)은, 창이 안 뜨니 복구 동작
+   * (재시도)이 정말 하나뿐인가로 옮겨 잰다.
+   */
+  it('그림을 받지 못하면 미리보기 창 자체가 뜨지 않는다 — 복구 동작은 재시도 하나뿐이다', async () => {
     await renderSelectedScreen({ history: [makeIssue({ printOutcome: 'SUCCEEDED' })] });
 
     await clickWhenEnabled(() => screen.getByRole('button', { name: t.issue.preview }));
-    await screen.findByRole('button', { name: t.preview.print });
 
-    expect(screen.getAllByRole('button', { name: t.preview.close })).toHaveLength(1);
-    expect(screen.queryByRole('button', { name: /닫기|close/i })).toBe(
-      screen.getByRole('button', { name: t.preview.close }),
-    );
+    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.preview.print })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.preview.close })).not.toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: messages.common.retry })).toHaveLength(1);
   });
 
-  it('발행하면 미리보기가 뜨고, 인쇄를 눌러야 프린터로 간다', async () => {
+  /*
+   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 미리보기가 뜨고
+   * 인쇄까지 이어지는 정상 경로를 쟀다 — 그림을 받는 걸음이 막혀 이제 그 경로 자체가 없다.
+   * ⭐ **발행(`POST /app/document-issues`)은 그대로 된다** — 막힌 것은 그 뒤의 그림 취득뿐임을
+   * 함께 짚는다.
+   */
+  it('발행은 되어도 미리보기·인쇄는 막힌다 — 셸에 아무것도 보내지 않는다', async () => {
     const save = vi.fn(async () => 'ok');
     (window as unknown as { pop?: { rendition?: RenditionShell } }).pop = {
       rendition: { save },
     };
+    const issueWrites: Request[] = [];
+    const renditionCalls: number[] = [];
 
-    await renderSelectedScreen({ issueCount: 0 });
+    await renderSelectedScreen({ issueCount: 0, issueWrites, renditionCalls });
 
     await screen.findByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
 
-    expect(await screen.findByAltText(t.preview.alt)).toBeInTheDocument();
-    /* 아직 종이는 나가지 않았다 — 사용자가 보고 나서 누른다. */
-    expect(save).not.toHaveBeenCalled();
-
-    await userEvent.click(screen.getByRole('button', { name: t.preview.print }));
-
+    /* 발행 기록은 남는다 — 막힌 것은 그 뒤의 그림 취득이지 발행이 아니다. */
     await waitFor(() => {
-      expect(save).toHaveBeenCalledTimes(1);
+      expect(issueWrites).toHaveLength(1);
     });
-    expect(await screen.findByText(t.print.succeeded)).toBeInTheDocument();
+    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
+    expect(screen.queryByAltText(t.preview.alt)).not.toBeInTheDocument();
+    expect(renditionCalls).toHaveLength(0);
+    expect(save).not.toHaveBeenCalled();
   });
 
   /* 발행 이력은 회차로 쌓인다(K-1) — 앞 회차를 덮지 않는다. */
@@ -931,8 +945,14 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
   /*
    * ⛔ **목록의 첫 줄이 최신이라고 가정하지 않는다** — 계약이 정렬을 보장하지 않아 오름차순으로
    * 오면 첫 줄이 1회차다(독립 검증 실측).
+   *
+   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 실제 렌디션
+   * 요청이 «어느 회차의 documentIssueLogId 로» 나가는지를 보고 최고 회차 선택을 확인했다 —
+   * 이제 그 요청 자체가 나가지 않아 그 방법으로는 더 잴 수 없다. 대신 최고 회차를 골라도(즉
+   * 미리보기가 열려도) 순서와 무관하게 네트워크 요청은 여전히 0건임을 잰다 — 회차 선택
+   * 로직이 남아 있다는 것은 미리보기 단추가 활성화된다는 사실로 이미 확인된다(바로 위 시험).
    */
-  it('오름차순으로 와도 가장 높은 회차를 연다', async () => {
+  it('이력이 오름차순으로 와도 미리보기 시도가 네트워크를 부르지 않는다', async () => {
     const renditionCalls: number[] = [];
     await renderSelectedScreen({
       renditionCalls,
@@ -944,10 +964,8 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
 
     await clickWhenEnabled(() => screen.getByRole('button', { name: t.issue.preview }));
 
-    await waitFor(() => {
-      expect(renditionCalls).toContain(44302);
-    });
-    expect(renditionCalls).not.toContain(44301);
+    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
+    expect(renditionCalls).toHaveLength(0);
   });
 
   it('발행 이력이 없으면 그 사실을 말한다', async () => {
@@ -1096,21 +1114,25 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
   /*
    * ⛔ **종이는 나왔다.** 「인쇄하지 못했다」고 말하고 「다시 인쇄」를 권하면 같은 라벨이 한
    * 장 더 나온다(독립 검증 실측).
+   *
+   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 「보고만 실패」는 «인쇄까지는
+   * 됐다»는 전제가 있어야 하는데 그림을 못 받으니 인쇄 자체가 없다 — 그 전제가 성립하는
+   * `reportFailed` 상태는 이제 이 화면에서 이를 수 없다. 대신 그림을 못 받으면 셸에도(인쇄)
+   * 서버 보고에도 아예 닿지 않는다는, 지금 실제로 성립하는 사실을 잰다.
    */
-  it('보고만 실패하면 다시 인쇄를 권하지 않는다', async () => {
+  it('그림을 받지 못하면 셸에도 인쇄 결과 보고에도 닿지 않는다', async () => {
     const save = vi.fn(async () => 'ok');
     (window as unknown as { pop?: { rendition?: RenditionShell } }).pop = { rendition: { save } };
+    const reportWrites: Request[] = [];
 
-    await renderSelectedScreen({ issueCount: 0, reportFails: true });
+    await renderSelectedScreen({ issueCount: 0, reportWrites });
 
     await screen.findByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
-    await userEvent.click(await screen.findByRole('button', { name: t.preview.print }));
 
-    expect(await screen.findByText(t.print.reportFailedTitle)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.print.retry })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: t.print.reportRetry })).toBeInTheDocument();
-    expect(save).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
+    expect(save).not.toHaveBeenCalled();
+    expect(reportWrites).toHaveLength(0);
   });
 
   /* ⛔ 회차만 오르고 빠져나갈 길이 없는 자리를 두지 않는다. */
@@ -1124,61 +1146,51 @@ describe('RepackLabelIssueScreen — 발행 실패', () => {
     expect(screen.getByRole('button', { name: messages.common.retry })).toBeEnabled();
   });
 
-  /* ⛔ 인쇄 실패를 발행 실패로 말하지 않는다(K-4) — 복구는 실패 사유의 새 회차다(K-7). */
-  it('인쇄가 실패해도 발행 기록이 남았다고 말한다', async () => {
+  /*
+   * ⛔ 인쇄 실패를 발행 실패로 말하지 않는다(K-4) — 복구는 실패 사유의 새 회차다(K-7).
+   *
+   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 셸이 인쇄에
+   * 실패한 뒤 「다시 발행」이 `PRINT_FAILURE` 사유의 새 회차를 만드는 것을 쟀다 — 이제
+   * 그림을 못 받아 인쇄까지 가지 못하므로 그 실패 사유 자체가 나지 않는다. 대신 그림을 못
+   * 받은 것도 **발행 실패로 말하지 않는다**는 같은 원칙을, 지금 실제로 있는 자리
+   * (`renditionFailed` 배너의 «재시도»)에서 잰다 — 재시도는 미리보기를 다시 열 뿐 새 발행
+   * 요청을 보내지 않는다(회차가 이유 없이 오르지 않는다).
+   */
+  it('그림을 받지 못해도 발행 실패로 말하지 않는다 — 재시도가 새 회차를 만들지 않는다', async () => {
     const issueWrites: Request[] = [];
-    (window as unknown as { pop?: { rendition?: RenditionShell } }).pop = {
-      rendition: {
-        save: vi.fn(async () => {
-          throw new Error('용지 걸림');
-        }),
-      },
-    };
 
     await renderSelectedScreen({ issueCount: 0, issueWrites });
 
     await screen.findByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
-    await userEvent.click(await screen.findByRole('button', { name: t.preview.print }));
-
-    expect(await screen.findByText(t.print.failedTitle)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: t.print.retry }));
 
     await waitFor(() => {
-      expect(issueWrites).toHaveLength(2);
+      expect(issueWrites).toHaveLength(1);
     });
-    const retryBody = (await issueWrites[1]?.json()) as {
-      targets: { targetId: number }[];
-      reissueReasonCode?: string;
-    };
-    expect(retryBody.targets).toEqual([
-      { targetTypeCode: 'HANDLING_UNIT', targetId: HANDLING_UNIT_ID },
-    ]);
-    expect(retryBody.reissueReasonCode).toBe('PRINT_FAILURE');
+    await userEvent.click(await screen.findByRole('button', { name: messages.common.retry }));
+
+    expect(await screen.findByText(t.preview.failed)).toBeInTheDocument();
+    expect(issueWrites).toHaveLength(1);
   });
 
   /*
    * ⛔ **셸·서버가 준 오류 문구를 작업자에게 보이지 않는다.** 현장에서 할 일은 프린터를
    *    확인한 뒤 실패 사유로 재발행하는 것이고, 기술 사유는 그 판단을 돕지 않으면서 화면만
    *    어지럽힌다.
+   *
+   * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 원래 이 시험은 셸이 던진 실패
+   * 문구('용지 걸림')가 새지 않는지를 쟀다 — 이제는 그림을 못 받는 내부 사유
+   * (`LABEL_RENDITION_NOT_READY_REASON`)가 그 자리를 대신한다. 같은 원칙(내부 사유 문자열이
+   * 화면에 그대로 새지 않는다)이 이 사유에도 지켜지는지로 다시 잰다.
    */
   it('실패 사유 원문을 화면에 싣지 않는다', async () => {
-    (window as unknown as { pop?: { rendition?: RenditionShell } }).pop = {
-      rendition: {
-        save: vi.fn(async () => {
-          throw new Error('용지 걸림');
-        }),
-      },
-    };
-
     await renderSelectedScreen({ issueCount: 0 });
 
     await screen.findByText(HANDLING_UNIT_NO);
     await clickWhenEnabled(submitButton);
-    await userEvent.click(await screen.findByRole('button', { name: t.preview.print }));
 
-    await screen.findByText(t.print.failedTitle);
+    await screen.findByText(t.preview.failed);
     expect(screen.getByText(t.print.failedBody)).toBeInTheDocument();
-    expect(screen.queryByText(/용지 걸림/)).not.toBeInTheDocument();
+    expect(screen.queryByText(LABEL_RENDITION_NOT_READY_REASON)).not.toBeInTheDocument();
   });
 });
