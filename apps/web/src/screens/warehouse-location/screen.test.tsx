@@ -491,13 +491,31 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
     expect(requests.some((request) => request.url.pathname === '/mdm/locations')).toBe(false);
   });
 
-  it('Location이 200건을 넘으면 모든 페이지를 모아 마지막 항목까지 표시한다', async () => {
-    const items: Location[] = Array.from({ length: 201 }, (_, index) => ({
+  /**
+   * **쪽이 갈려도 다 모아 온다** — 201번째 위치를 영원히 관리하지 못하는 일이 없게.
+   *
+   * ⭐ **쪽 크기를 «응답이» 말한다.** 모으는 쪽(`queries.ts`)이 다음 쪽이 있는지를
+   * `ceil(total / page.size)` 로 판정하는데, 그 `size` 는 **요청에 보낸 값이 아니라 응답이 준
+   * 값**이다. 그래서 스텁이 작은 쪽 크기를 말하면 **행 셋으로 같은 두 쪽 모으기를 통과한다.**
+   *
+   * ⛔ **행을 201개 만들지 않는다**(#1033). 앞 회차는 실제 쪽 크기(200)를 스텁에도 적어 두어
+   * 두 쪽을 만들려면 201행이 필요했다. 그 201행을 **그리는 비용이 이 시험의 거의 전부**였고
+   * (jsdom 단독 1.9초 · 전체 실행에서 5초 제한을 넘겨 떨어졌다), 정작 재려는 것과는 무관했다.
+   * 실제 브라우저에서는 1000행도 14ms 다 — **느린 것은 행이 아니라 jsdom 이다.**
+   *
+   * ⚠ **행을 줄이되 경계는 그대로 넘는다.** 「100건으로 줄이자」는 답이 될 수 없다 — 한 쪽에
+   * 다 들어와 **위 반복문이 한 번도 돌지 않고**, 쪽 모으기가 깨져도 초록불이 된다.
+   * 지우는 것보다 나쁘다: 없는 줄 알면 다시 만들지만, 이건 있는 줄 알고 방심하게 한다.
+   */
+  it('Location이 한 쪽을 넘으면 모든 쪽을 모아 마지막 항목까지 표시한다', async () => {
+    const items: Location[] = Array.from({ length: 3 }, (_, index) => ({
       ...locationFixtures[0]!,
       locationId: 3000 + index,
       locationCode: `L-${String(index + 1).padStart(3, '0')}`,
       locationName: `Location ${String(index + 1)}`,
     }));
+    /* 스텁이 말하는 쪽 크기. 실제 요청 크기(200)와 달라도 되며, 그 사정은 위 주석에 있다. */
+    const STUB_PAGE_SIZE = 2;
     const { requests, user } = renderScreen(
       [
         warehouseListRoute(),
@@ -505,12 +523,13 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
         {
           match: (request) => isGet(request, '/mdm/locations'),
           respond: (request) => {
-            const page = Number(new URL(request.url).searchParams.get('page'));
-            return jsonResponse(
-              page === 1
-                ? { items: items.slice(0, 200), page: { page: 1, size: 200, total: 201 } }
-                : { items: items.slice(200), page: { page: 2, size: 200, total: 201 } },
-            );
+            const pageNumber = Number(new URL(request.url).searchParams.get('page'));
+            const from = (pageNumber - 1) * STUB_PAGE_SIZE;
+
+            return jsonResponse({
+              items: items.slice(from, from + STUB_PAGE_SIZE),
+              page: { page: pageNumber, size: STUB_PAGE_SIZE, total: items.length },
+            });
           },
         },
         ...lookupRoutes(),
@@ -520,12 +539,26 @@ describe('WarehouseLocationScreen — Location 계층 조회', () => {
 
     const panel = await openLocationTab(user);
 
-    expect(await within(panel).findByRole('button', { name: 'L-201' })).toBeInTheDocument();
-    expect(
-      requests
-        .filter((request) => request.url.pathname === '/mdm/locations')
-        .map((request) => request.url.searchParams.get('page')),
-    ).toEqual(['1', '2']);
+    /* 마지막 항목은 **둘째 쪽에서만** 온다 — 한 쪽만 모았다면 여기서 걸린다. */
+    expect(await within(panel).findByRole('button', { name: 'L-003' })).toBeInTheDocument();
+
+    const locationRequests = requests.filter(
+      (request) => request.url.pathname === '/mdm/locations',
+    );
+
+    expect(locationRequests.map((request) => request.url.searchParams.get('page'))).toEqual([
+      '1',
+      '2',
+    ]);
+
+    /*
+     * ⭐ **요청이 드는 쪽 크기는 스텁이 말하는 것과 다르다.** 스텁이 작아진 뒤로는 이 단언만이
+     * 「화면이 실제로 200씩 달라고 한다」를 지킨다 — 없으면 그 값이 조용히 바뀔 수 있다.
+     */
+    expect(locationRequests.map((request) => request.url.searchParams.get('size'))).toEqual([
+      '200',
+      '200',
+    ]);
   });
 
   it('계층을 depth와 함께 그리고 기본이 펼침 상태다', async () => {

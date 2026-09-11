@@ -4005,7 +4005,20 @@ describe('StocktakingScreen — 마감 성공', () => {
 
     await screen.findByRole('status', { name: t.result.closedLabel });
 
-    expect(currentLocation()).not.toContain('loc=');
+    /*
+     * ⚠ **결과 배지가 떴다고 주소가 바뀐 것은 아니다**(#1072).
+     *
+     * 마감 성공 핸들러는 `setSearchParams` 와 `setResult` 를 **함께** 부르지만 둘이 화면에
+     * 닿는 시점이 다르다 — 결과는 그 커밋에 바로 그려지고 주소는 **라우터를 한 번 더 거친다.**
+     * 배지만 기다리고 주소를 즉시 읽으면 느린 기계에서 한 틱 차이로 갈린다(CI 에서 실제로
+     * 두 번 떨어졌다).
+     *
+     * ⛔ **단언을 약하게 만드는 것이 아니다** — 기다릴 뿐 재는 것은 그대로다.
+     */
+    await waitFor(() => {
+      expect(currentLocation()).not.toContain('loc=');
+    });
+
     expect(screen.getByText(t.empty.closedTitle)).toBeInTheDocument();
     expect(screen.queryByLabelText(t.fields.location)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(t.lineTable.countedQtyLabel(1))).not.toBeInTheDocument();
@@ -4237,10 +4250,18 @@ describe('StocktakingScreen — 조정 등록', () => {
     await closeCount(user);
 
     const result = await screen.findByRole('status', { name: t.result.closedLabel });
+
+    /*
+     * 짝 양성 — 마감이 실제로 주소를 바꿨다(`loc`가 빠졌다). 갈리지 않으면 이 시험은 무의미하다.
+     *
+     * ⚠ **주소는 결과 배지보다 한 틱 늦게 온다**(#1072) — 같은 사정이 위 시험에도 있다.
+     */
+    await waitFor(() => {
+      expect(currentLocation()).toBe(`${ROUTE}${AT_COUNT}`);
+    });
+
     const afterClose = currentLocation();
 
-    /* 짝 양성 — 마감이 실제로 주소를 바꿨다(`loc`가 빠졌다). 갈리지 않으면 이 시험은 무의미하다. */
-    expect(afterClose).toBe(`${ROUTE}${AT_COUNT}`);
     expect(afterClose).not.toBe(`${ROUTE}${AT_LOCATION}`);
 
     await user.click(within(result).getByRole('link', { name: t.actions.adjustment }));
