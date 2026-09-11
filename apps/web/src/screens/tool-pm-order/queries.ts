@@ -1,4 +1,5 @@
 import type { ApiClient, ApiError, components } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 
@@ -96,7 +97,7 @@ export const useBulkOrderCreate = (): BulkOrderResult => {
       const results: OrderOutcome[] = [];
 
       for (const { moldId, body } of bodies) {
-        const key = keys.current.get(moldId) ?? crypto.randomUUID();
+        const key = keys.current.get(moldId) ?? createIdempotencyKey();
 
         keys.current.set(moldId, key);
 

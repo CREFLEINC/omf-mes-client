@@ -1,4 +1,5 @@
 import type { ApiClient, EtagStore } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 
 import { runRequest } from '../../patterns/request';
 import type { WorkOrderReleaseBody } from './issue-request';
@@ -55,7 +56,7 @@ export interface ReleaseKeyHolder {
 
 export const releaseKeyFor = (holder: ReleaseKeyHolder, workOrderId: number): string => {
   if (holder.current === null || holder.current.workOrderId !== workOrderId) {
-    holder.current = { workOrderId, key: crypto.randomUUID() };
+    holder.current = { workOrderId, key: createIdempotencyKey() };
   }
 
   return holder.current.key;

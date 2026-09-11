@@ -1,4 +1,5 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -375,7 +376,7 @@ export const usePackingWorkOutbox = (): Outbox => {
     (entry: Omit<OutboxEntry, 'idempotencyKey'> & { idempotencyKey?: string | null }): void => {
       const queued: OutboxEntry = {
         ...entry,
-        idempotencyKey: entry.idempotencyKey ?? crypto.randomUUID(),
+        idempotencyKey: entry.idempotencyKey ?? createIdempotencyKey(),
       };
 
       setRejection(null);

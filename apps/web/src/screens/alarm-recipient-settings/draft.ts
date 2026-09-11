@@ -1,5 +1,6 @@
 import { messages } from '@omf-mes/i18n';
 
+import { createLocalKey } from '../../patterns/local-key';
 import type {
   DraftError,
   NotificationRecipient,
@@ -9,7 +10,7 @@ import type {
 
 const t = messages.alarmRecipientSettings;
 
-export const emptyRecipient = (key = crypto.randomUUID()): RecipientDraft => ({
+export const emptyRecipient = (key = createLocalKey()): RecipientDraft => ({
   key,
   recipientTypeCode: 'ROLE',
   businessUnitId: '',

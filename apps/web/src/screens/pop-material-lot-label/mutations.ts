@@ -1,4 +1,5 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { fetchLabelRendition, labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
@@ -156,7 +157,7 @@ const reportPrint = async (
     client.POST('/app/document-issues/{documentIssueLogId}:report-print', {
       params: {
         path: { documentIssueLogId },
-        header: { 'Idempotency-Key': crypto.randomUUID(), 'X-Worker-No': workerNo },
+        header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
       },
       body: toPrintReportBody(failureReason),
     }),
@@ -264,7 +265,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
 
           if (lotId === null) {
             const keys = lotKeys.current;
-            const key = keys.get(row.inboundReceiptLineId) ?? crypto.randomUUID();
+            const key = keys.get(row.inboundReceiptLineId) ?? createIdempotencyKey();
             keys.set(row.inboundReceiptLineId, key);
 
             lotId = await createLot(client, row, new Date().toISOString(), workerNo, key);
@@ -284,7 +285,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
            */
           const signature = `${String(lotId)}|${printerName ?? ''}|${reissueReasonCode ?? ''}`;
           const held = issueKeys.get(row.inboundReceiptLineId);
-          const issueKey = held?.signature === signature ? held.key : crypto.randomUUID();
+          const issueKey = held?.signature === signature ? held.key : createIdempotencyKey();
           issueKeys.set(row.inboundReceiptLineId, { key: issueKey, signature });
 
           issue = await createIssue(

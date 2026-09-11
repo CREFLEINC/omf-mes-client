@@ -2,8 +2,10 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
+import { createLocalKey } from '../../patterns/local-key';
 import { MAX_AUTO_ATTEMPTS, isRejected, retryDelayOf } from '../../patterns/outbox-policy';
 import type { ApiError } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 
 import { runRequest, toApiError } from '../../patterns/request';
 import type { HoldDirection } from './codes';
@@ -485,9 +487,9 @@ export const useWorkHoldOutbox = (): Outbox => {
   const enqueueGroup = useCallback((drafts: readonly OutboxDraft[]): void => {
     if (drafts.length === 0) return;
 
-    const groupId = crypto.randomUUID();
+    const groupId = createLocalKey();
     const queued = drafts.map((draft) => ({
-      idempotencyKey: crypto.randomUUID(),
+      idempotencyKey: createIdempotencyKey(),
       groupId,
       ...draft,
     }));

@@ -1,3 +1,4 @@
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -171,7 +172,7 @@ const reportOne = async (
       client.POST('/app/document-issues/{documentIssueLogId}:report-print', {
         params: {
           path: { documentIssueLogId },
-          header: { 'Idempotency-Key': crypto.randomUUID(), 'X-Worker-No': workerNo },
+          header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
         },
         body:
           attempt.kind === 'printed'

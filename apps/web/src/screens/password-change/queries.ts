@@ -1,3 +1,4 @@
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useMutation } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 
@@ -195,7 +196,7 @@ export const useChangePassword = (options: PasswordChangeOptions): PasswordChang
     const idempotencyKey =
       previous !== null && isSameWrite(previous.draft, draft)
         ? previous.idempotencyKey
-        : crypto.randomUUID();
+        : createIdempotencyKey();
 
     send({ draft, idempotencyKey });
   };

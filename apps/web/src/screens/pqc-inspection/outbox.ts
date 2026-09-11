@@ -1,4 +1,5 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -283,7 +284,7 @@ export const useOutbox = (): Outbox => {
   const enqueue = useCallback((body: InspectionResultCreate): void => {
     setRejection(null);
     setEntries((prev) => {
-      const next = [...prev, { idempotencyKey: crypto.randomUUID(), body }];
+      const next = [...prev, { idempotencyKey: createIdempotencyKey(), body }];
       writeStored(next);
 
       return next;

@@ -1,4 +1,5 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -157,7 +158,7 @@ const reportPrint = async (
     client.POST('/app/document-issues/{documentIssueLogId}:report-print', {
       params: {
         path: { documentIssueLogId },
-        header: { 'Idempotency-Key': crypto.randomUUID(), 'X-Worker-No': workerNo },
+        header: { 'Idempotency-Key': createIdempotencyKey(), 'X-Worker-No': workerNo },
       },
       body: toPrintReportBody(failureReason),
     }),
@@ -274,7 +275,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
           const signature = signatureOf(command);
 
           if (issueKey.current?.signature !== signature) {
-            issueKey.current = { signature, key: crypto.randomUUID() };
+            issueKey.current = { signature, key: createIdempotencyKey() };
           }
 
           const issues = await createIssues(client, command, workerNo, issueKey.current.key);

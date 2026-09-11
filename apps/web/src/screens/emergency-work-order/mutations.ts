@@ -1,4 +1,5 @@
 import type { ApiError, components } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
@@ -112,7 +113,7 @@ export const useIssueEmergencyWorkOrder = (): IssueResult => {
 
   const createKeyFor = (signature: string): string => {
     if (createKey.current === null || createKey.current.signature !== signature) {
-      createKey.current = { signature, key: crypto.randomUUID() };
+      createKey.current = { signature, key: createIdempotencyKey() };
     }
 
     return createKey.current.key;
