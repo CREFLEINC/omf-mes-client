@@ -5,6 +5,7 @@ import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import {
   DOCUMENT_TYPE_CODE,
+  HANDLING_UNIT_TYPE_GROUP_CODE,
   REISSUE_REASON_GROUP_CODE,
   TARGET_TYPE_CODE,
   type CodeValue,
@@ -66,6 +67,7 @@ export const repackLabelKeys = {
   history: (handlingUnitId: number) =>
     ['repack-label-issue', 'issue-history', handlingUnitId] as const,
   reissueReasons: ['repack-label-issue', 'reissue-reasons'] as const,
+  handlingUnitTypes: ['repack-label-issue', 'handling-unit-types'] as const,
   remainderCandidates: (handlingUnitId: number) =>
     ['repack-label-issue', 'remainder-candidates', handlingUnitId] as const,
   pendingRows: ['repack-label-issue', 'pending-rows'] as const,
@@ -585,6 +587,34 @@ export const usePrinters = (): UseQueryResult<Printer[]> => {
       );
 
       return data.items;
+    },
+  });
+};
+
+/**
+ * 포장 유형의 표시명.
+ *
+ * ⚠ **판정에 쓰지 않는다** — 읽을 수 있게 하는 것까지다. 못 받아도 화면은 그대로 서고 발행도
+ * 막지 않는다.
+ *
+ * ⛔ 쓰지 않는 값을 걸러 내지 않는다 — 이미 그 유형이 붙은 포장의 칸이 「표시명 없음」으로
+ * 떨어진다.
+ */
+export const useHandlingUnitTypes = (): UseQueryResult<CodeValue[]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: repackLabelKeys.handlingUnitTypes,
+    queryFn: async (): Promise<CodeValue[]> => {
+      return readAllPages(REASON_PAGE_SIZE, (page, size) =>
+        runRequest(() =>
+          client.GET('/mdm/code-values', {
+            params: {
+              query: { codeGroupCode: HANDLING_UNIT_TYPE_GROUP_CODE, page, size },
+            },
+          }),
+        ),
+      );
     },
   });
 };

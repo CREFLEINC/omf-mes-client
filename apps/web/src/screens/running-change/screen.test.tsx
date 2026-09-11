@@ -40,6 +40,14 @@ const IDENTIFIED: PopIdentity = {
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
+/** 보류 칩이 코드가 아니라 이 이름으로 서야 한다(#1045). */
+const LOT_STATUS_VALUE = {
+  codeValueId: 2,
+  code: 'INSPECTION_PENDING',
+  codeName: '검사 대기',
+  isActive: true,
+};
+
 interface Options {
   canInputMaterial?: boolean;
   /** 게이팅 조회가 실패한다 */
@@ -56,6 +64,10 @@ interface Options {
   noChangeReasons?: boolean;
   /** 부분 검색으로만 걸린다 — 읽은 코드와 찾은 LOT 번호가 달라진다 */
   partialOnly?: boolean;
+  /** 품질 상태 표시명을 받지 못한다 */
+  noLotStatuses?: boolean;
+  /** 스캔한 LOT 이 보류 중이다 — 그때만 상태 칩이 선다 */
+  heldPart?: boolean;
   /** 교체 등록 요청을 담아 둔다 */
   writes?: Request[];
   /** 교체 등록 응답 상태. 기본 201 */
@@ -63,6 +75,12 @@ interface Options {
   /** 교체 등록이 **통신 실패**한다. 거부와 달리 큐에 남는다 */
   writeFails?: boolean;
 }
+
+/** 스캔으로 걸리는 LOT. 보류 중이면 품질 상태 칩이 선다. */
+const scannedLot = (options: Options) =>
+  options.heldPart === true
+    ? makeLot({ held: true, statusCode: LOT_STATUS_VALUE.code })
+    : makeLot();
 
 const routes = (options: Options): StubRoute[] => [
   {
@@ -137,12 +155,12 @@ const routes = (options: Options): StubRoute[] => [
       const query = new URL(request.url).searchParams;
       /* 1단계 — LOT 번호 정확 일치. 다른 값이면 걸리지 않는다. */
       if (query.get('lotNo') === NEW_LOT_NO) {
-        return jsonResponse({ items: [makeLot()], page: { page: 1, size: 20, total: 1 } });
+        return jsonResponse({ items: [scannedLot(options)], page: { page: 1, size: 20, total: 1 } });
       }
 
       /* 2단계 — 외부 식별자·번호 일부로 걸린다. 읽은 코드와 찾은 번호가 다르다. */
       if (options.partialOnly === true && query.get('q') !== null) {
-        return jsonResponse({ items: [makeLot()], page: { page: 1, size: 20, total: 1 } });
+        return jsonResponse({ items: [scannedLot(options)], page: { page: 1, size: 20, total: 1 } });
       }
 
       return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
@@ -171,13 +189,21 @@ const routes = (options: Options): StubRoute[] => [
   {
     /* 교체 사유 값 목록 — 고객이 마스터에서 채운다(스펙 §4-A). 기본 목에서는 한 건 온다. */
     match: (request) => pathOf(request) === '/mdm/code-values',
-    respond: () =>
-      jsonResponse({
+    respond: (request) => {
+      /* 품질 상태는 교체 사유와 다른 그룹이다 — 한 갈래로 묶으면 사유 목록에 상태가 섞인다. */
+      if (new URL(request.url).searchParams.get('codeGroupCode') === 'LOT_STATUS') {
+        const items = options.noLotStatuses === true ? [] : [LOT_STATUS_VALUE];
+
+        return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+      }
+
+      return jsonResponse({
         items: options.noChangeReasons
           ? []
           : [{ codeValueId: 1, code: 'DEFECT', codeName: '부품 불량' }],
         page: { page: 1, size: 100, total: options.noChangeReasons ? 0 : 1 },
-      }),
+      });
+    },
   },
   {
     match: (request) => pathOf(request) === '/mdm/uoms',
@@ -399,6 +425,31 @@ describe('러닝체인지 화면 — 교체 대상 모집단', () => {
     /* 줄마다 그 줄의 LOT 이 선다 — 목록이 다른 데서 오면 이 짝이 어긋난다. */
     expect(names[0]).toContain(OLD_LOT_NO);
     expect(names[1]).toContain(NEW_LOT_NO);
+  });
+
+  /* #1045 — 현장은 `INSPECTION_PENDING` 이 무엇인지도, 무엇을 하면 풀리는지도 모른다. */
+  it('보류 칩을 공통코드 표시명으로 보인다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ heldPart: true });
+
+    await screen.findByText(OLD_LOT_NO);
+    await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
+
+    expect(await screen.findByText(LOT_STATUS_VALUE.codeName)).toBeInTheDocument();
+    expect(screen.queryByText(LOT_STATUS_VALUE.code)).not.toBeInTheDocument();
+  });
+
+  /* 표시명을 못 받았을 때만 코드를 보이되, 없다는 사실을 함께 적는다 — 이름을 지어내지 않는다. */
+  it('표시명을 못 받으면 코드와 함께 표시명이 없다고 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ heldPart: true, noLotStatuses: true });
+
+    await screen.findByText(OLD_LOT_NO);
+    await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
+
+    expect(
+      await screen.findByText(t.replace.statusUnknown(LOT_STATUS_VALUE.code)),
+    ).toBeInTheDocument();
   });
 
   /* #1046 — 화살표 양쪽이 같은 값이면 무엇이 무엇으로 바뀌는지 읽히지 않는다. */

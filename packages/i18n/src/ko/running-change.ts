@@ -108,6 +108,14 @@ export const runningChange = {
   replace: {
     partLabel: '신규 부품',
     partNone: '신규 부품 LOT 을 먼저 스캔 해주세요.',
+    /*
+     * 보류 칩의 품질 상태 — 공통코드로 표시명을 푼다. ⛔ **코드를 그대로 세우지 않는다**:
+     * 현장은 `INSPECTION_PENDING` 이 무엇인지도, 무엇을 하면 풀리는지도 모른다.
+     */
+    statusLoading: '상태를 확인하는 중',
+    statusFailed: '상태를 확인하지 못했습니다',
+    /* 표시명을 못 받았을 때만 코드를 보인다. 이름을 지어내지 않는다(전례 #1022). */
+    statusUnknown: (code: string) => `${code} (표시명 없음)`,
     clearPart: '지우기',
     targetLabel: '교체 대상',
     targetPlaceholder: '교체 대상을 고르세요',

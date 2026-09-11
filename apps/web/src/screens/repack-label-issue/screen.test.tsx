@@ -112,7 +112,19 @@ interface Options {
   /** 발행 이력 서버 쪽별 응답 */
   historyPages?: ReturnType<typeof makeIssue>[][];
   historyRequests?: Request[];
+  /** 포장 유형 공통코드. 기본은 `BOX` 한 값 */
+  handlingUnitTypes?: CodeValue[];
 }
+
+/** 대상 포장의 유형 코드에 붙은 표시명. 화면은 코드가 아니라 이것을 보인다(#1045). */
+const HANDLING_UNIT_TYPE_VALUE: CodeValue = {
+  codeValueId: 9201,
+  codeGroupId: 920,
+  code: 'BOX',
+  codeName: '박스',
+  displayOrder: 1,
+  isActive: true,
+};
 
 const defaultReasons = [
   {
@@ -303,6 +315,16 @@ const routes = (options: Options): StubRoute[] => [
   {
     match: (request) => pathOf(request) === '/mdm/code-values',
     respond: (request) => {
+      const group = new URL(request.url).searchParams.get('codeGroupCode');
+
+      /* 포장 유형은 재발행 사유와 다른 그룹이다 — 한 갈래로 묶으면 사유 쪽 쪽수까지 흐려진다. */
+      if (group === 'HANDLING_UNIT_TYPE') {
+        return jsonResponse({
+          items: options.handlingUnitTypes ?? [HANDLING_UNIT_TYPE_VALUE],
+          page: { page: 1, size: 100, total: options.handlingUnitTypes?.length ?? 1 },
+        });
+      }
+
       options.reasonRequests?.push(request.clone());
       const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
       const pages = options.reasonPages ?? [defaultReasons];
@@ -490,6 +512,23 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
 
     expect(await screen.findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
     expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
+  });
+
+  /* #1045 — 현장은 `BOX` 를 읽지 않는다. 같은 값을 다른 화면은 「박스」로 쓴다. */
+  it('포장 유형을 공통코드 표시명으로 보인다', async () => {
+    await renderSelectedScreen({ lotIds: [LOT_A_ID] });
+
+    expect(await screen.findByText(HANDLING_UNIT_TYPE_VALUE.codeName)).toBeInTheDocument();
+    expect(screen.queryByText(HANDLING_UNIT_TYPE_VALUE.code)).not.toBeInTheDocument();
+  });
+
+  /* 표시명을 못 받았을 때만 코드를 보이되, 없다는 사실을 함께 적는다 — 이름을 지어내지 않는다. */
+  it('표시명을 못 받으면 코드와 함께 표시명이 없다고 적는다', async () => {
+    await renderSelectedScreen({ lotIds: [LOT_A_ID], handlingUnitTypes: [] });
+
+    expect(
+      await screen.findByText(t.handlingUnit.typeUnknown(HANDLING_UNIT_TYPE_VALUE.code)),
+    ).toBeInTheDocument();
   });
 
   /*

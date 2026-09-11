@@ -21,6 +21,7 @@ import {
   useIssueStanding,
   usePendingRepackRows,
   usePrinters,
+  useHandlingUnitTypes,
   useReissueReasons,
   useRemainderCandidates,
 } from './queries';
@@ -78,6 +79,8 @@ export const RepackLabelIssueScreen = () => {
   const remainder = useRemainderCandidates(selectedHandlingUnitId);
   const printers = usePrinters();
   const reasons = useReissueReasons();
+  /* 《대상 포장》의 유형 칸이 코드가 아니라 표시명으로 서게 한다(#1045). */
+  const handlingUnitTypes = useHandlingUnitTypes();
   const printRunner = useIssuePrintRunner(entry.workerNo);
 
   const standing = standingQuery.data ?? UNKNOWN_STANDING;
@@ -344,6 +347,15 @@ export const RepackLabelIssueScreen = () => {
               handlingUnit={handlingUnit.data.handlingUnit}
               rows={contents.rows}
               namesFailed={contents.isNameError}
+              types={{
+                entries: (handlingUnitTypes.data ?? []).map((value) => ({
+                  value: value.code,
+                  label: value.codeName,
+                  isActive: value.isActive,
+                })),
+                isError: handlingUnitTypes.isError,
+                isLoading: handlingUnitTypes.isPending,
+              }}
             />
           )}
         </Card>

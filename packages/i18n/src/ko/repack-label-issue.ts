@@ -96,6 +96,14 @@ export const repackLabelIssue = {
     itemColumn: '품목',
     qtyColumn: '수량',
     unknownValue: '—',
+    /*
+     * 포장 유형 — 공통코드로 표시명을 푼다. ⛔ **코드를 그대로 세우지 않는다**(#1045):
+     * 현장은 `BOX` 를 읽지 않고, 같은 값을 다른 화면은 「박스」로 쓴다.
+     */
+    typeLoading: '유형을 확인하는 중',
+    typeFailed: '유형을 확인하지 못했습니다',
+    /* 표시명을 못 받았을 때만 코드를 보인다. 이름을 지어내지 않는다(전례 #1022). */
+    typeUnknown: (code: string): string => `${code} (표시명 없음)`,
     empty: '이 포장에 담긴 내용물이 없습니다.',
     /** ⛔ 「모른다」를 「없다」로 말하지 않는다(G-9) — 아직 받는 중인 것과 못 받은 것을 가른다. */
     loading: '대상 포장을 불러오는 중입니다.',
