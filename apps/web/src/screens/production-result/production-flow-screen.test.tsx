@@ -830,8 +830,17 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
-    /* ⛔ 손짓 한 번으로 끝난다 — 되묻는 팝업이 끼어들지 않는다. */
-    await waitFor(() => expect(savedCount(writes)).toBe(1));
+    /*
+     * ⛔ 손짓 한 번으로 끝난다 — 되묻는 팝업이 끼어들지 않는다.
+     *
+     * ⚠ 건수는 **발행·인쇄까지 끝난 뒤에** 센다. `waitFor` 로 1 에 닿는 순간 재면 뒤따라
+     *    오는 둘째 요청을 놓친다 — 되돌릴 수 없는 쓰기라 흐름이 멎은 자리에서 센다(이 파일
+     *    맨 앞 시험이 쓰는 자리와 같다).
+     */
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
+
+    expect(savedCount(writes)).toBe(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
