@@ -152,7 +152,14 @@ export const ProductionFlowScreen = () => {
    * 이 작업지시의 잔여수량 — **서버가 낸 값을 쓴다**(`quantity-draft`). 화면이 식을 새로
    * 세우지 않는다. 받지 못했으면 `null` 이고, 그것은 0 이 아니라 «모른다»다.
    */
-  const remaining = remainingQty(workOrder.data);
+  /*
+   * ⚠ **음수로 온다.** 「지시 수량 − 양품 누계」라, 이미 지시를 넘겨 만든 지시는 `-4` 처럼
+   *    내려온다(계약 `varianceQty` 설명 — 「양수면 미달분, 음수면 초과분」). 그대로 적으면
+   *    「잔여 -4 EA」가 되어 읽는 사람이 음수를 수량으로 읽는다. 더 남은 것이 없다는 뜻이므로
+   *    **0 으로 세운다** — 판정은 달라지지 않는다(0 이든 -4 든 넣는 수량은 전부 초과다).
+   */
+  const reportedRemaining = remainingQty(workOrder.data);
+  const remaining = reportedRemaining === null ? null : Math.max(0, reportedRemaining);
   /** 지금 입력이 잔여를 넘는가. 잔여를 모르면 넘는지도 모른다 — 그때는 묻지 않는다. */
   const isOverrun = exceedsRemaining(actualQty, remaining);
   const tagMissing =
