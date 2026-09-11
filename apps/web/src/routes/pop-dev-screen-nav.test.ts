@@ -33,6 +33,16 @@ describe('개발용 화면 이동 목록', () => {
     expect(POP_DEV_SCREENS.map((screen) => screen.path)).not.toContain(POP_DEV_ENTRY_PATH);
   });
 
+  /*
+   * ⛔ **사번은 진입값이 아니다**(#1041). 리터럴로 박아 두면 진입 화면에서 지정한 작업자를
+   * 주소가 덮어, 남는 기록이 하지 않은 사람 앞으로 간다 — 시험에서 실제로 그렇게 됐다.
+   */
+  it('이동 주소에 사번을 적지 않는다', () => {
+    for (const { query } of POP_DEV_SCREENS) {
+      expect(query ?? '').not.toMatch(/workerNo=/);
+    }
+  });
+
   /* 진입값은 주소에 실려 나가야 뜻이 있다 — 물음표를 빠뜨리면 경로의 일부가 된다. */
   it('진입값을 적은 화면은 물음표로 시작한다', () => {
     for (const { query } of POP_DEV_SCREENS) {
