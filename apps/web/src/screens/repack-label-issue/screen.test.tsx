@@ -32,6 +32,7 @@ import {
   makeIssue,
   readyPrinter,
 } from './fixtures';
+import { localDateTimeText } from './formatting';
 import type { RenditionShell } from './print';
 import { RepackLabelIssueScreen } from './screen';
 import type { CodeValue, HandlingUnit } from './types';
@@ -112,7 +113,21 @@ interface Options {
   /** 발행 이력 서버 쪽별 응답 */
   historyPages?: ReturnType<typeof makeIssue>[][];
   historyRequests?: Request[];
+  /** 포장 유형 공통코드. 기본은 `BOX` 한 값 */
+  handlingUnitTypes?: CodeValue[];
+  /** 재구성 사건을 못 찾는다 — 그 줄이 무엇인지 말해야 한다(#1044) */
+  noRepackEvent?: boolean;
 }
+
+/** 대상 포장의 유형 코드에 붙은 표시명. 화면은 코드가 아니라 이것을 보인다(#1045). */
+const HANDLING_UNIT_TYPE_VALUE: CodeValue = {
+  codeValueId: 9201,
+  codeGroupId: 920,
+  code: 'BOX',
+  codeName: '박스',
+  displayOrder: 1,
+  isActive: true,
+};
 
 const defaultReasons = [
   {
@@ -151,8 +166,41 @@ const routes = (options: Options): StubRoute[] => [
   },
   {
     match: (request) => pathOf(request).endsWith('/repack-events'),
-    respond: () =>
-      jsonResponse({
+    respond: (request) => {
+      /* 재구성으로 생기지 않은 포장 — 서버가 0건이라 답한다(#1044). */
+      if (options.noRepackEvent === true) {
+        return jsonResponse({ items: [] });
+      }
+
+      /*
+       * ⭐ **기본은 «사건이 있는» 줄이다.** 이 목록이 세우는 것은 재구성으로 생긴 포장이므로
+       *    그쪽이 보통이고, 사건을 못 찾은 줄은 `noRepackEvent` 로만 나온다 — 기본이 0건이면
+       *    두 갈래가 같은 것이 되어 「사건 있는 줄」 대조군이 사라진다.
+       */
+      if (options.hasRemainder !== true) {
+        return jsonResponse({
+          items: [
+            {
+              repackEventId: 880,
+              repackTypeCode: 'MERGE',
+              performedBy: 7001,
+              occurredAt: '2026-09-09T06:12:00.000Z',
+              lines: [
+                {
+                  handlingUnitId: Number(pathOf(request).split('/').at(-2)),
+                  roleCode: 'RESULT',
+                  itemId: ITEM_ID,
+                  lotId: LOT_A_ID,
+                  qtyBefore: 0,
+                  qtyAfter: 80,
+                },
+              ],
+            },
+          ],
+        });
+      }
+
+      return jsonResponse({
         items:
           options.hasRemainder === true
             ? [
@@ -194,7 +242,8 @@ const routes = (options: Options): StubRoute[] => [
                 },
               ]
             : [],
-      }),
+      });
+    },
   },
   {
     match: (request) => pathOf(request) === `/inventory/handling-units/${String(REMAINDER_ID)}`,
@@ -303,6 +352,24 @@ const routes = (options: Options): StubRoute[] => [
   {
     match: (request) => pathOf(request) === '/mdm/code-values',
     respond: (request) => {
+      const group = new URL(request.url).searchParams.get('codeGroupCode');
+
+      /* 포장 유형은 재발행 사유와 다른 그룹이다 — 한 갈래로 묶으면 사유 쪽 쪽수까지 흐려진다. */
+      if (group === 'HANDLING_UNIT_TYPE') {
+        /*
+         * ⭐ **서버처럼 군다** — 계약의 기본은 「사용 중인 것만」이고, 미사용 값은 화면이
+         *    `includeInactive` 를 켜야 온다(공유계약 G-8). 목이 늘 다 내려 주면 화면이 그것을
+         *    안 켜도 시험이 통과해, 폐기된 유형이 붙은 옛 포장이 깨지는 것을 못 잡는다.
+         */
+        const all = options.handlingUnitTypes ?? [HANDLING_UNIT_TYPE_VALUE];
+        const items =
+          new URL(request.url).searchParams.get('includeInactive') === 'true'
+            ? all
+            : all.filter((value) => value.isActive);
+
+        return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
+      }
+
       options.reasonRequests?.push(request.clone());
       const page = Number(new URL(request.url).searchParams.get('page') ?? '1');
       const pages = options.reasonPages ?? [defaultReasons];
@@ -438,6 +505,23 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
     expect(url.searchParams.get('size')).toBe('50');
   });
 
+  /*
+   * #1044 — 사건을 못 찾은 줄이 포장 번호조차 없이 모든 칸 「—」 로 서면, 작업자는 눌러 보기
+   * 전에 무엇인지 알 수 없고 잘못 골라 엉뚱한 라벨을 뽑을 여지가 생긴다.
+   *
+   * ⛔ 줄을 «빼지» 않는다 — 후보를 좁히는 것은 서버 몫이다(계약 `labelIssued=false`).
+   */
+  it('재구성 이력을 못 찾은 줄도 포장 번호와 사유를 적는다', async () => {
+    renderScreen({ noRepackEvent: true });
+
+    expect(await screen.findByText(t.pending.unknownEvent(HANDLING_UNIT_NO))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', {
+        name: t.pending.selectRow(t.pending.unknownEvent(HANDLING_UNIT_NO), HANDLING_UNIT_NO),
+      }),
+    ).toBeEnabled();
+  });
+
   it('발행 대기 조회가 실패하면 다시 조회할 수 있다', async () => {
     renderScreen({ pendingFails: true });
 
@@ -490,6 +574,33 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
 
     expect(await screen.findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
     expect(await screen.findByText(LOT_A_NO)).toBeInTheDocument();
+  });
+
+  /* #1045 — 현장은 `BOX` 를 읽지 않는다. 같은 값을 다른 화면은 「박스」로 쓴다. */
+  it('포장 유형을 공통코드 표시명으로 보인다', async () => {
+    await renderSelectedScreen({ lotIds: [LOT_A_ID] });
+
+    expect(await screen.findByText(HANDLING_UNIT_TYPE_VALUE.codeName)).toBeInTheDocument();
+    expect(screen.queryByText(HANDLING_UNIT_TYPE_VALUE.code)).not.toBeInTheDocument();
+  });
+
+  /* 폐기된 유형이 붙은 옛 포장도 이름으로 읽혀야 한다 — 이름을 푸는 조회는 좁히지 않는다. */
+  it('미사용으로 바뀐 유형도 표시명으로 보인다', async () => {
+    await renderSelectedScreen({
+      lotIds: [LOT_A_ID],
+      handlingUnitTypes: [{ ...HANDLING_UNIT_TYPE_VALUE, isActive: false }],
+    });
+
+    expect(await screen.findByText(HANDLING_UNIT_TYPE_VALUE.codeName)).toBeInTheDocument();
+  });
+
+  /* 표시명을 못 받았을 때만 코드를 보이되, 없다는 사실을 함께 적는다 — 이름을 지어내지 않는다. */
+  it('표시명을 못 받으면 코드와 함께 표시명이 없다고 적는다', async () => {
+    await renderSelectedScreen({ lotIds: [LOT_A_ID], handlingUnitTypes: [] });
+
+    expect(
+      await screen.findByText(t.handlingUnit.typeUnknown(HANDLING_UNIT_TYPE_VALUE.code)),
+    ).toBeInTheDocument();
   });
 
   /*
@@ -704,6 +815,20 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
     await renderSelectedScreen({ history: [] });
 
     expect(await screen.findByRole('button', { name: t.issue.preview })).toBeDisabled();
+  });
+
+  /*
+   * #1043 — 서버 원문(`2026-09-03T01:20:00Z`)이 그대로 서면 발행 대기 칸과 두 표기가 섞이고
+   * 현지 시각과 아홉 시간 어긋나 보인다.
+   */
+  it('발행 이력의 시각을 현지 시각 한 꼴로 적는다', async () => {
+    const issuedAt = '2026-09-03T01:20:00Z';
+    await renderSelectedScreen({ history: [makeIssue({ issuedAt })] });
+
+    expect(
+      await screen.findByText(new RegExp(localDateTimeText(issuedAt, '—'))),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(issuedAt))).not.toBeInTheDocument();
   });
 
   it('발행 이력이 있으면 미리보기를 열 수 있다', async () => {

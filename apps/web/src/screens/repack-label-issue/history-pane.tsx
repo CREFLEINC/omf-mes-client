@@ -1,6 +1,7 @@
 import { Stepper, type StepperItem } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { localDateTimeText } from './formatting';
 import type { DocumentIssue } from './types';
 
 const t = messages.repackLabelIssue.history;
@@ -23,7 +24,11 @@ const stepOf = (issue: DocumentIssue): StepperItem => ({
    * 자리**라서, 회색 완료 표시로 두면 눈에 걸리지 않는다.
    */
   status: issue.printOutcome === 'FAILED' ? 'rejected' : 'complete',
-  description: `${issue.issuedByName} · ${issue.issuedAt} · ${t.outcome[issue.printOutcome]}`,
+  /*
+   * ⛔ **서버 원문을 그대로 찍지 않는다**(#1043). 표준시 문자열이 그대로 서서 발행 대기 칸과
+   *    두 표기가 섞였고, 현지 시각과 아홉 시간 어긋나 보였다.
+   */
+  description: `${issue.issuedByName} · ${localDateTimeText(issue.issuedAt, t.unknownAt)} · ${t.outcome[issue.printOutcome]}`,
 });
 
 export const HistoryPane = ({ issues, isFailed }: HistoryPaneProps) => {

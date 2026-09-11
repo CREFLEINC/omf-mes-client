@@ -87,7 +87,16 @@ export const runningChange = {
     label: '신규 부품 LOT 스캔',
     manualEntry: '직접 입력',
     outcomes: {
-      part: (code: string, lotNo: string) => `${code} → ${lotNo} 을(를) 담았습니다.`,
+      /**
+       * 읽은 코드와 찾은 LOT 이 «다를 때»만 둘을 잇는다 — 검색이 번호의 일부·외부 식별자로도
+       * 걸리므로 작업자가 잘못 걸린 것인지 판단할 근거가 된다(`scan.ts`).
+       */
+      partResolved: (code: string, lotNo: string) => `${code} → ${lotNo} 을(를) 담았습니다.`,
+      /**
+       * 읽은 코드가 곧 LOT 번호인 경우. ⛔ **화살표 양쪽에 같은 값을 적지 않는다** — 무엇이
+       * 무엇으로 바뀌는지 읽히지 않고, 실제로는 바뀐 것이 없다.
+       */
+      part: (lotNo: string) => `${lotNo} 을(를) 담았습니다.`,
       ambiguous: (count: number) =>
         `여러 건이 걸렸습니다(${count}건). LOT 번호를 그대로 읽어 주세요.`,
       notFound: (code: string) => `${code} 에 해당하는 LOT 을 찾지 못했습니다.`,
@@ -99,6 +108,16 @@ export const runningChange = {
   replace: {
     partLabel: '신규 부품',
     partNone: '신규 부품 LOT 을 먼저 스캔 해주세요.',
+    /*
+     * 보류 칩의 품질 상태 — 공통코드로 표시명을 푼다. ⛔ **코드를 그대로 세우지 않는다**:
+     * 현장은 `INSPECTION_PENDING` 이 무엇인지도, 무엇을 하면 풀리는지도 모른다.
+     */
+    statusLoading: '상태를 확인하는 중',
+    /** 상태 코드 자체가 비었다. 계약상 오지 않지만, 오면 「이름이 없다」가 아니라 값이 없다. */
+    statusEmpty: '—',
+    statusFailed: '상태를 확인하지 못했습니다',
+    /* 표시명을 못 받았을 때만 코드를 보인다. 이름을 지어내지 않는다(전례 #1022). */
+    statusUnknown: (code: string) => `${code} (표시명 없음)`,
     clearPart: '지우기',
     targetLabel: '교체 대상',
     targetPlaceholder: '교체 대상을 고르세요',

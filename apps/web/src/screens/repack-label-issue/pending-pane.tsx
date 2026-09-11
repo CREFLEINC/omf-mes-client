@@ -1,6 +1,7 @@
 import { Button, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { localDateTimeText } from './formatting';
 import type { PendingRepackRow } from './queries';
 
 const t = messages.repackLabelIssue.pending;
@@ -14,23 +15,6 @@ export interface PendingPaneProps {
   onSelect: (handlingUnitId: number) => void;
   onRetry: () => void;
 }
-
-/**
- * 확정 시각 — **날짜와 시각만** 남긴다(도면의 `08-07 14:20`). 해는 적지 않는다: 이 목록은
- * 오늘·어제 일어난 재구성을 보는 자리라 해까지 적으면 좁은 칸에서 시각이 밀린다.
- *
- * ⛔ 읽을 수 없는 값을 지어내지 않는다 — 모르면 모른다고 둔다.
- */
-const occurredText = (value: string | null): string => {
-  if (value === null) return t.unknown;
-
-  const at = new Date(value);
-  if (Number.isNaN(at.getTime())) return t.unknown;
-
-  const pad = (part: number): string => String(part).padStart(2, '0');
-
-  return `${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
-};
 
 /**
  * ① 발행 대기 — **재구성 사건 목록이다**(스펙 §3 ① 도면 · 사용자 지적 2026-09-11).
@@ -68,8 +52,16 @@ export const PendingPane = ({
        */
       render: (row) => {
         const selected = row.handlingUnitId === selectedId;
-        const sourceText =
-          row.sourceNos.length === 0 ? t.unknown : row.sourceNos.join(t.sourceJoin);
+        /*
+         * ⛔ **아무 말도 안 하는 줄을 세우지 않는다**(#1044). 재구성 사건을 못 찾으면 원 포장을
+         *    모르지만 **이 포장의 번호는 안다** — 번호와 「왜 나머지가 비었는지」를 함께 적어,
+         *    눌러 보기 전에 무엇인지 알 수 있게 한다.
+         */
+        const sourceText = !row.hasRepackEvent
+          ? t.unknownEvent(row.handlingUnitNo)
+          : row.sourceNos.length === 0
+            ? t.unknown
+            : row.sourceNos.join(t.sourceJoin);
 
         return (
           <button
@@ -122,7 +114,7 @@ export const PendingPane = ({
       header: t.occurredColumn,
       align: 'center',
       width: '18%',
-      render: (row) => occurredText(row.occurredAt),
+      render: (row) => localDateTimeText(row.occurredAt, t.unknown),
     },
   ];
 
