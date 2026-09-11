@@ -998,6 +998,50 @@ for (const [name, path, check] of DETAILS) {
   console.log(`${ok ? '✔' : '✘'} M-01-05 품목과 자리가 어긋나는 보관조건을 들고 온다`);
 }
 
+/*
+ * 실적 입력 -> 마감 -> 포장 체인의 가운데 토막(#1031).
+ *
+ * 이 경로가 없어 계약 예시 서버가 받아 400 을 돌려주었고, 88단계 시험이 46번에서 멈춰 그
+ * 뒤의 포장 - 납품 라벨까지 볼 수 없었다.
+ *
+ * 이 블록은 씨앗 상태를 바꾼다(현재 생산 LOT 이 마감된다) - 그래서 맨 뒤에 둔다.
+ */
+{
+  const detail = await fetch(`${BASE}/trace/lots/8103`);
+  const etag = detail.headers.get('etag');
+  const headers = {
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'seed-smoke-p-02-04-complete',
+    'X-Worker-No': '100027',
+  };
+  const body = JSON.stringify({
+    businessDate: '2026-09-11',
+    occurredAt: '2026-09-11T11:30:00+09:00',
+  });
+  const complete = await fetch(`${BASE}/trace/lots/8103:complete`, {
+    method: 'POST',
+    headers: { ...headers, 'If-Match': etag ?? '' },
+    body,
+  });
+  const completed = await complete.json();
+  /* 되돌릴 수 없는 전이다 - 다른 키로 다시 부르면 거절한다. */
+  const again = await fetch(`${BASE}/trace/lots/8103:complete`, {
+    method: 'POST',
+    headers: { ...headers, 'Idempotency-Key': 'seed-smoke-p-02-04-complete-again' },
+    body,
+  });
+  const packing = await (await fetch(`${BASE}/trace/lots?workOrderId=11002&completed=true`)).json();
+  const ok =
+    typeof etag === 'string' &&
+    complete.ok &&
+    typeof completed.completedAt === 'string' &&
+    again.status === 409 &&
+    packing.items.some((row) => row.lotId === 8103);
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} P-02-04 생산 LOT 마감이 포장 대상으로 이어진다`);
+}
+
 console.log(
   failed === 0
     ? `\n화면 ${String(ENTRIES.length + DETAILS.length)}자리 전부 열립니다.`
