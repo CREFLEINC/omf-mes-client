@@ -600,13 +600,13 @@ describe('제품 입고·적치 화면', () => {
   });
 
   /* 규칙이 없다고 막으면 미등록 품목이 적치 자체를 못 해 현장이 선다. */
-  it('정해진 자리가 없으면 그 사실을 말하고 확인을 받아 통과시킨다', async () => {
+  it('정해진 위치가 없으면 그 사실을 말하고 확인을 받아 통과시킨다', async () => {
     const user = userEvent.setup();
     mount({ noRule: true });
     await openUnit(user);
     await pickLocation(user);
 
-    expect(await screen.findByText('이 품목에 정해진 자리가 없습니다')).toBeTruthy();
+    expect(await screen.findByText('이 품목에 정해진 위치가 없습니다')).toBeTruthy();
     expect(screen.getByRole('button', { name: '입고·적치 완료' })).toBeDisabled();
 
     await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));
@@ -667,7 +667,7 @@ describe('제품 입고·적치 화면', () => {
     await openUnit(user);
     await pickLocation(user);
 
-    expect(await screen.findByText('이 품목에 정해진 자리가 없습니다')).toBeTruthy();
+    expect(await screen.findByText('이 품목에 정해진 위치가 없습니다')).toBeTruthy();
     expect(screen.queryByText('권장 위치 FG-DEFAULT 이(가) 아닙니다')).toBeNull();
 
     await user.click(screen.getByRole('button', { name: '여기 적치합니다' }));

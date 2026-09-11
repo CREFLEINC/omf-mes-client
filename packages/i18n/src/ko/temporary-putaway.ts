@@ -51,7 +51,7 @@ export const temporaryPutaway = {
     notFound: (code: string) => `${code} 위치를 이 창고에서 찾지 못했습니다`,
     chosen: (code: string, name: string) => `${code} ${name}`,
     /** 임시 유형으로 가려낸 자리가 하나도 없을 때만 전체를 보인다. */
-    unfiltered: '임시 위치로 등록된 자리가 없어 전체 위치를 보입니다',
+    unfiltered: '임시 유형으로 등록된 위치가 없어 전체 위치를 보입니다',
     pickAction: '목록에서 선택',
     /*
      * 선택칸은 임시 유형만 담고 스캔은 창고 전체를 받는다. 손 입력이 없으면 라벨이 상한

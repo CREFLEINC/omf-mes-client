@@ -18,7 +18,7 @@ export const productReceipt = {
     pick: '입고 창고',
     pickPlaceholder: '창고를 고르세요',
     /** 인식표가 든 창고는 지금 있는 자리다. 들어갈 창고는 사람이 정한다. */
-    hint: '물건이 들어갈 창고입니다. 인식표가 지금 있는 자리와 다를 수 있습니다.',
+    hint: '물건이 들어갈 창고입니다. 인식표가 지금 있는 위치와 다를 수 있습니다.',
   },
   unit: {
     legend: '인식표 스캔',
@@ -72,7 +72,7 @@ export const productReceipt = {
     /** 다른 칸에 두면 다음 피킹이 물건을 찾지 못한다. */
     notRecommended: (code: string) => `권장 위치 ${code} 이(가) 아닙니다`,
     /** 규칙이 없다고 막으면 미등록 품목이 적치 자체를 못 해 현장이 선다. */
-    noRule: '이 품목에 정해진 자리가 없습니다',
+    noRule: '이 품목에 정해진 위치가 없습니다',
     noRuleConfirm: '여기 적치합니다',
     rulesLoadFailed: '권장 위치를 확인할 수 없습니다',
   },
