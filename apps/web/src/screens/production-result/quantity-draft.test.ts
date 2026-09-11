@@ -152,3 +152,33 @@ describe('exceedsRemaining — 넘는지만 말하고 막지 않는다', () => {
     expect(exceedsRemaining('', 380)).toBe(false);
   });
 });
+
+/**
+ * **초과는 막지 않고 «말한다»**(#1040).
+ *
+ * ⭐ 설계는 초과 생산을 허용으로 확정했다 — R27 · ✓확정 QA #27 · `P-02-06` §5-4 「초과 생산 —
+ * 막지 않는다 · 화면은 「초과 달성」으로 표시하고 완료를 허용한다」. 그래서 이 판정은 **저장을
+ * 막는 사유에 들어가지 않는다**. 자매 화면 `P-04-03` 이 같은 상황을 차단하는 것은 그 화면의
+ * 별도 규칙이다(§5 「합계 > 처분 수량 → ⛔」) — 거기는 이미 판정된 처분 수량을 나눠 담는 일이라
+ * 상한이 있고, 여기는 만든 것을 적는 일이라 상한이 없다.
+ */
+describe('초과 판정은 저장을 막지 않는다 — #1040', () => {
+  const guard = (goodQty: string): SaveGuard => ({
+    isGateAllowed: true,
+    hasWorkOrder: true,
+    hasWorker: true,
+    hasLot: true,
+    hasPendingPqc: false,
+    draft: { goodQty, remarks: '' },
+  });
+
+  it('잔여를 넘겨도 저장 사유가 서지 않는다', () => {
+    expect(exceedsRemaining('600', 500)).toBe(true);
+    expect(saveBlockReason(guard('600'))).toBeNull();
+  });
+
+  it('0 과 빈 값은 그대로 막는다 — 초과 허용이 그 둘을 열지 않는다', () => {
+    expect(saveBlockReason(guard('0'))).toBe('zeroQty');
+    expect(saveBlockReason(guard(''))).toBe('emptyQty');
+  });
+});

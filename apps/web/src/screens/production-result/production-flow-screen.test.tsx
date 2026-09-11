@@ -770,3 +770,55 @@ describe('ProductionFlowScreen', () => {
     });
   });
 });
+
+/**
+ * **초과를 화면이 말한다 — 막지는 않는다**(#1040).
+ *
+ * ⭐ 판정 함수(`exceedsRemaining`)와 문구는 전부터 있었는데 **화면이 그것을 부르지 않아**
+ * 88단계 시험에서 「지시 500 에 600 을 넣어도 아무 말이 없다」로 나왔다. 여기서 잠그는 것은
+ * «배선»이다 — 판정 자체는 `quantity-draft.test.ts` 가 잰다.
+ *
+ * ⛔ **막히는지는 재지 않는다.** 초과 생산은 허용이다(R27 · ✓확정 QA #27).
+ */
+describe('ProductionFlowScreen — 잔여 초과 표시', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+    Object.defineProperty(window, 'pop', {
+      configurable: true,
+      value: { rendition: { save: vi.fn().mockResolvedValue('/tmp/lot.prn') } },
+    });
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+    Reflect.deleteProperty(window, 'pop');
+  });
+
+  /** 이 W/O 의 잔여는 12 다(`progress.varianceQty`). */
+  const REMAINING = 12;
+
+  it('잔여를 넘겨 치면 초과 달성을 알리고, 출력은 그대로 열어 둔다', async () => {
+    const user = userEvent.setup();
+    renderScreen([]);
+
+    const actual = await screen.findByLabelText(t.flow.quantity.actual);
+    /* 기본값은 목표수량이라 LOT 이 온 뒤에 채워진다 — 먼저 기다리지 않으면 지우기가 앞선다. */
+    await waitFor(() => expect(actual).toHaveValue(String(REMAINING)));
+    await user.clear(actual);
+    await user.type(actual, String(REMAINING + 1));
+
+    expect(await screen.findByText(t.flow.quantity.overrun('1 EA', '12 EA'))).toBeInTheDocument();
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+  });
+
+  it('잔여와 같으면 아무 말도 하지 않는다 — 경계에서 뜨지 않는다', async () => {
+    renderScreen([]);
+
+    const actual = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(actual).toHaveValue(String(REMAINING)));
+
+    expect(screen.queryByText(/초과 달성/u)).not.toBeInTheDocument();
+  });
+});
