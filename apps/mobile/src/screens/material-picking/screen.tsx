@@ -19,6 +19,7 @@ import { useBackStep } from '../../patterns/back-step';
 import { LOT_HOLD_REASON, displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocation } from '../../patterns/locations';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -597,7 +598,7 @@ export const MaterialPickingScreen = () => {
                     </span>
                   )}
                   {each.lotNo === null || each.lotNo === undefined ? null : (
-                    <span className="picking-out__line-lot">{each.lotNo}</span>
+                    <span className="picking-out__line-lot">{formatMaterialLotNo(each.lotNo)}</span>
                   )}
                   {place.length === 0 ? null : (
                     <span className="picking-out__line-note">{place.join(' · ')}</span>
@@ -645,7 +646,10 @@ export const MaterialPickingScreen = () => {
             {scanned === null ? null : matched ? (
               <Chip status="success">{t.scan.matched}</Chip>
             ) : (
-              <AlertBanner variant="error" title={t.scan.mismatch(line.lotNo ?? '')} />
+              <AlertBanner
+                variant="error"
+                title={t.scan.mismatch(formatMaterialLotNo(line.lotNo ?? ''))}
+              />
             )}
 
             {isOutOfSequence(line, lines, queued) ? (
