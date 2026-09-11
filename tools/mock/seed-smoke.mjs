@@ -1096,7 +1096,7 @@ for (const [name, path, check] of DETAILS) {
     byOtherLot.items.length === 0;
 
   if (!ok) failed += 1;
-  console.log(`${ok ? '\u2714' : '\u2718'} P-02-04 라벨 발행 이력이 대상\u00b7LOT 축을 거른다`);
+  console.log(`${ok ? '✔' : '✘'} P-02-04 라벨 발행 이력이 대상·LOT 축을 거른다`);
 }
 
 /*
