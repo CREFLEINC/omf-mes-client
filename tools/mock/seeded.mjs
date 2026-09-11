@@ -3465,6 +3465,22 @@ on('POST', '/maintenance/breakdowns/{breakdownId}/attachments', (params, _q, bod
 
 /* ── 공통 ─────────────────────────────────────────────────── */
 
+const approvalRequestVersions = new Map(
+  state.approvalRequests.map((row) => [row.approvalRequestId, 1]),
+);
+
+/** 목록이 내는 모양 — 결재 단계는 상세의 것이라 걷어낸다(계약 `ApprovalRequest` 에 없다). */
+const withoutSteps = ({ steps: _steps, ...request }) => request;
+
+/** 상세가 내는 모양 — 계약 `ApprovalRequestDetail` 은 요청과 단계를 나눠 담는다. */
+const approvalDetail = (request) => ({
+  request: withoutSteps(request),
+  steps: request.steps ?? [],
+});
+
+const approvalRequestEtag = (request) =>
+  resourceEtag('approval-request', request.approvalRequestId, approvalRequestVersions);
+
 on('GET', '/app/approval-requests', (_p, query, _b, headers) => {
   const requestedByMe = bool(query, 'requestedByMe');
   const workerNo = headers['x-worker-no'] ?? null;
@@ -3476,10 +3492,119 @@ on('GET', '/app/approval-requests', (_p, query, _b, headers) => {
       (row) => bool(query, 'pendingOnly') !== true || row.statusCode === 'PENDING',
       /* 이 셸에는 계정 로그인이 없어 서버가 상신자를 푸는 근거가 사번 헤더뿐이다. */
       (row) => requestedByMe !== true || workerNo === null || row.requestedByWorkerNo === workerNo,
-    ]),
+    ]).map(withoutSteps),
     query,
   );
 });
+
+/*
+ * 승인 요청 한 건 — **결재의 잠금 토큰이 이 응답으로만 온다**(#1032).
+ *
+ * ⚠ 이 경로가 씨앗에 없어 계약 예시 서버가 답했다. 목록에는 `AP-2026-000031`(IQC_SKIP)이
+ *   보이는데 상세는 예시의 다른 건이 떴고, 예시에는 `ETag` 가 없어 화면이 **승인 요청을
+ *   아예 내지 못했다** — 「최신 정보를 불러오는 중입니다」에서 멈춘다.
+ */
+on('GET', '/app/approval-requests/{approvalRequestId}', (params) => {
+  const request = state.approvalRequests.find(
+    (row) => row.approvalRequestId === Number(params.approvalRequestId),
+  );
+
+  return request === undefined
+    ? null
+    : {
+        status: 200,
+        created: approvalDetail(request),
+        headers: { ETag: approvalRequestEtag(request) },
+      };
+});
+
+/**
+ * 결재 한 단계를 적는다. **승인은 다음 단계로 넘기고, 마지막 단계면 요청이 승인으로 닫힌다.**
+ * 반려는 그 자리에서 요청을 닫는다 — 되돌리는 오퍼레이션은 계약에 없다(공유계약 J-6).
+ */
+const decideApproval = (params, body, headers, decisionCode) => {
+  const request = state.approvalRequests.find(
+    (row) => row.approvalRequestId === Number(params.approvalRequestId),
+  );
+  if (request === undefined) return null;
+
+  return idempotent(
+    `app.approval-requests:${params.approvalRequestId}:${decisionCode}`,
+    headers,
+    () => {
+      if (headers['if-match'] === undefined) {
+        return {
+          status: 400,
+          created: { code: 'IF_MATCH_REQUIRED', message: 'If-Match 가 필요합니다.', errors: [] },
+        };
+      }
+
+      if (!matchesEtag(headers, approvalRequestEtag(request))) return conflict();
+
+      /* 결재는 되돌릴 수 없다 — 이미 닫힌 요청은 다시 결재하지 않는다(공유계약 J-6). */
+      if (request.statusCode !== 'PENDING') {
+        return {
+          status: 400,
+          created: {
+            code: 'STATE_LOCKED',
+            message: '이미 결재가 끝난 요청입니다.',
+            errors: [],
+          },
+        };
+      }
+
+      /* 반려는 의견이 필수다 — 상신자가 무엇을 고쳐야 하는지 알아야 재상신이 선다(A-12). */
+      if (decisionCode === 'REJECTED' && (body?.comment ?? '').trim() === '') {
+        return {
+          status: 400,
+          created: { code: 'COMMENT_REQUIRED', message: '반려 사유가 필요합니다.', errors: [] },
+        };
+      }
+
+      /*
+       * ⚠ **화면이 만든 요청은 단계 칸이 비어 있다**(이 목의 상신 처리기들이 그렇게 만든다).
+       *    비면 «한 단계»로 본다 — 그대로 더하면 `NaN` 이 되어 요청이 영영 닫히지 않는다.
+       */
+      const currentStepNo = request.currentStepNo ?? 1;
+      const totalStepNo = request.totalStepNo ?? 1;
+
+      const step = (request.steps ?? []).find((row) => row.stepNo === currentStepNo);
+      if (step !== undefined) {
+        step.decisionCode = decisionCode;
+        step.decisionAt = new Date().toISOString();
+        step.decisionComment = body?.comment ?? null;
+        step.isCurrent = false;
+      }
+
+      if (decisionCode === 'REJECTED' || currentStepNo >= totalStepNo) {
+        request.statusCode = decisionCode;
+        request.currentStepNo = currentStepNo;
+        request.isMyTurn = false;
+      } else {
+        request.currentStepNo = currentStepNo + 1;
+        const next = (request.steps ?? []).find((row) => row.stepNo === request.currentStepNo);
+        if (next !== undefined) next.isCurrent = true;
+        request.isMyTurn = next?.isMine ?? false;
+      }
+
+      bumpVersion(approvalRequestVersions, request.approvalRequestId);
+
+      return {
+        status: 200,
+        created: approvalDetail(request),
+        headers: { ETag: approvalRequestEtag(request) },
+      };
+    },
+  );
+};
+
+on('POST', '/app/approval-requests/{approvalRequestId}:approve', (params, _q, body, headers) =>
+  decideApproval(params, body, headers, 'APPROVED'),
+);
+
+on('POST', '/app/approval-requests/{approvalRequestId}:reject', (params, _q, body, headers) =>
+  decideApproval(params, body, headers, 'REJECTED'),
+);
 
 /* ── 서버 ─────────────────────────────────────────────────── */
 

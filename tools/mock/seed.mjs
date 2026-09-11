@@ -2436,6 +2436,33 @@ export const createSeed = (now = new Date()) => {
       requestedAt: iso(0, 12),
       versionNo: 1,
     },
+    /*
+     * IQC 수입검사 의뢰 — **W-04-05 의 대기 큐가 이 한 건으로 선다**(#1032). 화면이
+     * `inspectionTypeCode=IQC · pendingOnly=true` 로 고정해 묻는데 씨앗에 IQC 가 하나도
+     * 없어, 88단계 시험 16번이 늘 「전체 0건」이었다.
+     *
+     * 대상은 검사 대기로 보류된 자재 LOT(8003)이다 — 같은 LOT 이 IQC 생략 한도승인(18번)의
+     * 대상이라, 두 화면이 같은 건을 놓고 갈린다.
+     */
+    {
+      inspectionRequestId: 16003,
+      inspectionRequestNo: 'IR-2026-0903-0002',
+      inspectionTypeCode: 'IQC',
+      inspectionPlanVersionId: 1001,
+      targetTypeCode: 'LOT',
+      targetId: 8003,
+      itemId: 2002,
+      lotId: 8003,
+      workOrderId: null,
+      productionResultId: null,
+      targetQty: 120,
+      uomId: 1001,
+      coverageFromAt: iso(-1, 9),
+      coverageToAt: iso(-1, 10),
+      statusCode: 'REQUESTED',
+      requestedAt: iso(-1, 10),
+      versionNo: 1,
+    },
     /* 끝난 의뢰. `pendingOnly=true` 가 이것을 걸러 내는지 확인할 자리다. */
     {
       inspectionRequestId: 16002,
@@ -2483,7 +2510,33 @@ export const createSeed = (now = new Date()) => {
       statusCode: 'PENDING',
       currentStepNo: 1,
       totalStepNo: 2,
-      isMyTurn: false,
+      isMyTurn: true,
+      /*
+       * 결재 단계 — **상세(`{ request, steps }`)가 이 목록을 싣는다**(#1032). ⛔ 목록 응답에는
+       * 싣지 않는다(계약 `ApprovalRequest` 에 없는 칸이다) — 목록 처리기가 걷어낸다.
+       */
+      steps: [
+        {
+          stepNo: 1,
+          approverId: 1001,
+          approverName: '김품질',
+          decisionCode: null,
+          decisionAt: null,
+          decisionComment: null,
+          isMine: true,
+          isCurrent: true,
+        },
+        {
+          stepNo: 2,
+          approverId: 1002,
+          approverName: '박승인',
+          decisionCode: null,
+          decisionAt: null,
+          decisionComment: null,
+          isMine: false,
+          isCurrent: false,
+        },
+      ],
     },
   ];
 

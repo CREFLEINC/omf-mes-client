@@ -999,6 +999,60 @@ for (const [name, path, check] of DETAILS) {
 }
 
 /*
+ * W-04-05 IQC 대기 큐와 W-CO-09 결재(#1032).
+ *
+ * 씨앗에 IQC 의뢰가 없어 16번이 늘 「전체 0건」이었고, 승인 요청 «단건»을 씨앗이 다루지
+ * 않아 목록과 상세가 다른 건을 가리켰다. 상세가 ETag 를 내지 않으면 화면은 승인 요청을
+ * 아예 내지 못한다.
+ *
+ * 이 블록도 씨앗 상태를 바꾼다(요청 하나가 결재된다) - 그래서 뒤쪽에 둔다.
+ */
+{
+  const queue = await (
+    await fetch(`${BASE}/quality/inspection-requests?inspectionTypeCode=IQC&pendingOnly=true`)
+  ).json();
+  const list = await (await fetch(`${BASE}/app/approval-requests?pendingOnly=true`)).json();
+  const target = list.items[0];
+  const detailResponse = await fetch(
+    `${BASE}/app/approval-requests/${String(target?.approvalRequestId ?? 0)}`,
+  );
+  const etag = detailResponse.headers.get('etag');
+  const detail = await detailResponse.json();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'seed-smoke-w-co-09-approve',
+    'If-Match': etag ?? '',
+  };
+  /* 반려는 의견이 필수다 - 빈 의견은 400 으로 막힌다(공유계약 A-12). */
+  const emptyReject = await fetch(
+    `${BASE}/app/approval-requests/${String(target?.approvalRequestId ?? 0)}:reject`,
+    {
+      method: 'POST',
+      headers: { ...headers, 'Idempotency-Key': 'seed-smoke-w-co-09-reject-empty' },
+      body: JSON.stringify({ comment: '' }),
+    },
+  );
+  const approve = await fetch(
+    `${BASE}/app/approval-requests/${String(target?.approvalRequestId ?? 0)}:approve`,
+    { method: 'POST', headers, body: JSON.stringify({ comment: '수량 확인함' }) },
+  );
+  const approved = await approve.json();
+  const ok =
+    queue.items.length >= 1 &&
+    queue.items.every((row) => row.inspectionTypeCode === 'IQC') &&
+    /* 목록과 상세가 «같은 건»을 가리킨다 - 예시 서버가 답하면 여기서 갈린다. */
+    detail.request?.approvalRequestNo === target?.approvalRequestNo &&
+    typeof etag === 'string' &&
+    detail.steps?.length >= 1 &&
+    emptyReject.status === 400 &&
+    approve.ok &&
+    approved.steps?.[0]?.decisionCode === 'APPROVED';
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} W-04-05 IQC 큐와 W-CO-09 결재가 선다`);
+}
+
+/*
  * 실적 입력 -> 마감 -> 포장 체인의 가운데 토막(#1031).
  *
  * 이 경로가 없어 계약 예시 서버가 받아 400 을 돌려주었고, 88단계 시험이 46번에서 멈춰 그
