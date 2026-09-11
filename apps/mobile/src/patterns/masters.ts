@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
+import { masterName } from './master-name';
 import { runRequest } from './request';
 
 export const masterKeys = {
@@ -181,7 +182,7 @@ export const useDefectCodes = (enabled: boolean): UseQueryResult<Map<number, Def
       return new Map(
         data.items.map((code) => [
           code.defectCodeId,
-          { defectCode: code.defectCode, defectName: code.nameKo ?? code.defectName },
+          { defectCode: code.defectCode, defectName: masterName(code, code.defectName) },
         ]),
       );
     },
