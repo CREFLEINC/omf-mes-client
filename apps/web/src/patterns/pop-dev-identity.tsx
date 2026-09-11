@@ -21,9 +21,13 @@ import { useWorkerSession } from './worker-session';
  * **개발 서버에 한해** 접은 것이다. POP 의 등록 흐름을 설계가 정할 때 그 형태가 먼저 볼
  * 전례다 — 이 임시물이 그 자리를 대신하지 않는다.
  *
- * ⚠ **사번은 지어내기 전에 화면이 정한 것을 먼저 쓴다.** 진입 화면(P-CO-01)이 사번을
- * `worker-session`에 두므로, 사람이 실제로 친 사번으로 기록되는 편이 시연에 정직하다.
- * 아직 아무도 치지 않았을 때만 데모 사번으로 내려간다.
+ * ⛔ **사번은 메우지 않는다.** 단말 번호·공정은 「이 단말이 무엇인가」라 지어내도 기록의
+ * 귀속이 흔들리지 않지만, 사번은 **남는 기록이 누구 앞으로 가는가**다. 한동안 아무도 치지
+ * 않았을 때 데모 사번(`100029`)으로 내려갔는데, 사번은 메모리에만 있어(§5-4) 주소로 다시
+ * 열거나 새로고침하면 세션이 비고 — 방금 100027 을 친 사람의 작업이 **아무 말 없이** 다른
+ * 사람 앞으로 저장됐다(88단계 시험 결함 2 · #1041). 그래서 세션이 비면 `null` 을 그대로
+ * 내려보낸다: 화면은 「사번이 확인되지 않았습니다」로 서고, 진입 화면(P-CO-01)에서 다시
+ * 지정하면 풀린다. 조회는 그대로 열리므로 이 파일의 쓸모(단말·공정 메우기)는 남는다.
  */
 
 /**
@@ -39,9 +43,6 @@ export const POP_DEV_TERMINAL_ID = 1001;
  */
 export const POP_DEV_PROCESS_ID = 1001;
 
-/** 아무도 사번을 치지 않았을 때의 값. 목 서버 조회가 통하는 사번이다. */
-export const POP_DEV_WORKER_NO = '100029';
-
 export interface PopDevIdentityProviderProps {
   children: ReactNode;
 }
@@ -54,7 +55,7 @@ export const PopDevIdentityProvider = ({ children }: PopDevIdentityProviderProps
       value={{
         terminalId: POP_DEV_TERMINAL_ID,
         processId: POP_DEV_PROCESS_ID,
-        workerNo: session?.worker.workerNo ?? POP_DEV_WORKER_NO,
+        workerNo: session?.worker.workerNo ?? null,
       }}
     >
       {children}
