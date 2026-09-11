@@ -23,6 +23,8 @@ export const shippingPackingLabel = {
   targets: {
     paneLabel: '대상',
     columns: {
+      /** 줄 번호. 서버 값이 아니라 **보이는 차례**다 — 대상을 말로 가리킬 때 쓴다. */
+      no: 'No.',
       target: '대상',
       status: '상태',
       lastIssued: '최근 발행',
@@ -51,11 +53,29 @@ export const shippingPackingLabel = {
     loadFailed: '대상 목록을 불러오지 못했습니다.',
     retry: '다시 불러오기',
     selectionLimited: '출하검사에 합격하지 않은 대상은 고를 수 없습니다.',
+    /**
+     * 빈 목록의 첫 줄.
+     *
+     * ⛔ **왜 비었는지는 이 줄이 말하지 않는다** — 아래 설명 줄이 그 자리다(`beforeKind` ·
+     * `empty` · `emptyPacking`). 「아직 고르지 않았다」와 「없다」를 이 줄로 합치면 공유계약
+     * G-9 가 갈라 놓은 두 상태가 같은 모양이 된다.
+     */
+    emptyTitle: '표시할 대상이 없습니다.',
+    /** 표 아래 — 지금 몇 건을 들고 있는지. 발행 단추를 누르기 전에 확인하는 자리다. */
+    selectedCount: (count: number) => `선택 항목 ${String(count)}건`,
+    clearSelection: '선택 해제',
   },
   recovery: {
     title: '누락 라벨 이어서 출력',
-    packingMissing: (count: number) => `미발행 포장 라벨 ${String(count)}건`,
-    deliveryMissing: (count: number) => `발행 가능한 미발행 납품 라벨 ${String(count)}건`,
+    /**
+     * 건수 카드의 이름과 단위.
+     *
+     * ⛔ 이름과 수를 한 문장으로 붙이지 않는다 — 카드는 이름과 수를 다른 크기로 세워 수를
+     * 먼저 읽게 한다. 문장으로 붙이면 수가 글자 사이에 묻힌다.
+     */
+    packingLabel: '미발행 포장 라벨',
+    deliveryLabel: '발행 가능한 미발행 납품 라벨',
+    countUnit: '건',
     oqcWaiting: (count: number) => `OQC 판정 대기 납품 라벨 ${String(count)}건`,
     reissueRequired: (count: number) =>
       `${String(count)}건은 발행 기록이 있지만 인쇄 완료가 아니므로 아래 재출력 흐름에서 처리해야 합니다.`,

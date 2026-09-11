@@ -1,4 +1,4 @@
-import { AlertBanner, Button } from '@crefle/web-ui';
+import { AlertBanner, Button, StatCard } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -324,7 +324,24 @@ export const ShippingPackingLabelScreen = ({
                 </AlertBanner>
               ) : (
                 <div className="pop-slabel-recovery-actions">
-                  <span>{t.recovery.packingMissing(missingPackingRows.length)}</span>
+                  {/*
+                   * ⭐ **건수는 카드로 세운다**(시안 ①). 「미발행 포장 라벨 0건」을 한 문장으로
+                   *    두면 수가 글자 사이에 묻혀, 눌러야 할 단추가 둘 중 어느 쪽인지 한눈에
+                   *    갈리지 않았다. DS `StatCard` 가 이름·수·설명을 이미 갈라 세운다.
+                   *
+                   * ⚠ **수가 0 이어도 감추지 않는다** — 「없다」를 보이는 것이 이 구획의 일이다
+                   *   (공유계약 G-9).
+                   *
+                   * ⛔ **상태 점(`status`)을 달지 않는다.** 그 점의 라벨이 카드 이름과 함께
+                   *    읽혀 읽는 기계에 같은 말이 두 번 들린다 — 수가 이미 상태를 말한다.
+                   */}
+                  <StatCard
+                    className="pop-slabel-recovery-card"
+                    bordered
+                    label={t.recovery.packingLabel}
+                    value={String(missingPackingRows.length)}
+                    unit={t.recovery.countUnit}
+                  />
                   <Button
                     className={popTouchClass('normal')}
                     variant="outlined"
@@ -347,7 +364,13 @@ export const ShippingPackingLabelScreen = ({
                   >
                     {t.recovery.packingAction}
                   </Button>
-                  <span>{t.recovery.deliveryMissing(missingDeliveryRows.length)}</span>
+                  <StatCard
+                    className="pop-slabel-recovery-card"
+                    bordered
+                    label={t.recovery.deliveryLabel}
+                    value={String(missingDeliveryRows.length)}
+                    unit={t.recovery.countUnit}
+                  />
                   <Button
                     className={popTouchClass('critical')}
                     size="xl"
@@ -444,6 +467,29 @@ export const ShippingPackingLabelScreen = ({
                     onOpenHistory={setHistoryTargetId}
                     empty={isListPending ? '' : emptyMessage}
                   />
+                </div>
+                {/*
+                 * 표 바로 아래 — **지금 몇 건을 들고 있는가.**
+                 *
+                 * ⚠ 목록이 길어지면 고른 줄이 스크롤 밖으로 나가, 발행 단추를 누르기 전에
+                 *   몇 건인지 셀 길이 없었다(시안 ③). 여기서 한 번 말하고 무를 길도 함께 둔다.
+                 *
+                 * ⛔ 「선택 해제」는 **고름만 비운다** — 종류·사유·프린터는 건드리지 않는다.
+                 *    저 셋까지 비우면 다시 고르는 데 손이 세 번 더 간다.
+                 */}
+                <div className="pop-slabel-selection">
+                  <span>{t.targets.selectedCount(selectedIds.length)}</span>
+                  <Button
+                    className={popTouchClass('normal')}
+                    variant="outlined"
+                    size="xl"
+                    disabled={selectedIds.length === 0 || isBusy}
+                    onClick={() => {
+                      setSelectedIds([]);
+                    }}
+                  >
+                    {t.targets.clearSelection}
+                  </Button>
                 </div>
                 {/* 고를 수 없는 줄이 목록에 남아 있는 이유를 말한다(G-3 — 어떻게 풀 것인가). */}
                 {kind !== null && isDelivery(kind) && rows.some((row) => !row.isIssuable) ? (

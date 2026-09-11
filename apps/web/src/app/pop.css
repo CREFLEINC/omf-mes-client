@@ -4754,3 +4754,105 @@
   padding-inline: var(--space-2);
   gap: var(--space-1);
 }
+
+/* ------------------------------------------------------------------------- *
+ * P-04-01 라벨 모드(`shipping-packing-label`) 짜임새 다듬기 — 2026-09-11
+ *
+ * 시안을 근거로 **보이는 모양만** 손본다. 구획 짜임·기능·문구 규칙은 그대로다.
+ * 이름은 전부 `pop-slabel-*` 로, 이 슬라이스 밖에 닿지 않는다.
+ * ------------------------------------------------------------------------- */
+
+/*
+ * ① 누락 라벨 — 건수 카드와 단추가 **한 행에 짝지어** 선다.
+ *
+ * 격자는 위(`.pop-slabel-recovery-actions`)가 이미 `1fr auto 1fr auto` 로 잡아 두었다.
+ * 여기서는 카드가 그 `1fr` 을 꽉 채우게만 한다 — `StatCard` 는 제 내용만큼만 서기 때문이다.
+ */
+.pop-ui .pop-slabel-recovery-card {
+  min-width: 0;
+  /*
+   * ⚠ **낮게 세운다**(사용자 지시 2026-09-11). 기본 여백으로 두면 카드 하나가 200px 가까이
+   *   서서, 이 구획만으로 1024×768 세로 예산의 4분의 1을 먹었다. 이름과 수 두 줄이면 되는
+   *   자리다.
+   */
+  padding: var(--space-3) var(--space-4);
+}
+
+/*
+ * 고른 칸을 **테두리로** 알린다(시안 ②).
+ *
+ * ⛔ 배경을 칠하지 않는다 — 이 화면은 어두운 바탕이라, 칸 하나만 밝히면 그 칸이 «눌린 단추»
+ *    처럼 보여 라디오라는 것이 흐려진다. 테두리 한 겹이면 갈린다.
+ *
+ * ⚠ `:has()` 로 잡는다 — DS 라디오는 고른 상태를 겉 이름으로 내보내지 않는다.
+ */
+.pop-ui [role='radiogroup'].pop-slabel-kinds label:has(input:checked) {
+  border-color: var(--semantic-error);
+  box-shadow: inset 0 0 0 1px var(--semantic-error);
+}
+
+/*
+ * ③ 표 아래 선택 줄 — 왼쪽은 건수, 오른쪽은 무르는 단추.
+ *
+ * `flex: none` 이라 목록이 길어져도 밀려 사라지지 않는다(프린터 줄과 같은 처리).
+ */
+.pop-ui .pop-slabel-selection {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--outline-variant);
+}
+
+/*
+ * 빈 목록 — 표 «안»에서 가운데로, 폭을 가두지 않는다.
+ *
+ * 위 `.pop-slabel-empty` 는 글 한 줄짜리였을 때의 값이다. `EmptyState` 는 제 안에서 이미
+ * 가운데로 세우므로 바깥 폭 제한만 풀어 준다.
+ */
+.pop-ui .pop-slabel-empty {
+  max-width: none;
+  margin-inline: auto;
+  padding-block: var(--space-5);
+}
+
+/*
+ * ④ 프린터 칸이 손톱만 해지던 것 — **겨냥이 틀렸다.**
+ *
+ * 위 「프린터 고르는 칸은 폭이 고정이다」(`[role='combobox']`)가 잡는 것은 값 칸이 아니라
+ * **[선택] 단추다** — `PopSelect` 가 그 역할을 단추에 건다(`patterns/pop-select.tsx`).
+ * 그래서 단추만 넓어지고, 값이 비는 잠긴 상태에서 값 칸은 폭 0 으로 찌그러졌다(실측 시안).
+ *
+ * 폭은 **값 칸**이 가져야 한다. 단추는 제 글자만큼이면 된다.
+ */
+.pop-ui .pop-slabel-printer .pop-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pop-ui .pop-slabel-printer .pop-select__value {
+  min-width: 14rem;
+}
+
+.pop-ui .pop-slabel-printer [role='combobox'] {
+  min-width: 0;
+}
+
+/* 프린터 줄은 [이름][값 칸 + 선택][상태] 한 줄이다 — 값 칸이 남는 폭을 가져간다. */
+.pop-ui .pop-slabel-printer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/*
+ * ⚠ **이 묶음은 갈래가 넷이다** — 정상 · 잠김 · 오류(`Chip` + [다시 확인]) · 없음(경고 띠).
+ *   위 `display: flex` 는 넷 모두에 걸리는데, 경고 띠는 flex 아이템이 되면서 **가로로 꽉
+ *   차던 것이 글자 폭까지 줄어든다**(독립 검증 지적 2026-09-11). 띠는 줄 전체를 쓴다.
+ */
+.pop-ui .pop-slabel-printer > [role='status'],
+.pop-ui .pop-slabel-printer > [role='alert'] {
+  flex: 1 1 100%;
+}
