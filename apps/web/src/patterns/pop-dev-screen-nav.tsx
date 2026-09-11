@@ -38,6 +38,12 @@ export interface PopDevScreen {
    *
    * ⛔ 이 값을 화면 코드가 읽는 기본값으로 옮기지 않는다. 진입값은 화면을 «부르는 쪽»이
    * 정하는 것이고, 화면이 스스로 지어내면 대상 없이 열린 사실이 가려진다.
+   *
+   * ⛔ **사번(`workerNo`)은 적지 않는다.** 다섯 화면에 `workerNo=100029` 가 리터럴로 박혀
+   * 있었는데, 진입 화면에서 100027 을 지정하고 이 목록으로 넘어가면 **주소가 지정을
+   * 덮었다** — 남는 기록이 하지 않은 사람 앞으로 갔다(88단계 시험 결함 2 · #1041). 사번은
+   * 「어느 대상인가」가 아니라 「누가 하는가」라 부르는 쪽이 정할 값이 아니다: 지금 단말의
+   * 작업자(`worker-session`)가 그대로 따라오므로 적을 필요도 없다. 감지기가 막는다.
    */
   query?: string;
 }
@@ -64,12 +70,12 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     path: '/pop/production-result',
     label: 'P-02-04 생산 실적·라벨·LOT 마감',
     /* 현재 생산 LOT이 있는 씨앗 작업지시다. */
-    query: '?workOrderId=11002&workerNo=100029',
+    query: '?workOrderId=11002',
   },
   {
     path: '/pop/packing-label-reprint',
     label: 'P-02-09 포장 라벨·인식표 재출력',
-    query: '?handlingUnitId=13001&workerNo=100029',
+    query: '?handlingUnitId=13001',
   },
   { path: '/pop/pqc-inspection', label: 'P-02-13 PQC 제품 검사', query: '?ir=1001' },
   { path: '/pop/emergency-work-orders', label: 'P-02-12 긴급 작업지시' },
@@ -78,14 +84,14 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   {
     path: '/pop/tool-usage',
     label: 'P-05-01 공구 사용',
-    query: '?workOrderId=11002&workerNo=100029',
+    query: '?workOrderId=11002',
   },
   { path: '/pop/downtime', label: 'P-05-02 비가동 등록', query: '?equipmentId=5001' },
   {
     path: '/pop/packing-work',
     label: 'P-02-08 포장 작업',
     /* 씨앗에서 완료 LOT 이 달려 있는 작업지시다 — 다른 번호면 포장 대상이 비어 뜬다. */
-    query: '?workOrderId=11001&workerNo=100029',
+    query: '?workOrderId=11001',
   },
   {
     path: '/pop/repack-label-issue',
@@ -108,7 +114,7 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
   {
     path: '/pop/goods-issue-qr',
     label: 'P-01-02 출고 QR 발행',
-    query: '?goodsIssueId=16401&workerNo=100029',
+    query: '?goodsIssueId=16401',
   },
   /*
    * ⚠ 이 화면도 진입 컨텍스트를 주소로 받는다(`?workOrderId=`) — 작업지시 선택이 셸에 서기
