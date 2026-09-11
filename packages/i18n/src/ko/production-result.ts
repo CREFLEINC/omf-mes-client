@@ -47,6 +47,14 @@ export const productionResult = {
        */
       overrun: (over: string, remaining: string) =>
         `초과 달성 — 잔여 ${remaining} 보다 ${over} 많습니다.`,
+      /**
+       * 잔여가 이미 0 이하인 W/O — **뺄셈을 보이지 않는다.**
+       *
+       * ⚠ `varianceQty` 는 「지시 − 양품 누계」라 이미 초과 생산된 작업지시에서는 **음수**가
+       * 온다. 그대로 넣으면 「잔여 -4 EA 보다 16 EA 많습니다」가 되어, 읽는 사람이 -4 를
+       * 수량으로 읽는다. 숫자가 뜻을 잃는 자리에서는 숫자를 빼고 사실만 적는다.
+       */
+      overrunNoRemaining: '초과 달성 — 이 작업지시에 남은 수량이 없습니다.',
     },
     tag: {
       title: '인식표',

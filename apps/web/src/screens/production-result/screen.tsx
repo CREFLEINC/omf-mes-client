@@ -702,10 +702,14 @@ export const ProductionFlowScreen = () => {
             {isOverrun && parsedQty !== null && remaining !== null && (
               <AlertBanner
                 variant="warning"
-                title={t.flow.quantity.overrun(
-                  `${formatQty(parsedQty - remaining)} ${uomLabel}`,
-                  `${formatQty(remaining)} ${uomLabel}`,
-                )}
+                title={
+                  remaining > 0
+                    ? t.flow.quantity.overrun(
+                        `${formatQty(parsedQty - remaining)} ${uomLabel}`,
+                        `${formatQty(remaining)} ${uomLabel}`,
+                      )
+                    : t.flow.quantity.overrunNoRemaining
+                }
               />
             )}
             <NumericKeypad

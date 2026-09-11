@@ -813,6 +813,42 @@ describe('ProductionFlowScreen — 잔여 초과 표시', () => {
     await waitFor(() => expect(output).toBeEnabled());
   });
 
+  /**
+   * 이미 지시를 넘겨 만든 W/O — `varianceQty` 가 **음수**로 온다(「지시 − 양품 누계」).
+   * 그 수를 문구에 넣으면 「잔여 -4 EA 보다 …」가 되어 읽는 사람이 -4 를 수량으로 읽는다.
+   */
+  it('잔여가 이미 0 이하면 뺄셈을 보이지 않고 사실만 적는다', async () => {
+    const overProduced: StubRoute = {
+      match: (request) =>
+        new URL(request.url).pathname === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+      respond: () =>
+        jsonResponse({
+          workOrderId: WORK_ORDER_ID,
+          workOrderNo: 'WO-SYN-001',
+          productionOrderId: 1,
+          productionOrderNo: 'ERP-SYN-001',
+          productionPlanId: 1,
+          routingOperationId: 1,
+          itemId: 101,
+          itemCode: 'ITEM-SYN-01',
+          orderQty: 12,
+          uomId: 1,
+          workOrderTypeCode: 'NORMAL',
+          statusCode: 'IN_PROGRESS',
+          priorityNo: 1,
+          progress: { goodQty: 16, varianceQty: -4 },
+        }),
+    };
+
+    renderScreen([], [overProduced]);
+
+    const actual = await screen.findByLabelText(t.flow.quantity.actual);
+    await waitFor(() => expect(actual).toHaveValue(String(REMAINING)));
+
+    expect(await screen.findByText(t.flow.quantity.overrunNoRemaining)).toBeInTheDocument();
+    expect(screen.queryByText(/-4/u)).not.toBeInTheDocument();
+  });
+
   it('잔여와 같으면 아무 말도 하지 않는다 — 경계에서 뜨지 않는다', async () => {
     renderScreen([]);
 
