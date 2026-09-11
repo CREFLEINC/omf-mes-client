@@ -826,12 +826,16 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     /*
      * ⛔ 손짓 한 번으로 끝난다 — 되묻는 팝업이 끼어들지 않는다.
      *
-     * ⚠ 건수는 **발행·인쇄까지 끝난 뒤에** 센다. `waitFor` 로 1 에 닿는 순간 재면 뒤따라
-     *    오는 둘째 요청을 놓친다 — 되돌릴 수 없는 쓰기라 흐름이 멎은 자리에서 센다(이 파일
-     *    맨 앞 시험이 쓰는 자리와 같다).
+     * ⚠ 건수는 **흐름이 멎은 뒤에** 센다. `waitFor` 로 1 에 닿는 순간 재면 뒤따라 오는 둘째
+     *    요청을 놓친다 — 되돌릴 수 없는 쓰기라 멎은 자리에서 센다(이 파일 맨 앞 시험과 같다).
+     *
+     * ⚠ **멎는 자리가 스캔 칸에서 렌디션 실패로 옮겨졌다.** 서버 구현 기준선에서
+     *    `GET /app/document-issues/{id}/rendition` 은 미구현이라 부르지 않는다(대응표 P1) —
+     *    그림을 못 받으니 인쇄가 끝나지 않고, 스캔 칸은 `outputPhase === 'scanReady'`
+     *    에서만 열리므로 영영 열리지 않는다. 이 시험이 재는 것은 **초과를 말하는 것과 저장이
+     *    그대로 나가는 것**이고 그 둘은 인쇄와 무관하다 — 기준점만 옮기고 재는 것은 그대로 둔다.
      */
-    const scan = await screen.findByLabelText(t.flow.scan.label);
-    await waitFor(() => expect(scan).toBeEnabled());
+    expect(await screen.findByText(t.flow.output.renditionFailed)).toBeVisible();
 
     expect(savedCount(writes)).toBe(1);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();

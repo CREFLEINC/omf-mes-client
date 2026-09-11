@@ -61,8 +61,16 @@ const PAGE_SIZE = 50;
  * 문구를 낸다(통보 221·222). 이 함수가 셋 밖의 코드를 만나는 일은 없지만, 만나면 공용 배너에
  * 맡기려고 `null`을 낸다.
  */
+/**
+ * 409 중 **다시 불러도 안 풀리는** 사유를 그 사유대로 말한다.
+ *
+ * ⭐ **원인(`cause`)이 아니라 코드(`code`)로 가른다.** 서버는 공용 충돌 봉투를 쓰므로 이
+ * 응답에도 `conflictCause`가 늘 실린다(통보 221) — 원인만 보면 「다른 사용자가 먼저
+ * 수정했습니다」가 되는데, 이미 재등록이 끝난 건에 그 말을 하면 사용자는 새로고침을
+ * 되풀이한다. 경합(`VERSION_CONFLICT`)은 여기서 걸리지 않고 공용 배너가 원인별로 말한다.
+ */
 const conflictMessage = (error: ApiError | null): string | null => {
-  if (error === null || error.kind !== 'http' || error.status !== 409) return null;
+  if (error === null || error.kind !== 'conflict') return null;
   switch (error.code) {
     case 'ALREADY_REINSTATED':
       return t.conflict.already;

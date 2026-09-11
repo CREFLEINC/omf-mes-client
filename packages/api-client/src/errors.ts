@@ -22,6 +22,15 @@ export type ApiError =
   | {
       kind: 'conflict';
       cause: ConflictCause;
+      /**
+       * 업무 사유 코드 — `ALREADY_REINSTATED` 처럼 **다시 불러도 안 풀리는** 것이 있다.
+       *
+       * ⭐ `cause` 와 «다른 축»이다. `cause` 는 「누가 먼저 손댔는가」(사용자·ERP·워커)이고
+       * 이것은 「무엇이 어긋났는가」다. 서버가 공용 충돌 봉투에 둘을 함께 싣는데(통보 221)
+       * 여기서 코드를 버리면 화면은 원인만 보고 「다른 사용자가 먼저 수정했습니다」로 안내한다 —
+       * 이미 재등록이 끝난 건에 그 말을 하면 사용자는 새로고침을 되풀이한다.
+       */
+      code?: string;
       message: string;
       currentLotStatusCode?: string;
     }
@@ -98,6 +107,8 @@ export const normalizeApiError = (status: number, body: unknown): ApiError => {
     return {
       kind: 'conflict',
       cause: body.conflictCause,
+      /* 원인과 함께 **코드도 남긴다** — 위 `code` 주석 참고. 화면이 둘 다 보고 갈라야 한다. */
+      ...(code === undefined ? {} : { code }),
       message: typeof body.message === 'string' ? body.message : '',
       ...(currentLotStatusCode === undefined ? {} : { currentLotStatusCode }),
     };

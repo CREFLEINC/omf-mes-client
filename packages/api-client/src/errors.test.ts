@@ -30,6 +30,33 @@ describe('normalizeApiError', () => {
     },
   );
 
+  /*
+   * ⭐ **원인과 코드는 다른 축이라 둘 다 남긴다.** `cause`는 「누가 먼저 손댔는가」이고
+   * `code`는 「무엇이 어긋났는가」다. 서버가 공용 충돌 봉투에 둘을 함께 싣는데(통보 221)
+   * 여기서 코드를 버리면 `ALREADY_REINSTATED`처럼 **다시 불러도 안 풀리는** 사유가
+   * 「다른 사용자가 먼저 수정했습니다」로 안내되고, 사용자는 새로고침을 되풀이한다.
+   */
+  it('409에서 업무 코드를 원인과 «함께» 보존한다 — 통보 221·222', () => {
+    expect(
+      normalizeApiError(409, {
+        code: 'ALREADY_REINSTATED',
+        conflictCause: 'user',
+        message: '이미 재등록된 건입니다',
+      }),
+    ).toEqual({
+      kind: 'conflict',
+      cause: 'user',
+      code: 'ALREADY_REINSTATED',
+      message: '이미 재등록된 건입니다',
+    });
+  });
+
+  it('코드가 없는 충돌에는 code 키를 만들지 않는다', () => {
+    expect(
+      normalizeApiError(409, { conflictCause: 'workerLease', message: '충돌' }),
+    ).not.toHaveProperty('code');
+  });
+
   it('품질 충돌의 구조화된 현재 LOT 상태를 자유 문구와 분리해 보존한다', () => {
     expect(
       normalizeApiError(409, {

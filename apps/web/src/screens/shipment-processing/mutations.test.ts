@@ -148,7 +148,12 @@ describe('useShipmentProcessingMutation', () => {
     expect(result.current.fieldErrors).toEqual({});
   });
 
-  it('409 원인과 메시지를 conflict 오류로 보존한다', async () => {
+  /*
+   * ⭐ **원인·코드·메시지 셋을 함께 남긴다**(통보 221·222). `cause`는 「누가 먼저 손댔는가」이고
+   * `code`는 「무엇이 어긋났는가」다 — 코드를 버리면 「이미 처리된 건」과 「경합」을 화면이
+   * 가를 수 없어, 다시 눌러도 안 풀리는 건에 「다시 시도하세요」를 안내하게 된다.
+   */
+  it('409 원인·코드·메시지를 conflict 오류로 보존한다', async () => {
     const { fetch } = recordingFetch([
       shipmentsRoute(() =>
         jsonResponse(
@@ -172,6 +177,7 @@ describe('useShipmentProcessingMutation', () => {
       expect(result.current.error).toEqual({
         kind: 'conflict',
         cause: 'user',
+        code: 'VERSION_CONFLICT',
         message: 'Synthetic state conflict',
       }),
     );
