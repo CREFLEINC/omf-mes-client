@@ -13,7 +13,7 @@
 
 ## 범위
 
-생산실행 범위의 화면 — **관리웹 7개**(사이드바 「생산」 섹션) + **POP(현장 단말) 2개**. 모바일(Capacitor)에는 이 도메인 화면이 하나도 없다(§알려진 제약 13). 목록·라우트는 `apps/web/src/routes/index.tsx`(관리웹)·`apps/web/src/routes/pop.tsx`(POP) · 사이드바 라벨은 `apps/web/src/app/layout.tsx`가 정본이다.
+생산실행 범위의 화면 — **관리웹 7개**(사이드바 「생산」 섹션) + **POP(현장 단말) 2개**. 모바일(Capacitor)에는 이 도메인 화면이 하나도 없다(§알려진 제약 13). 목록·라우트는 `apps/web/src/routes/index.tsx`(관리웹)·`apps/web/src/routes/pop.tsx`(POP) · 사이드바 라벨·차례는 `apps/web/src/app/nav-tree.ts`가 정본이다.
 
 | 화면ID  | 화면명                                   | 셸  | 라우트                               |
 | ------- | ---------------------------------------- | --- | ------------------------------------ |

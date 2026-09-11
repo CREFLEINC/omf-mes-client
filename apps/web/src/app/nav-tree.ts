@@ -449,3 +449,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     ],
   },
 ];
+
+/**
+ * `NAV_LEAD` 를 포함한 **전 항목**.
+ *
+ * ⭐ **훑는 쪽이 합치기를 잊지 않게 여기서 합친다.** `NAV_GROUPS` 만 훑으면 섹션 밖 항목이
+ * 조용히 빠진다 — 검색창에 「대시보드」를 쳤을 때 결과가 0건이 되는 식이고, 그 빠짐은 전체
+ * 렌더를 재는 감지기에 걸리지 않는다(그쪽은 검색을 거치지 않는다).
+ */
+export const NAV_ENTRIES: readonly NavEntry[] = [
+  NAV_LEAD,
+  ...NAV_GROUPS.flatMap((group) => group.items),
+];
