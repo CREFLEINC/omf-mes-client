@@ -5,9 +5,10 @@ import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import {
+  SUPPLIER_RETURN_CODE_GROUPS,
   isRequiredCodeListPending,
-  PLACEHOLDER_SUPPLIER_RETURN_CODES,
   toCodeOptionSets,
+  withRuntimeSupplierReturnCodes,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import {
@@ -58,6 +59,7 @@ import {
   useGoodsReceiptDetail,
   useGoodsReceipts,
   useOnHandBalances,
+  useSupplierReturnCodeValues,
   useSupplierReturnPost,
 } from './queries';
 import { ReceiptSummaryPane } from './receipt-summary-pane';
@@ -644,7 +646,12 @@ export const SupplierReturnScreen = () => {
    * 값 목록이 확정되지 않은 코드의 선택지. **화면이 만들어 조건 줄에 넘긴다** —
    * 배열이 차는 순간 화면이 달라지는 것을 화면 수준에서 잴 수 있게 하기 위해서다.
    */
-  const codeOptions = toCodeOptionSets(PLACEHOLDER_SUPPLIER_RETURN_CODES);
+  const issueTypes = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.issueType);
+  const reasons = useSupplierReturnCodeValues(SUPPLIER_RETURN_CODE_GROUPS.reason);
+  const codeLookupError = [issueTypes, reasons].find((lookup) => lookup.isError);
+  const codeOptions = toCodeOptionSets(
+    withRuntimeSupplierReturnCodes({ issueType: issueTypes.data, reason: reasons.data }),
+  );
 
   /** 잠긴 두 버튼의 사유를 잇는 `id`. 사유는 **잠근 자리 옆에서** 읽혀야 한다(배치 규범 4). */
   const blockReasonId = useId();
@@ -1043,6 +1050,15 @@ export const SupplierReturnScreen = () => {
           error={list.error}
           onRetry={() => {
             void list.refetch();
+          }}
+        />
+      )}
+      {codeLookupError !== undefined && (
+        <LoadErrorBanner
+          error={codeLookupError.error}
+          onRetry={() => {
+            void issueTypes.refetch();
+            void reasons.refetch();
           }}
         />
       )}

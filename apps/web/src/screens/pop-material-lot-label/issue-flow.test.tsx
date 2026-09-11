@@ -36,6 +36,7 @@ const lineOf = (lotId: number | null, receiptNo = 1) => ({
   receivedQty: 500,
   uomId: 8401,
   supplierLotMissing: true,
+  supplierLotLabelAttached: false,
   inspectionRequired: false,
   statusCode: 'SYN_STATUS',
   lotId,

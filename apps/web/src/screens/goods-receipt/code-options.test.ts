@@ -8,6 +8,7 @@ import {
   PLACEHOLDER_GOODS_RECEIPT_CODES,
   REQUIRED_CODE_KEYS,
   toCodeOptionSets,
+  withRuntimeGoodsReceiptCodes,
   type CodeValueLists,
 } from './code-options';
 import { INVENTORY_STATUS_CODES } from './gr-request';
@@ -20,6 +21,27 @@ const SAMPLE_CODES: CodeValueLists = {
   inventoryStatus: ['SAMPLE_INVENTORY_A'],
   reason: ['SAMPLE_REASON_A'],
 };
+
+const codeValue = (code: string, displayOrder: number, isActive = true) => ({
+  codeValueId: displayOrder,
+  codeGroupId: 1,
+  code,
+  codeName: code,
+  displayOrder,
+  isActive,
+});
+
+it('활성 서버 코드만 표시 순서대로 운영 선택지에 연결한다', () => {
+  const values = withRuntimeGoodsReceiptCodes({
+    receiptType: [codeValue('PRODUCT', 20), codeValue('MATERIAL', 10)],
+    qualityStatus: [codeValue('DEFECTIVE', 20), codeValue('NORMAL', 10, false)],
+    inventoryStatus: [codeValue('BLOCKED', 40)],
+  });
+
+  expect(values.receiptType).toEqual(['MATERIAL', 'PRODUCT']);
+  expect(values.qualityStatus).toEqual(['DEFECTIVE']);
+  expect(values.inventoryStatus).toEqual(['BLOCKED']);
+});
 
 describe('자리표시 상수', () => {
   /*

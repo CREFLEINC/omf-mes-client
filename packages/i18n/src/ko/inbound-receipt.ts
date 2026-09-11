@@ -20,6 +20,14 @@ export const inboundReceipt = {
     /** 자릿수와 숫자 전용은 저장소가 막지 않는다. 화면이 지킨다. */
     malformed: (length: number) => `자재 LOT 번호는 34자리 숫자입니다 (현재 ${String(length)}자)`,
     scanned: (lotNo: string) => `공급사 LOT ${lotNo}`,
+    externalEntry: '납품서의 공급사 LOT 번호 입력',
+    externalLabel: '공급사 LOT 번호',
+    externalPlaceholder: '납품서 원문을 그대로 입력하세요',
+    externalSubmit: '공급사 LOT 번호 넣기',
+    externalRequired: '공급사 LOT 번호를 입력하세요',
+    externalTooLong: (max: number, actual: number) =>
+      `공급사 LOT 번호는 ${String(max)}자 이하여야 합니다 (현재 ${String(actual)}자)`,
+    externalTaken: (lotNo: string) => `라벨 미부착 · 공급사 LOT ${lotNo}`,
     missing: 'LOT 번호 없음',
     missingChosen: 'LOT 번호가 붙어 있지 않습니다',
     reasonLabel: '대체 LOT 사유',

@@ -50,6 +50,7 @@ const po = (): PurchaseOrder =>
 const draft = (overrides: Partial<ReceiptDraft> = {}): ReceiptDraft => ({
   supplierLotNo: SCANNED,
   supplierLotMissing: false,
+  supplierLotLabelAttached: true,
   substituteLotReasonCode: '',
   unordered: false,
   supplierId: null,
@@ -170,10 +171,28 @@ describe('등록 조건', () => {
 
   /* 미부착 분기는 데이터에 있는 구분이다. 사유 없이 참으로 보내면 서버가 거부한다. */
   it('LOT 미부착이면 대체 사유가 있어야 등록할 수 있다', () => {
-    const missing = draft({ supplierLotNo: '', supplierLotMissing: true });
+    const missing = draft({
+      supplierLotNo: '',
+      supplierLotMissing: true,
+      supplierLotLabelAttached: false,
+    });
 
     expect(canSubmit(missing, true)).toBe(false);
     expect(canSubmit({ ...missing, substituteLotReasonCode: 'NO_LABEL' }, true)).toBe(true);
+  });
+
+  it('번호가 없으면 부착됨을 함께 보낼 수 없다', () => {
+    expect(
+      canSubmit(
+        draft({
+          supplierLotNo: '',
+          supplierLotMissing: true,
+          supplierLotLabelAttached: true,
+          substituteLotReasonCode: 'NO_LABEL',
+        }),
+        true,
+      ),
+    ).toBe(false);
   });
 
   /* 발주 없이 진행하는 경로는 이 화면에 없다. 고르지 않으면 등록이 서지 않는다. */
@@ -229,6 +248,27 @@ describe('등록 본문', () => {
     expect(body.lines[0]?.receivedQty).toBe(500);
     expect(body.lines[0]?.supplierLotNo).toBe(SCANNED);
     expect(body.lines[0]?.supplierLotMissing).toBe(false);
+    expect(body.lines[0]?.supplierLotLabelAttached).toBe(true);
+  });
+
+  it('번호는 있으나 라벨이 미부착이면 원문과 부착 상태를 함께 보낸다', () => {
+    const supplierLotNo = '납품서-LOT/A-01';
+    const body = toOutboxDraft(
+      draft({ supplierLotNo, supplierLotLabelAttached: false }),
+      31,
+      9,
+      1,
+      2,
+      NOW,
+      '900028',
+    ).body as { lines: Record<string, unknown>[] };
+
+    expect(body.lines[0]).toMatchObject({
+      supplierLotNo,
+      supplierLotMissing: false,
+      supplierLotLabelAttached: false,
+      substituteLotReasonCode: null,
+    });
   });
 
   /* 검사 대상 여부는 서버가 라인마다 정한다. 화면이 실으면 두 곳에 규칙이 생긴다. */
@@ -244,6 +284,7 @@ describe('등록 본문', () => {
     const missing = draft({
       supplierLotNo: '',
       supplierLotMissing: true,
+      supplierLotLabelAttached: false,
       substituteLotReasonCode: 'NO_LABEL',
     });
     const body = toOutboxDraft(missing, 31, 9, 1, 2, NOW, '900028').body as {
@@ -257,12 +298,17 @@ describe('등록 본문', () => {
 
   /* 미부착이라고 말하면서 번호를 함께 실으면 서버가 어느 쪽을 믿을지 정할 수 없다. */
   it('미부착이면 번호가 남아 있어도 싣지 않는다', () => {
-    const conflicting = draft({ supplierLotMissing: true, substituteLotReasonCode: 'NO_LABEL' });
+    const conflicting = draft({
+      supplierLotMissing: true,
+      supplierLotLabelAttached: false,
+      substituteLotReasonCode: 'NO_LABEL',
+    });
     const body = toOutboxDraft(conflicting, 31, 9, 1, 2, NOW, '900028').body as {
       lines: Record<string, unknown>[];
     };
 
     expect(body.lines[0]?.supplierLotNo).toBeNull();
+    expect(body.lines[0]?.supplierLotLabelAttached).toBe(false);
   });
 
   it('비워 둔 항목은 빈 문자가 아니라 비운 값으로 싣는다', () => {

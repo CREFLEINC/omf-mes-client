@@ -27,7 +27,7 @@ export const LOT_SOURCE_TYPE_CODE = 'INBOUND_RECEIPT_LINE';
 /**
  * 번호를 **서버가 매긴다.**
  *
- * 이 화면은 공급사 LOT 이 붙어 오지 않은 자재만 다루므로(`supplierLotMissing=true`) 발번
+ * 이 화면은 실물 라벨이 붙어 오지 않은 자재만 다루므로(`supplierLotLabelAttached=false`) 발번
  * 경로가 하나로 정해져 있다. ⛔ `lotNo` 를 함께 보내면 400 이다 — 계약이 「안 준 것」과
  * 「못 정한 것」을 가르지 않으려고 **누가 매기는가**를 직접 받는다.
  */

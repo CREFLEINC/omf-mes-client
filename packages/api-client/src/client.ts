@@ -69,6 +69,26 @@ const serializeQuery = (query: Record<string, unknown>): string => {
 };
 
 /**
+ * `baseUrl`에 API 접두 경로가 있어도 화면의 OpenAPI 경로와 같은 키로 ETag를 보관한다.
+ * 개발 프록시(`/api`)는 전송 주소에만 필요하며, 쓰기 훅이 참조하는 계약 경로의 일부가 아니다.
+ */
+const etagPath = (requestUrl: string, baseUrl: string): string => {
+  const request = new URL(requestUrl);
+  const base = new URL(baseUrl, request);
+  const basePath = base.pathname.replace(/\/$/, '');
+
+  if (
+    request.origin === base.origin &&
+    basePath !== '' &&
+    (request.pathname === basePath || request.pathname.startsWith(`${basePath}/`))
+  ) {
+    return request.pathname.slice(basePath.length) || '/';
+  }
+
+  return request.pathname;
+};
+
+/**
  * 계약 기반 클라이언트. 응답의 ETag를 경로별로 자동 캡처한다 —
  * 저장 응답의 ETag까지 받아 갱신해야 연속 수정 시 재조회가 필요 없다(공유계약 B-1).
  */
@@ -101,7 +121,7 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     onResponse({ request, response }) {
       const etag = response.headers.get('ETag');
       if (etag !== null) {
-        etags.capture(new URL(request.url).pathname, etag);
+        etags.capture(etagPath(request.url, options.baseUrl), etag);
       }
       return response;
     },

@@ -101,7 +101,7 @@ export const IqcInspectionScreen = () => {
    * 그래서 확정본이면 `null` 이 되고 저장은 「새로 만들기」로 간다.
    */
   const editingResultId =
-    round !== null && round.statusCode !== '확정' ? round.inspectionResultId : null;
+    round !== null && round.statusCode !== 'CONFIRMED' ? round.inspectionResultId : null;
 
   /*
    * ⭐ 잠금 토큰을 얻으려고 회차 한 건을 따로 부른다 — 목록 200 에는 `ETag` 가 없고, 토큰

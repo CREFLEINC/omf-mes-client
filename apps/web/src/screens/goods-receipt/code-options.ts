@@ -1,4 +1,5 @@
 import { messages } from '@omf-mes/i18n';
+import type { components } from '@omf-mes/api-client';
 
 import type { GoodsReceiptCodeKey, SelectOption } from './types';
 
@@ -46,6 +47,13 @@ export type CodeValueLists = Record<GoodsReceiptCodeKey, readonly string[]>;
 
 /** 코드마다의 선택지. */
 export type CodeOptionSets = Record<GoodsReceiptCodeKey, SelectOption[]>;
+type CodeValue = components['schemas']['CodeValue'];
+
+export const GOODS_RECEIPT_CODE_GROUPS = {
+  receiptType: 'RECEIPT_TYPE',
+  qualityStatus: 'LOT_STATUS',
+  inventoryStatus: 'INVENTORY_STATUS',
+} as const;
 
 /** 고정 OpenAPI가 닫은 구조 코드만 채운다. 운영 공통코드 축은 실행 시점 조회 전까지 비워 둔다. */
 export const PLACEHOLDER_GOODS_RECEIPT_CODES: CodeValueLists = {
@@ -55,6 +63,25 @@ export const PLACEHOLDER_GOODS_RECEIPT_CODES: CodeValueLists = {
   inventoryStatus: ['AVAILABLE', 'IN_TRANSIT', 'ON_HOLD', 'BLOCKED'],
   reason: [],
 };
+
+/** 서버의 활성 공통코드만 현재 선택지에 반영한다. */
+const activeCodes = (values: readonly CodeValue[] | undefined): string[] =>
+  (values ?? [])
+    .filter((value) => value.isActive)
+    .slice()
+    .sort((left, right) => left.displayOrder - right.displayOrder)
+    .map((value) => value.code);
+
+export const withRuntimeGoodsReceiptCodes = (values: {
+  receiptType?: readonly CodeValue[];
+  qualityStatus?: readonly CodeValue[];
+  inventoryStatus?: readonly CodeValue[];
+}): CodeValueLists => ({
+  ...PLACEHOLDER_GOODS_RECEIPT_CODES,
+  receiptType: activeCodes(values.receiptType),
+  qualityStatus: activeCodes(values.qualityStatus),
+  inventoryStatus: activeCodes(values.inventoryStatus),
+});
 
 /**
  * 값 목록을 선택지로 옮긴다.

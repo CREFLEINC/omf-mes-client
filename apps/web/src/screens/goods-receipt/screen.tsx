@@ -7,9 +7,10 @@ import { useSearchParams } from 'react-router';
 import { SaveErrorBanner } from '../../patterns/master';
 import { CodeFields } from './code-fields';
 import {
+  GOODS_RECEIPT_CODE_GROUPS,
   isRequiredCodeListPending,
-  PLACEHOLDER_GOODS_RECEIPT_CODES,
   toCodeOptionSets,
+  withRuntimeGoodsReceiptCodes,
 } from './code-options';
 import { DiscardConfirmDialog } from './discard-confirm-dialog';
 import {
@@ -46,6 +47,7 @@ import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import {
   useGoodsReceiptPost,
+  useGoodsReceiptCodeValues,
   useInboundReceiptLines,
   useInboundReceipts,
   useLocationOptions,
@@ -204,6 +206,12 @@ export const GoodsReceiptScreen = () => {
   const suppliers = useSupplierOptions();
   /* 공장만 미리 받는다 — 제목줄은 목록 응답만으로 곧바로 그려진다(`lookups.ts`의 표). */
   const plants = usePlantOptions();
+  const receiptTypes = useGoodsReceiptCodeValues(GOODS_RECEIPT_CODE_GROUPS.receiptType);
+  const qualityStatuses = useGoodsReceiptCodeValues(GOODS_RECEIPT_CODE_GROUPS.qualityStatus);
+  const inventoryStatuses = useGoodsReceiptCodeValues(GOODS_RECEIPT_CODE_GROUPS.inventoryStatus);
+  const codeLookupError = [receiptTypes, qualityStatuses, inventoryStatuses].find(
+    (lookup) => lookup.isError,
+  );
 
   const lines = useInboundReceiptLines(selectedIrId);
   const lineData = lines.data;
@@ -551,7 +559,13 @@ export const GoodsReceiptScreen = () => {
    * 안쪽에서 다시 `null` 가지를 만들지 않는다.
    */
   const postPane = (inboundReceipt: IrView, line: IrLineView): ReactNode => {
-    const codeOptions = toCodeOptionSets(PLACEHOLDER_GOODS_RECEIPT_CODES);
+    const codeOptions = toCodeOptionSets(
+      withRuntimeGoodsReceiptCodes({
+        receiptType: receiptTypes.data,
+        qualityStatus: qualityStatuses.data,
+        inventoryStatus: inventoryStatuses.data,
+      }),
+    );
     const fieldErrors = { ...post.fieldErrors, ...localFieldErrors };
     const blockReason = postBlockReason({
       isCodeListPending: isRequiredCodeListPending(codeOptions),
@@ -859,6 +873,16 @@ export const GoodsReceiptScreen = () => {
           error={list.error}
           onRetry={() => {
             void list.refetch();
+          }}
+        />
+      )}
+      {codeLookupError !== undefined && (
+        <LoadErrorBanner
+          error={codeLookupError.error}
+          onRetry={() => {
+            void receiptTypes.refetch();
+            void qualityStatuses.refetch();
+            void inventoryStatuses.refetch();
           }}
         />
       )}

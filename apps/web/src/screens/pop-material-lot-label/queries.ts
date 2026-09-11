@@ -25,7 +25,7 @@ import {
  * | 첫 진입 | 라벨 미발행 입하 건 목록 |
  *
  * **미부착 조건을 서버가 거른다.** 스펙 §3-6 과 변경 통지 #534 가 목록 원천을
- * `?supplierLotMissing=true&labelIssued=false` 로 정했고 그 질의가 계약에 있다. 화면이 받아서
+ * `?supplierLotLabelAttached=false&labelIssued=false` 로 정했고 그 질의가 계약에 있다. 화면이 받아서
  * 거르던 우회는 걷었다 — 거르는 쪽이 서버이므로 **한 쪽에 보이는 줄 수가 쪽 크기와 어긋나지
  * 않는다.**
  *
@@ -61,10 +61,10 @@ const fetchReceipts = async (
   const data = await runRequest(() =>
     client.GET('/logistics/inbound-receipts', {
       /*
-       * 미부착이면서 아직 라벨을 찍지 않은 건만 받는다(스펙 §3-6 · 변경 통지 #534).
+       * 실물 라벨이 미부착이면서 아직 라벨을 찍지 않은 건만 받는다.
        * ⛔ 화면이 받아서 거르지 않는다 — 목록이 쪽 단위라 거른 뒤 개수가 쪽 크기와 어긋난다.
        */
-      params: { query: { ...query, supplierLotMissing: true, labelIssued: false } },
+      params: { query: { ...query, supplierLotLabelAttached: false, labelIssued: false } },
     }),
   );
 
@@ -95,7 +95,7 @@ const fetchReceiptLines = async (client: Client, inboundReceiptId: number): Prom
     client.GET('/logistics/inbound-receipts/{inboundReceiptId}/lines', {
       params: {
         path: { inboundReceiptId },
-        query: { supplierLotMissing: true, labelIssued: false },
+        query: { supplierLotLabelAttached: false, labelIssued: false },
       },
     }),
   );

@@ -22,6 +22,7 @@ const line = (overrides: Partial<InboundReceiptLine> = {}): InboundReceiptLine =
   receivedQty: 480,
   uomId: 1001,
   supplierLotMissing: false,
+  supplierLotLabelAttached: true,
   inspectionRequired: true,
   statusCode: 'REGISTERED',
   lotId: null,

@@ -345,7 +345,7 @@ describe('IqcInspectionScreen', () => {
     const body = await bodyOf(writes[0] as Request);
     expect(body).not.toHaveProperty('inspectorId');
     expect(body).not.toHaveProperty('terminalId');
-    expect(body.statusCode).toBe('작성중');
+    expect(body.statusCode).toBe('DRAFT');
   });
 
   it('작성중 회차가 있으면 그것을 고치고 잠금 토큰을 싣는다', async () => {
