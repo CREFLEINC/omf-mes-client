@@ -147,11 +147,11 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
 
         try {
           /*
-           * ⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1
-           * 「미구현 5건」). `client.GET` 을 부르지 않고 항상 거부하는 대역을 부른다 — 아래는
-           * 원래도 «렌디션 실패» 갈래로 실패 사유를 실어 보고하던 자리라 그대로 태운다.
+           * ⛔ **배포본에서는 요청이 만들어지지 않는다**(`patterns/pop-label-rendition` 머리말 —
+           * 실서버에 경로가 없어 개발 모드에서만 부른다). 아래는 원래도 «렌디션 실패» 갈래로
+           * 실패 사유를 실어 보고하던 자리라 그대로 태운다.
            */
-          rendition = await fetchLabelRendition();
+          rendition = await fetchLabelRendition(client, target.documentIssueLogId);
         } catch (error) {
           failureReason = reasonOf(error);
           failurePhase = 'renditionFailed';

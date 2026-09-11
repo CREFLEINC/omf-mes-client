@@ -140,12 +140,14 @@ const createIssue = async (
  *
  * ⛔ **형식은 서버가 정한 것을 그대로 쓴다** — 라벨은 이미지(`png`)다. 화면이 다시 그리지 않는다.
  *
- * ⛔⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1 「미구현
- * 5건」). `client.GET` 을 부르지 않고 항상 거부하는 대역을 부른다 — LOT 등록·발행 기록은
- * 이미 남았으므로 `render` 걸음에서 멈춘 것으로만 다루고 등록을 되풀이하지 않는다(위 `IssueStep`
- * 표 참고).
+ * ⛔⛔ **배포본에서는 요청이 만들어지지 않는다**(`patterns/pop-label-rendition` 머리말 — 실서버에
+ * 경로가 없어 개발 모드에서만 부른다). LOT 등록·발행 기록은 이미 남았으므로 `render` 걸음에서
+ * 멈춘 것으로만 다루고 등록을 되풀이하지 않는다(위 `IssueStep` 표 참고).
  */
-const fetchRendition = async (): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition());
+const fetchRendition = async (
+  client: ApiClient['client'],
+  documentIssueLogId: number,
+): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition(client, documentIssueLogId));
 
 const reportPrint = async (
   client: Client,
@@ -298,7 +300,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           issueKeys.delete(row.inboundReceiptLineId);
 
           enter('render');
-          const bytes = await fetchRendition();
+          const bytes = await fetchRendition(client, issue.documentIssueLogId);
 
           enter('print');
           const shell = popShell();

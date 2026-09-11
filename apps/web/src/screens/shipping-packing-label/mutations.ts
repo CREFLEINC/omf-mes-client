@@ -128,12 +128,15 @@ const createIssues = async (
  * ⚠ **발행 기록 «한 건당» 한 번이다.** 발행은 한 트랜잭션이지만 그리기는 그 밖이라 **건별
  * 실패가 정상이다**(요구서 §4-2 B-8) — 여기서 한 장이 실패해도 앞서 나온 장은 유효하다.
  *
- * ⛔⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1 「미구현
- * 5건」). `client.GET` 을 부르지 않고 항상 `LabelRenditionNotReadyError` 로 거부한다 — 아래
- * `issue`·`retryRendition` 의 catch 가 이 타입을 알아보고 「발행 실패」와 다른, 사람이 읽을
+ * ⛔⛔ **배포본에서는 요청이 만들어지지 않는다**(`patterns/pop-label-rendition` 머리말 — 실서버에
+ * 경로가 없어 개발 모드에서만 부르고, 그 밖에서는 `LabelRenditionNotReadyError` 로 거부한다).
+ * 아래 `issue`·`retryRendition` 의 catch 가 이 타입을 알아보고 「발행 실패」와 다른, 사람이 읽을
  * 사유를 `failureReason` 에 싣는다.
  */
-const fetchRendition = async (): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition());
+const fetchRendition = async (
+  client: ApiClient['client'],
+  documentIssueLogId: number,
+): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition(client, documentIssueLogId));
 
 /**
  * `issue`·`render` 걸음이 멈춘 원인을 결과에 담는다.
@@ -287,7 +290,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
           const rendered: IssuedLabel[] = [];
 
           for (const one of issues) {
-            const bytes = await fetchRendition();
+            const bytes = await fetchRendition(client, one.documentIssueLogId);
             const previewUrl = URL.createObjectURL(
               new Blob([bytes as BlobPart], { type: 'image/png' }),
             );
@@ -343,7 +346,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
         const rendered: IssuedLabel[] = [];
 
         for (const one of issued.current) {
-          const bytes = await fetchRendition();
+          const bytes = await fetchRendition(client, one.documentIssueLogId);
           const previewUrl = URL.createObjectURL(
             new Blob([bytes as BlobPart], { type: 'image/png' }),
           );
