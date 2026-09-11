@@ -3660,6 +3660,12 @@ const corsHeaders = (request) => {
   if (origin === undefined) {
     return {
       'Access-Control-Allow-Origin': '*',
+      /*
+       * ⚠ **출처가 없을 때도 이 줄이 있어야 한다**(독립 검증 지적 2026-09-11). 없으면 이
+       * `*` 응답이 중간 캐시에 남아, 뒤이어 오는 자격 증명 요청에 그대로 나간다 — 브라우저는
+       * 그 응답을 버리고 화면은 다시 「불러오지 못했습니다」가 된다.
+       */
+      Vary: 'Origin',
       'Access-Control-Allow-Headers': '*',
       'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
     };
