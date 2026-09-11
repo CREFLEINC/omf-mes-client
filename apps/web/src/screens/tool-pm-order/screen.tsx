@@ -17,6 +17,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
+import { createLocalKey } from '../../patterns/local-key';
 import { FieldLabel } from './field-label';
 import { LoadErrorBanner } from './load-error-banner';
 import { lookupNote, usePlantOptions, useUserOptions } from './lookups';
@@ -489,7 +490,7 @@ export const ToolPmOrderScreen = () => {
             onClick={() => {
               setDraft((prev) => ({
                 ...prev,
-                items: [...prev.items, { key: crypto.randomUUID(), name: '' }],
+                items: [...prev.items, { key: createLocalKey(), name: '' }],
               }));
             }}
           >

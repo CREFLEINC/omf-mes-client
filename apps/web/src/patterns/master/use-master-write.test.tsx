@@ -1,9 +1,10 @@
 import { messages } from '@omf-mes/i18n';
 import { act, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiRequestError, toApiError } from '../request';
 import { renderHookWithProviders } from '../../test/api-harness';
+import { withoutRandomUuid } from '../../test/insecure-context';
 import {
   requireIfMatch,
   useMasterWrite,
@@ -719,6 +720,31 @@ describe('useMasterWrite — 화면의 말로 되말하기', () => {
  * 빈 문자열로 메우면 빈 토큰이 나가고, 서버의 거부가 화면에서 「저장이 반려됐다」로 읽힌다 —
  * 실제로는 **물어보지도 못한 것**이다.
  */
+/**
+ * ⭐ **평문 HTTP 배포본에서도 나간다**(#1066). 그곳에는 `crypto.randomUUID` 가 없어, 키를 그것으로
+ * 만들면 `write` 가 요청 전에 던진다 — 이 훅을 쓰는 화면 전부의 저장이 아무 말 없이 멎는다.
+ */
+describe('useMasterWrite — 평문 HTTP 배포본', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('crypto.randomUUID가 없어도 요청이 나가고 멱등 키가 UUID다', async () => {
+    withoutRandomUuid();
+
+    const { result, calls } = renderWrite();
+
+    act(() => {
+      result.current.write({ name: '값' });
+    });
+
+    await waitFor(() => {
+      expect(calls).toHaveLength(1);
+    });
+    expect(calls[0]?.headers['Idempotency-Key']).toMatch(UUID_PATTERN);
+  });
+});
+
 describe('requireIfMatch', () => {
   it('토큰이 있으면 그대로 준다', () => {
     expect(requireIfMatch({ 'Idempotency-Key': 'key-1', 'If-Match': '7' })).toBe('7');

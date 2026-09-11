@@ -1,4 +1,5 @@
 import { useToast } from '@crefle/web-ui';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { hashKey, useMutation, useQueryClient } from '@tanstack/react-query';
 
@@ -67,7 +68,7 @@ export const useSignOut = (): SignOutAction => {
     signOut: () => {
       if (mutation.isPending) return;
 
-      mutation.mutate(crypto.randomUUID());
+      mutation.mutate(createIdempotencyKey());
     },
     isSigningOut: mutation.isPending,
   };

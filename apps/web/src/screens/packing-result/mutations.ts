@@ -1,4 +1,5 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query';
 import { useRef } from 'react';
 
@@ -99,7 +100,7 @@ export const keptCreateKey = (previous: KeptKey | null, body: CreateHandlingUnit
 
   return previous !== null && previous.signature === signature
     ? previous
-    : { signature, key: crypto.randomUUID() };
+    : { signature, key: createIdempotencyKey() };
 };
 
 /** 만들어진 포장 — **번호를 화면이 보이고, 토큰은 확정이 쓴다.** */
@@ -152,9 +153,9 @@ export const keptPackingAttempt = (
   return {
     signature,
     now,
-    packKey: crypto.randomUUID(),
+    packKey: createIdempotencyKey(),
     linkKeys: Object.fromEntries(
-      target.lines.map((line) => [line.shipmentLotAllocationId, crypto.randomUUID()]),
+      target.lines.map((line) => [line.shipmentLotAllocationId, createIdempotencyKey()]),
     ),
   };
 };

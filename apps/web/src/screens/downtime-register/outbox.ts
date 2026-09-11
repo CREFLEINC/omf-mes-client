@@ -1,4 +1,5 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -308,14 +309,14 @@ export const useOutbox = (): Outbox => {
 
   const enqueueCreate = useCallback(
     (workerNo: string, body: DowntimeCreate): void => {
-      push({ kind: 'create', idempotencyKey: crypto.randomUUID(), workerNo, body });
+      push({ kind: 'create', idempotencyKey: createIdempotencyKey(), workerNo, body });
     },
     [push],
   );
 
   const enqueueClose = useCallback(
     (workerNo: string, downtimeId: number): void => {
-      push({ kind: 'close', idempotencyKey: crypto.randomUUID(), workerNo, downtimeId });
+      push({ kind: 'close', idempotencyKey: createIdempotencyKey(), workerNo, downtimeId });
     },
     [push],
   );

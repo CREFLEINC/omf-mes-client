@@ -1,4 +1,5 @@
 import { AlertBanner, Breadcrumb, PageHeader, useToast } from '@crefle/web-ui';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
@@ -109,7 +110,7 @@ const useObservationImport = (equipmentId: number | null) => {
         try {
           await runRequest(() =>
             client.POST('/maintenance/collection-channels', {
-              params: { header: { 'Idempotency-Key': crypto.randomUUID() } },
+              params: { header: { 'Idempotency-Key': createIdempotencyKey() } },
               /*
                * ⭐ **조건은 「전체」로 «명시»한다** — 창의 등록과 같은 규칙이다. 로그에서
                * 가져오는 채널은 고를 조건이 없어 언제나 전체이지만, 그 사실을 빼지 않고

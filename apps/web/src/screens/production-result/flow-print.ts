@@ -1,3 +1,4 @@
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -93,7 +94,7 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
     const existing = reportKeys.current.get(slot);
     if (existing !== undefined) return existing;
 
-    const key = crypto.randomUUID();
+    const key = createIdempotencyKey();
     reportKeys.current.set(slot, key);
 
     return key;

@@ -1,4 +1,5 @@
 import type { components, ConflictCause } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
@@ -95,7 +96,7 @@ export const useConfirmRunner = (): ConfirmRunner => {
       const outcomes: ConfirmOutcome[] = [];
 
       for (const row of rows) {
-        const key = keys.current.get(row.shipmentId) ?? crypto.randomUUID();
+        const key = keys.current.get(row.shipmentId) ?? createIdempotencyKey();
         keys.current.set(row.shipmentId, key);
 
         /*

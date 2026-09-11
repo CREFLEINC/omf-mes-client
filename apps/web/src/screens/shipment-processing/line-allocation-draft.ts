@@ -1,3 +1,4 @@
+import { createLocalKey } from '../../patterns/local-key';
 import type { ShipmentRequestLineCandidate } from './types';
 
 /**
@@ -46,7 +47,7 @@ export const createLineAllocationDrafts = (
 
 export const addAllocation = (line: LineAllocationDraft): LineAllocationDraft => ({
   ...line,
-  allocations: [...line.allocations, { draftId: crypto.randomUUID(), lotId: null, qty: '' }],
+  allocations: [...line.allocations, { draftId: createLocalKey(), lotId: null, qty: '' }],
 });
 
 export const removeAllocation = (

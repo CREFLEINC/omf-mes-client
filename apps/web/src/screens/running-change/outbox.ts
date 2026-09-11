@@ -1,4 +1,5 @@
 import type { ApiClient, components } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -302,7 +303,7 @@ export const useOutbox = (): Outbox => {
      * 여러 번 부를 수 있다 — 그 안에서 만들면 **한 건의 키가 호출마다 달라질 여지**가 열린다.
      * 재전송이 새 전표가 되는 것이 이 화면에서 가장 비싼 사고다(C-1 #5).
      */
-    const entry: OutboxEntry = { idempotencyKey: crypto.randomUUID(), workerNo, body };
+    const entry: OutboxEntry = { idempotencyKey: createIdempotencyKey(), workerNo, body };
 
     setEntries((prev) => {
       const next = [...prev, entry];

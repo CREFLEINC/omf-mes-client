@@ -1,4 +1,5 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
@@ -306,7 +307,7 @@ export const useMarkRead = (options: MarkReadOptions): MarkReadMutation => {
      * 두 번째를 앞 요청의 재생으로 삼켜 **그 알림은 바뀌지 않는데 화면은 바뀌었다고 말한다.**
      * 이 쓰기는 두 번 실행돼도 결과가 같으므로(멱등한 상태 전이) 키를 유지할 이유도 없다.
      */
-    mutateAsync({ notificationId, idempotencyKey: crypto.randomUUID() })
+    mutateAsync({ notificationId, idempotencyKey: createIdempotencyKey() })
       .then(() => {
         /*
          * ⭐ **성공 되먹임의 예외를 요청 실패와 가른다**(전례 `login/queries.ts` · `omf-mes#96` 계열).
@@ -424,7 +425,7 @@ export const useMarkAllRead = (options: MarkAllReadOptions): MarkAllReadMutation
 
     setFailure(null);
 
-    mutation.mutate(crypto.randomUUID(), {
+    mutation.mutate(createIdempotencyKey(), {
       onSuccess: (data) => {
         void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
 

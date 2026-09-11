@@ -1,4 +1,5 @@
 import type { ApiClient } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 
 import { isRejected } from '../../patterns/outbox-policy';
 import { runRequest } from '../../patterns/request';
@@ -62,7 +63,7 @@ export const enqueueReworkResult = (
   workerNo: string,
   body: ProductionResultCreate,
 ): ReworkResultOutboxEntry => {
-  const entry = { idempotencyKey: crypto.randomUUID(), workerNo, body };
+  const entry = { idempotencyKey: createIdempotencyKey(), workerNo, body };
   writeEntries([...readEntries(), entry]);
   return entry;
 };

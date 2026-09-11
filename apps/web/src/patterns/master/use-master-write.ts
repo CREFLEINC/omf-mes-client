@@ -1,4 +1,5 @@
 import type { ApiError, ErrorItem } from '@omf-mes/api-client';
+import { createIdempotencyKey } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
@@ -286,7 +287,7 @@ export const useMasterWrite = <TVariables, TData>(
       idempotency.current === null ||
       idempotency.current.signature !== signature
     ) {
-      idempotency.current = { signature, key: crypto.randomUUID() };
+      idempotency.current = { signature, key: createIdempotencyKey() };
     }
 
     const headers: WriteHeaders = { 'Idempotency-Key': idempotency.current.key };
