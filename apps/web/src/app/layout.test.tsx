@@ -1,10 +1,11 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 
 import { SessionProvider, useSession, type Session } from '../patterns/session';
 import { renderWithProviders } from '../test/api-harness';
+import { expandAllNavGroups } from '../test/nav-groups';
 import { AppLayout } from './layout';
 
 /** 합성값이다 — 계약의 예시값(`1001`·`hong.gd`·`홍길동`)을 쓰지 않는다(공개 저장소 경계). */
@@ -44,7 +45,20 @@ const SignInProbe = () => {
  * 그 답을 시험이 쥔다 — 「없을 때」에서 시작해 [세션 담기]로 「있을 때」로 넘어가야
  * 상단 바의 두 모양을 한 회차에서 앞뒤로 잴 수 있다.
  */
-const renderLayout = (children: string) => {
+/**
+ * ⚠ **기본으로 묶음을 전부 펼친다**(#1079). 앱은 **현재 묶음만 펼친 채** 서지만, 이 파일의
+ * 감지기 30건은 항목이 DOM 에 있어야 하는 것들이고 그 30건이 재려는 것은 **차례와 경로**이지
+ * 접힘이 아니다. 펼치는 일을 감지기마다 되풀이하면 30곳에서 같은 준비를 적게 되고, 그중 하나를
+ * 빠뜨리면 「항목이 없다」가 **접혀 있어서인지 빠져서인지** 구별되지 않는다.
+ *
+ * ⛔ **그래서 접힘의 기본값은 이 하네스로 덮인다 — 그 자리를 따로 재는 감지기가 반드시 있어야
+ * 한다.** `expandGroups: false` 로 부르는 「셸 — 묶음 접기」 감지기들이 그 몫이다. 그 감지기를
+ * 지우면 앱이 전부 펼친 채로 돌아가도 이 파일은 초록이다.
+ */
+const renderLayout = (
+  children: string,
+  options: { expandGroups?: boolean; route?: string } = {},
+) => {
   const user = userEvent.setup();
 
   renderWithProviders(
@@ -52,13 +66,32 @@ const renderLayout = (children: string) => {
       <SignInProbe />
       <AppLayout>{children}</AppLayout>
     </SessionProvider>,
-    { session: null },
+    { session: null, ...(options.route === undefined ? {} : { route: options.route }) },
   );
+
+  if (options.expandGroups !== false) expandAllNavGroups();
 
   return { user };
 };
 
 const topbar = (): HTMLElement => screen.getByRole('banner');
+
+const navSidebar = (): HTMLElement => screen.getByRole('navigation', { name: '주 메뉴' });
+
+/**
+ * 묶음 손잡이를 **접근명의 앞머리**로 찾는다. 접근명이 「<이름> 펼치기 (화면 N개)」·「<이름>
+ * 접기 (화면 N개)」로 상태와 개수를 함께 담으므로 완전 일치로는 집을 수 없고, 개수를 시험이
+ * 되풀이하면 항목이 하나 늘 때마다 여기도 고쳐야 한다.
+ */
+const groupToggle = (label: string): HTMLElement => {
+  const found = within(navSidebar())
+    .getAllByRole('button')
+    .find((button) => (button.getAttribute('aria-label') ?? '').startsWith(`${label} `));
+
+  if (found === undefined) throw new Error(`「${label}」 묶음의 손잡이를 찾지 못했습니다`);
+
+  return found;
+};
 
 describe('AppLayout', () => {
   it('사이드바에 기준정보 섹션의 창고·Location 메뉴가 보인다', () => {
@@ -646,6 +679,13 @@ describe('AppLayout', () => {
     renderLayout('본문 내용');
 
     const sidebar = screen.getByRole('navigation', { name: '주 메뉴' });
+
+    /*
+     * **묶음을 역할로 집는다.** 전에는 이름 글자의 `parentElement` 를 썼는데, 그것은 라벨이 묶음
+     * 그릇의 **직계 자식**이라는 DS 의 구조에 기대는 것이었다 — 손잡이가 선 뒤로는 라벨의 부모가
+     * 버튼이라 그릇을 찾지 못하고 69개가 전부 「섹션 밖」으로 셌다. 묶음은 자기 이름을 접근명으로
+     * 내놓으므로(`role="group"` + `aria-label`) 이름 목록은 그대로 쓰면서 구조 의존만 끊는다.
+     */
     const sections = [
       '기준정보',
       '자재창고',
@@ -656,11 +696,9 @@ describe('AppLayout', () => {
       '승인',
       '알림',
       '시스템 관리',
-    ].map((label) => within(sidebar).getByText(label).parentElement);
+    ].map((label) => within(sidebar).getByRole('group', { name: label }));
 
-    const grouped = sections.flatMap((section) =>
-      section === null ? [] : [...section.querySelectorAll('a')],
-    );
+    const grouped = sections.flatMap((section) => [...section.querySelectorAll('a')]);
     const all = within(sidebar).getAllByRole('link');
     const ungrouped = all.filter((link) => !grouped.some((anchor) => anchor === link));
 
@@ -1085,5 +1123,256 @@ describe('AppLayout — 셸 치수', () => {
     await user.click(screen.getByRole('button', { name: '사이드바 펼치기' }));
 
     expect(flags()).toEqual({ 셸: 'false', 사이드바: 'false' });
+  });
+});
+
+/**
+ * 셸 — **묶음 접기**(#1079).
+ *
+ * ⭐ **이 묶음의 감지기들이 `renderLayout` 의 기본값을 떠받친다.** 하네스가 편의로 전부 펼치므로,
+ * 접힘이 실제로 서는지는 **여기서만** 재진다 — `expandGroups: false` 로 부르는 것이 그 표시다.
+ */
+describe('AppLayout — 묶음 접기', () => {
+  /**
+   * 처음 열 때 보이는 것이 **묶음 9줄 + 섹션 밖 1개**다. 69개가 한꺼번에 펼쳐져 있던 것이
+   * 이 작업의 출발점이다.
+   */
+  it('처음에는 어느 묶음도 펼쳐져 있지 않다 — 현재 화면이 어느 묶음에도 없을 때', () => {
+    renderLayout('본문 내용', { expandGroups: false });
+
+    expect(within(navSidebar()).getAllByRole('group')).toHaveLength(9);
+    /* 섹션 밖 항목 하나만 남는다 — 묶음 안 항목은 DOM 에 없다. */
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(1);
+  });
+
+  /**
+   * ⛔ **닫힌 묶음의 항목은 감추는 것이 아니라 없다.** DS 사이드바의 화살표 키 순회가
+   * `querySelectorAll('[data-sidebar-item]')` 로 돌기 때문에, 감추기만 하면 **보이지 않는 항목에
+   * 초점이 간다.** 「보이지 않는다」가 아니라 「DOM 에 없다」를 잰다.
+   */
+  it('닫힌 묶음의 항목은 DOM 에 없다', () => {
+    renderLayout('본문 내용', { expandGroups: false });
+
+    /*
+     * ⚠ **`queryByRole` 로 재지 않는다 — 그것은 접근성 트리를 본다.** `display: none` 으로 감춘
+     * 항목은 `queryByRole` 에 잡히지 않아 **감추기만 해도 통과한다**(결함 재주입에서 드러났다).
+     * 그런데 DS 사이드바의 화살표 키 순회는 `querySelectorAll('[data-sidebar-item]')` 로 돌아
+     * **접근성 숨김을 보지 않는다** — 감춘 항목에 초점이 간다. 그 선택자를 그대로 써서 잰다.
+     */
+    expect(navSidebar().querySelectorAll('[data-sidebar-item]')).toHaveLength(1);
+  });
+
+  it('묶음을 누르면 펼쳐지고 다시 누르면 접힌다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.click(groupToggle('기준정보'));
+
+    expect(within(navSidebar()).getByRole('link', { name: '창고·Location' })).toBeInTheDocument();
+    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'true');
+
+    await user.click(groupToggle('기준정보'));
+
+    expect(within(navSidebar()).queryByRole('link', { name: '창고·Location' })).toBeNull();
+    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  /**
+   * 다른 묶음은 **건드리지 않는다.** 한 묶음을 열 때 다른 것이 닫히면(아코디언) 두 업무를
+   * 번갈아 보는 사람이 같은 묶음을 계속 다시 연다.
+   */
+  it('한 묶음을 열어도 다른 묶음은 그대로 닫혀 있다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.click(groupToggle('기준정보'));
+
+    expect(groupToggle('자재창고')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  /** 접힌 묶음은 이름만 남아, **안에 몇 개가 있는지**를 함께 보여야 누를지 말지 판단할 수 있다. */
+  it('손잡이가 묶음의 화면 수를 알린다', () => {
+    renderLayout('본문 내용', { expandGroups: false });
+
+    /* 「기준정보」는 화면 11개다 — `nav-tree.ts` 가 정본이고 전수 순서 감지기가 그 수를 못 박는다. */
+    expect(groupToggle('기준정보')).toHaveAccessibleName('기준정보 펼치기 (화면 11개)');
+  });
+});
+
+/**
+ * 셸 — **화면 검색**(#1079).
+ *
+ * 검색은 **이름으로만** 찾는다. 주소를 섞으면 「출하」에 `/shipment/**` 가 통째로 걸려 아무것도
+ * 좁히지 못하고, 섹션명을 섞으면 맞는 항목이 없는 묶음이 열린 채 선다(`nav-filter.ts`).
+ */
+describe('AppLayout — 화면 검색', () => {
+  const searchBox = (): HTMLElement =>
+    within(navSidebar()).getByRole('searchbox', { name: messages.shellNav.search.label });
+
+  const visibleLinkNames = (): string[] =>
+    within(navSidebar())
+      .getAllByRole('link')
+      .map((link) => link.textContent ?? '');
+
+  it('이름의 일부를 치면 맞는 화면만 남는다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.type(searchBox(), '실사');
+
+    /* 아이콘 리가처가 링크의 글자에 함께 들어오므로 이름이 **포함**되는지로 본다. */
+    expect(visibleLinkNames().filter((name) => name.includes('재고실사'))).toHaveLength(1);
+    expect(visibleLinkNames().filter((name) => name.includes('창고·Location'))).toHaveLength(0);
+  });
+
+  /**
+   * ⭐ **맞는 묶음은 접혀 있어도 펼쳐진다.** 접힌 채로 두면 찾아 놓고도 보이지 않아 「결과 없음」과
+   * 구별되지 않는다.
+   */
+  it('접힌 묶음 안에서 맞아도 보인다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    expect(within(navSidebar()).queryByRole('link', { name: '재고실사' })).toBeNull();
+
+    await user.type(searchBox(), '실사');
+
+    expect(within(navSidebar()).getByRole('link', { name: '재고실사' })).toBeInTheDocument();
+  });
+
+  /** 맞는 항목이 하나도 없는 묶음은 **이름도 서지 않는다** — 눌러도 빌 묶음을 남기지 않는다. */
+  it('맞는 항목이 없는 묶음은 사라진다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.type(searchBox(), '실사');
+
+    const groupNames = within(navSidebar())
+      .getAllByRole('group')
+      .map((group) => group.getAttribute('aria-label'));
+
+    expect(groupNames).toEqual(['자재창고']);
+  });
+
+  /** 섹션 밖 항목도 검색 대상이다 — `NAV_GROUPS` 만 훑으면 이것이 조용히 빠진다. */
+  it('섹션 밖 항목도 검색에 걸린다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.type(searchBox(), '대시보드');
+
+    expect(within(navSidebar()).getByRole('link', { name: '통합 대시보드' })).toBeInTheDocument();
+    expect(within(navSidebar()).queryAllByRole('group')).toHaveLength(0);
+  });
+
+  /** 검색어에 맞지 않으면 섹션 밖 항목도 **빠진다** — 늘 남으면 검색이 좁혀지지 않는다. */
+  it('검색어에 맞지 않으면 섹션 밖 항목도 빠진다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.type(searchBox(), '실사');
+
+    expect(within(navSidebar()).queryByRole('link', { name: '통합 대시보드' })).toBeNull();
+  });
+
+  /** ⛔ **빈 사이드바를 그대로 두지 않는다** — 통째로 비면 사람은 화면이 깨진 것으로 읽는다. */
+  it('맞는 것이 하나도 없으면 그 사실을 말한다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.type(searchBox(), '있을 수 없는 화면 이름');
+
+    expect(within(navSidebar()).getByText(messages.shellNav.search.empty)).toBeInTheDocument();
+    expect(within(navSidebar()).queryAllByRole('link')).toHaveLength(0);
+  });
+
+  /**
+   * ⭐ **검색어를 지우면 사람이 정해 둔 접힘 모양으로 돌아온다.** 검색이 접힘 상태를 덮어쓰면,
+   * 찾아 들어갔다 나온 사람은 자기가 접어 둔 것이 전부 열린 화면을 보게 된다.
+   */
+  it('검색어를 지우면 그 전 접힘 상태로 돌아온다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.click(groupToggle('기준정보'));
+    expect(within(navSidebar()).getByRole('link', { name: '창고·Location' })).toBeInTheDocument();
+
+    await user.type(searchBox(), '실사');
+    await user.clear(searchBox());
+
+    /* 기준정보는 내가 열어 둔 채로, 자재창고는 닫힌 채로 돌아와야 한다. */
+    expect(within(navSidebar()).getByRole('link', { name: '창고·Location' })).toBeInTheDocument();
+    expect(within(navSidebar()).queryByRole('link', { name: '재고실사' })).toBeNull();
+  });
+
+  /** 대소문자를 고른다 — 라벨에 `IQC`·`P/O` 처럼 영문이 섞여 있어 고르지 않으면 못 찾는다. */
+  it('영문 이름은 대소문자를 가리지 않는다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await user.type(searchBox(), 'iqc');
+
+    expect(
+      within(navSidebar()).getByRole('link', { name: 'IQC 수입검사·판정' }),
+    ).toBeInTheDocument();
+  });
+});
+
+/**
+ * 셸 — **들어온 화면의 묶음은 열려 있다**(#1079).
+ *
+ * ⭐ **주소로 들어오는 길이 있다.** 링크를 받았거나 새로 고쳤거나 가드가 돌려보냈을 때, 지금 보고
+ * 있는 화면이 **접힌 묶음 안**이면 사이드바에 자기 위치가 보이지 않는다.
+ */
+describe('AppLayout — 현재 묶음', () => {
+  it('들어온 화면이 속한 묶음은 처음부터 펼쳐져 있다', () => {
+    renderLayout('본문 내용', { expandGroups: false, route: '/logistics/stocktaking' });
+
+    expect(groupToggle('자재창고')).toHaveAttribute('aria-expanded', 'true');
+    expect(within(navSidebar()).getByRole('link', { name: '재고실사' })).toBeInTheDocument();
+  });
+
+  /** 다른 묶음은 여전히 접혀 있다 — 하나가 열리는 것이 전부 열리는 것이 되면 소용이 없다. */
+  it('다른 묶음은 그대로 접혀 있다', () => {
+    renderLayout('본문 내용', { expandGroups: false, route: '/logistics/stocktaking' });
+
+    expect(groupToggle('기준정보')).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  /**
+   * ⛔ **현재 묶음을 「늘 열림」으로 계산하지 않는다.** 그러면 지금 보고 있는 묶음을 **접을 수
+   * 없다** — 접어도 다음 렌더에 다시 열린다. 들어올 때 한 번 열어 주고 그 뒤는 사람이 정한다.
+   */
+  it('현재 묶음도 접을 수 있다', async () => {
+    const { user } = renderLayout('본문 내용', {
+      expandGroups: false,
+      route: '/logistics/stocktaking',
+    });
+
+    await user.click(groupToggle('자재창고'));
+
+    expect(groupToggle('자재창고')).toHaveAttribute('aria-expanded', 'false');
+    expect(within(navSidebar()).queryByRole('link', { name: '재고실사' })).toBeNull();
+  });
+});
+
+/**
+ * 셸 — **레일(아이콘 전용)에서는 접기와 검색을 두지 않는다**(#1079).
+ *
+ * 72px 에 입력칸이 들어가지 않고, 들어간다 해도 결과가 아이콘만 남아 **무엇이 걸렸는지 읽을 수
+ * 없다.** 접기 손잡이도 누를 이름이 없다 — DS 가 그 상태의 섹션 라벨을 접근명으로만 남긴다.
+ */
+describe('AppLayout — 레일', () => {
+  const collapseRail = async (user: UserEvent): Promise<void> => {
+    await user.click(screen.getByRole('button', { name: '사이드바 접기' }));
+  };
+
+  it('레일에서는 검색창이 없다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await collapseRail(user);
+
+    expect(
+      within(navSidebar()).queryByRole('searchbox', { name: messages.shellNav.search.label }),
+    ).toBeNull();
+  });
+
+  /** ⛔ **레일에서 항목을 감추지 않는다.** 아이콘만이라도 **전부** 서야 누를 수 있다. */
+  it('레일에서는 항목이 전부 선다', async () => {
+    const { user } = renderLayout('본문 내용', { expandGroups: false });
+
+    await collapseRail(user);
+
+    expect(within(navSidebar()).getAllByRole('link')).toHaveLength(69);
   });
 });

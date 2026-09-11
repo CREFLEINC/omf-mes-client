@@ -120,6 +120,7 @@ import { recycleEntry } from './recycle-entry';
 import { inboundVariance } from './inbound-variance';
 import { temporaryPutaway } from './temporary-putaway';
 import { shellHome } from './shell-home';
+import { shellNav } from './shell-nav';
 import { wipHandover } from './wip-handover';
 import { workerAssignment } from './worker-assignment';
 import { popMaterialLotLabel } from './pop-material-lot-label';
@@ -238,6 +239,7 @@ export const ko = {
   temporaryPutaway,
   poChangeReview,
   shellHome,
+  shellNav,
   wipHandover,
   workerAssignment,
   popMaterialLotLabel,

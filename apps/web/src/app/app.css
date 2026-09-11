@@ -36,6 +36,12 @@
  * .topbar-session 상단 바 오른쪽의 이름과 로그아웃
  * .sidebar-lead  섹션 밖에 홀로 선 메뉴 항목이 목록의 넘침에 줄어드는 것을 막는다
  *               임시 우회 — design-system-v2-webui#103
+ * .nav-group        접을 수 있는 사이드바 묶음 — DS SidebarSection 을 대신한다
+ * .nav-group-toggle 그 묶음의 손잡이(펼치기·접기) — 섹션 라벨 자리에 선다
+ * .nav-group-label  손잡이 안의 묶음 이름 — 남는 폭을 쓰고 길면 줄인다
+ * .nav-group-count  접혀 있을 때 안에 몇 개가 있는지
+ * .nav-group-items  그 묶음의 항목들 — 열렸을 때만 내용이 있다
+ * .nav-search-empty 검색에 맞는 화면이 없다는 안내
  * .login-card    그 화면이 세우는 카드의 폭 상한(규범 8)
  * .login-title   카드 머리에 놓는 표제 — 디자인 시스템의 머리 서식을 그대로 물려받는다(규범 8)
  * .login-fields  카드 안 입력 칸 사이 간격(규범 8)
@@ -7743,4 +7749,82 @@ dl.filter-bar.approval-inbox-detail-facts {
  */
 .sidebar-lead {
   flex: none;
+}
+
+/*
+ * 접을 수 있는 사이드바 묶음 — **DS 섹션 라벨이 서던 자리를 손잡이가 대신한다**(#1079).
+ *
+ * 값은 DS 섹션(`_section_`·`_sectionLabel_`)에서 그대로 가져왔다 — 묶음 사이 간격 `--space-2`,
+ * 라벨의 글자·색·안쪽 여백. 접히는 것 말고는 **전과 같이 보여야** 하므로 새 값을 만들지 않는다.
+ */
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/*
+ * 묶음 손잡이. **DS 메뉴 항목과 같은 격자에 선다** — 아이콘 자리(20px)가 항목의 아이콘(24px)보다
+ * 작아 제목이 항목보다 가볍게 읽히고, 그게 의도다(제목이 항목보다 무거워지면 분류가 내용을 가린다).
+ */
+.nav-group-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--on-surface-muted);
+  font: var(--type-label-sm);
+  letter-spacing: var(--type-label-sm-tracking);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-group-toggle:hover {
+  background: var(--state-hover-neutral);
+}
+
+.nav-group-toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* 이름이 남는 폭을 먹고, 좁아지면 숫자를 밀어내지 않고 자기가 줄어든다. */
+.nav-group-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * 접혀 있을 때 **안에 몇 개가 있는지**. 접힌 묶음은 이름만 남아 누르기 전에는 안이 비었는지
+ * 열셋인지 알 수 없다. 숫자는 이름보다 약하게 읽혀야 한다 — 찾는 단서는 이름이다.
+ */
+.nav-group-count {
+  flex: none;
+  color: var(--on-surface-variant);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 항목 사이 간격은 DS 목록과 같다. 닫혀 있으면 내용이 없어 높이가 0 이 된다. */
+.nav-group-items:not(:empty) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/*
+ * 검색에 맞는 화면이 없다는 안내. ⛔ **빈 사이드바를 그대로 두지 않는다** — 통째로 비면 사람은
+ * 화면이 깨진 것으로 읽는다.
+ */
+.nav-search-empty {
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--on-surface-variant);
+  font: var(--type-body-sm);
 }

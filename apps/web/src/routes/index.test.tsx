@@ -11,6 +11,7 @@ import {
 } from '../screens/disposition-decision/filters';
 import { WORK_ORDER_PROGRESS_PATH } from '../screens/work-order-progress/filters';
 import { SessionProvider } from '../patterns/session';
+import { expandAllNavGroups } from '../test/nav-groups';
 import { SYNTHETIC_SESSION, signedOutRoute, withSessionStub } from '../test/session-harness';
 import {
   groupsResponse as equipmentGroupsResponse,
@@ -110,6 +111,9 @@ const sidebarHrefs = (): string[] => {
     { session: SYNTHETIC_SESSION },
   );
 
+  /* 묶음이 접힌 채로는 항목이 DOM 에 없다 — 재려는 것은 **주소**이지 접힘이 아니다(#1079). */
+  expandAllNavGroups();
+
   return within(screen.getByRole('navigation', { name: '주 메뉴' }))
     .getAllByRole('link')
     .map((link) => link.getAttribute('href') ?? '');
@@ -184,6 +188,12 @@ const renderRoutedApp = (route: string, routes: StubRoute[]): void => {
      */
     { fetch: createStubFetch(routes), route, session: SYNTHETIC_SESSION },
   );
+
+  /*
+   * 사이드바 항목을 **눌러서** 이동을 재는 시험들이 이 하네스를 쓴다. 앱은 현재 묶음만 펼친 채
+   * 서므로(#1079) 다른 묶음의 항목은 DOM 에 없다 — 재려는 것은 **이동**이지 접힘이 아니다.
+   */
+  expandAllNavGroups();
 };
 
 const isGet = (request: Request, pathname: string): boolean =>
@@ -1149,7 +1159,9 @@ describe('appRouter — 계정 로그인의 자리', () => {
       { session: null, route: PROTECTED_ENTRY },
     );
 
-    expect(await screen.findByRole('heading', { level: 1, name: messages.login.title })).toBeVisible();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: messages.login.title }),
+    ).toBeVisible();
     expect(currentLocation()).toBe('/login');
 
     /* 셸이 서지 않았다 — 막으려던 것은 자료가 아니라 화면 구성이다. */
