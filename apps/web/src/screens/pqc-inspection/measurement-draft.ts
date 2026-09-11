@@ -75,6 +75,16 @@ export const toMeasurementDrafts = (rows: readonly MeasurementRow[]): Measuremen
   return drafts;
 };
 
+/**
+ * 저장된 측정치를 편집 상태로 되돌린다.
+ *
+ * ⭐ **육안 항목에 값이 남아 있으면 그대로 둔다**(설계 회신 2026-09-11 · 스펙 §4-C). 그 항목은
+ * 화면에 값 칸이 없지만, §4-C 는 「셋 다 비어도 된다」이지 「비워야 한다」가 아니다 — 이미
+ * 기록된 측정치를 화면이 지울 까닭이 없다.
+ *
+ * ⛔ **없던 값을 만들지도 않는다.** 새로 넣는 육안 항목은 값 칸이 없으니 빈 채로 남고, 보내는
+ * 본문에도 실리지 않는다(`valueOf`). 「측정값과 판정은 다른 축」이라는 §4-C 그대로다.
+ */
 const storedValueOf = (row: MeasurementRow): string => {
   const measured = row.measured;
 
