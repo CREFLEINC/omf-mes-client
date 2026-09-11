@@ -125,7 +125,6 @@ export const ProductionFlowScreen = () => {
    * 초과 확인 팝업. ⛔ **확인했다는 사실을 남기지 않는다** — 수량을 고쳐 다시 넘기면 다시
    * 물어야 한다. 팝업이 열려 있는 동안만 서는 상태다(스펙 §6 「차단하지 말고 확인 후 진행」).
    */
-  const [isOverrunOpen, setIsOverrunOpen] = useState(false);
   const [tagReissueReason, setTagReissueReason] = useState<string | null>(null);
   const [pendingSerialQuantity, setPendingSerialQuantity] = useState(0);
   const [pendingTagDocuments, setPendingTagDocuments] = useState<DocumentIssueCreate[]>([]);
@@ -695,8 +694,8 @@ export const ProductionFlowScreen = () => {
                 <dd>{lot === null ? '—' : `${formatQty(lot.initialQty)} ${uomLabel}`}</dd>
               </div>
               {/*
-               * ⭐ **잔여수량을 세운다**(스펙 §3-2 「잔여수량 380 / 500」). 초과를 확인으로
-               *    되묻는 화면인데 잔여가 보이지 않으면, 묻는 순간에야 처음 그 수를 본다.
+               * ⭐ **잔여수량을 세운다**(스펙 §3-2 「잔여수량 380 / 500」). 아래 초과 알림이
+               *    「잔여보다 얼마 많다」로 말하므로, 그 잔여가 같은 화면에 보여야 한다.
                * ⚠ 받지 못했으면 **「확인할 수 없습니다」로 적는다** — 0 으로 그리면 잔여가
                *    없다는 뜻이 되어, 모든 입력이 초과로 보인다.
                */}
@@ -722,6 +721,26 @@ export const ProductionFlowScreen = () => {
               error={parsedQty === null || parsedQty <= 0 ? t.flow.quantity.invalid : undefined}
               onChange={(event) => setActualQty(quantityInput(event.target.value))}
             />
+            {/*
+             * 초과를 **친 자리에서 바로 말한다**(#1040). 저장 직전에 되묻지 않으므로, 작업자가
+             * 수를 고칠 수 있는 동안 눈에 들어와야 한다.
+             *
+             * ⛔ 막지 않는다 — 초과 생산은 허용이다(✓확정 QA #27 · `P-02-06` §5-4).
+             * ⚠ 잔여를 모르면 넘었는지도 모른다 — `isOverrun` 이 그때 `false` 라 서지 않는다.
+             */}
+            {isOverrun && parsedQty !== null && remaining !== null && (
+              <AlertBanner
+                variant="warning"
+                title={
+                  remaining > 0
+                    ? t.overrun.notice(
+                        `${formatQty(parsedQty - remaining)} ${uomLabel}`.trim(),
+                        `${formatQty(remaining)} ${uomLabel}`.trim(),
+                      )
+                    : t.overrun.noticeNoRemaining
+                }
+              />
+            )}
             <NumericKeypad
               value={actualQty}
               /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
@@ -890,18 +909,12 @@ export const ProductionFlowScreen = () => {
               <Button
                 disabled={!canOutput}
                 /*
-                 * ⛔ **초과라고 단추를 끄지 않는다** — 초과 생산은 허용이고(✓확정 QA #27),
-                 *    화면이 하는 일은 한 번 확인받는 것이다(스펙 §6). 끄면 현장이 초과분을
-                 *    등록할 길이 없어진다.
+                 * ⛔ **초과라고 단추를 끄지도, 되묻지도 않는다** — 초과 생산은 허용이고
+                 *    (✓확정 QA #27), 화면이 하는 일은 **말하는 것**이다(사용자 결정
+                 *    2026-09-11). 초과는 수량 칸 아래에서 이미 말했고, 여기서 한 번 더
+                 *    멈춰 세우면 허용된 작업마다 손짓이 하나씩 는다.
                  */
-                onClick={() => {
-                  if (isOverrun) {
-                    setIsOverrunOpen(true);
-                    return;
-                  }
-
-                  queueOutput();
-                }}
+                onClick={queueOutput}
               >
                 {t.flow.output.issue}
               </Button>
@@ -1025,41 +1038,6 @@ export const ProductionFlowScreen = () => {
             </nav>
           </>
         )}
-      </Dialog>
-
-      {/*
-       * 초과 확인 — **막는 팝업이 아니라 되묻는 팝업이다**(스펙 §6 · ✓확정 QA #27 「초과 달성」).
-       * [초과로 저장] 이 그대로 저장·발행으로 이어지고, [수량 고치기] 는 수량 칸으로 돌아간다.
-       */}
-      <Dialog
-        open={isOverrunOpen}
-        onClose={() => setIsOverrunOpen(false)}
-        title={t.overrun.title}
-        /* ⛔ 나가는 길은 아래 두 단추다 — 다른 팝업과 같은 규칙이다(#1005). */
-        showCloseButton={false}
-        closeOnBackdropClick={false}
-        footer={
-          <>
-            <Button variant="outlined" onClick={() => setIsOverrunOpen(false)}>
-              {t.overrun.cancel}
-            </Button>
-            <Button
-              onClick={() => {
-                setIsOverrunOpen(false);
-                queueOutput();
-              }}
-            >
-              {t.overrun.confirm}
-            </Button>
-          </>
-        }
-      >
-        <p>
-          {t.overrun.body(
-            `${actualQty} ${uomLabel}`.trim(),
-            remaining === null ? '—' : `${formatQty(remaining)} ${uomLabel}`.trim(),
-          )}
-        </p>
       </Dialog>
 
       <Dialog
