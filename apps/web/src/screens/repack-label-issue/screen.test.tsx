@@ -32,6 +32,7 @@ import {
   makeIssue,
   readyPrinter,
 } from './fixtures';
+import { localDateTimeText } from './formatting';
 import type { RenditionShell } from './print';
 import { RepackLabelIssueScreen } from './screen';
 import type { CodeValue, HandlingUnit } from './types';
@@ -743,6 +744,18 @@ describe('RepackLabelIssueScreen — 발행 뒤', () => {
     await renderSelectedScreen({ history: [] });
 
     expect(await screen.findByRole('button', { name: t.issue.preview })).toBeDisabled();
+  });
+
+  /*
+   * #1043 — 서버 원문(`2026-09-03T01:20:00Z`)이 그대로 서면 발행 대기 칸과 두 표기가 섞이고
+   * 현지 시각과 아홉 시간 어긋나 보인다.
+   */
+  it('발행 이력의 시각을 현지 시각 한 꼴로 적는다', async () => {
+    const issuedAt = '2026-09-03T01:20:00Z';
+    await renderSelectedScreen({ history: [makeIssue({ issuedAt })] });
+
+    expect(await screen.findByText(new RegExp(localDateTimeText(issuedAt, '—')))).toBeInTheDocument();
+    expect(screen.queryByText(new RegExp(issuedAt))).not.toBeInTheDocument();
   });
 
   it('발행 이력이 있으면 미리보기를 열 수 있다', async () => {

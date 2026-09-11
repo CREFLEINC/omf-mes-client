@@ -179,6 +179,8 @@ export const repackLabelIssue = {
     empty: '발행 이력이 없습니다.',
     failed: '발행 이력을 불러오지 못했습니다.',
     seq: (issueSeq: number): string => `회차 ${String(issueSeq)}`,
+    /** 읽을 수 없는 시각. ⛔ 지어내지 않는다 — 모르면 모른다고 둔다. */
+    unknownAt: '—',
     outcome: {
       PENDING: '인쇄 결과 미보고',
       SUCCEEDED: '인쇄 성공',
