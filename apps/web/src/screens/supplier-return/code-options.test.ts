@@ -8,6 +8,7 @@ import {
   PLACEHOLDER_SUPPLIER_RETURN_CODES,
   REQUIRED_CODE_KEYS,
   toCodeOptionSets,
+  withRuntimeSupplierReturnCodes,
   type CodeValueLists,
 } from './code-options';
 
@@ -26,6 +27,25 @@ const ALL_KEYS = [
   'receiptType',
   'status',
 ] as const;
+
+const codeValue = (code: string, displayOrder: number, isActive = true) => ({
+  codeValueId: displayOrder,
+  codeGroupId: 1,
+  code,
+  codeName: code,
+  displayOrder,
+  isActive,
+});
+
+it('활성 서버 출고 유형과 사유만 표시 순서대로 반품 선택지에 연결한다', () => {
+  const values = withRuntimeSupplierReturnCodes({
+    issueType: [codeValue('OTHER', 40), codeValue('SUPPLIER_RETURN', 20)],
+    reason: [codeValue('OTHER', 50), codeValue('IQC_FAIL', 10, false)],
+  });
+
+  expect(values.issueType).toEqual(['SUPPLIER_RETURN', 'OTHER']);
+  expect(values.reason).toEqual(['OTHER']);
+});
 
 describe('PLACEHOLDER_SUPPLIER_RETURN_CODES', () => {
   it('닫힌 구조 코드만 고정 계약 값으로 채운다', () => {

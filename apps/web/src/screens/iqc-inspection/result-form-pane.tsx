@@ -122,7 +122,7 @@ export const ResultFormPane = ({
   onCancelReinspection,
 }: ResultFormPaneProps) => {
   const judgmentId = useId();
-  const isConfirmed = round?.statusCode === '확정';
+  const isConfirmed = round?.statusCode === 'CONFIRMED';
   const errors = validateQuantities(draft);
   const totals = toTotals(draft, inspectedQty);
   const [showErrors, setShowErrors] = useState(false);

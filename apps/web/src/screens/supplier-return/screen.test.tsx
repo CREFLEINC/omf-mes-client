@@ -62,7 +62,20 @@ const { codeValues } = vi.hoisted(() => ({
 vi.mock('./code-options', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./code-options')>();
 
-  return { ...actual, PLACEHOLDER_SUPPLIER_RETURN_CODES: codeValues };
+  return {
+    ...actual,
+    PLACEHOLDER_SUPPLIER_RETURN_CODES: codeValues,
+    withRuntimeSupplierReturnCodes: () => codeValues,
+  };
+});
+
+vi.mock('./queries', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./queries')>();
+
+  return {
+    ...actual,
+    useSupplierReturnCodeValues: () => ({ data: [], isError: false }),
+  };
 });
 
 /** 지어낸 합성 코드. **계약의 `@example` 값을 쓰지 않는다** — 예시가 확정 값으로 읽히면 안 된다. */

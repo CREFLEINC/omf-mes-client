@@ -67,6 +67,21 @@ export const irKeys = {
   locations: (warehouseId: number | null) => ['goods-receipt-locations', warehouseId] as const,
   /** 입고 처리 뒤 다시 읽는 자재 LOT. 번호마다 갈린다. */
   lot: (lotId: number | null) => ['goods-receipt-lot', lotId] as const,
+  codeValues: (codeGroupCode: string) => ['goods-receipt-code-values', codeGroupCode] as const,
+};
+
+export const useGoodsReceiptCodeValues = (
+  codeGroupCode: string,
+): UseQueryResult<components['schemas']['CodeValue'][]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: irKeys.codeValues(codeGroupCode),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/code-values', { params: { query: { codeGroupCode, page: 1, size: 200 } } }),
+      ).then((response) => response.items),
+  });
 };
 
 const fetchInboundReceipts = async (

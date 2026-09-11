@@ -353,6 +353,33 @@ describe('입하 등록 화면', () => {
     expect(screen.getByText('ERP W/O 선택')).toBeTruthy();
   });
 
+  it('라벨 없는 외부 LOT 원문은 34자리 형식 강제 없이 받는다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await user.click(screen.getByRole('button', { name: '납품서의 공급사 LOT 번호 입력' }));
+    await user.type(screen.getByLabelText('공급사 LOT 번호'), '납품서-LOT/A-01');
+    await user.click(screen.getByRole('button', { name: '공급사 LOT 번호 넣기' }));
+
+    expect(await screen.findByText('라벨 미부착 · 공급사 LOT 납품서-LOT/A-01')).toBeTruthy();
+    expect(screen.getByText('ERP W/O 선택')).toBeTruthy();
+  });
+
+  it('외부 LOT 원문이 계약 상한을 넘으면 자르지 않고 입력을 막는다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByLabelText('LOT 번호');
+    await user.click(screen.getByRole('button', { name: '납품서의 공급사 LOT 번호 입력' }));
+    await user.type(screen.getByLabelText('공급사 LOT 번호'), 'A'.repeat(101));
+    await user.click(screen.getByRole('button', { name: '공급사 LOT 번호 넣기' }));
+
+    expect(await screen.findByText('공급사 LOT 번호는 100자 이하여야 합니다 (현재 101자)')).toBeTruthy();
+    expect(screen.queryByText('ERP W/O 선택')).toBeNull();
+    expect(screen.getByLabelText('공급사 LOT 번호')).toHaveValue('A'.repeat(101));
+  });
+
   /* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */
   it('스캔값이 발주를 정하지 않는다고 말한다', async () => {
     mount();

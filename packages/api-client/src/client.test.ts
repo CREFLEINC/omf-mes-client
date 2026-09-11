@@ -60,6 +60,20 @@ describe('createApiClient', () => {
     expect(etags.ifMatch('/mdm/warehouses/3')).toBe('"7"');
   });
 
+  it('baseUrl의 /api 접두어 없이 OpenAPI 경로로 ETag를 보관한다', async () => {
+    const { client, etags } = createApiClient({
+      baseUrl: 'http://mock.test/api',
+      fetch: async () => jsonResponse({ warehouseId: '3' }, { ETag: '"7"' }),
+    });
+
+    await client.GET('/mdm/warehouses/{warehouseId}', {
+      params: { path: { warehouseId: 3 } },
+    });
+
+    expect(etags.ifMatch('/mdm/warehouses/3')).toBe('"7"');
+    expect(etags.ifMatch('/api/mdm/warehouses/3')).toBeUndefined();
+  });
+
   it('ETag가 없는 응답은 캡처하지 않는다', async () => {
     const { client, etags } = createApiClient({
       baseUrl: 'http://mock.test',

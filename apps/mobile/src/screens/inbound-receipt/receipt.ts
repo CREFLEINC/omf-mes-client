@@ -6,6 +6,7 @@ import { createIdempotencyKey, type OutboxDraft } from '../../patterns/outbox';
 export type PurchaseOrder = components['schemas']['PurchaseOrder'];
 export type PurchaseOrderLine = components['schemas']['PurchaseOrderLine'];
 export type InboundReceiptCreate = components['schemas']['InboundReceiptCreate'];
+export type InboundReceiptLineUpsert = components['schemas']['InboundReceiptLineUpsert'];
 export type InboundReceiptSplitRequest = components['schemas']['InboundReceiptSplitRequest'];
 export type SplitMode = InboundReceiptSplitRequest['mode'];
 
@@ -131,9 +132,11 @@ export const businessDateOf = (now: Date): string => {
 };
 
 export interface ReceiptDraft {
-  /** 스캔한 공급사 LOT 번호. 미부착이면 비어 있다. */
+  /** 스캔 또는 수기로 받은 공급사 LOT 원문. 번호가 없으면 비어 있다. */
   supplierLotNo: string;
   supplierLotMissing: boolean;
+  /** 공급사가 준 LOT 라벨이 물건에 실제 부착됐는가. */
+  supplierLotLabelAttached: boolean;
   substituteLotReasonCode: string;
   purchaseOrder: PurchaseOrder | null;
   purchaseOrderLine: PurchaseOrderLine | null;
@@ -173,6 +176,11 @@ export const canSubmit = (draft: ReceiptDraft, hasWorker: boolean): boolean => {
 
   /* 미부착 분기는 데이터에 있는 구분이다. 사유 없이 참으로 보내면 서버가 거부한다. */
   if (draft.supplierLotMissing && draft.substituteLotReasonCode === '') {
+    return false;
+  }
+
+  /* 번호가 없는데 부착됐다고 보내면 사전부착 스캔 경로와 충돌한다. */
+  if (draft.supplierLotMissing && draft.supplierLotLabelAttached) {
     return false;
   }
 
@@ -222,7 +230,7 @@ const toLine = (
   uomId: number,
   receivedQty: number,
   purchaseOrderLineId: number | null,
-) => ({
+): InboundReceiptLineUpsert => ({
   purchaseOrderLineId,
   itemId,
   receivedQty,
@@ -230,6 +238,7 @@ const toLine = (
   packageCount: draft.packageCount.trim() === '' ? null : Number(draft.packageCount.trim()),
   supplierLotNo: draft.supplierLotMissing ? null : optional(draft.supplierLotNo),
   supplierLotMissing: draft.supplierLotMissing,
+  supplierLotLabelAttached: draft.supplierLotMissing ? false : draft.supplierLotLabelAttached,
   substituteLotReasonCode: draft.supplierLotMissing ? draft.substituteLotReasonCode : null,
   manufacturedDate: optional(draft.manufacturedDate),
   expiryDate: optional(draft.expiryDate),

@@ -42,6 +42,7 @@ const lineResponse = (
   receivedQty: 100,
   uomId: 9501,
   supplierLotMissing: false,
+  supplierLotLabelAttached: true,
   inspectionRequired: true,
   statusCode: 'SAMPLE_IR_LINE_STATUS_A',
   ...overrides,

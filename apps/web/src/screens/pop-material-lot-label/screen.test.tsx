@@ -21,7 +21,7 @@ const line = (
   receiptId: number,
   itemId: number,
   qty: number,
-  missing: boolean,
+  attached: boolean,
   /** 이 라인으로 만들어진 자재LOT. 없으면 아직 등록하지 않은 라인이다. */
   lotId: number | null = null,
 ) => ({
@@ -31,14 +31,15 @@ const line = (
   itemId,
   receivedQty: qty,
   uomId: 8401,
-  supplierLotMissing: missing,
+  supplierLotMissing: false,
+  supplierLotLabelAttached: attached,
   inspectionRequired: false,
   statusCode: 'SYN_STATUS',
   lotId,
 });
 
 const DEFAULT_RECEIPTS = [receipt(8101, 'SYN-IB-0001', 8201, '2026-08-27T09:12:30Z')];
-const DEFAULT_LINES = [line(8501, 8101, 8601, 500, true)];
+const DEFAULT_LINES = [line(8501, 8101, 8601, 500, false)];
 
 interface StubOptions {
   receipts?: ReturnType<typeof receipt>[];
@@ -226,14 +227,14 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
     });
 
     for (const url of [receiptUrls[0], lineUrls[0]]) {
-      expect(url?.searchParams.get('supplierLotMissing')).toBe('true');
+      expect(url?.searchParams.get('supplierLotLabelAttached')).toBe('false');
       expect(url?.searchParams.get('labelIssued')).toBe('false');
     }
   });
 
   /** 서버가 이미 거르므로 화면에는 받은 줄이 그대로 선다. */
   it('받은 라인을 화면이 다시 거르지 않는다', async () => {
-    renderScreen({ lines: [line(8501, 8101, 8601, 500, true), line(8502, 8101, 8601, 200, true)] });
+    renderScreen({ lines: [line(8501, 8101, 8601, 500, false), line(8502, 8101, 8601, 200, false)] });
 
     expect(await screen.findByText('500 EA')).toBeInTheDocument();
     expect(screen.getByText('200 EA')).toBeInTheDocument();

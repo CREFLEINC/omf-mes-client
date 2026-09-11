@@ -58,7 +58,7 @@ describe('useInspectionRounds', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    expect(result.current.data?.[0]).toMatchObject({ inspectionRound: 1, statusCode: '작성중' });
+    expect(result.current.data?.[0]).toMatchObject({ inspectionRound: 1, statusCode: 'DRAFT' });
   });
 
   it('기간을 보내지 않는다 — 한 의뢰의 회차를 읽는 경로에 기간을 실으면 없는 기간을 지어낸다', async () => {

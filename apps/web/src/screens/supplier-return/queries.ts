@@ -60,6 +60,22 @@ export const receiptKeys = {
   list: (query: ReceiptListQuery) => [...RECEIPT_LIST_KEY, query] as const,
   detail: (goodsReceiptId: number | null) =>
     ['supplier-return-goods-receipts', 'detail', goodsReceiptId] as const,
+  codeValues: (codeGroupCode: string) =>
+    ['supplier-return-code-values', codeGroupCode] as const,
+};
+
+export const useSupplierReturnCodeValues = (
+  codeGroupCode: string,
+): UseQueryResult<components['schemas']['CodeValue'][]> => {
+  const { client } = useApiClient();
+
+  return useQuery({
+    queryKey: receiptKeys.codeValues(codeGroupCode),
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/code-values', { params: { query: { codeGroupCode, page: 1, size: 200 } } }),
+      ).then((response) => response.items),
+  });
 };
 
 /**

@@ -46,6 +46,7 @@ const BASE_RECEIPT_LINE: InboundReceiptLineResponse = {
   receivedQty: 12,
   uomId: 9601,
   supplierLotMissing: false,
+  supplierLotLabelAttached: true,
   inspectionRequired: false,
   statusCode: 'SAMPLE_IR_STATUS_A',
 };

@@ -46,12 +46,15 @@ const t = messages.inboundReceipt;
 /* 필수 표시는 화면마다 짓지 않는다. 같은 뜻이 여러 모양으로 갈린다. */
 const required = messages.common.required;
 const INBOUND_RECEIPT_EXCEPTION_TYPE = 'INBOUND_RECEIPT_EXCEPTION_TYPE';
+/** 계약 InboundReceiptLineUpsert.supplierLotNo의 varchar(100) 상한. 붙여넣기를 자르지 않는다. */
+const SUPPLIER_LOT_NO_MAX_LENGTH = 100;
 
 type Outcome = 'queued' | 'sent' | 'rejected';
 
 const emptyDraft: ReceiptDraft = {
   supplierLotNo: '',
   supplierLotMissing: false,
+  supplierLotLabelAttached: true,
   substituteLotReasonCode: '',
   unordered: false,
   supplierId: null,
@@ -78,6 +81,9 @@ export const InboundReceiptScreen = () => {
 
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
   const [malformed, setMalformed] = useState<string | null>(null);
+  const [externalLotInput, setExternalLotInput] = useState(false);
+  const [externalLotNo, setExternalLotNo] = useState('');
+  const [externalLotError, setExternalLotError] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   /* 부족한데도 그대로 등록하겠다는 사람의 답. 화면은 더 올 것인지 알지 못한다. */
   const [continueUnder, setContinueUnder] = useState(false);
@@ -126,7 +132,38 @@ export const InboundReceiptScreen = () => {
     }
 
     setMalformed(null);
-    patch({ supplierLotNo: code, supplierLotMissing: false, substituteLotReasonCode: '' });
+    patch({
+      supplierLotNo: code,
+      supplierLotMissing: false,
+      supplierLotLabelAttached: true,
+      substituteLotReasonCode: '',
+    });
+  };
+
+  const takeExternalLot = () => {
+    const lotNo = externalLotNo.trim();
+
+    if (lotNo === '') {
+      setExternalLotError(t.scan.externalRequired);
+      return;
+    }
+
+    if (lotNo.length > SUPPLIER_LOT_NO_MAX_LENGTH) {
+      setExternalLotError(t.scan.externalTooLong(SUPPLIER_LOT_NO_MAX_LENGTH, lotNo.length));
+      return;
+    }
+
+    setMalformed(null);
+    setExternalLotError(null);
+    patch({
+      supplierLotNo: lotNo,
+      supplierLotMissing: false,
+      supplierLotLabelAttached: false,
+      substituteLotReasonCode: '',
+    });
+    setExternalLotInput(false);
+    setExternalLotNo('');
+    setExternalLotError(null);
   };
 
   const scanField = useScanField({ onScan: take });
@@ -221,6 +258,8 @@ export const InboundReceiptScreen = () => {
   const restart = () => {
     setDraft(emptyDraft);
     setMalformed(null);
+    setExternalLotInput(false);
+    setExternalLotNo('');
     setOutcome(null);
     setContinueUnder(false);
     setVarianceNext(false);
@@ -391,26 +430,74 @@ export const InboundReceiptScreen = () => {
               variant="text"
               size="lg"
               onClick={() => {
-                patch({ supplierLotMissing: false, substituteLotReasonCode: '' });
+                patch({
+                  supplierLotMissing: false,
+                  supplierLotLabelAttached: true,
+                  substituteLotReasonCode: '',
+                });
               }}
             >
               {t.scan.back}
             </Button>
           </>
         ) : draft.supplierLotNo === '' ? (
-          <Button
-            className="receipt__wide"
-            variant="outlined"
-            size="xl"
-            onClick={() => {
-              setMalformed(null);
-              patch({ supplierLotNo: '', supplierLotMissing: true });
-            }}
-          >
-            {t.scan.missing}
-          </Button>
+          <>
+            {externalLotInput ? (
+              <div className="receipt__field">
+                <TextField
+                  label={t.scan.externalLabel}
+                  placeholder={t.scan.externalPlaceholder}
+                  size="xl"
+                  fullWidth
+                  value={externalLotNo}
+                  error={externalLotError ?? undefined}
+                  onChange={(event) => {
+                    setExternalLotNo(event.target.value);
+                    setExternalLotError(null);
+                  }}
+                />
+                <Button className="receipt__wide" variant="filled" size="xl" onClick={takeExternalLot}>
+                  {t.scan.externalSubmit}
+                </Button>
+              </div>
+            ) : (
+              <Button
+                className="receipt__wide"
+                variant="outlined"
+                size="xl"
+                onClick={() => {
+                  setMalformed(null);
+                  setExternalLotError(null);
+                  setExternalLotInput(true);
+                }}
+              >
+                {t.scan.externalEntry}
+              </Button>
+            )}
+            <Button
+              className="receipt__wide"
+              variant="outlined"
+              size="xl"
+              onClick={() => {
+                setMalformed(null);
+                setExternalLotInput(false);
+                setExternalLotError(null);
+                patch({
+                  supplierLotNo: '',
+                  supplierLotMissing: true,
+                  supplierLotLabelAttached: false,
+                });
+              }}
+            >
+              {t.scan.missing}
+            </Button>
+          </>
         ) : (
-          <p className="receipt__note">{t.scan.scanned(draft.supplierLotNo)}</p>
+          <p className="receipt__note">
+            {draft.supplierLotLabelAttached
+              ? t.scan.scanned(draft.supplierLotNo)
+              : t.scan.externalTaken(draft.supplierLotNo)}
+          </p>
         )}
       </section>
 

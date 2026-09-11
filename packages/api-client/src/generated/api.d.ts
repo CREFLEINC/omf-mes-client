@@ -16781,12 +16781,14 @@ export interface paths {
                     statusCode?: string;
                     /** @description 라벨이 발행된 건을 뺄지. 근거: P-01-01 §6 */
                     labelIssued?: boolean;
-                    /** @description 라인 중 supplier_lot_missing 이 이 값인 라인을 하나 이상 가진 건만. true = 미부착 건(MES 가 채번한다) · false = 사전부착 건. ⚠ 헤더 목록인데 판정은 라인 단위다 — 건 안에 두 종류가 섞여 있을 수 있으므로 라인을 고를 때 GET .../lines 의 같은 이름 필터를 함께 쓴다. 근거: P-01-01 §6 */
+                    /** @description 라인 중 공급사 LOT 번호 자체가 없는 라인을 거른다. 라벨 부착 여부와는 별도 축이다. */
                     supplierLotMissing?: boolean;
                     /** @description 입하번호·거래명세서번호 검색 */
                     q?: string;
                     page?: number;
                     size?: number;
+                    /** @description 라인 중 공급사 LOT 라벨 부착 상태가 이 값인 라인을 하나 이상 가진 건만. false 는 외부번호가 있어도 실물 라벨이 없는 건을 포함한다. */
+                    supplierLotLabelAttached?: boolean;
                 };
                 header?: never;
                 path?: never;
@@ -17051,10 +17053,12 @@ export interface paths {
         get: {
             parameters: {
                 query?: {
-                    /** @description 미부착 라인만 거른다. LOT 발번 단위가 라인이기 때문이다 — 한 건에 미부착 라인이 여럿이면 LOT 도 여럿이다. 근거: P-01-01 §4-B·§6 */
+                    /** @description 공급사 LOT 번호 자체가 없는 라인을 거른다. */
                     supplierLotMissing?: boolean;
                     /** @description 라벨이 발행된 라인을 뺄지. false 이면서 lotId 가 채워진 라인 = 「LOT 은 생겼는데 발행 기록이 없는」 상태다 — 화면은 그 라인에 「인쇄」만 보인다. 근거: P-01-01 §5-2·§6 */
                     labelIssued?: boolean;
+                    /** @description 공급사 LOT 라벨 부착 상태로 거른다. false 이면 외부번호 유무와 관계없이 MES 라벨 발행 대상이다. */
+                    supplierLotLabelAttached?: boolean;
                 };
                 header?: never;
                 path: {
@@ -39115,7 +39119,7 @@ export interface components {
             /** @example 비고 문자열 */
             remarks?: string | null;
         };
-        /** @description 입하 등록. 헤더·라인이 한 트랜잭션으로 만들어지고, 자재 LOT 은 공급사 LOT 이 부착된 라인에만 함께 생긴다. supplierLotMissing=true 인 라인은 LOT 없이 저장되고 P-01-01 이 POST /trace/lots(numberSourceCode=MES)로 나중에 채운다. 부착 라인의 LOT 이 없으면 이후 흐름이 통째로 막힌다. 근거: M-01-01 §5-4 · P-01-01 §3-6 · 공유계약 B-8 */
+        /** @description 입하 등록. 헤더·라인이 한 트랜잭션으로 만들어지고, 자재 LOT 은 supplierLotLabelAttached=true 인 라인에만 함께 생긴다. false 인 라인은 외부 supplierLotNo 원문을 보존하되 LOT 없이 저장되고 P-01-01 이 POST /trace/lots(numberSourceCode=MES)로 나중에 채운다. 부착 여부를 생략한 기존 요청은 supplierLotMissing=false이면 true, true이면 false로 처리한다. 근거: M-01-01 §5-4 · P-01-01 §3-6 · 공유계약 B-8 */
         InboundReceiptCreate: {
             /**
              * Format: int64
@@ -39259,6 +39263,11 @@ export interface components {
              * @example 1001
              */
             lotId?: number | null;
+            /**
+             * @description 공급사 LOT 라벨이 실물에 부착됐는지. 번호 유무와 별도 축이며 false 인 라인은 LOT 생성 전 lotId=null 이다.
+             * @example false
+             */
+            supplierLotLabelAttached: boolean;
         };
         InboundReceiptLineListResponse: {
             items: components["schemas"]["InboundReceiptLine"][];
@@ -39317,6 +39326,11 @@ export interface components {
              * @example 2027-08-06
              */
             expiryDate?: string | null;
+            /**
+             * @description 공급사 LOT 라벨이 실물에 부착됐는지. 생략하면 supplierLotMissing의 반대값으로 호환 처리한다. supplierLotMissing=true 와 true 조합은 400 PAIR 이다.
+             * @example false
+             */
+            supplierLotLabelAttached?: boolean;
         };
         /** @description 분리 등록의 한쪽. 영업일과 발생 시각은 바깥에서 한 번만 받는다. */
         InboundReceiptSplitPart: {

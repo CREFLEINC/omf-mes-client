@@ -1,4 +1,5 @@
 import { messages } from '@omf-mes/i18n';
+import type { components } from '@omf-mes/api-client';
 
 import type { ReturnCodeKey, SelectOption } from './types';
 
@@ -52,6 +53,12 @@ export type CodeValueLists = Record<SupplierReturnCodeKey, readonly string[]>;
 
 /** 코드마다의 선택지. */
 export type CodeOptionSets = Record<SupplierReturnCodeKey, SelectOption[]>;
+type CodeValue = components['schemas']['CodeValue'];
+
+export const SUPPLIER_RETURN_CODE_GROUPS = {
+  issueType: 'ISSUE_TYPE',
+  reason: 'GOODS_ISSUE_REASON',
+} as const;
 
 /** 고정 OpenAPI가 닫은 구조 코드만 채운다. 운영 공통코드 축은 실행 시점 조회 전까지 비워 둔다. */
 export const PLACEHOLDER_SUPPLIER_RETURN_CODES: CodeValueLists = {
@@ -62,6 +69,22 @@ export const PLACEHOLDER_SUPPLIER_RETURN_CODES: CodeValueLists = {
   receiptType: [],
   status: [],
 };
+
+const activeCodes = (values: readonly CodeValue[] | undefined): string[] =>
+  (values ?? [])
+    .filter((value) => value.isActive)
+    .slice()
+    .sort((left, right) => left.displayOrder - right.displayOrder)
+    .map((value) => value.code);
+
+export const withRuntimeSupplierReturnCodes = (values: {
+  issueType?: readonly CodeValue[];
+  reason?: readonly CodeValue[];
+}): CodeValueLists => ({
+  ...PLACEHOLDER_SUPPLIER_RETURN_CODES,
+  issueType: activeCodes(values.issueType),
+  reason: activeCodes(values.reason),
+});
 
 const toOptions = (values: readonly string[]): SelectOption[] =>
   values.map((code) => ({ value: code, label: code }));

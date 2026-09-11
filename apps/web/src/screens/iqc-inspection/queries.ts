@@ -247,7 +247,7 @@ export interface SaveDraftVariables {
 }
 
 /** 계약이 못박은 두 값 중 임시 저장이 쓰는 쪽. 확정은 다음 회차가 다룬다. */
-const DRAFT_STATUS = '작성중';
+const DRAFT_STATUS = 'DRAFT';
 
 /**
  * 검사 결과를 임시 저장한다 — **고칠 회차가 있으면 고치고, 없으면 만든다.**
