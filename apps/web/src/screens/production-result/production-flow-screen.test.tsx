@@ -866,6 +866,27 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
   });
 
   /*
+   * 이미 지시를 넘겨 만든 지시는 `varianceQty` 가 **음수**로 온다(「지시 − 양품 누계」).
+   * ⛔ 그 수를 그대로 적으면 「잔여 -4 EA」가 되어 음수를 수량으로 읽게 된다.
+   */
+  it('잔여가 이미 0 아래면 0 으로 세우고, 넣는 수량은 여전히 되묻는다', async () => {
+    const writes: Request[] = [];
+    const user = userEvent.setup();
+    renderScreen(writes, [workOrderWith({ goodQty: 16, varianceQty: -4 })]);
+
+    const output = await screen.findByRole('button', { name: t.flow.output.issue });
+    await waitFor(() => expect(output).toBeEnabled());
+
+    expect(screen.getByText(`0 ${t.quantity.orderedSuffix('12', 'EA')}`)).toBeInTheDocument();
+    expect(screen.queryByText(/-4/u)).not.toBeInTheDocument();
+
+    await user.click(output);
+
+    expect(await screen.findByRole('dialog', { name: t.overrun.title })).toBeInTheDocument();
+    expect(savedCount(writes)).toBe(0);
+  });
+
+  /*
    * ⚠ 진척이 없으면 잔여는 **0 이 아니라 «모른다»**다. 모르는 것으로 막지도, 묻지도 않는다 —
    * 대신 모른다는 사실을 화면이 적는다.
    */
