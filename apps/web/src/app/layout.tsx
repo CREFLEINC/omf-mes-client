@@ -1,10 +1,32 @@
-import { AppShell, Button, Sidebar, SidebarItem, SidebarSection, Topbar } from '@crefle/web-ui';
+import {
+  AppShell,
+  Button,
+  SearchInput,
+  Sidebar,
+  SidebarItem,
+  SidebarSection,
+  Topbar,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 
 import { useSession, useSignOut } from '../patterns/session';
-import { NAV_GROUPS, NAV_LEAD } from './nav-tree';
+import { filterNavGroups, hasNoNavMatch, matchesNavEntry } from './nav-filter';
+import { NavGroup } from './nav-group';
+import { NAV_ENTRIES, NAV_GROUPS, NAV_LEAD } from './nav-tree';
+
+/** 사이드바 **조작** 문구. 화면 이름은 `nav-tree.ts` 가 갖는다. */
+const t = messages.shellNav;
+
+/**
+ * 이 주소를 보고 있는가. **하위 경로도 그 항목의 것이다**(`/a/b` 는 `/a` 항목을 켠다).
+ *
+ * ⛔ **두 곳에서 같은 식을 적지 않는다.** 항목의 선택 표시와 「현재 묶음」 판정이 같은 뜻이어야
+ * 하는데 식을 복사하면 한쪽만 고쳐지는 날이 온다 — 그러면 켜진 항목이 든 묶음이 닫힌 채 선다.
+ */
+const isPathActive = (pathname: string, to: string): boolean =>
+  pathname === to || pathname.startsWith(`${to}/`);
 
 interface NavItemProps {
   to: string;
@@ -31,7 +53,7 @@ const NavItem = ({ to, icon, children, className }: NavItemProps) => {
   const href = useHref(to);
   const handleClick = useLinkClickHandler(to);
   const location = useLocation();
-  const isActive = location.pathname === to || location.pathname.startsWith(`${to}/`);
+  const isActive = isPathActive(location.pathname, to);
 
   return (
     <SidebarItem
@@ -45,6 +67,15 @@ const NavItem = ({ to, icon, children, className }: NavItemProps) => {
     </SidebarItem>
   );
 };
+
+/**
+ * 지금 보고 있는 화면이 속한 묶음 이름. 어디에도 속하지 않으면 `null`(섹션 밖 항목·로그인 등).
+ *
+ * 항목과 **같은 함수**를 쓴다(`isPathActive`) — 하위 경로를 보고 있어도 그 묶음이 열려 있어야 한다.
+ */
+const findActiveGroupLabel = (pathname: string): string | null =>
+  NAV_GROUPS.find((group) => group.items.some((item) => isPathActive(pathname, item.to)))?.label ??
+  null;
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -108,6 +139,80 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
    */
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  /**
+   * 화면 검색어 — **사이드바의 것이고 주소에 싣지 않는다.** 주소에 실으면 뒤로 가기가 검색을
+   * 되돌리고, 링크를 공유할 때 남의 검색어가 따라간다. 화면을 고르면 그 자리에서 쓸모가 끝난다.
+   */
+  const [query, setQuery] = useState('');
+
+  const { pathname } = useLocation();
+  const activeGroupLabel = findActiveGroupLabel(pathname);
+
+  /**
+   * 펼쳐 둔 묶음 — **처음에는 지금 보고 있는 화면의 묶음 하나뿐이다**(#1079).
+   *
+   * ⭐ **전부 펼쳐 두지 않는다.** 묶음 9개에 화면 69개라 전부 펼치면 목록이 4208px 이 되어 한
+   * 화면에 18% 만 보인다(실측). 처음 보이는 것을 9줄로 줄이는 것이 이 작업의 목적이다.
+   *
+   * ⚠ **기억하지 않는다.** 접힘 상태를 브라우저에 남기는 전례가 이 저장소 운영 코드에 하나도
+   * 없어(`localStorage` 사용처 0) 이번에는 들이지 않는다 — 새로 고치면 「현재 묶음만」으로 돌아간다.
+   */
+  const [openGroups, setOpenGroups] = useState<ReadonlySet<string>>(
+    () => new Set(activeGroupLabel === null ? [] : [activeGroupLabel]),
+  );
+
+  /**
+   * 다른 묶음의 화면으로 **밖에서** 들어오면 그 묶음을 열어 준다 — 주소를 직접 치거나, 가드가
+   * 돌려보내거나, 본문 안의 링크를 눌렀을 때다.
+   *
+   * ⛔ **「현재 묶음은 늘 열림」으로 계산하지 않는다.** 그러면 지금 보고 있는 묶음을 **접을 수
+   * 없다** — 접어도 다음 렌더에 다시 열린다. 들어올 때 한 번 더해 주고, 그 뒤로는 사람이 정한다.
+   */
+  useEffect(() => {
+    if (activeGroupLabel === null) return;
+
+    setOpenGroups((previous) =>
+      previous.has(activeGroupLabel) ? previous : new Set(previous).add(activeGroupLabel),
+    );
+  }, [activeGroupLabel]);
+
+  /**
+   * 화면을 고르면 **검색어를 버린다.**
+   *
+   * 남겨 두면 들어간 화면에서 사이드바가 걸린 한 줄로 줄어든 채 서서, 형제 화면도 대시보드도
+   * 보이지 않는다 — 찾는 일은 끝났고 이제 필요한 것은 **평소의 사이드바**다.
+   */
+  useEffect(() => {
+    setQuery('');
+  }, [pathname]);
+
+  const toggleGroup = (label: string): void => {
+    setOpenGroups((previous) => {
+      const next = new Set(previous);
+
+      if (!next.delete(label)) next.add(label);
+
+      return next;
+    });
+  };
+
+  /**
+   * 걸러는 데 실제로 쓰는 검색어 — **레일에서는 없는 것과 같다**(#1079 검토).
+   *
+   * ⛔ **판정을 여러 곳에서 각자 하지 않는다.** 레일에는 검색창이 없어(아래 `header`) **지울
+   * 수단이 없는데**, 남은 검색어를 어떤 판정은 보고 어떤 판정은 안 보면 **절반만 걸린 사이드바**가
+   * 된다 — 실제로 그랬다: 항목은 68개가 다 서는데 섹션 밖 항목만 사라지고, 맞는 것이 없으면
+   * 72px 레일에 안내 문단이 아이콘들과 나란히 섰다. 끊는 자리를 하나로 둔다.
+   *
+   * ⭐ **접을 때 검색어를 지우지는 않는다.** 레일이 그것을 보지 않으므로 남아 있어도 해가 없고,
+   * 다시 펼치면 찾던 것이 그대로 있다 — 폭을 잠깐 벌렸다고 사람의 일을 버리지 않는다.
+   */
+  const activeQuery = isSidebarCollapsed ? '' : query;
+
+  const isSearching = activeQuery.trim() !== '';
+  const visibleGroups = filterNavGroups(NAV_GROUPS, activeQuery);
+  const isLeadVisible = matchesNavEntry(NAV_LEAD, activeQuery);
+
   return (
     <AppShell
       mainLabel="본문"
@@ -124,6 +229,24 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
           aria-label="주 메뉴"
           collapsed={isSidebarCollapsed}
           onCollapsedChange={setIsSidebarCollapsed}
+          header={
+            /*
+             * ⛔ **레일(아이콘 전용)에서는 검색창을 세우지 않는다.** 72px 에 입력칸이 들어가지
+             * 않고, 들어간다 해도 결과가 아이콘만 남아 **무엇이 걸렸는지 읽을 수 없다.**
+             * 접힌 상태에서 찾으려는 사람은 먼저 펼친다.
+             */
+            isSidebarCollapsed ? undefined : (
+              <SearchInput
+                size="sm"
+                fullWidth
+                aria-label={t.search.label}
+                placeholder={t.search.placeholder}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                onClear={() => setQuery('')}
+              />
+            )
+          }
         >
           {/*
            * ⚠ **`.sidebar-lead` 는 서식이 아니라 배치를 지키는 자리다.** 섹션 밖 직계 항목은
@@ -132,18 +255,67 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
            *
            * 이 항목이 **왜 섹션 밖 맨 위인지**는 `nav-tree.ts` 의 `NAV_LEAD` 에 적혀 있다.
            */}
-          <NavItem to={NAV_LEAD.to} icon={NAV_LEAD.icon} className="sidebar-lead">
-            {NAV_LEAD.label}
-          </NavItem>
-          {NAV_GROUPS.map((group) => (
-            <SidebarSection key={group.label} label={group.label}>
-              {group.items.map((item) => (
-                <NavItem key={item.to} to={item.to} icon={item.icon}>
-                  {item.label}
-                </NavItem>
-              ))}
-            </SidebarSection>
-          ))}
+          {isLeadVisible ? (
+            <NavItem to={NAV_LEAD.to} icon={NAV_LEAD.icon} className="sidebar-lead">
+              {NAV_LEAD.label}
+            </NavItem>
+          ) : null}
+          {/*
+           * ⭐ **레일에서는 접기 손잡이를 두지 않고 DS 섹션으로 돌아간다.** 아이콘만 남은 폭에서
+           * 손잡이는 누를 이름이 없고, DS 가 그 상태의 섹션 라벨을 이미 접근명으로만 남긴다
+           * (`sectionLabelHidden`). 두 모양을 한 갈래로 합치려다 레일에서 빈 줄이 서는 쪽을
+           * 고르지 않는다.
+           */}
+          {isSidebarCollapsed
+            ? /* 레일에서 `activeQuery` 가 비므로 이 목록은 `NAV_GROUPS` 와 같다 — 자료는 한 길이고
+               * 갈라지는 것은 **그리는 모양**뿐이다(손잡이 대신 DS 섹션). */
+              visibleGroups.map((group) => (
+                <SidebarSection key={group.label} label={group.label}>
+                  {group.items.map((item) => (
+                    <NavItem key={item.to} to={item.to} icon={item.icon}>
+                      {item.label}
+                    </NavItem>
+                  ))}
+                </SidebarSection>
+              ))
+            : visibleGroups.map((group) => {
+                /*
+                 * ⭐ **검색 중에는 맞는 묶음을 강제로 펼친다.** 접혀 있으면 맞는 항목을 찾아
+                 * 놓고도 보이지 않아 「결과 없음」과 구별되지 않는다. 접힘 상태 자체는 건드리지
+                 * 않아, 검색어를 지우면 **사람이 정해 둔 모양으로 그대로 돌아온다.**
+                 */
+                const isOpen = isSearching || openGroups.has(group.label);
+
+                return (
+                  <NavGroup
+                    key={group.label}
+                    label={group.label}
+                    count={group.items.length}
+                    isOpen={isOpen}
+                    /*
+                     * ⛔ **검색 중에는 잠근다.** 강제로 펼쳐 둔 상태라 눌러도 화면이 바뀌지 않는데,
+                     * 누름이 접힘 상태를 조용히 뒤집으면 그 결과가 **검색어를 지운 뒤에** 드러난다 —
+                     * 「접기」를 눌렀는데 열려 있거나, 열어 둔 것이 닫혀 있다. 상태를 거짓으로
+                     * 알리는 컨트롤을 두지 않는다.
+                     */
+                    isLocked={isSearching}
+                    onToggle={() => toggleGroup(group.label)}
+                  >
+                    {group.items.map((item) => (
+                      <NavItem key={item.to} to={item.to} icon={item.icon}>
+                        {item.label}
+                      </NavItem>
+                    ))}
+                  </NavGroup>
+                );
+              })}
+          {/*
+           * 맞는 것이 하나도 없을 때. ⛔ **빈 목록을 그대로 두지 않는다** — 사이드바가 통째로
+           * 비면 사람은 화면이 깨진 것으로 읽는다.
+           */}
+          {hasNoNavMatch(NAV_ENTRIES, activeQuery) ? (
+            <p className="nav-search-empty">{t.search.empty}</p>
+          ) : null}
         </Sidebar>
       }
     >
