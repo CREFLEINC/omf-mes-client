@@ -2,7 +2,7 @@ import '@crefle/web-ui/styles/index.css';
 import '@crefle/web-ui/css';
 import './app.css';
 
-import { activeLocale, resolveLocale, setLocale } from '@omf-mes/i18n';
+import { activeLocale, messages, resolveLocale, setLocale } from '@omf-mes/i18n';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
@@ -21,6 +21,7 @@ if (!container) {
  */
 setLocale(resolveLocale(navigator.languages));
 document.documentElement.lang = activeLocale();
+document.title = messages.common.shell.brand;
 
 const { appRouter } = await import('../routes');
 

@@ -17,6 +17,16 @@ export const common = {
   retry: '다시 시도',
   includeInactive: '미사용 포함',
   discardChangesConfirm: '입력한 내용이 저장되지 않았습니다. 변경을 파기할까요?',
+  /*
+   * 화면 뼈대의 이름들. 디자인 시스템이 기본값을 한국어로 들고 있어, 넘겨주지 않으면 다른
+   * 언어로 열어도 이 자리만 한국어로 남는다.
+   */
+  shell: {
+    brand: 'OMF-MES 모바일',
+    main: '본문',
+    skipToMain: '본문으로 건너뛰기',
+    notifications: '알림',
+  },
   connection: {
     online: '온라인',
     offline: '오프라인',

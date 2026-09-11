@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from './api-context';
+import { masterName } from './master-name';
 import { runRequest } from './request';
 
 export interface CodeValue {
@@ -40,7 +41,7 @@ export const useCodeValues = (group: string): UseQueryResult<CodeValue[]> => {
       return data.items
         .filter((value) => value.isActive)
         .sort((left, right) => left.displayOrder - right.displayOrder)
-        .map((value) => ({ code: value.code, name: value.nameKo ?? value.codeName }));
+        .map((value) => ({ code: value.code, name: masterName(value, value.codeName) }));
     },
   });
 };

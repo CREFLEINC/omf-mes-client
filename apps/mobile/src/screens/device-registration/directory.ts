@@ -1,5 +1,6 @@
 import { readLocal, writeLocal } from '../../patterns/local-store';
 import type { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 
 type Client = ReturnType<typeof useApiClient>['client'];
@@ -34,7 +35,10 @@ export const fetchWorkerDirectory = async (
     );
 
     for (const worker of data.items) {
-      entries.push({ workerNo: worker.workerNo, workerName: worker.workerName });
+      entries.push({
+        workerNo: worker.workerNo,
+        workerName: masterName(worker, worker.workerName),
+      });
     }
 
     // 빈 페이지도 끝으로 본다. total 만 믿으면 그 값이 틀렸을 때 영원히 돈다.

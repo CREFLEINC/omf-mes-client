@@ -14,6 +14,7 @@ interface AppLayoutProps {
 }
 
 const t = messages.common.connection;
+const shell = messages.common.shell;
 
 const ShellTopbar = () => {
   const online = useOnlineStatus();
@@ -30,7 +31,7 @@ const ShellTopbar = () => {
     <Topbar
       brand={
         title === null ? (
-          <strong>OMF-MES 모바일</strong>
+          <strong>{shell.brand}</strong>
         ) : (
           <h1 className="mobile-shell__title">{title}</h1>
         )
@@ -61,7 +62,12 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <ScreenTitleProvider>
-      <AppShell className="mobile-shell" mainLabel="본문" topbar={<ShellTopbar />}>
+      <AppShell
+        className="mobile-shell"
+        mainLabel={shell.main}
+        skipLinkLabel={shell.skipToMain}
+        topbar={<ShellTopbar />}
+      >
         {children}
       </AppShell>
     </ScreenTitleProvider>
