@@ -140,11 +140,11 @@ const printOne = async (client: Client, record: DocumentIssue): Promise<PrintAtt
 
   try {
     /*
-     * ⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1
-     * 「미구현 5건」). `client.GET` 을 부르지 않고 항상 거부하는 대역을 부른다 — 발행 기록은
-     * 이미 남았으므로 여기서 멈춰도 재발행을 유도하지 않는다(아래는 «인쇄 실패»로만 다룬다).
+     * ⛔ **배포본에서는 요청이 만들어지지 않는다**(`patterns/pop-label-rendition` 머리말 —
+     * 실서버에 경로가 없어 개발 모드에서만 부른다). 발행 기록은 이미 남았으므로 여기서
+     * 멈춰도 재발행을 유도하지 않는다(아래는 «인쇄 실패»로만 다룬다).
      */
-    const blob = await fetchLabelRendition();
+    const blob = await fetchLabelRendition(client, record.documentIssueLogId);
 
     bytes = new Uint8Array(blob);
   } catch (cause) {

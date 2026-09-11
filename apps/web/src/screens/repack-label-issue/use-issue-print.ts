@@ -144,11 +144,11 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
 
       try {
         /*
-         * ⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1
-         * 「미구현 5건」). `client.GET` 을 부르지 않고 항상 거부하는 대역을 부른다 — 아래
-         * `catch` 가 «renditionFailed» 로 받아, «발행 실패»와 뒤섞이지 않게 한다.
+         * ⛔ **배포본에서는 요청이 만들어지지 않는다**(`patterns/pop-label-rendition` 머리말 —
+         * 실서버에 경로가 없어 개발 모드에서만 부른다). 아래 `catch` 가 «renditionFailed» 로
+         * 받아, «발행 실패»와 뒤섞이지 않게 한다.
          */
-        const data = await fetchLabelRendition();
+        const data = await fetchLabelRendition(client, target.documentIssueLogId);
 
         const received = new Uint8Array(data);
         bytes.current = received;
@@ -165,12 +165,11 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
           LABEL_RENDITION_FORMAT === 'png'
             ? received
             : /*
-               * ⛔ 여기도 서버에 없는 경로다 — 위와 같은 대역을 부른다. 실제로는 위 줄에서
-               * 이미 던져 이 자리까지 오지 않지만(첫 호출도 같은 경로다), 서버가 구현해
-               * 첫 호출이 성공하게 되는 날에도 «명령형 인쇄용 프린터 형식은 png 로 다시
-               * 받는다»는 이 갈래의 뜻은 그대로 남아야 한다.
+               * ⛔ 여기도 같은 경로다 — 배포본에서는 위 줄에서 이미 던져 이 자리까지 오지
+               * 않는다. 서버가 구현해 첫 호출이 성공하게 되는 날에도 «명령형 인쇄용 프린터
+               * 형식은 png 로 다시 받는다»는 이 갈래의 뜻은 그대로 남아야 한다.
                */
-              await fetchLabelRendition()
+              await fetchLabelRendition(client, target.documentIssueLogId)
                 .then((drawn) => new Uint8Array(drawn))
                 .catch(() => null);
 
