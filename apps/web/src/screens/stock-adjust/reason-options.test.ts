@@ -155,7 +155,8 @@ describe('ADJUST_REASON_GROUP_CODE', () => {
    * 거는 분기·검증이고, 어느 그룹의 코드값인지를 정하는 열쇠는 조회가 성립하려면 있어야 한다.
    */
   it('그룹코드 하나로 고정된다 — 번호가 아니다', () => {
-    expect(ADJUST_REASON_GROUP_CODE).toBe('ADJUST_REASON');
+    /* 서버 v0.1.2 구현이 실제로 쓰는 코드 그룹이다 — `ADJUST_REASON`이 아니다(대응표 P0). */
+    expect(ADJUST_REASON_GROUP_CODE).toBe('INVENTORY_ADJUSTMENT_REASON');
     expect(Number.isNaN(Number(ADJUST_REASON_GROUP_CODE))).toBe(true);
   });
 });

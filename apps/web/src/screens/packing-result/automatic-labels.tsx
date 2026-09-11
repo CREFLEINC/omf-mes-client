@@ -2,7 +2,11 @@ import { AlertBanner, Button } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo } from 'react';
 
-import { DELIVERY_LABEL, PACKING_LABEL } from '../shipping-packing-label/codes';
+import {
+  DELIVERY_LABEL,
+  DELIVERY_LABEL_ISSUE_LOCKED,
+  PACKING_LABEL,
+} from '../shipping-packing-label/codes';
 import { useLabelIssue, type LabelIssueHandle } from '../shipping-packing-label/mutations';
 import { useIssueSummaries, usePrinters } from '../shipping-packing-label/queries';
 import {
@@ -59,13 +63,28 @@ export const AutomaticLabels = ({ run, workerNo, onOpenManagement }: AutomaticLa
   const packingPrinters = usePrinters(PACKING_LABEL);
   const deliveryPrinters = usePrinters(DELIVERY_LABEL);
   const packingRows = useMemo(() => [packingRow(run.handlingUnit)], [run.handlingUnit]);
+  /*
+   * ⛔⛔ **`DELIVERY_LABEL` 발행은 서버가 항상 422 `INVALID` 로 거부한다**(대응표 P1 「공용
+   * 문서 발행」· I-27 마감 결정 · `shipping-packing-label/codes.ts` 의
+   * `DELIVERY_LABEL_ISSUE_LOCKED`). 그 화면의 수동 발행 단추(`screen.tsx`)가 이 플래그를
+   * 보고 요청 자체를 막는 것과 같은 결로, 자동 출력도 대상을 아예 만들지 않는다 — 그러지
+   * 않으면 «저장 실패»만 영원히 반복해 보인다. 서버가 지원을 시작하면 이 잠금만 걷어내면
+   * 포장 확정 뒤 자동 발행이 다시 납품 라벨까지 잇는다.
+   */
   const deliveryRows = useMemo(
     () =>
-      run.allocations
-        .filter((allocation) => allocation.oqcPassed)
-        .map((allocation) =>
-          toDeliveryRow(toAllocationView(allocation), t.oqcPassed, t.oqcWaiting, t.lotUnavailable),
-        ),
+      DELIVERY_LABEL_ISSUE_LOCKED
+        ? []
+        : run.allocations
+            .filter((allocation) => allocation.oqcPassed)
+            .map((allocation) =>
+              toDeliveryRow(
+                toAllocationView(allocation),
+                t.oqcPassed,
+                t.oqcWaiting,
+                t.lotUnavailable,
+              ),
+            ),
     [run.allocations],
   );
   const packingSummaries = useIssueSummaries(

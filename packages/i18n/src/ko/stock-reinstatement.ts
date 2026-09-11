@@ -101,6 +101,11 @@ export const stockReinstatement = {
     already: '이미 재등록된 판정입니다. 대기 목록을 다시 불러왔습니다.',
     released: '보류가 다른 경로에서 먼저 해제되었습니다. 대기 목록을 다시 확인하세요.',
     notEligible: '현재 판정은 재등록할 수 없습니다. 대기 목록을 다시 확인하세요.',
-    version: 'LOT 정보가 바뀌었습니다. 최신 상태를 불러온 뒤 다시 확인하세요.',
+    /*
+     * ⛔ `version`(낙관적 잠금 경합 전용 문구)은 더 두지 않는다 — 통보 221로 이 오퍼레이션의
+     * 모든 409에 `conflictCause`가 실려 `VERSION_CONFLICT`는 이제 공용 `SaveErrorBanner`가
+     * `messages.conflict.user`·`erpSync`·`workerLease`로 원인별로 말한다(화면의 `conflictMessage`
+     * 참고). 한 문구로 셋을 뭉뚱그리지 않기 위해 공용 문구에 자리를 넘긴다.
+     */
   },
 } as const;

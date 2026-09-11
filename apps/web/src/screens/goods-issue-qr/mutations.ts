@@ -2,7 +2,7 @@ import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/r
 
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
-import { labelRenditionFormat } from '../../patterns/pop-label-rendition';
+import { fetchLabelRendition, labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { runRequest } from '../../patterns/request';
 import { hasPrintBridge, sendToPrinter, type PrintAttempt } from './pop-print';
 import { goodsIssueQrKeys } from './queries';
@@ -138,17 +138,14 @@ const printOne = async (client: Client, record: DocumentIssue): Promise<PrintAtt
   let bytes: Uint8Array;
 
   try {
-    const blob = await runRequest(() =>
-      client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
-        params: {
-          path: { documentIssueLogId: record.documentIssueLogId },
-          query: { format },
-        },
-        parseAs: 'arrayBuffer',
-      }),
-    );
+    /*
+     * ⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1
+     * 「미구현 5건」). `client.GET` 을 부르지 않고 항상 거부하는 대역을 부른다 — 발행 기록은
+     * 이미 남았으므로 여기서 멈춰도 재발행을 유도하지 않는다(아래는 «인쇄 실패»로만 다룬다).
+     */
+    const blob = await fetchLabelRendition();
 
-    bytes = new Uint8Array(blob as ArrayBuffer);
+    bytes = new Uint8Array(blob);
   } catch (cause) {
     /* 그림을 못 받은 것도 인쇄 실패다 — 종이는 나오지 않았고, 기록은 남아 있다. */
     return { kind: 'failed', reason: cause instanceof Error ? cause.message : String(cause) };

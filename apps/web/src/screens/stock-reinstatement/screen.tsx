@@ -54,6 +54,13 @@ import {
 const t = messages.stockReinstatement;
 const PAGE_SIZE = 50;
 
+/**
+ * ⭐ **셋만 여기서 되말한다.** `queries.ts`의 `useReinstate`가 이 셋(다시 시도해도 안 풀리는
+ * 확정 사유)만 `conflictCause`를 지워 `kind: 'http'`로 넘긴다 — 그래서 `VERSION_CONFLICT`는
+ * 여기 오지 않고 `kind: 'conflict'`로 남아 `SaveErrorBanner`가 원인(user·erpSync·workerLease)별
+ * 문구를 낸다(통보 221·222). 이 함수가 셋 밖의 코드를 만나는 일은 없지만, 만나면 공용 배너에
+ * 맡기려고 `null`을 낸다.
+ */
 const conflictMessage = (error: ApiError | null): string | null => {
   if (error === null || error.kind !== 'http' || error.status !== 409) return null;
   switch (error.code) {
@@ -63,8 +70,6 @@ const conflictMessage = (error: ApiError | null): string | null => {
       return t.conflict.released;
     case 'DISPOSITION_NOT_REINSTATABLE':
       return t.conflict.notEligible;
-    case 'VERSION_CONFLICT':
-      return t.conflict.version;
     default:
       return null;
   }

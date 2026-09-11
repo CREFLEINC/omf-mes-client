@@ -74,9 +74,14 @@ describe('toListQuery', () => {
     expect(toListQuery(filters({ from: '2026-02-31' }), 1)).toBeNull();
   });
 
-  it('정렬 값을 계약이 받는 이름으로 바꾼다', () => {
-    expect(toListQuery(filters({ sort: 'elapsed' }), 1)?.sort).toBe('shippedAt,asc');
-    expect(toListQuery(filters({ sort: 'shipDate' }), 1)?.sort).toBe('shipDate,desc');
+  /*
+   * ⛔ 통보 219 — 서버 구현 기준 `sort`는 `shippedAt`·`shipmentNo`뿐이고 방향을 받지 않는다.
+   * 예전에는 `,asc`/`,desc` 접미사를 붙였지만 그러면 이제 400이라 접미사 없이 보낸다. 이
+   * 화면의 정렬 선택지가 `elapsed` 하나뿐이라(`shipDate`·`customer`는 없앴다) 시험도 그것 하나만
+   * 본다.
+   */
+  it('정렬 값을 계약이 받는 이름으로 바꾼다 — 방향 접미사를 붙이지 않는다', () => {
+    expect(toListQuery(filters({ sort: 'elapsed' }), 1)?.sort).toBe('shippedAt');
   });
 
   it('첫 쪽이면 쪽 번호를 싣지 않는다', () => {

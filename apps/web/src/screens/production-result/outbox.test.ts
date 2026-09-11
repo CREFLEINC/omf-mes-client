@@ -58,11 +58,16 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
 });
 
 describe('useOutbox — 끝나지 않는 장애에서 멈추되 실적은 남긴다', () => {
+  /*
+   * ⛔⛔ **`resultSourceCode` 가 다시 필수다**(2026-09-11 전달본 · `save-request.ts` 머리말
+   * 참고). 이 화면은 사람이 입력하는 POP 단말이라 `IOT` 일 수 없어 `MANUAL` 을 싣는다.
+   */
   const body = {
     workOrderId: 1001,
     goodQty: 120,
     uomId: 1001,
     occurredAt: '2026-09-02T09:12:00+09:00',
+    resultSourceCode: 'MANUAL',
   } satisfies OutboxEntry['body'];
 
   /** 언제 물어도 「지금은 못 받는다」고 답하는 서버. */

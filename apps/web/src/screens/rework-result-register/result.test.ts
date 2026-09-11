@@ -79,4 +79,15 @@ describe('재작업 실적 수량', () => {
     });
     expect(result.occurredAt).toMatch(/[+-]\d{2}:\d{2}$/);
   });
+
+  /*
+   * ⛔⛔ **`resultSourceCode` 가 다시 필수다**(2026-09-11 전달본 · `result.ts` 머리말 참고).
+   * 이 화면도 `usePopIdentity`·`NumericKeypad` 로 사람이 수량을 직접 치는 POP 단말이라
+   * `MANUAL` 을 싣는다 — `production-result/save-request.ts` 와 같은 판단이다.
+   */
+  it('실적 출처는 사람이 입력하는 단말이라 MANUAL 을 싣는다', () => {
+    const result = toProductionResult(workOrder, drafts(), new Date('2026-09-02T06:00:00.000Z'));
+
+    expect(result.resultSourceCode).toBe('MANUAL');
+  });
 });

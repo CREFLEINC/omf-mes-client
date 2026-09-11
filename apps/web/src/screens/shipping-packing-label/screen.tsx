@@ -3,7 +3,12 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 
 import { popTouchClass } from '../../patterns/pop-touch';
-import { DELIVERY_LABEL, PACKING_LABEL, type LabelKind } from './codes';
+import {
+  DELIVERY_LABEL,
+  DELIVERY_LABEL_ISSUE_LOCKED,
+  PACKING_LABEL,
+  type LabelKind,
+} from './codes';
 import { useShippingLabelEntry } from './entry-context';
 import { HistoryDialog } from './history-dialog';
 import { IssueOutcome } from './issue-outcome';
@@ -238,6 +243,7 @@ export const ShippingPackingLabelScreen = ({
 
   const startIssue = (): void => {
     if (kind === null || blockedReason !== null) return;
+    if (DELIVERY_LABEL_ISSUE_LOCKED && kind === DELIVERY_LABEL) return;
 
     issue.issue({
       kind,
@@ -346,12 +352,14 @@ export const ShippingPackingLabelScreen = ({
                     className={popTouchClass('critical')}
                     size="xl"
                     disabled={
+                      DELIVERY_LABEL_ISSUE_LOCKED ||
                       isRecoveryPending ||
                       missingDeliveryRows.length === 0 ||
                       workerNo === null ||
                       issue.phase !== 'idle'
                     }
                     onClick={() => {
+                      if (DELIVERY_LABEL_ISSUE_LOCKED) return;
                       setRecoveryPrintQueued(true);
                       issue.issue({
                         kind: DELIVERY_LABEL,

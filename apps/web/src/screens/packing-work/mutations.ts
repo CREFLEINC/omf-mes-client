@@ -1,5 +1,8 @@
+import type { ApiError } from '@omf-mes/api-client';
+
 import { useApiClient } from '../../patterns/api-context';
 import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import { ApiRequestError } from '../../patterns/request';
 import { packingWorkKeys } from './queries';
 import type {
   HandlingUnit,
@@ -134,32 +137,54 @@ export interface DiscardOptions {
 }
 
 /**
+ * ⛔⛔ **`DELETE /inventory/handling-units/{handlingUnitId}` 는 서버에 경로 자체가 없다**
+ * (생성 타입 `paths['/inventory/handling-units/{handlingUnitId}']['delete']` 가 `never` ·
+ * 2026-09-11 전달본 — 이 자리는 `get` 만 있다). 이 경로는 **설계 공지 3(2026-09-08)** 이
+ * 더한 것이라 이번 임시 서버 기준선(설계 공지 2 · `a6a87e14`)에는 없다 — 서버 저장소의
+ * 계약 사본(`contracts/COMMIT.txt`)도 아직 `a6a87e14` 라 서버는 공지 3을 모른다.
+ *
+ * ⭐ **사용자 결정 — 「준비 중」으로 닫고 서버팀에 보고한다.** 코드는 지우지 않는다. 서버가
+ * 공지 3을 구현하면 아래 `useHandlingUnitDiscard` 의 `request` 를 원래의
+ * `client.DELETE(...)` 호출로 되돌리면 된다.
+ *
+ * ⛔ **요청을 만들었다가 거부당한 척하지 않는다.** `Promise.reject` 로 곧바로 거부해 네트워크
+ * 요청 자체를 만들지 않는다 — `useMasterWrite` 는 이 실패를 `ApiRequestError` 그대로 받아
+ * `patterns/request.ts` 의 「정규화된 실패는 연결 문제로 덮지 않는다」약속(`runRequestWithResponse`
+ * 머리말) 위에서 처리하므로, 화면의 기존 오류 배너(`PackErrorBanner`)가 저장 실패가 아니라
+ * **아직 지원하지 않는 기능**으로 그대로 보여 준다.
+ */
+export const HANDLING_UNIT_DISCARD_NOT_READY_MESSAGE =
+  '포장 취소는 서버가 아직 지원하지 않습니다. 포장 단위는 그대로 남아 있고, 서버팀에 보고했습니다.';
+
+const handlingUnitDiscardNotReadyError = (): ApiError => ({
+  kind: 'validation',
+  errors: [
+    {
+      scope: 'screen',
+      code: 'HANDLING_UNIT_DISCARD_NOT_READY',
+      message: HANDLING_UNIT_DISCARD_NOT_READY_MESSAGE,
+    },
+  ],
+});
+
+/**
  * 확정 전 취소 — **담다가 그만둔 빈 포장을 거둔다**(스펙 §5-7 · 공유계약 B-8-1③).
  *
  * ⭐ **이 화면이 이 경로를 갖는 이유** — 호출이 둘로 갈리면서 「포장 단위는 만들어졌고 내용물은
  * 아직 없는」 상태가 생겼다. 그대로 두면 번호만 있고 아무것도 담기지 않은 포장이 쌓인다.
  *
+ * ⛔ **지금은 항상 거부된다** — 위 머리말 참고. 네트워크 요청을 만들지 않고 곧바로 거부해,
+ * 담다가 그만둔 포장은 거두지 못한 채 그대로 남는다.
+ *
  * ⛔ **확정 뒤에는 이 경로로 지우지 않는다** — 서버가 409 로 막는다(§5-7). 확정 후 해체는
  * 화면이 없다(§8-4 · 이 화면 범위 밖).
  */
 export const useHandlingUnitDiscard = ({
-  workerNo,
-  handlingUnitId,
   onSuccess,
-}: DiscardOptions): MasterWriteResult<Record<string, never>> => {
-  const { client } = useApiClient();
-
-  return useMasterWrite<Record<string, never>, unknown>({
-    request: (_body, headers) =>
-      client.DELETE('/inventory/handling-units/{handlingUnitId}', {
-        params: {
-          path: { handlingUnitId: handlingUnitId ?? 0 },
-          header: {
-            'Idempotency-Key': headers['Idempotency-Key'],
-            'X-Worker-No': workerNo,
-          },
-        },
-      }),
+}: DiscardOptions): MasterWriteResult<Record<string, never>> =>
+  useMasterWrite<Record<string, never>, unknown>({
+    request: (): Promise<never> =>
+      Promise.reject(new ApiRequestError(handlingUnitDiscardNotReadyError())),
     etagPath: null,
     invalidateKeys: [packingWorkKeys.parents],
     knownFields: NO_INLINE_FIELDS,
@@ -168,4 +193,3 @@ export const useHandlingUnitDiscard = ({
       onSuccess();
     },
   });
-};

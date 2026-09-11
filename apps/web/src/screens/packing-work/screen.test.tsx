@@ -33,6 +33,7 @@ import {
   targetLots,
   unitTypes,
 } from './fixtures';
+import { HANDLING_UNIT_DISCARD_NOT_READY_MESSAGE } from './mutations';
 import { STORAGE_KEY as OUTBOX_STORAGE_KEY } from './outbox';
 import { PackingWorkScreen } from './screen';
 
@@ -380,7 +381,9 @@ describe('P-02-08 포장 작업', () => {
     await chooseUnitType(user);
     expect(unitPane().queryByText(HANDLING_UNIT_NO)).not.toBeInTheDocument();
 
-    await user.click(await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }));
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
     await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
@@ -417,7 +420,16 @@ describe('P-02-08 포장 작업', () => {
       expect(screen.getByRole('button', { name: t.unit.discardAction })).toBeDisabled();
     });
 
-    it('담기 시작한 뒤에는 포장 단위를 거둘 수 있다', async () => {
+    /*
+     * ⚠ **동작이 바뀌었다.** 이 시험은 원래 「거둘 수 있다」— 취소가 성공해 새 포장으로
+     * 넘어가는 것을 쟀다. `DELETE /inventory/handling-units/{id}` 는 설계 공지
+     * 3(2026-09-08)이 더한 경로라 이번 서버 구현 기준(공지 2 · v0.1.2)에 없다
+     * (`mutations.ts` 의 `useHandlingUnitDiscard` 머리말 참고 — 생성 타입의 `delete` 가
+     * `never`). 그래서 취소는 이제 늘 「준비 중」으로 거부되고, 네트워크 요청 자체가 나가지
+     * 않으며, 포장 단위는 거둬지지 않은 채 그대로 남는다. 서버가 이 경로를 구현하면 이
+     * 시험을 원래의 성공 시나리오로 되돌리면 된다.
+     */
+    it('담기 시작한 뒤 취소를 눌러도 서버가 아직 지원하지 않아 그대로 남는다', async () => {
       const user = userEvent.setup();
       const discards: Request[] = [];
 
@@ -428,23 +440,15 @@ describe('P-02-08 포장 작업', () => {
 
       await user.click(screen.getByRole('button', { name: t.unit.discardAction }));
 
-      await waitFor(() => {
-        expect(discards).toHaveLength(1);
-      });
+      /* 「준비 중」이 드러난다 — 저장 실패나 네트워크 오류로 보이지 않는다. */
+      expect(await screen.findByText(HANDLING_UNIT_DISCARD_NOT_READY_MESSAGE)).toBeInTheDocument();
 
-      const request = writeAt(discards, 0);
+      /* ⛔ 네트워크 요청이 나가지 않는다 — 경로 자체가 없다. */
+      expect(discards).toHaveLength(0);
 
-      expect(request.method).toBe('DELETE');
-      expect(new URL(request.url).pathname).toBe(
-        `/inventory/handling-units/${String(HANDLING_UNIT_ID)}`,
-      );
-      expect(request.headers.get('X-Worker-No')).toBe(WORKER_NO);
-
-      /* 거둔 뒤에는 새 포장을 처음부터 시작한다 — 번호도 담은 것도 남지 않는다. */
-      await waitFor(() => {
-        expect(unitPane().queryByText(HANDLING_UNIT_NO)).not.toBeInTheDocument();
-      });
-      expect(unitPane().getByText(t.contents.empty)).toBeInTheDocument();
+      /* 거둬지지 않았으니 포장 단위와 담은 것이 그대로 남는다. */
+      expect(unitPane().getByText(HANDLING_UNIT_NO)).toBeInTheDocument();
+      expect(unitPane().queryByText(t.contents.empty)).not.toBeInTheDocument();
     });
 
     /* ⛔ 확정한 뒤에는 이 경로로 지우지 않는다 — 서버가 409 로 막고, 해체 화면은 없다(§8-4). */
@@ -669,7 +673,9 @@ describe('P-02-08 포장 작업', () => {
 
     const pack = writeAt(writes, 0);
 
-    expect(new URL(pack.url).pathname).toBe(`/inventory/handling-units/${String(HANDLING_UNIT_ID)}:pack`);
+    expect(new URL(pack.url).pathname).toBe(
+      `/inventory/handling-units/${String(HANDLING_UNIT_ID)}:pack`,
+    );
     /* ⛔ 「있다」로 보지 않는다 — 빈 키도 헤더로는 실린다. 서버는 그것을 키로 세지 않는다 */
     expect(pack.headers.get('Idempotency-Key') ?? '').not.toBe('');
     expect(pack.headers.get('X-Worker-No')).toBe(WORKER_NO);
@@ -795,7 +801,9 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     renderScreen({ creates });
 
     await chooseUnitType(user);
-    await user.click(await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }));
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
     await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 

@@ -19,6 +19,8 @@ const BODY: components['schemas']['ProductionResultCreate'] = {
   goodQty: 12,
   uomId: 1001,
   occurredAt: '2026-09-03T09:12:00+09:00',
+  /* resultSourceCode 가 2026-09-11 전달본에서 다시 필수다(result.ts 머리말) — 사람이 입력하는 POP 단말이라 MANUAL. */
+  resultSourceCode: 'MANUAL',
 };
 
 const clientWith = (status: number) =>

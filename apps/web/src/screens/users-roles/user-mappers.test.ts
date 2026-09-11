@@ -82,9 +82,15 @@ describe('toAppUserUpdate', () => {
     expect(Object.keys(body)).toContain('statusCode');
   });
 
-  it('선택한 상태 코드를 싣고 비운 값은 기존 상태 보존을 위해 뺀다', () => {
+  /*
+   * ⛔⛔ **`statusCode` 가 2026-09-11 전달본에서 선택 → 필수로 바뀌었다**(`user-mappers.ts`
+   * 머리말 참고). 예전엔 비우면 키를 빼 기존 상태를 보존했는데, 지금 생성 타입은 이 칸을
+   * required 로 요구해 키를 뺄 수 없다 — 항상 폼 값을 그대로 싣는다. 실제 화면에서는 수정
+   * 폼이 상세 조회로 채운 뒤에만 열려 이 값이 빈 문자열이 될 일이 없다(screen.tsx 폼 시딩).
+   */
+  it('선택한 상태 코드를 그대로 싣는다 — 이제 필수라 비워도 키를 뺄 수 없다', () => {
     expect(toAppUserUpdate(filled).statusCode).toBe('SYN-STATUS-A');
-    expect(Object.keys(toAppUserUpdate({ ...filled, statusCode: '' }))).not.toContain('statusCode');
+    expect(toAppUserUpdate({ ...filled, statusCode: '' }).statusCode).toBe('');
   });
 
   /** 키를 빼면 서버가 이전 값을 남길 수 있어 한 번 넣은 값을 지울 방법이 사라진다. */

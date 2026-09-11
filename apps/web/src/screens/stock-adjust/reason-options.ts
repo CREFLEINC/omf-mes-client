@@ -41,8 +41,13 @@ type CodeGroupResponse = components['schemas']['CodeGroup'];
  *
  * **번호(`codeGroupId`)를 쓰지 않는다**(전례 `judgment-group.ts`) — 번호는 자료가 만들어질 때
  * 정해져 환경마다 다르다. 그룹코드로 조회한 뒤 목록에서 정확히 일치하는 것을 고른다.
+ *
+ * ⚠ **그룹코드는 `ADJUST_REASON`이 아니다** — 서버 `v0.1.2` 구현이 실제로 쓰는 코드 그룹은
+ * `INVENTORY_ADJUSTMENT_REASON`이다(클라이언트 우선 대응표 P0 · 설계 검토 요청서 §3-1).
+ * 모바일 `apps/mobile/src/screens/shopfloor-receipt/hopper.ts`가 이미 이 값을 쓴다 — 값이
+ * 갈리면 관리웹과 모바일이 서로 다른 코드 그룹을 열어 조정 사유가 어긋난다.
  */
-export const ADJUST_REASON_GROUP_CODE = 'ADJUST_REASON';
+export const ADJUST_REASON_GROUP_CODE = 'INVENTORY_ADJUSTMENT_REASON';
 
 /**
  * 조회한 코드그룹 목록에서 조정 사유 그룹을 고른다. 없으면 `null`이다.

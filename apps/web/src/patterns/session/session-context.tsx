@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import { isUnauthenticated as isApiUnauthenticated, type components } from '@omf-mes/api-client';
 import { hashKey, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { createContext, use, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 
@@ -41,9 +41,6 @@ export interface SessionValue {
   retryRestore: () => void;
 }
 
-/** 자격이 없다는 서버의 답. 이 하나만 「로그인 안 했다」로 읽는다. */
-const HTTP_UNAUTHORIZED = 401;
-
 /**
  * ⚠ **세션은 자주 바뀌지 않지만 무한정 묵히지도 않는다.** 관리웹은 하루 종일 열어 두는 화면이라,
  * 권한을 새로 받은 사람이 브라우저를 껐다 켜야만 반영되는 것은 곤란하다. 전례
@@ -57,12 +54,13 @@ export const sessionKeys = {
 
 const SESSION_QUERY_HASH = hashKey(sessionKeys.current);
 
-/** 잡은 값이 「자격이 없다」인가. 그 밖의 실패는 전부 「모른다」다. */
-const isUnauthenticated = (cause: unknown): boolean => {
-  const error = toApiError(cause);
-
-  return error.kind === 'http' && error.status === HTTP_UNAUTHORIZED;
-};
+/**
+ * 잡은 값이 「자격이 없다」인가. 그 밖의 실패는 전부 「모른다」다.
+ *
+ * 401 을 무엇으로 볼지는 계약 계층이 정하고(`isApiUnauthenticated`) 여기서는 **잡은 값을
+ * 계약 오류로 바꾸는 일**만 한다 — 상태 코드를 두 곳에서 비교하면 한쪽만 고쳐지는 날이 온다.
+ */
+const isUnauthenticated = (cause: unknown): boolean => isApiUnauthenticated(toApiError(cause));
 
 /**
  * **세션이 끊겼다는 답을 어디서 받든 판정에 반영한다.**

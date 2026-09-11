@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { blindCountLineResponse, countLineResponse, countResponse, summaryResponse } from './fixtures';
+import {
+  blindCountLineResponse,
+  countLineResponse,
+  countResponse,
+  summaryResponse,
+} from './fixtures';
 import {
   describeBlindCount,
   toCountDetailView,
@@ -48,7 +53,12 @@ describe('toCountSummaryView', () => {
   it('요약 네 건수를 그대로 옮긴다', () => {
     const view = toCountSummaryView(summaryResponse());
 
-    expect(view).toEqual({ plannedCount: 40, countedCount: 25, uncountedCount: 15, varianceCount: 6 });
+    expect(view).toEqual({
+      plannedCount: 40,
+      countedCount: 25,
+      uncountedCount: 15,
+      varianceCount: 6,
+    });
   });
 
   it('0인 건수도 그대로 옮긴다', () => {
@@ -83,6 +93,8 @@ describe('toCountLineView', () => {
       itemId: 9301,
       lotId: 9601,
       systemQty: 100,
+      /* `counted` — 신설 필드(통보 273). 미실사 판정의 유일한 축이라 그대로 옮긴다. */
+      counted: true,
       countedQty: 98,
       varianceQty: -2,
       uomId: 9501,
@@ -96,7 +108,9 @@ describe('toCountLineView', () => {
   });
 
   it('차이 사유가 없는 라인은 null로 옮긴다', () => {
-    expect(toCountLineView(countLineResponse({ varianceReasonCode: null })).varianceReasonCode).toBeNull();
+    expect(
+      toCountLineView(countLineResponse({ varianceReasonCode: null })).varianceReasonCode,
+    ).toBeNull();
   });
 
   /*
@@ -110,14 +124,33 @@ describe('toCountLineView', () => {
     expect(view.systemQty).toBeNull();
   });
 
-  /* 차이도 같은 방어를 한다 — 계약이 블라인드에서 오는지 말하지 않는다(어긋남 1). */
-  it('블라인드 응답의 차이 수량을 보이지 않음(null)으로 읽는다', () => {
-    expect(toCountLineView(blindCountLineResponse()).varianceQty).toBeNull();
+  /*
+   * ⭐ **차이 수량은 블라인드가 아니라 `counted`로 가려진다**(통보 273 및 구현 코드 대조 ·
+   * 대응표 P0). 예전에는 「블라인드면 차이도 함께 안 온다」고 보고 `blindCountLineResponse`로
+   * 이 방어를 쟀다(어긋남 1) — 근거 없는 추정이었다. 실제로는 `varianceQty`가 **늘 실려 오고**
+   * `counted`가 거짓인 줄만 0으로 마스킹돼 있다. 블라인드 여부와는 무관하다.
+   */
+  it('미실사 줄(counted=false)의 차이 수량을 보이지 않음(null)으로 읽는다', () => {
+    const view = toCountLineView(
+      countLineResponse({ counted: false, countedQty: 0, varianceQty: 0 }),
+    );
+
+    expect(view.varianceQty).toBeNull();
+  });
+
+  /* 짝 방향 — 실사한 줄은 블라인드 응답이라도(장부 수량만 빠진 것이라도) 차이를 그대로 옮긴다. */
+  it('실사한 줄은 블라인드 응답이라도 차이 수량을 그대로 옮긴다', () => {
+    const view = toCountLineView(blindCountLineResponse());
+
+    expect(view.systemQty).toBeNull();
+    expect(view.varianceQty).toBe(-2);
   });
 
   /* 짝 방향 — 0은 「없음」이 아니다. `??`로 읽으면 0이 null로 뭉개진다. */
   it('장부·차이 수량이 0이면 0으로 읽는다', () => {
-    const view = toCountLineView(countLineResponse({ systemQty: 0, varianceQty: 0, countedQty: 0 }));
+    const view = toCountLineView(
+      countLineResponse({ systemQty: 0, varianceQty: 0, countedQty: 0 }),
+    );
 
     expect(view.systemQty).toBe(0);
     expect(view.varianceQty).toBe(0);

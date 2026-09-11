@@ -1,4 +1,4 @@
-import type { components } from '@omf-mes/api-client';
+import type { components, ConflictCause } from '@omf-mes/api-client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
@@ -28,6 +28,20 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const codeOf = (error: unknown): string | undefined => {
   if (!isRecord(error)) return undefined;
   return typeof error.code === 'string' ? error.code : undefined;
+};
+
+const CONFLICT_CAUSES: readonly ConflictCause[] = ['user', 'erpSync', 'workerLease'];
+
+/**
+ * `ShipmentConflictResponse.conflictCause` — 통보 221로 이 오퍼레이션의 모든 409에 실린다.
+ * `toFailureKind`가 이미 `code`로 갈래를 갈랐으니, `version-conflict`일 때만 이 값이 뜻을
+ * 갖는다(`failureReason` 참고).
+ */
+const causeOf = (error: unknown): ConflictCause | undefined => {
+  if (!isRecord(error)) return undefined;
+  return CONFLICT_CAUSES.includes(error.conflictCause as ConflictCause)
+    ? (error.conflictCause as ConflictCause)
+    : undefined;
 };
 
 export interface ConfirmRunState {
@@ -117,10 +131,12 @@ export const useConfirmRunner = (): ConfirmRunner => {
           continue;
         }
 
+        const cause = causeOf(result.error);
         outcomes.push({
           shipmentId: row.shipmentId,
           shipmentNo: row.shipmentNo,
           failure: toFailureKind(result.response.status, codeOf(result.error)),
+          ...(cause === undefined ? {} : { conflictCause: cause }),
         });
       }
 

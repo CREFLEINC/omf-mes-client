@@ -4,6 +4,7 @@ export { createIdempotencyKey } from './idempotency';
 export {
   NETWORK_ERROR,
   isTransientStatus,
+  isUnauthenticated,
   normalizeApiError,
   type ApiError,
   type ConflictCause,

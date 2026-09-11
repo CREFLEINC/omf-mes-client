@@ -152,8 +152,7 @@ const MINIMAL_LOT_DETAIL: LotDetailResponse = {
     sourceTypeCode: 'SAMPLE_SRC_A',
     sourceId: 9701,
     statusCode: 'SAMPLE_LOT_S_A',
-    workOrderSequenceNo: null,
-    workOrderLotCount: null,
+    /* workOrderSequenceNo·workOrderLotCount 는 2026-09-11 전달본 계약에서 완전히 빠졌다(대체 필드 없음) — 지어내지 않는다. */
   },
   externalIdentifiers: [],
   holds: [],

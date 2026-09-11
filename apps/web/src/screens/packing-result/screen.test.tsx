@@ -11,6 +11,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 
+import { HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE } from './mutations';
 import { PackingResultScreen } from './screen';
 
 const t = messages.packingResult;
@@ -64,12 +65,18 @@ const handlingUnitBody = {
 const renderScreen = (options: Options = {}) => {
   const routes: StubRoute[] = [
     {
+      /*
+       * ⚠ **`shipmentNo` 정확 일치 파라미터는 서버 구현 기준(v0.1.2)에 없다**(통보 219 ·
+       * `queries.ts` 의 `useShipmentScan` 머리말). 그룹 D 가 그 스캔을 `q` + `shipDateFrom` +
+       * 응답 재필터로 고쳤으므로, 이 목도 같은 모양으로 읽는다 — `q` 가 있는 요청만 「출하번호
+       * 스캔」으로 본다(`useTodayShipments` 는 `q` 없이 부른다).
+       */
       match: (request) => pathOf(request) === '/logistics/shipments',
       respond: (request) => {
         options.reads?.push(request.clone());
-        const requestedNo = queryOf(request).get('shipmentNo');
+        const requestedNo = queryOf(request).get('q');
         const missing =
-          queryOf(request).has('shipmentNo') &&
+          queryOf(request).has('q') &&
           (options.shipmentNotFound === true || requestedNo?.includes('없음') === true);
 
         return jsonResponse({
@@ -130,6 +137,11 @@ const renderScreen = (options: Options = {}) => {
       },
     },
     {
+      /*
+       * ⚠ **닿을 일이 없다.** `useHandlingUnitCancel` 이 이제 이 요청을 만들지 않는다(경로
+       * 자체가 서버에 없다 — `mutations.ts` 머리말). 스텁은 그대로 두어, 서버가 공지 3을
+       * 구현해 되돌릴 때 이 목도 다시 살아나게 한다.
+       */
       match: (request) =>
         request.method === 'DELETE' && pathOf(request) === '/inventory/handling-units/4001',
       respond: (request) => {
@@ -206,8 +218,12 @@ describe('PackingResultScreen', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(t.scan.label.productionLot)).toBeEnabled();
     });
+    /*
+     * ⚠ **`shipmentNo` 는 이제 보내지 않는다**(통보 219 · `queries.ts` 머리말) — 정확 일치
+     * 스캔도 검색용 `q` 로 나가고, 응답에서 정확히 같은 번호만 다시 골라낸다.
+     */
     const shipmentRequest = reads.find(
-      (request) => pathOf(request) === '/logistics/shipments' && queryOf(request).has('shipmentNo'),
+      (request) => pathOf(request) === '/logistics/shipments' && queryOf(request).has('q'),
     );
     const allocationRequest = reads.find(
       (request) =>
@@ -215,8 +231,9 @@ describe('PackingResultScreen', () => {
         queryOf(request).get('unpackedOnly') === 'true',
     );
 
-    expect(queryOf(shipmentRequest as Request).get('shipmentNo')).toBe('SYN-SH-0501');
+    expect(queryOf(shipmentRequest as Request).get('q')).toBe('SYN-SH-0501');
     expect(queryOf(shipmentRequest as Request).get('pickedOnly')).toBe('true');
+    expect(queryOf(shipmentRequest as Request).has('shipDateFrom')).toBe(true);
     expect(queryOf(allocationRequest as Request).get('shipmentId')).toBe('501');
   });
 
@@ -372,7 +389,15 @@ const pack = async (user: ReturnType<typeof userEvent.setup>, digits: string): P
 };
 
 describe('PackingResultScreen — 담기와 확정', () => {
-  it('열린 포장이 있으면 다른 출하 전환을 막고 취소 성공 뒤에만 새 출하를 조회한다', async () => {
+  /*
+   * ⚠ **동작이 바뀌었다.** 이 시험은 원래 「취소 성공 뒤에만 새 출하를 조회한다」였다.
+   * `DELETE /inventory/handling-units/{id}` 는 설계 공지 3(2026-09-08)이 더한 경로라 이번
+   * 서버 구현 기준(공지 2 · v0.1.2)에 없다(`mutations.ts` 의 `useHandlingUnitCancel` 머리말
+   * 참고) — 그래서 취소는 이제 늘 「준비 중」으로 거부되고, 열린 포장은 거둬지지 않는다.
+   * 다른 출하로의 전환도 그 상태 그대로 계속 막힌다. 서버가 이 경로를 구현하면 이 시험을
+   * 원래의 성공 시나리오로 되돌리면 된다.
+   */
+  it('열린 포장이 있으면 다른 출하 전환을 막고, 취소는 아직 지원하지 않아 계속 막힌 채로 남는다', async () => {
     const user = userEvent.setup();
     const reads: Request[] = [];
     renderScreen({ reads });
@@ -383,30 +408,26 @@ describe('PackingResultScreen — 담기와 확정', () => {
     await user.click(await screen.findByRole('option', { name: '카톤' }));
     await screen.findByText('SYN-CTN-0091');
 
-    await scan(user, t.scan.label.shipment, 'SYN-SH-0502');
-    expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
-    expect(
+    const sentToOtherShipment = () =>
       reads.some(
         (request) =>
-          pathOf(request) === '/logistics/shipments' &&
-          queryOf(request).get('shipmentNo') === 'SYN-SH-0502',
-      ),
-    ).toBe(false);
+          pathOf(request) === '/logistics/shipments' && queryOf(request).get('q') === 'SYN-SH-0502',
+      );
+
+    await scan(user, t.scan.label.shipment, 'SYN-SH-0502');
+    expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
+    expect(sentToOtherShipment()).toBe(false);
 
     await user.click(screen.getByRole('button', { name: t.actions.cancelUnit }));
-    await waitFor(() => {
-      expect(screen.queryByText('SYN-CTN-0091')).not.toBeInTheDocument();
-    });
+
+    /* ⛔ 네트워크 요청이 나가지 않는다 — 경로 자체가 없다. 「준비 중」이 드러나고 포장은 남는다. */
+    expect(await screen.findByText(HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE)).toBeInTheDocument();
+    expect(screen.getByText('SYN-CTN-0091')).toBeInTheDocument();
+
+    /* 취소가 되지 않았으니 다른 출하 전환도 여전히 막혀 있다. */
     await scan(user, t.scan.label.shipment, 'SYN-SH-0502');
-    await waitFor(() => {
-      expect(
-        reads.some(
-          (request) =>
-            pathOf(request) === '/logistics/shipments' &&
-            queryOf(request).get('shipmentNo') === 'SYN-SH-0502',
-        ),
-      ).toBe(true);
-    });
+    expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
+    expect(sentToOtherShipment()).toBe(false);
   });
 
   it('키패드로 친 수량이 화면에 보인다 — 누른 값이 어디로 갔는지 보이지 않으면 오입력을 못 알아챈다', async () => {

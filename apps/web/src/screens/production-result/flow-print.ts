@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import {
+  fetchLabelRendition,
   labelRenditionFormat,
   type LabelRenditionFormat,
 } from '../../patterns/pop-label-rendition';
@@ -144,15 +145,12 @@ export const useLabelPrintRunner = (workerNo: string | null): LabelPrintRunner =
         let rendition: ArrayBuffer | null = null;
 
         try {
-          rendition = await runRequest<ArrayBuffer>(() =>
-            client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
-              params: {
-                path: { documentIssueLogId: target.documentIssueLogId },
-                query: { format },
-              },
-              parseAs: 'arrayBuffer',
-            }),
-          );
+          /*
+           * ⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1
+           * 「미구현 5건」). `client.GET` 을 부르지 않고 항상 거부하는 대역을 부른다 — 아래는
+           * 원래도 «렌디션 실패» 갈래로 실패 사유를 실어 보고하던 자리라 그대로 태운다.
+           */
+          rendition = await fetchLabelRendition();
         } catch (error) {
           failureReason = reasonOf(error);
           failurePhase = 'renditionFailed';

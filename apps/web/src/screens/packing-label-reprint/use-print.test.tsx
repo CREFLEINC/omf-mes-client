@@ -1,6 +1,7 @@
 import { act, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { LABEL_RENDITION_NOT_READY_REASON } from '../../patterns/pop-label-rendition';
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
 import { WORKER_NO } from './fixtures';
 import { usePrintRunner } from './use-print';
@@ -56,7 +57,13 @@ const renderRunner = (requests: Request[], failReport = false) =>
 const TARGETS = [{ documentIssueLogId: 44001, label: 'LOT-SAMPLE-0031' }];
 
 describe('usePrintRunner — 인쇄 배선', () => {
-  it('그린 것을 png 로 받아 셸에 넘기고 성공을 보고한다', async () => {
+  /*
+   * ⛔⛔ **서버에 이 경로가 없다**(`patterns/pop-label-rendition` 머리말 · 대응표 P1 「미구현
+   * 5건」: `GET /app/document-issues/{id}/rendition`). 원래 이 시험은 그림을 실제로 받아 셸에
+   * 넘기는 정상 경로를 쟀다 — 이제 그 요청 자체가 나가지 않는다. 셸을 세워 두어도(«셸 탓»이
+   * 아님을 보이려고) 그림을 받으러 가지 않고 곧바로 실패로 보고하는 지금의 동작을 잰다.
+   */
+  it('그림을 받으러 네트워크 요청을 보내지 않고 곧바로 실패로 보고한다', async () => {
     const requests: Request[] = [];
     const save = vi.fn<(bytes: Uint8Array, label: string) => Promise<string>>(
       async () => '/tmp/label.png',
@@ -70,29 +77,33 @@ describe('usePrintRunner — 인쇄 배선', () => {
     });
 
     await waitFor(() => {
-      expect(result.current.state.phase).toBe('succeeded');
+      expect(result.current.state.phase).toBe('failed');
     });
 
-    const rendition = requests.find((request) => request.method === 'GET');
-    expect(new URL(rendition?.url ?? '').pathname).toBe('/app/document-issues/44001/rendition');
-    expect(new URL(rendition?.url ?? '').searchParams.get('format')).toBe('png');
-
-    expect(save).toHaveBeenCalledTimes(1);
-    expect(save.mock.calls[0]?.[1]).toBe('LOT-SAMPLE-0031');
+    /* 서버에 없는 경로다 — GET 요청 자체가 한 번도 나가지 않는다. */
+    expect(requests.some((request) => request.method === 'GET')).toBe(false);
+    expect(save).not.toHaveBeenCalled();
 
     const report = requests.find((request) => request.method === 'POST');
     expect(new URL(report?.url ?? '').pathname).toBe('/app/document-issues/44001:report-print');
     expect(report?.headers.get('X-Worker-No')).toBe(WORKER_NO);
     expect(report?.headers.get('Idempotency-Key')).not.toBeNull();
-    expect(await report?.json()).toEqual({ outcome: 'SUCCEEDED' });
-    expect(result.current.state.printed).toBe(1);
+    expect(await report?.json()).toEqual({
+      outcome: 'FAILED',
+      failureReason: LABEL_RENDITION_NOT_READY_REASON,
+    });
+    expect(result.current.state.reason).toBe(LABEL_RENDITION_NOT_READY_REASON);
+    expect(result.current.state.printed).toBe(0);
   });
 
-  it('셸이 거부하면 실패 사유를 실어 보고한다 — 발행 기록은 그대로 둔다', async () => {
+  /*
+   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 원래 이 시험은 «셸이 거부한» 실패를 쟀다 —
+   * 그림을 받는 걸음이 셸을 부르기 «전»에 이미 막혀 있어 셸의 거부 자체를 더는 관찰할 수
+   * 없다. 대신 셸이 아예 없을 때도 **같은 이유(그림을 받지 못함)로 네트워크를 부르지
+   * 않는지**를 잰다 — 셸 유무와 무관하게 막힌 자리가 앞쪽(그림 취득)이라는 성질을 지킨다.
+   */
+  it('셸이 없어도 그림을 받으러 가지 않는다 — shellUnavailable 판정이 먼저 선다', async () => {
     const requests: Request[] = [];
-    stubShell(async () => {
-      throw new Error('프린터 오프라인');
-    });
 
     const { result } = renderRunner(requests);
 
@@ -100,16 +111,8 @@ describe('usePrintRunner — 인쇄 배선', () => {
       await result.current.run(TARGETS);
     });
 
-    await waitFor(() => {
-      expect(result.current.state.phase).toBe('failed');
-    });
-
-    const report = requests.find((request) => request.method === 'POST');
-    expect(await report?.json()).toEqual({
-      outcome: 'FAILED',
-      failureReason: '프린터 오프라인',
-    });
-    expect(result.current.state.reason).toBe('프린터 오프라인');
+    expect(result.current.state.phase).toBe('shellUnavailable');
+    expect(requests).toHaveLength(0);
   });
 
   it('같은 보고를 다시 보낼 때 멱등 키가 바뀌지 않는다 — 「이미 보고됨」을 새 쓰기로 만들지 않는다', async () => {

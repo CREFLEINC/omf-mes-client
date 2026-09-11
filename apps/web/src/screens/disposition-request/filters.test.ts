@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   EMPTY_FILTERS,
   hasSelection,
+  isPeriodContractBlocked,
   readFilters,
   readPage,
   readSelection,
@@ -54,13 +55,49 @@ describe('toListQuery — 상태가 소스를 가른다', () => {
     });
   });
 
+  /*
+   * ⚠ 통보 186 — GET /quality/nonconformances 는 openedFrom·openedTo 가 계약에서 필수로
+   * 바뀌었다. 화면에 기간 조건이 없어 자리표시 기간(OPEN_ENDED_PERIOD)을 함께 싣는다 —
+   * 값 자체는 업무적 의미가 없고 「기간 없음」이라는 기존 동작을 지키기 위한 것이다.
+   */
   it('부적합 상태 셋은 부적합 목록으로 소스가 바뀌고 검색어는 싣지 않는다', () => {
     expect(
       toListQuery({ warehouseId: '', sourceCode: 'PRODUCT', stage: 'PENDING_DECISION', q: 'x' }, 1),
     ).toEqual({
       source: 'nonconformances',
-      query: { statusCode: 'PENDING_DECISION', sourceCode: 'PRODUCT' },
+      query: {
+        statusCode: 'PENDING_DECISION',
+        sourceCode: 'PRODUCT',
+      },
     });
+  });
+
+  /*
+   * ⛔ **기간을 지어내 채우지 않는다** — 통보 186 · 공유계약 L-3-2 ⑶·⑷.
+   *
+   * 서버가 `openedFrom`·`openedTo`를 필수로 올렸지만 이 화면에는 기간 조건이 없다. 두 칸을
+   * 「먼 과거~먼 미래」로 메우면 계약은 통과하되 L-3이 막으려는 전 파티션 스캔이 된다.
+   * 질의에 그 값이 «없는 것»이 이 화면의 답이고, 그래서 호출을 세우지 않는다.
+   */
+  it('부적합 목록 질의에 기간을 지어내 싣지 않는다', () => {
+    const { query } = toListQuery(
+      { warehouseId: '', sourceCode: '', stage: 'PENDING_DECISION', q: '' },
+      1,
+    );
+
+    expect(query).not.toHaveProperty('openedFrom');
+    expect(query).not.toHaveProperty('openedTo');
+  });
+
+  it('부적합 갈래는 부를 수 없는 조건으로 표시된다', () => {
+    const blocked = toListQuery(
+      { warehouseId: '', sourceCode: '', stage: 'PENDING_DECISION', q: '' },
+      1,
+    );
+    const open = toListQuery(EMPTY_FILTERS, 1);
+
+    expect(isPeriodContractBlocked(blocked)).toBe(true);
+    expect(isPeriodContractBlocked(open)).toBe(false);
   });
 
   it('첫 쪽이면 page 를 싣지 않는다', () => {

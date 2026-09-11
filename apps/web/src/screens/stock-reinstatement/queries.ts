@@ -22,6 +22,22 @@ import { toDecisionView } from './types';
 
 type Client = ApiClient['client'];
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+/**
+ * `StockReinstatementConflictResponse.code` 중 «다시 시도해도 안 풀리는» 셋 — 낙관적 잠금 경합이
+ * 아니라 확정된 업무 사유다(통보 221·222). `VERSION_CONFLICT`만 진짜 경합이라 여기 넣지 않는다.
+ */
+const DEFINITIVE_CONFLICT_CODES = [
+  'ALREADY_REINSTATED',
+  'HOLD_ALREADY_RELEASED',
+  'DISPOSITION_NOT_REINSTATABLE',
+] as const;
+
+const isDefinitiveConflictCode = (value: unknown): boolean =>
+  (DEFINITIVE_CONFLICT_CODES as readonly unknown[]).includes(value);
+
 export interface CandidateQuery {
   warehouseId?: number;
   reinstatable: true;
@@ -198,11 +214,30 @@ export const useReinstate = (
 ): MasterWriteResult<StockReinstatementCreate> => {
   const { client } = useApiClient();
   return useMasterWrite({
-    request: (body, headers) =>
-      client.POST('/logistics/stock-reinstatements', {
+    request: async (body, headers) => {
+      const result = await client.POST('/logistics/stock-reinstatements', {
         params: { header: { 'Idempotency-Key': headers['Idempotency-Key'] } },
         body,
-      }),
+      });
+
+      /*
+       * ⭐ **공용 충돌 봉투가 이 응답에도 `conflictCause`를 항상 싣는다**(통보 221). 그대로 두면
+       * 공용 정규화기(`packages/api-client/src/errors.ts`)가 `code`를 보지 않고 409 전부를
+       * `kind: 'conflict'`로 접어 「다른 사용자·ERP·워커」 문구만 남긴다 — 그런데
+       * `ALREADY_REINSTATED`·`HOLD_ALREADY_RELEASED`·`DISPOSITION_NOT_REINSTATABLE` 셋은 다시
+       * 불러와도 «누가 먼저 손댔는지»가 아니라 «이미 끝났거나 애초에 안 되는» 확정 사유라 그
+       * 문구가 틀린 안내가 된다(통보 222 · 대응표 「재등록 진입 목록」). `VERSION_CONFLICT`만
+       * 진짜 경합이라 원인 셋을 그대로 살려 공용 배너에 맡긴다. 공용 계층은 고치지 않고 이
+       * 화면이 직접 되돌린다(`screen.tsx`의 `conflictMessage`가 이어받는다).
+       */
+      if (result.response.status !== 409 || !isRecord(result.error)) return result;
+
+      const raw = result.error as Record<string, unknown>;
+      if (!isDefinitiveConflictCode(raw.code)) return result;
+
+      const { conflictCause: _conflictCause, ...rest } = raw;
+      return { ...result, error: rest };
+    },
     etagPath: null,
     invalidateKeys: [reinstatementKeys.all],
     knownFields: [

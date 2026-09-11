@@ -43,10 +43,9 @@ export const shipmentConfirm = {
      * **오래된 것이 위험하다** — 관행을 따르면 가장 위험한 건이 마지막 쪽에 숨는다(§5-7).
      */
     sortNote: '오래된 것이 위험해 경과일 긴 순이 기본입니다.',
+    /* ⛔ `shipDate`·`customer` 선택지를 없앴다 — 계약이 받는 `sort`가 아니다(통보 219). */
     sortOptions: {
       elapsed: '경과일 긴 순',
-      shipDate: '출하일 순',
-      customer: '고객 순',
     },
     search: '조회',
     reset: '초기화',

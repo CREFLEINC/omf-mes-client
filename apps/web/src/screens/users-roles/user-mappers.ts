@@ -45,17 +45,21 @@ export const emptyUserFormValues = (): UserFormValues => ({
  * **번호(`appUserId`)와 사용 여부(`isActive`)도 싣지 않는다** —
  * 번호는 경로에 있고 사용 여부는 `:deactivate`로만 바뀐다.
  *
- * 상태를 비우면 키를 빼 기존 값을 보존한다. 값이 있으면 공통코드에서 고른 값을 싣는다.
- *
  * **부서·전자우편은 비어도 키를 빼지 않고 널을 명시한다.** 키를 빼면 서버가 이전 값을
  * 남길 수 있어 한 번 넣은 값을 지울 방법이 사라진다.
+ *
+ * ⛔⛔ **`statusCode` 가 2026-09-11 전달본에서 선택 → 필수로 바뀌었다** — 예전엔 비우면 키를
+ * 빼 기존 상태를 보존했는데, 지금 생성 타입은 이 칸을 required 로 요구해 키를 뺄 수 없다.
+ * 지어낸 값을 채우지 않는다 — 수정 폼은 상세 조회(`appUserToFormValues`)가 채운 뒤에만 열려
+ * `values.statusCode` 가 항상 그 사용자의 현재 상태다(빈 값이 나올 선택지 자체가 없다 —
+ * `screen.tsx` 의 폼 시딩·`select-field.tsx` 참고). 그래서 항상 그 값을 그대로 싣는다.
  */
 export const toAppUserUpdate = (values: UserFormValues): AppUserUpdate => ({
   // 앞뒤 공백이 붙은 이름은 눈으로 구분되지 않는 다른 값이 된다.
   userName: values.userName.trim(),
   departmentId: values.departmentId === '' ? null : Number(values.departmentId),
   email: values.email.trim() === '' ? null : values.email.trim(),
-  ...(values.statusCode === '' ? {} : { statusCode: values.statusCode }),
+  statusCode: values.statusCode,
 });
 
 /**

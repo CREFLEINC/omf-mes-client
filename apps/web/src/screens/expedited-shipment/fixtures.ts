@@ -16,6 +16,11 @@ export interface ExpeditedStubOptions {
   omitHeld?: boolean;
   /** 활성 창고를 여럿 둔다 — 자동 확정이 안 되는 갈래. */
   manyWarehouses?: boolean;
+  /**
+   * 구역(ZONE) 단위로 관리되는 창고를 하나 섞는다 — 위치 입력 칸이 없는 이 화면에서는 후보에서
+   * 빠져야 한다(통보 221 · 대응표 「긴급 직행 위치」).
+   */
+  zoneManagedWarehouse?: boolean;
   /** 출하 라인의 품목을 바꾼다 — 맞는 라인이 없는 갈래. */
   lineItemId?: number;
   /** 배정·출하 수량을 바꾼다. */
@@ -78,8 +83,8 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
     ],
   };
 
-  const warehouses =
-    options.manyWarehouses === true
+  const warehouses = [
+    ...(options.manyWarehouses === true
       ? [
           {
             warehouseId: 2001,
@@ -87,6 +92,7 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
             businessUnitId: 1,
             warehouseCode: 'SYNTH-WH-1',
             warehouseName: '합성 창고 1',
+            managementLevelCode: 'WAREHOUSE',
             isActive: true,
           },
           {
@@ -95,6 +101,7 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
             businessUnitId: 1,
             warehouseCode: 'SYNTH-WH-2',
             warehouseName: '합성 창고 2',
+            managementLevelCode: 'WAREHOUSE',
             isActive: true,
           },
         ]
@@ -105,9 +112,29 @@ export const expeditedStub = (options: ExpeditedStubOptions = {}): StubFetch => 
             businessUnitId: 1,
             warehouseCode: 'SYNTH-WH-1',
             warehouseName: '합성 창고 1',
+            managementLevelCode: 'WAREHOUSE',
             isActive: true,
           },
-        ];
+        ]),
+    /*
+     * ⭐ 위치 입력 칸이 없는 이 화면에서는 구역 단위 관리 창고가 섞여 있어도 후보에서 빠져야
+     * 한다(통보 221) — 활성 창고 «전체» 개수가 아니라 창고 단위 관리 창고 개수로 자동/선택이
+     * 갈리는지를 이 값으로 확인한다.
+     */
+    ...(options.zoneManagedWarehouse === true
+      ? [
+          {
+            warehouseId: 2099,
+            plantId: 1001,
+            businessUnitId: 1,
+            warehouseCode: 'SYNTH-WH-ZONE',
+            warehouseName: '합성 구역관리 창고',
+            managementLevelCode: 'ZONE',
+            isActive: true,
+          },
+        ]
+      : []),
+  ];
 
   const routes = [
     {

@@ -2,7 +2,7 @@ import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
-import type { ListQuery } from './filters';
+import { isPeriodContractBlocked, type ListQuery } from './filters';
 import type {
   CandidateListResponse,
   DecisionListResponse,
@@ -43,24 +43,29 @@ export type TargetListResponse =
   | { source: 'candidates'; data: CandidateListResponse }
   | { source: 'nonconformances'; data: NonconformanceListResponse };
 
-/** 진입 목록. 상태 조건이 어느 경로를 부를지 정하고(`toListQuery`), 여기서는 그대로 따른다. */
+/**
+ * 진입 목록. 상태 조건이 어느 경로를 부를지 정하고(`toListQuery`), 여기서는 그대로 따른다.
+ *
+ * ⛔ **부적합 갈래는 요청을 세우지 않는다** — `isPeriodContractBlocked`가 그 사유를 들고 있다
+ * (통보 186 · 공유계약 L-3-2 ⑷). `enabled`로 막는 것에 더해 `queryFn`에서도 경로를 지웠다 —
+ * 「부르지 않는다」가 훅 한 곳의 조건에만 걸려 있으면, 뒷사람이 그 조건을 손볼 때 호출이 조용히
+ * 되살아난다. 지금은 되살리려면 이 함수를 고쳐야 하고, 그 자리에 이유가 적혀 있다.
+ */
 export const useTargetList = (query: ListQuery): UseQueryResult<TargetListResponse> => {
   const { client } = useApiClient();
 
   return useQuery({
     queryKey: requestKeys.list(query),
+    enabled: !isPeriodContractBlocked(query),
     queryFn: async (): Promise<TargetListResponse> => {
-      if (query.source === 'candidates') {
-        const data = await runRequest(() =>
-          client.GET('/quality/disposition-candidates', { params: { query: query.query } }),
-        );
-        return { source: 'candidates', data };
+      if (query.source !== 'candidates') {
+        throw new Error('부적합 목록은 기간 계약이 정리될 때까지 부르지 않는다(통보 186).');
       }
 
       const data = await runRequest(() =>
-        client.GET('/quality/nonconformances', { params: { query: query.query } }),
+        client.GET('/quality/disposition-candidates', { params: { query: query.query } }),
       );
-      return { source: 'nonconformances', data };
+      return { source: 'candidates', data };
     },
   });
 };

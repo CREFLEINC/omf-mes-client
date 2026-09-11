@@ -74,8 +74,10 @@ export interface RoleFilters {
  * **`loginId`는 등록에서만 쓰인다.** 계약의 수정 요청 본문에 그 키가 아예 없다 —
  * 수정 화면에서는 값 표기로만 보이고 요청 본문에도 실리지 않는다(계획 결정 10).
  *
- * `statusCode`는 공통코드 선택값이다. 등록에서 비우면 계약 기본값 `EMPLOYED`를 쓰고,
- * 수정에서 비우면 기존 상태를 보존한다.
+ * `statusCode`는 공통코드 선택값이다. 등록에서 비우면 계약 기본값 `EMPLOYED`를 쓴다.
+ *
+ * ⚠ 수정 요청의 `statusCode`는 2026-09-11 전달본부터 **필수**다(`user-mappers.ts`의
+ * `toAppUserUpdate` 참고) — 비워서 기존 상태를 보존하던 예전 동작은 더는 계약에 없다.
  */
 export interface UserFormValues {
   loginId: string;

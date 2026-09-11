@@ -5,7 +5,6 @@ import {
   Checkbox,
   Chip,
   DatePicker,
-  Dialog,
   EmptyState,
   PageHeader,
   Skeleton,
@@ -24,7 +23,6 @@ import { lookupNote, useOrderOptions, useToolOptions, useUserOptions } from './l
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import {
-  canClose,
   EMPTY_DRAFT,
   hasErrors,
   toCreateBody,
@@ -50,19 +48,16 @@ const EMPTY_ROWS: ToolResultView[] = [];
 const isPositiveInteger = (value: string): boolean => /^\d+$/.test(value) && Number(value) > 0;
 
 /**
- * W-05-03 컨테이너 — 툴 예방보전을 하고 누계를 되돌린다.
+ * W-05-03 컨테이너 — 툴 예방보전 실적을 적는다.
  *
- * ⭐ **누계 리셋을 서버가 한다.** 화면은 「되돌린다」는 뜻과 되돌린 뒤의 시작값만 보내고,
- * ⛔ **툴 마스터를 직접 고치지 않는다.** 리셋 직전 누계도 **서버가** 얼려 둔다 — 「이번
- * 예방보전까지 얼마나 썼는지」가 수명 분석의 유일한 재료라, 화면이 보내면 서버 값과 갈릴 수 있다.
+ * ⛔ **누계 리셋·마감을 이 폼에 두지 않는다.** 서버 v0.1.2 는 `POST /maintenance/results`의
+ * `resetCounter=true`·`closed=true`를 **항상 422 INVALID**로 거부한다(통보 113·114 · 대응표
+ * 「보전 실적 마감·리셋」). 절대 성공할 수 없는 조작을 보여 주지 않는다 — 목록의 리셋·마감
+ * 이력 칸(`resetCounter`·`shotCountBeforeReset`·`shotCountAfterReset`·`closed`)은 **기존
+ * 이력을 보여주는 읽기 전용으로 남는다**(막힌 것은 새로 거는 쓰기뿐이다).
  *
- * ⭐ **한 칸에 두 갱신이 붙는다.** 사용실적 입력은 **더하기**이고 이 리셋은 **바꾸기**다.
- * 바꾸기에는 저장 충돌 보호를 걸고, 더하기에는 걸지 않는다 — 여러 단말이 동시에 기여하므로
- * 잠그면 현장이 멎는다. 그 더하기 경로는 이 화면에 아예 없다.
- *
- * ⭐ **툴 상세를 부르는 이유가 둘이다** — 사람이 볼 누계와, 저장이 실을 잠금 토큰. 둘이 같은
- * 요청인 것은 우연이 아니다: 되돌리기는 「지금 누계」를 바꾸는 일이라 사람이 본 값과 서버가
- * 바꿀 값이 같아야 한다.
+ * ⭐ **툴 상세를 부르는 이유는 사람이 볼 누계를 보여 주기 위해서다.** 쓰기에도 낙관적 잠금
+ * 토큰(`If-Match`)이 실리는데, 그 값도 이 상세 조회의 ETag 다.
  *
  * **고른 툴은 주소가 소유한다** — 새로고침·공유가 같은 툴을 연다.
  */
@@ -72,7 +67,6 @@ export const ToolPmResultScreen = () => {
   const finishedId = `${startedId}-finished`;
   const noteId = `${startedId}-note`;
   const vendorId = `${startedId}-vendor`;
-  const shotId = `${startedId}-shot`;
 
   const toolParam = searchParams.get('tool') ?? '';
   const moldId = isPositiveInteger(toolParam) ? Number(toolParam) : null;
@@ -83,15 +77,14 @@ export const ToolPmResultScreen = () => {
 
   const [draft, setDraft] = useState<ToolResultDraft>({ ...EMPTY_DRAFT, tool: toolParam });
   const [errors, setErrors] = useState<DraftErrors>({});
-  const [isConfirming, setConfirming] = useState(false);
 
   /**
-   * 방금 저장한 것이 누계를 되돌렸는가. **상태가 아니라 결과다.**
+   * 방금 저장했는가. **상태가 아니라 결과다.**
    *
-   * ⭐ 저장에 성공하면 폼이 비므로 **화면만 보고는 저장됐는지 취소됐는지 알 수 없다.**
-   * 되돌리기는 되돌릴 수 없는 쓰기라 「했다」를 말하지 않으면 같은 사람이 한 번 더 누른다.
+   * 저장에 성공하면 폼이 비므로 **화면만 보고는 저장됐는지 취소됐는지 알 수 없다** — 「했다」를
+   * 말하지 않으면 같은 사람이 한 번 더 누른다.
    */
-  const [savedReset, setSavedReset] = useState<boolean | null>(null);
+  const [saved, setSaved] = useState(false);
 
   const tools = useToolOptions();
   const users = useUserOptions();
@@ -100,11 +93,10 @@ export const ToolPmResultScreen = () => {
   const results = useToolResults(moldId, page);
 
   const create = useToolResultCreate(moldId, () => {
-    setSavedReset(draft.resetCounter);
+    setSaved(true);
     setDraft({ ...EMPTY_DRAFT, tool: toolParam });
     setErrors({});
-    setConfirming(false);
-    /* 되돌린 값을 다시 읽는다 — 상세가 새 누계와 새 잠금 토큰을 함께 준다. */
+    /* 상세를 다시 읽는다 — 방금 적은 실적이 목록에 반영될 시점과 맞춘다. */
     void detail.refetch();
   });
 
@@ -114,8 +106,7 @@ export const ToolPmResultScreen = () => {
 
   /*
    * ⭐ **서버가 되말한 필드 오류를 화면이 전부 그린다.** `knownFields` 에 이름을 올리면 그
-   * 항목은 배너에서 빠져 인라인으로만 나온다 — 그릴 자리가 없으면 그대로 사라진다. 되돌릴 수
-   * 없는 쓰기에서 「왜 거부됐는지」가 사라지면 사람은 같은 값을 다시 보낸다.
+   * 항목은 배너에서 빠져 인라인으로만 나온다 — 그릴 자리가 없으면 그대로 사라진다.
    */
   const startedError = errors.startedAt ?? create.fieldErrors.startedAt;
   const finishedError = errors.finishedAt ?? create.fieldErrors.finishedAt;
@@ -137,13 +128,13 @@ export const ToolPmResultScreen = () => {
     setSearchParams(params);
     setDraft({ ...EMPTY_DRAFT, tool: value });
     setErrors({});
-    setSavedReset(null);
+    setSaved(false);
     create.reset();
   };
 
   /* 다시 치기 시작하면 「저장했습니다」를 지운다 — 남겨 두면 아직 안 보낸 값을 보냈다고 말한다. */
   const set = (patch: Partial<ToolResultDraft>): void => {
-    setSavedReset(null);
+    setSaved(false);
     setDraft((prev) => ({ ...prev, ...patch }));
   };
 
@@ -153,12 +144,6 @@ export const ToolPmResultScreen = () => {
     setErrors(nextErrors);
 
     if (hasErrors(nextErrors)) return;
-
-    /* 되돌리기가 켜졌을 때만 확인을 받는다 — 되돌리기만이 「바꾸기」다. */
-    if (draft.resetCounter) {
-      setConfirming(true);
-      return;
-    }
 
     create.write(toCreateBody(draft, -new Date().getTimezoneOffset()));
   };
@@ -257,14 +242,14 @@ export const ToolPmResultScreen = () => {
         <h2 className="pane-title">{t.panes.form}</h2>
         <SaveErrorBanner error={create.error} />
         {/* 되돌린 저장과 그냥 저장을 가려 말한다 — 되돌리기만이 툴 마스터를 바꾼다. */}
-        {savedReset !== null && (
+        {saved && (
           <AlertBanner
             variant="success"
             onDismiss={() => {
-              setSavedReset(null);
+              setSaved(false);
             }}
           >
-            {savedReset ? t.form.savedWithReset : t.form.saved}
+            {t.form.saved}
           </AlertBanner>
         )}
 
@@ -277,8 +262,7 @@ export const ToolPmResultScreen = () => {
             placeholder={t.form.orderNone}
             wide
             onChange={(value) => {
-              /* 오더를 비우면 마감도 함께 끈다 — 닫을 것이 없는데 켜진 채로 남지 않게. */
-              set({ order: value, closed: value === '' ? false : draft.closed });
+              set({ order: value });
             }}
           />
 
@@ -369,54 +353,6 @@ export const ToolPmResultScreen = () => {
               }}
             />
           </div>
-
-          {/*
-           * ⭐ 되돌리기는 「바꾸기」다 — 그 사실과 그래서 걸리는 보호를 칸 옆에 적는다.
-           * 사용실적 입력(더하기)에는 그 보호가 없다는 것도 함께 말한다: 같은 누계 칸을 두
-           * 경로가 건드리는데 규율이 다르다는 것을 아는 사람만 헷갈리지 않는다.
-           */}
-          <div className="field-cell field-cell-unlabeled check-group">
-            <Checkbox
-              checked={draft.resetCounter}
-              onChange={(event) => {
-                set({ resetCounter: event.target.checked });
-              }}
-            >
-              {t.form.resetCounter}
-            </Checkbox>
-            <span className="field-note">{t.form.resetNote}</span>
-            <span className="field-note">{t.form.resetLockNote}</span>
-          </div>
-
-          <div className="field-cell">
-            <FieldLabel htmlFor={shotId} label={t.form.shotAfterReset} />
-            <TextField
-              id={shotId}
-              value={draft.shotAfterReset}
-              inputMode="numeric"
-              disabled={!draft.resetCounter}
-              error={errors.shotAfterReset ?? create.fieldErrors.shotCountAfterReset}
-              helperText={t.form.shotAfterResetNote}
-              onChange={(event) => {
-                set({ shotAfterReset: event.target.value });
-              }}
-            />
-            <span className="field-note">{t.form.beforeResetNote}</span>
-          </div>
-
-          {/* ⭐ 마감은 오더가 있을 때만 뜻이 있다 — 없으면 잠그고 사유를 낸다. */}
-          <div className="field-cell field-cell-unlabeled check-group">
-            <Checkbox
-              checked={draft.closed}
-              disabled={!canClose(draft)}
-              onChange={(event) => {
-                set({ closed: event.target.checked });
-              }}
-            >
-              {t.form.closed}
-            </Checkbox>
-            {!canClose(draft) && <span className="field-note">{t.form.closedNoOrder}</span>}
-          </div>
         </div>
 
         {/* ⚠ 값 목록이 없어 부위를 적을 수 없다. 감추지 않고 사유를 낸다. */}
@@ -431,7 +367,7 @@ export const ToolPmResultScreen = () => {
             onClick={() => {
               setDraft({ ...EMPTY_DRAFT, tool: toolParam });
               setErrors({});
-              setSavedReset(null);
+              setSaved(false);
               create.reset();
             }}
           >
@@ -476,53 +412,9 @@ export const ToolPmResultScreen = () => {
             />
           </div>
         )}
-        {/* 되돌린 이력은 여러 해 쌓인다 — 첫 쪽만 그리고 「이게 전부」로 보이게 두지 않는다. */}
+        {/* 예방보전 이력은 여러 해 쌓인다 — 첫 쪽만 그리고 「이게 전부」로 보이게 두지 않는다. */}
         {pageView !== null && <PageNav view={pageView} onChange={goToPage} />}
       </section>
-
-      {/*
-       * ⭐ 되돌리기만 확인을 받는다. 되돌리기는 「바꾸기」라 되돌린 뒤에는 앞의 누계를 화면이
-       * 되살릴 수 없다 — 서버가 얼려 둔 값으로만 되짚을 수 있다.
-       */}
-      <Dialog
-        open={isConfirming}
-        onClose={() => {
-          setConfirming(false);
-        }}
-        title={t.confirm.title}
-        closeOnBackdropClick={false}
-        footer={
-          <>
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setConfirming(false);
-              }}
-              disabled={create.isSaving}
-            >
-              {t.confirm.cancel}
-            </Button>
-            <Button
-              onClick={() => {
-                create.write(toCreateBody(draft, -new Date().getTimezoneOffset()));
-              }}
-              disabled={create.isSaving}
-            >
-              {t.confirm.submit}
-            </Button>
-          </>
-        }
-      >
-        <p className="dialog-lead">{t.confirm.lead}</p>
-        <p className="dialog-lead">
-          <strong>
-            {t.confirm.summary(
-              tool === null ? t.table.notAvailable : formatCount(tool.currentShotCount),
-              formatCount(Number(draft.shotAfterReset.trim() === '' ? '0' : draft.shotAfterReset)),
-            )}
-          </strong>
-        </p>
-      </Dialog>
     </>
   );
 };

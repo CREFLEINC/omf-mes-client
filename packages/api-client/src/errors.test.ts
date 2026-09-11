@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { NETWORK_ERROR, isTransientStatus, normalizeApiError } from './errors';
+import { NETWORK_ERROR, isTransientStatus, isUnauthenticated, normalizeApiError } from './errors';
 
 describe('normalizeApiError', () => {
   it('409 + ConflictResponse는 저장 충돌로 정규화한다 — 재로드하면 풀린다', () => {
@@ -14,6 +14,21 @@ describe('normalizeApiError', () => {
       message: 'ERP 재동기화로 원본이 갱신됐습니다',
     });
   });
+
+  /*
+   * `ShipmentConflictResponse`·`StockReinstatementConflictResponse`도 `conflictCause`가
+   * 필수가 됐다(통보 221). 이 함수는 응답 스키마 이름을 보지 않고 몸체 모양(`conflictCause`
+   * 값)만 보므로 세 스키마 모두 같은 경로로 처리된다 — 세 값(user·erpSync·workerLease)이
+   * 전부 다뤄지는지 여기서 함께 확인한다.
+   */
+  it.each(['user', 'erpSync', 'workerLease'] as const)(
+    '409 + conflictCause=%s 는 그 원인 그대로 보존한다 — 통보 221',
+    (cause) => {
+      const result = normalizeApiError(409, { conflictCause: cause, message: '충돌' });
+
+      expect(result).toEqual({ kind: 'conflict', cause, message: '충돌' });
+    },
+  );
 
   it('품질 충돌의 구조화된 현재 LOT 상태를 자유 문구와 분리해 보존한다', () => {
     expect(
@@ -130,7 +145,12 @@ describe('normalizeApiError', () => {
     expect(result).toEqual({ kind: 'http', status: 503 });
   });
 
-  it.each([400, 401, 403, 404, 413, 422, 423])(
+  /*
+   * ⚠ 401은 이 목록에서 뺐다 — 대응표 P0 「세션 인증」으로 새로 갈렸다. 예전에는 401도 여느
+   * 400과 같이 몸체 모양만 보고 `validation`으로 접었는데, 그러면 세션이 끊긴 것을 「입력을
+   * 고치세요」로 안내하게 된다. 아래 `normalizeApiError — 401` 묶음이 바뀐 동작을 검증한다.
+   */
+  it.each([400, 403, 404, 413, 422, 423])(
     '계약이 오류 봉투를 두는 %i 의 validation 정규화는 그대로다',
     (status) => {
       const result = normalizeApiError(status, {
@@ -163,6 +183,74 @@ describe('normalizeApiError', () => {
     if (result.kind === 'http') {
       expect(result.message).toBeUndefined();
     }
+  });
+
+  /*
+   * 품질 조회 7건·출하 조회 5건이 원본 계약에 없던 400을 낼 수 있다(대응표 P0 「조회 오류
+   * 봉투」 · 통보 074·186·201·219). 이 GET 오퍼레이션들도 쓰기 요청과 같은 `ErrorResponse`
+   * (`errors[]`)를 쓰므로 위 400 validation 정규화가 그대로 적용된다 — 조회 전용 갈래를
+   * 새로 만들 필요가 없다. 여기서는 그 전제(모양이 같다)가 깨지지 않는지만 확인한다.
+   */
+  it('조회(GET)의 400도 쓰기와 같은 ErrorResponse 모양이면 validation으로 남는다 — 통보 074·186·201·219', () => {
+    const result = normalizeApiError(400, {
+      errors: [
+        { scope: 'screen', code: 'REQUIRED', field: 'shipDateFrom', message: '기간을 입력하세요' },
+      ],
+    });
+
+    expect(result.kind).toBe('validation');
+  });
+});
+
+/*
+ * 401은 「세션이 끊겼다」는 별개의 사실이다(대응표 P0 「세션 인증」). 로그인 외 API가 세션
+ * 쿠키 없이 불리면 이 갈래로 떨어져야 하고, `errors[]`를 가진 몸체라도 `validation`으로
+ * 접히지 않아야 한다 — 화면이 「입력을 고치세요」를 잘못 안내하는 것을 막는다.
+ */
+describe('normalizeApiError — 401', () => {
+  it('본문이 ErrorResponse(errors[]) 모양이어도 validation으로 접지 않고 http로 남긴다', () => {
+    const result = normalizeApiError(401, {
+      errors: [{ scope: 'screen', code: 'UNAUTHENTICATED', message: '로그인이 필요합니다' }],
+    });
+
+    expect(result).toEqual({ kind: 'http', status: 401, message: '로그인이 필요합니다' });
+  });
+
+  it('본문이 평문 {code, message} 모양이어도 http로 남긴다', () => {
+    const result = normalizeApiError(401, {
+      code: 'UNAUTHENTICATED',
+      message: '로그인이 필요합니다',
+    });
+
+    expect(result).toEqual({
+      kind: 'http',
+      status: 401,
+      code: 'UNAUTHENTICATED',
+      message: '로그인이 필요합니다',
+    });
+  });
+
+  it('메시지를 어디서도 못 찾으면 상태 코드만 남긴다', () => {
+    const result = normalizeApiError(401, undefined);
+
+    expect(result).toEqual({ kind: 'http', status: 401 });
+  });
+});
+
+describe('isUnauthenticated', () => {
+  it('401로 정규화된 http 오류를 세션 끊김으로 판정한다', () => {
+    expect(isUnauthenticated(normalizeApiError(401, undefined))).toBe(true);
+  });
+
+  it('다른 http 상태 코드는 세션 끊김이 아니다', () => {
+    expect(isUnauthenticated(normalizeApiError(403, undefined))).toBe(false);
+  });
+
+  it('http이 아닌 갈래는 세션 끊김이 아니다', () => {
+    expect(isUnauthenticated(NETWORK_ERROR)).toBe(false);
+    expect(isUnauthenticated(normalizeApiError(409, { conflictCause: 'user', message: '' }))).toBe(
+      false,
+    );
   });
 });
 

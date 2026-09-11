@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { LABEL_RENDITION_NOT_READY_REASON } from '../../patterns/pop-label-rendition';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   allocation,
@@ -140,10 +141,19 @@ const renderFlow = (options: FlowOptions = {}) => {
       },
       {
         match: (request) => new URL(request.url).pathname.endsWith('/rendition'),
-        respond: () =>
-          new Response(new Uint8Array([1, 2, 3]), {
+        respond: (request) => {
+          /*
+           * ⛔⛔ **서버에 이 경로가 없다**(대응표 P1 「미구현 5건」). 제품 코드가 부르면 안
+           * 된다 — 그래도 응답을 준비해 두는 것은, 회귀로 다시 부르게 되면 이 200 이 조용히
+           * 성공 경로를 열어 아래 시험들의 「부르지 않는다」 단언이 실패로 드러나게 하려는
+           * 것이다.
+           */
+          void record(request);
+
+          return new Response(new Uint8Array([1, 2, 3]), {
             headers: { 'Content-Type': 'image/png' },
-          }),
+          });
+        },
       },
       {
         match: (request) => new URL(request.url).pathname.endsWith(':report-print'),
@@ -213,11 +223,19 @@ describe('대상 고르기', () => {
 });
 
 describe('발행 → 미리보기 → 인쇄', () => {
+  /*
+   * ⛔⛔ **여기서부터는 포장라벨로 부른다.** `DELIVERY_LABEL`(납품라벨) 발행은 서버가 항상
+   * 422 `INVALID` 로 거부하고, 대상 유형 `SHIPMENT_LOT_ALLOCATION` 도 계약 enum에서 아예
+   * 빠졌다(대응표 P1 「공용 문서 발행」· I-27 마감 결정 · `codes.ts` 의
+   * `DELIVERY_LABEL_ISSUE_LOCKED`) — 그래서 발행(«쓰기»)까지 실제로 이어가는 시험은 계약이
+   * 살아 있는 포장라벨로 진행한다. 종류 선택 자체(«대상 고르기» 위 describe)는 납품라벨로도
+   * 여전히 살아 있다 — 막힌 자리는 발행 단추뿐이다.
+   */
   it('발행은 인쇄를 부르지 않는다 — 기록과 종이는 따로 간다', async () => {
     const { user, sent } = renderFlow();
 
-    await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
-    await screen.findByText('SYN-LOT-0001');
+    await user.click(await screen.findByRole('radio', { name: /포장라벨/u }));
+    await screen.findByText('SYN-HU-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
     await user.click(
       screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
@@ -228,41 +246,69 @@ describe('발행 → 미리보기 → 인쇄', () => {
     });
 
     expect(sentTo(sent, '/app/document-issues')?.body).toMatchObject({
-      documentTypeCode: 'DELIVERY_LABEL',
-      targets: [{ targetId: DELIVERY_TARGET_PASSED }],
+      documentTypeCode: 'PACKING_LABEL',
+      targets: [{ targetId: HANDLING_UNIT_ID }],
     });
     /* ⛔ 인쇄 결과 보고가 여기서 나가면 「나오지 않은 라벨」이 나온 것으로 남는다. */
     expect(sentTo(sent, ':report-print')).toBeUndefined();
   });
 
-  it('셸 통로가 없으면 인쇄 실패로 «보고»한다 — 모르는 것을 통과로 두지 않는다', async () => {
+  /*
+   * ⛔⛔ **서버에 `GET /app/document-issues/{id}/rendition` 경로가 없다**(`patterns/
+   * pop-label-rendition` 머리말 · 대응표 P1 「미구현 5건」). 원래 이 시험은 셸이 없을 때
+   * 인쇄 «시도»가 실패로 보고되는 것을 쟀다 — 이제는 그림을 받는 걸음이 셸을 보기도 «전»에
+   * 막혀 있어 미리보기 단추 자체가 켜지지 않고(`issue.labels` 가 결코 채워지지 않는다),
+   * 인쇄 결과 보고까지도 가지 않는다. 셸 유무와 무관하게 같은 사유로 멈추고, 그 사유가
+   * 「준비 중」임이 동적 문구(`failureReason`)로 드러나는지를 잰다.
+   */
+  it('그림을 받지 못하면 미리보기·인쇄로 가지 못한다 — 셸이 없어도 같은 이유다', async () => {
     const { user, sent } = renderFlow({ shellPrint: null });
 
-    await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
-    await screen.findByText('SYN-LOT-0001');
+    await user.click(await screen.findByRole('radio', { name: /포장라벨/u }));
+    await screen.findByText('SYN-HU-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
     await user.click(
       screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
     );
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: '미리보기' })).toBeEnabled();
-    });
-
-    await user.click(screen.getByRole('button', { name: '미리보기' }));
-    await user.click(await screen.findByRole('button', { name: '인쇄' }));
-
-    await waitFor(() => {
-      expect(sentTo(sent, ':report-print')).toBeDefined();
-    });
-
-    expect(sentTo(sent, ':report-print')?.body).toMatchObject({ outcome: 'FAILED' });
+    expect(
+      await screen.findByText(messages.shippingPackingLabel.outcome.renderFailed),
+    ).toBeInTheDocument();
+    expect(await screen.findByText(LABEL_RENDITION_NOT_READY_REASON)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '미리보기' })).toBeDisabled();
+    expect(sentTo(sent, ':report-print')).toBeUndefined();
   });
 
-  it('셸이 받으면 성공으로 보고한다', async () => {
+  /*
+   * ⛔⛔ **서버에 이 경로가 없다**(위와 같음). 셸이 있어도 `render` 걸음에서 이미 막혀 셸까지
+   * 넘어가지 않는다 — 「셸이 있어도 소용없다」는 사실 자체를 잰다.
+   */
+  it('셸이 있어도 그림을 받지 못해 셸을 부르지 않는다', async () => {
     const save = vi.fn(async () => 'syn://printed');
     const { user, sent } = renderFlow({ shellPrint: save });
 
+    await user.click(await screen.findByRole('radio', { name: /포장라벨/u }));
+    await screen.findByText('SYN-HU-0001');
+    await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
+    await user.click(
+      screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
+    );
+
+    expect(
+      await screen.findByText(messages.shippingPackingLabel.outcome.renderFailed),
+    ).toBeInTheDocument();
+    expect(save).not.toHaveBeenCalled();
+    expect(sentTo(sent, ':report-print')).toBeUndefined();
+  });
+
+  /*
+   * ⭐ **`DELIVERY_LABEL` 은 발행 단추 자리에서 막힌다.** 종류는 고를 수 있지만(대상 고르기는
+   * 계약과 무관하다) 발행을 누르면 요청 자체가 나가지 않는다 — «잠겼다»가 눈에 보이는
+   * 자리를 하나는 남겨 둔다.
+   */
+  it('납품라벨은 종류를 고르고 대상을 선택해도 발행 요청을 보내지 않는다', async () => {
+    const { user, sent } = renderFlow();
+
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
     await screen.findByText('SYN-LOT-0001');
     await user.click(screen.getAllByRole('checkbox')[1] as HTMLElement);
@@ -270,18 +316,7 @@ describe('발행 → 미리보기 → 인쇄', () => {
       screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
     );
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: '미리보기' })).toBeEnabled();
-    });
-
-    await user.click(screen.getByRole('button', { name: '미리보기' }));
-    await user.click(await screen.findByRole('button', { name: '인쇄' }));
-
-    await waitFor(() => {
-      expect(sentTo(sent, ':report-print')?.body).toMatchObject({ outcome: 'SUCCEEDED' });
-    });
-
-    expect(save).toHaveBeenCalledOnce();
+    expect(sentTo(sent, '/app/document-issues')).toBeUndefined();
   });
 });
 

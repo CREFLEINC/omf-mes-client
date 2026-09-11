@@ -36,7 +36,24 @@ export interface CandidateListQuery {
 
 /**
  * 부적합 목록 질의 — 「의뢰 전·판정 대기·판정 완료」가 이 경로다(요구서 §3-7 둘째 행).
- * 계약이 기간을 선택으로 두었고 이 갈래도 「지금 어디까지 왔나」를 보는 자리라 기간을 싣지 않는다.
+ *
+ * ⛔ **이 갈래는 지금 부를 수 없다** — 임시 서버 기준선이 `openedFrom`·`openedTo`를
+ * `required`로 올렸다(통보 186). 화면은 기간 조건을 갖지 않으므로 보낼 값이 없다.
+ *
+ * **값을 지어내 채우지 않는다.** 「먼 과거부터 먼 미래까지」로 두 칸을 메우면 계약은 만족하지만
+ * 공유계약 L-3이 막으려는 바로 그 조회가 된다 — L-3의 근거는 성능이 아니라 **「파티션 키 없이
+ * 조회하면 전 파티션을 스캔한다」**이고, L-3-2 ⑶은 「⛔ 어떤 목록도 무계로 두지 않는다」를
+ * 이름으로 금지한다. 형식만 채운 기간은 무계 목록을 감춘 것이지 없앤 것이 아니다.
+ *
+ * ⭐ **설계는 이 자리를 이미 예외로 다뤘다** — L-3-2 ⑷ 「적체 관리 화면은 예외다 — 기본이
+ * 「미처리 전건」이라 기간을 걸 수 없다(L-12). 그 자리는 「미처리만」 축이 유계를 대신한다」.
+ * 「의뢰 전 · 판정 대기 · 판정 완료」가 그 적체 관리다. 형제 오퍼레이션
+ * `GET /quality/disposition-candidates`의 계약 설명이 든 이유(기간을 강제하면 오래된 미처리
+ * 건이 사라진다)도 같은 조항의 표현이다.
+ *
+ * 그래서 이것은 클라이언트가 값을 채워 덮을 문제가 아니라 **서버팀에 돌려보낼 불일치**다.
+ * 그때까지 이 갈래는 요청을 세우지 않는다(`queries.ts`의 `enabled`). 서버가 기간 쌍을 조건부
+ * 필수로 되돌리거나 적체 예외를 인정하면 이 가드와 아래 `isPeriodContractBlocked`를 걷어낸다.
  */
 export interface NonconformanceListQuery {
   statusCode: string;
@@ -193,3 +210,13 @@ export const toListQuery = (filters: TargetFilters, page: number): ListQuery => 
     query: { statusCode: stage, ...sourceCode, ...warehouseId, ...pageQuery },
   };
 };
+
+/**
+ * 지금 이 조건으로 목록을 부를 수 없는가 — 위 `NonconformanceListQuery` 주석의 사유(통보 186 ·
+ * 공유계약 L-3-2 ⑷)다.
+ *
+ * **조회 실패가 아니라 「부를 수 없음」이다.** 둘을 뭉뚱그리면 화면이 빈 목록을 내고 사용자가
+ * 「부적합이 없다」로 읽는다 — 적체 관리 화면에서 그 오독은 미처리 건을 없는 것으로 만든다.
+ */
+export const isPeriodContractBlocked = (query: ListQuery): boolean =>
+  query.source === 'nonconformances';

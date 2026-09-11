@@ -4,11 +4,14 @@ import { messages } from '@omf-mes/i18n';
 /**
  * 툴 PM 실적 폼의 편집 상태와 그 판정.
  *
- * ⭐ **누계 리셋은 「바꾸기」다.** 사용실적 입력(더하기)과 축이 달라, 이쪽에만 저장 충돌
- * 보호가 걸린다 — 더하기는 여러 단말이 동시에 기여하므로 잠그면 현장이 멎는다.
+ * ⛔ **누계 리셋·마감을 드러내지 않는다.** 서버 v0.1.2 는 `POST /maintenance/results`의
+ * `resetCounter=true`·`closed=true`를 **항상 422 INVALID**로 거부한다(통보 113·114 · 대응표
+ * 「보전 실적 마감·리셋」). 그래서 이 화면은 두 동작을 폼에서 아예 걷어냈다 — 절대 성공할 수
+ * 없는 조작을 보여 주면 사용자가 누른 뒤에야 실패를 안다.
  *
- * ⛔ **화면이 툴 마스터를 고치지 않는다.** 보내는 것은 「되돌린다」는 뜻(`resetCounter`)과
- * 되돌린 뒤의 시작값뿐이고, 누계를 직접 쓰지 않는다. 리셋 직전 누계도 **서버가** 얼려 둔다.
+ * ⭐ 응답 필드(`resetCounter`·`shotCountBeforeReset`·`shotCountAfterReset`)는 **기존 이력을
+ * 보여주는 읽기 전용으로만** 남는다 — 막힌 것은 새로 리셋을 «거는» 쓰기뿐이다(`types.ts`
+ * `toToolResultView`, 이 화면 목록 칸).
  *
  * **순수 함수만 둔다.** 「지금」을 읽지 않는다.
  *
@@ -31,10 +34,6 @@ export interface ToolResultDraft {
   performer: string;
   isOutsourced: boolean;
   vendorName: string;
-  resetCounter: boolean;
-  /** 되돌린 뒤 시작값. **0도 값이다** — 빈 문자열과 가른다. */
-  shotAfterReset: string;
-  closed: boolean;
 }
 
 export const EMPTY_DRAFT: ToolResultDraft = {
@@ -46,9 +45,6 @@ export const EMPTY_DRAFT: ToolResultDraft = {
   performer: '',
   isOutsourced: false,
   vendorName: '',
-  resetCounter: false,
-  shotAfterReset: '0',
-  closed: false,
 };
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -64,12 +60,6 @@ export const isCalendarDate = (value: string): boolean => {
 
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 };
-
-/** 0 이상의 정수인가. **0을 빈 값과 가른다** — 되돌린 뒤 시작값은 보통 0이다. */
-const isNonNegativeInteger = (value: string): boolean => /^\d+$/.test(value.trim());
-
-/** 마감은 오더가 있을 때만 뜻이 있다 — 없으면 닫을 것이 없다. */
-export const canClose = (draft: ToolResultDraft): boolean => draft.order !== '';
 
 export type DraftErrors = Partial<Record<keyof ToolResultDraft, string>>;
 
@@ -102,18 +92,6 @@ export const validateDraft = (draft: ToolResultDraft): DraftErrors => {
     errors.performer = t.form.requiredPerformer;
   }
 
-  /*
-   * ⭐ 되돌리기를 켰으면 시작값이 **반드시** 있어야 한다(계약: 「참이면 shotCountAfterReset 을
-   * 함께 보낸다」). 0도 값이므로 빈 문자열과 가른다.
-   */
-  if (draft.resetCounter) {
-    if (draft.shotAfterReset.trim() === '') {
-      errors.shotAfterReset = t.form.requiredShotAfterReset;
-    } else if (!isNonNegativeInteger(draft.shotAfterReset)) {
-      errors.shotAfterReset = t.form.invalidShotAfterReset;
-    }
-  }
-
   return errors;
 };
 
@@ -136,10 +114,9 @@ export const toMoment = (date: string, offsetMinutes: number): string => {
 /**
  * 편집 상태를 요청 본문으로 옮긴다.
  *
- * ⛔ **누계를 보내지 않는다** — 보내는 것은 「되돌린다」는 뜻과 되돌린 뒤의 시작값뿐이다.
- * 리셋 직전 누계는 서버가 저장 시점 값으로 얼린다.
- * ⛔ **되돌리기를 끄면 시작값을 싣지 않는다** — 실으면 서버가 되돌린 것으로 읽을 수 있다.
- * ⛔ **오더가 없으면 마감을 싣지 않는다** — 닫을 것이 없는데 참을 보내면 뜻이 없다.
+ * ⛔ **누계 리셋·마감을 싣지 않는다** — 서버 v0.1.2 는 `resetCounter=true`·`closed=true`를
+ * 항상 422 INVALID 로 거부한다(통보 113·114). 이 화면은 두 필드를 아예 보내지 않는다(생략) —
+ * 계약이 둘 다 선택 필드로 두어 생략이 허용된다.
  * ⛔ **부위(`lines`)를 싣지 않는다** — 결과 값 목록이 아직 없어 채울 수 없다.
  */
 export const toCreateBody = (
@@ -151,12 +128,9 @@ export const toCreateBody = (
   startedAt: toMoment(draft.startedAt, offsetMinutes),
   resultNote: draft.resultNote.trim(),
   isOutsourced: draft.isOutsourced,
-  resetCounter: draft.resetCounter,
-  closed: canClose(draft) && draft.closed,
   ...(draft.order === '' ? {} : { maintenanceOrderId: Number(draft.order) }),
   ...(draft.finishedAt === '' ? {} : { finishedAt: toMoment(draft.finishedAt, offsetMinutes) }),
   ...(draft.isOutsourced
     ? { outsourceVendorName: draft.vendorName.trim() }
     : { performedByUserId: Number(draft.performer) }),
-  ...(draft.resetCounter ? { shotCountAfterReset: Number(draft.shotAfterReset.trim()) } : {}),
 });
