@@ -29,7 +29,10 @@ const t = messages.runningChange;
 const describeOutcome = (outcome: ScanOutcome): string => {
   switch (outcome.kind) {
     case 'part':
-      return t.scan.outcomes.part(outcome.code, outcome.part.lotNo);
+      /* 읽은 것과 찾은 것이 같으면 한 번만 적는다 — 화살표 양쪽이 같은 문장은 읽히지 않는다. */
+      return outcome.code === outcome.part.lotNo
+        ? t.scan.outcomes.part(outcome.part.lotNo)
+        : t.scan.outcomes.partResolved(outcome.code, outcome.part.lotNo);
     case 'ambiguous':
       return t.scan.outcomes.ambiguous(outcome.count);
     case 'not-found':

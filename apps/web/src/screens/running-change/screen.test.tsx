@@ -54,6 +54,8 @@ interface Options {
   noSession?: boolean;
   /** 고객이 교체 사유를 아직 채우지 않았다 — 0건이 정상이다(스펙 §6) */
   noChangeReasons?: boolean;
+  /** 부분 검색으로만 걸린다 — 읽은 코드와 찾은 LOT 번호가 달라진다 */
+  partialOnly?: boolean;
   /** 교체 등록 요청을 담아 둔다 */
   writes?: Request[];
   /** 교체 등록 응답 상태. 기본 201 */
@@ -138,6 +140,11 @@ const routes = (options: Options): StubRoute[] => [
         return jsonResponse({ items: [makeLot()], page: { page: 1, size: 20, total: 1 } });
       }
 
+      /* 2단계 — 외부 식별자·번호 일부로 걸린다. 읽은 코드와 찾은 번호가 다르다. */
+      if (options.partialOnly === true && query.get('q') !== null) {
+        return jsonResponse({ items: [makeLot()], page: { page: 1, size: 20, total: 1 } });
+      }
+
       return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
     },
   },
@@ -196,7 +203,7 @@ const submitButton = (): HTMLElement => screen.getByRole('button', { name: t.rep
 const fillReplacement = async (user: ReturnType<typeof userEvent.setup>): Promise<void> => {
   /* 스캐너는 코드 끝에 Enter 를 붙여 보낸다 — 화면에 [읽기] 단추가 없으므로 그 길이 전부다. */
   await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
-  await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO, NEW_LOT_NO));
+  await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO));
 
   await user.click(screen.getByLabelText(t.replace.targetLabel));
   await user.click(await screen.findByRole('option', { name: /ITEM-SAMPLE/ }));
@@ -394,6 +401,31 @@ describe('러닝체인지 화면 — 교체 대상 모집단', () => {
     expect(names[1]).toContain(NEW_LOT_NO);
   });
 
+  /* #1046 — 화살표 양쪽이 같은 값이면 무엇이 무엇으로 바뀌는지 읽히지 않는다. */
+  it('읽은 코드가 곧 LOT 번호면 번호를 한 번만 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await screen.findByText(OLD_LOT_NO);
+    await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
+
+    expect(await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO))).toBeInTheDocument();
+    expect(screen.queryByText(/→/)).not.toBeInTheDocument();
+  });
+
+  /* 읽은 것과 찾은 것이 다를 때는 둘을 함께 적어야 잘못 걸린 것을 알아볼 수 있다. */
+  it('부분 검색으로 다른 번호가 걸리면 읽은 코드와 찾은 번호를 함께 적는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ partialOnly: true });
+
+    await screen.findByText(OLD_LOT_NO);
+    await user.type(screen.getByLabelText(t.scan.label), 'EXT-0031{Enter}');
+
+    expect(
+      await screen.findByText(t.scan.outcomes.partResolved('EXT-0031', NEW_LOT_NO)),
+    ).toBeInTheDocument();
+  });
+
   it('현재 투입이 비면 고를 것이 없고 등록도 막힌다', async () => {
     renderScreen({ inputs: [] });
 
@@ -410,7 +442,7 @@ describe('러닝체인지 화면 — 교체 등록', () => {
 
     await screen.findByText(OLD_LOT_NO);
     await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
-    await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO, NEW_LOT_NO));
+    await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO));
 
     expect(screen.getByText(t.disabled.targetMissing)).toBeInTheDocument();
     expect(submitButton()).toBeDisabled();
@@ -503,7 +535,7 @@ describe('러닝체인지 화면 — 교체 등록', () => {
     renderScreen();
 
     await user.type(screen.getByLabelText(t.scan.label), `${NEW_LOT_NO}{Enter}`);
-    await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO, NEW_LOT_NO));
+    await screen.findByText(t.scan.outcomes.part(NEW_LOT_NO));
 
     await user.type(screen.getByLabelText(t.scan.label), 'LOT-SAMPLE-NONE{Enter}');
     await screen.findByText(t.scan.outcomes.notFound('LOT-SAMPLE-NONE'));

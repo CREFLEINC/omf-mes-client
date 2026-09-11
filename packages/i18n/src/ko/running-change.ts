@@ -87,7 +87,16 @@ export const runningChange = {
     label: '신규 부품 LOT 스캔',
     manualEntry: '직접 입력',
     outcomes: {
-      part: (code: string, lotNo: string) => `${code} → ${lotNo} 을(를) 담았습니다.`,
+      /**
+       * 읽은 코드와 찾은 LOT 이 «다를 때»만 둘을 잇는다 — 검색이 번호의 일부·외부 식별자로도
+       * 걸리므로 작업자가 잘못 걸린 것인지 판단할 근거가 된다(`scan.ts`).
+       */
+      partResolved: (code: string, lotNo: string) => `${code} → ${lotNo} 을(를) 담았습니다.`,
+      /**
+       * 읽은 코드가 곧 LOT 번호인 경우. ⛔ **화살표 양쪽에 같은 값을 적지 않는다** — 무엇이
+       * 무엇으로 바뀌는지 읽히지 않고, 실제로는 바뀐 것이 없다.
+       */
+      part: (lotNo: string) => `${lotNo} 을(를) 담았습니다.`,
       ambiguous: (count: number) =>
         `여러 건이 걸렸습니다(${count}건). LOT 번호를 그대로 읽어 주세요.`,
       notFound: (code: string) => `${code} 에 해당하는 LOT 을 찾지 못했습니다.`,
