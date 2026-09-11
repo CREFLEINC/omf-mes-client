@@ -1030,13 +1030,23 @@ on('GET', '/app/document-issues', (_params, query) => {
   const documentTypeCode = query.get('documentTypeCode');
   const targetTypeCode = query.get('targetTypeCode');
   const targetId = num(query, 'targetId');
+  /*
+   * 계약이 둔 축이다 — 「소속 LOT 로 찾는다. 개체 단위 출력물을 LOT 단위로 모아 볼 때 쓴다」
+   * (`listDocumentIssues`).
+   *
+   * ⛔ **대상 번호로 대신 맞추지 않는다.** `issue.lotId` 가 비어 있는 줄(소속 LOT 을 기록하지
+   *    않은 개체 발행)에 `targetId` 를 끼워 넣으면, 유형이 다른 번호가 우연히 같을 때 엉뚱한
+   *    줄이 섞인다. 모르는 것은 맞추지 않는다.
+   */
+  const lotId = num(query, 'lotId');
 
   const items = state.documentIssues
     .filter(
       (issue) =>
         (documentTypeCode === null || issue.documentTypeCode === documentTypeCode) &&
         (targetTypeCode === null || issue.targetTypeCode === targetTypeCode) &&
-        (targetId === null || issue.targetId === targetId),
+        (targetId === null || issue.targetId === targetId) &&
+        (lotId === null || issue.lotId === lotId),
     )
     .map((issue) => {
       const lot = state.lots.find((row) => row.lotId === (issue.lotId ?? issue.targetId));

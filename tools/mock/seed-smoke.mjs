@@ -1053,6 +1053,53 @@ for (const [name, path, check] of DETAILS) {
 }
 
 /*
+ * 라벨 발행 이력 조회가 **질의 축을 지키는가**(#1006).
+ *
+ * 씨앗이 이 경로를 다루지 않던 동안에는 계약 예시 서버가 답했고, 그쪽은 조건을 무시한 채 예시
+ * 한 건을 그대로 돌려주었다 — 발행한 적 없는 LOT 이 「이미 발행됨(2회차)」으로 서서 생산 실적
+ * 등록이 늘 재인쇄 갈래로 시작했다. 없는 번호로 물어도 같은 답이 왔다(실측).
+ *
+ * ⚠ **`ENTRIES` 에 둘 수 없다** — 그쪽은 「비면 실패」인데 여기서 재는 첫 조건은 「비어야
+ *   통과」다. 두 규칙이 한 표에 들어가지 않아 제 블록으로 둔다.
+ */
+{
+  const target = 8102;
+  const scope = 'documentTypeCode=PRODUCTION_LOT_LABEL&targetTypeCode=LOT';
+  const ask = async (query) => (await fetch(`${BASE}/app/document-issues?${query}`)).json();
+
+  const before = await ask(`${scope}&targetId=${String(target)}`);
+  const missing = await ask(`${scope}&targetId=999999`);
+
+  await fetch(`${BASE}/app/document-issues`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'seed-smoke-p-02-04-label' },
+    body: JSON.stringify({
+      documentTypeCode: 'PRODUCTION_LOT_LABEL',
+      targets: [{ targetTypeCode: 'LOT', targetId: target, lotId: target }],
+    }),
+  });
+
+  const after = await ask(`${scope}&targetId=${String(target)}`);
+  const other = await ask(`${scope}&targetId=8103`);
+  /* 계약이 둔 축이다 — 개체 단위 출력물을 LOT 으로 모아 볼 때 쓴다(listDocumentIssues). */
+  const byLot = await ask(`${scope}&lotId=${String(target)}`);
+  const byOtherLot = await ask(`${scope}&lotId=8103`);
+
+  const ok =
+    before.items.length === 0 &&
+    missing.items.length === 0 &&
+    after.items.length === 1 &&
+    after.items[0].targetId === target &&
+    after.items[0].issueSeq === 1 &&
+    other.items.length === 0 &&
+    byLot.items.length === 1 &&
+    byOtherLot.items.length === 0;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '\u2714' : '\u2718'} P-02-04 라벨 발행 이력이 대상\u00b7LOT 축을 거른다`);
+}
+
+/*
  * 실적 입력 -> 마감 -> 포장 체인의 가운데 토막(#1031).
  *
  * 이 경로가 없어 계약 예시 서버가 받아 400 을 돌려주었고, 88단계 시험이 46번에서 멈춰 그
