@@ -1,5 +1,7 @@
 import { waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { setLocale } from '@omf-mes/i18n';
 
 import {
   createStubFetch,
@@ -30,6 +32,10 @@ const codeValue = (overrides: Record<string, unknown>) => ({
 });
 
 describe('공통코드 조회', () => {
+  afterEach(() => {
+    setLocale('ko');
+  });
+
   it('그룹 코드로 묻는다', async () => {
     const seen: URL[] = [];
     const fetch = createStubFetch([capturing('/mdm/code-values', { items: [], page }, seen)]);
@@ -105,6 +111,52 @@ describe('공통코드 조회', () => {
 
     await waitFor(() => {
       expect(result.current.data?.[0]?.name).toBe('무발주 도착');
+    });
+  });
+
+  /* 베트남어를 고르면 베트남어 이름을 쓴다. 화면 문구만 옮기면 이 자리가 한국어로 남는다. */
+  it('베트남어를 고르면 베트남어 이름을 보인다', async () => {
+    setLocale('vi');
+
+    const fetch = createStubFetch([
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+        respond: () =>
+          jsonResponse({
+            items: [
+              codeValue({ codeName: 'No PO', nameKo: '무발주 도착', nameVi: 'Hang khong don' }),
+            ],
+            page,
+          }),
+      },
+    ]);
+
+    const { result } = renderHookWithProviders(() => useCodeValues('G'), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.[0]?.name).toBe('Hang khong don');
+    });
+  });
+
+  /* 그 언어 이름이 비면 원본으로 물러난다. 빈칸을 내면 무엇을 가리키는지조차 사라진다. */
+  it('베트남어 이름이 비면 원본을 보인다', async () => {
+    setLocale('vi');
+
+    const fetch = createStubFetch([
+      {
+        match: (request) => new URL(request.url).pathname === '/mdm/code-values',
+        respond: () =>
+          jsonResponse({
+            items: [codeValue({ codeName: 'No PO', nameKo: '무발주 도착', nameVi: null })],
+            page,
+          }),
+      },
+    ]);
+
+    const { result } = renderHookWithProviders(() => useCodeValues('G'), { fetch });
+
+    await waitFor(() => {
+      expect(result.current.data?.[0]?.name).toBe('No PO');
     });
   });
 });

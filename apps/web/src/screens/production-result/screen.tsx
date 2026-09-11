@@ -121,6 +121,11 @@ export const ProductionFlowScreen = () => {
   const [pendingTagIssue, setPendingTagIssue] = useState<DocumentIssueCreate | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [isTagReissueOpen, setIsTagReissueOpen] = useState(false);
+  /*
+   * 초과 확인 팝업. ⛔ **확인했다는 사실을 남기지 않는다** — 수량을 고쳐 다시 넘기면 다시
+   * 물어야 한다. 팝업이 열려 있는 동안만 서는 상태다(스펙 §6 「차단하지 말고 확인 후 진행」).
+   */
+  const [isOverrunOpen, setIsOverrunOpen] = useState(false);
   const [tagReissueReason, setTagReissueReason] = useState<string | null>(null);
   const [pendingSerialQuantity, setPendingSerialQuantity] = useState(0);
   const [pendingTagDocuments, setPendingTagDocuments] = useState<DocumentIssueCreate[]>([]);
@@ -143,6 +148,13 @@ export const ProductionFlowScreen = () => {
   const tagPrinter = defaultPrinter(tagPrinters.data);
   const serialCount = serials.data?.page.total ?? null;
   const parsedQty = parseGoodQty(actualQty);
+  /*
+   * 이 작업지시의 잔여수량 — **서버가 낸 값을 쓴다**(`quantity-draft`). 화면이 식을 새로
+   * 세우지 않는다. 받지 못했으면 `null` 이고, 그것은 0 이 아니라 «모른다»다.
+   */
+  const remaining = remainingQty(workOrder.data);
+  /** 지금 입력이 잔여를 넘는가. 잔여를 모르면 넘는지도 모른다 — 그때는 묻지 않는다. */
+  const isOverrun = exceedsRemaining(actualQty, remaining);
   const tagMissing =
     parsedQty === null || serialCount === null
       ? null
@@ -561,19 +573,6 @@ export const ProductionFlowScreen = () => {
   })();
 
   const uomLabel = uom.labelOf(lot?.uomId ?? workOrder.data?.uomId) ?? '';
-
-  /*
-   * **잔여를 넘었는지 — 막기 위해서가 아니라 말하기 위해서다**(#1040).
-   *
-   * ⭐ 초과 생산은 설계가 허용으로 확정했다(R27 · ✓확정 QA #27 · `P-02-06` §5-4). 그래서 이
-   *    값은 저장 사유(`saveBlockReason`)에 들어가지 않고 **표시 하나만** 연다. 자매 화면
-   *    `P-04-03` 이 같은 상황을 차단하는 것은 그 화면의 별도 규칙이다(§5).
-   *
-   * ⚠ **잔여를 모르면 넘었는지도 모른다** — `withProgress` 응답이 없으면 `remainingQty` 가
-   *    `null` 이고 아무 말도 하지 않는다. 0 으로 접으면 「모른다」가 「다 썼다」로 뒤집힌다.
-   */
-  const remaining = remainingQty(workOrder.data);
-  const isOverrun = exceedsRemaining(actualQty, remaining);
   const completedBoundary = completedLotPageBoundary(completedLots.data?.page);
 
   return (
@@ -688,6 +687,23 @@ export const ProductionFlowScreen = () => {
                 <dt>{t.flow.quantity.target}</dt>
                 <dd>{lot === null ? '—' : `${formatQty(lot.initialQty)} ${uomLabel}`}</dd>
               </div>
+              {/*
+               * ⭐ **잔여수량을 세운다**(스펙 §3-2 「잔여수량 380 / 500」). 초과를 확인으로
+               *    되묻는 화면인데 잔여가 보이지 않으면, 묻는 순간에야 처음 그 수를 본다.
+               * ⚠ 받지 못했으면 **「확인할 수 없습니다」로 적는다** — 0 으로 그리면 잔여가
+               *    없다는 뜻이 되어, 모든 입력이 초과로 보인다.
+               */}
+              <div>
+                <dt>{t.quantity.remaining}</dt>
+                <dd>
+                  {remaining === null
+                    ? t.quantity.remainingUnknown
+                    : `${formatQty(remaining)} ${t.quantity.orderedSuffix(
+                        formatQty(workOrder.data?.orderQty ?? 0),
+                        uomLabel === '' ? null : uomLabel,
+                      )}`}
+                </dd>
+              </div>
             </dl>
             <TextField
               id={actualQtyId}
@@ -699,19 +715,6 @@ export const ProductionFlowScreen = () => {
               error={parsedQty === null || parsedQty <= 0 ? t.flow.quantity.invalid : undefined}
               onChange={(event) => setActualQty(quantityInput(event.target.value))}
             />
-            {isOverrun && parsedQty !== null && remaining !== null && (
-              <AlertBanner
-                variant="warning"
-                title={
-                  remaining > 0
-                    ? t.flow.quantity.overrun(
-                        `${formatQty(parsedQty - remaining)} ${uomLabel}`,
-                        `${formatQty(remaining)} ${uomLabel}`,
-                      )
-                    : t.flow.quantity.overrunNoRemaining
-                }
-              />
-            )}
             <NumericKeypad
               value={actualQty}
               /* 수를 받는 칸이다 — 앞자리 0 을 쌓지 않는다(사번 칸은 켜지 않는다). */
@@ -877,7 +880,22 @@ export const ProductionFlowScreen = () => {
               (outputPhase === 'idle' && currentIssue !== null) ? (
               <Button onClick={retryLotPrint}>{t.flow.output.retryPrint}</Button>
             ) : (
-              <Button disabled={!canOutput} onClick={queueOutput}>
+              <Button
+                disabled={!canOutput}
+                /*
+                 * ⛔ **초과라고 단추를 끄지 않는다** — 초과 생산은 허용이고(✓확정 QA #27),
+                 *    화면이 하는 일은 한 번 확인받는 것이다(스펙 §6). 끄면 현장이 초과분을
+                 *    등록할 길이 없어진다.
+                 */
+                onClick={() => {
+                  if (isOverrun) {
+                    setIsOverrunOpen(true);
+                    return;
+                  }
+
+                  queueOutput();
+                }}
+              >
                 {t.flow.output.issue}
               </Button>
             )}
@@ -1000,6 +1018,41 @@ export const ProductionFlowScreen = () => {
             </nav>
           </>
         )}
+      </Dialog>
+
+      {/*
+       * 초과 확인 — **막는 팝업이 아니라 되묻는 팝업이다**(스펙 §6 · ✓확정 QA #27 「초과 달성」).
+       * [초과로 저장] 이 그대로 저장·발행으로 이어지고, [수량 고치기] 는 수량 칸으로 돌아간다.
+       */}
+      <Dialog
+        open={isOverrunOpen}
+        onClose={() => setIsOverrunOpen(false)}
+        title={t.overrun.title}
+        /* ⛔ 나가는 길은 아래 두 단추다 — 다른 팝업과 같은 규칙이다(#1005). */
+        showCloseButton={false}
+        closeOnBackdropClick={false}
+        footer={
+          <>
+            <Button variant="outlined" onClick={() => setIsOverrunOpen(false)}>
+              {t.overrun.cancel}
+            </Button>
+            <Button
+              onClick={() => {
+                setIsOverrunOpen(false);
+                queueOutput();
+              }}
+            >
+              {t.overrun.confirm}
+            </Button>
+          </>
+        }
+      >
+        <p>
+          {t.overrun.body(
+            `${actualQty} ${uomLabel}`.trim(),
+            remaining === null ? '—' : `${formatQty(remaining)} ${uomLabel}`.trim(),
+          )}
+        </p>
       </Dialog>
 
       <Dialog
