@@ -1034,7 +1034,7 @@ for (const [name, path, check] of DETAILS) {
   const ok =
     typeof etag === 'string' &&
     complete.ok &&
-    completed.completedAt !== null &&
+    typeof completed.completedAt === 'string' &&
     again.status === 409 &&
     packing.items.some((row) => row.lotId === 8103);
 
