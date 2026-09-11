@@ -1,4 +1,4 @@
-import { Button, Chip, Table, type Column } from '@crefle/web-ui';
+import { Button, Chip, EmptyState, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { popTouchClass } from '../../patterns/pop-touch';
@@ -46,6 +46,20 @@ export const TargetTable = ({
   empty,
 }: TargetTableProps) => {
   const columns: Column<TargetRow>[] = [
+    /*
+     * ⭐ **줄 번호는 서버 값이 아니라 보이는 차례다.** 현장에서 「셋째 줄이 안 나왔다」로
+     *    말이 오가는데, 번호가 없으면 이름을 통째로 읽어 줘야 한다.
+     *
+     * ⛔ 정렬을 켜지 않는 표라(아래) 이 번호는 다시 섞이지 않는다 — 켜는 순간 번호와 차례가
+     *    어긋나므로, 정렬을 도입한다면 이 열부터 다시 본다.
+     */
+    {
+      key: 'no',
+      header: t.columns.no,
+      align: 'center',
+      width: '72px',
+      render: (_row, rowIndex) => String(rowIndex + 1),
+    },
     {
       key: 'target',
       header: t.columns.target,
@@ -134,7 +148,29 @@ export const TargetTable = ({
 
         onSelectionChange(nextIds.filter((id) => allowed.has(id)).map(Number));
       }}
-      empty={<p className="field-note pop-slabel-empty">{empty}</p>}
+      /*
+       * 빈 목록 — **DS `EmptyState` 로 세운다.**
+       *
+       * ⚠ 문구 한 줄만 두면 표 한가운데 글자가 떠 있어 「불러오는 중인가」로 읽힌다(시안
+       *   지적). 제목·설명 두 자리를 가진 부품이 이미 있으므로 새로 그리지 않는다.
+       *
+       * ⛔ **제목이 설명을 대신하지 않는다.** 왜 비었는지는 `empty` 가 말한다 — 「아직 고르지
+       *    않았다」와 「없다」를 갈라 놓은 자리다(공유계약 G-9).
+       *
+       * ⚠ `empty` 가 빈 문자열이면 **아직 불러오는 중**이다(호출부). 그때는 아무것도 단정하지
+       *   않는다 — 빈 상태를 그리면 목록이 없다고 잘못 말한다.
+       */
+      empty={
+        empty === '' ? null : (
+          <EmptyState
+            className="pop-slabel-empty"
+            size="sm"
+            title={t.emptyTitle}
+            description={empty}
+            live
+          />
+        )
+      }
       getRowId={(row) => String(row.targetId)}
     />
   );

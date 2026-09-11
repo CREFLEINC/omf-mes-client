@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -565,8 +565,21 @@ describe('ShippingPackingLabelScreen — 재진입 복구', () => {
       },
     );
 
-    /* 「몇 건 빠졌는지」는 계약과 무관한 안내다 — 그대로 남는다. */
-    expect(await screen.findByText(t.recovery.deliveryMissing(1))).toBeInTheDocument();
+    /*
+     * 「몇 건 빠졌는지」는 계약과 무관한 안내다 — 그대로 남는다. 건수는 이름·수·단위가 갈린
+     * 카드로 서므로(`StatCard`) 카드를 이름으로 찾아 그 «안»의 수를 본다 — 화면 어딘가의
+     * 「1」을 집으면 다른 구획의 수와 구분되지 않는다.
+     *
+     * ⚠ **카드가 서는 것과 수가 채워지는 것은 다른 순간이다.** 이름은 첫 렌더부터 있고 수는
+     *   발행 현황이 온 뒤에 바뀐다 — 이름만 기다리고 수를 바로 읽으면 0 을 본다(실측).
+     */
+    await waitFor(() => {
+      const card = screen.getByText(t.recovery.deliveryLabel).closest('[role="group"]');
+
+      if (!(card instanceof HTMLElement)) throw new Error('건수 카드를 찾지 못했다');
+
+      expect(within(card).getByText('1')).toBeInTheDocument();
+    });
 
     const deliveryAction = screen.getByRole('button', { name: t.recovery.deliveryAction });
     expect(deliveryAction).toBeDisabled();
