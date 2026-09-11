@@ -772,10 +772,12 @@ describe('ProductionFlowScreen', () => {
 });
 
 /**
- * 잔여수량 초과 — **막지 않고 한 번 확인한다**(스펙 §6 · ✓확정 QA #27 「초과 달성」 · #1040).
+ * 잔여수량 초과 — **막지도 되묻지도 않고 «말한다»**(✓확정 QA #27 「초과 달성」 · 사용자 결정
+ * 2026-09-11 · #1040).
  *
  * ⛔ **저장 단추를 끄는 것으로 재지 않는다.** 끄면 현장이 초과분을 등록할 길이 없어져, 설계가
- * 허용한 동작을 화면이 막는 것이 된다. 재는 것은 「묻는가 · 답한 뒤 그대로 저장되는가」다.
+ * 허용한 동작을 화면이 막는 것이 된다.
+ * ⛔ **확인 팝업이 서지 않는 것도 함께 잰다** — 되묻는 형태로 되돌아가면 이 시험이 문다.
  */
 describe('ProductionFlowScreen — 잔여수량 초과', () => {
   beforeEach(() => {
@@ -816,81 +818,68 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
   const savedCount = (writes: Request[]): number =>
     writes.filter((request) => pathOf(request) === '/production/production-results').length;
 
-  it('잔여를 넘으면 바로 저장하지 않고 되묻는다 — 답하면 그대로 저장된다', async () => {
+  it('잔여를 넘으면 수량 칸 아래에서 말하고, 저장은 그대로 나간다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
+    /* 잔여 2 인데 기본 수량이 12 다 — 10 을 넘는다. */
     renderScreen(writes, [workOrderWith({ goodQty: 10, varianceQty: 2 })]);
+
+    expect(await screen.findByText(t.overrun.notice('10 EA', '2 EA'))).toBeInTheDocument();
 
     const output = await screen.findByRole('button', { name: t.flow.output.issue });
     await waitFor(() => expect(output).toBeEnabled());
     await user.click(output);
 
-    expect(await screen.findByRole('dialog', { name: t.overrun.title })).toBeInTheDocument();
-    expect(savedCount(writes)).toBe(0);
+    /*
+     * ⛔ 손짓 한 번으로 끝난다 — 되묻는 팝업이 끼어들지 않는다.
+     *
+     * ⚠ 건수는 **발행·인쇄까지 끝난 뒤에** 센다. `waitFor` 로 1 에 닿는 순간 재면 뒤따라
+     *    오는 둘째 요청을 놓친다 — 되돌릴 수 없는 쓰기라 흐름이 멎은 자리에서 센다(이 파일
+     *    맨 앞 시험이 쓰는 자리와 같다).
+     */
+    const scan = await screen.findByLabelText(t.flow.scan.label);
+    await waitFor(() => expect(scan).toBeEnabled());
 
-    await user.click(screen.getByRole('button', { name: t.overrun.confirm }));
-
-    await waitFor(() => expect(savedCount(writes)).toBe(1));
+    expect(savedCount(writes)).toBe(1);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('[수량 고치기] 로 물러나면 저장하지 않는다', async () => {
-    const writes: Request[] = [];
-    const user = userEvent.setup();
-    renderScreen(writes, [workOrderWith({ goodQty: 10, varianceQty: 2 })]);
-
-    const output = await screen.findByRole('button', { name: t.flow.output.issue });
-    await waitFor(() => expect(output).toBeEnabled());
-    await user.click(output);
-    await user.click(await screen.findByRole('button', { name: t.overrun.cancel }));
-
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: t.overrun.title })).not.toBeInTheDocument(),
-    );
-    expect(savedCount(writes)).toBe(0);
-    /* ⛔ 단추는 그대로 살아 있다 — 확인을 거부한 것이지 막힌 것이 아니다. */
-    expect(screen.getByRole('button', { name: t.flow.output.issue })).toBeEnabled();
-  });
-
-  /* 경계 — 잔여와 «같은» 수량은 초과가 아니다. 여기서 물으면 정상 작업마다 손이 한 번 더 간다. */
-  it('잔여와 같은 수량은 묻지 않고 저장한다', async () => {
+  /* 경계 — 잔여와 «같은» 수량은 초과가 아니다. 여기서 말하면 정상 작업마다 경고가 선다. */
+  it('잔여와 같은 수량에는 아무 말도 하지 않는다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
     renderScreen(writes, [workOrderWith({ goodQty: 0, varianceQty: 12 })]);
 
     const output = await screen.findByRole('button', { name: t.flow.output.issue });
     await waitFor(() => expect(output).toBeEnabled());
-    await user.click(output);
 
+    expect(screen.queryByText(/초과 달성/u)).not.toBeInTheDocument();
+
+    await user.click(output);
     await waitFor(() => expect(savedCount(writes)).toBe(1));
-    expect(screen.queryByRole('dialog', { name: t.overrun.title })).not.toBeInTheDocument();
   });
 
   /*
    * 이미 지시를 넘겨 만든 지시는 `varianceQty` 가 **음수**로 온다(「지시 − 양품 누계」).
    * ⛔ 그 수를 그대로 적으면 「잔여 -4 EA」가 되어 음수를 수량으로 읽게 된다.
    */
-  it('잔여가 이미 0 아래면 0 으로 세우고, 넣는 수량은 여전히 되묻는다', async () => {
+  it('잔여가 이미 0 아래면 0 으로 세우고, 뺄셈을 보이지 않는다', async () => {
     const writes: Request[] = [];
-    const user = userEvent.setup();
     renderScreen(writes, [workOrderWith({ goodQty: 16, varianceQty: -4 })]);
 
     const output = await screen.findByRole('button', { name: t.flow.output.issue });
     await waitFor(() => expect(output).toBeEnabled());
 
     expect(screen.getByText(`0 ${t.quantity.orderedSuffix('12', 'EA')}`)).toBeInTheDocument();
+    expect(await screen.findByText(t.overrun.noticeNoRemaining)).toBeInTheDocument();
     expect(screen.queryByText(/-4/u)).not.toBeInTheDocument();
-
-    await user.click(output);
-
-    expect(await screen.findByRole('dialog', { name: t.overrun.title })).toBeInTheDocument();
-    expect(savedCount(writes)).toBe(0);
   });
 
   /*
-   * ⚠ 진척이 없으면 잔여는 **0 이 아니라 «모른다»**다. 모르는 것으로 막지도, 묻지도 않는다 —
-   * 대신 모른다는 사실을 화면이 적는다.
+   * ⚠ 진척이 없으면 잔여는 **0 이 아니라 «모른다»**다. 모르는 것으로 막지도, 경고하지도
+   * 않는다 — 대신 모른다는 사실을 화면이 적는다.
    */
-  it('잔여를 받지 못하면 묻지 않고, 잔여 자리에 모른다고 적는다', async () => {
+  it('잔여를 받지 못하면 경고하지 않고, 잔여 자리에 모른다고 적는다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
     renderScreen(writes, [workOrderWith(undefined)]);
@@ -898,10 +887,9 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     const output = await screen.findByRole('button', { name: t.flow.output.issue });
     await waitFor(() => expect(output).toBeEnabled());
     expect(screen.getByText(t.quantity.remainingUnknown)).toBeInTheDocument();
+    expect(screen.queryByText(/초과 달성/u)).not.toBeInTheDocument();
 
     await user.click(output);
-
     await waitFor(() => expect(savedCount(writes)).toBe(1));
-    expect(screen.queryByRole('dialog', { name: t.overrun.title })).not.toBeInTheDocument();
   });
 });
