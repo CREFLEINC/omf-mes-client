@@ -9,7 +9,8 @@ import {
   LabelRenditionNotReadyError,
 } from '../../patterns/pop-label-rendition';
 import { runRequest, toApiError } from '../../patterns/request';
-import { RENDITION_FORMAT, type LabelKind } from './codes';
+import { type LabelKind } from './codes';
+import { labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { toDocumentIssueBody, toPrintReportBody } from './issue-request';
 import { renditionShell } from './shell-print';
 import { toIssueView, type IssueView, type TargetRow } from './types';
@@ -403,7 +404,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
                     label.bytes,
                     `label-${String(label.issue.documentIssueLogId)}`,
                     new Date().toISOString(),
-                    RENDITION_FORMAT,
+                    labelRenditionFormat(),
                   )
                   .then(() => null)
                   .catch((cause: unknown) => toFailureReason(cause));

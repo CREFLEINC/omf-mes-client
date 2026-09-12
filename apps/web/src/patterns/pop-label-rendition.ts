@@ -41,15 +41,36 @@ type ContractRenditionFormat = NonNullable<
  * POP 물리 인쇄가 사용하는 계약 형식. **`tspl` 이 빠져 사실상 `'png'` 하나뿐이다**(위 머리말).
  * PDF는 여전히 문서 출력용이라 이 타입에서 제외한다.
  */
-export type LabelRenditionFormat = Extract<ContractRenditionFormat, 'png' | 'tspl'>;
+export type LabelRenditionFormat = 'png' | 'tspl';
 
 /**
- * 그림 형식 하나뿐이다 — 계약에 `tspl` 이 없어 셸 유무로 더는 가르지 않는다(위 머리말).
+ * 셸의 RAW 인쇄 통로가 열려 있는가.
  *
- * ⚠ **모듈 최상위에서 한 번만 불러도 된다** — 화면 여섯이 그렇게 쓴다. 값이 상수이므로
- * 부르는 시점이 흔들려도 결과가 달라지지 않는다.
+ * ⚠ **`window.pop` 은 preload 가 화면보다 «먼저» 세운다** — 설치본에서는 이 판정이 언제
+ *   불려도 참이다. 브라우저로 여는 개발 확인에는 통로가 없어 거짓이고, 그때는 그림으로 받는다.
  */
-export const labelRenditionFormat = (): LabelRenditionFormat => 'png';
+const hasShellPrinter = (): boolean =>
+  typeof (globalThis as { pop?: { rendition?: { save?: unknown } } }).pop?.rendition?.save ===
+  'function';
+
+/**
+ * **셸이 있으면 명령형(`tspl`), 없으면 그림(`png`)** — 한때 있던 정책을 되돌린다(#1104).
+ *
+ * ⭐ **왜 되돌리는가.** 그림은 Windows 드라이버를 거쳐 프린터로 간다. 실기의 라벨 프린터는
+ * TSPL 로 설정돼 있는데 드라이버가 다른 언어를 내보내 **프린터가 작업을 받아들이고 버렸다** —
+ * 앱은 스풀러까지 성공이라 그 너머를 알 수 없어 라벨이 한 장도 안 나왔다(실기 2026-09-12).
+ * 명령형으로 받으면 셸이 대기열의 RAW 자리로 그대로 보내 **드라이버를 통째로 건너뛴다.**
+ * 같은 단말에서 `Ctrl+Alt+P` 진단(RAW·TSPL)은 이미 정상 출력된다.
+ *
+ * ⛔ **`tspl` 은 고정한 계약에 없는 값이다**(`format: "png" | "pdf"`). 목 서버는 구현해 두었고,
+ *    **사용자가 이 방향을 선택했다**(2026-09-12). 계약을 벗어나는 자리는 아래 `fetchLabelRendition`
+ *    한 곳뿐이며, 계약에 `tspl` 이 돌아오면 그 우회만 걷어낸다.
+ *
+ * ⚠ **모듈 최상위에서 부르지 않는다.** 셸 유무에 달린 값이라 부르는 시점이 뜻을 갖는다 —
+ *   상수로 굳혀 두면 통로가 선 뒤에도 옛 판정이 남는다.
+ */
+export const labelRenditionFormat = (): LabelRenditionFormat =>
+  hasShellPrinter() ? 'tspl' : 'png';
 
 /**
  * ⛔ **배포본에서는 서버가 이 오퍼레이션을 구현하지 않았다** — 위 머리말 참고.
@@ -84,7 +105,12 @@ export const fetchLabelRendition = async (
     client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
       params: {
         path: { documentIssueLogId },
-        query: { format: labelRenditionFormat() },
+        /*
+         * ⛔ **계약을 벗어나는 자리는 여기 하나뿐이다**(#1104). 고정한 계약의 `format` 은
+         *    `"png" | "pdf"` 라 `tspl` 을 타입이 받지 않는다 — 목은 구현해 두었고 사용자가
+         *    이 방향을 선택했다. 계약에 `tspl` 이 돌아오면 이 우회만 걷어낸다.
+         */
+        query: { format: labelRenditionFormat() as ContractRenditionFormat },
       },
       parseAs: 'arrayBuffer',
     }),

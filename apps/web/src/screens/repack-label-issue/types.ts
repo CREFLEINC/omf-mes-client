@@ -53,7 +53,6 @@ export const PRINT_FAILURE_REASON_CODE = 'PRINT_FAILURE';
  * 그림으로 받으면 드라이버가 픽셀로 그려, 명령으로 뽑은 라벨과 다른 물건으로 보인다
  * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
  */
-export const LABEL_RENDITION_FORMAT: LabelRenditionFormat = labelRenditionFormat();
 
 /**
  * 대상 포장의 내용물 한 줄.
