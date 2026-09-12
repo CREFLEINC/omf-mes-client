@@ -43,6 +43,10 @@ vi.mock('../../patterns/local-store', () => ({
 
 vi.mock('../../patterns/plant', () => ({
   currentPlantId: () => claims.plantId,
+  /* 셸이 기동할 때 부른다. 빠뜨리면 모의가 실제 모듈과 어긋나 처리되지 않은 오류가 난다. */
+  readPlantId: () => Promise.resolve(null),
+  rememberPlant: () => Promise.resolve(),
+  forgetPlant: () => Promise.resolve(),
 }));
 
 const page = { page: 1, size: 200, total: 1, totalElements: 1, totalPages: 1 };
