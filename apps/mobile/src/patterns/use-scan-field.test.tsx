@@ -11,6 +11,7 @@ const Probe = ({ onScan, scanner }: { onScan: (v: string) => void; scanner?: Sca
     <>
       <input aria-label="스캔" ref={field.ref} />
       <button type="button">다른 곳</button>
+      <input aria-label="수량" />
       <button type="button" onClick={field.openManual}>
         직접 입력
       </button>
@@ -20,6 +21,16 @@ const Probe = ({ onScan, scanner }: { onScan: (v: string) => void; scanner?: Sca
       <p>{field.manual ? '손 입력 중' : '스캔 대기'}</p>
     </>
   );
+};
+
+/** 화면 잠금처럼 문서를 가렸다 보였다 한다. */
+const hide = (hidden: boolean) => {
+  Object.defineProperty(document, 'hidden', { configurable: true, value: hidden });
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    value: hidden ? 'hidden' : 'visible',
+  });
+  document.dispatchEvent(new Event('visibilitychange'));
 };
 
 describe('스캔 필드 결선', () => {
@@ -165,5 +176,77 @@ describe('스캔 필드 결선', () => {
     unmount();
 
     expect(detach).toHaveBeenCalled();
+  });
+  /**
+   * 화면 잠금은 웹뷰를 가린다. 그동안 칸은 포커스를 잃는데, 그때 되돌리면 보이지도 않는
+   * 화면에 소프트 키보드가 서므로 되돌리지 않는다 - 그것은 맞다.
+   *
+   * 문제는 다시 보이게 된 뒤다. 되찾는 자리가 없으면 스캐너가 밀어 넣는 입력이 갈 곳을
+   * 잃는다. 현장에서는 잠금을 풀면 스캔이 되지 않는 것으로 나타났고, 화면을 늘 켜 두면
+   * 증상이 사라졌다.
+   */
+  it('잠금에서 돌아오면 스캔 칸이 포커스를 되찾는다', async () => {
+    render(<Probe onScan={vi.fn()} />);
+    const field = screen.getByLabelText('스캔');
+    expect(field).toHaveFocus();
+
+    /* 잠긴다 - 가려진 채로 포커스가 빠진다. */
+    hide(true);
+    field.blur();
+    expect(field).not.toHaveFocus();
+
+    /* 풀린다. */
+    hide(false);
+
+    await waitFor(() => {
+      expect(field).toHaveFocus();
+    });
+  });
+
+  it('가려져 있는 동안에는 포커스를 되돌리지 않는다', async () => {
+    render(<Probe onScan={vi.fn()} />);
+    const field = screen.getByLabelText('스캔');
+
+    hide(true);
+    field.blur();
+
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20);
+    });
+
+    expect(field).not.toHaveFocus();
+    hide(false);
+  });
+
+  /**
+   * 단추를 한 번 누르면 포커스가 그리로 간다. handleBlur 는 다른 컨트롤로 옮겨 간 포커스를
+   * 뺏지 않으므로 칸은 비어 있는 채로 남고, 그 상태에서 스캔하면 글자가 단추로 가 사라진다.
+   * 화면에는 아무 일도 일어나지 않아 작업자는 스캐너가 고장 난 것으로 읽는다.
+   */
+  it('포커스가 단추에 있어도 스캔이 닿는다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} />);
+
+    await user.click(screen.getByRole('button', { name: '다른 곳' }));
+    expect(screen.getByRole('button', { name: '다른 곳' })).toHaveFocus();
+
+    await user.keyboard('SYN-LOT-0042{Enter}');
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0042');
+  });
+
+  it('다른 칸에 치는 글자는 가져오지 않는다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} />);
+
+    const other = screen.getByLabelText('수량');
+    await user.click(other);
+    await user.keyboard('120');
+
+    expect(other).toHaveValue('120');
+    expect(onScan).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('스캔')).toHaveValue('');
   });
 });

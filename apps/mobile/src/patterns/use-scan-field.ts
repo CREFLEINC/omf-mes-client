@@ -88,6 +88,88 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
     });
   }, []);
 
+  /*
+   * 화면이 다시 보이면 포커스를 되찾는다.
+   *
+   * 잠금은 웹뷰를 가리고 그동안 칸은 포커스를 잃는다. 가려진 채로 되돌리면 보이지도 않는
+   * 화면에 소프트 키보드가 서므로 handleBlur 는 그때 물러선다 - 그 판단은 맞다. 다만 다시
+   * 보일 때 되찾는 자리가 없으면 스캐너가 밀어 넣는 입력이 갈 곳을 잃는다. 현장에서는
+   * 잠금을 풀면 스캔이 되지 않는 것으로 나타났고, 화면을 늘 켜 두면 증상이 사라졌다.
+   *
+   * 손으로 치는 중이면 가져오지 않는다 - 치던 자리에서 포커스를 뺏는 것이 된다.
+   */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.hidden || manual) {
+        return;
+      }
+      if (document.activeElement !== fieldRef.current) {
+        fieldRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [manual]);
+
+  /*
+   * 포커스가 칸에 없어도 스캔을 받는다.
+   *
+   * 스캐너는 키보드처럼 글자를 밀어 넣으므로 포커스가 있는 곳으로 간다. 작업자가 단추를
+   * 한 번 누르면 포커스가 그리로 옮겨 가고, 그 뒤 스캔한 글자는 단추로 가 사라진다 -
+   * 화면에는 아무 일도 일어나지 않아 스캐너가 고장 난 것으로 읽힌다.
+   *
+   * 첫 글자가 올 때 칸으로 포커스를 되돌리고 그 글자를 칸에 넣는다. 두 번째부터는 칸이
+   * 포커스를 쥐고 있으므로 여기를 거치지 않고, 판정도 종전 경로 그대로 돈다.
+   *
+   * 사람이 치고 있는 칸에서는 가져오지 않는다. 수량이나 비고를 치는 중에 글자를 빼앗으면
+   * 적은 값이 어디에도 남지 않는다 - 스캔을 놓치는 것보다 나쁘다.
+   */
+  useEffect(() => {
+    const onDocumentKey = (event: KeyboardEvent) => {
+      const field = fieldRef.current;
+
+      if (field === null || manual || event.defaultPrevented) {
+        return;
+      }
+
+      const active = document.activeElement;
+
+      if (active === field) {
+        return;
+      }
+
+      /* 사람이 글자를 넣고 있는 자리는 건드리지 않는다. */
+      if (
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      ) {
+        return;
+      }
+
+      /* 글자 하나로 오는 키만 옮긴다. Tab·Escape 같은 것은 제자리에 둔다. */
+      if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      event.preventDefault();
+      field.focus();
+      field.value += event.key;
+      field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+    };
+
+    document.addEventListener('keydown', onDocumentKey, true);
+
+    return () => {
+      document.removeEventListener('keydown', onDocumentKey, true);
+    };
+  }, [manual]);
+
   const ref = useCallback(
     (node: HTMLInputElement | null) => {
       detachRef.current?.();
