@@ -42,6 +42,10 @@ const TRANSLATED = [
   'save',
   /* #1120 — 승인. 결재함 1화면. */
   'approvalInbox',
+  /* #1121 — 알림. 알림센터 · 알람 수신자 설정 · 공지·전달 3화면. */
+  'notificationCenter',
+  'alarmRecipientSettings',
+  'notice',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
 ] as const satisfies readonly (keyof Messages)[];

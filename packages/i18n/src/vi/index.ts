@@ -15,6 +15,7 @@ import { ko, type Messages } from '../ko';
 
 import type { Translated } from './translated';
 
+import { alarmRecipientSettings } from './alarm-recipient-settings';
 import { approvalInbox } from './approval-inbox';
 import { common } from './common';
 import { conflict } from './conflict';
@@ -31,6 +32,8 @@ import { login } from './login';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
+import { notice } from './notice';
+import { notificationCenter } from './notification-center';
 import { outboxRejections } from './outbox-rejections';
 import { packingRepack } from './packing-repack';
 import { pendingCode } from './pending-code';
@@ -52,6 +55,7 @@ import { wipHandover } from './wip-handover';
 
 export const vi: Translated<Messages> = {
   ...ko,
+  alarmRecipientSettings,
   approvalInbox,
   common,
   conflict,
@@ -68,6 +72,8 @@ export const vi: Translated<Messages> = {
   materialLocation,
   materialLotScan,
   materialPicking,
+  notice,
+  notificationCenter,
   outboxRejections,
   packingRepack,
   pendingCode,
