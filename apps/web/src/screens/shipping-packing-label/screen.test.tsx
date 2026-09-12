@@ -272,6 +272,24 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     expect(issueButton()).toBeDisabled();
   });
 
+  /**
+   * ⛔ **눌리는데 아무 일도 없는 단추를 두지 않는다**(#1093 ③).
+   *
+   * 납품 라벨 발행은 서버가 항상 거부해 화면이 요청 자체를 만들지 않는다. 그 판단은 옳지만
+   * **단추에 반영하지 않으면** 작업자는 누르고 기다리다 다시 누른다 — 확인 창도 성공도
+   * 실패도 없는 그 모양이다.
+   */
+  it('납품라벨 발행 단추는 잠기고 그 사유가 옆에 선다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await chooseKind(user, '납품라벨');
+    await user.click(await rowCheckbox(0));
+
+    expect(await screen.findByText(t.actions.deliveryLocked)).toBeInTheDocument();
+    expect(issueButton()).toBeDisabled();
+  });
+
   it('종류를 포장라벨로 바꾸면 대상이 취급 단위로 갈린다', async () => {
     const user = userEvent.setup();
     renderScreen();

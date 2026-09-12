@@ -7651,12 +7651,15 @@ dl.filter-bar.approval-inbox-detail-facts {
   overflow: hidden;
 }
 
-/* ① 판정 — 무엇이 막았는가. 가장 먼저 읽히도록 위에 둔다. */
+/*
+ * ① 판정 — 무엇이 막았는가. 가장 먼저 읽히도록 위에 둔다.
+ *
+ * ⛔ **높이를 미리 잡아 두지 않는다**(사용자 지시 2026-09-12). 한때 152px 를 못박고 가운데
+ *    정렬해 두었는데, 배너가 세 줄이어도 그보다 낮아 **위아래로 빈 띠가 크게 남았다** —
+ *    막힌 화면에서 가장 먼저 읽어야 할 구획이 여백에 떠 있는 것처럼 보인다.
+ */
 .precheck-gate-verdict {
   flex: 0 0 auto;
-  min-height: 152px;
-  display: grid;
-  align-content: center;
 }
 
 /* 배너 안의 부연은 줄을 바꿔 세운다 — 한 줄로 이으면 표제가 묻힌다. */

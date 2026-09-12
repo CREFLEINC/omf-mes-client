@@ -270,7 +270,16 @@ export const RepackLabelIssueScreen = () => {
             variant="error"
             title={t.print.failedTitle}
             action={
-              <Button variant="outlined" size="sm" onClick={retryFailedPrint}>
+              /*
+               * ⛔ **눌러도 안 되면 비활성으로 보인다**(#1093 · 사용자 지시). 처리기가 대상 ·
+               *    사번 없이는 조용히 되돌아온다.
+               */
+              <Button
+                variant="outlined"
+                size="sm"
+                disabled={printRunner.state.target === null || entry.workerNo === null}
+                onClick={retryFailedPrint}
+              >
                 {t.print.retry}
               </Button>
             }

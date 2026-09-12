@@ -94,9 +94,6 @@ export const workPrecheckGate = {
     /** ⛔ 부여가 없는 것과 이력이 없는 것은 다르다. */
     notTargeted: '이 설비에는 부여된 점검 항목이 없습니다.',
 
-    /** ⚠ 「없음」이 「안 했음」이 아닐 수 있다는 사실(§5-4). */
-    unsentWarning: '미전송 점검이 있을 수 있습니다 — 점검 단말을 확인하세요.',
-
     /** ⚠ 고장은 보이되 막지 않는다(§5-6). */
     openBreakdowns: (count: number): string => `이 설비에 처리 중인 고장 ${count}건`,
   },

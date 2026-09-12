@@ -239,6 +239,18 @@ export const ShippingPackingLabelScreen = ({
     if (summaries.isError) return t.actions.historyUnavailable;
     if (hasMixedIssueModes) return t.actions.mixedIssueModes;
     if (isReissue && reissueReasonCode === null) return t.actions.needsReason;
+    /*
+     * ⛔ **`startIssue` 가 조용히 되돌아오던 자리를 여기서 말한다**(#1093 ③). 잠금은 아래
+     *    `startIssue` 가 이미 보고 있었는데 «단추 잠금 판정»에는 없어, 단추가 열린 채 눌리고
+     *    아무 일도 일어나지 않았다 — 확인 창도 성공도 실패도 없는 그 모양이다.
+     *
+     * ⚠ **맨 뒤에 둔다 — 앞으로 옮기지 말 것**(#1093 리뷰에서 한 번 뒤집었다가 되돌렸다).
+     *    `label-kind-radio.tsx` 가 납품라벨 «종류»를 일부러 열어 둔 이유가 그것이다: 대상
+     *    목록·재발행 판정까지는 서버를 부르지 않아 계약 영향 밖이고, **막는 자리는 실제로
+     *    계약을 어기는 이 발행 단추 하나뿐**이다. 이 사유를 앞에 두면 대상 확인·재발행 사유
+     *    안내 같은, 계약과 무관한 화면 구실이 통째로 이 문구에 가린다.
+     */
+    if (DELIVERY_LABEL_ISSUE_LOCKED && kind === DELIVERY_LABEL) return t.actions.deliveryLocked;
 
     return null;
   })();

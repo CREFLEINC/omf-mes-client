@@ -757,6 +757,43 @@ on('GET', '/mdm/molds/{moldId}', (params) => {
   return mold === undefined ? null : { mold };
 });
 
+/*
+ * 운영 정책 한 건 — **묻는 코드의 값을 답한다**(#1093).
+ *
+ * ⛔ **한때 이 경로가 목에 없어 Prism 으로 넘어갔다.** Prism 은 계약 예시를 돌려주므로 어떤
+ *    `policyCode` 로 물어도 «같은 한 건»(`SHOT_CONVERSION_ENABLED`)이 왔다 — 작업 전 점검
+ *    게이트는 통제 수준을 물었는데 샷 환산 정책을 받았고, 값이 통제 수준(BLOCK·WARN·OFF)이
+ *    아니라 「적용 정책 없음」으로 읽혔다. 목과 실서버는 데이터만 다르고 동작은 같아야 한다
+ *    (사용자 지시 2026-09-12).
+ *
+ * ⭐ **통제 수준은 `BLOCK` 으로 둔다.** 점검 이력이 없는 설비에서 게이트가 실제로 «막는»
+ *    자리를 확인할 수 있어야 한다 — 통제가 없으면 화면이 뜨지 않고 지나간다.
+ */
+const OPERATION_POLICIES = {
+  PRECHECK_CONTROL_LEVEL: {
+    operationPolicyId: 1101,
+    valueText: 'BLOCK',
+    matchedScopeCode: 'PLANT',
+  },
+  SHOT_CONVERSION_ENABLED: {
+    operationPolicyId: 1001,
+    valueText: '표준',
+    valueNumeric: 0.25,
+    valueBoolean: true,
+    matchedScopeCode: 'ITEM',
+  },
+};
+
+on('GET', '/app/operation-policies/effective', (_p, query) => {
+  const code = query.get('policyCode');
+  const found = OPERATION_POLICIES[code];
+
+  /* ⛔ 모르는 코드를 지어내지 않는다 — 「적용 정책이 없다」가 계약의 답이다. */
+  if (found === undefined) return { policyCode: code, resolved: false };
+
+  return { policyCode: code, resolved: true, ...found };
+});
+
 on('GET', '/mdm/equipments/{equipmentId}/inspection-items', (params) => {
   const assigned = state.inspectionItems.filter(
     (row) => row.equipmentId === Number(params.equipmentId),
@@ -799,15 +836,36 @@ on('GET', '/mdm/code-values', (_p, query) => {
  * ⚠ **토큰을 검증하지 않는다.** 서명·세대·활성 판정은 서버 몫이고 목은 그 자리를 흉내 내지
  *    않는다 — 401·403 갈래는 실서버에서 본다.
  */
+/*
+ * ⛔ **단말 번호를 무시하지 않는다.** 한때 어떤 번호로 물어도 같은 단말 하나를 답했다 —
+ *    실서버는 단말마다 다른 설비를 답하므로 「설비가 다르면 화면이 어떻게 도는가」를 목으로는
+ *    볼 수 없었다(사용자 지시 2026-09-12 · 데이터만 다르고 동작은 같아야 한다).
+ *
+ * ⭐ **두 단말이 서로 다른 설비에 붙어 있다.** 1001 은 오늘 점검에 합격한 설비(5001)라
+ *    작업 전 점검 게이트가 통과로 지나가고, 1002 는 점검 이력이 없는 설비(5002)라 게이트가
+ *    실제로 «막는» 자리를 보여 준다 — 둘 다 있어야 그 갈래를 갈라 볼 수 있다.
+ */
+const TERMINALS = {
+  1001: {
+    terminalCode: 'POP-A-01',
+    equipmentId: 5001,
+    equipmentCode: 'PRS-01',
+    equipmentName: '프레스 1호기',
+  },
+  1002: {
+    terminalCode: 'POP-A-02',
+    equipmentId: 5002,
+    equipmentCode: 'EQ-03',
+    equipmentName: '사출기 3호',
+  },
+};
+
 on('GET', '/mdm/terminals/{terminalId}', (params) => ({
   terminalId: Number(params.terminalId),
-  terminalCode: 'POP-A-01',
+  ...(TERMINALS[Number(params.terminalId)] ?? TERMINALS[1001]),
   terminalTypeCode: 'POP',
   plantId: 1001,
   locationId: 1001,
-  equipmentId: 2001,
-  equipmentCode: 'PRS-01',
-  equipmentName: '프레스 1호기',
   statusCode: 'ACTIVE',
   isActive: true,
   tokenIssuedAt: '2026-08-13T09:12:00+09:00',
@@ -3048,6 +3106,65 @@ on('POST', '/production/work-sessions/{workSessionId}:end', (params, _q, body, h
 
   return { created: session, status: 200 };
 });
+
+/*
+ * 작업 전 점검 통제 판정 — `P-02-02` 게이트가 «뜨는 순간» 스스로 남기는 기록이다(#1093 ①).
+ *
+ * ⛔ **목이 이 경로를 갖고 있지 않았다.** 상태 기반 목이 모르는 경로는 Prism 으로 넘어가고
+ *    Prism 은 이 본문을 거부해 400 을 냈다 — 그러면 게이트가 판정을 남기지 못해 **차단
+ *    상태에서 「돌아가기」밖에 남지 않는다.** 목과 실서버는 «데이터»만 다르고 동작은 같아야
+ *    한다(사용자 지시 2026-09-12).
+ *
+ * ⭐ **차단도 남긴다**(스펙 §5-8 · §9-3). 차단이면 작업 세션이 열리지 않아 세션 사건으로는
+ *    남길 곳이 없다 — 안 보이는 것과 안 남기는 것은 다르다.
+ *
+ * ⛔ **사번을 본문에서 읽지 않는다.** 귀속은 `X-Worker-No` 헤더가 나르고 서버가 옮겨 적는다.
+ */
+on('POST', '/production/precheck-decisions', (_p, _q, body, headers) => {
+  /*
+   * ⛔ **사번이 없으면 남기지 않는다.** 귀속이 비어 있는 판정은 「누가 통과시켰는가」를
+   *    말하지 못한다 — 실서버가 거부하는 자리를 목이 통과시키면 화면이 목에서만 선다.
+   */
+  /* ⚠ 빈 문자열도 「없다」다 — 게이트는 사번이 비어도 헤더를 그대로 실어 보낸다. */
+  if ((headers['x-worker-no'] ?? '').trim() === '') {
+    return {
+      status: 400,
+      created: { code: 'WORKER_NO_REQUIRED', message: '사번이 없으면 판정을 남기지 않습니다.' },
+    };
+  }
+
+  /*
+   * ⛔⛔ **같은 키의 재전송을 두 줄로 만들지 않는다.** 판정 기록은 되돌릴 수 없고, 화면도
+   *    `keyLifetime: 'until-applied'` 로 같은 키를 유지한다(`work-precheck-gate/mutations.ts`).
+   *    목이 이것을 무시하면 **다시 눌러 이력이 늘어나는** 바로 그 결함(#1093)을 목이 만든다.
+   */
+  return idempotent('precheck-decisions', headers, () => {
+    const created = {
+      precheckDecisionId: newId(),
+      workOrderId: body?.workOrderId,
+      equipmentId: body?.equipmentId,
+      decidedAt: body?.decidedAt ?? new Date().toISOString(),
+      controlLevelCode: body?.controlLevelCode,
+      decisionCode: body?.decisionCode,
+      basisInspectionId: body?.basisInspectionId ?? null,
+      overrideReasonCode: body?.overrideReasonCode ?? null,
+      workerNo: headers['x-worker-no'],
+    };
+
+    state.precheckDecisions.push(created);
+    return { created, status: 201 };
+  });
+});
+
+on('GET', '/production/precheck-decisions', (_p, query) =>
+  page(
+    keep(state.precheckDecisions, [
+      byNum(query, 'workOrderId', 'workOrderId'),
+      byNum(query, 'equipmentId', 'equipmentId'),
+    ]),
+    query,
+  ),
+);
 
 on('POST', '/production/operation-handovers', (_p, _q, body) => {
   const created = {

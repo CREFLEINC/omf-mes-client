@@ -248,6 +248,12 @@ export const ProductionFlowScreen = () => {
     setAppliedLotId(lotId);
     setConfirmedResultLotId(lotId);
     setOutputPhase('issuing');
+    /*
+     * ⛔ **쓰기가 먹은 뒤 요약을 다시 읽는다**(#1093 ④). 잔여수량은 작업지시의 진척에서 오는데
+     *    이 쓰기는 큐를 통해 나가므로 그 결과가 저절로 캐시에 반영되지 않는다 — 다시 읽지
+     *    않으면 방금 올린 수량이 화면의 잔여에 없고, 작업자는 **새로 고쳐야** 맞는 값을 본다.
+     */
+    void workOrder.refetch();
   };
 
   const outbox = useOutbox({ onApplied: onResultApplied });
@@ -963,7 +969,13 @@ export const ProductionFlowScreen = () => {
             {outputPhase === 'legacyMismatch' ? (
               <Button disabled>{t.flow.output.mismatchBlocked}</Button>
             ) : outputPhase === 'issueFailed' ? (
-              <Button onClick={retryLotIssue}>{t.flow.output.retryIssue}</Button>
+              /*
+               * ⛔ **눌러도 안 되면 비활성으로 보인다**(#1093 · 사용자 지시). 처리기가 LOT ·
+               *    사번 없이는 조용히 되돌아온다 — 단추가 열린 채면 눌리고 아무 말이 없다.
+               */
+              <Button disabled={lot === null || entry.workerNo === null} onClick={retryLotIssue}>
+                {t.flow.output.retryIssue}
+              </Button>
             ) : outputPhase === 'reportFailed' ? (
               <Button onClick={() => void lotPrint.retryReport()}>
                 {t.flow.output.retryReport}
