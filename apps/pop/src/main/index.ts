@@ -78,7 +78,6 @@ import {
   type PrinterChoice,
   createSilentPrinter,
   resolveTerminalPrinter,
-  selectPrinter,
 } from './silent-print';
 import { SecureStore } from './secure-store';
 import {
