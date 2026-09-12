@@ -390,8 +390,13 @@ export function repositoryPolicyErrors(root) {
     try {
       const tracked = git(['ls-files', '--', '.client-dev'], root);
       if (tracked !== '') {
-        const names = tracked.split('\n').slice(0, 3).join(', ');
-        errors.push(`.client-dev/: 로컬 전용 자료는 Git에서 추적하면 안 됩니다 (${names}).`);
+        const files = tracked.split('\n');
+        /* 몇 건인지를 함께 적는다. 보인 것만 빼면 되는 줄로 읽히면 나머지가 그대로 남는다. */
+        const names = files.slice(0, 3).join(', ');
+        const rest = files.length > 3 ? ` 외 ${files.length - 3}건` : '';
+        errors.push(
+          `.client-dev/: 로컬 전용 자료는 Git에서 추적하면 안 됩니다 (${files.length}건: ${names}${rest}).`,
+        );
       }
     } catch (error) {
       errors.push(`.client-dev/: Git 추적 상태를 확인할 수 없습니다: ${error.message}`);
