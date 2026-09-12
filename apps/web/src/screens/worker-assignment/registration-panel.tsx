@@ -1,8 +1,9 @@
 import { AlertBanner, Button, Card, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 
 import { usePopRegistration, type RegistrationFailure } from '../../patterns/pop-registration';
+import { panelScale } from './panel-scale';
 
 /**
  * P-CO-01 §3-A — **미등록·재등록 패널**(공유계약 F-4).
@@ -46,6 +47,27 @@ const failureMessage = (failure: RegistrationFailure, pendingCount: number): str
   }
 };
 
+/**
+ * 단말 화면에 맞춘 상자 배율(`panel-scale`). 창 크기가 바뀌면 다시 잰다 — 실기는 고정이지만
+ * 개발 PC 에서는 창을 줄여 가며 보기 때문이다.
+ */
+const usePanelScale = (): number => {
+  const [scale, setScale] = useState(() =>
+    typeof window === 'undefined' ? 1 : panelScale(window.innerWidth, window.innerHeight),
+  );
+
+  useEffect(() => {
+    const apply = (): void => setScale(panelScale(window.innerWidth, window.innerHeight));
+
+    apply();
+    window.addEventListener('resize', apply);
+
+    return () => window.removeEventListener('resize', apply);
+  }, []);
+
+  return scale;
+};
+
 export const RegistrationPanel = () => {
   const registration = usePopRegistration();
   const [token, setToken] = useState('');
@@ -55,9 +77,10 @@ export const RegistrationPanel = () => {
 
   const { phase, failure, pendingCount, terminal } = registration;
   const busy = phase === 'verifying' || phase === 'preparing';
+  const scale = usePanelScale();
 
   return (
-    <div className="pop-registration">
+    <div className="pop-registration" style={{ '--pop-reg-scale': scale } as CSSProperties}>
       <Card className="pop-registration__card">
         <h1 className="pop-registration__title">{t.title}</h1>
 
