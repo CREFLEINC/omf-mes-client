@@ -128,6 +128,16 @@ export const useParentHandlingUnits = (): UseQueryResult<HandlingUnit[]> => {
 export interface CodeLabels {
   itemCodeOf: (itemId: number) => string | null;
   uomCodeOf: (uomId: number) => string | null;
+  /**
+   * 이 단위가 소수를 받는가 — **숫자 키패드의 소수점 키를 여는 기준이다.**
+   *
+   * ⛔ **화면이 정하지 않는다.** 개수로 세는 단위(EA·BOX)에 소수점 키를 두면 서버가 거부할
+   * 값을 넣게 되고, 무게·부피 단위(KG·L)에 없으면 값을 넣을 길이 사라진다. 마스터가 그
+   * 자릿수를 들고 있으므로 그대로 따른다(전례 `P-04-01`).
+   *
+   * ⚠ **모르면 «받지 않는» 쪽으로 둔다** — 못 받은 상태에서 소수를 열어 두면 쓰기가 거부된다.
+   */
+  allowsDecimal: (uomId: number | null) => boolean;
 }
 
 export const useCodeLabels = (
@@ -163,9 +173,14 @@ export const useCodeLabels = (
   const uomCodeOf = new Map(
     (uoms.data?.items ?? []).map((uom) => [uom.uomId, uom.uomCode] as const),
   );
+  /* 같은 응답에서 함께 꺼낸다 — 자릿수를 물으려고 단위를 다시 부르지 않는다. */
+  const decimalScaleOf = new Map(
+    (uoms.data?.items ?? []).map((uom) => [uom.uomId, uom.decimalScale] as const),
+  );
 
   return {
     itemCodeOf: (itemId) => itemCodeOf.get(itemId) ?? null,
     uomCodeOf: (uomId) => uomCodeOf.get(uomId) ?? null,
+    allowsDecimal: (uomId) => (uomId === null ? false : (decimalScaleOf.get(uomId) ?? 0) > 0),
   };
 };

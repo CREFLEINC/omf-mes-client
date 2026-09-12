@@ -28,6 +28,12 @@ export interface ScanPaneProps {
   addedCount: number;
   /** 수량 입력의 인라인 오류. */
   quantityError: string | null;
+  /**
+   * 지금 담을 LOT 의 단위가 소수를 받는가 — **소수점 키를 열지 정한다.**
+   *
+   * ⛔ 화면이 정하지 않는다. 마스터의 자릿수를 그대로 따른다(`queries.ts` 머리 참조).
+   */
+  allowsDecimal: boolean;
 }
 
 /**
@@ -61,6 +67,7 @@ export const ScanPane = ({
   blockedReason,
   scanError,
   quantityError,
+  allowsDecimal,
   addedCount,
 }: ScanPaneProps) => {
   const [code, setCode] = useState('');
@@ -182,11 +189,13 @@ export const ScanPane = ({
         onChange={onQuantityChange}
         dropLeadingZero
         /*
-         * ⚠ **소수를 받는다** — 이 칸은 지금까지 `inputMode="decimal"` 로 소수를 받아 왔고,
-         *    키패드가 그보다 좁으면 넣던 값을 못 넣게 된다. 단위가 정수만 받는지는 이 화면이
-         *    알지 못한다(단위 소수 자릿수를 읽는 자리가 없다).
+         * ⛔ **소수점 키를 늘 두지 않는다.** 개수로 세는 단위(EA·BOX)에 두면 서버가 거부할
+         *    값을 넣게 되고, 세로가 빠듯한 이 구획에서 쓰지 않는 키 한 줄이 목록을 밀어낸다.
+         *    ⚠ 반대로 무게·부피 단위(KG·L)에 없으면 값을 넣을 길이 사라진다 — 마스터의
+         *    자릿수가 정한다(계약도 `decimalScale` 을 「수량 입력란의 소수 자릿수 판정」으로
+         *    적어 두었다).
          */
-        allowDecimal
+        allowDecimal={allowsDecimal}
         decimalLabel={t.scan.keypadDecimal}
         backspaceLabel={t.scan.keypadBackspace}
         clearLabel={t.scan.keypadClear}

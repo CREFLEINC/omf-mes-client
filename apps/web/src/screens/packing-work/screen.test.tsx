@@ -51,6 +51,11 @@ const IDENTIFIED: PopIdentity = {
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
 interface Options {
+  /**
+   * 이 LOT 의 단위가 소수를 받는다(마스터 `decimalScale > 0`). 무게·부피 단위가 그 자리다.
+   * 기본은 받지 않는다 — 개수로 세는 단위(EA·BOX)가 흔하다.
+   */
+  uomAllowsDecimal?: boolean;
   /** 포장 대상 조회가 실패한다 */
   lotsFail?: boolean;
   /** 포장 유형 조회가 실패한다 */
@@ -118,7 +123,15 @@ const routes = (options: Options): StubRoute[] => [
     match: (request) => pathOf(request) === '/mdm/uoms',
     respond: () =>
       jsonResponse({
-        items: [{ uomId: UOM_ID, uomCode: UOM_CODE, uomName: '개', isActive: true }],
+        items: [
+          {
+            uomId: UOM_ID,
+            uomCode: UOM_CODE,
+            uomName: '개',
+            isActive: true,
+            decimalScale: options.uomAllowsDecimal === true ? 3 : 0,
+          },
+        ],
         page: { page: 1, size: 20, total: 1 },
       }),
   },
@@ -348,6 +361,41 @@ describe('P-02-08 포장 작업', () => {
    * 수량(버튼 옆)과 유형(건너편). 유형을 먼저 말하면 옆 칸을 비워 둔 채 건너편으로 보내고,
    * 돌아와 다시 눌러야 수량을 안다(사용자 지적).
    */
+  /*
+   * ⛔ **소수점 키를 늘 두지 않는다**(사용자 지적 2026-09-12). 개수로 세는 단위(EA·BOX)에
+   * 두면 서버가 거부할 값을 넣게 되고, 세로가 빠듯한 이 구획에서 쓰지 않는 키 한 줄이
+   * 《포장 대상》 목록을 밀어낸다. 마스터의 자릿수가 정한다 — 계약도 `decimalScale` 을
+   * 「수량 입력란의 소수 자릿수 판정」으로 적어 두었다.
+   */
+  it('개수 단위에는 소수점 키를 두지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+
+    const pad = screen.getByRole('group', { name: t.scan.keypadLabel });
+    expect(
+      within(pad).queryByRole('button', { name: t.scan.keypadDecimal }),
+    ).not.toBeInTheDocument();
+  });
+
+  /* ⚠ 반대쪽도 지킨다 — 무게·부피 단위에 소수점이 없으면 값을 넣을 길이 사라진다. */
+  it('소수를 받는 단위에는 소수점 키를 연다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ uomAllowsDecimal: true });
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+
+    const pad = screen.getByRole('group', { name: t.scan.keypadLabel });
+    expect(
+      await within(pad).findByRole('button', { name: t.scan.keypadDecimal }),
+    ).toBeInTheDocument();
+  });
+
   it('수량이 비어 있으면 유형보다 수량을 먼저 말한다', async () => {
     const user = userEvent.setup();
 

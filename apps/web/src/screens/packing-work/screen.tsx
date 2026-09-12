@@ -562,6 +562,7 @@ export const PackingWorkScreen = () => {
             blockedReason={addBlockedReason}
             scanError={scanError}
             quantityError={quantityError}
+            allowsDecimal={labels.allowsDecimal(selectedLot?.uomId ?? null)}
             addedCount={addedCount}
           />
 
