@@ -34,7 +34,7 @@ const ENTRY_ROUTE = `/pop/running-change?workOrderId=${String(WORK_ORDER_ID)}`;
 /** 단말·공정·사번을 아는 상태. 셸이 채우는 값이라 시험에서는 직접 넣는다. */
 const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
-  processId: PROCESS_ID,
+  processes: [{ processId: PROCESS_ID }],
   workerNo: WORKER_NO,
 };
 
@@ -413,14 +413,17 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
   });
 
   it('단말을 모르면 사유를 말하고 막는다', async () => {
-    renderScreen({}, { terminalId: null, processId: null, workerNo: WORKER_NO });
+    renderScreen({}, { terminalId: null, processes: null, workerNo: WORKER_NO });
 
     expect(await screen.findByText(t.disabled.unidentified)).toBeInTheDocument();
     expect(screen.getByText(t.header.terminalUnknown)).toBeInTheDocument();
   });
 
   it('사번을 모르면 사유를 말하고 막는다', async () => {
-    renderScreen({}, { terminalId: TERMINAL_ID, processId: PROCESS_ID, workerNo: null });
+    renderScreen(
+      {},
+      { terminalId: TERMINAL_ID, processes: [{ processId: PROCESS_ID }], workerNo: null },
+    );
 
     expect(await screen.findByText(t.disabled.workerMissing)).toBeInTheDocument();
     expect(submitButton()).toBeDisabled();

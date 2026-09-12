@@ -34,6 +34,8 @@ export interface WorkerCardProps {
   pendingQueue: number;
   onShift: () => void;
   onGoToWork: () => void;
+  /** 단말 등록을 다시 한다 — 이 화면이 재등록의 유일한 입구다(F-4). */
+  onReRegister: () => void;
   /**
    * ⚠ **개발 빌드에서만 채워지는 자리다.** 주면 「작업 화면으로 이동」 버튼 «대신» 선다
    * (`patterns/pop-dev-screen-nav`). 배포 번들에서는 호출부의 조건이 상수로 접혀 이 값이
@@ -49,6 +51,7 @@ export const WorkerCard = ({
   pendingQueue,
   onShift,
   onGoToWork,
+  onReRegister,
   devScreenNav,
 }: WorkerCardProps) => (
   <section className="pane pop-pane" aria-label={t.heading}>
@@ -121,6 +124,15 @@ export const WorkerCard = ({
           {t.toWork}
         </Button>
       )}
+      {/*
+       * 재등록 — **설치 담당자용**이라 작업자 단추들과 성격이 다르다. 맨 아래에 약하게 둔다.
+       *
+       * ⛔ 사번이 없어도 눌릴 수 있어야 한다 — 잘못된 단말로 등록되면 사번부터 막히는데,
+       *    그 상태에서 되돌릴 길이 없으면 단말이 잠긴다.
+       */}
+      <Button type="button" variant="text" size={POP_TOUCH_SIZE} onClick={onReRegister}>
+        {messages.workerAssignment.registration.reRegister}
+      </Button>
     </div>
   </section>
 );

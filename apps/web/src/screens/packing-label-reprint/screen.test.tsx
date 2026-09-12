@@ -38,7 +38,7 @@ const ENTRY_ROUTE = `/pop/packing-label-reprint?handlingUnitId=${String(HANDLING
 /** 단말·공정을 아는 상태. 셸이 채우는 값이라 시험에서는 직접 넣는다. */
 const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
-  processId: PROCESS_ID,
+  processes: [{ processId: PROCESS_ID }],
   workerNo: WORKER_NO,
 };
 
@@ -282,7 +282,7 @@ describe('P-02-09 포장 라벨·인식표 재출력', () => {
   });
 
   it('단말을 모르면 권한을 통과로 처리하지 않는다', async () => {
-    renderScreen({}, ENTRY_ROUTE, { terminalId: null, processId: null, workerNo: WORKER_NO });
+    renderScreen({}, ENTRY_ROUTE, { terminalId: null, processes: null, workerNo: WORKER_NO });
 
     expect(await screen.findByText(t.gate.unidentified)).toBeInTheDocument();
   });

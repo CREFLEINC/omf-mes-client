@@ -18,25 +18,33 @@
  *    떨어지고, 화면은 「단말이 확인되지 않았습니다」를 잠깐 보였다가 스스로 고쳐지는
  *    것처럼 움직인다 — 진짜 미등록과 구분되지 않는다. 부르는 쪽이 순서를 지킨다.
  *
- * ⚠ **토큰을 여기에 «넣는» 길은 아직 없다.** 단말에 토큰을 주입하는 방법은 설계 미결이라
- *    (설계 사양서 §3.2.4 파급 목록) 이 파일은 **읽기만** 한다. 주입 방식이 정해지면 쓰기와
- *    등록 관문이 그때 붙는다 — 그때까지 현장 단말은 토큰이 없고, 그 상태에서 화면이 잠기는
- *    것은 「모르는 것을 통과로 처리하지 않는다」에 맞다.
+ * ⭐ **주입 경로가 정해졌다**(공유계약 F-4 · 요청 #536 반영 2026-09-10). 관리웹이 발급
+ *    대화상자에서 POP 에는 **토큰 필드·복사 버튼**으로 한 번 내주고, 설치 담당자가 그것을
+ *    P-CO-01 등록 패널에 **붙여넣는다.** QR·POP 카메라·수기 입력·짧은 등록코드 교환은
+ *    채택되지 않았다. 그래서 이 파일은 읽기에 더해 **쓰기**(`writeTerminalToken`)를 갖는다.
+ *
+ * ⛔ **검증하지 않은 토큰을 쓰지 않는다.** 쓰기는 「서버가 200 으로 확인해 준 바로 그 후보
+ *    토큰」에만 쓴다 — 등록 절차는 `patterns/pop-registration` 이 소유하고, 이 파일은
+ *    보관 통로일 뿐 판정하지 않는다.
  */
 
 /** 셸이 여는 통로 중 **이 자리가 쓰는 것만** 좁게 읽는다(#441 — 통로를 넓히지 않는다). */
 interface PopTokenBridge {
   deviceToken: {
     get: () => Promise<string | undefined>;
+    set: (value: string) => Promise<void>;
   };
 }
 
 const isBridge = (value: unknown): value is PopTokenBridge => {
   if (typeof value !== 'object' || value === null) return false;
 
-  const candidate = value as { deviceToken?: { get?: unknown } };
+  const candidate = value as { deviceToken?: { get?: unknown; set?: unknown } };
 
-  return typeof candidate.deviceToken?.get === 'function';
+  return (
+    typeof candidate.deviceToken?.get === 'function' &&
+    typeof candidate.deviceToken?.set === 'function'
+  );
 };
 
 const bridge = (): PopTokenBridge | null => {
@@ -75,13 +83,76 @@ export const readTerminalToken = async (): Promise<string | null> => {
   return cached;
 };
 
+/*
+ * 검증 중인 후보 토큰. **적용 전에만** 선다 — 등록 패널이 「이 토큰이 진짜인가」를 서버에
+ * 물을 때, 그 한 번의 조회는 «아직 보관하지 않은» 토큰으로 나가야 하기 때문이다.
+ */
+let candidate: string | null = null;
+
+/**
+ * 후보 토큰을 임시로 세운다. **등록 검증 조회를 감싸는 동안만** 쓴다.
+ *
+ * ⛔ **업무 요청이 도는 동안 켜지 않는다.** 이 값은 모든 요청에 실리므로, 켜 둔 채 다른
+ *    조회가 나가면 그것까지 후보 토큰으로 인증된다. 등록이 끝나기 전에는 업무 요청이
+ *    열리지 않으므로(F-4 「등록 전 차단」) 그 창 안에서만 안전하다.
+ */
+export const setCandidateTerminalToken = (value: string | null): void => {
+  candidate = value === '' ? null : value;
+};
+
 /**
  * 지금 요청에 실을 단말 토큰. **아직 읽기 전이거나 셸 밖이면 `null`** 이고, 그때 요청은
  * 인증 헤더 없이 나간다.
+ *
+ * 검증 중인 후보가 있으면 그것이 이긴다 — 등록 검증은 보관된 토큰이 아니라 **확인하려는
+ * 그 토큰**으로 물어야 답이 뜻을 갖는다.
  */
-export const currentTerminalToken = (): string | null => cached;
+export const currentTerminalToken = (): string | null => candidate ?? cached;
+
+/**
+ * 검증을 마친 후보 토큰을 셸의 자격증명 저장소에 보관하고, 이후 요청이 쓸 값으로 세운다.
+ *
+ * ⛔ **셸이 없으면 보관하지 않는다** — 브라우저로 여는 개발 확인에는 자격증명 저장소가
+ *    없다. 그 경우 `false` 를 돌려주고 부르는 쪽이 「이 단말에는 보관할 수 없다」를 말한다.
+ *    메모리에만 남겨 성공한 것처럼 보이면, 단말을 껐다 켠 뒤에야 등록이 풀린 것이 드러난다.
+ *
+ * ⚠ **보관이 성공해야 메모리 값도 바꾼다.** 순서를 뒤집으면 저장에 실패한 토큰으로 요청이
+ *    나가고, 다시 켰을 때만 원래 토큰으로 돌아가 같은 단말이 회차마다 다르게 움직인다.
+ */
+export const writeTerminalToken = async (
+  value: string,
+  options: { allowMemoryOnly?: boolean } = {},
+): Promise<boolean> => {
+  const pop = bridge();
+
+  if (pop === null) {
+    /*
+     * ⚠ **개발 서버에서 브라우저로 여는 경우만** 메모리에 둔다 — 셸이 없어 자격증명
+     *   저장소가 아예 없고, 막으면 등록 흐름 자체를 화면에서 확인할 수 없다. 새로고침하면
+     *   사라지는 것이 정직한 동작이다. ⛔ 배포 번들에서는 이 갈래가 서지 않는다.
+     */
+    if (options.allowMemoryOnly === true) {
+      cached = value;
+
+      return true;
+    }
+
+    return false;
+  }
+
+  try {
+    await pop.deviceToken.set(value);
+  } catch {
+    return false;
+  }
+
+  cached = value;
+
+  return true;
+};
 
 /** 시험 전용 — 모듈에 남은 값을 지운다. 시험 사이에 토큰이 새지 않게 한다. */
 export const forgetTerminalToken = (): void => {
   cached = null;
+  candidate = null;
 };

@@ -49,7 +49,7 @@ const OTHER_NEW_NO = 'HU-SAMPLE-0020';
 /** 단말·공정을 아는 상태. 셸이 채우는 값이라 시험에서는 직접 넣는다. */
 const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
-  processId: PROCESS_ID,
+  processes: [{ processId: PROCESS_ID }],
   workerNo: WORKER_NO,
 };
 

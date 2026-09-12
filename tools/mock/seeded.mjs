@@ -789,6 +789,32 @@ on('GET', '/mdm/code-values', (_p, query) => {
   );
 });
 
+/*
+ * 단말 단건 — POP 등록 검증이 부르는 자리(#999 · 공유계약 F-4).
+ *
+ * ⭐ **계약 예시 서버는 `terminalTypeCode` 를 `"string"` 으로 답한다.** 화면은 `POP` 일 때만
+ *    등록을 적용하므로(다른 유형은 관리자에게 맞는 등록 정보를 요청하도록 안내한다), 예시
+ *    값으로는 등록 흐름을 끝까지 볼 수 없다. 여기서 실제 유형 코드를 세운다.
+ *
+ * ⚠ **토큰을 검증하지 않는다.** 서명·세대·활성 판정은 서버 몫이고 목은 그 자리를 흉내 내지
+ *    않는다 — 401·403 갈래는 실서버에서 본다.
+ */
+on('GET', '/mdm/terminals/{terminalId}', (params) => ({
+  terminalId: Number(params.terminalId),
+  terminalCode: 'POP-A-01',
+  terminalTypeCode: 'POP',
+  plantId: 1001,
+  locationId: 1001,
+  equipmentId: 2001,
+  equipmentCode: 'PRS-01',
+  equipmentName: '프레스 1호기',
+  statusCode: 'ACTIVE',
+  isActive: true,
+  tokenIssuedAt: '2026-08-13T09:12:00+09:00',
+  tokenVersion: 3,
+  versionNo: 1,
+}));
+
 on('GET', '/mdm/terminals/{terminalId}/processes', () => ({
   items: [
     {

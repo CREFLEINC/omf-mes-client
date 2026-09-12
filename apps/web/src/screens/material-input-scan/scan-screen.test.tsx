@@ -36,7 +36,7 @@ const WORKER_NO = 'SAMPLE-W-0001';
 /** 셸이 단말·공정·사번을 채워 준 상태 — 게이팅이 판정할 수 있고 귀속도 갖춰졌다. */
 const GATED: PopIdentity = {
   terminalId: TERMINAL_ID,
-  processId: PROCESS_ID,
+  processes: [{ processId: PROCESS_ID }],
   workerNo: WORKER_NO,
 };
 
@@ -660,7 +660,8 @@ describe('MaterialInputScanScreen — 단말 게이팅', () => {
         {
           match: (request) => isGet(request, TERMINAL_PROCESSES_PATH),
           /* 다른 공정만 구성돼 있다 — 우리가 묻는 공정의 행은 없다. */
-          respond: () => jsonResponse({ items: [{ processId: 7999, canInputMaterial: true }] }),
+          respond: () =>
+            jsonResponse({ items: [{ processes: [{ processId: 7999 }], canInputMaterial: true }] }),
         },
       ],
       GATED,
@@ -906,7 +907,7 @@ describe('MaterialInputScanScreen — 게이팅 캐시', () => {
     const [processId, setProcessId] = useState(PROCESS_ID);
 
     return (
-      <PopIdentityProvider value={{ ...GATED, processId }}>
+      <PopIdentityProvider value={{ ...GATED, processes: [{ processId }] }}>
         <button
           type="button"
           onClick={() => {

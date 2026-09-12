@@ -119,7 +119,11 @@ const stubFetch: StubFetch = async (request) => {
 const renderScreen = () => {
   const rendered = renderWithProviders(
     <PopIdentityProvider
-      value={{ terminalId: TERMINAL_ID, processId: PROCESS_ID, workerNo: '100027' }}
+      value={{
+        terminalId: TERMINAL_ID,
+        processes: [{ processId: PROCESS_ID }],
+        workerNo: '100027',
+      }}
     >
       <ReworkResultRegisterScreen />
     </PopIdentityProvider>,
@@ -133,7 +137,11 @@ const renderScreen = () => {
 const renderWithFractionalUom = () => {
   const rendered = renderWithProviders(
     <PopIdentityProvider
-      value={{ terminalId: TERMINAL_ID, processId: PROCESS_ID, workerNo: '100027' }}
+      value={{
+        terminalId: TERMINAL_ID,
+        processes: [{ processId: PROCESS_ID }],
+        workerNo: '100027',
+      }}
     >
       <ReworkResultRegisterScreen />
     </PopIdentityProvider>,
@@ -161,7 +169,11 @@ const renderWithFractionalUom = () => {
 const renderWithoutDisposition = () => {
   const rendered = renderWithProviders(
     <PopIdentityProvider
-      value={{ terminalId: TERMINAL_ID, processId: PROCESS_ID, workerNo: '100027' }}
+      value={{
+        terminalId: TERMINAL_ID,
+        processes: [{ processId: PROCESS_ID }],
+        workerNo: '100027',
+      }}
     >
       <ReworkResultRegisterScreen />
     </PopIdentityProvider>,
@@ -455,9 +467,7 @@ describe('ReworkResultRegisterScreen — 스펙 §3 의 구획', () => {
     expect(screen.getByRole('button', { name: '7' })).toBeInTheDocument();
 
     /* ⛔ 열고 닫는 조작이 없다. */
-    expect(
-      screen.queryByRole('button', { name: t.quantities.keypadDone }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.quantities.keypadDone })).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: t.quantities.keypadCancel }),
     ).not.toBeInTheDocument();

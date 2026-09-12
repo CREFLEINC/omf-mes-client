@@ -10,6 +10,7 @@ import { ShippingPackingLabelScreen } from '../shipping-packing-label/screen';
 import { AutomaticLabels, type AutomaticLabelRun } from './automatic-labels';
 import { confirmLockReason } from './confirm-lock';
 import { ContentsTable, segmentLotNo } from './contents-table';
+import { soleProcessIdOf } from '../../patterns/pop-identity';
 import { usePackingIdentity } from './entry-context';
 import {
   HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE,
@@ -60,7 +61,7 @@ export const PackingResultScreen = () => {
   const shipmentLabelId = useId();
   const identity = usePackingIdentity();
   const isOnline = useOnline();
-  const gate = useTerminalGate(identity.terminalId, identity.processId);
+  const gate = useTerminalGate(identity.terminalId, soleProcessIdOf(identity.processes));
 
   /** ① 이 라벨이 정한 출하. 둘째 스캔의 질의 축이며 **첫 스캔 응답에서 그대로 온다**. */
   const [label, setLabel] = useState<ShipmentLotAllocation | null>(null);

@@ -1,5 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 
+import type { TerminalProcessRow } from './pop-registration';
+
 /**
  * POP 단말이 자기 자신과 지금 선 작업자를 아는 자리.
  *
@@ -25,17 +27,67 @@ import { createContext, useContext, type ReactNode } from 'react';
 export interface PopIdentity {
   /** 이 단말의 번호. 게이팅 조회가 경로로 요구한다. */
   terminalId: number | null;
-  /** 게이팅 판정의 대상 공정. 단말 하나가 여러 공정을 갖는다. */
-  processId: number | null;
+  /**
+   * 이 단말에 구성된 **공정 전부**. 셸이 받은 그대로 들고 있는다.
+   *
+   * ⛔ **한 값으로 좁히지 않는다**(공유계약 F-4 — 「셸은 전체 `items` 를 공급하며 전역 단일
+   *    공정을 만들지 않는다」). `terminal_process` 는 (단말, 공정) 행렬이라 여러 행이 정상이고,
+   *    **어느 행으로 판정하는가는 업무가 정한다** — 작업지시는 `WorkOrder.processId`, 라벨은
+   *    `requiredProcessIds`, 비가동은 설비의 소속 공정이다.
+   *
+   * ⛔ **첫 행을 고르거나 플래그를 OR 로 합산하지 않는다.** 그렇게 열린 버튼은 서버에서
+   *    403 으로 되돌아오고, 작업자에게는 고장으로 보인다.
+   *
+   * ⚠ **`null` 과 빈 배열은 다르다.** `null` 은 「아직 받지 못했다」이고, 빈 배열은 「이
+   *    단말에 구성된 공정이 없다」 — 창고 단말에서는 그것이 **정상**이다(F-1).
+   */
+  processes: readonly TerminalProcessRow[] | null;
   /** 귀속 사번. 쓰기의 `X-Worker-No` 헤더에 실린다. **인증이 아니라 귀속이다.** */
   workerNo: string | null;
 }
 
-/** 아무것도 모르는 상태. **이것이 기본값이다** — 채우는 곳이 아직 없다. */
+/** 아무것도 모르는 상태. **이것이 기본값이다** — 등록을 마치기 전까지 여기 머문다. */
 export const UNKNOWN_POP_IDENTITY: PopIdentity = {
   terminalId: null,
-  processId: null,
+  processes: null,
   workerNo: null,
+};
+
+/**
+ * **업무가 정한 공정**의 구성 행을 찾는다.
+ *
+ * ⛔ 못 찾으면 `null` 이고, 그것을 「허용」으로 읽지 않는다(F-6) — 구성되지 않은 공정은
+ *    열려 있지 않다. 부르는 쪽이 「판정할 수 없음」과 「막힘」을 갈라 말한다.
+ */
+/**
+ * **공정이 하나뿐이면** 그 공정. 여럿이면 `null` 이다.
+ *
+ * ⚠ **이것은 「첫 행 고르기」가 아니다.** 행이 하나면 고를 것이 없으므로 선택이 일어나지
+ *    않는다 — 설계가 금지한 것은 여럿 중 **임의로 하나를 집는 것**이다(F-4).
+ *
+ * ⛔ **임시 다리다.** 설계는 업무별 실제 공정의 출처를 정했지만(작업지시 `WorkOrder.processId`
+ *    · 라벨 `requiredProcessIds` · 비가동은 설비 상세), **고정한 계약에 그 필드들이 아직
+ *    없다** — 그 필드는 2026-09-10·11 설계 커밋에 들어왔고, 계약 생성물을 그 시점으로
+ *    올리면 이 저장소의 «모바일» 이 타입 검사에서 깨진다(T1 소관이라 우리가 고칠 수 없다).
+ *    그래서 공정이 여럿인 단말에서는 판정을 **보류**하고, 계약이 올라오는 날 이 함수를
+ *    부르는 자리들이 각자의 실제 공정으로 갈아탄다. 그때 이 함수는 사라진다.
+ */
+export const soleProcessIdOf = (processes: readonly TerminalProcessRow[] | null): number | null => {
+  if (processes === null || processes.length !== 1) return null;
+
+  return processes[0]?.processId ?? null;
+};
+
+/** 지금 단말의 공정이 하나뿐일 때 그 번호. 화면이 게이팅 조회에 쓴다. */
+export const usePopProcessId = (): number | null => soleProcessIdOf(usePopIdentity().processes);
+
+export const processRowOf = (
+  processes: readonly TerminalProcessRow[] | null,
+  processId: number | null,
+): TerminalProcessRow | null => {
+  if (processes === null || processId === null) return null;
+
+  return processes.find((row) => row.processId === processId) ?? null;
 };
 
 const PopIdentityContext = createContext<PopIdentity>(UNKNOWN_POP_IDENTITY);
