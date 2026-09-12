@@ -724,6 +724,56 @@ describe('DowntimeRegisterScreen — 오프라인', () => {
 });
 
 describe('DowntimeRegisterScreen — 합계만 못 받았을 때', () => {
+  /**
+   * ⭐ **실패했다고 구획을 걷지 않는다**(#1094 · 88단계 2회차 실기).
+   *
+   * 종전에는 화면이 이 패널을 통째로 배너로 갈아 끼워 **제목과 집계 자리가 함께 사라졌다** —
+   * 화면의 구조가 서버 상태에 따라 바뀌어, 작업자는 「오늘 이 설비」 칸이 어디 갔는지부터
+   * 찾는다. 그 한 줄을 되돌려도 타입과 다른 시험은 전부 초록이다.
+   */
+  it('오늘 기록 조회가 실패해도 구획은 서 있고 그 자리에서 다시 시도한다', async () => {
+    renderScreen([
+      /* ⚠ 오늘 조회«만» 넘어뜨린다 — 진행 중까지 함께 죽이면 위 배너가 같이 서서 무엇을 재는지 흐려진다. */
+      {
+        match: (request) =>
+          isGet(request, DOWNTIMES_PATH) &&
+          new URL(request.url).searchParams.get('openOnly') !== 'true',
+        respond: () => new Response('', { status: 500 }),
+      },
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+    ]);
+
+    /* 제목이 남는다 — 구획이 통째로 사라지면 이 줄에서 실패한다. */
+    expect(await screen.findByText(t.today.title)).toBeInTheDocument();
+    expect(await screen.findByText(t.today.loadFailed)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.today.retry })).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **서버 원문을 화면에 올리지 않는다**(#1094). 목의 「씨앗에 없는 자원입니다」가 사용자
+   * 화면에 그대로 떴다 — 400 밖의 상태 코드에 실려 오는 문장은 작업자가 할 수 있는 일이 없다.
+   */
+  it('⛔ 500 이 실어 보낸 개발자 문장을 화면에 내지 않는다', async () => {
+    renderScreen([
+      {
+        match: (request) => isGet(request, DOWNTIMES_PATH),
+        respond: () =>
+          jsonResponse({ code: 'NOT_FOUND', message: '씨앗에 없는 자원입니다.' }, { status: 500 }),
+      },
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+    ]);
+
+    await screen.findByText(t.today.title);
+
+    expect(screen.queryByText('씨앗에 없는 자원입니다.')).not.toBeInTheDocument();
+  });
+
   it('보이는 줄은 서버 목록이므로 **「내 단말 입력분만」이라 부르지 않는다**', async () => {
     renderScreen([
       downtimeListRoute({ today: [downtime()] }),

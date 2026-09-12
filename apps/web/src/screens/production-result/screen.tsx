@@ -126,8 +126,6 @@ export const ProductionFlowScreen = () => {
 
   const [actualQty, setActualQty] = useState('');
   const [outputPhase, setOutputPhase] = useState<OutputPhase>('idle');
-  /** 사번 없이 눌렀을 때 하는 말(#1094). 상시로 세우지 않고 누른 순간에만 뜬다. */
-  const [workerNotice, setWorkerNotice] = useState<string | null>(null);
   const [scanValue, setScanValue] = useState('');
   const [scanMismatch, setScanMismatch] = useState(false);
   const [isCompletedOpen, setIsCompletedOpen] = useState(false);
@@ -430,17 +428,7 @@ export const ProductionFlowScreen = () => {
     outputPhase !== 'idle' ||
     hasAppliedResult ||
     (lot !== null && outbox.isPendingForLot(lot.lotId));
-  /**
-   * 사번만 빼고 다 갖췄는가(#1094).
-   *
-   * ⭐ **사번은 «작업자가 지금 고칠 수 있는» 유일한 조건이다.** 나머지(권한·프린터·대기 검사)는
-   * 이 화면에서 손쓸 수 없어 잠그는 것이 맞지만, 사번은 진입 화면에서 다시 지정하면 풀린다 —
-   * 그래서 잠그는 대신 **누를 수 있게 두고 무엇을 하면 되는지 말한다**(사용자 확정 2026-09-12).
-   *
-   * ⛔ **꺼진 버튼으로 말하지 않는다.** 88단계 2회차에서 꺼진 버튼만 보고 「수량 때문」이라
-   *    잘못 읽었다 — 실제로는 사번 때문이었다. 현장에서도 같은 오해가 난다.
-   */
-  const canOutputExceptWorker =
+  const canOutput =
     lot !== null &&
     parsedQty !== null &&
     parsedQty > 0 &&
@@ -457,8 +445,6 @@ export const ProductionFlowScreen = () => {
     !outbox.isPendingForLot(lot.lotId) &&
     currentIssue === null &&
     !hasAppliedResult;
-
-  const canOutput = canOutputExceptWorker && entry.workerNo !== null;
 
   /**
    * 잔여수량을 「모른다」고 할 때 **왜 모르는지**(#1094).
@@ -477,15 +463,8 @@ export const ProductionFlowScreen = () => {
           : t.quantity.remainingUnknown;
 
   const queueOutput = (): void => {
-    /* ⭐ 사번이 비었으면 «무엇을 하면 되는지» 말한다 — 진입 화면에서 다시 지정하면 풀린다. */
-    if (entry.workerNo === null) {
-      setWorkerNotice(t.entry.missingWorker);
-
-      return;
-    }
-
-    setWorkerNotice(null);
     if (!canOutput || lot === null || parsedQty === null || entry.workOrderId === null) return;
+    if (entry.workerNo === null) return;
 
     setOutputPhase('queued');
     outbox.enqueue(
@@ -995,7 +974,7 @@ export const ProductionFlowScreen = () => {
               <Button onClick={retryLotPrint}>{t.flow.output.retryPrint}</Button>
             ) : (
               <Button
-                disabled={!canOutputExceptWorker}
+                disabled={!canOutput}
                 /*
                  * ⛔ **초과라고 단추를 끄지도, 되묻지도 않는다** — 초과 생산은 허용이고
                  *    (✓확정 QA #27), 화면이 하는 일은 **말하는 것**이다(사용자 결정
@@ -1015,12 +994,6 @@ export const ProductionFlowScreen = () => {
              *
              * 두 소식이 같은 자리에 선다: 실적 저장이 먼저이고 발행·인쇄가 그다음이다.
              */}
-            {workerNotice !== null && (
-              <div className="banner-slot">
-                <AlertBanner variant="warning" title={workerNotice} />
-              </div>
-            )}
-
             {outbox.rejection !== null && (
               <div className="banner-slot">
                 <AlertBanner variant="error" title={t.save.failTitle} />

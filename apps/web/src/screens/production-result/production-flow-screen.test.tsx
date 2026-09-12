@@ -191,15 +191,25 @@ const routes = (writes: Request[]): StubRoute[] => [
   },
 ];
 
-const renderScreen = (writes: Request[], extraRoutes: StubRoute[] = []) =>
+const renderScreen = (
+  writes: Request[],
+  extraRoutes: StubRoute[] = [],
+  options: { workerNo?: string | null; route?: string } = {},
+) =>
   renderWithProviders(
     <PopIdentityProvider
-      value={{ terminalId: 10, processes: [{ processId: 20 }], workerNo: '100029' }}
+      value={{
+        terminalId: 10,
+        processes: [{ processId: 20 }],
+        workerNo: options.workerNo === undefined ? '100029' : options.workerNo,
+      }}
     >
       <ProductionFlowScreen />
     </PopIdentityProvider>,
     {
-      route: `/pop/production-result?workOrderId=${String(WORK_ORDER_ID)}&workerNo=100029`,
+      route:
+        options.route ??
+        `/pop/production-result?workOrderId=${String(WORK_ORDER_ID)}&workerNo=100029`,
       fetch: createStubFetch([...extraRoutes, ...routes(writes)]),
     },
   );
@@ -944,5 +954,16 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
 
     await user.click(output);
     await waitFor(() => expect(savedCount(writes)).toBe(1));
+  });
+
+  /**
+   * ⛔ **「모른다」의 이유 셋을 한 문장으로 덮지 않는다**(#1094). 작업지시가 없는 것 · 아직
+   * 안 물어본 것 · 물어봤는데 실패한 것은 작업자가 할 일이 다르다.
+   */
+  it('작업지시를 못 받았으면 잔여수량이 왜 없는지 그 사유로 말한다', async () => {
+    renderScreen([], [], { route: '/pop/production-result' });
+
+    expect(await screen.findByText(t.quantity.remainingNoWorkOrder)).toBeInTheDocument();
+    expect(screen.queryByText(t.quantity.remainingUnknown)).not.toBeInTheDocument();
   });
 });
