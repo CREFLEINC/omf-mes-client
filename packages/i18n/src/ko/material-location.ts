@@ -48,7 +48,8 @@ export const materialLocation = {
   loading: '조회 중입니다',
   notFound: {
     title: '등록되지 않은 LOT입니다',
-    description: '읽은 번호를 확인하고 다시 스캔해 주세요.',
+    /* 읽은 값을 보인다. 없으면 잘못 읽은 것인지 등록이 안 된 것인지 가릴 수 없다. */
+    description: (lotNo: string) => `읽은 번호 ${lotNo} — 확인하고 다시 스캔해 주세요.`,
   },
   loadFailed: {
     title: '조회하지 못했습니다',

@@ -17,7 +17,7 @@ export const recycleEntry = {
     searching: '품목을 찾는 중입니다',
     loadFailed: '품목을 확인할 수 없습니다',
     /* 이 화면은 품목을 만들지 않는다. 없으면 어디서 만드는지 알린다. */
-    notRecycled: '등록되지 않은 재생재 품목입니다',
+    notRecycled: (itemCode: string) => `등록되지 않은 재생재 품목입니다 — 읽은 값 ${itemCode}`,
     notRecycledWhy: '관리웹에서 재생재 품목을 먼저 등록해야 합니다.',
     chosen: (code: string, name: string) => `${code} ${name}`,
     /* 단위는 품목의 기본 단위를 서버가 쓴다. 화면은 읽기만 한다. */
