@@ -241,6 +241,87 @@ describe('POP 단말 등록 — 상태 전이', () => {
   });
 
   /**
+   * ⛔⛔ **사람이 넣은 값이 틀렸다고 보관 토큰을 지우지 않는다**(#1137 · 독립 검증 지적).
+   *
+   * 등록을 마친 단말에서 담당자가 오타 토큰을 한 번 붙여넣었다고 멀쩡한 보관 토큰이 사라지면,
+   * 다음 기동에서 단말이 미등록으로 돌아간다 — 고친 것보다 나쁜 결과다.
+   */
+  it('사람이 넣은 값이 거절돼도 보관 토큰은 그대로 둔다', async () => {
+    const written: string[] = [];
+    (globalThis as { pop?: unknown }).pop = {
+      deviceToken: {
+        get: async () => TOKEN_A,
+        set: async (value: string) => {
+          written.push(value);
+        },
+      },
+      outbox: { size: async () => 0 },
+    };
+
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_B);
+    });
+
+    expect(registration.current.failure).toBe('rejected');
+    expect(written).toEqual([]);
+  });
+
+  /**
+   * ⛔⛔ **「지금은 못 받는다」는 판정이 아니다**(#1137 ③ · 독립 검증 지적). 5xx·429·408 은
+   *    서버가 토큰을 보고 답한 것이 아니라 서버 자신의 사정이다 — 그 사이에 보관 토큰을
+   *    지우면 서버가 회복돼도 단말은 미등록으로 남아 설치 담당자를 다시 불러야 한다.
+   */
+  it('서버가 잠깐 앓는 동안에는 보관 토큰을 버리지 않는다', async () => {
+    const written: string[] = [];
+    (globalThis as { pop?: unknown }).pop = {
+      deviceToken: {
+        get: async () => TOKEN_A,
+        set: async (value: string) => {
+          written.push(value);
+        },
+      },
+      outbox: { size: async () => 0 },
+    };
+
+    const box = { current: null as PopRegistration | null };
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+      </PopRegistrationProvider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+            respond: () =>
+              jsonResponse(
+                { errors: [{ scope: 'screen', code: 'UNAVAILABLE', message: '점검 중' }] },
+                { status: 503 },
+              ),
+          },
+        ]),
+        session: null,
+      },
+    );
+
+    const registration = box as { current: PopRegistration };
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_A, 'stored');
+    });
+
+    expect(registration.current.failure).toBe('unreachable');
+    expect(written).toEqual([]);
+  });
+
+  /**
    * ⛔⛔ **닿지 못한 것은 버리지 않는다.** 잠깐 망이 끊긴 사이에 멀쩡한 토큰을 지우면 설치
    *    담당자를 현장으로 다시 불러야 한다 — 판정과 못 물어본 것은 다르다.
    */

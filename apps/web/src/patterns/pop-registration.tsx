@@ -1,4 +1,4 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import { isTransientStatus, type ApiClient } from '@omf-mes/api-client';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 import { useApiClient } from './api-context';
@@ -224,6 +224,17 @@ const failureOf = (error: unknown): RegistrationFailure => {
 
   if (status === 403) return 'foreign';
 
+  /*
+   * ⛔ **「지금은 못 받는다」를 판정으로 읽지 않는다**(#1137 · 독립 검증 지적). 5xx·429·408 은
+   *    서버가 토큰을 «보고» 답한 것이 아니다 — 그런데 이번에 판정 갈래에 삭제가 붙어, 그대로
+   *    두면 서버가 잠깐 앓는 사이 멀쩡한 보관 토큰이 지워지고 설치 담당자를 현장으로 다시
+   *    불러야 한다.
+   *
+   * ⚠ **판정은 여기서 다시 짓지 않는다.** 같은 구분을 오프라인 큐도 쓰므로 기준이 두 곳에
+   *   생기면 한쪽만 고쳐졌을 때 조용히 어긋난다(`api-client` 의 `isTransientStatus` 주석).
+   */
+  if (status !== undefined && isTransientStatus(status)) return 'unreachable';
+
   /* 응답 자체가 없었다 — 토큰은 아직 판정된 적이 없다. */
   if (toApiError(error).kind === 'network') return 'unreachable';
 
@@ -233,7 +244,8 @@ const failureOf = (error: unknown): RegistrationFailure => {
 /**
  * 보관 토큰을 버릴 «판정» — 서버가 그 토큰을 보고 답했을 때만이다(#1137 ②).
  *
- * ⛔ `unreachable`·`offline` 은 들어오지 않는다 — 판정이 아니라 **못 물어본 것**이다.
+ * ⛔ `unreachable`·`offline` 은 들어오지 않는다 — 판정이 아니라 **못 물어본 것**이다. 서버가
+ *    「지금은 못 받는다」고 답한 갈래(5xx·429·408)도 `failureOf` 가 그쪽으로 접는다.
  * ⛔ `no-store`·`queue-blocked` 도 아니다 — 토큰이 아니라 적용 단계의 사정이다.
  */
 const DISCARDABLE_FAILURES: ReadonlySet<RegistrationFailure> = new Set([
