@@ -26,11 +26,24 @@ describe('POP 라벨 모드 — 돌아갈 길을 숨기지 않는다', () => {
    * ⛔ 액션 줄을 숨기는 규칙이 아예 없어야 한다. 「본문만 숨긴다」로 좁혀 두었고, 여기에
    * `.packing-actions` 가 다시 들어오면 그 순간 탈출 경로가 사라진다.
    */
+  /*
+   * ⛔ **`display: none` 한 가지만 막지 않는다.** `visibility: hidden` · `height: 0` 으로도
+   * 같은 일이 일어나고, 선택자를 따로 떼어 써도 마찬가지다(리뷰 실측).
+   */
   it('라벨 모드가 액션 줄을 숨기지 않는다', () => {
-    const hidesActions =
-      /\.packing-shell--labels[^{]*\.packing-actions[^{]*\{[^}]*display:\s*none/u;
+    const bodies = [...appCss.matchAll(/([^{}]*)\{([^}]*)\}/gu)]
+      .filter(
+        (match) =>
+          (match[1] ?? '').includes('.packing-shell--labels') &&
+          (match[1] ?? '').includes('.packing-actions'),
+      )
+      .map((match) => match[2] ?? '');
 
-    expect(appCss).not.toMatch(hidesActions);
+    for (const body of bodies) {
+      expect(body).not.toMatch(/display:\s*none/u);
+      expect(body).not.toMatch(/visibility:\s*hidden/u);
+      expect(body).not.toMatch(/(?:max-)?height:\s*0/u);
+    }
   });
 
   /* 본문을 숨기는 것은 맞다 — 라벨 모드에서 그릴 것이 아니다. */
@@ -44,10 +57,25 @@ describe('POP 라벨 모드 — 돌아갈 길을 숨기지 않는다', () => {
    * ⛔ **행 수를 줄이지 않는다.** 헤더·본문·액션바 셋을 유지해야 액션 줄이 설 자리가 있다
    * (E-4 — 공통 헤더와 주 액션을 화면 «안»에 유지한다). 두 행으로 줄이면 줄이 사라진다.
    */
+  /*
+   * ⛔ **리터럴 한 모양을 겨누지 않는다.** 한때 `auto minmax(0, 1fr);` 만 막았는데,
+   * `auto 1fr` 로 적거나 마지막 선언이라 세미콜론이 없으면 **그대로 통과했다**(리뷰 실측).
+   * 「행이 몇 개인가」를 센다.
+   */
   it('라벨 모드가 셸의 행 수를 줄이지 않는다', () => {
-    expect(appCss).not.toMatch(
-      /\.packing-shell--labels\s*\{[^}]*grid-template-rows:\s*auto\s+minmax\(0,\s*1fr\)\s*;/u,
-    );
+    const rule = /\.packing-shell--labels\s*\{([^}]*)\}/u.exec(appCss)?.[1];
+    const rows = rule === undefined ? undefined : /grid-template-rows:([^;}]*)/u.exec(rule)?.[1];
+
+    /* 규칙이 없거나 행을 다시 적지 않으면 기본 셋(`.packing-shell`)을 그대로 쓴다 — 통과다. */
+    if (rows === undefined) return;
+
+    /* `minmax(0, 1fr)` 안의 쉼표를 칸 구분으로 세지 않는다. */
+    const tracks = rows
+      .replace(/\([^)]*\)/gu, 'x')
+      .trim()
+      .split(/\s+/u);
+
+    expect(tracks).toHaveLength(3);
   });
 });
 
@@ -70,6 +98,11 @@ describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () =>
 
   it('포장 라벨 재출력의 내용물 표가 폭을 못박는다', () => {
     expect(popCss).toMatch(fixedLayout('pop-reprint-contents'));
+  });
+
+  /* 같은 사유·같은 처리 — 셋째 표를 빠뜨렸던 자리다(리뷰 지적). */
+  it('재구성 라벨 발행의 내용물 표가 폭을 못박는다', () => {
+    expect(popCss).toMatch(fixedLayout('pop-repack-contents'));
   });
 
   /*
@@ -99,7 +132,14 @@ describe('POP 목록 — 남는 높이를 받는 표에 바닥이 있다', () =>
     const rule = /\.pop-ui\s+\.pop-slabel-table\s*\{([^}]*)\}/u.exec(popCss)?.[1] ?? '';
 
     expect(rule).toMatch(/flex:\s*1\s+1\s+auto/u);
-    /* ⛔ `min-height: 0` 이면 형제가 높이를 다 쓸 때 사라진다. 실제 높이를 요구한다. */
-    expect(rule).toMatch(/min-height:\s*(?!0\b)\d+px/u);
+    /*
+     * ⛔ **값을 «수»로 견준다.** 한때 `(?!0\b)\d+px` 로 적었는데 `0px` 는 `0` 과 `p` 사이에
+     * 단어 경계가 없어 부정 선읽기가 성립하지 않는다 — **`min-height: 0px` 가 그대로
+     * 합격했다**(리뷰 실측). 정규식으로 「0 이 아님」을 쓰려다 아무것도 지키지 못했다.
+     */
+    const floor = Number(/min-height:\s*(\d+)px/u.exec(rule)?.[1] ?? '0');
+
+    /* 세 줄이 보일 만큼 — 한 줄만 보이면 고를 수가 없다. */
+    expect(floor).toBeGreaterThanOrEqual(96);
   });
 });

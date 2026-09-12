@@ -125,7 +125,7 @@ describe('POP 사번 키패드 높이', () => {
 describe('POP 키패드 — 격자에 쌓기 여백이 겹치지 않는다', () => {
   it('포장 작업 키패드가 쌓기 여백을 되돌린다', () => {
     expect(rules).toMatch(
-      /\.pop-ui\s+\.pack-work-scan\s+\.pack-work-keypad\s*>\s*\*\s*\+\s*\*\s*\{[^}]*margin-block-start:\s*0/u,
+      /\.pop-ui\s+\.pack-work-scan\s+\.pack-work-keypad\s*>\s*\*\s*\+\s*\*\s*\{[^}]*margin-block-start:\s*0\s*[;}]/u,
     );
   });
 });

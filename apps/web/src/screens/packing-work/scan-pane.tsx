@@ -162,7 +162,6 @@ export const ScanPane = ({
           size="xl"
           label={t.scan.quantityLabel}
           value={quantity}
-          inputMode="decimal"
           autoComplete="off"
           /*
            * ⛔ **칸을 직접 치게 두지 않는다**(전례 `P-04-03` 재작업 실적). 포커스가 가면 단말의
@@ -170,9 +169,6 @@ export const ScanPane = ({
            *    값은 아래 키패드가 넣는다.
            */
           readOnly
-          onChange={(event) => {
-            onQuantityChange(event.target.value);
-          }}
         />
         <Button
           type="button"

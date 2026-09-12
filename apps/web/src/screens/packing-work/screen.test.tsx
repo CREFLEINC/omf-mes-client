@@ -56,6 +56,10 @@ interface Options {
    * 기본은 받지 않는다 — 개수로 세는 단위(EA·BOX)가 흔하다.
    */
   uomAllowsDecimal?: boolean;
+  /** 단위 조회 요청을 담아 둔다 — 상한을 주었는지 보는 자리다. */
+  uomRequests?: Request[];
+  /** 단위 조회가 실패한다. */
+  uomsFail?: boolean;
   /** 포장 대상 조회가 실패한다 */
   lotsFail?: boolean;
   /** 포장 유형 조회가 실패한다 */
@@ -120,20 +124,28 @@ const routes = (options: Options): StubRoute[] => [
     },
   },
   {
-    match: (request) => pathOf(request) === '/mdm/uoms',
+    match: (request) => {
+      if (pathOf(request) !== '/mdm/uoms') return false;
+
+      options.uomRequests?.push(request.clone() as Request);
+
+      return true;
+    },
     respond: () =>
-      jsonResponse({
-        items: [
-          {
-            uomId: UOM_ID,
-            uomCode: UOM_CODE,
-            uomName: '개',
-            isActive: true,
-            decimalScale: options.uomAllowsDecimal === true ? 3 : 0,
-          },
-        ],
-        page: { page: 1, size: 20, total: 1 },
-      }),
+      options.uomsFail === true
+        ? jsonResponse({ message: '단위를 부를 수 없습니다' }, { status: 500 })
+        : jsonResponse({
+            items: [
+              {
+                uomId: UOM_ID,
+                uomCode: UOM_CODE,
+                uomName: '개',
+                isActive: true,
+                decimalScale: options.uomAllowsDecimal === true ? 3 : 0,
+              },
+            ],
+            page: { page: 1, size: 20, total: 1 },
+          }),
   },
   {
     match: (request) => request.method === 'GET' && pathOf(request) === '/inventory/handling-units',
@@ -403,6 +415,59 @@ describe('P-02-08 포장 작업', () => {
     expect(
       await within(pad).findByRole('button', { name: t.scan.keypadDecimal }),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **상한을 주지 않으면 첫 쪽만 받는다.** 잘린 단위는 자릿수를 못 읽어 소수점 키가
+   * 사라지는데, 이 화면의 수량 칸은 읽기 전용이라 **값을 넣을 길이 아예 없어진다**.
+   * 같은 함정이 `P-04-03` 에 주석으로 적혀 있었는데 이 화면이 그대로 밟았다(리뷰 지적).
+   */
+  it('단위 조회에 상한을 준다', async () => {
+    const uomRequests: Request[] = [];
+    renderScreen({ uomRequests });
+
+    await screen.findByText(LOT_A_NO);
+    await waitFor(() => expect(uomRequests.length).toBeGreaterThan(0));
+
+    const size = new URL(uomRequests[0]?.url ?? 'http://x/').searchParams.get('size');
+
+    expect(Number(size)).toBeGreaterThanOrEqual(100);
+  });
+
+  /*
+   * ⚠ **조회가 실패하면 소수점 키를 «연다».** 「모르면 받지 않는다」는 칸을 직접 칠 수 있는
+   * 화면의 규칙이고, 여기서는 키패드가 유일한 입력 수단이라 닫아 두면 조회 실패가 곧 작업
+   * 불가가 된다. 열어 두면 정수 단위에 소수를 넣었을 때 서버가 거부하는 데 그친다.
+   */
+  it('단위 조회가 실패하면 소수점 키를 막지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ uomsFail: true });
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+
+    const pad = screen.getByRole('group', { name: t.scan.keypadLabel });
+
+    expect(
+      await within(pad).findByRole('button', { name: t.scan.keypadDecimal }),
+    ).toBeInTheDocument();
+  });
+
+  /* ⛔ 단위가 바뀌면 값도 함께 비운다 — 소수점 키만 사라지고 값이 남으면 그대로 담긴다. */
+  it('다른 LOT 을 고르면 넣던 수량이 남지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+    await typeQuantity(user, '15');
+    expect(screen.getByLabelText(t.scan.quantityLabel)).toHaveValue('15');
+
+    await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
+
+    expect(screen.getByLabelText(t.scan.quantityLabel)).toHaveValue('');
   });
 
   it('수량이 비어 있으면 유형보다 수량을 먼저 말한다', async () => {

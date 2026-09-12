@@ -1221,6 +1221,7 @@
  * 체계 전용이고 「다른 번호 체계에 그대로 쓰지 말라」는 단서를 달았다). 지어내지 않고
  * 접어서 **아무것도 감추지 않는다** — 전례 `.pop-reprint-hu-value`.
  */
+.pop-ui .pop-giqr-lines th,
 .pop-ui .pop-giqr-lines td {
   overflow-wrap: anywhere;
 }
@@ -1237,7 +1238,22 @@
   width: 100%;
 }
 
+.pop-ui .pop-reprint-contents th,
 .pop-ui .pop-reprint-contents td {
+  overflow-wrap: anywhere;
+}
+
+/*
+ * 재구성 라벨 발행의 내용물 표 — **앞의 둘과 같은 사유·같은 처리**(#1092 리뷰 지적).
+ * 열 폭을 비율로 나눠 두었는데 기본 배치에서는 지켜지지 않아 긴 LOT 이 남의 폭을 가져간다.
+ */
+.pop-ui .pop-repack-contents {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.pop-ui .pop-repack-contents th,
+.pop-ui .pop-repack-contents td {
   overflow-wrap: anywhere;
 }
 
@@ -1248,19 +1264,13 @@
  * 여기에 숫자 키패드(D-4 — 없으면 현장에서 수량을 넣을 방법이 아예 없다)가 더해지면 담을
  * 높이가 모자란다.
  *
- * ⭐ **구획 «안»에서 스크롤한다**(E-4 규칙 1 — 「스크롤 구획을 하나 지정한다. 지정하지 않으면
- * 구현이 화면 스크롤을 택한다」). 단말에는 주소창도 스크롤바도 없어 화면 전체가 스크롤하면
- * 넘친 것이 «없는 것»이 된다(이 파일 머리).
+ * ⭐ **구획 «안»에서 스크롤한다**(E-4 규칙 1). 그 스크롤은 `.pop-section` 이 이미 주고
+ * 있으므로 여기서 다시 적지 않는다 — 같은 값을 두 곳에 적으면 한쪽만 고쳐진다.
  *
  * ⛔ **목록에 `flex: 1 1 auto` 를 주지 않는다.** 위쪽 줄들이 이미 높이를 다 쓰고 있어, 남는
  * 높이를 받게 하면 **0 으로 깔린다** — 실측에서 목록 높이가 0 이 되고 표제가 y=847 로 화면
  * 밖에 섰다. 목록은 자기 높이를 지키고 구획이 스크롤한다.
  */
-.pop-ui .pack-work-scan {
-  min-height: 0;
-  overflow-y: auto;
-}
-
 /*
  * 키패드 폭 — **수량 칸에 맞춘다.** 구획 전폭(399)으로 늘리면 키 하나가 130 을 넘어 손가락이
  * 키 사이를 멀리 옮겨야 하고, 열 폭이 제각각인 키패드가 화면마다 달라 보인다.
@@ -1408,9 +1418,16 @@
   min-height: 200px;
 }
 
-/* 서버가 매긴 신규 번호와 내용물 — 값 한 줄이 사라지지 않을 바닥. */
+/*
+ * 서버가 매긴 신규 번호와 내용물 — 값 한 줄이 사라지지 않을 바닥.
+ *
+ * ⛔ **`flex-shrink: 0` 을 주지 않는다.** 이 카드 안에는 줄 수 제한이 없는 내용물 표가
+ * 들어간다 — 줄지 못하게 막으면 혼적 포장에서 카드가 제 내용만큼 커지고, ①③을 하한까지
+ * 누른 뒤 **본문을 넘겨 발행 구획과 액션바를 화면 밖으로 민다.** 이 파일이 고치려던 바로
+ * 그 실패 유형이다(리뷰 지적). 줄어들되 자기 안에서 굴게 둔다(`.pop-section` 이 이미 준다).
+ */
 .pop-ui .pop-repack-panes > .pop-repack-numbering {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   min-height: 132px;
 }
 
@@ -1421,7 +1438,6 @@
 .pop-ui .pop-repack-panes > .pop-repack-issue {
   flex: 0 1 auto;
   min-height: 160px;
-  overflow-y: auto;
 }
 
 .pop-ui .pop-repack-pending-table {

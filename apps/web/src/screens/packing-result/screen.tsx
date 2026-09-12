@@ -663,7 +663,11 @@ export const PackingResultScreen = () => {
           type="button"
           variant="outlined"
           size="md"
-          disabled={shipmentId === null}
+          /*
+           * ⛔ **라벨 모드에서는 잠그지 않는다.** 들어간 뒤 출하 문맥이 사라지면 이 단추가
+           *    잠겨 **다시 갇힌다** — 표시를 되살려 놓고 잠금을 남겨 두면 고친 것이 아니다.
+           */
+          disabled={!isLabelMode && shipmentId === null}
           onClick={() => {
             setLabelMode((current) => !current);
           }}

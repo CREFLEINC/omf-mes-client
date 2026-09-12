@@ -190,6 +190,13 @@ export const PackingWorkScreen = () => {
   /** 목록에서 골랐거나 스캔으로 잡힌 대상. 담기는 이 값이 있어야 열린다. */
   const selectLot = (lot: Lot): void => {
     setSelectedLot(lot);
+    /*
+     * ⛔ **대상이 바뀌면 수량을 비운다.** 단위가 소수를 받는 LOT 에서 `1.5` 를 넣고 개수
+     *    단위 LOT 으로 옮기면, 소수점 «키»만 사라지고 **값은 그대로 남아** 그대로 담긴다 —
+     *    소수점 키를 단위로 가른 뜻이 그 자리에서 새어 나간다(리뷰 지적).
+     */
+    setQuantity('');
+    setQuantityError(null);
     setScanError(null);
   };
 
