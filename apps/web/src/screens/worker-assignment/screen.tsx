@@ -1,4 +1,4 @@
-import { Chip } from '@crefle/web-ui';
+import { Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -247,6 +247,33 @@ export const WorkerAssignmentScreen = () => {
         <Chip variant="status" size="md" status={isOnline ? 'success' : 'warning'}>
           {isOnline ? t.header.online : t.header.offline}
         </Chip>
+
+        {/*
+         * 재등록 — **설치 담당자용**이라 작업자 단추들과 성격이 다르다(사용자 지시
+         * 2026-09-12). 구획 바닥의 [교대]·[작업 시작] 과 한 줄에 세워 두었더니 작업자가
+         * 늘 쓰는 두 단추 옆에 하루 한 번 쓸까 말까 한 것이 같은 크기로 붙어 있었다 —
+         * [사용자 전환]·[화면 이동] 과 같은 **머리줄의 보조 조작**으로 옮긴다.
+         *
+         * ⭐ **재등록으로 들어가는 유일한 길**(P-CO-01 §5-1 · 공유계약 F-4). 등록을 마치면
+         *    게이트가 업무 화면을 내주므로, 이 단추가 없으면 잘못된 단말로 등록된 현장
+         *    단말을 **자격증명 저장소를 사람이 지우지 않고는** 되돌릴 수 없다.
+         *
+         * ⛔ 큐가 남은 채 다른 단말로 바꾸는 것은 적용 단계가 막는다 — 여기서 막지 않는다.
+         *    여기서 막으면 「같은 단말 재등록」까지 함께 잠긴다.
+         *
+         * ⛔ 사번이 없어도 눌릴 수 있어야 한다 — 잘못된 단말로 등록되면 사번부터 막히는데,
+         *    그 상태에서 되돌릴 길이 없으면 단말이 잠긴다.
+         */}
+        <Button
+          type="button"
+          /* ⚠ [사용자 전환]과 «같은» 변형·크기다 — 생김새를 한 벌로 두기로 했다. */
+          variant="filled"
+          size="md"
+          className="pop-terminal-header__reregister"
+          onClick={restart}
+        >
+          {messages.workerAssignment.registration.reRegister}
+        </Button>
       </section>
 
       <div className="pop-assign">
@@ -303,15 +330,6 @@ export const WorkerAssignmentScreen = () => {
               <PopDevScreenNav disabled={session === null} />
             ) : undefined
           }
-          /*
-           * ⭐ **재등록으로 들어가는 유일한 길**(P-CO-01 §5-1 · 공유계약 F-4). 등록을 마치면
-           *    게이트가 업무 화면을 내주므로, 이 단추가 없으면 잘못된 단말로 등록된 현장
-           *    단말을 **자격증명 저장소를 사람이 지우지 않고는** 되돌릴 수 없다.
-           *
-           * ⛔ 큐가 남은 채 다른 단말로 바꾸는 것은 적용 단계가 막는다 — 여기서 막지 않는다.
-           *    여기서 막으면 「같은 단말 재등록」까지 함께 잠긴다.
-           */
-          onReRegister={restart}
         />
       </div>
     </div>
