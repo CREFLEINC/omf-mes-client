@@ -10,6 +10,7 @@ const base = {
   palletId: null,
   palletContentCount: null,
   palletContentsPending: false,
+  palletListUnsupported: false,
   needsReason: false,
   reasonCode: '',
 };
@@ -23,6 +24,16 @@ const pallet = {
 };
 
 describe('issueGuard', () => {
+  /*
+   * ⛔ **고를 것이 오지 않는 서버에서 「고르세요」라고 하지 않는다**(#1095). 그 문장은 작업자를
+   *    그 자리에 세워 둔다 — 목록이 없다는 사실은 대상 칸이 이미 적고 있다.
+   */
+  it('파렛트 목록을 세울 수 없으면 「고르세요」가 아니라 그 사실로 막는다', () => {
+    expect(issueGuard({ ...pallet, palletId: null, palletListUnsupported: true })).toEqual({
+      kind: 'palletUnsupported',
+    });
+  });
+
   it('사번이 없으면 열지 않는다 — 서버가 거부한다', () => {
     expect(issueGuard({ ...base, workerNo: null })).toEqual({ kind: 'noWorker' });
   });

@@ -28,6 +28,13 @@ export const productionResult = {
         `${String(totalPages)}쪽 중 ${String(page)}쪽`,
       none: '생산할 LOT이 없습니다. 관리웹에서 W/O 마감을 진행하세요.',
       loadFailed: '현재 LOT을 불러오지 못했습니다.',
+      /*
+       * ⛔ **다시 시도해서 풀리는 일이 아니다**(#1095). 미마감 LOT 이 둘 이상인데 서버가
+       *    「현재 것」을 가려 주지 않는 상태라, 화면이 첫 줄을 집으면 **다른 LOT 에 실적이
+       *    붙는다.** 무엇을 해야 하는지까지 적는다 — 관리웹에서 LOT 을 마감하면 하나로 준다.
+       */
+      ambiguous:
+        '이 작업지시에 진행 중인 LOT이 둘 이상이라 현재 LOT을 가릴 수 없습니다. 관리웹에서 LOT 마감을 먼저 진행하세요.',
     },
     quantity: {
       title: '생산 수량',

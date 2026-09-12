@@ -1,6 +1,7 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import {
@@ -171,6 +172,18 @@ export interface HandlingUnitPage {
 }
 
 /**
+ * 파렛트 목록을 **배포본에서는 세울 수 없다**(#1095 · `patterns/pop-server-baseline`).
+ *
+ * 서버 구현 기준선의 `GET /inventory/handling-units` 에는 **LOT 축이 없다** — 질의에도 없고
+ * `HandlingUnit` 응답에도 `lotId` 가 없다. 어느 취급 단위에 이 LOT 이 실렸는지는
+ * `…/{handlingUnitId}/contents` 로 한 건씩 물어야만 알 수 있어, 목록을 세우려면 창고의 모든
+ * 취급 단위를 열어야 한다 — 그것은 목록이 아니라 전수 조회다.
+ *
+ * ⛔ **그래서 축만 지우고 넓혀 부르지 않는다.** 넓히면 아래가 금지한 바로 그 목록이 선다.
+ */
+export const isPalletListUnsupported = (): boolean => isServerBaselineBuild();
+
+/**
  * 파렛트 단위의 대상 목록 — **이 출고 라인의 LOT 이 실린 취급 단위만**(스펙 §5-2 · 2026-09-06).
  *
  * ⛔ **창고 전체를 부르지 않는다.** 축 없이 부르면 이 출고와 상관없는 파렛트가 목록에 서고,
@@ -183,7 +196,7 @@ export const useLineHandlingUnits = (lotId: number | null): UseQueryResult<Handl
 
   return useQuery({
     queryKey: goodsIssueQrKeys.handlingUnits(lotId ?? 0),
-    enabled: lotId !== null,
+    enabled: !isPalletListUnsupported() && lotId !== null,
     queryFn: async () => {
       const data = await runRequest(() =>
         client.GET('/inventory/handling-units', {

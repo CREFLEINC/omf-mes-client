@@ -291,6 +291,29 @@ describe('DowntimeRegisterScreen — 진행 중 구획', () => {
     expect(call?.body).toBeNull();
   });
 
+  /**
+   * ⛔ **끊긴 동안의 종료는 「지금」이 아니다**(통보 109 · #1095). 종료 시각의 정본은 서버의
+   *    최초 처리 시각이라, 큐에 머문 시간이 비가동 시간에 그대로 들어간다. 비가동은 정정
+   *    경로가 없으므로 **누른 그 자리에서** 말해야 한다 — 나중에 숫자를 보고는 되돌릴 수 없다.
+   */
+  it('끊긴 채 종료하면 종료 시각이 서버 도착 시각임을 그 자리에서 알린다', async () => {
+    setOnline(false);
+
+    renderScreen([
+      downtimeListRoute({ ongoing: [ongoingDowntime({ downtimeId: 5202 })] }),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+    ]);
+
+    fireEvent.click(await screen.findByRole('button', { name: t.ongoing.close }));
+
+    expect(await screen.findByText(t.ongoing.closedQueued)).toBeTruthy();
+    expect(screen.queryByText(t.ongoing.closed)).toBeNull();
+
+    setOnline(true);
+  });
+
   it('진행 중이 있으면 새 저장을 막고 먼저 할 일을 말한다', async () => {
     renderScreen([
       downtimeListRoute({ ongoing: [ongoingDowntime()] }),
@@ -738,7 +761,7 @@ describe('DowntimeRegisterScreen — 설비 미지정', () => {
 
     await flush();
 
-    expect(screen.getByText(t.header.equipmentMissing)).toBeTruthy();
+    expect(screen.getByText(t.errors.equipmentMissing)).toBeTruthy();
     expect(requests.some((request) => request.url.pathname.startsWith(DOWNTIMES_PATH))).toBe(false);
   });
 });

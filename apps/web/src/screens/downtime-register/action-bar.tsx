@@ -99,19 +99,17 @@ export interface ActionBarProps {
  * ⛔ **「다시 입력」은 서버를 부르지 않는다.** 저장 전 화면 안의 초기화이고, 계약에 대응하는
  * 오퍼레이션이 없는 것도 그래서다.
  */
-export const ActionBar = ({
-  block,
-  isEmpty,
-  isIncomplete,
-  onReset,
-  onSave,
-}: ActionBarProps) => {
-  const reason = describeSaveBlock(block);
-
+export const ActionBar = ({ block, isEmpty, isIncomplete, onReset, onSave }: ActionBarProps) => {
   return (
     <div className="downtime-actions">
-      {/* 막힌 이유는 버튼 옆에 **항상 보이는 글자**로 둔다 — 눌러 봐야 아는 잠금은 잠금이 아니다. */}
-      {reason !== null && <p className="downtime-block-reason">{reason}</p>}
+      {/*
+       * ⛔ **막힌 사유를 이 자리에 붉은 글자로 두지 않는다**(사용자 지시 2026-09-12).
+       *    말하지 않는 것이 아니라 **자리를 옮긴 것이다** — 화면 머리의 배너가 같은 문장을
+       *    낸다(`screen.tsx`). 아래에서 붉게 한 번 더 하면 같은 말이 두 곳에 서고, 상시 붉은
+       *    글자는 「늘 그런 것」으로 읽혀 정작 막혔을 때 아무도 보지 않는다.
+       *
+       * ⚠ **`describeSaveBlock` 은 그대로 쓴다** — 문장을 만드는 자리는 여전히 하나다.
+       */}
 
       {/*
        * ⛔ **비울 것이 없으면 잠근다**(사용자 지적 2026-09-07 · 선례 `P-02-04` §5-2 「입력 있음」).

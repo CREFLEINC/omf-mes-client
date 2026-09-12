@@ -58,3 +58,36 @@ export const printScriptArgs = (scriptPath: string): string[] => [
   '-File',
   scriptPath,
 ];
+
+/**
+ * **이 단말의 기본 프린터 이름을 묻는다**(#1098).
+ *
+ * ⭐ **인쇄가 실제로 쓰는 것과 같은 출처다.** 이름을 싣지 않으면 `PrintDocument` 가
+ * `PrinterSettings` 의 기본값으로 가는데, 그 기본값이 곧 OS 기본 프린터다 — 그러니 그 객체에
+ * **이름을 물어보면** 「아무 이름도 안 실었을 때 어디로 가는가」를 미리 아는 것과 같다.
+ * WMI(`Win32_Printer`)로 따로 묻지 않는 이유가 이것이다: 답이 갈릴 여지를 두지 않는다.
+ *
+ * ⚠ **Electron 은 이 값을 주지 않는다** — `PrinterInfo` 에 기본 여부를 담는 자리가 없다
+ *   (electron 38 타입 정의 실측). 그래서 OS 에 직접 묻는다.
+ */
+export const buildDefaultPrinterScript = (): string =>
+  [
+    '$ErrorActionPreference = "Stop"',
+    'try {',
+    '  Add-Type -AssemblyName System.Drawing',
+    '  $s = New-Object System.Drawing.Printing.PrinterSettings',
+    '  Write-Output $s.PrinterName',
+    '} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }',
+  ].join('\n');
+
+/**
+ * 스크립트가 뱉은 줄에서 기본 프린터 이름을 읽는다. **읽을 수 없으면 `null`** 이다.
+ *
+ * ⛔ **빈 줄을 이름으로 쓰지 않는다.** 프린터가 하나도 없는 단말에서 `PrinterName` 은 빈
+ *    문자열로 온다 — 그것을 그대로 실으면 「이름 없는 프린터」로 보내게 된다.
+ */
+export const parseDefaultPrinterName = (stdout: string): string | null => {
+  const name = stdout.split(/\r?\n/)[0]?.trim() ?? '';
+
+  return name === '' ? null : name;
+};

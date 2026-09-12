@@ -11,6 +11,8 @@ export interface PendingPaneProps {
   selectedId: number | null;
   isLoading: boolean;
   isError: boolean;
+  /** 배포본에서 서버에 목록 조건이 없어 표 자체를 세울 수 없는 상태인가(#1095). */
+  isUnsupported: boolean;
   disabled: boolean;
   onSelect: (handlingUnitId: number) => void;
   onRetry: () => void;
@@ -28,6 +30,7 @@ export const PendingPane = ({
   selectedId,
   isLoading,
   isError,
+  isUnsupported,
   disabled,
   onSelect,
   onRetry,
@@ -117,6 +120,21 @@ export const PendingPane = ({
       render: (row) => localDateTimeText(row.occurredAt, t.unknown),
     },
   ];
+
+  /*
+   * ⛔ **재시도 단추를 붙이지 않는다** — 눌러도 같은 자리로 돌아온다. 사용자가 할 수 있는
+   *    일이 없을 때 단추를 세우면 「내가 뭘 잘못했나」로 읽힌다.
+   *
+   * ⛔ **오류 색을 쓰지 않는다**(`pop-repack-pending-state` 는 붉다). 이것은 실패가 아니라
+   *    아직 서 있지 않은 자리다 — 표가 비었을 때와 같은 색으로 적는다.
+   */
+  if (isUnsupported) {
+    return (
+      <div role="status">
+        <p className="pop-empty-note">{t.unsupported}</p>
+      </div>
+    );
+  }
 
   if (isError) {
     return (

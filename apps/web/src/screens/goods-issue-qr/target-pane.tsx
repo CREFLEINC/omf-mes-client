@@ -36,6 +36,8 @@ export interface TargetPaneProps {
   pallets: readonly HandlingUnit[];
   palletsPending: boolean;
   palletsFailed: boolean;
+  /** 배포본에서 서버에 LOT 축이 없어 목록 자체를 세울 수 없는 상태인가(#1095). */
+  palletsUnavailable: boolean;
   /** 서버가 말한 총 건수가 받은 수보다 커서 목록이 잘렸는가. */
   palletsTruncated: boolean;
   /** 서버가 말한 총 건수. 잘렸을 때 「N건 중 M건」으로 말한다. */
@@ -77,6 +79,7 @@ export const TargetPane = ({
   pallets,
   palletsPending,
   palletsFailed,
+  palletsUnavailable,
   palletsTruncated,
   palletTotal,
   palletSelectable,
@@ -180,17 +183,19 @@ export const TargetPane = ({
               }))}
             />
             <p className="field-note">
-              {!palletSelectable
-                ? t.target.palletNeedsOneLine
-                : palletsFailed
-                  ? t.target.palletFailed
-                  : palletsPending
-                    ? t.target.palletLoading
-                    : pallets.length === 0
-                      ? t.target.palletEmpty
-                      : palletContents === null
-                        ? t.target.palletContentsUnknown
-                        : t.target.palletContents(palletContents.lineCount, quantityText)}
+              {palletsUnavailable
+                ? t.target.palletUnavailable
+                : !palletSelectable
+                  ? t.target.palletNeedsOneLine
+                  : palletsFailed
+                    ? t.target.palletFailed
+                    : palletsPending
+                      ? t.target.palletLoading
+                      : pallets.length === 0
+                        ? t.target.palletEmpty
+                        : palletContents === null
+                          ? t.target.palletContentsUnknown
+                          : t.target.palletContents(palletContents.lineCount, quantityText)}
             </p>
             {/*
              * 목록이 한 쪽에서 잘렸다는 사실은 **고르기 전에** 말한다 — 고른 뒤에 알려 봐야

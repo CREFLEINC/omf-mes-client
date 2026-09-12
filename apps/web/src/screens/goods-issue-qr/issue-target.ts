@@ -17,6 +17,7 @@ export type IssueGuard =
   | { kind: 'noSelection' }
   | { kind: 'palletNeedsOneLine' }
   | { kind: 'noPallet' }
+  | { kind: 'palletUnsupported' }
   | { kind: 'palletContentsPending' }
   | { kind: 'emptyPallet' }
   | { kind: 'reasonRequired' };
@@ -42,6 +43,8 @@ export interface IssueGuardInput {
    * 남는다 — 되돌릴 수 없는 쓰기다.
    */
   palletContentsPending: boolean;
+  /** 이 서버에서 파렛트 후보 목록 자체를 세울 수 없는가(#1095). */
+  palletListUnsupported: boolean;
   /** 고른 대상 중 이미 발행된 것이 있는가 — 있으면 재발행이라 사유가 필요하다. */
   needsReason: boolean;
   /** 고른 재발행 사유. 안 골랐으면 빈 문자열. */
@@ -57,11 +60,18 @@ export const issueGuard = ({
   palletContentsPending,
   needsReason,
   reasonCode,
+  palletListUnsupported,
 }: IssueGuardInput): IssueGuard => {
   if (workerNo === null) return { kind: 'noWorker' };
   if (selectedIds.length === 0) return { kind: 'noSelection' };
 
   if (unit === ISSUE_UNIT.pallet) {
+    /*
+     * ⛔ **목록을 세울 수 없는 서버에서는 「고르세요」라고 하지 않는다**(#1095). 고를 것이
+     *    오지 않는데 고르라고 하면 작업자가 그 자리에서 멈춘다 — 막힌 사유는 대상 칸이 이미
+     *    적고 있으므로 여기서는 그 말을 되풀이하지 않는다.
+     */
+    if (palletListUnsupported) return { kind: 'palletUnsupported' };
     if (selectedIds.length > 1) return { kind: 'palletNeedsOneLine' };
     if (palletId === null) return { kind: 'noPallet' };
     /* 빈 파렛트에는 찍을 것이 없다(스펙 §6). 그 판정이 서기 전에는 열지 않는다. */
