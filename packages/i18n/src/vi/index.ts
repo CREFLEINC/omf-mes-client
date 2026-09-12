@@ -15,6 +15,7 @@ import { ko, type Messages } from '../ko';
 
 import type { Translated } from './translated';
 
+import { approvalInbox } from './approval-inbox';
 import { common } from './common';
 import { conflict } from './conflict';
 import { dashboard } from './dashboard';
@@ -51,6 +52,7 @@ import { wipHandover } from './wip-handover';
 
 export const vi: Translated<Messages> = {
   ...ko,
+  approvalInbox,
   common,
   conflict,
   dashboard,

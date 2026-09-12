@@ -40,6 +40,8 @@ const TRANSLATED = [
   'pendingCode',
   'stateLocked',
   'save',
+  /* #1120 — 승인. 결재함 1화면. */
+  'approvalInbox',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
 ] as const satisfies readonly (keyof Messages)[];
