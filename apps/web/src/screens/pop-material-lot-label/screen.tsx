@@ -11,7 +11,14 @@ import { useLabelIssue } from './mutations';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { PrinterStatusIndicator } from './printer-status';
-import { useLotNo, usePrinters, useReceipts, useReissueReasons, useTargetRows } from './queries';
+import {
+  isReceiptListUnsupported,
+  useLotNo,
+  usePrinters,
+  useReceipts,
+  useReissueReasons,
+  useTargetRows,
+} from './queries';
 import { ReceiptList } from './receipt-list';
 import { ReissueDialog } from './reissue-dialog';
 import { TargetCard } from './target-card';
@@ -155,7 +162,13 @@ export const PopMaterialLotLabelScreen = () => {
            */}
           <h2 className="pop-lot-pane-title">{t.receipts.title}</h2>
 
-          {isListError ? (
+          {isReceiptListUnsupported() ? (
+            /*
+             * ⛔ **재시도 단추를 붙이지 않는다** — 눌러도 같은 자리로 돌아온다.
+             * ⛔ **오류로 칠하지 않는다** — 실패가 아니라 아직 서 있지 않은 자리다.
+             */
+            <AlertBanner variant="warning">{t.receipts.unsupported}</AlertBanner>
+          ) : isListError ? (
             <AlertBanner
               variant="error"
               title={t.receipts.loadFailed}

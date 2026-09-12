@@ -14,7 +14,6 @@ export const downtimeRegister = {
   header: {
     equipment: (equipmentCode: string): string => `설비 ${equipmentCode}`,
     /** 주소에 설비가 없으면 이 화면이 무엇을 기록하는지 정해지지 않는다. */
-    equipmentMissing: '설비가 지정되지 않았습니다. 설비를 고른 뒤 다시 들어오세요.',
     worker: (workerNo: string): string => `사번 ${workerNo}`,
     /** 사번이 없으면 쓰기가 서버에서 거부된다 — 누르기 전에 그 사실을 말한다. */
     workerUnknown: '사번 미확인',
@@ -38,6 +37,14 @@ export const downtimeRegister = {
     reason: (reasonName: string): string => `사유: ${reasonName}`,
     close: '지금 종료',
     closed: '비가동을 종료했습니다',
+    /*
+     * ⭐ **종료 시각은 서버가 «받은» 때다**(통보 109 · #1095). 단말이 단추를 누른 때가 아니라
+     * 서버의 최초 처리 시각이 정본이라, 끊긴 동안 큐에 머문 시간이 비가동 시간에 그대로
+     * 들어간다. 나중에 숫자를 보고 놀라지 않도록 **누른 그 자리에서** 말한다 — 비가동은
+     * 정정 경로가 없다.
+     */
+    closedQueued:
+      '종료를 저장했습니다. 연결되면 서버로 보내며, 종료 시각은 서버에 도착한 때로 기록됩니다.',
     /** 진행 중이 있으면 새 구간을 시작할 수 없다(스펙 §6-1). 어디로 가야 하는지까지 적는다. */
     blocksNew: '진행 중 비가동을 먼저 종료하세요.',
   },
@@ -126,15 +133,20 @@ export const downtimeRegister = {
     reasonsUnavailable: '비가동 사유 목록을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
     /** 겹침은 경고다 — 저장을 막지 않는다(스펙 §6-1 · 미결 처리 「만들지 않는다」). */
     overlapWarning: (rangeLabel: string): string => `${rangeLabel} 과 겹칩니다. 그대로 저장됩니다.`,
-    workerMissing: '실적 저장 — 사번을 확인할 수 없어 저장할 수 없습니다.',
-    equipmentMissing: '실적 저장 — 설비가 지정되지 않아 저장할 수 없습니다.',
+    /*
+     * ⚠ **「실적 저장 —」 머리말을 떼었다**(#1095 · 사용자 지시 2026-09-12). 이 문장들은 저장
+     *    버튼 옆에 서던 때 그 머리말로 「무엇이 막혔는지」를 가리켰다. 이제는 화면 머리의
+     *    배너 한 곳에서만 서므로 가리킬 버튼이 옆에 없다 — 머리말만 남으면 무엇을 말하는지
+     *    모르는 조각이 된다.
+     */
+    workerMissing: '사번을 확인할 수 없어 실적을 저장할 수 없습니다.',
+    equipmentMissing: '설비가 지정되지 않았습니다. 설비를 고른 뒤 다시 들어오세요.',
     /** 게이팅이 닫힌 것과 판정하지 못한 것은 작업자가 할 일이 다르다(공유계약 F-6). */
-    gateDenied: '실적 저장 — 이 단말에서는 실적을 입력할 수 없습니다.',
+    gateDenied: '이 단말에서는 실적을 입력할 수 없습니다.',
     /* 「권한이 없다」와 다른 말이다 — 단말 등록이 안 된 것이라 관리자를 불러도 권한으로는 안 풀린다. */
-    gateUnidentified:
-      '실적 저장 — 이 단말이 아직 등록되지 않았습니다. 단말 등록 후 사용할 수 있습니다.',
-    gateUnavailable: '실적 저장 — 입력 권한을 확인할 수 없습니다.',
-    gateChecking: '실적 저장 — 입력 권한을 확인하는 중입니다.',
+    gateUnidentified: '이 단말이 아직 등록되지 않았습니다. 단말 등록 후 사용할 수 있습니다.',
+    gateUnavailable: '입력 권한을 확인할 수 없습니다.',
+    gateChecking: '입력 권한을 확인하는 중입니다.',
     saveFailed: '저장하지 못했습니다.',
     closeFailed: '종료하지 못했습니다.',
   },

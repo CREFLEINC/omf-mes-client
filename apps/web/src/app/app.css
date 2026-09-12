@@ -6339,13 +6339,6 @@ dl.filter-bar.approval-inbox-detail-facts {
   gap: var(--space-3);
 }
 
-/* 막힌 사유는 버튼 왼쪽에 상시 선다 — 눌러 봐야 아는 잠금은 잠금이 아니다. */
-.downtime-block-reason {
-  margin: 0;
-  margin-inline-end: auto;
-  color: var(--semantic-error);
-}
-
 /* 칸 옆이 아니라 구획 안에 서는 오류 문장 — 어느 칸의 것인지는 바로 위 줄이 말한다. */
 .downtime-field-error {
   margin: 0;

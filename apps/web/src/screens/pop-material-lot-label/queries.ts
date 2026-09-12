@@ -2,6 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import { REISSUE_REASON_CODE_GROUP } from './codes';
@@ -54,6 +55,24 @@ export const receiptKeys = {
     ['pop-material-lot-label', 'receipt-lines', inboundReceiptId] as const,
 };
 
+/**
+ * 이 목록을 **배포본에서는 세울 수 없다**(#1095 · `patterns/pop-server-baseline`).
+ *
+ * 목록 원천의 정의는 **두 조건의 곱**이다 — `supplierLotLabelAttached=false`(실물 라벨 미부착)
+ * 와 `labelIssued=false`(아직 안 찍음). 서버 구현 기준선에는 **앞엣것이 없다.** 실서버는 없는
+ * 축을 거부하지 않고 무시하므로, 그대로 부르면 「실물 라벨이 이미 붙어 온 자재」까지 목록에
+ * 서고 그 줄에 **MES 가 자기 번호를 발번해 라벨을 찍는다** — 한 자재에 라벨 두 장이다.
+ * 되돌릴 수 없는 쓰기라 부르지 않는다.
+ *
+ * ⛔ **기준선의 `supplierLotMissing` 으로 갈아 끼우지 않는다.** 전달본 설명이 「미부착 건」을
+ *    겸하는 것처럼 읽히지만, 고정 설계는 **번호가 없는 것**과 **실물 라벨이 안 붙은 것**을
+ *    다른 축으로 둔다. 두 축이 같은지는 설계·서버가 답할 일이고, 틀리면 위와 같은 이중 발행이
+ *    된다 — 요청서 `2026-09-12-pop-baseline-discrepancies.md` 항목 2.
+ *
+ * ⭐ 목은 고정 설계대로 두 축을 답한다 — 개발 서버와 시험에서는 화면이 설계대로 선다.
+ */
+export const isReceiptListUnsupported = (): boolean => isServerBaselineBuild();
+
 const fetchReceipts = async (
   client: Client,
   query: ReceiptListQuery,
@@ -81,6 +100,7 @@ export const useReceipts = (query: ReceiptListQuery): UseQueryResult<ReceiptList
   const { client } = useApiClient();
 
   return useQuery({
+    enabled: !isReceiptListUnsupported(),
     queryKey: receiptKeys.list(query),
     queryFn: () => fetchReceipts(client, query),
   });

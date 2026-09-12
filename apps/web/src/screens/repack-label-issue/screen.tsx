@@ -19,6 +19,7 @@ import {
   useHandlingUnit,
   useIssueHistory,
   useIssueStanding,
+  isPendingListUnsupported,
   usePendingRepackRows,
   usePrinters,
   useHandlingUnitTypes,
@@ -322,6 +323,7 @@ export const RepackLabelIssueScreen = () => {
             selectedId={selectedHandlingUnitId}
             isLoading={pending.isPending}
             isError={pending.isError}
+            isUnsupported={isPendingListUnsupported()}
             disabled={isSubmitting}
             onSelect={selectHandlingUnit}
             onRetry={() => {

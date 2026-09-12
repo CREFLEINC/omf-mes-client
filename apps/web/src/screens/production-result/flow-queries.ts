@@ -2,6 +2,7 @@ import type { components } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import { CONTRACT_BATCH_SIZE, chunkTargets } from './flow-state';
@@ -38,7 +39,39 @@ export const productionFlowKeys = {
   reissueReasons: ['production-flow', 'reissue-reasons'] as const,
 };
 
-/** 서버가 정한 순서의 첫 미마감 LOT 한 건. 화면이 목록 첫 줄을 현재 LOT으로 추측하지 않는다. */
+/**
+ * 「현재 LOT 을 가릴 수 없다」는 사실. 화면은 이것을 오류가 아니라 **막힘**으로 말한다.
+ *
+ * ⛔ **미마감 LOT 이 둘 이상이면 첫 줄을 집지 않는다**(#1095). 서버 구현 기준선의
+ *    `GET /trace/lots` 에는 「현재 것만」(`currentOnly`)도 정렬 축(`sort`)도 없다 — 어느 줄이
+ *    먼저 오는지는 서버 마음이다. 그 상태에서 첫 줄을 현재 LOT 으로 읽으면 **다른 LOT 에
+ *    생산 실적이 붙는다.** 되돌릴 수 없는 쓰기라 「아마 이것일 것」으로 진행하지 않는다.
+ */
+export class CurrentLotAmbiguousError extends Error {
+  constructor() {
+    super('현재 LOT을 가릴 수 없습니다.');
+    this.name = 'CurrentLotAmbiguousError';
+  }
+}
+
+/**
+ * 서버가 정한 순서의 첫 미마감 LOT 한 건. 화면이 목록 첫 줄을 현재 LOT으로 추측하지 않는다.
+ *
+ * ## 질의가 두 갈래다 — 보는 서버가 다르기 때문이다(`patterns/pop-server-baseline`)
+ *
+ * ⭐ **목·시험은 고정 설계대로 `currentOnly` 로 묻는다.** 그 축이 곧 「현재 LOT」의 정의이고,
+ *    목은 생산 LOT · 대기·진행 상태 · 회차 정렬 셋으로 한 건을 골라 답한다. 이쪽에는 애매함이
+ *    없다.
+ *
+ * ⛔ **배포본에는 그 축이 없다.** `currentOnly` 를 보내도 서버가 읽지 않아 「현재 것만」이라는
+ *    뜻이 조용히 사라진 채 전체 목록이 온다. 그래서 남은 완료 축(`completed=false`)으로 좁히되
+ *    **두 건 이상이면 고르지 않고 막는다**(위 `CurrentLotAmbiguousError`). 한 건이면 애매할
+ *    것이 없으므로 그대로 쓴다 — 현장 대부분이 이 경우다.
+ *
+ * ⚠ **진척(`withProgress`)은 어느 쪽에서도 이 목록으로 받지 않는다.** 기준선이 그 축을 상세
+ *    (`/trace/lots/{lotId}`)에만 남겨, 출처를 한 곳으로 모아 두어야 두 서버에서 같게 돈다.
+ *    양품 누계는 `useLotDetail` 이 받는다.
+ */
 export const useCurrentLot = (workOrderId: number | null): UseQueryResult<Lot | null> => {
   const { client } = useApiClient();
 
@@ -48,11 +81,22 @@ export const useCurrentLot = (workOrderId: number | null): UseQueryResult<Lot | 
     queryFn: async (): Promise<Lot | null> => {
       if (workOrderId === null) throw new Error('작업지시가 없으면 현재 LOT을 조회하지 않습니다.');
 
+      if (!isServerBaselineBuild()) {
+        const data = await runRequest(() =>
+          client.GET('/trace/lots', { params: { query: { workOrderId, currentOnly: true } } }),
+        );
+
+        return data.items[0] ?? null;
+      }
+
+      /* 두 건째가 있는지 보려면 두 건을 받아야 한다 — 총계만으로는 쪽이 잘렸는지와 갈리지 않는다. */
       const data = await runRequest(() =>
         client.GET('/trace/lots', {
-          params: { query: { workOrderId, currentOnly: true, withProgress: true } },
+          params: { query: { workOrderId, completed: false, page: 1, size: 2 } },
         }),
       );
+
+      if (data.items.length > 1) throw new CurrentLotAmbiguousError();
 
       return data.items[0] ?? null;
     },
@@ -71,7 +115,9 @@ export const useCurrentLot = (workOrderId: number | null): UseQueryResult<Lot | 
  *    코드는 잠그는 «모양»이고 실제로는 두 단말이 같은 LOT 을 함께 마감한다. 육안 리뷰로는
  *    잡히지 않아 감지기가 이 자리를 지킨다.
  *
- * ⚠ 화면이 이 응답의 «내용»을 쓰지 않는다 — 목록이 이미 준다. 여기서 얻는 것은 헤더뿐이다.
+ * ⭐ **양품 누계도 여기서 온다**(#1095). 서버 구현 기준선이 `withProgress` 를 목록에서 거두고
+ *    상세에만 남겨, 「서버가 계산한 LOT 양품 누계」의 출처가 이 한 곳이 됐다. 헤더만 쓰던
+ *    조회가 아니다 — 이 값이 비면 화면은 실적이 이미 적용됐는지를 «모르는» 상태가 된다.
  */
 export const useLotDetail = (lotId: number | null): UseQueryResult<LotDetailResponse> => {
   const { client } = useApiClient();
@@ -82,7 +128,11 @@ export const useLotDetail = (lotId: number | null): UseQueryResult<LotDetailResp
     queryFn: () => {
       if (lotId === null) throw new Error('LOT이 없으면 상세를 조회하지 않습니다.');
 
-      return runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }));
+      return runRequest(() =>
+        client.GET('/trace/lots/{lotId}', {
+          params: { path: { lotId }, query: { withProgress: true } },
+        }),
+      );
     },
   });
 };

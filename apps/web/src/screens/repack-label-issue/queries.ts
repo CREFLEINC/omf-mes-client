@@ -1,6 +1,7 @@
 import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { terminalPrinters } from '../../patterns/pop-terminal-printers';
 import { runRequest } from '../../patterns/request';
 import {
@@ -149,10 +150,23 @@ const newestEventFor = (
  * ⚠ **다만 모르는 줄이 아무 말도 안 하게 두지 않는다**(#1044). 사건을 못 찾았다는 사실을
  * 줄에 실어, 화면이 번호와 사유를 함께 적을 수 있게 한다.
  */
+/**
+ * 발행 대기 목록을 **배포본에서는 세울 수 없다**(#1095 · `patterns/pop-server-baseline`).
+ *
+ * 이 목록의 정의는 계약의 `labelIssued=false` 하나인데(§5-1 · 2026-09-06 게이트 승인), 서버
+ * 구현 기준선의 `GET /inventory/handling-units` 에는 그 축이 없다. 실서버는 없는 축을 거부하지
+ * 않고 **무시하므로**, 그대로 부르면 「발행 대기」 표에 **창고의 모든 취급 단위**가 선다 —
+ * 발행은 되돌릴 수 없는 쓰기라 이미 라벨이 붙은 포장에 새 라벨이 나간다.
+ *
+ * ⭐ 목은 고정 설계대로 이 축을 답한다 — 개발 서버와 시험에서는 화면이 설계대로 선다.
+ */
+export const isPendingListUnsupported = (): boolean => isServerBaselineBuild();
+
 export const usePendingRepackRows = (): UseQueryResult<PendingRepackRow[]> => {
   const { client } = useApiClient();
 
   return useQuery({
+    enabled: !isPendingListUnsupported(),
     queryKey: repackLabelKeys.pendingRows,
     queryFn: async (): Promise<PendingRepackRow[]> => {
       const units = await readAllPages<HandlingUnit>(PENDING_PAGE_SIZE, (page, size) =>
