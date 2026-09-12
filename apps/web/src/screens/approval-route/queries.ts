@@ -1,4 +1,5 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { messages } from '@omf-mes/i18n';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -95,7 +96,7 @@ export const useRouteDetail = (approvalRouteId: number | null): UseQueryResult<A
     enabled: approvalRouteId !== null,
     queryFn: () => {
       if (approvalRouteId === null) {
-        throw new Error('결재선을 고르기 전에는 상세를 조회하지 않습니다.');
+        throw new Error(messages.approvalRoute.guard.detailNeedsSelection);
       }
 
       return runRequest(() =>
@@ -121,7 +122,7 @@ export const useRouteSteps = (approvalRouteId: number | null): UseQueryResult<St
     enabled: approvalRouteId !== null,
     queryFn: () => {
       if (approvalRouteId === null) {
-        throw new Error('결재선을 고르기 전에는 결재 단계를 조회하지 않습니다.');
+        throw new Error(messages.approvalRoute.guard.stepsNeedSelection);
       }
 
       return runRequest(() =>

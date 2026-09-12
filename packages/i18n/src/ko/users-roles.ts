@@ -89,6 +89,18 @@ export const usersRoles = {
    */
   optionsTruncated: '선택 목록이 일부만 표시됩니다. 찾는 값이 없으면 담당자에게 알려 주세요.',
   optionsLoadFailed: '선택 목록을 불러오지 못했습니다. 지금 저장된 값만 표시됩니다.',
+  /**
+   * 고르기 전에는 부르지 않기로 한 조회가 그래도 불렸을 때 던지는 말.
+   * **화면에 서지 않는 것이 정상이다** — 고른 것이 없으면 조회가 아예 꺼진다.
+   * 그래도 문구는 여기 둔다: 코드에 한국어를 박아 두면 베트남어 화면에서만 그 줄이 샌다.
+   */
+  guard: {
+    userDetailNeedsSelection: '사용자를 고르기 전에는 상세를 조회하지 않습니다.',
+    userAssignmentsNeedSelection: '사용자를 고르기 전에는 부여분을 조회하지 않습니다.',
+    userScopesNeedSelection: '사용자를 고르기 전에는 접근범위를 조회하지 않습니다.',
+    roleDetailNeedsSelection: '역할을 고르기 전에는 상세를 조회하지 않습니다.',
+    rolePermissionsNeedSelection: '역할을 고르기 전에는 기능 권한을 조회하지 않습니다.',
+  },
   /** 쪽 이동. 번호 목록을 두지 않는다 — 조건을 좁히는 것이 정상 경로다. */
   pageNav: {
     label: '쪽 이동',

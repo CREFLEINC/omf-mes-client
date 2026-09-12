@@ -17,6 +17,7 @@ import type { Translated } from './translated';
 
 import { alarmRecipientSettings } from './alarm-recipient-settings';
 import { approvalInbox } from './approval-inbox';
+import { approvalRoute } from './approval-route';
 import { common } from './common';
 import { conflict } from './conflict';
 import { dashboard } from './dashboard';
@@ -36,6 +37,7 @@ import { notice } from './notice';
 import { notificationCenter } from './notification-center';
 import { outboxRejections } from './outbox-rejections';
 import { packingRepack } from './packing-repack';
+import { passwordChange } from './password-change';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
 import { productPicking } from './product-picking';
@@ -50,13 +52,16 @@ import { shellNav } from './shell-nav';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stateLocked } from './state-locked';
 import { stockTransfer } from './stock-transfer';
+import { terminalProcessMap } from './terminal-process-map';
 import { temporaryPutaway } from './temporary-putaway';
+import { usersRoles } from './users-roles';
 import { wipHandover } from './wip-handover';
 
 export const vi: Translated<Messages> = {
   ...ko,
   alarmRecipientSettings,
   approvalInbox,
+  approvalRoute,
   common,
   conflict,
   dashboard,
@@ -76,6 +81,7 @@ export const vi: Translated<Messages> = {
   notificationCenter,
   outboxRejections,
   packingRepack,
+  passwordChange,
   pendingCode,
   physicalCount,
   productPicking,
@@ -90,6 +96,8 @@ export const vi: Translated<Messages> = {
   shopfloorReceipt,
   stateLocked,
   stockTransfer,
+  terminalProcessMap,
   temporaryPutaway,
+  usersRoles,
   wipHandover,
 };

@@ -46,6 +46,11 @@ const TRANSLATED = [
   'notificationCenter',
   'alarmRecipientSettings',
   'notice',
+  /* #1122 — 시스템 관리. 사용자·역할·권한 · 결재선 정의 · 단말기-공정 매핑 · 비밀번호 변경 4화면. */
+  'usersRoles',
+  'approvalRoute',
+  'terminalProcessMap',
+  'passwordChange',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
 ] as const satisfies readonly (keyof Messages)[];

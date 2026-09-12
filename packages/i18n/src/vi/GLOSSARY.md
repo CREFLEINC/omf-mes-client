@@ -176,6 +176,15 @@
 | 근무조 | ca làm việc | |
 | 수신 규칙 | quy tắc nhận | 누가 받을지를 적은 한 줄 |
 | 미리보기 | xem trước | |
+| 기능 구성 | cấu hình chức năng | 단말에 무엇을 띄울지. 권한(`quyền`)과 구별한다 |
+| 등록 토큰 | token đăng ký | 기기 등록 QR 에 담기는 것 |
+| 실적 | kết quả | |
+| 발행 | phát hành | |
+| 데이터 접근범위 | phạm vi truy cập dữ liệu | 어느 사업부·공장 자료를 볼 수 있는가 |
+| 역할 부여 | gán vai trò | |
+| 기능 권한 | quyền chức năng | |
+| 전자우편 | thư điện tử | |
+| 값 구간 | khoảng giá trị | 결재선이 받는 하한·상한 |
 
 ## 말투
 
