@@ -175,7 +175,7 @@ describe('재생재 등록 화면', () => {
     mount([], { items: [itemRow({ itemId: 30, mesCategoryCode: 'NEW' })] });
     await findItem(user);
 
-    expect(await screen.findByText('등록되지 않은 재생재 품목입니다')).toBeTruthy();
+    expect(await screen.findByText(/등록되지 않은 재생재 품목입니다 — 읽은 값 /)).toBeTruthy();
     expect(screen.getByText('관리웹에서 재생재 품목을 먼저 등록해야 합니다.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '재생재 등록' })).toBeNull();
   });

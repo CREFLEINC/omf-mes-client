@@ -290,7 +290,7 @@ export const RepairRoundtripScreen = () => {
       {defects.isError ? <AlertBanner variant="error" title={t.defect.loadFailed} /> : null}
       {defects.isSuccess && defects.data.length === 0 ? (
         <>
-          <AlertBanner variant="warning" title={t.defect.none} />
+          <AlertBanner variant="warning" title={t.defect.none(scanned ?? '')} />
           <p className="repair__note">{t.defect.window(DEFECT_WINDOW_DAYS)}</p>
         </>
       ) : null}

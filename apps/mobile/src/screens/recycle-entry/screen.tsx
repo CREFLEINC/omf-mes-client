@@ -216,7 +216,7 @@ export const RecycleEntryScreen = () => {
         {rows.isError ? <AlertBanner variant="error" title={t.item.loadFailed} /> : null}
         {/* 이 화면은 품목을 만들지 않는다. 없으면 어디서 만드는지 알린다. */}
         {missing ? (
-          <AlertBanner variant="warning" title={t.item.notRecycled}>
+          <AlertBanner variant="warning" title={t.item.notRecycled(searching ?? draft.itemCode)}>
             {t.item.notRecycledWhy}
           </AlertBanner>
         ) : null}

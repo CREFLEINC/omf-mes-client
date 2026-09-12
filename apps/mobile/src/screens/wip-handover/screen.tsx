@@ -249,6 +249,7 @@ export const WipHandoverScreen = () => {
         {problem === null ? null : (
           <AlertBanner variant="error" title={t.lot.problem[problem]}>
             {problem === 'held' ? t.lot.problem.heldWhy : null}
+            {scanned === null ? null : <p>{t.lot.scannedWas(scanned)}</p>}
           </AlertBanner>
         )}
       </section>

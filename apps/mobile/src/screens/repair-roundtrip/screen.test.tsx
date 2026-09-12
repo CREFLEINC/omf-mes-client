@@ -192,7 +192,7 @@ describe('수리 왕복 스캔 화면', () => {
     await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
-    expect(await screen.findByText('불량 판정된 LOT이 아닙니다')).toBeTruthy();
+    expect(await screen.findByText(/불량 판정된 LOT이 아닙니다 — 읽은 값 /)).toBeTruthy();
     expect(screen.getByText('최근 180일 안에서 찾았습니다')).toBeTruthy();
   });
 
@@ -206,7 +206,7 @@ describe('수리 왕복 스캔 화면', () => {
     expect(
       await screen.findByText('불량 기록을 확인할 수 없습니다. 연결을 확인한 뒤 다시 스캔하세요.'),
     ).toBeTruthy();
-    expect(screen.queryByText('불량 판정된 LOT이 아닙니다')).toBeNull();
+    expect(screen.queryByText(/불량 판정된 LOT이 아닙니다 — 읽은 값 /)).toBeNull();
   });
 
   it('불량을 찾으면 LOT과 품목과 불량 수량을 보인다', async () => {
@@ -997,7 +997,7 @@ describe('수리 왕복 스캔 화면', () => {
     await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
-    await screen.findByText('불량 판정된 LOT이 아닙니다');
+    await screen.findByText(/불량 판정된 LOT이 아닙니다 — 읽은 값 /);
     expect(tone.played).toBeGreaterThan(0);
   });
 

@@ -227,7 +227,11 @@ export const MaterialLocationScreen = () => {
         {pending ? <p role="status">{t.loading}</p> : null}
 
         {!pending && !failed && lot.data === null ? (
-          <EmptyState live title={t.notFound.title} description={t.notFound.description} />
+          <EmptyState
+            live
+            title={t.notFound.title}
+            description={t.notFound.description(formatMaterialLotNo(code ?? ''))}
+          />
         ) : null}
 
         {lot.data !== null && lot.data !== undefined ? (

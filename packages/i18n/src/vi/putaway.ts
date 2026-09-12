@@ -48,7 +48,7 @@ export const putaway: Translated<typeof ko.putaway> = {
     loadFailed: 'Không xác nhận được số LOT. Hãy kiểm tra kết nối.',
     expected: (lotNo: string) => `LOT của lệnh ${lotNo}`,
     matched: (lotNo: string) => `Đã quét ${lotNo}`,
-    mismatch: 'Đây không phải LOT của lệnh này',
+    mismatch: (lotNo: string) => `Đây không phải LOT của lệnh này — đã đọc ${lotNo}`,
   },
   verdict: {
     matched: 'Đúng vị trí gợi ý',
