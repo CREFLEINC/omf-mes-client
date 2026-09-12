@@ -134,6 +134,7 @@ import { shopfloorReceipt } from './shopfloor-receipt';
 import { stockTransfer } from './stock-transfer';
 import { physicalCount } from './physical-count';
 import { productDisposalRequest } from './product-disposal-request';
+import { productionPlan } from './production-plan';
 
 export const ko = {
   popPageNav,
@@ -256,6 +257,7 @@ export const ko = {
   stockTransfer,
   physicalCount,
   productDisposalRequest,
+  productionPlan,
 } as const;
 
 export type Messages = typeof ko;

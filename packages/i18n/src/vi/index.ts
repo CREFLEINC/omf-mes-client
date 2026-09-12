@@ -20,6 +20,7 @@ import { conflict } from './conflict';
 import { dashboard } from './dashboard';
 import { deviceRegistration } from './device-registration';
 import { editability } from './editability';
+import { emergencyWorkOrder } from './emergency-work-order';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
 import { inboundReceipt } from './inbound-receipt';
@@ -27,6 +28,7 @@ import { inboundVariance } from './inbound-variance';
 import { httpError } from './http-error';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { login } from './login';
+import { materialIssueRequest } from './material-issue-request';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
@@ -34,6 +36,9 @@ import { outboxRejections } from './outbox-rejections';
 import { packingRepack } from './packing-repack';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
+import { poChangeReview } from './po-change-review';
+import { productionOrder } from './production-order';
+import { productionPlan } from './production-plan';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
 import { putaway } from './putaway';
@@ -48,6 +53,10 @@ import { stateLocked } from './state-locked';
 import { stockTransfer } from './stock-transfer';
 import { temporaryPutaway } from './temporary-putaway';
 import { wipHandover } from './wip-handover';
+import { workOrder } from './work-order';
+import { workOrderClose } from './work-order-close';
+import { workOrderProgress } from './work-order-progress';
+import { workOrderRelease } from './work-order-release';
 
 export const vi: Translated<Messages> = {
   ...ko,
@@ -56,6 +65,7 @@ export const vi: Translated<Messages> = {
   dashboard,
   deviceRegistration,
   editability,
+  emergencyWorkOrder,
   equipmentFailureReport,
   equipmentInspection,
   httpError,
@@ -63,6 +73,7 @@ export const vi: Translated<Messages> = {
   inboundVariance,
   iqcSkipRequest,
   login,
+  materialIssueRequest,
   materialLocation,
   materialLotScan,
   materialPicking,
@@ -70,6 +81,9 @@ export const vi: Translated<Messages> = {
   packingRepack,
   pendingCode,
   physicalCount,
+  poChangeReview,
+  productionOrder,
+  productionPlan,
   productPicking,
   productReceipt,
   putaway,
@@ -84,4 +98,8 @@ export const vi: Translated<Messages> = {
   stockTransfer,
   temporaryPutaway,
   wipHandover,
+  workOrder,
+  workOrderClose,
+  workOrderProgress,
+  workOrderRelease,
 };

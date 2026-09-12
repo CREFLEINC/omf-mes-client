@@ -17,8 +17,10 @@ import { useWorkOrderList, type WorkOrderFact } from '../work-order/queries';
 import { useRoutingOperations } from '../routing/queries';
 import { useProductionPlanDetail } from './queries';
 
+const t = messages.productionPlan.result;
+
 const quantity = (value: number, uomLabel: string): string =>
-  `${new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value)} ${uomLabel}`;
+  t.quantity(new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value), uomLabel);
 
 export const WorkOrderResultPane = ({
   productionPlanId,
@@ -44,22 +46,22 @@ export const WorkOrderResultPane = ({
     ]) ?? [],
   );
   const columns: Column<WorkOrderFact>[] = [
-    { key: 'workOrderNo', header: 'W/O 번호' },
+    { key: 'workOrderNo', header: t.columns.workOrderNo },
     {
       key: 'operation',
-      header: '공정',
-      render: (row) => operationNames.get(row.routingOperationId) ?? '공정 이름 확인 불가',
+      header: t.columns.operation,
+      render: (row) => operationNames.get(row.routingOperationId) ?? t.operationUnknown,
     },
     {
       key: 'orderQty',
-      header: '수량',
+      header: t.columns.orderQty,
       align: 'end',
       render: (row) => quantity(row.orderQty, uomLabel),
     },
-    { key: 'workOrderTypeCode', header: 'W/O 유형' },
+    { key: 'workOrderTypeCode', header: t.columns.workOrderType },
     {
       key: 'statusCode',
-      header: '상태',
+      header: t.columns.status,
       render: (row) => (
         <Chip variant="status" status="idle" size="sm">
           {row.statusCode}
@@ -72,16 +74,12 @@ export const WorkOrderResultPane = ({
     plan.data === undefined || workOrders.data === undefined || operations.data === undefined;
 
   return (
-    <section className="pane production-plan-section" aria-label="전개된 작업지시">
-      <h2>{trustedPlan?.planNo ?? `생산계획 ${String(productionPlanId)}`} 전개 결과</h2>
+    <section className="pane production-plan-section" aria-label={t.pane}>
+      <h2>{t.heading(trustedPlan?.planNo ?? t.fallbackPlanName(productionPlanId))}</h2>
       {failed ? (
         <AlertBanner
           variant="error"
-          title={
-            ownerMismatch
-              ? '다른 계획의 전개 결과가 반환되었습니다.'
-              : '전개 결과를 불러오지 못했습니다.'
-          }
+          title={ownerMismatch ? t.ownerMismatch : t.loadFailed}
           action={
             <Button
               size="sm"
@@ -90,12 +88,12 @@ export const WorkOrderResultPane = ({
                 void Promise.all([plan.refetch(), workOrders.refetch(), operations.refetch()])
               }
             >
-              다시 시도
+              {t.retry}
             </Button>
           }
         />
       ) : loading ? (
-        <div role="status" aria-label="전개 결과를 불러오는 중">
+        <div role="status" aria-label={t.loading}>
           <SkeletonText lines={4} />
         </div>
       ) : (
@@ -112,7 +110,7 @@ export const WorkOrderResultPane = ({
               rows={workOrders.data.items}
               getRowId={(row) => String(row.workOrderId)}
               sort={null}
-              empty={<EmptyState size="sm" live title="생성된 작업지시가 없습니다." />}
+              empty={<EmptyState size="sm" live title={t.empty} />}
             />
           </div>
           <PageNav

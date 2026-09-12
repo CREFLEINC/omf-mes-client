@@ -1,5 +1,8 @@
 import { Button, Dialog } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import type { ReactNode } from 'react';
+
+const t = messages.productionPlan.confirmDialog;
 
 interface ProductionPlanConfirmDialogProps {
   planNo: string;
@@ -19,7 +22,7 @@ export const ProductionPlanConfirmDialog = ({
   <Dialog
     open
     size="sm"
-    title={`${planNo} 전개 확정`}
+    title={t.title(planNo)}
     closeOnBackdropClick={false}
     showCloseButton={false}
     onClose={() => {
@@ -28,16 +31,16 @@ export const ProductionPlanConfirmDialog = ({
     footer={
       <>
         <Button variant="outlined" disabled={isSubmitting} onClick={onClose}>
-          취소
+          {t.cancel}
         </Button>
         <Button loading={isSubmitting} disabled={isSubmitting} onClick={onConfirm}>
-          전개 확정
+          {t.confirm}
         </Button>
       </>
     }
   >
     {banner}
-    <p>계획을 확정하면 Routing 공정별 W/O와 공정 의존 관계를 함께 생성합니다.</p>
-    <p>서버가 한 트랜잭션으로 처리하며, 확정된 계획은 수정하거나 삭제할 수 없습니다.</p>
+    <p>{t.effect}</p>
+    <p>{t.irreversible}</p>
   </Dialog>
 );

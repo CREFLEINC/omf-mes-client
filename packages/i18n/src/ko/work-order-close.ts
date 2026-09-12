@@ -210,6 +210,11 @@ export const workOrderClose = {
       requestApproval: '상신',
     },
     immutable: '정정 실적도 같은 목록에 추가됩니다. 원본 실적은 삭제하거나 덮어쓰지 않습니다.',
+    /** 정정 입력이 틀렸을 때. 어느 칸을 어떻게 채우면 되는지를 적는다. */
+    errors: {
+      quantity: '0 이상의 수량을 입력하세요.',
+      reasonRequired: '정정 사유를 선택하세요.',
+    },
     dialog: {
       title: (workOrderNo: string, sequence: number): string =>
         `정정 입력 — ${workOrderNo} 순번 ${String(sequence)}`,
