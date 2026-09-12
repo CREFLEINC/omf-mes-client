@@ -133,6 +133,8 @@ export const PqcInspectionScreen = () => {
   } | null>(null);
 
   const [remarks, setRemarks] = useState('');
+  /** 초안을 지울지 가르는 자리 — 「효과가 다시 돌았다」와 「대상이 바뀌었다」는 다르다. */
+  const lastTargetId = useRef<number | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isJustConfirmed, setIsJustConfirmed] = useState(false);
@@ -167,12 +169,21 @@ export const PqcInspectionScreen = () => {
    * 전부 성공을 말한다** — 거부된 건은 큐에서 내려가 미동기 건수마저 0 으로 돌아온다.
    * 검사자는 그대로 다음 LOT 으로 넘어간다.
    */
+  const rejectedStatusCode = outbox.rejectedStatusCode;
+
   useEffect(() => {
     if (outbox.rejection === null) return;
 
     setIsSaved(false);
+    /*
+     * ⛔ **확정이 거부됐을 때만 잠금을 푼다.** 큐는 밀릴 수 있어 임시 저장과 확정이 함께 서
+     * 있을 수 있는데, 앞의 임시 저장이 거부됐다고 잠금을 풀면 **아직 큐에 살아 있는 확정 위에
+     * 두 번째 확정이 얹힌다**(#1091 리뷰).
+     */
+    if (rejectedStatusCode !== RESULT_STATUS.confirmed) return;
+
     setIsJustConfirmed(false);
-  }, [outbox.rejection]);
+  }, [outbox.rejection, rejectedStatusCode]);
 
   /*
    * 되돌림은 **값**으로 판정한다 — 조회 응답이 다시 그려질 때마다 참조가 달라지므로,
@@ -214,8 +225,15 @@ export const PqcInspectionScreen = () => {
      *
      * ⚠ 빈 객체로 되돌린다 — 이 화면은 저장된 측정치를 부르지 않으므로(요구서 §3-7) 되돌릴
      * 원본이 없고, 줄마다 빈 초안이 그 시작 상태다.
+     *
+     * ⛔ **대상이 «실제로» 바뀌었을 때만 지운다.** 이 효과의 의존성에는 서버가 내려주는 값
+     * (대상 수량·적용 구간)이 함께 들어 있어, 대상이 그대로여도 재조회가 그 값을 다르게 내면
+     * 다시 돈다 — 임시 저장 뒤 상세를 다시 읽으므로(#601 1-7) 실제로 일어나는 길이다. 그때까지
+     * 지우면 **검사자가 친 측정값이 말없이 사라진다**(리뷰 지적). 위의 다른 되돌림은 이
+     * 변경 전부터 같은 자리에 있었으므로 건드리지 않는다 — 내가 넓힌 것만 좁힌다.
      */
-    setDrafts({});
+    if (lastTargetId.current !== targetId) setDrafts({});
+    lastTargetId.current = targetId;
     setRemarks('');
     setCoverage(toCoverageDraft(coverageFromAt, coverageToAt));
     setInspectedDraft(String(storedInspectedQty));
@@ -308,14 +326,27 @@ export const PqcInspectionScreen = () => {
   /**
    * 이 검사가 **이미 확정됐는가** — 확정된 회차는 이 화면에서 고치지 않는다(§6 · B-10).
    *
-   * ⭐ **둘을 함께 본다.** 서버 상태만 보면 **오프라인에서 확정한 직후가 열려 있다** — 이 화면은
-   * 담는 순간 성공이라(C-1 #2) 서버에 닿기 전이고, 그 사이 같은 확정을 몇 번이고 더 담을 수
-   * 있다. 방금 확정한 사실만 보면 새로 연 화면이 열려 있다.
+   * ⭐ **셋을 함께 본다.** 어느 하나만으로는 구멍이 남는다.
    *
-   * ⚠ 서버가 거부하면 `isJustConfirmed` 가 거둬지므로(위) 잠금도 함께 풀린다 — 보내지 못한
-   * 검사를 잠근 채 두지 않는다.
+   * - 서버 상태만 보면 **오프라인에서 확정한 직후가 열려 있다** — 담는 순간 성공이라(C-1 #2)
+   *   서버에 닿기 전이고, 그 사이 같은 확정을 몇 번이고 더 담을 수 있다.
+   * - 방금 확정한 사실은 **화면 상태라 화면을 다시 세우면 사라진다.** 그런데 확정은 저장소에
+   *   남아 새로고침과 화면 이동을 넘긴다 — 잠금의 수명이 잠글 대상보다 짧으면, 끊긴 망에서
+   *   나갔다 돌아온 검사자가 빈 화면을 다시 채워 **같은 검사를 두 건으로 만든다**(리뷰 지적).
+   * - 그래서 **큐에 확정이 남아 있는가**를 함께 본다. 이것이 저장소에 남는 쪽이다.
+   *
+   * ⚠ 서버가 확정을 거부하면 그 건은 큐에서 내려가고 `isJustConfirmed` 도 거둬지므로(위)
+   * 잠금이 함께 풀린다 — 보내지 못한 검사를 잠근 채 두지 않는다.
+   *
+   * ⚠ **서버 갈래는 아직 실증되지 않았다** — 계약이 적은 전이는 「`:confirm` 이 `COMPLETED`」
+   * 하나인데 이 화면은 그 경로를 부르지 않고(§3-7 — 부르는 경로가 셋뿐이다) 결과 생성에
+   * `CONFIRMED` 를 실어 즉시 확정한다. 그 생성이 «의뢰»를 옮기는지는 계약에 없고, 목에도
+   * 개발 백엔드에도 확인할 자료가 없다(요청서 제출). 앞의 두 갈래는 그것과 무관하게 선다.
    */
-  const isConfirmed = detail.data?.statusCode === REQUEST_COMPLETED || isJustConfirmed;
+  const isConfirmed =
+    detail.data?.statusCode === REQUEST_COMPLETED ||
+    isJustConfirmed ||
+    (targetId !== null && outbox.hasPendingConfirm(targetId));
 
   /**
    * 확정이 막혔다면 **무엇이** 막혔는지. 풀렸으면 `null`.

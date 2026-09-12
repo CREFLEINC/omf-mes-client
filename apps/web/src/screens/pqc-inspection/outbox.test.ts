@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { MAX_AUTO_ATTEMPTS, retryDelayOf } from '../../patterns/outbox-policy';
 import { createStubFetch, jsonResponse, renderHookWithProviders } from '../../test/api-harness';
-import { isSendableEntry, useOutbox } from './outbox';
+import { STORAGE_KEY, isSendableEntry, useOutbox } from './outbox';
 
 /**
  * 이 큐가 지키는 것은 **되돌릴 수 없는 쓰기**다. 화면 시험이 「끊긴 채 저장」과 「새로고침을
@@ -157,5 +157,133 @@ describe('useOutbox — 끝나지 않는 장애에서 멈추되 담긴 것은 �
     expect(sent.at(-1)?.headers.get('Idempotency-Key')).toBe(
       sent[0]?.headers.get('Idempotency-Key'),
     );
+  });
+});
+
+/*
+ * ⛔ **잠금의 수명이 잠글 대상의 수명보다 짧으면 안 된다**(#1091 리뷰). 확정은 저장소에 남아
+ * 새로고침과 화면 이동을 넘기는데, 「방금 확정했다」는 화면 상태 하나로 잠그면 화면을 다시
+ * 세우는 순간 잠금만 사라진다 — 그 틈에 같은 검사가 두 건이 된다.
+ */
+describe('useOutbox — 큐가 「이 의뢰의 확정이 아직 남았는가」를 답한다', () => {
+  const bodyOf = (inspectionRequestId: number, statusCode: string) => ({
+    inspectionRequestId,
+    inspectedQty: 30,
+    acceptedQty: 28,
+    rejectedQty: 2,
+    heldQty: 0,
+    uomId: 10,
+    inspectedAt: '2026-09-02T10:00:00+09:00',
+    statusCode,
+  });
+
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  /** 아무 답도 하지 않아 큐가 비워지지 않는 서버 — 「아직 남아 있다」를 재는 자리다. */
+  const silent = [
+    {
+      match: (request: Request) => new URL(request.url).pathname === '/quality/inspection-results',
+      respond: () => new Promise<Response>(() => undefined),
+    },
+  ];
+
+  it('저장소에 남은 확정을 새로 뜬 훅이 그대로 읽는다', () => {
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([{ idempotencyKey: 'k-1', body: bodyOf(1001, 'CONFIRMED') }]),
+    );
+
+    const { result } = renderHookWithProviders(() => useOutbox(), {
+      fetch: createStubFetch(silent),
+    });
+
+    expect(result.current.hasPendingConfirm(1001)).toBe(true);
+  });
+
+  /* ⛔ **다른 의뢰의 확정으로 이 화면을 잠그지 않는다** — 큐는 의뢰를 가리지 않고 담는다. */
+  it('다른 의뢰의 확정은 이 의뢰를 잠그지 않는다', () => {
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([{ idempotencyKey: 'k-1', body: bodyOf(1002, 'CONFIRMED') }]),
+    );
+
+    const { result } = renderHookWithProviders(() => useOutbox(), {
+      fetch: createStubFetch(silent),
+    });
+
+    expect(result.current.hasPendingConfirm(1001)).toBe(false);
+  });
+
+  /* 임시 저장은 회차를 확정하지 않는다 — 그것으로 화면을 잠그면 검사자가 이어 쓰지 못한다. */
+  it('임시 저장만 남아 있으면 잠그지 않는다', () => {
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([{ idempotencyKey: 'k-1', body: bodyOf(1001, 'DRAFT') }]),
+    );
+
+    const { result } = renderHookWithProviders(() => useOutbox(), {
+      fetch: createStubFetch(silent),
+    });
+
+    expect(result.current.hasPendingConfirm(1001)).toBe(false);
+  });
+});
+
+/*
+ * ⛔ **「거부가 섰다」만으로는 무엇이 거부됐는지 알 수 없다**(#1091 리뷰). 큐는 밀릴 수 있어
+ * 임시 저장과 확정이 함께 서 있을 수 있고, 앞의 임시 저장이 거부됐다고 확정에 걸린 잠금을
+ * 풀면 아직 큐에 살아 있는 확정 위에 두 번째 확정이 얹힌다.
+ */
+describe('useOutbox — 거부된 것이 무엇이었는지 함께 낸다', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  afterEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  const refuses = [
+    {
+      match: (request: Request) => new URL(request.url).pathname === '/quality/inspection-results',
+      respond: () =>
+        jsonResponse({ errors: [{ scope: 'screen', code: 'FORBIDDEN' }] }, { status: 403 }),
+    },
+  ];
+
+  it('거부된 항목의 상태값을 함께 낸다', async () => {
+    const { result } = renderHookWithProviders(() => useOutbox(), {
+      fetch: createStubFetch(refuses),
+    });
+
+    await act(async () => {
+      result.current.enqueue({
+        inspectionRequestId: 1001,
+        inspectedQty: 30,
+        acceptedQty: 28,
+        rejectedQty: 2,
+        heldQty: 0,
+        uomId: 10,
+        inspectedAt: '2026-09-02T10:00:00+09:00',
+        statusCode: 'DRAFT',
+      });
+    });
+
+    await vi.waitFor(() => {
+      expect(result.current.rejection).not.toBeNull();
+    });
+    expect(result.current.rejectedStatusCode).toBe('DRAFT');
+
+    /* 거부 표시를 지우면 «무엇이었는지»도 함께 내려간다 — 둘이 어긋나면 판정이 흔들린다. */
+    act(() => {
+      result.current.clearRejection();
+    });
+    expect(result.current.rejectedStatusCode).toBeNull();
   });
 });

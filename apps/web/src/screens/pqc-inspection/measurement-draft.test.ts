@@ -175,6 +175,24 @@ describe('withMeasuredValue — 자동 판정은 값이 바뀔 때마다 다시 
     expect(withJudgment(row, chosen, '').judgment).toBe('REJECTED');
   });
 
+  /*
+   * ⚠ **규격 «안»의 값이면 해제해도 같은 판정이 도로 선다** — 검사자에게는 버튼이 안 먹는
+   * 것처럼 보이지만 의도다. 그 줄의 시작 상태가 빈 칸이 아니라 자동 판정이기 때문이고, 빈
+   * 칸으로 돌리려면 측정값을 지운다. 이 갈래를 시험에 못박아 두지 않으면 다음 사람이
+   * 「해제가 안 된다」를 결함으로 읽고 자동 판정을 도로 잠근다(#1091 리뷰).
+   */
+  it('규격 안의 값이면 해제해도 자동 판정이 같은 값을 도로 채운다', () => {
+    const row = autoRow(7.97, 8.03);
+    const chosen = withJudgment(row, type(row, ['8.00']), 'ACCEPTED');
+
+    const released = withJudgment(row, chosen, '');
+
+    expect(released.judgment).toBe('ACCEPTED');
+    /* ⭐ 다만 **출처는 자동으로 돌아간다** — 이제 값을 고치면 다시 계산된다. */
+    expect(released.judgmentByPerson).toBe(false);
+    expect(withMeasuredValue(row, released, '9').judgment).toBe('REJECTED');
+  });
+
   /* 재지 않은 줄에 판정이 남으면 「사람이 합격으로 판정했다」로 읽힌다. */
   it('값을 지우면 자동 판정도 거둔다', () => {
     const row = autoRow(7.97, 8.03);

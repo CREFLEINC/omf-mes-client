@@ -74,12 +74,22 @@ const renderScreen = (
   route = '/?ir=1001',
   rounds = [draftRound],
   specs = itemSpecsResponse(),
-  /** 쓰기에 무엇으로 답할지. 기본은 201 — 거부 갈래를 볼 때만 바꾼다. */
-  respondWrite: () => Response = () => jsonResponse(draftRound, { status: 201 }),
+  /**
+   * 쓰기에 무엇으로 답할지. 기본은 201 — 거부 갈래를 볼 때만 바꾼다.
+   *
+   * 약속을 돌려주면 **답을 미룰 수 있다** — 큐가 밀린 상태(앞 건이 아직 답을 못 받았는데 뒤에
+   * 새 건이 담긴다)를 만드는 유일한 길이다.
+   */
+  respondWrite: () => Response | Promise<Response> = () =>
+    jsonResponse(draftRound, { status: 201 }),
   /** 화면 곁에 함께 세울 것. 대상 이동처럼 화면 밖에서 오는 일을 흉내 낼 때만 쓴다. */
   beside: ReactNode = null,
-  /** 의뢰 상세로 무엇을 답할지. 확정된 의뢰로 들어오는 갈래를 볼 때만 바꾼다. */
-  detail: InspectionRequestResponse = waitingRequest,
+  /**
+   * 의뢰 상세로 무엇을 답할지. 확정된 의뢰로 들어오는 갈래를 볼 때만 바꾼다.
+   *
+   * 함수로 주면 **읽을 때마다 새로 답한다** — 재조회가 앞과 «다른» 값을 내는 갈래를 잰다.
+   */
+  detail: InspectionRequestResponse | (() => InspectionRequestResponse) = waitingRequest,
 ) => {
   const writes: Request[] = [];
   /** 의뢰 상세를 몇 번 읽었는가. 저장 뒤 다시 읽는지가 #601 1-7 의 판정 자료다. */
@@ -120,7 +130,7 @@ const renderScreen = (
       match: (request) => new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
       respond: (request) => {
         detailReads.push(request.clone() as Request);
-        return jsonResponse(detail);
+        return jsonResponse(typeof detail === 'function' ? detail() : detail);
       },
     },
     {
@@ -839,6 +849,46 @@ describe('PqcInspectionScreen — 서버가 거부하면 (공유계약 C-7)', ()
   });
 });
 
+/*
+ * ⛔ **재조회가 검사자의 입력을 지우지 않는다**(#1091 리뷰). 되돌림 효과의 의존성에는 서버가
+ * 내려주는 값(대상 수량·적용 구간)이 함께 들어 있어, **대상이 그대로여도** 재조회가 그 값을
+ * 다르게 내면 효과가 다시 돈다 — 임시 저장 뒤 상세를 다시 읽으므로(#601 1-7) 실제로 일어난다.
+ * 그때 항목 초안까지 지우면 검사자가 친 측정값이 말없이 사라진다.
+ */
+describe('PqcInspectionScreen — 재조회는 친 것을 지우지 않는다', () => {
+  it('같은 대상에서 상세가 다시 와도 측정값·판정이 남는다', async () => {
+    let reads = 0;
+    const { writes } = renderScreen(
+      '/?ir=1001',
+      [draftRound],
+      itemSpecsResponse(),
+      undefined,
+      null,
+      () => {
+        reads += 1;
+
+        /* 두 번째 읽기부터 서버가 적용 구간을 채워 내린다 — 효과가 다시 도는 방아쇠다. */
+        return reads === 1
+          ? waitingRequest
+          : { ...waitingRequest, coverageFromAt: '2026-09-12T01:00:00+09:00' };
+      },
+    );
+
+    await screen.findByText(t.measurements.heading);
+
+    const value = screen.getAllByLabelText(t.measurements.columns.value)[0] as HTMLInputElement;
+    await userEvent.type(value, '9');
+
+    /* 임시 저장이 상세 재조회를 부른다(#601 1-7) — 여기서 초안이 날아가던 자리다. */
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    await waitFor(() => expect(reads).toBeGreaterThan(1));
+
+    const after = screen.getAllByLabelText(t.measurements.columns.value)[0] as HTMLInputElement;
+    expect(after.value).toBe('9');
+  });
+});
+
 describe('PqcInspectionScreen — 액션바', () => {
   /*
    * ⭐ **터치 등급은 치수가 아니라 「틀렸을 때 무엇이 일어나는가」로 갈린다**(`pop-touch`).
@@ -923,6 +973,98 @@ describe('PqcInspectionScreen — 확정된 회차는 잠긴다', () => {
     expect(banner).not.toBeNull();
     expect(within(banner as HTMLElement).getByText(t.result.confirmed)).toBeInTheDocument();
     expect(screen.getAllByText(t.result.confirmed)).toHaveLength(1);
+  });
+
+  /*
+   * ⛔ **화면을 다시 세워도 잠금이 남는다**(#1091 리뷰). 확정은 저장소에 남아 새로고침과 화면
+   * 이동을 넘기는데, 「방금 확정했다」는 화면 상태 하나로 잠그면 다시 세우는 순간 잠금만
+   * 사라진다 — 끊긴 망에서 나갔다 돌아온 검사자가 빈 화면을 다시 채워 같은 검사를 두 건으로
+   * 만든다. 서버 상태도 기댈 수 없다: 아직 닿지 않았으므로 의뢰는 여전히 `REQUESTED` 다.
+   */
+  it('큐에 확정이 남아 있으면 화면을 새로 세워도 잠긴다', async () => {
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          idempotencyKey: 'k-confirm',
+          body: {
+            inspectionRequestId: 1001,
+            inspectedQty: 120,
+            acceptedQty: 120,
+            rejectedQty: 0,
+            heldQty: 0,
+            uomId: 10,
+            inspectedAt: '2026-09-12T10:00:00+09:00',
+            statusCode: 'CONFIRMED',
+          },
+        },
+      ]),
+    );
+
+    /* 서버는 답하지 않는다 — 큐가 비워지지 않아야 「아직 남아 있다」를 잰다. */
+    renderScreen('/?ir=1001', [draftRound], itemSpecsResponse([]), () => {
+      throw new TypeError('Failed to fetch');
+    });
+
+    expect(await screen.findByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+    expect(screen.getByText(t.result.confirmed)).toBeInTheDocument();
+
+    globalThis.localStorage.clear();
+  });
+
+  /*
+   * ⛔ **앞의 임시 저장이 거부됐다고 «확정»에 걸린 잠금을 풀지 않는다**(#1091 리뷰).
+   * 큐는 밀릴 수 있어 임시 저장과 확정이 함께 서 있을 수 있고, 거부는 큐 전체에 하나뿐인
+   * 값이라 「무엇이 거부됐는지」를 가르지 않으면 살아 있는 확정 위에 두 번째 확정이 얹힌다.
+   *
+   * ⚠ 확정이 큐를 빠져나간 «뒤»가 이 갈래가 실제로 갈리는 자리다 — 큐에 남아 있는 동안은
+   * 큐 잠금이 대신 막아 준다.
+   */
+  it('임시 저장이 거부돼도 이어서 성공한 확정의 잠금은 풀리지 않는다', async () => {
+    /*
+     * 첫 쓰기(임시 저장)는 **답을 미뤘다가** 거부하고, 둘째 쓰기(확정)는 받는다. 미루지 않으면
+     * 거부가 확정보다 «먼저» 도착해 담기는 순간 지워지므로(`enqueue` 가 거부 표시를 거둔다)
+     * 이 갈래 자체가 만들어지지 않는다.
+     */
+    let written = 0;
+    let refuseDraft = (): void => undefined;
+    const draftAnswered = new Promise<void>((resolve) => {
+      refuseDraft = resolve;
+    });
+
+    const { writes } = renderScreen('/?ir=1001', [draftRound], itemSpecsResponse([]), () => {
+      written += 1;
+
+      if (written === 1) {
+        return draftAnswered.then(() =>
+          jsonResponse({ errors: [{ scope: 'screen', code: 'FORBIDDEN' }] }, { status: 403 }),
+        );
+      }
+
+      return jsonResponse(draftRound, { status: 201 });
+    });
+
+    await userEvent.type(await screen.findByLabelText(t.result.fields.accepted), '500');
+    await userEvent.click(screen.getByRole('combobox', { name: t.result.judgment }));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+
+    /* 임시 저장 → 확정을 잇달아 담는다. 큐는 앞부터 하나씩 나간다. */
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    const confirm = screen.getByRole('button', { name: t.result.confirm });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    /* 확정이 큐에 담긴 뒤에야 앞 건의 거부를 돌려준다. */
+    refuseDraft();
+
+    await waitFor(() => expect(writes).toHaveLength(2));
+
+    /* 거부 배너가 섰다 — 이 시점에 잠금이 풀리면 두 번째 확정이 나갈 수 있다. */
+    await screen.findByRole('alert');
+
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
   });
 
   /*
