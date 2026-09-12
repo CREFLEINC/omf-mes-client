@@ -19,21 +19,29 @@ import { common } from './common';
 import { conflict } from './conflict';
 import { dashboard } from './dashboard';
 import { deviceRegistration } from './device-registration';
+import { disposalIssue } from './disposal-issue';
+import { documentProgress } from './document-progress';
 import { editability } from './editability';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
+import { goodsReceipt } from './goods-receipt';
 import { inboundReceipt } from './inbound-receipt';
+import { inboundSchedule } from './inbound-schedule';
 import { inboundVariance } from './inbound-variance';
 import { httpError } from './http-error';
+import { iqcInspection } from './iqc-inspection';
+import { iqcSkipApproval } from './iqc-skip-approval';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { login } from './login';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
 import { outboxRejections } from './outbox-rejections';
+import { overReceiptSplit } from './over-receipt-split';
 import { packingRepack } from './packing-repack';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
+import { poRegister } from './po-register';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
 import { putaway } from './putaway';
@@ -45,7 +53,11 @@ import { shellHome } from './shell-home';
 import { shellNav } from './shell-nav';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stateLocked } from './state-locked';
+import { stockAdjust } from './stock-adjust';
+import { stockStatus } from './stock-status';
 import { stockTransfer } from './stock-transfer';
+import { stocktaking } from './stocktaking';
+import { supplierReturn } from './supplier-return';
 import { temporaryPutaway } from './temporary-putaway';
 import { wipHandover } from './wip-handover';
 
@@ -55,21 +67,29 @@ export const vi: Translated<Messages> = {
   conflict,
   dashboard,
   deviceRegistration,
+  disposalIssue,
+  documentProgress,
   editability,
   equipmentFailureReport,
   equipmentInspection,
+  goodsReceipt,
   httpError,
   inboundReceipt,
+  inboundSchedule,
   inboundVariance,
+  iqcInspection,
+  iqcSkipApproval,
   iqcSkipRequest,
   login,
   materialLocation,
   materialLotScan,
   materialPicking,
   outboxRejections,
+  overReceiptSplit,
   packingRepack,
   pendingCode,
   physicalCount,
+  poRegister,
   productPicking,
   productReceipt,
   putaway,
@@ -81,7 +101,11 @@ export const vi: Translated<Messages> = {
   shellNav,
   shopfloorReceipt,
   stateLocked,
+  stockAdjust,
+  stockStatus,
   stockTransfer,
+  stocktaking,
+  supplierReturn,
   temporaryPutaway,
   wipHandover,
 };
