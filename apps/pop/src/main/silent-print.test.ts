@@ -7,6 +7,7 @@ import {
   PrintTimeoutError,
   type SilentPrintDeps,
   createSilentPrinter,
+  resolveTerminalPrinter,
   selectPrinter,
 } from './silent-print';
 
@@ -242,4 +243,83 @@ describe('대기열 RAW 로 보내는 것', () => {
       expect(printRaw.print).not.toHaveBeenCalled();
     },
   );
+});
+
+/**
+ * 어디로 보낼지의 **판정 전부**(#1098).
+ *
+ * ⭐ 이 묶음이 **단말을 멈추게 했던 결함**을 문다. 종전 판은 목록의 첫 대를 골랐고, Windows
+ * 목록은 대체로 이름순이라 가상 프린터(Microsoft Print to PDF)가 앞을 차지했다. 라벨이
+ * 그쪽으로 가면 드라이버가 저장 대화상자를 띄우는데, 그 상자는 키오스크 창 뒤에 깔려 누를 수
+ * 없고 인쇄 호출은 응답을 기다린 채 멈춘다 — 프로그램을 껐다 켜는 것 말고 방법이 없었다.
+ *
+ * ⛔ **판정을 조각내지 않는다.** 규칙만 순수 함수로 빼고 「목록을 어떻게 얻어 어떻게 넘기는가」를
+ *    조립부에 남기면, 규칙이 옳은 채로 **아무도 부르지 않는** 상태가 시험을 통과한다
+ *    (독립 검증이 실제로 그 뮤테이션을 살려 냈다 — 옛 결함을 배선에 되살려도 전건 통과했다).
+ */
+describe('보낼 곳 판정', () => {
+  const printers = [
+    printer('Microsoft Print to PDF'),
+    printer('HPRT HT800', { displayName: '라벨기 1호' }),
+  ];
+
+  it('지정이 없으면 OS 가 알려 준 기본 프린터로 보낸다', () => {
+    expect(resolveTerminalPrinter({ printers, defaultName: 'HPRT HT800' }).choice).toEqual({
+      kind: 'named',
+      deviceName: 'HPRT HT800',
+    });
+  });
+
+  /** ⛔ 이 시험이 옛 결함을 문다 — 첫 대는 가상 프린터다. */
+  it('⛔ 목록의 첫 대를 고르지 않는다', () => {
+    expect(resolveTerminalPrinter({ printers, defaultName: 'HPRT HT800' }).choice).not.toEqual({
+      kind: 'named',
+      deviceName: 'Microsoft Print to PDF',
+    });
+  });
+
+  it('⛔ 이름을 못 알아냈으면 싣지 않는다 — 목록에서 짐작해 고르지 않는다', () => {
+    expect(resolveTerminalPrinter({ printers, defaultName: null }).choice).toEqual({
+      kind: 'systemDefault',
+    });
+  });
+
+  it('지정값이 정한 프린터는 기본 프린터가 뒤집지 않는다', () => {
+    expect(
+      resolveTerminalPrinter({
+        printers,
+        preferred: 'Microsoft Print to PDF',
+        defaultName: 'HPRT HT800',
+      }).choice,
+    ).toEqual({ kind: 'named', deviceName: 'Microsoft Print to PDF' });
+  });
+
+  it('프린터가 하나도 없으면 기본 프린터로도 되살리지 않는다', () => {
+    expect(resolveTerminalPrinter({ printers: [], defaultName: 'HPRT HT800' }).choice).toEqual({
+      kind: 'none',
+    });
+  });
+
+  /**
+   * ⭐ 화면은 목록의 `name` 으로 「이 프린터로 나갑니다」를 맞춰 보인다. 표기가 갈리면
+   * 인쇄는 맞는 곳으로 가는데 화면이 다른 이름을 가리킨다.
+   */
+  it('OS 이름이 목록의 표시명과 같으면 목록의 이름으로 싣는다', () => {
+    expect(resolveTerminalPrinter({ printers, defaultName: '라벨기 1호' }).choice).toEqual({
+      kind: 'named',
+      deviceName: 'HPRT HT800',
+    });
+  });
+
+  it('목록에 없는 이름이어도 OS 가 준 이름을 그대로 쓴다 — 그 프린터는 실재한다', () => {
+    expect(resolveTerminalPrinter({ printers, defaultName: '창고 프린터' }).choice).toEqual({
+      kind: 'named',
+      deviceName: '창고 프린터',
+    });
+  });
+
+  it('그때 무엇이 있었는지를 함께 낸다 — 고르지 못한 날의 단서다', () => {
+    expect(resolveTerminalPrinter({ printers: [], defaultName: null }).available).toEqual([]);
+    expect(resolveTerminalPrinter({ printers, defaultName: null }).available).toHaveLength(2);
+  });
 });

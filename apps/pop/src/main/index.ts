@@ -65,13 +65,19 @@ import {
   buildRawPrintScript,
   rawPrintScriptArgs,
 } from './raw-print';
-import { buildPrintScript, printScriptArgs } from './windows-print';
+import {
+  buildDefaultPrinterScript,
+  buildPrintScript,
+  parseDefaultPrinterName,
+  printScriptArgs,
+} from './windows-print';
 import { resolveRendererPath } from './renderer-path';
 import {
   DEFAULT_PRINT_TIMEOUT_MS,
   type PrintPage,
   type PrinterChoice,
   createSilentPrinter,
+  resolveTerminalPrinter,
   selectPrinter,
 } from './silent-print';
 import { SecureStore } from './secure-store';
@@ -380,6 +386,35 @@ function createRawPrinter(fallbackName?: string): RawPrinter | undefined {
 }
 
 /**
+ * **이 단말의 기본 프린터 이름**. 알아내지 못하면 `null` 이다(#1098).
+ *
+ * ⭐ **알아낸 이름은 기록에 남기려고 쓴다.** 이름을 싣지 않아도 인쇄는 같은 곳으로 가지만,
+ *    그때 기록에는 「(OS 기본)」만 남아 **어느 장치로 갔는지 나중에 알 수 없다** — 라벨이 안
+ *    나온 날 그 줄이 유일한 단서다.
+ *
+ * ⛔ **캐시하지 않는다.** 현장에서 기본 프린터를 바꾸는 일이 있고, 기동 시점의 값을 들고 있으면
+ *    바뀐 뒤에도 옛 장치 이름으로 보낸다(프린터 목록을 매번 다시 묻는 것과 같은 이유다).
+ *
+ * ⚠ Windows 밖에서는 묻지 않는다 — 개발 기계에는 이 길이 없고, 엔진 경로가 알아서 간다.
+ */
+async function readDefaultPrinterName(scratchDir: string): Promise<string | null> {
+  if (process.platform !== 'win32') return null;
+
+  try {
+    const output = await runPrintScript(
+      join(scratchDir, 'default-printer.ps1'),
+      buildDefaultPrinterScript(),
+      printScriptArgs,
+    );
+
+    return parseDefaultPrinterName(output);
+  } catch {
+    /* 못 물어본 것이 인쇄를 막지 않는다 — 이름 없이 보내면 OS 가 같은 곳으로 보낸다. */
+    return null;
+  }
+}
+
+/**
  * Windows 단말의 인쇄 — **OS 의 그림 인쇄에 맡긴다**(`windows-print` 머리말).
  *
  * ⚠ 개발 기계(mac 등)에는 이 길이 없다. 거기서는 엔진 경로를 그대로 쓴다.
@@ -492,35 +527,19 @@ async function main(): Promise<void> {
   }> => {
     if (printHost === null) return { choice: { kind: 'none' }, available: [] };
 
-    const printers = await printHost.webContents.getPrintersAsync();
-    const chosen = selectPrinter(printers, process.env.POP_PRINTER_NAME);
-
     /*
-     * ⭐ **「OS 기본에 맡긴다」를 이름으로 바꿔 못 박는다**(실기 실측 2026-09-08).
+     * ⭐ **여기서 하는 일은 «구해 넘기는 것» 뿐이다.** 어디로 보낼지의 판정은 전부
+     *    `resolveTerminalPrinter` 가 갖는다 — 이 자리에 판정을 조금이라도 남기면 시험이 닿지
+     *    않는 틈이 다시 생긴다(독립 검증 지적 2026-09-12).
      *
-     * 지정값이 없으면 장치 이름을 싣지 않고 OS 기본에 맡겨 왔는데, 그 단말의 기본 프린터가
-     * 라벨 프린터가 아니면 **명령이 엉뚱한 장치로 가서 아무것도 나오지 않는다** — 기록에는
-     * 「고른 프린터=(OS 기본)」만 남아 어디로 갔는지도 알 수 없었다.
-     *
-     * 그래서 여기서 **한 대를 골라 이름을 싣는다** — 화면이 보이는 것과 같은 규칙이다
-     * (`patterns/pop-terminal-printers`: 기본으로 표시된 것, 없으면 첫 번째).
-     * ⛔ 이름을 못 고르면 「보낼 곳 없음」이다 — 조용히 OS 에 떠넘기지 않는다.
+     * ⚠ **매번 다시 묻는다.** 현장에서 프린터를 갈아 끼우거나 기본 프린터를 바꾸는 일이 있어,
+     *   기동 시점의 값을 들고 있으면 사라진 장치로 계속 보낸다.
      */
-    /*
-     * ⚠ **Electron 은 「어느 것이 OS 기본인가」를 알려 주지 않는다**(`PrinterInfo` 에 그 자리가
-     *   없다). 그래서 **화면이 고르는 것과 같은 규칙**을 쓴다 — 목록의 첫 대
-     *   (`patterns/pop-terminal-printers` 가 화면에 그렇게 보인다). 화면에 보이는 프린터와
-     *   실제로 나가는 프린터가 갈리지 않는 것이 여기서 가장 중요하다.
-     *
-     * ⭐ **한 대로 못 박으려면 `POP_PRINTER_NAME` 을 준다** — 그 값이 있으면 위에서 이미 정해진다.
-     */
-    const named = chosen.kind === 'systemDefault' ? printers[0] : undefined;
-
-    return {
-      choice: named === undefined ? chosen : { kind: 'named' as const, deviceName: named.name },
-      /* 고르지 못했을 때 **무엇이 있었는지**를 기록에 남기려고 함께 들고 나간다. */
-      available: printers.map(({ name, displayName }) => ({ name, displayName })),
-    };
+    return resolveTerminalPrinter({
+      printers: await printHost.webContents.getPrintersAsync(),
+      preferred: process.env.POP_PRINTER_NAME,
+      defaultName: await readDefaultPrinterName(stagingDir),
+    });
   };
 
   // 대기열이 사라지면 현장 실적이 사라진다. 창을 만들기 **전에** 등록한다 —
