@@ -315,9 +315,13 @@ describe('ProductionFlowScreen', () => {
    */
   it('상세가 늦게 닿아도 이미 적용된 양품 누계가 초기수량에 덮이지 않는다', async () => {
     const writes: Request[] = [];
-    let releaseDetail: (() => void) | null = null;
+    let releaseDetail = (): void => {
+      /* 아래 Promise 가 곧바로 덮어쓴다 — 실행기는 동기이므로 이 몸통은 불리지 않는다. */
+    };
     const detailArrived = new Promise<void>((resolve) => {
-      releaseDetail = resolve;
+      releaseDetail = (): void => {
+        resolve();
+      };
     });
     const slowDetail: StubRoute = {
       match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}`,
@@ -336,7 +340,7 @@ describe('ProductionFlowScreen', () => {
     renderScreen(writes, [slowDetail]);
 
     const quantity = await screen.findByLabelText(t.flow.quantity.actual);
-    releaseDetail?.();
+    releaseDetail();
 
     await waitFor(() => {
       expect(quantity).toHaveValue('8');
