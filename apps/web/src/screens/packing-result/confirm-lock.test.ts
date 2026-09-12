@@ -31,10 +31,6 @@ const ready = (overrides: Partial<ConfirmLockInput> = {}): ConfirmLockInput => (
 });
 
 describe('confirmLockReason', () => {
-  /**
-   * ⛔ **눌러도 아무 일이 없던 자리다**(#1093). 확정 처리기가 창고 없이는 조용히 되돌아왔는데
-   *    단추는 열려 있었다 — 잠그고 사유를 말한다.
-   */
   /** ⛔ 「만드는 중」과 「만들지 못했다」는 작업자가 할 일이 다르다(#1093). */
   it('포장이 아직 열리지 않았으면 만드는 중인지 실패인지 갈라 말한다', () => {
     expect(confirmLockReason(ready({ hasOpenUnit: false, isOpeningUnit: true }))).toBe(
