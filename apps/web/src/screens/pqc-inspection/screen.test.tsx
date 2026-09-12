@@ -884,7 +884,14 @@ describe('PqcInspectionScreen — 확정된 회차는 잠긴다', () => {
 
     expect(await screen.findByRole('button', { name: t.result.confirm })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
-    expect(screen.getByText(t.result.confirmed)).toBeInTheDocument();
+
+    /*
+     * ⛔ **하지 않은 일을 방금 한 것처럼 말하지 않는다** — 어제 확정된 회차에 들어와도
+     *    「확정했습니다」가 서면 검사자는 자기가 방금 확정한 줄 안다.
+     */
+    expect(screen.queryByText(t.result.confirmSucceeded)).not.toBeInTheDocument();
+    /* ⛔ 한 사실이 두 문장으로 갈라 서지 않는다 — 사유는 «띠 하나»에만 있다. */
+    expect(screen.getAllByText(t.result.confirmed)).toHaveLength(1);
   });
 
   /* ⚠ 서버에 닿기 전에도 잠긴다 — 담는 순간이 성공이라(C-1 #2) 그 사이가 열려 있었다. */
@@ -906,6 +913,16 @@ describe('PqcInspectionScreen — 확정된 회차는 잠긴다', () => {
     expect(await screen.findByText(t.result.confirmSucceeded)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
     expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+
+    /*
+     * ⭐ **한 띠가 둘을 함께 말한다**(사용자 지시 2026-09-12) — 확정됐다는 결과와, 그래서
+     *    무엇을 할 수 없는지. 아래에 회색 줄로 또 세우면 같은 사실이 무게가 다른 문장
+     *    둘로 갈라진다.
+     */
+    const banner = screen.getByText(t.result.confirmSucceeded).closest('[role]');
+    expect(banner).not.toBeNull();
+    expect(within(banner as HTMLElement).getByText(t.result.confirmed)).toBeInTheDocument();
+    expect(screen.getAllByText(t.result.confirmed)).toHaveLength(1);
   });
 
   /*
