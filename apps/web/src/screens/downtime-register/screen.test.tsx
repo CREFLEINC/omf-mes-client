@@ -390,6 +390,13 @@ describe('DowntimeRegisterScreen — 저장', () => {
     expect(screen.getAllByText(t.errors.endedBeforeStarted).length).toBeGreaterThan(0);
   });
 
+  /**
+   * ⭐ **잠그되, 왜 잠겼는지는 말한다**(#1094 · 사용자 확인 2026-09-12 실화면).
+   *
+   * 꺼진 버튼만으로는 무엇이 모자란지 알 수 없었던 것이 이 이슈의 출발점이다 — 88단계
+   * 2회차에서 작업자가 「수량 때문」이라 잘못 읽었다. 한 회차 동안 「잠그지 않고 누르면
+   * 말한다」로 갔다가, 실제 화면에서 **눌리는 붉은 버튼**이 「지금 저장된다」로 읽혀 되돌렸다.
+   */
   it('시작 시각과 사유가 차기 전에는 「실적 저장」이 잠긴다 (스펙 §5-1 활성 조건)', async () => {
     renderScreen(baseRoutes());
 
@@ -397,7 +404,6 @@ describe('DowntimeRegisterScreen — 저장', () => {
     const saveButton = screen.getByRole('button', { name: t.actions.save });
     expect(saveButton).toBeDisabled();
 
-    /* 시작만으로는 아직 모자라다 — 사유가 `NOT NULL` 이다. */
     typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
     expect(saveButton).toBeDisabled();
 
@@ -405,16 +411,31 @@ describe('DowntimeRegisterScreen — 저장', () => {
     expect(saveButton).toBeEnabled();
   });
 
-  it('날짜만 치고 시각을 비우면 아직 「시작 시각」이 아니다 — 잠긴 채로 둔다', async () => {
+  it('⛔ 아무것도 손대지 않은 화면은 조용히 맞이한다 — 빈 화면을 경고로 맞이하지 않는다', async () => {
     renderScreen(baseRoutes());
 
     await flush();
-    fireEvent.change(screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`), {
-      target: { value: '2026-08-11' },
-    });
+
+    expect(screen.queryByText(t.actions.needStarted)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.actions.needReason)).not.toBeInTheDocument();
+  });
+
+  it('한 칸이라도 건드리면 무엇이 모자란지 말한다 — 사유를 고르면 시작 시각을 가리킨다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
     await chooseReason();
 
-    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
+    expect(await screen.findByText(t.actions.needStarted)).toBeInTheDocument();
+  });
+
+  it('시작 시각만 차면 이번엔 사유를 말한다 — 한 번에 하나씩 가리킨다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
+    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
+
+    expect(await screen.findByText(t.actions.needReason)).toBeInTheDocument();
   });
 
   it('아직 아무것도 적지 않았으면 「다시 입력」이 잠긴다 — 비울 것이 없다', async () => {
@@ -428,11 +449,18 @@ describe('DowntimeRegisterScreen — 저장', () => {
     expect(screen.getByRole('button', { name: t.actions.reset })).toBeEnabled();
   });
 
-  it('고를 사유가 하나도 없으면 칸을 감추지 않고 잠근 뒤 사유를 말한다', async () => {
+  /**
+   * ⭐ **「못 불러왔다」와 「없다」를 가른다**(#1094 · 88단계 2회차 실기).
+   *
+   * 연결이 멀쩡한데 「연결을 확인하세요」가 떠 현장이 망을 의심했다 — 실제로는 등록된 사유가
+   * 0건이었다. 작업자가 할 일이 다르다: 하나는 다시 시도, 하나는 관리자에게 등록 요청이다.
+   */
+  it('받았는데 0건이면 「등록된 사유가 없다」고 말한다 — 연결을 의심시키지 않는다', async () => {
     /* ⛔ 스펙 §6-1 — 감추면 저장이 왜 막히는지 화면에 남는 것이 없다(사유는 `NOT NULL`). */
     renderScreen([reasonsRoute([]), ...baseRoutes()]);
 
-    expect(await screen.findByText(t.errors.reasonsUnavailable)).toBeTruthy();
+    expect(await screen.findByText(t.errors.reasonsEmpty)).toBeTruthy();
+    expect(screen.queryByText(t.errors.reasonsLoadFailed)).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.reason.detail })).toBeDisabled();
   });
 
@@ -696,6 +724,56 @@ describe('DowntimeRegisterScreen — 오프라인', () => {
 });
 
 describe('DowntimeRegisterScreen — 합계만 못 받았을 때', () => {
+  /**
+   * ⭐ **실패했다고 구획을 걷지 않는다**(#1094 · 88단계 2회차 실기).
+   *
+   * 종전에는 화면이 이 패널을 통째로 배너로 갈아 끼워 **제목과 집계 자리가 함께 사라졌다** —
+   * 화면의 구조가 서버 상태에 따라 바뀌어, 작업자는 「오늘 이 설비」 칸이 어디 갔는지부터
+   * 찾는다. 그 한 줄을 되돌려도 타입과 다른 시험은 전부 초록이다.
+   */
+  it('오늘 기록 조회가 실패해도 구획은 서 있고 그 자리에서 다시 시도한다', async () => {
+    renderScreen([
+      /* ⚠ 오늘 조회«만» 넘어뜨린다 — 진행 중까지 함께 죽이면 위 배너가 같이 서서 무엇을 재는지 흐려진다. */
+      {
+        match: (request) =>
+          isGet(request, DOWNTIMES_PATH) &&
+          new URL(request.url).searchParams.get('openOnly') !== 'true',
+        respond: () => new Response('', { status: 500 }),
+      },
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+    ]);
+
+    /* 제목이 남는다 — 구획이 통째로 사라지면 이 줄에서 실패한다. */
+    expect(await screen.findByText(t.today.title)).toBeInTheDocument();
+    expect(await screen.findByText(t.today.loadFailed)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.today.retry })).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **서버 원문을 화면에 올리지 않는다**(#1094). 목의 「씨앗에 없는 자원입니다」가 사용자
+   * 화면에 그대로 떴다 — 400 밖의 상태 코드에 실려 오는 문장은 작업자가 할 수 있는 일이 없다.
+   */
+  it('⛔ 500 이 실어 보낸 개발자 문장을 화면에 내지 않는다', async () => {
+    renderScreen([
+      {
+        match: (request) => isGet(request, DOWNTIMES_PATH),
+        respond: () =>
+          jsonResponse({ code: 'NOT_FOUND', message: '씨앗에 없는 자원입니다.' }, { status: 500 }),
+      },
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+    ]);
+
+    await screen.findByText(t.today.title);
+
+    expect(screen.queryByText('씨앗에 없는 자원입니다.')).not.toBeInTheDocument();
+  });
+
   it('보이는 줄은 서버 목록이므로 **「내 단말 입력분만」이라 부르지 않는다**', async () => {
     renderScreen([
       downtimeListRoute({ today: [downtime()] }),
