@@ -230,6 +230,15 @@ export const PackingWorkScreen = () => {
    */
   const addBlockedReason = ((): string | null => {
     if (entryBlockedReason !== null) return entryBlockedReason;
+    /*
+     * ⭐ **확정을 마친 포장에는 담기지 않는다**(#1094 · 88단계 2회차 실기).
+     *
+     * ⛔ **이 판정이 수량보다 «먼저» 서야 한다.** 종전에는 이 갈래가 아예 없어, 확정 뒤에
+     *    담기를 누르면 아래 수량 검사에 먼저 걸려 **「수량을 넣으십시오」**가 떴다 — 수량을
+     *    채워 넣어도 열리지 않으니 작업자는 고장으로 읽는다. 막힌 이유와 다른 말을 하는 것이
+     *    말하지 않는 것보다 나쁘다.
+     */
+    if (packed) return t.confirm.blockedPacked;
     if (draft.handlingUnit === null && !outbox.isOnline) return t.unit.offlineStartBlocked;
 
     return null;

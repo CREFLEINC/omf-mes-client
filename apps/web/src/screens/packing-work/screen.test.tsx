@@ -409,6 +409,25 @@ describe('P-02-08 포장 작업', () => {
    * ⭐ **확정 전 취소**(스펙 §5-7 · 공유계약 B-8-1③). 호출이 둘로 갈리며 「번호는 있고 내용물은
    * 없는」 상태가 생겼고, 그대로 두면 빈 포장이 쌓인다.
    */
+  /**
+   * ⭐ **막힌 이유와 다른 말을 하지 않는다**(#1094 · 88단계 2회차 실기).
+   *
+   * 확정을 마친 포장에 담기를 누르면 **「수량을 넣으십시오」**가 떴다 — 담기를 막는 갈래에
+   * 「확정됨」이 없어 수량 검사에 먼저 걸린 것이다. 수량을 채워 넣어도 열리지 않으니 작업자는
+   * 고장으로 읽는다. 틀린 사유는 침묵보다 나쁘다.
+   */
+  it('확정을 마친 포장에 담기를 누르면 수량이 아니라 「확정을 마쳤습니다」를 말한다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({});
+    await packOneLine(user, LOT_A_NO, '100');
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    expect(await scanPane().findByText(t.confirm.blockedPacked)).toBeInTheDocument();
+    expect(scanPane().queryByText(t.scan.quantityRequired)).not.toBeInTheDocument();
+  });
+
   describe('확정 전 취소', () => {
     it('담기 전에는 취소할 것이 없다', async () => {
       const user = userEvent.setup();

@@ -390,22 +390,45 @@ describe('DowntimeRegisterScreen — 저장', () => {
     expect(screen.getAllByText(t.errors.endedBeforeStarted).length).toBeGreaterThan(0);
   });
 
-  it('시작 시각과 사유가 차기 전에는 「실적 저장」이 잠긴다 (스펙 §5-1 활성 조건)', async () => {
+  /**
+   * ⭐ **덜 찼다고 잠그지 않는다**(#1094 · 사용자 확정 2026-09-12).
+   *
+   * 종전에는 시작 시각·사유가 차기 전까지 버튼을 잠갔다. 현장은 **꺼진 버튼을 보고 무엇이
+   * 모자란지 알지 못했고**, 88단계 2회차에서 실제로 「수량 때문」이라 잘못 읽었다. 이제
+   * 누를 수 있고, 누르면 **무엇이** 모자란지 말한다.
+   */
+  it('덜 찬 채로 눌러도 잠기지 않고, 시작 시각이 비었으면 그것을 말한다', async () => {
     renderScreen(baseRoutes());
 
     await flush();
     const saveButton = screen.getByRole('button', { name: t.actions.save });
-    expect(saveButton).toBeDisabled();
-
-    /* 시작만으로는 아직 모자라다 — 사유가 `NOT NULL` 이다. */
-    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
-    expect(saveButton).toBeDisabled();
-
-    await chooseReason();
     expect(saveButton).toBeEnabled();
+
+    fireEvent.click(saveButton);
+
+    expect(await screen.findByText(t.actions.needStarted)).toBeInTheDocument();
   });
 
-  it('날짜만 치고 시각을 비우면 아직 「시작 시각」이 아니다 — 잠긴 채로 둔다', async () => {
+  it('시작 시각만 차면 이번엔 사유를 말한다 — 한 번에 하나씩 가리킨다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
+    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
+    fireEvent.click(screen.getByRole('button', { name: t.actions.save }));
+
+    expect(await screen.findByText(t.actions.needReason)).toBeInTheDocument();
+  });
+
+  it('⛔ 누르기 전에는 말하지 않는다 — 빈 화면을 경고로 맞이하지 않는다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
+
+    expect(screen.queryByText(t.actions.needStarted)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.actions.needReason)).not.toBeInTheDocument();
+  });
+
+  it('날짜만 치고 시각을 비우면 아직 「시작 시각」이 아니다 — 그 사실을 말한다', async () => {
     renderScreen(baseRoutes());
 
     await flush();
@@ -413,8 +436,9 @@ describe('DowntimeRegisterScreen — 저장', () => {
       target: { value: '2026-08-11' },
     });
     await chooseReason();
+    fireEvent.click(screen.getByRole('button', { name: t.actions.save }));
 
-    expect(screen.getByRole('button', { name: t.actions.save })).toBeDisabled();
+    expect(await screen.findByText(t.actions.needStarted)).toBeInTheDocument();
   });
 
   it('아직 아무것도 적지 않았으면 「다시 입력」이 잠긴다 — 비울 것이 없다', async () => {
@@ -428,11 +452,18 @@ describe('DowntimeRegisterScreen — 저장', () => {
     expect(screen.getByRole('button', { name: t.actions.reset })).toBeEnabled();
   });
 
-  it('고를 사유가 하나도 없으면 칸을 감추지 않고 잠근 뒤 사유를 말한다', async () => {
+  /**
+   * ⭐ **「못 불러왔다」와 「없다」를 가른다**(#1094 · 88단계 2회차 실기).
+   *
+   * 연결이 멀쩡한데 「연결을 확인하세요」가 떠 현장이 망을 의심했다 — 실제로는 등록된 사유가
+   * 0건이었다. 작업자가 할 일이 다르다: 하나는 다시 시도, 하나는 관리자에게 등록 요청이다.
+   */
+  it('받았는데 0건이면 「등록된 사유가 없다」고 말한다 — 연결을 의심시키지 않는다', async () => {
     /* ⛔ 스펙 §6-1 — 감추면 저장이 왜 막히는지 화면에 남는 것이 없다(사유는 `NOT NULL`). */
     renderScreen([reasonsRoute([]), ...baseRoutes()]);
 
-    expect(await screen.findByText(t.errors.reasonsUnavailable)).toBeTruthy();
+    expect(await screen.findByText(t.errors.reasonsEmpty)).toBeTruthy();
+    expect(screen.queryByText(t.errors.reasonsLoadFailed)).not.toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.reason.detail })).toBeDisabled();
   });
 

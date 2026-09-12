@@ -30,10 +30,10 @@ export interface SaveBlockInput {
 
 /**
  * ⛔ **여기 담는 것은 「이 단말·이 작업자로는 안 된다」뿐이다.** 덜 채운 칸은 담지 않는다 —
- * 그쪽은 사유를 글로 적지 않고 버튼을 잠그는 것으로 말한다(`isIncomplete`).
+ * 그쪽은 **누른 순간** 화면이 무엇이 모자란지 말한다(#1094 · `screen.tsx` 의 `blockedNotice`).
  *
- * 두 갈래를 가르는 이유: 여기 담기는 것들은 **작업자가 화면에서 고칠 수 없다**(권한·사번·설비)
- * 라 무엇이 막는지 글로 말해야 하지만, 덜 채운 칸은 **화면에 그 자리가 보인다.**
+ * 두 갈래를 가르는 이유: 여기 담기는 것들은 **작업자가 화면에서 고칠 수 없어**(권한·사번·설비)
+ * 누르기 «전»에 말해야 하고, 덜 채운 칸은 작업자가 지금 채울 수 있어 누를 때 말하면 된다.
  */
 export const resolveSaveBlock = ({
   workerNo,
@@ -88,7 +88,6 @@ export interface ActionBarProps {
   /** 아직 아무것도 적지 않았다 — 비울 것이 없으면 「다시 입력」을 잠근다. */
   isEmpty: boolean;
   /** 저장에 필요한 것이 덜 찼다 — **시작 시각과 사유**다(스펙 §5-1 활성 조건). */
-  isIncomplete: boolean;
   onReset: () => void;
   onSave: () => void;
 }
@@ -99,7 +98,7 @@ export interface ActionBarProps {
  * ⛔ **「다시 입력」은 서버를 부르지 않는다.** 저장 전 화면 안의 초기화이고, 계약에 대응하는
  * 오퍼레이션이 없는 것도 그래서다.
  */
-export const ActionBar = ({ block, isEmpty, isIncomplete, onReset, onSave }: ActionBarProps) => {
+export const ActionBar = ({ block, isEmpty, onReset, onSave }: ActionBarProps) => {
   return (
     <div className="downtime-actions">
       {/*
@@ -124,19 +123,15 @@ export const ActionBar = ({ block, isEmpty, isIncomplete, onReset, onSave }: Act
       {/*
        * 큐에 담는 것이 곧 성공이라 「저장하는 중」이 없다 — 통신을 기다리지 않는다.
        *
-       * ⛔ **시작 시각과 사유가 차기 전에는 잠긴다**(스펙 §5-1 활성 조건 · 사용자 지적
-       *    2026-09-07). 빈 화면에서 눌리면 「눌러도 되는 것」으로 읽힌다.
+       * ⛔ **덜 찼다고 잠그지 않는다**(#1094 · 사용자 확정 2026-09-12). 종전에는 시작 시각·사유가
+       *    차기 전에 잠갔는데(§5-1 활성 조건), 현장은 **꺼진 버튼을 보고 무엇이 모자란지 알지
+       *    못했다** — 88단계 2회차에서 그 오해가 실제로 났다. 이제 누를 수 있고, 누르면
+       *    화면 머리에서 무엇이 모자란지 말한다.
        *
-       * ⚠ **덜 찼다는 사유를 버튼 옆에 적지 않는다.** 스펙이 이 셋에 정한 처리는 「활성 조건」
-       *    뿐이고(§5-1), 비어 있는 칸은 화면에 이미 보인다 — 선례 `P-02-04` 도 같은 자리의
-       *    상주 사유를 걷었다(2026-09-07).
+       * ⚠ **상주 사유는 여전히 두지 않는다.** 빈 화면을 붉은 글씨로 맞이하지 않는다는 종전
+       *    판단(2026-09-07)은 그대로다 — 바뀐 것은 「언제 말하는가」뿐이다.
        */}
-      <Button
-        variant="filled"
-        size="2xl"
-        disabled={block !== null || isIncomplete}
-        onClick={onSave}
-      >
+      <Button variant="filled" size="2xl" disabled={block !== null} onClick={onSave}>
         {t.actions.save}
       </Button>
     </div>

@@ -51,6 +51,8 @@ export interface TodayPanelProps {
    * `isPending` 은 «꺼 둔» 조회에 대해 거짓이라 그것만으로는 두 상태가 구별되지 않는다.
    */
   isAsked: boolean;
+  /** 조회를 걸지 «못한» 이유를 담은 문구(#1094). `isAsked` 가 참이면 쓰이지 않는다. */
+  notAskedLabel: string;
   /** 이 단말이 아는 것만 보이는 상태인가 — 범위를 이름으로 말해야 한다. */
   isLocalOnly: boolean;
   now: Date;
@@ -72,6 +74,7 @@ export const TodayPanel = ({
   totalMinutes,
   isPending,
   isAsked,
+  notAskedLabel,
   isLocalOnly,
   now,
 }: TodayPanelProps) => {
@@ -102,7 +105,7 @@ export const TodayPanel = ({
                * ⛔ 묻지 않았으면 건수를 말하지 않는다 — `0건` 은 「없었다」로 읽힌다.
                *    합계 자리가 이미 지키는 구분을 건수에도 그대로 적용한다.
                */}
-              {isAsked ? t.today.summary(rows.length, totalLabel) : t.today.notAsked}
+              {isAsked ? t.today.summary(rows.length, totalLabel) : notAskedLabel}
               {isAsked && basisLabel !== null && (
                 <span className="downtime-today-basis">{t.today.basis(basisLabel)}</span>
               )}
@@ -132,7 +135,7 @@ export const TodayPanel = ({
                 rows={[...rows]}
                 getRowId={(row) => row.key}
                 density="compact"
-                empty={isAsked ? t.today.empty : t.today.notAsked}
+                empty={isAsked ? t.today.empty : notAskedLabel}
               />
             </div>
           </>
