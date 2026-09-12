@@ -71,14 +71,16 @@ export const useScanField = ({ onScan, scanner, applied }: UseScanFieldOptions):
     onScanRef.current(value);
   }, []);
 
+  /*
+   * 넘기는 것은 상태 갱신 함수 밖에서 한다. 앱은 StrictMode 로 돌아 갱신 함수가 두 번
+   * 도는데, 그 안에서 넘기면 한 번 받은 것이 두 건으로 나간다.
+   */
   const acceptPending = useCallback(() => {
-    setPending((value) => {
-      if (value !== null) {
-        onScanRef.current(value);
-      }
-      return null;
-    });
-  }, []);
+    if (pending !== null) {
+      onScanRef.current(pending);
+    }
+    setPending(null);
+  }, [pending]);
 
   const dismissPending = useCallback(() => {
     setPending(null);

@@ -534,7 +534,7 @@ describe('자재LOT 스캔·등록 화면', () => {
   });
   /**
    * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
-   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 「이 라인 등록」을 누른다.
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 등록 단추를 누른다.
    */
   it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
     const user = userEvent.setup();
@@ -578,5 +578,4 @@ describe('자재LOT 스캔·등록 화면', () => {
 
     expect(await screen.findByText(formatMaterialLotNo(other))).toBeTruthy();
   });
-
 });

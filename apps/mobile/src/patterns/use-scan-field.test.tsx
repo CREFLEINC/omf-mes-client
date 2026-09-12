@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { ScannerAdapter } from './scanner';
@@ -327,4 +328,23 @@ describe('스캔 필드 결선', () => {
     expect(onScan).toHaveBeenCalledWith('SYN-LOT-0003');
   });
 
+  /*
+   * 앱은 StrictMode 로 돈다. 상태 갱신 함수 안에서 부수효과를 내면 그 함수가 두 번 돌아
+   * 한 번 받은 것이 두 건으로 나간다 - 멱등키를 다시 짓는 화면에서는 쓰기가 갈린다.
+   */
+  it('되물은 값을 받을 때 한 번만 넘긴다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(
+      <StrictMode>
+        <Probe onScan={onScan} applied="SYN-LOT-0001" />
+      </StrictMode>,
+    );
+
+    await user.type(screen.getByLabelText('스캔'), 'SYN-LOT-0002{Enter}');
+    await user.click(screen.getByRole('button', { name: '바꾸기' }));
+
+    expect(onScan).toHaveBeenCalledTimes(1);
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0002');
+  });
 });
