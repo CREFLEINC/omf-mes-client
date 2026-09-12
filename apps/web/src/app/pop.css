@@ -3473,6 +3473,16 @@
   font-size: 13px;
 }
 
+/*
+ * ⭐ **[단말 재등록]도 둥글다**(사용자 지시 2026-09-12). `.pop-ui button` 이 업무 화면 조작을
+ *    위해 모서리를 `--radius-md` 로 펴는데, 이 단추는 그 규칙이 겨냥한 «큰 터치 조작»이 아니라
+ *    머리줄의 작은 보조 조작이다 — 같은 자리의 [사용자 전환](`.pop-logout`, `.pop-ui` 밖이라
+ *    DS 기본 `--radius-full` 을 그대로 받는다)과 생김새를 한 벌로 맞춘다.
+ */
+.pop-ui .pop-terminal-header__reregister {
+  border-radius: var(--radius-full);
+}
+
 .pop-logout button:hover,
 .pop-ui .pop-terminal-header__reregister:hover {
   background: #8f1d17;
@@ -5140,7 +5150,13 @@
   font-weight: 600;
 }
 
+/*
+ * ⭐ **오른쪽에 모은다**(사용자 지시 2026-09-12). 상자가 창 폭을 따라 넓어지므로 왼쪽에
+ *    붙여 두면 조작 둘이 넓은 여백의 반대편 끝에 앉아, 방금 읽은 확인 내용과 눈이 멀어진다 —
+ *    대화상자 조작의 자리는 상자의 «끝»이다.
+ */
 .pop-registration__actions {
   display: flex;
+  justify-content: flex-end;
   gap: 12px;
 }
