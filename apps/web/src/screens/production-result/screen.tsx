@@ -446,6 +446,22 @@ export const ProductionFlowScreen = () => {
     currentIssue === null &&
     !hasAppliedResult;
 
+  /**
+   * 잔여수량을 「모른다」고 할 때 **왜 모르는지**(#1094).
+   *
+   * ⛔ **셋을 한 문장으로 덮지 않는다.** 작업지시가 없는 것 · 아직 안 물어본 것 · 물어봤는데
+   *    실패한 것은 작업자가 할 일이 다르다 — 하나는 진입 화면으로, 하나는 기다림, 하나는
+   *    다시 시도다. 본보기는 자재 투입의 「아직 조회하지 않았습니다」다.
+   */
+  const remainingUnknownLabel =
+    entry.workOrderId === null
+      ? t.quantity.remainingNoWorkOrder
+      : workOrder.isError
+        ? t.quantity.remainingLoadFailed
+        : workOrder.isPending
+          ? t.quantity.remainingNotAsked
+          : t.quantity.remainingUnknown;
+
   const queueOutput = (): void => {
     if (!canOutput || lot === null || parsedQty === null || entry.workOrderId === null) return;
     if (entry.workerNo === null) return;
@@ -745,7 +761,7 @@ export const ProductionFlowScreen = () => {
                 <dt>{t.quantity.remaining}</dt>
                 <dd>
                   {remaining === null
-                    ? t.quantity.remainingUnknown
+                    ? remainingUnknownLabel
                     : `${formatQty(remaining)} ${t.quantity.orderedSuffix(
                         formatQty(workOrder.data?.orderQty ?? 0),
                         uomLabel === '' ? null : uomLabel,
