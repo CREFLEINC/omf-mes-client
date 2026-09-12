@@ -156,6 +156,11 @@ export const packingResult = {
     gateUnavailable: '단말 권한을 확인할 수 없습니다',
     gateUnidentified: '단말·공정이 확인되지 않았습니다',
     workerMissing: '사번이 확인되지 않았습니다',
+    /*
+     * ⛔ **눌러도 아무 일이 없던 자리다**(#1093). 확정은 창고를 본문에 실어야 하는데 그 값이
+     *    없으면 처리기가 조용히 되돌아왔다 — 단추는 열려 있고 화면은 아무 말도 하지 않았다.
+     */
+    warehouseMissing: '출하 전표에 창고가 없어 확정할 수 없습니다',
   },
   confirmed: (handlingUnitNo: string): string => `포장 ${handlingUnitNo} 을 확정했습니다`,
 } as const;

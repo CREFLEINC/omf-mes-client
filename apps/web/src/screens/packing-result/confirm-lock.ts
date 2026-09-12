@@ -22,6 +22,8 @@ export interface ConfirmLockInput {
   isOnline: boolean;
   gate: GateVerdict;
   workerNo: string | null;
+  /** 확정 본문이 실어야 하는 창고. 출하 전표에서 온다. */
+  warehouseId: number | null;
   handlingUnitTypeCode: string;
   lines: readonly PackedLine[];
 }
@@ -43,6 +45,8 @@ export const confirmLockReason = (input: ConfirmLockInput): string | undefined =
   }
 
   if (input.workerNo === null || input.workerNo.trim() === '') return t.locks.workerMissing;
+  /* ⛔ 처리기가 조용히 되돌아오던 조건이다(#1093) — 잠그고 사유를 말한다. */
+  if (input.warehouseId === null) return t.locks.warehouseMissing;
   if (input.handlingUnitTypeCode === '') return t.locks.noType;
   if (input.lines.length === 0) return t.locks.noContents;
 

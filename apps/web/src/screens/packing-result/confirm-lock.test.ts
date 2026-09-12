@@ -22,12 +22,21 @@ const ready = (overrides: Partial<ConfirmLockInput> = {}): ConfirmLockInput => (
   isOnline: true,
   gate: 'allowed',
   workerNo: '3391',
+  warehouseId: 7001,
   handlingUnitTypeCode: 'CARTON',
   lines: [line],
   ...overrides,
 });
 
 describe('confirmLockReason', () => {
+  /**
+   * ⛔ **눌러도 아무 일이 없던 자리다**(#1093). 확정 처리기가 창고 없이는 조용히 되돌아왔는데
+   *    단추는 열려 있었다 — 잠그고 사유를 말한다.
+   */
+  it('창고가 없으면 확정을 잠그고 그 사실을 말한다', () => {
+    expect(confirmLockReason(ready({ warehouseId: null }))).toBe(t.locks.warehouseMissing);
+  });
+
   it('다 갖춰지면 잠그지 않는다', () => {
     expect(confirmLockReason(ready())).toBeUndefined();
   });

@@ -298,6 +298,7 @@ export const PackingResultScreen = () => {
     isOnline,
     gate: gate.verdict,
     workerNo: identity.workerNo,
+    warehouseId,
     handlingUnitTypeCode,
     lines,
   });
@@ -666,7 +667,12 @@ export const PackingResultScreen = () => {
             type="button"
             variant="outlined"
             size="md"
-            disabled={cancelUnit.isPending}
+            /*
+             * ⛔ **사번이 없으면 잠근다**(#1093). 아래 처리기가 그때 조용히 되돌아왔는데
+             *    단추는 열려 있어, 눌러도 아무 일이 없었다. 사유는 위 `lockReason` 이 이미
+             *    같은 말로 적고 있다.
+             */
+            disabled={cancelUnit.isPending || identity.workerNo === null}
             onClick={() => {
               if (identity.workerNo === null) return;
               cancelUnit.mutate(
