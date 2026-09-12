@@ -205,8 +205,15 @@ describe('헤더', () => {
 
     expect(within(header).getByText(t.header.brand)).toBeInTheDocument();
     expect(within(header).getByText(t.header.online)).toBeInTheDocument();
-    /* ⚠ 단말을 지목할 값이 없어 코드가 서지 않는다 — 지어내지 않고 없음 표시를 낸다. */
-    expect(within(header).getByText(new RegExp(t.header.label))).toBeInTheDocument();
+    /*
+     * ⚠ 단말을 지목할 값이 없어 코드가 서지 않는다 — 지어내지 않고 없음 표시를 낸다.
+     *
+     * ⛔ **`단말` 만으로 찾지 않는다.** 머리줄에는 [단말 재등록] 도 서 있어 「단말」 을
+     *    품은 글이 둘이다 — 값까지 함께 재야 «단말 줄» 을 집는다.
+     */
+    expect(
+      within(header).getByText(`${t.header.label} ${t.header.emptyValue}`),
+    ).toBeInTheDocument();
   });
 });
 
