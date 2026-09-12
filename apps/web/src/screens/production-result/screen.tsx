@@ -318,11 +318,7 @@ export const ProductionFlowScreen = () => {
     const nextLotId = lot?.lotId ?? null;
     if (currentLotIdRef.current === nextLotId) return;
     currentLotIdRef.current = nextLotId;
-    setActualQty(
-      lot === null || lot === undefined
-        ? ''
-        : String(appliedGoodQty(lotDetail.data?.lot) ?? lot.initialQty),
-    );
+    setActualQty(lot === null || lot === undefined ? '' : String(lot.initialQty));
     setOutputPhase('idle');
     setScanValue('');
     setScanMismatch(false);
@@ -338,9 +334,10 @@ export const ProductionFlowScreen = () => {
       confirmedLotId === nextLotId ? confirmedLotId : null,
     );
     /*
-     * ⚠ **상세를 기다리지 않는다**(#1095). 양품 누계의 출처가 상세로 옮겨져 이 자리에서는
-     *    아직 모르지만, 그 값이 닿으면 **아래 효과가 수량을 그 값으로 다시 세운다.** 여기서
-     *    한 번 더 막으면 이전 LOT 의 수량이 남는 창만 새로 생긴다.
+     * ⚠ **여기서 양품 누계를 읽지 않는다**(#1095). 그 값의 출처가 상세로 옮겨졌는데, LOT 이
+     *    바뀌는 이 순간의 상세는 «새 LOT 것이 아직 없는» 상태다 — 읽어 봐야 언제나 모르는
+     *    값이고, 의존성에 없는 값을 읽는 자리만 남는다. **이미 적용된 실적이 있으면 아래
+     *    효과가 수량을 그 값으로 다시 세운다.**
      */
   }, [currentLot.data]);
 

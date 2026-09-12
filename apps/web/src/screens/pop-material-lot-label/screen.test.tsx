@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { PopMaterialLotLabelScreen } from './screen';
@@ -151,9 +151,42 @@ const renderScreen = (options: StubOptions = {}) => {
 
 const selectFirst = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(
-    await screen.findByRole('button', { name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택' }),
+    await screen.findByRole('button', {
+      name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택',
+    }),
   );
 };
+
+/**
+ * ⛔ **배포본은 발행 대상 목록을 «부르지 않는다»**(#1095).
+ *
+ * 이 목록의 정의는 두 조건의 곱인데(실물 라벨 미부착 · 아직 안 찍음) 서버 구현 기준선에는
+ * 앞엣것이 없고, 실서버는 없는 축을 거부하지 않고 **무시한다.** 그대로 부르면 이미 라벨이
+ * 붙어 온 자재까지 목록에 서고 그 줄에 MES 가 자기 번호로 라벨을 한 장 더 찍는다.
+ *
+ * ⚠ **요청이 나가지 않는 것까지 본다** — 목록이 비어 보이는 것만으로는 증거가 되지 못한다.
+ */
+describe('PopMaterialLotLabelScreen — 서버 구현 기준선', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('배포본에서는 발행 대상 목록을 부르지 않고 사유를 적는다', async () => {
+    vi.stubEnv('MODE', 'production');
+    const asked: URL[] = [];
+
+    renderScreen({
+      onReceiptRequest: (url) => {
+        asked.push(url);
+      },
+    });
+
+    expect(
+      await screen.findByText(messages.popMaterialLotLabel.receipts.unsupported),
+    ).toBeInTheDocument();
+    expect(asked).toHaveLength(0);
+  });
+});
 
 describe('PopMaterialLotLabelScreen — 입하 목록', () => {
   it('라벨을 발행하지 않은 입하 건만 조회한다', async () => {
@@ -234,7 +267,9 @@ describe('PopMaterialLotLabelScreen — 입하 목록', () => {
 
   /** 서버가 이미 거르므로 화면에는 받은 줄이 그대로 선다. */
   it('받은 라인을 화면이 다시 거르지 않는다', async () => {
-    renderScreen({ lines: [line(8501, 8101, 8601, 500, false), line(8502, 8101, 8601, 200, false)] });
+    renderScreen({
+      lines: [line(8501, 8101, 8601, 500, false), line(8502, 8101, 8601, 200, false)],
+    });
 
     expect(await screen.findByText('500 EA')).toBeInTheDocument();
     expect(screen.getByText('200 EA')).toBeInTheDocument();
@@ -496,7 +531,9 @@ describe('PopMaterialLotLabelScreen — 프린터 상태', () => {
 describe('PopMaterialLotLabelScreen — 등록이 어디까지 갔는가', () => {
   const selectRow = async (user: ReturnType<typeof userEvent.setup>) => {
     await user.click(
-      await screen.findByRole('button', { name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택' }),
+      await screen.findByRole('button', {
+        name: '입하 SYN-IB-0001 · 품목 SYN-ITEM-01 · 합성 품목 가 · 수량 500 EA 선택',
+      }),
     );
   };
 
