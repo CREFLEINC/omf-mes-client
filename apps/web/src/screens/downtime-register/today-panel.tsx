@@ -1,4 +1,4 @@
-import { Card, Chip, Skeleton, Table, type Column } from '@crefle/web-ui';
+import { Button, Card, Chip, Skeleton, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { toClockLabel, toDurationLabel, toRangeLabel } from './formatting';
@@ -53,6 +53,17 @@ export interface TodayPanelProps {
   isAsked: boolean;
   /** 조회를 걸지 «못한» 이유를 담은 문구(#1094). `isAsked` 가 참이면 쓰이지 않는다. */
   notAskedLabel: string;
+  /**
+   * 조회가 실패했는가(#1094).
+   *
+   * ⛔ **실패했다고 구획을 걷지 않는다.** 종전에는 화면이 이 패널을 통째로 배너로 갈아
+   *    끼워 **제목과 집계 자리가 함께 사라졌다** — 화면의 구조가 서버 상태에 따라 바뀌어,
+   *    작업자는 「오늘 이 설비」 칸이 어디 갔는지부터 찾는다. 자리는 그대로 두고 **내용만**
+   *    무엇이 잘못됐는지로 바꾼다.
+   */
+  isError: boolean;
+  /** 실패했을 때 다시 시도하는 길. */
+  onRetry: () => void;
   /** 이 단말이 아는 것만 보이는 상태인가 — 범위를 이름으로 말해야 한다. */
   isLocalOnly: boolean;
   now: Date;
@@ -75,6 +86,8 @@ export const TodayPanel = ({
   isPending,
   isAsked,
   notAskedLabel,
+  isError,
+  onRetry,
   isLocalOnly,
   now,
 }: TodayPanelProps) => {
@@ -96,7 +109,14 @@ export const TodayPanel = ({
       <section className="downtime-section" aria-label={t.today.title}>
         <h2 className="pane-title">{t.today.title}</h2>
 
-        {isPending ? (
+        {isError ? (
+          <p className="downtime-today-summary">
+            {t.today.loadFailed}{' '}
+            <Button variant="text" size="md" onClick={onRetry}>
+              {t.today.retry}
+            </Button>
+          </p>
+        ) : isPending ? (
           <Skeleton height="72px" aria-label={t.today.title} />
         ) : (
           <>

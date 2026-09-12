@@ -3606,7 +3606,16 @@
 }
 
 [data-pop-screen-nav] .pop-ui > .pop-header,
-[data-pop-screen-nav] .pop-ui > .pop-terminal-header {
+[data-pop-screen-nav] .pop-ui > .pop-terminal-header,
+/*
+ * ⭐ **덮개 안쪽 머리줄도 자리를 비운다**(#1094 · 88단계 2회차 실기).
+ *
+ * 위 두 선택자는 `.pop-ui` 의 «바로 아래» 머리줄만 잡는데, 작업 전 점검 게이트는
+ * `.pop-ui > .pop-overlay > .pop-header` 로 한 겹 더 들어가 있어 **걸리지 않았다** —
+ * 자리를 비우지 않은 채 전체 화면을 덮으니 머리줄의 「화면 이동」 버튼이 제목 글자 위에
+ * 겹쳐 섰다. 그 버튼은 `.pop-ui` 밖에 고정으로 서 있어 덮개가 밀어내지 못한다.
+ */
+[data-pop-screen-nav] .pop-ui > .pop-overlay > .pop-header {
   padding-right: calc(var(--pop-logout-box-w, 95px) + var(--pop-screen-nav-w));
 }
 

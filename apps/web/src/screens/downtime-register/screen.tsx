@@ -407,23 +407,26 @@ export const DowntimeRegisterScreen = () => {
         }}
       />
 
-      {today.isError ? (
-        <LoadErrorBanner error={today.error} onRetry={today.refetch} />
-      ) : (
-        <TodayPanel
-          rows={rows}
-          totalMinutes={today.totalMinutes}
-          isPending={today.isPending}
-          isAsked={today.isAsked}
-          /*
-           * ⭐ **조회를 못 건 이유를 가려 말한다**(#1094). 설비를 골라 둔 채 끊겼는데도
-           *    「설비를 고르면…」이 떠서, 머리줄에 설비 번호가 보이는데 고르라고 말했다.
-           */
-          notAskedLabel={equipmentId === null ? t.today.notAsked : t.today.notAskedOffline}
-          isLocalOnly={isLocalOnly}
-          now={now}
-        />
-      )}
+      {/*
+       * ⛔ **실패했다고 이 구획을 배너로 갈아 끼우지 않는다**(#1094). 종전에는 제목과 집계가
+       *    함께 사라져 화면의 구조가 서버 상태에 따라 바뀌었고, 같은 문구의 배너가 위에도
+       *    서 있어 **한 화면에 같은 말이 둘** 있었다. 자리는 지키고 내용만 바꾼다.
+       */}
+      <TodayPanel
+        rows={rows}
+        totalMinutes={today.totalMinutes}
+        isPending={today.isPending}
+        isAsked={today.isAsked}
+        /*
+         * ⭐ **조회를 못 건 이유를 가려 말한다**(#1094). 설비를 골라 둔 채 끊겼는데도
+         *    「설비를 고르면…」이 떠서, 머리줄에 설비 번호가 보이는데 고르라고 말했다.
+         */
+        notAskedLabel={equipmentId === null ? t.today.notAsked : t.today.notAskedOffline}
+        isLocalOnly={isLocalOnly}
+        isError={today.isError}
+        onRetry={today.refetch}
+        now={now}
+      />
 
       {blockedNotice !== null && (
         <div className="banner-slot">
