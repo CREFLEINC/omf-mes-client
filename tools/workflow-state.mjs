@@ -379,6 +379,24 @@ export function repositoryPolicyErrors(root) {
       }
     }
   }
+  /*
+   * .client-dev/ 에는 비공개 요청서와 설계 참조 클론이 들어간다. 이 저장소는 공개라
+   * 한 번 올라가면 되돌릴 수 없다(V3 §4 · §6).
+   *
+   * .gitignore 로는 모자란다 - 이미 추적 중인 파일에는 듣지 않고, git add -f 는 그냥
+   * 지나간다. 무엇이 추적되고 있는지를 직접 본다.
+   */
+  if (insideGitRepository) {
+    try {
+      const tracked = git(['ls-files', '--', '.client-dev'], root);
+      if (tracked !== '') {
+        const names = tracked.split('\n').slice(0, 3).join(', ');
+        errors.push(`.client-dev/: 로컬 전용 자료는 Git에서 추적하면 안 됩니다 (${names}).`);
+      }
+    } catch (error) {
+      errors.push(`.client-dev/: Git 추적 상태를 확인할 수 없습니다: ${error.message}`);
+    }
+  }
   return errors;
 }
 
