@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { DeviceRegistrationProvider, useDeviceRegistration } from './device-registration';
+import { currentPlantId, forgetPlant, rememberPlant } from './plant';
 
 const keystore = vi.hoisted(() => ({
   token: null as string | null,
@@ -25,9 +26,30 @@ vi.mock('./device-token', () => ({
   currentDeviceToken: () => keystore.token,
 }));
 
-afterEach(() => {
+/*
+ * ⭐ **공장은 토큰에 없다**(#1103). 등록할 때 남기고, 기동할 때 되살리고, 등록이 풀리면 함께
+ * 잊어야 한다 — 셋 중 하나라도 빠지면 공장을 알아야 하는 쓰기 화면이 조용히 막히거나,
+ * 더 나쁘게는 «옛 공장»으로 쓴다. 여기가 그 수명주기를 지키는 자리다.
+ */
+const store = vi.hoisted(() => new Map<string, string>());
+
+vi.mock('./local-store', () => ({
+  readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
+  writeLocal: (key: string, value: string) => {
+    store.set(key, value);
+    return Promise.resolve();
+  },
+  removeLocal: (key: string) => {
+    store.delete(key);
+    return Promise.resolve();
+  },
+}));
+
+afterEach(async () => {
   keystore.token = null;
   keystore.readFails = false;
+  store.clear();
+  await forgetPlant();
 });
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -121,6 +143,67 @@ describe('단말 등록 상태', () => {
 
     expect(result.current.status).toBe('unregistered');
     expect(keystore.token).toBeNull();
+  });
+
+  /* 기동 때 되살리지 않으면 앱을 다시 켤 때마다 공장이 빈다 — 쓰기 화면이 그때부터 막힌다. */
+  it('기동할 때 남겨 둔 공장을 되살린다', async () => {
+    keystore.token = 'tok-1';
+    store.set('plant-id', '7');
+
+    const { result } = mount();
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('registered');
+    });
+    expect(currentPlantId()).toBe(7);
+  });
+
+  /* 등록됨이 되기 전에 서 있어야 한다. 늦으면 첫 쓰기가 「공장을 모른다」로 막힌다. */
+  it('공장을 되살리기 전에는 등록됨이라 하지 않는다', async () => {
+    keystore.token = 'tok-1';
+    store.set('plant-id', '7');
+
+    const { result } = mount();
+
+    await waitFor(() => {
+      expect(result.current.status).toBe('registered');
+    });
+    /* 등록됨이 된 시점에 이미 서 있다 — 이 순서가 뒤집히면 위 단언이 먼저 깨진다. */
+    expect(currentPlantId()).not.toBeNull();
+  });
+
+  it('등록을 풀면 공장도 잊는다 — 남기면 다음 등록까지 옛 공장으로 쓴다', async () => {
+    keystore.token = 'tok-1';
+    await rememberPlant(7);
+    const { result } = mount();
+    await waitFor(() => {
+      expect(result.current.status).toBe('registered');
+    });
+
+    await act(async () => {
+      await result.current.unregister();
+    });
+
+    expect(currentPlantId()).toBeNull();
+  });
+
+  it('서버가 받지 않으면 공장도 남기지 않는다', async () => {
+    const { result } = mount();
+    await waitFor(() => {
+      expect(result.current.status).toBe('unregistered');
+    });
+
+    await act(async () => {
+      await expect(
+        result.current.register('tok-3', async () => {
+          // 확인 도중 공장을 남겼더라도 거절되면 되돌아가야 한다.
+          await rememberPlant(9);
+          throw new Error('거절');
+        }),
+      ).rejects.toThrow('거절');
+    });
+
+    expect(currentPlantId()).toBeNull();
   });
 
   it('프로바이더 밖에서는 쓸 수 없다', () => {

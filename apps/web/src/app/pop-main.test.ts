@@ -63,4 +63,19 @@ describe('POP 진입점 배선', () => {
   it('단말 토큰을 읽은 뒤에 화면을 세운다', () => {
     expect(source).toMatch(/readTerminalToken\(\)\s*\.then\(\s*mount\s*\)/u);
   });
+
+  /*
+   * ⛔ **보관 토큰은 «한 번만» 스스로 확인한다.** 검증이 실패하면 상태가 `unregistered` 로
+   *    돌아오는데 그것이 바로 자동 확인의 조건이라, 기억해 두지 않으면 즉시 또 물어보고 또
+   *    실패한다 — 화면이 「확인하는 중…」 과 실패 문구 사이를 끝없이 오가 붙여넣기조차 할 수
+   *    없다(실측 2026-09-12 · 실 서버 설치본).
+   *
+   * ⚠ **상태로는 못 막는다.** 시도했다는 사실이 렌더 사이에 남아야 하므로 `ref` 다 —
+   *    `useState` 로 두면 그 갱신이 다시 렌더를 돌려 같은 자리로 돌아온다.
+   */
+  it('보관 토큰을 한 번만 스스로 확인한다 — 실패해도 되풀이하지 않는다', () => {
+    expect(source).toMatch(/const attempted = useRef<string \| null>\(null\)/u);
+    expect(source).toMatch(/attempted\.current === stored/u);
+    expect(source).toMatch(/attempted\.current = stored/u);
+  });
 });

@@ -85,7 +85,7 @@ export const putaway = {
     `수용량 ${capacity} · 현재 ${held} + ${adding}`,
   /** 막지 않는다. 냉장 자리가 없어 상온에 두어야 하는 날이 있다. */
   storageMismatch: (itemCondition: string, locationCondition: string) =>
-    `품목은 ${itemCondition} 보관인데 이 자리는 ${locationCondition} 입니다`,
+    `품목은 ${itemCondition} 보관인데 이 위치는 ${locationCondition} 입니다`,
   /** 건별로 저장하고 마지막에 한 번 마친다. 연속 작업이라 매 건 화면을 끝내면 손이 더 간다. */
   record1: '이 지시 적치',
   done: {

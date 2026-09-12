@@ -5,12 +5,21 @@ import { runRequest } from './request';
 /**
  * 라벨을 **무슨 형식으로, 부를 것인가 말 것인가**를 한 곳에서 정한다.
  *
- * ⛔⛔ **한때는 셸 유무로 그림(`png`)과 명령형(`tspl`)을 갈랐다** — 그림으로 받으면 단말이
- * 그것을 프린터 드라이버에 넘겨 그리는데, 글자가 픽셀로 찍혀 프린터가 자기 글꼴로 찍는
- * 명령형 라벨과 **다른 물건으로 보였다**(실측 2026-09-08). 그런데 **전달본에서 `tspl` 이
- * 빠졌다** — `getDocumentRendition` 의 `format` 질의는 이제 `"png" | "pdf"` 뿐이다. 셸이
- * 있어도 명령형으로 받을 계약 값이 없으므로, 이 파일은 **셸 유무를 형식 선택 근거로 쓰지
- * 않는다** — 지어내 넓히지 않는다. 서버가 `tspl` 을 다시 지원하면 형식 선택 정책만 되돌린다.
+ * ⭐ **셸이 있으면 명령형(`tspl`), 없으면 그림(`png`)** — 셸 유무가 형식을 가른다(#1104).
+ *
+ * 그림으로 받으면 단말이 그것을 **Windows 드라이버에 넘겨** 그린다. 실기의 라벨 프린터는
+ * TSPL 로 설정돼 있는데 드라이버가 다른 언어를 내보내 **프린터가 작업을 받아들이고 버렸다** —
+ * 스풀러까지는 성공이라 앱은 그 너머를 알 수 없었고, 라벨이 한 장도 나오지 않았다(실기
+ * 2026-09-12). 명령형으로 받으면 셸이 대기열의 RAW 자리로 그대로 보내 드라이버를 건너뛴다.
+ *
+ * ⛔ **`tspl` 은 고정한 계약에 없는 값이다** — `getDocumentRendition` 의 `format` 질의는
+ * `"png" | "pdf"` 뿐이다. 목은 구현해 두었고 **사용자가 이 방향을 선택했다**(2026-09-12).
+ * 계약을 벗어나는 자리는 아래 `fetchLabelRendition` 한 곳이며, 계약에 `tspl` 이 돌아오면
+ * 그 우회만 걷어낸다.
+ *
+ * ⛔ **미리보기는 언제나 `png` 로 «명시해» 부른다.** 인쇄로 나가는 바이트만 명령형이면 된다 —
+ * 명령문을 `<img>` 에 넣으면 언제나 「그릴 수 없습니다」가 뜨고, 명령형을 쓰는 자리는 실기
+ * 단말뿐이라 **확인해야 할 그 단말에서만** 미리보기가 통째로 죽는다(리뷰 지적 2026-09-08).
  *
  * ## 부르는가 — **모드가 가른다**(#1083)
  *
@@ -41,15 +50,36 @@ type ContractRenditionFormat = NonNullable<
  * POP 물리 인쇄가 사용하는 계약 형식. **`tspl` 이 빠져 사실상 `'png'` 하나뿐이다**(위 머리말).
  * PDF는 여전히 문서 출력용이라 이 타입에서 제외한다.
  */
-export type LabelRenditionFormat = Extract<ContractRenditionFormat, 'png' | 'tspl'>;
+export type LabelRenditionFormat = 'png' | 'tspl';
 
 /**
- * 그림 형식 하나뿐이다 — 계약에 `tspl` 이 없어 셸 유무로 더는 가르지 않는다(위 머리말).
+ * 셸의 RAW 인쇄 통로가 열려 있는가.
  *
- * ⚠ **모듈 최상위에서 한 번만 불러도 된다** — 화면 여섯이 그렇게 쓴다. 값이 상수이므로
- * 부르는 시점이 흔들려도 결과가 달라지지 않는다.
+ * ⚠ **`window.pop` 은 preload 가 화면보다 «먼저» 세운다** — 설치본에서는 이 판정이 언제
+ *   불려도 참이다. 브라우저로 여는 개발 확인에는 통로가 없어 거짓이고, 그때는 그림으로 받는다.
  */
-export const labelRenditionFormat = (): LabelRenditionFormat => 'png';
+const hasShellPrinter = (): boolean =>
+  typeof (globalThis as { pop?: { rendition?: { save?: unknown } } }).pop?.rendition?.save ===
+  'function';
+
+/**
+ * **셸이 있으면 명령형(`tspl`), 없으면 그림(`png`)** — 한때 있던 정책을 되돌린다(#1104).
+ *
+ * ⭐ **왜 되돌리는가.** 그림은 Windows 드라이버를 거쳐 프린터로 간다. 실기의 라벨 프린터는
+ * TSPL 로 설정돼 있는데 드라이버가 다른 언어를 내보내 **프린터가 작업을 받아들이고 버렸다** —
+ * 앱은 스풀러까지 성공이라 그 너머를 알 수 없어 라벨이 한 장도 안 나왔다(실기 2026-09-12).
+ * 명령형으로 받으면 셸이 대기열의 RAW 자리로 그대로 보내 **드라이버를 통째로 건너뛴다.**
+ * 같은 단말에서 `Ctrl+Alt+P` 진단(RAW·TSPL)은 이미 정상 출력된다.
+ *
+ * ⛔ **`tspl` 은 고정한 계약에 없는 값이다**(`format: "png" | "pdf"`). 목 서버는 구현해 두었고,
+ *    **사용자가 이 방향을 선택했다**(2026-09-12). 계약을 벗어나는 자리는 아래 `fetchLabelRendition`
+ *    한 곳뿐이며, 계약에 `tspl` 이 돌아오면 그 우회만 걷어낸다.
+ *
+ * ⚠ **모듈 최상위에서 부르지 않는다.** 셸 유무에 달린 값이라 부르는 시점이 뜻을 갖는다 —
+ *   상수로 굳혀 두면 통로가 선 뒤에도 옛 판정이 남는다.
+ */
+export const labelRenditionFormat = (): LabelRenditionFormat =>
+  hasShellPrinter() ? 'tspl' : 'png';
 
 /**
  * ⛔ **배포본에서는 서버가 이 오퍼레이션을 구현하지 않았다** — 위 머리말 참고.
@@ -75,6 +105,13 @@ export class LabelRenditionNotReadyError extends Error {
 export const fetchLabelRendition = async (
   client: ApiClient['client'],
   documentIssueLogId: number,
+  /**
+   * 받을 형식. 기본은 인쇄로 나갈 형식이다.
+   *
+   * ⛔ **미리보기는 `'png'` 을 명시해 부른다.** 기본값에 기대면 셸이 선 단말에서 명령형
+   *    바이트가 `<img>` 로 들어가 미리보기가 통째로 죽는다(#1104 리뷰 지적).
+   */
+  format: LabelRenditionFormat = labelRenditionFormat(),
 ): Promise<ArrayBuffer> => {
   if (import.meta.env.MODE !== 'development') {
     throw new LabelRenditionNotReadyError();
@@ -84,7 +121,12 @@ export const fetchLabelRendition = async (
     client.GET('/app/document-issues/{documentIssueLogId}/rendition', {
       params: {
         path: { documentIssueLogId },
-        query: { format: labelRenditionFormat() },
+        /*
+         * ⛔ **계약을 벗어나는 자리는 여기 하나뿐이다**(#1104). 고정한 계약의 `format` 은
+         *    `"png" | "pdf"` 라 `tspl` 을 타입이 받지 않는다 — 목은 구현해 두었고 사용자가
+         *    이 방향을 선택했다. 계약에 `tspl` 이 돌아오면 이 우회만 걷어낸다.
+         */
+        query: { format: format as ContractRenditionFormat },
       },
       parseAs: 'arrayBuffer',
     }),

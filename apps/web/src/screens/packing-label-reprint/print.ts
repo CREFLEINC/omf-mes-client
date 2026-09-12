@@ -25,7 +25,6 @@ import {
  * 그림으로 받으면 드라이버가 픽셀로 그려, 명령으로 뽑은 라벨과 다른 물건으로 보인다
  * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
  */
-export const LABEL_RENDITION_FORMAT: LabelRenditionFormat = labelRenditionFormat();
 
 /**
  * POP 셸이 렌더러에 여는 통로 중 이 화면이 쓰는 부분.

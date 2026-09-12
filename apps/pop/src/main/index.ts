@@ -31,6 +31,7 @@ import {
 } from 'electron';
 import initSqlJs from 'sql.js';
 
+import { normalizeTarget, relayToApi, shouldRelay } from './api-relay';
 import { createFileBlobStore } from './file-blob-store';
 import {
   isAllowedNavigation,
@@ -129,10 +130,32 @@ protocol.registerSchemesAsPrivileged([
   { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
+/**
+ * 백엔드 원점 — 셸이 `/api` 요청을 대신 보낼 곳(`api-relay`).
+ *
+ * ⚠ **기본은 꺼짐이다.** 값이 없으면 중계가 서지 않고, 화면이 절대 주소를 그대로 부르던
+ *   지금까지의 동작이 남는다. 값은 굽는 사람이 `POP_API_TARGET` 으로 준다.
+ */
+const API_TARGET = normalizeTarget(process.env.POP_API_TARGET);
+
 function registerRendererProtocol(): void {
   protocol.handle(APP_SCHEME, async (request) => {
+    const { pathname, search } = new URL(request.url);
+
+    /*
+     * ⛔ **중계 실패를 «응답»으로 바꾸지 않는다.** 아래 `catch` 는 무엇이든 500 으로 만드는데,
+     *    백엔드가 꺼져 있어 중계가 던진 것까지 500 이 되면 화면은 **서버가 답한 것으로** 읽고
+     *    「이 토큰은 더 이상 쓸 수 없습니다」를 말한다 — 닿지 못한 것과 거절당한 것을 가르려고
+     *    만든 갈래가 바로 이 자리에서 무너진다(리뷰 2회차 지적).
+     *
+     * ⭐ 던진 채로 두면 화면의 fetch 가 실패하고 「서버에 연결하지 못했습니다」로 간다.
+     *    그래서 이 분기는 `try` **밖**에 있다 — 옮기면 그 구분이 조용히 사라진다.
+     */
+    if (shouldRelay(pathname, API_TARGET)) {
+      return await relayToApi(net.fetch, API_TARGET, request, pathname, search);
+    }
+
     try {
-      const { pathname } = new URL(request.url);
       const resolved = resolveRendererPath({ rendererDir: RENDERER_DIR, pathname, existsSync });
 
       if (resolved.kind === 'forbidden') return new Response('forbidden', { status: 403 });

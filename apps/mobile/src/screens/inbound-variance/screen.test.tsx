@@ -147,7 +147,7 @@ const mount = (extra: StubRoute[] = [], options: Options = {}) =>
 const chooseLine = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(await screen.findByRole('combobox', { name: '입하 고르기' }));
   await user.click(await screen.findByRole('option', { name: 'IB-2026-0002' }));
-  await user.click(await screen.findByRole('button', { name: /1번 줄/ }));
+  await user.click(await screen.findByRole('button', { name: /1번 라인/ }));
   await screen.findByText('ABC-123 원자재');
 };
 
@@ -177,9 +177,9 @@ describe('입하 오류 등록 화면', () => {
     mount();
     await openReceipt(user);
 
-    const pick = await screen.findByRole('button', { name: /1번 줄/ });
+    const pick = await screen.findByRole('button', { name: /1번 라인/ });
 
-    expect(pick.querySelector('strong')?.textContent).toBe('1번 줄');
+    expect(pick.querySelector('strong')?.textContent).toBe('1번 라인');
     expect(pick.querySelector('p')?.textContent).toContain('실입하');
   });
 
@@ -196,11 +196,11 @@ describe('입하 오류 등록 화면', () => {
     mount();
     await chooseLine(user);
 
-    expect(screen.getByText('고른 줄 1번 · 실입하 480 EA')).toBeTruthy();
+    expect(screen.getByText('고른 라인 1번 · 실입하 480 EA')).toBeTruthy();
   });
 
   /* 수정도 삭제도 없다. 무엇이 이미 적혀 있는지 보이지 않으면 같은 것을 두 번 적는다. */
-  it('이 줄에 이미 적힌 오류를 보인다', async () => {
+  it('이 라인에 이미 적힌 오류를 보인다', async () => {
     const user = userEvent.setup();
     mount([], {
       known: [

@@ -2,6 +2,7 @@ import { screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
+import { currentPlantId } from '../../patterns/plant';
 import type { QrCamera } from '../../patterns/qr-camera';
 import { DeviceRegistrationScreen } from './screen';
 
@@ -38,10 +39,17 @@ const tokenWith = (payload: unknown): string => {
   return `header.${body}.signature`;
 };
 
-const REGISTRATION_TOKEN = tokenWith({ terminalCode: 'SYN-TERM-01', plantId: 7 });
+/*
+ * ⭐ **실제 토큰이 싣고 오는 것은 단말 번호 하나뿐이다**(`sub`). 코드·공장은 서버에 물어본다.
+ * 종전 시험은 `terminalCode`·`plantId` 가 토큰에 들어 있는 지어낸 모양을 쓰고 있었고, 그래서
+ * 실서버에서 등록이 통째로 막히는 동안에도 초록이었다(#1103).
+ */
+const TERMINAL_ID = 1001;
+const REGISTRATION_TOKEN = tokenWith({ sub: TERMINAL_ID, iss: 'omf-mes', iat: 1757000000 });
 
 interface StubCamera extends QrCamera {
   read: (value: string) => void;
+  fail: (message: string) => void;
   closed: () => number;
 }
 
@@ -49,19 +57,22 @@ const stubCamera = (
   overrides: Partial<Pick<QrCamera, 'isSupported' | 'requestPermission'>> = {},
 ): StubCamera => {
   let onRead: ((value: string) => void) | null = null;
+  let onError: ((message: string) => void) | null = null;
   let closes = 0;
 
   return {
     isSupported: overrides.isSupported ?? (() => Promise.resolve(true)),
     requestPermission: overrides.requestPermission ?? (() => Promise.resolve('granted' as const)),
-    open: (listener) => {
+    open: (listener, failed) => {
       onRead = listener;
+      onError = failed ?? null;
       return Promise.resolve(() => {
         closes += 1;
         return Promise.resolve();
       });
     },
     read: (value) => onRead?.(value),
+    fail: (message) => onError?.(message),
     closed: () => closes,
   };
 };
@@ -72,6 +83,23 @@ const workersRoute = (items: { workerNo: string; workerName: string }[], seen: U
     seen.push(new URL(request.url));
     return jsonResponse({ items, page: { page: 0, size: 100, total: items.length } });
   },
+});
+
+/** 토큰이 가리키는 단말. 코드·공장은 여기서 온다 — 토큰에는 없다. */
+const terminalRoute = (
+  respond: (request: Request) => Response = () =>
+    jsonResponse({
+      terminalId: TERMINAL_ID,
+      terminalCode: 'SYN-TERM-01',
+      terminalTypeCode: 'PDA',
+      plantId: 7,
+      statusCode: 'ACTIVE',
+      isActive: true,
+    }),
+) => ({
+  match: (request: Request) =>
+    new URL(request.url).pathname === `/mdm/terminals/${String(TERMINAL_ID)}`,
+  respond,
 });
 
 const worker = { workerNo: 'SYN-W-0001', workerName: '작업자 1' };
@@ -106,7 +134,7 @@ describe('기기 등록 화면', () => {
   it('읽은 QR이 가리키는 단말을 보인다', async () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
-      fetch: createStubFetch([workersRoute([worker])]),
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker])]),
     });
 
     await waitFor(() => {
@@ -126,7 +154,7 @@ describe('기기 등록 화면', () => {
   it('무엇으로 등록됐는지와 확인하라는 말을 함께 보인다', async () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
-      fetch: createStubFetch([workersRoute([worker])]),
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker])]),
     });
 
     await waitFor(() => {
@@ -143,7 +171,7 @@ describe('기기 등록 화면', () => {
   it('등록 표시가 기준정보 수신 표시보다 앞에 온다', async () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
-      fetch: createStubFetch([workersRoute([worker])]),
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker])]),
     });
 
     await waitFor(() => {
@@ -164,7 +192,7 @@ describe('기기 등록 화면', () => {
   it('공장을 따로 보이지 않는다', async () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
-      fetch: createStubFetch([workersRoute([worker])]),
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker])]),
     });
 
     await waitFor(() => {
@@ -174,6 +202,44 @@ describe('기기 등록 화면', () => {
 
     await screen.findByText(/SYN-TERM-01/);
     expect(screen.queryByText(/공장/)).toBeNull();
+  });
+
+  /*
+   * ⭐ **이 결함 자체를 막는 자리다**(#1103). 실제 토큰에는 `terminalCode`·`plantId` 가 없다.
+   * 그 둘을 요구하면 모든 등록 QR 이 「등록 QR 이 아님」으로 걸러지고, 화면은 읽은 것을 조용히
+   * 버린 채 스캔 대기에 머문다 — 현장에서는 「카메라는 열렸는데 인식이 안 된다」로 보인다.
+   */
+  it('코드·공장이 없는 실서버 모양의 토큰으로도 등록된다', async () => {
+    const camera = stubCamera();
+    renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker])]),
+    });
+
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
+    camera.read(tokenWith({ sub: TERMINAL_ID }));
+
+    expect(await screen.findByText('등록되었습니다')).toBeInTheDocument();
+    expect(screen.getByText('SYN-TERM-01')).toBeInTheDocument();
+  });
+
+  /*
+   * ⭐ **공장은 토큰에 없다.** 등록할 때 남겨 두지 않으면 `currentPlantId()` 가 늘 null 이고,
+   * 공장을 알아야 하는 쓰기 화면(입하 등록·자재LOT 스캔·제품 입고)이 전부 막힌다 — 등록은
+   * 멀쩡히 끝나므로 한참 뒤 다른 화면에서 드러난다.
+   */
+  it('등록하면서 서버가 말한 공장을 단말에 남긴다', async () => {
+    const camera = stubCamera();
+    renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker])]),
+    });
+
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
+    camera.read(REGISTRATION_TOKEN);
+
+    await screen.findByText('등록되었습니다');
+    await waitFor(() => {
+      expect(currentPlantId()).toBe(7);
+    });
   });
 
   /* 등록 QR 이 아닌 코드가 먼저 잡히는 일이 흔하다. 그때 화면이 멈추면 다시 비출 수 없다. */
@@ -193,7 +259,7 @@ describe('기기 등록 화면', () => {
   it('읽은 뒤 기준정보를 받는 동안 그것을 말한다', async () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
-      fetch: createStubFetch([workersRoute([worker])]),
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker])]),
     });
 
     await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
@@ -206,7 +272,7 @@ describe('기기 등록 화면', () => {
   it('기준정보를 받는 동안에는 등록되지 않았다고 말하지 않는다', async () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
-      fetch: createStubFetch([workersRoute([worker])]),
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker])]),
     });
 
     await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
@@ -221,7 +287,7 @@ describe('기기 등록 화면', () => {
   it('읽은 뒤에는 카메라를 닫는다', async () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
-      fetch: createStubFetch([workersRoute([worker])]),
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker])]),
     });
 
     await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
@@ -236,7 +302,7 @@ describe('기기 등록 화면', () => {
     const camera = stubCamera();
     const seen: URL[] = [];
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
-      fetch: createStubFetch([workersRoute([worker], seen)]),
+      fetch: createStubFetch([terminalRoute(), workersRoute([worker], seen)]),
     });
 
     await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
@@ -253,10 +319,7 @@ describe('기기 등록 화면', () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
       fetch: createStubFetch([
-        {
-          match: (request) => new URL(request.url).pathname === '/mdm/workers',
-          respond: () => jsonResponse({ code: 'UNAUTHENTICATED' }, { status: 401 }),
-        },
+        terminalRoute(() => jsonResponse({ code: 'UNAUTHENTICATED' }, { status: 401 })),
       ]),
     });
 
@@ -272,12 +335,9 @@ describe('기기 등록 화면', () => {
     const camera = stubCamera();
     renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
       fetch: createStubFetch([
-        {
-          match: (request) => new URL(request.url).pathname === '/mdm/workers',
-          respond: () => {
-            throw new TypeError('Failed to fetch');
-          },
-        },
+        terminalRoute(() => {
+          throw new TypeError('Failed to fetch');
+        }),
       ]),
     });
 
@@ -311,6 +371,23 @@ describe('기기 등록 화면', () => {
     expect(
       await screen.findByText('카메라 권한이 없어 등록 QR을 읽을 수 없습니다'),
     ).toBeInTheDocument();
+  });
+
+  /* 듣지 않으면 화면이 스캔 대기에 머물러 「비추고 있는데 아무 일도 안 일어난다」가 된다. */
+  it('스캐너가 도중에 실패하면 조용히 기다리지 않는다', async () => {
+    const camera = stubCamera();
+    renderWithProviders(<DeviceRegistrationScreen camera={camera} />, {
+      fetch: createStubFetch([]),
+    });
+
+    await screen.findByText('관리자 화면의 등록 QR을 스캔하세요.');
+    camera.fail('카메라를 쓸 수 없습니다');
+
+    expect(
+      await screen.findByText('이 기기에서 카메라 인식을 쓸 수 없습니다'),
+    ).toBeInTheDocument();
+    /* 쓸 수 없다고 말해 놓고 카메라만 계속 돌면 배터리와 카메라 표시등이 그대로 남는다. */
+    expect(camera.closed()).toBe(1);
   });
 
   it('카메라 인식을 쓸 수 없으면 그렇게 말한다', async () => {
