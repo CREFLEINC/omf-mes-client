@@ -1064,6 +1064,39 @@ describe('AppLayout — 로그아웃', () => {
 });
 
 /**
+ * **언어를 고르는 자리**(#1113).
+ *
+ * ⭐ **로그아웃과 같은 자리에 둔다.** 공용 PC 를 한국인 관리자와 베트남인 관리자가 번갈아 쓰므로,
+ * 자리에 앉은 사람이 먼저 하는 일이 「내 언어로 바꾸고 내 계정으로 들어가기」다.
+ *
+ * ⚠ **고르는 동작 자체는 여기서 재지 않는다** — 새로고침까지가 한 동작이라
+ * `locale-select.test.tsx` 가 갈아 끼운 새로고침으로 잰다. 여기서 재는 것은 **자리**다.
+ */
+describe('AppLayout — 언어 선택', () => {
+  it('세션이 있으면 로그아웃과 같은 자리에 언어 선택이 선다', async () => {
+    const { user } = renderLayout('본문 내용');
+
+    await user.click(screen.getByRole('button', { name: '세션 담기' }));
+
+    const actions = within(topbar()).getByText(SYNTHETIC_USER_NAME).parentElement;
+
+    if (actions === null) throw new Error('이름을 담은 자리를 찾지 못했습니다');
+
+    expect(within(actions).getByRole('combobox', { name: '언어' })).toBeInTheDocument();
+  });
+
+  /**
+   * 셸 밖의 로그인 화면에는 이 칸이 없다 — 그 화면의 언어는 **지난번에 고른 값**이 정한다.
+   * 세션 없는 갈래가 그 사정을 대신 지킨다(이 셸은 `RequireSession` 안에서만 선다).
+   */
+  it('세션이 없으면 언어 선택도 없다', () => {
+    renderLayout('본문 내용');
+
+    expect(within(topbar()).queryByRole('combobox', { name: '언어' })).toBeNull();
+  });
+});
+
+/**
  * 셸 치수 — **브라우저에서만 드러나는 두 어긋남**(#1077 · #1078).
  *
  * ⚠ **여기서 픽셀을 재지 않는다.** jsdom 은 레이아웃을 계산하지 않아 높이·폭을 물으면 0 을

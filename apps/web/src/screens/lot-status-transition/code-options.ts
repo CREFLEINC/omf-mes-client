@@ -2,6 +2,7 @@ import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 
 /**
@@ -14,7 +15,8 @@ import { runRequest } from '../../patterns/request';
  *
  * ⛔ 값 목록을 화면에 박지 않는다 — 고객이 늘리는 값이다. 목록이 아직 없거나(빈 seed) 못 받았거나
  * 잘렸으면 선택칸을 잠그고 그 사유를 적는다(G-2 · 규범 4) — 자유 입력으로 물러나지 않는다.
- * 표시명은 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). 로케일 스위치 전이라 한국어만 본다.
+ * 표시명은 고른 언어의 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33) — 고르는 일은
+ * `patterns/master-name.ts` 가 한다.
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -39,12 +41,13 @@ export interface ReasonOptions {
   unavailableReason: string | undefined;
 }
 
-const labelOf = (value: { code: string; codeName: string; nameKo?: string | null }): string => {
-  const localized = (value.nameKo ?? '').trim();
-  if (localized !== '') return localized;
-  const base = value.codeName.trim();
-  return base === '' ? value.code : base;
-};
+/** 표시명은 고른 언어의 다국어 컬럼이 먼저, 기본 이름이 fallback, 둘 다 비면 코드(G-33). */
+const labelOf = (value: {
+  code: string;
+  codeName: string;
+  nameKo?: string | null;
+  nameVi?: string | null;
+}): string => masterName(value, value.codeName.trim() || value.code);
 
 export const useLotHoldReasonOptions = (group: LotHoldReasonGroup): ReasonOptions => {
   const { client } = useApiClient();

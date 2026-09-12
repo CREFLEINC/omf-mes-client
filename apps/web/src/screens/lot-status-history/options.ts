@@ -2,6 +2,7 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 
 export const LOT_TYPE_GROUP_CODE = 'LOT_TYPE';
@@ -39,8 +40,8 @@ const fetchLotCodeOptions = async (
   return {
     items: data.items.map((item) => ({
       code: item.code,
-      /* 표시명은 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). 로케일 스위치 전이라 한국어만 본다. */
-      label: (item.nameKo ?? '').trim() || item.codeName,
+      /* 표시명은 고른 언어의 다국어 컬럼이 먼저, 기본 이름이 fallback(G-33). */
+      label: masterName(item, item.codeName),
       displayOrder: item.displayOrder,
       isActive: item.isActive,
     })),

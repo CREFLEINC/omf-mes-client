@@ -12,9 +12,11 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 
 import { useSession, useSignOut } from '../patterns/session';
+import { LocaleSelect } from './locale-select';
 import { filterNavGroups, hasNoNavMatch, matchesNavEntry } from './nav-filter';
 import { NavGroup } from './nav-group';
 import { NAV_ENTRIES, NAV_GROUPS, NAV_LEAD } from './nav-tree';
+import { localizedLabel, SHELL_BRAND } from './shell-label';
 
 /** 사이드바 **조작** 문구. 화면 이름은 `nav-tree.ts` 가 갖는다. */
 const t = messages.shellNav;
@@ -72,6 +74,9 @@ const NavItem = ({ to, icon, children, className }: NavItemProps) => {
  * 지금 보고 있는 화면이 속한 묶음 이름. 어디에도 속하지 않으면 `null`(섹션 밖 항목·로그인 등).
  *
  * 항목과 **같은 함수**를 쓴다(`isPathActive`) — 하위 경로를 보고 있어도 그 묶음이 열려 있어야 한다.
+ *
+ * ⛔ **보이는 이름이 아니라 `label`(한국어)을 돌려준다**(#1113). 이 값은 펼침 상태의 **키**로
+ * 쓰이므로 언어를 타면 안 된다 — 타면 언어를 바꾼 뒤 열어 둔 묶음이 다른 키가 되어 닫힌다.
  */
 const findActiveGroupLabel = (pathname: string): string | null =>
   NAV_GROUPS.find((group) => group.items.some((item) => isPathActive(pathname, item.to)))?.label ??
@@ -82,10 +87,14 @@ interface AppLayoutProps {
 }
 
 /**
- * 상단 바 오른쪽 — **누구로 있는가와 나가는 길**.
+ * 상단 바 오른쪽 — **누구로 있는가와 나가는 길, 그리고 어느 언어로 볼 것인가**.
  *
  * ⭐ **이름 없이 로그아웃만 두지 않는다.** 사무실에서 여럿이 번갈아 쓰는 화면이라, 나가기 전에
  * **지금 누구로 있는지**를 같은 자리에서 확인할 수 있어야 한다.
+ *
+ * ⭐ **언어 선택이 로그아웃 옆인 것도 같은 사정이다**(#1113). 같은 자리를 한국인 관리자와
+ * 베트남인 관리자가 번갈아 쓰므로, 자리에 앉은 사람이 **먼저 하는 일**이 「내 언어로 바꾸고
+ * 내 계정으로 들어가기」다 — 그 둘을 한 자리에 둔다.
  *
  * ⚠ **나가는 중에는 잠근다.** 연타가 그대로 요청 두 벌이 되고, 계약이 쓰기마다 새 멱등 키를
  * 요구하므로 서버에는 서로 다른 요청으로 보인다.
@@ -96,6 +105,7 @@ const SessionActions = ({ userName }: { userName: string }) => {
   return (
     <div className="topbar-session">
       <span>{userName}</span>
+      <LocaleSelect />
       <Button variant="text" size="sm" onClick={signOut} disabled={isSigningOut}>
         {messages.session.actions.signOut}
       </Button>
@@ -220,7 +230,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       onCollapsedChange={setIsSidebarCollapsed}
       topbar={
         <Topbar
-          brand={<strong>OMF-MES 관리웹</strong>}
+          brand={<strong>{localizedLabel(SHELL_BRAND)}</strong>}
           actions={session === null ? undefined : <SessionActions userName={session.userName} />}
         />
       }
@@ -257,7 +267,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
            */}
           {isLeadVisible ? (
             <NavItem to={NAV_LEAD.to} icon={NAV_LEAD.icon} className="sidebar-lead">
-              {NAV_LEAD.label}
+              {localizedLabel(NAV_LEAD)}
             </NavItem>
           ) : null}
           {/*
@@ -270,10 +280,10 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
             ? /* 레일에서 `activeQuery` 가 비므로 이 목록은 `NAV_GROUPS` 와 같다 — 자료는 한 길이고
                * 갈라지는 것은 **그리는 모양**뿐이다(손잡이 대신 DS 섹션). */
               visibleGroups.map((group) => (
-                <SidebarSection key={group.label} label={group.label}>
+                <SidebarSection key={group.label} label={localizedLabel(group)}>
                   {group.items.map((item) => (
                     <NavItem key={item.to} to={item.to} icon={item.icon}>
-                      {item.label}
+                      {localizedLabel(item)}
                     </NavItem>
                   ))}
                 </SidebarSection>
@@ -289,7 +299,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                 return (
                   <NavGroup
                     key={group.label}
-                    label={group.label}
+                    label={localizedLabel(group)}
                     count={group.items.length}
                     isOpen={isOpen}
                     /*
@@ -303,7 +313,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                   >
                     {group.items.map((item) => (
                       <NavItem key={item.to} to={item.to} icon={item.icon}>
-                        {item.label}
+                        {localizedLabel(item)}
                       </NavItem>
                     ))}
                   </NavGroup>
