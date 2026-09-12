@@ -3063,20 +3063,38 @@ on('POST', '/production/work-sessions/{workSessionId}:end', (params, _q, body, h
  * ⛔ **사번을 본문에서 읽지 않는다.** 귀속은 `X-Worker-No` 헤더가 나르고 서버가 옮겨 적는다.
  */
 on('POST', '/production/precheck-decisions', (_p, _q, body, headers) => {
-  const created = {
-    precheckDecisionId: newId(),
-    workOrderId: body?.workOrderId,
-    equipmentId: body?.equipmentId,
-    decidedAt: body?.decidedAt ?? new Date().toISOString(),
-    controlLevelCode: body?.controlLevelCode,
-    decisionCode: body?.decisionCode,
-    basisInspectionId: body?.basisInspectionId ?? null,
-    overrideReasonCode: body?.overrideReasonCode ?? null,
-    workerNo: headers['x-worker-no'] ?? null,
-  };
+  /*
+   * ⛔ **사번이 없으면 남기지 않는다.** 귀속이 비어 있는 판정은 「누가 통과시켰는가」를
+   *    말하지 못한다 — 실서버가 거부하는 자리를 목이 통과시키면 화면이 목에서만 선다.
+   */
+  if (headers['x-worker-no'] === undefined) {
+    return {
+      status: 400,
+      created: { code: 'WORKER_NO_REQUIRED', message: '사번이 없으면 판정을 남기지 않습니다.' },
+    };
+  }
 
-  state.precheckDecisions.push(created);
-  return { created, status: 201 };
+  /*
+   * ⛔⛔ **같은 키의 재전송을 두 줄로 만들지 않는다.** 판정 기록은 되돌릴 수 없고, 화면도
+   *    `keyLifetime: 'until-applied'` 로 같은 키를 유지한다(`work-precheck-gate/mutations.ts`).
+   *    목이 이것을 무시하면 **다시 눌러 이력이 늘어나는** 바로 그 결함(#1093)을 목이 만든다.
+   */
+  return idempotent('precheck-decisions', headers, () => {
+    const created = {
+      precheckDecisionId: newId(),
+      workOrderId: body?.workOrderId,
+      equipmentId: body?.equipmentId,
+      decidedAt: body?.decidedAt ?? new Date().toISOString(),
+      controlLevelCode: body?.controlLevelCode,
+      decisionCode: body?.decisionCode,
+      basisInspectionId: body?.basisInspectionId ?? null,
+      overrideReasonCode: body?.overrideReasonCode ?? null,
+      workerNo: headers['x-worker-no'],
+    };
+
+    state.precheckDecisions.push(created);
+    return { created, status: 201 };
+  });
 });
 
 on('GET', '/production/precheck-decisions', (_p, query) =>

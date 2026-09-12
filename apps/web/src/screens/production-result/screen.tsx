@@ -953,7 +953,13 @@ export const ProductionFlowScreen = () => {
             {outputPhase === 'legacyMismatch' ? (
               <Button disabled>{t.flow.output.mismatchBlocked}</Button>
             ) : outputPhase === 'issueFailed' ? (
-              <Button onClick={retryLotIssue}>{t.flow.output.retryIssue}</Button>
+              /*
+               * ⛔ **눌러도 안 되면 비활성으로 보인다**(#1093 · 사용자 지시). 처리기가 LOT ·
+               *    사번 없이는 조용히 되돌아온다 — 단추가 열린 채면 눌리고 아무 말이 없다.
+               */
+              <Button disabled={lot === null || entry.workerNo === null} onClick={retryLotIssue}>
+                {t.flow.output.retryIssue}
+              </Button>
             ) : outputPhase === 'reportFailed' ? (
               <Button onClick={() => void lotPrint.retryReport()}>
                 {t.flow.output.retryReport}

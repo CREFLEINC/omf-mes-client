@@ -49,6 +49,8 @@ interface Options {
   missingProcessRow?: boolean;
   /** 쓰기 요청을 담아 둔다 — 확정이 세 단계를 도는지 본다 */
   writes?: Request[];
+  /** 포장 만들기가 실패하는 갈래 — 담긴 줄은 있는데 포장이 없는 상태를 만든다(#1093). */
+  createUnitFails?: boolean;
   reads?: Request[];
 }
 
@@ -125,7 +127,9 @@ const renderScreen = (options: Options = {}) => {
       respond: (request) => {
         options.writes?.push(request.clone());
 
-        return jsonResponse(handlingUnitBody, { status: 201, headers: { ETag: '"7"' } });
+        return options.createUnitFails === true
+          ? jsonResponse({ message: '만들지 못했습니다' }, { status: 500 })
+          : jsonResponse(handlingUnitBody, { status: 201, headers: { ETag: '"7"' } });
       },
     },
     {
@@ -430,6 +434,26 @@ describe('PackingResultScreen — 담기와 확정', () => {
     await scan(user, t.scan.label.shipment, 'SYN-SH-0502');
     expect(await screen.findByText(t.match.openUnitBlocksShipmentChange)).toBeInTheDocument();
     expect(sentToOtherShipment()).toBe(false);
+  });
+
+  /**
+   * ⛔ **포장이 없으면 확정 단추를 잠근다**(#1093 · 사용자 지시 「눌러도 안 되면 비활성」).
+   *
+   * 담는 것은 화면이 즉시 하고 포장은 서버가 만들어 준다. 만들기가 실패하면 담긴 줄은 있는데
+   * 포장이 없는 상태로 남는데, 그때 확정 처리기는 조용히 되돌아온다 — 단추가 열려 있으면
+   * 작업자는 계속 누르고 아무 말도 듣지 못한다.
+   */
+  it('포장 만들기가 실패하면 확정이 잠기고 그 사실을 말한다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ createUnitFails: true });
+
+    await scanUntilMatched(user);
+    await pack(user, '60');
+    await user.click(screen.getByRole('combobox', { name: t.fields.handlingUnitType }));
+    await user.click(await screen.findByRole('option', { name: '카톤' }));
+
+    expect(await screen.findByText(t.locks.unitMissing)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.actions.confirm })).toBeDisabled();
   });
 
   it('키패드로 친 수량이 화면에 보인다 — 누른 값이 어디로 갔는지 보이지 않으면 오입력을 못 알아챈다', async () => {
