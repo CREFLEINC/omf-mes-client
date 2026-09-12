@@ -26,7 +26,7 @@ export const materialLocation = {
     countSuffix: (count: number): string => `위치 ${String(count)}곳`,
     depleted: '(소진)',
     emptyTitle: '재고가 있는 위치가 없습니다',
-    emptyDescription: '등록된 LOT이지만 지금 재고가 잡힌 자리가 없습니다.',
+    emptyDescription: '등록된 LOT이지만 지금 재고가 있는 위치가 없습니다.',
   },
   quantity: {
     onHand: '보유',

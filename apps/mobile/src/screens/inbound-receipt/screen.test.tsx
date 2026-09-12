@@ -19,6 +19,10 @@ const plant = vi.hoisted(() => ({ id: null as number | null }));
 
 vi.mock('../../patterns/plant', () => ({
   currentPlantId: () => plant.id,
+  /* 셸이 기동할 때 부른다. 빠뜨리면 모의가 실제 모듈과 어긋나 처리되지 않은 오류가 난다. */
+  readPlantId: () => Promise.resolve(null),
+  rememberPlant: () => Promise.resolve(),
+  forgetPlant: () => Promise.resolve(),
 }));
 /** 장갑 낀 손은 화면을 안 보고 있을 수 있다. 소리로도 알리는지 본다(공유계약 D-2). */
 const tone = vi.hoisted(() => ({ played: 0 }));

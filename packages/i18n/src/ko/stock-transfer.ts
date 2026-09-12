@@ -50,7 +50,7 @@ export const stockTransfer = {
      * 재고가 없는 것과 사업장을 못 정한 것을 가른다. 앞의 것은 셈이 틀린 것이고 뒤의 것은
      * 창고 마스터가 덜 선 것이라, 현장이 할 일이 서로 다르다.
      */
-    unknownBusinessUnit: '이 자리의 사업장을 확인할 수 없습니다',
+    unknownBusinessUnit: '이 위치의 사업장을 확인할 수 없습니다',
     unknownBusinessUnitWhy: '재고는 있습니다. 창고 정보가 서야 옮길 수 있으니 관리자에게 알리세요.',
     /** 이동 헤더는 출발 창고를 하나만 받는다. 섞으면 없는 자리에서 빼는 것이 된다. */
     mixedWarehouse: '서로 다른 창고의 LOT을 한 번에 옮길 수 없습니다. 창고별로 나누세요.',

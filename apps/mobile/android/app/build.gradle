@@ -1,5 +1,21 @@
 apply plugin: 'com.android.application'
 
+// 서명 키와 비밀번호는 이 저장소에 두지 않는다 - 공개 저장소다. 값은 환경변수로만 들어오고
+// apps/mobile/scripts/release-build.sh 가 Keychain 에서 꺼내 준다.
+def releaseKeystore = System.getenv("OMF_RELEASE_KEYSTORE")
+
+// 서명 없이 나온 APK 는 단말에 설치되지 않는데, 빌드는 그대로 성공한다. 릴리스를 만들 때만 짚는다.
+//
+// 태스크 이름이 아니라 태스크 그래프를 본다. `gradlew build` 는 이름에 release 가 없지만
+// 릴리스 변형까지 만들어, 이름으로만 판정하면 그 경로에서 경고가 빠진다.
+if (!releaseKeystore) {
+    gradle.taskGraph.whenReady { graph ->
+        if (graph.allTasks.any { it.name.toLowerCase().contains("release") }) {
+            logger.warn("OMF_RELEASE_KEYSTORE 가 없다 - 서명 없는 APK 가 나오고 단말에 설치되지 않는다. apps/mobile/scripts/release-build.sh 를 쓴다.")
+        }
+    }
+}
+
 android {
     namespace = "com.crefle.omfmes.mobile"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,8 +32,34 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (releaseKeystore) {
+                storeFile file(releaseKeystore)
+                storePassword System.getenv("OMF_RELEASE_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("OMF_RELEASE_KEY_ALIAS")
+                // PKCS12 는 키 비밀번호가 저장소 비밀번호와 같아야 한다. 지킬 비밀이 하나로 준다.
+                keyPassword System.getenv("OMF_RELEASE_KEYSTORE_PASSWORD")
+
+                // 넷을 다 적는다. AGP 는 아무것도 지정하지 않으면 minSdk 를 보고 v1·v2 를 스스로
+                // 정하는데, 하나라도 명시하면 그 계산을 그만두고 나머지를 꺼 버린다 - v3 만 켜면
+                // v2 가 조용히 사라진다(실측).
+                //
+                // v1 은 minSdk 33 아래를 위한 하위 호환이라 대상이 없다.
+                // v3 은 키 교체 계보를 담는 자리다. 이것이 없으면 이 키에 영구히 묶인다.
+                // v4 는 adb --incremental 전용이고 사내 반입 설치와 무관하다.
+                enableV1Signing false
+                enableV2Signing true
+                enableV3Signing true
+                enableV4Signing false
+            }
+        }
+    }
     buildTypes {
         release {
+            if (releaseKeystore) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

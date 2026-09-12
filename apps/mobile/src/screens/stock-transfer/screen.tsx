@@ -6,6 +6,7 @@ import { Link } from 'react-router';
 import { useLocationByCode } from '../../patterns/locations';
 import { useScannedLot } from '../../patterns/lots';
 import { useItemLabels } from '../../patterns/masters';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -457,7 +458,10 @@ export const StockTransferScreen = () => {
             ) : null}
             {foundLot.isError ? <AlertBanner variant="error" title={t.from.loadFailed} /> : null}
             {scannedLot !== null && foundLot.data === null ? (
-              <AlertBanner variant="error" title={t.from.notFound(scannedLot)} />
+              <AlertBanner
+                variant="error"
+                title={t.from.notFound(formatMaterialLotNo(scannedLot))}
+              />
             ) : null}
             {duplicate ? <AlertBanner variant="warning" title={t.from.already} /> : null}
             {noStock ? <AlertBanner variant="error" title={t.from.noStock} /> : null}

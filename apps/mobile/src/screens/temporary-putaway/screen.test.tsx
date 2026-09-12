@@ -207,12 +207,12 @@ describe('임시 위치 적재 화면', () => {
   });
 
   /* 고객이 임시 유형을 지우면 한 자리도 남지 않는다. 목록을 비우면 포화된 현장이 선다. */
-  it('임시 유형으로 등록된 자리가 없으면 전체를 보이고 그 사실을 말한다', async () => {
+  it('임시 유형으로 등록된 위치가 없으면 전체를 보이고 그 사실을 말한다', async () => {
     const user = userEvent.setup();
     mount({ task: task() }, [], { locations: [location()] });
 
     expect(
-      await screen.findByText('임시 위치로 등록된 자리가 없어 전체 위치를 보입니다'),
+      await screen.findByText('임시 유형으로 등록된 위치가 없어 전체 위치를 보입니다'),
     ).toBeTruthy();
 
     await openList(user);

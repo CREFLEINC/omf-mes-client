@@ -34,7 +34,7 @@ import './app.css';
  */
 import './pop.css';
 
-import { StrictMode, useEffect, type ReactNode } from 'react';
+import { StrictMode, useEffect, useRef, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Navigate, Outlet, RouterProvider, createBrowserRouter } from 'react-router';
 
@@ -60,13 +60,24 @@ import { AppProviders } from './providers';
 const PopRegistrationGate = ({ children }: { children: ReactNode }) => {
   const registration = usePopRegistration();
   const { phase, verify } = registration;
+  /**
+   * 이미 스스로 확인해 본 보관 토큰. **한 번만 시도한다.**
+   *
+   * ⛔ **없으면 무한히 되돈다.** 검증이 실패하면 상태가 `unregistered` 로 돌아오는데, 그것이
+   *    바로 이 effect 의 조건이다 — 보관 토큰은 그대로 남아 있으므로 즉시 또 물어보고, 또
+   *    실패하고, 다시 돌아온다. 화면은 「확인하는 중…」 과 실패 문구 사이를 끝없이 오가고
+   *    설치 담당자는 입력조차 할 수 없다(실측 2026-09-12 · 사용자 지적 — 실 서버 설치본).
+   */
+  const attempted = useRef<string | null>(null);
 
   useEffect(() => {
     if (phase !== 'unregistered') return;
 
     const stored = currentTerminalToken();
 
-    if (stored === null) return;
+    if (stored === null || attempted.current === stored) return;
+
+    attempted.current = stored;
 
     void verify(stored);
   }, [phase, verify]);
