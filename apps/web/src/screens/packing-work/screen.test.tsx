@@ -204,6 +204,26 @@ const chooseUnitType = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('option', { name: BOX_NAME }));
 };
 
+/**
+ * 수량을 **화면 키패드로** 넣는다(D-4).
+ *
+ * ⛔ **칸에 직접 치지 않는다** — 칸은 읽기 전용이다. 현장 POP 은 키오스크로 잠겨 있어 운영체제
+ * 키보드가 뜨지 않으므로, 칸을 치는 시험은 단말에 없는 입력 수단을 흉내 내는 것이 된다
+ * (#1092 — 그 상태로 화면이 나가 현장에서 수량을 넣을 방법이 아예 없었다).
+ */
+const typeQuantity = async (
+  user: ReturnType<typeof userEvent.setup>,
+  qty: string,
+): Promise<void> => {
+  const pad = screen.getByRole('group', { name: t.scan.keypadLabel });
+
+  for (const ch of qty) {
+    await user.click(
+      within(pad).getByRole('button', { name: ch === '.' ? t.scan.keypadDecimal : ch }),
+    );
+  }
+};
+
 const packOneLine = async (
   user: ReturnType<typeof userEvent.setup>,
   lotNo: string,
@@ -211,7 +231,7 @@ const packOneLine = async (
 ) => {
   await chooseUnitType(user);
   await user.click(await scanPane().findByRole('button', { name: `${lotNo} ${t.lotList.select}` }));
-  await user.type(screen.getByLabelText(t.scan.quantityLabel), qty);
+  await typeQuantity(user, qty);
   await user.click(screen.getByRole('button', { name: t.scan.submit }));
 };
 
@@ -355,7 +375,7 @@ describe('P-02-08 포장 작업', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
     );
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await typeQuantity(user, '100');
 
     const submit = screen.getByRole('button', { name: t.scan.submit });
     expect(submit).toBeEnabled();
@@ -384,7 +404,7 @@ describe('P-02-08 포장 작업', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
     );
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await typeQuantity(user, '100');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     /*
@@ -503,7 +523,7 @@ describe('P-02-08 포장 작업', () => {
     await unitPane().findByText(HANDLING_UNIT_NO);
 
     await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await typeQuantity(user, '30');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await unitPane().findByText(LOT_B_NO)).toBeInTheDocument();
@@ -518,7 +538,7 @@ describe('P-02-08 포장 작업', () => {
     await packOneLine(user, LOT_A_NO, '100');
     expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '50');
+    await typeQuantity(user, '50');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     /* 행의 수량과 아래 합계가 둘 다 150 이다 — 행이 늘었다면 100 과 50 으로 갈라진다 */
@@ -570,7 +590,7 @@ describe('P-02-08 포장 작업', () => {
     expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
     expect(screen.getByLabelText(t.scan.label)).toHaveFocus();
 
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '50');
+    await typeQuantity(user, '50');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await unitPane().findAllByText(`150 ${UOM_CODE}`)).toHaveLength(2);
@@ -596,7 +616,7 @@ describe('P-02-08 포장 작업', () => {
 
     await chooseUnitType(user);
     await user.type(screen.getByLabelText(t.scan.label), `${LOT_A_NO}{enter}`);
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await typeQuantity(user, '100');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await unitPane().findByText(LOT_A_NO)).toBeInTheDocument();
@@ -613,7 +633,7 @@ describe('P-02-08 포장 작업', () => {
 
     expect(screen.getByText(t.scan.quantityRequired)).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '0');
+    await typeQuantity(user, '0');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(screen.getByText(t.scan.quantityPositive)).toBeInTheDocument();
@@ -629,7 +649,7 @@ describe('P-02-08 포장 작업', () => {
     expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
     await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await typeQuantity(user, '30');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await screen.findByText(t.contents.mixedTitle)).toBeInTheDocument();
@@ -662,7 +682,7 @@ describe('P-02-08 포장 작업', () => {
     expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
     await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await typeQuantity(user, '30');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     await user.click(await screen.findByRole('button', { name: t.confirm.submit }));
@@ -804,7 +824,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
     );
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await typeQuantity(user, '100');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await screen.findByText(t.unit.offlineStartBlocked)).toBeInTheDocument();
@@ -1015,7 +1035,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }),
     );
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await typeQuantity(user, '30');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     setOnline(false);

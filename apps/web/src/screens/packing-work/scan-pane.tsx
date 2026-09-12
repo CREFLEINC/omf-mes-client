@@ -1,5 +1,6 @@
 import { Button, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { NumericKeypad } from '@omf-mes/ui';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 
 import { popTouchClass } from '../../patterns/pop-touch';
@@ -40,8 +41,16 @@ export interface ScanPaneProps {
  * (스펙 §4-B) 계약에도 그 값을 파생할 자리가 없다 — 사람이 넣는 수밖에 없다. §6 의
  * 「스캔 «수량» > LOT 잔여」도 이 칸을 전제한다.
  *
- * ⛔ **숫자 키패드를 여기 두지 않는다.** 그 부품은 `P-CO-01` 이 소유하고 있고, 여기서 또
- * 만들면 같은 것이 둘이 된다.
+ * ⭐ **숫자 키패드를 여기 놓는다**(공유계약 D-4 — 「POP 숫자 입력은 화면 내장 키패드를 쓴다.
+ * OS 터치 키보드에 의존하지 않는다 — 키오스크 창에서 화면을 덮고 제어가 어렵다」).
+ *
+ * ⛔ **한때 「부품을 `P-CO-01` 이 소유하니 여기 두지 않는다」고 적혀 있었는데 그 판단이
+ * 틀렸다.** 부품은 이미 `@omf-mes/ui` 로 공용이고 POP 화면 아홉이 각자 **놓기만** 한다 —
+ * 만드는 것과 놓는 것은 다른 축이다. 그 사이 이 화면만 OS 자판에 기대어, 키오스크로 잠긴
+ * 현장 단말에서는 **수량을 넣을 방법이 아예 없었다**(88단계 2회차 · #1092).
+ *
+ * ⭐ **팝업이 아니라 상시로 선다** — D-4 가 「위치는 축이 아니다 · 팝업으로 그린 화면이 한
+ * 곳도 없다」로 적었고, 팝업이던 두 화면(제품 검사·재작업 실적)이 명시적으로 상시로 되돌아왔다.
  */
 export const ScanPane = ({
   selectedLotNo,
@@ -138,6 +147,12 @@ export const ScanPane = ({
           value={quantity}
           inputMode="decimal"
           autoComplete="off"
+          /*
+           * ⛔ **칸을 직접 치게 두지 않는다**(전례 `P-04-03` 재작업 실적). 포커스가 가면 단말의
+           *    운영체제 키보드가 화면을 덮는데, 키오스크 창에서는 그것을 닫을 길이 마땅치 않다.
+           *    값은 아래 키패드가 넣는다.
+           */
+          readOnly
           onChange={(event) => {
             onQuantityChange(event.target.value);
           }}
@@ -153,6 +168,29 @@ export const ScanPane = ({
           {t.scan.submit}
         </Button>
       </div>
+
+      {/*
+       * ⭐ **수량 칸 바로 아래에 선다.** 손이 칸과 키 사이를 오가는 거리가 짧아야 하고, 이
+       * 화면의 수량 칸은 좌단에 있다. ⚠ 좌단은 세로가 빠듯해(1024×768 실측 — 목록이 비어도
+       * 넘쳤다) 키패드가 들어오면 《포장 대상》 목록이 밀린다 — 그래서 목록이 **구획 안에서**
+       * 스크롤하도록 함께 걸었다(E-4 규칙 1 · `pop.css`).
+       */}
+      <NumericKeypad
+        className="pack-work-keypad"
+        label={t.scan.keypadLabel}
+        value={quantity}
+        onChange={onQuantityChange}
+        dropLeadingZero
+        /*
+         * ⚠ **소수를 받는다** — 이 칸은 지금까지 `inputMode="decimal"` 로 소수를 받아 왔고,
+         *    키패드가 그보다 좁으면 넣던 값을 못 넣게 된다. 단위가 정수만 받는지는 이 화면이
+         *    알지 못한다(단위 소수 자릿수를 읽는 자리가 없다).
+         */
+        allowDecimal
+        decimalLabel={t.scan.keypadDecimal}
+        backspaceLabel={t.scan.keypadBackspace}
+        clearLabel={t.scan.keypadClear}
+      />
 
       {quantityError !== null && <p className="field-error">{quantityError}</p>}
       {/* ⛔ 유형 미선택은 여기서 말하지 않는다 — 누르면 고칠 칸(오른쪽 「유형」)이 말한다. */}

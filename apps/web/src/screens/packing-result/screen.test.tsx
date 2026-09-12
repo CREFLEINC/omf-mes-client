@@ -272,6 +272,34 @@ describe('PackingResultScreen', () => {
     });
   });
 
+  /*
+   * ⛔ **라벨 모드에서 돌아올 길이 사라지면 현장 단말은 갇힌다**(E-4 — 주 액션을 화면 «안»에
+   * 유지한다). 한때 액션 줄을 통째로 숨겼는데 되돌아가는 단추가 그 안에 있었다. 개발용
+   * 브라우저는 새로고침으로 빠져나오지만 단말에는 주소창이 없다(88단계 2회차 실측 · #1092).
+   */
+  it('라벨 모드에 들어가도 돌아오는 단추가 남는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await scan(user, t.scan.label.deliveryLabel, 'SYN-DL-0455-001');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.labels })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole('button', { name: t.actions.labels }));
+
+    const back = await screen.findByRole('button', { name: t.actions.packing });
+    expect(back).toBeEnabled();
+
+    /* ⛔ 포장 조작은 함께 서지 않는다 — 라벨 화면에서 누를 일이 없다. */
+    expect(screen.queryByRole('button', { name: t.actions.confirm })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.actions.rescan })).not.toBeInTheDocument();
+
+    /* 눌러서 실제로 돌아온다 — 단추가 있는 것과 동작하는 것은 다른 축이다. */
+    await user.click(back);
+    expect(await screen.findByRole('button', { name: t.actions.confirm })).toBeInTheDocument();
+  });
+
   it('없는 납품라벨은 «빈 목록»으로 오고 화면이 그것을 사유로 말한다', async () => {
     const user = userEvent.setup();
     renderScreen({ labelNotFound: true });
