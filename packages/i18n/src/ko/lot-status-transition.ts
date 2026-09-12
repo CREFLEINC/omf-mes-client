@@ -16,4 +16,160 @@ export const lotStatusTransition = {
     /** 화면이 저장을 막는 이유 — 선택지에 없는 값은 보내지 않는다. */
     unknown: '선택지에 없는 사유입니다. 다시 고르세요.',
   },
+  /** 첫 패널 — 기간·LOT 번호·자재·품질 상태로 전이 대상 LOT을 추린다. */
+  candidate: {
+    pane: '전이 대상 LOT',
+    filters: {
+      period: '최근 전이 기간',
+      lotNo: 'LOT 번호',
+      item: '자재',
+      status: '품질 상태',
+      all: '전체',
+      note: '최근 전이 일자를 기준으로 대상 LOT을 조회합니다.',
+      periodMissing: '조회 시작일과 종료일을 모두 선택하세요.',
+      periodInvalid: '조회 기간에 올바른 날짜를 입력하세요.',
+      periodReversed: '조회 시작일은 종료일보다 늦을 수 없습니다.',
+      reset: '초기화',
+      search: '조회',
+    },
+    fields: {
+      lotNo: 'LOT 번호',
+      item: '품목',
+      status: '품질 상태',
+      onHand: '보유 수량',
+      held: '보류 수량',
+    },
+    /** 행을 고르는 단추의 접근성 이름 — 표 안에서는 LOT 번호만 보이므로 이름에 붙여 준다. */
+    select: (lotNo: string): string => `${lotNo} 선택`,
+    /** 상태 이름을 못 받았을 때 — 코드는 남겨 두고 이름이 없다는 것만 덧붙인다(G-33). */
+    statusUnknown: (code: string): string => `${code} (이름 미확인)`,
+    loading: 'LOT 후보를 불러오는 중',
+    failed: 'LOT 후보를 불러오지 못했습니다.',
+    retry: '다시 시도',
+    empty: '조건에 맞는 LOT이 없습니다.',
+    summary: (total: string, page: number, totalPages: number): string =>
+      `총 ${total}건 · ${String(page)} / ${String(totalPages)}쪽`,
+    pagination: 'LOT 후보 쪽 이동',
+    previous: '이전 쪽',
+    next: '다음 쪽',
+  },
+  /** 고른 LOT의 식별과 현재 수량·상태를 되짚어 주는 패널. */
+  selected: {
+    pane: '선택한 LOT',
+    title: '선택 LOT',
+    identity: '선택 LOT 식별',
+    lotNo: 'LOT 번호',
+    item: '품목',
+    currentTitle: '현재 상태',
+    current: '선택 LOT 현재 상태',
+    status: 'Lot Status',
+    onHand: '보유 수량',
+    held: '보류 수량',
+    available: '가용 수량',
+    latestTransition: '최근 전이',
+    latestReason: '최근 사유',
+  },
+  /** 전이 선택지·열린 보류를 세워 실행 칸을 열지 말지 정하는 패널. */
+  preparation: {
+    pane: '상태 전이 준비',
+    loading: '전이 선택지를 불러오는 중',
+    failed: '전이 선택지를 불러오지 못했습니다.',
+    retry: '다시 시도',
+    noTransition: '현재 LOT은 전이할 수 없습니다.',
+    choiceTitle: '전이할 상태',
+    choiceLabel: '전이',
+    holds: {
+      pane: '열린 보류 목록',
+      title: '열린 보류',
+      reason: '보류 사유',
+      heldAt: '보류 시각',
+      quantity: '보류 수량',
+      full: '전량',
+      target: '해제 대상',
+      select: '선택',
+      selected: '선택됨',
+    },
+    /** 실행 칸이 서기 전에 무엇이 남았는지 알리는 한 줄. 막힌 자리와 푸는 길을 같이 적는다. */
+    notes: {
+      createReady: '보류 등록 준비가 완료되었습니다.',
+      lockUnknown: 'LOT 잠금 정보를 확인하지 못해 진행할 수 없습니다.',
+      holdsLoading: '열린 보류를 불러오는 중입니다.',
+      holdsFailed: '열린 보류를 불러오지 못했습니다.',
+      holdsEmpty: '해제할 열린 보류가 없습니다.',
+      detailLoading: '보류 상세를 불러오는 중입니다.',
+      detailFailed: '보류 상세를 불러오지 못했습니다.',
+      releaseReady: '보류 해제 준비가 완료되었습니다.',
+    },
+  },
+  /** CREATE_HOLD 실행 칸 — 보류 범위·수량·사유를 받아 확인 대화상자로 넘긴다. */
+  create: {
+    pane: '보류 등록 입력',
+    scope: '보류 범위',
+    full: '전량 보류',
+    partial: '일부 보류',
+    quantity: '보류 수량',
+    remarks: '보류 비고',
+    confirm: '등록 확인',
+    dialogTitle: (lotNo: string): string => `LOT 보류 등록 — ${lotNo}`,
+    cancel: '취소',
+    register: '보류 등록',
+    reload: '최신 불러오기',
+    success: 'LOT 보류를 등록했습니다.',
+    quantityPositive: '보류 수량은 0보다 커야 합니다.',
+    quantityUnknown: '보류 가능 수량을 확인하지 못했습니다.',
+    quantityMax: (maximum: string): string =>
+      `보류 수량은 보류 가능 수량 ${maximum} 이하여야 합니다.`,
+    /** 확인 대화상자가 미리 보여 주는 「이 전이가 무엇을 막는가」. */
+    impact: {
+      title: '이 전이가 하는 일',
+      description: 'Hold는 대상 수량의 출고·출하 및 피킹을 막습니다.',
+      targetQuantity: (quantity: string): string => `대상 수량: ${quantity}`,
+      fullQuantity: '전량',
+      targetLocation: (location: string): string => `대상 위치: ${location}`,
+      location: (warehouse: string, location: string): string =>
+        `창고 ${warehouse} / Location ${location}`,
+      unknown: '미확인',
+      openPicking: (count: string): string => `피킹 중인 요청 ${count}건이 막힙니다.`,
+      shipped: (quantity: string): string =>
+        `이미 출고된 수량 ${quantity}은 이 전이로 회수되지 않습니다.`,
+      recovery: '다시 사용하려면 Release 전이가 필요하며, 이미 출고된 수량은 회수되지 않습니다.',
+    },
+  },
+  /** RELEASE_HOLD 실행 칸 — 해제 범위·수량·사유·비고를 받는다. 비고는 등록과 달리 필수다. */
+  release: {
+    pane: '보류 해제 입력',
+    scope: '해제 범위',
+    full: '전량 해제',
+    partial: '일부 해제',
+    quantity: '해제 수량',
+    remarks: '비고',
+    confirm: '해제 확인',
+    dialogTitle: (lotNo: string): string => `LOT 보류 해제 — ${lotNo}`,
+    cancel: '취소',
+    release: '보류 해제',
+    reload: '최신 불러오기',
+    success: 'LOT 보류를 해제했습니다.',
+    quantityPositive: '해제 수량은 0보다 커야 합니다.',
+    quantityUnknown: '해제 가능한 보류 수량을 확인하지 못했습니다.',
+    quantityMax: (maximum: string): string => `해제 수량은 보류 수량 ${maximum} 이하여야 합니다.`,
+    remarksRequired: '비고를 입력하세요.',
+    impact: {
+      title: '이 전이가 하는 일',
+      description: '보류 해제는 대상 수량의 출고·출하 및 피킹 제한을 풉니다.',
+      targetQuantity: (quantity: string): string => `대상 수량: ${quantity}`,
+      fullQuantity: '전량',
+      targetLocation: (location: string): string => `대상 위치: ${location}`,
+      location: (warehouse: string, location: string): string =>
+        `창고 ${warehouse} / Location ${location}`,
+      unknown: '미확인',
+      recovery:
+        '다시 보류가 필요하면 새 Hold를 등록해야 하며, 이미 출고된 수량은 회수되지 않습니다.',
+    },
+  },
+  /** 409·412로 되돌아온 뒤 대화상자가 내는 말. 서버가 사유를 주면 그 말이 먼저다. */
+  stale: {
+    fallback: 'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.',
+    withStatus: (statusLabel: string): string =>
+      `LOT 정보가 변경되었습니다. 현재 상태는 ${statusLabel}입니다. 최신 정보를 불러온 뒤 다시 확인하세요.`,
+  },
 } as const;

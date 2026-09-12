@@ -27,6 +27,8 @@ import { isTransitionStale, transitionStaleMessage } from './transition-error';
 type LotHold = components['schemas']['LotHold'];
 type LotHoldCreate = components['schemas']['LotHoldCreate'];
 type TransitionImpact = NonNullable<components['schemas']['LotStatusTransition']['impact']>;
+const t = messages.lotStatusTransition.create;
+const tReason = messages.lotStatusTransition.reason;
 const ROOT_KEY = ['lot-status-transition'] as const;
 const HISTORY_KEY = ['lot-status-history'] as const;
 
@@ -52,18 +54,17 @@ const validate = (
   props: CreateHoldExecutionProps,
   reasons: ReasonOptions,
 ): Validation => {
-  const tReason = messages.lotStatusTransition.reason;
   const text = draft.holdQty.trim();
   const quantity = Number(text);
   const quantityError =
     draft.mode === 'FULL'
       ? undefined
       : text === '' || !Number.isFinite(quantity) || quantity <= 0
-        ? '보류 수량은 0보다 커야 합니다.'
+        ? t.quantityPositive
         : props.maxHoldQty === undefined || !Number.isFinite(props.maxHoldQty)
-          ? '보류 가능 수량을 확인하지 못했습니다.'
+          ? t.quantityUnknown
           : quantity > props.maxHoldQty
-            ? `보류 수량은 보류 가능 수량 ${String(props.maxHoldQty)} 이하여야 합니다.`
+            ? t.quantityMax(String(props.maxHoldQty))
             : undefined;
   const reasonCode = draft.reasonCode.trim();
   const reasonError =
@@ -133,7 +134,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
     onSuccess: () => {
       setConfirmation(null);
       props.onConfirmationChange(false);
-      toast.show({ variant: 'success', description: 'LOT 보류를 등록했습니다.' });
+      toast.show({ variant: 'success', description: t.success });
       props.onCreated();
     },
   });
@@ -148,16 +149,19 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
     props.onStale();
     void queryClient.invalidateQueries({ queryKey: ROOT_KEY });
   };
-  const location = `창고 ${props.warehouseId === undefined ? '미확인' : String(props.warehouseId)} / Location ${props.locationId === undefined ? '미확인' : String(props.locationId)}`;
+  const location = t.impact.location(
+    props.warehouseId === undefined ? t.impact.unknown : String(props.warehouseId),
+    props.locationId === undefined ? t.impact.unknown : String(props.locationId),
+  );
 
   return (
-    <section className="lot-status-transition-execution" aria-label="보류 등록 입력">
+    <section className="lot-status-transition-execution" aria-label={t.pane}>
       <RadioGroup
         name={`create-hold-mode-${String(props.lotId)}`}
         orientation="horizontal"
         value={draft.mode}
         disabled={write.isSaving}
-        aria-label="보류 범위"
+        aria-label={t.scope}
         onChange={(value) => {
           setDraft({
             mode: value === 'PARTIAL' ? 'PARTIAL' : 'FULL',
@@ -169,13 +173,13 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
           write.reset();
         }}
       >
-        <Radio value="FULL">전량 보류</Radio>
-        <Radio value="PARTIAL">일부 보류</Radio>
+        <Radio value="FULL">{t.full}</Radio>
+        <Radio value="PARTIAL">{t.partial}</Radio>
       </RadioGroup>
       <div className="form-grid lot-status-transition-execution-form">
         {draft.mode === 'PARTIAL' && (
           <TextField
-            label="보류 수량"
+            label={t.quantity}
             inputMode="decimal"
             required
             value={draft.holdQty}
@@ -188,13 +192,13 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
         {/* 규범 3 — Select 에 label prop 이 없어 라벨을 직접 세운다. 잠긴 사유는 상시 텍스트(규범 4). */}
         <div className="field-cell wide-select">
           <label className="field-label" htmlFor={reasonId}>
-            {messages.lotStatusTransition.reason.holdLabel}
+            {tReason.holdLabel}
           </label>
           <Select
             id={reasonId}
             options={reasons.options}
             value={draft.reasonCode === '' ? null : draft.reasonCode}
-            placeholder={messages.lotStatusTransition.reason.placeholder}
+            placeholder={tReason.placeholder}
             disabled={write.isSaving || reasons.unavailableReason !== undefined}
             invalid={validation.reasonError !== undefined && draft.reasonCode !== ''}
             aria-required
@@ -208,7 +212,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
           )}
         </div>
         <TextArea
-          label="보류 비고"
+          label={t.remarks}
           fullWidth
           rows={3}
           value={draft.remarks}
@@ -225,7 +229,7 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
             }
           }}
         >
-          등록 확인
+          {t.confirm}
         </Button>
       </div>
       {confirmation !== null && (
@@ -233,14 +237,14 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
           open
           closeOnBackdropClick={false}
           showCloseButton={false}
-          title={`LOT 보류 등록 — ${props.lotNo}`}
+          title={t.dialogTitle(props.lotNo)}
           onClose={() => {
             if (!write.isSaving) closeDialog();
           }}
           footer={
             <>
               <Button variant="outlined" disabled={write.isSaving} onClick={closeDialog}>
-                취소
+                {t.cancel}
               </Button>
               <Button
                 loading={write.isSaving}
@@ -249,29 +253,35 @@ export const CreateHoldExecution = (props: CreateHoldExecutionProps) => {
                   if (!write.isSaving && !stale) write.write(confirmation);
                 }}
               >
-                보류 등록
+                {t.register}
               </Button>
             </>
           }
         >
           {stale ? (
-            <AlertBanner variant="error" action={<Button onClick={reload}>최신 불러오기</Button>}>
+            <AlertBanner variant="error" action={<Button onClick={reload}>{t.reload}</Button>}>
               {transitionStaleMessage(write.error, props.statusLabel)}
             </AlertBanner>
           ) : (
             <SaveErrorBanner error={write.error} />
           )}
-          <AlertBanner variant="warning" title="이 전이가 하는 일">
-            <p>Hold는 대상 수량의 출고·출하 및 피킹을 막습니다.</p>
-            <p>대상 수량: {confirmation.holdQty === undefined ? '전량' : confirmation.holdQty}</p>
-            <p>대상 위치: {location}</p>
+          <AlertBanner variant="warning" title={t.impact.title}>
+            <p>{t.impact.description}</p>
+            <p>
+              {t.impact.targetQuantity(
+                confirmation.holdQty === undefined
+                  ? t.impact.fullQuantity
+                  : String(confirmation.holdQty),
+              )}
+            </p>
+            <p>{t.impact.targetLocation(location)}</p>
             {(props.impact?.openPickingCount ?? 0) > 0 && (
-              <p>피킹 중인 요청 {props.impact?.openPickingCount}건이 막힙니다.</p>
+              <p>{t.impact.openPicking(String(props.impact?.openPickingCount))}</p>
             )}
             {(props.impact?.shippedQty ?? 0) > 0 && (
-              <p>이미 출고된 수량 {props.impact?.shippedQty}은 이 전이로 회수되지 않습니다.</p>
+              <p>{t.impact.shipped(String(props.impact?.shippedQty))}</p>
             )}
-            <p>다시 사용하려면 Release 전이가 필요하며, 이미 출고된 수량은 회수되지 않습니다.</p>
+            <p>{t.impact.recovery}</p>
           </AlertBanner>
         </Dialog>
       )}

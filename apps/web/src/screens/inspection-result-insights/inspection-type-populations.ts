@@ -1,9 +1,13 @@
+import { messages } from '@omf-mes/i18n';
+
 import type { InspectionInsightFilters } from './filters';
 
+const t = messages.inspectionResultInsights.inspectionTypes;
+
 export const INSPECTION_TYPE_POPULATIONS = [
-  { code: 'IQC', label: '수입검사' },
-  { code: 'PQC', label: '공정검사' },
-  { code: 'OQC', label: '출하검사' },
+  { code: 'IQC', label: t.IQC },
+  { code: 'PQC', label: t.PQC },
+  { code: 'OQC', label: t.OQC },
 ] as const;
 
 export interface InspectionTypePopulation {

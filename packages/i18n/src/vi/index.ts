@@ -19,14 +19,18 @@ import { common } from './common';
 import { conflict } from './conflict';
 import { dashboard } from './dashboard';
 import { deviceRegistration } from './device-registration';
+import { dispositionDecision } from './disposition-decision';
 import { editability } from './editability';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
 import { inboundReceipt } from './inbound-receipt';
 import { inboundVariance } from './inbound-variance';
 import { httpError } from './http-error';
+import { inspectionResultInsights } from './inspection-result-insights';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { login } from './login';
+import { lotStatusHistory } from './lot-status-history';
+import { lotStatusTransition } from './lot-status-transition';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
@@ -37,6 +41,7 @@ import { physicalCount } from './physical-count';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
 import { putaway } from './putaway';
+import { qualityApproval } from './quality-approval';
 import { recycleEntry } from './recycle-entry';
 import { repairRoundtrip } from './repair-roundtrip';
 import { save } from './save';
@@ -46,6 +51,7 @@ import { shellNav } from './shell-nav';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stateLocked } from './state-locked';
 import { stockTransfer } from './stock-transfer';
+import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { temporaryPutaway } from './temporary-putaway';
 import { wipHandover } from './wip-handover';
 
@@ -55,14 +61,18 @@ export const vi: Translated<Messages> = {
   conflict,
   dashboard,
   deviceRegistration,
+  dispositionDecision,
   editability,
   equipmentFailureReport,
   equipmentInspection,
   httpError,
   inboundReceipt,
   inboundVariance,
+  inspectionResultInsights,
   iqcSkipRequest,
   login,
+  lotStatusHistory,
+  lotStatusTransition,
   materialLocation,
   materialLotScan,
   materialPicking,
@@ -73,6 +83,7 @@ export const vi: Translated<Messages> = {
   productPicking,
   productReceipt,
   putaway,
+  qualityApproval,
   recycleEntry,
   repairRoundtrip,
   save,
@@ -82,6 +93,7 @@ export const vi: Translated<Messages> = {
   shopfloorReceipt,
   stateLocked,
   stockTransfer,
+  suspiciousMaterialHold,
   temporaryPutaway,
   wipHandover,
 };
