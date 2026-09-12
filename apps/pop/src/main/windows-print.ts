@@ -34,18 +34,47 @@ export interface WindowsPrintJob {
  */
 export function buildPrintScript({ imagePath, deviceName, jobName }: WindowsPrintJob): string {
   const chooseDevice =
-    deviceName === undefined ? '' : `$doc.PrinterSettings.PrinterName = ${psQuote(deviceName)}\n`;
+    deviceName === undefined
+      ? ''
+      : [
+          `  $doc.PrinterSettings.PrinterName = ${psQuote(deviceName)}`,
+          /*
+           * ⛔ **이름을 세운 뒤 «유효한가»를 확인한다**(#1102). `PrinterName` 은 없는 이름을
+           *    넣어도 그 자리에서 던지지 않는다 — `Print()` 에 가서야 죽고, 그때의 예외는
+           *    「프린터를 찾을 수 없다」가 아니라 일반 오류로 보인다. 여기서 가려야 사유가
+           *    사람이 읽을 수 있는 문장으로 남는다.
+           */
+          '  if (-not $doc.PrinterSettings.IsValid) { throw ' +
+            psQuote('프린터를 찾을 수 없습니다: ') +
+            ` + ${psQuote(deviceName)} }`,
+        ].join('\n') + '\n';
 
+  /*
+   * ⛔ **실패를 삼키지 않는다**(#1102 · 공유계약 F-6). 종전에는 `catch` 도 `exit` 도 없어
+   *    **그림을 못 읽든 프린터가 없든 앱에는 성공으로 돌아왔고**, 화면은 「인쇄했습니다」를
+   *    냈다 — 라벨은 한 장도 나오지 않았는데 대기열에는 작업조차 없었다(실기 2026-09-12).
+   *
+   * ⚠ `$ErrorActionPreference = 'Stop'` 은 오류를 «멈추는 오류»로 올릴 뿐 **종료 코드를
+   *   정하지 않는다.** 부르는 쪽이 종료 코드만 보므로 `exit 1` 이 있어야 실패가 건너간다.
+   * ⛔ `Write-Error` 를 쓰지 않는다 — `Stop` 이 그것마저 올려 `exit` 에 닿지 못한다
+   *   (같은 형태를 `raw-print.ts` 가 먼저 썼다).
+   */
   return [
     '$ErrorActionPreference = ' + psQuote('Stop'),
-    'Add-Type -AssemblyName System.Drawing',
-    `$image = [System.Drawing.Image]::FromFile(${psQuote(imagePath)})`,
-    '$doc = New-Object System.Drawing.Printing.PrintDocument',
-    chooseDevice + `$doc.DocumentName = ${psQuote(jobName)}`,
+    '$image = $null',
+    '$doc = $null',
+    'try {',
+    '  Add-Type -AssemblyName System.Drawing',
+    `  $image = [System.Drawing.Image]::FromFile(${psQuote(imagePath)})`,
+    '  $doc = New-Object System.Drawing.Printing.PrintDocument',
+    chooseDevice + `  $doc.DocumentName = ${psQuote(jobName)}`,
     /* 대화상자를 띄우지 않는 인쇄 제어기 — 키오스크에는 사람이 누를 창이 없다. */
-    '$doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController',
-    '$doc.add_PrintPage({ param($sender, $e) $e.Graphics.DrawImage($image, $e.PageBounds) })',
-    'try { $doc.Print() } finally { $doc.Dispose(); $image.Dispose() }',
+    '  $doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController',
+    '  $doc.add_PrintPage({ param($sender, $e) $e.Graphics.DrawImage($image, $e.PageBounds) })',
+    '  $doc.Print()',
+    '} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }',
+    /* ⚠ 놓아 주는 것은 실패해도 인쇄 결과를 뒤집지 않는다 — 며칠씩 도는 단말에서 파일이 잠긴 채 쌓인다. */
+    'finally { if ($doc) { $doc.Dispose() }; if ($image) { $image.Dispose() } }',
   ].join('\n');
 }
 
