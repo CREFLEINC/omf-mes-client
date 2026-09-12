@@ -42,6 +42,20 @@ const TRANSLATED = [
   'save',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
+  /* #1119 — 설비/툴 13화면. */
+  'collectionChannel',
+  'downtimeSummary',
+  'equipmentFailure',
+  'equipmentMaster',
+  'gaugeCalibration',
+  'gaugeMaster',
+  'maintenanceOrder',
+  'maintenanceResult',
+  'shotConversion',
+  'toolMaster',
+  'toolPmOrder',
+  'toolPmResult',
+  'workCalendar',
 ] as const satisfies readonly (keyof Messages)[];
 
 const HANGUL = /[가-힣]/;

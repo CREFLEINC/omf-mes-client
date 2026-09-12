@@ -160,6 +160,65 @@
 | 확장속성 | thuộc tính mở rộng | |
 | 동기화 | đồng bộ | |
 
+## 관리웹 — 설비/툴 13화면 (#1119)
+
+설비·툴·계측기를 「무엇이 있고 · 언제 도는가 · 어떻게 셌는가」로 다루는 13화면이 쓰는 말이다.
+위 「관리웹 — 업무 말」 표의 계측기·검교정·툴·타발수·보전·예비품·비가동을 그대로 잇는다.
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 설비 그룹 | nhóm thiết bị | 상위·하위는 `nhóm cha`·`nhóm con` |
+| 점검 항목 | hạng mục kiểm tra định kỳ | 설비 점검(`kiểm tra định kỳ`)의 항목. 수집 채널의 검사 항목(`hạng mục kiểm tra`)과 구별한다 |
+| 부여 · 부여 해제 | gán · gỡ gán | 점검 항목을 설비·그룹에 매다는 일. 마스터에 만드는 일과 다르다 |
+| 주기 · 주기 단위 · 주기 간격 | chu kỳ · đơn vị chu kỳ · khoảng chu kỳ | |
+| 주기 기준일 | ngày cơ sở chu kỳ | 다음 주기가 시작하는 점 |
+| 캐비티 | khoang khuôn | 캐비티 수는 `số khoang khuôn` |
+| 적정타수 | số nhát dập đảm bảo | 툴이 보장하는 타발수. 누계는 `số nhát dập lũy kế` |
+| 누계 | lũy kế | |
+| 환산 · 환산 비율 | quy đổi · tỷ lệ quy đổi | 타발수 환산 파라미터 |
+| 정책 · 적용 범위 | chính sách · phạm vi áp dụng | 범위 축이 비면 「지정 없음」(`Không chỉ định`) |
+| 유효 시작일 · 유효 종료일 | ngày bắt đầu hiệu lực · ngày kết thúc hiệu lực | |
+| 유효기한(차기 검교정) | hạn hiệu lực | ⛔ 자재의 유효기간(`hạn sử dụng`)과 다른 말이다 |
+| 성적서 | giấy chứng nhận | 검교정 성적서 |
+| 교정 기관 | tổ chức hiệu chuẩn | |
+| 허용오차 | sai số cho phép | |
+| 실시일 | ngày thực hiện | |
+| 합격 · 불합격 | Đạt · Không đạt | |
+| 예방보전(PM) · 사후보전 | bảo trì phòng ngừa · bảo trì khắc phục | 값 라벨은 `Phòng ngừa`·`Khắc phục` 로 짧게 |
+| 보전 지시 · 보전 오더 | lệnh bảo trì | 발행은 `Phát hành`, 발행된 상태는 `Đã phát hành` |
+| 트리거 | kích hoạt | 보전지시를 부르는 사건(고장·점검 불합격·주기 도래) |
+| 도래 · 도래 전 | Đến hạn · Chưa đến hạn | |
+| 실적 | kết quả | |
+| 외주 업체 | nhà thầu ngoài | 자재 공급사(`nhà cung cấp`)와 구별한다 |
+| 조업 시간 | thời gian vận hành | |
+| 계획 비가동 | dừng máy theo kế hoạch | |
+| 시간가동률 | tỷ lệ thời gian hoạt động | 낼 수 없으면 `Không tính được` |
+| 설비종합효율 | hiệu suất thiết bị tổng thể | 이 화면이 내지 않는다는 말에만 쓴다 |
+| 경미 정지 | dừng ngắn | |
+| 구간(비가동 한 토막) | khoảng | 겹친 구간은 `khoảng chồng nhau` |
+| 비중 | tỷ trọng | 률(`tỷ lệ`)과 구별한다 |
+| 칸 크기(집계 단위) | độ lớn ô | 일·주·월 |
+| 작업 캘린더 | lịch làm việc | |
+| 가동 · 휴무 · 부분 가동 | làm việc · nghỉ · làm việc một phần | 달력 칸의 구분 |
+| 요일 줄임 | CN · T2 ~ T7 | 일요일이 `CN`(Chủ nhật) |
+| 적용 대상 | đối tượng áp dụng | 캘린더를 따르는 공장·설비 그룹·설비 |
+| 수집 채널 | kênh thu thập | |
+| 신호 · 수신 로그 | tín hiệu · nhật ký nhận | |
+| 연결됨 · 연결 해제 | Đã nối · Gỡ nối | 매핑(`ánh xạ`)이 「짝을 정하는 일」이면 이것은 그 결과의 상태다 |
+| 검사기준 | tiêu chuẩn kiểm tra | 버전은 `phiên bản tiêu chuẩn kiểm tra` |
+| 사업부 | đơn vị kinh doanh | |
+| 운용상태 | trạng thái vận hành | 자산의 수명주기 축. 사용 여부와 다른 축이다 |
+| 폐기(설비·툴·계측기) | thanh lý · 처리는 `Xử lý thanh lý` | ⛔ 자재 폐기(`hủy`)와 다른 말이다 |
+| 미사용 | Ngừng dùng · 꼬리표는 ` (ngừng dùng)` | 「사용 중지」 **동작**은 `Ngừng sử dụng` — `common.ts` 가 정한 두 꼴이다 |
+| 기록 없음 | Không có ghi nhận | 지정 없음(`Không chỉ định`)과 구별한다 |
+| 산출 불가 | Không tính được | 0과 다르다 |
+| 진행 중 | Đang diễn ra | 끝나지 않은 구간·실적 |
+| 되돌릴 수 없다 | Không thể hoàn tác | |
+| 빼기(입력 줄 제거) | Bỏ | 삭제(`Xóa`)와 구별한다 |
+| 입력 지우기 | Xóa nội dung nhập | 조회 조건 초기화(`Đặt lại`)와 구별한다 |
+| 쪽 이동 | Chuyển trang | `전체 N건` → `Tổng N mục` · 이전·다음은 `Trước`·`Sau` |
+| 조회 조건 | Điều kiện tra cứu | |
+
 ## 말투
 
 - **높임은 `-ạ` 를 붙이지 않는다.** 현장에서 빠르게 읽는 화면이라 짧게 둔다.

@@ -1,5 +1,6 @@
 /**
- * 베트남어 화면 문구. 모바일 화면이 쓰는 슬라이스와, 관리웹 **셸**이 쓰는 슬라이스를 옮겼다.
+ * 베트남어 화면 문구. 모바일 화면이 쓰는 슬라이스와, 관리웹 **셸**·**설비/툴 13화면**이 쓰는
+ * 슬라이스를 옮겼다.
  *
  * 옮기지 않은 슬라이스는 한국어를 그대로 쓴다 - 관리웹 화면 문구는 묶음별 후속 이슈 몫이고
  * POP 은 다른 팀 몫이라 여기서 건드리지 않는다. 용어는 GLOSSARY.md 에 묶어 두고 슬라이스마다
@@ -15,18 +16,26 @@ import { ko, type Messages } from '../ko';
 
 import type { Translated } from './translated';
 
+import { collectionChannel } from './collection-channel';
 import { common } from './common';
 import { conflict } from './conflict';
 import { dashboard } from './dashboard';
 import { deviceRegistration } from './device-registration';
+import { downtimeSummary } from './downtime-summary';
 import { editability } from './editability';
+import { equipmentFailure } from './equipment-failure';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
+import { equipmentMaster } from './equipment-master';
+import { gaugeCalibration } from './gauge-calibration';
+import { gaugeMaster } from './gauge-master';
 import { inboundReceipt } from './inbound-receipt';
 import { inboundVariance } from './inbound-variance';
 import { httpError } from './http-error';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { login } from './login';
+import { maintenanceOrder } from './maintenance-order';
+import { maintenanceResult } from './maintenance-result';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
@@ -44,25 +53,38 @@ import { session } from './session';
 import { shellHome } from './shell-home';
 import { shellNav } from './shell-nav';
 import { shopfloorReceipt } from './shopfloor-receipt';
+import { shotConversion } from './shot-conversion';
 import { stateLocked } from './state-locked';
 import { stockTransfer } from './stock-transfer';
 import { temporaryPutaway } from './temporary-putaway';
+import { toolMaster } from './tool-master';
+import { toolPmOrder } from './tool-pm-order';
+import { toolPmResult } from './tool-pm-result';
 import { wipHandover } from './wip-handover';
+import { workCalendar } from './work-calendar';
 
 export const vi: Translated<Messages> = {
   ...ko,
+  collectionChannel,
   common,
   conflict,
   dashboard,
   deviceRegistration,
+  downtimeSummary,
   editability,
+  equipmentFailure,
   equipmentFailureReport,
   equipmentInspection,
+  equipmentMaster,
+  gaugeCalibration,
+  gaugeMaster,
   httpError,
   inboundReceipt,
   inboundVariance,
   iqcSkipRequest,
   login,
+  maintenanceOrder,
+  maintenanceResult,
   materialLocation,
   materialLotScan,
   materialPicking,
@@ -80,8 +102,13 @@ export const vi: Translated<Messages> = {
   shellHome,
   shellNav,
   shopfloorReceipt,
+  shotConversion,
   stateLocked,
   stockTransfer,
   temporaryPutaway,
+  toolMaster,
+  toolPmOrder,
+  toolPmResult,
   wipHandover,
+  workCalendar,
 };
