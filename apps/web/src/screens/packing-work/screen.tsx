@@ -235,6 +235,16 @@ export const PackingWorkScreen = () => {
     return null;
   })();
 
+  /**
+   * 화면 «위 띠»가 이미 말하고 있는 사유는 아래에서 되풀이하지 않는다(사용자 지적 2026-09-12).
+   *
+   * ⛔ **잠그는 것과 말하는 것은 다른 축이다** — 사유가 사라져도 잠금은 그대로다. 진입 인자가
+   * 없다는 한 문장이 머리 띠·좌단·우단 세 곳에 동시에 서 있었고, 그러면 정작 다른 사유가
+   * 떴을 때 그것이 눈에 띄지 않는다.
+   */
+  const noteUnlessBanner = (reason: string | null): string | null =>
+    reason === null || reason === entryBlockedReason ? null : reason;
+
   const add = (): void => {
     /* ⛔ 포장 단위를 만드는 동안 다시 누르지 않는다 — 빈 포장이 두 개 생긴다. */
     if (create.isSaving) return;
@@ -559,7 +569,8 @@ export const PackingWorkScreen = () => {
             onQuantityChange={setQuantity}
             onScan={scan}
             onAdd={add}
-            blockedReason={addBlockedReason}
+            isBlocked={addBlockedReason !== null}
+            blockedNote={noteUnlessBanner(addBlockedReason)}
             scanError={scanError}
             quantityError={quantityError}
             allowsDecimal={labels.allowsDecimal(selectedLot?.uomId ?? null)}
@@ -614,7 +625,7 @@ export const PackingWorkScreen = () => {
             isDiscarding={discard.isSaving}
             onDiscard={discardUnit}
             labels={labels}
-            blockedReason={confirmBlockedReason}
+            blockedReason={noteUnlessBanner(confirmBlockedReason)}
             canConfirm={canConfirm}
             isConfirming={pack.isSaving}
           />

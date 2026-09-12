@@ -15,8 +15,17 @@ export interface ScanPaneProps {
   /** 스캔·직접 입력으로 들어온 코드. 대상 잡기는 화면이 한다. */
   onScan: (code: string) => void;
   onAdd: () => void;
-  /** 담기가 막혀 있으면 그 사유. 없으면 `null` */
-  blockedReason: string | null;
+  /** 담기가 막혀 있는가 — **잠그는 축**이다. 무엇을 말할지는 아래 `blockedNote` 가 따로 정한다 */
+  isBlocked: boolean;
+  /**
+   * 막힌 사유 중 **이 자리에서 말할 것**. 없으면 `null`.
+   *
+   * ⛔ **화면 위 띠가 이미 말하는 사유는 여기서 되풀이하지 않는다**(사용자 지적 2026-09-12).
+   * 진입 인자가 없다는 말이 머리 띠·좌단·우단 세 곳에 동시에 섰다 — 같은 문장이 화면을
+   * 채우면 정작 다른 사유가 떴을 때 그것이 눈에 띄지 않는다. 같은 판단이 이 화면의 확정
+   * 사유에 이미 적용돼 있다(「유형 미선택·내용물 없음은 말로 적지 않는다」).
+   */
+  blockedNote: string | null;
   /** 스캔 코드가 목록에 없을 때의 인라인 오류. */
   scanError: string | null;
   /**
@@ -64,7 +73,8 @@ export const ScanPane = ({
   onQuantityChange,
   onScan,
   onAdd,
-  blockedReason,
+  isBlocked,
+  blockedNote,
   scanError,
   quantityError,
   allowsDecimal,
@@ -169,7 +179,7 @@ export const ScanPane = ({
           variant="filled"
           size="xl"
           className={popTouchClass('critical')}
-          disabled={blockedReason !== null || selectedLotNo === null}
+          disabled={isBlocked || selectedLotNo === null}
           onClick={onAdd}
         >
           {t.scan.submit}
@@ -203,7 +213,7 @@ export const ScanPane = ({
 
       {quantityError !== null && <p className="field-error">{quantityError}</p>}
       {/* ⛔ 유형 미선택은 여기서 말하지 않는다 — 누르면 고칠 칸(오른쪽 「유형」)이 말한다. */}
-      {blockedReason !== null && <p className="field-note">{blockedReason}</p>}
+      {blockedNote !== null && <p className="field-note">{blockedNote}</p>}
     </>
   );
 };

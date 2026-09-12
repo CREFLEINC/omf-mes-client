@@ -295,11 +295,18 @@ describe('P-02-08 포장 작업', () => {
     expect(query.get('completed')).toBe('true');
   });
 
-  it('작업지시를 모르면 대상을 부르지 않고 그 사실을 말한다', async () => {
+  /*
+   * ⛔ **같은 사실을 한 번만 말한다**(사용자 지적 2026-09-12). 한때 머리 띠·좌단 담기 아래·
+   * 우단 확정 아래 **세 곳**에 같은 문장이 동시에 섰다. 그러면 화면이 그 한 문장으로 차고,
+   * 정작 다른 사유가 떴을 때 그것이 눈에 띄지 않는다.
+   *
+   * ⚠ **앞 판의 단언이 `> 0` 이라 이 겹침을 통과시켰다** — 「적어도 한 번」은 세 번도 참이다.
+   */
+  it('작업지시를 모르면 대상을 부르지 않고 그 사실을 «한 번만» 말한다', async () => {
     renderScreen({}, `/pop/packing-work?workerNo=${WORKER_NO}`);
 
-    /* 배너와 담기 아래 사유가 같은 말을 한다 — 둘 다 이 사실을 말해야 한다 */
-    expect((await screen.findAllByText(t.entry.missingWorkOrder)).length).toBeGreaterThan(0);
+    expect(await screen.findByText(t.entry.missingWorkOrder)).toBeInTheDocument();
+    expect(screen.getAllByText(t.entry.missingWorkOrder)).toHaveLength(1);
   });
 
   it('사번이 없으면 포장을 시작할 수 없다고 말한다', async () => {
@@ -309,7 +316,9 @@ describe('P-02-08 포장 작업', () => {
       workerNo: null,
     });
 
-    expect((await screen.findAllByText(t.entry.missingWorker)).length).toBeGreaterThan(0);
+    expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
+    /* ⛔ 같은 사실을 한 번만 말한다 — 위 시험과 같은 사유. */
+    expect(screen.getAllByText(t.entry.missingWorker)).toHaveLength(1);
   });
 
   it('대상 목록이 실패하면 배너로 말한다', async () => {
