@@ -42,6 +42,18 @@ const TRANSLATED = [
   'save',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
+  /* #1116 — 출하 11화면. */
+  'dispositionRequest',
+  'expeditedShipment',
+  'oqcInspection',
+  'productDisposalRequest',
+  'productStockStatus',
+  'returnReceipt',
+  'shipmentConfirm',
+  'shipmentProcessing',
+  'shipmentRequestCreate',
+  'shipmentSchedule',
+  'stockReinstatement',
 ] as const satisfies readonly (keyof Messages)[];
 
 const HANGUL = /[가-힣]/;
