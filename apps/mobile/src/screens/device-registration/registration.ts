@@ -5,7 +5,9 @@ import { useDeviceRegistration } from '../../patterns/device-registration';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
 import { createMlkitQrCamera, type QrCamera } from '../../patterns/qr-camera';
-import { readTerminalClaims, type TerminalClaims } from '../../patterns/token-claims';
+import { readTerminalIdFromToken } from '../../patterns/token-claims';
+import { rememberPlant } from '../../patterns/plant';
+import { fetchTerminal, type RegisteredTerminal } from './terminal';
 import { fetchWorkerDirectory, saveWorkerDirectory } from './directory';
 
 /**
@@ -19,8 +21,8 @@ export type RegistrationPhase =
 
 export interface RegistrationFlow {
   phase: RegistrationPhase;
-  /** 읽은 QR 이 가리키는 단말. 아직 읽지 않았으면 null 이다. */
-  terminal: TerminalClaims | null;
+  /** 읽은 QR 이 가리키는 단말. 서버에 물어보기 전에는 null 이다. */
+  terminal: RegisteredTerminal | null;
   retry: () => void;
 }
 
@@ -34,7 +36,7 @@ export const useRegistrationFlow = ({ camera }: RegistrationFlowOptions = {}): R
   const { client } = useApiClient();
 
   const [phase, setPhase] = useState<RegistrationPhase>('preparing');
-  const [terminal, setTerminal] = useState<TerminalClaims | null>(null);
+  const [terminal, setTerminal] = useState<RegisteredTerminal | null>(null);
   const [attempt, setAttempt] = useState(0);
 
   const cameraRef = useRef<QrCamera | null>(null);
@@ -68,26 +70,39 @@ export const useRegistrationFlow = ({ camera }: RegistrationFlowOptions = {}): R
         return;
       }
 
-      const claims = readTerminalClaims(value);
+      /*
+       * ⭐ **토큰에 있는 것은 단말 번호뿐이다.** 코드·공장은 이 번호로 서버에 물어본다 —
+       * 종전에는 그 둘이 토큰에 들어 있다고 보고 없으면 여기서 걸렀는데, 실제 토큰에 없어
+       * 모든 등록 QR 이 조용히 버려졌다(#1103).
+       */
+      const terminalId = readTerminalIdFromToken(value);
 
       // 등록 QR 이 아닌 코드는 실패가 아니다. 미리보기를 열어 둔 채 다음 것을 기다린다.
-      if (claims === null) {
+      if (terminalId === null) {
         return;
       }
 
       taken = true;
-      setTerminal(claims);
       setPhase('receiving');
 
       void close?.().catch(() => undefined);
       close = null;
 
       /*
-       * 토큰을 두고 곧바로 기준정보를 받는다. 서버가 이 토큰을 받아 주는지는 실제로 불러 봐야
-       * 알고, 받아 둔 목록이 있어야 등록 직후 현장에 들어가도 사번을 확인할 수 있다.
+       * 토큰을 두고 곧바로 단말과 기준정보를 받는다. 서버가 이 토큰을 받아 주는지는 실제로
+       * 불러 봐야 알고, 받아 둔 목록이 있어야 등록 직후 현장에 들어가도 사번을 확인할 수 있다.
        */
       void register(value, async () => {
-        const entries = await fetchWorkerDirectory(client, claims.plantId);
+        const found = await fetchTerminal(client, terminalId);
+
+        if (!cancelled) {
+          setTerminal(found);
+        }
+
+        // 공장은 토큰에 없다. 쓰기 화면이 이걸 읽으므로 등록할 때 남겨 둔다.
+        await rememberPlant(found.plantId);
+
+        const entries = await fetchWorkerDirectory(client, found.plantId);
         await saveWorkerDirectory(entries);
       }).catch((error: unknown) => {
         if (cancelled) {
@@ -114,7 +129,13 @@ export const useRegistrationFlow = ({ camera }: RegistrationFlowOptions = {}): R
           return;
         }
 
-        const stop = await qrCamera.open(accept);
+        /*
+         * 미리보기가 열린 뒤의 실패는 이 통로로만 온다. 듣지 않으면 화면이 스캔 대기에 머물러,
+         * 작업자에게는 「비추고 있는데 아무 일도 안 일어난다」로만 보인다(#1103).
+         */
+        const stop = await qrCamera.open(accept, () => {
+          if (!cancelled) setPhase('unsupported');
+        });
 
         if (cancelled) {
           await stop();
