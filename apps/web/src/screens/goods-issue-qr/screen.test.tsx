@@ -1,7 +1,7 @@
 import { messages } from '@omf-mes/i18n';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -314,6 +314,44 @@ const installPrintBridge = (save: (bytes: Uint8Array) => Promise<string>): void 
 
 afterEach(() => {
   delete (globalThis as { pop?: unknown }).pop;
+});
+
+/**
+ * ⛔ **배포본은 파렛트 목록을 «부르지 않는다»**(#1095). 서버 구현 기준선의
+ *    `GET /inventory/handling-units` 에는 LOT 축이 없고, 실서버는 없는 축을 거부하지 않고
+ *    무시한다 — 그대로 부르면 이 출고와 상관없는 창고 전체의 파렛트가 후보로 서고, 발행은
+ *    되돌릴 수 없는 쓰기다.
+ *
+ * ⚠ **요청이 나가지 않는 것까지 본다.** 목록이 비어 보이는 것만으로는 증거가 되지 못한다.
+ */
+describe('GoodsIssueQrScreen — 서버 구현 기준선', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('배포본에서는 파렛트 목록을 부르지 않고 사유를 적는다', async () => {
+    vi.stubEnv('MODE', 'production');
+    const user = userEvent.setup();
+    const asked: string[] = [];
+    const watched: StubRoute = {
+      match: (request) => {
+        asked.push(new URL(request.url).pathname);
+
+        return false;
+      },
+      respond: () => jsonResponse({}),
+    };
+    renderWithProviders(<GoodsIssueQrScreen />, {
+      fetch: createStubFetch([watched, ...routes({ issueCounts: { 1001: 0 } })]),
+      route: ENTRY_ROUTE,
+    });
+
+    await screen.findByText('LOT-SAMPLE-20');
+    await user.click(screen.getByRole('radio', { name: t.target.unitPallet }));
+
+    expect(screen.getByText(t.target.palletUnavailable)).toBeInTheDocument();
+    expect(asked.some((path) => path === '/inventory/handling-units')).toBe(false);
+  });
 });
 
 describe('GoodsIssueQrScreen', () => {

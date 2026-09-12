@@ -63,6 +63,8 @@ export const goodsIssueQr = {
     palletNeedsOneLine: '파렛트는 라인을 하나만 고른 뒤에 고를 수 있습니다.',
     palletLoading: '파렛트를 불러오는 중입니다.',
     palletFailed: '파렛트를 불러오지 못했습니다. 잠시 뒤 다시 시도하세요.',
+    /* 다시 시도해도 풀리지 않는다 — 서버가 이 축을 아직 제공하지 않는다(#1095). */
+    palletUnavailable: '파렛트 단위 발행은 아직 서버가 지원하지 않습니다. 라인 단위로 발행하세요.',
     /** 이 라인의 LOT 이 실린 파렛트가 없다 — 파렛트를 만드는 것은 창고 화면이다. */
     palletEmpty: '이 라인의 LOT 이 실린 파렛트가 없습니다. 라인 단위로 발행하세요.',
     /**
@@ -128,6 +130,8 @@ export const goodsIssueQr = {
     disabledNoSelection: '발행할 라인을 먼저 고르세요.',
     disabledPalletNeedsOneLine: '파렛트로 발행하려면 라인을 하나만 고르세요.',
     disabledNoPallet: '발행할 파렛트를 고르세요.',
+    /* 대상 칸이 이미 사유를 적고 있다 — 같은 말을 액션바에서 되풀이하지 않는다(#1095). */
+    disabledPalletUnsupported: '라인 단위로 발행하세요.',
     /** 빈 파렛트 차단(스펙 §6)이 서기 전 — 잠깐 열렸다가 닫히지 않게 그동안 막는다. */
     disabledPalletContentsPending: '담긴 내용을 확인하는 중입니다. 잠시 뒤 발행할 수 있습니다.',
     /** 빈 파렛트에는 찍을 것이 없다(스펙 §6). */

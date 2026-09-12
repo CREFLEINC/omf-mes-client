@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { useReprintEntry } from './entry-context';
 import { ErrorBanner } from './error-banner';
 import { HandlingUnitPane } from './handling-unit-pane';
@@ -35,7 +36,13 @@ const printerTone = (status: Printer['status']) => {
       return 'success' as const;
     case 'BUSY':
       return 'info' as const;
+    /*
+     * ⚠ **배포본의 `OFFLINE` 은 「연결이 끊겼다」가 아니다**(#1095 · 대응표 P1). 서버 구현
+     * 기준선에 상태 수집 축이 없어 값이 항상 `OFFLINE` 이라, 붉게 칠하면 오류 색이 상시 떠
+     * 있고 진짜 장애가 왔을 때 아무도 보지 않는다. 색만 낮추고 문구는 서버 것을 쓴다.
+     */
     case 'OFFLINE':
+      return isServerBaselineBuild() ? ('info' as const) : ('error' as const);
     case 'ERROR':
       return 'error' as const;
   }

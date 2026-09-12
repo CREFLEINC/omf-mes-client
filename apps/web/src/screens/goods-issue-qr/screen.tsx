@@ -19,6 +19,7 @@ import {
   useGoodsIssue,
   useGoodsIssueLines,
   useHandlingUnitContents,
+  isPalletListUnsupported,
   useLineHandlingUnits,
   usePrinters,
 } from './queries';
@@ -166,6 +167,7 @@ export const GoodsIssueQrScreen = () => {
     unit,
     selectedIds,
     palletId,
+    palletListUnsupported: isPalletListUnsupported(),
     palletContentCount: palletContents.data?.length ?? null,
     /*
      * 내용물을 아직 «묻는 중»이면 열지 않는다 — 빈 파렛트 차단(스펙 §6)이 조회가 닿기 전
@@ -332,6 +334,7 @@ export const GoodsIssueQrScreen = () => {
           pallets={palletItems}
           palletsPending={pallets.isPending && palletSelectable}
           palletsFailed={pallets.isError}
+          palletsUnavailable={isPalletListUnsupported()}
           palletsTruncated={palletsTruncated}
           palletTotal={pallets.data?.total ?? 0}
           palletSelectable={palletSelectable}
@@ -430,6 +433,9 @@ const guardNote = (kind: Exclude<IssueGuard['kind'], 'ready'>): string => {
       return t.action.disabledPalletNeedsOneLine;
     case 'noPallet':
       return t.action.disabledNoPallet;
+    /* 막힌 사유는 대상 칸이 이미 적는다 — 액션바에서 되풀이하지 않는다(#1095). */
+    case 'palletUnsupported':
+      return t.action.disabledPalletUnsupported;
     case 'palletContentsPending':
       return t.action.disabledPalletContentsPending;
     case 'emptyPallet':

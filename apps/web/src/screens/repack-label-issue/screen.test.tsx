@@ -497,6 +497,42 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * ⛔ **배포본은 발행 대기 목록을 «부르지 않는다»**(#1095). 서버 구현 기준선에 `labelIssued`
+ *    축이 없고 실서버는 없는 축을 거부하지 않고 무시한다 — 그대로 부르면 「발행 대기」 표에
+ *    창고의 모든 취급 단위가 서고, 이미 라벨이 붙은 포장에 새 라벨이 나간다.
+ *
+ * ⚠ **요청이 나가지 않는 것까지 본다.** 표가 비어 보이는 것만으로는 부르지 않았다는 증거가
+ *    되지 못한다 — 부르고 나서 응답을 버려도 표는 똑같이 비어 보인다.
+ */
+describe('RepackLabelIssueScreen — 서버 구현 기준선', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('배포본에서는 발행 대기 목록을 부르지 않고 사유를 적는다', async () => {
+    vi.stubEnv('MODE', 'production');
+    const asked: string[] = [];
+    const watched: StubRoute = {
+      match: (request) => {
+        asked.push(new URL(request.url).pathname);
+
+        return false;
+      },
+      respond: () => jsonResponse({}),
+    };
+    renderWithProviders(
+      <PopIdentityProvider value={IDENTIFIED}>
+        <RepackLabelIssueScreen />
+      </PopIdentityProvider>,
+      { fetch: createStubFetch([watched, ...routes({})]), route: ENTRY_ROUTE },
+    );
+
+    expect(await screen.findByText(t.pending.unsupported)).toBeInTheDocument();
+    expect(asked.some((path) => path === '/inventory/handling-units')).toBe(false);
+  });
+});
+
 describe('RepackLabelIssueScreen — 대상 포장', () => {
   it('임시 URL 값 대신 labelIssued=false 발행 대기 목록에서 고른다', async () => {
     const pendingRequests: Request[] = [];

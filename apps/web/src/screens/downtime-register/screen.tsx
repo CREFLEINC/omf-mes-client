@@ -7,7 +7,7 @@ import { useSearchParams } from 'react-router';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
 import { usePopIdentity } from '../../patterns/pop-identity';
 
-import { ActionBar, resolveSaveBlock } from './action-bar';
+import { ActionBar, describeSaveBlock, resolveSaveBlock } from './action-bar';
 import { toRangeLabel } from './formatting';
 import {
   EMPTY_INTERVAL,
@@ -160,6 +160,7 @@ export const DowntimeRegisterScreen = () => {
     gate: gate.verdict,
     hasOngoing: ongoing.downtime !== null,
   });
+  const saveBlockReason = describeSaveBlock(block);
 
   /*
    * 오류를 언제 보일지 갈래가 둘이다.
@@ -211,7 +212,7 @@ export const DowntimeRegisterScreen = () => {
     if (workerNo === null || ongoing.downtime === null) return;
 
     outbox.enqueueClose(workerNo, ongoing.downtime.downtimeId);
-    setSavedNotice(t.ongoing.closed);
+    setSavedNotice(outbox.isOnline ? t.ongoing.closed : t.ongoing.closedQueued);
   };
 
   /*
@@ -289,14 +290,23 @@ export const DowntimeRegisterScreen = () => {
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
       {/*
-       * 설비가 없으면 **조회가 나가지 않는다.** 그 사실을 배너로 먼저 말한다 — 빈 목록만으로는
-       * 「오늘 비가동이 없다」와 「무엇을 볼지 정해지지 않았다」가 같은 모양이 된다.
+       * **저장이 막힌 사유는 머리에서 한 번 말한다.**
+       *
+       * 설비가 없으면 조회 자체가 나가지 않으므로 그 사실을 먼저 말해야 한다 — 빈 목록만으로는
+       * 「오늘 비가동이 없다」와 「무엇을 볼지 정해지지 않았다」가 같은 모양이 된다. 권한·단말
+       * 갈래도 같다: 작업자가 **화면에서 고칠 수 없는** 사유라 글로 말하지 않으면 「버튼이
+       * 고장 났다」로 읽힌다.
+       *
+       * ⛔ **액션바 옆의 붉은 상주 문구를 여기로 옮긴 것이다**(사용자 지시 2026-09-12).
+       *    같은 말을 아래에서 붉게 한 번 더 하지 않는다 — 선례 `P-02-04` 도 그 자리의 상주
+       *    사유를 걷었다(2026-09-07).
+       *
+       * ⛔ **제목을 달지 않는다.** 제목이 붙으면 아이콘이 제목 줄에 서고 정작 읽어야 할 문장이
+       *    다음 줄로 내려간다 — 아이콘과 문장은 같은 줄에 선다(사용자 지시 2026-09-12).
        */}
-      {equipmentId === null && (
+      {saveBlockReason !== null && (
         <div className="banner-slot">
-          <AlertBanner variant="warning" title={t.title}>
-            {t.header.equipmentMissing}
-          </AlertBanner>
+          <AlertBanner variant="warning">{saveBlockReason}</AlertBanner>
         </div>
       )}
 

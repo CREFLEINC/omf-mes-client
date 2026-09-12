@@ -304,14 +304,55 @@ describe('ProductionFlowScreen', () => {
     );
   });
 
+  /**
+   * ⛔ **상세가 늦게 닿아도 이미 적용된 실적을 덮지 않는다**(#1095).
+   *
+   * 양품 누계의 출처가 목록에서 상세로 옮겨졌다. 목록만 먼저 닿은 순간에는 초기수량이 서지만,
+   * 상세가 늦게 닿아도 **끝내 서버의 누계로 되돌아와야 한다.** 그러지 않으면 작업자가 초기수량을
+   * 그대로 저장해 실적이 두 번 올라간다 — 되돌릴 수 없는 쓰기다.
+   */
+  it('상세가 늦게 닿아도 이미 적용된 양품 누계가 초기수량에 덮이지 않는다', async () => {
+    const writes: Request[] = [];
+    let releaseDetail: (() => void) | null = null;
+    const detailArrived = new Promise<void>((resolve) => {
+      releaseDetail = resolve;
+    });
+    const slowDetail: StubRoute = {
+      match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}`,
+      respond: async () => {
+        await detailArrived;
+
+        return jsonResponse(
+          {
+            lot: { lotId: LOT_ID, lotNo: LOT_NO, progress: { goodQty: 8, varianceQty: -4 } },
+            externalReferences: [],
+          },
+          { headers: { ETag: LOT_ETAG } },
+        );
+      },
+    };
+    renderScreen(writes, [slowDetail]);
+
+    const quantity = await screen.findByLabelText(t.flow.quantity.actual);
+    releaseDetail?.();
+
+    await waitFor(() => {
+      expect(quantity).toHaveValue('8');
+    });
+  });
+
   it('서버 적용 실적으로 재진입하면 수량을 잠그고 생산 실적 없이 라벨 단계만 재개한다', async () => {
     const writes: Request[] = [];
     const user = userEvent.setup();
+    /*
+     * ⚠ **현재 LOT 은 `completed=false` 로 좁힌다**(#1095). 서버 구현 기준선에 `currentOnly`
+     *    축이 없다 — 옛 질의를 흉내 내면 시험만 통과하고 실서버에서는 전체 목록이 온다.
+     */
     const appliedLot: StubRoute = {
       match: (request) => pathOf(request) === '/trace/lots',
       respond: (request) => {
         const url = new URL(request.url);
-        if (url.searchParams.get('currentOnly') !== 'true') {
+        if (url.searchParams.get('completed') === 'true') {
           return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
         }
 
@@ -328,16 +369,25 @@ describe('ProductionFlowScreen', () => {
               sourceTypeCode: 'WORK_ORDER',
               sourceId: WORK_ORDER_ID,
               statusCode: 'NORMAL',
-              workOrderSequenceNo: 1,
-              workOrderLotCount: 3,
-              progress: { goodQty: 8, varianceQty: -4 },
             },
           ],
           page: { page: 1, size: 20, total: 1 },
         });
       },
     };
-    renderScreen(writes, [appliedLot]);
+    /* 양품 누계는 상세에만 실린다(#1095) — 목록에 얹으면 화면이 읽지 못한다. */
+    const appliedLotDetail: StubRoute = {
+      match: (request) => pathOf(request) === `/trace/lots/${String(LOT_ID)}`,
+      respond: () =>
+        jsonResponse(
+          {
+            lot: { lotId: LOT_ID, lotNo: LOT_NO, progress: { goodQty: 8, varianceQty: -4 } },
+            externalReferences: [],
+          },
+          { headers: { ETag: LOT_ETAG } },
+        ),
+    };
+    renderScreen(writes, [appliedLot, appliedLotDetail]);
 
     const quantity = await screen.findByLabelText(t.flow.quantity.actual);
     await waitFor(() => expect(quantity).toHaveValue('8'));
@@ -561,7 +611,7 @@ describe('ProductionFlowScreen', () => {
         match: (request) => pathOf(request) === '/trace/lots',
         respond: (request) => {
           const url = new URL(request.url);
-          if (url.searchParams.get('currentOnly') !== 'true') {
+          if (url.searchParams.get('completed') === 'true') {
             return jsonResponse({ items: [], page: { page: 1, size: 20, total: 0 } });
           }
 

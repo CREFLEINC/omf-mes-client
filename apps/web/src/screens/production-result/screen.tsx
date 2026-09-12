@@ -16,6 +16,7 @@ import {
   defaultPrinter,
   latestIssue,
   useCompletedLots,
+  CurrentLotAmbiguousError,
   useCurrentLot,
   useLotDetail,
   useItem,
@@ -152,9 +153,11 @@ export const ProductionFlowScreen = () => {
   const reissueReasons = useReissueReasons(isTagReissueOpen);
   const lotIssues = useLotIssues(currentLot.data?.lotId ?? null);
   /*
-   * ⭐ **마감이 실을 낙관적 잠금 값을 받아 두는 조회다**(#1005 · 공유계약 B-1). 응답 «내용»은
-   *    쓰지 않는다 — 목록이 이미 준다. 여기서 얻는 것은 `ETag` 헤더뿐이고, 그것이 보관소의
-   *    `/trace/lots/{lotId}` 자리에 앉아야 `useLotComplete` 가 꺼내 쓸 수 있다.
+   * ⭐ **마감이 실을 낙관적 잠금 값을 받아 두는 조회다**(#1005 · 공유계약 B-1). `ETag` 헤더가
+   *    보관소의 `/trace/lots/{lotId}` 자리에 앉아야 `useLotComplete` 가 꺼내 쓸 수 있다.
+   *
+   * ⭐ **양품 누계의 출처이기도 하다**(#1095). 서버 구현 기준선이 `withProgress` 를 목록에서
+   *    거둬 이 상세에만 남겼다 — 목록이 더는 진척을 주지 않는다.
    */
   const lotDetail = useLotDetail(currentLot.data?.lotId ?? null);
   const currentIssue = latestIssue(lotIssues.data);
@@ -180,8 +183,10 @@ export const ProductionFlowScreen = () => {
     parsedQty === null || serialCount === null
       ? null
       : missingIdentificationCount(parsedQty, serialCount);
+  const isCurrentLotAmbiguous = currentLot.error instanceof CurrentLotAmbiguousError;
   const lot = currentLot.data ?? null;
-  const serverAppliedQty = appliedGoodQty(lot);
+  /* 진척은 상세에만 실린다(#1095) — 목록의 줄에서 찾으면 늘 「모름」이 된다. */
+  const serverAppliedQty = appliedGoodQty(lotDetail.data?.lot);
   const hasAppliedResult =
     lot !== null && (serverAppliedQty !== null || confirmedResultLotId === lot.lotId);
 
@@ -312,10 +317,11 @@ export const ProductionFlowScreen = () => {
     const lot = currentLot.data;
     const nextLotId = lot?.lotId ?? null;
     if (currentLotIdRef.current === nextLotId) return;
-
     currentLotIdRef.current = nextLotId;
     setActualQty(
-      lot === null || lot === undefined ? '' : String(appliedGoodQty(lot) ?? lot.initialQty),
+      lot === null || lot === undefined
+        ? ''
+        : String(appliedGoodQty(lotDetail.data?.lot) ?? lot.initialQty),
     );
     setOutputPhase('idle');
     setScanValue('');
@@ -331,6 +337,11 @@ export const ProductionFlowScreen = () => {
     setConfirmedResultLotId((confirmedLotId) =>
       confirmedLotId === nextLotId ? confirmedLotId : null,
     );
+    /*
+     * ⚠ **상세를 기다리지 않는다**(#1095). 양품 누계의 출처가 상세로 옮겨져 이 자리에서는
+     *    아직 모르지만, 그 값이 닿으면 **아래 효과가 수량을 그 값으로 다시 세운다.** 여기서
+     *    한 번 더 막으면 이전 LOT 의 수량이 남는 창만 새로 생긴다.
+     */
   }, [currentLot.data]);
 
   useEffect(() => {
@@ -640,9 +651,19 @@ export const ProductionFlowScreen = () => {
 
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
+      {/*
+       * ⛔ **가릴 수 없는 것과 못 불러온 것을 갈라 말한다**(#1095). 앞엣것은 다시 시도해도
+       *    풀리지 않고 작업자가 할 일이 다르다 — 「불러오지 못했다」로 뭉뚱그리면 현장이
+       *    새로고침만 반복한다.
+       */}
       {currentLot.isError && (
         <div className="banner-slot">
-          <AlertBanner variant="error" title={t.flow.currentLot.loadFailed} />
+          <AlertBanner
+            variant={isCurrentLotAmbiguous ? 'warning' : 'error'}
+            title={isCurrentLotAmbiguous ? undefined : t.flow.currentLot.loadFailed}
+          >
+            {isCurrentLotAmbiguous ? t.flow.currentLot.ambiguous : undefined}
+          </AlertBanner>
         </div>
       )}
       {currentLot.data === null && (

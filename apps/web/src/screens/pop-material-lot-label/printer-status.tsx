@@ -1,6 +1,7 @@
 import { Button, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
+import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { popTouchClass } from '../../patterns/pop-touch';
 import type { PrinterStatus, PrinterView } from './types';
 
@@ -16,6 +17,20 @@ const CHIP_STATUS: Record<PrinterStatus, 'success' | 'warning' | 'error'> = {
   OFFLINE: 'error',
   ERROR: 'error',
 };
+
+/**
+ * 배포본에서 `OFFLINE` 을 **경고로 낮춘다**(#1095 · 대응표 P1 「프린터 상태」).
+ *
+ * 서버 구현 기준선에는 프린터 상태를 실제로 모으는 축이 없어 `statusCode` 가 **항상
+ * `OFFLINE`** 이다. 그대로 붉게 칠하면 정상 인쇄 중에도 오류 색이 상시 떠 있고, 그것은
+ * 사용자에게 「이 칩은 늘 빨갛다」를 가르친다 — 서버가 상태를 모으기 시작해 «진짜» 연결
+ * 끊김이 왔을 때 아무도 그 색을 보지 않는다.
+ *
+ * ⛔ **색만 낮춘다 — 문구는 그대로 서버 것을 쓴다.** 「정상」이라고 바꿔 말하지 않는다.
+ * 모르는 것을 통과로 처리하지 않는다(F-6).
+ */
+const chipStatusOf = (status: PrinterStatus): 'success' | 'warning' | 'error' =>
+  status === 'OFFLINE' && isServerBaselineBuild() ? 'warning' : CHIP_STATUS[status];
 
 export interface PrinterStatusProps {
   printer: PrinterView | null;
@@ -66,9 +81,9 @@ export const PrinterStatusIndicator = ({
 
   return (
     <div className="pop-lot-status">
-      <Chip status={CHIP_STATUS[printer.status]}>
-      {`${t.label} ${printer.displayName} · ${printer.statusMessage ?? t.noStatusMessage}`}
-    </Chip>
+      <Chip status={chipStatusOf(printer.status)}>
+        {`${t.label} ${printer.displayName} · ${printer.statusMessage ?? t.noStatusMessage}`}
+      </Chip>
     </div>
   );
 };
