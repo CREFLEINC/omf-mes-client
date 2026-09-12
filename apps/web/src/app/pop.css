@@ -4360,12 +4360,47 @@
 /*
  * 긴급 W/O 목록의 수량 칸 — **수와 단위가 한 줄에 선다**(사용자 지시 2026-09-11).
  *
- * ⚠ 칸에 140px 을 적어 두었지만 표가 가로로 좁아지면서 58px 로 줄었고, 그 폭에서 「40 EA」가
- *   빈칸에서 접혀 수와 단위가 위아래로 갈렸다(실측). 표는 이미 가로로 스크롤하므로 이 칸이
- *   접히지 않게 두는 것이 낫다 — 「40」과 「EA」는 함께 읽어야 뜻이 되는 한 값이다.
+ * ⚠ 「40」과 「EA」는 함께 읽어야 뜻이 되는 한 값이라 접지 않는다. 폭은 적지 않는다 — 적어 둔
+ *   140px 은 지켜지지도 않으면서 좌단 표를 넘치게 한 몫이었다(#1147).
  */
 .pop-ui .pop-emergency-list td:last-child {
   white-space: nowrap;
+}
+
+/*
+ * ⛔ **긴급 W/O 목록이 좌단 구획 안에 들어와야 한다**(#1147 · 88단계 3회차 실측).
+ *
+ * 1024×768 에서 좌단 표 자리는 408px 인데 표가 519px 로 서서 가로 스크롤이 생기고 수량 열이
+ * 화면 밖으로 밀렸다 — 단말에는 스크롤바가 보이지 않아 «없는 열»이 된다. 넘친 몫은 셋이었다.
+ *
+ * 1. 첫 칸에 「긴급」 표식과 번호가 한 줄로 서 263px 을 가져갔다 → **표식을 번호 위로 올린다.**
+ *    (스펙 도면의 🚨 강조는 그대로 남는다)
+ * 2. 번호가 대상 카드의 큰 글씨(17px)로 섰다 → **목록에서는 본문 크기로 내린다.** 전례
+ *    `.pop-lot-row > .pop-lot-no` 와 같은 이유 — 목록은 «고르는» 자리이고, 고른 뒤 오른쪽 상세가
+ *    번호를 다시 보인다.
+ * 3. 버튼의 좌우 안쪽 여백 → **뺀다.** 이 목록은 줄 전체가 누르는 자리라(`.pop-row-target`)
+ *    버튼 여백이 누를 자리를 넓혀 주지 않는다. 높이는 건드리지 않는다.
+ *
+ * 발행 시각은 낱말 단위로만 접힌다(`.pop-emergency-released`) — 자리가 있으면 한 줄로 서고,
+ * 수량이 길어져 자리가 모자랄 때만 「발행 / 날짜 / 시각」으로 내려간다.
+ */
+.pop-ui .pop-emergency-list .pop-row-select {
+  padding-inline: 0;
+}
+
+.pop-ui .pop-emergency-list .pop-row-select > span {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--pop-text);
+}
+
+.pop-ui .pop-emergency-list .stacked-cell > .pop-emergency-released {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 0.25em;
 }
 
 /*

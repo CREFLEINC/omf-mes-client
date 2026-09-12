@@ -23,6 +23,7 @@ export const materialInputScanKeys = {
   receipts: (workOrderId: number) => ['material-input-scan', 'receipts', workOrderId] as const,
   receiptDetail: (shopfloorReceiptId: number) =>
     ['material-input-scan', 'receipt-detail', shopfloorReceiptId] as const,
+  workOrder: (workOrderId: number) => ['material-input-scan', 'work-order', workOrderId] as const,
 };
 
 const fetchReceipts = async (client: Client, workOrderId: number): Promise<ReceiptView[]> => {
@@ -107,4 +108,32 @@ export const useReceiptLines = (workOrderId: number | null): ReceiptLinesResult 
       });
     },
   };
+};
+
+/**
+ * 작업지시의 유형 코드 — **머리줄의 긴급 표식 하나**에만 쓴다(#1147).
+ *
+ * ⛔ 어느 판정에도 쓰지 않는다. 못 받으면 `undefined` 이고 표식을 세우지 않는다 — 투입은
+ * 유형과 상관없이 같은 경로라, 이 조회가 실패했다고 화면을 막을 이유가 없다.
+ */
+export const useWorkOrderTypeCode = (workOrderId: number | null): string | undefined => {
+  const { client } = useApiClient();
+
+  const workOrder = useQuery({
+    queryKey: materialInputScanKeys.workOrder(workOrderId ?? 0),
+    enabled: workOrderId !== null,
+    queryFn: () => {
+      if (workOrderId === null) {
+        throw new Error('작업지시 없이는 유형을 조회하지 않습니다.');
+      }
+
+      return runRequest(() =>
+        client.GET('/production/work-orders/{workOrderId}', {
+          params: { path: { workOrderId } },
+        }),
+      );
+    },
+  });
+
+  return workOrder.data?.workOrderTypeCode ?? undefined;
 };

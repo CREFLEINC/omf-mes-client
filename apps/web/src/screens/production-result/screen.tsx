@@ -52,6 +52,7 @@ import {
 import { usePendingPqc, useWorkOrder } from './queries';
 import { buildSaveBody } from './save-request';
 import { useUomLookup } from './uom-lookup';
+import { isEmergency } from './work-order-type';
 
 const t = messages.productionResult;
 
@@ -639,6 +640,14 @@ export const ProductionFlowScreen = () => {
         </h1>
         {workOrder.data === undefined ? null : (
           <p className="pop-context">
+            {/* 긴급 W/O 에서 넘어왔으면 그 사실을 머리줄에 남긴다(`P-02-12` §5-1 · #1147). */}
+            {isEmergency(workOrder.data) && (
+              <>
+                <Chip status="error" size="md">
+                  {t.flow.header.emergency}
+                </Chip>{' '}
+              </>
+            )}
             {`${t.flow.header.erpWorkOrder} ${workOrder.data.productionOrderNo ?? '—'} · ${t.flow.header.workOrder} ${workOrder.data.workOrderNo} · ${t.flow.header.item} ${item.data?.itemCode ?? workOrder.data.itemCode ?? '—'}`}
           </p>
         )}
