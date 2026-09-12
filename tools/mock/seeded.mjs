@@ -3639,12 +3639,53 @@ const readBody = (request) =>
  * ⚠ 실기 인쇄 확인에 반드시 필요하다 — 셸이 형식 시그니처를 검사하므로 JSON 을 PNG 라고
  *   말하면 인쇄 경로가 시작되지 않는다.
  */
+/**
+ * 되돌려 줄 CORS 머리 — **요청한 출처를 그대로 되돌린다.**
+ *
+ * ⛔ **`*` 로는 안 된다.** 화면은 쿠키 세션을 쓰려고 `credentials: 'include'` 로 부르는데
+ * (`apps/web/src/app/api.ts`), 브라우저는 그 요청에 `*` 로 답한 응답을 **읽지 못하고 버린다.**
+ * 서버는 200 을 냈는데 화면에는 「불러오지 못했습니다」만 남아, 목이 답을 안 준 것처럼 보인다
+ * (실측 — 사번 확인이 전부 실패했다). 자격 증명을 실은 요청에는 출처를 «하나만» 적어야 하고,
+ * 목은 개발 기계 안에서만 도니 요청한 출처를 그대로 돌려주면 된다.
+ *
+ * ⚠ **`Vary: Origin` 이 함께 있어야 한다.** 출처마다 답이 다른데 이 줄이 없으면, 한 출처에
+ * 준 응답이 캐시에 남아 다른 출처에도 그대로 나간다.
+ *
+ * ⚠ **허용 머리·방법도 `*` 를 못 쓴다** — 자격 증명이 실리면 `*` 가 글자 그대로 읽혀 어떤
+ * 머리와도 맞지 않는다. 미리 묻는 요청(preflight)이 적어 온 것을 그대로 되돌린다.
+ */
+const corsHeaders = (request) => {
+  const origin = request?.headers?.origin;
+
+  if (origin === undefined) {
+    return {
+      'Access-Control-Allow-Origin': '*',
+      /*
+       * ⚠ **출처가 없을 때도 이 줄이 있어야 한다**(독립 검증 지적 2026-09-11). 없으면 이
+       * `*` 응답이 중간 캐시에 남아, 뒤이어 오는 자격 증명 요청에 그대로 나간다 — 브라우저는
+       * 그 응답을 버리고 화면은 다시 「불러오지 못했습니다」가 된다.
+       */
+      Vary: 'Origin',
+      'Access-Control-Allow-Headers': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    };
+  }
+
+  return {
+    'Access-Control-Allow-Origin': origin,
+    Vary: 'Origin',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Headers':
+      request.headers['access-control-request-headers'] ??
+      'Content-Type, Authorization, If-Match, If-None-Match',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+  };
+};
+
 const sendBinary = (response, { contentType, bytes }) => {
   response.writeHead(200, {
     'Content-Type': contentType,
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': '*',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    ...corsHeaders(response.req),
     'Content-Length': bytes.length,
   });
   response.end(bytes);
@@ -3654,9 +3695,7 @@ const send = (response, status, payload, headers = {}) => {
   if (status === 204) {
     response.writeHead(status, {
       ...headers,
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': '*',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+      ...corsHeaders(response.req),
       'Access-Control-Expose-Headers': 'ETag, Location',
     });
     response.end();
@@ -3667,9 +3706,7 @@ const send = (response, status, payload, headers = {}) => {
   response.writeHead(status, {
     ...headers,
     'Content-Type': 'application/json; charset=utf-8',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': '*',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    ...corsHeaders(response.req),
     /* 브라우저는 노출 목록에 없는 응답 헤더를 읽지 못한다 — 낙관적 잠금 토큰(ETag)을 화면이 받게 연다. */
     'Access-Control-Expose-Headers': 'ETag, Location',
     'Content-Length': Buffer.byteLength(body),
@@ -3694,8 +3731,9 @@ const forward = async (request, response, body) => {
 
     response.writeHead(upstream.status, {
       'Content-Type': upstream.headers.get('content-type') ?? 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': '*',
+      ...corsHeaders(response.req),
+      /* ⚠ 되돌림 길도 ETag 를 열어야 한다 — 이 길로 오는 단건 조회가 있다(낙관적 잠금). */
+      'Access-Control-Expose-Headers': 'ETag, Location',
     });
     response.end(text);
   } catch {

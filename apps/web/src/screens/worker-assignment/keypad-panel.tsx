@@ -95,9 +95,16 @@ export const KeypadPanel = ({
       )}
     </div>
 
+    {/*
+     * ⭐ **키 높이를 아래 [ 확인 ]과 같게 세운다**(사용자 지시 2026-09-11). POP 이 컨트롤
+     * 높이를 관리웹 기본(40)으로 수렴시킨 뒤로 키패드만 40 으로 섰는데, 장갑 낀 손이 찍기에
+     * 작았다. 높이는 `pop.css` 가 이 이름으로 준다 — 이 화면 전용 이름이라 다른 화면의
+     * 키패드는 따라 바뀌지 않는다.
+     */}
     <NumericKeypad
       value={workerNo}
       onChange={onChange}
+      className="worker-no-keypad"
       label={t.keypad}
       backspaceLabel={t.backspace}
       clearLabel={t.clear}
