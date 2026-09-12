@@ -860,18 +860,35 @@ const TERMINALS = {
   },
 };
 
-on('GET', '/mdm/terminals/{terminalId}', (params) => ({
-  terminalId: Number(params.terminalId),
-  ...(TERMINALS[Number(params.terminalId)] ?? TERMINALS[1001]),
-  terminalTypeCode: 'POP',
-  plantId: 1001,
-  locationId: 1001,
-  statusCode: 'ACTIVE',
-  isActive: true,
-  tokenIssuedAt: '2026-08-13T09:12:00+09:00',
-  tokenVersion: 3,
-  versionNo: 1,
-}));
+/*
+ * ⛔ **모르는 단말을 아는 척하지 않는다**(#1137 · 앞선 리뷰 지적). 한때 어떤 번호로 물어도
+ *    POP-A-01 을 답했다 — 실서버는 없는 단말·폐기된 세대를 401 로 묶으므로(공유계약 F-4),
+ *    등록이 거절되는 갈래를 **목에서는 한 번도 볼 수 없었다.** 목과 실서버는 데이터만 다르고
+ *    동작은 같아야 한다(사용자 지시 2026-09-12).
+ */
+on('GET', '/mdm/terminals/{terminalId}', (params) => {
+  const known = TERMINALS[Number(params.terminalId)];
+
+  if (known === undefined) {
+    return {
+      status: 401,
+      created: { code: 'TERMINAL_NOT_FOUND', message: '등록된 단말이 아닙니다.' },
+    };
+  }
+
+  return {
+    terminalId: Number(params.terminalId),
+    ...known,
+    terminalTypeCode: 'POP',
+    plantId: 1001,
+    locationId: 1001,
+    statusCode: 'ACTIVE',
+    isActive: true,
+    tokenIssuedAt: '2026-08-13T09:12:00+09:00',
+    tokenVersion: 3,
+    versionNo: 1,
+  };
+});
 
 on('GET', '/mdm/terminals/{terminalId}/processes', () => ({
   items: [
