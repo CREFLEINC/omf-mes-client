@@ -10,6 +10,7 @@ import { useTerminal, useWorkerDirectory, useWorkerLookup } from './queries';
 import { pickExact, verifyWorker, type WorkerResponse } from './verify';
 import { WorkerCard } from './worker-card';
 import { PopDevScreenNav } from '../../patterns/pop-dev-screen-nav';
+import { usePopIdentity } from '../../patterns/pop-identity';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 
 /**
@@ -80,13 +81,13 @@ export const WorkerAssignmentScreen = () => {
   const [pendingQueue, setPendingQueue] = useState(0);
 
   /**
-   * ⚠ **단말 식별자를 줄 자리가 이 저장소에 아직 없다** — 셸이 여는 통로가 단말 토큰·캐시·
-   * 큐·출력물만 내주고 식별자를 내주지 않는다. 그래서 단말 조회가 서지 않고, 헤더는 이름
-   * 대신 없음 표시를 낸다. ⛔ 지어내지 않는다.
+   * ⭐ **등록이 확인해 준 단말 번호**(#999). 예전에는 이 자리가 `null` 로 못 박혀 있었다 —
+   * 셸이 식별자를 내주지 않아 단말 조회가 서지 못했고, 헤더는 늘 없음 표시를 냈다. 등록
+   * 흐름이 서면서 그 값이 생겼고, 여기 한 자리를 채우는 것으로 헤더·공장 연쇄가 살아난다.
    *
-   * ⭐ 통로가 생기면 **이 한 자리**에 식별자를 넣으면 된다.
+   * ⛔ **주소에서 받지 않는다.** 신원은 서버가 확인해 준 것만 쓴다(공유계약 F-4).
    */
-  const terminalId: number | null = null;
+  const { terminalId } = usePopIdentity();
   const terminal = useTerminal(terminalId);
 
   const isOnline = useIsOnline();
@@ -96,14 +97,12 @@ export const WorkerAssignmentScreen = () => {
    * ⭐ **연결돼 있을 때 목록을 미리 받아 둔다**(§5-6 · C-11) — 오프라인에서 사번을 확인할
    * 근거는 이것뿐이다. 받아 두는 것과 쓰는 것이 시점이 다르므로, 받는 즉시 셸 캐시에 넣는다.
    *
-   * ⛔ **지금은 한 번도 돌지 않는다.** 「해당 공장」이 스펙의 조건인데 공장은 단말이 알려주고,
-   * 단말을 지목할 값이 이 저장소에 아직 없다(위 `terminalId`). 그래서 실기의 오프라인 확인은
-   * **언제나 「목록을 아직 받지 못했습니다」로 떨어진다** — 읽는 쪽은 서 있고 **받아 두는 쪽이
-   * 비어 있다.**
+   * ⭐ **등록이 서면서 이 연쇄가 살아났다**(#999). 「해당 공장」은 단말이 알려주는 값인데
+   * 그 단말 번호가 없어 예전에는 한 번도 돌지 않았고, 오프라인 사번 확인이 언제나 「목록을
+   * 아직 받지 못했습니다」로 떨어졌다.
    *
    * ⛔ **공장 없이 전 공장을 받아 두는 것으로 메우지 않는다** — 옆 공장 사번이 이 단말에서
-   * 통과한다. 단말 값을 얻는 경로가 서면 위 `terminalId` 한 자리를 채우는 것으로 이 연쇄가
-   * 통째로 살아난다.
+   * 통과한다.
    */
   const directory = useWorkerDirectory(homePlantId, isOnline);
   const directoryData = directory.data;

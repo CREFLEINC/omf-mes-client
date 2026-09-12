@@ -19,7 +19,7 @@ export const EQUIPMENT_ID = 6301;
 
 export const IDENTITY: PopIdentity = {
   terminalId: TERMINAL_ID,
-  processId: PROCESS_ID,
+  processes: [{ processId: PROCESS_ID }],
   workerNo: null,
 };
 

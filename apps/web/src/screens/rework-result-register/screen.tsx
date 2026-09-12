@@ -7,7 +7,7 @@ import { useEffect, useId, useState } from 'react';
 import { PopSelect as Select } from '../../patterns/pop-select';
 
 import { useApiClient } from '../../patterns/api-context';
-import { usePopIdentity } from '../../patterns/pop-identity';
+import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopPageNav, pageBoundaryOf } from '../../patterns/pop-page-nav';
 import { popTouchClass } from '../../patterns/pop-touch';
 import { drainReworkResults, enqueueReworkResult, pendingReworkResultCount } from './outbox';
@@ -61,7 +61,7 @@ export const ReworkResultRegisterScreen = () => {
   const source = useReworkSource(nonconformanceId);
   const dispositions = useDispositionDecisions(nonconformanceId);
   const sourceLot = useReworkSourceLot(selected?.reworkSourceLotId ?? null);
-  const gate = useResultGate(identity.terminalId, identity.processId);
+  const gate = useResultGate(identity.terminalId, soleProcessIdOf(identity.processes));
   const uom = useUomLookup();
   const progress = reworkDispositionProgress(dispositions.data?.items ?? []);
   /* 이 화면이 보이는 처분은 «재작업» 한 건이다 — 다른 유형은 이 W/O 의 근거가 아니다. */

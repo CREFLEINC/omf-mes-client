@@ -3,7 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 
-import { usePopIdentity } from '../../patterns/pop-identity';
+import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PrecheckGate } from '../work-precheck-gate/gate';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 import { ActionBar } from './action-bar';
@@ -60,7 +60,7 @@ export const WorkStartScreen = () => {
   const uomCodeOf = (uomId: number | undefined): string | null =>
     uomId === undefined ? null : (uoms.data?.get(uomId) ?? null);
 
-  const gate = useStartGate(identity.terminalId, identity.processId);
+  const gate = useStartGate(identity.terminalId, soleProcessIdOf(identity.processes));
   const terminal = useTerminal(identity.terminalId);
 
   const equipmentId = terminal.data?.equipmentId ?? null;
@@ -523,7 +523,7 @@ export const WorkStartScreen = () => {
           equipmentCode={equipmentCode}
           equipmentName={equipmentName}
           plantId={terminal.data?.plantId ?? null}
-          processId={identity.processId}
+          processId={soleProcessIdOf(identity.processes)}
           workerNo={confirmedNo}
           decidedAt={gateAt}
           /* 단말 시각의 «날짜»다 — 주기 창이 이 값을 기준으로 열린다. */

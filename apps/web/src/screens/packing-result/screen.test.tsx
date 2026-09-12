@@ -191,7 +191,9 @@ const renderScreen = (options: Options = {}) => {
   ];
 
   return renderWithProviders(
-    <PopIdentityProvider value={{ terminalId: 101, processId: 301, workerNo: '3391' }}>
+    <PopIdentityProvider
+      value={{ terminalId: 101, processes: [{ processId: 301 }], workerNo: '3391' }}
+    >
       <PackingResultScreen />
     </PopIdentityProvider>,
     { fetch: createStubFetch(routes), route: '/pop/packing' },
