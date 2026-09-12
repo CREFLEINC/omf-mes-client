@@ -3049,6 +3049,46 @@ on('POST', '/production/work-sessions/{workSessionId}:end', (params, _q, body, h
   return { created: session, status: 200 };
 });
 
+/*
+ * 작업 전 점검 통제 판정 — `P-02-02` 게이트가 «뜨는 순간» 스스로 남기는 기록이다(#1093 ①).
+ *
+ * ⛔ **목이 이 경로를 갖고 있지 않았다.** 상태 기반 목이 모르는 경로는 Prism 으로 넘어가고
+ *    Prism 은 이 본문을 거부해 400 을 냈다 — 그러면 게이트가 판정을 남기지 못해 **차단
+ *    상태에서 「돌아가기」밖에 남지 않는다.** 목과 실서버는 «데이터»만 다르고 동작은 같아야
+ *    한다(사용자 지시 2026-09-12).
+ *
+ * ⭐ **차단도 남긴다**(스펙 §5-8 · §9-3). 차단이면 작업 세션이 열리지 않아 세션 사건으로는
+ *    남길 곳이 없다 — 안 보이는 것과 안 남기는 것은 다르다.
+ *
+ * ⛔ **사번을 본문에서 읽지 않는다.** 귀속은 `X-Worker-No` 헤더가 나르고 서버가 옮겨 적는다.
+ */
+on('POST', '/production/precheck-decisions', (_p, _q, body, headers) => {
+  const created = {
+    precheckDecisionId: newId(),
+    workOrderId: body?.workOrderId,
+    equipmentId: body?.equipmentId,
+    decidedAt: body?.decidedAt ?? new Date().toISOString(),
+    controlLevelCode: body?.controlLevelCode,
+    decisionCode: body?.decisionCode,
+    basisInspectionId: body?.basisInspectionId ?? null,
+    overrideReasonCode: body?.overrideReasonCode ?? null,
+    workerNo: headers['x-worker-no'] ?? null,
+  };
+
+  state.precheckDecisions.push(created);
+  return { created, status: 201 };
+});
+
+on('GET', '/production/precheck-decisions', (_p, query) =>
+  page(
+    keep(state.precheckDecisions, [
+      byNum(query, 'workOrderId', 'workOrderId'),
+      byNum(query, 'equipmentId', 'equipmentId'),
+    ]),
+    query,
+  ),
+);
+
 on('POST', '/production/operation-handovers', (_p, _q, body) => {
   const created = {
     operationHandoverId: newId(),
