@@ -123,7 +123,8 @@ describe('그림 인쇄 — 실패를 알린다', () => {
   it('그림 읽기와 프린터 준비가 모두 try 안에 있다 — 인쇄 직전의 실패도 잡힌다', () => {
     const built = script();
     const tryAt = built.indexOf('try {');
-    const catchAt = built.indexOf('} catch');
+    /* ⚠ 핸들러 «안»에도 catch 가 있다 — 바깥 것을 콘솔 기록으로 집어낸다. */
+    const catchAt = built.indexOf('} catch { [Console]::Error');
 
     expect(tryAt).toBeGreaterThanOrEqual(0);
     expect(built.indexOf('FromFile')).toBeGreaterThan(tryAt);
@@ -155,5 +156,40 @@ describe('그림 인쇄 — 실패를 알린다', () => {
     expect(built).toContain('finally {');
     expect(built.indexOf('finally {')).toBeGreaterThan(built.indexOf('} catch'));
     expect(built).toContain('$image.Dispose()');
+  });
+});
+
+/**
+ * 그리는 자리의 실패도 잡는가(#1102 2회차).
+ *
+ * ⭐ **PowerShell 이벤트 핸들러의 예외는 `Print()` 밖으로 나오지 않는다.** 그림을 한 장도
+ * 그리지 못해도 인쇄는 정상으로 끝나고 **빈 작업이라 대기열에도 남지 않는다** — 실기에서
+ * 「인쇄했습니다」가 뜨는데 라벨도 대기열 항목도 없던 정체가 이것이다(2026-09-12).
+ */
+describe('그림 인쇄 — 그리는 자리의 실패', () => {
+  const script = (): string => buildPrintScript({ imagePath: 'C:\\a.png', jobName: 'LOT-1' });
+
+  it('핸들러 안에서 오류를 받아 둔다 — 바깥 try 로는 못 잡는다', () => {
+    const built = script();
+
+    expect(built).toContain('$script:pageError');
+    expect(built).toContain('catch { $script:pageError = $_.Exception.Message }');
+  });
+
+  it('받아 둔 오류를 인쇄 뒤에 던진다 — 그래야 종료 코드가 선다', () => {
+    const built = script();
+
+    expect(built.indexOf('if ($script:pageError)')).toBeGreaterThan(built.indexOf('$doc.Print()'));
+  });
+
+  it('⛔ 한 장도 못 그렸으면 실패다 — 빈 작업은 아무 데도 남지 않는다', () => {
+    const built = script();
+
+    expect(built).toContain('$script:pagesDrawn');
+    expect(built).toContain('-lt 1');
+  });
+
+  it('그린 장수를 실제로 센다 — 세지 않으면 위 판정이 늘 참이 된다', () => {
+    expect(script()).toContain('$script:pagesDrawn = $script:pagesDrawn + 1');
   });
 });

@@ -70,8 +70,31 @@ export function buildPrintScript({ imagePath, deviceName, jobName }: WindowsPrin
     chooseDevice + `  $doc.DocumentName = ${psQuote(jobName)}`,
     /* 대화상자를 띄우지 않는 인쇄 제어기 — 키오스크에는 사람이 누를 창이 없다. */
     '  $doc.PrintController = New-Object System.Drawing.Printing.StandardPrintController',
-    '  $doc.add_PrintPage({ param($sender, $e) $e.Graphics.DrawImage($image, $e.PageBounds) })',
+    /*
+     * ⛔ **그리는 자리의 오류는 `Print()` 밖으로 나오지 않는다**(#1102 2회차).
+     *
+     * PowerShell 의 이벤트 핸들러에서 난 예외는 **그 자리에서 삼켜진다** — 그림을 한 장도
+     * 그리지 못해도 `Print()` 는 정상으로 끝나고, 빈 작업이라 **인쇄 대기열에도 남지 않는다.**
+     * 실기에서 「인쇄했습니다」가 뜨는데 라벨이 안 나오고 대기열도 비어 있던 정체가 이것이다
+     * (2026-09-12). 바깥 `try` 로는 못 잡으므로 **핸들러 안에서 받아 두었다가 뒤에서 던진다.**
+     */
+    '  $script:pageError = $null',
+    '  $script:pagesDrawn = 0',
+    '  $doc.add_PrintPage({',
+    '    param($sender, $e)',
+    '    try {',
+    '      $e.Graphics.DrawImage($image, $e.PageBounds)',
+    '      $script:pagesDrawn = $script:pagesDrawn + 1',
+    '    } catch { $script:pageError = $_.Exception.Message }',
+    '  })',
     '  $doc.Print()',
+    '  if ($script:pageError) { throw ' +
+      psQuote('라벨을 그리지 못했습니다: ') +
+      ' + $script:pageError }',
+    /* ⚠ 오류 없이 한 장도 안 그린 경우도 실패다 — 빈 작업은 아무 데도 남지 않는다. */
+    '  if ($script:pagesDrawn -lt 1) { throw ' +
+      psQuote('인쇄할 내용이 만들어지지 않았습니다.') +
+      ' }',
     '} catch { [Console]::Error.WriteLine($_.Exception.Message); exit 1 }',
     /* ⚠ 놓아 주는 것은 실패해도 인쇄 결과를 뒤집지 않는다 — 며칠씩 도는 단말에서 파일이 잠긴 채 쌓인다. */
     'finally { if ($doc) { $doc.Dispose() }; if ($image) { $image.Dispose() } }',
