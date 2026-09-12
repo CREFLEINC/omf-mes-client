@@ -41,9 +41,25 @@ export const DATA_TYPES = {
 export interface MeasurementDraft {
   judgment: string;
   value: string;
+  /**
+   * 이 판정을 **사람이 골랐는가.**
+   *
+   * ⛔ **「판정 칸이 비었는가」로 가르지 않는다.** 자동 판정이 한 번 채우면 칸이 다시 비지
+   * 않아, 그 뒤로는 값을 고쳐도 자동 판정이 영영 서지 않는다 — POP 은 키패드로 한 자씩 치는
+   * 화면이라 **첫 글자의 판정이 그대로 박힌다.** 규격 7.97~8.03 항목에 8.00 을 치면 첫 자
+   * 「8」이 합격을 박고, 8.5 로 고쳐도 합격이 남는다(88단계 2회차 실측 · #1091).
+   *
+   * ⭐ 출처를 초안이 들면 §5-11 의 두 문장이 동시에 선다 — **채운 값은 값이 바뀔 때마다 다시
+   * 계산되고**(시작점), **사람이 고른 값은 덮이지 않는다**(확정이 아니다).
+   */
+  judgmentByPerson: boolean;
 }
 
-export const EMPTY_MEASUREMENT_DRAFT: MeasurementDraft = { judgment: '', value: '' };
+export const EMPTY_MEASUREMENT_DRAFT: MeasurementDraft = {
+  judgment: '',
+  value: '',
+  judgmentByPerson: false,
+};
 
 /** 줄의 열쇠 → 그 줄의 초안. 항목과 샘플이 함께 한 줄을 가리킨다. */
 export type MeasurementDrafts = Record<string, MeasurementDraft>;
@@ -69,6 +85,17 @@ export const toMeasurementDrafts = (rows: readonly MeasurementRow[]): Measuremen
     drafts[row.key] = {
       judgment: stored === '' ? (judgeAutomatically(row) ?? '') : stored,
       value: storedValueOf(row),
+      /*
+       * 저장된 판정은 **사람이 남긴 결론으로 본다** — 자동이 채운 값으로 덮지 않는다.
+       *
+       * ⚠ **측정치 조회가 붙으면 이 줄을 다시 봐야 한다.** 저장된 판정의 상당수는 «자동이 채워
+       * 준 값을 그대로 저장한 것»인데 여기서는 그것까지 사람 것으로 접는다 — 지금은 이 화면이
+       * 저장된 측정치를 부르지 않아(요구서 §3-7 · `screen.tsx` 가 언제나 빈 배열을 넘긴다) 이
+       * 줄이 실행되지 않지만, 조회가 붙는 순간 **불러온 회차에서 값을 고쳐도 자동 판정이 다시
+       * 서지 않는다**(#1091 이 고친 것이 그 자리에서 부활한다). 그때는 판정의 출처를 서버가
+       * 함께 내려 주어야 한다(리뷰 지적).
+       */
+      judgmentByPerson: stored !== '',
     };
   }
 
@@ -94,6 +121,71 @@ const storedValueOf = (row: MeasurementRow): string => {
   if (measured.booleanValue !== null) return String(measured.booleanValue);
 
   return '';
+};
+
+/**
+ * 지금 친 값을 **자동 판정이 볼 수 있는 모양**으로 감싼다. 저장된 측정치를 부르지 않으므로
+ * (요구서 §3-7) 대조할 값은 화면의 초안뿐이다 — 수치가 아니면 잴 것이 없어 비운다.
+ */
+export const toProbe = (raw: string): MeasurementRow['measured'] => {
+  const trimmed = raw.trim();
+  const numeric = Number(trimmed);
+
+  if (trimmed === '' || Number.isNaN(numeric)) return null;
+
+  return {
+    numericValue: numeric,
+    textValue: null,
+    booleanValue: null,
+    judgmentCode: '',
+    measuredAt: '',
+    inspectionEquipmentId: null,
+    calibrationExpired: false,
+  };
+};
+
+/**
+ * 측정값을 고친 뒤의 초안 — **자동 판정은 값이 바뀔 때마다 다시 계산한다**(§5-11 「채운 값은
+ * 시작점이지 확정이 아니다」).
+ *
+ * ⛔ **사람이 고른 판정은 건드리지 않는다.** 덮으면 검사자의 판단이 한 자 칠 때마다 지워진다.
+ *
+ * ⚠ 자동 판정이 서다가 **값을 지우면 판정도 거둔다** — `judgeAutomatically` 가 잴 값이 없을 때
+ * `null` 을 내므로 빈 문자열이 된다. 재지 않은 줄에 판정이 남아 있으면 「사람이 합격으로
+ * 판정했다」로 읽힌다.
+ */
+export const withMeasuredValue = (
+  row: MeasurementRow | undefined,
+  draft: MeasurementDraft,
+  value: string,
+): MeasurementDraft => {
+  if (draft.judgmentByPerson || row === undefined) return { ...draft, value };
+
+  return {
+    ...draft,
+    value,
+    judgment: judgeAutomatically({ ...row, measured: toProbe(value) }) ?? '',
+  };
+};
+
+/**
+ * 판정을 **사람이 고른 뒤**의 초안.
+ *
+ * ⚠ 같은 값을 다시 눌러 «해제»하면 사람 선택이 풀리고 **자동 판정이 되돌아온다** — 해제는
+ * 「판정하지 않은 상태로 돌린다」는 뜻이고, 그 상태의 시작점이 자동 판정이다.
+ *
+ * ⚠ **그래서 자동 판정이 서는 줄에서는 해제가 «빈 칸»을 만들지 않는다.** 규격 안의 값이 든
+ * 줄에서 「합격」을 다시 누르면 자동 판정이 같은 합격을 도로 채운다 — 검사자에게는 버튼이 안
+ * 먹는 것처럼 보인다. 빈 칸으로 돌리려면 측정값을 지우면 된다(리뷰 지적).
+ */
+export const withJudgment = (
+  row: MeasurementRow | undefined,
+  draft: MeasurementDraft,
+  judgment: string,
+): MeasurementDraft => {
+  if (judgment !== '') return { ...draft, judgment, judgmentByPerson: true };
+
+  return withMeasuredValue(row, { ...draft, judgment: '', judgmentByPerson: false }, draft.value);
 };
 
 /**

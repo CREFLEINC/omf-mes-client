@@ -19,6 +19,11 @@ import { popTouchClass } from '../../patterns/pop-touch';
 const t = messages.pqcInspection.result;
 
 export interface ActionBarProps {
+  /**
+   * 이 회차가 이미 확정됐는가. ⛔ **임시 저장도 함께 잠근다** — 이 화면의 저장은 언제나 새
+   * 결과를 만드는 경로라, 확정 뒤의 임시 저장도 중복 결과가 된다(`confirm-gate.ts`).
+   */
+  isConfirmed: boolean;
   /** 확정이 막혔다면 **무엇이** 막혔는지. 풀렸으면 `null` */
   blockedReason: string | null;
   /** 저장이 막혔다면 그 사유. 막는 것은 수량이 아닌 값이 남아 있을 때뿐이다 */
@@ -36,6 +41,7 @@ export interface ActionBarProps {
 }
 
 export const ActionBar = ({
+  isConfirmed,
   blockedReason,
   saveBlockedReason,
   isSaved,
@@ -60,7 +66,21 @@ export const ActionBar = ({
        * 회색 한 줄이면 잠긴 사유 문구와 같은 무게라, 「됐다」와 「안 된다」가 같은 모양으로 선다.
        */}
       {isSaved && <AlertBanner variant="success" title={t.saved} />}
-      {isJustConfirmed && <AlertBanner variant="success" title={t.confirmSucceeded} />}
+      {/*
+       * ⭐ **확정됐다는 사실과 그래서 무엇을 할 수 없는지를 «한 띠»에 담는다**(사용자 지시
+       *    2026-09-12). 결과를 띠로 내면서 잠긴 사유를 아래 회색 줄로 또 세우면, 한 가지
+       *    사실이 서로 다른 무게의 문장 둘로 갈라져 선다.
+       *
+       * ⚠ **방금 확정한 것과 확정된 회차로 «들어온» 것은 첫 줄이 다르다.** 앞은 지금 한
+       *    일이고 뒤는 이미 그런 상태다 — 들어올 때마다 「확정했습니다」라고 하면 하지 않은
+       *    일을 방금 한 것처럼 말한다.
+       */}
+      {isJustConfirmed && (
+        <AlertBanner variant="success" title={t.confirmSucceeded}>
+          {t.confirmed}
+        </AlertBanner>
+      )}
+      {isConfirmed && !isJustConfirmed && <AlertBanner variant="info" title={t.confirmed} />}
 
       {saveBlockedReason !== null && <p className="field-note">{saveBlockedReason}</p>}
       {/*
@@ -69,10 +89,13 @@ export const ActionBar = ({
        * ⛔ **합계가 안 맞는 것은 여기서 말하지 않는다**(사용자 지시 2026-09-10). 그 사실은
        *    《결과 입력》이 「검사 수량보다 n 모자랍니다」로 이미 말하고 있어, 같은 말이 화면
        *    두 곳에 선다. 버튼 잠금은 그대로다 — 잠그는 조건과 문구는 다른 축이다.
+       *
+       * ⛔ **확정됐다는 것도 여기서 말하지 않는다**(같은 사유 · 사용자 지시 2026-09-12) —
+       *    위 띠가 이미 말했다.
        */}
-      {blockedReason !== null && blockedReason !== t.confirmBlockedByTotals && (
-        <p className="field-note">{blockedReason}</p>
-      )}
+      {blockedReason !== null &&
+        blockedReason !== t.confirmBlockedByTotals &&
+        blockedReason !== t.confirmed && <p className="field-note">{blockedReason}</p>}
     </div>
 
     {/*
@@ -100,6 +123,7 @@ export const ActionBar = ({
       variant="outlined"
       size="xl"
       className={popTouchClass('primary')}
+      disabled={isConfirmed}
       onClick={onSave}
     >
       {t.save}

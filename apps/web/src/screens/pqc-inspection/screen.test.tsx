@@ -9,6 +9,7 @@ import { popTouchClass } from '../../patterns/pop-touch';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   codeValuesResponse,
+  completedRequest,
   draftRound,
   itemSpecsResponse,
   measurementsResponse,
@@ -18,12 +19,14 @@ import {
   waitingRequest,
 } from './fixtures';
 import type { CodeValueResponse } from './code-options';
+import type { InspectionRequestResponse } from './types';
 import { STORAGE_KEY } from './outbox';
 import { PqcInspectionScreen } from './screen';
 
 const t = messages.pqcInspection;
 
 const GO_NEXT = '다음 대상으로';
+const GO_BACK = '앞 대상으로';
 
 /**
  * 대상만 바꾸는 이동 단추. **화면을 다시 세우지 않고** 주소만 옮기기 위해 화면 곁에 세운다 —
@@ -45,6 +48,25 @@ const GoToNextTarget = () => {
 };
 
 /**
+ * 앞 대상으로 **되돌아가는** 단추. 한 번 읽은 대상이라 조회가 «즉시» 답하고, 그때는
+ * 「불러오는 중」 틈이 생기지 않는다 — 그 틈이 초안을 대신 지워 주던 자리다.
+ */
+const GoBackToFirstTarget = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        navigate('/?ir=1001');
+      }}
+    >
+      {GO_BACK}
+    </button>
+  );
+};
+
+/**
  * 요청이 실제로 무엇을 실어 갔는지 본다 — **화면이 무엇을 저장하는가**가 이 화면의 판정
  * 자료이므로, 그려진 글자보다 나간 본문이 더 중요한 자리가 많다.
  */
@@ -52,10 +74,22 @@ const renderScreen = (
   route = '/?ir=1001',
   rounds = [draftRound],
   specs = itemSpecsResponse(),
-  /** 쓰기에 무엇으로 답할지. 기본은 201 — 거부 갈래를 볼 때만 바꾼다. */
-  respondWrite: () => Response = () => jsonResponse(draftRound, { status: 201 }),
+  /**
+   * 쓰기에 무엇으로 답할지. 기본은 201 — 거부 갈래를 볼 때만 바꾼다.
+   *
+   * 약속을 돌려주면 **답을 미룰 수 있다** — 큐가 밀린 상태(앞 건이 아직 답을 못 받았는데 뒤에
+   * 새 건이 담긴다)를 만드는 유일한 길이다.
+   */
+  respondWrite: () => Response | Promise<Response> = () =>
+    jsonResponse(draftRound, { status: 201 }),
   /** 화면 곁에 함께 세울 것. 대상 이동처럼 화면 밖에서 오는 일을 흉내 낼 때만 쓴다. */
   beside: ReactNode = null,
+  /**
+   * 의뢰 상세로 무엇을 답할지. 확정된 의뢰로 들어오는 갈래를 볼 때만 바꾼다.
+   *
+   * 함수로 주면 **읽을 때마다 새로 답한다** — 재조회가 앞과 «다른» 값을 내는 갈래를 잰다.
+   */
+  detail: InspectionRequestResponse | (() => InspectionRequestResponse) = waitingRequest,
 ) => {
   const writes: Request[] = [];
   /** 의뢰 상세를 몇 번 읽었는가. 저장 뒤 다시 읽는지가 #601 1-7 의 판정 자료다. */
@@ -96,7 +130,7 @@ const renderScreen = (
       match: (request) => new URL(request.url).pathname.startsWith('/quality/inspection-requests/'),
       respond: (request) => {
         detailReads.push(request.clone() as Request);
-        return jsonResponse(waitingRequest);
+        return jsonResponse(typeof detail === 'function' ? detail() : detail);
       },
     },
     {
@@ -760,6 +794,99 @@ describe('PqcInspectionScreen — 서버가 거부하면 (공유계약 C-7)', ()
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     });
   });
+
+  /*
+   * ⛔ **앞 대상에 친 측정값·판정도 따라오지 않는다.** 초안 effect 는 «줄 목록»이 달라질 때만
+   * 도는데 줄 목록은 검사기준 버전이 정한다 — 같은 기준을 쓰는 다른 LOT 으로 옮기면 열쇠가
+   * 그대로라 돌지 않았다. 남으면 저장이 붙는 순간 **다른 LOT 에 앞 대상의 측정치가 저장된다.**
+   */
+  it('이미 읽은 대상으로 돌아가도 앞 대상의 측정값·판정이 따라오지 않는다', async () => {
+    renderScreen(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      <>
+        <GoToNextTarget />
+        <GoBackToFirstTarget />
+      </>,
+    );
+
+    await screen.findByText(t.measurements.heading);
+
+    /*
+     * 한 번 다녀와야 앞 대상이 **조회 보관소에 남는다** — 돌아올 때 조회가 즉시 답하고,
+     * 그때는 「불러오는 중」 틈이 없어 줄 목록이 한 번도 비지 않는다. 그 틈이 초안을 대신
+     * 지워 주던 자리라, 여기서만 되돌림이 실제로 시험된다.
+     */
+    await userEvent.click(screen.getByRole('button', { name: GO_NEXT }));
+    await screen.findByText(t.measurements.heading);
+
+    const value = screen.getAllByLabelText(t.measurements.columns.value)[0] as HTMLInputElement;
+    await userEvent.type(value, '9');
+
+    const groups = screen.getAllByRole('group', { name: t.measurements.columns.judgment });
+    await userEvent.click(within(groups[0] as HTMLElement).getByRole('button', { name: '합격' }));
+
+    expect(value.value).toBe('9');
+    expect(within(groups[0] as HTMLElement).getByRole('button', { name: '합격' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: GO_BACK }));
+
+    await waitFor(() => {
+      const moved = screen.getAllByLabelText(t.measurements.columns.value)[0] as HTMLInputElement;
+
+      expect(moved.value).toBe('');
+    });
+
+    const movedGroups = screen.getAllByRole('group', { name: t.measurements.columns.judgment });
+    expect(
+      within(movedGroups[0] as HTMLElement).getByRole('button', { name: '합격' }),
+    ).toHaveAttribute('aria-pressed', 'false');
+  });
+});
+
+/*
+ * ⛔ **재조회가 검사자의 입력을 지우지 않는다**(#1091 리뷰). 되돌림 효과의 의존성에는 서버가
+ * 내려주는 값(대상 수량·적용 구간)이 함께 들어 있어, **대상이 그대로여도** 재조회가 그 값을
+ * 다르게 내면 효과가 다시 돈다 — 임시 저장 뒤 상세를 다시 읽으므로(#601 1-7) 실제로 일어난다.
+ * 그때 항목 초안까지 지우면 검사자가 친 측정값이 말없이 사라진다.
+ */
+describe('PqcInspectionScreen — 재조회는 친 것을 지우지 않는다', () => {
+  it('같은 대상에서 상세가 다시 와도 측정값·판정이 남는다', async () => {
+    let reads = 0;
+    const { writes } = renderScreen(
+      '/?ir=1001',
+      [draftRound],
+      itemSpecsResponse(),
+      undefined,
+      null,
+      () => {
+        reads += 1;
+
+        /* 두 번째 읽기부터 서버가 적용 구간을 채워 내린다 — 효과가 다시 도는 방아쇠다. */
+        return reads === 1
+          ? waitingRequest
+          : { ...waitingRequest, coverageFromAt: '2026-09-12T01:00:00+09:00' };
+      },
+    );
+
+    await screen.findByText(t.measurements.heading);
+
+    const value = screen.getAllByLabelText(t.measurements.columns.value)[0] as HTMLInputElement;
+    await userEvent.type(value, '9');
+
+    /* 임시 저장이 상세 재조회를 부른다(#601 1-7) — 여기서 초안이 날아가던 자리다. */
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    await waitFor(() => expect(writes).toHaveLength(1));
+    await waitFor(() => expect(reads).toBeGreaterThan(1));
+
+    const after = screen.getAllByLabelText(t.measurements.columns.value)[0] as HTMLInputElement;
+    expect(after.value).toBe('9');
+  });
 });
 
 describe('PqcInspectionScreen — 액션바', () => {
@@ -792,5 +919,177 @@ describe('PqcInspectionScreen — 액션바', () => {
 
     expect(await screen.findByRole('button', { name: t.result.confirm })).toBeDisabled();
     expect(screen.queryByText(t.result.confirmBlockedByTotals)).not.toBeInTheDocument();
+  });
+});
+
+/*
+ * ⛔ **확정된 회차는 이 화면에서 고치지 않는다**(§6 · B-10 — 정정이 아니라 재검사 회차다).
+ * 88단계 2회차에서 「검사를 확정했습니다」를 받은 뒤에도 같은 버튼으로 확정이 또 나갔고 둘
+ * 다 성공했다. 새로 열어도 서버가 `COMPLETED` 를 주는데 화면이 빈 입력 상태로 다시 열렸다
+ * — 잠그는 자리가 아예 없었다(#1091).
+ */
+describe('PqcInspectionScreen — 확정된 회차는 잠긴다', () => {
+  it('확정된 의뢰로 들어오면 두 단추가 함께 잠기고 사유를 말한다', async () => {
+    renderScreen('/?ir=1001', [draftRound], itemSpecsResponse(), undefined, null, completedRequest);
+
+    expect(await screen.findByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+
+    /*
+     * ⛔ **하지 않은 일을 방금 한 것처럼 말하지 않는다** — 어제 확정된 회차에 들어와도
+     *    「확정했습니다」가 서면 검사자는 자기가 방금 확정한 줄 안다.
+     */
+    expect(screen.queryByText(t.result.confirmSucceeded)).not.toBeInTheDocument();
+    /* ⛔ 한 사실이 두 문장으로 갈라 서지 않는다 — 사유는 «띠 하나»에만 있다. */
+    expect(screen.getAllByText(t.result.confirmed)).toHaveLength(1);
+  });
+
+  /* ⚠ 서버에 닿기 전에도 잠긴다 — 담는 순간이 성공이라(C-1 #2) 그 사이가 열려 있었다. */
+  it('방금 확정했으면 서버 상태를 다시 읽기 전에도 잠긴다', async () => {
+    /* 항목이 없는 기준으로 연다 — 확정 조건 넷 중 「전 항목 판정」이 저절로 선다. */
+    const { writes } = renderScreen('/?ir=1001', [draftRound], itemSpecsResponse([]));
+
+    /* 합계를 맞추고(검사 수량은 대상 수량 500 으로 시작한다) 종합 판정을 고른다. */
+    await userEvent.type(await screen.findByLabelText(t.result.fields.accepted), '500');
+    await userEvent.click(screen.getByRole('combobox', { name: t.result.judgment }));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+
+    const confirm = screen.getByRole('button', { name: t.result.confirm });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    expect(await screen.findByText(t.result.confirmSucceeded)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+
+    /*
+     * ⭐ **한 띠가 둘을 함께 말한다**(사용자 지시 2026-09-12) — 확정됐다는 결과와, 그래서
+     *    무엇을 할 수 없는지. 아래에 회색 줄로 또 세우면 같은 사실이 무게가 다른 문장
+     *    둘로 갈라진다.
+     */
+    const banner = screen.getByText(t.result.confirmSucceeded).closest('[role]');
+    expect(banner).not.toBeNull();
+    expect(within(banner as HTMLElement).getByText(t.result.confirmed)).toBeInTheDocument();
+    expect(screen.getAllByText(t.result.confirmed)).toHaveLength(1);
+  });
+
+  /*
+   * ⛔ **화면을 다시 세워도 잠금이 남는다**(#1091 리뷰). 확정은 저장소에 남아 새로고침과 화면
+   * 이동을 넘기는데, 「방금 확정했다」는 화면 상태 하나로 잠그면 다시 세우는 순간 잠금만
+   * 사라진다 — 끊긴 망에서 나갔다 돌아온 검사자가 빈 화면을 다시 채워 같은 검사를 두 건으로
+   * 만든다. 서버 상태도 기댈 수 없다: 아직 닿지 않았으므로 의뢰는 여전히 `REQUESTED` 다.
+   */
+  it('큐에 확정이 남아 있으면 화면을 새로 세워도 잠긴다', async () => {
+    globalThis.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          idempotencyKey: 'k-confirm',
+          body: {
+            inspectionRequestId: 1001,
+            inspectedQty: 120,
+            acceptedQty: 120,
+            rejectedQty: 0,
+            heldQty: 0,
+            uomId: 10,
+            inspectedAt: '2026-09-12T10:00:00+09:00',
+            statusCode: 'CONFIRMED',
+          },
+        },
+      ]),
+    );
+
+    /* 서버는 답하지 않는다 — 큐가 비워지지 않아야 「아직 남아 있다」를 잰다. */
+    renderScreen('/?ir=1001', [draftRound], itemSpecsResponse([]), () => {
+      throw new TypeError('Failed to fetch');
+    });
+
+    expect(await screen.findByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+    expect(screen.getByText(t.result.confirmed)).toBeInTheDocument();
+
+    globalThis.localStorage.clear();
+  });
+
+  /*
+   * ⛔ **앞의 임시 저장이 거부됐다고 «확정»에 걸린 잠금을 풀지 않는다**(#1091 리뷰).
+   * 큐는 밀릴 수 있어 임시 저장과 확정이 함께 서 있을 수 있고, 거부는 큐 전체에 하나뿐인
+   * 값이라 「무엇이 거부됐는지」를 가르지 않으면 살아 있는 확정 위에 두 번째 확정이 얹힌다.
+   *
+   * ⚠ 확정이 큐를 빠져나간 «뒤»가 이 갈래가 실제로 갈리는 자리다 — 큐에 남아 있는 동안은
+   * 큐 잠금이 대신 막아 준다.
+   */
+  it('임시 저장이 거부돼도 이어서 성공한 확정의 잠금은 풀리지 않는다', async () => {
+    /*
+     * 첫 쓰기(임시 저장)는 **답을 미뤘다가** 거부하고, 둘째 쓰기(확정)는 받는다. 미루지 않으면
+     * 거부가 확정보다 «먼저» 도착해 담기는 순간 지워지므로(`enqueue` 가 거부 표시를 거둔다)
+     * 이 갈래 자체가 만들어지지 않는다.
+     */
+    let written = 0;
+    let refuseDraft = (): void => undefined;
+    const draftAnswered = new Promise<void>((resolve) => {
+      refuseDraft = resolve;
+    });
+
+    const { writes } = renderScreen('/?ir=1001', [draftRound], itemSpecsResponse([]), () => {
+      written += 1;
+
+      if (written === 1) {
+        return draftAnswered.then(() =>
+          jsonResponse({ errors: [{ scope: 'screen', code: 'FORBIDDEN' }] }, { status: 403 }),
+        );
+      }
+
+      return jsonResponse(draftRound, { status: 201 });
+    });
+
+    await userEvent.type(await screen.findByLabelText(t.result.fields.accepted), '500');
+    await userEvent.click(screen.getByRole('combobox', { name: t.result.judgment }));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+
+    /* 임시 저장 → 확정을 잇달아 담는다. 큐는 앞부터 하나씩 나간다. */
+    await userEvent.click(screen.getByRole('button', { name: t.result.save }));
+    const confirm = screen.getByRole('button', { name: t.result.confirm });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    /* 확정이 큐에 담긴 뒤에야 앞 건의 거부를 돌려준다. */
+    refuseDraft();
+
+    await waitFor(() => expect(writes).toHaveLength(2));
+
+    /* 거부 배너가 섰다 — 이 시점에 잠금이 풀리면 두 번째 확정이 나갈 수 있다. */
+    await screen.findByRole('alert');
+
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+  });
+
+  /*
+   * ⛔ **보내지 못한 검사를 잠근 채 두지 않는다.** 담는 순간 성공을 말했으므로(C-1 #2) 잠금도
+   * 그때 걸리는데, 서버가 받지 않기로 했다면 그 검사는 남지 않았다 — 잠긴 채로 두면 검사자가
+   * 다시 넣을 길이 없다.
+   */
+  it('확정이 거부되면 두 단추가 다시 열린다', async () => {
+    const { writes } = renderScreen('/?ir=1001', [draftRound], itemSpecsResponse([]), () =>
+      jsonResponse({ errors: [{ scope: 'screen', code: 'FORBIDDEN' }] }, { status: 403 }),
+    );
+
+    await userEvent.type(await screen.findByLabelText(t.result.fields.accepted), '500');
+    await userEvent.click(screen.getByRole('combobox', { name: t.result.judgment }));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+
+    const confirm = screen.getByRole('button', { name: t.result.confirm });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.result.save })).toBeEnabled();
+    });
+    expect(screen.getByRole('button', { name: t.result.confirm })).toBeEnabled();
   });
 });

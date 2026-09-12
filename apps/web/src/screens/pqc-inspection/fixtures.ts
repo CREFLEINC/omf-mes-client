@@ -57,6 +57,15 @@ export const inProgressRequest: InspectionRequestResponse = {
 };
 
 /**
+ * 검사가 **끝난 의뢰** — `:confirm` 이 의뢰를 `COMPLETED` 로 옮긴다(계약
+ * `InspectionRequest.statusCode` 확정 5값). ⛔ 결과의 `CONFIRMED` 와 다른 값이다.
+ */
+export const completedRequest: InspectionRequestResponse = {
+  ...waitingRequest,
+  statusCode: 'COMPLETED',
+};
+
+/**
  * 자재 LOT 이 없는 건. 계약에서 `lotId` 는 선택이며(작업지시 대상 검사 등) **없는 것이 정상**이다.
  * 표가 이 갈래에서 깨지지 않아야 한다.
  */

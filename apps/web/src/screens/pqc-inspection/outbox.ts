@@ -51,6 +51,12 @@ export interface OutboxEntry {
 export const STORAGE_KEY = 'omf-mes.pqc-inspection.outbox';
 
 /**
+ * 검사 «결과»의 확정 상태값. ⛔ 의뢰의 `COMPLETED` 와 다른 축이다 — 이것은 큐에 담긴 본문이
+ * 확정인지 임시 저장인지를 가르는 자리다(`queries.ts` `RESULT_STATUS`).
+ */
+const CONFIRMED_STATUS = 'CONFIRMED';
+
+/**
  * 저장소에서 읽은 값이 **보낼 수 있는 모양인가.**
  *
  * ⛔ **믿고 넘기지 않는다.** 지난 판의 화면이 썼거나 손으로 고쳐졌을 수 있고, 그 끝에 있는
@@ -130,6 +136,14 @@ export interface Outbox {
   enqueue: (body: InspectionResultCreate) => void;
   /** 서버가 거부한 것 — 인라인용·배너용으로 갈라 둔다. 없으면 `null`. */
   rejection: SplitError | null;
+  /**
+   * 거부된 항목이 **무엇이었는가**(`DRAFT` 또는 `CONFIRMED`). 거부가 없으면 `null`.
+   *
+   * ⛔ **「거부가 섰다」만으로는 무엇이 거부됐는지 알 수 없다** — 큐는 밀릴 수 있어 임시 저장과
+   * 확정이 함께 서 있을 수 있고, 그때 앞의 임시 저장이 거부됐다고 «확정»에 걸린 잠금을 풀면
+   * 아직 큐에 살아 있는 확정 위에 두 번째 확정이 얹힌다.
+   */
+  rejectedStatusCode: string | null;
   /** 거부 표시를 지운다 — 사용자가 값을 고쳐 다시 저장할 때 부른다. */
   clearRejection: () => void;
   /**
@@ -139,6 +153,15 @@ export interface Outbox {
   isStalled: boolean;
   /** 멈춘 큐를 사람이 깨운다. */
   retryNow: () => void;
+  /**
+   * 이 의뢰의 **확정이 아직 큐에 남아 있는가.**
+   *
+   * ⭐ **잠금의 수명이 잠글 대상의 수명보다 짧으면 안 된다.** 확정은 저장소에 남아 새로고침과
+   * 화면 이동을 넘기는데, 「방금 확정했다」는 화면 상태 하나로 잠그면 화면을 다시 세우는 순간
+   * 잠금만 사라진다 — 끊긴 망에서 나갔다 돌아온 검사자가 빈 화면을 다시 채워 **같은 검사를
+   * 두 건으로 만든다**(#1091 리뷰).
+   */
+  hasPendingConfirm: (inspectionRequestId: number) => boolean;
 }
 
 /**
@@ -152,6 +175,8 @@ export const useOutbox = (): Outbox => {
 
   const [entries, setEntries] = useState<OutboxEntry[]>(readStored);
   const [rejection, setRejection] = useState<SplitError | null>(null);
+  /** 거부된 항목의 `statusCode`. `rejection` 과 «같이» 서고 같이 내려간다. */
+  const [rejectedStatusCode, setRejectedStatusCode] = useState<string | null>(null);
 
   /**
    * 서버가 실제로 받은 횟수. **화면이 조회를 다시 할 계기다**(#601 1-7).
@@ -264,6 +289,7 @@ export const useOutbox = (): Outbox => {
           }
 
           setRejection(splitError(toApiError(error), SAVE_FIELDS, undefined));
+          setRejectedStatusCode(entry.body.statusCode);
         }
 
         /* 받아졌든 거부됐든 큐에서는 내린다. 거부는 **그 건만** 내린다(C-2). */
@@ -283,6 +309,7 @@ export const useOutbox = (): Outbox => {
 
   const enqueue = useCallback((body: InspectionResultCreate): void => {
     setRejection(null);
+    setRejectedStatusCode(null);
     setEntries((prev) => {
       const next = [...prev, { idempotencyKey: createIdempotencyKey(), body }];
       writeStored(next);
@@ -293,6 +320,7 @@ export const useOutbox = (): Outbox => {
 
   const clearRejection = useCallback((): void => {
     setRejection(null);
+    setRejectedStatusCode(null);
   }, []);
 
   const retryNow = useCallback((): void => {
@@ -301,14 +329,30 @@ export const useOutbox = (): Outbox => {
     setRetryTick((tick) => tick + 1);
   }, []);
 
+  /*
+   * ⚠ **본문에서 읽는다** — 항목이 `statusCode` 를 따로 들지 않기 때문이다(`OutboxEntry`).
+   * 두 벌로 두면 한쪽만 고쳐진다.
+   */
+  const hasPendingConfirm = useCallback(
+    (inspectionRequestId: number): boolean =>
+      entries.some(
+        (entry) =>
+          entry.body.inspectionRequestId === inspectionRequestId &&
+          entry.body.statusCode === CONFIRMED_STATUS,
+      ),
+    [entries],
+  );
+
   return {
     pendingCount: entries.length,
     sentCount: sentTick,
     isOnline,
     enqueue,
     rejection,
+    rejectedStatusCode,
     clearRejection,
     isStalled,
     retryNow,
+    hasPendingConfirm,
   };
 };
