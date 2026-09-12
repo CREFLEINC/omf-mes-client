@@ -2297,6 +2297,15 @@
 }
 
 /*
+ * [단말 재등록] — 머리줄 오른쪽, 상태 칩과 [화면 이동] 사이에 앉는다.
+ *
+ * ⚠ **자리를 비우지 않는다.** 이 단추는 «떠서» 서는 [사용자 전환]·[화면 이동]과 달리 머리줄
+ *   흐름 «안»에 있어 스스로 자리를 만든다 — `--pop-logout-w` 류의 여백 셈에 손대지 않는다.
+ *
+ * 생김새는 [사용자 전환]과 한 벌로 둔다 — 아래 「로그아웃 자리」 절의 `.pop-logout button`.
+ */
+
+/*
  * 목록 뒤에 붙는 안내 배너 — **목록과 사이를 벌린다.**
  *
  * 배너가 마지막 줄에 붙어 서면 «목록의 한 줄»로 읽힌다(실측: 긴급 W/O 목록의 「발행은
@@ -3321,7 +3330,13 @@
  *   쉬운 행동이다(사번을 다시 넣으면 된다). 관리웹 기본 밀도(E-3)의 컨트롤 높이보다도 낮게
  *   둔다.
  */
-.pop-logout button {
+/*
+ * ⭐ **[단말 재등록]도 같은 모양이다**(사용자 지시 2026-09-12). 머리줄 오른쪽에 나란히 서는
+ *   보조 조작 둘이라 서로 다르게 생길 이유가 없다 — 규칙을 «한 벌»로 두어 한쪽만 바뀌는
+ *   일을 막는다. ⚠ 그 단추는 `.pop-ui` 안(머리줄 흐름)에 서므로 겨냥을 한 단계 올려 잡는다.
+ */
+.pop-logout button,
+.pop-ui .pop-terminal-header__reregister {
   min-height: 30px;
   padding-inline: 10px;
   /*
@@ -3337,7 +3352,8 @@
   font-size: 13px;
 }
 
-.pop-logout button:hover {
+.pop-logout button:hover,
+.pop-ui .pop-terminal-header__reregister:hover {
   background: #8f1d17;
 }
 
@@ -4882,8 +4898,14 @@
  *
  * ⛔ **`100vh` 를 쓰지 않는다** — `pop-fit` 의 zoom 과 어긋나 바닥이 빈다(실측). 높이는
  *    `100%` 로 받는다.
+ *
+ * ⛔ **`border-box` 를 물려받지 못한다.** 이 패널은 라우터 «밖» 에 서서 `.pop-ui` 안에 들지
+ *    않으므로 그 상자셈이 닿지 않는다 — `height: 100%` 에 여백 24px 이 «더해져» 문서가 화면
+ *    보다 48px 길어지고, 상자 하나뿐인 화면에 세로 스크롤이 생겼다(실측 1216 / 1168).
+ *    그래서 여기서 직접 잡는다.
  */
 .pop-registration {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4891,28 +4913,46 @@
   padding: 24px;
 }
 
+/*
+ * ⭐ **남는 폭을 쓴다.** 720px 로 못박아 두었더니 1024 예산에서도 좌우가 150px 씩 비고, 더
+ *    넓은 창에서는 화면 한가운데 작은 쪽지처럼 떴다(사용자 지적). 폭은 `100%` 로 받아 창을
+ *    따라가고 상한만 둔다 — 어느 크기에서도 좌우 여백 규칙은 그대로다.
+ *
+ * ⚠ **높이는 화면을 넘지 않는다.** 사유 문구가 길어져도 상자가 화면 밖으로 자라면 문서가
+ *   다시 스크롤한다 — 넘치는 몫은 상자 «안에서» 처리한다.
+ */
 .pop-registration__card {
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  width: min(720px, 100%);
-  padding: 32px;
+  gap: 20px;
+  width: min(1040px, 100%);
+  max-height: 100%;
+  padding: 40px;
+  overflow-y: auto;
 }
 
 /*
- * ⚠ **줄 높이를 글자 크기와 함께 적는다.** 물려받는 값이 20px 이라 28px 글자를 담지 못하고
- *   위아래가 잘린다(실측 — 상자 높이가 14.6px 로 섰다).
+ * 표제 — **업무 화면 머리줄과 같은 글자다**(`.pop-title` 이 쓰는 `title-lg`). 이 패널만
+ * 28px 로 서 있었는데, 단말을 켜면 이 화면 다음에 바로 업무 화면이 오므로 두 표제가 다른
+ * 크기로 보인다(사용자 지적).
+ *
+ * ⚠ **줄 높이가 글자 크기와 함께 오는 `font` 로 적는다.** 크기만 주면 물려받은 20px 이
+ *   글자를 담지 못해 위아래가 잘린다(실측 — 상자 높이가 14.6px 로 섰다).
  */
 .pop-registration__title {
   margin: 0;
-  font-size: 28px;
-  font-weight: 700;
-  line-height: 1.3;
+  font: var(--type-title-lg);
+  letter-spacing: var(--type-title-lg-tracking);
 }
 
+/*
+ * ⚠ **본문은 16px 이다** — POP 표시 규격이 정한 크기(`--pop-text`)이고 업무 화면 전부가
+ *   그것을 쓴다. 이 패널은 `.pop-ui` 밖이라 그 변수가 닿지 않으므로 값을 직접 적는다.
+ */
 .pop-registration__guide {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 /*
@@ -4935,7 +4975,7 @@
   grid-template-columns: 160px 1fr;
   gap: 8px 16px;
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .pop-registration__facts dt {
