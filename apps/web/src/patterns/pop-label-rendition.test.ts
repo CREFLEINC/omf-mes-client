@@ -1,8 +1,9 @@
 import type { ApiClient } from '@omf-mes/api-client';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   fetchLabelRendition,
+  labelRenditionFormat,
   LabelRenditionNotReadyError,
   LABEL_RENDITION_NOT_READY_REASON,
 } from './pop-label-rendition';
@@ -65,3 +66,40 @@ describe('fetchLabelRendition — 배포본에서는 부르지 않는다', () =>
     }
   });
 });
+
+/**
+ * 라벨을 무슨 형식으로 받는가(#1104).
+ *
+ * ⭐ **드라이버를 건너뛰기 위한 판정이다.** 그림은 Windows 드라이버를 거쳐 프린터로 가는데,
+ * 실기의 라벨 프린터는 TSPL 로 설정돼 있고 드라이버가 다른 언어를 내보내 **작업을 받아들이고
+ * 버렸다** — 라벨이 한 장도 나오지 않았다(2026-09-12). 명령형으로 받으면 셸이 대기열의 RAW
+ * 자리로 그대로 보낸다.
+ */
+describe('라벨 형식 선택', () => {
+  afterEach(() => {
+    delete (globalThis as { pop?: unknown }).pop;
+  });
+
+  it('셸이 있으면 명령형으로 받는다 — 드라이버를 거치지 않는다', () => {
+    (globalThis as { pop?: unknown }).pop = { rendition: { save: async () => '' } };
+
+    expect(labelRenditionFormat()).toBe('tspl');
+  });
+
+  it('셸이 없으면 그림으로 받는다 — 브라우저로 여는 개발 확인에는 RAW 통로가 없다', () => {
+    expect(labelRenditionFormat()).toBe('png');
+  });
+
+  it('⛔ 통로가 반쪽이면 명령형으로 받지 않는다 — 보낼 곳 없는 명령이 된다', () => {
+    (globalThis as { pop?: unknown }).pop = { rendition: {} };
+
+    expect(labelRenditionFormat()).toBe('png');
+  });
+});
+
+/*
+ * ⚠ **「고른 형식을 요청에 싣는가」는 이 실행에서 잴 수 없다.** `fetchLabelRendition` 은
+ *   `MODE !== 'development'` 이면 **요청을 만들기 «전»에** 거부하고(#1083), 시험 실행의
+ *   `MODE` 는 `test` 다 — 빌드 시점 상수로 접히므로 같은 실행 안에서 두 갈래를 함께 세울 수
+ *   없다. 미리보기가 `png` 를 명시하는지는 **호출부의 리터럴과 주석이 지킨다**(리뷰 2회차).
+ */

@@ -63,7 +63,7 @@ echo "[2/5] 웹 빌드 — API 기준 $EMULATOR_API_BASE_URL"
 VITE_API_BASE_URL="$EMULATOR_API_BASE_URL" pnpm --filter @omf-mes/mobile build >/dev/null
 
 echo "[3/5] 네이티브 동기화 — 개발 기기 평문 허용을 켠 채로"
-(cd "$MOBILE" && CAP_ALLOW_LOCAL_HTTP=1 npx cap sync android >/dev/null)
+(cd "$MOBILE" && CAP_ALLOW_CLEARTEXT_HTTP=1 npx cap sync android >/dev/null)
 
 echo "[4/5] 디버그 APK 빌드"
 (cd "$MOBILE/android" && ./gradlew --quiet assembleDebug)

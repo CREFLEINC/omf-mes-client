@@ -646,7 +646,7 @@ describe('적치·입고 완료 화면', () => {
    * 막지 않는다 - 설계가 경고로 정했고 냉장 자리가 없어 상온에 두어야 하는 날이 있다.
    * 다만 말하지 않으면 아무도 모른 채 지나간다.
    */
-  it('품목과 자리의 보관조건이 어긋나면 말하되 막지 않는다', async () => {
+  it('품목과 위치의 보관조건이 어긋나면 말하되 막지 않는다', async () => {
     const user = userEvent.setup();
     mount([], {
       itemStorage: 'COLD',
@@ -658,7 +658,7 @@ describe('적치·입고 완료 화면', () => {
 
     /* 표시명은 서버가 갖는다. 코드 문자열을 그대로 보이면 현장이 영문을 읽는다. */
     expect(
-      await screen.findByText('품목은 냉장 보관인데 이 자리는 상온 입니다'),
+      await screen.findByText('품목은 냉장 보관인데 이 위치는 상온 입니다'),
     ).toBeInTheDocument();
     expect(screen.queryByText(/COLD/)).toBeNull();
     /* 경고다. 자리 판정은 그대로 통과한다. */
@@ -677,6 +677,6 @@ describe('적치·입고 완료 화면', () => {
     scan('A-01-03');
 
     await screen.findByLabelText(/LOT 라벨 스캔/);
-    expect(screen.queryByText(/보관인데 이 자리는/)).toBeNull();
+    expect(screen.queryByText(/보관인데 이 위치는/)).toBeNull();
   });
 });

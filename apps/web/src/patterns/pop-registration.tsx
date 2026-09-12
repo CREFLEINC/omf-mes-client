@@ -8,7 +8,7 @@ import {
   setCandidateTerminalToken,
   writeTerminalToken,
 } from './pop-terminal-token';
-import { runRequest } from './request';
+import { ApiRequestError, runRequest, toApiError } from './request';
 import { useWorkerSession } from './worker-session';
 
 /**
@@ -93,6 +93,7 @@ export type RegistrationPhase =
 export type RegistrationFailure =
   | 'malformed' // 토큰 모양이 아니다 — sub 를 읽을 수 없다
   | 'rejected' // 401 — 위조·만료·세대 폐기·비활성이거나 없는 단말
+  | 'unreachable' // 서버가 답하지 않았다 — 토큰을 판정한 적이 없다
   | 'foreign' // 403 — 다른 단말을 가리킨다
   | 'wrong-type' // POP 단말이 아니다
   | 'offline' // 신규 등록은 온라인 전용이다
@@ -179,11 +180,31 @@ const readPendingCount = async (): Promise<number> => {
   }
 };
 
-/** HTTP 상태를 사유로 옮긴다. 401 과 403 이 뜻하는 것이 다르다(F-4). */
+/**
+ * HTTP 상태를 사유로 옮긴다. 401 과 403 이 뜻하는 것이 다르다(F-4).
+ *
+ * ⛔ **답이 «없는» 것을 거절로 읽지 않는다.** 상태가 없으면 요청이 서버에 닿지도 못한 것이라
+ *    토큰은 판정된 적이 없다. 전부 `rejected` 로 뭉쳤더니 설치본이 서버에 못 닿는 동안 화면이
+ *    「이 토큰은 더 이상 쓸 수 없습니다」를 말했고, 담당자는 멀쩡한 토큰을 몇 번씩 재발급
+ *    받았다(실측 2026-09-12 · 사용자 지적 — 서버 CORS 가 닫혀 요청이 브라우저에서 막힌 건이다).
+ *    ⚠ 사유가 다르면 사람이 할 일이 다르다 — 하나는 재발급, 하나는 연결 확인이다.
+ */
 const failureOf = (error: unknown): RegistrationFailure => {
-  const status = (error as { status?: unknown })?.status;
+  /*
+   * ⛔ **오류에서 `status` 를 바로 읽지 않는다.** 요청 경로는 정규화된 봉투(`ApiRequestError`)
+   *    를 던지므로 그 자리에 `status` 가 없다 — 그렇게 읽던 동안 403 갈래가 «한 번도» 서지
+   *    못하고 모든 실패가 「토큰이 죽었다」로 떨어졌다.
+   *
+   * ⛔ **정규화된 갈래로도 상태를 못 읽는다.** 서버가 403 을 계약 오류 봉투로 보내면 정규화가
+   *    그것을 `validation` 으로 접으면서 상태 코드를 버린다 — 봉투만 보고 고치면 403 갈래는
+   *    «여전히» 죽어 있다(리뷰 2회차 지적). 정규화 전 상태를 남겨 둔 자리를 본다.
+   */
+  const status = error instanceof ApiRequestError ? error.httpStatus : undefined;
 
   if (status === 403) return 'foreign';
+
+  /* 응답 자체가 없었다 — 토큰은 아직 판정된 적이 없다. */
+  if (toApiError(error).kind === 'network') return 'unreachable';
 
   return 'rejected';
 };

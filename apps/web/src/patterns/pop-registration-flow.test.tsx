@@ -191,4 +191,83 @@ describe('POP 단말 등록 — 상태 전이', () => {
 
     expect(registration.current.failure).toBe('malformed');
   });
+
+  /**
+   * ⭐ **서버에 닿지 못한 것과 거절당한 것을 가른다.** 사람이 할 일이 다르다 — 하나는 연결
+   * 확인이고 하나는 재발급이다. 실 서버 설치본이 CORS 로 막혔을 때 화면이 「이 토큰은 더
+   * 이상 쓸 수 없습니다」를 말해, 담당자가 멀쩡한 토큰을 몇 번씩 다시 발급받았다(실측
+   * 2026-09-12 · 사용자 지적).
+   */
+  it('응답이 아예 없으면 토큰을 의심하지 않는다 — 연결 실패는 거절이 아니다', async () => {
+    putShell(0);
+    const box = { current: null as PopRegistration | null };
+
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+      </PopRegistrationProvider>,
+      /* 브라우저가 요청을 막았을 때와 같다 — 응답이 없고 fetch 자체가 던진다. */
+      { fetch: () => Promise.reject(new TypeError('Failed to fetch')), session: null },
+    );
+
+    const registration = box as { current: PopRegistration };
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_A);
+    });
+
+    expect(registration.current.failure).toBe('unreachable');
+  });
+
+  /**
+   * ⭐ **403 갈래가 실제로 선다.** 오류에서 `status` 를 바로 읽던 동안 이 갈래는 한 번도
+   * 서지 못했다 — 요청 경로가 정규화된 봉투를 던져 그 자리에 `status` 가 없기 때문이다.
+   *
+   * ⛔ **몸통을 계약 모양(`errors[]`)으로 낸다.** 계약에 없는 `{ message }` 로 재면 정규화가
+   *    상태 코드를 그대로 들고 와 갈래가 서는 것처럼 보인다 — 실제 서버 응답은 봉투라
+   *    거기서 상태가 접혀 사라지고, 감지기만 초록인 채 갈래는 죽어 있다(리뷰 2회차 실측).
+   */
+  it('다른 단말을 가리키면 거절이 아니라 「남의 토큰」이다', async () => {
+    putShell(0);
+    const box = { current: null as PopRegistration | null };
+
+    const Probe = () => {
+      box.current = usePopRegistration();
+
+      return null;
+    };
+
+    renderWithProviders(
+      <PopRegistrationProvider>
+        <Probe />
+      </PopRegistrationProvider>,
+      {
+        fetch: createStubFetch([
+          {
+            match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+            respond: () =>
+              jsonResponse(
+                { errors: [{ scope: 'screen', code: 'FORBIDDEN', message: '남의 단말' }] },
+                { status: 403 },
+              ),
+          },
+        ]),
+        session: null,
+      },
+    );
+
+    const registration = box as { current: PopRegistration };
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_A);
+    });
+
+    expect(registration.current.failure).toBe('foreign');
+  });
 });

@@ -19,6 +19,7 @@ import { useBackStep } from '../../patterns/back-step';
 import { LOT_HOLD_REASON, displayNameOf, useCodeValues } from '../../patterns/code-values';
 import { playErrorTone } from '../../patterns/error-tone';
 import { useLocation } from '../../patterns/locations';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { toApiError } from '../../patterns/request';
 import { useScanField } from '../../patterns/use-scan-field';
@@ -571,7 +572,7 @@ export const MaterialPickingScreen = () => {
                 /* 보류 라인은 비활성으로 두고 사유를 함께 보인다. 서버가 표시해 내려준 값이다. */
                 disabled={trouble !== null}
                 /*
-                 * 이미 고른 줄을 다시 누르면 고른 값이 바뀌지 않아 change 가 나지 않는다.
+                 * 이미 고른 라인을 다시 누르면 고른 값이 바뀌지 않아 change 가 나지 않는다.
                  * 되돌아온 뒤 같은 줄을 다시 집는 길이 그 누름이라 눌림으로도 잇는다.
                  */
                 onClick={() => {
@@ -597,7 +598,7 @@ export const MaterialPickingScreen = () => {
                     </span>
                   )}
                   {each.lotNo === null || each.lotNo === undefined ? null : (
-                    <span className="picking-out__line-lot">{each.lotNo}</span>
+                    <span className="picking-out__line-lot">{formatMaterialLotNo(each.lotNo)}</span>
                   )}
                   {place.length === 0 ? null : (
                     <span className="picking-out__line-note">{place.join(' · ')}</span>
@@ -645,7 +646,10 @@ export const MaterialPickingScreen = () => {
             {scanned === null ? null : matched ? (
               <Chip status="success">{t.scan.matched}</Chip>
             ) : (
-              <AlertBanner variant="error" title={t.scan.mismatch(line.lotNo ?? '')} />
+              <AlertBanner
+                variant="error"
+                title={t.scan.mismatch(formatMaterialLotNo(line.lotNo ?? ''))}
+              />
             )}
 
             {isOutOfSequence(line, lines, queued) ? (
