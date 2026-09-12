@@ -11,6 +11,7 @@ import { pickExact, verifyWorker, type WorkerResponse } from './verify';
 import { WorkerCard } from './worker-card';
 import { PopDevScreenNav } from '../../patterns/pop-dev-screen-nav';
 import { usePopIdentity } from '../../patterns/pop-identity';
+import { usePopRegistration } from '../../patterns/pop-registration';
 import { setWorkerSession, useWorkerSession } from '../../patterns/worker-session';
 
 /**
@@ -88,6 +89,7 @@ export const WorkerAssignmentScreen = () => {
    * ⛔ **주소에서 받지 않는다.** 신원은 서버가 확인해 준 것만 쓴다(공유계약 F-4).
    */
   const { terminalId } = usePopIdentity();
+  const { restart } = usePopRegistration();
   const terminal = useTerminal(terminalId);
 
   const isOnline = useIsOnline();
@@ -301,6 +303,15 @@ export const WorkerAssignmentScreen = () => {
               <PopDevScreenNav disabled={session === null} />
             ) : undefined
           }
+          /*
+           * ⭐ **재등록으로 들어가는 유일한 길**(P-CO-01 §5-1 · 공유계약 F-4). 등록을 마치면
+           *    게이트가 업무 화면을 내주므로, 이 단추가 없으면 잘못된 단말로 등록된 현장
+           *    단말을 **자격증명 저장소를 사람이 지우지 않고는** 되돌릴 수 없다.
+           *
+           * ⛔ 큐가 남은 채 다른 단말로 바꾸는 것은 적용 단계가 막는다 — 여기서 막지 않는다.
+           *    여기서 막으면 「같은 단말 재등록」까지 함께 잠긴다.
+           */
+          onReRegister={restart}
         />
       </div>
     </div>

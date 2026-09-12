@@ -1,0 +1,194 @@
+import { act, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
+
+import {
+  PopRegistrationProvider,
+  usePopRegistration,
+  type PopRegistration,
+} from './pop-registration';
+import { forgetTerminalToken } from './pop-terminal-token';
+import { createStubFetch, jsonResponse, renderWithProviders } from '../test/api-harness';
+
+/**
+ * 등록 상태 기계가 **갈래마다 다르게 움직이는지** 잰다.
+ *
+ * ⭐ **왜 이 자리에 감지기가 필요한가.** 이 흐름은 타입 검사와 화면 시험이 전부 초록인 채
+ * 깨질 수 있다 — 실제로 그랬다. 큐 보존 판정이 언제나 「신원이 안 바뀐다」로 떨어져 **한 번도
+ * 작동하지 않았고**(리뷰 지적), 그 사이 전체 시험 19,287건이 초록이었다. 판정이 한 시점의
+ * 값이 아니라 **상태 전이**에 걸려 있어, 전이를 실제로 밟지 않는 시험으로는 잡히지 않는다.
+ */
+
+/** `sub` 만 담은 토큰. 서명은 검증되지 않으므로 자리만 채운다. */
+const tokenFor = (sub: number): string =>
+  `header.${btoa(JSON.stringify({ sub, kind: 'terminal' })).replace(/=+$/, '')}.signature`;
+
+const TOKEN_A = tokenFor(1001);
+const TOKEN_B = tokenFor(2002);
+
+interface TerminalRow {
+  terminalId: number;
+  plantId: number;
+}
+
+/** 단말 단건과 자기 공정 목록 — 등록이 부르는 요청은 이 둘뿐이다. */
+const stubFor = (rows: TerminalRow[]) =>
+  createStubFetch([
+    {
+      match: (request) => /\/mdm\/terminals\/\d+\/processes(\?|$)/.test(request.url),
+      respond: () => jsonResponse({ items: [{ processId: 1001, processName: '사출' }] }),
+    },
+    {
+      match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
+      respond: (request) => {
+        const id = Number(/\/mdm\/terminals\/(\d+)/.exec(request.url)?.[1]);
+        const row = rows.find((candidate) => candidate.terminalId === id);
+
+        /* 없는 단말·위조·만료는 계약이 401 로 묶는다(F-4). */
+        return row === undefined
+          ? jsonResponse({ message: '없다' }, { status: 401 })
+          : jsonResponse({
+              terminalId: row.terminalId,
+              terminalCode: `POP-${String(row.terminalId)}`,
+              terminalTypeCode: 'POP',
+              plantId: row.plantId,
+              isActive: true,
+            });
+      },
+    },
+  ]);
+
+/** 셸 통로를 흉내 낸다 — 미전송 건수와 토큰 보관이 판정에 든다. */
+const putShell = (pendingCount: number): void => {
+  (globalThis as { pop?: unknown }).pop = {
+    deviceToken: { get: async () => undefined, set: async () => undefined },
+    outbox: { size: async () => pendingCount },
+  };
+};
+
+/**
+ * 등록 객체를 시험이 들고 있게 한다.
+ *
+ * 훅 전용 하네스는 프로바이더를 갈아 끼우지 못해, 화면 하네스 안에 탐침을 세우고 그 탐침이
+ * 매 렌더의 값을 바깥 상자에 넣는다.
+ */
+const openRegistration = (rows: TerminalRow[]): { current: PopRegistration } => {
+  const box = { current: null as PopRegistration | null };
+
+  const Probe = () => {
+    box.current = usePopRegistration();
+
+    return null;
+  };
+
+  renderWithProviders(
+    <PopRegistrationProvider>
+      <Probe />
+    </PopRegistrationProvider>,
+    { fetch: stubFor(rows), session: null },
+  );
+
+  return box as { current: PopRegistration };
+};
+
+/** 등록을 끝까지 밟는다 — 여러 시험이 「이미 등록된 상태」에서 시작한다. */
+const register = async (registration: { current: PopRegistration }, token: string) => {
+  await act(async () => {
+    await registration.current.verify(token);
+  });
+  await act(async () => {
+    await registration.current.apply();
+  });
+  await waitFor(() => expect(registration.current.phase).toBe('ready'));
+};
+
+afterEach(() => {
+  delete (globalThis as { pop?: unknown }).pop;
+  forgetTerminalToken();
+});
+
+describe('POP 단말 등록 — 상태 전이', () => {
+  it('붙여넣기 → 검증 → 적용 → 준비까지 가면 업무로 넘어간다', async () => {
+    putShell(0);
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_A);
+    });
+
+    /* 검증만으로 업무를 열지 않는다 — 설치 담당자가 단말 코드를 확인해야 한다(F-4). */
+    expect(registration.current.phase).toBe('verified');
+    expect(registration.current.terminal?.terminalCode).toBe('POP-1001');
+
+    await act(async () => {
+      await registration.current.apply();
+    });
+
+    await waitFor(() => expect(registration.current.phase).toBe('ready'));
+    expect(registration.current.processes).toHaveLength(1);
+  });
+
+  /**
+   * ⛔ **이 시험이 리뷰가 잡은 Blocker 를 고정한다.** 판정 기준점을 `state` 로 두면 `verify()` 가
+   * 상태를 갈아엎는 탓에 **언제나 통과**해, 미전송 기록이 다른 단말 앞으로 전송된다(F-4).
+   */
+  it('⛔ 다른 단말로 바꾸는데 미전송이 남아 있으면 적용을 막는다', async () => {
+    putShell(3);
+    const registration = openRegistration([
+      { terminalId: 1001, plantId: 10 },
+      { terminalId: 2002, plantId: 10 },
+    ]);
+
+    await register(registration, TOKEN_A);
+
+    await act(() => {
+      registration.current.restart();
+    });
+    await act(async () => {
+      await registration.current.verify(TOKEN_B);
+    });
+    await act(async () => {
+      await registration.current.apply();
+    });
+
+    expect(registration.current.failure).toBe('queue-blocked');
+    expect(registration.current.pendingCount).toBe(3);
+    expect(registration.current.phase).not.toBe('ready');
+  });
+
+  it('같은 단말 재등록은 미전송이 남아 있어도 막지 않는다 — 큐는 새 토큰으로 그대로 간다', async () => {
+    putShell(3);
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+
+    await register(registration, TOKEN_A);
+
+    await act(() => {
+      registration.current.restart();
+    });
+    await register(registration, TOKEN_A);
+
+    expect(registration.current.failure).toBeNull();
+  });
+
+  it('없는 단말·폐기된 세대는 재발급 안내로 떨어진다', async () => {
+    putShell(0);
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+
+    await act(async () => {
+      await registration.current.verify(TOKEN_B);
+    });
+
+    expect(registration.current.failure).toBe('rejected');
+    expect(registration.current.phase).toBe('unregistered');
+  });
+
+  it('토큰 모양이 아니면 서버에 묻지 않는다 — 붙여넣기 실수를 등록 시도로 만들지 않는다', async () => {
+    putShell(0);
+    const registration = openRegistration([{ terminalId: 1001, plantId: 10 }]);
+
+    await act(async () => {
+      await registration.current.verify('붙여넣기-실수');
+    });
+
+    expect(registration.current.failure).toBe('malformed');
+  });
+});

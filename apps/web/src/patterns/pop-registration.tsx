@@ -219,6 +219,15 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
   const [state, setState] = useState<RegistrationState>(INITIAL);
   /* 검증을 통과한 «바로 그» 후보. 적용은 이 값에만 한다(F-4). */
   const [approved, setApproved] = useState<string | null>(null);
+  /**
+   * **지금 등록되어 있는 단말.** 큐 보존 판정이 「갈 곳이 달라지는가」를 재는 기준점이다.
+   *
+   * ⛔ **`state` 로 대신하지 않는다.** `verify()` 가 새 후보를 받을 때마다 `state` 를 초기값으로
+   *    갈아엎으므로, 적용 시점에는 직전 등록이 남아 있지 않다 — 그것으로 비교하면 판정이
+   *    **언제나 「신원이 안 바뀐다」로 떨어져** 미전송 기록이 다른 단말 앞으로 전송된다.
+   *    이 자리를 따로 둔 이유가 그것이고, 아래 감지기가 그 갈래를 잰다.
+   */
+  const [registered, setRegistered] = useState<VerifiedTerminal | null>(null);
 
   const prepare = useCallback(
     async (terminal: VerifiedTerminal) => {
@@ -227,6 +236,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
       try {
         const processes = await fetchProcesses(client, terminal.terminalId);
 
+        setRegistered(terminal);
         setState({
           phase: 'ready',
           failure: null,
@@ -294,10 +304,9 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
      * ⭐ **신원이 바뀌는데 미전송이 남아 있으면 막는다**(F-4). 같은 단말·공장이면 큐는 그대로
      *    새 토큰으로 재전송되므로 막지 않는다 — 막는 것은 **갈 곳이 달라지는** 경우뿐이다.
      */
-    const current = state.processes === null ? null : state.terminal;
     const changesIdentity =
-      current !== null &&
-      (current.terminalId !== terminal.terminalId || current.plantId !== terminal.plantId);
+      registered !== null &&
+      (registered.terminalId !== terminal.terminalId || registered.plantId !== terminal.plantId);
 
     if (changesIdentity) {
       const pending = await readPendingCount();
@@ -321,7 +330,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
 
     setApproved(null);
     await prepare(terminal);
-  }, [approved, prepare, state.processes, state.terminal]);
+  }, [approved, prepare, registered, state.terminal]);
 
   const retryPrepare = useCallback(async () => {
     if (state.terminal === null) return;
@@ -329,6 +338,12 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
     await prepare(state.terminal);
   }, [prepare, state.terminal]);
 
+  /**
+   * 등록 정보를 바꾸러 간다(P-CO-01 §5-1 「재등록」).
+   *
+   * ⛔ **지금 등록된 신원은 지우지 않는다** — 큐 보존 판정의 기준점이다. 새 토큰을 적용할 때
+   *    「갈 곳이 달라지는가」를 이 값과 비교해 재고, 실제로 바뀔 때만 미전송 건수를 본다.
+   */
   const restart = useCallback(() => {
     setApproved(null);
     setCandidateTerminalToken(null);

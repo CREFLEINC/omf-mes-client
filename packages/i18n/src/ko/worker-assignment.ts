@@ -30,6 +30,13 @@ export const workerAssignment = {
     confirmTitle: '이 단말이 맞습니까?',
     apply: '등록 적용',
     restart: '다시 입력',
+    /**
+     * 등록을 마친 뒤 단말 자체를 바꿀 때(P-CO-01 §5-1 「재등록」).
+     *
+     * ⛔ **업무 화면 머리줄에 두지 않는다** — 모든 화면에서 닿으면 작업 중에 실수로 눌린다.
+     *    진입 화면에서만, 그것도 자주 쓰는 단추와 떨어뜨려 둔다.
+     */
+    reRegister: '단말 재등록',
     terminalCode: '단말 코드',
     terminalType: '단말 유형',
     equipment: '설비',

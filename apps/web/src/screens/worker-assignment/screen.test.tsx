@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import { WorkerAssignmentScreen } from './screen';
 import type { WorkerResponse } from './verify';
+import { PopRegistrationProvider } from '../../patterns/pop-registration';
 import { setWorkerSession } from '../../patterns/worker-session';
 
 const t = messages.workerAssignment;
@@ -50,11 +51,16 @@ const renderScreen = (items: WorkerResponse[] = [workerOf()]) => {
     },
   ]);
 
+  /*
+   * ⭐ **등록 공급자를 함께 세운다**(#999). 이 화면은 재등록으로 들어가는 유일한 입구라
+   *    등록 상태를 읽는다 — 셸에서는 언제나 그 안에 서므로, 시험도 같은 조합으로 잰다.
+   *    공급자는 스스로 요청을 내지 않아 이 시험들이 보는 요청 수는 달라지지 않는다.
+   */
   renderWithProviders(
-    <>
+    <PopRegistrationProvider>
       <WorkerAssignmentScreen />
       <LocationProbe />
-    </>,
+    </PopRegistrationProvider>,
     { fetch, route: '/pop/worker-assignment' },
   );
 
