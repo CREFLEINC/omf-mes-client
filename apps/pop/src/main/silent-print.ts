@@ -12,6 +12,7 @@
  *    밀지 않는 이유는 서식이 서버에 있기 때문이다 — 브라우저 엔진이 PNG·PDF 를 그려 주고,
  *    그 결과를 드라이버가 받는다. 임시 파일은 작업이 끝나면 지운다.
  */
+import type { LoggedPrinter } from './print-log';
 import type { Rendition, RenditionFormat, SilentPrinter } from './print';
 import { type RawPrinter, RawPrinterUnavailableError } from './raw-print';
 
@@ -73,6 +74,59 @@ export function selectPrinter(
 
   return printers.length === 0 ? { kind: 'none' } : { kind: 'systemDefault' };
 }
+
+export interface TerminalPrinterInput {
+  printers: readonly AvailablePrinter[];
+  /** 기동 시 지정값(`POP_PRINTER_NAME`). 비었으면 지정하지 않은 것이다. */
+  preferred?: string;
+  /** OS 가 알려 준 기본 프린터 이름. 못 물어봤으면 `null`. */
+  defaultName: string | null;
+}
+
+/**
+ * **어디로 보낼지 전부 여기서 정한다**(#1098).
+ *
+ * ⭐ **판정을 통째로 순수 함수에 둔 이유가 있다.** 종전에는 이 결정이 창을 들고 있는 조립부
+ * «안» 에 흩어져 있어 시험이 닿지 않았고, 그 안에서 **목록의 첫 대를 고르고 있었다** — 라벨이
+ * 가상 프린터로 가서 저장 대화상자가 뜨고, 그 상자가 키오스크 창 뒤에 깔려 **단말이 멈췄다**
+ * (실기 2026-09-12). 그때 272개 시험이 전부 초록이었다.
+ *
+ * ⛔ **부르는 쪽에 판정을 남기지 않는다.** 규칙만 순수 함수로 빼고 배선은 조립부에 두면,
+ *    「규칙은 옳은데 아무도 부르지 않는」 상태를 시험이 못 잡는다(독립 검증 지적). 조립부가
+ *    하는 일은 **프린터 목록과 기본 이름을 구해 이 함수에 넘기는 것**까지다.
+ *
+ * ⛔ **목록 순서로 짐작하지 않는다.** 「어느 것이 기본인가」를 아는 것은 OS 뿐이다.
+ */
+export const resolveTerminalPrinter = ({
+  printers,
+  preferred,
+  defaultName,
+}: TerminalPrinterInput): { choice: PrinterChoice; available: LoggedPrinter[] } => {
+  /* 고르지 못했을 때 무엇이 있었는지를 기록에 남기려고 함께 들고 나간다. */
+  const available = printers.map(({ name, displayName }) => ({ name, displayName }));
+  const chosen = selectPrinter(printers, preferred);
+
+  /* 지정값이 정했거나 보낼 곳이 없는 것은 기본 프린터가 뒤집지 않는다. */
+  if (chosen.kind !== 'systemDefault') return { choice: chosen, available };
+
+  /* 이름을 못 알아냈으면 싣지 않는다 — 그래도 OS 는 같은 기본 프린터로 보낸다. */
+  if (defaultName === null) return { choice: chosen, available };
+
+  /*
+   * ⭐ **목록에 있는 이름이면 목록의 표기를 쓴다.** 화면이 「이 프린터로 나갑니다」를 목록의
+   *    `name` 으로 맞춰 보이므로(`patterns/pop-terminal-printers`), 표기가 어긋나면 **인쇄는
+   *    맞는 곳으로 가는데 화면은 다른 이름을 가리킨다.** 목록에 없으면 OS 가 준 이름을 그대로
+   *    쓴다 — 목록을 못 읽었을 뿐 그 프린터는 실재한다.
+   */
+  const matched = printers.find(
+    (printer) => printer.name === defaultName || printer.displayName === defaultName,
+  );
+
+  return {
+    choice: { kind: 'named', deviceName: matched?.name ?? defaultName },
+    available,
+  };
+};
 
 /** 임시로 떨어뜨린 출력물. 인쇄가 끝나면 `path` 를 지운다. */
 export interface StagedRendition {
