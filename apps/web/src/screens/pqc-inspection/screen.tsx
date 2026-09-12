@@ -23,14 +23,15 @@ import { ItemPanel } from './item-panel';
 import { KeypadPanel } from './keypad-panel';
 import { QueueLoadErrorBanner } from './load-error-banner';
 import {
+  EMPTY_MEASUREMENT_DRAFT,
   hasValueError,
   isAllJudged,
   toMeasurementDrafts,
   toMeasurementInputs,
-  type MeasurementDraft,
+  withJudgment,
+  withMeasuredValue,
   type MeasurementDrafts,
 } from './measurement-draft';
-import { judgeAutomatically } from './auto-judgment';
 import { toMeasurementRows, type MeasurementRow } from './measurement-rows';
 import {
   RESULT_STATUS,
@@ -77,8 +78,14 @@ import {
 
 const t = messages.pqcInspection;
 
-/** 계약이 못박은 두 값 중 확정 쪽. 이 값이면 회차를 더 고치지 않는다. */
-const CONFIRMED_STATUS = 'CONFIRMED';
+/**
+ * **검사 «의뢰»의 확정 상태값**(계약 `InspectionRequest.statusCode` — `REQUESTED`·`IN_PROGRESS`·
+ * `COMPLETED`·`SKIPPED`·`CANCELLED`). 확정(`:confirm`)이 의뢰를 이 값으로 옮긴다.
+ *
+ * ⛔ **결과의 `CONFIRMED` 와 다르다.** 한때 이 자리에 `'CONFIRMED'` 가 적혀 있었는데 그것은
+ * 검사 «결과»의 상태값이고, 의뢰는 그 값을 영영 갖지 않는다 — 그대로 썼다면 잠금이 서지 않는다.
+ */
+const REQUEST_COMPLETED = 'COMPLETED';
 
 export const PqcInspectionScreen = () => {
   const [searchParams] = useSearchParams();
@@ -199,6 +206,16 @@ export const PqcInspectionScreen = () => {
      * 배너와 칸 오류가 그대로 선다 — 검사자는 그것을 이 대상의 결과로 읽는다.
      */
     clearRejection();
+    /*
+     * ⛔ **항목 초안도 함께 되돌린다.** 아래 초안 effect 는 «줄 목록»이 달라질 때만 도는데,
+     * 줄 목록은 검사기준 버전이 정한다 — **같은 기준을 쓰는 다른 LOT 으로 옮기면 열쇠가 그대로라
+     * 돌지 않는다.** 지우지 않으면 앞 대상에 친 측정값·판정이 남고, 저장이 붙는 순간 **다른
+     * LOT 에 앞 대상의 측정치를 저장**하는 길이 된다 — 바로 위 수량 되돌림과 같은 사유다.
+     *
+     * ⚠ 빈 객체로 되돌린다 — 이 화면은 저장된 측정치를 부르지 않으므로(요구서 §3-7) 되돌릴
+     * 원본이 없고, 줄마다 빈 초안이 그 시작 상태다.
+     */
+    setDrafts({});
     setRemarks('');
     setCoverage(toCoverageDraft(coverageFromAt, coverageToAt));
     setInspectedDraft(String(storedInspectedQty));
@@ -234,23 +251,38 @@ export const PqcInspectionScreen = () => {
   };
 
   /**
-   * 항목 한 줄을 고친다.
+   * 항목 한 줄의 측정값을 고친다.
    *
-   * ⭐ **값을 넣으면 자동 판정이 채운다**(§5-11) — 저장된 측정치를 부르지 않으므로 검사자가
-   * 지금 넣는 값이 유일한 대조 대상이다. ⛔ **사람이 이미 고른 판정은 덮지 않는다.** 채운
-   * 값은 시작점이지 확정이 아니고, 덮으면 사람 판단이 지워진다.
+   * ⭐ **값을 넣을 때마다 자동 판정이 다시 채운다**(§5-11) — 저장된 측정치를 부르지 않으므로
+   * 검사자가 지금 넣는 값이 유일한 대조 대상이다. ⛔ **사람이 이미 고른 판정은 덮지 않는다.**
+   *
+   * ⛔ **판정 선택과 한 콜백으로 합치지 않는다.** 합치면 「자동이 채운 값」과 「사람이 고른 값」이
+   * 같은 모양으로 들어와, 가를 수 있는 것이 「칸이 비었는가」밖에 남지 않는다 — 자동이 한 번
+   * 채우면 칸이 다시 비지 않으므로 첫 글자의 판정이 그대로 박힌다(#1091).
    */
-  const changeMeasurement = (key: string, next: MeasurementDraft): void => {
+  const changeMeasurementValue = (key: string, value: string): void => {
     setIsSaved(false);
-    setDrafts((current) => {
-      const row = rows.find((candidate) => candidate.key === key);
-      const filled =
-        row !== undefined && next.judgment === ''
-          ? (judgeAutomatically({ ...row, measured: toProbe(row, next.value) }) ?? '')
-          : next.judgment;
+    setDrafts((current) => ({
+      ...current,
+      [key]: withMeasuredValue(
+        rows.find((candidate) => candidate.key === key),
+        current[key] ?? EMPTY_MEASUREMENT_DRAFT,
+        value,
+      ),
+    }));
+  };
 
-      return { ...current, [key]: { ...next, judgment: filled } };
-    });
+  /** 사람이 항목 판정을 골랐다 — **이 자리를 지나야 「사람이 고른 값」이 된다.** */
+  const changeMeasurementJudgment = (key: string, judgment: string): void => {
+    setIsSaved(false);
+    setDrafts((current) => ({
+      ...current,
+      [key]: withJudgment(
+        rows.find((candidate) => candidate.key === key),
+        current[key] ?? EMPTY_MEASUREMENT_DRAFT,
+        judgment,
+      ),
+    }));
   };
 
   /**
@@ -274,6 +306,18 @@ export const PqcInspectionScreen = () => {
   const canInputInspection = true;
 
   /**
+   * 이 검사가 **이미 확정됐는가** — 확정된 회차는 이 화면에서 고치지 않는다(§6 · B-10).
+   *
+   * ⭐ **둘을 함께 본다.** 서버 상태만 보면 **오프라인에서 확정한 직후가 열려 있다** — 이 화면은
+   * 담는 순간 성공이라(C-1 #2) 서버에 닿기 전이고, 그 사이 같은 확정을 몇 번이고 더 담을 수
+   * 있다. 방금 확정한 사실만 보면 새로 연 화면이 열려 있다.
+   *
+   * ⚠ 서버가 거부하면 `isJustConfirmed` 가 거둬지므로(위) 잠금도 함께 풀린다 — 보내지 못한
+   * 검사를 잠근 채 두지 않는다.
+   */
+  const isConfirmed = detail.data?.statusCode === REQUEST_COMPLETED || isJustConfirmed;
+
+  /**
    * 확정이 막혔다면 **무엇이** 막혔는지. 풀렸으면 `null`.
    *
    * ⛔ 갈래를 뭉개지 않는다 — 푸는 방법이 다르다. 권한은 단말 설정을, 합계는 수량을, 판정은
@@ -284,6 +328,7 @@ export const PqcInspectionScreen = () => {
    * 울지 않는다 — 실제로 그런 상태였고 뮤테이션으로 드러났다(`confirm-gate.ts` 머리 참조).
    */
   const confirmBlockedReason = toConfirmBlockedReason({
+    isConfirmed,
     canInputInspection,
     totals,
     judgment,
@@ -308,6 +353,9 @@ export const PqcInspectionScreen = () => {
     uomId: number,
     statusCode: (typeof RESULT_STATUS)['draft'],
   ): void => {
+    /* ⛔ 확정된 회차에는 임시 저장도 보내지 않는다 — 그것도 새 결과를 만든다. */
+    if (isConfirmed) return;
+
     setShowErrors(true);
 
     if (hasQuantityError(validateQuantities(draft)) || hasValueError(rows, drafts)) return;
@@ -428,7 +476,8 @@ export const PqcInspectionScreen = () => {
             planVersion={planVersion.data ?? null}
             rows={rows}
             drafts={drafts}
-            onChange={changeMeasurement}
+            onValueChange={changeMeasurementValue}
+            onJudgmentChange={changeMeasurementJudgment}
             judgmentOptions={itemJudgmentOptions}
             isLoading={itemSpecs.isLoading}
           />
@@ -478,6 +527,7 @@ export const PqcInspectionScreen = () => {
       </div>
 
       <ActionBar
+        isConfirmed={isConfirmed}
         blockedReason={confirmBlockedReason}
         saveBlockedReason={saveBlockedReason}
         isSaved={isSaved}
@@ -491,26 +541,6 @@ export const PqcInspectionScreen = () => {
       />
     </PqcFrame>
   );
-};
-
-/**
- * 지금 친 값을 **자동 판정이 볼 수 있는 모양**으로 감싼다. 저장된 측정치가 없으므로 대조할
- * 값은 화면의 초안뿐이다 — 수치가 아니면 잴 것이 없어 비운다.
- */
-const toProbe = (row: MeasurementRow, raw: string): MeasurementRow['measured'] => {
-  const numeric = Number(raw.trim());
-
-  if (raw.trim() === '' || Number.isNaN(numeric)) return null;
-
-  return {
-    numericValue: numeric,
-    textValue: null,
-    booleanValue: null,
-    judgmentCode: '',
-    measuredAt: '',
-    inspectionEquipmentId: null,
-    calibrationExpired: false,
-  };
 };
 
 /**

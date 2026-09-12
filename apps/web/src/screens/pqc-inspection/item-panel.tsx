@@ -41,7 +41,10 @@ export interface ItemPanelProps {
   planVersion: PlanVersionView | null;
   rows: MeasurementRow[];
   drafts: MeasurementDrafts;
-  onChange: (key: string, draft: MeasurementDraft) => void;
+  /** 측정값을 고쳤다. ⛔ 판정 선택과 **가른다** — 자동 판정을 다시 계산할지가 여기서 갈린다 */
+  onValueChange: (key: string, value: string) => void;
+  /** 사람이 판정을 골랐다(같은 값을 다시 누르면 해제라 빈 문자열이 온다) */
+  onJudgmentChange: (key: string, judgment: string) => void;
   /** 항목 판정 선택지 — **두 값이다**(합격·불합격). 종합 판정과 그룹이 다르다 */
   judgmentOptions: CodeOption[];
   /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null` — 아무것도 붙이지 않는다. */
@@ -54,7 +57,8 @@ export const ItemPanel = ({
   planVersion,
   rows,
   drafts,
-  onChange,
+  onValueChange,
+  onJudgmentChange,
   judgmentOptions,
   uomCodeOf,
   isLoading,
@@ -98,7 +102,8 @@ export const ItemPanel = ({
               key={row.key}
               row={row}
               draft={drafts[row.key] ?? EMPTY_MEASUREMENT_DRAFT}
-              onChange={onChange}
+              onValueChange={onValueChange}
+              onJudgmentChange={onJudgmentChange}
               judgmentOptions={judgmentOptions}
               uomCodeOf={uomCodeOf}
             />
@@ -112,12 +117,22 @@ export const ItemPanel = ({
 interface ItemRowProps {
   row: MeasurementRow;
   draft: MeasurementDraft;
-  onChange: (key: string, draft: MeasurementDraft) => void;
+  /** 측정값을 고쳤다. ⛔ 판정 선택과 **가른다** — 자동 판정을 다시 계산할지가 여기서 갈린다 */
+  onValueChange: (key: string, value: string) => void;
+  /** 사람이 판정을 골랐다(같은 값을 다시 누르면 해제라 빈 문자열이 온다) */
+  onJudgmentChange: (key: string, judgment: string) => void;
   judgmentOptions: CodeOption[];
   uomCodeOf: (uomId: number | null) => string | null;
 }
 
-const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowProps) => {
+const ItemRow = ({
+  row,
+  draft,
+  onValueChange,
+  onJudgmentChange,
+  judgmentOptions,
+  uomCodeOf,
+}: ItemRowProps) => {
   const judgmentId = useId();
   const outOfSpec = isOutOfSpec(row);
   const specText = describeSpec(row.spec, uomCodeOf(row.spec.uomId));
@@ -175,7 +190,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowPr
             value={draft.value}
 
             error={isValueInvalid(row, draft) ? t.valueInvalid : undefined}
-            onChange={(event) => onChange(row.key, { ...draft, value: event.target.value })}
+            onChange={(event) => onValueChange(row.key, event.target.value)}
           />
         )}
 
@@ -202,10 +217,7 @@ const ItemRow = ({ row, draft, onChange, judgmentOptions, uomCodeOf }: ItemRowPr
                 variant={draft.judgment === option.value ? 'filled' : 'outlined'}
                 aria-pressed={draft.judgment === option.value}
                 onClick={() =>
-                  onChange(row.key, {
-                    ...draft,
-                    judgment: draft.judgment === option.value ? '' : option.value,
-                  })
+                  onJudgmentChange(row.key, draft.judgment === option.value ? '' : option.value)
                 }
               >
                 {option.label}

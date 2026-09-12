@@ -23,6 +23,16 @@ const t = messages.pqcInspection.result;
 
 export interface ConfirmGateInput {
   /**
+   * 이 회차가 **이미 확정됐는가.**
+   *
+   * ⛔ **확정된 회차는 이 화면에서 고치지 않는다** — 설계 §6 이 「재검사는 새 회차(회차 +1 ·
+   * `previous_result_id`) — **정정이 아니다**(B-10)」로 못박았다. 그런데 이 화면의 저장은
+   * 언제나 **새로 만드는 경로**이고 회차 번호도 앞 회차도 싣지 않는다 — 확정 뒤에 또 보내면
+   * 재검사 회차가 아니라 **중복 결과**가 된다. 88단계 2회차에서 같은 확정이 두 번 나갔고
+   * 둘 다 성공했다(#1091).
+   */
+  isConfirmed: boolean;
+  /**
    * 이 단말이 이 공정의 검사를 입력할 수 있는가(`can_input_inspection` · F-1).
    *
    * ⛔ **모를 때는 참으로 넘긴다** — 막으면 권한 있는 사람이 이유 없이 갇힌다. 정본은
@@ -43,6 +53,11 @@ export interface ConfirmGateInput {
  * 사람이 마지막에야 「이 단말은 할 수 없다」를 만난다. 할 수 없는 일을 다 시킨 뒤 막는 셈이다.
  */
 export const toConfirmBlockedReason = (input: ConfirmGateInput): string | null => {
+  /*
+   * ⭐ **확정됨이 단말 권한보다 앞이다.** 권한이 있어도 확정된 회차는 고칠 수 없고, 뒤에 두면
+   * 권한 없는 단말이 「권한이 없습니다」를 먼저 만나 «고칠 수 있는 상태»로 오해한다.
+   */
+  if (input.isConfirmed) return t.confirmed;
   if (!input.canInputInspection) return t.confirmBlockedByTerminal;
   if (!canConfirm(input.totals)) return t.confirmBlockedByTotals;
   if (input.judgment === '') return t.confirmBlockedByJudgment;

@@ -19,6 +19,11 @@ import { popTouchClass } from '../../patterns/pop-touch';
 const t = messages.pqcInspection.result;
 
 export interface ActionBarProps {
+  /**
+   * 이 회차가 이미 확정됐는가. ⛔ **임시 저장도 함께 잠근다** — 이 화면의 저장은 언제나 새
+   * 결과를 만드는 경로라, 확정 뒤의 임시 저장도 중복 결과가 된다(`confirm-gate.ts`).
+   */
+  isConfirmed: boolean;
   /** 확정이 막혔다면 **무엇이** 막혔는지. 풀렸으면 `null` */
   blockedReason: string | null;
   /** 저장이 막혔다면 그 사유. 막는 것은 수량이 아닌 값이 남아 있을 때뿐이다 */
@@ -36,6 +41,7 @@ export interface ActionBarProps {
 }
 
 export const ActionBar = ({
+  isConfirmed,
   blockedReason,
   saveBlockedReason,
   isSaved,
@@ -100,6 +106,7 @@ export const ActionBar = ({
       variant="outlined"
       size="xl"
       className={popTouchClass('primary')}
+      disabled={isConfirmed}
       onClick={onSave}
     >
       {t.save}

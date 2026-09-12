@@ -8,6 +8,7 @@ const t = messages.pqcInspection.result;
 
 /** 아무것도 막히지 않은 상태. 시험마다 «한 가지만» 무너뜨려 그 갈래를 잰다. */
 const OPEN: ConfirmGateInput = {
+  isConfirmed: false,
   canInputInspection: true,
   totals: toTotals({ accepted: '30', rejected: '0', held: '0' }, 30),
   judgment: 'ACCEPTED',
@@ -17,6 +18,22 @@ const OPEN: ConfirmGateInput = {
 describe('toConfirmBlockedReason — 막힌 사유를 하나로 좁힌다', () => {
   it('전부 갖춰지면 막지 않는다', () => {
     expect(toConfirmBlockedReason(OPEN)).toBeNull();
+  });
+
+  /*
+   * ⛔ 확정된 회차는 정정이 아니라 «재검사 회차»로만 고친다(§6 · B-10). 이 화면의 저장은
+   * 언제나 새로 만드는 경로라, 확정 뒤에 또 보내면 중복 결과가 된다 — 88단계 2회차에서
+   * 같은 확정이 두 번 나갔고 둘 다 성공했다(#1091).
+   */
+  it('이미 확정된 회차는 막고, 사유가 «재검사 회차»를 가리킨다', () => {
+    expect(toConfirmBlockedReason({ ...OPEN, isConfirmed: true })).toBe(t.confirmed);
+  });
+
+  /* 확정됨이 «가장 앞»이다 — 권한이 있어도 확정된 회차는 고칠 수 없다. */
+  it('확정됨이 단말 권한보다 먼저 나온다', () => {
+    expect(toConfirmBlockedReason({ ...OPEN, isConfirmed: true, canInputInspection: false })).toBe(
+      t.confirmed,
+    );
   });
 
   /*

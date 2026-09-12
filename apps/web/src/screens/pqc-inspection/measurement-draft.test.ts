@@ -9,11 +9,21 @@ import {
   judgedCount,
   toMeasurementDrafts,
   toMeasurementInputs,
+  withJudgment,
+  withMeasuredValue,
+  type MeasurementDraft,
   type MeasurementDrafts,
 } from './measurement-draft';
 import type { MeasurementRow } from './measurement-rows';
 
 const MEASURED_AT = '2026-08-27T09:00:00+09:00';
+
+/** 시험이 쓰는 초안 한 줄. **판정 출처는 따로 말하지 않으면 자동**이다. */
+const draftOf = (judgment: string, value: string, judgmentByPerson = false): MeasurementDraft => ({
+  judgment,
+  value,
+  judgmentByPerson,
+});
 
 const rowOf = (
   key: string,
@@ -54,7 +64,7 @@ describe('toMeasurementDrafts — 저장된 값을 초안으로', () => {
       }),
     ]);
 
-    expect(drafts['1-1']).toEqual({ judgment: 'ACCEPTED', value: '10.05' });
+    expect(drafts['1-1']).toEqual(draftOf('ACCEPTED', '10.05', true));
   });
 
   /* 거짓을 고른 것과 아직 안 고른 것이 화면에서 달라야 한다. */
@@ -71,7 +81,7 @@ describe('toMeasurementDrafts — 저장된 값을 초안으로', () => {
       }),
     ]);
 
-    expect(drafts['2-1']).toEqual({ judgment: 'REJECTED', value: 'false' });
+    expect(drafts['2-1']).toEqual(draftOf('REJECTED', 'false', true));
   });
 });
 
@@ -114,11 +124,75 @@ describe('자동 판정과 저장된 판정', () => {
   });
 });
 
+/*
+ * 88단계 2회차 실측을 그대로 옮긴다(#1091). POP 은 키패드로 **한 자씩** 치므로, 완성된 값이
+ * 판정되는 일이 오히려 드물다 — 첫 글자의 판정이 박히면 규격 밖 제품이 「합격」으로 저장된다.
+ */
+describe('withMeasuredValue — 자동 판정은 값이 바뀔 때마다 다시 계산한다', () => {
+  const autoRow = (lower: number, upper: number): MeasurementRow => ({
+    ...rowOf('7-1', DATA_TYPES.numeric),
+    automaticJudgment: true,
+    spec: { target: null, lower, upper, uomId: null },
+  });
+
+  /** 한 자씩 친다 — 초안이 앞 글자의 판정을 들고 다음 글자를 만난다. */
+  const type = (row: MeasurementRow, keys: readonly string[]): MeasurementDraft =>
+    keys.reduce(
+      (draft, value) => withMeasuredValue(row, draft, value),
+      EMPTY_MEASUREMENT_DRAFT as MeasurementDraft,
+    );
+
+  it('규격 7.97~8.03 — 첫 자 「8」의 합격이 8.5 에 박히지 않는다', () => {
+    const row = autoRow(7.97, 8.03);
+
+    expect(type(row, ['8']).judgment).toBe('ACCEPTED');
+    expect(type(row, ['8', '8.5']).judgment).toBe('REJECTED');
+    expect(type(row, ['8', '8.5', '9']).judgment).toBe('REJECTED');
+  });
+
+  it('규격 11.95~12.05 — 첫 자 「1」의 불합격이 12.00 에 박히지 않는다', () => {
+    const row = autoRow(11.95, 12.05);
+
+    expect(type(row, ['1']).judgment).toBe('REJECTED');
+    expect(type(row, ['1', '12.00']).judgment).toBe('ACCEPTED');
+    expect(type(row, ['1', '12.00', '11.98']).judgment).toBe('ACCEPTED');
+  });
+
+  /* ⭐ §5-11 의 나머지 반쪽 — 채운 값은 시작점이지만 **사람이 고른 값은 확정이다.** */
+  it('사람이 고른 판정은 값을 고쳐도 덮이지 않는다', () => {
+    const row = autoRow(7.97, 8.03);
+    const chosen = withJudgment(row, type(row, ['8.5']), 'ACCEPTED');
+
+    expect(chosen.judgment).toBe('ACCEPTED');
+    expect(withMeasuredValue(row, chosen, '9').judgment).toBe('ACCEPTED');
+  });
+
+  /* 해제는 「판정하지 않은 상태로 돌린다」이고, 그 상태의 시작점이 자동 판정이다. */
+  it('고른 판정을 해제하면 자동 판정이 되돌아온다', () => {
+    const row = autoRow(7.97, 8.03);
+    const chosen = withJudgment(row, type(row, ['9']), 'ACCEPTED');
+
+    expect(withJudgment(row, chosen, '').judgment).toBe('REJECTED');
+  });
+
+  /* 재지 않은 줄에 판정이 남으면 「사람이 합격으로 판정했다」로 읽힌다. */
+  it('값을 지우면 자동 판정도 거둔다', () => {
+    const row = autoRow(7.97, 8.03);
+
+    expect(withMeasuredValue(row, type(row, ['8']), '').judgment).toBe('');
+  });
+
+  /* 자동 판정이 서지 않는 항목에 판정을 지어내지 않는다. */
+  it('자동 판정이 서지 않는 항목은 값을 고쳐도 비운 채로 둔다', () => {
+    const row = rowOf('7-1', DATA_TYPES.numeric);
+
+    expect(withMeasuredValue(row, EMPTY_MEASUREMENT_DRAFT, '8').judgment).toBe('');
+  });
+});
+
 describe('isValueInvalid — 수치형에만 숫자 규칙을 건다', () => {
   it('수치형에 수치가 아닌 값은 잘못이다', () => {
-    expect(isValueInvalid(rowOf('1-1', DATA_TYPES.numeric), { judgment: '', value: 'abc' })).toBe(
-      true,
-    );
+    expect(isValueInvalid(rowOf('1-1', DATA_TYPES.numeric), draftOf('', 'abc'))).toBe(true);
   });
 
   it('수치형의 빈 칸은 잘못이 아니다 — 판정만으로 성립하는 줄이 있다', () => {
@@ -127,16 +201,14 @@ describe('isValueInvalid — 수치형에만 숫자 규칙을 건다', () => {
 
   /* ⛔ 문자 항목에 숫자 규칙을 걸면 정상 입력이 틀렸다고 나온다. */
   it('문자형에는 숫자 규칙을 걸지 않는다', () => {
-    expect(isValueInvalid(rowOf('3-1', DATA_TYPES.text), { judgment: '', value: '양호' })).toBe(
-      false,
-    );
+    expect(isValueInvalid(rowOf('3-1', DATA_TYPES.text), draftOf('', '양호'))).toBe(false);
   });
 
   it('hasValueError 는 한 줄이라도 잘못되면 참이다', () => {
     const rows = [rowOf('1-1', DATA_TYPES.numeric), rowOf('3-1', DATA_TYPES.text)];
     const drafts: MeasurementDrafts = {
-      '1-1': { judgment: '', value: 'abc' },
-      '3-1': { judgment: '', value: '양호' },
+      '1-1': draftOf('', 'abc'),
+      '3-1': draftOf('', '양호'),
     };
 
     expect(hasValueError(rows, drafts)).toBe(true);
@@ -148,7 +220,7 @@ describe('진행 세기 — 값이 아니라 판정으로 센다', () => {
 
   it('판정한 줄만 센다', () => {
     const drafts: MeasurementDrafts = {
-      '1-1': { judgment: 'ACCEPTED', value: '' },
+      '1-1': draftOf('ACCEPTED', ''),
       '2-1': EMPTY_MEASUREMENT_DRAFT,
     };
 
@@ -161,8 +233,8 @@ describe('진행 세기 — 값이 아니라 판정으로 센다', () => {
    */
   it('값이 비어 있어도 판정했으면 끝난 줄이다', () => {
     const drafts: MeasurementDrafts = {
-      '1-1': { judgment: 'ACCEPTED', value: '' },
-      '2-1': { judgment: 'REJECTED', value: '' },
+      '1-1': draftOf('ACCEPTED', ''),
+      '2-1': draftOf('REJECTED', ''),
     };
 
     expect(isAllJudged(rows, drafts)).toBe(true);
@@ -173,18 +245,12 @@ describe('toMeasurementInputs — 보내는 값으로 접는다', () => {
   it('판정하지 않은 줄은 싣지 않는다 — 사람이 내리지 않은 판정을 만들지 않는다', () => {
     const rows = [rowOf('1-1', DATA_TYPES.numeric)];
 
-    expect(
-      toMeasurementInputs(rows, { '1-1': { judgment: '', value: '10' } }, MEASURED_AT),
-    ).toEqual([]);
+    expect(toMeasurementInputs(rows, { '1-1': draftOf('', '10') }, MEASURED_AT)).toEqual([]);
   });
 
   it('수치형은 numericValue 한 칸만 채운다', () => {
     const rows = [rowOf('1-1', DATA_TYPES.numeric)];
-    const sent = toMeasurementInputs(
-      rows,
-      { '1-1': { judgment: 'ACCEPTED', value: '10.05' } },
-      MEASURED_AT,
-    );
+    const sent = toMeasurementInputs(rows, { '1-1': draftOf('ACCEPTED', '10.05') }, MEASURED_AT);
 
     expect(sent).toEqual([
       {
@@ -202,7 +268,7 @@ describe('toMeasurementInputs — 보내는 값으로 접는다', () => {
   it('문자형은 textValue 한 칸만 채운다', () => {
     const sent = toMeasurementInputs(
       [rowOf('3-1', DATA_TYPES.text)],
-      { '3-1': { judgment: 'ACCEPTED', value: '양호' } },
+      { '3-1': draftOf('ACCEPTED', '양호') },
       MEASURED_AT,
     );
 
@@ -213,7 +279,7 @@ describe('toMeasurementInputs — 보내는 값으로 접는다', () => {
   it('불리언은 booleanValue 한 칸만 채운다', () => {
     const sent = toMeasurementInputs(
       [rowOf('2-1', DATA_TYPES.boolean)],
-      { '2-1': { judgment: 'ACCEPTED', value: 'false' } },
+      { '2-1': draftOf('ACCEPTED', 'false') },
       MEASURED_AT,
     );
 
@@ -225,7 +291,7 @@ describe('toMeasurementInputs — 보내는 값으로 접는다', () => {
   it('값이 비면 값 칸을 아예 싣지 않는다', () => {
     const sent = toMeasurementInputs(
       [rowOf('4-1', DATA_TYPES.text)],
-      { '4-1': { judgment: 'ACCEPTED', value: '' } },
+      { '4-1': draftOf('ACCEPTED', '') },
       MEASURED_AT,
     );
 
@@ -240,7 +306,7 @@ describe('toMeasurementInputs — 보내는 값으로 접는다', () => {
   it('수치형에 수치가 아닌 값이 남아 있으면 값 칸을 싣지 않는다', () => {
     const sent = toMeasurementInputs(
       [rowOf('1-1', DATA_TYPES.numeric)],
-      { '1-1': { judgment: 'ACCEPTED', value: 'abc' } },
+      { '1-1': draftOf('ACCEPTED', 'abc') },
       MEASURED_AT,
     );
 
