@@ -2,7 +2,7 @@ import { AlertBanner, Button, Card, Chip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useId, useMemo, useState } from 'react';
 
-import { usePopIdentity } from '../../patterns/pop-identity';
+import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { isServerBaselineBuild } from '../../patterns/pop-server-baseline';
 import { useReprintEntry } from './entry-context';
 import { ErrorBanner } from './error-banner';
@@ -103,7 +103,7 @@ export const PackingLabelReprintScreen = () => {
   const titleId = useId();
   const entry = useReprintEntry();
   const identity = usePopIdentity();
-  const gate = useTerminalGate(identity.terminalId, identity.processId);
+  const gate = useTerminalGate(identity.terminalId, soleProcessIdOf(identity.processes));
 
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [reasonCode, setReasonCode] = useState('');

@@ -116,7 +116,7 @@ const renderFlow = (options: FlowOptions = {}) => {
   const user = userEvent.setup();
   const identity: PopIdentity = {
     terminalId: null,
-    processId: null,
+    processes: null,
     workerNo: WORKER_NO,
     ...options.identity,
   };

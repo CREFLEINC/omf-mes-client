@@ -193,7 +193,9 @@ const routes = (writes: Request[]): StubRoute[] => [
 
 const renderScreen = (writes: Request[], extraRoutes: StubRoute[] = []) =>
   renderWithProviders(
-    <PopIdentityProvider value={{ terminalId: 10, processId: 20, workerNo: '100029' }}>
+    <PopIdentityProvider
+      value={{ terminalId: 10, processes: [{ processId: 20 }], workerNo: '100029' }}
+    >
       <ProductionFlowScreen />
     </PopIdentityProvider>,
     {

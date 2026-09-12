@@ -25,7 +25,7 @@ const ROUTE = `/pop/material-input?workOrderId=${String(WORK_ORDER_ID)}`;
 /** 셸이 채워 준 단말·공정·사번 — 확정까지 갈 수 있는 유일한 상태다. */
 const GATED: PopIdentity = {
   terminalId: TERMINAL_ID,
-  processId: PROCESS_ID,
+  processes: [{ processId: PROCESS_ID }],
   workerNo: WORKER_NO,
 };
 

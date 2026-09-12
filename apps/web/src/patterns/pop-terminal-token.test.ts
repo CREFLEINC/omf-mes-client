@@ -6,9 +6,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { currentTerminalToken, forgetTerminalToken, readTerminalToken } from './pop-terminal-token';
 
-/** 셸이 여는 통로를 흉내 낸다. `get` 이 무엇을 하는지만 시험이 정한다. */
-const putBridge = (get: () => Promise<string | undefined>): void => {
-  (globalThis as { pop?: unknown }).pop = { deviceToken: { get } };
+/**
+ * 셸이 여는 통로를 흉내 낸다. `get` 이 무엇을 하는지만 시험이 정한다.
+ *
+ * ⚠ **`set` 도 함께 둔다** — 통로 판정이 읽기·쓰기 둘을 요구한다(#999 등록 반영). 실제
+ * preload 는 둘을 함께 열지만, 흉내가 한쪽만 두면 통로가 «없는» 것으로 판정돼 토큰이 조용히
+ * 붙지 않는다.
+ */
+const putBridge = (
+  get: () => Promise<string | undefined>,
+  set: (value: string) => Promise<void> = async () => undefined,
+): void => {
+  (globalThis as { pop?: unknown }).pop = { deviceToken: { get, set } };
 };
 
 afterEach(() => {

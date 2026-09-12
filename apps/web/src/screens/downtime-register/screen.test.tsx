@@ -136,7 +136,7 @@ const closeRoute = (downtimeId: number): StubRoute => ({
 
 const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
-  processId: PROCESS_ID,
+  processes: [{ processId: PROCESS_ID }],
   workerNo: WORKER_NO,
 };
 

@@ -4873,3 +4873,81 @@
 .pop-ui .worker-no-keypad > button {
   min-height: 72px;
 }
+
+/*
+ * 단말 등록 패널 — P-CO-01 §3-A(#999).
+ *
+ * ⭐ **한가운데 한 상자.** 이 화면이 서는 순간에는 업무가 아무것도 열려 있지 않아 다른 칸과
+ *    나란히 놓을 것이 없다. 설치 담당자가 서서 붙여넣는 자리라 손이 닿는 높이에 모은다.
+ *
+ * ⛔ **`100vh` 를 쓰지 않는다** — `pop-fit` 의 zoom 과 어긋나 바닥이 빈다(실측). 높이는
+ *    `100%` 로 받는다.
+ */
+.pop-registration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+}
+
+.pop-registration__card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(720px, 100%);
+  padding: 32px;
+}
+
+/*
+ * ⚠ **줄 높이를 글자 크기와 함께 적는다.** 물려받는 값이 20px 이라 28px 글자를 담지 못하고
+ *   위아래가 잘린다(실측 — 상자 높이가 14.6px 로 섰다).
+ */
+.pop-registration__title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.pop-registration__guide {
+  margin: 0;
+  font-size: 18px;
+}
+
+/*
+ * 알림 띠의 표식을 글자 줄에 맞춘다.
+ *
+ * DS 는 표식을 «제목 줄»에 맞추려고 위 여백 4px 을 준다. 제목 없이 설명 한 줄만 내는 이
+ * 자리에서는 그 여백이 그대로 어긋남이 된다(실측 — 표식이 글자보다 2.4px 아래에 섰다).
+ * `pop-material-lot-outcome` 이 같은 사정을 같은 방식으로 풀었다.
+ *
+ * ⛔ **가운데 정렬로 바꾸지 않는다.** 문구가 두 줄이 되는 사유가 있어(미전송 큐 안내) 가운데로
+ *    세우면 표식이 두 줄 «사이»에 뜬다 — 첫 줄에 맞추는 것이 맞다.
+ */
+.pop-registration [class*='_root_'] > [class*='icon'] {
+  margin-block-start: 0;
+}
+
+/* 확인용 사실표 — 라벨과 값을 두 열로 세운다. 설치 담당자가 눈으로 대조하는 자리다. */
+.pop-registration__facts {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  gap: 8px 16px;
+  margin: 0;
+  font-size: 18px;
+}
+
+.pop-registration__facts dt {
+  color: var(--pop-muted, #5f6368);
+}
+
+.pop-registration__facts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pop-registration__actions {
+  display: flex;
+  gap: 12px;
+}

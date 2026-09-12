@@ -5,7 +5,7 @@ import { useEffect, useId, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
-import { usePopIdentity } from '../../patterns/pop-identity';
+import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 
 import { ActionBar, describeSaveBlock, resolveSaveBlock } from './action-bar';
 import { toRangeLabel } from './formatting';
@@ -86,7 +86,8 @@ export const DowntimeRegisterScreen = () => {
    * 없어 지금은 전부 `null`이고, 화면은 그 상태를 사유와 함께 보인다 — 모르는 것을 통과로
    * 처리하지 않는다.
    */
-  const { terminalId, processId, workerNo } = usePopIdentity();
+  const { terminalId, processes, workerNo } = usePopIdentity();
+  const processId = soleProcessIdOf(processes);
 
   const titleId = useId();
 
