@@ -22,6 +22,7 @@ const ready = (overrides: Partial<ConfirmLockInput> = {}): ConfirmLockInput => (
   isOnline: true,
   gate: 'allowed',
   workerNo: '3391',
+  shipmentId: 9001,
   warehouseId: 7001,
   hasOpenUnit: true,
   isOpeningUnit: false,
@@ -41,7 +42,15 @@ describe('confirmLockReason', () => {
     );
   });
 
-  it('창고가 없으면 확정을 잠그고 그 사실을 말한다', () => {
+  /**
+   * ⛔ **고르기 전의 정상 상태를 자료 결함으로 말하지 않는다**(#1093 리뷰). 창고는
+   *    출하 전표에서 오므로 진입 직후에는 둘 다 비어 있다 — 두 상태가 같은 문구로 떨어지면
+   *    작업자는 고르면 되는 자리에서 전표가 깨졌다고 읽는다.
+   */
+  it('출하를 고르기 전과 고른 뒤 창고가 없는 것을 갈라 말한다', () => {
+    expect(confirmLockReason(ready({ shipmentId: null, warehouseId: null }))).toBe(
+      t.locks.shipmentMissing,
+    );
     expect(confirmLockReason(ready({ warehouseId: null }))).toBe(t.locks.warehouseMissing);
   });
 

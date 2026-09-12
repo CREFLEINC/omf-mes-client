@@ -3125,7 +3125,8 @@ on('POST', '/production/precheck-decisions', (_p, _q, body, headers) => {
    * ⛔ **사번이 없으면 남기지 않는다.** 귀속이 비어 있는 판정은 「누가 통과시켰는가」를
    *    말하지 못한다 — 실서버가 거부하는 자리를 목이 통과시키면 화면이 목에서만 선다.
    */
-  if (headers['x-worker-no'] === undefined) {
+  /* ⚠ 빈 문자열도 「없다」다 — 게이트는 사번이 비어도 헤더를 그대로 실어 보낸다. */
+  if ((headers['x-worker-no'] ?? '').trim() === '') {
     return {
       status: 400,
       created: { code: 'WORKER_NO_REQUIRED', message: '사번이 없으면 판정을 남기지 않습니다.' },

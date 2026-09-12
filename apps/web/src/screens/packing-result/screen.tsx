@@ -298,6 +298,7 @@ export const PackingResultScreen = () => {
     isOnline,
     gate: gate.verdict,
     workerNo: identity.workerNo,
+    shipmentId,
     warehouseId,
     hasOpenUnit: openUnit !== null,
     isOpeningUnit: createUnit.isPending,
