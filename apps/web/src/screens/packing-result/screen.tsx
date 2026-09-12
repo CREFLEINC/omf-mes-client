@@ -518,7 +518,7 @@ export const PackingResultScreen = () => {
                */}
               {openUnit !== null && <p className="packing-unit-no">{openUnit.handlingUnitNo}</p>}
               {/* 이름은 칸 «옆»이다(설계 §3 「유형 [ 카톤 ▾ ]」) — 안내 글로만 두면 고른 뒤 사라진다. */}
-              <span className="field-label" id={typeLabelId}>
+              <span className="field-label packing-type-label" id={typeLabelId}>
                 {t.fields.handlingUnitType}
               </span>
               <Select
@@ -652,10 +652,16 @@ export const PackingResultScreen = () => {
           </Button>
         )}
 
+        {/*
+         * ⭐ **액션바의 크기 토큰을 하나로 맞춘다**(사용자 지시 2026-09-12). 높이는 CSS 가
+         *    72 로 맞춰 주지만 크기 토큰이 제각각이면 «좌우 여백»이 16·24·32 로 갈려 같은
+         *    줄인데 다른 크기로 보인다. 강조는 `variant`(채움/테두리)가 맡는다 — 크기로
+         *    강조하면 줄이 들쭉날쭉해진다.
+         */}
         <Button
           type="button"
           variant="outlined"
-          size="md"
+          size="2xl"
           disabled={shipmentId === null}
           onClick={() => {
             setLabelMode((current) => !current);
@@ -668,7 +674,7 @@ export const PackingResultScreen = () => {
           <Button
             type="button"
             variant="outlined"
-            size="md"
+            size="2xl"
             /*
              * ⛔ **사번이 없으면 잠근다**(#1093). 아래 처리기가 그때 조용히 되돌아왔는데
              *    단추는 열려 있어, 눌러도 아무 일이 없었다. 사유는 위 `lockReason` 이 이미
@@ -711,7 +717,7 @@ export const PackingResultScreen = () => {
         <Button
           type="button"
           variant="outlined"
-          size="xl"
+          size="2xl"
           className="pop-touch-target"
           disabled={labelCode === null && matched === null}
           onClick={() => {

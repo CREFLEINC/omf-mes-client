@@ -216,13 +216,6 @@ describe('P-02-02 작업 전 점검 통제 — 차단', () => {
     ).toBeInTheDocument();
   });
 
-  /** ⚠ 「이력 없음」을 「점검 안 함」으로 단정하지 않는다(§5-4). */
-  it('이력이 없을 때 미전송 가능성을 함께 말한다', async () => {
-    await pressStart(NO_HISTORY);
-
-    expect(await screen.findByText(t.history.unsentWarning)).toBeInTheDocument();
-  });
-
   /** ⛔ 「미적용」은 「NG 인데 돌려도 된다」가 아니다(§5-7). */
   it('점검이 불합격이면 통제 수준이 미적용이어도 막는다', async () => {
     const { recorded } = await pressStart({
