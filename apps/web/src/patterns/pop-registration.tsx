@@ -8,7 +8,7 @@ import {
   setCandidateTerminalToken,
   writeTerminalToken,
 } from './pop-terminal-token';
-import { runRequest, toApiError } from './request';
+import { ApiRequestError, runRequest, toApiError } from './request';
 import { useWorkerSession } from './worker-session';
 
 /**
@@ -194,15 +194,17 @@ const failureOf = (error: unknown): RegistrationFailure => {
    * ⛔ **오류에서 `status` 를 바로 읽지 않는다.** 요청 경로는 정규화된 봉투(`ApiRequestError`)
    *    를 던지므로 그 자리에 `status` 가 없다 — 그렇게 읽던 동안 403 갈래가 «한 번도» 서지
    *    못하고 모든 실패가 「토큰이 죽었다」로 떨어졌다.
+   *
+   * ⛔ **정규화된 갈래로도 상태를 못 읽는다.** 서버가 403 을 계약 오류 봉투로 보내면 정규화가
+   *    그것을 `validation` 으로 접으면서 상태 코드를 버린다 — 봉투만 보고 고치면 403 갈래는
+   *    «여전히» 죽어 있다(리뷰 2회차 지적). 정규화 전 상태를 남겨 둔 자리를 본다.
    */
-  const apiError = toApiError(error);
+  const status = error instanceof ApiRequestError ? error.httpStatus : undefined;
 
-  if (apiError.kind !== 'http') return apiError.kind === 'network' ? 'unreachable' : 'rejected';
+  if (status === 403) return 'foreign';
 
-  if (apiError.status === 403) return 'foreign';
-
-  /* 상태 코드가 없다 = 응답 자체가 없었다. 토큰은 아직 판정된 적이 없다. */
-  if (apiError.status <= 0) return 'unreachable';
+  /* 응답 자체가 없었다 — 토큰은 아직 판정된 적이 없다. */
+  if (toApiError(error).kind === 'network') return 'unreachable';
 
   return 'rejected';
 };

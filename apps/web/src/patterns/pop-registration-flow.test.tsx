@@ -228,6 +228,10 @@ describe('POP 단말 등록 — 상태 전이', () => {
   /**
    * ⭐ **403 갈래가 실제로 선다.** 오류에서 `status` 를 바로 읽던 동안 이 갈래는 한 번도
    * 서지 못했다 — 요청 경로가 정규화된 봉투를 던져 그 자리에 `status` 가 없기 때문이다.
+   *
+   * ⛔ **몸통을 계약 모양(`errors[]`)으로 낸다.** 계약에 없는 `{ message }` 로 재면 정규화가
+   *    상태 코드를 그대로 들고 와 갈래가 서는 것처럼 보인다 — 실제 서버 응답은 봉투라
+   *    거기서 상태가 접혀 사라지고, 감지기만 초록인 채 갈래는 죽어 있다(리뷰 2회차 실측).
    */
   it('다른 단말을 가리키면 거절이 아니라 「남의 토큰」이다', async () => {
     putShell(0);
@@ -247,7 +251,11 @@ describe('POP 단말 등록 — 상태 전이', () => {
         fetch: createStubFetch([
           {
             match: (request) => /\/mdm\/terminals\/\d+(\?|$)/.test(request.url),
-            respond: () => jsonResponse({ message: '남의 단말' }, { status: 403 }),
+            respond: () =>
+              jsonResponse(
+                { errors: [{ scope: 'screen', code: 'FORBIDDEN', message: '남의 단말' }] },
+                { status: 403 },
+              ),
           },
         ]),
         session: null,
