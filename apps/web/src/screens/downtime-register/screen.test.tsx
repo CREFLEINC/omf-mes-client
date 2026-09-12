@@ -136,7 +136,7 @@ const closeRoute = (downtimeId: number): StubRoute => ({
 
 const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
-  processId: PROCESS_ID,
+  processes: [{ processId: PROCESS_ID }],
   workerNo: WORKER_NO,
 };
 
@@ -918,7 +918,11 @@ describe('DowntimeRegisterScreen — 설비를 아직 고르지 않았을 때', 
    *    그렇게 떴다. 합계 자리가 이미 지키던 구분(모르는 값 ≠ 없는 값)을 건수·목록에도 준다.
    */
   it('건수를 0으로 말하지 않고 무엇을 해야 나오는지 알린다', async () => {
-    renderScreen([downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()], IDENTIFIED, '/pop/downtime');
+    renderScreen(
+      [downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()],
+      IDENTIFIED,
+      '/pop/downtime',
+    );
 
     await flush();
 

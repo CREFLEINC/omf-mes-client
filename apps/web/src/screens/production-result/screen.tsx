@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState } from 'react';
 
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
-import { usePopIdentity } from '../../patterns/pop-identity';
+import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopSelect as Select } from '../../patterns/pop-select';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { useResultEntry } from './entry-context';
@@ -120,7 +120,7 @@ export const ProductionFlowScreen = () => {
   const item = useItem(currentLot.data?.itemId ?? workOrder.data?.itemId ?? null);
   const lotPrinters = usePrinters('PRODUCTION_LOT_LABEL');
   const tagPrinters = usePrinters('IDENTIFICATION_TAG');
-  const gates = useFlowGates(identity.terminalId, identity.processId);
+  const gates = useFlowGates(identity.terminalId, soleProcessIdOf(identity.processes));
   const uom = useUomLookup();
 
   const [actualQty, setActualQty] = useState('');

@@ -48,7 +48,12 @@ export const mergeIdentity = (
   sessionWorkerNo: string | null = null,
 ): PopIdentity => ({
   terminalId: identity.terminalId ?? parseId(params.get('terminalId')),
-  processId: identity.processId ?? parseId(params.get('processId')),
+  /*
+   * ⛔ **공정은 주소에서 받지 않는다**(#999). 공정 구성은 셸이 등록 때 서버에서 받은 목록이
+   *    정본이고(공유계약 F-4), 주소로 덮을 수 있으면 게이팅이 «주소를 고치는 것»으로 열린다.
+   *    단말 번호의 주소 대체는 개발 확인용으로 남겨 둔다 — 그쪽은 판정이 아니라 조회 축이다.
+   */
+  processes: identity.processes,
   workerNo:
     identity.workerNo ?? parseWorkerNo(sessionWorkerNo) ?? parseWorkerNo(params.get('workerNo')),
 });

@@ -2,7 +2,7 @@ import { AlertBanner, Button, Card, Chip, Tooltip } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useRef, useState } from 'react';
 
-import { usePopIdentity } from '../../patterns/pop-identity';
+import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { PopWorkerTag } from '../../patterns/pop-worker-tag';
 import { useIsOnline } from './connection';
 import { useRepackLabelEntry } from './entry-context';
@@ -58,7 +58,7 @@ export const RepackLabelIssueScreen = () => {
   const titleId = useId();
   const entry = useRepackLabelEntry();
   const identity = usePopIdentity();
-  const gate = useTerminalGate(identity.terminalId, identity.processId);
+  const gate = useTerminalGate(identity.terminalId, soleProcessIdOf(identity.processes));
   const isOnline = useIsOnline();
 
   const [selectedHandlingUnitId, setSelectedHandlingUnitId] = useState<number | null>(null);

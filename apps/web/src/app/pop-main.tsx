@@ -42,28 +42,39 @@ import { popRoutes } from '../routes/pop';
 import { applyPopFit } from '../patterns/pop-fit';
 import { PopLogoutButton } from '../patterns/pop-logout';
 import { PopScreenNavButton } from '../patterns/pop-screen-nav';
-import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../patterns/pop-identity';
-import { readTerminalToken } from '../patterns/pop-terminal-token';
+import { PopRegistrationProvider, usePopRegistration } from '../patterns/pop-registration';
+import { RegistrationPanel } from '../screens/worker-assignment/registration-panel';
+import { currentTerminalToken, readTerminalToken } from '../patterns/pop-terminal-token';
 import { AppProviders } from './providers';
 
 /**
- * 셸이 아직 채우지 못하는 단말 신원의 자리.
+ * **등록을 마치기 전에는 업무로 넘기지 않는다**(공유계약 F-4 · P-CO-01 §3-A).
  *
- * ⛔ **개발 모드에서는 이 겹을 씌우지 않는다.** `AppProviders` 가 개발용 신원 공급자를
- * 이미 세우는데(`patterns/pop-dev-identity`), 그 «안쪽» 에 이 겹을 한 번 더 씌우면 안쪽이
- * 이겨 단말이 도로 「모름」이 된다 — 그러면 저장·발행이 전부 「단말이 확인되지 않았습니다」로
- * 잠긴다(2026-09-08 설치본에서 실측).
+ * ⛔ **라우터 «밖»에 세운다.** 안에 두면 주소만 알면 업무 화면이 먼저 그려지고, 그 화면이
+ * 조회를 시작한다 — 「등록 전에는 서버 업무 조회를 열지 않는다」가 깨진다.
  *
- * ⛔ **가름은 `MODE` 로 한다.** `import.meta.env.DEV` 는 개발 서버에서만 참이라
- * `--mode development` 로 구운 확인용 설치본에서 조용히 거짓이 됐다. 이 저장소의 빌드 시점
- * 가름은 `MODE === 'development'` 한 표기로 통일돼 있다(`pop-dev-guard.test.ts`).
+ * ⭐ **보관된 토큰이 있으면 스스로 확인한다.** 단말을 껐다 켤 때마다 설치 담당자를 부를 수는
+ * 없다. 보관된 토큰도 새 토큰과 **같은 검증 길**을 지난다 — 세대가 폐기됐으면 여기서
+ * 걸러져 등록 패널이 다시 선다.
  */
-const PopShellIdentity = ({ children }: { children: ReactNode }) =>
-  import.meta.env.MODE === 'development' ? (
-    children
-  ) : (
-    <PopIdentityProvider value={UNKNOWN_POP_IDENTITY}>{children}</PopIdentityProvider>
-  );
+const PopRegistrationGate = ({ children }: { children: ReactNode }) => {
+  const registration = usePopRegistration();
+  const { phase, verify } = registration;
+
+  useEffect(() => {
+    if (phase !== 'unregistered') return;
+
+    const stored = currentTerminalToken();
+
+    if (stored === null) return;
+
+    void verify(stored);
+  }, [phase, verify]);
+
+  if (phase !== 'ready') return <RegistrationPanel />;
+
+  return <>{children}</>;
+};
 
 if (import.meta.env.DEV && window.pop === undefined) {
   window.pop = {
@@ -160,10 +171,12 @@ const mount = () => {
   createRoot(container).render(
     <StrictMode>
       <AppProviders>
-        <PopShellIdentity>
-          <RouterProvider router={popRouter} />
-          {import.meta.env.MODE === 'development' ? <PopDevHomeShortcut /> : null}
-        </PopShellIdentity>
+        <PopRegistrationProvider>
+          <PopRegistrationGate>
+            <RouterProvider router={popRouter} />
+            {import.meta.env.MODE === 'development' ? <PopDevHomeShortcut /> : null}
+          </PopRegistrationGate>
+        </PopRegistrationProvider>
       </AppProviders>
     </StrictMode>,
   );
