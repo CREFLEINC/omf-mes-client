@@ -23,7 +23,17 @@ const webDist = existsSync(popDist) ? popDist : adminDist;
 // 릴리스 여부. 배포본에는 소스맵을 싣지 않고, 렌더러 부재를 실패로 처리한다.
 const isRelease = process.env.POP_RELEASE === '1';
 
+/*
+ * 백엔드 원점 — 셸이 `/api` 요청을 대신 보낼 곳(`src/main/index.ts` 「API 중계」).
+ *
+ * ⛔ **주소를 코드에 적지 않는다.** 이 저장소는 공개다 — 값은 굽는 사람이 환경변수로 준다.
+ *    비우면 중계가 서지 않고, 화면이 절대 주소를 그대로 부르던 지금까지의 동작이 남는다
+ *    (모바일의 `CAP_NATIVE_HTTP` 와 같이 «켜야» 서는 스위치다).
+ */
+const apiTarget = (process.env.POP_API_TARGET ?? '').replace(/\/+$/, '');
+
 const common = {
+  define: { 'process.env.POP_API_TARGET': JSON.stringify(apiTarget) },
   bundle: true,
   platform: 'node',
   target: 'node20',

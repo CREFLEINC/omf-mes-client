@@ -129,10 +129,61 @@ protocol.registerSchemesAsPrivileged([
   { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
+/**
+ * API 중계 — **요청을 브라우저 엔진 «대신» 셸이 보낸다.**
+ *
+ * ⭐ **모바일이 같은 사정을 같은 방식으로 풀었다**(`apps/mobile/capacitor.config.ts` ·
+ *    `CAP_NATIVE_HTTP`). 「백엔드가 CORS 응답 헤더를 주지 않아 WebView 의 fetch 로는 닿지
+ *    않는다 — 네이티브 요청에는 동일 출처 정책이 걸리지 않는다」와 글자 그대로 같은 문제다.
+ *    POP 에는 그 자리가 없어 화면이 「서버에 연결하지 못했습니다」에서 멈춰 있었다(실측
+ *    2026-09-12: `curl` 은 401 을 받는데 같은 요청이 화면에서는 `Failed to fetch`).
+ *
+ * ⭐ **개발 서버의 `/api` 프록시와 같은 구조다.** 화면은 자기 주소(`pop://app/api/...`)로만
+ *    부르고 실제 통신은 여기서 한다 — 개발과 설치본이 같은 주소를 부르게 되는 것도 이득이다.
+ *
+ * ⛔ **렌더러의 접근 규칙을 끄지 않는다.** `webSecurity` 는 그대로 켜져 있고, 브라우저의 검사를
+ *    «통과시키는» 것이 아니라 검사가 애초에 없는 자리로 요청을 옮기는 것이다.
+ *
+ * ⚠ **기본은 꺼짐이다** — 모바일 스위치와 같다. `POP_API_TARGET` 을 주고 구운 설치본에서만
+ *   서고, 주지 않으면 지금까지처럼 화면이 절대 주소를 그대로 부른다.
+ */
+const API_TARGET = (process.env.POP_API_TARGET ?? '').replace(/\/+$/, '');
+const API_PREFIX = '/api/';
+/**
+ * 중계가 실어 보내지 «않는» 것.
+ *
+ * ⚠ 화면 «안»의 사정이라 서버가 알 필요가 없다. `pop://app` 이 출처로 그대로 나가면 서버가
+ *   알 수 없는 출처로 보고 거절할 수 있다 — 중계는 셸 자신의 요청이다.
+ */
+const DROPPED_HEADERS = new Set(['origin', 'referer', 'host', 'connection']);
+
+async function relayToApi(request: Request, pathname: string, search: string): Promise<Response> {
+  const headers = new Headers();
+
+  request.headers.forEach((value, key) => {
+    if (!DROPPED_HEADERS.has(key.toLowerCase())) headers.set(key, value);
+  });
+
+  /* 본문 없는 메서드에 빈 본문을 실으면 400 으로 떨어뜨리는 서버가 있다. */
+  const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
+
+  return await net.fetch(`${API_TARGET}${pathname}${search}`, {
+    method: request.method,
+    headers,
+    body: hasBody ? await request.arrayBuffer() : undefined,
+    redirect: 'manual',
+  });
+}
+
 function registerRendererProtocol(): void {
   protocol.handle(APP_SCHEME, async (request) => {
     try {
-      const { pathname } = new URL(request.url);
+      const { pathname, search } = new URL(request.url);
+
+      if (API_TARGET !== '' && pathname.startsWith(API_PREFIX)) {
+        return await relayToApi(request, pathname, search);
+      }
+
       const resolved = resolveRendererPath({ rendererDir: RENDERER_DIR, pathname, existsSync });
 
       if (resolved.kind === 'forbidden') return new Response('forbidden', { status: 403 });

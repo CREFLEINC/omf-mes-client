@@ -31,6 +31,8 @@ const failureMessage = (failure: RegistrationFailure, pendingCount: number): str
       return t.failure.malformed;
     case 'rejected':
       return t.failure.rejected;
+    case 'unreachable':
+      return t.failure.unreachable;
     case 'foreign':
       return t.failure.foreign;
     case 'wrong-type':
