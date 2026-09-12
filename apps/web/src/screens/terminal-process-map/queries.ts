@@ -1,5 +1,4 @@
 import type { components } from '@omf-mes/api-client';
-import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -91,8 +90,7 @@ export const useTerminalDetail = (terminalId: number | null): UseQueryResult<Ter
     queryKey: terminalKeys.terminal(terminalId),
     enabled: terminalId !== null,
     queryFn: () => {
-      if (terminalId === null)
-        throw new Error(messages.terminalProcessMap.guard.detailNeedsSelection);
+      if (terminalId === null) throw new Error('단말을 고르기 전에는 상세를 조회하지 않습니다.');
 
       return runRequest(() =>
         client.GET('/mdm/terminals/{terminalId}', { params: { path: { terminalId } } }),
@@ -116,8 +114,7 @@ export const useTerminalProcesses = (
     queryKey: terminalKeys.processes(terminalId),
     enabled: terminalId !== null,
     queryFn: () => {
-      if (terminalId === null)
-        throw new Error(messages.terminalProcessMap.guard.configNeedsSelection);
+      if (terminalId === null) throw new Error('단말을 고르기 전에는 구성을 조회하지 않습니다.');
 
       return runRequest(() =>
         client.GET('/mdm/terminals/{terminalId}/processes', { params: { path: { terminalId } } }),

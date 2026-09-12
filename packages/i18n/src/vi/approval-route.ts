@@ -77,10 +77,6 @@ export const approvalRoute: Translated<typeof ko.approvalRoute> = {
     chipRemoveKeyword: 'Bỏ điều kiện từ khóa',
     chipRemoveIncludeInactive: 'Bỏ điều kiện gồm cả mục ngừng dùng',
   },
-  guard: {
-    detailNeedsSelection: 'Không tra cứu chi tiết khi chưa chọn luồng phê duyệt.',
-    stepsNeedSelection: 'Không tra cứu bước phê duyệt khi chưa chọn luồng phê duyệt.',
-  },
   pageNav: {
     label: 'Chuyển trang',
     range: (start: number, end: number, total: number): string =>

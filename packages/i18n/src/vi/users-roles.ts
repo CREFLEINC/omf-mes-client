@@ -71,13 +71,6 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
   optionsTruncated:
     'Danh sách lựa chọn chỉ hiện một phần. Không thấy giá trị cần tìm thì hãy báo người phụ trách.',
   optionsLoadFailed: 'Không tải được danh sách lựa chọn. Chỉ hiện giá trị đang lưu.',
-  guard: {
-    userDetailNeedsSelection: 'Không tra cứu chi tiết khi chưa chọn người dùng.',
-    userAssignmentsNeedSelection: 'Không tra cứu phần đã gán khi chưa chọn người dùng.',
-    userScopesNeedSelection: 'Không tra cứu phạm vi truy cập khi chưa chọn người dùng.',
-    roleDetailNeedsSelection: 'Không tra cứu chi tiết khi chưa chọn vai trò.',
-    rolePermissionsNeedSelection: 'Không tra cứu quyền chức năng khi chưa chọn vai trò.',
-  },
   pageNav: {
     label: 'Chuyển trang',
     range: (start: number, end: number, total: number): string =>

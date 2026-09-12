@@ -160,11 +160,6 @@ export const notice: Translated<typeof ko.notice> = {
       'Phạm vi lệnh sản xuất không đếm được số người đối tượng nên chỉ hiện số đã xác nhận.',
   },
 
-  guard: {
-    detailNeedsSelection: 'Không tra cứu chi tiết khi chưa chọn thông cáo.',
-    ackNeedsSelection: 'Không tra cứu tình hình xác nhận khi chưa chọn thông cáo.',
-  },
-
   pageNav: {
     label: 'Chuyển trang',
     range: (start: number, end: number, total: number): string =>

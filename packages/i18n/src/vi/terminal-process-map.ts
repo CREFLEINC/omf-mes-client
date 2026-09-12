@@ -139,11 +139,6 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     canReturnMaterial: 'Trả lại vật tư',
   },
 
-  guard: {
-    detailNeedsSelection: 'Không tra cứu chi tiết khi chưa chọn máy quét.',
-    configNeedsSelection: 'Không tra cứu cấu hình khi chưa chọn máy quét.',
-  },
-
   pageNav: {
     label: 'Chuyển trang',
     range: (start: number, end: number, total: number): string =>

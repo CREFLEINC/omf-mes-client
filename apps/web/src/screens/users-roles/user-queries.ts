@@ -1,5 +1,4 @@
 import type { components } from '@omf-mes/api-client';
-import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -60,9 +59,7 @@ export const useUserList = (
     queryKey: userKeys.list(filters, page),
     enabled,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/app/users', { params: { query: toUserListQuery(filters, page) } }),
-      ),
+      runRequest(() => client.GET('/app/users', { params: { query: toUserListQuery(filters, page) } })),
   });
 };
 
@@ -86,7 +83,7 @@ export const useUserDetail = (appUserId: number | null): UseQueryResult<AppUserD
     enabled: appUserId !== null,
     queryFn: () => {
       if (appUserId === null) {
-        throw new Error(messages.usersRoles.guard.userDetailNeedsSelection);
+        throw new Error('사용자를 고르기 전에는 상세를 조회하지 않습니다.');
       }
 
       return runRequest(() =>
@@ -110,7 +107,7 @@ export const useUserRoles = (appUserId: number | null): UseQueryResult<UserRoleL
     enabled: appUserId !== null,
     queryFn: () => {
       if (appUserId === null) {
-        throw new Error(messages.usersRoles.guard.userAssignmentsNeedSelection);
+        throw new Error('사용자를 고르기 전에는 부여분을 조회하지 않습니다.');
       }
 
       return runRequest(() =>
@@ -131,7 +128,7 @@ export const useUserDataScopes = (
     enabled: appUserId !== null,
     queryFn: () => {
       if (appUserId === null) {
-        throw new Error(messages.usersRoles.guard.userScopesNeedSelection);
+        throw new Error('사용자를 고르기 전에는 접근범위를 조회하지 않습니다.');
       }
 
       return runRequest(() =>

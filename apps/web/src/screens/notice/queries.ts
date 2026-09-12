@@ -1,5 +1,4 @@
 import type { components } from '@omf-mes/api-client';
-import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -99,7 +98,7 @@ export const useNoticeDetail = (noticeId: number | null): UseQueryResult<NoticeV
     queryKey: noticeKeys.detail(noticeId),
     enabled: noticeId !== null,
     queryFn: () => {
-      if (noticeId === null) throw new Error(messages.notice.guard.detailNeedsSelection);
+      if (noticeId === null) throw new Error('공지를 고르기 전에는 상세를 조회하지 않습니다.');
 
       return runRequest(() =>
         client.GET('/app/notices/{noticeId}', { params: { path: { noticeId } } }),
@@ -125,7 +124,7 @@ export const useAcknowledgements = (
     queryKey: noticeKeys.acks(noticeId, pendingOnly),
     enabled: enabled && noticeId !== null,
     queryFn: () => {
-      if (noticeId === null) throw new Error(messages.notice.guard.ackNeedsSelection);
+      if (noticeId === null) throw new Error('공지를 고르기 전에는 확인 현황을 조회하지 않습니다.');
 
       return runRequest(() =>
         client.GET('/app/notices/{noticeId}/acknowledgements', {

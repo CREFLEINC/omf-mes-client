@@ -142,14 +142,6 @@ export const notificationCenter = {
     beyondLastTitle: '이 쪽에는 알림이 없습니다',
     beyondLastDescription: '앞쪽에 결과가 있습니다. 첫 쪽으로 이동하세요.',
   },
-  /**
-   * 조회를 멈춘 자리가 그래도 불렸을 때 던지는 말. **화면에 서지 않는 것이 정상이다** —
-   * 기간이 성립하지 않으면 조회가 아예 꺼지고, 사유는 위 `reasons`가 낸다.
-   * 그래도 문구는 여기 둔다 — 코드에 한국어를 박아 두면 베트남어 화면에서만 그 줄이 샌다.
-   */
-  guard: {
-    periodBlocked: '보낼 수 없는 기간에서는 알림 목록을 조회하지 않습니다.',
-  },
   card: {
     read: '읽음',
     unread: '안 읽음',

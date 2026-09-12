@@ -84,7 +84,7 @@ export const useNotificationList = (
     enabled: query !== null,
     queryFn: () => {
       if (query === null) {
-        throw new Error(messages.notificationCenter.guard.periodBlocked);
+        throw new Error('보낼 수 없는 기간에서는 알림 목록을 조회하지 않습니다.');
       }
 
       return fetchNotifications(client, query);

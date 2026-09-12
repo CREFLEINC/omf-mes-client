@@ -1,5 +1,4 @@
 import type { components } from '@omf-mes/api-client';
-import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -26,8 +25,7 @@ export interface RoleListResponse {
 
 export const roleKeys = {
   all: ['users-roles-roles'] as const,
-  list: (filters: RoleFilters, page: number) =>
-    ['users-roles-roles', 'list', filters, page] as const,
+  list: (filters: RoleFilters, page: number) => ['users-roles-roles', 'list', filters, page] as const,
   detail: (roleId: number) => ['users-roles-roles', 'detail', roleId] as const,
   /**
    * 기능 권한 부여분. **이번에 치환을 부르지 않으므로 무효화할 일이 없다** —
@@ -52,9 +50,7 @@ export const useRoleList = (
     queryKey: roleKeys.list(filters, page),
     enabled,
     queryFn: () =>
-      runRequest(() =>
-        client.GET('/app/roles', { params: { query: toRoleListQuery(filters, page) } }),
-      ),
+      runRequest(() => client.GET('/app/roles', { params: { query: toRoleListQuery(filters, page) } })),
   });
 };
 
@@ -78,7 +74,7 @@ export const useRoleDetail = (roleId: number | null): UseQueryResult<RoleDetailR
     enabled: roleId !== null,
     queryFn: () => {
       if (roleId === null) {
-        throw new Error(messages.usersRoles.guard.roleDetailNeedsSelection);
+        throw new Error('역할을 고르기 전에는 상세를 조회하지 않습니다.');
       }
 
       return runRequest(() => client.GET('/app/roles/{roleId}', { params: { path: { roleId } } }));
@@ -104,7 +100,7 @@ export const useRolePermissions = (
     enabled: roleId !== null,
     queryFn: () => {
       if (roleId === null) {
-        throw new Error(messages.usersRoles.guard.rolePermissionsNeedSelection);
+        throw new Error('역할을 고르기 전에는 기능 권한을 조회하지 않습니다.');
       }
 
       return runRequest(() =>

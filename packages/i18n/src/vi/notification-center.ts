@@ -87,9 +87,6 @@ export const notificationCenter: Translated<typeof ko.notificationCenter> = {
     beyondLastTitle: 'Trang này không có thông báo',
     beyondLastDescription: 'Kết quả nằm ở trang trước. Hãy về trang đầu.',
   },
-  guard: {
-    periodBlocked: 'Không tra cứu danh sách thông báo với khoảng thời gian không gửi được.',
-  },
   card: {
     read: 'Đã xem',
     unread: 'Chưa xem',

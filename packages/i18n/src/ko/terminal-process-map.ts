@@ -138,16 +138,6 @@ export const terminalProcessMap = {
     canReturnMaterial: '자재 반납',
   },
 
-  /**
-   * 고르기 전에는 부르지 않기로 한 조회가 그래도 불렸을 때 던지는 말.
-   * **화면에 서지 않는 것이 정상이다** — 그래도 문구는 여기 둔다: 코드에 한국어를 박아 두면
-   * 베트남어 화면에서만 그 줄이 샌다.
-   */
-  guard: {
-    detailNeedsSelection: '단말을 고르기 전에는 상세를 조회하지 않습니다.',
-    configNeedsSelection: '단말을 고르기 전에는 구성을 조회하지 않습니다.',
-  },
-
   pageNav: {
     label: '쪽 이동',
     range: (start: number, end: number, total: number): string =>
