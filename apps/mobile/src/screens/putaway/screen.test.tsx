@@ -349,7 +349,8 @@ describe('적치·입고 완료 화면', () => {
     await screen.findByText('권장 위치와 같습니다');
     await scanLot('RM-LOT-9999');
 
-    expect(await screen.findByText('이 지시의 LOT 이 아닙니다')).toBeTruthy();
+    /* 읽은 값이 함께 보여야 잘못 읽은 것인지 다른 LOT 인지 가릴 수 있다. */
+    expect(await screen.findByText(/이 지시의 LOT 이 아닙니다 — 읽은 값 /)).toBeTruthy();
     expect(screen.getByRole('button', { name: '이 지시 적치' })).toBeDisabled();
   });
 
