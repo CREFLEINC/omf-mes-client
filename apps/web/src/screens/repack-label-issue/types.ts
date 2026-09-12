@@ -1,9 +1,5 @@
 import type { components } from '@omf-mes/api-client';
 
-import {
-  labelRenditionFormat,
-  type LabelRenditionFormat,
-} from '../../patterns/pop-label-rendition';
 export type HandlingUnit = components['schemas']['HandlingUnit'];
 export type HandlingUnitContent = components['schemas']['HandlingUnitContent'];
 export type HandlingUnitRepackEvent = components['schemas']['HandlingUnitRepackEvent'];

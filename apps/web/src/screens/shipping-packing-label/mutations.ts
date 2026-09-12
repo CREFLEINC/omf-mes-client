@@ -6,11 +6,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useApiClient } from '../../patterns/api-context';
 import {
   fetchLabelRendition,
+  labelRenditionFormat,
   LabelRenditionNotReadyError,
 } from '../../patterns/pop-label-rendition';
 import { runRequest, toApiError } from '../../patterns/request';
 import { type LabelKind } from './codes';
-import { labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { toDocumentIssueBody, toPrintReportBody } from './issue-request';
 import { renditionShell } from './shell-print';
 import { toIssueView, type IssueView, type TargetRow } from './types';
@@ -138,6 +138,26 @@ const fetchRendition = async (
   client: ApiClient['client'],
   documentIssueLogId: number,
 ): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition(client, documentIssueLogId));
+
+/**
+ * 미리보기에 쓸 **그림**. 인쇄로 나갈 바이트와 형식이 다를 수 있다(#1104).
+ *
+ * ⭐ **인쇄가 그림이면 그것을 그대로 쓴다** — 같은 것을 두 번 받지 않는다.
+ * ⚠ **그림을 못 받아도 던지지 않는다.** 미리보기가 없는 것이 인쇄를 막지는 않는다 — 종이로
+ *   나갈 바이트는 이미 손에 있다. 그때는 인쇄용 바이트를 그대로 돌려주고, 그리지 못하는
+ *   것은 `<img>` 가 스스로 말한다.
+ */
+const fetchPreview = async (
+  client: ApiClient['client'],
+  documentIssueLogId: number,
+  printed: Uint8Array,
+): Promise<Uint8Array> => {
+  if (labelRenditionFormat() === 'png') return printed;
+
+  return fetchLabelRendition(client, documentIssueLogId, 'png')
+    .then((drawn) => new Uint8Array(drawn))
+    .catch(() => printed);
+};
 
 /**
  * `issue`·`render` 걸음이 멈춘 원인을 결과에 담는다.
@@ -292,8 +312,15 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
 
           for (const one of issues) {
             const bytes = await fetchRendition(client, one.documentIssueLogId);
+            /*
+             * ⛔ **미리보기는 «그림»으로 따로 받는다**(#1104 리뷰 지적). 인쇄로 나가는 것은
+             *    셸이 선 단말에서 명령형(`tspl`)이고, 그 바이트를 `<img>` 에 넣으면 언제나
+             *    「그릴 수 없습니다」가 뜬다 — **확인해야 할 그 단말에서만** 죽는다.
+             * ⚠ 그림을 못 받아도 인쇄는 막지 않는다 — 종이로 나갈 바이트는 이미 손에 있다.
+             */
+            const previewBytes = await fetchPreview(client, one.documentIssueLogId, bytes);
             const previewUrl = URL.createObjectURL(
-              new Blob([bytes as BlobPart], { type: 'image/png' }),
+              new Blob([previewBytes as BlobPart], { type: 'image/png' }),
             );
             urls.current.push(previewUrl);
             rendered.push({ issue: one, bytes, previewUrl });
@@ -348,8 +375,10 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
 
         for (const one of issued.current) {
           const bytes = await fetchRendition(client, one.documentIssueLogId);
+          /* ⛔ 미리보기는 그림으로 따로 받는다 — 위 갈래와 같은 사정이다(#1104). */
+          const previewBytes = await fetchPreview(client, one.documentIssueLogId, bytes);
           const previewUrl = URL.createObjectURL(
-            new Blob([bytes as BlobPart], { type: 'image/png' }),
+            new Blob([previewBytes as BlobPart], { type: 'image/png' }),
           );
           urls.current.push(previewUrl);
           rendered.push({ issue: one, bytes, previewUrl });

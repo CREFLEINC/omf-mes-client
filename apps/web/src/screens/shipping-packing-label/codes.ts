@@ -10,10 +10,6 @@ import type { components } from '@omf-mes/api-client';
  * | `PACKING_TARGET_TYPE_CODE` | ✅ 확정 | P-04-01 §4·공통 출력물 계약 |
  * | `REISSUE_REASON_CODE_GROUP` | ✅ 확정 | 계약이 코드 그룹 코드로 명시 |
  */
-import {
-  labelRenditionFormat,
-  type LabelRenditionFormat,
-} from '../../patterns/pop-label-rendition';
 
 /**
  * 납품 라벨 — **고객에게 나가는 것**이라 OQC 합격 건에만 붙는다(스펙 §5-1).

@@ -169,7 +169,7 @@ export const useIssuePrintRunner = (workerNo: string | null): IssuePrintRunner =
                * 않는다. 서버가 구현해 첫 호출이 성공하게 되는 날에도 «명령형 인쇄용 프린터
                * 형식은 png 로 다시 받는다»는 이 갈래의 뜻은 그대로 남아야 한다.
                */
-              await fetchLabelRendition(client, target.documentIssueLogId)
+              await fetchLabelRendition(client, target.documentIssueLogId, 'png')
                 .then((drawn) => new Uint8Array(drawn))
                 .catch(() => null);
 
