@@ -237,6 +237,15 @@ export const ShippingPackingLabelScreen = ({
     if (summaries.isError) return t.actions.historyUnavailable;
     if (hasMixedIssueModes) return t.actions.mixedIssueModes;
     if (isReissue && reissueReasonCode === null) return t.actions.needsReason;
+    /*
+     * ⛔ **`startIssue` 가 조용히 되돌아오던 자리를 여기서 말한다**(#1093 ③). 잠금은 아래
+     *    `startIssue` 가 이미 보고 있었는데 «단추 잠금 판정»에는 없어, 단추가 열린 채 눌리고
+     *    아무 일도 일어나지 않았다 — 확인 창도 성공도 실패도 없는 그 모양이다.
+     *
+     * ⚠ **맨 뒤에 둔다.** 앞의 사유들은 작업자가 화면에서 고칠 수 있는 것이고 이것은 아니다 —
+     *    앞에 두면 고칠 수 있는 사유가 이 잠금에 가려 보이지 않는다.
+     */
+    if (DELIVERY_LABEL_ISSUE_LOCKED && kind === DELIVERY_LABEL) return t.actions.deliveryLocked;
 
     return null;
   })();

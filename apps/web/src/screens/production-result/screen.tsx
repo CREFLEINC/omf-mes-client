@@ -248,6 +248,12 @@ export const ProductionFlowScreen = () => {
     setAppliedLotId(lotId);
     setConfirmedResultLotId(lotId);
     setOutputPhase('issuing');
+    /*
+     * ⛔ **쓰기가 먹은 뒤 요약을 다시 읽는다**(#1093 ④). 잔여수량은 작업지시의 진척에서 오는데
+     *    이 쓰기는 큐를 통해 나가므로 그 결과가 저절로 캐시에 반영되지 않는다 — 다시 읽지
+     *    않으면 방금 올린 수량이 화면의 잔여에 없고, 작업자는 **새로 고쳐야** 맞는 값을 본다.
+     */
+    void workOrder.refetch();
   };
 
   const outbox = useOutbox({ onApplied: onResultApplied });

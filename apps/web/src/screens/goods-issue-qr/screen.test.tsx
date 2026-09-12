@@ -324,6 +324,27 @@ afterEach(() => {
  *
  * ⚠ **요청이 나가지 않는 것까지 본다.** 목록이 비어 보이는 것만으로는 증거가 되지 못한다.
  */
+/**
+ * ⛔ **부르지도 않은 조회를 「불러오는 중」으로 그리지 않는다**(#1093 ②).
+ *
+ * 전표 없이 들어오면 라인 조회는 아예 나가지 않는다. 그런데 react-query 는 꺼 둔 조회를
+ * 계속 `pending` 으로 두므로, 그 값을 그대로 쓰면 뼈대가 **영영 걷히지 않는다.** 배너는
+ * 「전표를 고른 뒤 들어오세요」라고 옳게 말하는데 옆이 로딩이라 작업자가 기다리게 된다.
+ */
+describe('GoodsIssueQrScreen — 전표 없이 진입', () => {
+  it('라인 구획이 로딩에 갇히지 않고 안내만 남는다', async () => {
+    renderWithProviders(<GoodsIssueQrScreen />, {
+      fetch: createStubFetch(routes({})),
+      route: '/pop/goods-issue-qr?workerNo=3391',
+    });
+
+    expect(await screen.findByText(t.entry.missingIssue)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('status', { name: t.lines.loading })).toBeNull();
+    });
+  });
+});
+
 describe('GoodsIssueQrScreen — 서버 구현 기준선', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
