@@ -161,6 +161,13 @@ export const packingResult = {
      *    없으면 처리기가 조용히 되돌아왔다 — 단추는 열려 있고 화면은 아무 말도 하지 않았다.
      */
     warehouseMissing: '출하 전표에 창고가 없어 확정할 수 없습니다',
+    /*
+     * ⛔ **담긴 것과 포장이 열리는 시점이 다르다**(#1093). 스캔하면 담긴 줄이 «먼저» 서고
+     *    포장은 그 뒤에 서버가 만들어 준다. 그 사이와 실패했을 때 확정 처리기가 조용히
+     *    되돌아왔는데 단추는 열려 있었다 — 「모르는 것」과 「막힌 것」을 갈라 말한다.
+     */
+    unitOpening: '포장을 만드는 중입니다',
+    unitMissing: '포장을 만들지 못했습니다. 담긴 것을 다시 스캔하세요',
   },
   confirmed: (handlingUnitNo: string): string => `포장 ${handlingUnitNo} 을 확정했습니다`,
 } as const;

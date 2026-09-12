@@ -299,6 +299,8 @@ export const PackingResultScreen = () => {
     gate: gate.verdict,
     workerNo: identity.workerNo,
     warehouseId,
+    hasOpenUnit: openUnit !== null,
+    isOpeningUnit: createUnit.isPending,
     handlingUnitTypeCode,
     lines,
   });
