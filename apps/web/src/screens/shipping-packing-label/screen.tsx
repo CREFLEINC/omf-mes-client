@@ -232,6 +232,8 @@ export const ShippingPackingLabelScreen = ({
   const blockedReason = ((): string | null => {
     if (issue.phase !== 'idle') return t.actions.finishCurrentIssue;
     if (workerNo === null) return t.actions.needsWorker;
+    /* 종류가 대상보다 먼저다 — 종류를 골라야 대상 목록이 선다. */
+    if (kind === null) return t.actions.needsKind;
     if (selectedRows.length === 0) return t.actions.needsTarget;
     if (summaries.isPending) return t.actions.checkingHistory;
     if (summaries.isError) return t.actions.historyUnavailable;

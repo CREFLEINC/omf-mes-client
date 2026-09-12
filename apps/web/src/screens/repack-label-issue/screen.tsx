@@ -416,7 +416,16 @@ export const RepackLabelIssueScreen = () => {
       </div>
 
       <div className="pop-action-bar pop-repack-actions">
-        {blockedReason !== null && (
+        {/*
+         * ⛔ **《대상 포장》 구획이 이미 말하고 있는 사유는 여기서 되풀이하지 않는다**
+         *    (사용자 지적 2026-09-12). 「발행 대기 목록에서 대상 포장을 선택하세요」가 구획
+         *    한가운데와 이 줄에 동시에 서 있었다 — 들어오자마자 같은 문장이 둘이라, 정작
+         *    다른 사유(회차 조회 실패·단말 권한·오프라인)가 떴을 때 그 자리가 늘 차 있던
+         *    자리로 읽힌다.
+         *
+         * ⚠ 잠그는 것과 말하는 것은 다른 축이다 — [발번·인쇄]는 그대로 잠긴다.
+         */}
+        {blockedReason !== null && blockedReason !== t.entry.missingHandlingUnit && (
           <p className="pop-repack-blocked" role="status">
             {blockedReason}
             {gate.verdict === 'unavailable' && (

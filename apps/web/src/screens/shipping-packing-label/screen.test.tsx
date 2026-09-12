@@ -189,6 +189,22 @@ describe('ShippingPackingLabelScreen — 진입', () => {
     expect(screen.queryByRole('radio', { name: /포장라벨/u })).not.toBeInTheDocument();
   });
 
+  /**
+   * ⭐ **종류를 고르기 전에도 «왜» 못 누르는지 말한다**(#1094 · 88단계 2회차 실기).
+   *
+   * 종전에는 이 상태에서 발행 버튼이 꺼진 채 아무 말도 하지 않아 현장이 고장으로 읽었다.
+   *
+   * ⛔ 대상 목록의 「라벨 종류를 먼저 고르세요」와 **같은 문장을 쓰지 않는다** — 한 화면에
+   *    같은 말이 둘 서면 어느 쪽을 고쳐야 하는지 흐려진다.
+   */
+  it('라벨 종류를 고르기 전에는 발행이 왜 막혔는지 말한다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.actions.needsKind)).toBeInTheDocument();
+    expect(issueButton()).toBeDisabled();
+    expect(t.actions.needsKind).not.toBe(t.targets.beforeKind);
+  });
+
   it('사번을 모르면 발행하지 않는다 — 서버가 거부할 쓰기를 만들지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen({}, ROUTE_WITHOUT_WORKER);

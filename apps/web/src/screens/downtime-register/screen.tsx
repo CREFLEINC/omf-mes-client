@@ -163,6 +163,23 @@ export const DowntimeRegisterScreen = () => {
   });
   const saveBlockReason = describeSaveBlock(block);
 
+  /**
+   * 저장이 «덜 차서» 잠겼다면 무엇이 모자란지(#1094).
+   *
+   * ⭐ **버튼이 잠겨 있어도 이유는 말한다.** 꺼진 버튼만으로는 무엇이 모자란지 알 수 없었던
+   *    것이 이 이슈의 출발점이다 — 88단계 2회차에서 작업자가 「수량 때문」이라 잘못 읽었다.
+   *
+   * ⛔ **아무것도 손대지 않은 화면은 조용히 맞이한다**(2026-09-07 판단). 한 칸이라도 건드린
+   *    뒤에야 말한다 — 빈 화면을 경고로 맞이하면 「늘 그런 것」으로 읽혀 정작 볼 때 안 본다.
+   */
+  const blockedNotice = ((): string | null => {
+    if (block !== null || isDraftEmpty(draft)) return null;
+    if (moments.started === null) return t.actions.needStarted;
+    if (reasonMissing) return t.actions.needReason;
+
+    return null;
+  })();
+
   /*
    * 오류를 언제 보일지 갈래가 둘이다.
    *
@@ -197,8 +214,8 @@ export const DowntimeRegisterScreen = () => {
     /* 앞 회차의 거부는 이 회차의 사실이 아니다 — 남겨 두면 방금 저장한 것이 거부된 것처럼 읽힌다. */
     outbox.clearRejections();
     if (block !== null || workerNo === null) return;
-    /* 덜 채운 칸이 있으면 여기서 멈춘다 — 그 사실은 칸 옆에 이미 서 있다. */
-    if (hasIntervalError(intervalErrors) || reasonMissing) return;
+    /* 덜 채운 칸이 있으면 버튼이 이미 잠겨 있다 — 여기까지 오지 않는다. */
+    if (hasIntervalError(intervalErrors) || reasonMissing || moments.started === null) return;
 
     const body = toDowntimeCreate(equipmentId, draft);
     if (body === null) return;
@@ -355,6 +372,7 @@ export const DowntimeRegisterScreen = () => {
         reasonCode={draft.reasonCode}
         reasons={reasonOptions.options}
         reasonsUnavailable={reasonOptions.isUnavailable}
+        reasonsFailed={reasonOptions.isError}
         remarks={draft.remarks}
         breakdownId={draft.breakdownId}
         breakdowns={breakdowns.breakdowns}
@@ -380,17 +398,33 @@ export const DowntimeRegisterScreen = () => {
         }}
       />
 
-      {today.isError ? (
-        <LoadErrorBanner error={today.error} onRetry={today.refetch} />
-      ) : (
-        <TodayPanel
-          rows={rows}
-          totalMinutes={today.totalMinutes}
-          isPending={today.isPending}
-          isAsked={today.isAsked}
-          isLocalOnly={isLocalOnly}
-          now={now}
-        />
+      {/*
+       * ⛔ **실패했다고 이 구획을 배너로 갈아 끼우지 않는다**(#1094). 종전에는 제목과 집계가
+       *    함께 사라져 화면의 구조가 서버 상태에 따라 바뀌었고, 같은 문구의 배너가 위에도
+       *    서 있어 **한 화면에 같은 말이 둘** 있었다. 자리는 지키고 내용만 바꾼다.
+       */}
+      <TodayPanel
+        rows={rows}
+        totalMinutes={today.totalMinutes}
+        isPending={today.isPending}
+        isAsked={today.isAsked}
+        /*
+         * ⭐ **조회를 못 건 이유를 가려 말한다**(#1094). 설비를 골라 둔 채 끊겼는데도
+         *    「설비를 고르면…」이 떠서, 머리줄에 설비 번호가 보이는데 고르라고 말했다.
+         */
+        notAskedLabel={equipmentId === null ? t.today.notAsked : t.today.notAskedOffline}
+        isLocalOnly={isLocalOnly}
+        isError={today.isError}
+        onRetry={today.refetch}
+        now={now}
+      />
+
+      {blockedNotice !== null && (
+        <div className="banner-slot">
+          <AlertBanner className="downtime-notice" variant="warning">
+            {blockedNotice}
+          </AlertBanner>
+        </div>
       )}
 
       {savedNotice !== null && (
@@ -409,6 +443,7 @@ export const DowntimeRegisterScreen = () => {
       <ActionBar
         block={block}
         isEmpty={isDraftEmpty(draft)}
+        isIncomplete={moments.started === null || reasonMissing}
         /*
          * 스펙 §5-1 의 활성 조건은 **시작 시각 + 사유** 둘이다.
          *
@@ -416,7 +451,6 @@ export const DowntimeRegisterScreen = () => {
          *    아니다(`readInterval` 이 `null` 을 낸다). ⛔ 끝 시각·겹침처럼 «누른 뒤에 말할»
          *    것은 여기 넣지 않는다: 그것들은 눌러야 무엇이 문제인지 칸 옆에서 말할 수 있다.
          */
-        isIncomplete={moments.started === null || reasonMissing}
         onReset={resetDraft}
         onSave={save}
       />

@@ -10,10 +10,6 @@ import type { components } from '@omf-mes/api-client';
  * | `PACKING_TARGET_TYPE_CODE` | ✅ 확정 | P-04-01 §4·공통 출력물 계약 |
  * | `REISSUE_REASON_CODE_GROUP` | ✅ 확정 | 계약이 코드 그룹 코드로 명시 |
  */
-import {
-  labelRenditionFormat,
-  type LabelRenditionFormat,
-} from '../../patterns/pop-label-rendition';
 
 /**
  * 납품 라벨 — **고객에게 나가는 것**이라 OQC 합격 건에만 붙는다(스펙 §5-1).
@@ -82,4 +78,3 @@ export const REISSUE_REASON_CODE_GROUP = 'REISSUE_REASON';
  * 그림으로 받으면 드라이버가 픽셀로 그려, 명령으로 뽑은 라벨과 다른 물건으로 보인다
  * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
  */
-export const RENDITION_FORMAT: LabelRenditionFormat = labelRenditionFormat();

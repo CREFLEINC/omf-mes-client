@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 
 import { useLocations } from '../../patterns/locations';
 import { useUomCodes } from '../../patterns/masters';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
@@ -164,7 +165,7 @@ export const RecycleEntryScreen = () => {
       <div className="recycle">
         {outcome === 'sent' ? (
           <AlertBanner variant="success" title={t.sent.title}>
-            {lotNo === null ? null : <p>{t.sent.lotNo(lotNo)}</p>}
+            {lotNo === null ? null : <p>{t.sent.lotNo(formatMaterialLotNo(lotNo))}</p>}
           </AlertBanner>
         ) : null}
         {outcome === 'queued' ? (

@@ -539,7 +539,12 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
     renderScreen({ pendingRequests });
 
     expect(await screen.findByRole('button', { name: new RegExp(HANDLING_UNIT_NO) })).toBeEnabled();
-    expect(screen.getAllByText(t.entry.missingHandlingUnit)).toHaveLength(2);
+    /*
+     * ⛔ **같은 사유를 한 번만 말한다**(사용자 지적 2026-09-12). 《대상 포장》 구획 한가운데와
+     * 액션 줄에 같은 문장이 동시에 서 있었고, **앞 판의 단언이 그 중복을 「2」로 못박아**
+     * 두어 결함이 아니라 사양처럼 보였다. 구획이 말하고 액션 줄은 비켜난다.
+     */
+    expect(screen.getAllByText(t.entry.missingHandlingUnit)).toHaveLength(1);
     expect(pendingRequests).toHaveLength(1);
 
     const url = new URL(pendingRequests[0]?.url ?? 'http://localhost');

@@ -635,11 +635,21 @@ export const PackingResultScreen = () => {
         </section>
       </div>
 
-      {/* 액션바 88 — 화면 바닥에 고정한다. 본문이 밀어내면 확정이 화면 밖으로 나간다. */}
+      {/*
+       * 액션바 88 — 화면 바닥에 고정한다. 본문이 밀어내면 확정이 화면 밖으로 나간다.
+       *
+       * ⛔ **라벨 모드에서도 이 줄을 세운다**(E-4 「공통 헤더와 주 액션을 화면 안에 유지한다」).
+       *    한때 라벨 모드에서 줄을 통째로 숨겼는데, **되돌아가는 단추가 그 안에 있었다** —
+       *    개발용 브라우저는 새로고침으로 빠져나오지만 현장 단말은 주소창이 없어 작업자가
+       *    갇혔다(88단계 2회차 실측 · #1092).
+       *
+       * ⛔ **포장 조작은 라벨 모드에서 세우지 않는다.** [포장 확정]·[다시 스캔]은 라벨 화면에서
+       *    누를 일이 없고, 세워 두면 «지금 무엇을 하는 화면인가»가 흐려진다.
+       */}
       <div className="packing-actions">
-        {lockReason !== undefined && <p className="packing-lock">{lockReason}</p>}
+        {!isLabelMode && lockReason !== undefined && <p className="packing-lock">{lockReason}</p>}
 
-        {gate.verdict === 'unavailable' && (
+        {!isLabelMode && gate.verdict === 'unavailable' && (
           <Button
             type="button"
             variant="text"
@@ -652,17 +662,15 @@ export const PackingResultScreen = () => {
           </Button>
         )}
 
-        {/*
-         * ⭐ **액션바의 크기 토큰을 하나로 맞춘다**(사용자 지시 2026-09-12). 높이는 CSS 가
-         *    72 로 맞춰 주지만 크기 토큰이 제각각이면 «좌우 여백»이 16·24·32 로 갈려 같은
-         *    줄인데 다른 크기로 보인다. 강조는 `variant`(채움/테두리)가 맡는다 — 크기로
-         *    강조하면 줄이 들쭉날쭉해진다.
-         */}
         <Button
           type="button"
           variant="outlined"
-          size="2xl"
-          disabled={shipmentId === null}
+          size="md"
+          /*
+           * ⛔ **라벨 모드에서는 잠그지 않는다.** 들어간 뒤 출하 문맥이 사라지면 이 단추가
+           *    잠겨 **다시 갇힌다** — 표시를 되살려 놓고 잠금을 남겨 두면 고친 것이 아니다.
+           */
+          disabled={!isLabelMode && shipmentId === null}
           onClick={() => {
             setLabelMode((current) => !current);
           }}
@@ -670,11 +678,11 @@ export const PackingResultScreen = () => {
           {isLabelMode ? t.actions.packing : t.actions.labels}
         </Button>
 
-        {openUnit !== null ? (
+        {!isLabelMode && openUnit !== null ? (
           <Button
             type="button"
             variant="outlined"
-            size="2xl"
+            size="md"
             /*
              * ⛔ **사번이 없으면 잠근다**(#1093). 아래 처리기가 그때 조용히 되돌아왔는데
              *    단추는 열려 있어, 눌러도 아무 일이 없었다. 사유는 위 `lockReason` 이 이미
@@ -706,7 +714,7 @@ export const PackingResultScreen = () => {
          * 오류로 보이면 사용자가 「다시」를 반복하므로, 사유를 그대로 보여 «아직 지원하지
          * 않는 기능»임을 드러낸다 — 열린 포장은 그대로 남는다.
          */}
-        {cancelUnit.isError && (
+        {!isLabelMode && cancelUnit.isError && (
           <p className="packing-lock">{HANDLING_UNIT_CANCEL_NOT_READY_MESSAGE}</p>
         )}
 
@@ -714,39 +722,47 @@ export const PackingResultScreen = () => {
          * ⛔ **읽은 것이 없으면 무를 것도 없다.** 아무것도 읽지 않은 채로 열려 있어, 눌러도
          *    아무 일이 없는 단추였다(사용자 지적 2026-09-07). 되돌릴 것이 있을 때만 연다.
          */}
-        <Button
-          type="button"
-          variant="outlined"
-          size="2xl"
-          className="pop-touch-target"
-          disabled={labelCode === null && matched === null}
-          onClick={() => {
-            /* 「다시 스캔」은 **마지막 스캔을 취소한다** — 담긴 것은 표에서 줄 단위로 뺀다. */
-            setMatched(null);
-            setQty('');
-            setMergeNote(null);
-          }}
-        >
-          {t.actions.rescan}
-        </Button>
+        {!isLabelMode && (
+          <>
+            <Button
+              type="button"
+              variant="outlined"
+              size="xl"
+              className="pop-touch-target"
+              disabled={labelCode === null && matched === null}
+              onClick={() => {
+                /* 「다시 스캔」은 **마지막 스캔을 취소한다** — 담긴 것은 표에서 줄 단위로 뺀다. */
+                setMatched(null);
+                setQty('');
+                setMergeNote(null);
+              }}
+            >
+              {t.actions.rescan}
+            </Button>
 
-        <Button
-          type="button"
-          variant="filled"
-          size="2xl"
-          disabled={lockReason !== undefined || confirm.isPending}
-          onClick={() => {
-            if (lockReason !== undefined || warehouseId === null || identity.workerNo === null) {
-              return;
-            }
+            <Button
+              type="button"
+              variant="filled"
+              size="2xl"
+              disabled={lockReason !== undefined || confirm.isPending}
+              onClick={() => {
+                if (
+                  lockReason !== undefined ||
+                  warehouseId === null ||
+                  identity.workerNo === null
+                ) {
+                  return;
+                }
 
-            if (openUnit === null) return;
+                if (openUnit === null) return;
 
-            confirm.mutate({ handlingUnit: openUnit, lines, workerNo: identity.workerNo });
-          }}
-        >
-          {confirm.isPending ? t.actions.confirming : t.actions.confirm}
-        </Button>
+                confirm.mutate({ handlingUnit: openUnit, lines, workerNo: identity.workerNo });
+              }}
+            >
+              {confirm.isPending ? t.actions.confirming : t.actions.confirm}
+            </Button>
+          </>
+        )}
       </div>
     </main>
   );

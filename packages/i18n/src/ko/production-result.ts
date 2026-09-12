@@ -183,7 +183,16 @@ export const productionResult = {
     /** 뒤 숫자는 지시 수량이다 — 딸린 정보라 화면이 한 급 낮춰 그린다. */
     orderedSuffix: (ordered: string, uom: string | null) =>
       uom === null ? `/ ${ordered}` : `/ ${ordered} ${uom}`,
+    /*
+     * ⛔ **「모른다」의 이유 셋을 한 문장으로 덮지 않는다**(#1094 · 88단계 2회차 실기).
+     *    작업지시가 없는 것 · 아직 안 물어본 것 · 물어봤는데 실패한 것은 작업자가 할 일이
+     *    다르다. 본보기는 자재 투입의 「아직 조회하지 않았습니다」 — 「없다」가 아니라
+     *    「안 물어봤다」로 가른다.
+     */
     remainingUnknown: '잔여수량을 확인할 수 없습니다.',
+    remainingNoWorkOrder: '작업지시를 받지 못해 잔여수량을 셀 수 없습니다.',
+    remainingNotAsked: '아직 조회하지 않았습니다.',
+    remainingLoadFailed: '잔여수량을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
   },
 
   /**

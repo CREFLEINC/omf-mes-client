@@ -16,7 +16,6 @@ import { toIssueView, type IssueView, type TargetRow } from './types';
  * 그림으로 받으면 드라이버가 픽셀로 그려, 명령으로 뽑은 라벨과 다른 물건으로 보인다
  * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
  */
-const LABEL_FORMAT = labelRenditionFormat();
 
 type Client = ApiClient['client'];
 
@@ -317,7 +316,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
                     bytes,
                     `lot-${String(issue.documentIssueLogId)}`,
                     new Date().toISOString(),
-                    LABEL_FORMAT,
+                    labelRenditionFormat(),
                   )
                   .then(() => null)
                   .catch((cause: unknown) =>

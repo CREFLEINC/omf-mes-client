@@ -1,6 +1,7 @@
 import { createContext, use, useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { clearDeviceToken, readDeviceToken, writeDeviceToken } from './device-token';
+import { forgetPlant, readPlantId } from './plant';
 
 export type RegistrationStatus = 'loading' | 'unregistered' | 'registered';
 
@@ -34,6 +35,15 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
     // 읽지 못한 것은 등록을 증명하지 못한 것이다. 다시 등록을 청하는 쪽이 안전하다.
     void readDeviceToken()
       .catch(() => null)
+      /*
+       * 공장도 함께 읽어 둔다 — 토큰이 싣고 오지 않으므로 등록 때 남겨 둔 것을 여기서
+       * 되살린다. 화면이 서기 전에 서 있어야 첫 쓰기가 「공장을 모른다」로 막히지 않는다.
+       */
+      .then(async (token) => {
+        await readPlantId().catch(() => null);
+
+        return token;
+      })
       .then((token) => {
         if (!cancelled) {
           setStatus(token === null ? 'unregistered' : 'registered');
@@ -52,6 +62,7 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
       await verify();
     } catch (error) {
       await clearDeviceToken();
+      await forgetPlant();
       throw error;
     }
 
@@ -60,6 +71,8 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
 
   const unregister = useCallback(async () => {
     await clearDeviceToken();
+    // 공장을 남겨 두면 다음 등록까지 옛 공장으로 쓴다 — 다른 공장의 재고가 는다.
+    await forgetPlant();
     setStatus('unregistered');
   }, []);
 
