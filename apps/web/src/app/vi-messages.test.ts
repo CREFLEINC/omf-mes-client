@@ -42,6 +42,18 @@ const TRANSLATED = [
   'save',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
+  /* #1114 — 기준정보 11화면. */
+  'commonCode',
+  'defectCauseCode',
+  'inspectionStandard',
+  'integrationSync',
+  'itemExtendedAttrs',
+  'judgmentCode',
+  'masterChange',
+  'putawayRule',
+  'routing',
+  'warehouseLayout',
+  'warehouseLocation',
 ] as const satisfies readonly (keyof Messages)[];
 
 const HANGUL = /[가-힣]/;

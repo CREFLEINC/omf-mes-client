@@ -223,6 +223,15 @@ export const inspectionStandard = {
     notApproved: '미승인',
     active: '사용',
     inactive: '미사용',
+    /*
+     * 검사 유형 3값의 선택지 이름. 약어만으로는 무엇을 가리키는지 읽히지 않아 풀어 쓴 말을 괄호에 담는다.
+     * 값 자체(IQC·PQC·OQC)는 계약이 정한 코드라 옮기지 않는다 — `screens/inspection-standard/code-options.ts`가 짝이다.
+     */
+    inspectionTypes: {
+      iqc: 'IQC (수입검사)',
+      pqc: 'PQC (공정검사)',
+      oqc: 'OQC (출하검사)',
+    },
     routingOption: (code: string, version: number): string => `${code} · Rev ${String(version)}`,
     version: (planVersion: number): string => `버전 ${String(planVersion)}`,
     draft: '작성중',

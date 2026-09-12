@@ -160,6 +160,122 @@
 | 확장속성 | thuộc tính mở rộng | |
 | 동기화 | đồng bộ | |
 
+## 관리웹 — 기준정보 (#1114)
+
+기준정보 11화면을 옮기며 정한 말이다. 다른 묶음이 같은 말을 만나면 여기를 본다.
+
+### 조직·거래처·사람
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 조직 | tổ chức | 탭 이름. 부서를 담는 묶음 |
+| 부서 | phòng ban | |
+| 상위 부서 · 뿌리 부서 | phòng ban cấp trên · phòng ban gốc | |
+| 계층 | phân cấp | 트리의 깊이 |
+| 최상위 · 하위 | cấp trên cùng · cấp dưới | |
+| 사업부 | đơn vị kinh doanh | 공장(`nhà máy`)과 구별한다 |
+| 거래처 | đối tác | 공급사(`nhà cung cấp`)보다 넓다 — 고객사·외주사도 담는다 |
+| 고객사 · 외주 제작사 | Khách hàng · Nhà gia công ngoài | 거래처 역할 |
+| 폐기 업체 | Đơn vị xử lý hủy | 거래처 역할. `hủy` 홀로 두면 취소 버튼으로 읽힌다 |
+| 작업자 | công nhân | 사용자(`người dùng`)와 구별한다 |
+| 성명 | họ tên | 사번(`mã nhân viên`)의 짝 |
+| 자격 · 인증 | chứng chỉ · chứng nhận | 자격 유형 `loại chứng chỉ` · 인증번호 `số chứng nhận` |
+| 계정 연결 | liên kết tài khoản | 연결됨 `Đã liên kết` · 연결 안 됨 `Chưa liên kết` |
+| 외부 시스템 · 원본 시스템 | hệ thống ngoài · hệ thống gốc | ERP 에서 받아 온 자료의 주인 |
+
+### 코드·마스터
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 코드값 | giá trị mã | 코드그룹(`nhóm mã`)의 짝 |
+| 원인코드 | mã nguyên nhân | 불량코드(`mã lỗi`)와 짝 |
+| 대분류 · 중분류 · 소분류 | cấp lớn · cấp vừa · cấp nhỏ | 불량·원인코드의 단 |
+| 매핑 부여 · 회수 | gán · thu hồi ánh xạ | 「매핑 = ánh xạ」에 붙는 동사 |
+| 임시 목록 | danh sách tạm | 코드 체계가 확정되기 전 |
+| 유효기간(효력 구간) | thời hạn hiệu lực | ⚠ LOT 의 유효기간(`hạn sử dụng`)과 **다른 말이다** |
+| 유효시작 · 유효종료 | Hiệu lực từ · Hiệu lực đến | 위 구간의 양끝 |
+| 정렬 순서 | thứ tự sắp xếp | |
+| 변경 사건 · 이력 번호 | sự kiện thay đổi · số lịch sử | 마스터 변경관리 |
+| 수행자 · 발생 시각 | người thực hiện · thời điểm phát sinh | |
+| 상관 식별자 | mã tương quan | 한 묶음의 변경을 잇는 값 |
+
+### 창고·적치
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 적치 규칙 | quy tắc cất hàng | |
+| 우선순위 | mức ưu tiên | 숫자 등급이라 `mức` |
+| 수용량 | sức chứa | 규칙·위치가 정한 상한 |
+| 현재 적재량 | lượng chứa hiện tại | 실측값. 위와 어근만 나눈다 |
+| 관리 수준 | mức quản lý | 창고가 Location 을 몇 단까지 두는지 |
+| 창고 전체 | toàn kho | 위치를 비운 규칙의 **확정된 뜻**이다 |
+| 규칙 없는 품목 | mặt hàng chưa có quy tắc | |
+| 중복 | trùng | 조합이 겹치는 것 |
+| 조합 | tổ hợp | 중복을 재는 축의 묶음 |
+| 창고유형 · 위치유형 | loại kho · loại vị trí | |
+| 외부창고 · 불량창고 | kho bên ngoài · kho hàng lỗi | |
+| 품질구역 · 보관조건 | khu vực chất lượng · điều kiện bảo quản | |
+| 혼적 | xếp lẫn | 품목·LOT 혼적 |
+| 도면 · 표식 | bản vẽ · điểm đánh dấu | 배치도(`sơ đồ bố trí`) 위에 올리는 것 |
+| 되돌리기 | hoàn tác | 취소(`Hủy`)와 구별한다 |
+| 회차 · 재발행 | lượt · phát hành lại | 라벨 발행 기록 |
+
+### 공정·검사
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 공정 마스터 · 공정 라인 | danh mục công đoạn · dòng công đoạn | |
+| 공정 유형 | loại công đoạn | |
+| 외주 공정 | công đoạn thuê ngoài | |
+| 표준 C/T · 표준 수율 | C/T tiêu chuẩn · tỷ lệ đạt tiêu chuẩn | |
+| 선후행 설정 | Thiết lập trước sau | |
+| 검사기준 · 검사 항목 | tiêu chuẩn kiểm tra · hạng mục kiểm tra | |
+| 검사 유형 · 검사 주기 · 검사 방법 | loại kiểm tra · chu kỳ kiểm tra · phương pháp kiểm tra | |
+| 공정검사 | kiểm tra công đoạn | PQC |
+| 검사장비 | thiết bị kiểm tra | 계측기(`thiết bị đo`)와 구별한다 |
+| 샘플링 | lấy mẫu | |
+| 상한 · 하한 | giới hạn trên · giới hạn dưới | |
+| 합격판정개수 · 불합격판정개수 | Số chấp nhận · Số bác bỏ | AQL 표의 Ac·Re. 「합격한 건수」가 아니다 |
+| 자동판정 | đánh giá tự động | |
+| 전 품목 공통 | Chung mọi mặt hàng | 품목을 비운 기준 |
+| 버전 | phiên bản | `Rev` 는 그대로 둔다 |
+| 작성중 · 확정 · 폐기(상태) | Đang soạn · Đã xác nhận · Đã hủy bỏ | 폐기는 취소(`Hủy`)와 갈라 뒷말을 붙인다 |
+
+### 품목 확장속성
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 자재 명세서 | BOM | 옮기지 않는다 |
+| 구성품 · 소요량 | thành phần · lượng cần | |
+| 스크랩률 | tỷ lệ hao hụt | 폐기(`hủy`)·불량(`lỗi`)과 겹쳐 읽히지 않게 갈랐다 |
+| 백플러시 | backflush | 옮기지 않는다 |
+| 단위 환산 | quy đổi đơn vị | 환산 전·후 `đơn vị trước/sau quy đổi` |
+| 기준 단위 | đơn vị cơ sở | |
+| 외부 코드 | mã ngoài | |
+| 확장 표시 | chỉ báo mở rộng | 켜진 확장 플래그를 내는 열 |
+| 유효기한(일) · 개봉 후 유효시간 | hạn sử dụng (ngày) · thời hạn sau khi mở (giờ) | |
+| 선출 정책 | chính sách thứ tự xuất | |
+| 입고검사 대상 | đối tượng kiểm tra nhập kho | |
+| 마이너스 재고 허용 | cho phép tồn kho âm | |
+| 시리얼 관리 유형 | loại quản lý serial | `serial` 은 옮기지 않는다 |
+| 개발품 | hàng phát triển | |
+
+### 연계·쪽 넘김
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 연계 · 연계 메시지 | liên kết · bản tin liên kết | |
+| 메시지 키 · 연계 종류 | khóa bản tin · loại liên kết | |
+| 재처리 | xử lý lại | 사람이 다시 보내는 것 |
+| 재시도 | thử lại | 서버가 스스로 다시 보내는 것. 위와 구별한다 |
+| 배치(일괄) | theo lô | |
+| 기간 시작 · 기간 종료 | bắt đầu kỳ · kết thúc kỳ | |
+| 쪽 이동 · 첫 쪽으로 | Chuyển trang · Về trang đầu | |
+| 이전 · 다음 | Trước · Sau | 쪽 넘김 |
+| 사용여부(라벨) · 사용·미사용(값) | Trạng thái sử dụng · Đang dùng · Ngừng dùng | 라벨과 값을 가른다 |
+| 사용 중지(동작) | Ngừng sử dụng | 위의 값과 가른다 |
+| 편집(열 머리글) | Chỉnh sửa | 수정(`Sửa`)과 구별한다 |
+
 ## 말투
 
 - **높임은 `-ạ` 를 붙이지 않는다.** 현장에서 빠르게 읽는 화면이라 짧게 둔다.

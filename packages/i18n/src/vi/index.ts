@@ -16,17 +16,24 @@ import { ko, type Messages } from '../ko';
 import type { Translated } from './translated';
 
 import { common } from './common';
+import { commonCode } from './common-code';
 import { conflict } from './conflict';
 import { dashboard } from './dashboard';
+import { defectCauseCode } from './defect-cause-code';
 import { deviceRegistration } from './device-registration';
 import { editability } from './editability';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
 import { inboundReceipt } from './inbound-receipt';
 import { inboundVariance } from './inbound-variance';
+import { inspectionStandard } from './inspection-standard';
+import { integrationSync } from './integration-sync';
 import { httpError } from './http-error';
 import { iqcSkipRequest } from './iqc-skip-request';
+import { itemExtendedAttrs } from './item-extended-attrs';
+import { judgmentCode } from './judgment-code';
 import { login } from './login';
+import { masterChange } from './master-change';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
@@ -37,8 +44,10 @@ import { physicalCount } from './physical-count';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
 import { putaway } from './putaway';
+import { putawayRule } from './putaway-rule';
 import { recycleEntry } from './recycle-entry';
 import { repairRoundtrip } from './repair-roundtrip';
+import { routing } from './routing';
 import { save } from './save';
 import { session } from './session';
 import { shellHome } from './shell-home';
@@ -47,13 +56,17 @@ import { shopfloorReceipt } from './shopfloor-receipt';
 import { stateLocked } from './state-locked';
 import { stockTransfer } from './stock-transfer';
 import { temporaryPutaway } from './temporary-putaway';
+import { warehouseLayout } from './warehouse-layout';
+import { warehouseLocation } from './warehouse-location';
 import { wipHandover } from './wip-handover';
 
 export const vi: Translated<Messages> = {
   ...ko,
   common,
+  commonCode,
   conflict,
   dashboard,
+  defectCauseCode,
   deviceRegistration,
   editability,
   equipmentFailureReport,
@@ -61,8 +74,13 @@ export const vi: Translated<Messages> = {
   httpError,
   inboundReceipt,
   inboundVariance,
+  inspectionStandard,
+  integrationSync,
   iqcSkipRequest,
+  itemExtendedAttrs,
+  judgmentCode,
   login,
+  masterChange,
   materialLocation,
   materialLotScan,
   materialPicking,
@@ -73,8 +91,10 @@ export const vi: Translated<Messages> = {
   productPicking,
   productReceipt,
   putaway,
+  putawayRule,
   recycleEntry,
   repairRoundtrip,
+  routing,
   save,
   session,
   shellHome,
@@ -83,5 +103,7 @@ export const vi: Translated<Messages> = {
   stateLocked,
   stockTransfer,
   temporaryPutaway,
+  warehouseLayout,
+  warehouseLocation,
   wipHandover,
 };
