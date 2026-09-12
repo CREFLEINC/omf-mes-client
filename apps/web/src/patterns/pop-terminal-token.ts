@@ -151,6 +151,34 @@ export const writeTerminalToken = async (
   return true;
 };
 
+/**
+ * 보관된 토큰을 **버린다** — 서버가 그 토큰을 보고 「더는 못 쓴다」고 답했을 때만 부른다(#1137).
+ *
+ * ⛔ **못 물어본 것을 버리지 않는다.** 판정 여부는 부르는 쪽(`patterns/pop-registration`)이
+ *    가리고, 이 자리는 지우기만 한다 — 여기서 다시 판단하면 규칙이 두 곳에 생긴다.
+ *
+ * ⚠ **빈 값으로 덮어쓴다.** 셸의 보관 통로에는 지우는 문이 따로 없고(`deviceToken` 은
+ *   `get`·`set` 둘뿐), 읽는 쪽이 빈 문자열을 「없음」으로 본다(`readTerminalToken`). 통로를
+ *   넓히지 않고 같은 결과를 낸다.
+ *
+ * ⚠ **메모리 값을 먼저 비우지 않는다.** 보관에 실패했는데 메모리만 비우면, 껐다 켠 뒤 죽은
+ *   토큰이 되살아나 같은 화면이 다시 선다 — 지금 세션에서만 사라져 더 헷갈린다.
+ */
+export const discardStoredTerminalToken = async (): Promise<void> => {
+  const pop = bridge();
+
+  if (pop !== null) {
+    try {
+      await pop.deviceToken.set('');
+    } catch {
+      /* 못 지웠으면 다음 기동에서 같은 길을 다시 지난다 — 화면을 막을 일은 아니다. */
+    }
+  }
+
+  cached = null;
+  candidate = null;
+};
+
 /** 시험 전용 — 모듈에 남은 값을 지운다. 시험 사이에 토큰이 새지 않게 한다. */
 export const forgetTerminalToken = (): void => {
   cached = null;
