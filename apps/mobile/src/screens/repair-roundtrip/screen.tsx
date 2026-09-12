@@ -21,6 +21,7 @@ import { useScannedLot } from '../../patterns/lots';
 import { useDefectCodes, useItem, useUomCodes, type DefectCodeLabel } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -113,6 +114,8 @@ export const RepairRoundtripScreen = () => {
   const returnKey = useIdempotencyKey(`${String(executionId)}:${String(result)}`);
 
   const scanField = useScanField({
+    /* 끝낸 뒤에는 묻지 않는다. 이미 적혔으니 다음 LOT 을 읽는 것이 잃을 것이 없다. */
+    applied: done === null ? scanned : null,
     onScan: (value) => {
       setScanned(value);
       setScanSeq((seq) => seq + 1);
@@ -552,6 +555,8 @@ export const RepairRoundtripScreen = () => {
           </div>
         )}
       </section>
+
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

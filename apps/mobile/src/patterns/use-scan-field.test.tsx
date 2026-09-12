@@ -5,8 +5,16 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ScannerAdapter } from './scanner';
 import { useScanField } from './use-scan-field';
 
-const Probe = ({ onScan, scanner }: { onScan: (v: string) => void; scanner?: ScannerAdapter }) => {
-  const field = useScanField({ onScan, scanner });
+const Probe = ({
+  onScan,
+  scanner,
+  applied,
+}: {
+  onScan: (v: string) => void;
+  scanner?: ScannerAdapter;
+  applied?: string | null;
+}) => {
+  const field = useScanField({ onScan, scanner, applied });
   return (
     <>
       <input aria-label="스캔" ref={field.ref} />
@@ -19,6 +27,17 @@ const Probe = ({ onScan, scanner }: { onScan: (v: string) => void; scanner?: Sca
         찾기
       </button>
       <p>{field.manual ? '손 입력 중' : '스캔 대기'}</p>
+      {field.pending === null ? null : (
+        <>
+          <p>{`되물음 ${field.pending}`}</p>
+          <button type="button" onClick={field.acceptPending}>
+            바꾸기
+          </button>
+          <button type="button" onClick={field.dismissPending}>
+            그대로
+          </button>
+        </>
+      )}
     </>
   );
 };
@@ -249,4 +268,63 @@ describe('스캔 필드 결선', () => {
     expect(onScan).not.toHaveBeenCalled();
     expect(screen.getByLabelText('스캔')).toHaveValue('');
   });
+
+  it('이미 적용된 값이 있으면 바로 바꾸지 않고 되묻는다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} applied="SYN-LOT-0001" />);
+
+    await user.type(screen.getByLabelText('스캔'), 'SYN-LOT-0002{Enter}');
+
+    expect(onScan).not.toHaveBeenCalled();
+    expect(screen.getByText('되물음 SYN-LOT-0002')).toBeTruthy();
+  });
+
+  it('되물은 값을 받으면 그때 넘긴다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} applied="SYN-LOT-0001" />);
+
+    await user.type(screen.getByLabelText('스캔'), 'SYN-LOT-0002{Enter}');
+    await user.click(screen.getByRole('button', { name: '바꾸기' }));
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0002');
+    expect(screen.queryByText(/되물음/)).toBeNull();
+  });
+
+  it('되물은 값을 물리면 앞엣것이 남는다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} applied="SYN-LOT-0001" />);
+
+    await user.type(screen.getByLabelText('스캔'), 'SYN-LOT-0002{Enter}');
+    await user.click(screen.getByRole('button', { name: '그대로' }));
+
+    expect(onScan).not.toHaveBeenCalled();
+    expect(screen.queryByText(/되물음/)).toBeNull();
+  });
+
+  /** 같은 것을 다시 댄 것은 바꾸는 것이 아니다. 물어볼 것이 없다. */
+  it('같은 값을 다시 읽으면 묻지 않는다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} applied="SYN-LOT-0001" />);
+
+    await user.type(screen.getByLabelText('스캔'), 'SYN-LOT-0001{Enter}');
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0001');
+    expect(screen.queryByText(/되물음/)).toBeNull();
+  });
+
+  /** 적용된 것이 없으면 종전대로 바로 간다. 여러 건을 쌓는 화면이 그 자리다. */
+  it('적용된 값이 없으면 바로 넘긴다', async () => {
+    const user = userEvent.setup();
+    const onScan = vi.fn();
+    render(<Probe onScan={onScan} />);
+
+    await user.type(screen.getByLabelText('스캔'), 'SYN-LOT-0003{Enter}');
+
+    expect(onScan).toHaveBeenCalledWith('SYN-LOT-0003');
+  });
+
 });

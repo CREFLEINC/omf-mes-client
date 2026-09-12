@@ -7,6 +7,7 @@ import { useLocations } from '../../patterns/locations';
 import { useUomCodes } from '../../patterns/masters';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -65,7 +66,7 @@ export const RecycleEntryScreen = () => {
     patch({ itemCode: code });
   };
 
-  const scanField = useScanField({ onScan: take });
+  const scanField = useScanField({ onScan: take, applied: draft.itemCode });
 
   const rows = useItemsByCode(searching);
   const warehouses = useWarehouses();
@@ -349,6 +350,8 @@ export const RecycleEntryScreen = () => {
           </section>
         </>
       )}
+
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

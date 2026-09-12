@@ -5,6 +5,13 @@ import { createKeyboardWedgeScanner, type ScannerAdapter } from './scanner';
 export interface UseScanFieldOptions {
   onScan: (value: string) => void;
   scanner?: ScannerAdapter;
+  /**
+   * 지금 적용돼 있는 스캔값. 주면 다른 값을 읽었을 때 바로 바꾸지 않고 되묻는다.
+   *
+   * 스캔 하나가 대상을 정하는 화면에만 준다. 여러 건을 쌓는 화면에서는 재스캔이 정상
+   * 동작이라 물어보면 걸리적거린다.
+   */
+  applied?: string | null;
 }
 
 export interface ScanField {
@@ -16,20 +23,66 @@ export interface ScanField {
   openManual: () => void;
   /** 칸에 적힌 것을 스캔값과 같은 길로 넘긴다. */
   submitManual: () => void;
+  /** 되물을 새 스캔값. 물을 것이 없으면 null 이다. */
+  pending: string | null;
+  /** 지금 대상. 되묻는 창이 훅과 같은 값을 보도록 여기서 함께 낸다. */
+  applied: string | null;
+  /** 새로 읽은 값으로 바꾼다. */
+  acceptPending: () => void;
+  /** 앞엣것을 그대로 둔다. */
+  dismissPending: () => void;
 }
 
-export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanField => {
+export const useScanField = ({ onScan, scanner, applied }: UseScanFieldOptions): ScanField => {
   const fieldRef = useRef<HTMLInputElement | null>(null);
   const [manual, setManual] = useState(false);
   const detachRef = useRef<(() => void) | null>(null);
   const onScanRef = useRef(onScan);
   const adapterRef = useRef<ScannerAdapter | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const appliedRef = useRef<string | null | undefined>(applied);
 
   adapterRef.current ??= scanner ?? createKeyboardWedgeScanner();
 
   useEffect(() => {
     onScanRef.current = onScan;
   }, [onScan]);
+
+  useEffect(() => {
+    appliedRef.current = applied;
+  }, [applied]);
+
+  /*
+   * 스캔 한 건을 받는 자리. 이미 정해진 대상이 있고 다른 것을 읽었으면 바로 바꾸지 않는다.
+   *
+   * 옆 라벨을 스친 것인지 일부러 바꾼 것인지 화면은 모른다. 조용히 바뀌면 작업자는 앞엣것에
+   * 적는 줄 알고 다음 단계를 진행하고, 기록은 엉뚱한 대상에 남는다.
+   *
+   * 같은 값을 다시 댄 것은 바꾸는 것이 아니므로 묻지 않는다.
+   */
+  const take = useCallback((value: string) => {
+    const current = appliedRef.current;
+
+    if (current !== null && current !== undefined && current !== '' && current !== value) {
+      setPending(value);
+      return;
+    }
+
+    onScanRef.current(value);
+  }, []);
+
+  const acceptPending = useCallback(() => {
+    setPending((value) => {
+      if (value !== null) {
+        onScanRef.current(value);
+      }
+      return null;
+    });
+  }, []);
+
+  const dismissPending = useCallback(() => {
+    setPending(null);
+  }, []);
 
   const focus = useCallback(() => {
     fieldRef.current?.focus();
@@ -69,9 +122,9 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
     setKeyboard(false);
 
     if (value !== '') {
-      onScanRef.current(value);
+      take(value);
     }
-  }, [setKeyboard]);
+  }, [setKeyboard, take]);
 
   /*
    * 포커스가 갈 곳 없이 빠지면 스캐너가 밀어 넣는 입력이 유실되므로 되돌린다.
@@ -193,11 +246,11 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
           /* 스캔이 들어오면 손으로 치던 것은 접는다. 실물을 읽은 값이 이긴다. */
           setManual(false);
           node.inputMode = 'none';
-          onScanRef.current(value);
+          take(value);
         }) ?? null;
       node.focus();
     },
-    [handleBlur],
+    [handleBlur, take],
   );
 
   useEffect(() => {
@@ -207,5 +260,15 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
     };
   }, [handleBlur]);
 
-  return { ref, focus, manual, openManual, submitManual };
+  return {
+    ref,
+    focus,
+    manual,
+    openManual,
+    submitManual,
+    pending,
+    applied: applied ?? null,
+    acceptPending,
+    dismissPending,
+  };
 };

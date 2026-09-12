@@ -189,6 +189,8 @@ beforeEach(() => {
   held.failWrite = null;
 });
 
+const OTHER_LOT_NO = '7770001118880002229901015554440099';
+
 describe('입하 등록 화면', () => {
   /*
    * 번호 앞 아홉 자리가 제품코드다. 그것으로 품목을 찾으면 후보를 좁힐 수 있고,
@@ -1062,4 +1064,35 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
 
     expect(seen).toHaveLength(0);
   });
+  /*
+   * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 다음 단계로 넘어간다.
+   */
+  it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await screen.findByText(`공급사 LOT ${SCANNED}`);
+
+    scan(OTHER_LOT_NO);
+
+    /* 제목은 창이 닫혀도 DOM 에 남는다. 닿을 수 있는 단추로 열렸는지를 잰다. */
+    expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
+    /* 묻는 동안에는 아직 바뀌지 않는다. */
+    expect(screen.queryByText(`공급사 LOT ${OTHER_LOT_NO}`)).toBeNull();
+  });
+
+  it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await screen.findByText(`공급사 LOT ${SCANNED}`);
+    scan(OTHER_LOT_NO);
+
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    expect(await screen.findByText(`공급사 LOT ${OTHER_LOT_NO}`)).toBeTruthy();
+  });
+
 });

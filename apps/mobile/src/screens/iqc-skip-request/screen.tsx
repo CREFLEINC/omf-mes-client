@@ -10,6 +10,7 @@ import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useOutbox } from '../../patterns/outbox';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -94,7 +95,7 @@ export const IqcSkipRequestScreen = () => {
   const [noRoute, setNoRoute] = useState(false);
   const reasonSection = useRef<HTMLDivElement | null>(null);
 
-  const scanField = useScanField({ onScan: setScanned });
+  const scanField = useScanField({ onScan: setScanned, applied: scanned });
 
   const lot = useScannedLot(scanned);
   const found = lot.data ?? null;
@@ -324,6 +325,8 @@ export const IqcSkipRequestScreen = () => {
           <MyRequests requests={mine.data} statuses={statuses.data ?? []} />
         )}
       </section>
+
+      <ScanReplaceDialog field={scanField} format={formatMaterialLotNo} />
     </div>
   );
 };

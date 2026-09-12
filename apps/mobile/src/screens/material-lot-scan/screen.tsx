@@ -10,6 +10,7 @@ import { currentPlantId } from '../../patterns/plant';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -100,6 +101,7 @@ export const MaterialLotScanScreen = () => {
     canRegister(line, scanned, worker !== null, plantId, usedLotNos, filled, lineItemCode);
 
   const scanField = useScanField({
+    applied: scanned.trim(),
     onScan: (value) => {
       const taken = value.trim();
       setScanned(taken);
@@ -398,6 +400,8 @@ export const MaterialLotScanScreen = () => {
           </div>
         </section>
       )}
+
+      <ScanReplaceDialog field={scanField} format={formatMaterialLotNo} />
     </div>
   );
 };
