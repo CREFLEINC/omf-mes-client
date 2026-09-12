@@ -93,14 +93,6 @@ export const DowntimeRegisterScreen = () => {
 
   const [draft, setDraft] = useState<DowntimeDraft>(EMPTY_DRAFT);
   const [savedNotice, setSavedNotice] = useState<string | null>(null);
-  /**
-   * 덜 채운 채로 저장을 눌렀을 때 하는 말(#1094).
-   *
-   * ⛔ **상시로 세우지 않는다.** 빈 화면을 붉은 글씨로 맞이하지 않는다는 종전 판단은 그대로다
-   *    — 다만 **꺼진 버튼만으로는 무엇이 모자란지 알 수 없었다**(88단계 2회차 실기). 그래서
-   *    버튼을 살리고 «누른 순간» 에만 말한다(사용자 확정 2026-09-12 · 본보기는 작업 중단).
-   */
-  const [blockedNotice, setBlockedNotice] = useState<string | null>(null);
 
   const outbox = useOutbox();
   const gate = useTerminalGate(terminalId, processId);
@@ -171,6 +163,23 @@ export const DowntimeRegisterScreen = () => {
   });
   const saveBlockReason = describeSaveBlock(block);
 
+  /**
+   * 저장이 «덜 차서» 잠겼다면 무엇이 모자란지(#1094).
+   *
+   * ⭐ **버튼이 잠겨 있어도 이유는 말한다.** 꺼진 버튼만으로는 무엇이 모자란지 알 수 없었던
+   *    것이 이 이슈의 출발점이다 — 88단계 2회차에서 작업자가 「수량 때문」이라 잘못 읽었다.
+   *
+   * ⛔ **아무것도 손대지 않은 화면은 조용히 맞이한다**(2026-09-07 판단). 한 칸이라도 건드린
+   *    뒤에야 말한다 — 빈 화면을 경고로 맞이하면 「늘 그런 것」으로 읽혀 정작 볼 때 안 본다.
+   */
+  const blockedNotice = ((): string | null => {
+    if (block !== null || isDraftEmpty(draft)) return null;
+    if (moments.started === null) return t.actions.needStarted;
+    if (reasonMissing) return t.actions.needReason;
+
+    return null;
+  })();
+
   /*
    * 오류를 언제 보일지 갈래가 둘이다.
    *
@@ -204,27 +213,9 @@ export const DowntimeRegisterScreen = () => {
   const save = (): void => {
     /* 앞 회차의 거부는 이 회차의 사실이 아니다 — 남겨 두면 방금 저장한 것이 거부된 것처럼 읽힌다. */
     outbox.clearRejections();
-    setBlockedNotice(null);
     if (block !== null || workerNo === null) return;
-
-    /*
-     * ⭐ **덜 채운 칸은 «무엇이» 모자란지 말한다**(#1094). 시작 시각이 먼저다 — 위에서
-     *    아래로 채우는 화면이라 먼저 비어 있는 칸을 가리켜야 작업자가 되돌아가지 않는다.
-     */
-    if (moments.started === null) {
-      setBlockedNotice(t.actions.needStarted);
-
-      return;
-    }
-
-    if (reasonMissing) {
-      setBlockedNotice(t.actions.needReason);
-
-      return;
-    }
-
-    /* 잘못 친 것은 칸 옆에 이미 서 있다 — 같은 말을 배너로 한 번 더 하지 않는다. */
-    if (hasIntervalError(intervalErrors)) return;
+    /* 덜 채운 칸이 있으면 버튼이 이미 잠겨 있다 — 여기까지 오지 않는다. */
+    if (hasIntervalError(intervalErrors) || reasonMissing || moments.started === null) return;
 
     const body = toDowntimeCreate(equipmentId, draft);
     if (body === null) return;
@@ -430,12 +421,7 @@ export const DowntimeRegisterScreen = () => {
 
       {blockedNotice !== null && (
         <div className="banner-slot">
-          <AlertBanner
-            variant="warning"
-            onDismiss={() => {
-              setBlockedNotice(null);
-            }}
-          >
+          <AlertBanner className="downtime-notice" variant="warning">
             {blockedNotice}
           </AlertBanner>
         </div>
@@ -457,6 +443,7 @@ export const DowntimeRegisterScreen = () => {
       <ActionBar
         block={block}
         isEmpty={isDraftEmpty(draft)}
+        isIncomplete={moments.started === null || reasonMissing}
         /*
          * 스펙 §5-1 의 활성 조건은 **시작 시각 + 사유** 둘이다.
          *

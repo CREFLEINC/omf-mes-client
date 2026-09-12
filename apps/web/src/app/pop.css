@@ -4209,8 +4209,18 @@
  * DS 는 표식을 «제목 줄»에 맞추려고 위 여백 4px 을 준다. 제목 없이 한 줄만 내는 이 자리에서는
  * 그 여백이 그대로 어긋남이 된다 — 가운데로 세운 뒤에도 2px 이 남았다(실측).
  */
-.pop-ui .pop-material-lot-outcome > [class*='icon'] {
+.pop-ui .pop-material-lot-outcome > [class*='icon'],
+/*
+ * ⭐ **같은 어긋남이 POP 에서 세 번째다**(#1094 · 실기 2026-09-12). 제목 없이 한 줄만 내는
+ *    띠에서 DS 의 위 여백 4px 이 그대로 어긋남이 된다 — 비가동의 안내 띠도 같은 자리다.
+ * ⛔ 전역으로 걷지 않는다 — 제목이 있는 띠에서는 그 여백이 «맞다».
+ */
+.pop-ui .downtime-notice > [class*='icon'] {
   margin-block-start: 0;
+}
+
+.pop-ui .downtime-notice {
+  align-items: center;
 }
 
 /*

@@ -391,20 +391,40 @@ describe('DowntimeRegisterScreen — 저장', () => {
   });
 
   /**
-   * ⭐ **덜 찼다고 잠그지 않는다**(#1094 · 사용자 확정 2026-09-12).
+   * ⭐ **잠그되, 왜 잠겼는지는 말한다**(#1094 · 사용자 확인 2026-09-12 실화면).
    *
-   * 종전에는 시작 시각·사유가 차기 전까지 버튼을 잠갔다. 현장은 **꺼진 버튼을 보고 무엇이
-   * 모자란지 알지 못했고**, 88단계 2회차에서 실제로 「수량 때문」이라 잘못 읽었다. 이제
-   * 누를 수 있고, 누르면 **무엇이** 모자란지 말한다.
+   * 꺼진 버튼만으로는 무엇이 모자란지 알 수 없었던 것이 이 이슈의 출발점이다 — 88단계
+   * 2회차에서 작업자가 「수량 때문」이라 잘못 읽었다. 한 회차 동안 「잠그지 않고 누르면
+   * 말한다」로 갔다가, 실제 화면에서 **눌리는 붉은 버튼**이 「지금 저장된다」로 읽혀 되돌렸다.
    */
-  it('덜 찬 채로 눌러도 잠기지 않고, 시작 시각이 비었으면 그것을 말한다', async () => {
+  it('시작 시각과 사유가 차기 전에는 「실적 저장」이 잠긴다 (스펙 §5-1 활성 조건)', async () => {
     renderScreen(baseRoutes());
 
     await flush();
     const saveButton = screen.getByRole('button', { name: t.actions.save });
-    expect(saveButton).toBeEnabled();
+    expect(saveButton).toBeDisabled();
 
-    fireEvent.click(saveButton);
+    typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
+    expect(saveButton).toBeDisabled();
+
+    await chooseReason();
+    expect(saveButton).toBeEnabled();
+  });
+
+  it('⛔ 아무것도 손대지 않은 화면은 조용히 맞이한다 — 빈 화면을 경고로 맞이하지 않는다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
+
+    expect(screen.queryByText(t.actions.needStarted)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.actions.needReason)).not.toBeInTheDocument();
+  });
+
+  it('한 칸이라도 건드리면 무엇이 모자란지 말한다 — 사유를 고르면 시작 시각을 가리킨다', async () => {
+    renderScreen(baseRoutes());
+
+    await flush();
+    await chooseReason();
 
     expect(await screen.findByText(t.actions.needStarted)).toBeInTheDocument();
   });
@@ -414,31 +434,8 @@ describe('DowntimeRegisterScreen — 저장', () => {
 
     await flush();
     typeInterval(['2026-08-11', '14:20'], ['2026-08-11', '15:07']);
-    fireEvent.click(screen.getByRole('button', { name: t.actions.save }));
 
     expect(await screen.findByText(t.actions.needReason)).toBeInTheDocument();
-  });
-
-  it('⛔ 누르기 전에는 말하지 않는다 — 빈 화면을 경고로 맞이하지 않는다', async () => {
-    renderScreen(baseRoutes());
-
-    await flush();
-
-    expect(screen.queryByText(t.actions.needStarted)).not.toBeInTheDocument();
-    expect(screen.queryByText(t.actions.needReason)).not.toBeInTheDocument();
-  });
-
-  it('날짜만 치고 시각을 비우면 아직 「시작 시각」이 아니다 — 그 사실을 말한다', async () => {
-    renderScreen(baseRoutes());
-
-    await flush();
-    fireEvent.change(screen.getByLabelText(`${t.interval.startedAt} ${t.interval.date}`), {
-      target: { value: '2026-08-11' },
-    });
-    await chooseReason();
-    fireEvent.click(screen.getByRole('button', { name: t.actions.save }));
-
-    expect(await screen.findByText(t.actions.needStarted)).toBeInTheDocument();
   });
 
   it('아직 아무것도 적지 않았으면 「다시 입력」이 잠긴다 — 비울 것이 없다', async () => {

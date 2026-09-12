@@ -87,6 +87,8 @@ export interface ActionBarProps {
   block: SaveBlock;
   /** 아직 아무것도 적지 않았다 — 비울 것이 없으면 「다시 입력」을 잠근다. */
   isEmpty: boolean;
+  /** 시작 시각·사유가 아직 덜 찼는가. 잠그되 사유는 화면이 말한다(#1094). */
+  isIncomplete: boolean;
   /** 저장에 필요한 것이 덜 찼다 — **시작 시각과 사유**다(스펙 §5-1 활성 조건). */
   onReset: () => void;
   onSave: () => void;
@@ -98,7 +100,7 @@ export interface ActionBarProps {
  * ⛔ **「다시 입력」은 서버를 부르지 않는다.** 저장 전 화면 안의 초기화이고, 계약에 대응하는
  * 오퍼레이션이 없는 것도 그래서다.
  */
-export const ActionBar = ({ block, isEmpty, onReset, onSave }: ActionBarProps) => {
+export const ActionBar = ({ block, isEmpty, isIncomplete, onReset, onSave }: ActionBarProps) => {
   return (
     <div className="downtime-actions">
       {/*
@@ -123,15 +125,19 @@ export const ActionBar = ({ block, isEmpty, onReset, onSave }: ActionBarProps) =
       {/*
        * 큐에 담는 것이 곧 성공이라 「저장하는 중」이 없다 — 통신을 기다리지 않는다.
        *
-       * ⛔ **덜 찼다고 잠그지 않는다**(#1094 · 사용자 확정 2026-09-12). 종전에는 시작 시각·사유가
-       *    차기 전에 잠갔는데(§5-1 활성 조건), 현장은 **꺼진 버튼을 보고 무엇이 모자란지 알지
-       *    못했다** — 88단계 2회차에서 그 오해가 실제로 났다. 이제 누를 수 있고, 누르면
-       *    화면 머리에서 무엇이 모자란지 말한다.
+       * ⛔ **덜 차면 잠근다**(스펙 §5-1 활성 조건 · 사용자 확인 2026-09-12 실화면).
        *
-       * ⚠ **상주 사유는 여전히 두지 않는다.** 빈 화면을 붉은 글씨로 맞이하지 않는다는 종전
-       *    판단(2026-09-07)은 그대로다 — 바뀐 것은 「언제 말하는가」뿐이다.
+       * ⚠ 한 회차 동안 「잠그지 않고 누르면 말한다」로 갔다가 되돌렸다 — 실제 화면에서
+       *    **눌리는 붉은 버튼**이 「지금 저장된다」로 읽혔다. 잠그되, 종전과 달리 **왜 잠겼는지는
+       *    화면이 말한다**(`screen.tsx` 의 `blockedNotice`) — 꺼진 버튼만으로는 무엇이 모자란지
+       *    알 수 없었던 것이 이 이슈의 출발점이다.
        */}
-      <Button variant="filled" size="2xl" disabled={block !== null} onClick={onSave}>
+      <Button
+        variant="filled"
+        size="2xl"
+        disabled={block !== null || isIncomplete}
+        onClick={onSave}
+      >
         {t.actions.save}
       </Button>
     </div>
