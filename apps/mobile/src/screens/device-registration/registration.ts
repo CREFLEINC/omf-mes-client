@@ -4,11 +4,11 @@ import { useApiClient } from '../../patterns/api-context';
 import { useDeviceRegistration } from '../../patterns/device-registration';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
+import { rememberPlant } from '../../patterns/plant';
 import { createMlkitQrCamera, type QrCamera } from '../../patterns/qr-camera';
 import { readTerminalIdFromToken } from '../../patterns/token-claims';
-import { rememberPlant } from '../../patterns/plant';
-import { fetchTerminal, type RegisteredTerminal } from './terminal';
 import { fetchWorkerDirectory, saveWorkerDirectory } from './directory';
+import { fetchTerminal, type RegisteredTerminal } from './terminal';
 
 /**
  * 등록은 한 방향으로만 간다 — 카메라를 열고, 읽고, 서버가 받아 주는지 확인한다.
@@ -134,7 +134,14 @@ export const useRegistrationFlow = ({ camera }: RegistrationFlowOptions = {}): R
          * 작업자에게는 「비추고 있는데 아무 일도 안 일어난다」로만 보인다(#1103).
          */
         const stop = await qrCamera.open(accept, () => {
-          if (!cancelled) setPhase('unsupported');
+          if (cancelled) {
+            return;
+          }
+
+          /* 읽은 뒤와 같이 거둔다 — 남겨 두면 쓸 수 없다고 말해 놓고 카메라만 계속 돈다. */
+          void close?.().catch(() => undefined);
+          close = null;
+          setPhase('unsupported');
         });
 
         if (cancelled) {

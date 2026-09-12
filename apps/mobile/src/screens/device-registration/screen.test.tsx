@@ -386,6 +386,8 @@ describe('기기 등록 화면', () => {
     expect(
       await screen.findByText('이 기기에서 카메라 인식을 쓸 수 없습니다'),
     ).toBeInTheDocument();
+    /* 쓸 수 없다고 말해 놓고 카메라만 계속 돌면 배터리와 카메라 표시등이 그대로 남는다. */
+    expect(camera.closed()).toBe(1);
   });
 
   it('카메라 인식을 쓸 수 없으면 그렇게 말한다', async () => {
