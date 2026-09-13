@@ -229,6 +229,35 @@ describe('전송 실패한 기록 화면', () => {
     expect(valueOf(screen.getByRole('group', { name: '상세' }), '돌아온 문구')).toBe('없음');
   });
 
+  it('잠긴 상태의 문구가 전부 비어도 갈래별 문구로 대신한다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'stateLocked',
+          errors: [
+            { scope: 'field', field: 'a', code: 'locked', message: '' },
+            { scope: 'field', field: 'b', code: 'locked', message: '' },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    expect(await screen.findByText('지금 상태에서는 할 수 없는 일입니다.')).toBeInTheDocument();
+  });
+
+  /* 코드 칸도 빈 문자열이 도달한다 - 계약이 문자열이기만 하면 싣는다. */
+  it('오류 코드가 빈 문자열이면 없다고 적는다', async () => {
+    seed([record({ error: { kind: 'http', status: 500, code: '', message: '멈췄습니다' } })]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    expect(valueOf(screen.getByRole('group', { name: '상세' }), '오류 코드')).toBe('없음');
+  });
+
   /*
    * 앞 건이 못 가 붙을 곳이 없던 건은 상태 없는 오류를 달고 있다. 그 0 을 응답 코드로 내면
    * 담당자가 있지도 않은 코드를 찾는다.
