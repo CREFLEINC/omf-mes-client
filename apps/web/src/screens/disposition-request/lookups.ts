@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 import { SEVERITY_CODE_GROUP, type CodeOption } from './codes';
 import type { PageMeta } from './types';
@@ -91,7 +92,7 @@ export const useSeverityOptions = (): CodeOptionSource => {
 
       return data.items
         .filter((item) => item.isActive)
-        .map((item) => ({ value: item.code, label: nameOr(item.nameKo ?? item.codeName) }));
+        .map((item) => ({ value: item.code, label: nameOr(masterName(item, item.codeName)) }));
     },
   });
 
@@ -133,7 +134,7 @@ export const useDepartmentOptions = (): CodeOptionSource => {
         .filter((department) => department.isActive)
         .map((department) => ({
           value: String(department.departmentId),
-          label: nameOr(department.nameKo ?? department.departmentName),
+          label: nameOr(masterName(department, department.departmentName)),
         }));
     },
   });

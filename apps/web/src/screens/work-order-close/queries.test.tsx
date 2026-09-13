@@ -514,7 +514,9 @@ describe('work-order close lookups', () => {
         {
           code: 'SYN-CLOSED',
           codeName: 'Synthetic closed',
+          /* 두 언어를 함께 실어 나른다 — 표시명을 고르는 일은 `patterns/master-name.ts` 몫이다. */
           nameKo: null,
+          nameVi: null,
           displayOrder: 20,
           isActive: true,
         },

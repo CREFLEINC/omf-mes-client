@@ -1,4 +1,5 @@
 import type { NavEntry, NavGroup } from './nav-tree';
+import { localizedLabel } from './shell-label';
 
 /**
  * 사이드바 화면 검색 — **이름으로만 찾는다**(#1079).
@@ -14,9 +15,15 @@ import type { NavEntry, NavGroup } from './nav-tree';
  */
 const normalize = (value: string): string => value.trim().toLowerCase();
 
-/** 이 항목이 검색어에 걸리는가. 비교하는 것은 **이름 하나**다. */
+/**
+ * 이 항목이 검색어에 걸리는가. 비교하는 것은 **이름 하나**다.
+ *
+ * ⭐ **보이는 이름으로 잰다**(#1113). 두 언어를 다 보면 베트남어 화면에서 한국어를 쳐도 걸리는데,
+ * 그러면 **화면에 없는 글자가 결과를 만든다** — 걸린 까닭을 화면에서 읽을 수 없다. 반대로 늘
+ * 한국어로만 재면 베트남어 화면의 검색이 통째로 죽는다.
+ */
 const matches = (entry: NavEntry, needle: string): boolean =>
-  normalize(entry.label).includes(needle);
+  normalize(localizedLabel(entry)).includes(needle);
 
 /**
  * 검색어에 맞는 항목만 남긴 묶음 목록. **맞는 항목이 없는 묶음은 빠진다.**

@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import type { LookupEntry, LookupSource } from '../../patterns/lookup-display';
+import { masterName } from '../../patterns/master-name';
 import { runRequest } from '../../patterns/request';
 
 /**
@@ -10,8 +11,9 @@ import { runRequest } from '../../patterns/request';
  * `SHIPMENT_STATUS`(미확정·확정·취소 · 시스템 값)가 준다(G-32). 코드 문자열을 사용자에게
  * 그대로 보이지 않기 위한 조회다.
  *
- * 표시명은 다국어 컬럼(`nameKo`)이 먼저, 기본 이름(`codeName`)이 fallback(G-33). 로케일 스위치가
- * 아직 없어 한국어만 본다. 모르는 코드는 코드를 그대로 보인다 — 뜻을 지어내지 않는다(G-9).
+ * 표시명은 고른 언어의 다국어 컬럼(`nameKo`·`nameVi`)이 먼저, 기본 이름(`codeName`)이
+ * fallback(G-33) — 고르는 일은 `patterns/master-name.ts` 가 한다. 모르는 코드는 코드를 그대로
+ * 보인다 — 뜻을 지어내지 않는다(G-9).
  *
  * 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
@@ -19,12 +21,12 @@ export const SHIPMENT_STATUS_CODE_GROUP = 'SHIPMENT_STATUS';
 
 const EMPTY_ENTRIES: LookupEntry[] = [];
 
-const nameOf = (value: { code: string; codeName: string; nameKo?: string | null }): string => {
-  const localized = (value.nameKo ?? '').trim();
-  if (localized !== '') return localized;
-  const base = value.codeName.trim();
-  return base === '' ? value.code : base;
-};
+const nameOf = (value: {
+  code: string;
+  codeName: string;
+  nameKo?: string | null;
+  nameVi?: string | null;
+}): string => masterName(value, value.codeName.trim() || value.code);
 
 export const useShipmentStatusLookup = (): LookupSource => {
   const { client } = useApiClient();
