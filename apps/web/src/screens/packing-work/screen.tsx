@@ -190,6 +190,13 @@ export const PackingWorkScreen = () => {
   /** 목록에서 골랐거나 스캔으로 잡힌 대상. 담기는 이 값이 있어야 열린다. */
   const selectLot = (lot: Lot): void => {
     setSelectedLot(lot);
+    /*
+     * ⛔ **대상이 바뀌면 수량을 비운다.** 단위가 소수를 받는 LOT 에서 `1.5` 를 넣고 개수
+     *    단위 LOT 으로 옮기면, 소수점 «키»만 사라지고 **값은 그대로 남아** 그대로 담긴다 —
+     *    소수점 키를 단위로 가른 뜻이 그 자리에서 새어 나간다(리뷰 지적).
+     */
+    setQuantity('');
+    setQuantityError(null);
     setScanError(null);
   };
 
@@ -230,10 +237,29 @@ export const PackingWorkScreen = () => {
    */
   const addBlockedReason = ((): string | null => {
     if (entryBlockedReason !== null) return entryBlockedReason;
+    /*
+     * ⭐ **확정을 마친 포장에는 담기지 않는다**(#1094 · 88단계 2회차 실기).
+     *
+     * ⛔ **이 판정이 수량보다 «먼저» 서야 한다.** 종전에는 이 갈래가 아예 없어, 확정 뒤에
+     *    담기를 누르면 아래 수량 검사에 먼저 걸려 **「수량을 넣으십시오」**가 떴다 — 수량을
+     *    채워 넣어도 열리지 않으니 작업자는 고장으로 읽는다. 막힌 이유와 다른 말을 하는 것이
+     *    말하지 않는 것보다 나쁘다.
+     */
+    if (packed) return t.confirm.blockedPacked;
     if (draft.handlingUnit === null && !outbox.isOnline) return t.unit.offlineStartBlocked;
 
     return null;
   })();
+
+  /**
+   * 화면 «위 띠»가 이미 말하고 있는 사유는 아래에서 되풀이하지 않는다(사용자 지적 2026-09-12).
+   *
+   * ⛔ **잠그는 것과 말하는 것은 다른 축이다** — 사유가 사라져도 잠금은 그대로다. 진입 인자가
+   * 없다는 한 문장이 머리 띠·좌단·우단 세 곳에 동시에 서 있었고, 그러면 정작 다른 사유가
+   * 떴을 때 그것이 눈에 띄지 않는다.
+   */
+  const noteUnlessBanner = (reason: string | null): string | null =>
+    reason === null || reason === entryBlockedReason ? null : reason;
 
   const add = (): void => {
     /* ⛔ 포장 단위를 만드는 동안 다시 누르지 않는다 — 빈 포장이 두 개 생긴다. */
@@ -559,9 +585,11 @@ export const PackingWorkScreen = () => {
             onQuantityChange={setQuantity}
             onScan={scan}
             onAdd={add}
-            blockedReason={addBlockedReason}
+            isBlocked={addBlockedReason !== null}
+            blockedNote={noteUnlessBanner(addBlockedReason)}
             scanError={scanError}
             quantityError={quantityError}
+            allowsDecimal={labels.allowsDecimal(selectedLot?.uomId ?? null)}
             addedCount={addedCount}
           />
 
@@ -613,7 +641,7 @@ export const PackingWorkScreen = () => {
             isDiscarding={discard.isSaving}
             onDiscard={discardUnit}
             labels={labels}
-            blockedReason={confirmBlockedReason}
+            blockedReason={noteUnlessBanner(confirmBlockedReason)}
             canConfirm={canConfirm}
             isConfirming={pack.isSaving}
           />

@@ -176,6 +176,8 @@ afterEach(() => {
   setOnline(true);
 });
 
+const OTHER_LOT_NO = 'PLOT-2026-0805-0099-D';
+
 describe('수리 왕복 스캔 화면', () => {
   /* 앞쪽이 서버에 없으면 반출이 붙을 곳이 없다. 담아 두는 길을 두지 않는다. */
   it('연결이 없으면 진입을 막고 스캔 자리를 열지 않는다', async () => {
@@ -192,7 +194,7 @@ describe('수리 왕복 스캔 화면', () => {
     await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
-    expect(await screen.findByText('불량 판정된 LOT이 아닙니다')).toBeTruthy();
+    expect(await screen.findByText(/불량 판정된 LOT이 아닙니다 — 읽은 값 /)).toBeTruthy();
     expect(screen.getByText('최근 180일 안에서 찾았습니다')).toBeTruthy();
   });
 
@@ -206,7 +208,7 @@ describe('수리 왕복 스캔 화면', () => {
     expect(
       await screen.findByText('불량 기록을 확인할 수 없습니다. 연결을 확인한 뒤 다시 스캔하세요.'),
     ).toBeTruthy();
-    expect(screen.queryByText('불량 판정된 LOT이 아닙니다')).toBeNull();
+    expect(screen.queryByText(/불량 판정된 LOT이 아닙니다 — 읽은 값 /)).toBeNull();
   });
 
   it('불량을 찾으면 LOT과 품목과 불량 수량을 보인다', async () => {
@@ -997,7 +999,7 @@ describe('수리 왕복 스캔 화면', () => {
     await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
-    await screen.findByText('불량 판정된 LOT이 아닙니다');
+    await screen.findByText(/불량 판정된 LOT이 아닙니다 — 읽은 값 /);
     expect(tone.played).toBeGreaterThan(0);
   });
 
@@ -1055,4 +1057,35 @@ describe('수리 왕복 스캔 화면', () => {
 
     expect(await screen.findByText('불량 코드를 확인할 수 없습니다')).toBeTruthy();
   });
+  /*
+   * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 다음 단계로 넘어간다.
+   */
+  it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
+    mount();
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+
+    scan(OTHER_LOT_NO);
+
+    /* 제목은 창이 닫혀도 DOM 에 남는다. 닿을 수 있는 단추로 열렸는지를 잰다. */
+    expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
+    expect(screen.queryAllByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`)).toHaveLength(0);
+  });
+
+  it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/불량 LOT 스캔/);
+    scan(SCANNED);
+    await screen.findByText('불량 40 EA');
+    scan(OTHER_LOT_NO);
+
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    /* 투입과 반납 두 갈래에 같은 카드가 선다. 몇 개인지가 아니라 섰는지를 잰다. */
+    expect(await screen.findAllByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`)).not.toHaveLength(0);
+  });
+
 });

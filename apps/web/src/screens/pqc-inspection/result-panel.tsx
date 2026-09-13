@@ -96,6 +96,13 @@ export interface ResultPanelProps {
    */
   padField: PadTarget | null;
   onPadFieldChange: (target: PadTarget | null) => void;
+  /**
+   * 확정된 회차인가. **잠기면 수량도 판정도 처분도 받지 않는다**(#1146 ③).
+   *
+   * ⛔ **띠 하나로 끝내지 않는다.** 「고칠 수 없습니다」라고 적어 둔 옆에서 값이 그대로
+   * 바뀌면, 검사자는 다시 채워 넣고 저장됐다고 믿는다 — 저장이 막혀 아무것도 안 남는다.
+   */
+  isLocked: boolean;
 }
 
 /** 계약이 짚어 줄 수 있는 칸 이름 ↔ 화면의 초안 칸. */
@@ -136,6 +143,7 @@ export const ResultPanel = ({
   onPadFieldChange,
   disposition,
   onDispositionChange,
+  isLocked,
 }: ResultPanelProps) => {
   const judgmentId = useId();
   const dispositionName = useId();
@@ -176,8 +184,16 @@ export const ResultPanel = ({
    */
   const withUnit = (value: string): string => (uomCode === null ? value : `${value} ${uomCode}`);
 
+  /*
+   * ⛔ **확정된 회차에는 잔여를 말하지 않는다**(#1146 ①). 이 화면은 확정한 «값»을 되읽지
+   * 않으므로(요구서 §3-7 — 부르는 경로가 셋뿐이다) 다시 열면 칸이 비어 있고, 그 빈 칸으로
+   * 잰 잔여가 「120 EA 남았습니다」로 선다. **끝난 검사가 아직 안 끝난 것처럼 읽힌다.**
+   *
+   * ⛔ 대신 다른 문장을 세우지 않는다 — 확정됐다는 사실은 띠가 이미 «한 번» 말한다.
+   *    여기에 한 줄을 더하면 같은 사실이 무게가 다른 문장 둘로 갈라진다.
+   */
   const totalsNote =
-    totals.kind === 'uncountable'
+    isLocked || totals.kind === 'uncountable'
       ? null
       : totals.matches
         ? t.matched
@@ -204,7 +220,7 @@ export const ResultPanel = ({
       trailingIcon={uomSuffix}
       inputMode="decimal"
       value={draft[key]}
-      disabled={false}
+      disabled={isLocked}
       /* 서버가 짚어 준 것을 먼저 낸다 — 그쪽이 이 값에 대해 더 아는 쪽이다. */
       error={serverErrorOf(key) ?? (showErrors && invalid ? t.quantityInvalid : undefined)}
       /*
@@ -246,6 +262,7 @@ export const ResultPanel = ({
             fullWidth
             aria-label={`${label} ${tCoverage.date}`}
             value={parts.date}
+            disabled={isLocked}
             error={error === undefined ? undefined : ' '}
             onChange={(event) => setPart('date', event.target.value)}
           />
@@ -255,6 +272,7 @@ export const ResultPanel = ({
             fullWidth
             aria-label={`${label} ${tCoverage.time}`}
             value={parts.time}
+            disabled={isLocked}
             error={error === undefined ? undefined : ' '}
             onChange={(event) => setPart('time', event.target.value)}
           />
@@ -283,7 +301,7 @@ export const ResultPanel = ({
         trailingIcon={uomSuffix}
         inputMode="decimal"
         value={inspectedDraft}
-        disabled={false}
+        disabled={isLocked}
         error={showErrors && inspectedInvalid ? t.quantityInvalid : undefined}
         onClick={() => setPadField({ key: 'inspected', label: t.fields.inspectedQty })}
         onChange={(event) => onInspectedChange(event.target.value)}
@@ -371,7 +389,7 @@ export const ResultPanel = ({
             placeholder={
               judgmentOptions.length === 0 ? t.judgmentUnavailable : t.judgmentPlaceholder
             }
-            disabled={judgmentOptions.length === 0}
+            disabled={isLocked || judgmentOptions.length === 0}
             onChange={onJudgmentChange}
           />
           {/*
@@ -404,7 +422,7 @@ export const ResultPanel = ({
             className="pqc-disposition"
             name={dispositionName}
             value={disposition ?? ''}
-            disabled={!canChoose}
+            disabled={isLocked || !canChoose}
             aria-labelledby={dispositionLabelId}
             onChange={(value) => onDispositionChange(value === '' ? null : toDisposition(value))}
           >

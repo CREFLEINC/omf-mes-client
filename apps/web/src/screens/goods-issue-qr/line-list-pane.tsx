@@ -99,7 +99,13 @@ export const LineListPane = ({
     {
       key: 'qty',
       header: t.lines.columnQty,
-      width: '112px',
+      /*
+       * ⚠ **품목·LOT 이 쓸 폭을 먼저 남긴다**(#1150). 표가 `table-layout: fixed` 라(`pop.css`
+       *    `.pop-giqr-lines`) 여기 적은 폭은 지시값이고, 폭을 안 적은 품목·LOT 은 «남는 폭»을
+       *    나눠 갖는다. 수량 112 · 발행 132 로 두었을 때 1024 단말에서 둘이 58px 씩만 받아
+       *    글자가 한 자씩 세로로 늘어섰다(실측 · 88단계 3회차). 「12,000 BOX」가 두 줄로 서는 폭.
+       */
+      width: '88px',
       align: 'center',
       render: (row) =>
         `${row.line.issueQty.toLocaleString('ko-KR')} ${lookupDisplayLabel(uomNames, row.line.uomId)}`,
@@ -109,10 +115,13 @@ export const LineListPane = ({
        * ⚠ **폭을 고정한다.** 이 칸의 문구는 「미발행」(3자)부터 「발행 현황 확인 불가」(10자)까지
        * 길이가 갈리는데, 폭을 안 주면 긴 문구가 들어온 순간 칸이 세로로 눌려 **품목·LOT 이 쓸
        * 폭까지 가져간다**(실측으로 네 줄로 접혔다).
+       *
+       * ⚠ 긴 문구에 맞춰 넓히지 않는다(#1150) — 드문 「확인 불가」 하나 때문에 늘 품목·LOT 이
+       *    좁아진다. 긴 문구는 칩 안에서 접힌다(`pop.css`).
        */
       key: 'status',
       header: t.lines.columnStatus,
-      width: '132px',
+      width: '92px',
       align: 'center',
       render: (row) => (
         <Chip variant="status" size="md" status={STATUS_TONE[row.status.kind]}>

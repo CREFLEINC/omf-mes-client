@@ -4,6 +4,8 @@
  * 이 파일은 이 화면이 소유한다 — 다른 화면 슬라이스의 같은 이름 파일을 참조하지 않는다.
  */
 
+import { messages } from '@omf-mes/i18n';
+
 const pad = (value: number, length: number): string => String(value).padStart(length, '0');
 
 /** 계약이 준 시각 글자를 `HH:MM`으로. 읽을 수 없으면 `null`이다 — 깨진 글자를 시각인 척 보이지 않는다. */
@@ -19,9 +21,15 @@ export const toClockLabel = (isoText: string): string | null => {
  *
  * ⚠ **1분짜리도 그대로 보인다.** 짧은 정지를 걸러 내는 것은 집계 화면 소관이고, 이 화면은
  * 들어온 것을 그대로 적는다 — 잦다는 것 자체가 신호다.
+ *
+ * ⛔ **음수를 「0분」으로 적지 않는다**(#1094 · 88단계 2회차 실기). 종료가 시작보다 빠른 줄은
+ *    **길이가 0 인 것이 아니라 구간이 뒤집힌 것**이고, 0 으로 적으면 「아주 짧았다」로 읽혀
+ *    아무도 고치지 않는다. 그 사실이 보여야 사람이 그 줄을 손본다.
  */
 export const toDurationLabel = (minutes: number): string => {
-  const whole = Math.max(0, Math.trunc(minutes));
+  if (minutes < 0) return messages.downtimeRegister.today.durationInvalid;
+
+  const whole = Math.trunc(minutes);
   const hours = Math.floor(whole / 60);
   const rest = whole % 60;
 

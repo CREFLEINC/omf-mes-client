@@ -579,9 +579,13 @@ export const ReworkResultRegisterScreen = () => {
                 {verdict === 'partial' && (
                   <AlertBanner variant="warning">{t.partial(remaining)}</AlertBanner>
                 )}
-                {queued && <AlertBanner variant="success">{t.queued}</AlertBanner>}
-                {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
-                {rejected && <AlertBanner variant="error">{t.rejected}</AlertBanner>}
+                {/*
+                 * ⛔ **쓰기의 결과는 여기에 두지 않는다** — 본문은 한 겹으로 스크롤하고 이
+                 *    카드가 그 «끝»이라, 「저장했습니다」가 스크롤 맨 아래에 서서 1024×768
+                 *    에서는 보이지 않았다. 작업자는 저장된 줄 모르고 **한 번 더 저장한다**
+                 *    (88단계 2회차 실측 · #1092). 결과는 아래 액션바에 선다 — 다른 POP
+                 *    화면이 결과를 세우는 자리와 같다(전례 `P-02-13`·`P-04-01`).
+                 */}
               </section>
             </Card.Body>
           </Card>
@@ -598,7 +602,17 @@ export const ReworkResultRegisterScreen = () => {
        * ⭐ **고르기 전에도 자리를 지킨다** — 조작이 사라졌다 나타나면 본문이 그만큼 움직인다.
        */}
       <div className="pop-action-bar">
-        <div className="pop-action-note">{gateReason && <p>{gateReason}</p>}</div>
+        <div className="pop-action-note">
+          {/*
+           * ⭐ **쓰기의 결과는 «늘 보이는» 자리에 선다.** 액션바는 화면 바닥에 붙어 스크롤과
+           *    무관하므로, 저장한 사실이 스크롤에 묻히지 않는다 — 그것이 묻히면 같은 실적이
+           *    두 번 저장된다(#1092).
+           */}
+          {queued && <AlertBanner variant="success">{t.queued}</AlertBanner>}
+          {queueError && <AlertBanner variant="error">{t.queueError}</AlertBanner>}
+          {rejected && <AlertBanner variant="error">{t.rejected}</AlertBanner>}
+          {gateReason && <p>{gateReason}</p>}
+        </div>
         <Button size="2xl" variant="outlined" disabled={!hasSomethingToReset} onClick={reset}>
           {t.reset}
         </Button>

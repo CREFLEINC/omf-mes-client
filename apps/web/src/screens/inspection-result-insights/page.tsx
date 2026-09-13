@@ -1,4 +1,5 @@
 import { AlertBanner, Breadcrumb, Button, PageHeader, SkeletonText } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useNavigate } from 'react-router';
 
 import {
@@ -8,6 +9,8 @@ import {
   useOverallJudgmentLookup,
 } from './lookups';
 import { InspectionResultInsightsScreen } from './screen';
+
+const t = messages.inspectionResultInsights;
 
 export const InspectionResultInsightsPage = () => {
   const navigate = useNavigate();
@@ -22,13 +25,11 @@ export const InspectionResultInsightsPage = () => {
   return (
     <div className="screen inspection-results-screen">
       <PageHeader
-        title="검사실적·검사결과 조회"
-        breadcrumb={
-          <Breadcrumb items={[{ label: '품질관리' }, { label: '검사실적·검사결과 조회' }]} />
-        }
+        title={t.title}
+        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
       {all.some((lookup) => lookup.isLoading) && (
-        <div role="status" aria-label="검사 조회 조건을 준비하는 중">
+        <div role="status" aria-label={t.page.preparing}>
           <SkeletonText lines={1} />
         </div>
       )}
@@ -36,24 +37,24 @@ export const InspectionResultInsightsPage = () => {
         <div className="banner-slot">
           <AlertBanner
             variant="error"
-            title="일부 조회 조건 이름을 불러오지 못했습니다."
+            title={t.page.lookupFailed}
             action={
               <Button
                 size="sm"
                 variant="outlined"
                 onClick={() => failed.forEach((lookup) => lookup.refetch())}
               >
-                실패한 조건 다시 시도
+                {t.page.lookupRetry}
               </Button>
             }
           >
-            내부 번호나 코드를 대신 표시하지 않습니다.
+            {t.page.lookupFailedDetail}
           </AlertBanner>
         </div>
       )}
       {all.some((lookup) => lookup.truncated) && (
         <div className="banner-slot">
-          <AlertBanner variant="warning">조회 조건 목록 일부만 표시됩니다.</AlertBanner>
+          <AlertBanner variant="warning">{t.page.lookupTruncated}</AlertBanner>
         </div>
       )}
       <InspectionResultInsightsScreen

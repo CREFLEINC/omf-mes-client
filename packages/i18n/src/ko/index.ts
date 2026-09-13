@@ -133,6 +133,8 @@ import { workHoldRegister } from './work-hold-register';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stockTransfer } from './stock-transfer';
 import { physicalCount } from './physical-count';
+import { lotStatusHistory } from './lot-status-history';
+import { inspectionResultInsights } from './inspection-result-insights';
 import { productDisposalRequest } from './product-disposal-request';
 
 export const ko = {
@@ -256,6 +258,8 @@ export const ko = {
   stockTransfer,
   physicalCount,
   productDisposalRequest,
+  lotStatusHistory,
+  inspectionResultInsights,
 } as const;
 
 export type Messages = typeof ko;

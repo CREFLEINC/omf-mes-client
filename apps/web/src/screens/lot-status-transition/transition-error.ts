@@ -1,6 +1,7 @@
 import type { ApiError } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 
-const STALE_FALLBACK = 'LOT 정보가 변경되었습니다. 최신 정보를 불러온 뒤 다시 확인하세요.';
+const t = messages.lotStatusTransition.stale;
 
 export const isTransitionStale = (error: ApiError | null): boolean =>
   error?.kind === 'conflict' ||
@@ -14,12 +15,12 @@ export const transitionStaleMessage = (
     (error?.kind === 'conflict' || error?.kind === 'http') &&
     error.currentLotStatusCode !== undefined
   ) {
-    return `LOT 정보가 변경되었습니다. 현재 상태는 ${statusLabel(error.currentLotStatusCode)}입니다. 최신 정보를 불러온 뒤 다시 확인하세요.`;
+    return t.withStatus(statusLabel(error.currentLotStatusCode));
   }
 
   return (error?.kind === 'conflict' || error?.kind === 'http') &&
     error.message !== undefined &&
     error.message.trim() !== ''
     ? error.message
-    : STALE_FALLBACK;
+    : t.fallback;
 };

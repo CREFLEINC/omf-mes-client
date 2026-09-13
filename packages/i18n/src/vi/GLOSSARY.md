@@ -196,6 +196,243 @@
 | 매핑 | ánh xạ | |
 | 확장속성 | thuộc tính mở rộng | |
 | 동기화 | đồng bộ | |
+| 상신 | trình | 결재에 올리는 일. 상신자는 `người trình` |
+| 반려 | từ chối | 승인(`phê duyệt`)의 반대쪽 |
+| 결재 의견 | ý kiến phê duyệt | 결재하며 남기는 말 |
+| 결재 단계 | bước phê duyệt | 결재선 안의 한 칸 |
+| 전기 | ghi sổ | 장부에 올리는 일. 승인은 이것을 하지 않는다 |
+| 공지 | thông cáo | 게시하는 글. 알림(`thông báo`)과 구별한다 |
+| 전달 | truyền đạt | 공지·전달 화면의 뒷말 |
+| 게시 | đăng | 공지를 올려 두는 일. 게시 중은 `Đang đăng` |
+| 읽음 · 안 읽음 | Đã xem · Chưa xem | 알림의 읽은 표시(#1113 대시보드와 같은 말) |
+| 확인 (공지) | xác nhận | 읽었다고 사람이 눌러 남기는 이력. 읽음과 다른 일이다 |
+| 대상 범위 | phạm vi đối tượng | 공지를 누구에게 보내는가 |
+| 작업지시 | lệnh sản xuất | |
+| 사업부 | đơn vị kinh doanh | |
+| 부서 | phòng ban | 사업부보다 작은 단위 |
+| 근무조 | ca làm việc | |
+| 수신 규칙 | quy tắc nhận | 누가 받을지를 적은 한 줄 |
+| 미리보기 | xem trước | |
+| 기능 구성 | cấu hình chức năng | 단말에 무엇을 띄울지. 권한(`quyền`)과 구별한다 |
+| 등록 토큰 | token đăng ký | 기기 등록 QR 에 담기는 것 |
+| 실적 | kết quả | |
+| 발행 | phát hành | |
+| 데이터 접근범위 | phạm vi truy cập dữ liệu | 어느 사업부·공장 자료를 볼 수 있는가 |
+| 역할 부여 | gán vai trò | |
+| 기능 권한 | quyền chức năng | |
+| 전자우편 | thư điện tử | |
+| 값 구간 | khoảng giá trị | 결재선이 받는 하한·상한 |
+
+## 관리웹 — 품질관리
+
+품질관리 6화면이 쓰는 말이다(#1118). 「판정」·「처분」·「승인」은 위 표에 이미 있고, 여기서는
+그 셋과 함께 서는 말만 적는다.
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 의심자재 | vật tư nghi ngờ | 아직 판정 전인, 의심스러운 자재 |
+| 후보 | ứng viên | 조건에 걸려 고를 수 있게 된 줄 |
+| 전이 | chuyển đổi | Lot Status 가 바뀌는 일. 사이드바가 세운 말과 같다 |
+| 해제 | gỡ | 보류를 푸는 일. 「해제 조건」의 `gỡ` 와 같은 말 |
+| 열린 보류 | mục tạm giữ đang mở | 아직 풀리지 않은 보류 건 |
+| 부적합 | không phù hợp | NC. 낱개로 셀 때는 `mục không phù hợp` |
+| 특채 | đặc cách | 사이드바가 세운 말과 같다 |
+| 한도승인 | phê duyệt hạn mức | |
+| 상신 | trình | 결재에 올리는 일. 상신자 `người trình` |
+| 반려 | từ chối | 승인(`phê duyệt`)의 반대쪽 |
+| 심각도 | mức nghiêm trọng | |
+| 실적 | thực hiện | 사이드바가 세운 말과 같다 |
+| 검사유형 | loại kiểm tra | IQC · PQC · OQC 를 가르는 축 |
+| 공정검사 | kiểm tra công đoạn | PQC |
+| 종합판정 | đánh giá tổng hợp | |
+| 회차 | lần | 재검이 붙을 때마다 올라가는 번호 |
+| 재검 | kiểm tra lại | |
+| 의뢰번호 | số yêu cầu | |
+| 불량률 | tỷ lệ lỗi | 분모는 검사수량 |
+| 분포 | phân bố | |
+| 대분류 | nhóm lớn | 분포 표의 묶음 열 |
+| 비중 | tỷ trọng | |
+| 측정치 · 측정값 | giá trị đo | |
+| 시료 | mẫu | |
+| 규격 | quy cách | 측정값이 들어야 하는 범위 |
+| 행위자 | người thực hiện | 이력에 이름이 남는 사람 |
+| 사건 | sự kiện | 이력에 남는 일. 알림(`thông báo`)·알람(`cảnh báo`)과 구별한다 |
+
+## 세는 말·수량
+
+화면마다 갈리기 쉬운 자리다 — 낱개를 세는 말과 수량의 갈래를 여기 묶는다.
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 건 (세는 단위) | mục | `전체 12건` → `tổng 12 mục` |
+| 쪽 · 쪽 이동 | trang · chuyển trang | |
+| 보유 수량 | số lượng đang giữ | 지금 갖고 있는 양 |
+| 보류 수량 | số lượng tạm giữ | 그중 묶여 있는 양 |
+| 가용 수량 | số lượng khả dụng | 보유에서 보류를 뺀 양 |
+| 남은 수량 | số lượng còn lại | 아직 처분하지 않은 양 |
+| 전량 | toàn bộ | 수량을 비워 둔 것. 적용 시점의 전부를 뜻한다 |
+| 기준값 | giá trị gốc | 공통코드가 채우는 선택지 |
+| 작업지시 | lệnh sản xuất | 지시(`lệnh`)와 생산을 붙여 가른다 |
+## 관리웹 — 기준정보 (#1114)
+
+기준정보 11화면을 옮기며 정한 말이다. 다른 묶음이 같은 말을 만나면 여기를 본다.
+
+### 조직·거래처·사람
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 조직 | tổ chức | 탭 이름. 부서를 담는 묶음 |
+| 부서 | phòng ban | |
+| 상위 부서 · 뿌리 부서 | phòng ban cấp trên · phòng ban gốc | |
+| 계층 | phân cấp | 트리의 깊이 |
+| 최상위 · 하위 | cấp trên cùng · cấp dưới | |
+| 사업부 | đơn vị kinh doanh | 공장(`nhà máy`)과 구별한다 |
+| 거래처 | đối tác | 공급사(`nhà cung cấp`)보다 넓다 — 고객사·외주사도 담는다 |
+| 고객사 · 외주 제작사 | Khách hàng · Nhà gia công ngoài | 거래처 역할 |
+| 폐기 업체 | Đơn vị xử lý hủy | 거래처 역할. `hủy` 홀로 두면 취소 버튼으로 읽힌다 |
+| 작업자 | công nhân | 사용자(`người dùng`)와 구별한다 |
+| 성명 | họ tên | 사번(`mã nhân viên`)의 짝 |
+| 자격 · 인증 | chứng chỉ · chứng nhận | 자격 유형 `loại chứng chỉ` · 인증번호 `số chứng nhận` |
+| 계정 연결 | liên kết tài khoản | 연결됨 `Đã liên kết` · 연결 안 됨 `Chưa liên kết` |
+| 외부 시스템 · 원본 시스템 | hệ thống ngoài · hệ thống gốc | ERP 에서 받아 온 자료의 주인 |
+
+### 코드·마스터
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 코드값 | giá trị mã | 코드그룹(`nhóm mã`)의 짝 |
+| 원인코드 | mã nguyên nhân | 불량코드(`mã lỗi`)와 짝 |
+| 대분류 · 중분류 · 소분류 | cấp lớn · cấp vừa · cấp nhỏ | 불량·원인코드의 단 |
+| 매핑 부여 · 회수 | gán · thu hồi ánh xạ | 「매핑 = ánh xạ」에 붙는 동사 |
+| 임시 목록 | danh sách tạm | 코드 체계가 확정되기 전 |
+| 유효기간(효력 구간) | thời hạn hiệu lực | ⚠ LOT 의 유효기간(`hạn sử dụng`)과 **다른 말이다** |
+| 유효시작 · 유효종료 | Hiệu lực từ · Hiệu lực đến | 위 구간의 양끝 |
+| 정렬 순서 | thứ tự sắp xếp | |
+| 변경 사건 · 이력 번호 | sự kiện thay đổi · số lịch sử | 마스터 변경관리 |
+| 수행자 · 발생 시각 | người thực hiện · thời điểm phát sinh | |
+| 상관 식별자 | mã tương quan | 한 묶음의 변경을 잇는 값 |
+
+### 창고·적치
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 적치 규칙 | quy tắc cất hàng | |
+| 우선순위 | mức ưu tiên | 숫자 등급이라 `mức` |
+| 수용량 | sức chứa | 규칙·위치가 정한 상한 |
+| 현재 적재량 | lượng chứa hiện tại | 실측값. 위와 어근만 나눈다 |
+| 관리 수준 | mức quản lý | 창고가 Location 을 몇 단까지 두는지 |
+| 창고 전체 | toàn kho | 위치를 비운 규칙의 **확정된 뜻**이다 |
+| 규칙 없는 품목 | mặt hàng chưa có quy tắc | |
+| 중복 | trùng | 조합이 겹치는 것 |
+| 조합 | tổ hợp | 중복을 재는 축의 묶음 |
+| 창고유형 · 위치유형 | loại kho · loại vị trí | |
+| 외부창고 · 불량창고 | kho bên ngoài · kho hàng lỗi | |
+| 품질구역 · 보관조건 | khu vực chất lượng · điều kiện bảo quản | |
+| 혼적 | xếp lẫn | 품목·LOT 혼적 |
+| 도면 · 표식 | bản vẽ · điểm đánh dấu | 배치도(`sơ đồ bố trí`) 위에 올리는 것 |
+| 되돌리기 | hoàn tác | 취소(`Hủy`)와 구별한다 |
+| 회차 · 재발행 | lượt · phát hành lại | 라벨 발행 기록 |
+
+### 공정·검사
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 공정 마스터 · 공정 라인 | danh mục công đoạn · dòng công đoạn | |
+| 공정 유형 | loại công đoạn | |
+| 외주 공정 | công đoạn thuê ngoài | |
+| 표준 C/T · 표준 수율 | C/T tiêu chuẩn · tỷ lệ đạt tiêu chuẩn | |
+| 선후행 설정 | Thiết lập trước sau | |
+| 검사기준 · 검사 항목 | tiêu chuẩn kiểm tra · hạng mục kiểm tra | |
+| 검사 유형 · 검사 주기 · 검사 방법 | loại kiểm tra · chu kỳ kiểm tra · phương pháp kiểm tra | |
+| 공정검사 | kiểm tra công đoạn | PQC |
+| 검사장비 | thiết bị kiểm tra | 계측기(`thiết bị đo`)와 구별한다 |
+| 샘플링 | lấy mẫu | |
+| 상한 · 하한 | giới hạn trên · giới hạn dưới | |
+| 합격판정개수 · 불합격판정개수 | Số chấp nhận · Số bác bỏ | AQL 표의 Ac·Re. 「합격한 건수」가 아니다 |
+| 자동판정 | đánh giá tự động | |
+| 전 품목 공통 | Chung mọi mặt hàng | 품목을 비운 기준 |
+| 버전 | phiên bản | `Rev` 는 그대로 둔다 |
+| 작성중 · 확정 · 폐기(상태) | Đang soạn · Đã xác nhận · Đã hủy bỏ | 폐기는 취소(`Hủy`)와 갈라 뒷말을 붙인다 |
+
+### 품목 확장속성
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 자재 명세서 | BOM | 옮기지 않는다 |
+| 구성품 · 소요량 | thành phần · lượng cần | |
+| 스크랩률 | tỷ lệ hao hụt | 폐기(`hủy`)·불량(`lỗi`)과 겹쳐 읽히지 않게 갈랐다 |
+| 백플러시 | backflush | 옮기지 않는다 |
+| 단위 환산 | quy đổi đơn vị | 환산 전·후 `đơn vị trước/sau quy đổi` |
+| 기준 단위 | đơn vị cơ sở | |
+| 외부 코드 | mã ngoài | |
+| 확장 표시 | chỉ báo mở rộng | 켜진 확장 플래그를 내는 열 |
+| 유효기한(일) · 개봉 후 유효시간 | hạn sử dụng (ngày) · thời hạn sau khi mở (giờ) | |
+| 선출 정책 | chính sách thứ tự xuất | |
+| 입고검사 대상 | đối tượng kiểm tra nhập kho | |
+| 마이너스 재고 허용 | cho phép tồn kho âm | |
+| 시리얼 관리 유형 | loại quản lý serial | `serial` 은 옮기지 않는다 |
+| 개발품 | hàng phát triển | |
+
+### 연계·쪽 넘김
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 연계 · 연계 메시지 | liên kết · bản tin liên kết | |
+| 메시지 키 · 연계 종류 | khóa bản tin · loại liên kết | |
+| 재처리 | xử lý lại | 사람이 다시 보내는 것 |
+| 재시도 | thử lại | 서버가 스스로 다시 보내는 것. 위와 구별한다 |
+| 배치(일괄) | theo lô | |
+| 기간 시작 · 기간 종료 | bắt đầu kỳ · kết thúc kỳ | |
+| 쪽 이동 · 첫 쪽으로 | Chuyển trang · Về trang đầu | |
+| 이전 · 다음 | Trước · Sau | 쪽 넘김 |
+| 사용여부(라벨) · 사용·미사용(값) | Trạng thái sử dụng · Đang dùng · Ngừng dùng | 라벨과 값을 가른다 |
+| 사용 중지(동작) | Ngừng sử dụng | 위의 값과 가른다 |
+| 편집(열 머리글) | Chỉnh sửa | 수정(`Sửa`)과 구별한다 |
+
+## 관리웹 — 출하
+
+출하 11화면이 쓰는 말이다(#1116). 같은 말이 화면마다 갈리지 않게 여기서 못박는다.
+
+| 한국어 | 베트남어 | 메모 |
+| --- | --- | --- |
+| 출하 예정 | kế hoạch xuất hàng | 아직 나가지 않은 것 |
+| 출하지시서 | phiếu chỉ thị xuất hàng | 고객이 보낸 것 |
+| 출하작업지시 | lệnh xuất hàng | 우리가 만드는 것. 지시서와 구별한다 |
+| 편성 | lập lệnh | 지시서를 작업지시로 만드는 일 |
+| 단독 생성 | tạo độc lập | 지시서 없이 만드는 것 |
+| 고객 | khách hàng | |
+| 납품처 | nơi giao hàng | 고객과 다를 수 있다 |
+| 거래처 | đối tác | 고객보다 넓은 말 |
+| 미확정 | chưa xác nhận | 확정(`xác nhận`)의 앞 상태 |
+| 긴급 직행 출하 | xuất hàng thẳng khẩn cấp | 창고를 거치지 않는다 |
+| 생산 완료분 | phần đã sản xuất xong | 직행 출하의 대상 |
+| 관문 | cổng kiểm | 통과해야 다음으로 가는 조건 |
+| 포장 | đóng gói | |
+| 차량번호 · 운전자명 | biển số xe · tên tài xế | |
+| 봉인번호 · 운송장번호 | số niêm phong · số vận đơn | |
+| 상차담당자 · 운송사 | người phụ trách lên xe · hãng vận chuyển | |
+| 출하검사 판정 | đánh giá kiểm tra xuất hàng | OQC |
+| 의뢰 | yêu cầu | 남에게 해 달라고 미는 일 |
+| 회차 | lượt | 검사를 다시 한 차례 |
+| 재검사 | kiểm tra lại | 앞 회차를 고치지 않고 쌓는다 |
+| 불합격 | Không đạt | 합격(`Đạt`)의 짝 |
+| 생략 | bỏ qua | 검사를 안 하기로 승인된 종결 |
+| 검사성적서 | giấy chứng nhận kiểm tra | CoA |
+| 적용 기준 · 기준 버전 | tiêu chuẩn áp dụng · phiên bản tiêu chuẩn | 검사 시점에 고정된다 |
+| 부적합 | điểm không phù hợp | 등록하는 단위 |
+| 심각도 | mức nghiêm trọng | |
+| 불량창고 | kho hàng lỗi | |
+| 완제품창고 | kho thành phẩm | |
+| 보유 · 가용 | đang giữ · khả dụng | 재고의 두 축 |
+| 재등록 | đăng ký lại | 보류를 풀어 정상 재고로 되돌린다 |
+| 기타출고 | xuất kho khác | 폐기가 실제로 나가는 전표 |
+| 자체 폐기 | tự hủy | 외부 업체 없이 |
+| 상신 | trình duyệt | 결재에 올리는 일 |
+| 결재함 | hộp phê duyệt | |
+| 반려 | từ chối | 승인의 짝 |
+| 묶기 | nhóm theo | 목록을 묶는 축 |
+| 요약 | tóm tắt | 집계 구획 |
+| 건 (세는 단위) | mục | `전체 120건` → `Tổng 120 mục` |
 
 ## 말투
 

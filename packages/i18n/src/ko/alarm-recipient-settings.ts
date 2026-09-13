@@ -10,7 +10,14 @@ export const alarmRecipientSettings = {
     user: '사용자',
     zalo: 'Zalo 알림',
   },
-  values: { role: '조직·역할', user: '개인', inactive: ' (비활성)' },
+  values: {
+    role: '조직·역할',
+    user: '개인',
+    inactive: ' (비활성)',
+    /** 미리보기 표의 상태 칸. 위 `inactive`는 선택칸 이름에 붙는 꼬리라 앞 공백이 있어 다르다. */
+    statusActive: '사용 중',
+    statusInactive: '비활성',
+  },
   actions: { add: '수신 규칙 추가', remove: '수신 규칙 제거', preview: '미리보기', save: '저장' },
   state: {
     loading: '설정을 불러오는 중',
@@ -32,6 +39,8 @@ export const alarmRecipientSettings = {
     requiredUser: '사용자를 선택해 주세요.',
     duplicate: '같은 수신 규칙이 이미 있습니다.',
     lookupFailed: '선택 목록을 불러오지 못했습니다. 다시 시도해 주세요.',
+    /** 쪽을 다 돌았는데 서버가 말한 수에 못 미친다 — 반쪽 목록으로 고르게 두지 않는다. */
+    lookupIncomplete: '선택 목록을 전부 불러오지 못했습니다.',
   },
   columns: {
     event: '알림 유형',

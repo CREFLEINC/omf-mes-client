@@ -268,7 +268,7 @@ export const ProcessMasterPane = () => {
     {
       key: 'isActive',
       header: t.fields.isActive,
-      render: (process) => (process.isActive ? '사용' : '미사용'),
+      render: (process) => (process.isActive ? t.values.active : t.values.inactive),
     },
   ];
 
@@ -549,7 +549,7 @@ const ProcessFormSlot = ({
         {!isCreateMode && (
           <div className="field-cell form-actions-secondary">
             <span className="field-label">{t.fields.isActive}</span>
-            <p>{active ? '사용' : '미사용'}</p>
+            <p>{active ? t.values.active : t.values.inactive}</p>
             <Button
               variant="outlined"
               onClick={() => onActivate(active ? 'deactivate' : 'activate')}

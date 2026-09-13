@@ -8,6 +8,7 @@ import {
   Table,
 } from '@crefle/web-ui';
 import type { ApiClient, components } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 import type { PropsWithChildren } from 'react';
@@ -22,6 +23,7 @@ import { ReleaseHoldExecution } from './release-hold-execution';
 type Transition = components['schemas']['LotStatusTransition'];
 type LotHold = components['schemas']['LotHold'];
 type Client = ApiClient['client'];
+const t = messages.lotStatusTransition.preparation;
 const OPEN_HOLD_PAGE_SIZE = 50;
 
 export const lotHoldDetailPath = (lotHoldId: number): `/quality/lot-holds/${number}` =>
@@ -34,8 +36,8 @@ const formatDateTime = (value: string): string => {
 };
 
 const PreparationPane = ({ children }: PropsWithChildren) => (
-  <section className="pane lot-status-transition-pane" aria-label="상태 전이 준비">
-    <h2 className="pane-title">상태 전이 준비</h2>
+  <section className="pane lot-status-transition-pane" aria-label={t.pane}>
+    <h2 className="pane-title">{t.pane}</h2>
     {children}
   </section>
 );
@@ -194,21 +196,21 @@ export const LotStatusTransitionPreparation = ({
   const targetLabel = (code: string): string =>
     statuses.data?.items.find((item) => item.code === code)?.label ?? code;
   const holdColumns: Column<LotHold>[] = [
-    { key: 'reason', header: '보류 사유', render: (item) => item.reasonCode },
+    { key: 'reason', header: t.holds.reason, render: (item) => item.reasonCode },
     {
       key: 'heldAt',
-      header: '보류 시각',
+      header: t.holds.heldAt,
       render: (item) => <time dateTime={item.heldAt}>{formatDateTime(item.heldAt)}</time>,
     },
     {
       key: 'quantity',
-      header: '보류 수량',
+      header: t.holds.quantity,
       align: 'end',
-      render: (item) => item.holdQty ?? '전량',
+      render: (item) => item.holdQty ?? t.holds.full,
     },
     {
       key: 'select',
-      header: '해제 대상',
+      header: t.holds.target,
       render: (item) => (
         <Button
           variant="outlined"
@@ -219,7 +221,7 @@ export const LotStatusTransitionPreparation = ({
             setSelectedHoldId(item.lotHoldId);
           }}
         >
-          {selectedHoldId === item.lotHoldId ? '선택됨' : '선택'}
+          {selectedHoldId === item.lotHoldId ? t.holds.selected : t.holds.select}
         </Button>
       ),
     },
@@ -228,7 +230,7 @@ export const LotStatusTransitionPreparation = ({
   if (transitions.isFetching && !confirmationPinned)
     return (
       <PreparationPane>
-        <div role="status" aria-label="전이 선택지를 불러오는 중">
+        <div role="status" aria-label={t.loading}>
           <SkeletonText lines={1} />
         </div>
       </PreparationPane>
@@ -238,53 +240,49 @@ export const LotStatusTransitionPreparation = ({
       <PreparationPane>
         <AlertBanner
           variant="error"
-          title="전이 선택지를 불러오지 못했습니다."
-          action={<Button onClick={() => void transitions.refetch()}>다시 시도</Button>}
+          title={t.failed}
+          action={<Button onClick={() => void transitions.refetch()}>{t.retry}</Button>}
         />
       </PreparationPane>
     );
   if (allowed.length === 0)
     return (
       <PreparationPane>
-        <AlertBanner variant="info">
-          {transitions.data?.note ?? '현재 LOT은 전이할 수 없습니다.'}
-        </AlertBanner>
+        <AlertBanner variant="info">{transitions.data?.note ?? t.noTransition}</AlertBanner>
       </PreparationPane>
     );
 
   let preparation: string | null = null;
   if (isCreate) {
-    preparation = Number.isSafeInteger(lot.versionNo)
-      ? '보류 등록 준비가 완료되었습니다.'
-      : 'LOT 잠금 정보를 확인하지 못해 진행할 수 없습니다.';
+    preparation = Number.isSafeInteger(lot.versionNo) ? t.notes.createReady : t.notes.lockUnknown;
   } else if (isRelease) {
     preparation = holds.isFetching
-      ? '열린 보류를 불러오는 중입니다.'
+      ? t.notes.holdsLoading
       : holds.isError
-        ? '열린 보류를 불러오지 못했습니다.'
+        ? t.notes.holdsFailed
         : holdsData?.items.length === 0
-          ? '해제할 열린 보류가 없습니다.'
+          ? t.notes.holdsEmpty
           : detail.isFetching
-            ? '보류 상세를 불러오는 중입니다.'
+            ? t.notes.detailLoading
             : detail.isError
-              ? '보류 상세를 불러오지 못했습니다.'
+              ? t.notes.detailFailed
               : selectedHold !== undefined && token !== undefined
-                ? '보류 해제 준비가 완료되었습니다.'
+                ? t.notes.releaseReady
                 : selectedHold === undefined
                   ? null
-                  : 'LOT 잠금 정보를 확인하지 못해 진행할 수 없습니다.';
+                  : t.notes.lockUnknown;
   }
 
   return (
     <PreparationPane>
       <div className="lot-status-transition-choice">
-        <h3 className="lot-status-transition-subtitle">전이할 상태</h3>
+        <h3 className="lot-status-transition-subtitle">{t.choiceTitle}</h3>
         <RadioGroup
           name={`lot-status-transition-${String(lot.lotId)}`}
           orientation="horizontal"
           value={selectedTransitionKey ?? ''}
           disabled={confirmationPinned}
-          aria-label="전이"
+          aria-label={t.choiceLabel}
           onChange={chooseTransition}
         >
           {allowed.map((item) => (
@@ -295,12 +293,12 @@ export const LotStatusTransitionPreparation = ({
         </RadioGroup>
       </div>
       {isRelease && holdsData !== undefined && holdsData.items.length > 0 && (
-        <section className="lot-status-transition-holds" aria-label="열린 보류 목록">
-          <h3 className="lot-status-transition-subtitle">열린 보류</h3>
+        <section className="lot-status-transition-holds" aria-label={t.holds.pane}>
+          <h3 className="lot-status-transition-subtitle">{t.holds.title}</h3>
           <div className="wide-table lot-status-transition-table">
             <Table
               density="compact"
-              caption="열린 보류"
+              caption={t.holds.title}
               columns={holdColumns}
               rows={holdsData.items}
               getRowId={(item) => String(item.lotHoldId)}

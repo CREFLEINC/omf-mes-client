@@ -10,6 +10,7 @@ import { currentPlantId } from '../../patterns/plant';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { useBackStep } from '../../patterns/back-step';
 import { playErrorTone } from '../../patterns/error-tone';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -100,6 +101,7 @@ export const MaterialLotScanScreen = () => {
     canRegister(line, scanned, worker !== null, plantId, usedLotNos, filled, lineItemCode);
 
   const scanField = useScanField({
+    applied: scanned.trim(),
     onScan: (value) => {
       const taken = value.trim();
       setScanned(taken);
@@ -338,9 +340,13 @@ export const MaterialLotScanScreen = () => {
                 }
               />
             )}
-            {problem === null && scanned.trim() !== '' ? (
+            {/*
+             * 읽은 값은 문제가 있을 때도 보인다. 무엇이 잘못됐다는 말만 있고 읽은 값이
+             * 없으면, 스캐너가 잘못 읽은 것인지 라벨이 그런 것인지 가릴 수 없다.
+             */}
+            {scanned.trim() === '' ? null : (
               <p className="material-lot-scan__scanned">{formatMaterialLotNo(scanned.trim())}</p>
-            ) : null}
+            )}
             {/* 라벨 수량은 최초 납품 스냅샷이라 라인 수량과 다를 수 있다. 막지 않는다. */}
             {problem === null && labelQty !== null && labelQty !== line.receivedQty ? (
               <AlertBanner
@@ -394,6 +400,8 @@ export const MaterialLotScanScreen = () => {
           </div>
         </section>
       )}
+
+      <ScanReplaceDialog field={scanField} format={formatMaterialLotNo} />
     </div>
   );
 };

@@ -38,6 +38,8 @@ export const wipHandover = {
     qty: (qty: string) => `완료 수량 ${qty}`,
     /* 모르는 채로 넉넉한 쪽으로 물러서지 않는다 - 되돌릴 수 없는 쓰기다. */
     qtyUnknown: '완료 수량을 확인할 수 없어 인계할 수 없습니다',
+    /* 읽은 값을 함께 보인다. 없으면 잘못 읽은 것인지 대상이 아닌 것인지 가릴 수 없다. */
+    scannedWas: (value: string) => `읽은 값 ${value}`,
     problem: {
       notProduction: '생산LOT이 아닙니다. 공정 인계는 생산LOT만 넘깁니다.',
       notCompleted: '생산 완료 처리가 필요합니다',

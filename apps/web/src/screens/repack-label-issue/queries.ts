@@ -106,13 +106,22 @@ export interface PendingRepackRow {
   remainderNo: string | null;
   occurredAt: string | null;
   /**
-   * 이 포장을 만든 재구성 사건을 찾았는가.
+   * 이 포장을 만든 재구성 사건을 찾았는가 — **셋으로 가른다**(#1150).
+   *
+   * | 값 | 뜻 |
+   * | --- | --- |
+   * | `found` | 이 포장을 새로 만든 사건이 있다 |
+   * | `none` | 서버가 사건 0건으로 답했다 — 재구성 이력이 «없다» |
+   * | `unmatched` | 사건은 있는데 이 포장을 새로 만든 쪽이 아니다(원 포장·잔량 등) — «없다»고 말할 수 없다 |
+   *
+   * ⛔ `none` 과 `unmatched` 를 한 갈래로 두지 않는다. 한때 둘 다 「확인 불가」였다가, 「없음」
+   *    으로 고치면 이력이 있는 포장에도 「없음」이 선다(PR #1156 리뷰 지적).
    *
    * ⚠ **못 찾았다는 것이 「포장을 모른다」는 뜻은 아니다**(#1044). 번호는 목록 응답이 늘 싣는다
    * (계약 `HandlingUnit.handlingUnitNo` 필수) — 줄이 그 번호와 «왜 나머지가 비었는지»를
    * 말해야 작업자가 눌러 보기 전에 무엇인지 안다.
    */
-  hasRepackEvent: boolean;
+  repackEvent: 'found' | 'none' | 'unmatched';
 }
 
 /**
@@ -141,13 +150,13 @@ const newestEventFor = (
  * (`…/repack-events`)로만 물을 수 있다. 발행 대기는 몇 건짜리 목록이라 감당한다 — 목록이
  * 커지면 설계에 사건 축 조회를 요청할 자리다.
  *
- * ⛔ **사건을 못 찾아도 줄을 버리지 않는다.** 라벨을 기다리는 포장이라는 사실은 그대로이고,
+ * ⛔ **이 포장을 만든 사건이 없어도 줄을 버리지 않는다.** 라벨을 기다리는 포장이라는 사실은 그대로이고,
  * 감추면 작업자가 그 포장에 닿을 길이 사라진다 — 모르는 칸만 비운다. 후보를 좁히는 것은
  * **서버 몫이다**: 계약이 `labelIssued=false` 를 「발행 대기 목록(재구성 신규 라벨 발행 대상)」
  * 으로 정의한다(P-04-04 §5-1 · 2026-09-06 게이트 승인) — 화면이 다시 거르면 서버가 대상이라
  * 답한 포장을 감춘다.
  *
- * ⚠ **다만 모르는 줄이 아무 말도 안 하게 두지 않는다**(#1044). 사건을 못 찾았다는 사실을
+ * ⚠ **다만 모르는 줄이 아무 말도 안 하게 두지 않는다**(#1044). 사건이 없거나 못 맞췄다는 사실을
  * 줄에 실어, 화면이 번호와 사유를 함께 적을 수 있게 한다.
  */
 /**
@@ -221,7 +230,7 @@ export const usePendingRepackRows = (): UseQueryResult<PendingRepackRow[]> => {
             newCount: 1,
             remainderNo: null,
             occurredAt: null,
-            hasRepackEvent: false,
+            repackEvent: events.items.length === 0 ? 'none' : 'unmatched',
           });
           continue;
         }
@@ -265,7 +274,7 @@ export const usePendingRepackRows = (): UseQueryResult<PendingRepackRow[]> => {
           newCount: newCount === 0 ? 1 : newCount,
           remainderNo: remainderId === undefined ? null : await numberOf(remainderId),
           occurredAt: event.occurredAt,
-          hasRepackEvent: true,
+          repackEvent: 'found',
         });
       }
 

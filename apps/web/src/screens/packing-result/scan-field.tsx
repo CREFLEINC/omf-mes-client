@@ -68,10 +68,19 @@ export const ScanField = ({ label, isScanning, lockReason, onScan }: ScanFieldPr
        *    같은 길이다. 같은 일을 하는 단추가 둘이면 어느 것이 정상 경로인지 흐려진다.
        */}
       <div className="scan-row">
+        {/*
+         * ⭐ **이름은 칸 «왼쪽»에 선다**(사용자 지시 2026-09-12). 출하 대상 줄
+         *    (`.packing-target`)이 이미 그 모양이고, 같은 화면의 같은 성격의 줄이 이름을
+         *    위에 이고 있으면 줄마다 높이가 달라 보인다.
+         *
+         * ⛔ **부품의 `label` 을 쓰지 않는다** — 그쪽은 칸 «위»에 그리는 자리다. 이름을 따로
+         *    세우고 칸에는 `aria-label` 로 이어, 읽어 주는 기계에도 같은 이름이 가게 한다.
+         */}
+        <span className="field-label">{label}</span>
         <TextField
           size="xl"
           ref={inputRef}
-          label={label}
+          aria-label={label}
           value={value}
           fullWidth
           autoComplete="off"

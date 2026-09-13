@@ -297,7 +297,7 @@ export const SuspiciousMaterialCandidatePane = ({
           </div>
           <div className="suspicious-material-hold-list-footer">
             <p className="field-note">
-              총 {new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0)}건 · {page} / {pages}쪽
+              {t.summary(new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0), page, pages)}
             </p>
             <nav className="form-actions" aria-label={t.pagination}>
               <Button
