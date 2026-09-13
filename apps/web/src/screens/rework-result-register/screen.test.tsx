@@ -122,6 +122,8 @@ const renderScreen = () => {
       value={{
         terminalId: TERMINAL_ID,
         processes: [{ processId: PROCESS_ID }],
+        equipment: null,
+
         workerNo: '100027',
       }}
     >
@@ -140,6 +142,8 @@ const renderWithFractionalUom = () => {
       value={{
         terminalId: TERMINAL_ID,
         processes: [{ processId: PROCESS_ID }],
+        equipment: null,
+
         workerNo: '100027',
       }}
     >
@@ -172,6 +176,8 @@ const renderWithoutDisposition = () => {
       value={{
         terminalId: TERMINAL_ID,
         processes: [{ processId: PROCESS_ID }],
+        equipment: null,
+
         workerNo: '100027',
       }}
     >

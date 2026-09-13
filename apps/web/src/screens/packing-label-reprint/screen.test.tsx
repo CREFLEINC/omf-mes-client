@@ -39,6 +39,8 @@ const ENTRY_ROUTE = `/pop/packing-label-reprint?handlingUnitId=${String(HANDLING
 const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
   processes: [{ processId: PROCESS_ID }],
+  equipment: null,
+
   workerNo: WORKER_NO,
 };
 
@@ -282,7 +284,12 @@ describe('P-02-09 포장 라벨·인식표 재출력', () => {
   });
 
   it('단말을 모르면 권한을 통과로 처리하지 않는다', async () => {
-    renderScreen({}, ENTRY_ROUTE, { terminalId: null, processes: null, workerNo: WORKER_NO });
+    renderScreen({}, ENTRY_ROUTE, {
+      terminalId: null,
+      processes: null,
+      equipment: null,
+      workerNo: WORKER_NO,
+    });
 
     expect(await screen.findByText(t.gate.unidentified)).toBeInTheDocument();
   });

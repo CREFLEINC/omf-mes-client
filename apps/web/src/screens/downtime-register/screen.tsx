@@ -79,15 +79,34 @@ const EMPTY_DRAFT: DowntimeDraft = {
  */
 export const DowntimeRegisterScreen = () => {
   const [searchParams] = useSearchParams();
-  const equipmentId = readEquipmentId(searchParams);
-  const equipmentCode = readEquipmentCode(searchParams);
   /*
-   * 단말·공정·사번은 **셸이 아는 것**이라 주소가 아니라 컨텍스트로 온다. 채우는 자리가 아직
-   * 없어 지금은 전부 `null`이고, 화면은 그 상태를 사유와 함께 보인다 — 모르는 것을 통과로
+   * 단말·공정·설비·사번은 **셸이 아는 것**이라 주소가 아니라 컨텍스트로 온다. 등록을 마치기
+   * 전에는 전부 `null`이고, 화면은 그 상태를 사유와 함께 보인다 — 모르는 것을 통과로
    * 처리하지 않는다.
    */
-  const { terminalId, processes, workerNo } = usePopIdentity();
+  const { terminalId, processes, equipment, workerNo } = usePopIdentity();
   const processId = soleProcessIdOf(processes);
+
+  /*
+   * ⭐ **설비는 단말이 정한다**(스펙 §4-A 「POP 은 설비에 붙어 있다」 · #1149). 종전에는 주소
+   *    하나뿐이라, 단말에 설비가 뻔히 붙어 있는데도 화면이 「설비를 고른 뒤 다시 들어오세요」로
+   *    막고 **고를 자리를 주지 않았다** — 현장에서 스스로 빠져나올 길이 없었다.
+   *
+   * ⚠ **주소가 이기는 것은 그대로 둔다.** 개발 이동표·점검처럼 «이 단말의 설비가 아닌 것»을
+   *    일부러 볼 때 쓰는 길이고, 주소에 적힌 것은 언제나 의도된 값이다.
+   * ⛔ **화면이 설비를 기억해 두지 않는다.** 둘 다 없으면 없는 채로 막힌다 — 앞서 본 설비를
+   *    들고 있으면 남의 설비에 비가동이 붙고, 비가동은 정정 경로가 없다.
+   */
+  const paramEquipmentId = readEquipmentId(searchParams);
+  const equipmentId = paramEquipmentId ?? equipment?.equipmentId ?? null;
+  /*
+   * ⛔ **이름표는 번호와 «같은 출처»에서 가져온다.** 주소가 단말과 다른 설비를 가리킬 때
+   *    코드만 단말 것을 쓰면 **다른 설비의 이름표를 단 화면**이 된다.
+   */
+  const equipmentCode =
+    paramEquipmentId === null
+      ? (equipment?.equipmentCode ?? null)
+      : readEquipmentCode(searchParams);
 
   const titleId = useId();
 
@@ -126,7 +145,16 @@ export const DowntimeRegisterScreen = () => {
     [reasonOptions.options],
   );
 
-  const rows: TodayRow[] = useMemo(() => {
+  /*
+   * ⭐ **줄과 함께 「그중 몇 줄이 서버 집계에 아직 없는가」를 센다**(#1149). 건수는 이 목록의
+   *    길이이고 합계는 서버가 낸 값이라, 아직 서버가 모르는 줄이 섞이면 **두 숫자가 다른
+   *    모집단을 센다** — 저장한 직후 건수만 늘고 합계는 그대로다. 그 차이를 화면이 말하려면
+   *    몇 줄이 그런지 알아야 한다.
+   */
+  const { rows, unsettledCount } = useMemo((): {
+    rows: TodayRow[];
+    unsettledCount: number;
+  } => {
     const local = [
       ...outbox.accepted.map((entry) => fromAccepted(entry, reasonNames)),
       ...outbox.pendingCreates.map((entry) =>
@@ -139,10 +167,19 @@ export const DowntimeRegisterScreen = () => {
       const known = new Set(server.map((row) => row.key));
 
       /* 서버가 이미 아는 건은 두 번 세지 않는다 — 방금 보낸 건이 응답과 목록에 함께 잡힌다. */
-      return [...server, ...local.filter((row) => !known.has(row.key))].sort(byStartedAtDesc);
+      const extra = local.filter((row) => !known.has(row.key));
+
+      return {
+        rows: [...server, ...extra].sort(byStartedAtDesc),
+        unsettledCount: extra.length,
+      };
     }
 
-    return local.sort(byStartedAtDesc);
+    /*
+     * 끊겨 있으면 목록 전체가 이 단말 것이다. 그 사실은 「내 단말 입력분만」이 따로 말하므로
+     * 여기서 다시 세지 않는다 — 한 화면이 같은 말을 두 번 하지 않는다.
+     */
+    return { rows: local.sort(byStartedAtDesc), unsettledCount: 0 };
   }, [day, outbox.accepted, outbox.isOnline, outbox.pendingCreates, reasonNames, today.downtimes]);
 
   const moments = readInterval(draft.interval);
@@ -158,6 +195,7 @@ export const DowntimeRegisterScreen = () => {
   const block = resolveSaveBlock({
     workerNo,
     equipmentId,
+    terminalId,
     gate: gate.verdict,
     hasOngoing: ongoing.downtime !== null,
   });
@@ -414,6 +452,12 @@ export const DowntimeRegisterScreen = () => {
          */
         notAskedLabel={equipmentId === null ? t.today.notAsked : t.today.notAskedOffline}
         isLocalOnly={isLocalOnly}
+        /*
+         * ⭐ **건수와 합계가 다른 것을 세는 동안 그 사실을 말한다**(#1149). 88단계 3회차에서
+         *    저장 뒤 「1건 · 합계 그대로」가 떴고, 어느 쪽을 믿어야 하는지 화면이 말해 주지
+         *    않았다 — 건수는 이 목록이고 합계는 서버 집계다.
+         */
+        unsettledCount={unsettledCount}
         isError={today.isError}
         onRetry={today.refetch}
         now={now}
