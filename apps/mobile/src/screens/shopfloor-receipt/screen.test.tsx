@@ -77,6 +77,16 @@ const routes = (options: Options = {}): StubRoute[] => [
             issuedAt: '2026-09-07T09:00:00+09:00',
             statusCode: 'POSTED',
           },
+          {
+            goodsIssueId: 501,
+            goodsIssueNo: SECOND_ISSUE_NO,
+            issueTypeCode: 'PRODUCTION',
+            sourceDocumentTypeCode: 'PICKING_ORDER',
+            sourceDocumentId: 300,
+            sourceWarehouseId: 5,
+            issuedAt: '2026-09-07T10:00:00+09:00',
+            statusCode: 'POSTED',
+          },
         ],
         page,
       }),
@@ -339,6 +349,7 @@ beforeEach(() => {
 });
 
 const OTHER_ISSUE_NO = 'GI-2026-000999';
+const SECOND_ISSUE_NO = 'GI-2026-000403';
 
 describe('생산창고 입고 화면', () => {
   /*
@@ -784,4 +795,58 @@ describe('생산창고 입고 화면', () => {
     expect(await screen.findByText(`${OTHER_ISSUE_NO} 출고 전표를 찾지 못했습니다`)).toBeTruthy();
   });
 
+  /*
+   * 전표를 바꿨는데 앞 전표를 보며 고른 설비와 잰 값이 남으면, 그 값이 다른 전표의 작업으로
+   * 이어진다. 수령 수량은 전표가 바뀌면 다시 만들어지는데 호퍼 쪽만 남는다.
+   */
+  it('새 전표를 받으면 고른 설비와 잰 값이 비워진다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+    await screen.findByText(/HOP-01/);
+
+    scan(SECOND_ISSUE_NO);
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    await screen.findByText(`${SECOND_ISSUE_NO} · 1라인`);
+    /* 전표가 바뀌었는데 앞 전표를 보며 고른 설비가 남아 있으면 그 호퍼가 계속 보인다. */
+    expect(screen.queryByText(/HOP-01/)).toBeNull();
+  });
+  /*
+   * 호퍼 결과 배너도 전표에 딸린 값이다. 남으면 새 전표 화면에 앞 전표의 기록 결과가 떠 있어,
+   * 이번 것도 이미 적은 줄로 읽힌다.
+   */
+  it('새 전표를 받으면 앞 전표의 호퍼 결과가 남지 않는다', async () => {
+    const user = userEvent.setup();
+    mount({
+      extra: [
+        {
+          match: (req: Request) =>
+            new URL(req.url).pathname === '/inventory/adjustments' && req.method === 'POST',
+          respond: () => jsonResponse({ inventoryAdjustmentId: 1 }, { status: 201 }),
+        },
+      ],
+    });
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await receivedField();
+
+    await user.click(await screen.findByRole('combobox', { name: '설비' }));
+    await user.click(await screen.findByRole('option', { name: /EQ-01/ }));
+    await user.type(await screen.findByLabelText(/RM-1001 실측 잔량/), '100');
+    await user.click(screen.getByRole('button', { name: '호퍼 잔량 기록' }));
+
+    expect(await screen.findByText('호퍼 잔량을 기록했습니다')).toBeTruthy();
+
+    scan(SECOND_ISSUE_NO);
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+    await screen.findByText(`${SECOND_ISSUE_NO} · 1라인`);
+
+    expect(screen.queryByText('호퍼 잔량을 기록했습니다')).toBeNull();
+  });
 });

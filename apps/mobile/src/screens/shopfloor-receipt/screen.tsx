@@ -205,6 +205,16 @@ export const ShopfloorReceiptScreen = () => {
       setScanned(value.trim());
       /* 같은 라벨을 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
       setScanSeq((seq) => seq + 1);
+
+      /*
+       * 전표가 바뀌면 호퍼 쪽도 비운다. 수령 수량은 전표가 바뀌면 다시 만들어지는데 여기만
+       * 남아, 앞 전표를 보며 고른 설비와 잰 값이 다른 전표의 작업으로 이어진다.
+       */
+      setEquipmentId(null);
+      setMeasured({});
+      setHopperOutcome(null);
+      setHopperSaveFailed(false);
+      setSaveFailed(false);
     },
   });
 
