@@ -16,7 +16,7 @@ const token = vi.hoisted(() => ({ cleared: 0, refuse: false, value: 't' as strin
 const steps = vi.hoisted(() => [] as string[]);
 
 /** 보관소가 특정 자리의 저장을 거절하는 상황을 만든다. */
-const refuse = vi.hoisted(() => ({ key: null as string | null }));
+const refuse = vi.hoisted(() => ({ key: null as string | null, removeKey: null as string | null }));
 
 vi.mock('../../patterns/device-token', () => ({
   readDeviceToken: () => Promise.resolve(token.value),
@@ -60,6 +60,10 @@ vi.mock('../../patterns/local-store', () => ({
     return Promise.resolve();
   },
   removeLocal: (key: string) => {
+    if (key === refuse.removeKey) {
+      return Promise.reject(new Error('보관소가 거절했습니다'));
+    }
+
     store.delete(key);
     return Promise.resolve();
   },
@@ -105,6 +109,7 @@ const signedIn = async (user: ReturnType<typeof userEvent.setup>) => {
 beforeEach(() => {
   reads.gate = null;
   refuse.key = null;
+  refuse.removeKey = null;
   steps.length = 0;
   token.cleared = 0;
   token.refuse = false;
@@ -397,6 +402,35 @@ describe('기기 등록 해제', () => {
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
     expect(screen.queryByText('등록을 풀지 못했습니다. 다시 시도하세요')).not.toBeInTheDocument();
+  });
+
+  /*
+   * 등록 풀기가 도중에 걸리면 토큰만 사라질 수 있다. 셸은 등록 화면으로 갈아타지만 사번은
+   * 셸 위에 있어 살아남아, 새 QR 로 재등록한 단말이 앞 작업자의 사번으로 기록을 쌓는다.
+   */
+  it('등록 풀기가 도중에 걸려도 사번은 끊는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    refuse.removeKey = 'plant-id';
+    await user.click(await screen.findByRole('button', { name: '등록 해제' }));
+
+    expect(await screen.findByRole('group', { name: '사번 입력' })).toBeInTheDocument();
+  });
+
+  /* X·Esc 도 같은 자리로 온다. 이 길이 죽으면 되돌릴 수 없는 확인 창이 영영 안 닫힌다. */
+  it('X 로도 창이 닫힌다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    await user.click(await screen.findByRole('button', { name: '닫기' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(token.cleared).toBe(0);
   });
 
   /* 사번이 남으면 새 QR 로 다시 등록했을 때 앞 작업자의 사번으로 기록이 쌓인다. */

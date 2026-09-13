@@ -251,9 +251,12 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       /*
        * 읽지 못해 옮겨 둔 원본도 버린다. 앱이 되읽지는 않지만 그 안에 이 단말이 만든 기록이
        * 그대로 있어, 남겨 두면 다음 등록이 앞 단말의 기록을 물려받는다.
+       *
+       * 여기서 걸려도 멈추지 않는다. 아무도 되읽지 않는 자리라, 정작 중요한 큐 비우기가
+       * 끝난 뒤에 이것 때문에 장부 정리를 통째로 되돌리면 화면이 보관소와 어긋난 채 남는다.
        */
-      await removeLocal(OUTBOX_BROKEN_KEY);
-      await removeLocal(OUTBOX_REJECTED_BROKEN_KEY);
+      await removeLocal(OUTBOX_BROKEN_KEY).catch(() => undefined);
+      await removeLocal(OUTBOX_REJECTED_BROKEN_KEY).catch(() => undefined);
       /*
        * 다 버린 뒤에 세대를 올린다. 먼저 올리면 보관소가 거절해 버리지 못한 회차도 진행 중인
        * 보내기의 판정을 버리게 해, 서버가 내린 판정이 어디에도 남지 않는다.

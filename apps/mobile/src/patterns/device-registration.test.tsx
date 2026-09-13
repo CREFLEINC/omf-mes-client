@@ -209,7 +209,7 @@ describe('단말 등록 상태', () => {
 
     removes.fails = true;
     await act(async () => {
-      await expect(result.current.unregister()).rejects.toThrow();
+      await result.current.unregister();
     });
 
     expect(result.current.status).toBe('unregistered');

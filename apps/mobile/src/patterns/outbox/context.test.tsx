@@ -9,7 +9,7 @@ import type { OutboxTransport } from './send';
 const store = vi.hoisted(() => new Map<string, string>());
 
 /** 보관소가 특정 자리의 저장을 거절하는 상황을 만든다. */
-const refuse = vi.hoisted(() => ({ key: null as string | null }));
+const refuse = vi.hoisted(() => ({ key: null as string | null, removeKey: null as string | null }));
 
 /** 버리기가 도는 중을 재려면 쓰기를 붙잡을 수 있어야 한다. */
 const writes = vi.hoisted(() => ({ gate: null as Promise<void> | null }));
@@ -28,6 +28,10 @@ vi.mock('../local-store', () => ({
     store.set(key, value);
   },
   removeLocal: (key: string) => {
+    if (key === refuse.removeKey) {
+      return Promise.reject(new Error('보관소가 거절했습니다'));
+    }
+
     store.delete(key);
     return Promise.resolve();
   },
@@ -54,6 +58,7 @@ const mount = (send: OutboxTransport = unreachable) =>
 beforeEach(() => {
   store.clear();
   refuse.key = null;
+  refuse.removeKey = null;
   writes.gate = null;
 });
 
@@ -547,9 +552,8 @@ describe('outbox', () => {
   });
 
   /* 읽지 못해 옮겨 둔 원본에도 이 단말이 만든 기록이 그대로 있다. */
-  it('읽지 못해 옮겨 둔 원본도 함께 버린다', async () => {
+  it('읽지 못해 옮겨 둔 큐 원본도 버린다', async () => {
     store.set('outbox-broken', '망가진 큐');
-    store.set('outbox-rejected-broken', '망가진 목록');
     const { result } = mount();
 
     await act(async () => {
@@ -557,7 +561,38 @@ describe('outbox', () => {
     });
 
     expect(store.has('outbox-broken')).toBe(false);
+  });
+
+  it('읽지 못해 옮겨 둔 되돌아온 목록 원본도 버린다', async () => {
+    store.set('outbox-rejected-broken', '망가진 목록');
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
     expect(store.has('outbox-rejected-broken')).toBe(false);
+  });
+
+  /*
+   * 되읽지 않는 자리를 못 지웠다고 장부 정리를 되돌리지 않는다. 되돌리면 큐는 이미 비었는데
+   * 화면은 아직 N 건이라 말한다.
+   */
+  it('옮겨 둔 원본을 못 지워도 버리기는 끝난다', async () => {
+    store.set('outbox-broken', '망가진 큐');
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    refuse.removeKey = 'outbox-broken';
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
+    expect(result.current.pending).toBe(0);
+    expect(store.get('outbox')).toBe('[]');
   });
 
   /*

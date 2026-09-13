@@ -72,16 +72,13 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
   const unregister = useCallback(async () => {
     await clearDeviceToken();
 
-    try {
-      // 공장을 남겨 두면 다음 등록까지 옛 공장으로 쓴다 — 다른 공장의 재고가 는다.
-      await forgetPlant();
-    } finally {
-      /*
-       * 토큰이 사라진 뒤로는 등록된 것이 아니다. 공장을 못 지웠다고 등록된 채로 두면 셸이
-       * 앱을 그대로 세우고 모든 요청이 401 로 되돌아온다 - 공장은 다음 등록이 덮는다.
-       */
-      setStatus('unregistered');
-    }
+    /*
+     * 공장을 남겨 두면 다음 등록까지 옛 공장으로 쓴다 — 다른 공장의 재고가 는다. 다만 여기서
+     * 걸려도 멈추지 않는다. 토큰은 이미 사라져 되돌릴 수 없고, 등록된 채로 두면 셸이 앱을
+     * 그대로 세워 모든 요청이 401 이 된다 - 남은 공장은 다음 등록이 덮는다.
+     */
+    await forgetPlant().catch(() => undefined);
+    setStatus('unregistered');
   }, []);
 
   return (
