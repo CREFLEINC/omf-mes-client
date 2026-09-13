@@ -422,6 +422,82 @@ describe('outbox', () => {
     });
   });
 
+  /*
+   * 등록을 풀면 이 기록들은 갈 곳을 잃는다. 되돌아온 것까지 함께 버려야 다음 등록이 앞 단말의
+   * 실패 목록을 물려받지 않는다.
+   */
+  it('버리면 담긴 것도 되돌아온 것도 남지 않는다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+    await waitFor(() => {
+      expect(result.current.rejected).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-2'));
+    });
+
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
+    expect(result.current.pending).toBe(0);
+    expect(result.current.rejected).toHaveLength(0);
+    expect(store.get('outbox')).toBe('[]');
+    expect(store.get('outbox-rejected')).toBe('[]');
+  });
+
+  /*
+   * 보내는 동안에는 턴을 놓는다. 그 사이에 등록이 풀리면 회차가 끝나고 자기가 떠 온 목록을
+   * 그대로 써서, 버렸다고 들은 것이 통째로 되살아난다 - 그 뒤 토큰 없이 나가 401 로 되돌아온다.
+   */
+  it('보내는 중에 버리면 그 회차의 결과가 되살아나지 않는다', async () => {
+    let release = (): void => {
+      /* 통신을 붙잡는 자리는 아래에서 채운다. */
+    };
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started: string[] = [];
+    const send: OutboxTransport = (entry) => {
+      started.push(entry.idempotencyKey);
+      return inFlight.then(() => Promise.reject(new ApiRequestError({ kind: 'network' })));
+    };
+
+    store.set(
+      'outbox',
+      JSON.stringify([
+        { ...draft('k-1'), id: 'e-1' },
+        { ...draft('k-2'), id: 'e-2' },
+      ]),
+    );
+
+    const { result } = mount(send);
+
+    await waitFor(() => {
+      expect(started).toEqual(['k-1']);
+    });
+
+    await act(async () => {
+      await result.current.discardAll();
+    });
+    expect(store.get('outbox')).toBe('[]');
+
+    await act(async () => {
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(store.get('outbox')).toBe('[]');
+    expect(result.current.pending).toBe(0);
+    expect(result.current.rejected).toHaveLength(0);
+  });
+
   it('빈 큐를 보내면 아무 결과도 내지 않는다', async () => {
     const { result } = mount();
 

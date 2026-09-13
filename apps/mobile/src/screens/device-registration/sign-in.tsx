@@ -30,6 +30,7 @@ export const WorkerSignInScreen = () => {
   const [directory, setDirectory] = useState<WorkerEntry[] | null | undefined>(undefined);
   const [rejected, setRejected] = useState<SignInResult | null>(null);
   const [asking, setAsking] = useState(false);
+  const [releaseFailed, setReleaseFailed] = useState(false);
   const { unregister } = useDeviceRegistration();
   /*
    * 등록을 풀면 담아 둔 것이 함께 사라진다. 몇 건인지 모른 채 누르게 두지 않는다(설계 §5-5).
@@ -46,7 +47,18 @@ export const WorkerSignInScreen = () => {
    * 사번으로 기록이 쌓인다 - 공용 장비에서 그것이 가장 나쁘다(공유계약 D-5).
    */
   const release = async () => {
-    await discardAll();
+    try {
+      await discardAll();
+    } catch {
+      /*
+       * 버리지 못했으면 등록을 풀지 않는다. 풀어 버리면 남은 기록이 토큰 없이 나가 되돌아오고,
+       * 그 사유는 서버의 판정이 아니라 우리가 등록을 푼 결과가 된다. 다만 청한 일이 일어나지
+       * 않았으므로 말한다 - 창은 이미 닫혀 있어 가만히 있으면 된 줄 안다.
+       */
+      setReleaseFailed(true);
+      return;
+    }
+
     await unregister();
     signOut();
   };
@@ -121,6 +133,8 @@ export const WorkerSignInScreen = () => {
           {t.unregister.open}
         </Button>
 
+        {releaseFailed ? <AlertBanner variant="error" title={t.unregister.failed} /> : null}
+
         <Dialog
           open={asking}
           /* 되돌릴 수 없다. 스크림을 스쳐 닫히면 물러선 것인지 손이 스친 것인지 갈리지 않는다. */
@@ -144,6 +158,7 @@ export const WorkerSignInScreen = () => {
                 disabled={!loaded}
                 onClick={() => {
                   setAsking(false);
+                  setReleaseFailed(false);
                   void release();
                 }}
               >

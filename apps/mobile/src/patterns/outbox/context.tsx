@@ -85,6 +85,8 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
   const [entries, setEntries] = useState<OutboxEntry[]>([]);
   const [rejected, setRejected] = useState<RejectedRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
+  /* 버린 횟수. 보내는 중에 버려졌는지를 회차가 알아보는 표식이다. */
+  const discarded = useRef(0);
 
   /*
    * 되돌아온 건을 상태와 별도로 붙잡아 둔다. 판정을 묻는 자리는 비동기 처리기 안이라 그 시점의
@@ -143,6 +145,11 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
   );
 
   const runFlush = useCallback(async (): Promise<FlushResult | null> => {
+    /*
+     * 이 회차가 어느 세대의 큐를 보고 있는가. 보내는 동안 턴을 놓으므로 그 사이에 등록이
+     * 풀려 큐가 버려질 수 있고, 그때 결과를 그대로 쓰면 버린 것이 통째로 되살아난다.
+     */
+    const generation = discarded.current;
     const stored = await inTurn(() => readQueue());
 
     if (stored.length === 0) {
@@ -156,6 +163,11 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     const result = await flushQueue(stored, send);
 
     await inTurn(async () => {
+      /* 버린 뒤에 끝난 회차다. 결과를 쓰면 작업자가 사라졌다고 들은 것이 되돌아온다. */
+      if (discarded.current !== generation) {
+        return;
+      }
+
       const attempted = new Set(stored.map((entry) => entry.id));
       const latest = await readQueue();
       // 보내려던 것 밖에 있는 것은 그 사이에 담긴 것이다. 결과로 덮으면 그 건이 사라진다.
@@ -218,6 +230,8 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
    * 그 사유는 서버가 그 기록에 대해 내린 판정이 아니라 우리가 등록을 푼 결과다.
    */
   const discardAll = useCallback(async () => {
+    discarded.current += 1;
+
     await inTurn(async () => {
       await writeQueue([]);
       await writeRejected([]);

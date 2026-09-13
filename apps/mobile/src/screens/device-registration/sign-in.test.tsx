@@ -12,6 +12,12 @@ const store = vi.hoisted(() => new Map<string, string>());
 /** 등록을 푸는 것은 단말 토큰을 지우는 일이다. 보안 저장소는 시험 환경에 없어 여기서 본다. */
 const token = vi.hoisted(() => ({ cleared: 0, value: 't' as string | null }));
 
+/** 무엇이 먼저 일어났는가. 버리기와 토큰 지우기의 차례를 재려면 둘을 한 줄에 놓아야 한다. */
+const steps = vi.hoisted(() => [] as string[]);
+
+/** 보관소가 특정 자리의 저장을 거절하는 상황을 만든다. */
+const refuse = vi.hoisted(() => ({ key: null as string | null }));
+
 vi.mock('../../patterns/device-token', () => ({
   readDeviceToken: () => Promise.resolve(token.value),
   writeDeviceToken: () => Promise.resolve(),
@@ -20,6 +26,7 @@ vi.mock('../../patterns/device-token', () => ({
   clearDeviceToken: () => {
     token.cleared += 1;
     token.value = null;
+    steps.push('토큰 지움');
     return Promise.resolve();
   },
 }));
@@ -37,6 +44,14 @@ vi.mock('../../patterns/local-store', () => ({
     return store.get(key) ?? null;
   },
   writeLocal: (key: string, value: string) => {
+    if (key === refuse.key) {
+      return Promise.reject(new Error('보관소가 거절했습니다'));
+    }
+
+    if (key === 'outbox' && value === '[]') {
+      steps.push('큐 버림');
+    }
+
     store.set(key, value);
     return Promise.resolve();
   },
@@ -85,6 +100,8 @@ const signedIn = async (user: ReturnType<typeof userEvent.setup>) => {
 
 beforeEach(() => {
   reads.gate = null;
+  refuse.key = null;
+  steps.length = 0;
   token.cleared = 0;
   token.value = 't';
   store.clear();
@@ -299,6 +316,45 @@ describe('기기 등록 해제', () => {
     await waitFor(() => {
       expect(store.get(OUTBOX_KEY)).toBe('[]');
     });
+  });
+
+  /*
+   * 토큰을 먼저 지우면 그 틈에 셸이 큐를 보내 토큰 없는 요청이 나간다 - 401 로 되돌아오고,
+   * 그 사유는 서버가 그 기록에 대해 내린 판정이 아니라 우리가 등록을 푼 결과가 된다.
+   */
+  it('토큰을 지우기 전에 담아 둔 것을 먼저 버린다', async () => {
+    store.set(OUTBOX_KEY, JSON.stringify([queuedEntry('a')]));
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    await user.click(await screen.findByRole('button', { name: '등록 해제' }));
+
+    await waitFor(() => {
+      expect(token.cleared).toBe(1);
+    });
+    expect(steps).toEqual(['큐 버림', '토큰 지움']);
+  });
+
+  /*
+   * 버리지 못했는데 등록을 풀면 남은 기록이 토큰 없이 나간다. 풀지 않는 것이 맞지만, 창은
+   * 이미 닫혀 있어 가만히 있으면 된 줄 안다 - 청한 일이 일어나지 않았다고 말한다.
+   */
+  it('버리지 못하면 등록을 풀지 않고 그렇게 말한다', async () => {
+    store.set(OUTBOX_KEY, JSON.stringify([queuedEntry('a')]));
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    refuse.key = OUTBOX_KEY;
+    await user.click(await screen.findByRole('button', { name: '등록 해제' }));
+
+    expect(
+      await screen.findByText('등록을 풀지 못했습니다. 기록이 그대로 남아 있으니 다시 시도하세요'),
+    ).toBeInTheDocument();
+    expect(token.cleared).toBe(0);
   });
 
   /* 사번이 남으면 새 QR 로 다시 등록했을 때 앞 작업자의 사번으로 기록이 쌓인다. */
