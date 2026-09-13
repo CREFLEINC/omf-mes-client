@@ -18,9 +18,19 @@ const NO_LEADER_STATUS = 0;
 export const reasonOf = (error: ApiError): string => {
   switch (error.kind) {
     case 'validation':
-      return error.errors.map((item) => item.message).join(' ') || t.invalid;
+      return (
+        error.errors
+          .map((item) => item.message)
+          .join(' ')
+          .trim() || t.invalid
+      );
     case 'stateLocked':
-      return error.errors.map((item) => item.message).join(' ') || t.stateLocked;
+      return (
+        error.errors
+          .map((item) => item.message)
+          .join(' ')
+          .trim() || t.stateLocked
+      );
     case 'conflict':
       return error.message || t.conflict;
     case 'http':
@@ -88,7 +98,7 @@ export const detailsOf = (record: RejectedRecord): DetailRow[] => {
    */
   const status =
     error.kind === 'http' && error.status !== NO_LEADER_STATUS ? String(error.status) : d.none;
-  const code = error.kind === 'http' || error.kind === 'conflict' ? (error.code ?? d.none) : d.none;
+  const code = error.kind === 'http' || error.kind === 'conflict' ? error.code || d.none : d.none;
   /*
    * 서버가 준 말만 낸다. 갈래별 안내는 우리가 지은 말이라, 이 이름표를 달고 나가면 작업자가
    * 서버가 그렇게 말했다고 담당자에게 전한다. 그 안내는 카드 본문에 이미 있다.

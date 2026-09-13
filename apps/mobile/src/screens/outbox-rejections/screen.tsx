@@ -59,7 +59,11 @@ export const OutboxRejectionsScreen = () => {
                   {openId === record.entry.id ? t.details.close : t.details.open}
                 </Button>
                 {openId === record.entry.id ? (
-                  <div role="group" aria-label={t.details.pane}>
+                  <div
+                    className="outbox-rejections__details-group"
+                    role="group"
+                    aria-label={t.details.pane}
+                  >
                     <dl className="outbox-rejections__details">
                       {detailsOf(record).map((row) => (
                         <div key={row.label} className="outbox-rejections__detail">

@@ -199,6 +199,48 @@ describe('전송 실패한 기록 화면', () => {
 
     expect(valueOf(details, '응답 코드')).toBe('401');
     expect(valueOf(details, '돌아온 문구')).toBe('없음');
+    /* 상세를 열기 전의 카드도 빈 줄이 되면 안 된다 - 같은 결함이 사유 쪽에도 있었다. */
+    expect(screen.getByText(/보냈지만 등록되지 않았습니다/)).toBeInTheDocument();
+  });
+
+  /*
+   * 항목마다 문구가 비어 있으면 이어 붙인 결과가 공백 한 칸이라 참으로 읽힌다. 그 값이
+   * 그대로 나가면 칸도 카드도 빈 줄이 된다.
+   */
+  it('문구가 빈 항목만 오면 갈래별 문구로 대신한다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          errors: [
+            { scope: 'field', field: 'a', code: 'required', message: '' },
+            { scope: 'field', field: 'b', code: 'required', message: '' },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    expect(await screen.findByText('적은 내용에 문제가 있습니다.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '상세 보기' }));
+
+    expect(valueOf(screen.getByRole('group', { name: '상세' }), '돌아온 문구')).toBe('없음');
+  });
+
+  /*
+   * 앞 건이 못 가 붙을 곳이 없던 건은 상태 없는 오류를 달고 있다. 그 0 을 응답 코드로 내면
+   * 담당자가 있지도 않은 코드를 찾는다.
+   */
+  it('앞 기록에 딸린 건은 없는 응답 코드를 지어 내지 않는다', async () => {
+    seed([record({ cascaded: true, error: { kind: 'http', status: 0 } })]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    expect(valueOf(screen.getByRole('group', { name: '상세' }), '응답 코드')).toBe('없음');
   });
 
   /* 세로 화면이라 여럿이 펼쳐지면 목록을 잃는다. 하나를 열면 앞엣것이 닫혀야 한다. */

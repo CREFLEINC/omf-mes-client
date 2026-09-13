@@ -40,6 +40,12 @@
   color: var(--on-surface-muted, inherit);
 }
 
+/* 카드가 왼쪽으로 붙여 세우므로 래퍼가 내용 폭으로 줄어든다. 안쪽 목록의 100% 는 그 줄어든
+   폭을 기준으로 재어 뜻을 잃는다. */
+.outbox-rejections__details-group {
+  align-self: stretch;
+}
+
 .outbox-rejections__details {
   display: flex;
   flex-direction: column;
