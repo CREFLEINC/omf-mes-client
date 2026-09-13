@@ -1208,6 +1208,78 @@ for (const [name, path, check] of DETAILS) {
   console.log(`${ok ? '✔' : '✘'} P-02-13 확정한 검사 결과가 목록 · 단건 · 측정치로 되읽힌다`);
 }
 
+/*
+ * P-02-13 확정 경로(`:confirm`)와 **이름 경로가 번호 자리에 먹히지 않는 것**(#1157 리뷰).
+ *
+ * ⛔ `/quality/inspection-results/{id}` 를 세우면서 같은 깊이의 `…/summary` ·
+ *    `…/defect-rate-trend` 를 삼켜 404 를 냈다. 종전에는 Prism 으로 넘어가 답하던 자리라
+ *    W-03-05 의 요약·추이 패널이 «조용히» 고장 났다 — 감지기가 없어 게이트는 초록이었다.
+ */
+{
+  const save = await fetch(`${BASE}/quality/inspection-results`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': 'seed-smoke-p-02-13-draft',
+    },
+    body: JSON.stringify({
+      inspectionRequestId: 16001,
+      /* 소수 수량 - 부동소수를 그대로 견주면 여기서 합계가 어긋난다. */
+      inspectedQty: 1,
+      acceptedQty: 0.7,
+      rejectedQty: 0.2,
+      heldQty: 0.1,
+      uomId: 1001,
+      inspectedAt: '2026-09-11T14:00:00+09:00',
+      statusCode: 'DRAFT',
+    }),
+  });
+  const draft = await save.json();
+  const resultId = Number(draft.inspectionResultId);
+  const path = `${BASE}/quality/inspection-results/${String(resultId)}`;
+
+  const etag = (await fetch(path)).headers.get('etag') ?? '';
+  const confirmHeaders = {
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'seed-smoke-p-02-13-confirm-action',
+    'If-Match': etag,
+  };
+  const body = JSON.stringify({ overallJudgmentCode: 'ACCEPTED' });
+
+  /* If-Match 를 안 실으면 막힌다 - 계약이 필수로 못박았다. */
+  const noToken = await fetch(`${path}:confirm`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'seed-smoke-no-token' },
+    body,
+  });
+  const confirmed = await fetch(`${path}:confirm`, {
+    method: 'POST',
+    headers: confirmHeaders,
+    body,
+  });
+  const settled = await confirmed.json();
+  /* 같은 키로 다시 오면 최초 응답을 재생한다 - 없는 충돌을 지어내지 않는다. */
+  const replay = await fetch(`${path}:confirm`, { method: 'POST', headers: confirmHeaders, body });
+
+  /* 같은 깊이의 이름 경로가 번호 자리에 먹히지 않는다. */
+  const summary = await fetch(`${BASE}/quality/inspection-results/summary`);
+  const trend = await fetch(`${BASE}/quality/inspection-results/defect-rate-trend`);
+
+  const ok =
+    save.status === 201 &&
+    noToken.status === 400 &&
+    confirmed.status === 200 &&
+    settled.statusCode === 'CONFIRMED' &&
+    settled.overallJudgmentCode === 'ACCEPTED' &&
+    settled.versionNo === 2 &&
+    replay.status === 200 &&
+    summary.status !== 404 &&
+    trend.status !== 404;
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} P-02-13 확정이 토큰을 요구하고, 이름 경로가 번호에 먹히지 않는다`);
+}
+
 console.log(
   failed === 0
     ? `\n화면 ${String(ENTRIES.length + DETAILS.length)}자리 전부 열립니다.`
