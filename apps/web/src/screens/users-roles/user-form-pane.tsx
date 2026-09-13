@@ -112,6 +112,17 @@ export const UserFormPane = ({
             <TextField
               id={loginIdId}
               value={values.loginId}
+              /*
+               * ⛔ **아래 비밀번호 칸이 생기면서 이 줄이 필요해졌다.** 두 칸을 나란히 두면
+               *    브라우저가 「아이디 + 비밀번호」를 **이 출처의 자격증명 쌍**으로 읽고 저장을
+               *    권할 수 있다. 그것을 누르면 **관리자 자신의** 저장된 비밀번호가 남의 초기
+               *    비밀번호로 바뀐다. 비밀번호 칸의 `new-password` 는 «채우기»를 막을 뿐
+               *    «저장 권유»를 막지 못하므로 이 칸에서도 신호를 준다.
+               *
+               * ⚠ 브라우저가 이 값을 무시하는 일이 있어 완전한 차단은 아니다. 이 파일에
+               *   `<form>` 요소가 없어 발동 확률이 이미 낮다는 것이 함께 받치는 근거다.
+               */
+              autoComplete="off"
               onChange={(event) => onChange({ loginId: event.target.value })}
               error={fieldErrors.loginId}
               aria-required

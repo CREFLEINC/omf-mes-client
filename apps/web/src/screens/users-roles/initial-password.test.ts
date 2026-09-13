@@ -55,7 +55,9 @@ describe('validateInitialPassword', () => {
   });
 
   it('7자는 숫자와 알파벳을 다 채워도 규칙 미달이다 — 하한을 한 자 못 채운다', () => {
-    expect(validateInitialPassword('abcdef1')).toBe(t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH));
+    expect(validateInitialPassword('abcdef1')).toBe(
+      t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH),
+    );
   });
 
   it('정확히 8자 숫자+알파벳은 통과한다 — 이 길이는 상한이 아니라 하한이다', () => {
@@ -63,11 +65,15 @@ describe('validateInitialPassword', () => {
   });
 
   it('알파벳만 8자는 숫자가 없어 규칙 미달이다', () => {
-    expect(validateInitialPassword('abcdefgh')).toBe(t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH));
+    expect(validateInitialPassword('abcdefgh')).toBe(
+      t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH),
+    );
   });
 
   it('숫자만 8자는 알파벳이 없어 규칙 미달이다', () => {
-    expect(validateInitialPassword('12345678')).toBe(t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH));
+    expect(validateInitialPassword('12345678')).toBe(
+      t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH),
+    );
   });
 
   it('특수문자를 섞은 8자 숫자+알파벳은 통과한다 — 특수문자는 금지가 아니다', () => {
@@ -92,7 +98,9 @@ describe('validateInitialPassword', () => {
   it('공백만 8자는 빈 칸이 아니라 규칙 미달이다', () => {
     const spacesOnly = ' '.repeat(INITIAL_PASSWORD_MIN_LENGTH);
 
-    expect(validateInitialPassword(spacesOnly)).toBe(t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH));
+    expect(validateInitialPassword(spacesOnly)).toBe(
+      t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH),
+    );
     expect(validateInitialPassword(spacesOnly)).not.toBe(t.required);
   });
 
@@ -113,5 +121,26 @@ describe('validateInitialPassword', () => {
     expect(validateInitialPassword('abcdefg１')).toBe(
       t.initialPasswordWeak(INITIAL_PASSWORD_MIN_LENGTH),
     );
+  });
+
+  /*
+   * ⚠ **`value.length`는 UTF-16 코드 단위다.** 서로게이트 쌍(이모지 등)은 코드포인트 하나가
+   * 코드 단위 둘로 세어진다 — `ab1` + 이모지 3개는 코드포인트로는 6자(하한 미달)인데
+   * `.length`로는 3 + 3*2 = 9로 재어져 하한(8자)을 채운 것처럼 통과한다. 이 시험은 **지금
+   * 동작을 고정한다** — 하한을 코드포인트로 다시 재도록 고치는 것은 이 회차의 범위가 아니다.
+   *
+   * ⛢ **지금은 사고가 아닌 이유.** 이 값이 실제로 서버에 실리면, 서버가 문자열 길이를
+   * 코드포인트로 잰다면(대개 그렇다) `1`+이모지 3개는 코드포인트 4자로 서버 하한(8자) 미달이라
+   * 400 `RANGE`를 낸다 — 그리고 `password`는 **등록 전용** `USER_CREATE_FORM_FIELDS`(위
+   * `user-validation.ts`)에 있는 `knownFields`라 그 400이 배너로 새지 않고 이 칸 옆에
+   * 인라인으로 선다(`UsersRolesScreen 등록 저장 실패`가 그 배선을 잰다). 즉 화면 판정을
+   * 빠져나가도 서버 판정이 같은 칸에서 다시 잡는다 — 조용히 통과해 버리는 값이 아니다.
+   */
+  it('서로게이트 쌍은 코드 단위로 세어져 코드포인트 하한에 못 미쳐도 통과한다', () => {
+    const withEmoji = `ab1${'😀'.repeat(3)}`; // 코드포인트 6자, UTF-16 코드 단위 9
+
+    expect([...withEmoji]).toHaveLength(6);
+    expect(withEmoji.length).toBe(9);
+    expect(validateInitialPassword(withEmoji)).toBeUndefined();
   });
 });

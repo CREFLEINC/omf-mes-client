@@ -96,11 +96,7 @@ import {
   userDetailPath,
   userKeys,
 } from './user-queries';
-import {
-  USER_CREATE_FORM_FIELDS,
-  USER_FORM_FIELDS,
-  validateUserForm,
-} from './user-validation';
+import { USER_CREATE_FORM_FIELDS, USER_FORM_FIELDS, validateUserForm } from './user-validation';
 import type {
   AppUser,
   Role,
@@ -143,7 +139,7 @@ interface UserFormState {
    * 등록 폼에 남아 첫 렌더부터 붉은 글씨가 선다. 이 안에 두면 폼 값과 **수명이 같아져** 잊을
    * 자리가 없다.
    */
-  passwordTouched: boolean;
+  isPasswordTouched: boolean;
 }
 
 /**
@@ -243,7 +239,7 @@ export const UsersRolesScreen = () => {
       source: userFormSource,
       baseline: seeded,
       values: seeded,
-      passwordTouched: false,
+      isPasswordTouched: false,
     });
   }
 
@@ -287,7 +283,7 @@ export const UsersRolesScreen = () => {
 
     const value = formState.values.password;
 
-    if (value === '' && !formState.passwordTouched) return undefined;
+    if (value === '' && !formState.isPasswordTouched) return undefined;
 
     return validateInitialPassword(value);
   })();
@@ -479,7 +475,7 @@ export const UsersRolesScreen = () => {
       setUserFieldErrors({});
       const next = appUserToFormValues(saved);
       setFormState((prev) =>
-        prev === null ? prev : { ...prev, baseline: next, values: next, passwordTouched: false },
+        prev === null ? prev : { ...prev, baseline: next, values: next, isPasswordTouched: false },
       );
       toast.show({ variant: 'success', description: messages.common.saved });
     },
@@ -818,7 +814,7 @@ export const UsersRolesScreen = () => {
              * 상태 갱신이 되고, 두 갱신 사이의 렌더에서 「새 값 + 낡은 손댔는가」가 보인다.
              * 한 번 참이 되면 되돌리지 않는다 — 값을 지운 것도 손댄 것이다.
              */
-            passwordTouched: prev.passwordTouched || 'password' in patch,
+            isPasswordTouched: prev.isPasswordTouched || 'password' in patch,
           },
     );
 

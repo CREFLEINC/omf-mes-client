@@ -19,12 +19,23 @@ COPY packages packages
 ARG VITE_API_BASE_URL=/api
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL}
 
-# 기본값이 빈 까닭: 비우면 화면 코드의 기본값으로 떨어진다 — 배포처마다 덮을 때만 넘긴다. ARG 로 넘긴 값은 docker history 에 남는다(비밀이 아니다).
+RUN pnpm -r typecheck
+RUN TZ=Asia/Seoul pnpm --filter @omf-mes/web exec vitest run --maxWorkers=4 --testTimeout=15000
+
+# 사용자 등록 폼의 초기 비밀번호 기본값. 비우면 화면 코드의 기본값으로 떨어지므로,
+# 배포처마다 다른 값을 쓸 때만 넘긴다.
+#
+# ⛔ **시험(`vitest`) «뒤», 빌드 «앞»이 이 선언의 자리다.** 위로 올리면 넘긴 값이
+#    `import.meta.env` 로 시험 실행에까지 들어간다 — vite 는 `process.env` 의 `VITE_*` 를
+#    `.env` 파일보다 먼저 읽는다. 그러면 등록 폼의 기본값이 «넘긴 값»으로 바뀌고, 그 값이
+#    화면 규칙(숫자+알파벳 8자)을 우연히 어기면 **코드와 무관하게 CI 에서만** 등록 시험이
+#    깨진다. 시험이 보는 기본값은 언제나 코드 상수 하나여야 한다.
+#
+# ⚠ 이 값은 **빌드 산출물 JS 에 박힌다** — 그것이 실제로 드러나는 자리다. 최종 이미지는
+#   아래 nginx 단계라 이 `build` 단계의 `ARG`·`ENV` 는 배포 이미지 이력에 남지 않는다.
 ARG VITE_DEFAULT_INITIAL_PASSWORD=
 ENV VITE_DEFAULT_INITIAL_PASSWORD=${VITE_DEFAULT_INITIAL_PASSWORD}
 
-RUN pnpm -r typecheck
-RUN TZ=Asia/Seoul pnpm --filter @omf-mes/web exec vitest run --maxWorkers=4 --testTimeout=15000
 RUN pnpm --filter @omf-mes/web build
 
 FROM nginx:1.28.3-alpine AS runtime
