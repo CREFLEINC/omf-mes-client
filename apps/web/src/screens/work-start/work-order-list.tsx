@@ -24,6 +24,11 @@ export interface WorkOrderListProps {
   onPageChange: (page: number) => void;
   /** 전체 보기인가 — 빈 상태 문구가 갈린다. */
   isShowingAll: boolean;
+  /**
+   * 단말에 설비가 매핑되지 않았는가. 서버가 목록 조회를 거부하므로 「전체 보기」를 두지 않는다
+   * (사용자 지시 2026-09-13).
+   */
+  isEquipmentMissing?: boolean;
   /** 설비를 몰라 기본 목록을 세우지 못했는가. */
   isEquipmentUnknown: boolean;
   /** 사번 확인 전에는 고를 수 없다. */
@@ -57,6 +62,7 @@ export const WorkOrderList = ({
   pageMeta,
   onPageChange,
   isShowingAll,
+  isEquipmentMissing = false,
   isEquipmentUnknown,
   canSelect,
   selectedId,
@@ -76,9 +82,11 @@ export const WorkOrderList = ({
         </h2>
 
         {/* 「전체 보기」는 조회 축 하나를 뺄 뿐이다 — 다른 조건은 그대로다(§5-5). */}
-        <Button type="button" variant="outlined" size="xl" onClick={onToggleScope}>
-          {isShowingAll ? t.showEquipmentOnly : t.showAll}
-        </Button>
+        {!isEquipmentMissing && (
+          <Button type="button" variant="outlined" size="xl" onClick={onToggleScope}>
+            {isShowingAll ? t.showEquipmentOnly : t.showAll}
+          </Button>
+        )}
       </div>
 
       {/*
@@ -86,14 +94,23 @@ export const WorkOrderList = ({
        *    보이고 있고 누르면 무엇이 늘어나는지를 한 줄로 말한다 — 배너가 아니라 보조 문구다:
        *    경고가 아니라 «현재 상태»라서 배너로 세우면 세로 예산을 먹고 경고와 섞인다.
        */}
-      <p className="field-note work-start-scope-note">
-        {isShowingAll ? t.scopeNoteAll : t.scopeNoteEquipment}
-      </p>
+      {/* 설비가 없으면 범위를 바꿀 길이 없어 「전체 보기를 누르세요」가 거짓말이 된다. */}
+      {!isEquipmentMissing && (
+        <p className="field-note work-start-scope-note">
+          {isShowingAll ? t.scopeNoteAll : t.scopeNoteEquipment}
+        </p>
+      )}
 
       {/*
        * ⚠ 설비를 몰라 기본 목록을 못 세운 상태는 **빈 목록이 아니다.** 사유와 다음 행동을
        *    함께 보인다 — 그러지 않으면 「이 설비에 지시가 없다」로 읽힌다.
        */}
+      {isEquipmentMissing && (
+        <div className="banner-slot">
+          <AlertBanner variant="info">{t.equipmentMissing}</AlertBanner>
+        </div>
+      )}
+
       {isEquipmentUnknown && !isShowingAll && (
         <div className="banner-slot">
           <AlertBanner variant="warning">{t.equipmentUnknown}</AlertBanner>

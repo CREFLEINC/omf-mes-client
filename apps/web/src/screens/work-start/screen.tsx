@@ -66,6 +66,11 @@ export const WorkStartScreen = () => {
   const equipmentId = terminal.data?.equipmentId ?? null;
   const equipmentCode = terminal.data?.equipmentCode ?? null;
   const equipmentName = terminal.data?.equipmentName ?? null;
+  /*
+   * ⭐ **설비가 매핑되지 않은 단말**(사용자 지시 2026-09-13). 조회가 실패해 «모르는» 것과
+   *    가른다 — 서버가 답했고 그 답이 「설비 없음」이다. 서버는 이 단말의 목록 조회를 거부한다.
+   */
+  const isEquipmentMissing = terminal.isSuccess && equipmentId === null;
 
   /*
    * ⭐ **사번은 단말이 이미 들고 있을 수 있다.** 사번 경량 인증(`P-CO-01`)이 정한 값이
@@ -258,7 +263,17 @@ export const WorkStartScreen = () => {
      */
     const other = (text: string) => ({ code: 'other' as const, text });
 
-    if (gate.verdict === 'unidentified') return other(t.blocked.unidentified);
+    /* ⭐ 사유별로 가른다(사용자 지시 2026-09-13) — 매핑이 비어 있는 것은 등록 실패가 아니다. */
+    if (isEquipmentMissing) return other(t.blocked.equipmentMissing);
+    if (gate.verdict === 'unidentified') {
+      if (identity.terminalId !== null && identity.processes !== null) {
+        return other(
+          identity.processes.length === 0 ? t.blocked.processNone : t.blocked.processMultiple,
+        );
+      }
+
+      return other(t.blocked.unidentified);
+    }
     if (gate.verdict === 'checking') return other(t.blocked.checking);
     if (gate.verdict === 'unavailable') return other(t.blocked.unavailable);
     if (gate.verdict === 'denied') return other(t.blocked.denied);
@@ -417,8 +432,7 @@ export const WorkStartScreen = () => {
     <main className="pop-shell pop-ui work-start-screen" aria-labelledby={titleId}>
       <PopHeader
         titleId={titleId}
-        equipmentCode={equipmentCode}
-        equipmentName={equipmentName}
+        terminalCode={terminal.data?.terminalCode ?? null}
         workerNo={confirmedNo}
         /*
          * ⭐ 연결 여부는 «마지막 조회가 서버에 닿았는가»로 말한다 — 브라우저의 온라인 표시는
@@ -534,7 +548,8 @@ export const WorkStartScreen = () => {
           setListPage(page);
         }}
         isShowingAll={isShowingAll}
-        isEquipmentUnknown={equipmentId === null}
+        isEquipmentMissing={isEquipmentMissing}
+        isEquipmentUnknown={equipmentId === null && !isEquipmentMissing}
         canSelect={confirmedNo !== null}
         selectedId={selectedId}
         onSelect={selectWorkOrder}

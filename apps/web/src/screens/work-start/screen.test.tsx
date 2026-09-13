@@ -7,6 +7,7 @@ import {
   EQUIPMENT_ID,
   IDENTITY,
   PROCESS_ID,
+  TERMINAL,
   WORKER,
   WORK_ORDER,
   listUrls,
@@ -84,6 +85,44 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
     expect(screen.queryByText(t.blocked.denied)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.blocked.retry })).toBeInTheDocument();
     expect(startButton()).toBeDisabled();
+  });
+
+  /** ⭐ 사용자 지시 2026-09-13 — 매핑이 비어 있는 것은 「단말을 확인하지 못했다」가 아니다. */
+  it('설비가 매핑되지 않은 단말은 그 사유를 말하고 목록을 묻지 않는다', async () => {
+    const { recorded } = renderScreen({
+      terminal: { ...TERMINAL, equipmentId: null, equipmentCode: null, equipmentName: null },
+    });
+
+    expect(await screen.findByText(t.blocked.equipmentMissing)).toBeInTheDocument();
+    expect(screen.getByText(t.list.equipmentMissing)).toBeInTheDocument();
+    expect(screen.queryByText(t.blocked.unidentified)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.list.equipmentUnknown)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.list.showAll })).not.toBeInTheDocument();
+    expect(listUrls(recorded.urls)).toHaveLength(0);
+  });
+
+  it('공정이 없거나 여럿이면 등록 실패가 아니라 공정 매핑을 사유로 말한다', async () => {
+    renderScreen({ identity: { ...IDENTITY, processes: [] } });
+    expect(await screen.findByText(t.blocked.processNone)).toBeInTheDocument();
+  });
+
+  it('공정이 여럿이면 권한을 확인할 수 없다고 말한다', async () => {
+    renderScreen({
+      identity: {
+        ...IDENTITY,
+        processes: [{ processId: PROCESS_ID }, { processId: PROCESS_ID + 1 }],
+      },
+    });
+    expect(await screen.findByText(t.blocked.processMultiple)).toBeInTheDocument();
+    expect(screen.queryByText(t.blocked.unidentified)).not.toBeInTheDocument();
+  });
+
+  it('머리줄은 설비가 아니라 단말 코드를 보인다', async () => {
+    renderScreen();
+    expect(
+      await screen.findByText(t.header.terminalLabel(TERMINAL.terminalCode)),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(TERMINAL.equipmentCode, { exact: false })).not.toBeInTheDocument();
   });
 
   it('단말·공정을 모르면 조회하지 않고 사유를 말한다', async () => {
