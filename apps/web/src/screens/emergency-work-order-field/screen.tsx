@@ -1,6 +1,8 @@
 import { messages } from '@omf-mes/i18n';
 import { useId, useState } from 'react';
 
+import { usePopIdentity } from '../../patterns/pop-identity';
+
 import { DetailPane } from './detail-pane';
 import { PopHeader } from './pop-header';
 import { useEmergencyWorkOrders } from './queries';
@@ -11,8 +13,6 @@ import { WorkOrderList } from './work-order-list';
 import { EMERGENCY_WORK_ORDER_TYPE_CODE, isEmergencyTypeCodeKnown } from './work-order-type';
 
 export interface EmergencyWorkOrderFieldScreenProps {
-  /** 이 단말의 번호. 셸이 채운다 — 아직 채우는 곳이 없어 기본은 「모른다」다. */
-  terminalNo?: string;
   /**
    * 긴급을 뜻하는 유형 코드. 화면은 기본값으로 상수를 쓴다.
    *
@@ -33,9 +33,13 @@ export interface EmergencyWorkOrderFieldScreenProps {
  */
 export const EmergencyWorkOrderFieldScreen = ({
   typeCode = EMERGENCY_WORK_ORDER_TYPE_CODE,
-  terminalNo,
 }: EmergencyWorkOrderFieldScreenProps) => {
   const t = messages.emergencyWorkOrderField;
+  /*
+   * 단말 번호는 **셸이 아는 값**이라 다른 POP 화면과 같은 자리(`patterns/pop-identity`)에서
+   * 읽는다(#1147). 화면 속성으로 받던 때는 채우는 곳이 없어 이 화면만 「단말 —」로 떴다.
+   */
+  const { terminalId } = usePopIdentity();
   const [selectedId, setSelectedId] = useState<number | null>(null);
   /* 셸이 없는 화면이라 표제가 본문의 이름이 된다 — 이름 없는 랜드마크로 남기지 않는다. */
   const titleId = useId();
@@ -62,7 +66,7 @@ export const EmergencyWorkOrderFieldScreen = ({
     <main className="pop-shell pop-ui" aria-labelledby={titleId}>
       <PopHeader
         titleId={titleId}
-        terminalNo={terminalNo}
+        terminalNo={terminalId === null ? undefined : String(terminalId)}
         /*
          * ⭐ 연결 여부는 «마지막 조회가 서버에 닿았는가»로 말한다 — 브라우저의 온라인
          *    표시는 산업용 패널 PC 에서 사실과 다르다(같은 기기의 서버에는 랜선 없이도 닿는다).
