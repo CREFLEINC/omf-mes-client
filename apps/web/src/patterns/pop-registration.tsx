@@ -1,10 +1,11 @@
-import type { ApiClient } from '@omf-mes/api-client';
+import { isTransientStatus, type ApiClient } from '@omf-mes/api-client';
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 
 import { useApiClient } from './api-context';
 import { PopIdentityProvider } from './pop-identity';
 import {
   currentTerminalToken,
+  discardStoredTerminalToken,
   setCandidateTerminalToken,
   writeTerminalToken,
 } from './pop-terminal-token';
@@ -100,9 +101,23 @@ export type RegistrationFailure =
   | 'no-store' // 셸이 없어 자격증명 저장소에 보관할 수 없다
   | 'queue-blocked'; // 미전송 기록이 있는데 다른 신원으로 바꾸려 한다
 
+/**
+ * 판정이 **어느 토큰에 대한 것인가.**
+ *
+ * ⛔ **없으면 화면이 무엇을 말하는지 알 수 없다**(#1137). 켤 때 보관된 토큰을 스스로 확인하는데
+ *    (`app/pop-main` 의 `PopRegistrationGate`), 그 실패가 입력란이 «빈» 등록 화면에 그대로
+ *    떴다 — 설치 담당자는 한 글자도 넣지 않았는데 「이 토큰은 더 이상 쓸 수 없습니다」를
+ *    받았다(실측 2026-09-12 · 사용자 지적 · 실서버 설치본).
+ */
+export type FailureSource =
+  | 'stored' // 켤 때 스스로 확인한 보관 토큰
+  | 'entered'; // 설치 담당자가 방금 붙여넣은 값
+
 export interface RegistrationState {
   phase: RegistrationPhase;
   failure: RegistrationFailure | null;
+  /** 위 `failure` 가 «어느» 토큰 이야기인가. 실패가 없으면 뜻이 없다. */
+  failureSource: FailureSource;
   /** 적용을 막은 미전송 건수. `queue-blocked` 일 때만 값이 있다. */
   pendingCount: number;
   /** 검증이 확인해 준 단말. `verified` 이후에만 있다. */
@@ -112,8 +127,13 @@ export interface RegistrationState {
 }
 
 export interface PopRegistration extends RegistrationState {
-  /** 붙여넣은 후보 토큰을 서버에 확인시킨다. */
-  verify: (token: string) => Promise<void>;
+  /**
+   * 후보 토큰을 서버에 확인시킨다.
+   *
+   * ⚠ `source` 는 **실패 문구가 누구 이야기인지**를 정한다. 기본은 사람이 방금 넣은 값이고,
+   *   켤 때 보관 토큰을 스스로 확인하는 자리만 `'stored'` 로 부른다(#1137).
+   */
+  verify: (token: string, source?: FailureSource) => Promise<void>;
   /** 확인된 바로 그 후보 토큰을 적용한다. 설치 담당자가 단말 코드를 본 뒤에 부른다. */
   apply: () => Promise<void>;
   /** 준비만 다시 시도한다 — 토큰은 그대로다. */
@@ -125,6 +145,7 @@ export interface PopRegistration extends RegistrationState {
 const INITIAL: RegistrationState = {
   phase: 'unregistered',
   failure: null,
+  failureSource: 'entered',
   pendingCount: 0,
   terminal: null,
   processes: null,
@@ -203,11 +224,36 @@ const failureOf = (error: unknown): RegistrationFailure => {
 
   if (status === 403) return 'foreign';
 
+  /*
+   * ⛔ **「지금은 못 받는다」를 판정으로 읽지 않는다**(#1137 · 독립 검증 지적). 5xx·429·408 은
+   *    서버가 토큰을 «보고» 답한 것이 아니다 — 그런데 이번에 판정 갈래에 삭제가 붙어, 그대로
+   *    두면 서버가 잠깐 앓는 사이 멀쩡한 보관 토큰이 지워지고 설치 담당자를 현장으로 다시
+   *    불러야 한다.
+   *
+   * ⚠ **판정은 여기서 다시 짓지 않는다.** 같은 구분을 오프라인 큐도 쓰므로 기준이 두 곳에
+   *   생기면 한쪽만 고쳐졌을 때 조용히 어긋난다(`api-client` 의 `isTransientStatus` 주석).
+   */
+  if (status !== undefined && isTransientStatus(status)) return 'unreachable';
+
   /* 응답 자체가 없었다 — 토큰은 아직 판정된 적이 없다. */
   if (toApiError(error).kind === 'network') return 'unreachable';
 
   return 'rejected';
 };
+
+/**
+ * 보관 토큰을 버릴 «판정» — 서버가 그 토큰을 보고 답했을 때만이다(#1137 ②).
+ *
+ * ⛔ `unreachable`·`offline` 은 들어오지 않는다 — 판정이 아니라 **못 물어본 것**이다. 서버가
+ *    「지금은 못 받는다」고 답한 갈래(5xx·429·408)도 `failureOf` 가 그쪽으로 접는다.
+ * ⛔ `no-store`·`queue-blocked` 도 아니다 — 토큰이 아니라 적용 단계의 사정이다.
+ */
+const DISCARDABLE_FAILURES: ReadonlySet<RegistrationFailure> = new Set([
+  'malformed',
+  'rejected',
+  'foreign',
+  'wrong-type',
+]);
 
 const fetchTerminal = (client: Client, terminalId: number): Promise<VerifiedTerminal> =>
   runRequest(() =>
@@ -261,6 +307,7 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
         setState({
           phase: 'ready',
           failure: null,
+          failureSource: 'entered',
           pendingCount: 0,
           terminal,
           processes,
@@ -273,21 +320,42 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
     [client],
   );
 
+  /**
+   * 보관된 토큰이 걸러졌으면 **그 자리에서 버린다**(#1137 ②).
+   *
+   * ⛔ **닿지 못한 것은 버리지 않는다.** 서버가 답하지 않아 확인하지 못한 것과 서버가 「이
+   *    토큰은 끝났다」고 판정한 것은 다르다 — 잠깐 망이 끊긴 사이에 멀쩡한 토큰을 지우면
+   *    설치 담당자를 현장으로 다시 불러야 한다(같은 근거로 `unreachable` 갈래를 만들었다).
+   *
+   * ⚠ 버리지 않으면 껐다 켤 때마다 같은 실패가 되풀이된다 — 화면은 매번 아무도 넣지 않은
+   *   토큰의 부고를 전한다.
+   */
+  const discardIfStored = useCallback(
+    async (source: FailureSource, failure: RegistrationFailure): Promise<void> => {
+      if (source !== 'stored') return;
+      if (!DISCARDABLE_FAILURES.has(failure)) return;
+
+      await discardStoredTerminalToken();
+    },
+    [],
+  );
+
   const verify = useCallback(
-    async (token: string) => {
+    async (token: string, source: FailureSource = 'entered') => {
       const trimmed = token.trim();
       const terminalId = readTerminalIdFromToken(trimmed);
 
       setApproved(null);
 
       if (terminalId === null) {
-        setState({ ...INITIAL, failure: 'malformed' });
+        setState({ ...INITIAL, failure: 'malformed', failureSource: source });
+        await discardIfStored(source, 'malformed');
 
         return;
       }
 
       if (!navigator.onLine) {
-        setState({ ...INITIAL, failure: 'offline' });
+        setState({ ...INITIAL, failure: 'offline', failureSource: source });
 
         return;
       }
@@ -299,7 +367,8 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
         const terminal = await fetchTerminal(client, terminalId);
 
         if (terminal.terminalTypeCode !== 'POP') {
-          setState({ ...INITIAL, failure: 'wrong-type', terminal });
+          setState({ ...INITIAL, failure: 'wrong-type', failureSource: source, terminal });
+          await discardIfStored(source, 'wrong-type');
 
           return;
         }
@@ -307,13 +376,16 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
         setApproved(trimmed);
         setState({ ...INITIAL, phase: 'verified', terminal });
       } catch (error) {
-        setState({ ...INITIAL, failure: failureOf(error) });
+        const failure = failureOf(error);
+
+        setState({ ...INITIAL, failure, failureSource: source });
+        await discardIfStored(source, failure);
       } finally {
         /* 후보 창을 닫는다 — 열어 두면 이후 업무 요청까지 후보 토큰으로 나간다. */
         setCandidateTerminalToken(null);
       }
     },
-    [client],
+    [client, discardIfStored],
   );
 
   const apply = useCallback(async () => {
@@ -386,6 +458,22 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
            */
           terminalId: state.phase === 'ready' ? (state.terminal?.terminalId ?? null) : null,
           processes: state.phase === 'ready' ? state.processes : null,
+          /*
+           * ⭐ **단말에 붙은 설비를 여기서 내린다**(#1149). 스펙이 「POP 은 설비에 붙어 있다」로
+           *    정한 값이고 단말 상세가 이미 답해 준다 — 내리지 않으면 설비를 쓰는 화면이
+           *    주소에 손으로 번호를 붙여야만 열렸고, 「설비를 고르세요」라고 말하면서 고를
+           *    자리를 주지 않는 화면이 됐다(88단계 3회차).
+           */
+          equipment:
+            state.phase === 'ready' &&
+            state.terminal !== null &&
+            state.terminal.equipmentId !== null
+              ? {
+                  equipmentId: state.terminal.equipmentId,
+                  equipmentCode: state.terminal.equipmentCode,
+                  equipmentName: state.terminal.equipmentName,
+                }
+              : null,
           workerNo: session?.worker.workerNo ?? null,
         }}
       >

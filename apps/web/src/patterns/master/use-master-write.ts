@@ -95,10 +95,25 @@ export interface MasterWriteResult<TVariables> {
   discardIdempotencyKey: () => void;
 }
 
+/**
+ * 한 번의 쓰기가 들고 가는 것 전부 — **요청뿐 아니라 그 결과를 받을 처리기까지** 싣는다.
+ *
+ * ⛔ **처리기를 훅 옵션에서 «그때» 읽지 않는다.** 훅 옵션 쪽 처리기는 응답이 올 때의 렌더를
+ *    보므로, 답을 기다리는 사이에 사용자가 다른 대상을 고르면 **옛 쓰기의 결과가 새 대상에
+ *    덮인다**(실측 — 결재선 화면 감지기 둘이 그 자리를 지키고 있다). 보낼 때의 처리기를
+ *    함께 실어 보내면 결과는 언제나 자기 시도에게 돌아간다.
+ */
 interface WritePayload<TVariables, TData> {
   variables: TVariables;
   headers: WriteHeaders;
   request: (variables: TVariables, headers: WriteHeaders) => Promise<ApiCallResult<TData>>;
+  /** 이 쓰기를 연 렌더의 처리기·설정. 응답이 늦어도 이것으로 받는다. */
+  settle: {
+    onSuccess: ((data: TData) => void) | undefined;
+    invalidateKeys: readonly (readonly unknown[])[];
+    knownFields: readonly string[];
+    restateFieldError: ((item: ErrorItem) => string | undefined) | undefined;
+  };
 }
 
 export interface SplitError {
@@ -237,10 +252,50 @@ export const useMasterWrite = <TVariables, TData>(
    */
   const idempotency = useRef<IdempotencyState | null>(null);
 
+  /*
+   * ⛔ **성공·실패 처리기를 `mutate` 의 인자로 넘기지 않는다**(#1148 실측). 그 자리의 처리기는
+   *    **부품이 응답보다 먼저 사라지면 통째로 버려진다**(react-query 문서 · 훅 옵션 쪽은 언제나
+   *    불린다). 버려지면 쓰기는 서버에 남았는데 화면은 성공도 실패도 모르는 채로 선다 —
+   *    쓰기 하나가 다음 쓰기를 여는 사슬에서는 그 뒤가 통째로 멎는다.
+   *
+   * ⚠ **개발 모드의 이중 실행이 이 자리를 정확히 때린다.** `StrictMode` 는 마운트 직후의 효과를
+   *   한 번 되감았다가 다시 도는데, 그 되감기에서 첫 쓰기의 처리기가 버려진다. 되도는 쪽이
+   *   「같은 쓰기를 두 번 하지 않는다」로 막혀 있으면 사슬이 거기서 끝난다(실측 — P-02-01 이
+   *   점검 판정만 남기고 조용히 멈췄다).
+   *
+   * ⛔ **그렇다고 훅 옵션의 처리기를 «그대로» 부르지도 않는다.** 그쪽은 **응답이 올 때의 렌더**를
+   *    보므로, 늦게 온 응답이 그 사이에 새로 고른 대상을 덮어쓴다(실측 — 결재 경로 화면에서
+   *    「수정 결과가 새 대상의 폼을 덮지 않는다」가 이 방식에 깨졌다). 그래서 처리기·설정을
+   *    **쓰기와 함께 실어 보내** 언제나 불리면서도 쓸 때의 닫힘을 붙들게 한다(`settle`).
+   */
   const mutation = useMutation({
     // 요청 함수를 변수로 받아 이 훅이 옛 렌더의 요청을 붙잡지 않게 한다.
     mutationFn: (payload: WritePayload<TVariables, TData>): Promise<TData> =>
       runRequest(() => payload.request(payload.variables, payload.headers)),
+    onSuccess: (data, payload) => {
+      /*
+       * ⭐ 성공에만 키를 버린다. 버리지 않으면 같은 값 재제출이 «끝난 키»로 나가고,
+       * 서버는 계약대로 실행 없이 앞 응답을 되돌려 준다 — 화면은 그것을 성공으로 읽어
+       * 아무 일도 없었는데 바뀌었다고 단언한다(결정 #10 ⓒ).
+       */
+      idempotency.current = null;
+
+      for (const queryKey of payload.settle.invalidateKeys) {
+        void queryClient.invalidateQueries({ queryKey });
+      }
+      payload.settle.onSuccess?.(data);
+    },
+    onError: (cause, payload) => {
+      /* 키를 유지한다 — 적용 여부를 모르거나(통신 실패·5xx) 실행 전 거부(400·401)다. */
+      const split = splitError(
+        toApiError(cause),
+        payload.settle.knownFields,
+        payload.settle.restateFieldError,
+      );
+
+      setFieldErrors(split.fieldErrors);
+      setError(split.error);
+    },
   });
 
   const clearErrors = useCallback(() => {
@@ -304,34 +359,17 @@ export const useMasterWrite = <TVariables, TData>(
       headers['If-Match'] = ifMatch;
     }
 
-    mutation.mutate(
-      { variables, headers, request: options.request },
-      {
-        onSuccess: (data) => {
-          /*
-           * ⭐ 성공에만 키를 버린다. 버리지 않으면 같은 값 재제출이 «끝난 키»로 나가고,
-           * 서버는 계약대로 실행 없이 앞 응답을 되돌려 준다 — 화면은 그것을 성공으로 읽어
-           * 아무 일도 없었는데 바뀌었다고 단언한다(결정 #10 ⓒ).
-           */
-          idempotency.current = null;
-
-          for (const queryKey of options.invalidateKeys) {
-            void queryClient.invalidateQueries({ queryKey });
-          }
-          options.onSuccess?.(data);
-        },
-        onError: (cause) => {
-          /* 키를 유지한다 — 적용 여부를 모르거나(통신 실패·5xx) 실행 전 거부(400·401)다. */
-          const split = splitError(
-            toApiError(cause),
-            options.knownFields,
-            options.restateFieldError,
-          );
-          setFieldErrors(split.fieldErrors);
-          setError(split.error);
-        },
+    mutation.mutate({
+      variables,
+      headers,
+      request: options.request,
+      settle: {
+        onSuccess: options.onSuccess,
+        invalidateKeys: options.invalidateKeys,
+        knownFields: options.knownFields,
+        restateFieldError: options.restateFieldError,
       },
-    );
+    });
   };
 
   return {

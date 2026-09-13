@@ -25,9 +25,11 @@ const t = messages.pqcInspection.noStandard;
 export interface FreeInputPanelProps {
   remarks: string;
   onRemarksChange: (value: string) => void;
+  /** 확정된 회차는 자유 입력도 받지 않는다(#1146 ③). */
+  isLocked: boolean;
 }
 
-export const FreeInputPanel = ({ remarks, onRemarksChange }: FreeInputPanelProps) => (
+export const FreeInputPanel = ({ remarks, onRemarksChange, isLocked }: FreeInputPanelProps) => (
   <section className="pane" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
 
@@ -39,6 +41,7 @@ export const FreeInputPanel = ({ remarks, onRemarksChange }: FreeInputPanelProps
       size="xl"
       label={t.remarks}
       value={remarks}
+      disabled={isLocked}
       onChange={(event) => onRemarksChange(event.target.value)}
     />
   </section>

@@ -1,8 +1,11 @@
 import { Button, SearchInput, Select } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import type { LotFilters } from './filters';
 import { useLocationReferenceOptions } from './reference-options';
+
+const t = messages.lotStatusHistory;
 
 export interface FilterOption {
   value: string;
@@ -67,7 +70,7 @@ const SelectField = ({
 };
 
 const withAll = (options: readonly FilterOption[]): FilterOption[] => [
-  { value: '', label: '전체' },
+  { value: '', label: t.values.all },
   ...options,
 ];
 
@@ -124,19 +127,19 @@ export const LotFilterBar = ({
   const locationOptions =
     locations.data?.entries.map((entry) => ({
       value: entry.value,
-      label: entry.isActive ? entry.label : `${entry.label} (미사용)`,
+      label: entry.isActive ? entry.label : t.values.inactive(entry.label),
     })) ?? [];
   const locationNote =
     filters.warehouse === ''
-      ? '창고를 먼저 선택하세요.'
+      ? t.lotFilter.notes.locationNeedsWarehouse
       : locations.isError
-        ? '위치 목록을 불러오지 못했습니다.'
+        ? t.lotFilter.notes.locationFailed
         : locations.data?.isTruncated === true
-          ? '일부 위치만 표시됩니다.'
+          ? t.lotFilter.notes.locationTruncated
           : undefined;
 
   const searchReason =
-    lotTypeBlockReason ?? (filters.lotType === '' ? 'LOT 유형을 선택하세요.' : null);
+    lotTypeBlockReason ?? (filters.lotType === '' ? t.lotFilter.reasons.lotTypeRequired : null);
   const search = (): void => {
     if (searchReason === null) onSearch(filters);
   };
@@ -145,34 +148,34 @@ export const LotFilterBar = ({
     <div className="filter-bar lot-status-filter">
       <SelectField
         required
-        label="LOT 유형"
+        label={t.lotFilter.fields.lotType}
         options={lotTypeOptions}
         value={filters.lotType}
         note={lotTypeNote}
         onChange={(lotType) => setFilters((current) => ({ ...current, lotType }))}
       />
       <SearchInput
-        label="LOT 번호"
+        label={t.lotFilter.fields.lotNo}
         value={filters.q}
         onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
         onSearch={search}
       />
       <SelectField
-        label="품목"
+        label={t.lotFilter.fields.item}
         options={withAll(itemOptions)}
         value={filters.item}
         note={itemNote}
         onChange={(item) => setFilters((current) => ({ ...current, item }))}
       />
       <SelectField
-        label="현재 상태"
+        label={t.lotFilter.fields.status}
         options={withAll(lotStatusOptions)}
         value={filters.status}
         note={lotStatusNote}
         onChange={(status) => setFilters((current) => ({ ...current, status }))}
       />
       <SelectField
-        label="창고"
+        label={t.lotFilter.fields.warehouse}
         options={withAll(warehouseOptions)}
         value={filters.warehouse}
         note={warehouseNote}
@@ -185,7 +188,7 @@ export const LotFilterBar = ({
         }
       />
       <SelectField
-        label="위치"
+        label={t.lotFilter.fields.location}
         options={withAll(locationOptions)}
         value={filters.location}
         note={locationNote}
@@ -204,10 +207,10 @@ export const LotFilterBar = ({
             aria-describedby={searchReason === null ? undefined : reasonId}
             onClick={search}
           >
-            조회
+            {t.actions.search}
           </Button>
           <Button variant="outlined" onClick={onReset}>
-            초기화
+            {t.actions.reset}
           </Button>
         </div>
       </div>

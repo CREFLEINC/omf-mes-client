@@ -495,7 +495,7 @@ export const PqcInspectionScreen = () => {
          * 제품이 멈춘다. 어느 갈래인지는 **의뢰에 기준이 실려 있는가**로 갈린다.
          */}
         {planVersionId === null ? (
-          <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} />
+          <FreeInputPanel remarks={remarks} onRemarksChange={setRemarks} isLocked={isConfirmed} />
         ) : (
           <ItemPanel
             uomCodeOf={(uomId) =>
@@ -511,6 +511,7 @@ export const PqcInspectionScreen = () => {
             onJudgmentChange={changeMeasurementJudgment}
             judgmentOptions={itemJudgmentOptions}
             isLoading={itemSpecs.isLoading}
+            isLocked={isConfirmed}
           />
         )}
 
@@ -533,6 +534,7 @@ export const PqcInspectionScreen = () => {
           onDispositionChange={setDisposition}
           padField={padField}
           onPadFieldChange={setPadField}
+          isLocked={isConfirmed}
         />
 
         {/*
@@ -554,6 +556,7 @@ export const PqcInspectionScreen = () => {
             if (padField.key === 'inspected') changeInspected(next);
             else changeDraft({ ...draft, [padField.key]: next });
           }}
+          isLocked={isConfirmed}
         />
       </div>
 

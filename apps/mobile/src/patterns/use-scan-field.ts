@@ -5,6 +5,13 @@ import { createKeyboardWedgeScanner, type ScannerAdapter } from './scanner';
 export interface UseScanFieldOptions {
   onScan: (value: string) => void;
   scanner?: ScannerAdapter;
+  /**
+   * 지금 적용돼 있는 스캔값. 주면 다른 값을 읽었을 때 바로 바꾸지 않고 되묻는다.
+   *
+   * 스캔 하나가 대상을 정하는 화면에만 준다. 여러 건을 쌓는 화면에서는 재스캔이 정상
+   * 동작이라 물어보면 걸리적거린다.
+   */
+  applied?: string | null;
 }
 
 export interface ScanField {
@@ -16,20 +23,68 @@ export interface ScanField {
   openManual: () => void;
   /** 칸에 적힌 것을 스캔값과 같은 길로 넘긴다. */
   submitManual: () => void;
+  /** 되물을 새 스캔값. 물을 것이 없으면 null 이다. */
+  pending: string | null;
+  /** 지금 대상. 되묻는 창이 훅과 같은 값을 보도록 여기서 함께 낸다. */
+  applied: string | null;
+  /** 새로 읽은 값으로 바꾼다. */
+  acceptPending: () => void;
+  /** 앞엣것을 그대로 둔다. */
+  dismissPending: () => void;
 }
 
-export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanField => {
+export const useScanField = ({ onScan, scanner, applied }: UseScanFieldOptions): ScanField => {
   const fieldRef = useRef<HTMLInputElement | null>(null);
   const [manual, setManual] = useState(false);
   const detachRef = useRef<(() => void) | null>(null);
   const onScanRef = useRef(onScan);
   const adapterRef = useRef<ScannerAdapter | null>(null);
+  const [pending, setPending] = useState<string | null>(null);
+  const appliedRef = useRef<string | null | undefined>(applied);
 
   adapterRef.current ??= scanner ?? createKeyboardWedgeScanner();
 
   useEffect(() => {
     onScanRef.current = onScan;
   }, [onScan]);
+
+  useEffect(() => {
+    appliedRef.current = applied;
+  }, [applied]);
+
+  /*
+   * 스캔 한 건을 받는 자리. 이미 정해진 대상이 있고 다른 것을 읽었으면 바로 바꾸지 않는다.
+   *
+   * 옆 라벨을 스친 것인지 일부러 바꾼 것인지 화면은 모른다. 조용히 바뀌면 작업자는 앞엣것에
+   * 적는 줄 알고 다음 단계를 진행하고, 기록은 엉뚱한 대상에 남는다.
+   *
+   * 같은 값을 다시 댄 것은 바꾸는 것이 아니므로 묻지 않는다.
+   */
+  const take = useCallback((value: string) => {
+    const current = appliedRef.current;
+
+    if (current !== null && current !== undefined && current !== '' && current !== value) {
+      setPending(value);
+      return;
+    }
+
+    onScanRef.current(value);
+  }, []);
+
+  /*
+   * 넘기는 것은 상태 갱신 함수 밖에서 한다. 앱은 StrictMode 로 돌아 갱신 함수가 두 번
+   * 도는데, 그 안에서 넘기면 한 번 받은 것이 두 건으로 나간다.
+   */
+  const acceptPending = useCallback(() => {
+    if (pending !== null) {
+      onScanRef.current(pending);
+    }
+    setPending(null);
+  }, [pending]);
+
+  const dismissPending = useCallback(() => {
+    setPending(null);
+  }, []);
 
   const focus = useCallback(() => {
     fieldRef.current?.focus();
@@ -69,9 +124,9 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
     setKeyboard(false);
 
     if (value !== '') {
-      onScanRef.current(value);
+      take(value);
     }
-  }, [setKeyboard]);
+  }, [setKeyboard, take]);
 
   /*
    * 포커스가 갈 곳 없이 빠지면 스캐너가 밀어 넣는 입력이 유실되므로 되돌린다.
@@ -87,6 +142,88 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
       }
     });
   }, []);
+
+  /*
+   * 화면이 다시 보이면 포커스를 되찾는다.
+   *
+   * 잠금은 웹뷰를 가리고 그동안 칸은 포커스를 잃는다. 가려진 채로 되돌리면 보이지도 않는
+   * 화면에 소프트 키보드가 서므로 handleBlur 는 그때 물러선다 - 그 판단은 맞다. 다만 다시
+   * 보일 때 되찾는 자리가 없으면 스캐너가 밀어 넣는 입력이 갈 곳을 잃는다. 현장에서는
+   * 잠금을 풀면 스캔이 되지 않는 것으로 나타났고, 화면을 늘 켜 두면 증상이 사라졌다.
+   *
+   * 손으로 치는 중이면 가져오지 않는다 - 치던 자리에서 포커스를 뺏는 것이 된다.
+   */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.hidden || manual) {
+        return;
+      }
+      if (document.activeElement !== fieldRef.current) {
+        fieldRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [manual]);
+
+  /*
+   * 포커스가 칸에 없어도 스캔을 받는다.
+   *
+   * 스캐너는 키보드처럼 글자를 밀어 넣으므로 포커스가 있는 곳으로 간다. 작업자가 단추를
+   * 한 번 누르면 포커스가 그리로 옮겨 가고, 그 뒤 스캔한 글자는 단추로 가 사라진다 -
+   * 화면에는 아무 일도 일어나지 않아 스캐너가 고장 난 것으로 읽힌다.
+   *
+   * 첫 글자가 올 때 칸으로 포커스를 되돌리고 그 글자를 칸에 넣는다. 두 번째부터는 칸이
+   * 포커스를 쥐고 있으므로 여기를 거치지 않고, 판정도 종전 경로 그대로 돈다.
+   *
+   * 사람이 치고 있는 칸에서는 가져오지 않는다. 수량이나 비고를 치는 중에 글자를 빼앗으면
+   * 적은 값이 어디에도 남지 않는다 - 스캔을 놓치는 것보다 나쁘다.
+   */
+  useEffect(() => {
+    const onDocumentKey = (event: KeyboardEvent) => {
+      const field = fieldRef.current;
+
+      if (field === null || manual || event.defaultPrevented) {
+        return;
+      }
+
+      const active = document.activeElement;
+
+      if (active === field) {
+        return;
+      }
+
+      /* 사람이 글자를 넣고 있는 자리는 건드리지 않는다. */
+      if (
+        active instanceof HTMLInputElement ||
+        active instanceof HTMLTextAreaElement ||
+        active instanceof HTMLSelectElement ||
+        (active instanceof HTMLElement && active.isContentEditable)
+      ) {
+        return;
+      }
+
+      /* 글자 하나로 오는 키만 옮긴다. Tab·Escape 같은 것은 제자리에 둔다. */
+      if (event.key.length !== 1 || event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      event.preventDefault();
+      field.focus();
+      field.value += event.key;
+      field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText' }));
+    };
+
+    document.addEventListener('keydown', onDocumentKey, true);
+
+    return () => {
+      document.removeEventListener('keydown', onDocumentKey, true);
+    };
+  }, [manual]);
 
   const ref = useCallback(
     (node: HTMLInputElement | null) => {
@@ -111,11 +248,11 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
           /* 스캔이 들어오면 손으로 치던 것은 접는다. 실물을 읽은 값이 이긴다. */
           setManual(false);
           node.inputMode = 'none';
-          onScanRef.current(value);
+          take(value);
         }) ?? null;
       node.focus();
     },
-    [handleBlur],
+    [handleBlur, take],
   );
 
   useEffect(() => {
@@ -125,5 +262,15 @@ export const useScanField = ({ onScan, scanner }: UseScanFieldOptions): ScanFiel
     };
   }, [handleBlur]);
 
-  return { ref, focus, manual, openManual, submitManual };
+  return {
+    ref,
+    focus,
+    manual,
+    openManual,
+    submitManual,
+    pending,
+    applied: applied ?? null,
+    acceptPending,
+    dismissPending,
+  };
 };

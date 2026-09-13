@@ -79,7 +79,8 @@ const PopRegistrationGate = ({ children }: { children: ReactNode }) => {
 
     attempted.current = stored;
 
-    void verify(stored);
+    /* ⚠ 사람이 넣은 값이 아니다 — 실패 문구가 그 사실을 말해야 한다(#1137). */
+    void verify(stored, 'stored');
   }, [phase, verify]);
 
   if (phase !== 'ready') return <RegistrationPanel />;

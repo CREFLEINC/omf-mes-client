@@ -189,6 +189,22 @@ describe('ShippingPackingLabelScreen — 진입', () => {
     expect(screen.queryByRole('radio', { name: /포장라벨/u })).not.toBeInTheDocument();
   });
 
+  /**
+   * ⭐ **종류를 고르기 전에도 «왜» 못 누르는지 말한다**(#1094 · 88단계 2회차 실기).
+   *
+   * 종전에는 이 상태에서 발행 버튼이 꺼진 채 아무 말도 하지 않아 현장이 고장으로 읽었다.
+   *
+   * ⛔ 대상 목록의 「라벨 종류를 먼저 고르세요」와 **같은 문장을 쓰지 않는다** — 한 화면에
+   *    같은 말이 둘 서면 어느 쪽을 고쳐야 하는지 흐려진다.
+   */
+  it('라벨 종류를 고르기 전에는 발행이 왜 막혔는지 말한다', async () => {
+    renderScreen();
+
+    expect(await screen.findByText(t.actions.needsKind)).toBeInTheDocument();
+    expect(issueButton()).toBeDisabled();
+    expect(t.actions.needsKind).not.toBe(t.targets.beforeKind);
+  });
+
   it('사번을 모르면 발행하지 않는다 — 서버가 거부할 쓰기를 만들지 않는다', async () => {
     const user = userEvent.setup();
     renderScreen({}, ROUTE_WITHOUT_WORKER);
@@ -253,6 +269,24 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     await user.click(await rowCheckbox(1));
 
     expect(await screen.findByText(t.actions.needsTarget)).toBeInTheDocument();
+    expect(issueButton()).toBeDisabled();
+  });
+
+  /**
+   * ⛔ **눌리는데 아무 일도 없는 단추를 두지 않는다**(#1093 ③).
+   *
+   * 납품 라벨 발행은 서버가 항상 거부해 화면이 요청 자체를 만들지 않는다. 그 판단은 옳지만
+   * **단추에 반영하지 않으면** 작업자는 누르고 기다리다 다시 누른다 — 확인 창도 성공도
+   * 실패도 없는 그 모양이다.
+   */
+  it('납품라벨 발행 단추는 잠기고 그 사유가 옆에 선다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await chooseKind(user, '납품라벨');
+    await user.click(await rowCheckbox(0));
+
+    expect(await screen.findByText(t.actions.deliveryLocked)).toBeInTheDocument();
     expect(issueButton()).toBeDisabled();
   });
 

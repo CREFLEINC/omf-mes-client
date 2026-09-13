@@ -42,14 +42,32 @@ export interface PopIdentity {
    *    단말에 구성된 공정이 없다」 — 창고 단말에서는 그것이 **정상**이다(F-1).
    */
   processes: readonly TerminalProcessRow[] | null;
+  /**
+   * **이 단말이 붙어 있는 설비.** 단말 상세가 답하는 값 그대로다(계약 `/mdm/terminals/{id}`).
+   *
+   * ⚠ **`null` 은 「설비에 붙어 있지 않다」와 「아직 등록되지 않았다」 둘 다다** — 가르는 것은
+   *    `terminalId` 다. 창고·검사 단말처럼 설비가 없는 것이 **정상**인 단말이 있다.
+   *
+   * ⛔ **화면이 이 값을 기억해 두지 않는다.** 단말이 재등록돼 설비가 바뀌면 여기서 바뀌어야
+   *    하고, 화면이 따로 들고 있으면 **남의 설비에 기록이 붙는다.**
+   */
+  equipment: PopEquipment | null;
   /** 귀속 사번. 쓰기의 `X-Worker-No` 헤더에 실린다. **인증이 아니라 귀속이다.** */
   workerNo: string | null;
+}
+
+/** 단말에 붙은 설비. 이름·코드는 **표시용**이고 판정에 쓰는 것은 번호다. */
+export interface PopEquipment {
+  equipmentId: number;
+  equipmentCode: string | null;
+  equipmentName: string | null;
 }
 
 /** 아무것도 모르는 상태. **이것이 기본값이다** — 등록을 마치기 전까지 여기 머문다. */
 export const UNKNOWN_POP_IDENTITY: PopIdentity = {
   terminalId: null,
   processes: null,
+  equipment: null,
   workerNo: null,
 };
 

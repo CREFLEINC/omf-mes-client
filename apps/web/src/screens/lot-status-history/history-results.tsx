@@ -7,14 +7,15 @@ import {
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 
 import type { HistoryFilters } from './filters';
 import { validateHistoryPeriod } from './period';
 import { useLotHoldEvents } from './queries';
 import type { LotHoldEventView } from './types';
 
+const t = messages.lotStatusHistory;
 const EMPTY = '—';
-const HISTORY_SCOPE_NOTICE = '보류 등록·해제 이력만 표시하며 전체 상태 전이는 기록되지 않습니다.';
 
 const formatDateTime = (value: string): string => {
   const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
@@ -22,14 +23,15 @@ const formatDateTime = (value: string): string => {
 };
 
 const eventLabel = (eventType: LotHoldEventView['eventTypeCode']): string =>
-  eventType === 'HELD' ? '보류 등록' : '보류 해제';
+  eventType === 'HELD' ? t.history.events.held : t.history.events.released;
 
 const quantity = (value: number): string => new Intl.NumberFormat('ko-KR').format(value);
 
 const eventKey = (event: LotHoldEventView): string =>
   `${event.lotHoldId}:${event.eventTypeCode}:${event.occurredAt}`;
 
-const actorName = (event: LotHoldEventView): string => event.actorName?.trim() || '이름 미확인';
+const actorName = (event: LotHoldEventView): string =>
+  event.actorName?.trim() || t.history.actorUnknown;
 
 interface HistoryResultsProps {
   filters: HistoryFilters;
@@ -49,14 +51,14 @@ export const HistoryResults = ({
   const columns: Column<LotHoldEventView>[] = [
     {
       key: 'occurredAt',
-      header: '일시',
+      header: t.history.columns.occurredAt,
       width: '164px',
       render: (event) => formatDateTime(event.occurredAt),
     },
-    { key: 'lotNo', header: 'LOT', render: (event) => event.lotNo },
+    { key: 'lotNo', header: t.history.columns.lot, render: (event) => event.lotNo },
     {
       key: 'eventTypeCode',
-      header: '전이/사건',
+      header: t.history.columns.event,
       width: '140px',
       render: (event) => (
         <Chip variant="status" size="sm">
@@ -66,20 +68,24 @@ export const HistoryResults = ({
     },
     {
       key: 'actorName',
-      header: '행위자',
+      header: t.history.columns.actor,
       render: actorName,
     },
-    { key: 'reasonCode', header: '사유', render: (event) => event.reasonCode ?? EMPTY },
+    {
+      key: 'reasonCode',
+      header: t.history.columns.reason,
+      render: (event) => event.reasonCode ?? EMPTY,
+    },
   ];
 
   const retry = (
     <Button
       variant="outlined"
       size="sm"
-      aria-label="보류 사건 이력 다시 시도"
+      aria-label={t.actions.retryLabel(t.history.pane)}
       onClick={() => void history.refetch()}
     >
-      다시 시도
+      {t.actions.retry}
     </Button>
   );
   const rows = [...(history.data?.rows ?? [])];
@@ -92,33 +98,33 @@ export const HistoryResults = ({
     meta === undefined
       ? ''
       : rows.length === 0
-        ? `전체 ${quantity(meta.total)}건`
-        : `${quantity(start)}–${quantity(start + rows.length - 1)} / 전체 ${quantity(meta.total)}건`;
+        ? t.range.total(quantity(meta.total))
+        : t.range.span(quantity(start), quantity(start + rows.length - 1), quantity(meta.total));
 
   return (
     <section className="pane lot-status-pane" aria-labelledby="lot-hold-history-title">
       <h2 className="pane-title" id="lot-hold-history-title">
-        보류 사건 이력
+        {t.history.pane}
       </h2>
-      <AlertBanner variant="info">{HISTORY_SCOPE_NOTICE}</AlertBanner>
+      <AlertBanner variant="info">{t.scopeNotice}</AlertBanner>
       {!hasValidPeriod && (
         <EmptyState
           size="sm"
-          title="기간을 선택하고 조회하세요"
-          description="조회 기간을 모두 적용하면 보류 사건 이력이 표시됩니다."
+          title={t.history.beforeSearch.title}
+          description={t.history.beforeSearch.description}
         />
       )}
       {hasValidPeriod && history.isPending && (
-        <div role="status" aria-label="보류 사건 이력을 불러오는 중">
+        <div role="status" aria-label={t.history.loading}>
           <SkeletonText lines={3} />
         </div>
       )}
       {hasValidPeriod && history.isError && (
-        <AlertBanner variant="error" title="보류 사건 이력을 불러오지 못했습니다." action={retry} />
+        <AlertBanner variant="error" title={t.history.failed} action={retry} />
       )}
       {hasValidPeriod && history.isFetching && history.data !== undefined && (
-        <p className="field-note" role="status" aria-label="보류 사건 이력 갱신 중">
-          보류 사건 이력을 갱신하는 중입니다.
+        <p className="field-note" role="status" aria-label={t.history.refreshing}>
+          {t.history.refreshingText}
         </p>
       )}
       {hasValidPeriod && history.data !== undefined && (
@@ -126,7 +132,7 @@ export const HistoryResults = ({
           <div className="wide-table lot-status-table" aria-busy={history.isFetching}>
             <Table
               density="compact"
-              caption="보류 사건 이력"
+              caption={t.history.pane}
               columns={columns}
               rows={rows}
               getRowId={eventKey}
@@ -134,14 +140,14 @@ export const HistoryResults = ({
                 <EmptyState
                   size="sm"
                   live
-                  title="이 기간의 보류 사건이 없습니다"
-                  description="현재 LOT 상태와 일치하지 않아도 오류가 아닙니다."
+                  title={t.history.empty.title}
+                  description={t.history.empty.description}
                 />
               }
             />
           </div>
           {meta !== undefined && (
-            <nav className="form-actions" aria-label="보류 사건 이력 쪽 이동">
+            <nav className="form-actions" aria-label={t.history.pagination}>
               <p className="field-note form-actions-secondary">{rangeLabel}</p>
               <Button
                 variant="outlined"
@@ -149,7 +155,7 @@ export const HistoryResults = ({
                 disabled={currentPage <= 1}
                 onClick={() => onPageChange(currentPage - 1)}
               >
-                이전 쪽
+                {t.actions.previousPage}
               </Button>
               <Button
                 variant="outlined"
@@ -157,7 +163,7 @@ export const HistoryResults = ({
                 disabled={currentPage >= totalPages}
                 onClick={() => onPageChange(currentPage + 1)}
               >
-                다음 쪽
+                {t.actions.nextPage}
               </Button>
             </nav>
           )}

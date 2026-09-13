@@ -73,6 +73,16 @@ describe('POP 진입점 배선', () => {
    * ⚠ **상태로는 못 막는다.** 시도했다는 사실이 렌더 사이에 남아야 하므로 `ref` 다 —
    *    `useState` 로 두면 그 갱신이 다시 렌더를 돌려 같은 자리로 돌아온다.
    */
+  /*
+   * ⛔ **보관 토큰의 실패를 사람이 넣은 값의 실패처럼 말하지 않는다**(#1137). 이 한 줄에서
+   *    `'stored'` 가 빠지면 ① 문구 구분과 ② 죽은 토큰 폐기가 **함께** 죽는데, 타입 검사도
+   *    전체 시험도 초록이다(독립 검증 M1 실측 — 뮤테이션 생존). 증상은 설치본에서만 난다:
+   *    입력란이 빈 화면에 「이 토큰은 더 이상 쓸 수 없습니다」가 뜨고, 껐다 켜도 되풀이된다.
+   */
+  it('보관 토큰의 확인은 사람이 넣은 값과 다른 갈래로 부른다', () => {
+    expect(source).toMatch(/verify\(stored, 'stored'\)/u);
+  });
+
   it('보관 토큰을 한 번만 스스로 확인한다 — 실패해도 되풀이하지 않는다', () => {
     expect(source).toMatch(/const attempted = useRef<string \| null>\(null\)/u);
     expect(source).toMatch(/attempted\.current === stored/u);

@@ -11,6 +11,7 @@ import { useIdempotencyKey } from '../../patterns/idempotency';
 import { useScannedLot } from '../../patterns/lots';
 import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -73,6 +74,7 @@ export const WipHandoverScreen = () => {
   const idempotency = useIdempotencyKey();
 
   const scanField = useScanField({
+    applied: scanned,
     onScan: (value) => {
       setScanned(value.trim());
       setToWorkOrderId(null);
@@ -249,6 +251,7 @@ export const WipHandoverScreen = () => {
         {problem === null ? null : (
           <AlertBanner variant="error" title={t.lot.problem[problem]}>
             {problem === 'held' ? t.lot.problem.heldWhy : null}
+            {scanned === null ? null : <p>{t.lot.scannedWas(scanned)}</p>}
           </AlertBanner>
         )}
       </section>
@@ -363,6 +366,8 @@ export const WipHandoverScreen = () => {
           {t.done.submit}
         </Button>
       </div>
+
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

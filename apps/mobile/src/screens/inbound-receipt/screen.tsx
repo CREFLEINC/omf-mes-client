@@ -7,6 +7,7 @@ import { isMaterialLotNo } from '../../patterns/material-lot-no';
 import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -166,7 +167,7 @@ export const InboundReceiptScreen = () => {
     setExternalLotError(null);
   };
 
-  const scanField = useScanField({ onScan: take });
+  const scanField = useScanField({ onScan: take, applied: draft.supplierLotNo });
 
   /* 세로 화면이라 채운 구획이 화면을 차지한 채 남으면 다음에 할 일이 접힌 자리에 있다. */
   useAdvanceTo(draft.supplierLotNo !== '' || draft.supplierLotMissing, poSection);
@@ -1142,6 +1143,8 @@ export const InboundReceiptScreen = () => {
           )}
         </>
       )}
+
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

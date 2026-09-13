@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 import { build } from 'esbuild';
 
+import { resolveApiTarget } from './api-target.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, '..');
 /*
@@ -27,10 +29,12 @@ const isRelease = process.env.POP_RELEASE === '1';
  * 백엔드 원점 — 셸이 `/api` 요청을 대신 보낼 곳(`src/main/index.ts` 「API 중계」).
  *
  * ⛔ **주소를 코드에 적지 않는다.** 이 저장소는 공개다 — 값은 굽는 사람이 환경변수로 준다.
- *    비우면 중계가 서지 않고, 화면이 절대 주소를 그대로 부르던 지금까지의 동작이 남는다
- *    (모바일의 `CAP_NATIVE_HTTP` 와 같이 «켜야» 서는 스위치다).
+ *
+ * ⚠ **릴리스에서는 필수다.** POP 화면 빌드의 기준 URL 기본값이 `pop://app/api`(중계)이므로
+ *   (`apps/web/vite.pop.config.ts`), 여기가 비면 켜지기는 하는데 아무것도 못 부르는 설치본이
+ *   나간다. 판정은 `api-target.mjs` 에 있고 감지기가 붙어 있다.
  */
-const apiTarget = (process.env.POP_API_TARGET ?? '').replace(/\/+$/, '');
+const apiTarget = resolveApiTarget(process.env.POP_API_TARGET, isRelease);
 
 const common = {
   define: { 'process.env.POP_API_TARGET': JSON.stringify(apiTarget) },

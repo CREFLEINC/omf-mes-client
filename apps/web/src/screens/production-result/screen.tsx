@@ -52,6 +52,7 @@ import {
 import { usePendingPqc, useWorkOrder } from './queries';
 import { buildSaveBody } from './save-request';
 import { useUomLookup } from './uom-lookup';
+import { isEmergency } from './work-order-type';
 
 const t = messages.productionResult;
 
@@ -248,6 +249,12 @@ export const ProductionFlowScreen = () => {
     setAppliedLotId(lotId);
     setConfirmedResultLotId(lotId);
     setOutputPhase('issuing');
+    /*
+     * ⛔ **쓰기가 먹은 뒤 요약을 다시 읽는다**(#1093 ④). 잔여수량은 작업지시의 진척에서 오는데
+     *    이 쓰기는 큐를 통해 나가므로 그 결과가 저절로 캐시에 반영되지 않는다 — 다시 읽지
+     *    않으면 방금 올린 수량이 화면의 잔여에 없고, 작업자는 **새로 고쳐야** 맞는 값을 본다.
+     */
+    void workOrder.refetch();
   };
 
   const outbox = useOutbox({ onApplied: onResultApplied });
@@ -446,6 +453,22 @@ export const ProductionFlowScreen = () => {
     currentIssue === null &&
     !hasAppliedResult;
 
+  /**
+   * 잔여수량을 「모른다」고 할 때 **왜 모르는지**(#1094).
+   *
+   * ⛔ **셋을 한 문장으로 덮지 않는다.** 작업지시가 없는 것 · 아직 안 물어본 것 · 물어봤는데
+   *    실패한 것은 작업자가 할 일이 다르다 — 하나는 진입 화면으로, 하나는 기다림, 하나는
+   *    다시 시도다. 본보기는 자재 투입의 「아직 조회하지 않았습니다」다.
+   */
+  const remainingUnknownLabel =
+    entry.workOrderId === null
+      ? t.quantity.remainingNoWorkOrder
+      : workOrder.isError
+        ? t.quantity.remainingLoadFailed
+        : workOrder.isPending
+          ? t.quantity.remainingNotAsked
+          : t.quantity.remainingUnknown;
+
   const queueOutput = (): void => {
     if (!canOutput || lot === null || parsedQty === null || entry.workOrderId === null) return;
     if (entry.workerNo === null) return;
@@ -617,6 +640,14 @@ export const ProductionFlowScreen = () => {
         </h1>
         {workOrder.data === undefined ? null : (
           <p className="pop-context">
+            {/* 긴급 W/O 에서 넘어왔으면 그 사실을 머리줄에 남긴다(`P-02-12` §5-1 · #1147). */}
+            {isEmergency(workOrder.data) && (
+              <>
+                <Chip status="error" size="md">
+                  {t.flow.header.emergency}
+                </Chip>{' '}
+              </>
+            )}
             {`${t.flow.header.erpWorkOrder} ${workOrder.data.productionOrderNo ?? '—'} · ${t.flow.header.workOrder} ${workOrder.data.workOrderNo} · ${t.flow.header.item} ${item.data?.itemCode ?? workOrder.data.itemCode ?? '—'}`}
           </p>
         )}
@@ -647,6 +678,17 @@ export const ProductionFlowScreen = () => {
       </header>
 
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
+
+      {/*
+       * ⛔ **작업지시 없이 들어온 화면을 말없이 비워 두지 않는다**(#1151). 공통 [화면 이동]은
+       *    작업지시를 싣지 않아, 그 길로 오면 아래 값이 전부 비고 잔여수량 칸만 짧게 사유를 댄다
+       *    — 무엇을 해야 하는지는 어디에도 없었다. 머리줄 바로 아래 한 곳에서 할 일을 말한다.
+       */}
+      {entry.workOrderId === null && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning" title={t.entry.missingWorkOrder} />
+        </div>
+      )}
 
       {/*
        * ⛔ **가릴 수 없는 것과 못 불러온 것을 갈라 말한다**(#1095). 앞엣것은 다시 시도해도
@@ -687,8 +729,13 @@ export const ProductionFlowScreen = () => {
       )}
 
       <div
+        /*
+         * ⚠ 두 칸 배치는 **태그 카드가 서지 않을 때 전부**다(#1147). 대상 여부를 아직 모르는
+         *    동안(작업지시·품목을 못 받음)에도 카드는 없는데, `false` 일 때만 두 칸으로 두어
+         *    빈 셋째 칸이 생기고 수량·라벨 카드가 좁아졌다(실측 312px · 두 칸이면 474px).
+         */
         className={`production-flow-grid pop-fixed${
-          isTagTarget === false ? ' production-flow-grid-no-tags' : ''
+          isTagTarget === true ? '' : ' production-flow-grid-no-tags'
         }`}
       >
         <Card bordered className="pop-section production-flow-progress">
@@ -745,7 +792,7 @@ export const ProductionFlowScreen = () => {
                 <dt>{t.quantity.remaining}</dt>
                 <dd>
                   {remaining === null
-                    ? t.quantity.remainingUnknown
+                    ? remainingUnknownLabel
                     : `${formatQty(remaining)} ${t.quantity.orderedSuffix(
                         formatQty(workOrder.data?.orderQty ?? 0),
                         uomLabel === '' ? null : uomLabel,
@@ -947,7 +994,13 @@ export const ProductionFlowScreen = () => {
             {outputPhase === 'legacyMismatch' ? (
               <Button disabled>{t.flow.output.mismatchBlocked}</Button>
             ) : outputPhase === 'issueFailed' ? (
-              <Button onClick={retryLotIssue}>{t.flow.output.retryIssue}</Button>
+              /*
+               * ⛔ **눌러도 안 되면 비활성으로 보인다**(#1093 · 사용자 지시). 처리기가 LOT ·
+               *    사번 없이는 조용히 되돌아온다 — 단추가 열린 채면 눌리고 아무 말이 없다.
+               */
+              <Button disabled={lot === null || entry.workerNo === null} onClick={retryLotIssue}>
+                {t.flow.output.retryIssue}
+              </Button>
             ) : outputPhase === 'reportFailed' ? (
               <Button onClick={() => void lotPrint.retryReport()}>
                 {t.flow.output.retryReport}

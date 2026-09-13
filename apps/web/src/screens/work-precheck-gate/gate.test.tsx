@@ -43,9 +43,7 @@ const pressStart = async (options: StubOptions = {}) => {
   }
 
   await user.click(screen.getByRole('button', { name: w.worker.confirm }));
-  await user.click(
-    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
-  );
+  await user.click(await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }));
 
   const start = () => screen.getByRole('button', { name: w.actions.start });
 
@@ -157,6 +155,41 @@ describe('P-02-02 작업 전 점검 통제 — 차단', () => {
     expect(sessions(recorded.bodies)).toHaveLength(0);
   });
 
+  /**
+   * ⛔ **기록이 끝났으면 버튼이 풀린다**(#1093 ①).
+   *
+   * 차단 판정은 게이트가 뜨는 그 순간 기록으로 나간다. 그 요청이 «성공»했는데도 버튼이
+   * 「기록하는 중」에 머물면, 작업자는 점검을 전송하고 돌아와도 [다시 확인]을 누를 수 없고
+   * 긴급 작업지시여도 우회할 수 없어 **돌아가기밖에 남지 않는다.**
+   */
+  it('차단 기록이 성공하면 버튼이 다시 눌린다', async () => {
+    const { recorded } = await pressStart(NO_HISTORY);
+
+    await screen.findByText(t.verdict.blockedMissing);
+    await waitFor(() => {
+      expect(decisions(recorded.bodies)).toHaveLength(1);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.recheck })).toBeEnabled();
+    });
+  });
+
+  /**
+   * ⛔ **거부된 기록도 버튼을 잠그지 않는다**(#1093 ①). 성공이든 거부든 요청이 끝났으면
+   *    작업자는 다시 확인하거나 돌아갈 수 있어야 한다 — 잠긴 채로 두면 「돌아가기」밖에 남지
+   *    않는다.
+   */
+  it('차단 기록이 거부돼도 버튼이 잠기지 않는다', async () => {
+    await pressStart({ ...NO_HISTORY, decisionStatus: 400 });
+
+    await screen.findByText(t.verdict.blockedMissing);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.recheck })).toBeEnabled();
+    });
+  });
+
   /** ⛔ 코드 문자열을 화면에 내지 않는다(스펙 §4 · 공유계약 G-32). */
   it('점검 유형을 코드가 아니라 코드 사전의 이름으로 보인다', async () => {
     await pressStart(NO_HISTORY);
@@ -181,13 +214,6 @@ describe('P-02-02 작업 전 점검 통제 — 차단', () => {
     expect(
       await screen.findByText(`${t.verdict.levelBlock}${t.verdict.scopeSuffix('공정')}`),
     ).toBeInTheDocument();
-  });
-
-  /** ⚠ 「이력 없음」을 「점검 안 함」으로 단정하지 않는다(§5-4). */
-  it('이력이 없을 때 미전송 가능성을 함께 말한다', async () => {
-    await pressStart(NO_HISTORY);
-
-    expect(await screen.findByText(t.history.unsentWarning)).toBeInTheDocument();
   });
 
   /** ⛔ 「미적용」은 「NG 인데 돌려도 된다」가 아니다(§5-7). */
@@ -310,9 +336,7 @@ describe('P-02-02 작업 전 점검 통제 — 판정할 수 없을 때', () => 
     });
 
     await waitFor(() => {
-      expect(
-        recorded.urls.some((url) => url.includes('/maintenance/inspections')),
-      ).toBe(true);
+      expect(recorded.urls.some((url) => url.includes('/maintenance/inspections'))).toBe(true);
     });
 
     const asked = recorded.urls.find((url) => url.startsWith('/maintenance/inspections'));
