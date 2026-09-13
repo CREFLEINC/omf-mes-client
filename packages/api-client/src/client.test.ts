@@ -46,6 +46,46 @@ describe('createApiClient — 쿠키 세션 자격 증명', () => {
   });
 });
 
+/*
+ * ⭐ 브라우저 HTTP 캐시가 옛 조회 결과를 304 로 재사용하지 않게 한다. 헤더를 늘리면
+ * preflight 허용 목록에 걸리므로 요청 헤더는 그대로여야 한다.
+ */
+describe('createApiClient — HTTP 캐시', () => {
+  it('요청을 no-store 로 보내고 헤더를 늘리지 않는다', async () => {
+    const requests: Request[] = [];
+    const { client } = createApiClient({
+      baseUrl: 'http://mock.test',
+      fetch: async (request) => {
+        requests.push(request);
+        return jsonResponse([]);
+      },
+    });
+
+    await client.GET('/mdm/warehouses');
+
+    expect(requests[0]?.cache).toBe('no-store');
+    expect(requests[0]?.headers.has('cache-control')).toBe(false);
+  });
+
+  it('본문이 있는 요청도 본문을 그대로 싣는다', async () => {
+    const bodies: string[] = [];
+    const { client } = createApiClient({
+      baseUrl: 'http://mock.test',
+      fetch: async (request) => {
+        bodies.push(await request.text());
+        return jsonResponse({});
+      },
+    });
+
+    await client.POST('/app/sessions', {
+      params: { header: { 'Idempotency-Key': 'k' } },
+      body: { loginId: 'a', password: 'b' },
+    });
+
+    expect(JSON.parse(bodies[0] ?? '{}')).toEqual({ loginId: 'a', password: 'b' });
+  });
+});
+
 describe('createApiClient', () => {
   it('응답의 ETag를 경로별로 자동 캡처한다', async () => {
     const { client, etags } = createApiClient({
