@@ -8,6 +8,8 @@ import type { Translated } from './translated';
 export const dashboard: Translated<typeof ko.dashboard> = {
   title: 'Bảng điều khiển tổng hợp',
   breadcrumbRoot: 'Chung',
+  summaryNotReady:
+    'Máy chủ chưa hỗ trợ tổng hợp chung của bảng điều khiển. Hãy xem riêng ở màn hình của từng thẻ.',
 
   panes: {
     filters: 'Điều kiện cơ sở',
