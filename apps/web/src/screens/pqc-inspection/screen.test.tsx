@@ -1006,6 +1006,22 @@ describe('PqcInspectionScreen — 확정된 회차는 잠긴다', () => {
   });
 
   /*
+   * ⭐ **억제는 확정된 회차에만 걸린다**(#1146 리뷰 지적). 앞 시험은 「확정되면 사라진다」만
+   * 재므로, 억제 조건을 넓혀 «모든» 회차의 잔여를 지워도 아무도 울지 않았다 — 잔여 경고는
+   * 합계를 맞추게 하는 유일한 안내라, 조용히 사라지면 검사자가 어긋난 수량을 못 찾는다.
+   */
+  it('확정되지 않은 회차에는 잔여 수량 경고가 그대로 선다', async () => {
+    renderScreen('/?ir=1001', [draftRound], itemSpecsResponse([]));
+
+    /* 대상 수량 500 으로 시작하고 합격이 비어 있으니 500 이 남는다. */
+    expect(await screen.findByText(/남았습니다/)).toBeInTheDocument();
+
+    /* 합계를 맞추면 「일치합니다」로 바뀐다 — 둘 다 억제되면 안 된다. */
+    await userEvent.type(screen.getByLabelText(t.result.fields.accepted), '500');
+    expect(await screen.findByText(t.result.matched)).toBeInTheDocument();
+  });
+
+  /*
    * ⛔ **끝난 검사를 「아직 안 끝났다」로 말하지 않는다**(#1146 ①). 이 화면은 확정한 값을
    * 되읽지 않아 다시 열면 칸이 비고, 그 빈 칸으로 잰 잔여가 「120 EA 남았습니다」로 섰다 —
    * 확정을 마친 회차에서 검사자가 자기 일이 남은 줄 안다.
