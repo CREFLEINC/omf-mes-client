@@ -338,6 +338,8 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
+const OTHER_ISSUE_NO = 'GI-2026-000999';
+
 describe('생산창고 입고 화면', () => {
   /*
    * 서버가 없다고 답한 것을 연결 탓으로 말하면, 붙어 있는 사람이 신호를 찾아 자리를 옮긴다.
@@ -752,4 +754,34 @@ describe('생산창고 입고 화면', () => {
 
     expect(await screen.findByText('입고를 전송하지 못했습니다')).toBeTruthy();
   });
+  /*
+   * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 다음 단계로 넘어간다.
+   */
+  it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await screen.findByText(`${ISSUE_NO} · 1라인`);
+
+    scan(OTHER_ISSUE_NO);
+
+    /* 제목은 창이 닫혀도 DOM 에 남는다. 닿을 수 있는 단추로 열렸는지를 잰다. */
+    expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
+    expect(screen.queryByText(`${OTHER_ISSUE_NO} 출고 전표를 찾지 못했습니다`)).toBeNull();
+  });
+
+  it('되물은 창에서 새 값을 받으면 그때 대상이 바뀐다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText(/출고 QR 스캔/);
+    scan(ISSUE_NO);
+    await screen.findByText(`${ISSUE_NO} · 1라인`);
+    scan(OTHER_ISSUE_NO);
+
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    expect(await screen.findByText(`${OTHER_ISSUE_NO} 출고 전표를 찾지 못했습니다`)).toBeTruthy();
+  });
+
 });

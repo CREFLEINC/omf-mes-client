@@ -134,6 +134,34 @@ test('저장소 정책 검사가 폐기된 하네스를 감지한다', () => {
   );
 });
 
+/*
+ * .client-dev/ 에는 비공개 요청서와 설계 참조 클론이 들어간다. 이 저장소는 공개라
+ * 한 번 올라가면 되돌릴 수 없다. .gitignore 는 이미 추적 중인 파일을 막지 못한다.
+ */
+test('.client-dev/ 가 추적되면 잡아낸다', () => {
+  const root = mkdtempSync(path.join(tmpdir(), 'workflow-client-dev-'));
+  execFileSync('git', ['init', '--quiet'], { cwd: root });
+  mkdirSync(path.join(root, '.client-dev/requests'), { recursive: true });
+  writeFileSync(path.join(root, '.client-dev/state.json'), '{}\n');
+  writeFileSync(path.join(root, '.client-dev/requests/ask.md'), '비공개 요청서\n');
+  execFileSync('git', ['add', '-f', '.client-dev'], { cwd: root });
+
+  assert.ok(
+    repositoryPolicyErrors(root).some((error) =>
+      error.includes('.client-dev/: 로컬 전용 자료는 Git에서 추적하면 안 됩니다'),
+    ),
+  );
+
+  /* 보인 것만 빼면 되는 줄로 읽히지 않도록 몇 건인지를 함께 말한다. */
+  for (const name of ['a.md', 'b.md', 'c.md']) {
+    writeFileSync(path.join(root, '.client-dev/requests', name), 'x\n');
+  }
+  execFileSync('git', ['add', '-f', '.client-dev'], { cwd: root });
+
+  assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('5건: ')));
+  assert.ok(repositoryPolicyErrors(root).some((error) => error.includes('외 2건')));
+});
+
 test('Git 작업 트리가 아니면 추적 검사를 통과시키지 않는다', () => {
   const root = mkdtempSync(path.join(tmpdir(), 'workflow-no-git-'));
   assert.ok(

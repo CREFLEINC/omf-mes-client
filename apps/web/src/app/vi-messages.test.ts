@@ -49,6 +49,18 @@ const TRANSLATED = [
   'lotStatusTransition',
   'qualityApproval',
   'suspiciousMaterialHold',
+  /* #1114 — 기준정보 11화면. */
+  'commonCode',
+  'defectCauseCode',
+  'inspectionStandard',
+  'integrationSync',
+  'itemExtendedAttrs',
+  'judgmentCode',
+  'masterChange',
+  'putawayRule',
+  'routing',
+  'warehouseLayout',
+  'warehouseLocation',
 ] as const satisfies readonly (keyof Messages)[];
 
 const HANGUL = /[가-힣]/;

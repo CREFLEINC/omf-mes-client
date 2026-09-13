@@ -12,6 +12,7 @@ import { useItemLabels } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
 import { toApiError } from '../../patterns/request';
+import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -199,6 +200,7 @@ export const ShopfloorReceiptScreen = () => {
   const [hopperKeypadFor, setHopperKeypadFor] = useState<number | null>(null);
 
   const scanField = useScanField({
+    applied: scanned,
     onScan: (value) => {
       setScanned(value.trim());
       /* 같은 라벨을 다시 스캔한 것도 한 회차다. 값만 보면 두 번째 스캔이 조용히 지나간다. */
@@ -631,6 +633,8 @@ export const ShopfloorReceiptScreen = () => {
           </div>
         </>
       )}
+
+      <ScanReplaceDialog field={scanField} />
     </div>
   );
 };

@@ -39,7 +39,7 @@ export const materialLocation: Translated<typeof ko.materialLocation> = {
   loading: 'Đang tra cứu',
   notFound: {
     title: 'LOT chưa được đăng ký',
-    description: 'Hãy kiểm tra số vừa đọc rồi quét lại.',
+    description: (lotNo: string) => `Số vừa đọc ${lotNo} — hãy kiểm tra rồi quét lại.`,
   },
   loadFailed: {
     title: 'Không tra cứu được',

@@ -63,7 +63,7 @@ export const putaway = {
     expected: (lotNo: string) => `지시 LOT ${lotNo}`,
     matched: (lotNo: string) => `스캔됨 ${lotNo}`,
     /** 다른 자재를 얹으면 그 뒤로 재고가 있다는 자리에 없다. */
-    mismatch: '이 지시의 LOT 이 아닙니다',
+    mismatch: (lotNo: string) => `이 지시의 LOT 이 아닙니다 — 읽은 값 ${lotNo}`,
   },
   verdict: {
     matched: '권장 위치와 같습니다',

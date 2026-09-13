@@ -415,3 +415,35 @@ describe('MaterialInputScanScreen — 품목 이름 풀이', () => {
     expect(screen.getByText(t.receiptStatus.matched)).toBeTruthy();
   });
 });
+
+/*
+ * 긴급 W/O 에서 넘어오면 긴급 표식이 머리줄에 남는다(`P-02-12` §5-1 「긴급 플래그 유지」 · #1147).
+ * 주소에는 긴급 여부가 없으므로 작업지시의 유형으로 가른다.
+ */
+describe('MaterialInputScanScreen — 긴급 표식', () => {
+  const workOrderRoute = (workOrderTypeCode: string): StubRoute => ({
+    match: (request) => isGet(request, `/production/work-orders/${String(WORK_ORDER_ID)}`),
+    respond: () => jsonResponse({ workOrderId: WORK_ORDER_ID, workOrderTypeCode }),
+  });
+
+  const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
+
+  it('긴급 작업지시면 머리줄에 긴급을 세운다', async () => {
+    renderScreen([listRoute([]), workOrderRoute('EMERGENCY')]);
+
+    expect(await within(header()).findByText(t.header.emergency)).toBeInTheDocument();
+  });
+
+  it('긴급이 아니면 세우지 않는다', async () => {
+    const { requests } = renderScreen([listRoute([]), workOrderRoute('NORMAL')]);
+
+    await waitFor(() => {
+      expect(requests.some((request) => request.url.pathname.startsWith('/production/'))).toBe(
+        true,
+      );
+    });
+    await flush();
+
+    expect(within(header()).queryByText(t.header.emergency)).not.toBeInTheDocument();
+  });
+});

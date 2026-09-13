@@ -11,6 +11,8 @@ export interface KeypadPanelProps {
   /** 그 칸의 값. */
   value: string;
   onChange: (next: string) => void;
+  /** 확정된 회차에서는 패드도 누르지 않는다(#1146 ③). */
+  isLocked: boolean;
 }
 
 /**
@@ -28,7 +30,7 @@ export interface KeypadPanelProps {
  * ⛔ **고른 칸이 없으면 누를 수 없다.** 어디로 들어갈지 모르는 숫자를 받으면 사용자는 자기가
  *    무엇을 쳤는지 모른다.
  */
-export const KeypadPanel = ({ label, value, onChange }: KeypadPanelProps) => (
+export const KeypadPanel = ({ label, value, onChange, isLocked }: KeypadPanelProps) => (
   <section className="pane pqc-keypad" aria-label={t.keypadLabel}>
     <h2 className="pane-title">{t.title}</h2>
 
@@ -45,7 +47,7 @@ export const KeypadPanel = ({ label, value, onChange }: KeypadPanelProps) => (
       value={value}
       dropLeadingZero
       onChange={onChange}
-      disabled={label === null}
+      disabled={isLocked || label === null}
       keySize={POP_TOUCH_SIZE}
       label={t.keypadLabel}
       backspaceLabel={t.backspace}
