@@ -98,6 +98,8 @@ export interface StubOptions {
   processes?: Record<string, unknown>[];
   processesStatus?: number;
   terminalStatus?: number;
+  /** 단말 상세 응답을 덮어쓴다 — 설비가 매핑되지 않은 단말을 재려면 필요하다. */
+  terminal?: Record<string, unknown>;
   workOrders?: Record<string, unknown>[];
   listStatus?: number;
   /** 고른 작업지시의 열린 세션. 기본은 없음. */
@@ -169,7 +171,7 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
         return jsonResponse({ message: '실패' }, { status: options.terminalStatus });
       }
 
-      return jsonResponse(TERMINAL);
+      return jsonResponse(options.terminal ?? TERMINAL);
     }
 
     if (url.pathname === `/mdm/terminals/${String(TERMINAL_ID)}/processes`) {
