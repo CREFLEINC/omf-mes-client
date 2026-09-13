@@ -118,7 +118,6 @@ const renderFlow = (options: FlowOptions = {}) => {
     terminalId: null,
     processes: null,
     equipment: null,
-
     workerNo: WORKER_NO,
     ...options.identity,
   };

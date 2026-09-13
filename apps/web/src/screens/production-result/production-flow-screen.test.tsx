@@ -202,7 +202,6 @@ const renderScreen = (
         terminalId: 10,
         processes: [{ processId: 20 }],
         equipment: null,
-
         workerNo: options.workerNo === undefined ? '100029' : options.workerNo,
       }}
     >

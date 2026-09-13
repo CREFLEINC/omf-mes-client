@@ -51,7 +51,6 @@ const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
   processes: [{ processId: PROCESS_ID }],
   equipment: null,
-
   workerNo: WORKER_NO,
 };
 

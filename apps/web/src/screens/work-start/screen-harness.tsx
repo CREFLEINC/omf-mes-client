@@ -21,7 +21,6 @@ export const IDENTITY: PopIdentity = {
   terminalId: TERMINAL_ID,
   processes: [{ processId: PROCESS_ID }],
   equipment: null,
-
   workerNo: null,
 };
 

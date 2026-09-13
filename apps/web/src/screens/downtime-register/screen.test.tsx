@@ -138,7 +138,6 @@ const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
   processes: [{ processId: PROCESS_ID }],
   equipment: null,
-
   workerNo: WORKER_NO,
 };
 
@@ -1134,16 +1133,25 @@ describe('DowntimeRegisterScreen — 건수와 합계의 모집단', () => {
    *    날짜로 치면 방금 넣은 줄이 목록에서 빠져 감지기가 늘 통과한다.
    */
   const todayInterval = (): { start: [string, string]; end: [string, string] } => {
-    const at = new Date(Date.now() - 60 * 60 * 1000);
     const pad = (value: number): string => String(value).padStart(2, '0');
-    const day = `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+    const localDay = (at: Date): string =>
+      `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
 
-    /* 한 시간 전이 어제라면 오늘 이른 시각을 쓴다 — 두 끝이 같은 날에 서야 한다. */
-    const sameDay = day === new Date().toISOString().slice(0, 10) || at.getHours() >= 1;
+    const now = new Date();
+    const day = localDay(now);
+    const earlier = new Date(now.getTime() - 60 * 60 * 1000);
 
-    return sameDay
-      ? { start: [day, `${pad(at.getHours())}:00`], end: [day, `${pad(at.getHours())}:30`] }
-      : { start: [day, '00:05'], end: [day, '00:10'] };
+    /*
+     * 한 시간 전이 어제라면(자정 직후) 오늘 첫 순간을 쓴다 — 두 끝이 **오늘 안에** 서야 하고,
+     * 아직 오지 않은 시각이어서도 안 된다.
+     */
+    if (localDay(earlier) !== day) return { start: [day, '00:00'], end: [day, '00:00'] };
+
+    /* `earlier` 의 정각·30분은 둘 다 지금보다 앞선다(지금 −79분 · −49분). */
+    return {
+      start: [day, `${pad(earlier.getHours())}:00`],
+      end: [day, `${pad(earlier.getHours())}:30`],
+    };
   };
 
   /**
