@@ -1,18 +1,21 @@
 import { Button, DatePicker, Select, TextField } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useEffect, useId, useState } from 'react';
 
 import type { HistoryFilters } from './filters';
 import type { FilterOption } from './lot-filter-bar';
 import { validateHistoryPeriod, type HistoryPeriodError } from './period';
 
+const t = messages.lotStatusHistory;
+
 const periodReason = (error: HistoryPeriodError | null): string | null => {
   switch (error) {
     case 'missing':
-      return '기간을 모두 선택한 뒤 조회할 수 있습니다.';
+      return t.historyFilter.reasons.missing;
     case 'invalid':
-      return '유효한 기간을 선택해 주세요.';
+      return t.historyFilter.reasons.invalid;
     case 'reversed':
-      return '기간 종료는 시작보다 앞설 수 없습니다.';
+      return t.historyFilter.reasons.reversed;
     case null:
       return null;
   }
@@ -48,14 +51,14 @@ export const HistoryFilterBar = ({
   const hasAppliedActor = actorOptions.some((option) => option.value === appliedActor);
   const visibleActorOptions =
     appliedActor !== '' && !hasAppliedActor
-      ? [...actorOptions, { value: appliedActor, label: '선택한 행위자 (이름 확인 불가)' }]
+      ? [...actorOptions, { value: appliedActor, label: t.historyFilter.actorUnknownOption }]
       : actorOptions;
 
   return (
     <div className="filter-bar lot-status-filter lot-status-history-filter">
       <div className="field-cell">
         <label className="field-label" htmlFor={periodId}>
-          기간
+          {t.historyFilter.fields.period}
         </label>
         <DatePicker
           id={periodId}
@@ -66,14 +69,14 @@ export const HistoryFilterBar = ({
       </div>
       <div className="field-cell wide-select">
         <label className="field-label" htmlFor={actorId}>
-          행위자
+          {t.historyFilter.fields.actor}
         </label>
         <Select
           id={actorId}
           value={draft.actor}
-          placeholder="전체"
+          placeholder={t.values.all}
           aria-describedby={actorNote === undefined ? undefined : actorNoteId}
-          options={[{ value: '', label: '전체' }, ...visibleActorOptions]}
+          options={[{ value: '', label: t.values.all }, ...visibleActorOptions]}
           onChange={(actor) => setDraft((current) => ({ ...current, actor }))}
         />
         {actorNote !== undefined && (
@@ -83,7 +86,7 @@ export const HistoryFilterBar = ({
         )}
       </div>
       <TextField
-        label="LOT"
+        label={t.historyFilter.fields.lot}
         value={draft.lot}
         onChange={(event) => setDraft((current) => ({ ...current, lot: event.target.value }))}
       />
@@ -100,10 +103,10 @@ export const HistoryFilterBar = ({
             aria-describedby={reason === null ? undefined : reasonId}
             onClick={() => onSearch(draft)}
           >
-            조회
+            {t.actions.search}
           </Button>
           <Button variant="outlined" onClick={onReset}>
-            초기화
+            {t.actions.reset}
           </Button>
         </div>
       </div>

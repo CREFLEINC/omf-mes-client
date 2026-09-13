@@ -8,6 +8,7 @@ import {
   StatCard,
   Table,
 } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 
 import { toLotStatusSort, toTableSort } from './current-sort';
 import type { LotFilters, LotStatusSort } from './filters';
@@ -15,6 +16,7 @@ import type { FilterOption } from './lot-filter-bar';
 import { useLotStatusList, useLotStatusSummary } from './queries';
 import { lotStatusRowKey, type LotStatusRow } from './types';
 
+const t = messages.lotStatusHistory;
 const EMPTY = '—';
 
 const formatDateTime = (value: string | null): string => {
@@ -27,7 +29,7 @@ const knownLabel = (options: readonly FilterOption[], value: string): string | u
   options.find((option) => option.value === value)?.label;
 
 const statusLabel = (options: readonly FilterOption[], value: string): string =>
-  knownLabel(options, value) ?? `${value} (목록 미확정)`;
+  knownLabel(options, value) ?? t.values.unlisted(value);
 
 const quantity = (value: number | null): string =>
   value === null ? EMPTY : new Intl.NumberFormat('ko-KR').format(value);
@@ -65,12 +67,12 @@ export const CurrentResults = ({
         aria-labelledby="lot-current-results-title"
       >
         <h2 className="pane-title" id="lot-current-results-title">
-          현재 LOT 상태
+          {t.current.pane}
         </h2>
         <EmptyState
           size="sm"
-          title="LOT 유형을 선택하고 조회하세요"
-          description="조회 조건을 적용하면 현재 상태 요약과 LOT 목록이 표시됩니다."
+          title={t.current.beforeSearch.title}
+          description={t.current.beforeSearch.description}
         />
       </section>
     );
@@ -78,28 +80,37 @@ export const CurrentResults = ({
 
   const itemLabel = (itemId: number): string =>
     knownLabel(itemOptions, String(itemId)) ??
-    (isItemPending ? '불러오는 중…' : isItemError ? '품목 목록 조회 실패' : '알 수 없음');
+    (isItemPending
+      ? t.current.itemLabel.loading
+      : isItemError
+        ? t.current.itemLabel.failed
+        : t.current.itemLabel.unknown);
   const columns: Column<LotStatusRow>[] = [
     {
       key: 'lotNo',
-      header: 'LOT',
+      header: t.current.columns.lot,
       width: '176px',
       sortable: true,
       render: (row) => (
         <Button
           variant="text"
           size="sm"
-          aria-label={`${row.lotNo} 상세 보기`}
+          aria-label={t.current.openDetail(row.lotNo)}
           onClick={() => onSelectLot(row.lotId)}
         >
           {row.lotNo}
         </Button>
       ),
     },
-    { key: 'item', header: '품목', sortable: true, render: (row) => itemLabel(row.itemId) },
+    {
+      key: 'item',
+      header: t.current.columns.item,
+      sortable: true,
+      render: (row) => itemLabel(row.itemId),
+    },
     {
       key: 'lotStatusCode',
-      header: '현재 상태',
+      header: t.current.columns.status,
       width: '180px',
       render: (row) => (
         <Chip variant="status" size="sm">
@@ -109,21 +120,21 @@ export const CurrentResults = ({
     },
     {
       key: 'onHandQty',
-      header: '보유',
+      header: t.current.columns.onHand,
       align: 'end',
       width: '112px',
       render: (row) => quantity(row.onHandQty),
     },
     {
       key: 'latestTransitionAt',
-      header: '최근 전이',
+      header: t.current.columns.latestTransition,
       width: '156px',
       sortable: true,
       render: (row) => formatDateTime(row.latestTransitionAt),
     },
     {
       key: 'latestReasonCode',
-      header: '사유',
+      header: t.current.columns.reason,
       width: '168px',
       render: (row) => row.latestReasonCode ?? EMPTY,
     },
@@ -133,10 +144,10 @@ export const CurrentResults = ({
     <Button
       variant="outlined"
       size="sm"
-      aria-label={`${label} 다시 시도`}
+      aria-label={t.actions.retryLabel(label)}
       onClick={() => void query.refetch()}
     >
-      다시 시도
+      {t.actions.retry}
     </Button>
   );
   const rows = [...(list.data?.rows ?? [])];
@@ -165,63 +176,63 @@ export const CurrentResults = ({
     meta === undefined
       ? ''
       : rows.length === 0
-        ? `전체 ${quantity(meta.total)}건`
-        : `${quantity(start)}–${quantity(start + rows.length - 1)} / 전체 ${quantity(meta.total)}건`;
+        ? t.range.total(quantity(meta.total))
+        : t.range.span(quantity(start), quantity(start + rows.length - 1), quantity(meta.total));
 
   return (
     <section className="pane lot-status-pane" aria-labelledby="lot-current-results-title">
       <h2 className="pane-title" id="lot-current-results-title">
-        현재 LOT 상태
+        {t.current.pane}
       </h2>
       {summary.isPending && (
-        <div role="status" aria-label="현재 상태 요약을 불러오는 중">
+        <div role="status" aria-label={t.current.summary.loading}>
           <SkeletonText lines={1} />
         </div>
       )}
       {summary.isError && (
         <AlertBanner
           variant="error"
-          title="현재 상태 요약을 불러오지 못했습니다."
-          action={retry(summary, '현재 상태 요약')}
+          title={t.current.summary.failed}
+          action={retry(summary, t.current.summary.pane)}
         />
       )}
       {summary.data !== undefined && (
         <>
-          <div className="lot-status-summary-grid" role="group" aria-label="현재 상태 요약">
+          <div className="lot-status-summary-grid" role="group" aria-label={t.current.summary.pane}>
             {summaryCells.map((cell) => (
               <StatCard
                 key={cell.key}
                 label={cell.label}
-                value={cell.value === null ? '집계 미확정' : String(cell.value)}
-                unit="건"
+                value={cell.value === null ? t.current.summary.unknownCount : String(cell.value)}
+                unit={t.current.summary.unit}
               />
             ))}
           </div>
-          <p className="field-note">기준 시각 {formatDateTime(summary.data.asOf)}</p>
+          <p className="field-note">{t.current.summary.asOf(formatDateTime(summary.data.asOf))}</p>
           {summary.data.outOfScopeCount !== null && summary.data.outOfScopeCount > 0 && (
             <AlertBanner variant="info">
-              권한 범위 밖 {summary.data.outOfScopeCount}건이 제외되었습니다.
+              {t.current.summary.outOfScope(summary.data.outOfScopeCount)}
             </AlertBanner>
           )}
         </>
       )}
 
-      <h3 className="lot-status-list-title">LOT 목록</h3>
+      <h3 className="lot-status-list-title">{t.current.list.title}</h3>
       {list.isPending && (
-        <div role="status" aria-label="LOT 목록을 불러오는 중">
+        <div role="status" aria-label={t.current.list.loading}>
           <SkeletonText lines={3} />
         </div>
       )}
       {list.isFetching && list.data !== undefined && (
-        <p className="field-note" role="status" aria-label="LOT 목록 갱신 중">
-          LOT 목록을 갱신하는 중입니다.
+        <p className="field-note" role="status" aria-label={t.current.list.refreshing}>
+          {t.current.list.refreshingText}
         </p>
       )}
       {list.isError && (
         <AlertBanner
           variant="error"
-          title="LOT 목록을 불러오지 못했습니다."
-          action={retry(list, 'LOT 목록')}
+          title={t.current.list.failed}
+          action={retry(list, t.current.list.title)}
         />
       )}
       {list.data !== undefined && (
@@ -229,7 +240,7 @@ export const CurrentResults = ({
           <div className="wide-table lot-status-table" aria-busy={list.isFetching}>
             <Table
               density="compact"
-              caption="현재 LOT 상태"
+              caption={t.current.pane}
               columns={columns}
               rows={rows}
               getRowId={lotStatusRowKey}
@@ -241,13 +252,13 @@ export const CurrentResults = ({
                   live
                   title={
                     meta !== undefined && meta.total > 0
-                      ? '이 쪽에는 결과가 없습니다'
-                      : '조건에 맞는 LOT이 없습니다'
+                      ? t.current.list.emptyPage
+                      : t.current.list.empty
                   }
                   action={
                     isBeyondLast ? (
                       <Button variant="outlined" onClick={() => onPageChange(1)}>
-                        첫 쪽으로
+                        {t.current.list.firstPage}
                       </Button>
                     ) : undefined
                   }
@@ -256,7 +267,7 @@ export const CurrentResults = ({
             />
           </div>
           {meta !== undefined && (
-            <nav className="form-actions" aria-label="LOT 목록 쪽 이동">
+            <nav className="form-actions" aria-label={t.current.list.pagination}>
               <p className="field-note form-actions-secondary">{rangeLabel}</p>
               <Button
                 variant="outlined"
@@ -264,7 +275,7 @@ export const CurrentResults = ({
                 disabled={currentPage <= 1}
                 onClick={() => onPageChange(currentPage - 1)}
               >
-                이전 쪽
+                {t.actions.previousPage}
               </Button>
               <Button
                 variant="outlined"
@@ -272,7 +283,7 @@ export const CurrentResults = ({
                 disabled={currentPage >= totalPages}
                 onClick={() => onPageChange(currentPage + 1)}
               >
-                다음 쪽
+                {t.actions.nextPage}
               </Button>
             </nav>
           )}

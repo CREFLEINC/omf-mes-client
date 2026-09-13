@@ -42,6 +42,13 @@ const TRANSLATED = [
   'save',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
+  /* #1118 — 품질관리 6화면. 셋은 문구 묶음이 없어 이 이슈가 슬라이스부터 세웠다. */
+  'dispositionDecision',
+  'inspectionResultInsights',
+  'lotStatusHistory',
+  'lotStatusTransition',
+  'qualityApproval',
+  'suspiciousMaterialHold',
   /* #1114 — 기준정보 11화면. */
   'commonCode',
   'defectCauseCode',

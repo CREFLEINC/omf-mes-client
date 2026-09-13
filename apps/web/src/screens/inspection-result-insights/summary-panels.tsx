@@ -1,9 +1,11 @@
 import { AlertBanner, Button, SkeletonText, StatCard } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 
 import type { InspectionInsightFilters } from './filters';
 import { toInspectionTypePopulations } from './inspection-type-populations';
 import { useInspectionSummary, type InspectionSummary } from './queries';
 
+const t = messages.inspectionResultInsights.summary;
 const dateTime = (value: string): string => {
   const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
   return match === null ? value : `${match[1]} ${match[2]}`;
@@ -30,24 +32,24 @@ const SummaryPanel = ({
     summary.data === undefined
       ? []
       : ([
-          ['검사건수', summary.data.inspectionCount, '건'],
-          ['검사수량', summary.data.inspectedQty, ''],
-          ['합격수량', summary.data.acceptedQty, ''],
-          ['불합격수량', summary.data.rejectedQty, ''],
-          ['불량률', summary.data.defectRate, '%'],
+          [t.inspectionCount, summary.data.inspectionCount, t.inspectionCountUnit],
+          [t.inspectedQty, summary.data.inspectedQty, ''],
+          [t.acceptedQty, summary.data.acceptedQty, ''],
+          [t.rejectedQty, summary.data.rejectedQty, ''],
+          [t.defectRate, summary.data.defectRate, t.defectRateUnit],
         ] as const satisfies ReadonlyArray<readonly [string, number, string]>);
 
   return (
-    <section className="inspection-results-summary-panel" aria-label={`${label} 검사실적 요약`}>
+    <section className="inspection-results-summary-panel" aria-label={t.pane(label)}>
       {showPopulationLabel && <h3 className="inspection-results-subtitle">{label}</h3>}
       {summary.isPending && <SkeletonText lines={1} />}
       {summary.isError && (
         <AlertBanner
           variant="error"
-          title={`${label} 요약을 불러오지 못했습니다.`}
+          title={t.failed(label)}
           action={
             <Button size="sm" variant="outlined" onClick={() => void summary.refetch()}>
-              다시 시도
+              {t.retry}
             </Button>
           }
         />
@@ -57,25 +59,25 @@ const SummaryPanel = ({
           <div
             className="inspection-results-stat-grid"
             role="group"
-            aria-label={showPopulationLabel ? `${label} 검사실적 요약 카드` : '검사실적 요약 카드'}
+            aria-label={showPopulationLabel ? t.cards(label) : t.cardsPlain}
           >
             {cards.map(([cardLabel, value, unit]) => (
               <StatCard key={cardLabel} label={cardLabel} value={number(value)} unit={unit} />
             ))}
           </div>
-          <p className="field-note">기준 {dateTime(summary.data.asOf)}</p>
-          <p className="field-note">불량률의 분모는 검사수량이며 생산 수율과 다를 수 있습니다.</p>
+          <p className="field-note">{t.asOf(dateTime(summary.data.asOf))}</p>
+          <p className="field-note">{t.defectRateNote}</p>
           {filters.calibrationExpired === '' && (summary.data.calibrationExpiredCount ?? 0) > 0 && (
             <AlertBanner
               variant="warning"
-              title={`${label} 검교정 만료 장비 측정 건수 ${summary.data.calibrationExpiredCount}건이 기본 집계에 포함되어 있습니다.`}
+              title={t.calibrationExpiredIncluded(label, summary.data.calibrationExpiredCount ?? 0)}
               action={
                 <Button size="sm" variant="outlined" onClick={onViewExpiredCalibration}>
-                  검교정 만료만 분리해 보기
+                  {t.viewCalibrationExpired}
                 </Button>
               }
             >
-              기본 조회는 검교정 만료 장비로 측정된 건을 자동 제외하지 않습니다.
+              {t.calibrationExpiredDetail}
             </AlertBanner>
           )}
         </>
@@ -99,9 +101,7 @@ export const SummaryPanels = ({
 
   return (
     <>
-      {showPopulationLabel && (
-        <p className="field-note">검사유형별 요약을 분리하며 서로 합산하지 않습니다.</p>
-      )}
+      {showPopulationLabel && <p className="field-note">{t.populationNote}</p>}
       {toInspectionTypePopulations(filters).map((population) => (
         <SummaryPanel
           key={population.code}
