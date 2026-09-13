@@ -196,7 +196,12 @@ const renderScreen = (options: Options = {}) => {
 
   return renderWithProviders(
     <PopIdentityProvider
-      value={{ terminalId: 101, processes: [{ processId: 301 }], workerNo: '3391' }}
+      value={{
+        terminalId: 101,
+        processes: [{ processId: 301 }],
+        equipment: null,
+        workerNo: '3391',
+      }}
     >
       <PackingResultScreen />
     </PopIdentityProvider>,

@@ -88,7 +88,7 @@ describe('P-02-01 작업 시작 — 단말 게이팅', () => {
 
   it('단말·공정을 모르면 조회하지 않고 사유를 말한다', async () => {
     const { recorded } = renderScreen({
-      identity: { terminalId: null, processes: null, workerNo: null },
+      identity: { terminalId: null, processes: null, equipment: null, workerNo: null },
     });
 
     expect(await screen.findByText(t.blocked.unidentified)).toBeInTheDocument();

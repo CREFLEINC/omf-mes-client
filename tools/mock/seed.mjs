@@ -31,6 +31,9 @@ export const createSeed = (now = new Date()) => {
     return at.toISOString();
   };
 
+  /** 지금으로부터 n 분 전. 날짜를 글자로 박지 않고 되짚어 잡을 때 쓴다. */
+  const minutesAgo = (minutes) => new Date(now.getTime() - minutes * 60 * 1000).toISOString();
+
   /** 열려 있는 작업 세션이 시작된 순간 — 지금으로부터 6시간 12분 전(설계 도면의 예시 크기). */
   const SESSION_STARTED_AT = new Date(now.getTime() - (6 * 60 + 12) * 60 * 1000).toISOString();
 
@@ -2719,6 +2722,55 @@ export const createSeed = (now = new Date()) => {
         reportedAt: iso(-3, 14),
         reporterWorkerNo: '100028',
         statusCode: 'DONE',
+      },
+    ],
+    /*
+     * 비가동 실적(P-05-02 · W-05-08).
+     *
+     * ⚠ **끝난 구간만 둔다.** 열린 구간이 하나라도 있으면 P-05-02 가 새 저장을 막으므로
+     *    (스펙 §6-1) 「넣어 보기」를 목만으로 해 볼 수 없다 — 열린 구간은 화면이 만든다.
+     * ⚠ **지금에서 되짚어 잡는다.** 날짜를 글자로 박으면 날이 갈수록 「오늘」에서 빠져나가
+     *    오늘 목록이 늘 비게 된다.
+     */
+    downtimes: [
+      {
+        downtimeId: 8901,
+        equipmentId: 5001,
+        equipmentCode: 'PRS-01',
+        reasonCode: 'MATERIAL_WAIT',
+        reasonName: '자재 대기',
+        startedAt: minutesAgo(200),
+        endedAt: minutesAgo(185),
+        breakdownId: null,
+        workSessionId: null,
+        recordedByWorkerNo: '100028',
+        remarks: null,
+      },
+      {
+        downtimeId: 8902,
+        equipmentId: 5001,
+        equipmentCode: 'PRS-01',
+        reasonCode: 'MOLD_CHANGE',
+        reasonName: '금형 교체',
+        startedAt: minutesAgo(140),
+        endedAt: minutesAgo(90),
+        breakdownId: 8801,
+        workSessionId: null,
+        recordedByWorkerNo: '100027',
+        remarks: null,
+      },
+      {
+        downtimeId: 8903,
+        equipmentId: 5002,
+        equipmentCode: 'EQ-03',
+        reasonCode: 'EQUIPMENT_FAILURE',
+        reasonName: '설비 고장',
+        startedAt: minutesAgo(1900),
+        endedAt: minutesAgo(1840),
+        breakdownId: null,
+        workSessionId: null,
+        recordedByWorkerNo: '100029',
+        remarks: null,
       },
     ],
     operationHandovers: [],

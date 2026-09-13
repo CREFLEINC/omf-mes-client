@@ -458,6 +458,22 @@ export const PopRegistrationProvider = ({ children }: { children: ReactNode }) =
            */
           terminalId: state.phase === 'ready' ? (state.terminal?.terminalId ?? null) : null,
           processes: state.phase === 'ready' ? state.processes : null,
+          /*
+           * ⭐ **단말에 붙은 설비를 여기서 내린다**(#1149). 스펙이 「POP 은 설비에 붙어 있다」로
+           *    정한 값이고 단말 상세가 이미 답해 준다 — 내리지 않으면 설비를 쓰는 화면이
+           *    주소에 손으로 번호를 붙여야만 열렸고, 「설비를 고르세요」라고 말하면서 고를
+           *    자리를 주지 않는 화면이 됐다(88단계 3회차).
+           */
+          equipment:
+            state.phase === 'ready' &&
+            state.terminal !== null &&
+            state.terminal.equipmentId !== null
+              ? {
+                  equipmentId: state.terminal.equipmentId,
+                  equipmentCode: state.terminal.equipmentCode,
+                  equipmentName: state.terminal.equipmentName,
+                }
+              : null,
           workerNo: session?.worker.workerNo ?? null,
         }}
       >
