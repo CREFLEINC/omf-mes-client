@@ -620,3 +620,160 @@ describe('P-02-01 작업 시작 — 선택 확인의 긴급 표식', () => {
     expect(within(selectionPane()).queryByText(t.list.emergencyBadge)).not.toBeInTheDocument();
   });
 });
+
+
+/**
+ * #1148 — **누른 뒤에 아무 일도 없는 자리를 없앤다.**
+ *
+ * 작업 시작은 쓰기 둘이 사슬로 묶여 있다(판정 기록 → 세션 생성). 실측에서 앞엣것만 나가고
+ * 화면이 아무 말도 하지 않는 회차가 나왔다. 여기 감지기는 그 사슬이 **끊길 수 있는 자리**와
+ * **끊겼을 때 말하는지**를 잰다.
+ */
+describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#1148)', () => {
+  const OPEN_SESSION = {
+    workSessionId: 9801,
+    workOrderId: WORK_ORDER.workOrderId,
+    sessionNo: 1,
+    terminalId: 9101,
+    startedAt: '2026-09-02T08:10:00+09:00',
+    statusCode: 'SYN_RUNNING',
+  };
+
+  /** 고른 뒤 시작을 누를 수 있는 상태까지 간다. */
+  const selectWorkOrder = async (rendered: ReturnType<typeof renderScreen>) => {
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+  };
+
+  /**
+   * ⭐ **§6 — 「진행 중인 작업이 있습니다」 + 그 세션으로 이동.** 잠긴 버튼만 두면 안내가
+   *    시키는 동작을 화면이 주지 않는다(실측 2026-09-12 · 88단계 확정 결함 13).
+   */
+  it('진행 중인 세션이 있으면 그 작업으로 이어갈 길을 준다', async () => {
+    const rendered = renderScreen({ openSessions: [OPEN_SESSION] });
+
+    await selectWorkOrder(rendered);
+
+    expect(await screen.findByText(t.blocked.alreadyOpen)).toBeInTheDocument();
+
+    await rendered.user.click(
+      screen.getByRole('button', { name: t.blocked.continueToSession }),
+    );
+
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      `/pop/material-input?workOrderId=${String(WORK_ORDER.workOrderId)}`,
+    );
+  });
+
+  /** ⛔ 중단 중인 지시는 [재개] 로 간다 — 이어가기를 세우지 않는다(§5-4). */
+  it('중단 중인 지시에는 이어가기를 세우지 않는다', async () => {
+    const rendered = renderScreen({
+      workOrders: [{ ...WORK_ORDER, statusCode: 'SUSPENDED' }],
+      openSessions: [OPEN_SESSION],
+    });
+
+    await selectWorkOrder(rendered);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: t.actions.resume })).toBeEnabled();
+    });
+    expect(
+      screen.queryByRole('button', { name: t.blocked.continueToSession }),
+    ).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **판정 기록이 오가는 동안 화면이 비어 있지 않다.** 통과 판정이면 게이트가 아무것도
+   *    그리지 않으므로, 이 사이에 표시가 없으면 작업자는 버튼이 안 먹었다고 본다.
+   */
+  it('판정을 기록하는 동안 시작 버튼이 진행 중으로 잠긴다', async () => {
+    let release = (): void => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const rendered = renderScreen({ decisionGate: gate });
+
+    await selectWorkOrder(rendered);
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await rendered.user.click(startButton());
+
+    const starting = await screen.findByRole('button', { name: t.actions.starting });
+    expect(starting).toBeDisabled();
+
+    release();
+    await waitFor(() => {
+      expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1);
+    });
+  });
+
+  /**
+   * ⭐ **이 회차가 이슈의 재현이다.** 판정이 오가는 사이 목록이 다시 와서 고른 줄이 사라져도
+   *    세션 쓰기는 나가야 한다 — 「①은 나갔고 ②는 안 나갔다」가 여기서 생긴다.
+   */
+  it('판정 중에 목록에서 그 줄이 사라져도 세션을 연다', async () => {
+    let release = (): void => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const rendered = renderScreen({ decisionGate: gate, workOrdersAfter: [] });
+
+    await selectWorkOrder(rendered);
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+    await rendered.user.click(startButton());
+
+    /* 판정이 오가는 사이 서버의 목록이 달라진다 — 다른 단말이 먼저 가져간 상황이다. */
+    await rendered.queryClient.invalidateQueries({ queryKey: ['work-start', 'work-orders'] });
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+      ).not.toBeInTheDocument();
+    });
+
+    release();
+
+    await waitFor(() => {
+      expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1);
+    });
+
+    /*
+     * ⭐ **세션만 열고 서는 것도 「조용히 멈춤」이다.** 성공 처리기가 사라진 줄을 다시 찾으면
+     *    작업지시 번호가 빈 문구가 서고 자재 투입으로 넘어가지도 못한다.
+     */
+    expect(await screen.findByText(t.result.started(WORK_ORDER.workOrderNo))).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        `/pop/material-input?workOrderId=${String(WORK_ORDER.workOrderId)}`,
+      );
+    });
+  });
+
+  /**
+   * ⭐ **서버와 어긋났으면 무슨 일이 있었고 다음에 무엇이 일어나는지 말한다**(이슈 기대 동작).
+   */
+  it('409 면 상태가 바뀌었다고 말하고 목록을 다시 불러온다', async () => {
+    const rendered = renderScreen({ startStatus: 409 });
+
+    await selectWorkOrder(rendered);
+    await waitFor(() => {
+      expect(startButton()).toBeEnabled();
+    });
+
+    const before = listUrls(rendered.recorded.urls).length;
+
+    await rendered.user.click(startButton());
+
+    expect(await screen.findByText(t.result.conflict)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(listUrls(rendered.recorded.urls).length).toBeGreaterThan(before);
+    });
+  });
+});

@@ -175,12 +175,23 @@ export const WorkStartScreen = () => {
   const submitAtRef = useRef<string | null>(null);
 
   /**
-   * 점검 통제 게이트가 열려 있는가 — 열려 있으면 그 시도의 시각이 들어 있다.
+   * 지금 시작을 시도하고 있는 것 — **누른 순간의 작업지시와 시각을 통째로 붙든다.**
    *
    * ⭐ **시각을 상태로 든다.** 게이트가 판정 기록에 싣는 값이라, 다시 그리는 사이에 바뀌면
    * 같은 시도가 두 판정으로 남는다.
+   *
+   * ⛔ **고른 줄을 다시 찾아 쓰지 않는다**(#1148). `selected` 는 «지금 목록»에서 매번 다시
+   *    찾는 값이라, 판정이 오가는 사이 목록이 새로 오면서 그 줄이 빠지면 **`null` 이 된다** —
+   *    그러면 게이트가 사라져 판정 기록의 성공 처리기가 아예 불리지 않고(호출별 콜백은 부품이
+   *    사라지면 버려진다), 세션 쓰기는 나가지 않은 채 화면은 아무 말도 하지 않는다. 판정만
+   *    서버에 남는 자리가 이것이다. 시도를 붙들어 두면 목록이 어떻게 바뀌든 사슬이 끝까지 간다.
    */
-  const [gateAt, setGateAt] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState<{ at: string; workOrder: WorkOrder } | null>(null);
+
+  /**
+   * 사슬이 끊겼는데 서버가 거절한 것도 아닌 자리 — **말없이 끝내지 않기 위한 한 칸**이다.
+   */
+  const [chainError, setChainError] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -239,7 +250,7 @@ export const WorkStartScreen = () => {
    * 시작·재개를 막는 사유. **순서가 뜻이다** — 단말이 못 하는 일이면 사번을 아무리 잘 넣어도
    * 열리지 않으므로 그 사실을 먼저 말한다.
    */
-  const block = ((): { code: 'notSelected' | 'other'; text: string } | null => {
+  const block = ((): { code: 'notSelected' | 'alreadyOpen' | 'other'; text: string } | null => {
     /*
      * ⚠ **사유를 «코드»와 함께 낸다.** 배너를 세울지는 「아무것도 안 골랐다」인지로 갈리는데,
      *   그것을 번역 문구가 같은지로 판정하면 다른 사유가 같은 문장을 쓰게 되는 날 그 배너까지
@@ -263,8 +274,12 @@ export const WorkStartScreen = () => {
       /* ⛔ 열린 세션이 없으면 재개하지 않는다 — 새로 열면 중단 구간이 사라진다. */
       if (openSession.data === null) return other(t.resume.sessionNotFound);
     } else if (openSession.data !== null) {
-      /* ⛔ 세션이 이미 열려 있으면 새로 열지 않는다(§6). */
-      return other(t.blocked.alreadyOpen);
+      /*
+       * ⛔ 세션이 이미 열려 있으면 새로 열지 않는다(§6). ⭐ **다만 이어갈 길은 준다** —
+       *    같은 줄이 「그 세션으로 이동」이라고 적었고, 안내만 두고 길을 주지 않으면 작업자가
+       *    시킨 대로 할 수가 없다(#1148).
+       */
+      return { code: 'alreadyOpen', text: t.blocked.alreadyOpen };
     }
 
     return null;
@@ -274,10 +289,39 @@ export const WorkStartScreen = () => {
 
   const writeError = isResume ? resumeWork.error : startWork.error;
 
+  /**
+   * 서버가 「지금 보고 있는 것이 사실과 다르다」고 답했는가.
+   *
+   * ⛔ **상태 코드 하나로 판정하지 않는다.** 4xx 가 계약 오류 봉투로 오면 정규화가 그것을
+   * `conflict` 로 접으면서 상태 코드를 버린다 — 한쪽만 보면 실서버에서 갈래가 죽는다.
+   */
+  const isConflict = (error: NonNullable<typeof writeError>): boolean =>
+    error.kind === 'conflict' || (error.kind === 'http' && error.status === 409);
+
+  /**
+   * ⭐ **어긋났으면 화면이 스스로 다시 묻는다**(#1148). 문구가 「목록을 새로 불러옵니다」라고
+   *    적었으면 실제로 불러와야 한다 — 이 저장소는 자동 재조회를 꺼 두었으므로(`providers`)
+   *    여기서 부르지 않으면 작업자가 단말을 새로 켤 때까지 옛 목록이 그대로 선다.
+   *
+   * ⚠ **같은 실패로 두 번 부르지 않는다** — 실패 객체를 기억해 두고 새것일 때만 움직인다.
+   */
+  const refetchedForRef = useRef<unknown>(null);
+
+  useEffect(() => {
+    if (writeError === null || refetchedForRef.current === writeError) return;
+    if (!isConflict(writeError)) return;
+
+    refetchedForRef.current = writeError;
+    void list.refetch();
+    void openSession.refetch();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps -- 조회 객체는 렌더마다 새로 생긴다. */
+  }, [writeError]);
+
   const submit = () => {
     if (selected === null || confirmedNo === null) return;
 
     setOutcome(null);
+    setChainError(null);
 
     /* 붙들고 있던 시각이 있으면 그대로 쓴다 — 같은 시도의 재시도이기 때문이다. */
     submitAtRef.current ??= terminalNow(new Date());
@@ -294,7 +338,7 @@ export const WorkStartScreen = () => {
      *    §5-5). 게이트가 통과·경고 진행·우회 중 하나로 판정을 «기록한 뒤» 열어 주고, 그때
      *    아래 `startSession` 이 부른다.
      */
-    setGateAt(at);
+    setAttempt({ at, workOrder: selected });
   };
 
   /**
@@ -303,15 +347,26 @@ export const WorkStartScreen = () => {
    * ⚠ 게이트가 붙들고 있던 시각을 그대로 쓴다 — 판정과 세션이 같은 시도임을 시각이 말한다.
    */
   const startSession = (override: ControlOverride | null) => {
-    setGateAt(null);
+    const target = attempt?.workOrder ?? null;
 
-    if (selected === null) return;
+    setAttempt(null);
+
+    /*
+     * ⛔ **조용히 돌아가지 않는다**(#1148). 여기까지 왔다는 것은 판정이 **이미 서버에
+     *    남았다**는 뜻이라, 아무 말 없이 끝내면 작업자는 아무 일도 없었다고 읽고 계속 누른다 —
+     *    누를 때마다 판정만 한 줄씩 는다.
+     */
+    if (target === null) {
+      setChainError(t.result.notOpened);
+
+      return;
+    }
 
     startWork.write(
       toSessionRequest({
-        workOrder: selected,
+        workOrder: target,
         equipmentId,
-        startedAt: submitAtRef.current ?? terminalNow(new Date()),
+        startedAt: attempt?.at ?? submitAtRef.current ?? terminalNow(new Date()),
         controlOverride: override,
       }),
     );
@@ -325,7 +380,8 @@ export const WorkStartScreen = () => {
    */
   const clearSelection = () => {
     submitAtRef.current = null;
-    setGateAt(null);
+    setAttempt(null);
+    setChainError(null);
     setOutcome(null);
     setSelectedId(null);
   };
@@ -345,7 +401,8 @@ export const WorkStartScreen = () => {
     }
 
     submitAtRef.current = null;
-    setGateAt(null);
+    setAttempt(null);
+    setChainError(null);
     setOutcome(null);
     setSelectedId(workOrder.workOrderId);
   };
@@ -396,7 +453,23 @@ export const WorkStartScreen = () => {
           <AlertBanner
             variant="warning"
             action={
-              retryLabel === null ? undefined : (
+              block.code === 'alreadyOpen' ? (
+                /*
+                 * ⛔ **쓰기가 아니다.** 이미 열린 세션으로 «자리를 옮기는» 것뿐이라 여기서
+                 *    아무것도 보내지 않는다 — 재개(`RESUME` 적재)는 중단 상태의 사건이고(§5-4)
+                 *    이 갈래가 아니다.
+                 */
+                <Button
+                  type="button"
+                  variant="outlined"
+                  size="sm"
+                  onClick={() => {
+                    if (selected !== null) goToMaterialInput(selected.workOrderId);
+                  }}
+                >
+                  {t.blocked.continueToSession}
+                </Button>
+              ) : retryLabel === null ? undefined : (
                 <Button type="button" variant="outlined" size="sm" onClick={gate.retry}>
                   {retryLabel}
                 </Button>
@@ -490,11 +563,16 @@ export const WorkStartScreen = () => {
         </div>
       )}
 
+      {chainError !== null && (
+        <div className="banner-slot">
+          <AlertBanner variant="error">{chainError}</AlertBanner>
+        </div>
+      )}
+
       {writeError !== null && (
         <div className="banner-slot">
           <AlertBanner variant="error">
-            {writeError.kind === 'conflict' ||
-            (writeError.kind === 'http' && writeError.status === 409)
+            {isConflict(writeError)
               ? t.result.conflict
               : isResume
                 ? t.result.resumeFailed
@@ -506,7 +584,11 @@ export const WorkStartScreen = () => {
       <ActionBar
         mode={isResume ? 'resume' : 'start'}
         isBlocked={block !== null}
-        isSaving={isResume ? resumeWork.isSaving : startWork.isSaving}
+        /*
+         * ⭐ **판정을 기록하는 동안도 「시작 중」이다**(#1148). 통과 판정이면 게이트가 아무것도
+         *    그리지 않으므로, 이 사이에 표시가 없으면 화면이 통째로 멎은 것처럼 보인다.
+         */
+        isSaving={isResume ? resumeWork.isSaving : startWork.isSaving || attempt !== null}
         onSubmit={submit}
       />
 
@@ -514,24 +596,24 @@ export const WorkStartScreen = () => {
         점검 통제 게이트 — ⭐ **막을 때만 보인다**(`P-02-02` §9-3). 통과면 아무것도 그리지
         않고 판정만 남긴 뒤 세션을 연다. 이 화면 위에 덮이므로 여기서 마지막에 그린다.
       */}
-      {gateAt !== null && selected !== null && confirmedNo !== null && (
+      {attempt !== null && confirmedNo !== null && (
         <PrecheckGate
-          workOrderId={selected.workOrderId}
-          workOrderNo={selected.workOrderNo}
-          workOrderTypeCode={selected.workOrderTypeCode}
+          workOrderId={attempt.workOrder.workOrderId}
+          workOrderNo={attempt.workOrder.workOrderNo}
+          workOrderTypeCode={attempt.workOrder.workOrderTypeCode}
           equipmentId={equipmentId}
           equipmentCode={equipmentCode}
           equipmentName={equipmentName}
           plantId={terminal.data?.plantId ?? null}
           processId={soleProcessIdOf(identity.processes)}
           workerNo={confirmedNo}
-          decidedAt={gateAt}
+          decidedAt={attempt.at}
           /* 단말 시각의 «날짜»다 — 주기 창이 이 값을 기준으로 열린다. */
-          today={gateAt.slice(0, 10)}
+          today={attempt.at.slice(0, 10)}
           isOnline={isOnline}
           onCleared={startSession}
           onCancel={() => {
-            setGateAt(null);
+            setAttempt(null);
           }}
         />
       )}
