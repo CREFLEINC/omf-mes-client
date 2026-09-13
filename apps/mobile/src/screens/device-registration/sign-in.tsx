@@ -49,17 +49,16 @@ export const WorkerSignInScreen = () => {
   const release = async () => {
     try {
       await discardAll();
+      await unregister();
     } catch {
       /*
-       * 버리지 못했으면 등록을 풀지 않는다. 풀어 버리면 남은 기록이 토큰 없이 나가 되돌아오고,
-       * 그 사유는 서버의 판정이 아니라 우리가 등록을 푼 결과가 된다. 다만 청한 일이 일어나지
-       * 않았으므로 말한다 - 창은 이미 닫혀 있어 가만히 있으면 된 줄 안다.
+       * 어느 걸음이 걸렸든 청한 일이 끝나지 않았다 - 창은 이미 닫혀 있어 가만히 있으면 된
+       * 줄 안다. 기록이 남았는지는 걸린 자리마다 달라 단정하지 않는다.
        */
       setReleaseFailed(true);
       return;
     }
 
-    await unregister();
     signOut();
   };
 
@@ -128,6 +127,7 @@ export const WorkerSignInScreen = () => {
           size="xl"
           onClick={() => {
             setAsking(true);
+            setReleaseFailed(false);
           }}
         >
           {t.unregister.open}

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +10,7 @@ import { WorkerSignInScreen } from './sign-in';
 const store = vi.hoisted(() => new Map<string, string>());
 
 /** 등록을 푸는 것은 단말 토큰을 지우는 일이다. 보안 저장소는 시험 환경에 없어 여기서 본다. */
-const token = vi.hoisted(() => ({ cleared: 0, value: 't' as string | null }));
+const token = vi.hoisted(() => ({ cleared: 0, refuse: false, value: 't' as string | null }));
 
 /** 무엇이 먼저 일어났는가. 버리기와 토큰 지우기의 차례를 재려면 둘을 한 줄에 놓아야 한다. */
 const steps = vi.hoisted(() => [] as string[]);
@@ -24,6 +24,10 @@ vi.mock('../../patterns/device-token', () => ({
   /* 지운 뒤에도 살아 있다고 답하면 토큰 없이 나가는 갈래가 시험에서 사라진다. */
   currentDeviceToken: () => token.value,
   clearDeviceToken: () => {
+    if (token.refuse) {
+      return Promise.reject(new Error('보안 저장소가 거절했습니다'));
+    }
+
     token.cleared += 1;
     token.value = null;
     steps.push('토큰 지움');
@@ -103,6 +107,7 @@ beforeEach(() => {
   refuse.key = null;
   steps.length = 0;
   token.cleared = 0;
+  token.refuse = false;
   token.value = 't';
   store.clear();
   store.set('worker-directory', JSON.stringify(DIRECTORY));
@@ -206,7 +211,9 @@ describe('기기 등록 해제', () => {
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
-    expect(await screen.findByText(/보내지 못한 기록 2건이 사라집니다/)).toBeInTheDocument();
+    /* 닫힌 창의 본문도 DOM 에 남는다 - 창 안에서 재야 열렸는지가 갈린다. */
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(await dialog.findByText(/보내지 못한 기록 2건이 사라집니다/)).toBeInTheDocument();
   });
 
   /* 담아 둔 것이 없으면 잃을 것이 없다. 없는 위험을 지어 보이지 않는다. */
@@ -296,8 +303,9 @@ describe('기기 등록 해제', () => {
 
     await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
 
-    expect(await screen.findByText(/보내지 못한 기록 1건이 사라집니다/)).toBeInTheDocument();
-    expect(screen.getByText(/전송 실패한 기록 1건도 사라집니다/)).toBeInTheDocument();
+    const dialog = within(await screen.findByRole('dialog'));
+    expect(await dialog.findByText(/보내지 못한 기록 1건이 사라집니다/)).toBeInTheDocument();
+    expect(dialog.getByText(/전송 실패한 기록 1건도 사라집니다/)).toBeInTheDocument();
   });
 
   /*
@@ -351,10 +359,40 @@ describe('기기 등록 해제', () => {
     refuse.key = OUTBOX_KEY;
     await user.click(await screen.findByRole('button', { name: '등록 해제' }));
 
-    expect(
-      await screen.findByText('등록을 풀지 못했습니다. 기록이 그대로 남아 있으니 다시 시도하세요'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요')).toBeInTheDocument();
     expect(token.cleared).toBe(0);
+  });
+
+  /*
+   * 버리기와 토큰 지우기는 걸음이 둘이다. 뒤엣것만 걸리면 기록은 이미 사라졌는데 단말은
+   * 그대로 등록돼 있고, 창은 닫혀 있어 아무 일도 없었던 것으로 읽힌다.
+   */
+  it('토큰을 지우지 못해도 그렇게 말한다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    token.refuse = true;
+    await user.click(await screen.findByRole('button', { name: '등록 해제' }));
+
+    expect(await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요')).toBeInTheDocument();
+  });
+
+  /* 실패를 보고 물러섰는데 붉은 배너가 남으면, 다음에 들어온 사람이 방금 실패한 줄로 읽는다. */
+  it('실패한 뒤 창을 다시 열면 앞 실패를 지운다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    token.refuse = true;
+    await user.click(await screen.findByRole('button', { name: '등록 해제' }));
+    await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요');
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    expect(screen.queryByText('등록을 풀지 못했습니다. 다시 시도하세요')).not.toBeInTheDocument();
   });
 
   /* 사번이 남으면 새 QR 로 다시 등록했을 때 앞 작업자의 사번으로 기록이 쌓인다. */

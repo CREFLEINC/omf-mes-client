@@ -230,11 +230,14 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
    * 그 사유는 서버가 그 기록에 대해 내린 판정이 아니라 우리가 등록을 푼 결과다.
    */
   const discardAll = useCallback(async () => {
-    discarded.current += 1;
-
     await inTurn(async () => {
       await writeQueue([]);
       await writeRejected([]);
+      /*
+       * 다 버린 뒤에 세대를 올린다. 먼저 올리면 보관소가 거절해 버리지 못한 회차도 진행 중인
+       * 보내기의 판정을 버리게 해, 서버가 내린 판정이 어디에도 남지 않는다.
+       */
+      discarded.current += 1;
       rejectedRef.current = [];
       setEntries([]);
       setRejected([]);

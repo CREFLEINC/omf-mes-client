@@ -56,7 +56,7 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
       pending: (count: string) => `${count} bản ghi chưa gửi sẽ mất`,
       returned: (count: string) => `${count} bản ghi gửi thất bại cũng sẽ mất`,
       counting: 'Đang đếm các bản ghi chưa gửi',
-      failed: 'Không hủy được đăng ký. Bản ghi vẫn còn, hãy thử lại',
+      failed: 'Không hủy được đăng ký. Hãy thử lại',
       confirm: 'Hủy đăng ký',
       cancel: 'Giữ nguyên',
     },

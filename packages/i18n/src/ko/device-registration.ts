@@ -74,7 +74,7 @@ export const deviceRegistration = {
       pending: (count: string) => `보내지 못한 기록 ${count}건이 사라집니다`,
       returned: (count: string) => `전송 실패한 기록 ${count}건도 사라집니다`,
       counting: '보내지 못한 기록을 세는 중입니다',
-      failed: '등록을 풀지 못했습니다. 기록이 그대로 남아 있으니 다시 시도하세요',
+      failed: '등록을 풀지 못했습니다. 다시 시도하세요',
       confirm: '등록 해제',
       cancel: '그대로 두기',
     },

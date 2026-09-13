@@ -498,6 +498,47 @@ describe('outbox', () => {
     expect(result.current.rejected).toHaveLength(0);
   });
 
+  /*
+   * 버리다 걸리면 아무것도 버리지 못한 것처럼 이어져야 한다. 세대를 먼저 올리면 그 회차가
+   * 진행 중인 보내기의 판정까지 버려, 서버가 내린 판정이 어디에도 남지 않는다.
+   */
+  it('버리다 걸리면 보내는 중인 회차의 판정을 버리지 않는다', async () => {
+    let release = (): void => {
+      /* 통신을 붙잡는 자리는 아래에서 채운다. */
+    };
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started: string[] = [];
+    const send: OutboxTransport = (entry) => {
+      started.push(entry.idempotencyKey);
+      return inFlight.then(() =>
+        Promise.reject(new ApiRequestError({ kind: 'http', status: 422 })),
+      );
+    };
+
+    store.set('outbox', JSON.stringify([{ ...draft('k-1'), id: 'e-1' }]));
+
+    const { result } = mount(send);
+
+    await waitFor(() => {
+      expect(started).toEqual(['k-1']);
+    });
+
+    refuse.key = 'outbox-rejected';
+    await act(async () => {
+      await expect(result.current.discardAll()).rejects.toThrow();
+    });
+
+    refuse.key = null;
+    await act(async () => {
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(result.current.rejected).toHaveLength(1);
+  });
+
   it('빈 큐를 보내면 아무 결과도 내지 않는다', async () => {
     const { result } = mount();
 
