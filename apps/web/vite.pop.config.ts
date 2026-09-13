@@ -47,17 +47,44 @@ const popDevEntry = (): Plugin => ({
  * (실측), 고정하면 그때 서버가 아예 뜨지 않는다. 밀리면 vite 가 다음 포트로 옮겨 가며
  * 터미널에 실제 주소를 찍는다 — **그 주소를 쓴다.**
  */
-export default defineConfig(({ mode }) => ({
-  plugins: [react(), popDevEntry()],
-  server: {
-    port: 5174,
-    proxy: apiProxy(loadEnv(mode, process.cwd(), 'VITE_').VITE_API_PROXY_TARGET),
-  },
-  build: {
-    outDir: 'dist-pop',
-    emptyOutDir: true,
-    rollupOptions: {
-      input: 'pop.html',
+/**
+ * 설치본이 부를 기준 URL — **셸 자신의 주소**다(`apps/pop/src/main/api-relay.ts`).
+ *
+ * ⭐ 화면이 `pop://app/api/...` 를 부르면 셸이 그 요청을 백엔드로 대신 보낸다. 화면이 실서버
+ *    절대 주소를 직접 부르면 `pop://app` 이 늘 「다른 출처」라 백엔드의 허용 헤더가 없는 한
+ *    응답을 읽지 못한다 — 안드로이드가 `CAP_NATIVE_HTTP` 로 푼 것과 같은 자리다.
+ *
+ * ⚠ 이 값이 기본이므로 **굽는 사람은 `POP_API_TARGET` 으로 백엔드 원점을 줘야 한다.**
+ *   주지 않으면 릴리스 빌드가 멈춘다(`apps/pop/scripts/api-target.mjs`).
+ */
+const RELAY_BASE_URL = 'pop://app/api';
+
+export default defineConfig(({ mode, command }) => {
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
+
+  /*
+   * ⛔ **개발 서버에는 걸지 않는다.** `dev:pop` 은 브라우저에서 열리므로 `pop://app` 을 부를
+   *    수 없고, `/api` 프록시가 그 자리를 대신한다 — 기본을 바꾸면 개발 확인이 통째로 죽는다.
+   *
+   * ⚠ 사람이 준 값이 이긴다. 목을 가리키는 설치본을 굽던 기존 레시피가 그대로 선다.
+   */
+  const bakeRelayBase = command === 'build' && (env.VITE_API_BASE_URL ?? '') === '';
+
+  return {
+    plugins: [react(), popDevEntry()],
+    define: bakeRelayBase
+      ? { 'import.meta.env.VITE_API_BASE_URL': JSON.stringify(RELAY_BASE_URL) }
+      : {},
+    server: {
+      port: 5174,
+      proxy: apiProxy(env.VITE_API_PROXY_TARGET),
     },
-  },
-}));
+    build: {
+      outDir: 'dist-pop',
+      emptyOutDir: true,
+      rollupOptions: {
+        input: 'pop.html',
+      },
+    },
+  };
+});

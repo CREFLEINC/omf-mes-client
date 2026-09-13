@@ -26,6 +26,7 @@ export const wipHandover: Translated<typeof ko.wipHandover> = {
     notFound: (code: string) => `Không tìm thấy LOT ${code}`,
     qty: (qty: string) => `Số lượng hoàn thành ${qty}`,
     qtyUnknown: 'Không xác nhận được số lượng hoàn thành nên không bàn giao được',
+    scannedWas: (value: string) => `Đã đọc ${value}`,
     problem: {
       notProduction: 'Đây không phải LOT sản xuất. Bàn giao công đoạn chỉ nhận LOT sản xuất.',
       notCompleted: 'Cần xử lý hoàn thành sản xuất trước',

@@ -1,8 +1,13 @@
 import { AlertBanner, Button, Card, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 
-import { usePopRegistration, type RegistrationFailure } from '../../patterns/pop-registration';
+import {
+  usePopRegistration,
+  type FailureSource,
+  type RegistrationFailure,
+} from '../../patterns/pop-registration';
+import { panelScale } from './panel-scale';
 
 /**
  * P-CO-01 §3-A — **미등록·재등록 패널**(공유계약 F-4).
@@ -25,7 +30,34 @@ const t = messages.workerAssignment.registration;
  * 사유를 문장으로. **각 사유가 사람이 할 일이 다르다** — 401 은 재발급, 403 은 다른 토큰,
  * 미보관은 설치 담당자 호출이다. 한 문장으로 뭉치면 아무도 다음 행동을 모른다.
  */
-const failureMessage = (failure: RegistrationFailure, pendingCount: number): string => {
+const failureMessage = (
+  failure: RegistrationFailure,
+  pendingCount: number,
+  source: FailureSource,
+): string => {
+  /*
+   * ⛔ **보관된 토큰의 판정을 사람이 넣은 값의 판정처럼 말하지 않는다**(#1137). 켤 때 스스로
+   *    확인하는 갈래라 이 순간 입력란은 «비어» 있다 — 「이 토큰은 더 이상 쓸 수 없습니다」가
+   *    무엇을 가리키는지 알 수 없고, 설치 담당자는 자기가 넣은 값이 거절당한 줄 안다.
+   *
+   * ⚠ **닿지 못한 갈래는 가르지 않는다.** 판정이 아니라 못 물어본 것이라 두 경우에 할 일이
+   *   같다 — 연결을 확인하고 다시 시도하는 것 하나뿐이다.
+   */
+  if (source === 'stored') {
+    switch (failure) {
+      case 'malformed':
+        return t.storedFailure.malformed;
+      case 'rejected':
+        return t.storedFailure.rejected;
+      case 'foreign':
+        return t.storedFailure.foreign;
+      case 'wrong-type':
+        return t.storedFailure.wrongType;
+      default:
+        break;
+    }
+  }
+
   switch (failure) {
     case 'malformed':
       return t.failure.malformed;
@@ -46,6 +78,27 @@ const failureMessage = (failure: RegistrationFailure, pendingCount: number): str
   }
 };
 
+/**
+ * 단말 화면에 맞춘 상자 배율(`panel-scale`). 창 크기가 바뀌면 다시 잰다 — 실기는 고정이지만
+ * 개발 PC 에서는 창을 줄여 가며 보기 때문이다.
+ */
+const usePanelScale = (): number => {
+  const [scale, setScale] = useState(() =>
+    typeof window === 'undefined' ? 1 : panelScale(window.innerWidth, window.innerHeight),
+  );
+
+  useEffect(() => {
+    const apply = (): void => setScale(panelScale(window.innerWidth, window.innerHeight));
+
+    apply();
+    window.addEventListener('resize', apply);
+
+    return () => window.removeEventListener('resize', apply);
+  }, []);
+
+  return scale;
+};
+
 export const RegistrationPanel = () => {
   const registration = usePopRegistration();
   const [token, setToken] = useState('');
@@ -53,16 +106,19 @@ export const RegistrationPanel = () => {
   /* 이탈 시 후보 입력을 지운다 — 값이 화면에 남지 않게 한다(F-4). */
   useEffect(() => () => setToken(''), []);
 
-  const { phase, failure, pendingCount, terminal } = registration;
+  const { phase, failure, failureSource, pendingCount, terminal } = registration;
   const busy = phase === 'verifying' || phase === 'preparing';
+  const scale = usePanelScale();
 
   return (
-    <div className="pop-registration">
+    <div className="pop-registration" style={{ '--pop-reg-scale': scale } as CSSProperties}>
       <Card className="pop-registration__card">
         <h1 className="pop-registration__title">{t.title}</h1>
 
         {failure !== null ? (
-          <AlertBanner variant="error">{failureMessage(failure, pendingCount)}</AlertBanner>
+          <AlertBanner variant="error">
+            {failureMessage(failure, pendingCount, failureSource)}
+          </AlertBanner>
         ) : null}
 
         {phase === 'verified' && terminal !== null ? (

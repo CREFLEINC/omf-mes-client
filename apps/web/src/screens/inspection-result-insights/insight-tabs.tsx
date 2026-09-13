@@ -9,6 +9,7 @@ import {
   Tabs,
   type TabItem,
 } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useState } from 'react';
 
 import type { InspectionInsightFilters } from './filters';
@@ -16,6 +17,7 @@ import { useDefectDistribution, type DefectDistribution } from './queries';
 import type { DistributionGroup } from './request-queries';
 import { TrendPanels } from './trend-panels';
 
+const t = messages.inspectionResultInsights.tabs;
 type Node = DefectDistribution['nodes'][number];
 type View = 'trend' | 'distribution';
 const EMPTY = '—';
@@ -24,9 +26,9 @@ const dateTime = (value: string): string => {
   return match === null ? value : `${match[1]} ${match[2]}`;
 };
 const GROUP_OPTIONS = [
-  { value: 'defectCode', label: '불량코드' },
-  { value: 'occurrenceProcess', label: '발생 공정' },
-  { value: 'detectionProcess', label: '검출 공정' },
+  { value: 'defectCode', label: t.groups.defectCode },
+  { value: 'occurrenceProcess', label: t.groups.occurrenceProcess },
+  { value: 'detectionProcess', label: t.groups.detectionProcess },
 ];
 
 interface InsightTabsProps {
@@ -50,7 +52,7 @@ export const InsightTabs = ({
   );
   const retry = (refetch: () => Promise<unknown>) => (
     <Button size="sm" variant="outlined" onClick={() => void refetch()}>
-      다시 시도
+      {t.retry}
     </Button>
   );
   const parentLabels = new Map(
@@ -59,7 +61,7 @@ export const InsightTabs = ({
   const columns: Column<Node>[] = [
     {
       key: 'category',
-      header: '대분류',
+      header: t.columns.category,
       render: (node) =>
         node.parentDefectCodeId === undefined
           ? node.label
@@ -67,14 +69,14 @@ export const InsightTabs = ({
     },
     {
       key: 'detail',
-      header: '상세',
+      header: t.columns.detail,
       render: (node) => (node.parentDefectCodeId === undefined ? EMPTY : node.label),
     },
-    { key: 'recordCount', header: '건수', align: 'end' },
-    { key: 'defectQty', header: '수량', align: 'end' },
+    { key: 'recordCount', header: t.columns.recordCount, align: 'end' },
+    { key: 'defectQty', header: t.columns.defectQty, align: 'end' },
     {
       key: 'share',
-      header: '비중',
+      header: t.columns.share,
       align: 'end',
       render: (node) => (node.share === undefined ? EMPTY : `${node.share}%`),
     },
@@ -84,46 +86,38 @@ export const InsightTabs = ({
     group === 'detectionProcess' ||
     distribution.data?.nodes.some((node) => node.duplicateRisk === true) === true;
   const distributionContent = (
-    <section className="inspection-results-analysis" aria-label="불량 분포 결과">
+    <section className="inspection-results-analysis" aria-label={t.distributionPane}>
       <div className="field-cell wide-select inspection-results-distribution-field">
-        <span className="field-label">분포 묶음 기준</span>
+        <span className="field-label">{t.groupBy}</span>
         <Select
-          aria-label="분포 묶음 기준"
+          aria-label={t.groupBy}
           value={group}
           options={GROUP_OPTIONS}
           onChange={(value) => setGroup(value as DistributionGroup)}
         />
       </div>
       <div className="inspection-results-banner-stack">
-        <AlertBanner variant="info">
-          목록·요약·추이와 다른 모집단이며 두 수가 다른 것이 정상입니다.
-        </AlertBanner>
-        <AlertBanner variant="warning">현재 담기지 않는 불량 원천이 있을 수 있습니다.</AlertBanner>
-        {duplicateWarning && (
-          <AlertBanner variant="warning">공정별 분포는 중복 계상될 수 있습니다.</AlertBanner>
-        )}
+        <AlertBanner variant="info">{t.populationNote}</AlertBanner>
+        <AlertBanner variant="warning">{t.sourceWarning}</AlertBanner>
+        {duplicateWarning && <AlertBanner variant="warning">{t.duplicateWarning}</AlertBanner>}
       </div>
       {distribution.isPending && <SkeletonText lines={3} />}
       {distribution.isError && (
-        <AlertBanner
-          variant="error"
-          title="불량 분포를 불러오지 못했습니다."
-          action={retry(distribution.refetch)}
-        />
+        <AlertBanner variant="error" title={t.failed} action={retry(distribution.refetch)} />
       )}
       {!distribution.isError && distribution.data !== undefined && (
         <>
           <div className="wide-table inspection-results-table">
             <Table
               density="compact"
-              caption="불량코드 분포"
+              caption={t.caption}
               columns={columns}
               rows={[...distribution.data.nodes]}
               getRowId={(node) => String(node.defectCodeId)}
-              empty={<EmptyState size="sm" title="분포 데이터가 없습니다" />}
+              empty={<EmptyState size="sm" title={t.empty} />}
             />
           </div>
-          <p className="field-note">기준 {dateTime(distribution.data.asOf)}</p>
+          <p className="field-note">{t.asOf(dateTime(distribution.data.asOf))}</p>
         </>
       )}
     </section>
@@ -131,7 +125,7 @@ export const InsightTabs = ({
   const tabs: TabItem[] = [
     {
       value: 'trend',
-      label: '불량률 추이',
+      label: t.trend,
       content:
         queriesEnabled && view === 'trend' ? (
           <TrendPanels filters={filters} enabled={queriesEnabled} />
@@ -139,13 +133,13 @@ export const InsightTabs = ({
     },
     {
       value: 'distribution',
-      label: '불량 분포',
+      label: t.distribution,
       content: queriesEnabled && view === 'distribution' ? distributionContent : null,
     },
   ];
   return (
     <Tabs
-      aria-label="검사 결과 인사이트"
+      aria-label={t.label}
       items={tabs}
       value={view}
       onChange={(value) => setView(value as View)}

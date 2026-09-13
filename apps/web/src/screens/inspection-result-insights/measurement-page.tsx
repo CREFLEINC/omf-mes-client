@@ -7,6 +7,7 @@ import {
   SkeletonText,
   Table,
 } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabelWithInactive, type LookupSource } from '../../patterns/lookup-display';
 import {
@@ -17,7 +18,8 @@ import {
 } from './queries';
 
 type CalibrationFilter = '' | 'only' | 'exclude';
-const EMPTY = '미확인';
+const t = messages.inspectionResultInsights.measurement;
+const EMPTY = t.unknown;
 const dateTime = (value: string): string => {
   const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
   return match === null ? value : `${match[1]} ${match[2]}`;
@@ -25,8 +27,8 @@ const dateTime = (value: string): string => {
 const measuredValue = (row: InspectionMeasurement): string => {
   if (row.numericValue !== undefined) return String(row.numericValue);
   if (row.textValue !== undefined) return row.textValue;
-  if (row.booleanValue !== undefined) return row.booleanValue ? '예' : '아니오';
-  return '미측정';
+  if (row.booleanValue !== undefined) return row.booleanValue ? t.booleanTrue : t.booleanFalse;
+  return t.unmeasured;
 };
 
 interface MeasurementPageProps {
@@ -57,31 +59,31 @@ export const MeasurementPage = ({
   const columns: Column<InspectionMeasurement>[] = [
     {
       key: 'item',
-      header: '항목',
-      render: (row) => itemNames.get(row.inspectionItemSpecId) ?? '항목 이름 미확인',
+      header: t.columns.item,
+      render: (row) => itemNames.get(row.inspectionItemSpecId) ?? t.itemNameUnknown,
     },
-    { key: 'sampleNo', header: '시료 번호', align: 'end' },
-    { key: 'value', header: '측정값', render: measuredValue },
+    { key: 'sampleNo', header: t.columns.sampleNo, align: 'end' },
+    { key: 'value', header: t.columns.value, render: measuredValue },
     {
       key: 'judgmentCode',
-      header: '판정',
+      header: t.columns.judgment,
       render: (row) => lookupDisplayLabelWithInactive(judgmentSource, row.judgmentCode),
     },
-    { key: 'measuredAt', header: '측정시각', render: (row) => dateTime(row.measuredAt) },
+    { key: 'measuredAt', header: t.columns.measuredAt, render: (row) => dateTime(row.measuredAt) },
     {
       key: 'calibration',
-      header: '교정 상태',
+      header: t.columns.calibration,
       render: (row) =>
         row.calibrationExpiredAtMeasurement === true
-          ? '검교정 만료'
+          ? t.calibrationExpired
           : row.calibrationExpiredAtMeasurement === false
-            ? '정상'
+            ? t.calibrationNormal
             : EMPTY,
     },
   ];
   const retry = (label: string, refetch: () => unknown) => (
     <Button variant="outlined" size="sm" onClick={() => void refetch()}>
-      {label} 다시 시도
+      {t.retryOf(label)}
     </Button>
   );
   const totalPages = Math.max(
@@ -92,43 +94,43 @@ export const MeasurementPage = ({
 
   return (
     <section aria-labelledby="measurement-page-title">
-      <h2 id="measurement-page-title">측정치 전체 보기</h2>
+      <h2 id="measurement-page-title">{t.title}</h2>
       {detail.isPending && <SkeletonText lines={1} />}
       {detail.isError && (
         <AlertBanner
           variant="error"
-          title="검사 결과 정보를 불러오지 못했습니다."
-          action={retry('검사 결과 정보', detail.refetch)}
+          title={t.detailFailed}
+          action={retry(t.detailRetryTarget, detail.refetch)}
         />
       )}
       {!detail.isError && detail.data !== undefined && <p>{detail.data.inspectionResultNo}</p>}
       <Select
-        aria-label="교정 상태 필터"
+        aria-label={t.calibrationFilter}
         value={calibrationExpired}
         options={[
-          { value: '', label: '전체' },
-          { value: 'only', label: '검교정 만료만' },
-          { value: 'exclude', label: '검교정 만료 제외' },
+          { value: '', label: t.all },
+          { value: 'only', label: t.calibrationOnly },
+          { value: 'exclude', label: t.calibrationExclude },
         ]}
         onChange={(value) => onCalibrationChange(value as CalibrationFilter)}
       />
       {summary.isError && (
         <AlertBanner
           variant="error"
-          title="측정 항목 이름을 불러오지 못했습니다."
-          action={retry('측정 항목 이름', summary.refetch)}
+          title={t.summaryFailed}
+          action={retry(t.summaryRetryTarget, summary.refetch)}
         />
       )}
       {(measurements.isPending || measurements.isPlaceholderData) && (
-        <div role="status" aria-label="측정치 페이지를 불러오는 중">
+        <div role="status" aria-label={t.loading}>
           <SkeletonText lines={3} />
         </div>
       )}
       {measurements.isError && (
         <AlertBanner
           variant="error"
-          title="측정치를 불러오지 못했습니다."
-          action={retry('측정치', measurements.refetch)}
+          title={t.failed}
+          action={retry(t.retryTarget, measurements.refetch)}
         />
       )}
       {!measurements.isError &&
@@ -136,38 +138,36 @@ export const MeasurementPage = ({
         measurements.data !== undefined && (
           <>
             {isBeyondLast ? (
-              <EmptyState
-                size="sm"
-                title="요청한 측정치 쪽이 없습니다"
-                description="이전 쪽으로 이동해 주세요."
-              />
+              <EmptyState size="sm" title={t.beyondLast} description={t.beyondLastDescription} />
             ) : (
               <Table
                 density="compact"
-                caption="검사 측정치"
+                caption={t.caption}
                 columns={columns}
                 rows={[...measurements.data.items]}
                 getRowId={(row) => String(row.inspectionMeasurementId)}
-                empty={<EmptyState size="sm" title="측정치가 없습니다" />}
+                empty={<EmptyState size="sm" title={t.empty} />}
               />
             )}
-            <nav className="form-actions" aria-label="측정치 쪽 이동">
+            <nav className="form-actions" aria-label={t.pagination}>
               <Button
                 variant="outlined"
                 disabled={page <= 1}
                 onClick={() => onPageChange(page - 1)}
               >
-                이전
+                {t.previous}
               </Button>
               <span>
-                {isBeyondLast ? `요청 ${page} / 마지막 ${totalPages}` : `${page} / ${totalPages}`}
+                {isBeyondLast
+                  ? t.beyondLastPosition(page, totalPages)
+                  : t.position(page, totalPages)}
               </span>
               <Button
                 variant="outlined"
                 disabled={page >= totalPages}
                 onClick={() => onPageChange(page + 1)}
               >
-                다음
+                {t.next}
               </Button>
             </nav>
           </>

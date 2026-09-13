@@ -35,6 +35,7 @@ const ENTRY_ROUTE = `/pop/running-change?workOrderId=${String(WORK_ORDER_ID)}`;
 const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
   processes: [{ processId: PROCESS_ID }],
+  equipment: null,
   workerNo: WORKER_NO,
 };
 
@@ -413,7 +414,7 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
   });
 
   it('단말을 모르면 사유를 말하고 막는다', async () => {
-    renderScreen({}, { terminalId: null, processes: null, workerNo: WORKER_NO });
+    renderScreen({}, { terminalId: null, processes: null, equipment: null, workerNo: WORKER_NO });
 
     expect(await screen.findByText(t.disabled.unidentified)).toBeInTheDocument();
     expect(screen.getByText(t.header.terminalUnknown)).toBeInTheDocument();
@@ -422,7 +423,12 @@ describe('러닝체인지 화면 — 단말 게이팅', () => {
   it('사번을 모르면 사유를 말하고 막는다', async () => {
     renderScreen(
       {},
-      { terminalId: TERMINAL_ID, processes: [{ processId: PROCESS_ID }], workerNo: null },
+      {
+        terminalId: TERMINAL_ID,
+        processes: [{ processId: PROCESS_ID }],
+        equipment: null,
+        workerNo: null,
+      },
     );
 
     expect(await screen.findByText(t.disabled.workerMissing)).toBeInTheDocument();
