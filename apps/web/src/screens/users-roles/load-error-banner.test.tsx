@@ -101,6 +101,20 @@ describe('LoadErrorBanner', () => {
     expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
   });
 
+  const forbiddenResponse = {
+    errors: [{ scope: 'screen' as const, code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' }],
+  };
+
+  it('실제 403 오류 봉투가 validation으로 정규화돼도 원본 상태로 권한 없음 처리한다', () => {
+    renderBanner(new ApiRequestError(
+      { kind: 'validation', errors: forbiddenResponse.errors },
+      { httpStatus: 403 },
+    ));
+
+    expect(screen.getByText(messages.httpError.forbidden)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
+  });
+
   /** 요청 경로 밖에서 생긴 값이 와도 배너가 비지 않아야 한다. */
   it('정규화되지 않은 값이 와도 기본 안내를 낸다', () => {
     renderBanner(new Error('알 수 없는 오류'));

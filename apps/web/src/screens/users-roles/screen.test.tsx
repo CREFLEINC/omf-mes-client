@@ -88,6 +88,10 @@ const userListRoute = (items = appUserFixtures, pageMeta: PageStub = DEFAULT_PAG
   respond: () => jsonResponse({ items, page: pageMeta }),
 });
 
+const forbiddenResponse = {
+  errors: [{ scope: 'screen', code: 'PERMISSION_DENIED', message: '이 기능을 쓸 권한이 없습니다.' }],
+};
+
 const userListErrorRoute = (status: number, body: unknown = { errors: [] }): StubRoute => ({
   match: (request) => isGet(request, USERS_PATH),
   respond: () => jsonResponse(body, { status }),
@@ -778,6 +782,43 @@ describe('UsersRolesScreen 조회 실패', () => {
     });
   });
 
+  /** 접근 확인을 다시 하는 동안에는 이미 확인한 선택 상세를 지우지 않는다. */
+  it('일반 목록 재조회 중과 500 실패 뒤에는 기존 선택 상세가 남는다', async () => {
+    const listRoute = userListRoute();
+    let listCalls = 0;
+    let finishRefetch: ((response: Response) => void) | null = null;
+    const { requests, queryClient } = renderScreen(
+      [
+        {
+          match: listRoute.match,
+          respond: (request) => {
+            listCalls += 1;
+            if (listCalls === 1) return listRoute.respond(request);
+            return new Promise<Response>((resolve) => { finishRefetch = resolve; });
+          },
+        },
+        departmentsRoute(),
+        userDetailRoute(),
+        ...roleRoutes(),
+      ],
+      '?usr=1001',
+    );
+
+    expect(await screen.findByRole('textbox', { name: '이름' })).toHaveValue('합성 사용자 A');
+
+    act(() => {
+      void queryClient.invalidateQueries({ queryKey: ['users-roles-users', 'list'] });
+    });
+    await waitFor(() => expect(userRequests(requests)).toHaveLength(2));
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('합성 사용자 A');
+
+    await act(async () => {
+      finishRefetch?.(jsonResponse({ errors: [] }, { status: 500 }));
+    });
+    expect(await within(userListPane()).findByText('목록을 불러오지 못했습니다')).toBeInTheDocument();
+    expect(within(userFormPane()).getByRole('textbox', { name: '이름' })).toHaveValue('합성 사용자 A');
+  });
+
   /** 서버가 빈 문구를 주는 일이 실제로 있다 — 빈 배너가 아니라 기본 안내가 나와야 한다. */
   it('서버가 빈 문구를 줘도 배너 본문이 비지 않는다', async () => {
     const { requests } = renderScreen([
@@ -796,18 +837,22 @@ describe('UsersRolesScreen 조회 실패', () => {
    * 계약이 「이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다」고 못 박았다.
    * 표·빈 상태를 함께 내면 볼 수 없는 자료가 있는 것처럼 읽힌다.
    */
-  it('권한이 없으면 배너만 나오고 표도 빈 상태도 나오지 않는다', async () => {
-    const { requests } = renderScreen([userListErrorRoute(403), departmentsRoute()]);
-
-    await waitFor(() => {
-      expect(requestsTo(requests, USERS_PATH).length).toBeGreaterThan(0);
-    });
+  it('권한이 없으면 지난 선택 주소여도 관리 본문과 상세 요청을 막는다', async () => {
+    const { requests } = renderScreen(
+      [userListErrorRoute(403, forbiddenResponse), departmentsRoute(), userDetailRoute(), ...roleRoutes()],
+      '?usr=1001',
+    );
 
     expect(await screen.findByText(/이 작업을 수행할 권한이 없습니다/)).toBeInTheDocument();
+    expect(detailRequests(requests)).toHaveLength(0);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '사용자 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '역할 부여' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '데이터 접근범위' })).not.toBeInTheDocument();
+    expect(within(userListPane()).queryByRole('button', { name: '사용자 추가' })).not.toBeInTheDocument();
+    expect(within(userListPane()).queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.queryByText('등록된 사용자가 없습니다')).not.toBeInTheDocument();
     expect(screen.queryByText('조건에 맞는 사용자가 없습니다')).not.toBeInTheDocument();
-    // 다시 불러도 같은 답이 온다 — 누를 수 있는 조치를 주면 사용자를 헛돌게 한다.
     expect(screen.queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
   });
 });
@@ -3197,17 +3242,21 @@ describe('UsersRolesScreen 역할 목록 표시', () => {
   });
 
   /** 계약이 「이 화면 자체가 권한 관리 화면이라 진입 자체를 막고 배너로 사유를 표시한다」고 못 박았다. */
-  it('권한이 없으면 배너만 나오고 다시 시도를 주지 않는다', async () => {
-    const { requests } = renderScreen([roleListErrorRoute(403)], ROLES_TAB);
+  it('권한이 없으면 지난 역할 선택 주소여도 관리 본문과 상세 요청을 막는다', async () => {
+    const { requests } = renderScreen(
+      [roleListErrorRoute(403, forbiddenResponse), ...roleDetailRoutes()],
+      `${ROLES_TAB}&rol=5001`,
+    );
 
-    await waitFor(() => {
-      expect(roleRequests(requests).length).toBeGreaterThan(0);
-    });
-
-    const banner = await within(roleListPane()).findByRole('alert');
+    const banner = await screen.findByRole('alert');
 
     expect(within(banner).queryByRole('button', { name: '다시 시도' })).not.toBeInTheDocument();
     expect(within(roleListPane()).queryByRole('table')).not.toBeInTheDocument();
+    expect(requestsTo(requests, rolePath(5001))).toHaveLength(0);
+    expect(screen.queryByRole('region', { name: '역할 정보' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: '기능 권한' })).not.toBeInTheDocument();
+    expect(within(roleListPane()).queryByRole('button', { name: '역할 추가' })).not.toBeInTheDocument();
+    expect(within(roleListPane()).queryByRole('textbox')).not.toBeInTheDocument();
   });
 
   it('범위 밖 쪽에는 다른 안내가 나온다', async () => {
