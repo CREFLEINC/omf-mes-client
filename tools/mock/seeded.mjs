@@ -3619,6 +3619,191 @@ on('POST', '/maintenance/breakdowns', (_p, _q, body) => {
   return { created, status: 201 };
 });
 
+/*
+ * ── 비가동(P-05-02 · W-05-08) ──────────────────────────────
+ *
+ * ⚠ **종전에는 이 경로들이 없어 Prism 이 계약 예시를 답했다**(#1149). 목록은 질의와 무관한
+ *    지난달 한 줄을, 집계는 그와 아무 관계 없는 예시값을 돌려주었고, 그래서 화면에
+ *    「0건 · 합계 2시간」처럼 **건수와 합계가 서로 다른 것을 세는** 모습이 섰다 — 화면 결함으로
+ *    보고됐지만 원인은 목이었다(88단계 3회차).
+ *
+ * ⭐ **집계는 목록과 «같은 모집단»에서 센다.** 목이 두 숫자를 따로 지어내면 화면이 그 둘을
+ *    맞춰 보이려 해도 맞을 수가 없다.
+ */
+
+const equipmentOf = (equipmentId) =>
+  state.equipments.find((one) => one.equipmentId === equipmentId);
+
+/** 사유 코드의 표시명. **이름은 서버가 붙인다** — 화면은 코드→이름 표를 갖지 않는다(G-31). */
+const reasonNameOf = (reasonCode) =>
+  (state.codeValues.DOWNTIME_REASON ?? []).find(([code]) => code === reasonCode)?.[1] ?? null;
+
+/** 구간 길이(분). 끝나지 않았으면 «모른다» — 0 으로 채우지 않는다. */
+const downtimeMinutes = (row) =>
+  row.endedAt === null || row.endedAt === undefined
+    ? null
+    : Math.max(0, Math.round((Date.parse(row.endedAt) - Date.parse(row.startedAt)) / 60_000));
+
+/** 길이는 저장값이 아니라 파생값이다(스펙 §4-A) — 낼 때 계산한다. */
+const withDowntimeDuration = (row) => ({
+  ...row,
+  endedAt: row.endedAt ?? null,
+  durationMinutes: downtimeMinutes(row),
+});
+
+/**
+ * 지역 시각 기준 `yyyy-mm-dd`.
+ *
+ * ⛔ **ISO 글자를 그대로 비교하지 않는다.** 저장은 UTC 글자인데 화면은 **단말이 선 날**을
+ *    보내므로(`toLocalDay`), 글자끼리 비교하면 시차만큼 오늘 것이 어제로 빠진다.
+ */
+const localDayOf = (isoText) => {
+  const at = new Date(isoText);
+  const month = String(at.getMonth() + 1).padStart(2, '0');
+  const date = String(at.getDate()).padStart(2, '0');
+  return `${String(at.getFullYear())}-${month}-${date}`;
+};
+
+/** 겹치는 구간인가 — 같은 설비에서 시각이 물린 줄이 있으면 참이다. */
+const overlapsAnother = (row, rows) =>
+  rows.some(
+    (other) =>
+      other !== row &&
+      other.equipmentId === row.equipmentId &&
+      Date.parse(other.startedAt) < Date.parse(row.endedAt ?? '9999-12-31T00:00:00Z') &&
+      Date.parse(row.startedAt) < Date.parse(other.endedAt ?? '9999-12-31T00:00:00Z'),
+  );
+
+const downtimesMatching = (query) => {
+  const from = query.get('startedFrom');
+  const to = query.get('startedTo');
+
+  return keep(state.downtimes, [
+    byNum(query, 'equipmentId', 'equipmentId'),
+    byText(query, 'reasonCode', 'reasonCode'),
+    (row) => bool(query, 'openOnly') !== true || (row.endedAt ?? null) === null,
+    (row) => bool(query, 'overlappingOnly') !== true || overlapsAnother(row, state.downtimes),
+    (row) => from === null || from === '' || localDayOf(row.startedAt) >= from,
+    (row) => to === null || to === '' || localDayOf(row.startedAt) <= to,
+  ]);
+};
+
+on('GET', '/maintenance/downtimes', (_p, query) =>
+  page(downtimesMatching(query).map(withDowntimeDuration), query),
+);
+
+/** 경미 정지 임계(분). 합계에서 빼지 않고 줄만 나눠 보인다(계약 주). */
+const MINOR_STOP_THRESHOLD_MINUTES = 5;
+
+const groupTotals = (rows, keyOf, labelOf) => {
+  const buckets = new Map();
+
+  for (const row of rows) {
+    const key = keyOf(row);
+    const bucket = buckets.get(key) ?? { count: 0, totalMinutes: 0 };
+    bucket.count += 1;
+    bucket.totalMinutes += downtimeMinutes(row) ?? 0;
+    buckets.set(key, bucket);
+  }
+
+  const whole = [...buckets.values()].reduce((sum, bucket) => sum + bucket.totalMinutes, 0);
+
+  return [...buckets.entries()].map(([key, bucket]) => ({
+    ...labelOf(key),
+    count: bucket.count,
+    totalMinutes: bucket.totalMinutes,
+    sharePercent: whole === 0 ? 0 : Math.round((bucket.totalMinutes / whole) * 1000) / 10,
+    averageMinutes:
+      bucket.count === 0 ? 0 : Math.round((bucket.totalMinutes / bucket.count) * 10) / 10,
+  }));
+};
+
+on('GET', '/maintenance/downtimes/summary', (_p, query) => {
+  const rows = downtimesMatching(query);
+  const closed = rows.filter((row) => (row.endedAt ?? null) !== null);
+  const minor = closed.filter((row) => (downtimeMinutes(row) ?? 0) < MINOR_STOP_THRESHOLD_MINUTES);
+  const actual = closed.reduce((sum, row) => sum + (downtimeMinutes(row) ?? 0), 0);
+
+  return {
+    /*
+     * ⛔ **조업 시간을 지어내지 않는다** — 작업 세션 구간의 합이고(공유계약 L-2) 이 목은 그
+     *    계산을 갖고 있지 않다. 0 이면 가동률은 「산출 불가」로 내려가는 것이 계약이 정한 길이다.
+     */
+    operatingMinutes: 0,
+    plannedDowntimeMinutes: 0,
+    actualDowntimeMinutes: actual,
+    availabilityPercent: null,
+    openIntervalCount: rows.length - closed.length,
+    overlappingIntervalCount: rows.filter((row) => overlapsAnother(row, state.downtimes)).length,
+    minorStopCount: minor.length,
+    minorStopMinutes: minor.reduce((sum, row) => sum + (downtimeMinutes(row) ?? 0), 0),
+    minorStopThresholdMinutes: MINOR_STOP_THRESHOLD_MINUTES,
+    byReason: groupTotals(
+      closed,
+      (row) => row.reasonCode,
+      (code) => ({
+        reasonCode: code,
+        reasonName: closed.find((row) => row.reasonCode === code)?.reasonName ?? code,
+      }),
+    ),
+    byEquipment: groupTotals(
+      closed,
+      (row) => row.equipmentId,
+      (equipmentId) => ({
+        equipmentId,
+        equipmentCode: equipmentOf(equipmentId)?.equipmentCode ?? null,
+        equipmentName: equipmentOf(equipmentId)?.equipmentName ?? null,
+      }),
+    ),
+    byPeriod: groupTotals(
+      closed,
+      (row) => localDayOf(row.startedAt),
+      (day) => ({ periodStart: day }),
+    ),
+    sessionsWithoutEquipmentCount: 0,
+    correctiveMaintenanceCount: 0,
+    preventiveMaintenanceCount: 0,
+    breakdownsClosedWithoutOrderCount: 0,
+  };
+});
+
+on('POST', '/maintenance/downtimes', (_p, _q, body, headers) =>
+  idempotent('downtime-create', headers, () => {
+    const created = {
+      downtimeId: newId(),
+      equipmentId: body?.equipmentId ?? null,
+      equipmentCode: equipmentOf(body?.equipmentId)?.equipmentCode ?? null,
+      reasonCode: body?.reasonCode ?? null,
+      /* 이름은 서버가 붙인다 — 화면이 코드→이름 표를 갖지 않기 때문이다(스펙 §4-A · G-31). */
+      reasonName: reasonNameOf(body?.reasonCode),
+      startedAt: body?.startedAt ?? null,
+      endedAt: body?.endedAt ?? null,
+      breakdownId: body?.breakdownId ?? null,
+      workSessionId: null,
+      /* 귀속 사번은 본문이 아니라 헤더로 온다(공유계약 D-5). */
+      recordedByWorkerNo: headers['x-worker-no'] ?? null,
+      remarks: body?.remarks ?? null,
+    };
+
+    state.downtimes.push(created);
+    return { created: withDowntimeDuration(created), status: 201 };
+  }),
+);
+
+/*
+ * 「지금 종료」 — ⭐ **끝 시각은 서버가 «받은» 때다**(통보 109). 화면이 시각을 실어 보내지
+ * 않으므로 여기서 박는다.
+ */
+on('POST', '/maintenance/downtimes/{downtimeId}:close', (params, _q, _body, headers) =>
+  idempotent(`downtime-close:${params.downtimeId}`, headers, () => {
+    const found = state.downtimes.find((row) => row.downtimeId === Number(params.downtimeId));
+    if (found === undefined) return null;
+
+    found.endedAt = new Date().toISOString();
+    return withDowntimeDuration(found);
+  }),
+);
+
 on('POST', '/maintenance/breakdowns/{breakdownId}/attachments', (params, _q, body) => {
   const breakdown = state.breakdowns.find(
     (each) => each.breakdownId === Number(params.breakdownId),
