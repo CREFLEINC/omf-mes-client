@@ -1,8 +1,20 @@
 import { Select } from '@crefle/web-ui';
 import { activeLocale, LOCALES, type Locale } from '@omf-mes/i18n';
 
-import { rememberLocale } from '../patterns/locale-preference';
-import { localizedLabel, LOCALE_CHOICE } from './shell-label';
+import { rememberLocale } from './locale-preference';
+import { localizedLabel, type LocalizedLabel } from './localized-label';
+
+/**
+ * 이 칸의 접근명.
+ *
+ * ⭐ **고를 언어의 이름(`한국어` · `Tiếng Việt`)과는 다른 것이다** — 그쪽은 아래
+ * `LOCALE_NAMES` 가 갖고 **옮기지 않는다.** 이 이름은 「무엇을 고르는 칸인가」라서 지금 읽고
+ * 있는 언어를 따라간다.
+ *
+ * ⚠ **`@omf-mes/i18n` 이 아니라 여기 있다.** 셸이 제 손으로 드는 이름들과 같은 규칙이다
+ * (`localized-label.ts` 머리말).
+ */
+export const LOCALE_CHOICE: LocalizedLabel = { label: '언어', labelVi: 'Ngôn ngữ' };
 
 /**
  * 고를 수 있는 언어의 이름 — **각자 제 언어로 적는다.**
@@ -34,7 +46,7 @@ const reloadPage = (): void => {
 };
 
 /**
- * 화면 언어를 고르는 칸 — **상단 바의 로그아웃 옆**(#1113).
+ * 화면 언어를 고르는 칸 — **상단 바의 로그아웃 옆**(#1113)과 **로그인 카드의 머리**(#1126).
  *
  * ⭐ **고르면 새로고침한다.** 세션 도중 전환을 만들지 않는 까닭은 `patterns/locale-preference.ts`
  * 에 적혀 있다 — 소비 형태가 모듈 최상위 붙잡기라, 다시 세우지 않으면 **이미 붙잡은 자리만
@@ -43,9 +55,13 @@ const reloadPage = (): void => {
  * ⚠ **같은 언어를 다시 고르면 아무것도 하지 않는다.** 새로고침은 사람이 보고 있던 것을 버리는
  * 일이라, 바뀌는 것이 없는데 치르게 하지 않는다.
  *
- * ⛔ **로그인 화면에는 서지 않는다.** 이 칸은 셸 안에 있고 로그인은 셸을 쓰지 않는 유일한
- * 화면이다(`ko/login.ts`). 로그인 화면의 언어는 **지난번에 고른 값**이 정한다 — 고르지 않은
- * 첫 방문만 브라우저 언어를 본다.
+ * ⭐ **로그인 화면도 이 칸을 쓴다 — 그래서 `app/` 이 아니라 `patterns/` 에 산다**(#1126).
+ * 로그인은 셸을 쓰지 않는 유일한 화면이라(`ko/login.ts`) 상단 바가 없고, `screens/` 는 `app/`
+ * 을 부를 수 없다(`dep:check` 의 `app-inner-direction`). 두 자리가 **같은 부품**을 써야 고를
+ * 언어의 이름이 갈리지 않는다.
+ *
+ * ⚠ **그 화면에서는 카드 머리에 선다 — 칸을 치기 전에 만나는 자리다.** 고르면 새로고침하므로
+ * 폼 아래에 두면 이미 친 값을 잃는다.
  */
 export const LocaleSelect = ({ reload = reloadPage }: LocaleSelectProps) => {
   const current = activeLocale();

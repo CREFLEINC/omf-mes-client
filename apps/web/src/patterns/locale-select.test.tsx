@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LOCALE_STORAGE_KEY } from '../patterns/locale-preference';
+import { LOCALE_STORAGE_KEY } from './locale-preference';
 import { LocaleSelect } from './locale-select';
 
 beforeEach(() => {

@@ -10,7 +10,7 @@ import { LOCALES, resolveLocale, type Locale } from '@omf-mes/i18n';
  *
  * ⛔ **세션 도중 전환을 만들지 않는다.** 화면 1,539곳이 `const t = messages.xxx` 로 모듈이
  * 실릴 때 값을 붙잡으므로, 고른 뒤에 바꾸려면 그 소비 형태를 웹·POP·모바일에서 한꺼번에
- * 갈아야 한다. 고르면 새로고침한다(`app/locale-select.tsx`).
+ * 갈아야 한다. 고르면 새로고침한다(`patterns/locale-select.tsx`).
  */
 
 /**

@@ -8,8 +8,9 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from 'react-router';
 
 import { startingLocale } from '../patterns/locale-preference';
+import { localizedLabel } from '../patterns/localized-label';
 import { AppProviders } from './providers';
-import { localizedLabel, SHELL_BRAND } from './shell-label';
+import { SHELL_BRAND } from './shell-label';
 
 const container = document.getElementById('root');
 if (!container) {

@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react';
+import { createEvent, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -190,6 +190,46 @@ describe('LoginScreen — 셸 밖에 선다', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: t.title })).toBeInTheDocument();
     expect(screen.getByRole('main', { name: t.title })).toBeInTheDocument();
+  });
+});
+
+/**
+ * **언어를 고르는 자리**(#1126).
+ *
+ * ⭐ **이 화면에만 이 칸이 따로 필요하다.** 다른 70화면은 셸의 상단 바가 대신 세워 주지만
+ * (`app/layout.tsx`) 이 화면은 셸 밖이라 세워 줄 사람이 없다 — 공용 PC 에 처음 앉은 사람은
+ * **여기서 바꾸지 못하면 바꿀 자리가 없다.**
+ *
+ * ⚠ **고르는 동작은 여기서 재지 않는다** — 새로고침까지가 한 동작이라
+ * `patterns/locale-select.test.tsx` 가 갈아 끼운 새로고침으로 잰다(셸 시험도 같은 분할이다).
+ * 여기서 재는 것은 **자리**다.
+ */
+describe('LoginScreen — 언어 선택', () => {
+  it('카드 머리의 표제와 같은 자리에 언어 칸이 선다', () => {
+    renderScreen();
+
+    /* 양성 먼저 — 화면이 실제로 섰음을 잡은 뒤에 자리를 잰다. */
+    const heading = screen.getByRole('heading', { level: 1, name: t.title });
+    const head = heading.parentElement;
+
+    if (head === null) throw new Error('카드 머리를 찾지 못했습니다');
+
+    expect(within(head).getByRole('combobox', { name: '언어' })).toBeInTheDocument();
+  });
+
+  /**
+   * ⛔ **폼 안에 두지 않는다.** 이 화면의 폼은 제출 경로가 여럿이고(엔터 · 프로그램적 제출)
+   * 그 길로 나가는 것은 자격뿐이어야 한다 — 언어 칸이 폼 안에 서면 고르는 동작이 제출과
+   * 같은 묶음에 들어가고, `name` 을 갖는 날에는 요청에까지 실린다.
+   */
+  it('언어 칸이 폼 안에 서지 않는다', () => {
+    renderScreen();
+
+    const form = loginIdBox().closest('form');
+
+    if (form === null) throw new Error('로그인 폼을 찾지 못했습니다');
+
+    expect(within(form).queryByRole('combobox')).toBeNull();
   });
 });
 
