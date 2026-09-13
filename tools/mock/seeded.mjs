@@ -3380,6 +3380,203 @@ on('GET', '/quality/inspection-requests', (_p, query) => {
 });
 
 /*
+ * 검사 «결과» — P-02-13 · W-01-01 · W-03-05 가 함께 쓴다(#1154).
+ *
+ * ⚠ **종전에는 이 경로가 통째로 없어 Prism 이 계약 예시를 돌려주었다.** 확정을 보내도 남는
+ * 것이 없어 회차도 측정치도 다시 읽히지 않았고, PQC 의 «확정 이후» 갈래를 목으로 한 번도
+ * 밟을 수 없었다.
+ *
+ * ⛔ **검사 «의뢰»의 상태는 여기서 옮기지 않는다.** 계약이 `:confirm` 에 대해 말하는 전이는
+ * «결과»의 상태와 Lot Status 둘뿐이고, 의뢰를 누가 `COMPLETED` 로 옮기는지는 어느 자료에도
+ * 없다(03 요구서가 「의뢰 상태 코드값이 미확정」이라고 적었다). 목이 여기서 값을 지어내면
+ * 화면의 확정 잠금이 «되는 것처럼» 보이고, 실서버에서 안 될 때 아무도 못 잡는다.
+ * 설계 회신이 오면 그때 넣는다 — `omf-mes-client#1146`.
+ */
+const inspectionResultEtag = (result) => `W/"${String(result.versionNo ?? 1)}"`;
+
+/** 합계 제약(A-3). 계약이 `:confirm` 에서 400 으로 못박았다. */
+const totalsMatch = (result) =>
+  Number(result.acceptedQty ?? 0) +
+    Number(result.rejectedQty ?? 0) +
+    Number(result.heldQty ?? 0) ===
+  Number(result.inspectedQty ?? 0);
+
+on('POST', '/quality/inspection-results', (_p, _q, body, headers) =>
+  idempotent('inspection-result', headers, () => {
+    const request = state.inspectionRequests.find(
+      (row) => row.inspectionRequestId === Number(body?.inspectionRequestId),
+    );
+
+    if (request === undefined) {
+      return { status: 404, created: { code: 'NOT_FOUND', message: '검사 의뢰가 없습니다.' } };
+    }
+
+    /*
+     * 회차는 **서버가 센다**(계약 — 「재검이면 previousResultId 를 실으면 서버가 회차를 +1」).
+     * 앞 회차를 안 실으면 1회차다.
+     */
+    const previous = state.inspectionResults.find(
+      (row) => row.inspectionResultId === Number(body?.previousResultId),
+    );
+    const inspectionResultId = newId();
+    const created = {
+      inspectionResultId,
+      inspectionResultNo: `IRS-2026-${String(inspectionResultId).slice(-4)}`,
+      inspectionRequestId: request.inspectionRequestId,
+      inspectionRequestNo: request.inspectionRequestNo,
+      inspectionTypeCode: request.inspectionTypeCode,
+      itemId: request.itemId,
+      lotId: request.lotId,
+      inspectionRound: previous === undefined ? 1 : Number(previous.inspectionRound ?? 1) + 1,
+      inspectedQty: Number(body?.inspectedQty ?? 0),
+      acceptedQty: Number(body?.acceptedQty ?? 0),
+      rejectedQty: Number(body?.rejectedQty ?? 0),
+      heldQty: Number(body?.heldQty ?? 0),
+      uomId: Number(body?.uomId ?? request.uomId),
+      overallJudgmentCode: body?.overallJudgmentCode ?? null,
+      /* 검사자는 서버가 세션에서 정한다 — 화면은 보내지 않는다(계약 §5-6). */
+      inspectorId: 100027,
+      inspectedAt: body?.inspectedAt ?? new Date().toISOString(),
+      statusCode: body?.statusCode ?? 'DRAFT',
+      previousResultId: previous?.inspectionResultId ?? null,
+      reinspectionReasonCode: body?.reinspectionReasonCode ?? null,
+      remarks: body?.remarks ?? null,
+      /* 확정으로 들어왔으면 그 순간이 확정 시각이다. 임시 저장은 비운다. */
+      confirmedAt: body?.statusCode === 'CONFIRMED' ? new Date().toISOString() : null,
+      versionNo: 1,
+    };
+
+    if (created.statusCode === 'CONFIRMED' && !totalsMatch(created)) {
+      return {
+        status: 400,
+        created: {
+          code: 'QTY_SUM_MISMATCH',
+          message: '합격·불합격·보류의 합이 검사 수량과 같아야 합니다.',
+        },
+      };
+    }
+
+    state.inspectionResults.push(created);
+
+    /* ⛔ 측정치는 자체 쓰기 경로가 없다 — 결과 저장에 함께 실려 온다(P-02-13 §4-C). */
+    for (const [index, measurement] of (body?.measurements ?? []).entries()) {
+      state.inspectionMeasurements.push({
+        inspectionMeasurementId: inspectionResultId * 100 + index,
+        inspectionResultId,
+        inspectionItemSpecId: Number(measurement?.inspectionItemSpecId),
+        sampleNo: Number(measurement?.sampleNo ?? 1),
+        numericValue: measurement?.numericValue ?? null,
+        textValue: measurement?.textValue ?? null,
+        booleanValue: measurement?.booleanValue ?? null,
+        judgmentCode: measurement?.judgmentCode,
+        measuredAt: measurement?.measuredAt ?? created.inspectedAt,
+        inspectionEquipmentId: measurement?.inspectionEquipmentId ?? null,
+        calibrationExpiredAtMeasurement: false,
+      });
+    }
+
+    return { created, status: 201 };
+  }),
+);
+
+on('GET', '/quality/inspection-results', (_p, query) => {
+  /*
+   * ⛔ **유계가 아니면 400**(공유계약 L-3) — 의뢰 번호도 기간도 없으면 전수 조회가 된다.
+   * 계약이 「둘 중 하나로 반드시 유계여야 한다」고 적었다.
+   */
+  if (
+    num(query, 'inspectionRequestId') === null &&
+    query.get('inspectedFrom') === null &&
+    query.get('inspectedTo') === null
+  ) {
+    return {
+      status: 400,
+      created: {
+        code: 'UNBOUNDED_QUERY',
+        message: '검사 의뢰 또는 검사 기간 중 하나로 범위를 정해야 합니다.',
+      },
+    };
+  }
+
+  return page(
+    keep(state.inspectionResults, [
+      byNum(query, 'inspectionRequestId', 'inspectionRequestId'),
+      byText(query, 'inspectionTypeCode', 'inspectionTypeCode'),
+      byText(query, 'overallJudgmentCode', 'overallJudgmentCode'),
+      byText(query, 'statusCode', 'statusCode'),
+      byNum(query, 'itemId', 'itemId'),
+    ]),
+    query,
+  );
+});
+
+/*
+ * ⭐ **단건이 `ETag` 를 낸다.** 확정이 `If-Match` 로 이 토큰을 되돌려 보내는데, 목록 200 에는
+ * 토큰이 없고 보관소가 응답이 온 «경로»를 열쇠로 쓴다 — 이 경로가 비면 화면은 요청을 아예
+ * 내보내지 않고 조용히 멈춘다.
+ */
+on('GET', '/quality/inspection-results/{inspectionResultId}', (params) => {
+  const result = state.inspectionResults.find(
+    (row) => row.inspectionResultId === Number(params.inspectionResultId),
+  );
+
+  return result === undefined
+    ? null
+    : { created: { ...result }, status: 200, headers: { ETag: inspectionResultEtag(result) } };
+});
+
+on('GET', '/quality/inspection-results/{inspectionResultId}/measurements', (params, query) =>
+  page(
+    state.inspectionMeasurements
+      .filter((row) => row.inspectionResultId === Number(params.inspectionResultId))
+      .map(({ inspectionResultId: _omit, ...row }) => row),
+    query,
+  ),
+);
+
+on(
+  'POST',
+  '/quality/inspection-results/{inspectionResultId}:confirm',
+  (params, _q, _b, headers) => {
+    const result = state.inspectionResults.find(
+      (row) => row.inspectionResultId === Number(params.inspectionResultId),
+    );
+    if (result === undefined) return null;
+
+    if (headers['if-match'] !== undefined && headers['if-match'] !== inspectionResultEtag(result)) {
+      return {
+        status: 409,
+        created: { code: 'VERSION_CONFLICT', message: '다른 곳에서 먼저 바뀌었습니다.' },
+      };
+    }
+
+    if (result.statusCode === 'CONFIRMED') {
+      return {
+        status: 409,
+        created: { code: 'INVALID_STATE', message: '이미 확정된 회차입니다.' },
+      };
+    }
+
+    /* ⛔ 합계가 맞지 않으면 확정하지 않는다(A-3) — 계약이 400 으로 못박았다. */
+    if (!totalsMatch(result)) {
+      return {
+        status: 400,
+        created: {
+          code: 'QTY_SUM_MISMATCH',
+          message: '합격·불합격·보류의 합이 검사 수량과 같아야 합니다.',
+        },
+      };
+    }
+
+    result.statusCode = 'CONFIRMED';
+    result.confirmedAt = new Date().toISOString();
+    result.versionNo = Number(result.versionNo ?? 1) + 1;
+
+    return { created: { ...result }, status: 200 };
+  },
+);
+
+/*
  * W-04-07 — 판정 대기 대상 · 부적합 등록 · 판정 의뢰 · 처분 목록.
  * 부적합 상세는 ETag 를 내고, 의뢰는 If-Match 를 요구한다 — 화면의 낙관적 잠금 흐름을 목에서 밟는다.
  */

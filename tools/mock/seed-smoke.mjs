@@ -1143,6 +1143,71 @@ for (const [name, path, check] of DETAILS) {
   console.log(`${ok ? '✔' : '✘'} P-02-04 생산 LOT 마감이 포장 대상으로 이어진다`);
 }
 
+/*
+ * P-02-13 검사 결과 저장 - 되읽기 체인(#1154).
+ *
+ * 이 경로가 통째로 없어 확정을 보내도 남는 것이 없었고, PQC 의 「확정 이후」 갈래를 목으로
+ * 한 번도 밟을 수 없었다. 저장한 것이 목록 · 단건 · 측정치로 «되읽혀야» 체인이 산다.
+ *
+ * ⛔ 검사 «의뢰»의 상태는 변하지 않아야 한다 - 누가 옮기는지가 설계에 없다(#1146).
+ */
+{
+  const headers = {
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'seed-smoke-p-02-13-confirm',
+  };
+  const saved = await fetch(`${BASE}/quality/inspection-results`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      inspectionRequestId: 16001,
+      inspectedQty: 120,
+      acceptedQty: 120,
+      rejectedQty: 0,
+      heldQty: 0,
+      uomId: 1001,
+      overallJudgmentCode: 'ACCEPTED',
+      inspectedAt: '2026-09-11T13:00:00+09:00',
+      statusCode: 'CONFIRMED',
+      measurements: [
+        {
+          inspectionItemSpecId: 7102,
+          sampleNo: 1,
+          numericValue: 12,
+          judgmentCode: 'ACCEPTED',
+          measuredAt: '2026-09-11T13:00:00+09:00',
+        },
+      ],
+    }),
+  });
+  const created = await saved.json();
+  const resultId = Number(created.inspectionResultId);
+
+  const rounds = await (
+    await fetch(`${BASE}/quality/inspection-results?inspectionRequestId=16001`)
+  ).json();
+  const single = await fetch(`${BASE}/quality/inspection-results/${String(resultId)}`);
+  const measurements = await (
+    await fetch(`${BASE}/quality/inspection-results/${String(resultId)}/measurements`)
+  ).json();
+  /* 유계가 아니면 400 이다(L-3) - 전수 조회를 열어 두지 않는다. */
+  const unbounded = await fetch(`${BASE}/quality/inspection-results`);
+  const request = await (await fetch(`${BASE}/quality/inspection-requests/16001`)).json();
+
+  const ok =
+    saved.status === 201 &&
+    created.statusCode === 'CONFIRMED' &&
+    created.inspectionRound === 1 &&
+    rounds.items.some((row) => row.inspectionResultId === resultId) &&
+    typeof single.headers.get('etag') === 'string' &&
+    measurements.items.some((row) => row.numericValue === 12) &&
+    unbounded.status === 400 &&
+    request.statusCode === 'REQUESTED';
+
+  if (!ok) failed += 1;
+  console.log(`${ok ? '✔' : '✘'} P-02-13 확정한 검사 결과가 목록 · 단건 · 측정치로 되읽힌다`);
+}
+
 console.log(
   failed === 0
     ? `\n화면 ${String(ENTRIES.length + DETAILS.length)}자리 전부 열립니다.`
