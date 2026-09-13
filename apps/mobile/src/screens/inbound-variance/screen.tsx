@@ -21,6 +21,7 @@ import { useItem, useUomCodes } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   INBOUND_VARIANCE_REASON,
   INBOUND_VARIANCE_TYPE,
@@ -52,6 +53,7 @@ const emptyDraft: VarianceDraft = {
 
 export const InboundVarianceScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const { enqueue, flush, countPending, isRejected } = useOutbox();
   const { worker } = useWorkerSession();
@@ -199,7 +201,9 @@ export const InboundVarianceScreen = () => {
         />
         {receipts.isPending ? <p role="status">{t.receipt.loading}</p> : null}
         {/* 확인하지 못한 것을 입하가 없는 것으로 말하지 않는다. */}
-        {receipts.isError ? <AlertBanner variant="error" title={t.receipt.loadFailed} /> : null}
+        {receipts.isError ? (
+          <AlertBanner variant="error" title={failureText(receipts.error, t.receipt.loadFailed)} />
+        ) : null}
         {receipts.data !== undefined && receipts.data.length === 0 ? (
           <p className="variance__note">{t.receipt.none}</p>
         ) : null}

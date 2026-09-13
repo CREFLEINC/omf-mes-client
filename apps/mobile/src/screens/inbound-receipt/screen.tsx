@@ -14,6 +14,7 @@ import { useWorkerSession } from '../../patterns/worker-session';
 import { useCodeValues } from '../../patterns/code-values';
 import { useAdvanceTo } from '../../patterns/advance-to';
 import { playErrorTone } from '../../patterns/error-tone';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   SUBSTITUTE_LOT_REASON,
   useOpenPurchaseOrders,
@@ -75,6 +76,7 @@ const emptyDraft: ReceiptDraft = {
 
 export const InboundReceiptScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const navigate = useNavigate();
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
@@ -539,7 +541,9 @@ export const InboundReceiptScreen = () => {
             {/* 번호만으로는 어느 발주 물품인지 확정되지 않는다. 담당자가 고른다. */}
             <p className="receipt__note">{narrowed ? t.po.narrowedNote : t.po.pickNote}</p>
             {orders.isPending ? <p role="status">{t.po.loading}</p> : null}
-            {orders.isError ? <AlertBanner variant="error" title={t.po.loadFailed} /> : null}
+            {orders.isError ? (
+              <AlertBanner variant="error" title={failureText(orders.error, t.po.loadFailed)} />
+            ) : null}
             {orders.data !== undefined && orders.data.length === 0 ? (
               <p className="receipt__note">{t.po.none}</p>
             ) : null}

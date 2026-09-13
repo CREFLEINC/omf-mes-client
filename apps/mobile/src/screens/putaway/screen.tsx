@@ -16,6 +16,7 @@ import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { useWorkerId } from '../../patterns/workers';
 import { useLocationByCode, useLocations, type Location } from '../../patterns/locations';
+import { useLoadFailure } from '../../patterns/load-failure';
 import {
   putawayKeys,
   useLocationContents,
@@ -59,6 +60,7 @@ interface Registered {
 
 export const PutawayScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
 
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -273,7 +275,9 @@ export const PutawayScreen = () => {
           <h2>{t.tasks.legend}</h2>
           {worker === null ? <p className="putaway__note">{t.noWorker}</p> : null}
           {workerId.isPending && worker !== null ? <p role="status">{t.worker.loading}</p> : null}
-          {workerId.isError ? <AlertBanner variant="error" title={t.worker.loadFailed} /> : null}
+          {workerId.isError ? (
+            <AlertBanner variant="error" title={failureText(workerId.error, t.worker.loadFailed)} />
+          ) : null}
           {/* 비우고 물으면 남의 지시까지 온다. 찾지 못하면 목록을 열지 않는다. */}
           {workerId.isSuccess && workerId.data === null ? (
             <AlertBanner variant="warning" title={t.worker.notFound(worker?.workerNo ?? '')} />
@@ -282,7 +286,9 @@ export const PutawayScreen = () => {
           {tasks.isPending && workerId.data !== null ? (
             <p role="status">{t.tasks.loading}</p>
           ) : null}
-          {tasks.isError ? <AlertBanner variant="error" title={t.tasks.loadFailed} /> : null}
+          {tasks.isError ? (
+            <AlertBanner variant="error" title={failureText(tasks.error, t.tasks.loadFailed)} />
+          ) : null}
           {tasks.data !== undefined && tasks.data.length === 0 ? (
             <p className="putaway__note">{t.tasks.none}</p>
           ) : null}
@@ -360,7 +366,10 @@ export const PutawayScreen = () => {
             <h2>{t.location.legend}</h2>
             {locations.isPending ? <p role="status">{t.location.loading}</p> : null}
             {locations.isError ? (
-              <AlertBanner variant="error" title={t.location.loadFailed} />
+              <AlertBanner
+                variant="error"
+                title={failureText(locations.error, t.location.loadFailed)}
+              />
             ) : null}
             {locations.data !== undefined && locations.data.length === 0 ? (
               <AlertBanner variant="warning" title={t.location.none} />
@@ -385,7 +394,10 @@ export const PutawayScreen = () => {
                   }
                 />
                 {byCode.isError ? (
-                  <AlertBanner variant="error" title={t.location.loadFailed} />
+                  <AlertBanner
+                    variant="error"
+                    title={failureText(byCode.error, t.location.loadFailed)}
+                  />
                 ) : null}
                 {/* 스캐너가 못 읽는 라벨이 있다. 손으로 넣는 길을 늘 연다(공유계약 D-3). */}
                 <Button
@@ -499,7 +511,9 @@ export const PutawayScreen = () => {
             <section className="putaway__section" ref={lotSection}>
               <h2>{t.lot.legend}</h2>
               {lotNo.isPending ? <p role="status">{t.lot.loading}</p> : null}
-              {lotNo.isError ? <AlertBanner variant="error" title={t.lot.loadFailed} /> : null}
+              {lotNo.isError ? (
+                <AlertBanner variant="error" title={failureText(lotNo.error, t.lot.loadFailed)} />
+              ) : null}
               <TextField
                 ref={lotField.ref}
                 label={required(t.lot.scanLabel)}

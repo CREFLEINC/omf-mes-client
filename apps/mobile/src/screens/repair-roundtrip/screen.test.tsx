@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -205,9 +206,7 @@ describe('수리 왕복 스캔 화면', () => {
     await screen.findByLabelText(/불량 LOT 스캔/);
     scan(SCANNED);
 
-    expect(
-      await screen.findByText('불량 기록을 확인할 수 없습니다. 연결을 확인한 뒤 다시 스캔하세요.'),
-    ).toBeTruthy();
+    expect(await screen.findByText(messages.httpError.loadServer)).toBeTruthy();
     expect(screen.queryByText(/불량 판정된 LOT이 아닙니다 — 읽은 값 /)).toBeNull();
   });
 
@@ -1087,5 +1086,4 @@ describe('수리 왕복 스캔 화면', () => {
     /* 투입과 반납 두 갈래에 같은 카드가 선다. 몇 개인지가 아니라 섰는지를 잰다. */
     expect(await screen.findAllByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`)).not.toHaveLength(0);
   });
-
 });

@@ -40,6 +40,8 @@ export const materialLocation = {
     checking: '보류 여부를 확인하는 중입니다',
     unconfirmed: '보류 여부를 확인하지 못했습니다',
     unconfirmedDescription: '묶여 있을 수 있으니 연결된 뒤에 확인하고 옮기세요.',
+    /** 연결이 아닌 이유로 확인하지 못했을 때 그 이유 뒤에 붙인다. 주의는 이유와 상관없다. */
+    unconfirmedCaution: '묶여 있을 수 있으니 확인한 뒤에 옮기세요.',
     wholeLot: '전량 보류',
     quantity: (amount: string): string => `${amount} 보류`,
     releaseCondition: (condition: string): string => `해제 조건: ${condition}`,

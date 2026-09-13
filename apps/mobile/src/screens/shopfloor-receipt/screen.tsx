@@ -11,11 +11,11 @@ import { useLocation } from '../../patterns/locations';
 import { useItemLabels } from '../../patterns/masters';
 import { useOnlineStatus } from '../../patterns/online-status';
 import { useOutbox } from '../../patterns/outbox';
-import { toApiError } from '../../patterns/request';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
 import { useScanField } from '../../patterns/use-scan-field';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
+import { useLoadFailure, useQueryErrorOf } from '../../patterns/load-failure';
 import {
   useAlreadyReceived,
   useHopperStock,
@@ -57,6 +57,9 @@ const VARIANCE_REASON = 'VARIANCE_REASON';
 
 export const ShopfloorReceiptScreen = () => {
   useScreenTitle(t.title);
+  const failureText = useLoadFailure();
+  /* 확인하지 못한 까닭. 판정 훅은 까닭을 싣지 않아 캐시에서 읽는다. */
+  const receivedError = useQueryErrorOf('shopfloor-receipt-existing');
 
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
   const { worker } = useWorkerSession();
@@ -358,7 +361,9 @@ export const ShopfloorReceiptScreen = () => {
         </Button>
 
         {scanned !== null && found.isPending ? <p role="status">{t.issue.loading}</p> : null}
-        {found.isError ? <AlertBanner variant="error" title={t.issue.loadFailed} /> : null}
+        {found.isError ? (
+          <AlertBanner variant="error" title={failureText(found.error, t.issue.loadFailed)} />
+        ) : null}
         {scanned !== null && found.data === null ? (
           <AlertBanner variant="error" title={t.issue.notFound(scanned)} />
         ) : null}
@@ -375,9 +380,9 @@ export const ShopfloorReceiptScreen = () => {
               )}
               {destination.isError ? (
                 <p className="shopfloor-receipt__note">
-                  {toApiError(destination.error).kind === 'network'
-                    ? t.issue.destinationOffline
-                    : t.issue.destinationUnknown}
+                  {failureText(destination.error, t.issue.destinationOffline, {
+                    other: t.issue.destinationUnknown,
+                  })}
                 </p>
               ) : null}
               {issue.lines.length === 0 ? <p>{t.issue.empty}</p> : null}
@@ -402,7 +407,9 @@ export const ShopfloorReceiptScreen = () => {
         */}
         {received === 'unknown' && issue !== null ? (
           <AlertBanner variant="warning" title={t.unverified.title}>
-            {t.unverified.description}
+            {failureText(receivedError, t.unverified.description, {
+              caution: t.unverified.caution,
+            })}
           </AlertBanner>
         ) : null}
       </section>
@@ -518,7 +525,10 @@ export const ShopfloorReceiptScreen = () => {
             <h2>{t.hopper.legend}</h2>
             {equipments.isPending ? <p role="status">{t.hopper.loading}</p> : null}
             {equipments.isError ? (
-              <AlertBanner variant="error" title={t.hopper.loadFailed} />
+              <AlertBanner
+                variant="error"
+                title={failureText(equipments.error, t.hopper.loadFailed)}
+              />
             ) : null}
             {equipments.data === undefined ? null : (
               <div className="shopfloor-receipt__field">
@@ -550,7 +560,10 @@ export const ShopfloorReceiptScreen = () => {
               <p role="status">{t.hopper.stockLoading}</p>
             ) : null}
             {hopperStock.isError ? (
-              <AlertBanner variant="error" title={t.hopper.stockFailed} />
+              <AlertBanner
+                variant="error"
+                title={failureText(hopperStock.error, t.hopper.stockFailed)}
+              />
             ) : null}
             {hopperStock.isSuccess && stocks.length === 0 ? (
               <p className="shopfloor-receipt__note">{t.hopper.empty}</p>
