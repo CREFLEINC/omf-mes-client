@@ -25,9 +25,11 @@ import { dashboard } from './dashboard';
 import { defectCauseCode } from './defect-cause-code';
 import { deviceRegistration } from './device-registration';
 import { dispositionDecision } from './disposition-decision';
+import { dispositionRequest } from './disposition-request';
 import { editability } from './editability';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
+import { expeditedShipment } from './expedited-shipment';
 import { httpError } from './http-error';
 import { inboundReceipt } from './inbound-receipt';
 import { inboundVariance } from './inbound-variance';
@@ -46,25 +48,34 @@ import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
 import { notice } from './notice';
 import { notificationCenter } from './notification-center';
+import { oqcInspection } from './oqc-inspection';
 import { outboxRejections } from './outbox-rejections';
 import { packingRepack } from './packing-repack';
 import { passwordChange } from './password-change';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
+import { productDisposalRequest } from './product-disposal-request';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
+import { productStockStatus } from './product-stock-status';
 import { putaway } from './putaway';
 import { putawayRule } from './putaway-rule';
 import { qualityApproval } from './quality-approval';
 import { recycleEntry } from './recycle-entry';
 import { repairRoundtrip } from './repair-roundtrip';
+import { returnReceipt } from './return-receipt';
 import { routing } from './routing';
 import { save } from './save';
 import { session } from './session';
 import { shellHome } from './shell-home';
 import { shellNav } from './shell-nav';
+import { shipmentConfirm } from './shipment-confirm';
+import { shipmentProcessing } from './shipment-processing';
+import { shipmentRequestCreate } from './shipment-request-create';
+import { shipmentSchedule } from './shipment-schedule';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stateLocked } from './state-locked';
+import { stockReinstatement } from './stock-reinstatement';
 import { stockTransfer } from './stock-transfer';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { temporaryPutaway } from './temporary-putaway';
@@ -86,9 +97,11 @@ export const vi: Translated<Messages> = {
   defectCauseCode,
   deviceRegistration,
   dispositionDecision,
+  dispositionRequest,
   editability,
   equipmentFailureReport,
   equipmentInspection,
+  expeditedShipment,
   httpError,
   inboundReceipt,
   inboundVariance,
@@ -107,25 +120,34 @@ export const vi: Translated<Messages> = {
   materialPicking,
   notice,
   notificationCenter,
+  oqcInspection,
   outboxRejections,
   packingRepack,
   passwordChange,
   pendingCode,
   physicalCount,
+  productDisposalRequest,
   productPicking,
   productReceipt,
+  productStockStatus,
   putaway,
   putawayRule,
   qualityApproval,
   recycleEntry,
   repairRoundtrip,
+  returnReceipt,
   routing,
   save,
   session,
   shellHome,
   shellNav,
+  shipmentConfirm,
+  shipmentProcessing,
+  shipmentRequestCreate,
+  shipmentSchedule,
   shopfloorReceipt,
   stateLocked,
+  stockReinstatement,
   stockTransfer,
   suspiciousMaterialHold,
   temporaryPutaway,
