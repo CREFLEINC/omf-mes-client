@@ -2706,6 +2706,11 @@ export const createSeed = (now = new Date()) => {
     inspectionPlans: [inspectionPlan],
     inspectionPlanVersions: [inspectionPlanVersion],
     inspectionItemSpecs,
+    /*
+     * 검사 «결과»는 비어서 시작한다 — 화면이 저장한 것만 쌓인다. 미리 한 건 넣어 두면
+     * 처음 여는 의뢰가 이미 검사된 것처럼 보여, 「확정하면 무엇이 달라지는가」를 잴 수 없다.
+     */
+    inspectionResults: [],
     inspectionMeasurements: [],
     /*
      * 지난 고장 하나. 없으면 지난 증상 재사용 제안이 실기에서 한 번도 서지 않는다 - 끝난
