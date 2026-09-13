@@ -555,10 +555,12 @@ describe('입하 등록 화면 — 발주 경로', () => {
     await user.click(screen.getByRole('combobox', { name: 'ERP W/O 번호' }));
     await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
 
-    const cards = await screen.findAllByText(/남은 예정/);
+    const remainings = await screen.findAllByText(/남은 예정/);
 
-    expect(cards[0]?.textContent).toMatch(/남은 예정 50/);
-    expect(cards[1]?.textContent).toMatch(/남은 예정 0/);
+    /* 개수를 못 박지 않으면 위쪽에 같은 말이 하나 생길 때 차례가 아닌 것을 재게 된다. */
+    expect(remainings).toHaveLength(2);
+    expect(remainings[0]?.textContent).toMatch(/남은 예정 50/);
+    expect(remainings[1]?.textContent).toMatch(/남은 예정 0/);
   });
 
   /*

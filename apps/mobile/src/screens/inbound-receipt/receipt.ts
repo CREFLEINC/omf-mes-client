@@ -317,17 +317,25 @@ export const toOutboxDraft = (
  * ⛔ 다 받은 줄을 감추지 않는다. 그 줄에도 초과 입하가 들어오고, 감추면 초과분만 등록하는
  *    길이 화면에서 사라져 담당자가 무발주로 돌아가 공급사·품목·단위를 손으로 고르게 된다.
  *
- * 같은 무리 안에서는 받은 차례를 지킨다. 흔들면 고르던 자리가 회차마다 바뀐다.
+ * 같은 무리 안에서는 받은 차례를 지킨다 - ES2019 부터 sort 가 안정이라 등급이 같으면
+ * 받은 차례로 남는다. 흔들면 고르던 자리가 회차마다 바뀐다.
  */
 export const openLinesFirst = (
   lines: readonly PurchaseOrderLine[],
   queuedFor: (purchaseOrderLineId: number) => number,
 ): PurchaseOrderLine[] => {
-  const openOf = (line: PurchaseOrderLine) =>
-    remainingQtyOf(line, queuedFor(line.purchaseOrderLineId)) > 0 ? 0 : 1;
+  const isClosed = (line: PurchaseOrderLine) =>
+    remainingQtyOf(line, queuedFor(line.purchaseOrderLineId)) <= 0;
 
-  /* 조회가 준 배열을 제자리에서 뒤집으면 캐시에 담긴 것이 함께 바뀐다. */
-  return [...lines].sort((left, right) => openOf(left) - openOf(right));
+  /*
+   * 줄마다 한 번만 센다. 비교 안에서 세면 큐를 O(n log n) 번 훑는다.
+   *
+   * 조회가 준 배열을 제자리에서 뒤집으면 캐시에 담긴 것이 함께 바뀐다.
+   */
+  return [...lines]
+    .map((line) => ({ line, closed: Number(isClosed(line)) }))
+    .sort((left, right) => left.closed - right.closed)
+    .map((each) => each.line);
 };
 
 export interface SplitQuantities {
