@@ -23,12 +23,6 @@ export const UNDER = 'under';
 export type Verdict = typeof NORMAL | typeof OVER | typeof UNDER;
 
 /**
- * 아직 안 온 수량. 한 발주에 여러 번 도착할 수 있어 발주 총량과 견주면 두 방향으로 틀린다.
- *
- * 분할 납품의 마지막 회차가 부족으로 읽히고, 누적이 총량을 넘긴 것도 부족으로 읽힌다.
- * 뒤엣것이 더 무겁다 - 서버가 거부할 초과인데 화면이 입하 오류 등록으로 보낸다.
- */
-/**
  * 서버가 수량을 담는 자릿수. 여기까지는 값이 살아 있고 그 아래는 서버가 잘라 버린다.
  */
 const STORED_SCALE = 1e6;
@@ -43,23 +37,14 @@ const STORED_SCALE = 1e6;
 const exact = (compute: (scale: (value: number) => number) => number): number =>
   compute((value) => Math.round(value * STORED_SCALE)) / STORED_SCALE;
 
+/**
+ * 아직 안 온 수량. 한 발주에 여러 번 도착할 수 있어 발주 총량과 견주면 두 방향으로 틀린다.
+ *
+ * 분할 납품의 마지막 회차가 부족으로 읽히고, 누적이 총량을 넘긴 것도 부족으로 읽힌다.
+ * 뒤엣것이 더 무겁다 - 서버가 거부할 초과인데 화면이 입하 오류 등록으로 보낸다.
+ */
 export const remainingQtyOf = (line: PurchaseOrderLine, queuedQty = 0): number =>
   exact((to) => to(line.orderedQty) - to(line.receivedQty) - to(queuedQty));
-
-/** 화면에 보이는 소수 자릿수. 그 아래는 올려서 자른다. */
-const SHOWN_SCALE = 100;
-
-/**
- * 눈으로 읽는 수량.
- *
- * 자릿수를 제한하지 않으면 6자리까지 그대로 나와, 현장에서 견줄 수 없는 수가 보인다.
- * 내리지 않고 올리는 것은 모자라게 보이는 쪽이 더 나쁘기 때문이다 - 보이는 수보다 실물이
- * 많으면 창고에서 다시 센다.
- *
- * ⛔ 보내는 값을 이것으로 만들지 않는다. 이 함수는 보이는 자리에서만 쓴다.
- */
-export const displayQty = (value: number): string =>
-  String(Math.ceil(Math.round(value * STORED_SCALE) / (STORED_SCALE / SHOWN_SCALE)) / SHOWN_SCALE);
 
 /**
  * 이번 도착까지 받고도 남는 몫.

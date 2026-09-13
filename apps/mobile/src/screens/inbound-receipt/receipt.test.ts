@@ -6,7 +6,6 @@ import {
   UNDER,
   businessDateOf,
   canSubmit,
-  displayQty,
   isExpiryBeforeManufactured,
   packageProblem,
   qtyProblem,
@@ -386,7 +385,7 @@ describe('초과 입하 분리 본문', () => {
   /* 남은 예정도 뺄셈이 셋이라 같은 자리에서 샌다. */
   it('남은 예정이 소수 뺄셈에서 꼬리를 달지 않는다', () => {
     expect(remainingQtyOf(poLine({ orderedQty: 8.01, receivedQty: 8 }))).toBe(0.01);
-    expect(remainingQtyOf(poLine({ orderedQty: 7.5, receivedQty: 0 }), 0.3)).toBe(7.2);
+    expect(remainingQtyOf(poLine({ orderedQty: 2.3, receivedQty: 0.1 }), 0.1)).toBe(2.1);
   });
 
   it('BOTH는 정량과 초과를 한 본문에 싣고 초과분의 발주 귀속을 끊는다', () => {
@@ -508,27 +507,5 @@ describe('담긴 입하 셈', () => {
     expect(remainingQtyOf(line, 500)).toBe(0);
     expect(verdictOf(line, 500, 0)).toBe(NORMAL);
     expect(verdictOf(line, 500, 500)).toBe(OVER);
-  });
-});
-
-describe('표시 수량', () => {
-  it('소수 두 자리까지만 올려 보인다', () => {
-    expect(displayQty(0.001)).toBe('0.01');
-    expect(displayQty(7.501)).toBe('7.51');
-    expect(displayQty(8.0149)).toBe('8.02');
-  });
-
-  /* 두 자리 안에 드는 값은 자리를 밀어 올리지 않는다 - 곱셈 꼬리가 0.01 을 0.02 로 만든다. */
-  it('이미 두 자리 안인 값은 그대로 둔다', () => {
-    expect(displayQty(0.01)).toBe('0.01');
-    expect(displayQty(8.01)).toBe('8.01');
-    expect(displayQty(7.5)).toBe('7.5');
-    expect(displayQty(0.29)).toBe('0.29');
-  });
-
-  it('정수는 소수점을 붙이지 않는다', () => {
-    expect(displayQty(0)).toBe('0');
-    expect(displayQty(1050)).toBe('1050');
-    expect(displayQty(100000)).toBe('100000');
   });
 });

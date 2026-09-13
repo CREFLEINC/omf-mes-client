@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -10,6 +11,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { OUTBOX_KEY } from '../../patterns/outbox';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { InboundReceiptScreen } from './screen';
 
@@ -532,6 +534,39 @@ describe('입하 등록 화면 — 발주 경로', () => {
     /* 라인 카드와 품목·수량 확인 두 자리 모두에 선다. */
     expect(await screen.findAllByText(/품목 정보 없음/)).toHaveLength(2);
     expect(screen.getAllByText(/발주 500 단위 없음/)).toHaveLength(2);
+  });
+
+  /*
+   * 담아 둔 것은 서버의 누적에 없다. 카드가 그것을 빼지 않으면 카드는 남은 예정 500,
+   * 그 카드를 누른 뒤 수량 칸은 0 이 되어 고치려던 어긋남이 오프라인 경로에 그대로 남는다.
+   */
+  it('라인 카드가 담아 둔 수량까지 빼고 남은 예정을 낸다', async () => {
+    const user = userEvent.setup();
+    store.set(
+      OUTBOX_KEY,
+      JSON.stringify([
+        {
+          id: 'queued-1',
+          label: messages.inboundReceipt.record,
+          idempotencyKey: 'queued-key',
+          method: 'POST',
+          path: '/logistics/inbound-receipts',
+          body: { lines: [{ purchaseOrderLineId: 41, receivedQty: 500 }] },
+          occurredAt: '2026-09-01T02:30:00.000Z',
+          confirmation: 'pending',
+        },
+      ]),
+    );
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await screen.findByText('ERP W/O 선택');
+
+    await user.click(screen.getByRole('combobox', { name: 'ERP W/O 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+
+    expect(await screen.findByText(/남은 예정 0/)).toBeTruthy();
+    expect(screen.getByText('다 받았습니다')).toBeTruthy();
   });
 
   /*
