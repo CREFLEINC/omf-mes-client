@@ -42,7 +42,11 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     linesNone: 'ERP W/O này không có dòng nào',
     lineLabel: (item: string, ordered: string, uom: string) =>
       `${item} · Đặt hàng ${ordered} ${uom}`,
+    itemUnknown: 'Không có thông tin mặt hàng',
+    uomUnknown: 'Không có đơn vị',
     received: (qty: string) => `Nhập hàng lũy kế ${qty}`,
+    lineRemaining: (qty: string) => `Còn dự kiến ${qty}`,
+    lineClosed: 'Đã nhận đủ',
     tolerance: (over: string, under: string) => `Dung sai +${over} / -${under}`,
     linePicked: 'Đã chọn',
     clear: 'Xóa lựa chọn ERP W/O',

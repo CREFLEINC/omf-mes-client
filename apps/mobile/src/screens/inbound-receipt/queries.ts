@@ -12,8 +12,12 @@ import type { PurchaseOrder, PurchaseOrderLine } from './receipt';
  */
 export const SUBSTITUTE_LOT_REASON = 'SUBSTITUTE_LOT_REASON';
 
+/** 담는 쪽과 지우는 쪽이 함께 쓴다. 한쪽만 문자열로 적으면 이름이 바뀔 때 조용히 어긋난다. */
+const ORDERS_KEY = 'inbound-purchase-orders';
+
 export const receiptKeys = {
-  orders: (itemId: number | null) => ['inbound-purchase-orders', itemId] as const,
+  allOrders: [ORDERS_KEY] as const,
+  orders: (itemId: number | null) => [ORDERS_KEY, itemId] as const,
   scannedItem: (code: string | null) => ['inbound-scanned-item', code] as const,
   detail: (purchaseOrderId: number | null) => ['inbound-po-detail', purchaseOrderId] as const,
 };

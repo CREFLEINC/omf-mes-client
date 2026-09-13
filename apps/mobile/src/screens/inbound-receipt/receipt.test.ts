@@ -371,6 +371,23 @@ describe('초과 입하 분리 본문', () => {
     });
   });
 
+  /*
+   * 실기기에서 나온 값이다 - 안료 7.5 에 허용 0.5, 도착 8.01 이면 초과분이
+   * 0.009999999999999787 로 나왔다. 그 값은 화면에만 머물지 않고 요청 본문의 수량으로
+   * 나가는데, 서버는 6자리로 반올림해 받으므로 거르지 못한다.
+   */
+  it('소수 수량에서 초과분이 부동소수 꼬리를 달지 않는다', () => {
+    expect(
+      splitQuantitiesOf(poLine({ orderedQty: 7.5, receivedQty: 0, toleranceOverQty: 0.5 }), 8.01),
+    ).toEqual({ remaining: 7.5, normal: 8, excess: 0.01 });
+  });
+
+  /* 남은 예정도 뺄셈이 셋이라 같은 자리에서 샌다. */
+  it('남은 예정이 소수 뺄셈에서 꼬리를 달지 않는다', () => {
+    expect(remainingQtyOf(poLine({ orderedQty: 8.01, receivedQty: 8 }))).toBe(0.01);
+    expect(remainingQtyOf(poLine({ orderedQty: 2.3, receivedQty: 0.1 }), 0.1)).toBe(2.1);
+  });
+
   it('BOTH는 정량과 초과를 한 본문에 싣고 초과분의 발주 귀속을 끊는다', () => {
     const entry = toSplitOutboxDraft(
       draft({ receivedQty: '511' }),

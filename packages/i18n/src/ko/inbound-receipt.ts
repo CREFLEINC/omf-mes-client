@@ -50,7 +50,16 @@ export const inboundReceipt = {
     linesLoadFailed: 'ERP W/O 라인을 확인할 수 없습니다',
     linesNone: '이 ERP W/O에 라인이 없습니다',
     lineLabel: (item: string, ordered: string, uom: string) => `${item} · 발주 ${ordered} ${uom}`,
+    /*
+     * 품목과 단위는 다른 조회에서 온다. 못 찾았을 때 빈 글자를 끼우면 이름도 단위도 없이
+     * 수량만 남아, 작업자가 무엇을 세는지 모르는 채 적는다. 없는 것은 없다고 적는다.
+     */
+    itemUnknown: '품목 정보 없음',
+    uomUnknown: '단위 없음',
     received: (qty: string) => `누적 입하 ${qty}`,
+    /** 판정이 견주는 수다. 발주 총량만 보이면 그 수에 맞춰 적고 초과 판정을 받는다. */
+    lineRemaining: (qty: string) => `남은 예정 ${qty}`,
+    lineClosed: '다 받았습니다',
     tolerance: (over: string, under: string) => `허용 +${over} / -${under}`,
     linePicked: '선택됨',
     clear: 'ERP W/O 선택 지우기',
