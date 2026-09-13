@@ -481,6 +481,31 @@ describe('입하 등록 화면 — 발주 경로', () => {
   });
 
   /*
+   * 실기기에서 나온 것이다. 발주는 라인마다 열고 닫히는데 후보 목록은 발주 단위라, 그 품목의
+   * 라인이 다 찬 발주도 후보에 선다. 카드가 발주량과 누적만 보이면 작업자는 굵게 보이는 발주량
+   * 대로 적고 초과 판정을 받는다 - 견주는 수인 남은 예정을 카드가 직접 말해야 한다.
+   */
+  it('라인 카드가 남은 예정을 보이고 다 받은 줄을 표식한다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      lines: [
+        poLine({ purchaseOrderLineId: 41, orderedQty: 100, receivedQty: 100 }),
+        poLine({ purchaseOrderLineId: 42, lineNo: 2, itemId: 32, orderedQty: 50, receivedQty: 0 }),
+      ],
+    });
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await screen.findByText('ERP W/O 선택');
+
+    await user.click(screen.getByRole('combobox', { name: 'ERP W/O 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+
+    expect(await screen.findByText(/남은 예정 0/)).toBeTruthy();
+    expect(screen.getByText('다 받았습니다')).toBeTruthy();
+    expect(screen.getByText(/남은 예정 50/)).toBeTruthy();
+  });
+
+  /*
    * 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다. 총량만 칸 옆에 두면 적는 사람이
    * 그 수에 맞추려 하고, 판정은 다른 수로 나온다.
    */
@@ -663,6 +688,7 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
   });
+
 });
 
 describe('입하 등록 화면 — 초과 입하 분리', () => {
@@ -1101,7 +1127,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
    * 라벨의 앞자리가 어느 발주 라인이 후보인지를 가른다. 다른 품목의 라벨로 바꿨는데 앞서 고른
    * 라인이 남으면, 그 라인에 남의 라벨이 붙은 채 등록된다 - 화면은 아무 말도 하지 않는다.
    *
-   * 되묻는 창이 이미 「정말 바꿀 거냐」를 물었으므로 비워도 놀라지 않는다.
+   * 되묻는 창이 이미 바꿀 것인지를 물었으므로 비워도 놀라지 않는다.
    */
   it('새 라벨을 받으면 그 아래 고른 것이 비워진다', async () => {
     const user = userEvent.setup();

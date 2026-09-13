@@ -43,6 +43,8 @@ export const inboundReceipt: Translated<typeof ko.inboundReceipt> = {
     lineLabel: (item: string, ordered: string, uom: string) =>
       `${item} · Đặt hàng ${ordered} ${uom}`,
     received: (qty: string) => `Nhập hàng lũy kế ${qty}`,
+    lineRemaining: (qty: string) => `Còn dự kiến ${qty}`,
+    lineClosed: 'Đã nhận đủ',
     tolerance: (over: string, under: string) => `Dung sai +${over} / -${under}`,
     linePicked: 'Đã chọn',
     clear: 'Xóa lựa chọn ERP W/O',

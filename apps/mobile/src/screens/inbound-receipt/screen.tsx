@@ -25,6 +25,7 @@ import {
   OVER,
   UNDER,
   canSubmit,
+  displayQty,
   isExpiryBeforeManufactured,
   packageProblem,
   qtyProblem,
@@ -624,11 +625,24 @@ export const InboundReceiptScreen = () => {
                           <strong>
                             {t.po.lineLabel(
                               itemLabelOf(line.itemId),
-                              String(line.orderedQty),
+                              displayQty(line.orderedQty),
                               uoms.data?.get(line.uomId) ?? '',
                             )}
                           </strong>
-                          <p>{t.po.received(String(line.receivedQty))}</p>
+                          <p>{t.po.received(displayQty(line.receivedQty))}</p>
+                          {/*
+                           * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다.
+                           * 견주는 수를 카드가 직접 말하지 않으면 발주량대로 적게 된다.
+                           */}
+                          <p>
+                            {t.po.lineRemaining(displayQty(remainingQtyOf(line)))}
+                            {remainingQtyOf(line) > 0 ? null : (
+                              <>
+                                {' · '}
+                                <strong>{t.po.lineClosed}</strong>
+                              </>
+                            )}
+                          </p>
                           <p>
                             {t.po.tolerance(
                               String(line.toleranceOverQty),
@@ -858,11 +872,11 @@ export const InboundReceiptScreen = () => {
                    */}
                   {draft.purchaseOrderLine === null ? null : (
                     <>
-                      <p>{t.qty.ordered(String(draft.purchaseOrderLine.orderedQty), uom)}</p>
+                      <p>{t.qty.ordered(displayQty(draft.purchaseOrderLine.orderedQty), uom)}</p>
                       <p>
                         <strong>
                           {t.qty.remaining(
-                            String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
+                            displayQty(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
                             uom,
                           )}
                         </strong>
@@ -979,8 +993,8 @@ export const InboundReceiptScreen = () => {
                   <AlertBanner
                     variant="warning"
                     title={t.verdict.over(
-                      String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
-                      String(received),
+                      displayQty(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
+                      displayQty(received),
                     )}
                   >
                     {t.verdict.overNext}
@@ -990,11 +1004,11 @@ export const InboundReceiptScreen = () => {
                       <h2>{t.verdict.split.legend}</h2>
                       <dl className="receipt__counts">
                         <dt>{t.verdict.split.remaining}</dt>
-                        <dd>{`${String(splitQuantities.remaining)} ${uom}`}</dd>
+                        <dd>{`${displayQty(splitQuantities.remaining)} ${uom}`}</dd>
                         <dt>{t.verdict.split.normal}</dt>
-                        <dd>{`${String(splitQuantities.normal)} ${uom}`}</dd>
+                        <dd>{`${displayQty(splitQuantities.normal)} ${uom}`}</dd>
                         <dt>{t.verdict.split.excess}</dt>
-                        <dd>{`${String(splitQuantities.excess)} ${uom}`}</dd>
+                        <dd>{`${displayQty(splitQuantities.excess)} ${uom}`}</dd>
                       </dl>
 
                       <div className="receipt__field">
@@ -1078,20 +1092,20 @@ export const InboundReceiptScreen = () => {
                 <AlertBanner
                   variant="warning"
                   title={t.verdict.under(
-                    String(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
-                    String(received),
+                    displayQty(remainingQtyOf(draft.purchaseOrderLine, queuedQty)),
+                    displayQty(received),
                   )}
                 >
                   <dl className="receipt__counts">
                     <dt>{t.verdict.counts.ordered}</dt>
-                    <dd>{`${String(draft.purchaseOrderLine.orderedQty)} ${uom}`}</dd>
+                    <dd>{`${displayQty(draft.purchaseOrderLine.orderedQty)} ${uom}`}</dd>
                     <dt>{t.verdict.counts.received}</dt>
-                    <dd>{`${String(draft.purchaseOrderLine.receivedQty)} ${uom}`}</dd>
+                    <dd>{`${displayQty(draft.purchaseOrderLine.receivedQty)} ${uom}`}</dd>
                     <dt>{t.verdict.counts.arrived}</dt>
-                    <dd>{`${String(received)} ${uom}`}</dd>
+                    <dd>{`${displayQty(received)} ${uom}`}</dd>
                     <dt>{t.verdict.counts.remaining}</dt>
                     <dd>
-                      {`${String(
+                      {`${displayQty(
                         remainingAfterOf(draft.purchaseOrderLine, received, queuedQty),
                       )} ${uom}`}
                     </dd>
