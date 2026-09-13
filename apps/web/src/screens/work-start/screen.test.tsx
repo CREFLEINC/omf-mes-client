@@ -743,6 +743,17 @@ describe('P-02-01 작업 시작 — 누르면 반드시 무언가 말한다(#114
     await waitFor(() => {
       expect(sessionBodies(rendered.recorded.bodies)).toHaveLength(1);
     });
+
+    /*
+     * ⭐ **세션만 열고 서는 것도 「조용히 멈춤」이다.** 성공 처리기가 사라진 줄을 다시 찾으면
+     *    작업지시 번호가 빈 문구가 서고 자재 투입으로 넘어가지도 못한다.
+     */
+    expect(await screen.findByText(t.result.started(WORK_ORDER.workOrderNo))).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        `/pop/material-input?workOrderId=${String(WORK_ORDER.workOrderId)}`,
+      );
+    });
   });
 
   /**
