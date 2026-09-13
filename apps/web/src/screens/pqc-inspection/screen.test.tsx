@@ -981,6 +981,96 @@ describe('PqcInspectionScreen — 확정된 회차는 잠긴다', () => {
    * 사라진다 — 끊긴 망에서 나갔다 돌아온 검사자가 빈 화면을 다시 채워 같은 검사를 두 건으로
    * 만든다. 서버 상태도 기댈 수 없다: 아직 닿지 않았으므로 의뢰는 여전히 `REQUESTED` 다.
    */
+  /*
+   * ⛔ **잠금은 단추에서 끝나지 않는다**(#1146 ③). 88단계 3회차에서 「이 회차는 확정되어
+   * 고칠 수 없습니다」가 뜬 옆에서 측정치가 99 로 바뀌고 항목 판정이 뒤집혔으며 진행 수가
+   * 0/3 → 2/3 으로 움직였다. 저장이 막혀 서버는 안전했지만, 검사자는 **빈 화면을 다시 채우고
+   * 저장됐다고 믿는다** — 아무것도 남지 않는다.
+   */
+  it('확정된 회차는 측정치·항목 판정·수량 칸도 함께 잠근다', async () => {
+    renderScreen('/?ir=1001', [draftRound], itemSpecsResponse(), undefined, null, completedRequest);
+
+    /* 좌단 — 측정값과 항목 판정 */
+    const values = await screen.findAllByLabelText(t.measurements.columns.value);
+    for (const value of values) expect(value).toBeDisabled();
+    for (const judgment of screen.getAllByRole('button', { name: '합격' })) {
+      expect(judgment).toBeDisabled();
+    }
+
+    /* 우단 — 수량과 종합 판정 */
+    expect(screen.getByLabelText(t.result.fields.inspectedQty)).toBeDisabled();
+    expect(screen.getByLabelText(t.result.fields.accepted)).toBeDisabled();
+    expect(screen.getByLabelText(t.result.fields.rejected)).toBeDisabled();
+    expect(screen.getByLabelText(t.result.fields.held)).toBeDisabled();
+    expect(screen.getByRole('combobox', { name: t.result.judgment })).toBeDisabled();
+  });
+
+  /*
+   * ⛔ **끝난 검사를 「아직 안 끝났다」로 말하지 않는다**(#1146 ①). 이 화면은 확정한 값을
+   * 되읽지 않아 다시 열면 칸이 비고, 그 빈 칸으로 잰 잔여가 「120 EA 남았습니다」로 섰다 —
+   * 확정을 마친 회차에서 검사자가 자기 일이 남은 줄 안다.
+   */
+  it('확정된 회차에는 잔여 수량 경고를 세우지 않는다', async () => {
+    renderScreen('/?ir=1001', [draftRound], itemSpecsResponse(), undefined, null, completedRequest);
+
+    /* 띠는 서야 한다 — 잠금 자체를 지운 것이 아니다. */
+    expect(await screen.findByText(t.result.confirmed)).toBeInTheDocument();
+
+    /* 어느 수량이 오든 「… 남았습니다」· 「… 많습니다」· 「일치합니다」가 서지 않아야 한다. */
+    expect(screen.queryByText(/남았습니다|많습니다/)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.result.matched)).not.toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **화면 «안»에서 나갔다 돌아와도 잠긴다**(#1146 ②). 88단계 3회차에서 같은 회차가
+   * 주소 새로고침으로 들어가면 잠기고 [화면 이동]으로 들어가면 안 잠겼다. **실기에는
+   * 주소창이 없어** 작업자가 겪는 쪽이 뒤의 것이고, 그쪽만 열려 있었다.
+   *
+   * 이 갈래는 앞의 둘이 모두 «꺼진» 뒤다 — 큐는 비었고(보냈다) 「방금 확정했다」는 화면
+   * 상태라 이동으로 사라진다. 기댈 것이 서버 상태 하나뿐인 자리다.
+   */
+  it('확정한 뒤 화면 안에서 나갔다 돌아와도 잠긴다', async () => {
+    /*
+     * 서버는 **쓰기 전후로 다르게 답한다** — 확정이 닿기 전에는 대기, 닿은 뒤에는 완료다.
+     * 실제 서버가 하는 일을 그대로 흉내 낸다.
+     */
+    let confirmed = false;
+
+    const { writes } = renderScreen(
+      '/?ir=1001',
+      [draftRound],
+      itemSpecsResponse([]),
+      () => {
+        confirmed = true;
+
+        return jsonResponse(draftRound, { status: 201 });
+      },
+      <>
+        <GoToNextTarget />
+        <GoBackToFirstTarget />
+      </>,
+      () => (confirmed ? completedRequest : waitingRequest),
+    );
+
+    await userEvent.type(await screen.findByLabelText(t.result.fields.accepted), '500');
+    await userEvent.click(screen.getByRole('combobox', { name: t.result.judgment }));
+    await userEvent.click(await screen.findByRole('option', { name: '합격' }));
+
+    const confirm = screen.getByRole('button', { name: t.result.confirm });
+    await waitFor(() => expect(confirm).toBeEnabled());
+    await userEvent.click(confirm);
+
+    await waitFor(() => expect(writes).toHaveLength(1));
+
+    /* 화면 «안»에서 다른 대상으로 갔다가 되돌아온다 — [화면 이동] 이 하는 일이다. */
+    await userEvent.click(screen.getByRole('button', { name: GO_NEXT }));
+    await userEvent.click(screen.getByRole('button', { name: GO_BACK }));
+
+    expect(await screen.findByRole('button', { name: t.result.confirm })).toBeDisabled();
+    expect(screen.getByRole('button', { name: t.result.save })).toBeDisabled();
+    expect(screen.getAllByText(t.result.confirmed)).toHaveLength(1);
+  });
+
   it('큐에 확정이 남아 있으면 화면을 새로 세워도 잠긴다', async () => {
     globalThis.localStorage.setItem(
       STORAGE_KEY,
