@@ -215,6 +215,26 @@ describe('단말 등록 상태', () => {
     expect(result.current.status).toBe('unregistered');
   });
 
+  /*
+   * 되돌리기가 걸려도 원래 오류를 그대로 올린다. 여기서 보관소 오류로 바뀌면 화면이 잠깐
+   * 끊긴 것을 거절로 읽어, 다시 걸면 되는 작업자에게 새 QR 을 받아 오라고 말한다.
+   */
+  it('되돌리기가 걸려도 원래 오류를 가리지 않는다', async () => {
+    const { result } = mount();
+    await waitFor(() => {
+      expect(result.current.status).toBe('unregistered');
+    });
+
+    const original = new Error('서버에 닿지 못했습니다');
+    removes.fails = true;
+
+    await act(async () => {
+      await expect(result.current.register('tok-4', () => Promise.reject(original))).rejects.toBe(
+        original,
+      );
+    });
+  });
+
   it('서버가 받지 않으면 공장도 남기지 않는다', async () => {
     const { result } = mount();
     await waitFor(() => {

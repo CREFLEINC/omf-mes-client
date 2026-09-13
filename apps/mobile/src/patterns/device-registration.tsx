@@ -61,8 +61,12 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
     try {
       await verify();
     } catch (error) {
-      await clearDeviceToken();
-      await forgetPlant();
+      /*
+       * 되돌리기가 걸려도 원래 오류를 그대로 올린다. 여기서 보관소 오류로 바뀌면 화면이 잠깐
+       * 끊긴 것을 거절로 읽어, 다시 걸면 되는 작업자에게 새 QR 을 받아 오라고 말한다.
+       */
+      await clearDeviceToken().catch(() => undefined);
+      await forgetPlant().catch(() => undefined);
       throw error;
     }
 

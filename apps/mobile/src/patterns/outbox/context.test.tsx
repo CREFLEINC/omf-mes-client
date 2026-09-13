@@ -595,6 +595,23 @@ describe('outbox', () => {
     expect(store.get('outbox')).toBe('[]');
   });
 
+  it('되돌아온 목록 원본을 못 지워도 버리기는 끝난다', async () => {
+    store.set('outbox-rejected-broken', '망가진 목록');
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    refuse.removeKey = 'outbox-rejected-broken';
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
+    expect(result.current.pending).toBe(0);
+    expect(store.get('outbox')).toBe('[]');
+  });
+
   /*
    * 세대를 큐 읽기와 같은 슬롯에서 뜬다. 밖에서 뜨면 버리기가 시작됐지만 아직 올리지 않은
    * 틈에 든 회차가 자기 것이 아닌 세대를 지고, 서버가 내린 판정을 버린다.
