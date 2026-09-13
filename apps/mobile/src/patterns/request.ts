@@ -1,5 +1,7 @@
 import { NETWORK_ERROR, normalizeApiError, type ApiError } from '@omf-mes/api-client';
 
+import { noteServerAnswered, noteServerSilent } from './online-status';
+
 /**
  * openapi-fetch 호출의 반환 형태. HTTP 오류는 던지지 않고 error에 담겨 오고,
  * fetch 자체의 실패만 예외로 올라온다.
@@ -36,9 +38,18 @@ export const runRequest = async <TData>(
   try {
     result = await call();
   } catch (cause) {
-    // 응답이 없는 실패다. 상태 코드가 없으므로 http로 뭉뚱그리지 않는다.
+    /*
+     * 응답이 없는 실패다. 상태 코드가 없으므로 http로 뭉뚱그리지 않는다.
+     *
+     * 연결 표시가 보는 자리이기도 하다 - 기기가 망에 붙어 있어도 우리 서버에 못 닿는 일이
+     * 있고, 그때 화면이 온라인이라고 말하면 작업자는 자기 입력이 갔다고 믿는다.
+     */
+    noteServerSilent();
     throw new ApiRequestError(NETWORK_ERROR, { cause });
   }
+
+  /* 오류 응답도 답이다. 서버가 받았다는 뜻이므로 연결은 살아 있다. */
+  noteServerAnswered();
 
   if (!result.response.ok) {
     throw new ApiRequestError(normalizeApiError(result.response.status, result.error));

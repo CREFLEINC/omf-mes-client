@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -57,6 +57,9 @@ const render = () =>
 beforeEach(() => {
   store.clear();
 });
+
+const valueOf = (scope: HTMLElement, label: string): string =>
+  within(scope).getByText(label).parentElement?.querySelector('dd')?.textContent ?? '';
 
 describe('전송 실패한 기록 화면', () => {
   it('무엇이 언제 왜 실패했는지 보인다', async () => {
@@ -117,5 +120,172 @@ describe('전송 실패한 기록 화면', () => {
     render();
 
     expect(await screen.findByText('전송 실패한 기록이 없습니다.')).toBeInTheDocument();
+  });
+
+  /*
+   * 서버는 단말 토큰이 죽은 것과 권한이 없는 것을 같은 401 문구로 보내고, 그 문구는 현장
+   * 단말에 있지도 않은 로그인을 찾으라고 한다. 사유 한 줄만 보이면 담당자에게 무엇을 물어야
+   * 할지 정해지지 않아, 어디로 무엇을 보내 무엇이 돌아왔는지를 함께 낸다.
+   */
+  const failed = () =>
+    record({
+      entry: {
+        ...record().entry,
+        label: '입하 등록',
+        method: 'POST',
+        path: '/logistics/inbound-receipts',
+        idempotencyKey: 'key-9',
+      },
+      error: {
+        kind: 'http',
+        status: 401,
+        code: 'PERMISSION_DENIED',
+        message: '로그인이 필요합니다.',
+      },
+    });
+
+  it('상세를 열면 요청과 응답 코드와 돌아온 문구를 보인다', async () => {
+    seed([failed()]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    /*
+     * 사유 문단에도 같은 문구가 이미 떠 있다. 상세 안에서만 찾지 않으면 접힌 채로도
+     * 걸려, 상세를 열었는지와 무관하게 통과한다.
+     */
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(within(details).getByText('POST /logistics/inbound-receipts')).toBeInTheDocument();
+    expect(within(details).getByText('401')).toBeInTheDocument();
+    expect(within(details).getByText('PERMISSION_DENIED')).toBeInTheDocument();
+    expect(within(details).getByText('로그인이 필요합니다.')).toBeInTheDocument();
+    expect(within(details).getByText('key-9')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '상세 닫기' }));
+
+    expect(screen.queryByRole('group', { name: '상세' })).not.toBeInTheDocument();
+  });
+
+  /*
+   * 서버가 문구 없이 충돌만 돌려주면 정규화가 빈 문자열을 넣는다. 그 빈 값을 그대로 내면
+   * 다른 칸은 없음이라 적혀 있는데 이 칸만 비어, 읽는 사람이 잘린 화면으로 읽는다.
+   */
+  it('서버가 준 문구가 비어 있으면 없다고 적는다', async () => {
+    seed([record({ error: { kind: 'conflict', cause: 'user', message: '' } })]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '돌아온 문구')).toBe('없음');
+  });
+
+  /*
+   * 401 은 이 화면을 만든 이유 그 자체다. 정규화가 빈 문구를 그대로 싣는 갈래라, 여기를
+   * 재지 않으면 가장 자주 보는 자리가 무감지로 남는다.
+   */
+  it('오류 응답의 문구가 비어 있어도 없다고 적는다', async () => {
+    seed([record({ error: { kind: 'http', status: 401, message: '' } })]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '응답 코드')).toBe('401');
+    expect(valueOf(details, '돌아온 문구')).toBe('없음');
+    /* 상세를 열기 전의 카드도 빈 줄이 되면 안 된다 - 같은 결함이 사유 쪽에도 있었다. */
+    expect(screen.getByText(/보냈지만 등록되지 않았습니다/)).toBeInTheDocument();
+  });
+
+  /*
+   * 항목마다 문구가 비어 있으면 이어 붙인 결과가 공백 한 칸이라 참으로 읽힌다. 그 값이
+   * 그대로 나가면 칸도 카드도 빈 줄이 된다.
+   */
+  it('문구가 빈 항목만 오면 갈래별 문구로 대신한다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'validation',
+          errors: [
+            { scope: 'field', field: 'a', code: 'required', message: '' },
+            { scope: 'field', field: 'b', code: 'required', message: '' },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    expect(await screen.findByText('적은 내용에 문제가 있습니다.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '상세 보기' }));
+
+    expect(valueOf(screen.getByRole('group', { name: '상세' }), '돌아온 문구')).toBe('없음');
+  });
+
+  it('잠긴 상태의 문구가 전부 비어도 갈래별 문구로 대신한다', async () => {
+    seed([
+      record({
+        error: {
+          kind: 'stateLocked',
+          errors: [
+            { scope: 'field', field: 'a', code: 'locked', message: '' },
+            { scope: 'field', field: 'b', code: 'locked', message: '' },
+          ],
+        },
+      }),
+    ]);
+
+    render();
+
+    expect(await screen.findByText('지금 상태에서는 할 수 없는 일입니다.')).toBeInTheDocument();
+  });
+
+  /* 코드 칸도 빈 문자열이 도달한다 - 계약이 문자열이기만 하면 싣는다. */
+  it('오류 코드가 빈 문자열이면 없다고 적는다', async () => {
+    seed([record({ error: { kind: 'http', status: 500, code: '', message: '멈췄습니다' } })]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    expect(valueOf(screen.getByRole('group', { name: '상세' }), '오류 코드')).toBe('없음');
+  });
+
+  /*
+   * 앞 건이 못 가 붙을 곳이 없던 건은 상태 없는 오류를 달고 있다. 그 0 을 응답 코드로 내면
+   * 담당자가 있지도 않은 코드를 찾는다.
+   */
+  it('앞 기록에 딸린 건은 없는 응답 코드를 지어 내지 않는다', async () => {
+    seed([record({ cascaded: true, error: { kind: 'http', status: 0 } })]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    expect(valueOf(screen.getByRole('group', { name: '상세' }), '응답 코드')).toBe('없음');
+  });
+
+  /* 세로 화면이라 여럿이 펼쳐지면 목록을 잃는다. 하나를 열면 앞엣것이 닫혀야 한다. */
+  it('상세는 한 번에 하나만 펴진다', async () => {
+    seed([failed(), record({ entry: { ...record().entry, id: 'e-2', label: '고장 사진' } })]);
+
+    render();
+
+    const open = await screen.findAllByRole('button', { name: '상세 보기' });
+
+    await userEvent.click(open[0]!);
+    expect(screen.getAllByRole('group', { name: '상세' })).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole('button', { name: '상세 보기' }));
+
+    expect(screen.getAllByRole('group', { name: '상세' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: '상세 닫기' })).toHaveLength(1);
   });
 });

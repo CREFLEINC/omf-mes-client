@@ -39,3 +39,26 @@
 .outbox-rejections__cascaded {
   color: var(--on-surface-muted, inherit);
 }
+
+/* 카드가 왼쪽으로 붙여 세우므로 래퍼가 내용 폭으로 줄어든다. 안쪽 목록의 100% 는 그 줄어든
+   폭을 기준으로 재어 뜻을 잃는다. */
+.outbox-rejections__details-group {
+  align-self: stretch;
+}
+
+.outbox-rejections__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  margin: 0;
+}
+
+.outbox-rejections__detail dt {
+  color: var(--on-surface-muted, inherit);
+}
+
+/* 경로와 멱등키는 줄바꿈할 자리가 없어 좁은 화면에서 넘친다. 글자 사이에서 끊는다. */
+.outbox-rejections__detail dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

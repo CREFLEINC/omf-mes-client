@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { noteServerSilent } from '../patterns/online-status';
 import { ApiRequestError } from '../patterns/request';
 import { useScreenTitle } from '../patterns/screen-title';
 import { OutboxProvider, useOutbox } from '../patterns/outbox';
@@ -162,6 +163,16 @@ describe('AppLayout', () => {
 
   it('끊겨 있으면 오프라인으로 보인다', () => {
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+
+    renderLayout('본문 자리');
+
+    expect(screen.getByRole('banner')).toHaveTextContent('오프라인');
+  });
+
+  /* 못 닿는 사정은 patterns/online-status.ts 에 적어 두었다. */
+  it('망이 붙어 있어도 서버가 답하지 않으면 오프라인으로 보인다', () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    noteServerSilent();
 
     renderLayout('본문 자리');
 
