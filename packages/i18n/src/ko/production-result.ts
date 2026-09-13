@@ -12,6 +12,8 @@ export const productionResult = {
       /* ⚠ ERP 쪽 번호와 나란히 서는 자리라 어느 쪽 번호인지 밝힌다(사용자 지시 2026-09-10). */
       workOrder: 'MES W/O',
       item: '품목',
+      /** 긴급 W/O 에서 넘어왔을 때 머리줄 앞에 서는 표식(`P-02-12` §5-1 「긴급 플래그 유지」). */
+      emergency: '긴급',
     },
     currentLot: {
       title: 'LOT 진행',
