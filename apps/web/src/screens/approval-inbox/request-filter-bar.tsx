@@ -172,6 +172,7 @@ export const RequestFilterBar = ({
           onSearch={(value) => {
             onSearch({ ...filters, q: value });
           }}
+          clearLabel={messages.common.clear}
         />
 
         {/*

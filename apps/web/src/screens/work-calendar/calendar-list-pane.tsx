@@ -167,6 +167,7 @@ export const CalendarListPane = ({
           value={draft.q}
           onChange={(event) => setDraft({ q: event.target.value })}
           onSearch={(value) => applyDraft({ q: value })}
+          clearLabel={messages.common.clear}
         />
         <div className="work-calendar-filter-footer">
           {/* 해제 축이라 변경 즉시 적용한다. */}

@@ -45,6 +45,7 @@ const BREADCRUMB = (
       { label: tPlan.breadcrumbGroup },
       { label: tPlan.title },
     ]}
+    aria-label={messages.common.shell.breadcrumb}
   />
 );
 

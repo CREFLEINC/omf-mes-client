@@ -98,6 +98,7 @@ export const TargetPane = ({
               onChangeSearchDraft(event.target.value);
             }}
             onSearch={onSearch}
+            clearLabel={messages.common.clear}
           />
         </div>
       </div>

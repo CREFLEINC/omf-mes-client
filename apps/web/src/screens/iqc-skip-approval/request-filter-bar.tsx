@@ -170,6 +170,7 @@ export const RequestFilterBar = ({
           onSearch={(value) => {
             onSearch({ ...filters, q: value });
           }}
+          clearLabel={messages.common.clear}
         />
 
         {/* 확인칸은 라벨 층이 없다 — 규범 2의 `.field-cell-unlabeled`가 줄을 맞춘다. */}

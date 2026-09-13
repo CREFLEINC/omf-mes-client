@@ -23,7 +23,12 @@ import { WorkOrderListPane } from './work-order-list-pane';
 
 const t = messages.workOrder.screen.view;
 const emptyPage = { page: 1, size: 1, total: 0 };
-const breadcrumb = <Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />;
+const breadcrumb = (
+  <Breadcrumb
+    items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+    aria-label={messages.common.shell.breadcrumb}
+  />
+);
 
 const priorityError = (fact: WorkOrderFact, priorityText: string): string | undefined => {
   const error = validateWorkOrderAssignmentDraft({

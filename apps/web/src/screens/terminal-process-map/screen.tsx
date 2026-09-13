@@ -266,7 +266,12 @@ export const TerminalProcessMapScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
         actions={<Button onClick={openCreate}>{t.terminal.create}</Button>}
       />
 
@@ -277,6 +282,7 @@ export const TerminalProcessMapScreen = () => {
             onDismiss={() => {
               setSavedNotice(null);
             }}
+            dismissLabel={messages.common.close}
           >
             {savedNotice}
           </AlertBanner>
@@ -298,6 +304,7 @@ export const TerminalProcessMapScreen = () => {
                 onSearch={() => {
                   apply({ q: search }, true);
                 }}
+                clearLabel={messages.common.clear}
               />
             </div>
             <div className="field-cell field-cell-unlabeled check-group">

@@ -1408,7 +1408,12 @@ export const StocktakingScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
         actions={
           <Button variant="outlined" size="sm" onClick={refreshAll}>
             {t.actions.refresh}

@@ -11,6 +11,7 @@ export const common: Translated<typeof ko.common> = {
   reset: 'Đặt lại',
   confirm: 'Xác nhận',
   close: 'Đóng',
+  clear: 'Xóa',
   deactivate: 'Ngừng sử dụng',
   saved: 'Đã lưu',
   created: 'Đã đăng ký',
@@ -22,6 +23,8 @@ export const common: Translated<typeof ko.common> = {
     main: 'Nội dung chính',
     skipToMain: 'Bỏ qua, đến nội dung chính',
     notifications: 'Thông báo',
+    mainMenu: 'Menu chính',
+    breadcrumb: 'Đường dẫn điều hướng',
   },
   connection: {
     online: 'Trực tuyến',

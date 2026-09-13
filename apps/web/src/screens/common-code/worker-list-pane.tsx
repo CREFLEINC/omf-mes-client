@@ -199,6 +199,7 @@ export const WorkerListPane = ({
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          clearLabel={messages.common.clear}
         />
 
         {/*

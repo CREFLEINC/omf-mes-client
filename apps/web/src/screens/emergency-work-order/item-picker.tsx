@@ -46,6 +46,7 @@ export const ItemPicker = ({ selected, onSelect }: ItemPickerProps) => {
           }}
           onSearch={setKeyword}
           loading={search.isFetching}
+          clearLabel={messages.common.clear}
         />
         <Button
           onClick={() => {

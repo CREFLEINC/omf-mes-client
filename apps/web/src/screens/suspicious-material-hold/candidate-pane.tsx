@@ -240,6 +240,7 @@ export const SuspiciousMaterialCandidatePane = ({
           disabled={isLocked}
           onChange={(event) => setDraft((value) => ({ ...value, q: event.target.value }))}
           onSearch={apply}
+          clearLabel={messages.common.clear}
         />
         {filterSelects.map(([label, key, entries]) => (
           <div className="field-cell wide-select" key={key}>

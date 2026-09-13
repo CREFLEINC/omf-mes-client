@@ -11,6 +11,12 @@ export const common = {
   reset: '초기화',
   confirm: '확인',
   close: '닫기',
+  /*
+   * 검색칸의 지우기 단추 접근명. 디자인 시스템이 기본값을 한국어로 들고 있어, 넘기지 않으면
+   * 다른 언어로 열어도 이 자리만 한국어로 남는다. 조건을 모두 비우는 「초기화」와 다르다 —
+   * 이것은 검색칸 하나만 비운다.
+   */
+  clear: '지우기',
   deactivate: '사용 중지',
   saved: '저장했습니다',
   created: '등록했습니다',
@@ -26,6 +32,10 @@ export const common = {
     main: '본문',
     skipToMain: '본문으로 건너뛰기',
     notifications: '알림',
+    /** 사이드바의 접근명. 관리웹에만 선다 — 모바일에는 사이드바가 없다. */
+    mainMenu: '주 메뉴',
+    /** 표제 위 경로의 접근명. 관리웹에만 선다. */
+    breadcrumb: '탐색 경로',
   },
   connection: {
     online: '온라인',

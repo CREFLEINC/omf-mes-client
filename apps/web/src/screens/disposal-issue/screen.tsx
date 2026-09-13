@@ -2388,7 +2388,12 @@ export const DisposalIssueScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
         actions={
           /* 전송 중에는 다시 부르지 않는다 — 나가는 중인 쓰기가 곧 그 자료를 바꾼다. */
           <Button variant="outlined" size="sm" disabled={isLocked} onClick={refreshAll}>

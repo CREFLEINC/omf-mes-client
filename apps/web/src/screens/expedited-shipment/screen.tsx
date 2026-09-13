@@ -151,7 +151,12 @@ export const ExpeditedShipmentScreen = ({
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
       />
       {/* ⚠ 화면의 «성격»을 머리에 상시 붙인다 — 오류가 아니라 이 화면이 무엇인지에 대한 말이다. */}
       <div className="banner-slot">

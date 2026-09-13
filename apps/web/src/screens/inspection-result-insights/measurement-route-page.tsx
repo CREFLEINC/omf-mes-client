@@ -32,7 +32,10 @@ const Header = () => (
     <PageHeader
       title={TITLE}
       breadcrumb={
-        <Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }, { label: TITLE }]} />
+        <Breadcrumb
+          items={[{ label: t.breadcrumbRoot }, { label: t.title }, { label: TITLE }]}
+          aria-label={messages.common.shell.breadcrumb}
+        />
       }
     />
     <div className="form-actions">

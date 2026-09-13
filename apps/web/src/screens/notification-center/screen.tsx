@@ -369,7 +369,12 @@ export const NotificationCenterScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
         /*
          * 기준 시각을 제목 줄에 둔다. **live 영역으로 두지 않는다** — 조건을 바꿀 때마다
          * 낭독되는데, 조회가 끝났다는 사실은 목록·빈 상태가 이미 알린다.
