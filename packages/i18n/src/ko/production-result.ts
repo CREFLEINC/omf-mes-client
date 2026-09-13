@@ -12,6 +12,8 @@ export const productionResult = {
       /* ⚠ ERP 쪽 번호와 나란히 서는 자리라 어느 쪽 번호인지 밝힌다(사용자 지시 2026-09-10). */
       workOrder: 'MES W/O',
       item: '품목',
+      /** 긴급 W/O 에서 넘어왔을 때 머리줄 앞에 서는 표식(`P-02-12` §5-1 「긴급 플래그 유지」). */
+      emergency: '긴급',
     },
     currentLot: {
       title: 'LOT 진행',
@@ -122,7 +124,15 @@ export const productionResult = {
     workOrderLabel: '작업지시',
     itemLabel: '품목',
     workerLabel: '사번',
-    missingWorkOrder: '작업지시를 받지 못해 실적을 등록할 수 없습니다.',
+    /**
+     * 작업지시 없이 들어왔을 때 — **다음 행동까지 말한다**(#1151).
+     *
+     * ⚠ 공통 [화면 이동](G-34)은 작업지시를 싣지 않는다 — 설계가 정한 것은 「고르면 그 화면으로
+     *   이동」까지다. 그 길로 들어오면 모든 값이 비는데, 이유와 할 일을 말하지 않으면 고장처럼
+     *   보인다. 문장은 포장 화면들(`packing-work`·`work-hold-register`)과 같은 꼴로 맞춘다.
+     */
+    missingWorkOrder:
+      '작업지시를 받지 못해 실적을 등록할 수 없습니다. 작업 시작 화면에서 작업지시를 고른 뒤 들어오세요.',
     missingWorker: '사번이 확인되지 않아 저장할 수 없습니다. 사번 인증을 먼저 하세요.',
     loadFailed: '작업지시를 불러오지 못했습니다.',
   },
@@ -183,7 +193,16 @@ export const productionResult = {
     /** 뒤 숫자는 지시 수량이다 — 딸린 정보라 화면이 한 급 낮춰 그린다. */
     orderedSuffix: (ordered: string, uom: string | null) =>
       uom === null ? `/ ${ordered}` : `/ ${ordered} ${uom}`,
+    /*
+     * ⛔ **「모른다」의 이유 셋을 한 문장으로 덮지 않는다**(#1094 · 88단계 2회차 실기).
+     *    작업지시가 없는 것 · 아직 안 물어본 것 · 물어봤는데 실패한 것은 작업자가 할 일이
+     *    다르다. 본보기는 자재 투입의 「아직 조회하지 않았습니다」 — 「없다」가 아니라
+     *    「안 물어봤다」로 가른다.
+     */
     remainingUnknown: '잔여수량을 확인할 수 없습니다.',
+    remainingNoWorkOrder: '작업지시를 받지 못해 잔여수량을 셀 수 없습니다.',
+    remainingNotAsked: '아직 조회하지 않았습니다.',
+    remainingLoadFailed: '잔여수량을 불러오지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.',
   },
 
   /**

@@ -50,6 +50,14 @@ export interface ItemPanelProps {
   /** 단위 번호를 코드로 옮긴다. 못 옮기면 `null` — 아무것도 붙이지 않는다. */
   uomCodeOf: (uomId: number | null) => string | null;
   isLoading: boolean;
+  /**
+   * 확정된 회차인가. **잠기면 값도 판정도 받지 않는다**(#1146 ③).
+   *
+   * ⛔ **버튼만 잠그는 것으로 끝내지 않는다.** 88단계 3회차에서 「이 회차는 확정되어 고칠 수
+   * 없습니다」가 뜬 옆에서 측정치가 그대로 바뀌고 진행 수가 0/3 → 2/3 으로 움직였다. 저장이
+   * 막혀 서버는 안전했지만, 검사자는 **다시 채워 넣고 저장됐다고 믿는다.**
+   */
+  isLocked: boolean;
 }
 
 export const ItemPanel = ({
@@ -62,6 +70,7 @@ export const ItemPanel = ({
   judgmentOptions,
   uomCodeOf,
   isLoading,
+  isLocked,
 }: ItemPanelProps) => (
   <section className="pane pqc-item-panel" aria-label={t.heading}>
     <h2 className="field-label">{t.heading}</h2>
@@ -106,6 +115,7 @@ export const ItemPanel = ({
               onJudgmentChange={onJudgmentChange}
               judgmentOptions={judgmentOptions}
               uomCodeOf={uomCodeOf}
+              isLocked={isLocked}
             />
           ))}
         </ol>
@@ -123,6 +133,8 @@ interface ItemRowProps {
   onJudgmentChange: (key: string, judgment: string) => void;
   judgmentOptions: CodeOption[];
   uomCodeOf: (uomId: number | null) => string | null;
+  /** 확정된 회차의 줄은 값도 판정도 받지 않는다(#1146 ③). */
+  isLocked: boolean;
 }
 
 const ItemRow = ({
@@ -132,6 +144,7 @@ const ItemRow = ({
   onJudgmentChange,
   judgmentOptions,
   uomCodeOf,
+  isLocked,
 }: ItemRowProps) => {
   const judgmentId = useId();
   const outOfSpec = isOutOfSpec(row);
@@ -190,6 +203,7 @@ const ItemRow = ({
             value={draft.value}
 
             error={isValueInvalid(row, draft) ? t.valueInvalid : undefined}
+            disabled={isLocked}
             onChange={(event) => onValueChange(row.key, event.target.value)}
           />
         )}
@@ -218,6 +232,7 @@ const ItemRow = ({
                 size="xl"
                 variant={draft.judgment === option.value ? 'filled' : 'outlined'}
                 aria-pressed={draft.judgment === option.value}
+                disabled={isLocked}
                 onClick={() =>
                   onJudgmentChange(row.key, draft.judgment === option.value ? '' : option.value)
                 }

@@ -1,4 +1,5 @@
 import { Breadcrumb, PageHeader, Tabs, type TabItem } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 
@@ -34,8 +35,10 @@ import {
 } from './reference-options';
 import { useLotActorOptions } from './queries';
 
+const t = messages.lotStatusHistory;
+
 const inactiveLabel = (label: string, isActive: boolean): string =>
-  isActive ? label : `${label} (미사용)`;
+  isActive ? label : t.values.inactive(label);
 
 const toCodeOptions = (items: readonly LotCodeOption[] | undefined): FilterOption[] =>
   items?.map((item) => ({
@@ -56,9 +59,9 @@ interface OptionState {
 }
 
 const optionNote = (state: OptionState, name: string): string | undefined => {
-  if (state.isPending) return `${name} 목록을 불러오는 중입니다.`;
-  if (state.isError) return `${name} 목록을 불러오지 못했습니다.`;
-  if (state.data?.isTruncated === true) return `일부 ${name}만 표시됩니다.`;
+  if (state.isPending) return t.optionNotes.loading(name);
+  if (state.isError) return t.optionNotes.failed(name);
+  if (state.data?.isTruncated === true) return t.optionNotes.truncated(name);
   return undefined;
 };
 
@@ -94,21 +97,21 @@ const LotMode = ({
   };
 
   const lotTypeBlockReason = lotTypes.isPending
-    ? 'LOT 유형 기준값을 불러오는 중입니다.'
+    ? t.lotFilter.reasons.lotTypeLoading
     : lotTypes.isError
-      ? 'LOT 유형 기준값을 불러오지 못했습니다.'
+      ? t.lotFilter.reasons.lotTypeFailed
       : lotTypes.data?.isSeeded === false
-        ? 'LOT 유형 기준값이 준비되지 않았습니다.'
+        ? t.lotFilter.reasons.lotTypeUnseeded
         : undefined;
   const lotStatusNote =
     lotStatuses.data?.isSeeded === false
-      ? '현재 상태 기준값이 준비되지 않았습니다.'
-      : optionNote(lotStatuses, '현재 상태');
+      ? t.lotFilter.notes.lotStatusUnseeded
+      : optionNote(lotStatuses, t.lotFilter.fields.status);
 
   return (
     <div className="lot-status-workspace">
-      <section className="pane lot-status-pane" aria-label="LOT 조회 조건">
-        <h2 className="pane-title">LOT 조회 조건</h2>
+      <section className="pane lot-status-pane" aria-label={t.lotFilter.pane}>
+        <h2 className="pane-title">{t.lotFilter.pane}</h2>
         <LotFilterBar
           appliedFilters={filters}
           lotTypeOptions={toCodeOptions(lotTypes.data?.items)}
@@ -116,11 +119,11 @@ const LotMode = ({
           warehouseOptions={toReferenceOptions(warehouses.data?.entries)}
           itemOptions={toReferenceOptions(items.data?.entries)}
           lotTypeNote={
-            lotTypes.data?.isTruncated === true ? '일부 LOT 유형만 표시됩니다.' : undefined
+            lotTypes.data?.isTruncated === true ? t.lotFilter.notes.lotTypeTruncated : undefined
           }
           lotStatusNote={lotStatusNote}
-          warehouseNote={optionNote(warehouses, '창고')}
-          itemNote={optionNote(items, '품목')}
+          warehouseNote={optionNote(warehouses, t.lotFilter.fields.warehouse)}
+          itemNote={optionNote(items, t.lotFilter.fields.item)}
           lotTypeBlockReason={lotTypeBlockReason}
           onSearch={onSearch}
           onReset={onReset}
@@ -166,19 +169,19 @@ const HistoryMode = ({ filters, page, onSearch, onReset, onPageChange }: History
       label: inactiveLabel(actor.userName === '' ? actor.loginId : actor.userName, actor.isActive),
     })) ?? [];
   const actorNote = actors.isPending
-    ? '행위자 목록을 불러오는 중입니다.'
+    ? t.optionNotes.loading(t.historyFilter.fields.actor)
     : actors.isError
-      ? '행위자 목록을 불러오지 못했습니다.'
+      ? t.optionNotes.failed(t.historyFilter.fields.actor)
       : actors.data !== undefined && actors.data.page.total > actors.data.items.length
-        ? '일부 행위자만 표시됩니다.'
+        ? t.optionNotes.truncated(t.historyFilter.fields.actor)
         : filters.actor !== '' && !actorOptions.some((option) => option.value === filters.actor)
-          ? '선택한 행위자 이름을 확인하지 못했습니다.'
+          ? t.historyFilter.actorUnknownNote
           : undefined;
 
   return (
     <div className="lot-status-workspace">
-      <section className="pane lot-status-pane" aria-label="이력 조회 조건">
-        <h2 className="pane-title">이력 조회 조건</h2>
+      <section className="pane lot-status-pane" aria-label={t.historyFilter.pane}>
+        <h2 className="pane-title">{t.historyFilter.pane}</h2>
         <HistoryFilterBar
           appliedFilters={filters}
           actorOptions={actorOptions}
@@ -249,19 +252,17 @@ export const LotStatusHistoryScreen = () => {
       />
     ) : null;
   const tabs: TabItem[] = [
-    { value: 'lot', label: 'LOT으로 찾기', content: lotContent },
-    { value: 'history', label: '이력으로 찾기', content: historyContent },
+    { value: 'lot', label: t.modes.lot, content: lotContent },
+    { value: 'history', label: t.modes.history, content: historyContent },
   ];
 
   return (
     <>
       <PageHeader
-        title="Lot Status 현황·변경이력 조회"
-        breadcrumb={
-          <Breadcrumb items={[{ label: '품질관리' }, { label: 'Lot Status 현황·변경이력 조회' }]} />
-        }
+        title={t.title}
+        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
       />
-      <Tabs aria-label="Lot Status 조회 모드" items={tabs} value={mode} onChange={changeMode} />
+      <Tabs aria-label={t.modes.label} items={tabs} value={mode} onChange={changeMode} />
     </>
   );
 };

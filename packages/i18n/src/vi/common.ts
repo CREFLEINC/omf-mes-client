@@ -44,4 +44,12 @@ export const common: Translated<typeof ko.common> = {
     label: 'Mã nhân viên',
     unknown: 'Chưa xác nhận mã nhân viên',
   },
+
+  rescan: {
+    title: 'Đã quét lại',
+    body: (before: string, after: string) =>
+      `Đối tượng hiện tại là ${before}. Đổi sang ${after} vừa đọc chứ?`,
+    keep: 'Giữ nguyên',
+    replace: 'Dùng giá trị vừa đọc',
+  },
 };

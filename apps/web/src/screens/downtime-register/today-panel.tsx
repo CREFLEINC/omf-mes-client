@@ -1,4 +1,4 @@
-import { Card, Chip, Skeleton, Table, type Column } from '@crefle/web-ui';
+import { Button, Card, Chip, Skeleton, Table, type Column } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 
 import { toClockLabel, toDurationLabel, toRangeLabel } from './formatting';
@@ -51,8 +51,29 @@ export interface TodayPanelProps {
    * `isPending` 은 «꺼 둔» 조회에 대해 거짓이라 그것만으로는 두 상태가 구별되지 않는다.
    */
   isAsked: boolean;
+  /** 조회를 걸지 «못한» 이유를 담은 문구(#1094). `isAsked` 가 참이면 쓰이지 않는다. */
+  notAskedLabel: string;
+  /**
+   * 조회가 실패했는가(#1094).
+   *
+   * ⛔ **실패했다고 구획을 걷지 않는다.** 종전에는 화면이 이 패널을 통째로 배너로 갈아
+   *    끼워 **제목과 집계 자리가 함께 사라졌다** — 화면의 구조가 서버 상태에 따라 바뀌어,
+   *    작업자는 「오늘 이 설비」 칸이 어디 갔는지부터 찾는다. 자리는 그대로 두고 **내용만**
+   *    무엇이 잘못됐는지로 바꾼다.
+   */
+  isError: boolean;
+  /** 실패했을 때 다시 시도하는 길. */
+  onRetry: () => void;
   /** 이 단말이 아는 것만 보이는 상태인가 — 범위를 이름으로 말해야 한다. */
   isLocalOnly: boolean;
+  /**
+   * 줄에는 섰는데 **서버 합계에는 아직 안 들어간** 건수(#1149).
+   *
+   * ⚠ 0 이면 건수와 합계가 같은 것을 센다. 0 이 아니면 **두 숫자의 모집단이 다르고**, 그
+   *    사실을 화면이 말하지 않으면 작업자는 어느 쪽을 믿어야 하는지 알 수 없다 — 저장한
+   *    구간이 「0분」으로 사라진 것처럼 읽힌다(88단계 3회차).
+   */
+  unsettledCount: number;
   now: Date;
 }
 
@@ -72,7 +93,11 @@ export const TodayPanel = ({
   totalMinutes,
   isPending,
   isAsked,
+  notAskedLabel,
+  isError,
+  onRetry,
   isLocalOnly,
+  unsettledCount,
   now,
 }: TodayPanelProps) => {
   /*
@@ -93,7 +118,14 @@ export const TodayPanel = ({
       <section className="downtime-section" aria-label={t.today.title}>
         <h2 className="pane-title">{t.today.title}</h2>
 
-        {isPending ? (
+        {isError ? (
+          <p className="downtime-today-summary">
+            {t.today.loadFailed}{' '}
+            <Button variant="text" size="md" onClick={onRetry}>
+              {t.today.retry}
+            </Button>
+          </p>
+        ) : isPending ? (
           <Skeleton height="72px" aria-label={t.today.title} />
         ) : (
           <>
@@ -102,19 +134,36 @@ export const TodayPanel = ({
                * ⛔ 묻지 않았으면 건수를 말하지 않는다 — `0건` 은 「없었다」로 읽힌다.
                *    합계 자리가 이미 지키는 구분을 건수에도 그대로 적용한다.
                */}
-              {isAsked ? t.today.summary(rows.length, totalLabel) : t.today.notAsked}
+              {isAsked ? t.today.summary(rows.length, totalLabel) : notAskedLabel}
               {isAsked && basisLabel !== null && (
                 <span className="downtime-today-basis">{t.today.basis(basisLabel)}</span>
               )}
             </p>
 
-            {isLocalOnly && (
+            {/*
+             * ⭐ **범위를 말하는 자리는 하나다.** 끊겼으면 「내 단말 입력분만」이고, 붙어
+             *    있는데 아직 서버 합계에 안 들어간 줄이 있으면 그 사실이다(#1149).
+             *
+             * ⛔ **끊긴 상태에서 둘을 함께 말하지 않는다** — 끊겨 있으면 목록 전체가 이 단말
+             *    것이라 앞 문장이 이미 그 말을 하고 있다.
+             */}
+            {isLocalOnly ? (
               <p className="downtime-today-scope">
                 <Chip variant="status" size="md" status="warning">
                   {t.today.localOnly}
                 </Chip>
                 <span>{t.today.localOnlyDescription}</span>
               </p>
+            ) : (
+              isAsked &&
+              unsettledCount > 0 && (
+                <p className="downtime-today-scope">
+                  <Chip variant="status" size="md" status="warning">
+                    {t.today.unsettled(unsettledCount)}
+                  </Chip>
+                  <span>{t.today.unsettledDescription}</span>
+                </p>
+              )
             )}
 
             {/*
@@ -132,7 +181,7 @@ export const TodayPanel = ({
                 rows={[...rows]}
                 getRowId={(row) => row.key}
                 density="compact"
-                empty={isAsked ? t.today.empty : t.today.notAsked}
+                empty={isAsked ? t.today.empty : notAskedLabel}
               />
             </div>
           </>

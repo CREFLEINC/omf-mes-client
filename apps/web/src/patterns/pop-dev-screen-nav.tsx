@@ -86,7 +86,12 @@ export const POP_DEV_SCREENS: readonly PopDevScreen[] = [
     label: 'P-05-01 공구 사용',
     query: '?workOrderId=11002',
   },
-  { path: '/pop/downtime', label: 'P-05-02 비가동 등록', query: '?equipmentId=5001' },
+  /*
+   * ⚠ **설비를 주소로 주지 않는다**(#1149). 이제 화면이 단말에 붙은 설비로 스스로 열리므로,
+   *    여기서 번호를 박으면 개발 이동만 «다른 길»을 타 정작 현장이 쓰는 길이 시험되지 않는다
+   *    — 이름표도 코드 대신 번호로 서서 실제 화면과 달라 보였다(실측).
+   */
+  { path: '/pop/downtime', label: 'P-05-02 비가동 등록' },
   {
     path: '/pop/packing-work',
     label: 'P-02-08 포장 작업',

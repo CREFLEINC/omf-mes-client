@@ -186,7 +186,7 @@ export const AlarmRecipientSettingsScreen = () => {
       header: t.columns.status,
       render: (user) => (
         <Chip status={user.isActive ? 'success' : 'warning'}>
-          {user.isActive ? '사용 중' : '비활성'}
+          {user.isActive ? t.values.statusActive : t.values.statusInactive}
         </Chip>
       ),
     },

@@ -45,12 +45,22 @@ const ENTRY_ROUTE = `/pop/packing-work?workOrderId=${String(WORK_ORDER_ID)}&work
 const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
   processes: [{ processId: PROCESS_ID }],
+  equipment: null,
   workerNo: WORKER_NO,
 };
 
 const pathOf = (request: Request): string => new URL(request.url).pathname;
 
 interface Options {
+  /**
+   * 이 LOT 의 단위가 소수를 받는다(마스터 `decimalScale > 0`). 무게·부피 단위가 그 자리다.
+   * 기본은 받지 않는다 — 개수로 세는 단위(EA·BOX)가 흔하다.
+   */
+  uomAllowsDecimal?: boolean;
+  /** 단위 조회 요청을 담아 둔다 — 상한을 주었는지 보는 자리다. */
+  uomRequests?: Request[];
+  /** 단위 조회가 실패한다. */
+  uomsFail?: boolean;
   /** 포장 대상 조회가 실패한다 */
   lotsFail?: boolean;
   /** 포장 유형 조회가 실패한다 */
@@ -115,12 +125,28 @@ const routes = (options: Options): StubRoute[] => [
     },
   },
   {
-    match: (request) => pathOf(request) === '/mdm/uoms',
+    match: (request) => {
+      if (pathOf(request) !== '/mdm/uoms') return false;
+
+      options.uomRequests?.push(request.clone() as Request);
+
+      return true;
+    },
     respond: () =>
-      jsonResponse({
-        items: [{ uomId: UOM_ID, uomCode: UOM_CODE, uomName: '개', isActive: true }],
-        page: { page: 1, size: 20, total: 1 },
-      }),
+      options.uomsFail === true
+        ? jsonResponse({ message: '단위를 부를 수 없습니다' }, { status: 500 })
+        : jsonResponse({
+            items: [
+              {
+                uomId: UOM_ID,
+                uomCode: UOM_CODE,
+                uomName: '개',
+                isActive: true,
+                decimalScale: options.uomAllowsDecimal === true ? 3 : 0,
+              },
+            ],
+            page: { page: 1, size: 20, total: 1 },
+          }),
   },
   {
     match: (request) => request.method === 'GET' && pathOf(request) === '/inventory/handling-units',
@@ -204,6 +230,26 @@ const chooseUnitType = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.click(screen.getByRole('option', { name: BOX_NAME }));
 };
 
+/**
+ * 수량을 **화면 키패드로** 넣는다(D-4).
+ *
+ * ⛔ **칸에 직접 치지 않는다** — 칸은 읽기 전용이다. 현장 POP 은 키오스크로 잠겨 있어 운영체제
+ * 키보드가 뜨지 않으므로, 칸을 치는 시험은 단말에 없는 입력 수단을 흉내 내는 것이 된다
+ * (#1092 — 그 상태로 화면이 나가 현장에서 수량을 넣을 방법이 아예 없었다).
+ */
+const typeQuantity = async (
+  user: ReturnType<typeof userEvent.setup>,
+  qty: string,
+): Promise<void> => {
+  const pad = screen.getByRole('group', { name: t.scan.keypadLabel });
+
+  for (const ch of qty) {
+    await user.click(
+      within(pad).getByRole('button', { name: ch === '.' ? t.scan.keypadDecimal : ch }),
+    );
+  }
+};
+
 const packOneLine = async (
   user: ReturnType<typeof userEvent.setup>,
   lotNo: string,
@@ -211,7 +257,7 @@ const packOneLine = async (
 ) => {
   await chooseUnitType(user);
   await user.click(await scanPane().findByRole('button', { name: `${lotNo} ${t.lotList.select}` }));
-  await user.type(screen.getByLabelText(t.scan.quantityLabel), qty);
+  await typeQuantity(user, qty);
   await user.click(screen.getByRole('button', { name: t.scan.submit }));
 };
 
@@ -262,11 +308,18 @@ describe('P-02-08 포장 작업', () => {
     expect(query.get('completed')).toBe('true');
   });
 
-  it('작업지시를 모르면 대상을 부르지 않고 그 사실을 말한다', async () => {
+  /*
+   * ⛔ **같은 사실을 한 번만 말한다**(사용자 지적 2026-09-12). 한때 머리 띠·좌단 담기 아래·
+   * 우단 확정 아래 **세 곳**에 같은 문장이 동시에 섰다. 그러면 화면이 그 한 문장으로 차고,
+   * 정작 다른 사유가 떴을 때 그것이 눈에 띄지 않는다.
+   *
+   * ⚠ **앞 판의 단언이 `> 0` 이라 이 겹침을 통과시켰다** — 「적어도 한 번」은 세 번도 참이다.
+   */
+  it('작업지시를 모르면 대상을 부르지 않고 그 사실을 «한 번만» 말한다', async () => {
     renderScreen({}, `/pop/packing-work?workerNo=${WORKER_NO}`);
 
-    /* 배너와 담기 아래 사유가 같은 말을 한다 — 둘 다 이 사실을 말해야 한다 */
-    expect((await screen.findAllByText(t.entry.missingWorkOrder)).length).toBeGreaterThan(0);
+    expect(await screen.findByText(t.entry.missingWorkOrder)).toBeInTheDocument();
+    expect(screen.getAllByText(t.entry.missingWorkOrder)).toHaveLength(1);
   });
 
   it('사번이 없으면 포장을 시작할 수 없다고 말한다', async () => {
@@ -276,7 +329,9 @@ describe('P-02-08 포장 작업', () => {
       workerNo: null,
     });
 
-    expect((await screen.findAllByText(t.entry.missingWorker)).length).toBeGreaterThan(0);
+    expect(await screen.findByText(t.entry.missingWorker)).toBeInTheDocument();
+    /* ⛔ 같은 사실을 한 번만 말한다 — 위 시험과 같은 사유. */
+    expect(screen.getAllByText(t.entry.missingWorker)).toHaveLength(1);
   });
 
   it('대상 목록이 실패하면 배너로 말한다', async () => {
@@ -328,6 +383,94 @@ describe('P-02-08 포장 작업', () => {
    * 수량(버튼 옆)과 유형(건너편). 유형을 먼저 말하면 옆 칸을 비워 둔 채 건너편으로 보내고,
    * 돌아와 다시 눌러야 수량을 안다(사용자 지적).
    */
+  /*
+   * ⛔ **소수점 키를 늘 두지 않는다**(사용자 지적 2026-09-12). 개수로 세는 단위(EA·BOX)에
+   * 두면 서버가 거부할 값을 넣게 되고, 세로가 빠듯한 이 구획에서 쓰지 않는 키 한 줄이
+   * 《포장 대상》 목록을 밀어낸다. 마스터의 자릿수가 정한다 — 계약도 `decimalScale` 을
+   * 「수량 입력란의 소수 자릿수 판정」으로 적어 두었다.
+   */
+  it('개수 단위에는 소수점 키를 두지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+
+    const pad = screen.getByRole('group', { name: t.scan.keypadLabel });
+    expect(
+      within(pad).queryByRole('button', { name: t.scan.keypadDecimal }),
+    ).not.toBeInTheDocument();
+  });
+
+  /* ⚠ 반대쪽도 지킨다 — 무게·부피 단위에 소수점이 없으면 값을 넣을 길이 사라진다. */
+  it('소수를 받는 단위에는 소수점 키를 연다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ uomAllowsDecimal: true });
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+
+    const pad = screen.getByRole('group', { name: t.scan.keypadLabel });
+    expect(
+      await within(pad).findByRole('button', { name: t.scan.keypadDecimal }),
+    ).toBeInTheDocument();
+  });
+
+  /*
+   * ⛔ **상한을 주지 않으면 첫 쪽만 받는다.** 잘린 단위는 자릿수를 못 읽어 소수점 키가
+   * 사라지는데, 이 화면의 수량 칸은 읽기 전용이라 **값을 넣을 길이 아예 없어진다**.
+   * 같은 함정이 `P-04-03` 에 주석으로 적혀 있었는데 이 화면이 그대로 밟았다(리뷰 지적).
+   */
+  it('단위 조회에 상한을 준다', async () => {
+    const uomRequests: Request[] = [];
+    renderScreen({ uomRequests });
+
+    await screen.findByText(LOT_A_NO);
+    await waitFor(() => expect(uomRequests.length).toBeGreaterThan(0));
+
+    const size = new URL(uomRequests[0]?.url ?? 'http://x/').searchParams.get('size');
+
+    expect(Number(size)).toBeGreaterThanOrEqual(100);
+  });
+
+  /*
+   * ⚠ **조회가 실패하면 소수점 키를 «연다».** 「모르면 받지 않는다」는 칸을 직접 칠 수 있는
+   * 화면의 규칙이고, 여기서는 키패드가 유일한 입력 수단이라 닫아 두면 조회 실패가 곧 작업
+   * 불가가 된다. 열어 두면 정수 단위에 소수를 넣었을 때 서버가 거부하는 데 그친다.
+   */
+  it('단위 조회가 실패하면 소수점 키를 막지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen({ uomsFail: true });
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+
+    const pad = screen.getByRole('group', { name: t.scan.keypadLabel });
+
+    expect(
+      await within(pad).findByRole('button', { name: t.scan.keypadDecimal }),
+    ).toBeInTheDocument();
+  });
+
+  /* ⛔ 단위가 바뀌면 값도 함께 비운다 — 소수점 키만 사라지고 값이 남으면 그대로 담긴다. */
+  it('다른 LOT 을 고르면 넣던 수량이 남지 않는다', async () => {
+    const user = userEvent.setup();
+    renderScreen();
+
+    await user.click(
+      await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
+    );
+    await typeQuantity(user, '15');
+    expect(screen.getByLabelText(t.scan.quantityLabel)).toHaveValue('15');
+
+    await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
+
+    expect(screen.getByLabelText(t.scan.quantityLabel)).toHaveValue('');
+  });
+
   it('수량이 비어 있으면 유형보다 수량을 먼저 말한다', async () => {
     const user = userEvent.setup();
 
@@ -355,7 +498,7 @@ describe('P-02-08 포장 작업', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
     );
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await typeQuantity(user, '100');
 
     const submit = screen.getByRole('button', { name: t.scan.submit });
     expect(submit).toBeEnabled();
@@ -384,7 +527,7 @@ describe('P-02-08 포장 작업', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
     );
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await typeQuantity(user, '100');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     /*
@@ -409,6 +552,25 @@ describe('P-02-08 포장 작업', () => {
    * ⭐ **확정 전 취소**(스펙 §5-7 · 공유계약 B-8-1③). 호출이 둘로 갈리며 「번호는 있고 내용물은
    * 없는」 상태가 생겼고, 그대로 두면 빈 포장이 쌓인다.
    */
+  /**
+   * ⭐ **막힌 이유와 다른 말을 하지 않는다**(#1094 · 88단계 2회차 실기).
+   *
+   * 확정을 마친 포장에 담기를 누르면 **「수량을 넣으십시오」**가 떴다 — 담기를 막는 갈래에
+   * 「확정됨」이 없어 수량 검사에 먼저 걸린 것이다. 수량을 채워 넣어도 열리지 않으니 작업자는
+   * 고장으로 읽는다. 틀린 사유는 침묵보다 나쁘다.
+   */
+  it('확정을 마친 포장에 담기를 누르면 수량이 아니라 「확정을 마쳤습니다」를 말한다', async () => {
+    const user = userEvent.setup();
+
+    renderScreen({});
+    await packOneLine(user, LOT_A_NO, '100');
+    await user.click(screen.getByRole('button', { name: t.confirm.submit }));
+    await screen.findByText(t.confirm.done);
+
+    expect(await scanPane().findByText(t.confirm.blockedPacked)).toBeInTheDocument();
+    expect(scanPane().queryByText(t.scan.quantityRequired)).not.toBeInTheDocument();
+  });
+
   describe('확정 전 취소', () => {
     it('담기 전에는 취소할 것이 없다', async () => {
       const user = userEvent.setup();
@@ -503,7 +665,7 @@ describe('P-02-08 포장 작업', () => {
     await unitPane().findByText(HANDLING_UNIT_NO);
 
     await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await typeQuantity(user, '30');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await unitPane().findByText(LOT_B_NO)).toBeInTheDocument();
@@ -518,7 +680,7 @@ describe('P-02-08 포장 작업', () => {
     await packOneLine(user, LOT_A_NO, '100');
     expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '50');
+    await typeQuantity(user, '50');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     /* 행의 수량과 아래 합계가 둘 다 150 이다 — 행이 늘었다면 100 과 50 으로 갈라진다 */
@@ -570,7 +732,7 @@ describe('P-02-08 포장 작업', () => {
     expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
     expect(screen.getByLabelText(t.scan.label)).toHaveFocus();
 
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '50');
+    await typeQuantity(user, '50');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await unitPane().findAllByText(`150 ${UOM_CODE}`)).toHaveLength(2);
@@ -596,7 +758,7 @@ describe('P-02-08 포장 작업', () => {
 
     await chooseUnitType(user);
     await user.type(screen.getByLabelText(t.scan.label), `${LOT_A_NO}{enter}`);
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await typeQuantity(user, '100');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await unitPane().findByText(LOT_A_NO)).toBeInTheDocument();
@@ -613,7 +775,7 @@ describe('P-02-08 포장 작업', () => {
 
     expect(screen.getByText(t.scan.quantityRequired)).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '0');
+    await typeQuantity(user, '0');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(screen.getByText(t.scan.quantityPositive)).toBeInTheDocument();
@@ -629,7 +791,7 @@ describe('P-02-08 포장 작업', () => {
     expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
     await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await typeQuantity(user, '30');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await screen.findByText(t.contents.mixedTitle)).toBeInTheDocument();
@@ -662,7 +824,7 @@ describe('P-02-08 포장 작업', () => {
     expect(await unitPane().findByText(HANDLING_UNIT_NO)).toBeInTheDocument();
 
     await user.click(scanPane().getByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }));
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await typeQuantity(user, '30');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     await user.click(await screen.findByRole('button', { name: t.confirm.submit }));
@@ -804,7 +966,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_A_NO} ${t.lotList.select}` }),
     );
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '100');
+    await typeQuantity(user, '100');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     expect(await screen.findByText(t.unit.offlineStartBlocked)).toBeInTheDocument();
@@ -1015,7 +1177,7 @@ describe('P-02-08 포장 작업 — 오프라인', () => {
     await user.click(
       await scanPane().findByRole('button', { name: `${LOT_B_NO} ${t.lotList.select}` }),
     );
-    await user.type(screen.getByLabelText(t.scan.quantityLabel), '30');
+    await typeQuantity(user, '30');
     await user.click(screen.getByRole('button', { name: t.scan.submit }));
 
     setOnline(false);

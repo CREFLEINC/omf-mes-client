@@ -33,7 +33,9 @@ export interface NoticeFormProps {
 const scopeOptions = (): SelectOption[] =>
   SCOPE_CODES.map((code) => ({
     value: code,
-    label: isSupportedScope(code) ? scopeLabel(code) : `${scopeLabel(code)} (1차 미지원)`,
+    label: isSupportedScope(code)
+      ? scopeLabel(code)
+      : `${scopeLabel(code)}${t.scope.unsupportedSuffix}`,
   }));
 
 export const NoticeForm = ({
