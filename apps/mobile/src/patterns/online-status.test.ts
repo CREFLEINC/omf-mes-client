@@ -53,11 +53,7 @@ describe('연결 상태', () => {
     expect(result.current).toBe(true);
   });
 
-  /*
-   * 기기가 망에 붙어 있어도 우리 서버에는 못 닿을 수 있다 - 방화벽, 평문 차단, 주소
-   * 오설정, 서버 정지. 실측으로 겪었다: WiFi 는 검증된 채였고 기기 셸에서는 서버가 401 을
-   * 주는데 앱의 요청만 OS 가 막아, 한 건도 못 가는 동안 배너는 계속 온라인이었다.
-   */
+  /* 못 닿는 사정은 online-status.ts 에 적어 두었다. */
   it('망이 붙어 있어도 서버가 답하지 않으면 거짓이다', () => {
     setOnline(true);
     const { result } = renderHook(() => useServerReachable());
@@ -79,6 +75,23 @@ describe('연결 상태', () => {
     act(() => {
       noteServerAnswered();
     });
+
+    expect(result.current).toBe(true);
+  });
+
+  /*
+   * 기동 직후는 참이다. 아직 아무것도 안 보냈으니 못 닿는다고 단정할 근거가 없고, 첫 조회가
+   * 곧 답을 준다. 거짓으로 두면 멀쩡한 단말이 켜질 때마다 오프라인을 보인다.
+   *
+   * 공용 설정이 회차마다 참으로 되돌리므로 그 값을 그대로 재면 이 갈래가 가려진다 - 모듈을
+   * 새로 읽어 아무도 손대지 않은 초깃값을 본다.
+   */
+  it('아무것도 보내기 전에는 참이다', async () => {
+    setOnline(true);
+    vi.resetModules();
+
+    const fresh = await import('./online-status');
+    const { result } = renderHook(() => fresh.useServerReachable());
 
     expect(result.current).toBe(true);
   });

@@ -58,6 +58,9 @@ beforeEach(() => {
   store.clear();
 });
 
+const valueOf = (scope: HTMLElement, label: string): string =>
+  within(scope).getByText(label).parentElement?.querySelector('dd')?.textContent ?? '';
+
 describe('전송 실패한 기록 화면', () => {
   it('무엇이 언제 왜 실패했는지 보인다', async () => {
     seed([record()]);
@@ -178,7 +181,24 @@ describe('전송 실패한 기록 화면', () => {
 
     const details = screen.getByRole('group', { name: '상세' });
 
-    expect(within(details).getAllByText('없음').length).toBeGreaterThanOrEqual(3);
+    expect(valueOf(details, '돌아온 문구')).toBe('없음');
+  });
+
+  /*
+   * 401 은 이 화면을 만든 이유 그 자체다. 정규화가 빈 문구를 그대로 싣는 갈래라, 여기를
+   * 재지 않으면 가장 자주 보는 자리가 무감지로 남는다.
+   */
+  it('오류 응답의 문구가 비어 있어도 없다고 적는다', async () => {
+    seed([record({ error: { kind: 'http', status: 401, message: '' } })]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(valueOf(details, '응답 코드')).toBe('401');
+    expect(valueOf(details, '돌아온 문구')).toBe('없음');
   });
 
   /* 세로 화면이라 여럿이 펼쳐지면 목록을 잃는다. 하나를 열면 앞엣것이 닫혀야 한다. */

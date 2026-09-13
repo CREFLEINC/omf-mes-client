@@ -26,7 +26,7 @@ export const reasonOf = (error: ApiError): string => {
     case 'http':
       return error.status === NO_LEADER_STATUS
         ? t.noLeader
-        : (error.message ?? `${t.unknown} (${String(error.status)})`);
+        : error.message || `${t.unknown} (${String(error.status)})`;
     case 'network':
       return t.unknown;
   }
@@ -67,7 +67,12 @@ const serverMessageOf = (error: ApiError): string | null => {
       return error.message || null;
     case 'validation':
     case 'stateLocked':
-      return error.errors.map((item) => item.message).join(' ') || null;
+      return (
+        error.errors
+          .map((item) => item.message)
+          .join(' ')
+          .trim() || null
+      );
     case 'http':
       return error.message || null;
     case 'network':

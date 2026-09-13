@@ -22,10 +22,7 @@ const answered = <T>(status: number, data: T): (() => Promise<ApiCallResult<T>>)
 };
 
 describe('요청이 남기는 연결 기록', () => {
-  /*
-   * 기기가 망에 붙어 있어도 우리 서버에는 못 닿을 수 있다 - 방화벽, 평문 차단, 주소
-   * 오설정, 서버 정지. 그때 화면이 온라인이라고 말하면 작업자는 자기 입력이 갔다고 믿는다.
-   */
+  /* 못 닿는 사정은 online-status.ts 에 적어 두었다. */
   it('응답이 아예 없으면 닿지 못한 것으로 적는다', async () => {
     await expect(
       runRequest(() => Promise.reject(new TypeError('Failed to fetch'))),
