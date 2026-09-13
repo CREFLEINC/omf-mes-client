@@ -2,7 +2,7 @@ import { AlertBanner, Button } from '@crefle/web-ui';
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
-import { toApiError } from '../../patterns/request';
+import { ApiRequestError, toApiError } from '../../patterns/request';
 
 /**
  * 조회 실패의 원인을 한 줄 안내로 옮긴다.
@@ -40,6 +40,10 @@ export const describeLoadError = (error: ApiError): string => {
  */
 const isForbidden = (error: ApiError): boolean => error.kind === 'http' && error.status === 403;
 
+/** 목록이 막히면 선택 상세와 변경 액션도 함께 숨긴다. */
+export const isForbiddenLoadError = (error: unknown): boolean =>
+  (error instanceof ApiRequestError && error.httpStatus === 403) || isForbidden(toApiError(error));
+
 export interface LoadErrorBannerProps {
   error: unknown;
   onRetry: () => void;
@@ -55,7 +59,7 @@ export interface LoadErrorBannerProps {
  */
 export const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => {
   const apiError = toApiError(error);
-  const forbidden = isForbidden(apiError);
+  const forbidden = isForbiddenLoadError(error);
 
   return (
     <div className="banner-slot">
@@ -70,7 +74,7 @@ export const LoadErrorBanner = ({ error, onRetry }: LoadErrorBannerProps) => {
           )
         }
       >
-        {describeLoadError(apiError)}
+        {forbidden ? messages.httpError.forbidden : describeLoadError(apiError)}
       </AlertBanner>
     </div>
   );

@@ -39,7 +39,7 @@ import {
   toUserSearchParams,
 } from './filters';
 import { validateInitialPassword } from './initial-password';
-import { LoadErrorBanner } from './load-error-banner';
+import { isForbiddenLoadError, LoadErrorBanner } from './load-error-banner';
 import {
   lookupKeys,
   useBusinessUnitOptions,
@@ -196,10 +196,14 @@ export const UsersRolesScreen = () => {
 
   const isCreatingUser = isUsersTab && isCreating(searchParams, 'user');
   const selectedParam = isUsersTab ? readSelectedAppUserId(searchParams) : null;
-  /** 등록 폼이 열려 있는 동안에는 상세를 조회하지 않는다 — 만들고 있는 자원에는 상세가 없다. */
-  const selectedAppUserId = isCreatingUser ? null : selectedParam;
-
   const userList = useUserList(filters, page, isUsersTab);
+  const userListForbidden = userList.isError && isForbiddenLoadError(userList.error);
+  /**
+   * 목록으로 화면 접근을 확인하기 전에는 URL의 지난 선택을 조회하지 않는다.
+   * 재조회 중에는 기존 데이터를 유지하고, 403이면 기존 데이터가 있어도 즉시 가린다.
+   */
+  const selectedAppUserId =
+    isCreatingUser || userList.data === undefined || userListForbidden ? null : selectedParam;
   const users = userList.data?.items ?? [];
 
   /*
@@ -347,10 +351,11 @@ export const UsersRolesScreen = () => {
 
   const isCreatingRole = isRolesTab && isCreating(searchParams, 'role');
   const selectedRoleParam = isRolesTab ? readSelectedRoleId(searchParams) : null;
-  /** 등록 폼이 열려 있는 동안에는 상세를 조회하지 않는다 — 만들고 있는 자원에는 상세가 없다. */
-  const selectedRoleId = isCreatingRole ? null : selectedRoleParam;
-
   const roleList = useRoleList(roleFilters, page, isRolesTab);
+  const roleListForbidden = roleList.isError && isForbiddenLoadError(roleList.error);
+  /** 사용자 탭과 같이 목록 접근 확인 전에는 지난 역할의 상세를 조회하지 않는다. */
+  const selectedRoleId =
+    isCreatingRole || roleList.data === undefined || roleListForbidden ? null : selectedRoleParam;
   const roles = roleList.data?.items ?? [];
 
   /* 서버가 준 쪽 정보를 정본으로 쓴다 — 사용자 목록과 같은 규칙이다. */
@@ -1179,7 +1184,11 @@ export const UsersRolesScreen = () => {
     );
   };
 
-  const usersTabContent = (
+  const usersTabContent = userListForbidden ? (
+    <section className="pane" aria-label={t.panes.userList}>
+      <LoadErrorBanner error={userList.error} onRetry={() => void userList.refetch()} />
+    </section>
+  ) : (
     <div className="two-pane">
       <UserListPane
         users={users}
@@ -1215,11 +1224,13 @@ export const UsersRolesScreen = () => {
        * 우 칸은 구획을 세로로 쌓는다 — 사용자 정보 아래에 역할 부여·데이터 접근범위가 붙는다.
        * `.pane-stack`은 선택자에 매이지 않은 기본 규칙이라 2단 배치의 칸 안에서도 그대로 동작한다.
        */}
-      <div className="pane-stack">
-        {renderUserFormPane()}
-        {renderRoleAssignPane()}
-        {renderDataScopePane()}
-      </div>
+      {userList.data !== undefined && (
+        <div className="pane-stack">
+          {renderUserFormPane()}
+          {renderRoleAssignPane()}
+          {renderDataScopePane()}
+        </div>
+      )}
     </div>
   );
 
@@ -1358,7 +1369,11 @@ export const UsersRolesScreen = () => {
     );
   };
 
-  const rolesTabContent = (
+  const rolesTabContent = roleListForbidden ? (
+    <section className="pane" aria-label={t.panes.roleList}>
+      <LoadErrorBanner error={roleList.error} onRetry={() => void roleList.refetch()} />
+    </section>
+  ) : (
     <div className="two-pane">
       <RoleListPane
         roles={roles}
@@ -1378,10 +1393,12 @@ export const UsersRolesScreen = () => {
         }
       />
 
-      <div className="pane-stack">
-        {renderRoleFormPane()}
-        {renderPermissionGridPane()}
-      </div>
+      {roleList.data !== undefined && (
+        <div className="pane-stack">
+          {renderRoleFormPane()}
+          {renderPermissionGridPane()}
+        </div>
+      )}
     </div>
   );
 
