@@ -1,5 +1,5 @@
 import type { NavEntry, NavGroup } from './nav-tree';
-import { localizedLabel } from './shell-label';
+import { localizedLabel } from '../patterns/localized-label';
 
 /**
  * 사이드바 화면 검색 — **이름으로만 찾는다**(#1079).

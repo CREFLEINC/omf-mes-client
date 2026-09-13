@@ -11,12 +11,13 @@ import { messages } from '@omf-mes/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useHref, useLinkClickHandler, useLocation } from 'react-router';
 
+import { LocaleSelect } from '../patterns/locale-select';
+import { localizedLabel } from '../patterns/localized-label';
 import { useSession, useSignOut } from '../patterns/session';
-import { LocaleSelect } from './locale-select';
 import { filterNavGroups, hasNoNavMatch, matchesNavEntry } from './nav-filter';
 import { NavGroup } from './nav-group';
 import { NAV_ENTRIES, NAV_GROUPS, NAV_LEAD } from './nav-tree';
-import { localizedLabel, SHELL_BRAND } from './shell-label';
+import { SHELL_BRAND } from './shell-label';
 
 /** 사이드바 **조작** 문구. 화면 이름은 `nav-tree.ts` 가 갖는다. */
 const t = messages.shellNav;

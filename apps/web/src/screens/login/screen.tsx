@@ -3,6 +3,7 @@ import { messages } from '@omf-mes/i18n';
 import { useId, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 
+import { LocaleSelect } from '../../patterns/locale-select';
 import { resolveReturnPath, useSession } from '../../patterns/session';
 
 import {
@@ -144,11 +145,24 @@ export const LoginScreen = () => {
      */
     <main className="login-shell" aria-labelledby={titleId}>
       <Card className="login-card" surface="default" elevation={2}>
-        <Card.Header>
+        <Card.Header className="login-head">
           {/* 카드 제목이 이 화면의 유일한 표제다 — 셸이 없어 제목 줄도 없다. */}
           <h1 id={titleId} className="login-title">
             {t.title}
           </h1>
+
+          {/*
+           * 언어 칸이 **이 화면에도** 선다(#1126). 셸이 없어 상단 바의 그 칸이 서지 않는데,
+           * 공용 PC 에 처음 앉은 사람은 **여기서 바꾸지 못하면 바꿀 자리가 없다** — 브라우저
+           * 언어가 그 사람의 언어라는 보장이 없고, 들어가기 전에는 상단 바에 닿지 못한다.
+           *
+           * ⭐ **표제 옆, 폼보다 위다.** 고르면 새로고침하므로(`patterns/locale-select.tsx`)
+           * 폼 아래에 두면 이미 친 아이디·비밀번호를 잃는다. 치기 전에 만나는 자리여야 한다.
+           *
+           * ⛔ **친 값을 새로고침 넘어로 나르지 않는다.** 그러려면 비밀번호를 저장소에 두어야
+           * 한다 — 칸이 둘뿐이라 다시 치는 대가가 그보다 작다.
+           */}
+          <LocaleSelect />
         </Card.Header>
 
         <Card.Body>

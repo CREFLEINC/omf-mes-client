@@ -22,7 +22,7 @@
  * 이름을 읽는 쪽에서만 드러난다. 새 항목은 `label` 과 `labelVi` 를 **함께** 적는다.
  */
 
-import type { LocalizedLabel } from './shell-label';
+import type { LocalizedLabel } from '../patterns/localized-label';
 
 /** 메뉴 항목 하나 — 주소 · 아이콘(Material Symbols 리가처) · 두 언어의 보이는 이름. */
 export interface NavEntry extends LocalizedLabel {

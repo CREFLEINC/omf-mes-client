@@ -1,32 +1,13 @@
-import { activeLocale } from '@omf-mes/i18n';
+import type { LocalizedLabel } from '../patterns/localized-label';
 
 /**
- * 셸이 **제 손으로 드는** 이름 — 화면 이름 · 묶음 이름 · 제품 이름(#1113).
+ * 셸 자신의 이름.
  *
- * ⛔ **`@omf-mes/i18n` 으로 옮기지 않는다.** 이 문구들은 `nav-tree.ts` 가 차례·배치 근거와 함께
- * 갖는 **이름**이고, 그 규칙의 근거는 저 파일 머리말에 있다. 옮기면 이름과 근거가 두 파일로
- * 갈려 「왜 이 자리인가」를 적어 둔 주석이 이름에서 멀어진다.
- *
- * ⭐ **그래서 번역도 이름 옆에 나란히 둔다**(`label` · `labelVi`). 사전을 따로 두면 이름을
- * 옮길 때 번역이 따라오지 않고, 짝이 어긋난 것을 아무도 못 본다.
- *
- * ⚠ **언어 하나만 든 이름은 이 형을 쓰지 않는다.** 채워야 할 자리가 비면 `typecheck` 가 짚는
- * 것이 이 형의 쓸모다 — `labelVi` 를 선택 항목으로 두는 순간 빠뜨린 자리가 조용해진다.
+ * ⭐ **이름의 형(`LocalizedLabel`)과 활성 언어를 고르는 함수(`localizedLabel`)는
+ * `patterns/localized-label.ts` 에 있다**(#1126) — 로그인 화면도 그 둘을 쓰는데 `screens/` 는
+ * `app/` 을 부를 수 없기 때문이다(`dep:check` 의 `app-inner-direction`). 여기 남은 것은
+ * **셸만 쓰는 이름** 하나다.
  */
-export interface LocalizedLabel {
-  readonly label: string;
-  readonly labelVi: string;
-}
-
-/**
- * 활성 언어의 이름.
- *
- * ⚠ **모듈 최상위에서 붙잡지 않는다.** 언어는 진입점(`main.tsx`)이 화면을 싣기 전에 정하지만,
- * 이 함수를 부르는 쪽은 그리는 순간마다 묻는다 — 값을 상수로 굳혀 두면 정하기 전에 읽은 한
- * 벌이 화면에 남는다.
- */
-export const localizedLabel = (named: LocalizedLabel): string =>
-  activeLocale() === 'vi' ? named.labelVi : named.label;
 
 /**
  * 상단 바의 제품 이름.
@@ -41,11 +22,3 @@ export const SHELL_BRAND: LocalizedLabel = {
   label: 'OMF-MES 관리웹',
   labelVi: 'OMF-MES Quản trị',
 };
-
-/**
- * 언어 선택칸의 접근명.
- *
- * ⭐ **고를 언어의 이름(`한국어` · `Tiếng Việt`)은 옮기지 않는다** — 그것은 `locale-select.tsx`
- * 가 갖는다. 자기 언어로 적혀 있어야 **지금 읽을 수 없는 화면에서도** 제 언어를 찾는다.
- */
-export const LOCALE_CHOICE: LocalizedLabel = { label: '언어', labelVi: 'Ngôn ngữ' };

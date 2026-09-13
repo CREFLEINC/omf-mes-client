@@ -2,7 +2,9 @@ import { ko, vi, type Messages } from '@omf-mes/i18n';
 import { describe, expect, it } from 'vitest';
 
 import { NAV_ENTRIES, NAV_GROUPS } from './nav-tree';
-import { LOCALE_CHOICE, SHELL_BRAND, type LocalizedLabel } from './shell-label';
+import { LOCALE_CHOICE } from '../patterns/locale-select';
+import type { LocalizedLabel } from '../patterns/localized-label';
+import { SHELL_BRAND } from './shell-label';
 
 /**
  * 베트남어를 고른 사람에게 한국어가 보이지 않는가 — **관리웹 몫**(#1113).
@@ -197,7 +199,8 @@ describe('베트남어 문구 — 관리웹', () => {
 });
 
 /**
- * 사이드바 78개와 셸의 제 이름은 `@omf-mes/i18n` 이 아니라 `nav-tree.ts`·`shell-label.ts` 가
+ * 사이드바 78개와 셸의 제 이름은 `@omf-mes/i18n` 이 아니라 `nav-tree.ts`·`shell-label.ts`·
+ * `patterns/locale-select.tsx` 가
  * 갖는다(그 규칙의 근거는 `nav-tree.ts` 머리말에 있다). **그래서 여기서 따로 잰다** — 위
  * 감지기는 문구 묶음만 훑어 이 78개를 보지 못한다.
  */
