@@ -8,6 +8,7 @@
  * 여기 있는 값은 전부 지어낸 합성값이다(`SYN-` 접두).
  */
 import userEvent from '@testing-library/user-event';
+import { useLocation } from 'react-router';
 
 import { PopIdentityProvider, type PopIdentity } from '../../patterns/pop-identity';
 import { jsonResponse, renderWithProviders, type StubFetch } from '../../test/api-harness';
@@ -128,6 +129,13 @@ export interface StubOptions {
   openBreakdownCount?: number;
   /** 판정 기록 응답 상태. 기본 201. */
   decisionStatus?: number;
+  /**
+   * 판정 기록 응답을 **붙들어 둔다.** 감지기가 이 약속을 풀 때까지 응답하지 않는다 —
+   * 「누른 뒤 응답이 오기 전」의 화면을 재려면 그 사이가 있어야 한다.
+   */
+  decisionGate?: Promise<unknown>;
+  /** 목록 조회의 **두 번째 응답부터** 쓸 줄들. 조회 사이에 서버가 달라진 상태를 만든다. */
+  workOrdersAfter?: Record<string, unknown>[];
   /** 점검 유형의 표시 이름(코드 사전). 기본은 일상·정기 두 값. */
   inspectionTypeNames?: Record<string, unknown>[];
 }
@@ -140,6 +148,7 @@ export interface Recorded {
 const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch } => {
   const recorded: Recorded = { urls: [], bodies: [] };
   let workerCalls = 0;
+  let listCalls = 0;
 
   const fetch: StubFetch = async (request) => {
     const url = new URL(request.url);
@@ -175,7 +184,11 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
         return jsonResponse({ message: '실패' }, { status: options.listStatus });
       }
 
-      const items = options.workOrders ?? [WORK_ORDER];
+      listCalls += 1;
+      const items =
+        listCalls > 1 && options.workOrdersAfter !== undefined
+          ? options.workOrdersAfter
+          : (options.workOrders ?? [WORK_ORDER]);
 
       return jsonResponse({ items, page: { page: 1, size: 20, total: items.length } });
     }
@@ -248,6 +261,8 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
     }
 
     if (url.pathname === '/production/precheck-decisions') {
+      if (options.decisionGate !== undefined) await options.decisionGate;
+
       if (options.decisionStatus !== undefined) {
         return jsonResponse({ message: '실패' }, { status: options.decisionStatus });
       }
@@ -315,12 +330,20 @@ const stub = (options: StubOptions = {}): { recorded: Recorded; fetch: StubFetch
   return { recorded, fetch };
 };
 
+/** 지금 주소를 글로 낸다 — 기억 라우터에는 주소창이 없어 이동을 잴 길이 이것뿐이다. */
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return <output data-testid="location">{`${location.pathname}${location.search}`}</output>;
+};
+
 export const renderScreen = (options: StubOptions & { identity?: PopIdentity } = {}) => {
   const { identity = IDENTITY, ...stubOptions } = options;
   const stubbed = stub(stubOptions);
   const rendered = renderWithProviders(
     <PopIdentityProvider value={identity}>
       <WorkStartScreen />
+      <LocationProbe />
     </PopIdentityProvider>,
     { fetch: stubbed.fetch, route: '/pop/work-start' },
   );
