@@ -2,11 +2,16 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+import { messages } from '@omf-mes/i18n';
+
+import { INITIAL_PASSWORD_MIN_LENGTH } from './initial-password';
 import { UserFormPane, type UserFormPaneProps } from './user-form-pane';
 import type { UserFormValues } from './types';
 
 const values: UserFormValues = {
   loginId: 'SYN-LOGIN-01',
+  // 합성 값이다 — 실제 계정에 쓰이는 값이 아니다. 규칙(숫자+알파벳, 8자 이상)을 통과하도록 지었다.
+  password: 'SynPw1234',
   userName: '합성 사용자 A',
   departmentId: '3001',
   email: 'syn.user.a@example.invalid',
@@ -51,6 +56,97 @@ const renderPane = (overrides: Partial<UserFormPaneProps> = {}) => {
 };
 
 const pane = (): HTMLElement => screen.getByRole('region', { name: '사용자 정보' });
+
+/**
+ * 그 칸에 **실제로 매인** 문구. `aria-describedby`가 가리키는 요소들을 따라간다.
+ * 선례: `password-change/screen.test.tsx`의 `errorTextFor`.
+ *
+ * ⭐ 화면 어딘가에 문구가 있다는 것과 **그 칸에 붙어 있다**는 것은 다르다 — 붙은 자리를 재야
+ * 디자인 시스템이 안내와 오류를 같은 자리에서 갈아끼우는지(오류가 서면 안내가 걷히는지)를 잡는다.
+ */
+const describedTextOf = (box: HTMLElement): string =>
+  (box.getAttribute('aria-describedby') ?? '')
+    .split(' ')
+    .filter((id) => id !== '')
+    .map((id) => document.getElementById(id)?.textContent ?? '')
+    .join(' ');
+
+describe('UserFormPane 초기 비밀번호', () => {
+  /*
+   * ⚠ `type="password"`인 칸은 `role="textbox"`로 잡히지 않는다 — `getByLabelText`로 찾는다.
+   * 이 파일의 기존 `queryByRole('textbox', …)` 부재 단언들은 그래서 이 칸과 무관하며 그대로 둔다.
+   */
+  const passwordBox = (): HTMLElement => within(pane()).getByLabelText('초기 비밀번호');
+
+  it('등록에서만 칸이 선다', () => {
+    renderPane({ mode: 'create', values: { ...values, loginId: '' } });
+
+    expect(passwordBox()).toBeInTheDocument();
+  });
+
+  it('수정에는 칸이 없다 — 수정 요청 본문에 그 키가 없다', () => {
+    renderPane({ mode: 'edit' });
+
+    expect(within(pane()).queryByLabelText('초기 비밀번호')).not.toBeInTheDocument();
+  });
+
+  it('type이 password이고 새 비밀번호로 자동완성한다', () => {
+    /*
+     * ⭐ `autoComplete`이 `new-password`가 아니면(예: `current-password`이거나 없으면) 브라우저가
+     * **관리자 자신의** 저장된 비밀번호를 이 칸에 채우려 하고, 그 값이 그대로 등록 요청에 실릴 수
+     * 있다 — 남의 계정에 관리자 자신의 비밀번호가 초기값으로 걸리는 사고다.
+     */
+    renderPane({ mode: 'create', values: { ...values, loginId: '' } });
+
+    const input = passwordBox();
+
+    expect(input).toHaveAttribute('type', 'password');
+    expect(input).toHaveAttribute('autoComplete', 'new-password');
+  });
+
+  it('필수 표시가 붙는다 — 저장을 눌러야 필수임을 알게 되면 안 된다', () => {
+    renderPane({ mode: 'create', values: { ...values, loginId: '' } });
+
+    expect(passwordBox()).toHaveAttribute('aria-required', 'true');
+  });
+
+  it('규칙 안내가 칸에 이어져 있다', () => {
+    renderPane({ mode: 'create', values: { ...values, loginId: '' } });
+
+    expect(describedTextOf(passwordBox())).toBe(
+      messages.usersRoles.user.initialPasswordNotice(INITIAL_PASSWORD_MIN_LENGTH),
+    );
+  });
+
+  /** 디자인 시스템이 `error`가 있으면 `helperText` 자리를 갈아끼운다(`TextFieldProps`). */
+  it('오류가 서면 안내를 덮는다', () => {
+    const errorText = '초기 비밀번호는 숫자와 알파벳을 함께 넣어 8자 이상이어야 합니다.';
+
+    renderPane({
+      mode: 'create',
+      values: { ...values, loginId: '' },
+      fieldErrors: { password: errorText },
+    });
+
+    expect(describedTextOf(passwordBox())).toBe(errorText);
+    expect(
+      within(pane()).queryByText(
+        messages.usersRoles.user.initialPasswordNotice(INITIAL_PASSWORD_MIN_LENGTH),
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('타이핑하면 상위에 알린다', async () => {
+    const { onChange, user } = renderPane({
+      mode: 'create',
+      values: { ...values, loginId: '', password: '' },
+    });
+
+    await user.type(passwordBox(), 'S');
+
+    expect(onChange).toHaveBeenCalledWith({ password: 'S' });
+  });
+});
 
 describe('UserFormPane 로그인 ID', () => {
   /** 계약의 수정 본문에 그 키가 아예 없다 — 잠긴 입력칸은 「언젠가 열린다」는 뜻이 된다. */

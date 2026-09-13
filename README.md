@@ -78,7 +78,9 @@ pnpm --filter @omf-mes/mobile dev   # 모바일 셸 개발 서버 (브라우저)
 **인증이 쿠키(`omf_session`, HttpOnly)라 이 편이 맞기도 하다.** 같은 출처면 쿠키가 그대로
 실려 화면 코드를 고치지 않아도 로그인 세션이 유지된다.
 
-`apps/web/.env.example`을 `apps/web/.env.local`로 복사하고 두 값을 채운다.
+`apps/web/.env.example`을 `apps/web/.env.local`로 복사하고 프록시 두 값을 채운다. 같은 파일의
+`VITE_DEFAULT_INITIAL_PASSWORD`(사용자 등록 폼의 초기 비밀번호 기본값)는 **선택**이다 — 비워 두면
+화면 코드의 기본값을 쓴다.
 
 ```bash
 cp apps/web/.env.example apps/web/.env.local   # 주소를 채운다 — .local 은 커밋되지 않는다

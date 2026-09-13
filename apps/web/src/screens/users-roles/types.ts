@@ -74,6 +74,10 @@ export interface RoleFilters {
  * **`loginId`는 등록에서만 쓰인다.** 계약의 수정 요청 본문에 그 키가 아예 없다 —
  * 수정 화면에서는 값 표기로만 보이고 요청 본문에도 실리지 않는다(계획 결정 10).
  *
+ * **`password`도 등록에서만 쓰인다.** 계약의 수정 요청 본문에 자리가 없다 — 수정 화면에는
+ * 칸 자체를 두지 않고 요청 본문에도 실리지 않는다. 비밀번호 변경은 본인이 자기 화면
+ * (`password-change`)에서 하는 일이며, 이 화면이 남의 비밀번호를 고치는 통로가 아니다.
+ *
  * `statusCode`는 공통코드 선택값이다. 등록에서 비우면 계약 기본값 `EMPLOYED`를 쓴다.
  *
  * ⚠ 수정 요청의 `statusCode`는 2026-09-11 전달본부터 **필수**다(`user-mappers.ts`의
@@ -81,6 +85,8 @@ export interface RoleFilters {
  */
 export interface UserFormValues {
   loginId: string;
+  /** 초기 비밀번호. **등록에서만 쓰인다** — 정책은 `initial-password.ts`가 소유한다 */
+  password: string;
   userName: string;
   /** 비우면 「지정하지 않음」 — 계약이 널을 허용한다 */
   departmentId: string;
