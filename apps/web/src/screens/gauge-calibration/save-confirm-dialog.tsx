@@ -21,7 +21,7 @@ export const summarize = (draft: CalibrationDraft, equipmentLabel: string): stri
     codeLabel(draft.resultCode, PLACEHOLDER_RESULT_CODES),
   ];
 
-  if (draft.nextDueOn !== '') parts.push(`유효 ~${draft.nextDueOn}`);
+  if (draft.nextDueOn !== '') parts.push(t.confirm.validUntil(draft.nextDueOn));
   if (draft.agencyName.trim() !== '') parts.push(draft.agencyName.trim());
 
   return parts.filter((part) => part.trim() !== '').join(' · ');

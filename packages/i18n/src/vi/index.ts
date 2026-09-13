@@ -1,5 +1,6 @@
 /**
- * 베트남어 화면 문구. 모바일 화면이 쓰는 슬라이스와, 관리웹 **셸**이 쓰는 슬라이스를 옮겼다.
+ * 베트남어 화면 문구. 모바일 화면이 쓰는 슬라이스와, 관리웹 **셸**·**설비/툴 13화면**이 쓰는
+ * 슬라이스를 옮겼다.
  *
  * 옮기지 않은 슬라이스는 한국어를 그대로 쓴다 - 관리웹 화면 문구는 묶음별 후속 이슈 몫이고
  * POP 은 다른 팀 몫이라 여기서 건드리지 않는다. 용어는 GLOSSARY.md 에 묶어 두고 슬라이스마다
@@ -18,6 +19,7 @@ import type { Translated } from './translated';
 import { alarmRecipientSettings } from './alarm-recipient-settings';
 import { approvalInbox } from './approval-inbox';
 import { approvalRoute } from './approval-route';
+import { collectionChannel } from './collection-channel';
 import { common } from './common';
 import { commonCode } from './common-code';
 import { conflict } from './conflict';
@@ -28,10 +30,15 @@ import { disposalIssue } from './disposal-issue';
 import { dispositionDecision } from './disposition-decision';
 import { dispositionRequest } from './disposition-request';
 import { documentProgress } from './document-progress';
+import { downtimeSummary } from './downtime-summary';
 import { editability } from './editability';
+import { equipmentFailure } from './equipment-failure';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
+import { equipmentMaster } from './equipment-master';
 import { expeditedShipment } from './expedited-shipment';
+import { gaugeCalibration } from './gauge-calibration';
+import { gaugeMaster } from './gauge-master';
 import { goodsReceipt } from './goods-receipt';
 import { httpError } from './http-error';
 import { inboundReceipt } from './inbound-receipt';
@@ -48,6 +55,8 @@ import { judgmentCode } from './judgment-code';
 import { login } from './login';
 import { lotStatusHistory } from './lot-status-history';
 import { lotStatusTransition } from './lot-status-transition';
+import { maintenanceOrder } from './maintenance-order';
+import { maintenanceResult } from './maintenance-result';
 import { masterChange } from './master-change';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
@@ -82,6 +91,7 @@ import { shipmentProcessing } from './shipment-processing';
 import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentSchedule } from './shipment-schedule';
 import { shopfloorReceipt } from './shopfloor-receipt';
+import { shotConversion } from './shot-conversion';
 import { stateLocked } from './state-locked';
 import { stockAdjust } from './stock-adjust';
 import { stockReinstatement } from './stock-reinstatement';
@@ -92,16 +102,21 @@ import { supplierReturn } from './supplier-return';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { temporaryPutaway } from './temporary-putaway';
 import { terminalProcessMap } from './terminal-process-map';
+import { toolMaster } from './tool-master';
+import { toolPmOrder } from './tool-pm-order';
+import { toolPmResult } from './tool-pm-result';
 import { usersRoles } from './users-roles';
 import { warehouseLayout } from './warehouse-layout';
 import { warehouseLocation } from './warehouse-location';
 import { wipHandover } from './wip-handover';
+import { workCalendar } from './work-calendar';
 
 export const vi: Translated<Messages> = {
   ...ko,
   alarmRecipientSettings,
   approvalInbox,
   approvalRoute,
+  collectionChannel,
   common,
   commonCode,
   conflict,
@@ -112,10 +127,15 @@ export const vi: Translated<Messages> = {
   dispositionDecision,
   dispositionRequest,
   documentProgress,
+  downtimeSummary,
   editability,
+  equipmentFailure,
   equipmentFailureReport,
   equipmentInspection,
+  equipmentMaster,
   expeditedShipment,
+  gaugeCalibration,
+  gaugeMaster,
   goodsReceipt,
   httpError,
   inboundReceipt,
@@ -132,6 +152,8 @@ export const vi: Translated<Messages> = {
   login,
   lotStatusHistory,
   lotStatusTransition,
+  maintenanceOrder,
+  maintenanceResult,
   masterChange,
   materialLocation,
   materialLotScan,
@@ -166,6 +188,7 @@ export const vi: Translated<Messages> = {
   shipmentRequestCreate,
   shipmentSchedule,
   shopfloorReceipt,
+  shotConversion,
   stateLocked,
   stockAdjust,
   stockReinstatement,
@@ -176,8 +199,12 @@ export const vi: Translated<Messages> = {
   suspiciousMaterialHold,
   temporaryPutaway,
   terminalProcessMap,
+  toolMaster,
+  toolPmOrder,
+  toolPmResult,
   usersRoles,
   warehouseLayout,
   warehouseLocation,
   wipHandover,
+  workCalendar,
 };

@@ -53,6 +53,20 @@ const TRANSLATED = [
   'passwordChange',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
+  /* #1119 — 설비/툴 13화면. */
+  'collectionChannel',
+  'downtimeSummary',
+  'equipmentFailure',
+  'equipmentMaster',
+  'gaugeCalibration',
+  'gaugeMaster',
+  'maintenanceOrder',
+  'maintenanceResult',
+  'shotConversion',
+  'toolMaster',
+  'toolPmOrder',
+  'toolPmResult',
+  'workCalendar',
   /* #1115 — 자재창고 12화면. 용어가 겹쳐 한 파가 쭉 옮겼다(GLOSSARY 의 물류·창고 표가 정본). */
   'disposalIssue',
   'documentProgress',
