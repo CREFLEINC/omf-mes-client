@@ -6,9 +6,9 @@ import { useOnlineStatus } from '../../patterns/online-status';
 import { toApiError } from '../../patterns/request';
 import { rememberPlant } from '../../patterns/plant';
 import { createMlkitQrCamera, type QrCamera } from '../../patterns/qr-camera';
-import { readTerminalIdFromToken } from '../../patterns/token-claims';
+import { readTerminalClaims } from '../../patterns/token-claims';
 import { fetchWorkerDirectory, saveWorkerDirectory } from './directory';
-import { fetchTerminal, type RegisteredTerminal } from './terminal';
+import { verifyTerminalToken, type RegisteredTerminal } from './terminal';
 
 /**
  * 등록은 한 방향으로만 간다 — 카메라를 열고, 읽고, 서버가 받아 주는지 확인한다.
@@ -71,14 +71,15 @@ export const useRegistrationFlow = ({ camera }: RegistrationFlowOptions = {}): R
       }
 
       /*
-       * ⭐ **토큰에 있는 것은 단말 번호뿐이다.** 코드·공장은 이 번호로 서버에 물어본다 —
-       * 종전에는 그 둘이 토큰에 들어 있다고 보고 없으면 여기서 걸렀는데, 실제 토큰에 없어
-       * 모든 등록 QR 이 조용히 버려졌다(#1103).
+       * 토큰이 싣고 온 것을 읽는다. 번호가 없으면 등록 QR 이 아니다.
+       *
+       * 코드와 공장은 없을 수 있다 - 계약이 클레임 규격을 아직 갖지 않는다. 없다고 등록을
+       * 막지 않는다.
        */
-      const terminalId = readTerminalIdFromToken(value);
+      const claims = readTerminalClaims(value);
 
       // 등록 QR 이 아닌 코드는 실패가 아니다. 미리보기를 열어 둔 채 다음 것을 기다린다.
-      if (terminalId === null) {
+      if (claims === null) {
         return;
       }
 
@@ -89,20 +90,31 @@ export const useRegistrationFlow = ({ camera }: RegistrationFlowOptions = {}): R
       close = null;
 
       /*
-       * 토큰을 두고 곧바로 단말과 기준정보를 받는다. 서버가 이 토큰을 받아 주는지는 실제로
+       * 토큰을 두고 곧바로 확인하고 기준정보를 받는다. 서버가 이 토큰을 받아 주는지는 실제로
        * 불러 봐야 알고, 받아 둔 목록이 있어야 등록 직후 현장에 들어가도 사번을 확인할 수 있다.
+       *
+       * 공장을 모르면 확인할 조회를 부를 수 없다. 그때는 등록을 세우지 않는다 - 공장 없이
+       * 등록해 두면 쓰기 화면이 첫 저장에서 막힌다.
        */
       void register(value, async () => {
-        const found = await fetchTerminal(client, terminalId);
-
-        if (!cancelled) {
-          setTerminal(found);
+        if (claims.plantId === null) {
+          throw new Error('토큰에 공장이 없어 등록을 확인할 수 없습니다.');
         }
 
-        // 공장은 토큰에 없다. 쓰기 화면이 이걸 읽으므로 등록할 때 남겨 둔다.
-        await rememberPlant(found.plantId);
+        await verifyTerminalToken(client, claims.plantId);
 
-        const entries = await fetchWorkerDirectory(client, found.plantId);
+        if (!cancelled) {
+          setTerminal({
+            terminalId: claims.terminalId,
+            terminalCode: claims.terminalCode,
+            plantId: claims.plantId,
+          });
+        }
+
+        // 쓰기 화면이 공장을 읽으므로 등록할 때 남겨 둔다.
+        await rememberPlant(claims.plantId);
+
+        const entries = await fetchWorkerDirectory(client, claims.plantId);
         await saveWorkerDirectory(entries);
       }).catch((error: unknown) => {
         if (cancelled) {

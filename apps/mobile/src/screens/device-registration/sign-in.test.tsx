@@ -111,4 +111,20 @@ describe('사번 확인 화면', () => {
     expect(await screen.findByRole('group', { name: '사번 입력' })).toBeInTheDocument();
     expect(screen.queryByText('작업자 1 · 900028')).not.toBeInTheDocument();
   });
+  /*
+   * 계약이 사번 칸을 50 으로 두고 형식을 강제하지 않는다 - 786건 중 표본 2건만 확인했고,
+   * 강제했다가 다른 형식이 하나라도 있으면 그 사람이 단말을 아예 못 쓴다는 것이 그 결정의
+   * 근거다. 화면이 더 좁히면 그 결정을 화면에서 되돌리는 셈이 된다.
+   */
+  it('계약이 두는 길이까지 받는다', async () => {
+    const user = userEvent.setup();
+    mount();
+
+    await screen.findByRole('group', { name: '사번 입력' });
+
+    const long = '1234567890'.repeat(3) + '12345';
+    await press(user, long);
+
+    expect(screen.getByLabelText('사번')).toHaveValue(long);
+  });
 });

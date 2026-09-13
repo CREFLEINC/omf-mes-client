@@ -99,11 +99,18 @@ export const DeviceRegistrationScreen = ({ camera }: { camera?: QrCamera }) => {
       {/* 등록 자체가 맞았는지를 먼저 본다. 기준정보 수신 표시보다 앞에 둔다. */}
       {phase === 'receiving' && terminal !== null ? (
         <AlertBanner variant="success" title={t.registered.title}>
-          {/* 관리자에게 들은 코드와 눈으로 맞춰 보는 값이다. 문장에 묻히지 않게 둔다. */}
-          <p>
-            <strong>{terminal.terminalCode}</strong>
-          </p>
-          <p>{t.registered.confirm}</p>
+          {/*
+            관리자에게 들은 코드와 눈으로 맞춰 보는 값이다. 문장에 묻히지 않게 둔다.
+            코드가 안 실려 오면 대조할 것이 없으므로 빈 칸과 안내를 함께 숨긴다.
+          */}
+          {terminal.terminalCode === null ? null : (
+            <>
+              <p>
+                <strong>{terminal.terminalCode}</strong>
+              </p>
+              <p>{t.registered.confirm}</p>
+            </>
+          )}
         </AlertBanner>
       ) : null}
 
@@ -121,7 +128,7 @@ export const DeviceRegistrationScreen = ({ camera }: { camera?: QrCamera }) => {
       ) : null}
 
       {/* 받는 중에는 위 등록 표시가 같은 코드를 보인다. 두 번 보이면 어느 쪽을 볼지 갈린다. */}
-      {terminal === null || phase === 'receiving' ? null : (
+      {terminal === null || terminal.terminalCode === null || phase === 'receiving' ? null : (
         <Card bordered aria-label={t.terminal.label}>
           <Card.Body className="card-body">
             <p>{`${t.terminal.label} ${terminal.terminalCode}`}</p>

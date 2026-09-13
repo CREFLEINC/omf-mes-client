@@ -15,7 +15,7 @@
  *
  * 토큰이 아닌 QR 을 비추는 일이 흔하므로 읽지 못하는 것을 예외로 다루지 않고 null 로 낸다.
  */
-export const readTerminalIdFromToken = (token: string): number | null => {
+const readPayload = (token: string): Record<string, unknown> | null => {
   const parts = token.trim().split('.');
 
   if (parts.length !== 3) {
@@ -46,12 +46,62 @@ export const readTerminalIdFromToken = (token: string): number | null => {
     return null;
   }
 
-  const sub = (payload as { sub?: unknown }).sub;
-  const parsed = typeof sub === 'number' ? sub : typeof sub === 'string' ? Number(sub) : Number.NaN;
+  return payload as Record<string, unknown>;
+};
 
-  /*
-   * ⚠ **안전 정수 밖이면 거부한다.** JavaScript 의 수는 int64 를 온전히 담지 못해 큰 번호는
-   * 조용히 반올림된다 — 그 번호로 조회하면 **옆 단말의 정보를 받아** 그것으로 등록된다.
-   */
+/*
+ * ⚠ **안전 정수 밖이면 거부한다.** JavaScript 의 수는 int64 를 온전히 담지 못해 큰 번호는
+ * 조용히 반올림된다 — 그 번호로 조회하면 옆 단말의 것을 받아 그것으로 등록된다.
+ */
+const readId = (value: unknown): number | null => {
+  const parsed =
+    typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;
+
   return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : null;
+};
+
+export const readTerminalIdFromToken = (token: string): number | null => {
+  const payload = readPayload(token);
+
+  return payload === null ? null : readId(payload.sub);
+};
+
+/** 등록 화면이 보여 줄 값. 번호 말고는 없을 수 있다. */
+export interface TerminalClaims {
+  terminalId: number;
+  /** 등록 끝에 사람이 관리자 안내와 대조하는 값. 없으면 표시를 생략한다. */
+  terminalCode: string | null;
+  /** 쓰기 화면이 물려받는 공장. 없으면 등록 때 다른 길로 받아야 한다. */
+  plantId: number | null;
+}
+
+/**
+ * 토큰이 싣고 온 것을 읽는다.
+ *
+ * ⛔ **이것은 인증이 아니다.** 서명을 보지 않으므로 값이 참이라는 보장이 없다 — 서버가 토큰을
+ * 받아 준 뒤에만 보여 주는 값으로 쓴다.
+ *
+ * ⚠ **코드·공장이 없다고 등록을 막지 않는다.** 계약이 클레임 규격을 아직 갖지 않아 서버가
+ * 무엇을 싣는지 보장되지 않는다. 막으면 대조라는 편의를 위해 등록이라는 필수를 잃는다.
+ */
+export const readTerminalClaims = (token: string): TerminalClaims | null => {
+  const payload = readPayload(token);
+
+  if (payload === null) {
+    return null;
+  }
+
+  const terminalId = readId(payload.sub);
+
+  if (terminalId === null) {
+    return null;
+  }
+
+  const code = payload.terminalCode;
+
+  return {
+    terminalId,
+    terminalCode: typeof code === 'string' && code.trim() !== '' ? code : null,
+    plantId: readId(payload.plantId),
+  };
 };
