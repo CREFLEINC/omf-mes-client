@@ -24,6 +24,11 @@ export type SaveBlock =
 export interface SaveBlockInput {
   workerNo: string | null;
   equipmentId: number | null;
+  /**
+   * 이 단말의 번호. **설비를 모르는 «이유»를 가르는 데만 쓴다**(#1149) — 단말을 모르면 설비도
+   * 알 수 없으므로 「설비가 지정되지 않았다」는 사실이 아니라 **아직 아무것도 모르는 것**이다.
+   */
+  terminalId: number | null;
   gate: GateVerdict;
   hasOngoing: boolean;
 }
@@ -38,11 +43,19 @@ export interface SaveBlockInput {
 export const resolveSaveBlock = ({
   workerNo,
   equipmentId,
+  terminalId,
   gate,
   hasOngoing,
 }: SaveBlockInput): SaveBlock => {
   if (workerNo === null) return 'worker-missing';
-  if (equipmentId === null) return 'equipment-missing';
+  /*
+   * ⛔ **단말을 모르는 것을 「설비가 지정되지 않았다」로 말하지 않는다**(#1149). 설비는 단말에
+   *    붙어 오므로 단말이 서기 전에는 없는 것이 당연하고, 그때 관리자에게 설비 지정을
+   *    요청하라고 말하면 **아무도 풀 수 없는 심부름**이 된다 — 풀리는 것은 단말 등록이다.
+   */
+  if (equipmentId === null) {
+    return terminalId === null ? 'gate-unidentified' : 'equipment-missing';
+  }
   /*
    * ⛔ **「단말을 모른다」를 「권한이 없다」로 말하지 않는다.** 같은 슬라이스의
    *    `terminal-gating` 이 두 판정을 갈라 두었는데 여기서 다시 합쳐 놓았고, 그 결과 단말

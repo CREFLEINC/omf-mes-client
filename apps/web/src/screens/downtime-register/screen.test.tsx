@@ -137,6 +137,7 @@ const closeRoute = (downtimeId: number): StubRoute => ({
 const IDENTIFIED: PopIdentity = {
   terminalId: TERMINAL_ID,
   processes: [{ processId: PROCESS_ID }],
+  equipment: null,
   workerNo: WORKER_NO,
 };
 
@@ -1043,5 +1044,192 @@ describe('DowntimeRegisterScreen — 설비를 아직 고르지 않았을 때', 
     await flush();
 
     expect(screen.queryByText(t.today.notAsked)).toBeNull();
+  });
+});
+
+/**
+ * #1149 ① — **설비는 단말이 정한다**(스펙 §4-A 「POP 은 설비에 붙어 있다」).
+ *
+ * 88단계 3회차에서 이 화면은 「설비를 고른 뒤 다시 들어오세요」로 막으면서 **고를 자리를
+ * 주지 않았다** — 단말에 설비가 붙어 있는데도 주소에 번호를 손으로 붙여야 열렸다.
+ */
+describe('DowntimeRegisterScreen — 단말에 붙은 설비', () => {
+  const TERMINAL_EQUIPMENT_ID = 5102;
+  const TERMINAL_EQUIPMENT_CODE = 'SAMPLE-PRS-02';
+
+  const withEquipment: PopIdentity = {
+    ...IDENTIFIED,
+    equipment: {
+      equipmentId: TERMINAL_EQUIPMENT_ID,
+      equipmentCode: TERMINAL_EQUIPMENT_CODE,
+      equipmentName: '합성 설비',
+    },
+  };
+
+  it('주소에 설비가 없어도 단말이 붙은 설비로 연다', async () => {
+    const { requests } = renderScreen(
+      [downtimeListRoute({ today: [downtime()] }), summaryRoute(), breakdownsRoute(), gateRoute()],
+      withEquipment,
+      '/pop/downtime',
+    );
+
+    await flush();
+
+    /* 막히지 않는다 — 고를 수 없는 일을 시키지 않는다. */
+    expect(screen.queryByText(t.errors.equipmentMissing)).toBeNull();
+    expect(screen.getByText(t.header.equipment(TERMINAL_EQUIPMENT_CODE))).toBeTruthy();
+
+    const asked = requests.find((request) => request.url.pathname === DOWNTIMES_PATH);
+    expect(asked?.url.searchParams.get('equipmentId')).toBe(String(TERMINAL_EQUIPMENT_ID));
+  });
+
+  /*
+   * ⚠ **주소가 이긴다.** 개발 이동표·점검처럼 «이 단말의 설비가 아닌 것»을 일부러 볼 때 쓰는
+   *    길이라, 주소에 적힌 것은 언제나 의도된 값이다. 이름표도 같은 출처를 따라간다.
+   */
+  it('주소가 가리키는 설비가 단말 것보다 앞선다', async () => {
+    const { requests } = renderScreen(
+      [downtimeListRoute({ today: [downtime()] }), summaryRoute(), breakdownsRoute(), gateRoute()],
+      withEquipment,
+    );
+
+    await flush();
+
+    expect(screen.getByText(t.header.equipment(EQUIPMENT_CODE))).toBeTruthy();
+
+    const asked = requests.find((request) => request.url.pathname === DOWNTIMES_PATH);
+    expect(asked?.url.searchParams.get('equipmentId')).toBe(String(EQUIPMENT_ID));
+  });
+
+  /*
+   * ⛔ **단말을 모르는 것을 「설비가 지정되지 않았다」로 말하지 않는다** — 설비는 단말에 붙어
+   *    오므로 단말이 서기 전에는 없는 것이 당연하고, 그때 설비 지정을 요청하라고 말하면
+   *    아무도 풀 수 없는 심부름이 된다.
+   */
+  it('단말을 모르면 설비가 아니라 단말 등록을 말한다', async () => {
+    renderScreen(
+      [downtimeListRoute(), summaryRoute(), breakdownsRoute(), gateRoute()],
+      { ...IDENTIFIED, terminalId: null, processes: null },
+      '/pop/downtime',
+    );
+
+    await flush();
+
+    expect(screen.getByText(t.errors.gateUnidentified)).toBeTruthy();
+    expect(screen.queryByText(t.errors.equipmentMissing)).toBeNull();
+
+    /* ⛔ ④ 구획도 같은 해법을 말한다 — 한 화면이 「단말 등록」과 「설비 지정」을 함께 시키지 않는다. */
+    expect(screen.getAllByText(t.today.notAskedUnidentified).length).toBeGreaterThan(0);
+    expect(screen.queryByText(t.today.notAsked)).toBeNull();
+  });
+});
+
+/**
+ * #1149 ② — **건수와 합계가 다른 것을 세는 동안 그 사실을 말한다.**
+ *
+ * 건수는 ④ 목록의 길이이고 합계는 서버 집계다. 방금 넣은 줄은 목록에 먼저 서고 합계에는
+ * 나중에 들어가므로, 그 사이에는 두 숫자의 모집단이 다르다 — 말하지 않으면 저장한 구간이
+ * 「0분」으로 사라진 것처럼 읽힌다(88단계 3회차).
+ */
+describe('DowntimeRegisterScreen — 건수와 합계의 모집단', () => {
+  /*
+   * ⚠ **오늘 날짜로 친다.** ④ 에 서는 줄은 **단말이 선 날**로 걸러지므로(`startedOn`), 고정
+   *    날짜로 치면 방금 넣은 줄이 목록에서 빠져 감지기가 늘 통과한다.
+   */
+  const todayInterval = (): { start: [string, string]; end: [string, string] } => {
+    const pad = (value: number): string => String(value).padStart(2, '0');
+    const localDay = (at: Date): string =>
+      `${String(at.getFullYear())}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+
+    const now = new Date();
+    const day = localDay(now);
+    const earlier = new Date(now.getTime() - 60 * 60 * 1000);
+
+    /*
+     * 한 시간 전이 어제라면(자정 직후) 오늘 첫 순간을 쓴다 — 두 끝이 **오늘 안에** 서야 하고,
+     * 아직 오지 않은 시각이어서도 안 된다.
+     */
+    if (localDay(earlier) !== day) return { start: [day, '00:00'], end: [day, '00:00'] };
+
+    /* `earlier` 의 정각·30분은 둘 다 지금보다 앞선다(지금 −79분 · −49분). */
+    return {
+      start: [day, `${pad(earlier.getHours())}:00`],
+      end: [day, `${pad(earlier.getHours())}:30`],
+    };
+  };
+
+  /**
+   * ⚠ **서버가 «보낸 그대로»를 돌려주게 한다.** 고정 예시(지난달 날짜)를 돌려주면 받아들여진
+   *    줄이 오늘 목록에서 빠져, 감지기가 보려던 상태 자체가 서지 않는다.
+   */
+  const echoCreateRoute = (onCreated?: (created: unknown) => void): StubRoute => ({
+    match: (request) =>
+      request.method === 'POST' && new URL(request.url).pathname === DOWNTIMES_PATH,
+    respond: async (request) => {
+      const body = (await request.json()) as Record<string, unknown>;
+      const created = { ...downtime({ downtimeId: 5299 }), ...body };
+      onCreated?.(created);
+
+      return jsonResponse(created, { status: 201 });
+    },
+  });
+
+  it('서버 합계에 아직 없는 줄이 섞이면 범위를 말한다', async () => {
+    renderScreen([
+      /* 서버 목록·집계는 방금 넣은 건을 아직 모른다 — 저장 직후가 그 상태다. */
+      downtimeListRoute(),
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+      echoCreateRoute(),
+    ]);
+
+    await flush();
+    expect(screen.queryByText(t.today.unsettled(1))).toBeNull();
+
+    const { start, end } = todayInterval();
+    typeInterval(start, end);
+    await chooseReason();
+    save();
+
+    expect(await screen.findByText(t.today.unsettled(1))).toBeTruthy();
+    expect(screen.getByText(t.today.unsettledDescription)).toBeTruthy();
+  });
+
+  it('서버 목록이 그 건을 알게 되면 범위 안내를 걷는다', async () => {
+    let todayItems: unknown[] = [];
+
+    renderScreen([
+      {
+        match: (request) => isGet(request, DOWNTIMES_PATH),
+        respond: (request) => {
+          const openOnly = new URL(request.url).searchParams.get('openOnly') === 'true';
+          const items = openOnly ? [] : todayItems;
+
+          return jsonResponse({ items, page: { page: 1, size: 50, total: items.length } });
+        },
+      },
+      summaryRoute(),
+      breakdownsRoute(),
+      gateRoute(),
+      echoCreateRoute((created) => {
+        todayItems = [created];
+      }),
+    ]);
+
+    await flush();
+
+    const { start, end } = todayInterval();
+    typeInterval(start, end);
+    await chooseReason();
+    save();
+
+    /* 같은 것을 세게 됐으면 범위를 덧붙이지 않는다 — 늘 서 있는 경고는 아무도 읽지 않는다. */
+    await waitFor(() => {
+      expect(screen.queryByText(t.today.unsettled(1))).toBeNull();
+    });
+
+    /* 두 번 세지 않는다 — 서버가 아는 건과 큐가 아는 건은 같은 한 줄이다. */
+    expect(screen.getByText(new RegExp(t.today.summary(1, '')))).toBeTruthy();
   });
 });

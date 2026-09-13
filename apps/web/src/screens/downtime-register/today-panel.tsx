@@ -66,6 +66,14 @@ export interface TodayPanelProps {
   onRetry: () => void;
   /** 이 단말이 아는 것만 보이는 상태인가 — 범위를 이름으로 말해야 한다. */
   isLocalOnly: boolean;
+  /**
+   * 줄에는 섰는데 **서버 합계에는 아직 안 들어간** 건수(#1149).
+   *
+   * ⚠ 0 이면 건수와 합계가 같은 것을 센다. 0 이 아니면 **두 숫자의 모집단이 다르고**, 그
+   *    사실을 화면이 말하지 않으면 작업자는 어느 쪽을 믿어야 하는지 알 수 없다 — 저장한
+   *    구간이 「0분」으로 사라진 것처럼 읽힌다(88단계 3회차).
+   */
+  unsettledCount: number;
   now: Date;
 }
 
@@ -89,6 +97,7 @@ export const TodayPanel = ({
   isError,
   onRetry,
   isLocalOnly,
+  unsettledCount,
   now,
 }: TodayPanelProps) => {
   /*
@@ -131,13 +140,30 @@ export const TodayPanel = ({
               )}
             </p>
 
-            {isLocalOnly && (
+            {/*
+             * ⭐ **범위를 말하는 자리는 하나다.** 끊겼으면 「내 단말 입력분만」이고, 붙어
+             *    있는데 아직 서버 합계에 안 들어간 줄이 있으면 그 사실이다(#1149).
+             *
+             * ⛔ **끊긴 상태에서 둘을 함께 말하지 않는다** — 끊겨 있으면 목록 전체가 이 단말
+             *    것이라 앞 문장이 이미 그 말을 하고 있다.
+             */}
+            {isLocalOnly ? (
               <p className="downtime-today-scope">
                 <Chip variant="status" size="md" status="warning">
                   {t.today.localOnly}
                 </Chip>
                 <span>{t.today.localOnlyDescription}</span>
               </p>
+            ) : (
+              isAsked &&
+              unsettledCount > 0 && (
+                <p className="downtime-today-scope">
+                  <Chip variant="status" size="md" status="warning">
+                    {t.today.unsettled(unsettledCount)}
+                  </Chip>
+                  <span>{t.today.unsettledDescription}</span>
+                </p>
+              )
             )}
 
             {/*
