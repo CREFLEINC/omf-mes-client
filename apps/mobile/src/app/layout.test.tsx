@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { noteServerAnswered, noteServerSilent } from '../patterns/online-status';
+import { noteServerSilent } from '../patterns/online-status';
 import { ApiRequestError } from '../patterns/request';
 import { useScreenTitle } from '../patterns/screen-title';
 import { OutboxProvider, useOutbox } from '../patterns/outbox';
@@ -181,8 +181,6 @@ describe('AppLayout', () => {
     renderLayout('본문 자리');
 
     expect(screen.getByRole('banner')).toHaveTextContent('오프라인');
-
-    noteServerAnswered();
   });
 
   /*

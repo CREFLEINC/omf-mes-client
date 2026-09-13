@@ -61,7 +61,7 @@ export const OutboxRejectionsScreen = () => {
                 {openId === record.entry.id ? (
                   <dl
                     className="outbox-rejections__details"
-                    role="list"
+                    role="group"
                     aria-label={t.details.pane}
                   >
                     {detailsOf(record).map((row) => (

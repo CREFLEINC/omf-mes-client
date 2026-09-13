@@ -64,12 +64,12 @@ export interface DetailRow {
 const serverMessageOf = (error: ApiError): string | null => {
   switch (error.kind) {
     case 'conflict':
-      return error.message;
+      return error.message || null;
     case 'validation':
     case 'stateLocked':
       return error.errors.map((item) => item.message).join(' ') || null;
     case 'http':
-      return error.message ?? null;
+      return error.message || null;
     case 'network':
       return null;
   }

@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { noteServerAnswered, useServerReachable } from './online-status';
+import { noteServerAnswered, noteServerSilent, useServerReachable } from './online-status';
 import { ApiRequestError, runRequest, type ApiCallResult } from './request';
 
 /*
@@ -15,7 +15,7 @@ beforeEach(() => {
 
 const reachable = (): boolean => renderHook(() => useServerReachable()).result.current;
 
-const answered = <T,>(status: number, data: T): (() => Promise<ApiCallResult<T>>) => {
+const answered = <T>(status: number, data: T): (() => Promise<ApiCallResult<T>>) => {
   const response = new Response(null, { status });
 
   return () => Promise.resolve({ data, response } as ApiCallResult<T>);
@@ -37,8 +37,14 @@ describe('요청이 남기는 연결 기록', () => {
   /*
    * 오류 응답도 답이다. 서버가 받았다는 뜻이라 연결은 살아 있다 - 그것을 오프라인으로
    * 보이면 작업자가 망을 고치러 가는데, 고칠 것은 망이 아니다.
+   *
+   * 닿지 못한 자리에서 시작한다. 참에서 시작해 참을 재면 오류 응답에 아무것도 적지 않는
+   * 코드도 통과한다 - 그 갈래가 이 화면이 지키려는 바로 그것이다.
    */
   it('오류 응답은 닿은 것으로 적는다', async () => {
+    noteServerSilent();
+    expect(reachable()).toBe(false);
+
     await expect(runRequest(answered(401, null))).rejects.toBeInstanceOf(ApiRequestError);
 
     expect(reachable()).toBe(true);

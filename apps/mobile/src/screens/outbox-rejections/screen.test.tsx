@@ -152,7 +152,7 @@ describe('전송 실패한 기록 화면', () => {
      * 사유 문단에도 같은 문구가 이미 떠 있다. 상세 안에서만 찾지 않으면 접힌 채로도
      * 걸려, 상세를 열었는지와 무관하게 통과한다.
      */
-    const details = screen.getByRole('list', { name: '상세' });
+    const details = screen.getByRole('group', { name: '상세' });
 
     expect(within(details).getByText('POST /logistics/inbound-receipts')).toBeInTheDocument();
     expect(within(details).getByText('401')).toBeInTheDocument();
@@ -162,7 +162,23 @@ describe('전송 실패한 기록 화면', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '상세 닫기' }));
 
-    expect(screen.queryByRole('list', { name: '상세' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: '상세' })).not.toBeInTheDocument();
+  });
+
+  /*
+   * 서버가 문구 없이 충돌만 돌려주면 정규화가 빈 문자열을 넣는다. 그 빈 값을 그대로 내면
+   * 다른 칸은 없음이라 적혀 있는데 이 칸만 비어, 읽는 사람이 잘린 화면으로 읽는다.
+   */
+  it('서버가 준 문구가 비어 있으면 없다고 적는다', async () => {
+    seed([record({ error: { kind: 'conflict', cause: 'user', message: '' } })]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    const details = screen.getByRole('group', { name: '상세' });
+
+    expect(within(details).getAllByText('없음').length).toBeGreaterThanOrEqual(3);
   });
 
   /* 세로 화면이라 여럿이 펼쳐지면 목록을 잃는다. 하나를 열면 앞엣것이 닫혀야 한다. */
@@ -174,11 +190,11 @@ describe('전송 실패한 기록 화면', () => {
     const open = await screen.findAllByRole('button', { name: '상세 보기' });
 
     await userEvent.click(open[0]!);
-    expect(screen.getAllByRole('list', { name: '상세' })).toHaveLength(1);
+    expect(screen.getAllByRole('group', { name: '상세' })).toHaveLength(1);
 
     await userEvent.click(screen.getByRole('button', { name: '상세 보기' }));
 
-    expect(screen.getAllByRole('list', { name: '상세' })).toHaveLength(1);
+    expect(screen.getAllByRole('group', { name: '상세' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: '상세 닫기' })).toHaveLength(1);
   });
 });
