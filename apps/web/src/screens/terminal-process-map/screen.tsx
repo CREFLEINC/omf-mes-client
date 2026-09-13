@@ -57,7 +57,7 @@ import {
 } from './terminal-draft';
 import { TerminalForm } from './terminal-form';
 import { TokenDialog } from './token-dialog';
-import type { SelectOption, TerminalView, TokenView } from './types';
+import { formatMoment, type SelectOption, type TerminalView, type TokenView } from './types';
 
 const t = messages.terminalProcessMap;
 
@@ -80,9 +80,8 @@ type FormMode = 'closed' | 'create' | 'edit';
  * ⭐ **0건이 정상인 단말이 있다** — 창고 전용 단말은 공정 행이 없다. 여덟 플래그가 전부
  * 생산 축이기 때문이고, 빈 결과를 오류로 그리지 않는다.
  *
- * ⭐⭐ **등록 토큰을 발급해 그림으로 보이는 것이 이 화면이다.** 기기는 그것을 카메라로 읽고
- * 서버를 따로 부르지 않는다 — 토큰 없이 열리는 경로가 없다. ⚠ 재발급하면 이전 기기가
- * 모두 끊기므로 누르기 전에 말한다.
+ * ⭐⭐ 등록 토큰은 QR 또는 복사로 기기에 전달한다. 기기가 명부 수신 뒤 서버에 등록을
+ * 확인한 상태를 별도 표시한다. 재발급은 이전 토큰 세대를 끊는다.
  *
  * **조회 조건과 고른 단말은 주소가 소유한다** — 새로고침·공유가 같은 화면을 연다.
  */
@@ -243,6 +242,19 @@ export const TerminalProcessMapScreen = () => {
     { key: 'type', header: t.list.type, render: (row) => row.terminalTypeCode },
     { key: 'status', header: t.list.status, render: (row) => row.statusCode },
     {
+      key: 'registration',
+      header: t.list.registration,
+      render: (row) => (
+        <Chip size="sm" status={row.registrationStatusCode === 'REGISTERED' ? 'success' : 'idle'}>
+          {row.registrationStatusCode === 'REGISTERED'
+            ? t.list.registrationComplete
+            : row.registrationStatusCode === 'UNREGISTERED'
+              ? t.list.registrationPending
+              : t.list.registrationUnknown}
+        </Chip>
+      ),
+    },
+    {
       key: 'equipment',
       header: t.list.equipment,
       render: (row) => row.equipmentLabel ?? t.list.notAvailable,
@@ -382,6 +394,17 @@ export const TerminalProcessMapScreen = () => {
                   <dd>{selected.terminalTypeCode}</dd>
                   <dt>{t.terminal.status}</dt>
                   <dd>{selected.statusCode}</dd>
+                  <dt>{t.terminal.registration}</dt>
+                  <dd>
+                    {selected.registrationStatusCode === 'REGISTERED'
+                      ? t.terminal.registrationComplete
+                      : selected.registrationStatusCode === 'UNREGISTERED'
+                        ? t.terminal.registrationPending
+                        : t.terminal.registrationUnknown}
+                    {selected.registrationConfirmedAt === null
+                      ? null
+                      : ` · ${formatMoment(selected.registrationConfirmedAt)}`}
+                  </dd>
                   <dt>{t.terminal.equipment}</dt>
                   <dd>{selected.equipmentLabel ?? t.terminal.equipmentNone}</dd>
                 </dl>

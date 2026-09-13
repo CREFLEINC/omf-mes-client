@@ -11,3 +11,4 @@ export {
   type ErrorItem,
 } from './errors';
 export type { components, paths } from './generated/api';
+export type { TerminalRegistrationConfirmation, TerminalRegistrationStatusCode } from './forward-contract';

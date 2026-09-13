@@ -113,8 +113,8 @@ const harness = (
     {
       match: (request) =>
         request.method === 'POST' && pathOf(request) === '/inventory/handling-units',
-      respond: (request) => {
-        void record(request);
+      respond: async (request) => {
+        await record(request);
 
         return jsonResponse(handlingUnitBody, {
           status: statuses.create ?? 201,
@@ -124,16 +124,16 @@ const harness = (
     },
     {
       match: (request) => pathOf(request) === '/inventory/handling-units/4001:pack',
-      respond: (request) => {
-        void record(request);
+      respond: async (request) => {
+        await record(request);
 
         return jsonResponse(handlingUnitBody, { status: statuses.pack ?? 200 });
       },
     },
     {
       match: (request) => pathOf(request).startsWith('/logistics/shipment-lot-allocations/'),
-      respond: (request) => {
-        void record(request);
+      respond: async (request) => {
+        await record(request);
 
         return jsonResponse({ shipmentLotAllocationId: 9001 }, { status: statuses.link ?? 200 });
       },

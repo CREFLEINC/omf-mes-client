@@ -34,6 +34,10 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     code: 'Mã máy quét',
     type: 'Loại',
     status: 'Trạng thái',
+    registration: 'Trạng thái đăng ký',
+    registrationPending: 'Chưa đăng ký',
+    registrationComplete: 'Đã đăng ký',
+    registrationUnknown: 'Chưa xác nhận',
     equipment: 'Thiết bị',
     active: 'Dùng',
     inactive: 'Ngừng',
@@ -54,6 +58,10 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
     plant: 'Nhà máy',
     type: 'Loại',
     status: 'Trạng thái',
+    registration: 'Trạng thái đăng ký',
+    registrationPending: 'Chưa đăng ký',
+    registrationComplete: 'Đã đăng ký',
+    registrationUnknown: 'Chưa xác nhận',
     equipment: 'Thiết bị lắp đặt',
     equipmentNone: 'Không gắn vào thiết bị nào',
     equipmentNote: 'Màn hình POP dùng giá trị này ở chỗ lấy «thiết bị này» làm tiền đề.',
@@ -85,18 +93,19 @@ export const terminalProcessMap: Translated<typeof ko.terminalProcessMap> = {
   token: {
     issue: 'Phát hành token đăng ký',
     title: 'Token đăng ký máy quét',
-    /** ⭐ 기기는 서버를 부르지 않는다 — 이 그림이 유일한 전달 경로다. */
-    lead: 'Dùng camera của máy đọc hình này để đăng ký. Máy không gọi máy chủ riêng nên hình này là đường truyền duy nhất.',
+    lead: 'Quét mã QR hoặc dán mã đăng ký trên máy. Trạng thái sẽ hoàn tất sau khi máy xác nhận với máy chủ và nhận danh sách nhân viên.',
     reissueWarning:
       'Phát hành lại thì mọi máy đã đăng ký trước đó đều bị ngắt. Những máy đó phải đăng ký lại.',
     imageLabel: 'Hình mã dùng để đăng ký máy quét',
+    copy: 'Sao chép mã đăng ký',
+    copied: 'Đã sao chép mã đăng ký.',
+    copyFailed: 'Không sao chép được. Hãy kiểm tra quyền bảng nhớ tạm của trình duyệt.',
     issuedAt: 'Thời điểm phát hành',
     expiresAt: 'Hết hạn',
     noExpiry: 'Không hết hạn',
     close: 'Đóng',
     failed: 'Không phát hành được token đăng ký. Hãy thử lại.',
-    /** ⛔ 토큰 글자를 화면에 적지 않는다 — 옮긴 말에서도 글자를 보여 준다고 읽히면 안 된다. */
-    textOmitted: 'Chuỗi token không hiện trên màn hình. Chỉ truyền qua hình.',
+    textOmitted: 'Mã đăng ký không hiện trên màn hình. Hãy quét QR hoặc sao chép và dán vào máy.',
   },
 
   grid: {
