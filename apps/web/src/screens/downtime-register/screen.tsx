@@ -449,8 +449,19 @@ export const DowntimeRegisterScreen = () => {
         /*
          * ⭐ **조회를 못 건 이유를 가려 말한다**(#1094). 설비를 골라 둔 채 끊겼는데도
          *    「설비를 고르면…」이 떠서, 머리줄에 설비 번호가 보이는데 고르라고 말했다.
+         *
+         * ⛔ **한 화면이 해법을 둘 말하지 않는다**(#1149 · 독립 검증 지적). 단말이 아직
+         *    서지 않았으면 위 배너는 「단말 등록」을 말하는데 여기만 「설비 지정」을 말해,
+         *    작업자가 둘 중 무엇을 요청해야 하는지 알 수 없었다. 막는 사유와 같은 순서로
+         *    가른다(`resolveSaveBlock`).
          */
-        notAskedLabel={equipmentId === null ? t.today.notAsked : t.today.notAskedOffline}
+        notAskedLabel={
+          equipmentId !== null
+            ? t.today.notAskedOffline
+            : terminalId === null
+              ? t.today.notAskedUnidentified
+              : t.today.notAsked
+        }
         isLocalOnly={isLocalOnly}
         /*
          * ⭐ **건수와 합계가 다른 것을 세는 동안 그 사실을 말한다**(#1149). 88단계 3회차에서

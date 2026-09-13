@@ -1117,6 +1117,10 @@ describe('DowntimeRegisterScreen — 단말에 붙은 설비', () => {
 
     expect(screen.getByText(t.errors.gateUnidentified)).toBeTruthy();
     expect(screen.queryByText(t.errors.equipmentMissing)).toBeNull();
+
+    /* ⛔ ④ 구획도 같은 해법을 말한다 — 한 화면이 「단말 등록」과 「설비 지정」을 함께 시키지 않는다. */
+    expect(screen.getAllByText(t.today.notAskedUnidentified).length).toBeGreaterThan(0);
+    expect(screen.queryByText(t.today.notAsked)).toBeNull();
   });
 });
 
