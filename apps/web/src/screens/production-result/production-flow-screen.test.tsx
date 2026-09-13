@@ -967,6 +967,21 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
     expect(await screen.findByText(t.quantity.remainingNoWorkOrder)).toBeInTheDocument();
     expect(screen.queryByText(t.quantity.remainingUnknown)).not.toBeInTheDocument();
   });
+
+  /* 공통 [화면 이동]으로 오면 작업지시가 없다 — 할 일까지 말해야 고장으로 읽히지 않는다(#1151). */
+  it('작업지시 없이 들어오면 작업 시작 화면에서 고르라고 안내한다', async () => {
+    renderScreen([], [], { route: '/pop/production-result' });
+
+    expect(await screen.findByText(t.entry.missingWorkOrder)).toBeInTheDocument();
+  });
+
+  it('작업지시를 받고 들어오면 그 안내를 세우지 않는다', async () => {
+    renderScreen([]);
+
+    await screen.findByText(/WO-SYN-001/u);
+
+    expect(screen.queryByText(t.entry.missingWorkOrder)).not.toBeInTheDocument();
+  });
 });
 
 /* 긴급 W/O 에서 넘어오면 긴급 표식이 머리줄에 남는다(`P-02-12` §5-1 · #1147). */

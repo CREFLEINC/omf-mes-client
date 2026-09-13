@@ -680,6 +680,17 @@ export const ProductionFlowScreen = () => {
       {outbox.isStalled && <OutboxStallBanner onRetry={outbox.retryNow} />}
 
       {/*
+       * ⛔ **작업지시 없이 들어온 화면을 말없이 비워 두지 않는다**(#1151). 공통 [화면 이동]은
+       *    작업지시를 싣지 않아, 그 길로 오면 아래 값이 전부 비고 잔여수량 칸만 짧게 사유를 댄다
+       *    — 무엇을 해야 하는지는 어디에도 없었다. 머리줄 바로 아래 한 곳에서 할 일을 말한다.
+       */}
+      {entry.workOrderId === null && (
+        <div className="banner-slot">
+          <AlertBanner variant="warning" title={t.entry.missingWorkOrder} />
+        </div>
+      )}
+
+      {/*
        * ⛔ **가릴 수 없는 것과 못 불러온 것을 갈라 말한다**(#1095). 앞엣것은 다시 시도해도
        *    풀리지 않고 작업자가 할 일이 다르다 — 「불러오지 못했다」로 뭉뚱그리면 현장이
        *    새로고침만 반복한다.
