@@ -67,6 +67,7 @@ export interface ShipmentRequestCreateInput {
   mode: AssignmentMode;
   /** 지시서 경유일 때만 값이 있다 */
   salesOrderId: number | null;
+  fulfillmentPlantId: string;
   customerId: string;
   shipToPartnerId: string;
   requestedShipDate: string;
@@ -82,9 +83,10 @@ export const toShipmentRequestCreateBody = (
 ): ShipmentRequestCreate | null => {
   const customerId = readId(input.customerId);
   const shipToPartnerId = readId(input.shipToPartnerId);
+  const fulfillmentPlantId = readId(input.fulfillmentPlantId);
   const requestedShipDate = input.requestedShipDate.trim();
 
-  if (customerId === null || shipToPartnerId === null || requestedShipDate === '') return null;
+  if (customerId === null || shipToPartnerId === null || fulfillmentPlantId === null || requestedShipDate === '') return null;
   if (
     input.lines.some(
       (line) => line.customerLotRequirement.length > CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH,
@@ -105,6 +107,7 @@ export const toShipmentRequestCreateBody = (
 
   return {
     salesOrderId: input.mode === 'fromOrder' ? input.salesOrderId : null,
+    fulfillmentPlantId,
     customerId,
     shipToPartnerId,
     requestedShipDate,

@@ -59,6 +59,7 @@ const workOrder = (id: number, itemId = 910001) => ({
   orderQty: 12.5,
   uomId: 920001,
   workOrderTypeCode: 'NORMAL',
+  processId: 901,
   priorityNo: 1,
   statusCode: 'COMPLETED',
 });

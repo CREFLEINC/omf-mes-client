@@ -78,8 +78,8 @@ export const failedLine = (outcome: ImportOutcome): string =>
   t.failedRow(outcome.channelKey, outcome.reason ?? t.unknownReason);
 
 /** 값이 오지 않은 칸을 빈 칸으로 두지 않는다 — 없는 것인지 못 받은 것인지 구별이 안 된다. */
-export const orNotRecorded = (value: string | undefined): string =>
-  value === undefined || value === '' ? t.notRecorded : value;
+export const orNotRecorded = (value: string | null | undefined): string =>
+  value === null || value === undefined || value === '' ? t.notRecorded : value;
 
 const RFC3339_PATTERN = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/;
 

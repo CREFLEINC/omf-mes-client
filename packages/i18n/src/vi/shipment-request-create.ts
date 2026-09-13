@@ -51,6 +51,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     submit: 'Lập lệnh xuất hàng',
   },
   fields: {
+    fulfillmentPlant: 'Nhà máy phụ trách xuất hàng',
     customer: 'Khách hàng',
     shipToPartner: 'Nơi giao hàng',
     requestedShipDate: 'Ngày yêu cầu xuất hàng',
@@ -58,6 +59,8 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
   lineTable: {
     item: 'Mặt hàng',
     itemLabel: (rowIndex: number): string => `Mặt hàng dòng ${String(rowIndex)}`,
+    uom: 'Đơn vị',
+    uomLabel: (rowIndex: number): string => `Đơn vị dòng ${String(rowIndex)}`,
     requestedQty: 'Số lượng yêu cầu',
     requestedQtyLabel: (rowIndex: number): string => `Số lượng yêu cầu dòng ${String(rowIndex)}`,
     availableQty: 'Số lượng khả dụng',
@@ -84,6 +87,7 @@ export const shipmentRequestCreate: Translated<typeof ko.shipmentRequestCreate> 
     erpNotMatched: '—',
   },
   errors: {
+    fulfillmentPlantRequired: 'Hãy chọn nhà máy phụ trách xuất hàng.',
     customerRequired: 'Hãy chọn khách hàng.',
     shipToPartnerRequired: 'Hãy chọn nơi giao hàng.',
     requestedShipDateRequired: 'Hãy nhập ngày yêu cầu xuất hàng.',

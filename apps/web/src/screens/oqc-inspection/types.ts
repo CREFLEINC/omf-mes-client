@@ -162,7 +162,7 @@ export const toInspectionResultRound = (item: InspectionResultResponse): Inspect
   acceptedQty: item.acceptedQty,
   rejectedQty: item.rejectedQty,
   heldQty: item.heldQty,
-  overallJudgmentCode: item.overallJudgmentCode,
+  overallJudgmentCode: item.overallJudgmentCode ?? '',
   statusCode: item.statusCode,
   confirmedAt: item.confirmedAt ?? null,
   previousResultId: item.previousResultId ?? null,

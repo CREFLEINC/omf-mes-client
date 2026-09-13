@@ -7,6 +7,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
   breadcrumbRoot: 'Xuất hàng',
   panes: {
     list: 'Danh sách kế hoạch xuất hàng',
+    fulfillmentPlant: 'Chỉ định nhà máy xuất hàng',
   },
   fields: {
     periodFrom: 'Ngày xuất hàng từ',
@@ -15,11 +16,14 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     shipToPartner: 'Nơi giao hàng',
     progress: 'Trạng thái tiến độ',
     inspection: 'Trạng thái kiểm tra',
+    fulfillmentPlant: 'Nhà máy phụ trách xuất hàng',
   },
   actions: {
     prevPage: 'Trước',
     nextPage: 'Sau',
     goFirstPage: 'Về trang đầu',
+    assignPlant: 'Chỉ định nhà máy xuất hàng',
+    savePlant: 'Lưu chỉ định nhà máy',
   },
   reasons: {
     periodRequired: 'Ngày xuất hàng từ bắt buộc phải nhập.',
@@ -31,6 +35,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
   },
   loading: {
     list: 'Đang tải danh sách kế hoạch xuất hàng',
+    detail: 'Đang tải lệnh xuất hàng',
   },
   table: {
     requestedShipDate: 'Ngày xuất hàng',
@@ -40,6 +45,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     qty: 'Yêu cầu / Phân bổ / Xuất hàng',
     inspection: 'Kiểm tra',
     progress: 'Tiến độ',
+    fulfillmentPlant: 'Nhà máy phụ trách xuất hàng',
   },
   values: {
     empty: '—',
@@ -48,6 +54,7 @@ export const shipmentSchedule: Translated<typeof ko.shipmentSchedule> = {
     referenceFailed: 'Không tải được tên',
     inspectionPending: 'Chờ',
     inspectionPassed: 'Đạt',
+    plantAssigned: 'Đã chỉ định',
   },
   filters: {
     all: 'Tất cả',

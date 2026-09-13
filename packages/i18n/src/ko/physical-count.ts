@@ -52,6 +52,8 @@ export const physicalCount = {
     already: (qty: string) => `이전 값 ${qty}`,
     /** 안 센 것과 0 으로 센 것은 다르다. 안 센 라인은 보내지 않는다. */
     uncounted: '아직 세지 않음',
+    reasonLabel: (name: string) => `${name} 차이 사유`,
+    reasonPlaceholder: '차이 사유를 고르세요',
     problem: {
       notNumber: '수량을 숫자로 적으세요',
       negative: '수량은 0보다 작을 수 없습니다',

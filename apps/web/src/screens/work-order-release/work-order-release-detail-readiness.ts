@@ -61,6 +61,8 @@ const preconditionReason = (preconditions: WorkOrderReleasePreconditions): strin
       return t.status.validationBlocked;
     case 'validationUnavailable':
       return t.status.validationUnavailable;
+    case 'missingDefaultLocations':
+      return t.status.missingDefaultLocations;
     default:
       return preconditions.passesStaticGate ? null : t.status.validationUnavailable;
   }

@@ -23,13 +23,13 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
   };
 
   it('계약이 필수로 둔 것이 갖춰지면 보낼 수 있다', () => {
-    expect(isSendableEntry({ idempotencyKey: 'k-1', body })).toBe(true);
+    expect(isSendableEntry({ idempotencyKey: 'k-1', workerNo: '900028', body })).toBe(true);
   });
 
   /* ⛔ 키가 없으면 재전송이 **새 검사 결과**가 된다 — 보내지 않는 편이 낫다. */
   it('멱등 키가 없으면 보내지 않는다', () => {
-    expect(isSendableEntry({ body })).toBe(false);
-    expect(isSendableEntry({ idempotencyKey: '', body })).toBe(false);
+    expect(isSendableEntry({ workerNo: '900028', body })).toBe(false);
+    expect(isSendableEntry({ idempotencyKey: '', workerNo: '900028', body })).toBe(false);
   });
 
   it('본문이 없거나 객체가 아니면 보내지 않는다', () => {
@@ -40,7 +40,7 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
   /* 수량이 문자열로 굳어 있는 판이 저장소에 남아 있을 수 있다 — 그대로 보내면 서버가
    * 무엇을 기록할지 화면이 알 수 없다. */
   it('수량이 수치가 아니면 보내지 않는다', () => {
-    expect(isSendableEntry({ idempotencyKey: 'k-1', body: { ...body, acceptedQty: '28' } })).toBe(
+    expect(isSendableEntry({ idempotencyKey: 'k-1', workerNo: '900028', body: { ...body, acceptedQty: '28' } })).toBe(
       false,
     );
   });
@@ -48,7 +48,7 @@ describe('isSendableEntry — 저장소에서 읽은 값을 믿지 않는다', (
   it('검사 시각이 없으면 보내지 않는다 — 언제 잰 것인지 모르는 판정은 기록이 아니다', () => {
     const { inspectedAt: _dropped, ...withoutTime } = body;
 
-    expect(isSendableEntry({ idempotencyKey: 'k-1', body: withoutTime })).toBe(false);
+    expect(isSendableEntry({ idempotencyKey: 'k-1', workerNo: '900028', body: withoutTime })).toBe(false);
   });
 
   it('객체가 아닌 것은 전부 걸러 낸다', () => {
@@ -100,7 +100,7 @@ describe('useOutbox — 끝나지 않는 장애에서 멈추되 담긴 것은 �
     });
 
     act(() => {
-      result.current.enqueue({
+      result.current.enqueue('900028', {
         inspectionRequestId: 1001,
         inspectedQty: 30,
         acceptedQty: 28,
@@ -127,7 +127,7 @@ describe('useOutbox — 끝나지 않는 장애에서 멈추되 담긴 것은 �
     });
 
     act(() => {
-      result.current.enqueue({
+      result.current.enqueue('900028', {
         inspectionRequestId: 1001,
         inspectedQty: 30,
         acceptedQty: 28,
@@ -196,7 +196,7 @@ describe('useOutbox — 큐가 「이 의뢰의 확정이 아직 남았는가」
   it('저장소에 남은 확정을 새로 뜬 훅이 그대로 읽는다', () => {
     globalThis.localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify([{ idempotencyKey: 'k-1', body: bodyOf(1001, 'CONFIRMED') }]),
+      JSON.stringify([{ idempotencyKey: 'k-1', workerNo: '900028', body: bodyOf(1001, 'CONFIRMED') }]),
     );
 
     const { result } = renderHookWithProviders(() => useOutbox(), {
@@ -210,7 +210,7 @@ describe('useOutbox — 큐가 「이 의뢰의 확정이 아직 남았는가」
   it('다른 의뢰의 확정은 이 의뢰를 잠그지 않는다', () => {
     globalThis.localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify([{ idempotencyKey: 'k-1', body: bodyOf(1002, 'CONFIRMED') }]),
+      JSON.stringify([{ idempotencyKey: 'k-1', workerNo: '900028', body: bodyOf(1002, 'CONFIRMED') }]),
     );
 
     const { result } = renderHookWithProviders(() => useOutbox(), {
@@ -224,7 +224,7 @@ describe('useOutbox — 큐가 「이 의뢰의 확정이 아직 남았는가」
   it('임시 저장만 남아 있으면 잠그지 않는다', () => {
     globalThis.localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify([{ idempotencyKey: 'k-1', body: bodyOf(1001, 'DRAFT') }]),
+      JSON.stringify([{ idempotencyKey: 'k-1', workerNo: '900028', body: bodyOf(1001, 'DRAFT') }]),
     );
 
     const { result } = renderHookWithProviders(() => useOutbox(), {
@@ -263,7 +263,7 @@ describe('useOutbox — 거부된 것이 무엇이었는지 함께 낸다', () =
     });
 
     await act(async () => {
-      result.current.enqueue({
+      result.current.enqueue('900028', {
         inspectionRequestId: 1001,
         inspectedQty: 30,
         acceptedQty: 28,

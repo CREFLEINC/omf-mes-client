@@ -54,6 +54,7 @@ export const shipmentRequestCreate = {
     submit: '출하작업지시 편성',
   },
   fields: {
+    fulfillmentPlant: '출하 담당 공장',
     customer: '고객',
     shipToPartner: '납품처',
     requestedShipDate: '출하요청일',
@@ -61,6 +62,8 @@ export const shipmentRequestCreate = {
   lineTable: {
     item: '품목',
     itemLabel: (rowIndex: number): string => `${String(rowIndex)}행 품목`,
+    uom: '단위',
+    uomLabel: (rowIndex: number): string => `${String(rowIndex)}행 단위`,
     requestedQty: '요청 수량',
     requestedQtyLabel: (rowIndex: number): string => `${String(rowIndex)}행 요청 수량`,
     availableQty: '가용 수량',
@@ -86,6 +89,7 @@ export const shipmentRequestCreate = {
     erpNotMatched: '—',
   },
   errors: {
+    fulfillmentPlantRequired: '출하 담당 공장을 선택하세요.',
     customerRequired: '고객을 선택하세요.',
     shipToPartnerRequired: '납품처를 선택하세요.',
     requestedShipDateRequired: '출하요청일을 입력하세요.',

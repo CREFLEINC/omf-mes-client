@@ -183,6 +183,27 @@ const routes = (options: Options = {}): StubRoute[] => [
         page,
       }),
   },
+  {
+    match: (req) => new URL(req.url).pathname === '/mdm/code-values',
+    respond: (req) => {
+      options.asked?.push(req.url);
+      return jsonResponse({
+        items:
+          new URL(req.url).searchParams.get('codeGroupCode') === 'VARIANCE_REASON'
+            ? [
+                {
+                  code: 'COUNT_ERROR',
+                  codeName: 'Count error',
+                  nameKo: '계수 오류',
+                  isActive: true,
+                  displayOrder: 1,
+                },
+              ]
+            : [],
+        page,
+      });
+    },
+  },
 ];
 
 const SignedIn = ({ children }: { children: ReactNode }) => {
@@ -294,7 +315,7 @@ describe('실물 카운트 화면', () => {
     mount({ seen });
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
     await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
 
     await waitFor(() => {
@@ -319,6 +340,8 @@ describe('실물 카운트 화면', () => {
     await openLocation(user);
 
     await user.type(await screen.findByLabelText(QTY_LABEL), '0');
+    await user.click(await screen.findByRole('combobox', { name: /차이 사유/ }));
+    await user.click(screen.getByRole('option', { name: '계수 오류' }));
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '이 위치 완료' })).not.toBeDisabled();
@@ -333,6 +356,54 @@ describe('실물 카운트 화면', () => {
     const body = (await seen[0]?.json()) as { lines: { countedQty: number }[] };
 
     expect(body.lines[0]?.countedQty).toBe(0);
+  });
+
+  it('비블라인드 실물 차이는 공통코드 사유 선택 후 그 값을 PUT 본문에 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    const asked: string[] = [];
+    mount({ seen, asked });
+    await openLocation(user);
+    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
+    expect(screen.getByRole('button', { name: '이 위치 완료' })).toBeDisabled();
+    await user.click(await screen.findByRole('combobox', { name: /차이 사유/ }));
+    await user.click(screen.getByRole('option', { name: '계수 오류' }));
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+    await waitFor(() => expect(seen).toHaveLength(1));
+    const body = (await seen[0]?.json()) as {
+      lines: { countedQty: number; varianceReasonCode: string }[];
+    };
+    expect(body.lines[0]).toMatchObject({ countedQty: 118, varianceReasonCode: 'COUNT_ERROR' });
+    expect(asked.some((url) => url.includes('codeGroupCode=VARIANCE_REASON'))).toBe(true);
+  });
+
+  it('블라인드 첫 계수는 사유 없이 원래 흐름으로 보낸다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ blind: true, seen });
+    await openLocation(user);
+    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
+    expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+    await waitFor(() => expect(seen).toHaveLength(1));
+    const body = (await seen[0]?.json()) as { lines: Record<string, unknown>[] };
+    expect(body.lines[0]).not.toHaveProperty('varianceReasonCode');
+  });
+
+  it('블라인드 기존 계수를 그대로 동봉하면 서버에서 받은 계수 시각과 미입력 사유를 보존한다', async () => {
+    const user = userEvent.setup();
+    const seen: Request[] = [];
+    mount({ blind: true, firstCounted: true, seen });
+    await openLocation(user);
+    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
+    expect(screen.queryByRole('combobox', { name: /차이 사유/ })).toBeNull();
+    await user.click(screen.getByRole('button', { name: '이 위치 완료' }));
+    await waitFor(() => expect(seen).toHaveLength(1));
+    const body = (await seen[0]?.json()) as {
+      lines: { countedAt: string; varianceReasonCode?: string }[];
+    };
+    expect(body.lines[0]?.countedAt).toBe('2026-09-07T09:00:00+09:00');
+    expect(body.lines[0]).not.toHaveProperty('varianceReasonCode');
   });
 
   /* 안 센 줄과 0 으로 센 줄이 화면에서도 갈려야 한다. */
@@ -353,7 +424,7 @@ describe('실물 카운트 화면', () => {
     mount();
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
 
     await waitFor(() => {
       expect(screen.getAllByText('아직 세지 않음')).toHaveLength(1);
@@ -442,7 +513,7 @@ describe('실물 카운트 화면', () => {
     mount({ seen });
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
 
     const button = screen.getByRole('button', { name: '이 위치 완료' });
     button.click();
@@ -464,7 +535,7 @@ describe('실물 카운트 화면', () => {
     mount();
     await openLocation(user);
 
-    await user.type(await screen.findByLabelText(QTY_LABEL), '118');
+    await user.type(await screen.findByLabelText(QTY_LABEL), '120');
 
     held.failWrite = 'outbox';
     await user.click(screen.getByRole('button', { name: '이 위치 완료' }));

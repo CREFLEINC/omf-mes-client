@@ -31,6 +31,7 @@ import {
   toReference,
   useAvailableQty,
   useCustomerOptions,
+  useFulfillmentPlantOptions,
   useItemOptions,
   useShipToPartnerOptions,
   useUomOptions,
@@ -60,12 +61,14 @@ const toSelectOptions = (lookup: LookupResult): SelectOption[] =>
   lookup.entries.map((entry) => ({ value: entry.value, label: entry.label }));
 
 interface HeaderDraft {
+  fulfillmentPlantId: string;
   customerId: string;
   shipToPartnerId: string;
   requestedShipDate: string;
 }
 
 const EMPTY_HEADER_DRAFT: HeaderDraft = {
+  fulfillmentPlantId: '',
   customerId: '',
   shipToPartnerId: '',
   requestedShipDate: '',
@@ -120,6 +123,7 @@ export const ShipmentRequestCreateScreen = () => {
   const detail = useSalesOrderDetail(targetSalesOrderId);
 
   const customers = useCustomerOptions();
+  const fulfillmentPlants = useFulfillmentPlantOptions();
   const shipToPartners = useShipToPartnerOptions();
   const items = useItemOptions();
   const uoms = useUomOptions();
@@ -159,6 +163,7 @@ export const ShipmentRequestCreateScreen = () => {
     if (detail.data === undefined) return;
 
     setHeader({
+      fulfillmentPlantId: '',
       customerId: String(detail.data.customerId),
       shipToPartnerId: String(detail.data.shipToPartnerId),
       requestedShipDate: '',
@@ -236,6 +241,7 @@ export const ShipmentRequestCreateScreen = () => {
     const body = toShipmentRequestCreateBody({
       mode,
       salesOrderId: target.kind === 'order' ? target.salesOrderId : null,
+      fulfillmentPlantId: header.fulfillmentPlantId,
       customerId: header.customerId,
       shipToPartnerId: header.shipToPartnerId,
       requestedShipDate: header.requestedShipDate,
@@ -317,11 +323,14 @@ export const ShipmentRequestCreateScreen = () => {
       <AssignmentFormPane
         mode={mode ?? 'standalone'}
         customerId={header.customerId}
+        fulfillmentPlantId={header.fulfillmentPlantId}
         shipToPartnerId={header.shipToPartnerId}
         requestedShipDate={header.requestedShipDate}
         customerOptions={toSelectOptions(customers)}
+        fulfillmentPlantOptions={toSelectOptions(fulfillmentPlants)}
         shipToPartnerOptions={toSelectOptions(shipToPartners)}
         customerLookup={customers}
+        fulfillmentPlantNote={lookupNote(fulfillmentPlants)}
         shipToPartnerLookup={shipToPartners}
         customerNote={lookupNote(customers)}
         shipToPartnerNote={lookupNote(shipToPartners)}

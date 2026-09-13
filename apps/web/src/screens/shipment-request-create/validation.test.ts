@@ -36,20 +36,22 @@ describe('readQty', () => {
 });
 
 describe('validateHeader', () => {
-  it('단독 생성은 고객·납품처·출하요청일이 모두 필수다', () => {
+  it('단독 생성은 공장·고객·납품처·출하요청일이 모두 필수다', () => {
     const errors = validateHeader('standalone', {
+      fulfillmentPlantId: '',
       customerId: '',
       shipToPartnerId: '',
       requestedShipDate: '',
     });
 
     expect(Object.keys(errors)).toEqual(
-      expect.arrayContaining(['customerId', 'shipToPartnerId', 'requestedShipDate']),
+      expect.arrayContaining(['fulfillmentPlantId', 'customerId', 'shipToPartnerId', 'requestedShipDate']),
     );
   });
 
   it('지시서 경유는 고객·납품처를 판정하지 않는다 — 지시서가 채운다', () => {
     const errors = validateHeader('fromOrder', {
+      fulfillmentPlantId: '1',
       customerId: '',
       shipToPartnerId: '',
       requestedShipDate: '2026-08-20',
@@ -60,6 +62,7 @@ describe('validateHeader', () => {
 
   it('출하요청일은 두 모드 모두 필수다', () => {
     const errors = validateHeader('fromOrder', {
+      fulfillmentPlantId: '1',
       customerId: '8201',
       shipToPartnerId: '8211',
       requestedShipDate: '',

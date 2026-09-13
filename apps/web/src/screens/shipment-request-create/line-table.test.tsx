@@ -76,7 +76,7 @@ describe('LineTable — 지시서 경유', () => {
 });
 
 describe('LineTable — 단독 생성', () => {
-  it('품목 선택칸과 요청 수량 입력칸을 낸다(완료 조건 C3)', () => {
+  it('품목·단위 선택칸과 요청 수량 입력칸을 낸다(완료 조건 C3)', () => {
     render(
       <LineTable
         mode="standalone"
@@ -93,7 +93,24 @@ describe('LineTable — 단독 생성', () => {
     );
 
     expect(screen.getByLabelText(t.lineTable.itemLabel(1))).toBeInTheDocument();
+    expect(screen.getByLabelText(t.lineTable.uomLabel(1))).toBeInTheDocument();
     expect(screen.getByLabelText(t.lineTable.requestedQtyLabel(1))).toBeInTheDocument();
+  });
+
+  it('단위를 고르면 줄 초안에 uomId를 반영한다', async () => {
+    const onPatch = vi.fn<(key: string, patch: Record<string, unknown>) => void>();
+    const user = userEvent.setup();
+    const row = emptyLineDraft();
+
+    render(
+      <LineTable mode="standalone" rows={[row]} errors={{}} itemLookup={itemLookup} uomLookup={uomLookup}
+        itemOptions={itemOptions} uomOptions={uomOptions} availableQty={noAvailableQty} onPatch={onPatch} onRemove={vi.fn()} />,
+    );
+
+    await user.click(screen.getByLabelText(t.lineTable.uomLabel(1)));
+    await user.click(screen.getByRole('option', { name: 'SAMPLE-UOM-EA · 개' }));
+
+    expect(onPatch).toHaveBeenCalledWith(row.key, { uomId: '8401' });
   });
 
   it('한 줄뿐이면 행 삭제가 잠긴다', () => {

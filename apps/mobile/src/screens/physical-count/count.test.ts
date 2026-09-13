@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   canSubmit,
   countedLines,
+  needsReason,
   qtyProblemOf,
   queuedForLocationOf,
   toCountDraft,
@@ -19,7 +20,10 @@ const line = (overrides: Partial<DraftLine> = {}): DraftLine => ({
   systemQty: 120,
   counted: false,
   previousQty: null,
+  previousCountedAt: null,
+  previousReasonCode: null,
   qty: '',
+  reasonCode: '',
   ...overrides,
 });
 
@@ -90,35 +94,99 @@ describe('아직 세지 않은 것과 0 으로 센 것', () => {
 });
 
 describe('완료 가능 여부', () => {
-  const lines = [line({ qty: '118' })];
+  const lines = [line({ qty: '118', reasonCode: 'COUNT_ERROR' })];
+  const reasons = ['COUNT_ERROR'];
 
   it('위치를 안 고르면 완료할 수 없다', () => {
-    expect(canSubmit(null, lines, true, 0)).toBe(false);
+    expect(canSubmit(null, lines, true, 0, count(), reasons)).toBe(false);
   });
 
   it('사번이 없으면 완료할 수 없다', () => {
-    expect(canSubmit(location, lines, false, 0)).toBe(false);
+    expect(canSubmit(location, lines, false, 0, count(), reasons)).toBe(false);
   });
 
   it('한 줄도 적지 않으면 완료할 수 없다', () => {
-    expect(canSubmit(location, [line()], true, 0)).toBe(false);
+    expect(canSubmit(location, [line()], true, 0, count(), reasons)).toBe(false);
   });
 
   it('수량이 잘못된 줄이 있으면 완료할 수 없다', () => {
-    expect(canSubmit(location, [line({ qty: '-1' })], true, 0)).toBe(false);
+    expect(canSubmit(location, [line({ qty: '-1' })], true, 0, count(), reasons)).toBe(false);
   });
 
   /* 서버 응답에는 아직 안 간 건이 없다. 큐를 세지 않으면 같은 위치를 두 번 치환한다. */
   it('큐에 이 위치의 전송이 담겨 있으면 완료할 수 없다', () => {
-    expect(canSubmit(location, lines, true, 1)).toBe(false);
+    expect(canSubmit(location, lines, true, 1, count(), reasons)).toBe(false);
   });
 
   it('0 만 적어도 완료한다', () => {
-    expect(canSubmit(location, [line({ qty: '0' })], true, 0)).toBe(true);
+    expect(
+      canSubmit(
+        location,
+        [line({ qty: '0', reasonCode: 'COUNT_ERROR' })],
+        true,
+        0,
+        count(),
+        reasons,
+      ),
+    ).toBe(true);
   });
 
   it('적은 줄이 있고 수량이 맞으면 완료한다', () => {
-    expect(canSubmit(location, lines, true, 0)).toBe(true);
+    expect(canSubmit(location, lines, true, 0, count(), reasons)).toBe(true);
+  });
+
+  it('비블라인드 차이는 활성 사유 선택 전/목록 미수신 시 완료하지 않는다', () => {
+    expect(canSubmit(location, [line({ qty: '118' })], true, 0, count(), reasons)).toBe(false);
+    expect(canSubmit(location, lines, true, 0, count(), [])).toBe(false);
+  });
+});
+
+describe('실사 차이 사유', () => {
+  it('비블라인드 차이와 블라인드 기존 계수 변경은 사유가 필요하다', () => {
+    expect(needsReason(count(), line({ qty: '118' }))).toBe(true);
+    expect(needsReason({ blindCount: true }, line({ qty: '118' }))).toBe(false);
+    expect(
+      needsReason({ blindCount: true }, line({ counted: true, previousQty: 120, qty: '118' })),
+    ).toBe(true);
+  });
+
+  it('블라인드 미보완 라인 무변경 동봉은 원래 계수 시각과 빈 사유를 보존한다', () => {
+    const previous = '2026-09-07T00:00:00.000Z';
+    const blind = { ...count(), blindCount: true };
+    const draft = toCountDraft(
+      blind,
+      3001,
+      [line({ counted: true, previousQty: 118, previousCountedAt: previous, qty: '118' })],
+      new Date('2026-09-07T09:12:00+09:00'),
+      '100028',
+    );
+    const body = draft.body as { lines: { countedAt: string; varianceReasonCode?: string }[] };
+    expect(body.lines[0]?.countedAt).toBe(previous);
+    expect(body.lines[0]).not.toHaveProperty('varianceReasonCode');
+  });
+
+  it('수정 계수는 선택한 사유와 새 계수 시각을 오프라인 본문에 담는다', () => {
+    const now = new Date('2026-09-07T09:12:00+09:00');
+    const draft = toCountDraft(
+      count(),
+      3001,
+      [
+        line({
+          counted: true,
+          previousQty: 120,
+          previousCountedAt: '2026-09-07T00:00:00.000Z',
+          qty: '118',
+          reasonCode: 'COUNT_ERROR',
+        }),
+      ],
+      now,
+      '100028',
+    );
+    const body = draft.body as { lines: { countedAt: string; varianceReasonCode?: string }[] };
+    expect(body.lines[0]).toMatchObject({
+      countedAt: now.toISOString(),
+      varianceReasonCode: 'COUNT_ERROR',
+    });
   });
 });
 

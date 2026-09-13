@@ -23,6 +23,14 @@ const clientSpy = () => {
 };
 
 describe('fetchLabelRendition — 배포본에서는 부르지 않는다', () => {
+  it('지원되는 납품 라벨만 발행 기록의 PNG를 조회한다', async () => {
+    const { get, client } = clientSpy();
+    const bytes = new Uint8Array([137, 80, 78, 71]).buffer;
+    get.mockResolvedValue({ data: bytes, response: new Response(bytes) });
+    await expect(fetchLabelRendition(client, 44101, 'png', 'DELIVERY_LABEL')).resolves.toEqual(bytes);
+    expect(get).toHaveBeenCalledWith('/app/document-issues/{documentIssueLogId}/rendition',
+      expect.objectContaining({ params: { path: { documentIssueLogId: 44101 }, query: { format: 'png' } } }));
+  });
   it('거부한다 — 성공으로 빠지는 길이 없다', async () => {
     const { client } = clientSpy();
 
