@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -965,5 +965,45 @@ describe('ProductionFlowScreen — 잔여수량 초과', () => {
 
     expect(await screen.findByText(t.quantity.remainingNoWorkOrder)).toBeInTheDocument();
     expect(screen.queryByText(t.quantity.remainingUnknown)).not.toBeInTheDocument();
+  });
+});
+
+/* 긴급 W/O 에서 넘어오면 긴급 표식이 머리줄에 남는다(`P-02-12` §5-1 · #1147). */
+describe('ProductionFlowScreen — 긴급 표식', () => {
+  const emergencyWorkOrder: StubRoute = {
+    match: (request) => pathOf(request) === `/production/work-orders/${String(WORK_ORDER_ID)}`,
+    respond: () =>
+      jsonResponse({
+        workOrderId: WORK_ORDER_ID,
+        workOrderNo: 'WO-SYN-001',
+        productionOrderId: 1,
+        productionOrderNo: 'ERP-SYN-001',
+        productionPlanId: 1,
+        routingOperationId: 1,
+        itemId: 101,
+        itemCode: 'ITEM-SYN-01',
+        orderQty: 12,
+        uomId: 1,
+        workOrderTypeCode: 'EMERGENCY',
+        statusCode: 'IN_PROGRESS',
+        priorityNo: 1,
+        progress: { goodQty: 0, varianceQty: 12 },
+      }),
+  };
+
+  const header = (): HTMLElement => screen.getAllByRole('banner')[0] as HTMLElement;
+
+  it('긴급 작업지시면 머리줄에 긴급을 세운다', async () => {
+    renderScreen([], [emergencyWorkOrder]);
+
+    expect(await within(header()).findByText(t.flow.header.emergency)).toBeInTheDocument();
+  });
+
+  it('긴급이 아니면 세우지 않는다', async () => {
+    renderScreen([]);
+
+    await within(header()).findByText(/WO-SYN-001/);
+
+    expect(within(header()).queryByText(t.flow.header.emergency)).not.toBeInTheDocument();
   });
 });

@@ -52,6 +52,7 @@ import {
 import { usePendingPqc, useWorkOrder } from './queries';
 import { buildSaveBody } from './save-request';
 import { useUomLookup } from './uom-lookup';
+import { isEmergency } from './work-order-type';
 
 const t = messages.productionResult;
 
@@ -639,6 +640,14 @@ export const ProductionFlowScreen = () => {
         </h1>
         {workOrder.data === undefined ? null : (
           <p className="pop-context">
+            {/* 긴급 W/O 에서 넘어왔으면 그 사실을 머리줄에 남긴다(`P-02-12` §5-1 · #1147). */}
+            {isEmergency(workOrder.data) && (
+              <>
+                <Chip status="error" size="md">
+                  {t.flow.header.emergency}
+                </Chip>{' '}
+              </>
+            )}
             {`${t.flow.header.erpWorkOrder} ${workOrder.data.productionOrderNo ?? '—'} · ${t.flow.header.workOrder} ${workOrder.data.workOrderNo} · ${t.flow.header.item} ${item.data?.itemCode ?? workOrder.data.itemCode ?? '—'}`}
           </p>
         )}
@@ -709,8 +718,13 @@ export const ProductionFlowScreen = () => {
       )}
 
       <div
+        /*
+         * ⚠ 두 칸 배치는 **태그 카드가 서지 않을 때 전부**다(#1147). 대상 여부를 아직 모르는
+         *    동안(작업지시·품목을 못 받음)에도 카드는 없는데, `false` 일 때만 두 칸으로 두어
+         *    빈 셋째 칸이 생기고 수량·라벨 카드가 좁아졌다(실측 312px · 두 칸이면 474px).
+         */
         className={`production-flow-grid pop-fixed${
-          isTagTarget === false ? ' production-flow-grid-no-tags' : ''
+          isTagTarget === true ? '' : ' production-flow-grid-no-tags'
         }`}
       >
         <Card bordered className="pop-section production-flow-progress">
