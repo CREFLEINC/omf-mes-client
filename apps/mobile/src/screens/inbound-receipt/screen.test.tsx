@@ -506,6 +506,35 @@ describe('입하 등록 화면 — 발주 경로', () => {
   });
 
   /*
+   * 품목과 단위는 다른 조회에서 온다. 그 조회가 비거나 이 품목을 담고 있지 않으면 지금은
+   * 빈 글자가 들어가, 카드에 이름도 단위도 없이 발주 수량만 남는다 - 작업자는 무엇을
+   * 세는지 모르는 채 수량을 적는다. 없으면 없다고 적는다.
+   */
+  it('품목과 단위를 못 찾으면 없다고 적는다', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: () => jsonResponse({ items: [], page }),
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items/31',
+        respond: () => jsonResponse({ message: '없음' }, { status: 404 }),
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/uoms',
+        respond: () => jsonResponse({ items: [], page }),
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user, /품목 정보 없음/);
+
+    /* 라인 카드와 품목·수량 확인 두 자리 모두에 선다. */
+    expect(await screen.findAllByText(/품목 정보 없음/)).toHaveLength(2);
+    expect(screen.getAllByText(/발주 500 단위 없음/)).toHaveLength(2);
+  });
+
+  /*
    * 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다. 총량만 칸 옆에 두면 적는 사람이
    * 그 수에 맞추려 하고, 판정은 다른 수로 나온다.
    */

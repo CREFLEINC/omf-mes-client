@@ -269,14 +269,19 @@ export const InboundReceiptScreen = () => {
    * 상태에서 저장이 여기로 새어 나간다.
    */
   const varianceReady = loaded && plantId !== null && canSubmit(draft, worker !== null);
-  const uom =
-    uoms.data?.get((draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId) ?? -1) ?? '';
+  /*
+   * 단위는 따로 조회한다. 못 찾았을 때 빈 글자를 끼우면 수량 뒤가 그냥 비어, 무엇을 세는
+   * 단위인지 없는 것인지 화면만 보고는 가릴 수 없다.
+   */
+  const uomOf = (uomId: number | null | undefined): string =>
+    uoms.data?.get(uomId ?? -1) ?? t.po.uomUnknown;
+  const uom = uomOf(draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId);
 
   /* 코드와 이름을 함께 보인다. 라벨에는 코드가 찍혀 있고 사람은 이름으로 고른다. */
   const itemLabelOf = (itemId: number): string => {
     const found = itemLabels.data?.get(itemId);
 
-    return found === undefined ? '' : `${found.itemCode} ${found.itemName}`;
+    return found === undefined ? t.po.itemUnknown : `${found.itemCode} ${found.itemName}`;
   };
 
   const qtyMessage = (): string | undefined => {
@@ -643,7 +648,7 @@ export const InboundReceiptScreen = () => {
                             {t.po.lineLabel(
                               itemLabelOf(line.itemId),
                               displayQty(line.orderedQty),
-                              uoms.data?.get(line.uomId) ?? '',
+                              uomOf(line.uomId),
                             )}
                           </strong>
                           <p>{t.po.received(displayQty(line.receivedQty))}</p>
@@ -877,7 +882,7 @@ export const InboundReceiptScreen = () => {
                 <Card.Body className="card-body receipt__card">
                   <strong>
                     {item.data === undefined
-                      ? String(draft.itemId ?? draft.purchaseOrderLine?.itemId ?? '')
+                      ? t.po.itemUnknown
                       : `${item.data.itemCode} ${item.data.itemName}`}
                   </strong>
                   {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
