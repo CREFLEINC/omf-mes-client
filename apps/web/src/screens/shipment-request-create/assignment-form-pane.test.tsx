@@ -22,10 +22,12 @@ const shipToPartnerLookup = {
 
 const baseProps = (overrides: Partial<AssignmentFormPaneProps> = {}): AssignmentFormPaneProps => ({
   mode: 'standalone',
+  fulfillmentPlantId: '8101',
   customerId: '',
   shipToPartnerId: '',
   requestedShipDate: '',
   customerOptions: [{ value: '8201', label: 'SAMPLE-CUST-01 · 합성 고객 가' }],
+  fulfillmentPlantOptions: [{ value: '8101', label: 'SAMPLE-PLANT-01 · 합성 공장 가' }],
   shipToPartnerOptions: [{ value: '8211', label: 'SAMPLE-SHIP-01 · 합성 납품처 가' }],
   customerLookup,
   shipToPartnerLookup,

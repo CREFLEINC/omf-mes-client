@@ -13,6 +13,9 @@ const draft = (overrides: Partial<WorkOrderAssignmentDraft> = {}): WorkOrderAssi
   plannedEquipmentId: '301',
   plannedMoldId: '401',
   plannedShiftId: '',
+  defaultWipLocationId: '601',
+  defaultFgLocationId: '602',
+  defaultScrapLocationId: '603',
   plannedStartAtLocal: '',
   plannedEndAtLocal: '',
   priorityNo: '1',
@@ -48,6 +51,9 @@ const renderPane = (
         { value: '501', label: 'SYN-SHIFT-CURRENT' },
         { value: '502', label: 'SYN-SHIFT-NEXT' },
       ]}
+      defaultWipLocationOptions={[{ value: '601', label: 'SYN-WIP' }]}
+      defaultFgLocationOptions={[{ value: '602', label: 'SYN-FG' }]}
+      defaultScrapLocationOptions={[{ value: '603', label: 'SYN-SCRAP' }]}
       fieldErrors={{}}
       fieldNotes={{}}
       onChange={onChange}
@@ -66,7 +72,7 @@ describe('WorkOrderResourcePane', () => {
     expect(screen.queryByText(t.warning)).toBeNull();
   });
 
-  it('renders four cards in order with five labelled controls and material guidance', () => {
+  it('renders four cards in order with eight labelled controls and material guidance', () => {
     renderPane();
     const pane = screen.getByRole('region', { name: t.pane });
     expect(pane).toHaveClass('work-order-resource-pane');
@@ -87,8 +93,13 @@ describe('WorkOrderResourcePane', () => {
     expect(screen.getByRole('combobox', { name: t.fields.worker })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.mold })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: t.fields.shift })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.fields.defaultWipLocation })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: t.fields.defaultFgLocation })).toBeInTheDocument();
+    expect(
+      screen.getByRole('combobox', { name: t.fields.defaultScrapLocation }),
+    ).toBeInTheDocument();
     expect(screen.getByText(t.materialInfo)).toBeInTheDocument();
-    expect(screen.getAllByRole('combobox')).toHaveLength(5);
+    expect(screen.getAllByRole('combobox')).toHaveLength(8);
   });
 
   it('preserves caller option order and text, owns one clear option, and emits exact patches', async () => {
@@ -153,6 +164,6 @@ describe('WorkOrderResourcePane', () => {
       expect(control).toBeDisabled();
       expect(control).toHaveAccessibleDescription('SYN-SAVE-LOCK');
     }
-    expect(screen.getAllByText('SYN-SAVE-LOCK')).toHaveLength(5);
+    expect(screen.getAllByText('SYN-SAVE-LOCK')).toHaveLength(8);
   });
 });

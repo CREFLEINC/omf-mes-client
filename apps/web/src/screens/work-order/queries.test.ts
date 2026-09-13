@@ -42,6 +42,9 @@ const fact = (workOrderId: number) => ({
   plannedEquipmentId: null,
   plannedMoldId: null,
   plannedShiftId: null,
+  defaultWipLocationId: null,
+  defaultFgLocationId: null,
+  defaultScrapLocationId: null,
   remarks: null,
 });
 
@@ -89,7 +92,13 @@ describe('work-order reads', () => {
     const { fetch, requests } = recordingFetch([
       getRoute(LIST_PATH, {
         items: [
-          { ...workOrder(702), productionLineId: 901, remarks: 'Synthetic remarks', versionNo: 9 },
+          {
+            ...workOrder(702),
+            productionLineId: 901,
+            defaultWipLocationId: 902,
+            remarks: 'Synthetic remarks',
+            versionNo: 9,
+          },
           workOrder(701),
         ],
         page: { page: 3, size: 20, total: 22 },
@@ -105,14 +114,28 @@ describe('work-order reads', () => {
       ['page', '3'],
     ]);
     expect(result.current.data).toEqual({
-      items: [{ ...fact(702), productionLineId: 901, remarks: 'Synthetic remarks' }, fact(701)],
+      items: [
+        {
+          ...fact(702),
+          productionLineId: 901,
+          defaultWipLocationId: 902,
+          remarks: 'Synthetic remarks',
+        },
+        fact(701),
+      ],
       page: { page: 3, size: 20, total: 22 },
     });
   });
 
   it('gets the exact detail path with no search and returns the list fact shape', async () => {
     const { fetch, requests } = recordingFetch([
-      getRoute(DETAIL_PATH, { ...workOrder(702), plannedEquipmentId: 901, versionNo: 9 }),
+      getRoute(DETAIL_PATH, {
+        ...workOrder(702),
+        plannedEquipmentId: 901,
+        defaultFgLocationId: 903,
+        defaultScrapLocationId: 904,
+        versionNo: 9,
+      }),
     ]);
     const { result } = renderHookWithProviders(() => useWorkOrderDetail(702), { fetch });
 
@@ -121,7 +144,12 @@ describe('work-order reads', () => {
     expect(requests).toHaveLength(1);
     expect(requests[0]?.pathname).toBe(DETAIL_PATH);
     expect(requests[0]?.search).toBe('');
-    expect(result.current.data).toEqual({ ...fact(702), plannedEquipmentId: 901 });
+    expect(result.current.data).toEqual({
+      ...fact(702),
+      plannedEquipmentId: 901,
+      defaultFgLocationId: 903,
+      defaultScrapLocationId: 904,
+    });
   });
 
   it('gets validation unchanged in server finding order and null-normalizes an omitted field', async () => {

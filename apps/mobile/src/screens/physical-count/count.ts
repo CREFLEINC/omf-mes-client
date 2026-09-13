@@ -35,7 +35,10 @@ export interface DraftLine {
   counted: boolean;
   /** 이미 센 줄의 이전 값. 덮어쓸 때 무엇을 바꾸는지 보이려고 든다. */
   previousQty: number | null;
+  previousCountedAt: string | null;
+  previousReasonCode: string | null;
   qty: string;
+  reasonCode: string;
 }
 
 export type QtyProblem = 'notNumber' | 'negative';
@@ -70,11 +73,26 @@ export const qtyProblemOf = (line: DraftLine): QtyProblem | null => {
 export const countedLines = (lines: DraftLine[]): DraftLine[] =>
   lines.filter((line) => line.qty.trim() !== '');
 
+/** 장부 차이를 알 수 있는 계수와 기존 블라인드 재계수만 사유를 요구한다. */
+export const needsReason = (
+  count: Pick<InventoryCount, 'blindCount'>,
+  line: DraftLine,
+): boolean => {
+  if (line.qty.trim() === '' || qtyProblemOf(line) !== null) return false;
+  const qty = Number(line.qty.trim());
+  if (count.blindCount) return line.counted && line.previousQty !== qty;
+  if (line.systemQty === null) return true;
+  if (qty === line.systemQty) return false;
+  return !line.counted || line.previousQty !== qty || line.previousReasonCode === null;
+};
+
 export const canSubmit = (
   location: { locationId: number } | null,
   lines: DraftLine[],
   hasWorker: boolean,
   queuedForLocation: number,
+  count: Pick<InventoryCount, 'blindCount'>,
+  activeReasonCodes: readonly string[],
 ): boolean => {
   if (location === null || !hasWorker || queuedForLocation > 0) {
     return false;
@@ -82,7 +100,14 @@ export const canSubmit = (
 
   const counted = countedLines(lines);
 
-  return counted.length > 0 && counted.every((line) => qtyProblemOf(line) === null);
+  return (
+    counted.length > 0 &&
+    counted.every(
+      (line) =>
+        qtyProblemOf(line) === null &&
+        (!needsReason(count, line) || activeReasonCodes.includes(line.reasonCode)),
+    )
+  );
 };
 
 /** 실사 라인 치환 경로. 위치는 경로가 아니라 본문이 든다. */
@@ -134,8 +159,17 @@ export const toCountDraft = (
       lotId: line.lotId,
       countedQty: Number(line.qty.trim()),
       uomId: line.uomId,
-      /* 센 시각은 이 단말의 것이다. 서버가 받은 시각이 아니다. */
-      countedAt: occurredAt,
+      /* 기존 계수를 그대로 동봉할 때는 최초 계수 시각을 보존한다. */
+      countedAt:
+        line.counted &&
+        line.previousQty === Number(line.qty.trim()) &&
+        line.reasonCode === '' &&
+        line.previousCountedAt !== null
+          ? line.previousCountedAt
+          : occurredAt,
+      ...(needsReason(count, line) && line.reasonCode !== ''
+        ? { varianceReasonCode: line.reasonCode }
+        : {}),
     })),
   };
 

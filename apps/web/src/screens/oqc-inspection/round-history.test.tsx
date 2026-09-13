@@ -31,8 +31,8 @@ describe('RoundHistory', () => {
 
     expect(steps).toHaveLength(2);
     /* ⛔ 표시명으로 옮기지 않는다 — 코드 그대로가 오히려 정확하다. */
-    expect(steps[0]).toHaveTextContent(confirmedRound.overallJudgmentCode);
-    expect(steps[1]).toHaveTextContent(reinspectionRound.overallJudgmentCode);
+    expect(steps[0]).toHaveTextContent(confirmedRound.overallJudgmentCode ?? '');
+    expect(steps[1]).toHaveTextContent(reinspectionRound.overallJudgmentCode ?? '');
     expect(steps[0]).toHaveTextContent('합격 480 · 불합격 15 · 보류 5');
   });
 

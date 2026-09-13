@@ -272,22 +272,15 @@ describe('ShippingPackingLabelScreen — 대상 목록', () => {
     expect(issueButton()).toBeDisabled();
   });
 
-  /**
-   * ⛔ **눌리는데 아무 일도 없는 단추를 두지 않는다**(#1093 ③).
-   *
-   * 납품 라벨 발행은 서버가 항상 거부해 화면이 요청 자체를 만들지 않는다. 그 판단은 옳지만
-   * **단추에 반영하지 않으면** 작업자는 누르고 기다리다 다시 누른다 — 확인 창도 성공도
-   * 실패도 없는 그 모양이다.
-   */
-  it('납품라벨 발행 단추는 잠기고 그 사유가 옆에 선다', async () => {
+  it('납품라벨은 합격 대상을 고르면 발행 단추가 열린다', async () => {
     const user = userEvent.setup();
     renderScreen();
 
     await chooseKind(user, '납품라벨');
     await user.click(await rowCheckbox(0));
 
-    expect(await screen.findByText(t.actions.deliveryLocked)).toBeInTheDocument();
-    expect(issueButton()).toBeDisabled();
+    await waitFor(() => expect(issueButton()).toBeEnabled());
+    expect(screen.queryByText(t.actions.deliveryLocked)).toBeNull();
   });
 
   it('종류를 포장라벨로 바꾸면 대상이 취급 단위로 갈린다', async () => {
@@ -565,15 +558,7 @@ describe('ShippingPackingLabelScreen — 발행과 인쇄', () => {
 });
 
 describe('ShippingPackingLabelScreen — 재진입 복구', () => {
-  /*
-   * ⛔⛔ **`DELIVERY_LABEL` 발행은 서버가 항상 422 `INVALID` 로 거부한다**(대응표 P1
-   * 「공용 문서 발행」· I-27 마감 결정 · `codes.ts` 의 `DELIVERY_LABEL_ISSUE_LOCKED`).
-   * 대상 유형 `SHIPMENT_LOT_ALLOCATION` 도 계약 enum 에서 빠졌다 — 원래 이 시험은 복구
-   * 액션이 누락된 OQC 통과 납품 라벨을 자동으로 발행·인쇄까지 잇는 것을 쟀다. 그 발행
-   * 동작 자체를 잠갔으므로, 이제는 «몇 건이 빠졌는지»는 그대로 안내하되 복구 단추는
-   * 눌러도 반응하지 않는지를 잰다 — 눌러도 요청이 나가지 않아야 한다(완료 조건).
-   */
-  it('summary에서 누락된 OQC 통과 납품 라벨의 건수는 안내하지만, 복구 단추는 잠겨 있어 요청을 보내지 않는다', async () => {
+  it('summary에서 누락된 OQC 통과 납품 라벨의 복구 요청을 보낸다', async () => {
     const user = userEvent.setup();
     const requests: { request: Request; body: string }[] = [];
     const save = vi.fn(async () => 'syn://printed');
@@ -616,16 +601,11 @@ describe('ShippingPackingLabelScreen — 재진입 복구', () => {
     });
 
     const deliveryAction = screen.getByRole('button', { name: t.recovery.deliveryAction });
-    expect(deliveryAction).toBeDisabled();
+    await waitFor(() => expect(deliveryAction).toBeEnabled());
 
     await user.click(deliveryAction);
 
-    expect(
-      requests.some(
-        ({ request }) => request.method === 'POST' && pathOf(request) === '/app/document-issues',
-      ),
-    ).toBe(false);
-    expect(save).not.toHaveBeenCalled();
-    expect(requests.some(({ request }) => pathOf(request).endsWith(':report-print'))).toBe(false);
+    await waitFor(() => expect(requests.some(({ request }) =>
+      request.method === 'POST' && pathOf(request) === '/app/document-issues')).toBe(true));
   });
 });

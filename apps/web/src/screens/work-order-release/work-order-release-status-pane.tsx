@@ -24,6 +24,8 @@ const toStatusPresentation = (preconditions: WorkOrderReleasePreconditions): Sta
       return { variant: 'error', message: t.status.validationBlocked };
     case 'validationUnavailable':
       return { variant: 'error', message: t.status.validationUnavailable };
+    case 'missingDefaultLocations':
+      return { variant: 'error', message: t.status.missingDefaultLocations };
     default:
       return { variant: 'error', message: t.status.validationUnavailable };
   }

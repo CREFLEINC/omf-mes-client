@@ -11,6 +11,7 @@ const line = (patch: Partial<ShipmentRequestLineDraft>): ShipmentRequestLineDraf
 });
 
 const baseInput = {
+  fulfillmentPlantId: '8101',
   customerId: '8201',
   shipToPartnerId: '8211',
   requestedShipDate: '2026-08-20',
@@ -34,6 +35,7 @@ describe('toShipmentRequestCreateBody', () => {
     });
 
     expect(body?.salesOrderId).toBe(8101);
+    expect(body?.fulfillmentPlantId).toBe(8101);
     expect(body?.lines).toEqual([
       {
         salesOrderLineId: 8601,
@@ -94,6 +96,7 @@ describe('toShipmentRequestCreateBody', () => {
 
   it('머리 필수 값이 비면 만들지 않는다', () => {
     const body = toShipmentRequestCreateBody({
+      fulfillmentPlantId: '8101',
       customerId: '',
       shipToPartnerId: '8211',
       requestedShipDate: '2026-08-20',

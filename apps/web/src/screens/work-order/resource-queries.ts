@@ -1,5 +1,5 @@
 import type { components } from '@omf-mes/api-client';
-import { useQuery, type UseQueryResult } from '@tanstack/react-query';
+import { useQueries, useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest } from '../../patterns/request';
@@ -7,6 +7,8 @@ import { runRequest } from '../../patterns/request';
 type ProductionLine = components['schemas']['ProductionLine'];
 type Equipment = components['schemas']['Equipment'];
 type Shift = components['schemas']['Shift'];
+type Warehouse = components['schemas']['Warehouse'];
+type Location = components['schemas']['Location'];
 type PageMeta = components['schemas']['PageMeta'];
 
 export interface WorkOrderProductionLineFact {
@@ -42,6 +44,21 @@ export interface WorkOrderShiftFact {
   isActive: boolean;
 }
 
+export interface WorkOrderLocationFact {
+  locationId: number;
+  warehouseId: number;
+  locationCode: string;
+  locationName: string;
+  isActive: boolean;
+}
+
+export interface WorkOrderLocationLookup {
+  items: WorkOrderLocationFact[];
+  truncated: boolean;
+  isPending: boolean;
+  isError: boolean;
+}
+
 export interface WorkOrderResourceList<TItem> {
   items: TItem[];
   page: PageMeta;
@@ -56,6 +73,9 @@ export const workOrderResourceKeys = {
     ['work-order-resources', 'equipments', plantId, productionLineId, page] as const,
   shifts: (plantId: number | null, page: number) =>
     ['work-order-resources', 'shifts', plantId, page] as const,
+  warehouses: ['work-order-resources', 'warehouses'] as const,
+  locations: (warehouseId: number) =>
+    ['work-order-resources', 'locations', warehouseId] as const,
 };
 
 export const toWorkOrderProductionLineFact = (
@@ -91,6 +111,14 @@ export const toWorkOrderShiftFact = (shift: Shift): WorkOrderShiftFact => ({
   endTime: shift.endTime,
   crossesMidnight: shift.crossesMidnight,
   isActive: shift.isActive,
+});
+
+const toWorkOrderLocationFact = (location: Location): WorkOrderLocationFact => ({
+  locationId: location.locationId,
+  warehouseId: location.warehouseId,
+  locationCode: location.locationCode,
+  locationName: location.locationName,
+  isActive: location.isActive,
 });
 
 const toResourceList = <TSource, TFact>(
@@ -187,4 +215,44 @@ export const useWorkOrderShifts = (
       );
     },
   });
+};
+
+/**
+ * 작업지시는 기본 위치의 창고를 별도로 갖지 않는다. Location API가 창고를 필수로 받으므로
+ * 실제 창고별 목록을 합쳐 선택한다. 창고 ID를 화면이나 시드에 고정하지 않는다.
+ */
+export const useWorkOrderLocations = (): WorkOrderLocationLookup => {
+  const { client } = useApiClient();
+  const warehouses = useQuery({
+    queryKey: workOrderResourceKeys.warehouses,
+    queryFn: () =>
+      runRequest(() =>
+        client.GET('/mdm/warehouses', { params: { query: { includeInactive: true, size: 200 } } }),
+      ),
+  });
+  const activeWarehouseIds =
+    warehouses.data?.items.filter((warehouse) => warehouse.isActive).map((warehouse) => warehouse.warehouseId) ??
+    [];
+  const locations = useQueries({
+    queries: activeWarehouseIds.map((warehouseId) => ({
+      queryKey: workOrderResourceKeys.locations(warehouseId),
+      queryFn: () =>
+        runRequest(() =>
+          client.GET('/mdm/locations', {
+            params: { query: { warehouseId, includeInactive: true, size: 200 } },
+          }),
+        ),
+    })),
+  });
+
+  return {
+    items: locations.flatMap((query) => query.data?.items.map(toWorkOrderLocationFact) ?? []),
+    truncated:
+      (warehouses.data !== undefined && warehouses.data.page.total > warehouses.data.items.length) ||
+      locations.some(
+        (query) => query.data !== undefined && query.data.page.total > query.data.items.length,
+      ),
+    isPending: warehouses.isPending || locations.some((query) => query.isPending),
+    isError: warehouses.isError || locations.some((query) => query.isError),
+  };
 };

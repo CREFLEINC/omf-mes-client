@@ -11,6 +11,7 @@ import {
 } from '../../test/api-harness';
 import {
   useWorkOrderEquipments,
+  useWorkOrderLocations,
   useWorkOrderProductionLines,
   useWorkOrderShifts,
   workOrderResourceKeys,
@@ -19,6 +20,8 @@ import {
 const LINES_PATH = '/mdm/production-lines';
 const EQUIPMENTS_PATH = '/mdm/equipments';
 const SHIFTS_PATH = '/mdm/shifts';
+const WAREHOUSES_PATH = '/mdm/warehouses';
+const LOCATIONS_PATH = '/mdm/locations';
 
 interface RecordedRequest {
   method: string;
@@ -52,6 +55,22 @@ const shift = (shiftId: number) => ({
   startTime: '20:00:00',
   endTime: '08:00:00',
   crossesMidnight: true,
+  isActive: true,
+});
+
+const warehouse = (warehouseId: number, isActive = true) => ({
+  warehouseId,
+  warehouseCode: `SYN-WH-${warehouseId}`,
+  warehouseName: `Synthetic warehouse ${warehouseId}`,
+  warehouseTypeCode: 'MATERIAL',
+  isActive,
+});
+
+const location = (locationId: number, warehouseId: number) => ({
+  locationId,
+  warehouseId,
+  locationCode: `SYN-LOC-${locationId}`,
+  locationName: `Synthetic location ${locationId}`,
   isActive: true,
 });
 
@@ -92,6 +111,47 @@ describe('workOrderResourceKeys', () => {
 });
 
 describe('work-order resource queries', () => {
+  it('loads actual locations from every active warehouse without fixing a seed warehouse ID', async () => {
+    const { fetch, requests } = recordingFetch([
+      getRoute(WAREHOUSES_PATH, {
+        items: [warehouse(34), warehouse(35), warehouse(36, false)],
+        page: { page: 1, size: 200, total: 3 },
+      }),
+      {
+        match: (request) =>
+          request.method === 'GET' &&
+          new URL(request.url).pathname === LOCATIONS_PATH &&
+          new URL(request.url).searchParams.get('warehouseId') === '34',
+        respond: () =>
+          jsonResponse({ items: [location(601, 34)], page: { page: 1, size: 200, total: 1 } }),
+      },
+      {
+        match: (request) =>
+          request.method === 'GET' &&
+          new URL(request.url).pathname === LOCATIONS_PATH &&
+          new URL(request.url).searchParams.get('warehouseId') === '35',
+        respond: () =>
+          jsonResponse({ items: [location(602, 35)], page: { page: 1, size: 200, total: 1 } }),
+      },
+    ]);
+    const { result } = renderHookWithProviders(() => useWorkOrderLocations(), { fetch });
+
+    await waitFor(() => expect(result.current.isPending).toBe(false));
+
+    expect(requests.map((request) => request.url.pathname)).toEqual([
+      WAREHOUSES_PATH,
+      LOCATIONS_PATH,
+      LOCATIONS_PATH,
+    ]);
+    expect(
+      requests
+        .filter((request) => request.url.pathname === LOCATIONS_PATH)
+        .map((request) => request.url.searchParams.get('warehouseId')),
+    ).toEqual(['34', '35']);
+    expect(result.current.items).toEqual([location(601, 34), location(602, 35)]);
+    expect(result.current.truncated).toBe(false);
+  });
+
   it('keeps all queries idle without a plant and sends zero fallback requests', () => {
     const { fetch, requests } = recordingFetch([]);
     const { result } = renderHookWithProviders(

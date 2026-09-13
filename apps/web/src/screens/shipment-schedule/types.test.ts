@@ -87,9 +87,7 @@ describe('toShipmentRequestView', () => {
   });
 
   it('lines가 없어도 검사 상태는 응답 값 그대로다 — 합계만 null이 된다', () => {
-    const { lines: _lines, ...withoutLines } = RESPONSE;
-
-    expect(toShipmentRequestView(withoutLines)).toMatchObject({
+    expect(toShipmentRequestView({ ...RESPONSE, lines: [] })).toMatchObject({
       inspectionStatus: 'NOT_REQUIRED',
       lineTotals: null,
     });

@@ -132,7 +132,7 @@ export interface LotHoldEventView {
   lotId: number;
   lotNo: string;
   itemId: number | null;
-  actorId: number;
+  actorId: number | null;
   actorName: string | null;
   reasonCode: string | null;
   holdQty: number | null;
@@ -148,7 +148,7 @@ export const toLotHoldEventView = (value: LotHoldEventResponse): LotHoldEventVie
   lotId: value.lotId,
   lotNo: value.lotNo,
   itemId: value.itemId ?? null,
-  actorId: value.actorId,
+  actorId: value.actorId ?? null,
   actorName: value.actorName ?? null,
   reasonCode: value.reasonCode ?? null,
   holdQty: value.holdQty ?? null,

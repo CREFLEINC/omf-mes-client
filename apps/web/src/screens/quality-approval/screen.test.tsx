@@ -110,7 +110,7 @@ const concession: Concession = {
   allowedWorkOrderId: 1_201,
   allowedProcessId: 1_301,
   allowedCustomerId: 1_401,
-  unrestrictedAxes: ['SYNTH-UNDEFINED-AXIS'],
+  unrestrictedAxes: ['allowedProcessId'],
   approvalRequestId: 31,
   statusCode: 'SYNTH-ACTIVE',
   usable: false,

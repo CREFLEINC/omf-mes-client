@@ -104,9 +104,9 @@ export const PackingResultScreen = () => {
   const shipmentAllocations = useShipmentAllocations(shipmentId);
   const progress = toProgress(shipmentAllocations.allocations);
   /*
-   * ⛔⛔ **`ShipmentLotAllocation.shippingInspectionStatusCode` 가 계약에서 빠졌다**(생성 타입
-   * `components['schemas']['ShipmentLotAllocation']` · 2026-09-11 전달본 — 다섯 상태값
-   * (`NOT_REQUIRED`·`PENDING`·`PASSED`·`REJECTED`·`HELD`) 중 어느 것도 더는 내려오지 않는다).
+   * ⛔⛔ **`ShipmentLotAllocation.shippingInspectionStatusCode` 는 목표 선택 필드다**.
+   * 현행 서버는 다섯 상태값(`NOT_REQUIRED`·`PENDING`·`PASSED`·`REJECTED`·`HELD`)
+   * 중 어느 것도 배분 응답에 아직 싣지 않는다.
    * 남은 것은 `oqcPassed`(불리언)뿐인데, 계약이 「검사 대상이 아닌 배분도 true 로 내린다」고
    * 못박아 **`NOT_REQUIRED` 와 `PASSED` 를 한 값으로 묶는다** — 그 값으로 다섯 상태 중 하나를
    * 되짚으면 실제로는 「대기·불합격·보류」였던 배분이 「합격」처럼 보일 수 있다(추측 금지).

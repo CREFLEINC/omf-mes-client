@@ -23,7 +23,7 @@ describe('RoundHistory', () => {
     render(<RoundHistory rounds={[toInspectionResultRound(confirmedRound)]} />);
 
     expect(screen.getByText(t.heading)).toBeInTheDocument();
-    expect(screen.getByText(confirmedRound.overallJudgmentCode)).toBeInTheDocument();
+    expect(screen.getByText(confirmedRound.overallJudgmentCode ?? '')).toBeInTheDocument();
     expect(
       screen.getByText(formatDateTime(confirmedRound.confirmedAt as string)),
     ).toBeInTheDocument();

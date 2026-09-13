@@ -21,6 +21,7 @@ import { useWorkOrderMolds, useWorkOrderWorkers } from './people-tool-queries';
 import { useWorkOrderDetail, useWorkOrderValidation, type WorkOrderFact } from './queries';
 import {
   useWorkOrderEquipments,
+  useWorkOrderLocations,
   useWorkOrderProductionLines,
   useWorkOrderShifts,
 } from './resource-queries';
@@ -73,6 +74,7 @@ export const WorkOrderAssignmentEditorSession = ({
   const workers = useWorkOrderWorkers(plantId, 1);
   const molds = useWorkOrderMolds(plantId, 1);
   const shifts = useWorkOrderShifts(plantId, 1);
+  const locations = useWorkOrderLocations();
   const validationQuery = useWorkOrderValidation(workOrder.workOrderId);
   const update = useUpdateWorkOrder({
     workOrderId: workOrder.workOrderId,
@@ -153,6 +155,13 @@ export const WorkOrderAssignmentEditorSession = ({
         item.isActive,
       ),
   );
+  const locationSource: LookupSource = {
+    entries: locations.items.map((item) =>
+      entry(item.locationId, item.locationCode, item.locationName, item.isActive),
+    ),
+    isLoading: locations.isPending,
+    isError: locations.isError,
+  };
   const fieldErrors = mergeWorkOrderAssignmentFieldErrors(
     Object.fromEntries(
       Object.entries(validation.fieldErrors).map(([field, error]) => [
@@ -192,6 +201,9 @@ export const WorkOrderAssignmentEditorSession = ({
           responsibleWorkerOptions={options(workerSource, effectiveDraft.responsibleWorkerId)}
           plannedMoldOptions={options(moldSource, effectiveDraft.plannedMoldId)}
           plannedShiftOptions={options(shiftSource, effectiveDraft.plannedShiftId)}
+          defaultWipLocationOptions={options(locationSource, effectiveDraft.defaultWipLocationId)}
+          defaultFgLocationOptions={options(locationSource, effectiveDraft.defaultFgLocationId)}
+          defaultScrapLocationOptions={options(locationSource, effectiveDraft.defaultScrapLocationId)}
           fieldErrors={fieldErrors}
           fieldNotes={{
             productionLineId: lookupNote(lineSource, lines.data?.truncated),
@@ -199,6 +211,9 @@ export const WorkOrderAssignmentEditorSession = ({
             responsibleWorkerId: lookupNote(workerSource, workers.data?.truncated),
             plannedMoldId: lookupNote(moldSource, molds.data?.truncated),
             plannedShiftId: lookupNote(shiftSource, shifts.data?.truncated),
+            defaultWipLocationId: lookupNote(locationSource, locations.truncated),
+            defaultFgLocationId: lookupNote(locationSource, locations.truncated),
+            defaultScrapLocationId: lookupNote(locationSource, locations.truncated),
           }}
           disabled={lockReason !== null}
           disabledReason={lockReason ?? undefined}

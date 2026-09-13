@@ -11,6 +11,11 @@ const RESOURCE_FIELDS = [
   'plannedMoldId',
   'plannedShiftId',
 ] as const;
+const LOCATION_FIELDS = [
+  'defaultWipLocationId',
+  'defaultFgLocationId',
+  'defaultScrapLocationId',
+] as const;
 const DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/;
 
 export interface WorkOrderAssignmentDraft {
@@ -19,6 +24,9 @@ export interface WorkOrderAssignmentDraft {
   plannedEquipmentId: string;
   plannedMoldId: string;
   plannedShiftId: string;
+  defaultWipLocationId: string;
+  defaultFgLocationId: string;
+  defaultScrapLocationId: string;
   plannedStartAtLocal: string;
   plannedEndAtLocal: string;
   priorityNo: string;
@@ -50,6 +58,17 @@ const offsetText = (at: Date): string => {
 };
 
 const toOffsetDateTime = (local: string, at: Date): string => `${local}:00${offsetText(at)}`;
+
+const toLocalDateTime = (value: string | null): string => {
+  if (value === null) return '';
+
+  const instant = new Date(value);
+  if (Number.isNaN(instant.getTime())) return '';
+
+  return `${String(instant.getFullYear()).padStart(4, '0')}-${pad(instant.getMonth() + 1)}-${pad(
+    instant.getDate(),
+  )}T${pad(instant.getHours())}:${pad(instant.getMinutes())}`;
+};
 
 const toNullableId = (value: string): number | null => {
   const trimmed = value.trim();
@@ -87,8 +106,11 @@ export const workOrderAssignmentDraftFrom = (fact: WorkOrderFact): WorkOrderAssi
   plannedEquipmentId: fact.plannedEquipmentId?.toString() ?? '',
   plannedMoldId: fact.plannedMoldId?.toString() ?? '',
   plannedShiftId: fact.plannedShiftId?.toString() ?? '',
-  plannedStartAtLocal: fact.plannedStartAt?.slice(0, 16) ?? '',
-  plannedEndAtLocal: fact.plannedEndAt?.slice(0, 16) ?? '',
+  defaultWipLocationId: fact.defaultWipLocationId?.toString() ?? '',
+  defaultFgLocationId: fact.defaultFgLocationId?.toString() ?? '',
+  defaultScrapLocationId: fact.defaultScrapLocationId?.toString() ?? '',
+  plannedStartAtLocal: toLocalDateTime(fact.plannedStartAt),
+  plannedEndAtLocal: toLocalDateTime(fact.plannedEndAt),
   priorityNo: fact.priorityNo.toString(),
 });
 
@@ -98,6 +120,12 @@ export const validateWorkOrderAssignmentDraft = (
   const fieldErrors: WorkOrderAssignmentFieldErrors = {};
 
   for (const field of RESOURCE_FIELDS) {
+    const value = draft[field].trim();
+    if (value !== '' && !isPositiveSafeInteger(Number(value))) {
+      fieldErrors[field] = 'INVALID_SELECTION';
+    }
+  }
+  for (const field of LOCATION_FIELDS) {
     const value = draft[field].trim();
     if (value !== '' && !isPositiveSafeInteger(Number(value))) {
       fieldErrors[field] = 'INVALID_SELECTION';
@@ -153,6 +181,9 @@ export const toWorkOrderAssignmentUpdate = (
     plannedEquipmentId: toNullableId(draft.plannedEquipmentId),
     plannedMoldId: toNullableId(draft.plannedMoldId),
     plannedShiftId: toNullableId(draft.plannedShiftId),
+    defaultWipLocationId: toNullableId(draft.defaultWipLocationId),
+    defaultFgLocationId: toNullableId(draft.defaultFgLocationId),
+    defaultScrapLocationId: toNullableId(draft.defaultScrapLocationId),
     plannedStartAt:
       draft.plannedStartAtLocal === '' ? null : toOffsetDateTime(draft.plannedStartAtLocal, at),
     plannedEndAt:

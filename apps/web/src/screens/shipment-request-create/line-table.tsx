@@ -153,6 +153,27 @@ export const LineTable = ({
         ),
     },
     {
+      key: 'uom',
+      header: t.lineTable.uom,
+      width: '144px',
+      render: (row, rowIndex) =>
+        isFromOrder ? (
+          uomNameOf(row)
+        ) : (
+          <Select
+            size="sm"
+            options={uomOptions}
+            value={row.uomId === '' ? null : row.uomId}
+            invalid={errorOf(row, 'uomId') !== undefined}
+            disabled={isLocked}
+            aria-label={t.lineTable.uomLabel(rowIndex + 1)}
+            onChange={(value) => {
+              onPatch(row.key, { uomId: value });
+            }}
+          />
+        ),
+    },
+    {
       key: 'availableQty',
       header: t.lineTable.availableQty,
       align: 'end',

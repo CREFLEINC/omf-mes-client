@@ -12,6 +12,9 @@ const RESOURCE_FIELDS = [
   'responsibleWorkerId',
   'plannedMoldId',
   'plannedShiftId',
+  'defaultWipLocationId',
+  'defaultFgLocationId',
+  'defaultScrapLocationId',
 ] as const;
 
 type ResourceField = (typeof RESOURCE_FIELDS)[number];
@@ -29,6 +32,9 @@ export interface WorkOrderResourcePaneProps {
   responsibleWorkerOptions: WorkOrderResourceOption[];
   plannedMoldOptions: WorkOrderResourceOption[];
   plannedShiftOptions: WorkOrderResourceOption[];
+  defaultWipLocationOptions: WorkOrderResourceOption[];
+  defaultFgLocationOptions: WorkOrderResourceOption[];
+  defaultScrapLocationOptions: WorkOrderResourceOption[];
   fieldErrors: Partial<Record<ResourceField, string>>;
   fieldNotes: Partial<Record<ResourceField, string>>;
   disabled?: boolean;
@@ -101,6 +107,9 @@ export const WorkOrderResourcePane = ({
   responsibleWorkerOptions,
   plannedMoldOptions,
   plannedShiftOptions,
+  defaultWipLocationOptions,
+  defaultFgLocationOptions,
+  defaultScrapLocationOptions,
   fieldErrors,
   fieldNotes,
   disabled = false,
@@ -166,6 +175,9 @@ export const WorkOrderResourcePane = ({
           </Card.Header>
           <Card.Body>
             <AlertBanner variant="info">{t.materialInfo}</AlertBanner>
+            {select('defaultWipLocationId', t.fields.defaultWipLocation, defaultWipLocationOptions)}
+            {select('defaultFgLocationId', t.fields.defaultFgLocation, defaultFgLocationOptions)}
+            {select('defaultScrapLocationId', t.fields.defaultScrapLocation, defaultScrapLocationOptions)}
           </Card.Body>
         </Card>
       </div>

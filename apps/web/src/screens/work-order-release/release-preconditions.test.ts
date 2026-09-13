@@ -105,7 +105,7 @@ describe('work-order release preconditions', () => {
     [911, null, null, ['finishedGoods', 'scrap']],
     [null, null, null, ['wip', 'finishedGoods', 'scrap']],
   ] as const)(
-    'keeps missing default locations as ordered warnings: %s, %s, %s',
+    'blocks release when default locations are missing: %s, %s, %s',
     (
       defaultWipLocationId,
       defaultFgLocationId,
@@ -117,7 +117,11 @@ describe('work-order release preconditions', () => {
           releaseFact({ defaultWipLocationId, defaultFgLocationId, defaultScrapLocationId }),
           report(),
         ),
-      ).toEqual({ passesStaticGate: true, blockReason: null, missingDefaultLocations });
+      ).toEqual({
+        passesStaticGate: missingDefaultLocations.length === 0,
+        blockReason: missingDefaultLocations.length === 0 ? null : 'missingDefaultLocations',
+        missingDefaultLocations,
+      });
     },
   );
 

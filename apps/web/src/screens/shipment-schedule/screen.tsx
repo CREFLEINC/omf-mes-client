@@ -1,6 +1,6 @@
-import { Breadcrumb, PageHeader, type SortState } from '@crefle/web-ui';
+import { Breadcrumb, Button, PageHeader, Select, type SortState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { LoadErrorBanner } from './load-error-banner';
@@ -9,13 +9,15 @@ import {
   lookupNote,
   toReference,
   useCustomerOptions,
+  useFulfillmentPlantOptions,
   useShipToPartnerOptions,
   type LookupResult,
 } from './lookups';
 import { PageNav } from './page-nav';
 import { toPageView } from './pagination';
 import { readPeriod, toPeriodQuery, validatePeriod, type PeriodInput } from './period';
-import { useShipmentScheduleList } from './queries';
+import { useFulfillmentPlantUpdate, useShipmentRequestDetail, useShipmentScheduleList } from './queries';
+import { SaveErrorBanner } from '../../patterns/master';
 import { ShipmentFilterBar } from './shipment-filter-bar';
 import { ShipmentTable } from './shipment-table';
 import { nextSortKey, readSortKey, toSortQuery } from './sort';
@@ -87,6 +89,16 @@ export const ShipmentScheduleScreen = () => {
 
   const customers = useCustomerOptions();
   const shipToPartners = useShipToPartnerOptions();
+  const fulfillmentPlants = useFulfillmentPlantOptions();
+  const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
+  const [fulfillmentPlantId, setFulfillmentPlantId] = useState('');
+  const selectedDetail = useShipmentRequestDetail(selectedRequestId);
+  const updatePlant = useFulfillmentPlantUpdate(selectedRequestId);
+
+  useEffect(() => {
+    if (selectedDetail.data === undefined) return;
+    setFulfillmentPlantId(selectedDetail.data.fulfillmentPlantId == null ? '' : String(selectedDetail.data.fulfillmentPlantId));
+  }, [selectedDetail.data]);
 
   /**
    * 조건을 주소에 반영한다. 주소가 정본이라 조회는 주소가 바뀐 결과로 일어난다.
@@ -175,6 +187,10 @@ export const ShipmentScheduleScreen = () => {
                 applyQuery(period, filters, sortKey);
               }}
               onRetryReferences={retryReferences}
+              onAssignPlant={(shipmentRequestId) => {
+                setSelectedRequestId(shipmentRequestId);
+                updatePlant.reset();
+              }}
             />
             {listQuery !== null && !list.isPending && (
               <PageNav
@@ -187,6 +203,47 @@ export const ShipmentScheduleScreen = () => {
           </>
         )}
       </section>
+
+      {selectedRequestId !== null && (
+        <section className="pane" aria-label={t.panes.fulfillmentPlant}>
+          {selectedDetail.isPending && <p>{t.loading.detail}</p>}
+          {selectedDetail.isError && (
+            <LoadErrorBanner error={selectedDetail.error} onRetry={() => { void selectedDetail.refetch(); }} />
+          )}
+          {selectedDetail.data !== undefined && (
+            <div className="form-grid">
+              <div className="field-cell wide-select">
+                <label className="field-label" htmlFor="shipment-fulfillment-plant">
+                  {t.fields.fulfillmentPlant}
+                </label>
+                <Select
+                  id="shipment-fulfillment-plant"
+                  options={toSelectOptions(fulfillmentPlants)}
+                  value={fulfillmentPlantId === '' ? null : fulfillmentPlantId}
+                  disabled={updatePlant.isSaving}
+                  invalid={updatePlant.fieldErrors.fulfillmentPlantId !== undefined}
+                  onChange={(value) => {
+                    setFulfillmentPlantId(value);
+                    updatePlant.clearFieldError('fulfillmentPlantId');
+                  }}
+                />
+                {updatePlant.fieldErrors.fulfillmentPlantId !== undefined && (
+                  <span className="field-error">{updatePlant.fieldErrors.fulfillmentPlantId}</span>
+                )}
+              </div>
+              <div className="field-cell">
+                <Button
+                  disabled={fulfillmentPlantId === '' || updatePlant.isSaving}
+                  onClick={() => { updatePlant.write({ fulfillmentPlantId: Number(fulfillmentPlantId) }); }}
+                >
+                  {t.actions.savePlant}
+                </Button>
+              </div>
+            </div>
+          )}
+          <SaveErrorBanner error={updatePlant.error} />
+        </section>
+      )}
     </>
   );
 };

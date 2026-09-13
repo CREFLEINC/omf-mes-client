@@ -32,10 +32,10 @@ const pagedRoute = (pages: ReturnType<typeof worker>[][], seen: URL[]): StubRout
   respond: (request) => {
     const url = new URL(request.url);
     seen.push(url);
-    const page = Number(url.searchParams.get('page') ?? '0');
+    const page = Number(url.searchParams.get('page') ?? '1');
     const total = pages.reduce((count, items) => count + items.length, 0);
 
-    return jsonResponse({ items: pages[page] ?? [], page: { page, size: 100, total } });
+    return jsonResponse({ items: pages[page - 1] ?? [], page: { page, size: 100, total } });
   },
 });
 
@@ -61,8 +61,24 @@ describe('작업자 목록 수신', () => {
     const entries = await fetchWorkerDirectory(clientWith([pagedRoute([first, second], seen)]), 7);
 
     expect(entries).toHaveLength(102);
-    expect(seen.map((url) => url.searchParams.get('page'))).toEqual(['0', '1']);
+    expect(seen.map((url) => url.searchParams.get('page'))).toEqual(['1', '2']);
     expect(entries.at(-1)?.workerNo).toBe('SYN-W-0102');
+  });
+
+  it('458명을 5페이지로 받을 때 중복 없이 마지막 58명까지 받는다', async () => {
+    const seen: URL[] = [];
+    const pages = Array.from({ length: 5 }, (_, pageIndex) =>
+      Array.from({ length: pageIndex === 4 ? 58 : 100 }, (_, itemIndex) =>
+        worker(pageIndex * 100 + itemIndex + 1),
+      ),
+    );
+
+    const entries = await fetchWorkerDirectory(clientWith([pagedRoute(pages, seen)]), 7);
+
+    expect(entries).toHaveLength(458);
+    expect(new Set(entries.map((entry) => entry.workerNo))).toHaveLength(458);
+    expect(seen.map((url) => url.searchParams.get('page'))).toEqual(['1', '2', '3', '4', '5']);
+    expect(entries.at(-1)?.workerNo).toBe('SYN-W-0458');
   });
 
   /* total 이 실제보다 크면 빈 페이지를 영원히 청하게 된다. */
@@ -73,10 +89,10 @@ describe('작업자 목록 수신', () => {
       respond: (request) => {
         const url = new URL(request.url);
         seen.push(url);
-        const page = Number(url.searchParams.get('page') ?? '0');
+        const page = Number(url.searchParams.get('page') ?? '1');
 
         return jsonResponse({
-          items: page === 0 ? [worker(1)] : [],
+          items: page === 1 ? [worker(1)] : [],
           page: { page, size: 100, total: 9999 },
         });
       },

@@ -34,6 +34,7 @@ const workOrder = (overrides: Record<string, unknown> = {}) => ({
   orderQty: 120,
   uomId: 904,
   workOrderTypeCode: 'SYN_NORMAL',
+  processId: 901,
   priorityNo: 2,
   statusCode: 'SYN_RELEASED',
   releasedAt: '2026-08-26T10:00:00+09:00',

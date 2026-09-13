@@ -5,7 +5,11 @@ export const WORK_ORDER_RELEASE_LOCATION_KINDS = ['wip', 'finishedGoods', 'scrap
 
 export type WorkOrderReleaseLocationKind = (typeof WORK_ORDER_RELEASE_LOCATION_KINDS)[number];
 export type WorkOrderReleaseBlockReason =
-  'noSelection' | 'validationUnavailable' | 'validationBlocked' | 'alreadyReleased';
+  | 'noSelection'
+  | 'validationUnavailable'
+  | 'validationBlocked'
+  | 'missingDefaultLocations'
+  | 'alreadyReleased';
 
 export interface WorkOrderReleasePreconditions {
   passesStaticGate: boolean;
@@ -62,5 +66,13 @@ export const deriveWorkOrderReleasePreconditions = (
     };
   }
 
-  return { passesStaticGate: true, blockReason: null, missingDefaultLocations: missingLocations };
+  if (missingLocations.length > 0) {
+    return {
+      passesStaticGate: false,
+      blockReason: 'missingDefaultLocations',
+      missingDefaultLocations: missingLocations,
+    };
+  }
+
+  return { passesStaticGate: true, blockReason: null, missingDefaultLocations: [] };
 };

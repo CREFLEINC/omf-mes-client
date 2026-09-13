@@ -136,6 +136,8 @@ export const workOrderRelease: Translated<typeof ko.workOrderRelease> = {
     validationBlocked: 'Hãy xử lý các mục bị chặn trong kết quả kiểm tra rồi xem lại.',
     validationUnavailable:
       'Không tải được kết quả kiểm tra. Hãy chọn lại hoặc làm mới trang rồi tiếp tục.',
+    missingDefaultLocations:
+      'Hãy thiết lập vị trí WIP, thành phẩm và phế liệu mặc định rồi kiểm tra lại.',
   },
   locations: {
     missingTitle: 'Thiếu vị trí mặc định',
