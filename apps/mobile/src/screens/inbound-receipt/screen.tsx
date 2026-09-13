@@ -235,9 +235,10 @@ export const InboundReceiptScreen = () => {
 
   const started = draft.supplierLotNo !== '' || draft.supplierLotMissing;
   const received = Number(draft.receivedQty.trim());
-  /* 서버의 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 초과가 초과로 보이지 않는다. */
   /*
-   * 라인마다 따로 센다. 카드와 판정이 다른 함수로 세면 담아 둔 것이 있는 라인에서 카드는
+   * 서버의 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 초과가 초과로 보이지 않는다.
+   *
+   * 라인마다 따로 센다. 카드와 판정이 다른 수를 세면 담아 둔 것이 있는 라인에서 카드는
    * 남은 예정 500, 그 카드를 누른 뒤 수량 칸은 0 이 된다 - 고치려던 어긋남이 그대로 남는다.
    */
   const queuedFor = (purchaseOrderLineId: number): number =>
@@ -643,53 +644,56 @@ export const InboundReceiptScreen = () => {
                   <AlertBanner variant="warning" title={t.po.linesNone} />
                 ) : null}
                 <ul className="receipt__lines">
-                  {(lines.data ?? []).map((line: PurchaseOrderLine) => (
-                    <li key={line.purchaseOrderLineId}>
-                      <Card
-                        bordered
-                        interactive
-                        onClick={() => {
-                          patch({ purchaseOrderLine: line });
-                        }}
-                      >
-                        <Card.Body className="card-body receipt__line">
-                          <strong>
-                            {t.po.lineLabel(
-                              itemLabelOf(line.itemId),
-                              String(line.orderedQty),
-                              uomOf(line.uomId),
-                            )}
-                          </strong>
-                          <p>{t.po.received(String(line.receivedQty))}</p>
-                          {/*
-                           * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다.
-                           * 견주는 수를 카드가 직접 말하지 않으면 발주량대로 적게 된다.
-                           */}
-                          <p>
-                            {t.po.lineRemaining(
-                              String(remainingQtyOf(line, queuedFor(line.purchaseOrderLineId))),
-                            )}
-                            {remainingQtyOf(line, queuedFor(line.purchaseOrderLineId)) > 0 ? null : (
-                              <>
-                                {' · '}
-                                <strong>{t.po.lineClosed}</strong>
-                              </>
-                            )}
-                          </p>
-                          <p>
-                            {t.po.tolerance(
-                              String(line.toleranceOverQty),
-                              String(line.toleranceUnderQty),
-                            )}
-                          </p>
-                          {draft.purchaseOrderLine?.purchaseOrderLineId ===
-                          line.purchaseOrderLineId ? (
-                            <Chip status="success">{t.po.linePicked}</Chip>
-                          ) : null}
-                        </Card.Body>
-                      </Card>
-                    </li>
-                  ))}
+                  {(lines.data ?? []).map((line: PurchaseOrderLine) => {
+                    /* 표시와 표식이 갈리지 않게 한 번만 센다. */
+                    const lineRemaining = remainingQtyOf(line, queuedFor(line.purchaseOrderLineId));
+
+                    return (
+                      <li key={line.purchaseOrderLineId}>
+                        <Card
+                          bordered
+                          interactive
+                          onClick={() => {
+                            patch({ purchaseOrderLine: line });
+                          }}
+                        >
+                          <Card.Body className="card-body receipt__line">
+                            <strong>
+                              {t.po.lineLabel(
+                                itemLabelOf(line.itemId),
+                                String(line.orderedQty),
+                                uomOf(line.uomId),
+                              )}
+                            </strong>
+                            <p>{t.po.received(String(line.receivedQty))}</p>
+                            {/*
+                             * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다.
+                             * 견주는 수를 카드가 직접 말하지 않으면 발주량대로 적게 된다.
+                             */}
+                            <p>
+                              {t.po.lineRemaining(String(lineRemaining))}
+                              {lineRemaining > 0 ? null : (
+                                <>
+                                  {' · '}
+                                  <strong>{t.po.lineClosed}</strong>
+                                </>
+                              )}
+                            </p>
+                            <p>
+                              {t.po.tolerance(
+                                String(line.toleranceOverQty),
+                                String(line.toleranceUnderQty),
+                              )}
+                            </p>
+                            {draft.purchaseOrderLine?.purchaseOrderLineId ===
+                            line.purchaseOrderLineId ? (
+                              <Chip status="success">{t.po.linePicked}</Chip>
+                            ) : null}
+                          </Card.Body>
+                        </Card>
+                      </li>
+                    );
+                  })}
                 </ul>
                 <Button
                   variant="text"
