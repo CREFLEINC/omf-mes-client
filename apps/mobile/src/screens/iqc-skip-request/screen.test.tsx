@@ -492,4 +492,23 @@ describe('긴급 IQC 생략 요청 화면', () => {
     expect(await screen.findByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`)).toBeTruthy();
   });
 
+  /*
+   * 사유는 「이 LOT 을 왜 급히 써야 하는가」다. 다른 LOT 을 읽었는데 앞 LOT 을 위해 쓴 사유가
+   * 남으면 그대로 요청이 올라가고, 승인자는 그 사유만 보고 판단한다.
+   */
+  it('새 LOT 을 받으면 적어 둔 사유가 비워진다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('입하 LOT 스캔');
+
+    scan(LOT_NO);
+    await screen.findByText('ABC-100 PP 수지');
+    await user.type(screen.getByLabelText(/사유/), '라인 정지 임박');
+
+    scan(OTHER_LOT_NO);
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    await screen.findByText(`${OTHER_LOT_NO} LOT을 찾지 못했습니다`);
+    expect(screen.getByLabelText(/사유/)).toHaveValue('');
+  });
 });

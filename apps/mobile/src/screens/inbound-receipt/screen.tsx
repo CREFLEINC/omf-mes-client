@@ -133,6 +133,31 @@ export const InboundReceiptScreen = () => {
     }
 
     setMalformed(null);
+
+    /*
+     * 라벨이 바뀌면 그 아래 고른 것을 비운다.
+     *
+     * 라벨의 앞자리가 어느 발주 라인이 후보인지를 가른다. 다른 품목의 라벨로 바꿨는데 앞서
+     * 고른 라인이 남으면 그 라인에 남의 라벨이 붙은 채 등록되고, 화면은 아무 말도 하지 않는다.
+     *
+     * 같은 라벨을 다시 댄 것은 바꾸는 것이 아니므로 그대로 둔다 - 비우면 잘못 읽어 다시 댄
+     * 사람이 적어 둔 것을 잃는다.
+     */
+    if (code !== draft.supplierLotNo) {
+      setContinueUnder(false);
+      setVarianceNext(false);
+      setSplitExceptionType('');
+      setSplitExceptionReason('');
+      setShowAllOrders(false);
+      setKeypadFor(null);
+      setDraft({
+        ...emptyDraft,
+        supplierLotNo: code,
+        supplierLotLabelAttached: true,
+      });
+      return;
+    }
+
     patch({
       supplierLotNo: code,
       supplierLotMissing: false,
@@ -457,7 +482,12 @@ export const InboundReceiptScreen = () => {
                     setExternalLotError(null);
                   }}
                 />
-                <Button className="receipt__wide" variant="filled" size="xl" onClick={takeExternalLot}>
+                <Button
+                  className="receipt__wide"
+                  variant="filled"
+                  size="xl"
+                  onClick={takeExternalLot}
+                >
                   {t.scan.externalSubmit}
                 </Button>
               </div>

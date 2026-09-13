@@ -63,7 +63,15 @@ export const RecycleEntryScreen = () => {
     }
 
     setSearching(code);
-    patch({ itemCode: code });
+
+    /*
+     * 품목이 바뀌면 그 아래 적어 둔 것을 비운다. 남으면 앞 품목을 넣으려던 창고·위치·수량으로
+     * 다른 품목의 재고가 늘고, 되돌릴 자리가 없다.
+     *
+     * 같은 코드를 다시 댄 것은 바꾸는 것이 아니므로 훅이 여기까지 오지 않는다.
+     */
+    setDraft({ ...emptyDraft, itemCode: code });
+    setSaveFailed(false);
   };
 
   const scanField = useScanField({ onScan: take, applied: draft.itemCode });

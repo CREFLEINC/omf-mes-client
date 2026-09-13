@@ -381,7 +381,9 @@ describe('입하 등록 화면', () => {
     await user.type(screen.getByLabelText('공급사 LOT 번호'), 'A'.repeat(101));
     await user.click(screen.getByRole('button', { name: '공급사 LOT 번호 넣기' }));
 
-    expect(await screen.findByText('공급사 LOT 번호는 100자 이하여야 합니다 (현재 101자)')).toBeTruthy();
+    expect(
+      await screen.findByText('공급사 LOT 번호는 100자 이하여야 합니다 (현재 101자)'),
+    ).toBeTruthy();
     expect(screen.queryByText('ERP W/O 선택')).toBeNull();
     expect(screen.getByLabelText('공급사 LOT 번호')).toHaveValue('A'.repeat(101));
   });
@@ -1095,4 +1097,23 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     expect(await screen.findByText(`공급사 LOT ${OTHER_LOT_NO}`)).toBeTruthy();
   });
 
+  /*
+   * 라벨의 앞자리가 어느 발주 라인이 후보인지를 가른다. 다른 품목의 라벨로 바꿨는데 앞서 고른
+   * 라인이 남으면, 그 라인에 남의 라벨이 붙은 채 등록된다 - 화면은 아무 말도 하지 않는다.
+   *
+   * 되묻는 창이 이미 「정말 바꿀 거냐」를 물었으므로 비워도 놀라지 않는다.
+   */
+  it('새 라벨을 받으면 그 아래 고른 것이 비워진다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await screen.findByText('품목·수량 확인');
+
+    scan(OTHER_LOT_NO);
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    expect(await screen.findByText(`공급사 LOT ${OTHER_LOT_NO}`)).toBeTruthy();
+    expect(screen.queryByText('품목·수량 확인')).toBeNull();
+  });
 });

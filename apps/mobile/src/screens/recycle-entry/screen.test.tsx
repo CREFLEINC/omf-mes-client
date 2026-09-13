@@ -146,6 +146,7 @@ beforeEach(() => {
 });
 
 const OTHER_CODE = 'XYZ-999';
+const SECOND_CODE = 'XYZ-777';
 
 const scan = (code: string) => {
   const field = screen.getByLabelText('품목코드') as HTMLInputElement;
@@ -157,11 +158,17 @@ const scan = (code: string) => {
 /* 기본 스텁은 어떤 코드에도 같은 행을 준다. 대상이 바뀌었는지 재려면 코드를 갈라야 한다. */
 const byCode: StubRoute = {
   match: (req) => new URL(req.url).pathname === '/mdm/items',
-  respond: (req) =>
-    jsonResponse({
-      items: new URL(req.url).searchParams.get('q') === CODE ? [itemRow()] : [],
-      page,
-    }),
+  respond: (req) => {
+    const asked = new URL(req.url).searchParams.get('q');
+    const rows =
+      asked === CODE
+        ? [itemRow()]
+        : asked === SECOND_CODE
+          ? [itemRow({ itemId: 41, itemCode: SECOND_CODE })]
+          : [];
+
+    return jsonResponse({ items: rows, page });
+  },
 };
 
 describe('재생재 등록 화면', () => {
@@ -379,4 +386,27 @@ describe('재생재 등록 화면', () => {
     ).toBeTruthy();
   });
 
+  /*
+   * 품목을 바꿨는데 앞 품목을 넣으려던 창고·위치·수량이 남으면, 재생재 재고가 엉뚱한 품목으로
+   * 는다. 되돌릴 자리가 없는 쓰기다.
+   *
+   * 못 찾는 코드로 재면 안 된다 - 수량 칸 자체가 안 그려져 값이 남았는지 가릴 수 없다. 찾아지는
+   * 코드로 바꿔 칸이 선 채로 잰다.
+   */
+  it('새 품목을 받으면 적어 둔 것이 비워진다', async () => {
+    const user = userEvent.setup();
+    mount([byCode]);
+    await screen.findByLabelText('품목코드');
+    scan(CODE);
+    await screen.findByText('ABC-123 원자재');
+    await fill(user, '12.5');
+    expect(screen.getByLabelText('수량')).toHaveValue('12.5');
+
+    scan(SECOND_CODE);
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    await screen.findByText('XYZ-777 원자재');
+    expect(screen.getByLabelText('수량')).toHaveValue('');
+    expect(screen.queryByRole('combobox', { name: '위치' })).toBeNull();
+  });
 });

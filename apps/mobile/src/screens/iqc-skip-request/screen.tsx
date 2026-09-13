@@ -95,7 +95,21 @@ export const IqcSkipRequestScreen = () => {
   const [noRoute, setNoRoute] = useState(false);
   const reasonSection = useRef<HTMLDivElement | null>(null);
 
-  const scanField = useScanField({ onScan: setScanned, applied: scanned });
+  /*
+   * 새 LOT 을 받으면 적어 둔 것을 비운다. 사유는 이 LOT 을 왜 급히 써야 하는가를 적는 자리라
+   * 앞 LOT 을 위해 쓴 글이 다른 LOT 의 요청으로 올라간다 - 승인자는 그 사유만 보고 판단한다.
+   *
+   * 같은 LOT 을 다시 댄 것은 바꾸는 것이 아니므로 훅이 여기까지 오지 않는다.
+   */
+  const scanField = useScanField({
+    applied: scanned,
+    onScan: (value) => {
+      setScanned(value);
+      setReason('');
+      setNoRoute(false);
+      setSaveFailed(false);
+    },
+  });
 
   const lot = useScannedLot(scanned);
   const found = lot.data ?? null;
