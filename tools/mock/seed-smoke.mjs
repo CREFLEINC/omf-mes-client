@@ -1325,7 +1325,51 @@ for (const [name, path, check] of DETAILS) {
   /* 거부된 확정이 저장본을 건드리지 않았는가. */
   const untouched = await (await fetch(badPath)).json();
 
+  /*
+   * ⛔ **키가 회차를 건너가지 않는다**(#1157 3회차 리뷰). 멱등 범위에 회차 번호가 없으면
+   *    회차 A 로 받은 응답이 **회차 B 의 같은 키에 그대로 되돌아온다.** 두 회차에 «같은 키»를
+   *    겹쳐 쏘아, 각자 자기 번호로 답하는지 본다.
+   */
+  const crossed = [];
+  for (const round of [0, 1]) {
+    const made = await fetch(`${BASE}/quality/inspection-results`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Idempotency-Key': `seed-smoke-p-02-13-cross-${String(round)}`,
+      },
+      body: JSON.stringify({
+        inspectionRequestId: 16001,
+        inspectedQty: 2,
+        acceptedQty: 2,
+        rejectedQty: 0,
+        heldQty: 0,
+        uomId: 1001,
+        inspectedAt: '2026-09-11T16:00:00+09:00',
+        statusCode: 'DRAFT',
+      }),
+    });
+    const one = await made.json();
+    const onePath = `${BASE}/quality/inspection-results/${String(one.inspectionResultId)}`;
+    const oneEtag = (await fetch(onePath)).headers.get('etag') ?? '';
+    const settledOne = await (
+      await fetch(`${onePath}:confirm`, {
+        method: 'POST',
+        /* ⭐ 두 회차가 «같은» 멱등 키를 쓴다 — 범위가 좁지 않으면 여기서 섞인다. */
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': 'seed-smoke-p-02-13-shared',
+          'If-Match': oneEtag,
+        },
+        body: JSON.stringify({}),
+      })
+    ).json();
+
+    crossed.push(one.inspectionResultId === settledOne.inspectionResultId);
+  }
+
   const ok =
+    crossed.every(Boolean) &&
     save.status === 201 &&
     noToken.status === 400 &&
     confirmed.status === 200 &&
