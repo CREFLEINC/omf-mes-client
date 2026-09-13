@@ -15,6 +15,9 @@ import { ko, type Messages } from '../ko';
 
 import type { Translated } from './translated';
 
+import { alarmRecipientSettings } from './alarm-recipient-settings';
+import { approvalInbox } from './approval-inbox';
+import { approvalRoute } from './approval-route';
 import { common } from './common';
 import { commonCode } from './common-code';
 import { conflict } from './conflict';
@@ -41,8 +44,11 @@ import { masterChange } from './master-change';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
+import { notice } from './notice';
+import { notificationCenter } from './notification-center';
 import { outboxRejections } from './outbox-rejections';
 import { packingRepack } from './packing-repack';
+import { passwordChange } from './password-change';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
 import { productPicking } from './product-picking';
@@ -62,12 +68,17 @@ import { stateLocked } from './state-locked';
 import { stockTransfer } from './stock-transfer';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { temporaryPutaway } from './temporary-putaway';
+import { terminalProcessMap } from './terminal-process-map';
+import { usersRoles } from './users-roles';
 import { warehouseLayout } from './warehouse-layout';
 import { warehouseLocation } from './warehouse-location';
 import { wipHandover } from './wip-handover';
 
 export const vi: Translated<Messages> = {
   ...ko,
+  alarmRecipientSettings,
+  approvalInbox,
+  approvalRoute,
   common,
   commonCode,
   conflict,
@@ -94,8 +105,11 @@ export const vi: Translated<Messages> = {
   materialLocation,
   materialLotScan,
   materialPicking,
+  notice,
+  notificationCenter,
   outboxRejections,
   packingRepack,
+  passwordChange,
   pendingCode,
   physicalCount,
   productPicking,
@@ -115,6 +129,8 @@ export const vi: Translated<Messages> = {
   stockTransfer,
   suspiciousMaterialHold,
   temporaryPutaway,
+  terminalProcessMap,
+  usersRoles,
   warehouseLayout,
   warehouseLocation,
   wipHandover,
