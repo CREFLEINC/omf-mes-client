@@ -57,8 +57,10 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ steps.image.outputs.tags }}
+          # DEFAULT_INITIAL_PASSWORD secret 이 없으면 빈 값이 가고 화면 코드의 기본값으로 떨어진다 — 의도된 동작이다.
           build-args: |
             VITE_API_BASE_URL=/api
+            VITE_DEFAULT_INITIAL_PASSWORD=${{ secrets.DEFAULT_INITIAL_PASSWORD }}
           labels: |
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}

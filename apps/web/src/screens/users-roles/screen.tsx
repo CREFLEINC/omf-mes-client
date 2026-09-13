@@ -38,6 +38,7 @@ import {
   toRoleSearchParams,
   toUserSearchParams,
 } from './filters';
+import { validateInitialPassword } from './initial-password';
 import { LoadErrorBanner } from './load-error-banner';
 import {
   lookupKeys,
@@ -95,7 +96,11 @@ import {
   userDetailPath,
   userKeys,
 } from './user-queries';
-import { USER_FORM_FIELDS, validateUserForm } from './user-validation';
+import {
+  USER_CREATE_FORM_FIELDS,
+  USER_FORM_FIELDS,
+  validateUserForm,
+} from './user-validation';
 import type {
   AppUser,
   Role,
@@ -127,6 +132,18 @@ interface UserFormState {
   source: UserFormSource;
   baseline: UserFormValues;
   values: UserFormValues;
+  /**
+   * 초기 비밀번호 칸을 **사람이 한 번이라도 건드렸는가.** 등록 폼이 그 칸을 기본값으로 채워 열기
+   * 때문에 필요하다 — 빈 칸을 「아직 안 채웠다」로만 보면 값을 **지운** 사람에게도 아무 말을 못 한다.
+   *
+   * ⭐ **왜 별 `useState`가 아니라 이 안인가.** 폼 시딩 블록이 편집 대상이 바뀔 때마다 이
+   * 상태를 통째로 새로 만들고, `resetUserEditing`이 `null`로 떨군다. 폼 닫기·다른 사용자
+   * 선택·등록 성공·탭 전환·뒤로가기가 **전부 그 길을 지난다.** 별 상태로 두면 그 길마다 초기화를
+   * 적어야 하고, **하나를 잊어도 타입이 그것을 잡지 못한다** — 앞 등록에서 손댄 흔적이 다음
+   * 등록 폼에 남아 첫 렌더부터 붉은 글씨가 선다. 이 안에 두면 폼 값과 **수명이 같아져** 잊을
+   * 자리가 없다.
+   */
+  passwordTouched: boolean;
 }
 
 /**
@@ -222,13 +239,58 @@ export const UsersRolesScreen = () => {
       typeof userFormSource === 'string'
         ? emptyUserFormValues()
         : appUserToFormValues(userFormSource.appUser);
-    setFormState({ source: userFormSource, baseline: seeded, values: seeded });
+    setFormState({
+      source: userFormSource,
+      baseline: seeded,
+      values: seeded,
+      passwordTouched: false,
+    });
   }
 
   const isUserDirty = formState !== null && !isSameUserValues(formState.values, formState.baseline);
 
   /** 보내기 전에 화면에서 잡은 오류. 저장을 누른 뒤에만 세운다 — 입력 도중에 붉은 글씨를 띄우지 않는다. */
   const [userFieldErrors, setUserFieldErrors] = useState<Record<string, string>>({});
+
+  /**
+   * 초기 비밀번호 칸에 **지금** 설 한 문장. 없으면 `undefined`.
+   *
+   * ⛔ **이 결과를 `userFieldErrors`에 담지 않는다.** `changeUserValues`가 「고치는 즉시 그 칸의
+   * 오류를 지운다」를 보장하는데, 담으면 한 글자마다 지우고 다시 세우는 경쟁이 되어 **그 코드가
+   * 뜻을 잃는다**(무엇을 지우는 규칙인지 말할 수 없게 된다). 렌더마다 다시 재면 충돌이 없다 —
+   * 지워지는 것은 **담아 둔 오류**(서버가 준 것 · 저장을 누른 시점의 것)뿐이고, 살아 있는 판정은
+   * 다음 렌더에 스스로 다시 선다. 그래서 `changeUserValues`는 이 칸을 알 필요가 없다.
+   *
+   * **네 갈래다.**
+   *
+   * | 값 | 손댔는가 | 무엇을 말하나 |
+   * | --- | --- | --- |
+   * | 비었다 | 아니오 | **아무 말도 하지 않는다** |
+   * | 비었다 | 예 | 「필수」 |
+   * | 있다 | 무관 | 규칙 판정 |
+   * | — | — | 등록 모드가 아니면 아무 말도 하지 않는다 |
+   *
+   * ⭐ **셋째 줄의 「무관」이 이 칸의 핵심이다.** 값이 있는데 규칙을 어기면 **손대기 전에도**
+   * 말한다. 이 칸은 기본값이 채워진 채 열리므로(`emptyUserFormValues`), 잘못된 기본값이
+   * 들어온 배포본을 **즉시 드러내는 유일한 길**이 이것이다 — 손댄 뒤에만 말하면 관리자가 그 칸을
+   * 건드리지 않고 저장을 누를 때까지 아무도 모른다.
+   *
+   * ⭐ **첫째 줄이 침묵하는 것은 「첫 글자부터 붉은 글씨를 세우지 않는다」는 규율 때문이다**
+   * (`password-change/password-draft.ts` 머리말 · 이 화면의 `userFieldErrors`도 같은 규율이다).
+   * 값을 **지워서** 빈 칸이 된 경우는 손댄 것이므로 둘째 줄로 간다 — 지운 사람에게는 말해야 한다.
+   *
+   * 등록 모드가 아니면 재지 않는다 — 수정 폼에 이 칸이 없어(`user-form-pane.tsx`) 그릴 자리가
+   * 없고, 그릴 자리 없는 오류는 저장만 막는 침묵이 된다.
+   */
+  const liveInitialPasswordError = ((): string | undefined => {
+    if (!isCreatingUser || formState === null) return undefined;
+
+    const value = formState.values.password;
+
+    if (value === '' && !formState.passwordTouched) return undefined;
+
+    return validateInitialPassword(value);
+  })();
 
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
 
@@ -416,7 +478,9 @@ export const UsersRolesScreen = () => {
     onSuccess: (saved) => {
       setUserFieldErrors({});
       const next = appUserToFormValues(saved);
-      setFormState((prev) => (prev === null ? prev : { ...prev, baseline: next, values: next }));
+      setFormState((prev) =>
+        prev === null ? prev : { ...prev, baseline: next, values: next, passwordTouched: false },
+      );
       toast.show({ variant: 'success', description: messages.common.saved });
     },
   });
@@ -430,7 +494,20 @@ export const UsersRolesScreen = () => {
     // 아직 없는 자원이라 잠글 대상이 없다. 201 응답에도 ETag가 없다(계약 실측).
     etagPath: null,
     invalidateKeys: [userKeys.all],
-    knownFields: USER_FORM_FIELDS,
+    /*
+     * ⭐ **등록만 `password`를 아는 목록을 쓴다.** 넣지 않으면 서버가 그 필드에 낸 400이
+     * `splitError`(`patterns/master/use-master-write.ts`)에서 「화면이 아는 필드가 아니면 배너로
+     * 올린다」에 걸려 **고칠 칸을 짚어 주지 못한다.**
+     *
+     * ⛔ **수정 쓰기(위 `userWrite`)는 `USER_FORM_FIELDS`를 그대로 둔다 — 넓히면 안 된다.**
+     * 두 쓰기가 같은 상수를 쓰고 있어서 상수를 넓히는 쪽으로 고치면, 수정 저장에서 서버가
+     * `field: "password"`를 내려보낼 때 같은 함수가 그것을 **인라인으로 분류하는데 수정 폼에는
+     * 그 칸이 없어 어디에도 그려지지 않는다.** 배너로 올라가야 할 실패가 조용히 삼켜지고
+     * 사용자는 저장이 왜 안 됐는지 알 수 없다 — 그 함수가 「어디에도 표시되지 않는 오류가
+     * 생긴다」로 경고하는 사고가 바로 이것이다. 그래서 목록은 **그 폼에 실제로 있는 칸으로만**
+     * 유지한다.
+     */
+    knownFields: USER_CREATE_FORM_FIELDS,
     onSuccess: (saved) => {
       setUserFieldErrors({});
       /*
@@ -731,7 +808,18 @@ export const UsersRolesScreen = () => {
 
   const changeUserValues = (patch: Partial<UserFormValues>) => {
     setFormState((prev) =>
-      prev === null ? prev : { ...prev, values: { ...prev.values, ...patch } },
+      prev === null
+        ? prev
+        : {
+            ...prev,
+            values: { ...prev.values, ...patch },
+            /*
+             * 「손댔다」를 값과 **한 번에** 갱신한다 — 값 갱신 뒤에 따로 세우면 한 입력이 두 번의
+             * 상태 갱신이 되고, 두 갱신 사이의 렌더에서 「새 값 + 낡은 손댔는가」가 보인다.
+             * 한 번 참이 되면 되돌리지 않는다 — 값을 지운 것도 손댄 것이다.
+             */
+            passwordTouched: prev.passwordTouched || 'password' in patch,
+          },
     );
 
     // 고치는 즉시 그 칸의 오류를 지운다 — 고친 값 옆에 낡은 오류가 남으면 안 된다.
@@ -902,7 +990,32 @@ export const UsersRolesScreen = () => {
           mode="create"
           values={formState.values}
           onChange={changeUserValues}
-          fieldErrors={{ ...userCreateWrite.fieldErrors, ...userFieldErrors }}
+          /*
+           * 병합 순서 — **로컬 검증이 서버 오류를 덮는다**(수정 폼과 같은 순서다). 지금 고칠 수
+           * 있는 것을 먼저 보인다.
+           *
+           * ⚠ **형제 화면(`password-change`)은 반대로 「서버 진술이 이긴다」를 실측 근거까지 달아
+           * 두었다.** 여기서 순서를 뒤집지 않는 근거는 **이 칸에서 서버가 낼 수 있는 말이 길이와
+           * 형식 둘뿐이고**(8자 미만 → `RANGE`, 문자열 아님 → `INVALID` — `initial-password.ts`의
+           * 실측), **그 둘이 화면 규칙이 이미 포함하는 부분집합**이라는 것이다. 가려도 잃는 정보가
+           * 없으므로 그쪽 화면이 막으려던 사고(서버가 거절한 값을 사용자가 그대로 되보낸다)가
+           * 여기서는 성립하지 않는다. 그쪽은 현재 비밀번호가 맞는지를 **서버만 아는** 칸이라
+           * 사정이 다르다.
+           *
+           * 값이 화면 규칙을 통과하면 파생값이 `undefined`가 되어 **서버 오류가 다시 보인다** —
+           * 화면이 재지 않는 축(예: 확인되지 않은 상한)을 서버가 가진다면 그 말이 제자리에 선다.
+           *
+           * ⛔ **`password: undefined`를 얹지 않는다.** `fieldErrors`는 `Record<string, string>`
+           * 이고 디자인 시스템의 `error`는 truthy 판정을 하므로 키가 있기만 해도 형이 어긋난다.
+           * 그래서 **있을 때만** 키를 만든다.
+           */
+          fieldErrors={{
+            ...userCreateWrite.fieldErrors,
+            ...userFieldErrors,
+            ...(liveInitialPasswordError === undefined
+              ? {}
+              : { password: liveInitialPasswordError }),
+          }}
           /* 등록에는 저장 충돌이 없다 — 「최신 불러오기」를 낼 자리가 아니다. */
           banner={<SaveErrorBanner error={userCreateWrite.error} />}
           departmentOptions={userDepartmentOptions}

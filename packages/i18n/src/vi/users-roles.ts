@@ -122,8 +122,16 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       department: 'Phòng ban',
       email: 'Thư điện tử',
       status: 'Trạng thái',
+      initialPassword: 'Mật khẩu ban đầu',
     },
     statusDefault: 'Mặc định (đang làm việc)',
+    /**
+     * ⚠ 조합 규칙을 이름으로 옮긴다 — ko 쪽 `initialPasswordNotice` 머리 주석 참고: 이
+     * 화면에는 그 규칙이 실제로 있어(`password-change.ts`와 반대) 감추지 않는다. 특수문자가
+     * 금지로 읽히지 않게, 「함께 넣어」가 최소 조건이지 상한이 아니라는 것도 그대로 옮긴다.
+     */
+    initialPasswordNotice: (minLength: number): string =>
+      `Hãy đặt tối thiểu ${String(minLength)} ký tự, gồm cả chữ cái và chữ số. Sau khi đăng ký, người dùng có thể tự đổi ở «Đổi mật khẩu».`,
     /** 부서를 고르지 않은 상태. 계약이 널을 허용하므로 **비우는 것이 정상 값이다.** */
     departmentNone: 'Không chỉ định',
     empty: {
@@ -141,6 +149,9 @@ export const usersRoles: Translated<typeof ko.usersRoles> = {
       userNameTooLong: 'Tên không được quá 200 ký tự.',
       emailTooLong: 'Thư điện tử không được quá 200 ký tự.',
       emailFormat: 'Không đúng dạng thư điện tử. Hãy nhập theo dạng «tên@tên miền».',
+      /** 빈 값은 이 키를 쓰지 않는다 — 그 갈래는 이미 있는 `required`를 그대로 쓴다. */
+      initialPasswordWeak: (minLength: number): string =>
+        `Mật khẩu ban đầu phải có tối thiểu ${String(minLength)} ký tự, gồm cả chữ cái và chữ số.`,
     },
   },
   role: {

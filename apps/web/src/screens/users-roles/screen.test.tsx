@@ -3,7 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation, useNavigate } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createStubFetch,
@@ -23,6 +23,7 @@ import {
   userDataScopeFixtures,
   userRoleFixtures,
 } from './fixtures';
+import { FALLBACK_INITIAL_PASSWORD } from './initial-password';
 import { UsersRolesScreen } from './screen';
 import type { AppUser, Role } from './types';
 
@@ -1285,6 +1286,170 @@ describe('UsersRolesScreen 등록', () => {
     expect(
       within(userFormPane()).queryByRole('button', { name: '사용 중지' }),
     ).not.toBeInTheDocument();
+  });
+
+  /**
+   * 초기 비밀번호 칸의 화면 시험.
+   *
+   * ⚠⚠ **vite 는 모드와 무관하게 `.env.local`을 읽고 그 값이 vitest 에도 실린다.** 이 저장소에는
+   * 이미 `apps/web/.env.local`이 있다 — 누가 거기에 `VITE_DEFAULT_INITIAL_PASSWORD`를 넣으면
+   * **그 기계에서만** 아래 시험들이 갈린다. 그래서 기본값에 닿는 시험마다 `vi.stubEnv`로 값을 못
+   * 박는다. **이 stub을 지우지 마라** — 지우면 이 그룹이 다시 기계 종속이 된다.
+   */
+  describe('초기 비밀번호', () => {
+    /* 공개 저장소에 실리는 값이다 — 합성 접두 없이도 명백히 지어낸 값을 쓴다. */
+    const SYNTHETIC_DEFAULT_PASSWORD = 'SynDefault-01';
+    const SYNTHETIC_TYPED_PASSWORD = 'SynTyped02';
+
+    const passwordErrorText = '초기 비밀번호는 숫자와 알파벳을 함께 넣어 8자 이상이어야 합니다.';
+    const passwordRequiredText = '필수 입력 항목입니다.';
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    const openCreateForm = async () => {
+      const rendered = renderScreen([userListRoute(), departmentsRoute(), userDetailRoute()]);
+
+      await waitForUserList(rendered.requests);
+      await rendered.user.click(
+        within(userListPane()).getByRole('button', { name: '사용자 추가' }),
+      );
+      await within(userFormPane()).findByLabelText('초기 비밀번호');
+
+      return rendered;
+    };
+
+    const passwordBoxOf = (): HTMLElement =>
+      within(userFormPane()).getByLabelText('초기 비밀번호');
+
+    it('등록 본문에 고친 초기 비밀번호가 실린다', async () => {
+      const { requests, user } = await fillCreateForm([userCreateRoute()]);
+
+      await user.clear(passwordBoxOf());
+      await user.type(passwordBoxOf(), SYNTHETIC_TYPED_PASSWORD);
+      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+      await waitFor(() => {
+        expect(requests.some((request) => request.method === 'POST')).toBe(true);
+      });
+      expect(createBodyOf(requests).password).toBe(SYNTHETIC_TYPED_PASSWORD);
+    });
+
+    it('손대지 않으면 환경변수 기본값이 그대로 실린다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      const { requests, user } = await fillCreateForm([userCreateRoute()]);
+
+      expect(passwordBoxOf()).toHaveValue(SYNTHETIC_DEFAULT_PASSWORD);
+
+      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+      await waitFor(() => {
+        expect(requests.some((request) => request.method === 'POST')).toBe(true);
+      });
+      expect(createBodyOf(requests).password).toBe(SYNTHETIC_DEFAULT_PASSWORD);
+    });
+
+    /** 「환경변수가 없을 때」도 값을 못 박는다 — 빈 문자열을 명시한다. */
+    it('환경변수가 없으면 코드 기본값이 실린다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', '');
+
+      const { requests, user } = await fillCreateForm([userCreateRoute()]);
+
+      expect(passwordBoxOf()).toHaveValue(FALLBACK_INITIAL_PASSWORD);
+
+      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+
+      await waitFor(() => {
+        expect(requests.some((request) => request.method === 'POST')).toBe(true);
+      });
+      expect(createBodyOf(requests).password).toBe(FALLBACK_INITIAL_PASSWORD);
+    });
+
+    it('폼을 열면 아직 손대지 않아 안내도 필수 표시도 없다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      await openCreateForm();
+
+      expect(passwordBoxOf()).toHaveValue(SYNTHETIC_DEFAULT_PASSWORD);
+      expect(passwordBoxOf()).toBeValid();
+      expect(within(userFormPane()).queryByText(passwordErrorText)).not.toBeInTheDocument();
+      expect(within(userFormPane()).queryByText(passwordRequiredText)).not.toBeInTheDocument();
+    });
+
+    it('비우면 저장을 누르지 않아도 즉시 필수 안내가 서고 요청이 나가지 않는다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      const { requests, user } = await openCreateForm();
+
+      await user.clear(passwordBoxOf());
+
+      await waitFor(() => {
+        expect(within(userFormPane()).getByText(passwordRequiredText)).toBeInTheDocument();
+      });
+      expect(passwordBoxOf()).toBeInvalid();
+
+      // 저장을 눌러도 화면 검증이 막아 요청을 보내지 않는다.
+      await user.click(within(userFormPane()).getByRole('button', { name: '사용자 추가' }));
+      expect(requests.some((request) => request.method === 'POST')).toBe(false);
+    });
+
+    it('규칙을 어기는 값은 즉시 메시지가 뜨고 채우면 사라진다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      const { user } = await openCreateForm();
+
+      // 양성을 먼저 세운다 — 시작 값(환경변수 기본값)은 규칙을 통과한다.
+      expect(passwordBoxOf()).toBeValid();
+
+      await user.clear(passwordBoxOf());
+      await user.type(passwordBoxOf(), 'aaaaaaaa'); // 알파벳뿐 — 숫자가 없어 규칙을 어긴다
+
+      await waitFor(() => {
+        expect(passwordBoxOf()).toBeInvalid();
+      });
+      expect(within(userFormPane()).getByText(passwordErrorText)).toBeInTheDocument();
+
+      await user.type(passwordBoxOf(), '1'); // 숫자를 더해 조건을 채운다
+
+      await waitFor(() => {
+        expect(passwordBoxOf()).toBeValid();
+      });
+      expect(within(userFormPane()).queryByText(passwordErrorText)).not.toBeInTheDocument();
+    });
+
+    /**
+     * `passwordTouched`를 `formState` 안에 둔 근거가 이것이다 — 별 상태로 두면 폼을 닫는 길
+     * (여기서는 취소)에서 초기화를 잊을 수 있는데, 폼 값과 수명이 같으면 잊을 자리가 없다.
+     */
+    it('폼을 닫았다 다시 열면 앞선 흔적이 남지 않는다', async () => {
+      vi.stubEnv('VITE_DEFAULT_INITIAL_PASSWORD', SYNTHETIC_DEFAULT_PASSWORD);
+
+      const { user } = await openCreateForm();
+
+      await user.clear(passwordBoxOf());
+      await waitFor(() => {
+        expect(within(userFormPane()).getByText(passwordRequiredText)).toBeInTheDocument();
+      });
+
+      await user.click(within(userFormPane()).getByRole('button', { name: '취소' }));
+      await waitFor(() => {
+        expect(within(userFormPane()).queryByLabelText('초기 비밀번호')).not.toBeInTheDocument();
+      });
+
+      await user.click(within(userListPane()).getByRole('button', { name: '사용자 추가' }));
+      const reopened = await within(userFormPane()).findByLabelText('초기 비밀번호');
+
+      expect(reopened).toHaveValue(SYNTHETIC_DEFAULT_PASSWORD);
+      expect(within(userFormPane()).queryByText(passwordRequiredText)).not.toBeInTheDocument();
+    });
+
+    it('수정 폼에는 칸이 없다', async () => {
+      await openUserDetail([userUpdateRoute()]);
+
+      expect(within(userFormPane()).queryByLabelText('초기 비밀번호')).not.toBeInTheDocument();
+    });
   });
 });
 
