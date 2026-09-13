@@ -70,6 +70,8 @@ export interface Outbox {
   isRejected: (idempotencyKey: string) => boolean;
   /** 되돌아온 건 하나를 목록에서 내린다. 사람이 보고 정리한 뒤다. */
   dismissRejected: (id: string) => Promise<void>;
+  /** 등록을 풀 때 담긴 것과 되돌아온 것을 모두 버린다. */
+  discardAll: () => Promise<void>;
 }
 
 const OutboxContext = createContext<Outbox | null>(null);
@@ -208,6 +210,23 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     [inTurn],
   );
 
+  /**
+   * 담긴 것과 되돌아온 것을 모두 버린다. 기기 등록을 풀 때만 부른다.
+   *
+   * 등록을 풀면 이 기록들은 갈 곳을 잃는다 - 어느 단말이 만든 것인가를 지고 있는데 그 단말이
+   * 사라지고, 다음 등록은 다른 단말일 수 있다. 남겨 두면 토큰 없이 나가 401 로 되돌아오고,
+   * 그 사유는 서버가 그 기록에 대해 내린 판정이 아니라 우리가 등록을 푼 결과다.
+   */
+  const discardAll = useCallback(async () => {
+    await inTurn(async () => {
+      await writeQueue([]);
+      await writeRejected([]);
+      rejectedRef.current = [];
+      setEntries([]);
+      setRejected([]);
+    });
+  }, [inTurn]);
+
   const isRejected = useCallback(
     (idempotencyKey: string) =>
       rejectedRef.current.some((record) => record.entry.idempotencyKey === idempotencyKey),
@@ -300,10 +319,12 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       enqueue,
       flush,
       dismissRejected,
+      discardAll,
     }),
     [
       countPending,
       pendingOf,
+      discardAll,
       dismissRejected,
       enqueue,
       isRejected,

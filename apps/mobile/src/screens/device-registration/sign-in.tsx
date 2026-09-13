@@ -35,8 +35,21 @@ export const WorkerSignInScreen = () => {
    * 등록을 풀면 담아 둔 것이 함께 사라진다. 몇 건인지 모른 채 누르게 두지 않는다(설계 §5-5).
    * 되돌아온 것도 센다 - 그것도 이 기기에만 남아 있다.
    */
-  const { loaded, pending, rejected: returned } = useOutbox();
-  const losing = pending + returned.length;
+  const { loaded, pending, rejected: returned, discardAll } = useOutbox();
+
+  /*
+   * 큐를 먼저 버리고 그다음 등록을 푼다. 반대로 하면 토큰이 없는 채로 큐가 남아, 다음
+   * 재전송이 인증 없이 나가 401 로 되돌아온다 - 그 사유는 서버가 그 기록에 대해 내린 판정이
+   * 아니라 우리가 등록을 푼 결과이고, 되돌아온 것은 다시 보내지 않으므로 되찾을 수 없다.
+   *
+   * 사번도 함께 끊는다. 남겨 두면 새 QR 로 다시 등록했을 때 사번 입력을 건너뛰어 앞 작업자의
+   * 사번으로 기록이 쌓인다 - 공용 장비에서 그것이 가장 나쁘다(공유계약 D-5).
+   */
+  const release = async () => {
+    await discardAll();
+    await unregister();
+    signOut();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +123,8 @@ export const WorkerSignInScreen = () => {
 
         <Dialog
           open={asking}
+          /* 되돌릴 수 없다. 스크림을 스쳐 닫히면 물러선 것인지 손이 스친 것인지 갈리지 않는다. */
+          closeOnBackdropClick={false}
           onClose={() => {
             setAsking(false);
           }}
@@ -129,7 +144,7 @@ export const WorkerSignInScreen = () => {
                 disabled={!loaded}
                 onClick={() => {
                   setAsking(false);
-                  void unregister();
+                  void release();
                 }}
               >
                 {t.unregister.confirm}
@@ -139,8 +154,15 @@ export const WorkerSignInScreen = () => {
         >
           <p>{t.unregister.notice}</p>
           {!loaded ? <p>{t.unregister.counting}</p> : null}
-          {loaded && losing > 0 ? (
-            <AlertBanner variant="warning" title={t.unregister.pending(String(losing))} />
+          {/*
+            앱바가 둘로 가른 것을 창에서 합치지 않는다. 기다리면 가는 것과 기다려도 가지
+            않는 것은 다른 일이라, 합치면 앱바의 두 수와 창의 한 수가 어긋난다.
+          */}
+          {loaded && pending > 0 ? (
+            <AlertBanner variant="warning" title={t.unregister.pending(String(pending))} />
+          ) : null}
+          {loaded && returned.length > 0 ? (
+            <AlertBanner variant="warning" title={t.unregister.returned(String(returned.length))} />
           ) : null}
         </Dialog>
       </div>

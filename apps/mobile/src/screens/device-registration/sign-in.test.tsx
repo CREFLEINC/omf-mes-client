@@ -3,27 +3,39 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { OUTBOX_KEY } from '../../patterns/outbox';
+import { OUTBOX_KEY, OUTBOX_REJECTED_KEY } from '../../patterns/outbox';
 import { createStubFetch, renderWithProviders } from '../../test/api-harness';
 import { WorkerSignInScreen } from './sign-in';
 
 const store = vi.hoisted(() => new Map<string, string>());
 
 /** 등록을 푸는 것은 단말 토큰을 지우는 일이다. 보안 저장소는 시험 환경에 없어 여기서 본다. */
-const token = vi.hoisted(() => ({ cleared: 0 }));
+const token = vi.hoisted(() => ({ cleared: 0, value: 't' as string | null }));
 
 vi.mock('../../patterns/device-token', () => ({
-  readDeviceToken: () => Promise.resolve('t'),
+  readDeviceToken: () => Promise.resolve(token.value),
   writeDeviceToken: () => Promise.resolve(),
-  currentDeviceToken: () => 't',
+  /* 지운 뒤에도 살아 있다고 답하면 토큰 없이 나가는 갈래가 시험에서 사라진다. */
+  currentDeviceToken: () => token.value,
   clearDeviceToken: () => {
     token.cleared += 1;
+    token.value = null;
     return Promise.resolve();
   },
 }));
 
+/** 큐를 읽는 동안의 상태를 재려면 읽기를 붙잡을 수 있어야 한다. */
+const reads = vi.hoisted(() => ({ gate: null as Promise<void> | null }));
+
 vi.mock('../../patterns/local-store', () => ({
-  readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
+  readLocal: async (key: string) => {
+    /* 큐만 붙잡는다. 전부 막으면 작업자 목록도 못 받아 사번 확인에 닿지 못한다. */
+    if (reads.gate !== null && key === 'outbox') {
+      await reads.gate;
+    }
+
+    return store.get(key) ?? null;
+  },
   writeLocal: (key: string, value: string) => {
     store.set(key, value);
     return Promise.resolve();
@@ -72,7 +84,9 @@ const signedIn = async (user: ReturnType<typeof userEvent.setup>) => {
 };
 
 beforeEach(() => {
+  reads.gate = null;
   token.cleared = 0;
+  token.value = 't';
   store.clear();
   store.set('worker-directory', JSON.stringify(DIRECTORY));
 });
@@ -217,5 +231,85 @@ describe('기기 등록 해제', () => {
 
     expect(token.cleared).toBe(0);
     expect(screen.getByText('작업자 1 · 900028')).toBeInTheDocument();
+  });
+
+  /*
+   * 큐를 읽기 전에는 몇 건을 잃는지 모른다. 그 사이 확인이 눌리면 설계가 건수를 먼저
+   * 보이라고 정한 뜻이 사라진다.
+   */
+  it('큐를 읽기 전에는 확인을 막는다', async () => {
+    let release = () => {
+      /* 문을 여는 자리는 아래에서 채운다. */
+    };
+    reads.gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    expect(await screen.findByText('보내지 못한 기록을 세는 중입니다')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '등록 해제' })).toBeDisabled();
+
+    release();
+  });
+
+  /*
+   * 앱바가 둘로 가른 것을 창에서 합치지 않는다 - 기다리면 가는 것과 기다려도 가지 않는 것은
+   * 다른 일이라, 합치면 앱바의 두 수와 창의 한 수가 어긋난다.
+   */
+  it('되돌아온 기록은 따로 센다', async () => {
+    store.set(OUTBOX_KEY, JSON.stringify([queuedEntry('a')]));
+    store.set(
+      OUTBOX_REJECTED_KEY,
+      JSON.stringify([
+        {
+          entry: queuedEntry('b'),
+          error: { kind: 'http', status: 401 },
+          cascaded: false,
+          rejectedAt: '2026-09-01T03:00:00.000Z',
+        },
+      ]),
+    );
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    expect(await screen.findByText(/보내지 못한 기록 1건이 사라집니다/)).toBeInTheDocument();
+    expect(screen.getByText(/전송 실패한 기록 1건도 사라집니다/)).toBeInTheDocument();
+  });
+
+  /*
+   * 창이 사라진다고 말한 것은 실제로 사라져야 한다. 남겨 두면 토큰 없이 나가 401 로
+   * 되돌아오고, 그 사유는 서버의 판정이 아니라 우리가 등록을 푼 결과다.
+   */
+  it('풀면 담아 둔 것도 함께 버린다', async () => {
+    store.set(OUTBOX_KEY, JSON.stringify([queuedEntry('a')]));
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    await user.click(await screen.findByRole('button', { name: '등록 해제' }));
+
+    await waitFor(() => {
+      expect(store.get(OUTBOX_KEY)).toBe('[]');
+    });
+  });
+
+  /* 사번이 남으면 새 QR 로 다시 등록했을 때 앞 작업자의 사번으로 기록이 쌓인다. */
+  it('풀면 사번도 함께 끊는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    await user.click(await screen.findByRole('button', { name: '등록 해제' }));
+
+    expect(await screen.findByRole('group', { name: '사번 입력' })).toBeInTheDocument();
   });
 });

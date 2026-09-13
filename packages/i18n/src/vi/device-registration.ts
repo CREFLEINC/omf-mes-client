@@ -54,6 +54,7 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
       title: 'Hủy đăng ký thiết bị này?',
       notice: 'Muốn dùng lại phải xin mã QR mới từ quản trị viên.',
       pending: (count: string) => `${count} bản ghi chưa gửi sẽ mất`,
+      returned: (count: string) => `${count} bản ghi gửi thất bại cũng sẽ mất`,
       counting: 'Đang đếm các bản ghi chưa gửi',
       confirm: 'Hủy đăng ký',
       cancel: 'Giữ nguyên',
