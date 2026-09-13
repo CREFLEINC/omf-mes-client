@@ -127,5 +127,4 @@ describe('사번 확인 화면', () => {
 
     expect(screen.getByLabelText('사번')).toHaveValue(long);
   });
-
 });

@@ -76,9 +76,9 @@ describe('단말 토큰에서 단말 번호 읽기', () => {
  */
 describe('단말 토큰에서 보여 줄 값 읽기', () => {
   it('코드와 공장을 읽는다', () => {
-    expect(readTerminalClaims(tokenWith({ sub: 7, terminalCode: 'SYN-PDA-01', plantId: 3 }))).toEqual(
-      { terminalId: 7, terminalCode: 'SYN-PDA-01', plantId: 3 },
-    );
+    expect(
+      readTerminalClaims(tokenWith({ sub: 7, terminalCode: 'SYN-PDA-01', plantId: 3 })),
+    ).toEqual({ terminalId: 7, terminalCode: 'SYN-PDA-01', plantId: 3 });
   });
 
   it('코드가 없어도 번호는 읽는다', () => {

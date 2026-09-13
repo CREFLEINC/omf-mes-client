@@ -14,7 +14,7 @@ const t = messages.deviceRegistration.signIn;
 
 /*
  * 계약 Worker.workerNo 의 상한이다. 화면이 더 좁히지 않는다 - 계약이 형식을 강제하지 않기로
- * 한 이유가 「표본 밖의 사번을 가진 사람이 단말을 아예 못 쓰는 것」을 막으려는 것이라, 화면이
+ * 한 이유가 표본 밖의 사번을 가진 사람이 단말을 아예 못 쓰는 것을 막으려는 데 있어, 화면이
  * 좁히면 그 결정을 화면에서 되돌리는 셈이 된다.
  */
 const MAX_WORKER_NO_LENGTH = 50;
