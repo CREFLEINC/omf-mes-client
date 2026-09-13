@@ -33,6 +33,9 @@ vi.mock('./device-token', () => ({
  */
 const store = vi.hoisted(() => new Map<string, string>());
 
+/** 공장을 잊는 걸음만 걸리는 상황을 만든다. */
+const removes = vi.hoisted(() => ({ fails: false }));
+
 vi.mock('./local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
   writeLocal: (key: string, value: string) => {
@@ -40,6 +43,10 @@ vi.mock('./local-store', () => ({
     return Promise.resolve();
   },
   removeLocal: (key: string) => {
+    if (removes.fails) {
+      return Promise.reject(new Error('보관소가 거절했습니다'));
+    }
+
     store.delete(key);
     return Promise.resolve();
   },
@@ -48,6 +55,7 @@ vi.mock('./local-store', () => ({
 afterEach(async () => {
   keystore.token = null;
   keystore.readFails = false;
+  removes.fails = false;
   store.clear();
   await forgetPlant();
 });
@@ -185,6 +193,26 @@ describe('단말 등록 상태', () => {
     });
 
     expect(currentPlantId()).toBeNull();
+  });
+
+  /*
+   * 토큰이 사라진 뒤로는 등록된 것이 아니다. 공장을 못 지웠다고 등록된 채로 두면 셸이 앱을
+   * 그대로 세우고 모든 요청이 401 로 되돌아온다.
+   */
+  it('공장을 잊지 못해도 등록된 채로 두지 않는다', async () => {
+    keystore.token = 'tok-2';
+    await rememberPlant(7);
+    const { result } = mount();
+    await waitFor(() => {
+      expect(result.current.status).toBe('registered');
+    });
+
+    removes.fails = true;
+    await act(async () => {
+      await expect(result.current.unregister()).rejects.toThrow();
+    });
+
+    expect(result.current.status).toBe('unregistered');
   });
 
   it('서버가 받지 않으면 공장도 남기지 않는다', async () => {

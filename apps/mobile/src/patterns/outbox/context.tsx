@@ -9,8 +9,17 @@ import {
   type ReactNode,
 } from 'react';
 
-import { appendEntry, readQueue, writeQueue, type OutboxDraft, type OutboxEntry } from './queue';
+import { removeLocal } from '../local-store';
 import {
+  OUTBOX_BROKEN_KEY,
+  appendEntry,
+  readQueue,
+  writeQueue,
+  type OutboxDraft,
+  type OutboxEntry,
+} from './queue';
+import {
+  OUTBOX_REJECTED_BROKEN_KEY,
   appendRejected,
   brokenBatchesOf,
   dropRejected,
@@ -148,9 +157,15 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     /*
      * 이 회차가 어느 세대의 큐를 보고 있는가. 보내는 동안 턴을 놓으므로 그 사이에 등록이
      * 풀려 큐가 버려질 수 있고, 그때 결과를 그대로 쓰면 버린 것이 통째로 되살아난다.
+     *
+     * 큐를 읽는 것과 같은 슬롯에서 뜬다. 밖에서 뜨면 버리기가 이미 시작됐지만 아직 세대를
+     * 올리지 않은 틈이 생겨, 버리기와 무관한 회차가 자기 것이 아닌 세대를 지고 판정을 버린다.
      */
-    const generation = discarded.current;
-    const stored = await inTurn(() => readQueue());
+    let generation = 0;
+    const stored = await inTurn(() => {
+      generation = discarded.current;
+      return readQueue();
+    });
 
     if (stored.length === 0) {
       return null;
@@ -233,6 +248,12 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     await inTurn(async () => {
       await writeQueue([]);
       await writeRejected([]);
+      /*
+       * 읽지 못해 옮겨 둔 원본도 버린다. 앱이 되읽지는 않지만 그 안에 이 단말이 만든 기록이
+       * 그대로 있어, 남겨 두면 다음 등록이 앞 단말의 기록을 물려받는다.
+       */
+      await removeLocal(OUTBOX_BROKEN_KEY);
+      await removeLocal(OUTBOX_REJECTED_BROKEN_KEY);
       /*
        * 다 버린 뒤에 세대를 올린다. 먼저 올리면 보관소가 거절해 버리지 못한 회차도 진행 중인
        * 보내기의 판정을 버리게 해, 서버가 내린 판정이 어디에도 남지 않는다.

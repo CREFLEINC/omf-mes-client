@@ -255,6 +255,8 @@ describe('기기 등록 해제', () => {
 
     expect(token.cleared).toBe(0);
     expect(screen.getByText('작업자 1 · 900028')).toBeInTheDocument();
+    /* 창이 열린 채로도 앞 둘은 참이다. 닫혔는지는 역할로 재야 갈린다. */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   /*
@@ -377,6 +379,8 @@ describe('기기 등록 해제', () => {
     await user.click(await screen.findByRole('button', { name: '등록 해제' }));
 
     expect(await screen.findByText('등록을 풀지 못했습니다. 다시 시도하세요')).toBeInTheDocument();
+    /* 창이 그대로 서 있으면 이 배너는 모달 뒤에 가려 읽히지 않는다. */
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   /* 실패를 보고 물러섰는데 붉은 배너가 남으면, 다음에 들어온 사람이 방금 실패한 줄로 읽는다. */
