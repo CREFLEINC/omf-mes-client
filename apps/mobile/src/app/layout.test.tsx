@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { noteServerAnswered, noteServerSilent } from '../patterns/online-status';
 import { ApiRequestError } from '../patterns/request';
 import { useScreenTitle } from '../patterns/screen-title';
 import { OutboxProvider, useOutbox } from '../patterns/outbox';
@@ -166,6 +167,22 @@ describe('AppLayout', () => {
     renderLayout('본문 자리');
 
     expect(screen.getByRole('banner')).toHaveTextContent('오프라인');
+  });
+
+  /*
+   * 기기가 망에 붙어 있어도 우리 서버에는 못 닿을 수 있다 - 방화벽, 평문 차단, 주소
+   * 오설정, 서버 정지. 실측으로 겪었다: WiFi 는 검증된 채였고 기기 셸에서는 서버가 401 을
+   * 주는데 앱의 요청만 OS 가 막아, 한 건도 못 가는 동안 상단 바는 계속 온라인이었다.
+   */
+  it('망이 붙어 있어도 서버가 답하지 않으면 오프라인으로 보인다', () => {
+    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(true);
+    noteServerSilent();
+
+    renderLayout('본문 자리');
+
+    expect(screen.getByRole('banner')).toHaveTextContent('오프라인');
+
+    noteServerAnswered();
   });
 
   /*

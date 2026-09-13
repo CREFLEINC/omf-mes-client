@@ -40,13 +40,6 @@
   color: var(--on-surface-muted, inherit);
 }
 
-/* 목록이 길어도 닿는 자리가 바뀌지 않게 띄워 둔다. */
-.outbox-rejections__dev {
-  position: fixed;
-  right: var(--space-4, 16px);
-  bottom: var(--space-4, 16px);
-}
-
 .outbox-rejections__details {
   display: flex;
   flex-direction: column;

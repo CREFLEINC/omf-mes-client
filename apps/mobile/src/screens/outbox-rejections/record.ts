@@ -61,16 +61,40 @@ export interface DetailRow {
  * 권한이 없는 것을 같은 401 문구로 보내고, 그 문구는 로그인을 찾으라고 한다. 현장 단말에는
  * 로그인이 없다. 어디로 무엇을 보내 무엇이 돌아왔는지를 함께 낸다.
  */
+const serverMessageOf = (error: ApiError): string | null => {
+  switch (error.kind) {
+    case 'conflict':
+      return error.message;
+    case 'validation':
+    case 'stateLocked':
+      return error.errors.map((item) => item.message).join(' ') || null;
+    case 'http':
+      return error.message ?? null;
+    case 'network':
+      return null;
+  }
+};
+
 export const detailsOf = (record: RejectedRecord): DetailRow[] => {
   const error = record.error;
-  const status = error.kind === 'http' ? String(error.status) : d.none;
+  /*
+   * 앞 건이 못 가 붙을 곳이 없던 건은 상태 없는 오류로 표시돼 있다. 그 0 을 그대로 내면
+   * 담당자가 있지도 않은 응답 코드를 찾는다 - 없는 것은 없다고 적는다.
+   */
+  const status =
+    error.kind === 'http' && error.status !== NO_LEADER_STATUS ? String(error.status) : d.none;
   const code = error.kind === 'http' || error.kind === 'conflict' ? (error.code ?? d.none) : d.none;
+  /*
+   * 서버가 준 말만 낸다. 갈래별 안내는 우리가 지은 말이라, 이 이름표를 달고 나가면 작업자가
+   * 서버가 그렇게 말했다고 담당자에게 전한다. 그 안내는 카드 본문에 이미 있다.
+   */
+  const message = serverMessageOf(error);
 
   return [
     { label: d.request, value: `${record.entry.method} ${record.entry.path}` },
     { label: d.status, value: status },
     { label: d.code, value: code },
-    { label: d.message, value: reasonOf(error) },
+    { label: d.message, value: message ?? d.none },
     { label: d.key, value: record.entry.idempotencyKey },
     { label: d.rejectedAt, value: whenOf(record.rejectedAt) },
   ];

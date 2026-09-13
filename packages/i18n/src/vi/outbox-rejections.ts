@@ -10,6 +10,7 @@ export const outboxRejections: Translated<typeof ko.outboxRejections> = {
   cascaded: 'Bản ghi trước thất bại nên bản ghi này cũng không gửi được',
   dismiss: 'Bỏ khỏi danh sách',
   details: {
+    pane: 'Chi tiết',
     open: 'Xem chi tiết',
     close: 'Đóng chi tiết',
     request: 'Yêu cầu',

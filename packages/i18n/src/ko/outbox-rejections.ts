@@ -17,6 +17,7 @@ export const outboxRejections = {
    * 권한이 없는 것이 같은 말로 오므로, 무엇을 어디로 보내 무엇이 돌아왔는지를 함께 보인다.
    */
   details: {
+    pane: '상세',
     open: '상세 보기',
     close: '상세 닫기',
     request: '요청',

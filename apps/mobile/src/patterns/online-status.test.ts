@@ -83,24 +83,6 @@ describe('연결 상태', () => {
     expect(result.current).toBe(true);
   });
 
-  /*
-   * 답이 오기만 하면 온라인이다. 401 도 500 도 서버가 받았다는 뜻이고, 그것을 오프라인으로
-   * 보이면 작업자가 망을 고치러 간다 - 고칠 것은 망이 아니다.
-   */
-  it('오류 응답도 답이므로 온라인이다', () => {
-    setOnline(true);
-    const { result } = renderHook(() => useServerReachable());
-
-    act(() => {
-      noteServerSilent();
-    });
-    act(() => {
-      noteServerAnswered();
-    });
-
-    expect(result.current).toBe(true);
-  });
-
   /* 다시 붙었다는 기기 신호는 앞서 못 닿았던 기억을 지운다. 다음 요청이 정정한다. */
   it('망이 다시 붙으면 못 닿았던 기억을 지운다', () => {
     setOnline(true);

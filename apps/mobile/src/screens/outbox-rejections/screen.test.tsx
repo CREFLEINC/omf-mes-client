@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -148,13 +148,37 @@ describe('전송 실패한 기록 화면', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
 
-    expect(screen.getByText('POST /logistics/inbound-receipts')).toBeInTheDocument();
-    expect(screen.getByText('401')).toBeInTheDocument();
-    expect(screen.getByText('PERMISSION_DENIED')).toBeInTheDocument();
-    expect(screen.getByText('key-9')).toBeInTheDocument();
+    /*
+     * 사유 문단에도 같은 문구가 이미 떠 있다. 상세 안에서만 찾지 않으면 접힌 채로도
+     * 걸려, 상세를 열었는지와 무관하게 통과한다.
+     */
+    const details = screen.getByRole('list', { name: '상세' });
+
+    expect(within(details).getByText('POST /logistics/inbound-receipts')).toBeInTheDocument();
+    expect(within(details).getByText('401')).toBeInTheDocument();
+    expect(within(details).getByText('PERMISSION_DENIED')).toBeInTheDocument();
+    expect(within(details).getByText('로그인이 필요합니다.')).toBeInTheDocument();
+    expect(within(details).getByText('key-9')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: '상세 닫기' }));
 
-    expect(screen.queryByText('PERMISSION_DENIED')).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: '상세' })).not.toBeInTheDocument();
+  });
+
+  /* 세로 화면이라 여럿이 펼쳐지면 목록을 잃는다. 하나를 열면 앞엣것이 닫혀야 한다. */
+  it('상세는 한 번에 하나만 펴진다', async () => {
+    seed([failed(), record({ entry: { ...record().entry, id: 'e-2', label: '고장 사진' } })]);
+
+    render();
+
+    const open = await screen.findAllByRole('button', { name: '상세 보기' });
+
+    await userEvent.click(open[0]!);
+    expect(screen.getAllByRole('list', { name: '상세' })).toHaveLength(1);
+
+    await userEvent.click(screen.getByRole('button', { name: '상세 보기' }));
+
+    expect(screen.getAllByRole('list', { name: '상세' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: '상세 닫기' })).toHaveLength(1);
   });
 });
