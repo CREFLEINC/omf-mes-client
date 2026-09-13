@@ -9,7 +9,7 @@ import { soleProcessIdOf, usePopIdentity } from '../../patterns/pop-identity';
 import { ConfirmPanel } from './confirm-panel';
 import { LoadErrorBanner } from './load-error-banner';
 import { useLotStatusLabels } from './lot-status-labels';
-import { useReceiptLines } from './queries';
+import { useReceiptLines, useWorkOrderTypeCode } from './queries';
 import { ReceiptSummary } from './receipt-summary';
 import { useReferenceLabels } from './reference-labels';
 import { ReceiptTable } from './receipt-table';
@@ -24,6 +24,7 @@ import { readWorkOrderId } from './screen-params';
 import { useOutbox } from './outbox';
 import { useOpenWorkSession } from './session';
 import { useTerminalGate } from './terminal-gating';
+import { isEmergencyTypeCode } from './work-order-type';
 
 const t = messages.materialInputScan;
 
@@ -91,6 +92,8 @@ export const MaterialInputScanScreen = () => {
   const titleId = useId();
 
   const receipt = useReceiptLines(workOrderId);
+  /* 긴급 W/O 에서 넘어왔으면 그 사실을 머리줄에 남긴다(`P-02-12` §5-1 · #1147). */
+  const isEmergency = isEmergencyTypeCode(useWorkOrderTypeCode(workOrderId));
 
   const [draft, setDraft] = useState<ScanDraft>(EMPTY_SCAN_DRAFT);
   const scan = useScanLookup();
@@ -275,7 +278,18 @@ export const MaterialInputScanScreen = () => {
         <h1 id={titleId} className="pop-title">
           {t.title}
         </h1>
-        {workOrderId !== null && <p className="pop-context">{t.header.workOrder(workOrderId)}</p>}
+        {workOrderId !== null && (
+          <p className="pop-context">
+            {isEmergency && (
+              <>
+                <Chip status="error" size="md">
+                  {t.header.emergency}
+                </Chip>{' '}
+              </>
+            )}
+            {t.header.workOrder(workOrderId)}
+          </p>
+        )}
 
         {/*
          * 스펙 §3의 헤더 오른쪽 — **지금 어느 구간에서 어느 단말로 찍고 있는가.** 단말은

@@ -1,5 +1,5 @@
 import { messages } from '@omf-mes/i18n';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { setWorkerSession } from '../../patterns/worker-session';
@@ -586,5 +586,37 @@ describe('P-02-01 작업 시작 — 계획 밖 설비', () => {
     expect(
       screen.queryByText(t.selection.otherEquipment(t.selection.none)),
     ).not.toBeInTheDocument();
+  });
+});
+
+/* 목록에서 본 긴급 표식이 «선택 확인»에서도 남는다(스펙 §5-3 · #1147). */
+describe('P-02-01 작업 시작 — 선택 확인의 긴급 표식', () => {
+  const selectionPane = (): HTMLElement => screen.getByRole('region', { name: t.selection.title });
+
+  it('긴급 지시를 고르면 선택 확인에도 긴급을 세운다', async () => {
+    const rendered = renderScreen({
+      workOrders: [{ ...WORK_ORDER, workOrderTypeCode: 'EMERGENCY' }],
+    });
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+
+    expect(await within(selectionPane()).findByText(t.list.emergencyBadge)).toBeInTheDocument();
+  });
+
+  it('긴급이 아닌 지시를 고르면 세우지 않는다', async () => {
+    const rendered = renderScreen();
+
+    await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) });
+    await enterWorkerNo(rendered.user, WORKER.workerNo);
+    await rendered.user.click(
+      await screen.findByRole('button', { name: selectName(WORK_ORDER.workOrderNo) }),
+    );
+
+    await within(selectionPane()).findByText(new RegExp(WORK_ORDER.workOrderNo));
+    expect(within(selectionPane()).queryByText(t.list.emergencyBadge)).not.toBeInTheDocument();
   });
 });
