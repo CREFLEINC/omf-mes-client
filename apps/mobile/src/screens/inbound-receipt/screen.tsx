@@ -28,6 +28,7 @@ import {
   UNDER,
   canSubmit,
   isExpiryBeforeManufactured,
+  openLinesFirst,
   packageProblem,
   qtyProblem,
   queuedQtyOf,
@@ -644,7 +645,7 @@ export const InboundReceiptScreen = () => {
                   <AlertBanner variant="warning" title={t.po.linesNone} />
                 ) : null}
                 <ul className="receipt__lines">
-                  {(lines.data ?? []).map((line: PurchaseOrderLine) => {
+                  {openLinesFirst(lines.data ?? [], queuedFor).map((line: PurchaseOrderLine) => {
                     /* 표시와 표식이 갈리지 않게 한 번만 센다. */
                     const lineRemaining = remainingQtyOf(line, queuedFor(line.purchaseOrderLineId));
 

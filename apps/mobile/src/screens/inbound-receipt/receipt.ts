@@ -307,6 +307,37 @@ export const toOutboxDraft = (
   };
 };
 
+/**
+ * 받을 것이 남은 줄을 위로 올린다.
+ *
+ * 후보 목록은 발주 단위로 열림을 판정하므로, 그 품목의 라인이 다 찼어도 같은 발주의 다른
+ * 라인이 열려 있으면 후보로 선다. 그때 다 받은 줄이 맨 위에 서면 작업자가 그것부터 고르고
+ * 초과 판정을 받는다 - 실기기에서 그 차례로 나왔다.
+ *
+ * ⛔ 다 받은 줄을 감추지 않는다. 그 줄에도 초과 입하가 들어오고, 감추면 초과분만 등록하는
+ *    길이 화면에서 사라져 담당자가 무발주로 돌아가 공급사·품목·단위를 손으로 고르게 된다.
+ *
+ * 같은 무리 안에서는 받은 차례를 지킨다 - ES2019 부터 sort 가 안정이라 등급이 같으면
+ * 받은 차례로 남는다. 흔들면 고르던 자리가 회차마다 바뀐다.
+ */
+export const openLinesFirst = (
+  lines: readonly PurchaseOrderLine[],
+  queuedFor: (purchaseOrderLineId: number) => number,
+): PurchaseOrderLine[] => {
+  const isClosed = (line: PurchaseOrderLine) =>
+    remainingQtyOf(line, queuedFor(line.purchaseOrderLineId)) <= 0;
+
+  /*
+   * 줄마다 한 번만 센다. 비교 안에서 세면 큐를 O(n log n) 번 훑는다.
+   *
+   * 조회가 준 배열을 제자리에서 뒤집으면 캐시에 담긴 것이 함께 바뀐다.
+   */
+  return [...lines]
+    .map((line) => ({ line, closed: Number(isClosed(line)) }))
+    .sort((left, right) => left.closed - right.closed)
+    .map((each) => each.line);
+};
+
 export interface SplitQuantities {
   remaining: number;
   normal: number;

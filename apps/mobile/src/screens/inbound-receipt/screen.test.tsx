@@ -537,6 +537,33 @@ describe('입하 등록 화면 — 발주 경로', () => {
   });
 
   /*
+   * 실기기에서 다 받은 줄이 맨 위에 섰다. 그대로 두면 작업자가 그것부터 고르고 초과 판정을
+   * 받는다 - 감추지 않고 차례만 내려, 고를 것이 먼저 눈에 들어오게 한다.
+   */
+  it('받을 것이 남은 줄을 위로 올린다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      lines: [
+        poLine({ purchaseOrderLineId: 41, itemId: 31, orderedQty: 100, receivedQty: 100 }),
+        poLine({ purchaseOrderLineId: 42, lineNo: 2, itemId: 32, orderedQty: 50, receivedQty: 0 }),
+      ],
+    });
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await screen.findByText('ERP W/O 선택');
+
+    await user.click(screen.getByRole('combobox', { name: 'ERP W/O 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+
+    const remainings = await screen.findAllByText(/남은 예정/);
+
+    /* 개수를 못 박지 않으면 위쪽에 같은 말이 하나 생길 때 차례가 아닌 것을 재게 된다. */
+    expect(remainings).toHaveLength(2);
+    expect(remainings[0]?.textContent).toMatch(/남은 예정 50/);
+    expect(remainings[1]?.textContent).toMatch(/남은 예정 0/);
+  });
+
+  /*
    * 담아 둔 것은 서버의 누적에 없다. 카드가 그것을 빼지 않으면 카드는 남은 예정 500,
    * 그 카드를 누른 뒤 수량 칸은 0 이 되어 고치려던 어긋남이 오프라인 경로에 그대로 남는다.
    */
