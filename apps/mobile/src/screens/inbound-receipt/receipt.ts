@@ -23,13 +23,28 @@ export const UNDER = 'under';
 export type Verdict = typeof NORMAL | typeof OVER | typeof UNDER;
 
 /**
+ * 서버가 수량을 담는 자릿수. 여기까지는 값이 살아 있고 그 아래는 서버가 잘라 버린다.
+ */
+const STORED_SCALE = 1e6;
+
+/**
+ * 수량 셈을 정수로 옮겨 한다.
+ *
+ * 배정밀도에서 8.01 - 8 은 0.009999999999999787 이다. 그 값이 화면에 그대로 나오고 요청
+ * 본문의 수량으로도 나가는데, 서버는 6자리로 반올림해 받으므로 잘못된 값이 거절되지 않고
+ * 그대로 원장에 남는다.
+ */
+const exact = (compute: (scale: (value: number) => number) => number): number =>
+  compute((value) => Math.round(value * STORED_SCALE)) / STORED_SCALE;
+
+/**
  * 아직 안 온 수량. 한 발주에 여러 번 도착할 수 있어 발주 총량과 견주면 두 방향으로 틀린다.
  *
  * 분할 납품의 마지막 회차가 부족으로 읽히고, 누적이 총량을 넘긴 것도 부족으로 읽힌다.
  * 뒤엣것이 더 무겁다 - 서버가 거부할 초과인데 화면이 입하 오류 등록으로 보낸다.
  */
 export const remainingQtyOf = (line: PurchaseOrderLine, queuedQty = 0): number =>
-  line.orderedQty - line.receivedQty - queuedQty;
+  exact((to) => to(line.orderedQty) - to(line.receivedQty) - to(queuedQty));
 
 /**
  * 이번 도착까지 받고도 남는 몫.
@@ -42,16 +57,16 @@ export const remainingAfterOf = (
   line: PurchaseOrderLine,
   arrivedQty: number,
   queuedQty = 0,
-): number => remainingQtyOf(line, queuedQty) - arrivedQty;
+): number => exact((to) => to(remainingQtyOf(line, queuedQty)) - to(arrivedQty));
 
 export const verdictOf = (line: PurchaseOrderLine, arrivedQty: number, queuedQty = 0): Verdict => {
   const remaining = remainingQtyOf(line, queuedQty);
 
-  if (arrivedQty > remaining + line.toleranceOverQty) {
+  if (arrivedQty > exact((to) => to(remaining) + to(line.toleranceOverQty))) {
     return OVER;
   }
 
-  return arrivedQty < remaining - line.toleranceUnderQty ? UNDER : NORMAL;
+  return arrivedQty < exact((to) => to(remaining) - to(line.toleranceUnderQty)) ? UNDER : NORMAL;
 };
 
 /** 큐에서 이 화면이 셈에 넣을 만큼만 읽는다. 큐는 화면을 가리지 않고 한 줄로 쌓인다. */
@@ -305,9 +320,10 @@ export const splitQuantitiesOf = (
   queuedQty = 0,
 ): SplitQuantities => {
   const remaining = remainingQtyOf(line, queuedQty);
-  const normal = Math.min(arrivedQty, Math.max(0, remaining + line.toleranceOverQty));
+  const room = exact((to) => Math.max(0, to(remaining) + to(line.toleranceOverQty)));
+  const normal = Math.min(arrivedQty, room);
 
-  return { remaining, normal, excess: arrivedQty - normal };
+  return { remaining, normal, excess: exact((to) => to(arrivedQty) - to(normal)) };
 };
 
 const splitPart = (

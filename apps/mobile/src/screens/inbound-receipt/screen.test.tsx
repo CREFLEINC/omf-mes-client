@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useEffect, type ReactNode } from 'react';
@@ -10,6 +11,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { OUTBOX_KEY } from '../../patterns/outbox';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { InboundReceiptScreen } from './screen';
 
@@ -481,6 +483,93 @@ describe('입하 등록 화면 — 발주 경로', () => {
   });
 
   /*
+   * 실기기에서 나온 것이다. 발주는 라인마다 열고 닫히는데 후보 목록은 발주 단위라, 그 품목의
+   * 라인이 다 찬 발주도 후보에 선다. 카드가 발주량과 누적만 보이면 작업자는 굵게 보이는 발주량
+   * 대로 적고 초과 판정을 받는다 - 견주는 수인 남은 예정을 카드가 직접 말해야 한다.
+   */
+  it('라인 카드가 남은 예정을 보이고 다 받은 줄을 표식한다', async () => {
+    const user = userEvent.setup();
+    mount([], {
+      lines: [
+        poLine({ purchaseOrderLineId: 41, orderedQty: 100, receivedQty: 100 }),
+        poLine({ purchaseOrderLineId: 42, lineNo: 2, itemId: 32, orderedQty: 50, receivedQty: 0 }),
+      ],
+    });
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await screen.findByText('ERP W/O 선택');
+
+    await user.click(screen.getByRole('combobox', { name: 'ERP W/O 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+
+    expect(await screen.findByText(/남은 예정 0/)).toBeTruthy();
+    expect(screen.getByText('다 받았습니다')).toBeTruthy();
+    expect(screen.getByText(/남은 예정 50/)).toBeTruthy();
+  });
+
+  /*
+   * 품목과 단위는 다른 조회에서 온다. 그 조회가 비거나 이 품목을 담고 있지 않으면 지금은
+   * 빈 글자가 들어가, 카드에 이름도 단위도 없이 발주 수량만 남는다 - 작업자는 무엇을
+   * 세는지 모르는 채 수량을 적는다. 없으면 없다고 적는다.
+   */
+  it('품목과 단위를 못 찾으면 없다고 적는다', async () => {
+    const user = userEvent.setup();
+    mount([
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items',
+        respond: () => jsonResponse({ items: [], page }),
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/items/31',
+        respond: () => jsonResponse({ message: '없음' }, { status: 404 }),
+      },
+      {
+        match: (req) => new URL(req.url).pathname === '/mdm/uoms',
+        respond: () => jsonResponse({ items: [], page }),
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user, /품목 정보 없음/);
+
+    /* 라인 카드와 품목·수량 확인 두 자리 모두에 선다. */
+    expect(await screen.findAllByText(/품목 정보 없음/)).toHaveLength(2);
+    expect(screen.getAllByText(/발주 500 단위 없음/)).toHaveLength(2);
+  });
+
+  /*
+   * 담아 둔 것은 서버의 누적에 없다. 카드가 그것을 빼지 않으면 카드는 남은 예정 500,
+   * 그 카드를 누른 뒤 수량 칸은 0 이 되어 고치려던 어긋남이 오프라인 경로에 그대로 남는다.
+   */
+  it('라인 카드가 담아 둔 수량까지 빼고 남은 예정을 낸다', async () => {
+    const user = userEvent.setup();
+    store.set(
+      OUTBOX_KEY,
+      JSON.stringify([
+        {
+          id: 'queued-1',
+          label: messages.inboundReceipt.record,
+          idempotencyKey: 'queued-key',
+          method: 'POST',
+          path: '/logistics/inbound-receipts',
+          body: { lines: [{ purchaseOrderLineId: 41, receivedQty: 500 }] },
+          occurredAt: '2026-09-01T02:30:00.000Z',
+          confirmation: 'pending',
+        },
+      ]),
+    );
+    mount();
+    await screen.findByLabelText('LOT 번호');
+    scan(SCANNED);
+    await screen.findByText('ERP W/O 선택');
+
+    await user.click(screen.getByRole('combobox', { name: 'ERP W/O 번호' }));
+    await user.click(await screen.findByRole('option', { name: 'PO-2026-0003' }));
+
+    expect(await screen.findByText(/남은 예정 0/)).toBeTruthy();
+    expect(screen.getByText('다 받았습니다')).toBeTruthy();
+  });
+
+  /*
    * 판정이 견주는 것은 발주 총량이 아니라 남은 예정이다. 총량만 칸 옆에 두면 적는 사람이
    * 그 수에 맞추려 하고, 판정은 다른 수로 나온다.
    */
@@ -662,6 +751,44 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(body.lines).toHaveLength(1);
     expect(body.businessDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
+  });
+
+  /*
+   * 실기기에서 나온 것이다. 라인이 하나뿐인 발주를 다 받아 닫은 뒤 곧바로 다음 입하로 넘어가면
+   * 그 발주가 후보에 그대로 남았다. 목록 조회는 키가 바뀌지 않아 다시 돌지 않는다 - 작업자가
+   * 받을 것이 없는 발주를 골라 실물 수량을 넣고 초과 판정을 받는다.
+   */
+  it('등록에 성공하면 발주 목록을 다시 받는다', async () => {
+    const user = userEvent.setup();
+    let orders = 0;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/purchase-orders' && req.method === 'GET',
+        respond: () => {
+          orders += 1;
+          return jsonResponse({ items: [order], page });
+        },
+      },
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+        respond: () => jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 }),
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await waitFor(() => {
+      expect(orders).toBe(1);
+    });
+
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+    await screen.findByText('입하를 등록했습니다');
+
+    await waitFor(() => {
+      expect(orders).toBeGreaterThan(1);
+    });
   });
 });
 
@@ -1101,7 +1228,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
    * 라벨의 앞자리가 어느 발주 라인이 후보인지를 가른다. 다른 품목의 라벨로 바꿨는데 앞서 고른
    * 라인이 남으면, 그 라인에 남의 라벨이 붙은 채 등록된다 - 화면은 아무 말도 하지 않는다.
    *
-   * 되묻는 창이 이미 「정말 바꿀 거냐」를 물었으므로 비워도 놀라지 않는다.
+   * 되묻는 창이 이미 바꿀 것인지를 물었으므로 비워도 놀라지 않는다.
    */
   it('새 라벨을 받으면 그 아래 고른 것이 비워진다', async () => {
     const user = userEvent.setup();

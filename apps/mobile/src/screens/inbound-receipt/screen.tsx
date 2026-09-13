@@ -1,5 +1,6 @@
 import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
@@ -16,6 +17,7 @@ import { useAdvanceTo } from '../../patterns/advance-to';
 import { playErrorTone } from '../../patterns/error-tone';
 import {
   SUBSTITUTE_LOT_REASON,
+  receiptKeys,
   useOpenPurchaseOrders,
   usePurchaseOrderLines,
   useScannedItem,
@@ -78,6 +80,7 @@ export const InboundReceiptScreen = () => {
 
   const navigate = useNavigate();
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
+  const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
 
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
@@ -232,11 +235,15 @@ export const InboundReceiptScreen = () => {
 
   const started = draft.supplierLotNo !== '' || draft.supplierLotMissing;
   const received = Number(draft.receivedQty.trim());
-  /* 서버의 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 초과가 초과로 보이지 않는다. */
-  const queuedQty = queuedQtyOf(
-    pendingOf(t.record),
-    draft.purchaseOrderLine?.purchaseOrderLineId ?? -1,
-  );
+  /*
+   * 서버의 누적 입하에는 큐에 있는 것이 없다. 셈에 넣지 않으면 초과가 초과로 보이지 않는다.
+   *
+   * 라인마다 따로 센다. 카드와 판정이 다른 수를 세면 담아 둔 것이 있는 라인에서 카드는
+   * 남은 예정 500, 그 카드를 누른 뒤 수량 칸은 0 이 된다 - 고치려던 어긋남이 그대로 남는다.
+   */
+  const queuedFor = (purchaseOrderLineId: number): number =>
+    queuedQtyOf(pendingOf(t.record), purchaseOrderLineId);
+  const queuedQty = queuedFor(draft.purchaseOrderLine?.purchaseOrderLineId ?? -1);
   const verdict =
     draft.purchaseOrderLine === null || qtyProblem(draft.receivedQty) !== null
       ? null
@@ -265,14 +272,19 @@ export const InboundReceiptScreen = () => {
    * 상태에서 저장이 여기로 새어 나간다.
    */
   const varianceReady = loaded && plantId !== null && canSubmit(draft, worker !== null);
-  const uom =
-    uoms.data?.get((draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId) ?? -1) ?? '';
+  /*
+   * 단위는 따로 조회한다. 못 찾았을 때 빈 글자를 끼우면 수량 뒤가 그냥 비어, 무엇을 세는
+   * 단위인지 없는 것인지 화면만 보고는 가릴 수 없다.
+   */
+  const uomOf = (uomId: number | null | undefined): string =>
+    uoms.data?.get(uomId ?? -1) ?? t.po.uomUnknown;
+  const uom = uomOf(draft.unordered ? draft.uomId : draft.purchaseOrderLine?.uomId);
 
   /* 코드와 이름을 함께 보인다. 라벨에는 코드가 찍혀 있고 사람은 이름으로 고른다. */
   const itemLabelOf = (itemId: number): string => {
     const found = itemLabels.data?.get(itemId);
 
-    return found === undefined ? '' : `${found.itemCode} ${found.itemName}`;
+    return found === undefined ? t.po.itemUnknown : `${found.itemCode} ${found.itemName}`;
   };
 
   const qtyMessage = (): string | undefined => {
@@ -357,7 +369,28 @@ export const InboundReceiptScreen = () => {
         return;
       }
 
-      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+      const queued = result === null || result.remaining.some(mine);
+
+      /*
+       * 보낸 뒤에는 발주가 달라져 있다 - 다 받은 라인은 닫히고 그 라인뿐이던 발주는 후보에서
+       * 빠진다. 목록 조회는 키가 바뀌지 않아 스스로 다시 돌지 않으므로, 지우지 않으면 다음
+       * 입하에서 받을 것이 없는 발주를 고르게 된다.
+       */
+      if (!queued) {
+        const purchaseOrderId = draft.purchaseOrder?.purchaseOrderId ?? null;
+
+        /*
+         * 기다리지 않는다. 무효화는 부르는 즉시 낡음으로 표시하고, 기다리면 성공 배너가 조회
+         * 두 번 뒤에야 뜬다 - 그 사이 단추도 흐려지지 않아 화면이 아무 말도 하지 않는다.
+         */
+        void queryClient.invalidateQueries({ queryKey: receiptKeys.allOrders });
+
+        if (purchaseOrderId !== null) {
+          void queryClient.invalidateQueries({ queryKey: receiptKeys.detail(purchaseOrderId) });
+        }
+      }
+
+      setOutcome(queued ? 'queued' : 'sent');
     } finally {
       inFlight.current = false;
     }
@@ -611,38 +644,56 @@ export const InboundReceiptScreen = () => {
                   <AlertBanner variant="warning" title={t.po.linesNone} />
                 ) : null}
                 <ul className="receipt__lines">
-                  {(lines.data ?? []).map((line: PurchaseOrderLine) => (
-                    <li key={line.purchaseOrderLineId}>
-                      <Card
-                        bordered
-                        interactive
-                        onClick={() => {
-                          patch({ purchaseOrderLine: line });
-                        }}
-                      >
-                        <Card.Body className="card-body receipt__line">
-                          <strong>
-                            {t.po.lineLabel(
-                              itemLabelOf(line.itemId),
-                              String(line.orderedQty),
-                              uoms.data?.get(line.uomId) ?? '',
-                            )}
-                          </strong>
-                          <p>{t.po.received(String(line.receivedQty))}</p>
-                          <p>
-                            {t.po.tolerance(
-                              String(line.toleranceOverQty),
-                              String(line.toleranceUnderQty),
-                            )}
-                          </p>
-                          {draft.purchaseOrderLine?.purchaseOrderLineId ===
-                          line.purchaseOrderLineId ? (
-                            <Chip status="success">{t.po.linePicked}</Chip>
-                          ) : null}
-                        </Card.Body>
-                      </Card>
-                    </li>
-                  ))}
+                  {(lines.data ?? []).map((line: PurchaseOrderLine) => {
+                    /* 표시와 표식이 갈리지 않게 한 번만 센다. */
+                    const lineRemaining = remainingQtyOf(line, queuedFor(line.purchaseOrderLineId));
+
+                    return (
+                      <li key={line.purchaseOrderLineId}>
+                        <Card
+                          bordered
+                          interactive
+                          onClick={() => {
+                            patch({ purchaseOrderLine: line });
+                          }}
+                        >
+                          <Card.Body className="card-body receipt__line">
+                            <strong>
+                              {t.po.lineLabel(
+                                itemLabelOf(line.itemId),
+                                String(line.orderedQty),
+                                uomOf(line.uomId),
+                              )}
+                            </strong>
+                            <p>{t.po.received(String(line.receivedQty))}</p>
+                            {/*
+                             * 후보 목록은 발주 단위라 그 품목의 라인이 다 찬 발주도 선다.
+                             * 견주는 수를 카드가 직접 말하지 않으면 발주량대로 적게 된다.
+                             */}
+                            <p>
+                              {t.po.lineRemaining(String(lineRemaining))}
+                              {lineRemaining > 0 ? null : (
+                                <>
+                                  {' · '}
+                                  <strong>{t.po.lineClosed}</strong>
+                                </>
+                              )}
+                            </p>
+                            <p>
+                              {t.po.tolerance(
+                                String(line.toleranceOverQty),
+                                String(line.toleranceUnderQty),
+                              )}
+                            </p>
+                            {draft.purchaseOrderLine?.purchaseOrderLineId ===
+                            line.purchaseOrderLineId ? (
+                              <Chip status="success">{t.po.linePicked}</Chip>
+                            ) : null}
+                          </Card.Body>
+                        </Card>
+                      </li>
+                    );
+                  })}
                 </ul>
                 <Button
                   variant="text"
@@ -846,7 +897,7 @@ export const InboundReceiptScreen = () => {
                 <Card.Body className="card-body receipt__card">
                   <strong>
                     {item.data === undefined
-                      ? String(draft.itemId ?? draft.purchaseOrderLine?.itemId ?? '')
+                      ? t.po.itemUnknown
                       : `${item.data.itemCode} ${item.data.itemName}`}
                   </strong>
                   {item.isError ? <p className="receipt__note">{t.qty.itemLoadFailed}</p> : null}
