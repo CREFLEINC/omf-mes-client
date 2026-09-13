@@ -7,10 +7,17 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
   checking: 'Đang kiểm tra trạng thái đăng ký',
   unregistered: {
     title: 'Máy này chưa được đăng ký',
-    description: 'Hãy quét mã QR đăng ký trên màn hình quản trị.',
+    description: 'Quét mã QR đăng ký trên màn hình quản trị. Nếu không quét được, hãy nhập mã đăng ký.',
     where: 'Quản trị viên tạo mã đăng ký tại Web quản trị > Hệ thống > Cài đặt.',
   },
+  code: {
+    label: 'Mã đăng ký',
+    submit: 'Đăng ký bằng mã',
+    switch: 'Nhập mã đăng ký trực tiếp',
+    help: 'Dán hoặc nhập mã đăng ký đã sao chép từ Web quản trị.',
+  },
   camera: {
+    start: 'Quay lại quét QR',
     preparing: 'Đang chuẩn bị camera',
     unsupported: 'Máy này không dùng được nhận dạng camera',
     denied: 'Không có quyền camera nên không đọc được mã QR đăng ký',
@@ -25,8 +32,8 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
     description: 'Đang nhận danh sách nhân viên. Hãy đợi cho đến khi xong.',
   },
   rejected: {
-    title: 'Thông tin đăng ký đã hết hạn',
-    description: 'Hãy yêu cầu quản trị viên cấp mã QR mới.',
+    title: 'Không xác nhận được mã đăng ký',
+    description: 'Kiểm tra mã hoặc yêu cầu quản trị viên cấp mã đăng ký mới.',
   },
   retry: 'Thử lại',
   terminal: {

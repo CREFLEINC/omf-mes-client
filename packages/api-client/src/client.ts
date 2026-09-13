@@ -1,6 +1,6 @@
 import createClient from 'openapi-fetch';
 
-import type { paths } from './generated/api';
+import type { ApiPaths } from './forward-contract';
 import { createEtagStore, type EtagStore } from './etag-store';
 
 export interface ApiClientOptions {
@@ -26,7 +26,7 @@ export interface ApiClientOptions {
 }
 
 export interface ApiClient {
-  client: ReturnType<typeof createClient<paths>>;
+  client: ReturnType<typeof createClient<ApiPaths>>;
   etags: EtagStore;
   /**
    * 서버 주소.
@@ -119,7 +119,7 @@ const noStoreFetch =
  */
 export const createApiClient = (options: ApiClientOptions): ApiClient => {
   const etags = createEtagStore();
-  const client = createClient<paths>({
+  const client = createClient<ApiPaths>({
     baseUrl: options.baseUrl,
     fetch: noStoreFetch(options.fetch),
     credentials: options.credentials,

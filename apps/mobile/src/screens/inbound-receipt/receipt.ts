@@ -344,7 +344,7 @@ export interface SplitQuantities {
   excess: number;
 }
 
-/** 초과 허용치까지는 ERP W/O에 귀속하고, 그보다 많이 온 수량만 비귀속으로 가른다. */
+/** 초과 허용치까지는 자재 P/O에 귀속하고, 그보다 많이 온 수량만 비귀속으로 가른다. */
 export const splitQuantitiesOf = (
   line: PurchaseOrderLine,
   arrivedQty: number,
@@ -378,7 +378,7 @@ const splitPart = (
 /**
  * 모바일 초과 입하를 한 트랜잭션 요청으로 만든다.
  *
- * 정량분만 원 ERP W/O 라인에 귀속한다. 초과분에 그 식별자를 싣으면 초과가 원 발주 누적에
+ * 정량분만 원 자재 P/O 라인에 귀속한다. 초과분에 그 식별자를 싣으면 초과가 원 발주 누적에
  * 다시 더해져 분리 자체가 무효가 된다.
  */
 export const toSplitOutboxDraft = (
@@ -397,7 +397,7 @@ export const toSplitOutboxDraft = (
   const line = draft.purchaseOrderLine;
 
   if (line === null) {
-    throw new Error('초과 입하 분리는 ERP W/O 라인을 고른 뒤에만 만들 수 있습니다.');
+    throw new Error('초과 입하 분리는 자재 P/O 라인을 고른 뒤에만 만들 수 있습니다.');
   }
 
   const occurredAt = now.toISOString();
