@@ -19,6 +19,8 @@ export const materialInputScan = {
     workOrderMissing: '작업지시가 지정되지 않았습니다. 작업지시를 고른 뒤 다시 들어오세요.',
     /* ⚠ 머리줄의 작업지시 표기는 화면마다 「W/O」로 통일한다(사용자 지시 2026-09-10). */
     workOrder: (workOrderId: number): string => `W/O #${String(workOrderId)}`,
+    /** 긴급 W/O 에서 넘어왔을 때 작업지시 앞에 서는 표식(`P-02-12` §5-1 「긴급 플래그 유지」). */
+    emergency: '긴급',
     /** 이 투입이 매달릴 구간(스펙 §5-5). 세션은 없어도 투입이 서므로 없을 때도 말한다. */
     session: (sessionId: number): string => `세션 #${String(sessionId)}`,
     /**

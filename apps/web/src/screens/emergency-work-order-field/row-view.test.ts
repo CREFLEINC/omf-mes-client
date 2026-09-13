@@ -29,6 +29,11 @@ describe('발행 시각 표시', () => {
     expect(dateTimeText(undefined)).toBe(t.unknown);
   });
 
+  it('서버가 null 로 준 값을 「null」이라는 글자로 보이지 않는다', () => {
+    /* 계약 타입은 undefined 만 적지만 실제 응답은 null 이다(#1147). */
+    expect(dateTimeText(null)).toBe(t.unknown);
+  });
+
   it('읽을 수 없는 모양이면 받은 대로 보인다', () => {
     expect(dateTimeText('언제인지 모를 값')).toBe('언제인지 모를 값');
   });
@@ -37,6 +42,7 @@ describe('발행 시각 표시', () => {
 describe('수량·품목 표시', () => {
   it('안 온 수량을 0으로 떨어뜨리지 않는다', () => {
     expect(qtyText(undefined)).toBe(t.unknown);
+    expect(qtyText(null)).toBe(t.unknown);
   });
 
   it('품목 코드가 비면 빈칸이 아니라 모른다고 적는다', () => {
@@ -47,6 +53,11 @@ describe('수량·품목 표시', () => {
 describe('배정 없음 판정', () => {
   it('설비·금형·교대가 전부 비었을 때만 배정 없음이다', () => {
     expect(hasNoAssignment(base)).toBe(true);
+  });
+
+  it('null 로 온 배정도 없는 것으로 본다', () => {
+    const nulls = { plannedEquipmentId: null, plannedMoldId: null, plannedShiftId: null };
+    expect(hasNoAssignment({ ...base, ...(nulls as unknown as Partial<WorkOrder>) })).toBe(true);
   });
 
   it.each([
