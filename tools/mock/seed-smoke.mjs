@@ -1246,10 +1246,18 @@ for (const [name, path, check] of DETAILS) {
   };
   const body = JSON.stringify({ overallJudgmentCode: 'ACCEPTED' });
 
-  /* If-Match 를 안 실으면 막힌다 - 계약이 필수로 못박았다. */
+  /*
+   * If-Match 를 안 실으면 막힌다 - 계약이 필수로 못박았다.
+   *
+   * ⛔ **아래 확정과 «같은 키»를 쓴다.** 거부를 멱등 캐시가 기억하면, 토큰을 제대로 실어
+   *    다시 보내도 옛 400 이 그대로 되돌아온다 - 고친 뒤 재시도가 영영 막힌다.
+   */
   const noToken = await fetch(`${path}:confirm`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'seed-smoke-no-token' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': confirmHeaders['Idempotency-Key'],
+    },
     body,
   });
   const confirmed = await fetch(`${path}:confirm`, {
@@ -1261,20 +1269,77 @@ for (const [name, path, check] of DETAILS) {
   /* 같은 키로 다시 오면 최초 응답을 재생한다 - 없는 충돌을 지어내지 않는다. */
   const replay = await fetch(`${path}:confirm`, { method: 'POST', headers: confirmHeaders, body });
 
-  /* 같은 깊이의 이름 경로가 번호 자리에 먹히지 않는다. */
-  const summary = await fetch(`${BASE}/quality/inspection-results/summary`);
-  const trend = await fetch(`${BASE}/quality/inspection-results/defect-rate-trend`);
+  /*
+   * 같은 깊이의 이름 경로가 번호 자리에 먹히지 않는다.
+   *
+   * ⚠ **200 을 요구하지 않는다** — 이 둘은 씨앗이 다루지 않아 Prism 이 답하는 자리이고,
+   *    Prism 은 목보다 늦게 뜬다. 재는 것은 「목이 «자기» 404 로 가로챘는가」 하나다.
+   */
+  const swallowed = async (path) => {
+    const answer = await fetch(`${BASE}${path}`);
+
+    if (answer.status !== 404) return false;
+
+    const problem = await answer.json().catch(() => ({}));
+
+    return problem.code === 'NOT_FOUND';
+  };
+
+  const summarySwallowed = await swallowed('/quality/inspection-results/summary');
+  const trendSwallowed = await swallowed('/quality/inspection-results/defect-rate-trend');
+
+  /*
+   * ⛔ **거부가 재시도를 영영 막지 않는다**(#1157 2회차 리뷰). 합계를 어긋나게 저장한 회차를
+   *    같은 키로 확정하면 400 이 오는데, 그 400 이 캐시되면 수량을 고쳐도 같은 400 이
+   *    되돌아온다. 그리고 거부된 확정이 판정·비고를 «이미 써 두면» 안 된다.
+   */
+  const bad = await fetch(`${BASE}/quality/inspection-results`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Idempotency-Key': 'seed-smoke-p-02-13-bad' },
+    body: JSON.stringify({
+      inspectionRequestId: 16001,
+      inspectedQty: 10,
+      acceptedQty: 4,
+      rejectedQty: 0,
+      heldQty: 0,
+      uomId: 1001,
+      overallJudgmentCode: 'REJECTED',
+      remarks: 'orig',
+      inspectedAt: '2026-09-11T15:00:00+09:00',
+      statusCode: 'DRAFT',
+    }),
+  });
+  const badRound = await bad.json();
+  const badPath = `${BASE}/quality/inspection-results/${String(badRound.inspectionResultId)}`;
+  const badEtag = (await fetch(badPath)).headers.get('etag') ?? '';
+  const badHeaders = {
+    'Content-Type': 'application/json',
+    'Idempotency-Key': 'seed-smoke-p-02-13-retry',
+    'If-Match': badEtag,
+  };
+  const rejected = await fetch(`${badPath}:confirm`, {
+    method: 'POST',
+    headers: badHeaders,
+    body: JSON.stringify({ overallJudgmentCode: 'ACCEPTED', remarks: 'changed' }),
+  });
+  /* 거부된 확정이 저장본을 건드리지 않았는가. */
+  const untouched = await (await fetch(badPath)).json();
 
   const ok =
     save.status === 201 &&
     noToken.status === 400 &&
     confirmed.status === 200 &&
+    confirmed.headers.get('etag') !== null &&
     settled.statusCode === 'CONFIRMED' &&
     settled.overallJudgmentCode === 'ACCEPTED' &&
     settled.versionNo === 2 &&
     replay.status === 200 &&
-    summary.status !== 404 &&
-    trend.status !== 404;
+    rejected.status === 400 &&
+    untouched.overallJudgmentCode === 'REJECTED' &&
+    untouched.remarks === 'orig' &&
+    untouched.statusCode === 'DRAFT' &&
+    !summarySwallowed &&
+    !trendSwallowed;
 
   if (!ok) failed += 1;
   console.log(`${ok ? '✔' : '✘'} P-02-13 확정이 토큰을 요구하고, 이름 경로가 번호에 먹히지 않는다`);

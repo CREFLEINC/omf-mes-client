@@ -81,7 +81,15 @@ const idempotent = (scope, headers, execute) => {
   if (remembered !== undefined) return structuredClone(remembered);
 
   const result = execute();
-  if (result !== null) idempotentResults.set(scopedKey, structuredClone(result));
+  /*
+   * ⛔ **거부를 기억하지 않는다.** 기억하면 값을 고쳐 다시 보내도 옛 400 이 되돌아와
+   * **영영 막힌다** — 쓰기 훅 일부가 「적용될 때까지」 키를 붙들고 있어(`keyLifetime`)
+   * 같은 키가 다시 나가기 때문이다(#1157 2회차 리뷰 실측). 재생해야 하는 것은 «성공»이다.
+   */
+  if (result !== null && Number(result.status ?? 200) < 400) {
+    idempotentResults.set(scopedKey, structuredClone(result));
+  }
+
   return result;
 };
 
@@ -3575,67 +3583,83 @@ on(
    *    감싸지 않으면 목이 「이미 확정된 회차입니다」(409)라는 **없는 충돌을 지어낸다.**
    */
   (params, _q, body, headers) =>
-    idempotent('quality.inspection-results:confirm', headers, () => {
-      const result = state.inspectionResults.find(
-        (row) => row.inspectionResultId === Number(params.inspectionResultId),
-      );
-      if (result === undefined) return null;
-
+    idempotent(
       /*
-       * ⛔ **`If-Match` 는 «필수»다**(계약 `IfMatchVersion`). 없으면 통과시키지 않는다 —
-       *    토큰을 못 실은 화면이 목에서만 통과하고 실서버에서 죽는다.
-       *
-       * ⚠ 저장(`POST /quality/inspection-results`)의 `If-Match` 는 계약이 «선택»이라고
-       *    적었다(오프라인 큐는 토큰을 싣지 않는다 · C-9) — 그쪽은 보지 않는다.
+       * ⛔ **범위에 회차 번호를 넣는다**(저장소 관례 — `trace.lots:${lotId}:complete`).
+       *    빼면 회차 A 로 받은 응답이 **회차 B 의 같은 키에 되돌아온다.**
        */
-      if (headers['if-match'] === undefined) {
+      `quality.inspection-results:${String(params.inspectionResultId)}:confirm`,
+      headers,
+      () => {
+        const result = state.inspectionResults.find(
+          (row) => row.inspectionResultId === Number(params.inspectionResultId),
+        );
+        if (result === undefined) return null;
+
+        /*
+         * ⛔ **`If-Match` 는 «필수»다**(계약 `IfMatchVersion`). 없으면 통과시키지 않는다 —
+         *    토큰을 못 실은 화면이 목에서만 통과하고 실서버에서 죽는다.
+         *
+         * ⚠ 저장(`POST /quality/inspection-results`)의 `If-Match` 는 계약이 «선택»이라고
+         *    적었다(오프라인 큐는 토큰을 싣지 않는다 · C-9) — 그쪽은 보지 않는다.
+         */
+        if (headers['if-match'] === undefined) {
+          return {
+            status: 400,
+            created: { code: 'IF_MATCH_REQUIRED', message: 'If-Match 가 필요합니다.' },
+          };
+        }
+
+        if (headers['if-match'] !== inspectionResultEtag(result)) {
+          return {
+            status: 409,
+            created: { code: 'VERSION_CONFLICT', message: '다른 곳에서 먼저 바뀌었습니다.' },
+          };
+        }
+
+        if (result.statusCode === 'CONFIRMED') {
+          return {
+            status: 409,
+            created: { code: 'INVALID_STATE', message: '이미 확정된 회차입니다.' },
+          };
+        }
+
+        /* ⛔ 합계가 맞지 않으면 확정하지 않는다(A-3) — 계약이 400 으로 못박았다. */
+        if (!totalsMatch(result)) {
+          return {
+            status: 400,
+            created: {
+              code: 'QTY_SUM_MISMATCH',
+              message: '합격·불합격·보류의 합이 검사 수량과 같아야 합니다.',
+            },
+          };
+        }
+
+        /*
+         * ⭐ **본문이 실려 오면 그 값으로 바꾼다.** 계약이 `overallJudgmentCode`·`remarks` 를
+         *    받고 「비우면 저장된 값을 쓴다」고 적었다 — 실은 값을 버리면 확정 때 판정을 고쳐
+         *    보낸 화면이 옛 값을 되읽는다.
+         *
+         * ⛔ **거부 판정을 «전부» 지난 뒤에 쓴다.** 먼저 쓰면 400 을 돌려주면서 저장본은 이미
+         *    바뀌어 있다 — 거부된 쓰기가 상태를 남긴다(#1157 2회차 리뷰 실측).
+         */
+        if (body?.overallJudgmentCode !== undefined) {
+          result.overallJudgmentCode = body.overallJudgmentCode;
+        }
+        if (body?.remarks !== undefined) result.remarks = body.remarks;
+
+        result.statusCode = 'CONFIRMED';
+        result.confirmedAt = new Date().toISOString();
+        result.versionNo = Number(result.versionNo ?? 1) + 1;
+
+        /* ⭐ 바뀐 토큰을 함께 내린다 — 판이 올랐으므로 들고 있던 토큰은 이미 낡았다. */
         return {
-          status: 400,
-          created: { code: 'IF_MATCH_REQUIRED', message: 'If-Match 가 필요합니다.' },
+          created: { ...result },
+          status: 200,
+          headers: { ETag: inspectionResultEtag(result) },
         };
-      }
-
-      if (headers['if-match'] !== inspectionResultEtag(result)) {
-        return {
-          status: 409,
-          created: { code: 'VERSION_CONFLICT', message: '다른 곳에서 먼저 바뀌었습니다.' },
-        };
-      }
-
-      if (result.statusCode === 'CONFIRMED') {
-        return {
-          status: 409,
-          created: { code: 'INVALID_STATE', message: '이미 확정된 회차입니다.' },
-        };
-      }
-
-      /*
-       * ⭐ **본문이 실려 오면 그 값으로 바꾼다.** 계약이 `overallJudgmentCode`·`remarks` 를
-       *    받고 「비우면 저장된 값을 쓴다」고 적었다 — 실은 값을 버리면 확정 때 판정을 고쳐
-       *    보낸 화면이 옛 값을 되읽는다.
-       */
-      if (body?.overallJudgmentCode !== undefined) {
-        result.overallJudgmentCode = body.overallJudgmentCode;
-      }
-      if (body?.remarks !== undefined) result.remarks = body.remarks;
-
-      /* ⛔ 합계가 맞지 않으면 확정하지 않는다(A-3) — 계약이 400 으로 못박았다. */
-      if (!totalsMatch(result)) {
-        return {
-          status: 400,
-          created: {
-            code: 'QTY_SUM_MISMATCH',
-            message: '합격·불합격·보류의 합이 검사 수량과 같아야 합니다.',
-          },
-        };
-      }
-
-      result.statusCode = 'CONFIRMED';
-      result.confirmedAt = new Date().toISOString();
-      result.versionNo = Number(result.versionNo ?? 1) + 1;
-
-      return { created: { ...result }, status: 200 };
-    }),
+      },
+    ),
 );
 
 /*
