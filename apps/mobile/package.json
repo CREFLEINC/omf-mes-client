@@ -20,7 +20,7 @@
     "@capacitor/core": "8.5.0",
     "@capacitor/keyboard": "8.0.1",
     "@capacitor/preferences": "8.0.1",
-    "@crefle/web-ui": "github:CREFLEINC/design-system-v2-webui#d63fdcf",
+    "@crefle/web-ui": "github:CREFLEINC/design-system-v2-webui#0307884",
     "@omf-mes/api-client": "workspace:*",
     "@omf-mes/i18n": "workspace:*",
     "@omf-mes/ui": "workspace:*",
