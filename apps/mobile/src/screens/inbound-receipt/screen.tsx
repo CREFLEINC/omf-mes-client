@@ -1,5 +1,6 @@
 import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
@@ -16,6 +17,7 @@ import { useAdvanceTo } from '../../patterns/advance-to';
 import { playErrorTone } from '../../patterns/error-tone';
 import {
   SUBSTITUTE_LOT_REASON,
+  receiptKeys,
   useOpenPurchaseOrders,
   usePurchaseOrderLines,
   useScannedItem,
@@ -79,6 +81,7 @@ export const InboundReceiptScreen = () => {
 
   const navigate = useNavigate();
   const { enqueue, flush, isRejected, loaded, pendingOf } = useOutbox();
+  const queryClient = useQueryClient();
   const { worker } = useWorkerSession();
 
   const [draft, setDraft] = useState<ReceiptDraft>(emptyDraft);
@@ -358,7 +361,21 @@ export const InboundReceiptScreen = () => {
         return;
       }
 
-      setOutcome(result === null || result.remaining.some(mine) ? 'queued' : 'sent');
+      const queued = result === null || result.remaining.some(mine);
+
+      /*
+       * 보낸 뒤에는 발주가 달라져 있다 - 다 받은 라인은 닫히고 그 라인뿐이던 발주는 후보에서
+       * 빠진다. 목록 조회는 키가 바뀌지 않아 스스로 다시 돌지 않으므로, 지우지 않으면 다음
+       * 입하에서 받을 것이 없는 발주를 고르게 된다.
+       */
+      if (!queued) {
+        await queryClient.invalidateQueries({ queryKey: ['inbound-purchase-orders'] });
+        await queryClient.invalidateQueries({
+          queryKey: receiptKeys.detail(draft.purchaseOrder?.purchaseOrderId ?? null),
+        });
+      }
+
+      setOutcome(queued ? 'queued' : 'sent');
     } finally {
       inFlight.current = false;
     }

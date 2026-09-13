@@ -689,6 +689,43 @@ describe('입하 등록 화면 — 발주 경로', () => {
     expect(await screen.findByText('입하를 등록했습니다')).toBeTruthy();
   });
 
+  /*
+   * 실기기에서 나온 것이다. 라인이 하나뿐인 발주를 다 받아 닫은 뒤 곧바로 다음 입하로 넘어가면
+   * 그 발주가 후보에 그대로 남았다. 목록 조회는 키가 바뀌지 않아 다시 돌지 않는다 - 작업자가
+   * 받을 것이 없는 발주를 골라 실물 수량을 넣고 초과 판정을 받는다.
+   */
+  it('등록에 성공하면 발주 목록을 다시 받는다', async () => {
+    const user = userEvent.setup();
+    let orders = 0;
+    mount([
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/purchase-orders' && req.method === 'GET',
+        respond: () => {
+          orders += 1;
+          return jsonResponse({ items: [order], page });
+        },
+      },
+      {
+        match: (req) =>
+          new URL(req.url).pathname === '/logistics/inbound-receipts' && req.method === 'POST',
+        respond: () => jsonResponse({ inboundReceipt: {}, lines: [] }, { status: 201 }),
+      },
+    ]);
+    await screen.findByLabelText('LOT 번호');
+    await choosePoLine(user);
+    await waitFor(() => {
+      expect(orders).toBe(1);
+    });
+
+    await user.type(await screen.findByLabelText(/실입하\ 수량/), '500');
+    await user.click(screen.getByRole('button', { name: '입하 등록' }));
+    await screen.findByText('입하를 등록했습니다');
+
+    await waitFor(() => {
+      expect(orders).toBeGreaterThan(1);
+    });
+  });
 });
 
 describe('입하 등록 화면 — 초과 입하 분리', () => {
