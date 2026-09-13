@@ -116,6 +116,13 @@ describe('POP 표 — 긴 번호가 다른 열을 밀어내지 않는다', () =>
       /\.pop-ui\s+\.pop-reprint-contents\s+td\s*\{[^}]*overflow-wrap:\s*anywhere/u,
     );
   });
+
+  /* 발행 칩도 좁은 칸 안에서 접힌다 — 한 줄로 두면 칸 밖으로 잘린다(#1150). */
+  it('출고 QR 발행 칩이 칸 안에서 접힌다', () => {
+    expect(popCss).toMatch(
+      /\.pop-ui\s+\.pop-giqr-lines\s+td:last-child\s*>\s*\*\s*\{[^}]*white-space:\s*normal/u,
+    );
+  });
 });
 
 /*

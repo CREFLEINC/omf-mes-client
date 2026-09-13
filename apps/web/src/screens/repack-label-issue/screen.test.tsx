@@ -118,6 +118,8 @@ interface Options {
   handlingUnitTypes?: CodeValue[];
   /** 재구성 사건을 못 찾는다 — 그 줄이 무엇인지 말해야 한다(#1044) */
   noRepackEvent?: boolean;
+  /** 사건은 있는데 이 포장이 원 포장으로만 실린다 — 「없음」이라 말하면 안 되는 갈래(#1150). */
+  unmatchedRepackEvent?: boolean;
   /**
    * 인쇄 결과 보고 요청을 검사한다. 렌디션이 막힌 뒤로는 «부르지 않아야 하는» 자리를
    * 확인하는 용도로도 쓴다 — 그림을 못 받으면 인쇄도 없고, 인쇄가 없으면 보고도 없다.
@@ -178,9 +180,32 @@ const routes = (options: Options): StubRoute[] => [
         return jsonResponse({ items: [] });
       }
 
+      if (options.unmatchedRepackEvent === true) {
+        return jsonResponse({
+          items: [
+            {
+              repackEventId: 882,
+              repackTypeCode: 'SPLIT',
+              performedBy: 7001,
+              occurredAt: '2026-09-09T06:12:00.000Z',
+              lines: [
+                {
+                  handlingUnitId: Number(pathOf(request).split('/').at(-2)),
+                  roleCode: 'SOURCE',
+                  itemId: ITEM_ID,
+                  lotId: LOT_A_ID,
+                  qtyBefore: 180,
+                  qtyAfter: 100,
+                },
+              ],
+            },
+          ],
+        });
+      }
+
       /*
        * ⭐ **기본은 «사건이 있는» 줄이다.** 이 목록이 세우는 것은 재구성으로 생긴 포장이므로
-       *    그쪽이 보통이고, 사건을 못 찾은 줄은 `noRepackEvent` 로만 나온다 — 기본이 0건이면
+       *    그쪽이 보통이고, 사건이 없는 줄은 `noRepackEvent` 로만 나온다 — 기본이 0건이면
        *    두 갈래가 같은 것이 되어 「사건 있는 줄」 대조군이 사라진다.
        */
       if (options.hasRemainder !== true) {
@@ -570,6 +595,14 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
     ).toBeEnabled();
     /* 서버가 200 으로 «없다»고 답한 줄이다 — 못 읽었다는 말을 세우지 않는다(#1150). */
     expect(screen.queryByText(/확인 불가/)).not.toBeInTheDocument();
+  });
+
+  /* 사건은 있는데 이 포장을 만든 쪽이 아니면 이력이 «있다» — 「없음」이라 말하지 않는다(#1150). */
+  it('이 포장을 만든 사건을 못 맞춘 줄은 없다고 말하지 않는다', async () => {
+    renderScreen({ unmatchedRepackEvent: true });
+
+    expect(await screen.findByText(t.pending.unknownEvent(HANDLING_UNIT_NO))).toBeInTheDocument();
+    expect(screen.queryByText(t.pending.noEvent(HANDLING_UNIT_NO))).not.toBeInTheDocument();
   });
 
   it('발행 대기 조회가 실패하면 다시 조회할 수 있다', async () => {

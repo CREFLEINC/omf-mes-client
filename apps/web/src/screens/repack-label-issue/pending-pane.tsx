@@ -60,11 +60,14 @@ export const PendingPane = ({
          *    모르지만 **이 포장의 번호는 안다** — 번호와 「왜 나머지가 비었는지」를 함께 적어,
          *    눌러 보기 전에 무엇인지 알 수 있게 한다.
          */
-        const sourceText = !row.hasRepackEvent
-          ? t.noEvent(row.handlingUnitNo)
-          : row.sourceNos.length === 0
-            ? t.unknown
-            : row.sourceNos.join(t.sourceJoin);
+        const sourceText =
+          row.repackEvent === 'none'
+            ? t.noEvent(row.handlingUnitNo)
+            : row.repackEvent === 'unmatched'
+              ? t.unknownEvent(row.handlingUnitNo)
+              : row.sourceNos.length === 0
+                ? t.unknown
+                : row.sourceNos.join(t.sourceJoin);
 
         return (
           <button
