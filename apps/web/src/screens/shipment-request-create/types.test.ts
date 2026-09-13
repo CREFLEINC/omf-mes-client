@@ -36,8 +36,8 @@ describe('toSalesOrderDetailView', () => {
     });
   });
 
-  it('lines가 없으면 빈 배열이다', () => {
-    const view = toSalesOrderDetailView({ ...salesOrderDetailFixture, lines: undefined });
+  it('lines가 빈 배열이면 빈 배열이다', () => {
+    const view = toSalesOrderDetailView({ ...salesOrderDetailFixture, lines: [] });
 
     expect(view.lines).toEqual([]);
   });
@@ -57,7 +57,7 @@ describe('toCreatedShipmentRequestView', () => {
   it('lines가 없으면 라인 수를 0으로 낸다 — 지어내지 않는다', () => {
     const view = toCreatedShipmentRequestView({
       ...createdShipmentRequestFixture,
-      lines: undefined,
+      lines: [],
     });
 
     expect(view.lineCount).toBe(0);

@@ -28,8 +28,8 @@ const allocation = (overrides: Partial<ShipmentLotAllocation> = {}): ShipmentLot
   allocatedQty: 180,
   uomId: 920001,
   /*
-   * ⛔ **`shippingInspectionStatusCode` 를 더는 싣지 않는다** — 계약에서 빠졌다(2026-09-11
-   * 전달본 · `screen.tsx` 의 `oqcStatuses` 머리말 참고). 남은 것은 `oqcPassed` 뿐이다.
+   * 현행 서버의 배분 응답은 목표 필드 `shippingInspectionStatusCode`를 생략한다.
+   * 화면이 실제 발행 조건으로 사용하는 값은 `oqcPassed`다.
    */
   oqcPassed: true,
   packedQty: 0,

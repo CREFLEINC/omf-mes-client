@@ -23,6 +23,9 @@ const fact = (overrides: Partial<WorkOrderFact> = {}): WorkOrderFact => ({
   plannedShiftId: 190,
   remarks: 'SYN-REMARKS',
   ...overrides,
+  defaultWipLocationId: overrides.defaultWipLocationId ?? null,
+  defaultFgLocationId: overrides.defaultFgLocationId ?? null,
+  defaultScrapLocationId: overrides.defaultScrapLocationId ?? null,
 });
 
 const presentation = (

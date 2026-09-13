@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
 import { popTouchClass } from '../../patterns/pop-touch';
+import { PopIdentityProvider, UNKNOWN_POP_IDENTITY } from '../../patterns/pop-identity';
 import { createStubFetch, jsonResponse, renderWithProviders } from '../../test/api-harness';
 import {
   codeValuesResponse,
@@ -90,6 +91,7 @@ const renderScreen = (
    * 함수로 주면 **읽을 때마다 새로 답한다** — 재조회가 앞과 «다른» 값을 내는 갈래를 잰다.
    */
   detail: InspectionRequestResponse | (() => InspectionRequestResponse) = waitingRequest,
+  workerNo: string | null = '900028',
 ) => {
   const writes: Request[] = [];
   /** 의뢰 상세를 몇 번 읽었는가. 저장 뒤 다시 읽는지가 #601 1-7 의 판정 자료다. */
@@ -157,10 +159,12 @@ const renderScreen = (
   ]);
 
   renderWithProviders(
-    <>
-      <PqcInspectionScreen />
-      {beside}
-    </>,
+    <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo }}>
+      <>
+        <PqcInspectionScreen />
+        {beside}
+      </>
+    </PopIdentityProvider>,
     { route, fetch },
   );
 
@@ -210,7 +214,12 @@ const renderWithStoredJudgment = async (): Promise<{ measured: string }> => {
     },
   ]);
 
-  renderWithProviders(<PqcInspectionScreen />, { route: '/?ir=1001', fetch });
+  renderWithProviders(
+    <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: '900028' }}>
+      <PqcInspectionScreen />
+    </PopIdentityProvider>,
+    { route: '/?ir=1001', fetch },
+  );
 
   return { measured: expiredMeasurement.judgmentCode };
 };
@@ -356,7 +365,12 @@ describe('PqcInspectionScreen — 검사 기준이 없는 갈래', () => {
       },
     ]);
 
-    renderWithProviders(<PqcInspectionScreen />, { route: '/?ir=1001', fetch });
+    renderWithProviders(
+      <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: '900028' }}>
+        <PqcInspectionScreen />
+      </PopIdentityProvider>,
+      { route: '/?ir=1001', fetch },
+    );
 
     return { called };
   };
@@ -448,7 +462,12 @@ describe('PqcInspectionScreen — 검사 항목 구획', () => {
       },
     ]);
 
-    renderWithProviders(<PqcInspectionScreen />, { route: '/?ir=1001', fetch });
+    renderWithProviders(
+      <PopIdentityProvider value={{ ...UNKNOWN_POP_IDENTITY, workerNo: '900028' }}>
+        <PqcInspectionScreen />
+      </PopIdentityProvider>,
+      { route: '/?ir=1001', fetch },
+    );
 
     await screen.findByText(t.measurements.heading);
 
@@ -1093,6 +1112,7 @@ describe('PqcInspectionScreen — 확정된 회차는 잠긴다', () => {
       JSON.stringify([
         {
           idempotencyKey: 'k-confirm',
+          workerNo: '900028',
           body: {
             inspectionRequestId: 1001,
             inspectedQty: 120,

@@ -10,7 +10,7 @@ import {
   LabelRenditionNotReadyError,
 } from '../../patterns/pop-label-rendition';
 import { runRequest, toApiError } from '../../patterns/request';
-import { type LabelKind } from './codes';
+import { DELIVERY_LABEL, type LabelKind } from './codes';
 import { toDocumentIssueBody, toPrintReportBody } from './issue-request';
 import { renditionShell } from './shell-print';
 import { toIssueView, type IssueView, type TargetRow } from './types';
@@ -137,7 +137,13 @@ const createIssues = async (
 const fetchRendition = async (
   client: ApiClient['client'],
   documentIssueLogId: number,
-): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition(client, documentIssueLogId));
+  kind: LabelKind | null,
+): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition(
+  client,
+  documentIssueLogId,
+  labelRenditionFormat(),
+  kind === DELIVERY_LABEL ? 'DELIVERY_LABEL' : undefined,
+));
 
 /**
  * 미리보기에 쓸 **그림**. 인쇄로 나갈 바이트와 형식이 다를 수 있다(#1104).
@@ -154,7 +160,7 @@ const fetchPreview = async (
 ): Promise<Uint8Array> => {
   if (labelRenditionFormat() === 'png') return printed;
 
-  return fetchLabelRendition(client, documentIssueLogId, 'png')
+  return fetchLabelRendition(client, documentIssueLogId, 'png', 'DELIVERY_LABEL')
     .then((drawn) => new Uint8Array(drawn))
     .catch(() => printed);
 };
@@ -260,6 +266,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
    */
   const issueKey = useRef<{ signature: string; key: string } | null>(null);
   const issued = useRef<IssueView[]>([]);
+  const issuedKind = useRef<LabelKind | null>(null);
   /* 미리보기 주소는 화면이 놓아도 브라우저가 놓지 않는다 — 이 훅이 끝까지 들고 있다가 푼다. */
   const urls = useRef<string[]>([]);
 
@@ -276,6 +283,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
     setStep(null);
     setLabels([]);
     issued.current = [];
+    issuedKind.current = null;
     setResult(IDLE_RESULT);
   }, [releaseUrls]);
 
@@ -304,6 +312,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
 
           const issues = await createIssues(client, command, workerNo, issueKey.current.key);
           issued.current = issues;
+          issuedKind.current = command.kind;
 
           at = 'render';
           setStep('render');
@@ -311,7 +320,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
           const rendered: IssuedLabel[] = [];
 
           for (const one of issues) {
-            const bytes = await fetchRendition(client, one.documentIssueLogId);
+            const bytes = await fetchRendition(client, one.documentIssueLogId, command.kind);
             /*
              * ⛔ **미리보기는 «그림»으로 따로 받는다**(#1104 리뷰 지적). 인쇄로 나가는 것은
              *    셸이 선 단말에서 명령형(`tspl`)이고, 그 바이트를 `<img>` 에 넣으면 언제나
@@ -374,7 +383,7 @@ export const useLabelIssue = ({ workerNo }: LabelIssueOptions): LabelIssueHandle
         const rendered: IssuedLabel[] = [];
 
         for (const one of issued.current) {
-          const bytes = await fetchRendition(client, one.documentIssueLogId);
+          const bytes = await fetchRendition(client, one.documentIssueLogId, issuedKind.current);
           /* ⛔ 미리보기는 그림으로 따로 받는다 — 위 갈래와 같은 사정이다(#1104). */
           const previewBytes = await fetchPreview(client, one.documentIssueLogId, bytes);
           const previewUrl = URL.createObjectURL(

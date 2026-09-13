@@ -27,6 +27,9 @@ const workOrderFact = (overrides: Partial<WorkOrderFact> = {}): WorkOrderFact =>
   plannedEquipmentId: 903,
   plannedMoldId: 904,
   plannedShiftId: 905,
+  defaultWipLocationId: 906,
+  defaultFgLocationId: 907,
+  defaultScrapLocationId: 908,
   remarks: 'Synthetic remarks',
   ...overrides,
 });
@@ -39,6 +42,9 @@ const validDraft = (
   plannedEquipmentId: '',
   plannedMoldId: '',
   plannedShiftId: '',
+  defaultWipLocationId: '',
+  defaultFgLocationId: '',
+  defaultScrapLocationId: '',
   plannedStartAtLocal: '2026-08-23T09:45',
   plannedEndAtLocal: '2026-08-23T10:45',
   priorityNo: '2',
@@ -53,6 +59,9 @@ describe('work-order assignment model', () => {
       plannedEquipmentId: '903',
       plannedMoldId: '904',
       plannedShiftId: '905',
+      defaultWipLocationId: '906',
+      defaultFgLocationId: '907',
+      defaultScrapLocationId: '908',
       plannedStartAtLocal: '2026-08-23T09:45',
       plannedEndAtLocal: '2026-08-23T10:45',
       priorityNo: '2',
@@ -65,6 +74,9 @@ describe('work-order assignment model', () => {
           plannedEquipmentId: null,
           plannedMoldId: null,
           plannedShiftId: null,
+          defaultWipLocationId: null,
+          defaultFgLocationId: null,
+          defaultScrapLocationId: null,
           plannedStartAt: null,
           plannedEndAt: null,
           priorityNo: 0,
@@ -76,6 +88,9 @@ describe('work-order assignment model', () => {
       plannedEquipmentId: '',
       plannedMoldId: '',
       plannedShiftId: '',
+      defaultWipLocationId: '',
+      defaultFgLocationId: '',
+      defaultScrapLocationId: '',
       plannedStartAtLocal: '',
       plannedEndAtLocal: '',
       priorityNo: '0',
@@ -90,11 +105,28 @@ describe('work-order assignment model', () => {
         plannedEquipmentId: '\t',
         plannedMoldId: '',
         plannedShiftId: '',
+        defaultWipLocationId: '',
+        defaultFgLocationId: '',
+        defaultScrapLocationId: '',
         plannedStartAtLocal: '',
         plannedEndAtLocal: '',
         priorityNo: '',
       }),
     ).toEqual({ fieldErrors: { priorityNo: 'REQUIRED' }, formError: 'ASSIGNMENT_REQUIRED' });
+  });
+
+  it('hydrates a UTC response into local input values so a location-only save preserves the instant', () => {
+    const instant = '2026-09-12T01:00:00Z';
+    const local = new Date(instant);
+    const expected = `${String(local.getFullYear()).padStart(4, '0')}-${String(
+      local.getMonth() + 1,
+    ).padStart(2, '0')}-${String(local.getDate()).padStart(2, '0')}T${String(
+      local.getHours(),
+    ).padStart(2, '0')}:${String(local.getMinutes()).padStart(2, '0')}`;
+
+    expect(
+      workOrderAssignmentDraftFrom(workOrderFact({ plannedStartAt: instant })).plannedStartAtLocal,
+    ).toBe(expected);
   });
 
   it.each([
@@ -103,6 +135,9 @@ describe('work-order assignment model', () => {
     'plannedEquipmentId',
     'plannedMoldId',
     'plannedShiftId',
+    'defaultWipLocationId',
+    'defaultFgLocationId',
+    'defaultScrapLocationId',
   ] as const)(
     'rejects each invalid resource selection and accepts a trimmed positive ID: %s',
     (field) => {
@@ -226,6 +261,9 @@ describe('work-order assignment model', () => {
           plannedEquipmentId: '903',
           plannedMoldId: '904',
           plannedShiftId: '905',
+          defaultWipLocationId: ' 906 ',
+          defaultFgLocationId: '907',
+          defaultScrapLocationId: '908',
           priorityNo: ' 7 ',
         }),
         at,
@@ -236,6 +274,9 @@ describe('work-order assignment model', () => {
       plannedEquipmentId: 903,
       plannedMoldId: 904,
       plannedShiftId: 905,
+      defaultWipLocationId: 906,
+      defaultFgLocationId: 907,
+      defaultScrapLocationId: 908,
       plannedStartAt: '2026-08-23T09:45:00+09:00',
       plannedEndAt: '2026-08-23T10:45:00+09:00',
       priorityNo: 7,
@@ -265,6 +306,9 @@ describe('work-order assignment model', () => {
       plannedEquipmentId: 903,
       plannedMoldId: null,
       plannedShiftId: null,
+      defaultWipLocationId: null,
+      defaultFgLocationId: null,
+      defaultScrapLocationId: null,
       plannedStartAt: null,
       plannedEndAt: null,
       priorityNo: 2,

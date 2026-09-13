@@ -156,8 +156,8 @@ describe('work-order release readiness', () => {
     expect(result.releaseBody).toBeNull();
   });
 
-  it('keeps valid WARN and missing-location warnings non-blocking but requires a valid body', () => {
-    const selected = detail({ defaultWipLocationId: null });
+  it('keeps valid WARN non-blocking while requiring a valid body', () => {
+    const selected = detail();
     const withWarning = validation({
       report: report({
         findings: [{ severity: 'WARN', field: null, code: 'SYN-WARN', message: 'warning' }],
@@ -167,10 +167,15 @@ describe('work-order release readiness', () => {
     const allowed = toWorkOrderReleaseReadiness(ready(selected), withWarning, body);
 
     expect(waiting).toMatchObject({
+      detail: selected,
       inputLockedReason: null,
       releaseDisabledReason: t.readiness.inputRequired,
       releaseBody: null,
-      preconditions: { passesStaticGate: true, missingDefaultLocations: ['wip'] },
+      preconditions: {
+        passesStaticGate: true,
+        blockReason: null,
+        missingDefaultLocations: [],
+      },
     });
     expect(allowed).toMatchObject({
       detail: selected,
@@ -179,4 +184,36 @@ describe('work-order release readiness', () => {
       releaseBody: body,
     });
   });
+
+  it.each([
+    ['wip', { defaultWipLocationId: null }],
+    ['finishedGoods', { defaultFgLocationId: null }],
+    ['scrap', { defaultScrapLocationId: null }],
+  ] as const)(
+    'blocks release when the %s default location is missing even with WARN and a valid body',
+    (kind, missing) => {
+      const selected = detail(missing);
+      const withWarning = validation({
+        report: report({
+          findings: [{ severity: 'WARN', field: null, code: 'SYN-WARN', message: 'warning' }],
+        }),
+      });
+
+      for (const proposedBody of [null, body]) {
+        expect(
+          toWorkOrderReleaseReadiness(ready(selected), withWarning, proposedBody),
+        ).toMatchObject({
+          detail: selected,
+          inputLockedReason: t.status.missingDefaultLocations,
+          releaseDisabledReason: t.status.missingDefaultLocations,
+          releaseBody: null,
+          preconditions: {
+            passesStaticGate: false,
+            blockReason: 'missingDefaultLocations',
+            missingDefaultLocations: [kind],
+          },
+        });
+      }
+    },
+  );
 });

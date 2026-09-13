@@ -6,7 +6,9 @@ import { useSearchParams } from 'react-router';
 
 import { SaveErrorBanner } from '../../patterns/master';
 import { OutboxStallBanner } from '../../patterns/outbox-stall-banner';
+import { usePopIdentity } from '../../patterns/pop-identity';
 import { toApiError } from '../../patterns/request';
+import { useWorkerSession } from '../../patterns/worker-session';
 
 import { ActionBar } from './action-bar';
 import { CODE_GROUPS, toCodeOptions } from './code-options';
@@ -90,6 +92,9 @@ const REQUEST_COMPLETED = 'COMPLETED';
 export const PqcInspectionScreen = () => {
   const [searchParams] = useSearchParams();
   const targetId = readTargetId(searchParams);
+  const identity = usePopIdentity();
+  const workerSession = useWorkerSession();
+  const workerNo = identity.workerNo?.trim() || workerSession?.worker.workerNo?.trim() || null;
 
   const detail = useInspectionRequestDetail(targetId);
   const itemSpecs = useInspectionItemSpecs(detail.data?.inspectionPlanVersionId ?? null);
@@ -372,9 +377,11 @@ export const PqcInspectionScreen = () => {
    * 값이 남아 있을 때뿐이다.**
    */
   const saveBlockedReason =
-    showErrors && (hasQuantityError(validateQuantities(draft)) || hasValueError(rows, drafts))
-      ? t.result.saveBlockedByInvalid
-      : null;
+    workerNo === null
+      ? t.result.saveBlockedByWorker
+      : showErrors && (hasQuantityError(validateQuantities(draft)) || hasValueError(rows, drafts))
+        ? t.result.saveBlockedByInvalid
+        : null;
 
   /**
    * 결과를 저장한다 — **임시 저장과 검사 확정이 같은 경로**이고 상태값으로 갈린다(§3-7).
@@ -389,7 +396,12 @@ export const PqcInspectionScreen = () => {
 
     setShowErrors(true);
 
-    if (hasQuantityError(validateQuantities(draft)) || hasValueError(rows, drafts)) return;
+    if (
+      workerNo === null ||
+      hasQuantityError(validateQuantities(draft)) ||
+      hasValueError(rows, drafts)
+    )
+      return;
 
     setIsSaved(false);
     setIsJustConfirmed(false);
@@ -403,6 +415,7 @@ export const PqcInspectionScreen = () => {
      * 건수가 말한다(#4).
      */
     outbox.enqueue(
+      workerNo,
       toResultBody({
         inspectionRequestId,
         inspectedQty: toSendableNumber(inspectedDraft),
@@ -562,7 +575,7 @@ export const PqcInspectionScreen = () => {
 
       <ActionBar
         isConfirmed={isConfirmed}
-        blockedReason={confirmBlockedReason}
+        blockedReason={workerNo === null ? t.result.saveBlockedByWorker : confirmBlockedReason}
         saveBlockedReason={saveBlockedReason}
         isSaved={isSaved}
         isJustConfirmed={isJustConfirmed}

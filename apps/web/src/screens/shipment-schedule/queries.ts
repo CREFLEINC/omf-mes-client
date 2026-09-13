@@ -2,7 +2,9 @@ import type { ApiClient } from '@omf-mes/api-client';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
-import { runRequest } from '../../patterns/request';
+import { runRequest, runRequestWithResponse } from '../../patterns/request';
+import { useMasterWrite, type MasterWriteResult } from '../../patterns/master';
+import type { components } from '@omf-mes/api-client';
 import type { ShipmentFilterQuery } from './filters';
 import type { PeriodQuery } from './period';
 import type { SortQuery } from './sort';
@@ -35,7 +37,11 @@ export type ShipmentScheduleListQuery = PeriodQuery &
 export const shipmentScheduleKeys = {
   all: ['shipment-schedule'] as const,
   list: (query: ShipmentScheduleListQuery | null) => ['shipment-schedule', 'list', query] as const,
+  detail: (shipmentRequestId: number | null) => ['shipment-schedule', 'detail', shipmentRequestId] as const,
 };
+
+const shipmentRequestDetailPath = (shipmentRequestId: number): '/logistics/shipment-requests/{shipmentRequestId}' =>
+  '/logistics/shipment-requests/{shipmentRequestId}';
 
 const fetchShipmentSchedule = async (
   client: Client,
@@ -62,12 +68,49 @@ export const useShipmentScheduleList = (
   return useQuery({
     queryKey: shipmentScheduleKeys.list(query),
     enabled: query !== null,
-    queryFn: () => {
+    queryFn: async () => {
       if (query === null) {
         throw new Error('출하일 시작 없이는 목록을 조회하지 않습니다.');
       }
 
       return fetchShipmentSchedule(client, query);
     },
+  });
+};
+
+export const useShipmentRequestDetail = (shipmentRequestId: number | null) => {
+  const { client, etags } = useApiClient();
+  return useQuery({
+    queryKey: shipmentScheduleKeys.detail(shipmentRequestId),
+    enabled: shipmentRequestId !== null,
+    queryFn: async () => {
+      if (shipmentRequestId === null) throw new Error('선택한 출하작업지시가 없습니다.');
+      const { data, response } = await runRequestWithResponse(() => client.GET('/logistics/shipment-requests/{shipmentRequestId}', {
+        params: { path: { shipmentRequestId } },
+      }));
+      const etag = response.headers.get('ETag');
+      if (etag !== null) etags.capture(shipmentRequestDetailPath(shipmentRequestId), etag);
+      return data;
+    },
+  });
+};
+
+export const useFulfillmentPlantUpdate = (
+  shipmentRequestId: number | null,
+): MasterWriteResult<components['schemas']['ShipmentRequestUpdate']> => {
+  const { client } = useApiClient();
+  return useMasterWrite<components['schemas']['ShipmentRequestUpdate'], components['schemas']['ShipmentRequest']>({
+    request: (body, headers) => {
+      if (shipmentRequestId === null) throw new Error('선택한 출하작업지시가 없습니다.');
+      return client.PUT('/logistics/shipment-requests/{shipmentRequestId}', {
+        params: { path: { shipmentRequestId }, header: {
+          'Idempotency-Key': headers['Idempotency-Key'], 'If-Match': headers['If-Match'] ?? '',
+        } },
+        body,
+      });
+    },
+    etagPath: shipmentRequestId === null ? null : shipmentRequestDetailPath(shipmentRequestId),
+    invalidateKeys: [shipmentScheduleKeys.all],
+    knownFields: ['fulfillmentPlantId'],
   });
 };

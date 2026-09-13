@@ -32,6 +32,9 @@ const detail = (overrides: Partial<WorkOrderCloseDetailFact> = {}): WorkOrderClo
   completedAt: null,
   completionVarianceReasonCode: null,
   closedAt: null,
+  defaultWipLocationId: null,
+  defaultFgLocationId: null,
+  defaultScrapLocationId: null,
   progress: {
     goodQty: 180,
     defectQty: 12,

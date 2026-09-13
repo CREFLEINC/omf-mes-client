@@ -22,6 +22,7 @@ const t = messages.shipmentRequestCreate;
 export const CUSTOMER_LOT_REQUIREMENT_MAX_LENGTH = 200;
 
 export const HEADER_FORM_FIELDS: readonly string[] = [
+  'fulfillmentPlantId',
   'customerId',
   'shipToPartnerId',
   'requestedShipDate',
@@ -39,6 +40,7 @@ export type LineFieldName =
 export const lineFieldId = (key: string, field: LineFieldName): string => `${key}.${field}`;
 
 export interface HeaderDraft {
+  fulfillmentPlantId: string;
   customerId: string;
   shipToPartnerId: string;
   requestedShipDate: string;
@@ -51,6 +53,7 @@ export const validateHeader = (
 ): Record<string, string> => {
   const errors: Record<string, string> = {};
 
+  if (draft.fulfillmentPlantId === '') errors.fulfillmentPlantId = t.errors.fulfillmentPlantRequired;
   if (draft.requestedShipDate === '') errors.requestedShipDate = t.errors.requestedShipDateRequired;
 
   if (mode === 'standalone') {

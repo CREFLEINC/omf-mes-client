@@ -41,6 +41,8 @@ type InspectionResultResponse = components['schemas']['InspectionResult'];
 /** 큐에 담긴 한 건. 검사 결과는 회차마다 한 건이지만 큐는 밀릴 수 있어 배열로 든다. */
 export interface OutboxEntry {
   idempotencyKey: string;
+  /** Enqueue-time inspector: retries must retain the original worker. */
+  workerNo: string;
   /**
    * 보낼 본문. ⛔ **`statusCode` 를 항목에 따로 두지 않는다** — 본문에 이미 있고, 두 벌이면
    * 한쪽만 고쳐진다. 「임시 저장」과 「확정」을 가르는 것은 담는 쪽이 이미 알고 있다.
@@ -67,6 +69,7 @@ export const isSendableEntry = (value: unknown): value is OutboxEntry => {
 
   const entry = value as Record<string, unknown>;
   if (typeof entry.idempotencyKey !== 'string' || entry.idempotencyKey === '') return false;
+  if (typeof entry.workerNo !== 'string' || entry.workerNo.trim() === '') return false;
 
   const body = entry.body;
   if (typeof body !== 'object' || body === null) return false;
@@ -121,6 +124,7 @@ const postEntry = async (client: Client, entry: OutboxEntry): Promise<Inspection
     client.POST('/quality/inspection-results', {
       /* ⛔ 시도마다 새로 만들지 않는다 — 재전송이 새 검사 결과가 된다(C-1 #5). */
       params: { header: { 'Idempotency-Key': entry.idempotencyKey } },
+      headers: { 'X-Worker-No': entry.workerNo },
       body: entry.body,
     }),
   );
@@ -133,7 +137,7 @@ export interface Outbox {
   /** 지금 연결돼 있는가. 건수와 함께 낸다 — 끊긴 것과 밀리는 것은 다르다. */
   isOnline: boolean;
   /** 큐에 담는다. **이것이 곧 성공이다** — 통신을 기다리지 않는다(C-1 #2). */
-  enqueue: (body: InspectionResultCreate) => void;
+  enqueue: (workerNo: string, body: InspectionResultCreate) => void;
   /** 서버가 거부한 것 — 인라인용·배너용으로 갈라 둔다. 없으면 `null`. */
   rejection: SplitError | null;
   /**
@@ -307,11 +311,12 @@ export const useOutbox = (): Outbox => {
     })();
   }, [client, entries, isOnline, isStalled, retryTick]);
 
-  const enqueue = useCallback((body: InspectionResultCreate): void => {
+  const enqueue = useCallback((workerNo: string, body: InspectionResultCreate): void => {
+    if (workerNo.trim() === '') return;
     setRejection(null);
     setRejectedStatusCode(null);
     setEntries((prev) => {
-      const next = [...prev, { idempotencyKey: createIdempotencyKey(), body }];
+      const next = [...prev, { idempotencyKey: createIdempotencyKey(), workerNo, body }];
       writeStored(next);
 
       return next;

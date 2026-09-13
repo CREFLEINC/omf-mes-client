@@ -15,6 +15,7 @@ export const shipmentSchedule = {
   breadcrumbRoot: '출하',
   panes: {
     list: '출하 예정 목록',
+    fulfillmentPlant: '출하 공장 지정',
   },
   fields: {
     periodFrom: '출하일 시작',
@@ -23,11 +24,14 @@ export const shipmentSchedule = {
     shipToPartner: '납품처',
     progress: '진행 상태',
     inspection: '검사 상태',
+    fulfillmentPlant: '출하 담당 공장',
   },
   actions: {
     prevPage: '이전',
     nextPage: '다음',
     goFirstPage: '첫 쪽으로',
+    assignPlant: '출하 공장 지정',
+    savePlant: '공장 지정 저장',
   },
   /** 비활성 사유·실패 사유는 그 컨트롤이나 대상의 이름으로 시작한다. */
   reasons: {
@@ -38,6 +42,7 @@ export const shipmentSchedule = {
   },
   loading: {
     list: '출하 예정 목록을 불러오는 중',
+    detail: '출하작업지시를 불러오는 중',
   },
   /** 목록 표의 머리글. 열 구성의 근거는 screens/shipment-schedule/shipment-table.tsx에 있다. */
   table: {
@@ -48,6 +53,7 @@ export const shipmentSchedule = {
     qty: '요청 / 배정 / 출하',
     inspection: '검사',
     progress: '진행',
+    fulfillmentPlant: '출하 담당 공장',
   },
   values: {
     /** 값이 없는 칸. 빈 칸으로 두면 자료가 없는 것인지 화면이 빠뜨린 것인지 구분되지 않는다. */
@@ -57,6 +63,7 @@ export const shipmentSchedule = {
     referenceFailed: '이름을 불러오지 못했습니다',
     inspectionPending: '대기',
     inspectionPassed: '합격',
+    plantAssigned: '지정됨',
   },
   filters: {
     all: '전체',

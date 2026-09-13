@@ -26,6 +26,7 @@ const request = (overrides: Partial<Parameters<typeof toShipmentRequestCandidate
   statusCode: 'SYN-STATUS',
   shipmentProgressCode: 'PICKED' as const,
   shippingInspectionStatusCode: 'PASSED' as const,
+  lines: [],
   ...overrides,
 });
 
@@ -47,7 +48,9 @@ describe('toShipmentRequestLineCandidate', () => {
 
 describe('toShipmentRequestCandidate', () => {
   it('lines가 없으면 null로 낸다 — 판정 불가와 빈 배열을 가른다', () => {
-    const candidate = toShipmentRequestCandidate(request());
+    const payload = request();
+    Reflect.deleteProperty(payload, 'lines');
+    const candidate = toShipmentRequestCandidate(payload);
 
     expect(candidate.lines).toBeNull();
   });

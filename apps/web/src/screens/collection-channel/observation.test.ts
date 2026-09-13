@@ -122,6 +122,7 @@ describe('실패한 줄 그리기', () => {
 describe('값이 없는 칸', () => {
   it('오지 않으면 기록 없음이다', () => {
     expect(orNotRecorded(undefined)).toBe(t.notRecorded);
+    expect(orNotRecorded(null)).toBe(t.notRecorded);
   });
 
   it('빈 문자열도 기록 없음이다', () => {

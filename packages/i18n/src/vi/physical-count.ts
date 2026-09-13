@@ -37,6 +37,8 @@ export const physicalCount: Translated<typeof ko.physicalCount> = {
     systemQty: (qty: string) => `Sổ sách ${qty}`,
     already: (qty: string) => `Giá trị trước ${qty}`,
     uncounted: 'Chưa đếm',
+    reasonLabel: (name: string) => `Lý do chênh lệch của ${name}`,
+    reasonPlaceholder: 'Chọn lý do chênh lệch',
     problem: {
       notNumber: 'Hãy ghi số lượng bằng chữ số',
       negative: 'Số lượng không được nhỏ hơn 0',

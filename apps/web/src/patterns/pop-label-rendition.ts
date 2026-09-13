@@ -82,7 +82,7 @@ export const labelRenditionFormat = (): LabelRenditionFormat =>
   hasShellPrinter() ? 'tspl' : 'png';
 
 /**
- * ⛔ **배포본에서는 서버가 이 오퍼레이션을 구현하지 않았다** — 위 머리말 참고.
+ * 배포본에서 지원되지 않는 문서 종류의 그림 요청에 쓰는 사유다.
  */
 export const LABEL_RENDITION_NOT_READY_REASON =
   '라벨 이미지 생성 기능은 서버가 아직 지원하지 않습니다. 발행 기록은 정상적으로 남았습니다.';
@@ -98,7 +98,7 @@ export class LabelRenditionNotReadyError extends Error {
 /**
  * 발행 기록 한 건의 라벨 그림.
  *
- * **개발 모드에서만 실제로 조회한다**(위 머리말). 그 밖에서는 요청을 만들지 않고 곧바로
+ * **납품 라벨 또는 개발 모드에서 조회한다**(위 머리말). 그 밖에서는 요청을 만들지 않고 곧바로
  * `LabelRenditionNotReadyError` 로 거부하므로, 호출부의 기존 실패 처리(재발행을 유도하지 않고
  * 미리보기·인쇄만 막힌 것으로 다루는 경로)가 그대로 선다.
  */
@@ -112,8 +112,10 @@ export const fetchLabelRendition = async (
    *    바이트가 `<img>` 로 들어가 미리보기가 통째로 죽는다(#1104 리뷰 지적).
    */
   format: LabelRenditionFormat = labelRenditionFormat(),
+  /** 납품 라벨은 배포 서버가 PNG rendition을 제공한다. */
+  readyDocumentTypeCode?: 'DELIVERY_LABEL',
 ): Promise<ArrayBuffer> => {
-  if (import.meta.env.MODE !== 'development') {
+  if (import.meta.env.MODE !== 'development' && readyDocumentTypeCode !== 'DELIVERY_LABEL') {
     throw new LabelRenditionNotReadyError();
   }
 

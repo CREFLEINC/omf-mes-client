@@ -81,7 +81,7 @@ const workersRoute = (items: { workerNo: string; workerName: string }[], seen: U
   match: (request: Request) => new URL(request.url).pathname === '/mdm/workers',
   respond: (request: Request) => {
     seen.push(new URL(request.url));
-    return jsonResponse({ items, page: { page: 0, size: 100, total: items.length } });
+    return jsonResponse({ items, page: { page: 1, size: 100, total: items.length } });
   },
 });
 

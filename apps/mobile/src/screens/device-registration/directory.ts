@@ -27,7 +27,7 @@ export const fetchWorkerDirectory = async (
 ): Promise<WorkerEntry[]> => {
   const entries: WorkerEntry[] = [];
 
-  for (let page = 0; ; page += 1) {
+  for (let page = 1; ; page += 1) {
     const data = await runRequest(() =>
       client.GET('/mdm/workers', {
         params: { query: { plantId, includeInactive: false, page, size: PAGE_SIZE } },

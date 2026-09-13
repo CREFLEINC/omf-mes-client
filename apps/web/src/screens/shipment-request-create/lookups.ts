@@ -77,6 +77,7 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 export const lookupKeys = {
   customers: ['shipment-request-create-lookups', 'customers'] as const,
   shipToPartners: ['shipment-request-create-lookups', 'ship-to-partners'] as const,
+  fulfillmentPlants: ['shipment-request-create-lookups', 'fulfillment-plants'] as const,
   items: ['shipment-request-create-lookups', 'items'] as const,
   uoms: ['shipment-request-create-lookups', 'uoms'] as const,
 };
@@ -138,6 +139,31 @@ export const useShipToPartnerOptions = (): LookupResult => {
   return toPartnerLookupResult(query.data, query.isError, query.isPending, () => {
     void query.refetch();
   });
+};
+
+/** 이행 공장 — 새 편성은 활성 공장을 지정해야 하므로 기본 활성 목록만 쓴다. */
+export const useFulfillmentPlantOptions = (): LookupResult => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: lookupKeys.fulfillmentPlants,
+    queryFn: () => runRequest(() => client.GET('/mdm/plants', { params: { query: {} } })),
+  });
+  const data = query.data;
+
+  return {
+    entries:
+      data?.items.map((plant) => ({
+        value: String(plant.plantId),
+        label: `${plant.plantCode} · ${plant.plantName}`,
+        isActive: plant.isActive,
+      })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: query.isPending,
+    refetch: () => {
+      void query.refetch();
+    },
+  };
 };
 
 /** 품목 — 라인 표의 품목 선택칸(단독 생성)과 이름 표시(지시서 경유) 둘 다 쓴다. */

@@ -29,6 +29,7 @@ export interface ShipmentTableProps {
   shipToPartnerLookup: ReferenceSource;
   onFirstPage: () => void;
   onRetryReferences: () => void;
+  onAssignPlant: (shipmentRequestId: number) => void;
 }
 
 /** 값이 없는 칸은 비워 두지 않는다. */
@@ -93,6 +94,7 @@ export const ShipmentTable = ({
   shipToPartnerLookup,
   onFirstPage,
   onRetryReferences,
+  onAssignPlant,
 }: ShipmentTableProps) => {
   const columns: Column<ShipmentRequestView>[] = [
     {
@@ -142,6 +144,15 @@ export const ShipmentTable = ({
           {orEmptyMark(row.shipmentProgressCode)}
         </Chip>
       ),
+    },
+    {
+      key: 'fulfillmentPlant',
+      header: t.table.fulfillmentPlant,
+      render: (row) => row.fulfillmentPlantId == null ? (
+        <Button variant="outlined" size="sm" onClick={() => { onAssignPlant(row.shipmentRequestId); }}>
+          {t.actions.assignPlant}
+        </Button>
+      ) : t.values.plantAssigned,
     },
   ];
 

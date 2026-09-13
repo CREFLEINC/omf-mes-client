@@ -42,6 +42,7 @@ const workOrder = (workOrderId: number) => ({
   orderQty: 10,
   uomId: 901,
   workOrderTypeCode: 'SYN_NORMAL',
+  processId: 901,
   priorityNo: 1,
   statusCode: 'SYN_DRAFT',
 });

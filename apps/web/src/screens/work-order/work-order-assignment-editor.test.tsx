@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   workers: vi.fn(),
   molds: vi.fn(),
   shifts: vi.fn(),
+  locations: vi.fn(),
   write: vi.fn(),
 }));
 vi.mock('./queries', () => ({
@@ -31,6 +32,7 @@ vi.mock('./resource-queries', () => ({
   useWorkOrderProductionLines: mocks.lines,
   useWorkOrderEquipments: mocks.equipments,
   useWorkOrderShifts: mocks.shifts,
+  useWorkOrderLocations: mocks.locations,
 }));
 vi.mock('./people-tool-queries', () => ({
   useWorkOrderWorkers: mocks.workers,
@@ -49,6 +51,9 @@ const workOrder = {
   plannedEquipmentId: 301,
   plannedMoldId: 401,
   plannedShiftId: 501,
+  defaultWipLocationId: 601,
+  defaultFgLocationId: 602,
+  defaultScrapLocationId: 603,
 } as WorkOrderFact;
 const query = (data: unknown, overrides: Record<string, unknown> = {}) => ({
   data,
@@ -99,6 +104,16 @@ beforeEach(() => {
       },
     ]),
   );
+  mocks.locations.mockReturnValue({
+    items: [
+      { locationId: 601, warehouseId: 34, locationCode: 'WIP', locationName: 'WIP 위치', isActive: true },
+      { locationId: 602, warehouseId: 34, locationCode: 'FG', locationName: '완제품 위치', isActive: true },
+      { locationId: 603, warehouseId: 34, locationCode: 'SCRAP', locationName: '스크랩 위치', isActive: true },
+    ],
+    truncated: false,
+    isPending: false,
+    isError: false,
+  });
   mocks.update.mockReturnValue(updateState());
 });
 

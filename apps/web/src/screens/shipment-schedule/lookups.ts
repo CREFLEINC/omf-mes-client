@@ -107,6 +107,7 @@ export const lookupNote = (lookup: LookupResult): string | undefined => {
 export const lookupKeys = {
   customers: ['shipment-schedule-lookups', 'customers'] as const,
   shipToPartners: ['shipment-schedule-lookups', 'ship-to-partners'] as const,
+  fulfillmentPlants: ['shipment-schedule-lookups', 'fulfillment-plants'] as const,
 };
 
 const toLookupResult = (
@@ -164,4 +165,22 @@ export const useShipToPartnerOptions = (): LookupResult => {
   return toLookupResult(query.data, query.isError, query.isPending, () => {
     void query.refetch();
   });
+};
+
+export const useFulfillmentPlantOptions = (): LookupResult => {
+  const { client } = useApiClient();
+  const query = useQuery({
+    queryKey: lookupKeys.fulfillmentPlants,
+    queryFn: () => runRequest(() => client.GET('/mdm/plants', { params: { query: {} } })),
+  });
+  const data = query.data;
+  return {
+    entries: data?.items.map((plant) => ({
+      value: String(plant.plantId), label: `${plant.plantCode} · ${plant.plantName}`, isActive: plant.isActive,
+    })) ?? EMPTY_ENTRIES,
+    truncated: data !== undefined && isTruncated(data.page, data.items.length),
+    isError: query.isError,
+    isLoading: query.isPending,
+    refetch: () => { void query.refetch(); },
+  };
 };

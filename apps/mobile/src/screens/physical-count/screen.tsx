@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 
 import { useLotLabels } from '../../patterns/handling-units';
+import { useCodeValues } from '../../patterns/code-values';
 import { useLocationByCode } from '../../patterns/locations';
 import { useItemLabels } from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
@@ -14,6 +15,7 @@ import { useCountLines, useOpenCounts } from './queries';
 import {
   COUNT_LABEL,
   canSubmit,
+  needsReason,
   qtyProblemOf,
   queuedForLocationOf,
   toCountDraft,
@@ -22,6 +24,7 @@ import {
 import './screen.css';
 
 const t = messages.physicalCount;
+const VARIANCE_REASON = 'VARIANCE_REASON';
 
 type Outcome = 'held' | 'sent' | 'rejected';
 
@@ -47,6 +50,7 @@ export const PhysicalCountScreen = () => {
   const location = useLocationByCode(count?.warehouseId ?? null, scanned);
   const at = location.data ?? null;
   const planned = useCountLines(countId, at?.locationId ?? null);
+  const reasons = useCodeValues(VARIANCE_REASON);
 
   const itemLabels = useItemLabels(lines.length > 0);
 
@@ -61,7 +65,16 @@ export const PhysicalCountScreen = () => {
         ? queuedForLocationOf(pendingOf(COUNT_LABEL), countId, at.locationId)
         : 1;
 
-  const ready = canSubmit(at, lines, worker !== null, queuedForLocation);
+  const ready =
+    count !== null &&
+    canSubmit(
+      at,
+      lines,
+      worker !== null,
+      queuedForLocation,
+      count,
+      (reasons.data ?? []).map((reason) => reason.code),
+    );
 
   /*
    * 위치의 라인을 화면이 적을 자리로 옮긴다. 수량은 비워 둔다 - 비어 있는 것이 아직 세지
@@ -79,7 +92,7 @@ export const PhysicalCountScreen = () => {
      * 센 사람이 아무 말 없이 처음부터 다시 세게 된다.
      */
     setLines((current) => {
-      const typed = new Map(current.map((line) => [line.inventoryCountLineId, line.qty]));
+      const typed = new Map(current.map((line) => [line.inventoryCountLineId, line]));
 
       return rows.map((row) => ({
         inventoryCountLineId: row.inventoryCountLineId,
@@ -91,7 +104,10 @@ export const PhysicalCountScreen = () => {
         systemQty: row.systemQty ?? null,
         counted: row.counted,
         previousQty: row.counted ? row.countedQty : null,
-        qty: typed.get(row.inventoryCountLineId) ?? '',
+        previousCountedAt: row.counted ? row.countedAt : null,
+        previousReasonCode: row.varianceReasonCode ?? null,
+        qty: typed.get(row.inventoryCountLineId)?.qty ?? '',
+        reasonCode: typed.get(row.inventoryCountLineId)?.reasonCode ?? '',
       }));
     });
   }, [planned.data]);
@@ -273,7 +289,13 @@ export const PhysicalCountScreen = () => {
                     onChange={(event) => {
                       const next = event.target.value;
                       setLines((current) =>
-                        current.map((each, at2) => (at2 === index ? { ...each, qty: next } : each)),
+                        current.map((each, at2) => {
+                          if (at2 !== index) return each;
+                          const changed = { ...each, qty: next };
+                          return count !== null && !needsReason(count, changed)
+                            ? { ...changed, reasonCode: '' }
+                            : changed;
+                        }),
                       );
                     }}
                     error={problem === null ? undefined : t.lines.problem[problem]}
@@ -296,6 +318,31 @@ export const PhysicalCountScreen = () => {
                     </p>
                   ) : line.qty.trim() === '' ? (
                     <p className="physical-count__previous">{t.lines.uncounted}</p>
+                  ) : null}
+                  {count !== null && needsReason(count, line) ? (
+                    <>
+                      <label htmlFor={`physical-count-reason-${String(line.inventoryCountLineId)}`}>
+                        {t.lines.reasonLabel(nameOf(line))}
+                      </label>
+                      <Select
+                        id={`physical-count-reason-${String(line.inventoryCountLineId)}`}
+                        placeholder={t.lines.reasonPlaceholder}
+                        size="xl"
+                        value={line.reasonCode === '' ? null : line.reasonCode}
+                        onChange={(value) => {
+                          const next = String(value);
+                          setLines((current) =>
+                            current.map((each, at2) =>
+                              at2 === index ? { ...each, reasonCode: next } : each,
+                            ),
+                          );
+                        }}
+                        options={(reasons.data ?? []).map((reason) => ({
+                          value: reason.code,
+                          label: reason.name,
+                        }))}
+                      />
+                    </>
                   ) : null}
                 </div>
               );

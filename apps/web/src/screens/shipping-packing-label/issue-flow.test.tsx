@@ -301,12 +301,7 @@ describe('발행 → 미리보기 → 인쇄', () => {
     expect(sentTo(sent, ':report-print')).toBeUndefined();
   });
 
-  /*
-   * ⭐ **`DELIVERY_LABEL` 은 발행 단추 자리에서 막힌다.** 종류는 고를 수 있지만(대상 고르기는
-   * 계약과 무관하다) 발행을 누르면 요청 자체가 나가지 않는다 — «잠겼다»가 눈에 보이는
-   * 자리를 하나는 남겨 둔다.
-   */
-  it('납품라벨은 종류를 고르고 대상을 선택해도 발행 요청을 보내지 않는다', async () => {
+  it('납품라벨은 배분과 LOT을 대상으로 발행하고 PNG를 조회한다', async () => {
     const { user, sent } = renderFlow();
 
     await user.click(await screen.findByRole('radio', { name: /납품라벨/u }));
@@ -316,7 +311,13 @@ describe('발행 → 미리보기 → 인쇄', () => {
       screen.getByRole('button', { name: messages.shippingPackingLabel.actions.issue }),
     );
 
-    expect(sentTo(sent, '/app/document-issues')).toBeUndefined();
+    await waitFor(() => {
+      expect(sentTo(sent, '/app/document-issues')?.body).toMatchObject({
+        documentTypeCode: 'DELIVERY_LABEL',
+        targets: [{ targetTypeCode: 'SHIPMENT_LOT_ALLOCATION', targetId: 9401, lotId: 9801 }],
+      });
+      expect(sentTo(sent, '/rendition')).toBeDefined();
+    });
   });
 });
 
