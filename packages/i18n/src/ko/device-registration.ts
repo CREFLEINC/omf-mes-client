@@ -63,6 +63,19 @@ export const deviceRegistration = {
       backspace: '한 자 지우기',
       clear: '모두 지우기',
     },
+    /*
+     * 등록을 풀면 담아 둔 것이 함께 사라진다. 설계 M-CO-01 §5-5 가 누를 때 미동기 건수를
+     * 반드시 보이라고 정했고, §6 이 그때 2단계 확인을 요구한다.
+     */
+    unregister: {
+      open: '기기 등록 해제',
+      title: '이 기기의 등록을 풀까요?',
+      notice: '다시 쓰려면 관리자에게 새 QR 을 받아야 합니다.',
+      pending: (count: string) => `보내지 못한 기록 ${count}건이 사라집니다`,
+      counting: '보내지 못한 기록을 세는 중입니다',
+      confirm: '등록 해제',
+      cancel: '그대로 두기',
+    },
     current: {
       label: '현재 작업자',
       /** 귀속이 어디로 붙는지 밝히지 않으면 남의 사번으로 기록이 쌓인다. */

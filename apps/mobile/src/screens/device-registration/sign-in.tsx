@@ -1,9 +1,11 @@
-import { AlertBanner, Button, Card, TextField } from '@crefle/web-ui';
+import { AlertBanner, Button, Card, Dialog, TextField } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { NumericKeypad } from '@omf-mes/ui';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 
+import { useDeviceRegistration } from '../../patterns/device-registration';
+import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { loadWorkerDirectory, type WorkerEntry } from './directory';
@@ -27,6 +29,14 @@ export const WorkerSignInScreen = () => {
   const [entry, setEntry] = useState('');
   const [directory, setDirectory] = useState<WorkerEntry[] | null | undefined>(undefined);
   const [rejected, setRejected] = useState<SignInResult | null>(null);
+  const [asking, setAsking] = useState(false);
+  const { unregister } = useDeviceRegistration();
+  /*
+   * 등록을 풀면 담아 둔 것이 함께 사라진다. 몇 건인지 모른 채 누르게 두지 않는다(설계 §5-5).
+   * 되돌아온 것도 센다 - 그것도 이 기기에만 남아 있다.
+   */
+  const { loaded, pending, rejected: returned } = useOutbox();
+  const losing = pending + returned.length;
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +97,52 @@ export const WorkerSignInScreen = () => {
         >
           {t.toWork}
         </Button>
+
+        <Button
+          variant="text"
+          size="xl"
+          onClick={() => {
+            setAsking(true);
+          }}
+        >
+          {t.unregister.open}
+        </Button>
+
+        <Dialog
+          open={asking}
+          onClose={() => {
+            setAsking(false);
+          }}
+          title={t.unregister.title}
+          footer={
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => {
+                  setAsking(false);
+                }}
+              >
+                {t.unregister.cancel}
+              </Button>
+              {/* 큐를 읽기 전에는 몇 건을 잃는지 모른다. 모르는 채 풀게 두지 않는다. */}
+              <Button
+                disabled={!loaded}
+                onClick={() => {
+                  setAsking(false);
+                  void unregister();
+                }}
+              >
+                {t.unregister.confirm}
+              </Button>
+            </>
+          }
+        >
+          <p>{t.unregister.notice}</p>
+          {!loaded ? <p>{t.unregister.counting}</p> : null}
+          {loaded && losing > 0 ? (
+            <AlertBanner variant="warning" title={t.unregister.pending(String(losing))} />
+          ) : null}
+        </Dialog>
       </div>
     );
   }

@@ -3,10 +3,24 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { OUTBOX_KEY } from '../../patterns/outbox';
 import { createStubFetch, renderWithProviders } from '../../test/api-harness';
 import { WorkerSignInScreen } from './sign-in';
 
 const store = vi.hoisted(() => new Map<string, string>());
+
+/** 등록을 푸는 것은 단말 토큰을 지우는 일이다. 보안 저장소는 시험 환경에 없어 여기서 본다. */
+const token = vi.hoisted(() => ({ cleared: 0 }));
+
+vi.mock('../../patterns/device-token', () => ({
+  readDeviceToken: () => Promise.resolve('t'),
+  writeDeviceToken: () => Promise.resolve(),
+  currentDeviceToken: () => 't',
+  clearDeviceToken: () => {
+    token.cleared += 1;
+    return Promise.resolve();
+  },
+}));
 
 vi.mock('../../patterns/local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
@@ -39,7 +53,26 @@ const press = async (user: ReturnType<typeof userEvent.setup>, digits: string) =
   }
 };
 
+const queuedEntry = (id: string) => ({
+  id,
+  label: '입하 등록',
+  idempotencyKey: id,
+  method: 'POST',
+  path: '/logistics/inbound-receipts',
+  body: {},
+  occurredAt: '2026-09-01T02:30:00.000Z',
+  confirmation: 'pending',
+});
+
+const signedIn = async (user: ReturnType<typeof userEvent.setup>) => {
+  await screen.findByRole('group', { name: '사번 입력' });
+  await press(user, '900028');
+  await user.click(screen.getByRole('button', { name: '확인' }));
+  await screen.findByText('작업자 1 · 900028');
+};
+
 beforeEach(() => {
+  token.cleared = 0;
   store.clear();
   store.set('worker-directory', JSON.stringify(DIRECTORY));
 });
@@ -126,5 +159,63 @@ describe('사번 확인 화면', () => {
     await press(user, long);
 
     expect(screen.getByLabelText('사번')).toHaveValue(long);
+  });
+});
+
+describe('기기 등록 해제', () => {
+  /*
+   * 설계 M-CO-01 §5-5 - 누를 때 미동기 건수를 반드시 보인다. 그 수를 모르면 무엇을 잃는지
+   * 모른 채 누르게 되고, 등록을 풀면 담아 둔 것이 함께 사라진다.
+   */
+  it('보내지 못한 기록이 있으면 건수를 보인다', async () => {
+    store.set(OUTBOX_KEY, JSON.stringify([queuedEntry('a'), queuedEntry('b')]));
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    expect(await screen.findByText(/보내지 못한 기록 2건이 사라집니다/)).toBeInTheDocument();
+  });
+
+  /* 담아 둔 것이 없으면 잃을 것이 없다. 없는 위험을 지어 보이지 않는다. */
+  it('보내지 못한 기록이 없으면 사라진다고 말하지 않는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+
+    await screen.findByRole('button', { name: '등록 해제' });
+    expect(screen.queryByText(/사라집니다/)).not.toBeInTheDocument();
+  });
+
+  /* 되돌릴 수 없다. 한 번 누름으로 풀리면 손이 스친 것과 뜻이 같아진다. */
+  it('두 단계를 거쳐야 풀린다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    expect(screen.getByText('작업자 1 · 900028')).toBeInTheDocument();
+
+    await user.click(await screen.findByRole('button', { name: '등록 해제' }));
+
+    await waitFor(() => {
+      expect(token.cleared).toBe(1);
+    });
+  });
+
+  /* 닫으면 아무 일도 없어야 한다. 되돌릴 수 없는 것은 물러설 길을 함께 둔다. */
+  it('닫으면 등록이 그대로 남는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await signedIn(user);
+
+    await user.click(screen.getByRole('button', { name: '기기 등록 해제' }));
+    await user.click(await screen.findByRole('button', { name: '그대로 두기' }));
+
+    expect(token.cleared).toBe(0);
+    expect(screen.getByText('작업자 1 · 900028')).toBeInTheDocument();
   });
 });

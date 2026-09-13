@@ -49,6 +49,15 @@ export const deviceRegistration: Translated<typeof ko.deviceRegistration> = {
       backspace: 'Xóa một ký tự',
       clear: 'Xóa hết',
     },
+    unregister: {
+      open: 'Hủy đăng ký thiết bị',
+      title: 'Hủy đăng ký thiết bị này?',
+      notice: 'Muốn dùng lại phải xin mã QR mới từ quản trị viên.',
+      pending: (count: string) => `${count} bản ghi chưa gửi sẽ mất`,
+      counting: 'Đang đếm các bản ghi chưa gửi',
+      confirm: 'Hủy đăng ký',
+      cancel: 'Giữ nguyên',
+    },
     current: {
       label: 'Nhân viên hiện tại',
       notice: 'Mọi ghi nhận trên máy này sẽ mang mã nhân viên đó.',
