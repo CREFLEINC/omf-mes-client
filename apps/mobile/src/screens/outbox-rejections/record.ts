@@ -1,7 +1,10 @@
 import type { ApiError } from '@omf-mes/api-client';
 import { messages } from '@omf-mes/i18n';
 
+import type { RejectedRecord } from '../../patterns/outbox';
+
 const t = messages.outboxRejections.reason;
+const d = messages.outboxRejections.details;
 
 /** 앞 건이 못 가 붙을 곳이 없던 건. 큐가 상태 없는 오류로 표시해 둔 값이다. */
 const NO_LEADER_STATUS = 0;
@@ -44,4 +47,31 @@ export const whenOf = (iso: string): string => {
   }
 
   return `${pad(at.getMonth() + 1)}-${pad(at.getDate())} ${pad(at.getHours())}:${pad(at.getMinutes())}`;
+};
+
+export interface DetailRow {
+  label: string;
+  value: string;
+}
+
+/**
+ * 담당자에게 물을 때 적을 값들.
+ *
+ * 사유 한 줄만으로는 무엇을 물어야 할지 정해지지 않는다 - 서버는 단말 토큰이 죽은 것과
+ * 권한이 없는 것을 같은 401 문구로 보내고, 그 문구는 로그인을 찾으라고 한다. 현장 단말에는
+ * 로그인이 없다. 어디로 무엇을 보내 무엇이 돌아왔는지를 함께 낸다.
+ */
+export const detailsOf = (record: RejectedRecord): DetailRow[] => {
+  const error = record.error;
+  const status = error.kind === 'http' ? String(error.status) : d.none;
+  const code = error.kind === 'http' || error.kind === 'conflict' ? (error.code ?? d.none) : d.none;
+
+  return [
+    { label: d.request, value: `${record.entry.method} ${record.entry.path}` },
+    { label: d.status, value: status },
+    { label: d.code, value: code },
+    { label: d.message, value: reasonOf(error) },
+    { label: d.key, value: record.entry.idempotencyKey },
+    { label: d.rejectedAt, value: whenOf(record.rejectedAt) },
+  ];
 };

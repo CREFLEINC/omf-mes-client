@@ -118,4 +118,43 @@ describe('전송 실패한 기록 화면', () => {
 
     expect(await screen.findByText('전송 실패한 기록이 없습니다.')).toBeInTheDocument();
   });
+
+  /*
+   * 서버는 단말 토큰이 죽은 것과 권한이 없는 것을 같은 401 문구로 보내고, 그 문구는 현장
+   * 단말에 있지도 않은 로그인을 찾으라고 한다. 사유 한 줄만 보이면 담당자에게 무엇을 물어야
+   * 할지 정해지지 않아, 어디로 무엇을 보내 무엇이 돌아왔는지를 함께 낸다.
+   */
+  const failed = () =>
+    record({
+      entry: {
+        ...record().entry,
+        label: '입하 등록',
+        method: 'POST',
+        path: '/logistics/inbound-receipts',
+        idempotencyKey: 'key-9',
+      },
+      error: {
+        kind: 'http',
+        status: 401,
+        code: 'PERMISSION_DENIED',
+        message: '로그인이 필요합니다.',
+      },
+    });
+
+  it('상세를 열면 요청과 응답 코드와 돌아온 문구를 보인다', async () => {
+    seed([failed()]);
+
+    render();
+
+    await userEvent.click(await screen.findByRole('button', { name: '상세 보기' }));
+
+    expect(screen.getByText('POST /logistics/inbound-receipts')).toBeInTheDocument();
+    expect(screen.getByText('401')).toBeInTheDocument();
+    expect(screen.getByText('PERMISSION_DENIED')).toBeInTheDocument();
+    expect(screen.getByText('key-9')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: '상세 닫기' }));
+
+    expect(screen.queryByText('PERMISSION_DENIED')).not.toBeInTheDocument();
+  });
 });

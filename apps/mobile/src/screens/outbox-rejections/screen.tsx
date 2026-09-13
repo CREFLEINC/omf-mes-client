@@ -1,9 +1,10 @@
 import { Button, Card, EmptyState } from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
+import { useState } from 'react';
 
 import { useOutbox } from '../../patterns/outbox';
 import { useScreenTitle } from '../../patterns/screen-title';
-import { reasonOf, whenOf } from './record';
+import { detailsOf, reasonOf, whenOf } from './record';
 import './screen.css';
 
 const t = messages.outboxRejections;
@@ -18,6 +19,8 @@ export const OutboxRejectionsScreen = () => {
   useScreenTitle(t.title);
 
   const { rejected, dismissRejected } = useOutbox();
+  /* 펼친 기록. 한 번에 하나만 연다 - 세로 화면이라 여럿이 펼쳐지면 목록을 잃는다. */
+  const [openId, setOpenId] = useState<string | null>(null);
   // 방금 되돌아온 것이 위로 온다 - 아직 손쓸 수 있는 것이 그쪽이다.
   const records = [...rejected].reverse();
 
@@ -44,6 +47,26 @@ export const OutboxRejectionsScreen = () => {
                 <p className="outbox-rejections__reason">{reasonOf(record.error)}</p>
                 {record.cascaded ? (
                   <p className="outbox-rejections__cascaded">{t.cascaded}</p>
+                ) : null}
+                <Button
+                  variant="text"
+                  size="xl"
+                  aria-expanded={openId === record.entry.id}
+                  onClick={() => {
+                    setOpenId((current) => (current === record.entry.id ? null : record.entry.id));
+                  }}
+                >
+                  {openId === record.entry.id ? t.details.close : t.details.open}
+                </Button>
+                {openId === record.entry.id ? (
+                  <dl className="outbox-rejections__details">
+                    {detailsOf(record).map((row) => (
+                      <div key={row.label} className="outbox-rejections__detail">
+                        <dt>{row.label}</dt>
+                        <dd>{row.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 ) : null}
                 <Button
                   variant="outlined"

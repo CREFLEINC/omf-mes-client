@@ -39,3 +39,28 @@
 .outbox-rejections__cascaded {
   color: var(--on-surface-muted, inherit);
 }
+
+/* 목록이 길어도 닿는 자리가 바뀌지 않게 띄워 둔다. */
+.outbox-rejections__dev {
+  position: fixed;
+  right: var(--space-4, 16px);
+  bottom: var(--space-4, 16px);
+}
+
+.outbox-rejections__details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2, 8px);
+  width: 100%;
+  margin: 0;
+}
+
+.outbox-rejections__detail dt {
+  color: var(--on-surface-muted, inherit);
+}
+
+/* 경로와 멱등키는 줄바꿈할 자리가 없어 좁은 화면에서 넘친다. 글자 사이에서 끊는다. */
+.outbox-rejections__detail dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
