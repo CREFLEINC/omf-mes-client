@@ -9,19 +9,29 @@ import type { OutboxTransport } from './send';
 const store = vi.hoisted(() => new Map<string, string>());
 
 /** 보관소가 특정 자리의 저장을 거절하는 상황을 만든다. */
-const refuse = vi.hoisted(() => ({ key: null as string | null }));
+const refuse = vi.hoisted(() => ({ key: null as string | null, removeKey: null as string | null }));
+
+/** 버리기가 도는 중을 재려면 쓰기를 붙잡을 수 있어야 한다. */
+const writes = vi.hoisted(() => ({ gate: null as Promise<void> | null }));
 
 vi.mock('../local-store', () => ({
   readLocal: (key: string) => Promise.resolve(store.get(key) ?? null),
-  writeLocal: (key: string, value: string) => {
+  writeLocal: async (key: string, value: string) => {
     if (key === refuse.key) {
-      return Promise.reject(new Error('보관소가 거절했습니다'));
+      throw new Error('보관소가 거절했습니다');
+    }
+
+    if (writes.gate !== null) {
+      await writes.gate;
     }
 
     store.set(key, value);
-    return Promise.resolve();
   },
   removeLocal: (key: string) => {
+    if (key === refuse.removeKey) {
+      return Promise.reject(new Error('보관소가 거절했습니다'));
+    }
+
     store.delete(key);
     return Promise.resolve();
   },
@@ -48,6 +58,8 @@ const mount = (send: OutboxTransport = unreachable) =>
 beforeEach(() => {
   store.clear();
   refuse.key = null;
+  refuse.removeKey = null;
+  writes.gate = null;
 });
 
 describe('outbox', () => {
@@ -420,6 +432,241 @@ describe('outbox', () => {
     await waitFor(() => {
       expect(seen).toEqual(['k-1']);
     });
+  });
+
+  /*
+   * 등록을 풀면 이 기록들은 갈 곳을 잃는다. 되돌아온 것까지 함께 버려야 다음 등록이 앞 단말의
+   * 실패 목록을 물려받지 않는다.
+   */
+  it('버리면 담긴 것도 되돌아온 것도 남지 않는다', async () => {
+    const send: OutboxTransport = () =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 }));
+    const { result } = mount(send);
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+    await waitFor(() => {
+      expect(result.current.rejected).toHaveLength(1);
+    });
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-2'));
+    });
+
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
+    expect(result.current.pending).toBe(0);
+    expect(result.current.rejected).toHaveLength(0);
+    expect(store.get('outbox')).toBe('[]');
+    expect(store.get('outbox-rejected')).toBe('[]');
+  });
+
+  /*
+   * 보내는 동안에는 턴을 놓는다. 그 사이에 등록이 풀리면 회차가 끝나고 자기가 떠 온 목록을
+   * 그대로 써서, 버렸다고 들은 것이 통째로 되살아난다 - 그 뒤 토큰 없이 나가 401 로 되돌아온다.
+   */
+  it('보내는 중에 버리면 그 회차의 결과가 되살아나지 않는다', async () => {
+    let release = (): void => {
+      /* 통신을 붙잡는 자리는 아래에서 채운다. */
+    };
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started: string[] = [];
+    const send: OutboxTransport = (entry) => {
+      started.push(entry.idempotencyKey);
+      return inFlight.then(() => Promise.reject(new ApiRequestError({ kind: 'network' })));
+    };
+
+    store.set(
+      'outbox',
+      JSON.stringify([
+        { ...draft('k-1'), id: 'e-1' },
+        { ...draft('k-2'), id: 'e-2' },
+      ]),
+    );
+
+    const { result } = mount(send);
+
+    await waitFor(() => {
+      expect(started).toEqual(['k-1']);
+    });
+
+    await act(async () => {
+      await result.current.discardAll();
+    });
+    expect(store.get('outbox')).toBe('[]');
+
+    await act(async () => {
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(store.get('outbox')).toBe('[]');
+    expect(result.current.pending).toBe(0);
+    expect(result.current.rejected).toHaveLength(0);
+  });
+
+  /*
+   * 버리다 걸리면 아무것도 버리지 못한 것처럼 이어져야 한다. 세대를 먼저 올리면 그 회차가
+   * 진행 중인 보내기의 판정까지 버려, 서버가 내린 판정이 어디에도 남지 않는다.
+   */
+  it('버리다 걸리면 보내는 중인 회차의 판정을 버리지 않는다', async () => {
+    let release = (): void => {
+      /* 통신을 붙잡는 자리는 아래에서 채운다. */
+    };
+    const inFlight = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const started: string[] = [];
+    const send: OutboxTransport = (entry) => {
+      started.push(entry.idempotencyKey);
+      return inFlight.then(() =>
+        Promise.reject(new ApiRequestError({ kind: 'http', status: 422 })),
+      );
+    };
+
+    store.set('outbox', JSON.stringify([{ ...draft('k-1'), id: 'e-1' }]));
+
+    const { result } = mount(send);
+
+    await waitFor(() => {
+      expect(started).toEqual(['k-1']);
+    });
+
+    refuse.key = 'outbox-rejected';
+    await act(async () => {
+      await expect(result.current.discardAll()).rejects.toThrow();
+    });
+
+    refuse.key = null;
+    await act(async () => {
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    expect(result.current.rejected).toHaveLength(1);
+  });
+
+  /* 읽지 못해 옮겨 둔 원본에도 이 단말이 만든 기록이 그대로 있다. */
+  it('읽지 못해 옮겨 둔 큐 원본도 버린다', async () => {
+    store.set('outbox-broken', '망가진 큐');
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
+    expect(store.has('outbox-broken')).toBe(false);
+  });
+
+  it('읽지 못해 옮겨 둔 되돌아온 목록 원본도 버린다', async () => {
+    store.set('outbox-rejected-broken', '망가진 목록');
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
+    expect(store.has('outbox-rejected-broken')).toBe(false);
+  });
+
+  /*
+   * 되읽지 않는 자리를 못 지웠다고 장부 정리를 되돌리지 않는다. 되돌리면 큐는 이미 비었는데
+   * 화면은 아직 N 건이라 말한다.
+   */
+  it('옮겨 둔 원본을 못 지워도 버리기는 끝난다', async () => {
+    store.set('outbox-broken', '망가진 큐');
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    refuse.removeKey = 'outbox-broken';
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
+    expect(result.current.pending).toBe(0);
+    expect(store.get('outbox')).toBe('[]');
+  });
+
+  it('되돌아온 목록 원본을 못 지워도 버리기는 끝난다', async () => {
+    store.set('outbox-rejected-broken', '망가진 목록');
+    const { result } = mount();
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+
+    refuse.removeKey = 'outbox-rejected-broken';
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
+    expect(result.current.pending).toBe(0);
+    expect(store.get('outbox')).toBe('[]');
+  });
+
+  /*
+   * 세대를 큐 읽기와 같은 슬롯에서 뜬다. 밖에서 뜨면 버리기가 시작됐지만 아직 올리지 않은
+   * 틈에 든 회차가 자기 것이 아닌 세대를 지고, 서버가 내린 판정을 버린다.
+   */
+  it('버리기가 도는 중에 시작한 회차는 자기 판정을 지킨다', async () => {
+    const { result } = mount(() =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 })),
+    );
+
+    await waitFor(() => {
+      expect(result.current.loaded).toBe(true);
+    });
+
+    let release = (): void => {
+      /* 버리기를 붙잡는 자리는 아래에서 채운다. */
+    };
+    writes.gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    await act(async () => {
+      /* 버리기가 첫 쓰기에 닿아 멈춘 사이에 담고 보낸다 - 셋이 이 차례로 턴에 선다. */
+      const discarding = result.current.discardAll();
+
+      await Promise.resolve();
+
+      const enqueuing = result.current.enqueue(draft('k-1'));
+      const flushing = result.current.flush();
+
+      writes.gate = null;
+      release();
+      await Promise.all([discarding, enqueuing, flushing]);
+    });
+
+    expect(result.current.rejected).toHaveLength(1);
+  });
+
+  /* isRejected 가 이 ref 만 본다. 비우지 않으면 버린 건을 계속 되돌아왔다고 답한다. */
+  it('버린 뒤에는 그 멱등키를 되돌아온 것으로 답하지 않는다', async () => {
+    const { result } = mount(() =>
+      Promise.reject(new ApiRequestError({ kind: 'http', status: 422 })),
+    );
+
+    await act(async () => {
+      await result.current.enqueue(draft('k-1'));
+    });
+    await waitFor(() => {
+      expect(result.current.isRejected('k-1')).toBe(true);
+    });
+
+    await act(async () => {
+      await result.current.discardAll();
+    });
+
+    expect(result.current.isRejected('k-1')).toBe(false);
   });
 
   it('빈 큐를 보내면 아무 결과도 내지 않는다', async () => {

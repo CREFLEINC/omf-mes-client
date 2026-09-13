@@ -9,8 +9,17 @@ import {
   type ReactNode,
 } from 'react';
 
-import { appendEntry, readQueue, writeQueue, type OutboxDraft, type OutboxEntry } from './queue';
+import { removeLocal } from '../local-store';
 import {
+  OUTBOX_BROKEN_KEY,
+  appendEntry,
+  readQueue,
+  writeQueue,
+  type OutboxDraft,
+  type OutboxEntry,
+} from './queue';
+import {
+  OUTBOX_REJECTED_BROKEN_KEY,
   appendRejected,
   brokenBatchesOf,
   dropRejected,
@@ -70,6 +79,8 @@ export interface Outbox {
   isRejected: (idempotencyKey: string) => boolean;
   /** 되돌아온 건 하나를 목록에서 내린다. 사람이 보고 정리한 뒤다. */
   dismissRejected: (id: string) => Promise<void>;
+  /** 등록을 풀 때 담긴 것과 되돌아온 것을 모두 버린다. */
+  discardAll: () => Promise<void>;
 }
 
 const OutboxContext = createContext<Outbox | null>(null);
@@ -83,6 +94,8 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
   const [entries, setEntries] = useState<OutboxEntry[]>([]);
   const [rejected, setRejected] = useState<RejectedRecord[]>([]);
   const [loaded, setLoaded] = useState(false);
+  /* 버린 횟수. 보내는 중에 버려졌는지를 회차가 알아보는 표식이다. */
+  const discarded = useRef(0);
 
   /*
    * 되돌아온 건을 상태와 별도로 붙잡아 둔다. 판정을 묻는 자리는 비동기 처리기 안이라 그 시점의
@@ -141,7 +154,18 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
   );
 
   const runFlush = useCallback(async (): Promise<FlushResult | null> => {
-    const stored = await inTurn(() => readQueue());
+    /*
+     * 이 회차가 어느 세대의 큐를 보고 있는가. 보내는 동안 턴을 놓으므로 그 사이에 등록이
+     * 풀려 큐가 버려질 수 있고, 그때 결과를 그대로 쓰면 버린 것이 통째로 되살아난다.
+     *
+     * 큐를 읽는 것과 같은 슬롯에서 뜬다. 밖에서 뜨면 버리기가 이미 시작됐지만 아직 세대를
+     * 올리지 않은 틈이 생겨, 버리기와 무관한 회차가 자기 것이 아닌 세대를 지고 판정을 버린다.
+     */
+    let generation = 0;
+    const stored = await inTurn(() => {
+      generation = discarded.current;
+      return readQueue();
+    });
 
     if (stored.length === 0) {
       return null;
@@ -154,6 +178,11 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     const result = await flushQueue(stored, send);
 
     await inTurn(async () => {
+      /* 버린 뒤에 끝난 회차다. 결과를 쓰면 작업자가 사라졌다고 들은 것이 되돌아온다. */
+      if (discarded.current !== generation) {
+        return;
+      }
+
       const attempted = new Set(stored.map((entry) => entry.id));
       const latest = await readQueue();
       // 보내려던 것 밖에 있는 것은 그 사이에 담긴 것이다. 결과로 덮으면 그 건이 사라진다.
@@ -207,6 +236,37 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
     },
     [inTurn],
   );
+
+  /**
+   * 담긴 것과 되돌아온 것을 모두 버린다. 기기 등록을 풀 때만 부른다.
+   *
+   * 등록을 풀면 이 기록들은 갈 곳을 잃는다 - 어느 단말이 만든 것인가를 지고 있는데 그 단말이
+   * 사라지고, 다음 등록은 다른 단말일 수 있다. 남겨 두면 토큰 없이 나가 401 로 되돌아오고,
+   * 그 사유는 서버가 그 기록에 대해 내린 판정이 아니라 우리가 등록을 푼 결과다.
+   */
+  const discardAll = useCallback(async () => {
+    await inTurn(async () => {
+      await writeQueue([]);
+      await writeRejected([]);
+      /*
+       * 읽지 못해 옮겨 둔 원본도 버린다. 앱이 되읽지는 않지만 그 안에 이 단말이 만든 기록이
+       * 그대로 있어, 남겨 두면 다음 등록이 앞 단말의 기록을 물려받는다.
+       *
+       * 여기서 걸려도 멈추지 않는다. 아무도 되읽지 않는 자리라, 정작 중요한 큐 비우기가
+       * 끝난 뒤에 이것 때문에 장부 정리를 통째로 되돌리면 화면이 보관소와 어긋난 채 남는다.
+       */
+      await removeLocal(OUTBOX_BROKEN_KEY).catch(() => undefined);
+      await removeLocal(OUTBOX_REJECTED_BROKEN_KEY).catch(() => undefined);
+      /*
+       * 다 버린 뒤에 세대를 올린다. 먼저 올리면 보관소가 거절해 버리지 못한 회차도 진행 중인
+       * 보내기의 판정을 버리게 해, 서버가 내린 판정이 어디에도 남지 않는다.
+       */
+      discarded.current += 1;
+      rejectedRef.current = [];
+      setEntries([]);
+      setRejected([]);
+    });
+  }, [inTurn]);
 
   const isRejected = useCallback(
     (idempotencyKey: string) =>
@@ -300,10 +360,12 @@ export const OutboxProvider = ({ send, children }: OutboxProviderProps) => {
       enqueue,
       flush,
       dismissRejected,
+      discardAll,
     }),
     [
       countPending,
       pendingOf,
+      discardAll,
       dismissRejected,
       enqueue,
       isRejected,

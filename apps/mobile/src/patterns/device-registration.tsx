@@ -61,8 +61,12 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
     try {
       await verify();
     } catch (error) {
-      await clearDeviceToken();
-      await forgetPlant();
+      /*
+       * 되돌리기가 걸려도 원래 오류를 그대로 올린다. 여기서 보관소 오류로 바뀌면 화면이 잠깐
+       * 끊긴 것을 거절로 읽어, 다시 걸면 되는 작업자에게 새 QR 을 받아 오라고 말한다.
+       */
+      await clearDeviceToken().catch(() => undefined);
+      await forgetPlant().catch(() => undefined);
       throw error;
     }
 
@@ -71,8 +75,13 @@ export const DeviceRegistrationProvider = ({ children }: { children: ReactNode }
 
   const unregister = useCallback(async () => {
     await clearDeviceToken();
-    // 공장을 남겨 두면 다음 등록까지 옛 공장으로 쓴다 — 다른 공장의 재고가 는다.
-    await forgetPlant();
+
+    /*
+     * 공장을 남겨 두면 다음 등록까지 옛 공장으로 쓴다 — 다른 공장의 재고가 는다. 다만 여기서
+     * 걸려도 멈추지 않는다. 토큰은 이미 사라져 되돌릴 수 없고, 등록된 채로 두면 셸이 앱을
+     * 그대로 세워 모든 요청이 401 이 된다 - 남은 공장은 다음 등록이 덮는다.
+     */
+    await forgetPlant().catch(() => undefined);
     setStatus('unregistered');
   }, []);
 
