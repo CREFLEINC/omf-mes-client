@@ -24,18 +24,24 @@ import { conflict } from './conflict';
 import { dashboard } from './dashboard';
 import { defectCauseCode } from './defect-cause-code';
 import { deviceRegistration } from './device-registration';
+import { disposalIssue } from './disposal-issue';
 import { dispositionDecision } from './disposition-decision';
 import { dispositionRequest } from './disposition-request';
+import { documentProgress } from './document-progress';
 import { editability } from './editability';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
 import { expeditedShipment } from './expedited-shipment';
+import { goodsReceipt } from './goods-receipt';
 import { httpError } from './http-error';
 import { inboundReceipt } from './inbound-receipt';
+import { inboundSchedule } from './inbound-schedule';
 import { inboundVariance } from './inbound-variance';
 import { inspectionResultInsights } from './inspection-result-insights';
 import { inspectionStandard } from './inspection-standard';
 import { integrationSync } from './integration-sync';
+import { iqcInspection } from './iqc-inspection';
+import { iqcSkipApproval } from './iqc-skip-approval';
 import { iqcSkipRequest } from './iqc-skip-request';
 import { itemExtendedAttrs } from './item-extended-attrs';
 import { judgmentCode } from './judgment-code';
@@ -50,10 +56,12 @@ import { notice } from './notice';
 import { notificationCenter } from './notification-center';
 import { oqcInspection } from './oqc-inspection';
 import { outboxRejections } from './outbox-rejections';
+import { overReceiptSplit } from './over-receipt-split';
 import { packingRepack } from './packing-repack';
 import { passwordChange } from './password-change';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
+import { poRegister } from './po-register';
 import { productDisposalRequest } from './product-disposal-request';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
@@ -75,8 +83,12 @@ import { shipmentRequestCreate } from './shipment-request-create';
 import { shipmentSchedule } from './shipment-schedule';
 import { shopfloorReceipt } from './shopfloor-receipt';
 import { stateLocked } from './state-locked';
+import { stockAdjust } from './stock-adjust';
 import { stockReinstatement } from './stock-reinstatement';
+import { stockStatus } from './stock-status';
 import { stockTransfer } from './stock-transfer';
+import { stocktaking } from './stocktaking';
+import { supplierReturn } from './supplier-return';
 import { suspiciousMaterialHold } from './suspicious-material-hold';
 import { temporaryPutaway } from './temporary-putaway';
 import { terminalProcessMap } from './terminal-process-map';
@@ -96,18 +108,24 @@ export const vi: Translated<Messages> = {
   dashboard,
   defectCauseCode,
   deviceRegistration,
+  disposalIssue,
   dispositionDecision,
   dispositionRequest,
+  documentProgress,
   editability,
   equipmentFailureReport,
   equipmentInspection,
   expeditedShipment,
+  goodsReceipt,
   httpError,
   inboundReceipt,
+  inboundSchedule,
   inboundVariance,
   inspectionResultInsights,
   inspectionStandard,
   integrationSync,
+  iqcInspection,
+  iqcSkipApproval,
   iqcSkipRequest,
   itemExtendedAttrs,
   judgmentCode,
@@ -122,10 +140,12 @@ export const vi: Translated<Messages> = {
   notificationCenter,
   oqcInspection,
   outboxRejections,
+  overReceiptSplit,
   packingRepack,
   passwordChange,
   pendingCode,
   physicalCount,
+  poRegister,
   productDisposalRequest,
   productPicking,
   productReceipt,
@@ -147,8 +167,12 @@ export const vi: Translated<Messages> = {
   shipmentSchedule,
   shopfloorReceipt,
   stateLocked,
+  stockAdjust,
   stockReinstatement,
+  stockStatus,
+  stocktaking,
   stockTransfer,
+  supplierReturn,
   suspiciousMaterialHold,
   temporaryPutaway,
   terminalProcessMap,
