@@ -3,27 +3,26 @@ import { runRequest } from '../../patterns/request';
 
 type Client = ReturnType<typeof useApiClient>['client'];
 
-/** 등록이 가리키는 단말. 토큰은 번호만 싣고 오므로 나머지는 서버가 준다. */
+/** 등록이 가리키는 단말. 코드는 없을 수 있다 — 계약이 토큰 클레임을 아직 정의하지 않는다. */
 export interface RegisteredTerminal {
   terminalId: number;
-  terminalCode: string;
+  terminalCode: string | null;
   plantId: number;
 }
 
 /**
- * 토큰이 가리키는 단말을 받는다.
+ * 서버가 이 토큰을 받아 주는지 확인한다.
  *
- * ⭐ **이 호출이 토큰 검증을 겸한다.** 요청에는 방금 저장한 단말 토큰이 실리므로, 서버가
- * 받아 주지 않으면 여기서 거절로 떨어진다 — 등록을 세우기 전에 알 수 있다.
+ * 등록이 온라인 전용인 이유가 이것이다(M-CO-01 §6). 확인하지 않으면 등록은 성공한 것처럼
+ * 보이고, 현장에 들어간 뒤 화면마다 401 이 난다. 실패는 등록 시점에 나는 편이 낫다.
  *
- * ⛔ **코드를 토큰에서 읽지 않는다.** 토큰의 값은 서명을 보지 않은 값이고, 작업자가 관리자와
- * 맞춰 보는 것은 «서버가 말한» 코드여야 한다.
+ * 어느 조회든 상관없다 — 토큰은 서버가 서명했고 매 호출마다 검증하므로 200 자체가 수락의
+ * 증명이다. 작업자 목록을 쓰는 것은 등록 직후 어차피 받아야 하는 것이라서다.
+ *
+ * 단말 상세는 묻지 않는다. `GET /mdm/terminals/{terminalId}` 를 모바일 단말 토큰으로 부르면
+ * 401 이 오고(실측), 그 실패로 등록이 통째로 막혔다.
  */
-export const fetchTerminal = (client: Client, terminalId: number): Promise<RegisteredTerminal> =>
+export const verifyTerminalToken = (client: Client, plantId: number): Promise<void> =>
   runRequest(() =>
-    client.GET('/mdm/terminals/{terminalId}', { params: { path: { terminalId } } }),
-  ).then((data) => ({
-    terminalId: data.terminalId,
-    terminalCode: data.terminalCode,
-    plantId: data.plantId,
-  }));
+    client.GET('/mdm/workers', { params: { query: { plantId, page: 1, size: 1 } } }),
+  ).then(() => undefined);

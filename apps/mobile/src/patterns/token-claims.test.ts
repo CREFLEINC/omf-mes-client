@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { readTerminalIdFromToken } from './token-claims';
+import { readTerminalClaims, readTerminalIdFromToken } from './token-claims';
 
 const tokenWith = (payload: unknown): string => {
   const body = btoa(JSON.stringify(payload))
@@ -64,5 +64,45 @@ describe('단말 토큰에서 단말 번호 읽기', () => {
 
   it('본문이 깨져 있으면 읽지 않는다', () => {
     expect(readTerminalIdFromToken('header.@@@.signature')).toBeNull();
+  });
+});
+
+/*
+ * 등록 끝에 단말 코드를 보여 사람이 관리자 안내와 대조한다(M-CO-01 §5-2). 기계가 틀린 QR 을
+ * 잡을 방법이 없어 사람이 잡는 자리다.
+ *
+ * ⚠ 계약이 토큰 클레임을 아직 정의하지 않는다. 그래서 값이 없을 수 있고, 없다고 등록을 막지
+ * 않는다 - 막으면 대조라는 «편의»를 위해 등록이라는 «필수»를 잃는다.
+ */
+describe('단말 토큰에서 보여 줄 값 읽기', () => {
+  it('코드와 공장을 읽는다', () => {
+    expect(readTerminalClaims(tokenWith({ sub: 7, terminalCode: 'SYN-PDA-01', plantId: 3 }))).toEqual(
+      { terminalId: 7, terminalCode: 'SYN-PDA-01', plantId: 3 },
+    );
+  });
+
+  it('코드가 없어도 번호는 읽는다', () => {
+    expect(readTerminalClaims(tokenWith({ sub: 7, plantId: 3 }))).toEqual({
+      terminalId: 7,
+      terminalCode: null,
+      plantId: 3,
+    });
+  });
+
+  it('공장이 없어도 번호는 읽는다', () => {
+    expect(readTerminalClaims(tokenWith({ sub: 7 }))).toEqual({
+      terminalId: 7,
+      terminalCode: null,
+      plantId: null,
+    });
+  });
+
+  /* 번호가 없으면 어디로 물어볼지도 모른다. 그때만 등록 QR 이 아니라고 본다. */
+  it('번호가 없으면 아무것도 내지 않는다', () => {
+    expect(readTerminalClaims(tokenWith({ terminalCode: 'SYN-PDA-01' }))).toBeNull();
+  });
+
+  it('토큰이 아니면 아무것도 내지 않는다', () => {
+    expect(readTerminalClaims('그냥 문자열')).toBeNull();
   });
 });
