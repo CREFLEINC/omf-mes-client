@@ -124,7 +124,15 @@ export const productionResult = {
     workOrderLabel: '작업지시',
     itemLabel: '품목',
     workerLabel: '사번',
-    missingWorkOrder: '작업지시를 받지 못해 실적을 등록할 수 없습니다.',
+    /**
+     * 작업지시 없이 들어왔을 때 — **다음 행동까지 말한다**(#1151).
+     *
+     * ⚠ 공통 [화면 이동](G-34)은 작업지시를 싣지 않는다 — 설계가 정한 것은 「고르면 그 화면으로
+     *   이동」까지다. 그 길로 들어오면 모든 값이 비는데, 이유와 할 일을 말하지 않으면 고장처럼
+     *   보인다. 문장은 포장 화면들(`packing-work`·`work-hold-register`)과 같은 꼴로 맞춘다.
+     */
+    missingWorkOrder:
+      '작업지시를 받지 못해 실적을 등록할 수 없습니다. 작업 시작 화면에서 작업지시를 고른 뒤 들어오세요.',
     missingWorker: '사번이 확인되지 않아 저장할 수 없습니다. 사번 인증을 먼저 하세요.',
     loadFailed: '작업지시를 불러오지 못했습니다.',
   },
