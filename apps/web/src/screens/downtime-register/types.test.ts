@@ -37,6 +37,7 @@ describe('resolveSaveBlock', () => {
   const base = {
     workerNo: 'SAMPLE-1',
     equipmentId: 1,
+    terminalId: 9001,
     gate: 'allowed' as const,
     hasOngoing: false,
   };
@@ -47,6 +48,18 @@ describe('resolveSaveBlock', () => {
 
   it('사번을 모르면 그것부터 말한다 — 쓰기가 서버에서 거부되는 사유다', () => {
     expect(resolveSaveBlock({ ...base, workerNo: null, equipmentId: null })).toBe('worker-missing');
+  });
+
+  /*
+   * ⛔ **단말을 모르면 「설비가 지정되지 않았다」로 말하지 않는다**(#1149). 설비는 단말에 붙어
+   *    오므로 단말이 서기 전에는 없는 것이 당연하고, 그때 관리자에게 설비 지정을 요청하라고
+   *    말하면 아무도 풀 수 없는 심부름이 된다 — 풀리는 것은 단말 등록이다.
+   */
+  it('설비를 모르는 이유가 단말인지 설비인지 가른다', () => {
+    expect(resolveSaveBlock({ ...base, equipmentId: null })).toBe('equipment-missing');
+    expect(resolveSaveBlock({ ...base, equipmentId: null, terminalId: null })).toBe(
+      'gate-unidentified',
+    );
   });
 
   it('게이팅을 판정하지 못한 것과 닫힌 것을 가른다', () => {

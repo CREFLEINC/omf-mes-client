@@ -11,6 +11,7 @@ import {
   type StubRoute,
 } from '../../test/api-harness';
 import { runBackStep } from '../../patterns/back-step';
+import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { MaterialLotScanScreen } from './screen';
 
@@ -530,5 +531,51 @@ describe('자재LOT 스캔·등록 화면', () => {
     await user.click(screen.getByRole('button', { name: '이 라인 등록' }));
 
     expect(await screen.findByText('등록을 저장하지 못했습니다')).toBeTruthy();
+  });
+  /**
+   * 스캔 하나가 이 화면의 대상을 정한다. 이미 읽은 뒤에 다른 라벨을 스치면 대상이 조용히
+   * 바뀌는데, 작업자는 앞엣것에 적는 줄 알고 등록 단추를 누른다.
+   */
+  it('이미 읽은 뒤 다른 값을 읽으면 되묻는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+
+    const other = '123456789' + '000000500' + '260731' + '778899' + '0009';
+    scan(other);
+
+    expect(await screen.findByText('다시 스캔했습니다')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: '그대로 두기' })).toBeTruthy();
+  });
+
+  it('되물은 창에서 그대로 두면 앞엣것이 남는다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+    scan('123456789' + '000000500' + '260731' + '778899' + '0009');
+
+    await user.click(await screen.findByRole('button', { name: '그대로 두기' }));
+
+    /* 창이 사라지는 것이 아니라 대상이 안 바뀐 것을 잰다 - 그것이 이 단추가 하는 일이다. */
+    expect(screen.getByText(formatMaterialLotNo(LOT_NO))).toBeTruthy();
+    expect(screen.getByRole('button', { name: '이 라인 등록' })).not.toBeDisabled();
+  });
+
+  it('되물은 창에서 바꾸면 새로 읽은 값이 대상이 된다', async () => {
+    const user = userEvent.setup();
+    mount();
+    await pickLine(user);
+
+    await scanAndWait(LOT_NO);
+    const other = '123456789' + '000000500' + '260731' + '778899' + '0009';
+    scan(other);
+
+    await user.click(await screen.findByRole('button', { name: '새로 읽은 값으로' }));
+
+    expect(await screen.findByText(formatMaterialLotNo(other))).toBeTruthy();
   });
 });

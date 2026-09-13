@@ -103,7 +103,12 @@ export const LocationLabelDialog = ({ previews, baseUrl, onClose }: LocationLabe
                 />
               )}
               <figcaption>
-                <span>{`${preview.locationCode} · ${String(preview.issueSeq)}회`}</span>
+                <span>
+                  {messages.warehouseLocation.labelPreview.caption(
+                    preview.locationCode,
+                    preview.issueSeq,
+                  )}
+                </span>
                 <a href={src} download={`${preview.locationCode}.png`}>
                   {messages.warehouseLocation.labelPreview.download}
                 </a>

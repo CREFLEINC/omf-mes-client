@@ -32,7 +32,12 @@ describe('usePackingIdentity', () => {
       route: '/pop/packing?terminalId=101&workerNo=3391',
     });
 
-    expect(result.current).toEqual({ terminalId: 101, processes: null, workerNo: '3391' });
+    expect(result.current).toEqual({
+      terminalId: 101,
+      processes: null,
+      equipment: null,
+      workerNo: '3391',
+    });
   });
 
   /**
@@ -49,11 +54,16 @@ describe('usePackingIdentity', () => {
 
   it('⭐ 셸이 채운 값이 «주소보다» 이긴다 — 단말이 자기에 대해 아는 것이 옳다', () => {
     const merged = mergeIdentity(
-      { terminalId: 101, processes: [{ processId: 301 }], workerNo: '3391' },
+      { terminalId: 101, processes: [{ processId: 301 }], equipment: null, workerNo: '3391' },
       new URLSearchParams('terminalId=999&processId=999&workerNo=9999'),
     );
 
-    expect(merged).toEqual({ terminalId: 101, processes: [{ processId: 301 }], workerNo: '3391' });
+    expect(merged).toEqual({
+      terminalId: 101,
+      processes: [{ processId: 301 }],
+      equipment: null,
+      workerNo: '3391',
+    });
   });
 
   it('셸이 아무것도 모르면 주소가 단말 번호·사번을 메운다 — 공정은 메우지 않는다', () => {
@@ -62,7 +72,12 @@ describe('usePackingIdentity', () => {
       new URLSearchParams('terminalId=101&processId=301&workerNo=3391'),
     );
 
-    expect(merged).toEqual({ terminalId: 101, processes: null, workerNo: '3391' });
+    expect(merged).toEqual({
+      terminalId: 101,
+      processes: null,
+      equipment: null,
+      workerNo: '3391',
+    });
   });
 
   it('P-CO-01이 지정한 작업자를 주소 없이 이어받는다', () => {
@@ -72,13 +87,18 @@ describe('usePackingIdentity', () => {
       route: '/pop/packing?terminalId=101',
     });
 
-    expect(result.current).toEqual({ terminalId: 101, processes: null, workerNo: '900044' });
+    expect(result.current).toEqual({
+      terminalId: 101,
+      processes: null,
+      equipment: null,
+      workerNo: '900044',
+    });
   });
 
   it('셸이 사번을 알면 현재 작업자 세션과 주소보다 먼저 쓴다', () => {
     expect(
       mergeIdentity(
-        { terminalId: 101, processes: [{ processId: 301 }], workerNo: '900028' },
+        { terminalId: 101, processes: [{ processId: 301 }], equipment: null, workerNo: '900028' },
         new URLSearchParams('workerNo=900099'),
         '900044',
       ).workerNo,
@@ -97,7 +117,12 @@ describe('usePackingIdentity', () => {
       route: '/pop/packing',
     });
 
-    expect(result.current).toEqual({ terminalId: null, processes: null, workerNo: null });
+    expect(result.current).toEqual({
+      terminalId: null,
+      processes: null,
+      equipment: null,
+      workerNo: null,
+    });
   });
 
   it('숫자가 아니거나 0 이하인 단말 번호는 «모른다»로 다룬다', () => {
@@ -105,6 +130,11 @@ describe('usePackingIdentity', () => {
       route: '/pop/packing?terminalId=abc&processId=0&workerNo=%20%20',
     });
 
-    expect(result.current).toEqual({ terminalId: null, processes: null, workerNo: null });
+    expect(result.current).toEqual({
+      terminalId: null,
+      processes: null,
+      equipment: null,
+      workerNo: null,
+    });
   });
 });

@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { useQuery, type UseQueryResult } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -75,7 +76,8 @@ const loadAll = async <T extends PagedItem>(
     if (response.items.length === 0) break;
     if (result.length >= response.page.total) break;
   } while (page <= 100);
-  if (result.length < total) throw new Error('선택 목록을 전부 불러오지 못했습니다.');
+  if (result.length < total)
+    throw new Error(messages.alarmRecipientSettings.errors.lookupIncomplete);
   return result;
 };
 

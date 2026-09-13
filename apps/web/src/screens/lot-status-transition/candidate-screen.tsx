@@ -11,6 +11,7 @@ import {
   Table,
 } from '@crefle/web-ui';
 import type { components, paths } from '@omf-mes/api-client';
+import { messages } from '@omf-mes/i18n';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useId, useState } from 'react';
 
@@ -34,6 +35,9 @@ type LotStatusCandidateQuery = NonNullable<
   NonNullable<paths['/quality/lot-statuses']['get']>['parameters']['query']
 >;
 export type LotStatusCandidate = components['schemas']['LotQualityStatus'];
+
+const t = messages.lotStatusTransition.candidate;
+const tSelected = messages.lotStatusTransition.selected;
 
 export interface LotStatusCandidateFilters {
   q: string;
@@ -176,11 +180,11 @@ export const LotStatusTransitionCandidateScreen = () => {
   const periodError = validateTransitionPeriod(draft);
   const periodErrorMessage =
     periodError === 'missing'
-      ? '조회 시작일과 종료일을 모두 선택하세요.'
+      ? t.filters.periodMissing
       : periodError === 'invalid'
-        ? '조회 기간에 올바른 날짜를 입력하세요.'
+        ? t.filters.periodInvalid
         : periodError === 'reversed'
-          ? '조회 시작일은 종료일보다 늦을 수 없습니다.'
+          ? t.filters.periodReversed
           : null;
   const itemSource: LookupSource = {
     entries: items.data?.entries ?? [],
@@ -192,7 +196,7 @@ export const LotStatusTransitionCandidateScreen = () => {
     statuses.data?.items.map((item) => ({ value: item.code, label: item.label })) ?? [];
   const itemLabel = (itemId: number): string => lookupDisplayLabelWithInactive(itemSource, itemId);
   const statusLabel = (code: string): string =>
-    statusOptions.find((option) => option.value === code)?.label ?? `${code} (이름 미확인)`;
+    statusOptions.find((option) => option.value === code)?.label ?? t.statusUnknown(code);
   const changePage = (next: number): void => {
     if (confirmationPinned) return;
     setPage(next);
@@ -213,12 +217,12 @@ export const LotStatusTransitionCandidateScreen = () => {
   const columns: Column<LotStatusCandidate>[] = [
     {
       key: 'lotNo',
-      header: 'LOT 번호',
+      header: t.fields.lotNo,
       render: (row) => (
         <button
           type="button"
           className="link-cell"
-          aria-label={`${row.lotNo} 선택`}
+          aria-label={t.select(row.lotNo)}
           aria-current={selectedKey === rowKey(row) ? true : undefined}
           disabled={confirmationPinned}
           onClick={() => {
@@ -229,14 +233,24 @@ export const LotStatusTransitionCandidateScreen = () => {
         </button>
       ),
     },
-    { key: 'item', header: '품목', render: (row) => itemLabel(row.itemId) },
+    { key: 'item', header: t.fields.item, render: (row) => itemLabel(row.itemId) },
     {
       key: 'status',
-      header: '품질 상태',
+      header: t.fields.status,
       render: (row) => <Chip variant="status">{statusLabel(row.lotStatusCode)}</Chip>,
     },
-    { key: 'onHand', header: '보유 수량', align: 'end', render: (row) => row.onHandQty ?? '—' },
-    { key: 'held', header: '보류 수량', align: 'end', render: (row) => row.heldQty ?? '—' },
+    {
+      key: 'onHand',
+      header: t.fields.onHand,
+      align: 'end',
+      render: (row) => row.onHandQty ?? emptyValue,
+    },
+    {
+      key: 'held',
+      header: t.fields.held,
+      align: 'end',
+      render: (row) => row.heldQty ?? emptyValue,
+    },
   ];
   const meta = candidates.data?.page;
   const totalPages = meta === undefined || meta.size < 1 ? 1 : Math.ceil(meta.total / meta.size);
@@ -248,12 +262,12 @@ export const LotStatusTransitionCandidateScreen = () => {
         aria-labelledby="lot-status-transition-candidates-title"
       >
         <h2 className="pane-title" id="lot-status-transition-candidates-title">
-          전이 대상 LOT
+          {t.pane}
         </h2>
         <div className="filter-bar lot-status-transition-filter">
           <div className="field-cell lot-status-transition-period">
             <label className="field-label" htmlFor={periodId}>
-              최근 전이 기간
+              {t.filters.period}
             </label>
             <DatePicker
               id={periodId}
@@ -265,22 +279,22 @@ export const LotStatusTransitionCandidateScreen = () => {
           </div>
           <SearchInput
             disabled={confirmationPinned}
-            label="LOT 번호"
+            label={t.filters.lotNo}
             value={draft.q}
             onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
             onSearch={apply}
           />
           <FilterSelect
             disabled={confirmationPinned}
-            label="자재"
-            options={[{ value: '', label: '전체' }, ...itemOptions]}
+            label={t.filters.item}
+            options={[{ value: '', label: t.filters.all }, ...itemOptions]}
             value={draft.itemId}
             onChange={(itemId) => setDraft((current) => ({ ...current, itemId }))}
           />
           <FilterSelect
             disabled={confirmationPinned}
-            label="품질 상태"
-            options={[{ value: '', label: '전체' }, ...statusOptions]}
+            label={t.filters.status}
+            options={[{ value: '', label: t.filters.all }, ...statusOptions]}
             value={draft.lotStatusCode}
             onChange={(lotStatusCode) => setDraft((current) => ({ ...current, lotStatusCode }))}
           />
@@ -289,14 +303,14 @@ export const LotStatusTransitionCandidateScreen = () => {
               className={periodError === null ? 'field-note' : 'field-error'}
               role={periodError === null ? undefined : 'alert'}
             >
-              {periodErrorMessage ?? '최근 전이 일자를 기준으로 대상 LOT을 조회합니다.'}
+              {periodErrorMessage ?? t.filters.note}
             </span>
             <div className="form-actions lot-status-transition-filter-actions">
               <Button variant="outlined" disabled={confirmationPinned} onClick={reset}>
-                초기화
+                {t.filters.reset}
               </Button>
               <Button disabled={confirmationPinned || periodError !== null} onClick={apply}>
-                조회
+                {t.filters.search}
               </Button>
             </div>
           </div>
@@ -304,11 +318,11 @@ export const LotStatusTransitionCandidateScreen = () => {
         {candidates.isError ? (
           <AlertBanner
             variant="error"
-            title="LOT 후보를 불러오지 못했습니다."
-            action={<Button onClick={() => void candidates.refetch()}>다시 시도</Button>}
+            title={t.failed}
+            action={<Button onClick={() => void candidates.refetch()}>{t.retry}</Button>}
           />
         ) : candidates.isPending ? (
-          <div role="status" aria-label="LOT 후보를 불러오는 중">
+          <div role="status" aria-label={t.loading}>
             <SkeletonText lines={3} />
           </div>
         ) : (
@@ -319,33 +333,36 @@ export const LotStatusTransitionCandidateScreen = () => {
             >
               <Table
                 density="compact"
-                caption="전이 대상 LOT"
+                caption={t.pane}
                 columns={columns}
                 rows={candidates.data.items}
                 getRowId={rowKey}
                 sort={null}
-                empty={<EmptyState size="sm" live title="조건에 맞는 LOT이 없습니다." />}
+                empty={<EmptyState size="sm" live title={t.empty} />}
               />
             </div>
             <div className="lot-status-transition-list-footer">
               <p className="field-note">
-                총 {new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0)}건 · {page} /{' '}
-                {totalPages}쪽
+                {t.summary(
+                  new Intl.NumberFormat('ko-KR').format(meta?.total ?? 0),
+                  page,
+                  totalPages,
+                )}
               </p>
-              <nav className="form-actions" aria-label="LOT 후보 쪽 이동">
+              <nav className="form-actions" aria-label={t.pagination}>
                 <Button
                   variant="outlined"
                   disabled={confirmationPinned || page <= 1}
                   onClick={() => changePage(page - 1)}
                 >
-                  이전 쪽
+                  {t.previous}
                 </Button>
                 <Button
                   variant="outlined"
                   disabled={confirmationPinned || page >= totalPages}
                   onClick={() => changePage(page + 1)}
                 >
-                  다음 쪽
+                  {t.next}
                 </Button>
               </nav>
             </div>
@@ -354,12 +371,12 @@ export const LotStatusTransitionCandidateScreen = () => {
       </section>
       {selected !== null && (
         <div className="lot-status-transition-detail-grid">
-          <section className="pane lot-status-transition-pane" aria-label="선택한 LOT">
-            <h2 className="pane-title">선택 LOT</h2>
-            <dl className="lot-status-transition-identity" aria-label="선택 LOT 식별">
+          <section className="pane lot-status-transition-pane" aria-label={tSelected.pane}>
+            <h2 className="pane-title">{tSelected.title}</h2>
+            <dl className="lot-status-transition-identity" aria-label={tSelected.identity}>
               {[
-                ['LOT 번호', selected.lotNo],
-                ['품목', itemLabel(selected.itemId)],
+                [tSelected.lotNo, selected.lotNo],
+                [tSelected.item, itemLabel(selected.itemId)],
               ].map(([label, value]) => (
                 <div className="field-cell" key={label}>
                   <dt className="field-label">{label}</dt>
@@ -367,15 +384,15 @@ export const LotStatusTransitionCandidateScreen = () => {
                 </div>
               ))}
             </dl>
-            <h3 className="lot-status-transition-subtitle">현재 상태</h3>
-            <dl className="lot-status-transition-status-grid" aria-label="선택 LOT 현재 상태">
+            <h3 className="lot-status-transition-subtitle">{tSelected.currentTitle}</h3>
+            <dl className="lot-status-transition-status-grid" aria-label={tSelected.current}>
               {[
-                ['Lot Status', statusLabel(selected.lotStatusCode)],
-                ['보유 수량', quantity(selected.onHandQty)],
-                ['보류 수량', quantity(selected.heldQty)],
-                ['가용 수량', quantity(selected.availableQty)],
-                ['최근 전이', formatDateTime(selected.latestTransitionAt)],
-                ['최근 사유', selected.latestReasonCode ?? emptyValue],
+                [tSelected.status, statusLabel(selected.lotStatusCode)],
+                [tSelected.onHand, quantity(selected.onHandQty)],
+                [tSelected.held, quantity(selected.heldQty)],
+                [tSelected.available, quantity(selected.availableQty)],
+                [tSelected.latestTransition, formatDateTime(selected.latestTransitionAt)],
+                [tSelected.latestReason, selected.latestReasonCode ?? emptyValue],
               ].map(([label, value]) => (
                 <div className="field-cell" key={label}>
                   <dt className="field-label">{label}</dt>

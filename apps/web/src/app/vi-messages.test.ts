@@ -40,6 +40,17 @@ const TRANSLATED = [
   'pendingCode',
   'stateLocked',
   'save',
+  /* #1120 — 승인. 결재함 1화면. */
+  'approvalInbox',
+  /* #1121 — 알림. 알림센터 · 알람 수신자 설정 · 공지·전달 3화면. */
+  'notificationCenter',
+  'alarmRecipientSettings',
+  'notice',
+  /* #1122 — 시스템 관리. 사용자·역할·권한 · 결재선 정의 · 단말기-공정 매핑 · 비밀번호 변경 4화면. */
+  'usersRoles',
+  'approvalRoute',
+  'terminalProcessMap',
+  'passwordChange',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
   /* #1116 — 출하 11화면. */
@@ -54,6 +65,25 @@ const TRANSLATED = [
   'shipmentRequestCreate',
   'shipmentSchedule',
   'stockReinstatement',
+  /* #1118 — 품질관리 6화면. 셋은 문구 묶음이 없어 이 이슈가 슬라이스부터 세웠다. */
+  'dispositionDecision',
+  'inspectionResultInsights',
+  'lotStatusHistory',
+  'lotStatusTransition',
+  'qualityApproval',
+  'suspiciousMaterialHold',
+  /* #1114 — 기준정보 11화면. */
+  'commonCode',
+  'defectCauseCode',
+  'inspectionStandard',
+  'integrationSync',
+  'itemExtendedAttrs',
+  'judgmentCode',
+  'masterChange',
+  'putawayRule',
+  'routing',
+  'warehouseLayout',
+  'warehouseLocation',
 ] as const satisfies readonly (keyof Messages)[];
 
 const HANGUL = /[가-힣]/;

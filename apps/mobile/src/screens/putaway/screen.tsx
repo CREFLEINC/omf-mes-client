@@ -519,7 +519,10 @@ export const PutawayScreen = () => {
               {scannedLot === null ? null : lotMatches(lotNo.data ?? null, scannedLot) ? (
                 <p className="putaway__scanned">{t.lot.matched(formatMaterialLotNo(scannedLot))}</p>
               ) : (
-                <AlertBanner variant="error" title={t.lot.mismatch} />
+                <AlertBanner
+                  variant="error"
+                  title={t.lot.mismatch(formatMaterialLotNo(scannedLot))}
+                />
               )}
             </section>
           )}

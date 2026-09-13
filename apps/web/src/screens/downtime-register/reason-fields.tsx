@@ -15,6 +15,8 @@ export interface ReasonFieldsProps {
   reasons: readonly ReasonOption[];
   /** 고를 것이 하나도 없다 — 칸을 감추지 않고 «잠근다»(스펙 §6-1 · G-2). */
   reasonsUnavailable: boolean;
+  /** 조회가 실패했는가 — 거짓이면 「받았는데 0건」이다(#1094). */
+  reasonsFailed: boolean;
   remarks: string;
   breakdownId: number | null;
   breakdowns: readonly BreakdownView[];
@@ -44,6 +46,7 @@ export const ReasonFields = ({
   reasonCode,
   reasons,
   reasonsUnavailable,
+  reasonsFailed,
   remarks,
   breakdownId,
   breakdowns,
@@ -93,7 +96,9 @@ export const ReasonFields = ({
 
           {/* 고를 것이 없는 «이유»는 칸 옆에 선다 — 잠긴 칸만으로는 무엇이 잘못인지 모른다. */}
           {reasonsUnavailable && (
-            <p className="downtime-field-error">{t.errors.reasonsUnavailable}</p>
+            <p className="downtime-field-error">
+              {reasonsFailed ? t.errors.reasonsLoadFailed : t.errors.reasonsEmpty}
+            </p>
           )}
         </div>
 

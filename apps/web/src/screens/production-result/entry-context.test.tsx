@@ -34,6 +34,7 @@ const ShellIdentity = ({ children }: { children: React.ReactNode }) => {
       value={{
         terminalId: 1001,
         processes: [{ processId: 1001 }],
+        equipment: null,
         workerNo: session?.worker.workerNo ?? null,
       }}
     >

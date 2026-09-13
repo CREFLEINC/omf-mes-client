@@ -1,4 +1,5 @@
 import { AlertBanner, Button, Dialog, EmptyState, SkeletonText } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 
 import { lookupDisplayLabelWithInactive } from '../../patterns/lookup-display';
 import {
@@ -9,9 +10,10 @@ import {
 } from './queries';
 import type { ResultLabels } from './result-overview';
 
-const EMPTY = '미확인';
+const t = messages.inspectionResultInsights.detail;
+const EMPTY = t.unknown;
 /* 기준 미등록은 「없는 값」이다 — 「모르는 값」(EMPTY)과 같은 모양으로 그리지 않는다(공유계약 G-9 · client#589). */
-const NO_PLAN_VERSION = '기준 없음';
+const NO_PLAN_VERSION = t.noPlanVersion;
 const dateTime = (value: string): string => {
   const match = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})/.exec(value);
   return match === null ? value : `${match[1]} ${match[2]}`;
@@ -40,27 +42,32 @@ const MeasurementSummaryRow = ({ item }: { item: MeasurementItemSummary }) => {
   return (
     <li>
       <h4>{item.itemName}</h4>
-      <p>{item.specText ?? '규격 미확인'}</p>
+      <p>{item.specText ?? t.specUnknown}</p>
       <p>
-        측정 {count(item.measuredCount)}건 · 합격 {count(item.acceptedCount)}건 · 불합격{' '}
-        {count(item.rejectedCount)}건 · 미측정 {count(item.unmeasuredCount)}건
+        {t.measuredCounts(
+          count(item.measuredCount),
+          count(item.acceptedCount),
+          count(item.rejectedCount),
+          count(item.unmeasuredCount),
+        )}
       </p>
       {(outOfSpecValues.length > 0 || remaining > 0) && (
         <p>
-          일부 예시: {outOfSpecValues.join(', ')}
-          {remaining > 0
-            ? `${outOfSpecValues.length > 0 ? ' · ' : ''}외 ${String(remaining)}건`
-            : ''}
+          {t.outOfSpecExamples(
+            outOfSpecValues.join(', '),
+            remaining > 0
+              ? t.outOfSpecRemaining(outOfSpecValues.length > 0 ? ' · ' : '', remaining)
+              : '',
+          )}
         </p>
       )}
-      <p>측정 장비 {item.equipmentName ?? EMPTY}</p>
+      <p>{t.equipment(item.equipmentName ?? EMPTY)}</p>
       {item.equipmentCalibrationExpired === true && (
         <AlertBanner variant="warning">
-          검교정 만료
           {item.equipmentCalibrationDueDate === null ||
           item.equipmentCalibrationDueDate === undefined
-            ? ''
-            : ` · 예정일 ${item.equipmentCalibrationDueDate}`}
+            ? t.calibrationExpired
+            : t.calibrationExpiredWithDue(item.equipmentCalibrationDueDate)}
         </AlertBanner>
       )}
     </li>
@@ -84,34 +91,34 @@ export const ResultDetailDialog = ({
         : String(request.data.inspectionPlanVersionId);
   const retry = (label: string, refetch: () => Promise<unknown>) => (
     <Button
-      aria-label={`${label} 다시 시도`}
+      aria-label={t.retryOf(label)}
       size="sm"
       variant="outlined"
       onClick={() => void refetch()}
     >
-      다시 시도
+      {t.retry}
     </Button>
   );
   const fields =
     detail.data === undefined
       ? []
       : [
-          ['의뢰번호', detail.data.inspectionRequestNo ?? EMPTY],
-          ['기준 버전', planVersion],
-          ['품목', lookupDisplayLabelWithInactive(labels.item, detail.data.itemId)],
-          ['LOT', detail.data.lotNo ?? EMPTY],
-          ['공정', detail.data.processName ?? EMPTY],
+          [t.fields.inspectionRequestNo, detail.data.inspectionRequestNo ?? EMPTY],
+          [t.fields.planVersion, planVersion],
+          [t.fields.item, lookupDisplayLabelWithInactive(labels.item, detail.data.itemId)],
+          [t.fields.lotNo, detail.data.lotNo ?? EMPTY],
+          [t.fields.process, detail.data.processName ?? EMPTY],
           [
-            '검사/합격/불합격/보류',
+            t.fields.quantities,
             `${detail.data.inspectedQty} / ${detail.data.acceptedQty} / ${detail.data.rejectedQty} / ${detail.data.heldQty}`,
           ],
           [
-            '종합판정',
+            t.fields.judgment,
             lookupDisplayLabelWithInactive(labels.judgment, detail.data.overallJudgmentCode),
           ],
           [
-            '검사시각/회차',
-            `${dateTime(detail.data.inspectedAt)} / ${detail.data.inspectionRound}회`,
+            t.fields.inspectedAt,
+            t.inspectedAtWithRound(dateTime(detail.data.inspectedAt), detail.data.inspectionRound),
           ],
         ];
 
@@ -119,14 +126,16 @@ export const ResultDetailDialog = ({
     <Dialog
       open
       size="lg"
-      title="검사 결과 상세"
+      title={t.title}
       onClose={onClose}
       footer={
         <>
           <Button variant="outlined" onClick={onClose}>
-            닫기
+            {t.close}
           </Button>
-          <Button onClick={() => onViewMeasurements(inspectionResultId)}>측정치 전체 보기</Button>
+          <Button onClick={() => onViewMeasurements(inspectionResultId)}>
+            {t.viewMeasurements}
+          </Button>
         </>
       }
     >
@@ -134,12 +143,12 @@ export const ResultDetailDialog = ({
       {detail.isError && (
         <AlertBanner
           variant="error"
-          title="검사 상세를 불러오지 못했습니다."
-          action={retry('검사 상세', detail.refetch)}
+          title={t.failed}
+          action={retry(t.failedRetryTarget, detail.refetch)}
         />
       )}
       {!detail.isError && detail.data !== undefined && (
-        <dl className="filter-bar" aria-label="검사 결과 속성">
+        <dl className="filter-bar" aria-label={t.fieldsLabel}>
           {fields.map(([label, value]) => (
             <div className="field-cell" key={label}>
               <dt className="field-label">{label}</dt>
@@ -148,19 +157,19 @@ export const ResultDetailDialog = ({
           ))}
         </dl>
       )}
-      <h3>항목별 측정 요약</h3>
+      <h3>{t.summaryTitle}</h3>
       {summary.isPending && <SkeletonText lines={3} />}
       {summary.isError && (
         <AlertBanner
           variant="error"
-          title="측정 요약을 불러오지 못했습니다."
-          action={retry('측정 요약', summary.refetch)}
+          title={t.summaryFailed}
+          action={retry(t.summaryRetryTarget, summary.refetch)}
         />
       )}
       {!summary.isError &&
         summary.data !== undefined &&
         (summary.data.items.length === 0 ? (
-          <EmptyState size="sm" title="측정 요약이 없습니다" />
+          <EmptyState size="sm" title={t.summaryEmpty} />
         ) : (
           <ul>
             {summary.data.items.map((item) => (
@@ -169,7 +178,7 @@ export const ResultDetailDialog = ({
           </ul>
         ))}
       {!summary.isError && summary.data !== undefined && (
-        <p className="field-note">기준 {dateTime(summary.data.asOf)}</p>
+        <p className="field-note">{t.asOf(dateTime(summary.data.asOf))}</p>
       )}
     </Dialog>
   );
