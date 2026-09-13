@@ -234,7 +234,12 @@ export const JudgmentCodeScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
         /*
          * 편집기 안의 문구는 「코드값」이다 — 공통코드 화면과 한 묶음을 공유해 여기서 바꾸면
          * 그쪽 화면이 함께 바뀐다. 화면 이름과 편집기 어휘가 다른 이유를 머리에서 밝힌다.

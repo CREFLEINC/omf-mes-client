@@ -283,6 +283,7 @@ export const LotStatusTransitionCandidateScreen = () => {
             value={draft.q}
             onChange={(event) => setDraft((current) => ({ ...current, q: event.target.value }))}
             onSearch={apply}
+            clearLabel={messages.common.clear}
           />
           <FilterSelect
             disabled={confirmationPinned}

@@ -202,6 +202,7 @@ export const CodeGroupListPane = ({
           value={draft.q}
           onChange={(event) => setDraft((prev) => ({ ...prev, q: event.target.value }))}
           onSearch={(value) => onApplyFilters({ ...draft, q: value })}
+          clearLabel={messages.common.clear}
         />
 
         {/* 해제 축이라 변경 즉시 적용한다. */}

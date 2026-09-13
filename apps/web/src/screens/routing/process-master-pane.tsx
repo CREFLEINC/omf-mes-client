@@ -421,6 +421,7 @@ const ProcessListPane = ({
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           onSearch={(value) => onApplyFilters({ ...filters, q: value })}
+          clearLabel={messages.common.clear}
         />
         <div className="field-cell field-cell-unlabeled">
           <Checkbox

@@ -131,6 +131,7 @@ export const ProductionOrderFilterBar = ({
         value={draft.q}
         onChange={(event) => update('q', event.target.value)}
         onSearch={search}
+        clearLabel={messages.common.clear}
       />
       <div className="field-cell field-cell-unlabeled">
         {reversed && (

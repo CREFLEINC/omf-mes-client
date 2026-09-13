@@ -266,7 +266,12 @@ export const NoticeScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
         actions={<Button onClick={openCreate}>{t.form.create}</Button>}
       />
 
@@ -277,6 +282,7 @@ export const NoticeScreen = () => {
             onDismiss={() => {
               setFlash(null);
             }}
+            dismissLabel={messages.common.close}
           >
             {flash}
           </AlertBanner>
@@ -297,6 +303,7 @@ export const NoticeScreen = () => {
               onSearch={() => {
                 apply({ q: search });
               }}
+              clearLabel={messages.common.clear}
             />
           </div>
 

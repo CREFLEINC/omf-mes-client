@@ -21,6 +21,12 @@ import { localizedLabel, SHELL_BRAND } from './shell-label';
 /** 사이드바 **조작** 문구. 화면 이름은 `nav-tree.ts` 가 갖는다. */
 const t = messages.shellNav;
 
+/*
+ * 셸 뼈대의 접근명. **디자인 시스템이 기본값을 한국어로 들고 있어, 넘기지 않으면 베트남어로
+ * 열어도 이 자리만 한국어로 남는다**(#1131). 모바일 셸도 같은 자리를 같은 말로 채운다.
+ */
+const shell = messages.common.shell;
+
 /**
  * 이 주소를 보고 있는가. **하위 경로도 그 항목의 것이다**(`/a/b` 는 `/a` 항목을 켠다).
  *
@@ -225,7 +231,8 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <AppShell
-      mainLabel="본문"
+      mainLabel={shell.main}
+      skipLinkLabel={shell.skipToMain}
       collapsed={isSidebarCollapsed}
       onCollapsedChange={setIsSidebarCollapsed}
       topbar={
@@ -236,7 +243,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
       }
       sidebar={
         <Sidebar
-          aria-label="주 메뉴"
+          aria-label={shell.mainMenu}
           collapsed={isSidebarCollapsed}
           onCollapsedChange={setIsSidebarCollapsed}
           header={
@@ -254,6 +261,7 @@ export const AppLayout = ({ children }: AppLayoutProps) => {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 onClear={() => setQuery('')}
+                clearLabel={messages.common.clear}
               />
             )
           }

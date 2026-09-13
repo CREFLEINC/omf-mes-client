@@ -609,7 +609,12 @@ export const OverReceiptSplitScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
       />
 
       {/* 조회 실패는 빈 상태로 오인시키지 않는다 — 「없습니다」로 내면 자료가 없는 줄 안다. */}

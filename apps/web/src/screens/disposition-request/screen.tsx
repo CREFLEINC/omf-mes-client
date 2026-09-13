@@ -334,7 +334,12 @@ export const DispositionRequestScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
       />
       {/* 이 화면이 «하지 않는 것»을 상단에 상시 적는다 — 판정 버튼을 찾다가 못 찾게 하지 않는다(§5-1). */}
       <div className="banner-slot">

@@ -168,7 +168,12 @@ export const WarehouseLayoutScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
       />
 
       {flash !== null && (
@@ -178,6 +183,7 @@ export const WarehouseLayoutScreen = () => {
             onDismiss={() => {
               setFlash(null);
             }}
+            dismissLabel={messages.common.close}
           >
             {flash}
           </AlertBanner>

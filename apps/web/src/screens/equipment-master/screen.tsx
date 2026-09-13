@@ -1337,7 +1337,12 @@ export const EquipmentMasterScreen = () => {
     <>
       <PageHeader
         title={t.title}
-        breadcrumb={<Breadcrumb items={[{ label: t.breadcrumbRoot }, { label: t.title }]} />}
+        breadcrumb={
+          <Breadcrumb
+            items={[{ label: t.breadcrumbRoot }, { label: t.title }]}
+            aria-label={messages.common.shell.breadcrumb}
+          />
+        }
         /*
          * ⛔ **머리의 동작은 «보고 있는 뷰»의 것이다.** 점검 항목을 보는 중에 「그룹 추가」가
          * 서 있으면 그 탭의 동작으로 읽힌다 — 누르면 뷰가 바뀌어 사용자가 길을 잃는다.

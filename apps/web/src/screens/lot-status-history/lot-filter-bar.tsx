@@ -159,6 +159,7 @@ export const LotFilterBar = ({
         value={filters.q}
         onChange={(event) => setFilters((current) => ({ ...current, q: event.target.value }))}
         onSearch={search}
+        clearLabel={messages.common.clear}
       />
       <SelectField
         label={t.lotFilter.fields.item}
