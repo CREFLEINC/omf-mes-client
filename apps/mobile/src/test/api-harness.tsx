@@ -10,6 +10,7 @@ import {
 import type { ReactNode } from 'react';
 
 import { appQueryDefaults } from '../app/providers';
+import { noteServerAnswered } from '../patterns/online-status';
 import { ApiClientProvider } from '../patterns/api-context';
 import { OutboxProvider } from '../patterns/outbox';
 import { createOutboxTransport } from '../app/outbox-transport';
@@ -115,6 +116,12 @@ export const renderWithProviders = (
   ui: ReactNode,
   options: ProviderOptions,
 ): ProvidedRenderResult => {
+  /*
+   * 연결 표시는 마지막 요청이 답을 받았는지를 모듈 하나에 들고 있다. 오프라인을 흉내 내는
+   * 시험이 던진 실패가 뒤 시험까지 물들이므로, 화면을 세울 때마다 되돌린다.
+   */
+  noteServerAnswered();
+
   const { apiClient, Providers } = createProviders(options.fetch, options.queryClient);
   const result = render(<Providers>{ui}</Providers>);
 
