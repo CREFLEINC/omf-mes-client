@@ -559,15 +559,17 @@ describe('RepackLabelIssueScreen — 대상 포장', () => {
    *
    * ⛔ 줄을 «빼지» 않는다 — 후보를 좁히는 것은 서버 몫이다(계약 `labelIssued=false`).
    */
-  it('재구성 이력을 못 찾은 줄도 포장 번호와 사유를 적는다', async () => {
+  it('재구성 이력이 없는 줄도 포장 번호와 사유를 적는다', async () => {
     renderScreen({ noRepackEvent: true });
 
-    expect(await screen.findByText(t.pending.unknownEvent(HANDLING_UNIT_NO))).toBeInTheDocument();
+    expect(await screen.findByText(t.pending.noEvent(HANDLING_UNIT_NO))).toBeInTheDocument();
     expect(
       screen.getByRole('button', {
-        name: t.pending.selectRow(t.pending.unknownEvent(HANDLING_UNIT_NO), HANDLING_UNIT_NO),
+        name: t.pending.selectRow(t.pending.noEvent(HANDLING_UNIT_NO), HANDLING_UNIT_NO),
       }),
     ).toBeEnabled();
+    /* 서버가 200 으로 «없다»고 답한 줄이다 — 못 읽었다는 말을 세우지 않는다(#1150). */
+    expect(screen.queryByText(/확인 불가/)).not.toBeInTheDocument();
   });
 
   it('발행 대기 조회가 실패하면 다시 조회할 수 있다', async () => {

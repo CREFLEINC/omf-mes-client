@@ -56,12 +56,12 @@ export const PendingPane = ({
       render: (row) => {
         const selected = row.handlingUnitId === selectedId;
         /*
-         * ⛔ **아무 말도 안 하는 줄을 세우지 않는다**(#1044). 재구성 사건을 못 찾으면 원 포장을
+         * ⛔ **아무 말도 안 하는 줄을 세우지 않는다**(#1044). 재구성 사건이 없으면 원 포장을
          *    모르지만 **이 포장의 번호는 안다** — 번호와 「왜 나머지가 비었는지」를 함께 적어,
          *    눌러 보기 전에 무엇인지 알 수 있게 한다.
          */
         const sourceText = !row.hasRepackEvent
-          ? t.unknownEvent(row.handlingUnitNo)
+          ? t.noEvent(row.handlingUnitNo)
           : row.sourceNos.length === 0
             ? t.unknown
             : row.sourceNos.join(t.sourceJoin);
