@@ -1,3 +1,4 @@
+import { messages } from '@omf-mes/i18n';
 import { useQuery } from '@tanstack/react-query';
 
 import { useApiClient } from '../../patterns/api-context';
@@ -14,7 +15,7 @@ export interface UomLookup {
   isPending: boolean;
 }
 
-export const UOM_UNKNOWN = '단위 확인 중';
+export const UOM_UNKNOWN = messages.emergencyWorkOrder.uomUnknown;
 
 export const useUomLookup = (): UomLookup => {
   const { client } = useApiClient();

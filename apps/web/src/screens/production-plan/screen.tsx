@@ -1,4 +1,5 @@
 import { AlertBanner, Breadcrumb, Button, PageHeader, SkeletonText } from '@crefle/web-ui';
+import { messages } from '@omf-mes/i18n';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 
@@ -25,6 +26,9 @@ import {
 } from './reference-queries';
 import { WorkOrderResultPane } from './work-order-result-pane';
 
+const tPlan = messages.productionPlan;
+const t = tPlan.screen;
+
 const readProductionOrderId = (params: URLSearchParams): number | null => {
   const raw = params.get('productionOrderId');
   if (raw === null || !/^[1-9]\d*$/.test(raw)) return null;
@@ -35,7 +39,13 @@ const readProductionOrderId = (params: URLSearchParams): number | null => {
 const quantity = (value: number): string =>
   new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 6 }).format(value);
 const BREADCRUMB = (
-  <Breadcrumb items={[{ label: '생산' }, { label: '계획·지시' }, { label: 'W/O 전개·편성' }]} />
+  <Breadcrumb
+    items={[
+      { label: tPlan.breadcrumbRoot },
+      { label: tPlan.breadcrumbGroup },
+      { label: tPlan.title },
+    ]}
+  />
 );
 
 const ProductionPlanWorkspace = ({
@@ -69,15 +79,15 @@ const ProductionPlanWorkspace = ({
 
   return (
     <div className="production-plan-workspace">
-      <section className="pane production-plan-order-summary" aria-label="선택 생산 P/O">
+      <section className="pane production-plan-order-summary" aria-label={tPlan.order.pane}>
         <header className="production-plan-order-heading">
-          <span>선택 생산 P/O</span>
+          <span>{tPlan.order.heading}</span>
           <h2>{order.productionOrderNo}</h2>
         </header>
         <p className="production-plan-order-facts">
           {describeItem(order.itemId, new Map(itemNames.items.map((item) => [item.itemId, item])))}{' '}
           · {quantity(order.orderQty)} {uomLabel}
-          {order.dueDate === null ? '' : ` · 납기 ${order.dueDate}`}
+          {order.dueDate === null ? '' : tPlan.order.due(order.dueDate)}
         </p>
       </section>
       <MasterCheckPane
@@ -99,25 +109,23 @@ const ProductionPlanWorkspace = ({
         onRoutingChange={setRoutingId}
       />
       {order.plantId !== null && lines.isPending && lines.data === undefined && (
-        <div role="status" aria-label="생산라인을 불러오는 중">
+        <div role="status" aria-label={tPlan.lines.loading}>
           <SkeletonText lines={2} />
         </div>
       )}
       {lines.isError && (
         <AlertBanner
           variant="error"
-          title="생산라인을 불러오지 못했습니다."
+          title={tPlan.lines.loadFailed}
           action={
             <Button size="sm" variant="outlined" onClick={() => void lines.refetch()}>
-              생산라인 다시 시도
+              {tPlan.lines.retry}
             </Button>
           }
         />
       )}
       {order.plantId === null && (
-        <AlertBanner variant="info">
-          P/O에 공장이 없어 생산라인은 미지정으로 저장합니다.
-        </AlertBanner>
+        <AlertBanner variant="info">{tPlan.lines.plantMissing}</AlertBanner>
       )}
       {referencesLoaded && linesLoaded && (
         <ProductionPlanEditorSection
@@ -136,7 +144,7 @@ const ProductionPlanWorkspace = ({
           }))}
           lineOptions={lineItems.map((line) => ({
             value: String(line.productionLineId),
-            label: `${line.parentLineId === null ? '' : `${lineNames.get(line.parentLineId) ?? '상위 라인'} > `}${line.lineCode} · ${line.lineName}${line.isActive ? '' : ' · 비활성'}`,
+            label: `${line.parentLineId === null ? '' : `${lineNames.get(line.parentLineId) ?? tPlan.lines.parentUnknown} > `}${line.lineCode} · ${line.lineName}${line.isActive ? '' : tPlan.lines.inactiveSuffix}`,
           }))}
           addDisabled={!masterReady || referenceFailed || orderUnavailable}
           onShowResults={setResultPlanId}
@@ -149,9 +157,7 @@ const ProductionPlanWorkspace = ({
           uomLabel={uomLabel}
         />
       )}
-      <AlertBanner variant="info">
-        생산 LOT 크기와 선발행은 W/O 확정·배포 단계에서 입력합니다.
-      </AlertBanner>
+      <AlertBanner variant="info">{t.lotNotice}</AlertBanner>
     </div>
   );
 };
@@ -173,20 +179,20 @@ export const ProductionPlanScreen = () => {
     matchingOrder ?? (trustedOrder?.productionOrderId === productionOrderId ? trustedOrder : null);
   const orderUnavailable = order.isError || ownerMismatch;
   const failureTitle = ownerMismatch
-    ? '요청한 생산 P/O와 다른 상세가 반환되었습니다.'
+    ? t.ownerMismatch
     : workspaceOrder === null
-      ? '생산 P/O를 불러오지 못했습니다.'
-      : '최신 생산 P/O를 확인하지 못했습니다.';
+      ? t.loadFailed
+      : t.stale;
 
   return (
     <>
-      <PageHeader title="W/O 전개·편성" breadcrumb={BREADCRUMB} />
+      <PageHeader title={tPlan.title} breadcrumb={BREADCRUMB} />
       {productionOrderId === null ? (
-        <AlertBanner variant="warning" title="생산 P/O를 먼저 선택하세요.">
-          <Link to="/production/production-orders">P/O 수신·조회로 이동</Link>
+        <AlertBanner variant="warning" title={t.unselected}>
+          <Link to="/production/production-orders">{t.openProductionOrders}</Link>
         </AlertBanner>
       ) : order.isPending && workspaceOrder === null ? (
-        <div role="status" aria-label="생산 P/O를 불러오는 중">
+        <div role="status" aria-label={t.loading}>
           <SkeletonText lines={3} />
         </div>
       ) : (
@@ -197,11 +203,11 @@ export const ProductionPlanScreen = () => {
               title={failureTitle}
               action={
                 <Button size="sm" variant="outlined" onClick={() => void order.refetch()}>
-                  다시 시도
+                  {t.retry}
                 </Button>
               }
             >
-              {workspaceOrder !== null && '현재 편집 내용은 유지됩니다.'}
+              {workspaceOrder !== null && t.keepsEdits}
             </AlertBanner>
           )}
           {workspaceOrder !== null && (

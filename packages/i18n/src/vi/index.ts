@@ -32,6 +32,7 @@ import { dispositionRequest } from './disposition-request';
 import { documentProgress } from './document-progress';
 import { downtimeSummary } from './downtime-summary';
 import { editability } from './editability';
+import { emergencyWorkOrder } from './emergency-work-order';
 import { equipmentFailure } from './equipment-failure';
 import { equipmentFailureReport } from './equipment-failure-report';
 import { equipmentInspection } from './equipment-inspection';
@@ -58,6 +59,7 @@ import { lotStatusTransition } from './lot-status-transition';
 import { maintenanceOrder } from './maintenance-order';
 import { maintenanceResult } from './maintenance-result';
 import { masterChange } from './master-change';
+import { materialIssueRequest } from './material-issue-request';
 import { materialLocation } from './material-location';
 import { materialLotScan } from './material-lot-scan';
 import { materialPicking } from './material-picking';
@@ -70,11 +72,14 @@ import { packingRepack } from './packing-repack';
 import { passwordChange } from './password-change';
 import { pendingCode } from './pending-code';
 import { physicalCount } from './physical-count';
+import { poChangeReview } from './po-change-review';
 import { poRegister } from './po-register';
 import { productDisposalRequest } from './product-disposal-request';
 import { productPicking } from './product-picking';
 import { productReceipt } from './product-receipt';
 import { productStockStatus } from './product-stock-status';
+import { productionOrder } from './production-order';
+import { productionPlan } from './production-plan';
 import { putaway } from './putaway';
 import { putawayRule } from './putaway-rule';
 import { qualityApproval } from './quality-approval';
@@ -110,6 +115,10 @@ import { warehouseLayout } from './warehouse-layout';
 import { warehouseLocation } from './warehouse-location';
 import { wipHandover } from './wip-handover';
 import { workCalendar } from './work-calendar';
+import { workOrder } from './work-order';
+import { workOrderClose } from './work-order-close';
+import { workOrderProgress } from './work-order-progress';
+import { workOrderRelease } from './work-order-release';
 
 export const vi: Translated<Messages> = {
   ...ko,
@@ -129,6 +138,7 @@ export const vi: Translated<Messages> = {
   documentProgress,
   downtimeSummary,
   editability,
+  emergencyWorkOrder,
   equipmentFailure,
   equipmentFailureReport,
   equipmentInspection,
@@ -155,6 +165,7 @@ export const vi: Translated<Messages> = {
   maintenanceOrder,
   maintenanceResult,
   masterChange,
+  materialIssueRequest,
   materialLocation,
   materialLotScan,
   materialPicking,
@@ -167,8 +178,11 @@ export const vi: Translated<Messages> = {
   passwordChange,
   pendingCode,
   physicalCount,
+  poChangeReview,
   poRegister,
   productDisposalRequest,
+  productionOrder,
+  productionPlan,
   productPicking,
   productReceipt,
   productStockStatus,
@@ -207,4 +221,8 @@ export const vi: Translated<Messages> = {
   warehouseLocation,
   wipHandover,
   workCalendar,
+  workOrder,
+  workOrderClose,
+  workOrderProgress,
+  workOrderRelease,
 };

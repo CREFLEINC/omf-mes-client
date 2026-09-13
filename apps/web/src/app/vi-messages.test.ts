@@ -53,6 +53,16 @@ const TRANSLATED = [
   'passwordChange',
   /* 모바일이 옮기며 `shell`·`reference` 까지 담은 것을 관리웹도 그대로 읽는다. */
   'common',
+  /* #1117 — 생산 9화면. `productionPlan` 은 이 파가 새로 만든 묶음이다. */
+  'productionOrder',
+  'poChangeReview',
+  'productionPlan',
+  'workOrder',
+  'workOrderRelease',
+  'workOrderClose',
+  'emergencyWorkOrder',
+  'materialIssueRequest',
+  'workOrderProgress',
   /* #1119 — 설비/툴 13화면. */
   'collectionChannel',
   'downtimeSummary',
