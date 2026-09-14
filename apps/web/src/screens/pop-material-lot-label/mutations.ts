@@ -1,21 +1,15 @@
 import type { ApiClient, ApiError } from '@omf-mes/api-client';
 import { createIdempotencyKey } from '@omf-mes/api-client';
-import { fetchLabelRendition, labelRenditionFormat } from '../../patterns/pop-label-rendition';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useRef, useState } from 'react';
 
 import { useApiClient } from '../../patterns/api-context';
 import { runRequest, toApiError } from '../../patterns/request';
 import { toDocumentIssueBody, toLotCreateBody, toPrintReportBody } from './issue-request';
+import { buildMaterialLotLabel } from './label-tspl';
 import { receiptKeys } from './queries';
 import { popShell } from './shell-print';
 import { toIssueView, type IssueView, type TargetRow } from './types';
-
-/**
- * 라벨 형식. **셸이 있으면 명령형(`tspl`)** 으로 받아 프린터가 자기 글꼴로 찍게 한다 —
- * 그림으로 받으면 드라이버가 픽셀로 그려, 명령으로 뽑은 라벨과 다른 물건으로 보인다
- * (`patterns/pop-label-rendition` 머리말 · 사용자 지시 2026-09-08).
- */
 
 type Client = ApiClient['client'];
 
@@ -25,7 +19,7 @@ type Client = ApiClient['client'];
  * ```
  * register  POST /trace/lots                                    LOT 을 만든다
  * issue     POST /app/document-issues                           발행 기록을 만든다(회차는 서버)
- * render    GET  /app/document-issues/{id}/rendition            서버가 그린 것을 받는다
+ * render    (화면)                                              80 × 30 라벨을 직접 짠다
  * print     window.pop.rendition.save(...)                      셸이 보낸다
  * report    POST /app/document-issues/{id}:report-print         결과를 보고한다
  * ```
@@ -84,6 +78,8 @@ export interface IssueCommand {
   printerName: string | null;
   /** 재인쇄일 때만 채운다. 신규 발행에 사유가 붙으면 이력이 거짓이 된다. */
   reissueReasonCode: string | null;
+  /** 라벨 수량 옆에 적을 단위 코드. 화면이 이름을 못 풀었으면 `null`. */
+  uomCode: string | null;
 }
 
 /** 인쇄를 못 한 사유 — 서버 보고에 그대로 실린다. `FAILED` 인데 사유가 없으면 422 다. */
@@ -134,13 +130,42 @@ const createIssue = async (
   return toIssueView(created);
 };
 
-/** 서버가 그린 자재 LOT 라벨을 배포본에서도 명시적 문서 종류로 받는다. */
-const fetchRendition = async (
-  client: ApiClient['client'],
-  documentIssueLogId: number,
-): Promise<Uint8Array> => new Uint8Array(await fetchLabelRendition(
-  client, documentIssueLogId, labelRenditionFormat(), 'MATERIAL_LOT_LABEL',
-));
+/**
+ * 인쇄할 라벨을 **POP 이 직접 짠다**(사용자 지시 2026-09-14 · `label-tspl` 머리말).
+ *
+ * ⭐ 서버 렌디션은 100 × 60 mm 좌표라 현장의 80 × 30 mm 라벨지에서 잘렸다. 라벨에 실을 값만
+ *   서버에서 받는다 — 품번은 품목 상세, LOT 번호는 발행 기록(없으면 LOT 상세)에서.
+ *
+ * ⛔ **값을 못 받으면 짜지 않는다.** 빈 품번·LOT 으로 찍힌 라벨은 나온 것처럼 보이지만 쓸 수 없다 —
+ *    `render` 걸음의 실패로 멈춘다.
+ */
+const buildLabel = async (
+  client: Client,
+  input: { row: TargetRow; issue: IssueView; lotId: number; uomCode: string | null },
+): Promise<Uint8Array> => {
+  const { row, issue, lotId, uomCode } = input;
+
+  const item = await runRequest(() =>
+    client.GET('/mdm/items/{itemId}', { params: { path: { itemId: row.itemId } } }),
+  );
+
+  const lotNo =
+    issue.lotNo ??
+    (
+      await runRequest(() => client.GET('/trace/lots/{lotId}', { params: { path: { lotId } } }))
+    ).lot.lotNo;
+
+  const commands = buildMaterialLotLabel({
+    itemCode: item.item.itemCode,
+    lotNo,
+    qty: row.receivedQty,
+    uomCode,
+    issueSeq: issue.issueSeq,
+    inboundReceiptNo: row.inboundReceiptNo,
+  });
+
+  return new TextEncoder().encode(commands);
+};
 
 const reportPrint = async (
   client: Client,
@@ -223,7 +248,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
 
   const run = useCallback(
     (command: IssueCommand) => {
-      const { row, printerName, reissueReasonCode } = command;
+      const { row, printerName, reissueReasonCode, uomCode } = command;
 
       /*
        * ⛔ **사번을 모르면 아무것도 부르지 않는다**(공유계약 D-5 · F-6). 단추도 함께 막혀
@@ -293,7 +318,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
           issueKeys.delete(row.inboundReceiptLineId);
 
           enter('render');
-          const bytes = await fetchRendition(client, issue.documentIssueLogId);
+          const bytes = await buildLabel(client, { row, issue, lotId, uomCode });
 
           enter('print');
           const shell = popShell();
@@ -310,7 +335,7 @@ export const useLabelIssue = ({ workerNo }: IssueRunOptions): IssueRunResultHand
                     bytes,
                     `lot-${String(issue.documentIssueLogId)}`,
                     new Date().toISOString(),
-                    labelRenditionFormat(),
+                    'tspl',
                   )
                   .then(() => null)
                   .catch((cause: unknown) =>
