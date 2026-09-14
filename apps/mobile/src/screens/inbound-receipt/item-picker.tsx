@@ -46,7 +46,8 @@ const useSettled = (term: string): string => {
  */
 export const ItemPicker = ({ onPick, onCancel }: ItemPickerProps) => {
   const [term, setTerm] = useState('');
-  const search = useItemSearch(useSettled(term));
+  const settled = useSettled(term);
+  const search = useItemSearch(settled);
   const found = search.data ?? [];
   /* 한 쪽에서 잘렸다. 말하지 않으면 뒤에 있는 품목이 없는 것으로 읽힌다. */
   const capped = found.length >= ITEM_SEARCH_LIMIT;
