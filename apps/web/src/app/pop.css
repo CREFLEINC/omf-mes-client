@@ -5533,3 +5533,20 @@
 .pop-ui > .pop-overlay > .pop-header > .pop-context-right {
   flex-shrink: 0;
 }
+
+/*
+ * 툴 사용실적 액션 줄 — **버튼은 한 줄에 다 선다. 긴 사유는 제 칸 안에서 두 줄로 접힌다**
+ * (사용자 지시 2026-09-14).
+ *
+ * ⚠ 사유 칸이 `flex: 1 1 auto` 라 글 길이만큼 폭을 요구했고, 베트남어 사유가 줄 폭을 넘자
+ *   [저장]이 다음 줄로 밀려 액션 줄이 두 층이 됐다(실측). 폭 요구를 0 에서 시작하게 해 남는
+ *   폭만 쓰고, 넘치는 글은 그 안에서 줄을 바꾼다.
+ */
+.pop-ui .pop-actions > .tool-usage-block {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.pop-ui .pop-actions > .tool-usage-block ~ button {
+  flex-shrink: 0;
+}
