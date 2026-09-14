@@ -79,7 +79,6 @@ export const ShopfloorReceiptScreen = () => {
   const issue = found.data ?? null;
   const received = useAlreadyReceived(issue?.issue.goodsIssueId ?? null);
 
-  const itemLabels = useItemLabels(issue !== null);
   const lotLabels = useLineLotLabels(issue?.lines ?? []);
   const reasons = useCodeValues(VARIANCE_REASON);
   /*
@@ -146,6 +145,12 @@ export const ShopfloorReceiptScreen = () => {
   const hopperLocationId = hopperLocationOf(equipment);
   const hopper = useLocation(hopperLocationId);
   const hopperStock = useHopperStock(hopperLocationId);
+
+  /* 호퍼 잔량의 품목도 함께 묻는다 - 전표에 없는 품목이 섞여 있어 그 줄만 대리키로 남는다. */
+  const itemLabels = useItemLabels([
+    ...(issue?.lines ?? []).map((line) => line.itemId),
+    ...(hopperStock.data ?? []).map((stock) => stock.itemId),
+  ]);
   const stocks = hopperStock.data ?? [];
   /*
    * 사유는 고객이 늘리는 값이라 화면이 박지 않는다. 서버가 모른다고 답하면 막는다 - 지어낸
@@ -246,7 +251,7 @@ export const ShopfloorReceiptScreen = () => {
   });
 
   const nameOf = (line: DraftLine): string => {
-    const item = itemLabels.data?.get(line.itemId);
+    const item = itemLabels.get(line.itemId);
     const lotNo = lotLabels.get(line.lotId) ?? String(line.lotId);
 
     return t.lines.name(item === undefined ? '' : item.itemCode, lotNo);
@@ -573,7 +578,7 @@ export const ShopfloorReceiptScreen = () => {
             {stocks.map((stock) => {
               const value = measured[stock.itemId] ?? '';
               const problem = measureProblemOf(value);
-              const item = itemLabels.data?.get(stock.itemId);
+              const item = itemLabels.get(stock.itemId);
               const name = item === undefined ? String(stock.itemId) : item.itemCode;
 
               return (

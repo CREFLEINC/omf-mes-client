@@ -71,7 +71,7 @@ export const MaterialLotScanScreen = () => {
   const receipts = useSupplierLotReceipts();
   const lines = useFillableLines(receiptId);
 
-  const itemLabels = useItemLabels((lines.data ?? []).length > 0);
+  const itemLabels = useItemLabels((lines.data ?? []).map((each) => each.itemId));
   const plantId = currentPlantId();
 
   /*
@@ -96,7 +96,7 @@ export const MaterialLotScanScreen = () => {
 
   /* 이 회차에 보낸 번호는 큐에 없다. 다시 스캔하면 서버가 400 으로 되돌린다. */
   const usedLotNos = [...queuedLotNos, ...registered.map((each) => each.lotNo)];
-  const lineItemCode = line === null ? undefined : itemLabels.data?.get(line.itemId)?.itemCode;
+  const lineItemCode = line === null ? undefined : itemLabels.get(line.itemId)?.itemCode;
   const problem = scanned.trim() === '' ? null : scanProblemOf(scanned, usedLotNos, lineItemCode);
   const labelQty = labelQtyOf(scanned);
   const ready =
@@ -288,7 +288,7 @@ export const MaterialLotScanScreen = () => {
               value: String(each.inboundReceiptLineId),
               label: t.line.item(
                 String(each.lineNo),
-                itemLabels.data?.get(each.itemId)?.itemCode ?? '',
+                itemLabels.get(each.itemId)?.itemCode ?? '',
                 String(each.receivedQty),
               ),
             }))}

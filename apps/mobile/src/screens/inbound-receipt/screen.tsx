@@ -1,11 +1,26 @@
-import { AlertBanner, Button, Card, Chip, NumberPad, Select, TextField } from '@crefle/web-ui';
+import {
+  AlertBanner,
+  Button,
+  Card,
+  Chip,
+  NumberPad,
+  SearchInput,
+  Select,
+  TextField,
+} from '@crefle/web-ui';
 import { messages } from '@omf-mes/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { isMaterialLotNo } from '../../patterns/material-lot-no';
-import { useItem, useItemLabels, useSuppliers, useUomCodes } from '../../patterns/masters';
+import {
+  useItem,
+  useItemLabels,
+  useItemSearch,
+  useSuppliers,
+  useUomCodes,
+} from '../../patterns/masters';
 import { useOutbox } from '../../patterns/outbox';
 import { currentPlantId } from '../../patterns/plant';
 import { ScanReplaceDialog } from '../../patterns/scan-replace-dialog';
@@ -232,8 +247,17 @@ export const InboundReceiptScreen = () => {
   const item = useItem((draft.unordered ? draft.itemId : draft.purchaseOrderLine?.itemId) ?? null);
   const uoms = useUomCodes(true);
   /* 목록의 발주 라인은 품목 식별자만 준다. 그 번호로는 실물 라벨과 대조할 수 없다. */
-  const itemLabels = useItemLabels(draft.purchaseOrder !== null || draft.unordered);
+  const itemLabels = useItemLabels((lines.data ?? []).map((each) => each.itemId));
   const suppliers = useSuppliers(draft.unordered);
+  /* 무발주는 작업자가 품목을 직접 고른다. 고르기 전에는 마스터 전체가 후보라 찾아서 좁힌다. */
+  const [itemTerm, setItemTerm] = useState('');
+  const itemSearch = useItemSearch(draft.unordered ? itemTerm : '');
+  const itemPlaceholder =
+    itemSearch.data === undefined
+      ? t.exception.itemSearchFirst
+      : itemSearch.data.length === 0
+        ? t.exception.itemSearchEmpty
+        : t.exception.itemPlaceholder;
   /* 공장은 단말 토큰이 싣고 온다. 발주가 없으면 승계할 곳이 여기뿐이다. */
   const plantId = draft.unordered ? currentPlantId() : (draft.purchaseOrder?.plantId ?? null);
 
@@ -286,7 +310,7 @@ export const InboundReceiptScreen = () => {
 
   /* 코드와 이름을 함께 보인다. 라벨에는 코드가 찍혀 있고 사람은 이름으로 고른다. */
   const itemLabelOf = (itemId: number): string => {
-    const found = itemLabels.data?.get(itemId);
+    const found = itemLabels.get(itemId);
 
     return found === undefined ? t.po.itemUnknown : `${found.itemCode} ${found.itemName}`;
   };
@@ -767,27 +791,43 @@ export const InboundReceiptScreen = () => {
                 </div>
               )}
 
-              {itemLabels.isError ? (
-                <AlertBanner variant="error" title={t.exception.itemLoadFailed} />
-              ) : null}
-              {itemLabels.data === undefined ? null : (
-                <div className="receipt__field">
-                  <label htmlFor="receipt-item">{required(t.exception.itemLabel)}</label>
-                  <Select
-                    id="receipt-item"
-                    placeholder={t.exception.itemPlaceholder}
-                    size="xl"
-                    value={draft.itemId === null ? null : String(draft.itemId)}
-                    onChange={(value) => {
-                      patch({ itemId: Number(value) });
-                    }}
-                    options={[...itemLabels.data].map(([itemId, label]) => ({
-                      value: String(itemId),
-                      label: `${label.itemCode} ${label.itemName}`,
-                    }))}
-                  />
-                </div>
-              )}
+              {/*
+                마스터가 9,000건인 곳이 있어 목록으로 늘어놓지 않는다. 앞에서 잘린 목록을
+                보이면 있는 품목이 없는 것으로 읽혀, 고르지 못하고도 이유를 알 수 없다.
+              */}
+              <div className="receipt__field">
+                <SearchInput
+                  label={t.exception.itemSearchLabel}
+                  placeholder={t.exception.itemSearchPlaceholder}
+                  helperText={t.exception.itemSearchHint}
+                  error={itemSearch.isError ? t.exception.itemSearchFailed : undefined}
+                  loading={itemSearch.isFetching}
+                  size="xl"
+                  fullWidth
+                  value={itemTerm}
+                  onChange={(event) => {
+                    setItemTerm(event.target.value);
+                  }}
+                />
+              </div>
+
+              {/* 찾기 전에도 세워 둔다 - 칸이 없으면 무엇을 더 채워야 하는지 보이지 않는다. */}
+              <div className="receipt__field">
+                <label htmlFor="receipt-item">{required(t.exception.itemLabel)}</label>
+                <Select
+                  id="receipt-item"
+                  placeholder={itemPlaceholder}
+                  size="xl"
+                  value={draft.itemId === null ? null : String(draft.itemId)}
+                  onChange={(value) => {
+                    patch({ itemId: Number(value) });
+                  }}
+                  options={(itemSearch.data ?? []).map((each) => ({
+                    value: String(each.itemId),
+                    label: `${each.itemCode} ${each.itemName}`,
+                  }))}
+                />
+              </div>
               {/* 품목 마스터의 주인은 ERP 다. 여기서 만들 길을 찾지 않는다. */}
               <AlertBanner variant="info" title={t.exception.itemUnregistered}>
                 {t.exception.itemUnregisteredWhy}

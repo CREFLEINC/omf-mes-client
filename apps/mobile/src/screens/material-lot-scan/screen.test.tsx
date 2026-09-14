@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { runBackStep } from '../../patterns/back-step';
 import { formatMaterialLotNo } from '../../patterns/material-lot-no';
 import { useWorkerSession } from '../../patterns/worker-session';
@@ -153,22 +154,18 @@ const routes = (options: Options = {}): StubRoute[] => [
         : jsonResponse({ lotId: 8101 }, { status: 201 });
     },
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [
-          {
-            itemId: 2002,
-            itemCode: options.itemCode ?? 'ABC-123',
-            itemName: '하우징',
-            fifoPolicyCode: 'FIFO',
-          },
-          { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
-        ],
-        page,
-      }),
-  },
+  ...itemRoutes(
+    [
+      {
+        itemId: 2002,
+        itemCode: options.itemCode ?? 'ABC-123',
+        itemName: '하우징',
+        fifoPolicyCode: 'FIFO',
+      },
+      { itemId: 2001, itemCode: 'RM-1001', itemName: '수지A', fifoPolicyCode: 'FEFO' },
+    ],
+    page,
+  ),
 ];
 
 const SignedIn = ({ children }: { children: ReactNode }) => {

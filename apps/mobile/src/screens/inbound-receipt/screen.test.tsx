@@ -11,6 +11,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { OUTBOX_KEY } from '../../patterns/outbox';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { InboundReceiptScreen } from './screen';
@@ -124,19 +125,10 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [{ itemId: 31, itemCode: 'ABC-123', itemName: '원자재', fifoPolicyCode: 'FIFO' }],
-        page,
-      }),
-  },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items/31',
-    respond: () =>
-      jsonResponse({ item: { itemCode: 'ABC-123', itemName: '원자재', fifoPolicyCode: 'FIFO' } }),
-  },
+  ...itemRoutes(
+    [{ itemId: 31, itemCode: 'ABC-123', itemName: '원자재', fifoPolicyCode: 'FIFO' }],
+    page,
+  ),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/uoms',
     respond: () => jsonResponse({ items: [{ uomId: 9, uomCode: 'EA' }], page }),
@@ -1012,6 +1004,12 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await user.click(await screen.findByRole('option', { name: option }));
   };
 
+  /* 마스터를 다 늘어놓지 않으므로 찾는 말을 먼저 적어야 후보가 선다. */
+  const chooseItem = async (user: ReturnType<typeof userEvent.setup>, term: string) => {
+    await user.type(await screen.findByLabelText('품목 찾기'), term);
+    await choose(user, '품목', new RegExp(term));
+  };
+
   /*
    * 거래처 역할은 다섯이다. 거르지 않으면 고객사가 공급사 후보에 섞이고, 잘못 실린 거래처로
    * 입하가 서면 되돌릴 자리가 없다.
@@ -1035,7 +1033,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await screen.findByLabelText('LOT 번호');
     await openUnordered(user);
     await choose(user, '공급사', /합성공급사/);
-    await choose(user, '품목', /ABC-123/);
+    await chooseItem(user, 'ABC-123');
     await choose(user, '단위', /EA/);
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '40');
 
@@ -1067,7 +1065,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await openUnordered(user);
 
     await choose(user, '공급사', /합성공급사/);
-    await choose(user, '품목', /ABC-123/);
+    await chooseItem(user, 'ABC-123');
     await choose(user, '단위', /EA/);
     await choose(user, '예외입하 유형', /긴급 입하/);
     await user.type(screen.getByLabelText(/예외\ 사유/), '발주서 도착 전 긴급 입하');
@@ -1105,7 +1103,7 @@ describe('입하 등록 화면 — 발주 없이 도착', () => {
     await openUnordered(user);
 
     await choose(user, '공급사', /합성공급사/);
-    await choose(user, '품목', /ABC-123/);
+    await chooseItem(user, 'ABC-123');
     await choose(user, '단위', /EA/);
     await user.type(await screen.findByLabelText(/실입하\ 수량/), '40');
 

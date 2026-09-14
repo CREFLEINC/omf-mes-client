@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { ProductReceiptScreen } from './screen';
 
@@ -290,17 +291,13 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [
-          { itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' },
-          { itemId: 2102, itemCode: 'FG-1002', itemName: '완제품B', fifoPolicyCode: 'FEFO' },
-        ],
-        page,
-      }),
-  },
+  ...itemRoutes(
+    [
+      { itemId: 2101, itemCode: 'FG-1001', itemName: '완제품A', fifoPolicyCode: 'FEFO' },
+      { itemId: 2102, itemCode: 'FG-1002', itemName: '완제품B', fifoPolicyCode: 'FEFO' },
+    ],
+    page,
+  ),
 ];
 
 const SignedIn = ({ children }: { children: ReactNode }) => {

@@ -10,6 +10,7 @@ import {
   renderWithProviders,
   type StubRoute,
 } from '../../test/api-harness';
+import { itemRoutes } from '../../test/master-routes';
 import { runBackStep } from '../../patterns/back-step';
 import { useWorkerSession } from '../../patterns/worker-session';
 import { ShopfloorReceiptScreen } from './screen';
@@ -257,14 +258,10 @@ const routes = (options: Options = {}): StubRoute[] => [
       });
     },
   },
-  {
-    match: (req) => new URL(req.url).pathname === '/mdm/items',
-    respond: () =>
-      jsonResponse({
-        items: [{ itemId: 100, itemCode: 'RM-1001', itemName: '원자재', fifoPolicyCode: 'FEFO' }],
-        page,
-      }),
-  },
+  ...itemRoutes(
+    [{ itemId: 100, itemCode: 'RM-1001', itemName: '원자재', fifoPolicyCode: 'FEFO' }],
+    page,
+  ),
   {
     match: (req) => new URL(req.url).pathname === '/mdm/code-values',
     respond: (req) => {

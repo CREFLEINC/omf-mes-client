@@ -80,7 +80,7 @@ export const StockTransferScreen = () => {
   const destination = useLocationByCode(toWarehouseId, scannedLocation);
   const foundLot = useScannedLot(scannedLot);
   const balances = useLotBalances(foundLot.data?.lotId ?? null);
-  const itemLabels = useItemLabels(lines.length > 0);
+  const itemLabels = useItemLabels(lines.map((line) => line.itemId));
 
   const toWarehouse = (warehouses.data ?? []).find((each) => each.warehouseId === toWarehouseId);
   const toLocation = destination.data ?? null;
@@ -180,7 +180,7 @@ export const StockTransferScreen = () => {
   });
 
   const nameOf = (line: DraftLine): string =>
-    t.from.name(itemLabels.data?.get(line.itemId)?.itemCode ?? '', line.lotNo);
+    t.from.name(itemLabels.get(line.itemId)?.itemCode ?? '', line.lotNo);
 
   const restart = () => {
     setLines([]);
