@@ -33,7 +33,7 @@ const CameraWindow = ({ scanning }: { scanning: boolean }) => (
 );
 
 export const DeviceRegistrationScreen = ({ camera }: { camera?: QrCamera }) => {
-  useScreenTitle(t.title);
+  useScreenTitle(t.title, { compact: true });
   const { phase, terminal, retry, submitCode, startCamera, showManualEntry, cameraEnabled } =
     useRegistrationFlow({ camera });
   const [code, setCode] = useState('');
